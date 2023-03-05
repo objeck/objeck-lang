@@ -167,7 +167,7 @@ bundle Gtk3 {
 		GDK_DRAG_PROTO_WAYLAND := 7	
 	}
 
-	consts GdkEventType {
+	consts EventType {
 		GDK_NOTHING := -1,
 		GDK_DELETE := 0,
 		GDK_DESTROY := 1,
@@ -620,11 +620,11 @@ bundle Gtk3 {
 		New(gobject : Int) {
 			@gobject := gobject;
 		}
-
+		
 		method : public : GetRef() ~ Int {
 			return @gobject;
 		}
-
+		
 		method : public : SignalConnect(detailed_signal : String, handler : (GObject, Base) ~ Nil, data : Base) ~ Nil {
 			array_args := Base->New[4];
 
@@ -664,7 +664,6 @@ bundle Gtk3 {
 			array_args[2] := IntRef->New(cursor_type);
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_cursor_new_for_display", array_args);
-	
 			value := array_args[0]->As(IntRef);
 			@gobject := value->Get();
 		}
@@ -725,7 +724,6 @@ bundle Gtk3 {
 			array_args[2] := name;
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_cursor_new_from_name", array_args);
-	
 			value := array_args[0]->As(IntRef);
 			@gobject := value->Get();
 		}
@@ -900,7 +898,7 @@ bundle Gtk3 {
 			array_args[2] := IntRef->New(index_);
 			array_args[3] := keyval;
 			array_args[4] := modifiers;
-			
+	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_device_get_key", array_args);
 	
 			value := array_args[0]->As(IntRef);
@@ -1030,7 +1028,7 @@ bundle Gtk3 {
 			array_args[2] := screen;
 			array_args[3] := x;
 			array_args[4] := y;
-			
+	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_device_get_position_double", array_args);
 		}
 
@@ -1615,7 +1613,7 @@ bundle Gtk3 {
 			array_args[1] := IntRef->New(@gobject);
 			array_args[2] := width;
 			array_args[3] := height;
-			
+	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_display_get_maximal_cursor_size", array_args);
 		}
 
@@ -1901,14 +1899,14 @@ bundle Gtk3 {
 				array_args[2] := clipboard_window;
 				array_args[3] := IntRef->New(time_);
 
-				targets_objs := Int->New[n_targets];
-				each(i : targets) {
-					targets_objs[i] := IntRef->New(targets[i]->GetRef());
-				};
+					targets_objs := Int->New[n_targets];
+					each(i : targets) {
+						targets_objs[i] := IntRef->New(targets[i]->GetRef());
+					};
 				array_args[4] := IntArrayRef->New(targets_objs);
 
 				array_args[5] := IntRef->New(n_targets);
-		
+	
 				Proxy->GetDllProxy()->CallFunction("gtk3_gdk_display_store_clipboard", array_args);
 			};
 		}
@@ -2049,6 +2047,7 @@ bundle Gtk3 {
 		function : GetDefault() ~ Display {
 			array_args := Base->New[1];
 
+	
 			array_args[0] := IntRef->New();
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_display_get_default", array_args);
@@ -2075,6 +2074,215 @@ bundle Gtk3 {
 			return Display->New(value->Get());
 		}
 	}
+
+	class DragContext from GObject {
+		New(gobject : Int) {
+			Parent();
+
+			@gobject := gobject;
+		}
+
+		#~
+		Determines the bitmask of actions proposed by the source if
+		gdk_drag_context_get_suggested_action() returns %GDK_ACTION_ASK.
+		@return the #GdkDragAction flags
+		~#
+		method : public : GetActions() ~ DragAction {
+			array_args := Base->New[2];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_drag_context_get_actions", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get()->As(DragAction);
+		}
+
+		#~
+		Returns the destination window for the DND operation.
+		@return a #GdkWindow
+		~#
+		method : public : GetDestWindow() ~ Window {
+			array_args := Base->New[2];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_drag_context_get_dest_window", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Window->New(value->Get());
+		}
+
+		#~
+		Returns the #GdkDevice associated to the drag context.
+		@return The #GdkDevice associated to @context.
+		~#
+		method : public : GetDevice() ~ Device {
+			array_args := Base->New[2];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_drag_context_get_device", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Device->New(value->Get());
+		}
+
+		#~
+		Returns the window on which the drag icon should be rendered
+		during the drag operation. Note that the window may not be
+		available until the drag operation has begun. GDK will move
+		the window in accordance with the ongoing drag operation.
+		The window is owned by @context and will be destroyed when
+		the drag operation is over.
+		@return the drag window, or %NULL
+		~#
+		method : public : GetDragWindow() ~ Window {
+			array_args := Base->New[2];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_drag_context_get_drag_window", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Window->New(value->Get());
+		}
+
+		#~
+		Returns the drag protocol that is used by this context.
+		@return the drag protocol
+		~#
+		method : public : GetProtocol() ~ DragProtocol {
+			array_args := Base->New[2];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_drag_context_get_protocol", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get()->As(DragProtocol);
+		}
+
+		#~
+		Determines the action chosen by the drag destination.
+		@return a #GdkDragAction value
+		~#
+		method : public : GetSelectedAction() ~ DragAction {
+			array_args := Base->New[2];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_drag_context_get_selected_action", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get()->As(DragAction);
+		}
+
+		#~
+		Returns the #GdkWindow where the DND operation started.
+		@return a #GdkWindow
+		~#
+		method : public : GetSourceWindow() ~ Window {
+			array_args := Base->New[2];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_drag_context_get_source_window", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Window->New(value->Get());
+		}
+
+		#~
+		Determines the suggested drag action of the context.
+		@return a #GdkDragAction value
+		~#
+		method : public : GetSuggestedAction() ~ DragAction {
+			array_args := Base->New[2];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_drag_context_get_suggested_action", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get()->As(DragAction);
+		}
+
+		#~
+		Requests the drag and drop operation to be managed by @context.
+		When a drag and drop operation becomes managed, the #GdkDragContext
+		will internally handle all input and source-side #GdkEventDND events
+		as required by the windowing system.
+		
+		Once the drag and drop operation is managed, the drag context will
+		emit the following signals:
+		- The #GdkDragContext::action-changed signal whenever the final action
+		  to be performed by the drag and drop operation changes.
+		- The #GdkDragContext::drop-performed signal after the user performs
+		  the drag and drop gesture (typically by releasing the mouse button).
+		- The #GdkDragContext::dnd-finished signal after the drag and drop
+		  operation concludes (after all #GdkSelection transfers happen).
+		- The #GdkDragContext::cancel signal if the drag and drop operation is
+		  finished but doesn't happen over an accepting destination, or is
+		  cancelled through other means.
+		@param ipc_window Window to use for IPC messaging/events
+		@param actions the actions supported by the drag source
+		@return #TRUE if the drag and drop operation is managed.
+		~#
+		method : public : ManageDnd(ipc_window : Window, actions : DragAction) ~ Bool {
+			array_args := Base->New[4];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := ipc_window;
+			array_args[3] := IntRef->New(actions);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_drag_context_manage_dnd", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get() = 0 ? false : true;
+		}
+
+		#~
+		Associates a #GdkDevice to @context, so all Drag and Drop events
+		for @context are emitted as if they came from this device.
+		@param device a #GdkDevice
+		~#
+		method : public : SetDevice(device : Device) ~ Nil {
+			array_args := Base->New[3];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := device;
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_drag_context_set_device", array_args);
+		}
+
+		#~
+		Sets the position of the drag window that will be kept
+		under the cursor hotspot. Initially, the hotspot is at the
+		top left corner of the drag window.
+		@param hot_x x coordinate of the drag window hotspot
+		@param hot_y y coordinate of the drag window hotspot
+		~#
+		method : public : SetHotspot(hot_x : Int, hot_y : Int) ~ Nil {
+			array_args := Base->New[4];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := IntRef->New(hot_x);
+			array_args[3] := IntRef->New(hot_y);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_drag_context_set_hotspot", array_args);
+		}	}
 
 	#~
 	GdkMonitor objects represent the individual outputs that are
@@ -2310,7 +2518,6 @@ bundle Gtk3 {
 		New() {
 			Parent();
 		}
-
 		New(gobject : Int) {
 			Parent();
 
@@ -2463,6 +2670,7 @@ bundle Gtk3 {
 		function : GetDefault() ~ Screen {
 			array_args := Base->New[1];
 
+	
 			array_args[0] := IntRef->New();
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_screen_get_default", array_args);
@@ -2503,7 +2711,6 @@ bundle Gtk3 {
 			array_args[3] := IntRef->New(attributes_mask);
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_new", array_args);
-	
 			value := array_args[0]->As(IntRef);
 			@gobject := value->Get();
 		}
@@ -3254,7 +3461,7 @@ bundle Gtk3 {
 			array_args[3] := y;
 			array_args[4] := width;
 			array_args[5] := height;
-			
+	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_geometry", array_args);
 		}
 
@@ -3419,7 +3626,7 @@ bundle Gtk3 {
 			array_args[3] := IntRef->New(y);
 			array_args[4] := root_x;
 			array_args[5] := root_y;
-			
+	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_window_get_root_coords", array_args);
 		}
 
@@ -4935,6 +5142,84 @@ bundle Gtk3 {
 		}
 	}
 	#~
+	An opaque type representing a string as an index into a table
+	of strings on the X server.
+	~#
+	class Atom {
+		@gobject : Int;
+
+		New(gobject : Int) {
+			Parent();
+
+			@gobject := gobject;
+		}
+
+		#~
+		Determines the string corresponding to an atom.
+		@return a newly-allocated string containing the string
+		  corresponding to @atom. When you are done with the
+		  return value, you should free it using g_free().
+		~#
+		method : public : Name() ~ String {
+			array_args := Base->New[2];
+	
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_atom_name", array_args);
+	
+			return array_args[0]->As(String);
+		}
+		#~
+		Finds or creates an atom corresponding to a given string.
+		@param atom_name a string.
+		@param only_if_exists if %TRUE, GDK is allowed to not create a new atom, but
+		  just return %GDK_NONE if the requested atom doesn’t already
+		  exists. Currently, the flag is ignored, since checking the
+		  existance of an atom is as expensive as creating it.
+		@return the atom corresponding to @atom_name.
+		~#
+		function : Intern(atom_name : String, only_if_exists : Bool) ~ Atom {
+			array_args := Base->New[3];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := atom_name;
+			array_args[2] := IntRef->New(only_if_exists ? 0 : 1);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_atom_intern", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Atom->New(value->Get());
+		}
+
+		#~
+		Finds or creates an atom corresponding to a given string.
+		
+		Note that this function is identical to gdk_atom_intern() except
+		that if a new #GdkAtom is created the string itself is used rather
+		than a copy. This saves memory, but can only be used if the string
+		will always exist. It can be used with statically
+		allocated strings in the main program, but not with statically
+		allocated memory in dynamically loaded modules, if you expect to
+		ever unload the module again (e.g. do not use this function in
+		GTK+ theme engines).
+		@param atom_name a static string
+		@return the atom corresponding to @atom_name
+		~#
+		function : InternStaticString(atom_name : String) ~ Atom {
+			array_args := Base->New[2];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := atom_name;
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_atom_intern_static_string", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Atom->New(value->Get());
+		}
+	}
+
+	#~
 	A #GdkColor is used to describe a color,
 	similar to the XColor struct used in the X11 drawing API.
 	~#
@@ -5033,6 +5318,4527 @@ bundle Gtk3 {
 			array_args[1] := IntRef->New(blue);
 	
 			Proxy->GetDllProxy()->CallFunction("color_set_blue", array_args);
+		}
+	}
+
+	#~
+	Contains the fields which are common to all event structs.
+	Any event pointer can safely be cast to a pointer to a #GdkEventAny to
+	access these fields.
+	~#
+	class EventAny {
+		@gobject : Int;
+
+	
+		New(gobject : Int) {
+			Parent();
+
+			@gobject := gobject;
+		}
+
+		method : public : GetType() ~ EventType {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventany_get_type", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get()->As(EventType);
+		}
+
+		method : public : SetType(type : EventType) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(type);
+	
+			Proxy->GetDllProxy()->CallFunction("eventany_set_type", array_args);
+		}
+
+
+		method : public : GetWindow() ~ Window {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventany_get_window", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Window->New(value->Get());
+		}
+
+		method : public : SetWindow(window : Window) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := window;
+	
+			Proxy->GetDllProxy()->CallFunction("eventany_set_window", array_args);
+		}
+
+
+		method : public : GetSendEvent() ~ Int {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventany_get_sendevent", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		method : public : SetSendEvent(send_event : Int) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(send_event);
+	
+			Proxy->GetDllProxy()->CallFunction("eventany_set_sendevent", array_args);
+		}
+	}
+
+	#~
+	Used for button press and button release events. The
+	@type field will be one of %GDK_BUTTON_PRESS,
+	%GDK_2BUTTON_PRESS, %GDK_3BUTTON_PRESS or %GDK_BUTTON_RELEASE,
+	
+	Double and triple-clicks result in a sequence of events being received.
+	For double-clicks the order of events will be:
+	
+	- %GDK_BUTTON_PRESS
+	- %GDK_BUTTON_RELEASE
+	- %GDK_BUTTON_PRESS
+	- %GDK_2BUTTON_PRESS
+	- %GDK_BUTTON_RELEASE
+	
+	Note that the first click is received just like a normal
+	button press, while the second click results in a %GDK_2BUTTON_PRESS
+	being received just after the %GDK_BUTTON_PRESS.
+	
+	Triple-clicks are very similar to double-clicks, except that
+	%GDK_3BUTTON_PRESS is inserted after the third click. The order of the
+	events is:
+	
+	- %GDK_BUTTON_PRESS
+	- %GDK_BUTTON_RELEASE
+	- %GDK_BUTTON_PRESS
+	- %GDK_2BUTTON_PRESS
+	- %GDK_BUTTON_RELEASE
+	- %GDK_BUTTON_PRESS
+	- %GDK_3BUTTON_PRESS
+	- %GDK_BUTTON_RELEASE
+	
+	For a double click to occur, the second button press must occur within
+	1/4 of a second of the first. For a triple click to occur, the third
+	button press must also occur within 1/2 second of the first button press.
+	~#
+	class EventButton {
+		@gobject : Int;
+
+	
+		New(gobject : Int) {
+			Parent();
+
+			@gobject := gobject;
+		}
+
+		method : public : GetType() ~ EventType {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventbutton_get_type", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get()->As(EventType);
+		}
+
+		method : public : SetType(type : EventType) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(type);
+	
+			Proxy->GetDllProxy()->CallFunction("eventbutton_set_type", array_args);
+		}
+
+
+		method : public : GetWindow() ~ Window {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventbutton_get_window", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Window->New(value->Get());
+		}
+
+		method : public : SetWindow(window : Window) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := window;
+	
+			Proxy->GetDllProxy()->CallFunction("eventbutton_set_window", array_args);
+		}
+
+
+		method : public : GetSendEvent() ~ Int {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventbutton_get_sendevent", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		method : public : SetSendEvent(send_event : Int) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(send_event);
+	
+			Proxy->GetDllProxy()->CallFunction("eventbutton_set_sendevent", array_args);
+		}
+
+
+		method : public : GetTime() ~ Int {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventbutton_get_time", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		method : public : SetTime(time : Int) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(time);
+	
+			Proxy->GetDllProxy()->CallFunction("eventbutton_set_time", array_args);
+		}
+
+
+		method : public : GetX() ~ Float {
+			array_args := Base->New[2];
+
+			array_args[0] := FloatRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventbutton_get_x", array_args);
+	
+			value := array_args[0]->As(FloatRef);
+			return value->Get();
+		}
+
+		method : public : SetX(x : Float) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := FloatRef->New(x);
+	
+			Proxy->GetDllProxy()->CallFunction("eventbutton_set_x", array_args);
+		}
+
+
+		method : public : GetY() ~ Float {
+			array_args := Base->New[2];
+
+			array_args[0] := FloatRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventbutton_get_y", array_args);
+	
+			value := array_args[0]->As(FloatRef);
+			return value->Get();
+		}
+
+		method : public : SetY(y : Float) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := FloatRef->New(y);
+	
+			Proxy->GetDllProxy()->CallFunction("eventbutton_set_y", array_args);
+		}
+
+
+		method : public : GetAxes() ~ Float {
+			array_args := Base->New[2];
+
+			array_args[0] := FloatRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventbutton_get_axes", array_args);
+	
+			value := array_args[0]->As(FloatRef);
+			return value->Get();
+		}
+
+		method : public : SetAxes(axes : Float) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := FloatRef->New(axes);
+	
+			Proxy->GetDllProxy()->CallFunction("eventbutton_set_axes", array_args);
+		}
+
+
+		method : public : GetButton() ~ Int {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventbutton_get_button", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		method : public : SetButton(button : Int) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(button);
+	
+			Proxy->GetDllProxy()->CallFunction("eventbutton_set_button", array_args);
+		}
+
+
+		method : public : GetDevice() ~ Device {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventbutton_get_device", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Device->New(value->Get());
+		}
+
+		method : public : SetDevice(device : Device) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := device;
+	
+			Proxy->GetDllProxy()->CallFunction("eventbutton_set_device", array_args);
+		}
+
+
+		method : public : GetXRoot() ~ Float {
+			array_args := Base->New[2];
+
+			array_args[0] := FloatRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventbutton_get_xroot", array_args);
+	
+			value := array_args[0]->As(FloatRef);
+			return value->Get();
+		}
+
+		method : public : SetXRoot(x_root : Float) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := FloatRef->New(x_root);
+	
+			Proxy->GetDllProxy()->CallFunction("eventbutton_set_xroot", array_args);
+		}
+
+
+		method : public : GetYRoot() ~ Float {
+			array_args := Base->New[2];
+
+			array_args[0] := FloatRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventbutton_get_yroot", array_args);
+	
+			value := array_args[0]->As(FloatRef);
+			return value->Get();
+		}
+
+		method : public : SetYRoot(y_root : Float) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := FloatRef->New(y_root);
+	
+			Proxy->GetDllProxy()->CallFunction("eventbutton_set_yroot", array_args);
+		}
+	}
+
+	#~
+	Generated when a window size or position has changed.
+	~#
+	class EventConfigure {
+		@gobject : Int;
+
+	
+		New(gobject : Int) {
+			Parent();
+
+			@gobject := gobject;
+		}
+
+		method : public : GetType() ~ EventType {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventconfigure_get_type", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get()->As(EventType);
+		}
+
+		method : public : SetType(type : EventType) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(type);
+	
+			Proxy->GetDllProxy()->CallFunction("eventconfigure_set_type", array_args);
+		}
+
+
+		method : public : GetWindow() ~ Window {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventconfigure_get_window", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Window->New(value->Get());
+		}
+
+		method : public : SetWindow(window : Window) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := window;
+	
+			Proxy->GetDllProxy()->CallFunction("eventconfigure_set_window", array_args);
+		}
+
+
+		method : public : GetSendEvent() ~ Int {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventconfigure_get_sendevent", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		method : public : SetSendEvent(send_event : Int) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(send_event);
+	
+			Proxy->GetDllProxy()->CallFunction("eventconfigure_set_sendevent", array_args);
+		}
+
+
+		method : public : GetX() ~ Int {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventconfigure_get_x", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		method : public : SetX(x : Int) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(x);
+	
+			Proxy->GetDllProxy()->CallFunction("eventconfigure_set_x", array_args);
+		}
+
+
+		method : public : GetY() ~ Int {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventconfigure_get_y", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		method : public : SetY(y : Int) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(y);
+	
+			Proxy->GetDllProxy()->CallFunction("eventconfigure_set_y", array_args);
+		}
+
+
+		method : public : GetWidth() ~ Int {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventconfigure_get_width", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		method : public : SetWidth(width : Int) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(width);
+	
+			Proxy->GetDllProxy()->CallFunction("eventconfigure_set_width", array_args);
+		}
+
+
+		method : public : GetHeight() ~ Int {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventconfigure_get_height", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		method : public : SetHeight(height : Int) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(height);
+	
+			Proxy->GetDllProxy()->CallFunction("eventconfigure_set_height", array_args);
+		}
+	}
+
+	#~
+	Generated when the pointer enters or leaves a window.
+	~#
+	class EventCrossing {
+		@gobject : Int;
+
+	
+		New(gobject : Int) {
+			Parent();
+
+			@gobject := gobject;
+		}
+
+		method : public : GetType() ~ EventType {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventcrossing_get_type", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get()->As(EventType);
+		}
+
+		method : public : SetType(type : EventType) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(type);
+	
+			Proxy->GetDllProxy()->CallFunction("eventcrossing_set_type", array_args);
+		}
+
+
+		method : public : GetWindow() ~ Window {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventcrossing_get_window", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Window->New(value->Get());
+		}
+
+		method : public : SetWindow(window : Window) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := window;
+	
+			Proxy->GetDllProxy()->CallFunction("eventcrossing_set_window", array_args);
+		}
+
+
+		method : public : GetSendEvent() ~ Int {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventcrossing_get_sendevent", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		method : public : SetSendEvent(send_event : Int) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(send_event);
+	
+			Proxy->GetDllProxy()->CallFunction("eventcrossing_set_sendevent", array_args);
+		}
+
+
+		method : public : GetSubwindow() ~ Window {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventcrossing_get_subwindow", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Window->New(value->Get());
+		}
+
+		method : public : SetSubwindow(subwindow : Window) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := subwindow;
+	
+			Proxy->GetDllProxy()->CallFunction("eventcrossing_set_subwindow", array_args);
+		}
+
+
+		method : public : GetTime() ~ Int {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventcrossing_get_time", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		method : public : SetTime(time : Int) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(time);
+	
+			Proxy->GetDllProxy()->CallFunction("eventcrossing_set_time", array_args);
+		}
+
+
+		method : public : GetX() ~ Float {
+			array_args := Base->New[2];
+
+			array_args[0] := FloatRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventcrossing_get_x", array_args);
+	
+			value := array_args[0]->As(FloatRef);
+			return value->Get();
+		}
+
+		method : public : SetX(x : Float) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := FloatRef->New(x);
+	
+			Proxy->GetDllProxy()->CallFunction("eventcrossing_set_x", array_args);
+		}
+
+
+		method : public : GetY() ~ Float {
+			array_args := Base->New[2];
+
+			array_args[0] := FloatRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventcrossing_get_y", array_args);
+	
+			value := array_args[0]->As(FloatRef);
+			return value->Get();
+		}
+
+		method : public : SetY(y : Float) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := FloatRef->New(y);
+	
+			Proxy->GetDllProxy()->CallFunction("eventcrossing_set_y", array_args);
+		}
+
+
+		method : public : GetXRoot() ~ Float {
+			array_args := Base->New[2];
+
+			array_args[0] := FloatRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventcrossing_get_xroot", array_args);
+	
+			value := array_args[0]->As(FloatRef);
+			return value->Get();
+		}
+
+		method : public : SetXRoot(x_root : Float) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := FloatRef->New(x_root);
+	
+			Proxy->GetDllProxy()->CallFunction("eventcrossing_set_xroot", array_args);
+		}
+
+
+		method : public : GetYRoot() ~ Float {
+			array_args := Base->New[2];
+
+			array_args[0] := FloatRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventcrossing_get_yroot", array_args);
+	
+			value := array_args[0]->As(FloatRef);
+			return value->Get();
+		}
+
+		method : public : SetYRoot(y_root : Float) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := FloatRef->New(y_root);
+	
+			Proxy->GetDllProxy()->CallFunction("eventcrossing_set_yroot", array_args);
+		}
+
+
+		method : public : GetMode() ~ CrossingMode {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventcrossing_get_mode", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get()->As(CrossingMode);
+		}
+
+		method : public : SetMode(mode : CrossingMode) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(mode);
+	
+			Proxy->GetDllProxy()->CallFunction("eventcrossing_set_mode", array_args);
+		}
+
+
+		method : public : GetDetail() ~ NotifyType {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventcrossing_get_detail", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get()->As(NotifyType);
+		}
+
+		method : public : SetDetail(detail : NotifyType) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(detail);
+	
+			Proxy->GetDllProxy()->CallFunction("eventcrossing_set_detail", array_args);
+		}
+
+
+		method : public : GetFocus() ~ Bool {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventcrossing_get_focus", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get() = 0 ? false : true;
+		}
+
+		method : public : SetFocus(focus : Bool) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(focus ? 1 : 0);
+	
+			Proxy->GetDllProxy()->CallFunction("eventcrossing_set_focus", array_args);
+		}
+	}
+
+	#~
+	Generated during DND operations.
+	~#
+	class EventDND {
+		@gobject : Int;
+
+	
+		New(gobject : Int) {
+			Parent();
+
+			@gobject := gobject;
+		}
+
+		method : public : GetType() ~ EventType {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventdnd_get_type", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get()->As(EventType);
+		}
+
+		method : public : SetType(type : EventType) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(type);
+	
+			Proxy->GetDllProxy()->CallFunction("eventdnd_set_type", array_args);
+		}
+
+
+		method : public : GetWindow() ~ Window {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventdnd_get_window", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Window->New(value->Get());
+		}
+
+		method : public : SetWindow(window : Window) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := window;
+	
+			Proxy->GetDllProxy()->CallFunction("eventdnd_set_window", array_args);
+		}
+
+
+		method : public : GetSendEvent() ~ Int {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventdnd_get_sendevent", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		method : public : SetSendEvent(send_event : Int) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(send_event);
+	
+			Proxy->GetDllProxy()->CallFunction("eventdnd_set_sendevent", array_args);
+		}
+
+
+		method : public : GetContext() ~ DragContext {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventdnd_get_context", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return DragContext->New(value->Get());
+		}
+
+		method : public : SetContext(context : DragContext) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := context;
+	
+			Proxy->GetDllProxy()->CallFunction("eventdnd_set_context", array_args);
+		}
+
+
+		method : public : GetTime() ~ Int {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventdnd_get_time", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		method : public : SetTime(time : Int) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(time);
+	
+			Proxy->GetDllProxy()->CallFunction("eventdnd_set_time", array_args);
+		}
+
+
+		method : public : GetXRoot() ~ Int {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventdnd_get_xroot", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		method : public : SetXRoot(x_root : Int) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(x_root);
+	
+			Proxy->GetDllProxy()->CallFunction("eventdnd_set_xroot", array_args);
+		}
+
+
+		method : public : GetYRoot() ~ Int {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventdnd_get_yroot", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		method : public : SetYRoot(y_root : Int) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(y_root);
+	
+			Proxy->GetDllProxy()->CallFunction("eventdnd_set_yroot", array_args);
+		}
+	}
+
+	#~
+	Generated when all or part of a window becomes visible and needs to be
+	redrawn.
+	~#
+	class EventExpose {
+		@gobject : Int;
+
+	
+		New(gobject : Int) {
+			Parent();
+
+			@gobject := gobject;
+		}
+
+		method : public : GetType() ~ EventType {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventexpose_get_type", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get()->As(EventType);
+		}
+
+		method : public : SetType(type : EventType) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(type);
+	
+			Proxy->GetDllProxy()->CallFunction("eventexpose_set_type", array_args);
+		}
+
+
+		method : public : GetWindow() ~ Window {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventexpose_get_window", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Window->New(value->Get());
+		}
+
+		method : public : SetWindow(window : Window) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := window;
+	
+			Proxy->GetDllProxy()->CallFunction("eventexpose_set_window", array_args);
+		}
+
+
+		method : public : GetSendEvent() ~ Int {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventexpose_get_sendevent", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		method : public : SetSendEvent(send_event : Int) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(send_event);
+	
+			Proxy->GetDllProxy()->CallFunction("eventexpose_set_sendevent", array_args);
+		}
+
+
+		method : public : GetArea() ~ Rectangle {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventexpose_get_area", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Rectangle->New(value->Get());
+		}
+
+		method : public : SetArea(area : Rectangle) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := area;
+	
+			Proxy->GetDllProxy()->CallFunction("eventexpose_set_area", array_args);
+		}
+
+
+		method : public : GetCount() ~ Int {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventexpose_get_count", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		method : public : SetCount(count : Int) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(count);
+	
+			Proxy->GetDllProxy()->CallFunction("eventexpose_set_count", array_args);
+		}
+	}
+
+	#~
+	Describes a change of keyboard focus.
+	~#
+	class EventFocus {
+		@gobject : Int;
+
+	
+		New(gobject : Int) {
+			Parent();
+
+			@gobject := gobject;
+		}
+
+		method : public : GetType() ~ EventType {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventfocus_get_type", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get()->As(EventType);
+		}
+
+		method : public : SetType(type : EventType) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(type);
+	
+			Proxy->GetDllProxy()->CallFunction("eventfocus_set_type", array_args);
+		}
+
+
+		method : public : GetWindow() ~ Window {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventfocus_get_window", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Window->New(value->Get());
+		}
+
+		method : public : SetWindow(window : Window) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := window;
+	
+			Proxy->GetDllProxy()->CallFunction("eventfocus_set_window", array_args);
+		}
+
+
+		method : public : GetSendEvent() ~ Int {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventfocus_get_sendevent", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		method : public : SetSendEvent(send_event : Int) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(send_event);
+	
+			Proxy->GetDllProxy()->CallFunction("eventfocus_set_sendevent", array_args);
+		}
+
+
+		method : public : GetIn() ~ Int {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventfocus_get_in", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		method : public : SetIn(in : Int) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(in);
+	
+			Proxy->GetDllProxy()->CallFunction("eventfocus_set_in", array_args);
+		}
+	}
+
+	#~
+	Generated when a pointer or keyboard grab is broken. On X11, this happens
+	when the grab window becomes unviewable (i.e. it or one of its ancestors
+	is unmapped), or if the same application grabs the pointer or keyboard
+	again. Note that implicit grabs (which are initiated by button presses)
+	can also cause #GdkEventGrabBroken events.
+	~#
+	class EventGrabBroken {
+		@gobject : Int;
+
+	
+		New(gobject : Int) {
+			Parent();
+
+			@gobject := gobject;
+		}
+
+		method : public : GetType() ~ EventType {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventgrabbroken_get_type", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get()->As(EventType);
+		}
+
+		method : public : SetType(type : EventType) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(type);
+	
+			Proxy->GetDllProxy()->CallFunction("eventgrabbroken_set_type", array_args);
+		}
+
+
+		method : public : GetWindow() ~ Window {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventgrabbroken_get_window", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Window->New(value->Get());
+		}
+
+		method : public : SetWindow(window : Window) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := window;
+	
+			Proxy->GetDllProxy()->CallFunction("eventgrabbroken_set_window", array_args);
+		}
+
+
+		method : public : GetSendEvent() ~ Int {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventgrabbroken_get_sendevent", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		method : public : SetSendEvent(send_event : Int) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(send_event);
+	
+			Proxy->GetDllProxy()->CallFunction("eventgrabbroken_set_sendevent", array_args);
+		}
+
+
+		method : public : GetKeyboard() ~ Bool {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventgrabbroken_get_keyboard", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get() = 0 ? false : true;
+		}
+
+		method : public : SetKeyboard(keyboard : Bool) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(keyboard ? 1 : 0);
+	
+			Proxy->GetDllProxy()->CallFunction("eventgrabbroken_set_keyboard", array_args);
+		}
+
+
+		method : public : GetImplicit() ~ Bool {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventgrabbroken_get_implicit", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get() = 0 ? false : true;
+		}
+
+		method : public : SetImplicit(implicit : Bool) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(implicit ? 1 : 0);
+	
+			Proxy->GetDllProxy()->CallFunction("eventgrabbroken_set_implicit", array_args);
+		}
+
+
+		method : public : GetGrabWindow() ~ Window {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventgrabbroken_get_grabwindow", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Window->New(value->Get());
+		}
+
+		method : public : SetGrabWindow(grab_window : Window) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := grab_window;
+	
+			Proxy->GetDllProxy()->CallFunction("eventgrabbroken_set_grabwindow", array_args);
+		}
+	}
+
+	#~
+	Describes a key press or key release event.
+	~#
+	class EventKey {
+		@gobject : Int;
+
+	
+		New(gobject : Int) {
+			Parent();
+
+			@gobject := gobject;
+		}
+
+		method : public : GetType() ~ EventType {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventkey_get_type", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get()->As(EventType);
+		}
+
+		method : public : SetType(type : EventType) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(type);
+	
+			Proxy->GetDllProxy()->CallFunction("eventkey_set_type", array_args);
+		}
+
+
+		method : public : GetWindow() ~ Window {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventkey_get_window", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Window->New(value->Get());
+		}
+
+		method : public : SetWindow(window : Window) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := window;
+	
+			Proxy->GetDllProxy()->CallFunction("eventkey_set_window", array_args);
+		}
+
+
+		method : public : GetSendEvent() ~ Int {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventkey_get_sendevent", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		method : public : SetSendEvent(send_event : Int) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(send_event);
+	
+			Proxy->GetDllProxy()->CallFunction("eventkey_set_sendevent", array_args);
+		}
+
+
+		method : public : GetTime() ~ Int {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventkey_get_time", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		method : public : SetTime(time : Int) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(time);
+	
+			Proxy->GetDllProxy()->CallFunction("eventkey_set_time", array_args);
+		}
+
+
+		method : public : GetKeyval() ~ Int {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventkey_get_keyval", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		method : public : SetKeyval(keyval : Int) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(keyval);
+	
+			Proxy->GetDllProxy()->CallFunction("eventkey_set_keyval", array_args);
+		}
+
+
+		method : public : GetLength() ~ Int {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventkey_get_length", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		method : public : SetLength(length : Int) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(length);
+	
+			Proxy->GetDllProxy()->CallFunction("eventkey_set_length", array_args);
+		}
+
+
+		method : public : GetString() ~ String {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventkey_get_string", array_args);
+	
+			return array_args[0]->As(String);
+		}
+
+		method : public : SetString(string : String) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := string;
+	
+			Proxy->GetDllProxy()->CallFunction("eventkey_set_string", array_args);
+		}
+
+
+		method : public : GetHardwareKeycode() ~ Int {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventkey_get_hardwarekeycode", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		method : public : SetHardwareKeycode(hardware_keycode : Int) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(hardware_keycode);
+	
+			Proxy->GetDllProxy()->CallFunction("eventkey_set_hardwarekeycode", array_args);
+		}
+
+
+		method : public : GetGroup() ~ Int {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventkey_get_group", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		method : public : SetGroup(group : Int) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(group);
+	
+			Proxy->GetDllProxy()->CallFunction("eventkey_set_group", array_args);
+		}
+
+
+		method : public : GetIsModifier() ~ Int {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventkey_get_ismodifier", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		method : public : SetIsModifier(is_modifier : Int) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(is_modifier);
+	
+			Proxy->GetDllProxy()->CallFunction("eventkey_set_ismodifier", array_args);
+		}
+	}
+
+	#~
+	Generated when the pointer moves.
+	~#
+	class EventMotion {
+		@gobject : Int;
+
+	
+		New(gobject : Int) {
+			Parent();
+
+			@gobject := gobject;
+		}
+
+		method : public : GetType() ~ EventType {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventmotion_get_type", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get()->As(EventType);
+		}
+
+		method : public : SetType(type : EventType) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(type);
+	
+			Proxy->GetDllProxy()->CallFunction("eventmotion_set_type", array_args);
+		}
+
+
+		method : public : GetWindow() ~ Window {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventmotion_get_window", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Window->New(value->Get());
+		}
+
+		method : public : SetWindow(window : Window) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := window;
+	
+			Proxy->GetDllProxy()->CallFunction("eventmotion_set_window", array_args);
+		}
+
+
+		method : public : GetSendEvent() ~ Int {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventmotion_get_sendevent", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		method : public : SetSendEvent(send_event : Int) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(send_event);
+	
+			Proxy->GetDllProxy()->CallFunction("eventmotion_set_sendevent", array_args);
+		}
+
+
+		method : public : GetTime() ~ Int {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventmotion_get_time", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		method : public : SetTime(time : Int) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(time);
+	
+			Proxy->GetDllProxy()->CallFunction("eventmotion_set_time", array_args);
+		}
+
+
+		method : public : GetX() ~ Float {
+			array_args := Base->New[2];
+
+			array_args[0] := FloatRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventmotion_get_x", array_args);
+	
+			value := array_args[0]->As(FloatRef);
+			return value->Get();
+		}
+
+		method : public : SetX(x : Float) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := FloatRef->New(x);
+	
+			Proxy->GetDllProxy()->CallFunction("eventmotion_set_x", array_args);
+		}
+
+
+		method : public : GetY() ~ Float {
+			array_args := Base->New[2];
+
+			array_args[0] := FloatRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventmotion_get_y", array_args);
+	
+			value := array_args[0]->As(FloatRef);
+			return value->Get();
+		}
+
+		method : public : SetY(y : Float) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := FloatRef->New(y);
+	
+			Proxy->GetDllProxy()->CallFunction("eventmotion_set_y", array_args);
+		}
+
+
+		method : public : GetAxes() ~ Float {
+			array_args := Base->New[2];
+
+			array_args[0] := FloatRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventmotion_get_axes", array_args);
+	
+			value := array_args[0]->As(FloatRef);
+			return value->Get();
+		}
+
+		method : public : SetAxes(axes : Float) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := FloatRef->New(axes);
+	
+			Proxy->GetDllProxy()->CallFunction("eventmotion_set_axes", array_args);
+		}
+
+
+		method : public : GetIsHint() ~ Int {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventmotion_get_ishint", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		method : public : SetIsHint(is_hint : Int) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(is_hint);
+	
+			Proxy->GetDllProxy()->CallFunction("eventmotion_set_ishint", array_args);
+		}
+
+
+		method : public : GetDevice() ~ Device {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventmotion_get_device", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Device->New(value->Get());
+		}
+
+		method : public : SetDevice(device : Device) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := device;
+	
+			Proxy->GetDllProxy()->CallFunction("eventmotion_set_device", array_args);
+		}
+
+
+		method : public : GetXRoot() ~ Float {
+			array_args := Base->New[2];
+
+			array_args[0] := FloatRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventmotion_get_xroot", array_args);
+	
+			value := array_args[0]->As(FloatRef);
+			return value->Get();
+		}
+
+		method : public : SetXRoot(x_root : Float) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := FloatRef->New(x_root);
+	
+			Proxy->GetDllProxy()->CallFunction("eventmotion_set_xroot", array_args);
+		}
+
+
+		method : public : GetYRoot() ~ Float {
+			array_args := Base->New[2];
+
+			array_args[0] := FloatRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventmotion_get_yroot", array_args);
+	
+			value := array_args[0]->As(FloatRef);
+			return value->Get();
+		}
+
+		method : public : SetYRoot(y_root : Float) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := FloatRef->New(y_root);
+	
+			Proxy->GetDllProxy()->CallFunction("eventmotion_set_yroot", array_args);
+		}
+	}
+
+	#~
+	Generated when the owner of a selection changes. On X11, this
+	information is only available if the X server supports the XFIXES
+	extension.
+	~#
+	class EventOwnerChange {
+		@gobject : Int;
+
+	
+		New(gobject : Int) {
+			Parent();
+
+			@gobject := gobject;
+		}
+
+		method : public : GetType() ~ EventType {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventownerchange_get_type", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get()->As(EventType);
+		}
+
+		method : public : SetType(type : EventType) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(type);
+	
+			Proxy->GetDllProxy()->CallFunction("eventownerchange_set_type", array_args);
+		}
+
+
+		method : public : GetWindow() ~ Window {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventownerchange_get_window", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Window->New(value->Get());
+		}
+
+		method : public : SetWindow(window : Window) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := window;
+	
+			Proxy->GetDllProxy()->CallFunction("eventownerchange_set_window", array_args);
+		}
+
+
+		method : public : GetSendEvent() ~ Int {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventownerchange_get_sendevent", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		method : public : SetSendEvent(send_event : Int) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(send_event);
+	
+			Proxy->GetDllProxy()->CallFunction("eventownerchange_set_sendevent", array_args);
+		}
+
+
+		method : public : GetOwner() ~ Window {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventownerchange_get_owner", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Window->New(value->Get());
+		}
+
+		method : public : SetOwner(owner : Window) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := owner;
+	
+			Proxy->GetDllProxy()->CallFunction("eventownerchange_set_owner", array_args);
+		}
+
+
+		method : public : GetReason() ~ OwnerChange {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventownerchange_get_reason", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get()->As(OwnerChange);
+		}
+
+		method : public : SetReason(reason : OwnerChange) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(reason);
+	
+			Proxy->GetDllProxy()->CallFunction("eventownerchange_set_reason", array_args);
+		}
+
+
+		method : public : GetSelection() ~ Atom {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventownerchange_get_selection", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Atom->New(value->Get());
+		}
+
+		method : public : SetSelection(selection : Atom) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := selection;
+	
+			Proxy->GetDllProxy()->CallFunction("eventownerchange_set_selection", array_args);
+		}
+
+
+		method : public : GetTime() ~ Int {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventownerchange_get_time", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		method : public : SetTime(time : Int) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(time);
+	
+			Proxy->GetDllProxy()->CallFunction("eventownerchange_set_time", array_args);
+		}
+
+
+		method : public : GetSelectionTime() ~ Int {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventownerchange_get_selectiontime", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		method : public : SetSelectionTime(selection_time : Int) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(selection_time);
+	
+			Proxy->GetDllProxy()->CallFunction("eventownerchange_set_selectiontime", array_args);
+		}
+	}
+
+	#~
+	Generated during %GDK_SOURCE_TABLET_PAD interaction with tactile sensors.
+	~#
+	class EventPadAxis {
+		@gobject : Int;
+
+	
+		New(gobject : Int) {
+			Parent();
+
+			@gobject := gobject;
+		}
+
+		method : public : GetType() ~ EventType {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventpadaxis_get_type", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get()->As(EventType);
+		}
+
+		method : public : SetType(type : EventType) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(type);
+	
+			Proxy->GetDllProxy()->CallFunction("eventpadaxis_set_type", array_args);
+		}
+
+
+		method : public : GetWindow() ~ Window {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventpadaxis_get_window", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Window->New(value->Get());
+		}
+
+		method : public : SetWindow(window : Window) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := window;
+	
+			Proxy->GetDllProxy()->CallFunction("eventpadaxis_set_window", array_args);
+		}
+
+
+		method : public : GetSendEvent() ~ Int {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventpadaxis_get_sendevent", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		method : public : SetSendEvent(send_event : Int) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(send_event);
+	
+			Proxy->GetDllProxy()->CallFunction("eventpadaxis_set_sendevent", array_args);
+		}
+
+
+		method : public : GetTime() ~ Int {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventpadaxis_get_time", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		method : public : SetTime(time : Int) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(time);
+	
+			Proxy->GetDllProxy()->CallFunction("eventpadaxis_set_time", array_args);
+		}
+
+
+		method : public : GetGroup() ~ Int {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventpadaxis_get_group", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		method : public : SetGroup(group : Int) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(group);
+	
+			Proxy->GetDllProxy()->CallFunction("eventpadaxis_set_group", array_args);
+		}
+
+
+		method : public : GetIndex() ~ Int {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventpadaxis_get_index", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		method : public : SetIndex(index : Int) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(index);
+	
+			Proxy->GetDllProxy()->CallFunction("eventpadaxis_set_index", array_args);
+		}
+
+
+		method : public : GetMode() ~ Int {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventpadaxis_get_mode", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		method : public : SetMode(mode : Int) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(mode);
+	
+			Proxy->GetDllProxy()->CallFunction("eventpadaxis_set_mode", array_args);
+		}
+
+
+		method : public : GetValue() ~ Float {
+			array_args := Base->New[2];
+
+			array_args[0] := FloatRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventpadaxis_get_value", array_args);
+	
+			value := array_args[0]->As(FloatRef);
+			return value->Get();
+		}
+
+		method : public : SetValue(value : Float) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := FloatRef->New(value);
+	
+			Proxy->GetDllProxy()->CallFunction("eventpadaxis_set_value", array_args);
+		}
+	}
+
+	#~
+	Generated during %GDK_SOURCE_TABLET_PAD button presses and releases.
+	~#
+	class EventPadButton {
+		@gobject : Int;
+
+	
+		New(gobject : Int) {
+			Parent();
+
+			@gobject := gobject;
+		}
+
+		method : public : GetType() ~ EventType {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventpadbutton_get_type", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get()->As(EventType);
+		}
+
+		method : public : SetType(type : EventType) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(type);
+	
+			Proxy->GetDllProxy()->CallFunction("eventpadbutton_set_type", array_args);
+		}
+
+
+		method : public : GetWindow() ~ Window {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventpadbutton_get_window", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Window->New(value->Get());
+		}
+
+		method : public : SetWindow(window : Window) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := window;
+	
+			Proxy->GetDllProxy()->CallFunction("eventpadbutton_set_window", array_args);
+		}
+
+
+		method : public : GetSendEvent() ~ Int {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventpadbutton_get_sendevent", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		method : public : SetSendEvent(send_event : Int) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(send_event);
+	
+			Proxy->GetDllProxy()->CallFunction("eventpadbutton_set_sendevent", array_args);
+		}
+
+
+		method : public : GetTime() ~ Int {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventpadbutton_get_time", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		method : public : SetTime(time : Int) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(time);
+	
+			Proxy->GetDllProxy()->CallFunction("eventpadbutton_set_time", array_args);
+		}
+
+
+		method : public : GetGroup() ~ Int {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventpadbutton_get_group", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		method : public : SetGroup(group : Int) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(group);
+	
+			Proxy->GetDllProxy()->CallFunction("eventpadbutton_set_group", array_args);
+		}
+
+
+		method : public : GetButton() ~ Int {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventpadbutton_get_button", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		method : public : SetButton(button : Int) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(button);
+	
+			Proxy->GetDllProxy()->CallFunction("eventpadbutton_set_button", array_args);
+		}
+
+
+		method : public : GetMode() ~ Int {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventpadbutton_get_mode", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		method : public : SetMode(mode : Int) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(mode);
+	
+			Proxy->GetDllProxy()->CallFunction("eventpadbutton_set_mode", array_args);
+		}
+	}
+
+	#~
+	Generated during %GDK_SOURCE_TABLET_PAD mode switches in a group.
+	~#
+	class EventPadGroupMode {
+		@gobject : Int;
+
+	
+		New(gobject : Int) {
+			Parent();
+
+			@gobject := gobject;
+		}
+
+		method : public : GetType() ~ EventType {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventpadgroupmode_get_type", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get()->As(EventType);
+		}
+
+		method : public : SetType(type : EventType) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(type);
+	
+			Proxy->GetDllProxy()->CallFunction("eventpadgroupmode_set_type", array_args);
+		}
+
+
+		method : public : GetWindow() ~ Window {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventpadgroupmode_get_window", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Window->New(value->Get());
+		}
+
+		method : public : SetWindow(window : Window) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := window;
+	
+			Proxy->GetDllProxy()->CallFunction("eventpadgroupmode_set_window", array_args);
+		}
+
+
+		method : public : GetSendEvent() ~ Int {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventpadgroupmode_get_sendevent", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		method : public : SetSendEvent(send_event : Int) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(send_event);
+	
+			Proxy->GetDllProxy()->CallFunction("eventpadgroupmode_set_sendevent", array_args);
+		}
+
+
+		method : public : GetTime() ~ Int {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventpadgroupmode_get_time", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		method : public : SetTime(time : Int) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(time);
+	
+			Proxy->GetDllProxy()->CallFunction("eventpadgroupmode_set_time", array_args);
+		}
+
+
+		method : public : GetGroup() ~ Int {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventpadgroupmode_get_group", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		method : public : SetGroup(group : Int) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(group);
+	
+			Proxy->GetDllProxy()->CallFunction("eventpadgroupmode_set_group", array_args);
+		}
+
+
+		method : public : GetMode() ~ Int {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventpadgroupmode_get_mode", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		method : public : SetMode(mode : Int) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(mode);
+	
+			Proxy->GetDllProxy()->CallFunction("eventpadgroupmode_set_mode", array_args);
+		}
+	}
+
+	#~
+	Describes a property change on a window.
+	~#
+	class EventProperty {
+		@gobject : Int;
+
+	
+		New(gobject : Int) {
+			Parent();
+
+			@gobject := gobject;
+		}
+
+		method : public : GetType() ~ EventType {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventproperty_get_type", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get()->As(EventType);
+		}
+
+		method : public : SetType(type : EventType) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(type);
+	
+			Proxy->GetDllProxy()->CallFunction("eventproperty_set_type", array_args);
+		}
+
+
+		method : public : GetWindow() ~ Window {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventproperty_get_window", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Window->New(value->Get());
+		}
+
+		method : public : SetWindow(window : Window) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := window;
+	
+			Proxy->GetDllProxy()->CallFunction("eventproperty_set_window", array_args);
+		}
+
+
+		method : public : GetSendEvent() ~ Int {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventproperty_get_sendevent", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		method : public : SetSendEvent(send_event : Int) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(send_event);
+	
+			Proxy->GetDllProxy()->CallFunction("eventproperty_set_sendevent", array_args);
+		}
+
+
+		method : public : GetAtom() ~ Atom {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventproperty_get_atom", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Atom->New(value->Get());
+		}
+
+		method : public : SetAtom(atom : Atom) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := atom;
+	
+			Proxy->GetDllProxy()->CallFunction("eventproperty_set_atom", array_args);
+		}
+
+
+		method : public : GetTime() ~ Int {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventproperty_get_time", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		method : public : SetTime(time : Int) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(time);
+	
+			Proxy->GetDllProxy()->CallFunction("eventproperty_set_time", array_args);
+		}
+	}
+
+	#~
+	Proximity events are generated when using GDK&#x2019;s wrapper for the
+	XInput extension. The XInput extension is an add-on for standard X
+	that allows you to use nonstandard devices such as graphics tablets.
+	A proximity event indicates that the stylus has moved in or out of
+	contact with the tablet, or perhaps that the user&#x2019;s finger has moved
+	in or out of contact with a touch screen.
+	
+	This event type will be used pretty rarely. It only is important for
+	XInput aware programs that are drawing their own cursor.
+	~#
+	class EventProximity {
+		@gobject : Int;
+
+	
+		New(gobject : Int) {
+			Parent();
+
+			@gobject := gobject;
+		}
+
+		method : public : GetType() ~ EventType {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventproximity_get_type", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get()->As(EventType);
+		}
+
+		method : public : SetType(type : EventType) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(type);
+	
+			Proxy->GetDllProxy()->CallFunction("eventproximity_set_type", array_args);
+		}
+
+
+		method : public : GetWindow() ~ Window {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventproximity_get_window", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Window->New(value->Get());
+		}
+
+		method : public : SetWindow(window : Window) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := window;
+	
+			Proxy->GetDllProxy()->CallFunction("eventproximity_set_window", array_args);
+		}
+
+
+		method : public : GetSendEvent() ~ Int {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventproximity_get_sendevent", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		method : public : SetSendEvent(send_event : Int) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(send_event);
+	
+			Proxy->GetDllProxy()->CallFunction("eventproximity_set_sendevent", array_args);
+		}
+
+
+		method : public : GetTime() ~ Int {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventproximity_get_time", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		method : public : SetTime(time : Int) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(time);
+	
+			Proxy->GetDllProxy()->CallFunction("eventproximity_set_time", array_args);
+		}
+
+
+		method : public : GetDevice() ~ Device {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventproximity_get_device", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Device->New(value->Get());
+		}
+
+		method : public : SetDevice(device : Device) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := device;
+	
+			Proxy->GetDllProxy()->CallFunction("eventproximity_set_device", array_args);
+		}
+	}
+
+	#~
+	Generated from button presses for the buttons 4 to 7. Wheel mice are
+	usually configured to generate button press events for buttons 4 and 5
+	when the wheel is turned.
+	
+	Some GDK backends can also generate &#x201C;smooth&#x201D; scroll events, which
+	can be recognized by the %GDK_SCROLL_SMOOTH scroll direction. For
+	these, the scroll deltas can be obtained with
+	gdk_event_get_scroll_deltas().
+	~#
+	class EventScroll {
+		@gobject : Int;
+
+	
+		New(gobject : Int) {
+			Parent();
+
+			@gobject := gobject;
+		}
+
+		method : public : GetType() ~ EventType {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventscroll_get_type", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get()->As(EventType);
+		}
+
+		method : public : SetType(type : EventType) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(type);
+	
+			Proxy->GetDllProxy()->CallFunction("eventscroll_set_type", array_args);
+		}
+
+
+		method : public : GetWindow() ~ Window {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventscroll_get_window", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Window->New(value->Get());
+		}
+
+		method : public : SetWindow(window : Window) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := window;
+	
+			Proxy->GetDllProxy()->CallFunction("eventscroll_set_window", array_args);
+		}
+
+
+		method : public : GetSendEvent() ~ Int {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventscroll_get_sendevent", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		method : public : SetSendEvent(send_event : Int) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(send_event);
+	
+			Proxy->GetDllProxy()->CallFunction("eventscroll_set_sendevent", array_args);
+		}
+
+
+		method : public : GetTime() ~ Int {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventscroll_get_time", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		method : public : SetTime(time : Int) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(time);
+	
+			Proxy->GetDllProxy()->CallFunction("eventscroll_set_time", array_args);
+		}
+
+
+		method : public : GetX() ~ Float {
+			array_args := Base->New[2];
+
+			array_args[0] := FloatRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventscroll_get_x", array_args);
+	
+			value := array_args[0]->As(FloatRef);
+			return value->Get();
+		}
+
+		method : public : SetX(x : Float) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := FloatRef->New(x);
+	
+			Proxy->GetDllProxy()->CallFunction("eventscroll_set_x", array_args);
+		}
+
+
+		method : public : GetY() ~ Float {
+			array_args := Base->New[2];
+
+			array_args[0] := FloatRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventscroll_get_y", array_args);
+	
+			value := array_args[0]->As(FloatRef);
+			return value->Get();
+		}
+
+		method : public : SetY(y : Float) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := FloatRef->New(y);
+	
+			Proxy->GetDllProxy()->CallFunction("eventscroll_set_y", array_args);
+		}
+
+
+		method : public : GetDirection() ~ ScrollDirection {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventscroll_get_direction", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get()->As(ScrollDirection);
+		}
+
+		method : public : SetDirection(direction : ScrollDirection) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(direction);
+	
+			Proxy->GetDllProxy()->CallFunction("eventscroll_set_direction", array_args);
+		}
+
+
+		method : public : GetDevice() ~ Device {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventscroll_get_device", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Device->New(value->Get());
+		}
+
+		method : public : SetDevice(device : Device) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := device;
+	
+			Proxy->GetDllProxy()->CallFunction("eventscroll_set_device", array_args);
+		}
+
+
+		method : public : GetXRoot() ~ Float {
+			array_args := Base->New[2];
+
+			array_args[0] := FloatRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventscroll_get_xroot", array_args);
+	
+			value := array_args[0]->As(FloatRef);
+			return value->Get();
+		}
+
+		method : public : SetXRoot(x_root : Float) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := FloatRef->New(x_root);
+	
+			Proxy->GetDllProxy()->CallFunction("eventscroll_set_xroot", array_args);
+		}
+
+
+		method : public : GetYRoot() ~ Float {
+			array_args := Base->New[2];
+
+			array_args[0] := FloatRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventscroll_get_yroot", array_args);
+	
+			value := array_args[0]->As(FloatRef);
+			return value->Get();
+		}
+
+		method : public : SetYRoot(y_root : Float) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := FloatRef->New(y_root);
+	
+			Proxy->GetDllProxy()->CallFunction("eventscroll_set_yroot", array_args);
+		}
+
+
+		method : public : GetDeltaX() ~ Float {
+			array_args := Base->New[2];
+
+			array_args[0] := FloatRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventscroll_get_deltax", array_args);
+	
+			value := array_args[0]->As(FloatRef);
+			return value->Get();
+		}
+
+		method : public : SetDeltaX(delta_x : Float) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := FloatRef->New(delta_x);
+	
+			Proxy->GetDllProxy()->CallFunction("eventscroll_set_deltax", array_args);
+		}
+
+
+		method : public : GetDeltaY() ~ Float {
+			array_args := Base->New[2];
+
+			array_args[0] := FloatRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventscroll_get_deltay", array_args);
+	
+			value := array_args[0]->As(FloatRef);
+			return value->Get();
+		}
+
+		method : public : SetDeltaY(delta_y : Float) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := FloatRef->New(delta_y);
+	
+			Proxy->GetDllProxy()->CallFunction("eventscroll_set_deltay", array_args);
+		}
+
+
+		method : public : GetIsStop() ~ Int {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventscroll_get_isstop", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		method : public : SetIsStop(is_stop : Int) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(is_stop);
+	
+			Proxy->GetDllProxy()->CallFunction("eventscroll_set_isstop", array_args);
+		}
+	}
+
+	#~
+	Generated when a selection is requested or ownership of a selection
+	is taken over by another client application.
+	~#
+	class EventSelection {
+		@gobject : Int;
+
+	
+		New(gobject : Int) {
+			Parent();
+
+			@gobject := gobject;
+		}
+
+		method : public : GetType() ~ EventType {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventselection_get_type", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get()->As(EventType);
+		}
+
+		method : public : SetType(type : EventType) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(type);
+	
+			Proxy->GetDllProxy()->CallFunction("eventselection_set_type", array_args);
+		}
+
+
+		method : public : GetWindow() ~ Window {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventselection_get_window", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Window->New(value->Get());
+		}
+
+		method : public : SetWindow(window : Window) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := window;
+	
+			Proxy->GetDllProxy()->CallFunction("eventselection_set_window", array_args);
+		}
+
+
+		method : public : GetSendEvent() ~ Int {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventselection_get_sendevent", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		method : public : SetSendEvent(send_event : Int) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(send_event);
+	
+			Proxy->GetDllProxy()->CallFunction("eventselection_set_sendevent", array_args);
+		}
+
+
+		method : public : GetSelection() ~ Atom {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventselection_get_selection", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Atom->New(value->Get());
+		}
+
+		method : public : SetSelection(selection : Atom) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := selection;
+	
+			Proxy->GetDllProxy()->CallFunction("eventselection_set_selection", array_args);
+		}
+
+
+		method : public : GetTarget() ~ Atom {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventselection_get_target", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Atom->New(value->Get());
+		}
+
+		method : public : SetTarget(target : Atom) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := target;
+	
+			Proxy->GetDllProxy()->CallFunction("eventselection_set_target", array_args);
+		}
+
+
+		method : public : GetProperty() ~ Atom {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventselection_get_property", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Atom->New(value->Get());
+		}
+
+		method : public : SetProperty(property : Atom) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := property;
+	
+			Proxy->GetDllProxy()->CallFunction("eventselection_set_property", array_args);
+		}
+
+
+		method : public : GetTime() ~ Int {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventselection_get_time", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		method : public : SetTime(time : Int) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(time);
+	
+			Proxy->GetDllProxy()->CallFunction("eventselection_set_time", array_args);
+		}
+
+
+		method : public : GetRequestor() ~ Window {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventselection_get_requestor", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Window->New(value->Get());
+		}
+
+		method : public : SetRequestor(requestor : Window) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := requestor;
+	
+			Proxy->GetDllProxy()->CallFunction("eventselection_set_requestor", array_args);
+		}
+	}
+
+	class EventSequence {
+		@gobject : Int;
+
+		New(gobject : Int) {
+			Parent();
+
+			@gobject := gobject;
+		}	}
+
+	#~
+	Generated when a setting is modified.
+	~#
+	class EventSetting {
+		@gobject : Int;
+
+	
+		New(gobject : Int) {
+			Parent();
+
+			@gobject := gobject;
+		}
+
+		method : public : GetType() ~ EventType {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventsetting_get_type", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get()->As(EventType);
+		}
+
+		method : public : SetType(type : EventType) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(type);
+	
+			Proxy->GetDllProxy()->CallFunction("eventsetting_set_type", array_args);
+		}
+
+
+		method : public : GetWindow() ~ Window {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventsetting_get_window", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Window->New(value->Get());
+		}
+
+		method : public : SetWindow(window : Window) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := window;
+	
+			Proxy->GetDllProxy()->CallFunction("eventsetting_set_window", array_args);
+		}
+
+
+		method : public : GetSendEvent() ~ Int {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventsetting_get_sendevent", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		method : public : SetSendEvent(send_event : Int) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(send_event);
+	
+			Proxy->GetDllProxy()->CallFunction("eventsetting_set_sendevent", array_args);
+		}
+
+
+		method : public : GetAction() ~ SettingAction {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventsetting_get_action", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get()->As(SettingAction);
+		}
+
+		method : public : SetAction(action : SettingAction) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(action);
+	
+			Proxy->GetDllProxy()->CallFunction("eventsetting_set_action", array_args);
+		}
+
+
+		method : public : GetName() ~ String {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventsetting_get_name", array_args);
+	
+			return array_args[0]->As(String);
+		}
+
+		method : public : SetName(name : String) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := name;
+	
+			Proxy->GetDllProxy()->CallFunction("eventsetting_set_name", array_args);
+		}
+	}
+
+	#~
+	Used for touch events.
+	@type field will be one of %GDK_TOUCH_BEGIN, %GDK_TOUCH_UPDATE,
+	%GDK_TOUCH_END or %GDK_TOUCH_CANCEL.
+	
+	Touch events are grouped into sequences by means of the @sequence
+	field, which can also be obtained with gdk_event_get_event_sequence().
+	Each sequence begins with a %GDK_TOUCH_BEGIN event, followed by
+	any number of %GDK_TOUCH_UPDATE events, and ends with a %GDK_TOUCH_END
+	(or %GDK_TOUCH_CANCEL) event. With multitouch devices, there may be
+	several active sequences at the same time.
+	~#
+	class EventTouch {
+		@gobject : Int;
+
+	
+		New(gobject : Int) {
+			Parent();
+
+			@gobject := gobject;
+		}
+
+		method : public : GetType() ~ EventType {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventtouch_get_type", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get()->As(EventType);
+		}
+
+		method : public : SetType(type : EventType) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(type);
+	
+			Proxy->GetDllProxy()->CallFunction("eventtouch_set_type", array_args);
+		}
+
+
+		method : public : GetWindow() ~ Window {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventtouch_get_window", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Window->New(value->Get());
+		}
+
+		method : public : SetWindow(window : Window) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := window;
+	
+			Proxy->GetDllProxy()->CallFunction("eventtouch_set_window", array_args);
+		}
+
+
+		method : public : GetSendEvent() ~ Int {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventtouch_get_sendevent", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		method : public : SetSendEvent(send_event : Int) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(send_event);
+	
+			Proxy->GetDllProxy()->CallFunction("eventtouch_set_sendevent", array_args);
+		}
+
+
+		method : public : GetTime() ~ Int {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventtouch_get_time", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		method : public : SetTime(time : Int) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(time);
+	
+			Proxy->GetDllProxy()->CallFunction("eventtouch_set_time", array_args);
+		}
+
+
+		method : public : GetX() ~ Float {
+			array_args := Base->New[2];
+
+			array_args[0] := FloatRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventtouch_get_x", array_args);
+	
+			value := array_args[0]->As(FloatRef);
+			return value->Get();
+		}
+
+		method : public : SetX(x : Float) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := FloatRef->New(x);
+	
+			Proxy->GetDllProxy()->CallFunction("eventtouch_set_x", array_args);
+		}
+
+
+		method : public : GetY() ~ Float {
+			array_args := Base->New[2];
+
+			array_args[0] := FloatRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventtouch_get_y", array_args);
+	
+			value := array_args[0]->As(FloatRef);
+			return value->Get();
+		}
+
+		method : public : SetY(y : Float) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := FloatRef->New(y);
+	
+			Proxy->GetDllProxy()->CallFunction("eventtouch_set_y", array_args);
+		}
+
+
+		method : public : GetAxes() ~ Float {
+			array_args := Base->New[2];
+
+			array_args[0] := FloatRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventtouch_get_axes", array_args);
+	
+			value := array_args[0]->As(FloatRef);
+			return value->Get();
+		}
+
+		method : public : SetAxes(axes : Float) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := FloatRef->New(axes);
+	
+			Proxy->GetDllProxy()->CallFunction("eventtouch_set_axes", array_args);
+		}
+
+
+		method : public : GetSequence() ~ EventSequence {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventtouch_get_sequence", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return EventSequence->New(value->Get());
+		}
+
+		method : public : SetSequence(sequence : EventSequence) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := sequence;
+	
+			Proxy->GetDllProxy()->CallFunction("eventtouch_set_sequence", array_args);
+		}
+
+
+		method : public : GetEmulatingPointer() ~ Bool {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventtouch_get_emulatingpointer", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get() = 0 ? false : true;
+		}
+
+		method : public : SetEmulatingPointer(emulating_pointer : Bool) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(emulating_pointer ? 1 : 0);
+	
+			Proxy->GetDllProxy()->CallFunction("eventtouch_set_emulatingpointer", array_args);
+		}
+
+
+		method : public : GetDevice() ~ Device {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventtouch_get_device", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Device->New(value->Get());
+		}
+
+		method : public : SetDevice(device : Device) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := device;
+	
+			Proxy->GetDllProxy()->CallFunction("eventtouch_set_device", array_args);
+		}
+
+
+		method : public : GetXRoot() ~ Float {
+			array_args := Base->New[2];
+
+			array_args[0] := FloatRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventtouch_get_xroot", array_args);
+	
+			value := array_args[0]->As(FloatRef);
+			return value->Get();
+		}
+
+		method : public : SetXRoot(x_root : Float) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := FloatRef->New(x_root);
+	
+			Proxy->GetDllProxy()->CallFunction("eventtouch_set_xroot", array_args);
+		}
+
+
+		method : public : GetYRoot() ~ Float {
+			array_args := Base->New[2];
+
+			array_args[0] := FloatRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventtouch_get_yroot", array_args);
+	
+			value := array_args[0]->As(FloatRef);
+			return value->Get();
+		}
+
+		method : public : SetYRoot(y_root : Float) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := FloatRef->New(y_root);
+	
+			Proxy->GetDllProxy()->CallFunction("eventtouch_set_yroot", array_args);
+		}
+	}
+
+	#~
+	Generated during touchpad swipe gestures.
+	~#
+	class EventTouchpadPinch {
+		@gobject : Int;
+
+	
+		New(gobject : Int) {
+			Parent();
+
+			@gobject := gobject;
+		}
+
+		method : public : GetType() ~ EventType {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventtouchpadpinch_get_type", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get()->As(EventType);
+		}
+
+		method : public : SetType(type : EventType) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(type);
+	
+			Proxy->GetDllProxy()->CallFunction("eventtouchpadpinch_set_type", array_args);
+		}
+
+
+		method : public : GetWindow() ~ Window {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventtouchpadpinch_get_window", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Window->New(value->Get());
+		}
+
+		method : public : SetWindow(window : Window) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := window;
+	
+			Proxy->GetDllProxy()->CallFunction("eventtouchpadpinch_set_window", array_args);
+		}
+
+
+		method : public : GetSendEvent() ~ Int {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventtouchpadpinch_get_sendevent", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		method : public : SetSendEvent(send_event : Int) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(send_event);
+	
+			Proxy->GetDllProxy()->CallFunction("eventtouchpadpinch_set_sendevent", array_args);
+		}
+
+
+		method : public : GetPhase() ~ Int {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventtouchpadpinch_get_phase", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		method : public : SetPhase(phase : Int) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(phase);
+	
+			Proxy->GetDllProxy()->CallFunction("eventtouchpadpinch_set_phase", array_args);
+		}
+
+
+		method : public : GetNFingers() ~ Int {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventtouchpadpinch_get_nfingers", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		method : public : SetNFingers(n_fingers : Int) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(n_fingers);
+	
+			Proxy->GetDllProxy()->CallFunction("eventtouchpadpinch_set_nfingers", array_args);
+		}
+
+
+		method : public : GetTime() ~ Int {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventtouchpadpinch_get_time", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		method : public : SetTime(time : Int) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(time);
+	
+			Proxy->GetDllProxy()->CallFunction("eventtouchpadpinch_set_time", array_args);
+		}
+
+
+		method : public : GetX() ~ Float {
+			array_args := Base->New[2];
+
+			array_args[0] := FloatRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventtouchpadpinch_get_x", array_args);
+	
+			value := array_args[0]->As(FloatRef);
+			return value->Get();
+		}
+
+		method : public : SetX(x : Float) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := FloatRef->New(x);
+	
+			Proxy->GetDllProxy()->CallFunction("eventtouchpadpinch_set_x", array_args);
+		}
+
+
+		method : public : GetY() ~ Float {
+			array_args := Base->New[2];
+
+			array_args[0] := FloatRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventtouchpadpinch_get_y", array_args);
+	
+			value := array_args[0]->As(FloatRef);
+			return value->Get();
+		}
+
+		method : public : SetY(y : Float) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := FloatRef->New(y);
+	
+			Proxy->GetDllProxy()->CallFunction("eventtouchpadpinch_set_y", array_args);
+		}
+
+
+		method : public : GetDx() ~ Float {
+			array_args := Base->New[2];
+
+			array_args[0] := FloatRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventtouchpadpinch_get_dx", array_args);
+	
+			value := array_args[0]->As(FloatRef);
+			return value->Get();
+		}
+
+		method : public : SetDx(dx : Float) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := FloatRef->New(dx);
+	
+			Proxy->GetDllProxy()->CallFunction("eventtouchpadpinch_set_dx", array_args);
+		}
+
+
+		method : public : GetDy() ~ Float {
+			array_args := Base->New[2];
+
+			array_args[0] := FloatRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventtouchpadpinch_get_dy", array_args);
+	
+			value := array_args[0]->As(FloatRef);
+			return value->Get();
+		}
+
+		method : public : SetDy(dy : Float) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := FloatRef->New(dy);
+	
+			Proxy->GetDllProxy()->CallFunction("eventtouchpadpinch_set_dy", array_args);
+		}
+
+
+		method : public : GetAngleDelta() ~ Float {
+			array_args := Base->New[2];
+
+			array_args[0] := FloatRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventtouchpadpinch_get_angledelta", array_args);
+	
+			value := array_args[0]->As(FloatRef);
+			return value->Get();
+		}
+
+		method : public : SetAngleDelta(angle_delta : Float) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := FloatRef->New(angle_delta);
+	
+			Proxy->GetDllProxy()->CallFunction("eventtouchpadpinch_set_angledelta", array_args);
+		}
+
+
+		method : public : GetScale() ~ Float {
+			array_args := Base->New[2];
+
+			array_args[0] := FloatRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventtouchpadpinch_get_scale", array_args);
+	
+			value := array_args[0]->As(FloatRef);
+			return value->Get();
+		}
+
+		method : public : SetScale(scale : Float) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := FloatRef->New(scale);
+	
+			Proxy->GetDllProxy()->CallFunction("eventtouchpadpinch_set_scale", array_args);
+		}
+
+
+		method : public : GetXRoot() ~ Float {
+			array_args := Base->New[2];
+
+			array_args[0] := FloatRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventtouchpadpinch_get_xroot", array_args);
+	
+			value := array_args[0]->As(FloatRef);
+			return value->Get();
+		}
+
+		method : public : SetXRoot(x_root : Float) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := FloatRef->New(x_root);
+	
+			Proxy->GetDllProxy()->CallFunction("eventtouchpadpinch_set_xroot", array_args);
+		}
+
+
+		method : public : GetYRoot() ~ Float {
+			array_args := Base->New[2];
+
+			array_args[0] := FloatRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventtouchpadpinch_get_yroot", array_args);
+	
+			value := array_args[0]->As(FloatRef);
+			return value->Get();
+		}
+
+		method : public : SetYRoot(y_root : Float) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := FloatRef->New(y_root);
+	
+			Proxy->GetDllProxy()->CallFunction("eventtouchpadpinch_set_yroot", array_args);
+		}
+	}
+
+	#~
+	Generated during touchpad swipe gestures.
+	~#
+	class EventTouchpadSwipe {
+		@gobject : Int;
+
+	
+		New(gobject : Int) {
+			Parent();
+
+			@gobject := gobject;
+		}
+
+		method : public : GetType() ~ EventType {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventtouchpadswipe_get_type", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get()->As(EventType);
+		}
+
+		method : public : SetType(type : EventType) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(type);
+	
+			Proxy->GetDllProxy()->CallFunction("eventtouchpadswipe_set_type", array_args);
+		}
+
+
+		method : public : GetWindow() ~ Window {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventtouchpadswipe_get_window", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Window->New(value->Get());
+		}
+
+		method : public : SetWindow(window : Window) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := window;
+	
+			Proxy->GetDllProxy()->CallFunction("eventtouchpadswipe_set_window", array_args);
+		}
+
+
+		method : public : GetSendEvent() ~ Int {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventtouchpadswipe_get_sendevent", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		method : public : SetSendEvent(send_event : Int) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(send_event);
+	
+			Proxy->GetDllProxy()->CallFunction("eventtouchpadswipe_set_sendevent", array_args);
+		}
+
+
+		method : public : GetPhase() ~ Int {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventtouchpadswipe_get_phase", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		method : public : SetPhase(phase : Int) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(phase);
+	
+			Proxy->GetDllProxy()->CallFunction("eventtouchpadswipe_set_phase", array_args);
+		}
+
+
+		method : public : GetNFingers() ~ Int {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventtouchpadswipe_get_nfingers", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		method : public : SetNFingers(n_fingers : Int) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(n_fingers);
+	
+			Proxy->GetDllProxy()->CallFunction("eventtouchpadswipe_set_nfingers", array_args);
+		}
+
+
+		method : public : GetTime() ~ Int {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventtouchpadswipe_get_time", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		method : public : SetTime(time : Int) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(time);
+	
+			Proxy->GetDllProxy()->CallFunction("eventtouchpadswipe_set_time", array_args);
+		}
+
+
+		method : public : GetX() ~ Float {
+			array_args := Base->New[2];
+
+			array_args[0] := FloatRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventtouchpadswipe_get_x", array_args);
+	
+			value := array_args[0]->As(FloatRef);
+			return value->Get();
+		}
+
+		method : public : SetX(x : Float) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := FloatRef->New(x);
+	
+			Proxy->GetDllProxy()->CallFunction("eventtouchpadswipe_set_x", array_args);
+		}
+
+
+		method : public : GetY() ~ Float {
+			array_args := Base->New[2];
+
+			array_args[0] := FloatRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventtouchpadswipe_get_y", array_args);
+	
+			value := array_args[0]->As(FloatRef);
+			return value->Get();
+		}
+
+		method : public : SetY(y : Float) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := FloatRef->New(y);
+	
+			Proxy->GetDllProxy()->CallFunction("eventtouchpadswipe_set_y", array_args);
+		}
+
+
+		method : public : GetDx() ~ Float {
+			array_args := Base->New[2];
+
+			array_args[0] := FloatRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventtouchpadswipe_get_dx", array_args);
+	
+			value := array_args[0]->As(FloatRef);
+			return value->Get();
+		}
+
+		method : public : SetDx(dx : Float) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := FloatRef->New(dx);
+	
+			Proxy->GetDllProxy()->CallFunction("eventtouchpadswipe_set_dx", array_args);
+		}
+
+
+		method : public : GetDy() ~ Float {
+			array_args := Base->New[2];
+
+			array_args[0] := FloatRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventtouchpadswipe_get_dy", array_args);
+	
+			value := array_args[0]->As(FloatRef);
+			return value->Get();
+		}
+
+		method : public : SetDy(dy : Float) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := FloatRef->New(dy);
+	
+			Proxy->GetDllProxy()->CallFunction("eventtouchpadswipe_set_dy", array_args);
+		}
+
+
+		method : public : GetXRoot() ~ Float {
+			array_args := Base->New[2];
+
+			array_args[0] := FloatRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventtouchpadswipe_get_xroot", array_args);
+	
+			value := array_args[0]->As(FloatRef);
+			return value->Get();
+		}
+
+		method : public : SetXRoot(x_root : Float) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := FloatRef->New(x_root);
+	
+			Proxy->GetDllProxy()->CallFunction("eventtouchpadswipe_set_xroot", array_args);
+		}
+
+
+		method : public : GetYRoot() ~ Float {
+			array_args := Base->New[2];
+
+			array_args[0] := FloatRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventtouchpadswipe_get_yroot", array_args);
+	
+			value := array_args[0]->As(FloatRef);
+			return value->Get();
+		}
+
+		method : public : SetYRoot(y_root : Float) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := FloatRef->New(y_root);
+	
+			Proxy->GetDllProxy()->CallFunction("eventtouchpadswipe_set_yroot", array_args);
+		}
+	}
+
+	#~
+	Generated when the window visibility status has changed.
+	~#
+	class EventVisibility {
+		@gobject : Int;
+
+	
+		New(gobject : Int) {
+			Parent();
+
+			@gobject := gobject;
+		}
+
+		method : public : GetType() ~ EventType {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventvisibility_get_type", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get()->As(EventType);
+		}
+
+		method : public : SetType(type : EventType) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(type);
+	
+			Proxy->GetDllProxy()->CallFunction("eventvisibility_set_type", array_args);
+		}
+
+
+		method : public : GetWindow() ~ Window {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventvisibility_get_window", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Window->New(value->Get());
+		}
+
+		method : public : SetWindow(window : Window) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := window;
+	
+			Proxy->GetDllProxy()->CallFunction("eventvisibility_set_window", array_args);
+		}
+
+
+		method : public : GetSendEvent() ~ Int {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventvisibility_get_sendevent", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		method : public : SetSendEvent(send_event : Int) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(send_event);
+	
+			Proxy->GetDllProxy()->CallFunction("eventvisibility_set_sendevent", array_args);
+		}
+
+
+		method : public : GetState() ~ VisibilityState {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventvisibility_get_state", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get()->As(VisibilityState);
+		}
+
+		method : public : SetState(state : VisibilityState) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(state);
+	
+			Proxy->GetDllProxy()->CallFunction("eventvisibility_set_state", array_args);
+		}
+	}
+
+	#~
+	Generated when the state of a toplevel window changes.
+	~#
+	class EventWindowState {
+		@gobject : Int;
+
+	
+		New(gobject : Int) {
+			Parent();
+
+			@gobject := gobject;
+		}
+
+		method : public : GetType() ~ EventType {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventwindowstate_get_type", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get()->As(EventType);
+		}
+
+		method : public : SetType(type : EventType) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(type);
+	
+			Proxy->GetDllProxy()->CallFunction("eventwindowstate_set_type", array_args);
+		}
+
+
+		method : public : GetWindow() ~ Window {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventwindowstate_get_window", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Window->New(value->Get());
+		}
+
+		method : public : SetWindow(window : Window) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := window;
+	
+			Proxy->GetDllProxy()->CallFunction("eventwindowstate_set_window", array_args);
+		}
+
+
+		method : public : GetSendEvent() ~ Int {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventwindowstate_get_sendevent", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		method : public : SetSendEvent(send_event : Int) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(send_event);
+	
+			Proxy->GetDllProxy()->CallFunction("eventwindowstate_set_sendevent", array_args);
+		}
+
+
+		method : public : GetChangedMask() ~ WindowState {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventwindowstate_get_changedmask", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get()->As(WindowState);
+		}
+
+		method : public : SetChangedMask(changed_mask : WindowState) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(changed_mask);
+	
+			Proxy->GetDllProxy()->CallFunction("eventwindowstate_set_changedmask", array_args);
+		}
+
+
+		method : public : GetNewWindowState() ~ WindowState {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("eventwindowstate_get_newwindowstate", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get()->As(WindowState);
+		}
+
+		method : public : SetNewWindowState(new_window_state : WindowState) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(new_window_state);
+	
+			Proxy->GetDllProxy()->CallFunction("eventwindowstate_set_newwindowstate", array_args);
 		}
 	}
 
@@ -5432,6 +10238,1349 @@ bundle Gtk3 {
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_rectangle_union", array_args);
 		}	}
 
+	#~
+	A #GdkEvent contains a union of all of the event types,
+	and allows access to the data fields in a number of ways.
+	
+	The event type is always the first field in all of the event types, and
+	can always be accessed with the following code, no matter what type of
+	event it is:
+	|[&lt;!-- language="C" --&gt;
+	  GdkEvent *event;
+	  GdkEventType type;
+	
+	  type = event-&gt;type;
+	]|
+	
+	To access other fields of the event, the pointer to the event
+	can be cast to the appropriate event type, or the union member
+	name can be used. For example if the event type is %GDK_BUTTON_PRESS
+	then the x coordinate of the button press can be accessed with:
+	|[&lt;!-- language="C" --&gt;
+	  GdkEvent *event;
+	  gdouble x;
+	
+	  x = ((GdkEventButton*)event)-&gt;x;
+	]|
+	or:
+	|[&lt;!-- language="C" --&gt;
+	  GdkEvent *event;
+	  gdouble x;
+	
+	  x = event-&gt;button.x;
+	]|
+	~#
+	class Event {
+		@gobject : Int;
+
+	
+		New(gobject : Int) {
+			Parent();
+
+			@gobject := gobject;
+		}
+
+		method : public : GetType() ~ EventType {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("event_get_type", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get()->As(EventType);
+		}
+
+		method : public : SetType(type : EventType) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := IntRef->New(type);
+	
+			Proxy->GetDllProxy()->CallFunction("event_set_type", array_args);
+		}
+
+
+		method : public : GetAny() ~ EventAny {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("event_get_any", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return EventAny->New(value->Get());
+		}
+
+		method : public : SetAny(any : EventAny) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := any;
+	
+			Proxy->GetDllProxy()->CallFunction("event_set_any", array_args);
+		}
+
+
+		method : public : GetExpose() ~ EventExpose {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("event_get_expose", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return EventExpose->New(value->Get());
+		}
+
+		method : public : SetExpose(expose : EventExpose) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := expose;
+	
+			Proxy->GetDllProxy()->CallFunction("event_set_expose", array_args);
+		}
+
+
+		method : public : GetVisibility() ~ EventVisibility {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("event_get_visibility", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return EventVisibility->New(value->Get());
+		}
+
+		method : public : SetVisibility(visibility : EventVisibility) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := visibility;
+	
+			Proxy->GetDllProxy()->CallFunction("event_set_visibility", array_args);
+		}
+
+
+		method : public : GetMotion() ~ EventMotion {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("event_get_motion", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return EventMotion->New(value->Get());
+		}
+
+		method : public : SetMotion(motion : EventMotion) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := motion;
+	
+			Proxy->GetDllProxy()->CallFunction("event_set_motion", array_args);
+		}
+
+
+		method : public : GetButton() ~ EventButton {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("event_get_button", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return EventButton->New(value->Get());
+		}
+
+		method : public : SetButton(button : EventButton) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := button;
+	
+			Proxy->GetDllProxy()->CallFunction("event_set_button", array_args);
+		}
+
+
+		method : public : GetTouch() ~ EventTouch {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("event_get_touch", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return EventTouch->New(value->Get());
+		}
+
+		method : public : SetTouch(touch : EventTouch) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := touch;
+	
+			Proxy->GetDllProxy()->CallFunction("event_set_touch", array_args);
+		}
+
+
+		method : public : GetScroll() ~ EventScroll {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("event_get_scroll", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return EventScroll->New(value->Get());
+		}
+
+		method : public : SetScroll(scroll : EventScroll) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := scroll;
+	
+			Proxy->GetDllProxy()->CallFunction("event_set_scroll", array_args);
+		}
+
+
+		method : public : GetKey() ~ EventKey {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("event_get_key", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return EventKey->New(value->Get());
+		}
+
+		method : public : SetKey(key : EventKey) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := key;
+	
+			Proxy->GetDllProxy()->CallFunction("event_set_key", array_args);
+		}
+
+
+		method : public : GetCrossing() ~ EventCrossing {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("event_get_crossing", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return EventCrossing->New(value->Get());
+		}
+
+		method : public : SetCrossing(crossing : EventCrossing) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := crossing;
+	
+			Proxy->GetDllProxy()->CallFunction("event_set_crossing", array_args);
+		}
+
+
+		method : public : GetFocusChange() ~ EventFocus {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("event_get_focuschange", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return EventFocus->New(value->Get());
+		}
+
+		method : public : SetFocusChange(focus_change : EventFocus) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := focus_change;
+	
+			Proxy->GetDllProxy()->CallFunction("event_set_focuschange", array_args);
+		}
+
+
+		method : public : GetConfigure() ~ EventConfigure {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("event_get_configure", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return EventConfigure->New(value->Get());
+		}
+
+		method : public : SetConfigure(configure : EventConfigure) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := configure;
+	
+			Proxy->GetDllProxy()->CallFunction("event_set_configure", array_args);
+		}
+
+
+		method : public : GetProperty() ~ EventProperty {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("event_get_property", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return EventProperty->New(value->Get());
+		}
+
+		method : public : SetProperty(property : EventProperty) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := property;
+	
+			Proxy->GetDllProxy()->CallFunction("event_set_property", array_args);
+		}
+
+
+		method : public : GetSelection() ~ EventSelection {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("event_get_selection", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return EventSelection->New(value->Get());
+		}
+
+		method : public : SetSelection(selection : EventSelection) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := selection;
+	
+			Proxy->GetDllProxy()->CallFunction("event_set_selection", array_args);
+		}
+
+
+		method : public : GetOwnerChange() ~ EventOwnerChange {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("event_get_ownerchange", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return EventOwnerChange->New(value->Get());
+		}
+
+		method : public : SetOwnerChange(owner_change : EventOwnerChange) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := owner_change;
+	
+			Proxy->GetDllProxy()->CallFunction("event_set_ownerchange", array_args);
+		}
+
+
+		method : public : GetProximity() ~ EventProximity {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("event_get_proximity", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return EventProximity->New(value->Get());
+		}
+
+		method : public : SetProximity(proximity : EventProximity) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := proximity;
+	
+			Proxy->GetDllProxy()->CallFunction("event_set_proximity", array_args);
+		}
+
+
+		method : public : GetDnd() ~ EventDND {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("event_get_dnd", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return EventDND->New(value->Get());
+		}
+
+		method : public : SetDnd(dnd : EventDND) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := dnd;
+	
+			Proxy->GetDllProxy()->CallFunction("event_set_dnd", array_args);
+		}
+
+
+		method : public : GetWindowState() ~ EventWindowState {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("event_get_windowstate", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return EventWindowState->New(value->Get());
+		}
+
+		method : public : SetWindowState(window_state : EventWindowState) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := window_state;
+	
+			Proxy->GetDllProxy()->CallFunction("event_set_windowstate", array_args);
+		}
+
+
+		method : public : GetSetting() ~ EventSetting {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("event_get_setting", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return EventSetting->New(value->Get());
+		}
+
+		method : public : SetSetting(setting : EventSetting) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := setting;
+	
+			Proxy->GetDllProxy()->CallFunction("event_set_setting", array_args);
+		}
+
+
+		method : public : GetGrabBroken() ~ EventGrabBroken {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("event_get_grabbroken", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return EventGrabBroken->New(value->Get());
+		}
+
+		method : public : SetGrabBroken(grab_broken : EventGrabBroken) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := grab_broken;
+	
+			Proxy->GetDllProxy()->CallFunction("event_set_grabbroken", array_args);
+		}
+
+
+		method : public : GetTouchpadSwipe() ~ EventTouchpadSwipe {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("event_get_touchpadswipe", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return EventTouchpadSwipe->New(value->Get());
+		}
+
+		method : public : SetTouchpadSwipe(touchpad_swipe : EventTouchpadSwipe) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := touchpad_swipe;
+	
+			Proxy->GetDllProxy()->CallFunction("event_set_touchpadswipe", array_args);
+		}
+
+
+		method : public : GetTouchpadPinch() ~ EventTouchpadPinch {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("event_get_touchpadpinch", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return EventTouchpadPinch->New(value->Get());
+		}
+
+		method : public : SetTouchpadPinch(touchpad_pinch : EventTouchpadPinch) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := touchpad_pinch;
+	
+			Proxy->GetDllProxy()->CallFunction("event_set_touchpadpinch", array_args);
+		}
+
+
+		method : public : GetPadButton() ~ EventPadButton {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("event_get_padbutton", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return EventPadButton->New(value->Get());
+		}
+
+		method : public : SetPadButton(pad_button : EventPadButton) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := pad_button;
+	
+			Proxy->GetDllProxy()->CallFunction("event_set_padbutton", array_args);
+		}
+
+
+		method : public : GetPadAxis() ~ EventPadAxis {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("event_get_padaxis", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return EventPadAxis->New(value->Get());
+		}
+
+		method : public : SetPadAxis(pad_axis : EventPadAxis) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := pad_axis;
+	
+			Proxy->GetDllProxy()->CallFunction("event_set_padaxis", array_args);
+		}
+
+
+		method : public : GetPadGroupMode() ~ EventPadGroupMode {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("event_get_padgroupmode", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return EventPadGroupMode->New(value->Get());
+		}
+
+		method : public : SetPadGroupMode(pad_group_mode : EventPadGroupMode) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@gobject);
+			array_args[1] := pad_group_mode;
+	
+			Proxy->GetDllProxy()->CallFunction("event_set_padgroupmode", array_args);
+		}
+
+
+
+		#~
+		Creates a new event of the given type. All fields are set to 0.
+		@param type a #GdkEventType
+		@return a newly-allocated #GdkEvent. The returned #GdkEvent
+		should be freed with gdk_event_free().
+		~#
+		New(type : EventType) {
+			Parent();
+
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(type);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_event_new", array_args);
+			value := array_args[0]->As(IntRef);
+			@gobject := value->Get();
+		}
+		#~
+		If both events contain X/Y information, this function will return %TRUE
+		and return in @angle the relative angle from @event1 to @event2. The rotation
+		direction for positive angles is from the positive X axis towards the positive
+		Y axis.
+		@param event2 second #GdkEvent
+		@param angle return location for the relative angle between both events
+		@return %TRUE if the angle could be calculated.
+		~#
+		method : public : GetAngle(event2 : Event, angle : Float) ~ Bool {
+			array_args := Base->New[4];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := event2;
+			array_args[3] := FloatRef->New(angle);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_events_get_angle", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get() = 0 ? false : true;
+		}
+
+		#~
+		If both events contain X/Y information, the center of both coordinates
+		will be returned in @x and @y.
+		@param event2 second #GdkEvent
+		@param x return location for the X coordinate of the center
+		@param y return location for the Y coordinate of the center
+		@return %TRUE if the center could be calculated.
+		~#
+		method : public : GetCenter(event2 : Event, x : Float, y : Float) ~ Bool {
+			array_args := Base->New[5];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := event2;
+			array_args[3] := FloatRef->New(x);
+			array_args[4] := FloatRef->New(y);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_events_get_center", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get() = 0 ? false : true;
+		}
+
+		#~
+		If both events have X/Y information, the distance between both coordinates
+		(as in a straight line going from @event1 to @event2) will be returned.
+		@param event2 second #GdkEvent
+		@param distance return location for the distance
+		@return %TRUE if the distance could be calculated.
+		~#
+		method : public : GetDistance(event2 : Event, distance : Float) ~ Bool {
+			array_args := Base->New[4];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := event2;
+			array_args[3] := FloatRef->New(distance);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_events_get_distance", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get() = 0 ? false : true;
+		}
+
+		#~
+		Copies a #GdkEvent, copying or incrementing the reference count of the
+		resources associated with it (e.g. #GdkWindow&#x2019;s and strings).
+		@return a copy of @event. The returned #GdkEvent should be freed with
+		gdk_event_free().
+		~#
+		method : public : Copy() ~ Event {
+			array_args := Base->New[2];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_event_copy", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Event->New(value->Get());
+		}
+
+		#~
+		Frees a #GdkEvent, freeing or decrementing any resources associated with it.
+		Note that this function should only be called with events returned from
+		functions such as gdk_event_peek(), gdk_event_get(), gdk_event_copy()
+		and gdk_event_new().
+		~#
+		method : public : Free() ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_event_free", array_args);
+		}
+
+		#~
+		Extract the axis value for a particular axis use from
+		an event structure.
+		@param axis_use the axis use to look for
+		@param value location to store the value found
+		@return %TRUE if the specified axis was found, otherwise %FALSE
+		~#
+		method : public : GetAxis(axis_use : AxisUse, value_ : Float) ~ Bool {
+			array_args := Base->New[4];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := IntRef->New(axis_use);
+			array_args[3] := FloatRef->New(value_);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_event_get_axis", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get() = 0 ? false : true;
+		}
+
+		#~
+		Extract the button number from an event.
+		@param button location to store mouse button number
+		@return %TRUE if the event delivered a button number
+		~#
+		method : public : GetButton(button : Int) ~ Bool {
+			array_args := Base->New[3];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := IntRef->New(button);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_event_get_button", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get() = 0 ? false : true;
+		}
+
+		#~
+		Extracts the click count from an event.
+		@param click_count location to store click count
+		@return %TRUE if the event delivered a click count
+		~#
+		method : public : GetClickCount(click_count : Int) ~ Bool {
+			array_args := Base->New[3];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := IntRef->New(click_count);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_event_get_click_count", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get() = 0 ? false : true;
+		}
+
+		#~
+		Extract the event window relative x/y coordinates from an event.
+		@param x_win location to put event window x coordinate
+		@param y_win location to put event window y coordinate
+		@return %TRUE if the event delivered event window coordinates
+		~#
+		method : public : GetCoords(x_win : Float, y_win : Float) ~ Bool {
+			array_args := Base->New[4];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := FloatRef->New(x_win);
+			array_args[3] := FloatRef->New(y_win);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_event_get_coords", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get() = 0 ? false : true;
+		}
+
+		#~
+		If the event contains a &#x201C;device&#x201D; field, this function will return
+		it, else it will return %NULL.
+		@return a #GdkDevice, or %NULL.
+		~#
+		method : public : GetDevice() ~ Device {
+			array_args := Base->New[2];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_event_get_device", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Device->New(value->Get());
+		}
+
+		#~
+		If the event was generated by a device that supports
+		different tools (eg. a tablet), this function will
+		return a #GdkDeviceTool representing the tool that
+		caused the event. Otherwise, %NULL will be returned.
+		
+		Note: the #GdkDeviceTool&lt;!-- --&gt;s will be constant during
+		the application lifetime, if settings must be stored
+		persistently across runs, see gdk_device_tool_get_serial()
+		@return The current device tool, or %NULL
+		~#
+		method : public : GetDeviceTool() ~ DeviceTool {
+			array_args := Base->New[2];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_event_get_device_tool", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return DeviceTool->New(value->Get());
+		}
+
+		#~
+		If @event if of type %GDK_TOUCH_BEGIN, %GDK_TOUCH_UPDATE,
+		%GDK_TOUCH_END or %GDK_TOUCH_CANCEL, returns the #GdkEventSequence
+		to which the event belongs. Otherwise, return %NULL.
+		@return the event sequence that the event belongs to
+		~#
+		method : public : GetEventSequence() ~ EventSequence {
+			array_args := Base->New[2];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_event_get_event_sequence", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return EventSequence->New(value->Get());
+		}
+
+		#~
+		Retrieves the type of the event.
+		@return a #GdkEventType
+		~#
+		method : public : GetEventType() ~ EventType {
+			array_args := Base->New[2];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_event_get_event_type", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get()->As(EventType);
+		}
+
+		#~
+		Extracts the hardware keycode from an event.
+		
+		Also see gdk_event_get_scancode().
+		@param keycode location to store the keycode
+		@return %TRUE if the event delivered a hardware keycode
+		~#
+		method : public : GetKeycode(keycode : Int) ~ Bool {
+			array_args := Base->New[3];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := IntRef->New(keycode);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_event_get_keycode", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get() = 0 ? false : true;
+		}
+
+		#~
+		Extracts the keyval from an event.
+		@param keyval location to store the keyval
+		@return %TRUE if the event delivered a key symbol
+		~#
+		method : public : GetKeyval(keyval : Int) ~ Bool {
+			array_args := Base->New[3];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := IntRef->New(keyval);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_event_get_keyval", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get() = 0 ? false : true;
+		}
+
+		#~
+		#event: a #GdkEvent
+		Returns whether this event is an 'emulated' pointer event (typically
+		from a touch event), as opposed to a real one.
+		@return %TRUE if this event is emulated
+		~#
+		method : public : GetPointerEmulated() ~ Bool {
+			array_args := Base->New[2];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_event_get_pointer_emulated", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get() = 0 ? false : true;
+		}
+
+		#~
+		Extract the root window relative x/y coordinates from an event.
+		@param x_root location to put root window x coordinate
+		@param y_root location to put root window y coordinate
+		@return %TRUE if the event delivered root window coordinates
+		~#
+		method : public : GetRootCoords(x_root : Float, y_root : Float) ~ Bool {
+			array_args := Base->New[4];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := FloatRef->New(x_root);
+			array_args[3] := FloatRef->New(y_root);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_event_get_root_coords", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get() = 0 ? false : true;
+		}
+
+		#~
+		Gets the keyboard low-level scancode of a key event.
+		
+		This is usually hardware_keycode. On Windows this is the high
+		word of WM_KEY{DOWN,UP} lParam which contains the scancode and
+		some extended flags.
+		@return The associated keyboard scancode or 0
+		~#
+		method : public : GetScancode() ~ Int {
+			array_args := Base->New[2];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_event_get_scancode", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		#~
+		Returns the screen for the event. The screen is
+		typically the screen for `event-&gt;any.window`, but
+		for events such as mouse events, it is the screen
+		where the pointer was when the event occurs -
+		that is, the screen which has the root window
+		to which `event-&gt;motion.x_root` and
+		`event-&gt;motion.y_root` are relative.
+		@return the screen for the event
+		~#
+		method : public : GetScreen() ~ Screen {
+			array_args := Base->New[2];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_event_get_screen", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Screen->New(value->Get());
+		}
+
+		#~
+		Retrieves the scroll deltas from a #GdkEvent
+		
+		See also: gdk_event_get_scroll_direction()
+		@param delta_x return location for X delta
+		@param delta_y return location for Y delta
+		@return %TRUE if the event contains smooth scroll information
+		  and %FALSE otherwise
+		~#
+		method : public : GetScrollDeltas(delta_x : Float, delta_y : Float) ~ Bool {
+			array_args := Base->New[4];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := FloatRef->New(delta_x);
+			array_args[3] := FloatRef->New(delta_y);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_event_get_scroll_deltas", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get() = 0 ? false : true;
+		}
+
+		#~
+		Extracts the scroll direction from an event.
+		
+		If @event is not of type %GDK_SCROLL, the contents of @direction
+		are undefined.
+		
+		If you wish to handle both discrete and smooth scrolling, you
+		should check the return value of this function, or of
+		gdk_event_get_scroll_deltas(); for instance:
+		
+		|[&lt;!-- language="C" --&gt;
+		  GdkScrollDirection direction;
+		  double vscroll_factor = 0.0;
+		  double x_scroll, y_scroll;
+		
+		  if (gdk_event_get_scroll_direction (event, &amp;direction))
+		    {
+		      // Handle discrete scrolling with a known constant delta;
+		      const double delta = 12.0;
+		
+		      switch (direction)
+		        {
+		        case GDK_SCROLL_UP:
+		          vscroll_factor = -delta;
+		          break;
+		        case GDK_SCROLL_DOWN:
+		          vscroll_factor = delta;
+		          break;
+		        default:
+		          // no scrolling
+		          break;
+		        }
+		    }
+		  else if (gdk_event_get_scroll_deltas (event, &amp;x_scroll, &amp;y_scroll))
+		    {
+		      // Handle smooth scrolling directly
+		      vscroll_factor = y_scroll;
+		    }
+		]|
+		@param direction location to store the scroll direction
+		@return %TRUE if the event delivered a scroll direction
+		  and %FALSE otherwise
+		~#
+		method : public : GetScrollDirection(direction : ScrollDirection) ~ Bool {
+			array_args := Base->New[3];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := IntRef->New(direction);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_event_get_scroll_direction", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get() = 0 ? false : true;
+		}
+
+		#~
+		Returns the #GdkSeat this event was generated for.
+		@return The #GdkSeat of this event
+		~#
+		method : public : GetSeat() ~ Seat {
+			array_args := Base->New[2];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_event_get_seat", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Seat->New(value->Get());
+		}
+
+		#~
+		This function returns the hardware (slave) #GdkDevice that has
+		triggered the event, falling back to the virtual (master) device
+		(as in gdk_event_get_device()) if the event wasn&#x2019;t caused by
+		interaction with a hardware device. This may happen for example
+		in synthesized crossing events after a #GdkWindow updates its
+		geometry or a grab is acquired/released.
+		
+		If the event does not contain a device field, this function will
+		return %NULL.
+		@return a #GdkDevice, or %NULL.
+		~#
+		method : public : GetSourceDevice() ~ Device {
+			array_args := Base->New[2];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_event_get_source_device", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Device->New(value->Get());
+		}
+
+		#~
+		If the event contains a &#x201C;state&#x201D; field, puts that field in @state. Otherwise
+		stores an empty state (0). Returns %TRUE if there was a state field
+		in the event. @event may be %NULL, in which case it&#x2019;s treated
+		as if the event had no state field.
+		@param state return location for state
+		@return %TRUE if there was a state field in the event
+		~#
+		method : public : GetState(state : ModifierType) ~ Bool {
+			array_args := Base->New[3];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := IntRef->New(state);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_event_get_state", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get() = 0 ? false : true;
+		}
+
+		#~
+		Returns the time stamp from @event, if there is one; otherwise
+		returns #GDK_CURRENT_TIME. If @event is %NULL, returns #GDK_CURRENT_TIME.
+		@return time stamp field from @event
+		~#
+		method : public : GetTime() ~ Int {
+			array_args := Base->New[2];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_event_get_time", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		#~
+		Extracts the #GdkWindow associated with an event.
+		@return The #GdkWindow associated with the event
+		~#
+		method : public : GetWindow() ~ Window {
+			array_args := Base->New[2];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_event_get_window", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Window->New(value->Get());
+		}
+
+		#~
+		Check whether a scroll event is a stop scroll event. Scroll sequences
+		with smooth scroll information may provide a stop scroll event once the
+		interaction with the device finishes, e.g. by lifting a finger. This
+		stop scroll event is the signal that a widget may trigger kinetic
+		scrolling based on the current velocity.
+		
+		Stop scroll events always have a a delta of 0/0.
+		@return %TRUE if the event is a scroll stop event
+		~#
+		method : public : IsScrollStopEvent() ~ Bool {
+			array_args := Base->New[2];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_event_is_scroll_stop_event", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get() = 0 ? false : true;
+		}
+
+		#~
+		Appends a copy of the given event onto the front of the event
+		queue for event-&gt;any.window&#x2019;s display, or the default event
+		queue if event-&gt;any.window is %NULL. See gdk_display_put_event().
+		~#
+		method : public : Put() ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_event_put", array_args);
+		}
+
+		#~
+		Sets the device for @event to @device. The event must
+		have been allocated by GTK+, for instance, by
+		gdk_event_copy().
+		@param device a #GdkDevice
+		~#
+		method : public : SetDevice(device : Device) ~ Nil {
+			array_args := Base->New[3];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := device;
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_event_set_device", array_args);
+		}
+
+		#~
+		Sets the device tool for this event, should be rarely used.
+		@param tool tool to set on the event, or %NULL
+		~#
+		method : public : SetDeviceTool(tool : DeviceTool) ~ Nil {
+			array_args := Base->New[3];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := tool;
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_event_set_device_tool", array_args);
+		}
+
+		#~
+		Sets the screen for @event to @screen. The event must
+		have been allocated by GTK+, for instance, by
+		gdk_event_copy().
+		@param screen a #GdkScreen
+		~#
+		method : public : SetScreen(screen : Screen) ~ Nil {
+			array_args := Base->New[3];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := screen;
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_event_set_screen", array_args);
+		}
+
+		#~
+		Sets the slave device for @event to @device.
+		
+		The event must have been allocated by GTK+,
+		for instance by gdk_event_copy().
+		@param device a #GdkDevice
+		~#
+		method : public : SetSourceDevice(device : Device) ~ Nil {
+			array_args := Base->New[3];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@gobject);
+			array_args[2] := device;
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_event_set_source_device", array_args);
+		}
+
+		#~
+		This function returns whether a #GdkEventButton should trigger a
+		context menu, according to platform conventions. The right mouse
+		button always triggers context menus. Additionally, if
+		gdk_keymap_get_modifier_mask() returns a non-0 mask for
+		%GDK_MODIFIER_INTENT_CONTEXT_MENU, then the left mouse button will
+		also trigger a context menu if this modifier is pressed.
+		
+		This function should always be used instead of simply checking for
+		event-&gt;button == %GDK_BUTTON_SECONDARY.
+		@return %TRUE if the event should trigger a context menu.
+		~#
+		method : public : TriggersContextMenu() ~ Bool {
+			array_args := Base->New[2];
+	
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@gobject);
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_event_triggers_context_menu", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return value->Get() = 0 ? false : true;
+		}
+		#~
+		Checks all open displays for a #GdkEvent to process,to be processed
+		on, fetching events from the windowing system if necessary.
+		See gdk_display_get_event().
+		@return the next #GdkEvent to be processed, or %NULL
+		if no events are pending. The returned #GdkEvent should be freed
+		with gdk_event_free().
+		~#
+		function : Get() ~ Event {
+			array_args := Base->New[1];
+
+	
+			array_args[0] := IntRef->New();
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_event_get", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Event->New(value->Get());
+		}
+
+		#~
+		If there is an event waiting in the event queue of some open
+		display, returns a copy of it. See gdk_display_peek_event().
+		@return a copy of the first #GdkEvent on some event
+		queue, or %NULL if no events are in any queues. The returned
+		#GdkEvent should be freed with gdk_event_free().
+		~#
+		function : Peek() ~ Event {
+			array_args := Base->New[1];
+
+	
+			array_args[0] := IntRef->New();
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_event_peek", array_args);
+	
+			value := array_args[0]->As(IntRef);
+			return Event->New(value->Get());
+		}
+
+		#~
+		Request more motion notifies if @event is a motion notify hint event.
+		
+		This function should be used instead of gdk_window_get_pointer() to
+		request further motion notifies, because it also works for extension
+		events where motion notifies are provided for devices other than the
+		core pointer. Coordinate extraction, processing and requesting more
+		motion events from a %GDK_MOTION_NOTIFY event usually works like this:
+		
+		|[&lt;!-- language="C" --&gt;
+		{
+		  // motion_event handler
+		  x = motion_event-&gt;x;
+		  y = motion_event-&gt;y;
+		  // handle (x,y) motion
+		  gdk_event_request_motions (motion_event); // handles is_hint events
+		}
+		]|
+		@param event a valid #GdkEvent
+		~#
+		function : RequestMotions(event : EventMotion) ~ Nil {
+			array_args := Base->New[1];
+
+			array_args[0] := Nil;
+			array_args[1] := event;
+	
+			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_event_request_motions", array_args);
+		}
+	}
 
 	#
 	# Missing classes/records
@@ -5442,19 +11591,13 @@ bundle Gtk3 {
 		}
 	}
 
-	class Atom from GObject {
+	class DeviceTool from GObject {
 		New(gobject : Int) {
 			Parent();
 		}
 	}
 
 	class DrawingContext from GObject {
-		New(gobject : Int) {
-			Parent();
-		}
-	}
-
-	class Event from GObject {
 		New(gobject : Int) {
 			Parent();
 		}
