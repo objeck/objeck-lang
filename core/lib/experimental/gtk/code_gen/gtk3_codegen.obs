@@ -72,9 +72,9 @@ class Gtk3Binder {
 		# configuration 
 		@objk_file_out := FileWriter->New("out/objk_code.txt");
 		@cxx_file_out := FileWriter->New("out/cxx_code.txt");
-		@static_content := ParseStaticContent("config/objk_cxx_static.dat");
+		@static_content := ParseStaticContent("config/gtk3_codegen.static");
 
-		LoadConfiguration("config/gtk3_codegen.set");
+		LoadConfiguration("config/gtk3_codegen.config");
 		keywords := @config->Find("keywords")<String>;
 
 		@lang_keywords := Set->New()<String>;
