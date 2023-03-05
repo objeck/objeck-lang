@@ -113,6 +113,11 @@ class Gtk3Binder {
 					List(bitfields_xml, "[Bitfields]");
 				};
 
+				unions_xml := parser->FindElements("/repository/namespace/union")<XmlElement>;
+				if(unions_xml <> Nil) {
+					List(unions_xml, "[Unions]");
+				};
+
 				classes_xml := parser->FindElements("/repository/namespace/class")<XmlElement>;
 				if(classes_xml <> Nil) {
 					List(classes_xml, "[Classes]");
@@ -121,11 +126,6 @@ class Gtk3Binder {
 				records_xml := parser->FindElements("/repository/namespace/record")<XmlElement>;
 				if(records_xml <> Nil) {
 					List(records_xml, "[Records]");
-				};
-
-				unions_xml := parser->FindElements("/repository/namespace/union")<XmlElement>;
-				if(unions_xml <> Nil) {
-					List(unions_xml, "[unions]");
 				};
 			}
 			else {
@@ -210,8 +210,6 @@ class Gtk3Binder {
 		each(enum_xml := enums_xml) {
 			enum_name := enum_xml->GetAttribute("name")->GetValue();
 			@enums_consts->Insert(enum_name);
-
-			@consts_set->Insert(enum_name);
 
 			if(@is_debug) {
 				if(is_enum) {
@@ -612,31 +610,31 @@ class Gtk3Binder {
 									ctype_name->Pop();
 								};
 
-								if(@consts_set->Has(type_name)) {
-									objk_buffer += "\t\t\tarray_args[{$index}] := IntRef->New({$param_name});\n";
+								if(<>type_name->Equals(@class_name) & <>@enums_consts->Has(type_name)) {
+									@missing_defs->Insert(type_name);
+								};
 
-									cxx_buffer += "\t\tconst {$ctype_name} p{$index} = ({$ctype_name})APITools_GetIntValue(context, {$index});\n";
+								if(is_array) {
+									objk_buffer += "\n\t\t\t{$param_name}_objs := Int->New[0];\n";
+									objk_buffer += "\t\t\t# copy references\n";
+									objk_buffer += "\t\t\tarray_args[{$index}] := IntArrayRef->New({$param_name}_objs);\n\n";
 								}
 								else {
-									if(<>type_name->Equals(@class_name)) {
-										@missing_defs->Insert(type_name);
-									};
+									if(@enums_consts->Has(type_name)) {
+										objk_buffer += "\t\t\tarray_args[{$index}] := IntRef->New({$param_name});\n";
 
-									if(is_array) {
-										objk_buffer += "\n\t\t\t{$param_name}_objs := Int->New[0];\n";
-										objk_buffer += "\t\t\t# copy references\n";
-										objk_buffer += "\t\t\tarray_args[{$index}] := IntArrayRef->New({$param_name}_objs);\n\n";
+										cxx_buffer += "\t\tconst {$ctype_name} p{$index} = ({$ctype_name})APITools_GetIntValue(context, {$index});\n";
 									}
 									else {
 										objk_buffer += "\t\t\tarray_args[{$index}] := {$param_name};\n";
 									};
+								};
 
-									cxx_buffer += "\t\tconst size_t* p{$index}_obj = APITools_GetObjectValue(context, {$index});\n";
-									cxx_buffer += "\t\t{$ctype_type} p{$index} = ({$ctype_type})p{$index}_obj[0];\n";
+								cxx_buffer += "\t\tconst size_t* p{$index}_obj = APITools_GetObjectValue(context, {$index});\n";
+								cxx_buffer += "\t\t{$ctype_type} p{$index} = ({$ctype_type})p{$index}_obj[0];\n";
 
-									if(i + 1 < params_xml->Size()) {
-										cxx_buffer += "\n";
-									}
+								if(i + 1 < params_xml->Size()) {
+									cxx_buffer += "\n";
 								};
 							};
 						};
@@ -685,30 +683,26 @@ class Gtk3Binder {
 
 					cxx_buffer += "\t\tAPITools_SetStringValue(context, 0, BytesToUnicode(status));\n";
 				}
-				else if(<>type_name->Equals("Nil")) {
+				else if(<>type_name->Equals("Nil") & <>is_constr) {
 					objk_buffer += "\t\n\t\t\tvalue := array_args[0]->As(IntRef);\n";
 
 					if(@consts_set->Has(type_name)) {
 						objk_buffer += "\t\t\treturn value->Get()->As({$type_name});\n";
 
-						cxx_buffer += "\t\tAPITools_SetIntValue(context, 0, (size_t)status);\n";						
 					}
 					else {
-						if(<>type_name->Equals(@class_name)) {
+						if(<>type_name->Equals(@class_name) & <>@enums_consts->Has(type_name)) {
 							@missing_defs->Insert(type_name);
 						};
 
-						if(is_constr) {
-							objk_buffer += "\t\t\t@gobject := value->Get();\n";
+						if(@enums_consts->Has(type_name)) {
+							objk_buffer += "\t\t\treturn value->Get()->As({$type_name});\n";
+
+							cxx_buffer += "\t\tAPITools_SetIntValue(context, 0, (size_t)status);\n";
 						}
 						else {
-							if(@enums_consts->Has(type_name)) {
-								objk_buffer += "\t\t\treturn value->Get()->As({$type_name});\n";
-							}
-							else {
-								objk_buffer += "\t\t\treturn {$type_name}->New(value->Get());\n";
-							};
-						}
+							objk_buffer += "\t\t\treturn {$type_name}->New(value->Get());\n";
+						};
 
 						cxx_buffer += "\t\tAPITools_SetIntValue(context, 0, (size_t)status);\n";
 					};
