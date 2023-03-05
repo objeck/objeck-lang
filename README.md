@@ -8,7 +8,7 @@
   <a href="https://scan.coverity.com/projects/objeck"><img src="https://img.shields.io/coverity/scan/10314.svg" alt="Coverity Scan Build Status"></a>
 </p>
 
-<h1 align="center">Objeck, it's Programmable</h1>
+<h1 align="center">Fully Programmable</h1>
 
 ```ruby
 class Hello {
