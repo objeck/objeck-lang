@@ -3,19 +3,19 @@ use System.IO.Filesystem;
 use Data.XML;
 
 class Gtk3Binder {
-	@is_debug : Bool;
 	@filename : String;
-	@basic_type_map : Hash<String, String>;
+	@basic_types : Hash<String, String>;
 	@namespace : String;
-	@objk_out : FileWriter;
-	@cxx_out : FileWriter;
+	@objk_file_out : FileWriter;
+	@cxx_file_out : FileWriter;
 	@class_name : String;
 	@missing_defs : Set<String>;
 	@static_content : Map<String, String>;
-	@settings : MultiMap<String, String>;
-	@keywords : Set<String>;
-	@enums_consts : Set<String>;
+	@config : MultiMap<String, String>;
+	@lang_keywords : Set<String>;
+	@consts_enums : Set<String>;
 	@emit_classes : Vector<String>;
+	@is_debug : Bool;
 
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 2) {
@@ -39,50 +39,50 @@ class Gtk3Binder {
 	New(filename : String) {
 		@filename := filename;
 
-		@basic_type_map := Hash->New()<String, String>;
-		@basic_type_map->Insert("gpointer", "Int");
-		@basic_type_map->Insert("gboolean", "Bool");
-		@basic_type_map->Insert("gshort", "Int");
-		@basic_type_map->Insert("int", "Int");
-		@basic_type_map->Insert("gint", "Int");
-		@basic_type_map->Insert("none", "Nil");
-		@basic_type_map->Insert("gint8", "Int");
-		@basic_type_map->Insert("gint16", "Int");
-		@basic_type_map->Insert("gint32", "Int");
-		@basic_type_map->Insert("guint", "Int");
-		@basic_type_map->Insert("guint8", "Int");
-		@basic_type_map->Insert("guint16", "Int");
-		@basic_type_map->Insert("guint32", "Int");
-		@basic_type_map->Insert("gint", "Int");
-		@basic_type_map->Insert("gulong", "Int");
-		@basic_type_map->Insert("gfloat", "Float");
-		@basic_type_map->Insert("gdouble", "Float");
-		@basic_type_map->Insert("utf8", "String");
-		@basic_type_map->Insert("const gchar*", "String");
-		@basic_type_map->Insert("const char*", "String");
-		@basic_type_map->Insert("gchar*", "String");
-		@basic_type_map->Insert("gchar**", "String[]");
-		@basic_type_map->Insert("filename", "String");
-		@basic_type_map->Insert("void", "Nil");
-		@basic_type_map->Insert("guint8*", "Byte[]");
+		@basic_types := Hash->New()<String, String>;
+		@basic_types->Insert("gpointer", "Int");
+		@basic_types->Insert("gboolean", "Bool");
+		@basic_types->Insert("gshort", "Int");
+		@basic_types->Insert("int", "Int");
+		@basic_types->Insert("gint", "Int");
+		@basic_types->Insert("none", "Nil");
+		@basic_types->Insert("gint8", "Int");
+		@basic_types->Insert("gint16", "Int");
+		@basic_types->Insert("gint32", "Int");
+		@basic_types->Insert("guint", "Int");
+		@basic_types->Insert("guint8", "Int");
+		@basic_types->Insert("guint16", "Int");
+		@basic_types->Insert("guint32", "Int");
+		@basic_types->Insert("gint", "Int");
+		@basic_types->Insert("gulong", "Int");
+		@basic_types->Insert("gfloat", "Float");
+		@basic_types->Insert("gdouble", "Float");
+		@basic_types->Insert("utf8", "String");
+		@basic_types->Insert("const gchar*", "String");
+		@basic_types->Insert("const char*", "String");
+		@basic_types->Insert("gchar*", "String");
+		@basic_types->Insert("gchar**", "String[]");
+		@basic_types->Insert("filename", "String");
+		@basic_types->Insert("void", "Nil");
+		@basic_types->Insert("guint8*", "Byte[]");
 
 		@missing_defs := Set->New()<String>;
-		@enums_consts := Set->New()<String>;
+		@consts_enums := Set->New()<String>;
 
 		# configuration 
-		@objk_out := FileWriter->New("gens/objk_code.txt");
-		@cxx_out := FileWriter->New("gens/cxx_code.txt");
-		@static_content := ParseStaticContent("gens/objk_cxx_static.dat");
+		@objk_file_out := FileWriter->New("out/objk_code.txt");
+		@cxx_file_out := FileWriter->New("out/cxx_code.txt");
+		@static_content := ParseStaticContent("config/objk_cxx_static.dat");
 
-		LoadConfiguration("gtk3_codegen.set");
-		keywords := @settings->Find("keywords")<String>;
+		LoadConfiguration("config/gtk3_codegen.set");
+		keywords := @config->Find("keywords")<String>;
 
-		@keywords := Set->New()<String>;
+		@lang_keywords := Set->New()<String>;
 		each(keyword := keywords) {
-			@keywords->Insert(keyword);
+			@lang_keywords->Insert(keyword);
 		};
 
-		@emit_classes := @settings->Find("emit_classes")<String>;
+		@emit_classes := @config->Find("emit_classes")<String>;
 
 		@is_debug := true;
 	}
@@ -148,7 +148,7 @@ class Gtk3Binder {
 					ParseConsts(bitfields_xml, false);
 				};
 
-				@objk_out->WriteString(@static_content->Find("objk_gobject"));
+				@objk_file_out->WriteString(@static_content->Find("objk_gobject"));
 
 				classes_xml := parser->FindElements("/repository/namespace/class")<XmlElement>;
 				if(classes_xml <> Nil) {
@@ -173,14 +173,14 @@ class Gtk3Binder {
 					};
 				};
 				objk_buffer->Pop();
-				@objk_out->WriteString(objk_buffer);
+				@objk_file_out->WriteString(objk_buffer);
 
 
-				@objk_out->WriteString("\n}");
-				@objk_out->Close();
+				@objk_file_out->WriteString("\n}");
+				@objk_file_out->Close();
 
-				@cxx_out->WriteString("}");
-				@cxx_out->Close();
+				@cxx_file_out->WriteString("}");
+				@cxx_file_out->Close();
 			};
 		};
 
@@ -202,7 +202,7 @@ class Gtk3Binder {
 	method : IdentifyStructs(structs : Vector<XmlElement>) ~ Nil {
 		if(structs <> Nil) {
 			each(struct := structs) {
-				@enums_consts->Insert(struct->GetAttribute("name")->GetValue());
+				@consts_enums->Insert(struct->GetAttribute("name")->GetValue());
 			};
 		};
 	}
@@ -246,7 +246,7 @@ class Gtk3Binder {
 			objk_buffer += "\t\n\t}\n\n";
 		};
 
-		@objk_out->WriteString(objk_buffer);
+		@objk_file_out->WriteString(objk_buffer);
 	}
 
 	method : ParseClasses(classes_xml : Vector<XmlElement>, is_class : Bool) ~ Nil {
@@ -275,8 +275,8 @@ class Gtk3Binder {
 				cxx_buffer->Pop();
 			};
 
-			@objk_out->WriteString(objk_buffer);
-			@cxx_out->WriteString(cxx_buffer);
+			@objk_file_out->WriteString(objk_buffer);
+			@cxx_file_out->WriteString(cxx_buffer);
 		};
 	}
 
@@ -621,7 +621,7 @@ class Gtk3Binder {
 									ctype_name->Pop();
 								};
 
-								if(<>type_name->Equals(@class_name) & <>@enums_consts->Has(type_name)) {
+								if(<>type_name->Equals(@class_name) & <>@consts_enums->Has(type_name)) {
 									@missing_defs->Insert(type_name);
 								};
 
@@ -630,7 +630,7 @@ class Gtk3Binder {
 									objk_buffer += "\t\t\t# copy references\n";
 									objk_buffer += "\t\t\tarray_args[{$index}] := IntArrayRef->New({$param_name}_objs);\n\n";
 								}
-								else if(@enums_consts->Has(type_name)) {
+								else if(@consts_enums->Has(type_name)) {
 									objk_buffer += "\t\t\tarray_args[{$index}] := IntRef->New({$param_name});\n";
 
 									cxx_buffer += "\t\tconst {$ctype_name} p{$index} = ({$ctype_name})APITools_GetIntValue(context, {$index});\n";
@@ -695,16 +695,16 @@ class Gtk3Binder {
 				else if(<>type_name->Equals("Nil") & <>is_constr) {
 					objk_buffer += "\t\n\t\t\tvalue := array_args[0]->As(IntRef);\n";
 
-					if(@enums_consts->Has(type_name)) {
+					if(@consts_enums->Has(type_name)) {
 						objk_buffer += "\t\t\treturn value->Get()->As({$type_name});\n";
 
 					}
 					else {
-						if(<>type_name->Equals(@class_name) & <>@enums_consts->Has(type_name)) {
+						if(<>type_name->Equals(@class_name) & <>@consts_enums->Has(type_name)) {
 							@missing_defs->Insert(type_name);
 						};
 
-						if(@enums_consts->Has(type_name)) {
+						if(@consts_enums->Has(type_name)) {
 							objk_buffer += "\t\t\treturn value->Get()->As({$type_name});\n";
 
 							cxx_buffer += "\t\tAPITools_SetIntValue(context, 0, (size_t)status);\n";
@@ -830,7 +830,7 @@ class Gtk3Binder {
 				}
 				else {
 					objk_buffer += "\t\n\t\t\tvalue := array_args[0]->As(IntRef);\n";
-					if(@enums_consts->Has(type)) {
+					if(@consts_enums->Has(type)) {
 						objk_buffer += "\t\t\treturn value->Get()->As({$type});\n";
 					}
 					else {
@@ -876,7 +876,7 @@ class Gtk3Binder {
 					cxx_buffer += "\t\tconst auto value = APITools_GetFloatValue(context, 1);\n";
 					cxx_buffer += "\t\tobj->{$name} = value;\n";
 				}
-				else if(@enums_consts->Has(type)) {
+				else if(@consts_enums->Has(type)) {
 					objk_buffer += "\t\t\tarray_args[1] := IntRef->New({$name});\n";
 
 					cxx_buffer += "\t\tconst auto value = APITools_GetIntValue(context, 1);\n";
@@ -935,7 +935,7 @@ class Gtk3Binder {
 	}
 
 	method : GetMappingName(ctype_name : String) ~ String {
-		mapping_name := @basic_type_map->Find(ctype_name);
+		mapping_name := @basic_types->Find(ctype_name);
 		if(mapping_name <> Nil) {
 			return mapping_name;
 		};
@@ -951,11 +951,11 @@ class Gtk3Binder {
 	method : WriteObjeckHeader() ~ Nil {
 		buffer := @static_content->Find("objk_header");
 		Runtime->Assert(buffer <> Nil & <>buffer->IsEmpty());
-		@objk_out->WriteString(buffer);
+		@objk_file_out->WriteString(buffer);
 	}
 
 	method : LoadConfiguration(filename : String) ~ Nil {
-		@settings := MultiMap->New()<String, String>;
+		@config := MultiMap->New()<String, String>;
 
 		file := FileReader->New(filename);
 		leaving {
@@ -973,7 +973,7 @@ class Gtk3Binder {
 					items := data->Split(',');
 					each(item := items) {
 						item := item->Trim();
-						@settings->Insert(tag, item);
+						@config->Insert(tag, item);
 					};
 				};
 			};
@@ -982,7 +982,7 @@ class Gtk3Binder {
 	}
 
 	method : MatchKeyword(name : String) ~ Bool {
-		return @keywords->Has(name);
+		return @lang_keywords->Has(name);
 	}
 
 	method : native : MatchEmitClass(name : String) ~ Bool {
@@ -1006,7 +1006,7 @@ class Gtk3Binder {
 	method : WriteCxxHeader() ~ Nil {
 		buffer := @static_content->Find("cxx_header");
 		Runtime->Assert(buffer <> Nil & <>buffer->IsEmpty());
-		@cxx_out->WriteString(buffer);
+		@cxx_file_out->WriteString(buffer);
 	}
 
 	function : WriteMissingClass(class_name : String, objk_buffer : String) ~ Nil {
