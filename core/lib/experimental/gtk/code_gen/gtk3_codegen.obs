@@ -494,8 +494,7 @@ class Gtk3Binder {
 						};
 					}
 					else {
-						cxx_params_buffer->Pop();
-						cxx_params_buffer->Pop();
+						cxx_params_buffer += "p1";
 					};
 
 					cxx_params_buffer += ");\n";
