@@ -1,2 +1,2 @@
 keywords: use, value
-emit_classes: Display, Monitor, Color*, Cursor, Window, Device, Screen, RGBA, Rectangle, DeviceManager, Atom, Event*
+emit_classes: DragContext, Display, Monitor, Color*, Cursor, Window, Device, Screen, RGBA, Rectangle, DeviceManager, Atom, Event*
