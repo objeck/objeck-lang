@@ -430,7 +430,7 @@ class Gtk3Binder {
 						};
 						objk_buffer += "\t\n\t\t\tProxy->GetDllProxy()->CallFunction(\"gtk3_{$identifier_name}\", array_args);\n";
 
-						cxx_params_buffer += "\t\t{$identifier_name}();\n";
+						cxx_params_buffer += "\t\tauto status = {$identifier_name}();\n";
 					};
 				}
 				else {
