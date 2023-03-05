@@ -668,7 +668,10 @@ class Gtk3Binder {
 				type_name := XmlElement->DecodeString(GetMappingName(type_name_xml->GetValue()));
 				
 				# TODO: hash sub-strings
-				if(type_name->Equals("Int")) {
+				if(is_constr) {
+					cxx_buffer += "\t\tAPITools_SetIntValue(context, 0, (size_t)status);\n";
+				}
+				else if(type_name->Equals("Int")) {
 					objk_buffer += "\t\n\t\t\tvalue := array_args[0]->As(IntRef);\n";
 					objk_buffer += "\t\t\treturn value->Get();\n";
 
@@ -691,12 +694,11 @@ class Gtk3Binder {
 
 					cxx_buffer += "\t\tAPITools_SetStringValue(context, 0, BytesToUnicode(status));\n";
 				}
-				else if(<>type_name->Equals("Nil") & <>is_constr) {
+				else if(<>type_name->Equals("Nil")) {
 					objk_buffer += "\t\n\t\t\tvalue := array_args[0]->As(IntRef);\n";
 
 					if(@consts_enums->Has(type_name)) {
 						objk_buffer += "\t\t\treturn value->Get()->As({$type_name});\n";
-
 					}
 					else {
 						if(<>type_name->Equals(@class_name) & <>@consts_enums->Has(type_name)) {
