@@ -494,7 +494,8 @@ class Gtk3Binder {
 						};
 					}
 					else {
-						cxx_params_buffer += "p1";
+						cxx_params_buffer->Pop();
+						cxx_params_buffer->Pop();
 					};
 
 					cxx_params_buffer += ");\n";
@@ -593,22 +594,22 @@ class Gtk3Binder {
 						if(type_name->Equals("Int")) {
 							objk_buffer += "\t\t\tarray_args[{$index}] := IntRef->New({$param_name});\n";
 
-							cxx_buffer += "\t\tconst gint p{$index} = APITools_GetIntValue(context, {$index});\n";
+							cxx_buffer += "\t\tconst gint p{$index} = (gint)APITools_GetIntValue(context, {$index});\n";
 						}
 						else if(type_name->Equals("Float")) {
 							objk_buffer += "\t\t\tarray_args[{$index}] := FloatRef->New({$param_name});\n";
 
-							cxx_buffer += "\t\tconst gdouble p{$index} = APITools_GetFloatValue(context, {$index});\n";
+							cxx_buffer += "\t\tconst gdouble p{$index} = (gdouble)APITools_GetFloatValue(context, {$index});\n";
 						}
 						else if(type_name->Equals("Bool")) {
 							objk_buffer += "\t\t\tarray_args[{$index}] := IntRef->New({$param_name} ? 0 : 1);\n";
 
-							cxx_buffer += "\t\tconst gboolean p{$index} = APITools_GetIntValue(context, {$index}) ? false : true;\n";
+							cxx_buffer += "\t\tconst gboolean p{$index} = (gboolean)APITools_GetIntValue(context, {$index}) ? false : true;\n";
 						}
 						else if(type_name->Equals("String")) {
 							objk_buffer += "\t\t\tarray_args[{$index}] := {$param_name};\n";
 
-							cxx_buffer += "\t\tconst gchar* p{$index} = UnicodeToBytes(APITools_GetStringValue(context, {$index})).c_str();\n";
+							cxx_buffer += "\t\tconst gchar* p{$index} = (gchar*)UnicodeToBytes(APITools_GetStringValue(context, {$index})).c_str();\n";
 						}
 						else {
 							param_type_xml := type_xml->GetAttribute("type");
@@ -669,6 +670,9 @@ class Gtk3Binder {
 				
 				# TODO: hash sub-strings
 				if(is_constr) {
+					objk_buffer += "\t\t\tvalue := array_args[0]->As(IntRef);\n"
+					objk_buffer += "\t\t\t@gobject := value->Get();\n";
+
 					cxx_buffer += "\t\tAPITools_SetIntValue(context, 0, (size_t)status);\n";
 				}
 				else if(type_name->Equals("Int")) {
@@ -699,6 +703,8 @@ class Gtk3Binder {
 
 					if(@consts_enums->Has(type_name)) {
 						objk_buffer += "\t\t\treturn value->Get()->As({$type_name});\n";
+
+						cxx_buffer += "\t\tAPITools_SetIntValue(context, 0, (size_t)status);\n";
 					}
 					else {
 						if(<>type_name->Equals(@class_name) & <>@consts_enums->Has(type_name)) {
