@@ -2707,7 +2707,7 @@ extern "C" {
 	void eventbutton_set_window(VMContext& context) {
 		GdkEventButton* obj = (GdkEventButton*)APITools_GetIntValue(context, 0);
 		const size_t* value_obj = APITools_GetObjectValue(context, 1);
-		obj->window = (Window)value_obj[0];
+		obj->window = (GdkWindow*)value_obj[0];
 	}
 
 #ifdef _WIN32
@@ -2776,23 +2776,6 @@ extern "C" {
 		GdkEventButton* obj = (GdkEventButton*)APITools_GetIntValue(context, 0);
 		const auto value = APITools_GetFloatValue(context, 1);
 		obj->y = value;
-	}
-
-#ifdef _WIN32
-	__declspec(dllexport)
-#endif
-	void eventbutton_get_axes(VMContext& context) {
-		const GdkEventButton* obj = (GdkEventButton*)APITools_GetIntValue(context, 1);
-		APITools_SetFloatValue(context, 0, obj->axes);
-	}
-
-#ifdef _WIN32
-	__declspec(dllexport)
-#endif
-	void eventbutton_set_axes(VMContext& context) {
-		GdkEventButton* obj = (GdkEventButton*)APITools_GetIntValue(context, 0);
-		const auto value = APITools_GetFloatValue(context, 1);
-		obj->axes = value;
 	}
 
 #ifdef _WIN32
@@ -2898,7 +2881,7 @@ extern "C" {
 	void eventconfigure_set_window(VMContext& context) {
 		GdkEventConfigure* obj = (GdkEventConfigure*)APITools_GetIntValue(context, 0);
 		const size_t* value_obj = APITools_GetObjectValue(context, 1);
-		obj->window = (Window)value_obj[0];
+		obj->window = (GdkWindow*)value_obj[0];
 	}
 
 #ifdef _WIN32
@@ -3021,7 +3004,7 @@ extern "C" {
 	void eventcrossing_set_window(VMContext& context) {
 		GdkEventCrossing* obj = (GdkEventCrossing*)APITools_GetIntValue(context, 0);
 		const size_t* value_obj = APITools_GetObjectValue(context, 1);
-		obj->window = (Window)value_obj[0];
+		obj->window = (GdkWindow*)value_obj[0];
 	}
 
 #ifdef _WIN32
@@ -3055,7 +3038,7 @@ extern "C" {
 	void eventcrossing_set_subwindow(VMContext& context) {
 		GdkEventCrossing* obj = (GdkEventCrossing*)APITools_GetIntValue(context, 0);
 		const size_t* value_obj = APITools_GetObjectValue(context, 1);
-		obj->subwindow = (Window)value_obj[0];
+		obj->subwindow = (GdkWindow*)value_obj[0];
 	}
 
 #ifdef _WIN32
@@ -3229,7 +3212,7 @@ extern "C" {
 	void eventdnd_set_window(VMContext& context) {
 		GdkEventDND* obj = (GdkEventDND*)APITools_GetIntValue(context, 0);
 		const size_t* value_obj = APITools_GetObjectValue(context, 1);
-		obj->window = (Window)value_obj[0];
+		obj->window = (GdkWindow*)value_obj[0];
 	}
 
 #ifdef _WIN32
@@ -3352,7 +3335,7 @@ extern "C" {
 	void eventexpose_set_window(VMContext& context) {
 		GdkEventExpose* obj = (GdkEventExpose*)APITools_GetIntValue(context, 0);
 		const size_t* value_obj = APITools_GetObjectValue(context, 1);
-		obj->window = (Window)value_obj[0];
+		obj->window = (GdkWindow*)value_obj[0];
 	}
 
 #ifdef _WIN32
@@ -3370,23 +3353,6 @@ extern "C" {
 		GdkEventExpose* obj = (GdkEventExpose*)APITools_GetIntValue(context, 0);
 		const auto value = APITools_GetIntValue(context, 1);
 		obj->send_event = value;
-	}
-
-#ifdef _WIN32
-	__declspec(dllexport)
-#endif
-	void eventexpose_get_area(VMContext& context) {
-		const GdkEventExpose* obj = (GdkEventExpose*)APITools_GetIntValue(context, 1);
-		APITools_SetIntValue(context, 0, (size_t)obj->area);
-	}
-
-#ifdef _WIN32
-	__declspec(dllexport)
-#endif
-	void eventexpose_set_area(VMContext& context) {
-		GdkEventExpose* obj = (GdkEventExpose*)APITools_GetIntValue(context, 0);
-		const size_t* value_obj = APITools_GetObjectValue(context, 1);
-		obj->area = (Rectangle)value_obj[0];
 	}
 
 #ifdef _WIN32
@@ -3441,7 +3407,7 @@ extern "C" {
 	void eventfocus_set_window(VMContext& context) {
 		GdkEventFocus* obj = (GdkEventFocus*)APITools_GetIntValue(context, 0);
 		const size_t* value_obj = APITools_GetObjectValue(context, 1);
-		obj->window = (Window)value_obj[0];
+		obj->window = (GdkWindow*)value_obj[0];
 	}
 
 #ifdef _WIN32
@@ -3513,7 +3479,7 @@ extern "C" {
 	void eventgrabbroken_set_window(VMContext& context) {
 		GdkEventGrabBroken* obj = (GdkEventGrabBroken*)APITools_GetIntValue(context, 0);
 		const size_t* value_obj = APITools_GetObjectValue(context, 1);
-		obj->window = (Window)value_obj[0];
+		obj->window = (GdkWindow*)value_obj[0];
 	}
 
 #ifdef _WIN32
@@ -3581,7 +3547,7 @@ extern "C" {
 	void eventgrabbroken_set_grabwindow(VMContext& context) {
 		GdkEventGrabBroken* obj = (GdkEventGrabBroken*)APITools_GetIntValue(context, 0);
 		const size_t* value_obj = APITools_GetObjectValue(context, 1);
-		obj->grab_window = (Window)value_obj[0];
+		obj->grab_window = (GdkWindow*)value_obj[0];
 	}
 
 
@@ -3619,7 +3585,7 @@ extern "C" {
 	void eventkey_set_window(VMContext& context) {
 		GdkEventKey* obj = (GdkEventKey*)APITools_GetIntValue(context, 0);
 		const size_t* value_obj = APITools_GetObjectValue(context, 1);
-		obj->window = (Window)value_obj[0];
+		obj->window = (GdkWindow*)value_obj[0];
 	}
 
 #ifdef _WIN32
@@ -3793,7 +3759,7 @@ extern "C" {
 	void eventmotion_set_window(VMContext& context) {
 		GdkEventMotion* obj = (GdkEventMotion*)APITools_GetIntValue(context, 0);
 		const size_t* value_obj = APITools_GetObjectValue(context, 1);
-		obj->window = (Window)value_obj[0];
+		obj->window = (GdkWindow*)value_obj[0];
 	}
 
 #ifdef _WIN32
@@ -3984,7 +3950,7 @@ extern "C" {
 	void eventownerchange_set_window(VMContext& context) {
 		GdkEventOwnerChange* obj = (GdkEventOwnerChange*)APITools_GetIntValue(context, 0);
 		const size_t* value_obj = APITools_GetObjectValue(context, 1);
-		obj->window = (Window)value_obj[0];
+		obj->window = (GdkWindow*)value_obj[0];
 	}
 
 #ifdef _WIN32
@@ -4018,7 +3984,7 @@ extern "C" {
 	void eventownerchange_set_owner(VMContext& context) {
 		GdkEventOwnerChange* obj = (GdkEventOwnerChange*)APITools_GetIntValue(context, 0);
 		const size_t* value_obj = APITools_GetObjectValue(context, 1);
-		obj->owner = (Window)value_obj[0];
+		obj->owner = (GdkWindow*)value_obj[0];
 	}
 
 #ifdef _WIN32
@@ -4106,7 +4072,7 @@ extern "C" {
 #endif
 	void eventpadaxis_set_type(VMContext& context) {
 		GdkEventPadAxis* obj = (GdkEventPadAxis*)APITools_GetIntValue(context, 0);
-		const auto value = APITools_GetIntValue(context, 1);
+		const auto value = (GdkEventType)APITools_GetIntValue(context, 1);
 		obj->type = value;
 	}
 
@@ -4124,7 +4090,7 @@ extern "C" {
 	void eventpadaxis_set_window(VMContext& context) {
 		GdkEventPadAxis* obj = (GdkEventPadAxis*)APITools_GetIntValue(context, 0);
 		const size_t* value_obj = APITools_GetObjectValue(context, 1);
-		obj->window = (Window)value_obj[0];
+		obj->window = (GdkWindow*)value_obj[0];
 	}
 
 #ifdef _WIN32
@@ -4264,7 +4230,7 @@ extern "C" {
 	void eventpadbutton_set_window(VMContext& context) {
 		GdkEventPadButton* obj = (GdkEventPadButton*)APITools_GetIntValue(context, 0);
 		const size_t* value_obj = APITools_GetObjectValue(context, 1);
-		obj->window = (Window)value_obj[0];
+		obj->window = (GdkWindow*)value_obj[0];
 	}
 
 #ifdef _WIN32
@@ -4387,7 +4353,7 @@ extern "C" {
 	void eventpadgroupmode_set_window(VMContext& context) {
 		GdkEventPadGroupMode* obj = (GdkEventPadGroupMode*)APITools_GetIntValue(context, 0);
 		const size_t* value_obj = APITools_GetObjectValue(context, 1);
-		obj->window = (Window)value_obj[0];
+		obj->window = (GdkWindow*)value_obj[0];
 	}
 
 #ifdef _WIN32
@@ -4493,7 +4459,7 @@ extern "C" {
 	void eventproperty_set_window(VMContext& context) {
 		GdkEventProperty* obj = (GdkEventProperty*)APITools_GetIntValue(context, 0);
 		const size_t* value_obj = APITools_GetObjectValue(context, 1);
-		obj->window = (Window)value_obj[0];
+		obj->window = (GdkWindow*)value_obj[0];
 	}
 
 #ifdef _WIN32
@@ -4582,7 +4548,7 @@ extern "C" {
 	void eventproximity_set_window(VMContext& context) {
 		GdkEventProximity* obj = (GdkEventProximity*)APITools_GetIntValue(context, 0);
 		const size_t* value_obj = APITools_GetObjectValue(context, 1);
-		obj->window = (Window)value_obj[0];
+		obj->window = (GdkWindow*)value_obj[0];
 	}
 
 #ifdef _WIN32
@@ -4671,7 +4637,7 @@ extern "C" {
 	void eventscroll_set_window(VMContext& context) {
 		GdkEventScroll* obj = (GdkEventScroll*)APITools_GetIntValue(context, 0);
 		const size_t* value_obj = APITools_GetObjectValue(context, 1);
-		obj->window = (Window)value_obj[0];
+		obj->window = (GdkWindow*)value_obj[0];
 	}
 
 #ifdef _WIN32
@@ -4896,7 +4862,7 @@ extern "C" {
 	void eventselection_set_window(VMContext& context) {
 		GdkEventSelection* obj = (GdkEventSelection*)APITools_GetIntValue(context, 0);
 		const size_t* value_obj = APITools_GetObjectValue(context, 1);
-		obj->window = (Window)value_obj[0];
+		obj->window = (GdkWindow*)value_obj[0];
 	}
 
 #ifdef _WIN32
@@ -4998,7 +4964,7 @@ extern "C" {
 	void eventselection_set_requestor(VMContext& context) {
 		GdkEventSelection* obj = (GdkEventSelection*)APITools_GetIntValue(context, 0);
 		const size_t* value_obj = APITools_GetObjectValue(context, 1);
-		obj->requestor = (Window)value_obj[0];
+		obj->requestor = (GdkWindow*)value_obj[0];
 	}
 
 
@@ -5040,7 +5006,7 @@ extern "C" {
 	void eventsetting_set_window(VMContext& context) {
 		GdkEventSetting* obj = (GdkEventSetting*)APITools_GetIntValue(context, 0);
 		const size_t* value_obj = APITools_GetObjectValue(context, 1);
-		obj->window = (Window)value_obj[0];
+		obj->window = (GdkWindow*)value_obj[0];
 	}
 
 #ifdef _WIN32
@@ -5111,7 +5077,7 @@ extern "C" {
 #endif
 	void eventtouch_set_type(VMContext& context) {
 		GdkEventTouch* obj = (GdkEventTouch*)APITools_GetIntValue(context, 0);
-		const auto value = APITools_GetIntValue(context, 1);
+		const auto value = (GdkEventType)APITools_GetIntValue(context, 1);
 		obj->type = value;
 	}
 
@@ -5129,7 +5095,7 @@ extern "C" {
 	void eventtouch_set_window(VMContext& context) {
 		GdkEventTouch* obj = (GdkEventTouch*)APITools_GetIntValue(context, 0);
 		const size_t* value_obj = APITools_GetObjectValue(context, 1);
-		obj->window = (Window)value_obj[0];
+		obj->window = (GdkWindow*)value_obj[0];
 	}
 
 #ifdef _WIN32
@@ -5198,40 +5164,6 @@ extern "C" {
 		GdkEventTouch* obj = (GdkEventTouch*)APITools_GetIntValue(context, 0);
 		const auto value = APITools_GetFloatValue(context, 1);
 		obj->y = value;
-	}
-
-#ifdef _WIN32
-	__declspec(dllexport)
-#endif
-	void eventtouch_get_axes(VMContext& context) {
-		const GdkEventTouch* obj = (GdkEventTouch*)APITools_GetIntValue(context, 1);
-		APITools_SetFloatValue(context, 0, obj->axes);
-	}
-
-#ifdef _WIN32
-	__declspec(dllexport)
-#endif
-	void eventtouch_set_axes(VMContext& context) {
-		GdkEventTouch* obj = (GdkEventTouch*)APITools_GetIntValue(context, 0);
-		const auto value = APITools_GetFloatValue(context, 1);
-		obj->axes = value;
-	}
-
-#ifdef _WIN32
-	__declspec(dllexport)
-#endif
-	void eventtouch_get_sequence(VMContext& context) {
-		const GdkEventTouch* obj = (GdkEventTouch*)APITools_GetIntValue(context, 1);
-		APITools_SetIntValue(context, 0, (size_t)obj->sequence);
-	}
-
-#ifdef _WIN32
-	__declspec(dllexport)
-#endif
-	void eventtouch_set_sequence(VMContext& context) {
-		GdkEventTouch* obj = (GdkEventTouch*)APITools_GetIntValue(context, 0);
-		const size_t* value_obj = APITools_GetObjectValue(context, 1);
-		obj->sequence = (EventSequence)value_obj[0];
 	}
 
 #ifdef _WIN32
@@ -5319,7 +5251,7 @@ extern "C" {
 #endif
 	void eventtouchpadpinch_set_type(VMContext& context) {
 		GdkEventTouchpadPinch* obj = (GdkEventTouchpadPinch*)APITools_GetIntValue(context, 0);
-		const auto value = APITools_GetIntValue(context, 1);
+		const auto value = (GdkEventType)APITools_GetIntValue(context, 1);
 		obj->type = value;
 	}
 
@@ -5337,7 +5269,7 @@ extern "C" {
 	void eventtouchpadpinch_set_window(VMContext& context) {
 		GdkEventTouchpadPinch* obj = (GdkEventTouchpadPinch*)APITools_GetIntValue(context, 0);
 		const size_t* value_obj = APITools_GetObjectValue(context, 1);
-		obj->window = (Window)value_obj[0];
+		obj->window = (GdkWindow*)value_obj[0];
 	}
 
 #ifdef _WIN32
@@ -5561,7 +5493,7 @@ extern "C" {
 #endif
 	void eventtouchpadswipe_set_type(VMContext& context) {
 		GdkEventTouchpadSwipe* obj = (GdkEventTouchpadSwipe*)APITools_GetIntValue(context, 0);
-		const auto value = APITools_GetIntValue(context, 1);
+		const auto value = (GdkEventType)APITools_GetIntValue(context, 1);
 		obj->type = value;
 	}
 
@@ -5579,7 +5511,7 @@ extern "C" {
 	void eventtouchpadswipe_set_window(VMContext& context) {
 		GdkEventTouchpadSwipe* obj = (GdkEventTouchpadSwipe*)APITools_GetIntValue(context, 0);
 		const size_t* value_obj = APITools_GetObjectValue(context, 1);
-		obj->window = (Window)value_obj[0];
+		obj->window = (GdkWindow*)value_obj[0];
 	}
 
 #ifdef _WIN32
@@ -5769,7 +5701,7 @@ extern "C" {
 #endif
 	void eventvisibility_set_type(VMContext& context) {
 		GdkEventVisibility* obj = (GdkEventVisibility*)APITools_GetIntValue(context, 0);
-		const auto value = APITools_GetIntValue(context, 1);
+		const auto value = (GdkEventType)APITools_GetIntValue(context, 1);
 		obj->type = value;
 	}
 
@@ -5787,7 +5719,7 @@ extern "C" {
 	void eventvisibility_set_window(VMContext& context) {
 		GdkEventVisibility* obj = (GdkEventVisibility*)APITools_GetIntValue(context, 0);
 		const size_t* value_obj = APITools_GetObjectValue(context, 1);
-		obj->window = (Window)value_obj[0];
+		obj->window = (GdkWindow*)value_obj[0];
 	}
 
 #ifdef _WIN32
@@ -5820,7 +5752,7 @@ extern "C" {
 #endif
 	void eventvisibility_set_state(VMContext& context) {
 		GdkEventVisibility* obj = (GdkEventVisibility*)APITools_GetIntValue(context, 0);
-		const auto value = APITools_GetIntValue(context, 1);
+		const auto value = (GdkVisibilityState)APITools_GetIntValue(context, 1);
 		obj->state = value;
 	}
 
@@ -5841,7 +5773,7 @@ extern "C" {
 #endif
 	void eventwindowstate_set_type(VMContext& context) {
 		GdkEventWindowState* obj = (GdkEventWindowState*)APITools_GetIntValue(context, 0);
-		const auto value = APITools_GetIntValue(context, 1);
+		const auto value = (GdkEventType)APITools_GetIntValue(context, 1);
 		obj->type = value;
 	}
 
@@ -5859,7 +5791,7 @@ extern "C" {
 	void eventwindowstate_set_window(VMContext& context) {
 		GdkEventWindowState* obj = (GdkEventWindowState*)APITools_GetIntValue(context, 0);
 		const size_t* value_obj = APITools_GetObjectValue(context, 1);
-		obj->window = (Window)value_obj[0];
+		obj->window = (GdkWindow*)value_obj[0];
 	}
 
 #ifdef _WIN32
@@ -5892,7 +5824,7 @@ extern "C" {
 #endif
 	void eventwindowstate_set_changedmask(VMContext& context) {
 		GdkEventWindowState* obj = (GdkEventWindowState*)APITools_GetIntValue(context, 0);
-		const auto value = APITools_GetIntValue(context, 1);
+		const auto value = (GdkWindowState)APITools_GetIntValue(context, 1);
 		obj->changed_mask = value;
 	}
 
@@ -5909,7 +5841,7 @@ extern "C" {
 #endif
 	void eventwindowstate_set_newwindowstate(VMContext& context) {
 		GdkEventWindowState* obj = (GdkEventWindowState*)APITools_GetIntValue(context, 0);
-		const auto value = APITools_GetIntValue(context, 1);
+		const auto value = (GdkWindowState)APITools_GetIntValue(context, 1);
 		obj->new_window_state = value;
 	}
 
@@ -6184,7 +6116,7 @@ extern "C" {
 #endif
 	void event_set_type(VMContext& context) {
 		GdkEvent* obj = (GdkEvent*)APITools_GetIntValue(context, 0);
-		const auto value = APITools_GetIntValue(context, 1);
+		const auto value = (GdkEventType)APITools_GetIntValue(context, 1);
 		obj->type = value;
 	}
 
@@ -6202,7 +6134,7 @@ extern "C" {
 	void event_set_any(VMContext& context) {
 		GdkEvent* obj = (GdkEvent*)APITools_GetIntValue(context, 0);
 		const size_t* value_obj = APITools_GetObjectValue(context, 1);
-		obj->any = (EventAny)value_obj[0];
+		obj->any = (GdkEventAny)value_obj[0];
 	}
 
 #ifdef _WIN32
@@ -6219,7 +6151,7 @@ extern "C" {
 	void event_set_expose(VMContext& context) {
 		GdkEvent* obj = (GdkEvent*)APITools_GetIntValue(context, 0);
 		const size_t* value_obj = APITools_GetObjectValue(context, 1);
-		obj->expose = (EventExpose)value_obj[0];
+		obj->expose = (GdkEventExpose)value_obj[0];
 	}
 
 #ifdef _WIN32
@@ -6236,7 +6168,7 @@ extern "C" {
 	void event_set_visibility(VMContext& context) {
 		GdkEvent* obj = (GdkEvent*)APITools_GetIntValue(context, 0);
 		const size_t* value_obj = APITools_GetObjectValue(context, 1);
-		obj->visibility = (EventVisibility)value_obj[0];
+		obj->visibility = (GdkEventVisibility)value_obj[0];
 	}
 
 #ifdef _WIN32
@@ -6253,7 +6185,7 @@ extern "C" {
 	void event_set_motion(VMContext& context) {
 		GdkEvent* obj = (GdkEvent*)APITools_GetIntValue(context, 0);
 		const size_t* value_obj = APITools_GetObjectValue(context, 1);
-		obj->motion = (EventMotion)value_obj[0];
+		obj->motion = (GdkEventMotion)value_obj[0];
 	}
 
 #ifdef _WIN32
@@ -6270,7 +6202,7 @@ extern "C" {
 	void event_set_button(VMContext& context) {
 		GdkEvent* obj = (GdkEvent*)APITools_GetIntValue(context, 0);
 		const size_t* value_obj = APITools_GetObjectValue(context, 1);
-		obj->button = (EventButton)value_obj[0];
+		obj->button = (GdkEventButton)value_obj[0];
 	}
 
 #ifdef _WIN32
@@ -6287,7 +6219,7 @@ extern "C" {
 	void event_set_touch(VMContext& context) {
 		GdkEvent* obj = (GdkEvent*)APITools_GetIntValue(context, 0);
 		const size_t* value_obj = APITools_GetObjectValue(context, 1);
-		obj->touch = (EventTouch)value_obj[0];
+		obj->touch = (GdkEventTouch)value_obj[0];
 	}
 
 #ifdef _WIN32
@@ -6304,7 +6236,7 @@ extern "C" {
 	void event_set_scroll(VMContext& context) {
 		GdkEvent* obj = (GdkEvent*)APITools_GetIntValue(context, 0);
 		const size_t* value_obj = APITools_GetObjectValue(context, 1);
-		obj->scroll = (EventScroll)value_obj[0];
+		obj->scroll = (GdkEventScroll)value_obj[0];
 	}
 
 #ifdef _WIN32
@@ -6321,7 +6253,7 @@ extern "C" {
 	void event_set_key(VMContext& context) {
 		GdkEvent* obj = (GdkEvent*)APITools_GetIntValue(context, 0);
 		const size_t* value_obj = APITools_GetObjectValue(context, 1);
-		obj->key = (EventKey)value_obj[0];
+		obj->key = (GdkEventKey)value_obj[0];
 	}
 
 #ifdef _WIN32
@@ -6338,7 +6270,7 @@ extern "C" {
 	void event_set_crossing(VMContext& context) {
 		GdkEvent* obj = (GdkEvent*)APITools_GetIntValue(context, 0);
 		const size_t* value_obj = APITools_GetObjectValue(context, 1);
-		obj->crossing = (EventCrossing)value_obj[0];
+		obj->crossing = (GdkEventCrossing)value_obj[0];
 	}
 
 #ifdef _WIN32
@@ -6355,7 +6287,7 @@ extern "C" {
 	void event_set_focuschange(VMContext& context) {
 		GdkEvent* obj = (GdkEvent*)APITools_GetIntValue(context, 0);
 		const size_t* value_obj = APITools_GetObjectValue(context, 1);
-		obj->focus_change = (EventFocus)value_obj[0];
+		obj->focus_change = (GdkEventFocus)value_obj[0];
 	}
 
 #ifdef _WIN32
@@ -6372,7 +6304,7 @@ extern "C" {
 	void event_set_configure(VMContext& context) {
 		GdkEvent* obj = (GdkEvent*)APITools_GetIntValue(context, 0);
 		const size_t* value_obj = APITools_GetObjectValue(context, 1);
-		obj->configure = (EventConfigure)value_obj[0];
+		obj->configure = (GdkEventConfigure)value_obj[0];
 	}
 
 #ifdef _WIN32
@@ -6389,7 +6321,7 @@ extern "C" {
 	void event_set_property(VMContext& context) {
 		GdkEvent* obj = (GdkEvent*)APITools_GetIntValue(context, 0);
 		const size_t* value_obj = APITools_GetObjectValue(context, 1);
-		obj->property = (EventProperty)value_obj[0];
+		obj->property = (GdkEventProperty)value_obj[0];
 	}
 
 #ifdef _WIN32
@@ -6406,7 +6338,7 @@ extern "C" {
 	void event_set_selection(VMContext& context) {
 		GdkEvent* obj = (GdkEvent*)APITools_GetIntValue(context, 0);
 		const size_t* value_obj = APITools_GetObjectValue(context, 1);
-		obj->selection = (EventSelection)value_obj[0];
+		obj->selection = (GdkEventSelection)value_obj[0];
 	}
 
 #ifdef _WIN32
@@ -6423,7 +6355,7 @@ extern "C" {
 	void event_set_ownerchange(VMContext& context) {
 		GdkEvent* obj = (GdkEvent*)APITools_GetIntValue(context, 0);
 		const size_t* value_obj = APITools_GetObjectValue(context, 1);
-		obj->owner_change = (EventOwnerChange)value_obj[0];
+		obj->owner_change = (GdkEventOwnerChange)value_obj[0];
 	}
 
 #ifdef _WIN32
@@ -6440,7 +6372,7 @@ extern "C" {
 	void event_set_proximity(VMContext& context) {
 		GdkEvent* obj = (GdkEvent*)APITools_GetIntValue(context, 0);
 		const size_t* value_obj = APITools_GetObjectValue(context, 1);
-		obj->proximity = (EventProximity)value_obj[0];
+		obj->proximity = (GdkEventProximity)value_obj[0];
 	}
 
 #ifdef _WIN32
@@ -6457,7 +6389,7 @@ extern "C" {
 	void event_set_dnd(VMContext& context) {
 		GdkEvent* obj = (GdkEvent*)APITools_GetIntValue(context, 0);
 		const size_t* value_obj = APITools_GetObjectValue(context, 1);
-		obj->dnd = (EventDND)value_obj[0];
+		obj->dnd = (GdkEventDND)value_obj[0];
 	}
 
 #ifdef _WIN32
@@ -6474,7 +6406,7 @@ extern "C" {
 	void event_set_windowstate(VMContext& context) {
 		GdkEvent* obj = (GdkEvent*)APITools_GetIntValue(context, 0);
 		const size_t* value_obj = APITools_GetObjectValue(context, 1);
-		obj->window_state = (EventWindowState)value_obj[0];
+		obj->window_state = (GdkEventWindowState)value_obj[0];
 	}
 
 #ifdef _WIN32
@@ -6491,7 +6423,7 @@ extern "C" {
 	void event_set_setting(VMContext& context) {
 		GdkEvent* obj = (GdkEvent*)APITools_GetIntValue(context, 0);
 		const size_t* value_obj = APITools_GetObjectValue(context, 1);
-		obj->setting = (EventSetting)value_obj[0];
+		obj->setting = (GdkEventSetting)value_obj[0];
 	}
 
 #ifdef _WIN32
@@ -6508,7 +6440,7 @@ extern "C" {
 	void event_set_grabbroken(VMContext& context) {
 		GdkEvent* obj = (GdkEvent*)APITools_GetIntValue(context, 0);
 		const size_t* value_obj = APITools_GetObjectValue(context, 1);
-		obj->grab_broken = (EventGrabBroken)value_obj[0];
+		obj->grab_broken = (GdkEventGrabBroken)value_obj[0];
 	}
 
 #ifdef _WIN32
@@ -6525,7 +6457,7 @@ extern "C" {
 	void event_set_touchpadswipe(VMContext& context) {
 		GdkEvent* obj = (GdkEvent*)APITools_GetIntValue(context, 0);
 		const size_t* value_obj = APITools_GetObjectValue(context, 1);
-		obj->touchpad_swipe = (EventTouchpadSwipe)value_obj[0];
+		obj->touchpad_swipe = (GdkEventTouchpadSwipe)value_obj[0];
 	}
 
 #ifdef _WIN32
@@ -6542,7 +6474,7 @@ extern "C" {
 	void event_set_touchpadpinch(VMContext& context) {
 		GdkEvent* obj = (GdkEvent*)APITools_GetIntValue(context, 0);
 		const size_t* value_obj = APITools_GetObjectValue(context, 1);
-		obj->touchpad_pinch = (EventTouchpadPinch)value_obj[0];
+		obj->touchpad_pinch = (GdkEventTouchpadPinch)value_obj[0];
 	}
 
 #ifdef _WIN32
@@ -6559,7 +6491,7 @@ extern "C" {
 	void event_set_padbutton(VMContext& context) {
 		GdkEvent* obj = (GdkEvent*)APITools_GetIntValue(context, 0);
 		const size_t* value_obj = APITools_GetObjectValue(context, 1);
-		obj->pad_button = (EventPadButton)value_obj[0];
+		obj->pad_button = (GdkEventPadButton)value_obj[0];
 	}
 
 #ifdef _WIN32
@@ -6576,7 +6508,7 @@ extern "C" {
 	void event_set_padaxis(VMContext& context) {
 		GdkEvent* obj = (GdkEvent*)APITools_GetIntValue(context, 0);
 		const size_t* value_obj = APITools_GetObjectValue(context, 1);
-		obj->pad_axis = (EventPadAxis)value_obj[0];
+		obj->pad_axis = (GdkEventPadAxis)value_obj[0];
 	}
 
 #ifdef _WIN32
@@ -6593,7 +6525,7 @@ extern "C" {
 	void event_set_padgroupmode(VMContext& context) {
 		GdkEvent* obj = (GdkEvent*)APITools_GetIntValue(context, 0);
 		const size_t* value_obj = APITools_GetObjectValue(context, 1);
-		obj->pad_group_mode = (EventPadGroupMode)value_obj[0];
+		obj->pad_group_mode = (GdkEventPadGroupMode)value_obj[0];
 	}
 
 #ifdef _WIN32
