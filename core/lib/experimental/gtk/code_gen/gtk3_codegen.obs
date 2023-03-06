@@ -28,7 +28,7 @@ class Gtk3Binder {
 				binder->Parse(false);
 			}
 			else {
-				"args: filename, [list|emit]"->ErrorLine();
+				"args: filename, [list|emit]"->ErrorLine(); 
 			};
 		}
 		else {
