@@ -1899,10 +1899,10 @@ bundle Gtk3 {
 				array_args[2] := clipboard_window;
 				array_args[3] := IntRef->New(time_);
 
-					targets_objs := Int->New[n_targets];
-					each(i : targets) {
-						targets_objs[i] := IntRef->New(targets[i]->GetRef());
-					};
+				targets_objs := Int->New[n_targets];
+				each(i : targets) {
+					targets_objs[i] := IntRef->New(targets[i]->GetRef());
+				};
 				array_args[4] := IntArrayRef->New(targets_objs);
 
 				array_args[5] := IntRef->New(n_targets);
@@ -5152,6 +5152,10 @@ bundle Gtk3 {
 			Parent();
 
 			@gobject := gobject;
+		}
+
+		method : public : GetRef() ~ Int {
+			return @gobject;
 		}
 
 		#~
@@ -10858,13 +10862,13 @@ bundle Gtk3 {
 		@param angle return location for the relative angle between both events
 		@return %TRUE if the angle could be calculated.
 		~#
-		method : public : GetAngle(event2 : Event, angle : Float) ~ Bool {
+		method : public : GetAngle(event2 : Event, angle : FloatRef) ~ Bool {
 			array_args := Base->New[4];
 	
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gobject);
 			array_args[2] := event2;
-			array_args[3] := FloatRef->New(angle);
+			array_args[3] := angle;
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_events_get_angle", array_args);
 	
@@ -10880,14 +10884,14 @@ bundle Gtk3 {
 		@param y return location for the Y coordinate of the center
 		@return %TRUE if the center could be calculated.
 		~#
-		method : public : GetCenter(event2 : Event, x : Float, y : Float) ~ Bool {
+		method : public : GetCenter(event2 : Event, x : FloatRef, y : FloatRef) ~ Bool {
 			array_args := Base->New[5];
 	
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gobject);
 			array_args[2] := event2;
-			array_args[3] := FloatRef->New(x);
-			array_args[4] := FloatRef->New(y);
+			array_args[3] := x;
+			array_args[4] := y;
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_events_get_center", array_args);
 	
@@ -10902,13 +10906,13 @@ bundle Gtk3 {
 		@param distance return location for the distance
 		@return %TRUE if the distance could be calculated.
 		~#
-		method : public : GetDistance(event2 : Event, distance : Float) ~ Bool {
+		method : public : GetDistance(event2 : Event, distance : FloatRef) ~ Bool {
 			array_args := Base->New[4];
 	
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gobject);
 			array_args[2] := event2;
-			array_args[3] := FloatRef->New(distance);
+			array_args[3] := distance;
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_events_get_distance", array_args);
 	
@@ -10956,13 +10960,13 @@ bundle Gtk3 {
 		@param value location to store the value found
 		@return %TRUE if the specified axis was found, otherwise %FALSE
 		~#
-		method : public : GetAxis(axis_use : AxisUse, value_ : Float) ~ Bool {
+		method : public : GetAxis(axis_use : AxisUse, value_ : FloatRef) ~ Bool {
 			array_args := Base->New[4];
 	
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gobject);
 			array_args[2] := IntRef->New(axis_use);
-			array_args[3] := FloatRef->New(value_);
+			array_args[3] := value_;
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_event_get_axis", array_args);
 	
@@ -10975,12 +10979,12 @@ bundle Gtk3 {
 		@param button location to store mouse button number
 		@return %TRUE if the event delivered a button number
 		~#
-		method : public : GetButton(button : Int) ~ Bool {
+		method : public : GetButton(button : IntRef) ~ Bool {
 			array_args := Base->New[3];
 	
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gobject);
-			array_args[2] := IntRef->New(button);
+			array_args[2] := button;
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_event_get_button", array_args);
 	
@@ -10993,12 +10997,12 @@ bundle Gtk3 {
 		@param click_count location to store click count
 		@return %TRUE if the event delivered a click count
 		~#
-		method : public : GetClickCount(click_count : Int) ~ Bool {
+		method : public : GetClickCount(click_count : IntRef) ~ Bool {
 			array_args := Base->New[3];
 	
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gobject);
-			array_args[2] := IntRef->New(click_count);
+			array_args[2] := click_count;
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_event_get_click_count", array_args);
 	
@@ -11012,13 +11016,13 @@ bundle Gtk3 {
 		@param y_win location to put event window y coordinate
 		@return %TRUE if the event delivered event window coordinates
 		~#
-		method : public : GetCoords(x_win : Float, y_win : Float) ~ Bool {
+		method : public : GetCoords(x_win : FloatRef, y_win : FloatRef) ~ Bool {
 			array_args := Base->New[4];
 	
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gobject);
-			array_args[2] := FloatRef->New(x_win);
-			array_args[3] := FloatRef->New(y_win);
+			array_args[2] := x_win;
+			array_args[3] := y_win;
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_event_get_coords", array_args);
 	
@@ -11125,12 +11129,12 @@ bundle Gtk3 {
 		@param keyval location to store the keyval
 		@return %TRUE if the event delivered a key symbol
 		~#
-		method : public : GetKeyval(keyval : Int) ~ Bool {
+		method : public : GetKeyval(keyval : IntRef) ~ Bool {
 			array_args := Base->New[3];
 	
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gobject);
-			array_args[2] := IntRef->New(keyval);
+			array_args[2] := keyval;
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_event_get_keyval", array_args);
 	
@@ -11162,13 +11166,13 @@ bundle Gtk3 {
 		@param y_root location to put root window y coordinate
 		@return %TRUE if the event delivered root window coordinates
 		~#
-		method : public : GetRootCoords(x_root : Float, y_root : Float) ~ Bool {
+		method : public : GetRootCoords(x_root : FloatRef, y_root : FloatRef) ~ Bool {
 			array_args := Base->New[4];
 	
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gobject);
-			array_args[2] := FloatRef->New(x_root);
-			array_args[3] := FloatRef->New(y_root);
+			array_args[2] := x_root;
+			array_args[3] := y_root;
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_event_get_root_coords", array_args);
 	
@@ -11227,13 +11231,13 @@ bundle Gtk3 {
 		@return %TRUE if the event contains smooth scroll information
 		  and %FALSE otherwise
 		~#
-		method : public : GetScrollDeltas(delta_x : Float, delta_y : Float) ~ Bool {
+		method : public : GetScrollDeltas(delta_x : FloatRef, delta_y : FloatRef) ~ Bool {
 			array_args := Base->New[4];
 	
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gobject);
-			array_args[2] := FloatRef->New(delta_x);
-			array_args[3] := FloatRef->New(delta_y);
+			array_args[2] := delta_x;
+			array_args[3] := delta_y;
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_event_get_scroll_deltas", array_args);
 	
@@ -11284,12 +11288,12 @@ bundle Gtk3 {
 		@return %TRUE if the event delivered a scroll direction
 		  and %FALSE otherwise
 		~#
-		method : public : GetScrollDirection(direction : ScrollDirection) ~ Bool {
+		method : public : GetScrollDirection(direction : IntRef) ~ Bool {
 			array_args := Base->New[3];
 	
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gobject);
-			array_args[2] := IntRef->New(direction);
+			array_args[2] := direction;
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_event_get_scroll_direction", array_args);
 	
@@ -11345,12 +11349,12 @@ bundle Gtk3 {
 		@param state return location for state
 		@return %TRUE if there was a state field in the event
 		~#
-		method : public : GetState(state : ModifierType) ~ Bool {
+		method : public : GetState(state : IntRef) ~ Bool {
 			array_args := Base->New[3];
 	
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gobject);
-			array_args[2] := IntRef->New(state);
+			array_args[2] := state;
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_event_get_state", array_args);
 	
