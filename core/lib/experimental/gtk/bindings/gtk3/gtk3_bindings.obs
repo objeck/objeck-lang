@@ -5582,29 +5582,6 @@ bundle Gtk3 {
 			Proxy->GetDllProxy()->CallFunction("eventbutton_set_y", array_args);
 		}
 
-
-		method : public : GetAxes() ~ Float {
-			array_args := Base->New[2];
-
-			array_args[0] := FloatRef->New();
-			array_args[1] := IntRef->New(@gobject);
-	
-			Proxy->GetDllProxy()->CallFunction("eventbutton_get_axes", array_args);
-	
-			value := array_args[0]->As(FloatRef);
-			return value->Get();
-		}
-
-		method : public : SetAxes(axes : Float) ~ Nil {
-			array_args := Base->New[2];
-
-			array_args[0] := IntRef->New(@gobject);
-			array_args[1] := FloatRef->New(axes);
-	
-			Proxy->GetDllProxy()->CallFunction("eventbutton_set_axes", array_args);
-		}
-
-
 		method : public : GetButton() ~ Int {
 			array_args := Base->New[2];
 
@@ -6382,30 +6359,7 @@ bundle Gtk3 {
 	
 			Proxy->GetDllProxy()->CallFunction("eventexpose_set_sendevent", array_args);
 		}
-
-
-		method : public : GetArea() ~ Rectangle {
-			array_args := Base->New[2];
-
-			array_args[0] := Nil;
-			array_args[1] := IntRef->New(@gobject);
-	
-			Proxy->GetDllProxy()->CallFunction("eventexpose_get_area", array_args);
-	
-			value := array_args[0]->As(IntRef);
-			return Rectangle->New(value->Get());
-		}
-
-		method : public : SetArea(area : Rectangle) ~ Nil {
-			array_args := Base->New[2];
-
-			array_args[0] := IntRef->New(@gobject);
-			array_args[1] := area;
-	
-			Proxy->GetDllProxy()->CallFunction("eventexpose_set_area", array_args);
-		}
-
-
+		
 		method : public : GetCount() ~ Int {
 			array_args := Base->New[2];
 
@@ -8891,51 +8845,6 @@ bundle Gtk3 {
 			Proxy->GetDllProxy()->CallFunction("eventtouch_set_y", array_args);
 		}
 
-
-		method : public : GetAxes() ~ Float {
-			array_args := Base->New[2];
-
-			array_args[0] := FloatRef->New();
-			array_args[1] := IntRef->New(@gobject);
-	
-			Proxy->GetDllProxy()->CallFunction("eventtouch_get_axes", array_args);
-	
-			value := array_args[0]->As(FloatRef);
-			return value->Get();
-		}
-
-		method : public : SetAxes(axes : Float) ~ Nil {
-			array_args := Base->New[2];
-
-			array_args[0] := IntRef->New(@gobject);
-			array_args[1] := FloatRef->New(axes);
-	
-			Proxy->GetDllProxy()->CallFunction("eventtouch_set_axes", array_args);
-		}
-
-
-		method : public : GetSequence() ~ EventSequence {
-			array_args := Base->New[2];
-
-			array_args[0] := Nil;
-			array_args[1] := IntRef->New(@gobject);
-	
-			Proxy->GetDllProxy()->CallFunction("eventtouch_get_sequence", array_args);
-	
-			value := array_args[0]->As(IntRef);
-			return EventSequence->New(value->Get());
-		}
-
-		method : public : SetSequence(sequence : EventSequence) ~ Nil {
-			array_args := Base->New[2];
-
-			array_args[0] := IntRef->New(@gobject);
-			array_args[1] := sequence;
-	
-			Proxy->GetDllProxy()->CallFunction("eventtouch_set_sequence", array_args);
-		}
-
-
 		method : public : GetEmulatingPointer() ~ Bool {
 			array_args := Base->New[2];
 
@@ -11111,12 +11020,12 @@ bundle Gtk3 {
 		@param keycode location to store the keycode
 		@return %TRUE if the event delivered a hardware keycode
 		~#
-		method : public : GetKeycode(keycode : Int) ~ Bool {
+		method : public : GetKeycode(keycode : IntRef) ~ Bool {
 			array_args := Base->New[3];
 	
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gobject);
-			array_args[2] := IntRef->New(keycode);
+			array_args[2] := keycode;
 	
 			Proxy->GetDllProxy()->CallFunction("gtk3_gdk_event_get_keycode", array_args);
 	
