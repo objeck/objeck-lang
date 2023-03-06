@@ -47,27 +47,27 @@
     <list name="types">
       <item>Nil</item>
       <item>Byte</item>
-      <item>ByteHolder</item>
+      <item>ByteRef</item>
       <item>Int</item>
-      <item>IntHolder</item>
+      <item>IntRef</item>
       <item>Float</item>
-      <item>FloatHolder</item>
+      <item>FloatRef</item>
       <item>Char</item>
-      <item>CharHolder</item>
+      <item>CharRef</item>
       <item>Bool</item>
-      <item>BoolHolder</item>
+      <item>BoolRef</item>
       <item>String</item>
-      <item>BaseArrayHolder</item>
-      <item>BoolArrayHolder</item>
-      <item>ByteArrayHolder</item>
-      <item>CharArrayHolder</item>
-      <item>FloatArrayHolder</item>
-      <item>IntArrayHolder</item>
-      <item>StringArrayHolder</item>
-      <item>Func2Holder</item>
-      <item>Func3Holder</item>
-      <item>Func4Holder</item>
-      <item>FuncHolder</item>
+      <item>BaseArrayRef</item>
+      <item>BoolArrayRef</item>
+      <item>ByteArrayRef</item>
+      <item>CharArrayRef</item>
+      <item>FloatArrayRef</item>
+      <item>IntArrayRef</item>
+      <item>StringArrayRef</item>
+      <item>Func2Ref</item>
+      <item>Func3Ref</item>
+      <item>Func4Ref</item>
+      <item>FuncRef</item>
     </list>
 
     <list name="predeclared">
