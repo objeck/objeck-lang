@@ -3,14 +3,6 @@ use System.IO.Filesystem;
 use Data.XML;
 
 class Gtk3Binder {
-	enum ModelType {
-		ENUMERATION,
-		BITFIELD,
-		UNION,
-		CLASS
-,		RECORD
-	}
-
 	@filename : String;
 	@enum_names : Set<String>;
 	@klass_names : Set<String>;
@@ -54,27 +46,27 @@ class Gtk3Binder {
 		if(parser->Parse()) {
 			enums_xml := parser->FindElements("/repository/namespace/enumeration")<XmlElement>;
 			if(enums_xml <> Nil) {
-				LoadEnums(enums_xml, Gtk3Binder->ModelType->ENUMERATION);
+				LoadEnums(enums_xml, GtkModel->Type->ENUM_BITFIELD);
 			};
 
 			bitfields_xml := parser->FindElements("/repository/namespace/bitfield")<XmlElement>;
 			if(bitfields_xml <> Nil) {
-				LoadEnums(bitfields_xml, Gtk3Binder->ModelType->BITFIELD);
+				LoadEnums(bitfields_xml, GtkModel->Type->ENUM_BITFIELD);
 			};
 
 			unions_xml := parser->FindElements("/repository/namespace/union")<XmlElement>;
 			if(unions_xml <> Nil) {
-				LoadEnums(unions_xml, Gtk3Binder->ModelType->UNION);
+				LoadEnums(unions_xml, GtkModel->Type->UNION);
 			};
 
 			classes_xml := parser->FindElements("/repository/namespace/class")<XmlElement>;
 			if(classes_xml <> Nil) {
-				LoadClasses(classes_xml, Gtk3Binder->ModelType->CLASS);
+				LoadClasses(classes_xml, GtkModel->Type->CLASS);
 			};
 
 			records_xml := parser->FindElements("/repository/namespace/record")<XmlElement>;
 			if(records_xml <> Nil) {
-				LoadClasses(records_xml, Gtk3Binder->ModelType->RECORD);
+				LoadClasses(records_xml, GtkModel->Type->RECORD);
 			};
 		};
 
@@ -85,28 +77,31 @@ class Gtk3Binder {
 		"---\nTime={$tick_secs} sec(s)\n---"->PrintLine();
 	}
 
-	method : LoadEnums(enums_xml : Vector<XmlElement>, type : Gtk3Binder->ModelType) ~ Bool {
-		return false;
-	}
+	method : LoadEnums(enums_xml : Vector<XmlElement>, type : GtkModel->Type) ~ Bool {
+		each(enum_xml := enums_xml) {
+			type_name := enum_xml->GetName();
 
-	method : LoadClasses(enums_xml : Vector<XmlElement>, type : Gtk3Binder->ModelType) ~ Bool {
-		return false;
-	}
+			if(type_name->Equals("bitfield") | type_name->Equals("enumeration")) {
+				name_xml := enum_xml->GetAttribute("name");
+				ctype_xml := enum_xml->GetAttribute("type");
+				doc_xml := enum_xml->GetFirstChild("doc");
+				
+				if(name_xml <> Nil & ctype_xml <> Nil & doc_xml <> Nil) {
+					name_value := name_xml->GetValue();
+					ctype_value := ctype_xml->GetValue();
+					doc_value := doc_xml->GetContent();
 
-	function : CamelCaseName(name : String) ~ String {
-		if(<>name->IsEmpty()) {
-			name->Set(name->Get(0)->ToUpper(), 0);
+					const_type := GtkConst->New(name_value, ctype_value, doc_value);
+					const_type->ToString()->PrintLine();
+				}
 
-			do {
-				underscore_index := name->Find('_');
-				if(underscore_index > -1) {
-					name->Delete(underscore_index);
-					name->Set(name->Get(underscore_index)->ToUpper(), underscore_index);
-				};
-			}
-			while(underscore_index > -1);
+			};
 		};
 
-		return name;
+		return false;
+	}
+
+	method : LoadClasses(enums_xml : Vector<XmlElement>, type : GtkModel->Type) ~ Bool {
+		return false;
 	}
 }
