@@ -46,12 +46,12 @@ class Gtk3Binder {
 		if(parser->Parse()) {
 			enums_xml := parser->FindElements("/repository/namespace/enumeration")<XmlElement>;
 			if(enums_xml <> Nil) {
-				LoadEnums(enums_xml, GtkModel->Type->ENUM_BITFIELD);
+				LoadEnums(enums_xml, GtkModel->Type->ENUM);
 			};
 
 			bitfields_xml := parser->FindElements("/repository/namespace/bitfield")<XmlElement>;
 			if(bitfields_xml <> Nil) {
-				LoadEnums(bitfields_xml, GtkModel->Type->ENUM_BITFIELD);
+				LoadEnums(bitfields_xml, GtkModel->Type->ENUM);
 			};
 
 			unions_xml := parser->FindElements("/repository/namespace/union")<XmlElement>;
