@@ -30,16 +30,25 @@ class GtkConst from GtkDocType {
 
 		@name := name;
 		@ctype := ctype;
-		@cont_types := GtkConstType->New()<Vector>;
-	}
-
-	method : public : ToString() ~ String {
-		doc_size := @doc->Size();
-		return "[name='{$@name}'], cytpe='{$@ctype}', doc_size={$doc_size}]";
+		
+		@cont_types := Vector->New()<GtkConstType>;
 	}
 
 	method : public : AddConst(name : String, ctype : String, value : Int) ~ Nil {
 		@cont_types->AddBack(GtkConstType->New(name, ctype, value));
+	}
+
+	method : public : ToString() ~ String {
+		buffer := "";
+
+		doc_size := @doc->Size();
+		buffer += "[Const: name='{$@name}', cytpe='{$@ctype}', doc_size={$doc_size}]\n";
+		each(cont_type := @cont_types) {
+			buffer += cont_type->ToString();
+			buffer += '\n';
+		};
+
+		return buffer;
 	}
 }	
 
@@ -50,14 +59,14 @@ class GtkConstType from GtkModel {
 
 	New(name : String, ctype : String, value : Int) {
 		Parent(GtkModel->Type->CONST);
-		
+
 		@name := name;
 		@ctype := ctype;
 		@value := value;
 	}
 
 	method : public : ToString() ~ String {
-		return "TODO";
+		return "\t[Member: name='{$@name}', cytpe='{$@ctype}', value={$@value}]";
 	}
 }
 
@@ -70,6 +79,12 @@ class GtkDocType from GtkModel {
 	}
 
 	method : virtual : public : ToString() ~ String;
+}
+
+interface CodeEmitter {
+	method : virtual : EmitCxx() ~ String;
+
+	method : virtual : EmitObjeck() ~ String;
 }
 
 class GtkModel {
