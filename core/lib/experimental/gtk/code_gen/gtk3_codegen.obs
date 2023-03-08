@@ -90,11 +90,19 @@ class Gtk3Binder {
 					name_value := name_xml->GetValue();
 					ctype_value := ctype_xml->GetValue();
 					doc_value := doc_xml->GetContent();
-
 					const_type := GtkConst->New(name_value, ctype_value, doc_value);
-					const_type->ToString()->PrintLine();
-				}
 
+					members_xml := enum_xml->GetChildren("member")<XmlElement>;
+					each(member_xml := members_xml) {
+						member_name := member_xml->GetAttribute("name")->GetValue();
+						member_type := member_xml->GetAttribute("identifier")->GetValue();
+						member_value := member_xml->GetAttribute("value")->GetValue();
+						
+						const_type->AddConst(member_name, member_type, member_value->ToInt());
+					};
+
+					const_type->ToString()->PrintLine();
+				};
 			};
 		};
 
