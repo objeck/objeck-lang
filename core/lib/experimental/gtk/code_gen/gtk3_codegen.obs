@@ -4,8 +4,8 @@ use Data.XML;
 
 class Gtk3Binder {
 	@filename : String;
-	@enum_names : Set<String>;
-	@klass_names : Set<String>;
+	@enum_inventory : Set<String>;
+	@klass_inventory : Set<String>;
 
 	@is_debug : Bool;
 
@@ -24,8 +24,8 @@ class Gtk3Binder {
 
 	New(filename : String) {
 		@filename := filename;
-		@enum_names := Set->New()<String>;
-		@klass_names := Set->New()<String>;
+		@enum_inventory := Set->New()<String>;
+		@klass_inventory := Set->New()<String>;
 
 		@is_debug := true;
 	}
@@ -69,8 +69,7 @@ class Gtk3Binder {
 				LoadClasses(records_xml, GtkModel->Type->RECORD);
 			};
 		};
-
-
+		
 		timer->End();
 		String->SetFloatPrecision(3);
 		tick_secs := timer->GetElapsedTime();
@@ -85,19 +84,21 @@ class Gtk3Binder {
 				name_xml := enum_xml->GetAttribute("name");
 				ctype_xml := enum_xml->GetAttribute("type");
 				doc_xml := enum_xml->GetFirstChild("doc");
-				
+
 				if(name_xml <> Nil & ctype_xml <> Nil & doc_xml <> Nil) {
 					name_value := name_xml->GetValue();
 					ctype_value := ctype_xml->GetValue();
 					doc_value := doc_xml->GetContent();
 					const_type := GtkConst->New(name_value, ctype_value, doc_value);
 
+					@enum_inventory->Insert(name_value);
+
 					members_xml := enum_xml->GetChildren("member")<XmlElement>;
 					each(member_xml := members_xml) {
 						member_name := member_xml->GetAttribute("name")->GetValue();
 						member_type := member_xml->GetAttribute("identifier")->GetValue();
 						member_value := member_xml->GetAttribute("value")->GetValue();
-						
+
 						const_type->AddConst(member_name, member_type, member_value->ToInt());
 					};
 
