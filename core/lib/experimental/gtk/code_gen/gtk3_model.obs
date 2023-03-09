@@ -44,8 +44,7 @@ class GtkRecord from GtkDocType {
 		doc_size := @doc->Size();
 		buffer += "[Record: name='{$@name}', cytpe='{$@ctype}', doc_size={$doc_size}]\n";
 		each(field_type := @field_types) {
-			buffer += field_type->ToString();
-			buffer += '\n';
+			buffer += field_type->ToString() + '\n';
 		};
 
 		return buffer;
@@ -95,8 +94,7 @@ class GtkConst from GtkDocType {
 		doc_size := @doc->Size();
 		buffer += "[Const: name='{$@name}', cytpe='{$@ctype}', doc_size={$doc_size}]\n";
 		each(cont_type := @consts_types) {
-			buffer += cont_type->ToString();
-			buffer += '\n';
+			buffer += cont_type->ToString() + '\n';
 		};
 
 		return buffer;
