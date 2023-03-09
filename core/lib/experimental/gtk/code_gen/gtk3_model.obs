@@ -1,7 +1,7 @@
 use Collection;
 
 class GtkClass from GtkDocType {
-	New(doc : String, type : GtkModel->Type) {
+	New(doc : String, type : GtkType->Type) {
 		Parent(doc, type);
 	}
 
@@ -11,7 +11,7 @@ class GtkClass from GtkDocType {
 }
 
 class GtkMethod from GtkDocType {
-	New(doc : String, type : GtkModel->Type) {
+	New(doc : String, type : GtkType->Type) {
 		Parent(doc, type);
 	}
 
@@ -21,61 +21,72 @@ class GtkMethod from GtkDocType {
 }
 
 class GtkRecord from GtkDocType {
-	@fields : Vector<GtkFieldType>;
-	@field_types : Vector<GtkFieldType>;
-
-	New(name : String, ctype : String, doc : String) {
-		Parent(doc, GtkModel->Type->RECORD);
-
-		@field_types := Vector->New()<GtkFieldType>;
-	}
-
-	method : public : AddField(name : String, ctype : String, is_writable : Bool, doc : String := "") ~ Nil {
-		@field_types->AddBack(GtkFieldType->New(name, ctype, is_writable, doc));
-	}
-
-	method : public : ToString() ~ String {
-		return "TODO";
-	}
-}
-
-class GtkFieldType from GtkModel {
 	@name : String;
 	@ctype : String;
-	@is_writable : Bool;
-	@doc : String;
+	@field_types : Vector<GtkRecordField>;
 
-	New(name : String, ctype : String, is_writable : Bool, doc : String) {
-		Parent(GtkModel->Type->RECORD);
+	New(name : String, ctype : String, doc : String) {
+		Parent(doc, GtkType->Type->RECORD);
 
 		@name := name;
 		@ctype := ctype;
-		@doc := doc;
+
+		@field_types := Vector->New()<GtkRecordField>;
+	}
+
+	method : public : AddField(name : String, ctype : String, is_writable : Bool, doc : String := "") ~ Nil {
+		@field_types->AddBack(GtkRecordField->New(name, ctype, is_writable, doc));
+	}
+
+	method : public : ToString() ~ String {
+		buffer := "";
+
+		doc_size := @doc->Size();
+		buffer += "[Record: name='{$@name}', cytpe='{$@ctype}', doc_size={$doc_size}]\n";
+		each(field_type := @field_types) {
+			buffer += field_type->ToString();
+			buffer += '\n';
+		};
+
+		return buffer;
+	}
+}
+
+class GtkRecordField from GtkDocType {
+	@name : String;
+	@ctype : String;
+	@is_writable : Bool;
+
+	New(name : String, ctype : String, is_writable : Bool, doc : String) {
+		Parent(doc, GtkType->Type->RECORD);
+
+		@name := name;
+		@ctype := ctype;
 		@is_writable := is_writable;
 	}
 
 	method : public : ToString() ~ String {
 		doc_size := @doc->Size();
-		return "\t[Member: name='{$@name}', cytpe='{$@ctype}', is_writable={$@is_writable}, doc_size={$doc_size}]";
+		return "\t[Field: name='{$@name}', cytpe='{$@ctype}', is_writable={$@is_writable}, doc_size={$doc_size}]";
 	}
 }
 
 class GtkConst from GtkDocType {
 	@name : String;
 	@ctype : String;
-	@consts_types : Vector<GtkConstType>;
+	@consts_types : Vector<GtkConstField>;
 
 	New(name : String, ctype : String, doc : String) {
-		Parent(doc, GtkModel->Type->ENUM);
+		Parent(doc, GtkType->Type->ENUM);
 
 		@name := name;
 		@ctype := ctype;
-		
-		@consts_types := Vector->New()<GtkConstType>;
+
+		@consts_types := Vector->New()<GtkConstField>;
 	}
 
 	method : public : AddConst(name : String, ctype : String, value : Int) ~ Nil {
-		@consts_types->AddBack(GtkConstType->New(name, ctype, value));
+		@consts_types->AddBack(GtkConstField->New(name, ctype, value));
 	}
 
 	method : public : ToString() ~ String {
@@ -92,13 +103,13 @@ class GtkConst from GtkDocType {
 	}
 }	
 
-class GtkConstType from GtkModel {
+class GtkConstField from GtkType {
 	@name : String;
 	@ctype : String;
 	@value : Int;
 
 	New(name : String, ctype : String, value : Int) {
-		Parent(GtkModel->Type->CONST);
+		Parent(GtkType->Type->CONST);
 
 		@name := name;
 		@ctype := ctype;
@@ -110,10 +121,10 @@ class GtkConstType from GtkModel {
 	}
 }
 
-class GtkDocType from GtkModel {
+class GtkDocType from GtkType {
 	@doc : String;
 
-	New(doc : String, type : GtkModel->Type) {
+	New(doc : String, type : GtkType->Type) {
 		Parent(type);
 		@doc := doc;
 	}
@@ -121,14 +132,8 @@ class GtkDocType from GtkModel {
 	method : virtual : public : ToString() ~ String;
 }
 
-interface CodeEmitter {
-	method : virtual : EmitCxx() ~ String;
-
-	method : virtual : EmitObjeck() ~ String;
-}
-
-class GtkModel {
-	@type : GtkModel->Type;
+class GtkType {
+	@type : GtkType->Type;
 
 	enum Type {
 		ENUM,
@@ -138,11 +143,11 @@ class GtkModel {
 		METHOD
 	}
 
-	New(type : GtkModel->Type) {
+	New(type : GtkType->Type) {
 		@type := type;
 	}
 
-	method : public : GetType() ~ GtkModel->Type {
+	method : public : GetType() ~ GtkType->Type {
 		return @type;
 	}
 
@@ -164,4 +169,10 @@ class GtkModel {
 
 		return name;
 	}
+}
+
+interface CodeEmitter {
+	method : virtual : EmitCxx() ~ String;
+
+	method : virtual : EmitObjeck() ~ String;
 }
