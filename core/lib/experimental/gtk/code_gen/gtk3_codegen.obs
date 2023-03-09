@@ -5,6 +5,8 @@ use Data.XML;
 class Gtk3Binder {
 	@filename : String;
 	@enum_inventory : Set<String>;
+	@record_inventory : Set<String>;
+	@union_inventory : Set<String>;
 	@klass_inventory : Set<String>;
 
 	@is_debug : Bool;
@@ -24,7 +26,10 @@ class Gtk3Binder {
 
 	New(filename : String) {
 		@filename := filename;
+
 		@enum_inventory := Set->New()<String>;
+		@record_inventory := Set->New()<String>;
+		@union_inventory := Set->New()<String>;
 		@klass_inventory := Set->New()<String>;
 
 		@is_debug := true;
@@ -44,6 +49,7 @@ class Gtk3Binder {
 
 		parser := XmlParser->New(data);
 		if(parser->Parse()) {
+			Inventory(parser);
 #~
 			enums_xml := parser->FindElements("/repository/namespace/enumeration")<XmlElement>;
 			if(enums_xml <> Nil) {
@@ -81,6 +87,43 @@ class Gtk3Binder {
 		"---\nTime={$tick_secs} sec(s)\n---"->PrintLine();
 	}
 
+	method : Inventory(parser : XmlParser) ~ Nil {
+		enums_xml := parser->FindElements("/repository/namespace/enumeration")<XmlElement>;
+		if(enums_xml <> Nil) {
+			each(enum_xml := enums_xml) {
+				@enum_inventory->Insert(enum_xml->GetAttribute("name")->GetValue());
+			};
+		};
+
+		bitfields_xml := parser->FindElements("/repository/namespace/bitfield")<XmlElement>;
+		if(bitfields_xml <> Nil) {
+			each(bitfield_xml := bitfields_xml) {
+				@enum_inventory->Insert(bitfield_xml->GetAttribute("name")->GetValue());
+			};
+		};
+
+		unions_xml := parser->FindElements("/repository/namespace/union")<XmlElement>;
+		if(unions_xml <> Nil) {
+			each(union_xml := unions_xml) {
+				@union_inventory->Insert(union_xml->GetAttribute("name")->GetValue());
+			};
+		};
+
+		records_xml := parser->FindElements("/repository/namespace/record")<XmlElement>;
+		if(records_xml <> Nil) {
+			each(record_xml := records_xml) {
+				@record_inventory->Insert(record_xml->GetAttribute("name")->GetValue());
+			};
+		};
+
+		klasses_xml := parser->FindElements("/repository/namespace/klass")<XmlElement>;
+		if(klasses_xml <> Nil) {
+			each(klass_xml := klasses_xml) {
+				@klass_inventory->Insert(klass_xml->GetAttribute("name")->GetValue());
+			};
+		};
+	}
+
 	method : LoadRecords(records_xml : Vector<XmlElement>) ~ Bool {
 		each(record_xml := records_xml) {
 			name_xml := record_xml->GetAttribute("name");
@@ -102,20 +145,22 @@ class Gtk3Binder {
 					if(writable_attrib <> Nil & writable_attrib->GetValue()->Equals("1")) {
 						is_writable := true;
 					};
-					
+
 					type_xml := field_xml->GetFirstChild("type");
 					if(type_xml <> Nil) {
 						type_name_value := type_xml->GetAttribute("name")->GetValue();
 
 						doc_xml := field_xml->GetFirstChild("doc");
 						if(doc_xml <> Nil) {
-							record->AddField(type_name_value, ctype_value, is_writable, doc_xml->GetContent());
+							record->AddField(name_value, type_name_value, is_writable, doc_xml->GetContent());
 						}
 						else {
-							record->AddField(type_name_value, ctype_value, is_writable);
+							record->AddField(name_value, type_name_value, is_writable);
 						};
 					};
 				};
+
+				record->ToString()->PrintLine();
 			};
 		};
 
@@ -137,8 +182,6 @@ class Gtk3Binder {
 					doc_value := doc_xml->GetContent();
 					const_type := GtkConst->New(name_value, ctype_value, doc_value);
 
-					@enum_inventory->Insert(name_value);
-
 					members_xml := enum_xml->GetChildren("member")<XmlElement>;
 					each(member_xml := members_xml) {
 						member_name := member_xml->GetAttribute("name")->GetValue();
@@ -156,7 +199,7 @@ class Gtk3Binder {
 		return false;
 	}
 
-	method : LoadClasses(enums_xml : Vector<XmlElement>, type : GtkModel->Type) ~ Bool {
+	method : LoadClasses(enums_xml : Vector<XmlElement>) ~ Bool {
 		return false;
 	}
 }
