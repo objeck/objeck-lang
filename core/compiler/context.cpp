@@ -866,12 +866,10 @@ void ContextAnalyzer::AnalyzeMethod(Method* method, const int depth)
     }
 
     // check for parent call
-    if((method->GetMethodType() == NEW_PUBLIC_METHOD ||
-       method->GetMethodType() == NEW_PRIVATE_METHOD) &&
-       (current_class->GetParent() || (current_class->GetLibraryParent() &&
-       current_class->GetLibraryParent()->GetName() != SYSTEM_BASE_NAME))) {
+    if((method->GetMethodType() == NEW_PUBLIC_METHOD || method->GetMethodType() == NEW_PRIVATE_METHOD) &&
+       (current_class->GetParent() || (current_class->GetLibraryParent() && current_class->GetLibraryParent()->GetName() != SYSTEM_BASE_NAME))) {
       if(statements.size() == 0 || statements.front()->GetStatementType() != METHOD_CALL_STMT) {
-        if(!current_class->IsInterface()) {
+        if(!method->IsAlt() && !current_class->IsInterface()) {
           ProcessError(method, L"Parent call required");
         }
       }

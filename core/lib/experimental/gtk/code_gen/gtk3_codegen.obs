@@ -44,16 +44,22 @@ class Gtk3Binder {
 
 		parser := XmlParser->New(data);
 		if(parser->Parse()) {
+#~
 			enums_xml := parser->FindElements("/repository/namespace/enumeration")<XmlElement>;
 			if(enums_xml <> Nil) {
-				LoadEnums(enums_xml, GtkModel->Type->ENUM);
+				LoadEnums(enums_xml);
 			};
 
 			bitfields_xml := parser->FindElements("/repository/namespace/bitfield")<XmlElement>;
 			if(bitfields_xml <> Nil) {
-				LoadEnums(bitfields_xml, GtkModel->Type->ENUM);
+				LoadEnums(bitfields_xml);
 			};
-
+~#	
+			records_xml := parser->FindElements("/repository/namespace/record")<XmlElement>;
+			if(records_xml <> Nil) {
+				LoadRecords(records_xml);
+			};
+#~
 			unions_xml := parser->FindElements("/repository/namespace/union")<XmlElement>;
 			if(unions_xml <> Nil) {
 				LoadEnums(unions_xml, GtkModel->Type->UNION);
@@ -63,11 +69,10 @@ class Gtk3Binder {
 			if(classes_xml <> Nil) {
 				LoadClasses(classes_xml, GtkModel->Type->CLASS);
 			};
-
-			records_xml := parser->FindElements("/repository/namespace/record")<XmlElement>;
-			if(records_xml <> Nil) {
-				LoadClasses(records_xml, GtkModel->Type->RECORD);
-			};
+~#			
+		}
+		else {
+			">>> Unable to parser XML <<<"->ErrorLine();
 		};
 		
 		timer->End();
@@ -76,7 +81,26 @@ class Gtk3Binder {
 		"---\nTime={$tick_secs} sec(s)\n---"->PrintLine();
 	}
 
-	method : LoadEnums(enums_xml : Vector<XmlElement>, type : GtkModel->Type) ~ Bool {
+	method : LoadRecords(records_xml : Vector<XmlElement>) ~ Bool {
+		each(record_xml := records_xml) {
+			name_xml := record_xml->GetAttribute("name");
+			ctype_xml := record_xml->GetAttribute("type");
+			doc_xml := record_xml->GetFirstChild("doc");
+
+			if(name_xml <> Nil & ctype_xml <> Nil & doc_xml <> Nil) {
+				name_value := name_xml->GetValue();
+				ctype_value := ctype_xml->GetValue();
+				doc_value := doc_xml->GetContent();
+
+				doc_size := doc_value->Size();
+				"[name_value='{$name_value}', ctype_value='{$ctype_value}', doc_size='{$doc_size}']"->PrintLine();
+			};
+		};
+
+		return false;
+	}
+
+	method : LoadEnums(enums_xml : Vector<XmlElement>) ~ Bool {
 		each(enum_xml := enums_xml) {
 			type_name := enum_xml->GetName();
 
