@@ -3303,7 +3303,11 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
           }
         }
           break;
-        
+
+        case CHAR_LIT_EXPR:
+        case INT_LIT_EXPR:
+        case FLOAT_LIT_EXPR:
+        case BOOLEAN_LIT_EXPR:
         case CHAR_STR_EXPR:
         case STAT_ARY_EXPR:
         case VAR_EXPR:
