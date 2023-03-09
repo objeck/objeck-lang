@@ -22,13 +22,41 @@ class GtkMethod from GtkDocType {
 
 class GtkRecord from GtkDocType {
 	@fields : Vector<GtkFieldType>;
+	@field_types : Vector<GtkFieldType>;
 
 	New(name : String, ctype : String, doc : String) {
 		Parent(doc, GtkModel->Type->RECORD);
+
+		@field_types := Vector->New()<GtkFieldType>;
+	}
+
+	method : public : AddField(name : String, ctype : String, is_writable : Bool, doc : String := "") ~ Nil {
+		@field_types->AddBack(GtkFieldType->New(name, ctype, is_writable, doc));
 	}
 
 	method : public : ToString() ~ String {
 		return "TODO";
+	}
+}
+
+class GtkFieldType from GtkModel {
+	@name : String;
+	@ctype : String;
+	@is_writable : Bool;
+	@doc : String;
+
+	New(name : String, ctype : String, is_writable : Bool, doc : String) {
+		Parent(GtkModel->Type->RECORD);
+
+		@name := name;
+		@ctype := ctype;
+		@doc := doc;
+		@is_writable := is_writable;
+	}
+
+	method : public : ToString() ~ String {
+		doc_size := @doc->Size();
+		return "\t[Member: name='{$@name}', cytpe='{$@ctype}', is_writable={$@is_writable}, doc_size={$doc_size}]";
 	}
 }
 
@@ -63,27 +91,6 @@ class GtkConst from GtkDocType {
 		return buffer;
 	}
 }	
-
-class GtkFieldType from GtkModel {
-	@name : String;
-	@ctype : String;
-	@is_writable : Bool;
-	@doc : String;
-
-	New(name : String, ctype : String, value : Int, is_writable : Bool, doc : String := Nil) {
-		Parent(GtkModel->Type->RECORD);
-
-		@name := name;
-		@ctype := ctype;
-		@doc := doc;
-		@is_writable := is_writable;
-	}
-
-	method : public : ToString() ~ String {
-		doc_size := @doc->Size();
-		return "\t[Member: name='{$@name}', cytpe='{$@ctype}', is_writable={$@is_writable}, doc_size={$doc_size}]";
-	}
-}
 
 class GtkConstType from GtkModel {
 	@name : String;

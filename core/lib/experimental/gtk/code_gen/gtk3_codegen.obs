@@ -92,8 +92,30 @@ class Gtk3Binder {
 				ctype_value := ctype_xml->GetValue();
 				doc_value := doc_xml->GetContent();
 
-				doc_size := doc_value->Size();
-				"[name_value='{$name_value}', ctype_value='{$ctype_value}', doc_size='{$doc_size}']"->PrintLine();
+				record := GtkRecord->New(name_value, ctype_value, doc_value);
+
+				fields_xml := record_xml->GetChildren("field")<XmlElement>;
+				each(field_xml := fields_xml) {
+					name_value := field_xml->GetAttribute("name")->GetValue();
+					is_writable := false;
+					writable_attrib := field_xml->GetAttribute("writable");
+					if(writable_attrib <> Nil & writable_attrib->GetValue()->Equals("1")) {
+						is_writable := true;
+					};
+					
+					type_xml := field_xml->GetFirstChild("type");
+					if(type_xml <> Nil) {
+						type_name_value := type_xml->GetAttribute("name")->GetValue();
+
+						doc_xml := field_xml->GetFirstChild("doc");
+						if(doc_xml <> Nil) {
+							record->AddField(type_name_value, ctype_value, is_writable, doc_xml->GetContent());
+						}
+						else {
+							record->AddField(type_name_value, ctype_value, is_writable);
+						};
+					};
+				};
 			};
 		};
 
