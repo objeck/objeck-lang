@@ -139,7 +139,6 @@ class Gtk3Binder {
 
 				fields_xml := record_xml->GetChildren("field")<XmlElement>;
 				each(field_xml := fields_xml) {
-					name_value := field_xml->GetAttribute("name")->GetValue();
 					is_writable := false;
 					writable_attrib := field_xml->GetAttribute("writable");
 					if(writable_attrib <> Nil & writable_attrib->GetValue()->Equals("1")) {
@@ -157,7 +156,8 @@ class Gtk3Binder {
 						else {
 							ctype_value := name_xml->GetValue();
 						};
-						
+
+						name_value := field_xml->GetAttribute("name")->GetValue();	
 						doc_xml := field_xml->GetFirstChild("doc");
 						if(doc_xml <> Nil) {
 							record->AddField(name_value, ctype_value, is_writable, doc_xml->GetContent());
