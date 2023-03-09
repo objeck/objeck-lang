@@ -148,14 +148,22 @@ class Gtk3Binder {
 
 					type_xml := field_xml->GetFirstChild("type");
 					if(type_xml <> Nil) {
-						type_name_value := type_xml->GetAttribute("name")->GetValue();
+						ctype_xml := type_xml->GetAttribute("type");
+						name_xml := type_xml->GetAttribute("name");
 
-						doc_xml := field_xml->GetFirstChild("doc");
-						if(doc_xml <> Nil) {
-							record->AddField(name_value, type_name_value, is_writable, doc_xml->GetContent());
+						if(ctype_xml <> Nil) {
+							ctype_value := ctype_xml->GetValue();
 						}
 						else {
-							record->AddField(name_value, type_name_value, is_writable);
+							ctype_value := name_xml->GetValue();
+						};
+						
+						doc_xml := field_xml->GetFirstChild("doc");
+						if(doc_xml <> Nil) {
+							record->AddField(name_value, ctype_value, is_writable, doc_xml->GetContent());
+						}
+						else {
+							record->AddField(name_value, ctype_value, is_writable);
 						};
 					};
 				};
