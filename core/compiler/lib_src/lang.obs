@@ -3729,7 +3729,9 @@ bundle System {
 		}
 
 		#~
-		Gets the current string capacity.
+		Gets the current string's storage capacity. That is the 
+		number of characters the string will hold before it is 
+		resized for growth.
 		@return string capacity
 		~#
 		method : public : Capacity() ~ Int {

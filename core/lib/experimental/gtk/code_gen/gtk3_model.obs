@@ -35,6 +35,9 @@ class GtkRecord from GtkDocType {
 	}
 
 	method : public : AddField(name : String, ctype : String, is_writable : Bool, doc : String := "") ~ Nil {
+		objk_type := GtkConst->MapType(ctype);
+objk_type->PrintLine();
+
 		@field_types->AddBack(GtkRecordField->New(name, ctype, is_writable, doc));
 	}
 
@@ -131,6 +134,7 @@ class GtkDocType from GtkType {
 }
 
 class GtkType {
+	@type_mapping : static : Map<String, String>;
 	@type : GtkType->Type;
 
 	enum Type {
@@ -139,6 +143,40 @@ class GtkType {
 		RECORD,
 		CLASS,
 		METHOD
+	}
+
+	function : Init() ~ Nil {
+		@type_mapping := Map->New()<String, String>;
+
+		# ints
+		@type_mapping->Insert("gint", "Int");
+		@type_mapping->Insert("guint", "Int");
+		@type_mapping->Insert("int", "Int");
+		@type_mapping->Insert("gint8", "Int");
+		@type_mapping->Insert("guint8", "Int");
+		@type_mapping->Insert("gint16", "Int");
+		@type_mapping->Insert("guint16", "Int");
+		@type_mapping->Insert("gshort", "Int");
+		@type_mapping->Insert("guint32", "Int");
+		@type_mapping->Insert("guint32", "Int");
+		@type_mapping->Insert("int", "Int");
+		# doubles
+		@type_mapping->Insert("gdouble", "Float");
+		# bools
+		@type_mapping->Insert("gboolean", "Bool");
+		# strings
+		@type_mapping->Insert("utf8", "String");
+		@type_mapping->Insert("gchar*", "String");
+		@type_mapping->Insert("char*", "String");
+	}
+
+	function : MapType(ctype : String) ~ String {
+		result := @type_mapping->Find(ctype);
+		if(result = Nil) {
+			return ctype;
+		};
+
+		return result;
 	}
 
 	New(type : GtkType->Type) {
