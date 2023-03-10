@@ -88,6 +88,8 @@ class Gtk3Binder {
 	}
 
 	method : Inventory(parser : XmlParser) ~ Nil {
+		GtkType->Init();
+		
 		enums_xml := parser->FindElements("/repository/namespace/enumeration")<XmlElement>;
 		if(enums_xml <> Nil) {
 			each(enum_xml := enums_xml) {
