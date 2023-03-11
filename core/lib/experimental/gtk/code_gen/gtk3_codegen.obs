@@ -170,7 +170,7 @@ class Gtk3Binder {
 					};
 				};
 
-				record->ToString()->PrintLine();
+				record->EmitObjeck()->PrintLine();
 			};
 		};
 
