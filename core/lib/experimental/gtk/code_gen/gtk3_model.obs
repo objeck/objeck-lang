@@ -151,6 +151,7 @@ class GtkRecordField from GtkDocType {
 
 		buffer += "method : public : {$objk_name}() ~ ";
 
+		# set return type
 		select(@type->GetType()) {
 			label GtkType->Type->CHAR {
 				buffer += "Char {\n";
@@ -175,6 +176,7 @@ class GtkRecordField from GtkDocType {
 
 		buffer += "\tarray_args := Base->New[2];\n\n";
 
+		# set parameters
 		buffer += "\tarray_args[0] := ";
 		select(@type->GetType()) {
 			label GtkType->Type->CHAR
@@ -199,6 +201,7 @@ class GtkRecordField from GtkDocType {
 
 		buffer += "\tProxy->GetDllProxy()->CallFunction(\"{$cxx_name}\", array_args);\n\n";
 
+		# set return
 		select(@type->GetType()) {
 			label GtkType->Type->CHAR
 			label GtkType->Type->INT
