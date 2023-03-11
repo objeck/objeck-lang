@@ -3708,22 +3708,11 @@ bundle System {
 				return false;
 			};
 
-			max := @pos - length;
-			threshold := @max - @max >> 1;
-			if(max < threshold) {
-				temp := Char->New[max];
-				Runtime->Copy(temp, 0, @string, 0, offset);
-				Runtime->Copy(temp, offset, @string, space, @pos - space);
-
-				@string := temp;
-				@max := @pos := max;
-			}
-			else {
-				end := offset + length;
-				Runtime->Copy(@string, offset, @string, end, @pos - end);
-				@string[max] := '\0';
-				@pos := max;
-			};
+			len := @pos - length;
+			end := offset + length;
+			Runtime->Copy(@string, offset, @string, end, @pos - end);
+			@string[len] := '\0';
+			@pos := len;
 
 			return true;
 		}
@@ -3764,15 +3753,14 @@ bundle System {
 
 			size := @pos + 1;
 			if(size > @max) {
-				max := size + @max << 1;
-				temp := Char->New[max];
+				@max := @max << 1;
+				temp := Char->New[@max];
 				Runtime->Copy(temp, 0, @string, 0, index);
 
 				temp[index] := char;
 				Runtime->Copy(temp, offset, @string, index, length);
-				
+					
 				@string := temp;
-				@max := max;
 			}
 			else {
 				Runtime->Copy(@string, offset, @string, index, length);
@@ -3802,15 +3790,14 @@ bundle System {
 
 			size := @pos + string->Size();
 			if(size > @max) {
-				max := size + @max << 1;
-				temp := Char->New[max];
+				@max := @max << 1;
+				temp := Char->New[@max];
 				Runtime->Copy(temp, 0, @string, 0, index);
 				
 				Runtime->Copy(temp, index, buffer, 0, buffer_size);
 				Runtime->Copy(temp, offset, @string, index, length);
 				
 				@string := temp;
-				@max := max;
 			}
 			else {
 				Runtime->Copy(@string, offset, @string, index, length);
