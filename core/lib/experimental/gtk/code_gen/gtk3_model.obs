@@ -351,6 +351,8 @@ class GtkType {
 			return result;
 		};
 
+		# TODO: look at records and classes
+		# last...
 		return @unknown_type;
 	}
 
