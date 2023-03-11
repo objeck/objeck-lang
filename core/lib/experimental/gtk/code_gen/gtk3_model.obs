@@ -25,7 +25,7 @@ class GtkMethod from GtkDocType {
 
 	function : ToCamelCase(name : String) ~ String {
 		temp := name->Copy();
-		
+
 		if(<>temp->IsEmpty()) {
 			temp->Set(temp->Get(0)->ToUpper(), 0);
 
@@ -91,6 +91,7 @@ class GtkRecord from GtkDocType {
 		each(field_type := @field_types) {
 			buffer += field_type->EmitCxx();
 		};
+		buffer->Pop();
 
 		return buffer;
 	}
@@ -165,15 +166,19 @@ class GtkRecordField from GtkDocType {
 			label GtkType->Type->CHAR
 			label GtkType->Type->INT
 			label GtkType->Type->BOOL {
-				buffer += "\tAPITools_SetIntValue(context, po->{$name});\n";
+				buffer += "\tAPITools_SetIntValue(context, 1, po->{$name});\n";
 			}
 
 			label GtkType->Type->FLOAT {
-				buffer += "\tAPITools_SetFloatValue(context, po->{$name});\n";
+				buffer += "\tAPITools_SetFloatValue(context, 1, po->{$name});\n";
+			}
+
+			label GtkType->Type->STRING {
+				buffer += "\tAPITools_SetStringValue(context, 0, BytesToUnicode(po->{$name}));\n";
 			}
 
 			other {
-				buffer += "TODO\n";
+				buffer += "--- OTHER ---\n";
 			}
 		};
 
@@ -267,7 +272,7 @@ class GtkRecordField from GtkDocType {
 
 			other {
 				objk_name := @type->GetObjkName();
-				buffer += "\t\treturn value->As({$objk_name});\n";
+				buffer += "\t\treturn array_args[0]->As({$objk_name});\n";
 			}
 		};
 		buffer += "\t}\n\n";
