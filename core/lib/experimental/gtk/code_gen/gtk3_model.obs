@@ -1,21 +1,54 @@
 use Collection;
 
 class GtkClass from GtkDocType {
-	New(doc : String, type : GtkType->Type) {
-		Parent(doc, type);
+	New(doc : String) {
+		Parent(doc);
 	}
 
 	method : public : ToString() ~ String {
 		return "TODO";
 	}
+
+	method : public : EmitCxx() ~ String {
+		return "TODO";
+	}
+
+	method : public : EmitObjeck() ~ String {
+		return "TODO";
+	}
 }
 
 class GtkMethod from GtkDocType {
-	New(doc : String, type : GtkType->Type) {
-		Parent(doc, type);
+	New(doc : String) {
+		Parent(doc);
+	}
+
+	function : ToCamelCase(name : String) ~ String {
+		if(<>name->IsEmpty()) {
+			name->Set(name->Get(0)->ToUpper(), 0);
+
+			do {
+				underscore_index := name->Find('_');
+				if(underscore_index > -1) {
+					name->Delete(underscore_index);
+					name->Set(name->Get(underscore_index)->ToUpper(), underscore_index);
+				};
+			}
+			while(underscore_index > -1);
+		};
+
+		return name;
 	}
 
 	method : public : ToString() ~ String {
+		return "TODO";
+	}
+
+	method : public : EmitCxx() ~ String {
+		return "TODO";
+	}
+
+	method : public : EmitObjeck() ~ String {
 		return "TODO";
 	}
 }
@@ -26,7 +59,7 @@ class GtkRecord from GtkDocType {
 	@field_types : Vector<GtkRecordField>;
 
 	New(name : String, ctype : String, doc : String) {
-		Parent(doc, GtkType->Type->RECORD);
+		Parent(doc);
 
 		@name := name;
 		@ctype := ctype;
@@ -35,9 +68,6 @@ class GtkRecord from GtkDocType {
 	}
 
 	method : public : AddField(name : String, ctype : String, is_writable : Bool, doc : String := "") ~ Nil {
-		objk_type := GtkConst->MapType(ctype);
-objk_type->PrintLine();
-
 		@field_types->AddBack(GtkRecordField->New(name, ctype, is_writable, doc));
 	}
 
@@ -52,24 +82,94 @@ objk_type->PrintLine();
 
 		return buffer;
 	}
+
+	method : public : EmitCxx() ~ String {
+		return "TODO";
+	}
+
+	method : public : EmitObjeck() ~ String {
+		return "TODO";	
+	}
 }
 
 class GtkRecordField from GtkDocType {
-	@name : String;
-	@ctype : String;
+	@type : GtkType;
 	@is_writable : Bool;
 
 	New(name : String, ctype : String, is_writable : Bool, doc : String) {
-		Parent(doc, GtkType->Type->RECORD);
+		Parent(doc);
 
-		@name := name;
-		@ctype := ctype;
+		@type := GtkType->New(name, ctype);
 		@is_writable := is_writable;
 	}
 
+	method : public : GetType() ~ GtkType {
+		return @type;
+	}
+
 	method : public : ToString() ~ String {
+		buffer := "";
+
+		buffer += "\t[Field: ";
+		buffer += @type->ToString();
+
 		doc_size := @doc->Size();
-		return "\t[Field: name='{$@name}', cytpe='{$@ctype}', is_writable={$@is_writable}, doc_size={$doc_size}]";
+		buffer += ", is_writable={$@is_writable}, doc_size={$doc_size}]";
+
+		return buffer;
+	}
+
+	method : public : EmitCxx() ~ String {
+		buffer += "";
+
+		# getter
+		ctype := @type->GetCxxName();
+
+		buffer += "#ifdef _WIN32\n";
+		buffer += "\t__declspec(dllexport)\n";
+		buffer += "#endif\n";
+		buffer += "void objk_get_{$ctype}(VMContext& context) {\n";
+
+		buffer += "}\n";
+
+		return "buffer";
+	}
+
+	method : public : EmitObjeck() ~ String {
+		buffer += "";
+
+		# getter
+		objk_name := "Get";
+		objk_name += GtkMethod->ToCamelCase(@type->GetCxxName());
+
+		buffer += "method : public : {$objk_name}() ~ Nil {\n";
+		buffer += "\tarray_args := Base->New[2];\n\n";
+
+		buffer += "\tarray_args[0] := ";
+		select(@type->GetType()) {
+			label GtkType->Type->CHAR
+			label GtkType->Type->INT
+			label GtkType->Type->BOOL {
+				buffer += "IntRef->New(@gobject);\n";
+			}
+
+			label GtkType->Type->FLOAT {
+				buffer += "FloatRef->New(@gobject);\n";
+			}
+			
+			other {
+				buffer += "Nil;\n";
+			}
+		};
+
+		buffer += "\tarray_args[1] := IntRef->New(@gobject);\n\n";
+
+		buffer += "Proxy->GetDllProxy()->CallFunction(\"gtk3_gdk_window_resize\", array_args);\n\n";
+
+		buffer += "value := array_args[0]->As(IntRef);\n";
+		buffer += "return value->Get();\n";
+
+		return buffer;
 	}
 }
 
@@ -79,7 +179,7 @@ class GtkConst from GtkDocType {
 	@consts_types : Vector<GtkConstField>;
 
 	New(name : String, ctype : String, doc : String) {
-		Parent(doc, GtkType->Type->ENUM);
+		Parent(doc);
 
 		@name := name;
 		@ctype := ctype;
@@ -102,15 +202,23 @@ class GtkConst from GtkDocType {
 
 		return buffer;
 	}
+
+	method : public : EmitCxx() ~ String {
+		return "TODO";
+	}
+
+	method : public : EmitObjeck() ~ String {
+		return "TODO";
+	}
 }	
 
-class GtkConstField from GtkType {
+class GtkConstField implements CodeEmitter {
 	@name : String;
 	@ctype : String;
 	@value : Int;
 
 	New(name : String, ctype : String, value : Int) {
-		Parent(GtkType->Type->CONST);
+		Parent();
 
 		@name := name;
 		@ctype := ctype;
@@ -120,95 +228,150 @@ class GtkConstField from GtkType {
 	method : public : ToString() ~ String {
 		return "\t[Member: name='{$@name}', cytpe='{$@ctype}', value={$@value}]";
 	}
+
+	method : public : EmitCxx() ~ String {
+		return "TODO";
+	}
+
+	method : public : EmitObjeck() ~ String {
+		return "TODO";
+	}
 }
 
-class GtkDocType from GtkType {
+class GtkDocType implements CodeEmitter {
 	@doc : String;
 
-	New(doc : String, type : GtkType->Type) {
-		Parent(type);
+	New(doc : String) {
+		Parent();
 		@doc := doc;
 	}
 
 	method : virtual : public : ToString() ~ String;
-}
-
-class GtkType {
-	@type_mapping : static : Map<String, String>;
-	@type : GtkType->Type;
-
-	enum Type {
-		ENUM,
-		CONST,
-		RECORD,
-		CLASS,
-		METHOD
-	}
-
-	function : Init() ~ Nil {
-		@type_mapping := Map->New()<String, String>;
-
-		# ints
-		@type_mapping->Insert("gint", "Int");
-		@type_mapping->Insert("guint", "Int");
-		@type_mapping->Insert("int", "Int");
-		@type_mapping->Insert("gint8", "Int");
-		@type_mapping->Insert("guint8", "Int");
-		@type_mapping->Insert("gint16", "Int");
-		@type_mapping->Insert("guint16", "Int");
-		@type_mapping->Insert("gshort", "Int");
-		@type_mapping->Insert("guint32", "Int");
-		@type_mapping->Insert("guint32", "Int");
-		@type_mapping->Insert("int", "Int");
-		# doubles
-		@type_mapping->Insert("gdouble", "Float");
-		# bools
-		@type_mapping->Insert("gboolean", "Bool");
-		# strings
-		@type_mapping->Insert("utf8", "String");
-		@type_mapping->Insert("gchar*", "String");
-		@type_mapping->Insert("char*", "String");
-	}
-
-	function : MapType(ctype : String) ~ String {
-		result := @type_mapping->Find(ctype);
-		if(result = Nil) {
-			return ctype;
-		};
-
-		return result;
-	}
-
-	New(type : GtkType->Type) {
-		@type := type;
-	}
-
-	method : public : GetType() ~ GtkType->Type {
-		return @type;
-	}
-
-	method : virtual : public : ToString() ~ String;
-
-	function : ToCamelCase(name : String) ~ String {
-		if(<>name->IsEmpty()) {
-			name->Set(name->Get(0)->ToUpper(), 0);
-
-			do {
-				underscore_index := name->Find('_');
-				if(underscore_index > -1) {
-					name->Delete(underscore_index);
-					name->Set(name->Get(underscore_index)->ToUpper(), underscore_index);
-				};
-			}
-			while(underscore_index > -1);
-		};
-
-		return name;
-	}
+	method : virtual : public : EmitCxx() ~ String;
+	method : virtual : public : EmitObjeck() ~ String;
 }
 
 interface CodeEmitter {
-	method : virtual : EmitCxx() ~ String;
+	method : virtual : public : ToString() ~ String;
+	method : virtual : public : EmitCxx() ~ String;
+	method : virtual : public : EmitObjeck() ~ String;
+}
 
-	method : virtual : EmitObjeck() ~ String;
+class GtkType {
+	@name : String;
+	@ctype_name : String;
+	@objk_type_name : String;
+	@objk_type : GtkType->Type;
+
+	@type_mapping : static : Map<String, Pair<String, IntRef>>;
+	@unknown_type : static : Pair<String, IntRef>;
+
+	enum Type {
+		INT,
+		FLOAT,
+		CHAR,
+		BOOL,
+		STRING,
+		OBJECT,
+		UNKNOWN
+	}
+
+	New(name : String, ctype_name : String) {
+		@name := name;
+		@ctype_name := ctype_name;
+		
+		mapped_type := MapType(ctype_name);
+		@objk_type_name := mapped_type->GetFirst();
+		@objk_type := mapped_type->GetSecond()->Get();
+	}
+
+	function : Init() ~ Nil {
+		@type_mapping := Map->New()<String, Pair<String, IntRef>>;
+		@unknown_type := Pair->New("Unknown", IntRef->New(GtkType->Type->UNKNOWN))<String, IntRef>;
+
+		# ints
+		type_pair := Pair->New("Int", IntRef->New(GtkType->Type->INT))<String, IntRef>;
+		@type_mapping->Insert("gint", type_pair);
+		@type_mapping->Insert("guint", type_pair);
+		@type_mapping->Insert("int", type_pair);
+		@type_mapping->Insert("gint8", type_pair);
+		@type_mapping->Insert("guint8", type_pair);
+		@type_mapping->Insert("gint16", type_pair);
+		@type_mapping->Insert("guint16", type_pair);
+		@type_mapping->Insert("gshort", type_pair);
+		@type_mapping->Insert("guint32", type_pair);
+		@type_mapping->Insert("guint32", type_pair);
+		@type_mapping->Insert("int", type_pair);
+
+		# doubles
+		type_pair := Pair->New("Float", IntRef->New(GtkType->Type->FLOAT))<String, IntRef>;
+		@type_mapping->Insert("gdouble", type_pair);
+
+		# bools
+		type_pair := Pair->New("Bool", IntRef->New(GtkType->Type->BOOL))<String, IntRef>;
+		@type_mapping->Insert("gboolean", type_pair);
+
+		# strings
+		type_pair := Pair->New("String", IntRef->New(GtkType->Type->STRING))<String, IntRef>;
+		@type_mapping->Insert("utf8", type_pair);
+		@type_mapping->Insert("gchar*", type_pair);
+		@type_mapping->Insert("char*", type_pair);
+	}
+
+	method : MapType(ctype_name : String) ~ Pair<String, IntRef> {
+		result := @type_mapping->Find(ctype_name);
+		if(result <> Nil) {
+			return result;
+		};
+
+		return @unknown_type;
+	}
+
+	method : public : GetName() ~ String {
+		return @name;
+	}
+
+	method : public : GetCxxName() ~ String {		
+		return @ctype_name;
+	}
+
+	method : public : GetObjkName() ~ String {		
+		return @objk_type_name;
+	}
+
+	method : public : GetType() ~ GtkType->Type {		
+		return @objk_type;
+	}
+	
+	method : public : ToString() ~ String {
+		type_str : String;
+
+		select(@objk_type) {
+			label Type->INT {
+				type_str := "Type->INT";
+			}
+		
+			label Type->FLOAT {
+				type_str := "Type->INT";
+			}
+
+			label Type->CHAR {
+				type_str := "Type->INT";
+			}
+
+			label Type->STRING {
+				type_str := "Type->INT";
+			}
+
+			label Type->OBJECT {
+				type_str := "Type->INT";
+			}
+
+			other {
+				type_str := "<Unknown>";
+			}
+		};
+
+		return "[Type: name='{$@name}', ctype_name='{$@ctype_name}', type='{$type_str}']";
+	}
 }
