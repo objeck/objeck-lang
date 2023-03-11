@@ -166,15 +166,15 @@ class GtkRecordField from GtkDocType {
 			label GtkType->Type->CHAR
 			label GtkType->Type->INT
 			label GtkType->Type->BOOL {
-				buffer += "\tAPITools_SetIntValue(context, 1, po->{$name});\n";
+				buffer += "\tAPITools_SetIntValue(context, 1, p0->{$name});\n";
 			}
 
 			label GtkType->Type->FLOAT {
-				buffer += "\tAPITools_SetFloatValue(context, 1, po->{$name});\n";
+				buffer += "\tAPITools_SetFloatValue(context, 1, p0->{$name});\n";
 			}
 
 			label GtkType->Type->STRING {
-				buffer += "\tAPITools_SetStringValue(context, 0, BytesToUnicode(po->{$name}));\n";
+				buffer += "\tAPITools_SetStringValue(context, 0, BytesToUnicode(p0->{$name}));\n";
 			}
 
 			other {
