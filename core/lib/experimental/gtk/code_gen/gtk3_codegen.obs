@@ -173,6 +173,8 @@ class Gtk3Binder {
 				};
 
 				record->EmitObjeck()->PrintLine();
+				record->EmitCxx()->PrintLine();
+				"---"->PrintLine();
 			};
 		};
 

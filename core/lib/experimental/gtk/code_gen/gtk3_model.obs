@@ -24,20 +24,22 @@ class GtkMethod from GtkDocType {
 	}
 
 	function : ToCamelCase(name : String) ~ String {
-		if(<>name->IsEmpty()) {
-			name->Set(name->Get(0)->ToUpper(), 0);
+		temp := name->Copy();
+		
+		if(<>temp->IsEmpty()) {
+			temp->Set(temp->Get(0)->ToUpper(), 0);
 
 			do {
-				underscore_index := name->Find('_');
+				underscore_index := temp->Find('_');
 				if(underscore_index > -1) {
-					name->Delete(underscore_index);
-					name->Set(name->Get(underscore_index)->ToUpper(), underscore_index);
+					temp->Delete(underscore_index);
+					temp->Set(temp->Get(underscore_index)->ToUpper(), underscore_index);
 				};
 			}
 			while(underscore_index > -1);
 		};
 
-		return name;
+		return temp;
 	}
 
 	method : public : ToString() ~ String {
@@ -68,7 +70,7 @@ class GtkRecord from GtkDocType {
 	}
 
 	method : public : AddField(name : String, ctype : String, is_writable : Bool, doc : String := "") ~ Nil {
-		@field_types->AddBack(GtkRecordField->New(name, ctype, is_writable, doc));
+		@field_types->AddBack(GtkRecordField->New(name, ctype, is_writable, @name, @ctype, doc));
 	}
 
 	method : public : ToString() ~ String {
@@ -84,16 +86,30 @@ class GtkRecord from GtkDocType {
 	}
 
 	method : public : EmitCxx() ~ String {
-		return "TODO";
+		buffer := "";
+
+		each(field_type := @field_types) {
+			buffer += field_type->EmitCxx();
+		};
+
+		return buffer;
 	}
 
 	method : public : EmitObjeck() ~ String {
 		buffer := "";
 
+		buffer += "class {$@name} {\n";
+		buffer += "\t@gobject : Int;\n\n";
+		buffer += "\tNew(gobject : Int) {\n";
+		buffer += "\t\t@gobject := gobject;\n";
+		buffer += "\t}\n\n";
+
 		each(field_type := @field_types) {
 			buffer += field_type->EmitObjeck();
 		};
+		buffer->Pop();
 
+		buffer += "}\n";
 		return buffer;
 	}
 }
@@ -101,12 +117,16 @@ class GtkRecord from GtkDocType {
 class GtkRecordField from GtkDocType {
 	@type : GtkType;
 	@is_writable : Bool;
+	@rec_name : String;
+	@rec_ctype : String;
 
-	New(name : String, ctype : String, is_writable : Bool, doc : String) {
+	New(name : String, ctype : String, is_writable : Bool, rec_name : String, rec_ctype : String, doc : String) {
 		Parent(doc);
 
 		@type := GtkType->New(name, ctype);
 		@is_writable := is_writable;
+		@rec_name := rec_name;
+		@rec_ctype := rec_ctype;
 	}
 
 	method : public : GetType() ~ GtkType {
@@ -126,7 +146,7 @@ class GtkRecordField from GtkDocType {
 	}
 
 	method : public : EmitCxx() ~ String {
-		buffer += "";
+		buffer := "";
 
 		# getter
 		cxx_name := @type->GetName();
@@ -135,11 +155,31 @@ class GtkRecordField from GtkDocType {
 		buffer += "#ifdef _WIN32\n";
 		buffer += "\t__declspec(dllexport)\n";
 		buffer += "#endif\n";
-		buffer += "void ${name}(VMContext& context) {\n";
+		buffer += "void {$cxx_name}(VMContext& context) {\n";
 
-		buffer += "}\n";
+		buffer += "\t{$@rec_ctype}* p0 = ({$@rec_ctype}*)APITools_GetIntValue(context, 0);\n";
 
-		return "buffer";
+		# set return type
+		name := @type->GetName();
+		select(@type->GetType()) {
+			label GtkType->Type->CHAR
+			label GtkType->Type->INT
+			label GtkType->Type->BOOL {
+				buffer += "\tAPITools_SetIntValue(context, po->{$name});\n";
+			}
+
+			label GtkType->Type->FLOAT {
+				buffer += "\tAPITools_SetFloatValue(context, po->{$name});\n";
+			}
+
+			other {
+				buffer += "TODO\n";
+			}
+		};
+
+		buffer += "}\n\n";
+
+		return buffer;
 	}
 
 	method : public : EmitObjeck() ~ String {
@@ -149,7 +189,7 @@ class GtkRecordField from GtkDocType {
 		objk_name := "Get";
 		objk_name += GtkMethod->ToCamelCase(@type->GetName());
 
-		buffer += "method : public : {$objk_name}() ~ ";
+		buffer += "\tmethod : public : {$objk_name}() ~ ";
 
 		# set return type
 		select(@type->GetType()) {
@@ -158,7 +198,7 @@ class GtkRecordField from GtkDocType {
 			}
 
 			label GtkType->Type->INT {
-				buffer += "Int {\n";
+				buffer += "\tInt {\n";
 			}
 			label GtkType->Type->BOOL {
 				buffer += "Bool {\n";
@@ -174,10 +214,10 @@ class GtkRecordField from GtkDocType {
 			}
 		};
 
-		buffer += "\tarray_args := Base->New[2];\n\n";
+		buffer += "\t\tarray_args := Base->New[2];\n\n";
 
 		# set parameters
-		buffer += "\tarray_args[0] := ";
+		buffer += "\t\tarray_args[0] := ";
 		select(@type->GetType()) {
 			label GtkType->Type->CHAR
 			label GtkType->Type->INT
@@ -194,39 +234,43 @@ class GtkRecordField from GtkDocType {
 				buffer += "Nil;\n";
 			}
 		};
-		buffer += "\tarray_args[1] := IntRef->New(@gobject);\n\n";
+		buffer += "\t\tarray_args[1] := IntRef->New(@gobject);\n\n";
 
 		cxx_name := @type->GetName();
 		cxx_name := "objk_get_{$cxx_name}"->ToLower();
 
-		buffer += "\tProxy->GetDllProxy()->CallFunction(\"{$cxx_name}\", array_args);\n\n";
+		buffer += "\t\tProxy->GetDllProxy()->CallFunction(\"{$cxx_name}\", array_args);\n\n";
 
 		# set return parameter
 		select(@type->GetType()) {
 			label GtkType->Type->CHAR
-			label GtkType->Type->INT
+			label GtkType->Type->INT {
+				buffer += "\t\tvalue := array_args[0]->As(IntRef);\n";
+				buffer += "\t\treturn value->Get();\n";
+			}
+
 			label GtkType->Type->BOOL {
-				buffer += "\tvalue := array_args[0]->As(IntRef);\n";
-				buffer += "\treturn value->Get();\n";
+				buffer += "\t\tvalue := array_args[0]->As(IntRef);\n";
+				buffer += "\t\treturn value->Get() = 0 ? false : true;\n";
 			}
 
 			label GtkType->Type->FLOAT {
-				buffer += "\tvalue := array_args[0]->As(FloatRef);\n";
-				buffer += "\treturn value->Get();\n";
+				buffer += "\t\tvalue := array_args[0]->As(FloatRef);\n";
+				buffer += "\t\treturn value->Get();\n";
 			}
 
 			label GtkType->Type->CONSTS {
 				objk_name := @type->GetObjkName();
-				buffer += "\tvalue := array_args[0]->As(IntRef);\n";
-				buffer += "\treturn value->Get()->As({$objk_name});\n";
+				buffer += "\t\tvalue := array_args[0]->As(IntRef);\n";
+				buffer += "\t\treturn value->Get()->As({$objk_name});\n";
 			}
 
 			other {
 				objk_name := @type->GetObjkName();
-				buffer += "\treturn value->As({$objk_name});\n";
+				buffer += "\t\treturn value->As({$objk_name});\n";
 			}
 		};
-		buffer += "}\n\n";
+		buffer += "\t}\n\n";
 
 		return buffer;
 	}
@@ -395,7 +439,6 @@ class GtkType {
 
 		if(@enum_inventory->Has(ctype_name)) {
 			name := ctype_name->Remove("Gdk");
-"=== {$name} ==="->PrintLine();			
 
 			type_pair := Pair->New(name, IntRef->New(GtkType->Type->CONSTS))<String, IntRef>;
 			@type_mapping->Insert(name, type_pair);
