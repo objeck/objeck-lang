@@ -88,7 +88,13 @@ class GtkRecord from GtkDocType {
 	}
 
 	method : public : EmitObjeck() ~ String {
-		return "TODO";	
+		buffer := "";
+
+		each(field_type := @field_types) {
+			buffer += field_type->EmitObjeck();
+		};
+
+		return buffer;
 	}
 }
 
@@ -123,12 +129,13 @@ class GtkRecordField from GtkDocType {
 		buffer += "";
 
 		# getter
-		ctype := @type->GetCxxName();
+		cxx_name := @type->GetName();
+		cxx_name := "objk_get_{$cxx_name}"->ToLower();
 
 		buffer += "#ifdef _WIN32\n";
 		buffer += "\t__declspec(dllexport)\n";
 		buffer += "#endif\n";
-		buffer += "void objk_get_{$ctype}(VMContext& context) {\n";
+		buffer += "void ${name}(VMContext& context) {\n";
 
 		buffer += "}\n";
 
@@ -136,38 +143,58 @@ class GtkRecordField from GtkDocType {
 	}
 
 	method : public : EmitObjeck() ~ String {
-		buffer += "";
+		buffer := "";
 
 		# getter
 		objk_name := "Get";
-		objk_name += GtkMethod->ToCamelCase(@type->GetCxxName());
+		objk_name += GtkMethod->ToCamelCase(@type->GetName());
 
 		buffer += "method : public : {$objk_name}() ~ Nil {\n";
 		buffer += "\tarray_args := Base->New[2];\n\n";
+
 
 		buffer += "\tarray_args[0] := ";
 		select(@type->GetType()) {
 			label GtkType->Type->CHAR
 			label GtkType->Type->INT
 			label GtkType->Type->BOOL {
-				buffer += "IntRef->New(@gobject);\n";
+				buffer += "IntRef->New();\n";
 			}
 
 			label GtkType->Type->FLOAT {
-				buffer += "FloatRef->New(@gobject);\n";
+				buffer += "FloatRef->New();\n";
 			}
-			
+
 			other {
 				buffer += "Nil;\n";
 			}
 		};
-
 		buffer += "\tarray_args[1] := IntRef->New(@gobject);\n\n";
 
-		buffer += "Proxy->GetDllProxy()->CallFunction(\"gtk3_gdk_window_resize\", array_args);\n\n";
+		cxx_name := @type->GetName();
+		cxx_name := "objk_get_{$cxx_name}"->ToLower();
 
-		buffer += "value := array_args[0]->As(IntRef);\n";
-		buffer += "return value->Get();\n";
+		buffer += "\tProxy->GetDllProxy()->CallFunction(\"{$cxx_name}\", array_args);\n\n";
+
+		select(@type->GetType()) {
+			label GtkType->Type->CHAR
+			label GtkType->Type->INT
+			label GtkType->Type->BOOL {
+				buffer += "\tvalue := array_args[0]->As(IntRef);\n";
+				buffer += "\treturn value->Get();\n";
+			}
+
+			label GtkType->Type->FLOAT {
+				buffer += "\tvalue := array_args[0]->As(FloatRef);\n";
+				buffer += "\treturn value->Get();\n";
+			}
+
+			other {
+				objk_name := @type->GetObjkName();
+				buffer += "\treturn value->As({$objk_name});\n";
+			}
+		};
+		buffer += "}\n\n";
 
 		return buffer;
 	}
