@@ -88,7 +88,7 @@ class Gtk3Binder {
 	}
 
 	method : Inventory(parser : XmlParser) ~ Nil {
-		GtkType->Init();
+		
 		
 		enums_xml := parser->FindElements("/repository/namespace/enumeration")<XmlElement>;
 		if(enums_xml <> Nil) {
@@ -124,6 +124,8 @@ class Gtk3Binder {
 				@klass_inventory->Insert(klass_xml->GetAttribute("name")->GetValue());
 			};
 		};
+
+		GtkType->Init(@enum_inventory, @union_inventory, @record_inventory, @klass_inventory);
 	}
 
 	method : LoadRecords(records_xml : Vector<XmlElement>) ~ Bool {
