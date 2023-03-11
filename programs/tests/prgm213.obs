@@ -1,0 +1,10 @@
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		s := "Hello World!";
+		s->Size()->PrintLine();
+		s->Capacity()->PrintLine();
+		s->Delete(2,7);
+		s->Size()->PrintLine();
+		s->PrintLine();
+	}
+}
