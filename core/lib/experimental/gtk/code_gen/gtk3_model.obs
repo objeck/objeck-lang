@@ -149,14 +149,37 @@ class GtkRecordField from GtkDocType {
 		objk_name := "Get";
 		objk_name += GtkMethod->ToCamelCase(@type->GetName());
 
-		buffer += "method : public : {$objk_name}() ~ Nil {\n";
-		buffer += "\tarray_args := Base->New[2];\n\n";
+		buffer += "method : public : {$objk_name}() ~ ";
 
+		select(@type->GetType()) {
+			label GtkType->Type->CHAR {
+				buffer += "Char {\n";
+			}
+
+			label GtkType->Type->INT {
+				buffer += "Int {\n";
+			}
+			label GtkType->Type->BOOL {
+				buffer += "Bool {\n";
+			}
+
+			label GtkType->Type->FLOAT {
+				buffer += "Float {\n";
+			}
+
+			other {
+				objk_name := @type->GetObjkName();
+				buffer += "{$objk_name} {\n";
+			}
+		};
+
+		buffer += "\tarray_args := Base->New[2];\n\n";
 
 		buffer += "\tarray_args[0] := ";
 		select(@type->GetType()) {
 			label GtkType->Type->CHAR
 			label GtkType->Type->INT
+			label GtkType->Type->CONSTS
 			label GtkType->Type->BOOL {
 				buffer += "IntRef->New();\n";
 			}
@@ -187,6 +210,12 @@ class GtkRecordField from GtkDocType {
 			label GtkType->Type->FLOAT {
 				buffer += "\tvalue := array_args[0]->As(FloatRef);\n";
 				buffer += "\treturn value->Get();\n";
+			}
+
+			label GtkType->Type->CONSTS {
+				objk_name := @type->GetObjkName();
+				buffer += "\tvalue := array_args[0]->As(IntRef);\n";
+				buffer += "\treturn value->Get()->As({$objk_name});\n";
 			}
 
 			other {
@@ -292,12 +321,17 @@ class GtkType {
 
 	@type_mapping : static : Map<String, Pair<String, IntRef>>;
 	@unknown_type : static : Pair<String, IntRef>;
+	@enum_inventory : static : Set<String>;
+	@union_inventory : static : Set<String>;
+	@record_inventory : static : Set<String>;
+	@klass_inventory : static : Set<String>;
 
 	enum Type {
 		INT,
 		FLOAT,
 		CHAR,
 		BOOL,
+		CONSTS,
 		STRING,
 		OBJECT,
 		UNKNOWN
@@ -312,7 +346,12 @@ class GtkType {
 		@objk_type := mapped_type->GetSecond()->Get();
 	}
 
-	function : Init() ~ Nil {
+	function : Init(enum_inventory : Set<String>, union_inventory : Set<String>, record_inventory : Set<String>, klass_inventory : Set<String>) ~ Nil {
+		@enum_inventory := enum_inventory;
+		@union_inventory := union_inventory;
+		@record_inventory := record_inventory;
+		@klass_inventory := klass_inventory;
+
 		@type_mapping := Map->New()<String, Pair<String, IntRef>>;
 		@unknown_type := Pair->New("Unknown", IntRef->New(GtkType->Type->UNKNOWN))<String, IntRef>;
 
@@ -351,8 +390,16 @@ class GtkType {
 			return result;
 		};
 
-		# TODO: look at records and classes
-		# last...
+		if(@enum_inventory->Has(ctype_name)) {
+			name := ctype_name->Remove("Gdk");
+"=== {$name} ==="->PrintLine();			
+
+			type_pair := Pair->New(name, IntRef->New(GtkType->Type->CONSTS))<String, IntRef>;
+			@type_mapping->Insert(name, type_pair);
+
+			return type_pair;
+		};
+		
 		return @unknown_type;
 	}
 
