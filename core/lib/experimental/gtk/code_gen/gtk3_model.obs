@@ -201,7 +201,7 @@ class GtkRecordField from GtkDocType {
 
 		buffer += "\tProxy->GetDllProxy()->CallFunction(\"{$cxx_name}\", array_args);\n\n";
 
-		# set return
+		# set return parameter
 		select(@type->GetType()) {
 			label GtkType->Type->CHAR
 			label GtkType->Type->INT
