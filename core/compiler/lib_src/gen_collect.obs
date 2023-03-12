@@ -2216,12 +2216,12 @@ bundle Collection {
 			while(i <= mid & j <= hi) {
 				if(b[i]->Compare(b[j]) < 0 | b[i]->Compare(b[j]) = 0) {
 					a[k] := b[i];
-					k := k + 1;
+					k += 1;
 					i += 1;
 				}
 				else {
 					a[k] := b[j];
-					k := k + 1;
+					k += 1;
 					j := j + 1;
 				};
 			};
@@ -2229,7 +2229,7 @@ bundle Collection {
 			# copy back remaining elements of first half (if any)
 			while(i <= mid) {
 				a[k] := b[i];
-				k := k + 1;
+				k += 1;
 				i += 1;
 			};
 		}
