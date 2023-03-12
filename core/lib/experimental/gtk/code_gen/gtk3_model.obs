@@ -121,6 +121,7 @@ class GtkRecordField from GtkDocType {
 	@rec_name : String;
 	@rec_ctype : String;
 
+	# TODO: field_name vs. type_nam
 	New(name : String, ctype : String, is_writable : Bool, rec_name : String, rec_ctype : String, doc : String) {
 		Parent(doc);
 
@@ -437,7 +438,7 @@ class GtkType {
 		@type_mapping->Insert("char*", type_pair);
 	}
 
-	function : GetCxxdName(name : String) ~ String {
+	function : GetCxxName(name : String) ~ String {
 		mapped_type := @enum_inventory->Find(name);
 		if(mapped_type <> Nil) {
 			return mapped_type->GetSecond();
@@ -453,7 +454,7 @@ class GtkType {
 			return mapped_type->GetSecond();
 		};
 
-		return "Unknown";
+		return name;
 	}
 
 	method : MapType(ctype_name : String) ~ Pair<String, IntRef> {
@@ -461,7 +462,6 @@ class GtkType {
 		if(result <> Nil) {
 			return result;
 		};
-"### 1: {$ctype_name} ###"->PrintLine();
 
 		mapped_type := @enum_inventory->Find(ctype_name);
 		if(mapped_type <> Nil) {
