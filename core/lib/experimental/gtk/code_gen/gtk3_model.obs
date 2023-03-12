@@ -437,24 +437,31 @@ class GtkType {
 		@type_mapping->Insert("char*", type_pair);
 	}
 
+	function : GetCxxdName(name : String) ~ String {
+		mapped_type := @enum_inventory->Find(name);
+		if(mapped_type <> Nil) {
+			return mapped_type->GetSecond();
+		};
+
+		mapped_type := @record_inventory->Find(name);
+		if(mapped_type <> Nil) {
+			return mapped_type->GetSecond();
+		};
+
+		mapped_type := @klass_inventory->Find(name);
+		if(mapped_type <> Nil) {
+			return mapped_type->GetSecond();
+		};
+
+		return "Unknown";
+	}
+
 	method : MapType(ctype_name : String) ~ Pair<String, IntRef> {
 		result := @type_mapping->Find(ctype_name);
 		if(result <> Nil) {
 			return result;
 		};
 
-		mapped_type := @enum_inventory->Find(ctype_name);
-		if(mapped_type <> Nil) {
-			name := mapped_type->GetFirst();
-			ctype_name := mapped_type->GetSecond();
-"### {$ctype_name} ###"->PrintLine();
-
-			type_pair := Pair->New(ctype_name, IntRef->New(GtkType->Type->CONSTS))<String, IntRef>;
-			@type_mapping->Insert(name, type_pair);
-
-			return type_pair;
-		};
-		
 		return @unknown_type;
 	}
 
