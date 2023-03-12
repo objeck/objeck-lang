@@ -482,10 +482,7 @@ class GtkType {
 		};
 
 		lookup_name := ctype_name->Copy()->Remove(@namespace);
-		if(lookup_name->EndsWith('*')) {
-			lookup_name->Pop();
-		};
-
+		
 		mapped_type := @enum_inventory->Find(lookup_name);
 		if(mapped_type <> Nil) {
 			type_pair := Pair->New(mapped_type->GetFirst(), IntRef->New(GtkType->Type->CONSTS))<String, IntRef>;
@@ -502,6 +499,10 @@ class GtkType {
 			return type_pair;
 		};
 
+		if(lookup_name->EndsWith('*')) {
+			lookup_name->Pop();
+		};
+		
 		mapped_type := @klass_inventory->Find(lookup_name);
 		if(mapped_type <> Nil) {
 			type_pair := Pair->New(mapped_type->GetFirst(), IntRef->New(GtkType->Type->OBJECT))<String, IntRef>;
