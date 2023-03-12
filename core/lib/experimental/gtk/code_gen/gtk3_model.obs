@@ -116,6 +116,7 @@ class GtkRecord from GtkDocType {
 }
 
 class GtkRecordField from GtkDocType {
+	@name : String;
 	@type : GtkType;
 	@is_writable : Bool;
 	@rec_name : String;
@@ -125,7 +126,11 @@ class GtkRecordField from GtkDocType {
 	New(name : String, ctype : String, is_writable : Bool, rec_name : String, rec_ctype : String, doc : String) {
 		Parent(doc);
 
-		@type := GtkType->New(name, ctype);
+		@name := name;
+		
+		objk_name := GtkType->GetCxxName(ctype);
+		@type := GtkType->New(objk_name, ctype);
+		
 		@is_writable := is_writable;
 		@rec_name := rec_name;
 		@rec_ctype := rec_ctype;
@@ -151,7 +156,7 @@ class GtkRecordField from GtkDocType {
 		buffer := "";
 
 		# getter
-		cxx_name := @type->GetName();
+		cxx_name := @name;
 		cxx_name := "objk_get_{$cxx_name}"->ToLower();
 
 		buffer += "#ifdef _WIN32\n";
@@ -162,7 +167,7 @@ class GtkRecordField from GtkDocType {
 		buffer += "\t{$@rec_ctype}* p0 = ({$@rec_ctype}*)APITools_GetIntValue(context, 0);\n";
 
 		# set return type
-		name := @type->GetName();
+		name := @name;
 		select(@type->GetType()) {
 			label GtkType->Type->CHAR
 			label GtkType->Type->INT
@@ -193,7 +198,7 @@ class GtkRecordField from GtkDocType {
 
 		# getter
 		objk_name := "Get";
-		objk_name += GtkMethod->ToCamelCase(@type->GetName());
+		objk_name += GtkMethod->ToCamelCase(@name);
 
 		buffer += "\tmethod : public : {$objk_name}() ~ ";
 
@@ -242,7 +247,7 @@ class GtkRecordField from GtkDocType {
 		};
 		buffer += "\t\tarray_args[1] := IntRef->New(@gobject);\n\n";
 
-		cxx_name := @type->GetName();
+		cxx_name := @name;
 		cxx_name := "objk_get_{$cxx_name}"->ToLower();
 
 		buffer += "\t\tProxy->GetDllProxy()->CallFunction(\"{$cxx_name}\", array_args);\n\n";
