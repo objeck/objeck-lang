@@ -2875,7 +2875,7 @@ bundle System {
 		New() {
 			Parent();
 
-			@max := 5;
+			@max := 8;
 			@string := Char->New[@max];
 			@pos := 0;
 		}
@@ -2887,7 +2887,7 @@ bundle System {
 		New(string : String) {
 			Parent();
 
-			@max := 5;
+			@max := 8;
 			@string := Char->New[@max];
 			@pos := 0;
 
@@ -2903,7 +2903,7 @@ bundle System {
 		New(array : Char[]) {
 			Parent();
 
-			@max := 5;
+			@max := 8;
 			@string := Char->New[@max];
 			@pos := 0;
 
@@ -2919,7 +2919,7 @@ bundle System {
 			Parent();
 
 			if(copy) {
-				@max := 5;
+				@max := 8;
 				@string := Char->New[@max];
 				@pos := 0;
 			}
@@ -2941,7 +2941,7 @@ bundle System {
 		New(array : Char[], offset : Int, length : Int) {
 			Parent();
 
-			@max := 5;
+			@max := 8;
 			@string := Char->New[@max];
 			@pos := 0;
 
@@ -2955,7 +2955,7 @@ bundle System {
 		New(bytes : Byte[]) {
 			Parent();
 			
-			@max := 5;
+			@max := 8;
 			@string := Char->New[@max];
 			@pos := 0;
 
@@ -2971,7 +2971,7 @@ bundle System {
 		New(bytes : Byte[], offset : Int, length : Int) {
 			Parent();
 
-			@max := 5;
+			@max := 8;
 			@string := Char->New[@max];
 			@pos := 0;
 
@@ -3105,7 +3105,7 @@ bundle System {
 		~#
 		method : public : Append(array : Char[]) ~ Nil {
 			if(@pos + array->Size() >= @max) {
-				@max += @max << 1 + array->Size();
+				@max += @max + @max >> 1;
 				temp := Char->New[@max];
 				Runtime->Copy(temp, 0, @string, 0, @string->Size());
 				@string := temp;
@@ -3130,7 +3130,7 @@ bundle System {
 			};
 			
 			if(@pos + length >= @max) {
-				@max += @max << 1 + length;
+				@max += @max + @max >> 1;
 				temp := Char->New[@max];
 				Runtime->Copy(temp, 0, @string, 0, @string->Size());
 				@string := temp;
@@ -3149,7 +3149,7 @@ bundle System {
 		~#
 		method : public : native : Append(array : Byte[]) ~ Nil {
 			if(@pos + array->Size() >= @max) {
-				@max += @max << 1 + array->Size();
+				@max += @max + @max >> 1;
 				temp := Char->New[@max];
 				Runtime->Copy(temp, 0, @string, 0, @string->Size());
 				@string := temp;
@@ -3174,7 +3174,7 @@ bundle System {
 			};
 			
 			if(@pos + length >= @max) {
-				@max += @max << 1 + length;
+				@max += @max + @max >> 1;
 				temp := Char->New[@max];
 				Runtime->Copy(temp, 0, @string, 0, @string->Size());
 				@string := temp;
@@ -3194,7 +3194,7 @@ bundle System {
 		method : public : Append(c : Char) ~ Nil {
 			if(@pos >= @max) {
 				# expand string
-				@max := @max << 1;
+				@max :=@max + @max >> 1;
 				temp := Char->New[@max];
 				# copy elements
 				Runtime->Copy(temp, 0, @string, 0, @string->Size());
@@ -3212,7 +3212,7 @@ bundle System {
 		method : public : Append(c : Byte) ~ Nil {
 			if(@pos >= @max) {
 				# expand string
-				@max := @max << 1;
+				@max := @max + @max >> 1;
 				temp := Char->New[@max];
 				# copy elements
 				Runtime->Copy(temp, 0, @string, 0, @string->Size());
@@ -3753,7 +3753,7 @@ bundle System {
 
 			size := @pos + 1;
 			if(size > @max) {
-				@max := @max << 1;
+				@max := @max + @max >> 1;
 				temp := Char->New[@max];
 				Runtime->Copy(temp, 0, @string, 0, index);
 
@@ -3790,7 +3790,7 @@ bundle System {
 
 			size := @pos + string->Size();
 			if(size > @max) {
-				@max := @max << 1;
+				@max := @max + @max >> 1;
 				temp := Char->New[@max];
 				Runtime->Copy(temp, 0, @string, 0, index);
 				
@@ -3821,7 +3821,7 @@ bundle System {
 		Clears string
 		~#
 		method : public : Clear() ~ Nil {
-			@max := 5;
+			@max := 8;
 			@string := Char->New[@max];
 			@pos := 0;			
 		}

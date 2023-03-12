@@ -127,10 +127,7 @@ class GtkRecordField from GtkDocType {
 		Parent(doc);
 
 		@name := name;
-		
-		objk_name := GtkType->GetCxxName(ctype);
-		@type := GtkType->New(objk_name, ctype);
-		
+		@type := GtkType->New(GtkType->GetCxxName(ctype), ctype);
 		@is_writable := is_writable;
 		@rec_name := rec_name;
 		@rec_ctype := rec_ctype;
