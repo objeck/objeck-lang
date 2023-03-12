@@ -178,7 +178,7 @@ class GtkRecordField from GtkDocType {
 			}
 
 			other {
-				buffer += "--- OTHER ---\n";
+				buffer += "\t--- OTHER ---\n";
 			}
 		};
 
@@ -373,10 +373,10 @@ class GtkType {
 
 	@type_mapping : static : Map<String, Pair<String, IntRef>>;
 	@unknown_type : static : Pair<String, IntRef>;
-	@enum_inventory : static : Set<String>;
-	@union_inventory : static : Set<String>;
-	@record_inventory : static : Set<String>;
-	@klass_inventory : static : Set<String>;
+	@enum_inventory : static : Map<String, Pair<String, String>>;
+	@union_inventory : static : Map<String, Pair<String, String>>;
+	@record_inventory : static : Map<String, Pair<String, String>>;
+	@klass_inventory : static : Map<String, Pair<String, String>>;
 
 	enum Type {
 		INT,
@@ -398,7 +398,8 @@ class GtkType {
 		@objk_type := mapped_type->GetSecond()->Get();
 	}
 
-	function : Init(enum_inventory : Set<String>, union_inventory : Set<String>, record_inventory : Set<String>, klass_inventory : Set<String>) ~ Nil {
+	function : Init(enum_inventory : Map<String, Pair<String, String>>, union_inventory : Map<String, Pair<String, String>>, 
+			record_inventory : Map<String, Pair<String, String>>, klass_inventory : Map<String, Pair<String, String>>) ~ Nil {
 		@enum_inventory := enum_inventory;
 		@union_inventory := union_inventory;
 		@record_inventory := record_inventory;
@@ -442,10 +443,13 @@ class GtkType {
 			return result;
 		};
 
-		if(@enum_inventory->Has(ctype_name)) {
-			name := ctype_name->Remove("Gdk");
+		mapped_type := @enum_inventory->Find(ctype_name);
+		if(mapped_type <> Nil) {
+			name := mapped_type->GetFirst();
+			ctype_name := mapped_type->GetSecond();
+"### {$ctype_name} ###"->PrintLine();
 
-			type_pair := Pair->New(name, IntRef->New(GtkType->Type->CONSTS))<String, IntRef>;
+			type_pair := Pair->New(ctype_name, IntRef->New(GtkType->Type->CONSTS))<String, IntRef>;
 			@type_mapping->Insert(name, type_pair);
 
 			return type_pair;
