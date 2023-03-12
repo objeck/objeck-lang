@@ -161,7 +161,7 @@ class GtkRecordField from GtkDocType {
 		buffer += "#endif\n";
 		buffer += "void {$cxx_name}(VMContext& context) {\n";
 
-		buffer += "\t{$@rec_ctype}* p0 = ({$@rec_ctype}*)APITools_GetIntValue(context, 0);\n";
+		buffer += "\t{$@rec_ctype}* p0 = ({$@rec_ctype}*)APITools_GetIntValue(context, 1);\n";
 
 		# set return type
 		name := @name;
@@ -169,15 +169,19 @@ class GtkRecordField from GtkDocType {
 			label GtkType->Type->CHAR
 			label GtkType->Type->INT
 			label GtkType->Type->BOOL {
-				buffer += "\tAPITools_SetIntValue(context, 1, p0->{$name});\n";
+				buffer += "\tAPITools_SetIntValue(context, 0, p0->{$name});\n";
 			}
 
 			label GtkType->Type->FLOAT {
-				buffer += "\tAPITools_SetFloatValue(context, 1, p0->{$name});\n";
+				buffer += "\tAPITools_SetFloatValue(context, 0, p0->{$name});\n";
 			}
 
 			label GtkType->Type->STRING {
 				buffer += "\tAPITools_SetStringValue(context, 0, BytesToUnicode(p0->{$name}));\n";
+			}
+
+			label GtkType->Type->CONSTS {
+				buffer += "\tAPITools_SetIntValue(context, 0, (size_t)p0->{$name});\n";
 			}
 
 			other {
@@ -474,6 +478,14 @@ class GtkType {
 		};						
 
 		mapped_type := @record_inventory->Find(ctype_name);
+		if(mapped_type <> Nil) {
+			type_pair := Pair->New(mapped_type->GetFirst(), IntRef->New(GtkType->Type->OBJECT))<String, IntRef>;
+			@type_mapping->Insert(mapped_type->GetSecond(), type_pair);
+
+			return type_pair;
+		};
+
+		mapped_type := @klass_inventory->Find(ctype_name);
 		if(mapped_type <> Nil) {
 			type_pair := Pair->New(mapped_type->GetFirst(), IntRef->New(GtkType->Type->OBJECT))<String, IntRef>;
 			@type_mapping->Insert(mapped_type->GetSecond(), type_pair);
