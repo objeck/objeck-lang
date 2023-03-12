@@ -461,6 +461,23 @@ class GtkType {
 		if(result <> Nil) {
 			return result;
 		};
+"### 1: {$ctype_name} ###"->PrintLine();
+
+		mapped_type := @enum_inventory->Find(ctype_name);
+		if(mapped_type <> Nil) {
+			type_pair := Pair->New(mapped_type->GetFirst(), IntRef->New(GtkType->Type->CONSTS))<String, IntRef>;
+			@type_mapping->Insert(mapped_type->GetSecond(), type_pair);
+
+			return type_pair;
+		};						
+
+		mapped_type := @record_inventory->Find(ctype_name);
+		if(mapped_type <> Nil) {
+			type_pair := Pair->New(mapped_type->GetFirst(), IntRef->New(GtkType->Type->OBJECT))<String, IntRef>;
+			@type_mapping->Insert(mapped_type->GetSecond(), type_pair);
+
+			return type_pair;
+		};
 
 		return @unknown_type;
 	}
