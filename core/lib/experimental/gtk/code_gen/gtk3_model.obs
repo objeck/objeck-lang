@@ -236,6 +236,7 @@ class GtkRecordField from GtkDocType {
 			label GtkType->Type->CHAR
 			label GtkType->Type->INT
 			label GtkType->Type->CONSTS
+			label GtkType->Type->OBJECT
 			label GtkType->Type->BOOL {
 				buffer += "IntRef->New();\n";
 			}
