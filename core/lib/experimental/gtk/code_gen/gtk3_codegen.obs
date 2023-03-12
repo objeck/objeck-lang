@@ -171,7 +171,7 @@ class Gtk3Binder {
 							ctype_value := ctype_xml->GetValue();
 						}
 						else {
-							ctype_value := GtkType->GetCxxName(name_xml->GetValue());
+							ctype_value := name_xml->GetValue();
 						};
 
 						name_value := field_xml->GetAttribute("name")->GetValue();	
