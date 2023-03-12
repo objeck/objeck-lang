@@ -2222,7 +2222,7 @@ bundle Collection {
 				else {
 					a[k] := b[j];
 					k += 1;
-					j := j + 1;
+					j += + 1;
 				};
 			};
 			
