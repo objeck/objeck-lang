@@ -3104,8 +3104,8 @@ bundle System {
 		@param array character array
 		~#
 		method : public : Append(array : Char[]) ~ Nil {
-			if(@pos + array->Size() >= @max) {
-				max := @pos + array->Size();
+			max := @pos + array->Size();
+			if(max >= @max) {
 				@max += max + max >> 1;
 				temp := Char->New[@max];
 				Runtime->Copy(temp, 0, @string, 0, @string->Size());
@@ -3130,8 +3130,8 @@ bundle System {
 				return;
 			};
 			
-			if(@pos + length >= @max) {
-				max := @pos + length;
+			max := @pos + length;
+			if(max >= @max) {
 				@max += max + max >> 1;
 				temp := Char->New[@max];
 				Runtime->Copy(temp, 0, @string, 0, @string->Size());
@@ -3150,8 +3150,8 @@ bundle System {
 		@param array array to be copied
 		~#
 		method : public : native : Append(array : Byte[]) ~ Nil {
-			if(@pos + array->Size() >= @max) {
-				max := @pos + array->Size();
+			max := @pos + array->Size();
+			if(max >= @max) {
 				@max += max + max >> 1;
 				temp := Char->New[@max];
 				Runtime->Copy(temp, 0, @string, 0, @string->Size());
@@ -3175,9 +3175,9 @@ bundle System {
 			if(offset < 0) {
 				return;
 			};
-			
-			if(@pos + length >= @max) {
-				max := @pos + length;
+
+			max := @pos + length;
+			if(max >= @max) {
 				@max += max + max >> 1;
 				temp := Char->New[@max];
 				Runtime->Copy(temp, 0, @string, 0, @string->Size());
