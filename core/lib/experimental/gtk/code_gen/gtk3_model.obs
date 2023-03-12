@@ -469,6 +469,7 @@ class GtkType {
 			return result;
 		};
 
+		# TODO: namespace
 		lookup_name := ctype_name->Copy()->Remove("Gdk");
 
 		mapped_type := @enum_inventory->Find(lookup_name);
@@ -494,7 +495,7 @@ class GtkType {
 
 			return type_pair;
 		};
-		
+
 		return @unknown_type;
 	}
 
