@@ -469,7 +469,9 @@ class GtkType {
 			return result;
 		};
 
-		mapped_type := @enum_inventory->Find(ctype_name);
+		lookup_name := ctype_name->Copy()->Remove("Gdk");
+
+		mapped_type := @enum_inventory->Find(lookup_name);
 		if(mapped_type <> Nil) {
 			type_pair := Pair->New(mapped_type->GetFirst(), IntRef->New(GtkType->Type->CONSTS))<String, IntRef>;
 			@type_mapping->Insert(mapped_type->GetSecond(), type_pair);
@@ -477,7 +479,7 @@ class GtkType {
 			return type_pair;
 		};						
 
-		mapped_type := @record_inventory->Find(ctype_name);
+		mapped_type := @record_inventory->Find(lookup_name);
 		if(mapped_type <> Nil) {
 			type_pair := Pair->New(mapped_type->GetFirst(), IntRef->New(GtkType->Type->OBJECT))<String, IntRef>;
 			@type_mapping->Insert(mapped_type->GetSecond(), type_pair);
@@ -485,14 +487,14 @@ class GtkType {
 			return type_pair;
 		};
 
-		mapped_type := @klass_inventory->Find(ctype_name);
+		mapped_type := @klass_inventory->Find(lookup_name);
 		if(mapped_type <> Nil) {
 			type_pair := Pair->New(mapped_type->GetFirst(), IntRef->New(GtkType->Type->OBJECT))<String, IntRef>;
 			@type_mapping->Insert(mapped_type->GetSecond(), type_pair);
 
 			return type_pair;
 		};
-
+		
 		return @unknown_type;
 	}
 
