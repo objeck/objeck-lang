@@ -93,8 +93,9 @@ class Gtk3Binder {
 			each(enum_xml := enums_xml) {
 				name := enum_xml->GetAttribute("name")->GetValue();
 				ctype_name := enum_xml->GetAttribute("type")->GetValue();
+"### 0: {$ctype_name} ###"->PrintLine();
 
-				@enum_inventory->Insert(name, Pair->New(name, ctype_name)<String, String>);
+				@enum_inventory->Insert(ctype_name, Pair->New(name, ctype_name)<String, String>);
 			};
 		};
 
@@ -104,7 +105,7 @@ class Gtk3Binder {
 				name := bitfield_xml->GetAttribute("name")->GetValue();
 				ctype_name := bitfield_xml->GetAttribute("type")->GetValue();
 
-				@enum_inventory->Insert(name, Pair->New(name, ctype_name)<String, String>);
+				@enum_inventory->Insert(ctype_name, Pair->New(name, ctype_name)<String, String>);
 			};
 		};
 
@@ -114,7 +115,7 @@ class Gtk3Binder {
 				name := union_xml->GetAttribute("name")->GetValue();
 				ctype_name := union_xml->GetAttribute("type")->GetValue();
 
-				@enum_inventory->Insert(name, Pair->New(name, ctype_name)<String, String>);
+				@enum_inventory->Insert(ctype_name, Pair->New(name, ctype_name)<String, String>);
 			};
 		};
 
@@ -123,8 +124,9 @@ class Gtk3Binder {
 			each(record_xml := records_xml) {
 				name := record_xml->GetAttribute("name")->GetValue();
 				ctype_name := record_xml->GetAttribute("type")->GetValue();
+"### 0: {$ctype_name} ###"->PrintLine();
 
-				@enum_inventory->Insert(name, Pair->New(name, ctype_name)<String, String>);
+				@enum_inventory->Insert(ctype_name, Pair->New(name, ctype_name)<String, String>);
 			};
 		};
 
@@ -134,7 +136,7 @@ class Gtk3Binder {
 				name := klass_xml->GetAttribute("name")->GetValue();
 				ctype_name := klass_xml->GetAttribute("type")->GetValue();
 
-				@enum_inventory->Insert(name, Pair->New(name, ctype_name)<String, String>);
+				@enum_inventory->Insert(ctype_name, Pair->New(name, ctype_name)<String, String>);
 			};
 		};
 
@@ -172,7 +174,6 @@ class Gtk3Binder {
 						}
 						else {
 							ctype_value := GtkType->GetCxxdName(name_xml->GetValue());
-"### {$ctype_value} ###"->PrintLine();							
 						};
 
 						name_value := field_xml->GetAttribute("name")->GetValue();	
