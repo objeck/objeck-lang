@@ -243,7 +243,7 @@ bundle System {
 		~#
 		function : ToInt(v : Byte) ~ Int {
 			return v->As(Int);
-		}3
+		}
 
 		function : Size(v : Byte) ~ Byte {
 			return v;
