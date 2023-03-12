@@ -3105,7 +3105,7 @@ bundle System {
 		~#
 		method : public : Append(array : Char[]) ~ Nil {
 			if(@pos + array->Size() >= @max) {
-				max := pos + array->Size();
+				max := @pos + array->Size();
 				@max += max + max >> 1;
 				temp := Char->New[@max];
 				Runtime->Copy(temp, 0, @string, 0, @string->Size());
@@ -3177,7 +3177,7 @@ bundle System {
 			};
 			
 			if(@pos + length >= @max) {
-				max := pos + length;
+				max := @pos + length;
 				@max += max + max >> 1;
 				temp := Char->New[@max];
 				Runtime->Copy(temp, 0, @string, 0, @string->Size());
