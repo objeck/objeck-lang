@@ -168,7 +168,8 @@ class GtkRecordField from GtkDocType {
 		select(@type->GetType()) {
 			label GtkType->Type->CHAR
 			label GtkType->Type->INT
-			label GtkType->Type->BOOL {
+			label GtkType->Type->BOOL
+			label GtkType->Type->CONSTS {
 				buffer += "\tAPITools_SetIntValue(context, 0, p0->{$name});\n";
 			}
 
@@ -180,7 +181,8 @@ class GtkRecordField from GtkDocType {
 				buffer += "\tAPITools_SetStringValue(context, 0, BytesToUnicode(p0->{$name}));\n";
 			}
 
-			label GtkType->Type->CONSTS {
+			
+			label GtkType->Type->OBJECT {
 				buffer += "\tAPITools_SetIntValue(context, 0, (size_t)p0->{$name});\n";
 			}
 
@@ -275,6 +277,13 @@ class GtkRecordField from GtkDocType {
 				objk_name := @type->GetObjkName();
 				buffer += "\t\tvalue := array_args[0]->As(IntRef);\n";
 				buffer += "\t\treturn value->Get()->As({$objk_name});\n";
+			}
+
+			label GtkType->Type->OBJECT {
+				objk_name := @type->GetObjkName();
+
+				buffer += "\t\tvalue := array_args[0]->As(IntRef);\n";
+				buffer += "\t\treturn {$objk_name}->New(value->Get());\n";
 			}
 
 			other {
@@ -384,6 +393,7 @@ class GtkType {
 	@union_inventory : static : Map<String, Pair<String, String>>;
 	@record_inventory : static : Map<String, Pair<String, String>>;
 	@klass_inventory : static : Map<String, Pair<String, String>>;
+	@namespace : static : String;
 
 	enum Type {
 		INT,
@@ -405,8 +415,9 @@ class GtkType {
 		@objk_type := mapped_type->GetSecond()->Get();
 	}
 
-	function : Init(enum_inventory : Map<String, Pair<String, String>>, union_inventory : Map<String, Pair<String, String>>, 
+	function : Init(namespace : String, enum_inventory : Map<String, Pair<String, String>>, union_inventory : Map<String, Pair<String, String>>, 
 			record_inventory : Map<String, Pair<String, String>>, klass_inventory : Map<String, Pair<String, String>>) ~ Nil {
+		@namespace := namespace;
 		@enum_inventory := enum_inventory;
 		@union_inventory := union_inventory;
 		@record_inventory := record_inventory;
@@ -469,8 +480,10 @@ class GtkType {
 			return result;
 		};
 
-		# TODO: namespace
-		lookup_name := ctype_name->Copy()->Remove("Gdk");
+		lookup_name := ctype_name->Copy()->Remove(@namespace);
+		if(lookup_name->EndsWith('*')) {
+			lookup_name->Pop();
+		};
 
 		mapped_type := @enum_inventory->Find(lookup_name);
 		if(mapped_type <> Nil) {
