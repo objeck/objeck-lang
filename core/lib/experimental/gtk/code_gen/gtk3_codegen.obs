@@ -86,7 +86,7 @@ class Gtk3Binder {
 		tick_secs := timer->GetElapsedTime();
 		"---\nTime={$tick_secs} sec(s)\n---"->PrintLine();
 	}
-	
+
 	method : Inventory(parser : XmlParser) ~ Nil {
 		enums_xml := parser->FindElements("/repository/namespace/enumeration")<XmlElement>;
 		if(enums_xml <> Nil) {
@@ -137,7 +137,7 @@ class Gtk3Binder {
 				@enum_inventory->Insert(name, Pair->New(name, ctype_name)<String, String>);
 			};
 		};
-		
+
 		GtkType->Init(@enum_inventory, @union_inventory, @record_inventory, @klass_inventory);
 	}
 
@@ -171,7 +171,8 @@ class Gtk3Binder {
 							ctype_value := ctype_xml->GetValue();
 						}
 						else {
-							ctype_value := name_xml->GetValue();
+							ctype_value := GtkType->GetCxxdName(name_xml->GetValue());
+"### {$ctype_value} ###"->PrintLine();							
 						};
 
 						name_value := field_xml->GetAttribute("name")->GetValue();	
