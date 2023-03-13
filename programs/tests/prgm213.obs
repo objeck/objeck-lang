@@ -1,10 +1,6 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		s := "Hello World!";
-		s->Size()->PrintLine();
-		s->Capacity()->PrintLine();
-		s->Delete(2,7);
-		s->Size()->PrintLine();
-		s->PrintLine();
+		s := [4, 3, 9, 2, 93, 29, 39, 131, 6, 8];
+		s->Sort()->ToString()->PrintLine();
 	}
 }
