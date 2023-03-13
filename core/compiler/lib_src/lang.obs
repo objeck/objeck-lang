@@ -368,7 +368,7 @@ bundle System {
 					j-=1;
 				};
 
-				if (i <= j) {
+				if(i <= j) {
 					temp := array[i];
 					array[i] := array[j];
 					array[j] := temp;
@@ -769,7 +769,7 @@ bundle System {
 					j-=1;
 				};
 
-				if (i <= j) {
+				if(i <= j) {
 					temp := array[i];
 					array[i] := array[j];
 					array[j] := temp;
@@ -1301,7 +1301,7 @@ bundle System {
 					j-=1;
 				};
 
-				if (i <= j) {
+				if(i <= j) {
 					temp := array[i];
 					array[i] := array[j];
 					array[j] := temp;
@@ -1825,7 +1825,7 @@ bundle System {
 					j-=1;
 				};
 
-				if (i <= j) {
+				if(i <= j) {
 					temp := array[i];
 					array[i] := array[j];
 					array[j] := temp;
