@@ -357,7 +357,7 @@ bundle System {
 		
 		function : native : Sort(array : Byte[], low : Int, high : Int) ~ Nil {
 			i := low; j := high;
-			pivot := array[low + (high-low)/2];
+			pivot := array[low + (high - low) / 2];
 
 			while(i <= j) {
 				while(array[i] < pivot) {
@@ -758,7 +758,7 @@ bundle System {
 		
 		function : native : Sort(array : Char[], low : Int, high : Int) ~ Nil {
 			i := low; j := high;
-			pivot := array[low + (high-low)/2];
+			pivot := array[low + (high - low) / 2];
 
 			while(i <= j) {
 				while(array[i] < pivot) {
@@ -1290,7 +1290,7 @@ bundle System {
 		
 		function : native : Sort(array : Int[], low : Int, high : Int) ~ Nil {
 			i := low; j := high;
-			pivot := array[low + (high-low)/2];
+			pivot := array[low + (high - low) / 2];
 
 			while(i <= j) {
 				while(array[i] < pivot) {
@@ -1814,7 +1814,7 @@ bundle System {
 		
 		function : native : Sort(array : Float[], low : Int, high : Int) ~ Nil {
 			i := low; j := high;
-			pivot := array[low + (high-low)/2];
+			pivot := array[low + (high - low) / 2];
 
 			while(i <= j) {
 				while(array[i] < pivot) {
