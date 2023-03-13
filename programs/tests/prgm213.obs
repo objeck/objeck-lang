@@ -1,6 +1,5 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		s := [4, 3, 9, 2, 93, 29, 39, 131, 6, 8];
-		s->Sort()->ToString()->PrintLine();
+		[4, 3, 9, 2, 93, 29, 39, 131, 6, 8]->Sort()->ToString()->PrintLine();
 	}
 }
