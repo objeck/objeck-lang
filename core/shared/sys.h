@@ -329,7 +329,7 @@ public:
     }
 #ifdef _DEBUG
     double compress_ratio = (double)out_buffer.size() / (double)dest_len;
-    GetLogger() << L"--- file out: uncompressed=" << out_buffer.size() << L", compressed=" << dest_len << L", ratio=" << round(compress_ratio) << L"x ---" << std::endl;
+    GetLogger() << L"[file out: uncompressed=" << out_buffer.size() << L", compressed=" << dest_len << L", ratio = " << round(compress_ratio) << L"x]" << std::endl;
 #endif
     file_out.write(compressed, dest_len);
     free(compressed);
