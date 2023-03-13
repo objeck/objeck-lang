@@ -2333,11 +2333,6 @@ bool ContextAnalyzer::AnalyzeExpressionMethodCall(Expression* expression, std::w
     type = expression->GetEvalType();
   }
 
-  if(expression->GetExpressionType() == STAT_ARY_EXPR) {
-    ProcessError(expression, L"Unable to make method calls on static arrays");
-    return false;
-  }
-
   if(type) {
     const int dimension = IsScalar(expression, false) ? 0 : type->GetDimension();
     return AnalyzeExpressionMethodCall(type, dimension, encoding, klass, lib_klass, is_enum_call);
