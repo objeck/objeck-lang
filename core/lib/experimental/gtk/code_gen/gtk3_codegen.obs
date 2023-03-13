@@ -4,11 +4,6 @@ use Data.XML;
 
 class Gtk3Binder {
 	@filename : String;
-	@enum_inventory : Map<String, Pair<String, String>>;
-	@record_inventory : Map<String, Pair<String, String>>;
-	@union_inventory : Map<String, Pair<String, String>>;
-	@klass_inventory : Map<String, Pair<String, String>>;
-
 	@is_debug : Bool;
 
 	function : Main(args : String[]) ~ Nil {
@@ -26,12 +21,6 @@ class Gtk3Binder {
 
 	New(filename : String) {
 		@filename := filename;
-
-		@enum_inventory := Map->New()<String, Pair<String, String>>;
-		@record_inventory := Map->New()<String, Pair<String, String>>;
-		@union_inventory := Map->New()<String, Pair<String, String>>;
-		@klass_inventory := Map->New()<String, Pair<String, String>>;
-
 		@is_debug := true;
 	}
 
@@ -88,13 +77,18 @@ class Gtk3Binder {
 	}
 
 	method : Inventory(parser : XmlParser) ~ Nil {
+		enum_inventory := Map->New()<String, Pair<String, String>>;
+		record_inventory := Map->New()<String, Pair<String, String>>;
+		union_inventory := Map->New()<String, Pair<String, String>>;
+		klass_inventory := Map->New()<String, Pair<String, String>>;
+
 		enums_xml := parser->FindElements("/repository/namespace/enumeration")<XmlElement>;
 		if(enums_xml <> Nil) {
 			each(enum_xml := enums_xml) {
 				name := enum_xml->GetAttribute("name")->GetValue();
 				ctype_name := enum_xml->GetAttribute("type")->GetValue();
 
-				@enum_inventory->Insert(name, Pair->New(name, ctype_name)<String, String>);
+				enum_inventory->Insert(name, Pair->New(name, ctype_name)<String, String>);
 			};
 		};
 
@@ -104,7 +98,7 @@ class Gtk3Binder {
 				name := bitfield_xml->GetAttribute("name")->GetValue();
 				ctype_name := bitfield_xml->GetAttribute("type")->GetValue();
 
-				@enum_inventory->Insert(name, Pair->New(name, ctype_name)<String, String>);
+				enum_inventory->Insert(name, Pair->New(name, ctype_name)<String, String>);
 			};
 		};
 
@@ -114,7 +108,7 @@ class Gtk3Binder {
 				name := union_xml->GetAttribute("name")->GetValue();
 				ctype_name := union_xml->GetAttribute("type")->GetValue();
 
-				@union_inventory->Insert(name, Pair->New(name, ctype_name)<String, String>);
+				union_inventory->Insert(name, Pair->New(name, ctype_name)<String, String>);
 			};
 		};
 
@@ -124,7 +118,7 @@ class Gtk3Binder {
 				name := record_xml->GetAttribute("name")->GetValue();
 				ctype_name := record_xml->GetAttribute("type")->GetValue();
 
-				@record_inventory->Insert(name, Pair->New(name, ctype_name)<String, String>);
+				record_inventory->Insert(name, Pair->New(name, ctype_name)<String, String>);
 			};
 		};
 
@@ -134,12 +128,12 @@ class Gtk3Binder {
 				name := klass_xml->GetAttribute("name")->GetValue();
 				ctype_name := klass_xml->GetAttribute("type")->GetValue();
 
-				@klass_inventory->Insert(name, Pair->New(name, ctype_name)<String, String>);
+				klass_inventory->Insert(name, Pair->New(name, ctype_name)<String, String>);
 			};
 		};
 
 		namespace := parser->GetRoot()->GetFirstChild("namespace")->GetAttribute("name")->GetValue();
-		GtkType->Init(namespace, @enum_inventory, @union_inventory, @record_inventory, @klass_inventory);
+		GtkType->Init(namespace, enum_inventory, union_inventory, record_inventory, klass_inventory);
 	}
 
 	method : LoadRecords(records_xml : Vector<XmlElement>) ~ Bool {
