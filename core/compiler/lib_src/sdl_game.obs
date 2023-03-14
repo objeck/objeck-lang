@@ -1269,7 +1269,7 @@ bundle Game.Framework {
 	}
 
 	#~
-	Generic shape
+	Collection shape
 	~#
 	interface Shape {
 		#~

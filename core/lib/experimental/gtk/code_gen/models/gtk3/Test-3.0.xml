@@ -1,0 +1,278 @@
+<repository xmlns="http://www.gtk.org/introspection/core/1.0" xmlns:c="http://www.gtk.org/introspection/c/1.0" xmlns:glib="http://www.gtk.org/introspection/glib/1.0" version="1.2">
+<include name="GdkPixbuf" version="2.0"/>
+<include name="Gio" version="2.0"/>
+<include name="Pango" version="1.0"/>
+<include name="cairo" version="1.0"/>
+<package name="gdk-3.0"/>
+<c:include name="gdk/gdk.h"/>
+<namespace name="Gdk" version="3.0" shared-library="libgdk-3.so.0" c:identifier-prefixes="Gdk" c:symbol-prefixes="gdk">
+
+<bitfield name="AnchorHints" version="3.22" stability="Unstable" glib:type-name="GdkAnchorHints" glib:get-type="gdk_anchor_hints_get_type" c:type="GdkAnchorHints">
+<doc xml:space="preserve">Positioning hints for aligning a window relative to a rectangle. These hints determine how the window should be positioned in the case that the window would fall off-screen if placed in its ideal position. For example, %GDK_ANCHOR_FLIP_X will replace %GDK_GRAVITY_NORTH_WEST with %GDK_GRAVITY_NORTH_EAST and vice versa if the window extends beyond the left or right edges of the monitor. If %GDK_ANCHOR_SLIDE_X is set, the window can be shifted horizontally to fit on-screen. If %GDK_ANCHOR_RESIZE_X is set, the window can be shrunken horizontally to fit. In general, when multiple flags are set, flipping should take precedence over sliding, which should take precedence over resizing.</doc>
+<member name="flip_x" value="1" c:identifier="GDK_ANCHOR_FLIP_X" glib:nick="flip-x" glib:name="GDK_ANCHOR_FLIP_X">
+<doc xml:space="preserve">allow flipping anchors horizontally</doc>
+</member>
+<member name="flip_y" value="2" c:identifier="GDK_ANCHOR_FLIP_Y" glib:nick="flip-y" glib:name="GDK_ANCHOR_FLIP_Y">
+<doc xml:space="preserve">allow flipping anchors vertically</doc>
+</member>
+<member name="slide_x" value="4" c:identifier="GDK_ANCHOR_SLIDE_X" glib:nick="slide-x" glib:name="GDK_ANCHOR_SLIDE_X">
+<doc xml:space="preserve">allow sliding window horizontally</doc>
+</member>
+<member name="slide_y" value="8" c:identifier="GDK_ANCHOR_SLIDE_Y" glib:nick="slide-y" glib:name="GDK_ANCHOR_SLIDE_Y">
+<doc xml:space="preserve">allow sliding window vertically</doc>
+</member>
+<member name="resize_x" value="16" c:identifier="GDK_ANCHOR_RESIZE_X" glib:nick="resize-x" glib:name="GDK_ANCHOR_RESIZE_X">
+<doc xml:space="preserve">allow resizing window horizontally</doc>
+</member>
+<member name="resize_y" value="32" c:identifier="GDK_ANCHOR_RESIZE_Y" glib:nick="resize-y" glib:name="GDK_ANCHOR_RESIZE_Y">
+<doc xml:space="preserve">allow resizing window vertically</doc>
+</member>
+<member name="flip" value="3" c:identifier="GDK_ANCHOR_FLIP" glib:nick="flip" glib:name="GDK_ANCHOR_FLIP">
+<doc xml:space="preserve">allow flipping anchors on both axes</doc>
+</member>
+<member name="slide" value="12" c:identifier="GDK_ANCHOR_SLIDE" glib:nick="slide" glib:name="GDK_ANCHOR_SLIDE">
+<doc xml:space="preserve">allow sliding window on both axes</doc>
+</member>
+<member name="resize" value="48" c:identifier="GDK_ANCHOR_RESIZE" glib:nick="resize" glib:name="GDK_ANCHOR_RESIZE">
+<doc xml:space="preserve">allow resizing window on both axes</doc>
+</member>
+</bitfield>
+
+<record name="Geometry" c:type="GdkGeometry">
+<doc xml:space="preserve">The #GdkGeometry struct gives the window manager information about a window’s geometry constraints. Normally you would set these on the GTK+ level using gtk_window_set_geometry_hints(). #GtkWindow then sets the hints on the #GdkWindow it creates. gdk_window_set_geometry_hints() expects the hints to be fully valid already and simply passes them to the window manager; in contrast, gtk_window_set_geometry_hints() performs some interpretation. For example, #GtkWindow will apply the hints to the geometry widget instead of the toplevel window, if you set a geometry widget. Also, the @min_width/@min_height/@max_width/@max_height fields may be set to -1, and #GtkWindow will substitute the size request of the window or geometry widget. If the minimum size hint is not provided, #GtkWindow will use its requisition as the minimum size. If the minimum size is provided and a geometry widget is set, #GtkWindow will take the minimum size as the minimum size of the geometry widget rather than the entire window. The base size is treated similarly. The canonical use-case for gtk_window_set_geometry_hints() is to get a terminal widget to resize properly. Here, the terminal text area should be the geometry widget; #GtkWindow will then automatically set the base size to the size of other widgets in the terminal window, such as the menubar and scrollbar. Then, the @width_inc and @height_inc fields should be set to the size of one character in the terminal. Finally, the base size should be set to the size of one character. The net effect is that the minimum size of the terminal will have a 1x1 character terminal area, and only terminal sizes on the “character grid” will be allowed. Here’s an example of how the terminal example would be implemented, assuming a terminal area widget called “terminal” and a toplevel window “toplevel”: |[<!-- language="C" --> GdkGeometry hints; hints.base_width = terminal->char_width; hints.base_height = terminal->char_height; hints.min_width = terminal->char_width; hints.min_height = terminal->char_height; hints.width_inc = terminal->char_width; hints.height_inc = terminal->char_height; gtk_window_set_geometry_hints (GTK_WINDOW (toplevel), GTK_WIDGET (terminal), hints, GDK_HINT_RESIZE_INC | GDK_HINT_MIN_SIZE | GDK_HINT_BASE_SIZE); ]| The other useful fields are the @min_aspect and @max_aspect fields; these contain a width/height ratio as a floating point number. If a geometry widget is set, the aspect applies to the geometry widget rather than the entire window. The most common use of these hints is probably to set @min_aspect and @max_aspect to the same value, thus forcing the window to keep a constant aspect ratio.</doc>
+<field name="min_width" writable="1">
+<doc xml:space="preserve">minimum width of window (or -1 to use requisition, with #GtkWindow only)</doc>
+<type name="gint" c:type="gint"/>
+</field>
+<field name="min_height" writable="1">
+<doc xml:space="preserve">minimum height of window (or -1 to use requisition, with #GtkWindow only)</doc>
+<type name="gint" c:type="gint"/>
+</field>
+<field name="max_width" writable="1">
+<doc xml:space="preserve">maximum width of window (or -1 to use requisition, with #GtkWindow only)</doc>
+<type name="gint" c:type="gint"/>
+</field>
+<field name="max_height" writable="1">
+<doc xml:space="preserve">maximum height of window (or -1 to use requisition, with #GtkWindow only)</doc>
+<type name="gint" c:type="gint"/>
+</field>
+<field name="base_width" writable="1">
+<doc xml:space="preserve">allowed window widths are @base_width + @width_inc * N where N is any integer (-1 allowed with #GtkWindow)</doc>
+<type name="gint" c:type="gint"/>
+</field>
+<field name="base_height" writable="1">
+<doc xml:space="preserve">allowed window widths are @base_height + @height_inc * N where N is any integer (-1 allowed with #GtkWindow)</doc>
+<type name="gint" c:type="gint"/>
+</field>
+<field name="width_inc" writable="1">
+<doc xml:space="preserve">width resize increment</doc>
+<type name="gint" c:type="gint"/>
+</field>
+<field name="height_inc" writable="1">
+<doc xml:space="preserve">height resize increment</doc>
+<type name="gint" c:type="gint"/>
+</field>
+<field name="min_aspect" writable="1">
+<doc xml:space="preserve">minimum width/height ratio</doc>
+<type name="gdouble" c:type="gdouble"/>
+</field>
+<field name="max_aspect" writable="1">
+<doc xml:space="preserve">maximum width/height ratio</doc>
+<type name="gdouble" c:type="gdouble"/>
+</field>
+<field name="win_gravity" writable="1">
+<doc xml:space="preserve">window gravity, see gtk_window_set_gravity()</doc>
+<type name="Gravity" c:type="GdkGravity"/>
+</field>
+</record>
+
+<class name="Monitor" c:symbol-prefix="monitor" c:type="GdkMonitor" parent="GObject.Object" glib:type-name="GdkMonitor" glib:get-type="gdk_monitor_get_type" glib:type-struct="MonitorClass">
+<doc xml:space="preserve">GdkMonitor objects represent the individual outputs that are associated with a #GdkDisplay. GdkDisplay has APIs to enumerate monitors with gdk_display_get_n_monitors() and gdk_display_get_monitor(), and to find particular monitors with gdk_display_get_primary_monitor() or gdk_display_get_monitor_at_window(). GdkMonitor was introduced in GTK+ 3.22 and supersedes earlier APIs in GdkScreen to obtain monitor-related information.</doc>
+<method name="get_display" c:identifier="gdk_monitor_get_display" glib:get-property="display" version="3.22">
+<doc xml:space="preserve">Gets the display that this monitor belongs to.</doc>
+<return-value transfer-ownership="none">
+<doc xml:space="preserve">the display</doc>
+<type name="Display" c:type="GdkDisplay*"/>
+</return-value>
+<parameters>
+<instance-parameter name="monitor" transfer-ownership="none">
+<doc xml:space="preserve">a #GdkMonitor</doc>
+<type name="Monitor" c:type="GdkMonitor*"/>
+</instance-parameter>
+</parameters>
+</method>
+<method name="get_geometry" c:identifier="gdk_monitor_get_geometry" glib:get-property="geometry" version="3.22">
+<doc xml:space="preserve">Retrieves the size and position of an individual monitor within the display coordinate space. The returned geometry is in ”application pixels”, not in ”device pixels” (see gdk_monitor_get_scale_factor()).</doc>
+<return-value transfer-ownership="none">
+<type name="none" c:type="void"/>
+</return-value>
+<parameters>
+<instance-parameter name="monitor" transfer-ownership="none">
+<doc xml:space="preserve">a #GdkMonitor</doc>
+<type name="Monitor" c:type="GdkMonitor*"/>
+</instance-parameter>
+<parameter name="geometry" direction="out" caller-allocates="1" transfer-ownership="none">
+<doc xml:space="preserve">a #GdkRectangle to be filled with the monitor geometry</doc>
+<type name="Rectangle" c:type="GdkRectangle*"/>
+</parameter>
+</parameters>
+</method>
+<method name="get_height_mm" c:identifier="gdk_monitor_get_height_mm" glib:get-property="height-mm" version="3.22">
+<doc xml:space="preserve">Gets the height in millimeters of the monitor.</doc>
+<return-value transfer-ownership="none">
+<doc xml:space="preserve">the physical height of the monitor</doc>
+<type name="gint" c:type="int"/>
+</return-value>
+<parameters>
+<instance-parameter name="monitor" transfer-ownership="none">
+<doc xml:space="preserve">a #GdkMonitor</doc>
+<type name="Monitor" c:type="GdkMonitor*"/>
+</instance-parameter>
+</parameters>
+</method>
+<method name="get_manufacturer" c:identifier="gdk_monitor_get_manufacturer" glib:get-property="manufacturer">
+<doc xml:space="preserve">Gets the name or PNP ID of the monitor's manufacturer, if available. Note that this value might also vary depending on actual display backend. PNP ID registry is located at https://uefi.org/pnp_id_list</doc>
+<return-value transfer-ownership="none" nullable="1">
+<doc xml:space="preserve">the name of the manufacturer, or %NULL</doc>
+<type name="utf8" c:type="const char*"/>
+</return-value>
+<parameters>
+<instance-parameter name="monitor" transfer-ownership="none">
+<doc xml:space="preserve">a #GdkMonitor</doc>
+<type name="Monitor" c:type="GdkMonitor*"/>
+</instance-parameter>
+</parameters>
+</method>
+<method name="get_model" c:identifier="gdk_monitor_get_model" glib:get-property="model">
+<doc xml:space="preserve">Gets the a string identifying the monitor model, if available.</doc>
+<return-value transfer-ownership="none" nullable="1">
+<doc xml:space="preserve">the monitor model, or %NULL</doc>
+<type name="utf8" c:type="const char*"/>
+</return-value>
+<parameters>
+<instance-parameter name="monitor" transfer-ownership="none">
+<doc xml:space="preserve">a #GdkMonitor</doc>
+<type name="Monitor" c:type="GdkMonitor*"/>
+</instance-parameter>
+</parameters>
+</method>
+<method name="get_refresh_rate" c:identifier="gdk_monitor_get_refresh_rate" glib:get-property="refresh-rate" version="3.22">
+<doc xml:space="preserve">Gets the refresh rate of the monitor, if available. The value is in milli-Hertz, so a refresh rate of 60Hz is returned as 60000.</doc>
+<return-value transfer-ownership="none">
+<doc xml:space="preserve">the refresh rate in milli-Hertz, or 0</doc>
+<type name="gint" c:type="int"/>
+</return-value>
+<parameters>
+<instance-parameter name="monitor" transfer-ownership="none">
+<doc xml:space="preserve">a #GdkMonitor</doc>
+<type name="Monitor" c:type="GdkMonitor*"/>
+</instance-parameter>
+</parameters>
+</method>
+<method name="get_scale_factor" c:identifier="gdk_monitor_get_scale_factor" glib:get-property="scale-factor" version="3.22">
+<doc xml:space="preserve">Gets the internal scale factor that maps from monitor coordinates to the actual device pixels. On traditional systems this is 1, but on very high density outputs this can be a higher value (often 2). This can be used if you want to create pixel based data for a particular monitor, but most of the time you’re drawing to a window where it is better to use gdk_window_get_scale_factor() instead.</doc>
+<return-value transfer-ownership="none">
+<doc xml:space="preserve">the scale factor</doc>
+<type name="gint" c:type="int"/>
+</return-value>
+<parameters>
+<instance-parameter name="monitor" transfer-ownership="none">
+<doc xml:space="preserve">a #GdkMonitor</doc>
+<type name="Monitor" c:type="GdkMonitor*"/>
+</instance-parameter>
+</parameters>
+</method>
+<method name="get_subpixel_layout" c:identifier="gdk_monitor_get_subpixel_layout" glib:get-property="subpixel-layout" version="3.22">
+<doc xml:space="preserve">Gets information about the layout of red, green and blue primaries for each pixel in this monitor, if available.</doc>
+<return-value transfer-ownership="none">
+<doc xml:space="preserve">the subpixel layout</doc>
+<type name="SubpixelLayout" c:type="GdkSubpixelLayout"/>
+</return-value>
+<parameters>
+<instance-parameter name="monitor" transfer-ownership="none">
+<doc xml:space="preserve">a #GdkMonitor</doc>
+<type name="Monitor" c:type="GdkMonitor*"/>
+</instance-parameter>
+</parameters>
+</method>
+<method name="get_width_mm" c:identifier="gdk_monitor_get_width_mm" glib:get-property="width-mm" version="3.22">
+<doc xml:space="preserve">Gets the width in millimeters of the monitor.</doc>
+<return-value transfer-ownership="none">
+<doc xml:space="preserve">the physical width of the monitor</doc>
+<type name="gint" c:type="int"/>
+</return-value>
+<parameters>
+<instance-parameter name="monitor" transfer-ownership="none">
+<doc xml:space="preserve">a #GdkMonitor</doc>
+<type name="Monitor" c:type="GdkMonitor*"/>
+</instance-parameter>
+</parameters>
+</method>
+<method name="get_workarea" c:identifier="gdk_monitor_get_workarea" glib:get-property="workarea" version="3.22">
+<doc xml:space="preserve">Retrieves the size and position of the “work area” on a monitor within the display coordinate space. The returned geometry is in ”application pixels”, not in ”device pixels” (see gdk_monitor_get_scale_factor()). The work area should be considered when positioning menus and similar popups, to avoid placing them below panels, docks or other desktop components. Note that not all backends may have a concept of workarea. This function will return the monitor geometry if a workarea is not available, or does not apply.</doc>
+<return-value transfer-ownership="none">
+<type name="none" c:type="void"/>
+</return-value>
+<parameters>
+<instance-parameter name="monitor" transfer-ownership="none">
+<doc xml:space="preserve">a #GdkMonitor</doc>
+<type name="Monitor" c:type="GdkMonitor*"/>
+</instance-parameter>
+<parameter name="workarea" direction="out" caller-allocates="1" transfer-ownership="none">
+<doc xml:space="preserve">a #GdkRectangle to be filled with the monitor workarea</doc>
+<type name="Rectangle" c:type="GdkRectangle*"/>
+</parameter>
+</parameters>
+</method>
+<method name="is_primary" c:identifier="gdk_monitor_is_primary" version="3.22">
+<doc xml:space="preserve">Gets whether this monitor should be considered primary (see gdk_display_get_primary_monitor()).</doc>
+<return-value transfer-ownership="none">
+<doc xml:space="preserve">%TRUE if @monitor is primary</doc>
+<type name="gboolean" c:type="gboolean"/>
+</return-value>
+<parameters>
+<instance-parameter name="monitor" transfer-ownership="none">
+<doc xml:space="preserve">a #GdkMonitor</doc>
+<type name="Monitor" c:type="GdkMonitor*"/>
+</instance-parameter>
+</parameters>
+</method>
+<property name="display" writable="1" construct-only="1" transfer-ownership="none" getter="get_display">
+<type name="Display"/>
+</property>
+<property name="geometry" transfer-ownership="none" getter="get_geometry">
+<type name="Rectangle"/>
+</property>
+<property name="height-mm" transfer-ownership="none" getter="get_height_mm" default-value="0">
+<type name="gint" c:type="gint"/>
+</property>
+<property name="manufacturer" transfer-ownership="none" getter="get_manufacturer" default-value="NULL">
+<type name="utf8" c:type="gchar*"/>
+</property>
+<property name="model" transfer-ownership="none" getter="get_model" default-value="NULL">
+<type name="utf8" c:type="gchar*"/>
+</property>
+<property name="refresh-rate" transfer-ownership="none" getter="get_refresh_rate" default-value="0">
+<type name="gint" c:type="gint"/>
+</property>
+<property name="scale-factor" transfer-ownership="none" getter="get_scale_factor" default-value="1">
+<type name="gint" c:type="gint"/>
+</property>
+<property name="subpixel-layout" transfer-ownership="none" getter="get_subpixel_layout" default-value="GDK_SUBPIXEL_LAYOUT_UNKNOWN">
+<type name="SubpixelLayout"/>
+</property>
+<property name="width-mm" transfer-ownership="none" getter="get_width_mm" default-value="0">
+<type name="gint" c:type="gint"/>
+</property>
+<property name="workarea" transfer-ownership="none" getter="get_workarea">
+<type name="Rectangle"/>
+</property>
+<glib:signal name="invalidate" when="first">
+<return-value transfer-ownership="none">
+<type name="none" c:type="void"/>
+</return-value>
+</glib:signal>
+</class>
+
+</namespace>
+</repository>

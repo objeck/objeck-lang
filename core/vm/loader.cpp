@@ -75,10 +75,6 @@ void Loader::Load()
   case MAGIC_NUM_EXE:
     break;
 
-  case MAGIC_NUM_WEB:
-    is_web = true;
-    break;
-
   default:
     std::wcerr << L"Unknown file type for '" << filename << L"'." << std::endl;
     exit(1);

@@ -8,7 +8,7 @@ bundle Default {
 			f := IO.File.FileReader->New("in.txt");
 			if(f->IsOpen()) {
 				string := f->ReadString();
-				while(f->IsEOF() = false) {
+				while(f->IsEoF() = false) {
 					string->PrintLine();
 					string := f->ReadString();
 				};

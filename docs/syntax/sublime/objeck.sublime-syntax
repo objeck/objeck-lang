@@ -41,7 +41,7 @@ contexts:
     - match: '\b(bundle)\b'
       scope: storage.type.trait.objeck-obs
 
-    - match: '\b(Byte|ByteHolder|Int|IntHolder|Float|FloatHolder|Char|CharHolder|Bool|BoolHolder|String|BaseArrayHolder|BoolArrayHolder|ByteArrayHolder|CharArrayHolder|FloatArrayHolder|IntArrayHolder|StringArrayHolder|Func2Holder|Func3Holder|Func4Holder|FuncHolder)\b'
+    - match: '\b(Byte|ByteRef|Int|IntRef|Float|FloatRef|Char|CharRef|Bool|BoolRef|String|BaseArrayRef|BoolArrayRef|ByteArrayRef|CharArrayRef|FloatArrayRef|IntArrayRef|StringArrayRef|Func2Ref|Func3Ref|Func4Ref|FuncRef)\b'
       scope: storage.type.objeck-obs
 
     - match: \[|\]|,

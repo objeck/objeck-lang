@@ -326,7 +326,7 @@ class NeuralNetwork {
 		buffer := Char->New[buffer_size + 1];
 
 		line := "";
-		while(<>reader->IsEOF()) {
+		while(<>reader->IsEoF()) {
 			read := reader->ReadBuffer(0, buffer_size, buffer);
 			for(i := 0; i < read; i += 1;) {
 				if(buffer[i] = '\n') {

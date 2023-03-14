@@ -65,13 +65,13 @@ class Scanner {
 					};
 					Whitespace();
 					
-					if(@index = @line → Size() & <>reader → IsEOF()) {
+					if(@index = @line → Size() & <>reader → IsEoF()) {
 						NextLine(reader);
 						Whitespace();
 					};
 					Comments(reader);
 					
-					return reader → IsEOF();
+					return reader → IsEoF();
 				};
 			};			
 		};
@@ -96,7 +96,7 @@ class Scanner {
 		
 		string_count ← 0;
 		@line_num ← 0;
-		while(<>reader → IsEOF()) {
+		while(<>reader → IsEoF()) {
 			# get line
 			NextLine(reader);
 			

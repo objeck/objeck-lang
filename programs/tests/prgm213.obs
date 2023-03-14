@@ -1,0 +1,5 @@
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		[4, 3, 9, 2, 93, 29, 39, 131, 6, 8]->Sort()->ToString()->PrintLine();
+	}
+}
