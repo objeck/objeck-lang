@@ -1,0 +1,251 @@
+use Collection;
+use System.IO.Filesystem;
+use Data.XML;
+
+class Gtk3Binder {
+	@filename : String;
+	@is_debug : Bool;
+
+	function : Main(args : String[]) ~ Nil {
+		show_usage := true;
+
+		if(args->Size() = 1) {
+			Gtk3Binder->New(args[0])->Emit();
+			show_usage := false;
+		};
+
+		if(show_usage) {
+			"args: filename, [list|emit]"->ErrorLine();
+		};
+	}
+
+	New(filename : String) {
+		@filename := filename;
+		@is_debug := true;
+	}
+
+	method : Emit() ~ Nil {
+		# read file
+		data := FileReader->ReadFile(@filename);
+		data_size := data->Size() / 1000;
+		data_size_str := data_size->ToCommaString();
+		
+		"[File: name='{$@filename}', size={$data_size_str} kb]\n---"->PrintLine();
+
+		# parse xml
+		timer := System.Time.Timer->New();
+		timer->Start();
+
+		parser := XmlParser->New(data);
+		if(parser->Parse()) {
+			Inventory(parser);
+#~
+			enums_xml := parser->FindElements("/repository/namespace/enumeration")<XmlElement>;
+			if(enums_xml <> Nil) {
+				LoadEnums(enums_xml);
+			};
+
+			bitfields_xml := parser->FindElements("/repository/namespace/bitfield")<XmlElement>;
+			if(bitfields_xml <> Nil) {
+				LoadEnums(bitfields_xml);
+			};
+~#	
+			records_xml := parser->FindElements("/repository/namespace/record")<XmlElement>;
+			if(records_xml <> Nil) {
+				LoadRecords(records_xml);
+			};
+#~
+			unions_xml := parser->FindElements("/repository/namespace/union")<XmlElement>;
+			if(unions_xml <> Nil) {
+				LoadEnums(unions_xml, GtkModel->Type->UNION);
+			};
+
+			classes_xml := parser->FindElements("/repository/namespace/class")<XmlElement>;
+			if(classes_xml <> Nil) {
+				LoadClasses(classes_xml, GtkModel->Type->CLASS);
+			};
+~#			
+		}
+		else {
+			">>> Unable to parser XML <<<"->ErrorLine();
+		};
+		
+		timer->End();
+		String->SetFloatPrecision(3);
+		tick_secs := timer->GetElapsedTime();
+		"---\nTime={$tick_secs} sec(s)\n---"->PrintLine();
+	}
+
+	method : Inventory(parser : XmlParser) ~ Nil {
+		enum_inventory := Map->New()<String, Pair<String, String>>;
+		record_inventory := Map->New()<String, Pair<String, String>>;
+		union_inventory := Map->New()<String, Pair<String, String>>;
+		klass_inventory := Map->New()<String, Pair<String, String>>;
+
+		enums_xml := parser->FindElements("/repository/namespace/enumeration")<XmlElement>;
+		if(enums_xml <> Nil) {
+			each(enum_xml := enums_xml) {
+				name := enum_xml->GetAttribute("name")->GetValue();
+				ctype_name := enum_xml->GetAttribute("type")->GetValue();
+
+				enum_inventory->Insert(name, Pair->New(name, ctype_name)<String, String>);
+			};
+		};
+
+		bitfields_xml := parser->FindElements("/repository/namespace/bitfield")<XmlElement>;
+		if(bitfields_xml <> Nil) {
+			each(bitfield_xml := bitfields_xml) {
+				name := bitfield_xml->GetAttribute("name")->GetValue();
+				ctype_name := bitfield_xml->GetAttribute("type")->GetValue();
+
+				enum_inventory->Insert(name, Pair->New(name, ctype_name)<String, String>);
+			};
+		};
+
+		unions_xml := parser->FindElements("/repository/namespace/union")<XmlElement>;
+		if(unions_xml <> Nil) {
+			each(union_xml := unions_xml) {
+				name := union_xml->GetAttribute("name")->GetValue();
+				ctype_name := union_xml->GetAttribute("type")->GetValue();
+
+				union_inventory->Insert(name, Pair->New(name, ctype_name)<String, String>);
+			};
+		};
+
+		records_xml := parser->FindElements("/repository/namespace/record")<XmlElement>;
+		if(records_xml <> Nil) {
+			each(record_xml := records_xml) {
+				name := record_xml->GetAttribute("name")->GetValue();
+				ctype_name := record_xml->GetAttribute("type")->GetValue();
+
+				record_inventory->Insert(name, Pair->New(name, ctype_name)<String, String>);
+			};
+		};
+
+		klasses_xml := parser->FindElements("/repository/namespace/class")<XmlElement>;
+		if(klasses_xml <> Nil) {
+			each(klass_xml := klasses_xml) {
+				name := klass_xml->GetAttribute("name")->GetValue();
+				ctype_name := klass_xml->GetAttribute("type")->GetValue();
+
+				klass_inventory->Insert(name, Pair->New(name, ctype_name)<String, String>);
+			};
+		};
+
+		namespace := parser->GetRoot()->GetFirstChild("namespace")->GetAttribute("name")->GetValue();
+		GtkType->Init(namespace, enum_inventory, union_inventory, record_inventory, klass_inventory);
+	}
+
+	method : LoadRecords(records_xml : Vector<XmlElement>) ~ Bool {
+		each(record_xml := records_xml) {
+			name_xml := record_xml->GetAttribute("name");
+			ctype_xml := record_xml->GetAttribute("type");
+			doc_xml := record_xml->GetFirstChild("doc");
+
+			if(name_xml <> Nil & ctype_xml <> Nil & doc_xml <> Nil) {
+				name_value := name_xml->GetValue();
+				ctype_value := ctype_xml->GetValue();
+				doc_value := doc_xml->GetContent();
+
+				record := GtkRecord->New(name_value, ctype_value, doc_value);
+
+				fields_xml := record_xml->GetChildren("field")<XmlElement>;
+				each(field_xml := fields_xml) {
+					is_writable := false;
+					writable_attrib := field_xml->GetAttribute("writable");
+					if(writable_attrib <> Nil & writable_attrib->GetValue()->Equals("1")) {
+						is_writable := true;
+					};
+
+					type_xml := field_xml->GetFirstChild("type");
+					if(type_xml <> Nil) {
+						ctype_xml := type_xml->GetAttribute("type");
+						name_xml := type_xml->GetAttribute("name");
+
+						if(ctype_xml <> Nil) {
+							ctype_value := ctype_xml->GetValue();
+						}
+						else {
+							ctype_value := name_xml->GetValue();
+						};
+
+						name_value := field_xml->GetAttribute("name")->GetValue();	
+						doc_xml := field_xml->GetFirstChild("doc");
+						if(doc_xml <> Nil) {
+							record->AddField(name_value, ctype_value, is_writable, doc_xml->GetContent());
+						}
+						else {
+							record->AddField(name_value, ctype_value, is_writable);
+						};
+					};
+				};
+
+				methods_xml := record_xml->GetChildren("method")<XmlElement>;
+				each(method_xml := methods_xml) {
+					id_xml := method_xml->GetAttribute("identifier");
+					name_xml := method_xml->GetAttribute("name");
+					if(id_xml <> Nil & name_xml <> Nil) {
+						id_value := id_xml->GetValue();
+						name_value := name_xml->GetValue();
+
+"### |{$id_value}|, |{$name_value}| ###"->PrintLine();
+					};
+
+					return_xml := method_xml->GetFirstChild("return-value");
+
+					parameters_xml := method_xml->GetFirstChild("parameters")->GetChildren("parameter")<XmlElement>;
+					each(parameter_xml := parameters_xml) {
+						type_xml := parameter_xml->GetFirstChild("type");
+						if(type_xml <> Nil) {
+							ctype_value := XmlElement->DecodeString(type_xml->GetAttribute("type")->GetValue());
+							name_value := type_xml->GetAttribute("name")->GetValue();
+"\t### |{$ctype_value}|, |{$name_value}| ###"->PrintLine();
+						};
+					};
+				};
+
+#				record->EmitObjeck()->PrintLine();
+#				record->EmitCxx()->PrintLine();
+				"---"->PrintLine();
+			};
+		};
+
+		return false;
+	}
+
+	method : LoadEnums(enums_xml : Vector<XmlElement>) ~ Bool {
+		each(enum_xml := enums_xml) {
+			type_name := enum_xml->GetName();
+
+			if(type_name->Equals("bitfield") | type_name->Equals("enumeration")) {
+				name_xml := enum_xml->GetAttribute("name");
+				ctype_xml := enum_xml->GetAttribute("type");
+				doc_xml := enum_xml->GetFirstChild("doc");
+
+				if(name_xml <> Nil & ctype_xml <> Nil & doc_xml <> Nil) {
+					name_value := name_xml->GetValue();
+					ctype_value := ctype_xml->GetValue();
+					doc_value := doc_xml->GetContent();
+					const_type := GtkConst->New(name_value, ctype_value, doc_value);
+
+					members_xml := enum_xml->GetChildren("member")<XmlElement>;
+					each(member_xml := members_xml) {
+						member_name := member_xml->GetAttribute("name")->GetValue();
+						member_type := member_xml->GetAttribute("identifier")->GetValue();
+						member_value := member_xml->GetAttribute("value")->GetValue();
+
+						const_type->AddConst(member_name, member_type, member_value->ToInt());
+					};
+
+					const_type->ToString()->PrintLine();
+				};
+			};
+		};
+
+		return false;
+	}
+
+	method : LoadClasses(klasses_xml : Vector<XmlElement>) ~ Bool {
+		return false;
+	}
+}

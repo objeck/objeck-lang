@@ -19,7 +19,7 @@ class Brainfu_k {
 	function : Scan(file : String) ~ String {
 		buffer := "";
 		reader := FileReader → New(file);
-		while(<>reader → IsEOF()) {
+		while(<>reader → IsEoF()) {
 			line := reader → ReadLine();
 			each(i : line) {
 				char := line → Get(i);

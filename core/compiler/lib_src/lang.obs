@@ -254,7 +254,7 @@ bundle System {
 		@ignore-params
 		@return absolute value
 		~#
-		function : native : Abs(v : Byte) ~ Byte {
+		function : Abs(v : Byte) ~ Byte {
 			if(v < 0) {
 				return v * -1;
 			};
@@ -267,7 +267,7 @@ bundle System {
 		@ignore-params
 		@return true if negative, false otherwise
 		~#
-		function : native : IsNeg(v : Byte) ~ Bool {
+		function : IsNeg(v : Byte) ~ Bool {
 			if(v < 0) {
 				return true;
 			};
@@ -357,7 +357,7 @@ bundle System {
 		
 		function : native : Sort(array : Byte[], low : Int, high : Int) ~ Nil {
 			i := low; j := high;
-			pivot := array[low + (high-low)/2];
+			pivot := array[low + (high - low) / 2];
 
 			while(i <= j) {
 				while(array[i] < pivot) {
@@ -368,7 +368,7 @@ bundle System {
 					j-=1;
 				};
 
-				if (i <= j) {
+				if(i <= j) {
 					temp := array[i];
 					array[i] := array[j];
 					array[j] := temp;
@@ -758,7 +758,7 @@ bundle System {
 		
 		function : native : Sort(array : Char[], low : Int, high : Int) ~ Nil {
 			i := low; j := high;
-			pivot := array[low + (high-low)/2];
+			pivot := array[low + (high - low) / 2];
 
 			while(i <= j) {
 				while(array[i] < pivot) {
@@ -769,7 +769,7 @@ bundle System {
 					j-=1;
 				};
 
-				if (i <= j) {
+				if(i <= j) {
 					temp := array[i];
 					array[i] := array[j];
 					array[j] := temp;
@@ -1290,7 +1290,7 @@ bundle System {
 		
 		function : native : Sort(array : Int[], low : Int, high : Int) ~ Nil {
 			i := low; j := high;
-			pivot := array[low + (high-low)/2];
+			pivot := array[low + (high - low) / 2];
 
 			while(i <= j) {
 				while(array[i] < pivot) {
@@ -1301,7 +1301,7 @@ bundle System {
 					j-=1;
 				};
 
-				if (i <= j) {
+				if(i <= j) {
 					temp := array[i];
 					array[i] := array[j];
 					array[j] := temp;
@@ -1814,7 +1814,7 @@ bundle System {
 		
 		function : native : Sort(array : Float[], low : Int, high : Int) ~ Nil {
 			i := low; j := high;
-			pivot := array[low + (high-low)/2];
+			pivot := array[low + (high - low) / 2];
 
 			while(i <= j) {
 				while(array[i] < pivot) {
@@ -1825,7 +1825,7 @@ bundle System {
 					j-=1;
 				};
 
-				if (i <= j) {
+				if(i <= j) {
 					temp := array[i];
 					array[i] := array[j];
 					array[j] := temp;
@@ -2875,7 +2875,7 @@ bundle System {
 		New() {
 			Parent();
 
-			@max := 5;
+			@max := 8;
 			@string := Char->New[@max];
 			@pos := 0;
 		}
@@ -2887,7 +2887,7 @@ bundle System {
 		New(string : String) {
 			Parent();
 
-			@max := 5;
+			@max := 8;
 			@string := Char->New[@max];
 			@pos := 0;
 
@@ -2903,7 +2903,7 @@ bundle System {
 		New(array : Char[]) {
 			Parent();
 
-			@max := 5;
+			@max := 8;
 			@string := Char->New[@max];
 			@pos := 0;
 
@@ -2919,7 +2919,7 @@ bundle System {
 			Parent();
 
 			if(copy) {
-				@max := 5;
+				@max := 8;
 				@string := Char->New[@max];
 				@pos := 0;
 			}
@@ -2941,7 +2941,7 @@ bundle System {
 		New(array : Char[], offset : Int, length : Int) {
 			Parent();
 
-			@max := 5;
+			@max := 8;
 			@string := Char->New[@max];
 			@pos := 0;
 
@@ -2955,7 +2955,7 @@ bundle System {
 		New(bytes : Byte[]) {
 			Parent();
 			
-			@max := 5;
+			@max := 8;
 			@string := Char->New[@max];
 			@pos := 0;
 
@@ -2971,7 +2971,7 @@ bundle System {
 		New(bytes : Byte[], offset : Int, length : Int) {
 			Parent();
 
-			@max := 5;
+			@max := 8;
 			@string := Char->New[@max];
 			@pos := 0;
 
@@ -3104,8 +3104,9 @@ bundle System {
 		@param array character array
 		~#
 		method : public : Append(array : Char[]) ~ Nil {
-			if(@pos + array->Size() >= @max) {
-				@max += @max << 1 + array->Size();
+			max := @pos + array->Size();
+			if(max >= @max) {
+				@max += max + max >> 1;
 				temp := Char->New[@max];
 				Runtime->Copy(temp, 0, @string, 0, @string->Size());
 				@string := temp;
@@ -3129,8 +3130,9 @@ bundle System {
 				return;
 			};
 			
-			if(@pos + length >= @max) {
-				@max += @max << 1 + length;
+			max := @pos + length;
+			if(max >= @max) {
+				@max += max + max >> 1;
 				temp := Char->New[@max];
 				Runtime->Copy(temp, 0, @string, 0, @string->Size());
 				@string := temp;
@@ -3148,8 +3150,9 @@ bundle System {
 		@param array array to be copied
 		~#
 		method : public : native : Append(array : Byte[]) ~ Nil {
-			if(@pos + array->Size() >= @max) {
-				@max += @max << 1 + array->Size();
+			max := @pos + array->Size();
+			if(max >= @max) {
+				@max += max + max >> 1;
 				temp := Char->New[@max];
 				Runtime->Copy(temp, 0, @string, 0, @string->Size());
 				@string := temp;
@@ -3172,9 +3175,10 @@ bundle System {
 			if(offset < 0) {
 				return;
 			};
-			
-			if(@pos + length >= @max) {
-				@max += @max << 1 + length;
+
+			max := @pos + length;
+			if(max >= @max) {
+				@max += max + max >> 1;
 				temp := Char->New[@max];
 				Runtime->Copy(temp, 0, @string, 0, @string->Size());
 				@string := temp;
@@ -3194,7 +3198,7 @@ bundle System {
 		method : public : Append(c : Char) ~ Nil {
 			if(@pos >= @max) {
 				# expand string
-				@max := @max << 1;
+				@max :=@pos + @pos >> 1;
 				temp := Char->New[@max];
 				# copy elements
 				Runtime->Copy(temp, 0, @string, 0, @string->Size());
@@ -3212,7 +3216,7 @@ bundle System {
 		method : public : Append(c : Byte) ~ Nil {
 			if(@pos >= @max) {
 				# expand string
-				@max := @max << 1;
+				@max := @pos + @pos >> 1;
 				temp := Char->New[@max];
 				# copy elements
 				Runtime->Copy(temp, 0, @string, 0, @string->Size());
@@ -3708,28 +3712,19 @@ bundle System {
 				return false;
 			};
 
-			max := @pos - length;
-			threshold := @max - @max >> 1;
-			if(max < threshold) {
-				temp := Char->New[max];
-				Runtime->Copy(temp, 0, @string, 0, offset);
-				Runtime->Copy(temp, offset, @string, space, @pos - space);
-
-				@string := temp;
-				@max := @pos := max;
-			}
-			else {
-				end := offset + length;
-				Runtime->Copy(@string, offset, @string, end, @pos - end);
-				@string[max] := '\0';
-				@pos := max;
-			};
+			len := @pos - length;
+			end := offset + length;
+			Runtime->Copy(@string, offset, @string, end, @pos - end);
+			@string[len] := '\0';
+			@pos := len;
 
 			return true;
 		}
 
 		#~
-		Gets the current string capacity.
+		Gets the current string's storage capacity. That is the 
+		number of characters the string will hold before it is 
+		resized for growth.
 		@return string capacity
 		~#
 		method : public : Capacity() ~ Int {
@@ -3762,15 +3757,14 @@ bundle System {
 
 			size := @pos + 1;
 			if(size > @max) {
-				max := size + @max << 1;
-				temp := Char->New[max];
+				@max := size + size >> 1;
+				temp := Char->New[@max];
 				Runtime->Copy(temp, 0, @string, 0, index);
 
 				temp[index] := char;
 				Runtime->Copy(temp, offset, @string, index, length);
-				
+					
 				@string := temp;
-				@max := max;
 			}
 			else {
 				Runtime->Copy(@string, offset, @string, index, length);
@@ -3800,15 +3794,14 @@ bundle System {
 
 			size := @pos + string->Size();
 			if(size > @max) {
-				max := size + @max << 1;
-				temp := Char->New[max];
+				@max := size + size >> 1;
+				temp := Char->New[@max];
 				Runtime->Copy(temp, 0, @string, 0, index);
 				
 				Runtime->Copy(temp, index, buffer, 0, buffer_size);
 				Runtime->Copy(temp, offset, @string, index, length);
 				
 				@string := temp;
-				@max := max;
 			}
 			else {
 				Runtime->Copy(@string, offset, @string, index, length);
@@ -3832,7 +3825,7 @@ bundle System {
 		Clears string
 		~#
 		method : public : Clear() ~ Nil {
-			@max := 5;
+			@max := 8;
 			@string := Char->New[@max];
 			@pos := 0;			
 		}
@@ -6787,8 +6780,15 @@ bundle System.IO.Filesystem {
 		Check if seek pointer is at the end-of-file
 		@return true if at the end-of-file, false otherwise
 		~#
-		method : public : IsEOF() ~ Bool {
+		method : public : IsEoF() ~ Bool {
 			FILE_EOF;
+		}
+
+		#~
+		Flushes the file buffer
+		~#
+		method : public : Flush() ~ Nil {
+			FILE_FLUSH;
 		}
 
 		#~
@@ -7162,7 +7162,7 @@ bundle System.IO.Filesystem {
 		@return character string
 		~#
 		method : public : ReadLine() ~ System.String {
-			if(IsEOF()) {
+			if(IsEoF()) {
 				return Nil;
 			};
 
@@ -7293,13 +7293,6 @@ bundle System.IO.Filesystem {
 		~#
 		method : public : Close() ~ Nil {
 			FILE_CLOSE;
-		}
-
-		#~
-		Flushes the file buffer
-		~#
-		method : public : Flush() ~ Nil {
-			FILE_FLUSH;
 		}
 
 		#~

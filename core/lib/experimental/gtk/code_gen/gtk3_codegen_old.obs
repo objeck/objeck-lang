@@ -1,0 +1,1194 @@
+use Collection;
+use System.IO.Filesystem;
+use Data.XML;
+
+class Gtk3Binder {
+	@filename : String;
+	@basic_types : Hash<String, String>;
+	@namespace : String;
+	@objk_file_out : FileWriter;
+	@cxx_file_out : FileWriter;
+	@class_name : String;
+	@missing_defs : Set<String>;
+	@static_content : Map<String, String>;
+	@config : MultiMap<String, String>;
+	@lang_keywords : Set<String>;
+	@consts_enums : Set<String>;
+	@emit_classes : Vector<String>;
+	@is_debug : Bool;
+
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() = 2) {
+			binder := Gtk3Binder->New(args[0]);
+
+			if(args[1]->Equals("list")) {
+				binder->Parse(true);
+			}
+			else if(args[1]->Equals("emit")) {
+				binder->Parse(false);
+			}
+			else {
+				"args: filename, [list|emit]"->ErrorLine(); 
+			};
+		}
+		else {
+			"args: filename, [list|emit]"->ErrorLine();
+		};
+	}
+
+	New(filename : String) {
+		@filename := filename;
+
+		@basic_types := Hash->New()<String, String>;
+		@basic_types->Insert("gpointer", "Int");
+		@basic_types->Insert("gboolean", "Bool");
+		@basic_types->Insert("gshort", "Int");
+		@basic_types->Insert("int", "Int");
+		@basic_types->Insert("gint", "Int");
+		@basic_types->Insert("none", "Nil");
+		@basic_types->Insert("gint8", "Int");
+		@basic_types->Insert("gint16", "Int");
+		@basic_types->Insert("gint32", "Int");
+		@basic_types->Insert("guint", "Int");
+		@basic_types->Insert("guint8", "Int");
+		@basic_types->Insert("guint16", "Int");
+		@basic_types->Insert("guint32", "Int");
+		@basic_types->Insert("gint", "Int");
+		@basic_types->Insert("gulong", "Int");
+		@basic_types->Insert("gfloat", "Float");
+		@basic_types->Insert("gdouble", "Float");
+		@basic_types->Insert("utf8", "String");
+		@basic_types->Insert("const gchar*", "String");
+		@basic_types->Insert("const char*", "String");
+		@basic_types->Insert("gchar*", "String");
+		@basic_types->Insert("gchar**", "String[]");
+		@basic_types->Insert("filename", "String");
+		@basic_types->Insert("void", "Nil");
+		@basic_types->Insert("guint8*", "Byte[]");
+
+		@missing_defs := Set->New()<String>;
+		@consts_enums := Set->New()<String>;
+
+		# configuration 
+		@objk_file_out := FileWriter->New("out/objk_code.txt");
+		@cxx_file_out := FileWriter->New("out/cxx_code.txt");
+		@static_content := ParseStaticContent("config/gtk3_codegen.static");
+
+		LoadConfiguration("config/gtk3_codegen.config");
+		keywords := @config->Find("keywords")<String>;
+
+		@lang_keywords := Set->New()<String>;
+		each(keyword := keywords) {
+			@lang_keywords->Insert(keyword);
+		};
+
+		@emit_classes := @config->Find("emit_classes")<String>;
+
+		@is_debug := true;
+	}
+
+	method : Parse(is_list : Bool) ~ Nil {
+		# read file
+		data := FileReader->ReadFile(@filename);
+		data_size := data->Size() / 1000;
+		data_size_str := data_size->ToCommaString();
+		"[File: name='{$@filename}', size={$data_size_str} kb]\n---"->PrintLine();
+
+		# parse xml
+		timer := System.Time.Timer->New();
+		timer->Start();
+
+		parser := XmlParser->New(data);
+		if(parser->Parse()) {
+			if(is_list) {
+				enums_xml := parser->FindElements("/repository/namespace/enumeration")<XmlElement>;
+				if(enums_xml <> Nil) {
+					List(enums_xml, "[Enums]");
+				};
+
+				bitfields_xml := parser->FindElements("/repository/namespace/bitfield")<XmlElement>;
+				if(bitfields_xml <> Nil) {
+					List(bitfields_xml, "[Bitfields]");
+				};
+
+				unions_xml := parser->FindElements("/repository/namespace/union")<XmlElement>;
+				if(unions_xml <> Nil) {
+					List(unions_xml, "[Unions]");
+				};
+
+				classes_xml := parser->FindElements("/repository/namespace/class")<XmlElement>;
+				if(classes_xml <> Nil) {
+					List(classes_xml, "[Classes]");
+				};
+
+				records_xml := parser->FindElements("/repository/namespace/record")<XmlElement>;
+				if(records_xml <> Nil) {
+					List(records_xml, "[Records]");
+				};
+			}
+			else {
+				WriteObjeckHeader();
+				WriteCxxHeader();
+
+				@namespace := parser->GetRoot()->GetFirstChild("namespace")->GetAttribute("name")->GetValue();
+
+				structs := parser->FindElements("/repository/namespace/enumeration")<XmlElement>;
+				IdentifyStructs(structs);
+				
+				structs := parser->FindElements("/repository/namespace/bitfield")<XmlElement>;
+				IdentifyStructs(structs);
+
+				enums_xml := parser->FindElements("/repository/namespace/enumeration")<XmlElement>;
+				if(enums_xml <> Nil) {
+					ParseConsts(enums_xml, true);
+				};
+
+				bitfields_xml := parser->FindElements("/repository/namespace/bitfield")<XmlElement>;
+				if(bitfields_xml <> Nil) {
+					ParseConsts(bitfields_xml, false);
+				};
+
+				@objk_file_out->WriteString(@static_content->Find("objk_gobject"));
+
+				classes_xml := parser->FindElements("/repository/namespace/class")<XmlElement>;
+				if(classes_xml <> Nil) {
+					ParseClasses(classes_xml, true);
+				};
+
+				records_xml := parser->FindElements("/repository/namespace/record")<XmlElement>;
+				if(records_xml <> Nil) {
+					ParseClasses(records_xml, false);
+				};
+
+				unions_xml := parser->FindElements("/repository/namespace/union")<XmlElement>;
+				if(unions_xml <> Nil) {
+					ParseClasses(unions_xml, false);
+				};
+				
+				objk_buffer := "\n\t#\n\t# Missing classes/records\n\t#";
+				missing_def_keys := @missing_defs->GetKeys()<String>;
+				each(missing_def_key := missing_def_keys) {
+					if(<>MatchEmitClass(missing_def_key)) {
+						WriteMissingClass(missing_def_key, objk_buffer);
+					};
+				};
+				objk_buffer->Pop();
+				@objk_file_out->WriteString(objk_buffer);
+
+
+				@objk_file_out->WriteString("\n}");
+				@objk_file_out->Close();
+
+				@cxx_file_out->WriteString("}");
+				@cxx_file_out->Close();
+			};
+		};
+
+		timer->End();
+		String->SetFloatPrecision(3);
+		tick_secs := timer->GetElapsedTime();
+		"---\nTime={$tick_secs} sec(s)\n---"->PrintLine();
+	}
+
+	method : List(items_xml : Vector<XmlElement>, name : String) ~ Nil {
+		name->PrintLine();
+
+		each(item_xml := items_xml) {
+			item_name := item_xml->GetAttribute("name")->GetValue();
+			"\t{$item_name}"->PrintLine();
+		};
+	}
+
+	method : IdentifyStructs(structs : Vector<XmlElement>) ~ Nil {
+		if(structs <> Nil) {
+			each(struct := structs) {
+				@consts_enums->Insert(struct->GetAttribute("name")->GetValue());
+			};
+		};
+	}
+
+	method : ParseConsts(enums_xml : Vector<XmlElement>, is_enum : Bool) ~ Nil {
+		objk_buffer := "";
+
+		if(@is_debug) {
+			if(is_enum) {
+				"### [Enums] ###"->PrintLine();
+			}
+			else {
+				"### [Bitfields] ###"->PrintLine();
+			};
+		};
+
+		each(enum_xml := enums_xml) {
+			enum_name := enum_xml->GetAttribute("name")->GetValue();
+
+			if(@is_debug) {
+				if(is_enum) {
+					"\tEnum: name='{$enum_name}'"->PrintLine();
+				}
+				else {
+					"\tBitfield: name='{$enum_name}'"->PrintLine();
+				};
+			};
+
+			objk_buffer += "\tconsts {$enum_name} {\n";
+
+			members_xml := enum_xml->GetChildren("member")<XmlElement>;
+			each(member_xml := members_xml) {
+				value_name := member_xml->GetAttribute("value")->GetValue();
+				identifier_name := member_xml->GetAttribute("identifier")->GetValue();
+
+				objk_buffer += "\t\t{$identifier_name} := {$value_name},\n";
+			};
+			objk_buffer->Pop();
+			objk_buffer->Pop();
+
+			objk_buffer += "\t\n\t}\n\n";
+		};
+
+		@objk_file_out->WriteString(objk_buffer);
+	}
+
+	method : ParseClasses(classes_xml : Vector<XmlElement>, is_class : Bool) ~ Nil {
+		if(@is_debug) {
+			if(is_class) {
+				"### [Classes] ###"->PrintLine();
+			}
+			else {
+				"### [Records] ###"->PrintLine();
+			};
+		};
+
+		each(i : classes_xml) {
+			cxx_buffer := "";
+			objk_buffer := "";
+
+			class_xml := classes_xml->Get(i);
+
+			@class_name := class_xml->GetAttribute("name")->GetValue();
+			if(MatchEmitClass(@class_name)) {
+				WriteClass(class_xml, objk_buffer, cxx_buffer, is_class);
+			};
+			
+			if(i + 1 = classes_xml->Size()) {
+				objk_buffer->Pop();
+				cxx_buffer->Pop();
+			};
+
+			@objk_file_out->WriteString(objk_buffer);
+			@cxx_file_out->WriteString(cxx_buffer);
+		};
+	}
+
+	method : WriteClass(class_xml : XmlElement, objk_buffer : String, cxx_buffer : String, is_class : Bool) ~ Nil {
+		if(@is_debug) {
+			if(is_class) {
+				"\t[Class: name='{$@class_name}']"->PrintLine();
+			}
+			else {
+				"\t[Record: name='{$@class_name}']"->PrintLine();
+			};
+		};
+
+		cxx_buffer += "\n\t//\n"
+		cxx_buffer += "\t// {$@class_name}\n"
+		cxx_buffer += "\t//\n"
+
+		# start class
+		objk_buffer += FormatDocHeader(class_xml->GetFirstChild("doc"), Nil, Nil, 1);
+
+		if(is_class) {
+			objk_buffer += "\tclass {$@class_name} from GObject {\n";
+		}
+		else {
+			objk_buffer += "\tclass {$@class_name} {\n";
+		};
+
+		ref_name := "gobject";
+		if(<>is_class) {
+			objk_buffer += "\t\t@{$ref_name} : Int;\n\n";
+		};
+
+		# parse parameters
+		fields_xml := class_xml->GetChildren("field")<XmlElement>;
+		getters_setters := ParseGettersSetters(fields_xml, objk_buffer, cxx_buffer);
+
+		# write constructor
+		objk_buffer += "\t\tNew({$ref_name} : Int) {\n";
+		objk_buffer += "\t\t\tParent();\n\n";
+		objk_buffer += "\t\t\t@{$ref_name} := {$ref_name};\n";
+		objk_buffer += "\t\t}\n\n";
+
+		# write getters and setters
+		WriteGettersSetters(ref_name, getters_setters, objk_buffer, cxx_buffer);
+
+		# add space
+		objk_buffer += '\n';
+
+		# write constructors
+		constructors_xml := class_xml->GetChildren("constructor")<XmlElement>;
+		WriteMethods(ref_name, constructors_xml, objk_buffer, cxx_buffer, true, false);
+
+		# write methods
+		methods_xml := class_xml->GetChildren("method")<XmlElement>;
+		WriteMethods(ref_name, methods_xml, objk_buffer, cxx_buffer, false, false);
+
+		# write functions
+		funcs_xml := class_xml->GetChildren("function")<XmlElement>;
+		WriteMethods(ref_name, funcs_xml, objk_buffer, cxx_buffer, false, true);
+
+		# end class
+		objk_buffer += "\t}\n\n";
+	}
+
+	method : WriteMethods(ref_name : String, methods_xml : Vector<XmlElement>, objk_buffer : String, cxx_buffer : String, is_constr : Bool, is_func : Bool) ~ Nil {
+		each(method_xml := methods_xml) {
+			method_name := method_xml->GetAttribute("name")->GetValue();
+			identifier_name := method_xml->GetAttribute("identifier")->GetValue();
+			method_case_name := CamelCaseName(method_name->Copy());
+
+			# return type value
+			return_type_name := XmlElement->DecodeString(method_xml->GetFirstChild("return-value")->GetFirstChild("type")->GetAttribute("type")->GetValue());
+			if(@is_debug) {
+				if(is_func) {
+					"\t\tfunction: name='{$method_name}'"->PrintLine();
+				}
+				else {
+					"\t\tmethod: name='{$method_name}'"->PrintLine();
+				};
+			};
+
+			# get parameters and returns types
+			params_xml := method_xml->GetFirstChild("parameters");
+			return_xml := method_xml->GetFirstChild("return-value");
+			is_deprecated := method_xml->GetAttribute("deprecated") <> Nil;
+			
+			is_introspectable := true;
+			introspectable_attr := method_xml->GetAttribute("introspectable");
+			if(introspectable_attr <> Nil) {
+				is_introspectable := <>introspectable_attr->GetValue()->Equals("0");
+			};
+
+			if(CanEmitMethod(method_xml) & <>is_deprecated & is_introspectable) {
+				objk_buffer += FormatDocHeader(method_xml->GetFirstChild("doc"), params_xml, return_xml, 2);
+
+				if(is_constr) {
+					cxx_buffer += "#ifdef _WIN32\n";
+					cxx_buffer += "\t__declspec(dllexport)\n";
+					cxx_buffer += "#endif\n";
+					cxx_buffer += "\tvoid gtk3_{$identifier_name}(VMContext& context) {\n";
+
+					objk_buffer += "\t\tNew"
+					WriteParameters(params_xml, objk_buffer, cxx_buffer);
+					objk_buffer += " {\n";
+					objk_buffer += "\t\t\tParent();\n\n";
+				}
+				else {
+					cxx_buffer += "#ifdef _WIN32\n";
+					cxx_buffer += "\t__declspec(dllexport)\n";
+					cxx_buffer += "#endif\n";
+					cxx_buffer += "\tvoid gtk3_{$identifier_name}(VMContext& context) {\n";
+
+					if(is_func) {
+						objk_buffer += "\t\tfunction : {$method_case_name}";
+					}
+					else {
+						inst_type_xml := params_xml->GetFirstChild("instance-parameter")->GetFirstChild("type");
+						inst_ctype_name := XmlElement->DecodeString(inst_type_xml->GetAttribute("type")->GetValue());
+						cxx_buffer += "\t\t{$inst_ctype_name} p1 = ({$inst_ctype_name})APITools_GetIntValue(context, 1);\n";
+						objk_buffer += "\t\tmethod : public : {$method_case_name}";
+					};
+
+					WriteParameters(params_xml, objk_buffer, cxx_buffer);
+
+					# set return type name
+					mapped_return_type_name := GetMappingName(return_type_name);
+					objk_buffer += " ~ {$mapped_return_type_name} {\n";
+				};
+
+				cxx_params_buffer := "";
+				cxx_params_count := 0;
+
+				if(params_xml = Nil) {
+					if(return_type_name->Equals("void")) {
+						objk_buffer += "\t\t\tarray_args := Base->New[0];\n\n";
+						objk_buffer += "\t\n\t\t\tProxy->GetDllProxy()->CallFunction(\"gtk3_{$identifier_name}\", array_args);\n";
+
+						cxx_params_buffer += "\t\t{$identifier_name}();\n";
+					}
+					else {
+						objk_buffer += "\t\t\tarray_args := Base->New[1];\n\n";
+
+						if(return_type_name->Equals("Float")) {
+							objk_buffer += "\t\n\t\t\tarray_args[0] := FloatRef->New();\n";
+						}
+						else if(return_type_name->Equals("String")) {
+							objk_buffer += "\t\n\t\t\tarray_args[0] := Nil;\n";
+						}
+						else {
+							objk_buffer += "\t\n\t\t\tarray_args[0] := IntRef->New();\n";
+						};
+						objk_buffer += "\t\n\t\t\tProxy->GetDllProxy()->CallFunction(\"gtk3_{$identifier_name}\", array_args);\n";
+
+						cxx_params_buffer += "\t\tauto status = {$identifier_name}();\n";
+					};
+				}
+				else {
+					parameters_size := params_xml->Size() + 1;
+
+					if(is_constr) {
+						objk_buffer += "\t\t\tarray_args := Base->New[{$parameters_size}];\n\n";
+						objk_buffer += "\t\t\tarray_args[0] := IntRef->New();\n";
+
+						cxx_params_count := WriteProxyParameters(params_xml, objk_buffer, cxx_params_buffer, is_constr, is_func);
+
+						cxx_params_buffer += "\t\tconst auto status = (size_t){$identifier_name}(p1, ";
+					}
+					else if(return_type_name->Equals("void")) {
+						if(is_func) {
+							parameters_size -= 1;
+						};
+						objk_buffer += "\t\t\tarray_args := Base->New[{$parameters_size}];\n\n";
+
+						if(is_func) {
+							objk_buffer += "\t\t\tarray_args[0] := Nil;\n";
+							cxx_params_count := WriteProxyParameters(params_xml, objk_buffer, cxx_params_buffer, is_constr, is_func);
+							cxx_params_buffer += "\t\t{$identifier_name}(";
+						}
+						else {
+							objk_buffer += "\t\t\tarray_args[0] := Nil;\n";
+							objk_buffer += "\t\t\tarray_args[1] := IntRef->New(@{$ref_name});\n";
+							cxx_params_count := WriteProxyParameters(params_xml, objk_buffer, cxx_params_buffer, is_constr, is_func);
+							cxx_params_buffer += "\t\t{$identifier_name}(p1, ";
+						};
+					}
+					else {
+						objk_buffer += "\t\t\tarray_args := Base->New[{$parameters_size}];\n";
+						WriteProxyReturnParameter(return_xml, objk_buffer, cxx_buffer);
+						
+						if(is_func) {						
+							cxx_params_count := WriteProxyParameters(params_xml, objk_buffer, cxx_params_buffer, is_constr, is_func);
+							cxx_params_buffer += "\t\tconst auto status = {$identifier_name}(";
+						}
+						else {
+							objk_buffer += "\t\t\tarray_args[1] := IntRef->New(@{$ref_name});\n";
+							cxx_params_count := WriteProxyParameters(params_xml, objk_buffer, cxx_params_buffer, is_constr, is_func);
+							cxx_params_buffer += "\t\tconst auto status = {$identifier_name}(p1, ";
+						};
+					};
+
+					objk_buffer += "\t\n\t\t\tProxy->GetDllProxy()->CallFunction(\"gtk3_{$identifier_name}\", array_args);\n";
+
+					if(1 < cxx_params_count) {
+						for(i := 1; i < cxx_params_count; i += 1;) {
+							if(is_func) {
+								cxx_params_buffer += "p" + i;
+							}
+							else {
+								cxx_params_buffer += "p" + (i + 1);
+							};
+
+							if(i < cxx_params_count - 1) {
+								cxx_params_buffer += ", ";
+							};
+						};
+					}
+					else {
+						cxx_params_buffer->Pop();
+						cxx_params_buffer->Pop();
+					};
+
+					cxx_params_buffer += ");\n";
+				};
+								
+				cxx_return_buffer := "";
+				WriteProxyReturn(return_xml, objk_buffer, cxx_return_buffer, is_constr);
+
+				objk_buffer += "\t\t}\n\n";
+
+				cxx_buffer += cxx_params_buffer;
+				if(<>cxx_return_buffer->IsEmpty()) {
+					cxx_buffer += '\n';
+					cxx_buffer += cxx_return_buffer;
+				};
+				cxx_buffer += "\t}\n\n";
+			}
+		};
+
+		objk_buffer->Pop();
+	}
+
+	method : WriteParameters(params_xml : XmlElement, objk_buffer : String, cxx_buffer : String) ~ Nil {
+		objk_buffer += '(';
+
+		if(params_xml <> Nil & params_xml->Size() > 0) {
+			clean_up : Bool;
+
+			each(param_xml := params_xml) {
+				param_name := param_xml->GetName();
+				if(param_name->Equals("parameter")) {
+					clean_up := true;
+
+					param_name := param_xml->GetAttribute("name")->GetValue();
+					if(MatchKeyword(param_name)) {
+						param_name += '_';
+					};
+
+					type_xml := param_xml->GetFirstChild("type");
+					if(type_xml <> Nil) {									
+						type_name := GetMappingName(type_xml->GetAttribute("name")->GetValue());
+						objk_buffer += "{$param_name} : {$type_name}, ";
+					}
+					else {
+						array_xml := param_xml->GetFirstChild("array");
+						type_xml := array_xml->GetFirstChild("type");
+						if(type_xml <> Nil) {									
+							type_name := GetMappingName(type_xml->GetAttribute("name")->GetValue());
+							objk_buffer += "{$param_name} : {$type_name}[], ";
+						};
+					};
+				};
+			};
+
+			if(clean_up) {
+				objk_buffer->Pop();
+				objk_buffer->Pop();
+			};
+		};
+
+		objk_buffer += ')';
+	}
+
+	method : native : WriteProxyParameters(params_xml : XmlElement, objk_buffer : String, cxx_buffer : String, is_constr : Bool, is_func : Bool) ~ Int {
+		if(params_xml <> Nil) {
+			index := 1;
+			if(is_constr) {
+				index := 1;
+			}
+			else if(<>is_func) {
+				index += 1;
+			};
+
+			each(i : params_xml) {
+				param_xml := params_xml->Get(i);
+				param_name := param_xml->GetName();
+
+				if(param_name->Equals("parameter")) {
+					is_array := false;
+
+					param_name := param_xml->GetAttribute("name")->GetValue();
+					type_xml := param_xml->GetFirstChild("type");
+					if(type_xml = Nil) {
+						array_xml := param_xml->GetFirstChild("array");
+						type_xml := array_xml->GetFirstChild("type");
+						is_array := true;
+					};
+
+					if(type_xml <> Nil) {									
+						if(MatchKeyword(param_name)) {
+							param_name += '_';
+						};
+						type_name := GetMappingName(type_xml->GetAttribute("name")->GetValue());
+						
+						# TODO: add array check
+						if(type_name->Equals("Int")) {
+							objk_buffer += "\t\t\tarray_args[{$index}] := IntRef->New({$param_name});\n";
+
+							cxx_buffer += "\t\tconst gint p{$index} = (gint)APITools_GetIntValue(context, {$index});\n";
+						}
+						else if(type_name->Equals("Float")) {
+							objk_buffer += "\t\t\tarray_args[{$index}] := FloatRef->New({$param_name});\n";
+
+							cxx_buffer += "\t\tconst gdouble p{$index} = (gdouble)APITools_GetFloatValue(context, {$index});\n";
+						}
+						else if(type_name->Equals("Bool")) {
+							objk_buffer += "\t\t\tarray_args[{$index}] := IntRef->New({$param_name} ? 0 : 1);\n";
+
+							cxx_buffer += "\t\tconst gboolean p{$index} = (gboolean)APITools_GetIntValue(context, {$index}) ? false : true;\n";
+						}
+						else if(type_name->Equals("String")) {
+							objk_buffer += "\t\t\tarray_args[{$index}] := {$param_name};\n";
+
+							cxx_buffer += "\t\tconst gchar* p{$index} = (gchar*)UnicodeToBytes(APITools_GetStringValue(context, {$index})).c_str();\n";
+						}
+						else {
+							param_type_xml := type_xml->GetAttribute("type");
+							param_name_xml := type_xml->GetAttribute("name");
+							if(param_type_xml <> Nil & param_name_xml <> Nil) {
+								ctype_type := XmlElement->DecodeString(param_type_xml->GetValue());
+								ctype_name := param_type_xml->GetValue();
+								if(ctype_name->EndsWith('*')) {
+									ctype_name->Pop();
+								};
+
+								if(<>type_name->Equals(@class_name) & <>@consts_enums->Has(type_name)) {
+									@missing_defs->Insert(type_name);
+								};
+
+								if(is_array) {
+									objk_buffer += "\n\t\t\t{$param_name}_objs := Int->New[0];\n";
+									objk_buffer += "\t\t\t# copy references\n";
+									objk_buffer += "\t\t\tarray_args[{$index}] := IntArrayRef->New({$param_name}_objs);\n\n";
+								}
+								else if(@consts_enums->Has(type_name)) {
+									objk_buffer += "\t\t\tarray_args[{$index}] := IntRef->New({$param_name});\n";
+
+									cxx_buffer += "\t\tconst {$ctype_name} p{$index} = ({$ctype_name})APITools_GetIntValue(context, {$index});\n";
+								}
+								else {
+									objk_buffer += "\t\t\tarray_args[{$index}] := {$param_name};\n";
+									
+									cxx_buffer += "\t\tconst size_t* p{$index}_obj = APITools_GetObjectValue(context, {$index});\n";
+									cxx_buffer += "\t\t{$ctype_type} p{$index} = ({$ctype_type})p{$index}_obj[0];\n";
+								};
+
+								if(i + 1 < params_xml->Size()) {
+									cxx_buffer += "\n";
+								};
+							};
+						};
+
+						# update
+						index += 1;
+					};
+				};
+			};
+
+			cxx_buffer += '\n';
+			return params_xml->Size();
+		};
+
+		return 0;
+	}
+
+	method : WriteProxyReturn(return_xml : XmlElement, objk_buffer : String, cxx_buffer : String, is_constr : Bool) ~ Nil {		
+		return_type_xml := return_xml->GetFirstChild("type");
+		if(return_type_xml <> Nil) {
+			type_name_xml := return_type_xml->GetAttribute("name");
+			if(type_name_xml <> Nil) {				
+				type_name := XmlElement->DecodeString(GetMappingName(type_name_xml->GetValue()));
+				
+				# TODO: hash sub-strings
+				if(is_constr) {
+					objk_buffer += "\t\t\tvalue := array_args[0]->As(IntRef);\n"
+					objk_buffer += "\t\t\t@gobject := value->Get();\n";
+
+					cxx_buffer += "\t\tAPITools_SetIntValue(context, 0, (size_t)status);\n";
+				}
+				else if(type_name->Equals("Int")) {
+					objk_buffer += "\t\n\t\t\tvalue := array_args[0]->As(IntRef);\n";
+					objk_buffer += "\t\t\treturn value->Get();\n";
+
+					cxx_buffer += "\t\tAPITools_SetIntValue(context, 0, status);\n";
+				}
+				else if(type_name->Equals("Bool")) {
+					objk_buffer += "\t\n\t\t\tvalue := array_args[0]->As(IntRef);\n";
+					objk_buffer += "\t\t\treturn value->Get() = 0 ? false : true;\n";
+
+					cxx_buffer += "\t\tAPITools_SetIntValue(context, 0, status);\n";
+				}
+				else if(type_name->Equals("Float")) {
+					objk_buffer += "\t\n\t\t\tvalue := array_args[0]->As(FloatRef);\n";
+					objk_buffer += "\t\t\treturn value->Get();\n";
+
+					cxx_buffer += "\t\tAPITools_SetFloatValue(context, 0, status);\n";
+				}
+				else if(type_name->Equals("String")) {
+					objk_buffer += "\t\n\t\t\treturn array_args[0]->As(String);\n";
+
+					cxx_buffer += "\t\tAPITools_SetStringValue(context, 0, BytesToUnicode(status));\n";
+				}
+				else if(<>type_name->Equals("Nil")) {
+					objk_buffer += "\t\n\t\t\tvalue := array_args[0]->As(IntRef);\n";
+
+					if(@consts_enums->Has(type_name)) {
+						objk_buffer += "\t\t\treturn value->Get()->As({$type_name});\n";
+
+						cxx_buffer += "\t\tAPITools_SetIntValue(context, 0, (size_t)status);\n";
+					}
+					else {
+						if(<>type_name->Equals(@class_name) & <>@consts_enums->Has(type_name)) {
+							@missing_defs->Insert(type_name);
+						};
+
+						if(@consts_enums->Has(type_name)) {
+							objk_buffer += "\t\t\treturn value->Get()->As({$type_name});\n";
+
+							cxx_buffer += "\t\tAPITools_SetIntValue(context, 0, (size_t)status);\n";
+						}
+						else {
+							objk_buffer += "\t\t\treturn {$type_name}->New(value->Get());\n";
+						};
+
+						cxx_buffer += "\t\tAPITools_SetIntValue(context, 0, (size_t)status);\n";
+					};
+				};
+			};			
+		};
+	}
+
+	method : WriteProxyReturnParameter(return_xml : XmlElement, objk_buffer : String, cxx_buffer : String) ~ Nil {		
+		return_type_xml := return_xml->GetFirstChild("type");
+		if(return_type_xml <> Nil) {
+			type_xml := return_type_xml->GetAttribute("type");
+			if(type_xml <> Nil) {									
+				type_name := GetMappingName(XmlElement->DecodeString(type_xml->GetValue()));
+				
+				# TODO: hash sub-strings
+				if(type_name->Equals("Float")) {
+					objk_buffer += "\t\n\t\t\tarray_args[0] := FloatRef->New();\n";
+				}
+				else if(type_name->Equals("String")) {
+					objk_buffer += "\t\n\t\t\tarray_args[0] := Nil;\n";
+				}
+				else {
+					objk_buffer += "\t\n\t\t\tarray_args[0] := IntRef->New();\n";
+				};
+			};
+		};
+	}
+
+	method : ParseGettersSetters(fields_xml : Vector<XmlElement>, objk_buffer : String, cxx_buffer : String) ~ Vector<Pair<String, String>> {
+		getters_setters := Vector->New()<Pair<String, String>>;
+
+		if(fields_xml->Size() > 0) {
+			each(field_xml := fields_xml) {
+				type_xml := field_xml->GetFirstChild("type");
+				field_name := field_xml->GetAttribute("name")->GetValue();
+
+				if(type_xml <> Nil) {
+					ctype_type_xml := type_xml->GetAttribute("type");
+					if(ctype_type_xml <> Nil) {
+						ctype_type_name := ctype_type_xml->GetValue();
+						mapping_name := GetMappingName(ctype_type_name);
+						getters_setters->AddBack(Pair->New(field_name, mapping_name)<String, String>);
+
+					};
+				};
+			};
+			objk_buffer += "\t\n";
+		};
+
+		return getters_setters;
+	}
+
+	method : WriteGettersSetters(ref_name : String, getters_setters : Vector<Pair<String, String>>, objk_buffer : String, cxx_buffer : String) ~ Nil {
+		# write getters and setters
+		each(getter_setter := getters_setters) {
+			name := getter_setter->GetFirst();
+			type := getter_setter->GetSecond();
+
+			if(<>name->Has('.') & <>type->Has('.')) {
+				method_case_name := CamelCaseName(name->Copy());
+
+				class_ref := @class_name->ToLower();
+
+				#
+				# getter
+				#
+				objk_buffer += "\t\tmethod : public : Get{$method_case_name}() ~ {$type} {\n";
+				objk_buffer += "\t\t\tarray_args := Base->New[2];\n\n";
+				
+				# set params
+				if(type->Equals("Byte") | type->Equals("Char") | type->Equals("Int") | type->Equals("Bool")) {
+					objk_buffer += "\t\t\tarray_args[0] := IntRef->New();\n";
+				}
+				else if(type->Equals("Float")) {
+					objk_buffer += "\t\t\tarray_args[0] := FloatRef->New();\n";
+				}
+				else {
+					objk_buffer += "\t\t\tarray_args[0] := Nil;\n";
+				};
+
+				objk_buffer += "\t\t\tarray_args[1] := IntRef->New(@{$ref_name});\n";
+
+				c_call_name := "{$class_ref}_get_{$method_case_name}"->ToLower();
+				objk_buffer += "\t\n\t\t\tProxy->GetDllProxy()->CallFunction(\"{$c_call_name}\", array_args);\n";
+
+				cxx_buffer += "#ifdef _WIN32\n";
+				cxx_buffer += "\t__declspec(dllexport)\n";
+				cxx_buffer += "#endif\n";
+				cxx_buffer += "\tvoid {$c_call_name}(VMContext& context) {\n";
+				cxx_buffer += "\t\tconst {$@namespace}{$@class_name}* obj = ({$@namespace}{$@class_name}*)APITools_GetIntValue(context, 1);\n";
+
+				# get return
+				if(type->Equals("Byte") | type->Equals("Char") | type->Equals("Int")) {
+					objk_buffer += "\t\n\t\t\tvalue := array_args[0]->As(IntRef);\n";
+					objk_buffer += "\t\t\treturn value->Get();\n";
+
+					cxx_buffer += "\t\tAPITools_SetIntValue(context, 0, obj->{$name});\n";
+				}
+				else if(type->Equals("Bool")) {
+					objk_buffer += "\t\n\t\t\tvalue := array_args[0]->As(IntRef);\n";
+					objk_buffer += "\t\t\treturn value->Get() = 0 ? false : true;\n";
+
+					cxx_buffer += "\t\tAPITools_SetIntValue(context, 0, obj->{$name} ? 1 : 0);\n";
+				}
+				else if(type->Equals("Float")) {
+					objk_buffer += "\t\n\t\t\tvalue := array_args[0]->As(FloatRef);\n";
+					objk_buffer += "\t\t\treturn value->Get();\n";
+
+					cxx_buffer += "\t\tAPITools_SetFloatValue(context, 0, obj->{$name});\n";
+				}
+				else if(type->Equals("String")) {
+					objk_buffer += "\t\n\t\t\treturn array_args[0]->As(String);\n";
+
+					cxx_buffer += "\t\tAPITools_SetStringValue(context, 0, obj->{$name});\n";
+				}
+				else {
+					objk_buffer += "\t\n\t\t\tvalue := array_args[0]->As(IntRef);\n";
+					if(@consts_enums->Has(type)) {
+						objk_buffer += "\t\t\treturn value->Get()->As({$type});\n";
+					}
+					else {
+						objk_buffer += "\t\t\treturn {$type}->New(value->Get());\n";
+					};
+
+					cxx_buffer += "\t\tAPITools_SetIntValue(context, 0, (size_t)obj->{$name});\n";
+				};
+
+				objk_buffer += "\t\t}\n\n";
+				cxx_buffer += "\t}\n\n";
+
+				#
+				# setter
+				#
+				objk_buffer += "\t\tmethod : public : Set{$method_case_name}({$name} : {$type}) ~ Nil {\n";
+				objk_buffer += "\t\t\tarray_args := Base->New[2];\n\n";
+				objk_buffer += "\t\t\tarray_args[0] := IntRef->New(@{$ref_name});\n";
+
+				c_call_name := "{$class_ref}_set_{$method_case_name}"->ToLower();
+				cxx_buffer += "#ifdef _WIN32\n";
+				cxx_buffer += "\t__declspec(dllexport)\n";
+				cxx_buffer += "#endif\n";
+				cxx_buffer += "\tvoid {$c_call_name}(VMContext& context) {\n";
+				cxx_buffer += "\t\t{$@namespace}{$@class_name}* obj = ({$@namespace}{$@class_name}*)APITools_GetIntValue(context, 0);\n";
+
+				# set value
+				if(type->Equals("Byte") | type->Equals("Char") | type->Equals("Int")) {
+					objk_buffer += "\t\t\tarray_args[1] := IntRef->New({$name});\n";
+
+					cxx_buffer += "\t\tconst auto value = APITools_GetIntValue(context, 1);\n";
+					cxx_buffer += "\t\tobj->{$name} = value;\n";
+				}
+				else if(type->Equals("Bool")) {
+					objk_buffer += "\t\t\tarray_args[1] := IntRef->New({$name} ? 1 : 0);\n";
+
+					cxx_buffer += "\t\tconst auto value = APITools_GetIntValue(context, 1) ? true : false;\n";
+					cxx_buffer += "\t\tobj->{$name} = value;\n";
+				}
+				else if(type->Equals("Float")) {
+					objk_buffer += "\t\t\tarray_args[1] := FloatRef->New({$name});\n";
+
+					cxx_buffer += "\t\tconst auto value = APITools_GetFloatValue(context, 1);\n";
+					cxx_buffer += "\t\tobj->{$name} = value;\n";
+				}
+				else if(@consts_enums->Has(type)) {
+					objk_buffer += "\t\t\tarray_args[1] := IntRef->New({$name});\n";
+
+					cxx_buffer += "\t\tconst auto value = APITools_GetIntValue(context, 1);\n";
+					cxx_buffer += "\t\tobj->{$name} = value;\n";
+				}
+				else {
+					objk_buffer += "\t\t\tarray_args[1] := {$name};\n";
+
+					cxx_buffer += "\t\tconst size_t* value_obj = APITools_GetObjectValue(context, 1);\n";
+					cxx_buffer += "\t\tobj->{$name} = ({$type})value_obj[0];\n";
+				};
+
+				c_call_name := "{$class_ref}_set_{$method_case_name}"->ToLower();
+				objk_buffer += "\t\n\t\t\tProxy->GetDllProxy()->CallFunction(\"{$c_call_name}\", array_args);\n";
+				objk_buffer += "\t\t}\n\n\n";
+
+				
+				cxx_buffer += "\t}\n\n";
+			};
+		};
+	}
+
+	method : native : CanEmitMethod(method_xml : XmlElement) ~ Bool {
+		params_xml := method_xml->GetFirstChild("parameters");
+		if(params_xml <> Nil) {
+			each(param_xml := params_xml) {
+				param_name := param_xml->GetName();
+				if(param_name->Equals("parameter")) {
+					type_xml := param_xml->GetFirstChild("type");
+					if(type_xml <> Nil) {									
+						type_name := GetMappingName(type_xml->GetAttribute("name")->GetValue());
+						if(type_name->Has('.')) {
+							return false;
+						};
+
+						if(type_name->Has("Func")) {
+							return false;
+						};
+					};
+				};
+			};
+		};
+
+		return_xml := method_xml->GetFirstChild("return-value");
+		if(return_xml <> Nil) {
+			type_xml := return_xml->GetFirstChild("type");
+			if(type_xml <> Nil) {									
+				type_name := GetMappingName(type_xml->GetAttribute("name")->GetValue());
+				if(type_name->Has('.')) {
+					return false;
+				};
+			};
+		};
+
+		return true;
+	}
+
+	method : GetMappingName(ctype_name : String) ~ String {
+		mapping_name := @basic_types->Find(ctype_name);
+		if(mapping_name <> Nil) {
+			return mapping_name;
+		};
+
+		mapping_name := ctype_name->Copy();
+		if(mapping_name->EndsWith('*')) {
+			mapping_name->Pop();
+			temp := @basic_types->Find(mapping_name);
+			if(temp <> Nil) {
+				mapping_name := temp->Copy();
+				mapping_name += "[]";
+				return mapping_name;
+			};
+		};
+		
+		return mapping_name->Remove(@namespace);
+	}
+
+	method : WriteObjeckHeader() ~ Nil {
+		buffer := @static_content->Find("objk_header");
+		Runtime->Assert(buffer <> Nil & <>buffer->IsEmpty());
+		@objk_file_out->WriteString(buffer);
+	}
+
+	method : LoadConfiguration(filename : String) ~ Nil {
+		@config := MultiMap->New()<String, String>;
+
+		file := FileReader->New(filename);
+		leaving {
+			file->Close();
+		};
+
+		do {
+			line := file->ReadLine();
+			if(line <> Nil) {
+				data_start := line->Find(':');
+				if(<>data_start->IsNeg()) {
+					tag := line->SubString(data_start);
+					data_start += 1;
+					data := line->SubString(data_start, line->Size() - data_start);
+					items := data->Split(',');
+					each(item := items) {
+						item := item->Trim();
+						@config->Insert(tag, item);
+					};
+				};
+			};
+		}
+		while(<>file->IsEoF());
+	}
+
+	method : MatchKeyword(name : String) ~ Bool {
+		return @lang_keywords->Has(name);
+	}
+
+	method : native : MatchEmitClass(name : String) ~ Bool {
+		found := false;
+
+		for(i := 0; <>found & i < @emit_classes->Size(); i += 1;) {
+			emit_class := @emit_classes->Get(i);
+
+			if(emit_class->EndsWith('*')) {
+				compare_class := emit_class->SubString(emit_class->Size() - 1);
+				found := name->StartsWith(compare_class);
+			}
+			else {
+				found := name->Equals(emit_class);
+			};
+		};
+
+		return found;
+	}
+
+	method : WriteCxxHeader() ~ Nil {
+		buffer := @static_content->Find("cxx_header");
+		Runtime->Assert(buffer <> Nil & <>buffer->IsEmpty());
+		@cxx_file_out->WriteString(buffer);
+	}
+
+	function : WriteMissingClass(class_name : String, objk_buffer : String) ~ Nil {
+		objk_buffer += "\n\tclass {$class_name} from GObject {\n"
+		objk_buffer += "\t\tNew(gobject : Int) {\n"
+		objk_buffer += "\t\t\tParent();\n"
+		objk_buffer += "\t\t}\n"
+		objk_buffer += "\t}\n"
+	}
+
+	function : ParseStaticContent(filename : String) ~ Map<String, String> {
+		section_map := Map->New()<String, String>;
+
+		reader := System.IO.Filesystem.FileReader->New(filename);
+		leaving {
+			reader->Close();
+		};
+
+		section_buffer := "";
+		section_name : String;
+
+		do {
+			line := reader->ReadLine();
+			if(<>line->IsEmpty()) {
+				if(line->StartsWith("### [") & line->EndsWith("] ###")) {
+					if(section_name <> Nil) {
+						section_name := section_name->Remove("### [")->Remove("] ###");
+						section_map->Insert(section_name, section_buffer);
+					};
+
+					section_name := line;
+					section_buffer := "";
+				}
+				else {
+					section_buffer += line + "\r\n";
+				};
+			}
+			else {
+				section_buffer += "\r\n";
+			};
+		}
+		while(<>reader->IsEoF());
+
+		if(section_name <> Nil) {
+			section_name := section_name->Remove("### [")->Remove("] ###");
+			section_map->Insert(section_name, section_buffer);
+		};
+
+		return section_map;
+	}
+
+	function : FormatDocHeader(doc_xml : XmlElement, params_xml : XmlElement, return_xml : XmlElement, padding : Int) ~ String {
+		doc_str := "";
+
+		if(doc_xml <> Nil) {
+			raw_doc_str := doc_xml->GetContent();
+
+			each(i : padding) {
+				doc_str += '\t';
+			};
+
+			doc_str += "#~\n";
+			each(i : padding) {
+				doc_str += '\t';
+			};
+
+			each(raw_doc_char := raw_doc_str) {
+				if(raw_doc_char = '\n') {
+					doc_str += '\n';
+					each(i : padding) {
+						doc_str += '\t';
+					};
+				}
+				else {
+					doc_str += raw_doc_char;
+				};
+			}
+			doc_str += '\n';
+
+			if(params_xml <> Nil) {
+				doc_str += FormatDocParams(params_xml, padding);
+			};
+
+			if(return_xml <> Nil) {
+				return_doc_xml := return_xml->GetFirstChild("doc");
+				if(return_doc_xml <> Nil) {
+					each(i : padding) {
+						doc_str += '\t';
+					};
+
+					doc_str += "@return ";
+					doc_str += FormatDocParam(return_doc_xml, padding);
+				};
+			};
+
+			each(i : padding) {
+				doc_str += '\t';
+			};
+			doc_str += "~#\n";
+		};
+
+		return doc_str;
+	}
+
+	function : FormatDocParams(params_xml : XmlElement, padding : Int) ~ String {
+		doc_str := "";
+
+		if(params_xml <> Nil & params_xml->Size() > 0) {
+			each(param_xml := params_xml) {
+				if(param_xml->GetName()->Equals("parameter")) {
+					param_name := param_xml->GetAttribute("name")->GetValue();
+					doc_xml := param_xml->GetFirstChild("doc");
+
+					if(doc_xml <> Nil) {
+						each(i : padding) {
+							doc_str += '\t';
+						};
+
+						doc_str += "@param ";
+						doc_str += param_name;
+						doc_str += ' ';
+
+						doc_str += FormatDocParam(doc_xml, padding);
+					};
+				};
+			};
+		};
+
+		return doc_str;
+	}
+
+	function : FormatDocParam(doc_xml : XmlElement, padding : Int) ~ String {
+		doc_str := "";
+
+		if(doc_xml <> Nil) {
+			raw_doc_str := XmlElement->DecodeString(doc_xml->GetContent());
+
+			each(raw_doc_char := raw_doc_str) {
+				if(raw_doc_char = '\n') {
+					doc_str += '\n';
+					each(i : padding) {
+						doc_str += '\t';
+					};
+				}
+				else {
+					doc_str += raw_doc_char;
+				};
+			};
+
+			doc_str += '\n';
+		};
+
+		return doc_str;
+	}
+
+	function : CamelCaseName(name : String) ~ String {
+		if(<>name->IsEmpty()) {
+			name->Set(name->Get(0)->ToUpper(), 0);
+
+			do {
+				underscore_index := name->Find('_');
+				if(underscore_index > -1) {
+					name->Delete(underscore_index);
+					name->Set(name->Get(underscore_index)->ToUpper(), underscore_index);
+				};
+			}
+			while(underscore_index > -1);
+		};
+
+		return name;
+	}
+}

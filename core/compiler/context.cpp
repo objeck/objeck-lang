@@ -289,12 +289,8 @@ bool ContextAnalyzer::Analyze()
   }
 
   // check for entry points
-  if(!main_found && !is_lib && !is_web) {
+  if(!main_found && !is_lib) {
     ProcessError(program->GetFileName(), L"The 'Main(args)' function was not defined");
-  }
-
-  if(is_web && !web_found) {
-    ProcessError(program->GetFileName(), L"The 'Action(args)' function was not defined");
   }
 
   return CheckErrors();
@@ -870,12 +866,10 @@ void ContextAnalyzer::AnalyzeMethod(Method* method, const int depth)
     }
 
     // check for parent call
-    if((method->GetMethodType() == NEW_PUBLIC_METHOD ||
-       method->GetMethodType() == NEW_PRIVATE_METHOD) &&
-       (current_class->GetParent() || (current_class->GetLibraryParent() &&
-       current_class->GetLibraryParent()->GetName() != SYSTEM_BASE_NAME))) {
+    if((method->GetMethodType() == NEW_PUBLIC_METHOD || method->GetMethodType() == NEW_PRIVATE_METHOD) &&
+       (current_class->GetParent() || (current_class->GetLibraryParent() && current_class->GetLibraryParent()->GetName() != SYSTEM_BASE_NAME))) {
       if(statements.size() == 0 || statements.front()->GetStatementType() != METHOD_CALL_STMT) {
-        if(!current_class->IsInterface()) {
+        if(!method->IsAlt() && !current_class->IsInterface()) {
           ProcessError(method, L"Parent call required");
         }
       }
@@ -910,26 +904,8 @@ void ContextAnalyzer::AnalyzeMethod(Method* method, const int depth)
         main_found = true;
       }
 
-      if(main_found && (is_lib || is_web)) {
+      if(main_found && (is_lib)) {
         ProcessError(method, L"Libraries and web applications may not define a 'Main(args)' function");
-      }
-    }
-    // web program
-    else if(is_web) {
-      const std::wstring web_str = current_class->GetName() + L":Action:o.Web.Server.Request,o.Web.Server.Response,";
-      if(method->GetEncodedName() == web_str) {
-        if(web_found) {
-          ProcessError(method, L"The 'Action(args)' function has already been defined");
-        }
-        else if(method->IsStatic()) {
-          current_class->SetCalled(true);
-          program->SetStart(current_class, method);
-          web_found = true;
-        }
-
-        if(web_found && (is_lib || main_found)) {
-          ProcessError(method, L"Web applications may not define a 'Main(args)' function or be compiled as a library");
-        }
       }
     }
   }
@@ -2357,11 +2333,6 @@ bool ContextAnalyzer::AnalyzeExpressionMethodCall(Expression* expression, std::w
     type = expression->GetEvalType();
   }
 
-  if(expression->GetExpressionType() == STAT_ARY_EXPR) {
-    ProcessError(expression, L"Unable to make method calls on static arrays");
-    return false;
-  }
-
   if(type) {
     const int dimension = IsScalar(expression, false) ? 0 : type->GetDimension();
     return AnalyzeExpressionMethodCall(type, dimension, encoding, klass, lib_klass, is_enum_call);
@@ -3327,7 +3298,11 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
           }
         }
           break;
-        
+
+        case CHAR_LIT_EXPR:
+        case INT_LIT_EXPR:
+        case FLOAT_LIT_EXPR:
+        case BOOLEAN_LIT_EXPR:
         case CHAR_STR_EXPR:
         case STAT_ARY_EXPR:
         case VAR_EXPR:

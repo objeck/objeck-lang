@@ -4,11 +4,11 @@
 # 
 # credits:
 # - H.W. Lang - merge sort implementation based on his work
-# - Arne Andersson - map classes uses a red-black tree variant he created
+# - Arne Andersson - map classes use a red-black tree variant he created
 ~~#
 
 #~
-Generic collections (-lib gen_collect)
+Collection collections (-lib gen_collect)
 ~#	
 bundle Collection {
 	#~
@@ -173,7 +173,7 @@ bundle Collection {
 	}
 	
 	#~
-	Generic pair
+	Collection pair
 	~#
 	class Pair<F : Compare, S> implements System.Compare  {
 		@first : F;
@@ -1287,7 +1287,7 @@ bundle Collection {
 	            @list := list;
 	    }
 
-	    #~
+		#~
 		Advances the pointer Backward
 		~#
 	    method : public : Next() ~ Nil {
@@ -1295,8 +1295,8 @@ bundle Collection {
 	                    @node := @node->GetPrevious();
 	            };
 	    }
-
-	    #~
+	    
+		#~
 		Checks to see the pointer can be advanced Backward
 		@return true if pointer can be advanced, false otherwise
 		~#
@@ -1780,7 +1780,7 @@ bundle Collection {
 
 		method : Expand() ~ Nil {
 			if(@size >= @values->Size()) {
-				temp : H[] := H->New[@size << 1];
+				temp : H[] := H->New[@size + @size >> 1];
 				Runtime->Copy(temp, 0, @values, 0, @size);
 				@values := temp;
 			};
@@ -1864,7 +1864,7 @@ bundle Collection {
 		method : public : AddBack(values : Vector<H>) ~ Nil {
 			max := values->Size() + @size;
 			if(max >= @values->Size()) {
-				temp : H[] := H->New[max << 1];
+				temp : H[] := H->New[max + max >> 1];
 				Runtime->Copy(temp, 0, @values, 0, @size);
 				@values := temp;
 			};
@@ -2014,7 +2014,7 @@ bundle Collection {
 
 		method : Expand() ~ Nil {
 			if(@size >= @values->Size()) {
-				temp : H[] := H->New[@size << 1];
+				temp : H[] := H->New[@size + @size >> 1];
 				Runtime->Copy(temp, 0, @values, 0, @size);
 				@values := temp;
 			};
@@ -2081,7 +2081,7 @@ bundle Collection {
 		method : public : AddBack(values : Vector<H>) ~ Nil {
 			max := values->Size() + @size;
 			if(max >= @values->Size()) {
-				temp : H[] := H->New[max << 1];
+				temp : H[] := H->New[max + max >> 1];
 				Runtime->Copy(temp, 0, @values, 0, @size);
 				@values := temp;
 			};
@@ -2216,20 +2216,20 @@ bundle Collection {
 			while(i <= mid & j <= hi) {
 				if(b[i]->Compare(b[j]) < 0 | b[i]->Compare(b[j]) = 0) {
 					a[k] := b[i];
-					k := k + 1;
+					k += 1;
 					i += 1;
 				}
 				else {
 					a[k] := b[j];
-					k := k + 1;
-					j := j + 1;
+					k += 1;
+					j += 1;
 				};
 			};
 			
 			# copy back remaining elements of first half (if any)
 			while(i <= mid) {
 				a[k] := b[i];
-				k := k + 1;
+				k += 1;
 				i += 1;
 			};
 		}

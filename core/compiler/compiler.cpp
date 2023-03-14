@@ -51,18 +51,14 @@ int Compile(const std::wstring& src_files, const std::wstring& opt, const std::w
   Parser parser(src_files, alt_syntax, programs);
   if(parser.Parse()) {
     bool is_lib = false;
-    bool is_web = false;
 
     if(target == L"lib") {
       is_lib = true;
     }
 
-    if(target == L"web") {
-      is_web = true;
-    }
     // analyze parse tree
     ParsedProgram* program = parser.GetProgram();
-    ContextAnalyzer analyzer(program, sys_lib_path, is_lib, is_web);
+    ContextAnalyzer analyzer(program, sys_lib_path, is_lib);
     if(analyzer.Analyze()) {
       // emit intermediate code
       IntermediateEmitter intermediate(program, is_lib, is_debug);
@@ -71,7 +67,7 @@ int Compile(const std::wstring& src_files, const std::wstring& opt, const std::w
       ItermediateOptimizer optimizer(intermediate.GetProgram(), intermediate.GetUnconditionalLabel(), opt, is_lib, is_debug);
       optimizer.Optimize();
       // emit target code
-      FileEmitter target(optimizer.GetProgram(), is_lib, is_debug, is_web, show_asm, dest_file);
+      FileEmitter target(optimizer.GetProgram(), is_lib, is_debug, show_asm, dest_file);
       target.Emit();
 
       return SUCCESS;
