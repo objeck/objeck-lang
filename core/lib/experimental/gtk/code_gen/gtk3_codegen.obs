@@ -180,8 +180,32 @@ class Gtk3Binder {
 					};
 				};
 
-				record->EmitObjeck()->PrintLine();
-				record->EmitCxx()->PrintLine();
+				methods_xml := record_xml->GetChildren("method")<XmlElement>;
+				each(method_xml := methods_xml) {
+					id_xml := method_xml->GetAttribute("identifier");
+					name_xml := method_xml->GetAttribute("name");
+					if(id_xml <> Nil & name_xml <> Nil) {
+						id_value := id_xml->GetValue();
+						name_value := name_xml->GetValue();
+
+"### |{$id_value}|, |{$name_value}| ###"->PrintLine();
+					};
+
+					return_xml := method_xml->GetFirstChild("return-value");
+
+					parameters_xml := method_xml->GetFirstChild("parameters")->GetChildren("parameter")<XmlElement>;
+					each(parameter_xml := parameters_xml) {
+						type_xml := parameter_xml->GetFirstChild("type");
+						if(type_xml <> Nil) {
+							ctype_value := XmlElement->DecodeString(type_xml->GetAttribute("type")->GetValue());
+							name_value := type_xml->GetAttribute("name")->GetValue();
+"\t### |{$ctype_value}|, |{$name_value}| ###"->PrintLine();
+						};
+					};
+				};
+
+#				record->EmitObjeck()->PrintLine();
+#				record->EmitCxx()->PrintLine();
 				"---"->PrintLine();
 			};
 		};
@@ -221,7 +245,7 @@ class Gtk3Binder {
 		return false;
 	}
 
-	method : LoadClasses(enums_xml : Vector<XmlElement>) ~ Bool {
+	method : LoadClasses(klasses_xml : Vector<XmlElement>) ~ Bool {
 		return false;
 	}
 }
