@@ -21,6 +21,10 @@ jobs:
     - name: add-deps
       run: sudo apt-get install build-essential libssl-dev unixodbc-dev libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev libsdl2-mixer-dev libreadline-dev
     
+    - name: build-core-lib
+      working-directory: ./core/compiler
+      run: ./update_version.sh
+      
     - name: build-toolchain
       working-directory: ./core/release
       run: ./deploy_posix.sh 64
