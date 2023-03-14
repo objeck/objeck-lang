@@ -10,7 +10,7 @@ Objeck release process
 	b. Update LSP version number
 
 ---
-3. Update system libraries on Linux x64; push code
+3. Update system libraries on Linux x64; run SA; push code
 4. Full build on Windows (reminder: escape signtool password) with LSP binaries; push code; copy binaries to network directory
 5. Build other OSs and copy binaries to network directory (9 items, with 'old' in total)
 	a. Linux x64
