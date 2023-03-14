@@ -347,7 +347,7 @@ bundle System.Diagnostics {
 	}
 
 	#~
-	Generic analysis result
+	Collection analysis result
 	~#
 	class Result {
 		#~

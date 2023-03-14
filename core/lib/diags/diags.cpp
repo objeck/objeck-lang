@@ -155,7 +155,7 @@ extern "C" {
 
     // if parsed
     if(prgm_obj[1]) {
-      ContextAnalyzer analyzer(program, full_lib_path, false, false);
+      ContextAnalyzer analyzer(program, full_lib_path, false);
       const bool analyze_success = analyzer.Analyze();
       const std::vector<std::wstring> warning_strings = program->GetWarningStrings();
       if(!analyze_success || !warning_strings.empty()) {
@@ -193,7 +193,7 @@ extern "C" {
     // if parsed
     bool validated = false;
     if(prgm_obj[1]) {
-      ContextAnalyzer analyzer(program, full_lib_path, false, false);
+      ContextAnalyzer analyzer(program, full_lib_path, false);
       validated = analyzer.Analyze();
     }
 
@@ -359,7 +359,7 @@ extern "C" {
           full_lib_path += L',' + lib_path;
         }
 
-        ContextAnalyzer analyzer(program, full_lib_path, false, false);
+        ContextAnalyzer analyzer(program, full_lib_path, false);
         if(analyzer.Analyze()) {
           std::wstring found_name; int found_line; int found_start_pos; int found_end_pos; Class* klass = nullptr;
           Enum* eenum = nullptr; ; EnumItem* eenum_item = nullptr;
@@ -398,7 +398,7 @@ extern "C" {
           full_lib_path += L',' + lib_path;
         }
 
-        ContextAnalyzer analyzer(program, full_lib_path, false, false);
+        ContextAnalyzer analyzer(program, full_lib_path, false);
         if(analyzer.Analyze()) {
           Class* found_klass = nullptr;
           if(analyzer.GetDefinition(klass, line_num, line_pos, found_klass)) {
@@ -441,7 +441,7 @@ extern "C" {
           full_lib_path += L',' + lib_path;
         }
 
-        ContextAnalyzer analyzer(program, full_lib_path, false, false);
+        ContextAnalyzer analyzer(program, full_lib_path, false);
         if(analyzer.Analyze()) {
           std::wstring found_name; int found_line; int found_start_pos; int found_end_pos;
           if(analyzer.GetDeclaration(method, line_num, line_pos, found_name, found_line, found_start_pos, found_end_pos)) {
@@ -485,7 +485,7 @@ extern "C" {
           full_lib_path += L',' + lib_path;
         }
 
-        ContextAnalyzer analyzer(program, full_lib_path, false, false);
+        ContextAnalyzer analyzer(program, full_lib_path, false);
         if(analyzer.Analyze()) {
           std::vector<std::pair<int, std::wstring>> completions;
 
@@ -603,7 +603,7 @@ extern "C" {
           full_lib_path += L',' + lib_path;
         }
 
-        ContextAnalyzer analyzer(program, full_lib_path, false, false);
+        ContextAnalyzer analyzer(program, full_lib_path, false);
         if(analyzer.Analyze()) {
           std::wstring found_name; int found_line; int found_start_pos; int found_end_pos; Expression* found_expression;  SymbolEntry* found_entry;
 
@@ -699,7 +699,7 @@ extern "C" {
           full_lib_path += L',' + lib_path;
         }
 
-        ContextAnalyzer analyzer(program, full_lib_path, false, false);
+        ContextAnalyzer analyzer(program, full_lib_path, false);
         if(analyzer.Analyze()) {
           std::vector<Method*> found_methods; std::vector<LibraryMethod*> found_lib_methods;
           if(analyzer.GetSignature(method, var_str, mthd_str, found_methods, found_lib_methods)) {
@@ -912,7 +912,7 @@ size_t* GetExpressionsCalls(VMContext& context, frontend::ParsedProgram* program
         full_lib_path += L',' + lib_path;
       }
 
-      ContextAnalyzer analyzer(program, full_lib_path, false, false);
+      ContextAnalyzer analyzer(program, full_lib_path, false);
       if(analyzer.Analyze()) {
         // fetch renamed expressions
         bool is_var;
@@ -1061,7 +1061,7 @@ size_t* GetExpressionsCalls(VMContext& context, frontend::ParsedProgram* program
         full_lib_path += L',' + lib_path;
       }
 
-      ContextAnalyzer analyzer(program, full_lib_path, false, false);
+      ContextAnalyzer analyzer(program, full_lib_path, false);
       if(analyzer.Analyze()) {
         // fetch renamed expressions
         std::vector<Expression*> expressions = FetchRenamedExpressions(klass, analyzer, line_num, line_pos);

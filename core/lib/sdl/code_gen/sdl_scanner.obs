@@ -37,7 +37,7 @@ bundle CodeGen {
 
 			reader := FileReader->New(@filename);
 			line_num := 0;
-			while(reader->IsEOF() <> true) {
+			while(reader->IsEoF() <> true) {
 				line := reader->ReadLine();
 				line_num := line_num + 1;
 

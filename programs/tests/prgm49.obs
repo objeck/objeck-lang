@@ -25,7 +25,7 @@ bundle Default {
 #      reader := FileReader->New("../compiler/test_src/prgm1.obs");
   reader := FileReader->New("/Users/randy/Documents/Code/main/src/compiler/test_src/prgm1.obs");
       line_num := 0;
-      while(reader->IsEOF() <> true) {
+      while(reader->IsEoF() <> true) {
         line := reader->ReadString();
         line_num := line_num + 1;
                   
