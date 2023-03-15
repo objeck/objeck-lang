@@ -5918,8 +5918,8 @@ bundle System.IO {
 		@param str string to be written
 		~#
 		method : public : WriteString(str : System.String) ~ Nil {
-			buffer := str->ToByteArray();
-			WriteString(0, buffer->Size(), buffer);
+			buffer := str->ToCharArray();
+			WriteBuffer(0, buffer->Size(), buffer);
 		}
 
 		#~
