@@ -2816,7 +2816,7 @@ bool TrapProcessor::StdInByteAryLen(StackProgram* program, size_t* inst, size_t*
   std::wcout << L"  STD_IN_BYTE_ARY_LEN: addr=" << array << L"(" << (size_t)array << L")" << std::endl;
 #endif
 
-  if(array && offset > -1 && offset + num < (long)array[0]) {
+  if(array && offset > -1 && offset + num <= (long)array[0]) {
     char* buffer = (char*)(array + 3);
     std::cin.read(buffer + offset, num);
     PushInt(1, op_stack, stack_pos);
@@ -2838,7 +2838,7 @@ bool TrapProcessor::StdInCharAryLen(StackProgram* program, size_t* inst, size_t*
   std::wcout << L"  STD_IN_CHAR_ARY: addr=" << array << L"(" << (size_t)array << L")" << std::endl;
 #endif
 
-  if(array && offset > -1 && offset + num < (long)array[0]) {
+  if(array && offset > -1 && offset + num <= (long)array[0]) {
     wchar_t* buffer = (wchar_t*)(array + 3);
     std::wcin.read(buffer + offset, num);
     PushInt(1, op_stack, stack_pos);
@@ -2860,7 +2860,7 @@ bool TrapProcessor::StdOutByteAryLen(StackProgram* program, size_t* inst, size_t
   std::wcout << L"  STD_OUT_BYTE_ARY_LEN: addr=" << array << L"(" << (size_t)array << L")" << std::endl;
 #endif
 
-  if(array && offset > -1 && offset + num < (long)array[0]) {
+  if(array && offset > -1 && offset + num <= (long)array[0]) {
     const char* buffer = (char*)(array + 3);
     std::cout.write(buffer + offset, num);
     PushInt(1, op_stack, stack_pos);
@@ -2882,7 +2882,7 @@ bool TrapProcessor::StdOutCharAryLen(StackProgram* program, size_t* inst, size_t
   std::wcout << L"  STD_OUT_CHAR_ARY: addr=" << array << L"(" << (size_t)array << L")" << std::endl;
 #endif
 
-  if(array && offset > -1 && offset + num < (long)array[0]) {
+  if(array && offset > -1 && offset + num <= (long)array[0]) {
     const wchar_t* buffer = (wchar_t*)(array + 3);
     std::wcout.write(buffer + offset, num);
     PushInt(1, op_stack, stack_pos);
@@ -3029,7 +3029,7 @@ bool TrapProcessor::StdErrByteAry(StackProgram* program, size_t* inst, size_t* &
   std::wcout << L"  STD_ERR_CHAR_ARY: addr=" << array << L"(" << (size_t)array << L")" << std::endl;
 #endif
 
-  if(array && offset > -1 && offset + num < (long)array[2]) {
+  if(array && offset > -1 && offset + num <= (long)array[2]) {
     const unsigned char* buffer = (unsigned char*)(array + 3);
     for(long i = 0; i < num; i++) {
       std::wcerr << (char)buffer[i + offset];
