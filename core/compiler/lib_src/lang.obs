@@ -5918,7 +5918,7 @@ bundle System.IO {
 		@param str string to be written
 		~#
 		method : public : WriteString(str : System.String) ~ Nil {
-			buffer := str->ToCharArray();
+			buffer := str->ToByteArray();
 			WriteString(0, buffer->Size(), buffer);
 		}
 
