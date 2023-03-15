@@ -5927,7 +5927,7 @@ bundle System.IO {
 		@param buffer input buffer
 		@return true if successful, false otherwise
 		~#
-		function : public : WriteBuffer(buffer : Char[]) ~ Bool {
+		function : public : WriteString(buffer : Char[]) ~ Bool {
 			return WriteBuffer(0, buffer->Size(), buffer);	
 		}
 
