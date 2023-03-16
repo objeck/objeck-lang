@@ -335,6 +335,23 @@ void APITools_SetFloatArrayElement(size_t* data_array, size_t index, double valu
 }
 
 //
+// Gets an indexed Bool value
+//
+bool APITools_GetBoolValue(VMContext& context, size_t index) {
+  size_t* data_array = context.data_array;
+  if(data_array && index < data_array[0]) {
+    data_array += ARRAY_HEADER_OFFSET;
+    const size_t* value_holder = (size_t*)data_array[index];
+#ifdef _DEBUG
+    assert(value_holder);
+#endif
+    return !(*value_holder) ? false : true;
+  }
+
+  return false;
+}
+
+//
 // Gets an indexed Int value
 //
 size_t APITools_GetIntValue(VMContext &context, size_t index) {
@@ -403,6 +420,21 @@ unsigned char APITools_GetByteValue(VMContext& context, size_t index) {
   }
 
   return 0;
+}
+
+//
+// Sets an indexed Bool value
+//
+void APITools_SetBoolValue(VMContext& context, int index, bool value) {
+  size_t* data_array = context.data_array;
+  if(data_array && index < (int)data_array[0]) {
+    data_array += ARRAY_HEADER_OFFSET;
+    size_t* value_holder = (size_t*)data_array[index];
+#ifdef _DEBUG
+    assert(value_holder);
+#endif
+    *value_holder = !value ? 0 : 1;
+  }
 }
 
 //
