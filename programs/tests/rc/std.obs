@@ -29,7 +29,7 @@ bundle Default {
 				sq_diffs += (num - avg) * (num - avg);
 			};
 			
-			return (sq_diffs / nums->Size())->SquareRoot();
+			return (sq_diffs / nums->Size())->Sqrt();
 		}
 	}
 }
