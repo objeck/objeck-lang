@@ -32,6 +32,6 @@ class RungeKuttaMethod {
 	}
 	
 	function : native : Rate(x : Float, y : Float) ~ Float {
-		return x * y->SquareRoot();
+		return x * y->Sqrt();
 	}
 }

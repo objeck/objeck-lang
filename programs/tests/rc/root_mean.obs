@@ -12,7 +12,7 @@ bundle Default {
         sum += values[i]->Power(2.0);
       };
       
-      return (sum / values->Size())->SquareRoot();
+      return (sum / values->Size())->Sqrt();
     }
   }
 }

@@ -39,7 +39,7 @@ class RotatingCube {
 		if(@framework->IsOk()) {
 			# initialization
 			@framework->SetClearColor(Color->New(0, 0, 0));
-			RotateCube(Float->Pi(), 2.0->SquareRoot()->ArcTan());
+			RotateCube(Float->Pi(), 2.0->Sqrt()->ArcTan());
 
 			quit := false;
 			e := @framework->GetEvent();

@@ -17,7 +17,7 @@ class FirstClass {
 			=>  v * v)<FloatRef, FloatRef>);
 		# new function from preexisting function at run-time
 		vector->AddBack(Func2Ref->New(\Func->Double : (v) 
-			=> Float->SquareRoot(v->Get()))<FloatRef, FloatRef>);
+			=> Float->Sqrt(v->Get()))<FloatRef, FloatRef>);
 		# process collection
 		each(i : vector) {
 			# return value of other functions and pass argument to other function

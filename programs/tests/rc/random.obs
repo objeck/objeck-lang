@@ -12,7 +12,7 @@ bundle Default {
 		}
 	
 		function : native : RandomNormal() ~ Float {
-			return (2 * Float->Pi() * Float->Random())->Cos() * (-2 * (Float->Random()->Log()))->SquareRoot();
+			return (2 * Float->Pi() * Float->Random())->Cos() * (-2 * (Float->Random()->Log()))->Sqrt();
 		}
 	}
 }

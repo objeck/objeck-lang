@@ -56,7 +56,7 @@ bundle Default {
 				vBv+=u[i]*v[i]; 
 				vv+=v[i]*v[i]; 
 			};
-			(vBv/vv)->SquareRoot()->PrintLine();			
+			(vBv/vv)->Sqrt()->PrintLine();			
 		}
 	}
 }

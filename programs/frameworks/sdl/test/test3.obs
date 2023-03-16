@@ -172,7 +172,7 @@ i->PrintLine();
 		x_norm := Float->Power(a->GetX()->ToFloat() - b->GetX()->ToFloat(), 2.0);
 		y_norm := Float->Power(a->GetY()->ToFloat() - b->GetY()->ToFloat(), 2.0);
 
-		return (x_norm + y_norm)->SquareRoot();
+		return (x_norm + y_norm)->Sqrt();
 	}
 
 	method : PrintGrid() ~ Nil {

@@ -767,7 +767,7 @@ class Level {
 	function : Distance(a_x : Int, a_y : Int, b : Rectangle) ~ Int {
 		x_norm := a_x - b->GetCenterX();
 		y_norm := a_y - b->GetCenterY();
-		return (x_norm * x_norm + y_norm * y_norm)->ToFloat()->SquareRoot();
+		return (x_norm * x_norm + y_norm * y_norm)->ToFloat()->Sqrt();
 	}
 }
 

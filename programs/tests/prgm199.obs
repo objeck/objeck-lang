@@ -2,6 +2,6 @@ use Collection;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		16.0->SquareRoot()->PrintLine();
+		16.0->Sqrt()->PrintLine();
 	}
 }

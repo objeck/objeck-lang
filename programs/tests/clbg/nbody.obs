@@ -49,7 +49,7 @@
 					dz := iBody->GetZ() - jBody->GetZ();
 
 					dSquared := dx * dx + dy * dy + dz * dz;
-					distance := dSquared->SquareRoot();
+					distance := dSquared->Sqrt();
 					mag := dt / (dSquared * distance);
 
 					iBody->SetVx(iBody->GetVx() - dx * jBody->GetMass() * mag);
@@ -90,7 +90,7 @@
 					dy := iBody->GetY() - jBody->GetY();
 					dz := iBody->GetZ() - jBody->GetZ();					
 
-					distance := (dx*dx + dy*dy + dz*dz)->SquareRoot();
+					distance := (dx*dx + dy*dy + dz*dz)->Sqrt();
 					e -= (iBody->GetMass() * jBody->GetMass()) / distance;
 				};
 			};

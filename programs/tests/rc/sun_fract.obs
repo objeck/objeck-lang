@@ -50,7 +50,7 @@ class Test {
 
 		@framework->Clear();
 
-		factor := 0.5 + 1.25->SquareRoot();
+		factor := 0.5 + 1.25->Sqrt();
 		x := winWidth / 2.0;
 		y := winHeight / 2.0;
 		maxRad := Float->Power(iter, factor) / iter;
