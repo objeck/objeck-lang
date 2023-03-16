@@ -1,0 +1,21 @@
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		len_line := Standard->ReadLine();
+		Standard->ReadLine();
+
+		if(len_line <> Nil & len_line->Size() > 0) {
+			index := len_line->Find(':');
+			if(index > 0) {
+				index += 2;
+				len := len_line->SubString(index, len_line->Size() - index)->ToInt();
+				"length={$len}\n---"->PrintLine();
+				if(len > 0) {
+					buffer := Char->New[len];
+					Standard->ReadBuffer(0, buffer->Size(), buffer);
+					str := buffer->ToString();
+					"|{$str}|"->ToString()->PrintLine();
+				};
+			};
+		};
+	}
+}
