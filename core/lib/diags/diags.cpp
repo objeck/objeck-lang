@@ -157,7 +157,7 @@ extern "C" {
     if(prgm_obj[1]) {
       ContextAnalyzer analyzer(program, full_lib_path, false);
       const bool was_analyzed = analyzer.Analyze();
-      APITools_SetIntValue(context, 3, was_analyzed ? 1 : 0);
+      APITools_SetBoolValue(context, 3, was_analyzed);
 
       const std::vector<std::wstring> warning_strings = program->GetWarningStrings();
       if(!was_analyzed || !warning_strings.empty()) {
