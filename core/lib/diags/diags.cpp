@@ -156,9 +156,11 @@ extern "C" {
     // if parsed
     if(prgm_obj[1]) {
       ContextAnalyzer analyzer(program, full_lib_path, false);
-      const bool analyze_success = analyzer.Analyze();
+      const bool was_analyzed = analyzer.Analyze();
+      APITools_SetIntValue(context, 3, was_analyzed ? 1 : 0);
+
       const std::vector<std::wstring> warning_strings = program->GetWarningStrings();
-      if(!analyze_success || !warning_strings.empty()) {
+      if(!was_analyzed || !warning_strings.empty()) {
         std::vector<std::wstring> error_strings = program->GetErrorStrings();
         size_t* diagnostics_array = FormatErrors(context, error_strings, warning_strings);
         prgm_obj[3] = (size_t)diagnostics_array;
@@ -191,10 +193,10 @@ extern "C" {
     }
 
     // if parsed
-    bool validated = false;
+    bool was_analyzed = false;
     if(prgm_obj[1]) {
       ContextAnalyzer analyzer(program, full_lib_path, false);
-      validated = analyzer.Analyze();
+      was_analyzed = analyzer.Analyze();
     }
 
     // list of bundles for classes
@@ -324,7 +326,7 @@ extern "C" {
     // file root
     size_t* file_symb_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
     file_symb_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringObject(context, file_uri);
-    file_symb_obj[ResultPosition::POS_CODE] = validated ? 1 : 0;
+    file_symb_obj[ResultPosition::POS_CODE] = was_analyzed ? 1 : 0;
     file_symb_obj[ResultPosition::POS_TYPE] = ResultType::TYPE_FILE; // file type
     file_symb_obj[ResultPosition::POS_CHILDREN] = bundle_array ? (size_t)bundle_array : (size_t)klass_array;
     file_symb_obj[ResultPosition::POS_START_LINE] = file_symb_obj[ResultPosition::POS_START_POS] = file_symb_obj[ResultPosition::POS_END_LINE] = file_symb_obj[ResultPosition::POS_END_POS] = -1;
