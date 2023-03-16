@@ -40,7 +40,7 @@ bundle Default {
               }
 
               label '^': {
-                stack->AddBack(Float->Power(left, right));
+                stack->AddBack(Float->Pow(left, right));
               }
             };
           };  

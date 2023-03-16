@@ -1699,7 +1699,7 @@ bundle System {
 		@param r power to raise
 		@return pseudo power value
 		~#
-		function : Power(b : Float, r : Float) ~ Float {
+		function : Pow(b : Float, r : Float) ~ Float {
 			POW_FLOAT;
 		}
 
@@ -5580,7 +5580,7 @@ bundle System.Matrix {
 		@return Sigmoid value
 		~#
 		function : native : Sigmoid(x : Float) ~ Float {
-			return 1.0 / (1.0 + Float->Power(Float->E(), -1.0 * x));
+			return 1.0 / (1.0 + Float->Pow(Float->E(), -1.0 * x));
 		}
 
 		#~

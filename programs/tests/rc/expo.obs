@@ -7,7 +7,7 @@ class Exp {
 	
 	function : native : Pow(base : Float, exp : Int) ~ Float {
 		if(exp < 0) {
-			return 1 / (exp * -1.0)->Power(base);
+			return 1 / (exp * -1.0)->Pow(base);
 		};
 		
 		ans := 1.0;
