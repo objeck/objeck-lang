@@ -2011,7 +2011,7 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
       return StdInString(program, inst, op_stack, stack_pos, frame);
 
     case STD_FLUSH:
-      return StdErrFlush(program, inst, op_stack, stack_pos, frame);
+      return StdFlush(program, inst, op_stack, stack_pos, frame);
       
     case STD_ERR_BOOL:
       return StdErrBool(program, inst, op_stack, stack_pos, frame);
@@ -2035,7 +2035,7 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
       return StdErrByteAry(program, inst, op_stack, stack_pos, frame);
 
     case STD_ERR_FLUSH:
-      return StdFlush(program, inst, op_stack, stack_pos, frame);
+      return StdErrFlush(program, inst, op_stack, stack_pos, frame);
       
     case ASSERT_TRUE:
       return AssertTrue(program, inst, op_stack, stack_pos, frame);
