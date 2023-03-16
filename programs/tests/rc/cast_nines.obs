@@ -5,7 +5,7 @@
 		c1 := 0;
 		c2 := 0;
 
-		for (k:=1; k<N->As(Float)->Power(base->As(Float)); k+=1;){
+		for (k:=1; k<N->As(Float)->Pow(base->As(Float)); k+=1;){
 			c1+=1;
 			if (k%(base-1) = (k*k)%(base-1)){
 				c2+=1;

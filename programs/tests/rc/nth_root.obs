@@ -10,7 +10,7 @@ class NthRoot {
 
 		while((x[1] - x[0])->Abs() > p) {
 			x[0] := x[1];
-			x[1] := ((n - 1.0) * x[1] + A / (n - 1.0)->Power(x[1])) / n;
+			x[1] := ((n - 1.0) * x[1] + A / (n - 1.0)->Pow(x[1])) / n;
 		};
 
 		return x[1];

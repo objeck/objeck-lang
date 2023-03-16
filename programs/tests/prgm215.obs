@@ -1,5 +1,5 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		Int->Clamp(6, args[0]->ToInt(), 9)->PrintLine();
+		"Hello"->To
 	}
 }

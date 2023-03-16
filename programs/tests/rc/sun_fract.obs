@@ -53,10 +53,10 @@ class Test {
 		factor := 0.5 + 1.25->Sqrt();
 		x := winWidth / 2.0;
 		y := winHeight / 2.0;
-		maxRad := Float->Power(iter, factor) / iter;
+		maxRad := Float->Pow(iter, factor) / iter;
 
 		for(i:=0;i<=iter;i+=1;) {
-			r := Float->Power(i,factor)/iter;
+			r := Float->Pow(i,factor)/iter;
 			color := r/maxRad < diskRatio ? @colors[0] : @colors[1];
 			theta := 2*Float->Pi()*factor*i;
 			renderer->CircleColor(x + r*theta->Sin(), y + r*theta->Cos(), 10 * i/(1.0*iter), color);

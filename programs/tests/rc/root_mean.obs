@@ -8,8 +8,8 @@ bundle Default {
     function : native : RootSquareMean(values : Float[]) ~ Float {
       sum := 0.0;
       each(i : values) {
-        x := values[i]->Power(2.0);
-        sum += values[i]->Power(2.0);
+        x := values[i]->Pow(2.0);
+        sum += values[i]->Pow(2.0);
       };
       
       return (sum / values->Size())->Sqrt();
