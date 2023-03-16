@@ -10,7 +10,7 @@ bundle Default {
 			dx := ph1->Cos() * th1->Cos() - th2->Cos();
 			dy := ph1->Sin() * th1->Cos();
 
-			return ((dx * dx + dy * dy + dz * dz)->SquareRoot() / 2.0)->ArcSin() * 2 * 6371.0;
+			return ((dx * dx + dy * dy + dz * dz)->Sqrt() / 2.0)->ArcSin() * 2 * 6371.0;
 		}
 
 		function : Main(args : String[]) ~ Nil {

@@ -1201,7 +1201,7 @@ bundle Game.Framework {
 		method : Distance(x : Int, y : Int) ~ Int {
 			x_norm := x - GetCenterX();
 			y_norm := y - GetCenterY();
-			return (x_norm * x_norm + y_norm * y_norm)->ToFloat()->SquareRoot();
+			return (x_norm * x_norm + y_norm * y_norm)->ToFloat()->Sqrt();
 		}
 		
 		#~
@@ -1212,7 +1212,7 @@ bundle Game.Framework {
 		method : Distance(pos : Position) ~ Int {
 			x_norm := pos->GetCenterX() - GetCenterX();
 			y_norm := pos->GetCenterY() - GetCenterY();
-			return (x_norm * x_norm + y_norm * y_norm)->ToFloat()->SquareRoot();
+			return (x_norm * x_norm + y_norm * y_norm)->ToFloat()->Sqrt();
 		}
 
 		#~
@@ -2282,7 +2282,7 @@ bundle Game.Framework {
 		@return magnitude 
 		~#
 		method : public : Magnitude() ~ Float {
-			return MagnitudeSquared()->SquareRoot();
+			return MagnitudeSquared()->Sqrt();
 		}		
 
 		#~

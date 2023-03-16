@@ -276,19 +276,6 @@ bundle System {
 		}
 
 		#~
-		Checks is a number is not negative
-		@ignore-params
-		@return true if not negative, false otherwise
-		~#
-		function : native : NotNeg(v : Byte) ~ Bool {
-			if(v > -1) {
-				return true;
-			};
-
-			return false;
-		}
-
-		#~
 		Prints value 
 		@ignore-params
 		~#
@@ -1138,19 +1125,6 @@ bundle System {
 			return false;
 		}
 
-		#~
-		Checks is a number is not negative
-		@ignore-params
-		@return true if not negative, false otherwise
-		~#
-		function : NotNeg(v : Int) ~ Bool {
-			if(v > -1) {
-				return true;
-			};
-
-			return false;
-		}
-
 		function : Size(v : Int) ~ Int {
 			return v;
 		}
@@ -1549,19 +1523,6 @@ bundle System {
 
 			return false;
 		}
-
-		#~
-		Checks is a number is not negative
-		@ignore-params
-		@return true if not negative, false otherwise
-		~#
-		function : NotNeg(v : Float) ~ Bool {
-			if(v > -1.0) {
-				return true;
-			};
-
-			return false;
-		}
 		
 		#~
 		Calculates the floor value
@@ -1671,7 +1632,7 @@ bundle System {
 		@ignore-params
 		@return natural log value
 		~#
-		function : SquareRoot(f : Float) ~ Float {
+		function : Sqrt(f : Float) ~ Float {
 			SQRT_FLOAT;
 		}
 		
@@ -5672,7 +5633,7 @@ bundle System.Matrix {
 		@return updated matrix
 		~#
 		function : RandomNormal(mean : Float, variance : Float) ~ Float {
-			return  (-2.0 * variance * Float->Random()->Log())->SquareRoot() * (2.0 * Float->Pi() * Float->Random())->Cos() + mean;
+			return  (-2.0 * variance * Float->Random()->Log())->Sqrt() * (2.0 * Float->Pi() * Float->Random())->Cos() + mean;
 		}
 
 		#~

@@ -33,7 +33,7 @@
 					s += L[i * n + k] * L[j * n + k];
 				};
 				L[i * n + j] := (i = j) ?
-					(A[i * n + i] - s)->SquareRoot() :
+					(A[i * n + i] - s)->Sqrt() :
 					(1.0 / L[j * n + j] * (A[i * n + j] - s));
 			};
 		};

@@ -30,7 +30,7 @@
 				vv  += v[i]*v[i];
 			};
 
-			return (vBv/vv)->SquareRoot();
+			return (vBv/vv)->Sqrt();
 		}
 
 		# return element i,j of infinite matrix
