@@ -146,12 +146,13 @@ bundle System.Diagnostics {
 		@param sys_path system library path
 		@return analysis errors, Nil of no errors
 		~#
-		method : public : GetDiagnostics(uri : String, sys_path : String) ~ Result[] {
+		method : public : GetDiagnostics(was_parsed : BoolRef, uri : String, sys_path : String) ~ Result[] {
 			if(@diagnostics_results = Nil) {
-				array_args := Base->New[3];
+				array_args := Base->New[4];
 				array_args[0] := @self;
 				array_args[1] := uri;
 				array_args[2] := sys_path;
+				array_args[3] := was_parsed;
 				Proxy->GetDllProxy()->CallFunction("diag_get_diagnosis", array_args);
 			};
 
