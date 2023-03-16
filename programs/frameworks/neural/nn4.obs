@@ -111,9 +111,9 @@ class NeuralNetwork {
 		@output_nodes  := output_nodes;
 		@learning_rate := learning_rate;
 
-		@weight_inputs_hidden := Matrix2D->RandomNormal(0.01, Float->Power(@input_nodes, -0.5), 
+		@weight_inputs_hidden := Matrix2D->RandomNormal(0.01, Float->Pow(@input_nodes, -0.5), 
 			@hidden_nodes, @input_nodes);
-		@weight_outputs_hidden := Matrix2D->RandomNormal(0.01, Float->Power(@input_nodes, -0.5), 
+		@weight_outputs_hidden := Matrix2D->RandomNormal(0.01, Float->Pow(@input_nodes, -0.5), 
 			@output_nodes, @hidden_nodes);
 	}
 
