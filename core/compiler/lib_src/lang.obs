@@ -5917,9 +5917,9 @@ bundle System.IO {
 		Writes a character string
 		@param str string to be written
 		~#
-		function : public : WriteString(str : System.String) ~ Nil {
+		function : public : WriteString(str : System.String) ~ Bool {
 			buffer := str->ToCharArray();
-			WriteBuffer(0, buffer->Size(), buffer);
+			return WriteBuffer(0, buffer->Size(), buffer);
 		}
 
 		#~
