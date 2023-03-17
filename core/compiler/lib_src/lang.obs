@@ -5927,7 +5927,7 @@ bundle System.IO {
 		@param str string to be written
 		~#
 		function : public : WriteString(str : System.String) ~ Int {
-			return WriteBuffer(str->ToCharArray());
+			return WriteString(str->ToCharArray());
 		}
 
 		#~
