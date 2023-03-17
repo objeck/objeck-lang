@@ -1,5 +1,6 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
 		Standard->WriteString("Content-Length: 242\r\n\r\n{\"id\":101,\"jsonrpc\":\"2.0\",\"method\":\"client/registerCapability\",\"params\":{\"registrations\":[{\"id\":\"d929fc04-b4ac-4907-a3b3-0508710f3c42\",\"method\":\"workspace/didChangeWatchedFiles\",\"registerOptions\":{\"watchers\":[{\"globPattern\":\"**/*.json\"}]}}]}}");
+		a := dkdf;
 	}
 }
