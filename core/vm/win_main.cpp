@@ -46,15 +46,15 @@ int main(const int argc, const char* argv[])
   if(argc > 1) {
 #ifndef _MSYS2_CLANG    
     // enable Unicode console support
-    if(_setmode(_fileno(stdin), _O_U8TEXT) < 0) {
+    if(_setmode(_fileno(stdin), _O_BINARY) < 0) {
       return 1;
     }
 
-    if(_setmode(_fileno(stdout), _O_U8TEXT) < 0) {
+    if(_setmode(_fileno(stdout), _O_BINARY) < 0) {
       return 1;
     }
 #endif
-    
+
     // initialize Winsock
     WSADATA data;
     int status;
