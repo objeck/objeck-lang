@@ -5885,9 +5885,9 @@ bundle System.IO {
 		@param offset destination buffer offset
 		@param num number of values to read
 		@param buffer input buffer
-		@return true if successful, false otherwise
+		@return number of byte read
 		~#
-		function : ReadBuffer(offset : Int, num : Int, buffer : Byte[]) ~ Bool {
+		function : ReadBuffer(offset : Int, num : Int, buffer : Byte[]) ~ Int {
 			STD_IN_BYTE_ARY_LEN;
 		}
 		
@@ -5896,9 +5896,9 @@ bundle System.IO {
 		@param offset destination buffer offset
 		@param num number of values to read
 		@param buffer input buffer
-		@return true if successful, false otherwise
+		@return number of byte read
 		~#
-		function : ReadBuffer(offset : Int, num : Int, buffer : Char[]) ~ Bool {
+		function : ReadBuffer(offset : Int, num : Int, buffer : Char[]) ~ Int {
 			STD_IN_CHAR_ARY_LEN;
 		}
 		 	
@@ -5916,9 +5916,9 @@ bundle System.IO {
 		@param offset destination buffer offset
 		@param num number of values to write
 		@param buffer input buffer
-		@return true if successful, false otherwise
+		@return number of byte written
 		~#
-		function : public : WriteBuffer(offset : Int, num : Int, buffer : Byte[]) ~ Bool {
+		function : public : WriteBuffer(offset : Int, num : Int, buffer : Byte[]) ~ Int {
 			STD_OUT_BYTE_ARY_LEN;	
 		}
 
@@ -5945,9 +5945,9 @@ bundle System.IO {
 		@param offset destination buffer offset
 		@param num number of values to write
 		@param buffer input buffer
-		@return true if successful, false otherwise
+		@return number of byte written
 		~#
-		function : public : WriteBuffer(offset : Int, num : Int, buffer : Char[]) ~ Bool {
+		function : public : WriteBuffer(offset : Int, num : Int, buffer : Char[]) ~ Int {
 			STD_OUT_CHAR_ARY_LEN;
 		}
 

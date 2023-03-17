@@ -2633,8 +2633,8 @@ bool TrapProcessor::StdFlush(StackProgram* program, size_t* inst, size_t* &op_st
 #ifdef _DEBUG
   std::wcout << L"  STD_FLUSH" << std::endl;
 #endif
-  
-  std::cout.flush();
+  fflush(stdout);
+
   return true;
 }
 
@@ -2818,8 +2818,7 @@ bool TrapProcessor::StdInByteAryLen(StackProgram* program, size_t* inst, size_t*
 
   if(array && offset > -1 && offset + num <= (long)array[0]) {
     char* buffer = (char*)(array + 3);
-    std::cin.read(buffer + offset, num);
-    PushInt(1, op_stack, stack_pos);
+    PushInt(fread(buffer + offset, num, sizeof(char), stdin), op_stack, stack_pos);
   }
   else {
     PushInt(0, op_stack, stack_pos);
@@ -2840,9 +2839,8 @@ bool TrapProcessor::StdInCharAryLen(StackProgram* program, size_t* inst, size_t*
 
   if(array && offset > -1 && offset + num <= (long)array[0]) {
     char* buffer = (char*)calloc(num * 2, sizeof(char));
-    std::cin.read(buffer + offset, num);
+    size_t count = fread(buffer + offset, num, sizeof(char), stdin);
     const std::wstring wbuffer = BytesToUnicode(buffer);
-
     wchar_t* dest = (wchar_t*)(array + 3);
 #ifdef _WIN32
     wcsncpy_s(dest + offset, array[0], wbuffer.c_str(), num);
@@ -2852,10 +2850,10 @@ bool TrapProcessor::StdInCharAryLen(StackProgram* program, size_t* inst, size_t*
     free(buffer);
     buffer = nullptr;
 
-    PushInt(1, op_stack, stack_pos);
+    PushInt(count, op_stack, stack_pos);
   }
   else {
-    PushInt(0, op_stack, stack_pos);
+    PushInt(-1, op_stack, stack_pos);
   }
 
   return true;
@@ -2873,8 +2871,11 @@ bool TrapProcessor::StdOutByteAryLen(StackProgram* program, size_t* inst, size_t
 
   if(array && offset > -1 && offset + num <= (long)array[0]) {
     const char* buffer = (char*)(array + 3);
-    std::cout.write(buffer + offset, num);
-    PushInt(1, op_stack, stack_pos);
+
+    const size_t count = fwrite(buffer + offset, num, sizeof(char), stdout);
+    fflush(stdout);
+
+    PushInt(count, op_stack, stack_pos);
   }
   else {
     PushInt(0, op_stack, stack_pos);
@@ -2895,12 +2896,15 @@ bool TrapProcessor::StdOutCharAryLen(StackProgram* program, size_t* inst, size_t
 
   if(array && offset > -1 && offset + num <= (long)array[0]) {
     const wchar_t* wbuffer = (wchar_t*)(array + 3);
+
     std::string buffer = UnicodeToBytes(wbuffer + offset);
-    std::cout.write(buffer.c_str(), buffer.size());
-    PushInt(1, op_stack, stack_pos);
+    size_t count = fwrite(buffer.c_str(), buffer.size(), sizeof(char), stdout);
+    fflush(stdout);
+
+    PushInt(count, op_stack, stack_pos);
   }
   else {
-    PushInt(0, op_stack, stack_pos);
+    PushInt(-1, op_stack, stack_pos);
   }
 
   return true;
