@@ -5907,7 +5907,7 @@ bundle System.IO {
 		@param buffer input buffer
 		@return true if successful, false otherwise
 		~#
-		function : public : WriteBuffer(buffer : Byte[]) ~ Bool {
+		function : public : WriteBuffer(buffer : Byte[]) ~ Int {
 			return WriteBuffer(0, buffer->Size(), buffer);	
 		}
 
@@ -5926,7 +5926,7 @@ bundle System.IO {
 		Writes a character string
 		@param str string to be written
 		~#
-		function : public : WriteString(str : System.String) ~ Bool {
+		function : public : WriteString(str : System.String) ~ Int {
 			buffer := str->ToCharArray();
 			return WriteBuffer(0, buffer->Size(), buffer);
 		}
@@ -5936,7 +5936,7 @@ bundle System.IO {
 		@param buffer input buffer
 		@return true if successful, false otherwise
 		~#
-		function : public : WriteString(buffer : Char[]) ~ Bool {
+		function : public : WriteString(buffer : Char[]) ~ Int {
 			return WriteBuffer(0, buffer->Size(), buffer);	
 		}
 
