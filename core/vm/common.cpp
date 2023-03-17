@@ -2859,6 +2859,32 @@ bool TrapProcessor::StdInCharAryLen(StackProgram* program, size_t* inst, size_t*
   return true;
 }
 
+bool TrapProcessor::StdInString(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
+{
+  size_t* array = (size_t*)PopInt(op_stack, stack_pos);
+  if(array) {
+    // read input
+    const long max = (long)array[2];
+    char* buffer = (char*)calloc(max * 2, sizeof(char));
+    std::cin.getline(buffer, max);
+    const std::wstring wbuffer = BytesToUnicode(buffer);
+
+    // copy to dest
+    wchar_t* dest = (wchar_t*)(array + 3);
+#ifdef _WIN32
+    wcsncpy_s(dest, array[0], wbuffer.c_str(), max);
+#else
+    wcsncpy(dest, wbuffer.c_str(), max);
+#endif
+    // clean up
+    free(buffer);
+    buffer = nullptr;
+  }
+
+  return true;
+}
+
+
 bool TrapProcessor::StdOutByteAryLen(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
@@ -2872,8 +2898,11 @@ bool TrapProcessor::StdOutByteAryLen(StackProgram* program, size_t* inst, size_t
   if(array && offset > -1 && offset + num <= (long)array[0]) {
     const char* buffer = (char*)(array + 3);
 
-    const size_t count = fwrite(buffer + offset, num, sizeof(char), stdout);
-    fflush(stdout);
+    size_t count = 0;
+    for(size_t i = 0; i < num; ++i) {
+      const char c = *(buffer + offset + i);
+      count += fwrite(&c, sizeof(c), 1, stdout);
+    }
 
     PushInt(count, op_stack, stack_pos);
   }
@@ -2898,38 +2927,17 @@ bool TrapProcessor::StdOutCharAryLen(StackProgram* program, size_t* inst, size_t
     const wchar_t* wbuffer = (wchar_t*)(array + 3);
 
     std::string buffer = UnicodeToBytes(wbuffer + offset);
-    size_t count = fwrite(buffer.c_str(), buffer.size(), sizeof(char), stdout);
-    fflush(stdout);
+   
+    size_t count = 0;
+    for(size_t i = 0; i < num; ++i) {
+      const char c = *(buffer.c_str() + offset + i);
+      count += fwrite(&c, sizeof(c), 1, stdout);
+    }
 
     PushInt(count, op_stack, stack_pos);
   }
   else {
     PushInt(-1, op_stack, stack_pos);
-  }
-
-  return true;
-}
-
-bool TrapProcessor::StdInString(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
-{
-  size_t* array = (size_t*)PopInt(op_stack, stack_pos);
-  if(array) {
-    // read input
-    const long max = (long)array[2];
-    char* buffer = (char*)calloc(max * 2, sizeof(char));
-    std::cin.getline(buffer, max);
-    const std::wstring wbuffer = BytesToUnicode(buffer);
-    
-    // copy to dest
-    wchar_t* dest = (wchar_t*)(array + 3);
-#ifdef _WIN32
-    wcsncpy_s(dest, array[0], wbuffer.c_str(), max);
-#else
-    wcsncpy(dest, wbuffer.c_str(), max);
-#endif
-    // clean up
-    free(buffer);
-    buffer = nullptr;
   }
 
   return true;
@@ -3037,6 +3045,7 @@ bool TrapProcessor::StdErrCharAry(StackProgram* program, size_t* inst, size_t* &
   return true;
 }
 
+// TODO: fix
 bool TrapProcessor::StdErrByteAry(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
