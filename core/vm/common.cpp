@@ -2634,7 +2634,7 @@ bool TrapProcessor::StdFlush(StackProgram* program, size_t* inst, size_t* &op_st
   std::wcout << L"  STD_FLUSH" << std::endl;
 #endif
   
-  std::wcout.flush();
+  std::cout.flush();
   return true;
 }
 
@@ -2839,8 +2839,19 @@ bool TrapProcessor::StdInCharAryLen(StackProgram* program, size_t* inst, size_t*
 #endif
 
   if(array && offset > -1 && offset + num <= (long)array[0]) {
-    wchar_t* buffer = (wchar_t*)(array + 3);
-    std::wcin.read(buffer + offset, num);
+    char* buffer = (char*)calloc(num * 2, sizeof(char));
+    std::cin.read(buffer + offset, num);
+    const std::wstring wbuffer = BytesToUnicode(buffer);
+
+    wchar_t* dest = (wchar_t*)(array + 3);
+#ifdef _WIN32
+    wcsncpy_s(dest + offset, array[0], wbuffer.c_str(), num);
+#else
+    wcsncpy(dest + offset, wbuffer.c_str(), num);
+#endif
+    free(buffer);
+    buffer = nullptr;
+
     PushInt(1, op_stack, stack_pos);
   }
   else {
@@ -2883,8 +2894,9 @@ bool TrapProcessor::StdOutCharAryLen(StackProgram* program, size_t* inst, size_t
 #endif
 
   if(array && offset > -1 && offset + num <= (long)array[0]) {
-    const wchar_t* buffer = (wchar_t*)(array + 3);
-    std::wcout.write(buffer + offset, num);
+    const wchar_t* wbuffer = (wchar_t*)(array + 3);
+    std::string buffer = UnicodeToBytes(wbuffer + offset);
+    std::cout.write(buffer.c_str(), buffer.size());
     PushInt(1, op_stack, stack_pos);
   }
   else {
@@ -2900,17 +2912,19 @@ bool TrapProcessor::StdInString(StackProgram* program, size_t* inst, size_t* &op
   if(array) {
     // read input
     const long max = (long)array[2];
-    wchar_t* buffer = new wchar_t[max + 1];
-    std::wcin.getline(buffer, max);
+    char* buffer = (char*)calloc(max * 2, sizeof(char));
+    std::cin.getline(buffer, max);
+    const std::wstring wbuffer = BytesToUnicode(buffer);
+    
     // copy to dest
     wchar_t* dest = (wchar_t*)(array + 3);
 #ifdef _WIN32
-    wcsncpy_s(dest, array[0], buffer, max);
+    wcsncpy_s(dest, array[0], wbuffer.c_str(), max);
 #else
-    wcsncpy(dest, buffer, max);
+    wcsncpy(dest, wbuffer.c_str(), max);
 #endif
     // clean up
-    delete[] buffer;
+    free(buffer);
     buffer = nullptr;
   }
 
