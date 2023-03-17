@@ -2897,14 +2897,7 @@ bool TrapProcessor::StdOutByteAryLen(StackProgram* program, size_t* inst, size_t
 
   if(array && offset > -1 && offset + num <= (long)array[0]) {
     const char* buffer = (char*)(array + 3);
-
-    size_t count = 0;
-    for(size_t i = 0; i < num; ++i) {
-      const char c = *(buffer + offset + i);
-      count += fwrite(&c, sizeof(c), 1, stdout);
-    }
-
-    PushInt(count, op_stack, stack_pos);
+    PushInt(fwrite(buffer, 1, num, stdout), op_stack, stack_pos);
   }
   else {
     PushInt(0, op_stack, stack_pos);
@@ -2925,16 +2918,8 @@ bool TrapProcessor::StdOutCharAryLen(StackProgram* program, size_t* inst, size_t
 
   if(array && offset > -1 && offset + num <= (long)array[0]) {
     const wchar_t* wbuffer = (wchar_t*)(array + 3);
-
     std::string buffer = UnicodeToBytes(wbuffer + offset);
-   
-    size_t count = 0;
-    for(size_t i = 0; i < num; ++i) {
-      const char c = *(buffer.c_str() + offset + i);
-      count += fwrite(&c, sizeof(c), 1, stdout);
-    }
-
-    PushInt(count, op_stack, stack_pos);
+    PushInt(fwrite(buffer.c_str(), 1, num, stdout), op_stack, stack_pos);
   }
   else {
     PushInt(-1, op_stack, stack_pos);
