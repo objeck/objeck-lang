@@ -48,27 +48,29 @@ int main(const int argc, const char* argv[])
     char* value; size_t value_len;
     _dupenv_s(&value, &value_len, "OBJECK_STDIO");
 
-    // set as binary
-    if(value && !strcmp("binary", value)) {
-      if(_setmode(_fileno(stdin), _O_BINARY) < 0) {
-        return 1;
-      }
+    if(value) {
+      // set as binary
+      if(!strcmp("binary", value)) {
+        if(_setmode(_fileno(stdin), _O_BINARY) < 0) {
+          return 1;
+        }
 
-      if(_setmode(_fileno(stdout), _O_BINARY) < 0) {
-        return 1;
+        if(_setmode(_fileno(stdout), _O_BINARY) < 0) {
+          return 1;
+        }
+      }
+      // set as utf16
+      else if(!strcmp("utf16", value)) {
+        if(_setmode(_fileno(stdin), _O_U16TEXT) < 0) {
+          return 1;
+        }
+
+        if(_setmode(_fileno(stdout), _O_U16TEXT) < 0) {
+          return 1;
+        }
       }
     }
-    // set as utf16
-    else if(value && !strcmp("utf16", value)) {
-      if(_setmode(_fileno(stdin), _O_U16TEXT) < 0) {
-        return 1;
-      }
-
-      if(_setmode(_fileno(stdout), _O_U16TEXT) < 0) {
-        return 1;
-      }
-    }
-    // otherwise utf8
+    // set as utf8
     else {
       if(_setmode(_fileno(stdin), _O_U8TEXT) < 0) {
         return 1;
