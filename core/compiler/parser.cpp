@@ -2544,7 +2544,73 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
                                                                instructions::FILE_COPY);
       NextToken();
       break;
-      
+
+    case PIPE_OPEN_READ_WRITE:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::PIPE_OPEN_READ_WRITE);
+      NextToken();
+      break;
+
+    case PIPE_IN_BYTE:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::PIPE_IN_BYTE);
+      NextToken();
+      break;
+
+    case PIPE_OUT_BYTE:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::PIPE_OUT_BYTE);
+      NextToken();
+      break;
+
+    case PIPE_IN_BYTE_ARY:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::PIPE_IN_BYTE_ARY);
+      NextToken();
+      break;
+
+    case PIPE_IN_CHAR_ARY:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::PIPE_IN_CHAR_ARY);
+      NextToken();
+      break;
+
+    case PIPE_OUT_BYTE_ARY:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::PIPE_OUT_BYTE_ARY);
+      NextToken();
+      break;
+
+    case PIPE_OUT_CHAR_ARY:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::PIPE_OUT_CHAR_ARY);
+      NextToken();
+      break;
+
+    case PIPE_IN_STRING:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::PIPE_IN_STRING);
+      NextToken();
+      break;
+
+    case PIPE_OUT_STRING:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::PIPE_OUT_STRING);
+      NextToken();
+      break;
+
+    case PIPE_IS_OPEN:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::PIPE_IS_OPEN);
+      NextToken();
+      break;
+
+    case PIPE_IS_OPEN:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::PIPE_IS_OPEN);
+      NextToken();
+      break;
+
     case DIR_CREATE:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::DIR_CREATE);

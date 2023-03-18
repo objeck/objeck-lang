@@ -5879,7 +5879,7 @@ bundle System.IO {
  	#~
 	Provides standard I/O operations
 	~#
-	class Standard {
+	class Standard implements InputStream, OutputStream {
 		#~
 		Reads bytes from STDIN
 		@param offset destination buffer offset
@@ -6303,6 +6303,111 @@ bundle System.IO {
 		~#
 		function : SetFill(fill : Char) ~ ConsoleIO {
 			return IO.ConsoleIO->Instance()->SetFill(fill);
+		}
+	}
+
+	#~
+	Named pipe support
+	~#
+	class Pipe {
+		@handle : Int;
+		@path : String;
+
+		New(path : String) {
+			@path := path;
+			PIPE_OPEN_READ_WRITE;
+		}
+
+		#~
+		Gets the pipe name
+		@return pipe name
+		~#
+		method : public : GetName() ~ String {
+			return @name;
+		}
+
+		#~
+		Reads a byte
+		@return byte read
+		~#
+		method : public : ReadByte() ~ Byte {
+			PIPE_IN_BYTE;
+		}
+		
+		#~
+		Reads bytes into a byte buffer
+		@param offset destination buffer offset
+		@param num number of values to read
+		@param buffer input buffer
+		@return number of values read
+		~#
+		method : public : ReadBuffer(offset : Int, num : Int, buffer : Byte[]) ~ Int {
+			PIPE_IN_BYTE_ARY;
+		}
+		
+		#~
+		Reads bytes into a character buffer
+		@param offset destination buffer offset
+		@param num number of values to read
+		@param buffer input buffer
+		@return number of values read
+		~#
+		method : public : ReadBuffer(offset : Int, num : Int, buffer : Char[]) ~ Int {
+			PIPE_IN_CHAR_ARY;
+		}
+		
+		#~
+		Reads a string until a newline or character return is detected 
+		@return character string
+		~#
+		method : public : ReadLine() ~ System.String {
+			PIPE_IN_STRING;
+		}
+		
+		#~
+		Writes a byte
+		@param b byte to write
+		@return true if byte was written, false otherwise
+		~#
+		method : public : WriteByte(b : Int) ~ Bool {
+			PIPE_OUT_BYTE;
+		}
+		
+		#~
+		Writes bytes from a buffer
+		@param offset destination buffer offset
+		@param num number of values to write
+		@param buffer input buffer
+		@return number of values written
+		~#
+		method : public : WriteBuffer(offset : Int, num : Int, buffer : Byte[]) ~ Int {
+			PIPE_OUT_BYTE_ARY;
+		}
+		
+		#~
+		Writes characters from a buffer
+		@param offset destination buffer offset
+		@param num number of values to write
+		@param buffer input buffer
+		@return number of values written
+		~#
+		method : public : WriteBuffer(offset : Int, num : Int, buffer : Char[]) ~ Int {
+			PIPE_OUT_CHAR_ARY;
+		}
+		
+		#~
+		Writes a character string
+		@param str string to be written
+		~#
+		method : public : WriteString(str : System.String) ~ Nil {
+			PIPE_OUT_STRING;
+		}
+		
+		#~
+		Closes the stream
+		~#
+		method : public : Close() ~ Nil{
+			PIPE_CLOSE;
 		}
 	}
  	
@@ -7305,9 +7410,6 @@ bundle System.IO.Filesystem {
 		#~
 		Closes a file
 		~#
-		#~
-		Closes a file
-		~#
 		method : public : Close() ~ Nil {
 			FILE_CLOSE;
 		}
@@ -7374,6 +7476,217 @@ bundle System.IO.Filesystem {
 		}
 	}
 	
+	#~
+	Supports file read and write operations
+	~#
+	class FileReaderWriter from File implements System.IO.InputStream {
+		#~
+		Default constructor.
+		@param name filename
+		~#
+		New(name : System.String) {
+			Parent(name);
+			FILE_OPEN_READ_WRITE;
+		}	
+
+		#~
+		Closes the file
+		~#
+		method : public : Close() ~ Nil {
+			FILE_CLOSE;
+		}
+
+		#~
+		Reads a byte
+		@return byte read
+		~#
+		method : public : ReadByte() ~ Byte {
+			FILE_IN_BYTE;
+		}
+
+		#~
+		Reads bytes into a character buffer
+		@param offset destination buffer offset
+		@param num number of values to read
+		@param buffer input buffer
+		@return number of values read
+		~#
+		method : public : ReadBuffer(offset : Int, num : Int, buffer : Char[]) ~ Int {
+			FILE_IN_CHAR_ARY;
+		}
+
+		#~
+		Reads bytes into a byte buffer
+		@param offset destination buffer offset
+		@param num number of values to read
+		@param buffer input buffer
+		@return number of values read
+		~#
+		method : public : ReadBuffer(offset : Int, num : Int, buffer : Byte[]) ~ Int {
+			FILE_IN_BYTE_ARY;
+		}
+
+		#~
+		Reads a string until a newline or character return is detected 
+		@return character string
+		~#
+		method : public : ReadLine() ~ System.String {
+			if(IsEoF()) {
+				return Nil;
+			};
+
+			buffer : Char[] := Char->New[1024];
+			ReadString(buffer);
+			return System.String->New(buffer);
+		}
+
+		method : ReadString(buffer : Char[]) ~ Nil {
+			FILE_IN_STRING;
+		}
+		
+		#~
+		Reads a file's contents into a string
+		@param name filename
+		@return character string, Nil if file is not found
+		~#
+		function : ReadFile(name : String) ~ String {
+			len := File->Size(name);
+			if(len > 0) {
+				buffer := Char->New[len + 1];
+				in := FileReader->New(name);
+				if(in->IsOpen()) {
+					in->ReadBuffer(0, len, buffer);
+					in->Close();
+					
+					return String->New(buffer);
+				};
+			};
+	
+			return Nil;
+		}
+		
+		#~
+		Reads a file's contents into byte array
+		@param name filename
+		@return byte array, Nil if file is not found
+		~#
+		function : ReadBinaryFile(name : String) ~ Byte[] {
+			len := File->Size(name);
+			buffer := Byte->New[len];
+			in := FileReader->New(name);
+			if(in->IsOpen()) {
+				in->ReadBuffer(0, len, buffer);
+				in->Close();
+				
+				return buffer;
+			};
+			
+			return Nil;
+		}
+		
+		#~
+		Creates a temporary file
+		~#
+		function : Temp() ~ FileWriter {
+			return System.IO.Filesystem.FileWriter->New(GetTempName());
+		}
+
+		#~
+		Write string to file
+		@param name filename
+		@param content string to write
+		@return true if successful, false otherwise
+		~#
+		function : WriteFile(name : String, content : String) ~ Bool {
+			writer : FileWriter := FileWriter->New(name);
+			if(writer->IsOpen()) {
+				writer->WriteString(content);
+				writer->Close();				
+				return true;
+			};
+
+			return false;
+		}
+
+		#~
+		Write bytes to file
+		@param name filename
+		@param content to write
+		@return true if successful, false otherwise
+		~#
+		function : WriteFile(name : String, content : Byte[]) ~ Bool {
+			writer : FileWriter := FileWriter->New(name);
+			if(writer->IsOpen()) {
+				writer->WriteBuffer(content);
+				writer->Close();				
+				return true;
+			};
+
+			return false;
+		}
+		
+		#~
+		Writes a byte
+		@param b byte to write
+		@return true if byte was written, false otherwise
+		~#
+		method : public : WriteByte(b : Int) ~ Bool {
+			FILE_OUT_BYTE;
+		}
+
+		#~
+		Writes bytes from a buffer
+		@param buffer output buffer
+		@return true if successful, false otherwise
+		~#
+		method : public : WriteBuffer(buffer : Byte[]) ~ Int {
+			return WriteBuffer(0, buffer->Size(), buffer);	
+		}
+
+		#~
+		Writes bytes from a buffer
+		@param offset destination buffer offset
+		@param num number of values to write
+		@param buffer output buffer
+		@return number of values written
+		~#
+		method : public : WriteBuffer(offset : Int, num : Int, buffer : Byte[]) ~ Int {
+			FILE_OUT_BYTE_ARY;
+		}
+		
+		#~
+		Writes characters from a buffer
+		@param buffer output buffer
+		@return true if successful, false otherwise
+		~#
+		method : public : WriteBuffer(buffer : Char[]) ~ Int {
+			return WriteBuffer(0, buffer->Size(), buffer);	
+		}
+
+		#~
+		Writes characters from a buffer
+		@param offset destination buffer offset
+		@param num number of values to write
+		@param buffer input buffer
+		@return number of values written
+		~#
+		method : public : WriteBuffer(offset : Int, num : Int, buffer : Char[]) ~ Int {
+			FILE_OUT_CHAR_ARY;
+		}
+		
+		#~
+		Writes a character string
+		@param str string to be written
+		~#
+		method : public : WriteString(str : System.String) ~ Nil {
+			WriteString(str->ToCharArray());
+		}
+
+		method : WriteString(buffer : Char[]) ~ Nil {
+			FILE_OUT_STRING;
+		}
+	}
+
 	#~
 	Logs messages to temporary files
 	~#

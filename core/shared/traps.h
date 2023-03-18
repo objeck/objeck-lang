@@ -118,7 +118,6 @@ namespace instructions {
     FILE_OUT_CHAR_ARY,
     FILE_IN_STRING,
     FILE_OUT_STRING,
-    // file operations
     FILE_IS_OPEN,
     FILE_EXISTS,
     FILE_CAN_WRITE_ONLY,
@@ -133,6 +132,18 @@ namespace instructions {
     FILE_DELETE,
     FILE_RENAME,
     FILE_COPY,
+    // pipe i/o
+    PIPE_OPEN_READ_WRITE,
+    PIPE_IN_BYTE,
+    PIPE_OUT_BYTE,
+    PIPE_IN_BYTE_ARY,
+    PIPE_IN_CHAR_ARY,
+    PIPE_OUT_BYTE_ARY,
+    PIPE_OUT_CHAR_ARY,
+    PIPE_IN_STRING,
+    PIPE_OUT_STRING,
+    PIPE_IS_OPEN,
+    PIPE_CLOSE,
     // directory operations
     DIR_CREATE,
     DIR_SLASH,
