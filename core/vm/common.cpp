@@ -4522,7 +4522,7 @@ bool TrapProcessor::FileFlush(StackProgram* program, size_t* inst, size_t* &op_s
   if(instance && (FILE*)instance[0]) {
     FILE* file = (FILE*)instance[0];
 #ifdef _DEBUG
-    std::wcout << L"# file close: addr=" << file << L"(" << (size_t)file << L") #" << std::endl;
+    std::wcout << L"# file flush: addr=" << file << L"(" << (size_t)file << L") #" << std::endl;
 #endif
     instance[0] = 0;
     fflush(file);
@@ -4662,6 +4662,17 @@ bool TrapProcessor::PipeIsOpen(StackProgram* program, size_t* inst, size_t*& op_
 }
 
 bool TrapProcessor::PipeClose(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* fram) {
+  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+  if(instance) {
+#ifdef _WIN32
+    const HANDLE pipe = (HANDLE)instance[0];
+    CloseHandle(pipe);
+#else
+    const int pipe = (int)instance[0];
+    close(pipe);
+#endif
+  }
+
   return true;
 }
 
