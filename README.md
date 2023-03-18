@@ -13,11 +13,11 @@
 ```ruby
 class Hello {
    function : Main(args : String[]) ~ Nil {
-      hiya := Collection.Vector->New()<String>;
-      hiya->AddBack("Hello World");
-      hiya->AddBack("Καλημέρα κόσμε");
-      hiya->AddBack("こんにちは 世界");
-      hiya->Each(\^(h) => h->PrintLine());
+      hiya := Collection.Vector->New()<String>
+      hiya->AddBack("Hello World")
+      hiya->AddBack("Καλημέρα κόσμε")
+      hiya->AddBack("こんにちは 世界")
+      hiya->Each(\^(h) => h->PrintLine())
    }
 }
 ```
