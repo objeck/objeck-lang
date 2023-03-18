@@ -6343,7 +6343,7 @@ bundle System.IO {
 		@return byte read
 		~#
 		method : public : Wait() ~ Bool {
-			PIPE_WAIT;
+			PIPE_TO_WAIT;
 		}
 
 		#~
