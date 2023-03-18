@@ -92,6 +92,7 @@ namespace instructions {
     STD_ERR_INT,
     STD_ERR_FLOAT,
     STD_ERR_STRING,
+    STD_ERR_CHAR_ARY,
     STD_ERR_BYTE_ARY,
     STD_ERR_FLUSH,
     // compression
