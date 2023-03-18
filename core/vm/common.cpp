@@ -2268,8 +2268,14 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
     case FILE_REWIND:
       return FileRewind(program, inst, op_stack, stack_pos, frame);
 
-    case PIPE_OPEN_READ_WRITE:
-      return PipeOpenReadWrite(program, inst, op_stack, stack_pos, frame);
+    case PIPE_CREATE:
+      return PipeCreate(program, inst, op_stack, stack_pos, frame);
+
+    case PIPE_CONNECT:
+      return PipeConnect(program, inst, op_stack, stack_pos, frame);
+
+    case PIPE_TO_WAIT:
+      return PipeWait(program, inst, op_stack, stack_pos, frame);
 
     case PIPE_IN_BYTE:
       return PipeInByte(program, inst, op_stack, stack_pos, frame);
@@ -4599,7 +4605,8 @@ bool TrapProcessor::FileRewind(StackProgram* program, size_t* inst, size_t* &op_
 }
 
 // pipe operations
-bool TrapProcessor::PipeOpenReadWrite(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) {
+bool TrapProcessor::PipeCreate(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) 
+{
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(array && instance) {
@@ -4607,7 +4614,7 @@ bool TrapProcessor::PipeOpenReadWrite(StackProgram* program, size_t* inst, size_
     const std::string filename = UnicodeToBytes((wchar_t*)(array + 3));
 
 #ifdef _WIN32
-    const HANDLE pipe = CreateNamedPipe(filename.c_str(), PIPE_ACCESS_DUPLEX, PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT,
+    const HANDLE pipe = CreateNamedPipe(filename.c_str(), PIPE_ACCESS_DUPLEX, PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_TO_WAIT,
                                         1, 1024 * 16, 1024 * 16, NMPWAIT_USE_DEFAULT_WAIT, nullptr);
     if(pipe != INVALID_HANDLE_VALUE) {
       instance[0] = (size_t)pipe;
@@ -4626,43 +4633,63 @@ bool TrapProcessor::PipeOpenReadWrite(StackProgram* program, size_t* inst, size_
   return true;
 }
 
-bool TrapProcessor::PipeInByte(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) {
+bool TrapProcessor::PipeConnect(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) 
+{
+  return false;
+}
+
+bool TrapProcessor::PipeWait(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) 
+{
+  return false;
+}
+
+bool TrapProcessor::PipeInByte(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
+{
   return true;
 }
 
-bool TrapProcessor::PipeOutByte(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) {
+bool TrapProcessor::PipeOutByte(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) 
+{
   return true;
 }
 
-bool TrapProcessor::PipeInByteAry(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) {
+bool TrapProcessor::PipeInByteAry(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
+{
   return true;
 }
 
-bool TrapProcessor::PipeInCharAry(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) {
+bool TrapProcessor::PipeInCharAry(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
+{
   return true;
 }
 
-bool TrapProcessor::PipeOutByteAry(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) {
+bool TrapProcessor::PipeOutByteAry(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) 
+{
   return true;
 }
 
-bool TrapProcessor::PipeOutCharAry(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) {
+bool TrapProcessor::PipeOutCharAry(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) 
+{
   return true;
 }
 
-bool TrapProcessor::PipeInString(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) {
+bool TrapProcessor::PipeInString(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) 
+{
   return true;
 }
 
-bool TrapProcessor::PipeOutString(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) {
+bool TrapProcessor::PipeOutString(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) 
+{
   return true;
 }
 
-bool TrapProcessor::PipeIsOpen(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) {
+bool TrapProcessor::PipeIsOpen(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) 
+{
   return true;
 }
 
-bool TrapProcessor::PipeClose(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* fram) {
+bool TrapProcessor::PipeClose(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* fram) 
+{
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(instance) {
 #ifdef _WIN32
