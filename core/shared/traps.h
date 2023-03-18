@@ -133,7 +133,9 @@ namespace instructions {
     FILE_RENAME,
     FILE_COPY,
     // pipe i/o
-    PIPE_OPEN_READ_WRITE,
+    PIPE_CREATE,
+    PIPE_CONNECT,
+    PIPE_TO_WAIT,
     PIPE_IN_BYTE,
     PIPE_OUT_BYTE,
     PIPE_IN_BYTE_ARY,
