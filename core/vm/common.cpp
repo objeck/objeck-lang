@@ -2268,6 +2268,39 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
     case FILE_REWIND:
       return FileRewind(program, inst, op_stack, stack_pos, frame);
 
+    case PIPE_OPEN_READ_WRITE:
+      return PipeOpenReadWrite(program, inst, op_stack, stack_pos, frame);
+
+    case PIPE_IN_BYTE:
+      return PipeInByte(program, inst, op_stack, stack_pos, frame);
+
+    case PIPE_OUT_BYTE:
+      return PipeOutByte(program, inst, op_stack, stack_pos, frame);
+
+    case PIPE_IN_BYTE_ARY:
+      return PipeInByteAry(program, inst, op_stack, stack_pos, frame);
+
+    case PIPE_IN_CHAR_ARY:
+      return PipeInCharAry(program, inst, op_stack, stack_pos, frame);
+
+    case PIPE_OUT_BYTE_ARY:
+      return PipeOutByteAry(program, inst, op_stack, stack_pos, frame);
+
+    case PIPE_OUT_CHAR_ARY:
+      return PipeOutCharAry(program, inst, op_stack, stack_pos, frame);
+
+    case PIPE_IN_STRING:
+      return PipeInString(program, inst, op_stack, stack_pos, frame);
+
+    case PIPE_OUT_STRING:
+      return PipeOutString(program, inst, op_stack, stack_pos, frame);
+
+    case PIPE_IS_OPEN:
+      return PipeIsOpen(program, inst, op_stack, stack_pos, frame);
+
+    case PIPE_CLOSE:
+      return PipeClose(program, inst, op_stack, stack_pos, frame);
+
     case SOCK_TCP_IS_CONNECTED:
       return SockTcpIsConnected(program, inst, op_stack, stack_pos, frame);
 
@@ -4566,6 +4599,52 @@ bool TrapProcessor::FileRewind(StackProgram* program, size_t* inst, size_t* &op_
   return true;
 }
 
+// pipe operations
+bool TrapProcessor::PipeOpenReadWrite(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) {
+  return true;
+}
+
+bool TrapProcessor::PipeInByte(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) {
+  return true;
+}
+
+bool TrapProcessor::PipeOutByte(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) {
+  return true;
+}
+
+bool TrapProcessor::PipeInByteAry(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) {
+  return true;
+}
+
+bool TrapProcessor::PipeInCharAry(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) {
+  return true;
+}
+
+bool TrapProcessor::PipeOutByteAry(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) {
+  return true;
+}
+
+bool TrapProcessor::PipeOutCharAry(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) {
+  return true;
+}
+
+bool TrapProcessor::PipeInString(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) {
+  return true;
+}
+
+bool TrapProcessor::PipeOutString(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) {
+  return true;
+}
+
+bool TrapProcessor::PipeIsOpen(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) {
+  return true;
+}
+
+bool TrapProcessor::PipeClose(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* fram) {
+  return true;
+}
+
+// socket operations
 bool TrapProcessor::SockTcpIsConnected(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
