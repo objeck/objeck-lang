@@ -2818,10 +2818,10 @@ bool TrapProcessor::StdInByteAryLen(StackProgram* program, size_t* inst, size_t*
 
   if(array && offset > -1 && offset + num <= (long)array[0]) {
     char* buffer = (char*)(array + 3);
-    PushInt(fread(buffer + offset, num, sizeof(char), stdin), op_stack, stack_pos);
+    PushInt(fread(buffer + offset, num, 1, stdin), op_stack, stack_pos);
   }
   else {
-    PushInt(0, op_stack, stack_pos);
+    PushInt(-1, op_stack, stack_pos);
   }
 
   return true;
@@ -2838,19 +2838,26 @@ bool TrapProcessor::StdInCharAryLen(StackProgram* program, size_t* inst, size_t*
 #endif
 
   if(array && offset > -1 && offset + num <= (long)array[0]) {
-    char* buffer = (char*)calloc(num * 2, sizeof(char));
-    size_t count = fread(buffer + offset, num, sizeof(char), stdin);
-    const std::wstring wbuffer = BytesToUnicode(buffer);
-    wchar_t* dest = (wchar_t*)(array + 3);
+    wchar_t* buffer = (wchar_t*)(array + 3);
+    // allocate temporary buffer
+    char* byte_buffer = new char[array[0] + 1];
+    size_t read = fread(byte_buffer + offset, 1, num, stdin);
+    if(read) {
+      byte_buffer[read] = '\0';
+      std::wstring in = BytesToUnicode(byte_buffer);
 #ifdef _WIN32
-    wcsncpy_s(dest + offset, array[0], wbuffer.c_str(), num);
+      wcsncpy_s(buffer, array[0] + 1, in.c_str(), in.size());
 #else
-    wcsncpy(dest + offset, wbuffer.c_str(), num);
+      wcsncpy(buffer, in.c_str(), in.size());
 #endif
-    free(buffer);
-    buffer = nullptr;
-
-    PushInt(count, op_stack, stack_pos);
+      PushInt(in.size(), op_stack, stack_pos);
+    }
+    else {
+      PushInt(-1, op_stack, stack_pos);
+    }
+    // clean up
+    delete[] byte_buffer;
+    byte_buffer = nullptr;
   }
   else {
     PushInt(-1, op_stack, stack_pos);
@@ -2884,7 +2891,6 @@ bool TrapProcessor::StdInString(StackProgram* program, size_t* inst, size_t*& op
   return true;
 }
 
-
 bool TrapProcessor::StdOutByteAryLen(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
@@ -2900,7 +2906,7 @@ bool TrapProcessor::StdOutByteAryLen(StackProgram* program, size_t* inst, size_t
     PushInt(fwrite(buffer, 1, num, stdout), op_stack, stack_pos);
   }
   else {
-    PushInt(0, op_stack, stack_pos);
+    PushInt(-1, op_stack, stack_pos);
   }
 
   return true;
@@ -4601,7 +4607,7 @@ bool TrapProcessor::SockTcpInCharAry(StackProgram* program, size_t* inst, size_t
       byte_buffer[read] = '\0';
       std::wstring in = BytesToUnicode(byte_buffer);
 #ifdef _WIN32
-      wcsncpy_s(buffer, array[0], in.c_str(), in.size());
+      wcsncpy_s(buffer, array[0] + 1, in.c_str(), in.size());
 #else
       wcsncpy(buffer, in.c_str(), in.size());
 #endif
@@ -4732,7 +4738,7 @@ bool TrapProcessor::SockTcpSslInCharAry(StackProgram* program, size_t* inst, siz
       byte_buffer[read] = '\0';
       std::wstring in = BytesToUnicode(byte_buffer);
 #ifdef _WIN32
-      wcsncpy_s(buffer, array[0], in.c_str(), in.size() - 1);
+      wcsncpy_s(buffer, array[0] + 1, in.c_str(), in.size() - 1);
 #else
       wcsncpy(buffer, in.c_str(), in.size());
 #endif
