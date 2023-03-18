@@ -4488,8 +4488,7 @@ bool TrapProcessor::FileOpenReadWrite(StackProgram* program, size_t* inst, size_
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(array && instance) {
     array = (size_t*)array[0];
-    const std::wstring name((wchar_t*)(array + 3));
-    const std::string filename = UnicodeToBytes(name);
+    const std::string filename = UnicodeToBytes((wchar_t*)(array + 3));
     FILE* file = File::FileOpen(filename.c_str(), "w+b");
 #ifdef _DEBUG
     std::wcout << L"# file open: name='" << name << L"'; instance=" << instance << L"("
@@ -4605,8 +4604,7 @@ bool TrapProcessor::PipeOpenReadWrite(StackProgram* program, size_t* inst, size_
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(array && instance) {
     array = (size_t*)array[0];
-    const std::wstring name((wchar_t*)(array + 3));
-    const std::string filename = UnicodeToBytes(name);
+    const std::string filename = UnicodeToBytes((wchar_t*)(array + 3));
 
 #ifdef _WIN32
     const HANDLE pipe = CreateFile(filename.c_str(), GENERIC_READ | GENERIC_WRITE, 0, nullptr, OPEN_EXISTING, 0, nullptr);
