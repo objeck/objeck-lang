@@ -2545,9 +2545,21 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
       NextToken();
       break;
 
-    case PIPE_OPEN_READ_WRITE:
+    case PIPE_CREATE:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                               instructions::PIPE_OPEN_READ_WRITE);
+                                                               instructions::PIPE_CREATE);
+      NextToken();
+      break;
+
+    case PIPE_CONNECT:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::PIPE_CONNECT);
+      NextToken();
+      break;
+
+    case PIPE_TO_WAIT:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::PIPE_TO_WAIT);
       NextToken();
       break;
 

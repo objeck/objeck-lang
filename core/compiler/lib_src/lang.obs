@@ -6313,10 +6313,21 @@ bundle System.IO {
 		@handle : Int;
 		@name : String;
 
-		New(name : String) {
+		enum Mode {
+			CREATE,
+			CONNECT
+		}
+
+		New(name : String, mode : Pipe->Mode) {
 			Parent();
 			@name := name;
-			PIPE_OPEN_READ_WRITE;
+
+			if(mode = Pipe->Mode->CREATE) {
+				PIPE_CREATE;
+			}
+			else {
+				PIPE_CONNECT;
+			};
 		}
 
 		#~
@@ -6325,6 +6336,14 @@ bundle System.IO {
 		~#
 		method : public : GetName() ~ String {
 			return @name;
+		}
+
+		#~
+		Reads a byte
+		@return byte read
+		~#
+		method : public : Wait() ~ Bool {
+			PIPE_WAIT;
 		}
 
 		#~
