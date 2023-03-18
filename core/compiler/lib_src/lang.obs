@@ -7480,7 +7480,7 @@ bundle System.IO.Filesystem {
 	#~
 	Supports file read and write operations
 	~#
-	class FileReaderWriter from File implements System.IO.InputStream {
+	class FileReaderWriter from File implements System.IO.InputStream, System.IO.OutputStream {
 		#~
 		Default constructor.
 		@param name filename
