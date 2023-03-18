@@ -1992,8 +1992,8 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
 		case STD_FILL:
 			return StdOutFill(program, inst, op_stack, stack_pos, frame);
 
-    case STD_OUT_CHAR_ARY:
-      return StdOutCharAry(program, inst, op_stack, stack_pos, frame);
+    case STD_OUT_STRING:
+      return StdOutString(program, inst, op_stack, stack_pos, frame);
 
     case STD_IN_BYTE_ARY_LEN:
       return StdInByteAryLen(program, inst, op_stack, stack_pos, frame);
@@ -2791,11 +2791,11 @@ bool TrapProcessor::StdOutFill(StackProgram* program, size_t* inst, size_t*& op_
 	return true;
 }
 
-bool TrapProcessor::StdOutCharAry(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::StdOutString(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
 #ifdef _DEBUG
-  std::wcout << L"  STD_OUT_CHAR_ARY: addr=" << array << L"(" << (size_t)array << L")" << std::endl;
+  std::wcout << L"  STD_OUT_STRING: addr=" << array << L"(" << (size_t)array << L")" << std::endl;
 #endif
 
   if(array) {
@@ -2803,7 +2803,7 @@ bool TrapProcessor::StdOutCharAry(StackProgram* program, size_t* inst, size_t* &
     std::wcout << str;
   }
   else {
-    std::wcout << L"Nil";
+    std::wcout << L"<Nil>";
   }
 
   return true;
@@ -2922,7 +2922,7 @@ bool TrapProcessor::StdOutCharAryLen(StackProgram* program, size_t* inst, size_t
   const long offset = (long)PopInt(op_stack, stack_pos);
 
 #ifdef _DEBUG
-  std::wcout << L"  STD_OUT_CHAR_ARY: addr=" << array << L"(" << (size_t)array << L")" << std::endl;
+  std::wcout << L"  STD_OUT_STRING: addr=" << array << L"(" << (size_t)array << L")" << std::endl;
 #endif
 
   if(array && offset > -1 && offset + num <= (long)array[0]) {
@@ -3042,6 +3042,24 @@ bool TrapProcessor::StdErrString(StackProgram* program, size_t* inst, size_t* &o
 // TODO: fix
 bool TrapProcessor::StdErrCharAry(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
 {
+  size_t* array = (size_t*)PopInt(op_stack, stack_pos);
+  const long num = (long)PopInt(op_stack, stack_pos);
+  const long offset = (long)PopInt(op_stack, stack_pos);
+
+#ifdef _DEBUG
+  std::wcout << L"  STD_ERR_BYTE_ARY: addr=" << array << L"(" << (size_t)array << L")" << std::endl;
+#endif
+
+  if(array && offset > -1 && offset + num <= (long)array[2]) {
+    const wchar_t* buffer = (wchar_t*)(array + 3);
+    std::wcerr.write(buffer + offset, num);
+    PushInt(1, op_stack, stack_pos);
+  }
+  else {
+    std::wcerr << L"Nil";
+    PushInt(0, op_stack, stack_pos);
+  }
+
   return true;
 }
 

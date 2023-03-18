@@ -79,7 +79,7 @@ namespace instructions {
     STD_FLOAT_PER,
     STD_WIDTH,
     STD_FILL,
-    STD_OUT_CHAR_ARY,
+    STD_OUT_STRING,
     STD_OUT_BYTE_ARY_LEN,
     STD_OUT_CHAR_ARY_LEN,
     STD_IN_BYTE_ARY_LEN,
