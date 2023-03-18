@@ -2934,14 +2934,13 @@ bool TrapProcessor::StdOutCharAryLen(StackProgram* program, size_t* inst, size_t
   return true;
 }
 
-// TODO: Fix
 bool TrapProcessor::StdErrFlush(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
 #ifdef _DEBUG
   std::wcout << L"  STD_ERR_FLUSH" << std::endl;
 #endif
   
-  std::wcerr.flush();
+  fflush(stderr);
   return true;
 }
 
@@ -3045,14 +3044,12 @@ bool TrapProcessor::StdErrByteAry(StackProgram* program, size_t* inst, size_t* &
   const long offset = (long)PopInt(op_stack, stack_pos);
 
 #ifdef _DEBUG
-  std::wcout << L"  STD_ERR_STRING: addr=" << array << L"(" << (size_t)array << L")" << std::endl;
+  std::wcout << L"  STD_ERR_BYTE_ARY: addr=" << array << L"(" << (size_t)array << L")" << std::endl;
 #endif
 
   if(array && offset > -1 && offset + num <= (long)array[2]) {
-    const unsigned char* buffer = (unsigned char*)(array + 3);
-    for(long i = 0; i < num; i++) {
-      std::wcerr << (char)buffer[i + offset];
-    }
+    const char* buffer = (char*)(array + 3);
+    std::cerr.write(buffer + offset, num);
     PushInt(1, op_stack, stack_pos);
   }
   else {
