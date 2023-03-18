@@ -4,6 +4,6 @@ class Hello {
       hiya->AddBack("Hello World")
       hiya->AddBack("Καλημέρα κόσμε")
       hiya->AddBack("こんにちは 世界")
-      hiya->Each(\^(h) => h->PrintLine())
+      hiya->Each(\^(h) => h->PrintLine()
    }
 }
