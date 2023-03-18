@@ -2657,6 +2657,9 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
       break;
 
     case PIPE_CLOSE:
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INST_MEM));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::PIPE_CLOSE));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 2L));
       break;
 
     //----------- directory functions -----------
