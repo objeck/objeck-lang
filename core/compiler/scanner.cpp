@@ -246,6 +246,17 @@ void Scanner::LoadKeywords()
   ident_map[L"FILE_DELETE"] = FILE_DELETE;
   ident_map[L"FILE_RENAME"] = FILE_RENAME;
   ident_map[L"FILE_COPY"] = FILE_COPY;
+  ident_map[L"PIPE_OPEN_READ_WRITE" = PIPE_OPEN_READ_WRITE;
+  ident_map[L"PIPE_IN_BYTE" = PIPE_IN_BYTE;
+  ident_map[L"PIPE_OUT_BYTE" = PIPE_OUT_BYTE;
+  ident_map[L"PIPE_IN_BYTE_ARY" = PIPE_IN_BYTE_ARY;
+  ident_map[L"PIPE_IN_CHAR_ARY" = PIPE_IN_CHAR_ARY;
+  ident_map[L"PIPE_OUT_BYTE_ARY" = PIPE_OUT_BYTE_ARY;
+  ident_map[L"PIPE_OUT_CHAR_ARY" = PIPE_OUT_CHAR_ARY;
+  ident_map[L"PIPE_IN_STRING" = PIPE_IN_STRING;
+  ident_map[L"PIPE_OUT_STRING" = PIPE_OUT_STRING;
+  ident_map[L"PIPE_IS_OPEN" = PIPE_IS_OPEN;
+  ident_map[L"PIPE_CLOSE" = PIPE_CLOSE;
   ident_map[L"DIR_CREATE"] = DIR_CREATE;
   ident_map[L"DIR_SLASH"] = DIR_SLASH;
   ident_map[L"DIR_EXISTS"] = DIR_EXISTS;
@@ -496,6 +507,17 @@ void Scanner::CheckIdentifier(int index)
     case FILE_DELETE:
     case FILE_RENAME:
     case FILE_COPY:
+    case PIPE_OPEN_READ_WRITE:
+    case PIPE_IN_BYTE:
+    case PIPE_OUT_BYTE:
+    case PIPE_IN_BYTE_ARY:
+    case PIPE_IN_CHAR_ARY:
+    case PIPE_OUT_BYTE_ARY:
+    case PIPE_OUT_CHAR_ARY:
+    case PIPE_IN_STRING:
+    case PIPE_OUT_STRING:
+    case PIPE_IS_OPEN:
+    case PIPE_CLOSE:
     case DIR_CREATE:
     case DIR_SLASH:
     case DIR_EXISTS:
