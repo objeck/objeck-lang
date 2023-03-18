@@ -5879,7 +5879,7 @@ bundle System.IO {
  	#~
 	Provides standard I/O operations
 	~#
-	class Standard implements InputStream, OutputStream {
+	class Standard {
 		#~
 		Reads bytes from STDIN
 		@param offset destination buffer offset
@@ -6309,12 +6309,13 @@ bundle System.IO {
 	#~
 	Named pipe support
 	~#
-	class Pipe {
+	class Pipe implements InputStream, OutputStream {
 		@handle : Int;
-		@path : String;
+		@name : String;
 
-		New(path : String) {
-			@path := path;
+		New(name : String) {
+			Parent();
+			@name := name;
 			PIPE_OPEN_READ_WRITE;
 		}
 
