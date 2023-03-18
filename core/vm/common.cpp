@@ -4601,6 +4601,29 @@ bool TrapProcessor::FileRewind(StackProgram* program, size_t* inst, size_t* &op_
 
 // pipe operations
 bool TrapProcessor::PipeOpenReadWrite(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) {
+  size_t* array = (size_t*)PopInt(op_stack, stack_pos);
+  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+  if(array && instance) {
+    array = (size_t*)array[0];
+    const std::wstring name((wchar_t*)(array + 3));
+    const std::string filename = UnicodeToBytes(name);
+
+#ifdef _WIN32
+    const HANDLE pipe = CreateFile(filename.c_str(), GENERIC_READ | GENERIC_WRITE, 0, nullptr, OPEN_EXISTING, 0, nullptr);
+    if(pipe != INVALID_HANDLE_VALUE) {
+      instance[0] = (size_t)pipe;
+    }
+#else
+    const int pipe_ref = mkfifo(filename.c_str(), 0666);
+    if(pipe_ref > -1) {
+      const int pipe = open(filename.c_str(), O_RDWR);
+      if(pipe > -1) {
+        instance[0] = pipe;
+      }
+    }
+#endif
+  }
+
   return true;
 }
 
