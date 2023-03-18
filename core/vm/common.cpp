@@ -4607,7 +4607,8 @@ bool TrapProcessor::PipeOpenReadWrite(StackProgram* program, size_t* inst, size_
     const std::string filename = UnicodeToBytes((wchar_t*)(array + 3));
 
 #ifdef _WIN32
-    const HANDLE pipe = CreateFile(filename.c_str(), GENERIC_READ | GENERIC_WRITE, 0, nullptr, OPEN_EXISTING, 0, nullptr);
+    const HANDLE pipe = CreateNamedPipe(filename.c_str(), PIPE_ACCESS_DUPLEX, PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT,
+                                        1, 1024 * 16, 1024 * 16, NMPWAIT_USE_DEFAULT_WAIT, nullptr);
     if(pipe != INVALID_HANDLE_VALUE) {
       instance[0] = (size_t)pipe;
     }
