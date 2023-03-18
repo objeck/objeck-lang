@@ -798,11 +798,11 @@ bundle System {
 		}
 
 		function : Print(c : Char[]) ~ Nil {
-			STD_OUT_CHAR_ARY;
+			STD_OUT_STRING;
 		}
 
 		function : PrintLine(c : Char[]) ~ Nil {
-			STD_OUT_CHAR_ARY;
+			STD_OUT_STRING;
 			'\n'->Print();
 		}
 
