@@ -2598,13 +2598,7 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
                                                                instructions::PIPE_OUT_STRING);
       NextToken();
       break;
-
-    case PIPE_IS_OPEN:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                               instructions::PIPE_IS_OPEN);
-      NextToken();
-      break;
-
+      
     case PIPE_IS_OPEN:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::PIPE_IS_OPEN);
