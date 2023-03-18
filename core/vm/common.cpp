@@ -2031,6 +2031,9 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
     case STD_ERR_STRING:
       return StdErrString(program, inst, op_stack, stack_pos, frame);
 
+    case STD_ERR_CHAR_ARY:
+      return StdErrCharAry(program, inst, op_stack, stack_pos, frame);
+
     case STD_ERR_BYTE_ARY:
       return StdErrByteAry(program, inst, op_stack, stack_pos, frame);
 
@@ -3037,6 +3040,11 @@ bool TrapProcessor::StdErrString(StackProgram* program, size_t* inst, size_t* &o
 }
 
 // TODO: fix
+bool TrapProcessor::StdErrCharAry(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
+{
+  return true;
+}
+
 bool TrapProcessor::StdErrByteAry(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
