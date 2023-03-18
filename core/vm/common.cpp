@@ -2028,8 +2028,8 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
     case STD_ERR_FLOAT:
       return StdErrFloat(program, inst, op_stack, stack_pos, frame);
 
-    case STD_ERR_CHAR_ARY:
-      return StdErrCharAry(program, inst, op_stack, stack_pos, frame);
+    case STD_ERR_STRING:
+      return StdErrString(program, inst, op_stack, stack_pos, frame);
 
     case STD_ERR_BYTE_ARY:
       return StdErrByteAry(program, inst, op_stack, stack_pos, frame);
@@ -3018,12 +3018,12 @@ bool TrapProcessor::StdErrFloat(StackProgram* program, size_t* inst, size_t* &op
   return true;
 }
 
-bool TrapProcessor::StdErrCharAry(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::StdErrString(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
 
 #ifdef _DEBUG
-  std::wcout << L"  STD_ERR_CHAR_ARY: addr=" << array << L"(" << (size_t)array << L")" << std::endl;
+  std::wcout << L"  STD_ERR_STRING: addr=" << array << L"(" << (size_t)array << L")" << std::endl;
 #endif
 
   if(array) {
@@ -3045,7 +3045,7 @@ bool TrapProcessor::StdErrByteAry(StackProgram* program, size_t* inst, size_t* &
   const long offset = (long)PopInt(op_stack, stack_pos);
 
 #ifdef _DEBUG
-  std::wcout << L"  STD_ERR_CHAR_ARY: addr=" << array << L"(" << (size_t)array << L")" << std::endl;
+  std::wcout << L"  STD_ERR_STRING: addr=" << array << L"(" << (size_t)array << L")" << std::endl;
 #endif
 
   if(array && offset > -1 && offset + num <= (long)array[2]) {
