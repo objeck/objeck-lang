@@ -1626,6 +1626,20 @@ class TrapProcessor {
   static bool FileInString(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
   static bool FileOutString(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
   static bool FileRewind(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+
+
+  static bool PipeOpenReadWrite(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame);
+  static bool PipeInByte(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame);
+  static bool PipeOutByte(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame);
+  static bool PipeInByteAry(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame);
+  static bool PipeInCharAry(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame);
+  static bool PipeOutByteAry(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame);
+  static bool PipeOutCharAry(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame);
+  static bool PipeInString(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame);
+  static bool PipeOutString(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame);
+  static bool PipeIsOpen(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame);
+  static bool PipeClose(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* fram);
+
   static bool SockTcpIsConnected(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
   static bool SockTcpInByte(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
   static bool SockTcpInByteAry(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
