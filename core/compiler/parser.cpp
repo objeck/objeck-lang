@@ -2196,9 +2196,9 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
       NextToken();
       break;
 
-    case STD_OUT_CHAR_ARY:
+    case STD_OUT_STRING:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                               instructions::STD_OUT_CHAR_ARY);
+                                                               instructions::STD_OUT_STRING);
       NextToken();
       break;
 
