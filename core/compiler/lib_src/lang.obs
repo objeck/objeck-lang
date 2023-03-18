@@ -5967,10 +5967,11 @@ bundle System.IO {
 		@param num number of values to write
 		@param buffer input buffer
 		@return true if successful, false otherwise
-		~#
+		
 		function : public : WriteErrorBuffer(offset : Int, num : Int, buffer : Char[]) ~ Bool {
 			STD_ERR_BYTE_ARY;
 		}
+		~#
 
 		#~
 		Reads a string from STDIN
