@@ -6347,6 +6347,14 @@ bundle System.IO {
 		method : public : GetName() ~ String {
 			return @name;
 		}
+		
+		#~
+		Returns rather the pipe is open
+		@return true if pipe is open, false otherwise
+		~#
+		method : public : IsOpen() ~ Bool {
+			return @handle = 0 ? false : true;
+		}
 
 		#~
 		Wait for client connection
