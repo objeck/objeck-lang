@@ -258,8 +258,8 @@ enum ScannerTokenType {
   FILE_RENAME,
   FILE_COPY,
   // named pipe
+  PIPE_OPEN,
   PIPE_CREATE,
-  PIPE_CONNECT,
   PIPE_CONNECT,
   PIPE_IN_BYTE,
   PIPE_OUT_BYTE,
