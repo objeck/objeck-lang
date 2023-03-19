@@ -246,8 +246,8 @@ void Scanner::LoadKeywords()
   ident_map[L"FILE_DELETE"] = FILE_DELETE;
   ident_map[L"FILE_RENAME"] = FILE_RENAME;
   ident_map[L"FILE_COPY"] = FILE_COPY;
+  ident_map[L"PIPE_OPEN"] = PIPE_OPEN;
   ident_map[L"PIPE_CREATE"] = PIPE_CREATE;
-  ident_map[L"PIPE_CONNECT"] = PIPE_CONNECT;
   ident_map[L"PIPE_CONNECT"] = PIPE_CONNECT;
   ident_map[L"PIPE_IN_BYTE"] = PIPE_IN_BYTE;
   ident_map[L"PIPE_OUT_BYTE"] = PIPE_OUT_BYTE;
@@ -509,8 +509,8 @@ void Scanner::CheckIdentifier(int index)
     case FILE_DELETE:
     case FILE_RENAME:
     case FILE_COPY:
+    case PIPE_OPEN:
     case PIPE_CREATE:
-    case PIPE_CONNECT:
     case PIPE_CONNECT:
     case PIPE_IN_BYTE:
     case PIPE_OUT_BYTE:
