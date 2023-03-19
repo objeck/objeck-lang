@@ -4697,6 +4697,50 @@ bool TrapProcessor::PipeOutCharAry(StackProgram* program, size_t* inst, size_t*&
 
 bool TrapProcessor::PipeInString(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) 
 {
+  const size_t* array = (size_t*)PopInt(op_stack, stack_pos);
+  const size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+  if(array && instance) {
+    char buffer[MID_BUFFER_MAX] = { 0 };
+#ifdef _WIN32
+    const HANDLE pipe = (HANDLE)instance[0];
+    DWORD read;
+    BOOL check = ReadFile(pipe, &buffer, MID_BUFFER_MAX, &read, nullptr);
+#else
+    const int pipe = (int)instance[0];
+    bool check;
+#endif
+
+    if(check) {
+      long end_index = (long)strlen(buffer) - 1;
+      if(end_index > -1) {
+        if(buffer[end_index] == '\n' || buffer[end_index] == '\r') {
+          buffer[end_index] = '\0';
+        }
+
+        if(--end_index > -1 && buffer[end_index] == '\r') {
+          buffer[end_index] = '\0';
+        }
+      }
+      else {
+        buffer[0] = '\0';
+      }
+
+      // copy and remove file BOM UTF (8, 16, 32)
+      std::wstring in = BytesToUnicode(buffer);
+      if(in.size() > 0 && (in[0] == (wchar_t)0xFEFF || in[0] == (wchar_t)0xFFFE || in[0] == (wchar_t)0xFFFE0000 || in[0] == (wchar_t)0xEFBBBF)) {
+        in.erase(in.begin(), in.begin() + 1);
+      }
+
+      wchar_t* out = (wchar_t*)(array + 3);
+      const long max = (long)array[2];
+#ifdef _WIN32
+      wcsncpy_s(out, array[0], in.c_str(), max);
+#else
+      wcsncpy(out, in.c_str(), max);
+#endif
+    }
+  }
+
   return true;
 }
 
