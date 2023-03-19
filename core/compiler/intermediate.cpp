@@ -2623,9 +2623,6 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
 
     //----------- pipe functions -----------
   case PIPE_OPEN:
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INST_MEM));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::PIPE_OPEN));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 2L));
     break;
 
   case PIPE_CREATE:
@@ -2636,9 +2633,8 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
 
   case PIPE_CONNECT:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INST_MEM));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::PIPE_CONNECT));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 3L));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 2L));
     break;
 
   case PIPE_IN_BYTE:
