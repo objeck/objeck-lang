@@ -6327,7 +6327,7 @@ bundle System.IO {
 		@param name pipe path and name
 		@param mode <pre>Mode->OPEN</pre> or <pre>Mode->CREATE</pre>
 		~#
-		private : New(name : String, mode : Pipe->Mode) {
+		New : private (name : String, mode : Pipe->Mode) {
 			Parent();
 			@name := name;
 			@mode := mode;
@@ -6348,6 +6348,7 @@ bundle System.IO {
 			return @name;
 		}
 
+		#~
 		Wait for client connection
 		@return true when connected
 		~#
