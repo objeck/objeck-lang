@@ -2301,9 +2301,6 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
     case PIPE_OUT_STRING:
       return PipeOutString(program, inst, op_stack, stack_pos, frame);
 
-    case PIPE_IS_OPEN:
-      return PipeIsOpen(program, inst, op_stack, stack_pos, frame);
-
     case PIPE_CLOSE:
       return PipeClose(program, inst, op_stack, stack_pos, frame);
 
