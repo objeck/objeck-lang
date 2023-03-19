@@ -4648,7 +4648,12 @@ bool TrapProcessor::PipeConnect(StackProgram* program, size_t* inst, size_t*& op
     }
 #else
     const int pipe = (int)instance[0];
-    close(pipe);
+    if(open(pipe, O_RDWR) > -1) {
+      PushInt(1, op_stack, stack_pos);
+  }
+    else {
+      PushInt(0, op_stack, stack_pos);
+    }
 #endif
   }
 
