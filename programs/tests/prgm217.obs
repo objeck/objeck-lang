@@ -1,0 +1,10 @@
+class Hello {
+	function : Main(args : String[]) ~ Nil {
+		pipe := System.IO.Pipe->New("\\\\.\\pipe\\objk", Pipe->Mode->CREATE);
+		if(pipe->Connect()) {
+			pipe->ReadLine()->PrintLine();
+			pipe->WriteString("Hi Ya!");
+		};
+		pipe->Close();
+	}
+}
