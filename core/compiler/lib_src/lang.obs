@@ -6317,7 +6317,7 @@ bundle System.IO {
 		#~
 		Pipe modes
 		~#
-		enum Mode {
+		enum Mode := -4 {
 			OPEN,
 			CREATE
 		}
