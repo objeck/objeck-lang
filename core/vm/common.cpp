@@ -4637,7 +4637,7 @@ bool TrapProcessor::PipeCreate(StackProgram* program, size_t* inst, size_t*& op_
 bool TrapProcessor::PipeConnect(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) 
 {
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  if(instance) {
+  if(instance && (int)instance[2] == -3 /* Mode->CREATE */) {
 #ifdef _WIN32
     const HANDLE pipe = (HANDLE)instance[0];
     if(ConnectNamedPipe(pipe, nullptr)) {
