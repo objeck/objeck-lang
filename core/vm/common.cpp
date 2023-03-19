@@ -1268,7 +1268,7 @@ size_t* TrapProcessor::CreateMethodObject(size_t* cls_obj, StackMethod* mthd, St
         data_type_obj[0] = -995;
         index++;
         const int start_index = index + 1;
-        while(index < (int)params_string.size() && params_string[index] != L',') { // TODO: generics?
+        while(index < (int)params_string.size() && params_string[index] != L',') {
           index++;
         }
         data_type_obj[1] = (size_t)CreateStringObject(params_string.substr(start_index, index - 2),
@@ -3072,13 +3072,12 @@ bool TrapProcessor::StdErrString(StackProgram* program, size_t* inst, size_t* &o
     std::wcerr << str;
   }
   else {
-    std::wcerr << L"Nil";
+    std::wcerr << L"<Nil>";
   }
 
   return true;
 }
 
-// TODO: fix
 bool TrapProcessor::StdErrCharAry(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
@@ -3095,7 +3094,7 @@ bool TrapProcessor::StdErrCharAry(StackProgram* program, size_t* inst, size_t*& 
     PushInt(1, op_stack, stack_pos);
   }
   else {
-    std::wcerr << L"Nil";
+    std::wcerr << L"<Nil>";
     PushInt(0, op_stack, stack_pos);
   }
 
@@ -3118,7 +3117,7 @@ bool TrapProcessor::StdErrByteAry(StackProgram* program, size_t* inst, size_t* &
     PushInt(1, op_stack, stack_pos);
   }
   else {
-    std::wcerr << L"Nil";
+    std::wcerr << L"<Nil>";
     PushInt(0, op_stack, stack_pos);
   }
 
@@ -4716,8 +4715,9 @@ bool TrapProcessor::PipeInString(StackProgram* program, size_t* inst, size_t*& o
     DWORD read;
     const BOOL status = ReadFile(pipe, &buffer, MID_BUFFER_MAX, &read, nullptr);
 #else
+    // TODO: for POSIX
     const int pipe = (int)instance[0];
-    bool status = false;
+    bool status = read(pipe, &buffer, MID_BUFFER_MAX) > - 1;
 #endif
 
     if(status) {
@@ -4765,7 +4765,8 @@ bool TrapProcessor::PipeOutString(StackProgram* program, size_t* inst, size_t*& 
     DWORD written;
     WriteFile( pipe, output.c_str(), (DWORD)output.size() + 1, &written, nullptr);
 #else
-    FILE* file = (FILE*)instance[0];
+    // TODO: for POSIX
+    const int pipe = (int)instance[0];
 #endif
   }
 
@@ -5941,7 +5942,7 @@ std::wstring MethodFormatter::FormatParameters(const std::wstring param_str)
     case 'n':
       formatted_str += param_name++;
       formatted_str += L':';
-      formatted_str += L"Nil";
+      formatted_str += L"<Nil>";
       index++;
       break;
 
@@ -6070,7 +6071,7 @@ std::wstring MethodFormatter::FormatType(const std::wstring type_str)
     break;
 
   case L'n':
-    formatted_str += L"Nil";
+    formatted_str += L"<Nil>";
     index++;
     break;
 
