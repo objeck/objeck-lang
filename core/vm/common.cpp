@@ -2268,14 +2268,14 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
     case FILE_REWIND:
       return FileRewind(program, inst, op_stack, stack_pos, frame);
 
+    case PIPE_OPEN:
+      return PipeOpen(program, inst, op_stack, stack_pos, frame);
+
     case PIPE_CREATE:
       return PipeCreate(program, inst, op_stack, stack_pos, frame);
 
     case PIPE_CONNECT:
       return PipeConnect(program, inst, op_stack, stack_pos, frame);
-
-    case PIPE_TO_WAIT:
-      return PipeWait(program, inst, op_stack, stack_pos, frame);
 
     case PIPE_IN_BYTE:
       return PipeInByte(program, inst, op_stack, stack_pos, frame);
@@ -4607,14 +4607,15 @@ bool TrapProcessor::FileRewind(StackProgram* program, size_t* inst, size_t* &op_
 // pipe operations
 bool TrapProcessor::PipeCreate(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) 
 {
-  size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+  size_t* array = (size_t*)instance[1];
+
   if(array && instance) {
     array = (size_t*)array[0];
     const std::string filename = UnicodeToBytes((wchar_t*)(array + 3));
 
 #ifdef _WIN32
-    const HANDLE pipe = CreateNamedPipe(filename.c_str(), PIPE_ACCESS_DUPLEX, PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_TO_WAIT,
+    const HANDLE pipe = CreateNamedPipe(filename.c_str(), PIPE_ACCESS_DUPLEX, PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_CONNECT,
                                         1, 1024 * 16, 1024 * 16, NMPWAIT_USE_DEFAULT_WAIT, nullptr);
     if(pipe != INVALID_HANDLE_VALUE) {
       instance[0] = (size_t)pipe;
@@ -4638,7 +4639,7 @@ bool TrapProcessor::PipeConnect(StackProgram* program, size_t* inst, size_t*& op
   return false;
 }
 
-bool TrapProcessor::PipeWait(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) 
+bool TrapProcessor::PipeOpen(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) 
 {
   return false;
 }

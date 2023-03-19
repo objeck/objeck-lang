@@ -2622,54 +2622,57 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     break;
 
     //----------- pipe functions -----------
-    case PIPE_CREATE:
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INST_MEM));
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::PIPE_CREATE));
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 3L));
-      break;
+  case PIPE_OPEN:
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INST_MEM));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::PIPE_OPEN));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 2L));
+    break;
 
-    case PIPE_TO_WAIT:
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INST_MEM));
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::PIPE_TO_WAIT));
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 2L));
-      break;
+  case PIPE_CREATE:
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INST_MEM));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::PIPE_CREATE));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 2L));
+    break;
 
-    case PIPE_CONNECT:
-      break;
+  case PIPE_CONNECT:
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INST_MEM));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::PIPE_CONNECT));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 3L));
+    break;
 
-    case PIPE_IN_BYTE:
-      break;
+  case PIPE_IN_BYTE:
+    break;
 
-    case PIPE_OUT_BYTE:
-      break;
+  case PIPE_OUT_BYTE:
+    break;
 
-    case PIPE_IN_BYTE_ARY:
-      break;
+  case PIPE_IN_BYTE_ARY:
+    break;
 
-    case PIPE_IN_CHAR_ARY:
-      break;
+  case PIPE_IN_CHAR_ARY:
+    break;
 
-    case PIPE_OUT_BYTE_ARY:
-      break;
+  case PIPE_OUT_BYTE_ARY:
+    break;
 
-    case PIPE_OUT_CHAR_ARY:
-      break;
+  case PIPE_OUT_CHAR_ARY:
+    break;
 
-    case PIPE_IN_STRING:
-      break;
+  case PIPE_IN_STRING:
+    break;
 
-    case PIPE_OUT_STRING:
-      break;
+  case PIPE_OUT_STRING:
+    break;
 
-    case PIPE_IS_OPEN:
-      break;
+  case PIPE_IS_OPEN:
+    break;
 
-    case PIPE_CLOSE:
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INST_MEM));
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::PIPE_CLOSE));
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 2L));
-      break;
+  case PIPE_CLOSE:
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INST_MEM));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::PIPE_CLOSE));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 2L));
+    break;
 
     //----------- directory functions -----------
   case DIR_CREATE:
