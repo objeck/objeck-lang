@@ -2130,9 +2130,9 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
     case SOCK_TCP_IN_STRING:
       return SockTcpInString(program, inst, op_stack, stack_pos, frame);
 
-		case SOCK_TCP_ERROR:
-			return SockTcpError(program, inst, op_stack, stack_pos, frame);
-
+    case SOCK_TCP_ERROR:
+      return SockTcpError(program, inst, op_stack, stack_pos, frame);
+      
     case SOCK_TCP_SSL_CONNECT:
       return SockTcpSslConnect(program, inst, op_stack, stack_pos, frame);
 
@@ -2152,19 +2152,19 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
       return SockTcpSslInString(program, inst, op_stack, stack_pos, frame);
 
     case SOCK_TCP_SSL_LISTEN:
-			return SockTcpSslListen(program, inst, op_stack, stack_pos, frame);
+      return SockTcpSslListen(program, inst, op_stack, stack_pos, frame);
 
     case SOCK_TCP_SSL_ACCEPT:
-			return SockTcpSslAccept(program, inst, op_stack, stack_pos, frame);
+      return SockTcpSslAccept(program, inst, op_stack, stack_pos, frame);
 
     case SOCK_TCP_SSL_SRV_CERT:
-			return SockTcpSslCertSrv(program, inst, op_stack, stack_pos, frame);
+      return SockTcpSslCertSrv(program, inst, op_stack, stack_pos, frame);
 	
     case SOCK_TCP_SSL_SRV_CLOSE:
-			return SockTcpSslCloseSrv(program, inst, op_stack, stack_pos, frame);
+      return SockTcpSslCloseSrv(program, inst, op_stack, stack_pos, frame);
 
-		case SOCK_TCP_SSL_ERROR:
-			return SockTcpSslError(program, inst, op_stack, stack_pos, frame);
+    case SOCK_TCP_SSL_ERROR:
+      return SockTcpSslError(program, inst, op_stack, stack_pos, frame);
 
     case SERL_CHAR:
       return SerlChar(program, inst, op_stack, stack_pos, frame);
@@ -4762,14 +4762,14 @@ bool TrapProcessor::PipeOutString(StackProgram* program, size_t* inst, size_t*& 
     std::string output = UnicodeToBytes((wchar_t*)(array + 3));
 #ifdef _WIN32
     const HANDLE pipe = (HANDLE)instance[0];
-    DWORD written;
-    WriteFile( pipe, output.c_str(), (DWORD)output.size() + 1, &written, nullptr);
+    WriteFile(pipe, output.c_str(), (DWORD)output.size() + 1, nullptr, nullptr);
 #else
     // TODO: for POSIX
     const int pipe = (int)instance[0];
+    write(pipe, output.c_str(), output.size() + 1);
 #endif
   }
-
+  
   return true;
 }
 
