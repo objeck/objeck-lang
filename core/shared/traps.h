@@ -144,7 +144,6 @@ namespace instructions {
     PIPE_OUT_CHAR_ARY,
     PIPE_IN_STRING,
     PIPE_OUT_STRING,
-    PIPE_IS_OPEN,
     PIPE_CLOSE,
     // directory operations
     DIR_CREATE,
