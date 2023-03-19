@@ -6391,7 +6391,7 @@ bundle System.IO {
 		@return character string
 		~#
 		method : public : ReadLine() ~ System.String {
-			if(IsEoF()) {
+			if(@handle = 0) {
 				return Nil;
 			};
 			
