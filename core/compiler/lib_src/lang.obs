@@ -6440,6 +6440,10 @@ bundle System.IO {
 		@param str string to be written
 		~#
 		method : public : WriteString(str : System.String) ~ Nil {
+			WriteString(str->ToCharArray());
+		}
+
+		method : WriteString(buffer : Char[]) ~ Nil {
 			PIPE_OUT_STRING;
 		}
 		
