@@ -6312,13 +6312,32 @@ bundle System.IO {
 	class Pipe implements InputStream, OutputStream {
 		@handle : Int;
 		@name : String;
+		@mode : Pipe->Mode;
+
+		#~
+		Pipe modes
+		~#
+		enum Mode {
+			OPEN,
+			CREATE
+		}
 
 		#~
 		Create a new pipe for either a client or server
+		@param name pipe path and name
+		@param mode <pre>Mode->OPEN</pre> or <pre>Mode->CREATE</pre>
 		~#
-		New(name : String) {
+		private : New(name : String, mode : Pipe->Mode) {
 			Parent();
 			@name := name;
+			@mode := mode;
+
+			if(mode = Pipe->Mode->CREATE) {
+				PIPE_CREATE;
+			}
+			else {
+				PIPE_OPEN;
+			};
 		}
 
 		#~
@@ -6328,24 +6347,7 @@ bundle System.IO {
 		method : public : GetName() ~ String {
 			return @name;
 		}
-		
-		#~
-		Open client connect to exist pipe
-		@return true if successful, false otherwise
-		~#
-		method : public : Open() ~ Bool {
-			PIPE_OPEN;
-		}
 
-		#~
-		Create pipe server
-		@return true if successful, false otherwise
-		~#
-		method : public : Create() ~ Bool {
-			PIPE_CREATE;
-		}
-
-		#~
 		Wait for client connection
 		@return true when connected
 		~#
