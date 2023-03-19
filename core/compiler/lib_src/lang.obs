@@ -6391,6 +6391,16 @@ bundle System.IO {
 		@return character string
 		~#
 		method : public : ReadLine() ~ System.String {
+			if(IsEoF()) {
+				return Nil;
+			};
+			
+			buffer : Char[] := Char->New[1024];
+			ReadString(buffer);
+			return System.String->New(buffer);
+		}
+
+		method : ReadString(buffer : Char[]) ~ Nil {
 			PIPE_IN_STRING;
 		}
 		
