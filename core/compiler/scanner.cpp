@@ -257,7 +257,6 @@ void Scanner::LoadKeywords()
   ident_map[L"PIPE_OUT_CHAR_ARY"] = PIPE_OUT_CHAR_ARY;
   ident_map[L"PIPE_IN_STRING"] = PIPE_IN_STRING;
   ident_map[L"PIPE_OUT_STRING"] = PIPE_OUT_STRING;
-  ident_map[L"PIPE_IS_OPEN"] = PIPE_IS_OPEN;
   ident_map[L"PIPE_CLOSE"] = PIPE_CLOSE;
   ident_map[L"DIR_CREATE"] = DIR_CREATE;
   ident_map[L"DIR_SLASH"] = DIR_SLASH;
@@ -520,7 +519,6 @@ void Scanner::CheckIdentifier(int index)
     case PIPE_OUT_CHAR_ARY:
     case PIPE_IN_STRING:
     case PIPE_OUT_STRING:
-    case PIPE_IS_OPEN:
     case PIPE_CLOSE:
     case DIR_CREATE:
     case DIR_SLASH:

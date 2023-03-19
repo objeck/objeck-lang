@@ -4773,11 +4773,6 @@ bool TrapProcessor::PipeOutString(StackProgram* program, size_t* inst, size_t*& 
   return true;
 }
 
-bool TrapProcessor::PipeIsOpen(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) 
-{
-  return true;
-}
-
 bool TrapProcessor::PipeClose(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* fram) 
 {
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
