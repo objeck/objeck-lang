@@ -4647,15 +4647,25 @@ bool TrapProcessor::PipeConnect(StackProgram* program, size_t* inst, size_t*& op
       PushInt(0, op_stack, stack_pos);
     }
 #else
-    const int pipe = (int)instance[0];
-    if(open(pipe, O_RDWR) > -1) {
-      PushInt(1, op_stack, stack_pos);
-  }
-    else {
-      PushInt(0, op_stack, stack_pos);
-    }
+		size_t* array = (size_t*)instance[1];
+    if(array) {
+			array = (size_t*)array[0];
+			const std::string filename = UnicodeToBytes((wchar_t*)(array + 3));
+			if(open(filename.c_str(), O_RDWR) > -1) {
+				PushInt(1, op_stack, stack_pos);
+			}
+			else {
+				PushInt(0, op_stack, stack_pos);
+			}
+		}
+		else {
+			PushInt(0, op_stack, stack_pos);
+		}
 #endif
   }
+	else {
+		PushInt(0, op_stack, stack_pos);
+	}
 
   return true;
 }
@@ -4707,7 +4717,7 @@ bool TrapProcessor::PipeInString(StackProgram* program, size_t* inst, size_t*& o
     BOOL check = ReadFile(pipe, &buffer, MID_BUFFER_MAX, &read, nullptr);
 #else
     const int pipe = (int)instance[0];
-    bool check;
+    bool check = false;
 #endif
 
     if(check) {
