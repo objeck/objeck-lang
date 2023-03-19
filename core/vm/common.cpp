@@ -4714,13 +4714,13 @@ bool TrapProcessor::PipeInString(StackProgram* program, size_t* inst, size_t*& o
 #ifdef _WIN32
     const HANDLE pipe = (HANDLE)instance[0];
     DWORD read;
-    BOOL check = ReadFile(pipe, &buffer, MID_BUFFER_MAX, &read, nullptr);
+    const BOOL status = ReadFile(pipe, &buffer, MID_BUFFER_MAX, &read, nullptr);
 #else
     const int pipe = (int)instance[0];
-    bool check = false;
+    bool status = false;
 #endif
 
-    if(check) {
+    if(status) {
       long end_index = (long)strlen(buffer) - 1;
       if(end_index > -1) {
         if(buffer[end_index] == '\n' || buffer[end_index] == '\r') {
@@ -4756,6 +4756,19 @@ bool TrapProcessor::PipeInString(StackProgram* program, size_t* inst, size_t*& o
 
 bool TrapProcessor::PipeOutString(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) 
 {
+  const size_t* array = (size_t*)PopInt(op_stack, stack_pos);
+  const size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+  if(array && instance) {
+    std::string output = UnicodeToBytes((wchar_t*)(array + 3));
+#ifdef _WIN32
+    const HANDLE pipe = (HANDLE)instance[0];
+    DWORD written;
+    WriteFile( pipe, output.c_str(), (DWORD)output.size() + 1, &written, nullptr);
+#else
+    FILE* file = (FILE*)instance[0];
+#endif
+  }
+
   return true;
 }
 
