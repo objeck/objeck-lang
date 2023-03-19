@@ -6313,21 +6313,12 @@ bundle System.IO {
 		@handle : Int;
 		@name : String;
 
-		enum Mode {
-			CREATE,
-			CONNECT
-		}
-
-		New(name : String, mode : Pipe->Mode) {
+		#~
+		Create a new pipe for either a client or server
+		~#
+		New(name : String) {
 			Parent();
 			@name := name;
-
-			if(mode = Pipe->Mode->CREATE) {
-				PIPE_CREATE;
-			}
-			else {
-				PIPE_CONNECT;
-			};
 		}
 
 		#~
@@ -6337,13 +6328,29 @@ bundle System.IO {
 		method : public : GetName() ~ String {
 			return @name;
 		}
+		
+		#~
+		Open client connect to exist pipe
+		@return true if successful, false otherwise
+		~#
+		method : public : Open() ~ Bool {
+			PIPE_OPEN;
+		}
 
 		#~
-		Reads a byte
-		@return byte read
+		Create pipe server
+		@return true if successful, false otherwise
 		~#
-		method : public : Wait() ~ Bool {
-			PIPE_TO_WAIT;
+		method : public : Create() ~ Bool {
+			PIPE_CREATE;
+		}
+
+		#~
+		Wait for client connection
+		@return true when connected
+		~#
+		method : public : Connect() ~ Bool {
+			PIPE_CONNECT;
 		}
 
 		#~
