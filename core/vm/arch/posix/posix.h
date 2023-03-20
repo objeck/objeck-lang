@@ -199,6 +199,86 @@ class File {
 };
 
 /****************************
+ * Pipe support class
+ ****************************/
+class Pipe {
+public:
+  static bool CreatePipe(const std::string& name) {
+    if(mkfifo(name.c_str(), S_IRWXU)) {
+      return false;
+    }
+
+    return true;
+  }
+
+  static bool OpenPipe(const std::string& name, FILE*& pipe) {
+    pipe = fopen(name.c_str(), "r+b");
+    if(!pipe) {
+      return false;
+    }
+
+    return true;
+  }
+
+  static bool RemovePipe(const std::string& name, FILE* pipe) {
+    if(fclose(pipe)) {
+      false;
+    }
+
+    if(unlink(name.c_str())) {
+      return false;
+    }
+
+    return true;
+  }
+
+  static bool ClosePipe(FILE* pipe) {
+    if(fclose(pipe)) {
+      false;
+    }
+
+    return true;
+  }
+
+  static std::string ReadLine(FILE* pipe) {
+    char* buffer = new char[BUFFER_MAX];
+
+    // line from pipe
+    size_t buffer_len = BUFFER_MAX;
+    int read = (int)getline(&buffer, &buffer_len, pipe);
+    if(read < 0) {
+      delete[] buffer;
+      buffer = nullptr;
+
+      return "";
+    }
+
+    if(read < BUFFER_MAX) {
+      buffer[read] = '\0';
+    }
+    else {
+      delete[] buffer;
+      buffer = nullptr;
+
+      return "";
+    }
+
+    // copy and clean up
+    std::string output(buffer);
+
+    delete[] buffer;
+    buffer = nullptr;
+
+    return output;
+  }
+
+  static bool WriteLine(const std::string& line, FILE* pipe) {
+    const size_t len = line.size() + 1;
+    return fwrite(line.c_str(), 1, len, pipe) == len;
+  }
+}
+
+/****************************
  * IP socket support class
  ****************************/
 class IPSocket {
