@@ -4617,7 +4617,7 @@ bool TrapProcessor::PipeCreate(StackProgram* program, size_t* inst, size_t*& op_
       instance[0] = (size_t)pipe;
     }
 #else
-    if(mkfifo(filename.c_str(), S_IRWXU)) {
+    if(!mkfifo(filename.c_str(), S_IRWXU)) {
       instance[0] = 1;
     }
 #endif
@@ -4648,7 +4648,7 @@ bool TrapProcessor::PipeConnect(StackProgram* program, size_t* inst, size_t*& op
         instance[0] = (size_t)pipe;
       }
       else {
-	PushInt(0, op_stack, stack_pos);
+        PushInt(0, op_stack, stack_pos);
       } 
     }
     else {
@@ -4710,8 +4710,7 @@ bool TrapProcessor::PipeInString(StackProgram* program, size_t* inst, size_t*& o
     const BOOL status = ReadFile(pipe, &buffer, MID_BUFFER_MAX, nullptr, nullptr);
 #else
     FILE* pipe = (FILE*)instance[0];
-    char* buffer; size_t len;
-    bool status = getline(&buffer, &len, pipe) != 0;
+    bool fread(&buffer, 1, MID_BUFFER_MAX, pipe) != 0;
 #endif
     if(status) {
       long end_index = (long)strlen(buffer) - 1;
