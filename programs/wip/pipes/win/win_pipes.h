@@ -7,7 +7,7 @@
 
 #define BUFFER_MAX 4096
 
-bool CreatePipe(const std::string name, HANDLE &pipe) {
+bool CreatePipe(const std::string& name, HANDLE &pipe) {
 	pipe = CreateNamedPipe(name.c_str(), 
 		PIPE_ACCESS_DUPLEX, PIPE_TYPE_BYTE | 
 		PIPE_READMODE_BYTE | 
@@ -28,7 +28,7 @@ bool ClosePipe(HANDLE pipe) {
 	return true;
 }
 
-bool OpenClientPipe(const std::string name, HANDLE &pipe) {
+bool OpenClientPipe(const std::string& name, HANDLE &pipe) {
 	pipe = CreateFile(name.c_str(), GENERIC_READ | GENERIC_WRITE, 0, nullptr, OPEN_EXISTING, 0, nullptr);
  	if(pipe == INVALID_HANDLE_VALUE) {
     	return false;

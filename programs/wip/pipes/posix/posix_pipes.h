@@ -9,7 +9,7 @@
 
 #define BUFFER_MAX 4096
 
-bool CreatePipe(const std::string name) {
+bool CreatePipe(const std::string &name) {
 	if(mkfifo(name.c_str(), S_IRWXU)) {
 		return false;
 	}
@@ -17,7 +17,7 @@ bool CreatePipe(const std::string name) {
 	return true;
 }
 
-bool OpenPipe(const std::string name, FILE* &pipe) {
+bool OpenPipe(const std::string &name, FILE* &pipe) {
 	pipe = fopen(name.c_str(), "r+b");
 	if(!pipe) {
 		return false;
@@ -26,7 +26,7 @@ bool OpenPipe(const std::string name, FILE* &pipe) {
 	return true;
 }
 
-bool RemovePipe(const std::string name, FILE* pipe) {
+bool RemovePipe(const std::string &name, FILE* pipe) {
 	if(fclose(pipe)) {
 		false;
 	}
