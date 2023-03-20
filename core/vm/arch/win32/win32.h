@@ -54,6 +54,7 @@
 typedef void (WINAPI *PGNSI)(LPSYSTEM_INFO);
 typedef BOOL (WINAPI *PGPI)(DWORD, DWORD, DWORD, DWORD, PDWORD);
 
+// file operations
 class File {
   static bool GetAccountGroupOwner(const char* name, std::wstring &account, std::wstring &group) {
     std::wstring value;
@@ -280,6 +281,83 @@ class File {
       FindClose(find);
     }
     return files;
+  }
+};
+
+// pipe operations
+class Pipe {
+public:
+  static bool CreatePipe(const std::string& name, HANDLE& pipe) {
+    pipe = CreateNamedPipe(name.c_str(),
+                           PIPE_ACCESS_DUPLEX, PIPE_TYPE_BYTE |
+                           PIPE_READMODE_BYTE |
+                           PIPE_WAIT,
+                           // TODO: 1.5 MB source files
+                           PIPE_UNLIMITED_INSTANCES, 1024 * 16, 1024 * 16, 0, nullptr);
+    if(pipe == INVALID_HANDLE_VALUE) {
+      return false;
+    }
+
+    return true;
+  }
+
+  static bool ClosePipe(HANDLE pipe) {
+    if(CloseHandle(pipe)) {
+      false;
+    }
+
+    return true;
+  }
+
+  static bool OpenClientPipe(const std::string& name, HANDLE& pipe) {
+    pipe = CreateFile(name.c_str(), GENERIC_READ | GENERIC_WRITE, 0, nullptr, OPEN_EXISTING, 0, nullptr);
+    if(pipe == INVALID_HANDLE_VALUE) {
+      return false;
+    }
+
+    return true;
+  }
+
+  static bool OpenServerPipe(HANDLE pipe) {
+    if(ConnectNamedPipe(pipe, nullptr)) {
+      return true;
+    }
+
+    return false;
+  }
+
+  static std::string ReadLine(HANDLE pipe) {
+    std::string line;
+
+    DWORD read;
+    bool done = false;
+    char buffer[MID_BUFFER_MAX];
+    do {
+      if(ReadFile(pipe, buffer, MID_BUFFER_MAX - 1, &read, nullptr)) {
+        buffer[read] = '\0';
+        line.append(buffer);
+        done = true;
+      }
+      else if(GetLastError() == ERROR_MORE_DATA) {
+        buffer[read] = '\0';
+        line.append(buffer);
+      }
+      else {
+        return "";
+      }
+    } while(!done);
+
+    return line;
+  }
+
+  static bool WriteLine(const std::string& line, HANDLE pipe) {
+    DWORD written;
+    const DWORD len = (DWORD)line.size() + 1;
+    if(WriteFile(pipe, line.c_str(), len, &written, nullptr)) {
+      return written == len;
+    }
+
+    return false;
   }
 };
 
