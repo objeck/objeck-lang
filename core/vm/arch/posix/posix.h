@@ -222,7 +222,7 @@ public:
 
   static bool RemovePipe(const std::string& name, FILE* pipe) {
     if(fclose(pipe)) {
-      false;
+      return false;
     }
 
     if(unlink(name.c_str())) {
@@ -234,17 +234,17 @@ public:
 
   static bool ClosePipe(FILE* pipe) {
     if(fclose(pipe)) {
-      false;
+      return false;
     }
 
     return true;
   }
 
   static std::string ReadLine(FILE* pipe) {
-    char* buffer = new char[BUFFER_MAX];
+    char* buffer = new char[MID_BUFFER_MAX];
 
     // line from pipe
-    size_t buffer_len = BUFFER_MAX;
+    size_t buffer_len = MID_BUFFER_MAX;
     int read = (int)getline(&buffer, &buffer_len, pipe);
     if(read < 0) {
       delete[] buffer;
@@ -253,7 +253,7 @@ public:
       return "";
     }
 
-    if(read < BUFFER_MAX) {
+    if(read < MID_BUFFER_MAX) {
       buffer[read] = '\0';
     }
     else {
@@ -276,7 +276,7 @@ public:
     const size_t len = line.size() + 1;
     return fwrite(line.c_str(), 1, len, pipe) == len;
   }
-}
+};
 
 /****************************
  * IP socket support class
