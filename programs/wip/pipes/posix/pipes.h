@@ -78,8 +78,9 @@ std::string ReadLine(FILE* pipe) {
 	return output;
 }
 
-size_t WriteLine(const std::string &line, FILE* pipe) {
-	return fwrite(line.c_str(), 1, line.size() + 1, pipe);
+bool WriteLine(const std::string &line, FILE* pipe) {
+	const size_t len = line.size() + 1;
+	return fwrite(line.c_str(), 1, len, pipe) == len;
 }
 
 #endif
