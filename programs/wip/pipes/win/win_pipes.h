@@ -12,6 +12,7 @@ bool CreatePipe(const std::string& name, HANDLE &pipe) {
 		PIPE_ACCESS_DUPLEX, PIPE_TYPE_BYTE | 
 		PIPE_READMODE_BYTE | 
 		PIPE_WAIT, 
+		// TODO: 1.5 MB source files
 		PIPE_UNLIMITED_INSTANCES, 1024 * 16, 1024 * 16, 0, nullptr);
     if(pipe == INVALID_HANDLE_VALUE) {
     	return false;
