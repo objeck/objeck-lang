@@ -4617,16 +4617,12 @@ bool TrapProcessor::PipeCreate(StackProgram* program, size_t* inst, size_t*& op_
       instance[0] = (size_t)pipe;
     }
 #else
-    const int pipe_ref = mkfifo(filename.c_str(), 0666);
-    if(pipe_ref > -1) {
-      const int pipe = open(filename.c_str(), O_RDWR);
-      if(pipe > -1) {
-        instance[0] = pipe;
-      }
+    if(mkfifo(filename.c_str(), S_IRWXU)) {
+      instance[0] = 1;
     }
 #endif
   }
-
+  
   return true;
 }
 
@@ -4643,26 +4639,27 @@ bool TrapProcessor::PipeConnect(StackProgram* program, size_t* inst, size_t*& op
       PushInt(0, op_stack, stack_pos);
     }
 #else
-		size_t* array = (size_t*)instance[1];
-    if(array) {
-			array = (size_t*)array[0];
-			const std::string filename = UnicodeToBytes((wchar_t*)(array + 3));
-			if(open(filename.c_str(), O_RDWR) > -1) {
-				PushInt(1, op_stack, stack_pos);
-			}
-			else {
-				PushInt(0, op_stack, stack_pos);
-			}
-		}
-		else {
-			PushInt(0, op_stack, stack_pos);
-		}
+    size_t* array = (size_t*)instance[1];
+    if(array && instance[0] == 1) {
+      array = (size_t*)array[0];
+      const std::string filename = UnicodeToBytes((wchar_t*)(array + 3));
+      FILE* pipe = fopen(filename.c_str(), "w+b");
+      if(pipe) {
+        instance[0] = (size_t)pipe;
+      }
+      else {
+	PushInt(0, op_stack, stack_pos);
+      } 
+    }
+    else {
+      PushInt(0, op_stack, stack_pos);
+    }
 #endif
   }
-	else {
-		PushInt(0, op_stack, stack_pos);
-	}
-
+  else {
+    PushInt(0, op_stack, stack_pos);
+  }
+  
   return true;
 }
 
@@ -4705,18 +4702,15 @@ bool TrapProcessor::PipeInString(StackProgram* program, size_t* inst, size_t*& o
 {
   const size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   const size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  if(array && instance) {
+  if(array && instance && instance[0]) {
     char buffer[MID_BUFFER_MAX] = { 0 };
 #ifdef _WIN32
     const HANDLE pipe = (HANDLE)instance[0];
-    DWORD read;
-    const BOOL status = ReadFile(pipe, &buffer, MID_BUFFER_MAX, &read, nullptr);
+    const BOOL status = ReadFile(pipe, &buffer, MID_BUFFER_MAX, nullptr, nullptr);
 #else
-    // TODO: for POSIX
-    const int pipe = (int)instance[0];
-    bool status = read(pipe, &buffer, MID_BUFFER_MAX) > - 1;
+    FILE* pipe = (FILE*)instance[0];
+    bool status = fread(&buffer, 1, MID_BUFFER_MAX, pipe) != 0;
 #endif
-
     if(status) {
       long end_index = (long)strlen(buffer) - 1;
       if(end_index > -1) {
@@ -4731,7 +4725,7 @@ bool TrapProcessor::PipeInString(StackProgram* program, size_t* inst, size_t*& o
       else {
         buffer[0] = '\0';
       }
-
+      
       // copy and remove file BOM UTF (8, 16, 32)
       std::wstring in = BytesToUnicode(buffer);
       if(in.size() > 0 && (in[0] == (wchar_t)0xFEFF || in[0] == (wchar_t)0xFFFE || in[0] == (wchar_t)0xFFFE0000 || in[0] == (wchar_t)0xEFBBBF)) {
@@ -4747,7 +4741,7 @@ bool TrapProcessor::PipeInString(StackProgram* program, size_t* inst, size_t*& o
 #endif
     }
   }
-
+  
   return true;
 }
 
@@ -4755,15 +4749,15 @@ bool TrapProcessor::PipeOutString(StackProgram* program, size_t* inst, size_t*& 
 {
   const size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   const size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  if(array && instance) {
+  if(array && instance && instance[0]) {
     std::string output = UnicodeToBytes((wchar_t*)(array + 3));
 #ifdef _WIN32
     const HANDLE pipe = (HANDLE)instance[0];
     WriteFile(pipe, output.c_str(), (DWORD)output.size() + 1, nullptr, nullptr);
 #else
     // TODO: for POSIX
-    const int pipe = (int)instance[0];
-    write(pipe, output.c_str(), output.size() + 1);
+    FILE* pipe = (FILE*)instance[0];
+    fwrite(output.c_str(), 1, output.size() + 1, pipe);
 #endif
   }
   
@@ -4778,8 +4772,8 @@ bool TrapProcessor::PipeClose(StackProgram* program, size_t* inst, size_t*& op_s
     const HANDLE pipe = (HANDLE)instance[0];
     CloseHandle(pipe);
 #else
-    const int pipe = (int)instance[0];
-    close(pipe);
+    FILE* pipe = (FILE*)instance[0];
+    fclose(pipe);
 #endif
   }
 
@@ -5088,7 +5082,7 @@ bool TrapProcessor::FileInCharAry(StackProgram* program, size_t* inst, size_t* &
   const long num = (long)PopInt(op_stack, stack_pos);
   const long offset = (long)PopInt(op_stack, stack_pos);
   const size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-
+  
   if(array && instance && (FILE*)instance[0] && offset > -1 && offset + num <= (long)array[0]) {
     FILE* file = (FILE*)instance[0];
     wchar_t* out = (wchar_t*)(array + 3);
