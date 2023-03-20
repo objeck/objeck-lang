@@ -1,11 +1,11 @@
 #include "pipes.h"
 
 int main() {
-   const char name[] = "/tmp/objk";
+   const std::string name = "\\\\.\\pipe\\foo";
 
    HANDLE pipe;
    if(!OpenClientPipe(name, pipe)) {
-      std::wcerr << "Unable to open pipe!" << std::endl;
+      std::wcerr << "Unable to open client pipe!" << std::endl;
       exit(1);
    }
 
