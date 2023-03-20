@@ -4703,13 +4703,14 @@ bool TrapProcessor::PipeInString(StackProgram* program, size_t* inst, size_t*& o
   const size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   const size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(array && instance && instance[0]) {
-    char buffer[MID_BUFFER_MAX] = { 0 };
+    
 #ifdef _WIN32
     const HANDLE pipe = (HANDLE)instance[0];
     const BOOL status = ReadFile(pipe, &buffer, MID_BUFFER_MAX, nullptr, nullptr);
 #else
     FILE* pipe = (FILE*)instance[0];
-    bool status = fread(&buffer, 1, MID_BUFFER_MAX, pipe) != 0;
+    char* buffer; size_t len;
+    bool status = getline(&buffer, &len, pipe) != 0;
 #endif
     if(status) {
       long end_index = (long)strlen(buffer) - 1;
@@ -4721,9 +4722,6 @@ bool TrapProcessor::PipeInString(StackProgram* program, size_t* inst, size_t*& o
         if(--end_index > -1 && buffer[end_index] == '\r') {
           buffer[end_index] = '\0';
         }
-      }
-      else {
-        buffer[0] = '\0';
       }
       
       // copy and remove file BOM UTF (8, 16, 32)
