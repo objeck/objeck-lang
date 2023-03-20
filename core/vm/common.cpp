@@ -4644,7 +4644,7 @@ bool TrapProcessor::PipeConnect(StackProgram* program, size_t* inst, size_t*& op
       const std::string name = UnicodeToBytes((wchar_t*)(array + 3));
       
       FILE* pipe;
-      if(OpenPipe(name, pipe) {
+      if(Pipe::OpenPipe(name, pipe)) {
         instance[0] = (size_t)pipe;
         PushInt(1, op_stack, stack_pos);
       }
