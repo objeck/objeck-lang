@@ -4712,6 +4712,35 @@ bool TrapProcessor::PipeOutString(StackProgram* program, size_t* inst, size_t*& 
 
 bool TrapProcessor::PipeClose(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* fram) 
 {
+  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+  if(instance && instance[0]) {
+    // server pipe
+    if((int)instance[2] == -3 /* Mode->CREATE */) {
+#ifdef _WIN32
+      const HANDLE pipe = (HANDLE)instance[0];
+      Pipe::ClosePipe(pipe);
+#else
+      const FILE* pipe = (FILE * instance[0];
+      size_t * array = (size_t*)instance[1];
+      if(array) {
+        array = (size_t*)array[0];
+        const std::string name = UnicodeToBytes((wchar_t*)(array + 3));
+        Pipe::RemovePipe(name, pipe);
+      }
+#endif
+    }
+    // client pipe
+    else {
+#ifdef _WIN32
+      const HANDLE pipe = (HANDLE)instance[0];
+      Pipe::ClosePipe(pipe);
+#else
+      const FILE* pipe = (FILE * instance[0];
+      Pipe::ClosePipe(pipe);
+#endif
+    }
+  }
+
   return true;
 }
 
