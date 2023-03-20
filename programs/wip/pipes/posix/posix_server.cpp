@@ -1,5 +1,5 @@
 
-#include "pipes.h"
+#include "posix_pipes.h"
 
 int main() 
 {

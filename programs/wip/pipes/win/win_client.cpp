@@ -1,4 +1,4 @@
-#include "pipes.h"
+#include "win_pipes.h"
 
 int main() {
    const std::string name = "\\\\.\\pipe\\foo";
