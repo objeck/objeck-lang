@@ -4643,8 +4643,8 @@ bool TrapProcessor::PipeConnect(StackProgram* program, size_t* inst, size_t*& op
     if(array && instance[0] == 1) {
       array = (size_t*)array[0];
       const std::string filename = UnicodeToBytes((wchar_t*)(array + 3));
-      FILE* pipe = fopen(filename.c_str(), "w+b");
-      if(pipe) {
+      const int pipe = open(filename.c_str(), S_IRWXG);
+      if(pipe > -1) {
         instance[0] = (size_t)pipe;
       }
       else {
@@ -4709,7 +4709,7 @@ bool TrapProcessor::PipeInString(StackProgram* program, size_t* inst, size_t*& o
     const BOOL status = ReadFile(pipe, &buffer, MID_BUFFER_MAX, nullptr, nullptr);
 #else
     FILE* pipe = (FILE*)instance[0];
-    bool status = fread(&buffer, 1, MID_BUFFER_MAX, pipe) != 0;
+    bool status = read(pipe, &buffer, MID_BUFFER_MAX) != 0;
 #endif
     if(status) {
       long end_index = (long)strlen(buffer) - 1;
@@ -4757,7 +4757,7 @@ bool TrapProcessor::PipeOutString(StackProgram* program, size_t* inst, size_t*& 
 #else
     // TODO: for POSIX
     FILE* pipe = (FILE*)instance[0];
-    fwrite(output.c_str(), 1, output.size() + 1, pipe);
+    write(pipe, output.c_str(), output.size() + 1);
 #endif
   }
   
