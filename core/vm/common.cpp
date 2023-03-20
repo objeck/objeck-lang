@@ -4703,9 +4703,8 @@ bool TrapProcessor::PipeInString(StackProgram* program, size_t* inst, size_t*& o
   const size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   const size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(array && instance && instance[0]) {
-    
-#ifdef _WIN32
     char buffer[MID_BUFFER_MAX];
+#ifdef _WIN32
     const HANDLE pipe = (HANDLE)instance[0];
     const BOOL status = ReadFile(pipe, &buffer, MID_BUFFER_MAX, nullptr, nullptr);
 #else
