@@ -4643,7 +4643,7 @@ bool TrapProcessor::PipeConnect(StackProgram* program, size_t* inst, size_t*& op
     if(array && instance[0] == 1) {
       array = (size_t*)array[0];
       const std::string filename = UnicodeToBytes((wchar_t*)(array + 3));
-      const int pipe = open(filename.c_str(), S_IRWXG)
+      const int pipe = open(filename.c_str(), S_IRWXG);
       if(pipe < 0) {
         PushInt(0, op_stack, stack_pos);
       }

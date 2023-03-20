@@ -2,11 +2,17 @@ class Hello {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
 			pipe := System.IO.Pipe->New(args[0], Pipe->Mode->CREATE);
+"--- 0 ---"->PrintLine();
 			if(pipe->Connect()) {
+"--- 1 ---"->PrintLine();
 				pipe->ReadLine()->PrintLine();
+"--- 2 ---"->PrintLine();
 				pipe->WriteString("Hi Ya!");
+"--- 3 ---"->PrintLine();
 			};
+"--- 4 ---"->PrintLine();
 			pipe->Close();
+"--- 5 ---"->PrintLine();
 		};
 	}
 }

@@ -1,20 +1,22 @@
 #include <iostream>
-#include <fstream>
+#include <fcntl.h>
+#include <unistd.h>
 #include <stdio.h>
 #include <string.h>
 
-#define BUFFER_MAX 1024
+#define BUFFER_MAX 4096
 
 int main() {
-	FILE* file = fopen("/tmp/objk", "r+b");
-	if(file) {
+	int pipe = open("/tmp/objk", O_APPEND, S_IRWXG);
+std::cout << pipe << std::endl;
+	if(pipe > -1) {
 		char buffer[BUFFER_MAX + 1];
 
 		strcpy(buffer, "Hello World dkdkfkdfk ak dfkdf...\r\n");
-		fwrite(buffer, 1, BUFFER_MAX, file);
+		write(pipe, buffer, BUFFER_MAX);
 
-		fread(buffer, 1, BUFFER_MAX, file);
+		read(pipe, buffer, BUFFER_MAX);
 		std::cout << buffer << std::endl;
 	}
-	fclose(file);
+	close(pipe);
 }
