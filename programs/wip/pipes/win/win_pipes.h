@@ -57,7 +57,7 @@ std::string ReadLine(HANDLE pipe) {
 			line.append(buffer);
 			done = true;
 		}
-		else if(GetLastError() != ERROR_MORE_DATA) {
+		else if(GetLastError() == ERROR_MORE_DATA) {
 			buffer[read] = '\0';
 			line.append(buffer);
 		}
