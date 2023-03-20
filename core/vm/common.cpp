@@ -4628,7 +4628,7 @@ bool TrapProcessor::PipeCreate(StackProgram* program, size_t* inst, size_t*& op_
 bool TrapProcessor::PipeConnect(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) 
 {
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  if(instance && (int)instance[2] == -3 /* Mode->CREATE */) {
+  if(instance && instance[0] && (int)instance[2] == -3 /* Mode->CREATE */) {
 #ifdef _WIN32
     const HANDLE pipe = (HANDLE)instance[0];
     if(Pipe::OpenServerPipe(pipe)) {
@@ -4639,7 +4639,7 @@ bool TrapProcessor::PipeConnect(StackProgram* program, size_t* inst, size_t*& op
     }
 #else
     size_t* array = (size_t*)instance[1];
-    if(array && instance[0] == 1) {
+    if(array) {
       array = (size_t*)array[0];
       const std::string name = UnicodeToBytes((wchar_t*)(array + 3));
       
