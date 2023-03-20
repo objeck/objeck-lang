@@ -4705,6 +4705,7 @@ bool TrapProcessor::PipeInString(StackProgram* program, size_t* inst, size_t*& o
   if(array && instance && instance[0]) {
     
 #ifdef _WIN32
+    char buffer[MID_BUFFER_MAX];
     const HANDLE pipe = (HANDLE)instance[0];
     const BOOL status = ReadFile(pipe, &buffer, MID_BUFFER_MAX, nullptr, nullptr);
 #else
@@ -4722,6 +4723,9 @@ bool TrapProcessor::PipeInString(StackProgram* program, size_t* inst, size_t*& o
         if(--end_index > -1 && buffer[end_index] == '\r') {
           buffer[end_index] = '\0';
         }
+      }
+      else {
+        buffer[0] = '\0';
       }
       
       // copy and remove file BOM UTF (8, 16, 32)
