@@ -4708,7 +4708,7 @@ bool TrapProcessor::PipeInString(StackProgram* program, size_t* inst, size_t*& o
     const HANDLE pipe = (HANDLE)instance[0];
     const BOOL status = ReadFile(pipe, &buffer, MID_BUFFER_MAX, nullptr, nullptr);
 #else
-    FILE* pipe = (FILE*)instance[0];
+    int pipe = (int)instance[0];
     bool status = read(pipe, &buffer, MID_BUFFER_MAX) != 0;
 #endif
     if(status) {
@@ -4756,7 +4756,7 @@ bool TrapProcessor::PipeOutString(StackProgram* program, size_t* inst, size_t*& 
     WriteFile(pipe, output.c_str(), (DWORD)output.size() + 1, nullptr, nullptr);
 #else
     // TODO: for POSIX
-    FILE* pipe = (FILE*)instance[0];
+    int pipe = (int)instance[0];
     write(pipe, output.c_str(), output.size() + 1);
 #endif
   }
@@ -4772,8 +4772,8 @@ bool TrapProcessor::PipeClose(StackProgram* program, size_t* inst, size_t*& op_s
     const HANDLE pipe = (HANDLE)instance[0];
     CloseHandle(pipe);
 #else
-    FILE* pipe = (FILE*)instance[0];
-    fclose(pipe);
+    int pipe = (int)instance[0];
+    close(pipe);
 #endif
   }
 
