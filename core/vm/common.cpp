@@ -4709,7 +4709,7 @@ bool TrapProcessor::PipeInString(StackProgram* program, size_t* inst, size_t*& o
     const BOOL status = ReadFile(pipe, &buffer, MID_BUFFER_MAX, nullptr, nullptr);
 #else
     FILE* pipe = (FILE*)instance[0];
-    bool fread(&buffer, 1, MID_BUFFER_MAX, pipe) != 0;
+    bool status = fread(&buffer, 1, MID_BUFFER_MAX, pipe) != 0;
 #endif
     if(status) {
       long end_index = (long)strlen(buffer) - 1;
