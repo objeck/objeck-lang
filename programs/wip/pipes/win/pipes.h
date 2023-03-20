@@ -13,7 +13,7 @@ bool CreatePipe(const std::string name, HANDLE &pipe) {
 		PIPE_READMODE_BYTE | 
 		PIPE_WAIT, 
 		PIPE_UNLIMITED_INSTANCES, 1024 * 16, 1024 * 16, 0, nullptr);
-    if(pipe != INVALID_HANDLE_VALUE) {
+    if(pipe == INVALID_HANDLE_VALUE) {
     	return false;
     }
 

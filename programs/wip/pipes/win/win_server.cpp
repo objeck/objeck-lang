@@ -2,7 +2,7 @@
  
 int main() 
 { 
-   const std::string name = "/tmp/objk";
+   const std::string name = "\\\\.\\pipe\\foo";
 
    HANDLE pipe;
    if(!CreatePipe(name, pipe)) {
@@ -11,7 +11,7 @@ int main()
    }
 
    if(!OpenServerPipe(pipe)) {
-      std::cerr << "Unable to open pipe!" << std::endl;
+      std::cerr << "Unable to open server pipe!" << std::endl;
       exit(1);
    }
 
