@@ -6324,8 +6324,8 @@ bundle System.IO {
 
 		#~
 		Create a new pipe for either a client or server
-		@param name pipe path and name
-		@param mode <pre>Mode->OPEN</pre> or <pre>Mode->CREATE</pre>
+		@param name pipe path and name. <p>For POSIX the base direcotry is <pre>/tmp/</pre> for Windows <pre>\\.\pipe\</pre></p>
+		@param mode <pre>Mode->OPEN</pre> for existing pipe or <pre>Mode->CREATE</pre> to create a new pipe
 		~#
 		New(name : String, mode : Pipe->Mode) {
 			Parent();
