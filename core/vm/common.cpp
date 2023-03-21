@@ -2839,7 +2839,7 @@ bool TrapProcessor::StdOutString(StackProgram* program, size_t* inst, size_t* &o
     std::wcout << str;
   }
   else {
-    std::wcout << L"<Nil>";
+    std::wcout << L"Nil";
   }
 
   return true;
@@ -3069,7 +3069,7 @@ bool TrapProcessor::StdErrString(StackProgram* program, size_t* inst, size_t* &o
     std::wcerr << str;
   }
   else {
-    std::wcerr << L"<Nil>";
+    std::wcerr << L"Nil";
   }
 
   return true;
@@ -3091,7 +3091,7 @@ bool TrapProcessor::StdErrCharAry(StackProgram* program, size_t* inst, size_t*& 
     PushInt(1, op_stack, stack_pos);
   }
   else {
-    std::wcerr << L"<Nil>";
+    std::wcerr << L"Nil";
     PushInt(0, op_stack, stack_pos);
   }
 
@@ -3114,7 +3114,7 @@ bool TrapProcessor::StdErrByteAry(StackProgram* program, size_t* inst, size_t* &
     PushInt(1, op_stack, stack_pos);
   }
   else {
-    std::wcerr << L"<Nil>";
+    std::wcerr << L"Nil";
     PushInt(0, op_stack, stack_pos);
   }
 
@@ -5926,7 +5926,7 @@ std::wstring MethodFormatter::FormatParameters(const std::wstring param_str)
     case 'n':
       formatted_str += param_name++;
       formatted_str += L':';
-      formatted_str += L"<Nil>";
+      formatted_str += L"Nil";
       index++;
       break;
 
@@ -6055,7 +6055,7 @@ std::wstring MethodFormatter::FormatType(const std::wstring type_str)
     break;
 
   case L'n':
-    formatted_str += L"<Nil>";
+    formatted_str += L"Nil";
     index++;
     break;
 
