@@ -11,6 +11,8 @@ int main() {
 
 	const std::string line = "Hi Ya!\r\n";
 	WriteLine(line, pipe);
+
+	std::cout << ReadLine(pipe) << std::endl;
 	
 	ClosePipe(pipe);
 }
