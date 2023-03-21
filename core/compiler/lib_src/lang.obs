@@ -6327,7 +6327,7 @@ bundle System.IO {
 		@param name pipe path and name
 		@param mode <pre>Mode->OPEN</pre> or <pre>Mode->CREATE</pre>
 		~#
-		New : private (name : String, mode : Pipe->Mode) {
+		New(name : String, mode : Pipe->Mode) {
 			Parent();
 			@name := name;
 			@mode := mode;
