@@ -244,6 +244,14 @@ public:
     return fgetc(pipe);
   }
 
+  static size_t ReadByteArray(char* buffer, size_t offset, size_t num, FILE* pipe) {
+    return fread(buffer + offset, 1, num, pipe);
+  }
+
+  static size_t WriteByteArray(char* buffer, size_t offset, size_t num, FILE* pipe) {
+    return fwrite(buffer + offset, 1, num, pipe);
+  }
+
   static bool WriteByte(char value, FILE* pipe) {
     return fputc(value, pipe);
   }
