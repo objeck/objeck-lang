@@ -3209,11 +3209,11 @@ LibraryMethod* ContextAnalyzer::ResolveMethodCall(LibraryClass* klass, MethodCal
     else if(alt_mthds.size()) {
       alt_error_method_names = selector.GetAlternativeMethodNames();
     }
-  }
 
-  // public/private check
-  if(!lib_method->IsStatic() && (lib_method->GetMethodType() == PRIVATE_METHOD || lib_method->GetMethodType() == NEW_PRIVATE_METHOD)) {
-    ProcessError(static_cast<Expression*>(method_call), L"Cannot reference a private method from this context");
+    // public/private check
+    if(!lib_method->IsStatic() && (lib_method->GetMethodType() == PRIVATE_METHOD || lib_method->GetMethodType() == NEW_PRIVATE_METHOD)) {
+      ProcessError(static_cast<Expression*>(method_call), L"Cannot reference a private method from this context");
+    }
   }
 
   return lib_method;
