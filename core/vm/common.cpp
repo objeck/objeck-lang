@@ -1932,503 +1932,503 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
                                 size_t* &op_stack, long* &stack_pos, StackFrame* frame) {
   const long id = (long)PopInt(op_stack, stack_pos);
   switch(id) {
-    case LOAD_CLS_INST_ID:
-      return LoadClsInstId(program, inst, op_stack, stack_pos, frame);
+  case LOAD_CLS_INST_ID:
+    return LoadClsInstId(program, inst, op_stack, stack_pos, frame);
 
-    case LOAD_NEW_OBJ_INST:
-      return LoadNewObjInst(program, inst, op_stack, stack_pos, frame);
+  case LOAD_NEW_OBJ_INST:
+    return LoadNewObjInst(program, inst, op_stack, stack_pos, frame);
 
-    case LOAD_CLS_BY_INST:
-      return LoadClsByInst(program, inst, op_stack, stack_pos, frame);
+  case LOAD_CLS_BY_INST:
+    return LoadClsByInst(program, inst, op_stack, stack_pos, frame);
 
-    case BYTES_TO_UNICODE:
-      return ConvertBytesToUnicode(program, inst, op_stack, stack_pos, frame);
+  case BYTES_TO_UNICODE:
+    return ConvertBytesToUnicode(program, inst, op_stack, stack_pos, frame);
 
-    case UNICODE_TO_BYTES:
-      return ConvertUnicodeToBytes(program, inst, op_stack, stack_pos, frame);
+  case UNICODE_TO_BYTES:
+    return ConvertUnicodeToBytes(program, inst, op_stack, stack_pos, frame);
 
-    case LOAD_MULTI_ARY_SIZE:
-      return LoadMultiArySize(program, inst, op_stack, stack_pos, frame);
+  case LOAD_MULTI_ARY_SIZE:
+    return LoadMultiArySize(program, inst, op_stack, stack_pos, frame);
 
-    case CPY_CHAR_STR_ARY:
-      return CpyCharStrAry(program, inst, op_stack, stack_pos, frame);
+  case CPY_CHAR_STR_ARY:
+    return CpyCharStrAry(program, inst, op_stack, stack_pos, frame);
 
-    case CPY_CHAR_STR_ARYS:
-      return CpyCharStrArys(program, inst, op_stack, stack_pos, frame);
+  case CPY_CHAR_STR_ARYS:
+    return CpyCharStrArys(program, inst, op_stack, stack_pos, frame);
 
-    case CPY_INT_STR_ARY:
-      return CpyIntStrAry(program, inst, op_stack, stack_pos, frame);
+  case CPY_INT_STR_ARY:
+    return CpyIntStrAry(program, inst, op_stack, stack_pos, frame);
 
-    case CPY_FLOAT_STR_ARY:
-      return CpyFloatStrAry(program, inst, op_stack, stack_pos, frame);
+  case CPY_FLOAT_STR_ARY:
+    return CpyFloatStrAry(program, inst, op_stack, stack_pos, frame);
 
-    case STD_OUT_BOOL:
-      return StdOutBool(program, inst, op_stack, stack_pos, frame);
+  case STD_OUT_BOOL:
+    return StdOutBool(program, inst, op_stack, stack_pos, frame);
 
-    case STD_OUT_BYTE:
-      return StdOutByte(program, inst, op_stack, stack_pos, frame);
+  case STD_OUT_BYTE:
+    return StdOutByte(program, inst, op_stack, stack_pos, frame);
 
-    case STD_OUT_CHAR:
-      return StdOutChar(program, inst, op_stack, stack_pos, frame);
+  case STD_OUT_CHAR:
+    return StdOutChar(program, inst, op_stack, stack_pos, frame);
 
-    case STD_OUT_INT:
-      return StdOutInt(program, inst, op_stack, stack_pos, frame);
+  case STD_OUT_INT:
+    return StdOutInt(program, inst, op_stack, stack_pos, frame);
 
-    case STD_OUT_FLOAT:
-      return StdOutFloat(program, inst, op_stack, stack_pos, frame);
-
-		case STD_INT_FMT:
-			return StdOutIntFrmt(program, inst, op_stack, stack_pos, frame);
-
-		case STD_FLOAT_FMT:
-			return StdOutFloatFrmt(program, inst, op_stack, stack_pos, frame);
-
-		case STD_FLOAT_PER:
-			return StdOutFloatPer(program, inst, op_stack, stack_pos, frame);
-
-		case STD_WIDTH:
-			return StdOutWidth(program, inst, op_stack, stack_pos, frame);
-
-		case STD_FILL:
-			return StdOutFill(program, inst, op_stack, stack_pos, frame);
-
-    case STD_OUT_STRING:
-      return StdOutString(program, inst, op_stack, stack_pos, frame);
-
-    case STD_IN_BYTE_ARY_LEN:
-      return StdInByteAryLen(program, inst, op_stack, stack_pos, frame);
-
-    case STD_IN_CHAR_ARY_LEN:
-      return StdInCharAryLen(program, inst, op_stack, stack_pos, frame);
-
-    case STD_OUT_BYTE_ARY_LEN:
-      return StdOutByteAryLen(program, inst, op_stack, stack_pos, frame);
-
-    case STD_OUT_CHAR_ARY_LEN:
-      return StdOutCharAryLen(program, inst, op_stack, stack_pos, frame);
-
-    case STD_IN_STRING:
-      return StdInString(program, inst, op_stack, stack_pos, frame);
-
-    case STD_FLUSH:
-      return StdFlush(program, inst, op_stack, stack_pos, frame);
+  case STD_OUT_FLOAT:
+    return StdOutFloat(program, inst, op_stack, stack_pos, frame);
       
-    case STD_ERR_BOOL:
-      return StdErrBool(program, inst, op_stack, stack_pos, frame);
+  case STD_INT_FMT:
+    return StdOutIntFrmt(program, inst, op_stack, stack_pos, frame);
+    
+  case STD_FLOAT_FMT:
+    return StdOutFloatFrmt(program, inst, op_stack, stack_pos, frame);
+    
+  case STD_FLOAT_PER:
+    return StdOutFloatPer(program, inst, op_stack, stack_pos, frame);
+    
+  case STD_WIDTH:
+    return StdOutWidth(program, inst, op_stack, stack_pos, frame);
+    
+  case STD_FILL:
+    return StdOutFill(program, inst, op_stack, stack_pos, frame);
 
-    case STD_ERR_BYTE:
-      return StdErrByte(program, inst, op_stack, stack_pos, frame);
+  case STD_OUT_STRING:
+    return StdOutString(program, inst, op_stack, stack_pos, frame);
+    
+  case STD_IN_BYTE_ARY_LEN:
+    return StdInByteAryLen(program, inst, op_stack, stack_pos, frame);
 
-    case STD_ERR_CHAR:
-      return StdErrChar(program, inst, op_stack, stack_pos, frame);
+  case STD_IN_CHAR_ARY_LEN:
+    return StdInCharAryLen(program, inst, op_stack, stack_pos, frame);
 
-    case STD_ERR_INT:
-      return StdErrInt(program, inst, op_stack, stack_pos, frame);
+  case STD_OUT_BYTE_ARY_LEN:
+    return StdOutByteAryLen(program, inst, op_stack, stack_pos, frame);
 
-    case STD_ERR_FLOAT:
-      return StdErrFloat(program, inst, op_stack, stack_pos, frame);
+  case STD_OUT_CHAR_ARY_LEN:
+    return StdOutCharAryLen(program, inst, op_stack, stack_pos, frame);
 
-    case STD_ERR_STRING:
-      return StdErrString(program, inst, op_stack, stack_pos, frame);
+  case STD_IN_STRING:
+    return StdInString(program, inst, op_stack, stack_pos, frame);
 
-    case STD_ERR_CHAR_ARY:
-      return StdErrCharAry(program, inst, op_stack, stack_pos, frame);
-
-    case STD_ERR_BYTE_ARY:
-      return StdErrByteAry(program, inst, op_stack, stack_pos, frame);
-
-    case STD_ERR_FLUSH:
-      return StdErrFlush(program, inst, op_stack, stack_pos, frame);
+  case STD_FLUSH:
+    return StdFlush(program, inst, op_stack, stack_pos, frame);
       
-    case ASSERT_TRUE:
-      return AssertTrue(program, inst, op_stack, stack_pos, frame);
+  case STD_ERR_BOOL:
+    return StdErrBool(program, inst, op_stack, stack_pos, frame);
 
-    case SYS_CMD:
-      return SysCmd(program, inst, op_stack, stack_pos, frame);
+  case STD_ERR_BYTE:
+    return StdErrByte(program, inst, op_stack, stack_pos, frame);
 
-		case SET_SIGNAL:
-			return SetSignal(program, inst, op_stack, stack_pos, frame);
+  case STD_ERR_CHAR:
+    return StdErrChar(program, inst, op_stack, stack_pos, frame);
 
-		case RAISE_SIGNAL:
-			return RaiseSignal(program, inst, op_stack, stack_pos, frame);
+  case STD_ERR_INT:
+    return StdErrInt(program, inst, op_stack, stack_pos, frame);
 
-    case  SYS_CMD_OUT:
-      return SysCmdOut(program, inst, op_stack, stack_pos, frame);
+  case STD_ERR_FLOAT:
+    return StdErrFloat(program, inst, op_stack, stack_pos, frame);
 
-    case EXIT:
-      return Exit(program, inst, op_stack, stack_pos, frame);
+  case STD_ERR_STRING:
+    return StdErrString(program, inst, op_stack, stack_pos, frame);
 
-    case GMT_TIME:
-      return GmtTime(program, inst, op_stack, stack_pos, frame);
+  case STD_ERR_CHAR_ARY:
+    return StdErrCharAry(program, inst, op_stack, stack_pos, frame);
 
-    case SYS_TIME:
-      return SysTime(program, inst, op_stack, stack_pos, frame);
+  case STD_ERR_BYTE_ARY:
+    return StdErrByteAry(program, inst, op_stack, stack_pos, frame);
 
-    case DATE_TIME_SET_1:
-      return DateTimeSet1(program, inst, op_stack, stack_pos, frame);
-
-    case DATE_TIME_SET_2:
-      return DateTimeSet2(program, inst, op_stack, stack_pos, frame);
-
-    case DATE_TIME_ADD_DAYS:
-      return DateTimeAddDays(program, inst, op_stack, stack_pos, frame);
-
-    case DATE_TIME_ADD_HOURS:
-      return DateTimeAddHours(program, inst, op_stack, stack_pos, frame);
-
-    case DATE_TIME_ADD_MINS:
-      return DateTimeAddMins(program, inst, op_stack, stack_pos, frame);
-
-    case DATE_TIME_ADD_SECS:
-      return DateTimeAddSecs(program, inst, op_stack, stack_pos, frame);
-
-    case TIMER_START:
-      return TimerStart(program, inst, op_stack, stack_pos, frame);
-
-    case TIMER_END:
-      return TimerEnd(program, inst, op_stack, stack_pos, frame);
-
-    case TIMER_ELAPSED:
-      return TimerElapsed(program, inst, op_stack, stack_pos, frame);
-
-    case GET_PLTFRM:
-      return GetPltfrm(program, inst, op_stack, stack_pos, frame);
-
-    case GET_VERSION:
-      return GetVersion(program, inst, op_stack, stack_pos, frame);
-
-    case GET_SYS_PROP:
-      return GetSysProp(program, inst, op_stack, stack_pos, frame);
-
-    case SET_SYS_PROP:
-      return SetSysProp(program, inst, op_stack, stack_pos, frame);
-
-    case SOCK_TCP_RESOLVE_NAME:
-      return SockTcpResolveName(program, inst, op_stack, stack_pos, frame);
-
-    case SOCK_TCP_HOST_NAME:
-      return SockTcpHostName(program, inst, op_stack, stack_pos, frame);
-
-    case SOCK_TCP_CONNECT:
-      return SockTcpConnect(program, inst, op_stack, stack_pos, frame);
-
-    case SOCK_TCP_BIND:
-      return SockTcpBind(program, inst, op_stack, stack_pos, frame);
-
-    case SOCK_TCP_LISTEN:
-      return SockTcpListen(program, inst, op_stack, stack_pos, frame);
-
-    case SOCK_TCP_ACCEPT:
-      return SockTcpAccept(program, inst, op_stack, stack_pos, frame);
-
-    case SOCK_TCP_CLOSE:
-      return SockTcpClose(program, inst, op_stack, stack_pos, frame);
-
-    case SOCK_TCP_OUT_STRING:
-      return SockTcpOutString(program, inst, op_stack, stack_pos, frame);
-
-    case SOCK_TCP_IN_STRING:
-      return SockTcpInString(program, inst, op_stack, stack_pos, frame);
-
-    case SOCK_TCP_ERROR:
-      return SockTcpError(program, inst, op_stack, stack_pos, frame);
+  case STD_ERR_FLUSH:
+    return StdErrFlush(program, inst, op_stack, stack_pos, frame);
       
-    case SOCK_TCP_SSL_CONNECT:
-      return SockTcpSslConnect(program, inst, op_stack, stack_pos, frame);
+  case ASSERT_TRUE:
+    return AssertTrue(program, inst, op_stack, stack_pos, frame);
 
-    case SOCK_TCP_SSL_ISSUER:
-      return SockTcpSslIssuer(program, inst, op_stack, stack_pos, frame);
+  case SYS_CMD:
+    return SysCmd(program, inst, op_stack, stack_pos, frame);
 
-    case SOCK_TCP_SSL_SUBJECT:
-      return SockTcpSslSubject(program, inst, op_stack, stack_pos, frame);
+  case SET_SIGNAL:
+    return SetSignal(program, inst, op_stack, stack_pos, frame);
 
-    case SOCK_TCP_SSL_CLOSE:
-      return SockTcpSslClose(program, inst, op_stack, stack_pos, frame);
+  case RAISE_SIGNAL:
+    return RaiseSignal(program, inst, op_stack, stack_pos, frame);
 
-    case SOCK_TCP_SSL_OUT_STRING:
-      return SockTcpSslOutString(program, inst, op_stack, stack_pos, frame);
+  case  SYS_CMD_OUT:
+    return SysCmdOut(program, inst, op_stack, stack_pos, frame);
 
-    case SOCK_TCP_SSL_IN_STRING:
-      return SockTcpSslInString(program, inst, op_stack, stack_pos, frame);
+  case EXIT:
+    return Exit(program, inst, op_stack, stack_pos, frame);
 
-    case SOCK_TCP_SSL_LISTEN:
-      return SockTcpSslListen(program, inst, op_stack, stack_pos, frame);
+  case GMT_TIME:
+    return GmtTime(program, inst, op_stack, stack_pos, frame);
 
-    case SOCK_TCP_SSL_ACCEPT:
-      return SockTcpSslAccept(program, inst, op_stack, stack_pos, frame);
+  case SYS_TIME:
+    return SysTime(program, inst, op_stack, stack_pos, frame);
 
-    case SOCK_TCP_SSL_SRV_CERT:
-      return SockTcpSslCertSrv(program, inst, op_stack, stack_pos, frame);
+  case DATE_TIME_SET_1:
+    return DateTimeSet1(program, inst, op_stack, stack_pos, frame);
+
+  case DATE_TIME_SET_2:
+    return DateTimeSet2(program, inst, op_stack, stack_pos, frame);
+
+  case DATE_TIME_ADD_DAYS:
+    return DateTimeAddDays(program, inst, op_stack, stack_pos, frame);
+
+  case DATE_TIME_ADD_HOURS:
+    return DateTimeAddHours(program, inst, op_stack, stack_pos, frame);
+
+  case DATE_TIME_ADD_MINS:
+    return DateTimeAddMins(program, inst, op_stack, stack_pos, frame);
+
+  case DATE_TIME_ADD_SECS:
+    return DateTimeAddSecs(program, inst, op_stack, stack_pos, frame);
+
+  case TIMER_START:
+    return TimerStart(program, inst, op_stack, stack_pos, frame);
+
+  case TIMER_END:
+    return TimerEnd(program, inst, op_stack, stack_pos, frame);
+
+  case TIMER_ELAPSED:
+    return TimerElapsed(program, inst, op_stack, stack_pos, frame);
+
+  case GET_PLTFRM:
+    return GetPltfrm(program, inst, op_stack, stack_pos, frame);
+
+  case GET_VERSION:
+    return GetVersion(program, inst, op_stack, stack_pos, frame);
+
+  case GET_SYS_PROP:
+    return GetSysProp(program, inst, op_stack, stack_pos, frame);
+
+  case SET_SYS_PROP:
+    return SetSysProp(program, inst, op_stack, stack_pos, frame);
+
+  case SOCK_TCP_RESOLVE_NAME:
+    return SockTcpResolveName(program, inst, op_stack, stack_pos, frame);
+
+  case SOCK_TCP_HOST_NAME:
+    return SockTcpHostName(program, inst, op_stack, stack_pos, frame);
+
+  case SOCK_TCP_CONNECT:
+    return SockTcpConnect(program, inst, op_stack, stack_pos, frame);
+
+  case SOCK_TCP_BIND:
+    return SockTcpBind(program, inst, op_stack, stack_pos, frame);
+
+  case SOCK_TCP_LISTEN:
+    return SockTcpListen(program, inst, op_stack, stack_pos, frame);
+
+  case SOCK_TCP_ACCEPT:
+    return SockTcpAccept(program, inst, op_stack, stack_pos, frame);
+
+  case SOCK_TCP_CLOSE:
+    return SockTcpClose(program, inst, op_stack, stack_pos, frame);
+
+  case SOCK_TCP_OUT_STRING:
+    return SockTcpOutString(program, inst, op_stack, stack_pos, frame);
+
+  case SOCK_TCP_IN_STRING:
+    return SockTcpInString(program, inst, op_stack, stack_pos, frame);
+
+  case SOCK_TCP_ERROR:
+    return SockTcpError(program, inst, op_stack, stack_pos, frame);
+      
+  case SOCK_TCP_SSL_CONNECT:
+    return SockTcpSslConnect(program, inst, op_stack, stack_pos, frame);
+
+  case SOCK_TCP_SSL_ISSUER:
+    return SockTcpSslIssuer(program, inst, op_stack, stack_pos, frame);
+
+  case SOCK_TCP_SSL_SUBJECT:
+    return SockTcpSslSubject(program, inst, op_stack, stack_pos, frame);
+
+  case SOCK_TCP_SSL_CLOSE:
+    return SockTcpSslClose(program, inst, op_stack, stack_pos, frame);
+
+  case SOCK_TCP_SSL_OUT_STRING:
+    return SockTcpSslOutString(program, inst, op_stack, stack_pos, frame);
+
+  case SOCK_TCP_SSL_IN_STRING:
+    return SockTcpSslInString(program, inst, op_stack, stack_pos, frame);
+
+  case SOCK_TCP_SSL_LISTEN:
+    return SockTcpSslListen(program, inst, op_stack, stack_pos, frame);
+
+  case SOCK_TCP_SSL_ACCEPT:
+    return SockTcpSslAccept(program, inst, op_stack, stack_pos, frame);
+
+  case SOCK_TCP_SSL_SRV_CERT:
+    return SockTcpSslCertSrv(program, inst, op_stack, stack_pos, frame);
 	
-    case SOCK_TCP_SSL_SRV_CLOSE:
-      return SockTcpSslCloseSrv(program, inst, op_stack, stack_pos, frame);
+  case SOCK_TCP_SSL_SRV_CLOSE:
+    return SockTcpSslCloseSrv(program, inst, op_stack, stack_pos, frame);
 
-    case SOCK_TCP_SSL_ERROR:
-      return SockTcpSslError(program, inst, op_stack, stack_pos, frame);
+  case SOCK_TCP_SSL_ERROR:
+    return SockTcpSslError(program, inst, op_stack, stack_pos, frame);
 
-    case SERL_CHAR:
-      return SerlChar(program, inst, op_stack, stack_pos, frame);
+  case SERL_CHAR:
+    return SerlChar(program, inst, op_stack, stack_pos, frame);
 
-    case SERL_INT:
-      return SerlInt(program, inst, op_stack, stack_pos, frame);
+  case SERL_INT:
+    return SerlInt(program, inst, op_stack, stack_pos, frame);
 
-    case SERL_FLOAT:
-      return SerlFloat(program, inst, op_stack, stack_pos, frame);
+  case SERL_FLOAT:
+    return SerlFloat(program, inst, op_stack, stack_pos, frame);
 
-    case SERL_OBJ_INST:
-      return SerlObjInst(program, inst, op_stack, stack_pos, frame);
+  case SERL_OBJ_INST:
+    return SerlObjInst(program, inst, op_stack, stack_pos, frame);
 
-    case SERL_BYTE_ARY:
-      return SerlByteAry(program, inst, op_stack, stack_pos, frame);
+  case SERL_BYTE_ARY:
+    return SerlByteAry(program, inst, op_stack, stack_pos, frame);
 
-    case SERL_CHAR_ARY:
-      return SerlCharAry(program, inst, op_stack, stack_pos, frame);
+  case SERL_CHAR_ARY:
+    return SerlCharAry(program, inst, op_stack, stack_pos, frame);
 
-    case SERL_INT_ARY:
-      return SerlIntAry(program, inst, op_stack, stack_pos, frame);
+  case SERL_INT_ARY:
+    return SerlIntAry(program, inst, op_stack, stack_pos, frame);
 
-    case SERL_OBJ_ARY:
-      return SerlObjAry(program, inst, op_stack, stack_pos, frame);
+  case SERL_OBJ_ARY:
+    return SerlObjAry(program, inst, op_stack, stack_pos, frame);
 
-    case SERL_FLOAT_ARY:
-      return SerlFloatAry(program, inst, op_stack, stack_pos, frame);
+  case SERL_FLOAT_ARY:
+    return SerlFloatAry(program, inst, op_stack, stack_pos, frame);
 
-    case DESERL_CHAR:
-      return DeserlChar(program, inst, op_stack, stack_pos, frame);
+  case DESERL_CHAR:
+    return DeserlChar(program, inst, op_stack, stack_pos, frame);
 
-    case DESERL_INT:
-      return DeserlInt(program, inst, op_stack, stack_pos, frame);
+  case DESERL_INT:
+    return DeserlInt(program, inst, op_stack, stack_pos, frame);
 
-    case DESERL_FLOAT:
-      return DeserlFloat(program, inst, op_stack, stack_pos, frame);
+  case DESERL_FLOAT:
+    return DeserlFloat(program, inst, op_stack, stack_pos, frame);
 
-    case DESERL_OBJ_INST:
-      return DeserlObjInst(program, inst, op_stack, stack_pos, frame);
+  case DESERL_OBJ_INST:
+    return DeserlObjInst(program, inst, op_stack, stack_pos, frame);
 
-    case DESERL_BYTE_ARY:
-      return DeserlByteAry(program, inst, op_stack, stack_pos, frame);
+  case DESERL_BYTE_ARY:
+    return DeserlByteAry(program, inst, op_stack, stack_pos, frame);
 
-    case DESERL_CHAR_ARY:
-      return DeserlCharAry(program, inst, op_stack, stack_pos, frame);
+  case DESERL_CHAR_ARY:
+    return DeserlCharAry(program, inst, op_stack, stack_pos, frame);
 
-    case DESERL_INT_ARY:
-      return DeserlIntAry(program, inst, op_stack, stack_pos, frame);
+  case DESERL_INT_ARY:
+    return DeserlIntAry(program, inst, op_stack, stack_pos, frame);
 
-    case DESERL_OBJ_ARY:
-      return DeserlObjAry(program, inst, op_stack, stack_pos, frame);
+  case DESERL_OBJ_ARY:
+    return DeserlObjAry(program, inst, op_stack, stack_pos, frame);
 
-    case DESERL_FLOAT_ARY:
-      return DeserlFloatAry(program, inst, op_stack, stack_pos, frame);
+  case DESERL_FLOAT_ARY:
+    return DeserlFloatAry(program, inst, op_stack, stack_pos, frame);
 
-    case COMPRESS_ZLIB_BYTES:
-      return CompressZlibBytes(program, inst, op_stack, stack_pos, frame);
+  case COMPRESS_ZLIB_BYTES:
+    return CompressZlibBytes(program, inst, op_stack, stack_pos, frame);
 
-    case UNCOMPRESS_ZLIB_BYTES:
-      return UncompressZlibBytes(program, inst, op_stack, stack_pos, frame);
+  case UNCOMPRESS_ZLIB_BYTES:
+    return UncompressZlibBytes(program, inst, op_stack, stack_pos, frame);
 
-    case COMPRESS_GZIP_BYTES:
-      return CompressGzipBytes (program, inst, op_stack, stack_pos, frame);
+  case COMPRESS_GZIP_BYTES:
+    return CompressGzipBytes (program, inst, op_stack, stack_pos, frame);
 
-    case UNCOMPRESS_GZIP_BYTES:
-      return UncompressGzipBytes (program, inst, op_stack, stack_pos, frame);
+  case UNCOMPRESS_GZIP_BYTES:
+    return UncompressGzipBytes (program, inst, op_stack, stack_pos, frame);
 
-    case COMPRESS_BR_BYTES:
-      return CompressBrBytes (program, inst, op_stack, stack_pos, frame);
+  case COMPRESS_BR_BYTES:
+    return CompressBrBytes (program, inst, op_stack, stack_pos, frame);
 
-    case UNCOMPRESS_BR_BYTES:
-      return UncompressBrBytes (program, inst, op_stack, stack_pos, frame);
+  case UNCOMPRESS_BR_BYTES:
+    return UncompressBrBytes (program, inst, op_stack, stack_pos, frame);
 
-    case CRC32_BYTES:
-      return CRC32Bytes(program, inst, op_stack, stack_pos, frame);
+  case CRC32_BYTES:
+    return CRC32Bytes(program, inst, op_stack, stack_pos, frame);
 
-    case FILE_OPEN_READ:
-      return FileOpenRead(program, inst, op_stack, stack_pos, frame);
+  case FILE_OPEN_READ:
+    return FileOpenRead(program, inst, op_stack, stack_pos, frame);
 
-    case FILE_OPEN_APPEND:
-      return FileOpenAppend(program, inst, op_stack, stack_pos, frame);
+  case FILE_OPEN_APPEND:
+    return FileOpenAppend(program, inst, op_stack, stack_pos, frame);
 
-    case FILE_OPEN_WRITE:
-      return FileOpenWrite(program, inst, op_stack, stack_pos, frame);
+  case FILE_OPEN_WRITE:
+    return FileOpenWrite(program, inst, op_stack, stack_pos, frame);
 
-    case FILE_OPEN_READ_WRITE:
-      return FileOpenReadWrite(program, inst, op_stack, stack_pos, frame);
+  case FILE_OPEN_READ_WRITE:
+    return FileOpenReadWrite(program, inst, op_stack, stack_pos, frame);
 
-    case FILE_CLOSE:
-      return FileClose(program, inst, op_stack, stack_pos, frame);
+  case FILE_CLOSE:
+    return FileClose(program, inst, op_stack, stack_pos, frame);
 
-    case FILE_FLUSH:
-      return FileFlush(program, inst, op_stack, stack_pos, frame);
+  case FILE_FLUSH:
+    return FileFlush(program, inst, op_stack, stack_pos, frame);
 
-    case FILE_IN_STRING:
-      return FileInString(program, inst, op_stack, stack_pos, frame);
+  case FILE_IN_STRING:
+    return FileInString(program, inst, op_stack, stack_pos, frame);
 
-    case FILE_OUT_STRING:
-      return FileOutString(program, inst, op_stack, stack_pos, frame);
+  case FILE_OUT_STRING:
+    return FileOutString(program, inst, op_stack, stack_pos, frame);
 
-    case FILE_REWIND:
-      return FileRewind(program, inst, op_stack, stack_pos, frame);
+  case FILE_REWIND:
+    return FileRewind(program, inst, op_stack, stack_pos, frame);
 
-    case PIPE_OPEN:
-      return PipeOpen(program, inst, op_stack, stack_pos, frame);
+  case PIPE_OPEN:
+    return PipeOpen(program, inst, op_stack, stack_pos, frame);
 
-    case PIPE_CREATE:
-      return PipeCreate(program, inst, op_stack, stack_pos, frame);
+  case PIPE_CREATE:
+    return PipeCreate(program, inst, op_stack, stack_pos, frame);
 
-    case PIPE_CONNECT:
-      return PipeConnect(program, inst, op_stack, stack_pos, frame);
+  case PIPE_CONNECT:
+    return PipeConnect(program, inst, op_stack, stack_pos, frame);
 
-    case PIPE_IN_BYTE:
-      return PipeInByte(program, inst, op_stack, stack_pos, frame);
+  case PIPE_IN_BYTE:
+    return PipeInByte(program, inst, op_stack, stack_pos, frame);
 
-    case PIPE_OUT_BYTE:
-      return PipeOutByte(program, inst, op_stack, stack_pos, frame);
+  case PIPE_OUT_BYTE:
+    return PipeOutByte(program, inst, op_stack, stack_pos, frame);
 
-    case PIPE_IN_BYTE_ARY:
-      return PipeInByteAry(program, inst, op_stack, stack_pos, frame);
+  case PIPE_IN_BYTE_ARY:
+    return PipeInByteAry(program, inst, op_stack, stack_pos, frame);
 
-    case PIPE_IN_CHAR_ARY:
-      return PipeInCharAry(program, inst, op_stack, stack_pos, frame);
+  case PIPE_IN_CHAR_ARY:
+    return PipeInCharAry(program, inst, op_stack, stack_pos, frame);
 
-    case PIPE_OUT_BYTE_ARY:
-      return PipeOutByteAry(program, inst, op_stack, stack_pos, frame);
+  case PIPE_OUT_BYTE_ARY:
+    return PipeOutByteAry(program, inst, op_stack, stack_pos, frame);
 
-    case PIPE_OUT_CHAR_ARY:
-      return PipeOutCharAry(program, inst, op_stack, stack_pos, frame);
+  case PIPE_OUT_CHAR_ARY:
+    return PipeOutCharAry(program, inst, op_stack, stack_pos, frame);
 
-    case PIPE_IN_STRING:
-      return PipeInString(program, inst, op_stack, stack_pos, frame);
+  case PIPE_IN_STRING:
+    return PipeInString(program, inst, op_stack, stack_pos, frame);
 
-    case PIPE_OUT_STRING:
-      return PipeOutString(program, inst, op_stack, stack_pos, frame);
+  case PIPE_OUT_STRING:
+    return PipeOutString(program, inst, op_stack, stack_pos, frame);
 
-    case PIPE_CLOSE:
-      return PipeClose(program, inst, op_stack, stack_pos, frame);
+  case PIPE_CLOSE:
+    return PipeClose(program, inst, op_stack, stack_pos, frame);
 
-    case SOCK_TCP_IS_CONNECTED:
-      return SockTcpIsConnected(program, inst, op_stack, stack_pos, frame);
+  case SOCK_TCP_IS_CONNECTED:
+    return SockTcpIsConnected(program, inst, op_stack, stack_pos, frame);
 
-    case SOCK_TCP_IN_BYTE:
-      return SockTcpInByte(program, inst, op_stack, stack_pos, frame);
+  case SOCK_TCP_IN_BYTE:
+    return SockTcpInByte(program, inst, op_stack, stack_pos, frame);
 
-    case SOCK_TCP_IN_BYTE_ARY:
-      return SockTcpInByteAry(program, inst, op_stack, stack_pos, frame);
+  case SOCK_TCP_IN_BYTE_ARY:
+    return SockTcpInByteAry(program, inst, op_stack, stack_pos, frame);
 
-    case SOCK_TCP_IN_CHAR_ARY:
-      return SockTcpInCharAry(program, inst, op_stack, stack_pos, frame);
+  case SOCK_TCP_IN_CHAR_ARY:
+    return SockTcpInCharAry(program, inst, op_stack, stack_pos, frame);
 
-    case SOCK_TCP_OUT_BYTE:
-      return SockTcpOutByte(program, inst, op_stack, stack_pos, frame);
+  case SOCK_TCP_OUT_BYTE:
+    return SockTcpOutByte(program, inst, op_stack, stack_pos, frame);
 
-    case SOCK_TCP_OUT_BYTE_ARY:
-      return SockTcpOutByteAry(program, inst, op_stack, stack_pos, frame);
+  case SOCK_TCP_OUT_BYTE_ARY:
+    return SockTcpOutByteAry(program, inst, op_stack, stack_pos, frame);
 
-    case SOCK_TCP_OUT_CHAR_ARY:
-      return SockTcpOutCharAry(program, inst, op_stack, stack_pos, frame);
+  case SOCK_TCP_OUT_CHAR_ARY:
+    return SockTcpOutCharAry(program, inst, op_stack, stack_pos, frame);
 
-    case SOCK_TCP_SSL_IN_BYTE:
-      return SockTcpSslInByte(program, inst, op_stack, stack_pos, frame);
+  case SOCK_TCP_SSL_IN_BYTE:
+    return SockTcpSslInByte(program, inst, op_stack, stack_pos, frame);
 
-    case SOCK_TCP_SSL_IN_BYTE_ARY:
-      return SockTcpSslInByteAry(program, inst, op_stack, stack_pos, frame);
+  case SOCK_TCP_SSL_IN_BYTE_ARY:
+    return SockTcpSslInByteAry(program, inst, op_stack, stack_pos, frame);
 
-    case SOCK_TCP_SSL_IN_CHAR_ARY:
-      return SockTcpSslInCharAry(program, inst, op_stack, stack_pos, frame);
+  case SOCK_TCP_SSL_IN_CHAR_ARY:
+    return SockTcpSslInCharAry(program, inst, op_stack, stack_pos, frame);
 
-    case SOCK_TCP_SSL_OUT_BYTE:
-      return SockTcpSslOutByte(program, inst, op_stack, stack_pos, frame);
+  case SOCK_TCP_SSL_OUT_BYTE:
+    return SockTcpSslOutByte(program, inst, op_stack, stack_pos, frame);
 
-    case SOCK_TCP_SSL_OUT_BYTE_ARY:
-      return SockTcpSslOutByteAry(program, inst, op_stack, stack_pos, frame);
+  case SOCK_TCP_SSL_OUT_BYTE_ARY:
+    return SockTcpSslOutByteAry(program, inst, op_stack, stack_pos, frame);
 
-    case SOCK_TCP_SSL_OUT_CHAR_ARY:
-      return SockTcpSslOutCharAry(program, inst, op_stack, stack_pos, frame);
+  case SOCK_TCP_SSL_OUT_CHAR_ARY:
+    return SockTcpSslOutCharAry(program, inst, op_stack, stack_pos, frame);
 
-    case FILE_IN_BYTE:
-      return FileInByte(program, inst, op_stack, stack_pos, frame);
+  case FILE_IN_BYTE:
+    return FileInByte(program, inst, op_stack, stack_pos, frame);
 
-    case FILE_IN_CHAR_ARY:
-      return FileInCharAry(program, inst, op_stack, stack_pos, frame);
+  case FILE_IN_CHAR_ARY:
+    return FileInCharAry(program, inst, op_stack, stack_pos, frame);
 
-    case FILE_IN_BYTE_ARY:
-      return FileInByteAry(program, inst, op_stack, stack_pos, frame);
+  case FILE_IN_BYTE_ARY:
+    return FileInByteAry(program, inst, op_stack, stack_pos, frame);
 
-    case FILE_OUT_BYTE:
-      return FileOutByte(program, inst, op_stack, stack_pos, frame);
+  case FILE_OUT_BYTE:
+    return FileOutByte(program, inst, op_stack, stack_pos, frame);
 
-    case FILE_OUT_BYTE_ARY:
-      return FileOutByteAry(program, inst, op_stack, stack_pos, frame);
+  case FILE_OUT_BYTE_ARY:
+    return FileOutByteAry(program, inst, op_stack, stack_pos, frame);
 
-    case FILE_OUT_CHAR_ARY:
-      return FileOutCharAry(program, inst, op_stack, stack_pos, frame);
+  case FILE_OUT_CHAR_ARY:
+    return FileOutCharAry(program, inst, op_stack, stack_pos, frame);
 
-    case FILE_SEEK:
-      return FileSeek(program, inst, op_stack, stack_pos, frame);
+  case FILE_SEEK:
+    return FileSeek(program, inst, op_stack, stack_pos, frame);
 
-    case FILE_EOF:
-      return FileEof(program, inst, op_stack, stack_pos, frame);
+  case FILE_EOF:
+    return FileEof(program, inst, op_stack, stack_pos, frame);
 
-    case FILE_IS_OPEN:
-      return FileIsOpen(program, inst, op_stack, stack_pos, frame);
+  case FILE_IS_OPEN:
+    return FileIsOpen(program, inst, op_stack, stack_pos, frame);
 
-    case FILE_EXISTS:
-      return FileExists(program, inst, op_stack, stack_pos, frame);
+  case FILE_EXISTS:
+    return FileExists(program, inst, op_stack, stack_pos, frame);
 
-    case FILE_CAN_WRITE_ONLY:
-      return FileCanWriteOnly(program, inst, op_stack, stack_pos, frame);
+  case FILE_CAN_WRITE_ONLY:
+    return FileCanWriteOnly(program, inst, op_stack, stack_pos, frame);
 
-    case FILE_CAN_READ_ONLY:
-      return FileCanReadOnly(program, inst, op_stack, stack_pos, frame);
+  case FILE_CAN_READ_ONLY:
+    return FileCanReadOnly(program, inst, op_stack, stack_pos, frame);
 
-    case FILE_CAN_READ_WRITE:
-      return FileCanReadWrite(program, inst, op_stack, stack_pos, frame);
+  case FILE_CAN_READ_WRITE:
+    return FileCanReadWrite(program, inst, op_stack, stack_pos, frame);
 
-    case FILE_SIZE:
-      return FileSize(program, inst, op_stack, stack_pos, frame);
+  case FILE_SIZE:
+    return FileSize(program, inst, op_stack, stack_pos, frame);
 
-    case FILE_FULL_PATH:
-      return FileFullPath(program, inst, op_stack, stack_pos, frame);
+  case FILE_FULL_PATH:
+    return FileFullPath(program, inst, op_stack, stack_pos, frame);
 
-    case FILE_TEMP_NAME:
-      return FileTempName(program, inst, op_stack, stack_pos, frame);
+  case FILE_TEMP_NAME:
+    return FileTempName(program, inst, op_stack, stack_pos, frame);
 
-    case FILE_ACCOUNT_OWNER:
-      return FileAccountOwner(program, inst, op_stack, stack_pos, frame);
+  case FILE_ACCOUNT_OWNER:
+    return FileAccountOwner(program, inst, op_stack, stack_pos, frame);
 
-    case FILE_GROUP_OWNER:
-      return FileGroupOwner(program, inst, op_stack, stack_pos, frame);
+  case FILE_GROUP_OWNER:
+    return FileGroupOwner(program, inst, op_stack, stack_pos, frame);
 
-    case FILE_DELETE:
-      return FileDelete(program, inst, op_stack, stack_pos, frame);
+  case FILE_DELETE:
+    return FileDelete(program, inst, op_stack, stack_pos, frame);
 
-    case FILE_RENAME:
-      return FileRename(program, inst, op_stack, stack_pos, frame);
+  case FILE_RENAME:
+    return FileRename(program, inst, op_stack, stack_pos, frame);
 
-    case FILE_COPY:
-      return FileCopy(program, inst, op_stack, stack_pos, frame);
+  case FILE_COPY:
+    return FileCopy(program, inst, op_stack, stack_pos, frame);
 
-    case FILE_CREATE_TIME:
-      return FileCreateTime(program, inst, op_stack, stack_pos, frame);
+  case FILE_CREATE_TIME:
+    return FileCreateTime(program, inst, op_stack, stack_pos, frame);
 
-    case FILE_MODIFIED_TIME:
-      return FileModifiedTime(program, inst, op_stack, stack_pos, frame);
+  case FILE_MODIFIED_TIME:
+    return FileModifiedTime(program, inst, op_stack, stack_pos, frame);
 
-    case FILE_ACCESSED_TIME:
-      return FileAccessedTime(program, inst, op_stack, stack_pos, frame);
+  case FILE_ACCESSED_TIME:
+    return FileAccessedTime(program, inst, op_stack, stack_pos, frame);
 
-    case DIR_CREATE:
-      return DirCreate(program, inst, op_stack, stack_pos, frame);
+  case DIR_CREATE:
+    return DirCreate(program, inst, op_stack, stack_pos, frame);
 
-    case DIR_SLASH:
-      return DirSlash(program, inst, op_stack, stack_pos, frame);
+  case DIR_SLASH:
+    return DirSlash(program, inst, op_stack, stack_pos, frame);
 
-    case DIR_EXISTS:
-      return DirExists(program, inst, op_stack, stack_pos, frame);
+  case DIR_EXISTS:
+    return DirExists(program, inst, op_stack, stack_pos, frame);
 
-    case DIR_LIST:
-      return DirList(program, inst, op_stack, stack_pos, frame);
+  case DIR_LIST:
+    return DirList(program, inst, op_stack, stack_pos, frame);
 
-    case DIR_COPY:
-      return DirCopy(program, inst, op_stack, stack_pos, frame);
+  case DIR_COPY:
+    return DirCopy(program, inst, op_stack, stack_pos, frame);
   }
 
   return false;
@@ -2818,13 +2818,13 @@ bool TrapProcessor::StdOutWidth(StackProgram* program, size_t* inst, size_t*& op
 bool TrapProcessor::StdOutFill(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
 {
 #ifdef _DEBUG
-	std::wcout << L"  STD_FILL" << std::endl;
+  std::wcout << L"  STD_FILL" << std::endl;
 #endif
 
   const wchar_t std_fill = (wchar_t)PopInt(op_stack, stack_pos);
-	std::wcout << std::setfill(std_fill);
+  std::wcout << std::setfill(std_fill);
 
-	return true;
+  return true;
 }
 
 bool TrapProcessor::StdOutString(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
@@ -4537,7 +4537,7 @@ bool TrapProcessor::FileInString(StackProgram* program, size_t* inst, size_t* &o
 {
   const size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   const size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  if(array && instance) {
+  if(array && instance && instance[0]) {
     FILE* file = (FILE*)instance[0];
     char buffer[MID_BUFFER_MAX] = {0};
     if(file && fgets(buffer, MID_BUFFER_MAX - 1, file)) {
@@ -4696,11 +4696,50 @@ bool TrapProcessor::PipeOutByteAry(StackProgram* program, size_t* inst, size_t*&
 
 bool TrapProcessor::PipeOutCharAry(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) 
 {
+  const size_t* array = (size_t*)PopInt(op_stack, stack_pos);
+  const size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+  if(array && instance && instance[0]) {
+    const std::string output = UnicodeToBytes((wchar_t*)(array + 3));
+#ifdef _WIN32
+    HANDLE pipe = (HANDLE)instance[0];
+#else
+    FILE* pipe = (FILE*)instance[0];
+#endif
+    Pipe::WriteLine(output, pipe);
+  }
+  
   return true;
 }
 
 bool TrapProcessor::PipeInString(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) 
 {
+  const size_t* array = (size_t*)PopInt(op_stack, stack_pos);
+  const size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+  if(array && instance && instance[0]) {
+#ifdef _WIN32
+    HANDLE pipe = (HANDLE)instance[0];
+    std::string buffer = Pipe::ReadLine(pipe);
+#else
+    FILE* pipe = (FILE*)instance[0];
+    std::string buffer = Pipe::ReadLine(pipe);
+#endif
+    
+    if(!buffer.empty()) {
+      // copy and remove file BOM UTF (8, 16, 32)
+      std::wstring in = BytesToUnicode(buffer);
+      if(in.size() > 0 && (in[0] == (wchar_t)0xFEFF || in[0] == (wchar_t)0xFFFE || in[0] == (wchar_t)0xFFFE0000 || in[0] == (wchar_t)0xEFBBBF)) {
+        in.erase(in.begin(), in.begin() + 1);
+      }
+      
+      wchar_t* out = (wchar_t*)(array + 3);
+      const long max = (long)array[2];
+#ifdef _WIN32
+      wcsncpy_s(out, array[0], in.c_str(), max);
+#else
+      wcsncpy(out, in.c_str(), max);
+#endif
+    }
+  }
   
   return true;
 }
@@ -4720,13 +4759,8 @@ bool TrapProcessor::PipeClose(StackProgram* program, size_t* inst, size_t*& op_s
       const HANDLE pipe = (HANDLE)instance[0];
       Pipe::ClosePipe(pipe);
 #else
-      const FILE* pipe = (FILE * instance[0];
-      size_t * array = (size_t*)instance[1];
-      if(array) {
-        array = (size_t*)array[0];
-        const std::string name = UnicodeToBytes((wchar_t*)(array + 3));
-        Pipe::RemovePipe(name, pipe);
-      }
+      FILE* pipe = (FILE*) instance[0];
+      Pipe::ClosePipe(pipe);
 #endif
     }
     // client pipe
@@ -4735,7 +4769,7 @@ bool TrapProcessor::PipeClose(StackProgram* program, size_t* inst, size_t*& op_s
       const HANDLE pipe = (HANDLE)instance[0];
       Pipe::ClosePipe(pipe);
 #else
-      const FILE* pipe = (FILE * instance[0];
+      FILE* pipe = (FILE*) instance[0];
       Pipe::ClosePipe(pipe);
 #endif
     }
