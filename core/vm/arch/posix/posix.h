@@ -240,6 +240,14 @@ public:
     return true;
   }
 
+  static char ReadByte(FILE* pipe) {
+    return fgetc(pipe);
+  }
+
+  static bool WriteByte(char value, FILE* pipe) {
+    return fputc(value, pipe);
+  }
+
   static std::string ReadLine(FILE* pipe) {
     char* buffer = new char[MID_BUFFER_MAX];
 
