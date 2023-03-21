@@ -16,10 +16,10 @@ int main()
 		exit(1);
 	}
 
-	std::string line = ReadLine(pipe);
-	std::cout << line << std::endl;
+	std::cout << ReadLine(pipe) << std::endl;
+	WriteLine("Second...\r\n", pipe);
 
-	if(!RemovePipe(name, pipe)) {
+	if(!ClosePipe(pipe)) {
 		std::cerr << "Unable to close pipe!" << std::endl;
 		exit(1);
 	}
