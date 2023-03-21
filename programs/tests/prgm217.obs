@@ -2,10 +2,13 @@ class Hello {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
 			pipe := System.IO.Pipe->New(args[0], Pipe->Mode->CREATE);
-			if(pipe->Connect()) {
-				pipe->ReadLine()->PrintLine();
-				pipe->WriteString("Hi Ya!");
+			if(<>pipe->Connect()) {
+				"Unable to connect pipe!"->PrintLine();	
 			};
+
+			pipe->ReadLine()->PrintLine();
+			pipe->WriteString("Second...");
+
 			pipe->Close();
 		};
 	}

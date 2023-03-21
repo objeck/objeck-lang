@@ -219,19 +219,7 @@ public:
 
     return true;
   }
-
-  static bool RemovePipe(const std::string& name, FILE* pipe) {
-    if(fclose(pipe)) {
-      return false;
-    }
-
-    if(unlink(name.c_str())) {
-      return false;
-    }
-
-    return true;
-  }
-
+  
   static bool ClosePipe(FILE* pipe) {
     if(fclose(pipe)) {
       return false;
@@ -249,46 +237,35 @@ public:
   }
 
   static size_t WriteByteArray(const char* buffer, size_t offset, size_t num, FILE* pipe) {
-    return fwrite(buffer + offset, 1, num, pipe);
+    size_t written = 0;
+    
+    for(size_t i = 0; i < num; i +=1) {
+      fputc(*(buffer + offset), pipe);
+    }
+    
+    return written;
   }
 
   static bool WriteByte(char value, FILE* pipe) {
     return fputc(value, pipe);
   }
 
-  static std::string ReadLine(FILE* pipe) {
-    char* buffer = new char[MID_BUFFER_MAX];
-
-    // line from pipe
-    size_t buffer_len = MID_BUFFER_MAX;
-    int read = (int)getline(&buffer, &buffer_len, pipe);
-    if(read < 0) {
-      delete[] buffer;
-      buffer = nullptr;
-
-      return "";
+  static std::string ReadString(FILE* pipe) {
+    std::string output;
+    
+    int value;
+    do {
+      value = fgetc(pipe);	
+      if(value != '\0') {
+	output += (char)value;
+      }
     }
-
-    if(read < MID_BUFFER_MAX) {
-      buffer[read] = '\0';
-    }
-    else {
-      delete[] buffer;
-      buffer = nullptr;
-
-      return "";
-    }
-
-    // copy and clean up
-    std::string output(buffer);
-
-    delete[] buffer;
-    buffer = nullptr;
-
+    while(value != '\0');
+	
     return output;
   }
 
-  static bool WriteLine(const std::string& line, FILE* pipe) {
+  static bool WriteString(const std::string& line, FILE* pipe) {
     const size_t len = line.size() + 1;
     return fwrite(line.c_str(), 1, len, pipe) == len;
   }
@@ -298,31 +275,31 @@ public:
  * IP socket support class
  ****************************/
 class IPSocket {
- public:
+public:
   static  std::vector<std::string> Resolve(const char* address) {
-		 std::vector<std::string> addresses;
+    std::vector<std::string> addresses;
 
-		struct addrinfo* result;
-		if(getaddrinfo(address, nullptr, nullptr, &result)) {
-			freeaddrinfo(result);
-			return  std::vector<std::string>();
-		}
+    struct addrinfo* result;
+    if(getaddrinfo(address, nullptr, nullptr, &result)) {
+      freeaddrinfo(result);
+      return  std::vector<std::string>();
+    }
 
-		struct addrinfo* res;
-		for(res = result; res != nullptr; res = res->ai_next) {
-			char hostname[NI_MAXHOST] = { 0 };
-			if(getnameinfo(res->ai_addr, (socklen_t)res->ai_addrlen, hostname, NI_MAXHOST, nullptr, 0, 0)) {
-				freeaddrinfo(result);
-				return  std::vector<std::string>();
-			}
+    struct addrinfo* res;
+    for(res = result; res != nullptr; res = res->ai_next) {
+      char hostname[NI_MAXHOST] = { 0 };
+      if(getnameinfo(res->ai_addr, (socklen_t)res->ai_addrlen, hostname, NI_MAXHOST, nullptr, 0, 0)) {
+	freeaddrinfo(result);
+	return  std::vector<std::string>();
+      }
 
-			if(*hostname != '\0') {
-				addresses.push_back(hostname);
-			}
-		}
+      if(*hostname != '\0') {
+	addresses.push_back(hostname);
+      }
+    }
 
-		freeaddrinfo(result);
-		return addresses;
+    freeaddrinfo(result);
+    return addresses;
   }
   
   static SOCKET Open(const char* address, int port) {
