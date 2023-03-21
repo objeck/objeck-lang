@@ -248,7 +248,7 @@ public:
     return fread(buffer + offset, 1, num, pipe);
   }
 
-  static size_t WriteByteArray(char* buffer, size_t offset, size_t num, FILE* pipe) {
+  static size_t WriteByteArray(const char* buffer, size_t offset, size_t num, FILE* pipe) {
     return fwrite(buffer + offset, 1, num, pipe);
   }
 
