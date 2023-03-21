@@ -7,8 +7,6 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-#define BUFFER_MAX 4096
-
 bool CreatePipe(const std::string &name) {
 	if(mkfifo(name.c_str(), S_IRWXU)) {
 		return false;
@@ -18,7 +16,7 @@ bool CreatePipe(const std::string &name) {
 }
 
 bool OpenPipe(const std::string &name, FILE* &pipe) {
-	pipe = fopen(name.c_str(), "r+b");
+	pipe = fopen(name.c_str(), "w+b");
 	if(!pipe) {
 		return false;
 	}
@@ -47,34 +45,17 @@ bool ClosePipe(FILE* pipe) {
 }
 
 std::string ReadLine(FILE* pipe) {
-	char* buffer = new char[BUFFER_MAX];
+	std::string output;
+
+	int value;
+	do {
+		value = fgetc(pipe);	
+		if(value != '\0') {
+			output += (char)value;
+		}
+	}
+	while(value != '\0');
 	
-	// line from pipe
-	size_t buffer_len = BUFFER_MAX;
-	int read = (int)getline(&buffer, &buffer_len, pipe);
-	if(read < 0) {
-		delete[] buffer;
-		buffer = nullptr;
-
-		return "";
-	}
-
-	if(read < BUFFER_MAX) {
-		buffer[read] = '\0';
-	}
-	else {
-		delete[] buffer;
-		buffer = nullptr;
-
-		return "";
-	}
-
-	// copy and clean up
-	std::string output(buffer);
-
-	delete[] buffer;
-	buffer = nullptr;
-
 	return output;
 }
 
