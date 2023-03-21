@@ -1374,9 +1374,7 @@ size_t* TrapProcessor::CreateStringObject(const std::wstring &value_str, StackPr
 #endif
 
   // create 'System.String' object instance
-  size_t* str_obj = MemoryManager::AllocateObject(program->GetStringObjectId(),
-                                                  op_stack, *stack_pos,
-                                                  false);
+  size_t* str_obj = MemoryManager::AllocateObject(program->GetStringObjectId(), op_stack, *stack_pos, false);
   str_obj[0] = (size_t)char_array;
   str_obj[1] = char_array_size;
   str_obj[2] = char_array_size;
@@ -2492,12 +2490,8 @@ bool TrapProcessor::ConvertBytesToUnicode(StackProgram* program, size_t* inst, s
   // create character array
   const long char_array_size = (long)out.size();
   const long char_array_dim = 1;
-  size_t* char_array = MemoryManager::AllocateArray(char_array_size + 1 +
-                                                    ((char_array_dim + 2) *
-                                                     sizeof(size_t)),
-                                                    CHAR_ARY_TYPE,
-                                                    op_stack, *stack_pos,
-                                                    false);
+  size_t* char_array = MemoryManager::AllocateArray(char_array_size + 1 + ((char_array_dim + 2) * sizeof(size_t)), 
+                                                    CHAR_ARY_TYPE, op_stack, *stack_pos, false);
   char_array[0] = char_array_size + 1;
   char_array[1] = char_array_dim;
   char_array[2] = char_array_size;
@@ -2879,7 +2873,7 @@ bool TrapProcessor::StdInCharAryLen(StackProgram* program, size_t* inst, size_t*
   if(array && offset > -1 && offset + num <= (long)array[0]) {
     wchar_t* buffer = (wchar_t*)(array + 3);
     // allocate temporary buffer
-    char* byte_buffer = new char[array[0] + 1];
+    char* byte_buffer = new char[num * 2 + 1];
     size_t read = fread(byte_buffer + offset, 1, num, stdin);
     if(read) {
       byte_buffer[read] = '\0';
@@ -4772,7 +4766,7 @@ bool TrapProcessor::PipeInCharAry(StackProgram* program, size_t* inst, size_t*& 
 #endif
 
     // read from pipe
-    char* byte_buffer = new char[num + 1];
+    char* byte_buffer = new char[num * 2 + 1];
     const size_t read = Pipe::ReadByteArray(byte_buffer, offset, num, pipe);
     byte_buffer[read] = '\0';
     std::wstring in(BytesToUnicode(byte_buffer));
@@ -4990,7 +4984,7 @@ bool TrapProcessor::SockTcpInCharAry(StackProgram* program, size_t* inst, size_t
     SOCKET sock = (SOCKET)instance[0];
     wchar_t* buffer = (wchar_t*)(array + 3);
     // allocate temporary buffer
-    char* byte_buffer = new char[array[0] + 1];
+    char* byte_buffer = new char[num * 2 + 1];
     int read = IPSocket::ReadBytes(byte_buffer + offset, num, sock);
     if(read > -1) {
       byte_buffer[read] = '\0';
@@ -5121,7 +5115,7 @@ bool TrapProcessor::SockTcpSslInCharAry(StackProgram* program, size_t* inst, siz
     SSL_CTX* ctx = (SSL_CTX*)instance[0];
     BIO* bio = (BIO*)instance[1];
     wchar_t* buffer = (wchar_t*)(array + 3);
-    char* byte_buffer = new char[array[0] + 1];
+    char* byte_buffer = new char[num * 2 + 1];
     int read = IPSecureSocket::ReadBytes(byte_buffer + offset, num, ctx, bio);
     if(read > -1) {
       byte_buffer[read] = '\0';
@@ -5234,7 +5228,7 @@ bool TrapProcessor::FileInCharAry(StackProgram* program, size_t* inst, size_t* &
     wchar_t* out = (wchar_t*)(array + 3);
 
     // read from file
-    char* byte_buffer = new char[num + 1];
+    char* byte_buffer = new char[num * 2 + 1];
     const size_t read = fread(byte_buffer + offset, 1, num, file);
     byte_buffer[read] = '\0';
     std::wstring in(BytesToUnicode(byte_buffer));
