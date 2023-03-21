@@ -4859,10 +4859,10 @@ bool TrapProcessor::PipeInString(StackProgram* program, size_t* inst, size_t*& o
   if(array && instance && instance[0]) {
 #ifdef _WIN32
     HANDLE pipe = (HANDLE)instance[0];
-    std::string buffer = Pipe::ReadLine(pipe);
+    std::string buffer = Pipe::ReadString(pipe);
 #else
     FILE* pipe = (FILE*)instance[0];
-    std::string buffer = Pipe::ReadLine(pipe);
+    std::string buffer = Pipe::ReadString(pipe);
 #endif
     
     if(!buffer.empty()) {
@@ -4896,7 +4896,7 @@ bool TrapProcessor::PipeOutString(StackProgram* program, size_t* inst, size_t*& 
 #else
     FILE* pipe = (FILE*)instance[0];
 #endif
-    Pipe::WriteLine(output, pipe);
+    Pipe::WriteString(output, pipe);
   }
 
   return true;

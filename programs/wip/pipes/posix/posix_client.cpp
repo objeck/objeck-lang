@@ -9,7 +9,7 @@ int main() {
 		exit(1);
 	}
 
-	WriteLine("Hi Ya!\r\n", pipe);
+	WriteLine("First...", pipe);
 	std::cout << ReadLine(pipe) << std::endl;
 	
 	ClosePipe(pipe);

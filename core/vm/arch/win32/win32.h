@@ -54,7 +54,9 @@
 typedef void (WINAPI *PGNSI)(LPSYSTEM_INFO);
 typedef BOOL (WINAPI *PGPI)(DWORD, DWORD, DWORD, DWORD, PDWORD);
 
-// file operations
+/****************************
+ * File support class
+ ****************************/
 class File {
   static bool GetAccountGroupOwner(const char* name, std::wstring &account, std::wstring &group) {
     std::wstring value;
@@ -284,7 +286,9 @@ class File {
   }
 };
 
-// pipe operations
+/****************************
+ * Pipe support class
+ ****************************/
 class Pipe {
 public:
   static bool CreatePipe(const std::string& name, HANDLE& pipe) {
@@ -363,7 +367,7 @@ public:
     return false;
   }
 
-  static std::string ReadLine(HANDLE pipe) {
+  static std::string ReadString(HANDLE pipe) {
     std::string line;
 
     DWORD read;
@@ -388,7 +392,7 @@ public:
     return line;
   }
 
-  static bool WriteLine(const std::string& line, HANDLE pipe) {
+  static bool WriteString(const std::string& line, HANDLE pipe) {
     DWORD written;
     const DWORD len = (DWORD)line.size() + 1;
     if(WriteFile(pipe, line.c_str(), len, &written, nullptr)) {
