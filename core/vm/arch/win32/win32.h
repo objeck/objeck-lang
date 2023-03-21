@@ -333,7 +333,25 @@ public:
       return buffer;
     }
 
-    return EOF;
+    return 0;
+  }
+
+  static size_t ReadByteArray(char* buffer, size_t offset, size_t num, HANDLE pipe) {
+    DWORD read;
+    if(ReadFile(pipe, buffer + offset, (DWORD)num, &read, nullptr)) {
+      return read;
+    }
+
+    return 0;
+  }
+
+  static size_t WriteByteArray(const char* buffer, size_t offset, size_t num, HANDLE pipe) {
+    DWORD written;
+    if(WriteFile(pipe, buffer + offset, (DWORD)num, &written, nullptr)) {
+      return written;
+    }
+
+    return 0;
   }
 
   static bool WriteByte(char value, HANDLE pipe) {

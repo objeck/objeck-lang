@@ -9,8 +9,10 @@ int main() {
       exit(1);
    }
 
-   const std::string line = "Hi Ya!\r\n";
+   const std::string line = "Hi There!\r\n";
    WriteLine(line, pipe);
+
+   std::cout << ReadLine(pipe) << std::endl;
    
    ClosePipe(pipe);
 }
