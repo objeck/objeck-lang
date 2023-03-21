@@ -326,6 +326,25 @@ public:
     return false;
   }
 
+  static char ReadByte(HANDLE pipe) {
+    char buffer;
+    DWORD read;
+    if(ReadFile(pipe, &buffer, 1, &read, nullptr)) {
+      return buffer;
+    }
+
+    return EOF;
+  }
+
+  static bool WriteByte(char value, HANDLE pipe) {
+    DWORD written;
+    if(WriteFile(pipe, &value, 1, &written, nullptr)) {
+      return true;
+    }
+
+    return false;
+  }
+
   static std::string ReadLine(HANDLE pipe) {
     std::string line;
 
@@ -345,7 +364,8 @@ public:
       else {
         return "";
       }
-    } while(!done);
+    } 
+    while(!done);
 
     return line;
   }
