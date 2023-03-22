@@ -291,7 +291,7 @@ class File {
  ****************************/
 class Pipe {
 public:
-  static bool CreatePipe(const std::string& name, HANDLE& pipe) {
+  static bool Create(const std::string& name, HANDLE& pipe) {
     pipe = CreateNamedPipe(name.c_str(),
                            PIPE_ACCESS_DUPLEX, PIPE_TYPE_BYTE |
                            PIPE_READMODE_BYTE |
@@ -305,7 +305,7 @@ public:
     return true;
   }
   
-  static bool OpenClientPipe(const std::string& name, HANDLE& pipe) {
+  static bool OpenClient(const std::string& name, HANDLE& pipe) {
     pipe = CreateFile(name.c_str(), GENERIC_READ | GENERIC_WRITE, 0, nullptr, OPEN_EXISTING, 0, nullptr);
     if(pipe == INVALID_HANDLE_VALUE) {
       return false;
@@ -314,7 +314,7 @@ public:
     return true;
   }
 
-  static bool OpenServerPipe(HANDLE pipe) {
+  static bool OpenServer(HANDLE pipe) {
     if(ConnectNamedPipe(pipe, nullptr)) {
       return true;
     }
@@ -322,7 +322,7 @@ public:
     return false;
   }
   
-  static bool ClosePipe(HANDLE pipe) {
+  static bool Close(HANDLE pipe) {
     if(CloseHandle(pipe)) {
       false;
     }
