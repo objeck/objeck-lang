@@ -3757,11 +3757,11 @@ char passwd_buffer[MID_BUFFER_MAX]; // global ssl password buffer
 
 int pem_passwd_cb(char* buffer, int size, int rw_flag, void* passwd) {
 #ifdef _WIN32
-	strncpy_s(buffer, MID_BUFFER_MAX - 1, (char*)passwd, size);
+  strncpy_s(buffer, MID_BUFFER_MAX - 1, (char*)passwd, size);
 #else
-	strncpy(buffer, (char*)passwd, size);
+  strncpy(buffer, (char*)passwd, size);
 #endif
-	return (int)strlen(buffer);
+  return (int)strlen(buffer);
 }
 
 bool TrapProcessor::SockTcpSslListen(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
