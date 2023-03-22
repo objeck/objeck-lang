@@ -4604,12 +4604,12 @@ bool TrapProcessor::PipeCreate(StackProgram* program, size_t* inst, size_t*& op_
 
 #ifdef _WIN32
     HANDLE pipe;
-    if(Pipe::CreatePipe(filename, pipe)) {
+    if(Pipe::Create(filename, pipe)) {
       instance[0] = (size_t)pipe;
     }
 #else
     int server_pipe;
-    if(Pipe::CreatePipe(filename, server_pipe)) {
+    if(Pipe::Create(filename, server_pipe)) {
       instance[0] = server_pipe;
   }
 #endif
@@ -4624,7 +4624,7 @@ bool TrapProcessor::PipeConnect(StackProgram* program, size_t* inst, size_t*& op
   if(instance && instance[0] && (int)instance[1] == -3 /* Mode->CREATE */) {
 #ifdef _WIN32
     const HANDLE pipe = (HANDLE)instance[0];
-    if(Pipe::OpenServerPipe(pipe)) {
+    if(Pipe::OpenServer(pipe)) {
       PushInt(1, op_stack, stack_pos);
     }
     else {
@@ -4633,7 +4633,7 @@ bool TrapProcessor::PipeConnect(StackProgram* program, size_t* inst, size_t*& op
 #else
     int client_pipe;
     const int server_pipe = (int)instance[0];
-    if(Pipe::OpenServerPipe(server_pipe, client_pipe)) {
+    if(Pipe::OpenServer(server_pipe, client_pipe)) {
       instance[0] = client_pipe;
       PushInt(1, op_stack, stack_pos);
     }
@@ -4659,7 +4659,7 @@ bool TrapProcessor::PipeOpen(StackProgram* program, size_t* inst, size_t*& op_st
     int pipe = (int)instance[0];
 #endif
     const std::string filename = UnicodeToBytes((wchar_t*)(((size_t*)instance[2]) + 3));
-    if(Pipe::OpenClientPipe(filename, pipe)) {
+    if(Pipe::OpenClient(filename, pipe)) {
       PushInt(1, op_stack, stack_pos);
     }
     else {
@@ -4684,7 +4684,7 @@ bool TrapProcessor::PipeClose(StackProgram* program, size_t* inst, size_t*& op_s
 #else
       const int pipe = (int)instance[0];
 #endif
-      Pipe::ClosePipe(pipe);
+      Pipe::Close(pipe);
     }
     // client pipe
     else {
@@ -4693,7 +4693,7 @@ bool TrapProcessor::PipeClose(StackProgram* program, size_t* inst, size_t*& op_s
 #else
       const int pipe = (int)instance[0];
 #endif
-      Pipe::ClosePipe(pipe);
+      Pipe::Close(pipe);
     }
   }
 
