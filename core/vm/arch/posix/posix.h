@@ -267,58 +267,48 @@ public:
   }
   
   static char ReadByte(int pipe) {
-    // return fgetc(pipe);
-    return false;
+    char value;
+    if(recv(pipe, &value, 1, 0)) {
+      return '\0';
+    }
+    
+    return value;
   }
 
   static size_t ReadByteArray(char* buffer, size_t offset, size_t num, int pipe) {
-    // return fread(buffer + offset, 1, num, pipe);
-    return false;
+    return recv(pipe, buffer + offset, num, 0);
   }
 
   static size_t WriteByteArray(const char* buffer, size_t offset, size_t num, int pipe) {
-    /*
-    size_t written = 0;
-    
-    for(size_t i = 0; i < num; i +=1) {
-      fputc(*(buffer + offset), pipe);
-    }
-    
-    return written;
-    */
-
-    return false;
+    return send(pipe, buffer + offset, num, 0);
   }
-
+  
   static bool WriteByte(char value, int pipe) {
-    // return fputc(value, pipe);
-    return false;
+    return send(pipe, &value, 1, 0);
   }
-
+  
   static std::string ReadString(int pipe) {
-    /*
     std::string output;
-    
-    int value;
-    do {
-      value = fgetc(pipe);	
-      if(value != '\0') {
-	output += (char)value;
-      }
-    }
-    while(value != '\0');
-	
-    return output;
-    */
-    return "";
-  }
 
+    bool done = false;
+    char buffer[MID_BUFFER_MAX];
+    do {
+      const int count = recv(pipe, buffer, MID_BUFFER_MAX - 1, 0);
+      if(count < MID_BUFFER_MAX - 1) {
+	done = true;
+      }
+
+      buffer[count] = '\0';
+      output.append(buffer);
+    }
+    while(!done);
+    
+    return output;
+  }
+  
   static bool WriteString(const std::string& line, int pipe) {
-    /*
-    const size_t len = line.size() + 1;
-    return fwrite(line.c_str(), 1, len, pipe) == len;
-    */
-    return false;
+    const size_t num = line.size() + 1;
+    return send(pipe, line.c_str(), num, 0) == (int)num;
   }
 };
 
