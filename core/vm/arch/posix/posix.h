@@ -204,18 +204,18 @@ class File {
  ****************************/
 class Pipe {
 public:
-  static bool Create(const std::string& name, int& server_pipe) {
+  static bool Create(const char* name, int& server_pipe) {
     server_pipe = socket(AF_UNIX, SOCK_STREAM, 0);
     if(server_pipe < 0) {
       return false;
     }
 
-    unlink(name.c_str());
+    unlink(name);
     
     struct sockaddr_un server_addr;
     memset(&server_addr, 0, sizeof(struct sockaddr_un));
     server_addr.sun_family = AF_UNIX;   
-    strcpy(server_addr.sun_path, name.c_str());
+    strcpy(server_addr.sun_path, name);
     
     const int len = sizeof(server_addr);
     if(bind(server_pipe, (struct sockaddr*) &server_addr, len) < 0) {
@@ -243,7 +243,7 @@ public:
     return true;
   }
   
-  static bool OpenClient(const std::string& name, int& client_pipe) {
+  static bool OpenClient(const char* name, int& client_pipe) {
     client_pipe = socket(AF_UNIX, SOCK_STREAM, 0);
     if(client_pipe < 0) {
       return false;
@@ -252,7 +252,7 @@ public:
     struct sockaddr_un client_addr;
     memset(&client_addr, 0, sizeof(struct sockaddr_un));
     client_addr.sun_family = AF_UNIX;   
-    strcpy(client_addr.sun_path, name.c_str());
+    strcpy(client_addr.sun_path, name);
     
     const int len = sizeof(client_addr);
     if(connect(client_pipe, (struct sockaddr*)&client_addr, len) < 0) {
