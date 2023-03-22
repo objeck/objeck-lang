@@ -304,15 +304,7 @@ public:
 
     return true;
   }
-
-  static bool ClosePipe(HANDLE pipe) {
-    if(CloseHandle(pipe)) {
-      false;
-    }
-
-    return true;
-  }
-
+  
   static bool OpenClientPipe(const std::string& name, HANDLE& pipe) {
     pipe = CreateFile(name.c_str(), GENERIC_READ | GENERIC_WRITE, 0, nullptr, OPEN_EXISTING, 0, nullptr);
     if(pipe == INVALID_HANDLE_VALUE) {
@@ -329,7 +321,15 @@ public:
 
     return false;
   }
+  
+  static bool ClosePipe(HANDLE pipe) {
+    if(CloseHandle(pipe)) {
+      false;
+    }
 
+    return true;
+  }
+  
   static char ReadByte(HANDLE pipe) {
     char buffer;
     DWORD read;
