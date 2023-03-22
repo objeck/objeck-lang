@@ -4596,7 +4596,7 @@ bool TrapProcessor::FileRewind(StackProgram* program, size_t* inst, size_t* &op_
 bool TrapProcessor::PipeCreate(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) 
 {
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  size_t* array = (size_t*)instance[1];
+  size_t* array = (size_t*)instance[3];
 
   if(array && instance) {
     array = (size_t*)array[0];
@@ -4608,8 +4608,9 @@ bool TrapProcessor::PipeCreate(StackProgram* program, size_t* inst, size_t*& op_
       instance[0] = (size_t)pipe;
     }
 #else
-    if(Pipe::CreatePipe(filename)) {
-      instance[0] = 1;
+    int server_pipe;
+    if(Pipe::CreatePipe(filename, server_pipe)) {
+      instance[1] = server_pipe;
   }
 #endif
   }
@@ -4620,7 +4621,7 @@ bool TrapProcessor::PipeCreate(StackProgram* program, size_t* inst, size_t*& op_
 bool TrapProcessor::PipeConnect(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) 
 {
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  if(instance && instance[0] && (int)instance[2] == -3 /* Mode->CREATE */) {
+  if(instance && (instance[0] || instance[1])  && (int)instance[2] == -3 /* Mode->CREATE */) {
 #ifdef _WIN32
     const HANDLE pipe = (HANDLE)instance[0];
     if(Pipe::OpenServerPipe(pipe)) {
@@ -4630,19 +4631,11 @@ bool TrapProcessor::PipeConnect(StackProgram* program, size_t* inst, size_t*& op
       PushInt(0, op_stack, stack_pos);
     }
 #else
-    size_t* array = (size_t*)instance[1];
-    if(array) {
-      array = (size_t*)array[0];
-      const std::string name = UnicodeToBytes((wchar_t*)(array + 3));
-      
-      FILE* pipe;
-      if(Pipe::OpenPipe(name, pipe)) {
-        instance[0] = (size_t)pipe;
-        PushInt(1, op_stack, stack_pos);
-      }
-      else {
-        PushInt(0, op_stack, stack_pos);
-      }
+    int client_pipe;
+    const int server_pipe = (int)instance[1];
+    if(Pipe::OpenServerPipe(server_pipe, client_pipe)) {
+      instance[0] = client_pipe;
+      PushInt(1, op_stack, stack_pos);
     }
     else {
       PushInt(0, op_stack, stack_pos);
@@ -4659,28 +4652,53 @@ bool TrapProcessor::PipeConnect(StackProgram* program, size_t* inst, size_t*& op
 bool TrapProcessor::PipeOpen(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) 
 {
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  if(instance && instance[0] && instance[1] && (int)instance[2] == -4 /* Mode->OPEN */) {
-    const std::string name = UnicodeToBytes((wchar_t*)(((size_t*)instance[1]) + 3));
+  if(instance && instance[0] && instance[3] && (int)instance[2] == -4 /* Mode->OPEN */) {
 #ifdef _WIN32
     HANDLE pipe = (HANDLE)instance[0];
+#else
+    int pipe = (int)instance[0];
+#endif
+    const std::string name = UnicodeToBytes((wchar_t*)(((size_t*)instance[3]) + 3));
     if(Pipe::OpenClientPipe(name, pipe)) {
       PushInt(1, op_stack, stack_pos);
     }
     else {
       PushInt(0, op_stack, stack_pos);
     }
-#else
-    FILE* pipe = (FILE*)instance[0];
-    if(Pipe::OpenPipe(name, pipe)) {
-      PushInt(1, op_stack, stack_pos);
-    }
-    else {
-      PushInt(0, op_stack, stack_pos);
-    }
-#endif
   }
   else {
     PushInt(0, op_stack, stack_pos);
+  }
+
+  return true;
+}
+
+bool TrapProcessor::PipeClose(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* fram) 
+{
+  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+  if(instance && instance[0]) {
+    // server pipe
+    if((int)instance[2] == -3 /* Mode->CREATE */) {
+#ifdef _WIN32
+      const HANDLE pipe = (HANDLE)instance[0];
+      Pipe::ClosePipe(pipe);
+#else
+      // server
+      Pipe::ClosePipe((int)instance[1]);
+      // client
+      Pipe::ClosePipe((int)instance[0]);
+#endif
+    }
+    // client pipe
+    else {
+#ifdef _WIN32
+      const HANDLE pipe = (HANDLE)instance[0];
+      Pipe::ClosePipe(pipe);
+#else
+      int pipe = (int)instance[0];
+      Pipe::ClosePipe(pipe);
+#endif
+    }
   }
 
   return true;
@@ -4694,7 +4712,7 @@ bool TrapProcessor::PipeInByte(StackProgram* program, size_t* inst, size_t*& op_
     HANDLE pipe = (HANDLE)instance[0];
     PushInt(Pipe::ReadByte(pipe), op_stack, stack_pos);
 #else
-    FILE* pipe = (FILE*)instance[0];
+    int pipe = (int)instance[0];
     PushInt(Pipe::ReadByte(pipe), op_stack, stack_pos);
 #endif
   }
@@ -4715,7 +4733,7 @@ bool TrapProcessor::PipeOutByte(StackProgram* program, size_t* inst, size_t*& op
     HANDLE pipe = (HANDLE)instance[0];
     PushInt(Pipe::WriteByte(value, pipe), op_stack, stack_pos);
 #else
-    FILE* pipe = (FILE*)instance[0];
+    int pipe = (int)instance[0];
     PushInt(Pipe::WriteByte(value, pipe), op_stack, stack_pos);
 #endif
   }
@@ -4737,7 +4755,7 @@ bool TrapProcessor::PipeInByteAry(StackProgram* program, size_t* inst, size_t*& 
 #ifdef _WIN32
     HANDLE pipe = (HANDLE)instance[0];
 #else
-    FILE* pipe = (FILE*)instance[0];
+    int pipe = (int)instance[0];
 #endif
     char* buffer = (char*)(array + 3);
     const size_t status = Pipe::ReadByteArray(buffer, offset, num, pipe);
@@ -4762,7 +4780,7 @@ bool TrapProcessor::PipeInCharAry(StackProgram* program, size_t* inst, size_t*& 
 #ifdef _WIN32
     HANDLE pipe = (HANDLE)instance[0];
 #else
-    FILE* pipe = (FILE*)instance[0];
+    int pipe = (int)instance[0];
 #endif
 
     // read from pipe
@@ -4807,7 +4825,7 @@ bool TrapProcessor::PipeOutByteAry(StackProgram* program, size_t* inst, size_t*&
 #ifdef _WIN32
     HANDLE pipe = (HANDLE)instance[0];
 #else
-    FILE* pipe = (FILE*)instance[0];
+    int pipe = (int)instance[0];
 #endif
     char* buffer = (char*)(array + 3);
     PushInt(Pipe::WriteByteArray(buffer, offset, num, pipe), op_stack, stack_pos);
@@ -4830,7 +4848,7 @@ bool TrapProcessor::PipeOutCharAry(StackProgram* program, size_t* inst, size_t*&
 #ifdef _WIN32
     HANDLE pipe = (HANDLE)instance[0];
 #else
-    FILE* pipe = (FILE*)instance[0];
+    int pipe = (int)instance[0];
 #endif
     const wchar_t* buffer = (wchar_t*)(array + 3);
     // copy sub buffer
@@ -4855,7 +4873,7 @@ bool TrapProcessor::PipeInString(StackProgram* program, size_t* inst, size_t*& o
     HANDLE pipe = (HANDLE)instance[0];
     std::string buffer = Pipe::ReadString(pipe);
 #else
-    FILE* pipe = (FILE*)instance[0];
+    int pipe = (int)instance[0];
     std::string buffer = Pipe::ReadString(pipe);
 #endif
     
@@ -4888,38 +4906,9 @@ bool TrapProcessor::PipeOutString(StackProgram* program, size_t* inst, size_t*& 
 #ifdef _WIN32
     HANDLE pipe = (HANDLE)instance[0];
 #else
-    FILE* pipe = (FILE*)instance[0];
+    int pipe = (int)instance[0];
 #endif
     Pipe::WriteString(output, pipe);
-  }
-
-  return true;
-}
-
-bool TrapProcessor::PipeClose(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* fram) 
-{
-  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  if(instance && instance[0]) {
-    // server pipe
-    if((int)instance[2] == -3 /* Mode->CREATE */) {
-#ifdef _WIN32
-      const HANDLE pipe = (HANDLE)instance[0];
-      Pipe::ClosePipe(pipe);
-#else
-      FILE* pipe = (FILE*) instance[0];
-      Pipe::ClosePipe(pipe);
-#endif
-    }
-    // client pipe
-    else {
-#ifdef _WIN32
-      const HANDLE pipe = (HANDLE)instance[0];
-      Pipe::ClosePipe(pipe);
-#else
-      FILE* pipe = (FILE*) instance[0];
-      Pipe::ClosePipe(pipe);
-#endif
-    }
   }
 
   return true;
