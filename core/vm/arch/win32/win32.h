@@ -294,8 +294,8 @@ public:
   static bool Create(const char* name, HANDLE& pipe) {
     pipe = CreateNamedPipe(name, PIPE_ACCESS_DUPLEX, PIPE_TYPE_BYTE |
                            PIPE_READMODE_BYTE | PIPE_WAIT, PIPE_UNLIMITED_INSTANCES, 
-                           3 * 512 * 1024, // output buffer size
-                           3 * 512 * 1024, // input buffer size
+                           1 * 512 * 1024, // output buffer size
+                           4 * 512 * 1024, // input buffer size
                            0, nullptr);
     if(pipe == INVALID_HANDLE_VALUE) {
       return false;
