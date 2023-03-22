@@ -4651,8 +4651,11 @@ bool TrapProcessor::PipeConnect(StackProgram* program, size_t* inst, size_t*& op
 
 bool TrapProcessor::PipeOpen(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) 
 {
+  const int mode = (int)PopInt(op_stack, stack_pos);
+  size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  if(instance && instance[0] && instance[2] && (int)instance[1] == -4 /* Mode->OPEN */) {
+
+  if(instance && array && mode == -4 /* Mode->OPEN */) {
 #ifdef _WIN32
     HANDLE pipe = (HANDLE)instance[0];
     const std::string filename = "\\\\.\\pipe\\" + UnicodeToBytes((wchar_t*)(((size_t*)instance[2]) + 3));
