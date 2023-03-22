@@ -323,7 +323,7 @@ public:
   
   static bool Close(HANDLE pipe) {
     if(CloseHandle(pipe)) {
-      false;
+      return false;
     }
 
     return true;
