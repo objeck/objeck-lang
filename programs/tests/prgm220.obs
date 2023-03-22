@@ -6,12 +6,21 @@ class Hello {
 				"Unable to connect pipe!"->PrintLine();	
 			};
 
-			buffer := Byte->New[4];
-			pipe->ReadBuffer(0, 4, buffer);
+			# byte
+			pipe->ReadByte()->PrintLine();
 
-			buffer[0]->PrintLine();
-			buffer[3]->PrintLine();
+			# bytes
+			bytes := Byte->New[4];
+			pipe->ReadBuffer(0, 4, bytes);
+			bytes[0]->PrintLine();
+			bytes[3]->PrintLine();
 
+			# chars
+			chars := Char->New[4];
+			pipe->ReadBuffer(0, 4, chars);
+			chars[0]->PrintLine();
+			chars[3]->PrintLine();
+			
 			pipe->Close();
 		};
 	}

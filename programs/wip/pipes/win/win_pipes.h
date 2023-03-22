@@ -4,6 +4,7 @@
 #include <iostream>
 #include <string>
 #include <windows.h>
+#include "win_util.h"
 
 #define BUFFER_MAX 4096
 
@@ -54,12 +55,12 @@ std::string ReadLine(HANDLE pipe) {
 	char buffer[BUFFER_MAX];
 	do {
 		if(ReadFile(pipe, buffer, BUFFER_MAX - 1, &read, nullptr)) {
-			buffer[read] = '\0';
+			buffer[read] = '/0';
 			line.append(buffer);
 			done = true;
 		}
 		else if(GetLastError() == ERROR_MORE_DATA) {
-			buffer[read] = '\0';
+			buffer[read] = '/0';
 			line.append(buffer);
 		}
 		else {
@@ -71,8 +72,28 @@ std::string ReadLine(HANDLE pipe) {
 	return line;
 }
 
+bool WriteByte(char buffer, HANDLE pipe) {
+	DWORD written;
+	if(WriteFile(pipe, &buffer, 1, &written, nullptr)) {
+		return written == 1;
+	}
+
+	return false;
+}
+
 size_t WriteBytes(char* buffer, size_t num, HANDLE pipe) {
 	DWORD written;
+	if(WriteFile(pipe, buffer, num, &written, nullptr)) {
+		return written;
+	}
+
+	return 0;
+}
+
+size_t WriteChars(const wchar_t* buffer, size_t num, HANDLE pipe) {
+	DWORD written;
+
+	const char* bytes = UnicodeToBytes(buffer).c_str();
 	if(WriteFile(pipe, buffer, num, &written, nullptr)) {
 		return written;
 	}
