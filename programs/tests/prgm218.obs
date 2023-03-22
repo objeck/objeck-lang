@@ -1,0 +1,17 @@
+class Hello {
+	function : Main(args : String[]) ~ Nil {
+		foo := Foo->New();
+		foo->HiYa();
+	}
+}
+
+#~
+class Foo {
+	New : private() {
+	}
+
+	method : public : HiYa() ~ Nil {
+		"HiYa"->PrintLine();
+	}
+}
+~#
