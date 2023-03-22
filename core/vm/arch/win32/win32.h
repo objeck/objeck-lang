@@ -291,13 +291,12 @@ class File {
  ****************************/
 class Pipe {
 public:
-  static bool Create(const std::string& name, HANDLE& pipe) {
-    pipe = CreateNamedPipe(name.c_str(),
-                           PIPE_ACCESS_DUPLEX, PIPE_TYPE_BYTE |
-                           PIPE_READMODE_BYTE |
-                           PIPE_WAIT,
-                           // TODO: 1.5 MB source files
-                           PIPE_UNLIMITED_INSTANCES, 1024 * 16, 1024 * 16, 0, nullptr);
+  static bool Create(const char* name, HANDLE& pipe) {
+    pipe = CreateNamedPipe(name, PIPE_ACCESS_DUPLEX, PIPE_TYPE_BYTE |
+                           PIPE_READMODE_BYTE | PIPE_WAIT, PIPE_UNLIMITED_INSTANCES, 
+                           3 * 512 * 1024, // output buffer size
+                           3 * 512 * 1024, // input buffer size
+                           0, nullptr);
     if(pipe == INVALID_HANDLE_VALUE) {
       return false;
     }
@@ -305,8 +304,8 @@ public:
     return true;
   }
   
-  static bool OpenClient(const std::string& name, HANDLE& pipe) {
-    pipe = CreateFile(name.c_str(), GENERIC_READ | GENERIC_WRITE, 0, nullptr, OPEN_EXISTING, 0, nullptr);
+  static bool OpenClient(const char* name, HANDLE& pipe) {
+    pipe = CreateFile(name, GENERIC_READ | GENERIC_WRITE, 0, nullptr, OPEN_EXISTING, 0, nullptr);
     if(pipe == INVALID_HANDLE_VALUE) {
       return false;
     }
