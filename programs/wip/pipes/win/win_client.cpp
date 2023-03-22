@@ -1,7 +1,7 @@
 #include "win_pipes.h"
 
 int main() {
-   const std::string name = "\\\\.\\pipe\\objk";
+   const std::string name = "\\\\.\\pipe\\foo";
 
    HANDLE pipe;
    if(!OpenClientPipe(name, pipe)) {
