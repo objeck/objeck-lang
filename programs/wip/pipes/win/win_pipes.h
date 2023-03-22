@@ -71,6 +71,15 @@ std::string ReadLine(HANDLE pipe) {
 	return line;
 }
 
+size_t WriteBytes(char* buffer, size_t num, HANDLE pipe) {
+	DWORD written;
+	if(WriteFile(pipe, buffer, num, &written, nullptr)) {
+		return written;
+	}
+
+	return 0;
+}
+
 bool WriteLine(const std::string &line, HANDLE pipe) {
 	DWORD written;
 	const size_t len = line.size() + 1;
