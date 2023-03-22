@@ -46,6 +46,7 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <netdb.h>
+#include <sys/un.h>
 #include <pwd.h>
 #include <grp.h>
 
@@ -203,40 +204,80 @@ class File {
  ****************************/
 class Pipe {
 public:
-  static bool CreatePipe(const std::string& name) {
-    if(mkfifo(name.c_str(), S_IRWXU)) {
+  static bool CreatePipe(const std::string& name, int& server_pipe) {
+    server_pipe = socket(AF_UNIX, SOCK_STREAM, 0);
+    if(server_pipe < 0) {
+      return false;
+    }
+
+    unlink(name.c_str());
+    
+    struct sockaddr_un server_addr;
+    memset(&server_addr, 0, sizeof(struct sockaddr_un));
+    server_addr.sun_family = AF_UNIX;   
+    strcpy(server_addr.sun_path, name.c_str());
+    
+    const int len = sizeof(server_addr);
+    if(bind(server_pipe, (struct sockaddr*) &server_addr, len) < 0) {
       return false;
     }
 
     return true;
   }
 
-  static bool OpenPipe(const std::string& name, FILE*& pipe) {
-    pipe = fopen(name.c_str(), "r+b");
-    if(!pipe) {
+  static bool OpenServerPipe(int server_pipe, int &client_pipe) {
+    if(listen(server_pipe, 4) < 0){ 
       return false;
     }
-
+    
+    struct sockaddr_un client_addr;
+    memset(&client_addr, 0, sizeof(struct sockaddr_un));
+    
+    socklen_t len;
+    client_pipe = accept(server_pipe, (struct sockaddr*)&client_addr, &len);
+    
     return true;
   }
   
-  static bool ClosePipe(FILE* pipe) {
-    if(fclose(pipe)) {
+  static bool OpenClientPipe(const std::string& name, int& client_pipe) {
+    client_pipe = socket(AF_UNIX, SOCK_STREAM, 0);
+    if(client_pipe < 0) {
       return false;
     }
-
+    
+    struct sockaddr_un client_addr;
+    memset(&client_addr, 0, sizeof(struct sockaddr_un));
+    client_addr.sun_family = AF_UNIX;   
+    strcpy(client_addr.sun_path, name.c_str());
+    
+    const int len = sizeof(client_addr);
+    if(bind(client_sock, (struct sockaddr *) &client_sockaddr, len) < 0) {
+      return false;
+    }
+    
+    if(connect(client_pipe, (struct sockaddr*)&client_addr, len) < 0) {
+      return false;
+    }
+    
     return true;
   }
-
-  static char ReadByte(FILE* pipe) {
-    return fgetc(pipe);
+  
+  static void ClosePipe(int pipe) {
+    close(pipe);
+  }
+  
+  static char ReadByte(int pipe) {
+    // return fgetc(pipe);
+    return false;
   }
 
-  static size_t ReadByteArray(char* buffer, size_t offset, size_t num, FILE* pipe) {
-    return fread(buffer + offset, 1, num, pipe);
+  static size_t ReadByteArray(char* buffer, size_t offset, size_t num, int pipe) {
+    // return fread(buffer + offset, 1, num, pipe);
+    return false;
   }
 
-  static size_t WriteByteArray(const char* buffer, size_t offset, size_t num, FILE* pipe) {
+  static size_t WriteByteArray(const char* buffer, size_t offset, size_t num, int pipe) {
+    /*
     size_t written = 0;
     
     for(size_t i = 0; i < num; i +=1) {
@@ -244,13 +285,18 @@ public:
     }
     
     return written;
+    */
+
+    return false;
   }
 
-  static bool WriteByte(char value, FILE* pipe) {
-    return fputc(value, pipe);
+  static bool WriteByte(char value, int pipe) {
+    // return fputc(value, pipe);
+    return false;
   }
 
-  static std::string ReadString(FILE* pipe) {
+  static std::string ReadString(int pipe) {
+    /*
     std::string output;
     
     int value;
@@ -263,11 +309,16 @@ public:
     while(value != '\0');
 	
     return output;
+    */
+    return "";
   }
 
-  static bool WriteString(const std::string& line, FILE* pipe) {
+  static bool WriteString(const std::string& line, int pipe) {
+    /*
     const size_t len = line.size() + 1;
     return fwrite(line.c_str(), 1, len, pipe) == len;
+    */
+    return false;
   }
 };
 

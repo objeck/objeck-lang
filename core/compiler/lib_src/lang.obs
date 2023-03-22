@@ -6310,9 +6310,10 @@ bundle System.IO {
 	Named pipe support
 	~#
 	class Pipe implements InputStream, OutputStream {
-		@handle : Int;
-		@name : String;
+		@client_handle : Int;
+		@server_handle : Int;		
 		@mode : Pipe->Mode;
+		@name : String;
 
 		#~
 		Pipe modes
@@ -6353,7 +6354,7 @@ bundle System.IO {
 		@return true if pipe is open, false otherwise
 		~#
 		method : public : IsOpen() ~ Bool {
-			return @handle = 0 ? false : true;
+			return @client_handle = 0 ? false : true;
 		}
 
 		#~
@@ -6399,7 +6400,7 @@ bundle System.IO {
 		@return character string
 		~#
 		method : public : ReadLine() ~ System.String {
-			if(@handle = 0) {
+			if(@client_handle = 0) {
 				return Nil;
 			};
 			
