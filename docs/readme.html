@@ -14,16 +14,16 @@ xmlns="http://www.w3.org/TR/REC-html40">
  <o:DocumentProperties>
   <o:Author>Randy Hollines</o:Author>
   <o:LastAuthor>Randy Hollines</o:LastAuthor>
-  <o:Revision>147</o:Revision>
-  <o:TotalTime>272</o:TotalTime>
+  <o:Revision>152</o:Revision>
+  <o:TotalTime>281</o:TotalTime>
   <o:Created>2022-09-01T22:16:00Z</o:Created>
-  <o:LastSaved>2023-03-21T17:34:00Z</o:LastSaved>
+  <o:LastSaved>2023-03-22T19:16:00Z</o:LastSaved>
   <o:Pages>4</o:Pages>
-  <o:Words>1005</o:Words>
-  <o:Characters>5735</o:Characters>
+  <o:Words>1003</o:Words>
+  <o:Characters>5718</o:Characters>
   <o:Lines>47</o:Lines>
   <o:Paragraphs>13</o:Paragraphs>
-  <o:CharactersWithSpaces>6727</o:CharactersWithSpaces>
+  <o:CharactersWithSpaces>6708</o:CharactersWithSpaces>
   <o:Version>16.00</o:Version>
  </o:DocumentProperties>
 </xml><![endif]-->
@@ -53,7 +53,7 @@ xmlns="http://www.w3.org/TR/REC-html40">
   </w:Compatibility>
   <w:DocumentVariables>
    <w:__Grammarly_42____i>H4sIAAAAAAAEAKtWckksSQxILCpxzi/NK1GyMqwFAAEhoTITAAAA</w:__Grammarly_42____i>
-   <w:__Grammarly_42___1>H4sIAAAAAAAEAKtWcslP9kxRslIyNDYyNTM3MjA1NTA3N7Y0NTZX0lEKTi0uzszPAykwNDSqBQBUOPimLgAAAA==</w:__Grammarly_42___1>
+   <w:__Grammarly_42___1>H4sIAAAAAAAEAKtWcslP9kxRslIyNDYyNTM3MjA1NTA3N7Y0NTZX0lEKTi0uzszPAykwNDSuBQAVCeO/LgAAAA==</w:__Grammarly_42___1>
   </w:DocumentVariables>
   <w:BrowserLevel>MicrosoftInternetExplorer4</w:BrowserLevel>
   <m:mathPr>
@@ -752,7 +752,8 @@ p.MsoSubtitle, li.MsoSubtitle, div.MsoSubtitle
 	color:#5A5A5A;
 	letter-spacing:.75pt;}
 a:link, span.MsoHyperlink
-	{mso-style-priority:99;
+	{mso-style-noshow:yes;
+	mso-style-priority:99;
 	color:#CC9900;
 	text-decoration:underline;
 	text-underline:single;}
@@ -1458,7 +1459,7 @@ programming language)<o:p></o:p></span></h1>
 
 <p class=MsoSubtitle><span style='font-size:10.0pt;line-height:105%;font-family:
 "Calibri",sans-serif;mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:
-minor-latin;mso-bidi-theme-font:minor-latin'>v2023.3.1 (March 22, 2023)<o:p></o:p></span></p>
+minor-latin;mso-bidi-theme-font:minor-latin'>v2023.3.1 (March 23, 2023)<o:p></o:p></span></p>
 
 <p class=MsoSubtitle><span style='font-size:10.0pt;line-height:105%;font-family:
 "Calibri",sans-serif;mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:
@@ -1471,7 +1472,7 @@ notes<o:p></o:p></span></h2>
 
 <p class=MsoNormal style='margin-bottom:0in'><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
-minor-latin'>New features, enhancements, and bug fixes<o:p></o:p></span></p>
+minor-latin'>Support for named pipes, improved LSP support, and bug fixes<o:p></o:p></span></p>
 
 <p class=MsoNormal style='margin-bottom:0in'><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
@@ -1487,8 +1488,7 @@ mso-fareast-font-family:Symbol;mso-bidi-font-family:Symbol'><span
 style='mso-list:Ignore'>·<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
-minor-latin'>Added the ‘Pipe’ class to <span class=SpellE>interprocess</span> communications
-via named pipes (new)<o:p></o:p></span></p>
+minor-latin'>Added ‘Pipe’ to support OS-level IPC (new)<o:p></o:p></span></p>
 
 <p class=MsoListParagraph style='margin-bottom:0in;text-indent:-.25in;
 mso-list:l8 level1 lfo1'><![if !supportLists]><span style='font-family:Symbol;
@@ -1496,7 +1496,7 @@ mso-fareast-font-family:Symbol;mso-bidi-font-family:Symbol'><span
 style='mso-list:Ignore'>·<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
-minor-latin'>Improved STDIO support for pipes (new)<o:p></o:p></span></p>
+minor-latin'>Improved STDIO piping support (new)<o:p></o:p></span></p>
 
 <p class=MsoListParagraph style='margin-bottom:0in;text-indent:-.25in;
 mso-list:l8 level1 lfo1'><![if !supportLists]><span style='font-family:Symbol;
@@ -1504,7 +1504,7 @@ mso-fareast-font-family:Symbol;mso-bidi-font-family:Symbol'><span
 style='mso-list:Ignore'>·<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
-minor-latin'>Optimizations for file I/O routines (new)<o:p></o:p></span></p>
+minor-latin'>Optimized file I/O routines (new)<o:p></o:p></span></p>
 
 <p class=MsoListParagraph style='margin-bottom:0in;text-indent:-.25in;
 mso-list:l8 level1 lfo1'><![if !supportLists]><span style='font-family:Symbol;
@@ -1512,7 +1512,7 @@ mso-fareast-font-family:Symbol;mso-bidi-font-family:Symbol'><span
 style='mso-list:Ignore'>·<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
-minor-latin'>Added ‘Clamp(..)’ function to numeric types (new)<o:p></o:p></span></p>
+minor-latin'>Added ‘Clamp(..)’ function for numeric types (new)<o:p></o:p></span></p>
 
 <p class=MsoListParagraph style='margin-bottom:0in;text-indent:-.25in;
 mso-list:l8 level1 lfo1'><![if !supportLists]><span style='font-family:Symbol;
@@ -1520,7 +1520,7 @@ mso-fareast-font-family:Symbol;mso-bidi-font-family:Symbol'><span
 style='mso-list:Ignore'>·<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
-minor-latin'>Better LSP support for non-<span class=SpellE>VSCode</span> IDEs
+minor-latin'>Improved LSP support for non-<span class=SpellE>VSCode</span> IDEs
 (new)<o:p></o:p></span></p>
 
 <p class=MsoListParagraph style='margin-bottom:0in;text-indent:-.25in;
@@ -1529,7 +1529,7 @@ mso-fareast-font-family:Symbol;mso-bidi-font-family:Symbol'><span
 style='mso-list:Ignore'>·<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span></span><![endif]><span style='font-family:"Calibri",sans-serif;
 mso-ascii-theme-font:minor-latin;mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:
-minor-latin'>Fixed issue <a
+minor-latin'>Fixed issues <a
 href="https://github.com/objeck/objeck-lang/issues/172">#172</a>, <a
 href="https://github.com/objeck/objeck-lang/issues/170">#170</a>, <a
 href="https://github.com/objeck/objeck-lang/issues/169">#169</a>, and <a
@@ -1785,8 +1785,8 @@ mso-fareast-font-family:Calibri;mso-fareast-theme-font:minor-latin;mso-hansi-the
 minor-latin;mso-bidi-theme-font:minor-latin'><span style='mso-list:Ignore'>3.<span
 style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span></span></span><![endif]><span
 style='font-family:"Calibri",sans-serif;mso-ascii-theme-font:minor-latin;
-mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>Note: If you compiled
-Objeck from source under MSYS2 you do not need to include the “\ <span
+mso-hansi-theme-font:minor-latin;mso-bidi-theme-font:minor-latin'>Note: If you
+compiled Objeck from source under MSYS2 you do not need to include the “\ <span
 class=SpellE>objeck</span>-lang\lib\<span class=SpellE>sdl</span>” path as the
 required SDL2 DLLs <span class=GramE>are</span> already in the MSYS2 shell’s
 path.<o:p></o:p></span></p>
