@@ -4600,13 +4600,13 @@ bool TrapProcessor::PipeCreate(StackProgram* program, size_t* inst, size_t*& op_
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
   if(instance && array && mode == -3 /* Mode->CREATE */) {
-    array = (size_t*)array[0];
+    const wchar_t* name = (wchar_t*)(((size_t*)array[0]) + 3);
 
 #ifdef _WIN32
-    const std::string filename = "\\\\.\\pipe\\" + UnicodeToBytes((wchar_t*)(((size_t*)instance[2]) + 3));
+    const std::string filename = "\\\\.\\pipe\\" + UnicodeToBytes(name);
     HANDLE pipe;
 #else
-    const std::string filename = "/tmp/" + UnicodeToBytes((wchar_t*)(((size_t*)instance[2]) + 3));
+    const std::string filename = "/tmp/" + UnicodeToBytes(name);
     int pipe;
 #endif
 
@@ -4656,12 +4656,14 @@ bool TrapProcessor::PipeOpen(StackProgram* program, size_t* inst, size_t*& op_st
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
   if(instance && array && mode == -4 /* Mode->OPEN */) {
+    const wchar_t* name = (wchar_t*)(((size_t*)array[0]) + 3);
+
 #ifdef _WIN32
     HANDLE pipe = (HANDLE)instance[0];
-    const std::string filename = "\\\\.\\pipe\\" + UnicodeToBytes((wchar_t*)(((size_t*)instance[2]) + 3));
+    const std::string filename = "\\\\.\\pipe\\" + UnicodeToBytes(name);
 #else
     int pipe = (int)instance[0];
-    const std::string filename = "/tmp/" + UnicodeToBytes((wchar_t*)(((size_t*)instance[2]) + 3));
+    const std::string filename = "/tmp/" + UnicodeToBytes(name);
 #endif
     if(Pipe::OpenClient(filename.c_str(), pipe)) {
       PushInt(1, op_stack, stack_pos);
