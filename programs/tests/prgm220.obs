@@ -1,0 +1,18 @@
+class Hello {
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() = 1) {
+			pipe := System.IO.Pipe->New(args[0], Pipe->Mode->CREATE);
+			if(<>pipe->Connect()) {
+				"Unable to connect pipe!"->PrintLine();	
+			};
+
+			buffer := Byte->New[4];
+			pipe->ReadBuffer(0, 4, buffer);
+
+			buffer[0]->PrintLine();
+			buffer[3]->PrintLine();
+
+			pipe->Close();
+		};
+	}
+}
