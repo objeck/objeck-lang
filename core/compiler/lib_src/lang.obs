@@ -6307,7 +6307,8 @@ bundle System.IO {
 	}
 
 	#~
-	Named pipe support
+	Named pipe support. 
+	For POSIX, a file backed UNIX socket. For Windows, a named pipe object.
 	~#
 	class Pipe implements InputStream, OutputStream {
 		@handle : Int;
