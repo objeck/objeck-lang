@@ -224,7 +224,7 @@ public:
 
     return true;
   }
-
+  
   static bool OpenServerPipe(int server_pipe, int &client_pipe) {
     if(listen(server_pipe, 4) < 0){ 
       return false;
@@ -233,8 +233,12 @@ public:
     struct sockaddr_un client_addr;
     memset(&client_addr, 0, sizeof(struct sockaddr_un));
     
-    socklen_t len;
-    client_pipe = accept(server_pipe, (struct sockaddr*)&client_addr, &len);
+    socklen_t client_len;
+    client_pipe = accept(server_pipe, (struct sockaddr*)&client_addr, &client_len);
+    if(client_pipe < 0) {
+      return false;
+    }
+    close(server_pipe);
     
     return true;
   }
@@ -251,10 +255,6 @@ public:
     strcpy(client_addr.sun_path, name.c_str());
     
     const int len = sizeof(client_addr);
-    if(bind(client_sock, (struct sockaddr *) &client_sockaddr, len) < 0) {
-      return false;
-    }
-    
     if(connect(client_pipe, (struct sockaddr*)&client_addr, len) < 0) {
       return false;
     }
