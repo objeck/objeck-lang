@@ -828,11 +828,11 @@ bundle System {
 		}
 
 		function : Error(c : Char[]) ~ Nil {
-			STD_ERR_CHAR_ARY;
+			STD_ERR_STRING;
 		}
 
 		function : ErrorLine(c : Char[]) ~ Nil {
-			STD_ERR_CHAR_ARY;
+			STD_ERR_STRING;
 			'\n'->Error();
 		}
 		
