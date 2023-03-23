@@ -93,8 +93,8 @@ size_t WriteBytes(char* buffer, size_t num, HANDLE pipe) {
 size_t WriteChars(const wchar_t* buffer, size_t num, HANDLE pipe) {
 	DWORD written;
 
-	const char* bytes = UnicodeToBytes(buffer).c_str();
-	if(WriteFile(pipe, buffer, num, &written, nullptr)) {
+	const std::string byte_str = UnicodeToBytes(buffer);
+	if(WriteFile(pipe, byte_str.c_str(), num, &written, nullptr)) {
 		return written;
 	}
 

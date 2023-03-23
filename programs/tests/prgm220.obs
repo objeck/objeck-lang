@@ -6,7 +6,7 @@ class Hello {
 				"Unable to connect pipe!"->PrintLine();	
 			};
 
-			# byte
+			# bytePIPE_IN_BYTE
 			pipe->ReadByte()->PrintLine();
 
 			# bytes
@@ -16,10 +16,13 @@ class Hello {
 			bytes[3]->PrintLine();
 
 			# chars
-			chars := Char->New[4];
-			pipe->ReadBuffer(0, 4, chars);
+			chars := Char->New[5];
+			pipe->ReadBuffer(0, 5, chars);
 			chars[0]->PrintLine();
 			chars[3]->PrintLine();
+
+			str := String->New(chars);
+			str->PrintLine();
 			
 			pipe->Close();
 		};
