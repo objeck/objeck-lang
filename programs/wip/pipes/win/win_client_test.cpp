@@ -17,8 +17,8 @@ int main() {
    std::cout << "bytes: wrote=" << WriteBytes(buffer, 4, pipe) << std::endl;
 
    // chars
-   wchar_t wbuffer[] = L"は 世界";
-   std::cout << "chars: wrote=" << WriteChars(wbuffer, 4, pipe) << std::endl;
+   wchar_t wbuffer[] = L"hello";
+   std::cout << "chars: wrote=" << WriteChars(wbuffer, 5, pipe) << std::endl;
 
    // string
 

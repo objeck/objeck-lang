@@ -1945,7 +1945,7 @@ void StackInterpreter::ProcessNewCharArray(StackInstr* instr, size_t* &op_stack,
     indices[dim++] = value;
   }
 
-  // nullptr terminated string 
+  // null-terminated string 
   size++;
   size_t* mem = MemoryManager::AllocateArray((long)(size + ((dim + 2) * sizeof(size_t))), CHAR_ARY_TYPE, op_stack, *stack_pos);
   mem[0] = size - 1;
