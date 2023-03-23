@@ -2903,9 +2903,6 @@ bool TrapProcessor::StdInString(StackProgram* program, size_t* inst, size_t*& op
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(array) {
-    // read input
-    const long max = (long)array[2];
-
     std::string buffer;
     std::getline(std::cin, buffer);
     const std::wstring wbuffer = BytesToUnicode(buffer);
@@ -2913,9 +2910,9 @@ bool TrapProcessor::StdInString(StackProgram* program, size_t* inst, size_t*& op
     // copy to dest
     wchar_t* dest = (wchar_t*)(array + 3);
 #ifdef _WIN32
-    wcsncpy_s(dest, array[0], wbuffer.c_str(), max);
+    wcsncpy_s(dest, array[0] + 1, wbuffer.c_str(), wbuffer.size());
 #else
-    wcsncpy(dest, wbuffer.c_str(), max);
+    wcsncpy(dest, wbuffer.c_str(), wbuffer.size());
 #endif
   }
 
@@ -3599,11 +3596,10 @@ bool TrapProcessor::SockTcpInString(StackProgram* program, size_t* inst, size_t*
       // copy content
       const std::wstring in = BytesToUnicode(buffer);
       wchar_t* out = (wchar_t*)(array + 3);
-      const long max = (long)array[2];
 #ifdef _WIN32
-      wcsncpy_s(out, array[0], in.c_str(), max);
+      wcsncpy_s(out, array[0] + 1, in.c_str(), in.size());
 #else
-      wcsncpy(out, in.c_str(), max);
+      wcsncpy(out, in.c_str(), in.size());
 #endif
     }
   }
@@ -3741,11 +3737,10 @@ bool TrapProcessor::SockTcpSslInString(StackProgram* program, size_t* inst, size
       // copy content
       const std::wstring in = BytesToUnicode(buffer);
       wchar_t* out = (wchar_t*)(array + 3);
-      const long max = (long)array[2];
 #ifdef _WIN32
-      wcsncpy_s(out, array[0], in.c_str(), max - 1);
+      wcsncpy_s(out, array[0] + 1, in.c_str(), in.size());
 #else
-      wcsncpy(out, in.c_str(), max);
+      wcsncpy(out, in.c_str(), in.size());
 #endif
     }
   }
@@ -4554,11 +4549,10 @@ bool TrapProcessor::FileInString(StackProgram* program, size_t* inst, size_t* &o
       }
 
       wchar_t* out = (wchar_t*)(array + 3);
-      const long max = (long)array[2];
 #ifdef _WIN32
-      wcsncpy_s(out, array[0], in.c_str(), max);
+      wcsncpy_s(out, array[0], in.c_str(), in.size());
 #else
-      wcsncpy(out, in.c_str(), max);
+      wcsncpy(out, in.c_str(), in.size());
 #endif
     }
   }
@@ -4798,9 +4792,9 @@ bool TrapProcessor::PipeInCharAry(StackProgram* program, size_t* inst, size_t*& 
 
     // copy
 #ifdef _WIN32
-    wcsncpy_s(out, array[0], in.c_str(), array[2]);
+    wcsncpy_s(out, array[0] + 1, in.c_str(), in.size());
 #else
-    wcsncpy(out, in.c_str(), array[2]);
+    wcsncpy(out, in.c_str(), in.size());
 #endif
 
     // clean up
@@ -4887,11 +4881,10 @@ bool TrapProcessor::PipeInString(StackProgram* program, size_t* inst, size_t*& o
       }
       
       wchar_t* out = (wchar_t*)(array + 3);
-      const long max = (long)array[2];
 #ifdef _WIN32
-      wcsncpy_s(out, array[0], in.c_str(), max);
+      wcsncpy_s(out, array[0] + 1, in.c_str(), in.size());
 #else
-      wcsncpy(out, in.c_str(), max);
+      wcsncpy(out, in.c_str(), in.size());
 #endif
     }
   }
@@ -5112,7 +5105,7 @@ bool TrapProcessor::SockTcpSslInCharAry(StackProgram* program, size_t* inst, siz
       byte_buffer[read] = '\0';
       std::wstring in = BytesToUnicode(byte_buffer);
 #ifdef _WIN32
-      wcsncpy_s(buffer, array[0] + 1, in.c_str(), in.size() - 1);
+      wcsncpy_s(buffer, array[0] + 1, in.c_str(), in.size());
 #else
       wcsncpy(buffer, in.c_str(), in.size());
 #endif
@@ -5231,7 +5224,7 @@ bool TrapProcessor::FileInCharAry(StackProgram* program, size_t* inst, size_t* &
 
     // copy
 #ifdef _WIN32
-    wcsncpy_s(out, array[0], in.c_str(), array[2]);
+    wcsncpy_s(out, array[0] + 1, in.c_str(), in.size());
 #else
     wcsncpy(out, in.c_str(), array[2]);
 #endif
