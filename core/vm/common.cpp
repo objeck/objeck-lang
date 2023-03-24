@@ -4754,8 +4754,7 @@ bool TrapProcessor::PipeInByteAry(StackProgram* program, size_t* inst, size_t*& 
     int pipe = (int)instance[0];
 #endif
     char* buffer = (char*)(array + 3);
-    const size_t status = Pipe::ReadByteArray(buffer, offset, num, pipe);
-    PushInt(status, op_stack, stack_pos);
+    PushInt(Pipe::ReadByteArray(buffer, offset, num, pipe), op_stack, stack_pos);
   }
   else {
     PushInt(-1, op_stack, stack_pos);
@@ -5191,7 +5190,8 @@ bool TrapProcessor::FileInByte(StackProgram* program, size_t* inst, size_t* &op_
   const size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if((FILE*)instance[0]) {
     FILE* file = (FILE*)instance[0];
-    PushInt(fgetc(file), op_stack, stack_pos);
+    const int value = fgetc(file);
+    PushInt(value < 0 ? 0 : value, op_stack, stack_pos);
   }
   else {
     PushInt(0, op_stack, stack_pos);
