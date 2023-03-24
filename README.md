@@ -38,8 +38,8 @@ More Rosetta Code [examples](https://github.com/objeck/objeck-lang/tree/master/p
   * [Closures](https://en.wikipedia.org/wiki/Closure_(computer_programming))
   * [Lambda expressions](https://en.wikipedia.org/wiki/Anonymous_function)
   * [First-class functions](https://en.wikipedia.org/wiki/First-class_function)
-* [Unicode support](https://en.wikipedia.org/wiki/Unicode)
-* OS-level Support
+* [Unicode enabled](https://en.wikipedia.org/wiki/Unicode)
+* OS support
   * [File systems](https://en.wikipedia.org/wiki/File_system)
   * [Sockets](https://en.wikipedia.org/wiki/Network_socket)
   * [Named pipes](https://en.wikipedia.org/wiki/Named_pipe)
