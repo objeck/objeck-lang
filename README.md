@@ -44,7 +44,7 @@ More Rosetta Code [examples](https://github.com/objeck/objeck-lang/tree/master/p
   * [Sockets](https://en.wikipedia.org/wiki/Network_socket)
   * [Named pipes](https://en.wikipedia.org/wiki/Named_pipe)
   * [Threads](https://en.wikipedia.org/wiki/Thread_(computing))
-  * [Date/times](https://en.wikipedia.org/wiki/C_date_and_time_functions#time_t)
+  * [Date/times](https://en.wikipedia.org/wiki/C_date_and_time_functions)
   * [Extension libraries](https://en.wikipedia.org/wiki/Library_(computing))
 * [Garbage collection](https://en.wikipedia.org/wiki/Tracing_garbage_collection)
 * [JIT compilation](https://en.wikipedia.org/wiki/Just-in-time_compilation)
