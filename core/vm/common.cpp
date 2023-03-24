@@ -63,32 +63,32 @@ std::unordered_map<long, StackMethod*> StackProgram::signal_handler_func;
 
 bool StackProgram::AddSignalHandler(long signal_id, StackMethod* mthd)
 {
-	signal_handler_func.insert(std::make_pair(signal_id, mthd));
+  signal_handler_func.insert(std::make_pair(signal_id, mthd));
 
   switch(signal_id) {
   case VM_SIGABRT:
-		std::signal(SIGABRT, StackProgram::SignalHandler);
+    std::signal(SIGABRT, StackProgram::SignalHandler);
     break;
 
-	case VM_SIGFPE:
-		std::signal(SIGFPE, StackProgram::SignalHandler);
-		break;
+  case VM_SIGFPE:
+    std::signal(SIGFPE, StackProgram::SignalHandler);
+    break;
 
-	case VM_SIGILL:
-		std::signal(SIGILL, StackProgram::SignalHandler);
-		break;
+  case VM_SIGILL:
+    std::signal(SIGILL, StackProgram::SignalHandler);
+    break;
 
-	case VM_SIGINT:
+  case VM_SIGINT:
     std::signal(SIGINT, StackProgram::SignalHandler);
-		break;
+    break;
 
-	case VM_SIGSEGV:
-		std::signal(SIGSEGV, StackProgram::SignalHandler);
-		break;
+  case VM_SIGSEGV:
+    std::signal(SIGSEGV, StackProgram::SignalHandler);
+    break;
 
-	case VM_SIGTERM:
-		std::signal(SIGTERM, StackProgram::SignalHandler);
-		break;
+  case VM_SIGTERM:
+    std::signal(SIGTERM, StackProgram::SignalHandler);
+    break;
 
   default:
     return false;
@@ -100,9 +100,9 @@ bool StackProgram::AddSignalHandler(long signal_id, StackMethod* mthd)
 StackMethod* StackProgram::GetSignalHandler(long key)
 {
  std::unordered_map<long, StackMethod*>::iterator found = signal_handler_func.find(key);
-	if(found != signal_handler_func.end()) {
-		return found->second;
-	}
+  if(found != signal_handler_func.end()) {
+    return found->second;
+  }
 
   return nullptr;
 }
@@ -112,7 +112,7 @@ void StackProgram::SignalHandler(int signal)
   StackMethod* called_method = nullptr;
 
   long sys_value = 0;
-	switch(signal) {
+  switch(signal) {
   case SIGABRT: {
     std::unordered_map<long, StackMethod*>::iterator  found = signal_handler_func.find(VM_SIGABRT);
     if(found != signal_handler_func.end()) {
@@ -120,7 +120,7 @@ void StackProgram::SignalHandler(int signal)
       sys_value = VM_SIGABRT;
     }
   }
-		break;
+    break;
 
   case SIGFPE: {
     std::unordered_map<long, StackMethod*>::iterator  found = signal_handler_func.find(VM_SIGFPE);
@@ -129,7 +129,7 @@ void StackProgram::SignalHandler(int signal)
       sys_value = VM_SIGFPE;
     }
   }
-		break;
+    break;
 
   case SIGILL: {
     std::unordered_map<long, StackMethod*>::iterator  found = signal_handler_func.find(VM_SIGILL);
@@ -138,60 +138,60 @@ void StackProgram::SignalHandler(int signal)
       sys_value = VM_SIGILL;
     }
   }
-		break;
+    break;
 
   case SIGINT: {
     std::unordered_map<long, StackMethod*>::iterator  found = signal_handler_func.find(VM_SIGINT);
     if(found != signal_handler_func.end()) {
-			called_method = found->second;
+      called_method = found->second;
       sys_value = VM_SIGINT;
     }
   }
-		break;
+    break;
 
-	case SIGSEGV: {
-	 std::unordered_map<long, StackMethod*>::iterator  found = signal_handler_func.find(VM_SIGSEGV);
-		if(found != signal_handler_func.end()) {
-			called_method = found->second;
+  case SIGSEGV: {
+   std::unordered_map<long, StackMethod*>::iterator  found = signal_handler_func.find(VM_SIGSEGV);
+    if(found != signal_handler_func.end()) {
+      called_method = found->second;
       sys_value = VM_SIGSEGV;
-		}
-	}
+    }
+  }
     break;
 
   case SIGTERM: {
-		 std::unordered_map<long, StackMethod*>::iterator  found = signal_handler_func.find(VM_SIGTERM);
-			if(found != signal_handler_func.end()) {
-				called_method = found->second;
+     std::unordered_map<long, StackMethod*>::iterator  found = signal_handler_func.find(VM_SIGTERM);
+      if(found != signal_handler_func.end()) {
+        called_method = found->second;
         sys_value = VM_SIGTERM;
-			}
-		}
-		break;
-	}
+      }
+    }
+    break;
+  }
 
-	if(called_method) {
-		// init
-		size_t* op_stack = new size_t[OP_STACK_SIZE];
+  if(called_method) {
+    // init
+    size_t* op_stack = new size_t[OP_STACK_SIZE];
     (*op_stack) = sys_value;
-		long* stack_pos = new long;
-		(*stack_pos) = 1;
+    long* stack_pos = new long;
+    (*stack_pos) = 1;
 
-		// execute
-		Runtime::StackInterpreter* intpr = new Runtime::StackInterpreter;
-		Runtime::StackInterpreter::AddThread(intpr);
-		intpr->Execute(op_stack, stack_pos, 0, called_method, nullptr, false);
+    // execute
+    Runtime::StackInterpreter* intpr = new Runtime::StackInterpreter;
+    Runtime::StackInterpreter::AddThread(intpr);
+    intpr->Execute(op_stack, stack_pos, 0, called_method, nullptr, false);
 
-		// clean up
-		delete[] op_stack;
-		op_stack = nullptr;
+    // clean up
+    delete[] op_stack;
+    op_stack = nullptr;
 
-		delete stack_pos;
-		stack_pos = nullptr;
+    delete stack_pos;
+    stack_pos = nullptr;
 
-		Runtime::StackInterpreter::RemoveThread(intpr);
+    Runtime::StackInterpreter::RemoveThread(intpr);
 
-		delete intpr;
-		intpr = nullptr;
-	}
+    delete intpr;
+    intpr = nullptr;
+  }
 }
 
 void StackProgram::InitializeProprieties()
@@ -2157,7 +2157,7 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
 
   case SOCK_TCP_SSL_SRV_CERT:
     return SockTcpSslCertSrv(program, inst, op_stack, stack_pos, frame);
-	
+  
   case SOCK_TCP_SSL_SRV_CLOSE:
     return SockTcpSslCloseSrv(program, inst, op_stack, stack_pos, frame);
 
@@ -2714,13 +2714,13 @@ bool TrapProcessor::StdOutInt(StackProgram* program, size_t* inst, size_t* &op_s
 bool TrapProcessor::StdOutFloat(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
 {
 #ifdef _DEBUG
-	std::wcout << L"  STD_OUT_FLOAT" << std::endl;
+  std::wcout << L"  STD_OUT_FLOAT" << std::endl;
 #endif
 
-	const FLOAT_VALUE value = PopFloat(op_stack, stack_pos);
-	std::wcout << value;
+  const FLOAT_VALUE value = PopFloat(op_stack, stack_pos);
+  std::wcout << value;
 
-	return true;
+  return true;
 }
 
 bool TrapProcessor::StdOutIntFrmt(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
@@ -2729,27 +2729,27 @@ bool TrapProcessor::StdOutIntFrmt(StackProgram* program, size_t* inst, size_t*& 
   std::wcout << L"  STD_INT_FMT" << std::endl;
 #endif
 
-	const long std_format = (long)PopInt(op_stack, stack_pos);
-	switch(std_format) {
-		// DEC
-		// DEFAULT
-	case -17:
+  const long std_format = (long)PopInt(op_stack, stack_pos);
+  switch(std_format) {
+    // DEC
+    // DEFAULT
+  case -17:
     std::wcout << std::dec;
-		break;
+    break;
 
-		// HEX
-	case -18:
-		std::wcout << std::hex;
-		break;
+    // HEX
+  case -18:
+    std::wcout << std::hex;
+    break;
 
-		// OCT
-	case -16:
-		std::wcout << std::oct;
-		break;
+    // OCT
+  case -16:
+    std::wcout << std::oct;
+    break;
 
-	default:
-		break;
-	}
+  default:
+    break;
+  }
 
   return true;
 }
@@ -2757,56 +2757,56 @@ bool TrapProcessor::StdOutIntFrmt(StackProgram* program, size_t* inst, size_t*& 
 bool TrapProcessor::StdOutFloatFrmt(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
 {
 #ifdef _DEBUG
-	std::wcout << L"  STD_OUT_FLOAT" << std::endl;
+  std::wcout << L"  STD_OUT_FLOAT" << std::endl;
 #endif
 
   const long std_format = (long)PopInt(op_stack, stack_pos);
   switch(std_format) {
-		// FIXED
+    // FIXED
     // DEFAULT
   case -20:
     std::wcout << std::fixed;
     break;
 
-	  // SCIENTIFIC
-	case -19:
+    // SCIENTIFIC
+  case -19:
     std::wcout << std::scientific;
-		break;
+    break;
 
-	  // HEX
-	case -18:
+    // HEX
+  case -18:
     std::wcout << std::hexfloat;
-		break;
+    break;
 
   default:
     break;
   }
 
-	return true;
+  return true;
 }
 
 bool TrapProcessor::StdOutFloatPer(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
 {
 #ifdef _DEBUG
-	std::wcout << L"  STD_FLOAT_PER" << std::endl;
+  std::wcout << L"  STD_FLOAT_PER" << std::endl;
 #endif
 
-	const size_t std_per = PopInt(op_stack, stack_pos);
-	std::wcout << std::setprecision(std_per);
+  const size_t std_per = PopInt(op_stack, stack_pos);
+  std::wcout << std::setprecision(std_per);
 
-	return true;
+  return true;
 }
 
 bool TrapProcessor::StdOutWidth(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
 {
 #ifdef _DEBUG
-	std::wcout << L"  STD_WIDTH" << std::endl;
+  std::wcout << L"  STD_WIDTH" << std::endl;
 #endif
 
   const size_t std_width = PopInt(op_stack, stack_pos);
   std::wcout << std::setw(std_width);
 
-	return true;
+  return true;
 }
 
 bool TrapProcessor::StdOutFill(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
@@ -3135,13 +3135,13 @@ bool TrapProcessor::SysCmd(StackProgram* program, size_t* inst, size_t*& op_stac
 
 bool TrapProcessor::SetSignal(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
 {
-	const long mthd_cls_id = (long)PopInt(op_stack, stack_pos);
-	const long signal_id = (long)PopInt(op_stack, stack_pos);
+  const long mthd_cls_id = (long)PopInt(op_stack, stack_pos);
+  const long signal_id = (long)PopInt(op_stack, stack_pos);
 
-	const long cls_id = (mthd_cls_id >> (16 * (1))) & 0xFFFF;
-	const long mthd_id = (mthd_cls_id >> (16 * (0))) & 0xFFFF;
+  const long cls_id = (mthd_cls_id >> (16 * (1))) & 0xFFFF;
+  const long mthd_id = (mthd_cls_id >> (16 * (0))) & 0xFFFF;
 
-	StackMethod* signal_mthd = Loader::GetProgram()->GetClass(cls_id)->GetMethod(mthd_id);
+  StackMethod* signal_mthd = Loader::GetProgram()->GetClass(cls_id)->GetMethod(mthd_id);
   if(signal_mthd) {
     return program->AddSignalHandler(signal_id, signal_mthd);
   }
@@ -3151,36 +3151,36 @@ bool TrapProcessor::SetSignal(StackProgram* program, size_t* inst, size_t*& op_s
 
 bool TrapProcessor::RaiseSignal(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
 {
-	const long signal_id = (long)PopInt(op_stack, stack_pos);
+  const long signal_id = (long)PopInt(op_stack, stack_pos);
 
-	switch(signal_id) {
-	case VM_SIGABRT:
+  switch(signal_id) {
+  case VM_SIGABRT:
     std::raise(SIGABRT);
-		break;
+    break;
 
-	case VM_SIGFPE:
-		std::raise(SIGFPE);
-		break;
+  case VM_SIGFPE:
+    std::raise(SIGFPE);
+    break;
 
-	case VM_SIGILL:
-		std::raise(SIGILL);
-		break;
+  case VM_SIGILL:
+    std::raise(SIGILL);
+    break;
 
-	case VM_SIGINT:
-		std::raise(SIGINT);
-		break;
+  case VM_SIGINT:
+    std::raise(SIGINT);
+    break;
 
-	case VM_SIGSEGV:
-		std::raise(SIGSEGV);
-		break;
+  case VM_SIGSEGV:
+    std::raise(SIGSEGV);
+    break;
 
-	case VM_SIGTERM:
-		std::raise(SIGTERM);
-		break;
+  case VM_SIGTERM:
+    std::raise(SIGTERM);
+    break;
 
     default:
       return false;
-	}
+  }
 
   return true;
 }
@@ -3761,12 +3761,12 @@ int pem_passwd_cb(char* buffer, int size, int rw_flag, void* passwd) {
 
 bool TrapProcessor::SockTcpSslListen(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
 {
-	size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(instance) {
-		size_t* cert_obj = (size_t*)instance[3];
-		size_t* key_obj = (size_t*)instance[4];
-		size_t* passwd_obj = (size_t*)instance[5];
-		const long port = (long)instance[6];
+    size_t* cert_obj = (size_t*)instance[3];
+    size_t* key_obj = (size_t*)instance[4];
+    size_t* passwd_obj = (size_t*)instance[5];
+    const long port = (long)instance[6];
 
     if(cert_obj && key_obj) {
       const std::wstring cert_str((wchar_t*)((size_t*)cert_obj[0] + 3));
@@ -3774,9 +3774,9 @@ bool TrapProcessor::SockTcpSslListen(StackProgram* program, size_t* inst, size_t
 
       SSL_CTX* ctx = SSL_CTX_new(SSLv23_server_method());
       if(!ctx) {
-				PushInt(0, op_stack, stack_pos);
-				instance[0] = instance[1] = instance[2] = 0;
-				return true;
+        PushInt(0, op_stack, stack_pos);
+        instance[0] = instance[1] = instance[2] = 0;
+        return true;
       }
 
       // get password for private key
@@ -3804,17 +3804,17 @@ bool TrapProcessor::SockTcpSslListen(StackProgram* program, size_t* inst, size_t
       
       if(!ok_cert || !ok_key) {
         PushInt(0, op_stack, stack_pos);
-				instance[0] = instance[1] = instance[2] = 0;
-				SSL_CTX_free(ctx);
-				return true;
+        instance[0] = instance[1] = instance[2] = 0;
+        SSL_CTX_free(ctx);
+        return true;
       }
 
       BIO* bio = BIO_new_ssl(ctx, 0);
       if(!bio) {
         PushInt(0, op_stack, stack_pos);
         instance[0] = instance[1] = instance[2] = 0;
-				SSL_CTX_free(ctx);
-				return true;
+        SSL_CTX_free(ctx);
+        return true;
       }
 
       // register and accept connections
@@ -3831,21 +3831,21 @@ bool TrapProcessor::SockTcpSslListen(StackProgram* program, size_t* inst, size_t
       instance[1] = (size_t)bio;
       instance[2] = (size_t)ctx;
 
-			PushInt(1, op_stack, stack_pos);
+      PushInt(1, op_stack, stack_pos);
       return true;
     }
   }
   
   PushInt(0, op_stack, stack_pos);
-	return true;
+  return true;
 }
 
 bool TrapProcessor::SockTcpSslAccept(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
 {
-	size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(instance) {
-		BIO* server_bio = (BIO*)instance[0];
-		BIO* bio = (BIO*)instance[1];
+    BIO* server_bio = (BIO*)instance[0];
+    BIO* bio = (BIO*)instance[1];
     
     if(server_bio && bio) {
       BIO_do_accept(server_bio);
@@ -3920,16 +3920,16 @@ bool TrapProcessor::SockTcpError(StackProgram* program, size_t* inst, size_t*& o
 {
 #ifdef _WIN32
   char error_msg[SMALL_BUFFER_MAX] = {0};
-	FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,	0, WSAGetLastError(), 0, error_msg, SMALL_BUFFER_MAX, 0);
-	char* newline = strrchr(error_msg, '\n');
+  FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,	0, WSAGetLastError(), 0, error_msg, SMALL_BUFFER_MAX, 0);
+  char* newline = strrchr(error_msg, '\n');
   if(newline) {
     *newline = '\0';
   }
-	const std::wstring err_msg = BytesToUnicode(error_msg);
-	PushInt((size_t)CreateStringObject(err_msg, program, op_stack, stack_pos), op_stack, stack_pos);
+  const std::wstring err_msg = BytesToUnicode(error_msg);
+  PushInt((size_t)CreateStringObject(err_msg, program, op_stack, stack_pos), op_stack, stack_pos);
 #else
-		const std::wstring err_msg = BytesToUnicode(strerror(errno));
-		PushInt((size_t)CreateStringObject(err_msg, program, op_stack, stack_pos), op_stack, stack_pos);
+    const std::wstring err_msg = BytesToUnicode(strerror(errno));
+    PushInt((size_t)CreateStringObject(err_msg, program, op_stack, stack_pos), op_stack, stack_pos);
 #endif
   
   return true;
@@ -3951,7 +3951,7 @@ bool TrapProcessor::SockTcpSslError(StackProgram* program, size_t* inst, size_t*
 
 bool TrapProcessor::SockTcpSslCloseSrv(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
 {
-	size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(instance) {
     BIO* srv_bio = (BIO*)instance[0];
     if(srv_bio) {
