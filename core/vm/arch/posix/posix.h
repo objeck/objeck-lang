@@ -215,7 +215,7 @@ public:
     struct sockaddr_un server_addr;
     memset(&server_addr, 0, sizeof(struct sockaddr_un));
     server_addr.sun_family = AF_UNIX;   
-    strcpy(server_addr.sun_path, name);
+    strncpy(server_addr.sun_path, name, sizeof(server_addr.sun_path) - 1);
     
     const int len = sizeof(server_addr);
     if(bind(server_pipe, (struct sockaddr*) &server_addr, len) < 0) {
@@ -233,7 +233,7 @@ public:
     struct sockaddr_un client_addr;
     memset(&client_addr, 0, sizeof(struct sockaddr_un));
     
-    socklen_t client_len;
+    socklen_t client_len = 0;
     client_pipe = accept(server_pipe, (struct sockaddr*)&client_addr, &client_len);
     if(client_pipe < 0) {
       return false;
@@ -252,7 +252,7 @@ public:
     struct sockaddr_un client_addr;
     memset(&client_addr, 0, sizeof(struct sockaddr_un));
     client_addr.sun_family = AF_UNIX;   
-    strcpy(client_addr.sun_path, name);
+    strncpy(client_addr.sun_path, name, sizeof(client_addr.sun_path) - 1);
     
     const int len = sizeof(client_addr);
     if(connect(client_pipe, (struct sockaddr*)&client_addr, len) < 0) {
@@ -294,6 +294,10 @@ public:
     char buffer[MID_BUFFER_MAX];
     do {
       const int count = recv(pipe, buffer, MID_BUFFER_MAX - 1, 0);
+      if(count < 0) {
+        return "";
+      }
+
       if(count < MID_BUFFER_MAX - 1) {
         done = true;
       }
