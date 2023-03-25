@@ -1,0 +1,161 @@
+use Collection;
+use System.IO.Filesystem;
+
+# WDR: https://en.wikipedia.org/wiki/WDR_paper_computer
+class PaperComputer {
+	@file : String;
+	@keywords : Hash<String, IntRef>;
+	@regs : Int[];
+
+	enum Instr {
+		INC,
+		DEC,
+		JMP,
+		ISZ,
+		STP
+	}
+
+	New(file : String) {
+		@file := file;
+		@keywords := Hash->New()<String, IntRef>;
+		@regs := Int->New[2];
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() = 1) {
+			PaperComputer->New(args[0])->Compute();
+		};
+	}
+
+	method : Compute() ~ Nil {
+		instrs := LoadInstrs();
+		if(instrs = Nil) {
+			">>> Invalid instructions <<<"->ErrorLine();
+		};
+
+		Execute(instrs);
+	}
+
+	method : LoadInstrs() ~ Vector<Pair<IntRef, IntRef>> {
+		instrs := Vector->New()<Pair<IntRef, IntRef>>
+
+		file := FileReader->New(@file);
+		leaving {
+			if(file <> Nil) {
+				file->Close();
+			};
+		};
+
+		if(file = Nil) {
+			return Nil;
+		};
+
+		LoadKeywords();
+
+		reg_str := file->ReadLine();
+		parts := reg_str->Trim()->Split(' ');
+		if(parts->Size() <> 2) {
+			return Nil;
+		};
+		@regs[0] := parts[0]->ToInt();
+		@regs[1] := parts[1]->ToInt();
+
+		do {
+			instr_str := file->ReadLine();
+			if(<>instr_str->IsEmpty()) {
+				parts := instr_str->Trim()->Split(' ');
+
+				code_str, oper_str : String;
+				if(parts->Size() = 0) {
+					code_str := instr_str;
+					oper_str := Nil;
+				}
+				else if(parts->Size() = 2) {
+					code_str := parts[0];
+					oper_str := parts[1];
+				}
+				else {
+					return Nil;
+				};
+
+				code := @keywords->Find(code_str);
+				if(code = Nil) {
+					return Nil;
+				};
+
+				if(oper_str = Nil) {
+					instrs->AddBack(Pair->New(code, Nil)<IntRef, IntRef>);
+				}
+				else {
+					oper := oper_str->ToInt();
+					instrs->AddBack(Pair->New(code, IntRef->New(oper))<IntRef, IntRef>);
+				};
+			};
+		}
+		while(<>file->IsEoF())
+
+		return instrs;
+	}
+
+	method : LoadKeywords() ~ Nil {
+		@keywords->Insert("inc", IntRef->New(PaperComputer->Instr->INC));
+		@keywords->Insert("dec", IntRef->New(PaperComputer->Instr->DEC));
+		@keywords->Insert("jmp", IntRef->New(PaperComputer->Instr->JMP));
+		@keywords->Insert("isz", IntRef->New(PaperComputer->Instr->ISZ));
+		@keywords->Insert("stp", IntRef->New(PaperComputer->Instr->STP));
+	}
+
+	method : Execute(instrs : Vector<Pair<IntRef, IntRef>>) ~ Nil {		
+		ip : Int;
+		while(true) {
+			instr := instrs->Get(ip);
+			code := instr->GetFirst()->Get();
+			oper := 0;
+			if(instr->GetSecond() <> Nil) {
+				oper := instr->GetSecond()->Get();
+			};
+
+			select(code) {
+				label PaperComputer->Instr->INC {
+					index := oper - 1;
+					"INC={$index}"->PrintLine();
+					@regs[index] += 1;
+					ip += 1;
+				}
+
+				label PaperComputer->Instr->DEC {
+					index := oper - 1;
+					"DEC={$index}"->PrintLine();
+					@regs[index] -= 1;
+					ip += 1;
+				}
+
+				label PaperComputer->Instr->JMP {
+					ip := oper - 1;
+					"JMP={$ip}"->PrintLine();
+				}
+
+				label PaperComputer->Instr->ISZ {
+					test := @regs[oper - 1]
+					"ISZ={$test}"->PrintLine();
+					if(test = 0) {
+						ip += 2;
+					}
+					else {
+						ip += 1;
+					};
+				}
+
+				label PaperComputer->Instr->STP {
+					"STP"->PrintLine();
+					break;
+				}
+			};
+
+			@regs->ToString()->PrintLine();
+			"---"->PrintLine();
+		};
+
+		"===\nFin."->PrintLine();
+	}
+}
