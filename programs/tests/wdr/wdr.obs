@@ -54,9 +54,12 @@ class PaperComputer {
 
 		reg_str := file->ReadLine();
 		parts := reg_str->Trim()->Split(' ');
+parts->Size()->PrintLine();
+		
 		if(parts->Size() <> 2) {
 			return Nil;
 		};
+
 		@regs[0] := parts[0]->ToInt();
 		@regs[1] := parts[1]->ToInt();
 
