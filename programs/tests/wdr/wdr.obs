@@ -10,11 +10,12 @@ class PaperComputer {
 	enum Instr {
 		INC,
 		DEC,
+
 		JMP,
 		ISZ,
 		STP
 	}
-
+	
 	New(file : String) {
 		@file := file;
 		@keywords := Hash->New()<String, IntRef>;
