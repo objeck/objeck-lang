@@ -352,7 +352,6 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
       ZeroFloatAry(op_stack, stack_pos);
       break;
 
-      // Note: no supported via JIT -- *start*
     case CEIL_FLOAT:
       PushFloat(ceil(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
       break;
@@ -421,8 +420,6 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
       *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2])) = pow(left_double, right_double);
       (*stack_pos)--;
       break;
-
-      // Note: no supported via JIT -- *end*
 
     case I2F:
 #ifdef _DEBUG
@@ -544,10 +541,6 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
     case CRITICAL_END:
       CriticalEnd(op_stack, stack_pos);
       break;
-
-      //
-      // End: Thread support
-      // 
 
     case NEW_BYTE_ARY:
       ProcessNewByteArray(instr, op_stack, stack_pos);

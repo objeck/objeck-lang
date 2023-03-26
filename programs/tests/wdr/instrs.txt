@@ -1,7 +1,14 @@
-0 13
-jmp 4
+0 8
+jmp 6
+inc 1
 inc 1
 dec 2
 isz 2
 jmp 2
+jmp 12
+inc 2
+inc 2
+dec 1
+isz 1
+jmp 9
 stp
