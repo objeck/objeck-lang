@@ -1606,7 +1606,7 @@ bundle System {
 		@ignore-params
 		@return ceiling value
 		~#
-		function : Ceiling(f : Float) ~ Float {
+		function : Ceil(f : Float) ~ Float {
 			CEIL_FLOAT;
 		}
 		
