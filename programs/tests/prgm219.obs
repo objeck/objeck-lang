@@ -1,8 +1,8 @@
 class Foo {
 	function : Main(args : String[]) ~ Nil {
-		2->Pow(3->As(Int))->PrintLine();
+		2->Pow(4.5)->PrintLine();
 
 		s := "foo";
-		s->Pad('#', 3, true)->PrintLine();
+		s->Pad('#', 3)->PrintLine();
 	}
 }

@@ -1085,7 +1085,7 @@ bundle System {
 		@return pseudo power value
 		~#
 		function : Pow(b : Int, r : Int) ~ Int {
-			return Float->Pow(r->As(Float), r->As(Float));
+			return Float->Pow(b->As(Float), r->As(Float));
 		}
 
 		#~
@@ -1097,7 +1097,7 @@ bundle System {
 		function : Pow(b : Int, r : Float) ~ Int {
 			return Float->Pow(b->As(Float), r);
 		}
-		
+
 		#~
 		Returns the smallest integer value
 		@param l value to compare
@@ -1719,19 +1719,19 @@ bundle System {
 		@param r power to raise
 		@return pseudo power value
 		~#
-		function : Pow(b : Float, r : Float) ~ Float {
-			POW_FLOAT;
+		function : Pow(b : Float, r : Int) ~ Float {
+			return Pow(b, r->ToFloat());
 		}
 
 		#~
-		Calculates the power value
-		@param b power base
-		@param r power to raise
-		@return pseudo power value
-		~#
-		function : Pow(b : Float, r : Int) ~ Float {
-			return Pow(b, r->As(Float));
-		}
+    Calculates the power value
+    @param b power base
+    @param r power to raise
+    @return pseudo power value
+    ~#
+    function : Pow(b : Float, r : Float) ~ Float {
+      POW_FLOAT;
+    }
 
 		#~
 		Prints value 
