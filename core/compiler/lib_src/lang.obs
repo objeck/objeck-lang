@@ -1077,6 +1077,16 @@ bundle System {
 
 			return (Float->Random() * 1000000.0)->As(Int) % max;
 		}
+
+		#~
+		Calculates the power value
+		@param b power base
+		@param r power to raise
+		@return pseudo power value
+		~#
+		function : Pow(b : Int, r : Int) ~ Int {
+			return Float->Pow(b, r);
+		}
 		
 		#~
 		Returns the smallest integer value
