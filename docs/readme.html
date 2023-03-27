@@ -1,6 +1,6 @@
 <html>
     <head>
-        <link rel="stylesheet" href="doc/readme.css">
+        <link rel="stylesheet" href="docs/readme.css">
     </head>
     
     <body>
@@ -11,10 +11,10 @@
         <p>Support for named pipes, improved LSP support, and bug fixes</p>
         <p>v2023.3.1</p>
         <ul>
-            <li>Added ‘Pipe’ to support OS-level IPC (new)</li>
+            <li>Added 'Pipe' to support OS-level IPC (new)</li>
             <li>Improved STDIO piping support (new)</li>
             <li>Optimized file I/O routines (new)</li>
-            <li>Added ‘Clamp(..)’ function for numeric types (new)</li>
+            <li>Added 'Clamp(..)' function for numeric types (new)</li>
             <li>Improved LSP support for non-VSCode IDEs (new)</li>
             <li>Updated the SSL Mozilla CA certificate (new)</li>
             <li>Fixed issues<a href="https://github.com/objeck/objeck-lang/issues/172">#172</a>, 
@@ -25,9 +25,9 @@
         
         <p>v2023.3.0</p>
         <ul>
-            <li>Added ‘Get(..)’ and ‘Size(..)’ to the XmlElement class (new)</li>
-            <li>Changed ‘xxxHolder’ type names to ‘xxxRef’ (i.e., IntHoder to IntRef) (new)</li>
-            <li>Changed bundle name ‘Generic.Collection’ to ‘Collection’ (new)</li>
+            <li>Added 'Get(..)' and 'Size(..)' to the XmlElement class (new)</li>
+            <li>Changed 'xxxHolder' type names to 'xxxRef' (i.e., IntHoder to IntRef) (new)</li>
+            <li>Changed bundle name 'Generic.Collection' to 'Collection' (new)</li>
             <li>Improved support for method calls from static declarations 
                 (<a href="https://github.com/objeck/objeck-lang/discussions/166">#166</a>)</li>
             <li>Fixed bug <a href="https://github.com/objeck/objeck-lang/issues/165">#165</a>
@@ -39,14 +39,16 @@
             <li>Enhanced the API tools for C++ library integration</li>
             <li>Added hooks for future GTK support</li>
             <li>General codebase maintenance</li>
-            <li>Fixed bugs<a href="https://github.com/objeck/objeck-lang/issues/160">#160</a> and 
+            <li>Fixed bugs <a href="https://github.com/objeck/objeck-lang/issues/160">#160</a> and 
             <a href="https://github.com/objeck/objeck-lang/issues/163">#163</a></li>
         </ul>
+        
         <p>
-        Please refer to the GitHub <a href="https://github.com/objeck/objeck-lang/issues">project site</a> for
-        additional information.
+        Please refer to the GitHub <a href="https://github.com/objeck/objeck-lang/issues">project site</a> 
+        for additional information.
         </p>
-        <p>The Programmer’s Guide is in the “doc” directory. Additional examples are
+
+        <p>The Programmer's Guide is in the "doc" directory. Additional examples are
         available in the <a href="mailto:Rosetta%20Code%20website">Rosetta Code</a>. 
         If you are facing issues, please submit a <a href="https://github.com/objeck/objeck-lang/issues">bug report</a>.</p>
 
@@ -62,7 +64,7 @@
             <li>doc/syntax – files to enable syntax highlighting for supported editors</li>
             <li>examples/ – source code examples, including a 2D game</li>
             <li>examples/doc – source code for self-documentation system</li>
-            <li>examples/tiny – “tiny” language compiler and VM</li>
+            <li>examples/tiny – "tiny" language compiler and VM</li>
             <li>lib/ – supporting language libraries</li>
             <li>lib/native/ – native OS shared libraries</li>
             <li>lib/native/misc – support file the portable runtime environment</li>
@@ -87,10 +89,10 @@
         <p>To manually set the environment paths in Windows:</p>
         <ol>
             <li><code>set OBECK_LIB_PATH=&lt;program_path&gt;\objeck-lang\lib</code></li>
-            <li><code>set PATH=%PATH%;&lt;program_path&gt;\objeck-lang\bin;C:\Users\&lt;account<a name="_Hlk120707647">&gt;\</a>objeck-lang\lib\sdl</code></li>
+            <li><code>set PATH=%PATH%;&lt;program_path&gt;\objeck-lang\bin;&lt;program_path&gt;\objeck-lang\lib\sdl</code></li>
             <li>Note: If you compiled Objeck from source under MSYS2 you do not need to
             include the <code>\objeck-lang\lib\sdl</code> path as the required SDL2 DLLs are
-            already in the MSYS2 shell’s path.</li>
+            already in the MSYS2 shell's path.</li>
         </ol>
 
         <p>To manually set the environment paths in macOS and Linux:</p>
@@ -100,7 +102,7 @@
         </ol>
 
         <p>On Windows STDIO may be configured to be UFT-8, UTF-16, or binary by setting the environment 
-        variable “OBJECK_STDIO” to “binary” or “utf16”, the default if UTF-8.</p>
+        variable <code>OBJECK_STDIO</code> to "binary" or "utf16", the default if UTF-8.</p>
 
         <p>Simple compile/execute:</p>
         <ol>
@@ -116,7 +118,8 @@
         </ol>
 
         <h3>SDL Support</h3>
-        <p>The 2D gaming framework is built around <a href="https://www.libsdl.org/download-2.0.php">SDL2</a> (&gt;=2.0.9).
+        <p>The 2D gaming framework is built around <a href="https://www.libsdl.org/download-2.0.php">SDL2</a> 
+            (&gt;=2.0.9).
         The Windows distribution contains the required DLLs. Support for other
         platforms is below.</p>
 
@@ -132,14 +135,14 @@
         <h4>For macOS</h4>
         <ol>
             <li>Apple Silicon (arm64)</li>
-            <li>Go to the <code>/lib/native</code> directory an untar the “sdl2_arm64.tgz” file</li>
+            <li>Go to the <code>/lib/native</code> directory an untar the <code>sdl2_arm64.tgz</code> file</li>
             <li>Copy the include and lib files to <code>/usr/local/include</code> and 
             <code>/usr/local/lib</code></li>
         </ol>
 
-        <h3>OpenSSL Support</h3>
+        <h3>Secure Web Server Support</h3>
         <p>The following to generate a self-signed SSL certificate for the
-        ‘TCPSecureSocketServer’ class using OpenSSL commands (for Windows and
+        'TCPSecureSocketServer' class using OpenSSL commands (for Windows and
         Linux):
         </p>
         
@@ -152,14 +155,15 @@
             <li><code>mv local.encrypted.key cert.key</code></li>
             <li><code>rm local.crt local.key</code></li>
             <li><code>chmod 600 cert.key</code></li>
-            <li>Import ‘cert.pem’ into the host OS</code></li>
+            <li>Import 'cert.pem' into the host OS</code></li>
         </ol>
 
         <p>Follow these<a href="https://proxyman.io/posts/2020-09-09-Generate-Self-Signed-Certificate-iOS13-Mac-Catalina">instructions</a>
         for macOS.</p>
         
         <h3>Source Code</h3>
-        <p>The Objeck source repository is located <a href="http://github.com/objeck/objeck-lang">here</a>, and the source can
+        <p>The Objeck source repository is located <a href="http://github.com/objeck/objeck-lang">here</a>, 
+            and the source can
         be fetched using the following command GIT command:</p>
         <ul>
             <li><code>git clone https://github.com/objeck/objeck-lang.git</code></li>
@@ -174,7 +178,7 @@
             <li>
                 Tested on the following platforms
                 <ul>
-                    <li>Windows 10 and 11 (Intel)<</li>
+                    <li>Windows 10 and 11 (Intel)</li>
                     <li>Ubuntu 22.04 (Intel)</li>
                     <li>Debian GNU/Linux 11 - Bullseye (ARM64)</li>
                     <li>macOS 13.0.1 (Apple Silicon and Intel)</li>
