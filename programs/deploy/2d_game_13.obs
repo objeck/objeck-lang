@@ -684,7 +684,7 @@ class Player {
 			CheckSign();
 		};
 
-		CheckFloorCeiling();
+		CheckFloorCeil();
 	}
 
 	method : Movement() ~ Nil {
@@ -799,7 +799,7 @@ class Player {
 	    };
     }
 
-    method : public : CheckFloorCeiling() ~ Nil {
+    method : public : CheckFloorCeil() ~ Nil {
     	if(@rect->GetTop() >= GameConsts->SCREEN_HEIGHT) {
 			@rect->SetTop(GameConsts->SCREEN_HEIGHT);
 			@vel->SetY(0);
