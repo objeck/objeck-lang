@@ -1085,7 +1085,17 @@ bundle System {
 		@return pseudo power value
 		~#
 		function : Pow(b : Int, r : Int) ~ Int {
-			return Float->Pow(b, r);
+			return Float->Pow(r->As(Float), r->As(Float));
+		}
+
+		#~
+		Calculates the power value
+		@param b power base
+		@param r power to raise
+		@return pseudo power value
+		~#
+		function : Pow(b : Int, r : Float) ~ Int {
+			return Float->Pow(b->As(Float), r);
 		}
 		
 		#~
@@ -1710,6 +1720,16 @@ bundle System {
 		@return pseudo power value
 		~#
 		function : Pow(b : Float, r : Float) ~ Float {
+			POW_FLOAT;
+		}
+
+		#~
+		Calculates the power value
+		@param b power base
+		@param r power to raise
+		@return pseudo power value
+		~#
+		function : Pow(b : Float, r : Int) ~ Float {
 			POW_FLOAT;
 		}
 
@@ -3811,7 +3831,7 @@ bundle System {
 			offset := index + buffer_size;
 			length := @pos - index;
 
-			size := @pos + string->Size();
+			size := @pos + buffer_size;
 			if(size > @max) {
 				@max := size + size >> 1;
 				temp := Char->New[@max];
@@ -3830,6 +3850,69 @@ bundle System {
 			
 			return true;
 
+		}
+
+		#~
+		Insert inserts a string
+		@param index insert offset
+		@param buffer buffer to insert
+		@return true if inserted, false otherwise 
+		~#
+		method : public : Insert(index : Int, buffer : Char[]) ~ Bool {
+			if(index < 0 | index > @pos) {
+				return false;
+			};
+			buffer_size := buffer->Size();
+
+			offset := index + buffer_size;
+			length := @pos - index;
+
+			size := @pos + buffer_size;
+			if(size > @max) {
+				@max := size + size >> 1;
+				temp := Char->New[@max];
+				Runtime->Copy(temp, 0, @string, 0, index);
+				
+				Runtime->Copy(temp, index, buffer, 0, buffer_size);
+				Runtime->Copy(temp, offset, @string, index, length);
+				
+				@string := temp;
+			}
+			else {
+				Runtime->Copy(@string, offset, @string, index, length);
+				Runtime->Copy(@string, index, buffer, 0, buffer_size);
+			};
+			@pos := size;
+			
+			return true;
+
+		}
+
+		#~
+		Pads a string with a character
+		@param char character to pad with
+		@param num number of character to pad
+		@param is_left if true, pad left, otherwise pad right
+		@return padded string
+		~#
+		method : public : Pad(char : Char, num : Int, is_left : Bool := false) ~ String {
+			padding := String->New();
+			each(i : num) {
+				padding->Append(char);
+			};
+
+			value : String;
+			if(is_left) {
+				value := String->New(padding);
+				value->Append(@string);
+
+			}
+			else {
+				value := String->New(@string);
+				value->Append(padding);
+			};
+
+			return value;
 		}
 
 		#~

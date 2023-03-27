@@ -1,8 +1,8 @@
 class Foo {
-	New : private() {
-	}
+	function : Main(args : String[]) ~ Nil {
+		2->Pow(5)->PrintLine();
 
-	method : public : HiYa() ~ Nil {
-		"HiYa"->PrintLine();
+		s := "foo";
+		s->Pad('#', 3, true)->PrintLine();
 	}
 }
