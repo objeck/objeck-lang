@@ -1730,7 +1730,7 @@ bundle System {
 		@return pseudo power value
 		~#
 		function : Pow(b : Float, r : Int) ~ Float {
-			POW_FLOAT;
+			return Pow(b, r->As(Float));
 		}
 
 		#~
