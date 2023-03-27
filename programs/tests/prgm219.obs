@@ -1,8 +1,18 @@
 class Foo {
 	function : Main(args : String[]) ~ Nil {
-		2->Pow(4.5)->PrintLine();
+		'\''->Print();
+		Justify("Hello", 8)->Print();
+		Justify("World!", 8)->Print();
+		Justify("Jon", 8)->Print();
+		'\''->Print();
+		'\n'->Print();
+	}
 
-		s := "foo";
-		s->Pad('#', 3)->PrintLine();
+	function : Justify(string : String, width : Int, is_left : Bool := false) ~ String {
+		if(width > 0 & string->Size() < width) {
+			return string->Pad('#', width - string->Size(), is_left);
+		};
+
+		return string;
 	}
 }
