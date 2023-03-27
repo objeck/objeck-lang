@@ -1094,7 +1094,7 @@ bundle System {
 		@param r power to raise
 		@return pseudo power value
 		~#
-		function : Pow(b : Int, r : Float) ~ Int {
+		function : Pow(b : Int, r : Float) ~ Float {
 			return Float->Pow(b->As(Float), r);
 		}
 
