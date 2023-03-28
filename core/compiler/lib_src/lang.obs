@@ -1399,7 +1399,7 @@ bundle System {
 		function : Gamma(n : Float) ~ Float {
 			GAMMA_FLOAT;
 		}
-		
+
 		#~
 		Converts the value into radians
 		@ignore-params
@@ -1580,6 +1580,33 @@ bundle System {
 		~#
 		function : ArcSin(f : Float) ~ Float {
 			ASIN_FLOAT;
+		}
+
+		#~
+		Calculates the hyperbolic cosine
+		@ignore-params
+		@return hyperbolic cosine value
+		~#
+		function : ArcCosh(f : Float) ~ Float {
+			ACOSH_FLOAT;
+		}
+
+		#~
+		Calculates the hyperbolic sine
+		@ignore-params
+		@return hyperbolic sine value
+		~#
+		function : ArcSinh(f : Float) ~ Float {
+			ASINH_FLOAT;
+		}
+
+		#~
+		Calculates the hyperbolic tangent
+		@ignore-params
+		@return hyperbolic tangent value
+		~#
+		function : ArcCosh(f : Float) ~ Float {
+			ATANH_FLOAT;
 		}
 		
 		#~
