@@ -1605,7 +1605,7 @@ bundle System {
 		@ignore-params
 		@return hyperbolic tangent value
 		~#
-		function : ArcCosh(f : Float) ~ Float {
+		function : ArcTanh(f : Float) ~ Float {
 			ATANH_FLOAT;
 		}
 		
@@ -3875,7 +3875,7 @@ bundle System {
 			return true;
 
 		}
-
+		
 		#~
 		Pads a string with a character
 		@param char character to pad with
@@ -3909,14 +3909,14 @@ bundle System {
 		@param is_left if true, justify left, right otherwise
 		@return padded string
 		~#
-		function : Justify(width : Int, is_left : Bool := false) ~ String {
+		method : public : Justify(width : Int, is_left : Bool := false) ~ String {
 			if(width > 0 & @string->Size() < width) {
-				return @string->Pad(' ', width - @string->Size(), is_left);
+				return Pad(' ', width - @pos, is_left);
 			};
 
-			return @string;
+			return String->New(@string);
 		}
-
+		
 		#~
 		Returns rather the string is empty
 		@return true if empty, false otherwise 
