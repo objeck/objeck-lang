@@ -3921,7 +3921,7 @@ bundle System {
 		@param is_left if true, justify left, right otherwise
 		@return padded string
 		~#
-		function : Justify(width : Int, is_left : Bool := false) ~ String {
+		method : public : Justify(width : Int, is_left : Bool := false) ~ String {
 			if(width > 0 & @string->Size() < width) {
 				return @string->Pad(' ', width - @string->Size(), is_left);
 			};
