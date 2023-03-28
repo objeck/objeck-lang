@@ -2160,6 +2160,24 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
       NextToken();
       break;
 
+    case ROUND_FLOAT:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::ROUND_FLOAT);
+      NextToken();
+      break;
+
+    case EXP_FLOAT:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::EXP_FLOAT);
+      NextToken();
+      break;
+
+    case LOG10_FLOAT:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::LOG10_FLOAT);
+      NextToken();
+      break;
+
     case POW_FLOAT:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::POW_FLOAT);
