@@ -1649,13 +1649,38 @@ bundle System {
 		
 		#~
 		Calculates the log value
-		#~
-		Calculates the log value
 		@ignore-params
 		@return log value
 		~#
 		function : Log(f : Float) ~ Float {
 			LOG_FLOAT;
+		}
+		
+		#~
+		Rounds the value
+		@ignore-params
+		@return rounded value
+		~#
+		function : Round(f : Float) ~ Float {
+			ROUND_FLOAT;
+		}
+
+		#~
+		Calculates exponential value
+		@ignore-params
+		@return exponential value
+		~#
+		function : Exp(f : Float) ~ Float {
+			EXP_FLOAT;
+		}
+		
+		#~
+		Calculates the common (base-10) logarithm value
+		@ignore-params
+		@return common (base-10) logarithm value
+		~#
+		function : Log10(f : Float) ~ Float {
+			LOG10_FLOAT;
 		}
 		
 		#~

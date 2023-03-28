@@ -444,6 +444,9 @@ void Scanner::CheckIdentifier(int index)
     case ATAN2_FLOAT:
     case MOD_FLOAT:
     case LOG_FLOAT:
+    case ROUND_FLOAT:
+    case EXP_FLOAT:
+    case LOG10_FLOAT:
     case POW_FLOAT:
     case SQRT_FLOAT:
     case GAMMA_FLOAT:
