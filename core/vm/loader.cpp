@@ -782,6 +782,18 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
       mthd_instrs[i] = new StackInstr(line_num, ATAN2_FLOAT);
       break;
 
+    case ACOSH_FLOAT:
+      mthd_instrs[i] = new StackInstr(line_num, ACOSH_FLOAT);
+      break;
+
+    case ASINH_FLOAT:
+      mthd_instrs[i] = new StackInstr(line_num, ASINH_FLOAT);
+      break;
+
+    case ATANH_FLOAT:
+      mthd_instrs[i] = new StackInstr(line_num, ATANH_FLOAT);
+      break;
+
     case MOD_FLOAT:
       mthd_instrs[i] = new StackInstr(line_num, MOD_FLOAT);
       break;

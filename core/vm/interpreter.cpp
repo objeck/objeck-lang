@@ -400,6 +400,18 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
       PushFloat(GetRandomValue(), op_stack, stack_pos);
       break;
 
+    case ACOSH_FLOAT:
+      PushFloat(acosh(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
+      break;
+
+    case ASINH_FLOAT:
+      PushFloat(asinh(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
+      break;
+
+    case ATANH_FLOAT:
+      PushFloat(atanh(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
+      break;
+
     case ATAN2_FLOAT:
       left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
       right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 1]));
