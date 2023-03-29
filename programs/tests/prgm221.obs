@@ -7,6 +7,7 @@ class Hello {
 		3.5->Round()->PrintLine();
 		3.5->Exp()->PrintLine();
 		3.5->ArcCosh()->PrintLine();
-		(2->Pow(63) - 1)->PrintLine();
+		(-1 - 2->Pow(63))->PrintLine();
+		Int->MinSize()->PrintLine();
 	}
 }
