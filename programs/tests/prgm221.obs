@@ -1,0 +1,10 @@
+class Hello {
+	function : Main(args : String[]) ~ Nil {
+		Brun();
+	}
+
+	function : native : Brun() ~ Nil {
+		3.5->Round()->PrintLine();
+		3.5->Exp()->PrintLine();
+	}
+}
