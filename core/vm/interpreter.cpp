@@ -104,7 +104,7 @@ void StackInterpreter::Initialize(StackProgram* p)
  ********************************/
 void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackMethod* method, size_t* instance, bool jit_called)
 {
-  long left;
+  int64_t left;
   double left_double, right_double;
   
 #ifdef _TIMING
@@ -449,14 +449,14 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
 #ifdef _DEBUG
       std::wcout << L"stack oper: I2F; call_pos=" << (*call_stack_pos) << std::endl;
 #endif
-      PushFloat((long)PopInt(op_stack, stack_pos), op_stack, stack_pos);
+      PushFloat((double)((int64_t)PopInt(op_stack, stack_pos)), op_stack, stack_pos);
       break;
 
     case F2I:
 #ifdef _DEBUG
       std::wcout << L"stack oper: F2I; call_pos=" << (*call_stack_pos) << std::endl;
 #endif
-      PushInt((long)PopFloat(op_stack, stack_pos), op_stack, stack_pos);
+      PushInt((int64_t)PopFloat(op_stack, stack_pos), op_stack, stack_pos);
       break;
 
     case S2I:
@@ -533,7 +533,7 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
       if(instr->GetOperand2() < 0) {
         ip = instr->GetOperand();
       }
-      else if((long)PopInt(op_stack, stack_pos) == instr->GetOperand2()) {
+      else if((int64_t)PopInt(op_stack, stack_pos) == instr->GetOperand2()) {
         ip = instr->GetOperand();
       }      
       break;
@@ -628,8 +628,8 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
 #endif
 
 #ifdef _WIN32
-      left = (long)PopInt(op_stack, stack_pos);
-      Sleep(left);
+      left = (int64_t)PopInt(op_stack, stack_pos);
+      Sleep((long)left);
 #else
       left = PopInt(op_stack, stack_pos);
       usleep(left * 1000);
@@ -848,7 +848,7 @@ void StackInterpreter::Int2Str(size_t* &op_stack, long* &stack_pos)
   if(str_ptr) {
     wchar_t* str = (wchar_t*)(str_ptr + 3);
     const size_t base = PopInt(op_stack, stack_pos);
-    const long value = (long)PopInt(op_stack, stack_pos);
+    const int64_t value = (int64_t)PopInt(op_stack, stack_pos);
     
     std::wstring conv;
     std::wstringstream formatter;
@@ -1344,8 +1344,8 @@ void StackInterpreter::CpyByteAry(size_t* &op_stack, long* &stack_pos)
 #endif
   }
 
-  const long src_array_len = (long)src_array[2];
-  const long dest_array_len = (long)dest_array[2];
+  const int64_t src_array_len = (int64_t)src_array[2];
+  const int64_t dest_array_len = (int64_t)dest_array[2];
   if(length > 0 && src_offset + length <= src_array_len && dest_offset + length <= dest_array_len) {
     const char* src_array_ptr = (char*)(src_array + 3);
     char* dest_array_ptr = (char*)(dest_array + 3);
@@ -2346,9 +2346,9 @@ void StackInterpreter::ProcessLoadIntArrayElement(StackInstr* instr, size_t* &op
     exit(1);
 #endif
   }
-  const long size = (long)array[0];
+  const int64_t size = (long)array[0];
   array += 2;
-  long index = ArrayIndex(instr, array, size, op_stack, stack_pos);
+  int64_t index = ArrayIndex(instr, array, size, op_stack, stack_pos);
   PushInt(array[index + instr->GetOperand()], op_stack, stack_pos);
 }
 
@@ -2374,9 +2374,9 @@ void StackInterpreter::ProcessStoreIntArrayElement(StackInstr* instr, size_t* &o
 #endif
   }
   
-  const long size = (long)array[0];
+  const int64_t size = (long)array[0];
   array += 2;
-  long index = ArrayIndex(instr, array, size, op_stack, stack_pos);
+  int64_t index = ArrayIndex(instr, array, size, op_stack, stack_pos);
   array[index + instr->GetOperand()] = PopInt(op_stack, stack_pos);
 }
 
@@ -2400,9 +2400,9 @@ void StackInterpreter::ProcessLoadByteArrayElement(StackInstr* instr, size_t* &o
     exit(1);
 #endif
   }
-  const long size = (long)array[0];
+  const int64_t size = (int64_t)array[0];
   array += 2;
-  long index = ArrayIndex(instr, array, size, op_stack, stack_pos);
+  int64_t index = ArrayIndex(instr, array, size, op_stack, stack_pos);
   array += instr->GetOperand();
   PushInt(((char*)array)[index], op_stack, stack_pos);
 }
@@ -2427,9 +2427,9 @@ void StackInterpreter::ProcessLoadCharArrayElement(StackInstr* instr, size_t* &o
     exit(1);
 #endif
   }
-  const long size = (long)array[0];
+  const int64_t size = (int64_t)array[0];
   array += 2;
-  long index = ArrayIndex(instr, array, size, op_stack, stack_pos);
+  int64_t index = ArrayIndex(instr, array, size, op_stack, stack_pos);
   array += instr->GetOperand();
   PushInt(((wchar_t*)array)[index], op_stack, stack_pos);
 }
@@ -2454,9 +2454,9 @@ void StackInterpreter::ProcessStoreByteArrayElement(StackInstr* instr, size_t* &
     exit(1);
 #endif
   }
-  const long size = (long)array[0];
+  const int64_t size = (int64_t)array[0];
   array += 2;
-  long index = ArrayIndex(instr, array, size, op_stack, stack_pos);
+  int64_t index = ArrayIndex(instr, array, size, op_stack, stack_pos);
   array += instr->GetOperand();
   ((char*)array)[index] = (char)PopInt(op_stack, stack_pos);
 }
@@ -2483,7 +2483,7 @@ void StackInterpreter::ProcessStoreCharArrayElement(StackInstr* instr, size_t* &
   }
   const long size = (long)array[0];
   array += 2;
-  long index = ArrayIndex(instr, array, size, op_stack, stack_pos);
+  int64_t index = ArrayIndex(instr, array, size, op_stack, stack_pos);
   array += instr->GetOperand();
   ((wchar_t*)array)[index] = (wchar_t)PopInt(op_stack, stack_pos);
 }
@@ -2510,7 +2510,7 @@ void StackInterpreter::ProcessLoadFloatArrayElement(StackInstr* instr, size_t* &
   }
   const long size = (long)array[0];
   array += 2;
-  long index = ArrayIndex(instr, array, size, op_stack, stack_pos);
+  int64_t index = ArrayIndex(instr, array, size, op_stack, stack_pos);
   FLOAT_VALUE value;
   memcpy(&value, array + index + instr->GetOperand(), sizeof(FLOAT_VALUE));
   PushFloat(value, op_stack, stack_pos);
@@ -2538,7 +2538,7 @@ void StackInterpreter::ProcessStoreFloatArrayElement(StackInstr* instr, size_t* 
   }
   const long size = (long)array[0];
   array += 2;
-  long index = ArrayIndex(instr, array, size, op_stack, stack_pos);
+  int64_t index = ArrayIndex(instr, array, size, op_stack, stack_pos);
   FLOAT_VALUE value = PopFloat(op_stack, stack_pos);
   memcpy(array + index + instr->GetOperand(), &value, sizeof(FLOAT_VALUE));
 }
@@ -2921,15 +2921,15 @@ void Runtime::StackInterpreter::StackErrorUnwind()
 #endif
 }
 
-long Runtime::StackInterpreter::ArrayIndex(StackInstr* instr, size_t* array, const long size, size_t*& op_stack, long*& stack_pos)
+int64_t Runtime::StackInterpreter::ArrayIndex(StackInstr* instr, size_t* array, const int64_t size, size_t*& op_stack, long*& stack_pos)
 {
   // generate index
-  long index = (long)PopInt(op_stack, stack_pos);
+  int64_t index = (int64_t)PopInt(op_stack, stack_pos);
   const long dim = instr->GetOperand();
 
   for(long i = 1; i < dim; i++) {
     index *= (long)array[i];
-    index += (long)PopInt(op_stack, stack_pos);
+    index += (int64_t)PopInt(op_stack, stack_pos);
   }
 
 #ifdef _DEBUG
