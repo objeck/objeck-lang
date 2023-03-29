@@ -795,6 +795,7 @@ namespace Runtime {
     void fcos();
     void ftan();
     void fsqrt();
+    void fround();
 
     // add instructions
     void add_imm_mem(long imm, long offset, Register dest);
