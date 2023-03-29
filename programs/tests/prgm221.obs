@@ -9,6 +9,6 @@ class Hello {
 		3.5->ArcCosh()->PrintLine();
 		(-1 - 2->Pow(63))->PrintLine();
 		Int->MaxSize()->PrintLine();
-		(-1 + Int->MinSize())->PrintLine();
+		Int->MinSize()->PrintLine();
 	}
 }
