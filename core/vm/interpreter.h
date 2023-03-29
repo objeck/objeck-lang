@@ -242,7 +242,7 @@ namespace Runtime {
     //
     // calculates an array offset
     //
-    long ArrayIndex(StackInstr* instr, size_t* array, const long size, size_t* &op_stack, long* &stack_pos);    
+    int64_t ArrayIndex(StackInstr* instr, size_t* array, const int64_t size, size_t* &op_stack, long* &stack_pos);
         
     //
     // creates a string object instance

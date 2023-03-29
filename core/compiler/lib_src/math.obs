@@ -1,8 +1,8 @@
 bundle System.Math {
 	#~
-	Ancillary mathematical operations
+	Ancillary mathematical routines
 	~#
-	class Operations {
+	class Routine {
 		#~
 		Calculates the factorial of the value
 		@param n number
