@@ -763,7 +763,7 @@ void StackInterpreter::Str2Int(size_t* &op_stack, long* &stack_pos)
 #endif
 
   size_t* str_ptr = (size_t*)PopInt(op_stack, stack_pos);
-  long base = (int64_t)PopInt(op_stack, stack_pos);
+  long base = (long)PopInt(op_stack, stack_pos);
   if(str_ptr) {
     wchar_t* str = (wchar_t*)(str_ptr + 3);
     try {
@@ -962,8 +962,8 @@ void StackInterpreter::ShlInt(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   std::wcout << L"stack oper: SHL_INT; call_pos=" << (*call_stack_pos) << std::endl;
 #endif
-  const long left = (int64_t)op_stack[(*stack_pos) - 1];
-  const long right = (int64_t)op_stack[(*stack_pos) - 2];
+  const long left = (long)op_stack[(*stack_pos) - 1];
+  const long right = (long)op_stack[(*stack_pos) - 2];
   op_stack[(*stack_pos) - 2] = left << right;
   (*stack_pos)--;
 }
@@ -973,8 +973,8 @@ void StackInterpreter::ShrInt(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   std::wcout << L"stack oper: SHR_INT; call_pos=" << (*call_stack_pos) << std::endl;
 #endif
-  const long left = (int64_t)op_stack[(*stack_pos) - 1];
-  const long right = (int64_t)op_stack[(*stack_pos) - 2];
+  const long left = (long)op_stack[(*stack_pos) - 1];
+  const long right = (long)op_stack[(*stack_pos) - 2];
   op_stack[(*stack_pos) - 2] = left >> right;
   (*stack_pos)--;
 }
@@ -1012,8 +1012,8 @@ void StackInterpreter::AndInt(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   std::wcout << L"stack oper: AND; call_pos=" << (*call_stack_pos) << std::endl;
 #endif
-  const long left = (int64_t)op_stack[(*stack_pos) - 1];
-  const long right = (int64_t)op_stack[(*stack_pos) - 2];
+  const long left = (long)op_stack[(*stack_pos) - 1];
+  const long right = (long)op_stack[(*stack_pos) - 2];
   op_stack[(*stack_pos) - 2] = left && right;
   (*stack_pos)--;
 }
@@ -1023,8 +1023,8 @@ void StackInterpreter::OrInt(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   std::wcout << L"stack oper: OR; call_pos=" << (*call_stack_pos) << std::endl;
 #endif
-  const long left = (int64_t)op_stack[(*stack_pos) - 1];
-  const long right = (int64_t)op_stack[(*stack_pos) - 2];
+  const long left = (long)op_stack[(*stack_pos) - 1];
+  const long right = (long)op_stack[(*stack_pos) - 2];
   op_stack[(*stack_pos) - 2] = left || right;
   (*stack_pos)--;
 }
@@ -1034,8 +1034,8 @@ void StackInterpreter::AddInt(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   std::wcout << L"stack oper: ADD; call_pos=" << (*call_stack_pos) << std::endl;
 #endif
-  const long left = (int64_t)op_stack[(*stack_pos) - 1];
-  const long right = (int64_t)op_stack[(*stack_pos) - 2];
+  const long left = (long)op_stack[(*stack_pos) - 1];
+  const long right = (long)op_stack[(*stack_pos) - 2];
   op_stack[(*stack_pos) - 2] = left + right;
   (*stack_pos)--;
 }
@@ -1056,8 +1056,8 @@ void StackInterpreter::SubInt(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   std::wcout << L"stack oper: SUB; call_pos=" << (*call_stack_pos) << std::endl;
 #endif
-  const long left = (int64_t)op_stack[(*stack_pos) - 1];
-  const long right = (int64_t)op_stack[(*stack_pos) - 2];
+  const long left = (long)op_stack[(*stack_pos) - 1];
+  const long right = (long)op_stack[(*stack_pos) - 2];
   op_stack[(*stack_pos) - 2] = left - right;
   (*stack_pos)--;
 }
@@ -1078,8 +1078,8 @@ void StackInterpreter::MulInt(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   std::wcout << L"stack oper: MUL; call_pos=" << (*call_stack_pos) << std::endl;
 #endif
-  const long left = (int64_t)op_stack[(*stack_pos) - 1];
-  const long right = (int64_t)op_stack[(*stack_pos) - 2];
+  const long left = (long)op_stack[(*stack_pos) - 1];
+  const long right = (long)op_stack[(*stack_pos) - 2];
   op_stack[(*stack_pos) - 2] = left *  right;
   (*stack_pos)--;
 }
@@ -1089,8 +1089,8 @@ void StackInterpreter::DivInt(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   std::wcout << L"stack oper: DIV; call_pos=" << (*call_stack_pos) << std::endl;
 #endif
-  const long left = (int64_t)op_stack[(*stack_pos) - 1];
-  const long right = (int64_t)op_stack[(*stack_pos) - 2];
+  const long left = (long)op_stack[(*stack_pos) - 1];
+  const long right = (long)op_stack[(*stack_pos) - 2];
   if(!right) {
     std::wcerr << L">>> Attempting to divide by zero <<<" << std::endl;
     StackErrorUnwind();
@@ -1132,8 +1132,8 @@ void StackInterpreter::ModInt(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   std::wcout << L"stack oper: MOD; call_pos=" << (*call_stack_pos) << std::endl;
 #endif
-  const long left = (int64_t)op_stack[(*stack_pos) - 1];
-  const long right = (int64_t)op_stack[(*stack_pos) - 2];
+  const long left = (long)op_stack[(*stack_pos) - 1];
+  const long right = (long)op_stack[(*stack_pos) - 2];
   op_stack[(*stack_pos) - 2] = left % right;
   (*stack_pos)--;
 }
@@ -1143,8 +1143,8 @@ void StackInterpreter::BitAndInt(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   std::wcout << L"stack oper: BIT_AND; call_pos=" << (*call_stack_pos) << std::endl;
 #endif
-  const long left = (int64_t)op_stack[(*stack_pos) - 1];
-  const long right = (int64_t)op_stack[(*stack_pos) - 2];
+  const long left = (long)op_stack[(*stack_pos) - 1];
+  const long right = (long)op_stack[(*stack_pos) - 2];
   op_stack[(*stack_pos) - 2] = left & right;
   (*stack_pos)--;
 }
@@ -1154,8 +1154,8 @@ void StackInterpreter::BitOrInt(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   std::wcout << L"stack oper: BIT_OR; call_pos=" << (*call_stack_pos) << std::endl;
 #endif
-  const long left = (int64_t)op_stack[(*stack_pos) - 1];
-  const long right = (int64_t)op_stack[(*stack_pos) - 2];
+  const long left = (long)op_stack[(*stack_pos) - 1];
+  const long right = (long)op_stack[(*stack_pos) - 2];
   op_stack[(*stack_pos) - 2] = left | right;
   (*stack_pos)--;
 }
@@ -1165,8 +1165,8 @@ void StackInterpreter::BitXorInt(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   std::wcout << L"stack oper: BIT_XOR; call_pos=" << (*call_stack_pos) << std::endl;
 #endif
-  const long left = (int64_t)op_stack[(*stack_pos) - 1];
-  const long right = (int64_t)op_stack[(*stack_pos) - 2];
+  const long left = (long)op_stack[(*stack_pos) - 1];
+  const long right = (long)op_stack[(*stack_pos) - 2];
   op_stack[(*stack_pos) - 2] = left ^ right;
   (*stack_pos)--;
 }
@@ -1176,8 +1176,8 @@ void StackInterpreter::LesEqlInt(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   std::wcout << L"stack oper: LES_EQL; call_pos=" << (*call_stack_pos) << std::endl;
 #endif
-  const long left = (int64_t)op_stack[(*stack_pos) - 1];
-  const long right = (int64_t)op_stack[(*stack_pos) - 2];
+  const long left = (long)op_stack[(*stack_pos) - 1];
+  const long right = (long)op_stack[(*stack_pos) - 2];
   op_stack[(*stack_pos) - 2] = left <= right;
   (*stack_pos)--;
 }
@@ -1187,8 +1187,8 @@ void StackInterpreter::GtrEqlInt(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   std::wcout << L"stack oper: GTR_EQL; call_pos=" << (*call_stack_pos) << std::endl;
 #endif
-  const long left = (int64_t)op_stack[(*stack_pos) - 1];
-  const long right = (int64_t)op_stack[(*stack_pos) - 2];
+  const long left = (long)op_stack[(*stack_pos) - 1];
+  const long right = (long)op_stack[(*stack_pos) - 2];
   op_stack[(*stack_pos) - 2] = left >= right;
   (*stack_pos)--;
 }
@@ -1220,8 +1220,8 @@ void StackInterpreter::EqlInt(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   std::wcout << L"stack oper: EQL; call_pos=" << (*call_stack_pos) << std::endl;
 #endif
-  const long left = (int64_t)op_stack[(*stack_pos) - 1];
-  const long right = (int64_t)op_stack[(*stack_pos) - 2];
+  const long left = (long)op_stack[(*stack_pos) - 1];
+  const long right = (long)op_stack[(*stack_pos) - 2];
   op_stack[(*stack_pos) - 2] = left == right;
   (*stack_pos)--;
 }
@@ -1231,8 +1231,8 @@ void StackInterpreter::NeqlInt(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   std::wcout << L"stack oper: NEQL; call_pos=" << (*call_stack_pos) << std::endl;
 #endif
-  const long left = (int64_t)op_stack[(*stack_pos) - 1];
-  const long right = (int64_t)op_stack[(*stack_pos) - 2];
+  const long left = (long)op_stack[(*stack_pos) - 1];
+  const long right = (long)op_stack[(*stack_pos) - 2];
   op_stack[(*stack_pos) - 2] = left != right;
   (*stack_pos)--;
 }
@@ -1242,8 +1242,8 @@ void StackInterpreter::LesInt(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   std::wcout << L"stack oper: LES; call_pos=" << (*call_stack_pos) << std::endl;
 #endif
-  const long left = (int64_t)op_stack[(*stack_pos) - 1];
-  const long right = (int64_t)op_stack[(*stack_pos) - 2];
+  const long left = (long)op_stack[(*stack_pos) - 1];
+  const long right = (long)op_stack[(*stack_pos) - 2];
   op_stack[(*stack_pos) - 2] = left < right;
   (*stack_pos)--;
 }
@@ -1253,8 +1253,8 @@ void StackInterpreter::GtrInt(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   std::wcout << L"stack oper: GTR; call_pos=" << (*call_stack_pos) << std::endl;
 #endif
-  const long left = (int64_t)op_stack[(*stack_pos) - 1];
-  const long right = (int64_t)op_stack[(*stack_pos) - 2];
+  const long left = (long)op_stack[(*stack_pos) - 1];
+  const long right = (long)op_stack[(*stack_pos) - 2];
   op_stack[(*stack_pos) - 2] = left > right;
   (*stack_pos)--;
 }
@@ -1327,10 +1327,10 @@ void StackInterpreter::CpyByteAry(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   std::wcout << L"stack oper: CPY_BYTE_ARY; call_pos=" << (*call_stack_pos) << std::endl;
 #endif
-  const long length = (int64_t)PopInt(op_stack, stack_pos);
-  const long src_offset = (int64_t)PopInt(op_stack, stack_pos);
+  const long length = (long)PopInt(op_stack, stack_pos);
+  const long src_offset = (long)PopInt(op_stack, stack_pos);
   size_t* src_array = (size_t*)PopInt(op_stack, stack_pos);
-  const long dest_offset = (int64_t)PopInt(op_stack, stack_pos);
+  const long dest_offset = (long)PopInt(op_stack, stack_pos);
   size_t* dest_array = (size_t*)PopInt(op_stack, stack_pos);
 
   if(!src_array || !dest_array) {
@@ -1367,10 +1367,10 @@ void StackInterpreter::CpyCharAry(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   std::wcout << L"stack oper: CPY_CHAR_ARY; call_pos=" << (*call_stack_pos) << std::endl;
 #endif
-  const long length = (int64_t)PopInt(op_stack, stack_pos);
-  const long src_offset = (int64_t)PopInt(op_stack, stack_pos);
+  const long length = (long)PopInt(op_stack, stack_pos);
+  const long src_offset = (long)PopInt(op_stack, stack_pos);
   size_t* src_array = (size_t*)PopInt(op_stack, stack_pos);
-  const long dest_offset = (int64_t)PopInt(op_stack, stack_pos);
+  const long dest_offset = (long)PopInt(op_stack, stack_pos);
   size_t* dest_array = (size_t*)PopInt(op_stack, stack_pos);
 
   if(!src_array || !dest_array) {
@@ -1384,8 +1384,8 @@ void StackInterpreter::CpyCharAry(size_t* &op_stack, long* &stack_pos)
 #endif
   }
 
-  const long src_array_len = (int64_t)src_array[2];
-  const long dest_array_len = (int64_t)dest_array[2];
+  const long src_array_len = (long)src_array[2];
+  const long dest_array_len = (long)dest_array[2];
   if(length > 0 && src_offset + length <= src_array_len && dest_offset + length <= dest_array_len) {
     wchar_t* src_array_ptr = (wchar_t*)(src_array + 3);
     wchar_t* dest_array_ptr = (wchar_t*)(dest_array + 3);
@@ -1407,10 +1407,10 @@ void StackInterpreter::CpyIntAry(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   std::wcout << L"stack oper: CPY_INT_ARY; call_pos=" << (*call_stack_pos) << std::endl;
 #endif
-  const long length = (int64_t)PopInt(op_stack, stack_pos);
-  const long src_offset = (int64_t)PopInt(op_stack, stack_pos);
+  const long length = (long)PopInt(op_stack, stack_pos);
+  const long src_offset = (long)PopInt(op_stack, stack_pos);
   size_t* src_array = (size_t*)PopInt(op_stack, stack_pos);
-  const long dest_offset = (int64_t)PopInt(op_stack, stack_pos);
+  const long dest_offset = (long)PopInt(op_stack, stack_pos);
   size_t* dest_array = (size_t*)PopInt(op_stack, stack_pos);
 
   if(!src_array || !dest_array) {
@@ -1424,8 +1424,8 @@ void StackInterpreter::CpyIntAry(size_t* &op_stack, long* &stack_pos)
 #endif
   }
 
-  const long src_array_len = (int64_t)src_array[0];
-  const long dest_array_len = (int64_t)dest_array[0];
+  const long src_array_len = (long)src_array[0];
+  const long dest_array_len = (long)dest_array[0];
   if(length > 0 && src_offset + length <= src_array_len && dest_offset + length <= dest_array_len) {
     size_t* src_array_ptr = src_array + 3;
     size_t* dest_array_ptr = dest_array + 3;
@@ -1447,10 +1447,10 @@ void StackInterpreter::CpyFloatAry(size_t*& op_stack, long*& stack_pos)
 #ifdef _DEBUG
   std::wcout << L"stack oper: CPY_FLOAT_ARY; call_pos=" << (*call_stack_pos) << std::endl;
 #endif
-  const long length = (int64_t)PopInt(op_stack, stack_pos);
-  const long src_offset = (int64_t)PopInt(op_stack, stack_pos);
+  const long length = (long)PopInt(op_stack, stack_pos);
+  const long src_offset = (long)PopInt(op_stack, stack_pos);
   size_t* src_array = (size_t*)PopInt(op_stack, stack_pos);
-  const long dest_offset = (int64_t)PopInt(op_stack, stack_pos);
+  const long dest_offset = (long)PopInt(op_stack, stack_pos);
   size_t* dest_array = (size_t*)PopInt(op_stack, stack_pos);
 
   if(!src_array || !dest_array) {
@@ -1464,8 +1464,8 @@ void StackInterpreter::CpyFloatAry(size_t*& op_stack, long*& stack_pos)
 #endif
   }
 
-  const long src_array_len = (int64_t)src_array[0];
-  const long dest_array_len = (int64_t)dest_array[0];
+  const long src_array_len = (long)src_array[0];
+  const long dest_array_len = (long)dest_array[0];
   if(length > 0 && src_offset + length <= src_array_len && dest_offset + length <= dest_array_len) {
     size_t* src_array_ptr = src_array + 3;
     size_t* dest_array_ptr = dest_array + 3;
@@ -1883,7 +1883,7 @@ void StackInterpreter::ProcessNewFunctionInstance(StackInstr* instr, size_t*& op
   std::wcout << L"stack oper: NEW_FUNC_INST: mem_size=" << instr->GetOperand() << std::endl;
 #endif
 
-  const long size = (int64_t)instr->GetOperand();
+  const long size = (long)instr->GetOperand();
   size_t func_mem = (size_t)MemoryManager::AllocateArray(size, BYTE_ARY_TYPE, op_stack, *stack_pos);
   PushInt(func_mem, op_stack, stack_pos);
 }
@@ -1907,7 +1907,7 @@ void StackInterpreter::ProcessNewArray(StackInstr* instr, size_t* &op_stack, lon
     indices[dim++] = value;
   }
 
-  size_t* mem = (size_t*)MemoryManager::AllocateArray((int64_t)(size + dim + 2), INT_TYPE, op_stack, *stack_pos);
+  size_t* mem = (size_t*)MemoryManager::AllocateArray((long)(size + dim + 2), INT_TYPE, op_stack, *stack_pos);
   mem[0] = size;
   mem[1] = dim;
 
@@ -1936,7 +1936,7 @@ void StackInterpreter::ProcessNewByteArray(StackInstr* instr, size_t* &op_stack,
 
   // nullptr terminated string 
   size++;
-  size_t* mem = MemoryManager::AllocateArray((int64_t)(size + ((dim + 2) * sizeof(size_t))), BYTE_ARY_TYPE, op_stack, *stack_pos);
+  size_t* mem = MemoryManager::AllocateArray((long)(size + ((dim + 2) * sizeof(size_t))), BYTE_ARY_TYPE, op_stack, *stack_pos);
   mem[0] = size - 1;
   mem[1] = dim;
   memcpy(mem + 2, indices, dim * sizeof(size_t));
@@ -1964,7 +1964,7 @@ void StackInterpreter::ProcessNewCharArray(StackInstr* instr, size_t* &op_stack,
 
   // null-terminated string 
   size++;
-  size_t* mem = MemoryManager::AllocateArray((int64_t)(size + ((dim + 2) * sizeof(size_t))), CHAR_ARY_TYPE, op_stack, *stack_pos);
+  size_t* mem = MemoryManager::AllocateArray((long)(size + ((dim + 2) * sizeof(size_t))), CHAR_ARY_TYPE, op_stack, *stack_pos);
   mem[0] = size - 1;
   mem[1] = dim;
   memcpy(mem + 2, indices, dim * sizeof(size_t));
@@ -2481,7 +2481,7 @@ void StackInterpreter::ProcessStoreCharArrayElement(StackInstr* instr, size_t* &
     exit(1);
 #endif
   }
-  const long size = (int64_t)array[0];
+  const long size = (long)array[0];
   array += 2;
   int64_t index = ArrayIndex(instr, array, size, op_stack, stack_pos);
   array += instr->GetOperand();
@@ -2508,7 +2508,7 @@ void StackInterpreter::ProcessLoadFloatArrayElement(StackInstr* instr, size_t* &
     exit(1);
 #endif
   }
-  const long size = (int64_t)array[0];
+  const long size = (long)array[0];
   array += 2;
   int64_t index = ArrayIndex(instr, array, size, op_stack, stack_pos);
   FLOAT_VALUE value;
@@ -2536,7 +2536,7 @@ void StackInterpreter::ProcessStoreFloatArrayElement(StackInstr* instr, size_t* 
     exit(1);
 #endif
   }
-  const long size = (int64_t)array[0];
+  const long size = (long)array[0];
   array += 2;
   int64_t index = ArrayIndex(instr, array, size, op_stack, stack_pos);
   FLOAT_VALUE value = PopFloat(op_stack, stack_pos);
@@ -2949,7 +2949,7 @@ int64_t Runtime::StackInterpreter::ArrayIndex(StackInstr* instr, size_t* array, 
 size_t* Runtime::StackInterpreter::CreateStringObject(const std::wstring& value_str, size_t*& op_stack, long*& stack_pos)
 {
   // create character array
-  const long char_array_size = (int64_t)value_str.size();
+  const long char_array_size = (long)value_str.size();
   const long char_array_dim = 1;
   size_t* char_array = (size_t*)MemoryManager::AllocateArray(char_array_size + 1 + ((char_array_dim + 2) * sizeof(size_t)),
                                                              CHAR_ARY_TYPE, op_stack, *stack_pos, false);

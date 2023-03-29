@@ -1628,7 +1628,7 @@ void JitAmd64::ProcessStackCallback(long instr_id, StackInstr* instr, long &inst
     non_params = 0;
   }
   else {
-    non_params = (int64_t)working_stack.size() - params;
+    non_params = (long)working_stack.size() - params;
   }
   
 #ifdef _DEBUG_JIT
@@ -1769,7 +1769,7 @@ void JitAmd64::ProcessReturn(long params) {
       non_params = 0;
     }
     else {
-      non_params = (int64_t)working_stack.size() - params;
+      non_params = (long)working_stack.size() - params;
     }
 #ifdef _DEBUG_JIT
     std::wcout << L"Return: params=" << params << L", non-params=" << non_params << std::endl;
@@ -1837,7 +1837,7 @@ void JitAmd64::ProcessReturn(long params) {
     
     // clean up working stack
     if(params < 0) {
-      params = (int64_t)working_stack.size();
+      params = (long)working_stack.size();
     }
     for(long i = 0; i < params; ++i) {
       RegInstr* left = working_stack.front();

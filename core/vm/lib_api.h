@@ -200,7 +200,7 @@ long APITools_GetIntArrayElement(size_t* data_array, size_t index) {
   const size_t src_array_len = data_array[0];
   if(index < src_array_len) {
     data_array += ARRAY_HEADER_OFFSET;
-    return (int64_t)data_array[index];
+    return (long)data_array[index];
   }
 
   return 0;
