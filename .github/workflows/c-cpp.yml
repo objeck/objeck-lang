@@ -24,7 +24,7 @@ jobs:
     - name: build-bootstrap
       working-directory: ./core/compiler
       run: ./update_version.sh
-
+      
     - name: build-toolchain
       working-directory: ./core/release
       run: ./deploy_posix.sh 64
