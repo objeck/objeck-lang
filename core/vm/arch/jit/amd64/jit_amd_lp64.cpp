@@ -2293,9 +2293,9 @@ void JitAmd64::ProcessFloatOperation(StackInstr* instruction) {
     fsqrt();
     break;
 
-    // TODO: use Intel instruction
   case LOG_FLOAT:
-    holder = call_xfunc(log, left);
+    fld_mem(left->GetOperand(), RBP);
+    flog();
     break;
 
   case ROUND_FLOAT:
@@ -2308,9 +2308,9 @@ void JitAmd64::ProcessFloatOperation(StackInstr* instruction) {
     holder = call_xfunc(exp, left);
     break;
 
-    // TODO: use Intel instruction
   case LOG10_FLOAT:
-    holder = call_xfunc(log10, left);
+    fld_mem(left->GetOperand(), RBP);
+    flog10();
     break;
 
   case ASIN_FLOAT:
@@ -4364,6 +4364,16 @@ void JitAmd64::fsqrt() {
 void JitAmd64::fround() {
   AddMachineCode(0xd9);
   AddMachineCode(0xfc);
+}
+
+void JitAmd64::flog() {
+  AddMachineCode(0xd9);
+  AddMachineCode(0xe9);
+}
+
+void JitAmd64::flog10() {
+  AddMachineCode(0xd9);
+  AddMachineCode(0xec);
 }
 
 /**

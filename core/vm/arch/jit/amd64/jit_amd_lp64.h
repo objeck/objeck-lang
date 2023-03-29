@@ -796,6 +796,8 @@ namespace Runtime {
     void ftan();
     void fsqrt();
     void fround();
+    void flog();
+    void flog10();
 
     // add instructions
     void add_imm_mem(long imm, long offset, Register dest);
