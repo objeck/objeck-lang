@@ -2303,14 +2303,13 @@ void JitAmd64::ProcessFloatOperation(StackInstr* instruction) {
     fround();
     break;
 
-    // TODO: use Intel instruction
-  case EXP_FLOAT:
-    holder = call_xfunc(exp, left);
-    break;
-
   case LOG10_FLOAT:
     fld_mem(left->GetOperand(), RBP);
     flog10();
+    break;
+
+  case EXP_FLOAT:
+    holder = call_xfunc(exp, left);
     break;
 
   case ASIN_FLOAT:
