@@ -174,6 +174,9 @@ void Scanner::LoadKeywords()
   ident_map[L"ATANH_FLOAT"] = ATANH_FLOAT;
   ident_map[L"MOD_FLOAT"] = MOD_FLOAT;
   ident_map[L"LOG_FLOAT"] = LOG_FLOAT;
+  ident_map[L"ROUND_FLOAT"] = ROUND_FLOAT;
+  ident_map[L"EXP_FLOAT"] = EXP_FLOAT;
+  ident_map[L"LOG10_FLOAT"] = LOG10_FLOAT;
   ident_map[L"POW_FLOAT"] = POW_FLOAT;
   ident_map[L"SQRT_FLOAT"] = SQRT_FLOAT;
   ident_map[L"GAMMA_FLOAT"] = GAMMA_FLOAT;

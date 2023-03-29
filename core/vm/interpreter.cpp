@@ -388,6 +388,18 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
       PushFloat(log(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
       break;
 
+    case ROUND_FLOAT:
+      PushFloat(round(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
+      break;
+
+    case EXP_FLOAT:
+      PushFloat(exp(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
+      break;
+
+    case LOG10_FLOAT:
+      PushFloat(log10(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
+      break;
+
     case SQRT_FLOAT:
       PushFloat(sqrt(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
       break;

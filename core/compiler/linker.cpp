@@ -1319,8 +1319,20 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
       instrs.push_back(new LibraryInstr(line_num, MOD_FLOAT));
       break;
       
+    case ROUND_FLOAT:
+      instrs.push_back(new LibraryInstr(line_num, ROUND_FLOAT));
+      break;
+
+    case EXP_FLOAT:
+      instrs.push_back(new LibraryInstr(line_num, EXP_FLOAT));
+      break;
+
     case LOG_FLOAT:
       instrs.push_back(new LibraryInstr(line_num, LOG_FLOAT));
+      break;
+
+    case LOG10_FLOAT:
+      instrs.push_back(new LibraryInstr(line_num, LOG10_FLOAT));
       break;
 
     case POW_FLOAT:

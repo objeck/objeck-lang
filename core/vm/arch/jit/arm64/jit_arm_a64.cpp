@@ -461,6 +461,9 @@ void JitArm64::ProcessInstructions() {
     case ASINH_FLOAT:
     case ATANH_FLOAT:
     case LOG_FLOAT:
+    case ROUND_FLOAT:
+    case EXP_FLOAT:
+    case LOG10_FLOAT:
     case GAMMA_FLOAT:
     case FLOR_FLOAT:
     case CEIL_FLOAT:
@@ -3637,7 +3640,19 @@ void JitArm64::ProcessFloatOperation(StackInstr* instruction)
   case ATANH_FLOAT:
     func_ptr = atanh;
     break;
-    
+
+  case ROUND_FLOAT:
+    func_ptr = round;
+    break;
+
+  case EXP_FLOAT:
+    func_ptr = exp;
+    break;
+
+  case LOG10_FLOAT:
+    func_ptr = log10;
+    break;
+
   case LOG_FLOAT:
     func_ptr = log;
     break;

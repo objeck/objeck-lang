@@ -802,6 +802,18 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
       mthd_instrs[i] = new StackInstr(line_num, LOG_FLOAT);
       break;
 
+    case ROUND_FLOAT:
+      mthd_instrs[i] = new StackInstr(line_num, ROUND_FLOAT);
+      break;
+
+    case EXP_FLOAT:
+      mthd_instrs[i] = new StackInstr(line_num, EXP_FLOAT);
+      break;
+
+    case LOG10_FLOAT:
+      mthd_instrs[i] = new StackInstr(line_num, LOG10_FLOAT);
+      break;
+
     case POW_FLOAT:
       mthd_instrs[i] = new StackInstr(line_num, POW_FLOAT);
       break;

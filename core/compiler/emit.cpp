@@ -821,6 +821,18 @@ void IntermediateInstruction::Debug(size_t i) {
     GetLogger()  << i << L":\tLOG_FLOAT" << std::endl;
     break;
 
+  case instructions::ROUND_FLOAT:
+    GetLogger() << i << L":\tROUND_FLOAT" << std::endl;
+    break;
+
+  case instructions::EXP_FLOAT:
+    GetLogger() << i << L":\tEXP_FLOAT" << std::endl;
+    break;
+
+  case instructions::LOG10_FLOAT:
+    GetLogger() << i << L":\tLOG10_FLOAT" << std::endl;
+    break;
+
   case instructions::POW_FLOAT:
     GetLogger()  << i << L":\tPOW_FLOAT" << std::endl;
     break;
