@@ -470,6 +470,9 @@ void JitAmd64::ProcessInstructions() {
     case ASINH_FLOAT:
     case ATANH_FLOAT:
     case LOG_FLOAT:
+    case ROUND_FLOAT:
+    case EXP_FLOAT:
+    case LOG10_FLOAT:
     case GAMMA_FLOAT:
     case ATAN2_FLOAT:
     case MOD_FLOAT:
@@ -2300,6 +2303,20 @@ void JitAmd64::ProcessFloatOperation(StackInstr* instruction) {
 
   case LOG_FLOAT:
     holder = call_xfunc(log, left);
+    break;
+
+    // TODO: use Intel instruction
+  case ROUND_FLOAT:
+    holder = call_xfunc(round, left);
+    break;
+
+    // TODO: use Intel instruction
+  case EXP_FLOAT:
+    holder = call_xfunc(exp, left);
+    break;
+
+  case LOG10_FLOAT:
+    holder = call_xfunc(log10, left);
     break;
 
   case ACOSH_FLOAT:

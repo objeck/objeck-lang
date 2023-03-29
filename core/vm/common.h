@@ -47,7 +47,6 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <time.h>
-#include <tgmath.h>
 #include "../shared/instrs.h"
 #include "../shared/sys.h"
 #include "../shared/traps.h"
