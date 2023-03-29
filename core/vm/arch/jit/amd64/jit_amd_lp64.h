@@ -183,7 +183,7 @@ namespace Runtime {
 #ifdef _WIN64    
       operand2 = (size_t)da;
 #else
-      operand = (long)da;
+      operand = (int64_t)da;
 #endif    
       holder = nullptr;
       instr = nullptr;
@@ -427,9 +427,9 @@ namespace Runtime {
   }  
 #else
     inline void AddImm64(long imm) {
-      unsigned char buffer[sizeof(long)];
+      unsigned char buffer[sizeof(int64_t)];
       ByteEncode64(buffer, imm);
-      for(size_t i = 0; i < sizeof(long); ++i) {
+      for(size_t i = 0; i < sizeof(int64_t); ++i) {
         AddMachineCode(buffer[i]);
       }    
     }
@@ -549,7 +549,7 @@ namespace Runtime {
     }
 #else
   inline void ByteEncode64(unsigned char buffer[], long value) {
-      memcpy(buffer, &value, sizeof(long));
+      memcpy(buffer, &value, sizeof(int64_t));
     }
 #endif      
 
