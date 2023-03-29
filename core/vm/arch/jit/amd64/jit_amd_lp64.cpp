@@ -1630,7 +1630,7 @@ void JitAmd64::ProcessStackCallback(long instr_id, StackInstr* instr, long &inst
     non_params = 0;
   }
   else {
-    non_params = (long)working_stack.size() - params;
+    non_params = (int64_t)working_stack.size() - params;
   }
   
 #ifdef _DEBUG_JIT
@@ -1714,7 +1714,7 @@ void JitAmd64::ProcessStackCallback(long instr_id, StackInstr* instr, long &inst
   move_mem_reg(INSTANCE_MEM, RBP, R8);
   move_mem_reg(MTHD_ID, RBP, RCX);
   move_mem_reg(CLS_ID, RBP, RDX);
-  move_imm_reg((long)instr, RSI);
+  move_imm_reg((int64_t)instr, RSI);
   move_imm_reg(instr_id, RDI);  
   push_imm(instr_index - 1);
   push_mem(CALL_STACK_POS, RBP);
@@ -1722,7 +1722,7 @@ void JitAmd64::ProcessStackCallback(long instr_id, StackInstr* instr, long &inst
   push_mem(STACK_POS, RBP);
   
   // call function
-  move_imm_reg((long)JitCompiler::JitStackCallback, R15);
+  move_imm_reg((int64_t)JitCompiler::JitStackCallback, R15);
   call_reg(R15);
   add_imm_reg(32, RSP);
   
@@ -1771,7 +1771,7 @@ void JitAmd64::ProcessReturn(long params) {
       non_params = 0;
     }
     else {
-      non_params = (long)working_stack.size() - params;
+      non_params = (int64_t)working_stack.size() - params;
     }
 #ifdef _DEBUG_JIT
     std::wcout << L"Return: params=" << params << L", non-params=" << non_params << std::endl;
@@ -1839,7 +1839,7 @@ void JitAmd64::ProcessReturn(long params) {
     
     // clean up working stack
     if(params < 0) {
-      params = (long)working_stack.size();
+      params = (int64_t)working_stack.size();
     }
     for(long i = 0; i < params; ++i) {
       RegInstr* left = working_stack.front();
@@ -4720,7 +4720,7 @@ RegisterHolder* JitAmd64::ArrayIndex(StackInstr* instr, MemoryType type)
 
   case MEM_INT:
     array_holder = GetRegister();
-    move_mem_reg((long)holder->GetOperand(), RBP, array_holder->GetRegister());
+    move_mem_reg((int64_t)holder->GetOperand(), RBP, array_holder->GetRegister());
     break;
 
   default:
@@ -4750,7 +4750,7 @@ RegisterHolder* JitAmd64::ArrayIndex(StackInstr* instr, MemoryType type)
   switch(holder->GetType()) {
   case IMM_INT:
     index_holder = GetRegister();
-    move_imm_reg((long)holder->GetOperand(), index_holder->GetRegister());
+    move_imm_reg((int64_t)holder->GetOperand(), index_holder->GetRegister());
     break;
 
   case REG_INT:
@@ -4759,7 +4759,7 @@ RegisterHolder* JitAmd64::ArrayIndex(StackInstr* instr, MemoryType type)
 
   case MEM_INT:
     index_holder = GetRegister();
-    move_mem_reg((long)holder->GetOperand(), RBP, index_holder->GetRegister());
+    move_mem_reg((int64_t)holder->GetOperand(), RBP, index_holder->GetRegister());
     break;
 
   default:
@@ -4779,7 +4779,7 @@ RegisterHolder* JitAmd64::ArrayIndex(StackInstr* instr, MemoryType type)
     working_stack.pop_front();
     switch(holder->GetType()) {
     case IMM_INT:
-      add_imm_reg((long)holder->GetOperand(), index_holder->GetRegister());
+      add_imm_reg((int64_t)holder->GetOperand(), index_holder->GetRegister());
       break;
 
     case REG_INT:
@@ -4787,7 +4787,7 @@ RegisterHolder* JitAmd64::ArrayIndex(StackInstr* instr, MemoryType type)
       break;
 
     case MEM_INT:
-      add_mem_reg((long)holder->GetOperand(), RBP, index_holder->GetRegister());
+      add_mem_reg((int64_t)holder->GetOperand(), RBP, index_holder->GetRegister());
       break;
 
     default:

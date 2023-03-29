@@ -99,7 +99,7 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
 
     // nullptr terminated string workaround
     size++;
-    size_t* mem = MemoryManager::AllocateArray((long)(size + ((dim + 2) * sizeof(size_t))), BYTE_ARY_TYPE, op_stack, *stack_pos);
+    size_t* mem = MemoryManager::AllocateArray((int64_t)(size + ((dim + 2) * sizeof(size_t))), BYTE_ARY_TYPE, op_stack, *stack_pos);
     mem[0] = size;
     mem[1] = dim;
     memcpy(mem + 2, indices, dim * sizeof(size_t));
@@ -125,7 +125,7 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
     }
 
     size++;
-    size_t* mem = (size_t*)MemoryManager::AllocateArray((long)(size + ((dim + 2) * sizeof(size_t))), CHAR_ARY_TYPE, op_stack, *stack_pos);
+    size_t* mem = (size_t*)MemoryManager::AllocateArray((int64_t)(size + ((dim + 2) * sizeof(size_t))), CHAR_ARY_TYPE, op_stack, *stack_pos);
     mem[0] = size - 1;
     mem[1] = dim;
     memcpy(mem + 2, indices, dim * sizeof(size_t));
@@ -150,7 +150,7 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
       indices[dim++] = value;
     }
 
-    size_t* mem = (size_t*)MemoryManager::AllocateArray((long)(size + dim + 2), INT_TYPE, op_stack, *stack_pos);
+    size_t* mem = (size_t*)MemoryManager::AllocateArray((int64_t)(size + dim + 2), INT_TYPE, op_stack, *stack_pos);
 #ifdef _DEBUG_JIT
     std::wcout << L"jit oper: NEW_INT_ARY: dim=" << dim << L"; size=" << size
       << L"; index=" << (*stack_pos) << L"; mem=" << mem << std::endl;
@@ -174,7 +174,7 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
       indices[dim++] = value;
     }
 
-    size_t* mem = (size_t*)MemoryManager::AllocateArray((long)(size + dim + 2), INT_TYPE, op_stack, *stack_pos);
+    size_t* mem = (size_t*)MemoryManager::AllocateArray((int64_t)(size + dim + 2), INT_TYPE, op_stack, *stack_pos);
     mem[0] = size;
     mem[1] = dim;
 
@@ -198,7 +198,7 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
     if(str_ptr) {
       wchar_t* str = (wchar_t*)(str_ptr + 3);
       const size_t base = PopInt(op_stack, stack_pos);
-      const long value = (long)PopInt(op_stack, stack_pos);
+      const long value = (int64_t)PopInt(op_stack, stack_pos);
 
       std::wstring conv;
       std::wstringstream formatter;
@@ -328,7 +328,7 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
 #endif
 
     size_t* str_ptr = (size_t*)PopInt(op_stack, stack_pos);
-    long base = (long)PopInt(op_stack, stack_pos);
+    long base = (int64_t)PopInt(op_stack, stack_pos);
     if(str_ptr) {
       wchar_t* str = (wchar_t*)(str_ptr + 3);
       try {
@@ -482,10 +482,10 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
 
     // ---------------- memory copy ----------------
   case CPY_BYTE_ARY: {
-    long length = (long)PopInt(op_stack, stack_pos);
-    const long src_offset = (long)PopInt(op_stack, stack_pos);
+    long length = (int64_t)PopInt(op_stack, stack_pos);
+    const long src_offset = (int64_t)PopInt(op_stack, stack_pos);
     size_t* src_array = (size_t*)PopInt(op_stack, stack_pos);
-    const long dest_offset = (long)PopInt(op_stack, stack_pos);
+    const long dest_offset = (int64_t)PopInt(op_stack, stack_pos);
     size_t* dest_array = (size_t*)PopInt(op_stack, stack_pos);
 
     if(!src_array || !dest_array) {
@@ -494,8 +494,8 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
       exit(1);
     }
 
-    const long src_array_len = (long)src_array[2];
-    const long dest_array_len = (long)dest_array[2];
+    const long src_array_len = (int64_t)src_array[2];
+    const long dest_array_len = (int64_t)dest_array[2];
     if(length > 0 && src_offset + length <= src_array_len && dest_offset + length <= dest_array_len) {
       char* src_array_ptr = (char*)(src_array + 3);
       char* dest_array_ptr = (char*)(dest_array + 3);
@@ -514,10 +514,10 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
     break;
 
   case CPY_CHAR_ARY: {
-    long length = (long)PopInt(op_stack, stack_pos);
-    const long src_offset = (long)PopInt(op_stack, stack_pos);
+    long length = (int64_t)PopInt(op_stack, stack_pos);
+    const long src_offset = (int64_t)PopInt(op_stack, stack_pos);
     size_t* src_array = (size_t*)PopInt(op_stack, stack_pos);
-    const long dest_offset = (long)PopInt(op_stack, stack_pos);
+    const long dest_offset = (int64_t)PopInt(op_stack, stack_pos);
     size_t* dest_array = (size_t*)PopInt(op_stack, stack_pos);
 
     if(!src_array || !dest_array) {
@@ -526,8 +526,8 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
       exit(1);
     }
 
-    const long src_array_len = (long)src_array[2];
-    const long dest_array_len = (long)dest_array[2];
+    const long src_array_len = (int64_t)src_array[2];
+    const long dest_array_len = (int64_t)dest_array[2];
 
     if(length > 0 && src_offset + length <= src_array_len && dest_offset + length <= dest_array_len) {
       const wchar_t* src_array_ptr = (wchar_t*)(src_array + 3);
@@ -547,10 +547,10 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
     break;
 
   case CPY_INT_ARY: {
-    long length = (long)PopInt(op_stack, stack_pos);
-    const long src_offset = (long)PopInt(op_stack, stack_pos);
+    long length = (int64_t)PopInt(op_stack, stack_pos);
+    const long src_offset = (int64_t)PopInt(op_stack, stack_pos);
     size_t* src_array = (size_t*)PopInt(op_stack, stack_pos);
-    const long dest_offset = (long)PopInt(op_stack, stack_pos);
+    const long dest_offset = (int64_t)PopInt(op_stack, stack_pos);
     size_t* dest_array = (size_t*)PopInt(op_stack, stack_pos);
 
     if(!src_array || !dest_array) {
@@ -559,8 +559,8 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
       exit(1);
     }
 
-    const long src_array_len = (long)src_array[0];
-    const long dest_array_len = (long)dest_array[0];
+    const long src_array_len = (int64_t)src_array[0];
+    const long dest_array_len = (int64_t)dest_array[0];
     if(length > 0 && src_offset + length <= src_array_len && dest_offset + length <= dest_array_len) {
       size_t* src_array_ptr = src_array + 3;
       size_t* dest_array_ptr = dest_array + 3;
@@ -579,10 +579,10 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
     break;
 
   case CPY_FLOAT_ARY: {
-    long length = (long)PopInt(op_stack, stack_pos);
-    const long src_offset = (long)PopInt(op_stack, stack_pos);
+    long length = (int64_t)PopInt(op_stack, stack_pos);
+    const long src_offset = (int64_t)PopInt(op_stack, stack_pos);
     size_t* src_array = (size_t*)PopInt(op_stack, stack_pos);
-    const long dest_offset = (long)PopInt(op_stack, stack_pos);
+    const long dest_offset = (int64_t)PopInt(op_stack, stack_pos);
     size_t* dest_array = (size_t*)PopInt(op_stack, stack_pos);
 
     if(!src_array || !dest_array) {
@@ -591,8 +591,8 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
       exit(1);
     }
 
-    const long src_array_len = (long)src_array[0];
-    const long dest_array_len = (long)dest_array[0];
+    const long src_array_len = (int64_t)src_array[0];
+    const long dest_array_len = (int64_t)dest_array[0];
     if(length > 0 && src_offset + length <= src_array_len && dest_offset + length <= dest_array_len) {
       size_t* src_array_ptr = src_array + 3;
       size_t* dest_array_ptr = dest_array + 3;
