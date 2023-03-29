@@ -1003,7 +1003,7 @@ bundle System {
 		@return maximum size of an integer
 		~#
 		function : MaxSize() ~ Int {
-			return 2147483647;
+			return 2->Pow(63);
 		}
 		
 		#~
@@ -1011,7 +1011,7 @@ bundle System {
 		@return maximum size of an integer
 		~#
 		function : MinSize() ~ Int {
-			return -2147483648;
+			return -1 * 2->Pow(63);
 		}
 		
 		#~
