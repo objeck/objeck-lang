@@ -6,5 +6,6 @@ class Hello {
 	function : native : Brun() ~ Nil {
 		3.5->Round()->PrintLine();
 		3.5->Exp()->PrintLine();
+		3.5->ArcCosh()->PrintLine();
 	}
 }
