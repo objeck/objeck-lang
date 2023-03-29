@@ -66,5 +66,29 @@ bundle System.Math {
 
 			return value;
 		}
+
+		#~
+		Returns a given value between an upper and lower bound
+		@param min minimal value
+		@param value value between the min and max
+		@param max maximum value
+		@return min if vaule is less than main, max if max is less than value, otherwise the value
+		~#
+		function : Clamp(min : Float, value : Float, max : Float) ~ Float {
+		      temp := value < min ? min : value;
+		      return temp > max ? max : temp;
+		}
+
+		#~
+		Returns a given value between an upper and lower bound
+		@param min minimal value
+		@param value value between the min and max
+		@param max maximum value
+		@return min if vaule is less than main, max if max is less than value, otherwise the value
+		~#
+		function : Clamp(min : Byte, value : Byte, max : Byte) ~ Byte {
+			temp := value < min ? min : value;
+			return temp > max ? max : temp;
+		}
 	}
 }
