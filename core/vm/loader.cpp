@@ -405,7 +405,7 @@ void Loader::LoadMethods(StackClass* cls, bool is_debug)
       break;
 
     default:
-      std::wcerr << L">>> unknown type <<<" << std::endl;
+      std::wcerr << L">>> unknown type: " << rtrn_name[0] << L"(" << (int)rtrn_name[0] << L") <<" << std::endl;
       exit(1);
       break;
     }
