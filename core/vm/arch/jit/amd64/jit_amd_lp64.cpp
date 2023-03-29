@@ -1369,8 +1369,7 @@ void JitAmd64::ProcessFloatToInt(StackInstr* instr) {
     
   case MEM_FLOAT:
   case MEM_INT:
-    cvt_mem_reg(left->GetOperand(), 
-                RBP, holder->GetRegister());
+    cvt_mem_reg(left->GetOperand(), RBP, holder->GetRegister());
     break;
 
   case REG_FLOAT:
@@ -1398,8 +1397,7 @@ void JitAmd64::ProcessIntToFloat(StackInstr* instr) {
     break;
     
   case MEM_INT:
-    cvt_mem_xreg(left->GetOperand(), 
-                 RBP, holder->GetRegister());
+    cvt_mem_xreg(left->GetOperand(), RBP, holder->GetRegister());
     break;
 
   case REG_INT:
