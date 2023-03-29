@@ -2301,6 +2301,7 @@ void JitAmd64::ProcessFloatOperation(StackInstr* instruction) {
     holder = call_xfunc(acos, left);
     break;
 
+    // TODO: use Intel instruction
   case LOG_FLOAT:
     holder = call_xfunc(log, left);
     break;
