@@ -8,7 +8,7 @@
   <a href="https://scan.coverity.com/projects/objeck"><img src="https://img.shields.io/coverity/scan/10314.svg" alt="Coverity Scan Build Status"></a>
 </p>
 
-<h1 align="center">Easier than Programming a VCR</h1>
+<h1 align="center">More Code, Lower Overhead</h1>
 
 ```ruby
 class Hello {
