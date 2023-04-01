@@ -2,5 +2,6 @@ class Test {
 	function : Main(args : String[]) ~ Nil {
 		"Nada!"->PrintLine();
 		"Hello World!"->ToFloat()->PrintLine();
+      "Hello Again"->PrintLine();
 	}
 }

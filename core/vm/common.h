@@ -950,6 +950,11 @@ class StackProgram {
 
   static void SetProperty(const std::wstring& key, const std::wstring& value) {
     EnterCriticalSection(&prop_cs);
+
+    if(properties_map.size() == 0) {
+      InitializeProprieties();
+    }
+
     properties_map.insert(std::pair<std::wstring, std::wstring>(key, value));
     LeaveCriticalSection(&prop_cs);
   }
