@@ -68,6 +68,8 @@ cd ../../release
 cd ../..
 cp -R docs/syntax core/release/deploy-msys2-clang/doc/syntax
 cp docs/readme.html core/release/deploy-msys2-clang
+cp docs/doc/readme.css core/release/deploy-msys2-clang/doc
+
 cp LICENSE core/release/deploy-msys2-clang
 unzip docs/api.zip -d core/release/deploy-msys2-clang/doc
 
