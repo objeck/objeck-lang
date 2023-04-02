@@ -1,7 +1,15 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		"Nada!"->PrintLine();
-		"Hello World!"->ToFloat()->PrintLine();
-      "Hello Again"->PrintLine();
+		"Welcome"->PrintLine();
+    Bar();
+    Foo();
 	}
+
+  function : Foo() ~ Nil {
+    "Hello World!"->PrintFOOOOOOO();
+  }
+  
+  function : Bar() ~ Nil {
+    "Foo Bar"->Size()->PrintLine();
+  }
 }
