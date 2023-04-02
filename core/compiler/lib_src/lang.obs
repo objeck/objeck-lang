@@ -4417,10 +4417,27 @@ bundle System {
 		#~
 		Compares two strings
 		@param rhs string to compare
-		@return 0 if equal, -1 if right-hand side i greater, 1 if left-hand side is greater
+		@return true if equal, false otherwise
 		~#
 		method : public : Equals(rhs : String) ~ Bool {
 			return Compare(rhs->As(System.Compare)) = 0;
+		}
+		
+		#~
+		Compares two strings, ignoring the case
+		@param rhs string to compare
+		@return true if equal, false otherwise, ignoring case
+		~#
+		method : public : EqualsIgnoreCase(rhs : String) ~ Bool {
+			each(i : @pos) {
+				l := @string[i]->ToLower();
+				r := @rhs->Get(i)->ToLower();
+				if(l <> r) {
+					return false;
+				};
+			};
+
+			return true;
 		}
 
 		#~
