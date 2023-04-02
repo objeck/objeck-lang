@@ -4480,7 +4480,7 @@ bool TrapProcessor::FileOpenReadWrite(StackProgram* program, size_t* inst, size_
     const std::string filename = UnicodeToBytes((wchar_t*)(array + 3));
     FILE* file = File::FileOpen(filename.c_str(), "w+b");
 #ifdef _DEBUG
-    std::wcout << L"# file open: name='" << name << L"'; instance=" << instance << L"("
+    std::wcout << L"# file open: name='" << filename.c_str() << L"'; instance=" << instance << L"("
       << (size_t)instance << L")" << L"; addr=" << file << L"(" << (size_t)file
       << L") #" << std::endl;
 #endif
