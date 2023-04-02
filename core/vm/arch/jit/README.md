@@ -8,7 +8,7 @@ JIT compilers iterate over bytecode instructions managing states using a stack a
 
 Compilers eliminate redundant move instructions and fold constant expressions. Boolean expressions are optimized out of loops and target features such as 'cmov' for x86_64 and ARM64 specific instructions are used where appropriate. Machine code is generated for general runtime error checking such as Nil de-references and array bounds checks. 
 
-JIT can callback to interpreted code as required.
+JIT'ed code can callback to interpreted code as needed.
 
 ### Code Layout
 ![alt text](../../../../docs/images/jit_design.svg "JIT Code Layout")
