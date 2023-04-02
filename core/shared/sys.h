@@ -464,11 +464,11 @@ public:
 
     // input
     stream.next_in = (Bytef*)src;
-    stream.avail_in = src_len;
+    stream.avail_in = (uInt)src_len;
 
     // output
     stream.next_out = (Bytef*)buffer;
-    stream.avail_out = buffer_max;
+    stream.avail_out = (uInt)buffer_max;
 
     out_len = buffer_max;
     if(deflateInit2(&stream, Z_DEFAULT_COMPRESSION, Z_DEFLATED, MAX_WBITS | 16, MAX_MEM_LEVEL, Z_DEFAULT_STRATEGY) != Z_OK) {
@@ -503,7 +503,7 @@ public:
 
     // input
     stream.next_in = (Bytef*)src;
-    stream.avail_in = src_len;
+    stream.avail_in = (uInt)src_len;
 
     unsigned long buffer_max = src_len << 2;
     if(buffer_max > COMPRESS_BUFFER_LIMIT) {
@@ -529,7 +529,7 @@ public:
       }
 
       stream.next_out = (Bytef*)(buffer + stream.total_out);
-      stream.avail_out = buffer_max - stream.total_out;
+      stream.avail_out = (uInt)buffer_max - stream.total_out;
 
       const int status = inflate(&stream, Z_SYNC_FLUSH);
       if(status == Z_STREAM_END) {
@@ -569,11 +569,11 @@ public:
 
     // input
     stream.next_in = (Bytef*)src;
-    stream.avail_in = src_len;
+    stream.avail_in = (uInt)src_len;
 
     // output
     stream.next_out = (Bytef*)buffer;
-    stream.avail_out = buffer_max;
+    stream.avail_out = (uInt)buffer_max;
 
     out_len = buffer_max;
     if(deflateInit2(&stream, Z_DEFAULT_COMPRESSION, Z_DEFLATED, -MAX_WBITS, MAX_MEM_LEVEL, Z_DEFAULT_STRATEGY) != Z_OK) {
@@ -608,7 +608,7 @@ public:
 
     // input
     stream.next_in = (Bytef*)src;
-    stream.avail_in = src_len;
+    stream.avail_in = (uInt)src_len;
 
     unsigned long buffer_max = src_len << 2;
     if(buffer_max > COMPRESS_BUFFER_LIMIT) {
@@ -634,7 +634,7 @@ public:
       }
 
       stream.next_out = (Bytef*)(buffer + stream.total_out);
-      stream.avail_out = buffer_max - stream.total_out;
+      stream.avail_out = (uInt)buffer_max - stream.total_out;
 
       const int status = inflate(&stream, Z_SYNC_FLUSH);
       if(status == Z_STREAM_END) {
