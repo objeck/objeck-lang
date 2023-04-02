@@ -4429,9 +4429,13 @@ bundle System {
 		@return true if equal, false otherwise, ignoring case
 		~#
 		method : public : EqualsIgnoreCase(rhs : String) ~ Bool {
+			if(rhs->Size() <> @pos) {
+				return false;
+			};
+
 			each(i : @pos) {
 				l := @string[i]->ToLower();
-				r := @rhs->Get(i)->ToLower();
+				r := rhs->Get(i)->ToLower();
 				if(l <> r) {
 					return false;
 				};
