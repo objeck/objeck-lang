@@ -78,6 +78,7 @@ mkdir deploy64\doc
 mkdir deploy64\doc\syntax
 xcopy /e ..\..\docs\syntax\* deploy64\doc\syntax
 copy ..\..\docs\readme.html deploy64
+copy ..\..\docs\doc\readme.css deploy64\doc
 copy ..\..\LICENSE deploy64
 call code_doc64.cmd
 

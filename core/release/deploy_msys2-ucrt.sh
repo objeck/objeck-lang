@@ -68,6 +68,8 @@ cd ../../release
 cd ../..
 cp -R docs/syntax core/release/deploy-msys2-ucrt/doc/syntax
 cp docs/readme.html core/release/deploy-msys2-ucrt
+cp docs/doc/readme.css core/release/deploy-msys2-ucrt/doc
+
 cp LICENSE core/release/deploy-msys2-ucrt
 unzip docs/api.zip -d core/release/deploy-msys2-ucrt/doc
 
