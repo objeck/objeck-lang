@@ -5,5 +5,7 @@ class Hello {
 		"hellO"->EqualsIgnoreCase("Hello")->PrintLine();
 		"hellOo"->EqualsIgnoreCase("Hello")->PrintLine();
 		"hellO"->EqualsIgnoreCase("Helloo")->PrintLine();
+		
+		System.IO.Filesystem.Logger->Instance()->GetDirectory()->PrintLine();
 	}
 }
