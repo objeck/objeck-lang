@@ -1,7 +1,11 @@
 class Hello {
 	function : Main(args : String[]) ~ Nil {
-		Runtime->SetProperty("foo", "bar");
-		dir := System.IO.Filesystem.Logger->Instance()->GetDirectory();
-		dir->PrintLine();
+		Runtime->SetProperty("foo", "bar")
+		dir := System.IO.Filesystem.Logger->Instance()->GetDirectory()
+		dir->PrintLine()
+
+		c := 3.145;
+		a := 13;
+		(a + c)->ToInt()->PrintLine()
 	}
 }
