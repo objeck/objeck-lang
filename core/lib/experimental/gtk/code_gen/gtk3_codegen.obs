@@ -226,6 +226,7 @@ class Gtk3Binder {
 						};
 
 						method_obj->ToString()->PrintLine();
+						method_obj->EmitObjeck()->PrintLine();
 
 						record->AddMethod(method_obj);
 					};

@@ -1,0 +1,13 @@
+class Hello {
+	function : Main(args : String[]) ~ Nil {
+		a := "";
+		b : String[];
+		c : String[];
+		d : String;
+#		a += b;
+#		b += c;
+		a += d;
+		b += c;
+		a->PrintLine();
+	}
+}
