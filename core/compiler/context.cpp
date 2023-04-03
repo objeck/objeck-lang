@@ -4338,7 +4338,10 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType ty
         //
         if(left_name == L"System.String") {
           Type* right_type = GetExpressionType(expression, depth + 1);
-          if(right_type && right_type->GetType() == CLASS_TYPE) {
+          if(left_type->GetDimension() != 0 || right_type->GetDimension() != 0) {
+            ProcessError(expression, L"Dimension size mismatch");
+          }
+          else if(right_type && right_type->GetType() == CLASS_TYPE) {
 #ifndef _SYSTEM
             LibraryClass* right_class = linker->SearchClassLibraries(right_type->GetName(), program->GetUses(current_class->GetFileName()));
 #else
