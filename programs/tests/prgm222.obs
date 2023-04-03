@@ -7,7 +7,11 @@ class Hello {
 #		a += b;
 #		b += c;
 		a += d;
-		b += c;
+#		b += c;
 		a->PrintLine();
+
+		buffer := String->New[2];
+		buffer[0] := a;
+		buffer[1] := d;
 	}
 }
