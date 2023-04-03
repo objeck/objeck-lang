@@ -1,5 +1,9 @@
 use Collection;
 
+
+#
+# Class
+#
 class GtkClass from GtkDocType {
 	New(doc : String) {
 		Parent(doc);
@@ -18,14 +22,21 @@ class GtkClass from GtkDocType {
 	}
 }
 
+#
+# Method
+#
+
 class GtkMethod from GtkDocType {
 	@name : String;
 	@cname : String;
+	@method_params : Vector<GtkMethodParam>;
+	@method_return : GtkMethodReturn;
 
 	New(name : String, cname : String, doc : String) {
 		Parent(doc);
-		@name := name;
+		@name := ToCamelCase(name);
 		@cname := cname;
+		@method_params := Vector->New()<GtkMethodParam>;
 	}
 
 	function : ToCamelCase(name : String) ~ String {
@@ -47,12 +58,25 @@ class GtkMethod from GtkDocType {
 		return temp;
 	}
 
-	method : public : AddParameter(name : String, ctype : String, type : String, is_out : Bool) ~ Nil {
+	method : public : AddParameter(name : String, type : String, ctype : String, is_out : Bool) ~ Nil {
+		@method_params->AddBack(GtkMethodParam->New(name, type, ctype, is_out));
+	}
 
+	method : public : SetReturn(type : String, ctype : String) ~ Nil {
+		@method_return := GtkMethodReturn->New(type, ctype);
 	}
 
 	method : public : ToString() ~ String {
-		return "TODO";
+		buffer := "";
+
+		doc_size := @doc->Size();
+		buffer += "\t[Method: name='{$@name}', cname='{$@cname}', doc_size={$doc_size}]\n";
+		each(method_param := @method_params) {
+			buffer += method_param->ToString() + '\n';
+		};
+		buffer += @method_return->ToString() + '\n';
+
+		return buffer;
 	}
 
 	method : public : EmitCxx() ~ String {
@@ -64,10 +88,59 @@ class GtkMethod from GtkDocType {
 	}
 }
 
+class GtkMethodParam {
+	@name : String;
+	@type : String;
+	@ctype : String;
+	@is_out : Bool;
+
+	New(name : String, type : String, ctype : String, is_out : Bool) {
+		@name := name;
+		@type := type;
+		@ctype := ctype;
+		@is_out := is_out;
+	}
+
+	method : public : EmitCxx() ~ String {
+		return "TODO";
+	}
+
+	method : public : EmitObjeck() ~ String {
+		return "TODO";
+	}
+
+	method : public : ToString() ~ String {
+		return "\t\t[Param: name='{$@name}', 'type={$@type}', ctype='{$@ctype}', is_out={$@is_out}]";
+	}
+}
+
+class GtkMethodReturn {
+	@type : String;
+	@ctype : String;
+
+	New(type : String, ctype : String) {
+		@type := type;
+		@ctype := ctype;
+	}
+
+	method : public : EmitCxx() ~ String {
+		return "TODO";
+	}
+
+	method : public : EmitObjeck() ~ String {
+		return "TODO";
+	}
+
+	method : public : ToString() ~ String {
+		return "\t\t[Return: type={$@type}, ctype={$@ctype}]";
+	}
+}
+
 class GtkRecord from GtkDocType {
 	@name : String;
 	@ctype : String;
 	@field_types : Vector<GtkRecordField>;
+	@methods : Vector<GtkMethod>;
 
 	New(name : String, ctype : String, doc : String) {
 		Parent(doc);
@@ -76,10 +149,15 @@ class GtkRecord from GtkDocType {
 		@ctype := ctype;
 
 		@field_types := Vector->New()<GtkRecordField>;
+		@methods := Vector->New()<GtkMethod>;
 	}
 
 	method : public : AddField(name : String, ctype : String, is_writable : Bool, doc : String := "") ~ Nil {
 		@field_types->AddBack(GtkRecordField->New(name, ctype, is_writable, @name, @ctype, doc));
+	}
+
+	method : public : AddMethod(method_obj : GtkMethod) ~ Nil {
+		@methods->AddBack(method_obj);
 	}
 
 	method : public : ToString() ~ String {
@@ -124,6 +202,10 @@ class GtkRecord from GtkDocType {
 	}
 }
 
+#
+# Record
+#
+
 class GtkRecordField from GtkDocType {
 	@name : String;
 	@type : GtkType;
@@ -131,7 +213,6 @@ class GtkRecordField from GtkDocType {
 	@rec_name : String;
 	@rec_ctype : String;
 
-	# TODO: field_name vs. type_nam
 	New(name : String, ctype : String, is_writable : Bool, rec_name : String, rec_ctype : String, doc : String) {
 		Parent(doc);
 
