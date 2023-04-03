@@ -19,8 +19,13 @@ class GtkClass from GtkDocType {
 }
 
 class GtkMethod from GtkDocType {
-	New(doc : String) {
+	@name : String;
+	@cname : String;
+
+	New(name : String, cname : String, doc : String) {
 		Parent(doc);
+		@name := name;
+		@cname := cname;
 	}
 
 	function : ToCamelCase(name : String) ~ String {
@@ -40,6 +45,10 @@ class GtkMethod from GtkDocType {
 		};
 
 		return temp;
+	}
+
+	method : public : AddParameter(name : String, ctype : String, type : String, is_out : Bool) ~ Nil {
+
 	}
 
 	method : public : ToString() ~ String {
