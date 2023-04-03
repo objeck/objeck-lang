@@ -12,10 +12,9 @@ class Gtk3Binder {
 		if(args->Size() = 1) {
 			Gtk3Binder->New(args[0])->Emit();
 			show_usage := false;
-		};
-
-		if(show_usage) {
-			"args: filename, [list|emit]"->ErrorLine();
+		}
+		else {
+			"args: <xml file>"->ErrorLine();
 		};
 	}
 
@@ -188,22 +187,38 @@ class Gtk3Binder {
 						id_value := id_xml->GetValue();
 						name_value := name_xml->GetValue();
 
-"### |{$id_value}|, |{$name_value}| ###"->PrintLine();
+"Method: '{$id_value}', '{$name_value}'"->PrintLine();
 					};
-
-					return_xml := method_xml->GetFirstChild("return-value");
 
 					parameters_xml := method_xml->GetFirstChild("parameters")->GetChildren("parameter")<XmlElement>;
 					each(parameter_xml := parameters_xml) {
+						is_out := false;
+						param_direction_xml := parameter_xml->GetAttribute("direction");
+						param_name_xml := parameter_xml->GetAttribute("name");
+						if(param_direction_xml <> Nil & param_direction_xml->GetValue()->Equals("out")) {
+							is_out := true;
+						};
+
 						type_xml := parameter_xml->GetFirstChild("type");
+						if(param_name_xml <> Nil & type_xml <> Nil) {
+							param_name_value := param_name_xml->GetValue();
+							ctype_value := XmlElement->DecodeString(type_xml->GetAttribute("type")->GetValue());
+							name_value := type_xml->GetAttribute("name")->GetValue();
+"\t{$param_name_value} -> '{$ctype_value}', '{$name_value}', is_out={$is_out}"->PrintLine();
+						};
+					};
+					
+					return_xml := method_xml->GetFirstChild("return-value");
+					if(return_xml <> Nil) {
+						type_xml := return_xml->GetFirstChild("type");
 						if(type_xml <> Nil) {
 							ctype_value := XmlElement->DecodeString(type_xml->GetAttribute("type")->GetValue());
 							name_value := type_xml->GetAttribute("name")->GetValue();
-"\t### |{$ctype_value}|, |{$name_value}| ###"->PrintLine();
+"\treturn => '{$ctype_value}', '{$name_value}'"->PrintLine();
 						};
 					};
 				};
-
+				
 #				record->EmitObjeck()->PrintLine();
 #				record->EmitCxx()->PrintLine();
 				"---"->PrintLine();
