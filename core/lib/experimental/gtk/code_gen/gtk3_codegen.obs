@@ -181,13 +181,17 @@ class Gtk3Binder {
 
 				methods_xml := record_xml->GetChildren("method")<XmlElement>;
 				each(method_xml := methods_xml) {
+					method_obj : GtkMethod;
+
 					id_xml := method_xml->GetAttribute("identifier");
 					name_xml := method_xml->GetAttribute("name");
 					if(id_xml <> Nil & name_xml <> Nil) {
 						id_value := id_xml->GetValue();
 						name_value := name_xml->GetValue();
-
 "Method: '{$id_value}', '{$name_value}'"->PrintLine();
+
+						# TODO: parse doc
+						method_obj := GtkMethod->New(name_value, id_value, "");
 					};
 
 					parameters_xml := method_xml->GetFirstChild("parameters")->GetChildren("parameter")<XmlElement>;
@@ -207,7 +211,7 @@ class Gtk3Binder {
 "\t{$param_name_value} -> '{$ctype_value}', '{$name_value}', is_out={$is_out}"->PrintLine();
 						};
 					};
-					
+
 					return_xml := method_xml->GetFirstChild("return-value");
 					if(return_xml <> Nil) {
 						type_xml := return_xml->GetFirstChild("type");
@@ -218,7 +222,7 @@ class Gtk3Binder {
 						};
 					};
 				};
-				
+
 #				record->EmitObjeck()->PrintLine();
 #				record->EmitCxx()->PrintLine();
 				"---"->PrintLine();
