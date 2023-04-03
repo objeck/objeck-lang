@@ -185,42 +185,51 @@ class Gtk3Binder {
 
 					id_xml := method_xml->GetAttribute("identifier");
 					name_xml := method_xml->GetAttribute("name");
-					if(id_xml <> Nil & name_xml <> Nil) {
+					doc_xml := method_xml->GetFirstChild("doc");
+					if(id_xml <> Nil & name_xml <> Nil & doc_xml <> Nil) {
 						id_value := id_xml->GetValue();
 						name_value := name_xml->GetValue();
-"Method: '{$id_value}', '{$name_value}'"->PrintLine();
+						doc_value := doc_xml->GetContent();
+						
+# "Method: '{$name_value}', '{$id_value}', '{$doc_value}'"->PrintLine();
 
-						# TODO: parse doc
-						method_obj := GtkMethod->New(name_value, id_value, "");
-					};
+						method_obj := GtkMethod->New(name_value, id_value, doc_value);
 
-					parameters_xml := method_xml->GetFirstChild("parameters")->GetChildren("parameter")<XmlElement>;
-					each(parameter_xml := parameters_xml) {
-						is_out := false;
-						param_direction_xml := parameter_xml->GetAttribute("direction");
-						param_name_xml := parameter_xml->GetAttribute("name");
-						if(param_direction_xml <> Nil & param_direction_xml->GetValue()->Equals("out")) {
-							is_out := true;
+						parameters_xml := method_xml->GetFirstChild("parameters")->GetChildren("parameter")<XmlElement>;
+						each(parameter_xml := parameters_xml) {
+							is_out := false;
+							param_direction_xml := parameter_xml->GetAttribute("direction");
+							param_name_xml := parameter_xml->GetAttribute("name");
+							if(param_direction_xml <> Nil & param_direction_xml->GetValue()->Equals("out")) {
+								is_out := true;
+							};
+
+							type_xml := parameter_xml->GetFirstChild("type");
+							if(param_name_xml <> Nil & type_xml <> Nil) {
+								param_name_value := param_name_xml->GetValue();
+								ctype_value := XmlElement->DecodeString(type_xml->GetAttribute("type")->GetValue());
+								name_value := type_xml->GetAttribute("name")->GetValue();
+# "\t{$param_name_value} -> '{$ctype_value}', '{$name_value}', is_out={$is_out}"->PrintLine();
+								method_obj->AddParameter(param_name_value, name_value, ctype_value, is_out);
+							};
 						};
 
-						type_xml := parameter_xml->GetFirstChild("type");
-						if(param_name_xml <> Nil & type_xml <> Nil) {
-							param_name_value := param_name_xml->GetValue();
-							ctype_value := XmlElement->DecodeString(type_xml->GetAttribute("type")->GetValue());
-							name_value := type_xml->GetAttribute("name")->GetValue();
-"\t{$param_name_value} -> '{$ctype_value}', '{$name_value}', is_out={$is_out}"->PrintLine();
+						return_xml := method_xml->GetFirstChild("return-value");
+						if(return_xml <> Nil) {
+							type_xml := return_xml->GetFirstChild("type");
+							if(type_xml <> Nil) {
+								ctype_value := XmlElement->DecodeString(type_xml->GetAttribute("type")->GetValue());
+								name_value := type_xml->GetAttribute("name")->GetValue();
+# "\treturn => '{$ctype_value}', '{$name_value}'"->PrintLine();
+								method_obj->SetReturn(name_value, ctype_value);
+							};
 						};
+
+						method_obj->ToString()->PrintLine();
+
+						record->AddMethod(method_obj);
 					};
 
-					return_xml := method_xml->GetFirstChild("return-value");
-					if(return_xml <> Nil) {
-						type_xml := return_xml->GetFirstChild("type");
-						if(type_xml <> Nil) {
-							ctype_value := XmlElement->DecodeString(type_xml->GetAttribute("type")->GetValue());
-							name_value := type_xml->GetAttribute("name")->GetValue();
-"\treturn => '{$ctype_value}', '{$name_value}'"->PrintLine();
-						};
-					};
 				};
 
 #				record->EmitObjeck()->PrintLine();
