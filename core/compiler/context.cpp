@@ -4338,10 +4338,7 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType ty
         //
         if(left_name == L"System.String") {
           Type* right_type = GetExpressionType(expression, depth + 1);
-          if(left_type->GetDimension() != 0 || right_type->GetDimension() != 0) {
-            ProcessError(expression, L"Dimension size mismatch");
-          }
-          else if(right_type && right_type->GetType() == CLASS_TYPE) {
+          if(right_type && right_type->GetType() == CLASS_TYPE) {
 #ifndef _SYSTEM
             LibraryClass* right_class = linker->SearchClassLibraries(right_type->GetName(), program->GetUses(current_class->GetFileName()));
 #else
@@ -4353,8 +4350,13 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType ty
               if(right == L"System.String") {
                 switch(type) {
                 case ADD_ASSIGN_STMT:
-                  static_cast<OperationAssignment*>(assignment)->SetStringConcat(true);
-                  check_right_cast = false;
+                  if(left_type->GetDimension() != 0 || right_type->GetDimension() != 0) {
+                    ProcessError(expression, L"Dimension size mismatch");
+                  }
+                  else {
+                    static_cast<OperationAssignment*>(assignment)->SetStringConcat(true);
+                    check_right_cast = false;
+                  }
                   break;
 
                 case SUB_ASSIGN_STMT:
