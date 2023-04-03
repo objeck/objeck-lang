@@ -84,7 +84,35 @@ class GtkMethod from GtkDocType {
 	}
 
 	method : public : EmitObjeck() ~ String {
-		return "TODO";
+		buffer := "";
+
+		# getter
+		buffer += "\tmethod : public : {$@name}() ~ ";
+
+		# set return type
+		select(@type->GetType()) {
+			label GtkType->Type->CHAR {
+				buffer += "Char {\n";
+			}
+
+			label GtkType->Type->INT {
+				buffer += "\tInt {\n";
+			}
+			label GtkType->Type->BOOL {
+				buffer += "Bool {\n";
+			}
+
+			label GtkType->Type->FLOAT {
+				buffer += "Float {\n";
+			}
+
+			other {
+				objk_name := @method_return->GetObjkName();
+				buffer += "{$objk_name} {\n";
+			}
+		};
+
+		return buffer;
 	}
 }
 
@@ -115,12 +143,10 @@ class GtkMethodParam {
 }
 
 class GtkMethodReturn {
-	@type : String;
-	@ctype : String;
-
-	New(type : String, ctype : String) {
-		@type := type;
-		@ctype := ctype;
+	@type : GtkType;
+	
+	New(name : String, cname : String) {
+		@type := GtkType->New(GtkType->GetCxxName(name), cname);
 	}
 
 	method : public : EmitCxx() ~ String {
@@ -132,7 +158,9 @@ class GtkMethodReturn {
 	}
 
 	method : public : ToString() ~ String {
-		return "\t\t[Return: type={$@type}, ctype={$@ctype}]";
+		name := @type->GetName();
+		cname := @type->GetCxName();
+		return "\t\t[Return: name={$name}, cname={$cname}]";
 	}
 }
 
