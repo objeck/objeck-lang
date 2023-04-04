@@ -1,11 +1,12 @@
 class Hello {
 	function : Main(args : String[]) ~ Nil {
-		"hello"->EqualsIgnoreCase("Hello")->PrintLine();
-		"helo"->EqualsIgnoreCase("Hlo")->PrintLine();
-		"hellO"->EqualsIgnoreCase("Hello")->PrintLine();
-		"hellOo"->EqualsIgnoreCase("Hello")->PrintLine();
-		"hellO"->EqualsIgnoreCase("Helloo")->PrintLine();
+		a : Int;
+		b := 3;
 		
-		System.IO.Filesystem.Logger->Instance()->GetDirectory()->PrintLine();
+		Foo(10, 3, "");
+	}
+
+	function : Foo(a : Int, b : Int, c : String := "") ~ Nil {
+		c->Append(a + b);
 	}
 }
