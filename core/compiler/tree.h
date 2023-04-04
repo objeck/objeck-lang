@@ -976,6 +976,7 @@ namespace frontend {
     OperationAssignment* post_operation;
     bool checked_post_operation;
     std::vector<Type*> concrete_types;
+    bool is_alt;
 
     Variable(const std::wstring& file_name, const int line_num, const int line_pos, const std::wstring& n) : Expression(file_name, line_num, line_pos) {
       name = n;
@@ -984,6 +985,7 @@ namespace frontend {
       id = -1;
       pre_operation = post_operation = nullptr;
       checked_pre_operation = checked_post_operation = true;
+      is_alt = false;
     }
 
     ~Variable() {
@@ -992,6 +994,14 @@ namespace frontend {
   public:
     const std::wstring GetName() const {
       return name;
+    }
+
+    bool IsAlt() {
+      return is_alt;
+    }
+
+    void WasAlt() {
+      is_alt = true;
     }
 
     void SetId(int i) {

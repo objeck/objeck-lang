@@ -439,6 +439,7 @@ void ContextAnalyzer::GenerateParameterMethods(ParsedBundle* bundle, Class* klas
       }
       else {
         Assignment* assignment = declaration->GetAssignment();
+        assignment->GetVariable()->WasAlt();
         assignment->GetExpression()->SetEvalType(declaration->GetEntry()->GetType(), true);
         alt_statements->AddStatement(assignment);
       }
@@ -1906,6 +1907,9 @@ void ContextAnalyzer::AnalyzeVariable(Variable* variable, SymbolEntry* entry, co
     const std::wstring scope_name = current_method->GetName() + L':' + variable->GetName();
     SymbolEntry* var_entry = TreeFactory::Instance()->MakeSymbolEntry(scope_name, TypeFactory::Instance()->MakeType(VAR_TYPE), false, true);
     current_table->AddEntry(var_entry, true);
+    if(variable->IsAlt()) {
+      var_entry->WasLoaded();
+    }
 
     // link entry and variable
     variable->SetTypes(var_entry->GetType());
@@ -4246,7 +4250,7 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType ty
 
       SymbolEntry* entry = variable->GetEntry();
       if(entry) {
-        entry->WasLoaded();
+//        entry->WasLoaded();
         if(expression->GetCastType()) {
           Type* to_type = expression->GetCastType();
           AnalyzeVariableCast(to_type, expression);
