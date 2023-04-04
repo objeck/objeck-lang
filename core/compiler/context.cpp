@@ -4246,6 +4246,7 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType ty
 
       SymbolEntry* entry = variable->GetEntry();
       if(entry) {
+        entry->WasLoaded();
         if(expression->GetCastType()) {
           Type* to_type = expression->GetCastType();
           AnalyzeVariableCast(to_type, expression);
