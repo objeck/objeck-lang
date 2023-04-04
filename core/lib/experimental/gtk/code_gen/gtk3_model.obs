@@ -114,10 +114,16 @@ class GtkMethod from GtkDocType {
 		# TODO: compiler bug
 		return_buffers := @method_return->EmitObjeck();
 
-		params_size := @method_params->Size();
+		params_size := @method_params->Size() + 1;
 		buffer += "\t\tarray_args := Base->New[{$params_size}];\n\n";
 		buffer->Append(return_buffers[0]);
-		buffer += "\t\tarray_args[1] := IntRef->New(@gobject);\n\n";
+		buffer += "\t\tarray_args[1] := IntRef->New(@gobject);\n";
+
+		for(i := 1; i < @method_params->Size(); i += 1;) {
+			method_param := @method_params->Get(i);
+			buffer += method_param->EmitObjeck(i + 1);
+		};
+		buffer += '\n';
 
 		buffer->Append(return_buffers[1]);
 		buffer += "\t}\n\n";
@@ -127,14 +133,12 @@ class GtkMethod from GtkDocType {
 
 class GtkMethodParam {
 	@name : String;
-	@type : String;
-	@ctype : String;
+	@type : GtkType;
 	@is_out : Bool;
 
 	New(name : String, type : String, ctype : String, is_out : Bool) {
 		@name := name;
-		@type := type;
-		@ctype := ctype;
+		@type := GtkType->New(GtkType->GetCxxName(type), ctype);
 		@is_out := is_out;
 	}
 
@@ -142,12 +146,35 @@ class GtkMethodParam {
 		return "TODO";
 	}
 
-	method : public : EmitObjeck() ~ String {
-		return "TODO";
+	method : public : EmitObjeck(index : Int) ~ String {
+		buffer := "";
+
+		buffer += "\t\tarray_args[{$index}] := ";
+		select(@type->GetType()) {
+			label GtkType->Type->CHAR
+			label GtkType->Type->INT
+			label GtkType->Type->CONSTS
+			label GtkType->Type->OBJECT
+			label GtkType->Type->BOOL {
+				buffer += "IntRef->New(@name);\n";
+			}
+
+			label GtkType->Type->FLOAT {
+				buffer += "FloatRef->New(@name);\n";
+			}
+
+			other {
+				buffer += "{$@name};\n";
+			}
+		};
+
+		return buffer;
 	}
 
 	method : public : ToString() ~ String {
-		return "\t\t[Param: name='{$@name}', 'type={$@type}', ctype='{$@ctype}', is_out={$@is_out}]";
+		type := @type->GetName();
+		ctype := @type->GetCxxName();
+		return "\t\t[Param: name='{$@name}', 'type={$type}', ctype='{$ctype}', is_out={$@is_out}]";
 	}
 }
 
@@ -186,6 +213,11 @@ class GtkMethodReturn {
 
 			label GtkType->Type->OBJECT {
 				param_buffer += "IntRef->New();\n";
+			}
+
+			label GtkType->Type->STRING {
+				param_buffer += "Nil;\n";
+				return_buffer += "\t\treturn array_args[0]->As(String);\n";
 			}
 
 			label GtkType->Type->BOOL {
@@ -359,7 +391,7 @@ class GtkRecordField from GtkDocType {
 			}
 
 			other {
-				buffer += "\t--- OTHER ---\n";
+				buffer += name;
 			}
 		};
 
@@ -575,6 +607,7 @@ class GtkType {
 		BOOL,
 		CONSTS,
 		STRING,
+		NIL,
 		OBJECT,
 		UNKNOWN
 	}
@@ -626,6 +659,10 @@ class GtkType {
 		@type_mapping->Insert("utf8", type_pair);
 		@type_mapping->Insert("gchar*", type_pair);
 		@type_mapping->Insert("char*", type_pair);
+
+		# Nil
+		type_pair := Pair->New("Nil", IntRef->New(GtkType->Type->NIL))<String, IntRef>;
+		@type_mapping->Insert("void", type_pair);
 	}
 
 	function : GetCxxName(name : String) ~ String {

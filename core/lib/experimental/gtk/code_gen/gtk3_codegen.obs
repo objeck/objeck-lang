@@ -225,7 +225,9 @@ class Gtk3Binder {
 							};
 						};
 
+						"\t---"->PrintLine();
 						method_obj->ToString()->PrintLine();
+						"\t---"->PrintLine();
 						method_obj->EmitObjeck()->PrintLine();
 
 						record->AddMethod(method_obj);
@@ -235,7 +237,7 @@ class Gtk3Binder {
 
 #				record->EmitObjeck()->PrintLine();
 #				record->EmitCxx()->PrintLine();
-				"---"->PrintLine();
+				"==="->PrintLine();
 			};
 		};
 
