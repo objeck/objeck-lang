@@ -276,9 +276,9 @@ void StackProgram::InitializeProprieties()
 
   // user and temp directories
 #ifdef _WIN32  
-  char user_dir[MAX_PATH];
+  wchar_t user_dir[MAX_PATH];
   if(GetUserDirectory(user_dir, MAX_PATH)) {
-    std::wstring user_dir_value = BytesToUnicode(user_dir);
+    std::wstring user_dir_value(user_dir);
     if(user_dir_value.back() == L'/' || user_dir_value.back() == L'\\') {
       user_dir_value.pop_back();
     }

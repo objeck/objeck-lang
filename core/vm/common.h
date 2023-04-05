@@ -959,14 +959,14 @@ class StackProgram {
     LeaveCriticalSection(&prop_cs);
   }
 
-  static BOOL GetUserDirectory(char* buf, DWORD len) {
+  static BOOL GetUserDirectory(wchar_t* buf, DWORD len) {
     HANDLE handle;
 
     if(!OpenProcessToken(GetCurrentProcess(), TOKEN_READ, &handle)) {
       return FALSE;
     }
 
-    if (!GetUserProfileDirectory(handle, buf, &len)) {
+    if(!GetUserProfileDirectoryW(handle, buf, &len)) {
       return FALSE;
     }
 
