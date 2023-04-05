@@ -1052,6 +1052,15 @@ bundle System {
 		}
 
 		#~
+		Calculates the natural log value
+		@ignore-params
+		@return natural log value
+		~#
+		function : Sqrt(a : Int) ~ Int {
+			return Float->Sqrt(a->As(Float));
+		}
+
+		#~
 		Returns the smallest integer value
 		@param l value to compare
 		@param r value to compare
@@ -1688,14 +1697,14 @@ bundle System {
 		}
 
 		#~
-    Calculates the power value
-    @param b power base
-    @param r power to raise
-    @return pseudo power value
-    ~#
-    function : Pow(b : Float, r : Float) ~ Float {
-      POW_FLOAT;
-    }
+		Calculates the power value
+		@param b power base
+		@param r power to raise
+		@return pseudo power value
+		~#
+		function : Pow(b : Float, r : Float) ~ Float {
+			POW_FLOAT;
+		}
 
 		#~
 		Prints value 
