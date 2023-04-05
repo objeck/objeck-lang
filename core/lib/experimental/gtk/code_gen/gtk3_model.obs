@@ -811,7 +811,11 @@ class GtkType {
 		return @ctype_name;
 	}
 
-	method : public : GetObjkName() ~ String {		
+	method : public : GetObjkName() ~ String {
+		if(@objk_type = GtkType->Type->UNKNOWN) {
+			return GetName();
+		};
+
 		return @objk_type_name;
 	}
 
