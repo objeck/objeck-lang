@@ -88,8 +88,8 @@ class GtkMethod from GtkDocType {
 
 		# getter
 		buffer += "\tmethod : public : {$@name}(";
-		if(@method_params->Size() > 1) {
-			for(i := 1; i < @method_params->Size(); i += 1;) {
+		if(@method_params->Size() > 0) {
+			each(i : @method_params) {
 				method_param := @method_params->Get(i);
 				buffer += method_param->EmitObjeck(i + 1, true);
 			};
@@ -122,14 +122,14 @@ class GtkMethod from GtkDocType {
 		};
 		return_buffers := @method_return->EmitObjeck();
 
-		params_size := @method_params->Size() = 0 ? 2 : @method_params->Size() + 1;
+		params_size := @method_params->Size() + 2;
 		buffer += "\t\tarray_args := Base->New[{$params_size}];\n\n";
 		buffer->Append(return_buffers[0]);
 		buffer += "\t\tarray_args[1] := IntRef->New(@gobject);\n";
 
-		for(i := 1; i < @method_params->Size(); i += 1;) {
+		each(i : @method_params) {
 			method_param := @method_params->Get(i);
-			buffer += method_param->EmitObjeck(i + 1, false);
+			buffer += method_param->EmitObjeck(i + 2, false);
 		};
 		buffer += '\n';
 
@@ -184,7 +184,7 @@ class GtkMethodParam {
 
 			label GtkType->Type->CONSTS {
 				if(is_sig) {
-					type := @type->GetName();
+					type := @type->GetObjkName();
 					buffer += "{$@name} : {$type}, ";
 				}
 				else {
@@ -194,7 +194,7 @@ class GtkMethodParam {
 
 			label GtkType->Type->OBJECT {
 				if(is_sig) {
-					type := @type->GetName();
+					type := @type->GetObjkName();
 					buffer += "{$@name} : {$type}, ";
 				}
 				else {
@@ -222,7 +222,7 @@ class GtkMethodParam {
 
 			other {
 				if(is_sig) {
-					type := @type->GetName();
+					type := @type->GetObjkName();
 					buffer += "{$@name} : {$type}, ";
 				}
 				else {
@@ -235,7 +235,7 @@ class GtkMethodParam {
 	}
 
 	method : public : ToString() ~ String {
-		type := @type->GetName();
+		type := @type->GetObjkName();
 		ctype := @type->GetCxxName();
 		return "\t\t[Param: name='{$@name}', 'type={$type}', ctype='{$ctype}', is_out={$@is_out}]";
 	}
@@ -316,7 +316,7 @@ class GtkMethodReturn {
 	}
 
 	method : public : ToString() ~ String {
-		name := @type->GetName();
+		name := @type->GetObjkName();
 		cname := @type->GetCxxName();
 		return "\t\t[Return: name={$name}, cname={$cname}]";
 	}
@@ -720,8 +720,9 @@ class GtkType {
 		@type_mapping->Insert("gint16", type_pair);
 		@type_mapping->Insert("guint16", type_pair);
 		@type_mapping->Insert("gshort", type_pair);
+		@type_mapping->Insert("gint32", type_pair);
 		@type_mapping->Insert("guint32", type_pair);
-		@type_mapping->Insert("guint32", type_pair);
+		@type_mapping->Insert("gint64", type_pair);
 		@type_mapping->Insert("int", type_pair);
 
 		# doubles
@@ -736,6 +737,7 @@ class GtkType {
 		type_pair := Pair->New("String", IntRef->New(GtkType->Type->STRING))<String, IntRef>;
 		@type_mapping->Insert("utf8", type_pair);
 		@type_mapping->Insert("gchar*", type_pair);
+		@type_mapping->Insert("const gchar*", type_pair);
 		@type_mapping->Insert("char*", type_pair);
 
 		# Nil
