@@ -87,7 +87,16 @@ class GtkMethod from GtkDocType {
 		buffer := "";
 
 		# getter
-		buffer += "\tmethod : public : {$@name}() ~ ";
+		buffer += "\tmethod : public : {$@name}(";
+		if(@method_params->Size() > 1) {
+			for(i := 1; i < @method_params->Size(); i += 1;) {
+				method_param := @method_params->Get(i);
+				buffer += method_param->EmitObjeck(i + 1, true);
+			};
+			buffer->Pop();
+			buffer->Pop();
+		};
+		buffer += ") ~ ";
 
 		# set return type
 		select(@method_return->GetType()->GetType()) {
@@ -121,7 +130,7 @@ class GtkMethod from GtkDocType {
 
 		for(i := 1; i < @method_params->Size(); i += 1;) {
 			method_param := @method_params->Get(i);
-			buffer += method_param->EmitObjeck(i + 1);
+			buffer += method_param->EmitObjeck(i + 1, false);
 		};
 		buffer += '\n';
 
@@ -146,25 +155,78 @@ class GtkMethodParam {
 		return "TODO";
 	}
 
-	method : public : EmitObjeck(index : Int) ~ String {
+	method : public : EmitObjeck(index : Int, is_sig : Bool) ~ String {
 		buffer := "";
 
-		buffer += "\t\tarray_args[{$index}] := ";
+		if(<>is_sig) {		
+			buffer += "\t\tarray_args[{$index}] := ";
+		};
+
 		select(@type->GetType()) {
-			label GtkType->Type->CHAR
-			label GtkType->Type->INT
-			label GtkType->Type->CONSTS
-			label GtkType->Type->OBJECT
+			label GtkType->Type->CHAR {
+				if(is_sig) {
+					buffer += "{$@name} : Char, ";
+				}
+				else {
+					buffer += "IntRef->New({$@name});\n";
+				};
+			}
+
+			label GtkType->Type->INT {
+				if(is_sig) {
+					buffer += "{$@name} : Int, ";
+				}
+				else {
+					buffer += "IntRef->New({$@name});\n";
+				};
+			}
+
+			label GtkType->Type->CONSTS {
+				if(is_sig) {
+					type := @type->GetName();
+					buffer += "{$@name} : {$type}, ";
+				}
+				else {
+					buffer += "IntRef->New({$@name});\n";
+				};
+			}
+
+			label GtkType->Type->OBJECT {
+				if(is_sig) {
+					type := @type->GetName();
+					buffer += "{$@name} : {$type}, ";
+				}
+				else {
+					buffer += "IntRef->New({$@name});\n";
+				};
+			}
+
 			label GtkType->Type->BOOL {
-				buffer += "IntRef->New(@name);\n";
+				if(is_sig) {
+					buffer += "{$@name} : Bool, ";
+				}
+				else {
+					buffer += "IntRef->New({$@name});\n";
+				};
 			}
 
 			label GtkType->Type->FLOAT {
-				buffer += "FloatRef->New(@name);\n";
+				if(is_sig) {
+					buffer += "{$@name} : Float, ";
+				}
+				else {
+					buffer += "FloatRef->New({$@name});\n";
+				};
 			}
 
 			other {
-				buffer += "{$@name};\n";
+				if(is_sig) {
+					type := @type->GetName();
+					buffer += "{$@name} : {$type}, ";
+				}
+				else {
+					buffer += "{$@name};\n";
+				};
 			}
 		};
 
@@ -613,7 +675,13 @@ class GtkType {
 	}
 
 	New(name : String, ctype_name : String) {
-		@name := name;
+		if(name->StartsWith("Gdk")) {
+			@name := name->SubString(3, name->Size() - 3);
+		}
+		else {
+			@name := name;
+		};
+
 		@ctype_name := ctype_name;
 		
 		mapped_type := MapType(ctype_name);
