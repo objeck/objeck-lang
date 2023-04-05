@@ -6011,7 +6011,6 @@ std::wstring MethodFormatter::FormatParameters(const std::wstring param_str)
   size_t index = 0;
 
   while(index < param_str.size() && param_name != L'{') {
-    int dimension = 0;
     switch(param_str[index]) {
     case 'l':
       formatted_str += param_name++;
@@ -6121,6 +6120,7 @@ std::wstring MethodFormatter::FormatParameters(const std::wstring param_str)
     }
 
     // set dimension
+    int dimension = 0;
     if(index < param_str.size() && param_str[index] == L'*') {
       formatted_str += L"[";
       while(index < param_str.size() && param_str[index] == L'*') {
