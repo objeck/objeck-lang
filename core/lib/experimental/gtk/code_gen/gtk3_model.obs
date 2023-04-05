@@ -120,10 +120,9 @@ class GtkMethod from GtkDocType {
 				buffer += "{$objk_name} {\n";
 			}
 		};
-		# TODO: compiler bug
 		return_buffers := @method_return->EmitObjeck();
 
-		params_size := @method_params->Size() + 1;
+		params_size := @method_params->Size() = 0 ? 2 : @method_params->Size() + 1;
 		buffer += "\t\tarray_args := Base->New[{$params_size}];\n\n";
 		buffer->Append(return_buffers[0]);
 		buffer += "\t\tarray_args[1] := IntRef->New(@gobject);\n";
@@ -133,6 +132,8 @@ class GtkMethod from GtkDocType {
 			buffer += method_param->EmitObjeck(i + 1, false);
 		};
 		buffer += '\n';
+
+		buffer += "\t\tProxy->GetDllProxy()->CallFunction(\"tbd\", array_args);\n";
 
 		buffer->Append(return_buffers[1]);
 		buffer += "\t}\n\n";
@@ -263,10 +264,16 @@ class GtkMethodReturn {
 		select(@type->GetType()) {
 			label GtkType->Type->CHAR {
 				param_buffer += "IntRef->New();\n";
+
+				return_buffer += "\n\t\tvalue := array_args[0]->As(IntRef);\n";
+				return_buffer += "\t\treturn value->Get()->As(Char);\n";
 			}
 
 			label GtkType->Type->INT {
 				param_buffer += "IntRef->New();\n";
+
+				return_buffer += "\n\t\tvalue := array_args[0]->As(IntRef);\n";
+				return_buffer += "\t\treturn value->Get();\n";
 			}
 
 			label GtkType->Type->CONSTS {
@@ -285,12 +292,15 @@ class GtkMethodReturn {
 			label GtkType->Type->BOOL {
 				param_buffer += "IntRef->New();\n";
 
-				return_buffer += "\t\tvalue := array_args[0]->As(IntRef);\n";
+				return_buffer += "\n\t\tvalue := array_args[0]->As(IntRef);\n";
 				return_buffer += "\t\treturn value->Get() = 0 ? false : true;\n";
 			}
 
 			label GtkType->Type->FLOAT {
 				param_buffer += "FloatRef->New();\n";
+
+				return_buffer += "\n\t\tvalue := array_args[0]->As(FloatRef);\n";
+				return_buffer += "\t\treturn value->Get();\n";
 			}
 
 			other {
