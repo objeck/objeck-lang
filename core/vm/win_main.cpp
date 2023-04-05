@@ -69,6 +69,16 @@ int main(const int argc, const char* argv[])
           return 1;
         }
       }
+      // set as utf8
+      else if(!strcmp("utf8", value)) {
+        if(_setmode(_fileno(stdin), _O_U8TEXT) < 0) {
+          return 1;
+        }
+
+        if(_setmode(_fileno(stdout), _O_U8TEXT) < 0) {
+          return 1;
+        }
+      }
     }
     // set as utf8
     else {
