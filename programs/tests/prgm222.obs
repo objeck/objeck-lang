@@ -13,5 +13,9 @@ class Hello {
 		buffer := String->New[2];
 		buffer[0] := a;
 		buffer[1] := d;
+		
+		x := "";
+		y : String[];
+		x += y[4];
 	}
 }
