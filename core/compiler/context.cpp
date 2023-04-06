@@ -4356,7 +4356,18 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType ty
                 switch(type) {
                 case ADD_ASSIGN_STMT:
                   if(left_type->GetDimension() != 0 || right_type->GetDimension() != 0) {
-                    ProcessError(expression, L"Dimension size mismatch");
+                    if(expression->GetExpressionType() == VAR_EXPR) {
+                      Variable* rhs_var = static_cast<Variable*>(expression);
+                      if(!rhs_var->GetIndices()) {
+                        ProcessError(expression, L"Dimension size mismatch");
+                      }
+                      else if(!rhs_var->GetIndices()->GetExpressions().size()) {
+                        ProcessError(expression, L"Dimension size mismatch");
+                      }
+                    }
+                    else {
+                      ProcessError(expression, L"Dimension size mismatch");
+                    }
                   }
                   else {
                     static_cast<OperationAssignment*>(assignment)->SetStringConcat(true);
