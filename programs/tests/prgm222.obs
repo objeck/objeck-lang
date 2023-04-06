@@ -12,10 +12,10 @@ class Hello {
 
 		buffer := String->New[2];
 		buffer[0] := a;
-		buffer[1] := d;
-		
-		x := "";
+		buffer[1] := "abc";
+
+		foo := "";
 		y : String[];
-		x += y[4];
+		foo += y[3];
 	}
 }
