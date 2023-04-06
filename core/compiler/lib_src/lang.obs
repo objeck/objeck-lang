@@ -1014,7 +1014,7 @@ bundle System {
 				return min;
 			};
 
-			return min + (Float->Random() * 1000000.0)->As(Int) % diff;
+			return min + (Float->Random() * 10000000.0)->As(Int) % diff;
 		}
 
 		#~
@@ -1028,7 +1028,7 @@ bundle System {
 				return 0;
 			};
 
-			return (Float->Random() * 1000000.0)->As(Int) % max;
+			return (Float->Random() * 10000000.0)->As(Int) % max;
 		}
 
 		#~
@@ -1038,7 +1038,7 @@ bundle System {
 		@return pseudo power value
 		~#
 		function : Pow(b : Int, r : Int) ~ Int {
-			return Float->Pow(b->As(Float), r->As(Float));
+			return Float->Pow(b->As(Float), r->As(Float))->Round();
 		}
 
 		#~
@@ -1057,7 +1057,7 @@ bundle System {
 		@return natural log value
 		~#
 		function : Sqrt(a : Int) ~ Int {
-			return Float->Sqrt(a->As(Float));
+			return Float->Sqrt(a->As(Float))->Round();
 		}
 
 		#~
