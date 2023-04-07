@@ -61,7 +61,6 @@ int main(const int argc, const char* argv[])
       // set as binary
       if(!strcmp("binary", value)) {
 #ifndef _MSYS2_CLANG
-
         if(_setmode(_fileno(stdin), _O_BINARY) < 0) {
           return 1;
         }
@@ -77,6 +76,7 @@ int main(const int argc, const char* argv[])
         std::ios_base::sync_with_stdio(false);
         std::locale utf16(std::locale(), new std::codecvt_utf16<wchar_t>);
         std::wcout.imbue(utf16);
+        std::wcin.imbue(utf16);
 #else
         if(_setmode(_fileno(stdin), _O_U16TEXT) < 0) {
           return 1;
@@ -93,6 +93,7 @@ int main(const int argc, const char* argv[])
         std::ios_base::sync_with_stdio(false);
         std::locale utf8(std::locale(), new std::codecvt_utf8_utf16<wchar_t>);
         std::wcout.imbue(utf8);
+        std::wcin.imbue(utf8);
 #else
         if(_setmode(_fileno(stdin), _O_U8TEXT) < 0) {
           return 1;
@@ -110,6 +111,7 @@ int main(const int argc, const char* argv[])
       std::ios_base::sync_with_stdio(false);
       std::locale utf8(std::locale(), new std::codecvt_utf8_utf16<wchar_t>);
       std::wcout.imbue(utf8);
+      std::wcin.imbue(utf8);
 #else
       if(_setmode(_fileno(stdin), _O_U8TEXT) < 0) {
         return 1;
