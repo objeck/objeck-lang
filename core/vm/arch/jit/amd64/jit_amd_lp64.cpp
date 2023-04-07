@@ -460,17 +460,18 @@ void JitAmd64::ProcessInstructions() {
       ProcessFloatCalculation(instr);
       break;
 
+    case ROUND_FLOAT:
+    case CEIL_FLOAT:
+    case FLOR_FLOAT:
     case SIN_FLOAT:
     case COS_FLOAT:
     case TAN_FLOAT:
-    case SQRT_FLOAT:
     case ASIN_FLOAT:
     case ACOS_FLOAT:
     case ACOSH_FLOAT:
     case ASINH_FLOAT:
     case ATANH_FLOAT:
     case LOG_FLOAT:
-    case ROUND_FLOAT:
     case EXP_FLOAT:
     case LOG10_FLOAT:
     case GAMMA_FLOAT:
@@ -478,9 +479,16 @@ void JitAmd64::ProcessInstructions() {
     case MOD_FLOAT:
     case POW_FLOAT:
 #ifdef _DEBUG_JIT
-      std::wcout << L"FLOAT SIN/COS/TAN/SQRT/ASIN/ACOS/ATAN2/POW/MOD_FLOAT: regs=" << aval_regs.size() << L"," << aux_regs.size() << std::endl;
+      std::wcout << L"FLOAT ROUND_FLOAT/CEIL_FLOAT/FLOR_FLOAT/SIN/COS/TAN/SQRT/ASIN/ACOS/ATAN2/POW/MOD_FLOAT: regs=" << aval_regs.size() << L"," << aux_regs.size() << std::endl;
 #endif
       ProcessFloatOperation(instr);
+      break;
+
+    case SQRT_FLOAT:
+#ifdef _DEBUG_JIT
+      std::wcout << L"FLOAT SQRT: regs=" << aval_regs.size() << L"," << aux_regs.size() << std::endl;
+#endif
+      ProcessFloatSqrt(instr);
       break;
 
     case LES_FLOAT:
@@ -772,20 +780,6 @@ void JitAmd64::ProcessInstructions() {
         left = nullptr;
       }
     }
-      break;
-
-    case FLOR_FLOAT:
-#ifdef _DEBUG_JIT
-      std::wcout << L"FLOR_FLOAT: regs=" << aval_regs.size() << L"," << aux_regs.size() << std::endl;
-#endif
-      ProcessFloor(instr);
-      break;
-
-    case CEIL_FLOAT:
-#ifdef _DEBUG_JIT
-      std::wcout << L"CEIL_FLOAT: regs=" << aval_regs.size() << L"," << aux_regs.size() << std::endl;
-#endif
-      ProcessCeiling(instr);
       break;
       
     case F2I:
@@ -1285,76 +1279,6 @@ void JitAmd64::ProcessStoreFloatElement(StackInstr* instr) {
   
   delete left;
   left = nullptr;
-}
-
-void JitAmd64::ProcessFloor(StackInstr* instr) {
-  RegInstr* left = working_stack.front();
-  working_stack.pop_front();
-  
-  switch(left->GetType()) {
-  case IMM_FLOAT: {
-    RegisterHolder* holder = GetXmmRegister();
-    round_imm_xreg(left, holder->GetRegister(), true);
-    working_stack.push_front(new RegInstr(holder));
-    delete left;
-    left = nullptr;
-  }
-    break;
-    
-  case MEM_FLOAT:
-  case MEM_INT: {
-    RegisterHolder* holder = GetXmmRegister();
-    round_mem_xreg(left->GetOperand(), RBP, holder->GetRegister(), true);
-    working_stack.push_front(new RegInstr(holder));
-    delete left;
-    left = nullptr;
-  }
-    break;
-    
-  case REG_FLOAT:
-    round_xreg_xreg(left->GetRegister()->GetRegister(), 
-    left->GetRegister()->GetRegister(), true);
-    working_stack.push_front(left);
-    break;
-
-  default:
-    break;
-  }
-}
-
-void JitAmd64::ProcessCeiling(StackInstr* instr) {
-  RegInstr* left = working_stack.front();
-  working_stack.pop_front();
-  
-  switch(left->GetType()) {
-  case IMM_FLOAT: {
-    RegisterHolder* holder = GetXmmRegister();
-    round_imm_xreg(left, holder->GetRegister(), false);
-    working_stack.push_front(new RegInstr(holder));
-    delete left;
-    left = nullptr;
-  }
-    break;
-    
-  case MEM_FLOAT:
-  case MEM_INT: {
-    RegisterHolder* holder = GetXmmRegister();
-    round_mem_xreg(left->GetOperand(), RBP, holder->GetRegister(), false);
-    working_stack.push_front(new RegInstr(holder));
-    delete left;
-    left = nullptr;
-  }
-    break;
-    
-  case REG_FLOAT:
-    round_xreg_xreg(left->GetRegister()->GetRegister(), 
-    left->GetRegister()->GetRegister(), false);
-    working_stack.push_front(left);
-    break;
-
-  default:
-    break;
-  }
 }
 
 void JitAmd64::ProcessFloatToInt(StackInstr* instr) {
@@ -2286,24 +2210,26 @@ void JitAmd64::ProcessFloatOperation(StackInstr* instruction) {
     ftan();
     break;
 
-  case SQRT_FLOAT:
-    fld_mem(left->GetOperand(), RBP);
-    fsqrt();
-    break;
-
   case LOG_FLOAT:
     fld_mem(left->GetOperand(), RBP);
     flog();
     break;
 
-  case ROUND_FLOAT:
-    fld_mem(left->GetOperand(), RBP);
-    fround();
-    break;
-
   case LOG10_FLOAT:
     fld_mem(left->GetOperand(), RBP);
     flog10();
+    break;
+
+  case ROUND_FLOAT:
+    holder = call_xfunc(round, left);
+    break;
+
+  case CEIL_FLOAT:
+    holder = call_xfunc(ceil, left);
+    break;
+
+  case FLOR_FLOAT:
+    holder = call_xfunc(floor, left);
     break;
 
   case EXP_FLOAT:
@@ -2358,6 +2284,24 @@ void JitAmd64::ProcessFloatOperation(StackInstr* instruction) {
     fstp_mem(left->GetOperand(), RBP);
     move_mem_xreg(left->GetOperand(), RBP, holder->GetRegister());
   }
+  working_stack.push_front(new RegInstr(holder));
+
+  delete left;
+  left = nullptr;
+}
+
+void JitAmd64::ProcessFloatSqrt(StackInstr* instruction) {
+  RegInstr* left = working_stack.front();
+  working_stack.pop_front();
+
+#ifdef _DEBUG_JIT
+  assert(left->GetType() == MEM_FLOAT);
+#endif
+
+  RegisterHolder* holder = GetXmmRegister();
+  move_mem_xreg(left->GetOperand(), RBP, holder->GetRegister());
+  sqrt_xreg_xreg(holder->GetRegister(), holder->GetRegister());
+  
   working_stack.push_front(new RegInstr(holder));
 
   delete left;
@@ -3443,6 +3387,23 @@ void JitAmd64::div_xreg_xreg(Register src, Register dest) {
   AddMachineCode(code);
 }
 
+void JitAmd64::sqrt_xreg_xreg(Register src, Register dest) {
+#ifdef _DEBUG_JIT
+  std::wcout << L"  " << (++instr_count) << L": [sqrtsd %" << GetRegisterName(src)
+    << L", %" << GetRegisterName(dest) << L"]" << std::endl;
+#endif
+  // encode
+  AddMachineCode(0xf2);
+  AddMachineCode(ROB(src, dest));
+  AddMachineCode(0x0f);
+  AddMachineCode(0x51);
+  unsigned char code = 0xc0;
+  // write value
+  RegisterEncode3(code, 2, dest);
+  RegisterEncode3(code, 5, src);
+  AddMachineCode(code);
+}
+
 void JitAmd64::add_xreg_xreg(Register src, Register dest) {
 #ifdef _DEBUG_JIT
   std::wcout << L"  " << (++instr_count) << L": [addsd %" << GetRegisterName(src) 
@@ -4052,67 +4013,6 @@ void JitAmd64::cvt_xreg_reg(Register src, Register dest) {
   RegisterEncode3(code, 2, dest);
   RegisterEncode3(code, 5, src);
   AddMachineCode(code);
-}
-
-void JitAmd64::round_imm_xreg(RegInstr* instr, Register reg, bool is_floor) {
-  // copy address of imm value
-  RegisterHolder* imm_holder = GetRegister();
-#ifdef _WIN64
-  move_imm_reg(instr->GetOperand2(), imm_holder->GetRegister());
-#else
-  move_imm_reg(instr->GetOperand(), imm_holder->GetRegister());
-#endif
-  round_mem_xreg(0, imm_holder->GetRegister(), reg, is_floor);
-  ReleaseRegister(imm_holder);
-}
-
-void JitAmd64::round_mem_xreg(long offset, Register src, Register dest, bool is_floor) {
-#ifdef _DEBUG_JIT
-  std::wcout << L"  " << (++instr_count) << (is_floor ? ": [floor " : ": [ceil ") 
-        << offset << L"(%" << GetRegisterName(src) << L"), %" << GetRegisterName(dest) 
-        << L"]" << std::endl;
-#endif
-  
-  AddMachineCode(0x66);
-  AddMachineCode(RXB(src, dest));
-  AddMachineCode(0x0f);
-  AddMachineCode(0x3a);
-  AddMachineCode(0x0b);
-  // memory
-  AddMachineCode(ModRM(src, dest));
-  AddImm(offset);
-  // mode
-  if(is_floor) {
-    AddMachineCode(0x03);
-  }
-  else {
-    AddMachineCode(0x05);
-  }
-}
-
-void JitAmd64::round_xreg_xreg(Register src, Register dest, bool is_floor) {
-#ifdef _DEBUG_JIT
-  std::wcout << L"  " << (++instr_count) << (is_floor ? ": [floor %" : ": [ceil %") 
-        << GetRegisterName(src) << L", %" << GetRegisterName(dest) << L"]" << std::endl;
-#endif
-  
-  AddMachineCode(0x66);
-  AddMachineCode(ROB(src, dest));
-  AddMachineCode(0x0f);
-  AddMachineCode(0x3a);
-  AddMachineCode(0x0b);
-  // registers
-  unsigned char code = 0xc0;
-  // write value
-  RegisterEncode3(code, 2, dest);
-  RegisterEncode3(code, 5, src);
-  // mode
-  if(is_floor) {
-    AddMachineCode(0x03);
-  }
-  else {
-    AddMachineCode(0x05);
-  }
 }
 
 void JitAmd64::cvt_imm_reg(RegInstr* instr, Register reg) {
