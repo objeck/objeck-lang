@@ -100,7 +100,7 @@ int main(const int argc, const char* argv[])
 #endif
       }
     }
-    // set as utf8
+    // set default as utf8
     else {
 #ifdef _MSYS2_CLANG
       std::ios_base::sync_with_stdio(false);
