@@ -357,7 +357,8 @@ namespace Runtime {
     void ProcessFloatCalculation(StackInstr* instruction);
     
     void ProcessFloatOperation(StackInstr* instruction);
-    void ProcessFloatSqrt(StackInstr* instruction);
+    void ProcessFloatSquareRoot(StackInstr* instruction);
+    void ProcessFloatRound(StackInstr* instruction, wchar_t mode);
 
     void ProcessReturn(long params = -1);
     void ProcessStackCallback(long instr_id, StackInstr* instr, long &instr_index, long params);
@@ -811,6 +812,7 @@ namespace Runtime {
     void add_mem_xreg(long offset, Register src, Register dest);
     void add_reg_reg(Register src, Register dest);
     void sqrt_xreg_xreg(Register src, Register dest);
+    void round_xreg_xreg(Register src, Register dest, wchar_t mode);
 
     // sub instructions
     void sub_imm_xreg(RegInstr* instr, Register reg);
