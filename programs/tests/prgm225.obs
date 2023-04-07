@@ -1,0 +1,14 @@
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		Brun();
+	}
+
+	function : native : Brun() ~ Nil {
+		sum := 0;
+		N := 2147483647;
+		for(i := 1; i < N; i++) {
+			sum += i->Sqrt();
+		}
+		sum->PrintLine();
+	}
+}

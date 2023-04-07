@@ -62,40 +62,69 @@ ItermediateOptimizer::ItermediateOptimizer(IntermediateProgram* p, int u, std::w
     }
   }
 
-  // primitive 'Float
+  // primitive 'Float'
   can_inline.insert(L"System.$Float:Size:f*,");
   can_inline.insert(L"System.$Float:Sin:f,");
   can_inline.insert(L"System.$Float:Cos:f,");
   can_inline.insert(L"System.$Float:Tan:f,");
-  can_inline.insert(L"System.$Float:SquareRoot:f,");
+  can_inline.insert(L"System.$Float:Sqrt:f,");
+  can_inline.insert(L"System.$Float:Round:f,");
   can_inline.insert(L"System.$Float:Log:f,");
-  can_inline.insert(L"System.$Float:Ceiling:f,");
+  can_inline.insert(L"System.$Float:Ceil:f,");
   can_inline.insert(L"System.$Float:Floor:f,");
   can_inline.insert(L"System.$Float:ArcSin:f,");
   can_inline.insert(L"System.$Float:ArcCos:f,");
-  can_inline.insert(L"System.$Float:Abs:f,");
+  can_inline.insert(L"System.$Float:ArcTan:f,");
   can_inline.insert(L"System.$Float:ArcTan2:f,f,");
-  can_inline.insert(L"System.$Float:Power:f,f,");
+  can_inline.insert(L"System.$Float:ArcSinh:f,");
+  can_inline.insert(L"System.$Float:ArcCosh:f,");
+  can_inline.insert(L"System.$Float:ArcTanh:f,");
+  can_inline.insert(L"System.$Float:Abs:f,");
+  can_inline.insert(L"System.$Float:Pow:f,f,");
   can_inline.insert(L"System.$Float:Max:f,f,");
   can_inline.insert(L"System.$Float:Min:f,f,");
   can_inline.insert(L"System.$Float:Pi:");
   can_inline.insert(L"System.$Float:E:");
+  can_inline.insert(L"System.$Float:Gamma:f,");
+  can_inline.insert(L"System.$Float:ToByte:f,");
+  can_inline.insert(L"System.$Float:ToChar:f,");
+  can_inline.insert(L"System.$Float:ToDegrees:f,");
+  can_inline.insert(L"System.$Float:ToInt:f,");
+  can_inline.insert(L"System.$Float:ToRadians:f,");
+  can_inline.insert(L"System.$Float:IsNeg:f,");
+
   // primitive 'Int'
   can_inline.insert(L"System.$Int:Size:i*,");
+  can_inline.insert(L"System.$Int:Pow:i,i,");
+  can_inline.insert(L"System.$Int:Sqrt:i,");
   can_inline.insert(L"System.$Int:Max:i,i,");
   can_inline.insert(L"System.$Int:Min:i,i,");
   can_inline.insert(L"System.$Int:Factorial:i,");
   can_inline.insert(L"System.$Int:Abs:i,");
+  can_inline.insert(L"System.$Int:IsNeg:i,");
+  can_inline.insert(L"System.$Int:ToByte:i,");
+  can_inline.insert(L"System.$Int:ToChar:i,");
+  can_inline.insert(L"System.$Int:ToFloat:i,");
+
   // primitive 'Char'
   can_inline.insert(L"System.$Char:Size:c*,");
   can_inline.insert(L"System.$Char:Max:c,c,");
   can_inline.insert(L"System.$Char:Min:c,c,");
   can_inline.insert(L"System.$Char:Abs:c,");
+  can_inline.insert(L"System.$Char:ToFloat:c,");
+  can_inline.insert(L"System.$Char:ToInt:c,");
+  can_inline.insert(L"System.$Char:IsUpper:c,");
+  can_inline.insert(L"System.$Char:IsLower:c,");
+  can_inline.insert(L"System.$Char:IsChar:c,");
+  can_inline.insert(L"System.$Char:IsDigit:c,");
+
   // primitive 'Byte'
   can_inline.insert(L"System.$Byte:Size:b*,");
   can_inline.insert(L"System.$Byte:Max:b,b,");
   can_inline.insert(L"System.$Byte:Min:b,b,");
   can_inline.insert(L"System.$Byte:Abs:b,");
+  can_inline.insert(L"System.$Byte:IsNeg:b,");
+
   // built-in types
   can_inline.insert(L"System.$BaseArray:Size:o.System.Base*,");
 }
