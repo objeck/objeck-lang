@@ -1,5 +1,5 @@
 /***************************************************************************
- * Starting point for the VM.
+ * Starting point for the VM in Windows
  *
  * Copyright (c) 2023, Randy Hollines
  * All rights reserved.
