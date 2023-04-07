@@ -31,6 +31,11 @@
 
 #define SYSTEM_ERROR -2
 
+#ifdef _MSYS2_CLANG
+#define UNICODE
+#define _UNICODE
+#endif
+
 #ifdef _DEBUG
 // #include "vld.h"
 #endif
@@ -40,17 +45,23 @@
 #include "../shared/version.h"
 #include <iostream>
 
+#ifdef _MSYS2_CLANG
+#include <locale>
+#include <codecvt>
+#endif
+
 // program start
 int main(const int argc, const char* argv[])
 {
   if(argc > 1) {
-#ifndef _MSYS2_CLANG    
     char* value; size_t value_len;
     _dupenv_s(&value, &value_len, "OBJECK_STDIO");
 
     if(value) {
       // set as binary
       if(!strcmp("binary", value)) {
+#ifndef _MSYS2_CLANG
+
         if(_setmode(_fileno(stdin), _O_BINARY) < 0) {
           return 1;
         }
@@ -58,9 +69,15 @@ int main(const int argc, const char* argv[])
         if(_setmode(_fileno(stdout), _O_BINARY) < 0) {
           return 1;
         }
+#endif        
       }
       // set as utf16
       else if(!strcmp("utf16", value)) {
+#ifdef _MSYS2_CLANG
+        std::ios_base::sync_with_stdio(false);
+        std::locale utf16(std::locale(), new std::codecvt_utf16<wchar_t>);
+        std::wcout.imbue(utf16);
+#else
         if(_setmode(_fileno(stdin), _O_U16TEXT) < 0) {
           return 1;
         }
@@ -68,9 +85,15 @@ int main(const int argc, const char* argv[])
         if(_setmode(_fileno(stdout), _O_U16TEXT) < 0) {
           return 1;
         }
+#endif        
       }
       // set as utf8
       else if(!strcmp("utf8", value)) {
+#ifdef _MSYS2_CLANG
+        std::ios_base::sync_with_stdio(false);
+        std::locale utf8(std::locale(), new std::codecvt_utf8_utf16<wchar_t>);
+        std::wcout.imbue(utf8);
+#else
         if(_setmode(_fileno(stdin), _O_U8TEXT) < 0) {
           return 1;
         }
@@ -78,10 +101,16 @@ int main(const int argc, const char* argv[])
         if(_setmode(_fileno(stdout), _O_U8TEXT) < 0) {
           return 1;
         }
+#endif        
       }
     }
     // set as utf8
     else {
+#ifdef _MSYS2_CLANG
+      std::ios_base::sync_with_stdio(false);
+      std::locale utf8(std::locale(), new std::codecvt_utf8_utf16<wchar_t>);
+      std::wcout.imbue(utf8);
+#else
       if(_setmode(_fileno(stdin), _O_U8TEXT) < 0) {
         return 1;
       }
@@ -89,8 +118,8 @@ int main(const int argc, const char* argv[])
       if(_setmode(_fileno(stdout), _O_U8TEXT) < 0) {
         return 1;
       }
-    }
 #endif
+    }
 
     // initialize Winsock
     WSADATA data;
