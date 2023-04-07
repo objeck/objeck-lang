@@ -355,7 +355,10 @@ namespace Runtime {
     RegInstr* ProcessIntFold(long left_imm, long right_imm, InstructionType type);
     void ProcessIntCalculation(StackInstr* instruction);
     void ProcessFloatCalculation(StackInstr* instruction);
+    
     void ProcessFloatOperation(StackInstr* instruction);
+    void ProcessFloatSqrt(StackInstr* instruction);
+
     void ProcessReturn(long params = -1);
     void ProcessStackCallback(long instr_id, StackInstr* instr, long &instr_index, long params);
     void ProcessFunctionCallParameter();
@@ -807,6 +810,7 @@ namespace Runtime {
     void add_mem_reg(long offset, Register src, Register dest);
     void add_mem_xreg(long offset, Register src, Register dest);
     void add_reg_reg(Register src, Register dest);
+    void sqrt_xreg_xreg(Register src, Register dest);
 
     // sub instructions
     void sub_imm_xreg(RegInstr* instr, Register reg);
@@ -863,9 +867,6 @@ namespace Runtime {
     void push_mem(long offset, Register src);
 
     // type conversion instructions
-    void round_imm_xreg(RegInstr* instr, Register reg, bool is_floor);
-    void round_mem_xreg(long offset, Register src, Register dest, bool is_floor);
-    void round_xreg_xreg(Register src, Register dest, bool is_floor);
     void cvt_xreg_reg(Register src, Register dest);
     void cvt_imm_reg(RegInstr* instr, Register reg);
     void cvt_mem_reg(long offset, Register src, Register dest);
