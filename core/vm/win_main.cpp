@@ -31,11 +31,6 @@
 
 #define SYSTEM_ERROR -2
 
-#ifdef _MSYS2_CLANG
-#define UNICODE
-#define _UNICODE
-#endif
-
 #ifdef _DEBUG
 // #include "vld.h"
 #endif
@@ -68,7 +63,7 @@ int main(const int argc, const char* argv[])
         if(_setmode(_fileno(stdout), _O_BINARY) < 0) {
           return 1;
         }
-#endif        
+#endif
       }
       // set as utf16
       else if(!strcmp("utf16", value)) {
@@ -85,7 +80,7 @@ int main(const int argc, const char* argv[])
         if(_setmode(_fileno(stdout), _O_U16TEXT) < 0) {
           return 1;
         }
-#endif        
+#endif
       }
       // set as utf8
       else if(!strcmp("utf8", value)) {
@@ -102,7 +97,7 @@ int main(const int argc, const char* argv[])
         if(_setmode(_fileno(stdout), _O_U8TEXT) < 0) {
           return 1;
         }
-#endif        
+#endif
       }
     }
     // set as utf8
