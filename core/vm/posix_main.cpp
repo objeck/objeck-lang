@@ -1,5 +1,5 @@
 /***************************************************************************
- * Starting point for the VM.
+ * Starting point for the VM on Linux and macOS
  *
  * Copyright (c) 2008-2017 Randy Hollines
  * All rights reserved.
