@@ -450,27 +450,51 @@ void JitArm64::ProcessInstructions() {
 #endif
       ProcessFloatCalculation(instr);
       break;
-      
+    
     case SIN_FLOAT:
     case COS_FLOAT:
     case TAN_FLOAT:
-    case SQRT_FLOAT:
     case ASIN_FLOAT:
     case ACOS_FLOAT:
     case ACOSH_FLOAT:
     case ASINH_FLOAT:
     case ATANH_FLOAT:
     case LOG_FLOAT:
-    case ROUND_FLOAT:
     case EXP_FLOAT:
     case LOG10_FLOAT:
     case GAMMA_FLOAT:
-    case FLOR_FLOAT:
-    case CEIL_FLOAT:
 #ifdef _DEBUG_JIT_JIT
       wcout << L"FLOAT SIN/COS/TAN/SQRT/FLOR/CEIL: regs=" << aval_regs.size() << endl;
 #endif
       ProcessFloatOperation(instr);
+      break;
+        
+    case ROUND_FLOAT:
+#ifdef _DEBUG_JIT_JIT
+      wcout << L"FLOAT ROUND: regs=" << aval_regs.size() << endl;
+#endif
+      ProcessFloatRound(instr, L'r');
+      break;
+        
+    case FLOR_FLOAT:
+#ifdef _DEBUG_JIT_JIT
+      wcout << L"FLOAT FLOR: regs=" << aval_regs.size() << endl;
+#endif
+      ProcessFloatRound(instr, L'f');
+      break;
+        
+    case CEIL_FLOAT:
+#ifdef _DEBUG_JIT_JIT
+      wcout << L"FLOAT CEIL: regs=" << aval_regs.size() << endl;
+#endif
+      ProcessFloatRound(instr, L'c');
+      break;
+        
+    case SQRT_FLOAT:
+#ifdef _DEBUG_JIT_JIT
+      wcout << L"FLOAT SQRT: regs=" << aval_regs.size() << endl;
+#endif
+      ProcessFloatSquareRoot(instr);
       break;
       
     case ATAN2_FLOAT:
@@ -1199,75 +1223,6 @@ void JitArm64::ProcessStoreFloatElement(StackInstr* instr) {
   
   delete left;
   left = nullptr;
-}
-
-void JitArm64::ProcessFloor(StackInstr* instr) {
-  RegInstr* left = working_stack.front();
-  working_stack.pop_front();
-  
-  switch(left->GetType()) {
-  case IMM_FLOAT: {
-    RegisterHolder* holder = GetFpRegister();
-    round_imm_freg(left, holder->GetRegister(), true);
-    working_stack.push_front(new RegInstr(holder));
-    delete left;
-    left = nullptr;
-  }
-    break;
-    
-  case MEM_FLOAT:
-  case MEM_INT: {
-    RegisterHolder* holder = GetFpRegister();
-    round_mem_freg(left->GetOperand(), SP, holder->GetRegister(), true);
-    working_stack.push_front(new RegInstr(holder));
-    delete left;
-    left = nullptr;
-  }
-    break;
-    
-  case REG_FLOAT:
-    round_freg_freg(left->GetRegister()->GetRegister(),
-                    left->GetRegister()->GetRegister(), true);
-    working_stack.push_front(left);
-    break;
-
-  default:
-    break;
-  }
-}
-
-void JitArm64::ProcessCeiling(StackInstr* instr) {
-  RegInstr* left = working_stack.front();
-  working_stack.pop_front();
-  
-  switch(left->GetType()) {
-  case IMM_FLOAT: {
-    RegisterHolder* holder = GetFpRegister();
-    round_imm_freg(left, holder->GetRegister(), false);
-    working_stack.push_front(new RegInstr(holder));
-    delete left;
-    left = nullptr;
-  }
-    break;
-    
-  case MEM_FLOAT:
-  case MEM_INT: {
-    RegisterHolder* holder = GetFpRegister();
-    round_mem_freg(left->GetOperand(), SP, holder->GetRegister(), false);
-    working_stack.push_front(new RegInstr(holder));
-    delete left;
-    left = nullptr;
-  }
-    break;
-    
-  case REG_FLOAT:
-    round_freg_freg(left->GetRegister()->GetRegister(), left->GetRegister()->GetRegister(), false);
-    working_stack.push_front(left);
-    break;
-
-  default:
-    break;
-  }
 }
 
 void JitArm64::ProcessFloatToInt(StackInstr* instr) {
@@ -2853,6 +2808,74 @@ void JitArm64::div_freg_freg(Register src, Register dest) {
   AddMachineCode(op_code);
 }
 
+void JitArm64::round_freg_freg(Register src, Register dest) {
+#ifdef _DEBUG_JIT_JIT
+  wcout << L"  " << (++instr_count) << L": [frinta " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
+#endif
+  
+  uint32_t op_code = 0x1E664000;
+  
+  // rm=rd <- dest
+  uint32_t op_dest = dest << 5;
+  op_code |= op_dest;
+
+  op_dest = dest;
+  op_code |= op_dest;
+
+  AddMachineCode(op_code);
+}
+
+void JitArm64::floor_freg_freg(Register src, Register dest) {
+#ifdef _DEBUG_JIT_JIT
+  wcout << L"  " << (++instr_count) << L": [frintm " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
+#endif
+  
+  uint32_t op_code = 0x1E654000;
+  
+  // rm=rd <- dest
+  uint32_t op_dest = dest << 5;
+  op_code |= op_dest;
+
+  op_dest = dest;
+  op_code |= op_dest;
+
+  AddMachineCode(op_code);
+}
+
+void JitArm64::ceil_freg_freg(Register src, Register dest) {
+#ifdef _DEBUG_JIT_JIT
+  wcout << L"  " << (++instr_count) << L": [frintp " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
+#endif
+  
+  uint32_t op_code = 0x1E64C000;
+  
+  // rm=rd <- dest
+  uint32_t op_dest = dest << 5;
+  op_code |= op_dest;
+
+  op_dest = dest;
+  op_code |= op_dest;
+
+  AddMachineCode(op_code);
+}
+
+void JitArm64::sqrt_freg_freg(Register src, Register dest) {
+#ifdef _DEBUG_JIT_JIT
+  wcout << L"  " << (++instr_count) << L": [fsqrt " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
+#endif
+  
+  uint32_t op_code = 0x1E61C000;
+  
+  // rm=rd <- dest
+  uint32_t op_dest = dest << 5;
+  op_code |= op_dest;
+
+  op_dest = dest;
+  op_code |= op_dest;
+
+  AddMachineCode(op_code);
+}
+
 void JitArm64::vcvt_imm_reg(RegInstr* instr, Register reg) {
   // copy address of imm value
   RegisterHolder* imm_holder = GetRegister();
@@ -3691,6 +3714,75 @@ void JitArm64::ProcessFloatOperation(StackInstr* instruction)
   left = nullptr;
 }
 
+void JitArm64::ProcessFloatRound(StackInstr* instruction, const wchar_t mode)
+{
+  RegInstr* left = working_stack.front();
+  working_stack.pop_front();
+  
+#ifdef _DEBUG_JIT_JIT
+  assert(left->GetType() == MEM_FLOAT);
+#endif
+  
+  // save D0, if needed
+  RegisterHolder *holder = GetFpRegister();
+  if(holder->GetRegister() != D0) {
+    move_freg_mem(D0, TMP_D0, SP);
+  }
+  
+  // load D0
+  move_mem_freg(left->GetOperand(), SP, D0);
+  
+  if(mode == L'f') {
+    floor_freg_freg(D0 , D0);
+  }
+  else if(mode == L'c') {
+    ceil_freg_freg(D0 , D0);
+  }
+  else {
+    round_freg_freg(D0 , D0);
+  }
+  
+  // get return and restore D0, if needed
+  move_freg_freg(D0, holder->GetRegister());
+  if(holder->GetRegister() != D0) {
+    move_mem_freg(TMP_D0, SP, D0);
+  }
+  working_stack.push_front(new RegInstr(holder));
+  
+  delete left;
+  left = nullptr;
+}
+
+void JitArm64::ProcessFloatSquareRoot(StackInstr* instruction)
+{
+  RegInstr* left = working_stack.front();
+  working_stack.pop_front();
+  
+#ifdef _DEBUG_JIT_JIT
+  assert(left->GetType() == MEM_FLOAT);
+#endif
+  
+  // save D0, if needed
+  RegisterHolder *holder = GetFpRegister();
+  if(holder->GetRegister() != D0) {
+    move_freg_mem(D0, TMP_D0, SP);
+  }
+  
+  // load D0
+  move_mem_freg(left->GetOperand(), SP, D0);
+  sqrt_freg_freg(D0 , D0);
+  
+  // get return and restore D0, if needed
+  move_freg_freg(D0, holder->GetRegister());
+  if(holder->GetRegister() != D0) {
+    move_mem_freg(TMP_D0, SP, D0);
+  }
+  working_stack.push_front(new RegInstr(holder));
+  
+  delete left;
+  left = nullptr;
+}
+
 void JitArm64::ProcessFloatOperation2(StackInstr* instruction)
 {
   RegInstr* left = working_stack.front();
@@ -3771,25 +3863,6 @@ void JitArm64::push_imm(int32_t value) {
 
 void JitArm64::pop_reg(Register reg) {
   throw runtime_error("Method 'pop_reg(..)' not implemented for ARM64 target");
-}
-
-void JitArm64::round_imm_freg(RegInstr* instr, Register reg, bool is_floor) {
-  // copy address of imm value
-  RegisterHolder* imm_holder = GetRegister();
-  move_imm_reg(instr->GetOperand(), imm_holder->GetRegister());
-  round_freg_freg(imm_holder->GetRegister(), reg, is_floor);
-  ReleaseRegister(imm_holder);
-}
-
-void JitArm64::round_mem_freg(long offset, Register src, Register dest, bool is_floor) {
-  RegisterHolder* mem_holder = GetRegister();
-  move_mem_reg(offset, src, mem_holder->GetRegister());
-  round_freg_freg(mem_holder->GetRegister(), dest, is_floor);
-  ReleaseRegister(mem_holder);
-}
-
-void JitArm64::round_freg_freg(Register src, Register dest, bool is_floor) {
-  throw runtime_error("Method 'round_freg_freg(..)' not implemented for ARM64 target");
 }
 
 //
@@ -4360,9 +4433,8 @@ long JitRuntime::Execute(StackMethod* method, size_t* inst, size_t* op_stack, lo
   jit_fun_ptr jit_fun = (jit_fun_ptr)code;
   
   // execute
-  const long rtrn_value = jit_fun(cls_id, mthd_id, method->GetClass()->GetClassMemory(), inst,
-                                  op_stack, stack_pos, call_stack, call_stack_pos, &(frame->jit_mem),
-                                  &(frame->jit_offset), int_consts);
+  const long rtrn_value = jit_fun(cls_id, mthd_id, method->GetClass()->GetClassMemory(), inst, op_stack, stack_pos,
+                                  call_stack, call_stack_pos, &(frame->jit_mem), &(frame->jit_offset), int_consts);
 
 #ifdef _DEBUG_JIT_JIT
   wcout << L"JIT return: " << rtrn_value << endl;

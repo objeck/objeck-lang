@@ -6,7 +6,8 @@ class Test {
 	function : native : Brun() ~ Nil {
 #		16.0->Sqrt()->PrintLine()
 		3.49->Round()->PrintLine();
-		3.48->Ceil()->PrintLine();
-		3.47->Floor()->PrintLine();
+		3.91->Ceil()->PrintLine();
+		3.91->Round()->PrintLine();
+		64.0->Sqrt()->PrintLine();
 	}
 }
