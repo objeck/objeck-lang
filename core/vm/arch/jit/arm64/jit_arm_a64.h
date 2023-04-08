@@ -356,6 +356,8 @@ namespace Runtime {
     void ProcessFloatCalculation(StackInstr* instruction);
     void ProcessFloatOperation(StackInstr* instruction);
     void ProcessFloatOperation2(StackInstr* instruction);
+    void ProcessFloatRound(StackInstr* instruction, const wchar_t mode);
+    void ProcessFloatSquareRoot(StackInstr* instruction);
     void ProcessReturn(long params = -1);
     void ProcessStackCallback(long instr_id, StackInstr* instr, long &instr_index, long params);
     void ProcessIntCallParameter();
@@ -371,8 +373,6 @@ namespace Runtime {
     void ProcessLoadFloatElement(StackInstr* instr);
     void ProcessStoreFloatElement(StackInstr* instr);
     void ProcessJump(StackInstr* instr);
-    void ProcessFloor(StackInstr* instr);
-    void ProcessCeiling(StackInstr* instr);
     void ProcessFloatToInt(StackInstr* instr);
     void ProcessIntToFloat(StackInstr* instr);
     
@@ -631,7 +631,13 @@ namespace Runtime {
     void div_imm_reg(long imm, Register reg, bool is_mod = false);
     void div_reg_reg(Register src, Register dest, bool is_mod = false);
     void div_mem_reg(long offset, Register src, Register dest, bool is_mod = false);
-
+    
+    // operations
+    void round_freg_freg(Register src, Register dest);
+    void floor_freg_freg(Register src, Register dest);
+    void ceil_freg_freg(Register src, Register dest);
+    void sqrt_freg_freg(Register src, Register dest);
+    
     // compare instructions
     void cmp_reg_reg(Register src, Register dest);
     void cmp_mem_reg(long offset, Register src, Register dest);
@@ -664,9 +670,6 @@ namespace Runtime {
     void push_mem(long offset, Register src);
 
     // type conversion instructions
-    void round_imm_freg(RegInstr* instr, Register reg, bool is_floor);
-    void round_mem_freg(long offset, Register src, Register dest, bool is_floor);
-    void round_freg_freg(Register src, Register dest, bool is_floor);
     void vcvt_freg_reg(Register src, Register dest);
     void vcvt_imm_reg(RegInstr* instr, Register reg);
     void vcvt_mem_reg(long offset, Register src, Register dest);
