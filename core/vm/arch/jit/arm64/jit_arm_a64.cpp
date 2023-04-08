@@ -3640,10 +3640,6 @@ void JitArm64::ProcessFloatOperation(StackInstr* instruction)
     func_ptr = tan;
     break;
 
-  case SQRT_FLOAT:
-    func_ptr = sqrt;
-    break;
-
   case ASIN_FLOAT:
     func_ptr = asin;
     break;
@@ -3664,10 +3660,6 @@ void JitArm64::ProcessFloatOperation(StackInstr* instruction)
     func_ptr = atanh;
     break;
 
-  case ROUND_FLOAT:
-    func_ptr = round;
-    break;
-
   case EXP_FLOAT:
     func_ptr = exp;
     break;
@@ -3683,15 +3675,7 @@ void JitArm64::ProcessFloatOperation(StackInstr* instruction)
   case GAMMA_FLOAT:
     func_ptr = tgamma;
     break;
-
-  case FLOR_FLOAT:
-    func_ptr = floor;
-    break;
-        
-  case CEIL_FLOAT:
-    func_ptr = ceil;
-    break;
-      
+    
   default:
     throw runtime_error("Invalid function call!");
     break;
