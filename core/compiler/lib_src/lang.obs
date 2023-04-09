@@ -256,7 +256,7 @@ bundle System {
 		~#
 		function : Abs(v : Byte) ~ Byte {
 			if(v < 0) {
-				return v * -1;
+				v *= -1;
 			};
 
 			return v;
@@ -1124,7 +1124,7 @@ bundle System {
 		~#
 		function : Abs(v : Int) ~ Int {
 			if(v < 0) {
-				return v * -1;
+				v *= -1;
 			};
 
 			return v;
@@ -1493,8 +1493,8 @@ bundle System {
 		@return absolute value
 		~#
 		function : native : Abs(v : Float) ~ Float {
-			if(v < 0.0) {
-				return v * -1.0;
+			if(v < 0) {
+				v *= -1;
 			};
 
 			return v;
