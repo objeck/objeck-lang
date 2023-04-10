@@ -4,6 +4,7 @@ class Test {
 	}
 	
 	function : native : Brun() ~ Nil {
-		13->Abs()->PrintLine();
+		a := 15->Compare(100);
+		a->PrintLine();
 	}
 }
