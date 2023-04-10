@@ -4937,6 +4937,8 @@ bool JitAmd64::Compile(StackMethod* cm)
     // aux general use registers
     aux_regs.push(new RegisterHolder(RSI));
     aux_regs.push(new RegisterHolder(RDI));
+    aux_regs.push(new RegisterHolder(R11));
+    aux_regs.push(new RegisterHolder(R10));
     // floating point registers
     aval_xregs.push_back(new RegisterHolder(XMM15));
     aval_xregs.push_back(new RegisterHolder(XMM14));
