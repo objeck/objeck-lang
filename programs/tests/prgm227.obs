@@ -1,0 +1,20 @@
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		Brun();
+	}
+
+	function : native : Brun() ~ Nil {
+		cprev := 3.0;
+		cnext := 0.0;
+		min := cprev;
+		N := 2147483647;
+		for(i := 1; i < N; i++) {
+			cnext := cprev->Sin();
+			if(cnext->Abs() < min) {
+				min := cnext->Abs();
+			}
+			cprev := cnext;
+		}
+		min->PrintLine();
+	}
+}
