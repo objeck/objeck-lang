@@ -62,6 +62,8 @@ ItermediateOptimizer::ItermediateOptimizer(IntermediateProgram* p, int u, std::w
     }
   }
 
+  jump_offset = 0;
+
   // primitive 'Float'
   can_inline.insert(L"System.$Float:Size:f*,");
   can_inline.insert(L"System.$Float:Sin:f,");
@@ -609,7 +611,7 @@ bool ItermediateOptimizer::CanInlineMethod(IntermediateMethod* mthd_called, std:
   // don't inline the same method more then once, since you'll have label/jump conflicts
   std::set<IntermediateMethod*>::iterator found = inlined_mthds.find(mthd_called);
   if(found != inlined_mthds.end()) {
-    return false;
+    jump_offset += JUMP_OFF_INC;
   }
 
   // don't inline recursive calls
@@ -710,7 +712,8 @@ bool ItermediateOptimizer::CanInlineMethod(IntermediateMethod* mthd_called, std:
       // look for conflicting jump offsets
     case instructions::LBL:
     case instructions::JMP:
-      if(lbl_jmp_offsets.find(mthd_called_instr->GetOperand()) != lbl_jmp_offsets.end()) {
+      if(lbl_jmp_offsets.find(mthd_called_instr->GetOperand()) != lbl_jmp_offsets.end() && 
+         lbl_jmp_offsets.find(mthd_called_instr->GetOperand() + JUMP_OFF_INC) != lbl_jmp_offsets.end()) {
         return false;
       }
       break;
@@ -1087,6 +1090,17 @@ IntermediateBlock* ItermediateOptimizer::InlineMethod(IntermediateBlock* inputs)
           case LOAD_INST_MEM:
             outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, local_instr_offset - 1, LOCL));
             break;
+
+          case JMP:
+            outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, JMP, mthd_called_instr->GetOperand() + jump_offset,
+                                                                                     mthd_called_instr->GetOperand2()));
+            break;
+
+          case LBL:
+            outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LBL, mthd_called_instr->GetOperand() + jump_offset, 
+                                                                                     mthd_called_instr->GetOperand2()));
+            break;
+
 
           default:
             outputs->AddInstruction(mthd_called_instr);
