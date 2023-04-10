@@ -38,6 +38,7 @@
 using namespace backend;
 
 #define LOCL_INLINE_MEM_MAX 128
+#define JUMP_OFF_INC 257
 
 /****************************
  * Performs optimizations on
@@ -68,6 +69,7 @@ class ItermediateOptimizer {
   bool merge_blocks;
   int cur_line_num;
   bool is_lib;
+  int jump_offset;
   
   std::vector<IntermediateBlock*> OptimizeMethod(std::vector<IntermediateBlock*> input);
   std::vector<IntermediateBlock*> InlineMethod(std::vector<IntermediateBlock*> inputs);

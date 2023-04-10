@@ -1,0 +1,9 @@
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		Brun();
+	}
+	
+	function : native : Brun() ~ Nil {
+		13->Abs()->PrintLine();
+	}
+}
