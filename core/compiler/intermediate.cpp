@@ -1381,7 +1381,6 @@ void IntermediateEmitter::EmitMethodCallStatement(MethodCall* method_call)
       EmitMethodCall(method_call, is_nested);
       EmitCast(method_call);
       
-      /*
       // pop return value if not used
       if(!method_call->GetMethodCall()) {
         switch(OrphanReturn(method_call)) {
@@ -1399,7 +1398,6 @@ void IntermediateEmitter::EmitMethodCallStatement(MethodCall* method_call)
           break;
         }
       }
-      */
 
       // next call
       if(method_call->GetMethod()) {
