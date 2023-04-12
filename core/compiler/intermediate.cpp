@@ -3168,7 +3168,7 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
       EmitMethodCall(method_call, is_nested || expression->GetExpressionType() == COND_EXPR);
 
       // pop return value if not used
-      if(!method_call->GetMethodCall()) {
+      if(!in_assign && !method_call->GetMethodCall()) {
         switch(OrphanReturn(method_call)) {
         case 0:
           imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, POP_INT));
@@ -4501,6 +4501,8 @@ void IntermediateEmitter::EmitIndices(ExpressionList* indices)
  ****************************/
 void IntermediateEmitter::EmitAssignment(Assignment* assignment)
 {
+  in_assign = true;
+
   cur_line_num = assignment->GetLineNumber();
 
   // expression
@@ -4719,7 +4721,9 @@ void IntermediateEmitter::EmitAssignment(Assignment* assignment)
       break;
     }
   }
+
   new_char_str_count = 0;
+  in_assign = false;
 }
 
 /****************************
