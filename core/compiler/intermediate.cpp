@@ -1398,6 +1398,7 @@ void IntermediateEmitter::EmitMethodCallStatement(MethodCall* method_call)
           break;
         }
       }
+
       // next call
       if(method_call->GetMethod()) {
         Method* method = method_call->GetMethod();
@@ -3165,6 +3166,25 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
       
       // emit call
       EmitMethodCall(method_call, is_nested || expression->GetExpressionType() == COND_EXPR);
+
+      // pop return value if not used
+      if(!method_call->GetMethodCall()) {
+        switch(OrphanReturn(method_call)) {
+        case 0:
+          imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, POP_INT));
+          break;
+
+        case 1:
+          imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, POP_FLOAT));
+          break;
+
+        case 2:
+          imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, POP_INT));
+          imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, POP_INT));
+          break;
+        }
+      }
+
       EmitCast(method_call);
       if(!method_call->GetVariable()) {
         EmitClassCast(method_call);
