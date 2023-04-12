@@ -1,10 +1,11 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		Brun();
+		10->Compare(15);
+		"two"->PrintLine();
+#		2->Compare(13);
 	}
-	
-	function : native : Brun() ~ Nil {
-		a := 15->Compare(100);
-		a->PrintLine();
+
+	function : Bar() ~ Int {
+		return 200;
 	}
 }
