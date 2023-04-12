@@ -3167,26 +3167,6 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
       // emit call
       EmitMethodCall(method_call, is_nested || expression->GetExpressionType() == COND_EXPR);
 
-      /*
-      // pop return value if not used
-      if(!in_assign && method_call->GetMethodCall()) {
-        switch(OrphanReturn(method_call)) {
-        case 0:
-          imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, POP_INT));
-          break;
-
-        case 1:
-          imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, POP_FLOAT));
-          break;
-
-        case 2:
-          imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, POP_INT));
-          imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, POP_INT));
-          break;
-        }
-      }
-      */
-
       EmitCast(method_call);
       if(!method_call->GetVariable()) {
         EmitClassCast(method_call);
@@ -3227,6 +3207,25 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
       } else {
         is_nested = false;
       }
+
+      // pop return value if not used
+      if(!in_assign && method_call->GetMethodCall()) {
+        switch(OrphanReturn(method_call)) {
+        case 0:
+          imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, POP_INT));
+          break;
+
+        case 1:
+          imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, POP_FLOAT));
+          break;
+
+        case 2:
+          imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, POP_INT));
+          imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, POP_INT));
+          break;
+        }
+      }
+
       method_call = method_call->GetMethodCall();
     }
   }
