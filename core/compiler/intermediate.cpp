@@ -3204,12 +3204,13 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
         else {
           is_nested = false;
         }
-      } else {
+      } 
+      else {
         is_nested = false;
       }
 
       // pop return value if not used
-      if(!in_assign && method_call->GetMethodCall()) {
+      if(!in_assign && !method_call->GetMethodCall()) {
         switch(OrphanReturn(method_call)) {
         case 0:
           imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, POP_INT));
