@@ -3167,6 +3167,7 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
       // emit call
       EmitMethodCall(method_call, is_nested || expression->GetExpressionType() == COND_EXPR);
 
+      /*
       // pop return value if not used
       if(!in_assign && !method_call->GetMethodCall()) {
         switch(OrphanReturn(method_call)) {
@@ -3184,6 +3185,7 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
           break;
         }
       }
+      */
 
       EmitCast(method_call);
       if(!method_call->GetVariable()) {
