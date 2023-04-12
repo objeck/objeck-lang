@@ -4,7 +4,7 @@ class Test {
 		"two"->PrintLine();
 #		2->Compare(13);
 	}
-
+	
 	function : Bar() ~ Int {
 		return 200;
 	}
