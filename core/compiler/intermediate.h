@@ -74,7 +74,6 @@ class IntermediateEmitter {
   std::stack<std::pair<int, int> > break_labels;
   bool is_str_array;
   std::queue<OperationAssignment*>post_statements;
-  bool in_assign;
   
   // emit operations
   void EmitStrings();
@@ -198,7 +197,6 @@ class IntermediateEmitter {
     string_cls = nullptr;
     string_cls_id = -1;
     is_str_array = false;
-    in_assign = false;
   }
 
   ~IntermediateEmitter() {

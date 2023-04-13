@@ -3209,26 +3209,6 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
         is_nested = false;
       }
 
-      /*
-      // pop return value if not used
-      if(!in_assign && !method_call->GetMethodCall()) {
-        switch(OrphanReturn(method_call)) {
-        case 0:
-          imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, POP_INT));
-          break;
-
-        case 1:
-          imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, POP_FLOAT));
-          break;
-
-        case 2:
-          imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, POP_INT));
-          imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, POP_INT));
-          break;
-        }
-      }
-      */
-
       method_call = method_call->GetMethodCall();
     }
   }
@@ -4505,8 +4485,6 @@ void IntermediateEmitter::EmitIndices(ExpressionList* indices)
  ****************************/
 void IntermediateEmitter::EmitAssignment(Assignment* assignment)
 {
-  in_assign = true;
-
   cur_line_num = assignment->GetLineNumber();
 
   // expression
@@ -4727,7 +4705,6 @@ void IntermediateEmitter::EmitAssignment(Assignment* assignment)
   }
 
   new_char_str_count = 0;
-  in_assign = false;
 }
 
 /****************************
