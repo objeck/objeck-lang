@@ -3226,9 +3226,8 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
           imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, POP_INT));
           break;
         }
-        */
-
       }
+      */
 
       method_call = method_call->GetMethodCall();
     }
