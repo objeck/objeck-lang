@@ -256,7 +256,6 @@ class ContextAnalyzer {
   int int_str_index;
   int float_str_index;
   int in_loop;
-
   bool in_assignment;
   bool in_return;
   int nested_call_depth;
