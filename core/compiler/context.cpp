@@ -2117,7 +2117,7 @@ void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, const int depth
       // TODO: check for rouge return
       nested_call_depth--;
       if(!nested_call_depth && !in_assignment && !in_return) {
-        OrphanReturn(method_call);
+        RogueReturn(method_call);
       }
       return;
     }
@@ -2175,7 +2175,7 @@ void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, const int depth
     // TODO: check for rouge return
     nested_call_depth--;
     if(!nested_call_depth && !in_assignment && !in_return) {
-      OrphanReturn(method_call);
+      RogueReturn(method_call);
     }
   }
 }
@@ -2623,20 +2623,24 @@ void ContextAnalyzer::AnalyzeExpressionMethodCall(Expression* expression, const 
       // TODO: check for rouge return
       nested_call_depth--;
       if(!nested_call_depth && !in_assignment && !in_return) {
-        OrphanReturn(method_call);
+        RogueReturn(method_call);
       }
     }
   }
 }
 
-int ContextAnalyzer::OrphanReturn(MethodCall* method_call)
+void ContextAnalyzer::RogueReturn(MethodCall* method_call)
 {
+  // TODO: set vs. return value
+
   if(!method_call) {
-    return -1;
+    method_call->SetRougeReturn(-1);
+    return;
   }
 
   if(method_call->GetCallType() == ENUM_CALL) {
-    return 0;
+    method_call->SetRougeReturn(0);
+    return;
   }
 
   Type* rtrn = nullptr;
@@ -2653,7 +2657,8 @@ int ContextAnalyzer::OrphanReturn(MethodCall* method_call)
   if(rtrn) {
     if(rtrn->GetType() != frontend::NIL_TYPE) {
       if(rtrn->GetDimension() > 0) {
-        return 0;
+        method_call->SetRougeReturn(0);
+        return;
       }
       else {
         switch(rtrn->GetType()) {
@@ -2662,13 +2667,16 @@ int ContextAnalyzer::OrphanReturn(MethodCall* method_call)
         case frontend::CHAR_TYPE:
         case frontend::INT_TYPE:
         case frontend::CLASS_TYPE:
-          return 0;
+          method_call->SetRougeReturn(0);
+          return;
 
         case frontend::FLOAT_TYPE:
-          return 1;
+          method_call->SetRougeReturn(1);
+          return;
 
         case frontend::FUNC_TYPE:
-          return 2;
+          method_call->SetRougeReturn(2);
+          return;
 
         default:
           break;
@@ -2677,7 +2685,7 @@ int ContextAnalyzer::OrphanReturn(MethodCall* method_call)
     }
   }
 
-  return -1;
+  method_call->SetRougeReturn(-1);
 }
 
 /*********************************

@@ -530,7 +530,7 @@ class ContextAnalyzer {
   void AnalyzeMethodCall(MethodCall* method_call, const int depth);
   void AnalyzeNewArrayCall(MethodCall* method_call, const int depth);
   void AnalyzeParentCall(MethodCall* method_call, const int depth);
-  int OrphanReturn(MethodCall* method_call);
+  void RogueReturn(MethodCall* method_call);
   LibraryClass* AnalyzeLibraryMethodCall(MethodCall* method_call, std::wstring &encoding, const int depth);
   Class* AnalyzeProgramMethodCall(MethodCall* method_call, std::wstring &encoding, const int depth);
   void AnalyzeMethodCall(Class* klass, MethodCall* method_call, bool is_expr, std::wstring &encoding, const int depth);

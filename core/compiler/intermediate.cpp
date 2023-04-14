@@ -5513,59 +5513,7 @@ void IntermediateEmitter::EmitClassCast(Expression* expression)
 
 int IntermediateEmitter::OrphanReturn(MethodCall* method_call)
 {
-  if(!method_call) {
-    return -1;
-  }
-
-  if(method_call->GetCallType() == ENUM_CALL) {
-    return 0;
-  }
-
-  Type* rtrn = nullptr;
-  if(method_call->GetMethod()) {
-    rtrn = method_call->GetMethod()->GetReturn();
-  }
-  else if(method_call->GetLibraryMethod()) {
-    rtrn = method_call->GetLibraryMethod()->GetReturn();
-  }
-  else if(method_call->IsFunctionalCall()) {
-    rtrn = method_call->GetFunctionalEntry()->GetType()->GetFunctionReturn();
-  }
-
-  if(rtrn) {
-    if(rtrn->GetType() != frontend::NIL_TYPE) {
-      if(rtrn->GetDimension() > 0) {
-        return 0;
-      }
-      else {
-        switch(rtrn->GetType()) {
-        case frontend::BOOLEAN_TYPE:
-        case frontend::BYTE_TYPE:
-        case frontend::CHAR_TYPE:
-        case frontend::INT_TYPE:
-        case frontend::CLASS_TYPE:
-          return 0;
-
-        case frontend::FLOAT_TYPE:
-          return 1;
-
-        case frontend::FUNC_TYPE:
-          return 2;
-
-#ifdef _DEBUG
-        default:
-          assert(false);
-          break;
-#else
-        default:
-          break;
-#endif
-        }
-      }
-    }
-  }
-
-  return -1;
+  return method_call->GetRougeReturn();
 }
 
 frontend::Class* IntermediateEmitter::SearchProgramClasses(const std::wstring& klass_name)

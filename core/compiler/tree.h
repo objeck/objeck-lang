@@ -2689,16 +2689,18 @@ namespace frontend {
     Type* func_rtrn;
     bool is_func_def;
     bool is_dyn_func_call;
+    int is_rouge_return;
     SymbolEntry* dyn_func_entry;
     std::vector<Type*> concrete_types;
     int mid_line_num;
     int mid_line_pos;
 
-    MethodCall(const std::wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos,
-               MethodCallType t, const std::wstring &v, ExpressionList* e);
+    MethodCall(const std::wstring &file_name, const int line_num, const int line_pos, const int end_line_num, 
+               const int end_line_pos, MethodCallType t, const std::wstring &v, ExpressionList* e);
 
     MethodCall(const std::wstring& file_name, const int line_num, const int line_pos, const int ml, const int mp,
-               const int end_line_num, const int end_line_pos, const std::wstring& v, const std::wstring& m, ExpressionList* e) : Statement(file_name, line_num, line_pos, end_line_num, end_line_pos), Expression(file_name, line_num, line_pos) {
+               const int end_line_num, const int end_line_pos, const std::wstring& v, const std::wstring& m, 
+               ExpressionList* e) : Statement(file_name, line_num, line_pos, end_line_num, end_line_pos), Expression(file_name, line_num, line_pos) {
       mid_line_num = ml;
       mid_line_pos = mp;
       variable_name = v;
@@ -2716,12 +2718,13 @@ namespace frontend {
       original_klass = nullptr;
       original_lib_klass = nullptr;
       is_enum_call = is_func_def = is_dyn_func_call = false;
+      is_rouge_return = -1;
       func_rtrn = nullptr;
       anonymous_klass = nullptr;
     }
 
-    MethodCall(const std::wstring& file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, const std::wstring& v,
-               const std::wstring &m) : Statement(file_name, line_num, line_pos, end_line_num, end_line_pos), Expression(file_name, line_num, line_pos) {
+    MethodCall(const std::wstring& file_name, const int line_num, const int line_pos, const int end_line_num, 
+               const int end_line_pos, const std::wstring& v, const std::wstring &m) : Statement(file_name, line_num, line_pos, end_line_num, end_line_pos), Expression(file_name, line_num, line_pos) {
       mid_line_num = mid_line_pos = -1;
       variable_name = v;
       call_type = ENUM_CALL;
@@ -2738,6 +2741,7 @@ namespace frontend {
       original_klass = nullptr;
       original_lib_klass = nullptr;
       is_enum_call = is_func_def = is_dyn_func_call = false;
+      is_rouge_return = -1;
       func_rtrn = nullptr;
       anonymous_klass = nullptr;
     }
@@ -2762,6 +2766,7 @@ namespace frontend {
       original_lib_klass = nullptr;
       is_enum_call = is_func_def = is_dyn_func_call = false;
       func_rtrn = nullptr;
+      is_rouge_return = -1;
       anonymous_klass = nullptr;
     }
 
@@ -2810,6 +2815,14 @@ namespace frontend {
     bool IsEnumCall() {
       return is_enum_call;
     }
+
+    void SetRougeReturn(int v) {
+      is_rouge_return = v;
+    }
+
+    const int GetRougeReturn() {
+      return is_rouge_return;
+    } 
 
     MethodCallType GetCallType() {
       return call_type;
