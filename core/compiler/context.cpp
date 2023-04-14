@@ -2075,6 +2075,8 @@ void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, const int depth
   // method/function
   //
   else {
+    nested_call_depth++;
+
     // static check
     const std::wstring variable_name = method_call->GetVariableName();
     SymbolEntry* entry = GetEntry(method_call, variable_name, depth);
@@ -2110,6 +2112,12 @@ void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, const int depth
       }
       else if(!method_call->GetMethod() && !method_call->GetLibraryMethod()) {
         AnalyzeMethodCall(klass, method_call, false, encoding, depth);
+      }
+      
+      // TODO: check for rouge return
+      nested_call_depth--;
+      if(!nested_call_depth && !in_assignment && !in_return) {
+        OrphanReturn(method_call);
       }
       return;
     }
@@ -2162,6 +2170,12 @@ void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, const int depth
       else {
         ProcessError(static_cast<Expression*>(method_call), L"Undefined class or method call: '" + method_call->GetMethodName() + L"'");
       }
+    }
+
+    // TODO: check for rouge return
+    nested_call_depth--;
+    if(!nested_call_depth && !in_assignment && !in_return) {
+      OrphanReturn(method_call);
     }
   }
 }
@@ -2558,6 +2572,8 @@ void ContextAnalyzer::AnalyzeExpressionMethodCall(Expression* expression, const 
       }
     }
     else {
+      nested_call_depth++;
+
       std::wstring encoding;
       Class* klass = nullptr;
       LibraryClass* lib_klass = nullptr;
@@ -2603,8 +2619,65 @@ void ContextAnalyzer::AnalyzeExpressionMethodCall(Expression* expression, const 
                        L"Undefined class reference.\n\tIf external reference to generic ensure it has been typed");
         }
       }
+
+      // TODO: check for rouge return
+      nested_call_depth--;
+      if(!nested_call_depth && !in_assignment && !in_return) {
+        OrphanReturn(method_call);
+      }
     }
   }
+}
+
+int ContextAnalyzer::OrphanReturn(MethodCall* method_call)
+{
+  if(!method_call) {
+    return -1;
+  }
+
+  if(method_call->GetCallType() == ENUM_CALL) {
+    return 0;
+  }
+
+  Type* rtrn = nullptr;
+  if(method_call->GetMethod()) {
+    rtrn = method_call->GetMethod()->GetReturn();
+  }
+  else if(method_call->GetLibraryMethod()) {
+    rtrn = method_call->GetLibraryMethod()->GetReturn();
+  }
+  else if(method_call->IsFunctionalCall()) {
+    rtrn = method_call->GetFunctionalEntry()->GetType()->GetFunctionReturn();
+  }
+
+  if(rtrn) {
+    if(rtrn->GetType() != frontend::NIL_TYPE) {
+      if(rtrn->GetDimension() > 0) {
+        return 0;
+      }
+      else {
+        switch(rtrn->GetType()) {
+        case frontend::BOOLEAN_TYPE:
+        case frontend::BYTE_TYPE:
+        case frontend::CHAR_TYPE:
+        case frontend::INT_TYPE:
+        case frontend::CLASS_TYPE:
+          return 0;
+
+        case frontend::FLOAT_TYPE:
+          return 1;
+
+        case frontend::FUNC_TYPE:
+          return 2;
+
+        default:
+          break;
+        }
+      }
+    }
+  }
+
+  return -1;
 }
 
 /*********************************
@@ -4073,6 +4146,8 @@ void ContextAnalyzer::AnalyzeReturn(Return* rtrn, const int depth)
   Debug(L"return", rtrn->GetLineNumber(), depth);
 #endif
 
+  in_return = true;
+
   Type* mthd_type = current_method->GetReturn();
   Expression* expression = rtrn->GetExpression();
   if(expression) {
@@ -4136,6 +4211,8 @@ void ContextAnalyzer::AnalyzeReturn(Return* rtrn, const int depth)
      current_method->GetMethodType() == NEW_PRIVATE_METHOD) {
     ProcessError(rtrn, L"Cannot return value from constructor");
   }
+
+  in_return = false;
 }
 
 void ContextAnalyzer::ValidateConcrete(Type* cls_type, Type* concrete_type, ParseNode* node, const int depth)
@@ -4216,6 +4293,8 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType ty
   Debug(L"assignment", assignment->GetLineNumber(), depth);
 #endif
 
+  in_assignment = true;
+
   Variable* variable = assignment->GetVariable();
   if(variable) {
     AnalyzeVariable(variable, depth + 1);
@@ -4233,6 +4312,7 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType ty
     if(expression->GetExpressionType() == LAMBDA_EXPR) {
       expression = static_cast<Lambda*>(expression)->GetMethodCall();
       if(!expression) {
+        in_assignment = false;
         return;
       }
     }
@@ -4250,7 +4330,6 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType ty
 
       SymbolEntry* entry = variable->GetEntry();
       if(entry) {
-//        entry->WasLoaded();
         if(expression->GetCastType()) {
           Type* to_type = expression->GetCastType();
           AnalyzeVariableCast(to_type, expression);
@@ -4508,6 +4587,8 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType ty
       }
     }
   }
+
+  in_assignment = false;
 }
 
 /****************************
