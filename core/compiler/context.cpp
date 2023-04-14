@@ -293,6 +293,10 @@ bool ContextAnalyzer::Analyze()
     ProcessError(program->GetFileName(), L"The 'Main(args)' function was not defined");
   }
 
+#ifdef _DEBUG
+  assert(!nested_call_depth);
+#endif
+
   return CheckErrors();
 }
 
@@ -2129,6 +2133,12 @@ void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, const int depth
       }
       else {
         AnalyzeMethodCall(lib_klass, method_call, false, encoding, false, depth);
+      }
+
+      // TODO: check for rouge return
+      nested_call_depth--;
+      if(!nested_call_depth && !in_assignment && !in_return) {
+        RogueReturn(method_call);
       }
       return;
     }
