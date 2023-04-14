@@ -3,6 +3,7 @@ class Test {
 		10->Compare(15);
 		"two"->PrintLine();
 #		2->Compare(13);
+		"[[``--'']]"->PrintLine();
 	}
 	
 	function : Bar() ~ Int {

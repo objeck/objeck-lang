@@ -119,9 +119,6 @@ class IntermediateEmitter {
   // emits class cast checks
   void EmitClassCast(Expression* expression);
 
-  // determines if a method call returns an unused value
-  int OrphanReturn(MethodCall* method_call);
-
   Class* SearchProgramClasses(const std::wstring &klass_name);
 
   Enum* SearchProgramEnums(const std::wstring &eenum_name);
