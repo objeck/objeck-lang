@@ -1264,7 +1264,7 @@ void IntermediateEmitter::EmitMethodCallStatement(MethodCall* method_call)
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, LOAD_FUNC_VAR, entry->GetId(), mem_context));
 
     // emit dynamic call
-    switch(OrphanReturn(method_call)) {
+    switch(method_call->GetRougeReturn()) {
     case 0:
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, DYN_MTHD_CALL, entry->GetType()->GetFunctionParameterCount(), instructions::INT_TYPE));
       if(!method_call->GetMethodCall()) {
@@ -1307,7 +1307,7 @@ void IntermediateEmitter::EmitMethodCallStatement(MethodCall* method_call)
       
       // pop return value if not used
       if(!method_call->GetMethodCall()) {
-        switch(OrphanReturn(method_call)) {
+        switch(method_call->GetRougeReturn()) {
         case 0:
           imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, POP_INT));
           break;
@@ -1319,6 +1319,9 @@ void IntermediateEmitter::EmitMethodCallStatement(MethodCall* method_call)
         case 2:
           imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, POP_INT));
           imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, POP_INT));
+          break;
+
+        default:
           break;
         }
       }
@@ -1383,7 +1386,7 @@ void IntermediateEmitter::EmitMethodCallStatement(MethodCall* method_call)
       
       // pop return value if not used
       if(!method_call->GetMethodCall()) {
-        switch(OrphanReturn(method_call)) {
+        switch(method_call->GetRougeReturn()) {
         case 0:
           imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, POP_INT));
           break;
@@ -1395,6 +1398,9 @@ void IntermediateEmitter::EmitMethodCallStatement(MethodCall* method_call)
         case 2:
           imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, POP_INT));
           imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, POP_INT));
+          break;
+
+        default:
           break;
         }
       }
@@ -3169,7 +3175,7 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
 
       // pop return value if not used
       if(!method_call->GetMethodCall()) {
-        switch(OrphanReturn(method_call)) {
+        switch(method_call->GetRougeReturn()) {
         case 0:
           imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, POP_INT));
           break;
@@ -3181,6 +3187,9 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
         case 2:
           imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, POP_INT));
           imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, POP_INT));
+          break;
+
+        default:
           break;
         }
       }
@@ -3313,7 +3322,7 @@ void IntermediateEmitter::EmitMethodCallExpression(MethodCall* method_call, bool
     }      
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_FUNC_VAR, entry->GetId(), mem_context));
     
-    switch(OrphanReturn(method_call)) {
+    switch(method_call->GetRougeReturn()) {
     case 0:
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, DYN_MTHD_CALL, entry->GetType()->GetFunctionParameterCount(), instructions::INT_TYPE));
       break;
@@ -5528,11 +5537,6 @@ void IntermediateEmitter::EmitClassCast(Expression* expression)
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression,cur_line_num, OBJ_INST_CAST, (long)expression->GetToLibraryClass()->GetId()));
     }
   }
-}
-
-int IntermediateEmitter::OrphanReturn(MethodCall* method_call)
-{
-  return method_call->GetRougeReturn();
 }
 
 frontend::Class* IntermediateEmitter::SearchProgramClasses(const std::wstring& klass_name)
