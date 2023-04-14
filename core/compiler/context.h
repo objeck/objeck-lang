@@ -249,13 +249,18 @@ class ContextAnalyzer {
   std::vector<std::wstring> alt_error_method_names;
   std::map<const std::wstring, Type*> type_map;
   std::unordered_set<std::wstring> holder_types;
+  std::vector<Class*> anonymous_classes;
   bool main_found;
   bool is_lib;
   int char_str_index;
   int int_str_index;
   int float_str_index;
   int in_loop;
-  std::vector<Class*> anonymous_classes;
+
+  bool in_assignment;
+  bool in_return;
+  int nested_call_depth;
+
 #ifdef _DIAG_LIB
   std::vector<std::wstring> error_strings;
   std::vector<std::wstring> warning_strings;
@@ -525,6 +530,7 @@ class ContextAnalyzer {
   void AnalyzeMethodCall(MethodCall* method_call, const int depth);
   void AnalyzeNewArrayCall(MethodCall* method_call, const int depth);
   void AnalyzeParentCall(MethodCall* method_call, const int depth);
+  int OrphanReturn(MethodCall* method_call);
   LibraryClass* AnalyzeLibraryMethodCall(MethodCall* method_call, std::wstring &encoding, const int depth);
   Class* AnalyzeProgramMethodCall(MethodCall* method_call, std::wstring &encoding, const int depth);
   void AnalyzeMethodCall(Class* klass, MethodCall* method_call, bool is_expr, std::wstring &encoding, const int depth);
@@ -549,7 +555,8 @@ class ContextAnalyzer {
     linker = new Linker(lib_path);
     program->SetLinker(linker);
     char_str_index = int_str_index = float_str_index= 0;
-    in_loop = 0;
+    in_loop = nested_call_depth = 0;
+    in_assignment = in_return = false;
     
     // setup type map
     type_map[L"Byte"] = TypeFactory::Instance()->MakeType(frontend::BYTE_TYPE, L"System.Byte");
