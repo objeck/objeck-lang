@@ -1,5 +1,9 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
+		Brun();
+	}
+
+	function : native : Brun() ~ Nil {
 		value := 9223372036854775807;
 		(value / 3 - 5)->PrintLine();
 	}
