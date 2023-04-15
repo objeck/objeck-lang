@@ -1152,9 +1152,9 @@ namespace frontend {
    ****************************/
   class IntegerLiteral : public Expression {
     friend class TreeFactory;
-    INT_VALUE value;
+    INT64_VALUE value;
 
-  IntegerLiteral(const std::wstring &file_name, const int line_num, const int line_pos, INT_VALUE v) : Expression(file_name, line_num, line_pos, TypeFactory::Instance()->MakeType(INT_TYPE)) {
+  IntegerLiteral(const std::wstring &file_name, const int line_num, const int line_pos, INT64_VALUE v) : Expression(file_name, line_num, line_pos, TypeFactory::Instance()->MakeType(INT_TYPE)) {
       value = v;
     }
 
@@ -1162,7 +1162,7 @@ namespace frontend {
     }
 
   public:
-    INT_VALUE GetValue() {
+    INT64_VALUE GetValue() {
       return value;
     }
 
@@ -3310,7 +3310,7 @@ namespace frontend {
       return tmp;
     }
 
-    IntegerLiteral* MakeIntegerLiteral(const std::wstring &file_name, const int line_num, const int line_pos, INT_VALUE value) {
+    IntegerLiteral* MakeIntegerLiteral(const std::wstring &file_name, const int line_num, const int line_pos, INT64_VALUE value) {
       IntegerLiteral* tmp = new IntegerLiteral(file_name, line_num, line_pos, value);
       expressions.push_back(tmp);
       return tmp;
