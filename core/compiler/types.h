@@ -438,7 +438,7 @@ namespace frontend {
   
   // static array holders
   struct IntStringHolder {
-    INT_VALUE* value;
+    INT64_VALUE* value;
     int length;
   };
   

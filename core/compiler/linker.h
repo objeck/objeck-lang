@@ -714,7 +714,13 @@ class Library {
   std::vector<std::wstring> bundle_names;
   
   inline int32_t ReadInt() {
-    int32_t value = *((long*)buffer);
+    int32_t value = *((int32_t*)buffer);
+    buffer += sizeof(value);
+    return value;
+  }
+
+  inline int64_t ReadInt64() {
+    int64_t value = *((int64_t*)buffer);
     buffer += sizeof(value);
     return value;
   }
