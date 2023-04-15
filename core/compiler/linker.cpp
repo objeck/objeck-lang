@@ -184,7 +184,7 @@ void Linker::ResolveExternalMethodCalls()
                 const int16_t lib_cls_id = lib_method->GetLibraryClass()->GetId();
                 const int lib_method_cls_id = (lib_cls_id << 16) | lib_method_id;
                 instr->SetType(instructions::LOAD_INT_LIT);
-                instr->SetOperand(lib_method_cls_id);
+                instr->SetOperand7(lib_method_cls_id);
               }
               else {
                 std::wcerr << L"Error: Unable to resolve external library method: '" << instr->GetOperand6() << L"'; check library path" << std::endl;
@@ -920,7 +920,7 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
     const int type = ReadByte();
     switch(type) {
     case LOAD_INT_LIT:
-      instrs.push_back(new LibraryInstr(line_num, LOAD_INT_LIT, ReadInt()));
+      instrs.push_back(new LibraryInstr(line_num, LOAD_INT_LIT, ReadInt64()));
       break;
       
     case LOAD_CHAR_LIT:

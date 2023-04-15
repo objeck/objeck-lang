@@ -1338,7 +1338,7 @@ IntermediateBlock* ItermediateOptimizer::ConstantProp(IntermediateBlock* inputs)
       if(instr->GetOperand2() == LOCL) {
         std::unordered_map<int, PropValue>::iterator result = value_prop_map.find(instr->GetOperand());
         if(result != value_prop_map.end()) {
-          outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (long)result->second.int_value));
+          outputs->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(cur_line_num, (long)result->second.int_value));
         }
         else {
           outputs->AddInstruction(instr);
