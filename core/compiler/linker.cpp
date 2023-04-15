@@ -658,9 +658,9 @@ void Library::LoadFile(const std::wstring &file_name)
     for(int i = 0; i < num_int_strings; ++i) {
       frontend::IntStringHolder* holder = new frontend::IntStringHolder;
       holder->length = ReadInt();
-      holder->value = new INT_VALUE[holder->length];
+      holder->value = new INT64_VALUE[holder->length];
       for(int j = 0; j < holder->length; ++j) {
-        holder->value[j] = ReadInt();
+        holder->value[j] = ReadInt64();
       }
 #ifdef _DEBUG
       GetLogger() << L"int std::string: id=" << i << L"; value=";
