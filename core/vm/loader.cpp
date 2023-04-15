@@ -433,22 +433,22 @@ void Loader::LoadInitializationCode(StackMethod* method)
 {
   std::vector<StackInstr*> instrs;
 
-  instrs.push_back(new StackInstr(-1, LOAD_INT_LIT, (long)arguments.size()));
+  instrs.push_back(new StackInstr(-1, arguments.size()));
   instrs.push_back(new StackInstr(-1, NEW_INT_ARY, (long)1));
   instrs.push_back(new StackInstr(-1, STOR_LOCL_INT_VAR, 0L, LOCL));
 
   for(size_t i = 0; i < arguments.size(); ++i) {
-    instrs.push_back(new StackInstr(-1, LOAD_INT_LIT, (long)arguments[i].size()));
+    instrs.push_back(new StackInstr(-1, arguments[i].size()));
     instrs.push_back(new StackInstr(-1, NEW_CHAR_ARY, 1L));
-    instrs.push_back(new StackInstr(-1, LOAD_INT_LIT, (long)(num_char_strings + i)));
-    instrs.push_back(new StackInstr(-1, LOAD_INT_LIT, (long)instructions::CPY_CHAR_STR_ARY));
+    instrs.push_back(new StackInstr(-1, (long)(num_char_strings + i)));
+    instrs.push_back(new StackInstr(-1, (long)instructions::CPY_CHAR_STR_ARY));
     instrs.push_back(new StackInstr(-1, TRAP_RTRN, 3L));
 
     instrs.push_back(new StackInstr(-1, NEW_OBJ_INST, (long)string_cls_id));
     // note: method ID is position dependent
     instrs.push_back(new StackInstr(-1, MTHD_CALL, (long)string_cls_id, 2L, 0L));
 
-    instrs.push_back(new StackInstr(-1, LOAD_INT_LIT, (long)i));
+    instrs.push_back(new StackInstr(-1, i));
     instrs.push_back(new StackInstr(-1, LOAD_LOCL_INT_VAR, 0L, LOCL));
     instrs.push_back(new StackInstr(-1, STOR_INT_ARY_ELM, 1L, LOCL));
   }
@@ -478,8 +478,10 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
     }
 
     switch(type) {
-    case LOAD_INT_LIT:
-      mthd_instrs[i] = new StackInstr(line_num, LOAD_INT_LIT, (long)ReadInt());
+    case LOAD_INT_LIT: {
+      const INT64_VALUE value = ReadInt64();
+      mthd_instrs[i] = new StackInstr(line_num, value);
+    }
       break;
 
     case LOAD_CHAR_LIT:

@@ -137,6 +137,7 @@ class StackInstr
   long operand;
   union {
     long operand2;
+    INT64_VALUE operand64;
     FLOAT_VALUE float_operand;
   } second_operand;
   long operand3;
@@ -144,6 +145,12 @@ class StackInstr
   int line_num;
 
  public:
+  StackInstr(int l, INT64_VALUE v) {
+    line_num = l;
+    type = LOAD_INT_LIT;
+    second_operand.operand64 = v;
+  }
+
   StackInstr(int l, InstructionType t) {
     line_num = l;
     type = t;
@@ -198,6 +205,10 @@ class StackInstr
 
   inline long GetOperand() const {
     return operand;
+  }
+
+  inline INT64_VALUE GetOperand64() const {
+    return second_operand.operand64;
   }
 
   inline long GetOperand2() const {
