@@ -177,7 +177,7 @@ void SelectArrayTree::Emit(SelectNode* node, int end_label)
       // true
       emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(emitter->cur_line_num, JMP, value_label_map[value], true));
       // evaluate less then
-      emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(emitter->cur_line_num, LOAD_INT_LIT, (long)node->GetValue2()));
+      emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(emitter->cur_line_num, (long)node->GetValue2()));
       emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(emitter->cur_line_num, LOAD_INT_VAR, 0, LOCL));
       emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(emitter->cur_line_num, LES_INT));
     }
@@ -1023,7 +1023,7 @@ void IntermediateEmitter::EmitLambda(Lambda* lambda)
   }
   // no closures
   else {
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, lambda, cur_line_num, LOAD_INT_LIT, 0L));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(current_statement, lambda, cur_line_num, 0L));
   }
 
   EmitMethodCallExpression(method_call, false, true);
@@ -1194,7 +1194,7 @@ void IntermediateEmitter::EmitMethodCallStatement(MethodCall* method_call)
   if(method_call->IsFunctionDefinition()) {
     if(method_call->GetMethod()) {
       if(!method_call->GetMethod()->IsLambda()) {
-        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, LOAD_INT_LIT, 0L));
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(static_cast<Statement*>(method_call), cur_line_num, 0L));
       }
 
       if(is_lib) {
@@ -1206,12 +1206,12 @@ void IntermediateEmitter::EmitMethodCallStatement(MethodCall* method_call)
         const int16_t method_id = method_call->GetMethod()->GetId();
         const int16_t cls_id = method_call->GetMethod()->GetClass()->GetId();
         const int method_cls_id = (cls_id << 16) | method_id;
-        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, LOAD_INT_LIT, (long)method_cls_id));
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(static_cast<Statement*>(method_call), cur_line_num, (long)method_cls_id));
       }
     }
     else {
       if(!method_call->GetLibraryMethod()->IsLambda()) {
-        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, LOAD_INT_LIT, 0L));
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(static_cast<Statement*>(method_call), cur_line_num, 0L));
       }
 
       if(is_lib) {
@@ -1223,7 +1223,7 @@ void IntermediateEmitter::EmitMethodCallStatement(MethodCall* method_call)
         const int16_t method_id = method_call->GetLibraryMethod()->GetId();
         const int16_t cls_id = method_call->GetLibraryMethod()->GetLibraryClass()->GetId();
         const int method_cls_id = (cls_id << 16) | method_id;
-        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, LOAD_INT_LIT, (long)method_cls_id));
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(static_cast<Statement*>(method_call), cur_line_num, (long)method_cls_id));
       }
     }
   }
@@ -1466,13 +1466,13 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
   switch(statement->GetId()) {
   case ASSERT_TRUE:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::ASSERT_TRUE));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::ASSERT_TRUE));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 2L));
     break;
     
   case EXIT:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::EXIT));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::EXIT));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 2L));
     break;
     
@@ -1719,46 +1719,46 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     /////////////////////////////////////////
   case instructions::LOAD_MULTI_ARY_SIZE:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::LOAD_MULTI_ARY_SIZE));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::LOAD_MULTI_ARY_SIZE));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP_RTRN, 2L));
     break;   
     
   case instructions::BYTES_TO_UNICODE:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::BYTES_TO_UNICODE));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::BYTES_TO_UNICODE));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP_RTRN, 2L));
     break;
     
   case instructions::UNICODE_TO_BYTES:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::UNICODE_TO_BYTES));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::UNICODE_TO_BYTES));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP_RTRN, 2L));
     break;
 
   case instructions::LOAD_NEW_OBJ_INST:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::LOAD_NEW_OBJ_INST));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::LOAD_NEW_OBJ_INST));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP_RTRN, 2L));
     break;
 
   case instructions::LOAD_CLS_INST_ID:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INST_MEM));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::LOAD_CLS_INST_ID));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::LOAD_CLS_INST_ID));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP_RTRN, 2L));
     break;
     
   case instructions::LOAD_CLS_BY_INST:
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::LOAD_CLS_BY_INST));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::LOAD_CLS_BY_INST));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP_RTRN, 1L));
     break;
     
   case SYS_TIME:
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::SYS_TIME));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::SYS_TIME));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 1L));
     break;
 
   case GMT_TIME:
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::GMT_TIME));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::GMT_TIME));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 1L));
     break;
     
@@ -1768,7 +1768,7 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 1, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 2, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 3, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::DATE_TIME_SET_1));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::DATE_TIME_SET_1));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 6L));
     break;
     
@@ -1781,7 +1781,7 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 4, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 5, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 6, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::DATE_TIME_SET_2));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::DATE_TIME_SET_2));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 9L));
     break;
 
@@ -1789,113 +1789,113 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INST_MEM));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 1, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::DATE_TIME_SET_3));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::DATE_TIME_SET_3));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 4L));
     break;
     
   case instructions::DATE_TIME_ADD_DAYS:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INST_MEM));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::DATE_TIME_ADD_DAYS));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::DATE_TIME_ADD_DAYS));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 3L));
     break;
     
   case instructions::DATE_TIME_ADD_HOURS:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INST_MEM));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::DATE_TIME_ADD_HOURS));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::DATE_TIME_ADD_HOURS));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 3L));
     break;
     
   case instructions::DATE_TIME_ADD_MINS:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INST_MEM));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::DATE_TIME_ADD_MINS));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::DATE_TIME_ADD_MINS));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 3L));
     break;
 
   case instructions::DATE_TIME_ADD_SECS:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INST_MEM));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::DATE_TIME_ADD_SECS));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::DATE_TIME_ADD_SECS));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 3L));
     break;
     
   case GET_PLTFRM:
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::GET_PLTFRM));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::GET_PLTFRM));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 1L));
     break;
     
   case GET_VERSION:
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::GET_VERSION));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::GET_VERSION));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 1L));
     break;
     
   case GET_SYS_PROP:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::GET_SYS_PROP));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::GET_SYS_PROP));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 2L));
     break;
     
   case SET_SYS_PROP:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 1, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::SET_SYS_PROP));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::SET_SYS_PROP));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 3L));
     break;
     
   case TIMER_START:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INST_MEM));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::TIMER_START));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::TIMER_START));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 2L));
     break;
 
   case TIMER_END:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INST_MEM));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::TIMER_END));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::TIMER_END));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 2L));
     break;
     
   case TIMER_ELAPSED:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INST_MEM));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::TIMER_ELAPSED));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::TIMER_ELAPSED));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 2L));
     break;
     
     // -------------- standard i/o --------------
   case instructions::STD_OUT_BOOL:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::STD_OUT_BOOL));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::STD_OUT_BOOL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 2L));
     break;
 
   case instructions::STD_OUT_BYTE:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::STD_OUT_BYTE));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::STD_OUT_BYTE));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 2L));
     break;
 
   case instructions::STD_OUT_CHAR:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::STD_OUT_CHAR));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::STD_OUT_CHAR));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 2L));
     break;
 
   case instructions::STD_OUT_INT:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::STD_OUT_INT));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::STD_OUT_INT));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 2L));
     break;
 
   case instructions::STD_OUT_FLOAT:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_FLOAT_VAR, 0, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::STD_OUT_FLOAT));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::STD_OUT_FLOAT));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 2L));
     break;
 
   case instructions::STD_OUT_STRING:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::STD_OUT_STRING));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::STD_OUT_STRING));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 2L));
     break;
     
@@ -1903,7 +1903,7 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 1, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 2, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::STD_OUT_BYTE_ARY_LEN));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::STD_OUT_BYTE_ARY_LEN));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 5L));
     break;
 
@@ -1911,7 +1911,7 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 1, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 2, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::STD_OUT_CHAR_ARY_LEN));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::STD_OUT_CHAR_ARY_LEN));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 5L));
     break;
 
@@ -1919,7 +1919,7 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 1, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 2, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::STD_IN_BYTE_ARY_LEN));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::STD_IN_BYTE_ARY_LEN));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 5L));
     break;
 
@@ -1927,80 +1927,80 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 1, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 2, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::STD_IN_CHAR_ARY_LEN));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::STD_IN_CHAR_ARY_LEN));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 5L));
     break;
     
   case instructions::STD_IN_STRING:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::STD_IN_STRING));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::STD_IN_STRING));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 2L));
     break;
 
   case instructions::STD_INT_FMT:
 		imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
-		imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::STD_INT_FMT));
+		imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::STD_INT_FMT));
 		imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 2L));
 		break;
 
   case instructions::STD_FLOAT_FMT:
 		imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
-		imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::STD_FLOAT_FMT));
+		imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::STD_FLOAT_FMT));
 		imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 2L));
 		break;
 
   case instructions::STD_FLOAT_PER:
 		imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
-		imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::STD_FLOAT_PER));
+		imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::STD_FLOAT_PER));
 		imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 2L));
 		break;
 
   case instructions::STD_WIDTH:
 		imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
-		imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::STD_WIDTH));
+		imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::STD_WIDTH));
 		imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 2L));
 		break;
 
   case instructions::STD_FILL:
 		imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
-		imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::STD_FILL));
+		imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::STD_FILL));
 		imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 2L));
 		break;
 
     // -------------- standard error i/o --------------
   case instructions::STD_ERR_BOOL:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::STD_ERR_BOOL));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::STD_ERR_BOOL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 2L));
     break;
 
   case instructions::STD_ERR_BYTE:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::STD_ERR_BYTE));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::STD_ERR_BYTE));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 2L));
     break;
 
   case instructions::STD_ERR_CHAR:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::STD_ERR_CHAR));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::STD_ERR_CHAR));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 2L));
     break;
 
   case instructions::STD_ERR_INT:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::STD_ERR_INT));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::STD_ERR_INT));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 2L));
     break;
 
   case instructions::STD_ERR_FLOAT:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_FLOAT_VAR, 0, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::STD_ERR_FLOAT));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::STD_ERR_FLOAT));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 2L));
     break;
 
   case instructions::STD_ERR_STRING:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::STD_ERR_STRING));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::STD_ERR_STRING));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 2L));
     break;
     
@@ -2008,7 +2008,7 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 1, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 2, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::STD_ERR_BYTE_ARY));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::STD_ERR_BYTE_ARY));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 5L));
     break;
 
@@ -2016,26 +2016,26 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 1, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 2, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::STD_ERR_CHAR_ARY));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::STD_ERR_CHAR_ARY));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 5L));
     break;
 
   case instructions::STD_FLUSH:
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::STD_FLUSH));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::STD_FLUSH));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 1L));
     break;
 
   case instructions::STD_ERR_FLUSH:
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::STD_ERR_FLUSH));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::STD_ERR_FLUSH));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 1L));
     break;
     
     //----------- ip socket methods -----------
   case instructions::SOCK_TCP_HOST_NAME: {
     // copy and create Char[]
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)(256 + 1)));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)(256 + 1)));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, NEW_CHAR_ARY, 1L));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::SOCK_TCP_HOST_NAME));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::SOCK_TCP_HOST_NAME));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP_RTRN, 2L));
 #ifdef _SYSTEM
     if(string_cls_id < 0) {
@@ -2068,7 +2068,7 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
    
   case SOCK_TCP_RESOLVE_NAME:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::SOCK_TCP_RESOLVE_NAME));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::SOCK_TCP_RESOLVE_NAME));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 2L));
     break;
   
@@ -2076,79 +2076,79 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INST_MEM));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 1, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::SOCK_TCP_CONNECT));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::SOCK_TCP_CONNECT));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 4L));
     break;
     
   case instructions::SOCK_TCP_BIND:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INST_MEM));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::SOCK_TCP_BIND));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::SOCK_TCP_BIND));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 3L));
     break;
     
   case instructions::SOCK_TCP_LISTEN:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INST_MEM));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::SOCK_TCP_LISTEN));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::SOCK_TCP_LISTEN));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 3L));
     break;
     
   case instructions::SOCK_TCP_ACCEPT:    
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INST_MEM));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::SOCK_TCP_ACCEPT));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::SOCK_TCP_ACCEPT));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 2L));
     break;
 
 	case instructions::SOCK_TCP_SSL_LISTEN:
 		imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INST_MEM));
-		imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::SOCK_TCP_SSL_LISTEN));
+		imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::SOCK_TCP_SSL_LISTEN));
 		imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 2L));
     break;
 
 	case instructions::SOCK_TCP_SSL_ACCEPT:
 		imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INST_MEM));
-		imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::SOCK_TCP_SSL_ACCEPT));
+		imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::SOCK_TCP_SSL_ACCEPT));
 		imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 2L));
 		break;
 
 	case instructions::SOCK_TCP_SSL_SRV_CERT:
 		imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INST_MEM));
-		imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::SOCK_TCP_SSL_SRV_CERT));
+		imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::SOCK_TCP_SSL_SRV_CERT));
 		imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 2L));
 		break;
   
   case instructions::SOCK_TCP_SSL_SRV_CLOSE:
 		imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INST_MEM));
-		imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::SOCK_TCP_SSL_SRV_CLOSE));
+		imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::SOCK_TCP_SSL_SRV_CLOSE));
 		imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 2L));
 		break;
 
 	case instructions::SOCK_TCP_SSL_ERROR:
-		imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::SOCK_TCP_SSL_ERROR));
+		imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::SOCK_TCP_SSL_ERROR));
 		imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 1L));
 		break;
 
 	case instructions::SOCK_TCP_ERROR:
-		imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::SOCK_TCP_ERROR));
+		imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::SOCK_TCP_ERROR));
 		imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 1L));
 		break;
     
   case instructions::SOCK_TCP_IS_CONNECTED:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INST_MEM));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::SOCK_TCP_IS_CONNECTED));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::SOCK_TCP_IS_CONNECTED));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 2L));
     break;
     
   case instructions::SOCK_TCP_CLOSE:    
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INST_MEM));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::SOCK_TCP_CLOSE));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::SOCK_TCP_CLOSE));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 2L));
     break;
 
   case instructions::SOCK_TCP_IN_BYTE:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INST_MEM));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::SOCK_TCP_IN_BYTE));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::SOCK_TCP_IN_BYTE));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 2L));
     break;
 
@@ -2157,7 +2157,7 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 1, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 2, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::SOCK_TCP_IN_BYTE_ARY));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::SOCK_TCP_IN_BYTE_ARY));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 5L));
     break;
     
@@ -2166,14 +2166,14 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 1, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 2, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::SOCK_TCP_IN_CHAR_ARY));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::SOCK_TCP_IN_CHAR_ARY));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 5L));
     break;
 
   case instructions::SOCK_TCP_OUT_BYTE:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INST_MEM));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::SOCK_TCP_OUT_BYTE));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::SOCK_TCP_OUT_BYTE));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 3L));
     break;
 
@@ -2182,7 +2182,7 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 1, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 2, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::SOCK_TCP_OUT_BYTE_ARY));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::SOCK_TCP_OUT_BYTE_ARY));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 5L));
     break;
 
@@ -2191,21 +2191,21 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 1, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 2, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::SOCK_TCP_OUT_CHAR_ARY));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::SOCK_TCP_OUT_CHAR_ARY));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 5L));
     break;
     
   case instructions::SOCK_TCP_OUT_STRING:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INST_MEM));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::SOCK_TCP_OUT_STRING));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::SOCK_TCP_OUT_STRING));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 3L));
     break;
 
   case instructions::SOCK_TCP_IN_STRING:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INST_MEM));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::SOCK_TCP_IN_STRING));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::SOCK_TCP_IN_STRING));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 3L));
     break;
     
@@ -2214,31 +2214,31 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INST_MEM));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 1, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::SOCK_TCP_SSL_CONNECT));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::SOCK_TCP_SSL_CONNECT));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 4L));
     break;
       
   case instructions::SOCK_TCP_SSL_ISSUER:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INST_MEM));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::SOCK_TCP_SSL_ISSUER));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::SOCK_TCP_SSL_ISSUER));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 2L));
     break;
 
   case instructions::SOCK_TCP_SSL_SUBJECT:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INST_MEM));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::SOCK_TCP_SSL_SUBJECT));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::SOCK_TCP_SSL_SUBJECT));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 2L));
     break;
     
   case instructions::SOCK_TCP_SSL_CLOSE:    
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INST_MEM));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::SOCK_TCP_SSL_CLOSE));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::SOCK_TCP_SSL_CLOSE));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 2L));
     break;
 
   case instructions::SOCK_TCP_SSL_IN_BYTE:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INST_MEM));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::SOCK_TCP_SSL_IN_BYTE));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::SOCK_TCP_SSL_IN_BYTE));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 2L));
     break;
 
@@ -2247,7 +2247,7 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 1, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 2, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::SOCK_TCP_SSL_IN_BYTE_ARY));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::SOCK_TCP_SSL_IN_BYTE_ARY));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 5L));
     break;
     
@@ -2256,14 +2256,14 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 1, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 2, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::SOCK_TCP_SSL_IN_CHAR_ARY));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::SOCK_TCP_SSL_IN_CHAR_ARY));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 5L));
     break;
     
   case instructions::SOCK_TCP_SSL_OUT_BYTE:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INST_MEM));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::SOCK_TCP_SSL_OUT_BYTE));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::SOCK_TCP_SSL_OUT_BYTE));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 3L));
     break;
 
@@ -2272,7 +2272,7 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 1, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 2, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::SOCK_TCP_SSL_OUT_BYTE_ARY));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::SOCK_TCP_SSL_OUT_BYTE_ARY));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 5L));
     break;
     
@@ -2281,155 +2281,155 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 1, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 2, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::SOCK_TCP_SSL_OUT_CHAR_ARY));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::SOCK_TCP_SSL_OUT_CHAR_ARY));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 5L));
     break;
     
   case instructions::SOCK_TCP_SSL_OUT_STRING:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INST_MEM));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::SOCK_TCP_SSL_OUT_STRING));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::SOCK_TCP_SSL_OUT_STRING));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 3L));
     break;
 
   case instructions::SOCK_TCP_SSL_IN_STRING:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INST_MEM));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::SOCK_TCP_SSL_IN_STRING));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::SOCK_TCP_SSL_IN_STRING));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 3L));
     break;
     
     //----------- serialization methods -----------  
   case SERL_CHAR:
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)SERL_CHAR));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)SERL_CHAR));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 1L));
     break;
     
   case SERL_INT:
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)SERL_INT));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)SERL_INT));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 1L));
     break;
     
   case SERL_FLOAT:
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)SERL_FLOAT));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)SERL_FLOAT));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 1L));
     break;
     
   case SERL_OBJ_INST:
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)SERL_OBJ_INST));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)SERL_OBJ_INST));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 1L));
     break;
     
   case SERL_BYTE_ARY:
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)SERL_BYTE_ARY));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)SERL_BYTE_ARY));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 1L));
     break;
 
   case SERL_CHAR_ARY:
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)SERL_CHAR_ARY));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)SERL_CHAR_ARY));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 1L));
     break;
     
   case SERL_INT_ARY:
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)SERL_INT_ARY));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)SERL_INT_ARY));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 1L));
     break;
     
   case SERL_OBJ_ARY:
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)SERL_OBJ_ARY));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)SERL_OBJ_ARY));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 1L));
     break;
     
   case SERL_FLOAT_ARY:
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)SERL_FLOAT_ARY));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)SERL_FLOAT_ARY));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 1L));
     break;
 
   case DESERL_CHAR:
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)DESERL_CHAR));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)DESERL_CHAR));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 1L));
     break;
     
   case DESERL_INT:
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)DESERL_INT));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)DESERL_INT));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 1L));
     break;
 
   case DESERL_FLOAT:
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)DESERL_FLOAT));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)DESERL_FLOAT));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 1L));   
     break;
 
   case DESERL_OBJ_INST:
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)DESERL_OBJ_INST));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)DESERL_OBJ_INST));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 1L));
     break;
 
   case DESERL_BYTE_ARY:
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)DESERL_BYTE_ARY));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)DESERL_BYTE_ARY));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 1L));
     break;
 
   case DESERL_CHAR_ARY:
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)DESERL_CHAR_ARY));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)DESERL_CHAR_ARY));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 1L));
     break;
 
   case DESERL_INT_ARY:
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)DESERL_INT_ARY));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)DESERL_INT_ARY));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 1L));
     break;
 
   case DESERL_OBJ_ARY:
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)DESERL_OBJ_ARY));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)DESERL_OBJ_ARY));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 1L));
     break;
     
   case DESERL_FLOAT_ARY:
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)DESERL_FLOAT_ARY));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)DESERL_FLOAT_ARY));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 1L));
     break;
 
     //----------- compression methods -----------
   case instructions::COMPRESS_ZLIB_BYTES:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::COMPRESS_ZLIB_BYTES));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::COMPRESS_ZLIB_BYTES));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP_RTRN, 2L));
     break;
 
   case instructions::UNCOMPRESS_ZLIB_BYTES:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::UNCOMPRESS_ZLIB_BYTES));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::UNCOMPRESS_ZLIB_BYTES));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP_RTRN, 2L));
     break;
 
   case instructions::COMPRESS_GZIP_BYTES:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::COMPRESS_GZIP_BYTES));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::COMPRESS_GZIP_BYTES));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP_RTRN, 2L));
     break;
 
   case instructions::UNCOMPRESS_GZIP_BYTES:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::UNCOMPRESS_GZIP_BYTES));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::UNCOMPRESS_GZIP_BYTES));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP_RTRN, 2L));
     break;
 
   case instructions::COMPRESS_BR_BYTES:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::COMPRESS_BR_BYTES));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::COMPRESS_BR_BYTES));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP_RTRN, 2L));
     break;
 
   case instructions::UNCOMPRESS_BR_BYTES:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::UNCOMPRESS_BR_BYTES));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::UNCOMPRESS_BR_BYTES));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP_RTRN, 2L));
     break;
 
   case instructions::CRC32_BYTES:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::CRC32_BYTES));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::CRC32_BYTES));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP_RTRN, 2L));
     break;
     
@@ -2437,34 +2437,34 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
   case instructions::FILE_OPEN_READ:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INST_MEM));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::FILE_OPEN_READ));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::FILE_OPEN_READ));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 3L));
     break;
 
   case instructions::FILE_OPEN_APPEND:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INST_MEM));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::FILE_OPEN_APPEND));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::FILE_OPEN_APPEND));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 3L));
     break;
     
   case FILE_OPEN_WRITE:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INST_MEM));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::FILE_OPEN_WRITE));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::FILE_OPEN_WRITE));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 3L));
     break;
 
   case FILE_OPEN_READ_WRITE:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INST_MEM));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::FILE_OPEN_READ_WRITE));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::FILE_OPEN_READ_WRITE));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 3L));
     break;
 
   case instructions::FILE_IN_BYTE:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INST_MEM));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::FILE_IN_BYTE));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::FILE_IN_BYTE));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 2L));
     break;
 
@@ -2473,7 +2473,7 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 1, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 2, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::FILE_IN_BYTE_ARY));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::FILE_IN_BYTE_ARY));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 5L));
     break;
 
@@ -2482,33 +2482,33 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 1, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 2, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::FILE_IN_CHAR_ARY));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::FILE_IN_CHAR_ARY));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 5L));
     break;
 
   case instructions::FILE_IN_STRING:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INST_MEM));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::FILE_IN_STRING));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::FILE_IN_STRING));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 3L));
     break;
 
   case instructions::FILE_CLOSE:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INST_MEM));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::FILE_CLOSE));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::FILE_CLOSE));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 2L));
     break;
 
   case instructions::FILE_FLUSH:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INST_MEM));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::FILE_FLUSH));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::FILE_FLUSH));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 2L));
     break;
     
   case FILE_OUT_BYTE:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INST_MEM));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::FILE_OUT_BYTE));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::FILE_OUT_BYTE));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 3L));
     break;
 
@@ -2517,7 +2517,7 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 1, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 2, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::FILE_OUT_BYTE_ARY));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::FILE_OUT_BYTE_ARY));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 5L));
     break;
     
@@ -2526,95 +2526,95 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 1, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 2, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::FILE_OUT_CHAR_ARY));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::FILE_OUT_CHAR_ARY));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 5L));
     break;
     
   case FILE_OUT_STRING:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INST_MEM));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::FILE_OUT_STRING));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::FILE_OUT_STRING));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 3L));
     break;
 
   case FILE_SEEK:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INST_MEM));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::FILE_SEEK));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::FILE_SEEK));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 3L));
     break;
 
   case FILE_EOF:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INST_MEM));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::FILE_EOF));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::FILE_EOF));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 2L));
     break;
 
   case FILE_REWIND:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INST_MEM));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::FILE_REWIND));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::FILE_REWIND));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 2L));
     break;
 
   case FILE_IS_OPEN:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INST_MEM));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::FILE_IS_OPEN));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::FILE_IS_OPEN));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 2L));
     break;
 
     //----------- file functions -----------
   case FILE_EXISTS:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::FILE_EXISTS));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::FILE_EXISTS));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 2L));
     break;
   
   case FILE_CAN_READ_ONLY:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::FILE_CAN_READ_ONLY));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::FILE_CAN_READ_ONLY));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 2L));
     break;
       
   case FILE_CAN_WRITE_ONLY:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::FILE_CAN_WRITE_ONLY));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::FILE_CAN_WRITE_ONLY));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 2L));
     break;
 
   case FILE_CAN_READ_WRITE:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::FILE_CAN_READ_WRITE));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::FILE_CAN_READ_WRITE));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 2L));
     break;
 
   case FILE_SIZE:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::FILE_SIZE));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::FILE_SIZE));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 2L));
     break;
 
   case FILE_FULL_PATH:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::FILE_FULL_PATH));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::FILE_FULL_PATH));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 2L));
     break;
 
   case FILE_TEMP_NAME:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::FILE_TEMP_NAME));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::FILE_TEMP_NAME));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 2L));
     break;
     
   case FILE_DELETE:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::FILE_DELETE));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::FILE_DELETE));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 2L));
     break;
 
   case FILE_RENAME:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 1, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::FILE_RENAME));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::FILE_RENAME));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 3L));
     break;
 
@@ -2622,40 +2622,40 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 1, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 2, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::FILE_COPY));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::FILE_COPY));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 4L));
     break;
     
   case FILE_CREATE_TIME:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 1, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::FILE_CREATE_TIME));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::FILE_CREATE_TIME));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 3L));
     break;
     
   case FILE_ACCOUNT_OWNER:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::FILE_ACCOUNT_OWNER));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::FILE_ACCOUNT_OWNER));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 2L));
     break;
     
   case FILE_GROUP_OWNER:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::FILE_GROUP_OWNER));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::FILE_GROUP_OWNER));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 2L));
     break;
     
   case FILE_MODIFIED_TIME:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 1, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::FILE_MODIFIED_TIME));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::FILE_MODIFIED_TIME));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 3L));
     break;
     
   case FILE_ACCESSED_TIME:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 1, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::FILE_ACCESSED_TIME));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::FILE_ACCESSED_TIME));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 3L));
     break;
 
@@ -2664,13 +2664,13 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INST_MEM));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 1, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::PIPE_CREATE));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::PIPE_CREATE));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 4L));
     break;
 
   case PIPE_CONNECT:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INST_MEM));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::PIPE_CONNECT));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::PIPE_CONNECT));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 2L));
     break;
 
@@ -2678,20 +2678,20 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INST_MEM));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 1, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::PIPE_OPEN));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::PIPE_OPEN));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 4L));
     break;
 
   case PIPE_IN_BYTE:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INST_MEM));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::PIPE_IN_BYTE));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::PIPE_IN_BYTE));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 2L));
     break;
 
   case PIPE_OUT_BYTE:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INST_MEM));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::PIPE_OUT_BYTE));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::PIPE_OUT_BYTE));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 3L));
     break;
 
@@ -2700,7 +2700,7 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 1, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 2, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::PIPE_IN_BYTE_ARY));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::PIPE_IN_BYTE_ARY));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 5L));
     break;
 
@@ -2709,7 +2709,7 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 1, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 2, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::PIPE_IN_CHAR_ARY));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::PIPE_IN_CHAR_ARY));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 5L));
     break;
 
@@ -2718,7 +2718,7 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 1, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 2, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::PIPE_OUT_BYTE_ARY));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::PIPE_OUT_BYTE_ARY));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 5L));
     break;
 
@@ -2727,51 +2727,51 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 1, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 2, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::PIPE_OUT_CHAR_ARY));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::PIPE_OUT_CHAR_ARY));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 5L));
     break;
 
   case PIPE_IN_STRING:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INST_MEM));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::PIPE_IN_STRING));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::PIPE_IN_STRING));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 3L));
     break;
 
   case PIPE_OUT_STRING:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INST_MEM));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::PIPE_OUT_STRING));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::PIPE_OUT_STRING));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 3L));
     break;
 
   case PIPE_CLOSE:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INST_MEM));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::PIPE_CLOSE));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::PIPE_CLOSE));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 2L));
     break;
 
     //----------- directory functions -----------
   case DIR_CREATE:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::DIR_CREATE));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::DIR_CREATE));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 2L));
     break;
 
   case DIR_SLASH:
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::DIR_SLASH));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::DIR_SLASH));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 1L));
     break;
 
   case DIR_EXISTS:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::DIR_EXISTS));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::DIR_EXISTS));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 2L));
     break;
 
   case DIR_LIST:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::DIR_LIST));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::DIR_LIST));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 2L));
     break;
 
@@ -2779,32 +2779,32 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 1, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 2, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::DIR_COPY));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::DIR_COPY));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 4L));
     break;
 
   case SYS_CMD:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::SYS_CMD));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::SYS_CMD));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 2L));
     break;
 
   case SYS_CMD_OUT:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::SYS_CMD_OUT));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::SYS_CMD_OUT));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 2L));
     break;
 
 	case SET_SIGNAL:
 		imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
 		imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 1, LOCL));
-		imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::SET_SIGNAL));
+		imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::SET_SIGNAL));
 		imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 3L));
 		break;
 
 	case RAISE_SIGNAL:
 		imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
-		imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_LIT, (long)instructions::RAISE_SIGNAL));
+		imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, (long)instructions::RAISE_SIGNAL));
 		imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 2L));
 		break;
   }
@@ -2836,7 +2836,7 @@ void IntermediateEmitter::EmitSelect(Select* select_stmt)
     }
     
     // emit code
-    // imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(select_stmt, cur_line_num, LOAD_INT_LIT, value));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(select_stmt, cur_line_num, value));
     EmitExpression(select_stmt->GetAssignment()->GetExpression());
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(select_stmt, cur_line_num, EQL_INT));
     if(select_stmt->GetOther()) {
@@ -3092,7 +3092,7 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
     break;
     
   case BOOLEAN_LIT_EXPR:
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LOAD_INT_LIT, (long)static_cast<BooleanLiteral*>(expression)->GetValue()));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(current_statement, expression, cur_line_num, (long)static_cast<BooleanLiteral*>(expression)->GetValue()));
     break;
 
   case CHAR_LIT_EXPR:
@@ -3111,7 +3111,7 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
     break;
 
   case NIL_LIT_EXPR:
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LOAD_INT_LIT, 0L));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(current_statement, expression, cur_line_num, 0L));
     break;
 
   case VAR_EXPR:
@@ -3252,7 +3252,7 @@ void IntermediateEmitter::EmitMethodCallExpression(MethodCall* method_call, bool
   if(method_call->IsFunctionDefinition()) {
     if(method_call->GetMethod()) {
       if(!method_call->GetMethod()->IsLambda()) {
-        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_INT_LIT, 0L));
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, 0L));
       }
 
       if(is_lib) {
@@ -3265,12 +3265,12 @@ void IntermediateEmitter::EmitMethodCallExpression(MethodCall* method_call, bool
         const int16_t method_id = method_call->GetMethod()->GetId();
         const int16_t cls_id = method_call->GetMethod()->GetClass()->GetId();
         const long method_cls_id = (cls_id << 16) | method_id;
-        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_INT_LIT, method_cls_id));
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, method_cls_id));
       }
     }
     else {
       if(!method_call->GetLibraryMethod()->IsLambda()) {
-        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_INT_LIT, 0L));
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, 0L));
       }
 
       if(is_lib) {
@@ -3282,7 +3282,7 @@ void IntermediateEmitter::EmitMethodCallExpression(MethodCall* method_call, bool
         const int16_t method_id = method_call->GetLibraryMethod()->GetId();
         const int16_t cls_id = method_call->GetLibraryMethod()->GetLibraryClass()->GetId();
         const long method_cls_id = (cls_id << 16) | method_id;
-        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_INT_LIT, method_cls_id));
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, method_cls_id));
       }
     }
   }
@@ -3614,29 +3614,29 @@ void IntermediateEmitter::EmitStaticArray(StaticArray* array) {
     // emit dimensions
     std::vector<int> sizes = array->GetSizes();
     for(int i = (int)sizes.size() - 1; i > -1; i--) {      
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, array, cur_line_num, LOAD_INT_LIT, (long)sizes[i]));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(current_statement, array, cur_line_num, (long)sizes[i]));
     }
     
     // write copy instructions
     switch(array->GetType()) {
     case frontend::INT_TYPE:    
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, array, cur_line_num, NEW_INT_ARY, (long)array->GetDimension()));
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, array, cur_line_num, LOAD_INT_LIT, (long)array->GetId()));
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, array, cur_line_num, LOAD_INT_LIT, (long)instructions::CPY_INT_STR_ARY));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(current_statement, array, cur_line_num, (long)array->GetId()));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(current_statement, array, cur_line_num, (long)instructions::CPY_INT_STR_ARY));
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, array, cur_line_num, TRAP_RTRN, 3L));
       break;
     
     case frontend::FLOAT_TYPE:
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, array, cur_line_num, NEW_FLOAT_ARY, (long)array->GetDimension()));
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, array, cur_line_num, LOAD_INT_LIT, (long)array->GetId()));
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, array, cur_line_num, LOAD_INT_LIT, (long)instructions::CPY_FLOAT_STR_ARY));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(current_statement, array, cur_line_num, (long)array->GetId()));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(current_statement, array, cur_line_num, (long)instructions::CPY_FLOAT_STR_ARY));
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, array, cur_line_num, TRAP_RTRN, 3L));
       break;
     
     case frontend::CHAR_TYPE:
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, array, cur_line_num, NEW_CHAR_ARY, (long)array->GetDimension()));
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, array, cur_line_num, LOAD_INT_LIT, (long)array->GetId()));
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, array, cur_line_num, LOAD_INT_LIT, (long)instructions::CPY_CHAR_STR_ARY));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(current_statement, array, cur_line_num, (long)array->GetId()));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(current_statement, array, cur_line_num, (long)instructions::CPY_CHAR_STR_ARY));
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, array, cur_line_num, TRAP_RTRN, 3L));
       break;
 
@@ -3656,12 +3656,12 @@ void IntermediateEmitter::EmitStaticArray(StaticArray* array) {
     // emit dimensions
     std::vector<int> sizes = array->GetSizes();
     for(size_t i = 0; i < sizes.size(); ++i) {      
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, array, cur_line_num, LOAD_INT_LIT, (long)sizes[i]));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(current_statement, array, cur_line_num, (long)sizes[i]));
     }
     
     // create string array
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, array, cur_line_num, NEW_INT_ARY, (long)array->GetDimension()));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, array, cur_line_num, LOAD_INT_LIT, (long)instructions::CPY_CHAR_STR_ARYS));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(current_statement, array, cur_line_num, (long)instructions::CPY_CHAR_STR_ARYS));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, array, cur_line_num, TRAP_RTRN, (long)(all_elements.size() + 2)));
   }
 }
@@ -3962,10 +3962,10 @@ void IntermediateEmitter::EmitCharacterStringSegment(CharacterStringSegment* seg
   
   if(segment->GetString().size() > 0) {
     // copy and create Char[]
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, char_str, cur_line_num, LOAD_INT_LIT, (long)segment->GetString().size()));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(current_statement, char_str, cur_line_num, (long)segment->GetString().size()));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, char_str, cur_line_num, NEW_CHAR_ARY, 1L));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, char_str, cur_line_num, LOAD_INT_LIT, (long)segment->GetId()));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, char_str, cur_line_num, LOAD_INT_LIT, (long)instructions::CPY_CHAR_STR_ARY));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(current_statement, char_str, cur_line_num, (long)segment->GetId()));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(current_statement, char_str, cur_line_num, (long)instructions::CPY_CHAR_STR_ARY));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, char_str, cur_line_num, TRAP_RTRN, 3L));
   
     // create 'System.String' instance
@@ -4027,7 +4027,7 @@ void IntermediateEmitter::EmitAndOr(CalculatedExpression* expression)
     long label = ++conditional_label;
     // AND jump
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, JMP, label, 1L));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LOAD_INT_LIT, 0L));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(current_statement, expression, cur_line_num, 0L));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, STOR_INT_VAR, 0, LOCL));
     long end = ++unconditional_label;
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, JMP, end, -1));
@@ -4045,7 +4045,7 @@ void IntermediateEmitter::EmitAndOr(CalculatedExpression* expression)
     long label = ++conditional_label;
     // OR jump
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, JMP, label, 0L));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LOAD_INT_LIT, 1L));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(current_statement, expression, cur_line_num, 1L));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, STOR_INT_VAR, 0, LOCL));
     long end = ++unconditional_label;
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, JMP, end, -1));
@@ -4898,7 +4898,7 @@ void IntermediateEmitter::EmitMethodCallParameters(MethodCall* method_call)
 
     if(method_call->GetEnumItem()) {
       long value = method_call->GetEnumItem()->GetId();
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_INT_LIT, value));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, value));
       if(method_call->GetCastType() && method_call->GetCastType()->GetType() == frontend::FLOAT_TYPE) {
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, I2F));
       }
@@ -4910,7 +4910,7 @@ void IntermediateEmitter::EmitMethodCallParameters(MethodCall* method_call)
       }
       else if(method_call->GetLibraryEnumItem()) {
         long value = method_call->GetLibraryEnumItem()->GetId();        
-        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_INT_LIT, value));
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, value));
       }
     }
     is_new_inst = false;
