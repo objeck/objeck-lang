@@ -1550,7 +1550,7 @@ namespace frontend {
   class Select : public Statement {
     friend class TreeFactory;
     Assignment* eval_assignment;
-    std::map<int, StatementList*> label_statements;
+    std::map<INT64_VALUE, StatementList*> label_statements;
     std::vector<StatementList*> statement_lists;
     std::map<ExpressionList*, StatementList*> statement_map;
     StatementList* other;
@@ -1567,11 +1567,11 @@ namespace frontend {
     }
 
   public:
-    void SetLabelStatements(std::map<int, StatementList*> s) {
+    void SetLabelStatements(std::map<INT64_VALUE, StatementList*> s) {
       label_statements = s;
     }
 
-    std::map<int, StatementList*> GetLabelStatements() {
+    std::map<INT64_VALUE, StatementList*> GetLabelStatements() {
       return label_statements;
     }
 
