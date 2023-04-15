@@ -3970,7 +3970,7 @@ void ContextAnalyzer::AnalyzeSelect(Select* select_stmt, const int depth)
       }
 
       // statements get associated here and validated below
-      label_statements.insert(std::pair<int, StatementList*>(value, iter->second));
+      label_statements.insert(std::pair<INT64_VALUE, StatementList*>(value, iter->second));
     }
   }
   select_stmt->SetLabelStatements(label_statements);

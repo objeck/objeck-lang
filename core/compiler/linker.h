@@ -67,6 +67,7 @@ class LibraryInstr {
   double operand4;
   std::wstring operand5;
   std::wstring operand6;
+  INT64_VALUE operand7;
   int line_num;
 
  public:
@@ -80,6 +81,12 @@ class LibraryInstr {
     line_num = l;
     type = t;
     operand = o;
+  }
+
+  LibraryInstr(int l, instructions::InstructionType t, INT64_VALUE o7) {
+    line_num = l;
+    type = t;
+    operand7 = o7;
   }
 
   LibraryInstr(int l, instructions::InstructionType t, double fo) {
@@ -155,6 +162,14 @@ class LibraryInstr {
 
   void SetOperand3(int o3) {
     operand3 = o3;
+  }
+
+  void SetOperand7(INT64_VALUE o7) {
+    operand7 = o7;
+  }
+
+  INT64_VALUE GetOperand7() {
+    return operand7;
   }
 
   double GetOperand4() {

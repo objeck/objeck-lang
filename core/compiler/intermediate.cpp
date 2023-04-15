@@ -148,14 +148,14 @@ void SelectArrayTree::Emit(SelectNode* node, int end_label)
     if(node->GetOperation() == CASE_LESS) {
       const INT64_VALUE value = node->GetValue();
       // evaluate less then
-      emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(emitter->cur_line_num, LOAD_INT_LIT, value));
+      emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(emitter->cur_line_num, value));
       emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(emitter->cur_line_num, LOAD_INT_VAR, 0, LOCL));
       emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(emitter->cur_line_num, LES_INT));
     } 
     else if(node->GetOperation() == CASE_EQUAL) {
       const INT64_VALUE value = node->GetValue();
       // evaluate equal to
-      emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(emitter->cur_line_num, LOAD_INT_LIT, value));
+      emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(emitter->cur_line_num, value));
       emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(emitter->cur_line_num, LOAD_INT_VAR, 0, LOCL));
       emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(emitter->cur_line_num, EQL_INT));
       // true
@@ -171,7 +171,7 @@ void SelectArrayTree::Emit(SelectNode* node, int end_label)
     else {
       // evaluate equal to
       const INT64_VALUE value = node->GetValue();
-      emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(emitter->cur_line_num, LOAD_INT_LIT, value));
+      emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(emitter->cur_line_num, value));
       emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(emitter->cur_line_num, LOAD_INT_VAR, 0, LOCL));
       emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(emitter->cur_line_num, EQL_INT));
       // true
