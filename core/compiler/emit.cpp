@@ -435,7 +435,7 @@ void IntermediateInstruction::Debug(size_t i) {
     break;
 
   case LOAD_INT_LIT:
-    GetLogger()  << i << L":\tLOAD_INT_LIT: value=" << operand << std::endl;
+    GetLogger()  << i << L":\tLOAD_INT_LIT: value=" << operand7 << std::endl;
     break;
 
   case LOAD_CHAR_LIT: {
