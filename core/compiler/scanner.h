@@ -400,7 +400,6 @@ class Token {
   std::wstring ident;
 
   union {
-    INT_VALUE int_lit;
     INT64_VALUE int64_lit;
     FLOAT_VALUE double_lit;
     wchar_t char_lit;
@@ -413,7 +412,6 @@ class Token {
     line_nbr = token->line_nbr;
     line_pos = token->line_pos;
     kind.char_lit = token->kind.char_lit;
-    kind.int_lit = token->kind.int_lit;
     kind.int64_lit = token->kind.int64_lit;
     kind.double_lit = token->kind.double_lit;
     ident = token->ident;
@@ -445,10 +443,6 @@ class Token {
     line_pos = p;
   }
 
-  inline void  SetIntLit(INT_VALUE i) {
-    kind.int_lit = i;
-  }
-
   inline void  SetInt64Lit(INT64_VALUE i) {
     kind.int64_lit = i;
   }
@@ -467,10 +461,6 @@ class Token {
 
   inline void SetIdentifier(std::wstring i) {
     ident = i;
-  }
-
-  inline const INT_VALUE GetIntLit() {
-    return kind.int_lit;
   }
 
   inline const INT64_VALUE GetInt64Lit() {
