@@ -112,6 +112,7 @@ namespace backend {
       type = t;
     }
 
+#ifdef _WIN32
     IntermediateInstruction(frontend::Statement* s, frontend::Expression* e, long l, InstructionType t, long o1) {
       line_num = l;
       statement = s;
@@ -119,6 +120,7 @@ namespace backend {
       type = t;
       operand = o1;
     }
+#endif
 
     IntermediateInstruction(frontend::Statement* s, frontend::Expression* e, long l, InstructionType t, INT64_VALUE o7) {
       line_num = l;
