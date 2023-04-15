@@ -128,6 +128,7 @@ namespace backend {
       expression = e;
       type = t;
       operand7 = o7;
+      operand = (long)o7;
     }
 
     IntermediateInstruction(frontend::Statement* s, frontend::Expression* e, long l, InstructionType t, long o1, long o2) {
