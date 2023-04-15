@@ -362,8 +362,8 @@ namespace backend {
       return tmp;
     }
 
-    IntermediateInstruction* MakeIntLitInstruction(long l, INT64_VALUE o1) {
-      IntermediateInstruction* tmp = new IntermediateInstruction(nullptr, nullptr, l, LOAD_INT_LIT, o1);
+    IntermediateInstruction* MakeIntLitInstruction(long l, INT64_VALUE o7) {
+      IntermediateInstruction* tmp = new IntermediateInstruction(nullptr, nullptr, l, LOAD_INT_LIT, o7);
       instructions.push_back(tmp);
       return tmp;
     }
