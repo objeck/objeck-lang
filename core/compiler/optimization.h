@@ -56,7 +56,7 @@ using namespace backend;
  ****************************/
 
 union PropValue {
-  int int_value;
+  INT64_VALUE int_value;
   double float_value;
 };
 
