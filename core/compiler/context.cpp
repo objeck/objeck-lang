@@ -3912,8 +3912,8 @@ void ContextAnalyzer::AnalyzeSelect(Select* select_stmt, const int depth)
   
   std::map<ExpressionList*, StatementList*>::iterator iter;
   // duplicate value vector
-  int value = 0;
-  std::map<int, StatementList*> label_statements;
+  INT64_VALUE value = 0;
+  std::map<INT64_VALUE, StatementList*> label_statements;
   for(iter = statements.begin(); iter != statements.end(); ++iter) {
     // expressions
     ExpressionList* expressions = iter->first;
@@ -3961,7 +3961,7 @@ void ContextAnalyzer::AnalyzeSelect(Select* select_stmt, const int depth)
             ProcessError(expression, L"Expected integer literal or enum item");
           }
         }
-                             break;
+          break;
 
         default:
           ProcessError(expression, L"Expected integer literal or enum item");
@@ -3969,7 +3969,7 @@ void ContextAnalyzer::AnalyzeSelect(Select* select_stmt, const int depth)
         }
       }
 
-      // statements get assoicated here and validated below
+      // statements get associated here and validated below
       label_statements.insert(std::pair<int, StatementList*>(value, iter->second));
     }
   }
@@ -6720,9 +6720,9 @@ bool ContextAnalyzer::DuplicateParentEntries(SymbolEntry* entry, Class* klass)
   return false;
 }
 
-bool ContextAnalyzer::DuplicateCaseItem(std::map<int, StatementList*>label_statements, int value)
+bool ContextAnalyzer::DuplicateCaseItem(std::map<INT64_VALUE, StatementList*>label_statements, INT64_VALUE value)
 {
-  std::map<int, StatementList*>::iterator result = label_statements.find(value);
+  std::map<INT64_VALUE, StatementList*>::iterator result = label_statements.find(value);
   if(result != label_statements.end()) {
     return true;
   }

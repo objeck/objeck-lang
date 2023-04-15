@@ -39,11 +39,11 @@ SelectArrayTree::SelectArrayTree(Select* s, IntermediateEmitter* e)
 {
   select = s;
   emitter = e;
-  std::map<int, StatementList*> label_statements = select->GetLabelStatements();
-  values = new int[label_statements.size()];
+  std::map<INT64_VALUE, StatementList*> label_statements = select->GetLabelStatements();
+  values = new INT64_VALUE[label_statements.size()];
   // map and sort values
   int i = 0;
-  std::map<int, StatementList*>::iterator iter;
+  std::map<INT64_VALUE, StatementList*>::iterator iter;
   for(iter = label_statements.begin(); iter != label_statements.end(); ++iter) {
     values[i] = iter->first;
     value_label_map[iter->first] = ++emitter->conditional_label;
@@ -111,8 +111,8 @@ void SelectArrayTree::Emit()
   int end_label = ++emitter->unconditional_label;
   Emit(root, end_label);
   // write statements
-  std::map<int, StatementList*> label_statements = select->GetLabelStatements();
-  std::map<int, StatementList*>::iterator iter;
+  std::map<INT64_VALUE, StatementList*> label_statements = select->GetLabelStatements();
+  std::map<INT64_VALUE, StatementList*>::iterator iter;
   for(iter = label_statements.begin(); iter != label_statements.end(); ++iter) {
     emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(select, emitter->cur_line_num, LBL, (long)value_label_map[iter->first]));
     StatementList* statement_list = iter->second;
@@ -146,14 +146,14 @@ void SelectArrayTree::Emit(SelectNode* node, int end_label)
     
     emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(emitter->cur_line_num, LBL, (long)node->GetId()));
     if(node->GetOperation() == CASE_LESS) {
-      const long value = node->GetValue();
+      const INT64_VALUE value = node->GetValue();
       // evaluate less then
       emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(emitter->cur_line_num, LOAD_INT_LIT, value));
       emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(emitter->cur_line_num, LOAD_INT_VAR, 0, LOCL));
       emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(emitter->cur_line_num, LES_INT));
     } 
     else if(node->GetOperation() == CASE_EQUAL) {
-      const long value = node->GetValue();
+      const INT64_VALUE value = node->GetValue();
       // evaluate equal to
       emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(emitter->cur_line_num, LOAD_INT_LIT, value));
       emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(emitter->cur_line_num, LOAD_INT_VAR, 0, LOCL));
@@ -170,7 +170,7 @@ void SelectArrayTree::Emit(SelectNode* node, int end_label)
     } 
     else {
       // evaluate equal to
-      const long value = node->GetValue();
+      const INT64_VALUE value = node->GetValue();
       emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(emitter->cur_line_num, LOAD_INT_LIT, value));
       emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(emitter->cur_line_num, LOAD_INT_VAR, 0, LOCL));
       emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(emitter->cur_line_num, EQL_INT));
@@ -2823,9 +2823,9 @@ void IntermediateEmitter::EmitSelect(Select* select_stmt)
   } 
   else {
     // get statement and value
-    std::map<int, StatementList*> label_statements = select_stmt->GetLabelStatements();
-    std::map<int, StatementList*>::iterator iter = label_statements.begin();
-    long value = iter->first;
+    std::map<INT64_VALUE, StatementList*> label_statements = select_stmt->GetLabelStatements();
+    std::map<INT64_VALUE, StatementList*>::iterator iter = label_statements.begin();
+    INT64_VALUE value = iter->first;
     StatementList* statement_list = iter->second;
 
     // set labels
@@ -2836,7 +2836,7 @@ void IntermediateEmitter::EmitSelect(Select* select_stmt)
     }
     
     // emit code
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(select_stmt, cur_line_num, LOAD_INT_LIT, value));
+    // imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(select_stmt, cur_line_num, LOAD_INT_LIT, value));
     EmitExpression(select_stmt->GetAssignment()->GetExpression());
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(select_stmt, cur_line_num, EQL_INT));
     if(select_stmt->GetOther()) {
