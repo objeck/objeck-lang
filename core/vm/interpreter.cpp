@@ -174,11 +174,17 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
       break;
     
     case LOAD_CHAR_LIT:
-    case LOAD_INT_LIT:
 #ifdef _DEBUG
       std::wcout << L"stack oper: LOAD_INT_LIT; call_pos=" << (*call_stack_pos) << std::endl;
 #endif
       PushInt(instr->GetOperand(), op_stack, stack_pos);
+      break;
+
+    case LOAD_INT_LIT:
+#ifdef _DEBUG
+      std::wcout << L"stack oper: LOAD_INT_LIT; call_pos=" << (*call_stack_pos) << std::endl;
+#endif
+      PushInt(instr->GetOperand64(), op_stack, stack_pos);
       break;
 
     case SHL_INT:
