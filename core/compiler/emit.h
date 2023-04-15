@@ -214,6 +214,10 @@ namespace backend {
       return operand2;
     }
 
+    INT64_VALUE GetOperand7() {
+      return operand7;
+    }
+
     FLOAT_VALUE GetOperand4() {
       return operand4;
     }
@@ -224,6 +228,10 @@ namespace backend {
     
     void SetOperand3(long o3) {
       operand3 = o3;
+    }
+
+    void SetOperand4(FLOAT_VALUE o4) {
+      operand4 = o4;
     }
 
     void Debug(size_t i);
