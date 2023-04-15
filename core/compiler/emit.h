@@ -305,6 +305,12 @@ namespace backend {
       return tmp;
     }
 
+    IntermediateInstruction* MakeIntLitInstruction(frontend::Statement* s, frontend::Expression* e, long l, INT64_VALUE o7) {
+      IntermediateInstruction* tmp = new IntermediateInstruction(s, e, l, LOAD_INT_LIT, o7);
+      instructions.push_back(tmp);
+      return tmp;
+    }
+
     IntermediateInstruction* MakeInstruction(frontend::Statement* s, frontend::Expression* e, long l, InstructionType t, long o1, long o2) {
       IntermediateInstruction* tmp = new IntermediateInstruction(s, e, l, t, o1, o2);
       instructions.push_back(tmp);
