@@ -1,0 +1,6 @@
+Compiler
+* 
+
+VM
+* minor updates left
+* jit compilers arm64 and arm64 load 32-bit literal values
