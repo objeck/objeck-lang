@@ -496,16 +496,16 @@ Enum* Parser::ParseEnum(int depth)
   Debug(L"[Enum: name='" + enum_scope_name + L"']", depth);
 #endif
 
-  int offset = 0;
+  long offset = 0;
   if(Match(TOKEN_ASSIGN)) {
     NextToken();
     Expression* label = ParseSimpleExpression(depth + 1);
     if(label) {
       if(label->GetExpressionType() == INT_LIT_EXPR) {
-        offset = static_cast<IntegerLiteral*>(label)->GetValue();
+        offset = (long)static_cast<IntegerLiteral*>(label)->GetValue();
       }
       else if(label->GetExpressionType() == CHAR_LIT_EXPR) {
-        offset = static_cast<CharacterLiteral*>(label)->GetValue();
+        offset = (long)static_cast<CharacterLiteral*>(label)->GetValue();
       }
       else {
         ProcessError(L"Expected integer/character literal", TOKEN_CLOSED_PAREN);
@@ -670,16 +670,16 @@ Enum* Parser::ParseConsts(int depth)
     }
 
     NextToken();
-    int value = -1;
+    long value = -1;
     Expression* expression = ParseTerm(depth + 1);
     if(expression) {
       switch (expression->GetExpressionType()) {
       case INT_LIT_EXPR:
-        value = static_cast<IntegerLiteral*>(expression)->GetValue();
+        value = (long)static_cast<IntegerLiteral*>(expression)->GetValue();
         break;
 
       case CHAR_LIT_EXPR:
-        value = static_cast<CharacterLiteral*>(expression)->GetValue();
+        value = (long)static_cast<CharacterLiteral*>(expression)->GetValue();
         break;
 
       case ADD_EXPR:
@@ -738,7 +738,7 @@ void Parser::CalculateConst(Expression* expression, std::stack<int>& values, int
 {
   switch (expression->GetExpressionType()) {
   case INT_LIT_EXPR:
-    values.push(static_cast<IntegerLiteral*>(expression)->GetValue());
+    values.push((long)static_cast<IntegerLiteral*>(expression)->GetValue());
     break;
 
   case CHAR_LIT_EXPR:

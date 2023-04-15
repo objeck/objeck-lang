@@ -138,7 +138,7 @@ void IntermediateProgram::Write(bool emit_lib, bool is_debug, OutputStream& out_
     frontend::IntStringHolder* holder = int_strings[i];
     WriteInt(holder->length, out_stream);
     for(int j = 0; j < holder->length; ++j) {
-      WriteInt(holder->value[j], out_stream);
+      WriteInt64(holder->value[j], out_stream);
     }
   }
   

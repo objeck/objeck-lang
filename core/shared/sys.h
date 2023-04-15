@@ -363,6 +363,12 @@ public:
     std::copy(std::begin(temp), std::end(temp), std::back_inserter(out_buffer));
   }
 
+  inline void WriteInt64(int64_t value) {
+    char temp[sizeof(value)];
+    memcpy(temp, &value, sizeof(value));
+    std::copy(std::begin(temp), std::end(temp), std::back_inserter(out_buffer));
+  }
+
   inline void WriteUnsigned(int32_t value) {
     char temp[sizeof(value)];
     memcpy(temp, &value, sizeof(value));

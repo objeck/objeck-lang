@@ -70,6 +70,10 @@ namespace backend {
       out_stream.WriteInt(value);
     }
 
+    inline void WriteInt64(int64_t value, OutputStream& out_stream) {
+      out_stream.WriteInt64(value);
+    }
+
     inline void WriteUnsigned(unsigned long value, OutputStream& out_stream) {
       out_stream.WriteUnsigned(value);
     }
@@ -96,6 +100,7 @@ namespace backend {
     FLOAT_VALUE operand4;
     std::wstring operand5;
     std::wstring operand6;
+    INT64_VALUE operand7;
     long line_num;
     frontend::Statement* statement;
     frontend::Expression* expression;
@@ -113,6 +118,14 @@ namespace backend {
       expression = e;
       type = t;
       operand = o1;
+    }
+
+    IntermediateInstruction(frontend::Statement* s, frontend::Expression* e, long l, InstructionType t, INT64_VALUE o7) {
+      line_num = l;
+      statement = s;
+      expression = e;
+      type = t;
+      operand7 = o7;
     }
 
     IntermediateInstruction(frontend::Statement* s, frontend::Expression* e, long l, InstructionType t, long o1, long o2) {
@@ -171,6 +184,7 @@ namespace backend {
       operand4 = lib_instr->GetOperand4();
       operand5 = lib_instr->GetOperand5();
       operand6 = lib_instr->GetOperand6();
+      operand7 = lib_instr->GetOperand7();
     }
 
     ~IntermediateInstruction() {
@@ -332,6 +346,12 @@ namespace backend {
 
     IntermediateInstruction* MakeInstruction(long l, InstructionType t, long o1) {
       IntermediateInstruction* tmp = new IntermediateInstruction(nullptr, nullptr, l, t, o1);
+      instructions.push_back(tmp);
+      return tmp;
+    }
+
+    IntermediateInstruction* MakeIntLitInstruction(long l, INT64_VALUE o1) {
+      IntermediateInstruction* tmp = new IntermediateInstruction(nullptr, nullptr, l, LOAD_INT_LIT, o1);
       instructions.push_back(tmp);
       return tmp;
     }
