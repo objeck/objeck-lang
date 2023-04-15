@@ -3739,7 +3739,7 @@ namespace frontend {
     }
 
     void AddIntString(std::vector<Expression*> &int_elements, int id) {
-      INT_VALUE* int_array = new INT_VALUE[int_elements.size()];
+      INT64_VALUE* int_array = new INT64_VALUE[int_elements.size()];
       for(size_t i = 0; i < int_elements.size(); ++i) {
         int_array[i] = static_cast<IntegerLiteral*>(int_elements[i])->GetValue();
       }
@@ -3753,7 +3753,7 @@ namespace frontend {
     }
 
     int GetIntStringId(std::vector<Expression*> &int_elements) {
-      INT_VALUE* int_array = new INT_VALUE[int_elements.size()];
+      INT64_VALUE* int_array = new INT64_VALUE[int_elements.size()];
       for(size_t i = 0; i < int_elements.size(); ++i) {
         int_array[i] = static_cast<IntegerLiteral*>(int_elements[i])->GetValue();
       }
