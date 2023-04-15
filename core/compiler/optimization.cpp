@@ -1294,12 +1294,12 @@ IntermediateBlock* ItermediateOptimizer::ConstantProp(IntermediateBlock* inputs)
   IntermediateBlock* outputs = new IntermediateBlock;
 
   bool set_int = false;
-  int int_value;
+  INT64_VALUE int_value;
 
   bool set_float = false;
   double float_value;
 
-  std::unordered_map<int, PropValue> value_prop_map;
+  std::unordered_map<INT64_VALUE, PropValue> value_prop_map;
 
   std::vector<IntermediateInstruction*> input_instrs = inputs->GetInstructions();
   for(size_t i = 0; i < input_instrs.size(); ++i) {
@@ -1316,12 +1316,12 @@ IntermediateBlock* ItermediateOptimizer::ConstantProp(IntermediateBlock* inputs)
         if(!(next_instr->GetType() == STOR_INT_VAR && next_next_instr->GetType() == LOAD_INT_VAR &&
            next_instr->GetOperand() == next_next_instr->GetOperand() &&
            next_instr->GetOperand2() == next_next_instr->GetOperand2())) {
-          int_value = instr->GetOperand();
+          int_value = instr->GetOperand7();
           set_int = true;
         }
       }
       else {
-        int_value = instr->GetOperand();
+        int_value = instr->GetOperand7();
         set_int = true;
       }
       break;
@@ -1336,9 +1336,9 @@ IntermediateBlock* ItermediateOptimizer::ConstantProp(IntermediateBlock* inputs)
 
     case LOAD_INT_VAR: {
       if(instr->GetOperand2() == LOCL) {
-        std::unordered_map<int, PropValue>::iterator result = value_prop_map.find(instr->GetOperand());
+        std::unordered_map<INT64_VALUE, PropValue>::iterator result = value_prop_map.find(instr->GetOperand());
         if(result != value_prop_map.end()) {
-          outputs->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(cur_line_num, (long)result->second.int_value));
+          outputs->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(cur_line_num, result->second.int_value));
         }
         else {
           outputs->AddInstruction(instr);
@@ -1382,7 +1382,7 @@ IntermediateBlock* ItermediateOptimizer::ConstantProp(IntermediateBlock* inputs)
 
     case LOAD_FLOAT_VAR: {
       if(instr->GetOperand2() == LOCL) {
-        std::unordered_map<int, PropValue>::iterator result = value_prop_map.find(instr->GetOperand());
+        std::unordered_map<INT64_VALUE, PropValue>::iterator result = value_prop_map.find(instr->GetOperand());
         if(result != value_prop_map.end()) {
           outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FLOAT_LIT, result->second.float_value));
         }
@@ -1475,7 +1475,8 @@ void ItermediateOptimizer::CalculateIntFold(IntermediateInstruction* instr, std:
     outputs->AddInstruction(working_stack.front());
     working_stack.pop_front();
     outputs->AddInstruction(instr);
-  } else if(working_stack.size() > 1) {
+  } 
+  else if(working_stack.size() > 1) {
     IntermediateInstruction* left = working_stack.front();
     working_stack.pop_front();
 
@@ -1484,49 +1485,49 @@ void ItermediateOptimizer::CalculateIntFold(IntermediateInstruction* instr, std:
 
     switch(instr->GetType()) {
     case ADD_INT: {
-      INT_VALUE value = left->GetOperand() + right->GetOperand();
+      INT64_VALUE value = left->GetOperand7() + right->GetOperand7();
       working_stack.push_front(IntermediateFactory::Instance()->MakeIntLitInstruction(cur_line_num, value));
     }
       break;
 
     case SUB_INT: {
-      INT_VALUE value = left->GetOperand() - right->GetOperand();
+      INT64_VALUE value = left->GetOperand7() - right->GetOperand7();
       working_stack.push_front(IntermediateFactory::Instance()->MakeIntLitInstruction(cur_line_num, value));
     }
       break;
 
     case MUL_INT: {
-      INT_VALUE value = left->GetOperand() * right->GetOperand();
+      INT64_VALUE value = left->GetOperand7() * right->GetOperand7();
       working_stack.push_front(IntermediateFactory::Instance()->MakeIntLitInstruction(cur_line_num, value));
     }
       break;
 
     case DIV_INT: {
-      INT_VALUE value = left->GetOperand() / right->GetOperand();
+      INT64_VALUE value = left->GetOperand7() / right->GetOperand7();
       working_stack.push_front(IntermediateFactory::Instance()->MakeIntLitInstruction(cur_line_num, value));
     }
       break;
 
     case MOD_INT: {
-      INT_VALUE value = left->GetOperand() % right->GetOperand();
+      INT64_VALUE value = left->GetOperand7() % right->GetOperand7();
       working_stack.push_front(IntermediateFactory::Instance()->MakeIntLitInstruction(cur_line_num, value));
     }
       break;
       
     case BIT_AND_INT: {
-      INT_VALUE value = left->GetOperand() & right->GetOperand();
+      INT64_VALUE value = left->GetOperand7() & right->GetOperand7();
       working_stack.push_front(IntermediateFactory::Instance()->MakeIntLitInstruction(cur_line_num, value));
     }
       break;
 
     case BIT_OR_INT: {
-      INT_VALUE value = left->GetOperand() | right->GetOperand();
+      INT64_VALUE value = left->GetOperand7() | right->GetOperand7();
       working_stack.push_front(IntermediateFactory::Instance()->MakeIntLitInstruction(cur_line_num, value));
     }
       break;
 
     case BIT_XOR_INT: {
-      INT_VALUE value = left->GetOperand() ^ right->GetOperand();
+      INT64_VALUE value = left->GetOperand7() ^ right->GetOperand7();
       working_stack.push_front(IntermediateFactory::Instance()->MakeIntLitInstruction(cur_line_num, value));
     }
       break;
