@@ -1,6 +1,6 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
 		value := 9223372036854775807;
-		(value / 2)->PrintLine();
+		(value / 3 - 5)->PrintLine();
 	}
 }
