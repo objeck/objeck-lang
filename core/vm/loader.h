@@ -58,6 +58,12 @@ class Loader {
     return value;
   }
 
+  inline INT64_VALUE ReadInt64() {
+    INT64_VALUE value = *((INT64_VALUE*)buffer);
+    buffer += sizeof(value);
+    return value;
+  }
+
   inline unsigned long ReadUnsigned() {
     uint32_t value = *((uint32_t*)buffer);
     buffer += sizeof(value);
