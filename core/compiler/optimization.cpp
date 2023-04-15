@@ -960,7 +960,7 @@ void ItermediateOptimizer::ApplyReduction(IntermediateInstruction* test, Interme
 
   std::deque<IntermediateInstruction*> rewrite_instrs;
   if(shift) {
-    rewrite_instrs.push_back(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (long)shift));
+    rewrite_instrs.push_back(IntermediateFactory::Instance()->MakeIntLitInstruction(cur_line_num, shift));
     // exclude literal
     if(working_stack.front()->GetType() != LOAD_INT_LIT) {
       rewrite_instrs.push_back(working_stack.front());
@@ -1485,49 +1485,49 @@ void ItermediateOptimizer::CalculateIntFold(IntermediateInstruction* instr, std:
     switch(instr->GetType()) {
     case ADD_INT: {
       INT_VALUE value = left->GetOperand() + right->GetOperand();
-      working_stack.push_front(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (long)value));
+      working_stack.push_front(IntermediateFactory::Instance()->MakeIntLitInstruction(cur_line_num, value));
     }
       break;
 
     case SUB_INT: {
       INT_VALUE value = left->GetOperand() - right->GetOperand();
-      working_stack.push_front(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (long)value));
+      working_stack.push_front(IntermediateFactory::Instance()->MakeIntLitInstruction(cur_line_num, value));
     }
       break;
 
     case MUL_INT: {
       INT_VALUE value = left->GetOperand() * right->GetOperand();
-      working_stack.push_front(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (long)value));
+      working_stack.push_front(IntermediateFactory::Instance()->MakeIntLitInstruction(cur_line_num, value));
     }
       break;
 
     case DIV_INT: {
       INT_VALUE value = left->GetOperand() / right->GetOperand();
-      working_stack.push_front(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (long)value));
+      working_stack.push_front(IntermediateFactory::Instance()->MakeIntLitInstruction(cur_line_num, value));
     }
       break;
 
     case MOD_INT: {
       INT_VALUE value = left->GetOperand() % right->GetOperand();
-      working_stack.push_front(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (long)value));
+      working_stack.push_front(IntermediateFactory::Instance()->MakeIntLitInstruction(cur_line_num, value));
     }
       break;
       
     case BIT_AND_INT: {
       INT_VALUE value = left->GetOperand() & right->GetOperand();
-      working_stack.push_front(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (long)value));
+      working_stack.push_front(IntermediateFactory::Instance()->MakeIntLitInstruction(cur_line_num, value));
     }
       break;
 
     case BIT_OR_INT: {
       INT_VALUE value = left->GetOperand() | right->GetOperand();
-      working_stack.push_front(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (long)value));
+      working_stack.push_front(IntermediateFactory::Instance()->MakeIntLitInstruction(cur_line_num, value));
     }
       break;
 
     case BIT_XOR_INT: {
       INT_VALUE value = left->GetOperand() ^ right->GetOperand();
-      working_stack.push_front(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (long)value));
+      working_stack.push_front(IntermediateFactory::Instance()->MakeIntLitInstruction(cur_line_num, value));
     }
       break;
 

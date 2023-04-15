@@ -340,6 +340,9 @@ void IntermediateInstruction::Write(bool is_debug, OutputStream& out_stream) {
 
   switch(type) {
   case LOAD_INT_LIT:
+    WriteInt64(operand7, out_stream);
+    break;
+
   case NEW_FLOAT_ARY:
   case NEW_INT_ARY:
   case NEW_BYTE_ARY:

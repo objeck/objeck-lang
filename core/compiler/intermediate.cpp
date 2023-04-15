@@ -3101,7 +3101,7 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
     break;
 
   case INT_LIT_EXPR:
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LOAD_INT_LIT, (long)static_cast<IntegerLiteral*>(expression)->GetValue()));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(current_statement, expression, cur_line_num, static_cast<IntegerLiteral*>(expression)->GetValue()));
     EmitCast(expression);
     break;
 
