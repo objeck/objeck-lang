@@ -222,14 +222,14 @@ enum SelectOperation {
 
 class SelectNode {
   int id;
-  int value;
-  int value2;
+  INT64_VALUE value;
+  INT64_VALUE value2;
   SelectOperation operation;
   SelectNode* left;
   SelectNode* right;
 
 public:
-  SelectNode(int i, int v) {
+  SelectNode(int i, INT64_VALUE v) {
     id = i;
     value = v;
     operation = CASE_EQUAL;
@@ -237,7 +237,7 @@ public:
     right = nullptr;
   }
 
-  SelectNode(int i, int v, SelectNode* l, SelectNode* r) {
+  SelectNode(int i, INT64_VALUE v, SelectNode* l, SelectNode* r) {
     id = i;
     operation = CASE_LESS;
     value = v;
@@ -245,7 +245,7 @@ public:
     right = r;
   }
 
-  SelectNode(int i, int v, int v2, SelectNode* l, SelectNode* r) {
+  SelectNode(int i, INT64_VALUE v, INT64_VALUE v2, SelectNode* l, SelectNode* r) {
     id = i;
     operation = CASE_LESS_OR_EQUAL;
     value = v;
@@ -270,11 +270,11 @@ public:
     return id;
   }
 
-  int GetValue() {
+  INT64_VALUE GetValue() {
     return value;
   }
 
-  int GetValue2() {
+  INT64_VALUE GetValue2() {
     return value2;
   }
 
@@ -292,10 +292,10 @@ public:
 };
 
 class SelectArrayTree {
-  int* values;
+  INT64_VALUE* values;
   SelectNode* root;
   IntermediateEmitter* emitter;
-  std::map<int, int> value_label_map;
+  std::map<INT64_VALUE, int> value_label_map;
   Select* select;
   int other_label;
 
