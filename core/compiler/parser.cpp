@@ -3072,7 +3072,7 @@ StaticArray* Parser::ParseStaticArray(int depth) {
         switch(GetToken()) {
         case TOKEN_INT_LIT:
           expression = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos,
-                                                                   -scanner->GetToken()->GetIntLit());
+                                                                   -scanner->GetToken()->GetInt64Lit());
           NextToken();
           break;
 
@@ -3091,7 +3091,7 @@ StaticArray* Parser::ParseStaticArray(int depth) {
         switch(GetToken()) {
         case TOKEN_INT_LIT:
           expression = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos,
-                                                                   scanner->GetToken()->GetIntLit());
+                                                                   scanner->GetToken()->GetInt64Lit());
           NextToken();
           break;
 
@@ -4063,7 +4063,7 @@ Expression* Parser::ParseSimpleExpression(int depth)
 
     switch(GetToken()) {
     case TOKEN_INT_LIT:
-      expression = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos, -scanner->GetToken()->GetIntLit());
+      expression = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos, -scanner->GetToken()->GetInt64Lit());
       NextToken();
       break;
 
@@ -4103,7 +4103,7 @@ Expression* Parser::ParseSimpleExpression(int depth)
       break;
 
     case TOKEN_INT_LIT:
-      expression = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos, scanner->GetToken()->GetIntLit());
+      expression = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos, scanner->GetToken()->GetInt64Lit());
       NextToken();
       break;
 
@@ -4855,7 +4855,7 @@ For* Parser::ParseEach(bool reverse, int depth)
       break;
 
     case TOKEN_INT_LIT:
-      left_pre_count = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos, scanner->GetToken()->GetIntLit());
+      left_pre_count = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos, scanner->GetToken()->GetInt64Lit());
       break;
 
     case TOKEN_FLOAT_LIT:
@@ -4917,7 +4917,7 @@ For* Parser::ParseEach(bool reverse, int depth)
       break;
 
     case TOKEN_INT_LIT:
-      left_pre_count = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos, scanner->GetToken()->GetIntLit());
+      left_pre_count = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos, scanner->GetToken()->GetInt64Lit());
       break;
 
     case TOKEN_FLOAT_LIT:

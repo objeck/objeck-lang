@@ -399,19 +399,23 @@ class Token {
   std::wstring filename;
   std::wstring ident;
 
-  INT_VALUE int_lit;
-  FLOAT_VALUE double_lit;
-  wchar_t char_lit;
-  char byte_lit;
+  union {
+    INT_VALUE int_lit;
+    INT64_VALUE int64_lit;
+    FLOAT_VALUE double_lit;
+    wchar_t char_lit;
+    char byte_lit;
+  } kind;
 
  public:
 
   inline void Copy(Token* token) {
     line_nbr = token->line_nbr;
     line_pos = token->line_pos;
-    char_lit = token->char_lit;
-    int_lit = token->int_lit;
-    double_lit = token->double_lit;
+    kind.char_lit = token->kind.char_lit;
+    kind.int_lit = token->kind.int_lit;
+    kind.int64_lit = token->kind.int64_lit;
+    kind.double_lit = token->kind.double_lit;
     ident = token->ident;
     token_type = token->token_type;
     filename = token->filename;
@@ -442,19 +446,23 @@ class Token {
   }
 
   inline void  SetIntLit(INT_VALUE i) {
-    int_lit = i;
+    kind.int_lit = i;
+  }
+
+  inline void  SetInt64Lit(INT64_VALUE i) {
+    kind.int64_lit = i;
   }
 
   inline void SetFloatLit(FLOAT_VALUE d) {
-    double_lit = d;
+    kind.double_lit = d;
   }
 
   inline void SetByteLit(char b) {
-    byte_lit = b;
+    kind.byte_lit = b;
   }
 
   inline void SetCharLit(wchar_t c) {
-    char_lit = c;
+    kind.char_lit = c;
   }
 
   inline void SetIdentifier(std::wstring i) {
@@ -462,19 +470,23 @@ class Token {
   }
 
   inline const INT_VALUE GetIntLit() {
-    return int_lit;
+    return kind.int_lit;
+  }
+
+  inline const INT64_VALUE GetInt64Lit() {
+    return kind.int64_lit;
   }
 
   inline const FLOAT_VALUE GetFloatLit() {
-    return double_lit;
+    return kind.double_lit;
   }
 
   inline const char GetByteLit() {
-    return byte_lit;
+    return kind.byte_lit;
   }
 
   inline const wchar_t GetCharLit() {
-    return char_lit;
+    return kind.char_lit;
   }
 
   inline const std::wstring GetIdentifier() {

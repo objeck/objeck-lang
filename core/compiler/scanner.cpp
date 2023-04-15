@@ -729,10 +729,10 @@ void Scanner::ParseInteger(int index, int base /*= 0*/)
   // parse and check for errors
   wchar_t* ending = nullptr;
   if(base == 2) {
-    tokens[index]->SetIntLit((int)wcstol(ident.c_str() + 2, &ending, 2));
+    tokens[index]->SetInt64Lit(wcstoll(ident.c_str() + 2, &ending, 2));
   }
   else {
-    tokens[index]->SetIntLit((int)wcstol(ident.c_str(), &ending, base));
+    tokens[index]->SetInt64Lit(wcstoll(ident.c_str(), &ending, base));
   }
 
   // set token
