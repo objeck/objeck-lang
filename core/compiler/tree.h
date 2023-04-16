@@ -1362,7 +1362,7 @@ namespace frontend {
   class EnumItem : public ParseNode {
     friend class TreeFactory;
     std::wstring name;
-    int id;
+    INT64_VALUE id;
     Enum* eenum;
 
     EnumItem(const std::wstring& file_name, const int line_num, const int line_pos, const std::wstring& n, Enum* e) : ParseNode(file_name, line_num, line_pos) {
@@ -1379,7 +1379,7 @@ namespace frontend {
       return name;
     }
 
-    void SetId(int i) {
+    void SetId(INT64_VALUE i) {
       id = i;
     }
 
@@ -1387,7 +1387,7 @@ namespace frontend {
       return eenum;
     }
 
-    int GetId() {
+    INT64_VALUE GetId() {
       return id;
     }
   };
@@ -1460,11 +1460,11 @@ namespace frontend {
     int end_line_num;
     int end_line_pos;
     std::wstring name;
-    int offset;
-    int index;
+    INT64_VALUE offset;
+    INT64_VALUE index;
     std::map<const std::wstring, EnumItem*> items;
 
-    Enum(const std::wstring& f, const int l, const int p, const int el, const int ep, const std::wstring& n, int o) : ParseNode(f, l, p) {
+    Enum(const std::wstring& f, const int l, const int p, const int el, const int ep, const std::wstring& n, INT64_VALUE o) : ParseNode(f, l, p) {
       end_line_num = el;
       end_line_pos = ep;
       name = n;
@@ -1508,7 +1508,7 @@ namespace frontend {
       return true;
     }
     
-    bool AddItem(EnumItem* e, int value) {
+    bool AddItem(EnumItem* e, INT64_VALUE value) {
       if(GetItem(e->GetName())) {
         return false;
       }
@@ -1531,7 +1531,7 @@ namespace frontend {
       return name;
     }
 
-    int GetOffset() {
+    INT64_VALUE GetOffset() {
       return offset;
     }
 
@@ -3154,7 +3154,7 @@ namespace frontend {
       return tmp;
     }
 
-    Enum* MakeEnum(const std::wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, const std::wstring &name, int offset) {
+    Enum* MakeEnum(const std::wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, const std::wstring &name, INT64_VALUE offset) {
       Enum* tmp = new Enum(file_name, line_num, line_pos, end_line_num, end_line_pos, name, offset);
       nodes.push_back(tmp);
       return tmp;

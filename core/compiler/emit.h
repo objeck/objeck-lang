@@ -808,10 +808,10 @@ namespace backend {
    ****************************/
   class IntermediateEnumItem : public Intermediate {
     std::wstring name;
-    INT_VALUE id;
+    INT64_VALUE id;
 
   public:
-    IntermediateEnumItem(const std::wstring &n, const INT_VALUE i) {
+    IntermediateEnumItem(const std::wstring &n, const INT64_VALUE i) {
       name = n;
       id = i;
     }
@@ -833,11 +833,11 @@ namespace backend {
    ****************************/
   class IntermediateEnum : public Intermediate {
     std::wstring name;
-    INT_VALUE offset;
+    INT64_VALUE offset;
     std::vector<IntermediateEnumItem*> items;
 
   public:
-    IntermediateEnum(const std::wstring &n, const INT_VALUE o) {
+    IntermediateEnum(const std::wstring &n, const INT64_VALUE o) {
       name = n;
       offset = o;
     }
