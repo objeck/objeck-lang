@@ -759,14 +759,14 @@ void Library::LoadEnums()
     const std::wstring &msg = L"[enum: name='" + enum_name + L"']";
     Linker::Debug(msg, 0, 1);
 #endif
-    const INT_VALUE enum_offset = ReadInt();
+    const INT64_VALUE enum_offset = ReadInt64();
     LibraryEnum* eenum = new LibraryEnum(enum_name, enum_offset);
 
     // read enum items
     const INT_VALUE num_items = ReadInt();
     for(int i = 0; i < num_items; ++i) {
       const std::wstring &item_name = ReadString();
-      const INT_VALUE item_id = ReadInt();
+      const INT64_VALUE item_id = ReadInt64();
       eenum->AddItem(new LibraryEnumItem(item_name, item_id, eenum));
     }
     // add enum
