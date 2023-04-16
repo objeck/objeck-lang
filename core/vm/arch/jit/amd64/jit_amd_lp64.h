@@ -843,7 +843,7 @@ namespace Runtime {
     void cmp_reg_reg(Register src, Register dest);
     void cmp_mem_reg(long offset, Register src, Register dest);
     void cmp_imm_reg(int64_t imm, Register reg);
-    void cmp_imm_mem(int64_t offset, Register src, int32_t imm);
+    void cmp_imm_mem(long offset, Register src, int64_t imm);
     void cmp_xreg_xreg(Register src, Register dest);
     void cmp_mem_xreg(long offset, Register src, Register dest);
     void cmp_imm_xreg(size_t addr, Register reg);
