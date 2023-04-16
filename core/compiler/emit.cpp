@@ -921,7 +921,7 @@ void IntermediateInstruction::Debug(size_t i) {
     GetLogger()  << i << L":\tOBJ_INST_CAST: to='" << klass->GetName() << L"', id=" << operand << std::endl;
   }
     break;
-
+    
   case OBJ_TYPE_OF: {
     IntermediateClass* klass = IntermediateProgram::Instance()->GetClass(operand);
     GetLogger()  << i << L":\tOBJ_TYPE_OF: check='" << klass->GetName() << L"', id=" << operand << std::endl;
