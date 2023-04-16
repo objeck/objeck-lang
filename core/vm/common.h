@@ -137,7 +137,7 @@ class StackInstr
   long operand;
   union {
     long operand2;
-    INT64_VALUE operand64;
+    INT64_VALUE operand4;
     FLOAT_VALUE float_operand;
   } second_operand;
   long operand3;
@@ -148,7 +148,7 @@ class StackInstr
   StackInstr(int l, INT64_VALUE v) {
     line_num = l;
     type = LOAD_INT_LIT;
-    second_operand.operand64 = v;
+    second_operand.operand4 = v;
   }
 
   StackInstr(int l, InstructionType t) {
@@ -207,8 +207,8 @@ class StackInstr
     return operand;
   }
 
-  inline INT64_VALUE GetOperand64() const {
-    return second_operand.operand64;
+  inline INT64_VALUE GetOperand4() const {
+    return second_operand.operand4;
   }
 
   inline long GetOperand2() const {
@@ -248,28 +248,18 @@ class StackInstr
  * JIT compile code
  ********************************/
 class NativeCode {
-#if defined(_ARM32) || defined(_ARM64)
-  uint32_t* code;
 #ifdef _ARM64
+  uint32_t* code;
   long* ints;
 #else
-  int32_t* ints;
-#endif
-#else
   unsigned char* code;
-#endif  
+#endif
+
   long size;
   FLOAT_VALUE* floats;
   
  public:
-#ifdef _ARM32
-  NativeCode(uint32_t* c, long s, int32_t* i, FLOAT_VALUE* f) {
-    code = c;
-    size = s;
-    ints = i;
-    floats = f;
-  }
-#elif _ARM64
+#ifdef _ARM64
   NativeCode(uint32_t* c, long s, long* i, FLOAT_VALUE* f) {
     code = c;
     size = s;
@@ -298,20 +288,14 @@ class NativeCode {
     floats = nullptr;
   }
 
-#if defined(_ARM32) || defined(_ARM64)
+#ifdef _ARM64
   inline uint32_t* GetCode() const {
     return code;
   }
   
-#ifdef _ARM32
-  inline int32_t* GetInts() const {
-    return ints;
-  }
-#else
   inline long* GetInts() const {
     return ints;
   }
-#endif
 #else
   inline unsigned char* GetCode() const {
     return code;
