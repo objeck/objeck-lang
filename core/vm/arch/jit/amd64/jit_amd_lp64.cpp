@@ -949,7 +949,7 @@ void JitAmd64::ProcessLoad(StackInstr* instr) {
     }
     else {
       holder = GetRegister();
-      move_mem_reg(left->GetOperand(), RBP, holder->GetRegister());
+      move_mem_reg((long)left->GetOperand(), RBP, holder->GetRegister());
     }
     CheckNilDereference(holder->GetRegister());
 
@@ -1010,7 +1010,7 @@ void JitAmd64::ProcessJump(StackInstr* instr) {
 
       case MEM_INT: {
         RegisterHolder* holder = GetRegister();
-        move_mem_reg(left->GetOperand(), RBP, holder->GetRegister());
+        move_mem_reg((long)left->GetOperand(), RBP, holder->GetRegister());
         cmp_imm_reg(instr->GetOperand2(), holder->GetRegister());
         ReleaseRegister(holder);
       }
@@ -1123,7 +1123,7 @@ void JitAmd64::ProcessStoreByteElement(StackInstr* instr) {
   case MEM_INT: {    
     // movb can only use al, bl, cl and dl registers
     RegisterHolder* holder = GetRegister(false);
-    move_mem_reg(left->GetOperand(), RBP, holder->GetRegister());
+    move_mem_reg((long)left->GetOperand(), RBP, holder->GetRegister());
     move_reg_mem8(holder->GetRegister(), 0, elem_holder->GetRegister());
     ReleaseRegister(holder);
     ReleaseRegister(elem_holder);
@@ -1186,7 +1186,7 @@ void JitAmd64::ProcessStoreCharElement(StackInstr* instr) {
   case MEM_INT: {    
     // movw can only use al, bl, cl and dl registers
     RegisterHolder* holder = GetRegister(false);
-    move_mem_reg(left->GetOperand(), RBP, holder->GetRegister());
+    move_mem_reg((long)left->GetOperand(), RBP, holder->GetRegister());
 #ifdef _WIN64  
     move_reg_mem16(holder->GetRegister(), 0, elem_holder->GetRegister());
 #else
@@ -1242,7 +1242,7 @@ void JitAmd64::ProcessStoreIntElement(StackInstr* instr) {
 
   case MEM_INT: {
     RegisterHolder* holder = GetRegister();
-    move_mem_reg(left->GetOperand(), RBP, holder->GetRegister());
+    move_mem_reg((long)left->GetOperand(), RBP, holder->GetRegister());
     move_reg_mem(holder->GetRegister(), 0, elem_holder->GetRegister());
     ReleaseRegister(holder);
   }
@@ -1277,7 +1277,7 @@ void JitAmd64::ProcessStoreFloatElement(StackInstr* instr) {
   case MEM_FLOAT: 
   case MEM_INT: {
     RegisterHolder* holder = GetXmmRegister();
-    move_mem_xreg(left->GetOperand(), 
+    move_mem_xreg((long)left->GetOperand(), 
                   RBP, holder->GetRegister());
     move_xreg_mem(holder->GetRegister(), 0, elem_holder->GetRegister());
     ReleaseXmmRegister(holder);
@@ -1312,7 +1312,7 @@ void JitAmd64::ProcessFloatToInt(StackInstr* instr) {
     
   case MEM_FLOAT:
   case MEM_INT:
-    cvt_mem_reg(left->GetOperand(), RBP, holder->GetRegister());
+    cvt_mem_reg((long)left->GetOperand(), RBP, holder->GetRegister());
     break;
 
   case REG_FLOAT:
@@ -1340,7 +1340,7 @@ void JitAmd64::ProcessIntToFloat(StackInstr* instr) {
     break;
     
   case MEM_INT:
-    cvt_mem_xreg(left->GetOperand(), RBP, holder->GetRegister());
+    cvt_mem_xreg((long)left->GetOperand(), RBP, holder->GetRegister());
     break;
 
   case REG_INT:
@@ -1375,7 +1375,7 @@ void JitAmd64::ProcessStore(StackInstr* instr) {
     }
     else {
       addr_holder = GetRegister();
-      move_mem_reg(left->GetOperand(), RBP, addr_holder->GetRegister());
+      move_mem_reg((long)left->GetOperand(), RBP, addr_holder->GetRegister());
     }
     dest = addr_holder->GetRegister();
     CheckNilDereference(dest);
@@ -1407,19 +1407,19 @@ void JitAmd64::ProcessStore(StackInstr* instr) {
   case MEM_INT: {
     RegisterHolder* holder = GetRegister();
     if(instr->GetType() == STOR_FUNC_VAR) {
-      move_mem_reg(left->GetOperand(), RBP, holder->GetRegister());
+      move_mem_reg((long)left->GetOperand(), RBP, holder->GetRegister());
       move_reg_mem(holder->GetRegister(), instr->GetOperand3(), dest);
 
       RegInstr* left2 = working_stack.front();
       working_stack.pop_front();
-      move_mem_reg(left2->GetOperand(), RBP, holder->GetRegister());
+      move_mem_reg((long)left2->GetOperand(), RBP, holder->GetRegister());
       move_reg_mem(holder->GetRegister(), instr->GetOperand3() + sizeof(size_t), dest);
 
       delete left2;
       left2 = nullptr;
     }
     else {      
-      move_mem_reg(left->GetOperand(), RBP, holder->GetRegister());            
+      move_mem_reg((long)left->GetOperand(), RBP, holder->GetRegister());            
       move_reg_mem(holder->GetRegister(), instr->GetOperand3(), dest);
     }
     ReleaseRegister(holder);
@@ -1454,7 +1454,7 @@ void JitAmd64::ProcessStore(StackInstr* instr) {
     
   case MEM_FLOAT: {
     RegisterHolder* holder = GetXmmRegister();
-    move_mem_xreg(left->GetOperand(), RBP, holder->GetRegister());
+    move_mem_xreg((long)left->GetOperand(), RBP, holder->GetRegister());
     move_xreg_mem(holder->GetRegister(), instr->GetOperand3(), dest);
     ReleaseXmmRegister(holder);
   }
@@ -1488,7 +1488,7 @@ void JitAmd64::ProcessCopy(StackInstr* instr) {
     working_stack.pop_front();
 
     RegisterHolder* holder = GetRegister();
-    move_mem_reg(left->GetOperand(), RBP, holder->GetRegister());
+    move_mem_reg((long)left->GetOperand(), RBP, holder->GetRegister());
     CheckNilDereference(holder->GetRegister());
     dest = holder->GetRegister();
     ReleaseRegister(holder);
@@ -1514,7 +1514,7 @@ void JitAmd64::ProcessCopy(StackInstr* instr) {
 
   case MEM_INT: {
     RegisterHolder* holder = GetRegister();
-    move_mem_reg(left->GetOperand(), RBP, holder->GetRegister());
+    move_mem_reg((long)left->GetOperand(), RBP, holder->GetRegister());
     move_reg_mem(holder->GetRegister(), instr->GetOperand3(), dest);
     // save register
     working_stack.pop_front();
@@ -1546,7 +1546,7 @@ void JitAmd64::ProcessCopy(StackInstr* instr) {
 
   case MEM_FLOAT: {
     RegisterHolder* holder = GetXmmRegister();
-    move_mem_xreg(left->GetOperand(), RBP, holder->GetRegister());
+    move_mem_xreg((long)left->GetOperand(), RBP, holder->GetRegister());
     move_xreg_mem(holder->GetRegister(), instr->GetOperand3(), dest);
     // save register
     working_stack.pop_front();
@@ -1655,7 +1655,7 @@ void JitAmd64::ProcessStackCallback(long instr_id, StackInstr* instr, long &inst
   move_mem_reg(INSTANCE_MEM, RBP, R8);
   move_mem_reg(MTHD_ID, RBP, RCX);
   move_mem_reg(CLS_ID, RBP, RDX);
-  move_imm_reg((int64_t)instr, RSI);
+  move_imm_reg(instr, RSI);
   move_imm_reg(instr_id, RDI);  
   push_imm(instr_index - 1);
   push_mem(CALL_STACK_POS, RBP);
@@ -1663,7 +1663,7 @@ void JitAmd64::ProcessStackCallback(long instr_id, StackInstr* instr, long &inst
   push_mem(STACK_POS, RBP);
   
   // call function
-  move_imm_reg((int64_t)JitCompiler::JitStackCallback, R15);
+  move_imm_reg(JitCompiler::JitStackCallback, R15);
   call_reg(R15);
   add_imm_reg(32, RSP);
   
@@ -1737,7 +1737,7 @@ void JitAmd64::ProcessReturn(long params) {
           case MEM_INT:
           {
             RegisterHolder* temp_holder = GetRegister();
-            move_mem_reg(left->GetOperand(), RBP, temp_holder->GetRegister());
+            move_mem_reg((long)left->GetOperand(), RBP, temp_holder->GetRegister());
             move_reg_mem(temp_holder->GetRegister(), 0, op_stack_holder->GetRegister());
             inc_mem(0, stack_pos_holder->GetRegister());
             add_imm_reg(sizeof(size_t), op_stack_holder->GetRegister());
@@ -1759,7 +1759,7 @@ void JitAmd64::ProcessReturn(long params) {
 
           case MEM_FLOAT: {
             RegisterHolder* temp_holder = GetXmmRegister();
-            move_mem_xreg(left->GetOperand(), RBP, temp_holder->GetRegister());
+            move_mem_xreg((long)left->GetOperand(), RBP, temp_holder->GetRegister());
             move_xreg_mem(temp_holder->GetRegister(), 0, op_stack_holder->GetRegister());
             inc_mem(0, stack_pos_holder->GetRegister());
             add_imm_reg(sizeof(double), op_stack_holder->GetRegister());
@@ -1806,7 +1806,7 @@ void JitAmd64::ProcessReturn(long params) {
   }
 }
 
-RegInstr* JitAmd64::ProcessIntFold(long left_imm, long right_imm, InstructionType type) {
+RegInstr* JitAmd64::ProcessIntFold(int64_t left_imm, int64_t right_imm, InstructionType type) {
   switch(type) {
   case AND_INT:
     return new RegInstr(IMM_INT, left_imm && right_imm);
@@ -1879,9 +1879,7 @@ void JitAmd64::ProcessIntCalculation(StackInstr* instruction) {
   case IMM_INT:
     switch(right->GetType()) {
     case IMM_INT:
-      working_stack.push_front(ProcessIntFold(left->GetOperand(), 
-          right->GetOperand(), 
-          instruction->GetType()));
+      working_stack.push_front(ProcessIntFold(left->GetOperand(), right->GetOperand(), instruction->GetType()));
       break;
       
     case REG_INT: {
@@ -1899,7 +1897,7 @@ void JitAmd64::ProcessIntCalculation(StackInstr* instruction) {
       
     case MEM_INT: {
       RegisterHolder* holder = GetRegister();
-      move_mem_reg(right->GetOperand(), RBP, holder->GetRegister());
+      move_mem_reg((long)right->GetOperand(), RBP, holder->GetRegister());
 
       RegisterHolder* imm_holder = GetRegister();
       move_imm_reg(left->GetOperand(), imm_holder->GetRegister());
@@ -1936,7 +1934,7 @@ void JitAmd64::ProcessIntCalculation(StackInstr* instruction) {
       break;
     case MEM_INT: {
       RegisterHolder* rhs = GetRegister();
-      move_mem_reg(right->GetOperand(), RBP, rhs->GetRegister());
+      move_mem_reg((long)right->GetOperand(), RBP, rhs->GetRegister());
       RegisterHolder* lhs = left->GetRegister();
       math_reg_reg(rhs->GetRegister(), lhs->GetRegister(), instruction->GetType());
       ReleaseRegister(rhs);
@@ -1954,14 +1952,14 @@ void JitAmd64::ProcessIntCalculation(StackInstr* instruction) {
     switch(right->GetType()) {
     case IMM_INT: {
       RegisterHolder* holder = GetRegister();
-      move_mem_reg(left->GetOperand(), RBP, holder->GetRegister());
+      move_mem_reg((long)left->GetOperand(), RBP, holder->GetRegister());
       math_imm_reg(right->GetOperand(), holder->GetRegister(), instruction->GetType());
       working_stack.push_front(new RegInstr(holder));
     }
       break;
     case REG_INT: {
       RegisterHolder* rhs = GetRegister();
-      move_mem_reg(left->GetOperand(), RBP, rhs->GetRegister());
+      move_mem_reg((long)left->GetOperand(), RBP, rhs->GetRegister());
       RegisterHolder* lhs = right->GetRegister();
       math_reg_reg(lhs->GetRegister(), rhs->GetRegister(), instruction->GetType());
       ReleaseRegister(lhs);
@@ -1970,8 +1968,8 @@ void JitAmd64::ProcessIntCalculation(StackInstr* instruction) {
       break;
     case MEM_INT: {
       RegisterHolder* holder = GetRegister();
-      move_mem_reg(left->GetOperand(), RBP, holder->GetRegister());
-      math_mem_reg(right->GetOperand(), holder->GetRegister(), instruction->GetType());
+      move_mem_reg((long)left->GetOperand(), RBP, holder->GetRegister());
+      math_mem_reg((long)right->GetOperand(), holder->GetRegister(), instruction->GetType());
       working_stack.push_front(new RegInstr(holder));
     }
       break;
@@ -2045,7 +2043,7 @@ void JitAmd64::ProcessFloatCalculation(StackInstr* instruction) {
     case MEM_FLOAT:
     case MEM_INT: {
       RegisterHolder* holder = GetXmmRegister();
-      move_mem_xreg(right->GetOperand(), RBP, holder->GetRegister());
+      move_mem_xreg((long)right->GetOperand(), RBP, holder->GetRegister());
 
       RegisterHolder* imm_holder = GetXmmRegister();
       move_imm_xreg(left, imm_holder->GetRegister());
@@ -2109,13 +2107,13 @@ void JitAmd64::ProcessFloatCalculation(StackInstr* instruction) {
       RegisterHolder* holder = left->GetRegister();
       if(type == LES_FLOAT || type == LES_EQL_FLOAT) {
         RegisterHolder* right_holder = GetXmmRegister();
-        move_mem_xreg(right->GetOperand(), RBP, right_holder->GetRegister());
+        move_mem_xreg((long)right->GetOperand(), RBP, right_holder->GetRegister());
         math_xreg_xreg(holder->GetRegister(), right_holder->GetRegister(), instruction->GetType());
         ReleaseXmmRegister(holder);
         working_stack.push_front(new RegInstr(right_holder));
       }
       else {
-        math_mem_xreg(right->GetOperand(), holder->GetRegister(), instruction->GetType());
+        math_mem_xreg((long)right->GetOperand(), holder->GetRegister(), instruction->GetType());
         working_stack.push_front(new RegInstr(holder));
       }
     }
@@ -2132,7 +2130,7 @@ void JitAmd64::ProcessFloatCalculation(StackInstr* instruction) {
     switch(right->GetType()) {
     case IMM_FLOAT: {
       RegisterHolder* holder = GetXmmRegister();
-      move_mem_xreg(left->GetOperand(), RBP, holder->GetRegister());
+      move_mem_xreg((long)left->GetOperand(), RBP, holder->GetRegister());
       
       RegisterHolder* imm_holder = GetXmmRegister();
       move_imm_xreg(right, imm_holder->GetRegister());
@@ -2152,12 +2150,12 @@ void JitAmd64::ProcessFloatCalculation(StackInstr* instruction) {
     case REG_FLOAT: {
       RegisterHolder* holder = right->GetRegister();
       if(type == LES_FLOAT || type == LES_EQL_FLOAT) {
-        math_mem_xreg(left->GetOperand(), holder->GetRegister(), instruction->GetType());
+        math_mem_xreg((long)left->GetOperand(), holder->GetRegister(), instruction->GetType());
         working_stack.push_front(new RegInstr(holder));
       }
       else {
         RegisterHolder* right_holder = GetXmmRegister();
-        move_mem_xreg(left->GetOperand(), RBP, right_holder->GetRegister());
+        move_mem_xreg((long)left->GetOperand(), RBP, right_holder->GetRegister());
         math_xreg_xreg(holder->GetRegister(), right_holder->GetRegister(), instruction->GetType());
         ReleaseXmmRegister(holder);
         working_stack.push_front(new RegInstr(right_holder));
@@ -2168,10 +2166,10 @@ void JitAmd64::ProcessFloatCalculation(StackInstr* instruction) {
     case MEM_FLOAT:
     case MEM_INT: {
       RegisterHolder* left_holder = GetXmmRegister();
-      move_mem_xreg(left->GetOperand(), RBP, left_holder->GetRegister());
+      move_mem_xreg((long)left->GetOperand(), RBP, left_holder->GetRegister());
 
       RegisterHolder* right_holder = GetXmmRegister();
-      move_mem_xreg(right->GetOperand(), RBP, right_holder->GetRegister());
+      move_mem_xreg((long)right->GetOperand(), RBP, right_holder->GetRegister());
       if(type == LES_FLOAT || type == LES_EQL_FLOAT) {
         math_xreg_xreg(left_holder->GetRegister(), right_holder->GetRegister(),  
      instruction->GetType());
@@ -2215,27 +2213,27 @@ void JitAmd64::ProcessFloatOperation(StackInstr* instruction) {
   RegisterHolder* holder = nullptr;
   switch(type) {
   case SIN_FLOAT:
-    fld_mem(left->GetOperand(), RBP);
+    fld_mem((long)left->GetOperand(), RBP);
     fsin();
     break;
 
   case COS_FLOAT:
-    fld_mem(left->GetOperand(), RBP);
+    fld_mem((long)left->GetOperand(), RBP);
     fcos();
     break;
 
   case TAN_FLOAT:
-    fld_mem(left->GetOperand(), RBP);
+    fld_mem((long)left->GetOperand(), RBP);
     ftan();
     break;
 
   case LOG_FLOAT:
-    fld_mem(left->GetOperand(), RBP);
+    fld_mem((long)left->GetOperand(), RBP);
     flog();
     break;
 
   case LOG10_FLOAT:
-    fld_mem(left->GetOperand(), RBP);
+    fld_mem((long)left->GetOperand(), RBP);
     flog10();
     break;
 
@@ -2300,8 +2298,8 @@ void JitAmd64::ProcessFloatOperation(StackInstr* instruction) {
 
   if(!holder) {
     holder = GetXmmRegister();
-    fstp_mem(left->GetOperand(), RBP);
-    move_mem_xreg(left->GetOperand(), RBP, holder->GetRegister());
+    fstp_mem((long)left->GetOperand(), RBP);
+    move_mem_xreg((long)left->GetOperand(), RBP, holder->GetRegister());
   }
   working_stack.push_front(new RegInstr(holder));
 
@@ -2318,7 +2316,7 @@ void JitAmd64::ProcessFloatSquareRoot(StackInstr* instruction) {
 #endif
 
   RegisterHolder* holder = GetXmmRegister();
-  move_mem_xreg(left->GetOperand(), RBP, holder->GetRegister());
+  move_mem_xreg((long)left->GetOperand(), RBP, holder->GetRegister());
   sqrt_xreg_xreg(holder->GetRegister(), holder->GetRegister());
   
   working_stack.push_front(new RegInstr(holder));
@@ -2336,7 +2334,7 @@ void JitAmd64::ProcessFloatRound(StackInstr* instruction, wchar_t mode) {
 #endif
 
   RegisterHolder* holder = GetXmmRegister();
-  move_mem_xreg(left->GetOperand(), RBP, holder->GetRegister());
+  move_mem_xreg((long)left->GetOperand(), RBP, holder->GetRegister());
   round_xreg_xreg(holder->GetRegister(), holder->GetRegister(), mode);
 
   working_stack.push_front(new RegInstr(holder));
@@ -2534,24 +2532,31 @@ void JitAmd64::move_imm_mem32(int32_t imm, long offset, Register dest) {
   move_imm_mem(imm, offset, dest);
 }
 
-void JitAmd64::move_imm_mem(long imm, long offset, Register dest) {
+void JitAmd64::move_imm_mem(int64_t imm, long offset, Register dest) {
+  if(imm < INT32_MIN || imm > INT32_MAX) {
+    RegisterHolder* holder = GetRegister();
+    move_imm_reg(imm, holder->GetRegister());
+    move_reg_mem(holder->GetRegister(), offset, dest);
+  }
+  else {
 #ifdef _DEBUG_JIT
-  std::wcout << L"  " << (++instr_count) << L": [movq $" << imm << L", " << offset 
-        << L"(%" << GetRegisterName(dest) << L")" << L"]" << std::endl;
+    std::wcout << L"  " << (++instr_count) << L": [movq $" << imm << L", " << offset
+      << L"(%" << GetRegisterName(dest) << L")" << L"]" << std::endl;
 #endif
-  // encode
-  AddMachineCode(XB(dest));
-  AddMachineCode(0xc7); 
-  unsigned char code = 0x80;
-  RegisterEncode3(code, 5, dest);
-  AddMachineCode(code);
-  // write value
-  AddImm(offset);
-  AddImm(imm);
+    // encode
+    AddMachineCode(XB(dest));
+    AddMachineCode(0xc7);
+    unsigned char code = 0x80;
+    RegisterEncode3(code, 5, dest);
+    AddMachineCode(code);
+    // write value
+    AddImm(offset);
+    AddImm((long)imm);
+  }
 }
 
 #ifdef _WIN64
-void JitAmd64::move_imm_reg(size_t imm, Register reg) {
+void JitAmd64::move_imm_reg(int64_t imm, Register reg) {
 #else
 void JitAmd64::move_imm_reg(long imm, Register reg) {
 #endif
@@ -2816,7 +2821,7 @@ void JitAmd64::loop(long offset)
 RegisterHolder* JitAmd64::call_xfunc(double(*func_ptr)(double), RegInstr* left)
 {
   move_xreg_mem(XMM0, TMP_XMM_0, RBP);
-  move_mem_xreg(left->GetOperand(), RBP, XMM0);
+  move_mem_xreg((long)left->GetOperand(), RBP, XMM0);
 
   RegisterHolder* call_holder = GetRegister();
   move_imm_reg((size_t)func_ptr, call_holder->GetRegister());
@@ -2842,10 +2847,10 @@ RegisterHolder* JitAmd64::call_xfunc2(double(*func_ptr)(double, double), RegInst
 #endif
 
   move_xreg_mem(XMM1, TMP_XMM_1, RBP);
-  move_mem_xreg(left->GetOperand(), RBP, XMM1);
+  move_mem_xreg((long)left->GetOperand(), RBP, XMM1);
 
   move_xreg_mem(XMM0, TMP_XMM_0, RBP);
-  move_mem_xreg(right->GetOperand(), RBP, XMM0);
+  move_mem_xreg((long)right->GetOperand(), RBP, XMM0);
   
   RegisterHolder* call_holder = GetRegister();
   move_imm_reg((size_t)func_ptr, call_holder->GetRegister());
@@ -2865,7 +2870,7 @@ RegisterHolder* JitAmd64::call_xfunc2(double(*func_ptr)(double, double), RegInst
   return result_holder;
 }
 
-void JitAmd64::math_imm_reg(long imm, Register reg, InstructionType type) 
+void JitAmd64::math_imm_reg(int64_t imm, Register reg, InstructionType type)
 {
   switch(type) {
   case AND_INT:
@@ -3179,8 +3184,9 @@ void JitAmd64::cmp_mem_reg(long offset, Register src, Register dest) {
   // write value
   AddImm(offset);
 }
-    
-void JitAmd64::cmp_imm_reg(long imm, Register reg) {
+
+// TODO: 64-bit compare
+void JitAmd64::cmp_imm_reg(int64_t imm, Register reg) {
 #ifdef _DEBUG_JIT
   std::wcout << L"  " << (++instr_count) << L": [cmpq $" << imm << L", %"
         << GetRegisterName(reg) << L"]" << std::endl;
@@ -3195,7 +3201,8 @@ void JitAmd64::cmp_imm_reg(long imm, Register reg) {
   AddImm(imm);
 }
 
-void JitAmd64::cmp_imm_mem(int32_t offset, Register src, int32_t imm) {
+// TODO: 64-bit compare
+void JitAmd64::cmp_imm_mem(int64_t offset, Register src, int32_t imm) {
 #ifdef _DEBUG_JIT
   std::wcout << L"  " << (++instr_count) << L": [cmpq $" << imm << L", " 
         << offset << L"(%"<< GetRegisterName(src) << L")]" << std::endl;
@@ -3279,7 +3286,7 @@ void JitAmd64::cmov_reg(Register reg, InstructionType oper) {
   ReleaseRegister(true_holder);
 }
 
-void JitAmd64::add_imm_mem(long imm, long offset, Register dest) {
+void JitAmd64::add_imm_mem(int64_t imm, long offset, Register dest) {
 #ifdef _DEBUG_JIT
   std::wcout << L"  " << (++instr_count) << L": [addq $" << imm << L", " 
         << offset << L"(%"<< GetRegisterName(dest) << L")]" << std::endl;
@@ -3293,7 +3300,7 @@ void JitAmd64::add_imm_mem(long imm, long offset, Register dest) {
   AddImm(imm);
 }
     
-void JitAmd64::add_imm_reg(long imm, Register reg) {
+void JitAmd64::add_imm_reg(int64_t imm, Register reg) {
 #ifdef _DEBUG_JIT
   std::wcout << L"  " << (++instr_count) << L": [addq $" << imm << L", %"
         << GetRegisterName(reg) << L"]" << std::endl;
@@ -3548,7 +3555,7 @@ void JitAmd64::div_mem_xreg(long offset, Register src, Register dest) {
   ReleaseXmmRegister(holder);
 }
 
-void JitAmd64::sub_imm_reg(long imm, Register reg) {
+void JitAmd64::sub_imm_reg(int64_t imm, Register reg) {
 #ifdef _DEBUG_JIT
   std::wcout << L"  " << (++instr_count) << L": [subq $" << imm << L", %"
         << GetRegisterName(reg) << L"]" << std::endl;
@@ -3562,7 +3569,7 @@ void JitAmd64::sub_imm_reg(long imm, Register reg) {
   AddImm(imm);
 }
 
-void JitAmd64::sub_imm_mem(long imm, long offset, Register dest) {
+void JitAmd64::sub_imm_mem(int64_t imm, long offset, Register dest) {
 #ifdef _DEBUG_JIT
   std::wcout << L"  " << (++instr_count) << L": [subq $" << imm << L", " 
         << offset << L"(%"<< GetRegisterName(dest) << L")]" << std::endl;
@@ -3606,7 +3613,7 @@ void JitAmd64::sub_mem_reg(long offset, Register src, Register dest) {
   AddImm(offset);
 }
 
-void JitAmd64::mul_imm_reg(long imm, Register reg) {
+void JitAmd64::mul_imm_reg(int64_t imm, Register reg) {
 #ifdef _DEBUG_JIT
   std::wcout << L"  " << (++instr_count) << L": [imuq $" << imm 
         << L", %"<< GetRegisterName(reg) << L"]" << std::endl;
@@ -3653,7 +3660,7 @@ void JitAmd64::mul_mem_reg(long offset, Register src, Register dest) {
   AddImm(offset);
 }
 
-void JitAmd64::div_imm_reg(long imm, Register reg, bool is_mod) {
+void JitAmd64::div_imm_reg(int64_t imm, Register reg, bool is_mod) {
   RegisterHolder* imm_holder = GetRegister();
   move_imm_reg(imm, imm_holder->GetRegister());
   div_reg_reg(imm_holder->GetRegister(), reg, is_mod);
@@ -3848,7 +3855,7 @@ void JitAmd64::inc_mem(long offset, Register dest) {
 #endif
 }
 
-void JitAmd64::shl_imm_reg(long value, Register dest) {
+void JitAmd64::shl_imm_reg(int64_t value, Register dest) {
   AddMachineCode(B(dest));
   AddMachineCode(0xc1);
   unsigned char code = 0xe0;
@@ -3908,7 +3915,7 @@ void JitAmd64::shl_mem_reg(long offset, Register src, Register dest)
   ReleaseRegister(mem_holder);
 }
 
-void JitAmd64::shr_imm_reg(long value, Register dest) {
+void JitAmd64::shr_imm_reg(int64_t value, Register dest) {
   AddMachineCode(B(dest));
   AddMachineCode(0xc1);
   unsigned char code = 0xe8;
@@ -4147,7 +4154,7 @@ void JitAmd64::cvt_mem_xreg(long offset, Register src, Register dest) {
   AddImm(offset);
 }
 
-void JitAmd64::and_imm_reg(long imm, Register reg) {
+void JitAmd64::and_imm_reg(int64_t imm, Register reg) {
 #ifdef _DEBUG_JIT
   std::wcout << L"  " << (++instr_count) << L": [andq $" << imm << L", %"
         << GetRegisterName(reg) << L"]" << std::endl;
@@ -4190,7 +4197,7 @@ void JitAmd64::and_mem_reg(long offset, Register src, Register dest) {
   AddImm(offset);
 }
 
-void JitAmd64::or_imm_reg(long imm, Register reg) {
+void JitAmd64::or_imm_reg(int64_t imm, Register reg) {
 #ifdef _DEBUG_JIT
   std::wcout << L"  " << (++instr_count) << L": [orq $" << imm << L", %"
         << GetRegisterName(reg) << L"]" << std::endl;
@@ -4233,7 +4240,7 @@ void JitAmd64::or_mem_reg(long offset, Register src, Register dest) {
   AddImm(offset);
 }
 
-void JitAmd64::xor_imm_reg(long imm, Register reg) {
+void JitAmd64::xor_imm_reg(int64_t imm, Register reg) {
 #ifdef _DEBUG_JIT
   std::wcout << L"  " << (++instr_count) << L": [xorq $" << imm << L", %"
         << GetRegisterName(reg) << L"]" << std::endl;
@@ -4684,7 +4691,7 @@ RegisterHolder* JitAmd64::ArrayIndex(StackInstr* instr, MemoryType type)
 
   case MEM_INT:
     array_holder = GetRegister();
-    move_mem_reg((int64_t)holder->GetOperand(), RBP, array_holder->GetRegister());
+    move_mem_reg((long)holder->GetOperand(), RBP, array_holder->GetRegister());
     break;
 
   default:
@@ -4714,7 +4721,7 @@ RegisterHolder* JitAmd64::ArrayIndex(StackInstr* instr, MemoryType type)
   switch(holder->GetType()) {
   case IMM_INT:
     index_holder = GetRegister();
-    move_imm_reg((int64_t)holder->GetOperand(), index_holder->GetRegister());
+    move_imm_reg(holder->GetOperand(), index_holder->GetRegister());
     break;
 
   case REG_INT:
@@ -4723,7 +4730,7 @@ RegisterHolder* JitAmd64::ArrayIndex(StackInstr* instr, MemoryType type)
 
   case MEM_INT:
     index_holder = GetRegister();
-    move_mem_reg((int64_t)holder->GetOperand(), RBP, index_holder->GetRegister());
+    move_mem_reg((long)holder->GetOperand(), RBP, index_holder->GetRegister());
     break;
 
   default:
@@ -4743,7 +4750,7 @@ RegisterHolder* JitAmd64::ArrayIndex(StackInstr* instr, MemoryType type)
     working_stack.pop_front();
     switch(holder->GetType()) {
     case IMM_INT:
-      add_imm_reg((int64_t)holder->GetOperand(), index_holder->GetRegister());
+      add_imm_reg(holder->GetOperand(), index_holder->GetRegister());
       break;
 
     case REG_INT:
@@ -4751,7 +4758,7 @@ RegisterHolder* JitAmd64::ArrayIndex(StackInstr* instr, MemoryType type)
       break;
 
     case MEM_INT:
-      add_mem_reg((int64_t)holder->GetOperand(), RBP, index_holder->GetRegister());
+      add_mem_reg((long)holder->GetOperand(), RBP, index_holder->GetRegister());
       break;
 
     default:
