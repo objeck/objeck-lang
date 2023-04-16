@@ -496,16 +496,16 @@ Enum* Parser::ParseEnum(int depth)
   Debug(L"[Enum: name='" + enum_scope_name + L"']", depth);
 #endif
 
-  long offset = 0;
+  INT64_VALUE offset = 0;
   if(Match(TOKEN_ASSIGN)) {
     NextToken();
     Expression* label = ParseSimpleExpression(depth + 1);
     if(label) {
       if(label->GetExpressionType() == INT_LIT_EXPR) {
-        offset = (long)static_cast<IntegerLiteral*>(label)->GetValue();
+        offset = static_cast<IntegerLiteral*>(label)->GetValue();
       }
       else if(label->GetExpressionType() == CHAR_LIT_EXPR) {
-        offset = (long)static_cast<CharacterLiteral*>(label)->GetValue();
+        offset = static_cast<CharacterLiteral*>(label)->GetValue();
       }
       else {
         ProcessError(L"Expected integer/character literal", TOKEN_CLOSED_PAREN);
@@ -670,16 +670,16 @@ Enum* Parser::ParseConsts(int depth)
     }
 
     NextToken();
-    long value = -1;
+    INT64_VALUE value = -1;
     Expression* expression = ParseTerm(depth + 1);
     if(expression) {
       switch (expression->GetExpressionType()) {
       case INT_LIT_EXPR:
-        value = (long)static_cast<IntegerLiteral*>(expression)->GetValue();
+        value = static_cast<IntegerLiteral*>(expression)->GetValue();
         break;
 
       case CHAR_LIT_EXPR:
-        value = (long)static_cast<CharacterLiteral*>(expression)->GetValue();
+        value = static_cast<CharacterLiteral*>(expression)->GetValue();
         break;
 
       case ADD_EXPR:
@@ -687,7 +687,7 @@ Enum* Parser::ParseConsts(int depth)
       case MUL_EXPR:
       case DIV_EXPR:
       case MOD_EXPR: {
-        std::stack<int> values;
+        std::stack<INT64_VALUE> values;
         CalculateConst(expression, values, depth + 1);
         if(values.size() == 1) {
           value = values.top();
@@ -734,11 +734,11 @@ Enum* Parser::ParseConsts(int depth)
 /****************************
  * Calculates a constant expression
  ****************************/
-void Parser::CalculateConst(Expression* expression, std::stack<int>& values, int depth)
+void Parser::CalculateConst(Expression* expression, std::stack<INT64_VALUE>& values, int depth)
 {
   switch (expression->GetExpressionType()) {
   case INT_LIT_EXPR:
-    values.push((long)static_cast<IntegerLiteral*>(expression)->GetValue());
+    values.push(static_cast<IntegerLiteral*>(expression)->GetValue());
     break;
 
   case CHAR_LIT_EXPR:
@@ -757,10 +757,10 @@ void Parser::CalculateConst(Expression* expression, std::stack<int>& values, int
     }
     
     if(values.size() > 1) {
-      const int right = values.top();
+      const INT64_VALUE right = values.top();
       values.pop();
 
-      const int left = values.top();
+      const INT64_VALUE left = values.top();
       values.pop();
 
       switch (expression->GetExpressionType()) {

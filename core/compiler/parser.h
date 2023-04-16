@@ -188,7 +188,7 @@ class Parser {
   Enum* ParseEnum(int depth);
   Alias* ParseLambdas(int depth);
   Enum* ParseConsts(int depth);
-  void CalculateConst(Expression* expression, std::stack<int> &values, int depth);
+  void CalculateConst(Expression* expression, std::stack<INT64_VALUE> &values, int depth);
   For* ParseFor(int depth);
   For* ParseEach(int depth);
   CriticalSection* ParseCritical(int depth);
