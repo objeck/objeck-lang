@@ -1655,7 +1655,7 @@ void JitAmd64::ProcessStackCallback(long instr_id, StackInstr* instr, long &inst
   move_mem_reg(INSTANCE_MEM, RBP, R8);
   move_mem_reg(MTHD_ID, RBP, RCX);
   move_mem_reg(CLS_ID, RBP, RDX);
-  move_imm_reg(instr, RSI);
+  move_imm_reg((size_t)instr, RSI);
   move_imm_reg(instr_id, RDI);  
   push_imm(instr_index - 1);
   push_mem(CALL_STACK_POS, RBP);
@@ -1663,7 +1663,7 @@ void JitAmd64::ProcessStackCallback(long instr_id, StackInstr* instr, long &inst
   push_mem(STACK_POS, RBP);
   
   // call function
-  move_imm_reg(JitCompiler::JitStackCallback, R15);
+  move_imm_reg((size_t)JitCompiler::JitStackCallback, R15);
   call_reg(R15);
   add_imm_reg(32, RSP);
   
