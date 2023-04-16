@@ -5,6 +5,6 @@ class Test {
 
 	function : native : Brun() ~ Nil {
 		value := 9223372036854775807;
-		value->PrintLine();
+		(value / 2)->PrintLine();
 	}
 }
