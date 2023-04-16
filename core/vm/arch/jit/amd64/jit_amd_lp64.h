@@ -352,7 +352,7 @@ namespace Runtime {
     void ProcessLoad(StackInstr* instr);
     void ProcessStore(StackInstr* instruction);
     void ProcessCopy(StackInstr* instr);
-    RegInstr* ProcessIntFold(long left_imm, long right_imm, InstructionType type);
+    RegInstr* ProcessIntFold(int64_t left_imm, int64_t right_imm, InstructionType type);
     void ProcessIntCalculation(StackInstr* instruction);
     void ProcessFloatCalculation(StackInstr* instruction);
     
@@ -762,9 +762,9 @@ namespace Runtime {
     void move_mem_reg(long offset, Register src, Register dest);
     void move_mem_reg32(long offset, Register src, Register dest);
     void move_imm_memx(RegInstr* instr, long offset, Register dest);
-    void move_imm_mem(long imm, long offset, Register dest);
+    void move_imm_mem(int64_t imm, long offset, Register dest);
 #ifdef _WIN64  
-    void move_imm_reg(size_t imm, Register reg);
+    void move_imm_reg(int64_t imm, Register reg);
 #else
     void move_imm_reg(long imm, Register reg);
 #endif  
@@ -774,7 +774,7 @@ namespace Runtime {
     void move_xreg_xreg(Register src, Register dest);
 
     // math instructions
-    void math_imm_reg(long imm, Register reg, InstructionType type);
+    void math_imm_reg(int64_t imm, Register reg, InstructionType type);
     void math_imm_xreg(RegInstr* instr, Register reg, InstructionType type);
     void math_reg_reg(Register src, Register dest, InstructionType type);
     void math_xreg_xreg(Register src, Register dest, InstructionType type);
@@ -782,13 +782,13 @@ namespace Runtime {
     void math_mem_xreg(long offset, Register reg, InstructionType type);
 
     // logical
-    void and_imm_reg(long imm, Register reg);
+    void and_imm_reg(int64_t imm, Register reg);
     void and_reg_reg(Register src, Register dest);
     void and_mem_reg(long offset, Register src, Register dest);
-    void or_imm_reg(long imm, Register reg);
+    void or_imm_reg(int64_t imm, Register reg);
     void or_reg_reg(Register src, Register dest);
     void or_mem_reg(long offset, Register src, Register dest);
-    void xor_imm_reg(long imm, Register reg);
+    void xor_imm_reg(int64_t imm, Register reg);
     void xor_reg_reg(Register src, Register dest);
     void xor_mem_reg(long offset, Register src, Register dest);
 
@@ -804,8 +804,8 @@ namespace Runtime {
     void flog10();
 
     // add instructions
-    void add_imm_mem(long imm, long offset, Register dest);
-    void add_imm_reg(long imm, Register reg);
+    void add_imm_mem(int64_t imm, long offset, Register dest);
+    void add_imm_reg(int64_t imm, Register reg);
     void add_imm_xreg(RegInstr* instr, Register reg);
     void add_xreg_xreg(Register src, Register dest);
     void add_mem_reg(long offset, Register src, Register dest);
@@ -818,8 +818,8 @@ namespace Runtime {
     void sub_imm_xreg(RegInstr* instr, Register reg);
     void sub_xreg_xreg(Register src, Register dest);
     void sub_mem_xreg(long offset, Register src, Register dest);
-    void sub_imm_reg(long imm, Register reg);
-    void sub_imm_mem(long imm, long offset, Register dest);
+    void sub_imm_reg(int64_t imm, Register reg);
+    void sub_imm_mem(int64_t imm, long offset, Register dest);
     void sub_reg_reg(Register src, Register dest);
     void sub_mem_reg(long offset, Register src, Register dest);
 
@@ -827,7 +827,7 @@ namespace Runtime {
     void mul_imm_xreg(RegInstr* instr, Register reg);
     void mul_xreg_xreg(Register src, Register dest);
     void mul_mem_xreg(long offset, Register src, Register dest);
-    void mul_imm_reg(long imm, Register reg);
+    void mul_imm_reg(int64_t imm, Register reg);
     void mul_reg_reg(Register src, Register dest);
     void mul_mem_reg(long offset, Register src, Register dest);
 
@@ -835,15 +835,15 @@ namespace Runtime {
     void div_imm_xreg(RegInstr* instr, Register reg);
     void div_xreg_xreg(Register src, Register dest);
     void div_mem_xreg(long offset, Register src, Register dest);
-    void div_imm_reg(long imm, Register reg, bool is_mod = false);
+    void div_imm_reg(int64_t imm, Register reg, bool is_mod = false);
     void div_reg_reg(Register src, Register dest, bool is_mod = false);
     void div_mem_reg(long offset, Register src, Register dest, bool is_mod = false);
 
     // compare instructions
     void cmp_reg_reg(Register src, Register dest);
     void cmp_mem_reg(long offset, Register src, Register dest);
-    void cmp_imm_reg(long imm, Register reg);
-    void cmp_imm_mem(int32_t offset, Register src, int32_t imm);
+    void cmp_imm_reg(int64_t imm, Register reg);
+    void cmp_imm_mem(int64_t offset, Register src, int32_t imm);
     void cmp_xreg_xreg(Register src, Register dest);
     void cmp_mem_xreg(long offset, Register src, Register dest);
     void cmp_imm_xreg(size_t addr, Register reg);
@@ -857,10 +857,10 @@ namespace Runtime {
     // shift instructions
     void shl_reg_reg(Register src, Register dest);
     void shl_mem_reg(long offset, Register src, Register dest);
-    void shl_imm_reg(long value, Register dest);
+    void shl_imm_reg(int64_t value, Register dest);
     void shr_reg_reg(Register src, Register dest);
     void shr_mem_reg(long offset, Register src, Register dest);
-    void shr_imm_reg(long value, Register dest);
+    void shr_imm_reg(int64_t value, Register dest);
 
     // push/pop instructions
     void push_imm(long value);
