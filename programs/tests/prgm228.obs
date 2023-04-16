@@ -7,5 +7,7 @@ class Test {
 		value := 9223372036854775807;
 		(value / 2 - 3)->PrintLine();
 		(9223372036854775807 = 9223372036854775807)->PrintLine();
+		value -= 3;
+		value->PrintLine();
 	}
 }
