@@ -4897,7 +4897,7 @@ void IntermediateEmitter::EmitMethodCallParameters(MethodCall* method_call)
     }
 
     if(method_call->GetEnumItem()) {
-      long value = method_call->GetEnumItem()->GetId();
+      const INT64_VALUE value = method_call->GetEnumItem()->GetId();
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, value));
       if(method_call->GetCastType() && method_call->GetCastType()->GetType() == frontend::FLOAT_TYPE) {
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, I2F));
@@ -4909,7 +4909,7 @@ void IntermediateEmitter::EmitMethodCallParameters(MethodCall* method_call)
         EmitVariable(method_call->GetVariable());  
       }
       else if(method_call->GetLibraryEnumItem()) {
-        long value = method_call->GetLibraryEnumItem()->GetId();        
+        const INT64_VALUE value = method_call->GetLibraryEnumItem()->GetId();
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, value));
       }
     }

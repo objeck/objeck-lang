@@ -972,7 +972,7 @@ void IntermediateInstruction::Debug(size_t i) {
  ****************************/
 void IntermediateEnumItem::Write(OutputStream& out_stream) {
   WriteString(name, out_stream);
-  WriteInt(id, out_stream);
+  WriteInt64(id, out_stream);
 }
 
 /****************************
@@ -980,7 +980,7 @@ void IntermediateEnumItem::Write(OutputStream& out_stream) {
  ****************************/
 void IntermediateEnum::Write(OutputStream& out_stream) {
   WriteString(name, out_stream);
-  WriteInt(offset, out_stream);
+  WriteInt64(offset, out_stream);
   // write items
   WriteInt((int)items.size(), out_stream);
   for(size_t i = 0; i < items.size(); ++i) {

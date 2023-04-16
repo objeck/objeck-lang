@@ -346,11 +346,11 @@ class LibraryMethod {
  ****************************/
 class LibraryEnumItem {
   std::wstring name;
-  int id;
+  INT64_VALUE id;
   LibraryEnum* lib_eenum;
 
  public:
-  LibraryEnumItem(const std::wstring &n, int i, LibraryEnum* e) {
+  LibraryEnumItem(const std::wstring &n, INT64_VALUE i, LibraryEnum* e) {
     name = n;
     id = i;
     lib_eenum = e;
@@ -363,7 +363,7 @@ class LibraryEnumItem {
     return name;
   }
 
-  int GetId() {
+  INT64_VALUE GetId() {
     return id;
   }
 
@@ -377,11 +377,11 @@ class LibraryEnumItem {
  ****************************/
 class LibraryEnum {
   std::wstring name;
-  int offset;
+  INT64_VALUE offset;
   std::map<const std::wstring, LibraryEnumItem*> items;
 
  public:
-  LibraryEnum(const std::wstring &n, const int o) {
+  LibraryEnum(const std::wstring &n, const INT64_VALUE o) {
     name = n;
     offset = o;
   }
@@ -401,7 +401,7 @@ class LibraryEnum {
     return name;
   }
 
-  int GetOffset() {
+  INT64_VALUE GetOffset() {
     return offset;
   }
 
