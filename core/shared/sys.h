@@ -38,6 +38,7 @@
 #include <codecvt>
 #endif
 
+#include <math.h>
 #include <zlib.h>
 #include <string.h>
 #include <fstream>
