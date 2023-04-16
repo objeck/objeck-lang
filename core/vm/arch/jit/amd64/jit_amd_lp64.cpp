@@ -3185,7 +3185,7 @@ void JitAmd64::cmp_mem_reg(long offset, Register src, Register dest) {
   AddImm(offset);
 }
 
-// TODO: 64-bit compare
+// TODO: 64-bit literal operation for Windows
 void JitAmd64::cmp_imm_reg(int64_t imm, Register reg) {
 #ifdef _DEBUG_JIT
   std::wcout << L"  " << (++instr_count) << L": [cmpq $" << imm << L", %"
@@ -3201,7 +3201,7 @@ void JitAmd64::cmp_imm_reg(int64_t imm, Register reg) {
   AddImm(imm);
 }
 
-// TODO: 64-bit compare
+// TODO: 64-bit literal operation for Windows
 void JitAmd64::cmp_imm_mem(int64_t offset, Register src, int32_t imm) {
 #ifdef _DEBUG_JIT
   std::wcout << L"  " << (++instr_count) << L": [cmpq $" << imm << L", " 
@@ -3286,6 +3286,7 @@ void JitAmd64::cmov_reg(Register reg, InstructionType oper) {
   ReleaseRegister(true_holder);
 }
 
+// TODO: 64-bit literal operation for Windows
 void JitAmd64::add_imm_mem(int64_t imm, long offset, Register dest) {
 #ifdef _DEBUG_JIT
   std::wcout << L"  " << (++instr_count) << L": [addq $" << imm << L", " 
@@ -3300,6 +3301,7 @@ void JitAmd64::add_imm_mem(int64_t imm, long offset, Register dest) {
   AddImm(imm);
 }
     
+// TODO: 64-bit literal operation for Windows
 void JitAmd64::add_imm_reg(int64_t imm, Register reg) {
 #ifdef _DEBUG_JIT
   std::wcout << L"  " << (++instr_count) << L": [addq $" << imm << L", %"
@@ -3555,6 +3557,7 @@ void JitAmd64::div_mem_xreg(long offset, Register src, Register dest) {
   ReleaseXmmRegister(holder);
 }
 
+// TODO: 64-bit literal operation for Windows
 void JitAmd64::sub_imm_reg(int64_t imm, Register reg) {
 #ifdef _DEBUG_JIT
   std::wcout << L"  " << (++instr_count) << L": [subq $" << imm << L", %"
@@ -3569,6 +3572,7 @@ void JitAmd64::sub_imm_reg(int64_t imm, Register reg) {
   AddImm(imm);
 }
 
+// TODO: 64-bit literal operation for Windows
 void JitAmd64::sub_imm_mem(int64_t imm, long offset, Register dest) {
 #ifdef _DEBUG_JIT
   std::wcout << L"  " << (++instr_count) << L": [subq $" << imm << L", " 
@@ -3613,6 +3617,7 @@ void JitAmd64::sub_mem_reg(long offset, Register src, Register dest) {
   AddImm(offset);
 }
 
+// TODO: 64-bit literal operation for Windows
 void JitAmd64::mul_imm_reg(int64_t imm, Register reg) {
 #ifdef _DEBUG_JIT
   std::wcout << L"  " << (++instr_count) << L": [imuq $" << imm 
@@ -4154,6 +4159,7 @@ void JitAmd64::cvt_mem_xreg(long offset, Register src, Register dest) {
   AddImm(offset);
 }
 
+// TODO: 64-bit literal operation for Windows
 void JitAmd64::and_imm_reg(int64_t imm, Register reg) {
 #ifdef _DEBUG_JIT
   std::wcout << L"  " << (++instr_count) << L": [andq $" << imm << L", %"
@@ -4197,6 +4203,7 @@ void JitAmd64::and_mem_reg(long offset, Register src, Register dest) {
   AddImm(offset);
 }
 
+// TODO: 64-bit literal operation for Windows
 void JitAmd64::or_imm_reg(int64_t imm, Register reg) {
 #ifdef _DEBUG_JIT
   std::wcout << L"  " << (++instr_count) << L": [orq $" << imm << L", %"
@@ -4240,6 +4247,7 @@ void JitAmd64::or_mem_reg(long offset, Register src, Register dest) {
   AddImm(offset);
 }
 
+// TODO: 64-bit literal operation for Windows
 void JitAmd64::xor_imm_reg(int64_t imm, Register reg) {
 #ifdef _DEBUG_JIT
   std::wcout << L"  " << (++instr_count) << L": [xorq $" << imm << L", %"
