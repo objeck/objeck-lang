@@ -2537,6 +2537,7 @@ void JitAmd64::move_imm_mem(int64_t imm, long offset, Register dest) {
     RegisterHolder* holder = GetRegister();
     move_imm_reg(imm, holder->GetRegister());
     move_reg_mem(holder->GetRegister(), offset, dest);
+    ReleaseRegister(holder);
   }
   else {
 #ifdef _DEBUG_JIT
@@ -2561,7 +2562,7 @@ void JitAmd64::move_imm_reg(int64_t imm, Register reg) {
 void JitAmd64::move_imm_reg(long imm, Register reg) {
 #endif
 #ifdef _DEBUG_JIT
-  std::wcout << L"  " << (++instr_count) << L": [movq $" << imm << L", %" 
+  std::wcout << L"  " << (++instr_count) << L": [movsq $" << imm << L", %" 
         << GetRegisterName(reg) << L"]" << std::endl;
 #endif
   // encode
@@ -3187,33 +3188,55 @@ void JitAmd64::cmp_mem_reg(long offset, Register src, Register dest) {
 
 // TODO: 64-bit literal operation for Windows
 void JitAmd64::cmp_imm_reg(int64_t imm, Register reg) {
+  if(imm < INT32_MIN || imm > INT32_MAX) {
+    RegisterHolder* holder = GetRegister();
+    move_imm_reg(imm, holder->GetRegister());
+    cmp_reg_reg(holder->GetRegister(), reg);
+    ReleaseRegister(holder);
+  }
+  else {
 #ifdef _DEBUG_JIT
-  std::wcout << L"  " << (++instr_count) << L": [cmpq $" << imm << L", %"
-        << GetRegisterName(reg) << L"]" << std::endl;
+    std::wcout << L"  " << (++instr_count) << L": [cmpq $" << imm << L", %"
+      << GetRegisterName(reg) << L"]" << std::endl;
 #endif
-  // encode
-  AddMachineCode(XB(reg));
-  AddMachineCode(0x81);
-  unsigned char code = 0xf8;
-  RegisterEncode3(code, 5, reg);
-  AddMachineCode(code);
-  // write value
-  AddImm(imm);
+    // encode
+    AddMachineCode(XB(reg));
+    AddMachineCode(0x81);
+    unsigned char code = 0xf8;
+    RegisterEncode3(code, 5, reg);
+    AddMachineCode(code);
+    // write value
+    AddImm((long)imm);
+  }
 }
 
 // TODO: 64-bit literal operation for Windows
-void JitAmd64::cmp_imm_mem(int64_t offset, Register src, int32_t imm) {
+void JitAmd64::cmp_imm_mem(long offset, Register src, int64_t imm) {
+  if(imm < INT32_MIN || imm > INT32_MAX) {
+    RegisterHolder* inm_holder = GetRegister();
+    move_imm_reg(imm, inm_holder->GetRegister());
+    
+    RegisterHolder* holder = GetRegister();
+    move_mem_reg(offset, src, holder->GetRegister());
+
+    cmp_reg_reg(inm_holder->GetRegister(), holder->GetRegister());
+
+    ReleaseRegister(inm_holder);
+    ReleaseRegister(holder);
+  }
+  else {
 #ifdef _DEBUG_JIT
-  std::wcout << L"  " << (++instr_count) << L": [cmpq $" << imm << L", " 
-        << offset << L"(%"<< GetRegisterName(src) << L")]" << std::endl;
+    std::wcout << L"  " << (++instr_count) << L": [cmpq $" << imm << L", "
+      << offset << L"(%" << GetRegisterName(src) << L")]" << std::endl;
 #endif
-  // encode
-  AddMachineCode(XB(src));
-  AddMachineCode(0x81);
-  AddMachineCode(ModRM(src, RDI));
-  // write value
-  AddImm(offset);
-  AddImm(imm);
+    // encode
+    AddMachineCode(XB(src));
+    AddMachineCode(0x81);
+    AddMachineCode(ModRM(src, RDI));
+    // write value
+    AddImm(offset);
+    AddImm((long)imm);
+  }
 }
 
 void JitAmd64::cmov_reg(Register reg, InstructionType oper) {
