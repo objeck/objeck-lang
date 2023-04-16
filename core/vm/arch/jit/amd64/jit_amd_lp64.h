@@ -159,7 +159,7 @@ namespace Runtime {
    */
   class RegInstr {
     RegType type;
-    long operand;
+    int64_t operand;
 #ifdef _WIN64
     size_t operand2;
 #endif  
@@ -189,7 +189,7 @@ namespace Runtime {
       instr = nullptr;
     }
 
-    RegInstr(RegType t, long o) {
+    RegInstr(RegType t, int64_t o) {
       type = t;
       operand = o;
     }
@@ -215,11 +215,11 @@ namespace Runtime {
       return type;
     }
 
-    void SetOperand(long o) {
+    void SetOperand(int64_t o) {
       operand = o;
     }
 
-    long GetOperand() {
+    int64_t GetOperand() {
       return operand;
     }
 
