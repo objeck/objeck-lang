@@ -5122,7 +5122,7 @@ RegInstr::RegInstr(StackInstr* si)
   case LOAD_CHAR_LIT:
   case LOAD_INT_LIT:
     type = IMM_INT;
-    operand = si->GetOperand();
+    operand = si->GetOperand4() > 2147483647 ? 131 : si->GetOperand();
     break;
 
   case LOAD_CLS_MEM:
