@@ -402,7 +402,7 @@ void IntermediateEmitter::EmitStrings()
           if(char_str_insts[i]->value == char_string_values[j]) {
             std::vector<LibraryInstr*> instrs = char_str_insts[i]->instrs;
             for(size_t k = 0; k < instrs.size(); ++k) {
-              instrs[k]->SetOperand((int)j);
+              instrs[k]->SetOperand7(j);
             }
             found = true;
           }
@@ -419,7 +419,7 @@ void IntermediateEmitter::EmitStrings()
           if(IntStringHolderEqual(int_str_insts[i]->value, int_string_values[j])) {
             std::vector<LibraryInstr*> instrs = int_str_insts[i]->instrs;
             for(size_t k = 0; k < instrs.size(); ++k) {
-              instrs[k]->SetOperand((int)j);
+              instrs[k]->SetOperand7(j);
             }
             found = true;
           }
@@ -436,7 +436,7 @@ void IntermediateEmitter::EmitStrings()
           if(FloatStringHolderEqual(float_str_insts[i]->value, float_string_values[j])) {
             std::vector<LibraryInstr*> instrs = float_str_insts[i]->instrs;
             for(size_t k = 0; k < instrs.size(); ++k) {
-              instrs[k]->SetOperand((int)j);
+              instrs[k]->SetOperand7(j);
             }
             found = true;
           }
