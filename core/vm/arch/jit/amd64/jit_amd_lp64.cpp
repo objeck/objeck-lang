@@ -5159,7 +5159,7 @@ RegInstr::RegInstr(StackInstr* si)
   switch(si->GetType()) {
   case LOAD_CHAR_LIT:
     type = IMM_INT;
-    operand = si->GetOperand4();
+    operand = si->GetOperand();
     break;
 
   case LOAD_INT_LIT:
