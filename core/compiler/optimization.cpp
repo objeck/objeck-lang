@@ -887,7 +887,7 @@ void ItermediateOptimizer::CalculateReduction(IntermediateInstruction* instr, st
 void ItermediateOptimizer::ApplyReduction(IntermediateInstruction* test, IntermediateInstruction* instr, IntermediateInstruction* top_instr, std::deque<IntermediateInstruction*>& working_stack, IntermediateBlock* outputs)
 {
   int shift = 0;
-  switch(test->GetOperand()) {
+  switch(test->GetOperand7()) {
   case 2:
     shift = 1;
     break;
