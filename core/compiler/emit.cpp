@@ -586,10 +586,8 @@ void IntermediateInstruction::Debug(size_t i) {
       << L"; local=" << (operand2 == LOCL ? "true" : "false") << std::endl;
     break;
 
-  case instructions::ASYNC_MTHD_CALL: {
-    IntermediateMethod* async_method = IntermediateProgram::Instance()->GetClass(operand)->GetMethod(operand2);
-    GetLogger()  << i << L":\tASYNC_MTHD_CALL: method='" << async_method->GetName() << L"'; native=" << (operand3 ? "true" : "false") << std::endl;
-  }
+  case instructions::ASYNC_MTHD_CALL:
+    GetLogger()  << i << L":\tASYNC_MTHD_CALL" << std::endl;
     break;
 
   case instructions::DLL_LOAD:

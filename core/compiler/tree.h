@@ -2817,12 +2817,15 @@ namespace frontend {
     }
 
     void SetRougeReturn(int v) {
-      is_rouge_return = v;
-
-      MethodCall* expression = method_call;
-      while(expression) {
+      if(method_call) {
+        MethodCall* expression = method_call;
+        while(expression->method_call) {
+          expression = expression->method_call;
+        }
         expression->is_rouge_return = v;
-        expression = expression->method_call;
+      }
+      else {
+        is_rouge_return = v;
       }
     }
 
