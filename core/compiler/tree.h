@@ -2817,16 +2817,7 @@ namespace frontend {
     }
 
     void SetRougeReturn(int v) {
-      if(method_call) {
-        MethodCall* expression = method_call;
-        while(expression->method_call) {
-          expression = expression->method_call;
-        }
-        expression->is_rouge_return = v;
-      }
-      else {
-        is_rouge_return = v;
-      }
+      is_rouge_return = v;
     }
 
     const int GetRougeReturn() {
