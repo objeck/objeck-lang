@@ -1,0 +1,9 @@
+use System.API;
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		s : Collection.Stack<Data.JSON.JsonElement>;
+		a : Data.JSON.JsonElement;
+		s->Top()->Add(a);
+	}
+}
