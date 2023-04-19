@@ -2645,7 +2645,11 @@ void ContextAnalyzer::AnalyzeExpressionMethodCall(Expression* expression, const 
 
 void ContextAnalyzer::RogueReturn(MethodCall* method_call)
 {
-  if(method_call && !nested_call_depth && !in_assignment && !in_return && !in_expression) {
+  //
+  // TODO: ignore 'New', when you wake up
+  //
+
+  if(!nested_call_depth && !in_assignment && !in_return && !in_expression) {
     // get the last method call
     while(method_call->GetMethodCall()) {
       method_call = method_call->GetMethodCall();
