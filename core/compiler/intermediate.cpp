@@ -1306,6 +1306,7 @@ void IntermediateEmitter::EmitMethodCallStatement(MethodCall* method_call)
       EmitCast(method_call);
       
       // pop return value if not used
+      if(!method_call->GetMethodCall()) {
         switch(method_call->GetRougeReturn()) {
         case 0:
           imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, POP_INT));
@@ -1323,7 +1324,7 @@ void IntermediateEmitter::EmitMethodCallStatement(MethodCall* method_call)
         default:
           break;
         }
-      
+      }
       // next call
       if(method_call->GetMethod()) {
         Method* method = method_call->GetMethod();
@@ -1384,6 +1385,7 @@ void IntermediateEmitter::EmitMethodCallStatement(MethodCall* method_call)
       EmitCast(method_call);
       
       // pop return value if not used
+      if(!method_call->GetMethodCall()) {
         switch(method_call->GetRougeReturn()) {
         case 0:
           imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, POP_INT));
@@ -1401,7 +1403,7 @@ void IntermediateEmitter::EmitMethodCallStatement(MethodCall* method_call)
         default:
           break;
         }
-      
+      }
 
       // next call
       if(method_call->GetMethod()) {
@@ -3172,6 +3174,7 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
       EmitMethodCall(method_call, is_nested || expression->GetExpressionType() == COND_EXPR);
 
       // pop return value if not used
+      if(!method_call->GetMethodCall()) {
         switch(method_call->GetRougeReturn()) {
         case 0:
           imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, POP_INT));
@@ -3189,7 +3192,9 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
         default:
           break;
         }
-      
+      }
+
+
       EmitCast(method_call);
       if(!method_call->GetVariable()) {
         EmitClassCast(method_call);
