@@ -187,8 +187,12 @@ namespace Runtime {
 
     RegInstr(StackInstr* si) {
       switch(si->GetType()) {
-      case LOAD_CHAR_LIT:
       case LOAD_INT_LIT:
+          type = IMM_INT;
+          operand = si->GetOperand4();
+          break;
+          
+      case LOAD_CHAR_LIT:
         type = IMM_INT;
         operand = si->GetOperand();
         break;
