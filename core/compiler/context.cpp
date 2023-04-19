@@ -1483,7 +1483,7 @@ void ContextAnalyzer::AnalyzeStatement(Statement* statement, const int depth)
 void ContextAnalyzer::AnalyzeExpression(Expression* expression, const int depth)
 {
   if(expression) {
-    
+    in_expression = true;
 
     StringConcat* str_concat = AnalyzeStringConcat(expression, depth + 1);
     if(str_concat) {
