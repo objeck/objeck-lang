@@ -4,10 +4,12 @@ class Test {
 	}
 
 	method : public : Filter(f : () ~ Bool) ~ Int {
-		if(f()) {
+		if(false) {
 			return 7;
 		};
 
-		return 11;
+		f();
+		
+		return 34;
 	}
 }
