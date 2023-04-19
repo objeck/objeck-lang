@@ -1483,6 +1483,8 @@ void ContextAnalyzer::AnalyzeStatement(Statement* statement, const int depth)
 void ContextAnalyzer::AnalyzeExpression(Expression* expression, const int depth)
 {
   if(expression) {
+    
+
     StringConcat* str_concat = AnalyzeStringConcat(expression, depth + 1);
     if(str_concat) {
       expression->SetPreviousExpression(str_concat);
@@ -1588,6 +1590,8 @@ void ContextAnalyzer::AnalyzeExpression(Expression* expression, const int depth)
 
     // check cast
     AnalyzeCast(expression, depth + 1);
+
+    in_expression = false;
   }
 }
 
@@ -2120,7 +2124,7 @@ void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, const int depth
       
       // TODO: check for rouge return
       nested_call_depth--;
-      if(!nested_call_depth && !in_assignment && !in_return) {
+      if(!nested_call_depth && !in_assignment && !in_return && !in_expression) {
         RogueReturn(method_call);
       }
       return;
@@ -2137,7 +2141,7 @@ void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, const int depth
 
       // TODO: check for rouge return
       nested_call_depth--;
-      if(!nested_call_depth && !in_assignment && !in_return) {
+      if(!nested_call_depth && !in_assignment && !in_return && !in_expression) {
         RogueReturn(method_call);
       }
       return;
@@ -2184,7 +2188,7 @@ void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, const int depth
 
     // TODO: check for rouge return
     nested_call_depth--;
-    if(!nested_call_depth && !in_assignment && !in_return) {
+    if(!nested_call_depth && !in_assignment && !in_return && !in_expression) {
       RogueReturn(method_call);
     }
   }
@@ -2632,7 +2636,7 @@ void ContextAnalyzer::AnalyzeExpressionMethodCall(Expression* expression, const 
 
       // TODO: check for rouge return
       nested_call_depth--;
-      if(!nested_call_depth && !in_assignment && !in_return) {
+      if(!nested_call_depth && !in_assignment && !in_return && !in_expression) {
         RogueReturn(method_call);
       }
     }
@@ -3605,7 +3609,7 @@ void ContextAnalyzer::AnalyzeVariableFunctionCall(MethodCall* method_call, const
 
     // TODO: check for rouge return
     nested_call_depth--;
-    if(!nested_call_depth && !in_assignment && !in_return) {
+    if(!nested_call_depth && !in_assignment && !in_return && !in_expression) {
       RogueReturn(method_call);
     }
   }
