@@ -8,16 +8,16 @@
     
     <body>
         <h1>Objeck</h1>
-        <p><a href='https://en.wikipedia.org/wiki/Shades_of_Blue_(Madlib_album)' target='_blank'>v2023.4.2</a> for April 15, 2023</p>
+        <p><a href='https://en.wikipedia.org/wiki/Shades_of_Blue_(Madlib_album)' target='_blank'>v2023.4.2</a> for April 21, 2023</p>
         
         <h3>Release Notes</h3>
         
         <p>General improvements and minor bug fixes</p>
         <p>v2023.4.2</p>
         <ul>
-            <li>Updated the tool chain to uniformly treat 'Int' types as 64-bits, instead of 32-bits on Windows and 64-bits on POSIX</li>
-            <li>Fixed issues #196, #205, #207 and #199 for MSYS2 Clang 64</li>
-            <li>Resolved a minor compiler issue that allowed unreferenced return values to sometimes go unchecked</li>
+            <li>Toolchain uniformly treats 'Int' types as 64-bits, instead of 32-bits on Windows and 64-bits on POSIX</li>
+            <li>Fixed issues #196, #199, #205 and #207 and for MSYS2 x86_64 Clang</li>
+            <li>Resolved edge case that sometimes allowed unreferenced return values to remain on the runtime stack</li>
         </ul>
 
         <p>v2023.4.1</p>
