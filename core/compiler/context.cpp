@@ -2648,7 +2648,6 @@ void ContextAnalyzer::RogueReturn(MethodCall* method_call)
   // TODO: set vs. return value
 
   if(!method_call) {
-    method_call->SetRougeReturn(-1);
     return;
   }
 

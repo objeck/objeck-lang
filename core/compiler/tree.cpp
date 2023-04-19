@@ -669,8 +669,9 @@ MethodCall::MethodCall(const std::wstring& file_name, const int line_num, const 
   original_lib_klass = nullptr;
   is_enum_call = is_func_def = is_dyn_func_call = false;
   func_rtrn = nullptr;
+  is_rouge_return = -1;
   anonymous_klass = nullptr;
-
+  
   if(variable_name == BOOL_CLASS_ID) {
     array_type = TypeFactory::Instance()->MakeType(BOOLEAN_TYPE);
   }
