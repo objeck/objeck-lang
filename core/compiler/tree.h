@@ -2689,7 +2689,7 @@ namespace frontend {
     Type* func_rtrn;
     bool is_func_def;
     bool is_dyn_func_call;
-    int is_rouge_return;
+    instructions::MemoryType is_rouge_return;
     SymbolEntry* dyn_func_entry;
     std::vector<Type*> concrete_types;
     int mid_line_num;
@@ -2718,7 +2718,7 @@ namespace frontend {
       original_klass = nullptr;
       original_lib_klass = nullptr;
       is_enum_call = is_func_def = is_dyn_func_call = false;
-      is_rouge_return = -1;
+      is_rouge_return = instructions::NIL_TYPE;
       func_rtrn = nullptr;
       anonymous_klass = nullptr;
     }
@@ -2741,7 +2741,7 @@ namespace frontend {
       original_klass = nullptr;
       original_lib_klass = nullptr;
       is_enum_call = is_func_def = is_dyn_func_call = false;
-      is_rouge_return = -1;
+      is_rouge_return = instructions::NIL_TYPE;
       func_rtrn = nullptr;
       anonymous_klass = nullptr;
     }
@@ -2766,7 +2766,7 @@ namespace frontend {
       original_lib_klass = nullptr;
       is_enum_call = is_func_def = is_dyn_func_call = false;
       func_rtrn = nullptr;
-      is_rouge_return = -1;
+      is_rouge_return = instructions::NIL_TYPE;
       anonymous_klass = nullptr;
     }
 
@@ -2816,11 +2816,11 @@ namespace frontend {
       return is_enum_call;
     }
 
-    void SetRougeReturn(int v) {
-      is_rouge_return = v;
+    void SetRougeReturn(instructions::MemoryType t) {
+      is_rouge_return = t;
     }
 
-    const int GetRougeReturn() {
+    const instructions::MemoryType GetRougeReturn() {
       return is_rouge_return;
     } 
 

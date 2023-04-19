@@ -2651,7 +2651,7 @@ void ContextAnalyzer::RogueReturn(MethodCall* method_call)
     }
 
     if(method_call->GetCallType() == ENUM_CALL) {
-      method_call->SetRougeReturn(0);
+      method_call->SetRougeReturn(instructions::INT_TYPE);
       return;
     }
 
@@ -2666,37 +2666,35 @@ void ContextAnalyzer::RogueReturn(MethodCall* method_call)
       rtrn = method_call->GetFunctionalEntry()->GetType()->GetFunctionReturn();
     }
 
-    if(rtrn) {
-      if(rtrn->GetType() != frontend::NIL_TYPE) {
-        if(rtrn->GetDimension() > 0) {
-          method_call->SetRougeReturn(0);
+    if(rtrn && rtrn->GetType() != frontend::NIL_TYPE) {
+      if(rtrn->GetDimension() > 0) {
+        method_call->SetRougeReturn(instructions::INT_TYPE);
+        return;
+      }
+      else {
+        switch(rtrn->GetType()) {
+        case frontend::BOOLEAN_TYPE:
+        case frontend::BYTE_TYPE:
+        case frontend::CHAR_TYPE:
+        case frontend::INT_TYPE:
+        case frontend::CLASS_TYPE:
+          method_call->SetRougeReturn(instructions::INT_TYPE);
           return;
-        }
-        else {
-          switch(rtrn->GetType()) {
-          case frontend::BOOLEAN_TYPE:
-          case frontend::BYTE_TYPE:
-          case frontend::CHAR_TYPE:
-          case frontend::INT_TYPE:
-          case frontend::CLASS_TYPE:
-            method_call->SetRougeReturn(0);
-            return;
 
-          case frontend::FLOAT_TYPE:
-            method_call->SetRougeReturn(1);
-            return;
+        case frontend::FLOAT_TYPE:
+          method_call->SetRougeReturn(instructions::FLOAT_TYPE);
+          return;
 
-          case frontend::FUNC_TYPE:
-            method_call->SetRougeReturn(2);
-            return;
+        case frontend::FUNC_TYPE:
+          method_call->SetRougeReturn(instructions::FUNC_TYPE);
+          return;
 
-          default:
-            break;
-          }
+        default:
+          break;
         }
       }
 
-      method_call->SetRougeReturn(-1);
+      method_call->SetRougeReturn(instructions::NIL_TYPE);
     }
   }
 }
