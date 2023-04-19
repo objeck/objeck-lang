@@ -1265,21 +1265,21 @@ void IntermediateEmitter::EmitMethodCallStatement(MethodCall* method_call)
 
     // emit dynamic call
     switch(method_call->GetRougeReturn()) {
-    case 0:
+    case instructions::INT_TYPE:
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, DYN_MTHD_CALL, entry->GetType()->GetFunctionParameterCount(), instructions::INT_TYPE));
       if(!method_call->GetMethodCall()) {
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, POP_INT));
       }
       break;
   
-    case 1:
+    case instructions::FLOAT_TYPE:
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, DYN_MTHD_CALL, entry->GetType()->GetFunctionParameterCount(), instructions::FLOAT_TYPE));
       if(!method_call->GetMethodCall()) {
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, POP_FLOAT));
       }
       break;
   
-    case 2:
+    case instructions::FUNC_TYPE:
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, DYN_MTHD_CALL, entry->GetType()->GetFunctionParameterCount(), instructions::FUNC_TYPE));
       if(!method_call->GetMethodCall()) {
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, POP_INT));
@@ -1308,15 +1308,15 @@ void IntermediateEmitter::EmitMethodCallStatement(MethodCall* method_call)
       // pop return value if not used
       if(!method_call->GetMethodCall()) {
         switch(method_call->GetRougeReturn()) {
-        case 0:
+        case instructions::INT_TYPE:
           imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, POP_INT));
           break;
 
-        case 1:
+        case instructions::FLOAT_TYPE:
           imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, POP_FLOAT));
           break;
 
-        case 2:
+        case instructions::FUNC_TYPE:
           imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, POP_INT));
           imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, POP_INT));
           break;
@@ -1387,15 +1387,15 @@ void IntermediateEmitter::EmitMethodCallStatement(MethodCall* method_call)
       // pop return value if not used
       if(!method_call->GetMethodCall()) {
         switch(method_call->GetRougeReturn()) {
-        case 0:
+        case instructions::INT_TYPE:
           imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, POP_INT));
           break;
 
-        case 1:
+        case instructions::FLOAT_TYPE:
           imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, POP_FLOAT));
           break;
 
-        case 2:
+        case instructions::FUNC_TYPE:
           imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, POP_INT));
           imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, POP_INT));
           break;
@@ -3176,15 +3176,15 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
       // pop return value if not used
       if(!method_call->GetMethodCall()) {
         switch(method_call->GetRougeReturn()) {
-        case 0:
+        case instructions::INT_TYPE:
           imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, POP_INT));
           break;
 
-        case 1:
+        case instructions::FLOAT_TYPE:
           imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, POP_FLOAT));
           break;
 
-        case 2:
+        case instructions::FUNC_TYPE:
           imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, POP_INT));
           imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, POP_INT));
           break;
@@ -3323,21 +3323,21 @@ void IntermediateEmitter::EmitMethodCallExpression(MethodCall* method_call, bool
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_FUNC_VAR, entry->GetId(), mem_context));
     
     switch(method_call->GetRougeReturn()) {
-    case 0:
+    case instructions::INT_TYPE:
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, DYN_MTHD_CALL, entry->GetType()->GetFunctionParameterCount(), instructions::INT_TYPE));
       if(!method_call->GetMethodCall()) {
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, POP_INT));
       }
       break;
   
-    case 1:
+    case instructions::FLOAT_TYPE:
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, DYN_MTHD_CALL, entry->GetType()->GetFunctionParameterCount(), instructions::FLOAT_TYPE));
       if(!method_call->GetMethodCall()) {
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, POP_FLOAT));
       }
       break;
 
-    case 2:
+    case instructions::FUNC_TYPE:
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, DYN_MTHD_CALL, entry->GetType()->GetFunctionParameterCount(), instructions::FUNC_TYPE));
       if(!method_call->GetMethodCall()) {
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, POP_INT));
