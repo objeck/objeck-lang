@@ -3,8 +3,8 @@ class Test {
 		Brun();
 	}
 
-	function : native : Brun() ~ Ni
-		value := 9223372036854775807;
+	function : native : Brun() ~ Nil {
+		value := 922337203685477580;
 		(value / 2 - 3)->PrintLine();
 		(9223372036854775807 = 9223372036854775807)->PrintLine();
 		value -= 3;
