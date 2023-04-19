@@ -3321,7 +3321,7 @@ void JitAmd64::add_imm_mem(int64_t imm, long offset, Register dest) {
   AddMachineCode(ModRM(dest, RAX));
   // write value
   AddImm(offset);
-  AddImm(imm);
+  AddImm((long)imm); // TODO: load imm to reg, perform operation 
 }
     
 // TODO: 64-bit literal operation for Windows
@@ -3337,9 +3337,9 @@ void JitAmd64::add_imm_reg(int64_t imm, Register reg) {
   RegisterEncode3(code, 5, reg);
   AddMachineCode(code);
   // write value
-  AddImm(imm);
+  AddImm((long)imm); // TODO: load imm to reg, perform operation 
 }
-    
+
 void JitAmd64::add_imm_xreg(RegInstr* instr, Register reg) {
   // copy address of imm value
   RegisterHolder* imm_holder = GetRegister();
@@ -3592,7 +3592,7 @@ void JitAmd64::sub_imm_reg(int64_t imm, Register reg) {
   unsigned char code = 0xe8;
   RegisterEncode3(code, 5, reg);
   AddMachineCode(code);
-  AddImm(imm);
+  AddImm((long)imm);
 }
 
 // TODO: 64-bit literal operation for Windows
@@ -3607,7 +3607,7 @@ void JitAmd64::sub_imm_mem(int64_t imm, long offset, Register dest) {
   AddMachineCode(ModRM(dest, RBP));
   // write value
   AddImm(offset);
-  AddImm(imm);
+  AddImm((long)imm); // TODO: load imm to reg, perform operation 
 }
 
 void JitAmd64::sub_reg_reg(Register src, Register dest) {
@@ -3655,7 +3655,7 @@ void JitAmd64::mul_imm_reg(int64_t imm, Register reg) {
   RegisterEncode3(code, 5, reg);
   AddMachineCode(code);
   // write value
-  AddImm(imm);
+  AddImm((long)imm); // TODO: load imm to reg, perform operation 
 }
 
 void JitAmd64::mul_reg_reg(Register src, Register dest) {
@@ -4195,7 +4195,7 @@ void JitAmd64::and_imm_reg(int64_t imm, Register reg) {
   RegisterEncode3(code, 5, reg);
   AddMachineCode(code);
   // write value
-  AddImm(imm);
+  AddImm((long)imm); // TODO: load imm to reg, perform operation 
 }
 
 void JitAmd64::and_reg_reg(Register src, Register dest) {
@@ -4239,7 +4239,7 @@ void JitAmd64::or_imm_reg(int64_t imm, Register reg) {
   RegisterEncode3(code, 5, reg);
   AddMachineCode(code);
   // write value
-  AddImm(imm);
+  AddImm((long)imm); // TODO: load imm to reg, perform operation 
 }
 
 void JitAmd64::or_reg_reg(Register src, Register dest) {
@@ -4283,7 +4283,7 @@ void JitAmd64::xor_imm_reg(int64_t imm, Register reg) {
   RegisterEncode3(code, 5, reg);
   AddMachineCode(code);
   // write value
-  AddImm(imm);
+  AddImm((long)imm); // TODO: load imm to reg, perform operation 
 }
 
 void JitAmd64::xor_reg_reg(Register src, Register dest) {
