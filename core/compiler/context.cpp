@@ -2645,64 +2645,60 @@ void ContextAnalyzer::AnalyzeExpressionMethodCall(Expression* expression, const 
 
 void ContextAnalyzer::RogueReturn(MethodCall* method_call)
 {
-  // TODO: set vs. return value
+  if(method_call && !nested_call_depth && !in_assignment && !in_return && !in_expression) {
+    while(method_call->GetMethodCall()) {
+      method_call = method_call->GetMethodCall();
+    }
 
-  if(!method_call) {
-    return;
-  }
+    if(method_call->GetCallType() == ENUM_CALL) {
+      method_call->SetRougeReturn(0);
+      return;
+    }
 
-  while(method_call->GetMethodCall()) {
-    method_call = method_call->GetMethodCall();
-  }
+    Type* rtrn = nullptr;
+    if(method_call->GetMethod()) {
+      rtrn = method_call->GetMethod()->GetReturn();
+    }
+    else if(method_call->GetLibraryMethod()) {
+      rtrn = method_call->GetLibraryMethod()->GetReturn();
+    }
+    else if(method_call->IsFunctionalCall()) {
+      rtrn = method_call->GetFunctionalEntry()->GetType()->GetFunctionReturn();
+    }
 
-  if(method_call->GetCallType() == ENUM_CALL) {
-    method_call->SetRougeReturn(0);
-    return;
-  }
-
-  Type* rtrn = nullptr;
-  if(method_call->GetMethod()) {
-    rtrn = method_call->GetMethod()->GetReturn();
-  }
-  else if(method_call->GetLibraryMethod()) {
-    rtrn = method_call->GetLibraryMethod()->GetReturn();
-  }
-  else if(method_call->IsFunctionalCall()) {
-    rtrn = method_call->GetFunctionalEntry()->GetType()->GetFunctionReturn();
-  }
-
-  if(rtrn) {
-    if(rtrn->GetType() != frontend::NIL_TYPE) {
-      if(rtrn->GetDimension() > 0) {
-        method_call->SetRougeReturn(0);
-        return;
-      }
-      else {
-        switch(rtrn->GetType()) {
-        case frontend::BOOLEAN_TYPE:
-        case frontend::BYTE_TYPE:
-        case frontend::CHAR_TYPE:
-        case frontend::INT_TYPE:
-        case frontend::CLASS_TYPE:
+    if(rtrn) {
+      if(rtrn->GetType() != frontend::NIL_TYPE) {
+        if(rtrn->GetDimension() > 0) {
           method_call->SetRougeReturn(0);
           return;
+        }
+        else {
+          switch(rtrn->GetType()) {
+          case frontend::BOOLEAN_TYPE:
+          case frontend::BYTE_TYPE:
+          case frontend::CHAR_TYPE:
+          case frontend::INT_TYPE:
+          case frontend::CLASS_TYPE:
+            method_call->SetRougeReturn(0);
+            return;
 
-        case frontend::FLOAT_TYPE:
-          method_call->SetRougeReturn(1);
-          return;
+          case frontend::FLOAT_TYPE:
+            method_call->SetRougeReturn(1);
+            return;
 
-        case frontend::FUNC_TYPE:
-          method_call->SetRougeReturn(2);
-          return;
+          case frontend::FUNC_TYPE:
+            method_call->SetRougeReturn(2);
+            return;
 
-        default:
-          break;
+          default:
+            break;
+          }
         }
       }
+
+      method_call->SetRougeReturn(-1);
     }
   }
-
-  method_call->SetRougeReturn(-1);
 }
 
 /*********************************
