@@ -1,9 +1,13 @@
-use System.API;
-
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		s : Collection.Stack<Data.JSON.JsonElement>;
-		a : Data.JSON.JsonElement;
-		s->Top()->Add(a);
+		"Hello World"->PrintLine();
+	}
+
+	method : public : Filter(f : () ~ Bool) ~ Int {
+		if(f()) {
+			return 7;
+		};
+
+		return 11;
 	}
 }
