@@ -2122,11 +2122,9 @@ void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, const int depth
         AnalyzeMethodCall(klass, method_call, false, encoding, depth);
       }
       
-      // TODO: check for rouge return
+      // check for rouge return
       nested_call_depth--;
-      if(!nested_call_depth && !in_assignment && !in_return && !in_expression) {
-        RogueReturn(method_call);
-      }
+      RogueReturn(method_call);
       return;
     }
     // library call
@@ -2139,11 +2137,9 @@ void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, const int depth
         AnalyzeMethodCall(lib_klass, method_call, false, encoding, false, depth);
       }
 
-      // TODO: check for rouge return
+      // check for rouge return
       nested_call_depth--;
-      if(!nested_call_depth && !in_assignment && !in_return && !in_expression) {
-        RogueReturn(method_call);
-      }
+      RogueReturn(method_call);
       return;
     }
 
@@ -2186,11 +2182,9 @@ void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, const int depth
       }
     }
 
-    // TODO: check for rouge return
+    // check for rouge return
     nested_call_depth--;
-    if(!nested_call_depth && !in_assignment && !in_return && !in_expression) {
-      RogueReturn(method_call);
-    }
+    RogueReturn(method_call);
   }
 }
 
@@ -2634,21 +2628,15 @@ void ContextAnalyzer::AnalyzeExpressionMethodCall(Expression* expression, const 
         }
       }
 
-      // TODO: check for rouge return
+      // check for rouge return
       nested_call_depth--;
-      if(!nested_call_depth && !in_assignment && !in_return && !in_expression) {
-        RogueReturn(method_call);
-      }
+      RogueReturn(method_call);
     }
   }
 }
 
 void ContextAnalyzer::RogueReturn(MethodCall* method_call)
 {
-  if(method_call->GetCallType() == NEW_INST_CALL) {
-    std::wcout << L"Hello" << std::endl;
-  }
-
   if(!nested_call_depth && !in_assignment && !in_return && !in_expression) {
     // get the last method call
     while(method_call->GetMethodCall()) {
@@ -3605,11 +3593,9 @@ void ContextAnalyzer::AnalyzeVariableFunctionCall(MethodCall* method_call, const
     // next call
     AnalyzeExpressionMethodCall(method_call, depth + 1);
 
-    // TODO: check for rouge return
+    // check for rouge return
     nested_call_depth--;
-    if(!nested_call_depth && !in_assignment && !in_return && !in_expression) {
-      RogueReturn(method_call);
-    }
+    RogueReturn(method_call);
   }
   else {
     const std::wstring &mthd_name = method_call->GetMethodName();
