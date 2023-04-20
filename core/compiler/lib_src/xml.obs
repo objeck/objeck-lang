@@ -179,7 +179,7 @@ bundle Data.XML {
 				};
 			};
 			
-			return "iso-8859-1";
+			return "utf-8";
 		}
 		
 		#~
@@ -192,7 +192,7 @@ bundle Data.XML {
 			out->Append("<?xml version=\"");
 			out->Append("1.0");
 			out->Append("\" encoding=\"");
-			out->Append("iso-8859-1");
+			out->Append("utf-8");
 			out->Append("\"?>");
 			
 			# serialize DOM
