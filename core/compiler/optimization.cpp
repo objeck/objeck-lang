@@ -1485,49 +1485,49 @@ void ItermediateOptimizer::CalculateIntFold(IntermediateInstruction* instr, std:
 
     switch(instr->GetType()) {
     case ADD_INT: {
-      INT64_VALUE value = left->GetOperand7() + right->GetOperand7();
+      const INT64_VALUE value = left->GetOperand7() + right->GetOperand7();
       working_stack.push_front(IntermediateFactory::Instance()->MakeIntLitInstruction(cur_line_num, value));
     }
       break;
 
     case SUB_INT: {
-      INT64_VALUE value = left->GetOperand7() - right->GetOperand7();
+      const INT64_VALUE value = left->GetOperand7() - right->GetOperand7();
       working_stack.push_front(IntermediateFactory::Instance()->MakeIntLitInstruction(cur_line_num, value));
     }
       break;
 
     case MUL_INT: {
-      INT64_VALUE value = left->GetOperand7() * right->GetOperand7();
+      const INT64_VALUE value = left->GetOperand7() * right->GetOperand7();
       working_stack.push_front(IntermediateFactory::Instance()->MakeIntLitInstruction(cur_line_num, value));
     }
       break;
 
     case DIV_INT: {
-      INT64_VALUE value = left->GetOperand7() / right->GetOperand7();
+      const INT64_VALUE value = left->GetOperand7() / right->GetOperand7();
       working_stack.push_front(IntermediateFactory::Instance()->MakeIntLitInstruction(cur_line_num, value));
     }
       break;
 
     case MOD_INT: {
-      INT64_VALUE value = left->GetOperand7() % right->GetOperand7();
+      const INT64_VALUE value = left->GetOperand7() % right->GetOperand7();
       working_stack.push_front(IntermediateFactory::Instance()->MakeIntLitInstruction(cur_line_num, value));
     }
       break;
       
     case BIT_AND_INT: {
-      INT64_VALUE value = left->GetOperand7() & right->GetOperand7();
+      const INT64_VALUE value = left->GetOperand7() & right->GetOperand7();
       working_stack.push_front(IntermediateFactory::Instance()->MakeIntLitInstruction(cur_line_num, value));
     }
       break;
 
     case BIT_OR_INT: {
-      INT64_VALUE value = left->GetOperand7() | right->GetOperand7();
+      const INT64_VALUE value = left->GetOperand7() | right->GetOperand7();
       working_stack.push_front(IntermediateFactory::Instance()->MakeIntLitInstruction(cur_line_num, value));
     }
       break;
 
     case BIT_XOR_INT: {
-      INT64_VALUE value = left->GetOperand7() ^ right->GetOperand7();
+      const INT64_VALUE value = left->GetOperand7() ^ right->GetOperand7();
       working_stack.push_front(IntermediateFactory::Instance()->MakeIntLitInstruction(cur_line_num, value));
     }
       break;
