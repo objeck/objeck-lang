@@ -2083,6 +2083,7 @@ void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, const int depth
   // method/function
   //
   else {
+    // track rouge return
     nested_call_depth++;
 
     // static check
@@ -2580,6 +2581,7 @@ void ContextAnalyzer::AnalyzeExpressionMethodCall(Expression* expression, const 
       }
     }
     else {
+      // track rouge return
       nested_call_depth++;
 
       std::wstring encoding;
@@ -3527,9 +3529,11 @@ void ContextAnalyzer::AnalyzeVariableFunctionCall(MethodCall* method_call, const
   // dynamic function call that is not bound to a class/function until runtime
   SymbolEntry* entry = GetEntry(method_call->GetMethodName());
   if(entry && entry->GetType() && entry->GetType()->GetType() == FUNC_TYPE) {
-    nested_call_depth++;
     entry->WasLoaded();
 
+    // track rouge return
+    nested_call_depth++;
+    
     // generate parameter strings
     Type* type = entry->GetType();
     AnalyzeVariableFunctionParameters(type, static_cast<Expression*>(method_call));
