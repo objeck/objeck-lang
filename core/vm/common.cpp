@@ -3031,7 +3031,7 @@ bool TrapProcessor::StdErrFloat(StackProgram* program, size_t* inst, size_t* &op
       std::wcerr << std::scientific;
     }
     else {
-      std::wcerr << std::setprecision(stol(precision));
+      std::wcerr << std::setprecision(stoll(precision));
     }
     
     std::wcerr << value;
