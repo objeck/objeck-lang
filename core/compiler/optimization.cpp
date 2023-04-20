@@ -1313,9 +1313,9 @@ IntermediateBlock* ItermediateOptimizer::ConstantProp(IntermediateBlock* inputs)
       if(i + 2 < input_instrs.size()) {
         IntermediateInstruction* next_instr = input_instrs[i + 1];
         IntermediateInstruction* next_next_instr = input_instrs[i + 2];
-        if(!(next_instr->GetType() == STOR_INT_VAR && next_next_instr->GetType() == LOAD_INT_VAR &&
+        if(next_instr->GetType() == STOR_INT_VAR && next_next_instr->GetType() == LOAD_INT_VAR &&
            next_instr->GetOperand() == next_next_instr->GetOperand() &&
-           next_instr->GetOperand2() == next_next_instr->GetOperand2())) {
+           next_instr->GetOperand2() == next_next_instr->GetOperand2()) {
           int_value = instr->GetOperand7();
           set_int = true;
         }
@@ -1359,9 +1359,9 @@ IntermediateBlock* ItermediateOptimizer::ConstantProp(IntermediateBlock* inputs)
       if(i + 2 < input_instrs.size()) {
         IntermediateInstruction* next_instr = input_instrs[i + 1];
         IntermediateInstruction* next_next_instr = input_instrs[i + 2];
-        if(!(next_instr->GetType() == STOR_FLOAT_VAR && next_next_instr->GetType() == LOAD_FLOAT_VAR &&
+        if(next_instr->GetType() == STOR_FLOAT_VAR && next_next_instr->GetType() == LOAD_FLOAT_VAR &&
            next_instr->GetOperand() == next_next_instr->GetOperand() &&
-           next_instr->GetOperand2() == next_next_instr->GetOperand2())) {
+           next_instr->GetOperand2() == next_next_instr->GetOperand2()) {
           float_value = instr->GetOperand4();
           set_float = true;
         }
