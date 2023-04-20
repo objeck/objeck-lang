@@ -269,7 +269,7 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
         else if(float_format == L"hex") {
           formatter << std::hexfloat;
         }
-        formatter << std::setprecision(stol(float_precision));
+        formatter << std::setprecision(stoll(float_precision));
 
         formatter << value;
         conv = formatter.str();
@@ -289,7 +289,7 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
         conv = formatter.str();
       }
       else if(!float_precision.empty()) {
-        formatter << std::setprecision(stol(float_precision));
+        formatter << std::setprecision(stoll(float_precision));
 
         formatter << value;
         conv = formatter.str();
@@ -336,25 +336,25 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
           switch(str[1]) {
             // binary
           case 'b':
-            PushInt(op_stack, stack_pos, std::stol(str + 2, nullptr, 2));
+            PushInt(op_stack, stack_pos, std::stoll(str + 2, nullptr, 2));
             return;
 
             // octal
           case 'o':
-            PushInt(op_stack, stack_pos, std::stol(str + 2, nullptr, 8));
+            PushInt(op_stack, stack_pos, std::stoll(str + 2, nullptr, 8));
             return;
 
             // hexadecimal
           case 'x':
           case 'X':
-            PushInt(op_stack, stack_pos, std::stol(str + 2, nullptr, 16));
+            PushInt(op_stack, stack_pos, std::stoll(str + 2, nullptr, 16));
             return;
 
           default:
       break;
           }
         }
-        PushInt(op_stack, stack_pos, std::stol(str, nullptr, base));
+        PushInt(op_stack, stack_pos, std::stoll(str, nullptr, base));
       }
       catch(std::invalid_argument& e) {
 #ifdef _WIN32
