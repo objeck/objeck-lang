@@ -2645,7 +2645,10 @@ void ContextAnalyzer::AnalyzeExpressionMethodCall(Expression* expression, const 
 
 void ContextAnalyzer::RogueReturn(MethodCall* method_call)
 {
-  /*
+  if(method_call->GetCallType() == NEW_INST_CALL) {
+    std::wcout << L"Hello" << std::endl;
+  }
+
   if(!nested_call_depth && !in_assignment && !in_return && !in_expression) {
     // get the last method call
     while(method_call->GetMethodCall()) {
@@ -2699,7 +2702,6 @@ void ContextAnalyzer::RogueReturn(MethodCall* method_call)
       method_call->SetRougeReturn(instructions::NIL_TYPE);
     }
   }
-  */
 }
 
 /*********************************
