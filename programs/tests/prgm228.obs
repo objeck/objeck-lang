@@ -5,7 +5,6 @@ class Test {
 
 	function : native : Brun() ~ Nil {
 		a := 3;
-		b := a;
-		b->PrintLine();
+		a->PrintLine();
 	}
 }
