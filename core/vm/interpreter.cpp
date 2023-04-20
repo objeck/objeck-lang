@@ -777,25 +777,25 @@ void StackInterpreter::Str2Int(size_t* &op_stack, long* &stack_pos)
         switch(str[1]) {
           // binary
         case L'b':
-          PushInt(std::stol(str + 2, nullptr, 2), op_stack, stack_pos);
+          PushInt(std::stoll(str + 2, nullptr, 2), op_stack, stack_pos);
           return;
 
           // octal
         case L'o':
-          PushInt(std::stol(str + 2, nullptr, 8), op_stack, stack_pos);
+          PushInt(std::stoll(str + 2, nullptr, 8), op_stack, stack_pos);
           return;
 
           // hexadecimal
         case L'x':
         case L'X':
-          PushInt(std::stol(str + 2, nullptr, 16), op_stack, stack_pos);
+          PushInt(std::stoll(str + 2, nullptr, 16), op_stack, stack_pos);
           return;
 
         default:
           break;
         }
       }
-      PushInt(std::stol(str, nullptr, base), op_stack, stack_pos);
+      PushInt(std::stoll(str, nullptr, base), op_stack, stack_pos);
     }
     catch(std::invalid_argument &e) {
 #ifdef _WIN32    
@@ -925,7 +925,7 @@ void inline StackInterpreter::Float2Str(size_t* &op_stack, long* &stack_pos)
       else if(float_format == L"hex") {
         formatter << std::hexfloat;
       }
-      formatter << std::setprecision(stol(float_precision));
+      formatter << std::setprecision(stoll(float_precision));
       
       formatter << value;
       conv = formatter.str();
@@ -945,7 +945,7 @@ void inline StackInterpreter::Float2Str(size_t* &op_stack, long* &stack_pos)
 			conv = formatter.str();
     }
     else if(!float_precision.empty()) {
-			formatter << std::setprecision(stol(float_precision));
+			formatter << std::setprecision(stoll(float_precision));
 
 			formatter << value;
 			conv = formatter.str();
