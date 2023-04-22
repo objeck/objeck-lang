@@ -4455,6 +4455,8 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType ty
               if(right == L"System.String") {
                 switch(type) {
                 case ADD_ASSIGN_STMT:
+                  static_cast<OperationAssignment*>(assignment)->SetStringConcat(true);
+                  check_right_cast = false;
                   if(left_type->GetDimension() != 0 || right_type->GetDimension() != 0) {
                     if(expression->GetExpressionType() == VAR_EXPR) {
                       Variable* rhs_var = static_cast<Variable*>(expression);
