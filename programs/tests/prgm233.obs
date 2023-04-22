@@ -1,0 +1,18 @@
+class Test {
+	@file_strs : String[];
+	@local_path : String;
+
+	function : Main(args : String[]) ~ Nil {
+
+	}
+
+	method : public : GetTexts(uri : String, use_alt : Bool) ~ String[,] {
+		each(i : 5) {
+			local_file_path := String->New(@local_path);
+			local_file_path += '/';
+			local_file_path += @file_strs[i];
+		};
+
+		return Nil;
+	}
+}
