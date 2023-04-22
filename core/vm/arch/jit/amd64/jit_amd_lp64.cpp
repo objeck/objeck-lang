@@ -3296,7 +3296,7 @@ void JitAmd64::cmov_reg(Register reg, InstructionType oper) {
     break;
 
   default:
-    std::cerr << L">>> Unknown compare! <<<" << std::endl;
+    std::wcerr << L">>> Unknown compare! <<<" << std::endl;
     exit(1);
     break;
   }
