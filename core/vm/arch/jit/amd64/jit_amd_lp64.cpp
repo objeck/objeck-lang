@@ -1017,7 +1017,7 @@ void JitAmd64::ProcessJump(StackInstr* instr) {
         break;
 
       default:
-        std::cerr << L">>> Should never occur (compiler bug?) type=" << left->GetType() << L" <<<" << std::endl;
+        std::wcerr << L">>> Should never occur (compiler bug?) type=" << left->GetType() << L" <<<" << std::endl;
         exit(1);
         break;
       }
