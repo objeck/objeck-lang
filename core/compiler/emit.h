@@ -269,7 +269,7 @@ namespace backend {
     }
 
     IntermediateInstruction* MakeInstruction(frontend::Statement* s, long l, InstructionType t, long o1) {
-      IntermediateInstruction* tmp = new IntermediateInstruction(s, nullptr, l, t, o1);
+      IntermediateInstruction* tmp = new IntermediateInstruction(s, nullptr, l, t, o1, -1);
       instructions.push_back(tmp);
       return tmp;
     }
@@ -317,7 +317,7 @@ namespace backend {
     }
 
     IntermediateInstruction* MakeInstruction(frontend::Statement* s, frontend::Expression* e, long l, InstructionType t, long o1) {
-      IntermediateInstruction* tmp = new IntermediateInstruction(s, e, l, t, o1);
+      IntermediateInstruction* tmp = new IntermediateInstruction(s, e, l, t, o1, -1);
       instructions.push_back(tmp);
       return tmp;
     }
@@ -368,7 +368,7 @@ namespace backend {
     }
 
     IntermediateInstruction* MakeInstruction(long l, InstructionType t, long o1) {
-      IntermediateInstruction* tmp = new IntermediateInstruction(nullptr, nullptr, l, t, o1);
+      IntermediateInstruction* tmp = new IntermediateInstruction(nullptr, nullptr, l, t, o1, -1);
       instructions.push_back(tmp);
       return tmp;
     }
