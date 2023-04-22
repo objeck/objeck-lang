@@ -84,7 +84,7 @@ int main(int argc, char* argv[])
     
     WSADATA data;
     if(WSAStartup(MAKEWORD(2, 2), &data)) {
-      std::cerr << L"Unable to load Winsock 2.2!" << std::endl;
+      std::wcerr << L"Unable to load Winsock 2.2!" << std::endl;
       exit(1);
     }
 #endif
