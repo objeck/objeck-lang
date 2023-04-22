@@ -914,7 +914,7 @@ void JitAmd64::ProcessInstructions() {
       
     default: {
       InstructionType error = (InstructionType)instr->GetType();
-      std::cerr << L"Unknown instruction: " << error << L"!" << std::endl;
+      std::wcerr << L"Unknown instruction: " << error << L"!" << std::endl;
       exit(1);
     }
       break;
@@ -1017,7 +1017,7 @@ void JitAmd64::ProcessJump(StackInstr* instr) {
         break;
 
       default:
-        std::cerr << L">>> Should never occur (compiler bug?) type=" << left->GetType() << L" <<<" << std::endl;
+        std::wcerr << L">>> Should never occur (compiler bug?) type=" << left->GetType() << L" <<<" << std::endl;
         exit(1);
         break;
       }
@@ -3296,7 +3296,7 @@ void JitAmd64::cmov_reg(Register reg, InstructionType oper) {
     break;
 
   default:
-    std::cerr << L">>> Unknown compare! <<<" << std::endl;
+    std::wcerr << L">>> Unknown compare! <<<" << std::endl;
     exit(1);
     break;
   }

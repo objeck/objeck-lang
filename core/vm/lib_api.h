@@ -627,7 +627,7 @@ void APITools_CallMethod(VMContext &context, size_t * instance, const wchar_t* q
 #endif
   }
   else {
-    std::cerr << L">>> DLL_CALL: Invalid method name: '" << qualified_name << L"'" << std::endl;
+    std::wcerr << L">>> DLL_CALL: Invalid method name: '" << qualified_name << L"'" << std::endl;
     exit(1);
   }
 }
