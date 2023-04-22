@@ -1,7 +1,5 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		ss : String[];
-		s := "";
-		s->Append(ss[3]);
+		
 	}
 }
