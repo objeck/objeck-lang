@@ -1664,7 +1664,7 @@ void ContextAnalyzer::AnalyzeCharacterString(CharacterString* char_str, const in
       // variable end
       if(var_start > -1) {
         if(str[i] == L'}') {
-          const std::wstring token = str.substr(var_start + 2, i - var_start - 2);
+          const std::wstring token = str.substr(static_cast<std::basic_string<wchar_t, std::char_traits<wchar_t>, std::allocator<wchar_t>>::size_type>(var_start) + 2, i - var_start - 2);
           SymbolEntry* entry = GetEntry(token);
           if(entry) {
             AnalyzeCharacterStringVariable(entry, char_str, depth);
@@ -1677,7 +1677,7 @@ void ContextAnalyzer::AnalyzeCharacterString(CharacterString* char_str, const in
           str_start = (int)i + 1;
         }
         else if(i + 1 == str.size()) {
-          const std::wstring token = str.substr(var_start + 1, i - var_start);
+          const std::wstring token = str.substr(static_cast<std::basic_string<wchar_t, std::char_traits<wchar_t>, std::allocator<wchar_t>>::size_type>(var_start) + 1, i - var_start);
           SymbolEntry* entry = GetEntry(token);
           if(entry) {
             AnalyzeCharacterStringVariable(entry, char_str, depth);
@@ -6283,8 +6283,11 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Type* right, Expression* expr
         return;
       }
       // downcast
-      else {
+      else if(right_lib_class) {
         ProcessError(expression, L"Invalid cast between classes: '" + left_lib_class->GetName() + L"' and '" + right_lib_class->GetName() + L"'");
+      }
+      else {
+        ProcessError(expression, L"Invalid cast");
       }
     }
     else {
