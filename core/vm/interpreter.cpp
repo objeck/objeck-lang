@@ -658,15 +658,15 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
 
       // shared library support
     case DLL_LOAD:
-      ProcessDllLoad(instr);
+      SharedLibraryLoad(instr);
       break;
 
     case DLL_UNLOAD:
-      ProcessDllUnload(instr);
+      SharedLibraryUnload(instr);
       break;
 
     case DLL_FUNC_CALL:
-      ProcessDllCall(instr, op_stack, stack_pos);
+      SharedLibraryCall(instr, op_stack, stack_pos);
       break;
       
     case TRAP:
@@ -2554,7 +2554,7 @@ void StackInterpreter::ProcessStoreFloatArrayElement(StackInstr* instr, size_t* 
  ********************************/
 
 typedef void (*ext_load_def)(VMContext& callbacks);
-void StackInterpreter::ProcessDllLoad(StackInstr* instr)
+void StackInterpreter::SharedLibraryLoad(StackInstr* instr)
 {
 #ifdef _DEBUG
   std::wcout << L"stack oper: shared LIBRARY_LOAD; call_pos=" << (*call_stack_pos) << std::endl;
@@ -2703,7 +2703,7 @@ void StackInterpreter::ProcessDllLoad(StackInstr* instr)
 }
 
 typedef void (*ext_unload_def)();
-void StackInterpreter::ProcessDllUnload(StackInstr* instr)
+void StackInterpreter::SharedLibraryUnload(StackInstr* instr)
 {
 #ifdef _DEBUG
   std::wcout << L"stack oper: shared library_UNLOAD; call_pos=" << (*call_stack_pos) << std::endl;
@@ -2751,7 +2751,7 @@ void StackInterpreter::ProcessDllUnload(StackInstr* instr)
 }
 
 typedef void (*lib_func_def) (VMContext& callbacks);
-void StackInterpreter::ProcessDllCall(StackInstr* instr, size_t* &op_stack, long* &stack_pos)
+void StackInterpreter::SharedLibraryCall(StackInstr* instr, size_t* &op_stack, long* &stack_pos)
 {
   size_t* instance = (size_t*)(*frame)->mem[0];
   size_t* str_obj = (size_t*)(*frame)->mem[1];
