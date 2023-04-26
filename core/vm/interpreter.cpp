@@ -1352,7 +1352,7 @@ void StackInterpreter::CpyByteAry(size_t* &op_stack, long* &stack_pos)
 
   const int64_t src_array_len = (int64_t)src_array[2];
   const int64_t dest_array_len = (int64_t)dest_array[2];
-  if(length > 0 && src_offset + length <= src_array_len && dest_offset + length <= dest_array_len) {
+  if(length > 0 && static_cast<long long>(src_offset) + length <= src_array_len && dest_offset + length <= dest_array_len) {
     const char* src_array_ptr = (char*)(src_array + 3);
     char* dest_array_ptr = (char*)(dest_array + 3);
     if(src_array_ptr == dest_array_ptr) {
@@ -1902,7 +1902,7 @@ void StackInterpreter::ProcessNewArray(StackInstr* instr, size_t* &op_stack, lon
 #ifdef _DEBUG
   std::wcout << L"stack oper: NEW_INT_ARY/NEW_FLOAT_ARY; call_pos=" << (*call_stack_pos) << std::endl;
 #endif
-  size_t indices[8];
+  size_t indices[8]{};
   const size_t value = PopInt(op_stack, stack_pos);
   size_t size = value;
   indices[0] = value;
@@ -1913,7 +1913,7 @@ void StackInterpreter::ProcessNewArray(StackInstr* instr, size_t* &op_stack, lon
     indices[dim++] = value;
   }
 
-  size_t* mem = (size_t*)MemoryManager::AllocateArray((long)(size + dim + 2), INT_TYPE, op_stack, *stack_pos);
+  size_t* mem = (size_t*)MemoryManager::AllocateArray((long)(static_cast<size_t>(size) + dim + 2), INT_TYPE, op_stack, *stack_pos);
   mem[0] = size;
   mem[1] = dim;
 
@@ -1929,7 +1929,7 @@ void StackInterpreter::ProcessNewByteArray(StackInstr* instr, size_t* &op_stack,
 #ifdef _DEBUG
   std::wcout << L"stack oper: NEW_BYTE_ARY; call_pos=" << (*call_stack_pos) << std::endl;
 #endif
-  size_t indices[8];
+  size_t indices[8]{};
   const size_t value = PopInt(op_stack, stack_pos);
   size_t size = value;
   indices[0] = value;
@@ -1940,9 +1940,9 @@ void StackInterpreter::ProcessNewByteArray(StackInstr* instr, size_t* &op_stack,
     indices[dim++] = value;
   }
 
-  // nullptr terminated string 
+  // null terminated string 
   size++;
-  size_t* mem = MemoryManager::AllocateArray((long)(size + ((dim + 2) * sizeof(size_t))), BYTE_ARY_TYPE, op_stack, *stack_pos);
+  size_t* mem = MemoryManager::AllocateArray((long)(size + ((static_cast<size_t>(dim) + 2) * sizeof(size_t))), BYTE_ARY_TYPE, op_stack, *stack_pos);
   mem[0] = size - 1;
   mem[1] = dim;
   memcpy(mem + 2, indices, dim * sizeof(size_t));
@@ -1957,7 +1957,7 @@ void StackInterpreter::ProcessNewCharArray(StackInstr* instr, size_t* &op_stack,
 #ifdef _DEBUG
   std::wcout << L"stack oper: NEW_CHAR_ARY; call_pos=" << (*call_stack_pos) << std::endl;
 #endif
-  size_t indices[8];
+  size_t indices[8]{};
   const size_t value = PopInt(op_stack, stack_pos);
   size_t size = value;
   indices[0] = value;
@@ -1970,7 +1970,7 @@ void StackInterpreter::ProcessNewCharArray(StackInstr* instr, size_t* &op_stack,
 
   // null-terminated string 
   size++;
-  size_t* mem = MemoryManager::AllocateArray((long)(size + ((dim + 2) * sizeof(size_t))), CHAR_ARY_TYPE, op_stack, *stack_pos);
+  size_t* mem = MemoryManager::AllocateArray((long)(size + ((static_cast<size_t>(dim) + 2) * sizeof(size_t))), CHAR_ARY_TYPE, op_stack, *stack_pos);
   mem[0] = size - 1;
   mem[1] = dim;
   memcpy(mem + 2, indices, dim * sizeof(size_t));
@@ -2657,7 +2657,7 @@ void StackInterpreter::ProcessDllLoad(StackInstr* instr)
   }
 
   // call function
-  VMContext context;
+  VMContext context{};
   context.data_array = nullptr;
   context.op_stack = nullptr;
   context.stack_pos = nullptr;
@@ -2957,16 +2957,16 @@ size_t* Runtime::StackInterpreter::CreateStringObject(const std::wstring& value_
   // create character array
   const long char_array_size = (long)value_str.size();
   const long char_array_dim = 1;
-  size_t* char_array = (size_t*)MemoryManager::AllocateArray(char_array_size + 1 + ((char_array_dim + 2) * sizeof(size_t)),
+  size_t* char_array = (size_t*)MemoryManager::AllocateArray(static_cast<size_t>(char_array_size) + 1 + ((static_cast<size_t>(char_array_dim) + 2) * sizeof(size_t)),
                                                              CHAR_ARY_TYPE, op_stack, *stack_pos, false);
-  char_array[0] = char_array_size + 1;
+  char_array[0] = static_cast<size_t>(char_array_size) + 1;
   char_array[1] = char_array_dim;
   char_array[2] = char_array_size;
 
   // copy string
   wchar_t* char_array_ptr = (wchar_t*)(char_array + 3);
 #ifdef _WIN32
-  wcsncpy_s(char_array_ptr, char_array_size + 1, value_str.c_str(), char_array_size);
+  wcsncpy_s(char_array_ptr, static_cast<rsize_t>(char_array_size) + 1, value_str.c_str(), char_array_size);
 #else
   wcsncpy(char_array_ptr, value_str.c_str(), char_array_size);
 #endif
