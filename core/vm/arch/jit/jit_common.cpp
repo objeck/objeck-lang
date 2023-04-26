@@ -97,7 +97,7 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
       indices[dim++] = value;
     }
 
-    // nullptr terminated string workaround
+    // null terminated string workaround
     size++;
     size_t* mem = MemoryManager::AllocateArray((int64_t)(size + ((dim + 2) * sizeof(size_t))), BYTE_ARY_TYPE, op_stack, *stack_pos);
     mem[0] = size;
