@@ -1,0 +1,10 @@
+use Collection;
+
+class Test {
+	@file_strs : String[];
+	function : Main(args : String[]) ~ Nil {
+		a := System.Utility.Parser->CommandParameters(args)<String, String>;
+		a->Size()->PrintLine();
+		a->Find("--aa")->PrintLine();
+	}
+}
