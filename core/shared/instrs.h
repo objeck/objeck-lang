@@ -175,7 +175,7 @@ namespace instructions {
     LIB_OBJ_INST_CAST,
     LIB_FUNC_DEF,
     // system directives
-    END_STMTS,
+    END_STMTS
   };
 
   // memory reference context, used for

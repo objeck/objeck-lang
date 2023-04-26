@@ -29,8 +29,8 @@
 * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 
-#ifndef __FILE_TARGET_H__
-#define __FILE_TARGET_H__
+#ifndef __EMIT_H__
+#define __EMIT_H__
 
 #include "types.h"
 #include "linker.h"
