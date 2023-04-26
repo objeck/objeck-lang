@@ -405,23 +405,23 @@ class ContextAnalyzer {
   }
   
   // helper function for program enum searches
-  inline bool HasProgramLibraryEnum(const std::wstring &n) {
+  inline bool HasProgramOrLibraryEnum(const std::wstring &n) {
     return SearchProgramEnums(n) || linker->SearchEnumLibraries(n, program->GetUses(current_class->GetFileName()));
   }
 
   // helper function for program class searches
-  inline bool HasProgramLibraryClass(const std::wstring &n) {
+  inline bool HasProgramOrLibraryClass(const std::wstring &n) {
     return SearchProgramClasses(n) || linker->SearchClassLibraries(n, program->GetUses(current_class->GetFileName()));
   }
 
   // class query by name
-  bool GetProgramLibraryClass(const std::wstring &cls_name, Class*& klass, LibraryClass* &lib_klass);
+  bool GetProgramOrLibraryClass(const std::wstring &cls_name, Class*& klass, LibraryClass* &lib_klass);
 
   // search and cache class type query
-  bool GetProgramLibraryClass(Type* type, Class* &klass, LibraryClass* &lib_klass);
+  bool GetProgramOrLibraryClass(Type* type, Class* &klass, LibraryClass* &lib_klass);
 
   // resolve program or library class name
-  std::wstring GetProgramLibraryClassName(const std::wstring &n);
+  std::wstring GetProgramOrLibraryClassName(const std::wstring &n);
 
   // determines if name equals class
   bool ClassEquals(const std::wstring &left_name, Class* right_klass, LibraryClass* right_lib_klass);
