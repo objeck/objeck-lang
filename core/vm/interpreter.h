@@ -336,9 +336,10 @@ namespace Runtime {
     inline void ProcessStoreFloat(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
     inline void ProcessLoadFloat(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
     inline void ProcessCopyFloat(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
-    inline void ProcessDllLoad(StackInstr* instr);
-    inline void ProcessDllUnload(StackInstr* instr);
-    inline void ProcessDllCall(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
+
+    inline void SharedLibraryLoad(StackInstr* instr);
+    inline void SharedLibraryUnload(StackInstr* instr);
+    inline void SharedLibraryCall(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
     
   public:
 		// initialize the runtime system
