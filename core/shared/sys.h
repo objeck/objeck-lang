@@ -144,7 +144,7 @@ static bool BytesToUnicode(const std::string &in, std::wstring &out) {
   }
   
   // create string
-  out.append(buffer, wsize - 1);
+  out.append(buffer, static_cast<std::basic_string<wchar_t, std::char_traits<wchar_t>, std::allocator<wchar_t>>::size_type>(wsize) - 1);
 
   // clean up
   delete[] buffer;
@@ -237,7 +237,7 @@ static bool UnicodeToBytes(const std::wstring &in, std::string &out) {
   }
   
   // append output
-  out.append(buffer, size - 1);
+  out.append(buffer, static_cast<std::basic_string<char, std::char_traits<char>, std::allocator<char>>::size_type>(size) - 1);
 
   // clean up
   delete[] buffer;
@@ -287,7 +287,7 @@ static bool CharacterToBytes(wchar_t in, std::string &out) {
     return true;
   }
   
-  wchar_t buffer[2];
+  wchar_t buffer[2]{};
   buffer[0] = in;
   buffer[1] = L'\0';
 
@@ -463,11 +463,7 @@ public:
     char* buffer = (char*)calloc(buffer_max, sizeof(char));
 
     // setup stream
-    z_stream stream;
-    stream.zalloc = Z_NULL;
-    stream.zfree = Z_NULL;
-    stream.opaque = Z_NULL;
-    stream.total_out = 0;
+    z_stream stream{};
 
     // input
     stream.next_in = (Bytef*)src;
@@ -502,11 +498,7 @@ public:
 
   static char* UncompressGzip(const char* src, unsigned long src_len, unsigned long& out_len) {
     // setup stream
-    z_stream stream;
-    stream.zalloc = Z_NULL;
-    stream.zfree = Z_NULL;
-    stream.opaque = Z_NULL;
-    stream.total_out = 0;
+    z_stream stream{};
 
     // input
     stream.next_in = (Bytef*)src;
@@ -527,7 +519,7 @@ public:
     bool success = false;
     do {
       if(stream.total_out >= buffer_max) {
-        char* temp = (char*)calloc(sizeof(char), buffer_max << 1);
+        char* temp = (char*)calloc(sizeof(char), static_cast<size_t>(buffer_max) << 1);
         memcpy(temp, buffer, buffer_max);
         buffer_max <<= 1;
 
@@ -568,11 +560,7 @@ public:
     char* buffer = (char*)calloc(buffer_max, sizeof(char));
 
     // setup stream
-    z_stream stream;
-    stream.zalloc = Z_NULL;
-    stream.zfree = Z_NULL;
-    stream.opaque = Z_NULL;
-    stream.total_out = 0;
+    z_stream stream{};
 
     // input
     stream.next_in = (Bytef*)src;
@@ -607,11 +595,7 @@ public:
 
   static char* UncompressBr(const char* src, unsigned long src_len, unsigned long& out_len) {
     // setup stream
-    z_stream stream;
-    stream.zalloc = Z_NULL;
-    stream.zfree = Z_NULL;
-    stream.opaque = Z_NULL;
-    stream.total_out = 0;
+    z_stream stream{};
 
     // input
     stream.next_in = (Bytef*)src;
@@ -632,7 +616,7 @@ public:
     bool success = false;
     do {
       if(stream.total_out >= buffer_max) {
-        char* temp = (char*)calloc(sizeof(char), buffer_max << 1);
+        char* temp = (char*)calloc(sizeof(char), static_cast<size_t>(buffer_max) << 1);
         memcpy(temp, buffer, buffer_max);
         buffer_max <<= 1;
 
