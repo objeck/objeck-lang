@@ -173,7 +173,7 @@ bundle System.Time {
 		}
 	}
 	
-	class DatePart {
+	class : private : DatePart {
 		@index : Int;
 		@type : Type;
 
@@ -246,6 +246,34 @@ bundle System.Utility {
 			};
 
 			return tokens;
+		}
+
+		#~
+		Command line parser
+		@param args command line arguments
+		@return name/value pairs
+		~#
+		function : CommandParameters(args : String[]) ~ Hash<String, String> {
+			params := Hash->New()<String, String>;
+
+			each(arg := args) {
+				name := "";
+				value := "";
+
+				index := arg->Find('=');
+				if(index > 0) {
+					name += arg->SubString(index);
+					index += 1;
+					value += arg->SubString(index, arg->Size() - index);
+				}
+				else {
+					name := arg;
+				};
+
+				params->Insert(name, value);
+			};
+
+			return params;
 		}
 	}
 }
