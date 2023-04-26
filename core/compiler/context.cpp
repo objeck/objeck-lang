@@ -2523,7 +2523,12 @@ void ContextAnalyzer::AnalyzeNewArrayCall(MethodCall* method_call, const int dep
           method_call->GetEvalType()->SetGenerics(concrete_types);
         }
         else {
-          ProcessError(static_cast<Expression*>(method_call), L"Concrete to generic size mismatch");
+          if(concrete_types.empty()) {
+            ProcessError(static_cast<Expression*>(method_call), L"Missing concrete types");
+          }
+          else {
+            ProcessError(static_cast<Expression*>(method_call), L"Concrete to generic size mismatch");
+          }
         }
       }
       else {
@@ -2532,7 +2537,12 @@ void ContextAnalyzer::AnalyzeNewArrayCall(MethodCall* method_call, const int dep
           method_call->GetEvalType()->SetGenerics(concrete_types);
         }
         else {
-          ProcessError(static_cast<Expression*>(method_call), L"Concrete to generic size mismatch");
+          if(concrete_types.empty()) {
+            ProcessError(static_cast<Expression*>(method_call), L"Missing concrete types");
+          }
+          else {
+            ProcessError(static_cast<Expression*>(method_call), L"Concrete to generic size mismatch");
+          }
         }
       }
     }
@@ -3486,28 +3496,33 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
       method_call->SetEvalType(eval_type, false);
     }
     else if(lib_method->GetReturn()->HasGenerics()) {
-      const std::vector<Type*> concretate_types = method_call->GetConcreteTypes();
+      const std::vector<Type*> concrete_types = method_call->GetConcreteTypes();
       const std::vector<Type*> generic_types = lib_method->GetReturn()->GetGenerics();
-      if(concretate_types.size() == generic_types.size()) {
-        for(size_t i = 0; i < concretate_types.size(); ++i) {
-          Type* concretate_type = concretate_types[i];
-          ResolveClassEnumType(concretate_type);
+      if(concrete_types.size() == generic_types.size()) {
+        for(size_t i = 0; i < concrete_types.size(); ++i) {
+          Type* concrete_type = concrete_types[i];
+          ResolveClassEnumType(concrete_type);
 
           Type* generic_type = generic_types[i];
           ResolveClassEnumType(generic_type);
 
-          ValidateConcretes(concretate_type, generic_type, method_call);
+          ValidateConcretes(concrete_type, generic_type, method_call);
         }
       }
       else {
-        ProcessError(static_cast<Expression*>(method_call), L"Concrete to generic size mismatch");
+        if(concrete_types.empty()) {
+          ProcessError(static_cast<Expression*>(method_call), L"Missing concrete types");
+        }
+        else {
+          ProcessError(static_cast<Expression*>(method_call), L"Concrete to generic size mismatch");
+        }
       }
     }
 
     // TODO: refactor, side effects?
-    const std::vector<Type*> concretate_types = method_call->GetConcreteTypes();
-    if(method_call->GetCallType() != NEW_INST_CALL && concretate_types.size() > 0 && concretate_types[0]->GetGenerics().size() == 1) {
-      Type* first_type = concretate_types[0];
+    const std::vector<Type*> concrete_types = method_call->GetConcreteTypes();
+    if(method_call->GetCallType() != NEW_INST_CALL && concrete_types.size() > 0 && concrete_types[0]->GetGenerics().size() == 1) {
+      Type* first_type = concrete_types[0];
       ResolveClassEnumType(first_type);
       method_call->SetEvalType(first_type, true);
     }
@@ -7724,7 +7739,6 @@ Type* ContextAnalyzer::ResolveGenericType(Type* candidate_type, MethodCall* meth
                     ValidateConcretes(candidate_type, concrete_type, method_call);
                   }
                   else {
-                    // TODO: this is a hack, fix it...
                     std::vector<Type*> to_concrete_types = method_call->GetConcreteTypes();                    
                     if(from_concrete_types.size() != to_concrete_types.size() && to_concrete_types.size() == 1) {
                       std::vector<Type*> mthd_types;
