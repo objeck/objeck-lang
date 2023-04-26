@@ -590,15 +590,15 @@ void IntermediateInstruction::Debug(size_t i) {
     GetLogger()  << i << L":\tASYNC_MTHD_CALL" << std::endl;
     break;
 
-  case instructions::DLL_LOAD:
+  case instructions::EXT_LIB_LOAD:
     GetLogger()  << i << L":\tDLL_LOAD" << std::endl;
     break;
 
-  case instructions::DLL_UNLOAD:
+  case instructions::EXT_LIB_UNLOAD:
     GetLogger()  << i << L":\tDLL_UNLOAD" << std::endl;
     break;
 
-  case instructions::DLL_FUNC_CALL:
+  case instructions::EXT_LIB_FUNC_CALL:
     GetLogger()  << i << L":\tDLL_FUNC_CALL" << std::endl;
     break;
 

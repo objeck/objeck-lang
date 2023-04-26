@@ -1487,16 +1487,16 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
     }
       break;
 
-    case DLL_LOAD:
-      instrs.push_back(new LibraryInstr(line_num, DLL_LOAD));
+    case EXT_LIB_LOAD:
+      instrs.push_back(new LibraryInstr(line_num, EXT_LIB_LOAD));
       break;
 
-    case DLL_UNLOAD:
-      instrs.push_back(new LibraryInstr(line_num, DLL_UNLOAD));
+    case EXT_LIB_UNLOAD:
+      instrs.push_back(new LibraryInstr(line_num, EXT_LIB_UNLOAD));
       break;
 
-    case DLL_FUNC_CALL:
-      instrs.push_back(new LibraryInstr(line_num, DLL_FUNC_CALL));
+    case EXT_LIB_FUNC_CALL:
+      instrs.push_back(new LibraryInstr(line_num, EXT_LIB_FUNC_CALL));
       break;
 
     case THREAD_JOIN:

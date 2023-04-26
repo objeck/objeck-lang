@@ -154,9 +154,9 @@ namespace instructions {
     SET_SIGNAL,
     RAISE_SIGNAL,
     // shared libraries
-    DLL_LOAD,
-    DLL_UNLOAD,
-    DLL_FUNC_CALL,
+    EXT_LIB_LOAD,
+    EXT_LIB_UNLOAD,
+    EXT_LIB_FUNC_CALL,
     // stack ops
     SWAP_INT,
     POP_INT,

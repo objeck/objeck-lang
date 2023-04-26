@@ -344,9 +344,9 @@ enum ScannerTokenType {
   DESERL_OBJ_ARY,
   DESERL_FLOAT_ARY,
   // shared library support
-  DLL_LOAD,
-  DLL_UNLOAD,
-  DLL_FUNC_CALL,
+  EXT_LIB_LOAD,
+  EXT_LIB_UNLOAD,
+  EXT_LIB_FUNC_CALL,
   // thread management
   ASYNC_MTHD_CALL,
   THREAD_MUTEX,

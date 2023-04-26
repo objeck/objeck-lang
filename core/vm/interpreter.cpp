@@ -657,15 +657,15 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
       break;
 
       // shared library support
-    case DLL_LOAD:
+    case EXT_LIB_LOAD:
       SharedLibraryLoad(instr);
       break;
 
-    case DLL_UNLOAD:
+    case EXT_LIB_UNLOAD:
       SharedLibraryUnload(instr);
       break;
 
-    case DLL_FUNC_CALL:
+    case EXT_LIB_FUNC_CALL:
       SharedLibraryCall(instr, op_stack, stack_pos);
       break;
       

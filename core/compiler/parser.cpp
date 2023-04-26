@@ -1787,21 +1787,21 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
       NextToken();
       break;
 
-    case DLL_LOAD:
+    case EXT_LIB_LOAD:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                               instructions::DLL_LOAD);
+                                                               instructions::EXT_LIB_LOAD);
       NextToken();
       break;
 
-    case DLL_UNLOAD:
+    case EXT_LIB_UNLOAD:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                               instructions::DLL_UNLOAD);
+                                                               instructions::EXT_LIB_UNLOAD);
       NextToken();
       break;
 
-    case DLL_FUNC_CALL:
+    case EXT_LIB_FUNC_CALL:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                               instructions::DLL_FUNC_CALL);
+                                                               instructions::EXT_LIB_FUNC_CALL);
       NextToken();
       break;
 
