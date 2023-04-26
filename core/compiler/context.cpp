@@ -619,8 +619,8 @@ bool ContextAnalyzer::AnalyzeVirtualMethods(Class* impl_class, Class* virtual_cl
         }
         else {
           error_msg += L"\n\tMissing: '";
-    error_msg += virtual_method->GetUserName();
-    error_msg += L'\'';
+          error_msg += virtual_method->GetUserName();
+          error_msg += L'\'';
         }
       }
     }
@@ -775,9 +775,9 @@ bool ContextAnalyzer::AnalyzeVirtualMethods(Class* impl_class, LibraryClass* lib
                                impl_method->IsStatic(), impl_method->IsVirtual(), virtual_method);
         }
         else {
-    error_msg += L"\n\t'Missing:";
-    error_msg += virtual_method->GetUserName();
-    error_msg += L'\'';
+          error_msg += L"\n\t'Missing:";
+          error_msg += virtual_method->GetUserName();
+          error_msg += L'\'';
         }
       }
     }
@@ -3511,7 +3511,11 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
       }
       else {
         if(concrete_types.empty()) {
-          ProcessError(static_cast<Expression*>(method_call), L"Missing concrete types");
+          for(const auto& generic_type : generic_types) {
+            if(!ResolveClassEnumType(generic_type)) {
+              ProcessError(static_cast<Expression*>(method_call), L"Missing or invalid concrete types");
+            }
+          }
         }
         else {
           ProcessError(static_cast<Expression*>(method_call), L"Concrete to generic size mismatch");
