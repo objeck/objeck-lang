@@ -1681,16 +1681,16 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, ASYNC_MTHD_CALL, -1, 1L, -1L));
     break;
     
-  case DLL_LOAD:
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, DLL_LOAD));
+  case EXT_LIB_LOAD:
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, EXT_LIB_LOAD));
     break;
 
-  case DLL_UNLOAD:
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, DLL_UNLOAD));
+  case EXT_LIB_UNLOAD:
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, EXT_LIB_UNLOAD));
     break;
     
-  case DLL_FUNC_CALL:
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, DLL_FUNC_CALL));
+  case EXT_LIB_FUNC_CALL:
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, EXT_LIB_FUNC_CALL));
     break;
     
   case THREAD_MUTEX:

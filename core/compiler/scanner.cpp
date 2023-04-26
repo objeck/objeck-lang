@@ -270,9 +270,9 @@ void Scanner::LoadKeywords()
   ident_map[L"DIR_COPY"] = DIR_COPY;
   ident_map[L"DIR_LIST"] = DIR_LIST;
   ident_map[L"ASYNC_MTHD_CALL"] = ASYNC_MTHD_CALL;
-  ident_map[L"DLL_LOAD"] = DLL_LOAD;
-  ident_map[L"DLL_UNLOAD"] = DLL_UNLOAD;
-  ident_map[L"DLL_FUNC_CALL"] = DLL_FUNC_CALL;
+  ident_map[L"EXT_LIB_LOAD"] = EXT_LIB_LOAD;
+  ident_map[L"EXT_LIB_UNLOAD"] = EXT_LIB_UNLOAD;
+  ident_map[L"EXT_LIB_FUNC_CALL"] = EXT_LIB_FUNC_CALL;
   ident_map[L"THREAD_MUTEX"] = THREAD_MUTEX;
   ident_map[L"THREAD_SLEEP"] = THREAD_SLEEP;
   ident_map[L"THREAD_JOIN"] = THREAD_JOIN;
@@ -538,9 +538,9 @@ void Scanner::CheckIdentifier(int index)
     case DIR_LIST:
     case DIR_COPY:
     case ASYNC_MTHD_CALL:
-    case DLL_LOAD:
-    case DLL_UNLOAD:
-    case DLL_FUNC_CALL:
+    case EXT_LIB_LOAD:
+    case EXT_LIB_UNLOAD:
+    case EXT_LIB_FUNC_CALL:
     case THREAD_MUTEX:
     case THREAD_SLEEP:
     case THREAD_JOIN:

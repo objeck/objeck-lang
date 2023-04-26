@@ -985,16 +985,16 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
       }
       break;
 
-    case DLL_LOAD:
-      mthd_instrs[i] = new StackInstr(line_num, DLL_LOAD);
+    case EXT_LIB_LOAD:
+      mthd_instrs[i] = new StackInstr(line_num, EXT_LIB_LOAD);
       break;
 
-    case DLL_UNLOAD:
-      mthd_instrs[i] = new StackInstr(line_num, DLL_UNLOAD);
+    case EXT_LIB_UNLOAD:
+      mthd_instrs[i] = new StackInstr(line_num, EXT_LIB_UNLOAD);
       break;
 
-    case DLL_FUNC_CALL:
-      mthd_instrs[i] = new StackInstr(line_num, DLL_FUNC_CALL);
+    case EXT_LIB_FUNC_CALL:
+      mthd_instrs[i] = new StackInstr(line_num, EXT_LIB_FUNC_CALL);
       break;
 
     case THREAD_JOIN:

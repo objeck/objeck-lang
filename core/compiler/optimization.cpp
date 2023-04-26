@@ -689,9 +689,9 @@ bool ItermediateOptimizer::CanInlineMethod(IntermediateMethod* mthd_called, std:
     case instructions::ZERO_CHAR_ARY:
     case instructions::ZERO_INT_ARY:
     case instructions::ZERO_FLOAT_ARY:
-    case instructions::DLL_LOAD:
-    case instructions::DLL_UNLOAD:
-    case instructions::DLL_FUNC_CALL:
+    case instructions::EXT_LIB_LOAD:
+    case instructions::EXT_LIB_UNLOAD:
+    case instructions::EXT_LIB_FUNC_CALL:
     case instructions::THREAD_JOIN:
     case instructions::THREAD_SLEEP:
     case instructions::THREAD_MUTEX:
