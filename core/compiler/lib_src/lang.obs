@@ -1492,7 +1492,7 @@ bundle System {
 		@ignore-params
 		@return absolute value
 		~#
-		function : native : Abs(v : Float) ~ Float {
+		function : Abs(v : Float) ~ Float {
 			if(v < 0.0) {
 				v *= -1.0;
 			};
