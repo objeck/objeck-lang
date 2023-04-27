@@ -1,10 +1,11 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		Brun();
-	}
-
-	function : native : Brun() ~ Nil {
-		a := 3;
+		a := args[0]->ToInt();
+		if(a < 0) {
+			a := (a - 1) xor -1;
+		}
 		a->PrintLine();
+
+		a->Abs()->PrintLine();
 	}
 }
