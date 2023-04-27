@@ -1076,21 +1076,19 @@ namespace backend {
       program = p;
       emit_lib = l;
       is_debug = d;
+      show_asm = s;
       file_name = n;
 
-#ifndef _DEBUG
       if(show_asm) {
         OpenLogger(ReplaceExt(UnicodeToBytes(file_name), "obm"));
       }
-#endif
     }
 
     ~FileEmitter() {
-#ifndef _DEBUG
       if(show_asm) {
         CloseLogger();
       }
-#endif
+
       delete program;
       program = nullptr;
     }
