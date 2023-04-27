@@ -1,5 +1,6 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		
+		aa := 13;
+		aa->PrintLine();
 	}
 }

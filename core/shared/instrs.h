@@ -79,7 +79,7 @@ namespace instructions {
     GTR_FLOAT,
     LES_EQL_FLOAT,
     GTR_EQL_FLOAT,
-    // mathematical operations
+    // integer operations 
     AND_INT,
     OR_INT,
     ADD_INT,
@@ -92,6 +92,7 @@ namespace instructions {
     BIT_XOR_INT,
     SHL_INT,
     SHR_INT,
+    // float operations
     ADD_FLOAT,
     SUB_FLOAT,
     MUL_FLOAT,
