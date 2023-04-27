@@ -90,7 +90,13 @@ void FileEmitter::Emit()
   OutputStream out_stream(file_name);
   program->Write(emit_lib, is_debug, out_stream);
   if(out_stream.WriteFile()) {
-    std::wcout << L"Wrote target file: '" << file_name << L"'\n---" << std::endl;
+    std::wcout << L"Wrote target file: '" << file_name << L"'";
+    
+    if(show_asm) {
+      std::wcout << L" with assembly output";
+    }
+
+    std::wcout  << L".\n---" << std::endl;
   }
   else {
     std::wcerr << L"Unable to write file: '" << file_name << L"'" << std::endl;
