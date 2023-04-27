@@ -256,7 +256,7 @@ bundle System {
 		~#
 		function : Abs(v : Byte) ~ Byte {
 			if(v < 0) {
-				v *= -1;
+				v := (v - 1) xor -1;
 			};
 
 			return v;
@@ -1124,7 +1124,7 @@ bundle System {
 		~#
 		function : Abs(v : Int) ~ Int {
 			if(v < 0) {
-				v *= -1;
+				v := (v - 1) xor -1;
 			};
 
 			return v;
@@ -1492,7 +1492,7 @@ bundle System {
 		@ignore-params
 		@return absolute value
 		~#
-		function : native : Abs(v : Float) ~ Float {
+		function : Abs(v : Float) ~ Float {
 			if(v < 0.0) {
 				v *= -1.0;
 			};
@@ -4807,7 +4807,7 @@ bundle System.API {
 			Parent();
 
 			@name := name;
-			DLL_LOAD;
+			EXT_LIB_LOAD;
 		}
 		
 		#~
@@ -4822,7 +4822,7 @@ bundle System.API {
 		Unloads the shared library
 		~#
 		method : public : Unload() ~ Nil {
-			DLL_UNLOAD;
+			EXT_LIB_UNLOAD;
 		}
 		
 		#~
@@ -4831,7 +4831,7 @@ bundle System.API {
 		@param args argument to the native function
 		~#
 		method : public : CallFunction(name : String, args : Base[]) ~ Nil {
-			DLL_FUNC_CALL;
+			EXT_LIB_FUNC_CALL;
 		}
 	}
 }
