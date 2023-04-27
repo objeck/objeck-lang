@@ -256,7 +256,7 @@ bundle System {
 		~#
 		function : Abs(v : Byte) ~ Byte {
 			if(v < 0) {
-				v *= -1;
+				v := (v - 1) xor -1;
 			};
 
 			return v;
@@ -1124,7 +1124,7 @@ bundle System {
 		~#
 		function : Abs(v : Int) ~ Int {
 			if(v < 0) {
-				v *= -1;
+				v := (v - 1) xor -1;
 			};
 
 			return v;
