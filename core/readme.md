@@ -1,7 +1,6 @@
 # Architecture  
 
-## Component Model
-![alt text](docs/images/toolchain.svg "Objeck System Architecture")
+![alt text](../docs/images/toolchain.svg "Objeck System Architecture")
 
 ### Notable Subsystems
 * [Compiler](https://github.com/objeck/objeck-lang/blob/master/core/compiler)
