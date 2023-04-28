@@ -510,7 +510,7 @@ wstring GetUsage()
   usage += L"  -src_dir:  [optional] directory of content to copy to app/resources\n";
   usage += L"  -to_dir:   [output] output file directory\n";
   usage += L"  -to_name:  [output] output app name\n";
-  usage += L"  -install:  [optional] root Objeck directory to copy the runtime from\n";
+  usage += L"  -install:  [output] root Objeck directory to copy the runtime from\n";
   usage += L"\nExample: \"obb -src_file /tmp/hello.obe -to_dir /tmp -to_name hello -install /opt/objeck-lang\"\n\nVersion: ";
   usage += VERSION_STRING;
 
