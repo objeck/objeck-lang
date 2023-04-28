@@ -1,4 +1,4 @@
-# Technical Architecture  
+# Architecture  
 
 ## Component Model
 ![alt text](docs/images/toolchain.svg "Objeck System Architecture")
