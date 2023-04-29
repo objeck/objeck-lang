@@ -129,6 +129,7 @@ ItermediateOptimizer::ItermediateOptimizer(IntermediateProgram* p, int u, std::w
 
   // built-in types
   can_inline.insert(L"System.$BaseArray:Size:o.System.Base*,");
+  can_inline.insert(L"System.Base:GetClassID:");
 }
 
 void ItermediateOptimizer::Optimize()
