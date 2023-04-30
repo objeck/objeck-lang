@@ -1,5 +1,5 @@
 /***************************************************************************
- * VM std::stack machine.
+ * VM stack machine.
  *
  * Copyright (c) 2023, Randy Hollines
  * All rights reserved.
