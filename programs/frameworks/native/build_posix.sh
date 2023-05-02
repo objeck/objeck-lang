@@ -13,4 +13,4 @@ $CC -O3 -Wall -D_DIAG_LIB -D_X64 -D_DIAG_LIB -D_MSYS2 -std=c++17 -fPIC -Wno-unus
 $CC -O3 -shared -Wl,-soname,$1.so.1 -o $LIB.so *.o -lssl -lcrypto -ldl -lz -pthread
 cp $LIB.so ../../../core/release/deploy/lib/native/
 
-obc foo && obr foo
+obc foo; obr foo
