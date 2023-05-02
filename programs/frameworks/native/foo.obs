@@ -1,20 +1,10 @@
-use System.API;
-
-class Proxy {
-	@lib_proxy : static : DllProxy;
-
-	function : GetDllProxy() ~ DllProxy {
-		if(@lib_proxy = Nil) {
-			@lib_proxy := DllProxy->New("lib_foo");
-		};
-
-		return @lib_proxy;
-	}
-}
-
 class Foo {
+	function : Main(args : String[]) ~ Nil {
+		Add(2, 3)->PrintLine();
+	}
+
 	function : Add(left : Int, right : Int) ~ Int {
-		array_args := Base->New[5];
+		array_args := Base->New[3];
 		array_args[0] := IntRef->New();
 		array_args[1] := IntRef->New(left);
 		array_args[2] := IntRef->New(right);
@@ -23,8 +13,16 @@ class Foo {
 		result := array_args[0]->As(IntRef);
 		return result->Get();
 	}
+}
 
-	function : Main(args : String[]) ~ Nil {
-		Add(2, 3)->PrintLine();
+class Proxy {
+	@lib_proxy : static : System.API.DllProxy;
+
+	function : GetDllProxy() ~ System.API.DllProxy {
+		if(@lib_proxy = Nil) {
+			@lib_proxy := System.API.DllProxy->New("lib_foo");
+		};
+
+		return @lib_proxy;
 	}
 }
