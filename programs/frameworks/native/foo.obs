@@ -5,12 +5,12 @@ class Foo {
 
 	function : Add(left : Int, right : Int) ~ Int {
 		array_args := Base->New[3];
-		array_args[0] := IntRef->New();
+		
+		array_args[0] := result := IntRef->New();
 		array_args[1] := IntRef->New(left);
 		array_args[2] := IntRef->New(right);
 		Proxy->GetDllProxy()->CallFunction("add", array_args);
 		
-		result := array_args[0]->As(IntRef);
 		return result->Get();
 	}
 }
