@@ -1,3 +1,5 @@
+#include "../../../core/vm/lib_api.h"
+
 extern "C" {
   //
   // initialize diagnostics environment
