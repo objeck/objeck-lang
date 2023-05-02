@@ -1,3 +1,7 @@
+@echo off
+
+setlocal
+
 set CC=cl
 set LIB=lib_foo
 set DEPLOY_DIR=deploy64
