@@ -30,7 +30,7 @@ extern "C" {
   void add(VMContext& context)
   {
     const long left = APITools_GetIntValue(context, 1);
-    const long right = APITools_GetIntValue(context, 1);
+    const long right = APITools_GetIntValue(context, 2);
     APITools_SetIntValue(context, 0, left + right);
   }
 }
