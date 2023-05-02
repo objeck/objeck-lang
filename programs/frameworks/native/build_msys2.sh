@@ -10,7 +10,7 @@ rm ../../../core/release/$DEPLOY_DIR/lib/native/$LIB.dll
 export PATH=$PATH:../../../core/release/$DEPLOY_DIR/bin
 export OBJECK_LIB_PATH=../../../core/release/$DEPLOY_DIR/lib
 
-$CC -O3 -Wall -D_DIAG_LIB -D_X64 -D_WIN32 -D_DIAG_LIB -D_MSYS2 -std=c++17 -fPIC -Wno-unused-function -Wno-unused-variable -c *lib_foo.cpp
+$CC -O3 -Wall -D_DIAG_LIB -D_X64 -D_WIN32 -D_DIAG_LIB -D_MSYS2 -std=c++17 -fPIC -Wno-unused-function -Wno-unused-variable -c *%LIB%.cpp
 $CC -O3 -shared -Wl,-soname,$LIB.dll.1 -o $LIB.dll *.o -lssl -lcrypto -lz -pthread
 cp $LIB.dll ../../../core/release/$DEPLOY_DIR/lib/native/
 
