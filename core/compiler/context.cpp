@@ -6366,17 +6366,17 @@ bool ContextAnalyzer::CheckGenericEqualTypes(Type* left, Type* right, Expression
             right_generic_type = right_generic_klass->GetGenericInterface();
           }
           else {
-            right_generic_type = ResolveGenericType(right_generic_type, expression, right_klass, lib_right_klass);
+            right_generic_type = ResolveGenericType(left_generic_type, expression, left_klass, lib_left_klass);
           }
         }
 
         const std::wstring left_type_name = left_generic_type->GetName();
         const std::wstring right_type_name = right_generic_type->GetName();
-        if(left_type_name != right_type_name) {
+        if(left_generic_type->IsResolved() && left_type_name != right_type_name) {
           if(check_only) {
             return false;
           }
-          ProcessError(expression, L"Cannot std::map generic/concrete class to concrete class: '" + left_type_name + L"' and '" + right_type_name + L"'");
+          ProcessError(expression, L"Cannot map generic/concrete class to concrete class: '" + left_type_name + L"' and '" + right_type_name + L"'");
         }
       }
     }
