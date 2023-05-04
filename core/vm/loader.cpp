@@ -871,7 +871,6 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
     case ZERO_INT_ARY:
     case ZERO_FLOAT_ARY:
       mthd_instrs[i] = cached_instrs[type];
-      cached_instr_count++;
       break;
       //
       // End: instruction caching
