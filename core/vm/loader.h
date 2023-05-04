@@ -187,6 +187,13 @@ public:
     cached_instrs[NEQL_FLOAT] = new StackInstr(-1, NEQL_FLOAT);
     cached_instrs[LES_EQL_FLOAT] = new StackInstr(-1, LES_EQL_FLOAT);
     cached_instrs[GTR_EQL_FLOAT] = new StackInstr(-1, GTR_EQL_FLOAT);
+
+   cached_instrs[I2F] = new StackInstr(-1, I2F);
+   cached_instrs[F2I] = new StackInstr(-1, F2I);
+   cached_instrs[S2I] = new StackInstr(-1, S2I);
+   cached_instrs[S2F] = new StackInstr(-1, S2F);
+   cached_instrs[I2S] = new StackInstr(-1, I2S);
+   cached_instrs[F2S] = new StackInstr(-1, F2S);
   }
 
   ~Loader() {

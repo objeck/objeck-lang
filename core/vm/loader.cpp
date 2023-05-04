@@ -825,27 +825,27 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
       break;
 
     case F2I:
-      mthd_instrs[i] = new StackInstr(line_num, F2I);
+      mthd_instrs[i] = cached_instrs[F2I];
       break;
 
     case I2F:
-      mthd_instrs[i] = new StackInstr(line_num, I2F);
+      mthd_instrs[i] = cached_instrs[I2F];
       break;
 
     case S2I:
-      mthd_instrs[i] = new StackInstr(line_num, S2I);
+      mthd_instrs[i] = cached_instrs[S2I];
       break;
 
     case S2F:
-      mthd_instrs[i] = new StackInstr(line_num, S2F);
+      mthd_instrs[i] = cached_instrs[S2F];
       break;
 
     case I2S:
-      mthd_instrs[i] = new StackInstr(line_num, I2S);
+      mthd_instrs[i] = cached_instrs[I2S];
       break;
       
     case F2S:
-      mthd_instrs[i] = new StackInstr(line_num, F2S);
+      mthd_instrs[i] = cached_instrs[F2S];
       break;
       
     case SWAP_INT:
