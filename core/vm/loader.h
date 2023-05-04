@@ -212,6 +212,11 @@ public:
 
     cached_instrs[POP_INT] = new StackInstr(-1, POP_INT);
     cached_instrs[POP_FLOAT] = new StackInstr(-1, POP_FLOAT);
+
+    cached_instrs[ZERO_BYTE_ARY] = new StackInstr(-1, ZERO_BYTE_ARY);
+    cached_instrs[ZERO_CHAR_ARY] = new StackInstr(-1, ZERO_CHAR_ARY);
+    cached_instrs[ZERO_INT_ARY] = new StackInstr(-1, ZERO_INT_ARY);
+    cached_instrs[ZERO_FLOAT_ARY] = new StackInstr(-1, ZERO_FLOAT_ARY);
   }
 
   ~Loader() {

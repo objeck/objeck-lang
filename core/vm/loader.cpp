@@ -716,24 +716,8 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
       mthd_instrs[i] = new StackInstr(line_num, CEIL_FLOAT);
       break;
 
-    case ZERO_BYTE_ARY:
-      mthd_instrs[i] = new StackInstr(line_num, ZERO_BYTE_ARY);
-      break;
-
-    case ZERO_CHAR_ARY:
-      mthd_instrs[i] = new StackInstr(line_num, ZERO_CHAR_ARY);
-      break;
-
-    case ZERO_INT_ARY:
-      mthd_instrs[i] = new StackInstr(line_num, ZERO_INT_ARY);
-      break;
-
     case LOAD_FLOAT_LIT:
       mthd_instrs[i] = new StackInstr(line_num, LOAD_FLOAT_LIT, ReadDouble());
-      break;
-
-    case ZERO_FLOAT_ARY:
-      mthd_instrs[i] = new StackInstr(line_num, ZERO_FLOAT_ARY);
       break;
 
     case FLOR_FLOAT:
@@ -816,6 +800,10 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
       mthd_instrs[i] = new StackInstr(line_num, SWAP_INT);
       break;
 
+    case LOAD_INST_MEM:
+      mthd_instrs[i] = new StackInstr(line_num, LOAD_INST_MEM);
+      break;
+
     case LOAD_CLS_MEM:
       mthd_instrs[i] = new StackInstr(line_num, LOAD_CLS_MEM);
       break;
@@ -831,11 +819,6 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
     case BIT_XOR_INT:
       mthd_instrs[i] = new StackInstr(line_num, BIT_XOR_INT);
       break;
-
-    case LOAD_INST_MEM:
-      mthd_instrs[i] = new StackInstr(line_num, LOAD_INST_MEM);
-      break;
-
 
       ////////////////////////////
     case ADD_INT:
@@ -881,7 +864,12 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
     case CPY_FLOAT_ARY:
     case POP_INT:
     case POP_FLOAT:
+    case ZERO_BYTE_ARY:
+    case ZERO_CHAR_ARY:
+    case ZERO_INT_ARY:
+    case ZERO_FLOAT_ARY:
       mthd_instrs[i] = cached_instrs[type];
+      cached_instr_count++;
       break;
 
       //////////////////////
