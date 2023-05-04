@@ -816,14 +816,6 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
       mthd_instrs[i] = new StackInstr(line_num, SWAP_INT);
       break;
 
-    case POP_INT:
-      mthd_instrs[i] = new StackInstr(line_num, POP_INT);
-      break;
-
-    case POP_FLOAT:
-      mthd_instrs[i] = new StackInstr(line_num, POP_FLOAT);
-      break;
-
     case LOAD_CLS_MEM:
       mthd_instrs[i] = new StackInstr(line_num, LOAD_CLS_MEM);
       break;
@@ -887,6 +879,8 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
     case CPY_CHAR_ARY:
     case CPY_INT_ARY:
     case CPY_FLOAT_ARY:
+    case POP_INT:
+    case POP_FLOAT:
       mthd_instrs[i] = cached_instrs[type];
       break;
 
