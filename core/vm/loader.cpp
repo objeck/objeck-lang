@@ -820,7 +820,9 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
       mthd_instrs[i] = new StackInstr(line_num, BIT_XOR_INT);
       break;
 
-      ////////////////////////////
+      //
+      // Start: instruction caching
+      //
     case ADD_INT:
     case SUB_INT:
     case MUL_INT:
@@ -871,8 +873,9 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
       mthd_instrs[i] = cached_instrs[type];
       cached_instr_count++;
       break;
-
-      //////////////////////
+      //
+      // End: instruction caching
+      //
 
     case RTRN:
       if(is_debug) {
