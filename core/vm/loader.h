@@ -52,6 +52,7 @@ class Loader {
   int start_class_id;
   int start_method_id;
   std::map<const std::wstring, const int> params;
+  size_t cached_instr_count;
   
   inline long ReadInt() {
     int32_t value = *((int32_t*)buffer);
