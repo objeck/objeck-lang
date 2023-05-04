@@ -712,10 +712,6 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
       mthd_instrs[i] = new StackInstr(line_num, AND_INT);
       break;
 
-    case ADD_INT:
-      mthd_instrs[i] = new StackInstr(line_num, ADD_INT);
-      break;
-
     case CEIL_FLOAT:
       mthd_instrs[i] = new StackInstr(line_num, CEIL_FLOAT);
       break;
@@ -794,10 +790,6 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
 
     case ATANH_FLOAT:
       mthd_instrs[i] = new StackInstr(line_num, ATANH_FLOAT);
-      break;
-
-    case MOD_FLOAT:
-      mthd_instrs[i] = new StackInstr(line_num, MOD_FLOAT);
       break;
 
     case LOG_FLOAT:
@@ -880,20 +872,24 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
       mthd_instrs[i] = new StackInstr(line_num, LOAD_ARY_SIZE);
       break;
 
+    case ADD_INT:
+      mthd_instrs[i] = cached_instrs[ADD_INT];
+      break;
+
     case SUB_INT:
-      mthd_instrs[i] = new StackInstr(line_num, SUB_INT);
+      mthd_instrs[i] = cached_instrs[SUB_INT];
       break;
 
     case MUL_INT:
-      mthd_instrs[i] = new StackInstr(line_num, MUL_INT);
+      mthd_instrs[i] = cached_instrs[MUL_INT];
       break;
 
     case DIV_INT:
-      mthd_instrs[i] = new StackInstr(line_num, DIV_INT);
+      mthd_instrs[i] = cached_instrs[DIV_INT];
       break;
 
     case MOD_INT:
-      mthd_instrs[i] = new StackInstr(line_num, MOD_INT);
+      mthd_instrs[i] = cached_instrs[MOD_INT];
       break;
 
     case BIT_AND_INT:
@@ -909,67 +905,71 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
       break;
 
     case EQL_INT:
-      mthd_instrs[i] = new StackInstr(line_num, EQL_INT);
+      mthd_instrs[i] = cached_instrs[EQL_INT];
       break;
 
     case NEQL_INT:
-      mthd_instrs[i] = new StackInstr(line_num, NEQL_INT);
+      mthd_instrs[i] = cached_instrs[NEQL_INT];
       break;
 
     case LES_INT:
-      mthd_instrs[i] = new StackInstr(line_num, LES_INT);
+      mthd_instrs[i] = cached_instrs[LES_INT];
       break;
 
     case GTR_INT:
-      mthd_instrs[i] = new StackInstr(line_num, GTR_INT);
+      mthd_instrs[i] = cached_instrs[GTR_INT];
       break;
 
     case LES_EQL_INT:
-      mthd_instrs[i] = new StackInstr(line_num, LES_EQL_INT);
-      break;
-
-    case LES_EQL_FLOAT:
-      mthd_instrs[i] = new StackInstr(line_num, LES_EQL_FLOAT);
+      mthd_instrs[i] = cached_instrs[LES_EQL_INT];
       break;
 
     case GTR_EQL_INT:
-      mthd_instrs[i] = new StackInstr(line_num, GTR_EQL_INT);
-      break;
-
-    case GTR_EQL_FLOAT:
-      mthd_instrs[i] = new StackInstr(line_num, GTR_EQL_FLOAT);
+      mthd_instrs[i] = cached_instrs[GTR_EQL_INT];
       break;
 
     case ADD_FLOAT:
-      mthd_instrs[i] = new StackInstr(line_num, ADD_FLOAT);
+      mthd_instrs[i] = cached_instrs[ADD_FLOAT];
       break;
 
     case SUB_FLOAT:
-      mthd_instrs[i] = new StackInstr(line_num, SUB_FLOAT);
+      mthd_instrs[i] = cached_instrs[SUB_FLOAT];
       break;
 
     case MUL_FLOAT:
-      mthd_instrs[i] = new StackInstr(line_num, MUL_FLOAT);
+      mthd_instrs[i] = cached_instrs[MUL_FLOAT];
       break;
 
     case DIV_FLOAT:
-      mthd_instrs[i] = new StackInstr(line_num, DIV_FLOAT);
+      mthd_instrs[i] = cached_instrs[DIV_FLOAT];
+      break;
+
+    case MOD_FLOAT:
+      mthd_instrs[i] = cached_instrs[MOD_FLOAT];
       break;
 
     case EQL_FLOAT:
-      mthd_instrs[i] = new StackInstr(line_num, EQL_FLOAT);
+      mthd_instrs[i] = cached_instrs[EQL_FLOAT];
       break;
 
     case NEQL_FLOAT:
-      mthd_instrs[i] = new StackInstr(line_num, NEQL_FLOAT);
+      mthd_instrs[i] = cached_instrs[NEQL_FLOAT];
+      break;
+
+    case LES_EQL_FLOAT:
+      mthd_instrs[i] = cached_instrs[LES_EQL_FLOAT];
+      break;
+
+    case GTR_EQL_FLOAT:
+      mthd_instrs[i] = cached_instrs[GTR_EQL_FLOAT];
       break;
 
     case LES_FLOAT:
-      mthd_instrs[i] = new StackInstr(line_num, LES_FLOAT);
+      mthd_instrs[i] = cached_instrs[LES_FLOAT];
       break;
 
     case GTR_FLOAT:
-      mthd_instrs[i] = new StackInstr(line_num, GTR_FLOAT);
+      mthd_instrs[i] = cached_instrs[GTR_FLOAT];
       break;
 
     case LOAD_FLOAT_LIT:

@@ -37,6 +37,7 @@
 
 class Loader {
   static StackProgram* program;
+  StackInstr** cached_instrs;
   std::vector<std::wstring> arguments;
   int num_float_strings;
   int num_int_strings;
@@ -51,7 +52,7 @@ class Loader {
   int start_class_id;
   int start_method_id;
   std::map<const std::wstring, const int> params;
-
+  
   inline long ReadInt() {
     int32_t value = *((int32_t*)buffer);
     buffer += sizeof(value);
@@ -137,6 +138,7 @@ public:
     if(!EndsWith(filename, L".obe") && !EndsWith(filename, L".obw")) {
       filename += L".obe";
     }
+    LoadOperInstrs();
 
     string_cls_id = -1;
     ReadFile();
@@ -148,6 +150,7 @@ public:
     if(!EndsWith(filename, L".obe")) {
       filename += L".obe";
     }
+    LoadOperInstrs();
 
     for(int i = 2; i < argc; ++i) {
       arguments.push_back(argv[i]);
@@ -155,6 +158,35 @@ public:
     string_cls_id = -1;
     ReadFile();
     program = new StackProgram;
+  }
+
+  void LoadOperInstrs() {
+    cached_instrs = new StackInstr*[END_STMTS]{};
+
+    // cache instructions
+    cached_instrs[ADD_INT] = new StackInstr(-1, ADD_INT);
+    cached_instrs[SUB_INT] = new StackInstr(-1, SUB_INT);
+    cached_instrs[MUL_INT] = new StackInstr(-1, MUL_INT);
+    cached_instrs[DIV_INT] = new StackInstr(-1, DIV_INT);
+    cached_instrs[MOD_INT] = new StackInstr(-1, MOD_INT);
+    cached_instrs[LES_INT] = new StackInstr(-1, LES_INT);
+    cached_instrs[GTR_INT] = new StackInstr(-1, GTR_INT);
+    cached_instrs[EQL_INT] = new StackInstr(-1, EQL_INT);
+    cached_instrs[NEQL_INT] = new StackInstr(-1, NEQL_INT);
+    cached_instrs[LES_EQL_INT] = new StackInstr(-1, LES_EQL_INT);
+    cached_instrs[GTR_EQL_INT] = new StackInstr(-1, GTR_EQL_INT);
+
+    cached_instrs[ADD_FLOAT] = new StackInstr(-1, ADD_FLOAT);
+    cached_instrs[SUB_FLOAT] = new StackInstr(-1, SUB_FLOAT);
+    cached_instrs[MUL_FLOAT] = new StackInstr(-1, MUL_FLOAT);
+    cached_instrs[DIV_FLOAT] = new StackInstr(-1, DIV_FLOAT);
+    cached_instrs[MOD_FLOAT] = new StackInstr(-1, MOD_FLOAT);
+    cached_instrs[LES_FLOAT] = new StackInstr(-1, LES_FLOAT);
+    cached_instrs[GTR_FLOAT] = new StackInstr(-1, GTR_FLOAT);
+    cached_instrs[EQL_FLOAT] = new StackInstr(-1, EQL_FLOAT);
+    cached_instrs[NEQL_FLOAT] = new StackInstr(-1, NEQL_FLOAT);
+    cached_instrs[LES_EQL_FLOAT] = new StackInstr(-1, LES_EQL_FLOAT);
+    cached_instrs[GTR_EQL_FLOAT] = new StackInstr(-1, GTR_EQL_FLOAT);
   }
 
   ~Loader() {
@@ -165,6 +197,16 @@ public:
 
     delete program;
     program = nullptr;
+
+    for(size_t i = 0; i < END_STMTS; ++i) {
+      StackInstr* tmp = cached_instrs[i];
+      if(tmp) {
+        delete tmp;
+        tmp = nullptr;
+      }
+    }
+    delete[] cached_instrs;
+    cached_instrs = nullptr;
   }
 
   static StackProgram* GetProgram();
