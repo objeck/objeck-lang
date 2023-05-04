@@ -404,6 +404,20 @@ class StackMethod {
       case S2F:
       case I2S:
       case F2S:
+        // general actions
+      case LOAD_ARY_SIZE:
+      case EXT_LIB_LOAD:
+      case EXT_LIB_UNLOAD:
+      case EXT_LIB_FUNC_CALL:
+      case THREAD_JOIN:
+      case THREAD_SLEEP:
+      case THREAD_MUTEX:
+      case CRITICAL_START:
+      case CRITICAL_END:
+      case CPY_BYTE_ARY:
+      case CPY_CHAR_ARY:
+      case CPY_INT_ARY:
+      case CPY_FLOAT_ARY:
         break;
 
       default:

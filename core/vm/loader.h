@@ -161,7 +161,7 @@ public:
   }
 
   void LoadOperInstrs() {
-    cached_instrs = new StackInstr*[END_STMTS]{};
+    cached_instrs = new StackInstr * [END_STMTS] {};
 
     // cache instructions
     cached_instrs[ADD_INT] = new StackInstr(-1, ADD_INT);
@@ -188,12 +188,27 @@ public:
     cached_instrs[LES_EQL_FLOAT] = new StackInstr(-1, LES_EQL_FLOAT);
     cached_instrs[GTR_EQL_FLOAT] = new StackInstr(-1, GTR_EQL_FLOAT);
 
-   cached_instrs[I2F] = new StackInstr(-1, I2F);
-   cached_instrs[F2I] = new StackInstr(-1, F2I);
-   cached_instrs[S2I] = new StackInstr(-1, S2I);
-   cached_instrs[S2F] = new StackInstr(-1, S2F);
-   cached_instrs[I2S] = new StackInstr(-1, I2S);
-   cached_instrs[F2S] = new StackInstr(-1, F2S);
+    cached_instrs[I2F] = new StackInstr(-1, I2F);
+    cached_instrs[F2I] = new StackInstr(-1, F2I);
+    cached_instrs[S2I] = new StackInstr(-1, S2I);
+    cached_instrs[S2F] = new StackInstr(-1, S2F);
+    cached_instrs[I2S] = new StackInstr(-1, I2S);
+    cached_instrs[F2S] = new StackInstr(-1, F2S);
+
+    cached_instrs[LOAD_ARY_SIZE] = new StackInstr(-1, LOAD_ARY_SIZE);
+    cached_instrs[EXT_LIB_LOAD] = new StackInstr(-1, EXT_LIB_LOAD);
+    cached_instrs[EXT_LIB_UNLOAD] = new StackInstr(-1, EXT_LIB_UNLOAD);
+    cached_instrs[EXT_LIB_FUNC_CALL] = new StackInstr(-1, EXT_LIB_FUNC_CALL);
+    cached_instrs[THREAD_JOIN] = new StackInstr(-1, THREAD_JOIN);
+    cached_instrs[THREAD_SLEEP] = new StackInstr(-1, THREAD_SLEEP);
+    cached_instrs[THREAD_MUTEX] = new StackInstr(-1, THREAD_MUTEX);
+    cached_instrs[CRITICAL_START] = new StackInstr(-1, CRITICAL_START);
+    cached_instrs[CRITICAL_END] = new StackInstr(-1, CRITICAL_END);
+
+    cached_instrs[CPY_BYTE_ARY] = new StackInstr(-1, CPY_BYTE_ARY);
+    cached_instrs[CPY_CHAR_ARY] = new StackInstr(-1, CPY_CHAR_ARY);
+    cached_instrs[CPY_INT_ARY] = new StackInstr(-1, CPY_INT_ARY);
+    cached_instrs[CPY_FLOAT_ARY] = new StackInstr(-1, CPY_FLOAT_ARY);
   }
 
   ~Loader() {
