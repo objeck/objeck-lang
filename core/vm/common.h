@@ -371,8 +371,39 @@ class StackMethod {
     // clean up
     for(int i = 0; i < instr_count; ++i) {
       StackInstr* tmp = instrs[i];
-      delete tmp;
-      tmp = nullptr;
+
+      switch(tmp->GetType()) {
+        // int operations
+      case ADD_INT:
+      case SUB_INT:
+      case MUL_INT:
+      case DIV_INT:
+      case MOD_INT:
+      case LES_INT:
+      case GTR_INT:
+      case EQL_INT:
+      case NEQL_INT:
+      case LES_EQL_INT:
+      case GTR_EQL_INT:
+        // float operations
+      case ADD_FLOAT:
+      case SUB_FLOAT:
+      case MUL_FLOAT:
+      case DIV_FLOAT:
+      case MOD_FLOAT:
+      case LES_FLOAT:
+      case GTR_FLOAT:
+      case EQL_FLOAT:
+      case NEQL_FLOAT:
+      case LES_EQL_FLOAT:
+      case GTR_EQL_FLOAT:
+        break;
+
+      default:
+        delete tmp;
+        tmp = nullptr;
+        break;
+      }
     }
     delete[] instrs;
     instrs = nullptr;
