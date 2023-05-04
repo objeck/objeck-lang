@@ -418,6 +418,8 @@ class StackMethod {
       case CPY_CHAR_ARY:
       case CPY_INT_ARY:
       case CPY_FLOAT_ARY:
+      case POP_INT:
+      case POP_FLOAT:
         break;
 
       default:

@@ -209,6 +209,9 @@ public:
     cached_instrs[CPY_CHAR_ARY] = new StackInstr(-1, CPY_CHAR_ARY);
     cached_instrs[CPY_INT_ARY] = new StackInstr(-1, CPY_INT_ARY);
     cached_instrs[CPY_FLOAT_ARY] = new StackInstr(-1, CPY_FLOAT_ARY);
+
+    cached_instrs[POP_INT] = new StackInstr(-1, POP_INT);
+    cached_instrs[POP_FLOAT] = new StackInstr(-1, POP_FLOAT);
   }
 
   ~Loader() {
