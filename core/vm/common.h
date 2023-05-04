@@ -397,6 +397,13 @@ class StackMethod {
       case NEQL_FLOAT:
       case LES_EQL_FLOAT:
       case GTR_EQL_FLOAT:
+        // conversions
+      case I2F:
+      case F2I:
+      case S2I:
+      case S2F:
+      case I2S:
+      case F2S:
         break;
 
       default:
