@@ -716,22 +716,6 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
       mthd_instrs[i] = new StackInstr(line_num, CEIL_FLOAT);
       break;
 
-    case CPY_BYTE_ARY:
-      mthd_instrs[i] = new StackInstr(line_num, CPY_BYTE_ARY);
-      break;
-      
-    case CPY_CHAR_ARY:
-      mthd_instrs[i] = new StackInstr(line_num, CPY_CHAR_ARY);
-      break;
-      
-    case CPY_INT_ARY:
-      mthd_instrs[i] = new StackInstr(line_num, CPY_INT_ARY);
-      break;
-
-    case CPY_FLOAT_ARY:
-      mthd_instrs[i] = new StackInstr(line_num, CPY_FLOAT_ARY);
-      break;
-
     case ZERO_BYTE_ARY:
       mthd_instrs[i] = new StackInstr(line_num, ZERO_BYTE_ARY);
       break;
@@ -742,6 +726,10 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
 
     case ZERO_INT_ARY:
       mthd_instrs[i] = new StackInstr(line_num, ZERO_INT_ARY);
+      break;
+
+    case LOAD_FLOAT_LIT:
+      mthd_instrs[i] = new StackInstr(line_num, LOAD_FLOAT_LIT, ReadDouble());
       break;
 
     case ZERO_FLOAT_ARY:
@@ -824,30 +812,6 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
       mthd_instrs[i] = new StackInstr(line_num, RAND_FLOAT);
       break;
 
-    case F2I:
-      mthd_instrs[i] = cached_instrs[F2I];
-      break;
-
-    case I2F:
-      mthd_instrs[i] = cached_instrs[I2F];
-      break;
-
-    case S2I:
-      mthd_instrs[i] = cached_instrs[S2I];
-      break;
-
-    case S2F:
-      mthd_instrs[i] = cached_instrs[S2F];
-      break;
-
-    case I2S:
-      mthd_instrs[i] = cached_instrs[I2S];
-      break;
-      
-    case F2S:
-      mthd_instrs[i] = cached_instrs[F2S];
-      break;
-      
     case SWAP_INT:
       mthd_instrs[i] = new StackInstr(line_num, SWAP_INT);
       break;
@@ -864,34 +828,6 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
       mthd_instrs[i] = new StackInstr(line_num, LOAD_CLS_MEM);
       break;
 
-    case LOAD_INST_MEM:
-      mthd_instrs[i] = new StackInstr(line_num, LOAD_INST_MEM);
-      break;
-
-    case LOAD_ARY_SIZE:
-      mthd_instrs[i] = new StackInstr(line_num, LOAD_ARY_SIZE);
-      break;
-
-    case ADD_INT:
-      mthd_instrs[i] = cached_instrs[ADD_INT];
-      break;
-
-    case SUB_INT:
-      mthd_instrs[i] = cached_instrs[SUB_INT];
-      break;
-
-    case MUL_INT:
-      mthd_instrs[i] = cached_instrs[MUL_INT];
-      break;
-
-    case DIV_INT:
-      mthd_instrs[i] = cached_instrs[DIV_INT];
-      break;
-
-    case MOD_INT:
-      mthd_instrs[i] = cached_instrs[MOD_INT];
-      break;
-
     case BIT_AND_INT:
       mthd_instrs[i] = new StackInstr(line_num, BIT_AND_INT);
       break;
@@ -904,77 +840,57 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
       mthd_instrs[i] = new StackInstr(line_num, BIT_XOR_INT);
       break;
 
+    case LOAD_INST_MEM:
+      mthd_instrs[i] = new StackInstr(line_num, LOAD_INST_MEM);
+      break;
+
+
+      ////////////////////////////
+    case ADD_INT:
+    case SUB_INT:
+    case MUL_INT:
+    case DIV_INT:
+    case MOD_INT:
     case EQL_INT:
-      mthd_instrs[i] = cached_instrs[EQL_INT];
-      break;
-
     case NEQL_INT:
-      mthd_instrs[i] = cached_instrs[NEQL_INT];
-      break;
-
     case LES_INT:
-      mthd_instrs[i] = cached_instrs[LES_INT];
-      break;
-
     case GTR_INT:
-      mthd_instrs[i] = cached_instrs[GTR_INT];
-      break;
-
     case LES_EQL_INT:
-      mthd_instrs[i] = cached_instrs[LES_EQL_INT];
-      break;
-
     case GTR_EQL_INT:
-      mthd_instrs[i] = cached_instrs[GTR_EQL_INT];
-      break;
-
     case ADD_FLOAT:
-      mthd_instrs[i] = cached_instrs[ADD_FLOAT];
-      break;
-
     case SUB_FLOAT:
-      mthd_instrs[i] = cached_instrs[SUB_FLOAT];
-      break;
-
     case MUL_FLOAT:
-      mthd_instrs[i] = cached_instrs[MUL_FLOAT];
-      break;
-
     case DIV_FLOAT:
-      mthd_instrs[i] = cached_instrs[DIV_FLOAT];
-      break;
-
     case MOD_FLOAT:
-      mthd_instrs[i] = cached_instrs[MOD_FLOAT];
-      break;
-
     case EQL_FLOAT:
-      mthd_instrs[i] = cached_instrs[EQL_FLOAT];
-      break;
-
     case NEQL_FLOAT:
-      mthd_instrs[i] = cached_instrs[NEQL_FLOAT];
-      break;
-
     case LES_EQL_FLOAT:
-      mthd_instrs[i] = cached_instrs[LES_EQL_FLOAT];
-      break;
-
     case GTR_EQL_FLOAT:
-      mthd_instrs[i] = cached_instrs[GTR_EQL_FLOAT];
-      break;
-
     case LES_FLOAT:
-      mthd_instrs[i] = cached_instrs[LES_FLOAT];
-      break;
-
     case GTR_FLOAT:
-      mthd_instrs[i] = cached_instrs[GTR_FLOAT];
+    case F2I:
+    case I2F:
+    case S2I:
+    case S2F:
+    case I2S:
+    case F2S:
+    case LOAD_ARY_SIZE:
+    case EXT_LIB_LOAD:
+    case EXT_LIB_UNLOAD:
+    case EXT_LIB_FUNC_CALL:
+    case THREAD_JOIN:
+    case THREAD_SLEEP:
+    case THREAD_MUTEX:
+    case CRITICAL_START:
+    case CRITICAL_END:
+    case CPY_BYTE_ARY:
+    case CPY_CHAR_ARY:
+    case CPY_INT_ARY:
+    case CPY_FLOAT_ARY:
+      mthd_instrs[i] = cached_instrs[type];
       break;
 
-    case LOAD_FLOAT_LIT:
-      mthd_instrs[i] = new StackInstr(line_num, LOAD_FLOAT_LIT, ReadDouble());
-      break;
+      //////////////////////
 
     case RTRN:
       if(is_debug) {
@@ -983,38 +899,6 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
       else {
         mthd_instrs[i] = new StackInstr(line_num, RTRN);
       }
-      break;
-
-    case EXT_LIB_LOAD:
-      mthd_instrs[i] = new StackInstr(line_num, EXT_LIB_LOAD);
-      break;
-
-    case EXT_LIB_UNLOAD:
-      mthd_instrs[i] = new StackInstr(line_num, EXT_LIB_UNLOAD);
-      break;
-
-    case EXT_LIB_FUNC_CALL:
-      mthd_instrs[i] = new StackInstr(line_num, EXT_LIB_FUNC_CALL);
-      break;
-
-    case THREAD_JOIN:
-      mthd_instrs[i] = new StackInstr(line_num, THREAD_JOIN);
-      break;
-
-    case THREAD_SLEEP:
-      mthd_instrs[i] = new StackInstr(line_num, THREAD_SLEEP);
-      break;
-
-    case THREAD_MUTEX:
-      mthd_instrs[i] = new StackInstr(line_num, THREAD_MUTEX);
-      break;
-
-    case CRITICAL_START:
-      mthd_instrs[i] = new StackInstr(line_num, CRITICAL_START);
-      break;
-
-    case CRITICAL_END:
-      mthd_instrs[i] = new StackInstr(line_num, CRITICAL_END);
       break;
 
     case TRAP: {
@@ -1037,7 +921,6 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
       exit(1);
     }
       break;
-      
     }
   }
 
