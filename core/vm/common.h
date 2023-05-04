@@ -420,6 +420,10 @@ class StackMethod {
       case CPY_FLOAT_ARY:
       case POP_INT:
       case POP_FLOAT:
+      case ZERO_BYTE_ARY:
+      case ZERO_CHAR_ARY:
+      case ZERO_INT_ARY:
+      case ZERO_FLOAT_ARY:
         break;
 
       default:
