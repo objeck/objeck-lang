@@ -478,20 +478,20 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
     }
 
     switch(type) {
-    case LOAD_INT_LIT:
-      mthd_instrs[i] = new StackInstr(line_num, ReadInt64());
-      break;
-
-    case LOAD_CHAR_LIT:
-      mthd_instrs[i] = new StackInstr(line_num, LOAD_CHAR_LIT, (long)ReadChar());
-      break;
-
     case LOAD_INST_MEM:
       mthd_instrs[i] = new StackInstr(line_num, LOAD_INST_MEM);
       break;
 
     case LOAD_CLS_MEM:
       mthd_instrs[i] = new StackInstr(line_num, LOAD_CLS_MEM);
+      break;
+
+    case LOAD_INT_LIT:
+      mthd_instrs[i] = new StackInstr(line_num, ReadInt64());
+      break;
+
+    case LOAD_CHAR_LIT:
+      mthd_instrs[i] = new StackInstr(line_num, LOAD_CHAR_LIT, (long)ReadChar());
       break;
 
     case TRAP:
@@ -531,6 +531,14 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
 
     case NEW_FUNC_INST:
       mthd_instrs[i] = new StackInstr(line_num, NEW_FUNC_INST, ReadInt());
+      break;
+
+    case LBL:
+      mthd_instrs[i] = new StackInstr(line_num, LBL, ReadInt());
+      break;
+
+    case OBJ_TYPE_OF:
+      mthd_instrs[i] = new StackInstr(line_num, OBJ_TYPE_OF, ReadInt());
       break;
 
     case LOAD_INT_VAR: {
@@ -672,18 +680,6 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
       const long label = ReadInt();
       const long cond = ReadInt();
       mthd_instrs[i] = new StackInstr(line_num, JMP, label, cond);
-    }
-      break;
-
-    case LBL: {
-      const long id = ReadInt();
-      mthd_instrs[i] = new StackInstr(line_num, LBL, id);
-    }
-      break;
-
-    case OBJ_TYPE_OF: {
-      const long check = ReadInt();
-      mthd_instrs[i] = new StackInstr(line_num, OBJ_TYPE_OF, check);
     }
       break;
 
