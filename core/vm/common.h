@@ -385,6 +385,14 @@ class StackMethod {
       case NEQL_INT:
       case LES_EQL_INT:
       case GTR_EQL_INT:
+      case OR_INT:
+      case AND_INT:
+      case SWAP_INT:
+      case BIT_AND_INT:
+      case BIT_OR_INT:
+      case BIT_XOR_INT:
+      case SHL_INT:
+      case SHR_INT:
         // float operations
       case ADD_FLOAT:
       case SUB_FLOAT:
@@ -397,6 +405,26 @@ class StackMethod {
       case NEQL_FLOAT:
       case LES_EQL_FLOAT:
       case GTR_EQL_FLOAT:
+      case SQRT_FLOAT:
+      case RAND_FLOAT:
+      case ASIN_FLOAT:
+      case ACOS_FLOAT:
+      case ATAN_FLOAT:
+      case ATAN2_FLOAT:
+      case ACOSH_FLOAT:
+      case ASINH_FLOAT:
+      case ATANH_FLOAT:
+      case LOG_FLOAT:
+      case ROUND_FLOAT:
+      case EXP_FLOAT:
+      case LOG10_FLOAT:
+      case POW_FLOAT:
+      case GAMMA_FLOAT:
+      case CEIL_FLOAT:
+      case FLOR_FLOAT:
+      case SIN_FLOAT:
+      case COS_FLOAT:
+      case TAN_FLOAT:
         // conversions
       case I2F:
       case F2I:
@@ -404,26 +432,29 @@ class StackMethod {
       case S2F:
       case I2S:
       case F2S:
-        // general actions
+        // shared libraries
       case LOAD_ARY_SIZE:
       case EXT_LIB_LOAD:
       case EXT_LIB_UNLOAD:
       case EXT_LIB_FUNC_CALL:
+        // thread
       case THREAD_JOIN:
       case THREAD_SLEEP:
       case THREAD_MUTEX:
       case CRITICAL_START:
       case CRITICAL_END:
+        // copy and clear
       case CPY_BYTE_ARY:
       case CPY_CHAR_ARY:
       case CPY_INT_ARY:
       case CPY_FLOAT_ARY:
-      case POP_INT:
-      case POP_FLOAT:
       case ZERO_BYTE_ARY:
       case ZERO_CHAR_ARY:
       case ZERO_INT_ARY:
       case ZERO_FLOAT_ARY:
+        // program flow
+      case POP_INT:
+      case POP_FLOAT:
         break;
 
       default:

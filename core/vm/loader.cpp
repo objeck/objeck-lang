@@ -488,12 +488,12 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
       mthd_instrs[i] = new StackInstr(line_num, LOAD_CHAR_LIT, (long)ReadChar());
       break;
 
-    case SHL_INT:
-      mthd_instrs[i] = new StackInstr(line_num, SHL_INT);
+    case LOAD_INST_MEM:
+      mthd_instrs[i] = new StackInstr(line_num, LOAD_INST_MEM);
       break;
 
-    case SHR_INT:
-      mthd_instrs[i] = new StackInstr(line_num, SHR_INT);
+    case LOAD_CLS_MEM:
+      mthd_instrs[i] = new StackInstr(line_num, LOAD_CLS_MEM);
       break;
 
     case LOAD_INT_VAR: {
@@ -667,18 +667,6 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
     }
       break;
 
-    case LIB_OBJ_INST_CAST:
-      std::wcerr << L">>> unsupported instruction for executable: LIB_OBJ_INST_CAST <<<" << std::endl;
-      exit(1);
-
-    case LIB_NEW_OBJ_INST:
-      std::wcerr << L">>> unsupported instruction for executable: LIB_NEW_OBJ_INST <<<" << std::endl;
-      exit(1);
-
-    case LIB_MTHD_CALL:
-      std::wcerr << L">>> unsupported instruction for executable: LIB_MTHD_CALL <<<" << std::endl;
-      exit(1);
-
     case JMP: {
       const long label = ReadInt();
       const long cond = ReadInt();
@@ -704,125 +692,43 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
     }
       break;
 
-    case OR_INT:
-      mthd_instrs[i] = new StackInstr(line_num, OR_INT);
-      break;
-
-    case AND_INT:
-      mthd_instrs[i] = new StackInstr(line_num, AND_INT);
-      break;
-
-    case CEIL_FLOAT:
-      mthd_instrs[i] = new StackInstr(line_num, CEIL_FLOAT);
-      break;
-
     case LOAD_FLOAT_LIT:
       mthd_instrs[i] = new StackInstr(line_num, LOAD_FLOAT_LIT, ReadDouble());
       break;
 
-    case FLOR_FLOAT:
-      mthd_instrs[i] = new StackInstr(line_num, FLOR_FLOAT);
+    case RTRN:
+      if(is_debug) {
+        mthd_instrs[i] = new StackInstr(line_num + 1, RTRN);
+      }
+      else {
+        mthd_instrs[i] = new StackInstr(line_num, RTRN);
+    }
       break;
 
-    case SIN_FLOAT:
-      mthd_instrs[i] = new StackInstr(line_num, SIN_FLOAT);
+    case TRAP: {
+      const long args = ReadInt();
+      mthd_instrs[i] = new StackInstr(line_num, TRAP, args);
+    }
       break;
 
-    case COS_FLOAT:
-      mthd_instrs[i] = new StackInstr(line_num, COS_FLOAT);
-      break;
-
-    case TAN_FLOAT:
-      mthd_instrs[i] = new StackInstr(line_num, TAN_FLOAT);
-      break;
-
-    case ASIN_FLOAT:
-      mthd_instrs[i] = new StackInstr(line_num, ASIN_FLOAT);
-      break;
-
-    case ACOS_FLOAT:
-      mthd_instrs[i] = new StackInstr(line_num, ACOS_FLOAT);
-      break;
-
-    case ATAN_FLOAT:
-      mthd_instrs[i] = new StackInstr(line_num, ATAN_FLOAT);
-      break;
-
-    case ATAN2_FLOAT:
-      mthd_instrs[i] = new StackInstr(line_num, ATAN2_FLOAT);
-      break;
-
-    case ACOSH_FLOAT:
-      mthd_instrs[i] = new StackInstr(line_num, ACOSH_FLOAT);
-      break;
-
-    case ASINH_FLOAT:
-      mthd_instrs[i] = new StackInstr(line_num, ASINH_FLOAT);
-      break;
-
-    case ATANH_FLOAT:
-      mthd_instrs[i] = new StackInstr(line_num, ATANH_FLOAT);
-      break;
-
-    case LOG_FLOAT:
-      mthd_instrs[i] = new StackInstr(line_num, LOG_FLOAT);
-      break;
-
-    case ROUND_FLOAT:
-      mthd_instrs[i] = new StackInstr(line_num, ROUND_FLOAT);
-      break;
-
-    case EXP_FLOAT:
-      mthd_instrs[i] = new StackInstr(line_num, EXP_FLOAT);
-      break;
-
-    case LOG10_FLOAT:
-      mthd_instrs[i] = new StackInstr(line_num, LOG10_FLOAT);
-      break;
-
-    case POW_FLOAT:
-      mthd_instrs[i] = new StackInstr(line_num, POW_FLOAT);
-      break;
-
-    case SQRT_FLOAT:
-      mthd_instrs[i] = new StackInstr(line_num, SQRT_FLOAT);
-      break;
-
-    case GAMMA_FLOAT:
-      mthd_instrs[i] = new StackInstr(line_num, GAMMA_FLOAT);
-      break;
-
-    case RAND_FLOAT:
-      mthd_instrs[i] = new StackInstr(line_num, RAND_FLOAT);
-      break;
-
-    case SWAP_INT:
-      mthd_instrs[i] = new StackInstr(line_num, SWAP_INT);
-      break;
-
-    case LOAD_INST_MEM:
-      mthd_instrs[i] = new StackInstr(line_num, LOAD_INST_MEM);
-      break;
-
-    case LOAD_CLS_MEM:
-      mthd_instrs[i] = new StackInstr(line_num, LOAD_CLS_MEM);
-      break;
-
-    case BIT_AND_INT:
-      mthd_instrs[i] = new StackInstr(line_num, BIT_AND_INT);
-      break;
-
-    case BIT_OR_INT:
-      mthd_instrs[i] = new StackInstr(line_num, BIT_OR_INT);
-      break;
-
-    case BIT_XOR_INT:
-      mthd_instrs[i] = new StackInstr(line_num, BIT_XOR_INT);
+    case TRAP_RTRN: {
+      const long args = ReadInt();
+      mthd_instrs[i] = new StackInstr(line_num, TRAP_RTRN, args);
+    }
       break;
 
       //
       // Start: instruction caching
       //
+
+    case SHL_INT:
+    case SHR_INT:
+    case BIT_AND_INT:
+    case BIT_OR_INT:
+    case BIT_XOR_INT:
+    case OR_INT:
+    case AND_INT:
+    case SWAP_INT:
     case ADD_INT:
     case SUB_INT:
     case MUL_INT:
@@ -834,6 +740,13 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
     case GTR_INT:
     case LES_EQL_INT:
     case GTR_EQL_INT:
+    case CEIL_FLOAT:
+    case FLOR_FLOAT:
+    case SIN_FLOAT:
+    case COS_FLOAT:
+    case TAN_FLOAT:
+    case SQRT_FLOAT:
+    case RAND_FLOAT:
     case ADD_FLOAT:
     case SUB_FLOAT:
     case MUL_FLOAT:
@@ -845,6 +758,19 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
     case GTR_EQL_FLOAT:
     case LES_FLOAT:
     case GTR_FLOAT:
+    case ASIN_FLOAT:
+    case ACOS_FLOAT:
+    case ATAN_FLOAT:
+    case ATAN2_FLOAT:
+    case ACOSH_FLOAT:
+    case ASINH_FLOAT:
+    case ATANH_FLOAT:
+    case LOG_FLOAT:
+    case ROUND_FLOAT:
+    case EXP_FLOAT:
+    case LOG10_FLOAT:
+    case POW_FLOAT:
+    case GAMMA_FLOAT:
     case F2I:
     case I2F:
     case S2I:
@@ -872,30 +798,22 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
     case ZERO_FLOAT_ARY:
       mthd_instrs[i] = cached_instrs[type];
       break;
+
       //
       // End: instruction caching
       //
 
-    case RTRN:
-      if(is_debug) {
-        mthd_instrs[i] = new StackInstr(line_num + 1, RTRN);
-      }
-      else {
-        mthd_instrs[i] = new StackInstr(line_num, RTRN);
-      }
-      break;
+    case LIB_OBJ_INST_CAST:
+      std::wcerr << L">>> unsupported instruction for executable: LIB_OBJ_INST_CAST <<<" << std::endl;
+      exit(1);
 
-    case TRAP: {
-      const long args = ReadInt();
-      mthd_instrs[i] = new StackInstr(line_num, TRAP, args);
-    }
-      break;
+    case LIB_NEW_OBJ_INST:
+      std::wcerr << L">>> unsupported instruction for executable: LIB_NEW_OBJ_INST <<<" << std::endl;
+      exit(1);
 
-    case TRAP_RTRN: {
-      const long args = ReadInt();
-      mthd_instrs[i] = new StackInstr(line_num, TRAP_RTRN, args);
-    }
-      break;
+    case LIB_MTHD_CALL:
+      std::wcerr << L">>> unsupported instruction for executable: LIB_MTHD_CALL <<<" << std::endl;
+      exit(1);
 
     default: {
 #ifdef _DEBUG
