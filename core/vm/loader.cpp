@@ -478,10 +478,8 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
     }
 
     switch(type) {
-    case LOAD_INT_LIT: {
-      const INT64_VALUE value = ReadInt64();
-      mthd_instrs[i] = new StackInstr(line_num, value);
-    }
+    case LOAD_INT_LIT:
+      mthd_instrs[i] = new StackInstr(line_num, ReadInt64());
       break;
 
     case LOAD_CHAR_LIT:
@@ -494,6 +492,45 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
 
     case LOAD_CLS_MEM:
       mthd_instrs[i] = new StackInstr(line_num, LOAD_CLS_MEM);
+      break;
+
+    case TRAP:
+      mthd_instrs[i] = new StackInstr(line_num, TRAP, ReadInt());
+      break;
+
+    case TRAP_RTRN:
+      mthd_instrs[i] = new StackInstr(line_num, TRAP_RTRN, ReadInt());
+      break;
+
+    case OBJ_INST_CAST:
+      mthd_instrs[i] = new StackInstr(line_num, OBJ_INST_CAST, ReadInt());
+      break;
+
+    case LOAD_FLOAT_LIT:
+      mthd_instrs[i] = new StackInstr(line_num, LOAD_FLOAT_LIT, ReadDouble());
+      break;
+    case NEW_FLOAT_ARY:
+      mthd_instrs[i] = new StackInstr(line_num, NEW_FLOAT_ARY, ReadInt());
+      break;
+
+    case NEW_INT_ARY:
+      mthd_instrs[i] = new StackInstr(line_num, NEW_INT_ARY, ReadInt());
+      break;
+
+    case NEW_BYTE_ARY:
+      mthd_instrs[i] = new StackInstr(line_num, NEW_BYTE_ARY, ReadInt());
+      break;
+
+    case NEW_CHAR_ARY:
+      mthd_instrs[i] = new StackInstr(line_num, NEW_CHAR_ARY, ReadInt());
+      break;
+
+    case NEW_OBJ_INST:
+      mthd_instrs[i] = new StackInstr(line_num, NEW_OBJ_INST, ReadInt());
+      break;
+
+    case NEW_FUNC_INST:
+      mthd_instrs[i] = new StackInstr(line_num, NEW_FUNC_INST, ReadInt());
       break;
 
     case LOAD_INT_VAR: {
@@ -608,42 +645,6 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
     }
       break;
 
-    case NEW_FLOAT_ARY: {
-      const long dim = ReadInt();
-      mthd_instrs[i] = new StackInstr(line_num, NEW_FLOAT_ARY, dim);
-    }
-      break;
-
-    case NEW_INT_ARY: {
-      const long dim = ReadInt();
-      mthd_instrs[i] = new StackInstr(line_num, NEW_INT_ARY, dim);
-    }
-      break;
-
-    case NEW_BYTE_ARY: {
-      const long dim = ReadInt();
-      mthd_instrs[i] = new StackInstr(line_num, NEW_BYTE_ARY, dim);
-    }
-      break;
-
-    case NEW_CHAR_ARY: {
-      const long dim = ReadInt();
-      mthd_instrs[i] = new StackInstr(line_num, NEW_CHAR_ARY, dim);
-    }
-      break;
-
-    case NEW_OBJ_INST: {
-      const long obj_id = ReadInt();
-      mthd_instrs[i] = new StackInstr(line_num, NEW_OBJ_INST, obj_id);
-    }
-      break;
-
-    case NEW_FUNC_INST: {
-      const long mem_size = ReadInt();
-      mthd_instrs[i] = new StackInstr(line_num, NEW_FUNC_INST, mem_size);
-    }
-      break;
-
     case DYN_MTHD_CALL: {
       const long num_params = ReadInt();
       const long rtrn_type = ReadInt();
@@ -680,20 +681,10 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
     }
       break;
 
-    case OBJ_INST_CAST: {
-      const long to = ReadInt();
-      mthd_instrs[i] = new StackInstr(line_num, OBJ_INST_CAST, to);
-    }
-      break;
-
     case OBJ_TYPE_OF: {
       const long check = ReadInt();
       mthd_instrs[i] = new StackInstr(line_num, OBJ_TYPE_OF, check);
     }
-      break;
-
-    case LOAD_FLOAT_LIT:
-      mthd_instrs[i] = new StackInstr(line_num, LOAD_FLOAT_LIT, ReadDouble());
       break;
 
     case RTRN:
@@ -702,18 +693,6 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
       }
       else {
         mthd_instrs[i] = new StackInstr(line_num, RTRN);
-    }
-      break;
-
-    case TRAP: {
-      const long args = ReadInt();
-      mthd_instrs[i] = new StackInstr(line_num, TRAP, args);
-    }
-      break;
-
-    case TRAP_RTRN: {
-      const long args = ReadInt();
-      mthd_instrs[i] = new StackInstr(line_num, TRAP_RTRN, args);
     }
       break;
 
