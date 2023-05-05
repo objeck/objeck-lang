@@ -161,7 +161,7 @@ public:
   }
 
   void LoadOperInstrs() {
-    cached_instrs = new StackInstr*[END_STMTS]{};
+    cached_instrs = new StackInstr * [END_STMTS] {};
 
     // cache instructions
     cached_instrs[ADD_INT] = new StackInstr(-1, ADD_INT);
@@ -217,6 +217,39 @@ public:
     cached_instrs[ZERO_CHAR_ARY] = new StackInstr(-1, ZERO_CHAR_ARY);
     cached_instrs[ZERO_INT_ARY] = new StackInstr(-1, ZERO_INT_ARY);
     cached_instrs[ZERO_FLOAT_ARY] = new StackInstr(-1, ZERO_FLOAT_ARY);
+
+    cached_instrs[OR_INT] = new StackInstr(-1, OR_INT);
+    cached_instrs[AND_INT] = new StackInstr(-1, AND_INT);
+    cached_instrs[SWAP_INT] = new StackInstr(-1, SWAP_INT);
+
+    cached_instrs[BIT_AND_INT] = new StackInstr(-1, BIT_AND_INT);
+    cached_instrs[BIT_OR_INT] = new StackInstr(-1, BIT_OR_INT);
+    cached_instrs[BIT_XOR_INT] = new StackInstr(-1, BIT_XOR_INT);
+
+    cached_instrs[CEIL_FLOAT] = new StackInstr(-1, CEIL_FLOAT);
+    cached_instrs[FLOR_FLOAT] = new StackInstr(-1, FLOR_FLOAT);
+    cached_instrs[SIN_FLOAT] = new StackInstr(-1, SIN_FLOAT);
+    cached_instrs[COS_FLOAT] = new StackInstr(-1, COS_FLOAT);
+    cached_instrs[TAN_FLOAT] = new StackInstr(-1, TAN_FLOAT);
+    cached_instrs[SQRT_FLOAT] = new StackInstr(-1, SQRT_FLOAT);
+    cached_instrs[RAND_FLOAT] = new StackInstr(-1, RAND_FLOAT);
+
+    cached_instrs[ASIN_FLOAT] = new StackInstr(-1, ASIN_FLOAT);
+    cached_instrs[ACOS_FLOAT] = new StackInstr(-1, ACOS_FLOAT);
+    cached_instrs[ATAN_FLOAT] = new StackInstr(-1, ATAN_FLOAT);
+    cached_instrs[ATAN2_FLOAT] = new StackInstr(-1, ATAN2_FLOAT);
+    cached_instrs[ACOSH_FLOAT] = new StackInstr(-1, ACOSH_FLOAT);
+    cached_instrs[ASINH_FLOAT] = new StackInstr(-1, ASINH_FLOAT);
+    cached_instrs[ATANH_FLOAT] = new StackInstr(-1, ATANH_FLOAT);
+    cached_instrs[LOG_FLOAT] = new StackInstr(-1, LOG_FLOAT);
+    cached_instrs[ROUND_FLOAT] = new StackInstr(-1, ROUND_FLOAT);
+    cached_instrs[EXP_FLOAT] = new StackInstr(-1, EXP_FLOAT);
+    cached_instrs[LOG10_FLOAT] = new StackInstr(-1, LOG10_FLOAT);
+    cached_instrs[POW_FLOAT] = new StackInstr(-1, POW_FLOAT);
+    cached_instrs[GAMMA_FLOAT] = new StackInstr(-1, GAMMA_FLOAT);
+
+    cached_instrs[SHL_INT] = new StackInstr(-1, SHL_INT);
+    cached_instrs[SHR_INT] = new StackInstr(-1, SHR_INT);
   }
 
   ~Loader() {
