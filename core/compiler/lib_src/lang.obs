@@ -4499,28 +4499,29 @@ bundle System {
 			# check class type
 			if(GetClassID() <> rhs->GetClassID()) {
 				r := -1;
-			};
-						
-			# check each character
-			right_string := rhs->As(String);
-			for(i := 0; i < @pos; i += 1;) {
-				left := @string[i];
-				right := right_string->Get(i);
-				if(left > right) {
+			}
+			else {			
+				# check each character
+				right_string := rhs->As(String);
+				for(i := 0; i < @pos; i += 1;) {
+					left := @string[i];
+					right := right_string->Get(i);
+					if(left > right) {
+						r := 1;
+					}
+					else if(left < right) {
+						r := -1;
+					};
+				};
+				
+				# check length
+				if(@pos > right_string->Size()) {
 					r := 1;
-				}
-				else if(left < right) {
+				};
+				
+				if(@pos < right_string->Size()) {
 					r := -1;
 				};
-			};
-			
-			# check length
-			if(@pos > right_string->Size()) {
-				r := 1;
-			};
-			
-			if(@pos < right_string->Size()) {
-				r := -1;
 			};
 			
 			# equal
