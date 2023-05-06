@@ -361,6 +361,7 @@ class StackMethod {
       StackInstr* tmp = instrs[i];
 
       switch(tmp->GetType()) {
+      case RTRN:
         // int operations
       case ADD_INT:
       case SUB_INT:
