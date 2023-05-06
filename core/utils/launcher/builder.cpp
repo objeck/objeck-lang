@@ -42,22 +42,26 @@ int main(int argc, char* argv[])
     exit(1);
   }
   
-  wstring runtime_base_dir = GetCommandParameter(L"install", cmd_params, argument_options, true);
+  wstring runtime_base_dir = GetCommandParameter(L"tool_dir", cmd_params, argument_options, true);
   wstring to_base_dir = GetCommandParameter(L"to_dir", cmd_params, argument_options);
   const wstring to_name = GetCommandParameter(L"to_name", cmd_params, argument_options);
   const wstring src_obe_file = GetCommandParameter(L"src_file", cmd_params, argument_options);
   const wstring src_dir = GetCommandParameter(L"src_dir", cmd_params, argument_options, true);
 
+  if(runtime_base_dir.empty()) {
 #ifdef _WIN32
-  char* path_str_ptr = nullptr;
-  size_t len;
-  if(_dupenv_s(&path_str_ptr, &len, "OBJECK_LIB_PATH")) {
-    exit(1);
-  }
+    char* path_str_ptr = nullptr;
+    size_t len;
+    if(_dupenv_s(&path_str_ptr, &len, "OBJECK_LIB_PATH")) {
+      exit(1);
+    }
 #else
-  char* path_str_ptr = getenv("OBJECK_LIB_PATH");
+    char* path_str_ptr = getenv("OBJECK_LIB_PATH");
 #endif
 
+    runtime_base_dir = BytesToUnicode(path_str_ptr);
+  }
+  
   // check command line parameters
   if(!EndsWith(src_obe_file, L".obe")) {
     wcout << GetUsage() << endl;
@@ -95,7 +99,7 @@ int main(int argc, char* argv[])
       }
 
       if(!CheckInstallDir(runtime_base_dir)) {
-        wcerr << ">>> Invalid Objeck install directory: '" << runtime_base_dir << L"' <<<" << endl;
+        wcerr << ">>> Invalid Objeck 'tool_dir' directory: '" << runtime_base_dir << L"', either provide the `-tool_dir` parameter or set environment variable `OBJECK_LIB_PATH` <<<" << endl;
         is_ok = false;
       }
 
@@ -252,8 +256,8 @@ int main(int argc, char* argv[])
       wcout << L"Created portable runtime for: '" + src_obe_file + L"' in directory '" + to_base_dir + L"'\n---" << endl;
     }
     catch(std::exception& e) {
-      cerr << ">>> Error encounented build native runtime environment <<<" << endl;
-      cerr << "\t" << e.what() << endl;
+      wcerr << ">>> Error encounented build native runtime environment <<<" << endl;
+      wcerr << "\t" << e.what() << endl;
       exit(1);
     }
   }
@@ -520,16 +524,15 @@ wstring BytesToUnicode(const string& in)
 
 wstring GetUsage()
 {
-  wstring usage;
+  wstring usage = L"Usage: obb -src_file <input *.obe> -to_dir <target directory> -to_name <app name>\n\n";
 
-  usage += L"Usage: obb -src_file <input *.obe> -to_dir <target directory> -to_name <app name>\n\n";
   usage += L"Options:\n";
   usage += L"  -src_file: [input] source .obe file\n";
+  usage += L"  -tool_dir: [optional] root Objeck tool chain directory to copy files from. Optional if the environment variable `OBJECK_LIB_PATH` is specified\n";
   usage += L"  -src_dir:  [optional] directory of content to copy to app/resources\n";
   usage += L"  -to_dir:   [output] output file directory\n";
   usage += L"  -to_name:  [output] output app name\n";
-  usage += L"  -install:  [output] root Objeck directory to copy the runtime from\n";
-  usage += L"\nExample: \"obb -src_file /tmp/hello.obe -to_dir /tmp -to_name hello -install /opt/objeck-lang\"\n\nVersion: ";
+  usage += L"\nExample: \"obb -src_file /tmp/hello.obe -to_dir /tmp -to_name hello -tool_dir /opt/objeck-lang\"\n\nVersion: ";
   usage += VERSION_STRING;
 
   return usage;
