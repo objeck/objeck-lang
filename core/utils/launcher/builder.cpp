@@ -48,6 +48,16 @@ int main(int argc, char* argv[])
   const wstring src_obe_file = GetCommandParameter(L"src_file", cmd_params, argument_options);
   const wstring src_dir = GetCommandParameter(L"src_dir", cmd_params, argument_options, true);
 
+#ifdef _WIN32
+  char* path_str_ptr = nullptr;
+  size_t len;
+  if(_dupenv_s(&path_str_ptr, &len, "OBJECK_LIB_PATH")) {
+    exit(1);
+  }
+#else
+  char* path_str_ptr = getenv("OBJECK_LIB_PATH");
+#endif
+
   // check command line parameters
   if(!EndsWith(src_obe_file, L".obe")) {
     wcout << GetUsage() << endl;
@@ -117,7 +127,6 @@ int main(int argc, char* argv[])
       to_bin_path += L"runtime";    
       to_bin_path += fs::path::preferred_separator;
       to_bin_path += L"bin";      
-//      fs::create_directory(to_bin_path);
 
       fs::copy(from_bin_path, to_bin_path, fs::copy_options::overwrite_existing | fs::copy_options::recursive);
 
@@ -165,7 +174,6 @@ int main(int argc, char* argv[])
       to_lib_path += fs::path::preferred_separator;
       to_lib_path += L"lib";
       
-//      fs::create_directory(to_lib_path);
       fs::copy(from_lib_path, to_lib_path, fs::copy_options::overwrite_existing | fs::copy_options::recursive);
 
       // delete unneeded Objeck library files 
