@@ -683,19 +683,9 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
     }
       break;
 
-    case RTRN:
-      if(is_debug) {
-        mthd_instrs[i] = new StackInstr(line_num + 1, RTRN);
-      }
-      else {
-        mthd_instrs[i] = new StackInstr(line_num, RTRN);
-    }
-      break;
-
       //
       // Start: instruction caching
       //
-
     case SHL_INT:
     case SHR_INT:
     case BIT_AND_INT:
@@ -767,13 +757,13 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
     case CPY_FLOAT_ARY:
     case POP_INT:
     case POP_FLOAT:
+    case RTRN:
     case ZERO_BYTE_ARY:
     case ZERO_CHAR_ARY:
     case ZERO_INT_ARY:
     case ZERO_FLOAT_ARY:
       mthd_instrs[i] = cached_instrs[type];
       break;
-
       //
       // End: instruction caching
       //
