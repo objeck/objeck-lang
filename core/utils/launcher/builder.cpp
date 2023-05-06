@@ -101,8 +101,8 @@ int main(int argc, char* argv[])
       }
 
       if(!CheckInstallDir(runtime_base_dir)) {
-        wcerr << ">>> Invalid Objeck 'tool_dir' directory: '" << runtime_base_dir << L"', specify" << endl; 
-				wcout<<  "  the `-tool_dir` parameter or set environment variable `OBJECK_LIB_PATH` <<<" << endl;
+        wcerr << ">>> Invalid Objeck toolchain directory: '" << runtime_base_dir << L"'" << endl; 
+				wcout<<  "  Please add optional parameter `-tool_dir` or set environment variable `OBJECK_LIB_PATH` <<<" << endl;
         is_ok = false;
       }
 
