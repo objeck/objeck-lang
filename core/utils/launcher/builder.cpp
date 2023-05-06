@@ -1,7 +1,7 @@
 /***************************************************************************
  * Builder for native execution environment
  *
- * Copyright (c) 2022, Randy Hollines
+ * Copyright (c) 2023, Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
