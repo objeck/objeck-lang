@@ -214,14 +214,16 @@ const string GetWorkingDirectory()
 
 int Spawn(const char* spawn_path, char** spawn_args, char** spawn_env) 
 {
-#ifdef _WIN32
-  intptr_t result = _spawnve(P_WAIT, spawn_path, spawn_args, spawn_env);
+#ifdef _MSYS2
+  const intptr_t result = _spawnv(P_WAIT, spawn_path, spawn_args);
+#elif _WIN32
+  const intptr_t result = _spawnve(P_WAIT, spawn_path, spawn_args, spawn_env);
 #else
-  int result = execve(spawn_path, spawn_args, spawn_env);
+  const int result = execve(spawn_path, spawn_args, spawn_env);
 #endif
 
   delete[] spawn_args;
   spawn_args = nullptr;
 
-  return result == 0 ? 0 : 1;
+  return result ? 1 : 0;
 }
