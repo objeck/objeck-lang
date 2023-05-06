@@ -70,10 +70,6 @@ int main(int argc, char* argv[])
     exit(1);
   }
 
-  if(runtime_base_dir.empty()) {
-    runtime_base_dir = GetInstallDirectory();
-  }
-
   // check for required parameters
   if(argument_options.empty()) {
     try {
@@ -270,50 +266,6 @@ int main(int argc, char* argv[])
   }
   
   return 0;
-}
-
-wstring GetInstallDirectory() 
-{
-  wstring install_dir;
-
-#ifdef _WIN32  
-  char install_path[MAX_FILE_PATH];
-  DWORD status = GetModuleFileNameA(nullptr, install_path, sizeof(install_path));
-  if(status > 0) {
-    string exe_path(install_path);
-    size_t index = exe_path.find("\\app\\");
-    if(index != string::npos) {
-      install_dir = BytesToUnicode(exe_path.substr(0, index));
-    }
-  }
-#else
-  ssize_t status = 0;
-  char install_path[MAX_FILE_PATH] = { 0 };
-#ifdef _OSX
-  uint32_t size = MAX_FILE_PATH;
-  if(_NSGetExecutablePath(install_path, &size) != 0) {
-    status = -1;
-  }
-#else
-  status = readlink("/proc/self/exe", install_path, sizeof(install_path) - 1);
-  if(status != -1) {
-    install_path[status] = '\0';
-  }
-#endif
-  if(status != -1) {
-    string exe_path(install_path);
-    size_t install_index = exe_path.find_last_of('/');
-    if(install_index != string::npos) {
-      exe_path = exe_path.substr(0, install_index);
-      install_index = exe_path.find_last_of('/');
-      if(install_index != string::npos) {
-        install_dir = BytesToUnicode(exe_path.substr(0, install_index));
-      }
-    }
-  }
-#endif
-
-  return install_dir;
 }
 
 bool CheckInstallDir(const wstring& install_dir) 
