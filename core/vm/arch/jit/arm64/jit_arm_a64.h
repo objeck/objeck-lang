@@ -189,7 +189,7 @@ namespace Runtime {
       switch(si->GetType()) {
       case LOAD_INT_LIT:
           type = IMM_INT;
-          operand = si->GetOperand4();
+          operand = si->GetInt64Operand();
           break;
           
       case LOAD_CHAR_LIT:
