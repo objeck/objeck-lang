@@ -5164,7 +5164,7 @@ RegInstr::RegInstr(StackInstr* si)
 
   case LOAD_INT_LIT:
     type = IMM_INT;
-    operand = si->GetOperand4();
+    operand = si->GetInt64Operand();
     break;
 
   case LOAD_CLS_MEM:

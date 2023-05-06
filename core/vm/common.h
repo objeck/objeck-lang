@@ -137,9 +137,9 @@ class StackInstr
   long operand;
   union {
     long operand2;
-    INT64_VALUE operand4;
+    INT64_VALUE int64_operand;
     FLOAT_VALUE float_operand;
-  } second_operand;
+  } alt_operand;
   long operand3;
   long native_offset;
   int line_num;
@@ -148,7 +148,7 @@ class StackInstr
   StackInstr(int l, INT64_VALUE v) {
     line_num = l;
     type = LOAD_INT_LIT;
-    second_operand.operand4 = v;
+    alt_operand.int64_operand = v;
   }
 
   StackInstr(int l, InstructionType t) {
@@ -167,7 +167,7 @@ class StackInstr
   StackInstr(int l, InstructionType t, FLOAT_VALUE fo) {
     line_num = l;
     type = t;
-    second_operand.float_operand = fo;
+    alt_operand.float_operand = fo;
     operand = operand3 = native_offset = 0;
   }
 
@@ -175,7 +175,7 @@ class StackInstr
     line_num = l;
     type = t;
     operand = o;
-    second_operand.operand2 = o2;
+    alt_operand.operand2 = o2;
     operand3 = native_offset = 0;
   }
 
@@ -183,7 +183,7 @@ class StackInstr
     line_num = l;
     type = t;
     operand = o;
-    second_operand.operand2 = o2;
+    alt_operand.operand2 = o2;
     operand3 = o3;
     native_offset = 0;
   }
@@ -195,48 +195,36 @@ class StackInstr
     return type;
   }
 
-  int GetLineNumber() const {
-    return line_num;
-  }
-
-  inline void SetType(InstructionType t) {
-    type = t;
-  }
-
   inline long GetOperand() const {
     return operand;
   }
 
-  inline INT64_VALUE GetOperand4() const {
-    return second_operand.operand4;
-  }
-
   inline long GetOperand2() const {
-    return second_operand.operand2;
+    return alt_operand.operand2;
   }
 
   inline long GetOperand3() const {
     return operand3;
   }
 
-  inline void SetOperand(long o) {
-    operand = o;
-  }
-
-  inline void SetOperand2(long o2) {
-    second_operand.operand2 = o2;
-  }
-
-  inline void SetOperand3(long o3) {
-    operand3 = o3;
+  inline INT64_VALUE GetInt64Operand() const {
+    return alt_operand.int64_operand;
   }
 
   inline FLOAT_VALUE GetFloatOperand() const {
-    return second_operand.float_operand;
+    return alt_operand.float_operand;
   }
 
   inline long GetOffset() const {
     return native_offset;
+  }
+
+  int GetLineNumber() const {
+    return line_num;
+  }
+
+  inline void SetOperand3(long o3) {
+    operand3 = o3;
   }
 
   inline void SetOffset(long o) {
