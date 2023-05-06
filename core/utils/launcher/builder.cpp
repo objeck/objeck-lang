@@ -60,6 +60,8 @@ int main(int argc, char* argv[])
 #endif
 
     runtime_base_dir = BytesToUnicode(path_str_ptr);
+    runtime_base_dir += fs::path::preferred_separator;
+    runtime_base_dir += L"..";
   }
   
   // check command line parameters
@@ -99,7 +101,8 @@ int main(int argc, char* argv[])
       }
 
       if(!CheckInstallDir(runtime_base_dir)) {
-        wcerr << ">>> Invalid Objeck 'tool_dir' directory: '" << runtime_base_dir << L"', either provide the `-tool_dir` parameter or set environment variable `OBJECK_LIB_PATH` <<<" << endl;
+        wcerr << ">>> Invalid Objeck 'tool_dir' directory: '" << runtime_base_dir << L"', specify" << endl; 
+				wcout<<  "  the `-tool_dir` parameter or set environment variable `OBJECK_LIB_PATH` <<<" << endl;
         is_ok = false;
       }
 
