@@ -172,41 +172,41 @@ int main(int argc, char* argv[])
       DeleteAllFileTypes(to_lib_path, L".obl");
 
       // copy launch executable and configuration file
-      fs::path from_lib_misc_path_obn(runtime_base_dir);
-      from_lib_misc_path_obn += fs::path::preferred_separator;
-      from_lib_misc_path_obn += L"lib";
-      from_lib_misc_path_obn += fs::path::preferred_separator;
-      from_lib_misc_path_obn += L"native";
-      from_lib_misc_path_obn += fs::path::preferred_separator;
-      from_lib_misc_path_obn += L"misc";
-      from_lib_misc_path_obn += fs::path::preferred_separator;
+      fs::path src_lib_misc_path_obn(runtime_base_dir);
+      src_lib_misc_path_obn += fs::path::preferred_separator;
+      src_lib_misc_path_obn += L"lib";
+      src_lib_misc_path_obn += fs::path::preferred_separator;
+      src_lib_misc_path_obn += L"native";
+      src_lib_misc_path_obn += fs::path::preferred_separator;
+      src_lib_misc_path_obn += L"misc";
+      src_lib_misc_path_obn += fs::path::preferred_separator;
 
-      fs::path foo(to_base_dir);
-      foo += fs::path::preferred_separator;
+      fs::path dest_lib_misc_path_obn(to_base_dir);
+      dest_lib_misc_path_obn += fs::path::preferred_separator;
       
 #ifdef _WIN32
-      from_lib_misc_path_obn += L"obn.exe";
-      foo += L"obn.exe";
+      src_lib_misc_path_obn += L"obn.exe";
+      dest_lib_misc_path_obn += L"obn.exe";
 #else
-      from_lib_misc_path_obn += L"obn";
-      foo += L"obn";
+      src_lib_misc_path_obn += L"obn";
+      dest_lib_misc_path_obn += L"obn";
 #endif
-      fs::copy(from_lib_misc_path_obn, foo);      
+      fs::copy(src_lib_misc_path_obn, dest_lib_misc_path_obn);      
 
-      fs::path from_lib_misc_path_prop(runtime_base_dir);
-      from_lib_misc_path_prop += fs::path::preferred_separator;
-      from_lib_misc_path_prop += L"lib";
-      from_lib_misc_path_prop += fs::path::preferred_separator;
-      from_lib_misc_path_prop += L"native";
-      from_lib_misc_path_prop += fs::path::preferred_separator;
-      from_lib_misc_path_prop += L"misc";
-      from_lib_misc_path_prop += fs::path::preferred_separator;
-      from_lib_misc_path_prop += L"config.prop";
+      fs::path src_lib_misc_path_prop(runtime_base_dir);
+      src_lib_misc_path_prop += fs::path::preferred_separator;
+      src_lib_misc_path_prop += L"lib";
+      src_lib_misc_path_prop += fs::path::preferred_separator;
+      src_lib_misc_path_prop += L"native";
+      src_lib_misc_path_prop += fs::path::preferred_separator;
+      src_lib_misc_path_prop += L"misc";
+      src_lib_misc_path_prop += fs::path::preferred_separator;
+      src_lib_misc_path_prop += L"config.prop";
 
-      fs::path bar(to_base_dir);
-      bar += fs::path::preferred_separator;
-      bar += L"config.prop";
-      fs::copy(from_lib_misc_path_prop, bar);
+      fs::path dest_lib_misc_path_prop(to_base_dir);
+      dest_lib_misc_path_prop += fs::path::preferred_separator;
+      dest_lib_misc_path_prop += L"config.prop";
+      fs::copy(src_lib_misc_path_prop, dest_lib_misc_path_prop);
 
       // copy target application
       fs::path to_obe_file(to_app_path);
