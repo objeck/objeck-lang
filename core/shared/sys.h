@@ -287,7 +287,7 @@ static bool CharacterToBytes(wchar_t in, std::string &out) {
     return true;
   }
   
-  wchar_t buffer[2]{};
+  wchar_t buffer[2];
   buffer[0] = in;
   buffer[1] = L'\0';
 
@@ -463,7 +463,7 @@ public:
     char* buffer = (char*)calloc(buffer_max, sizeof(char));
 
     // setup stream
-    z_stream stream{};
+    z_stream stream;
 
     // input
     stream.next_in = (Bytef*)src;
@@ -498,7 +498,7 @@ public:
 
   static char* UncompressGzip(const char* src, unsigned long src_len, unsigned long& out_len) {
     // setup stream
-    z_stream stream{};
+    z_stream stream;
 
     // input
     stream.next_in = (Bytef*)src;
@@ -560,7 +560,7 @@ public:
     char* buffer = (char*)calloc(buffer_max, sizeof(char));
 
     // setup stream
-    z_stream stream{};
+    z_stream stream;
 
     // input
     stream.next_in = (Bytef*)src;
@@ -595,7 +595,7 @@ public:
 
   static char* UncompressBr(const char* src, unsigned long src_len, unsigned long& out_len) {
     // setup stream
-    z_stream stream{};
+    z_stream stream;
 
     // input
     stream.next_in = (Bytef*)src;
