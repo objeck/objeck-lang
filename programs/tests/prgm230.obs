@@ -1,29 +1,11 @@
-use System.API;
-
-class Proxy {
-	@lib_proxy : static : DllProxy;
-
-	function : GetDllProxy() ~ DllProxy {
-		if(@lib_proxy = Nil) {
-			@lib_proxy := DllProxy->New("libobjk_diags");
-		};
-
-		return @lib_proxy;
-	}
-}
-
-class Analyzer {
-	#~
-	Parsers source file for analysis
-	@param src_file file to parse
-	@return object instance used for analysis
-	~#
-	function : ParseFile(src_file : String) ~ Nil {
-		array_args := Base->New[5];
-		Proxy->GetDllProxy()->CallFunction("diag_parse_file", array_args);
-	}
-
+class Test {
 	function : Main(args : String[]) ~ Nil {
-		System.IO.Filesystem.Logger->Instance()->Info("Foo bar");
+#		f := "Hello"->TypeOf(String);
+#		f->PrintLine();
+		
+		a := "Hello";
+		a->TypeOf(String)->PrintLine();
+
+#		"Hello"->TypeOf(String)->PrintLine();
 	}
 }
