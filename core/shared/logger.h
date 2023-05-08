@@ -46,10 +46,11 @@ static std::wostream& GetLogger() {
 }
 
 static void CloseLogger() {
-  logger->close();
-
-  delete logger;
-  logger = nullptr;
+  if(logger) {
+    logger->close();
+    delete logger;
+    logger = nullptr;
+  }
 }
 
 #endif
