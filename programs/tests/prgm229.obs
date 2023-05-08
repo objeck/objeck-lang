@@ -5,6 +5,9 @@ class Test {
 			tree := tree_inf->As(Tree); 
 			tree->ToString()->PrintLine();
 		}
+
+
+		(tree_inf->GetClassID() = 10)->PrintLine();
 	}
 }
 
