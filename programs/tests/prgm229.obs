@@ -1,33 +1,33 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		tree := MyTree->Node(42, MyTree->Empty(), MyTree->Empty());  
+		tree := Tree->Node(42, Tree->Empty(), Tree->Empty());  
 		tree->ToString()->PrintLine();
 	}
 }
 
-interface Tree {
-	function : virtual : Empty() ~ Tree;
-	function : virtual : Node(value : Int, left : Tree, right : Tree) ~ Tree;
+interface TreeInf {
+	function : virtual : Empty() ~ TreeInf;
+	function : virtual : Node(value : Int, left : TreeInf, right : TreeInf) ~ TreeInf;
 	method : virtual : public : ToString() ~ String;
 }
 
-class MyTree implements Tree {
+class Tree implements TreeInf {
 	@value : Int;
-	@left : Tree;
-	@right : Tree;
+	@left : TreeInf;
+	@right : TreeInf;
 
-	New(value : Int, left : Tree, right : Tree) {
+	New : private(value : Int, left : TreeInf, right : TreeInf) {
 		@value := value;
 		@left := left;
 		@right := right;
 	}
 
-	function : Empty() ~ Tree {
+	function : Empty() ~ TreeInf {
 		return Nil;
 	}
 
-	function : Node(value : Int, left : Tree, right : Tree) ~ Tree {
-		return MyTree->New(value, left, right);
+	function : Node(value : Int, left : TreeInf, right : TreeInf) ~ TreeInf {
+		return Tree->New(value, left, right);
 	}
 
 	method : public : ToString() ~ String {
