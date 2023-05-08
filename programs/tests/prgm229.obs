@@ -8,6 +8,7 @@ class Test {
 interface Tree {
 	function : virtual : Empty() ~ Tree;
 	function : virtual : Node(value : Int, left : Tree, right : Tree) ~ Tree;
+	method : virtual : public : ToString() ~ String;
 }
 
 class MyTree implements Tree {
@@ -21,11 +22,11 @@ class MyTree implements Tree {
 		@right := right;
 	}
 
-	function : Empty() ~ MyTree {
+	function : Empty() ~ Tree {
 		return Nil;
 	}
 
-	function : Node(value : Int, left : Tree, right : Tree) ~ MyTree {
+	function : Node(value : Int, left : Tree, right : Tree) ~ Tree {
 		return MyTree->New(value, left, right);
 	}
 
