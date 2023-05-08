@@ -4358,9 +4358,33 @@ MethodCall* Parser::ParseMethodCall(IdentifierContext& context, int depth)
         method_call->SetCastType(variable->GetCastType(), false);
       }
     }
+
     else if(Match(TOKEN_TYPE_OF_ID)) {
-      ProcessError(L"TypeOf(..) is not a statement", TOKEN_CLOSED_PAREN);
+       Variable* variable = ParseVariable(context, depth + 1);
+
+       NextToken();
+       if(!Match(TOKEN_OPEN_PAREN)) {
+         ProcessError(L"Expected '('", TOKEN_OPEN_PAREN);
+       }
+       NextToken();
+
+       Type* foo = nullptr;
+       if(variable) {
+          foo = ParseType(depth + 1);
+       }
+
+       if(!Match(TOKEN_CLOSED_PAREN)) {
+         ProcessError(L"Expected ')'", TOKEN_CLOSED_PAREN);
+       }
+       NextToken();
+       
+       if(foo)  {
+          method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos,
+                                                                GetLineNumber(), GetLinePosition(), ident, L"");
+          method_call->SetTypeOf(foo);
+       }
     }
+
     else {
       ProcessError(L"Expected identifier", TOKEN_SEMI_COLON);
     }

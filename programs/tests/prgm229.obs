@@ -1,14 +1,16 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		tree := Tree->Node(42, Tree->Empty(), Tree->Empty());  
-		tree->ToString()->PrintLine();
+		tree_inf := Tree->Node(42, Tree->Empty(), Tree->Empty());  
+		if(tree_inf->TypeOf(Tree)) {
+			tree := tree_inf->As(Tree); 
+			tree->ToString()->PrintLine();
+		}
 	}
 }
 
 interface TreeInf {
 	function : virtual : Empty() ~ TreeInf;
 	function : virtual : Node(value : Int, left : TreeInf, right : TreeInf) ~ TreeInf;
-	method : virtual : public : ToString() ~ String;
 }
 
 class Tree implements TreeInf {
