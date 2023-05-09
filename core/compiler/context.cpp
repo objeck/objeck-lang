@@ -2037,9 +2037,34 @@ void ContextAnalyzer::AnalyzeEnumCall(MethodCall* method_call, bool regress, con
         ProcessError(static_cast<Expression*>(method_call), L"Invalid '@parent' reference for variable: '" + item_name + L"'");
       }
     }
+    //
+    // check 'TypeOf(..)
+    //
+    else if(method_call->GetTypeOf()) {
+      if(method_call->GetTypeOf()->GetType() != CLASS_TYPE || (method_call->GetEvalType() && method_call->GetEvalType()->GetType() != CLASS_TYPE)) {
+        ProcessError(static_cast<Expression*>(method_call), L"Invalid 'TypeOf' check, only complex classes are supported");
+      }
+
+      AnalyzeVariable(method_call->GetVariable(), depth + 1);
+      
+      Type* type_of = method_call->GetTypeOf();
+      if(SearchProgramClasses(type_of->GetName())) {
+        Class* klass = SearchProgramClasses(type_of->GetName());
+        klass->SetCalled(true);
+        type_of->SetName(klass->GetName());
+      }
+      else if(linker->SearchClassLibraries(type_of->GetName(), program->GetUses(current_class->GetFileName()))) {
+        LibraryClass* lib_klass = linker->SearchClassLibraries(type_of->GetName(), program->GetUses(current_class->GetFileName()));
+        lib_klass->SetCalled(true);
+        type_of->SetName(lib_klass->GetName());
+      }
+      else {
+        ProcessError(static_cast<Expression*>(method_call), L"Invalid 'TypeOf' check, unknown class '" + type_of->GetName() + L"'");
+      }
+      method_call->SetEvalType(TypeFactory::Instance()->MakeType(BOOLEAN_TYPE), true);
+    }
     else {
-      ProcessError(static_cast<Expression*>(method_call), L"Undefined or incompatible enum type: '" +
-                   FormatTypeString(enum_name) + L"'");
+      ProcessError(static_cast<Expression*>(method_call), L"Undefined or incompatible enum type: '" + FormatTypeString(enum_name) + L"'");
     }
   }
 
@@ -3802,8 +3827,7 @@ void ContextAnalyzer::AnalyzeCast(Expression* expression, const int depth)
   }
   // typeof check
   else if(expression->GetTypeOf()) {
-    if(expression->GetTypeOf()->GetType() != CLASS_TYPE ||
-      (expression->GetEvalType() && expression->GetEvalType()->GetType() != CLASS_TYPE)) {
+    if(expression->GetTypeOf()->GetType() != CLASS_TYPE) {
       ProcessError(expression, L"Invalid 'TypeOf' check, only complex classes are supported");
     }
 
