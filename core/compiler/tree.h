@@ -2745,6 +2745,27 @@ namespace frontend {
       func_rtrn = nullptr;
       anonymous_klass = nullptr;
     }
+
+    MethodCall(const std::wstring& file_name, const int line_num, const int line_pos, const int end_line_num,
+               const int end_line_pos, Variable* v) : Statement(file_name, line_num, line_pos, end_line_num, end_line_pos), Expression(file_name, line_num, line_pos) {
+      mid_line_num = mid_line_pos = -1;
+      call_type = ENUM_CALL;
+      variable = v;
+      expressions = nullptr;
+      entry = dyn_func_entry = nullptr;
+      method = nullptr;
+      array_type = nullptr;
+      enum_item = nullptr;
+      method = nullptr;
+      lib_method = nullptr;
+      lib_enum_item = nullptr;
+      original_klass = nullptr;
+      original_lib_klass = nullptr;
+      is_enum_call = is_func_def = is_dyn_func_call = false;
+      is_rouge_return = instructions::NIL_TYPE;
+      func_rtrn = nullptr;
+      anonymous_klass = nullptr;
+    }
     
     MethodCall(const std::wstring& file_name, const int line_num, const int line_pos, const int ml, const int mp,
                const int end_line_num, const int end_line_pos, Variable* v, const std::wstring& m,
@@ -3376,6 +3397,13 @@ namespace frontend {
                                const int end_line_num, const int end_line_pos, 
                                const std::wstring& v, const std::wstring& m) {
       MethodCall* tmp = new MethodCall(file_name, line_num, line_pos, end_line_num, end_line_pos, v, m);
+      calls.push_back(tmp);
+      return tmp;
+    }
+
+    MethodCall* MakeMethodCall(const std::wstring& file_name, const int line_num, const int line_pos,
+                               const int end_line_num, const int end_line_pos, Variable* v) {
+      MethodCall* tmp = new MethodCall(file_name, line_num, line_pos, end_line_num, end_line_pos, v);
       calls.push_back(tmp);
       return tmp;
     }

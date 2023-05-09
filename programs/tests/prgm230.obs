@@ -1,11 +1,13 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-#		f := "Hello"->TypeOf(String);
-#		f->PrintLine();
+		"Hello"->TypeOf(String)->PrintLine();	
 		
 		a := "Hello";
 		a->TypeOf(String)->PrintLine();
-
-#		"Hello"->TypeOf(String)->PrintLine();
+		
+		a := "Hello";
+		b := a->TypeOf(String)
+		b->PrintLine();
+	
 	}
 }
