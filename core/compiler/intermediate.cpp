@@ -4357,7 +4357,7 @@ void IntermediateEmitter::EmitCast(Expression* expression)
       }
       else {
         long id = parsed_program->GetLinker()->SearchClassLibraries(type_of->GetName(), parsed_program->GetUses())->GetId();
-        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, OBJ_TYPE_OF, id)); 
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, OBJ_TYPE_OF, id));
         expression->GetTypeOf()->SetResolved(true);
       }
     }
@@ -5035,7 +5035,7 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
       EmitVariable(variable);            
       EmitClassCast(method_call);
     }
-    else if(method_call->GetTypeOf()) {
+    else if(variable && method_call->GetTypeOf()) {
       EmitVariable(variable);
     }
     else if(entry) {
