@@ -3146,33 +3146,23 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
     break;
   }
 
-  if(expression->GetTypeOf() && !expression->GetTypeOf()->IsResolved()) {
+  if(expression->GetTypeOf() && expression->GetExpressionType() != VAR_EXPR) {
     frontend::Type* type_of = expression->GetTypeOf();
 #ifdef _DEBUG
     assert(type_of->GetType() == frontend::CLASS_TYPE);
 #endif
     if(SearchProgramClasses(type_of->GetName())) {
-      if(is_lib) {
-        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LIB_OBJ_TYPE_OF, type_of->GetName()));
-      }
-      else {
-        long id = SearchProgramClasses(type_of->GetName())->GetId();
-        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, OBJ_TYPE_OF, id));
-        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LOAD_INST_MEM));
-      }
+      const long id = SearchProgramClasses(type_of->GetName())->GetId();
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, OBJ_TYPE_OF, id));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LOAD_INST_MEM));
     }
     else {
-      if(is_lib) {
-        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LIB_OBJ_TYPE_OF, type_of->GetName()));
-      }
-      else {
-        long id = parsed_program->GetLinker()->SearchClassLibraries(type_of->GetName(), parsed_program->GetUses())->GetId();
-        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, OBJ_TYPE_OF, id));
-        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LOAD_INST_MEM));
-      }
+      const long id = parsed_program->GetLinker()->SearchClassLibraries(type_of->GetName(), parsed_program->GetUses())->GetId();
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, OBJ_TYPE_OF, id));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LOAD_INST_MEM));
     }
   }
-  
+
   // note: all nested method calls of type METHOD_CALL_EXPR
   // are processed above
   if(expression->GetExpressionType() != METHOD_CALL_EXPR && expression->GetExpressionType() != VAR_EXPR) {
