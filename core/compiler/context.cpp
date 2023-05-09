@@ -3825,10 +3825,15 @@ void ContextAnalyzer::AnalyzeCast(Expression* expression, const int depth)
 
     AnalyzeRightCast(cast_type, root_type, expression, IsScalar(expression), depth + 1);
   }
-  // typeof check
+  // 'TypeOf(..)' check
   else if(expression->GetTypeOf()) {
     if(expression->GetTypeOf()->GetType() != CLASS_TYPE) {
-      ProcessError(expression, L"Invalid 'TypeOf' check, only complex classes are supported");
+      ProcessError(expression, L"Invalid 'TypeOf' check, only allowed for complex classes");
+    }
+
+    if(expression->GetExpressionType() == METHOD_CALL_EXPR && 
+       (static_cast<MethodCall*>(expression)->GetCallType() == NEW_INST_CALL || static_cast<MethodCall*>(expression)->GetCallType() == NEW_ARRAY_CALL)) {
+      ProcessError(expression, L"Invalid 'TypeOf' check during object instantiation");
     }
 
     Type* type_of = expression->GetTypeOf();
