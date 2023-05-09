@@ -1,15 +1,15 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		String->New()->TypeOf(String)->PrintLine();	
-#		"Hello"->TypeOf(String)->PrintLine();	
+#		String->New()->TypeOf(String)->PrintLine();	
+		"Hello"->TypeOf(String)->PrintLine();	
 
-#~		
+
 		a := "Hello";
 		a->TypeOf(String)->PrintLine();
 		
 		a := "Hello";
 		b := a->TypeOf(String)
 		b->PrintLine();
-~#	
+
 	}
 }
