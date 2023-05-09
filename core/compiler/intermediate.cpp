@@ -3145,6 +3145,34 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
     EmitCalculation(static_cast<CalculatedExpression*>(expression));
     break;
   }
+
+  if(expression->GetTypeOf() && !expression->GetTypeOf()->IsResolved()) {
+    frontend::Type* type_of = expression->GetTypeOf();
+#ifdef _DEBUG
+    assert(type_of->GetType() == frontend::CLASS_TYPE);
+#endif
+    if(SearchProgramClasses(type_of->GetName())) {
+      if(is_lib) {
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LIB_OBJ_TYPE_OF, type_of->GetName()));
+      }
+      else {
+        long id = SearchProgramClasses(type_of->GetName())->GetId();
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, OBJ_TYPE_OF, id));
+      }
+    }
+    else {
+      if(is_lib) {
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LIB_OBJ_TYPE_OF, type_of->GetName()));
+      }
+      else {
+        long id = parsed_program->GetLinker()->SearchClassLibraries(type_of->GetName(), parsed_program->GetUses())->GetId();
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, OBJ_TYPE_OF, id));
+      }
+    }
+
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LOAD_INST_MEM));
+
+  }
   
   // note: all nested method calls of type METHOD_CALL_EXPR
   // are processed above
@@ -4340,7 +4368,8 @@ void IntermediateEmitter::EmitCast(Expression* expression)
       }
       else {
         long id = parsed_program->GetLinker()->SearchClassLibraries(type_of->GetName(), parsed_program->GetUses())->GetId();
-        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, OBJ_TYPE_OF, id));  
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, OBJ_TYPE_OF, id)); 
+        expression->GetTypeOf()->SetResolved(true);
       }
     }
   }
@@ -5016,6 +5045,9 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
       // emit variable
       EmitVariable(variable);            
       EmitClassCast(method_call);
+    }
+    else if(method_call->GetTypeOf()) {
+      EmitVariable(variable);
     }
     else if(entry) {
       // memory context
