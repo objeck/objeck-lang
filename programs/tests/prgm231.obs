@@ -1,15 +1,6 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		"Hello World"->PrintLine();
-	}
-
-	method : public : Filter(f : () ~ Bool) ~ Int {
-		if(false) {
-			return 7;
-		};
-
-		f();
-		
-		return 34;
+		a : Base := String->New();
+		a->As(String)->Capacity()->PrintLine();
 	}
 }
