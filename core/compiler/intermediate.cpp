@@ -3158,6 +3158,7 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
       else {
         long id = SearchProgramClasses(type_of->GetName())->GetId();
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, OBJ_TYPE_OF, id));
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LOAD_INST_MEM));
       }
     }
     else {
@@ -3167,11 +3168,9 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
       else {
         long id = parsed_program->GetLinker()->SearchClassLibraries(type_of->GetName(), parsed_program->GetUses())->GetId();
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, OBJ_TYPE_OF, id));
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LOAD_INST_MEM));
       }
     }
-
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LOAD_INST_MEM));
-
   }
   
   // note: all nested method calls of type METHOD_CALL_EXPR
