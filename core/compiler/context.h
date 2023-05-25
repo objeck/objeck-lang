@@ -453,7 +453,7 @@ class ContextAnalyzer {
   void ProcessWarning(ParseNode* n, const std::wstring& msg);
   void ProcessErrorAlternativeMethods(std::wstring &message);
   void ProcessError(const std::wstring &fn, const std::wstring &msg);
-  bool CheckErrors();
+  bool CheckErrorsWarnings();
 
   // context operations
   void AnalyzeEnum(Enum* eenum, const int depth);
