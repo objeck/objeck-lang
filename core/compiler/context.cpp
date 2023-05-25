@@ -50,20 +50,6 @@ void ContextAnalyzer::ProcessError(ParseNode* node, const std::wstring &msg)
 /****************************
  * Emits an error
  ****************************/
-void ContextAnalyzer::ProcessWarning(ParseNode* node, const std::wstring& msg)
-{
-#ifdef _DEBUG
-  GetLogger() << L"\tWarning: " << node->GetFileName() << L":(" << node->GetLineNumber() << L',' << node->GetLinePosition() << L"): " << msg << std::endl;
-#endif
-
-  const std::wstring& str_line_num = ToString(node->GetLineNumber());
-  const std::wstring& str_line_pos = ToString(node->GetLinePosition());
-  warnings.insert(std::pair<int, std::wstring>(node->GetLineNumber(), node->GetFileName() + L":(" + str_line_num + L',' + str_line_pos + L"): Warning: " + msg));
-}
-
-/****************************
- * Emits an error
- ****************************/
 void ContextAnalyzer::ProcessError(const std::wstring& fn, int ln, int lp, const std::wstring& msg)
 {
 #ifdef _DEBUG
@@ -103,11 +89,25 @@ void ContextAnalyzer::ProcessErrorAlternativeMethods(std::wstring &message)
 }
 
 /****************************
+ * Emits an error
+ ****************************/
+void ContextAnalyzer::ProcessWarning(ParseNode* node, const std::wstring& msg)
+{
+#ifdef _DEBUG
+  GetLogger() << L"\tWarning: " << node->GetFileName() << L":(" << node->GetLineNumber() << L',' << node->GetLinePosition() << L"): " << msg << std::endl;
+#endif
+
+  const std::wstring& str_line_num = ToString(node->GetLineNumber());
+  const std::wstring& str_line_pos = ToString(node->GetLinePosition());
+  warnings.insert(std::pair<int, std::wstring>(node->GetLineNumber(), node->GetFileName() + L":(" + str_line_num + L',' + str_line_pos + L"): Warning: " + msg));
+}
+
+/****************************
  * Check for errors detected
  * during the contextual
  * analysis process.
  ****************************/
-bool ContextAnalyzer::CheckErrors()
+bool ContextAnalyzer::CheckErrorsWarnings()
 {
   bool status = true;
 
@@ -297,7 +297,7 @@ bool ContextAnalyzer::Analyze()
   assert(!nested_call_depth);
 #endif
 
-  return CheckErrors();
+  return CheckErrorsWarnings();
 }
 
 /****************************
@@ -3807,6 +3807,8 @@ void ContextAnalyzer::AnalyzeCast(Expression* expression, const int depth)
   if(expression->GetCastType()) {
     // get cast and root types
     Type* cast_type = expression->GetCastType();
+    ResolveClassEnumType(cast_type);
+
     Type* root_type = expression->GetBaseType();
     if(!root_type) {
       root_type = expression->GetEvalType();
@@ -6102,6 +6104,11 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Expression* expression, const
 
 void ContextAnalyzer::AnalyzeClassCast(Type* left, Type* right, Expression* expression, bool generic_check, const int depth)
 {
+  // this will be cause upstream
+  if(left->GetType() != CLASS_TYPE || right->GetType() != CLASS_TYPE) {
+    return;
+  }
+
   Class* left_class = nullptr;
   LibraryEnum* left_lib_enum = nullptr;
   LibraryClass* left_lib_class = nullptr;
