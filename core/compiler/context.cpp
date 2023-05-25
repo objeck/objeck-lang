@@ -43,7 +43,7 @@ void ContextAnalyzer::ProcessError(ParseNode* node, const std::wstring &msg)
 #endif
 
   const std::wstring &str_line_num = ToString(node->GetLineNumber());
-  const std::wstring& str_line_pos = ToString(node->GetLinePosition());
+  const std::wstring &str_line_pos = ToString(node->GetLinePosition());
   errors.insert(std::pair<int, std::wstring>(node->GetLineNumber(), node->GetFileName()+ L":(" + str_line_num + L',' + str_line_pos + L"): " + msg));
 }
 
@@ -6094,7 +6094,7 @@ Expression* ContextAnalyzer::BoxExpression(Type* to_type, Expression* from_expr,
  ****************************/
 void ContextAnalyzer::AnalyzeClassCast(Type* left, Expression* expression, const int depth)
 {
-  if(expression->GetCastType() && expression->GetEvalType() && (expression->GetCastType()->GetType() != CLASS_TYPE ||  expression->GetEvalType()->GetType() != CLASS_TYPE)) {
+  if(expression->GetCastType() && expression->GetEvalType() && (expression->GetCastType()->GetType() != CLASS_TYPE || expression->GetEvalType()->GetType() != CLASS_TYPE)) {
     AnalyzeRightCast(expression->GetCastType(), expression->GetEvalType(), expression, IsScalar(expression), depth + 1);
   }
 
@@ -6105,7 +6105,7 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Expression* expression, const
 void ContextAnalyzer::AnalyzeClassCast(Type* left, Type* right, Expression* expression, bool generic_check, const int depth)
 {
   // this will be cause upstream
-  if(left->GetType() != CLASS_TYPE || right->GetType() != CLASS_TYPE) {
+  if((left && left->GetType() != CLASS_TYPE) || (right && right->GetType() != CLASS_TYPE)) {
     return;
   }
 
