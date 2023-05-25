@@ -2636,7 +2636,7 @@ void ContextAnalyzer::AnalyzeExpressionMethodCall(Expression* expression, const 
       // check expression class
       bool is_enum_call = false;
       if(!AnalyzeExpressionMethodCall(expression, encoding, klass, lib_klass, is_enum_call)) {
-        ProcessError(static_cast<Expression*>(method_call), L"Invalid class type or assignment");
+//        ProcessError(static_cast<Expression*>(method_call), L"Invalid class type or assignment");
       }
       method_call->SetEnumCall(is_enum_call);
 
@@ -2652,7 +2652,7 @@ void ContextAnalyzer::AnalyzeExpressionMethodCall(Expression* expression, const 
           std::wstring error_msg;
 
           if(!expression->GetEvalType()->GetName().empty()) {
-            error_msg = L" +Undefined class reference: '" + expression->GetEvalType()->GetName();
+            error_msg = L"Undefined class reference: '" + expression->GetEvalType()->GetName();
           }
           else if(expression->GetExpressionType() == METHOD_CALL_EXPR) {
             MethodCall* cls_method = static_cast<MethodCall*>(expression);
@@ -2670,8 +2670,7 @@ void ContextAnalyzer::AnalyzeExpressionMethodCall(Expression* expression, const 
           ProcessError(static_cast<Expression*>(method_call), error_msg + L"\n\tIf external reference to generic ensure it has been typed");
         }
         else {
-          ProcessError(static_cast<Expression*>(method_call),
-                       L"Undefined class reference.\n\tIf external reference to generic ensure it has been typed");
+          ProcessError(static_cast<Expression*>(method_call), L"Undefined class reference.\n\tIf external reference to generic ensure it has been typed");
         }
       }
 
@@ -6933,7 +6932,7 @@ Type* ContextAnalyzer::GetExpressionType(Expression* expression, int depth)
     }
   }
   else if(mthd_call) {
-    while(mthd_call) {
+    do {
       AnalyzeExpressionMethodCall(mthd_call, depth + 1);
 
       // favor casts
@@ -6948,7 +6947,8 @@ Type* ContextAnalyzer::GetExpressionType(Expression* expression, int depth)
       }
 
       mthd_call = mthd_call->GetMethodCall();
-    }
+    } 
+    while(mthd_call);
   }
   else {
     // favor casts
