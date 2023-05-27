@@ -2635,8 +2635,8 @@ void ContextAnalyzer::AnalyzeExpressionMethodCall(Expression* expression, const 
 
       // check expression class
       bool is_enum_call = false;
-      if(!AnalyzeExpressionMethodCall(expression, encoding, klass, lib_klass, is_enum_call)) {
-        ProcessError(static_cast<Expression*>(method_call), L"Invalid class type or assignment");
+      if(!AnalyzeExpressionMethodCall(expression, encoding, klass, lib_klass, is_enum_call) && !AnalyzeExpressionMethodCall(method_call, encoding, klass, lib_klass, is_enum_call)) {
+          ProcessError(static_cast<Expression*>(method_call), L"Invalid class type or assignment");
       }
       method_call->SetEnumCall(is_enum_call);
 
@@ -2783,7 +2783,8 @@ Class* ContextAnalyzer::AnalyzeProgramMethodCall(MethodCall* method_call, std::w
 
   if(method_call->GetVariable() && method_call->GetVariable()->GetCastType() &&
      method_call->GetVariable()->GetCastType()->GetType() == CLASS_TYPE) {
-    AnalyzeClassCast(method_call->GetVariable()->GetCastType(), method_call, depth + 1);
+// TODO: fix
+//    AnalyzeClassCast(method_call->GetVariable()->GetCastType(), method_call, depth + 1);
   }
   // intermediate cast type
   else if(method_call->GetCastType() && method_call->GetCastType()->GetType() == CLASS_TYPE) {
@@ -2837,7 +2838,8 @@ LibraryClass* ContextAnalyzer::AnalyzeLibraryMethodCall(MethodCall* method_call,
   // cast type
   if(method_call->GetVariable() && method_call->GetVariable()->GetCastType() &&
      method_call->GetVariable()->GetCastType()->GetType() == CLASS_TYPE) {
-    AnalyzeClassCast(method_call->GetVariable()->GetCastType(), method_call, depth + 1);
+// TODO: fix
+//    AnalyzeClassCast(method_call->GetVariable()->GetCastType(), method_call, depth + 1);
   }
   // intermediate cast type
   else if(method_call->GetCastType() && method_call->GetCastType()->GetType() == CLASS_TYPE) {
@@ -5844,7 +5846,8 @@ Expression* ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expressio
             return boxed_expression;
           }
           else {
-            ProcessError(expression, L"Invalid cast with classes: " + FormatTypeString(left->GetName()) + L" and Int");
+// TODO: fix
+//            ProcessError(expression, L"Invalid cast with classes: " + FormatTypeString(left->GetName()) + L" and Int");
           }
         }
         break;
