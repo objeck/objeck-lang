@@ -7,8 +7,8 @@ class Test {
 ~#
 
 
-		c : Base := String->New("Hello World!");
+		c := String->New("Hello World!");
 		c->As(String)->Capacity()->Abs()->PrintLine();
-
+#		c->Capacity()->Abs()->PrintLine();
 	}
 }
