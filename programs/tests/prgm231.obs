@@ -6,9 +6,9 @@ class Test {
 		b->PrintLine();
 ~#
 
-
+		
 		c := String->New("Hello World!");
-		c->As(String)->Capacity()->Abs()->PrintLine();
 #		c->Capacity()->Abs()->PrintLine();
+		c->As(String)->Capacity()->Abs()->PrintLine();
 	}
 }
