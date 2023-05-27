@@ -6319,7 +6319,12 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Type* right, Expression* expr
     }
   }
   else {
-    ProcessError(expression, L"Invalid class, enum or method call context\n\tEnsure all required libraries have been included");
+    if(left) {
+      ProcessError(expression, L"Unknown class cast type: '" + left->GetName() + L"'");
+    }
+    else {
+      ProcessError(expression, L"Invalid class, enum or method call context\n\tEnsure all required libraries have been included");
+    }
   }
 }
 

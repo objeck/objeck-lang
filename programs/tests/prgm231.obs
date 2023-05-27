@@ -1,14 +1,13 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-#~
+
 		a : Base := String->New();
 		b := a->As(String)->Capacity()->Abs();
 		b->PrintLine();
-~#
 
 		
 		c := String->New("Hello World!");
 #		c->Capacity()->Abs()->PrintLine();
-		c->As(String)->Capacity()->Abs()->PrintLine();
+		c->As(Foo)->Capacity()->Abs()->PrintLine();
 	}
 }
