@@ -2781,13 +2781,7 @@ Class* ContextAnalyzer::AnalyzeProgramMethodCall(MethodCall* method_call, std::w
     }
   }
 
-  if(method_call->GetVariable() && method_call->GetVariable()->GetCastType() &&
-     method_call->GetVariable()->GetCastType()->GetType() == CLASS_TYPE) {
-// TODO: fix
-//    AnalyzeClassCast(method_call->GetVariable()->GetCastType(), method_call, depth + 1);
-  }
-  // intermediate cast type
-  else if(method_call->GetCastType() && method_call->GetCastType()->GetType() == CLASS_TYPE) {
+  if(method_call->GetCastType() && method_call->GetCastType()->GetType() == CLASS_TYPE) {
     AnalyzeVariableCast(method_call->GetCastType(), method_call);
   }
 
@@ -2835,14 +2829,7 @@ LibraryClass* ContextAnalyzer::AnalyzeLibraryMethodCall(MethodCall* method_call,
     klass = linker->SearchClassLibraries(variable_name, program->GetUses(current_class->GetFileName()));
   }
 
-  // cast type
-  if(method_call->GetVariable() && method_call->GetVariable()->GetCastType() &&
-     method_call->GetVariable()->GetCastType()->GetType() == CLASS_TYPE) {
-// TODO: fix
-//    AnalyzeClassCast(method_call->GetVariable()->GetCastType(), method_call, depth + 1);
-  }
-  // intermediate cast type
-  else if(method_call->GetCastType() && method_call->GetCastType()->GetType() == CLASS_TYPE) {
+  if(method_call->GetCastType() && method_call->GetCastType()->GetType() == CLASS_TYPE) {
     AnalyzeVariableCast(method_call->GetCastType(), method_call);
   }
 
@@ -5821,7 +5808,7 @@ Expression* ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expressio
           if(boxed_expression) {
             return boxed_expression;
           }
-          else {
+          else if(left->GetType() != CLASS_TYPE) {
             ProcessError(expression, L"Invalid cast with classes: " + FormatTypeString(left->GetName()) + L" and System.Byte");
           }
         }
@@ -5833,7 +5820,7 @@ Expression* ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expressio
           if(boxed_expression) {
             return boxed_expression;
           }
-          else {
+          else if(left->GetType() != CLASS_TYPE) {
             ProcessError(expression, L"Invalid cast with classes: " + FormatTypeString(left->GetName()) + L" and System.Char");
           }
         }
@@ -5845,9 +5832,8 @@ Expression* ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expressio
           if(boxed_expression) {
             return boxed_expression;
           }
-          else {
-// TODO: fix
-//            ProcessError(expression, L"Invalid cast with classes: " + FormatTypeString(left->GetName()) + L" and Int");
+          else if(left->GetType() != CLASS_TYPE) {
+            ProcessError(expression, L"Invalid cast with classes: " + FormatTypeString(left->GetName()) + L" and Int");
           }
         }
         break;
@@ -5858,7 +5844,7 @@ Expression* ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expressio
           if(boxed_expression) {
             return boxed_expression;
           }
-          else {
+          else if(left->GetType() != CLASS_TYPE) {
             ProcessError(expression, L"Invalid cast with classes: " + FormatTypeString(left->GetName()) + L" and System.Float");
           }
         }
@@ -5874,7 +5860,7 @@ Expression* ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expressio
           if(boxed_expression) {
             return boxed_expression;
           }
-          else {
+          else if(left->GetType() != CLASS_TYPE) {
             ProcessError(expression, L"Invalid cast with classes: " + left->GetName() + L" and System.Bool");
           }
         }
