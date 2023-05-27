@@ -2636,7 +2636,7 @@ void ContextAnalyzer::AnalyzeExpressionMethodCall(Expression* expression, const 
       // check expression class
       bool is_enum_call = false;
       if(!AnalyzeExpressionMethodCall(expression, encoding, klass, lib_klass, is_enum_call)) {
-//        ProcessError(static_cast<Expression*>(method_call), L"Invalid class type or assignment");
+        ProcessError(static_cast<Expression*>(method_call), L"Invalid class type or assignment");
       }
       method_call->SetEnumCall(is_enum_call);
 
