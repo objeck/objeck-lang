@@ -51,12 +51,15 @@ class Document {
 };
 
 class Editor {
+  Document doc;
 
 public:
   Editor();
 
   ~Editor() {
   }
+
+  void Edit();
 };
 
 #endif

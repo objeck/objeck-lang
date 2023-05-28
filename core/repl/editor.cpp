@@ -49,6 +49,8 @@ void Document::Initialize()
 
 void Document::List()
 {
+  std::wcout << L"---" << std::endl;
+
   auto i = 0;
   for(const auto &line : lines) {
     std::wcout << (++i);
@@ -96,5 +98,29 @@ bool Document::Delete(size_t line_num)
 //
 Editor::Editor()
 {
+  doc.Initialize();
+}
 
+void Editor::Edit()
+{
+  bool done = false;
+  std::wstring in;
+  do {
+    std::wcout << L"> ";
+    std::getline(std::wcin, in);
+
+    if(in == L"/q") {
+      done = true;
+    }
+    else if(in == L"/l") {
+      std::wcout << L"<list>" << std::endl;
+    }
+    else if(in == L"/d") {
+      std::wcout << L"<delete>" << std::endl;
+    }
+    else {
+      std::wcout << L"  [" << in << L']' << std::endl;
+    }
+  }
+  while(!done);
 }
