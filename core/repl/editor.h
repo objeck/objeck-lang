@@ -44,8 +44,9 @@ class Document {
    }
 
    size_t Initialize();
+   size_t Lines();
 
-   void List();
+   void List(size_t cur_pos);
    bool Insert(size_t line_num, const std::wstring line);
    bool Delete(size_t line_num);
 };

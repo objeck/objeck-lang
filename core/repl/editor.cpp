@@ -38,6 +38,11 @@ Document::Document()
 {
 }
 
+size_t Document::Lines()
+{
+  return lines.size();
+}
+
 size_t Document::Initialize()
 {
   lines.push_back(L"class Shell {");
@@ -48,13 +53,19 @@ size_t Document::Initialize()
   return 3;
 }
 
-void Document::List()
+void Document::List(size_t cur_pos)
 {
   std::wcout << L"---" << std::endl;
 
   auto i = 0;
   for(const auto &line : lines) {
-    std::wcout << (++i);
+    if(++i == cur_pos) {
+      std::wcout << "=> ";
+    }
+    else {
+      std::wcout << "   ";
+    }
+    std::wcout << i;
     std::wcout << L": ";
     std::wcout << line << std::endl;
   }
@@ -114,21 +125,56 @@ void Editor::Edit()
       done = true;
     }
     else if(in == L"/l") {
-      doc.List();
+      doc.List(cur_pos);
     }
-    else if(StartsWith(in, L"/d")) {
-      std::wcout << L"<delete>" << std::endl;
+    else if(StartsWith(in, L"/d ")) {
+      const size_t offset = in.find_last_of(L' ');
+      if(offset != std::wstring::npos) {
+        const std::wstring line_pos_str = in.substr(offset);
+        doc.Delete(std::stoi(line_pos_str));
+        cur_pos--;
+        std::wcout << "Ok." << std::endl;
+      }
+      else {
+        std::wcout << "???" << std::endl;
+      }
+    }
+    else if(StartsWith(in, L"/g ")) {
+      const size_t offset = in.find_last_of(L' ');
+      if(offset != std::wstring::npos) {
+        const std::wstring line_pos_str = in.substr(offset);
+        const size_t line_pos = std::stoi(line_pos_str);
+        if(line_pos < doc.Lines()) {
+          cur_pos = line_pos;
+          std::wcout << "Ok." << std::endl;
+        }
+        else {
+          std::wcout << "???" << std::endl;
+        }
+      }
+      else {
+        std::wcout << "???" << std::endl;
+      }
+    }
+    else if(StartsWith(in, L"/i ")) {
+      Append(in.substr(3));
     }
     else {
-      Append(in);
+      std::wcout << "???" << std::endl;
     }
   }
   while(!done);
+
+  std::wcout << "Goodbye." << std::endl;
 }
 
 void Editor::Append(std::wstring line)
 {
   if(doc.Insert(cur_pos, line)) {
     cur_pos++;
+    std::wcout << "Ok." << std::endl;
+  }
+  else {
+    std::wcout << "???" << std::endl;
   }
 }
