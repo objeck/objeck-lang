@@ -29,10 +29,8 @@
 * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 
-
 #define USAGE_ERROR -1
 #define SYSTEM_ERROR -2
-
 
 #include "repl.h"
 #include "editor.h"
@@ -43,6 +41,10 @@
 ****************************/
 int main(int argc, char* argv[])
 {
+  Editor editor;
+  editor.Edit();
+
+  /*
   Document doc;
   doc.List();
   doc.Insert(3, L"   (1 + 3)->PrintLine();");
@@ -51,4 +53,5 @@ int main(int argc, char* argv[])
 
   doc.Delete(4);
   doc.List();
+  */
 }
