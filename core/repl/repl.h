@@ -40,6 +40,9 @@
 #include <sstream>
 #include "../shared/version.h"
 
+#define SYNTAX_ERROR "Unknown."
+#define SYNTAX_SUCCESS "Ok."
+
 inline std::wstring List(int v) {
   std::wostringstream str;
   str << v;
