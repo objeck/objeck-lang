@@ -31,7 +31,40 @@
 
 #include "editor.h"
 
+ //
+ // Document
+ //
+Document::Document()
+{
+  Initialize();
+}
 
+void Document::Initialize()
+{
+  lines.push_back(L"class Shell {");
+  lines.push_back(L"  function : Main(args : String[]) ~ Nil {");
+  lines.push_back(L"  }");
+  lines.push_back(L"}");
+}
+
+const std::wstring Document::ToString()
+{
+  std::wstring buffer;
+
+  auto i = 0;
+  for(const auto &line : lines) {
+    buffer += ToString(++i);
+    buffer += L": ";
+    buffer += line;
+    buffer += L'\n';
+  }
+
+  return buffer;
+}
+
+//
+// Editor
+//
 Editor::Editor()
 {
 

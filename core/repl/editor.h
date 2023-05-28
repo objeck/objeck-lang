@@ -32,13 +32,36 @@
 #ifndef __EDITOR_H__
 #define __EDITOR_H__
 
-class Editor {
-  
+#include <string>
+#include <sstream>
+#include <list>
+
+class Document {
+  std::list<std::wstring> lines;
+
+  inline std::wstring ToString(int v) {
+    std::wostringstream str;
+    str << v;
+    return str.str();
+  }
+
  public:
-   Editor();
+   Document();
   
-   ~Editor() {
+   ~Document() {
    }
+
+   void Initialize();
+   const std::wstring ToString();
+};
+
+class Editor {
+
+public:
+  Editor();
+
+  ~Editor() {
+  }
 };
 
 #endif
