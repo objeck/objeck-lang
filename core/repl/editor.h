@@ -32,18 +32,10 @@
 #ifndef __EDITOR_H__
 #define __EDITOR_H__
 
-#include <string>
-#include <sstream>
-#include <list>
+#include "repl.h"
 
 class Document {
   std::list<std::wstring> lines;
-
-  inline std::wstring ToString(int v) {
-    std::wostringstream str;
-    str << v;
-    return str.str();
-  }
 
  public:
    Document();
@@ -52,7 +44,10 @@ class Document {
    }
 
    void Initialize();
-   const std::wstring ToString();
+
+   void List();
+   bool Insert(size_t line_num, const std::wstring line);
+   bool Delete(size_t line_num);
 };
 
 class Editor {

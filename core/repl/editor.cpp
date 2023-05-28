@@ -47,19 +47,48 @@ void Document::Initialize()
   lines.push_back(L"}");
 }
 
-const std::wstring Document::ToString()
+void Document::List()
 {
-  std::wstring buffer;
-
   auto i = 0;
   for(const auto &line : lines) {
-    buffer += ToString(++i);
-    buffer += L": ";
-    buffer += line;
-    buffer += L'\n';
+    std::wcout << (++i);
+    std::wcout << L": ";
+    std::wcout << line << std::endl;
+  }
+}
+
+bool Document::Insert(size_t line_num, const std::wstring line)
+{
+  if(line_num < lines.size()) {
+    size_t cur_num = 1;
+
+    std::list<std::wstring>::iterator iter = lines.begin();
+    while(cur_num++ < line_num) {
+      ++iter;
+    }
+
+    lines.insert(iter, line);
+    return true;
   }
 
-  return buffer;
+  return false;
+}
+
+bool Document::Delete(size_t line_num)
+{
+  if(line_num < lines.size()) {
+    size_t cur_num = 1;
+
+    std::list<std::wstring>::iterator iter = lines.begin();
+    while(cur_num++ < line_num) {
+      ++iter;
+    }
+
+    lines.erase(iter);
+    return true;
+  }
+
+  return false;
 }
 
 //
