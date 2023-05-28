@@ -8,6 +8,6 @@ class Test {
 		
 		c := String->New("Hello World!");
 #		c->Capacity()->Abs()->PrintLine();
-		c->As(Foo)->Capacity()->Abs()->PrintLine();
+		c->As(String)->Capacity()->Abs()->PrintLine();
 	}
 }
