@@ -51,28 +51,4 @@ int main(int argc, char* argv[])
 
   doc.Delete(4);
   doc.List();
-
-
-  /*
-  bool done = false;
-  std::wstring in;
-  do {
-    std::wcout << L"> ";
-    std::getline(std::wcin, in);
-
-    if(in == L"quit" || in == L"q") {
-      done = true;
-    }
-    else if(in == L"/l") {
-      std::wcout << L"<list>" << std::endl;
-    }
-    else if(in == L"/g") {
-      std::wcout << L"<goto>" << std::endl;
-    }
-    else {
-      std::wcout << L"  [" << in << L']' << std::endl;
-    }
-  } 
-  while(!done);
-  */
 }
