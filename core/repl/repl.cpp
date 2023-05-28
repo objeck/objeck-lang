@@ -33,11 +33,9 @@
 #define USAGE_ERROR -1
 #define SYSTEM_ERROR -2
 
-#include <iostream>
-#include <sstream>
 
+#include "repl.h"
 #include "editor.h"
-#include "../shared/version.h"
 
 /****************************
 * Program start. Parses command
@@ -46,7 +44,14 @@
 int main(int argc, char* argv[])
 {
   Document doc;
-  std::wcout << doc.ToString() << std::endl;
+  doc.List();
+  doc.Insert(3, L"   (1 + 3)->PrintLine();");
+  doc.Insert(3, L"   (11 + 19)->PrintLine();");
+  doc.List();
+
+  doc.Delete(4);
+  doc.List();
+
 
   /*
   bool done = false;

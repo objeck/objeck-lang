@@ -26,5 +26,8 @@
     <ClInclude Include="..\editor.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\repl.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
