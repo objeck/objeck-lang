@@ -46,8 +46,9 @@ class Document {
    ~Document() {
    }
 
-   size_t Initialize();
+   size_t Reset();
    inline size_t Lines();
+   std::wstring ToString();
 
    void List(size_t cur_pos);
    bool Insert(size_t line_num, const std::wstring line);

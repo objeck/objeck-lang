@@ -43,8 +43,10 @@ size_t Document::Lines()
   return lines.size();
 }
 
-size_t Document::Initialize()
+size_t Document::Reset()
 {
+  lines.clear();
+
   lines.push_back(L"class Shell {");
   lines.push_back(L"  function : Main(args : String[]) ~ Nil {");
   lines.push_back(L"  }");
@@ -53,19 +55,32 @@ size_t Document::Initialize()
   return 3;
 }
 
+std::wstring Document::ToString()
+{
+  std::wstring buffer;
+
+  for(const auto& line : lines) {
+    buffer += line;
+    buffer += L'\n';
+  }
+
+  return buffer;
+}
+
 void Document::List(size_t cur_pos)
 {
   std::wcout << L"---" << std::endl;
 
-  auto i = 0;
+  auto index = 0;
   for(const auto &line : lines) {
-    if(++i == cur_pos) {
+    if(++index == cur_pos) {
       std::wcout << "=> ";
     }
     else {
       std::wcout << "   ";
     }
-    std::wcout << i;
+
+    std::wcout << index;
     std::wcout << L": ";
     std::wcout << line << std::endl;
   }
@@ -110,7 +125,7 @@ bool Document::Delete(size_t line_num)
 //
 Editor::Editor()
 {
-  cur_pos = doc.Initialize();
+  cur_pos = doc.Reset();
 }
 
 void Editor::Edit()
@@ -126,6 +141,10 @@ void Editor::Edit()
     }
     else if(in == L"/l") {
       doc.List(cur_pos);
+    }
+    else if(in == L"/r") {
+      doc.Reset();
+      std::wcout << "Ok." << std::endl;
     }
     else if(StartsWith(in, L"/d ")) {
       const size_t offset = in.find_last_of(L' ');
