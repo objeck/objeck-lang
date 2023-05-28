@@ -33,9 +33,11 @@
 #define USAGE_ERROR -1
 #define SYSTEM_ERROR -2
 
-#include "../shared/version.h"
 #include <iostream>
 #include <sstream>
+
+#include "editor.h"
+#include "../shared/version.h"
 
 /****************************
 * Program start. Parses command
@@ -43,6 +45,10 @@
 ****************************/
 int main(int argc, char* argv[])
 {
+  Document doc;
+  std::wcout << doc.ToString() << std::endl;
+
+  /*
   bool done = false;
   std::wstring in;
   do {
@@ -63,4 +69,5 @@ int main(int argc, char* argv[])
     }
   } 
   while(!done);
+  */
 }
