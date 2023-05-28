@@ -1,5 +1,5 @@
 /***************************************************************************
- * Platform independent language optimizer.
+ * REPL editor
  *
  * Copyright (c) 2023, Randy Hollines
  * All rights reserved.
@@ -36,15 +36,16 @@
  //
 Document::Document()
 {
-  Initialize();
 }
 
-void Document::Initialize()
+size_t Document::Initialize()
 {
   lines.push_back(L"class Shell {");
   lines.push_back(L"  function : Main(args : String[]) ~ Nil {");
   lines.push_back(L"  }");
   lines.push_back(L"}");
+
+  return 3;
 }
 
 void Document::List()
@@ -98,7 +99,7 @@ bool Document::Delete(size_t line_num)
 //
 Editor::Editor()
 {
-  doc.Initialize();
+  cur_pos = doc.Initialize();
 }
 
 void Editor::Edit()
@@ -113,14 +114,21 @@ void Editor::Edit()
       done = true;
     }
     else if(in == L"/l") {
-      std::wcout << L"<list>" << std::endl;
+      doc.List();
     }
-    else if(in == L"/d") {
+    else if(StartsWith(in, L"/d")) {
       std::wcout << L"<delete>" << std::endl;
     }
     else {
-      std::wcout << L"  [" << in << L']' << std::endl;
+      Append(in);
     }
   }
   while(!done);
+}
+
+void Editor::Append(std::wstring line)
+{
+  if(doc.Insert(cur_pos, line)) {
+    cur_pos++;
+  }
 }

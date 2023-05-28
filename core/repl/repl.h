@@ -1,5 +1,5 @@
 /***************************************************************************
- * REPL editor
+ * Platform independent language optimizer.
  *
  * Copyright (c) 2023, Randy Hollines
  * All rights reserved.
@@ -29,40 +29,25 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
 
-#ifndef __EDITOR_H__
-#define __EDITOR_H__
+#ifndef __REPL_H__
+#define __REPL_H__
 
-#include "repl.h"
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <sstream>
+#include <list>
+#include <sstream>
+#include "../shared/version.h"
 
-class Document {
-  std::list<std::wstring> lines;
+inline std::wstring List(int v) {
+  std::wostringstream str;
+  str << v;
+  return str.str();
+}
 
- public:
-   Document();
-  
-   ~Document() {
-   }
-
-   size_t Initialize();
-
-   void List();
-   bool Insert(size_t line_num, const std::wstring line);
-   bool Delete(size_t line_num);
-};
-
-class Editor {
-  Document doc;
-  size_t cur_pos;
-
-public:
-  Editor();
-
-  ~Editor() {
-  }
-
-  void Edit();
-
-  void Append(std::wstring line);
-};
+inline bool StartsWith(const std::wstring text, const std::wstring test) {
+  return !text.rfind(test, 0);
+}
 
 #endif
