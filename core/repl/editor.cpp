@@ -31,9 +31,20 @@
 
 #include "editor.h"
 
- //
- // Document
- //
+//
+// Line
+//
+const std::wstring Line::ToString() {
+  return line;
+}
+
+const Line::Type Line::GetType() {
+  return type;
+}
+
+//
+// Document
+//
 Document::Document()
 {
 }
@@ -47,10 +58,10 @@ size_t Document::Reset()
 {
   lines.clear();
 
-  lines.push_back(L"class Shell {");
-  lines.push_back(L"  function : Main(args : String[]) ~ Nil {");
-  lines.push_back(L"  }");
-  lines.push_back(L"}");
+  lines.push_back(Line(L"class Shell {", Line::Type::READ_ONLY));
+  lines.push_back(Line(L"  function : Main(args : String[]) ~ Nil {", Line::Type::READ_ONLY));
+  lines.push_back(Line(L"  }", Line::Type::READ_ONLY));
+  lines.push_back(Line(L"}", Line::Type::READ_ONLY));
 
   return 3;
 }
@@ -59,8 +70,9 @@ std::wstring Document::ToString()
 {
   std::wstring buffer;
 
-  for(const auto& line : lines) {
-    buffer += line + L'\n';
+  for(auto &line : lines) {
+    buffer += line.ToString();
+    buffer += L'\n';
   }
 
   return buffer;
@@ -71,7 +83,7 @@ void Document::List(size_t cur_pos)
   std::wcout << L"---" << std::endl;
 
   auto index = 0;
-  for(const auto &line : lines) {
+  for(auto& line : lines) {
     if(++index == cur_pos) {
       std::wcout << "=> ";
     }
@@ -81,7 +93,7 @@ void Document::List(size_t cur_pos)
 
     std::wcout << index;
     std::wcout << L": ";
-    std::wcout << line << std::endl;
+    std::wcout << line.ToString() << std::endl;
   }
 }
 
@@ -90,12 +102,12 @@ bool Document::Insert(size_t line_num, const std::wstring line)
   if(line_num < lines.size()) {
     size_t cur_num = 1;
 
-    std::list<std::wstring>::iterator iter = lines.begin();
+    std::list<Line>::iterator iter = lines.begin();
     while(cur_num++ < line_num) {
       ++iter;
     }
 
-    lines.insert(iter, line);
+    lines.insert(iter, Line(line, Line::Type::READ_WRITE));
     return true;
   }
 
@@ -107,13 +119,15 @@ bool Document::Delete(size_t line_num)
   if(line_num < lines.size()) {
     size_t cur_num = 1;
 
-    std::list<std::wstring>::iterator iter = lines.begin();
+    std::list<Line>::iterator iter = lines.begin();
     while(cur_num++ < line_num) {
       ++iter;
     }
 
-    lines.erase(iter);
-    return true;
+    if(iter->GetType() == Line::Type::READ_WRITE) {
+      lines.erase(iter);
+      return true;
+    }
   }
 
   return false;
@@ -135,28 +149,37 @@ void Editor::Edit()
     std::wcout << L"> ";
     std::getline(std::wcin, in);
 
+    // quit
     if(in == L"/q") {
       done = true;
     }
+    // list
     else if(in == L"/l") {
       doc.List(cur_pos);
     }
-    else if(in == L"/r") {
+    // reset
+    else if(in == L"/x") {
       doc.Reset();
-      std::wcout << "Ok." << std::endl;
+      std::wcout << SYNTAX_SUCCESS << std::endl;
     }
+    // delete line
     else if(StartsWith(in, L"/d ")) {
       const size_t offset = in.find_last_of(L' ');
       if(offset != std::wstring::npos) {
         const std::wstring line_pos_str = in.substr(offset);
-        doc.Delete(std::stoi(line_pos_str));
-        cur_pos--;
-        std::wcout << "Ok." << std::endl;
+        if(doc.Delete(std::stoi(line_pos_str))) {
+          cur_pos--;
+          std::wcout << SYNTAX_SUCCESS << std::endl;
+        }
+        else {
+          std::wcout << "Read-only." << std::endl;
+        }
       }
       else {
-        std::wcout << "???" << std::endl;
+        std::wcout << SYNTAX_ERROR << std::endl;
       }
     }
+    // goto line
     else if(StartsWith(in, L"/g ")) {
       const size_t offset = in.find_last_of(L' ');
       if(offset != std::wstring::npos) {
@@ -164,21 +187,22 @@ void Editor::Edit()
         const size_t line_pos = std::stoi(line_pos_str);
         if(line_pos < doc.Lines()) {
           cur_pos = line_pos;
-          std::wcout << "Ok." << std::endl;
+          std::wcout << SYNTAX_SUCCESS << std::endl;
         }
         else {
-          std::wcout << "???" << std::endl;
+          std::wcout << SYNTAX_ERROR << std::endl;
         }
       }
       else {
-        std::wcout << "???" << std::endl;
+        std::wcout << SYNTAX_ERROR << std::endl;
       }
     }
+    // insert line
     else if(StartsWith(in, L"/i ")) {
       Append(in.substr(3));
     }
     else {
-      std::wcout << "???" << std::endl;
+      std::wcout << SYNTAX_ERROR << std::endl;
     }
   }
   while(!done);
@@ -190,9 +214,9 @@ void Editor::Append(std::wstring line)
 {
   if(doc.Insert(cur_pos, line)) {
     cur_pos++;
-    std::wcout << "Ok." << std::endl;
+    std::wcout << SYNTAX_SUCCESS << std::endl;
   }
   else {
-    std::wcout << "???" << std::endl;
+    std::wcout << SYNTAX_ERROR << std::endl;
   }
 }

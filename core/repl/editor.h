@@ -35,10 +35,44 @@
 #include "repl.h"
 
  //
+  // Line
+  //
+class Line {
+public:
+  enum Type {
+    READ_ONLY,
+    READ_WRITE
+  };
+
+private:
+  std::wstring line;
+  Line::Type type;
+
+public:
+  Line(const Line &l)
+  {
+    line = l.line;
+    type = l.type;
+  }
+
+  Line(const std::wstring &l, Line::Type t)
+  {
+    line = l;
+    type = t;
+  }
+
+  ~Line() {
+  }
+
+  const std::wstring ToString();
+  const Line::Type GetType();
+};
+
+ //
  // Document
  //
 class Document {
-  std::list<std::wstring> lines;
+  std::list<Line> lines;
 
  public:
    Document();
