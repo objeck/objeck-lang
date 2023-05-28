@@ -34,6 +34,9 @@
 
 #include "repl.h"
 
+ //
+ // Document
+ //
 class Document {
   std::list<std::wstring> lines;
 
@@ -44,13 +47,16 @@ class Document {
    }
 
    size_t Initialize();
-   size_t Lines();
+   inline size_t Lines();
 
    void List(size_t cur_pos);
    bool Insert(size_t line_num, const std::wstring line);
    bool Delete(size_t line_num);
 };
 
+//
+// Editor
+//
 class Editor {
   Document doc;
   size_t cur_pos;
