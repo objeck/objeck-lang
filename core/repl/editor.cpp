@@ -60,8 +60,7 @@ std::wstring Document::ToString()
   std::wstring buffer;
 
   for(const auto& line : lines) {
-    buffer += line;
-    buffer += L'\n';
+    buffer += line + L'\n';
   }
 
   return buffer;
