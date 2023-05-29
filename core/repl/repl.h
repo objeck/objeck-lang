@@ -38,6 +38,7 @@
 #include <sstream>
 #include <list>
 #include <sstream>
+#include "../shared/logger.h"
 #include "../shared/version.h"
 
 #define SYNTAX_ERROR "Huh?"
