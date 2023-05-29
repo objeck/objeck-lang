@@ -297,9 +297,6 @@ char* Editor::Compile()
 
 void Editor::Execute(char* code)
 {
-  wchar_t** commands = nullptr;
-  int argc = 0;
-
   Loader loader(code);
   loader.Load();
 
@@ -325,9 +322,6 @@ void Editor::Execute(char* code)
   // clean up
   delete[] op_stack;
   op_stack = nullptr;
-
-  delete[] code;
-  code = nullptr;
 }
 
 bool Editor::Append(std::wstring line)
