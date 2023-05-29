@@ -19,6 +19,12 @@
     <Filter Include="Source Files\Compiler">
       <UniqueIdentifier>{5ec5899f-28d1-4cf6-b82b-530ee8cb9ab2}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\Runtime">
+      <UniqueIdentifier>{3665b8dc-bc9c-4a0d-9f51-15d32ff3ad02}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Runtime">
+      <UniqueIdentifier>{4a18c556-ca98-4a97-876f-2ee77153f3be}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\repl.cpp">
@@ -59,6 +65,33 @@
     </ClCompile>
     <ClCompile Include="..\..\compiler\types.cpp">
       <Filter>Source Files\Compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\vm\common.cpp">
+      <Filter>Source Files\Runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\vm\interpreter.cpp">
+      <Filter>Source Files\Runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\vm\loader.cpp">
+      <Filter>Source Files\Runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\vm\vm.cpp">
+      <Filter>Source Files\Runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\vm\win_main.cpp">
+      <Filter>Source Files\Runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\vm\arch\memory.cpp">
+      <Filter>Source Files\Runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\vm\arch\win32\win32.cpp">
+      <Filter>Source Files\Runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\vm\arch\jit\jit_common.cpp">
+      <Filter>Source Files\Runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\vm\arch\jit\amd64\jit_amd_lp64.cpp">
+      <Filter>Source Files\Runtime</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -112,6 +145,33 @@
     </ClInclude>
     <ClInclude Include="..\..\shared\version.h">
       <Filter>Header Files\Compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\vm\vm.h">
+      <Filter>Header Files\Runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\vm\loader.h">
+      <Filter>Header Files\Runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\vm\lib_api.h">
+      <Filter>Header Files\Runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\vm\interpreter.h">
+      <Filter>Header Files\Runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\vm\common.h">
+      <Filter>Header Files\Runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\vm\arch\memory.h">
+      <Filter>Header Files\Runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\vm\arch\win32\win32.h">
+      <Filter>Header Files\Runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\vm\arch\jit\jit_common.h">
+      <Filter>Header Files\Runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\vm\arch\jit\amd64\jit_amd_lp64.h">
+      <Filter>Header Files\Runtime</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

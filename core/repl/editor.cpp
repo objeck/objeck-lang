@@ -174,7 +174,10 @@ void Editor::Edit()
     }
     // build and run
     else if(in == L"/r") {
-      Compile();
+      auto code = Compile();
+      if(code) {
+        Execute(code);
+      }
     }
     // reset
     else if(in == L"/x") {
@@ -290,6 +293,10 @@ const char* Editor::Compile()
   return nullptr;
 }
 
+void Editor::Execute(const char* code)
+{
+
+}
 
 bool Editor::Append(std::wstring line)
 {
