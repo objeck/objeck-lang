@@ -308,9 +308,6 @@ void Editor::Execute(char* code)
   long* stack_pos = new long;
   (*stack_pos) = 0;
 
-#ifdef _TIMING
-  clock_t start = clock();
-#endif
   // start the interpreter...
   Runtime::StackInterpreter* intpr = new Runtime::StackInterpreter(Loader::GetProgram());
   Runtime::StackInterpreter::AddThread(intpr);
