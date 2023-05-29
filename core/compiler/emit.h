@@ -1024,16 +1024,9 @@ namespace backend {
       return aliases_str;
     }
 
-    void Write(bool emit_lib, bool is_debug, OutputStream& out_stream);
+    void Write(bool emit_lib, bool is_debug, OutputStream& out_stream, bool mute);
 
     void Debug() {
-/*
-      GetLogger() << L"Strings:" << std::endl;
-      for(size_t i = 0; i < char_strings.size(); ++i) {
-        GetLogger() << L"string id=" << i << L", size=" << ToString((int)char_strings[i].size()) << std::endl;
-      }
-      GetLogger() << std::endl;
-*/
       GetLogger() << L"Program: enums=" << enums.size() << L", classes=" << classes.size() << L"; start_ids=" << class_id << L"," << method_id << std::endl;
       // enums
       for(size_t i = 0; i < enums.size(); ++i) {
@@ -1096,7 +1089,7 @@ namespace backend {
     }
 
     void Emit();
-    const char* Get();
+    char* Get();
   };
 }
 
