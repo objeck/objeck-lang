@@ -344,7 +344,7 @@ public:
   char* Get(size_t &size) {
     size = out_buffer.size();
 
-    char* buffer = new char[size];
+    char* buffer = (char*)malloc(size);
     memcpy(buffer, out_buffer.data(), size);
 
     return buffer;
