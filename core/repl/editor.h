@@ -104,7 +104,7 @@ public:
 
   void Edit();
 
-  void Append(std::wstring line);
+  bool Append(std::wstring line);
 };
 
 #endif
