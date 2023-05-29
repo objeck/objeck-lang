@@ -1094,6 +1094,7 @@ namespace backend {
     }
 
     void Emit();
+    const char* Get();
   };
 }
 

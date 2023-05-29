@@ -306,7 +306,7 @@ class OutputStream {
   std::vector<char> out_buffer;
 
 public:
-  OutputStream(const std::wstring &n) {
+  OutputStream(const std::wstring &n = L"") {
     file_name = n;
   }
 
@@ -339,6 +339,10 @@ public:
     file_out.close();
 
     return true;
+  }
+
+  const char* Get() {
+    return out_buffer.data();
   }
 
   inline void WriteString(const std::wstring &in) {

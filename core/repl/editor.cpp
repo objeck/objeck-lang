@@ -31,6 +31,9 @@
 
 #include "editor.h"
 
+#include "../compiler/compiler.h"
+#include "../compiler/types.h"
+
 //
 // Line
 //
@@ -169,6 +172,10 @@ void Editor::Edit()
     else if(in == L"/l") {
       doc.List(cur_pos);
     }
+    // build and run
+    else if(in == L"/r") {
+      Compile();
+    }
     // reset
     else if(in == L"/x") {
       doc.Reset();
@@ -243,6 +250,46 @@ void Editor::Edit()
 
   std::wcout << "Goodbye." << std::endl;
 }
+
+const char* Editor::Compile()
+{
+  const std::wstring input = doc.ToString();
+
+  const bool is_debug = false;
+  const bool is_lib = false;
+  const bool show_asm = false;
+  const std::wstring opt = L"s3";
+  const std::wstring sys_lib_path = L"lang.obl,gen_collect.obl";
+  const std::wstring filename = L"blob://program";
+
+  std::vector<std::pair<std::wstring, std::wstring> > programs;
+  programs.push_back(make_pair(filename + L".obs", input));
+
+  // parse source code
+  Parser parser(L"", false, programs);
+  if(parser.Parse()) {
+    // analyze parse tree
+    ParsedProgram* program = parser.GetProgram();
+    ContextAnalyzer analyzer(program, sys_lib_path, is_lib);
+    
+    if(analyzer.Analyze()) {
+      // emit intermediate code
+      IntermediateEmitter intermediate(program, is_lib, is_debug);
+      intermediate.Translate();
+      
+      // intermediate optimizer
+      ItermediateOptimizer optimizer(intermediate.GetProgram(), intermediate.GetUnconditionalLabel(), opt, is_lib, is_debug);
+      optimizer.Optimize();
+
+      // emit target code
+      FileEmitter target(optimizer.GetProgram(), is_lib, is_debug, show_asm, filename + L".obe");
+      return target.Get();
+    }
+  }
+
+  return nullptr;
+}
+
 
 bool Editor::Append(std::wstring line)
 {

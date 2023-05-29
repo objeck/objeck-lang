@@ -41,17 +41,14 @@
 ****************************/
 int main(int argc, char* argv[])
 {
+#ifdef _DEBUG
+  OpenLogger("debug.log");
+#endif
+
   Editor editor;
   editor.Edit();
 
-  /*
-  Document doc;
-  doc.List();
-  doc.Insert(3, L"   (1 + 3)->PrintLine();");
-  doc.Insert(3, L"   (11 + 19)->PrintLine();");
-  doc.List();
-
-  doc.Delete(4);
-  doc.List();
-  */
+#ifdef _DEBUG
+  CloseLogger();
+#endif
 }

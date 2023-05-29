@@ -50,11 +50,7 @@ int Compile(const std::wstring& src_files, const std::wstring& opt, const std::w
   // parse source code
   Parser parser(src_files, alt_syntax, programs);
   if(parser.Parse()) {
-    bool is_lib = false;
-
-    if(target == L"lib") {
-      is_lib = true;
-    }
+    const bool is_lib = target == L"lib";
 
     // analyze parse tree
     ParsedProgram* program = parser.GetProgram();
