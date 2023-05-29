@@ -43,14 +43,14 @@
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
-    <CharacterSet>Unicode</CharacterSet>
+    <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
-    <CharacterSet>Unicode</CharacterSet>
+    <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -127,10 +127,36 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\compiler\compiler.cpp" />
+    <ClCompile Include="..\..\compiler\context.cpp" />
+    <ClCompile Include="..\..\compiler\emit.cpp" />
+    <ClCompile Include="..\..\compiler\intermediate.cpp" />
+    <ClCompile Include="..\..\compiler\linker.cpp" />
+    <ClCompile Include="..\..\compiler\optimization.cpp" />
+    <ClCompile Include="..\..\compiler\parser.cpp" />
+    <ClCompile Include="..\..\compiler\scanner.cpp" />
+    <ClCompile Include="..\..\compiler\tree.cpp" />
+    <ClCompile Include="..\..\compiler\types.cpp" />
+    <ClCompile Include="..\..\shared\logger.cpp" />
     <ClCompile Include="..\editor.cpp" />
     <ClCompile Include="..\repl.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\compiler\compiler.h" />
+    <ClInclude Include="..\..\compiler\context.h" />
+    <ClInclude Include="..\..\compiler\emit.h" />
+    <ClInclude Include="..\..\compiler\intermediate.h" />
+    <ClInclude Include="..\..\compiler\linker.h" />
+    <ClInclude Include="..\..\compiler\optimization.h" />
+    <ClInclude Include="..\..\compiler\parser.h" />
+    <ClInclude Include="..\..\compiler\scanner.h" />
+    <ClInclude Include="..\..\compiler\tree.h" />
+    <ClInclude Include="..\..\compiler\types.h" />
+    <ClInclude Include="..\..\shared\instrs.h" />
+    <ClInclude Include="..\..\shared\logger.h" />
+    <ClInclude Include="..\..\shared\sys.h" />
+    <ClInclude Include="..\..\shared\traps.h" />
+    <ClInclude Include="..\..\shared\version.h" />
     <ClInclude Include="..\editor.h" />
     <ClInclude Include="..\repl.h" />
   </ItemGroup>

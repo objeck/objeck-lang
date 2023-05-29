@@ -34,9 +34,9 @@
 
 #include "repl.h"
 
- //
-  // Line
-  //
+//
+// Line
+//
 class Line {
 public:
   enum Type {
@@ -68,9 +68,9 @@ public:
   const Line::Type GetType();
 };
 
- //
- // Document
- //
+//
+// Document
+//
 class Document {
   std::list<Line> lines;
 
@@ -105,6 +105,7 @@ public:
   void Edit();
 
   bool Append(std::wstring line);
+  const char* Compile();
 };
 
 #endif

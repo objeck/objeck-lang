@@ -104,6 +104,31 @@ void FileEmitter::Emit()
 }
 
 /****************************
+ * Get target binary code
+ ****************************/
+const char* FileEmitter::Get()
+{
+  // library target
+  if(emit_lib) {
+    if(!frontend::EndsWith(file_name, L".obl")) {
+      std::wcerr << L"Error: Libraries must end in '.obl'" << std::endl;
+      exit(1);
+    }
+  }
+  // application target
+  else {
+    if(!frontend::EndsWith(file_name, L".obe")) {
+      std::wcerr << L"Error: Executables must end in '.obe'" << std::endl;
+      exit(1);
+    }
+  }
+
+  OutputStream out_stream;
+  program->Write(emit_lib, is_debug, out_stream);
+  return out_stream.Get();
+}
+
+/****************************
  * IntermediateProgram class
  ****************************/
 IntermediateProgram* IntermediateProgram::instance;
