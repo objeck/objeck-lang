@@ -954,6 +954,8 @@ namespace backend {
       }
 
       IntermediateFactory::Instance()->Clear();
+
+      instance = nullptr;
     }
 
     void AddClass(IntermediateClass* c) {
