@@ -341,8 +341,13 @@ public:
     return true;
   }
 
-  const char* Get() {
-    return out_buffer.data();
+  char* Get(size_t &size) {
+    size = out_buffer.size();
+
+    char* buffer = new char[size];
+    memcpy(buffer, out_buffer.data(), size);
+
+    return buffer;
   }
 
   inline void WriteString(const std::wstring &in) {

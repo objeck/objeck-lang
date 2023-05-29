@@ -105,8 +105,8 @@ public:
   void Edit();
 
   bool Append(std::wstring line);
-  const char* Compile();
-  void Execute(const char* code);
+  char* Compile();
+  void Execute(char* code);
 };
 
 #endif

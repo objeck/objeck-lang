@@ -88,7 +88,7 @@ void FileEmitter::Emit()
   }
   
   OutputStream out_stream(file_name);
-  program->Write(emit_lib, is_debug, out_stream);
+  program->Write(emit_lib, is_debug, out_stream, false);
   if(out_stream.WriteFile()) {
     std::wcout << L"Wrote target file: '" << file_name << L"'";
     
@@ -106,26 +106,15 @@ void FileEmitter::Emit()
 /****************************
  * Get target binary code
  ****************************/
-const char* FileEmitter::Get()
+char* FileEmitter::Get()
 {
-  // library target
-  if(emit_lib) {
-    if(!frontend::EndsWith(file_name, L".obl")) {
-      std::wcerr << L"Error: Libraries must end in '.obl'" << std::endl;
-      exit(1);
-    }
-  }
-  // application target
-  else {
-    if(!frontend::EndsWith(file_name, L".obe")) {
-      std::wcerr << L"Error: Executables must end in '.obe'" << std::endl;
-      exit(1);
-    }
-  }
-
   OutputStream out_stream;
-  program->Write(emit_lib, is_debug, out_stream);
-  return out_stream.Get();
+  program->Write(emit_lib, is_debug, out_stream, true);
+
+  size_t size;
+  char* buffer = out_stream.Get(size);
+
+  return buffer;
 }
 
 /****************************
@@ -133,7 +122,7 @@ const char* FileEmitter::Get()
  ****************************/
 IntermediateProgram* IntermediateProgram::instance;
 
-void IntermediateProgram::Write(bool emit_lib, bool is_debug, OutputStream& out_stream) {
+void IntermediateProgram::Write(bool emit_lib, bool is_debug, OutputStream& out_stream, bool mute) {
   // version
   WriteInt(VER_NUM, out_stream);
 
@@ -219,14 +208,16 @@ void IntermediateProgram::Write(bool emit_lib, bool is_debug, OutputStream& out_
     classes[i]->Write(emit_lib, out_stream);
   }
   
-  std::wcout << L"Compiled " << num_src_classes << (num_src_classes > 1 ? L" classes" : L" class");
-  if(is_debug) {
-    std::wcout << L" with debug symbols";
-  }
-  std::wcout << L'.' << std::endl;
-  
-  if(num_lib_classes > 0) {
-    std::wcout << L"Linked " << num_lib_classes << (num_lib_classes > 1 ? L" library classes." : L" library class.") << std::endl;
+  if(!mute) {
+    std::wcout << L"Compiled " << num_src_classes << (num_src_classes > 1 ? L" classes" : L" class");
+    if(is_debug) {
+      std::wcout << L" with debug symbols";
+    }
+    std::wcout << L'.' << std::endl;
+
+    if(num_lib_classes > 0) {
+      std::wcout << L"Linked " << num_lib_classes << (num_lib_classes > 1 ? L" library classes." : L" library class.") << std::endl;
+    }
   }
 }
 
