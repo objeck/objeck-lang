@@ -78,9 +78,6 @@
     <ClCompile Include="..\..\vm\vm.cpp">
       <Filter>Source Files\Runtime</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\vm\win_main.cpp">
-      <Filter>Source Files\Runtime</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\vm\arch\memory.cpp">
       <Filter>Source Files\Runtime</Filter>
     </ClCompile>
