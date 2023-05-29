@@ -150,8 +150,20 @@ void Editor::Edit()
     std::getline(std::wcin, in);
 
     // quit
-    if(in == L"/q") {
+    if(in == L"/q" || in == L"/quit") {
       done = true;
+    }
+    // help
+    else if(in == L"/h" || in == L"/help") {
+      std::wcout << "Commands:" << std::endl;
+      std::wcout << "  /q: quit" << std::endl;
+      std::wcout << "  /h: help" << std::endl;
+      std::wcout << "  /l: list" << std::endl;
+      std::wcout << "  /x: reset" << std::endl;
+      std::wcout << "  /g: goto line" << std::endl;
+      std::wcout << "  /i: insert line" << std::endl;
+      std::wcout << "  /m: insert multiple lines" << std::endl;
+      std::wcout << "  /d: delete line" << std::endl;
     }
     // list
     else if(in == L"/l") {
@@ -160,7 +172,7 @@ void Editor::Edit()
     // reset
     else if(in == L"/x") {
       doc.Reset();
-      std::wcout << SYNTAX_SUCCESS << std::endl;
+      std::wcout << L"Document reset." << std::endl;
     }
     // delete line
     else if(StartsWith(in, L"/d ")) {
@@ -169,10 +181,10 @@ void Editor::Edit()
         const std::wstring line_pos_str = in.substr(offset);
         if(doc.Delete(std::stoi(line_pos_str))) {
           cur_pos--;
-          std::wcout << SYNTAX_SUCCESS << std::endl;
+          std::wcout << L"Deleted line " << line_pos_str << L'.' << std::endl;
         }
         else {
-          std::wcout << "Read-only." << std::endl;
+          std::wcout << "Line " << line_pos_str << L" is read-only." << std::endl;
         }
       }
       else {
@@ -187,7 +199,7 @@ void Editor::Edit()
         const size_t line_pos = std::stoi(line_pos_str);
         if(line_pos < doc.Lines()) {
           cur_pos = line_pos;
-          std::wcout << SYNTAX_SUCCESS << std::endl;
+          std::wcout << "Cursor at line " << line_pos_str << L'.' << std::endl;
         }
         else {
           std::wcout << SYNTAX_ERROR << std::endl;
@@ -199,7 +211,29 @@ void Editor::Edit()
     }
     // insert line
     else if(StartsWith(in, L"/i ")) {
-      Append(in.substr(3));
+      if(Append(in.substr(3))) {
+        std::wcout << "Line inserted." << std::endl;
+      }
+    }
+    // insert multiple lines
+    else if(StartsWith(in, L"/m")) {
+      size_t line_count = 0;
+      bool multi_done = false;
+      do {
+        std::wcout << L"] ";
+        std::getline(std::wcin, in);
+        if(in == L"/m") {
+          multi_done = true;
+        }
+        else {
+          if(Append(in)) {
+            line_count++;
+          }
+        }
+      } 
+      while(!multi_done);
+
+      std::wcout << line_count << " lines inserted." << std::endl;
     }
     else {
       std::wcout << SYNTAX_ERROR << std::endl;
@@ -210,13 +244,12 @@ void Editor::Edit()
   std::wcout << "Goodbye." << std::endl;
 }
 
-void Editor::Append(std::wstring line)
+bool Editor::Append(std::wstring line)
 {
   if(doc.Insert(cur_pos, line)) {
     cur_pos++;
-    std::wcout << SYNTAX_SUCCESS << std::endl;
+    return true;
   }
-  else {
-    std::wcout << SYNTAX_ERROR << std::endl;
-  }
+  
+  return false;
 }
