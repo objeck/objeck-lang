@@ -328,6 +328,9 @@ void Editor::Execute(char* code)
   // clean up
   delete[] op_stack;
   op_stack = nullptr;
+
+  delete[] code;
+  code = nullptr;
 }
 
 bool Editor::Append(std::wstring line)
