@@ -40,7 +40,7 @@
 #include <sstream>
 #include "../shared/version.h"
 
-#define SYNTAX_ERROR "Unknown."
+#define SYNTAX_ERROR "Huh?"
 #define SYNTAX_SUCCESS "Ok."
 
 inline std::wstring List(int v) {
