@@ -106,6 +106,7 @@ public:
 
   bool Append(std::wstring line);
   const char* Compile();
+  void Execute(const char* code);
 };
 
 #endif
