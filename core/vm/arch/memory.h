@@ -148,7 +148,7 @@ class MemoryManager {
     MUTEX_LOCK(&allocated_lock);
 #endif
     std::set<size_t*>::iterator found = allocated_memory.find(mem);
-    if(found != allocated_memory.end() && mem[TYPE] == NIL_TYPE) {
+    if(found != allocated_memory.end() && mem[TYPE] == instructions::MemoryType::NIL_TYPE) {
 #ifndef _GC_SERIAL
       MUTEX_UNLOCK(&allocated_lock);
 #endif
@@ -229,7 +229,7 @@ class MemoryManager {
   // returns the class reference for an object instance
   //
   static inline StackClass* GetClass(size_t* mem) {
-    if(mem && mem[TYPE] == NIL_TYPE) {
+    if(mem && mem[TYPE] == instructions::MemoryType::NIL_TYPE) {
       return (StackClass*)mem[SIZE_OR_CLS];
     }
     return nullptr;

@@ -133,9 +133,18 @@ class Loader {
   void LoadConfiguration();
   
 public:
+  Loader(char* b) {
+    LoadOperInstrs();
+
+    string_cls_id = -1;
+    buffer_pos = 0;
+    alloc_buffer = buffer = b;
+    program = new StackProgram;
+  }
+
   Loader(const wchar_t* arg) {
     filename = arg;
-    if(!EndsWith(filename, L".obe") && !EndsWith(filename, L".obw")) {
+    if(!::EndsWith(filename, L".obe") && !::EndsWith(filename, L".obw")) {
       filename += L".obe";
     }
     LoadOperInstrs();
@@ -147,7 +156,7 @@ public:
 
   Loader(const int argc, wchar_t** argv) {
     filename = argv[1];
-    if(!EndsWith(filename, L".obe")) {
+    if(!::EndsWith(filename, L".obe")) {
       filename += L".obe";
     }
     LoadOperInstrs();
