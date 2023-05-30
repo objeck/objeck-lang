@@ -96,6 +96,7 @@ class Document {
 
    void List(size_t cur_pos, bool all);
    bool InsertLine(size_t line_num, const std::wstring line);
+   size_t InsertFunction(const std::wstring line);
    bool Delete(size_t line_num);
 };
 
@@ -115,6 +116,7 @@ public:
   void Edit();
 
   bool AppendLine(std::wstring line);
+  bool AppendFunction(std::wstring line);
   char* Compile();
   void Execute(char* code);
 };
