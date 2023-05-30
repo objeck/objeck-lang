@@ -106,17 +106,22 @@ void Document::List(size_t cur_pos, bool all)
   }
 }
 
-bool Document::InsertLine(size_t line_num, const std::wstring line)
+bool Document::InsertLine(size_t line_num, const std::wstring line, int padding)
 {
   if(line_num < lines.size()) {
-    size_t cur_num = 1;
+    size_t cur_num = 0;
 
     std::list<Line>::iterator iter = lines.begin();
     while(cur_num++ < line_num) {
       ++iter;
     }
 
-    lines.insert(iter, Line(L"    " + line, Line::Type::RW_LINE));
+    std::wstring padding_str;
+    while(padding--) {
+      padding_str += L' ';
+    }
+
+    lines.insert(iter, Line(padding_str + line, Line::Type::RW_LINE));
     return true;
   }
 
@@ -128,7 +133,7 @@ size_t Document::InsertFunction(const std::wstring text)
   size_t index = 0;
   for(auto& line : lines) {
     if(line.GetType() == Line::Type::RO_FUNC_END_LINE) {
-      InsertLine(index + 1, text);
+      InsertLine(index + 1, text, 2);
       return index;
     }
     ++index;
@@ -137,10 +142,15 @@ size_t Document::InsertFunction(const std::wstring text)
   return std::wstring::npos;
 }
 
-bool Document::Delete(size_t line_num)
+size_t Document::DeleteFunction(const std::wstring name)
+{
+  return std::wstring::npos;
+}
+
+bool Document::DeleteLine(size_t line_num)
 {
   if(line_num < lines.size()) {
-    size_t cur_num = 1;
+    size_t cur_num = 0;
 
     std::list<Line>::iterator iter = lines.begin();
     while(cur_num++ < line_num) {
@@ -217,8 +227,7 @@ void Editor::Edit()
       if(offset != std::wstring::npos) {
         const std::wstring line_pos_str = in.substr(offset);
         const int line_pos = std::stoi(line_pos_str);
-        if(doc.Delete(line_pos)) {
-          cur_pos--;
+        if(doc.DeleteLine(line_pos - 1)) {
           std::wcout << L"Removed line " << line_pos << L'.' << std::endl;
         }
         else {
@@ -253,12 +262,11 @@ void Editor::Edit()
       if(offset != std::wstring::npos) {
         const std::wstring line_pos_str = in.substr(offset);
         const size_t line_pos = std::stoi(line_pos_str);
-        if(doc.Delete(line_pos)) {
+        if(doc.DeleteLine(line_pos - 1)) {
           cur_pos = line_pos;
-
           std::wcout << L"Line " << line_pos << L"] ";
           std::getline(std::wcin, in);
-          if(AppendLine(in)) {
+          if(AppendLine(in, 4)) {
             std::wcout << "Replaced line" << line_pos << L'.' << std::endl;
           }
         }
@@ -272,7 +280,7 @@ void Editor::Edit()
     }
     // insert line
     else if(StartsWith(in, L"/i ")) {
-      if(AppendLine(in.substr(3))) {
+      if(AppendLine(in.substr(3), 4)) {
         std::wcout << "Inserted line." << std::endl;
       }
     }
@@ -287,7 +295,7 @@ void Editor::Edit()
           multi_line_done = true;
         }
         else {
-          if(AppendLine(in)) {
+          if(AppendLine(in, 4)) {
             line_count++;
           }
         }
@@ -380,9 +388,9 @@ void Editor::Execute(char* code)
   op_stack = nullptr;
 }
 
-bool Editor::AppendLine(std::wstring line)
+bool Editor::AppendLine(std::wstring line, const int padding)
 {
-  if(doc.InsertLine(cur_pos, line)) {
+  if(doc.InsertLine(cur_pos - 1, line, padding)) {
     cur_pos++;
     return true;
   }
