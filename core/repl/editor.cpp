@@ -54,7 +54,7 @@ Document::Document()
 {
 }
 
-size_t Document::Lines()
+size_t Document::Size()
 {
   return lines.size();
 }
@@ -221,7 +221,7 @@ void Editor::Edit()
       if(offset != std::wstring::npos) {
         const std::wstring line_pos_str = in.substr(offset);
         const size_t line_pos = std::stoi(line_pos_str);
-        if(line_pos < doc.Lines()) {
+        if(line_pos < doc.Size()) {
           cur_pos = line_pos;
           std::wcout << "Cursor at line " << line_pos_str << L'.' << std::endl;
         }
