@@ -171,8 +171,9 @@ void Editor::Edit()
       std::wcout << "  /o: reset" << std::endl;
       std::wcout << "  /g: goto line" << std::endl;
       std::wcout << "  /i: insert line" << std::endl;
-      std::wcout << "  /r: replace line" << std::endl;
       std::wcout << "  /im: insert multiple lines" << std::endl;
+      std::wcout << "  /if: insert function or method" << std::endl;
+      std::wcout << "  /r: replace line" << std::endl;
       std::wcout << "  /d: delete line" << std::endl;
       std::wcout << "  /x: execute program" << std::endl;
     }
