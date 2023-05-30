@@ -84,7 +84,7 @@ class Document {
    inline size_t Lines();
    std::wstring ToString();
 
-   void List(size_t cur_pos);
+   void List(size_t cur_pos, bool all);
    bool Insert(size_t line_num, const std::wstring line);
    bool Delete(size_t line_num);
 };
