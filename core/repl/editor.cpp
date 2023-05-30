@@ -63,10 +63,10 @@ size_t Document::Reset()
 {
   lines.clear();
 
-  lines.push_back(Line(L"class Shell {", Line::Type::READ_ONLY));
-  lines.push_back(Line(L"  function : Main(args : String[]) ~ Nil {", Line::Type::READ_ONLY));
-  lines.push_back(Line(L"  }", Line::Type::READ_ONLY));
-  lines.push_back(Line(L"}", Line::Type::READ_ONLY));
+  lines.push_back(Line(L"class Shell {", Line::Type::RO_CLS_START_LINE));
+  lines.push_back(Line(L"  function : Main(args : String[]) ~ Nil {", Line::Type::RO_FUNC_START_LINE));
+  lines.push_back(Line(L"  }", Line::Type::RO_FUNC_END_LINE));
+  lines.push_back(Line(L"}", Line::Type::RO_CLS_END_LINE));
 
   return 3;
 }
@@ -91,7 +91,7 @@ void Document::List(size_t cur_pos, bool all)
   for(auto& line : lines) {
     ++index;
 
-    if(all || line.GetType() == Line::Type::READ_WRITE) {
+    if(all || line.GetType() == Line::Type::RW_LINE) {
       if(index == cur_pos) {
         std::wcout << "=> ";
       }
@@ -106,7 +106,7 @@ void Document::List(size_t cur_pos, bool all)
   }
 }
 
-bool Document::Insert(size_t line_num, const std::wstring line)
+bool Document::InsertLine(size_t line_num, const std::wstring line)
 {
   if(line_num < lines.size()) {
     size_t cur_num = 1;
@@ -116,7 +116,7 @@ bool Document::Insert(size_t line_num, const std::wstring line)
       ++iter;
     }
 
-    lines.insert(iter, Line(line, Line::Type::READ_WRITE));
+    lines.insert(iter, Line(L"    " + line, Line::Type::RW_LINE));
     return true;
   }
 
@@ -133,7 +133,7 @@ bool Document::Delete(size_t line_num)
       ++iter;
     }
 
-    if(iter->GetType() == Line::Type::READ_WRITE) {
+    if(iter->GetType() == Line::Type::RW_LINE) {
       lines.erase(iter);
       return true;
     }
@@ -172,7 +172,7 @@ void Editor::Edit()
       std::wcout << "  /g: goto line" << std::endl;
       std::wcout << "  /i: insert line" << std::endl;
       std::wcout << "  /r: replace line" << std::endl;
-      std::wcout << "  /m: insert multiple lines" << std::endl;
+      std::wcout << "  /im: insert multiple lines" << std::endl;
       std::wcout << "  /d: delete line" << std::endl;
       std::wcout << "  /x: execute program" << std::endl;
     }
@@ -239,11 +239,11 @@ void Editor::Edit()
         const std::wstring line_pos_str = in.substr(offset);
         const size_t line_pos = std::stoi(line_pos_str);
         if(doc.Delete(line_pos)) {
-          cur_pos = line_pos - 1;
+          cur_pos = line_pos;
 
-          std::wcout << L"] ";
+          std::wcout << L"Line " << line_pos << L"] ";
           std::getline(std::wcin, in);
-          if(Append(in)) {
+          if(AppendLine(in)) {
             std::wcout << "Replaced line" << line_pos << L'.' << std::endl;
           }
         }
@@ -257,29 +257,34 @@ void Editor::Edit()
     }
     // insert line
     else if(StartsWith(in, L"/i ")) {
-      if(Append(in.substr(3))) {
+      if(AppendLine(in.substr(3))) {
         std::wcout << "Inserted line." << std::endl;
       }
     }
     // insert multiple lines
-    else if(StartsWith(in, L"/m")) {
+    else if(StartsWith(in, L"/im")) {
       size_t line_count = 0;
-      bool multi_done = false;
+      bool multi_line_done = false;
       do {
-        std::wcout << L"] ";
+        std::wcout << L"Line] ";
         std::getline(std::wcin, in);
-        if(in == L"/m") {
-          multi_done = true;
+        if(in == L"/im") {
+          multi_line_done = true;
         }
         else {
-          if(Append(in)) {
+          if(AppendLine(in)) {
             line_count++;
           }
         }
       } 
-      while(!multi_done);
+      while(!multi_line_done);
 
       std::wcout << L"Inserted " << line_count << " lines." << std::endl;
+    }
+    // insert function/method
+    else if(StartsWith(in, L"/if")) {
+      std::wcout << L"Signature] ";
+      std::getline(std::wcin, in);
     }
     else {
       std::wcout << SYNTAX_ERROR << std::endl;
@@ -358,9 +363,9 @@ void Editor::Execute(char* code)
   op_stack = nullptr;
 }
 
-bool Editor::Append(std::wstring line)
+bool Editor::AppendLine(std::wstring line)
 {
-  if(doc.Insert(cur_pos, line)) {
+  if(doc.InsertLine(cur_pos, line)) {
     cur_pos++;
     return true;
   }
