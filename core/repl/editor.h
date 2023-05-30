@@ -91,7 +91,7 @@ class Document {
    }
 
    size_t Reset();
-   inline size_t Lines();
+   inline size_t Size();
    std::wstring ToString();
 
    void List(size_t cur_pos, bool all);
