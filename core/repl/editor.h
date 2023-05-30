@@ -40,8 +40,18 @@
 class Line {
 public:
   enum Type {
-    READ_ONLY,
-    READ_WRITE
+    // read-only lines
+    RO_LINE,
+    RO_CLS_START_LINE,
+    RO_CLS_END_LINE,
+    RO_FUNC_START_LINE,
+    RO_FUNC_END_LINE,
+    // read/write line
+    RW_LINE,
+    RW_CLS_START_LINE,
+    RW_CLS_END_LINE,
+    RW_FUNC_START_LINE,
+    RW_FUNC_END_LINE,
   };
 
 private:
@@ -85,7 +95,7 @@ class Document {
    std::wstring ToString();
 
    void List(size_t cur_pos, bool all);
-   bool Insert(size_t line_num, const std::wstring line);
+   bool InsertLine(size_t line_num, const std::wstring line);
    bool Delete(size_t line_num);
 };
 
@@ -104,7 +114,7 @@ public:
 
   void Edit();
 
-  bool Append(std::wstring line);
+  bool AppendLine(std::wstring line);
   char* Compile();
   void Execute(char* code);
 };
