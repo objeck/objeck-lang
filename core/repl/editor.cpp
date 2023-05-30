@@ -68,7 +68,7 @@ size_t Document::Reset()
   lines.push_back(Line(L"  }", Line::Type::RO_FUNC_END_LINE));
   lines.push_back(Line(L"}", Line::Type::RO_CLS_END_LINE));
 
-  return 3;
+  return lines.size() - 1;
 }
 
 std::wstring Document::ToString()
@@ -121,6 +121,20 @@ bool Document::InsertLine(size_t line_num, const std::wstring line)
   }
 
   return false;
+}
+
+size_t Document::InsertFunction(const std::wstring text)
+{
+  size_t index = 0;
+  for(auto& line : lines) {
+    if(line.GetType() == Line::Type::RO_FUNC_END_LINE) {
+      InsertLine(index + 1, text);
+      return index;
+    }
+    ++index;
+  }
+
+  return std::wstring::npos;
 }
 
 bool Document::Delete(size_t line_num)
@@ -221,7 +235,7 @@ void Editor::Edit()
       if(offset != std::wstring::npos) {
         const std::wstring line_pos_str = in.substr(offset);
         const size_t line_pos = std::stoi(line_pos_str);
-        if(line_pos < doc.Size()) {
+        if(line_pos - 1 < doc.Size()) {
           cur_pos = line_pos;
           std::wcout << "Cursor at line " << line_pos_str << L'.' << std::endl;
         }
@@ -286,6 +300,8 @@ void Editor::Edit()
     else if(StartsWith(in, L"/if")) {
       std::wcout << L"Signature] ";
       std::getline(std::wcin, in);
+
+      cur_pos = doc.InsertFunction(in);
     }
     else {
       std::wcout << SYNTAX_ERROR << std::endl;
