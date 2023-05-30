@@ -95,9 +95,12 @@ class Document {
    std::wstring ToString();
 
    void List(size_t cur_pos, bool all);
-   bool InsertLine(size_t line_num, const std::wstring line);
+
+   bool InsertLine(size_t line_num, const std::wstring line, int padding);
+   bool DeleteLine(size_t line_num);
+
    size_t InsertFunction(const std::wstring line);
-   bool Delete(size_t line_num);
+   size_t DeleteFunction(const std::wstring line);
 };
 
 //
@@ -115,7 +118,7 @@ public:
 
   void Edit();
 
-  bool AppendLine(std::wstring line);
+  bool AppendLine(std::wstring line, const int padding);
   bool AppendFunction(std::wstring line);
   char* Compile();
   void Execute(char* code);
