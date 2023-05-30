@@ -83,22 +83,26 @@ std::wstring Document::ToString()
   return buffer;
 }
 
-void Document::List(size_t cur_pos)
+void Document::List(size_t cur_pos, bool all)
 {
   std::wcout << L"---" << std::endl;
 
   auto index = 0;
   for(auto& line : lines) {
-    if(++index == cur_pos) {
-      std::wcout << "=> ";
-    }
-    else {
-      std::wcout << "   ";
-    }
+    ++index;
 
-    std::wcout << index;
-    std::wcout << L": ";
-    std::wcout << line.ToString() << std::endl;
+    if(all || line.GetType() == Line::Type::READ_WRITE) {
+      if(index == cur_pos) {
+        std::wcout << "=> ";
+      }
+      else {
+        std::wcout << "   ";
+      }
+
+      std::wcout << index;
+      std::wcout << L": ";
+      std::wcout << line.ToString() << std::endl;
+    }
   }
 }
 
@@ -164,25 +168,31 @@ void Editor::Edit()
       std::wcout << "  /q: quit" << std::endl;
       std::wcout << "  /h: help" << std::endl;
       std::wcout << "  /l: list" << std::endl;
-      std::wcout << "  /x: reset" << std::endl;
+      std::wcout << "  /o: reset" << std::endl;
       std::wcout << "  /g: goto line" << std::endl;
       std::wcout << "  /i: insert line" << std::endl;
+      std::wcout << "  /r: replace line" << std::endl;
       std::wcout << "  /m: insert multiple lines" << std::endl;
       std::wcout << "  /d: delete line" << std::endl;
+      std::wcout << "  /x: execute program" << std::endl;
     }
     // list
     else if(in == L"/l") {
-      doc.List(cur_pos);
+      doc.List(cur_pos, false);
+    }
+    // list all
+    else if(in == L"/la") {
+      doc.List(cur_pos, true);
     }
     // build and run
-    else if(in == L"/r") {
+    else if(in == L"/x") {
       auto code = Compile();
       if(code) {
         Execute(code);
       }
     }
     // reset
-    else if(in == L"/x") {
+    else if(in == L"/o") {
       doc.Reset();
       std::wcout << L"Document reset." << std::endl;
     }
@@ -191,9 +201,10 @@ void Editor::Edit()
       const size_t offset = in.find_last_of(L' ');
       if(offset != std::wstring::npos) {
         const std::wstring line_pos_str = in.substr(offset);
-        if(doc.Delete(std::stoi(line_pos_str))) {
+        const int line_pos = std::stoi(line_pos_str);
+        if(doc.Delete(line_pos)) {
           cur_pos--;
-          std::wcout << L"Deleted line " << line_pos_str << L'.' << std::endl;
+          std::wcout << L"Removed line " << line_pos << L'.' << std::endl;
         }
         else {
           std::wcout << "Line " << line_pos_str << L" is read-only." << std::endl;
@@ -221,10 +232,33 @@ void Editor::Edit()
         std::wcout << SYNTAX_ERROR << std::endl;
       }
     }
+    // replace line
+    else if(StartsWith(in, L"/r ")) {
+      const size_t offset = in.find_last_of(L' ');
+      if(offset != std::wstring::npos) {
+        const std::wstring line_pos_str = in.substr(offset);
+        const size_t line_pos = std::stoi(line_pos_str);
+        if(doc.Delete(line_pos)) {
+          cur_pos = line_pos - 1;
+
+          std::wcout << L"] ";
+          std::getline(std::wcin, in);
+          if(Append(in)) {
+            std::wcout << "Replaced line" << line_pos << L'.' << std::endl;
+          }
+        }
+        else {
+          std::wcout << "Line " << line_pos_str << L" is read-only." << std::endl;
+        }
+      }
+      else {
+        std::wcout << SYNTAX_ERROR << std::endl;
+      }
+    }
     // insert line
     else if(StartsWith(in, L"/i ")) {
       if(Append(in.substr(3))) {
-        std::wcout << "Line inserted." << std::endl;
+        std::wcout << "Inserted line." << std::endl;
       }
     }
     // insert multiple lines
@@ -245,7 +279,7 @@ void Editor::Edit()
       } 
       while(!multi_done);
 
-      std::wcout << line_count << " lines inserted." << std::endl;
+      std::wcout << L"Inserted " << line_count << " lines." << std::endl;
     }
     else {
       std::wcout << SYNTAX_ERROR << std::endl;
