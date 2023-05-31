@@ -362,8 +362,7 @@ bool Editor::AppendFunction(std::wstring line)
     if(line.back() != L'{') {
       line += L" {";
     }
-    
-    doc.InsertLine(cur_pos, L"", 2);
+
     cur_pos = doc.InsertFunction(line);
     doc.InsertLine(cur_pos + 2, L"}", 2);
     return true;
