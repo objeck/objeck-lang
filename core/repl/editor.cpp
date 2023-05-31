@@ -108,7 +108,7 @@ void Document::List(size_t cur_pos, bool all)
 
 bool Document::InsertLine(size_t line_num, const std::wstring line, int padding)
 {
-  if(line_num < lines.size()) {
+  if(line_num > 0 && line_num < lines.size()) {
     size_t cur_num = 0;
 
     std::list<Line>::iterator iter = lines.begin();
@@ -149,7 +149,7 @@ size_t Document::DeleteFunction(const std::wstring name)
 
 bool Document::DeleteLine(size_t line_num)
 {
-  if(line_num < lines.size()) {
+  if(line_num > 0 && line_num < lines.size()) {
     size_t cur_num = 0;
 
     std::list<Line>::iterator iter = lines.begin();
@@ -285,7 +285,7 @@ void Editor::Edit()
       }
     }
     // insert multiple lines
-    else if(StartsWith(in, L"/im")) {
+    else if(in == L"/im") {
       size_t line_count = 0;
       bool multi_line_done = false;
       do {
@@ -305,11 +305,16 @@ void Editor::Edit()
       std::wcout << L"Inserted " << line_count << " lines." << std::endl;
     }
     // insert function/method
-    else if(StartsWith(in, L"/if")) {
+    else if(in == L"/if") {
       std::wcout << L"Signature] ";
       std::getline(std::wcin, in);
 
-      cur_pos = doc.InsertFunction(in);
+      if(AppendFunction(in)) {
+        std::wcout << L"Added function/method." << std::endl;
+      }
+      else {
+        std::wcout << L"Unable to added function/method. Please check the signature." << std::endl;
+      }
     }
     else {
       std::wcout << SYNTAX_ERROR << std::endl;
@@ -319,6 +324,64 @@ void Editor::Edit()
 
   std::wcout << "Goodbye." << std::endl;
 }
+
+bool Editor::AppendFunction(std::wstring line)
+{
+  Trim(line);
+
+  // validate input
+  const bool found_func = line.find(L"function") != std::wstring::npos;
+  const bool found_method = line.find(L"method") != std::wstring::npos;
+
+  size_t open_paren_pos = std::wstring::npos;
+  size_t closed_paren_pos = std::wstring::npos;
+  size_t tilde_pos = std::wstring::npos;
+
+  size_t char_pos = 0;
+  for(std::wstring::reverse_iterator iter = line.rbegin(); iter != line.rend(); ++iter, ++char_pos) {
+    const auto line_char = *iter;
+    switch(*iter) {
+    case L'(':
+      open_paren_pos = char_pos;
+      break;
+
+    case L')':
+      if(closed_paren_pos == std::wstring::npos) {
+        closed_paren_pos = char_pos;
+      }
+      break;
+
+    case L'~':
+      tilde_pos = char_pos;
+      break;
+    }
+  }
+
+  // '(' and ')' are scanned backwards
+  if((found_func || found_method) && open_paren_pos > closed_paren_pos && tilde_pos !=  std::wstring::npos) {
+    if(line.back() != L'{') {
+      line += L" {";
+    }
+    
+    doc.InsertLine(cur_pos, L"", 2);
+    cur_pos = doc.InsertFunction(line);
+    doc.InsertLine(cur_pos + 2, L"}", 2);
+    return true;
+  }
+
+  return false;
+}
+
+bool Editor::AppendLine(std::wstring line, const int padding)
+{
+  if(doc.InsertLine(cur_pos - 1, line, padding)) {
+    cur_pos++;
+    return true;
+  }
+
+  return false;
+}
+
 
 char* Editor::Compile()
 {
@@ -388,12 +451,3 @@ void Editor::Execute(char* code)
   op_stack = nullptr;
 }
 
-bool Editor::AppendLine(std::wstring line, const int padding)
-{
-  if(doc.InsertLine(cur_pos - 1, line, padding)) {
-    cur_pos++;
-    return true;
-  }
-  
-  return false;
-}
