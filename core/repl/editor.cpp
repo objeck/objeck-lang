@@ -195,8 +195,8 @@ void Editor::Edit()
       std::wcout << "  /o: reset" << std::endl;
       std::wcout << "  /g: goto line" << std::endl;
       std::wcout << "  /i: insert line" << std::endl;
-      std::wcout << "  /im: insert multiple lines" << std::endl;
-      std::wcout << "  /if: insert function or method" << std::endl;
+      std::wcout << "  /m: insert multiple lines" << std::endl;
+      std::wcout << "  /f: insert function or method" << std::endl;
       std::wcout << "  /r: replace line" << std::endl;
       std::wcout << "  /d: delete line" << std::endl;
       std::wcout << "  /x: execute program" << std::endl;
@@ -286,11 +286,11 @@ void Editor::Edit()
       }
     }
     // insert multiple lines
-    else if(in == L"/im") {
+    else if(in == L"/m") {
       size_t line_count = 0;
       bool multi_line_done = false;
       do {
-        std::wcout << L"Line] ";
+        std::wcout << L"('/im' to exit - Line] ";
         std::getline(std::wcin, in);
         if(in == L"/im") {
           multi_line_done = true;
@@ -306,7 +306,7 @@ void Editor::Edit()
       std::wcout << L"Inserted " << line_count << " lines." << std::endl;
     }
     // insert function/method
-    else if(in == L"/if") {
+    else if(in == L"/f") {
       std::wcout << L"Signature] ";
       std::getline(std::wcin, in);
 
