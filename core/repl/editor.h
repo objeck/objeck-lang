@@ -122,6 +122,23 @@ public:
   bool AppendFunction(std::wstring line);
   char* Compile();
   void Execute(char* code);
+
+  static inline void LeftTrim(std::wstring& str) {
+    str.erase(str.begin(), std::find_if(str.begin(), str.end(), [](unsigned char ch) {
+      return !std::isspace(ch);     
+    }));
+  }
+
+  static inline void RightTrim(std::wstring& str) {
+    str.erase(std::find_if(str.rbegin(), str.rend(), [](unsigned char ch) {
+      return !std::isspace(ch);
+    }).base(), str.end());
+  }
+
+  static inline void Trim(std::wstring& str) {
+    RightTrim(str);
+    LeftTrim(str);
+  }
 };
 
 #endif
