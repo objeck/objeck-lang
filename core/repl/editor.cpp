@@ -220,6 +220,7 @@ void Editor::Edit()
     else if(in == L"/o") {
       doc.Reset();
       std::wcout << L"Document reset." << std::endl;
+      cur_pos = 3;
     }
     // delete line
     else if(StartsWith(in, L"/d ")) {
@@ -364,7 +365,9 @@ bool Editor::AppendFunction(std::wstring line)
     }
 
     cur_pos = doc.InsertFunction(line);
-    doc.InsertLine(cur_pos + 2, L"}", 2);
+    cur_pos += 2;
+    doc.InsertLine(cur_pos, L"}", 2);
+    cur_pos++;
     return true;
   }
 
