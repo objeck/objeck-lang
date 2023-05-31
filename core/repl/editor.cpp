@@ -394,7 +394,7 @@ char* Editor::Compile()
   const bool show_asm = false;
   const std::wstring opt = L"s3";
   const std::wstring sys_lib_path = L"lang.obl,gen_collect.obl";
-  const std::wstring filename = L"blob://program";
+  const std::wstring filename = L"blob://shell";
 
   std::vector<std::pair<std::wstring, std::wstring> > programs;
   programs.push_back(make_pair(filename + L".obs", input));
