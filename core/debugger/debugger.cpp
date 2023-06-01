@@ -539,7 +539,7 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
 
         case CHAR_ARY_PARM:
           if(reference->GetIndices()) {
-            std::wcout << L"print: type=Char, value=" << (wchar_t)reference->GetIntValue() << std::endl;
+            std::wcout << L"print: type=Char, value=" << (wchar_t)reference->GetIntValue() << L"(" << (void*)expression->GetIntValue() << L")";
           }
           else {
             std::wcout << L"print: type=Char[], value=" << reference->GetIntValue() << L"(" << (void*)reference->GetIntValue() << L")";
@@ -769,11 +769,11 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
       break;
 
     case CHAR_LIT_EXPR:
-      std::wcout << L"print: type=Char, value=" << (wchar_t)expression->GetIntValue() << std::endl;
+      std::wcout << L"print: type=Char, value=" << (wchar_t)expression->GetIntValue() << L"(0x" << (void*)expression->GetIntValue() << L")" << std::endl;
       break;
 
     case INT_LIT_EXPR:
-      std::wcout << L"print: type=Int, value=" << (long)expression->GetIntValue() << std::endl;
+      std::wcout << L"print: type=Int, value=" << (long)expression->GetIntValue() << L"(0x" << (void*)expression->GetIntValue() << L")" << std::endl;
       break;
 
     case FLOAT_LIT_EXPR:
@@ -804,7 +804,7 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
         std::wcout << L"print: type=Float, value=" << expression->GetFloatValue() << std::endl;
       }
       else {
-        std::wcout << L"print: type=Int, value=" << (long)expression->GetIntValue() << std::endl;
+        std::wcout << L"print: type=Int, value=" << (long)expression->GetIntValue() << L"(0x" << (void*)expression->GetIntValue() << L")" << std::endl;
       }
       break;
 
