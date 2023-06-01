@@ -1,7 +1,7 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
 
-		a : Base := String->New();
+		a : Base := "Freak Nasty                                ";
 		b := a->As(String)->Capacity()->Abs();
 		b->PrintLine();
 
