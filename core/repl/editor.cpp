@@ -290,9 +290,9 @@ void Editor::Edit()
       size_t line_count = 0;
       bool multi_line_done = false;
       do {
-        std::wcout << L"('/im' to exit - Line] ";
+        std::wcout << L"('/m' to exit - Line] ";
         std::getline(std::wcin, in);
-        if(in == L"/im") {
+        if(in == L"/m") {
           multi_line_done = true;
         }
         else {

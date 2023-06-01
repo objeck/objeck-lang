@@ -390,6 +390,7 @@ void Runtime::Debugger::DoLoad()
 
   if(do_mem_init) {
     MemoryManager::Initialize(loader->GetProgram());
+    cur_line_num = 1;
   }
 
   // clear old program
@@ -413,7 +414,14 @@ void Runtime::Debugger::ProcessBreak(FilePostion* break_command) {
     file_name = cur_file_name;
   }
 
-  const std::wstring &path = base_path_param + file_name;
+  std::wstring path;
+  if(FileExists(file_name)) {
+    path = file_name;
+  }
+  else {
+    path = base_path_param + file_name;
+  }
+
   if(file_name.size() != 0 && FileExists(path)) {
     if(AddBreak(line_num, file_name)) {
       std::wcout << L"added breakpoint: file='" << file_name << L":" << line_num << L"'" << std::endl;
@@ -448,7 +456,14 @@ void Runtime::Debugger::ProcessDelete(FilePostion* delete_command) {
     file_name = cur_file_name;
   }
 
-  const std::wstring &path = base_path_param + file_name;
+  std::wstring path;
+  if(FileExists(file_name)) {
+    path = file_name;
+  }
+  else {
+    path = base_path_param + file_name;
+  }
+
   if(file_name.size() != 0 && FileExists(path)) {
     if(DeleteBreak(line_num, file_name)) {
       std::wcout << L"removed breakpoint: file='" << file_name << L":" << line_num << L"'" << std::endl;
@@ -494,7 +509,7 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
           else {
             const long value = (long)reference->GetIntValue();
             std::ios_base::fmtflags flags(std::wcout.flags());
-            std::wcout << L"print: type=Int/Byte/Bool, value=" << value << L"(" << std::hex << value << L')' << std::endl;
+            std::wcout << L"print: type=Int/Byte/Bool, value=" << value << L"(0x" << std::hex << value << L')' << std::endl;
             std::wcout.flags(flags);
           }
           break;
@@ -539,7 +554,7 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
           if(reference->GetIndices()) {
             const long value = (long)reference->GetIntValue();
             std::ios_base::fmtflags flags(std::wcout.flags());
-            std::wcout << L"print: type=Int, value=" << value << L"(" << std::hex << value << L')' << std::endl;
+            std::wcout << L"print: type=Int, value=" << value << L"(0x" << std::hex << value << L')' << std::endl;
             std::wcout.flags(flags);
           }
           else {
@@ -1524,7 +1539,8 @@ Runtime::UserBreak* Runtime::Debugger::FindBreak(int line_num, const std::wstrin
 {
   for(std::list<UserBreak*>::iterator iter = breaks.begin(); iter != breaks.end(); iter++) {
     UserBreak* user_break = (*iter);
-    if(user_break->line_num == line_num && user_break->file_name == file_name) {
+    const std::wstring base_file_name = base_path_param + user_break->file_name;
+    if(user_break->line_num == line_num && (user_break->file_name == file_name || base_file_name == file_name)) {
       return *iter;
     }
   }
@@ -1657,8 +1673,15 @@ Command* Runtime::Debugger::ProcessCommand(const std::wstring &line) {
         line_num = cur_line_num;
       }
 
-      const std::wstring &path = base_path_param + file_name;
-      if(FileExists(path) && line_num > 0) {
+      std::wstring path;
+      if(FileExists(file_name)) {
+        path = file_name;
+      }
+      else {
+        path = base_path_param + file_name;
+      }
+      
+      if(line_num > 0 && FileExists(path)) {
         SourceFile src_file(path, cur_line_num, this);
         if(!src_file.Print(line_num)) {
           std::wcout << L"invalid line number." << std::endl;
@@ -1949,6 +1972,7 @@ void Runtime::Debugger::Debug() {
   if(FileExists(program_file_param, true) && DirectoryExists(base_path_param)) {
     std::wcout << L"loaded binary: '" << program_file_param << L"'" << std::endl;
     std::wcout << L"source file path: '" << base_path_param << L"'" << std::endl << std::endl;
+
     // clear arguments
     arguments.clear();
     arguments.push_back(L"obr");
@@ -2024,13 +2048,13 @@ bool Runtime::SourceFile::Print(int start)
     const bool is_cur_line_num = i + 1 == cur_line_num;
     const bool is_break_point = debugger->FindBreak(i + 1);
     if(is_cur_line_num && is_break_point) {
-      std::wcout << std::right << L"#>" << std::setw(window) << (i + 1) << L": " << line << std::endl;
-    }
-    else if(is_cur_line_num) {
       std::wcout << std::right << L"=>" << std::setw(window) << (i + 1) << L": " << line << std::endl;
     }
+    else if(is_cur_line_num) {
+      std::wcout << std::right << L"->" << std::setw(window) << (i + 1) << L": " << line << std::endl;
+    }
     else if(is_break_point) {
-      std::wcout << std::right << L"# " << std::setw(window) << (i + 1) << L": " << line << std::endl;
+      std::wcout << std::right << L" #" << std::setw(window) << (i + 1) << L": " << line << std::endl;
     }
     else {
       std::wcout << std::right << std::setw(window + 2) << (i + 1) << L": " << line << std::endl;
