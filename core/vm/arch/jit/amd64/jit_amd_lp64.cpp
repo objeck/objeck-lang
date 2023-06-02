@@ -3159,9 +3159,7 @@ void JitAmd64::cmp_reg_reg(Register src, Register dest) {
         << L", %" << GetRegisterName(dest) << L"]" << std::endl;
 #endif
   // encode
-#ifndef _WIN64  
   AddMachineCode(ROB(src, dest));
-#endif  
   AddMachineCode(0x39);
   unsigned char code = 0xc0;
   // write value
@@ -3177,9 +3175,7 @@ void JitAmd64::cmp_mem_reg(long offset, Register src, Register dest) {
         << L"]" << std::endl;
 #endif
   // encode
-#ifndef _WIN64  
   AddMachineCode(RXB(dest, src));
-#endif
   AddMachineCode(0x3b);
   AddMachineCode(ModRM(src, dest));
   // write value
