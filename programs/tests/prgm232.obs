@@ -10,11 +10,9 @@ class Test1 {
 		"Go right through Falken's Maze:"->PrintLine();
 		for(i := 9223372016854775807; i < N; i++) {
 			if(i % 1000000000 = 0) {
-				Spinner->Spin();
+				System.Utility.Spinner->Next();
 			}
 		}
-		Spinner->Fin();
-	}
-
-	
+		Spinner->Next();
+	}	
 }
