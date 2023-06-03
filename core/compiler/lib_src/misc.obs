@@ -276,4 +276,52 @@ bundle System.Utility {
 			return params;
 		}
 	}
+
+	#~
+	Console spinner
+	~#
+	class Spinner {
+		@state : static : Int;
+
+		#~
+		Prints and advances the spinner to the next state
+		~#
+		function : Next() ~ Nil {
+			"\b"->Print();
+
+			select(@state) {
+				label 0 {
+					'|'->Print();
+					@state += 1;
+				}
+
+				label 1 {
+					'/'->Print();
+					@state += 1;
+				}
+
+				label 2 {
+					'-'->Print();
+					@state += 1;
+				}
+
+				label 3 {
+					'\\'->Print();
+					@state += 1;
+				}
+
+				label 4 {
+					".|"->Print();
+					@state := 0;
+				}
+			};
+		}
+
+		#~
+		Prints the final state
+		~#
+		function : Last() ~ Nil {
+			"\b."->PrintLine();
+		}
+	}
 }

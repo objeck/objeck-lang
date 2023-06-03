@@ -1,52 +1,20 @@
 class Test1 {
-	@state : static : Int;
 
 	function : Main(args : String[]) ~ Nil {
-		@state := 0;
 		Brun();
 	}
 
 	function : native : Brun() ~ Nil {
 		N : Int := 9223372036854775807;
-		i : Int;
 
 		"Go right through Falken's Maze:"->PrintLine();
-		for(i := 1; i < N; i++) {
+		for(i := 9223372016854775807; i < N; i++) {
 			if(i % 1000000000 = 0) {
-				PrintState();
+				Spinner->Spin();
 			}
 		}
-		"Brun"->PrintLine();
+		Spinner->Fin();
 	}
 
-	function : PrintState() ~ Nil {
-		"\b\b\b"->Print();
-
-		select(@state) {
-			label 0 {
-				"(|)"->Print();
-				@state += 1;
-			}
-
-			label 1 {
-				"(/)"->Print();
-				@state += 1;
-			}
-
-			label 2 {
-				"(-)"->Print();
-				@state += 1;
-			}
-
-			label 3 {
-				"(\\)"->Print();
-				@state += 1;
-			}
-
-			label 4 {
-				".(|)"->Print();
-				@state := 0;
-			}
-		};
-	}
+	
 }
