@@ -170,7 +170,7 @@ bundle System.Time {
 		~#
 		function : Format(date : Date, format : String, gmt : Bool) ~ String {
 			return Nil;
-		}
+		}:
 	}
 	
 	class : private : DatePart {

@@ -13,6 +13,6 @@ class Test1 {
 				System.Utility.Spinner->Next();
 			}
 		}
-		Spinner->Next();
+		System.Utility.Spinner->Last();
 	}	
 }
