@@ -1,15 +1,16 @@
+use Collection;
 use Data.JSON;
 use Data.XML;
 use Web.HTTP;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		Json();
-		Xml();
-		Download();
+		CreateJson();
+		CreateXml();
+		DownloadFile();
 	}
 
-	function : Json() ~ Nil {
+	function : CreateJson() ~ Nil {
 		builder := JsonBuilder->New();
 		back := builder->PushObject();
 
@@ -20,7 +21,7 @@ class Test {
 		builder->PopAll()->ToString()->PrintLine();
 	}
 
-	function : Xml() ~ Nil {
+	function : CreateXml() ~ Nil {
 		builder := XmlBuilder->New("List");
 
 		back := builder->GetRoot();
@@ -32,17 +33,15 @@ class Test {
 		back->ToString()->PrintLine();
 	}
 
-	function : Download() ~ Nil {
+	function : DownloadFile() ~ Nil {
 		urls := Collection.Vector->New()<Url>;
-		urls->AddBack(Url->New("https://objeck.org/img/gear.png"));
+		urls->AddBack(Url->New("https://www.objeck.org/index.html"));
 
 		headers := Collection.Map->New()<String,String>;
 
 		downloads := WebDownloader->Download(urls, headers)<Pair<String, String>>;
-		each(i : downloads) {
-			foo := downloads->Get(i)<Pair<String, String>>;
-			bar := foo->GetSecond()<String>;
-			bar->Size()->PrintLine();
+		each(download := downloads) {
+			download->GetSecond()->As(String)->PrintLine();
 		};
 	}
 }
