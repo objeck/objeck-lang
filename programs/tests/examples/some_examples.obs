@@ -8,6 +8,7 @@ class Test {
 		CreateJson();
 		CreateXml();
 		DownloadFile();
+		CallCommand();
 	}
 
 	function : CreateJson() ~ Nil {
@@ -42,6 +43,20 @@ class Test {
 		downloads := WebDownloader->Download(urls, headers)<Pair<String, String>>;
 		each(download := downloads) {
 			download->GetSecond()->As(String)->PrintLine();
+		};
+	}
+
+	function : CallCommand() ~ Nil {
+		lines : String[];
+		if(System.IO.Filesystem.Directory->GetSlash() = '/') {
+			lines := Runtime->CommandOutput("ls");
+		}
+		else {
+			lines := Runtime->CommandOutput("dir");
+		};
+
+		each(line := lines) {
+			line->PrintLine();
 		};
 	}
 }
