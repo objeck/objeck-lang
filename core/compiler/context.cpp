@@ -7779,14 +7779,14 @@ Type* ContextAnalyzer::ResolveGenericType(Type* candidate_type, MethodCall* meth
                   if(map_type_index > -1 && map_type_index < (int)from_concrete_types.size()) {
                     Type* candidate_type = candidate_types[i];
                     ResolveClassEnumType(candidate_type);
-                    
+
                     Type* concrete_type = from_concrete_types[map_type_index];
                     ResolveClassEnumType(concrete_type);
 
                     ValidateConcretes(candidate_type, concrete_type, method_call);
                   }
                   else {
-                    std::vector<Type*> to_concrete_types = method_call->GetConcreteTypes();                    
+                    std::vector<Type*> to_concrete_types = method_call->GetConcreteTypes();
                     if(from_concrete_types.size() != to_concrete_types.size() && to_concrete_types.size() == 1) {
                       std::vector<Type*> mthd_types;
                       if(method_call->GetMethod()) {
@@ -7827,7 +7827,7 @@ Type* ContextAnalyzer::ResolveGenericType(Type* candidate_type, MethodCall* meth
               }
             }
           }
-          
+
           if(klass_generic && klass_generic->HasGenerics()) {
             ValidateGenericConcreteMapping(candidate_types, klass_generic, static_cast<Expression*>(method_call));
             if(method_call->GetEvalType()) {
@@ -7873,6 +7873,10 @@ Type* ContextAnalyzer::ResolveGenericType(Type* candidate_type, MethodCall* meth
         }
       }
     }
+  }
+
+  if(!candidate_type->IsResolved()) {
+    ResolveClassEnumType(candidate_type);
   }
 
   return candidate_type;
