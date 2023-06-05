@@ -1,0 +1,48 @@
+use Data.JSON;
+use Data.XML;
+use Web.HTTP;
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		Json();
+		Xml();
+		Download();
+	}
+
+	function : Json() ~ Nil {
+		builder := JsonBuilder->New();
+		back := builder->PushObject();
+
+		back->Insert("One", 1);
+		back->Insert("Two", 2);
+		back->Insert("Three", 3);
+
+		builder->PopAll()->ToString()->PrintLine();
+	}
+
+	function : Xml() ~ Nil {
+		builder := XmlBuilder->New("List");
+
+		back := builder->GetRoot();
+
+		back->AddChild(XmlElement->New(XmlElement->Type->ELEMENT, "One", "1"));
+		back->AddChild(XmlElement->New(XmlElement->Type->ELEMENT, "Two", "2"));
+		back->AddChild(XmlElement->New(XmlElement->Type->ELEMENT, "Three", "3"));
+
+		back->ToString()->PrintLine();
+	}
+
+	function : Download() ~ Nil {
+		urls := Collection.Vector->New()<Url>;
+		urls->AddBack(Url->New("https://objeck.org/img/gear.png"));
+
+		headers := Collection.Map->New()<String,String>;
+
+		downloads := WebDownloader->Download(urls, headers)<Pair<String, String>>;
+		each(i : downloads) {
+			foo := downloads->Get(i)<Pair<String, String>>;
+			bar := foo->GetSecond()<String>;
+			bar->Size()->PrintLine();
+		};
+	}
+}
