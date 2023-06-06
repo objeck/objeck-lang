@@ -2924,7 +2924,7 @@ bundle System {
 			max := @pos + array->Size();
 			if(max >= @max) {
 				@max += max + max >> 1;
-				temp := Char->New[@max];
+				temp := Byte->New[@max];
 				Runtime->Copy(temp, 0, @buffer, 0, @buffer->Size());
 				@buffer := temp;
 			};
@@ -2944,7 +2944,7 @@ bundle System {
 			if(@pos >= @max) {
 				# expand string
 				@max := @pos + @pos >> 1;
-				temp := Char->New[@max];
+				temp := Byte->New[@max];
 				# copy elements
 				Runtime->Copy(temp, 0, @buffer, 0, @buffer->Size());
 				@buffer := temp;
