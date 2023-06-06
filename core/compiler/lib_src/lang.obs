@@ -3043,15 +3043,7 @@ bundle System {
 		@return cloned the object instance
 		~#
 		method : public : Clone() ~ System.ByteBuffer {
-		 	ByteBuffer->New(ToByteArray());
-		}
-
-		#~
-		Creates a new instance of the byte buffer
-		@return new string instance
-		~#
-		method : public : Copy() ~ String {
-			return String->New(@buffer);
+		 	return ByteBuffer->New(ToByteArray());
 		}
 
 		#~
@@ -3077,7 +3069,7 @@ bundle System {
 		@return byte array
 		~#
 		method : public : native : ToByteArray() ~ Byte[] {
-			output := ByteArray[@pos];
+			output := Byte->New[@pos];
 
 			for(i := 0; i < @pos; i += 1;) {
 				output[i] := @buffer[i];
