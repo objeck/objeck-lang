@@ -1946,7 +1946,7 @@ bundle System {
 		Clones the object instance
 		@return cloned the object instance
 		~#
-		method : public : Clone() ~ System.Compare {
+		method : public : Clone() ~ System.BoolRef {
 			return BoolRef->New(@value);
 		}
 
@@ -2038,7 +2038,7 @@ bundle System {
 		Clones the object instance
 		@return cloned the object instance
 		~#
-		method : public : Clone() ~ System.Compare {
+		method : public : Clone() ~ System.ByteRef {
 			return ByteRef->New(@value);
 		}
 
@@ -2130,7 +2130,7 @@ bundle System {
 		Clones the object instance
 		@return cloned the object instance
 		~#
-		method : public : Clone() ~ System.Compare {
+		method : public : Clone() ~ System.CharRef {
 			return CharRef->New(@value);
 		}
 
@@ -2268,7 +2268,7 @@ bundle System {
 		Clones the object instance
 		@return cloned the object instance
 		~#
-		method : public : Clone() ~ System.Compare {
+		method : public : Clone() ~ System.IntRef {
 			return IntRef->New(@value);
 		}
 
@@ -2392,7 +2392,7 @@ bundle System {
 		Clones the object instance
 		@return cloned the object instance
 		~#
-		method : public : Clone() ~ System.Compare {
+		method : public : Clone() ~ System.FloatRef {
 			return FloatRef->New(@value);
 		}
 		
@@ -2898,12 +2898,23 @@ bundle System {
 	}
 
 	#~
-	TBD
+	Byte array buffer
 	~#
-	class ByteBuffer {
+	class ByteBuffer implements System.Compare, System.Clone {
 		@buffer : Byte[];
 		@max : Int;
 		@pos : Int;
+
+		#~
+		Copy constructor
+		~#
+		New(buffer : Byte[]) {
+			Parent();
+
+			@buffer := buffer;
+			@max := buffer->Size();
+			@pos := 0;
+		}
 
 		#~
 		Default constructor
@@ -2952,6 +2963,113 @@ bundle System {
 
 			@buffer[@pos] := c;
 			@pos += 1;
+		}
+
+		#~
+		Return the size of the string
+		@return size of the string
+		~#
+		method : public : Size() ~ Int {
+			return @pos;			
+		}
+
+		#~
+		Returns the byte at the given index
+		@param index index offset
+		@return byte at index
+		~#
+		method : public : native : Get(index : Int) ~ Char {
+			if(index > -1 & index < @pos) {
+				return @buffer[index];
+			};
+
+			return 0;
+		}
+
+		#~
+		Returns a unique hash ID for a given byte sequence
+		@return hash ID
+		~#
+		method : public : native : HashID() ~ Int {
+			# djb2 hash			
+			hash := 5381;
+			
+			each(i : @pos) {
+				hash := ((hash << 5) + hash) + @buffer[i];				
+			};
+				
+			return hash;
+		}
+
+		#~
+		Compares two objects
+		@param rhs compare object
+		@return 0 if equal, -1 if right-hand side i greater, 1 if left-hand side is greater
+		~#
+		method : public : Compare(rhs : System.Compare) ~ Int {
+			# check class type
+			if(GetClassID() <> rhs->GetClassID()) {
+				return -1;
+			};
+						
+			# check each character
+			right_string := rhs->As(String);
+			for(i := 0; i < @pos; i += 1;) {
+				left := @buffer[i];
+				right := right_string->Get(i);
+				if(left > right) {
+					return 1;
+				}
+				else if(left < right) {
+					return -1;
+				};
+			};
+			
+			# check length
+			if(@pos > right_string->Size()) {
+				return 1;
+			};
+			
+			if(@pos < right_string->Size()) {
+				return -1;
+			};
+			
+			# equal
+			return 0;
+		}
+
+		#~
+		Clones the object instance
+		@return cloned the object instance
+		~#
+		method : public : Clone() ~ System.ByteBuffer {
+			return System.ByteBuffer->New(@buffer);
+		}
+
+		#~
+		Creates a new instance of the byte buffer
+		@return new string instance
+		~#
+		method : public : Copy() ~ String {
+			return String->New(@buffer);
+		}
+
+		#~
+		Gets the current buffer's storage capacity. That is the 
+		number of bytes the buffer will hold before it is 
+		resized for growth.
+		@return buffer capacity
+		~#
+		method : public : Capacity() ~ Int {
+			return @max;
+		}
+
+		#~
+		Gets the raw reference to the underlying byte array
+		@return raw byte array reference
+		~#
+		method : public : Raw() ~ Byte[] {
+			return @buffer;
 		}
 	}
 
@@ -4591,7 +4709,7 @@ bundle System {
 		Clones the object instance
 		@return cloned the object instance
 		~#
-		method : public : Clone() ~ System.Compare {
+		method : public : Clone() ~ System.String {
 			return String->New(@string);
 		}
 
@@ -5029,7 +5147,7 @@ bundle System.Time {
 		Clones the object instance
 		@return cloned the object instance
 		~#
-		method : public : Clone() ~ System.Compare {
+		method : public : Clone() ~ System.Time.Date {
 			return System.Time.Date->New(@day, @month, @year, @hours, @mins, @secs, @is_gmt);
 		}
 
