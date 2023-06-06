@@ -452,7 +452,9 @@ bundle Web.HTTP {
 			return attribs;
 		}
 
-		function : ReadChunked(content : Vector<String>, socket : System.IO.InputStream) ~ Nil {
+		function : ReadChunked(socket : System.IO.InputStream) ~ ByteBuffer {
+			return Nil;
+#~			
 			done := false;
 			do {
 				size_line := "0x";
@@ -478,9 +480,14 @@ bundle Web.HTTP {
 				};
 			}
 			while(done <> true);
+~#			
 		}
 
-		function : ReadLength(length : Int, content : Vector<String>, socket : System.IO.InputStream) ~ Nil {
+		function : ReadLength(length : Int, socket : System.IO.InputStream) ~ ByteBuffer {
+System.IO.Standard->Print("length=")->PrintLine(length);
+			
+			return Nil;
+#~
 			total_read := 0;		
 			buffer := Byte->New[8192];
 			do {
@@ -489,6 +496,7 @@ bundle Web.HTTP {
 				buffer->Clear();
 			}
 			while(total_read < length);
+~#			
 		}
 
 		function : ReadPost(content_length : Int, socket : System.IO.InputStream) ~ Byte[] {
