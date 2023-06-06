@@ -453,9 +453,9 @@ bundle Web.HTTP {
 		}
 
 		function : ReadChunked(socket : System.IO.InputStream) ~ ByteBuffer {
-			return Nil;
-#~			
+			output := ByteBuffer->New();
 			done := false;
+
 			do {
 				size_line := "0x";
 				size_line->Append(socket->ReadLine());
@@ -465,8 +465,9 @@ bundle Web.HTTP {
 					total_read := 0;								
 					buffer := Byte->New[8192];
 					do {
-						total_read += socket->ReadBuffer(0, buffer->Size(), buffer);
-						content->AddBack(String->New(buffer));
+						read += socket->ReadBuffer(0, buffer->Size(), buffer);
+						total_read += read;
+						output->Append(read, buffer);
 						buffer->Clear();
 					}
 					while(total_read < chunk_size);
@@ -480,23 +481,24 @@ bundle Web.HTTP {
 				};
 			}
 			while(done <> true);
-~#			
+
+			return output;
 		}
 
 		function : ReadLength(length : Int, socket : System.IO.InputStream) ~ ByteBuffer {
-System.IO.Standard->Print("length=")->PrintLine(length);
-			
-			return Nil;
-#~
-			total_read := 0;		
+			output := ByteBuffer->New();
 			buffer := Byte->New[8192];
+
+			total_read := 0;	
 			do {
-				total_read += socket->ReadBuffer(0, buffer->Size(), buffer);
-				content->AddBack(String->New(buffer));
+				read := socket->ReadBuffer(0, buffer->Size(), buffer);
+				total_read += read;
+				output->Append(read, buffer);
 				buffer->Clear();
 			}
 			while(total_read < length);
-~#			
+			
+			return output;		
 		}
 
 		function : ReadPost(content_length : Int, socket : System.IO.InputStream) ~ Byte[] {
@@ -531,7 +533,7 @@ System.IO.Standard->Print("length=")->PrintLine(length);
 		@param headers key/value headers
 		@return map of URLs and content
 		~#
-		function : Download(urls : Vector<Url>, headers : Map<String, String>) ~ Vector<Pair<Url, String>> {
+		function : Download(urls : Vector<Url>, headers : Map<String, String>) ~ Vector<Pair<Url, ByteArrayRef>> {
 			group_size := 3;
 
 			downloaders := Downloader->New[urls->Size()];
@@ -559,10 +561,10 @@ System.IO.Standard->Print("length=")->PrintLine(length);
 				download_count += group_ending;
 			};
 
-			results := Map->New()<Url, String>;
+			results := Map->New()<Url, ByteArrayRef>;
 			each(i : urls) {
 				downloader := downloaders[i];
-				results->Insert(downloader->GetUrl(), downloader->GetContent());
+				results->Insert(downloader->GetUrl(), ByteArrayRef->New(downloader->GetContent()));
 			};
 
 			return results->GetKeyValues();
@@ -571,7 +573,7 @@ System.IO.Standard->Print("length=")->PrintLine(length);
 
 	class Downloader from System.Concurrency.Thread {
 		@url : Url;
-		@content : String;
+		@content : Byte[];
 		@headers : Map<String, String>;
 
 		New(url : Url, headers : Map<String, String>) {
@@ -584,7 +586,7 @@ System.IO.Standard->Print("length=")->PrintLine(length);
 			return @url;
 		}
 
-		method : public : GetContent() ~ String {
+		method : public : GetContent() ~ Byte[] {
 			return @content;
 		}
 

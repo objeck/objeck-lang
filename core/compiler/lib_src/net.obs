@@ -95,7 +95,7 @@ bundle Web.HTTP {
 		@param data data to post
 		@return string read
 		~#
-		method : public : Post(url : Web.HTTP.Url, data : String) ~ String {
+		method : public : Post(url : Web.HTTP.Url, data : String) ~ Byte[] {
 			return Post(url, data, "text/plain");
 		}
 		
@@ -105,22 +105,21 @@ bundle Web.HTTP {
 		@param data data to post
 		@return read strings
 		~#
-		function : QuickPost(url : Web.HTTP.Url, data : String) ~ String {
-			document := "";
-			
-			client := HttpClient->New();
-			lines := client->Post(url, data);
-			if(lines = Nil) {
-				return Nil;
-			};
-
-			each(i : lines) {
-				document->Append(lines->Get(i));
-			};
-
-			return document;
+		function : QuickPost(url : Web.HTTP.Url, data : String) ~ Byte[] {
+			return HttpClient->New()->Post(url, data);
 		}
 		
+		#~
+		Performs a HTTPS POST
+		@param url URL
+		@param data data to post
+		@param content_type content type
+		@return read strings
+		~#
+		function : QuickPost(url : Web.HTTP.Url, data : String, content_type : String) ~ Byte[] {
+			return QuickPost(url, data, content_type, Nil);
+		}
+
 		#~
 		Performs a HTTP POST
 		@param url URL
@@ -129,14 +128,17 @@ bundle Web.HTTP {
 		@param headers key/value headers
 		@return read strings
 		~#
-		function : QuickPost(url : Web.HTTP.Url, data : String, content_type : String, headers : Map<String, String>) ~ String {			
+		function : QuickPost(url : Web.HTTP.Url, data : String, content_type : String, headers : Map<String, String>) ~ Byte[] {			
 			client := HttpsClient->New();
-			header_key_values := headers->GetKeyValues()<Pair<String, String>>;
-			each(i : header_key_values) {
-				key_value := header_key_values->Get(i);
-				key := key_value->GetFirst();
-				value := key_value->GetSecond();
-				client->AddHeader(key, value);
+
+			if(headers <> Nil) {
+				header_key_values := headers->GetKeyValues()<Pair<String, String>>;
+				each(i : header_key_values) {
+					key_value := header_key_values->Get(i);
+					key := key_value->GetFirst();
+					value := key_value->GetSecond();
+					client->AddHeader(key, value);
+				};
 			};
 
 			return client->Post(url, data, content_type);
@@ -149,8 +151,8 @@ bundle Web.HTTP {
 		@param data data to post
 		@return string read
 		~#
-		method : public : Post(url : Web.HTTP.Url, data : String, content_type : String) ~ String {
-			content := Vector->New()<String>;
+		method : public : Post(url : Web.HTTP.Url, data : String, content_type : String) ~ Byte[] {
+			content : ByteBuffer;
 			
 			if(url->GetScheme()->Equals("http")) {
 				address := url->GetHost();
@@ -277,12 +279,12 @@ bundle Web.HTTP {
 						# look for chunked blocks
 						encoding : String := @response_headers->Find("transfer-encoding");
 						if(encoding <> Nil & encoding->Equals("chunked")) {
-							WebCommon->ReadChunked(content, socket);
+							content := WebCommon->ReadChunked(socket);
 						}
 						else {
 							length_header : String := @response_headers->Find("content-length");
 							if(length_header <> Nil) {
-								WebCommon->ReadLength(length_header->ToInt(), content, socket);
+								content := WebCommon->ReadLength(length_header->ToInt(), socket);
 							};						
 						};
 					};
@@ -290,21 +292,15 @@ bundle Web.HTTP {
 				};
 			};
 			
-			document := "";
-
-			each(i : content) {
-				document->Append(content->Get(i));
-			};
-
-			return document;
+			return content->ToByteArray();
 		}
 		
 		#~
 		Performs a HTTP GET and returns results as a String
 		@param url URL
-		@return output as one string
+		@return output buffer
 		~#
-		function : QuickGet(url : Web.HTTP.Url) ~ String {
+		function : QuickGet(url : Web.HTTP.Url) ~ Byte[] {
 			return QuickGet(url, "text/plain", Nil);
 		}
 
@@ -312,10 +308,20 @@ bundle Web.HTTP {
 		Performs a HTTP GET and returns results as a String
 		@param url URL
 		@param headers key/value headers
-		@return output as one string
+		@return output buffer
 		~#
-		function : QuickGet(url : Web.HTTP.Url, headers : Map<String, String>) ~ String {
+		function : QuickGet(url : Web.HTTP.Url, headers : Map<String, String>) ~ Byte[] {
 			return QuickGet(url, "text/plain", headers);
+		}
+
+		#~
+		Performs a HTTP GET and returns results as a String
+		@param url URL
+		@param content_type content type
+		@return output buffer
+		~#
+		function : QuickGet(url : Web.HTTP.Url, content_type : String) ~ Byte[] {
+			return QuickGet(url, content_type, Nil);
 		}
 		
 		#~
@@ -323,9 +329,9 @@ bundle Web.HTTP {
 		@param url URL
 		@param content_type content type
 		@param headers key/value headers
-		@return output as one string
+		@return output buffer
 		~#
-		function : QuickGet(url : Web.HTTP.Url, content_type : String, headers : Map<String, String>) ~ String {			
+		function : QuickGet(url : Web.HTTP.Url, content_type : String, headers : Map<String, String>) ~ Byte[] {			
 			client := HttpClient->New();
 			if(headers <> Nil) {
 				header_key_values := headers->GetKeyValues()<Pair<String, String>>;
@@ -351,7 +357,7 @@ bundle Web.HTTP {
 		@param url URL
 		@return string read
 		~#
-		method : public : Get(url : Web.HTTP.Url) ~ String {
+		method : public : Get(url : Web.HTTP.Url) ~ Byte[] {
 			return Get(url, "text/plain");
 		}
 		
@@ -361,8 +367,8 @@ bundle Web.HTTP {
 		@param content_type content type
 		@return string read
 		~#
-		method : public : Get(url : Web.HTTP.Url, content_type : String) ~ String {
-			content := Vector->New()<String>;
+		method : public : Get(url : Web.HTTP.Url, content_type : String) ~ Byte[] {
+			content : ByteBuffer;
 			
 			if(url->GetScheme()->Equals("http")) {
 				address := url->GetHost();
@@ -486,27 +492,13 @@ bundle Web.HTTP {
 						# look for chunked blocks
 						encoding : String := @response_headers->Find("transfer-encoding");
 						if(encoding <> Nil & encoding->Equals("chunked")) {
-							WebCommon->ReadChunked(content, socket);
+							content := WebCommon->ReadChunked(socket);
 						}
 						else {
 							length_header : String := @response_headers->Find("content-length");
 							if(length_header <> Nil) {
-								WebCommon->ReadLength(length_header->ToInt(), content, socket);
-							}
-							else {
-								count := 0;
-								do {
-									line := socket->ReadLine();
-									if(line->Size() = 0) {
-										count += 1;
-									}
-									else {
-										content->AddBack(line);
-										count := 0;
-									};
-								}
-								while(count < 2);
-							};							
+								content := WebCommon->ReadLength(length_header->ToInt(), socket);
+							};
 						};
 					};
 					socket->Close();
@@ -516,13 +508,7 @@ bundle Web.HTTP {
 				};
 			};	
 			
-			document := "";
-			
-			each(i : content) {
-				document->Append(content->Get(i));
-			};
-
-			return document;
+			return content->ToByteArray();
 		}
 	}
 }
