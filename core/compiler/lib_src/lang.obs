@@ -2922,7 +2922,7 @@ bundle System {
 		New() {
 			Parent();
 
-			@max := 64;
+			@max := 512;
 			@buffer := Byte->New[@max];
 			@pos := 0;
 		}

@@ -35,11 +35,9 @@ class Test {
 	}
 
 	function : DownloadFile() ~ Nil {
-		client := HttpsClient->New();
 		url := Url->New("https://news.ucdenver.edu/wp-content/uploads/2023/04/16x9-1536x865.jpg");
-		data := client->Get(url, "image/jpeg");
-data->Size()->PrintLine();		
-		System.IO.Filesystem.FileWriter->WriteFile("a.jpg", data->ToByteArray());
+		data := HttpsClient->QuickGet(url, "image/jpeg");
+		System.IO.Filesystem.FileWriter->WriteFile("a.jpg", data);
 	}
 
 	function : CallCommand() ~ Nil {
