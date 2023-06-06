@@ -3043,7 +3043,7 @@ bundle System {
 		@return cloned the object instance
 		~#
 		method : public : Clone() ~ System.ByteBuffer {
-			return System.ByteBuffer->New(@buffer);
+		 	ByteBuffer->New(ToByteArray());
 		}
 
 		#~
@@ -3070,6 +3070,20 @@ bundle System {
 		~#
 		method : public : Raw() ~ Byte[] {
 			return @buffer;
+		}
+
+		#~
+		Returns a trimmed byte array
+		@return byte array
+		~#
+		method : public : native : ToByteArray() ~ Byte[] {
+			output := ByteArray[@pos];
+
+			for(i := 0; i < @pos; i += 1;) {
+				output[i] := @buffer[i];
+			};
+
+			return output;
 		}
 	}
 

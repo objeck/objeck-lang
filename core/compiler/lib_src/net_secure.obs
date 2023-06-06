@@ -151,9 +151,9 @@ bundle Web.HTTP {
 		@param data data to post
 		@return string read
 		~#
-		method : public : Post(url : Web.HTTP.Url, data : String, content_type : String) ~ String {
-			content := Vector->New()<String>;
-			
+		method : public : Post(url : Web.HTTP.Url, data : String, content_type : String) ~ Byte[] {	
+			content : Byte[];
+
 			if(url->GetScheme()->Equals("https")) {
 				address := url->GetHost();
 				
@@ -275,12 +275,12 @@ bundle Web.HTTP {
 						# look for chunked blocks
 						encoding : String := @response_headers->Find("transfer-encoding");
 						if(encoding <> Nil & encoding->Equals("chunked")) {
-							WebCommon->ReadChunked(content, socket);
+							content := WebCommon->ReadChunked(socket)->ToByteArray();
 						}
 						else {
 							length_header : String := @response_headers->Find("content-length");
 							if(length_header <> Nil) {
-								WebCommon->ReadLength(length_header->ToInt(), content, socket);
+								content := WebCommon->ReadLength(length_header->ToInt(), socket)->ToByteArray();
 							};						
 						};
 					};
@@ -288,13 +288,7 @@ bundle Web.HTTP {
 				};
 			};
 			
-			document := "";
-
-			each(i : content) {
-				document->Append(content->Get(i));
-			};
-
-			return document;
+			return content;
 		}
 		
 		#~
@@ -375,8 +369,8 @@ bundle Web.HTTP {
 		@param content_type content type
 		@return string read
 		~#
-		method : public : Get(url : Web.HTTP.Url, content_type : String) ~ String {
-			content := Vector->New()<String>;
+		method : public : Get(url : Web.HTTP.Url, content_type : String) ~ Byte[] {
+			content : Byte[];
 			
 			if(url->GetScheme()->Equals("https")) {
 				address := url->GetHost();
@@ -500,12 +494,12 @@ bundle Web.HTTP {
 						# look for chunked blocks
 						encoding : String := @response_headers->Find("transfer-encoding");
 						if(encoding <> Nil & encoding->Equals("chunked")) {
-							WebCommon->ReadChunked(content, socket);
+							content := WebCommon->ReadChunked(socket)->ToByteArray();
 						}
 						else {
 							length_header : String := @response_headers->Find("content-length");
 							if(length_header <> Nil) {
-								WebCommon->ReadLength(length_header->ToInt(), content, socket);
+								content := WebCommon->ReadLength(length_header->ToInt(), socket)->ToByteArray();
 							}
 							else {
 								count := 0;
@@ -532,13 +526,7 @@ bundle Web.HTTP {
 				};
 			};	
 			
-			document := "";
-
-			each(i : content) {
-				document->Append(content->Get(i));
-			};
-
-			return document;
+			return content;
 		}
 	}
 }
