@@ -2608,7 +2608,7 @@ bundle System {
 			@values := values;
 		}
 	}
-
+	
 	#~
 	Holds an base array
 	~#
@@ -2894,6 +2894,64 @@ bundle System {
 		~#
 		method : public : HashID() ~ Int {
 			return GetInstanceID();
+		}
+	}
+
+	#~
+	TBD
+	~#
+	class ByteBuffer {
+		@buffer : Byte[];
+		@max : Int;
+		@pos : Int;
+
+		#~
+		Default constructor
+		~#
+		New() {
+			Parent();
+
+			@max := 64;
+			@buffer := Byte->New[@max];
+			@pos := 0;
+		}
+
+		#~
+		Appends a byte array
+		@param array array to be copied
+		~#
+		method : public : native : Append(array : Byte[]) ~ Nil {
+			max := @pos + array->Size();
+			if(max >= @max) {
+				@max += max + max >> 1;
+				temp := Char->New[@max];
+				Runtime->Copy(temp, 0, @buffer, 0, @buffer->Size());
+				@buffer := temp;
+			};
+			
+			end := array->Size();
+			for(i := 0; i < end & array[i] <> '\0'; i += 1;) {
+				@buffer[@pos] := array[i];
+				@pos += 1;
+			};
+		}
+
+		#~
+		Appends a byte
+		@param c byte to append
+		~#
+		method : public : Append(c : Byte) ~ Nil {
+			if(@pos >= @max) {
+				# expand string
+				@max := @pos + @pos >> 1;
+				temp := Char->New[@max];
+				# copy elements
+				Runtime->Copy(temp, 0, @buffer, 0, @buffer->Size());
+				@buffer := temp;
+			};
+
+			@buffer[@pos] := c;
+			@pos += 1;
 		}
 	}
 
