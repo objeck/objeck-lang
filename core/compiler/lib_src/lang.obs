@@ -2941,7 +2941,27 @@ bundle System {
 			};
 			
 			end := array->Size();
-			for(i := 0; i < end & array[i] <> '\0'; i += 1;) {
+			for(i := 0; i < end; i += 1;) {
+				@buffer[@pos] := array[i];
+				@pos += 1;
+			};
+		}
+
+		#~
+		Appends a byte array
+		@param length number of characters to copy
+		@param array array to be copied
+		~#
+		method : public : native : Append(length : Int, array : Byte[]) ~ Nil {
+			max := @pos + length;
+			if(max >= @max) {
+				@max += max + max >> 1;
+				temp := Byte->New[@max];
+				Runtime->Copy(temp, 0, @buffer, 0, @buffer->Size());
+				@buffer := temp;
+			};
+			
+			for(i := 0; i < length; i += 1;) {
 				@buffer[@pos] := array[i];
 				@pos += 1;
 			};
