@@ -931,7 +931,7 @@ class StackProgram {
     cls_interfaces = nullptr;
     classes = nullptr;
     char_strings = nullptr;
-    string_cls_id = cls_cls_id = mthd_cls_id = sock_cls_id = data_type_cls_id = -1;
+    string_cls_id = cls_cls_id = mthd_cls_id = sock_cls_id = data_type_cls_id = command_output_cls_id = -1;
 #ifdef _WIN32
     InitializeCriticalSection(&program_cs);
     InitializeCriticalSection(&prop_cs);
