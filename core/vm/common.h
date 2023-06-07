@@ -903,6 +903,7 @@ class StackProgram {
   long mthd_cls_id;
   long sock_cls_id;
   long data_type_cls_id;
+  long command_output_cls_id;
   StackMethod* init_method;
   static std::map<std::wstring, std::wstring> properties_map;
 	static std::unordered_map<long, StackMethod*> signal_handler_func;
@@ -1146,17 +1147,32 @@ class StackProgram {
 	 }
 
    const long GetDataTypeObjectId() {
-    if(data_type_cls_id < 0) {
-      StackClass* cls = GetClass(L"System.Introspection.DataType");
-      if(!cls) {
-        std::wcerr << L">>> Internal error: unable to find class: System.Introspection.DataType <<<" << std::endl;
-        exit(1);
-      }
-      data_type_cls_id = cls->GetId();
-    }
+     if(data_type_cls_id < 0) {
+       StackClass* cls = GetClass(L"System.Introspection.DataType");
+       if(!cls) {
+         std::wcerr << L">>> Internal error: unable to find class: System.Introspection.DataType <<<" << std::endl;
+         exit(1);
+       }
+       data_type_cls_id = cls->GetId();
+     }
 
-    return data_type_cls_id;
-  }
+     return data_type_cls_id;
+   }
+
+   const long GetCommandOutputObjectId() {
+     if(command_output_cls_id < 0) {
+       StackClass* cls = GetClass(L"System.CommandOutput");
+       if(!cls) {
+         std::wcerr << L">>> Internal error: unable to find class: System.Introspection.DataType <<<" << std::endl;
+         exit(1);
+       }
+       command_output_cls_id = cls->GetId();
+     }
+
+     return command_output_cls_id;
+   }
+
+
 
   void SetFloatStrings(FLOAT_VALUE** s, int n) {
     float_strings = s;
