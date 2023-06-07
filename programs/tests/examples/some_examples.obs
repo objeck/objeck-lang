@@ -46,9 +46,9 @@ class Test {
 
 		command := output->GetCommand();
 		status := output->GetStatus();
-		"command='{$command}', status={$status}"->PrintLine();
-		
 		lines := output->GetOutput();
+
+		"command='{$command}', status={$status}"->PrintLine();
 		each(line := lines) {
 			line->PrintLine();
 		};
