@@ -82,46 +82,6 @@ namespace instructions {
   };
 }
 
-static std::wstring GetLibraryPath() {
-  std::wstring path;
-
-#ifdef _WIN32
-  char* path_str_ptr; size_t len;
-  if(_dupenv_s(&path_str_ptr, &len, "OBJECK_LIB_PATH")) {
-    return L"";
-  }
-#else
-  const char* path_str_ptr = getenv("OBJECK_LIB_PATH");
-#endif
-  if(path_str_ptr && strlen(path_str_ptr) > 0) {
-    std::string path_str(path_str_ptr);
-    
-
-    path = std::wstring(path_str.begin(), path_str.end());
-#ifdef _WIN32
-    free(path_str_ptr);
-    path_str_ptr = nullptr;
-
-    if(path[path.size() - 1] != '\\') {
-      path += L"\\";
-    }
-#else
-    if(path[path.size() - 1] != '/') {
-      path += L'/';
-    }
-#endif
-  }
-  else {
-#ifdef _WIN32
-    path += L"..\\lib\\";
-#else
-    path += L"../lib/";
-#endif
-  }
-
-  return path;
-}
-
 /****************************
  * Converts UTF-8 bytes to a 
  * native Unicode std::string 
@@ -739,6 +699,44 @@ static std::map<const std::wstring, std::wstring> ParseCommnadLine(int argc, cha
   }
 
   return arguments;
+}
+
+static std::wstring GetLibraryPath() {
+  std::wstring path;
+
+#ifdef _WIN32
+  char* path_str; size_t len;
+  if(_dupenv_s(&path_str, &len, "OBJECK_LIB_PATH")) {
+    return L"";
+  }
+#else
+  const char* path_str = getenv("OBJECK_LIB_PATH");
+#endif
+  if(path_str && strlen(path_str) > 0) {
+    const std::string foo(path_str);
+    path = BytesToUnicode(foo);
+#ifdef _WIN32
+    free(path_str);
+    path_str = nullptr;
+
+    if(path[path.size() - 1] != '\\') {
+      path += L"\\";
+    }
+#else
+    if(path[path.size() - 1] != '/') {
+      path += L'/';
+    }
+#endif
+  }
+  else {
+#ifdef _WIN32
+    path += L"..\\lib\\";
+#else
+    path += L"../lib/";
+#endif
+  }
+
+  return path;
 }
 
 #endif

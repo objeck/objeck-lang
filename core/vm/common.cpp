@@ -3185,11 +3185,31 @@ bool TrapProcessor::RaiseSignal(StackProgram* program, size_t* inst, size_t*& op
 
 bool TrapProcessor::SysCmdOut(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
 {
-  size_t* env_array_obj = (size_t*)PopInt(op_stack, stack_pos);
-  if(env_array_obj) {
-    env_array_obj = (size_t*)env_array_obj[0];
-    env_array_obj += 3;
+  size_t* env_array = (size_t*)PopInt(op_stack, stack_pos);
+  if(env_array) {
+    const size_t env_str_count = env_array[2];
+    for(size_t i = 0; i < env_str_count; ++i) {
+      size_t* env_str_obj = (size_t*)env_array[i + 3];
+      env_str_obj = (size_t*)*env_str_obj;
+      const std::string env_str = UnicodeToBytes((wchar_t*)(env_str_obj + 3));
+      const size_t index = env_str.find('=');
+      if(index != std::string::npos) {
+        const std::string name = env_str.substr(0, index);
+        const std::string value = env_str.substr(index + 1);
 
+#ifdef _WIN32
+        size_t buffer_len;
+        getenv_s(&buffer_len, nullptr, 0, name.c_str());
+        if(!buffer_len) {
+          _putenv_s(name.c_str(), value.c_str());
+        }
+#else
+        if(!getenv(name.c_str())) {
+          setenv(name.c_str(), value.c_str(), 0);
+      }
+#endif
+      }
+    }
   }
 
   size_t* command_obj = (size_t*)PopInt(op_stack, stack_pos);
