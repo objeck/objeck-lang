@@ -2,10 +2,6 @@
 Objeck system classes.
 Copyright (c) 2023 Randy Hollines
 note: compile compiler with -D_SYSTEM flag (on Linux)
-
-TODO:
-* Add 'ByteBuffer' class (see: 3248)
-
 ~#	
 
 #~
@@ -3436,7 +3432,7 @@ bundle System {
 		method : public : Append(c : Char) ~ Nil {
 			if(@pos >= @max) {
 				# expand string
-				@max :=@pos + @pos >> 1;
+				@max := @pos + @pos >> 1;
 				temp := Char->New[@max];
 				# copy elements
 				Runtime->Copy(temp, 0, @string, 0, @string->Size());
@@ -4838,9 +4834,10 @@ bundle System {
 		#~
 		Executes a system command
 		@param n system command
+		@param s command status code
 		@return output from command
 		~#
-		function : CommandOutput(n : System.String) ~ System.String[] {
+		function : CommandOutput(n : System.String, s : IntRef) ~ System.String[] {
 			SYS_CMD_OUT;
 		}
 		
