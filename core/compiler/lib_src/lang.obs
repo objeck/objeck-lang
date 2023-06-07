@@ -2931,7 +2931,7 @@ bundle System {
 		method : public : native : Append(array : Byte[]) ~ Nil {
 			max := @pos + array->Size();
 			if(max >= @max) {
-				@max += max + max >> 1;
+				@max := max >> 1;
 				temp := Byte->New[@max];
 				Runtime->Copy(temp, 0, @buffer, 0, @buffer->Size());
 				@buffer := temp;
@@ -2952,7 +2952,7 @@ bundle System {
 		method : public : native : Append(length : Int, array : Byte[]) ~ Nil {
 			max := @pos + length;
 			if(max >= @max) {
-				@max += max + max >> 1;
+				@max := max >> 1;
 				temp := Byte->New[@max];
 				Runtime->Copy(temp, 0, @buffer, 0, @buffer->Size());
 				@buffer := temp;
@@ -3341,7 +3341,7 @@ bundle System {
 		method : public : Append(array : Char[]) ~ Nil {
 			max := @pos + array->Size();
 			if(max >= @max) {
-				@max += max + max >> 1;
+				@max := max >> 1;
 				temp := Char->New[@max];
 				Runtime->Copy(temp, 0, @string, 0, @string->Size());
 				@string := temp;
@@ -3367,7 +3367,7 @@ bundle System {
 			
 			max := @pos + length;
 			if(max >= @max) {
-				@max += max + max >> 1;
+				@max := max >> 1;
 				temp := Char->New[@max];
 				Runtime->Copy(temp, 0, @string, 0, @string->Size());
 				@string := temp;
@@ -3387,7 +3387,7 @@ bundle System {
 		method : public : native : Append(array : Byte[]) ~ Nil {
 			max := @pos + array->Size();
 			if(max >= @max) {
-				@max += max + max >> 1;
+				@max := max >> 1;
 				temp := Char->New[@max];
 				Runtime->Copy(temp, 0, @string, 0, @string->Size());
 				@string := temp;
@@ -3413,7 +3413,7 @@ bundle System {
 
 			max := @pos + length;
 			if(max >= @max) {
-				@max += max + max >> 1;
+				@max := max >> 1;
 				temp := Char->New[@max];
 				Runtime->Copy(temp, 0, @string, 0, @string->Size());
 				@string := temp;
