@@ -42,9 +42,9 @@ class Test {
 	}
 
 	function : CallCommand() ~ Nil {
-		command := Directory->GetSlash() = '/' ? "ls - l" : "dir /w";
-		output := Runtime->CommandOutput(command);
+		output := Runtime->CommandOutput(Directory->GetSlash() = '/' ? "ls - l" : "dir /w");
 
+		command := output->GetCommand();
 		status := output->GetStatus();
 		"command='{$command}', status={$status}"->PrintLine();
 		
