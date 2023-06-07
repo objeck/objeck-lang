@@ -1,5 +1,5 @@
 #~
-# compile: obc -src http_regex_9.obs -lib net,regex
+# compile: obc -src http_regex_9.obs -lib net,json,regex
 # run: obr http_regex_9.obe https://www.objeck.org
 # note: takes a few seconds to run
 ~#
@@ -12,7 +12,7 @@ class RegExUrls {
 		if(args->Size() = 1) {
 			input := args[0];
 
-			output := HttpsClient->New()->QuickGet(Web.HTTP.Url->New(input));
+			output := HttpsClient->New()->QuickGet(Web.HTTP.Url->New(input))->ToString();
 			output_len := output->Size();
 			"URL: {$input}, read: {$output_len} character(s)"->PrintLine();
 
