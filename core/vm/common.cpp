@@ -3185,8 +3185,14 @@ bool TrapProcessor::RaiseSignal(StackProgram* program, size_t* inst, size_t*& op
 
 bool TrapProcessor::SysCmdOut(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
 {
-  size_t* command_obj = (size_t*)PopInt(op_stack, stack_pos);
+  size_t* env_array_obj = (size_t*)PopInt(op_stack, stack_pos);
+  if(env_array_obj) {
+    env_array_obj = (size_t*)env_array_obj[0];
+    env_array_obj += 3;
 
+  }
+
+  size_t* command_obj = (size_t*)PopInt(op_stack, stack_pos);
   size_t* str_array = (size_t*)command_obj[0];
   if(str_array) {
     const std::string cmd = UnicodeToBytes((wchar_t*)(str_array + 3));
