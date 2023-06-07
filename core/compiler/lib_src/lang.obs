@@ -4838,7 +4838,7 @@ bundle System {
 		@param s command status code, may be Nil
 		@return output from command
 		~#
-		function : CommandOutput(n : System.String, s : IntRef) ~ System.String[] {
+		function : CommandOutput(n : System.String) ~ CommandOutput {
 			SYS_CMD_OUT;
 		}
 		
@@ -5004,6 +5004,39 @@ bundle System {
 		~#
 		function : Copy(dest : Float[], dest_offset : Int, src : Float[], src_offset : Int, len : Int) ~ Bool {
 			CPY_FLOAT_ARY;
+		}
+	}
+
+	#~
+	Output from system command call
+	~#	
+	class CommandOutput {
+		@command : String;
+		@status : Int;
+		@output : String[];
+
+		#~
+		Gets the command that was executed
+		@return command executed
+		~#
+		method : public : GetCommand() ~ String {
+			return @command;
+		}
+
+		#~
+		Gets the return status code for the command executed
+		@return status code
+		~#
+		method : public : GetCommand() ~ String {
+			return @command;
+		}
+
+		#~
+		Gets output from command
+		@return output from command
+		~#
+		method : public : GetCommand() ~ String {
+			return @command;
 		}
 	}
 }
