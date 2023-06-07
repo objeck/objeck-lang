@@ -2903,6 +2903,7 @@ bundle System {
 
 		#~
 		Copy constructor
+		@param buffer buffer to set
 		~#
 		New(buffer : Byte[]) {
 			Parent();
@@ -4834,7 +4835,7 @@ bundle System {
 		#~
 		Executes a system command
 		@param n system command
-		@param s command status code
+		@param s command status code, may be Nil
 		@return output from command
 		~#
 		function : CommandOutput(n : System.String, s : IntRef) ~ System.String[] {
