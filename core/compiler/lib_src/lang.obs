@@ -5012,6 +5012,7 @@ bundle System {
 	~#	
 	class CommandOutput {
 		New() {
+			Parent();
 		}
 
 		@command : String;
@@ -5030,7 +5031,7 @@ bundle System {
 		Gets the return status code for the command executed
 		@return status code
 		~#
-		method : public : GetStatus() ~ String {
+		method : public : GetStatus() ~ Int {
 			return @status;
 		}
 
@@ -5038,7 +5039,7 @@ bundle System {
 		Gets output from command
 		@return output from command
 		~#
-		method : public : GetOutput() ~ String {
+		method : public : GetOutput() ~ String[] {
 			return @output;
 		}
 	}
