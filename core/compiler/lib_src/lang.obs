@@ -2971,7 +2971,7 @@ bundle System {
 		method : public : Append(c : Byte) ~ Nil {
 			if(@pos >= @max) {
 				# expand string
-				@max := @pos + @pos >> 1;
+				@max += @pos << 1;
 				temp := Byte->New[@max];
 				# copy elements
 				Runtime->Copy(temp, 0, @buffer, 0, @buffer->Size());
@@ -3433,7 +3433,7 @@ bundle System {
 		method : public : Append(c : Char) ~ Nil {
 			if(@pos >= @max) {
 				# expand string
-				@max := @pos + @pos >> 1;
+				@max += @pos << 1;
 				temp := Char->New[@max];
 				# copy elements
 				Runtime->Copy(temp, 0, @string, 0, @string->Size());
@@ -3451,7 +3451,7 @@ bundle System {
 		method : public : Append(c : Byte) ~ Nil {
 			if(@pos >= @max) {
 				# expand string
-				@max := @pos + @pos >> 1;
+				@max += @pos << 1;
 				temp := Char->New[@max];
 				# copy elements
 				Runtime->Copy(temp, 0, @string, 0, @string->Size());
