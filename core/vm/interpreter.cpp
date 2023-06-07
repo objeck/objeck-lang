@@ -2637,6 +2637,9 @@ void StackInterpreter::SharedLibraryLoad(StackInstr* instr)
   else {
     path_str += L"..\\lib\\native\\";
   }
+  
+  free(lib_path);
+  lib_path = nullptr;
 #else
   char* lib_path = getenv("OBJECK_LIB_PATH");
   if(lib_path) {

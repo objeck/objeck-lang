@@ -118,6 +118,9 @@ int main(const int argc, const char* argv[])
 #endif
     }
 
+    free(value);
+    value = nullptr;
+
     // initialize Winsock
     WSADATA data;
     int status;
