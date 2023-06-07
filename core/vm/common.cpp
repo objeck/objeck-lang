@@ -3125,8 +3125,7 @@ bool TrapProcessor::SysCmd(StackProgram* program, size_t* inst, size_t*& op_stac
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   array = (size_t*)array[0];
   if(array) {
-    const std::wstring wcmd((wchar_t*)(array + 3));
-    const std::string cmd = UnicodeToBytes(wcmd);
+    const std::string cmd = UnicodeToBytes((wchar_t*)(array + 3));
     PushInt(system(cmd.c_str()), op_stack, stack_pos);
   }
 
@@ -3383,8 +3382,7 @@ bool TrapProcessor::SockTcpResolveName(StackProgram* program, size_t* inst, size
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   array = (size_t*)array[0];
   if(array) {
-    const std::wstring wname((wchar_t*)(array + 3));
-    const std::string name =  UnicodeToBytes(wname);
+    const std::string name =  UnicodeToBytes((wchar_t*)(array + 3));
     std::vector<std::string> addrs = IPSocket::Resolve(name.c_str());
 
     // create 'System.String' object array
@@ -3451,8 +3449,7 @@ bool TrapProcessor::SockTcpConnect(StackProgram* program, size_t* inst, size_t* 
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(array && instance) {
     array = (size_t*)array[0];
-    const std::wstring waddr((wchar_t*)(array + 3));
-    const std::string addr = UnicodeToBytes(waddr);
+    const std::string addr = UnicodeToBytes((wchar_t*)(array + 3));
     SOCKET sock = IPSocket::Open(addr.c_str(), port);
 #ifdef _DEBUG
     std::wcout << L"# socket connect: addr='" << waddr << L":" << port << L"'; instance="
@@ -3621,8 +3618,7 @@ bool TrapProcessor::SockTcpSslConnect(StackProgram* program, size_t* inst, size_
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(array && instance) {
     array = (size_t*)array[0];
-    const std::wstring waddr((wchar_t*)(array + 3));
-    const std::string addr = UnicodeToBytes(waddr);
+    const std::string addr = UnicodeToBytes((wchar_t*)(array + 3));
 
     IPSecureSocket::Close((SSL_CTX*)instance[0], (BIO*)instance[1], (X509*)instance[2]);
 
@@ -4411,7 +4407,7 @@ bool TrapProcessor::TrapProcessor::CRC32Bytes(StackProgram* program, size_t* ins
   const char* in = (char*)(array + 3);
   const uLong in_len = (uLong)array[2];
 
-  // caculate CRC
+  // calculate CRC
   const uLong crc = crc32(0, (Bytef*)in, in_len);
   PushInt(crc, op_stack, stack_pos);
 
@@ -4423,9 +4419,7 @@ bool TrapProcessor::FileOpenRead(StackProgram* program, size_t* inst, size_t* &o
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(array && instance) {
-    array = (size_t*)array[0];
-    const std::wstring name((wchar_t*)(array + 3));
-    const std::string filename = UnicodeToBytes(name);
+    const std::string filename = UnicodeToBytes((wchar_t*)(array + 3));
     FILE* file = File::FileOpen(filename.c_str(), "rb");
 #ifdef _DEBUG
     std::wcout << L"# file open: name='" << name << L"'; instance=" << instance << L"("
@@ -4444,8 +4438,7 @@ bool TrapProcessor::FileOpenAppend(StackProgram* program, size_t* inst, size_t* 
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(array && instance) {
     array = (size_t*)array[0];
-    const std::wstring name((wchar_t*)(array + 3));
-    const std::string filename = UnicodeToBytes(name);
+    const std::string filename = UnicodeToBytes((wchar_t*)(array + 3));
     FILE* file = File::FileOpen(filename.c_str(), "ab");
 #ifdef _DEBUG
     std::wcout << L"# file open: name='" << name << L"'; instance=" << instance << L"("
@@ -4464,8 +4457,7 @@ bool TrapProcessor::FileOpenWrite(StackProgram* program, size_t* inst, size_t* &
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(array && instance) {
     array = (size_t*)array[0];
-    const std::wstring name((wchar_t*)(array + 3));
-    const std::string filename = UnicodeToBytes(name);
+    const std::string filename = UnicodeToBytes((wchar_t*)(array + 3));
     FILE* file = File::FileOpen(filename.c_str(), "wb");
 #ifdef _DEBUG
     std::wcout << L"# file open: name='" << name << L"'; instance=" << instance << L"("
@@ -5385,8 +5377,7 @@ bool TrapProcessor::FileCanWriteOnly(StackProgram* program, size_t* inst, size_t
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(array) {
     array = (size_t*)array[0];
-    const std::wstring wname((wchar_t*)(array + 3));
-    const std::string name =  UnicodeToBytes(wname);
+    const std::string name =  UnicodeToBytes((wchar_t*)(array + 3));
     PushInt(File::FileWriteOnly(name.c_str()), op_stack, stack_pos);
   }
   else {
@@ -5401,8 +5392,7 @@ bool TrapProcessor::FileCanReadOnly(StackProgram* program, size_t* inst, size_t*
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(array) {
     array = (size_t*)array[0];
-    const std::wstring wname((wchar_t*)(array + 3));
-    const std::string name =  UnicodeToBytes(wname);
+    const std::string name =  UnicodeToBytes((wchar_t*)(array + 3));
     PushInt(File::FileReadOnly(name.c_str()), op_stack, stack_pos);
   }
   else {
@@ -5433,8 +5423,7 @@ bool TrapProcessor::FileExists(StackProgram* program, size_t* inst, size_t* &op_
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(array) {
     array = (size_t*)array[0];
-    const std::wstring wname((wchar_t*)(array + 3));
-    const std::string name =  UnicodeToBytes(wname);
+    const std::string name =  UnicodeToBytes((wchar_t*)(array + 3));
     PushInt(File::FileExists(name.c_str()), op_stack, stack_pos);
   }
   else {
@@ -5449,8 +5438,7 @@ bool TrapProcessor::FileSize(StackProgram* program, size_t* inst, size_t* &op_st
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(array) {
     array = (size_t*)array[0];
-    const std::wstring wname((wchar_t*)(array + 3));
-    const std::string name =  UnicodeToBytes(wname);
+    const std::string name =  UnicodeToBytes((wchar_t*)(array + 3));
     PushInt(File::FileSize(name.c_str()), op_stack, stack_pos);
   }
   else {
@@ -5480,8 +5468,7 @@ bool TrapProcessor::FileFullPath(StackProgram* program, size_t* inst, size_t* &o
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(array) {
     array = (size_t*)array[0];
-    const std::wstring wname((wchar_t*)(array + 3));
-    const std::string name =  UnicodeToBytes(wname);
+    const std::string name =  UnicodeToBytes((wchar_t*)(array + 3));
     std::string full_path = File::FullPathName(name);
     if(full_path.size() > 0) {
       const std::wstring wfull_path(full_path.begin(), full_path.end());
@@ -5501,8 +5488,7 @@ bool TrapProcessor::FileAccountOwner(StackProgram* program, size_t* inst, size_t
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(array) {
     array = (size_t*)array[0];
-    const std::wstring wname((wchar_t*)(array + 3));
-    const std::string name =  UnicodeToBytes(wname);
+    const std::string name =  UnicodeToBytes((wchar_t*)(array + 3));
     ProcessFileOwner(name.c_str(), true, program, op_stack, stack_pos);
   }
   else {
@@ -5517,8 +5503,7 @@ bool TrapProcessor::FileGroupOwner(StackProgram* program, size_t* inst, size_t* 
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(array) {
     array = (size_t*)array[0];
-    const std::wstring wname((wchar_t*)(array + 3));
-    const std::string name =  UnicodeToBytes(wname);
+    const std::string name =  UnicodeToBytes((wchar_t*)(array + 3));
     ProcessFileOwner(name.c_str(), false, program, op_stack, stack_pos);
   }
   else {
@@ -5662,8 +5647,7 @@ bool TrapProcessor::FileCreateTime(StackProgram* program, size_t* inst, size_t* 
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(array) {
     array = (size_t*)array[0];
-    const std::wstring wname((wchar_t*)(array + 3));
-    const std::string name =  UnicodeToBytes(wname);
+    const std::string name =  UnicodeToBytes((wchar_t*)(array + 3));
     time_t raw_time = File::FileCreatedTime(name.c_str());
     if(raw_time > 0) {
       struct tm* curr_time;
@@ -5695,8 +5679,7 @@ bool TrapProcessor::FileModifiedTime(StackProgram* program, size_t* inst, size_t
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(array) {
     array = (size_t*)array[0];
-    const std::wstring wname((wchar_t*)(array + 3));
-    const std::string name =  UnicodeToBytes(wname);
+    const std::string name =  UnicodeToBytes((wchar_t*)(array + 3));
     time_t raw_time = File::FileModifiedTime(name.c_str());
     if(raw_time > 0) {
       struct tm* curr_time;
@@ -5728,8 +5711,7 @@ bool TrapProcessor::FileAccessedTime(StackProgram* program, size_t* inst, size_t
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(array) {
     array = (size_t*)array[0];
-    const std::wstring wname((wchar_t*)(array + 3));
-    const std::string name =  UnicodeToBytes(wname);
+    const std::string name =  UnicodeToBytes((wchar_t*)(array + 3));
     time_t raw_time = File::FileAccessedTime(name.c_str());
     if(raw_time > 0) {
       struct tm* curr_time;
@@ -5771,8 +5753,7 @@ bool TrapProcessor::DirCreate(StackProgram* program, size_t* inst, size_t* &op_s
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(array) {
     array = (size_t*)array[0];
-    const std::wstring wname((wchar_t*)(array + 3));
-    const std::string name =  UnicodeToBytes(wname);
+    const std::string name =  UnicodeToBytes((wchar_t*)(array + 3));
     PushInt(File::MakeDir(name.c_str()), op_stack, stack_pos);
   }
   else {
@@ -5787,8 +5768,7 @@ bool TrapProcessor::DirExists(StackProgram* program, size_t* inst, size_t* &op_s
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(array) {
     array = (size_t*)array[0];
-    const std::wstring wname((wchar_t*)(array + 3));
-    const std::string name =  UnicodeToBytes(wname);
+    const std::string name =  UnicodeToBytes((wchar_t*)(array + 3));
     PushInt(File::DirExists(name.c_str()), op_stack, stack_pos);
   }
   else {
@@ -5803,8 +5783,7 @@ bool TrapProcessor::DirList(StackProgram* program, size_t* inst, size_t* &op_sta
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   array = (size_t*)array[0];
   if(array) {
-    const std::wstring wname((wchar_t*)(array + 3));
-    const std::string name =  UnicodeToBytes(wname);
+    const std::string name =  UnicodeToBytes((wchar_t*)(array + 3));
     std::vector<std::string> files = File::ListDir(name.c_str());
 
     // create 'System.String' object array
