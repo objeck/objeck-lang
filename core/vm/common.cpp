@@ -2951,8 +2951,7 @@ bool TrapProcessor::StdOutCharAryLen(StackProgram* program, size_t* inst, size_t
 #endif
 
   if(array && offset > -1 && offset + num <= (long)array[0]) {
-    const wchar_t* wbuffer = (wchar_t*)(array + 3);
-    std::string buffer = UnicodeToBytes(wbuffer + offset);
+    std::string buffer = UnicodeToBytes((wchar_t*)(array + 3) + offset);
     PushInt(fwrite(buffer.c_str(), 1, num, stdout), op_stack, stack_pos);
   }
   else {
@@ -3552,14 +3551,13 @@ bool TrapProcessor::SockTcpOutString(StackProgram* program, size_t* inst, size_t
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(array && instance && (long)instance[0] > -1) {
     SOCKET sock = (SOCKET)instance[0];
-    const wchar_t* wdata = (wchar_t*)(array + 3);
 
 #ifdef _DEBUG
     std::wcout << L"# socket write std::string: instance=" << instance << L"(" << (size_t)instance << L")"
       << L"; array=" << array << L"(" << (size_t)array << L")" << L"; data=" << wdata << std::endl;
 #endif        
     if((long)sock > -1) {
-      const std::string data = UnicodeToBytes(wdata);
+      const std::string data = UnicodeToBytes((wchar_t*)(array + 3));
       IPSocket::WriteBytes(data.c_str(), (int)data.size(), sock);
     }
   }
@@ -3697,9 +3695,8 @@ bool TrapProcessor::SockTcpSslOutString(StackProgram* program, size_t* inst, siz
   if(array && instance) {
     SSL_CTX* ctx = (SSL_CTX*)instance[0];
     BIO* bio = (BIO*)instance[1];
-    const std::wstring data((wchar_t*)(array + 3));
     if(instance[3]) {
-      const std::string out = UnicodeToBytes(data);
+      const std::string out = UnicodeToBytes((wchar_t*)(array + 3));
       IPSecureSocket::WriteBytes(out.c_str(), (int)out.size(), ctx, bio);
     }
   }
@@ -3772,9 +3769,6 @@ bool TrapProcessor::SockTcpSslListen(StackProgram* program, size_t* inst, size_t
     const long port = (long)instance[6];
 
     if(cert_obj && key_obj) {
-      const std::wstring cert_str((wchar_t*)((size_t*)cert_obj[0] + 3));
-      const std::wstring key_str((wchar_t*)((size_t*)key_obj[0] + 3));
-
       SSL_CTX* ctx = SSL_CTX_new(SSLv23_server_method());
       if(!ctx) {
         PushInt(0, op_stack, stack_pos);
@@ -3799,8 +3793,8 @@ bool TrapProcessor::SockTcpSslListen(StackProgram* program, size_t* inst, size_t
       }
       
       // load certificates
-      const std::string cert_path = UnicodeToBytes(cert_str);
-      const std::string key_path = UnicodeToBytes(key_str);
+      const std::string cert_path = UnicodeToBytes((wchar_t*)((size_t*)cert_obj[0] + 3));
+      const std::string key_path = UnicodeToBytes((wchar_t*)((size_t*)key_obj[0] + 3));
       
       const int ok_cert = SSL_CTX_use_certificate_file(ctx, cert_path.c_str(), SSL_FILETYPE_PEM);
       const int ok_key = SSL_CTX_use_PrivateKey_file(ctx, key_path.c_str(), SSL_FILETYPE_PEM);
@@ -4846,7 +4840,7 @@ bool TrapProcessor::PipeOutCharAry(StackProgram* program, size_t* inst, size_t*&
 #endif
     const wchar_t* buffer = (wchar_t*)(array + 3);
     // copy sub buffer
-    std::wstring sub_buffer(buffer + offset, num);
+    const std::wstring sub_buffer(buffer + offset, num);
     // convert to bytes and write out
     std::string buffer_out = UnicodeToBytes(sub_buffer);
     PushInt(Pipe::WriteByteArray(buffer_out.c_str(), 0, buffer_out.size(), pipe), op_stack, stack_pos);
@@ -5038,7 +5032,7 @@ bool TrapProcessor::SockTcpOutCharAry(StackProgram* program, size_t* inst, size_
     SOCKET sock = (SOCKET)instance[0];
     const wchar_t* buffer = (wchar_t*)(array + 3);
     // copy sub buffer
-    std::wstring sub_buffer(buffer + offset, num);
+    const std::wstring sub_buffer(buffer + offset, num);
     // convert to bytes and write out
     std::string buffer_out = UnicodeToBytes(sub_buffer);
     PushInt(IPSocket::WriteBytes(buffer_out.c_str(), (int)buffer_out.size(), sock), op_stack, stack_pos);
@@ -5172,7 +5166,7 @@ bool TrapProcessor::SockTcpSslOutCharAry(StackProgram* program, size_t* inst, si
     BIO* bio = (BIO*)instance[1];
     const wchar_t* buffer = (wchar_t*)(array + 3);
     // copy sub buffer
-    std::wstring sub_buffer(buffer + offset, num);
+    const std::wstring sub_buffer(buffer + offset, num);
     // convert to bytes and write out
     std::string buffer_out = UnicodeToBytes(sub_buffer);
     PushInt(IPSecureSocket::WriteBytes(buffer_out.c_str(), (int)buffer_out.size(), ctx, bio), op_stack, stack_pos);
@@ -5312,7 +5306,7 @@ bool TrapProcessor::FileOutCharAry(StackProgram* program, size_t* inst, size_t* 
     FILE* file = (FILE*)instance[0];
     const wchar_t* buffer = (wchar_t*)(array + 3);
     // copy sub buffer
-    std::wstring sub_buffer(buffer + offset, num);
+    const std::wstring sub_buffer(buffer + offset, num);
     // convert to bytes and write out
     std::string buffer_out = UnicodeToBytes(sub_buffer);
     PushInt(fwrite(buffer_out.c_str(), 1, buffer_out.size(), file), op_stack, stack_pos);
@@ -5518,8 +5512,7 @@ bool TrapProcessor::FileDelete(StackProgram* program, size_t* inst, size_t* &op_
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(array) {
     array = (size_t*)array[0];
-    const std::wstring wname((wchar_t*)(array + 3));
-    const std::string name =  UnicodeToBytes(wname);
+    const std::string name =  UnicodeToBytes((wchar_t*)(array + 3));
     if(remove(name.c_str()) != 0) {
       PushInt(0, op_stack, stack_pos);
     }
@@ -5536,8 +5529,8 @@ bool TrapProcessor::FileDelete(StackProgram* program, size_t* inst, size_t* &op_
 
 bool TrapProcessor::FileRename(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
-  const size_t* to = (size_t*)PopInt(op_stack, stack_pos);
-  const size_t* from = (size_t*)PopInt(op_stack, stack_pos);
+  size_t* to = (size_t*)PopInt(op_stack, stack_pos);
+  size_t* from = (size_t*)PopInt(op_stack, stack_pos);
 
   if(!to || !from) {
     PushInt(0, op_stack, stack_pos);
@@ -5545,13 +5538,11 @@ bool TrapProcessor::FileRename(StackProgram* program, size_t* inst, size_t* &op_
   }
 
   to = (size_t*)to[0];
-  const std::wstring wto_name((wchar_t*)(to + 3));
+  const std::string to_name = UnicodeToBytes((wchar_t*)(to + 3));
 
   from = (size_t*)from[0];
-  const std::wstring wfrom_name((wchar_t*)(from + 3));
+  const std::string from_name = UnicodeToBytes((wchar_t*)(from + 3));
 
-  const std::string to_name = UnicodeToBytes(wto_name);
-  const std::string from_name = UnicodeToBytes(wfrom_name);
   if(rename(from_name.c_str(), to_name.c_str()) != 0) {
     PushInt(0, op_stack, stack_pos);
   }
@@ -5565,8 +5556,8 @@ bool TrapProcessor::FileRename(StackProgram* program, size_t* inst, size_t* &op_
 bool TrapProcessor::FileCopy(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
 {
   const bool overwrite = PopInt(op_stack, stack_pos);
-  const size_t* to = (size_t*)PopInt(op_stack, stack_pos);
-  const size_t* from = (size_t*)PopInt(op_stack, stack_pos);
+  size_t* to = (size_t*)PopInt(op_stack, stack_pos);
+  size_t* from = (size_t*)PopInt(op_stack, stack_pos);
 
   if(!to || !from) {
     PushInt(0, op_stack, stack_pos);
@@ -5574,13 +5565,10 @@ bool TrapProcessor::FileCopy(StackProgram* program, size_t* inst, size_t*& op_st
   }
 
   to = (size_t*)to[0];
-  const std::wstring wto_name((wchar_t*)(to + 3));
+  const std::string to_name = UnicodeToBytes((wchar_t*)(to + 3));
 
   from = (size_t*)from[0];
-  const std::wstring wfrom_name((wchar_t*)(from + 3));
-
-  const std::string to_name = UnicodeToBytes(wto_name);
-  const std::string from_name = UnicodeToBytes(wfrom_name);
+  const std::string from_name = UnicodeToBytes((wchar_t*)(from + 3));
 
   std::filesystem::copy_options options = std::filesystem::copy_options::none;
   if(overwrite) {
@@ -5602,8 +5590,8 @@ bool TrapProcessor::FileCopy(StackProgram* program, size_t* inst, size_t*& op_st
 bool TrapProcessor::DirCopy(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
 {
   const bool recursive = PopInt(op_stack, stack_pos);
-  const size_t* to = (size_t*)PopInt(op_stack, stack_pos);
-  const size_t* from = (size_t*)PopInt(op_stack, stack_pos);
+  size_t* to = (size_t*)PopInt(op_stack, stack_pos);
+  size_t* from = (size_t*)PopInt(op_stack, stack_pos);
 
   if(!to || !from) {
     PushInt(0, op_stack, stack_pos);
@@ -5611,13 +5599,10 @@ bool TrapProcessor::DirCopy(StackProgram* program, size_t* inst, size_t*& op_sta
   }
 
   to = (size_t*)to[0];
-  const std::wstring wto_name((wchar_t*)(to + 3));
+  const std::string to_name = UnicodeToBytes((wchar_t*)(to + 3));
 
   from = (size_t*)from[0];
-  const std::wstring wfrom_name((wchar_t*)(from + 3));
-
-  const std::string to_name = UnicodeToBytes(wto_name);
-  const std::string from_name = UnicodeToBytes(wfrom_name);
+  const std::string from_name = UnicodeToBytes((wchar_t*)(from + 3));
 
   if(File::DirExists(from_name.c_str())) {
     std::filesystem::copy_options copy_options = std::filesystem::copy_options::overwrite_existing;
