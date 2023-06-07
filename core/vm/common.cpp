@@ -3191,8 +3191,7 @@ bool TrapProcessor::SysCmdOut(StackProgram* program, size_t* inst, size_t*& op_s
 
   size_t* str_array = (size_t*)command_obj[0];
   if(str_array) {
-    const std::wstring wcmd((wchar_t*)(str_array + 3));
-    const std::string cmd = UnicodeToBytes(wcmd);
+    const std::string cmd = UnicodeToBytes((wchar_t*)(str_array + 3));
 
     int status;
     std::vector<std::string> output_lines = System::CommandOutput(cmd.c_str(), status);
