@@ -46,7 +46,7 @@ class Test {
 			command := "ls";
 		}
 		else {
-			command := "dir";
+			command := "dir /w";
 		};
 		output := Runtime->CommandOutput(command);
 
