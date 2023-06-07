@@ -5012,7 +5012,6 @@ bundle System {
 	~#	
 	class CommandOutput {
 		New() {
-			@status := -1;
 		}
 
 		@command : String;
