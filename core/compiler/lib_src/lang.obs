@@ -5030,16 +5030,16 @@ bundle System {
 		Gets the return status code for the command executed
 		@return status code
 		~#
-		method : public : GetCommand() ~ String {
-			return @command;
+		method : public : GetStatus() ~ String {
+			return @status;
 		}
 
 		#~
 		Gets output from command
 		@return output from command
 		~#
-		method : public : GetCommand() ~ String {
-			return @command;
+		method : public : GetOutput() ~ String {
+			return @output;
 		}
 	}
 }
