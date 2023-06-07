@@ -41,20 +41,21 @@ class Test {
 	}
 
 	function : CallCommand() ~ Nil {
-		lines : String[];
+		output : CommandOutput[];
 
 		status := IntRef->New();
 		if(System.IO.Filesystem.Directory->GetSlash() = '/') {
-			lines := Runtime->CommandOutput("ls", status);
+			output := Runtime->CommandOutput("ls", status);
 		}
 		else {
-			lines := Runtime->CommandOutput("dir", status);
+			output := Runtime->CommandOutput("dir", status);
 		};
 
 		if(status <> Nil) {
 			"status={$status}"->PrintLine();
 		};
 
+		lines := output->GetOutput();
 		each(line := lines) {
 			line->PrintLine();
 		};
