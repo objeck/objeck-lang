@@ -55,6 +55,7 @@
 #define FLOAT_VALUE double
 #define COMPRESS_BUFFER_LIMIT 2 << 28 // 512 MB
 
+#define LARGE_BUFFER_MAX 32768
 
 namespace instructions {
   // vm types
@@ -705,20 +706,17 @@ static std::wstring GetLibraryPath() {
   std::wstring path;
 
 #ifdef _WIN32
-  char* path_str; size_t len;
-  if(_dupenv_s(&path_str, &len, "OBJECK_LIB_PATH")) {
-    return L"";
-  }
+  size_t value_len;
+  char path_str[LARGE_BUFFER_MAX];
+  getenv_s(&value_len, path_str, LARGE_BUFFER_MAX, "OBJECK_STDIO");
 #else
   const char* path_str = getenv("OBJECK_LIB_PATH");
 #endif
+
   if(path_str && strlen(path_str) > 0) {
     const std::string foo(path_str);
     path = BytesToUnicode(foo);
 #ifdef _WIN32
-    free(path_str);
-    path_str = nullptr;
-
     if(path[path.size() - 1] != '\\') {
       path += L"\\";
     }
