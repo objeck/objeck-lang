@@ -4838,7 +4838,7 @@ bundle System {
 		@return output from command
 		~#
 		function : CommandOutput(c : System.String) ~ CommandOutput {
-			CommandOutput(c, Nil);
+			CommandOutput(c, Nil->As(String[]));
 		}
 
 		#~
