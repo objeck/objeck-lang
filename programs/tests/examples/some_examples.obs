@@ -2,6 +2,7 @@ use Collection;
 use Data.JSON;
 use Data.XML;
 use Web.HTTP;
+use System.IO.Filesystem;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
@@ -37,11 +38,11 @@ class Test {
 	function : DownloadFile() ~ Nil {
 		url := Url->New("https://news.ucdenver.edu/wp-content/uploads/2023/04/16x9-1536x865.jpg");
 		data := HttpsClient->QuickGet(url, "image/jpeg");
-		System.IO.Filesystem.FileWriter->WriteFile("a.jpg", data);
+		FileWriter->WriteFile("a.jpg", data);
 	}
 
 	function : CallCommand() ~ Nil {
-		command := System.IO.Filesystem.Directory->GetSlash() = '/' ? "ls - l" : "dir /w";
+		command := Directory->GetSlash() = '/' ? "ls - l" : "dir /w";
 		output := Runtime->CommandOutput(command);
 
 		status := output->GetStatus();
