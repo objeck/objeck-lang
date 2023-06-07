@@ -3194,10 +3194,12 @@ bool TrapProcessor::SysCmdOut(StackProgram* program, size_t* inst, size_t*& op_s
   if(array) {
     const std::wstring wcmd((wchar_t*)(array + 3));
     const std::string cmd = UnicodeToBytes(wcmd);
-    
+
     int status;
     std::vector<std::string> output_lines = System::CommandOutput(cmd.c_str(), status);
-    status_ref[0] = status;
+    if(status_ref) {
+      *status_ref = status;
+    }
 
     // create 'System.String' object array
     const long str_obj_array_size = (long)output_lines.size();
