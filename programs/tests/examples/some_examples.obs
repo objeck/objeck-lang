@@ -41,13 +41,7 @@ class Test {
 	}
 
 	function : CallCommand() ~ Nil {
-		command : String;
-		if(System.IO.Filesystem.Directory->GetSlash() = '/') {
-			command := "ls";
-		}
-		else {
-			command := "dir /w";
-		};
+		command := System.IO.Filesystem.Directory->GetSlash() = '/' ? "ls - l" : "dir /w";
 		output := Runtime->CommandOutput(command);
 
 		status := output->GetStatus();
