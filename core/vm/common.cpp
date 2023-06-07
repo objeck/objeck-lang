@@ -3187,20 +3187,16 @@ bool TrapProcessor::RaiseSignal(StackProgram* program, size_t* inst, size_t*& op
 
 bool TrapProcessor::SysCmdOut(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
 {
-  size_t* status_ref = (size_t*)PopInt(op_stack, stack_pos);
-  size_t* array = (size_t*)PopInt(op_stack, stack_pos);
+  size_t* command_obj = (size_t*)PopInt(op_stack, stack_pos);
 
-  array = (size_t*)array[0];
-  if(array) {
-    const std::wstring wcmd((wchar_t*)(array + 3));
+  size_t* str_array = (size_t*)command_obj[0];
+  if(str_array) {
+    const std::wstring wcmd((wchar_t*)(str_array + 3));
     const std::string cmd = UnicodeToBytes(wcmd);
 
     int status;
     std::vector<std::string> output_lines = System::CommandOutput(cmd.c_str(), status);
-    if(status_ref) {
-      *status_ref = status;
-    }
-
+    
     // create 'System.String' object array
     const long str_obj_array_size = (long)output_lines.size();
     const long str_obj_array_dim = 1;
@@ -3217,7 +3213,13 @@ bool TrapProcessor::SysCmdOut(StackProgram* program, size_t* inst, size_t*& op_s
       str_obj_array_ptr[i] = (size_t)CreateStringObject(line, program, op_stack, stack_pos);
     }
 
-    PushInt((size_t)str_obj_array, op_stack, stack_pos);
+
+    size_t* command_output_obj = MemoryManager::AllocateObject(program->GetCommandOutputObjectId(), op_stack, *stack_pos, false);
+    command_output_obj[0] = (size_t)command_obj;
+    command_output_obj[1] = status;
+    command_output_obj[2] = (size_t)str_obj_array;
+
+    PushInt((size_t)command_output_obj, op_stack, stack_pos);
   }
   else {
     PushInt(0, op_stack, stack_pos);
