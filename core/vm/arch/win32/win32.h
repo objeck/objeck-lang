@@ -620,7 +620,7 @@ class IPSecureSocket {
  ****************************/
 class System {
  public:
-   static std::vector<std::string> CommandOutput(const char* c) {
+   static std::vector<std::string> CommandOutput(const char* c, int &status) {
      std::vector<std::string> output;
 
      // create temporary file
@@ -633,7 +633,7 @@ class System {
        str_cmd += " > ";
        str_cmd += tmp_file_name;
 
-       system(str_cmd.c_str());
+       status = system(str_cmd.c_str());
 
        // read file output
        std::ifstream file_out(tmp_file_name.c_str());

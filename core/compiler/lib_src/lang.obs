@@ -2,10 +2,6 @@
 Objeck system classes.
 Copyright (c) 2023 Randy Hollines
 note: compile compiler with -D_SYSTEM flag (on Linux)
-
-TODO:
-* Add 'ByteBuffer' class (see: 3248)
-
 ~#	
 
 #~
@@ -2907,6 +2903,7 @@ bundle System {
 
 		#~
 		Copy constructor
+		@param buffer buffer to set
 		~#
 		New(buffer : Byte[]) {
 			Parent();
@@ -2934,7 +2931,7 @@ bundle System {
 		method : public : native : Append(array : Byte[]) ~ Nil {
 			max := @pos + array->Size();
 			if(max >= @max) {
-				@max += max + max >> 1;
+				@max += max << 1;
 				temp := Byte->New[@max];
 				Runtime->Copy(temp, 0, @buffer, 0, @buffer->Size());
 				@buffer := temp;
@@ -2955,7 +2952,7 @@ bundle System {
 		method : public : native : Append(length : Int, array : Byte[]) ~ Nil {
 			max := @pos + length;
 			if(max >= @max) {
-				@max += max + max >> 1;
+				@max += max << 1;
 				temp := Byte->New[@max];
 				Runtime->Copy(temp, 0, @buffer, 0, @buffer->Size());
 				@buffer := temp;
@@ -2974,7 +2971,7 @@ bundle System {
 		method : public : Append(c : Byte) ~ Nil {
 			if(@pos >= @max) {
 				# expand string
-				@max := @pos + @pos >> 1;
+				@max += @pos << 1;
 				temp := Byte->New[@max];
 				# copy elements
 				Runtime->Copy(temp, 0, @buffer, 0, @buffer->Size());
@@ -3344,7 +3341,7 @@ bundle System {
 		method : public : Append(array : Char[]) ~ Nil {
 			max := @pos + array->Size();
 			if(max >= @max) {
-				@max += max + max >> 1;
+				@max += max << 1;
 				temp := Char->New[@max];
 				Runtime->Copy(temp, 0, @string, 0, @string->Size());
 				@string := temp;
@@ -3370,7 +3367,7 @@ bundle System {
 			
 			max := @pos + length;
 			if(max >= @max) {
-				@max += max + max >> 1;
+				@max += max << 1;
 				temp := Char->New[@max];
 				Runtime->Copy(temp, 0, @string, 0, @string->Size());
 				@string := temp;
@@ -3390,7 +3387,7 @@ bundle System {
 		method : public : native : Append(array : Byte[]) ~ Nil {
 			max := @pos + array->Size();
 			if(max >= @max) {
-				@max += max + max >> 1;
+				@max += max << 1;
 				temp := Char->New[@max];
 				Runtime->Copy(temp, 0, @string, 0, @string->Size());
 				@string := temp;
@@ -3416,7 +3413,7 @@ bundle System {
 
 			max := @pos + length;
 			if(max >= @max) {
-				@max += max + max >> 1;
+				@max += max << 1;
 				temp := Char->New[@max];
 				Runtime->Copy(temp, 0, @string, 0, @string->Size());
 				@string := temp;
@@ -3436,7 +3433,7 @@ bundle System {
 		method : public : Append(c : Char) ~ Nil {
 			if(@pos >= @max) {
 				# expand string
-				@max :=@pos + @pos >> 1;
+				@max += @pos << 1;
 				temp := Char->New[@max];
 				# copy elements
 				Runtime->Copy(temp, 0, @string, 0, @string->Size());
@@ -3454,7 +3451,7 @@ bundle System {
 		method : public : Append(c : Byte) ~ Nil {
 			if(@pos >= @max) {
 				# expand string
-				@max := @pos + @pos >> 1;
+				@max += @pos << 1;
 				temp := Char->New[@max];
 				# copy elements
 				Runtime->Copy(temp, 0, @string, 0, @string->Size());
@@ -3995,7 +3992,7 @@ bundle System {
 
 			size := @pos + 1;
 			if(size > @max) {
-				@max := size + size >> 1;
+				@max += size << 1;
 				temp := Char->New[@max];
 				Runtime->Copy(temp, 0, @string, 0, index);
 
@@ -4032,7 +4029,7 @@ bundle System {
 
 			size := @pos + buffer_size;
 			if(size > @max) {
-				@max := size + size >> 1;
+				@max += size << 1;
 				temp := Char->New[@max];
 				Runtime->Copy(temp, 0, @string, 0, index);
 				
@@ -4068,7 +4065,7 @@ bundle System {
 
 			size := @pos + buffer_size;
 			if(size > @max) {
-				@max := size + size >> 1;
+				@max += size << 1;
 				temp := Char->New[@max];
 				Runtime->Copy(temp, 0, @string, 0, index);
 				
@@ -4828,19 +4825,19 @@ bundle System {
 
 		#~
 		Executes a system command
-		@param n system command
+		@param c system command
 		@return command status code
 		~#
-		function : Command(n : System.String) ~ Int {
+		function : Command(c : System.String) ~ Int {
 			SYS_CMD;
 		}
 
 		#~
 		Executes a system command
-		@param n system command
+		@param c system command
 		@return output from command
 		~#
-		function : CommandOutput(n : System.String) ~ System.String[] {
+		function : CommandOutput(c : System.String) ~ CommandOutput {
 			SYS_CMD_OUT;
 		}
 		
@@ -5006,6 +5003,43 @@ bundle System {
 		~#
 		function : Copy(dest : Float[], dest_offset : Int, src : Float[], src_offset : Int, len : Int) ~ Bool {
 			CPY_FLOAT_ARY;
+		}
+	}
+
+	#~
+	Output from system command call
+	~#	
+	class CommandOutput {
+		New() {
+			Parent();
+		}
+
+		@command : String;
+		@status : Int;
+		@output : String[];
+
+		#~
+		Gets the command that was executed
+		@return command executed
+		~#
+		method : public : GetCommand() ~ String {
+			return @command;
+		}
+
+		#~
+		Gets the return status code for the command executed
+		@return status code
+		~#
+		method : public : GetStatus() ~ Int {
+			return @status;
+		}
+
+		#~
+		Gets output from command
+		@return output from command
+		~#
+		method : public : GetOutput() ~ String[] {
+			return @output;
 		}
 	}
 }
