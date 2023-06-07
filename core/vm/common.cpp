@@ -3187,13 +3187,17 @@ bool TrapProcessor::RaiseSignal(StackProgram* program, size_t* inst, size_t*& op
 
 bool TrapProcessor::SysCmdOut(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
 {
+  size_t* status_ref = (size_t*)PopInt(op_stack, stack_pos);
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
+
   array = (size_t*)array[0];
   if(array) {
     const std::wstring wcmd((wchar_t*)(array + 3));
     const std::string cmd = UnicodeToBytes(wcmd);
     
-    std::vector<std::string> output_lines = System::CommandOutput(cmd.c_str());
+    int status;
+    std::vector<std::string> output_lines = System::CommandOutput(cmd.c_str(), status);
+    status_ref[0] = status;
 
     // create 'System.String' object array
     const long str_obj_array_size = (long)output_lines.size();

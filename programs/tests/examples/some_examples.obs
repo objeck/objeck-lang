@@ -7,8 +7,8 @@ class Test {
 	function : Main(args : String[]) ~ Nil {
 #		CreateJson(); 
 #		CreateXml();
-		DownloadFile();	
-#		CallCommand();
+#		DownloadFile();	
+		CallCommand();
 	}
 
 	function : CreateJson() ~ Nil {
@@ -42,6 +42,7 @@ class Test {
 
 	function : CallCommand() ~ Nil {
 		lines : String[];
+
 		if(System.IO.Filesystem.Directory->GetSlash() = '/') {
 			lines := Runtime->CommandOutput("ls");
 		}
@@ -49,6 +50,7 @@ class Test {
 			lines := Runtime->CommandOutput("dir");
 		};
 
+		lines->Size()->PrintLine();
 		each(line := lines) {
 			line->PrintLine();
 		};
