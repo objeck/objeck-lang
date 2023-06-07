@@ -632,7 +632,7 @@ class System {
        std::string str_cmd(c);
        str_cmd += " > ";
        str_cmd += tmp_file_name;
-
+       str_cmd += " 2>&1";
        status = system(str_cmd.c_str());
 
        // read file output
