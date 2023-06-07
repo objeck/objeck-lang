@@ -5,15 +5,9 @@ use Web.HTTP;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-<<<<<<< HEAD
 		CreateJson(); 
 		CreateXml();
 		DownloadFile();	
-=======
-#		CreateJson(); 
-#		CreateXml();
-#		DownloadFile();	
->>>>>>> bccd1141d90b6e9993e191167b100e609e2f6753
 		CallCommand();
 	}
 
@@ -49,11 +43,7 @@ class Test {
 	function : CallCommand() ~ Nil {
 		command : String;
 		if(System.IO.Filesystem.Directory->GetSlash() = '/') {
-<<<<<<< HEAD
-			lines := Runtime->CommandOutput("ls -l");
-=======
 			command := "ls";
->>>>>>> bccd1141d90b6e9993e191167b100e609e2f6753
 		}
 		else {
 			command := "dir /w";
