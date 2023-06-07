@@ -84,9 +84,8 @@
 #include <sys/types.h>
 #endif
 
-#define SMALL_BUFFER_MAX 512
-#define MID_BUFFER_MAX 2048
-#define LARGE_BUFFER_MAX 8192
+#define SMALL_BUFFER_MAX 1024
+#define MID_BUFFER_MAX 8192
 #define CALC_STACK_SIZE 16384
 #define CACERT_PEM_FILE "cacert.pem"
 

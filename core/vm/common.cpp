@@ -3185,6 +3185,9 @@ bool TrapProcessor::RaiseSignal(StackProgram* program, size_t* inst, size_t*& op
 
 bool TrapProcessor::SysCmdOut(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
 {
+  std::map<std::string, std::string> prev_env_variables;
+
+  // save existing environment variables
   size_t* env_array = (size_t*)PopInt(op_stack, stack_pos);
   if(env_array) {
     const size_t env_str_count = env_array[2];
@@ -3198,14 +3201,23 @@ bool TrapProcessor::SysCmdOut(StackProgram* program, size_t* inst, size_t*& op_s
         const std::string value = env_str.substr(index + 1);
 
 #ifdef _WIN32
-        size_t value_len;
-        getenv_s(&value_len, nullptr, 0, name.c_str());
-        if(!value_len) {
+        size_t prev_value_len; char prev_value[LARGE_BUFFER_MAX];
+        getenv_s(&prev_value_len, prev_value, LARGE_BUFFER_MAX, name.c_str());
+        if(prev_value_len > 0) {
+          prev_env_variables[name] = prev_value;
+        }
+        else {
+          prev_env_variables[name] = "";
           _putenv_s(name.c_str(), value.c_str());
         }
 #else
-        if(!getenv(name.c_str())) {
-          setenv(name.c_str(), value.c_str(), 0);
+        const char* prev_value = getenv(name.c_str());
+        if(prev_value) {
+          prev_env_variables[name] = prev_value;
+        }
+        else {
+          prev_env_variables[name] = "";
+          setenv(name.c_str(), value.c_str(), 1);
         }
 #endif
       }
@@ -3223,8 +3235,7 @@ bool TrapProcessor::SysCmdOut(StackProgram* program, size_t* inst, size_t*& op_s
     // create 'System.String' object array
     const long str_obj_array_size = (long)output_lines.size();
     const long str_obj_array_dim = 1;
-    size_t* str_obj_array = MemoryManager::AllocateArray(str_obj_array_size + str_obj_array_dim + 2,
-                                                         instructions::INT_TYPE, op_stack, *stack_pos, false);
+    size_t* str_obj_array = MemoryManager::AllocateArray(str_obj_array_size + str_obj_array_dim + 2, instructions::INT_TYPE, op_stack, *stack_pos, false);
     str_obj_array[0] = str_obj_array_size;
     str_obj_array[1] = str_obj_array_dim;
     str_obj_array[2] = str_obj_array_size;
@@ -3246,6 +3257,16 @@ bool TrapProcessor::SysCmdOut(StackProgram* program, size_t* inst, size_t*& op_s
   }
   else {
     PushInt(0, op_stack, stack_pos);
+  }
+
+  // restore existing environment variables 
+  std::map<const std::string, std::string>::iterator iter;
+  for(iter = prev_env_variables.begin(); iter != prev_env_variables.end(); ++iter) {
+#ifdef _WIN32
+    _putenv_s(iter->first.c_str(), iter->second.c_str());
+#else
+    setenv(iter->first.c_str(), iter->second.c_str(), 1);
+#endif
   }
 
   return true;

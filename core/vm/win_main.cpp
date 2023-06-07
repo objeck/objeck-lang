@@ -49,8 +49,9 @@
 int main(const int argc, const char* argv[])
 {
   if(argc > 1) {
-    char* value; size_t value_len;
-    _dupenv_s(&value, &value_len, "OBJECK_STDIO");
+    size_t value_len;
+    char value[LARGE_BUFFER_MAX];
+    getenv_s(&value_len, value, LARGE_BUFFER_MAX, "OBJECK_STDIO");
 
     if(value) {
       // set as binary
@@ -117,9 +118,6 @@ int main(const int argc, const char* argv[])
       }
 #endif
     }
-
-    free(value);
-    value = nullptr;
 
     // initialize Winsock
     WSADATA data;
