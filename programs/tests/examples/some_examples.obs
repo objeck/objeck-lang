@@ -5,10 +5,10 @@ use Web.HTTP;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-#		CreateJson(); 
-#		CreateXml();
+		CreateJson(); 
+		CreateXml();
 		DownloadFile();	
-#		CallCommand();
+		CallCommand();
 	}
 
 	function : CreateJson() ~ Nil {
@@ -43,7 +43,7 @@ class Test {
 	function : CallCommand() ~ Nil {
 		lines : String[];
 		if(System.IO.Filesystem.Directory->GetSlash() = '/') {
-			lines := Runtime->CommandOutput("ls");
+			lines := Runtime->CommandOutput("ls -l");
 		}
 		else {
 			lines := Runtime->CommandOutput("dir");
