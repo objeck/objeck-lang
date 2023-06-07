@@ -5011,6 +5011,10 @@ bundle System {
 	Output from system command call
 	~#	
 	class CommandOutput {
+		New() {
+			@status := -1;
+		}
+
 		@command : String;
 		@status : Int;
 		@output : String[];
