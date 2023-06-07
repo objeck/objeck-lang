@@ -4836,10 +4836,10 @@ bundle System {
 		Executes a system command
 		@param c system command
 		@return output from command
-		~#
+		
 		function : CommandOutput(c : System.String) ~ CommandOutput {
 			CommandOutput(c, Nil->As(String[]));
-		}
+		}~#
 
 		#~
 		Executes a system command
