@@ -43,7 +43,7 @@ class Test {
 
 	function : CallCommand() ~ Nil {
 		env := ["PATH=world", "foo=bar"];
-		output := Runtime->CommandOutput(Directory->GetSlash() = '/' ? "ls -l" : "echo %foo%", env);
+		output := Runtime->CommandOutput(Directory->GetSlash() = '/' ? "echo $foo" : "echo %foo%", env);
 
 		command := output->GetCommand();
 		status := output->GetStatus();
