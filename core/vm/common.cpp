@@ -1352,7 +1352,7 @@ void TrapProcessor::CreateClassObject(StackClass* cls, size_t* cls_obj, size_t* 
 }
 
 /********************************
- * Create a std::string instance
+ * Create a string instance
  ********************************/
 size_t* TrapProcessor::CreateStringObject(const std::wstring &value_str, StackProgram* program,
                                           size_t* &op_stack, long* &stack_pos) {
