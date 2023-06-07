@@ -5,9 +5,9 @@ use Web.HTTP;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		CreateJson(); 
-		CreateXml();
-		DownloadFile();	
+#		CreateJson(); 
+#		CreateXml();
+#		DownloadFile();	
 		CallCommand();
 	}
 
@@ -41,20 +41,18 @@ class Test {
 	}
 
 	function : CallCommand() ~ Nil {
-		output : CommandOutput[];
-
-		status := IntRef->New();
+		command : String;
 		if(System.IO.Filesystem.Directory->GetSlash() = '/') {
-			output := Runtime->CommandOutput("ls", status);
+			command := "ls";
 		}
 		else {
-			output := Runtime->CommandOutput("dir", status);
+			command := "dir";
 		};
+		output := Runtime->CommandOutput(command);
 
-		if(status <> Nil) {
-			"status={$status}"->PrintLine();
-		};
-
+		status := output->GetStatus();
+		"command='{$command}', status={$status}"->PrintLine();
+		
 		lines := output->GetOutput();
 		each(line := lines) {
 			line->PrintLine();

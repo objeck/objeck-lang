@@ -4825,20 +4825,19 @@ bundle System {
 
 		#~
 		Executes a system command
-		@param n system command
+		@param c system command
 		@return command status code
 		~#
-		function : Command(n : System.String) ~ Int {
+		function : Command(c : System.String) ~ Int {
 			SYS_CMD;
 		}
 
 		#~
 		Executes a system command
-		@param n system command
-		@param s command status code, may be Nil
+		@param c system command
 		@return output from command
 		~#
-		function : CommandOutput(n : System.String) ~ CommandOutput {
+		function : CommandOutput(c : System.String) ~ CommandOutput {
 			SYS_CMD_OUT;
 		}
 		
