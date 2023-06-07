@@ -4838,6 +4838,16 @@ bundle System {
 		@return output from command
 		~#
 		function : CommandOutput(c : System.String) ~ CommandOutput {
+			CommandOutput(c, Nil);
+		}
+
+		#~
+		Executes a system command
+		@param c system command
+		@param e array of environment variables
+		@return output from command
+		~#
+		function : CommandOutput(c : System.String, e : String[]) ~ CommandOutput {
 			SYS_CMD_OUT;
 		}
 		
