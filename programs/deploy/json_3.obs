@@ -1,5 +1,5 @@
 ﻿#~
-# compile: obc -src json_3.obs -lib json,net
+# compile: obc -src json_3.obs -lib json,net,json
 # run: obr json_3.obe
 ~#
 
@@ -10,7 +10,7 @@ use System.IO.Net;
 class JsonWeb {
 	function : Main(args : String[]) ~ Nil {		
 		url := Web.HTTP.Url->New("https://reqbin.com/echo/get/json");
-		document := HttpsClient->QuickGet(url);
+		document := HttpsClient->QuickGet(url)->ToString();
 		
 		parser := JsonParser->New(document);
 		if(parser->Parse()) {
