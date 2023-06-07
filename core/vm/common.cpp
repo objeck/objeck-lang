@@ -3198,15 +3198,15 @@ bool TrapProcessor::SysCmdOut(StackProgram* program, size_t* inst, size_t*& op_s
         const std::string value = env_str.substr(index + 1);
 
 #ifdef _WIN32
-        size_t buffer_len;
-        getenv_s(&buffer_len, nullptr, 0, name.c_str());
-        if(!buffer_len) {
+        size_t value_len;
+        getenv_s(&value_len, nullptr, 0, name.c_str());
+        if(!value_len) {
           _putenv_s(name.c_str(), value.c_str());
         }
 #else
         if(!getenv(name.c_str())) {
           setenv(name.c_str(), value.c_str(), 0);
-      }
+        }
 #endif
       }
     }
