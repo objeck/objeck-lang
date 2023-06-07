@@ -6,9 +6,9 @@ use System.IO.Filesystem;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		CreateJson(); 
-		CreateXml();
-		DownloadFile();	
+#		CreateJson(); 
+#		CreateXml();
+#		DownloadFile();	
 		CallCommand();
 	}
 
@@ -42,7 +42,7 @@ class Test {
 	}
 
 	function : CallCommand() ~ Nil {
-		output := Runtime->CommandOutput(Directory->GetSlash() = '/' ? "ls - l" : "dir /w");
+		output := Runtime->CommandOutput(Directory->GetSlash() = '/' ? "ls -l" : "dir /w");
 
 		command := output->GetCommand();
 		status := output->GetStatus();
