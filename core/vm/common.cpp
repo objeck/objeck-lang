@@ -2438,6 +2438,9 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
 
   case DIR_COPY:
     return DirCopy(program, inst, op_stack, stack_pos, frame);
+
+  case DIR_CUR:
+    return DirCur(program, inst, op_stack, stack_pos, frame);
   }
 
   return false;
@@ -5832,6 +5835,15 @@ bool TrapProcessor::DirSlash(StackProgram* program, size_t* inst, size_t*& op_st
 #else
   PushInt('/', op_stack, stack_pos);
 #endif
+
+  return true;
+}
+
+bool TrapProcessor::DirCur(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
+{
+  const std::wstring dir_cur_str = BytesToUnicode(std::filesystem::current_path().u8string());
+  const size_t* dir_cur_obj = CreateStringObject(dir_cur_str, program, op_stack, stack_pos);
+  PushInt((size_t)dir_cur_obj, op_stack, stack_pos);
 
   return true;
 }
