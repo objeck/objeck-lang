@@ -8440,6 +8440,14 @@ bundle System.IO.Filesystem {
 		function : GetUser() ~ String {
 			return Runtime->GetProperty("user_dir");
 		}
+
+		#~
+		Returns the current working directory
+		@return current working directory
+		~#
+		function : GetCurrent() ~ String {
+			DIR_CUR;
+		}
 		
 		#~
 		Returns the installation directory
