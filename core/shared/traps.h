@@ -151,7 +151,8 @@ namespace instructions {
     DIR_EXISTS,
     DIR_LIST,
     DIR_COPY,
-    DIR_CUR,
+    DIR_GET_CUR,
+    DIR_SET_CUR,
     // socket i/o
     SOCK_TCP_CONNECT,
     SOCK_TCP_BIND,

@@ -8446,7 +8446,16 @@ bundle System.IO.Filesystem {
 		@return current working directory
 		~#
 		function : GetCurrent() ~ String {
-			DIR_CUR;
+			DIR_GET_CUR;
+		}
+
+		#~
+		Sets the current working directory
+		@param name name of directory
+		@return true if successful, false otherwise
+		~#
+		function : SetCurrent(name : String) ~ Bool {
+			DIR_SET_CUR;
 		}
 		
 		#~
