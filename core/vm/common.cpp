@@ -3439,12 +3439,14 @@ bool TrapProcessor::GetSysEnv(StackProgram* program, size_t* inst, size_t*& op_s
   size_t* key_array = (size_t*)PopInt(op_stack, stack_pos);
   if(key_array) {
     key_array = (size_t*)key_array[0];
-    const wchar_t* key = (wchar_t*)(key_array + 3);
-    
-    // TODO: get environment variable
-    size_t* value = CreateStringObject(program->GetProperty(key), program, op_stack, stack_pos);
-    
-    PushInt((size_t)value, op_stack, stack_pos);
+    std::string key = UnicodeToBytes((wchar_t*)(key_array + 3));
+#ifdef _WIN32
+    size_t value_len; char value[LARGE_BUFFER_MAX];
+    getenv_s(&value_len, value, LARGE_BUFFER_MAX, key.c_str());
+#else
+    const char* value = getenv(key.c_str());
+#endif
+    PushInt((size_t)CreateStringObject(BytesToUnicode(value), program, op_stack, stack_pos), op_stack, stack_pos);
   }
   else {
     size_t* value = CreateStringObject(L"", program, op_stack, stack_pos);
@@ -3463,7 +3465,14 @@ bool TrapProcessor::SetSysEnv(StackProgram* program, size_t* inst, size_t*& op_s
     value_array = (size_t*)value_array[0];
     key_array = (size_t*)key_array[0];
 
-    // TODO: set environment variable
+    const std::string key = UnicodeToBytes((wchar_t*)(key_array + 3));
+    const std::string value = UnicodeToBytes((wchar_t*)(value_array + 3));
+
+#ifdef _WIN32
+    _putenv_s(key.c_str(), value.c_str());
+#else
+    setenv(key.c_str(), value.c_str(), 1);
+#endif
   }
 
   return true;
