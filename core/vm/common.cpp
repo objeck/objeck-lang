@@ -2439,8 +2439,11 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
   case DIR_COPY:
     return DirCopy(program, inst, op_stack, stack_pos, frame);
 
-  case DIR_CUR:
-    return DirCur(program, inst, op_stack, stack_pos, frame);
+  case DIR_GET_CUR:
+    return DirGetCur(program, inst, op_stack, stack_pos, frame);
+
+  case DIR_SET_CUR:
+    return DirSetCur(program, inst, op_stack, stack_pos, frame);
   }
 
   return false;
@@ -5839,11 +5842,40 @@ bool TrapProcessor::DirSlash(StackProgram* program, size_t* inst, size_t*& op_st
   return true;
 }
 
-bool TrapProcessor::DirCur(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
+bool TrapProcessor::DirGetCur(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
 {
-  const std::wstring dir_cur_str = BytesToUnicode(std::filesystem::current_path().u8string());
-  const size_t* dir_cur_obj = CreateStringObject(dir_cur_str, program, op_stack, stack_pos);
-  PushInt((size_t)dir_cur_obj, op_stack, stack_pos);
+  std::error_code error_code;
+  std::filesystem::path dir_cur_path = std::filesystem::current_path(error_code);
+  if(error_code) {
+    PushInt(0, op_stack, stack_pos);
+  }
+  else {
+    const std::wstring dir_cur_str = BytesToUnicode(dir_cur_path.u8string());
+    const size_t* dir_cur_obj = CreateStringObject(dir_cur_str, program, op_stack, stack_pos);
+    PushInt((size_t)dir_cur_obj, op_stack, stack_pos);
+  }
+
+  return true;
+}
+
+bool TrapProcessor::DirSetCur(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
+{
+  size_t* array = (size_t*)PopInt(op_stack, stack_pos);
+  array = (size_t*)array[0];
+  if(array) {
+    const std::string to_dir_str = UnicodeToBytes((wchar_t*)(array + 3));
+    std::error_code error_code;
+    std::filesystem::current_path(to_dir_str, error_code);
+    if(error_code) {
+      PushInt(0, op_stack, stack_pos);
+    }
+    else {
+      PushInt(1, op_stack, stack_pos);
+    }
+  }
+  else {
+    PushInt(0, op_stack, stack_pos);
+  }
 
   return true;
 }

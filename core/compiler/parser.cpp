@@ -2695,9 +2695,15 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
       NextToken();
       break;
 
-    case DIR_CUR:
+    case DIR_GET_CUR:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                               instructions::DIR_CUR);
+                                                               instructions::DIR_GET_CUR);
+      NextToken();
+      break;
+
+    case DIR_SET_CUR:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::DIR_SET_CUR);
       NextToken();
       break;
 
