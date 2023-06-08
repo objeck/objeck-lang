@@ -5093,7 +5093,12 @@ bundle System {
 		@return string representation of the command output
 		~#
 		method : public : ToString() ~ String {
-			return "command='{$@command}', status={$@status}, output='{$@output}'";
+			buffer := "command='{$@command}', status={$@status}\noutput:";
+			each(line := output) {
+				buffer += "\t'{$line}'";
+			};
+			
+			return buffer;
 		}
 	}
 }
