@@ -5087,6 +5087,14 @@ bundle System {
 		method : public : GetOutput() ~ String[] {
 			return @output;
 		}
+
+		#~
+		Creates a string representation of the command output
+		@return string representation of the command output
+		~#
+		method : public : ToString() ~ String {
+			return "command='{$@command}', status={$@status}, output='{$@output}'";
+		}
 	}
 }
 
