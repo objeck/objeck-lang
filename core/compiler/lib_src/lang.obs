@@ -3094,6 +3094,14 @@ bundle System {
 
 			return output;
 		}
+		
+		#~
+		Returns a string representation of the byte buffer
+		@return string representation of the byte buffer
+		~#
+		method : public : ToString() ~ String {
+			return @buffer->ToString();
+		}
 	}
 
 	#~
