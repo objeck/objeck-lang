@@ -4460,6 +4460,7 @@ bool TrapProcessor::FileOpenRead(StackProgram* program, size_t* inst, size_t* &o
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(array && instance) {
+    array = (size_t*)array[0];
     const std::string filename = UnicodeToBytes((wchar_t*)(array + 3));
     FILE* file = File::FileOpen(filename.c_str(), "rb");
 #ifdef _DEBUG
