@@ -1,0 +1,6 @@
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		Runtime->SetEnvironmentVariable("foo", "bar");
+		Runtime->GetEnvironmentVariable("foo")->PrintLine();
+	}
+}
