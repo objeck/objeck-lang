@@ -1775,6 +1775,7 @@ class TrapProcessor {
   static bool DirExists(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
   static bool DirList(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
   static bool DirCopy(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame);
+  static bool DirCur(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame);
 
   //
   // writes out serialized objects
