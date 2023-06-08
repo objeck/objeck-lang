@@ -211,6 +211,8 @@ namespace instructions {
     GET_VERSION,
     GET_SYS_PROP,
     SET_SYS_PROP,
+    GET_SYS_ENV,
+    SET_SYS_ENV,
     SYS_CMD,
     SYS_CMD_OUT,
     ASSERT_TRUE,

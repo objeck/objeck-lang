@@ -1938,6 +1938,18 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
       NextToken();
       break;
 
+    case GET_SYS_ENV:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::GET_SYS_ENV);
+      NextToken();
+      break;
+
+    case SET_SYS_ENV:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::SET_SYS_ENV);
+      NextToken();
+      break;
+
     case SET_SYS_PROP:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::SET_SYS_PROP);
