@@ -6,9 +6,9 @@ use System.IO.Filesystem;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-#		CreateJson(); 
-#		CreateXml();
-#		DownloadFile();	
+		CreateJson(); 
+		CreateXml();
+		DownloadFile();	
 		CallCommand();
 	}
 
@@ -40,18 +40,9 @@ class Test {
 		data := HttpsClient->QuickGet(url, "image/jpeg");
 		FileWriter->WriteFile("a.jpg", data);
 	}
-
+	
 	function : CallCommand() ~ Nil {
 		env := ["PATH=world", "foo=bar"];
-		output := Runtime->CommandOutput(Directory->GetSlash() = '/' ? "echo $foo" : "echo %foo%", env);
-
-		command := output->GetCommand();
-		status := output->GetStatus();
-		lines := output->GetOutput();
-
-		"command='{$command}', status={$status}"->PrintLine();
-		each(line := lines) {
-			line->PrintLine();
-		};
+		Runtime->CommandOutput(Directory->GetSlash() = '/' ? "echo $foo" : "echo %foo%", env)->ToString();
 	}
 }
