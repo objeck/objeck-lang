@@ -4951,7 +4951,7 @@ bundle System {
 		@return true if it exists, false otherwise
 		~#
 		function : HasEnvironmentVariable(key : String) ~ Bool {
-			value := GetEnvironment(key);
+			value := GetEnvironmentVariable(key);
 			return value <> Nil & <>value->IsEmpty();
 		}
 		
