@@ -708,7 +708,7 @@ static std::wstring GetLibraryPath() {
 #ifdef _WIN32
   size_t value_len;
   char path_str[LARGE_BUFFER_MAX];
-  getenv_s(&value_len, path_str, LARGE_BUFFER_MAX, "OBJECK_STDIO");
+  getenv_s(&value_len, path_str, LARGE_BUFFER_MAX, "OBJECK_LIB_PATH");
 #else
   const char* path_str = getenv("OBJECK_LIB_PATH");
 #endif
