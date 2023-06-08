@@ -379,6 +379,8 @@ enum ScannerTokenType {
   GET_VERSION,
   GET_SYS_PROP,
   SET_SYS_PROP,
+  GET_SYS_ENV,
+  SET_SYS_ENV,
   ASSERT_TRUE,
   SYS_CMD,
   SYS_CMD_OUT,

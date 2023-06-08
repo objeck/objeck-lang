@@ -2101,6 +2101,17 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
   case SET_SYS_PROP:
     return SetSysProp(program, inst, op_stack, stack_pos, frame);
 
+
+
+
+  case GET_SYS_ENV:
+    return GetSysEnv(program, inst, op_stack, stack_pos, frame);
+
+  case SET_SYS_ENV:
+    return SetSysEnv(program, inst, op_stack, stack_pos, frame);
+
+
+
   case SOCK_TCP_RESOLVE_NAME:
     return SockTcpResolveName(program, inst, op_stack, stack_pos, frame);
 
@@ -3418,6 +3429,41 @@ bool TrapProcessor::SetSysProp(StackProgram* program, size_t* inst, size_t* &op_
     }
 
     program->SetProperty(key, value);
+  }
+
+  return true;
+}
+
+bool TrapProcessor::GetSysEnv(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
+{
+  size_t* key_array = (size_t*)PopInt(op_stack, stack_pos);
+  if(key_array) {
+    key_array = (size_t*)key_array[0];
+    const wchar_t* key = (wchar_t*)(key_array + 3);
+    
+    // TODO: get environment variable
+    size_t* value = CreateStringObject(program->GetProperty(key), program, op_stack, stack_pos);
+    
+    PushInt((size_t)value, op_stack, stack_pos);
+  }
+  else {
+    size_t* value = CreateStringObject(L"", program, op_stack, stack_pos);
+    PushInt((size_t)value, op_stack, stack_pos);
+  }
+
+  return true;
+}
+
+bool TrapProcessor::SetSysEnv(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
+{
+  size_t* value_array = (size_t*)PopInt(op_stack, stack_pos);
+  size_t* key_array = (size_t*)PopInt(op_stack, stack_pos);
+
+  if(key_array && value_array) {
+    value_array = (size_t*)value_array[0];
+    key_array = (size_t*)key_array[0];
+
+    // TODO: set environment variable
   }
 
   return true;
