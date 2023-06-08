@@ -5094,8 +5094,9 @@ bundle System {
 		~#
 		method : public : ToString() ~ String {
 			buffer := "command='{$@command}', status={$@status}\noutput:";
-			each(output := @output) {
-				buffer += "\t'{$output}'";
+			for(i := 0; i < @output->Size(); i += 1;) {
+				output := @output[i];
+				buffer->Append("\t'{$output}'");
 			};
 			
 			return buffer;
