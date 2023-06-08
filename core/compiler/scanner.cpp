@@ -296,6 +296,8 @@ void Scanner::LoadKeywords()
   ident_map[L"GET_VERSION"] = GET_VERSION;
   ident_map[L"GET_SYS_PROP"] = GET_SYS_PROP;
   ident_map[L"SET_SYS_PROP"] = SET_SYS_PROP;
+  ident_map[L"GET_SYS_ENV"] = GET_SYS_ENV;
+  ident_map[L"SET_SYS_ENV"] = SET_SYS_ENV;
   ident_map[L"ASSERT_TRUE"] = ASSERT_TRUE;
   ident_map[L"SYS_CMD"] = SYS_CMD;
   ident_map[L"SYS_CMD_OUT"] = SYS_CMD_OUT;
@@ -563,6 +565,8 @@ void Scanner::CheckIdentifier(int index)
     case GET_PLTFRM:
     case GET_VERSION:
     case GET_SYS_PROP:
+    case GET_SYS_ENV:
+    case SET_SYS_ENV:
     case SET_SYS_PROP:
     case ASSERT_TRUE:
     case SYS_CMD:

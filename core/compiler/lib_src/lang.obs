@@ -4935,6 +4935,34 @@ bundle System {
 		function : SetProperty(key : String, value : String) ~ Nil {
 			SET_SYS_PROP;
 		}
+
+		#~
+		Fetches a runtime environment variable.
+		@param key variable key
+		@return runtime environment variable 
+		~#
+		function : GetEnvironmentVariable(key : String) ~ String {
+			GET_SYS_ENV;
+		}
+
+		#~
+		Checks if an environment variable exists
+		@param key variable key
+		@return true if it exists, false otherwise
+		~#
+		function : HasEnvironmentVariable(key : String) ~ Bool {
+			value := GetEnvironment(key);
+			return value <> Nil & <>value->IsEmpty();
+		}
+		
+		#~
+		Sets a runtime environment variable 
+		@param key variable key
+		@param value environment value
+		~#
+		function : SetEnvironmentVariable(key : String, value : String) ~ Nil {
+			SET_SYS_ENV;
+		}
 		
 		#~
 		Returns the current time
