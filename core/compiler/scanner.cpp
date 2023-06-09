@@ -269,6 +269,7 @@ void Scanner::LoadKeywords()
   ident_map[L"DIR_EXISTS"] = DIR_EXISTS;
   ident_map[L"DIR_COPY"] = DIR_COPY;
   ident_map[L"DIR_LIST"] = DIR_LIST;
+  ident_map[L"DIR_DELETE"] = DIR_DELETE;
   ident_map[L"DIR_GET_CUR"] = DIR_GET_CUR;
   ident_map[L"DIR_SET_CUR"] = DIR_SET_CUR;
   ident_map[L"ASYNC_MTHD_CALL"] = ASYNC_MTHD_CALL;
@@ -543,6 +544,7 @@ void Scanner::CheckIdentifier(int index)
     case DIR_COPY:
     case DIR_GET_CUR:
     case DIR_SET_CUR:
+    case DIR_DELETE:
     case ASYNC_MTHD_CALL:
     case EXT_LIB_LOAD:
     case EXT_LIB_UNLOAD:

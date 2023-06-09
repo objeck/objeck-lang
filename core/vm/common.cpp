@@ -2436,6 +2436,9 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
   case DIR_LIST:
     return DirList(program, inst, op_stack, stack_pos, frame);
 
+  case DIR_DELETE:
+    return DirDelete(program, inst, op_stack, stack_pos, frame);
+
   case DIR_COPY:
     return DirCopy(program, inst, op_stack, stack_pos, frame);
 
@@ -5938,6 +5941,21 @@ bool TrapProcessor::DirList(StackProgram* program, size_t* inst, size_t* &op_sta
     }
 
     PushInt((size_t)str_obj_array, op_stack, stack_pos);
+  }
+  else {
+    PushInt(0, op_stack, stack_pos);
+  }
+
+  return true;
+}
+
+bool TrapProcessor::DirDelete(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
+{
+  size_t* array = (size_t*)PopInt(op_stack, stack_pos);
+  array = (size_t*)array[0];
+  if(array) {
+    const std::string dir_name = UnicodeToBytes((wchar_t*)(array + 3));
+    PushInt(std::filesystem::remove_all(dir_name), op_stack, stack_pos);
   }
   else {
     PushInt(0, op_stack, stack_pos);
