@@ -153,6 +153,7 @@ namespace instructions {
     DIR_COPY,
     DIR_GET_CUR,
     DIR_SET_CUR,
+    DIR_DELETE,
     // socket i/o
     SOCK_TCP_CONNECT,
     SOCK_TCP_BIND,

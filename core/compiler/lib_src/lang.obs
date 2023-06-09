@@ -8537,6 +8537,15 @@ bundle System.IO.Filesystem {
 		function : List(n : System.String) ~ System.String[] {
 			DIR_LIST;
 		}
+
+		#~
+		Deletes the directory and all sub-directories
+		@param n directory
+		@return number of files and directories deleted, 0 if directory was not present
+		~#
+		function : Delete(n : System.String) ~ Int {
+			DIR_DELETE;
+		}
 	}
 }
 
