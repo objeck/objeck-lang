@@ -8554,10 +8554,11 @@ bundle System.IO.Filesystem {
 	class SymbolicLink {
 		#~
 		Creates a symbolic link
-		@param n symbolic link name
+		@param t target path name
+		@param d destination path name
 		@return true if symbolic link was created 
 		~#
-		function : Create(n : System.String) ~ Bool {
+		function : Create(t : System.String, d : System.String) ~ Bool {
 			SYM_LINK_CREATE;
 		}
 
