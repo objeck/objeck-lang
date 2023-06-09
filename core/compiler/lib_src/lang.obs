@@ -8378,7 +8378,7 @@ bundle System.IO.Filesystem {
 	}
 
 	#~
-	Provide file directory operations
+	Provides directory operations
 	~#
 	class Directory {
 		#~
@@ -8545,6 +8545,48 @@ bundle System.IO.Filesystem {
 		~#
 		function : Delete(n : System.String) ~ Int {
 			DIR_DELETE;
+		}
+	}
+
+	#~
+	Provides symbolic link operations
+	~#
+	class SymbolicLink {
+		#~
+		Creates a symbolic link
+		@param n symbolic link name
+		@return true if symbolic link was created 
+		~#
+		function : Create(n : System.String) ~ Bool {
+			SYM_LINK_CREATE;
+		}
+
+		#~
+		Copies a symbolic link
+		@param s source symbolic link
+		@param d destination symbolic link
+		@return true if link was copied
+		~#
+		function : Copy(s : System.String, d : System.String, r : Bool) ~ Bool {
+			SYM_LINK_COPY;
+		}
+
+		#~
+		Returns the path location that the symbolic link refers to
+		@param n symbolic link path
+		@return path the symbolic link refers to
+		~#
+		function : Location(n : System.String) ~ Bool {
+			SYM_LINK_LOC;
+		}
+
+		#~
+		Checks to see if the given symbolic link exists
+		@param n symbolic link name
+		@return true if symbolic link exists
+		~#
+		function : Exists(n : System.String) ~ Bool {
+			SYM_LINK_EXISTS;
 		}
 	}
 }
