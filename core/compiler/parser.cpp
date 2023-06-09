@@ -2695,6 +2695,12 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
       NextToken();
       break;
 
+    case DIR_DELETE:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::DIR_DELETE);
+      NextToken();
+      break;
+
     case DIR_GET_CUR:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::DIR_GET_CUR);

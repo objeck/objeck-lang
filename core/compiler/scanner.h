@@ -281,6 +281,7 @@ enum ScannerTokenType {
   DIR_SLASH,
   DIR_EXISTS,
   DIR_LIST,
+  DIR_DELETE,
   DIR_COPY,
   DIR_GET_CUR,
   DIR_SET_CUR,
