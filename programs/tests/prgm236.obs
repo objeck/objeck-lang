@@ -1,7 +1,10 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
+#~		
 		System.IO.Filesystem.Directory->GetWorking()->PrintLine();
-		System.IO.Filesystem.Directory->SetWorking("C:\\Users\\objec\\Documents\\foo")->PrintLine();
+		System.IO.Filesystem.Directory->SetWorking("/tmp/foo")->PrintLine();
 		System.IO.Filesystem.Directory->GetWorking()->PrintLine();
+~#
+		System.IO.Filesystem.Directory->Delete("C:\\Users\\objec\\Documents\\foo")->PrintLine();
 	}
 }

@@ -5955,7 +5955,8 @@ bool TrapProcessor::DirDelete(StackProgram* program, size_t* inst, size_t*& op_s
   array = (size_t*)array[0];
   if(array) {
     const std::string dir_name = UnicodeToBytes((wchar_t*)(array + 3));
-    PushInt(std::filesystem::remove_all(dir_name), op_stack, stack_pos);
+    const auto count = std::filesystem::remove_all(dir_name);
+    PushInt(count, op_stack, stack_pos);
   }
   else {
     PushInt(0, op_stack, stack_pos);
