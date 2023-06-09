@@ -5869,7 +5869,7 @@ bool TrapProcessor::DirSetCur(StackProgram* program, size_t* inst, size_t*& op_s
 #else
     const int status = chdir(to_dir_str.c_str());
 #endif
-    if(status) {
+    if(!status) {
       PushInt(1, op_stack, stack_pos);
     }
     else {
