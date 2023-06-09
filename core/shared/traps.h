@@ -154,6 +154,11 @@ namespace instructions {
     DIR_GET_CUR,
     DIR_SET_CUR,
     DIR_DELETE,
+    // symbolic link operations
+    SYM_LINK_CREATE,
+    SYM_LINK_COPY,
+    SYM_LINK_LOC,
+    SYM_LINK_EXISTS,
     // socket i/o
     SOCK_TCP_CONNECT,
     SOCK_TCP_BIND,

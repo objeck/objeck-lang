@@ -276,7 +276,7 @@ enum ScannerTokenType {
   PIPE_IN_STRING,
   PIPE_OUT_STRING,
   PIPE_CLOSE,
-  // directory-operations
+  // directory operations
   DIR_CREATE,
   DIR_SLASH,
   DIR_EXISTS,
@@ -285,6 +285,11 @@ enum ScannerTokenType {
   DIR_COPY,
   DIR_GET_CUR,
   DIR_SET_CUR,
+  // symbolic link operations
+  SYM_LINK_CREATE,
+  SYM_LINK_COPY,
+  SYM_LINK_LOC,
+  SYM_LINK_EXISTS,
   // socket operations
   SOCK_TCP_CONNECT,
   SOCK_TCP_IS_CONNECTED,
