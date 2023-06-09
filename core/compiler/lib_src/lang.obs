@@ -4315,9 +4315,9 @@ bundle System {
 		}
 
 		#~
-		Checks if the string ends with the given character
+		Checks if the string ends with the given string
 		@param string string to check for
-		@return true if ends with character, false otherwise
+		@return true if ends with string, false otherwise
 		~#
 		method : public : native : EndsWith(string : String) ~ Bool {
 			size := string->Size();
