@@ -5864,13 +5864,16 @@ bool TrapProcessor::DirSetCur(StackProgram* program, size_t* inst, size_t*& op_s
   array = (size_t*)array[0];
   if(array) {
     const std::string to_dir_str = UnicodeToBytes((wchar_t*)(array + 3));
-    std::error_code error_code;
-    std::filesystem::current_path(to_dir_str, error_code);
-    if(error_code) {
-      PushInt(0, op_stack, stack_pos);
+#ifdef _WIN32
+    const int status = _chdir(to_dir_str.c_str());
+#else
+    const int status = chdir(to_dir_str.c_str());
+#endif
+    if(status) {
+      PushInt(1, op_stack, stack_pos);
     }
     else {
-      PushInt(1, op_stack, stack_pos);
+      PushInt(0, op_stack, stack_pos);
     }
   }
   else {

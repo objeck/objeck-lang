@@ -1,5 +1,7 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
 		System.IO.Filesystem.Directory->GetCurrent()->PrintLine();
+		System.IO.Filesystem.Directory->SetCurrent("C:\\Users\\objec\\Documents\\foo")->PrintLine();
+		System.IO.Filesystem.Directory->GetCurrent()->PrintLine();
 	}
 }
