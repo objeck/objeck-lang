@@ -2447,6 +2447,18 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
 
   case DIR_SET_CUR:
     return DirSetCur(program, inst, op_stack, stack_pos, frame);
+
+  case SYM_LINK_CREATE:
+    return SymLinkCreate(program, inst, op_stack, stack_pos, frame);
+
+  case SYM_LINK_COPY:
+    return SymLinkCopy(program, inst, op_stack, stack_pos, frame);
+
+  case SYM_LINK_LOC:
+    return SymLinkLoc(program, inst, op_stack, stack_pos, frame);
+
+  case SYM_LINK_EXISTS:
+    return SymLinkExists(program, inst, op_stack, stack_pos, frame);
   }
 
   return false;
@@ -5957,6 +5969,102 @@ bool TrapProcessor::DirDelete(StackProgram* program, size_t* inst, size_t*& op_s
     const std::string dir_name = UnicodeToBytes((wchar_t*)(array + 3));
     const auto count = std::filesystem::remove_all(dir_name);
     PushInt(count, op_stack, stack_pos);
+  }
+  else {
+    PushInt(0, op_stack, stack_pos);
+  }
+
+  return true;
+}
+
+// TODO: implement
+bool TrapProcessor::SymLinkCreate(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
+{
+  size_t* array = (size_t*)PopInt(op_stack, stack_pos);
+  if(array) {
+    array = (size_t*)array[0];
+    const std::string name = UnicodeToBytes((wchar_t*)(array + 3));
+
+    // PushInt(File::MakeDir(name.c_str()), op_stack, stack_pos);
+  }
+  else {
+    PushInt(0, op_stack, stack_pos);
+  }
+
+  return true;
+}
+
+// TODO: implement
+bool TrapProcessor::SymLinkCopy(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
+{
+  const bool recursive = PopInt(op_stack, stack_pos);
+  size_t* to = (size_t*)PopInt(op_stack, stack_pos);
+  size_t* from = (size_t*)PopInt(op_stack, stack_pos);
+
+  if(!to || !from) {
+    PushInt(0, op_stack, stack_pos);
+    return true;
+  }
+
+  to = (size_t*)to[0];
+  const std::string to_name = UnicodeToBytes((wchar_t*)(to + 3));
+
+  from = (size_t*)from[0];
+  const std::string from_name = UnicodeToBytes((wchar_t*)(from + 3));
+
+  if(File::DirExists(from_name.c_str())) {
+    std::filesystem::copy_options copy_options = std::filesystem::copy_options::overwrite_existing;
+    if(recursive) {
+      copy_options |= std::filesystem::copy_options::recursive;
+    }
+
+    std::error_code error_code;
+    
+    // std::filesystem::copy(from_name, to_name, copy_options, error_code);
+    
+    if(error_code) {
+      PushInt(0, op_stack, stack_pos);
+    }
+    else {
+      PushInt(1, op_stack, stack_pos);
+    }
+  }
+  else {
+    PushInt(0, op_stack, stack_pos);
+  }
+
+  return true;
+}
+
+// TODO: implement
+bool TrapProcessor::SymLinkLoc(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
+{
+  size_t* array = (size_t*)PopInt(op_stack, stack_pos);
+  array = (size_t*)array[0];
+  if(array) {
+    const std::string name = UnicodeToBytes((wchar_t*)(array + 3));
+
+    // TODO: implement
+    std::wstring location;
+
+    PushInt((size_t)CreateStringObject(location, program, op_stack, stack_pos), op_stack, stack_pos);
+  }
+  else {
+    PushInt(0, op_stack, stack_pos);
+  }
+
+  return true;
+}
+
+// TODO: implement
+bool TrapProcessor::SymLinkExists(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
+{
+  size_t* array = (size_t*)PopInt(op_stack, stack_pos);
+  if(array) {
+    array = (size_t*)array[0];
+    const std::string name = UnicodeToBytes((wchar_t*)(array + 3));
+
+    // PushInt(File::DirExists(name.c_str()), op_stack, stack_pos);
   }
   else {
     PushInt(0, op_stack, stack_pos);
