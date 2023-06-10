@@ -5977,22 +5977,28 @@ bool TrapProcessor::DirDelete(StackProgram* program, size_t* inst, size_t*& op_s
   return true;
 }
 
-//
-// TODO: directory support?
-//
 bool TrapProcessor::SymLinkCreate(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
 {
+  const bool is_dir = PopInt(op_stack, stack_pos);
+  size_t* link_obj = (size_t*)PopInt(op_stack, stack_pos);
   size_t* target_obj = (size_t*)PopInt(op_stack, stack_pos);
-  size_t* dest_obj = (size_t*)PopInt(op_stack, stack_pos);
-  if(dest_obj && target_obj) {
-    dest_obj = (size_t*)dest_obj[0];
-    const std::string dest_str = UnicodeToBytes((wchar_t*)(dest_obj + 3));
 
+  if(target_obj && link_obj) {
     target_obj = (size_t*)target_obj[0];
     const std::string target_str = UnicodeToBytes((wchar_t*)(target_obj + 3));
 
+    link_obj = (size_t*)link_obj[0];
+    const std::string link_str = UnicodeToBytes((wchar_t*)(link_obj + 3));
+
     std::error_code error_code;
-    std::filesystem::create_symlink(target_str, dest_str, error_code);
+    if(is_dir) {
+      std::filesystem::create_directory_symlink(link_str, target_str, error_code);
+
+    }
+    else {
+      std::filesystem::create_symlink(link_str, target_str, error_code);
+    }
+
     if(error_code) {
       PushInt(0, op_stack, stack_pos);
     }
