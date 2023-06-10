@@ -5977,7 +5977,6 @@ bool TrapProcessor::DirDelete(StackProgram* program, size_t* inst, size_t*& op_s
   return true;
 }
 
-// TODO: implement
 bool TrapProcessor::SymLinkCreate(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
 {
   size_t* target_obj = (size_t*)PopInt(op_stack, stack_pos);
@@ -6047,18 +6046,21 @@ bool TrapProcessor::SymLinkCopy(StackProgram* program, size_t* inst, size_t*& op
   return true;
 }
 
-// TODO: implement
 bool TrapProcessor::SymLinkLoc(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   array = (size_t*)array[0];
   if(array) {
-    const std::string name = UnicodeToBytes((wchar_t*)(array + 3));
+    const std::string link_str = UnicodeToBytes((wchar_t*)(array + 3));
 
-    // TODO: implement
-    std::wstring location;
-
-    PushInt((size_t)CreateStringObject(location, program, op_stack, stack_pos), op_stack, stack_pos);
+    std::error_code error_code;
+    const auto target_path = std::filesystem::read_symlink(link_str, error_code);
+    if(error_code) {
+      PushInt(0, op_stack, stack_pos);
+    }
+    else {
+      PushInt((size_t)CreateStringObject(BytesToUnicode(target_path.u8string()), program, op_stack, stack_pos), op_stack, stack_pos);
+    }
   }
   else {
     PushInt(0, op_stack, stack_pos);
