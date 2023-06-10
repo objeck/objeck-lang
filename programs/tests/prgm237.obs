@@ -1,5 +1,5 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		System.IO.Filesystem.SymbolicLink->Location("/tmp/foo");
+		System.IO.Filesystem.SymbolicLink->Create("C:\\Users\\objec\\Documents\\foo", "C:\\Users\\objec\\Documents\\bar.txt", false);
 	}
 }
