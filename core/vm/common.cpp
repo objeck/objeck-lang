@@ -5977,6 +5977,9 @@ bool TrapProcessor::DirDelete(StackProgram* program, size_t* inst, size_t*& op_s
   return true;
 }
 
+//
+// TODO: directory support?
+//
 bool TrapProcessor::SymLinkCreate(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
 {
   size_t* target_obj = (size_t*)PopInt(op_stack, stack_pos);
