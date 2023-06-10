@@ -5000,13 +5000,21 @@ For* Parser::ParseEach(bool reverse, int depth)
       const std::wstring list_ident = scanner->GetToken()->GetIdentifier();
       IdentifierContext ident_context(list_ident, line_num, line_pos);
       left_pre_count = ParseExpression(depth + 1);
-
-      /*
-      const std::wstring ident = L"Size";
-      const int line_pos = GetLinePosition();
-      left_pre_count = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, GetLineNumber(), line_pos, -1, -1,
-                                                               list_ident, ident, TreeFactory::Instance()->MakeExpressionList());
-                                                               */
+      
+      // TODO: create a variable from the method call
+      if(left_pre_count->GetExpressionType() == METHOD_CALL_EXPR) {
+        const std::wstring ident = L"Size";
+        const int line_pos = GetLinePosition();
+        MethodCall* foo = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, GetLineNumber(), line_pos, -1, -1,
+                                                                  L"", ident, TreeFactory::Instance()->MakeExpressionList());
+        left_pre_count->SetMethodCall(foo);
+      }
+      else {
+        const std::wstring ident = L"Size";
+        const int line_pos = GetLinePosition();
+        left_pre_count = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, GetLineNumber(), line_pos, -1, -1,
+                                                                 list_ident, ident, TreeFactory::Instance()->MakeExpressionList());
+      }
     }
       break;
 
