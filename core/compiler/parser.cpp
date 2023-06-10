@@ -4983,30 +4983,38 @@ For* Parser::ParseEach(bool reverse, int depth)
     switch(GetToken()) {
     case TOKEN_CHAR_LIT:
       left_pre_count = TreeFactory::Instance()->MakeCharacterLiteral(file_name, line_num, line_pos, scanner->GetToken()->GetCharLit());
+      NextToken();
       break;
 
     case TOKEN_INT_LIT:
       left_pre_count = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos, scanner->GetToken()->GetInt64Lit());
+      NextToken();
       break;
 
     case TOKEN_FLOAT_LIT:
       left_pre_count = TreeFactory::Instance()->MakeFloatLiteral(file_name, line_num, line_pos, scanner->GetToken()->GetFloatLit());
+      NextToken();
       break;
 
     case TOKEN_IDENT: {
       const std::wstring list_ident = scanner->GetToken()->GetIdentifier();
+      IdentifierContext ident_context(list_ident, line_num, line_pos);
+      left_pre_count = ParseExpression(depth + 1);
+
+      /*
       const std::wstring ident = L"Size";
       const int line_pos = GetLinePosition();
       left_pre_count = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, GetLineNumber(), line_pos, -1, -1,
                                                                list_ident, ident, TreeFactory::Instance()->MakeExpressionList());
+                                                               */
     }
       break;
 
     default:
       ProcessError(L"Expected variable or literal expression", TOKEN_SEMI_COLON);
+      NextToken();
       break;
     }
-    NextToken();
 
     // pre-condition
     Variable* count_left = TreeFactory::Instance()->MakeVariable(file_name, line_num, 1, count_ident);
