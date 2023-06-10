@@ -7606,7 +7606,7 @@ bundle System.IO.Filesystem {
 		}
 
 		#~
-		Check to see if a file can be read-only
+		Checks if a file can be read-only
 		@param n filename
 		@return true if file can be read-only
 		~#
@@ -7615,7 +7615,7 @@ bundle System.IO.Filesystem {
 		}
 
 		#~
-		Check to see if a file can be read-only
+		Checks if a file can be read-only
 		@return true if file can be read-only
 		~#
 		method : public : IsReadWrite() ~ Bool {
@@ -7623,7 +7623,7 @@ bundle System.IO.Filesystem {
 		}
 
 		#~
-		Check to see if a file can be read
+		Checks if a file can be read
 		@param n filename
 		@return true if file can be read
 		~#
@@ -7632,7 +7632,7 @@ bundle System.IO.Filesystem {
 		}
 
 		#~
-		Check to see if a file can be read
+		Checks if a file can be read
 		@return true if file can be read
 		~#
 		method : public : IsReadOnly() ~ Bool {
@@ -7640,7 +7640,7 @@ bundle System.IO.Filesystem {
 		}
 		
 		#~
-		Check to see if a file can be written
+		Checks if a file can be written
 		@param n filename
 		@return true if file can be written
 		~#
@@ -7649,7 +7649,7 @@ bundle System.IO.Filesystem {
 		}
 
 		#~
-		Check to see if a file can be written
+		Checks if a file can be written
 		@return true if file can be written
 		~#
 		method : public : IsWriteOnly() ~ Bool {
@@ -7657,7 +7657,7 @@ bundle System.IO.Filesystem {
 		}
 		
 		#~
-		Check to see if a file exists
+		Checks if a file exists
 		@param n filename
 		@return true if file exists
 		~#
@@ -7666,7 +7666,7 @@ bundle System.IO.Filesystem {
 		}
 
 		#~
-		Check to see if a file exists
+		Checks if a file exists
 		@return true if file exists
 		~#
 		method : public : Exists() ~ Bool {
@@ -8569,7 +8569,7 @@ bundle System.IO.Filesystem {
 		@param d destination symbolic link
 		@return true if link was copied
 		~#
-		function : Copy(s : System.String, d : System.String, r : Bool) ~ Bool {
+		function : Copy(s : System.String, d : System.String) ~ Bool {
 			SYM_LINK_COPY;
 		}
 
