@@ -6004,34 +6004,21 @@ bool TrapProcessor::SymLinkCreate(StackProgram* program, size_t* inst, size_t*& 
   return true;
 }
 
-// TODO: implement
 bool TrapProcessor::SymLinkCopy(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
 {
   const bool recursive = PopInt(op_stack, stack_pos);
   size_t* to = (size_t*)PopInt(op_stack, stack_pos);
   size_t* from = (size_t*)PopInt(op_stack, stack_pos);
 
-  if(!to || !from) {
-    PushInt(0, op_stack, stack_pos);
-    return true;
-  }
+  if(to && from) {
+    to = (size_t*)to[0];
+    const std::string to_str = UnicodeToBytes((wchar_t*)(to + 3));
 
-  to = (size_t*)to[0];
-  const std::string to_name = UnicodeToBytes((wchar_t*)(to + 3));
-
-  from = (size_t*)from[0];
-  const std::string from_name = UnicodeToBytes((wchar_t*)(from + 3));
-
-  if(File::DirExists(from_name.c_str())) {
-    std::filesystem::copy_options copy_options = std::filesystem::copy_options::overwrite_existing;
-    if(recursive) {
-      copy_options |= std::filesystem::copy_options::recursive;
-    }
+    from = (size_t*)from[0];
+    const std::string from_str = UnicodeToBytes((wchar_t*)(from + 3));
 
     std::error_code error_code;
-    
-    // std::filesystem::copy(from_name, to_name, copy_options, error_code);
-    
+    std::filesystem::copy_symlink(from_str, to_str, error_code);
     if(error_code) {
       PushInt(0, op_stack, stack_pos);
     }
@@ -6069,15 +6056,13 @@ bool TrapProcessor::SymLinkLoc(StackProgram* program, size_t* inst, size_t*& op_
   return true;
 }
 
-// TODO: implement
 bool TrapProcessor::SymLinkExists(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(array) {
     array = (size_t*)array[0];
-    const std::string name = UnicodeToBytes((wchar_t*)(array + 3));
-
-    // PushInt(File::DirExists(name.c_str()), op_stack, stack_pos);
+    const std::string path_str = UnicodeToBytes((wchar_t*)(array + 3));
+    PushInt(std::filesystem::is_symlink(path_str), op_stack, stack_pos);
   }
   else {
     PushInt(0, op_stack, stack_pos);
