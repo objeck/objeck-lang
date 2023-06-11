@@ -4061,7 +4061,10 @@ void ContextAnalyzer::AnalyzeFor(For* for_stmt, const int depth)
   current_table->NewScope();
   
   // pre-expression
-  AnalyzeStatement(for_stmt->GetPreStatement(), depth + 1);
+  std::vector<Statement*> pre_statements = for_stmt->GetPreStatements()->GetStatements();
+  for(size_t i = 0; i < pre_statements.size(); ++i) {
+    AnalyzeStatement(pre_statements[i], depth + 1);
+  }
 
   // conditional expression
   Expression* expression = for_stmt->GetExpression();
@@ -4087,13 +4090,19 @@ void ContextAnalyzer::AnalyzeFor(For* for_stmt, const int depth)
       mthd_call_expr = static_cast<MethodCall*>(cond_expr->GetRight());
     }
     else {
-      Assignment* assign = static_cast<Declaration*>(for_stmt->GetPreStatement())->GetAssignment();
-      CalculatedExpression* cond_expr = static_cast<CalculatedExpression*>(assign->GetExpression());
-      mthd_call_expr = static_cast<MethodCall*>(cond_expr->GetLeft());
+      std::vector<Statement*> pre_statements = for_stmt->GetPreStatements()->GetStatements();
+      if(!pre_statements.empty()) {
+        Assignment* assign = static_cast<Declaration*>(pre_statements.back())->GetAssignment();
+        CalculatedExpression* cond_expr = static_cast<CalculatedExpression*>(assign->GetExpression());
+        mthd_call_expr = static_cast<MethodCall*>(cond_expr->GetLeft());
+      }
     }
 
     if(mthd_call_expr) {
       SymbolEntry* mthd_call_entry = mthd_call_expr->GetEntry();
+      if(!mthd_call_entry && mthd_call_expr->GetVariable()) {
+        mthd_call_entry = mthd_call_expr->GetVariable()->GetEntry();
+      }
       
       // TODO: build right-hand expression
       Expression* right_expr = nullptr;

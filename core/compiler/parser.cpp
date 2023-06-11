@@ -4912,7 +4912,8 @@ For* Parser::ParseEach(bool reverse, int depth)
     ProcessError(L"Variable already defined in this scope: '" + count_ident + L"'");
   }
 
-  Statement* pre_stmt = nullptr; CalculatedExpression* cond_expr = nullptr;
+  StatementList* pre_statements = TreeFactory::Instance()->MakeStatementList();
+  CalculatedExpression* cond_expr = nullptr;
   Statement* update_stmt = nullptr; StatementList* statements = nullptr;
 
   // reverse iteration 
@@ -4952,7 +4953,7 @@ For* Parser::ParseEach(bool reverse, int depth)
     pre_right->SetLeft(left_pre_count);
     pre_right->SetRight(TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos, 1));
     Assignment* count_assign = TreeFactory::Instance()->MakeAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), count_left, pre_right);
-    pre_stmt = TreeFactory::Instance()->MakeDeclaration(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), count_entry, count_assign);
+    pre_statements->AddStatement(TreeFactory::Instance()->MakeDeclaration(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), count_entry, count_assign));
 
     // conditional expression
     Expression* count_right = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos, 0);
@@ -5017,10 +5018,12 @@ For* Parser::ParseEach(bool reverse, int depth)
         // TODO: add 'size_assign' as a pre-statement
         Assignment* size_assign = TreeFactory::Instance()->MakeAssignment(file_name, line_num, line_pos, GetLineNumber(),
                                                                           GetLinePosition(), size_left_var, left_pre_count);
+        pre_statements->AddStatement(size_assign);
+
         // set variable
         const int line_pos = GetLinePosition();
         left_pre_count = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, GetLineNumber(), line_pos, -1, -1,
-                                                                 size_scope_name, L"Size", TreeFactory::Instance()->MakeExpressionList());
+                                                                 size_left_var, L"Size", TreeFactory::Instance()->MakeExpressionList());
       }
       else if(left_pre_count->GetExpressionType() == VAR_EXPR) {
         // set variable
@@ -5045,7 +5048,7 @@ For* Parser::ParseEach(bool reverse, int depth)
     Variable* count_left = TreeFactory::Instance()->MakeVariable(file_name, line_num, 1, count_ident);
     Expression* count_right = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos, 0);
     Assignment* count_assign = TreeFactory::Instance()->MakeAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), count_left, count_right);
-    pre_stmt = TreeFactory::Instance()->MakeDeclaration(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), count_entry, count_assign);
+    pre_statements->AddStatement(TreeFactory::Instance()->MakeDeclaration(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), count_entry, count_assign));
 
     // conditional expression
     Variable* list_left = TreeFactory::Instance()->MakeVariable(file_name, line_num, 1, count_ident);
@@ -5070,10 +5073,10 @@ For* Parser::ParseEach(bool reverse, int depth)
   }
 
   if(bind_var) {
-    return TreeFactory::Instance()->MakeFor(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), pre_stmt, cond_expr, update_stmt, bind_assign, statements);
+    return TreeFactory::Instance()->MakeFor(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), pre_statements, cond_expr, update_stmt, bind_assign, statements);
   }
 
-  return TreeFactory::Instance()->MakeFor(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), pre_stmt, cond_expr, update_stmt, statements);
+  return TreeFactory::Instance()->MakeFor(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), pre_statements, cond_expr, update_stmt, statements);
 }
 
 /****************************
@@ -5095,8 +5098,11 @@ For * Parser::ParseFor(int depth)
     ProcessError(L"Expected '('", TOKEN_OPEN_PAREN);
   }
   NextToken();
+  
   // pre-statement
-  Statement* pre_stmt = ParseStatement(depth + 1);
+  StatementList* pre_statements = TreeFactory::Instance()->MakeStatementList();
+  pre_statements->AddStatement(ParseStatement(depth + 1));
+
   // conditional
   Expression* cond_expr = ParseExpression(depth + 1);
   if(!Match(TOKEN_SEMI_COLON)) {
@@ -5104,18 +5110,20 @@ For * Parser::ParseFor(int depth)
   }
   NextToken();
   symbol_table->CurrentParseScope()->NewParseScope();
+  
   // update statement
   Statement* update_stmt = ParseStatement(depth + 1, false);
   if(!Match(TOKEN_CLOSED_PAREN)) {
     ProcessError(L"Expected ')'", TOKEN_CLOSED_PAREN);
   }
   NextToken();
+  
   // statement list
   StatementList* statements = ParseStatementList(depth + 1);
   symbol_table->CurrentParseScope()->PreviousParseScope();
   symbol_table->CurrentParseScope()->PreviousParseScope();
 
-  return TreeFactory::Instance()->MakeFor(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), pre_stmt, cond_expr, update_stmt, statements);
+  return TreeFactory::Instance()->MakeFor(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), pre_statements, cond_expr, update_stmt, statements);
 }
 
 /****************************
