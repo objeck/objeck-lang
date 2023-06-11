@@ -1630,15 +1630,15 @@ namespace frontend {
    ****************************/
   class For : public Statement {
     friend class TreeFactory;
-    Statement* pre_stmt;
+    StatementList* pre_stmts;
     Expression* cond_expr;
     Statement* update_stmt;
     Assignment* bind_assign;
     StatementList* statements;
 
     For(const std::wstring& file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos,
-        Statement* pre, Expression* cond, Statement* update, Assignment* bind_assignment, StatementList* stmts) : Statement(file_name, line_num, line_pos, end_line_num, end_line_pos) {
-      pre_stmt = pre;
+        StatementList* pre, Expression* cond, Statement* update, Assignment* bind_assignment, StatementList* stmts) : Statement(file_name, line_num, line_pos, end_line_num, end_line_pos) {
+      pre_stmts = pre;
       cond_expr = cond;
       update_stmt = update;
       bind_assign = bind_assignment;
@@ -1646,8 +1646,8 @@ namespace frontend {
     }
 
     For(const std::wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, 
-        Statement* pre, Expression* cond, Statement* update, StatementList* stmts) : Statement(file_name, line_num, line_pos, end_line_num, end_line_pos) {
-      pre_stmt = pre;
+        StatementList* pre, Expression* cond, Statement* update, StatementList* stmts) : Statement(file_name, line_num, line_pos, end_line_num, end_line_pos) {
+      pre_stmts = pre;
       cond_expr = cond;
       update_stmt = update;
       bind_assign = nullptr;
@@ -1662,8 +1662,8 @@ namespace frontend {
       return FOR_STMT;
     }
 
-    Statement* GetPreStatement() {
-      return pre_stmt;
+    StatementList* GetPreStatements() {
+      return pre_stmts;
     }
 
     Expression* GetExpression() {
@@ -3435,16 +3435,16 @@ namespace frontend {
       return tmp;
     }
 
-    For* MakeFor(const std::wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, Statement* pre_stmt, Expression* cond_expr,
+    For* MakeFor(const std::wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, StatementList* pre_stmts, Expression* cond_expr,
                  Statement* update_stmt, StatementList* stmts) {
-      For* tmp = new For(file_name, line_num, line_pos, end_line_num, end_line_pos, pre_stmt, cond_expr, update_stmt, stmts);
+      For* tmp = new For(file_name, line_num, line_pos, end_line_num, end_line_pos, pre_stmts, cond_expr, update_stmt, stmts);
       statements.push_back(tmp);
       return tmp;
     }
 
-    For* MakeFor(const std::wstring& file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, Statement* pre_stmt, Expression* cond_expr,
+    For* MakeFor(const std::wstring& file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, StatementList* pre_stmts, Expression* cond_expr,
                  Statement* update_stmt, Assignment* bind_assignment, StatementList* stmts) {
-      For* tmp = new For(file_name, line_num, line_pos, end_line_num, end_line_pos, pre_stmt, cond_expr, update_stmt, bind_assignment, stmts);
+      For* tmp = new For(file_name, line_num, line_pos, end_line_num, end_line_pos, pre_stmts, cond_expr, update_stmt, bind_assignment, stmts);
       statements.push_back(tmp);
       return tmp;
     }
