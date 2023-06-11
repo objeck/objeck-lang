@@ -3007,7 +3007,10 @@ void IntermediateEmitter::EmitFor(For* for_stmt)
   cur_line_num = for_stmt->GetLineNumber();
   
   // pre statement
-  EmitStatement(for_stmt->GetPreStatement());
+  std::vector<Statement*> pre_statements = for_stmt->GetPreStatements()->GetStatements();
+  for(size_t i = 0; i < pre_statements.size(); ++i) {
+    EmitStatement(pre_statements[i]);
+  }
 
   // conditional expression
   long unconditional = ++unconditional_label;
