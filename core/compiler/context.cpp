@@ -4147,24 +4147,22 @@ void ContextAnalyzer::AnalyzeFor(For* for_stmt, const int depth)
       }
 
       // update bound assignment
-      if(right_expr) {
-        bool is_special = false;
-        if(right_expr && right_expr->GetExpressionType() == VAR_EXPR) {
-          Variable* right_var = static_cast<Variable*>(right_expr);
-          const std::wstring right_var_name = right_var->GetName();
-          if(!right_var_name.empty() && right_var_name.front() == L'#' && EndsWith(right_var_name, L"_size")) {
-            right_var->SetInternalVariable(true);
-          }
+      if(right_expr && right_expr->GetExpressionType() == VAR_EXPR) {
+        // note: special case for 'each' loop
+        Variable* right_var = static_cast<Variable*>(right_expr);
+        const std::wstring right_var_name = right_var->GetName();
+        if(!right_var_name.empty() && right_var_name.front() == L'#' && EndsWith(right_var_name, L"_size")) {
+          right_var->SetInternalVariable(true);
         }
-
-        Assignment* assignment = for_stmt->GetBoundAssignment();
-
-        assignment->SetExpression(right_expr);
-        statements->PrependStatement(assignment);
       }
-      else if(expression) {
-        ProcessError(expression, L"Expected class or array type");
-      }
+
+      Assignment* assignment = for_stmt->GetBoundAssignment();
+
+      assignment->SetExpression(right_expr);
+      statements->PrependStatement(assignment);
+    }
+    else if(expression) {
+      ProcessError(expression, L"Expected class or array type");
     }
   }
   AnalyzeStatements(statements, depth + 1);
