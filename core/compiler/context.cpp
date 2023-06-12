@@ -1878,7 +1878,8 @@ void ContextAnalyzer::AnalyzeVariable(Variable* variable, SymbolEntry* entry, co
         AnalyzeIndices(indices, depth + 1);
       }
       else {
-        ProcessError(variable, L"Dimension size mismatch or uninitialized type");
+        // entry->SetType(variable->GetEntry()->GetType());
+        // ProcessError(variable, L"Dimension size mismatch or uninitialized type");
       }
     }
 
