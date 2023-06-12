@@ -1079,11 +1079,11 @@ namespace frontend {
       return post_operation;
     }
 
-    inline void Variable::SetInternalVariable(bool s) {
+    void SetInternalVariable(bool s) {
       is_special = s;
     }
 
-    inline bool Variable::IsInternalVariable() {
+    bool IsInternalVariable() {
       return is_special;
     }
 
