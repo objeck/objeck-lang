@@ -4998,9 +4998,7 @@ For* Parser::ParseEach(bool reverse, int depth)
       break;
 
     case TOKEN_IDENT: {
-      left_pre_count = ParseExpression(depth + 1);
-      
-      // TODO: FIX ME
+      left_pre_count = ParseExpression(depth + 1);      
       if(left_pre_count->GetExpressionType() == METHOD_CALL_EXPR) {
         // set method call and variable assignment
         const std::wstring size_scope_name = GetScopeName(L'#' + bound_ident + L"_size");

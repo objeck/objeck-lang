@@ -7550,9 +7550,9 @@ bundle System.IO.Filesystem {
 		}
 		
 		#~
-		Deletes a file
+		Deletes the file
 		@param n filename
-		@return true if file was deleted
+		@return true if file was deleted, false otherwise
 		~#
 		function : Delete(n : System.String) ~ Bool {
 			FILE_DELETE;
@@ -8589,6 +8589,15 @@ bundle System.IO.Filesystem {
 		~#
 		function : Exists(n : System.String) ~ Bool {
 			SYM_LINK_EXISTS;
+		}
+
+		#~
+		Deletes the symbolic link
+		@param n path to symbolic link
+		@return true if file was deleted, false otherwise
+		~#
+		function : Delete(n : System.String) ~ Bool {
+			FILE_DELETE;
 		}
 	}
 }
