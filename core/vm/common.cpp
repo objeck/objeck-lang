@@ -5637,15 +5637,7 @@ bool TrapProcessor::FileDelete(StackProgram* program, size_t* inst, size_t* &op_
   if(array) {
     array = (size_t*)array[0];
     const std::string name =  UnicodeToBytes((wchar_t*)(array + 3));
-    if(remove(name.c_str()) != 0) {
-      PushInt(0, op_stack, stack_pos);
-    }
-    else {
-      PushInt(1, op_stack, stack_pos);
-    }
-  }
-  else {
-    PushInt(0, op_stack, stack_pos);
+    PushInt(std::filesystem::remove(name.c_str()), op_stack, stack_pos);
   }
 
   return true;
