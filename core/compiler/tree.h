@@ -977,6 +977,7 @@ namespace frontend {
     bool checked_post_operation;
     std::vector<Type*> concrete_types;
     bool is_alt;
+    bool is_special;
 
     Variable(const std::wstring& file_name, const int line_num, const int line_pos, const std::wstring& n) : Expression(file_name, line_num, line_pos) {
       name = n;
@@ -985,7 +986,7 @@ namespace frontend {
       id = -1;
       pre_operation = post_operation = nullptr;
       checked_pre_operation = checked_post_operation = true;
-      is_alt = false;
+      is_alt = is_special = false;
     }
 
     ~Variable() {
@@ -1076,6 +1077,14 @@ namespace frontend {
 
     OperationAssignment* GetPostStatement() {
       return post_operation;
+    }
+
+    inline void Variable::SetInternalVariable(bool s) {
+      is_special = s;
+    }
+
+    inline bool Variable::IsInternalVariable() {
+      return is_special;
     }
 
     Variable* Copy();

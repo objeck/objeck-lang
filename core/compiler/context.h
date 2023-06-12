@@ -433,6 +433,14 @@ class ContextAnalyzer {
     return str.str();
   }
 
+  inline bool EndsWith(const std::wstring& value, const std::wstring& ending) {
+    if(ending.size() > value.size()) {
+      return false;
+    }
+
+    return equal(ending.rbegin(), ending.rend(), value.rbegin());
+  }
+
   // string replacement
   std::wstring ReplaceSubstring(std::wstring s, const std::wstring& f, const std::wstring& r);
 
@@ -585,18 +593,13 @@ class ContextAnalyzer {
   
   bool Analyze();
 
+
+
   //
   // diagnostics operations
   //
 #ifdef _DIAG_LIB
-  inline bool EndsWith(const std::wstring &value, const std::wstring &ending)
-  {
-    if(ending.size() > value.size()) {
-      return false;
-    }
-
-    return equal(ending.rbegin(), ending.rend(), value.rbegin());
-  }
+  
 
   bool GetCompletion(ParsedProgram* program, Method* method, const std::wstring var_str, const std::wstring mthd_str, 
                      const int line_num, const int line_pos, std::vector<std::pair<int, std::wstring> >& found_completion);
