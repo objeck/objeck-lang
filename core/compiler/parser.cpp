@@ -5014,6 +5014,7 @@ For* Parser::ParseEach(bool reverse, int depth)
           ProcessError(L"Variable already defined in this scope: '" + size_scope_name + L"'");
         }
         Variable* size_left_var = TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, size_scope_name);
+        size_left_var->SetInternalVariable(true);
 
         // TODO: add 'size_assign' as a pre-statement
         Assignment* size_assign = TreeFactory::Instance()->MakeAssignment(file_name, line_num, line_pos, GetLineNumber(),
