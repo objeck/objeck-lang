@@ -631,7 +631,16 @@ std::vector<int> StaticArray::GetSizes() {
  ****************************/
 Variable* Variable::Copy() {
   Variable* v = TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, name);
-  v->indices = indices;
+  
+  v->entry = entry;
+  v->pre_operation = pre_operation;
+  v->checked_pre_operation = checked_pre_operation;
+  v->post_operation = post_operation;
+  v->checked_post_operation = checked_post_operation;
+  v->concrete_types = concrete_types;
+  v->is_alt = is_alt;
+  v->is_special = is_special;
+
   return v;
 }
 

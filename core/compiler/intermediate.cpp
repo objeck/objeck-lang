@@ -5090,8 +5090,11 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
     // literal and variable method calls
     Variable* variable = method_call->GetVariable();
     SymbolEntry* entry = method_call->GetEntry();
-    if(!entry && variable) {
+
+    bool is_index_size = false;
+    if(variable && variable->IsInternalVariable()) {
       entry = variable->GetEntry();
+      is_index_size = true;
     }
     
     if(variable && method_call->GetCallType() == METHOD_CALL) {
@@ -5240,8 +5243,7 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
 
           case frontend::CLASS_TYPE:
             if(parsed_program->GetLinker()->SearchEnumLibraries(entry->GetType()->GetName(), parsed_program->GetUses()) || 
-               SearchProgramEnums(entry->GetType()->GetName()) || 
-               method_call->GetVariableName().empty()) {
+               SearchProgramEnums(entry->GetType()->GetName()) || is_index_size) {
               imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_INST_MEM));
             }
             break;
