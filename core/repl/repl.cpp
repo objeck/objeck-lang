@@ -1,5 +1,5 @@
 /***************************************************************************
-* Starting point of the interactive REPL
+* REPL shell
 *
 * Copyright (c) 2023, Randy Hollines
 * All rights reserved.
