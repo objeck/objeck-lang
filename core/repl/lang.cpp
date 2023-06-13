@@ -64,7 +64,7 @@ char* ObjeckLang::Compile(std::wstring input)
 
       // emit target code
       FileEmitter target(optimizer.GetProgram(), is_lib, is_debug, show_asm, filename + L".obe");
-      return target.Get();
+      return target.GetBinary();
     }
   }
 
