@@ -106,7 +106,7 @@ void FileEmitter::Emit()
 /****************************
  * Get target binary code
  ****************************/
-char* FileEmitter::Get()
+char* FileEmitter::GetBinary()
 {
   OutputStream out_stream;
   program->Write(emit_lib, is_debug, out_stream, true);
