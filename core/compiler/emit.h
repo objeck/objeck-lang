@@ -1089,7 +1089,7 @@ namespace backend {
     }
 
     void Emit();
-    char* Get();
+    char* GetBinary();
   };
 }
 
