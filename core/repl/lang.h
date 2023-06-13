@@ -1,5 +1,5 @@
 /***************************************************************************
- * Platform independent language optimizer.
+ * Objeck in a nutshell
  *
  * Copyright (c) 2023, Randy Hollines
  * All rights reserved.
@@ -29,23 +29,22 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
 
-#ifndef __REPL_H__
-#define __REPL_H__
+#ifndef __LANG_H__
+#define __LANG_H__
 
-#include "editor.h"
-#include "lang.h"
+#include "../compiler/compiler.h"
+#include "../compiler/types.h"
+#include "../vm/vm.h"
+#include "../shared/logger.h"
+#include "../shared/version.h"
 
-#define SYNTAX_ERROR "Huh?"
-#define SYNTAX_SUCCESS "Ok."
-
-inline std::wstring List(int v) {
-  std::wostringstream str;
-  str << v;
-  return str.str();
-}
-
-inline bool StartsWith(const std::wstring text, const std::wstring test) {
-  return !text.rfind(test, 0);
-}
+//
+// Language
+//
+class ObjeckLang {
+public:
+  static char* Compile(std::wstring input);
+  static void Execute(char* code);
+};
 
 #endif

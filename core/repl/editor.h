@@ -33,6 +33,7 @@
 #define __EDITOR_H__
 
 #include "repl.h"
+#include "lang.h"
 
 //
 // Line
@@ -120,8 +121,7 @@ public:
 
   bool AppendLine(std::wstring line, const int padding);
   bool AppendFunction(std::wstring line);
-  char* Compile();
-  void Execute(char* code);
+  
 
   static inline void LeftTrim(std::wstring& str) {
     str.erase(str.begin(), std::find_if(str.begin(), str.end(), [](unsigned char ch) {

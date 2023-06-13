@@ -33,7 +33,6 @@
 
 #include "../compiler/compiler.h"
 #include "../compiler/types.h"
-
 #include "../vm/vm.h"
 
 //
@@ -211,9 +210,9 @@ void Editor::Edit()
     }
     // build and run
     else if(in == L"/x") {
-      auto code = Compile();
+      auto code = ObjeckLang::Compile(doc.ToString());
       if(code) {
-        Execute(code);
+        ObjeckLang::Execute(code);
       }
     }
     // reset
@@ -383,73 +382,3 @@ bool Editor::AppendLine(std::wstring line, const int padding)
 
   return false;
 }
-
-
-char* Editor::Compile()
-{
-  const std::wstring input = doc.ToString();
-
-  const bool is_debug = false;
-  const bool is_lib = false;
-  const bool show_asm = false;
-  const std::wstring opt = L"s1";
-  const std::wstring sys_lib_path = L"lang.obl,gen_collect.obl";
-  const std::wstring filename = L"blob://shell";
-
-  std::vector<std::pair<std::wstring, std::wstring> > programs;
-  programs.push_back(make_pair(filename + L".obs", input));
-
-  // parse source code
-  Parser parser(L"", false, programs);
-  if(parser.Parse()) {
-    // analyze parse tree
-    ParsedProgram* program = parser.GetProgram();
-    ContextAnalyzer analyzer(program, sys_lib_path, is_lib);
-    
-    if(analyzer.Analyze()) {
-      // emit intermediate code
-      IntermediateEmitter intermediate(program, is_lib, is_debug);
-      intermediate.Translate();
-      
-      // intermediate optimizer
-      ItermediateOptimizer optimizer(intermediate.GetProgram(), intermediate.GetUnconditionalLabel(), opt, is_lib, is_debug);
-      optimizer.Optimize();
-
-      // emit target code
-      FileEmitter target(optimizer.GetProgram(), is_lib, is_debug, show_asm, filename + L".obe");
-      return target.Get();
-    }
-  }
-
-  return nullptr;
-}
-
-void Editor::Execute(char* code)
-{
-  Loader loader(code);
-  loader.Load();
-
-  // execute
-  size_t* op_stack = new size_t[OP_STACK_SIZE];
-  long* stack_pos = new long;
-  (*stack_pos) = 0;
-
-  // start the interpreter...
-  Runtime::StackInterpreter* intpr = new Runtime::StackInterpreter(Loader::GetProgram());
-  Runtime::StackInterpreter::AddThread(intpr);
-  intpr->Execute(op_stack, stack_pos, 0, loader.GetProgram()->GetInitializationMethod(), nullptr, false);
-
-#ifdef _DEBUG
-  std::wcout << L"# final std::stack: pos=" << (*stack_pos) << L" #" << std::endl;
-  if((*stack_pos) > 0) {
-    for(int i = 0; i < (*stack_pos); ++i) {
-      std::wcout << L"dump: value=" << op_stack[i] << std::endl;
-    }
-  }
-#endif
-
-  // clean up
-  delete[] op_stack;
-  op_stack = nullptr;
-}
-
