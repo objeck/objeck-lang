@@ -1,5 +1,5 @@
 /***************************************************************************
- * Platform independent language optimizer.
+ * REPL shell
  *
  * Copyright (c) 2023, Randy Hollines
  * All rights reserved.
