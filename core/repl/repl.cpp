@@ -33,7 +33,6 @@
 #define SYSTEM_ERROR -2
 
 #include "repl.h"
-#include "editor.h"
 
 /****************************
 * Program start. Parses command

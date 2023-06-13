@@ -159,6 +159,7 @@
     <ClCompile Include="..\..\vm\loader.cpp" />
     <ClCompile Include="..\..\vm\vm.cpp" />
     <ClCompile Include="..\editor.cpp" />
+    <ClCompile Include="..\lang.cpp" />
     <ClCompile Include="..\repl.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -187,6 +188,7 @@
     <ClInclude Include="..\..\vm\loader.h" />
     <ClInclude Include="..\..\vm\vm.h" />
     <ClInclude Include="..\editor.h" />
+    <ClInclude Include="..\lang.h" />
     <ClInclude Include="..\repl.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

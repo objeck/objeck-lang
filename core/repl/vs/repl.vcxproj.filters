@@ -90,6 +90,9 @@
     <ClCompile Include="..\..\vm\arch\jit\amd64\jit_amd_lp64.cpp">
       <Filter>Source Files\Runtime</Filter>
     </ClCompile>
+    <ClCompile Include="..\lang.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\editor.h">
@@ -169,6 +172,9 @@
     </ClInclude>
     <ClInclude Include="..\..\vm\arch\jit\amd64\jit_amd_lp64.h">
       <Filter>Header Files\Runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\lang.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
