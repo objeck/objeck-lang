@@ -8563,10 +8563,9 @@ bundle System.IO.Filesystem {
 		Creates a symbolic link
 		@param l link path name
 		@param t target path name
-		@param f true if directory, false otherwise
 		@return true if symbolic link was created 
 		~#
-		function : Create(l : System.String, t : System.String, f : Bool) ~ Bool {
+		function : Create(l : System.String, t : System.String) ~ Bool {
 			SYM_LINK_CREATE;
 		}
 
