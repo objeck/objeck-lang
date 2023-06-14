@@ -159,6 +159,11 @@ namespace instructions {
     SYM_LINK_COPY,
     SYM_LINK_LOC,
     SYM_LINK_EXISTS,
+    // hard link operations
+    HARD_LINK_CREATE,
+    HARD_LINK_COPY,
+    HARD_LINK_LOC,
+    HARD_LINK_EXISTS,
     // socket i/o
     SOCK_TCP_CONNECT,
     SOCK_TCP_BIND,
