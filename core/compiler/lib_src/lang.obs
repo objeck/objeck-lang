@@ -8563,34 +8563,6 @@ bundle System.IO.Filesystem {
 		}
 
 		#~
-		Copies a hard link
-		@param s source hard link
-		@param d destination hard link
-		@return true if link was copied
-		~#
-		function : Copy(s : System.String, d : System.String) ~ Bool {
-			HARD_LINK_COPY;
-		}
-
-		#~
-		Returns the path location that the hard link refers to
-		@param n hard link path
-		@return path the hard link refers to
-		~#
-		function : Location(n : System.String) ~ Bool {
-			HARD_LINK_LOC;
-		}
-
-		#~
-		Checks to see if the given hard link exists
-		@param n hard link name
-		@return true if hard link exists
-		~#
-		function : Exists(n : System.String) ~ Bool {
-			HARD_LINK_EXISTS;
-		}
-
-		#~
 		Deletes the hard link
 		@param n path to hard link
 		@return true if file was deleted, false otherwise
