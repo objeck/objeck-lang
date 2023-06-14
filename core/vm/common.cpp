@@ -5971,7 +5971,6 @@ bool TrapProcessor::DirDelete(StackProgram* program, size_t* inst, size_t*& op_s
 
 bool TrapProcessor::SymLinkCreate(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
 {
-  const bool is_dir = PopInt(op_stack, stack_pos);
   size_t* link_obj = (size_t*)PopInt(op_stack, stack_pos);
   size_t* target_obj = (size_t*)PopInt(op_stack, stack_pos);
 
@@ -5983,7 +5982,7 @@ bool TrapProcessor::SymLinkCreate(StackProgram* program, size_t* inst, size_t*& 
     const std::string link_str = UnicodeToBytes((wchar_t*)(link_obj + 3));
 
     std::error_code error_code;
-    if(is_dir) {
+    if(std::filesystem::is_directory(target_str)) {
       std::filesystem::create_directory_symlink(link_str, target_str, error_code);
 
     }
