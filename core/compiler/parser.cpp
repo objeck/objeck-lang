@@ -2738,6 +2738,31 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
       NextToken();
       break;
 
+    case HARD_LINK_CREATE:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::HARD_LINK_CREATE);
+      NextToken();
+      break;
+
+    case HARD_LINK_COPY:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::HARD_LINK_COPY);
+      NextToken();
+      break;
+
+    case HARD_LINK_LOC:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::HARD_LINK_LOC);
+      NextToken();
+      break;
+
+
+    case HARD_LINK_EXISTS:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::HARD_LINK_EXISTS);
+      NextToken();
+      break;
+
     case FILE_REWIND:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::FILE_REWIND);

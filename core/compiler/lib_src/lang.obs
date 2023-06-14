@@ -8549,14 +8549,59 @@ bundle System.IO.Filesystem {
 	}
 
 	#~
-	Provides hard link operations
+	Provides hard link filesystem operations
 	~#
 	class HardLink {
-		# TODO: placeholder to implement
+		#~
+		Creates a hard link
+		@param l link path name
+		@param t target path name
+		@return true if hard link was created 
+		~#
+		function : Create(l : System.String, t : System.String) ~ Bool {
+			HARD_LINK_CREATE;
+		}
+
+		#~
+		Copies a hard link
+		@param s source hard link
+		@param d destination hard link
+		@return true if link was copied
+		~#
+		function : Copy(s : System.String, d : System.String) ~ Bool {
+			HARD_LINK_COPY;
+		}
+
+		#~
+		Returns the path location that the hard link refers to
+		@param n hard link path
+		@return path the hard link refers to
+		~#
+		function : Location(n : System.String) ~ Bool {
+			HARD_LINK_LOC;
+		}
+
+		#~
+		Checks to see if the given hard link exists
+		@param n hard link name
+		@return true if hard link exists
+		~#
+		function : Exists(n : System.String) ~ Bool {
+			HARD_LINK_EXISTS;
+		}
+
+		#~
+		Deletes the hard link
+		@param n path to hard link
+		@return true if file was deleted, false otherwise
+		~#
+		function : Delete(n : System.String) ~ Bool {
+			FILE_DELETE;
+		}
 	}
 
 	#~
-	Provides symbolic link operations
+	Provides symbolic link filesystem operations
 	~#
 	class SymbolicLink {
 		#~

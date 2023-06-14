@@ -2459,6 +2459,18 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
 
   case SYM_LINK_EXISTS:
     return SymLinkExists(program, inst, op_stack, stack_pos, frame);
+
+  case HARD_LINK_CREATE:
+    return HardLinkCreate(program, inst, op_stack, stack_pos, frame);
+
+  case HARD_LINK_COPY:
+    return HardLinkCopy(program, inst, op_stack, stack_pos, frame);
+
+  case HARD_LINK_LOC:
+    return HardLinkLoc(program, inst, op_stack, stack_pos, frame);
+
+  case HARD_LINK_EXISTS:
+    return HardLinkExists(program, inst, op_stack, stack_pos, frame);
   }
 
   return false;
@@ -6067,6 +6079,119 @@ bool TrapProcessor::SymLinkExists(StackProgram* program, size_t* inst, size_t*& 
   else {
     PushInt(0, op_stack, stack_pos);
   }
+
+  return true;
+}
+
+//
+// TODO: implement
+//
+bool TrapProcessor::HardLinkCreate(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
+{
+  /*
+  size_t* link_obj = (size_t*)PopInt(op_stack, stack_pos);
+  size_t* target_obj = (size_t*)PopInt(op_stack, stack_pos);
+
+  if(target_obj && link_obj) {
+    target_obj = (size_t*)target_obj[0];
+    const std::string target_str = UnicodeToBytes((wchar_t*)(target_obj + 3));
+
+    link_obj = (size_t*)link_obj[0];
+    const std::string link_str = UnicodeToBytes((wchar_t*)(link_obj + 3));
+
+    std::error_code error_code;
+    if(std::filesystem::is_directory(target_str)) {
+      std::filesystem::create_directory_symlink(link_str, target_str, error_code);
+
+    }
+    else {
+      std::filesystem::create_symlink(link_str, target_str, error_code);
+    }
+
+    if(error_code) {
+      PushInt(0, op_stack, stack_pos);
+    }
+    else {
+      PushInt(1, op_stack, stack_pos);
+    }
+  }
+  else {
+    PushInt(0, op_stack, stack_pos);
+  }
+  */
+
+  return true;
+}
+
+bool TrapProcessor::HardLinkCopy(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
+{
+  /*
+  const bool recursive = PopInt(op_stack, stack_pos);
+  size_t* to = (size_t*)PopInt(op_stack, stack_pos);
+  size_t* from = (size_t*)PopInt(op_stack, stack_pos);
+
+  if(to && from) {
+    to = (size_t*)to[0];
+    const std::string to_str = UnicodeToBytes((wchar_t*)(to + 3));
+
+    from = (size_t*)from[0];
+    const std::string from_str = UnicodeToBytes((wchar_t*)(from + 3));
+
+    std::error_code error_code;
+    std::filesystem::copy_symlink(from_str, to_str, error_code);
+    if(error_code) {
+      PushInt(0, op_stack, stack_pos);
+    }
+    else {
+      PushInt(1, op_stack, stack_pos);
+    }
+  }
+  else {
+    PushInt(0, op_stack, stack_pos);
+  }
+  */
+
+  return true;
+}
+
+bool TrapProcessor::HardLinkLoc(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
+{
+  /*
+  size_t* array = (size_t*)PopInt(op_stack, stack_pos);
+  array = (size_t*)array[0];
+  if(array) {
+    const std::string link_str = UnicodeToBytes((wchar_t*)(array + 3));
+
+    std::error_code error_code;
+    const auto target_path = std::filesystem::read_symlink(link_str, error_code);
+    if(error_code) {
+      PushInt(0, op_stack, stack_pos);
+    }
+    else {
+      PushInt((size_t)CreateStringObject(BytesToUnicode(target_path.u8string()), program, op_stack, stack_pos), op_stack, stack_pos);
+    }
+  }
+  else {
+    PushInt(0, op_stack, stack_pos);
+  }
+  */
+
+  return true;
+}
+
+bool TrapProcessor::HardLinkExists(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
+{
+  /*
+  size_t* array = (size_t*)PopInt(op_stack, stack_pos);
+  if(array) {
+    array = (size_t*)array[0];
+    const std::string path_str = UnicodeToBytes((wchar_t*)(array + 3));
+    PushInt(std::filesystem::is_symlink(path_str), op_stack, stack_pos);
+  }
+  else {
+    PushInt(0, op_stack, stack_pos);
+  }
+  */
 
   return true;
 }
