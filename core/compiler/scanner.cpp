@@ -277,9 +277,6 @@ void Scanner::LoadKeywords()
   ident_map[L"SYM_LINK_LOC"] = SYM_LINK_LOC;
   ident_map[L"SYM_LINK_EXISTS"] = SYM_LINK_EXISTS;
   ident_map[L"HARD_LINK_CREATE"] = HARD_LINK_CREATE;
-  ident_map[L"HARD_LINK_COPY"] = HARD_LINK_COPY;
-  ident_map[L"HARD_LINK_LOC"] = HARD_LINK_LOC;
-  ident_map[L"HARD_LINK_EXISTS"] = HARD_LINK_EXISTS;
   ident_map[L"ASYNC_MTHD_CALL"] = ASYNC_MTHD_CALL;
   ident_map[L"EXT_LIB_LOAD"] = EXT_LIB_LOAD;
   ident_map[L"EXT_LIB_UNLOAD"] = EXT_LIB_UNLOAD;
@@ -558,9 +555,6 @@ void Scanner::CheckIdentifier(int index)
     case SYM_LINK_LOC:
     case SYM_LINK_EXISTS:
     case HARD_LINK_CREATE:
-    case HARD_LINK_COPY:
-    case HARD_LINK_LOC:
-    case HARD_LINK_EXISTS:
     case ASYNC_MTHD_CALL:
     case EXT_LIB_LOAD:
     case EXT_LIB_UNLOAD:
