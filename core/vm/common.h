@@ -1529,7 +1529,7 @@ class TrapProcessor {
   }
 
   //
-  // pushes an integer onto the calculation stack.  this code
+  // pushes an integer onto the calculation stack. this code
   // in normally inlined and there's a macro version available.
   //
   static inline void PushInt(size_t v, size_t* op_stack, long* stack_pos) {
