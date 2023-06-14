@@ -8549,6 +8549,13 @@ bundle System.IO.Filesystem {
 	}
 
 	#~
+	Provides hard link operations
+	~#
+	class HardLink {
+		# TODO: placeholder to implement
+	}
+
+	#~
 	Provides symbolic link operations
 	~#
 	class SymbolicLink {
