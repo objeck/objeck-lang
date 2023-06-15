@@ -47,7 +47,7 @@ bool ObjeckLang::Compile()
   const bool is_lib = false;
   const bool show_asm = false;
   const std::wstring opt = L"s1";
-  const std::wstring sys_lib_path = L"lang.obl,gen_collect.obl";
+  const std::wstring sys_lib_path = L"lang.obl,gen_collect.obl"; // TODO: make configurable 
   const std::wstring filename = L"shell://code";
 
   std::vector<std::pair<std::wstring, std::wstring> > programs;
