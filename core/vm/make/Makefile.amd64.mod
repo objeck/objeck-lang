@@ -1,0 +1,25 @@
+ARGS=-O3 -Wall -D_MODULE -D_OBJECK_NATIVE_LIB_PATH -D_NO_JIT -std=c++17 -Wno-unused-variable -Wno-unused-function -Wno-int-to-pointer-cast -Wno-unused-result
+
+CC=g++
+SRC=common.o interpreter.o loader.o vm.o posix_main.o 
+OBJ_LIBS=jit_amd_lp64.a memory.a
+MEM_PATH=arch
+JIT_PATH=arch/jit/amd64
+LIB=vm.a
+
+$(LIB): $(SRC) $(OBJ_LIBS)
+	$(AR) -cvq $(LIB) $(SRC)
+
+memory.a:
+	cd $(MEM_PATH); make -f make/Makefile.amd64
+	
+jit_amd_lp64.a:
+	cd $(JIT_PATH); make -f make/Makefile.amd64
+	
+%.o: %.cpp
+	$(CC) -m64 $(ARGS) -c $< 
+
+clean:
+	cd $(MEM_PATH); make clean -f make/Makefile.amd64
+	cd $(JIT_PATH); make clean -f make/Makefile.amd64
+	rm -f $(LIB) *.o *~
