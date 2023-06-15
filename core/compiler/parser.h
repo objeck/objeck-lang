@@ -240,6 +240,10 @@ class Parser {
   SymbolTableManager* GetSymbolTable() {
     return symbol_table;
   }
+
+#ifdef _MODULE
+  std::vector<std::wstring> GetErrors();
+#endif
 };
 
 #endif

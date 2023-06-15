@@ -74,6 +74,12 @@ bool ObjeckLang::Compile()
 
       return code != nullptr;
     }
+    else {
+      errors = analyzer.GetErrors();
+    }
+  }
+  else {
+    errors = parser.GetErrors();
   }
 
   return false;
