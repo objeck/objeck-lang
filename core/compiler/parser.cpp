@@ -225,6 +225,13 @@ bool Parser::CheckErrors()
   return true;
 }
 
+#ifdef _MODULE
+std::vector<std::wstring> Parser::GetErrors()
+{
+  return std::vector<std::wstring>();
+}
+#endif
+
 /****************************
  * Starts the parsing process.
  ****************************/

@@ -43,6 +43,7 @@
 //
 class ObjeckLang {
   std::wstring input;
+  std::vector<std::wstring> errors;
   char* code;
 
 public:

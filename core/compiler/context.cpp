@@ -8060,6 +8060,13 @@ Method* MethodCallSelector::GetSelection()
   return matches[match_index]->GetMethod();
 }
 
+#ifdef _MODULE
+std::vector<std::wstring> ContextAnalyzer::GetErrors()
+{
+  return std::vector<std::wstring>();
+}
+#endif
+
 //
 // START: diagnostics operations
 //
