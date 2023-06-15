@@ -123,11 +123,6 @@ const std::wstringstream& ObjeckLang::Execute()
   return output;
 }
 
-char* ObjeckLang::GetCode()
-{
-  return code;
-}
-
 std::vector<std::wstring> ObjeckLang::GetErrors() 
 {
   return errors;
