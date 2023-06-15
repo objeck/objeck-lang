@@ -42,9 +42,18 @@
 // Language
 //
 class ObjeckLang {
+  std::wstring input;
+  char* code;
+
 public:
-  static char* Compile(std::wstring input);
-  static void Execute(char* code);
+  ObjeckLang(std::wstring i);
+  ~ObjeckLang();
+
+  bool Compile();
+  char* GetCode();
+  std::vector<std::wstring> GetErrors();
+
+  std::wstringstream Execute();
 };
 
 #endif
