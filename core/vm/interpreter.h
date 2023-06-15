@@ -90,6 +90,11 @@ namespace Runtime {
 
     // halt
     bool halt;
+
+#ifdef _MODULE
+    std::wstringstream output_buffer;
+#endif
+
 #ifdef _DEBUGGER
     Debugger* debugger;
 #endif
@@ -458,6 +463,12 @@ namespace Runtime {
       monitor->cur_frame = frame;      
       MemoryManager::AddPdaMethodRoot(monitor);
     }
+
+#ifdef _MODULE
+    const std::wstringstream& GetOutputBuffer() {
+      return output_buffer;
+    }
+#endif
   
 #ifdef _DEBUGGER
     StackInterpreter(StackProgram* p, Debugger* d) {
