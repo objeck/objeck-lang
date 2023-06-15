@@ -177,7 +177,6 @@
     <ClCompile Include="..\..\vm\common.cpp" />
     <ClCompile Include="..\..\vm\interpreter.cpp" />
     <ClCompile Include="..\..\vm\loader.cpp" />
-    <ClCompile Include="..\..\vm\posix_main.cpp" />
     <ClCompile Include="..\..\vm\vm.cpp" />
     <ClCompile Include="..\lang.cpp" />
   </ItemGroup>

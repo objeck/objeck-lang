@@ -34,6 +34,7 @@
 ObjeckLang::ObjeckLang(std::wstring i)
 {
   input = i;
+  code = nullptr;
 }
 
 ObjeckLang::~ObjeckLang()
@@ -85,7 +86,7 @@ bool ObjeckLang::Compile()
   return false;
 }
 
-std::wstringstream ObjeckLang::Execute()
+const std::wstringstream& ObjeckLang::Execute()
 {
   Loader loader(code);
   loader.Load();
@@ -109,12 +110,17 @@ std::wstringstream ObjeckLang::Execute()
   }
 #endif
 
+  const std::wstringstream& output = intpr->GetOutputBuffer();
+
   // clean up
   delete[] op_stack;
   op_stack = nullptr;
 
+  delete intpr;
+  intpr = nullptr;
+
   // TODO:
-  return std::wstringstream();
+  return output;
 }
 
 char* ObjeckLang::GetCode()
@@ -124,5 +130,5 @@ char* ObjeckLang::GetCode()
 
 std::vector<std::wstring> ObjeckLang::GetErrors() 
 {
-  return std::vector<std::wstring>();
+  return errors;
 }

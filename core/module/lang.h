@@ -1,5 +1,5 @@
 /***************************************************************************
- * Objeck in a nutshell
+ * Objeck as a library
  *
  * Copyright (c) 2023, Randy Hollines
  * All rights reserved.
@@ -29,8 +29,8 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
 
-#ifndef __LANG_H__
-#define __LANG_H__
+#ifndef __MODULE_H__
+#define __MODULE_H__
 
 #include "../compiler/compiler.h"
 #include "../compiler/types.h"
@@ -54,7 +54,7 @@ public:
   char* GetCode();
   std::vector<std::wstring> GetErrors();
 
-  std::wstringstream Execute();
+  const std::wstringstream& Execute();
 };
 
 #endif

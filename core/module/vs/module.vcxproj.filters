@@ -131,9 +131,6 @@
     <ClCompile Include="..\..\vm\loader.cpp">
       <Filter>Source Files\VM</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\vm\posix_main.cpp">
-      <Filter>Source Files\VM</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\vm\arch\memory.cpp">
       <Filter>Source Files\VM</Filter>
     </ClCompile>
