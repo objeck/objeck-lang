@@ -3577,9 +3577,9 @@ bool TrapProcessor::SockTcpConnect(StackProgram* program, size_t* inst, size_t* 
     const std::string addr = UnicodeToBytes((wchar_t*)(array + 3));
     SOCKET sock = IPSocket::Open(addr.c_str(), port);
 #ifdef _DEBUG
-    std::wcout << L"# socket connect: addr='???'; instance="
-      << instance << L"(" << (size_t)instance << L")" << L"; addr=" << sock << L"("
-      << (long)sock << L") #" << std::endl;
+    std::wcout << L"# socket connect: addr='" << BytesToUnicode(addr) << "'; instance="
+	       << instance << L"(" << (size_t)instance << L")" << L"; addr=" << sock << L"("
+	       << (long)sock << L") #" << std::endl;
 #endif
     instance[0] = sock;
   }
@@ -3754,12 +3754,12 @@ bool TrapProcessor::SockTcpSslConnect(StackProgram* program, size_t* inst, size_
     instance[3] = is_open;
 
 #ifdef _DEBUG
-    std::wcout << L"# socket connect: addr='???'; instance="
-      << instance << L"(" << (size_t)instance << L")" << L"; addr=" << ctx << L"|" << bio << L"("
-      << (size_t)ctx << L"|" << (size_t)bio << L") #" << std::endl;
+    std::wcout << L"# socket connect: addr='" << BytesToUnicode(addr) << L"'; instance="
+	       << instance << L"(" << (size_t)instance << L")" << L"; addr=" << ctx << L"|" << bio << L"("
+	       << (size_t)ctx << L"|" << (size_t)bio << L") #" << std::endl;
 #endif
   }
-
+  
   return true;
 }
 
@@ -4543,13 +4543,12 @@ bool TrapProcessor::FileOpenRead(StackProgram* program, size_t* inst, size_t* &o
     const std::string filename = UnicodeToBytes((wchar_t*)(array + 3));
     FILE* file = File::FileOpen(filename.c_str(), "rb");
 #ifdef _DEBUG
-    std::wcout << L"# file open: name='???'; instance=" << instance << L"("
-      << (size_t)instance << L")" << L"; addr=" << file << L"(" << (size_t)file
-      << L") #" << std::endl;
+    std::wcout << L"# file open: name='" << BytesToUnicode(filename) << L"'; instance=" << instance << L"("
+	       << (size_t)instance << L")" << L"; addr=" << file << L"(" << (size_t)file << L") #" << std::endl;
 #endif
     instance[0] = (size_t)file;
   }
-
+  
   return true;
 }
 
@@ -4562,9 +4561,8 @@ bool TrapProcessor::FileOpenAppend(StackProgram* program, size_t* inst, size_t* 
     const std::string filename = UnicodeToBytes((wchar_t*)(array + 3));
     FILE* file = File::FileOpen(filename.c_str(), "ab");
 #ifdef _DEBUG
-    std::wcout << L"# file open: name='???'; instance=" << instance << L"("
-      << (size_t)instance << L")" << L"; addr=" << file << L"(" << (size_t)file
-      << L") #" << std::endl;
+    std::wcout << L"# file open: name='" << BytesToUnicode(filename) << L"'; instance=" << instance << L"("
+	       << (size_t)instance << L")" << L"; addr=" << file << L"(" << (size_t)file << L") #" << std::endl;
 #endif
     instance[0] = (size_t)file;
   }
@@ -4581,9 +4579,8 @@ bool TrapProcessor::FileOpenWrite(StackProgram* program, size_t* inst, size_t* &
     const std::string filename = UnicodeToBytes((wchar_t*)(array + 3));
     FILE* file = File::FileOpen(filename.c_str(), "wb");
 #ifdef _DEBUG
-    std::wcout << L"# file open: name='???'; instance=" << instance << L"("
-      << (size_t)instance << L")" << L"; addr=" << file << L"(" << (size_t)file
-      << L") #" << std::endl;
+    std::wcout << L"# file open: name='" << BytesToUnicode(filename) << L"'; instance=" << instance << L"("
+	       << (size_t)instance << L")" << L"; addr=" << file << L"(" << (size_t)file << L") #" << std::endl;
 #endif
     instance[0] = (size_t)file;
   }
