@@ -9,6 +9,7 @@ LIB=vm.a
 
 $(LIB): $(SRC) $(OBJ_LIBS)
 	$(AR) -cvq $(LIB) $(SRC)
+	cp $(LIB) ../module
 
 memory.a:
 	cd $(MEM_PATH); make -f make/Makefile.arm64

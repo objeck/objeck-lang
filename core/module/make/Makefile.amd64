@@ -2,7 +2,7 @@ ARGS=-O3 -Wall -std=c++17 -D_X64 -D_OBJECK_NATIVE_LIB_PATH -D_MODULE -Wint-to-po
 
 CC=g++
 SRC=lang.o
-OBJ_LIBS=../vm/vm.a ../vm/jit_amd_lp64.a ../vm/memory.a
+OBJ_LIBS=../compiler/compiler.a ../vm/vm.a
 VM_PATH=../vm
 MEM_PATH=../vm/arch
 JIT_PATH=../vm/arch/jit/amd64
@@ -11,14 +11,11 @@ EXE=obd
 $(EXE): $(SRC) $(OBJ_LIBS)
 	$(CC) -m64 -pthread -o $(EXE) $(SRC) $(OBJ_LIBS) -Wunused-function -ldl -lcrypto -lreadline -lssl -lz 
 
-../vm/vm.a:
+../compiler/compiler.a:
 	cd $(VM_PATH); make -f make/Makefile.amd64.mod
 
-../vm/memory.a:
-	cd $(MEM_PATH); make -f make/Makefile.amd64
-
-../vm/jit_amd_lp64.a:
-	cd $(JIT_PATH); make -f make/Makefile.amd64
+../vm/vm.a:
+	cd $(VM_PATH); make -f make/Makefile.amd64.mod
 	
 %.o: %.cpp
 	$(CC) -m64 $(ARGS) -c $< 
