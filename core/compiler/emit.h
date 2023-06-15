@@ -1089,7 +1089,9 @@ namespace backend {
     }
 
     void Emit();
+#ifdef _MODULE
     char* GetBinary();
+#endif
   };
 }
 

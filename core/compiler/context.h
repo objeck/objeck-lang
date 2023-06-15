@@ -593,7 +593,9 @@ class ContextAnalyzer {
   
   bool Analyze();
 
-
+#ifdef _MODULE
+  std::vector<std::wstring> GetErrors();
+#endif
 
   //
   // diagnostics operations

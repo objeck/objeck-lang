@@ -103,6 +103,7 @@ void FileEmitter::Emit()
   }
 }
 
+#ifdef _MODULE
 /****************************
  * Get target binary code
  ****************************/
@@ -116,6 +117,7 @@ char* FileEmitter::GetBinary()
 
   return buffer;
 }
+#endif
 
 /****************************
  * IntermediateProgram class
