@@ -1,0 +1,153 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Header Files\Compiler">
+      <UniqueIdentifier>{d3e8435c-253a-4b4f-908e-4814f2e3e44f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\VM">
+      <UniqueIdentifier>{0c41a239-67ff-4746-8608-1e8f30ac9473}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Resource Files\Compiler">
+      <UniqueIdentifier>{71e88456-1016-4f7b-bf1d-fbbfef175ad9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Resource Files\VM">
+      <UniqueIdentifier>{3118a4f7-842b-404d-b601-7b0a8fcf94b2}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\vm\common.h">
+      <Filter>Header Files\VM</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\vm\interpreter.h">
+      <Filter>Header Files\VM</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\vm\lib_api.h">
+      <Filter>Header Files\VM</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\vm\loader.h">
+      <Filter>Header Files\VM</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\vm\vm.h">
+      <Filter>Header Files\VM</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\compiler\compiler.h">
+      <Filter>Header Files\Compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\compiler\context.h">
+      <Filter>Header Files\Compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\compiler\emit.h">
+      <Filter>Header Files\Compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\compiler\intermediate.h">
+      <Filter>Header Files\Compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\compiler\linker.h">
+      <Filter>Header Files\Compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\compiler\optimization.h">
+      <Filter>Header Files\Compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\compiler\parser.h">
+      <Filter>Header Files\Compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\compiler\scanner.h">
+      <Filter>Header Files\Compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\compiler\tree.h">
+      <Filter>Header Files\Compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\compiler\types.h">
+      <Filter>Header Files\Compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\vm\arch\memory.h">
+      <Filter>Header Files\VM</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\vm\arch\win32\win32.h">
+      <Filter>Header Files\VM</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\vm\arch\jit\jit_common.h">
+      <Filter>Header Files\VM</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\vm\arch\jit\amd64\jit_amd_lp64.h">
+      <Filter>Header Files\VM</Filter>
+    </ClInclude>
+    <ClInclude Include="..\lang.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\compiler\compiler.cpp">
+      <Filter>Resource Files\Compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\compiler\context.cpp">
+      <Filter>Resource Files\Compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\compiler\emit.cpp">
+      <Filter>Resource Files\Compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\compiler\intermediate.cpp">
+      <Filter>Resource Files\Compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\compiler\linker.cpp">
+      <Filter>Resource Files\Compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\compiler\optimization.cpp">
+      <Filter>Resource Files\Compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\compiler\parser.cpp">
+      <Filter>Resource Files\Compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\compiler\scanner.cpp">
+      <Filter>Resource Files\Compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\compiler\tree.cpp">
+      <Filter>Resource Files\Compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\compiler\types.cpp">
+      <Filter>Resource Files\Compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\vm\vm.cpp">
+      <Filter>Resource Files\VM</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\vm\common.cpp">
+      <Filter>Resource Files\VM</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\vm\interpreter.cpp">
+      <Filter>Resource Files\VM</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\vm\loader.cpp">
+      <Filter>Resource Files\VM</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\vm\posix_main.cpp">
+      <Filter>Resource Files\VM</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\vm\arch\memory.cpp">
+      <Filter>Resource Files\VM</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\vm\arch\win32\win32.cpp">
+      <Filter>Resource Files\VM</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\vm\arch\jit\jit_common.cpp">
+      <Filter>Resource Files\VM</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\vm\arch\jit\amd64\jit_amd_lp64.cpp">
+      <Filter>Resource Files\VM</Filter>
+    </ClCompile>
+    <ClCompile Include="..\lang.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>
