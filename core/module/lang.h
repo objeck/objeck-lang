@@ -51,9 +51,7 @@ public:
   ~ObjeckLang();
 
   bool Compile();
-  char* GetCode();
   std::vector<std::wstring> GetErrors();
-
   const std::wstringstream& Execute();
 };
 
