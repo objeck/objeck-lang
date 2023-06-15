@@ -2,7 +2,7 @@ ARGS=-O3 -Wall -Wall -std=c++17 -D_ARM64 -D_OBJECK_NATIVE_LIB_PATH -D_DEBUGGER -
 
 CC=g++
 SRC=tree.o scanner.o parser.o debugger.o
-OBJ_LIBS=../vm/compiler.a ../vm/jit_arm_a64.a ../vm/memory.a
+OBJ_LIBS=../vm/vm.a ../vm/jit_arm_a64.a ../vm/memory.a
 VM_PATH=../vm
 MEM_PATH=../vm/arch
 JIT_PATH=../vm/arch/jit/arm64
@@ -11,7 +11,7 @@ EXE=obd
 $(EXE): $(SRC) $(OBJ_LIBS)
 	$(CC) -pthread -o $(EXE) $(SRC) $(OBJ_LIBS) -Wunused-function -ldl -lcrypto -lreadline -lssl -lz 
 
-../vm/compiler.a:
+../vm/vm.a:
 	cd $(VM_PATH); make -f make/Makefile.arm64.obd
 
 ../vm/memory.a:
