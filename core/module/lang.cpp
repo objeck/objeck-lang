@@ -31,10 +31,16 @@
 
 #include "lang.h"
 
-//
-// Language
-//
-char* ObjeckLang::Compile(std::wstring input)
+ObjeckLang::ObjeckLang(std::wstring i)
+{
+  input = i;
+}
+
+ObjeckLang::~ObjeckLang()
+{
+}
+
+bool ObjeckLang::Compile()
 {
   const bool is_debug = false;
   const bool is_lib = false;
@@ -64,14 +70,16 @@ char* ObjeckLang::Compile(std::wstring input)
 
       // emit target code
       FileEmitter target(optimizer.GetProgram(), is_lib, is_debug, show_asm, filename + L".obe");
-      return target.GetBinary();
+      code = target.GetBinary();
+
+      return code != nullptr;
     }
   }
 
-  return nullptr;
+  return false;
 }
 
-void ObjeckLang::Execute(char* code)
+std::wstringstream ObjeckLang::Execute()
 {
   Loader loader(code);
   loader.Load();
@@ -98,4 +106,17 @@ void ObjeckLang::Execute(char* code)
   // clean up
   delete[] op_stack;
   op_stack = nullptr;
+
+  // TODO:
+  return std::wstringstream();
+}
+
+char* ObjeckLang::GetCode()
+{
+  return code;
+}
+
+std::vector<std::wstring> ObjeckLang::GetErrors() 
+{
+  return std::vector<std::wstring>();
 }
