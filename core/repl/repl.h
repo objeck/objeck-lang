@@ -36,16 +36,5 @@
 #include "../module/lang.h"
 
 #define SYNTAX_ERROR "Huh?"
-#define SYNTAX_SUCCESS "Ok."
-
-inline std::wstring List(int v) {
-  std::wostringstream str;
-  str << v;
-  return str.str();
-}
-
-inline bool StartsWith(const std::wstring text, const std::wstring test) {
-  return !text.rfind(test, 0);
-}
 
 #endif

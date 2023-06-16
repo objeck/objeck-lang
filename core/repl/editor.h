@@ -117,12 +117,25 @@ public:
   ~Editor() {
   }
 
+  // start REPL loop
   void Edit();
 
-  bool AppendLine(std::wstring line, const int padding);
-  bool AppendFunction(std::wstring line);
-  
+  // commands
+  void DoReset();
+  void DoHelp();
+  void DoExecute();
+  void DoInsertLine(std::wstring in);
+  void DoInsertMultiLine(std::wstring in);
+  void DoDeleteLine(std::wstring& in);
+  void DoInsertFunction(std::wstring in);
+  void DoGotoLine(std::wstring& in);
+  void DoReplaceLine(std::wstring& in);
 
+  bool AppendFunction(std::wstring line);
+
+  // utility functions
+  bool AppendLine(std::wstring line, const int padding);
+  
   static inline void LeftTrim(std::wstring& str) {
     str.erase(str.begin(), std::find_if(str.begin(), str.end(), [](unsigned char ch) {
       return !std::isspace(ch);     
