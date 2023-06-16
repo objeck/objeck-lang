@@ -75,8 +75,13 @@ public:
   ~Line() {
   }
 
-  const std::wstring ToString();
-  const Line::Type GetType();
+  const std::wstring ToString() {
+    return line;
+  }
+
+  const Line::Type GetType() {
+    return type;
+  }
 };
 
 //
@@ -86,13 +91,17 @@ class Document {
   std::list<Line> lines;
 
  public:
-   Document();
-  
+   Document() {
+   }
+
    ~Document() {
    }
 
+   size_t Size() {
+     return lines.size();
+   }
+
    size_t Reset();
-   inline size_t Size();
    std::wstring ToString();
 
    void List(size_t cur_pos, bool all);
