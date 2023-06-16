@@ -119,6 +119,7 @@ class Document {
 //
 class Editor {
   Document doc;
+  std::wstring lib_uses;
   size_t cur_pos;
 
 public:
@@ -134,6 +135,7 @@ public:
   void DoReset();
   void DoHelp();
   void DoExecute();
+  void DoUseLibraries(std::wstring in);
   void DoInsertLine(std::wstring in);
   void DoInsertMultiLine(std::wstring in);
   void DoDeleteLine(std::wstring& in);

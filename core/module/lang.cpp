@@ -31,9 +31,10 @@
 
 #include "lang.h"
 
-ObjeckLang::ObjeckLang(std::wstring i)
+ObjeckLang::ObjeckLang(std::wstring s, std::wstring u)
 {
-  input = i;
+  source = s;
+  lib_uses = u;
   code = nullptr;
 }
 
@@ -47,11 +48,11 @@ bool ObjeckLang::Compile()
   const bool is_lib = false;
   const bool show_asm = false;
   const std::wstring opt = L"s1";
-  const std::wstring sys_lib_path = L"lang.obl,gen_collect.obl"; // TODO: make configurable 
+  const std::wstring sys_lib_path = lib_uses; // L"lang.obl,gen_collect.obl"
   const std::wstring filename = L"shell://code";
 
   std::vector<std::pair<std::wstring, std::wstring> > programs;
-  programs.push_back(make_pair(filename + L".obs", input));
+  programs.push_back(make_pair(filename + L".obs", source));
 
   // parse source code
   Parser parser(L"", false, programs);

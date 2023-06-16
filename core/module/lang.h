@@ -42,12 +42,13 @@
 // Language
 //
 class ObjeckLang {
-  std::wstring input;
+  std::wstring source;
+  std::wstring lib_uses;
   std::vector<std::wstring> errors;
   char* code;
 
 public:
-  ObjeckLang(std::wstring i);
+  ObjeckLang(std::wstring s, std::wstring u);
   ~ObjeckLang();
 
   bool Compile();
