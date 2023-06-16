@@ -43,7 +43,7 @@ size_t Document::Reset()
 {
   lines.clear();
 
-  lines.push_back(Line(L"class Shell {", Line::Type::RO_CLS_START_LINE));
+  lines.push_back(Line(L"class Repl {", Line::Type::RO_CLS_START_LINE));
   lines.push_back(Line(L"  function : Main(args : String[]) ~ Nil {", Line::Type::RO_FUNC_START_LINE));
   lines.push_back(Line(L"  }", Line::Type::RO_FUNC_END_LINE));
   lines.push_back(Line(L"}", Line::Type::RO_CLS_END_LINE));
