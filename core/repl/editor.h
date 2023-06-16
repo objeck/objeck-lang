@@ -89,6 +89,7 @@ public:
 //
 class Document {
   std::list<Line> lines;
+  size_t shell_count;
 
  public:
    Document() {
