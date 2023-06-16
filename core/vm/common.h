@@ -925,6 +925,10 @@ class StackProgram {
 #endif
 
  public:
+#ifdef _MODULE
+   std::wstringstream output_buffer;
+#endif
+
   StackProgram() {
     cls_hierarchy = nullptr;
     cls_interfaces = nullptr;
@@ -1484,7 +1488,7 @@ enum TimeInterval {
 };
 
 class TrapProcessor {
-  static inline bool GetTime(struct tm* &curr_time, time_t raw_time, bool is_gmt) {
+  static inline bool GetTime(struct tm*& curr_time, time_t raw_time, bool is_gmt) {
 #ifdef _WIN32
     struct tm temp_time;
     if(is_gmt) {
@@ -1912,6 +1916,14 @@ class TrapProcessor {
  public:
 
   static bool ProcessTrap(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+
+#ifdef _MODULE
+  static StackProgram* program;
+
+  static void Initialize(StackProgram* p) {
+    program = p;
+  }
+#endif
 };
 
 bool EndsWith(std::wstring const& str, std::wstring const& ending);
