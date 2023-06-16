@@ -47,8 +47,9 @@ size_t Document::Reset()
   lines.push_back(Line(L"  function : Main(args : String[]) ~ Nil {", Line::Type::RO_FUNC_START_LINE));
   lines.push_back(Line(L"  }", Line::Type::RO_FUNC_END_LINE));
   lines.push_back(Line(L"}", Line::Type::RO_CLS_END_LINE));
+  shell_count = lines.size();
 
-  return lines.size() - 1;
+  return shell_count - 1;
 }
 
 std::wstring Document::ToString()
@@ -65,28 +66,33 @@ std::wstring Document::ToString()
 
 void Document::List(size_t cur_pos, bool all)
 {
-  if(all) {
-    std::wcout << L"[All Code]" << std::endl;
+  if(!all && lines.size() == shell_count) {
+    std::wcout << L"[No code]" << std::endl;
   }
   else {
-    std::wcout << L"[Code]" << std::endl;
-  }
+    if(all) {
+      std::wcout << L"[All code]" << std::endl;
+    }
+    else {
+      std::wcout << L"[Lines of code]" << std::endl;
+    }
 
-  auto index = 0;
-  for(auto& line : lines) {
-    ++index;
+    auto index = 0;
+    for(auto& line : lines) {
+      ++index;
 
-    if(all || line.GetType() == Line::Type::RW_LINE) {
-      if(index == cur_pos) {
-        std::wcout << "=> ";
+      if(all || line.GetType() == Line::Type::RW_LINE) {
+        if(index == cur_pos) {
+          std::wcout << "=> ";
+        }
+        else {
+          std::wcout << "   ";
+        }
+
+        std::wcout << index;
+        std::wcout << L": ";
+        std::wcout << line.ToString() << std::endl;
       }
-      else {
-        std::wcout << "   ";
-      }
-
-      std::wcout << index;
-      std::wcout << L": ";
-      std::wcout << line.ToString() << std::endl;
     }
   }
 }
