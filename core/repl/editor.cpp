@@ -77,7 +77,7 @@ void Document::List(size_t cur_pos, bool all)
       std::wcout << L"[Lines of code]" << std::endl;
     }
 
-    auto index = 0;
+    size_t index = 0;
     for(auto& line : lines) {
       ++index;
 
@@ -266,7 +266,6 @@ bool Editor::AppendFunction(std::wstring line)
 
   size_t char_pos = 0;
   for(std::wstring::reverse_iterator iter = line.rbegin(); iter != line.rend(); ++iter, ++char_pos) {
-    const auto line_char = *iter;
     switch(*iter) {
     case L'(':
       open_paren_pos = char_pos;
