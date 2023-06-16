@@ -162,6 +162,7 @@ bool Document::DeleteLine(size_t line_num)
 //
 Editor::Editor()
 {
+  lib_uses = L"lang.obl,gen_collect.obl";
   cur_pos = doc.Reset();
 }
 
@@ -194,16 +195,6 @@ void Editor::Edit()
         doc.List(cur_pos, true);
         break;
 
-        // execute
-      case L'x':
-        DoExecute();
-        break;
-
-        // reset
-      case L'o':
-        DoReset();
-        break;
-
         // insert line
       case L'i':
         DoInsertLine(in);
@@ -232,6 +223,21 @@ void Editor::Edit()
         // replace line
       case L'r':
         DoReplaceLine(in);
+        break;
+
+        // execute
+      case L'u':
+        DoUseLibraries(in);
+        break;
+
+        // execute
+      case L'x':
+        DoExecute();
+        break;
+
+        // reset
+      case L'o':
+        DoReset();
         break;
 
         // other
@@ -296,7 +302,7 @@ bool Editor::AppendFunction(std::wstring line)
 
 void Editor::DoHelp()
 {
-  std::wcout << "Commands:" << std::endl;
+  std::wcout << "=> Commands" << std::endl;
   std::wcout << "  q: quit" << std::endl;
   std::wcout << "  h: help" << std::endl;
   std::wcout << "  l: lists lines" << std::endl;
@@ -308,13 +314,15 @@ void Editor::DoHelp()
   std::wcout << "  f: insert function or method" << std::endl;
   std::wcout << "  r: replace line" << std::endl;
   std::wcout << "  d: delete line" << std::endl;
-  std::wcout << "  u: edit use statements" << std::endl;
+  std::wcout << "  u: edit library use statements" << std::endl;
   std::wcout << "  x: execute program" << std::endl;
 }
 
 void Editor::DoReset()
 {
+  lib_uses = L"lang.obl,gen_collect.obl";
   doc.Reset();
+
   std::wcout << L"=> Document reset." << std::endl;
   cur_pos = 3;
 }
@@ -410,9 +418,23 @@ void Editor::DoInsertFunction(std::wstring in)
   }
 }
 
+void Editor::DoUseLibraries(std::wstring in)
+{
+  std::wcout << L"=> Current library list: " << lib_uses << std::endl;
+  std::wcout << L"New library list] ";
+  std::getline(std::wcin, in);
+
+  if(in.empty()) {
+    lib_uses = in;
+  }
+  else {
+    std::wcout << SYNTAX_ERROR << std::endl;
+  }
+}
+
 void Editor::DoExecute()
 {
-  ObjeckLang lang(doc.ToString());
+  ObjeckLang lang(doc.ToString(), lib_uses);
   if(lang.Compile()) {
     std::wcout << lang.Execute() << std::endl;
   }
