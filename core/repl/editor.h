@@ -33,7 +33,7 @@
 #define __EDITOR_H__
 
 #include "repl.h"
-#include "lang.h"
+#include "../module/lang.h"
 
 //
 // Line
