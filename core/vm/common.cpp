@@ -3039,8 +3039,8 @@ bool TrapProcessor::StdOutByteAryLen(StackProgram* program, size_t* inst, size_t
   if(array && offset > -1 && offset + num <= (long)array[0]) {
     const char* buffer = (char*)(array + 3);
 #ifdef _MODULE
-    // TODO: FIX ME
-    // PushInt(fwrite(buffer, 1, num, stdout), op_stack, stack_pos);
+    const std::wstring wide_buffer(BytesToUnicode(buffer));
+    program->output_buffer.write(wide_buffer.c_str(), wide_buffer.size());
 #else
     PushInt(fwrite(buffer, 1, num, stdout), op_stack, stack_pos);
 #endif
@@ -3063,11 +3063,11 @@ bool TrapProcessor::StdOutCharAryLen(StackProgram* program, size_t* inst, size_t
 #endif
 
   if(array && offset > -1 && offset + num <= (long)array[0]) {
-    std::string buffer = UnicodeToBytes((wchar_t*)(array + 3) + offset);
 #ifdef _MODULE
-    // TODO: FIX ME
-    // PushInt(fwrite(buffer.c_str(), 1, num, stdout), op_stack, stack_pos);
+    std::wstring wide_buffer((wchar_t*)(array + 3) + offset);
+    program->output_buffer.write(wide_buffer.c_str(), wide_buffer.size());
 #else
+    std::string buffer = UnicodeToBytes((wchar_t*)(array + 3) + offset);
     PushInt(fwrite(buffer.c_str(), 1, num, stdout), op_stack, stack_pos);
 #endif
   }
