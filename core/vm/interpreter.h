@@ -91,10 +91,6 @@ namespace Runtime {
     // halt
     bool halt;
 
-#ifdef _MODULE
-    std::wstringstream output_buffer;
-#endif
-
 #ifdef _DEBUGGER
     Debugger* debugger;
 #endif
@@ -466,7 +462,7 @@ namespace Runtime {
 
 #ifdef _MODULE
     const std::wstringstream& GetOutputBuffer() {
-      return output_buffer;
+      return program->output_buffer;
     }
 #endif
   

@@ -96,6 +96,10 @@ void StackInterpreter::Initialize(StackProgram* p)
 #endif
 #endif
   MemoryManager::Initialize(program);
+
+#ifdef _MODULE
+  TrapProcessor::Initialize(program);
+#endif
 }
 
 /********************************
