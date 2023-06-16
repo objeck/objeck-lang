@@ -86,7 +86,7 @@ bool ObjeckLang::Compile()
   return false;
 }
 
-const std::wstringstream& ObjeckLang::Execute()
+const std::wstring ObjeckLang::Execute()
 {
   Loader loader(code);
   loader.Load();
@@ -110,7 +110,7 @@ const std::wstringstream& ObjeckLang::Execute()
   }
 #endif
 
-  const std::wstringstream& output = intpr->GetOutputBuffer();
+  const std::wstring output = intpr->GetOutputBuffer().str();
 
   // clean up
   delete[] op_stack;
@@ -119,7 +119,6 @@ const std::wstringstream& ObjeckLang::Execute()
   delete intpr;
   intpr = nullptr;
 
-  // TODO:
   return output;
 }
 

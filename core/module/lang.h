@@ -52,7 +52,7 @@ public:
 
   bool Compile();
   std::vector<std::wstring> GetErrors();
-  const std::wstringstream& Execute();
+  const std::wstring Execute();
 };
 
 #endif
