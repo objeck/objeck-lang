@@ -8,7 +8,7 @@ VM_PATH=../vm
 MEM_PATH=../vm/arch
 JIT_PATH=../vm/arch/jit/amd64
 AR=ar
-LIB=objeck.a
+LIB=module.a
 
 $(LIB): $(SRC) $(OBJ_LIBS)
 	$(AR) -cvq $(LIB) $(SRC)
