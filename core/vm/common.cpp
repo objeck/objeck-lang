@@ -1184,6 +1184,10 @@ void APITools_MethodCallId(size_t* op_stack, long *stack_pos, size_t* instance,
 /********************************
  *  TrapManager class
  ********************************/
+#ifdef _MODULE
+StackProgram* TrapProcessor::program;
+#endif
+
 bool TrapProcessor::CreateNewObject(const std::wstring &cls_id, size_t* &op_stack, long* &stack_pos) {
   size_t* obj = MemoryManager::AllocateObject(cls_id.c_str(), op_stack, *stack_pos, false);
   if(obj) {
@@ -2711,7 +2715,12 @@ bool TrapProcessor::StdOutBool(StackProgram* program, size_t* inst, size_t* &op_
 #ifdef _DEBUG
   std::wcout << L"  STD_OUT_BOOL" << std::endl;
 #endif
+  
+#ifdef _MODULE
+  program->output_buffer << ((PopInt(op_stack, stack_pos) == 0) ? L"false" : L"true");
+#else
   std::wcout << ((PopInt(op_stack, stack_pos) == 0) ? L"false" : L"true");
+#endif
 
   return true;
 }
@@ -2721,7 +2730,12 @@ bool TrapProcessor::StdOutByte(StackProgram* program, size_t* inst, size_t* &op_
 #ifdef _DEBUG
   std::wcout << L"  STD_OUT_BYTE" << std::endl;
 #endif
+
+#ifdef _MODULE
+  program->output_buffer << (void*)((unsigned char)PopInt(op_stack, stack_pos));
+#else
   std::wcout << (void*)((unsigned char)PopInt(op_stack, stack_pos));
+#endif
 
   return true;
 }
@@ -2731,7 +2745,12 @@ bool TrapProcessor::StdOutChar(StackProgram* program, size_t* inst, size_t* &op_
 #ifdef _DEBUG
   std::wcout << L"  STD_OUT_CHAR" << std::endl;
 #endif
+
+#ifdef _MODULE
+  program->output_buffer << (wchar_t)PopInt(op_stack, stack_pos);
+#else
   std::wcout << (wchar_t)PopInt(op_stack, stack_pos);
+#endif
 
   return true;
 }
@@ -2741,7 +2760,12 @@ bool TrapProcessor::StdOutInt(StackProgram* program, size_t* inst, size_t* &op_s
 #ifdef _DEBUG
   std::wcout << L"  STD_OUT_INT" << std::endl;
 #endif
+
+#ifdef _MODULE
+  program->output_buffer << (int64_t)PopInt(op_stack, stack_pos);
+#else
   std::wcout << (int64_t)PopInt(op_stack, stack_pos);
+#endif
 
   return true;
 }
@@ -2753,7 +2777,11 @@ bool TrapProcessor::StdOutFloat(StackProgram* program, size_t* inst, size_t*& op
 #endif
 
   const FLOAT_VALUE value = PopFloat(op_stack, stack_pos);
+#ifdef _MODULE
+  program->output_buffer << value;
+#else
   std::wcout << value;
+#endif
 
   return true;
 }
@@ -2769,17 +2797,29 @@ bool TrapProcessor::StdOutIntFrmt(StackProgram* program, size_t* inst, size_t*& 
     // DEC
     // DEFAULT
   case -17:
+#ifdef _MODULE
+    program->output_buffer << std::dec;
+#else
     std::wcout << std::dec;
+#endif
     break;
 
     // HEX
   case -18:
+#ifdef _MODULE
+    program->output_buffer << std::hex;
+#else
     std::wcout << std::hex;
+#endif
     break;
 
     // OCT
   case -16:
+#ifdef _MODULE
+    program->output_buffer << std::oct;
+#else
     std::wcout << std::oct;
+#endif
     break;
 
   default:
@@ -2800,17 +2840,29 @@ bool TrapProcessor::StdOutFloatFrmt(StackProgram* program, size_t* inst, size_t*
     // FIXED
     // DEFAULT
   case -20:
+#ifdef _MODULE
+    program->output_buffer << std::fixed;
+#else
     std::wcout << std::fixed;
+#endif
     break;
 
     // SCIENTIFIC
   case -19:
+#ifdef _MODULE
+    program->output_buffer << std::scientific;
+#else
     std::wcout << std::scientific;
+#endif
     break;
 
     // HEX
   case -18:
+#ifdef _MODULE
+    program->output_buffer << std::hexfloat;
+#else
     std::wcout << std::hexfloat;
+#endif
     break;
 
   default:
@@ -2827,7 +2879,11 @@ bool TrapProcessor::StdOutFloatPer(StackProgram* program, size_t* inst, size_t*&
 #endif
 
   const size_t std_per = PopInt(op_stack, stack_pos);
+#ifdef _MODULE
+  program->output_buffer << std::setprecision(std_per);
+#else
   std::wcout << std::setprecision(std_per);
+#endif
 
   return true;
 }
@@ -2839,7 +2895,11 @@ bool TrapProcessor::StdOutWidth(StackProgram* program, size_t* inst, size_t*& op
 #endif
 
   const size_t std_width = PopInt(op_stack, stack_pos);
+#ifdef _MODULE
+  program->output_buffer << std::setw(std_width);
+#else
   std::wcout << std::setw(std_width);
+#endif
 
   return true;
 }
@@ -2851,7 +2911,11 @@ bool TrapProcessor::StdOutFill(StackProgram* program, size_t* inst, size_t*& op_
 #endif
 
   const wchar_t std_fill = (wchar_t)PopInt(op_stack, stack_pos);
+#ifdef _MODULE
+  program->output_buffer << std::setfill(std_fill);
+#else
   std::wcout << std::setfill(std_fill);
+#endif
 
   return true;
 }
@@ -2865,10 +2929,18 @@ bool TrapProcessor::StdOutString(StackProgram* program, size_t* inst, size_t* &o
 
   if(array) {
     wchar_t* str = (wchar_t*)(array + 3);
+#ifdef _MODULE
+    program->output_buffer << str;
+#else
     std::wcout << str;
+#endif
   }
   else {
+#ifdef _MODULE
+    program->output_buffer << L"Nil";
+#else
     std::wcout << L"Nil";
+#endif
   }
 
   return true;
@@ -2966,7 +3038,12 @@ bool TrapProcessor::StdOutByteAryLen(StackProgram* program, size_t* inst, size_t
 
   if(array && offset > -1 && offset + num <= (long)array[0]) {
     const char* buffer = (char*)(array + 3);
+#ifdef _MODULE
+    // TODO: FIX ME
+    // PushInt(fwrite(buffer, 1, num, stdout), op_stack, stack_pos);
+#else
     PushInt(fwrite(buffer, 1, num, stdout), op_stack, stack_pos);
+#endif
   }
   else {
     PushInt(-1, op_stack, stack_pos);
@@ -2987,7 +3064,12 @@ bool TrapProcessor::StdOutCharAryLen(StackProgram* program, size_t* inst, size_t
 
   if(array && offset > -1 && offset + num <= (long)array[0]) {
     std::string buffer = UnicodeToBytes((wchar_t*)(array + 3) + offset);
+#ifdef _MODULE
+    // TODO: FIX ME
+    // PushInt(fwrite(buffer.c_str(), 1, num, stdout), op_stack, stack_pos);
+#else
     PushInt(fwrite(buffer.c_str(), 1, num, stdout), op_stack, stack_pos);
+#endif
   }
   else {
     PushInt(-1, op_stack, stack_pos);
