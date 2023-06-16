@@ -37,28 +37,8 @@
 #include "../shared/version.h"
 
 //
-// Line
-//
-const std::wstring Line::ToString() {
-  return line;
-}
-
-const Line::Type Line::GetType() {
-  return type;
-}
-
-//
 // Document
 //
-Document::Document()
-{
-}
-
-size_t Document::Size()
-{
-  return lines.size();
-}
-
 size_t Document::Reset()
 {
   lines.clear();
@@ -85,7 +65,12 @@ std::wstring Document::ToString()
 
 void Document::List(size_t cur_pos, bool all)
 {
-  std::wcout << L"[Code]" << std::endl;
+  if(all) {
+    std::wcout << L"[All Code]" << std::endl;
+  }
+  else {
+    std::wcout << L"[Code]" << std::endl;
+  }
 
   auto index = 0;
   for(auto& line : lines) {
@@ -352,7 +337,8 @@ void Editor::DoInsertMultiLine(std::wstring in)
         line_count++;
       }
     }
-  } while(!multi_line_done);
+  } 
+  while(!multi_line_done);
 
   std::wcout << L"=> Inserted " << line_count << " lines." << std::endl;
 }
