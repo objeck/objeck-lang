@@ -115,7 +115,7 @@ bool ContextAnalyzer::CheckErrorsWarnings()
   if(!errors.empty()) {
     std::map<int, std::wstring>::iterator error;
     for(error = errors.begin(); error != errors.end(); ++error) {
-#ifdef _DIAG_LIB
+#if defined(_DIAG_LIB) || defined(_MODULE)
       error_strings.push_back(error->second);
 #else
       std::wcerr << error->second << std::endl;
@@ -147,6 +147,13 @@ bool ContextAnalyzer::CheckErrorsWarnings()
 
   return status;
 }
+
+#ifdef _MODULE
+std::vector<std::wstring> ContextAnalyzer::GetErrors()
+{
+  return error_strings;
+}
+#endif
 
 /****************************
  * Starts the analysis process
@@ -8059,13 +8066,6 @@ Method* MethodCallSelector::GetSelection()
   method_call->GetCallingParameters()->SetExpressions(matches[match_index]->GetCallingParameters());
   return matches[match_index]->GetMethod();
 }
-
-#ifdef _MODULE
-std::vector<std::wstring> ContextAnalyzer::GetErrors()
-{
-  return std::vector<std::wstring>();
-}
-#endif
 
 //
 // START: diagnostics operations
