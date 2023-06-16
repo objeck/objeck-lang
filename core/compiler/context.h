@@ -261,10 +261,12 @@ class ContextAnalyzer {
   bool in_expression;
   int nested_call_depth;
 
-#ifdef _DIAG_LIB
+#if defined(_DIAG_LIB) || defined(_MODULE)
   std::vector<std::wstring> error_strings;
+#ifdef _DIAG_LIB
   std::vector<std::wstring> warning_strings;
   std::vector<Expression*> diagnostic_expressions;
+#endif
 #endif
 
   inline void Debug(const std::wstring &msg, const int line_num, int depth) {

@@ -198,7 +198,7 @@ bool Parser::CheckErrors()
     std::map<int, std::wstring>::iterator error = errors.begin();
     if(errors.size() > error_max) {
       for(size_t i = 0; i < error_max; ++error, ++i) {
-#ifdef _DIAG_LIB
+#if defined(_DIAG_LIB) || defined(_MODULE)
         error_strings.push_back(error->second);
 #else
         std::wcerr << error->second << std::endl;
@@ -207,7 +207,7 @@ bool Parser::CheckErrors()
     }
     else {
       for(; error != errors.end(); ++error) {
-#ifdef _DIAG_LIB
+#if defined(_DIAG_LIB) || defined(_MODULE)
         error_strings.push_back(error->second);
 #else
         std::wcerr << error->second << std::endl;
@@ -228,7 +228,7 @@ bool Parser::CheckErrors()
 #ifdef _MODULE
 std::vector<std::wstring> Parser::GetErrors()
 {
-  return std::vector<std::wstring>();
+  return error_strings;
 }
 #endif
 

@@ -96,7 +96,8 @@ class Parser {
   std::vector<std::pair<std::wstring, std::wstring> > programs;
   unsigned int anonymous_class_id;
   bool expand_generic_def;
-#ifdef _DIAG_LIB
+
+#if defined(_DIAG_LIB) || defined(_MODULE)
   std::vector<std::wstring> error_strings;
 #endif
 
