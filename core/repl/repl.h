@@ -33,7 +33,7 @@
 #define __REPL_H__
 
 #include "editor.h"
-#include "lang.h"
+#include "../module/lang.h"
 
 #define SYNTAX_ERROR "Huh?"
 #define SYNTAX_SUCCESS "Ok."

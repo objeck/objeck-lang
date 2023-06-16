@@ -72,7 +72,7 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <IncludePath>..\..\lib\zlib\win;..\..\lib\openssl\win\include;$(IncludePath)</IncludePath>
-    <LibraryPath>..\..\lib\zlib\win\x64\Release;..\..\lib\openssl\win\x64;$(LibraryPath)</LibraryPath>
+    <LibraryPath>module\x64\Debug\objeck.lib;..\..\lib\zlib\win\x64\Release;..\..\lib\openssl\win\x64;$(LibraryPath)</LibraryPath>
     <TargetName>objeck</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
