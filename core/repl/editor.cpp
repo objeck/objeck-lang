@@ -210,10 +210,23 @@ void Editor::Edit()
     }
     // build and run
     else if(in == L"/x") {
+      ObjeckLang lang(doc.ToString());
+      if(lang.Compile()) {
+        lang.Execute();
+      }
+      else {
+        auto errors = lang.GetErrors();
+        for(auto& error : errors) {
+          std::wcout << error << std::endl;
+        }
+      }
+
+      /*
       auto code = ObjeckLang::Compile(doc.ToString());
       if(code) {
         ObjeckLang::Execute(code);
       }
+      */
     }
     // reset
     else if(in == L"/o") {
