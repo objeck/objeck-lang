@@ -133,11 +133,6 @@ size_t Document::InsertFunction(const std::wstring text)
   return std::wstring::npos;
 }
 
-size_t Document::DeleteFunction(const std::wstring name)
-{
-  return std::wstring::npos;
-}
-
 bool Document::DeleteLine(size_t line_num)
 {
   if(line_num > 0 && line_num < lines.size()) {
@@ -263,35 +258,35 @@ bool Editor::AppendFunction(std::wstring line)
   const bool found_func = line.find(L"function") != std::wstring::npos;
   const bool found_method = line.find(L"method") != std::wstring::npos;
 
-  size_t open_paren_pos = std::wstring::npos;
-  size_t closed_paren_pos = std::wstring::npos;
-  size_t tilde_pos = std::wstring::npos;
-
-  size_t char_pos = 0;
-  for(std::wstring::reverse_iterator iter = line.rbegin(); iter != line.rend(); ++iter, ++char_pos) {
-    switch(*iter) {
-    case L'(':
-      open_paren_pos = char_pos;
-      break;
-
-    case L')':
-      if(closed_paren_pos == std::wstring::npos) {
-        closed_paren_pos = char_pos;
-      }
-      break;
-
-    case L'~':
-      tilde_pos = char_pos;
-      break;
-    }
-  }
+  size_t open_paren_pos = line.find_first_of(L'(');
+  size_t closed_paren_pos = line.find_last_of(L')');
+  size_t tilde_pos = line.find(L'~');
 
   // '(' and ')' are scanned backwards
-  if((found_func || found_method) && open_paren_pos > closed_paren_pos && tilde_pos !=  std::wstring::npos) {
+  if((found_func || found_method) && open_paren_pos < closed_paren_pos && tilde_pos !=  std::wstring::npos) {
+    size_t ws_pos = open_paren_pos;
+
+    // check identifier
+    do {
+      --ws_pos;
+    } 
+    while(ws_pos && std::isspace(line[ws_pos]));
+
+    size_t ident_pos = ws_pos;
+    while(ident_pos && std::isalpha(line[ident_pos])) {
+      --ident_pos;
+    }
+    
+    if(ident_pos == ws_pos) {
+      return false;
+    }
+    // TODO: track functions/methods
+    // const std::wstring ident(line.substr(ident_pos, ws_pos - ident_pos + 1));
+    
+    // clean up and insert function/method
     if(line.back() != L'{') {
       line += L" {";
     }
-
     cur_pos = doc.InsertFunction(line);
     cur_pos += 2;
     doc.InsertLine(cur_pos, L"}", 2);
