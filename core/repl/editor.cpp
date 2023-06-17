@@ -254,7 +254,7 @@ bool Editor::AppendFunction(std::wstring line)
 {
   Trim(line);
 
-  // validate input
+  // check input
   const bool found_func = line.find(L"function") != std::wstring::npos;
   const bool found_method = line.find(L"method") != std::wstring::npos;
 
@@ -262,7 +262,7 @@ bool Editor::AppendFunction(std::wstring line)
   size_t closed_paren_pos = line.find_last_of(L')');
   size_t tilde_pos = line.find(L'~');
 
-  // '(' and ')' are scanned backwards
+  // validate input
   if((found_func || found_method) && open_paren_pos < closed_paren_pos && tilde_pos !=  std::wstring::npos) {
     size_t ws_pos = open_paren_pos;
 
@@ -277,13 +277,14 @@ bool Editor::AppendFunction(std::wstring line)
       --ident_pos;
     }
     
+    // validate identifier
     if(ident_pos == ws_pos) {
       return false;
     }
     // TODO: track functions/methods
     // const std::wstring ident(line.substr(ident_pos, ws_pos - ident_pos + 1));
     
-    // clean up and insert function/method
+    // good enough, clean up and insert function/method
     if(line.back() != L'{') {
       line += L" {";
     }
