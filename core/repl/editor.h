@@ -111,7 +111,6 @@ class Document {
    bool DeleteLine(size_t line_num);
 
    size_t InsertFunction(const std::wstring line);
-   size_t DeleteFunction(const std::wstring line);
 };
 
 //
