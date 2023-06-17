@@ -163,7 +163,7 @@ Editor::Editor()
 
 void Editor::Edit()
 {
-  std::wcout << L"Objeck REPL (" << VERSION_STRING << L")" << std::endl << L"---" << std::endl;
+  std::wcout << L"Objeck REPL v" << VERSION_STRING << L" ('h' for help)" << std::endl << L"---" << std::endl;
 
   std::wstring in; bool done = false;
   do {
@@ -314,6 +314,8 @@ void Editor::DoHelp()
   std::wcout << "  d: delete line" << std::endl;
   std::wcout << "  u: edit library use statements" << std::endl;
   std::wcout << "  x: execute program" << std::endl;
+  std::wcout << "---" << std::endl;
+  std::wcout << "Online guide at https://www.objeck/repl.html" << std::endl;
 }
 
 void Editor::DoReset()
