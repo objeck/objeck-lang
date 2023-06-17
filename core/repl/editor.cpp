@@ -183,7 +183,7 @@ void Editor::Edit()
     else if(in == L"h" || in == L"help") {
       DoHelp();
     }
-    else {
+    else if(in.size() == 1) {
       switch(in.front()) {
         // list
       case L'l':
@@ -245,6 +245,9 @@ void Editor::Edit()
         std::wcout << SYNTAX_ERROR << std::endl;
         break;
       }
+    }
+    else {
+      std::wcout << SYNTAX_ERROR << std::endl;
     }
   }
   while(!done);
@@ -342,7 +345,7 @@ void Editor::DoInsertMultiLine(std::wstring in)
   do {
     std::wcout << L"Insert '/m' to exit] ";
     std::getline(std::wcin, in);
-    if(in == L"m") {
+    if(in == L"/m") {
       multi_line_done = true;
     }
     else {
@@ -361,12 +364,17 @@ void Editor::DoGotoLine(std::wstring& in)
   std::wcout << L"Goto line? ";
   std::getline(std::wcin, in);
 
-  const size_t line_pos = std::stoi(in);
-  if(line_pos - 1 < doc.Size()) {
-    cur_pos = line_pos;
-    std::wcout << "=> Cursor at line " << in << L'.' << std::endl;
+  try {
+    const size_t line_pos = std::stoi(in);
+    if(line_pos - 1 < doc.Size()) {
+      cur_pos = line_pos;
+      std::wcout << "=> Cursor at line " << in << L'.' << std::endl;
+    }
+    else {
+      std::wcout << SYNTAX_ERROR << std::endl;
+    }
   }
-  else {
+  catch(std::invalid_argument &e) {
     std::wcout << SYNTAX_ERROR << std::endl;
   }
 }
@@ -376,17 +384,22 @@ void Editor::DoReplaceLine(std::wstring& in)
   std::wcout << L"Replace line? ";
   std::getline(std::wcin, in);
 
-  const size_t line_pos = std::stoi(in);
-  if(doc.DeleteLine(line_pos - 1)) {
-    cur_pos = line_pos;
-    std::wcout << L"Insert] " << line_pos << L"] ";
-    std::getline(std::wcin, in);
-    if(AppendLine(in, 4)) {
-      std::wcout << "=> Replaced line " << line_pos << L'.' << std::endl;
+  try {
+    const size_t line_pos = std::stoi(in);
+    if(doc.DeleteLine(line_pos - 1)) {
+      cur_pos = line_pos;
+      std::wcout << L"Insert] " << line_pos << L"] ";
+      std::getline(std::wcin, in);
+      if(AppendLine(in, 4)) {
+	std::wcout << "=> Replaced line " << line_pos << L'.' << std::endl;
+      }
+    }
+    else {
+      std::wcout << "=> Line " << in << L" is read-only." << std::endl;
     }
   }
-  else {
-    std::wcout << "=> Line " << in << L" is read-only." << std::endl;
+  catch(std::invalid_argument &e) {
+    std::wcout << SYNTAX_ERROR << std::endl;
   }
 }
 
@@ -394,13 +407,18 @@ void Editor::DoDeleteLine(std::wstring& in)
 {
   std::wcout << L"Delete line? ";
   std::getline(std::wcin, in);
-
-  const int line_pos = std::stoi(in);
-  if(doc.DeleteLine(line_pos - 1)) {
-    std::wcout << L"=> Removed line " << line_pos << L'.' << std::endl;
+  
+  try {
+    const int line_pos = std::stoi(in);
+    if(doc.DeleteLine(line_pos - 1)) {
+      std::wcout << L"=> Removed line " << line_pos << L'.' << std::endl;
+    }
+    else {
+      std::wcout << "=> Line " << in << L" is read-only." << std::endl;
+    }
   }
-  else {
-    std::wcout << "=> Line " << in << L" is read-only." << std::endl;
+  catch(std::invalid_argument &e) {
+    std::wcout << SYNTAX_ERROR << std::endl;
   }
 }
 
@@ -435,7 +453,7 @@ void Editor::DoExecute()
 {
   ObjeckLang lang(doc.ToString(), lib_uses);
   if(lang.Compile()) {
-    std::wcout << lang.Execute() << std::endl;
+    std::wcout << lang.Execute();
   }
   else {
     auto errors = lang.GetErrors();
