@@ -35,6 +35,6 @@
 #include "editor.h"
 #include "../module/lang.h"
 
-#define SYNTAX_ERROR "Sorry ... I cannot do that."
+#define SYNTAX_ERROR "I cannot do that."
 
 #endif
