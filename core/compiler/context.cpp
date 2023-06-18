@@ -129,6 +129,7 @@ bool ContextAnalyzer::CheckErrorsWarnings()
     status = false;
   }
 
+#ifndef _MODULE
   // check and process warnings
   if(!warnings.empty()) {
     std::map<int, std::wstring>::iterator warning;
@@ -144,6 +145,7 @@ bool ContextAnalyzer::CheckErrorsWarnings()
     program->SetWarningStrings(warning_strings);
 #endif
   }
+#endif
 
   return status;
 }
