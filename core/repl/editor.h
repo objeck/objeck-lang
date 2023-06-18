@@ -107,7 +107,6 @@ class Document {
    void List(size_t cur_pos, bool all);
    bool InsertLine(size_t line_num, const std::wstring line, int padding, Line::Type = Line::Type::RW_LINE);
    bool DeleteLine(size_t line_num);
-   size_t InsertFunction(const std::wstring line);
 #ifdef _DEBUG
    void Debug(size_t cur_pos);
 #endif
@@ -137,12 +136,9 @@ public:
   void DoUseLibraries(std::wstring in);
   void DoInsertLine(std::wstring in);
   void DoInsertMultiLine(std::wstring in);
-  void DoDeleteLine(std::wstring& in);
-  void DoInsertFunction(std::wstring in);
+  bool DoDeleteLine(std::wstring& in);
+  bool DoReplaceLine(std::wstring& in);
   void DoGotoLine(std::wstring& in);
-  void DoReplaceLine(std::wstring& in);
-
-  bool AppendFunction(std::wstring line);
 
   // utility functions
   bool AppendLine(std::wstring line, const int padding);
@@ -159,9 +155,10 @@ public:
     }).base(), str.end());
   }
 
-  static inline void Trim(std::wstring& str) {
+  static inline std::wstring& Trim(std::wstring& str) {
     RightTrim(str);
     LeftTrim(str);
+    return str;
   }
 };
 
