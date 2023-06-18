@@ -1,23 +1,29 @@
-ARGS=-O3 -Wall -Wno-unused-function -D_X64 -D_MSYS2_CLANG -std=c++17 -Wno-sequence-point
+ARGS=-O3 -Wall -std=c++17 -D_X64 -D_OBJECK_NATIVE_LIB_PATH -D_MODULE -Wint-to-pointer-cast -Wno-unused-variable -Wno-unused-function -Wno-int-to-pointer-cast
 
 CC=clang++
-SRC=types.o tree.o scanner.o parser.o linker.o context.o intermediate.o optimization.o emit.o compiler.o posix_main.o
-OBJ_LIBS=logger.a objeck.res
-LOGGER_PATH=../shared
-EXE=obc
+SRC=lang.o
+OBJ_LIBS=../compiler/compiler.a ../vm/vm.a
+COMPILER_PATH=../compiler
+VM_PATH=../vm
+MEM_PATH=../vm/arch
+JIT_PATH=../vm/arch/jit/amd64
+AR=ar
+LIB=module.a
 
-$(EXE): $(SRC) $(OBJ_LIBS) 
-	$(CC) -m64 -o $(EXE) $(SRC) $(OBJ_LIBS) -lz
+$(LIB): $(SRC) $(OBJ_LIBS)
+	$(AR) -cvq $(LIB) $(SRC)
 
+../compiler/compiler.a:
+	cd $(COMPILER_PATH); make -f make/Makefile.msys2-ucrt.amd64.mod
+
+../vm/vm.a:
+	cd $(VM_PATH); make -f make/Makefile.msys2-ucrt.amd64.mod
+	
 %.o: %.cpp
 	$(CC) -m64 $(ARGS) -c $< 
-	
-logger.a:
-	cd $(LOGGER_PATH); make -f make/Makefile.msys2-ucrt.amd64
-
-objeck.res:
-	windres vs/objeck.rc -O coff -o objeck.res -D_MSYS2_CLANG
 
 clean:
-	cd $(LOGGER_PATH); make -f make/Makefile.msys2-ucrt.amd64 clean
-	rm -f $(EXE) *.o *.res *~
+	cd $(COMPILER_PATH); make -f make/Makefile.msys2-ucrt.amd64.mod clean
+	cd $(VM_PATH); make -f make/Makefile.msys2-ucrt.amd64.mod clean
+	rm -f $(LIB) *.o *~
+
