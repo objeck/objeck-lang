@@ -97,7 +97,72 @@ void Document::List(size_t cur_pos, bool all)
   }
 }
 
-bool Document::InsertLine(size_t line_num, const std::wstring line, int padding)
+#ifdef _DEBUG
+void Document::Debug(size_t cur_pos)
+{
+  std::wcout << L"[DEBUG]\n---" << std::endl;
+
+  size_t index = 0;
+  for(auto& line : lines) {
+    ++index;
+
+    switch(line.GetType()) {
+    case Line::Type::RO_LINE:
+      std::wcout << L"[RO_LINE]       ";
+      break;
+
+    case Line::Type::RO_CLS_START_LINE:
+      std::wcout << L"[RO_CLS_START]  ";
+      break;
+
+    case Line::Type::RO_CLS_END_LINE:
+      std::wcout << L"[RO_CLS_END]    ";
+      break;
+
+    case Line::Type::RO_FUNC_START_LINE:
+      std::wcout << L"[RO_FUNC_START] ";
+      break;
+
+    case Line::Type::RO_FUNC_END_LINE:
+      std::wcout << L"[RO_FUNC_END]   ";
+      break;
+
+    case Line::Type::RW_LINE:
+      std::wcout << L"[RW_LINE]       ";
+      break;
+
+    case Line::Type::RW_CLS_START_LINE:
+      std::wcout << L"[RW_CLS_START]\t";
+      break;
+
+    case Line::Type::RW_CLS_END_LINE:
+      std::wcout << L"[RW_CLS_END]    ";
+      break;
+
+    case Line::Type::RW_FUNC_START_LINE:
+      std::wcout << L"[RW_FUNC_START] ";
+      break;
+
+    case Line::Type::RW_FUNC_END_LINE:
+      std::wcout << L"[RW_FUNC_END]   ";
+      break;
+    }
+
+    if(index == cur_pos) {
+      std::wcout << "=> ";
+    }
+    else {
+      std::wcout << "   ";
+    }
+
+    std::wcout << index;
+    std::wcout << L": ";
+    std::wcout << line.ToString() << std::endl;
+  }
+}
+#endif
+
+bool Document::InsertLine(size_t line_num, const std::wstring line, int padding, Line::Type type)
 {
   if(line_num > 0 && line_num < lines.size()) {
     size_t cur_num = 0;
@@ -112,7 +177,7 @@ bool Document::InsertLine(size_t line_num, const std::wstring line, int padding)
       padding_str += L' ';
     }
 
-    lines.insert(iter, Line(padding_str + line, Line::Type::RW_LINE));
+    lines.insert(iter, Line(padding_str + line, type));
     return true;
   }
 
@@ -124,7 +189,7 @@ size_t Document::InsertFunction(const std::wstring text)
   size_t index = 0;
   for(auto& line : lines) {
     if(line.GetType() == Line::Type::RO_FUNC_END_LINE) {
-      InsertLine(index + 1, text, 2);
+      InsertLine(index + 1, text, 2, Line::Type::RW_FUNC_START_LINE);
       return index;
     }
     ++index;
@@ -163,7 +228,7 @@ Editor::Editor()
 
 void Editor::Edit()
 {
-  std::wcout << L"Objeck REPL v" << VERSION_STRING << L" ('h' for help)" << std::endl << L"---" << std::endl;
+  std::wcout << L"Objeck REPL (" << VERSION_STRING << L")\n[type 'h' for help]\n---" << std::endl;
 
   std::wstring in; bool done = false;
   do {
@@ -235,6 +300,13 @@ void Editor::Edit()
         DoReset();
         break;
 
+#ifdef _DEBUG
+        // debug
+      case L'`':
+        doc.Debug(cur_pos);
+        break;
+#endif
+
         // other
       default:
         std::wcout << SYNTAX_ERROR << std::endl;
@@ -290,7 +362,7 @@ bool Editor::AppendFunction(std::wstring line)
     }
     cur_pos = doc.InsertFunction(line);
     cur_pos += 2;
-    doc.InsertLine(cur_pos, L"}", 2);
+    doc.InsertLine(cur_pos, L"}", 2, Line::Type::RW_FUNC_END_LINE);
     cur_pos++;
     return true;
   }

@@ -52,7 +52,7 @@ public:
     RW_CLS_START_LINE,
     RW_CLS_END_LINE,
     RW_FUNC_START_LINE,
-    RW_FUNC_END_LINE,
+    RW_FUNC_END_LINE
   };
 
 private:
@@ -104,13 +104,13 @@ class Document {
 
    size_t Reset();
    std::wstring ToString();
-
    void List(size_t cur_pos, bool all);
-
-   bool InsertLine(size_t line_num, const std::wstring line, int padding);
+   bool InsertLine(size_t line_num, const std::wstring line, int padding, Line::Type = Line::Type::RW_LINE);
    bool DeleteLine(size_t line_num);
-
    size_t InsertFunction(const std::wstring line);
+#ifdef _DEBUG
+   void Debug(size_t cur_pos);
+#endif
 };
 
 //
