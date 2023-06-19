@@ -36,6 +36,13 @@ cp make/Makefile.msys2-clang.amd64 Makefile
 make clean; make -j3
 cp obd ../release/deploy-msys2-clang/bin
 
+# build repl
+cd ../repl
+cp make/Makefile.msys2-clang.amd64 Makefile
+
+make clean; make -j3
+cp obi ../release/deploy-msys2-clang/bin
+
 # build libraries
 cd ../lib/odbc
 ./build_msys2-clang.sh odbc
