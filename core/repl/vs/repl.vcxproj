@@ -148,6 +148,10 @@
     <ClInclude Include="..\..\shared\version.h" />
     <ClInclude Include="..\editor.h" />
     <ClInclude Include="..\repl.h" />
+    <ClInclude Include="resource.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="objeck.rc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
