@@ -6,7 +6,7 @@ LOGGER_PATH=../shared
 AR=ar
 LIB=compiler.a
 
-$(LIB): $(SRC)
+$(LIB): $(SRC) $(OBJ_LIBS)
 	$(AR) -cvq $(LIB) $(SRC)
 	cp $(LIB) ../module
 
