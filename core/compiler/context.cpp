@@ -1244,7 +1244,8 @@ bool ContextAnalyzer::HasInferredLambdaTypes(const std::wstring lambda_name)
 void ContextAnalyzer::CheckLambdaInferredTypes(MethodCall* method_call, int depth)
 {
   ExpressionList* call_params = method_call->GetCallingParameters();
-  if(call_params->GetExpressions().size() == 1 && call_params->GetExpressions().at(0)->GetExpressionType() == LAMBDA_EXPR) {
+  const std::vector<Expression*> expressions = call_params->GetExpressions();
+  if(expressions.size() == 1 && expressions.at(0)->GetExpressionType() == LAMBDA_EXPR) {
     lambda_inferred.second = method_call;
   }
   else {
