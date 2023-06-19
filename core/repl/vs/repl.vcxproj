@@ -72,11 +72,14 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <IncludePath>..\..\lib\zlib\win;..\..\lib\openssl\win\include;$(IncludePath)</IncludePath>
-    <LibraryPath>..\..\repl\x64\Debug\;..\..\lib\zlib\win\x64;..\..\lib\openssl\win\x64\;$(LibraryPath)</LibraryPath>
+    <LibraryPath>..\..\release\x64\Debug\;..\..\repl\x64\Debug\;..\..\lib\zlib\win\x64;..\..\lib\openssl\win\x64\;$(LibraryPath)</LibraryPath>
+    <TargetName>obi</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <IncludePath>..\..\lib\zlib\win;..\..\lib\openssl\win\include;$(IncludePath)</IncludePath>
-    <LibraryPath>..\..\repl\x64\Release\;..\..\lib\zlib\win\x64;..\..\lib\openssl\win\x64\;$(LibraryPath)</LibraryPath>
+    <LibraryPath>..\..\release\x64\Release\;..\..\repl\x64\Release\;..\..\lib\zlib\win\x64;..\..\lib\openssl\win\x64\;$(LibraryPath)</LibraryPath>
+    <TargetName>obi</TargetName>
+    <OutDir>..\$(Configuration)\win64\</OutDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
