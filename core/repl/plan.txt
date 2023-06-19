@@ -1,3 +1,4 @@
 TODO
 * Add icon resource file for VS and MSYS2
+* Create Linux ARM64 build (module and REPL)
 * Create macOS build (module and REPL)
