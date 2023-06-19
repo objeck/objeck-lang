@@ -1,5 +1,5 @@
 CC=g++
-ARGS=-O3 -Wall -std=c++17 -D_MODULE -D_ARM64 -Wno-maybe-uninitialized -Wno-unused-function
+ARGS=-O3 -Wall -std=c++17 -D_MODULE -D_ARM64 -Wno-unused-function
 SRC=types.o tree.o scanner.o parser.o linker.o context.o intermediate.o optimization.o emit.o compiler.o 
 LOGGER_PATH=../shared
 OBJ_LIBS=logger.a
