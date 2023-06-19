@@ -1,12 +1,12 @@
 CC=g++
-ARGS=-O3 -Wall -std=c++17 -D_ARM64 -Wno-maybe-uninitialized -Wno-unused-function
+ARGS=-O3 -Wall -std=c++17 -D_MODULE -D_ARM64 -Wno-maybe-uninitialized -Wno-unused-function
 SRC=types.o tree.o scanner.o parser.o linker.o context.o intermediate.o optimization.o emit.o compiler.o 
-OBJ_LIBS=logger.a
 LOGGER_PATH=../shared
+OBJ_LIBS=logger.a
 AR=ar
 LIB=compiler.a
 
-$(LIB): $(SRC)
+$(LIB): $(SRC) $(OBJ_LIBS)
 	$(AR) -cvq $(LIB) $(SRC)
 	cp $(LIB) ../module
 
