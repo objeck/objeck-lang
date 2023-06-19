@@ -56,7 +56,7 @@ fi
 make clean; make -j3
 cp obd ../release/deploy/bin
 
-# build debugger
+# build repl
 cd ../repl
 if [ ! -z "$1" ] && [ "$1" = "rpi" ]; then
 	cp make/Makefile.arm64 Makefile
