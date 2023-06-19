@@ -1,7 +1,7 @@
 CC=clang++
 ARGS=-O3 -Wall -std=c++17 -D_MSYS2 -D_MSYS2_CLANG -D_X64 -D_OBJECK_NATIVE_LIB_PATH -Wno-unused-function 
 SRC=editor.o repl.o
-OBJ_LIBS=../module/module.a
+OBJ_LIBS=../module/module.a objeck.res
 MODULE_PATH=../module
 EXE=obi
 
@@ -13,6 +13,9 @@ $(EXE): $(SRC) $(OBJ_LIBS)
 
 ../module/module.a:
 	cd $(MODULE_PATH); make -f make/Makefile.msys2-clang.amd64
+
+objeck.res:
+	windres vs/objeck.rc -O coff -o objeck.res -D_MSYS2_CLANG
 
 clean:
 	cd $(MODULE_PATH); make -f make/Makefile.msys2-clang.amd64 clean
