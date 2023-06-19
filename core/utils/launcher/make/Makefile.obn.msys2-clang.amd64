@@ -1,6 +1,6 @@
 ARGS=-O3 -D_MSYS2 -Wall -D_MSYS2 -Wno-unused-function -std=c++17
 
-CC=g++
+CC=clang++
 SRC=launcher.o
 EXE=obn
 
