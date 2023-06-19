@@ -19,6 +19,8 @@ copy ..\compiler\Release\win64\*.exe deploy64\bin
 mt.exe -manifest ..\vm\vs\manifest.xml -outputresource:..\vm\Release\win64\obr.exe;1
 copy ..\vm\Release\win64\*.exe deploy64\bin
 copy ..\debugger\Release\win64\*.exe deploy64\bin
+copy ..\repl\Release\win64\*.exe deploy64\bin
+mt.exe -manifest ..\vm\vs\manifest.xml -outputresource:..\repl\Release\win64\obi.exe;1
 
 REM native launcher
 cd ..\utils\launcher
