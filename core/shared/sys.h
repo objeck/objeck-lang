@@ -708,14 +708,13 @@ static std::wstring GetLibraryPath() {
 #ifdef _WIN32
   size_t value_len;
   char path_str[LARGE_BUFFER_MAX];
-  getenv_s(&value_len, path_str, LARGE_BUFFER_MAX, "OBJECK_LIB_PATH");
+  if(getenv_s(&value_len, path_str, LARGE_BUFFER_MAX, "OBJECK_LIB_PATH")) {
 #else
   const char* path_str = getenv("OBJECK_LIB_PATH");
-#endif
-
-  if(path_str && strlen(path_str) > 0) {
-    const std::string foo(path_str);
-    path = BytesToUnicode(foo);
+  if(path_str) {
+#endif    
+    const std::string temp_str(path_str);
+    path = BytesToUnicode(temp_str);
 #ifdef _WIN32
     if(path[path.size() - 1] != '\\') {
       path += L"\\";

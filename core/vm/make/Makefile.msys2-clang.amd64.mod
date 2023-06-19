@@ -2,9 +2,10 @@ ARGS=-O3 -Wall -D_MODULE -D_X64 -D_OBJECK_NATIVE_LIB_PATH -D_MSYS2 -D_MSYS2_CLAN
 
 CC=clang++
 SRC=common.o interpreter.o loader.o vm.o posix_main.o 
-OBJ_LIBS=jit_amd_lp64.a memory.a
+OBJ_LIBS=win32.a jit_amd_lp64.a memory.a
 MEM_PATH=arch
 JIT_PATH=arch/jit/amd64
+WIN32_PATH=arch/win32
 AR=ar
 LIB=vm.a
 
@@ -17,6 +18,9 @@ memory.a:
 	
 jit_amd_lp64.a:
 	cd $(JIT_PATH); make -f make/Makefile.msys2-clang.amd64
+
+win32.a:
+	cd $(WIN32_PATH); make -f make/Makefile.msys2-clang.amd64
 	
 %.o: %.cpp
 	$(CC) -m64 $(ARGS) -c $< 
@@ -24,4 +28,5 @@ jit_amd_lp64.a:
 clean:
 	cd $(MEM_PATH); make clean -f make/Makefile.msys2-clang.amd64
 	cd $(JIT_PATH); make clean -f make/Makefile.msys2-clang.amd64
+	cd $(WIN32_PATH); make clean -f make/Makefile.msys2-clang.amd64
 	rm -f $(LIB) *.o *~
