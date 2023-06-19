@@ -3377,7 +3377,7 @@ bool TrapProcessor::SysCmdOut(StackProgram* program, size_t* inst, size_t*& op_s
   }
 
   // restore existing environment variables 
-  std::map<const std::string, std::string>::iterator iter;
+  std::map<std::string, std::string>::iterator iter;
   for(iter = prev_env_variables.begin(); iter != prev_env_variables.end(); ++iter) {
 #ifdef _WIN32
     _putenv_s(iter->first.c_str(), iter->second.c_str());
