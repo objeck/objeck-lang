@@ -56,6 +56,18 @@ fi
 make clean; make -j3
 cp obd ../release/deploy/bin
 
+# build debugger
+cd ../repl
+if [ ! -z "$1" ] && [ "$1" = "rpi" ]; then
+	cp make/Makefile.arm64 Makefile
+elif [ ! -z "$1" ] && [ "$1" = "macos" ]; then
+	cp make/Makefile.macos.amd64 Makefile
+else
+	cp make/Makefile.amd64 Makefile
+fi
+make clean; make -j3
+cp obi ../release/deploy/bin
+
 # build libraries
 cd ../lib/odbc
 if [ ! -z "$1" ] && [ "$1" = "macos" ]; then
