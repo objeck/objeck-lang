@@ -441,7 +441,11 @@ void Editor::DoUseLibraries(std::wstring in)
   std::wcout << L"New library list] ";
   std::getline(std::wcin, in);
 
-  if(in.empty()) {
+  in.erase(std::remove_if(in.begin(), in.end(), isspace), in.end());
+  if(!in.empty()) {
+    if(in.back() == L',') {
+      in.pop_back();
+    }
     lib_uses = in;
   }
   else {
