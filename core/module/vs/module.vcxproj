@@ -80,6 +80,9 @@
     <LibraryPath>module\x64\Release\objeck.lib;..\..\lib\zlib\win\x64\Release;..\..\lib\openssl\win\x64;$(LibraryPath)</LibraryPath>
     <TargetName>objeck</TargetName>
   </PropertyGroup>
+  <PropertyGroup Label="Vcpkg">
+    <VcpkgEnabled>false</VcpkgEnabled>
+  </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
