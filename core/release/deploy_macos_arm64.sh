@@ -33,7 +33,7 @@ cd ../module
 xcodebuild -project xcode/module.xcodeproj clean build
 
 # build repl
-cd ../debugger
+cd ../repl
 xcodebuild -project xcode/repl.xcodeproj clean build
 cp xcode/build/Release/obi ../release/deploy/bin
 
