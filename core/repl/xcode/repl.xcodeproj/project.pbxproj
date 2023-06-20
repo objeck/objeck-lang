@@ -28,7 +28,7 @@
 		ED20957A2A41DC1C0084045A /* editor.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = editor.h; path = ../../editor.h; sourceTree = "<group>"; };
 		ED20957B2A41DC1C0084045A /* editor.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = editor.cpp; path = ../../editor.cpp; sourceTree = "<group>"; };
 		ED20957C2A41DC1C0084045A /* repl.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = repl.cpp; path = ../../repl.cpp; sourceTree = "<group>"; };
-		EDF1142C2A41DBE400E5C2C3 /* repl */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = repl; sourceTree = BUILT_PRODUCTS_DIR; };
+		EDF1142C2A41DBE400E5C2C3 /* obi */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = obi; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -53,7 +53,7 @@
 		EDF1142D2A41DBE400E5C2C3 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				EDF1142C2A41DBE400E5C2C3 /* repl */,
+				EDF1142C2A41DBE400E5C2C3 /* obi */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -86,7 +86,7 @@
 			);
 			name = repl;
 			productName = repl;
-			productReference = EDF1142C2A41DBE400E5C2C3 /* repl */;
+			productReference = EDF1142C2A41DBE400E5C2C3 /* obi */;
 			productType = "com.apple.product-type.tool";
 		};
 /* End PBXNativeTarget section */
@@ -256,7 +256,8 @@
 					"-Wl,../../lib/openssl/macos/arm64/libcrypto.a",
 					"-lz",
 				);
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_MODULE_NAME = obi;
+				PRODUCT_NAME = obi;
 			};
 			name = Debug;
 		};
@@ -273,7 +274,8 @@
 					"-Wl,../../lib/openssl/macos/arm64/libcrypto.a",
 					"-lz",
 				);
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_MODULE_NAME = obi;
+				PRODUCT_NAME = obi;
 			};
 			name = Release;
 		};
