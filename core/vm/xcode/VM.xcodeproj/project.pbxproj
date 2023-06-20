@@ -317,13 +317,14 @@
 				GCC_WARN_ABOUT_DEPRECATED_FUNCTIONS = NO;
 				GCC_WARN_UNINITIALIZED_AUTOS = YES;
 				GCC_WARN_UNUSED_FUNCTION = NO;
+				HEADER_SEARCH_PATHS = ../../lib/openssl/macos/include;
 				"HEADER_SEARCH_PATHS[arch=*]" = ../../lib/openssl/macos/include;
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(SDKROOT)/usr/lib/system",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 11.0;
-				"OTHER_LDFLAGS[arch=*]" = (
+				OTHER_LDFLAGS = (
 					"-Wl,../../lib/openssl/macos/arm64/libssl.a",
 					"-Wl,../../lib/openssl/macos/arm64/libcrypto.a",
 					"-lz",
@@ -359,6 +360,7 @@
 				GCC_WARN_ABOUT_DEPRECATED_FUNCTIONS = NO;
 				GCC_WARN_UNINITIALIZED_AUTOS = YES;
 				GCC_WARN_UNUSED_FUNCTION = NO;
+				HEADER_SEARCH_PATHS = ../../lib/openssl/macos/include;
 				"HEADER_SEARCH_PATHS[arch=*]" = ../../lib/openssl/macos/include;
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
@@ -366,7 +368,7 @@
 				);
 				MACOSX_DEPLOYMENT_TARGET = 11.0;
 				ONLY_ACTIVE_ARCH = YES;
-				"OTHER_LDFLAGS[arch=*]" = (
+				OTHER_LDFLAGS = (
 					"-Wl,../../lib/openssl/macos/arm64/libssl.a",
 					"-Wl,../../lib/openssl/macos/arm64/libcrypto.a",
 					"-lz",
