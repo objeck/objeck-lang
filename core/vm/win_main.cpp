@@ -51,7 +51,7 @@ int main(const int argc, const char* argv[])
   if(argc > 1) {
     size_t value_len;
     char value[LARGE_BUFFER_MAX];
-    if(getenv_s(&value_len, value, LARGE_BUFFER_MAX, "OBJECK_STDIO")) {
+    if(!getenv_s(&value_len, value, LARGE_BUFFER_MAX, "OBJECK_STDIO") && strlen(value) > 0) {
       // set as binary
       if(!strcmp("binary", value)) {
 #ifndef _MSYS2_CLANG
