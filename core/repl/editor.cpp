@@ -317,7 +317,7 @@ void Editor::DoHelp()
   std::wcout << "  /u: edit library use statements" << std::endl;
   std::wcout << "  /x: execute program" << std::endl;
   std::wcout << "---" << std::endl;
-  std::wcout << "Online guide at https://www.objeck/repl.html" << std::endl;
+  std::wcout << "Online guide: https://objeck.org/getting_started.html" << std::endl;
 }
 
 void Editor::DoReset()
