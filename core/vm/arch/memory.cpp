@@ -597,7 +597,7 @@ void MemoryManager::CollectAllMemory(size_t* op_stack, long stack_pos)
   
   pthread_t collect_thread;
   if(pthread_create(&collect_thread, &attrs, CollectMemory, (void*)info)) {
-    std::cerr << L"Unable to create garbage collection thread!" << std::endl;
+    std::wcerr << L"Unable to create garbage collection thread!" << std::endl;
     exit(-1);
   }
 #endif
@@ -615,7 +615,7 @@ void MemoryManager::CollectAllMemory(size_t* op_stack, long stack_pos)
 #else
   void* status;
   if(pthread_join(collect_thread, &status)) {
-    std::cerr << L"Unable to join garbage collection threads!" << std::endl;
+    std::wcerr << L"Unable to join garbage collection threads!" << std::endl;
     exit(-1);
   }
   pthread_attr_destroy(&attrs);
@@ -696,19 +696,19 @@ void* MemoryManager::CollectMemory(void* arg)
   
   pthread_t static_thread;
   if(pthread_create(&static_thread, &attrs, CheckStatic, (void*)info)) {
-    std::cerr << L"Unable to create garbage collection thread!" << std::endl;
+    std::wcerr << L"Unable to create garbage collection thread!" << std::endl;
     exit(-1);
   }
 
   pthread_t stack_thread;
   if(pthread_create(&stack_thread, &attrs, CheckStack, (void*)info)) {
-    std::cerr << L"Unable to create garbage collection thread!" << std::endl;
+    std::wcerr << L"Unable to create garbage collection thread!" << std::endl;
     exit(-1);
   }
 
   pthread_t pda_thread;
   if(pthread_create(&pda_thread, &attrs, CheckPdaRoots, nullptr)) {
-    std::cerr << L"Unable to create garbage collection thread!" << std::endl;
+    std::wcerr << L"Unable to create garbage collection thread!" << std::endl;
     exit(-1);
   }
   
@@ -718,17 +718,17 @@ void* MemoryManager::CollectMemory(void* arg)
   void *status;
 
   if(pthread_join(static_thread, &status)) {
-    std::cerr << L"Unable to join garbage collection threads!" << std::endl;
+    std::wcerr << L"Unable to join garbage collection threads!" << std::endl;
     exit(-1);
   }
   
   if(pthread_join(stack_thread, &status)) {
-    std::cerr << L"Unable to join garbage collection threads!" << std::endl;
+    std::wcerr << L"Unable to join garbage collection threads!" << std::endl;
     exit(-1);
   }
 
   if(pthread_join(pda_thread, &status)) {
-    std::cerr << L"Unable to join garbage collection threads!" << std::endl;
+    std::wcerr << L"Unable to join garbage collection threads!" << std::endl;
     exit(-1);
   }
 #endif  
@@ -1289,7 +1289,7 @@ void* MemoryManager::CheckPdaRoots(void* arg)
   
   pthread_t jit_thread;
   if(pthread_create(&jit_thread, &attrs, CheckJitRoots, nullptr)) {
-    std::cerr << L"Unable to create garbage collection thread!" << std::endl;
+    std::wcerr << L"Unable to create garbage collection thread!" << std::endl;
     exit(-1);
   }
 #endif
@@ -1333,7 +1333,7 @@ void* MemoryManager::CheckPdaRoots(void* arg)
 #else
   void *status;
   if(pthread_join(jit_thread, &status)) {
-    std::cerr << L"Unable to join garbage collection threads!" << std::endl;
+    std::wcerr << L"Unable to join garbage collection threads!" << std::endl;
     exit(-1);
   }
   pthread_exit(nullptr);
