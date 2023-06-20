@@ -28,6 +28,15 @@ cd ../debugger
 xcodebuild -project xcode/Debugger.xcodeproj clean build
 cp xcode/build/Release/obd ../release/deploy/bin
 
+# build module library
+cd ../module
+xcodebuild -project xcode/module.xcodeproj clean build
+
+# build repl
+cd ../debugger
+xcodebuild -project xcode/repl.xcodeproj clean build
+cp xcode/build/Release/obi ../release/deploy/bin
+
 # build native launcher
 cd ../utils/launcher
 xcodebuild -project "xcode/Native Launcher.xcodeproj" -target obb clean build

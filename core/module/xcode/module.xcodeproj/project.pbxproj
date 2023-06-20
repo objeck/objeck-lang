@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		ED2095812A41DE170084045A /* jit_common.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED20957F2A41DE170084045A /* jit_common.cpp */; };
+		ED2095822A41DE170084045A /* jit_common.h in Headers */ = {isa = PBXBuildFile; fileRef = ED2095802A41DE170084045A /* jit_common.h */; };
 		ED2B997A2A413913000B6CD8 /* vm.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED2B99712A413913000B6CD8 /* vm.cpp */; };
 		ED2B997B2A413913000B6CD8 /* interpreter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED2B99722A413913000B6CD8 /* interpreter.cpp */; };
 		ED2B997C2A413913000B6CD8 /* loader.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED2B99732A413913000B6CD8 /* loader.cpp */; };
@@ -52,6 +54,8 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		ED20957F2A41DE170084045A /* jit_common.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = jit_common.cpp; path = ../../../vm/arch/jit/jit_common.cpp; sourceTree = "<group>"; };
+		ED2095802A41DE170084045A /* jit_common.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = jit_common.h; path = ../../../vm/arch/jit/jit_common.h; sourceTree = "<group>"; };
 		ED2B98FE2A413094000B6CD8 /* libmodule.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libmodule.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		ED2B99712A413913000B6CD8 /* vm.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = vm.cpp; path = ../../../vm/vm.cpp; sourceTree = "<group>"; };
 		ED2B99722A413913000B6CD8 /* interpreter.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = interpreter.cpp; path = ../../../vm/interpreter.cpp; sourceTree = "<group>"; };
@@ -136,6 +140,8 @@
 		ED2B99642A413726000B6CD8 /* VM */ = {
 			isa = PBXGroup;
 			children = (
+				ED20957F2A41DE170084045A /* jit_common.cpp */,
+				ED2095802A41DE170084045A /* jit_common.h */,
 				ED2B99892A413949000B6CD8 /* jit_arm_a64.cpp */,
 				ED2B998A2A413949000B6CD8 /* jit_arm_a64.h */,
 				ED2B99872A41393D000B6CD8 /* posix.h */,
@@ -205,6 +211,7 @@
 				ED9AB5B22A41402D00C0A8DA /* optimization.h in Headers */,
 				ED9AB5AF2A41402D00C0A8DA /* context.h in Headers */,
 				ED2B99822A413913000B6CD8 /* interpreter.h in Headers */,
+				ED2095822A41DE170084045A /* jit_common.h in Headers */,
 				ED9AB5AD2A41402D00C0A8DA /* scanner.h in Headers */,
 				ED9AB5AA2A41402D00C0A8DA /* emit.h in Headers */,
 				ED9AB5AB2A41402D00C0A8DA /* parser.h in Headers */,
@@ -280,6 +287,7 @@
 				ED9AB5B32A41402D00C0A8DA /* parser.cpp in Sources */,
 				ED9AB5B42A41402D00C0A8DA /* tree.cpp in Sources */,
 				ED9AB58B2A413FA400C0A8DA /* logger.cpp in Sources */,
+				ED2095812A41DE170084045A /* jit_common.cpp in Sources */,
 				ED2B99852A413935000B6CD8 /* memory.cpp in Sources */,
 				ED9AB5BA2A41402D00C0A8DA /* emit.cpp in Sources */,
 				ED9AB5B72A41402D00C0A8DA /* linker.cpp in Sources */,
@@ -412,6 +420,7 @@
 			buildSettings = {
 				CLANG_CXX_LANGUAGE_STANDARD = "c++17";
 				CODE_SIGN_STYLE = Automatic;
+				EXCLUDED_ARCHS = x86_64;
 				EXECUTABLE_PREFIX = lib;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					_MODULE,
@@ -420,6 +429,7 @@
 					_DEBUG,
 				);
 				"HEADER_SEARCH_PATHS[arch=*]" = ../../lib/openssl/macos/include;
+				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 			};
@@ -430,6 +440,7 @@
 			buildSettings = {
 				CLANG_CXX_LANGUAGE_STANDARD = "c++17";
 				CODE_SIGN_STYLE = Automatic;
+				EXCLUDED_ARCHS = x86_64;
 				EXECUTABLE_PREFIX = lib;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					_MODULE,
@@ -438,6 +449,7 @@
 					_OBJECK_NATIVE_LIB_PATH,
 				);
 				"HEADER_SEARCH_PATHS[arch=*]" = ../../lib/openssl/macos/include;
+				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 			};
