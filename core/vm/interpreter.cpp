@@ -2633,19 +2633,18 @@ void StackInterpreter::SharedLibraryLoad(StackInstr* instr)
 #ifdef _OBJECK_NATIVE_LIB_PATH
 #ifdef _WIN32
   size_t value_len;
-  char lib_path[LARGE_BUFFER_MAX];
-  getenv_s(&value_len, lib_path, LARGE_BUFFER_MAX, "OBJECK_LIB_PATH");
-  if(value_len > 0) {
-    path_str += BytesToUnicode(lib_path);
+  char value[LARGE_BUFFER_MAX];
+  if(!getenv_s(&value_len, value, LARGE_BUFFER_MAX, "OBJECK_LIB_PATH") && strlen(value) > 0) {
+    path_str += BytesToUnicode(value);
     path_str += L"\\native\\";
   }
   else {
     path_str += L"..\\lib\\native\\";
   }
 #else
-  char* lib_path = getenv("OBJECK_LIB_PATH");
-  if(lib_path) {
-    path_str += BytesToUnicode(lib_path);
+  char* value = getenv("OBJECK_LIB_PATH");
+  if(value) {
+    path_str += BytesToUnicode(value);
     path_str += L"/native/";
   }
   else {
