@@ -1,0 +1,494 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		ED2B99352A413371000B6CD8 /* instrs.h in Headers */ = {isa = PBXBuildFile; fileRef = ED2B992F2A413371000B6CD8 /* instrs.h */; };
+		ED2B99362A413371000B6CD8 /* version.h in Headers */ = {isa = PBXBuildFile; fileRef = ED2B99302A413371000B6CD8 /* version.h */; };
+		ED2B99372A413371000B6CD8 /* logger.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED2B99312A413371000B6CD8 /* logger.cpp */; };
+		ED2B99382A413371000B6CD8 /* sys.h in Headers */ = {isa = PBXBuildFile; fileRef = ED2B99322A413371000B6CD8 /* sys.h */; };
+		ED2B99392A413371000B6CD8 /* traps.h in Headers */ = {isa = PBXBuildFile; fileRef = ED2B99332A413371000B6CD8 /* traps.h */; };
+		ED2B993A2A413371000B6CD8 /* logger.h in Headers */ = {isa = PBXBuildFile; fileRef = ED2B99342A413371000B6CD8 /* logger.h */; };
+		ED2B99502A413704000B6CD8 /* emit.h in Headers */ = {isa = PBXBuildFile; fileRef = ED2B993B2A413703000B6CD8 /* emit.h */; };
+		ED2B99512A413704000B6CD8 /* compiler.h in Headers */ = {isa = PBXBuildFile; fileRef = ED2B993C2A413703000B6CD8 /* compiler.h */; };
+		ED2B99522A413704000B6CD8 /* types.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED2B993D2A413703000B6CD8 /* types.cpp */; };
+		ED2B99532A413704000B6CD8 /* intermediate.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED2B993E2A413703000B6CD8 /* intermediate.cpp */; };
+		ED2B99542A413704000B6CD8 /* optimization.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED2B993F2A413703000B6CD8 /* optimization.cpp */; };
+		ED2B99552A413704000B6CD8 /* tree.h in Headers */ = {isa = PBXBuildFile; fileRef = ED2B99402A413703000B6CD8 /* tree.h */; };
+		ED2B99562A413704000B6CD8 /* emit.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED2B99412A413703000B6CD8 /* emit.cpp */; };
+		ED2B99572A413704000B6CD8 /* optimization.h in Headers */ = {isa = PBXBuildFile; fileRef = ED2B99422A413703000B6CD8 /* optimization.h */; };
+		ED2B99582A413704000B6CD8 /* linker.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED2B99432A413703000B6CD8 /* linker.cpp */; };
+		ED2B99592A413704000B6CD8 /* parser.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED2B99442A413703000B6CD8 /* parser.cpp */; };
+		ED2B995A2A413704000B6CD8 /* types.h in Headers */ = {isa = PBXBuildFile; fileRef = ED2B99452A413703000B6CD8 /* types.h */; };
+		ED2B995B2A413704000B6CD8 /* context.h in Headers */ = {isa = PBXBuildFile; fileRef = ED2B99462A413703000B6CD8 /* context.h */; };
+		ED2B995C2A413704000B6CD8 /* scanner.h in Headers */ = {isa = PBXBuildFile; fileRef = ED2B99472A413703000B6CD8 /* scanner.h */; };
+		ED2B995D2A413704000B6CD8 /* parser.h in Headers */ = {isa = PBXBuildFile; fileRef = ED2B99482A413703000B6CD8 /* parser.h */; };
+		ED2B995E2A413704000B6CD8 /* linker.h in Headers */ = {isa = PBXBuildFile; fileRef = ED2B994A2A413703000B6CD8 /* linker.h */; };
+		ED2B995F2A413704000B6CD8 /* tree.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED2B994B2A413703000B6CD8 /* tree.cpp */; };
+		ED2B99602A413704000B6CD8 /* compiler.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED2B994C2A413704000B6CD8 /* compiler.cpp */; };
+		ED2B99612A413704000B6CD8 /* context.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED2B994D2A413704000B6CD8 /* context.cpp */; };
+		ED2B99622A413704000B6CD8 /* scanner.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED2B994E2A413704000B6CD8 /* scanner.cpp */; };
+		ED2B99632A413704000B6CD8 /* intermediate.h in Headers */ = {isa = PBXBuildFile; fileRef = ED2B994F2A413704000B6CD8 /* intermediate.h */; };
+		ED2B996B2A41373C000B6CD8 /* logger.h in Headers */ = {isa = PBXBuildFile; fileRef = ED2B99652A41373C000B6CD8 /* logger.h */; };
+		ED2B996C2A41373C000B6CD8 /* sys.h in Headers */ = {isa = PBXBuildFile; fileRef = ED2B99662A41373C000B6CD8 /* sys.h */; };
+		ED2B996D2A41373C000B6CD8 /* logger.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED2B99672A41373C000B6CD8 /* logger.cpp */; };
+		ED2B996E2A41373C000B6CD8 /* traps.h in Headers */ = {isa = PBXBuildFile; fileRef = ED2B99682A41373C000B6CD8 /* traps.h */; };
+		ED2B996F2A41373C000B6CD8 /* instrs.h in Headers */ = {isa = PBXBuildFile; fileRef = ED2B99692A41373C000B6CD8 /* instrs.h */; };
+		ED2B99702A41373C000B6CD8 /* version.h in Headers */ = {isa = PBXBuildFile; fileRef = ED2B996A2A41373C000B6CD8 /* version.h */; };
+		ED2B997A2A413913000B6CD8 /* vm.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED2B99712A413913000B6CD8 /* vm.cpp */; };
+		ED2B997B2A413913000B6CD8 /* interpreter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED2B99722A413913000B6CD8 /* interpreter.cpp */; };
+		ED2B997C2A413913000B6CD8 /* loader.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED2B99732A413913000B6CD8 /* loader.cpp */; };
+		ED2B997D2A413913000B6CD8 /* common.h in Headers */ = {isa = PBXBuildFile; fileRef = ED2B99742A413913000B6CD8 /* common.h */; };
+		ED2B997E2A413913000B6CD8 /* lib_api.h in Headers */ = {isa = PBXBuildFile; fileRef = ED2B99752A413913000B6CD8 /* lib_api.h */; };
+		ED2B997F2A413913000B6CD8 /* common.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED2B99762A413913000B6CD8 /* common.cpp */; };
+		ED2B99802A413913000B6CD8 /* loader.h in Headers */ = {isa = PBXBuildFile; fileRef = ED2B99772A413913000B6CD8 /* loader.h */; };
+		ED2B99812A413913000B6CD8 /* vm.h in Headers */ = {isa = PBXBuildFile; fileRef = ED2B99782A413913000B6CD8 /* vm.h */; };
+		ED2B99822A413913000B6CD8 /* interpreter.h in Headers */ = {isa = PBXBuildFile; fileRef = ED2B99792A413913000B6CD8 /* interpreter.h */; };
+		ED2B99852A413935000B6CD8 /* memory.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED2B99832A413935000B6CD8 /* memory.cpp */; };
+		ED2B99862A413935000B6CD8 /* memory.h in Headers */ = {isa = PBXBuildFile; fileRef = ED2B99842A413935000B6CD8 /* memory.h */; };
+		ED2B99882A41393D000B6CD8 /* posix.h in Headers */ = {isa = PBXBuildFile; fileRef = ED2B99872A41393D000B6CD8 /* posix.h */; };
+		ED2B998B2A41394A000B6CD8 /* jit_arm_a64.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED2B99892A413949000B6CD8 /* jit_arm_a64.cpp */; };
+		ED2B998C2A41394A000B6CD8 /* jit_arm_a64.h in Headers */ = {isa = PBXBuildFile; fileRef = ED2B998A2A413949000B6CD8 /* jit_arm_a64.h */; };
+		ED2B998F2A41395A000B6CD8 /* lang.h in Headers */ = {isa = PBXBuildFile; fileRef = ED2B998D2A41395A000B6CD8 /* lang.h */; };
+		ED2B99902A41395A000B6CD8 /* lang.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED2B998E2A41395A000B6CD8 /* lang.cpp */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		ED2B98FE2A413094000B6CD8 /* libmodule.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libmodule.a; sourceTree = BUILT_PRODUCTS_DIR; };
+		ED2B992F2A413371000B6CD8 /* instrs.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = instrs.h; path = ../../../shared/instrs.h; sourceTree = "<group>"; };
+		ED2B99302A413371000B6CD8 /* version.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = version.h; path = ../../../shared/version.h; sourceTree = "<group>"; };
+		ED2B99312A413371000B6CD8 /* logger.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = logger.cpp; path = ../../../shared/logger.cpp; sourceTree = "<group>"; };
+		ED2B99322A413371000B6CD8 /* sys.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = sys.h; path = ../../../shared/sys.h; sourceTree = "<group>"; };
+		ED2B99332A413371000B6CD8 /* traps.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = traps.h; path = ../../../shared/traps.h; sourceTree = "<group>"; };
+		ED2B99342A413371000B6CD8 /* logger.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = logger.h; path = ../../../shared/logger.h; sourceTree = "<group>"; };
+		ED2B993B2A413703000B6CD8 /* emit.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = emit.h; path = ../../../compiler/emit.h; sourceTree = "<group>"; };
+		ED2B993C2A413703000B6CD8 /* compiler.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = compiler.h; path = ../../../compiler/compiler.h; sourceTree = "<group>"; };
+		ED2B993D2A413703000B6CD8 /* types.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = types.cpp; path = ../../../compiler/types.cpp; sourceTree = "<group>"; };
+		ED2B993E2A413703000B6CD8 /* intermediate.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = intermediate.cpp; path = ../../../compiler/intermediate.cpp; sourceTree = "<group>"; };
+		ED2B993F2A413703000B6CD8 /* optimization.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = optimization.cpp; path = ../../../compiler/optimization.cpp; sourceTree = "<group>"; };
+		ED2B99402A413703000B6CD8 /* tree.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = tree.h; path = ../../../compiler/tree.h; sourceTree = "<group>"; };
+		ED2B99412A413703000B6CD8 /* emit.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = emit.cpp; path = ../../../compiler/emit.cpp; sourceTree = "<group>"; };
+		ED2B99422A413703000B6CD8 /* optimization.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = optimization.h; path = ../../../compiler/optimization.h; sourceTree = "<group>"; };
+		ED2B99432A413703000B6CD8 /* linker.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = linker.cpp; path = ../../../compiler/linker.cpp; sourceTree = "<group>"; };
+		ED2B99442A413703000B6CD8 /* parser.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = parser.cpp; path = ../../../compiler/parser.cpp; sourceTree = "<group>"; };
+		ED2B99452A413703000B6CD8 /* types.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = types.h; path = ../../../compiler/types.h; sourceTree = "<group>"; };
+		ED2B99462A413703000B6CD8 /* context.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = context.h; path = ../../../compiler/context.h; sourceTree = "<group>"; };
+		ED2B99472A413703000B6CD8 /* scanner.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = scanner.h; path = ../../../compiler/scanner.h; sourceTree = "<group>"; };
+		ED2B99482A413703000B6CD8 /* parser.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = parser.h; path = ../../../compiler/parser.h; sourceTree = "<group>"; };
+		ED2B994A2A413703000B6CD8 /* linker.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = linker.h; path = ../../../compiler/linker.h; sourceTree = "<group>"; };
+		ED2B994B2A413703000B6CD8 /* tree.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = tree.cpp; path = ../../../compiler/tree.cpp; sourceTree = "<group>"; };
+		ED2B994C2A413704000B6CD8 /* compiler.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = compiler.cpp; path = ../../../compiler/compiler.cpp; sourceTree = "<group>"; };
+		ED2B994D2A413704000B6CD8 /* context.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = context.cpp; path = ../../../compiler/context.cpp; sourceTree = "<group>"; };
+		ED2B994E2A413704000B6CD8 /* scanner.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = scanner.cpp; path = ../../../compiler/scanner.cpp; sourceTree = "<group>"; };
+		ED2B994F2A413704000B6CD8 /* intermediate.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = intermediate.h; path = ../../../compiler/intermediate.h; sourceTree = "<group>"; };
+		ED2B99652A41373C000B6CD8 /* logger.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = logger.h; path = ../../../shared/logger.h; sourceTree = "<group>"; };
+		ED2B99662A41373C000B6CD8 /* sys.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = sys.h; path = ../../../shared/sys.h; sourceTree = "<group>"; };
+		ED2B99672A41373C000B6CD8 /* logger.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = logger.cpp; path = ../../../shared/logger.cpp; sourceTree = "<group>"; };
+		ED2B99682A41373C000B6CD8 /* traps.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = traps.h; path = ../../../shared/traps.h; sourceTree = "<group>"; };
+		ED2B99692A41373C000B6CD8 /* instrs.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = instrs.h; path = ../../../shared/instrs.h; sourceTree = "<group>"; };
+		ED2B996A2A41373C000B6CD8 /* version.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = version.h; path = ../../../shared/version.h; sourceTree = "<group>"; };
+		ED2B99712A413913000B6CD8 /* vm.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = vm.cpp; path = ../../../vm/vm.cpp; sourceTree = "<group>"; };
+		ED2B99722A413913000B6CD8 /* interpreter.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = interpreter.cpp; path = ../../../vm/interpreter.cpp; sourceTree = "<group>"; };
+		ED2B99732A413913000B6CD8 /* loader.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = loader.cpp; path = ../../../vm/loader.cpp; sourceTree = "<group>"; };
+		ED2B99742A413913000B6CD8 /* common.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = common.h; path = ../../../vm/common.h; sourceTree = "<group>"; };
+		ED2B99752A413913000B6CD8 /* lib_api.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = lib_api.h; path = ../../../vm/lib_api.h; sourceTree = "<group>"; };
+		ED2B99762A413913000B6CD8 /* common.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = common.cpp; path = ../../../vm/common.cpp; sourceTree = "<group>"; };
+		ED2B99772A413913000B6CD8 /* loader.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = loader.h; path = ../../../vm/loader.h; sourceTree = "<group>"; };
+		ED2B99782A413913000B6CD8 /* vm.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = vm.h; path = ../../../vm/vm.h; sourceTree = "<group>"; };
+		ED2B99792A413913000B6CD8 /* interpreter.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = interpreter.h; path = ../../../vm/interpreter.h; sourceTree = "<group>"; };
+		ED2B99832A413935000B6CD8 /* memory.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = memory.cpp; path = ../../../vm/arch/memory.cpp; sourceTree = "<group>"; };
+		ED2B99842A413935000B6CD8 /* memory.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = memory.h; path = ../../../vm/arch/memory.h; sourceTree = "<group>"; };
+		ED2B99872A41393D000B6CD8 /* posix.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = posix.h; path = ../../../vm/arch/posix/posix.h; sourceTree = "<group>"; };
+		ED2B99892A413949000B6CD8 /* jit_arm_a64.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = jit_arm_a64.cpp; path = ../../../vm/arch/jit/arm64/jit_arm_a64.cpp; sourceTree = "<group>"; };
+		ED2B998A2A413949000B6CD8 /* jit_arm_a64.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = jit_arm_a64.h; path = ../../../vm/arch/jit/arm64/jit_arm_a64.h; sourceTree = "<group>"; };
+		ED2B998D2A41395A000B6CD8 /* lang.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = lang.h; path = ../lang.h; sourceTree = "<group>"; };
+		ED2B998E2A41395A000B6CD8 /* lang.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = lang.cpp; path = ../lang.cpp; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		ED2B98FC2A413094000B6CD8 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		ED2B98F52A413094000B6CD8 = {
+			isa = PBXGroup;
+			children = (
+				ED2B998E2A41395A000B6CD8 /* lang.cpp */,
+				ED2B998D2A41395A000B6CD8 /* lang.h */,
+				ED2B99642A413726000B6CD8 /* VM */,
+				ED2B992E2A413326000B6CD8 /* Compiler */,
+				ED2B98FF2A413094000B6CD8 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		ED2B98FF2A413094000B6CD8 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				ED2B98FE2A413094000B6CD8 /* libmodule.a */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		ED2B992E2A413326000B6CD8 /* Compiler */ = {
+			isa = PBXGroup;
+			children = (
+				ED2B994C2A413704000B6CD8 /* compiler.cpp */,
+				ED2B993C2A413703000B6CD8 /* compiler.h */,
+				ED2B994D2A413704000B6CD8 /* context.cpp */,
+				ED2B99462A413703000B6CD8 /* context.h */,
+				ED2B99412A413703000B6CD8 /* emit.cpp */,
+				ED2B993B2A413703000B6CD8 /* emit.h */,
+				ED2B993E2A413703000B6CD8 /* intermediate.cpp */,
+				ED2B994F2A413704000B6CD8 /* intermediate.h */,
+				ED2B99432A413703000B6CD8 /* linker.cpp */,
+				ED2B994A2A413703000B6CD8 /* linker.h */,
+				ED2B993F2A413703000B6CD8 /* optimization.cpp */,
+				ED2B99422A413703000B6CD8 /* optimization.h */,
+				ED2B99442A413703000B6CD8 /* parser.cpp */,
+				ED2B99482A413703000B6CD8 /* parser.h */,
+				ED2B994E2A413704000B6CD8 /* scanner.cpp */,
+				ED2B99472A413703000B6CD8 /* scanner.h */,
+				ED2B994B2A413703000B6CD8 /* tree.cpp */,
+				ED2B99402A413703000B6CD8 /* tree.h */,
+				ED2B993D2A413703000B6CD8 /* types.cpp */,
+				ED2B99452A413703000B6CD8 /* types.h */,
+				ED2B992F2A413371000B6CD8 /* instrs.h */,
+				ED2B99312A413371000B6CD8 /* logger.cpp */,
+				ED2B99342A413371000B6CD8 /* logger.h */,
+				ED2B99322A413371000B6CD8 /* sys.h */,
+				ED2B99332A413371000B6CD8 /* traps.h */,
+				ED2B99302A413371000B6CD8 /* version.h */,
+			);
+			path = Compiler;
+			sourceTree = "<group>";
+		};
+		ED2B99642A413726000B6CD8 /* VM */ = {
+			isa = PBXGroup;
+			children = (
+				ED2B99892A413949000B6CD8 /* jit_arm_a64.cpp */,
+				ED2B998A2A413949000B6CD8 /* jit_arm_a64.h */,
+				ED2B99872A41393D000B6CD8 /* posix.h */,
+				ED2B99832A413935000B6CD8 /* memory.cpp */,
+				ED2B99842A413935000B6CD8 /* memory.h */,
+				ED2B99762A413913000B6CD8 /* common.cpp */,
+				ED2B99742A413913000B6CD8 /* common.h */,
+				ED2B99722A413913000B6CD8 /* interpreter.cpp */,
+				ED2B99792A413913000B6CD8 /* interpreter.h */,
+				ED2B99752A413913000B6CD8 /* lib_api.h */,
+				ED2B99732A413913000B6CD8 /* loader.cpp */,
+				ED2B99772A413913000B6CD8 /* loader.h */,
+				ED2B99712A413913000B6CD8 /* vm.cpp */,
+				ED2B99782A413913000B6CD8 /* vm.h */,
+				ED2B99692A41373C000B6CD8 /* instrs.h */,
+				ED2B99672A41373C000B6CD8 /* logger.cpp */,
+				ED2B99652A41373C000B6CD8 /* logger.h */,
+				ED2B99662A41373C000B6CD8 /* sys.h */,
+				ED2B99682A41373C000B6CD8 /* traps.h */,
+				ED2B996A2A41373C000B6CD8 /* version.h */,
+			);
+			path = VM;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXHeadersBuildPhase section */
+		ED2B98FA2A413094000B6CD8 /* Headers */ = {
+			isa = PBXHeadersBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				ED2B99882A41393D000B6CD8 /* posix.h in Headers */,
+				ED2B99632A413704000B6CD8 /* intermediate.h in Headers */,
+				ED2B99382A413371000B6CD8 /* sys.h in Headers */,
+				ED2B995E2A413704000B6CD8 /* linker.h in Headers */,
+				ED2B996E2A41373C000B6CD8 /* traps.h in Headers */,
+				ED2B995C2A413704000B6CD8 /* scanner.h in Headers */,
+				ED2B99812A413913000B6CD8 /* vm.h in Headers */,
+				ED2B99802A413913000B6CD8 /* loader.h in Headers */,
+				ED2B99862A413935000B6CD8 /* memory.h in Headers */,
+				ED2B99702A41373C000B6CD8 /* version.h in Headers */,
+				ED2B99502A413704000B6CD8 /* emit.h in Headers */,
+				ED2B998C2A41394A000B6CD8 /* jit_arm_a64.h in Headers */,
+				ED2B995B2A413704000B6CD8 /* context.h in Headers */,
+				ED2B99822A413913000B6CD8 /* interpreter.h in Headers */,
+				ED2B99362A413371000B6CD8 /* version.h in Headers */,
+				ED2B996C2A41373C000B6CD8 /* sys.h in Headers */,
+				ED2B99392A413371000B6CD8 /* traps.h in Headers */,
+				ED2B99552A413704000B6CD8 /* tree.h in Headers */,
+				ED2B99572A413704000B6CD8 /* optimization.h in Headers */,
+				ED2B993A2A413371000B6CD8 /* logger.h in Headers */,
+				ED2B996F2A41373C000B6CD8 /* instrs.h in Headers */,
+				ED2B997E2A413913000B6CD8 /* lib_api.h in Headers */,
+				ED2B99512A413704000B6CD8 /* compiler.h in Headers */,
+				ED2B995A2A413704000B6CD8 /* types.h in Headers */,
+				ED2B995D2A413704000B6CD8 /* parser.h in Headers */,
+				ED2B998F2A41395A000B6CD8 /* lang.h in Headers */,
+				ED2B996B2A41373C000B6CD8 /* logger.h in Headers */,
+				ED2B997D2A413913000B6CD8 /* common.h in Headers */,
+				ED2B99352A413371000B6CD8 /* instrs.h in Headers */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXHeadersBuildPhase section */
+
+/* Begin PBXNativeTarget section */
+		ED2B98FD2A413094000B6CD8 /* module */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = ED2B99022A413094000B6CD8 /* Build configuration list for PBXNativeTarget "module" */;
+			buildPhases = (
+				ED2B98FA2A413094000B6CD8 /* Headers */,
+				ED2B98FB2A413094000B6CD8 /* Sources */,
+				ED2B98FC2A413094000B6CD8 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = module;
+			productName = module;
+			productReference = ED2B98FE2A413094000B6CD8 /* libmodule.a */;
+			productType = "com.apple.product-type.library.static";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		ED2B98F62A413094000B6CD8 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					ED2B98FD2A413094000B6CD8 = {
+						CreatedOnToolsVersion = 14.3.1;
+					};
+				};
+			};
+			buildConfigurationList = ED2B98F92A413094000B6CD8 /* Build configuration list for PBXProject "module" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = ED2B98F52A413094000B6CD8;
+			productRefGroup = ED2B98FF2A413094000B6CD8 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				ED2B98FD2A413094000B6CD8 /* module */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		ED2B98FB2A413094000B6CD8 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				ED2B997A2A413913000B6CD8 /* vm.cpp in Sources */,
+				ED2B99592A413704000B6CD8 /* parser.cpp in Sources */,
+				ED2B995F2A413704000B6CD8 /* tree.cpp in Sources */,
+				ED2B99622A413704000B6CD8 /* scanner.cpp in Sources */,
+				ED2B997F2A413913000B6CD8 /* common.cpp in Sources */,
+				ED2B997B2A413913000B6CD8 /* interpreter.cpp in Sources */,
+				ED2B996D2A41373C000B6CD8 /* logger.cpp in Sources */,
+				ED2B99602A413704000B6CD8 /* compiler.cpp in Sources */,
+				ED2B99542A413704000B6CD8 /* optimization.cpp in Sources */,
+				ED2B99852A413935000B6CD8 /* memory.cpp in Sources */,
+				ED2B998B2A41394A000B6CD8 /* jit_arm_a64.cpp in Sources */,
+				ED2B99372A413371000B6CD8 /* logger.cpp in Sources */,
+				ED2B99582A413704000B6CD8 /* linker.cpp in Sources */,
+				ED2B99902A41395A000B6CD8 /* lang.cpp in Sources */,
+				ED2B99532A413704000B6CD8 /* intermediate.cpp in Sources */,
+				ED2B99612A413704000B6CD8 /* context.cpp in Sources */,
+				ED2B99562A413704000B6CD8 /* emit.cpp in Sources */,
+				ED2B997C2A413913000B6CD8 /* loader.cpp in Sources */,
+				ED2B99522A413704000B6CD8 /* types.cpp in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		ED2B99002A413094000B6CD8 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				"HEADER_SEARCH_PATHS[arch=*]" = "";
+				MACOSX_DEPLOYMENT_TARGET = 13.3;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+				"SYSTEM_HEADER_SEARCH_PATHS[arch=*]" = "";
+			};
+			name = Debug;
+		};
+		ED2B99012A413094000B6CD8 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.3;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+		ED2B99032A413094000B6CD8 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_CXX_LANGUAGE_STANDARD = "c++17";
+				CODE_SIGN_STYLE = Automatic;
+				EXECUTABLE_PREFIX = lib;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					_MODULE,
+					_OSX,
+					_ARM64,
+					_DEBUG,
+				);
+				"HEADER_SEARCH_PATHS[arch=*]" = ../../lib/openssl/macos/include;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+			};
+			name = Debug;
+		};
+		ED2B99042A413094000B6CD8 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_CXX_LANGUAGE_STANDARD = "c++17";
+				CODE_SIGN_STYLE = Automatic;
+				EXECUTABLE_PREFIX = lib;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					_MODULE,
+					_OSX,
+					_ARM64,
+					_OBJECK_NATIVE_LIB_PATH,
+				);
+				"HEADER_SEARCH_PATHS[arch=*]" = ../../lib/openssl/macos/include;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		ED2B98F92A413094000B6CD8 /* Build configuration list for PBXProject "module" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				ED2B99002A413094000B6CD8 /* Debug */,
+				ED2B99012A413094000B6CD8 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		ED2B99022A413094000B6CD8 /* Build configuration list for PBXNativeTarget "module" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				ED2B99032A413094000B6CD8 /* Debug */,
+				ED2B99042A413094000B6CD8 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = ED2B98F62A413094000B6CD8 /* Project object */;
+}
