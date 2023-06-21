@@ -39,6 +39,10 @@ using namespace std;
 int main(const int argc, const char* argv[])
 {
   if(argc > 1) {
+    //
+    // Note: OBJECK_STDIO not needed for POSIX environments
+    //
+    
     // enable UTF-8 environment
 #if defined(_X64)
     char* locale = setlocale(LC_ALL, ""); 
