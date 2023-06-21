@@ -6,6 +6,7 @@
 * [Compiler](https://github.com/objeck/objeck-lang/blob/master/core/compiler)
 * [Virtual Machine](https://github.com/objeck/objeck-lang/blob/master/core/vm)
 * [Debugger](https://github.com/objeck/objeck-lang/blob/master/core/debugger)
+* [REPL](https://github.com/objeck/objeck-lang/blob/master/core/repl)
 * [Memory manager](https://github.com/objeck/objeck-lang/blob/master/core/vm/arch)
 * [Just-In-Time (JIT) compilation](https://github.com/objeck/objeck-lang/blob/master/core/vm/arch/jit)
 
