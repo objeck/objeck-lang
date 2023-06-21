@@ -54,19 +54,19 @@ int main(const int argc, const char* argv[])
     //
     // check for command line parameters
     //
-    bool set_stdio = false;
-    // bool set_foo_bar = false; // TODO: add if needed
-    size_t cmd_param_count = 0;
+    bool set_stdio_param = false;
+    // bool set_foo_bar_param = false; // TODO: add if needed
+    size_t vm_param_count = 0;
     for(size_t i = 1; i < argc; ++i) {
       const std::string name_value(argv[i]);
       // check for OBJECK_STDIO
       if(!name_value.rfind("--OBJECK_STDIO=", 0)) {
-        size_t name_value_index = name_value.find_first_of(L'=');
+        const size_t name_value_index = name_value.find_first_of(L'=');
         if(name_value_index != std::string::npos) {
           const std::string value(name_value.substr(name_value_index + 1));
           SetStdIo(value.c_str());
-          ++cmd_param_count;
-          set_stdio = true;
+          ++vm_param_count;
+          set_stdio_param = true;
         }
       }
       /* TODO: add if needed
@@ -82,7 +82,8 @@ int main(const int argc, const char* argv[])
     size_t value_len;
     char value[LARGE_BUFFER_MAX];
 
-    if(!set_stdio) {
+    // check for OBJECK_STDIO
+    if(!set_stdio_param) {
       if(!getenv_s(&value_len, value, LARGE_BUFFER_MAX, "OBJECK_STDIO") && strlen(value) > 0) {
         SetStdIo(value);
       }
@@ -105,7 +106,8 @@ int main(const int argc, const char* argv[])
       }
     }
     /* TODO: add if needed
-    else if(!set_foo_bar) {
+    // check for FOO_BAR
+    else if(!set_foo_bar_param) {
       if(!getenv_s(&value_len, value, LARGE_BUFFER_MAX, "FOO_BAR") && strlen(value) > 0) {
       }
     }
@@ -120,7 +122,7 @@ int main(const int argc, const char* argv[])
     }
     else {
       // execute program
-      status = Execute(argc - cmd_param_count, argv + cmd_param_count);
+      status = Execute(argc - vm_param_count, argv + vm_param_count);
     }
 
     // release Winsock
