@@ -110,6 +110,8 @@ int main(const int argc, const char* argv[])
     else if(!set_foo_bar_param) {
       if(!getenv_s(&value_len, value, LARGE_BUFFER_MAX, "FOO_BAR") && strlen(value) > 0) {
       }
+      else {
+      }
     }
     */
 
