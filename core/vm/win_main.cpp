@@ -45,44 +45,49 @@
 #include <codecvt>
 #endif
 
+void SetStdIo(const char* value);
+
 // program start
 int main(const int argc, const char* argv[])
 {
   if(argc > 1) {
+    //
+    // check for command line parameters
+    //
+    bool set_stdio = false;
+    // bool set_foo_bar = false; // TODO: add if needed
+    size_t cmd_param_count = 0;
+    for(size_t i = 1; i < argc; ++i) {
+      const std::string name_value(argv[i]);
+      // check for OBJECK_STDIO
+      if(!name_value.rfind("--OBJECK_STDIO=", 0)) {
+        size_t name_value_index = name_value.find_first_of(L'=');
+        if(name_value_index != std::string::npos) {
+          const std::string value(name_value.substr(name_value_index + 1));
+          SetStdIo(value.c_str());
+          ++cmd_param_count;
+          set_stdio = true;
+        }
+      }
+      /* TODO: add if needed
+      // check for FOO_BAR
+      else if(!name_value.rfind("--FOO_BAR=", 0)) {
+      }
+      */
+    }
+
+    //
+    // environment variables
+    //
     size_t value_len;
     char value[LARGE_BUFFER_MAX];
-    if(!getenv_s(&value_len, value, LARGE_BUFFER_MAX, "OBJECK_STDIO") && strlen(value) > 0) {
-      // set as binary
-      if(!strcmp("binary", value)) {
-#ifndef _MSYS2_CLANG
-        if(_setmode(_fileno(stdin), _O_BINARY) < 0) {
-          return 1;
-        }
 
-        if(_setmode(_fileno(stdout), _O_BINARY) < 0) {
-          return 1;
-        }
-#endif
+    if(!set_stdio) {
+      if(!getenv_s(&value_len, value, LARGE_BUFFER_MAX, "OBJECK_STDIO") && strlen(value) > 0) {
+        SetStdIo(value);
       }
-      // set as utf16
-      else if(!strcmp("utf16", value)) {
-#ifdef _MSYS2_CLANG
-        std::ios_base::sync_with_stdio(false);
-        std::locale utf16(std::locale(), new std::codecvt_utf16<wchar_t>);
-        std::wcout.imbue(utf16);
-        std::wcin.imbue(utf16);
-#else
-        if(_setmode(_fileno(stdin), _O_U16TEXT) < 0) {
-          return 1;
-        }
-
-        if(_setmode(_fileno(stdout), _O_U16TEXT) < 0) {
-          return 1;
-        }
-#endif
-      }
-      // set as utf8
-      else if(!strcmp("utf8", value)) {
+      // set default as utf8
+      else {
 #ifdef _MSYS2_CLANG
         std::ios_base::sync_with_stdio(false);
         std::locale utf8(std::locale(), new std::codecvt_utf8_utf16<wchar_t>);
@@ -90,32 +95,21 @@ int main(const int argc, const char* argv[])
         std::wcin.imbue(utf8);
 #else
         if(_setmode(_fileno(stdin), _O_U8TEXT) < 0) {
-          return 1;
+          exit(1);
         }
 
         if(_setmode(_fileno(stdout), _O_U8TEXT) < 0) {
-          return 1;
+          exit(1);
         }
 #endif
       }
     }
-    // set default as utf8
-    else {
-#ifdef _MSYS2_CLANG
-      std::ios_base::sync_with_stdio(false);
-      std::locale utf8(std::locale(), new std::codecvt_utf8_utf16<wchar_t>);
-      std::wcout.imbue(utf8);
-      std::wcin.imbue(utf8);
-#else
-      if(_setmode(_fileno(stdin), _O_U8TEXT) < 0) {
-        return 1;
+    /* TODO: add if needed
+    else if(!set_foo_bar) {
+      if(!getenv_s(&value_len, value, LARGE_BUFFER_MAX, "FOO_BAR") && strlen(value) > 0) {
       }
-
-      if(_setmode(_fileno(stdout), _O_U8TEXT) < 0) {
-        return 1;
-      }
-#endif
     }
+    */
 
     // initialize Winsock
     WSADATA data;
@@ -126,7 +120,7 @@ int main(const int argc, const char* argv[])
     }
     else {
       // execute program
-      status = Execute(argc, argv);
+      status = Execute(argc - cmd_param_count, argv + cmd_param_count);
     }
 
     // release Winsock
@@ -164,4 +158,54 @@ int main(const int argc, const char* argv[])
   }
 
   return 1;
+}
+
+void SetStdIo(const char* value)
+{
+  // set as binary
+  if(!strcmp("binary", value)) {
+#ifndef _MSYS2_CLANG
+    if(_setmode(_fileno(stdin), _O_BINARY) < 0) {
+      exit(1);
+    }
+
+    if(_setmode(_fileno(stdout), _O_BINARY) < 0) {
+      exit(1);
+    }
+#endif
+  }
+  // set as utf16
+  else if(!strcmp("utf16", value)) {
+#ifdef _MSYS2_CLANG
+    std::ios_base::sync_with_stdio(false);
+    std::locale utf16(std::locale(), new std::codecvt_utf16<wchar_t>);
+    std::wcout.imbue(utf16);
+    std::wcin.imbue(utf16);
+#else
+    if(_setmode(_fileno(stdin), _O_U16TEXT) < 0) {
+      exit(1);
+    }
+
+    if(_setmode(_fileno(stdout), _O_U16TEXT) < 0) {
+      exit(1);
+    }
+#endif
+  }
+  // set as utf8
+  else if(!strcmp("utf8", value)) {
+#ifdef _MSYS2_CLANG
+    std::ios_base::sync_with_stdio(false);
+    std::locale utf8(std::locale(), new std::codecvt_utf8_utf16<wchar_t>);
+    std::wcout.imbue(utf8);
+    std::wcin.imbue(utf8);
+#else
+    if(_setmode(_fileno(stdin), _O_U8TEXT) < 0) {
+      exit(1);
+    }
+
+    if(_setmode(_fileno(stdout), _O_U8TEXT) < 0) {
+      exit(1);
+    }
+#endif
+  }
 }
