@@ -1,5 +1,3 @@
-use System.IO.Filesystem;
-
 class Test {
 	function : Main(args : String[]) ~ Nil {
 		each(arg := args) {
