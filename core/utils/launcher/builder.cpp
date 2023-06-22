@@ -50,17 +50,14 @@ int main(int argc, char* argv[])
 
   if(runtime_base_dir.empty()) {
 #ifdef _WIN32
-    char* path_str_ptr = nullptr;
-    size_t len;
-    if(_dupenv_s(&path_str_ptr, &len, "OBJECK_LIB_PATH")) {
-      exit(1);
-    }
+    size_t path_len;
+    char path_str[MAX_ENV_PATH];
+    if(!getenv_s(&path_len, path_str, MAX_ENV_PATH, "OBJECK_LIB_PATH") && strlen(path_str) > 0) {
 #else
     char* path_str_ptr = getenv("OBJECK_LIB_PATH");
-#endif
-
     if(path_str_ptr) {
-      runtime_base_dir = BytesToUnicode(path_str_ptr);
+#endif
+      runtime_base_dir = BytesToUnicode(path_str);
       runtime_base_dir += fs::path::preferred_separator;
       runtime_base_dir += L"..";
     }

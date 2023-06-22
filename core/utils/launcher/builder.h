@@ -49,7 +49,7 @@
 #include <unistd.h>
 #endif
 
-#define MAX_FILE_PATH 256
+#define MAX_ENV_PATH 32768
 
 namespace fs = std::filesystem;
 using namespace std;
