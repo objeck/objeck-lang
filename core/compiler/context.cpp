@@ -6423,7 +6423,7 @@ bool ContextAnalyzer::CheckGenericEqualTypes(Type* left, Type* right, Expression
             right_generic_type = right_generic_klass->GetGenericInterface();
           }
           else {
-            right_generic_type = ResolveGenericType(left_generic_type, expression, left_klass, lib_left_klass);
+            right_generic_type = ResolveGenericType(right_generic_type, expression, left_klass, lib_left_klass);
           }
         }
 

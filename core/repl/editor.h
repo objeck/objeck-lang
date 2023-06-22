@@ -93,6 +93,7 @@ class Document {
 
  public:
    Document() {
+     shell_count = 0;
    }
 
    ~Document() {
