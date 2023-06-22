@@ -276,7 +276,8 @@ std::wstring Method::EncodeType(Type* type, Class* klass, ParsedProgram* program
     case FUNC_TYPE:  {
       name = L"m.";
       if(type->GetName().size() == 0) {
-        name += EncodeFunctionType(type->GetFunctionParameters(), type->GetFunctionReturn(), klass, program, linker);
+        std::vector<Type*> func_params = type->GetFunctionParameters();
+        name += EncodeFunctionType(func_params, type->GetFunctionReturn(), klass, program, linker);
       }
       else {
         name += type->GetName();
@@ -305,8 +306,7 @@ std::wstring Method::EncodeType(Type* type, Class* klass, ParsedProgram* program
   return name;
 }
 
-std::wstring Method::EncodeFunctionType(std::vector<Type*> func_params, Type* func_rtrn, 
-                                   Class* klass, ParsedProgram* program, Linker* linker) 
+std::wstring Method::EncodeFunctionType(std::vector<Type*> &func_params, Type* func_rtrn, Class* klass, ParsedProgram* program, Linker* linker) 
 {                                     
   std::wstring encoded_name = L"(";
   for(size_t i = 0; i < func_params.size(); ++i) {
