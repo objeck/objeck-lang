@@ -48,7 +48,7 @@ class ObjeckLang {
   char* code;
 
 public:
-  ObjeckLang(std::wstring &s, std::wstring &u);
+  ObjeckLang(const std::wstring &s, const std::wstring &u);
   ~ObjeckLang();
 
   bool Compile();
