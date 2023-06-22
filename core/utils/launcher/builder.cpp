@@ -59,9 +59,11 @@ int main(int argc, char* argv[])
     char* path_str_ptr = getenv("OBJECK_LIB_PATH");
 #endif
 
-    runtime_base_dir = BytesToUnicode(path_str_ptr);
-    runtime_base_dir += fs::path::preferred_separator;
-    runtime_base_dir += L"..";
+    if(path_str_ptr) {
+      runtime_base_dir = BytesToUnicode(path_str_ptr);
+      runtime_base_dir += fs::path::preferred_separator;
+      runtime_base_dir += L"..";
+    }
   }
   
   // check command line parameters
