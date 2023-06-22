@@ -31,7 +31,7 @@
 
 #include "lang.h"
 
-ObjeckLang::ObjeckLang(std::wstring &s, std::wstring &u)
+ObjeckLang::ObjeckLang(const std::wstring &s, const std::wstring &u)
 {
   source = s;
   lib_uses = u;

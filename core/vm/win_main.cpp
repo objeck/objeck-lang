@@ -56,7 +56,7 @@ int main(const int argc, const char* argv[])
     //
     bool set_stdio_param = false;
     // bool set_foo_bar_param = false; // TODO: add if needed
-    size_t vm_param_count = 0;
+    int vm_param_count = 0;
     for(size_t i = 1; i < argc; ++i) {
       const std::string name_value(argv[i]);
       // check for OBJECK_STDIO
