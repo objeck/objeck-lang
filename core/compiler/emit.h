@@ -966,7 +966,7 @@ namespace backend {
     IntermediateClass* GetClass(int id) {
       std::map<int, IntermediateClass*>::iterator result = class_map.find(id);
 #ifdef _DEBUG
-      // assert(result != class_map.end());
+      assert(result != class_map.end());
 #endif
       return result->second;
     }
