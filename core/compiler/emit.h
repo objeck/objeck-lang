@@ -431,7 +431,7 @@ namespace backend {
     }
 
     void AddInstructions(std::vector<IntermediateInstruction*> &i) {
-      instructions = i;
+      instructions = std::move(i);
     }
 
     void Remove(std::pair<size_t, size_t> &range) {
@@ -605,7 +605,7 @@ namespace backend {
     }
 
     void SetBlocks(std::vector<IntermediateBlock*> b) {
-      blocks = b;
+      blocks = std::move(b);
     }
 
     void Write(bool emit_lib, bool is_debug, OutputStream &out_stream);
@@ -984,15 +984,15 @@ namespace backend {
     }
 
     void SetCharStrings(std::vector<std::wstring> s) {
-      char_strings = s;
+      char_strings = std::move(s);
     }
 
     void SetIntStrings(std::vector<frontend::IntStringHolder*> s) {
-      int_strings = s;
+      int_strings = std::move(s);
     }
 
     void SetFloatStrings(std::vector<frontend::FloatStringHolder*> s) {
-      float_strings = s;
+      float_strings = std::move(s);
     }
 
     void SetStartIds(int c, int m) {
@@ -1009,7 +1009,7 @@ namespace backend {
     }
 
     void SetBundleNames(std::vector<std::wstring> &n) {
-      bundle_names = n;
+      bundle_names = std::move(n);
     }
 
     void SetStringClassId(int i) {
