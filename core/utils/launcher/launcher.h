@@ -44,7 +44,7 @@
 #include <unistd.h>
 #endif
 
-#define MAX_ENV_PATH 1024 * 32
+#define MAX_ENV_PATH 32768
 
 using namespace std;
 

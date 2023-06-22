@@ -119,18 +119,11 @@ const string BuildObjeckLibVariable(const string& working_dir)
  * Get the environment PATH value
  */
 const string BuildPathVariable(const string& working_dir) {
-  char* path_ptr = nullptr;
-
 #ifdef _WIN32
   size_t path_len;
-  _dupenv_s(&path_ptr, &path_len, "PATH");
-
-  if(path_ptr) {
-    string path_str(path_ptr);
-
-    free(path_ptr);
-    path_ptr = nullptr;
-
+  char path_str[MAX_ENV_PATH];
+  if(!getenv_s(&path_len, path_str, MAX_ENV_PATH, "PATH") && strlen(path_str) > 0) {
+    string path_str(path_str);
     const string objk_bin_str = working_dir + "\\runtime\\bin";
     const string objk_native_str = working_dir + "\\runtime\\lib\\native";
     const string objk_sdl_str = working_dir + "\\runtime\\lib\\sdl";
@@ -138,7 +131,7 @@ const string BuildPathVariable(const string& working_dir) {
     return "PATH=" + path_str + ';' + objk_sdl_str + ';' + objk_native_str + ';' + objk_bin_str;
   }
 #else
-  path_ptr = getenv("PATH");
+  char* path_ptr = getenv("PATH");
   if(path_ptr) {
     const string objk_bin_str = working_dir + "/runtime/bin";
     const string objk_native_str = working_dir + "/runtime/lib/native";
