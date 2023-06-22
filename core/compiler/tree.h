@@ -609,7 +609,7 @@ namespace frontend {
       return expressions;
     }
 
-    const void SetExpressions(const std::vector<Expression*> e) {
+    const void SetExpressions(const std::vector<Expression*> &e) {
       expressions = e;
     }
 
@@ -1565,7 +1565,7 @@ namespace frontend {
     StatementList* other;
 
     Select(const std::wstring& file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, 
-           Assignment* e, std::map<ExpressionList*, StatementList*> s, std::vector<StatementList*> sl, StatementList* o) : Statement(file_name, line_num, line_pos, end_line_num, end_line_pos) {
+           Assignment* e, std::map<ExpressionList*, StatementList*> &s, std::vector<StatementList*> &sl, StatementList* o) : Statement(file_name, line_num, line_pos, end_line_num, end_line_pos) {
       eval_assignment = e;
       statement_map = s;
       statement_lists = sl;
@@ -1576,7 +1576,7 @@ namespace frontend {
     }
 
   public:
-    void SetLabelStatements(std::map<INT64_VALUE, StatementList*> s) {
+    void SetLabelStatements(std::map<INT64_VALUE, StatementList*> &s) {
       label_statements = s;
     }
 
@@ -2063,8 +2063,7 @@ namespace frontend {
 
     std::wstring EncodeType(Type* type, Class* klass, ParsedProgram* program, Linker* linker);
 
-    std::wstring EncodeFunctionType(std::vector<Type*> func_params, Type* func_rtrn,
-                               Class* klass, ParsedProgram* program, Linker* linker);
+    std::wstring EncodeFunctionType(std::vector<Type*> &func_params, Type* func_rtrn,Class* klass, ParsedProgram* program, Linker* linker);
 
     std::wstring EncodeType(Type* type);
 
@@ -2324,7 +2323,7 @@ namespace frontend {
 #endif
 
     Class(const std::wstring& f, const int l, const int p, const int el, const int ep, const std::wstring& n, const std::wstring& pn,
-          std::vector<std::wstring> &e, std::vector<Class*> g, bool s, bool i) : ParseNode(f, l, p) {
+          std::vector<std::wstring> &e, std::vector<Class*> &g, bool s, bool i) : ParseNode(f, l, p) {
       end_line_num = el;
       end_line_pos = ep;
       name = n;
@@ -3203,15 +3202,14 @@ namespace frontend {
     }
 
     Class* MakeClass(const std::wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, const std::wstring &name,
-                     const std::wstring &parent_name, std::vector<std::wstring> interfaces, 
-         std::vector<Class*> generics, bool is_public, bool is_interface) {
+                     const std::wstring &parent_name, std::vector<std::wstring> &interfaces, std::vector<Class*> generics, bool is_public, bool is_interface) {
       Class* tmp = new Class(file_name, line_num, line_pos, end_line_num, end_line_pos, name, parent_name, interfaces, generics, is_public, is_interface);
       nodes.push_back(tmp);
       return tmp;
     }
 
     Class* MakeClass(const std::wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, const std::wstring &name,
-                     const std::wstring &parent_name, std::vector<std::wstring> interfaces) {
+                     const std::wstring &parent_name, std::vector<std::wstring> &interfaces) {
       Class* tmp = new Class(file_name, line_num, line_pos, end_line_num, end_line_pos, name, parent_name, interfaces);
       nodes.push_back(tmp);
       return tmp;
@@ -3465,8 +3463,7 @@ namespace frontend {
     }
 
     Select* MakeSelect(const std::wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, Assignment* eval_assignment,
-                       std::map<ExpressionList*, StatementList*> statement_map, 
-                       std::vector<StatementList*> statement_lists, StatementList* other) {
+                       std::map<ExpressionList*, StatementList*> &statement_map, std::vector<StatementList*> &statement_lists, StatementList* other) {
       Select* tmp = new Select(file_name, line_num, line_pos, end_line_num, end_line_pos, eval_assignment,
                                statement_map, statement_lists, other);
       statements.push_back(tmp);
@@ -3723,7 +3720,7 @@ namespace frontend {
       return L"unknown";
     }
 
-    void AddUse(std::wstring u, const std::wstring &f) {
+    void AddUse(const std::wstring &u, const std::wstring &f) {
       std::vector<std::wstring> uses;
       uses.push_back(u);
       AddUses(uses, f);
