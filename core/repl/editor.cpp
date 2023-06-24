@@ -372,7 +372,9 @@ void Editor::DoGotoLine(std::wstring& in)
       }
     }
     catch(std::invalid_argument& e) {
+#ifdef _WIN32
       UNREFERENCED_PARAMETER(e);
+#endif
       std::wcout << SYNTAX_ERROR << std::endl;
     }
   }
@@ -401,7 +403,9 @@ bool Editor::DoReplaceLine(std::wstring& in)
       }
     }
     catch(std::invalid_argument& e) {
+#ifdef _WIN32
       UNREFERENCED_PARAMETER(e);
+#endif
       std::wcout << SYNTAX_ERROR << std::endl;
     }
   }
@@ -427,7 +431,9 @@ bool Editor::DoDeleteLine(std::wstring& in)
       }
     }
     catch(std::invalid_argument& e) {
+#ifdef _WIN32
       UNREFERENCED_PARAMETER(e);
+#endif
       std::wcout << SYNTAX_ERROR << std::endl;
     }
   }
