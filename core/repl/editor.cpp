@@ -306,10 +306,10 @@ void Editor::Edit()
         // save file
       case L's':
         if(DoSaveFile()) {
-          std::wcout << L"File saved => '" << doc.GetName() << L"'" << std::endl;
+          std::wcout << L"File saved => '" << doc.GetName() << L".'" << std::endl;
         }
         else {
-          std::wcout << L"Unable to save file => '" << doc.GetName() << L"'" << std::endl;
+          std::wcout << L"Unable to save file => '" << doc.GetName() << L"'." << std::endl;
         }
         break;
 
