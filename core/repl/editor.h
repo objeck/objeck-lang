@@ -109,7 +109,7 @@ class Document {
      return name;
    }
 
-   void SetName(std::wstring n) {
+   void SetName(const std::wstring &n) {
      name = n;
    }
 
