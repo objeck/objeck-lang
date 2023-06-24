@@ -145,20 +145,20 @@ public:
   bool AppendLine(std::wstring line, const int padding);
   
   static inline void LeftTrim(std::wstring& str) {
-    str.erase(str.begin(), std::find_if(str.begin(), str.end(), [](unsigned char ch) {
+    str.erase(str.begin(), std::find_if(str.begin(), str.end(), [] (wchar_t ch) {
       return !std::isspace(ch);     
     }));
   }
 
   static inline void RightTrim(std::wstring& str) {
-    str.erase(std::find_if(str.rbegin(), str.rend(), [](unsigned char ch) {
+    str.erase(std::find_if(str.rbegin(), str.rend(), [] (wchar_t ch) {
       return !std::isspace(ch);
     }).base(), str.end());
   }
 
   static inline std::wstring& Trim(std::wstring& str) {
+    LeftTrim(str); 
     RightTrim(str);
-    LeftTrim(str);
     return str;
   }
 };

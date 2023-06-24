@@ -372,6 +372,7 @@ void Editor::DoGotoLine(std::wstring& in)
       }
     }
     catch(std::invalid_argument& e) {
+      UNREFERENCED_PARAMETER(e);
       std::wcout << SYNTAX_ERROR << std::endl;
     }
   }
@@ -400,6 +401,7 @@ bool Editor::DoReplaceLine(std::wstring& in)
       }
     }
     catch(std::invalid_argument& e) {
+      UNREFERENCED_PARAMETER(e);
       std::wcout << SYNTAX_ERROR << std::endl;
     }
   }
@@ -425,6 +427,7 @@ bool Editor::DoDeleteLine(std::wstring& in)
       }
     }
     catch(std::invalid_argument& e) {
+      UNREFERENCED_PARAMETER(e);
       std::wcout << SYNTAX_ERROR << std::endl;
     }
   }
