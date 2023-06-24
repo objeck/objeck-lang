@@ -150,7 +150,7 @@ public:
   void DoUseLibraries(std::wstring &in);
   void DoInsertLine(std::wstring &in);
   bool DoLoadFile(std::wstring &in);
-  bool DoSaveFile();
+  bool DoSaveFile(std::wstring& in);
   void DoInsertMultiLine(std::wstring &in);
   bool DoDeleteLine(std::wstring& in);
   bool DoReplaceLine(std::wstring& in);
@@ -175,6 +175,14 @@ public:
     LeftTrim(str); 
     RightTrim(str);
     return str;
+  }
+
+  bool EndsWith(const std::wstring& str, std::wstring const& ending) {
+    if(str.length() >= ending.length()) {
+      return str.compare(str.length() - ending.length(), ending.length(), ending) == 0;
+    }
+
+    return false;
   }
 };
 
