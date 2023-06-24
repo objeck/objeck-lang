@@ -51,7 +51,7 @@ public:
   ObjeckLang(const std::wstring &s, const std::wstring &u);
   ~ObjeckLang();
 
-  bool Compile();
+  bool Compile(const std::wstring filename);
   std::vector<std::wstring> GetErrors();
 
 #ifdef _MODULE_STDIO
