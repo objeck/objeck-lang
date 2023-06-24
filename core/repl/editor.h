@@ -88,11 +88,13 @@ public:
 // Document
 //
 class Document {
+  std::wstring name;
   std::list<Line> lines;
   size_t shell_count;
 
  public:
-   Document() {
+   Document(std::wstring n) {
+     name = n;
      shell_count = 0;
    }
 
@@ -102,6 +104,16 @@ class Document {
    size_t Size() {
      return lines.size();
    }
+
+   std::wstring GetName() {
+     return name;
+   }
+
+   std::wstring SetName(std::wstring n) {
+     name = n;
+   }
+
+   bool Save();
 
    size_t Reset();
    bool LoadFile(const std::wstring &file);
@@ -138,6 +150,7 @@ public:
   void DoUseLibraries(std::wstring &in);
   void DoInsertLine(std::wstring &in);
   bool DoLoadFile(std::wstring &in);
+  bool DoSaveFile();
   void DoInsertMultiLine(std::wstring &in);
   bool DoDeleteLine(std::wstring& in);
   bool DoReplaceLine(std::wstring& in);
