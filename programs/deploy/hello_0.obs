@@ -8,5 +8,6 @@ class Hello {
     "Hello World" → PrintLine();
     "Καλημέρα κόσμε" → PrintLine();
     "こんにちは 世界" → PrintLine();
+    "All about you!"->PrintLine();
   }
 }
