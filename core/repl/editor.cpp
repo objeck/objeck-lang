@@ -52,6 +52,23 @@ size_t Document::Reset()
   return shell_count - 1;
 }
 
+bool Document::LoadFile(const std::wstring& file)
+{
+  lines.clear();
+
+  std::ifstream read_file(file);
+  if(read_file.is_open()) {
+    std::string line;
+    while(std::getline(read_file, line)) {
+      lines.push_back(Line(BytesToUnicode(line), Line::Type::RW_LINE));
+    }
+    read_file.close();
+    return true;
+  }
+  
+  return false;
+}
+
 std::wstring Document::ToString()
 {
   std::wstring buffer;
@@ -259,6 +276,16 @@ void Editor::Edit()
         DoGotoLine(in);
         break;
 
+        // load file
+      case L'f':
+        if(DoLoadFile(in)) {
+          DoExecute();
+        }
+        else {
+          std::wcout << L"Unable to read file." << std::endl;
+        }
+        break;
+
         // replace line
       case L'r':
         if(DoReplaceLine(in)) {
@@ -329,14 +356,14 @@ void Editor::DoReset()
   cur_pos = 3;
 }
 
-void Editor::DoInsertLine(std::wstring in)
+void Editor::DoInsertLine(std::wstring &in)
 {
   if(!AppendLine(in, 4)) {
     std::wcout << "=> Unable to insert line." << std::endl;
   }
 }
 
-void Editor::DoInsertMultiLine(std::wstring in)
+void Editor::DoInsertMultiLine(std::wstring &in)
 {
   size_t line_count = 0;
   bool multi_line_done = false;
@@ -357,10 +384,20 @@ void Editor::DoInsertMultiLine(std::wstring in)
   std::wcout << L"=> Inserted " << line_count << " lines." << std::endl;
 }
 
+bool Editor::DoLoadFile(std::wstring& in)
+{
+  if(in.size() > 2) {
+    in = in.substr(3);
+    return doc.LoadFile(in);
+  }
+
+  return false;
+}
+
 void Editor::DoGotoLine(std::wstring& in)
 {
   if(in.size() > 2) {
-    in = in.substr(2);
+    in = in.substr(3);
     try {
       const size_t line_pos = std::stoi(in);
       if(line_pos - 1 < doc.Size()) {
@@ -386,7 +423,7 @@ void Editor::DoGotoLine(std::wstring& in)
 bool Editor::DoReplaceLine(std::wstring& in)
 {
   if(in.size() > 2) {
-    in = in.substr(2);
+    in = in.substr(3);
     try {
       const size_t line_pos = std::stoi(Trim(in));
       if(doc.DeleteLine(line_pos - 1)) {
@@ -419,7 +456,7 @@ bool Editor::DoReplaceLine(std::wstring& in)
 bool Editor::DoDeleteLine(std::wstring& in)
 {
   if(in.size() > 2) {
-    in = in.substr(2);
+    in = in.substr(3);
     try {
       const int line_pos = std::stoi(Trim(in));
       if(doc.DeleteLine(line_pos - 1)) {
@@ -444,7 +481,7 @@ bool Editor::DoDeleteLine(std::wstring& in)
   return false;
 }
 
-void Editor::DoUseLibraries(std::wstring in)
+void Editor::DoUseLibraries(std::wstring &in)
 {
   std::wcout << L"=> Current library list: " << lib_uses << std::endl;
   std::wcout << L"New library list] ";
