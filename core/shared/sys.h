@@ -55,6 +55,8 @@
 #define FLOAT_VALUE double
 #define COMPRESS_BUFFER_LIMIT 2 << 28 // 512 MB
 
+#define SMALL_BUFFER_MAX 1024
+#define MID_BUFFER_MAX 8192
 #define LARGE_BUFFER_MAX 32768
 
 namespace instructions {
@@ -707,8 +709,8 @@ static std::wstring GetLibraryPath() {
 
 #ifdef _WIN32
   size_t value_len;
-  char path_str[LARGE_BUFFER_MAX];
-  if(!getenv_s(&value_len, path_str, LARGE_BUFFER_MAX, "OBJECK_LIB_PATH") && strlen(path_str) > 0) {
+  char path_str[SMALL_BUFFER_MAX];
+  if(!getenv_s(&value_len, path_str, SMALL_BUFFER_MAX, "OBJECK_LIB_PATH") && strlen(path_str) > 0) {
 #else
   const char* path_str = getenv("OBJECK_LIB_PATH");
   if(path_str) {
