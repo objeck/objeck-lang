@@ -53,7 +53,12 @@ public:
 
   bool Compile();
   std::vector<std::wstring> GetErrors();
+
+#ifdef _MODULE_STDIO
   const std::wstring Execute();
+#else
+  void Execute();
+#endif
 };
 
 #endif

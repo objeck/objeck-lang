@@ -87,8 +87,22 @@ bool ObjeckLang::Compile()
   return false;
 }
 
+#ifdef _MODULE_STDIO
 const std::wstring ObjeckLang::Execute()
+#else
+void ObjeckLang::Execute()
+#endif
 {
+#ifdef _WIN32
+  if(_setmode(_fileno(stdin), _O_U8TEXT) < 0) {
+    exit(1);
+  }
+
+  if(_setmode(_fileno(stdout), _O_U8TEXT) < 0) {
+    exit(1);
+  }
+#endif
+
   Loader loader(code);
   loader.Load();
 
@@ -111,7 +125,9 @@ const std::wstring ObjeckLang::Execute()
   }
 #endif
 
+#ifdef _MODULE_STDIO
   const std::wstring output = intpr->GetOutputBuffer().str();
+#endif
 
   // clean up
   delete[] op_stack;
@@ -120,7 +136,9 @@ const std::wstring ObjeckLang::Execute()
   delete intpr;
   intpr = nullptr;
 
+#ifdef _MODULE_STDIO
   return output;
+#endif
 }
 
 std::vector<std::wstring> ObjeckLang::GetErrors() 
