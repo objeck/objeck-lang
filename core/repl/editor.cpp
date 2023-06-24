@@ -309,7 +309,7 @@ void Editor::Edit()
           std::wcout << L"File saved => '" << doc.GetName() << L".'" << std::endl;
         }
         else {
-          std::wcout << L"Unable to save file => '" << doc.GetName() << L"'." << std::endl;
+          std::wcout << L"Unable to save file => '" << doc.GetName() << L"'.\n\tIf the file was not loaded, provide a filename." << std::endl;
         }
         break;
 
