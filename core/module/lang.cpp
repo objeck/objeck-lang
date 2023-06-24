@@ -42,14 +42,13 @@ ObjeckLang::~ObjeckLang()
 {
 }
 
-bool ObjeckLang::Compile()
+bool ObjeckLang::Compile(const std::wstring filename)
 {
   const bool is_debug = false;
   const bool is_lib = false;
   const bool show_asm = false;
   const std::wstring opt = L"s1";
   const std::wstring sys_lib_path = lib_uses; // L"lang.obl,gen_collect.obl"
-  const std::wstring filename = L"shell://code";
 
   std::vector<std::pair<std::wstring, std::wstring> > programs;
   programs.push_back(make_pair(filename + L".obs", source));

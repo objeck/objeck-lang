@@ -57,15 +57,32 @@ bool Document::LoadFile(const std::wstring& file)
   lines.clear();
 
   std::ifstream read_file(UnicodeToBytes(file));
-  if(read_file.is_open()) {
+  if(read_file.good()) {
     std::string line;
     while(std::getline(read_file, line)) {
       lines.push_back(Line(BytesToUnicode(line), Line::Type::RW_LINE));
     }
     read_file.close();
+    name = file;
+
     return true;
   }
   
+  return false;
+}
+
+bool Document::Save()
+{
+  std::ofstream write_file(UnicodeToBytes(name));
+  if(write_file.good()) {
+    for(auto& line : lines) {
+      write_file << UnicodeToBytes(line.ToString()) << std::endl;
+    }
+    write_file.close();
+
+    return true;
+  }
+
   return false;
 }
 
@@ -220,7 +237,7 @@ void Document::Debug(size_t cur_pos)
 //
 // Editor
 //
-Editor::Editor()
+Editor::Editor() : doc(L"shell://code")
 {
   lib_uses = L"lang.obl,gen_collect.obl";
   cur_pos = doc.Reset();
@@ -283,6 +300,16 @@ void Editor::Edit()
         }
         else {
           std::wcout << L"Unable to read file." << std::endl;
+        }
+        break;
+
+        // save file
+      case L's':
+        if(DoSaveFile()) {
+          std::wcout << L"File saved to => '" << doc.GetName() << L"'" << std::endl;
+        }
+        else {
+          std::wcout << L"Unable to save file => '" << doc.GetName() << L"'" << std::endl;
         }
         break;
 
@@ -356,14 +383,14 @@ void Editor::DoReset()
   cur_pos = 3;
 }
 
-void Editor::DoInsertLine(std::wstring &in)
+void Editor::DoInsertLine(std::wstring& in)
 {
   if(!AppendLine(in, 4)) {
     std::wcout << "=> Unable to insert line." << std::endl;
   }
 }
 
-void Editor::DoInsertMultiLine(std::wstring &in)
+void Editor::DoInsertMultiLine(std::wstring& in)
 {
   size_t line_count = 0;
   bool multi_line_done = false;
@@ -378,8 +405,7 @@ void Editor::DoInsertMultiLine(std::wstring &in)
         line_count++;
       }
     }
-  } 
-  while(!multi_line_done);
+  } while(!multi_line_done);
 
   std::wcout << L"=> Inserted " << line_count << " lines." << std::endl;
 }
@@ -392,6 +418,16 @@ bool Editor::DoLoadFile(std::wstring& in)
       cur_pos = 1;
       return true;
     }
+  }
+
+  return false;
+}
+
+bool Editor::DoSaveFile()
+{
+  if(doc.GetName() != L"shell://code" && doc.Save()) {
+
+    return true;
   }
 
   return false;
@@ -505,7 +541,7 @@ void Editor::DoUseLibraries(std::wstring &in)
 void Editor::DoExecute()
 {
   ObjeckLang lang(doc.ToString(), lib_uses);
-  if(lang.Compile()) {
+  if(lang.Compile(doc.GetName())) {
     lang.Execute();
   }
   else {
