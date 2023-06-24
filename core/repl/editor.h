@@ -104,6 +104,7 @@ class Document {
    }
 
    size_t Reset();
+   bool LoadFile(const std::wstring &file);
    std::wstring ToString();
    void List(size_t cur_pos, bool all);
    bool InsertLine(size_t line_num, const std::wstring line, int padding, Line::Type = Line::Type::RW_LINE);
@@ -134,9 +135,10 @@ public:
   void DoReset();
   void DoHelp();
   void DoExecute();
-  void DoUseLibraries(std::wstring in);
-  void DoInsertLine(std::wstring in);
-  void DoInsertMultiLine(std::wstring in);
+  void DoUseLibraries(std::wstring &in);
+  void DoInsertLine(std::wstring &in);
+  bool DoLoadFile(std::wstring &in);
+  void DoInsertMultiLine(std::wstring &in);
   bool DoDeleteLine(std::wstring& in);
   bool DoReplaceLine(std::wstring& in);
   void DoGotoLine(std::wstring& in);
