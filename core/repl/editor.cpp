@@ -56,7 +56,7 @@ bool Document::LoadFile(const std::wstring& file)
 {
   lines.clear();
 
-  std::ifstream read_file(file);
+  std::ifstream read_file(UnicodeToBytes(file));
   if(read_file.is_open()) {
     std::string line;
     while(std::getline(read_file, line)) {
