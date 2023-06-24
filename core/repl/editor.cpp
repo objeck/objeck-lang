@@ -388,7 +388,10 @@ bool Editor::DoLoadFile(std::wstring& in)
 {
   if(in.size() > 2) {
     in = in.substr(3);
-    return doc.LoadFile(in);
+    if(doc.LoadFile(in)) {
+      cur_pos = 1;
+      return true;
+    }
   }
 
   return false;
@@ -503,7 +506,7 @@ void Editor::DoExecute()
 {
   ObjeckLang lang(doc.ToString(), lib_uses);
   if(lang.Compile()) {
-    std::wcout << lang.Execute();
+    lang.Execute();
   }
   else {
     auto errors = lang.GetErrors();
