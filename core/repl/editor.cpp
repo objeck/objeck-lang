@@ -305,7 +305,7 @@ void Editor::Edit()
 
         // save file
       case L's':
-        if(DoSaveFile()) {
+        if(DoSaveFile(in)) {
           std::wcout << L"File saved => '" << doc.GetName() << L".'" << std::endl;
         }
         else {
@@ -423,10 +423,15 @@ bool Editor::DoLoadFile(std::wstring& in)
   return false;
 }
 
-bool Editor::DoSaveFile()
+bool Editor::DoSaveFile(std::wstring& in)
 {
-  if(doc.GetName() != L"shell://code" && doc.Save()) {
-
+  if(in.size() > 2 && EndsWith(in, L".obs")) {
+    doc.SetName(in.substr(3));
+    if(doc.Save()) {
+      return true;
+    }
+  }
+  else if(doc.GetName() != L"shell://code" && doc.Save()) {
     return true;
   }
 
