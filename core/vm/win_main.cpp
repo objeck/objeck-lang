@@ -79,12 +79,12 @@ int main(const int argc, const char* argv[])
     //
     // environment variables
     //
-    size_t value_len;
-    char value[LARGE_BUFFER_MAX];
 
     // check for OBJECK_STDIO
+    size_t value_len;
+    char value[SMALL_BUFFER_MAX];
     if(!set_stdio_param) {
-      if(!getenv_s(&value_len, value, LARGE_BUFFER_MAX, "OBJECK_STDIO") && strlen(value) > 0) {
+      if(!getenv_s(&value_len, value, SMALL_BUFFER_MAX, "OBJECK_STDIO") && strlen(value) > 0) {
         SetStdIo(value);
       }
       // set default as utf8
@@ -108,7 +108,7 @@ int main(const int argc, const char* argv[])
     /* TODO: add if needed
     // check for FOO_BAR
     else if(!set_foo_bar_param) {
-      if(!getenv_s(&value_len, value, LARGE_BUFFER_MAX, "FOO_BAR") && strlen(value) > 0) {
+      if(!getenv_s(&value_len, value, SMALL_BUFFER_MAX, "FOO_BAR") && strlen(value) > 0) {
       }
       else {
       }

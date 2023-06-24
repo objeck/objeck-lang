@@ -3318,8 +3318,8 @@ bool TrapProcessor::SysCmdOut(StackProgram* program, size_t* inst, size_t*& op_s
         const std::string value = env_str.substr(index + 1);
 
 #ifdef _WIN32
-        size_t prev_value_len; char prev_value[LARGE_BUFFER_MAX];
-        if(!getenv_s(&prev_value_len, prev_value, LARGE_BUFFER_MAX, name.c_str()) && strlen(prev_value) > 0) {
+        size_t prev_value_len; char prev_value[SMALL_BUFFER_MAX];
+        if(!getenv_s(&prev_value_len, prev_value, SMALL_BUFFER_MAX, name.c_str()) && strlen(prev_value) > 0) {
           prev_env_variables[name] = prev_value;
         }
         else {
@@ -3547,8 +3547,8 @@ bool TrapProcessor::GetSysEnv(StackProgram* program, size_t* inst, size_t*& op_s
     std::string key = UnicodeToBytes((wchar_t*)(key_array + 3));
 #ifdef _WIN32
     size_t value_len; 
-    char value[LARGE_BUFFER_MAX];
-    if(!getenv_s(&value_len, value, LARGE_BUFFER_MAX, key.c_str()) && strlen(value) > 0) {
+    char value[SMALL_BUFFER_MAX];
+    if(!getenv_s(&value_len, value, SMALL_BUFFER_MAX, key.c_str()) && strlen(value) > 0) {
 #else
     const char* value = getenv(key.c_str());
     if(value) {
