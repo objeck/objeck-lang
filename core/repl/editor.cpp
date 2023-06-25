@@ -237,7 +237,7 @@ void Document::Debug(size_t cur_pos)
 //
 // Editor
 //
-Editor::Editor() : doc(L"shell://code")
+Editor::Editor() : doc(DEFAULT_FILE_NAME)
 {
   lib_uses = L"lang.obl,gen_collect.obl";
   cur_pos = doc.Reset();
@@ -365,7 +365,8 @@ void Editor::DoHelp()
   std::wcout << "  /g: goto line" << std::endl;
   std::wcout << "  /i: insert line above" << std::endl;
   std::wcout << "  /m: insert multiple lines above" << std::endl;
-  std::wcout << "  /f: insert function or method" << std::endl;
+  std::wcout << "  /f: load file by name" << std::endl;
+  std::wcout << "  /s: save file loaded or current buffer" << std::endl;
   std::wcout << "  /r: replace line" << std::endl;
   std::wcout << "  /d: delete line" << std::endl;
   std::wcout << "  /u: edit library use statements" << std::endl;
@@ -431,7 +432,7 @@ bool Editor::DoSaveFile(std::wstring& in)
       return true;
     }
   }
-  else if(doc.GetName() != L"shell://code" && doc.Save()) {
+  else if(doc.GetName() != DEFAULT_FILE_NAME && doc.Save()) {
     return true;
   }
 

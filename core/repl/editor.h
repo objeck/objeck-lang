@@ -35,6 +35,8 @@
 #include "repl.h"
 #include "../module/lang.h"
 
+#define DEFAULT_FILE_NAME L"shell://repl.obs"
+
 //
 // Line
 //
