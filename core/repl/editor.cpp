@@ -309,7 +309,7 @@ void Editor::Edit()
           std::wcout << L"File saved => '" << doc.GetName() << L".'" << std::endl;
         }
         else {
-          std::wcout << L"Unable to save file => '" << doc.GetName() << L"'.\n\tIf the file was not loaded, provide a filename." << std::endl;
+          std::wcout << L"Unable to save file => '" << doc.GetName() << L"'.\n  If the file was not loaded, provide a filename." << std::endl;
         }
         break;
 
@@ -370,7 +370,6 @@ void Editor::DoHelp()
   std::wcout << "  /r: replace line" << std::endl;
   std::wcout << "  /d: delete line" << std::endl;
   std::wcout << "  /u: edit library use statements" << std::endl;
-  std::wcout << "  /x: execute program" << std::endl;
   std::wcout << "---" << std::endl;
   std::wcout << "Online guide: https://objeck.org/getting_started.html" << std::endl;
 }
