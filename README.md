@@ -26,28 +26,28 @@ More Rosetta Code [examples](https://github.com/objeck/objeck-lang/tree/master/p
 
 ## Key Features
 * Object-oriented
-  * [Inheritance](https://en.wikipedia.org/wiki/Inheritance_(object-oriented_programming))
-  * [Interfaces](https://en.wikipedia.org/wiki/Interface_(object-oriented_programming))
-  * [Type Inference](https://en.wikipedia.org/wiki/Type_inference)
-  * [Reflection](https://en.wikipedia.org/wiki/Reflective_programming)
-  * [Dependency injection](https://en.wikipedia.org/wiki/Dependency_injection)
-  * [Generics](https://en.wikipedia.org/wiki/Generic_programming)
-  * [Type boxing](https://en.wikipedia.org/wiki/Boxing_(computer_science))
-  * [Serialization](https://en.wikipedia.org/wiki/Serialization)
+  * Inheritance
+  * Interfaces
+  * Type Inference
+  * Reflection
+  * Dependency injection
+  * Generics
+  * Type boxing
+  * Serialization
 * Functional 
-  * [Closures](https://en.wikipedia.org/wiki/Closure_(computer_programming))
-  * [Lambda expressions](https://en.wikipedia.org/wiki/Anonymous_function)
-  * [First-class functions](https://en.wikipedia.org/wiki/First-class_function)
-* [Unicode](https://en.wikipedia.org/wiki/Unicode)
+  * Closures
+  * Lambda expressions
+  * First-class functions
+* Unicode
 * OS support
-  * [File systems](https://en.wikipedia.org/wiki/File_system)
-  * [Sockets](https://en.wikipedia.org/wiki/Network_socket)
-  * [Named pipes](https://en.wikipedia.org/wiki/Named_pipe)
-  * [Threads](https://en.wikipedia.org/wiki/Thread_(computing))
-  * [Date/times](https://en.wikipedia.org/wiki/C_date_and_time_functions)
-  * [Extension libraries](https://en.wikipedia.org/wiki/Library_(computing))
-* [Garbage collection](https://en.wikipedia.org/wiki/Tracing_garbage_collection)
-* [JIT compilation](https://en.wikipedia.org/wiki/Just-in-time_compilation)
+  * File systems
+  * Sockets
+  * Named pipes
+  * Threads
+  * Date/times
+  * Extension libraries
+* Garbage collection](https://en.wikipedia.org/wiki/Tracing_garbage_collection)
+* JIT compilation
   * [arm64](https://github.com/objeck/objeck-lang/tree/master/core/vm/arch/jit/arm64): Linux (Raspberry Pi 4), macOS (Apple silicon)
   * [x86-64](https://github.com/objeck/objeck-lang/tree/master/core/vm/arch/jit/amd64): Windows (11/10), Linux and macOS
 * [LSP support](https://github.com/objeck/objeck-lsp)
