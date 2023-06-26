@@ -971,7 +971,7 @@
 			<path d="M0 770.4 C18.85 770.4 46.24 770.4 60.37 787.01 C74.81 804 75.37 838.37 75.39 861.95 L75.39 862.31"
 					class="st27"/>
 		</g>
-		<g id="shape41-376" v:mID="41" v:groupContext="shape" v:layerMember="0" transform="translate(659.606,-313.804)">
+		<g id="shape41-376" v:mID="41" v:groupContext="shape" v:layerMember="0" transform="translate(652.406,-285.004)">
 			<title>Subprocess.41</title>
 			<desc>Debugger (obd)</desc>
 			<v:custProps>
@@ -1015,7 +1015,7 @@
 			<path d="M62.19 770.4 L62.19 717" class="st13"/>
 			<text x="15.53" y="740.7" class="st28" v:langID="1033"><v:paragraph v:horizAlign="1"/><v:tabList/>Debugger<v:newlineChar/><tspan
 						x="24.67" dy="1.2em" class="st25">(obd)</tspan></text>		</g>
-		<g id="shape42-389" v:mID="42" v:groupContext="shape" v:layerMember="1" transform="translate(659.606,-340.502)">
+		<g id="shape42-389" v:mID="42" v:groupContext="shape" v:layerMember="1" transform="translate(652.406,-311.702)">
 			<title>Dynamic connector.42</title>
 			<v:userDefs>
 				<v:ud v:nameU="msvThemeColors" v:val="VT0(36):26"/>
@@ -1023,13 +1023,11 @@
 			</v:userDefs>
 			<g id="shadow42-390" v:groupContext="shadow" v:shadowOffsetX="1.44" v:shadowOffsetY="-1.44" v:shadowType="1"
 					transform="matrix(1,0,0,1,1.44,1.44)" class="st1">
-				<path d="M0 770.4 C-13.5 770.4 -13.5 792.82 -13.5 815.25 C-13.5 836.87 -13.5 858.5 -30.84 860.53 L-31.2 860.55"
-						class="st26"/>
+				<path d="M0 770.4 C-12.52 770.4 -13.43 823.3 -23.8 830.97 L-24.14 831.09" class="st26"/>
 			</g>
-			<path d="M0 770.4 C-13.5 770.4 -13.5 792.82 -13.5 815.25 C-13.5 836.87 -13.5 858.5 -30.84 860.53 L-31.2 860.55"
-					class="st27"/>
+			<path d="M0 770.4 C-12.52 770.4 -13.43 823.3 -23.8 830.97 L-24.14 831.09" class="st27"/>
 		</g>
-		<g id="shape44-400" v:mID="44" v:groupContext="shape" v:layerMember="0" transform="translate(659.606,-151.2)">
+		<g id="shape44-400" v:mID="44" v:groupContext="shape" v:layerMember="0" transform="translate(652.406,-174.311)">
 			<title>Subprocess.56.44</title>
 			<desc>Native Launcher (obb)</desc>
 			<v:custProps>
@@ -1073,7 +1071,7 @@
 			<path d="M62.19 770.4 L62.19 717" class="st13"/>
 			<text x="21.99" y="734.7" class="st28" v:langID="1033"><v:paragraph v:horizAlign="1"/><v:tabList/>Native <tspan
 						x="16.58" dy="1.2em" class="st9">Launcher<v:newlineChar/></tspan><tspan x="24.67" dy="1.2em" class="st25">(obb)</tspan></text>		</g>
-		<g id="shape45-414" v:mID="45" v:groupContext="shape" v:layerMember="1" transform="translate(659.606,-177.898)">
+		<g id="shape45-414" v:mID="45" v:groupContext="shape" v:layerMember="1" transform="translate(652.406,-201.009)">
 			<title>Dynamic connector.57.45</title>
 			<v:userDefs>
 				<v:ud v:nameU="msvThemeColors" v:val="VT0(36):26"/>
@@ -1081,11 +1079,9 @@
 			</v:userDefs>
 			<g id="shadow45-415" v:groupContext="shadow" v:shadowOffsetX="1.44" v:shadowOffsetY="-1.44" v:shadowType="1"
 					transform="matrix(1,0,0,1,1.44,1.44)" class="st1">
-				<path d="M0 770.4 C-13.5 770.4 -13.5 752.5 -13.5 734.61 C-13.5 717.22 -13.5 699.84 -30.84 698.21 L-31.2 698.19"
-						class="st26"/>
+				<path d="M0 770.4 C-12.5 770.4 -13.43 728.2 -23.75 721.96 L-24.09 721.86" class="st26"/>
 			</g>
-			<path d="M0 770.4 C-13.5 770.4 -13.5 752.5 -13.5 734.61 C-13.5 717.22 -13.5 699.84 -30.84 698.21 L-31.2 698.19"
-					class="st27"/>
+			<path d="M0 770.4 C-12.5 770.4 -13.43 728.2 -23.75 721.96 L-24.09 721.86" class="st27"/>
 		</g>
 		<g id="shape48-425" v:mID="48" v:groupContext="shape" v:layerMember="0" transform="translate(162.027,-324)">
 			<title>Process.48</title>
