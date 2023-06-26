@@ -22,7 +22,7 @@ class Hello {
 }
 ```
 
-More Rosetta Code [examples](https://github.com/objeck/objeck-lang/tree/master/programs/tests/rc) and [IDE](https://github.com/objeck/objeck-lsp) support.
+For more, start with [Rosetta Code examples](https://github.com/objeck/objeck-lang/tree/master/programs/tests/rc), [IDE plug-ins](https://github.com/objeck/objeck-lsp) and the [system architecture](https://github.com/objeck/objeck-lang/tree/master/core). 
 
 ## Key Features
 * Object-oriented
