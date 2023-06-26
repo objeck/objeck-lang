@@ -46,7 +46,7 @@ More Rosetta Code [examples](https://github.com/objeck/objeck-lang/tree/master/p
   * Threads
   * Date/times
   * Extension libraries
-* Garbage collection](https://en.wikipedia.org/wiki/Tracing_garbage_collection)
+* [Generational garbage collection](https://en.wikipedia.org/wiki/Tracing_garbage_collection)
 * JIT compilation
   * [arm64](https://github.com/objeck/objeck-lang/tree/master/core/vm/arch/jit/arm64): Linux (Raspberry Pi 4), macOS (Apple silicon)
   * [x86-64](https://github.com/objeck/objeck-lang/tree/master/core/vm/arch/jit/amd64): Windows (11/10), Linux and macOS
