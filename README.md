@@ -25,7 +25,7 @@ class Hello {
 To get started, take a look at the [language guide](https://objeck.org/getting_started.html), [Rosetta Code examples](https://github.com/objeck/objeck-lang/tree/master/programs/tests/rc), [IDE plug-ins](https://github.com/objeck/objeck-lsp) and for contributors the [system architecture](https://github.com/objeck/objeck-lang/tree/master/core). 
 
 ## Key Features
-* Object-oriented
+* [Object-oriented](https://en.wikipedia.org/wiki/Object-oriented_programming)
   * Inheritance
   * Interfaces
   * Type Inference
@@ -34,11 +34,11 @@ To get started, take a look at the [language guide](https://objeck.org/getting_s
   * Generics
   * Type boxing
   * Serialization
-* Functional 
+* [Functional](https://en.wikipedia.org/wiki/Functional_programming)
   * Closures
   * Lambda expressions
   * First-class functions
-* Unicode
+* [Unicode](https://en.wikipedia.org/wiki/Unicode)
 * OS support
   * File systems
   * Sockets
