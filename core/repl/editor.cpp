@@ -130,7 +130,7 @@ void Document::List(size_t cur_pos, bool all)
 
 bool Document::InsertLine(size_t line_num, const std::wstring line, int padding, Line::Type type)
 {
-  if(line_num > 0 && line_num < lines.size()) {
+  if(line_num >= 0 && line_num < lines.size()) {
     size_t cur_num = 0;
 
     std::list<Line>::iterator iter = lines.begin();
@@ -152,7 +152,7 @@ bool Document::InsertLine(size_t line_num, const std::wstring line, int padding,
 
 bool Document::DeleteLine(size_t line_num)
 {
-  if(line_num > 0 && line_num < lines.size()) {
+  if(line_num >= 0 && line_num < lines.size()) {
     size_t cur_num = 0;
 
     std::list<Line>::iterator iter = lines.begin();
