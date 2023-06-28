@@ -100,6 +100,8 @@ std::wstring Document::ToString()
 
 void Document::List(size_t cur_pos, bool all)
 {
+  Scanner scanner(L"", false, L"");
+
   if(!all && lines.size() == shell_count) {
     std::wcout << L"[No code]" << std::endl;
   }
@@ -108,27 +110,30 @@ void Document::List(size_t cur_pos, bool all)
       std::wcout << L"[All code]" << std::endl;
     }
 
+    std::wstringstream buffer;
     size_t index = 0;
     for(auto& line : lines) {
       ++index;
 
       if(all || line.GetType() == Line::Type::RW_LINE) {
         if(index == cur_pos) {
-          std::wcout << "=> ";
+          buffer << "=> ";
         }
         else {
-          std::wcout << "   ";
+          buffer << "   ";
         }
 
-        std::wcout << index;
-        std::wcout << L": ";
-        std::wcout << line.ToString() << std::endl;
+        buffer << index;
+        buffer << L": ";
+        buffer << line.ToString() << std::endl;
       }
     }
+
+    std::wcout << buffer.str() << std::endl;
   }
 }
 
-bool Document::InsertLine(size_t line_num, const std::wstring line, int padding, Line::Type type)
+bool Document::InsertLine(size_t line_num, const std::wstring line, Line::Type type)
 {
   if(line_num >= 0 && line_num < lines.size()) {
     size_t cur_num = 0;
@@ -138,12 +143,7 @@ bool Document::InsertLine(size_t line_num, const std::wstring line, int padding,
       ++iter;
     }
 
-    std::wstring padding_str;
-    while(padding--) {
-      padding_str += L' ';
-    }
-
-    lines.insert(iter, Line(padding_str + line, type));
+    lines.insert(iter, Line(line, type));
     return true;
   }
 
@@ -385,7 +385,7 @@ void Editor::DoReset()
 
 void Editor::DoInsertLine(std::wstring& in)
 {
-  if(!AppendLine(in, 4)) {
+  if(!AppendLine(in)) {
     std::wcout << "=> Unable to insert line." << std::endl;
   }
 }
@@ -401,7 +401,7 @@ void Editor::DoInsertMultiLine(std::wstring& in)
       multi_line_done = true;
     }
     else {
-      if(AppendLine(in, 4)) {
+      if(AppendLine(in)) {
         line_count++;
       }
     }
@@ -474,7 +474,7 @@ bool Editor::DoReplaceLine(std::wstring& in)
         cur_pos = line_pos;
         std::wcout << L"Insert] " << line_pos << L"] ";
         std::getline(std::wcin, in);
-        if(AppendLine(in, 4)) {
+        if(AppendLine(in)) {
           std::wcout << "=> Replaced line " << line_pos << L'.' << std::endl;
           return true;
         }
@@ -557,9 +557,9 @@ void Editor::DoExecute()
   }
 }
 
-bool Editor::AppendLine(std::wstring line, const int padding)
+bool Editor::AppendLine(std::wstring line)
 {
-  if(doc.InsertLine(cur_pos - 1, line, padding)) {
+  if(doc.InsertLine(cur_pos - 1, line)) {
     cur_pos++;
     return true;
   }
