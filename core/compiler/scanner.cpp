@@ -41,15 +41,17 @@
 Scanner::Scanner(std::wstring f, bool a, const std::wstring c)
 {
   // copy file name
-  
   alt_syntax = a;
   cur_char = L'\0';
+
   // create tokens
   for(int i = 0; i < LOOK_AHEAD; ++i) {
     tokens[i] = new Token;
   }
+  
   // load identifiers into map
   LoadKeywords();
+  
   // read file into memory
   if(!c.empty()) {
     filename = f;
