@@ -347,12 +347,12 @@ bundle System.Utility {
 		#~
 		Constructor
 		@param options options: 
-		<p><pre>options := Map->New()<String, String>;
+		<pre class="line-numbers">>options := Map->New()<String, String>;
 options->Insert("function-space", "false");
 options->Insert("ident-space", "3");
 options->Insert("trim-trailing", "true");
 options->Insert("start-line", "1");
-options->Insert("end-line", "2");</pre><p>
+options->Insert("end-line", "2");</pre>
 		~#
 		New(options : Map<String, String>) {
 			# get options
@@ -976,7 +976,7 @@ options->Insert("end-line", "2");</pre><p>
 		}
 	}
 
-	private : class Scanner {
+	class: private : Scanner {
 		@buffer : Char[];
 		@buffer_index : Int;
 		@cur_char : Char;
@@ -1419,7 +1419,7 @@ options->Insert("end-line", "2");</pre><p>
 		}
 	}
 
-	private : class Token {
+	class: private : Token {
 		@line_num : Int;
 		@type : Token->Type;
 		@value : String;
