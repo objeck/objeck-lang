@@ -980,27 +980,30 @@ void Scanner::ParseToken(int index)
     while(cur_char != L'\"' && cur_char != EOB) {
       if(cur_char == L'\\') {
         NextChar();
-        switch(cur_char) {
-        case L'"':
-        case L'\\':
-        case L'u':
-        case L'x':
-        case L'X':
-        case L'n':
-        case L'r':
-        case L'b':
-        case L'a':
-        case L'f':
-        case L't':
-        case L'0':
-        case L'$':
-          break;
+        if(std::isdigit(cur_char)) {
+          switch(cur_char) {
+          case L'"':
+          case L'\\':
+          case L'u':
+          case L'x':
+          case L'X':
+          case L'n':
+          case L'r':
+          case L'b':
+          case L'a':
+          case L'f':
+          case L't':
+          case L'0':
+          case L'$':
+            break;
 
-        default:
-          is_valid = false;
-          break;
+          default:
+            is_valid = false;
+            break;
+          }
         }
       }
+
       NextChar();
     }
     // mark
