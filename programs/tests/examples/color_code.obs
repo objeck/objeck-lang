@@ -1,0 +1,15 @@
+class ColorCode {
+	function : Main(args : String[]) ~ Nil {
+		"\x1B[31mTexting\033[0m\t\t"->PrintLine();
+#~		
+		options := Collection.Map->New()<String, String>;
+		options->Insert("function-space", "false");
+		options->Insert("ident-space", "3");
+		options->Insert("trim-trailing", "true");
+
+		source := System.IO.Filesystem.FileReader->ReadFile(args[0]);
+		formatter := System.Utility.CodeFormatter->New(options);
+		formatter->Format(source, true)->PrintLine();
+~#		
+	}
+}
