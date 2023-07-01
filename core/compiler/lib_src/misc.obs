@@ -416,7 +416,7 @@ options->Insert("end-line", "2");</pre>
 			return (@start_range < 0 & @end_range < 0) | (@token <> Nil & @start_range <= @token->GetLine() & @end_range >= @token->GetLine());
 		}	
 
-		method : public : Format(source : String) ~ String {
+		method : public : Format(source : String, is_color : Bool) ~ String {
 			scanner := Scanner->New(source);
 			if(scanner->Scan()) {
 				tab_space := 0;

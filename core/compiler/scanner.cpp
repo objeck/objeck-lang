@@ -983,6 +983,9 @@ void Scanner::ParseToken(int index)
         switch(cur_char) {
         case L'"':
         case L'\\':
+        case L'u':
+        case L'x':
+        case L'X':
         case L'n':
         case L'r':
         case L'b':
@@ -1014,7 +1017,7 @@ void Scanner::ParseToken(int index)
     if(cur_char == L'\\') {
       NextChar();
       // read unicode string
-      if(cur_char == L'u') {
+      if(cur_char == L'u' || cur_char == L'x' || cur_char == L'X') {
         NextChar();
         start_pos = buffer_pos - 1;
         while(iswdigit(cur_char) || (cur_char >= L'a' && cur_char <= L'f') || (cur_char >= L'A' && cur_char <= L'F')) {
