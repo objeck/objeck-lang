@@ -52,9 +52,41 @@ void CharacterString::AddSegment(const std::wstring& orig)
   if(!is_processed) {
     std::wstring escaped_str;
     int skip = 2;
+    bool is_unicode_str = false;
+    bool is_num_str = false;
+
     for(size_t i = 0; i < orig.size(); ++i) {
       wchar_t c = orig[i];
-      if(skip > 1 && c == L'\\' && i + 1 < orig.size()) {
+
+      if(is_num_str) {
+        const size_t start = i;
+        size_t end = i;
+
+        wchar_t cc = orig[end];
+        while(cc >= '0' && cc <= '7') {
+          cc = orig[end++];
+        }
+        const std::wstring escaped__sub_str = orig.substr(start, end - start - 1);
+        const wchar_t value = std::stoi(escaped__sub_str, 0, 8);
+        escaped_str += value;
+        i += escaped__sub_str.size() - 1;
+        is_num_str = false;
+      }
+      else if(is_unicode_str) {
+        const size_t start = i + 1;
+        size_t end = start;
+
+        wchar_t cc = orig[end];
+        while(std::isdigit(cc) || (cc >= 'A' && cc <= 'F') || (cc >= 'a' && cc <= 'f')) {
+          cc = orig[end++];
+        }
+        const std::wstring escaped__sub_str = orig.substr(start, end - start - 1);
+        const wchar_t value = std::stoi(escaped__sub_str, 0, 16);
+        escaped_str += value;
+        i += escaped__sub_str.size();
+        is_unicode_str = false;
+      }
+      else if(skip > 1 && c == L'\\' && i + 1 < orig.size()) {
         wchar_t cc = orig[i + 1];
         switch(cc) {
         case L'"':
@@ -105,7 +137,24 @@ void CharacterString::AddSegment(const std::wstring& orig)
           break;
 
         case L'0':
-          escaped_str += L'\0';
+        case L'1':
+        case L'2':
+        case L'3':
+        case L'4':
+        case L'5':
+        case L'6':
+        case L'7':
+        case L'8':
+        case L'9':
+          is_num_str = true;
+          skip = 0;
+          break;
+
+        case L'x':
+        case L'X':
+        case L'u':
+        case L'U':
+          is_unicode_str = true;
           skip = 0;
           break;
 
