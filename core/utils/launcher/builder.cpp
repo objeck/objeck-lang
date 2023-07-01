@@ -54,8 +54,8 @@ int main(int argc, char* argv[])
     char path_str[MAX_ENV_PATH];
     if(!getenv_s(&path_len, path_str, MAX_ENV_PATH, "OBJECK_LIB_PATH") && strlen(path_str) > 0) {
 #else
-    char* path_str_ptr = getenv("OBJECK_LIB_PATH");
-    if(path_str_ptr) {
+    char* path_str = getenv("OBJECK_LIB_PATH");
+    if(path_str) {
 #endif
       runtime_base_dir = BytesToUnicode(path_str);
       runtime_base_dir += fs::path::preferred_separator;
