@@ -417,6 +417,7 @@ options->Insert("end-line", "2");</pre>
 		}	
 
 		method : public : Format(source : String, is_color : Bool) ~ String {
+			// TODO: https://gist.github.com/JBlond/2fea43a3049b38287e5e9cefc87b2124
 			scanner := Scanner->New(source);
 			if(scanner->Scan()) {
 				tab_space := 0;
@@ -458,18 +459,34 @@ options->Insert("end-line", "2");</pre>
 					select(@token->GetType()) {
 						label Token->Type->CLASS_ID {
 							VerticalSpace(@prev_token, tab_space, @ident_space);
-							AppendBuffer("class");
+							
+							if(is_color) {
+								AppendBuffer("\x1B[34mclass\033[0m");
+							}
+							else {
+								AppendBuffer("\x1B[34mclass\033[0m");
+							};
 						}
 
 						label Token->Type->FUNCTION_ID {
 							VerticalSpace(@prev_token, tab_space, @ident_space);
 
-							AppendBuffer("function");
+							if(is_color) {
+								AppendBuffer("\x1B[34mfunction\033[0m");
+							}
+							else {
+								AppendBuffer("function");
+							};
 						}
 
 						label Token->Type->METHOD_ID {
 							VerticalSpace(@prev_token, tab_space, @ident_space);
-							AppendBuffer("method");
+							if(is_color) {
+								AppendBuffer("\x1B[34mfunction\033[0m");
+							}
+							else {
+								AppendBuffer("\x1B[34mmethod\033[0m");
+							};
 						}
 
 						label Token->Type->PUBLIC_ID {
@@ -563,7 +580,12 @@ options->Insert("end-line", "2");</pre>
 
 						label Token->Type->ASSESSOR {
 							PopBuffer();
-							AppendBuffer("->");
+							if(is_color) {
+								AppendBuffer("\x1B[32m->\033[0m");
+							}
+							else {
+								AppendBuffer("->");
+							};
 						}
 
 						label Token->Type->LINE_COMMENT {
@@ -594,10 +616,13 @@ options->Insert("end-line", "2");</pre>
 						}
 
 						label Token->Type->LESS {
+							PopBuffer();
 							AppendBuffer('<');
+							@skip_space := true;
 						}
 
 						label Token->Type->GTR {
+							PopBuffer();
 							AppendBuffer('>');
 						}
 
@@ -638,9 +663,17 @@ options->Insert("end-line", "2");</pre>
 						}
 
 						label Token->Type->STRING_LIT {
-							AppendBuffer('"');
-							AppendBuffer(@token->GetValue());
-							AppendBuffer('"');
+							value := @token->GetValue();
+							if(is_color) {
+								AppendBuffer("\x1B[44m\"");
+								AppendBuffer(value);
+								AppendBuffer("\"\033[0m");
+							}
+							else {
+								AppendBuffer('"');
+								AppendBuffer(value);
+								AppendBuffer('"');
+							};
 						}
 
 						label Token->Type->CHAR_LIT {
@@ -739,6 +772,7 @@ options->Insert("end-line", "2");</pre>
 						}
 
 						label Token->Type->NEW_ID {
+							PopBuffer();
 							@skip_space := true;
 							AppendBuffer("New");
 						}
