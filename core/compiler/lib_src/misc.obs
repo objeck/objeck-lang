@@ -346,9 +346,8 @@ bundle System.Utility {
 
 		ASCII_RED : String;
 		ASCII_BLUE_HIGH : String;
-		ASCII_LIGHT_BLUE : String;
-		ASCII_GREEN : String;
 		ASCII_CYAN : String;
+		ASCII_GREEN : String;
 		ASCII_GREY : String;
 		ASCII_END : String;
 
@@ -363,11 +362,10 @@ options->Insert("start-line", "1");
 options->Insert("end-line", "2");</pre>
 		~#
 		New(options : Map<String, String>) {
-			ASCII_LIGHT_BLUE := "\x1B[36m";
+			ASCII_CYAN := "\x1B[36m";
 			ASCII_BLUE_HIGH := "\x1B[42m";
-			ASCII_RED := "\x1B[31m";
+			ASCII_RED := "\x1B[36m";
 			ASCII_GREEN := "\x1B[32m";
-			ASCII_CYAN := "\x1B[33m";
 			ASCII_GREY := "\x1B[90m";
 			ASCII_END := "\033[0m";
 
@@ -516,7 +514,7 @@ options->Insert("end-line", "2");</pre>
 
 						label Token->Type->PUBLIC_ID {
 							if(is_color) {
-								AppendBuffer(ASCII_LIGHT_BLUE);
+								AppendBuffer(ASCII_CYAN);
 							};
 
 							AppendBuffer("public");
@@ -528,7 +526,7 @@ options->Insert("end-line", "2");</pre>
 
 						label Token->Type->PRIVATE_ID {
 							if(is_color) {
-								AppendBuffer(ASCII_LIGHT_BLUE);
+								AppendBuffer(ASCII_CYAN);
 							};
 
 							AppendBuffer("private");
@@ -540,7 +538,7 @@ options->Insert("end-line", "2");</pre>
 
 						label Token->Type->IF_ID {
 							if(is_color) {
-								AppendBuffer(ASCII_LIGHT_BLUE);
+								AppendBuffer(ASCII_CYAN);
 							};
 							
 							AppendBuffer("if");
@@ -552,7 +550,7 @@ options->Insert("end-line", "2");</pre>
 
 						label Token->Type->ELSE_ID {
 							if(is_color) {
-								AppendBuffer(ASCII_LIGHT_BLUE);
+								AppendBuffer(ASCII_CYAN);
 							};
 							
 							AppendBuffer('\n');
@@ -562,7 +560,7 @@ options->Insert("end-line", "2");</pre>
 
 						label Token->Type->DO_ID {
 							if(is_color) {
-								AppendBuffer(ASCII_LIGHT_BLUE);
+								AppendBuffer(ASCII_CYAN);
 							};
 							
 							AppendBuffer("do");
@@ -574,7 +572,7 @@ options->Insert("end-line", "2");</pre>
 
 						label Token->Type->WHILE_ID {
 							if(is_color) {
-								AppendBuffer(ASCII_LIGHT_BLUE);
+								AppendBuffer(ASCII_CYAN);
 							};
 							
 							AppendBuffer("while");
@@ -582,7 +580,7 @@ options->Insert("end-line", "2");</pre>
 
 						label Token->Type->FOR_ID {
 							if(is_color) {
-								AppendBuffer(ASCII_LIGHT_BLUE);
+								AppendBuffer(ASCII_CYAN);
 							};
 							
 							AppendBuffer("for");
@@ -596,7 +594,7 @@ options->Insert("end-line", "2");</pre>
 
 						label Token->Type->EACH_ID {
 							if(is_color) {
-								AppendBuffer(ASCII_LIGHT_BLUE);
+								AppendBuffer(ASCII_CYAN);
 							};
 							
 							AppendBuffer("each");
@@ -608,7 +606,7 @@ options->Insert("end-line", "2");</pre>
 
 						label Token->Type->BREAK_ID {
 							if(is_color) {
-								AppendBuffer(ASCII_LIGHT_BLUE);
+								AppendBuffer(ASCII_CYAN);
 							};
 							
 							AppendBuffer("break");
@@ -620,7 +618,7 @@ options->Insert("end-line", "2");</pre>
 
 						label Token->Type->CONTINUE_ID {
 							if(is_color) {
-								AppendBuffer(ASCII_LIGHT_BLUE);
+								AppendBuffer(ASCII_CYAN);
 							};
 							
 							AppendBuffer("continue");
@@ -632,7 +630,7 @@ options->Insert("end-line", "2");</pre>
 
 						label Token->Type->RETURN_ID {
 							if(is_color) {
-								AppendBuffer(ASCII_LIGHT_BLUE);
+								AppendBuffer(ASCII_CYAN);
 							};
 							
 							AppendBuffer("return");
@@ -644,7 +642,7 @@ options->Insert("end-line", "2");</pre>
 
 						label Token->Type->ALIAS_ID {
 							if(is_color) {
-								AppendBuffer(ASCII_LIGHT_BLUE);
+								AppendBuffer(ASCII_CYAN);
 							};
 							
 							AppendBuffer("alias");
@@ -656,7 +654,7 @@ options->Insert("end-line", "2");</pre>
 
 						label Token->Type->LEAVING_ID {
 							if(is_color) {
-								AppendBuffer(ASCII_LIGHT_BLUE);
+								AppendBuffer(ASCII_CYAN);
 							};
 							
 							AppendBuffer("leaving");
@@ -664,7 +662,7 @@ options->Insert("end-line", "2");</pre>
 
 						label Token->Type->USE_ID {
 							if(is_color) {
-								AppendBuffer(ASCII_LIGHT_BLUE);
+								AppendBuffer(ASCII_CYAN);
 							};
 							
 							AppendBuffer("use");
@@ -676,7 +674,7 @@ options->Insert("end-line", "2");</pre>
 
 						label Token->Type->NATIVE_ID {
 							if(is_color) {
-								AppendBuffer(ASCII_LIGHT_BLUE);
+								AppendBuffer(ASCII_CYAN);
 							};
 							
 							AppendBuffer("native");
@@ -688,7 +686,7 @@ options->Insert("end-line", "2");</pre>
 
 						label Token->Type->STATIC_ID {
 							if(is_color) {
-								AppendBuffer(ASCII_LIGHT_BLUE);
+								AppendBuffer(ASCII_CYAN);
 							};
 							
 							AppendBuffer("static");
@@ -696,7 +694,7 @@ options->Insert("end-line", "2");</pre>
 
 						label Token->Type->SELECT_ID {
 							if(is_color) {
-								AppendBuffer(ASCII_LIGHT_BLUE);
+								AppendBuffer(ASCII_CYAN);
 							};
 							
 							AppendBuffer("select");
@@ -710,7 +708,7 @@ options->Insert("end-line", "2");</pre>
 							VerticalSpace(@prev_token, tab_space, @ident_space);
 
 							if(is_color) {
-								AppendBuffer(ASCII_LIGHT_BLUE);
+								AppendBuffer(ASCII_CYAN);
 							};
 
 							AppendBuffer("label");
@@ -726,7 +724,7 @@ options->Insert("end-line", "2");</pre>
 						label Token->Type->OTHER_ID {
 							VerticalSpace(@prev_token, tab_space, @ident_space);
 							if(is_color) {
-								AppendBuffer(ASCII_LIGHT_BLUE);
+								AppendBuffer(ASCII_CYAN);
 							};
 							
 							AppendBuffer("other");
@@ -880,7 +878,7 @@ options->Insert("end-line", "2");</pre>
 
 						label Token->Type->STRING_LIT {
 							if(is_color) {
-								AppendBuffer(ASCII_LIGHT_BLUE);
+								AppendBuffer(ASCII_CYAN);
 							}
 							
 							value := @token->GetValue();
@@ -895,7 +893,7 @@ options->Insert("end-line", "2");</pre>
 
 						label Token->Type->CHAR_LIT {
 							if(is_color) {
-								AppendBuffer(ASCII_LIGHT_BLUE);
+								AppendBuffer(ASCII_CYAN);
 							}
 
 							AppendBuffer('\'');
@@ -909,7 +907,7 @@ options->Insert("end-line", "2");</pre>
 
 						label Token->Type->NUM_LIT {
 							if(is_color) {
-								AppendBuffer(ASCII_RED);
+								AppendBuffer(ASCII_CYAN);
 							}
 
 							AppendBuffer(@token->GetValue());
@@ -1017,7 +1015,7 @@ options->Insert("end-line", "2");</pre>
 
 						label Token->Type->VIRTUAL_ID {
 							if(is_color) {
-								AppendBuffer(ASCII_LIGHT_BLUE);
+								AppendBuffer(ASCII_CYAN);
 							};
 
 							AppendBuffer("virtual");
@@ -1029,7 +1027,7 @@ options->Insert("end-line", "2");</pre>
 
 						label Token->Type->BUNDLE_ID {
 							if(is_color) {
-								AppendBuffer(ASCII_LIGHT_BLUE);
+								AppendBuffer(ASCII_CYAN);
 							};
 
 							AppendBuffer("bundle");
@@ -1041,7 +1039,7 @@ options->Insert("end-line", "2");</pre>
 
 						label Token->Type->INTERFACE_ID {
 							if(is_color) {
-								AppendBuffer(ASCII_LIGHT_BLUE);
+								AppendBuffer(ASCII_CYAN);
 							};
 
 							AppendBuffer("interface");
@@ -1053,7 +1051,7 @@ options->Insert("end-line", "2");</pre>
 
 						label Token->Type->IMPLEMENTS_ID {
 							if(is_color) {
-								AppendBuffer(ASCII_LIGHT_BLUE);
+								AppendBuffer(ASCII_CYAN);
 							};
 
 							AppendBuffer("implements");
@@ -1065,7 +1063,7 @@ options->Insert("end-line", "2");</pre>
 
 						label Token->Type->ENUM_ID {
 							if(is_color) {
-								AppendBuffer(ASCII_LIGHT_BLUE);
+								AppendBuffer(ASCII_CYAN);
 							};
 
 							AppendBuffer("enum");
@@ -1077,7 +1075,7 @@ options->Insert("end-line", "2");</pre>
 
 						label Token->Type->CONSTS_ID {
 							if(is_color) {
-								AppendBuffer(ASCII_LIGHT_BLUE);
+								AppendBuffer(ASCII_CYAN);
 							};
 
 							in_consts := true;
@@ -1090,7 +1088,7 @@ options->Insert("end-line", "2");</pre>
 
 						label Token->Type->REVERSE_ID {
 							if(is_color) {
-								AppendBuffer(ASCII_LIGHT_BLUE);
+								AppendBuffer(ASCII_CYAN);
 							};
 
 							AppendBuffer("reverse");
@@ -1102,7 +1100,7 @@ options->Insert("end-line", "2");</pre>
 
 						label Token->Type->PARENT_ID {
 							if(is_color) {
-								AppendBuffer(ASCII_LIGHT_BLUE);
+								AppendBuffer(ASCII_CYAN);
 							};
 
 							AppendBuffer("parent");
@@ -1114,7 +1112,7 @@ options->Insert("end-line", "2");</pre>
 
 						label Token->Type->FROM_ID {
 							if(is_color) {
-								AppendBuffer(ASCII_LIGHT_BLUE);
+								AppendBuffer(ASCII_CYAN);
 							};
 
 							AppendBuffer("from");
@@ -1126,7 +1124,7 @@ options->Insert("end-line", "2");</pre>
 
 						label Token->Type->TRUE_ID {
 							if(is_color) {
-								AppendBuffer(ASCII_RED);
+								AppendBuffer(ASCII_CYAN);
 							};
 
 							AppendBuffer("true");
@@ -1138,7 +1136,7 @@ options->Insert("end-line", "2");</pre>
 
 						label Token->Type->FALSE_ID {
 							if(is_color) {
-								AppendBuffer(ASCII_RED);
+								AppendBuffer(ASCII_CYAN);
 							};
 
 							AppendBuffer("false");
