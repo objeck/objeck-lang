@@ -9,23 +9,10 @@ class ColorCode {
 	
 		#~
 		Fii
-		@bar dfdk
+		@bar <dfdk></a>
 		@foo back
 		~#
 	function : Main(args : String[]) ~ Nil {
-#~		
-		START := "\x1B[";
-		END := "mHi!\033[0m ";
-
-		for(i := 30; i < 48; i += 1;) {
-			foo := String->New(START);
-			foo += i;
-			foo += END;
-			foo += i;
-			foo->PrintLine();
-		};
-~#
-		
 		options := Collection.Map->New()<String, String>;
 		options->Insert("function-space", "false");
 		options->Insert("ident-space", "3");
