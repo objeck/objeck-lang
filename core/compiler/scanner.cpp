@@ -1068,6 +1068,13 @@ void Scanner::ParseToken(int index)
           NextChar();
           return;
 
+        case L'e':
+          tokens[index]->SetType(TOKEN_CHAR_LIT);
+          tokens[index]->SetCharLit(0x1b);
+          NextChar();
+          NextChar();
+          return;
+
         case L'a':
           tokens[index]->SetType(TOKEN_CHAR_LIT);
           tokens[index]->SetCharLit(L'\a');
