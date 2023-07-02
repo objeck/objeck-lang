@@ -350,6 +350,7 @@ bundle System.Utility {
 		ASCII_LIGHT_BLUE : String;
 		ASCII_GREEN : String;
 		ASCII_CYAN : String;
+		ASCII_GREY : String;
 		ASCII_END : String;
 
 		#~
@@ -370,6 +371,7 @@ options->Insert("end-line", "2");</pre>
 			ASCII_BLUE := "\x1B[34m";
 			ASCII_GREEN := "\x1B[32m";
 			ASCII_CYAN := "\x1B[33m";
+			ASCII_GREY := "\x1B[90m";
 			ASCII_END := "\033[0m";
 
 			# get options
@@ -759,7 +761,7 @@ options->Insert("end-line", "2");</pre>
 
 						label Token->Type->LINE_COMMENT {
 							if(is_color) {
-								AppendBuffer("\x1B[90m");
+								AppendBuffer(ASCII_GREY);
 							};
 
 							AppendBuffer('#');
@@ -768,6 +770,7 @@ options->Insert("end-line", "2");</pre>
 							if(is_color) {
 								AppendBuffer("\033[0m");
 							};
+							
 							AppendBuffer('\n');
 							@skip_space := insert_tabs := true;
 						}
@@ -776,27 +779,52 @@ options->Insert("end-line", "2");</pre>
 							PopBuffer();
 							
 							if(is_color) {
-								AppendBuffer("\x1B[90m#~\n");
+								AppendBuffer(ASCII_GREY);
 							};
 
 							comment := @token->GetValue()->Trim();
-							if(@ident_space > 0) {
-								each(j : comment) {
-									if(comment->Get(j) = '\t') {
+							
+							AppendBuffer("#~\n");
+							each(k : @ident_space) {
+								AppendBuffer(' ');
+							};
+
+							words := System.Utility.Parser->Tokenize(comment);
+							each(word := words) {
+								if(word->StartsWith('@')) {
+									AppendBuffer('\n');
+									each(k : @ident_space) {
+										AppendBuffer(' ');
+									};
+									AppendBuffer(word);
+								}
+								else {
+									AppendBuffer(word);
+									if(word->StartsWith(';')) {
+										AppendBuffer('\n');
 										each(k : @ident_space) {
 											AppendBuffer(' ');
 										};
+									}
+									else {
+										AppendBuffer(' ');
 									};
 								}
-							}
-							AppendBuffer(comment);
-							
+							};
+
+							AppendBuffer('\n');
+							each(k : @ident_space) {
+								AppendBuffer(' ');
+							};
+							AppendBuffer("~#");
+
+							AppendBuffer('\n');
+							each(k : @ident_space) {
+								AppendBuffer(' ');
+							};
+
 							if(is_color) {
-								AppendBuffer("\n");
-								each(k : @ident_space) {
-									AppendBuffer(' ');
-								};
-								AppendBuffer("~#\033[0m\n");
+								AppendBuffer(ASCII_END);
 							};
 						}
 
@@ -863,7 +891,7 @@ options->Insert("end-line", "2");</pre>
 
 						label Token->Type->STRING_LIT {
 							if(is_color) {
-								AppendBuffer(ASCII_BLUE_HIGH);
+								AppendBuffer(ASCII_LIGHT_BLUE);
 							}
 							
 							value := @token->GetValue();
@@ -878,7 +906,7 @@ options->Insert("end-line", "2");</pre>
 
 						label Token->Type->CHAR_LIT {
 							if(is_color) {
-								AppendBuffer(ASCII_BLUE_HIGH);
+								AppendBuffer(ASCII_LIGHT_BLUE);
 							}
 
 							AppendBuffer('\'');
@@ -1109,14 +1137,8 @@ options->Insert("end-line", "2");</pre>
 								};
 							};
 
-							if(is_color) {
-								AppendBuffer(ASCII_GREEN);
-							};
 							AppendBuffer('(');
-							if(is_color) {
-								AppendBuffer(ASCII_END);
-							};
-
+							
 							@skip_space := true;
 						}
 
@@ -1129,13 +1151,7 @@ options->Insert("end-line", "2");</pre>
 								in_for := false;
 							};
 
-							if(is_color) {
-								AppendBuffer(ASCII_GREEN);
-							};
 							AppendBuffer(')');
-							if(is_color) {
-								AppendBuffer(ASCII_END);
-							};
 						}
 
 						label Token->Type->OCBRACE {
@@ -1467,6 +1483,16 @@ options->Insert("end-line", "2");</pre>
 				}
 				else {
 					select(@cur_char) {
+						label '#' {
+							@tokens->AddBack(Token->New(@line_num, Token->Type->POUND, "pound"));
+							NextChar();
+						}
+
+						label '@' {
+							@tokens->AddBack(Token->New(@line_num, Token->Type->AT, "at"));
+							NextChar();
+						}
+
 						label '{' {
 							@tokens->AddBack(Token->New(@line_num, Token->Type->OCBRACE, "ocbrace"));
 							NextChar();
@@ -1704,7 +1730,8 @@ options->Insert("end-line", "2");</pre>
 			AS_ID,
 			TYPE_OF_ID,
 			CRITICAL_ID,
-			LAMBDA,			USE_ID,
+			LAMBDA,			
+			USE_ID,
 			DO_ID,
 			FOR_ID,
 			EACH_ID,
@@ -1765,6 +1792,8 @@ options->Insert("end-line", "2");</pre>
 			SEMI,
 			COMMA,
 			TILDE,
+			POUND,
+			AT,
 			FWD_SLASH,
 			LESS,
 			LESS_EQL,
