@@ -435,8 +435,8 @@ options->Insert("end-line", "2");</pre>
 			return (@start_range < 0 & @end_range < 0) | (@token <> Nil & @start_range <= @token->GetLine() & @end_range >= @token->GetLine());
 		}	
 
+		# TODO: https://gist.github.com/JBlond/2fea43a3049b38287e5e9cefc87b2124
 		method : public : native : Format(source : String, is_color : Bool) ~ String {
-			# TODO: https://gist.github.com/JBlond/2fea43a3049b38287e5e9cefc87b2124
 			scanner := Scanner->New(source);
 			if(scanner->Scan()) {
 				tab_space := 0;
