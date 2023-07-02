@@ -556,6 +556,10 @@ options->Insert("end-line", "2");</pre>
 							AppendBuffer('\n');
 							TabSpace(tab_space, @ident_space);
 							AppendBuffer("else");
+
+							if(is_color) {
+								AppendBuffer(ASCII_END);
+							};
 						}					
 
 						label Token->Type->DO_ID {
@@ -576,6 +580,10 @@ options->Insert("end-line", "2");</pre>
 							};
 							
 							AppendBuffer("while");
+
+							if(is_color) {
+								AppendBuffer(ASCII_END);
+							};
 						}
 
 						label Token->Type->FOR_ID {
@@ -1195,8 +1203,12 @@ options->Insert("end-line", "2");</pre>
 							AppendBuffer('%');
 						}
 
-						label Token->Type->FWD_SLASH {
+						label Token->Type->QUOTE {
 							AppendBuffer('\'');
+						}
+
+						label Token->Type->FWD_SLASH {
+							AppendBuffer('\\');
 						}
 
 						label Token->Type->EQL {
@@ -1206,6 +1218,11 @@ options->Insert("end-line", "2");</pre>
 						label Token->Type->LESS_EQL {
 							AppendBuffer("<=");
 						}
+
+						label Token->Type->ESCAPE {
+							AppendBuffer("\e");
+						}
+
 
 						label Token->Type->GTR_EQL {
 							AppendBuffer(">=");
@@ -1648,6 +1665,11 @@ options->Insert("end-line", "2");</pre>
 							NextChar();
 						}
 
+						label '_' {
+							@tokens->AddBack(Token->New(@line_num, Token->Type->DASH, "dash"));
+							NextChar();
+						}
+
 						label '[' {
 							@tokens->AddBack(Token->New(@line_num, Token->Type->OBRACE, "obrace"));
 							NextChar();
@@ -1743,6 +1765,11 @@ options->Insert("end-line", "2");</pre>
 							NextChar();
 						}
 
+						label '\e' {
+							@tokens->AddBack(Token->New(@line_num, Token->Type->ESCAPE, "\e"));
+							NextChar();
+						}
+
 						label '*' {
 							if(@next_char = '=') {
 								@tokens->AddBack(Token->New(@line_num, Token->Type->MUL_ASN, "mul_asn"));
@@ -1786,7 +1813,12 @@ options->Insert("end-line", "2");</pre>
 						}
 
 						label '\'' {
-							@tokens->AddBack(Token->New(@line_num, Token->Type->FWD_SLASH, "mod"));
+							@tokens->AddBack(Token->New(@line_num, Token->Type->QUOTE, "quote"));
+							NextChar();
+						}
+
+						label '\\' {
+							@tokens->AddBack(Token->New(@line_num, Token->Type->FWD_SLASH, "fwd_slash"));
 							NextChar();
 						}
 
@@ -1829,7 +1861,9 @@ options->Insert("end-line", "2");</pre>
 
 						other {
 							if(@cur_char <> '\0') {
-								"\n--- [Other ({$@line_num},{$@line_pos}): '{$@cur_char}'] ---"->ErrorLine();						
+								id := @cur_char->As(Int);
+								next_id := @next_char->As(Int);
+								"\n--- [Other ({$@line_num},{$@line_pos}): '{$@cur_char}'({$id}), '{$@next_char}'({$next_id})] ---"->ErrorLine();						
 								Runtime->Exit(1);
 							};
 						}
@@ -1902,6 +1936,7 @@ options->Insert("end-line", "2");</pre>
 			CHAR,
 			STR,
 			VAR,
+			DASH,
 			OPREN,
 			CPREN,
 			OBRACE,
@@ -1929,9 +1964,11 @@ options->Insert("end-line", "2");</pre>
 			TILDE,
 			POUND,
 			AT,
+			QUOTE,
 			FWD_SLASH,
 			LESS,
 			LESS_EQL,
+			ESCAPE,
 			GTR,
 			GTR_EQL,
 			EQL,
