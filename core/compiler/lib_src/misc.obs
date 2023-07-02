@@ -344,6 +344,14 @@ bundle System.Utility {
 
 		@trim_trailing : Bool;
 
+		ASCII_RED : String;
+		ASCII_BLUE : String;
+		ASCII_BLUE_HIGH : String;
+		ASCII_LIGHT_BLUE : String;
+		ASCII_GREEN : String;
+		ASCII_CYAN : String;
+		ASCII_END : String;
+
 		#~
 		Constructor
 		@param options options: 
@@ -355,6 +363,15 @@ options->Insert("start-line", "1");
 options->Insert("end-line", "2");</pre>
 		~#
 		New(options : Map<String, String>) {
+			ASCII_BLUE := "\x1B[34m";
+			ASCII_LIGHT_BLUE := "\x1B[36m";
+			ASCII_BLUE_HIGH := "\x1B[42m";
+			ASCII_RED := "\x1B[31m";
+			ASCII_BLUE := "\x1B[34m";
+			ASCII_GREEN := "\x1B[32m";
+			ASCII_CYAN := "\x1B[33m";
+			ASCII_END := "\033[0m";
+
 			# get options
 			stmt_space_check := options->Find("function-space");
 			@stmt_space := stmt_space_check <> Nil & stmt_space_check->Equals("true");
@@ -417,7 +434,7 @@ options->Insert("end-line", "2");</pre>
 		}	
 
 		method : public : Format(source : String, is_color : Bool) ~ String {
-			// TODO: https://gist.github.com/JBlond/2fea43a3049b38287e5e9cefc87b2124
+			# TODO: https://gist.github.com/JBlond/2fea43a3049b38287e5e9cefc87b2124
 			scanner := Scanner->New(source);
 			if(scanner->Scan()) {
 				tab_space := 0;
@@ -461,144 +478,326 @@ options->Insert("end-line", "2");</pre>
 							VerticalSpace(@prev_token, tab_space, @ident_space);
 							
 							if(is_color) {
-								AppendBuffer("\x1B[34mclass\033[0m");
-							}
-							else {
-								AppendBuffer("\x1B[34mclass\033[0m");
+								AppendBuffer(ASCII_GREEN);
 							};
+
+							AppendBuffer("class");
+
+							if(is_color) {
+								AppendBuffer(ASCII_END);
+							}
 						}
 
 						label Token->Type->FUNCTION_ID {
 							VerticalSpace(@prev_token, tab_space, @ident_space);
 
 							if(is_color) {
-								AppendBuffer("\x1B[34mfunction\033[0m");
-							}
-							else {
-								AppendBuffer("function");
+								AppendBuffer(ASCII_GREEN);
+							};
+							
+							AppendBuffer("function");
+
+							if(is_color) {
+								AppendBuffer(ASCII_END);
 							};
 						}
 
 						label Token->Type->METHOD_ID {
 							VerticalSpace(@prev_token, tab_space, @ident_space);
 							if(is_color) {
-								AppendBuffer("\x1B[34mfunction\033[0m");
-							}
-							else {
-								AppendBuffer("\x1B[34mmethod\033[0m");
+								AppendBuffer(ASCII_GREEN);
+							};
+
+							AppendBuffer("method");
+
+							if(is_color) {
+								AppendBuffer(ASCII_END);
 							};
 						}
 
 						label Token->Type->PUBLIC_ID {
+							if(is_color) {
+								AppendBuffer(ASCII_BLUE);
+							};
+
 							AppendBuffer("public");
+
+							if(is_color) {
+								AppendBuffer(ASCII_END);
+							};
 						}
 
 						label Token->Type->PRIVATE_ID {
+							if(is_color) {
+								AppendBuffer(ASCII_BLUE);
+							};
+
 							AppendBuffer("private");
+
+							if(is_color) {
+								AppendBuffer(ASCII_END);
+							};
 						}
 
 						label Token->Type->IF_ID {
+							if(is_color) {
+								AppendBuffer(ASCII_BLUE);
+							};
+							
 							AppendBuffer("if");
+
+							if(is_color) {
+								AppendBuffer(ASCII_END);
+							};
 						}
 
 						label Token->Type->ELSE_ID {
+							if(is_color) {
+								AppendBuffer(ASCII_BLUE);
+							};
+							
 							AppendBuffer('\n');
 							TabSpace(tab_space, @ident_space);
 							AppendBuffer("else");
 						}					
 
 						label Token->Type->DO_ID {
+							if(is_color) {
+								AppendBuffer(ASCII_BLUE);
+							};
+							
 							AppendBuffer("do");
+
+							if(is_color) {
+								AppendBuffer(ASCII_END);
+							};
 						}
 
 						label Token->Type->WHILE_ID {
+							if(is_color) {
+								AppendBuffer(ASCII_BLUE);
+							};
+							
 							AppendBuffer("while");
 						}
 
 						label Token->Type->FOR_ID {
+							if(is_color) {
+								AppendBuffer(ASCII_BLUE);
+							};
+							
 							AppendBuffer("for");
+
+							if(is_color) {
+								AppendBuffer(ASCII_END);
+							};
+
 							in_for := true;
 						}
 
 						label Token->Type->EACH_ID {
+							if(is_color) {
+								AppendBuffer(ASCII_BLUE);
+							};
+							
 							AppendBuffer("each");
+
+							if(is_color) {
+								AppendBuffer(ASCII_END);
+							};
 						}
 
 						label Token->Type->BREAK_ID {
+							if(is_color) {
+								AppendBuffer(ASCII_BLUE);
+							};
+							
 							AppendBuffer("break");
+
+							if(is_color) {
+								AppendBuffer(ASCII_END);
+							};
 						}
 
 						label Token->Type->CONTINUE_ID {
+							if(is_color) {
+								AppendBuffer(ASCII_BLUE);
+							};
+							
 							AppendBuffer("continue");
+
+							if(is_color) {
+								AppendBuffer(ASCII_END);
+							};
 						}
 
 						label Token->Type->RETURN_ID {
+							if(is_color) {
+								AppendBuffer(ASCII_BLUE);
+							};
+							
 							AppendBuffer("return");
+
+							if(is_color) {
+								AppendBuffer(ASCII_END);
+							};
 						}
 
 						label Token->Type->ALIAS_ID {
+							if(is_color) {
+								AppendBuffer(ASCII_BLUE);
+							};
+							
 							AppendBuffer("alias");
+
+							if(is_color) {
+								AppendBuffer(ASCII_END);
+							};
 						}
 
 						label Token->Type->LEAVING_ID {
+							if(is_color) {
+								AppendBuffer(ASCII_BLUE);
+							};
+							
 							AppendBuffer("leaving");
 						}
 
 						label Token->Type->USE_ID {
+							if(is_color) {
+								AppendBuffer(ASCII_BLUE);
+							};
+							
 							AppendBuffer("use");
+
+							if(is_color) {
+								AppendBuffer(ASCII_END);
+							};
 						}
 
 						label Token->Type->NATIVE_ID {
+							if(is_color) {
+								AppendBuffer(ASCII_BLUE);
+							};
+							
 							AppendBuffer("native");
+
+							if(is_color) {
+								AppendBuffer(ASCII_END);
+							};
 						}
 
 						label Token->Type->STATIC_ID {
+							if(is_color) {
+								AppendBuffer(ASCII_BLUE);
+							};
+							
 							AppendBuffer("static");
 						}
 
 						label Token->Type->SELECT_ID {
+							if(is_color) {
+								AppendBuffer(ASCII_BLUE);
+							};
+							
 							AppendBuffer("select");
+
+							if(is_color) {
+								AppendBuffer(ASCII_END);
+							};
 						}
 
 						label Token->Type->LABEL_ID {
 							VerticalSpace(@prev_token, tab_space, @ident_space);
+
+							if(is_color) {
+								AppendBuffer(ASCII_BLUE);
+							};
+
 							AppendBuffer("label");
+
+							if(is_color) {
+								AppendBuffer(ASCII_END);
+							};
+
 							in_label := true;
 							@skip_space := false;
 						}
 
 						label Token->Type->OTHER_ID {
 							VerticalSpace(@prev_token, tab_space, @ident_space);
+							if(is_color) {
+								AppendBuffer(ASCII_BLUE);
+							};
+							
 							AppendBuffer("other");
+
+							if(is_color) {
+								AppendBuffer(ASCII_END);
+							};
+
 							in_label := true;
 							@skip_space := false;
 						}
 
 						label Token->Type->ASGN {
+							if(is_color) {
+								AppendBuffer(ASCII_CYAN);
+							};
+
 							AppendBuffer(":=");
+
+							if(is_color) {
+								AppendBuffer(ASCII_END);
+							};
 						}
 
 						label Token->Type->ASSESSOR {
 							PopBuffer();
-							if(is_color) {
-								AppendBuffer("\x1B[32m->\033[0m");
-							}
-							else {
-								AppendBuffer("->");
-							};
+							AppendBuffer("->");
 						}
 
 						label Token->Type->LINE_COMMENT {
+							if(is_color) {
+								AppendBuffer("\x1B[90m");
+							};
+
 							AppendBuffer('#');
 							AppendBuffer(@token->GetValue());
+							
+							if(is_color) {
+								AppendBuffer("\033[0m");
+							};
 							AppendBuffer('\n');
 							@skip_space := insert_tabs := true;
 						}
 
 						label Token->Type->MULTI_COMMENT {
-							AppendBuffer("#~");
-							AppendBuffer(@token->GetValue());
-							AppendBuffer("~#");
+							PopBuffer();
+							
+							if(is_color) {
+								AppendBuffer("\x1B[90m#~\n");
+							};
+
+							comment := @token->GetValue()->Trim();
+							if(@ident_space > 0) {
+								each(j : comment) {
+									if(comment->Get(j) = '\t') {
+										each(k : @ident_space) {
+											AppendBuffer(' ');
+										};
+									};
+								}
+							}
+							AppendBuffer(comment);
+							
+							if(is_color) {
+								AppendBuffer("\n");
+								each(k : @ident_space) {
+									AppendBuffer(' ');
+								};
+								AppendBuffer("~#\033[0m\n");
+							};
 						}
 
 						label Token->Type->SEMI {
@@ -663,27 +862,44 @@ options->Insert("end-line", "2");</pre>
 						}
 
 						label Token->Type->STRING_LIT {
-							value := @token->GetValue();
 							if(is_color) {
-								AppendBuffer("\x1B[44m\"");
-								AppendBuffer(value);
-								AppendBuffer("\"\033[0m");
+								AppendBuffer(ASCII_BLUE_HIGH);
 							}
-							else {
-								AppendBuffer('"');
-								AppendBuffer(value);
-								AppendBuffer('"');
-							};
+							
+							value := @token->GetValue();
+							AppendBuffer('"');
+							AppendBuffer(value);
+							AppendBuffer('"');
+
+							if(is_color) {
+								AppendBuffer(ASCII_END);
+							}
 						}
 
 						label Token->Type->CHAR_LIT {
+							if(is_color) {
+								AppendBuffer(ASCII_BLUE_HIGH);
+							}
+
 							AppendBuffer('\'');
 							AppendBuffer(@token->GetValue());
 							AppendBuffer('\'');
+
+							if(is_color) {
+								AppendBuffer(ASCII_END);
+							}
 						}
 
 						label Token->Type->NUM_LIT {
+							if(is_color) {
+								AppendBuffer(ASCII_RED);
+							}
+
 							AppendBuffer(@token->GetValue());
+
+							if(is_color) {
+								AppendBuffer(ASCII_END);
+							}
 						}
 
 						label Token->Type->STRING_ID {
@@ -893,7 +1109,14 @@ options->Insert("end-line", "2");</pre>
 								};
 							};
 
+							if(is_color) {
+								AppendBuffer(ASCII_GREEN);
+							};
 							AppendBuffer('(');
+							if(is_color) {
+								AppendBuffer(ASCII_END);
+							};
+
 							@skip_space := true;
 						}
 
@@ -906,7 +1129,13 @@ options->Insert("end-line", "2");</pre>
 								in_for := false;
 							};
 
+							if(is_color) {
+								AppendBuffer(ASCII_GREEN);
+							};
 							AppendBuffer(')');
+							if(is_color) {
+								AppendBuffer(ASCII_END);
+							};
 						}
 
 						label Token->Type->OCBRACE {
@@ -991,15 +1220,13 @@ options->Insert("end-line", "2");</pre>
 			};
 		}
 
-		method : TabSpace(tab_space : Int, @ident_space : Int) ~ Nil {
-			if(@ident_space > 0) {
-				c := c2 := ' ';
+		method : TabSpace(tab_space : Int, F : Int) ~ Nil {
+			if(tab_space > 0) {
 				each(i : tab_space) {
-					
 					each(j : @ident_space) {
-						AppendBuffer(c);
+						AppendBuffer(' ');
 					};
-					AppendBuffer(c2);
+					AppendBuffer(' ');
 				};
 			}
 			else {
