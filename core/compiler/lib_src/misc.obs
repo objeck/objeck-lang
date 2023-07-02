@@ -1376,47 +1376,19 @@ options->Insert("end-line", "2");</pre>
 			if(@trim_trailing) {
 				formatted := formatted->Trim();
 			};
-
-			foo := 0;
-			in_string := false;
-			prev_char := '\0';
-			each(char := formatted) {
-				if((prev_char <> '\\' | prev_char <> '\'' ) & char = '"') {
-					in_string := <>in_string;
-				}
-
-				if(<>in_string) {
-					if(char = '{') {
-						foo += 1;
-						foo->Print();
-						", "->Print();
-					}
-					else if(char = '}') {
-						foo -= 1;
-						foo->Print();
-						", "->Print();
-					};
-				};
-
-				prev_char := char;
-			}
-			""->PrintLine();
-
+			
 			return formatted;
 		}
 
 		method : VerticalSpace(@prev_token : Token, tab_space : Int, @ident_space : Int) ~ Nil {
-#~
 			if(@prev_token->GetType() = Token->Type->CCBRACE) {
 				AppendBuffer("\n\n");
 				TabSpace(tab_space, @ident_space);
 				@skip_space := true;
 			};
-~#			
 		}
 
 		method : TabSpace(tab_space : Int, F : Int) ~ Nil {
-#~			
 			if(tab_space > 0) {
 				each(i : tab_space) {
 					each(j : @ident_space) {
@@ -1430,7 +1402,6 @@ options->Insert("end-line", "2");</pre>
 					AppendBuffer('\t');
 				};
 			};
-~#			
 		}
 	}
 
