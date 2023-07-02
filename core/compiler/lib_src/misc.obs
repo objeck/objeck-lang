@@ -1381,7 +1381,7 @@ options->Insert("end-line", "2");</pre>
 			in_string := false;
 			prev_char := '\0';
 			each(char := formatted) {
-				if(prev_char <> '\\' & char = '"') {
+				if((prev_char <> '\\' | prev_char <> '\'' ) & char = '"') {
 					in_string := <>in_string;
 				}
 
