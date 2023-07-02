@@ -980,7 +980,7 @@ void Scanner::ParseToken(int index)
     while(cur_char != L'\"' && cur_char != EOB) {
       if(cur_char == L'\\') {
         NextChar();
-        if(std::isdigit(cur_char)) {
+        if(!std::isdigit(cur_char)) {
           switch(cur_char) {
           case L'"':
           case L'\\':
@@ -991,10 +991,20 @@ void Scanner::ParseToken(int index)
           case L'r':
           case L'b':
           case L'a':
+          case L'e':
           case L'f':
           case L't':
-          case L'0':
           case L'$':
+          case L'0':
+          case L'1':
+          case L'2':
+          case L'3':
+          case L'4':
+          case L'5':
+          case L'6':
+          case L'7':
+          case L'8':
+          case L'9':
             break;
 
           default:

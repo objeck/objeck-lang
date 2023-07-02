@@ -1,5 +1,25 @@
 class ColorCode {
+	#~
+	Fii
+	@bar
+	~#
+	function : Bar(args : String[]) ~ Nil {
+	}
+	
 	function : Main(args : String[]) ~ Nil {
+#~		
+		START := "\x1B[";
+		END := "mHi!\033[0m ";
+
+		for(i := 30; i < 48; i += 1;) {
+			foo := String->New(START);
+			foo += i;
+			foo += END;
+			foo += i;
+			foo->PrintLine();
+		};
+~#
+		
 		options := Collection.Map->New()<String, String>;
 		options->Insert("function-space", "false");
 		options->Insert("ident-space", "3");
@@ -7,6 +27,8 @@ class ColorCode {
 
 		source := System.IO.Filesystem.FileReader->ReadFile(args[0]);
 		formatter := System.Utility.CodeFormatter->New(options);
+	#	formatter->Format(source, true)->PrintLine();
 		formatter->Format(source, true)->PrintLine();
+		
 	}
 }
