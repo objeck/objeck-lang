@@ -1253,7 +1253,7 @@ options->Insert("end-line", "2");</pre>
 		}
 	}
 
-	class: private : Scanner {
+	class : private : Scanner {
 		@buffer : Char[];
 		@buffer_index : Int;
 		@cur_char : Char;
@@ -1706,7 +1706,7 @@ options->Insert("end-line", "2");</pre>
 		}
 	}
 
-	class: private : Token {
+	class : private : Token {
 		@line_num : Int;
 		@type : Token->Type;
 		@value : String;
