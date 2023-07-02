@@ -1,11 +1,17 @@
 class ColorCode {
 	#~
 	Fii
-	@bar
+	@bar dfdk
+	@foo back
 	~#
 	function : Bar(args : String[]) ~ Nil {
 	}
 	
+		#~
+		Fii
+		@bar dfdk
+		@foo back
+		~#
 	function : Main(args : String[]) ~ Nil {
 #~		
 		START := "\x1B[";

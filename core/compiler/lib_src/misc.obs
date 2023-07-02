@@ -773,10 +773,11 @@ options->Insert("end-line", "2");</pre>
 
 							comment := @token->GetValue()->Trim();
 
-							AppendBuffer("#~\n");
+							AppendBuffer(" #~\n");
 							each(k : @ident_space) {
 								AppendBuffer(' ');
 							};
+							AppendBuffer(' ');
 
 							words := System.Utility.Parser->Tokenize(comment);
 							each(word := words) {
@@ -785,6 +786,7 @@ options->Insert("end-line", "2");</pre>
 									each(k : @ident_space) {
 										AppendBuffer(' ');
 									};
+									AppendBuffer(' ');
 									AppendBuffer(word);
 								}
 								else {
@@ -795,9 +797,7 @@ options->Insert("end-line", "2");</pre>
 											AppendBuffer(' ');
 										};
 									}
-									else {
-										AppendBuffer(' ');
-									};
+									AppendBuffer(' ');
 								}
 							};
 
@@ -805,7 +805,7 @@ options->Insert("end-line", "2");</pre>
 							each(k : @ident_space) {
 								AppendBuffer(' ');
 							};
-							AppendBuffer("~#");
+							AppendBuffer(" ~#");
 
 							AppendBuffer('\n');
 							each(k : @ident_space) {
