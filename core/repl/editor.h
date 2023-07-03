@@ -190,17 +190,6 @@ public:
   }
 };
 
-
-
-
-
-
-
-
-
-
-
-
 /*
 Code formatter
 */
@@ -225,7 +214,6 @@ class CodeFormatter {
   std::wstring ASCII_END;
 
   void AppendBuffer(std::wstring str) {
-    
       if(!buffer.empty() && (buffer.back() == L' ' && (buffer.at(buffer.size() - 2) == L'}' || buffer.at(buffer.size() - 2) == L';'))) {
         buffer.pop_back();
       }
@@ -235,7 +223,6 @@ class CodeFormatter {
   } 
 
   void AppendBuffer(wchar_t str) {
-
     if(!buffer.empty() && (buffer.back() == L' ' && (buffer.at(buffer.size() - 2) == L'}' || buffer.at(buffer.size() - 2) == L';'))) {
       buffer.pop_back();
     }
@@ -248,7 +235,7 @@ class CodeFormatter {
   }
 
   bool InRange()  {
-    return (start_range < 0 && end_range < 0) | (token != nullptr && start_range <= token->GetLineNumber() && end_range >= token->GetLineNumber());
+    return (start_range < 0 && end_range < 0) || (token != nullptr && start_range <= token->GetLineNumber() && end_range >= token->GetLineNumber());
   }
   
   void VerticalSpace(Token* prev_token, long tab_space, long ident_space) {

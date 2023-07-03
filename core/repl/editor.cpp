@@ -928,91 +928,89 @@ std::wstring CodeFormatter::Format(std::wstring source, bool is_color)
       AppendBuffer(L"->");
       break;
 
-
       /*
-              case TOKEN_LINE_COMMENT {
-                if(is_color) {
-                  AppendBuffer(ASCII_GREY);
-                };
-
-                AppendBuffer('#');
-                AppendBuffer(token->GetValue());
-
-                if(is_color) {
-                  AppendBuffer(L"\033[0m");
-                };
-
-                AppendBuffer('\n');
-                skip_space = insert_tabs = true;
-              }
-
-              case TOKEN_MULTI_COMMENT {
-                PopBuffer();
-
-                if(is_color) {
-                  AppendBuffer(ASCII_GREY);
-                };
-
-              comment = token->GetValue()->Trim();
-
-                AppendBuffer(L" #~\n");
-                each(k : ident_space) {
-                  AppendBuffer(' ');
-                };
-                AppendBuffer(' ');
-
-              words = System.Utility.Parser->Tokenize(comment);
-                each(word = words) {
-                  if(word->StartsWith('')) {
-                    AppendBuffer('\n');
-                    each(k : ident_space) {
-                      AppendBuffer(' ');
-                    };
-                    AppendBuffer(' ');
-                    AppendBuffer(word);
-                  }
-                  else {
-                    AppendBuffer(word);
-                    if(word->StartsWith(';')) {
-                      AppendBuffer('\n');
-                      each(k : ident_space) {
-                        AppendBuffer(' ');
-                      };
-                    }
-                    AppendBuffer(' ');
-                  }
-                };
-
-                AppendBuffer('\n');
-                each(k : ident_space) {
-                  AppendBuffer(' ');
-                };
-                AppendBuffer(L" ~#");
-
-                AppendBuffer('\n');
-                each(k : ident_space) {
-                  AppendBuffer(' ');
-                };
-
-                if(is_color) {
-                  AppendBuffer(ASCII_END);
-                };
-              }
-       
-
-    case TOKEN_SEMI_COLON:
-      PopBuffer();
-      AppendBuffer(';');
-
-      if(next_token->GetType() != TOKEN_CCBRACE && next_token->GetType() != TOKEN_VTAB && !in_for) {
-        AppendBuffer('\n');
-
-        skip_space = true;
-        if(!= in_for) {
-          insert_tabs = true;
+      case TOKEN_LINE_COMMENT {
+        if(is_color) {
+          AppendBuffer(ASCII_GREY);
         };
-      };
-      break;
+
+        AppendBuffer('#');
+        AppendBuffer(token->GetValue());
+
+        if(is_color) {
+          AppendBuffer(L"\033[0m");
+        };
+
+        AppendBuffer('\n');
+        skip_space = insert_tabs = true;
+      }
+
+      case TOKEN_MULTI_COMMENT {
+        PopBuffer();
+
+        if(is_color) {
+          AppendBuffer(ASCII_GREY);
+        };
+
+        comment = token->GetValue()->Trim();
+
+        AppendBuffer(L" #~\n");
+        each(k : ident_space) {
+          AppendBuffer(' ');
+        };
+        AppendBuffer(' ');
+
+        words = System.Utility.Parser->Tokenize(comment);
+        each(word = words) {
+          if(word->StartsWith('')) {
+            AppendBuffer('\n');
+            each(k : ident_space) {
+              AppendBuffer(' ');
+            };
+            AppendBuffer(' ');
+            AppendBuffer(word);
+          }
+          else {
+            AppendBuffer(word);
+            if(word->StartsWith(';')) {
+              AppendBuffer('\n');
+              each(k : ident_space) {
+                AppendBuffer(' ');
+              };
+            }
+            AppendBuffer(' ');
+          }
+        };
+
+        AppendBuffer('\n');
+        each(k : ident_space) {
+          AppendBuffer(' ');
+        };
+        AppendBuffer(L" ~#");
+
+        AppendBuffer('\n');
+        each(k : ident_space) {
+          AppendBuffer(' ');
+        };
+
+        if(is_color) {
+          AppendBuffer(ASCII_END);
+        };
+      }
+
+      case TOKEN_SEMI_COLON:
+        PopBuffer();
+        AppendBuffer(';');
+
+        if(next_token->GetType() != TOKEN_CCBRACE && next_token->GetType() != TOKEN_VTAB && !in_for) {
+          AppendBuffer('\n');
+
+          skip_space = true;
+          if(!= in_for) {
+            insert_tabs = true;
+          };
+        };
+        break;
       */
 
     case TOKEN_LES:
@@ -1053,13 +1051,11 @@ std::wstring CodeFormatter::Format(std::wstring source, bool is_color)
       break;
 
     case TOKEN_IDENT: {
-      if(prev_token->GetType() == TOKEN_ASSESSOR ||
-         prev_token->GetType() == TOKEN_ADD_ADD ||
-         prev_token->GetType() == TOKEN_SUB_SUB) {
+      if(prev_token->GetType() == TOKEN_ASSESSOR || prev_token->GetType() == TOKEN_ADD_ADD || prev_token->GetType() == TOKEN_SUB_SUB) {
         PopBuffer();
-      };
+      }
       const std::wstring value = token->GetIdentifier();
-      AppendBuffer(L"{$value}");
+      AppendBuffer(value);
     }
       break;
 
@@ -1172,7 +1168,7 @@ std::wstring CodeFormatter::Format(std::wstring source, bool is_color)
         AppendBuffer(ASCII_CYAN);
       };
 
-      AppendBuffer(L"nullptr");
+      AppendBuffer(L"Nil");
 
       if(is_color) {
         AppendBuffer(ASCII_END);
@@ -1467,9 +1463,9 @@ std::wstring CodeFormatter::Format(std::wstring source, bool is_color)
       AppendBuffer(L"{\n");
       skip_space = true;
       tab_space += 1;
-    insert_tabs = true;
+      insert_tabs = true;
 
-      if(in_case ) {
+      if(in_case) {
         in_case = false;
       };
       break;
@@ -1478,67 +1474,70 @@ std::wstring CodeFormatter::Format(std::wstring source, bool is_color)
       AppendBuffer('\n');
       tab_space -= 1;
       TabSpace(tab_space, ident_space);
-      AppendBuffer('}'); // TODO: Fix me!
+      AppendBuffer('}');
 
       if(in_consts) {
         in_consts = false;
       };
       break;
 
+      /*
+      case TOKEN_VTAB {
+        if(next_token->GetType() != TOKEN_CCBRACE) {
+          AppendBuffer(L"\n\n");
+          TabSpace(tab_space, ident_space);
+          skip_space = true;
+        };
+      }
+      */
+
+    default:
+      std::wcerr << L"--- OTHER ---" << std::endl;
+      break;
+
+      if(!skip_space) {
+        AppendBuffer(' ');
+      }
+      else {
+        skip_space = false;
+      }
+      break;
+    }
+
     /*
-    case TOKEN_VTAB {
-      if(next_token->GetType() != TOKEN_CCBRACE) {
-        AppendBuffer(L"\n\n");
-        TabSpace(tab_space, ident_space);
-        skip_space = true;
-      };
-    }
-
-    other {
-      "--- OTHER ---"->ErrorLine();
-    }
-  };
-
-  if(!=skip_space) {
-    AppendBuffer(' ');
-  }
-  else {
-    skip_space = false;
-  };
-};
-};
-
-// clean up output
-  offset_start = 0;
-each(i : buffer) {
-  if(buffer->Get(i) = '\n' | buffer->Get(i) = '\r') {
-    offset_start += 1;
-  }
-  else {
-    break;
-  };
-};
-
-offset_end = 0;
-  reverse(i : buffer) {
-    if(buffer->Get(i) = ' ' | buffer->Get(i) = '\t') {
-      offset_end += 1;
+    // clean up output
+    long offset_start = 0;
+    each(i : buffer) {
+    if(buffer->Get(i) = '\n' | buffer->Get(i) = '\r') {
+      offset_start += 1;
     }
     else {
       break;
     };
   };
 
-formatted = buffer->Substd::wstring(offset_start, buffer->Size() - offset_start - offset_end);
+    offset_end = 0;
+    reverse(i : buffer) {
+      if(buffer->Get(i) = ' ' | buffer->Get(i) = '\t') {
+        offset_end += 1;
+      }
+      else {
+        break;
+      };
+    };
 
-  if(trim_trailing) {
-  formatted = formatted->Trim();
-  };
 
-  return formatted;
-  */
+    // formatted = buffer->Substd::wstring(offset_start, buffer->Size() - offset_start - offset_end);
 
-    }
+    if(trim_trailing) {
+      formatted = formatted->Trim();
+    };
+
+    return formatted;
+
+
+      }
+    */
 
     // next token
     scanner.NextToken();
