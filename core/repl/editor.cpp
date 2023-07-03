@@ -1381,111 +1381,111 @@ std::wstring CodeFormatter::Format(std::wstring source, bool is_color)
       AppendBuffer(L"<=");
       break;
 
-      /*
-    case TOKEN_GTR_EQL {
+    case TOKEN_GEQL:
       AppendBuffer(L">=");
-    }
+      break;
 
-    case TOKEN_ADD_ASN {
+    case TOKEN_ADD_ASSIGN:
       AppendBuffer(L"+=");
-    }
+      break;
 
-    case TOKEN_SUB_ASN {
+    case TOKEN_SUB_ASSIGN:
       AppendBuffer(L"-=");
-    }
+      break;
 
-    case TOKEN_ADD_ADD {
+    case TOKEN_ADD_ADD:
       AppendBuffer(L"++");
-    }
+      break;
 
-    case TOKEN_SUB_SUB {
+    case TOKEN_SUB_SUB:
       AppendBuffer(L"--");
-    }
+      break;
 
-    case TOKEN_MUL_ASN {
+    case TOKEN_MUL_ASSIGN:
       AppendBuffer(L"*=");
-    }
+      break;
 
-    case TOKEN_DIV_ASN {
+    case TOKEN_DIV_ASSIGN:
       AppendBuffer(L"/=");
-    }
+      break;
 
-    case TOKEN_LAMBDA {
+    case TOKEN_LAMBDA:
       AppendBuffer(L"=>");
-    }
+      break;
 
-    case TOKEN_TILDE {
+    case TOKEN_TILDE:
       AppendBuffer('~');
-    }
+      break;
 
-    case TOKEN_OBRACE {
-      if(prev_token->GetType() = TOKEN_IDENT) {
+    case TOKEN_OPEN_BRACKET:
+      if(prev_token->GetType() == TOKEN_IDENT) {
         PopBuffer();
       };
       AppendBuffer('[');
       skip_space = true;
-    }
+      break;
 
-    case TOKEN_CBRACE {
-      if(prev_token->GetType() != TOKEN_OBRACE) {
+    case TOKEN_CLOSED_BRACKET:
+      if(prev_token->GetType() != TOKEN_OPEN_BRACKET) {
         PopBuffer();
       };
       AppendBuffer(']');
-    }
+      break;
 
-    case TOKEN_OPREN {
-      if(!=stmt_space) {
-        select(prev_token->GetType()) {
-          case TOKEN_IDENT
-            case TOKEN_IF_ID
-            case TOKEN_FOR_ID
-            case TOKEN_EACH_ID
-            case TOKEN_SELECT_ID
-            case TOKEN_WHILE_ID{
-              PopBuffer();
-          }
+    case TOKEN_OPEN_PAREN:
+      if(!stmt_space) {
+        switch(prev_token->GetType()) {
+        case TOKEN_IDENT:
+        case TOKEN_IF_ID:
+        case TOKEN_FOR_ID:
+        case TOKEN_EACH_ID:
+        case TOKEN_SELECT_ID:
+        case TOKEN_WHILE_ID:
+          PopBuffer();
+          break;
         };
       };
 
       AppendBuffer('(');
 
       skip_space = true;
-    }
+      break;
 
-    case TOKEN_CPREN {
-      if(prev_token->GetType() != TOKEN_OPREN) {
+    case TOKEN_CLOSED_PAREN:
+      if(prev_token->GetType() != TOKEN_OPEN_PAREN) {
         PopBuffer();
       };
 
       if(in_for) {
-      in_for = false;
+        in_for = false;
       };
 
       AppendBuffer(')');
-    }
+      break;
 
-    case TOKEN_OCBRACE {
+    case TOKEN_OPEN_BRACE:
       AppendBuffer(L"{\n");
       skip_space = true;
       tab_space += 1;
     insert_tabs = true;
 
       if(in_case ) {
-      in_case = false;
+        in_case = false;
       };
-    }
+      break;
 
-    case TOKEN_CCBRACE {
+    case TOKEN_CLOSED_BRACE:
       AppendBuffer('\n');
       tab_space -= 1;
       TabSpace(tab_space, ident_space);
       AppendBuffer('}'); // TODO: Fix me!
 
-        if(in_consts) {
+      if(in_consts) {
         in_consts = false;
-        };
-    }
+      };
+      break;
 
+    /*
     case TOKEN_VTAB {
       if(next_token->GetType() != TOKEN_CCBRACE) {
         AppendBuffer(L"\n\n");
