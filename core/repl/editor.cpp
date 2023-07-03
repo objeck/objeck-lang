@@ -100,7 +100,6 @@ std::wstring Document::ToString()
 
 void Document::List(size_t cur_pos, bool all)
 {
-  Scanner scanner(L"", false, L"");
 
   if(!all && lines.size() == shell_count) {
     std::wcout << L"[No code]" << std::endl;
@@ -111,25 +110,14 @@ void Document::List(size_t cur_pos, bool all)
     }
 
     std::wstringstream buffer;
-    size_t index = 0;
     for(auto& line : lines) {
-      ++index;
-
-      if(all || line.GetType() == Line::Type::RW_LINE) {
-        if(index == cur_pos) {
-          buffer << "=> ";
-        }
-        else {
-          buffer << "   ";
-        }
-
-        buffer << index;
-        buffer << L": ";
-        buffer << line.ToString() << std::endl;
-      }
+      std::wstring string = line.ToString();
+      buffer << string;
     }
 
-    std::wcout << buffer.str() << std::endl;
+    std::map<std::wstring, std::wstring> options;
+    CodeFormatter formatter(options);
+    std::wcout << formatter.Format(buffer.str(), false) << std::endl;
   }
 }
 
