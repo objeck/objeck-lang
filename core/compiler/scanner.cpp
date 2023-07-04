@@ -75,7 +75,8 @@ Scanner::Scanner(std::wstring f, bool a, const std::wstring c)
     ReadFile();
   }
   // set line number to 1
-  line_nbr = line_pos = 1;
+  line_nbr = 1;
+  line_pos = 1;
 }
 
 /****************************
@@ -666,61 +667,6 @@ void Scanner::CheckIdentifier(int index)
     tokens[index]->SetLinePos((int)(line_pos - 1));
     tokens[index]->SetFileName(filename);
   }
-}
-
-/****************************
- * Load a UTF-8 source file (text)
- * into memory.
- ****************************/
-wchar_t* Scanner::LoadFileBuffer(std::wstring filename, size_t& buffer_size)
-{
-  char* buffer;
-  const std::string open_filename = UnicodeToBytes(filename);
-
-  std::ifstream in(open_filename.c_str(), std::ios_base::in | std::ios_base::binary | std::ios_base::ate);
-  if(in.good()) {
-    // get file size
-    in.seekg(0, std::ios::end);
-    buffer_size = (size_t)in.tellg();
-    in.seekg(0, std::ios::beg);
-    buffer = (char*)calloc(buffer_size + 1, sizeof(char));
-    in.read(buffer, buffer_size);
-    // close file
-    in.close();
-  }
-  else {
-    return nullptr;;
-  }
-
-  // convert Unicode
-#ifdef _WIN32
-  const int wsize = MultiByteToWideChar(CP_UTF8, 0, buffer, -1, nullptr, 0);
-  if(wsize == 0) {
-    return nullptr;;
-  }
-  wchar_t* wbuffer = new wchar_t[wsize];
-  const int check = MultiByteToWideChar(CP_UTF8, 0, buffer, -1, wbuffer, wsize);
-  if(check == 0) {
-    return nullptr;;
-  }
-#else
-  size_t wsize = mbstowcs(nullptr, buffer, buffer_size);
-  if(wsize == (size_t)-1) {
-    free(buffer);
-    return nullptr;;
-  }
-  wchar_t* wbuffer = new wchar_t[wsize + 1];
-  size_t check = mbstowcs(wbuffer, buffer, buffer_size);
-  if(check == (size_t)-1) {
-    free(buffer);
-    delete[] wbuffer;
-    return nullptr;;
-  }
-  wbuffer[wsize] = L'\0';
-#endif
-
-  free(buffer);
-  return wbuffer;
 }
 
 void Scanner::CheckString(int index, bool is_valid)
