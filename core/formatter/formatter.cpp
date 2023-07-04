@@ -48,33 +48,84 @@ Token::~Token()
 /**
  * Scanner
  */
-Scanner::Scanner(const std::wstring& s)
+Scanner::Scanner()
 {
-
+  buffer = nullptr;
+  buffer_pos = buffer_pos = 0;
+  prev_char = cur_char = next_char = L'\0';
 }
 
 Scanner::~Scanner()
+{
+  if(buffer) {
+    delete[] buffer;
+    buffer = nullptr;
+  }
+}
+
+void Scanner::SetBuffer(wchar_t* b, size_t s)
+{
+  buffer = b;
+  buffer_size = s;
+}
+
+void Scanner::NextChar()
+{
+  if(!buffer_pos) {
+
+  }
+  else if(buffer_pos < buffer_size) {
+
+  }
+  else {
+
+  }
+}
+
+void Scanner::Whitespace()
 {
 
 }
 
 std::vector<Token*> Scanner::Scan()
 {
+  if(buffer && buffer_size) {
+    Whitespace();
+  }
+
   return tokens;
 }
+
+
 
 /**
  * Formatter
  */
 CodeFormatter::CodeFormatter(const std::wstring& s, bool f)
 {
-  // read file (see sys.h)
+  size_t buffer_size;
+
+  // process file input
   if(f) {
-/
+    wchar_t* buffer = LoadFileBuffer(s, buffer_size);
+  }
+  // process string input
+  else {
+    buffer_size = s.size();
+    wchar_t* buffer = new wchar_t[buffer_size];
+    std::wmemcpy(buffer, s.c_str(), buffer_size);
   }
 }
 
 CodeFormatter::~CodeFormatter()
 {
+  if(scanner) {
+    delete scanner;
+    scanner = nullptr;
+  }
+}
 
+std::wstring CodeFormatter::Format()
+{
+  return L"";
 }

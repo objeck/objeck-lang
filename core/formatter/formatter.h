@@ -32,10 +32,11 @@
 #ifndef __FORMATTER_H__
 #define __FORMATTER_H__
 
-#include <string>
-#include <vector>
-#include <map>
+#include "../shared/sys.h"
 
+ /**
+  * Token
+  */
 class Token {
 public:
   enum Type {
@@ -55,22 +56,39 @@ public:
   ~Token();
 };
 
+/**
+ * Scanner
+ */
 class Scanner {
   std::vector<Token*> tokens;
+  wchar_t* buffer;
+  size_t buffer_size;
+  size_t buffer_pos;
+  wchar_t prev_char, cur_char, next_char;
+
+  void NextChar();
+  void Whitespace();
+
 
 public:
-  Scanner(const std::wstring &s);
+  Scanner();
   ~Scanner();
 
+  void SetBuffer(wchar_t* b, size_t s);
   std::vector<Token*> Scan();
 };
 
+/**
+ * Formatter
+ */
 class CodeFormatter {
+  Scanner* scanner;
 
 public:
   CodeFormatter(const std::wstring& s, bool f = false);
-
   ~CodeFormatter();
+
+  std::wstring Format();
 };
 
 #endif
