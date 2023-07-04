@@ -535,8 +535,6 @@ class Scanner {
   int line_nbr;
   size_t line_pos;
   
-  // loads file into memory
-  wchar_t* LoadFileBuffer(std::wstring filename, size_t& buffer_size);
   // parsers a character string
   void CheckString(int index, bool is_valid);
   // parse an integer
