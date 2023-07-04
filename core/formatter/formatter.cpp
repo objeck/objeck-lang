@@ -1,4 +1,4 @@
-/***************************************************************************
+﻿/***************************************************************************
  * Language formatter
  *
  * Copyright (c) 2023, Randy Hollines
@@ -67,6 +67,7 @@ Scanner::~Scanner()
 void Scanner::LoadKeywords()
 {
   keywords[L"class"] = Token::Type::KEYWORD_TYPE;
+  keywords[L"Nil"] = Token::Type::KEYWORD_TYPE;
 }
 
 void Scanner::NextChar()
@@ -126,6 +127,22 @@ std::vector<Token*> Scanner::Scan()
       }
     }
     //
+    // character string
+    // 
+    if(cur_char == L'"') {
+      size_t str_start = buffer_pos - 1;
+      NextChar();
+      while(!(prev_char != L'\\' && cur_char == L'"')) {
+        NextChar();
+      }
+      NextChar();
+
+      const std::wstring comment_str(buffer, str_start, buffer_pos - str_start - 1);
+#ifdef _DEBUG
+      std::wcout << L"COMMENT: |" << comment_str << std::endl;
+#endif
+    }
+    //
     // identifier
     //
     else if(iswalpha(cur_char)) {
@@ -134,6 +151,9 @@ std::vector<Token*> Scanner::Scan()
         NextChar();
       }
       const std::wstring str(buffer, str_start, buffer_pos - str_start - 1);
+#ifdef _DEBUG
+      std::wcout << L"IDENT: |" << str << L'|' << std::endl;
+#endif
 
       auto keyword = keywords.find(str);
       if(keyword != keywords.end()) {
@@ -156,11 +176,69 @@ std::vector<Token*> Scanner::Scan()
     // operator or control
     else {
       switch(cur_char) {
-      case L'.':
-        tokens.push_back(new Token(Token::CTRL_TYPE, L"."));
+      case L'{':
+        tokens.push_back(new Token(Token::CTRL_TYPE, L"{"));
+        NextChar();
         break;
 
-      case L',':
+      case L'}':
+        tokens.push_back(new Token(Token::CTRL_TYPE, L"}"));
+        NextChar();
+        break;
+
+      case L'[':
+        tokens.push_back(new Token(Token::CTRL_TYPE, L"["));
+        NextChar();
+        break;
+
+      case L']':
+        tokens.push_back(new Token(Token::CTRL_TYPE, L"]"));
+        NextChar();
+        break;
+
+      case L'(':
+        tokens.push_back(new Token(Token::CTRL_TYPE, L"("));
+        NextChar();
+        break;
+
+      case L')':
+        tokens.push_back(new Token(Token::CTRL_TYPE, L")"));
+        NextChar();
+        break;
+
+      case L':':
+        tokens.push_back(new Token(Token::CTRL_TYPE, L":"));
+        NextChar();
+        break;
+
+      case L'~':
+        tokens.push_back(new Token(Token::CTRL_TYPE, L"~"));
+        NextChar();
+        break;
+
+      case L';':
+        tokens.push_back(new Token(Token::CTRL_TYPE, L","));
+        NextChar();
+        break;
+
+      case L'-':
+        if(next_char == L'>') {
+          NextChar();
+          tokens.push_back(new Token(Token::CTRL_TYPE, L"->"));
+          NextChar();
+        }
+        else if(next_char == L'-') {
+          NextChar();
+          tokens.push_back(new Token(Token::CTRL_TYPE, L"--"));
+          NextChar();
+        }
+        else {
+          tokens.push_back(new Token(Token::CTRL_TYPE, L"-"));
+          NextChar();
+        }
+        break;
+
+      case L'→':
         tokens.push_back(new Token(Token::CTRL_TYPE, L","));
         break;
 
@@ -172,8 +250,6 @@ std::vector<Token*> Scanner::Scan()
 
   return tokens;
 }
-
-
 
 /**
  * Formatter
