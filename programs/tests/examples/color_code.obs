@@ -5,6 +5,7 @@ class ColorCode {
 	@foo back
 	~#
 	function : Bar(args : String[]) ~ Nil {
+		"hi ya"->PrintLine();
 	}
 	
 		#~
