@@ -64,7 +64,9 @@ class Scanner {
   wchar_t* buffer;
   size_t buffer_size;
   size_t buffer_pos;
-  wchar_t prev_char, cur_char, next_char;
+  wchar_t prev_char;
+  wchar_t cur_char;
+  wchar_t next_char;
 
   void NextChar();
   void Whitespace();
