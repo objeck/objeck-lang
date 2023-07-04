@@ -75,8 +75,7 @@ Scanner::Scanner(std::wstring f, bool a, const std::wstring c)
     ReadFile();
   }
   // set line number to 1
-  line_nbr = 1;
-  line_pos = 1;
+  line_nbr = line_pos = 1;
 }
 
 /****************************
@@ -86,7 +85,7 @@ Scanner::~Scanner()
 {
   // delete buffer
   if(buffer) {
-    free(buffer);
+    delete[] buffer;
     buffer = nullptr;
   }
   // delete token array
