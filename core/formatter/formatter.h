@@ -33,6 +33,7 @@
 #define __FORMATTER_H__
 
 #include "../shared/sys.h"
+#include <unordered_map>
 
  /**
   * Token
@@ -60,23 +61,24 @@ public:
  * Scanner
  */
 class Scanner {
-  std::vector<Token*> tokens;
   wchar_t* buffer;
   size_t buffer_size;
   size_t buffer_pos;
+
   wchar_t prev_char;
   wchar_t cur_char;
   wchar_t next_char;
 
+  std::unordered_map<std::wstring, Token::Type> keywords;
+
   void NextChar();
   void Whitespace();
-
+  void LoadKeywords();
 
 public:
-  Scanner();
+  Scanner(wchar_t* b, size_t s);
   ~Scanner();
 
-  void SetBuffer(wchar_t* b, size_t s);
   std::vector<Token*> Scan();
 };
 
@@ -84,7 +86,8 @@ public:
  * Formatter
  */
 class CodeFormatter {
-  Scanner* scanner;
+  wchar_t* buffer;
+  size_t buffer_size;
 
 public:
   CodeFormatter(const std::wstring& s, bool f = false);

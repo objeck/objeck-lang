@@ -2,5 +2,8 @@
 
 int main(int argc, char* argv[])
 {
-	return 0;
+  if(argc > 1) {
+    CodeFormatter formatter(BytesToUnicode(argv[1]), true);
+    formatter.Format();
+  }
 }
