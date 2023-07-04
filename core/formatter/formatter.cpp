@@ -172,6 +172,10 @@ std::vector<Token*> Scanner::Scan()
         NextChar();
       }
       const std::wstring num_str(buffer, str_start, buffer_pos - str_start - 1);
+
+#ifdef _DEBUG
+      std::wcout << L"NUMBER: |" << num_str << L'|' << std::endl;
+#endif
     }
     // operator or control
     else {
@@ -240,6 +244,7 @@ std::vector<Token*> Scanner::Scan()
 
       case L'→':
         tokens.push_back(new Token(Token::CTRL_TYPE, L","));
+        NextChar();
         break;
 
       default:
