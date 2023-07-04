@@ -48,10 +48,11 @@ Token::~Token()
 /**
  * Scanner
  */
-Scanner::Scanner()
+Scanner::Scanner(wchar_t* b, size_t s)
 {
-  buffer = nullptr;
-  buffer_pos = buffer_pos = 0;
+  buffer = b;
+  buffer_size = s;
+  buffer_pos = 0;
   prev_char = cur_char = next_char = L'\0';
 }
 
@@ -63,10 +64,9 @@ Scanner::~Scanner()
   }
 }
 
-void Scanner::SetBuffer(wchar_t* b, size_t s)
+void Scanner::LoadKeywords()
 {
-  buffer = b;
-  buffer_size = s;
+  keywords[L"class"] = Token::Type::KEYWORD_TYPE;
 }
 
 void Scanner::NextChar()
@@ -79,24 +79,95 @@ void Scanner::NextChar()
     else {
       cur_char = buffer[buffer_pos];
     }
-
     next_char = buffer[++buffer_pos];
-
   }
   else {
-
+    prev_char = cur_char;
+    cur_char = next_char;
+    next_char = buffer[buffer_pos];
   }
 }
 
 void Scanner::Whitespace()
 {
-
+  while(iswspace(cur_char)) {
+    NextChar();
+  }
 }
 
 std::vector<Token*> Scanner::Scan()
 {
-  if(buffer && buffer_size) {
+  LoadKeywords();
+  NextChar();
+
+  std::vector<Token*> tokens;
+  while(cur_char) {
+    //
+    // whitespace
+    //
     Whitespace();
+
+    // comment
+    if(cur_char == L'#') {
+      NextChar();
+      
+      // multi-line
+      if(cur_char == L'~') {
+        NextChar();
+        while(!(cur_char == L'~' && next_char == L'#')) {
+          NextChar();
+        }
+        NextChar();
+        NextChar();
+      }
+      // single line
+      else {
+
+      }
+    }
+    //
+    // identifier
+    //
+    else if(iswalpha(cur_char)) {
+      size_t str_start = buffer_pos - 1;
+      while(iswalpha(cur_char) || iswdigit(cur_char) || cur_char == L'_') {
+        NextChar();
+      }
+      const std::wstring str(buffer, str_start, buffer_pos - str_start - 1);
+
+      auto keyword = keywords.find(str);
+      if(keyword != keywords.end()) {
+        tokens.push_back(new Token(Token::KEYWORD_TYPE, str));
+      }
+      else {
+        tokens.push_back(new Token(Token::IDENT_TYPE, str));
+      }
+    }
+    //
+    // number
+    //
+    else if(iswdigit(cur_char)) {
+      size_t str_start = buffer_pos - 1;
+      while(iswdigit(cur_char) || cur_char == L'.' || (cur_char >= L'a' && cur_char <= L'f') || (cur_char >= L'A' && cur_char <= L'F')) {
+        NextChar();
+      }
+      const std::wstring num_str(buffer, str_start, buffer_pos - str_start - 1);
+    }
+    // operator or control
+    else {
+      switch(cur_char) {
+      case L'.':
+        tokens.push_back(new Token(Token::CTRL_TYPE, L"."));
+        break;
+
+      case L',':
+        tokens.push_back(new Token(Token::CTRL_TYPE, L","));
+        break;
+
+      default:
+        break;
+      }
+    }
   }
 
   return tokens;
@@ -109,29 +180,27 @@ std::vector<Token*> Scanner::Scan()
  */
 CodeFormatter::CodeFormatter(const std::wstring& s, bool f)
 {
-  size_t buffer_size;
-
   // process file input
   if(f) {
-    wchar_t* buffer = LoadFileBuffer(s, buffer_size);
+    buffer = LoadFileBuffer(s, buffer_size);
   }
   // process string input
   else {
     buffer_size = s.size();
-    wchar_t* buffer = new wchar_t[buffer_size];
+    buffer = new wchar_t[buffer_size];
     std::wmemcpy(buffer, s.c_str(), buffer_size);
   }
 }
 
 CodeFormatter::~CodeFormatter()
 {
-  if(scanner) {
-    delete scanner;
-    scanner = nullptr;
-  }
+
 }
 
 std::wstring CodeFormatter::Format()
 {
+  Scanner scanner(buffer, buffer_size);
+  std::vector<Token*> tokens = scanner.Scan();
+
   return L"";
 }
