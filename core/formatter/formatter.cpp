@@ -71,10 +71,16 @@ void Scanner::SetBuffer(wchar_t* b, size_t s)
 
 void Scanner::NextChar()
 {
-  if(!buffer_pos) {
+  if(buffer_pos + 1 < buffer_size) {
+    if(buffer_pos) {
+      prev_char = cur_char;
+      cur_char = next_char;
+    }
+    else {
+      cur_char = buffer[buffer_pos];
+    }
 
-  }
-  else if(buffer_pos < buffer_size) {
+    next_char = buffer[++buffer_pos];
 
   }
   else {
