@@ -137,9 +137,9 @@ std::vector<Token*> Scanner::Scan()
       }
       NextChar();
 
-      const std::wstring comment_str(buffer, str_start, buffer_pos - str_start - 1);
+      const std::wstring char_str(buffer, str_start, buffer_pos - str_start - 1);
 #ifdef _DEBUG
-      std::wcout << L"COMMENT: |" << comment_str << std::endl;
+      std::wcout << L"STRING: ->|" << char_str << L"|<-" << std::endl;
 #endif
     }
     //
@@ -150,17 +150,17 @@ std::vector<Token*> Scanner::Scan()
       while(iswalpha(cur_char) || iswdigit(cur_char) || cur_char == L'_') {
         NextChar();
       }
-      const std::wstring str(buffer, str_start, buffer_pos - str_start - 1);
+      const std::wstring ident_str(buffer, str_start, buffer_pos - str_start - 1);
 #ifdef _DEBUG
-      std::wcout << L"IDENT: |" << str << L'|' << std::endl;
+      std::wcout << L"IDENT: |" << ident_str << L'|' << std::endl;
 #endif
 
-      auto keyword = keywords.find(str);
+      auto keyword = keywords.find(ident_str);
       if(keyword != keywords.end()) {
-        tokens.push_back(new Token(Token::KEYWORD_TYPE, str));
+        tokens.push_back(new Token(Token::KEYWORD_TYPE, ident_str));
       }
       else {
-        tokens.push_back(new Token(Token::IDENT_TYPE, str));
+        tokens.push_back(new Token(Token::IDENT_TYPE, ident_str));
       }
     }
     //
