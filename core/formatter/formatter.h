@@ -34,6 +34,7 @@
 
 #include "../shared/sys.h"
 #include <unordered_map>
+#include <sstream>
 
  /**
   * Token
@@ -45,7 +46,14 @@ public:
     NUM_TYPE,
     KEYWORD_TYPE,
     OPER_TYPE,
-    CTRL_TYPE
+    CTRL_TYPE,
+    OPEN_CBRACE,
+    CLOSED_CBRACE,
+    MULTI_COMMENT,
+    LINE_COMMENT,
+    VSPACE,
+    BRACKET_TYPE,
+    CHAR_STRING
   };
 
 private:
@@ -55,6 +63,14 @@ private:
 public:
   Token(Token::Type t, const std::wstring &v);
   ~Token();
+
+  Token::Type GetType() {
+    return type;
+  }
+
+  const std::wstring GetValue() {
+    return value;
+  }
 };
 
 /**
@@ -70,7 +86,7 @@ class Scanner {
   wchar_t next_char;
 
   std::unordered_map<std::wstring, Token::Type> keywords;
-
+  std::vector<Token*> tokens;
   void NextChar();
   void Whitespace();
   void LoadKeywords();
@@ -88,6 +104,7 @@ public:
 class CodeFormatter {
   wchar_t* buffer;
   size_t buffer_size;
+  size_t indent_space;
 
 public:
   CodeFormatter(const std::wstring& s, bool f = false);

@@ -85,7 +85,11 @@ void Scanner::NextChar()
   else {
     prev_char = cur_char;
     cur_char = next_char;
-    next_char = buffer[buffer_pos];
+    next_char = '\0';
+  }
+
+  if(cur_char == L'\n') {
+    tokens.push_back(new Token(Token::Type::VSPACE, L"\n"));
   }
 }
 
@@ -101,36 +105,49 @@ std::vector<Token*> Scanner::Scan()
   LoadKeywords();
   NextChar();
 
-  std::vector<Token*> tokens;
   while(cur_char) {
     //
     // whitespace
     //
     Whitespace();
 
+    //
     // comment
+    //
     if(cur_char == L'#') {
+      const size_t str_start = buffer_pos - 1;
       NextChar();
       
-      // multi-line
+      // multi-line comment
       if(cur_char == L'~') {
+        
         NextChar();
         while(!(cur_char == L'~' && next_char == L'#')) {
           NextChar();
         }
         NextChar();
         NextChar();
-      }
-      // single line
-      else {
 
+        const std::wstring comment_str(buffer, str_start, buffer_pos - str_start - 1);
+        tokens.push_back(new Token(Token::Type::MULTI_COMMENT, comment_str));        
+      }
+      // single line comment
+      else {
+        NextChar();
+        while(cur_char != L'\n') {
+          NextChar();
+        }
+        NextChar();
+
+        const std::wstring comment_str(buffer, str_start, buffer_pos - str_start - 1);
+        tokens.push_back(new Token(Token::Type::LINE_COMMENT, comment_str));
       }
     }
     //
     // character string
     // 
     if(cur_char == L'"') {
-      size_t str_start = buffer_pos - 1;
+      const size_t str_start = buffer_pos - 1;
       NextChar();
       while(!(prev_char != L'\\' && cur_char == L'"')) {
         NextChar();
@@ -138,16 +155,14 @@ std::vector<Token*> Scanner::Scan()
       NextChar();
 
       const std::wstring char_str(buffer, str_start, buffer_pos - str_start - 1);
-#ifdef _DEBUG
-      std::wcout << L"STRING: ->|" << char_str << L"|<-" << std::endl;
-#endif
+      tokens.push_back(new Token(Token::Type::CHAR_STRING, char_str));
     }
     //
     // identifier
     //
     else if(iswalpha(cur_char)) {
-      size_t str_start = buffer_pos - 1;
-      while(iswalpha(cur_char) || iswdigit(cur_char) || cur_char == L'_') {
+      const size_t str_start = buffer_pos - 1;
+      while(iswalpha(cur_char) || iswdigit(cur_char) || cur_char == L'_' || cur_char == L'.') {
         NextChar();
       }
       const std::wstring ident_str(buffer, str_start, buffer_pos - str_start - 1);
@@ -157,18 +172,18 @@ std::vector<Token*> Scanner::Scan()
 
       auto keyword = keywords.find(ident_str);
       if(keyword != keywords.end()) {
-        tokens.push_back(new Token(Token::KEYWORD_TYPE, ident_str));
+        tokens.push_back(new Token(Token::Type::KEYWORD_TYPE, ident_str));
       }
       else {
-        tokens.push_back(new Token(Token::IDENT_TYPE, ident_str));
+        tokens.push_back(new Token(Token::Type::IDENT_TYPE, ident_str));
       }
     }
     //
     // number
     //
     else if(iswdigit(cur_char)) {
-      size_t str_start = buffer_pos - 1;
-      while(iswdigit(cur_char) || cur_char == L'.' || (cur_char >= L'a' && cur_char <= L'f') || (cur_char >= L'A' && cur_char <= L'F')) {
+      const size_t str_start = buffer_pos - 1;
+      while(iswdigit(cur_char) || cur_char == L'.' || cur_char == L'x' || cur_char == L'X' || (cur_char >= L'a' && cur_char <= L'f') || (cur_char >= L'A' && cur_char <= L'F')) {
         NextChar();
       }
       const std::wstring num_str(buffer, str_start, buffer_pos - str_start - 1);
@@ -181,73 +196,111 @@ std::vector<Token*> Scanner::Scan()
     else {
       switch(cur_char) {
       case L'{':
-        tokens.push_back(new Token(Token::CTRL_TYPE, L"{"));
+        tokens.push_back(new Token(Token::Type::OPEN_CBRACE, L"{"));
         NextChar();
         break;
 
       case L'}':
-        tokens.push_back(new Token(Token::CTRL_TYPE, L"}"));
+        tokens.push_back(new Token(Token::Type::CLOSED_CBRACE, L"}"));
         NextChar();
         break;
 
       case L'[':
-        tokens.push_back(new Token(Token::CTRL_TYPE, L"["));
+        tokens.push_back(new Token(Token::Type::BRACKET_TYPE, L"["));
         NextChar();
         break;
 
       case L']':
-        tokens.push_back(new Token(Token::CTRL_TYPE, L"]"));
+        tokens.push_back(new Token(Token::Type::BRACKET_TYPE, L"]"));
         NextChar();
         break;
 
       case L'(':
-        tokens.push_back(new Token(Token::CTRL_TYPE, L"("));
+        tokens.push_back(new Token(Token::Type::BRACKET_TYPE, L"("));
         NextChar();
         break;
 
       case L')':
-        tokens.push_back(new Token(Token::CTRL_TYPE, L")"));
+        tokens.push_back(new Token(Token::Type::BRACKET_TYPE, L")"));
         NextChar();
         break;
 
       case L':':
-        tokens.push_back(new Token(Token::CTRL_TYPE, L":"));
-        NextChar();
-        break;
-
-      case L'~':
-        tokens.push_back(new Token(Token::CTRL_TYPE, L"~"));
-        NextChar();
-        break;
-
-      case L';':
-        tokens.push_back(new Token(Token::CTRL_TYPE, L","));
-        NextChar();
-        break;
-
-      case L'-':
-        if(next_char == L'>') {
+        if(next_char == L'=') {
           NextChar();
-          tokens.push_back(new Token(Token::CTRL_TYPE, L"->"));
-          NextChar();
-        }
-        else if(next_char == L'-') {
-          NextChar();
-          tokens.push_back(new Token(Token::CTRL_TYPE, L"--"));
+          tokens.push_back(new Token(Token::Type::OPER_TYPE, L":="));
           NextChar();
         }
         else {
-          tokens.push_back(new Token(Token::CTRL_TYPE, L"-"));
+          tokens.push_back(new Token(Token::Type::CTRL_TYPE, L":"));
           NextChar();
         }
         break;
 
       case L'→':
-        tokens.push_back(new Token(Token::CTRL_TYPE, L","));
+        tokens.push_back(new Token(Token::Type::CTRL_TYPE, L"→"));
         NextChar();
         break;
 
+      case L'~':
+        tokens.push_back(new Token(Token::Type::CTRL_TYPE, L"~"));
+        NextChar();
+        break;
+
+      case L',':
+        tokens.push_back(new Token(Token::Type::CTRL_TYPE, L","));
+        NextChar();
+        break;
+
+      case L';':
+        tokens.push_back(new Token(Token::Type::CTRL_TYPE, L";"));
+        NextChar();
+        break;
+
+      case L'<':
+        if(next_char == L'>') {
+          NextChar();
+          tokens.push_back(new Token(Token::Type::OPER_TYPE, L"<>"));
+          NextChar();
+        }
+        else {
+          tokens.push_back(new Token(Token::Type::OPER_TYPE, L"<"));
+          NextChar();
+        }
+        break;
+
+      case L'>':
+        if(next_char == L'>') {
+          NextChar();
+          tokens.push_back(new Token(Token::Type::OPER_TYPE, L"<>"));
+          NextChar();
+        }
+        else {
+          tokens.push_back(new Token(Token::Type::OPER_TYPE, L">"));
+          NextChar();
+        }
+        break;
+
+      case L'-':
+        if(next_char == L'>') {
+          NextChar();
+          tokens.push_back(new Token(Token::Type::CTRL_TYPE, L"->"));
+          NextChar();
+        }
+        else if(next_char == L'-') {
+          NextChar();
+          tokens.push_back(new Token(Token::Type::CTRL_TYPE, L"--"));
+          NextChar();
+        }
+        else {
+          tokens.push_back(new Token(Token::Type::CTRL_TYPE, L"-"));
+          NextChar();
+        }
+        break;
+
       default:
+        std::wcerr << L"### Unknown parsed token: '" << cur_char << L"' ###" << std::endl;
+        NextChar();
         break;
       }
     }
@@ -261,6 +314,8 @@ std::vector<Token*> Scanner::Scan()
  */
 CodeFormatter::CodeFormatter(const std::wstring& s, bool f)
 {
+  indent_space = 0;
+
   // process file input
   if(f) {
     buffer = LoadFileBuffer(s, buffer_size);
@@ -280,8 +335,48 @@ CodeFormatter::~CodeFormatter()
 
 std::wstring CodeFormatter::Format()
 {
+  std::wstringstream output_stream;
+
   Scanner scanner(buffer, buffer_size);
   std::vector<Token*> tokens = scanner.Scan();
+  for(auto token : tokens) {
+    switch(token->GetType()) {
+    case Token::Type::IDENT_TYPE:
+    case Token::Type::NUM_TYPE:
+    case Token::Type::KEYWORD_TYPE:
+    case Token::Type::OPER_TYPE:
+    case Token::Type::CTRL_TYPE:
+    case Token::Type::MULTI_COMMENT:
+    case Token::Type::LINE_COMMENT:
+    case Token::Type::BRACKET_TYPE:
+    case Token::Type::CHAR_STRING:
+      output_stream << token->GetValue();
+      break;
 
-  return L"";
+    case Token::Type::OPEN_CBRACE:
+      ++indent_space;
+      output_stream << token->GetValue();
+      break;
+
+    case Token::Type::CLOSED_CBRACE:
+      --indent_space;
+      output_stream << token->GetValue();
+      break;
+
+    case Token::Type::VSPACE:
+      output_stream << token->GetValue();
+      for(size_t i = 0; i < indent_space; ++i) {
+        output_stream << L'\t';
+      }
+      break;
+
+    default:
+      std::wcerr << L"### Unknown formatted token: \"" << token->GetValue() << L"\" ###" << std::endl;
+      break;
+    }
+
+    output_stream << L' ';
+  }
+
+  return output_stream.str();
 }
