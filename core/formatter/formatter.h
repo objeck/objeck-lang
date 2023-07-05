@@ -51,9 +51,9 @@ public:
     CLOSED_CBRACE,
     MULTI_COMMENT,
     LINE_COMMENT,
-    VSPACE,
     BRACKET_TYPE,
-    CHAR_STRING
+    CHAR_STRING,
+    END_STMT_TYPE
   };
 
 private:
