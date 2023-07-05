@@ -1494,14 +1494,13 @@ std::wstring CodeFormatter::Format(std::wstring source, bool is_color)
     default:
       std::wcerr << L"--- OTHER ---" << std::endl;
       break;
+    }
 
-      if(!skip_space) {
-        AppendBuffer(' ');
-      }
-      else {
-        skip_space = false;
-      }
-      break;
+    if(!skip_space) {
+      AppendBuffer(' ');
+    }
+    else {
+      skip_space = false;
     }
 
     /*
