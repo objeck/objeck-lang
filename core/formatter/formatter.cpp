@@ -204,22 +204,22 @@ std::vector<Token*> Scanner::Scan()
         break;
 
       case L'[':
-        tokens.push_back(new Token(Token::Type::BRACKET_TYPE, L"["));
+        tokens.push_back(new Token(Token::Type::OPEN_BRACKET_TYPE, L"["));
         NextChar();
         break;
 
       case L']':
-        tokens.push_back(new Token(Token::Type::BRACKET_TYPE, L"]"));
+        tokens.push_back(new Token(Token::Type::CLOSED_BRACKET_TYPE, L"]"));
         NextChar();
         break;
 
       case L'(':
-        tokens.push_back(new Token(Token::Type::BRACKET_TYPE, L"("));
+        tokens.push_back(new Token(Token::Type::OPEN_BRACKET_TYPE, L"("));
         NextChar();
         break;
 
       case L')':
-        tokens.push_back(new Token(Token::Type::BRACKET_TYPE, L")"));
+        tokens.push_back(new Token(Token::Type::CLOSED_BRACKET_TYPE, L")"));
         NextChar();
         break;
 
@@ -236,7 +236,7 @@ std::vector<Token*> Scanner::Scan()
         break;
 
       case L'→':
-        tokens.push_back(new Token(Token::Type::CTRL_TYPE, L"→"));
+        tokens.push_back(new Token(Token::Type::ACCESSOR_TYPE, L"→"));
         NextChar();
         break;
 
@@ -282,7 +282,7 @@ std::vector<Token*> Scanner::Scan()
       case L'-':
         if(next_char == L'>') {
           NextChar();
-          tokens.push_back(new Token(Token::Type::CTRL_TYPE, L"->"));
+          tokens.push_back(new Token(Token::Type::ACCESSOR_TYPE, L"->"));
           NextChar();
         }
         else if(next_char == L'-') {
@@ -351,8 +351,18 @@ std::wstring CodeFormatter::Format()
     case Token::Type::KEYWORD_TYPE:
     case Token::Type::OPER_TYPE:
     case Token::Type::CTRL_TYPE:
-    case Token::Type::BRACKET_TYPE:
     case Token::Type::CHAR_STRING:
+      output += token->GetValue();
+      break;
+
+    case Token::Type::OPEN_BRACKET_TYPE:
+      output += token->GetValue();
+      skip = true;
+      break;
+
+    case Token::Type::CLOSED_BRACKET_TYPE:
+      // TODO: prior token was not 'OPEN_BRACKET_TYPE'
+      output.pop_back();
       output += token->GetValue();
       break;
 
@@ -372,6 +382,12 @@ std::wstring CodeFormatter::Format()
       for(size_t i = 0; i < indent_space; ++i) {
         output += '\t';
       }
+      break;
+
+    case Token::Type::ACCESSOR_TYPE:
+      output.pop_back();
+      output += L"->";
+      skip = true;
       break;
 
     case Token::Type::OPEN_CBRACE:
@@ -405,7 +421,9 @@ std::wstring CodeFormatter::Format()
       break;
     }
 
-    output += L' ';
+    if(!skip) {
+      output += L' ';
+    }
   }
 
   return output;
