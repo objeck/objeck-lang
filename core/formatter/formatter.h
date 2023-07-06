@@ -47,6 +47,7 @@ public:
     KEYWORD_TYPE,
     OPER_TYPE,
     CTRL_TYPE,
+    COMMA_TYPE,
     OPEN_CBRACE,
     CLOSED_CBRACE,
     MULTI_COMMENT,

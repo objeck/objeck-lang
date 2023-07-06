@@ -88,10 +88,6 @@ void Scanner::NextChar()
     cur_char = next_char;
     next_char = '\0';
   }
-
-  if(cur_char == L'\n') {
-  //  tokens.push_back(new Token(Token::Type::VSPACE, L"\n"));
-  }
 }
 
 void Scanner::Whitespace()
@@ -246,7 +242,7 @@ std::vector<Token*> Scanner::Scan()
         break;
 
       case L',':
-        tokens.push_back(new Token(Token::Type::CTRL_TYPE, L","));
+        tokens.push_back(new Token(Token::Type::COMMA_TYPE, L","));
         NextChar();
         break;
 
@@ -343,42 +339,55 @@ std::wstring CodeFormatter::Format()
 
   Scanner scanner(buffer, buffer_size);
   std::vector<Token*> tokens = scanner.Scan();
-  for(auto token : tokens) {
+  for(size_t i = 0; i < tokens.size(); ++i) {
+    Token* cur_token = tokens[i];
+    Token* prev_token = nullptr;
+    if(i > 0) {
+      prev_token = tokens[i - 1];
+    }
+
     bool skip = false;
 
-    switch(token->GetType()) {
+    switch(cur_token->GetType()) {
     case Token::Type::IDENT_TYPE:
     case Token::Type::KEYWORD_TYPE:
     case Token::Type::OPER_TYPE:
     case Token::Type::CTRL_TYPE:
     case Token::Type::CHAR_STRING:
-      output += token->GetValue();
+      output += cur_token->GetValue();
+      break;
+
+    case Token::Type::COMMA_TYPE:
+      output.pop_back();
+      output += cur_token->GetValue();
       break;
 
     case Token::Type::OPEN_BRACKET_TYPE:
-      output += token->GetValue();
+      output.pop_back();
+      output += cur_token->GetValue();
       skip = true;
       break;
 
     case Token::Type::CLOSED_BRACKET_TYPE:
-      // TODO: prior token was not 'OPEN_BRACKET_TYPE'
-      output.pop_back();
-      output += token->GetValue();
+      if(prev_token->GetType() != Token::Type::OPEN_BRACKET_TYPE) {
+        output.pop_back();
+      }
+      output += cur_token->GetValue();
       break;
 
     case Token::Type::NUM_TYPE:
-      output += token->GetValue();
+      output += cur_token->GetValue();
       break;
 
     case Token::Type::MULTI_COMMENT:
-      output += L'\n' + token->GetValue();
+      output += L'\n' + cur_token->GetValue();
       for(size_t i = 0; i < indent_space; ++i) {
         output += '\t';
       }
       break;
 
     case Token::Type::LINE_COMMENT:
-      output += token->GetValue();
+      output += cur_token->GetValue();
       for(size_t i = 0; i < indent_space; ++i) {
         output += '\t';
       }
@@ -392,7 +401,7 @@ std::wstring CodeFormatter::Format()
 
     case Token::Type::OPEN_CBRACE:
       ++indent_space;
-      output += token->GetValue() + L'\n';
+      output += cur_token->GetValue() + L'\n';
       for(size_t i = 0; i < indent_space; ++i) {
         output += '\t';
       }
@@ -404,12 +413,12 @@ std::wstring CodeFormatter::Format()
       for(size_t i = 0; i < indent_space; ++i) {
         output += '\t';
       }
-      output += token->GetValue();
+      output += cur_token->GetValue();
       break;
 
     case Token::Type::END_STMT_TYPE:
       output.pop_back();
-      output += token->GetValue();
+      output += cur_token->GetValue();
       output += L'\n';
       for(size_t i = 0; i < indent_space; ++i) {
         output += '\t';
@@ -417,7 +426,7 @@ std::wstring CodeFormatter::Format()
       break;
 
     default:
-      std::wcerr << L"### Unknown formatted token: \"" << token->GetValue() << L"\" ###" << std::endl;
+      std::wcerr << L"### Unknown formatted token: \"" << cur_token->GetValue() << L"\" ###" << std::endl;
       break;
     }
 
