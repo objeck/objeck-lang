@@ -140,7 +140,7 @@ bool Document::InsertLine(size_t line_num, const std::wstring line, Line::Type t
 
 bool Document::DeleteLine(size_t line_num)
 {
-  if(line_num >= 0 && line_num < lines.size()) {
+  if(line_num > 0 && line_num < lines.size()) {
     size_t cur_num = 0;
 
     std::list<Line>::iterator iter = lines.begin();
@@ -1051,7 +1051,7 @@ std::wstring CodeFormatter::Format(std::wstring source, bool is_color)
       break;
 
     case TOKEN_IDENT: {
-      if(prev_token->GetType() == TOKEN_ASSESSOR || prev_token->GetType() == TOKEN_ADD_ADD || prev_token->GetType() == TOKEN_SUB_SUB) {
+      if(prev_token && (prev_token->GetType() == TOKEN_ASSESSOR || prev_token->GetType() == TOKEN_ADD_ADD || prev_token->GetType() == TOKEN_SUB_SUB)) {
         PopBuffer();
       }
       const std::wstring value = token->GetIdentifier();
@@ -1414,7 +1414,7 @@ std::wstring CodeFormatter::Format(std::wstring source, bool is_color)
       break;
 
     case TOKEN_OPEN_BRACKET:
-      if(prev_token->GetType() == TOKEN_IDENT) {
+      if(prev_token && prev_token->GetType() == TOKEN_IDENT) {
         PopBuffer();
       }
       AppendBuffer('[');
@@ -1422,14 +1422,14 @@ std::wstring CodeFormatter::Format(std::wstring source, bool is_color)
       break;
 
     case TOKEN_CLOSED_BRACKET:
-      if(prev_token->GetType() != TOKEN_OPEN_BRACKET) {
+      if(prev_token && prev_token->GetType() != TOKEN_OPEN_BRACKET) {
         PopBuffer();
       }
       AppendBuffer(']');
       break;
 
     case TOKEN_OPEN_PAREN:
-      if(!stmt_space) {
+      if(prev_token && !stmt_space) {
         switch(prev_token->GetType()) {
         case TOKEN_IDENT:
         case TOKEN_IF_ID:
@@ -1451,7 +1451,7 @@ std::wstring CodeFormatter::Format(std::wstring source, bool is_color)
       break;
 
     case TOKEN_CLOSED_PAREN:
-      if(prev_token->GetType() != TOKEN_OPEN_PAREN) {
+      if(prev_token && prev_token->GetType() != TOKEN_OPEN_PAREN) {
         PopBuffer();
       }
 
