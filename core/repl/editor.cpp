@@ -589,20 +589,20 @@ CodeFormatter::CodeFormatter(std::map<std::wstring, std::wstring>& options)
   iter = options.find(L"ident-space");
   if(iter != options.end()) {
     ident_space = (long)iter->second.size() - 1;
-  };
+  }
 
   // get start and end range
   start_range = -1;
   iter = options.find(L"start-line");
   if(iter != options.end()) {
     start_range = (long)iter->second.size();
-  };
+  }
 
   end_range = -1;
   iter = options.find(L"end-line");
   if(iter != options.end()) {
     end_range = (long)iter->second.size();
-  };
+  }
 
   buffer = L"";
 }
@@ -627,7 +627,7 @@ std::wstring CodeFormatter::Format(std::wstring source, bool is_color)
   if(insert_tabs) {
     TabSpace(tab_space, ident_space);
     insert_tabs = false;
-  };
+  }
 
   bool done = false;
   while(!done) {
@@ -645,7 +645,7 @@ std::wstring CodeFormatter::Format(std::wstring source, bool is_color)
 
       if(is_color) {
         AppendBuffer(ASCII_GREEN);
-      };
+      }
 
       AppendBuffer(L"class");
 
@@ -659,7 +659,7 @@ std::wstring CodeFormatter::Format(std::wstring source, bool is_color)
 
       if(is_color) {
         AppendBuffer(ASCII_GREEN);
-      };
+      }
 
       AppendBuffer(L"function");
 
@@ -672,37 +672,37 @@ std::wstring CodeFormatter::Format(std::wstring source, bool is_color)
       VerticalSpace(prev_token, tab_space, ident_space);
       if(is_color) {
         AppendBuffer(ASCII_GREEN);
-      };
+      }
 
       AppendBuffer(L"method");
 
       if(is_color) {
         AppendBuffer(ASCII_END);
-      };
+      }
       break;
 
     case TOKEN_PUBLIC_ID:
       if(is_color) {
         AppendBuffer(ASCII_CYAN);
-      };
+      }
 
       AppendBuffer(L"public");
 
       if(is_color) {
         AppendBuffer(ASCII_END);
-      };
+      }
       break;
 
     case TOKEN_PRIVATE_ID:
       if(is_color) {
         AppendBuffer(ASCII_CYAN);
-      };
+      }
 
       AppendBuffer(L"private");
 
       if(is_color) {
         AppendBuffer(ASCII_END);
-      };
+      }
       break;
 
     case TOKEN_END_OF_STREAM:
@@ -712,19 +712,19 @@ std::wstring CodeFormatter::Format(std::wstring source, bool is_color)
     case TOKEN_IF_ID:
       if(is_color) {
         AppendBuffer(ASCII_CYAN);
-      };
+      }
 
       AppendBuffer(L"if");
 
       if(is_color) {
         AppendBuffer(ASCII_END);
-      };
+      }
       break;
 
     case TOKEN_ELSE_ID:
       if(is_color) {
         AppendBuffer(ASCII_CYAN);
-      };
+      }
 
       AppendBuffer('\n');
       TabSpace(tab_space, ident_space);
@@ -732,44 +732,44 @@ std::wstring CodeFormatter::Format(std::wstring source, bool is_color)
 
       if(is_color) {
         AppendBuffer(ASCII_END);
-      };
+      }
       break;
 
 
     case TOKEN_DO_ID:
       if(is_color) {
         AppendBuffer(ASCII_CYAN);
-      };
+      }
 
       AppendBuffer(L"do");
 
       if(is_color) {
         AppendBuffer(ASCII_END);
-      };
+      }
       break;
 
     case TOKEN_WHILE_ID:
       if(is_color) {
         AppendBuffer(ASCII_CYAN);
-      };
+      }
 
       AppendBuffer(L"while");
 
       if(is_color) {
         AppendBuffer(ASCII_END);
-      };
+      }
       break;
 
     case TOKEN_FOR_ID:
       if(is_color) {
         AppendBuffer(ASCII_CYAN);
-      };
+      }
 
       AppendBuffer(L"for");
 
       if(is_color) {
         AppendBuffer(ASCII_END);
-      };
+      }
 
       in_for = true;
       break;
@@ -777,67 +777,67 @@ std::wstring CodeFormatter::Format(std::wstring source, bool is_color)
     case TOKEN_EACH_ID:
       if(is_color) {
         AppendBuffer(ASCII_CYAN);
-      };
+      }
 
       AppendBuffer(L"each");
 
       if(is_color) {
         AppendBuffer(ASCII_END);
-      };
+      }
       break;
 
     case TOKEN_BREAK_ID:
       if(is_color) {
         AppendBuffer(ASCII_CYAN);
-      };
+      }
 
       AppendBuffer(L"break");
 
       if(is_color) {
         AppendBuffer(ASCII_END);
-      };
+      }
       break;
 
     case TOKEN_CONTINUE_ID:
       if(is_color) {
         AppendBuffer(ASCII_CYAN);
-      };
+      }
 
       AppendBuffer(L"continue");
 
       if(is_color) {
         AppendBuffer(ASCII_END);
-      };
+      }
       break;
 
     case TOKEN_RETURN_ID:
       if(is_color) {
         AppendBuffer(ASCII_CYAN);
-      };
+      }
 
       AppendBuffer(L"return");
 
       if(is_color) {
         AppendBuffer(ASCII_END);
-      };
+      }
       break;
 
     case TOKEN_ALIAS_ID:
       if(is_color) {
         AppendBuffer(ASCII_CYAN);
-      };
+      }
 
       AppendBuffer(L"alias");
 
       if(is_color) {
         AppendBuffer(ASCII_END);
-      };
+      }
       break;
 
     case TOKEN_LEAVING_ID:
       if(is_color) {
         AppendBuffer(ASCII_CYAN);
-      };
+      }
 
       AppendBuffer(L"leaving");
       break;
@@ -845,31 +845,31 @@ std::wstring CodeFormatter::Format(std::wstring source, bool is_color)
     case TOKEN_USE_ID:
       if(is_color) {
         AppendBuffer(ASCII_CYAN);
-      };
+      }
 
       AppendBuffer(L"use");
 
       if(is_color) {
         AppendBuffer(ASCII_END);
-      };
+      }
       break;
 
     case TOKEN_NATIVE_ID:
       if(is_color) {
         AppendBuffer(ASCII_CYAN);
-      };
+      }
 
       AppendBuffer(L"native");
 
       if(is_color) {
         AppendBuffer(ASCII_END);
-      };
+      }
       break;
 
     case TOKEN_STATIC_ID:
       if(is_color) {
         AppendBuffer(ASCII_CYAN);
-      };
+      }
 
       AppendBuffer(L"static");
       break;
@@ -877,13 +877,13 @@ std::wstring CodeFormatter::Format(std::wstring source, bool is_color)
     case TOKEN_SELECT_ID:
       if(is_color) {
         AppendBuffer(ASCII_CYAN);
-      };
+      }
 
       AppendBuffer(L"select");
 
       if(is_color) {
         AppendBuffer(ASCII_END);
-      };
+      }
       break;
 
     case TOKEN_LABEL_ID:
@@ -891,13 +891,13 @@ std::wstring CodeFormatter::Format(std::wstring source, bool is_color)
 
       if(is_color) {
         AppendBuffer(ASCII_CYAN);
-      };
+      }
 
       AppendBuffer(L"case ");
 
       if(is_color) {
         AppendBuffer(ASCII_END);
-      };
+      }
 
       in_case = true;
       skip_space = false;
@@ -907,7 +907,7 @@ std::wstring CodeFormatter::Format(std::wstring source, bool is_color)
       VerticalSpace(prev_token, tab_space, ident_space);
       if(is_color) {
         AppendBuffer(ASCII_CYAN);
-      };
+      }
 
       AppendBuffer(L"other");
 
@@ -932,14 +932,14 @@ std::wstring CodeFormatter::Format(std::wstring source, bool is_color)
       case TOKEN_LINE_COMMENT {
         if(is_color) {
           AppendBuffer(ASCII_GREY);
-        };
+        }
 
         AppendBuffer('#');
         AppendBuffer(token->GetValue());
 
         if(is_color) {
           AppendBuffer(L"\033[0m");
-        };
+        }
 
         AppendBuffer('\n');
         skip_space = insert_tabs = true;
@@ -950,14 +950,14 @@ std::wstring CodeFormatter::Format(std::wstring source, bool is_color)
 
         if(is_color) {
           AppendBuffer(ASCII_GREY);
-        };
+        }
 
         comment = token->GetValue()->Trim();
 
         AppendBuffer(L" #~\n");
         each(k : ident_space) {
           AppendBuffer(' ');
-        };
+        }
         AppendBuffer(' ');
 
         words = System.Utility.Parser->Tokenize(comment);
@@ -966,7 +966,7 @@ std::wstring CodeFormatter::Format(std::wstring source, bool is_color)
             AppendBuffer('\n');
             each(k : ident_space) {
               AppendBuffer(' ');
-            };
+            }
             AppendBuffer(' ');
             AppendBuffer(word);
           }
@@ -976,26 +976,26 @@ std::wstring CodeFormatter::Format(std::wstring source, bool is_color)
               AppendBuffer('\n');
               each(k : ident_space) {
                 AppendBuffer(' ');
-              };
+              }
             }
             AppendBuffer(' ');
           }
-        };
+        }
 
         AppendBuffer('\n');
         each(k : ident_space) {
           AppendBuffer(' ');
-        };
+        }
         AppendBuffer(L" ~#");
 
         AppendBuffer('\n');
         each(k : ident_space) {
           AppendBuffer(' ');
-        };
+        }
 
         if(is_color) {
           AppendBuffer(ASCII_END);
-        };
+        }
       }
 
       case TOKEN_SEMI_COLON:
@@ -1008,8 +1008,8 @@ std::wstring CodeFormatter::Format(std::wstring source, bool is_color)
           skip_space = true;
           if(!= in_for) {
             insert_tabs = true;
-          };
-        };
+          }
+        }
         break;
       */
 
@@ -1031,7 +1031,7 @@ std::wstring CodeFormatter::Format(std::wstring source, bool is_color)
       if(in_consts) {
         AppendBuffer('\n');
         insert_tabs = skip_space = true;
-      };
+      }
       break;
 
     case TOKEN_NEQL:
@@ -1106,73 +1106,73 @@ std::wstring CodeFormatter::Format(std::wstring source, bool is_color)
     case TOKEN_INT_ID:
       if(is_color) {
         AppendBuffer(ASCII_CYAN);
-      };
+      }
 
       AppendBuffer(L"size_t");
 
       if(is_color) {
         AppendBuffer(ASCII_END);
-      };
+      }
       break;
 
     case TOKEN_FLOAT_ID:
       if(is_color) {
         AppendBuffer(ASCII_CYAN);
-      };
+      }
 
       AppendBuffer(L"Float");
 
       if(is_color) {
         AppendBuffer(ASCII_END);
-      };
+      }
       break;
 
     case TOKEN_CHAR_ID:
       if(is_color) {
         AppendBuffer(ASCII_CYAN);
-      };
+      }
 
       AppendBuffer(L"Char");
 
       if(is_color) {
         AppendBuffer(ASCII_END);
-      };
+      }
       break;
 
     case TOKEN_BOOLEAN_ID:
       if(is_color) {
         AppendBuffer(ASCII_CYAN);
-      };
+      }
 
       AppendBuffer(L"bool");
 
       if(is_color) {
         AppendBuffer(ASCII_END);
-      };
+      }
       break;
 
     case TOKEN_BYTE_ID:
       if(is_color) {
         AppendBuffer(ASCII_CYAN);
-      };
+      }
 
       AppendBuffer(L"Byte");
 
       if(is_color) {
         AppendBuffer(ASCII_END);
-      };
+      }
       break;
 
     case TOKEN_NIL_ID:
       if(is_color) {
         AppendBuffer(ASCII_CYAN);
-      };
+      }
 
       AppendBuffer(L"Nil");
 
       if(is_color) {
         AppendBuffer(ASCII_END);
-      };
+      }
       break;
 
     case TOKEN_AND_ID:
@@ -1190,134 +1190,134 @@ std::wstring CodeFormatter::Format(std::wstring source, bool is_color)
     case TOKEN_VIRTUAL_ID:
       if(is_color) {
         AppendBuffer(ASCII_CYAN);
-      };
+      }
 
       AppendBuffer(L"virtual");
 
       if(is_color) {
         AppendBuffer(ASCII_END);
-      };
+      }
       break;
 
     case TOKEN_BUNDLE_ID:
       if(is_color) {
         AppendBuffer(ASCII_CYAN);
-      };
+      }
 
       AppendBuffer(L"bundle");
 
       if(is_color) {
         AppendBuffer(ASCII_END);
-      };
+      }
       break;
 
     case TOKEN_INTERFACE_ID:
       if(is_color) {
         AppendBuffer(ASCII_CYAN);
-      };
+      }
 
       AppendBuffer(L"interface");
 
       if(is_color) {
         AppendBuffer(ASCII_END);
-      };
+      }
       break;
 
     case TOKEN_IMPLEMENTS_ID:
       if(is_color) {
         AppendBuffer(ASCII_CYAN);
-      };
+      }
 
       AppendBuffer(L"implements");
 
       if(is_color) {
         AppendBuffer(ASCII_END);
-      };
+      }
       break;
 
     case TOKEN_ENUM_ID:
       if(is_color) {
         AppendBuffer(ASCII_CYAN);
-      };
+      }
 
       AppendBuffer(L"enum");
 
       if(is_color) {
         AppendBuffer(ASCII_END);
-      };
+      }
       break;
 
     case TOKEN_CONSTS_ID:
       if(is_color) {
         AppendBuffer(ASCII_CYAN);
-      };
+      }
 
       in_consts = true;
       AppendBuffer(L"consts");
 
       if(is_color) {
         AppendBuffer(ASCII_END);
-      };
+      }
       break;
 
     case TOKEN_REVERSE_ID:
       if(is_color) {
         AppendBuffer(ASCII_CYAN);
-      };
+      }
 
       AppendBuffer(L"reverse");
 
       if(is_color) {
         AppendBuffer(ASCII_END);
-      };
+      }
       break;
 
     case TOKEN_PARENT_ID:
       if(is_color) {
         AppendBuffer(ASCII_CYAN);
-      };
+      }
 
       AppendBuffer(L"parent");
 
       if(is_color) {
         AppendBuffer(ASCII_END);
-      };
+      }
       break;
 
     case TOKEN_FROM_ID:
       if(is_color) {
         AppendBuffer(ASCII_CYAN);
-      };
+      }
 
       AppendBuffer(L"from");
 
       if(is_color) {
         AppendBuffer(ASCII_END);
-      };
+      }
       break;
 
     case TOKEN_TRUE_ID:
       if(is_color) {
         AppendBuffer(ASCII_CYAN);
-      };
+      }
 
       AppendBuffer(L"true");
 
       if(is_color) {
         AppendBuffer(ASCII_END);
-      };
+      }
       break;
 
     case TOKEN_FALSE_ID:
       if(is_color) {
         AppendBuffer(ASCII_CYAN);
-      };
+      }
 
       AppendBuffer(L"false");
 
       if(is_color) {
         AppendBuffer(ASCII_END);
-      };
+      }
       break;
 
     case TOKEN_NEW_ID:
@@ -1345,7 +1345,7 @@ std::wstring CodeFormatter::Format(std::wstring source, bool is_color)
     case TOKEN_COLON:
       if(in_case) {
         PopBuffer();
-      };
+      }
       AppendBuffer(':');
       break;
 
@@ -1416,7 +1416,7 @@ std::wstring CodeFormatter::Format(std::wstring source, bool is_color)
     case TOKEN_OPEN_BRACKET:
       if(prev_token->GetType() == TOKEN_IDENT) {
         PopBuffer();
-      };
+      }
       AppendBuffer('[');
       skip_space = true;
       break;
@@ -1424,7 +1424,7 @@ std::wstring CodeFormatter::Format(std::wstring source, bool is_color)
     case TOKEN_CLOSED_BRACKET:
       if(prev_token->GetType() != TOKEN_OPEN_BRACKET) {
         PopBuffer();
-      };
+      }
       AppendBuffer(']');
       break;
 
@@ -1439,8 +1439,11 @@ std::wstring CodeFormatter::Format(std::wstring source, bool is_color)
         case TOKEN_WHILE_ID:
           PopBuffer();
           break;
-        };
-      };
+
+        default:
+          break;
+        }
+      }
 
       AppendBuffer('(');
 
@@ -1450,11 +1453,11 @@ std::wstring CodeFormatter::Format(std::wstring source, bool is_color)
     case TOKEN_CLOSED_PAREN:
       if(prev_token->GetType() != TOKEN_OPEN_PAREN) {
         PopBuffer();
-      };
+      }
 
       if(in_for) {
         in_for = false;
-      };
+      }
 
       AppendBuffer(')');
       break;
@@ -1467,7 +1470,7 @@ std::wstring CodeFormatter::Format(std::wstring source, bool is_color)
 
       if(in_case) {
         in_case = false;
-      };
+      }
       break;
 
     case TOKEN_CLOSED_BRACE:
@@ -1478,7 +1481,7 @@ std::wstring CodeFormatter::Format(std::wstring source, bool is_color)
 
       if(in_consts) {
         in_consts = false;
-      };
+      }
       break;
 
       /*
@@ -1487,7 +1490,7 @@ std::wstring CodeFormatter::Format(std::wstring source, bool is_color)
           AppendBuffer(L"\n\n");
           TabSpace(tab_space, ident_space);
           skip_space = true;
-        };
+        }
       }
       */
 
@@ -1512,8 +1515,8 @@ std::wstring CodeFormatter::Format(std::wstring source, bool is_color)
     }
     else {
       break;
-    };
-  };
+    }
+  }
 
     offset_end = 0;
     reverse(i : buffer) {
@@ -1522,15 +1525,15 @@ std::wstring CodeFormatter::Format(std::wstring source, bool is_color)
       }
       else {
         break;
-      };
-    };
+      }
+    }
 
 
     // formatted = buffer->Substd::wstring(offset_start, buffer->Size() - offset_start - offset_end);
 
     if(trim_trailing) {
       formatted = formatted->Trim();
-    };
+    }
 
     return formatted;
 
