@@ -31,10 +31,11 @@
 
 #include "lang.h"
 
-ObjeckLang::ObjeckLang(const std::wstring &s, const std::wstring &u)
+ObjeckLang::ObjeckLang(const std::wstring &s, const std::wstring &u, const std::wstring &a)
 {
   source = s;
   lib_uses = u;
+  cmd_args = a;
   code = nullptr;
 }
 
@@ -48,7 +49,7 @@ bool ObjeckLang::Compile(const std::wstring filename)
   const bool is_lib = false;
   const bool show_asm = false;
   const std::wstring opt = L"s1";
-  const std::wstring sys_lib_path = lib_uses; // L"lang.obl,gen_collect.obl"
+  const std::wstring sys_lib_path = lib_uses;
 
   std::vector<std::pair<std::wstring, std::wstring> > programs;
   programs.push_back(make_pair(filename + L".obs", source));
@@ -105,12 +106,12 @@ void ObjeckLang::Execute()
   Loader loader(code);
   loader.Load();
 
-  // execute
+  // TODO: processes argument string: cmd_args
   size_t* op_stack = new size_t[OP_STACK_SIZE];
   long* stack_pos = new long;
   (*stack_pos) = 0;
 
-  // start the interpreter...
+  // execute
   Runtime::StackInterpreter* intpr = new Runtime::StackInterpreter(Loader::GetProgram());
   Runtime::StackInterpreter::AddThread(intpr);
   intpr->Execute(op_stack, stack_pos, 0, loader.GetProgram()->GetInitializationMethod(), nullptr, false);

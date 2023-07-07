@@ -680,7 +680,7 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
 #endif
       if(!TrapProcessor::ProcessTrap(program, (size_t*)(*frame)->mem[0], op_stack, stack_pos, (*frame))) {
         StackErrorUnwind();
-#ifdef _DEBUGGER
+#ifdef _NO_HALT
         halt = true;
         return;
 #else
@@ -725,7 +725,7 @@ void StackInterpreter::StorClsInstIntVar(StackInstr* instr, size_t* &op_stack, l
   if(!cls_inst_mem) {
     std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
     StackErrorUnwind();
-#ifdef _DEBUGGER
+#ifdef _NO_HALT
     halt = true;
     return;
 #else
@@ -756,7 +756,7 @@ void StackInterpreter::CopyClsInstIntVar(StackInstr* instr, size_t* &op_stack, l
   if(!cls_inst_mem) {
     std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
     StackErrorUnwind();
-#ifdef _DEBUGGER
+#ifdef _NO_HALT
     halt = true;
     return;
 #else
@@ -857,7 +857,7 @@ void StackInterpreter::Str2Int(size_t* &op_stack, long* &stack_pos)
   else {
     std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
     StackErrorUnwind();
-#ifdef _DEBUGGER
+#ifdef _NO_HALT
     halt = true;
     return;
 #else
@@ -889,7 +889,7 @@ void StackInterpreter::Str2Float(size_t* &op_stack, long* &stack_pos)
   else {
     std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
     StackErrorUnwind();
-#ifdef _DEBUGGER
+#ifdef _NO_HALT
     halt = true;
     return;
 #else
@@ -1053,7 +1053,7 @@ void StackInterpreter::LoadClsInstIntVar(StackInstr* instr, size_t* &op_stack, l
   if(!cls_inst_mem) {
     std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
     StackErrorUnwind();
-#ifdef _DEBUGGER
+#ifdef _NO_HALT
     halt = true;
     return;
 #else
@@ -1150,7 +1150,7 @@ void StackInterpreter::DivInt(size_t* &op_stack, long* &stack_pos)
   if(!right) {
     std::wcerr << L">>> Attempting to divide by zero <<<" << std::endl;
     StackErrorUnwind();
-#ifdef _DEBUGGER
+#ifdef _NO_HALT
     halt = true;
     return;
 #else
@@ -1368,7 +1368,7 @@ void StackInterpreter::LoadArySize(size_t* &op_stack, long* &stack_pos)
   if(!array) {
     std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
     StackErrorUnwind();
-#ifdef _DEBUGGER
+#ifdef _NO_HALT
     halt = true;
     return;
 #else
@@ -1392,7 +1392,7 @@ void StackInterpreter::CpyByteAry(size_t* &op_stack, long* &stack_pos)
   if(!src_array || !dest_array) {
     std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
     StackErrorUnwind();
-#ifdef _DEBUGGER
+#ifdef _NO_HALT
     halt = true;
     return;
 #else
@@ -1432,7 +1432,7 @@ void StackInterpreter::CpyCharAry(size_t* &op_stack, long* &stack_pos)
   if(!src_array || !dest_array) {
     std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
     StackErrorUnwind();
-#ifdef _DEBUGGER
+#ifdef _NO_HALT
     halt = true;
     return;
 #else
@@ -1472,7 +1472,7 @@ void StackInterpreter::CpyIntAry(size_t* &op_stack, long* &stack_pos)
   if(!src_array || !dest_array) {
     std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
     StackErrorUnwind();
-#ifdef _DEBUGGER
+#ifdef _NO_HALT
     halt = true;
     return;
 #else
@@ -1512,7 +1512,7 @@ void StackInterpreter::CpyFloatAry(size_t*& op_stack, long*& stack_pos)
   if(!src_array || !dest_array) {
     std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
     StackErrorUnwind();
-#ifdef _DEBUGGER
+#ifdef _NO_HALT
     halt = true;
     return;
 #else
@@ -1584,8 +1584,12 @@ void StackInterpreter::ObjTypeOf(StackInstr* instr, size_t* &op_stack, long* &st
   }
   else {
     std::wcerr << L">>> TypeOf(..) check on Nil value <<<" << std::endl;
-    StackErrorUnwind();
+#ifdef _NO_HALT
+    halt = true;
+    return;
+#else
     exit(1);
+#endif
   }
 }
 
@@ -1601,7 +1605,7 @@ void StackInterpreter::ObjInstCast(StackInstr* instr, size_t* &op_stack, long* &
     std::wcerr << L">>> Invalid object cast: '" << (to_cls ? to_cls->GetName() : L"?")
           << L"' to '" << program->GetClass(instr->GetOperand())->GetName() << L"' <<<" << std::endl;
     StackErrorUnwind();
-#ifdef _DEBUGGER
+#ifdef _NO_HALT
     halt = true;
     return;
 #else
@@ -1621,7 +1625,7 @@ void StackInterpreter::AsyncMthdCall(size_t* &op_stack, long* &stack_pos)
     PopFrame();
     std::wcerr << L">>> Attempting to dereference a 'Nil' memory element <<<" << std::endl;
     StackErrorUnwind();
-#ifdef _DEBUGGER
+#ifdef _NO_HALT
     halt = true;
     return;
 #else
@@ -1658,7 +1662,7 @@ void StackInterpreter::ThreadJoin(size_t* &op_stack, long* &stack_pos)
   if(!instance) {
     std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
     StackErrorUnwind();
-#ifdef _DEBUGGER
+#ifdef _NO_HALT
     halt = true;
     return;
 #else
@@ -1670,7 +1674,7 @@ void StackInterpreter::ThreadJoin(size_t* &op_stack, long* &stack_pos)
   HANDLE vm_thread = (HANDLE)instance[0];
   if(WaitForSingleObject(vm_thread, INFINITE) != WAIT_OBJECT_0) {
     std::wcerr << L">>> Unable to join thread! <<<" << std::endl;
-#ifdef _DEBUGGER
+#ifdef _NO_HALT
     return;
 #else
     exit(1);
@@ -1681,7 +1685,7 @@ void StackInterpreter::ThreadJoin(size_t* &op_stack, long* &stack_pos)
   pthread_t vm_thread = (pthread_t)instance[0];
   if(pthread_join(vm_thread, &status)) {
     std::wcerr << L">>> Unable to join thread! <<<" << std::endl;
-#ifdef _DEBUGGER
+#ifdef _NO_HALT
     return;
 #else
     exit(1);
@@ -1699,7 +1703,7 @@ void StackInterpreter::ThreadMutex(size_t* &op_stack, long* &stack_pos)
   if(!instance) {
     std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
     StackErrorUnwind();
-#ifdef _DEBUGGER
+#ifdef _NO_HALT
     halt = true;
     return;
 #else
@@ -1722,7 +1726,7 @@ void StackInterpreter::CriticalStart(size_t* &op_stack, long* &stack_pos)
   if(!instance) {
     std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
     StackErrorUnwind();
-#ifdef _DEBUGGER
+#ifdef _NO_HALT
     halt = true;
     return;
 #else
@@ -1745,7 +1749,7 @@ void StackInterpreter::CriticalEnd(size_t* &op_stack, long* &stack_pos)
   if(!instance) {
     std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
     StackErrorUnwind();
-#ifdef _DEBUGGER
+#ifdef _NO_HALT
     halt = true;
     return;
 #else
@@ -1778,7 +1782,7 @@ void StackInterpreter::ProcessLoadFunctionVar(StackInstr* instr, size_t* &op_sta
     if(!cls_inst_mem) {
       std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
       StackErrorUnwind();
-#ifdef _DEBUGGER
+#ifdef _NO_HALT
       halt = true;
       return;
 #else
@@ -1809,7 +1813,7 @@ void StackInterpreter::ProcessLoadFloat(StackInstr* instr, size_t* &op_stack, lo
     if(!cls_inst_mem) {
       std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
       StackErrorUnwind();
-#ifdef _DEBUGGER
+#ifdef _NO_HALT
       halt = true;
       return;
 #else
@@ -1840,7 +1844,7 @@ void StackInterpreter::ProcessStoreFunctionVar(StackInstr* instr, size_t* &op_st
     if(!cls_inst_mem) {
       std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
       StackErrorUnwind();
-#ifdef _DEBUGGER
+#ifdef _NO_HALT
       halt = true;
       return;
 #else
@@ -1872,7 +1876,7 @@ void StackInterpreter::ProcessStoreFloat(StackInstr* instr, size_t* &op_stack, l
     if(!cls_inst_mem) {
       std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
       StackErrorUnwind();
-#ifdef _DEBUGGER
+#ifdef _NO_HALT
       halt = true;
       return;
 #else
@@ -1903,7 +1907,7 @@ void StackInterpreter::ProcessCopyFloat(StackInstr* instr, size_t* &op_stack, lo
     if(!cls_inst_mem) {
       std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
       StackErrorUnwind();
-#ifdef _DEBUGGER
+#ifdef _NO_HALT
       halt = true;
       return;
 #else
@@ -2258,8 +2262,12 @@ void StackInterpreter::ProcessMethodCall(StackInstr* instr, StackInstr** &instrs
     StackClass* concrete_class = MemoryManager::GetClass((size_t*)instance);
     if(!concrete_class) {
       std::wcerr << L">>> Unable to resolve virtual method call <<<" << std::endl;
-      StackErrorUnwind();
+#ifdef _NO_HALT
+      halt = true;
+      return;
+#else
       exit(1);
+#endif
     }
 
     StackMethod* virtual_call = concrete_class->GetVirtualMethod(instr->GetOperand(), instr->GetOperand2());
@@ -2348,7 +2356,7 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, size_t* instanc
       break;
     }
     StackErrorUnwind(called);
-#ifdef _DEBUGGER
+#ifdef _NO_HALT
     halt = true;
     return;
 #else
@@ -2395,7 +2403,7 @@ void StackInterpreter::ProcessLoadIntArrayElement(StackInstr* instr, size_t* &op
   if(!array) {
     std::wcerr << L">>> Attempting to dereference a 'Nil' memory element <<<" << std::endl;
     StackErrorUnwind();
-#ifdef _DEBUGGER
+#ifdef _NO_HALT
     halt = true;
     return;
 #else
@@ -2404,7 +2412,12 @@ void StackInterpreter::ProcessLoadIntArrayElement(StackInstr* instr, size_t* &op
   }
   const int64_t size = (long)array[0];
   array += 2;
-  int64_t index = ArrayIndex(instr, array, size, op_stack, stack_pos);
+  const int64_t index = ArrayIndex(instr, array, size, op_stack, stack_pos);
+#ifdef _NO_HALT
+  if(halt) {
+    return;
+  }
+#endif
   PushInt(array[index + instr->GetOperand()], op_stack, stack_pos);
 }
 
@@ -2422,7 +2435,7 @@ void StackInterpreter::ProcessStoreIntArrayElement(StackInstr* instr, size_t* &o
   if(!array) {
     std::wcerr << L">>> Attempting to dereference a 'Nil' memory element <<<" << std::endl;
     StackErrorUnwind();
-#ifdef _DEBUGGER
+#ifdef _NO_HALT
     halt = true;
     return;
 #else
@@ -2432,7 +2445,12 @@ void StackInterpreter::ProcessStoreIntArrayElement(StackInstr* instr, size_t* &o
   
   const int64_t size = (long)array[0];
   array += 2;
-  int64_t index = ArrayIndex(instr, array, size, op_stack, stack_pos);
+  const int64_t index = ArrayIndex(instr, array, size, op_stack, stack_pos);
+#ifdef _NO_HALT
+  if(halt) {
+    return;
+  }
+#endif
   array[index + instr->GetOperand()] = PopInt(op_stack, stack_pos);
 }
 
@@ -2449,7 +2467,7 @@ void StackInterpreter::ProcessLoadByteArrayElement(StackInstr* instr, size_t* &o
   if(!array) {
     std::wcerr << L">>> Attempting to dereference a 'Nil' memory element <<<" << std::endl;
     StackErrorUnwind();
-#ifdef _DEBUGGER
+#ifdef _NO_HALT
     halt = true;
     return;
 #else
@@ -2458,7 +2476,12 @@ void StackInterpreter::ProcessLoadByteArrayElement(StackInstr* instr, size_t* &o
   }
   const int64_t size = (int64_t)array[0];
   array += 2;
-  int64_t index = ArrayIndex(instr, array, size, op_stack, stack_pos);
+  const int64_t index = ArrayIndex(instr, array, size, op_stack, stack_pos);
+#ifdef _NO_HALT
+  if(halt) {
+    return;
+  }
+#endif
   array += instr->GetOperand();
   PushInt(((char*)array)[index], op_stack, stack_pos);
 }
@@ -2476,7 +2499,7 @@ void StackInterpreter::ProcessLoadCharArrayElement(StackInstr* instr, size_t* &o
   if(!array) {
     std::wcerr << L">>> Attempting to dereference a 'Nil' memory element <<<" << std::endl;
     StackErrorUnwind();
-#ifdef _DEBUGGER
+#ifdef _NO_HALT
     halt = true;
     return;
 #else
@@ -2485,7 +2508,12 @@ void StackInterpreter::ProcessLoadCharArrayElement(StackInstr* instr, size_t* &o
   }
   const int64_t size = (int64_t)array[0];
   array += 2;
-  int64_t index = ArrayIndex(instr, array, size, op_stack, stack_pos);
+  const int64_t index = ArrayIndex(instr, array, size, op_stack, stack_pos);
+#ifdef _NO_HALT
+  if(halt) {
+    return;
+  }
+#endif
   array += instr->GetOperand();
   PushInt(((wchar_t*)array)[index], op_stack, stack_pos);
 }
@@ -2503,7 +2531,7 @@ void StackInterpreter::ProcessStoreByteArrayElement(StackInstr* instr, size_t* &
   if(!array) {
     std::wcerr << L">>> Attempting to dereference a 'Nil' memory element <<<" << std::endl;
     StackErrorUnwind();
-#ifdef _DEBUGGER
+#ifdef _NO_HALT
     halt = true;
     return;
 #else
@@ -2512,7 +2540,12 @@ void StackInterpreter::ProcessStoreByteArrayElement(StackInstr* instr, size_t* &
   }
   const int64_t size = (int64_t)array[0];
   array += 2;
-  int64_t index = ArrayIndex(instr, array, size, op_stack, stack_pos);
+  const int64_t index = ArrayIndex(instr, array, size, op_stack, stack_pos);
+#ifdef _NO_HALT
+  if(halt) {
+    return;
+  }
+#endif
   array += instr->GetOperand();
   ((char*)array)[index] = (char)PopInt(op_stack, stack_pos);
 }
@@ -2530,7 +2563,7 @@ void StackInterpreter::ProcessStoreCharArrayElement(StackInstr* instr, size_t* &
   if(!array) {
     std::wcerr << L">>> Attempting to dereference a 'Nil' memory element <<<" << std::endl;
     StackErrorUnwind();
-#ifdef _DEBUGGER
+#ifdef _NO_HALT
     halt = true;
     return;
 #else
@@ -2539,7 +2572,12 @@ void StackInterpreter::ProcessStoreCharArrayElement(StackInstr* instr, size_t* &
   }
   const long size = (long)array[0];
   array += 2;
-  int64_t index = ArrayIndex(instr, array, size, op_stack, stack_pos);
+  const int64_t index = ArrayIndex(instr, array, size, op_stack, stack_pos);
+#ifdef _NO_HALT
+  if(halt) {
+    return;
+  }
+#endif
   array += instr->GetOperand();
   ((wchar_t*)array)[index] = (wchar_t)PopInt(op_stack, stack_pos);
 }
@@ -2557,7 +2595,7 @@ void StackInterpreter::ProcessLoadFloatArrayElement(StackInstr* instr, size_t* &
   if(!array) {
     std::wcerr << L">>> Attempting to dereference a 'Nil' memory element <<<" << std::endl;
     StackErrorUnwind();
-#ifdef _DEBUGGER
+#ifdef _NO_HALT
     halt = true;
     return;
 #else
@@ -2566,7 +2604,12 @@ void StackInterpreter::ProcessLoadFloatArrayElement(StackInstr* instr, size_t* &
   }
   const long size = (long)array[0];
   array += 2;
-  int64_t index = ArrayIndex(instr, array, size, op_stack, stack_pos);
+  const int64_t index = ArrayIndex(instr, array, size, op_stack, stack_pos);
+#ifdef _NO_HALT
+  if(halt) {
+    return;
+  }
+#endif
   FLOAT_VALUE value;
   memcpy(&value, array + index + instr->GetOperand(), sizeof(FLOAT_VALUE));
   PushFloat(value, op_stack, stack_pos);
@@ -2585,7 +2628,7 @@ void StackInterpreter::ProcessStoreFloatArrayElement(StackInstr* instr, size_t* 
   if(!array) {
     std::wcerr << L">>> Attempting to dereference a 'Nil' memory element <<<" << std::endl;
     StackErrorUnwind();
-#ifdef _DEBUGGER
+#ifdef _NO_HALT
     halt = true;
     return;
 #else
@@ -2594,7 +2637,12 @@ void StackInterpreter::ProcessStoreFloatArrayElement(StackInstr* instr, size_t* 
   }
   const long size = (long)array[0];
   array += 2;
-  int64_t index = ArrayIndex(instr, array, size, op_stack, stack_pos);
+  const int64_t index = ArrayIndex(instr, array, size, op_stack, stack_pos);
+#ifdef _NO_HALT
+  if(halt) {
+    return;
+  }
+#endif
   FLOAT_VALUE value = PopFloat(op_stack, stack_pos);
   memcpy(array + index + instr->GetOperand(), &value, sizeof(FLOAT_VALUE));
 }
@@ -2612,7 +2660,7 @@ void StackInterpreter::SharedLibraryLoad(StackInstr* instr)
   size_t* instance = (size_t*)(*frame)->mem[0];
   if(!instance) {
     std::wcerr << L">>> Unable to load shared library! <<<" << std::endl;
-#ifdef _DEBUGGER
+#ifdef _NO_HALT
     exit(1);
 #else
     return;
@@ -2622,7 +2670,7 @@ void StackInterpreter::SharedLibraryLoad(StackInstr* instr)
   size_t* str_obj = (size_t*)instance[0];
   if(!str_obj || !(size_t*)str_obj[0]) {
     std::wcerr << L">>> Name of runtime shared library was not specified! <<<" << std::endl;
-#ifdef _DEBUGGER
+#ifdef _NO_HALT
     return;
 #else
     exit(1);
@@ -2665,7 +2713,7 @@ void StackInterpreter::SharedLibraryLoad(StackInstr* instr)
   std::string dll_string = UnicodeToBytes(path_str);
   if(dll_string.size() == 0) {
     std::wcerr << L">>> Name of runtime shared library was not specified! <<<" << std::endl;
-#ifdef _DEBUGGER
+#ifdef _NO_HALT
     return;
 #else
     exit(1);
@@ -2686,7 +2734,7 @@ void StackInterpreter::SharedLibraryLoad(StackInstr* instr)
   HINSTANCE dll_handle = LoadLibrary(dll_string.c_str());
   if(!dll_handle) {
     std::wcerr << L">>> Runtime error loading shared library: " << dll_string.c_str() << L" <<<" << std::endl;
-#ifdef _DEBUGGER
+#ifdef _NO_HALT
     return;
 #else
     exit(1);
@@ -2699,7 +2747,7 @@ void StackInterpreter::SharedLibraryLoad(StackInstr* instr)
   if(!ext_load) {
     std::wcerr << L">>> Runtime error calling function: load_lib <<<" << std::endl;
     FreeLibrary(dll_handle);
-#ifdef _DEBUGGER
+#ifdef _NO_HALT
     return;
 #else
     exit(1);
@@ -2720,7 +2768,7 @@ void StackInterpreter::SharedLibraryLoad(StackInstr* instr)
   void* dll_handle = dlopen(dll_string.c_str(), RTLD_LAZY);
   if(!dll_handle) {
     std::wcerr << L">>> Runtime error loading shared library: " << dlerror() << L" <<<" << std::endl;
-#ifdef _DEBUGGER
+#ifdef _NO_HALT
     return;
 #else
     exit(1);
@@ -2733,7 +2781,7 @@ void StackInterpreter::SharedLibraryLoad(StackInstr* instr)
   char* error;
   if((error = dlerror()) != nullptr)  {
     std::wcerr << L">>> Runtime error calling function: " << error << L" <<<" << std::endl;
-#ifdef _DEBUGGER
+#ifdef _NO_HALT
     return;
 #else
     exit(1);
@@ -2768,7 +2816,7 @@ void StackInterpreter::SharedLibraryUnload(StackInstr* instr)
     if(!ext_unload) {
       std::wcerr << L">>> Runtime error calling function: unload_lib <<<" << std::endl;
       FreeLibrary(dll_handle);
-#ifdef _DEBUGGER
+#ifdef _NO_HALT
       return;
 #else
       exit(1);
@@ -2786,7 +2834,7 @@ void StackInterpreter::SharedLibraryUnload(StackInstr* instr)
     char* error;
     if((error = dlerror()) != nullptr)  {
       std::wcerr << L">>> Runtime error calling function: " << error << L" <<<" << std::endl;
-#ifdef _DEBUGGER
+#ifdef _NO_HALT
       return;
 #else
       exit(1);
@@ -2808,7 +2856,7 @@ void StackInterpreter::SharedLibraryCall(StackInstr* instr, size_t* &op_stack, l
   size_t* array = (size_t*)str_obj[0];
   if(!array) {
     std::wcerr << L">>> Runtime error calling function <<<" << std::endl;
-#ifdef _DEBUGGER
+#ifdef _NO_HALT
     return;
 #else
     exit(1);
@@ -2832,7 +2880,7 @@ void StackInterpreter::SharedLibraryCall(StackInstr* instr, size_t* &op_stack, l
     if(!ext_func) {
       std::wcerr << L">>> Runtime error calling function: " << wstr << L" <<<" << std::endl;
       FreeLibrary(dll_handle);
-#ifdef _DEBUGGER
+#ifdef _NO_HALT
       return;
 #else
       exit(1);
@@ -2858,7 +2906,7 @@ void StackInterpreter::SharedLibraryCall(StackInstr* instr, size_t* &op_stack, l
     char* error;
     if((error = dlerror()) != nullptr)  {
       std::wcerr << L">>> Runtime error calling function: " << error << L" <<<" << std::endl;
-#ifdef _DEBUGGER
+#ifdef _NO_HALT
       return;
 #else
       exit(1);
@@ -2940,8 +2988,8 @@ void Runtime::StackInterpreter::ReleaseStackFrame(StackFrame* frame)
 void Runtime::StackInterpreter::StackErrorUnwind()
 {
   long pos = (*call_stack_pos);
-#ifdef _DEBUGGER
-  std::wcerr << L"Unwinding local std::stack (" << this << L"):" << std::endl;
+#ifdef _NO_HALT
+  std::wcerr << L"Unwinding local stack (" << this << L"):" << std::endl;
   StackMethod* method = (*frame)->method;
   if((*frame)->ip > 0 && pos > -1 &&
      method->GetInstruction((*frame)->ip)->GetLineNumber() > 0) {
@@ -2964,7 +3012,7 @@ void Runtime::StackInterpreter::StackErrorUnwind()
   }
   std::wcerr << L"  ..." << std::endl;
 #else
-  std::wcerr << L"Unwinding local std::stack (" << this << L"):" << std::endl;
+  std::wcerr << L"Unwinding local stack (" << this << L"):" << std::endl;
   std::wcerr << L"  method: pos=" << pos << L", name='"
         << MethodFormatter::Format((*frame)->method->GetName()) << L"'" << std::endl;
   if(pos != 0) {
@@ -2996,7 +3044,11 @@ int64_t Runtime::StackInterpreter::ArrayIndex(StackInstr* instr, size_t* array, 
   if(index < 0 || index >= size) {
     std::wcerr << L">>> Index out of bounds: " << index << L"," << size << L" <<<" << std::endl;
     StackErrorUnwind();
+#ifdef _NO_HALT
+    halt = true;
+#else
     exit(1);
+#endif
   }
 
   return index;
@@ -3033,7 +3085,7 @@ size_t* Runtime::StackInterpreter::CreateStringObject(const std::wstring& value_
 void Runtime::StackInterpreter::StackErrorUnwind(StackMethod* method)
 {
   long pos = (*call_stack_pos);
-  std::wcerr << L"Unwinding local std::stack (" << this << L"):" << std::endl;
+  std::wcerr << L"Unwinding local stack (" << this << L"):" << std::endl;
   std::wcerr << L"  method: pos=" << pos << L", name='" << MethodFormatter::Format(method->GetName()) << L"'" << std::endl;
   while(--pos) {
     if(pos > -1) {

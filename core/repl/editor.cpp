@@ -234,7 +234,7 @@ void Document::Debug(size_t cur_pos)
 //
 Editor::Editor() : doc(DEFAULT_FILE_NAME)
 {
-  lib_uses = L"lang.obl,gen_collect.obl";
+  lib_uses = USES_STRING;
   cur_pos = doc.Reset();
 }
 
@@ -265,9 +265,9 @@ void Editor::Edit()
         doc.List(cur_pos, false);
         break;
 
-        // list all
+        // edit command-line arguments
       case L'a':
-        doc.List(cur_pos, true);
+        DoCmdArgs(in);
         break;
 
         // insert multiple lines
@@ -288,8 +288,8 @@ void Editor::Edit()
         DoGotoLine(in);
         break;
 
-        // load file
-      case L'f':
+        // open file
+      case L'o':
         if(DoLoadFile(in)) {
           DoExecute();
         }
@@ -321,7 +321,7 @@ void Editor::Edit()
         break;
 
         // reset
-      case L'o':
+      case L'x':
         DoReset();
         break;
 
@@ -354,24 +354,24 @@ void Editor::DoHelp()
   std::wcout << "=> Commands" << std::endl;
   std::wcout << "  /q: quit" << std::endl;
   std::wcout << "  /h: help" << std::endl;
-  std::wcout << "  /l: lists lines" << std::endl;
-  std::wcout << "  /a: lists full program" << std::endl;
-  std::wcout << "  /o: reset" << std::endl;
+  std::wcout << "  /l: list lines" << std::endl;
+  std::wcout << "  /a: list full program" << std::endl;
   std::wcout << "  /g: goto line" << std::endl;
   std::wcout << "  /i: insert line above" << std::endl;
   std::wcout << "  /m: insert multiple lines above" << std::endl;
-  std::wcout << "  /f: load file by name" << std::endl;
-  std::wcout << "  /s: save file loaded or current buffer" << std::endl;
   std::wcout << "  /r: replace line" << std::endl;
   std::wcout << "  /d: delete line" << std::endl;
-  std::wcout << "  /u: edit library use statements" << std::endl;
+  std::wcout << "  /u: change library use statements" << std::endl;
+  std::wcout << "  /o: open file by name" << std::endl;
+  std::wcout << "  /s: save buffer or current file" << std::endl;
+  std::wcout << "  /x: reset" << std::endl;
   std::wcout << "---" << std::endl;
   std::wcout << "Online guide: https://objeck.org/getting_started.html" << std::endl;
 }
 
 void Editor::DoReset()
 {
-  lib_uses = L"lang.obl,gen_collect.obl";
+  lib_uses = USES_STRING;
   doc.Reset();
 
   std::wcout << L"=> Document reset." << std::endl;
@@ -403,6 +403,24 @@ void Editor::DoInsertMultiLine(std::wstring& in)
   } while(!multi_line_done);
 
   std::wcout << L"=> Inserted " << line_count << " lines." << std::endl;
+}
+
+void Editor::DoCmdArgs(std::wstring& in)
+{
+  std::wcout << L"=> Current arguments: " << cmd_args << std::endl;
+  std::wcout << L"New arguments] ";
+  std::getline(std::wcin, in);
+
+  in.erase(std::remove_if(in.begin(), in.end(), isspace), in.end());
+  if(!in.empty()) {
+    if(in.back() == L',') {
+      in.pop_back();
+    }
+    cmd_args = in;
+  }
+  else {
+    std::wcout << SYNTAX_ERROR << std::endl;
+  }
 }
 
 bool Editor::DoLoadFile(std::wstring& in)
@@ -522,8 +540,8 @@ bool Editor::DoDeleteLine(std::wstring& in)
 
 void Editor::DoUseLibraries(std::wstring &in)
 {
-  std::wcout << L"=> Current library list: " << lib_uses << std::endl;
-  std::wcout << L"New library list] ";
+  std::wcout << L"=> Currently used library lisst: " << lib_uses << std::endl;
+  std::wcout << L"New list] ";
   std::getline(std::wcin, in);
 
   in.erase(std::remove_if(in.begin(), in.end(), isspace), in.end());
@@ -540,7 +558,7 @@ void Editor::DoUseLibraries(std::wstring &in)
 
 void Editor::DoExecute()
 {
-  ObjeckLang lang(doc.ToString(), lib_uses);
+  ObjeckLang lang(doc.ToString(), L"lang.obl," + lib_uses, cmd_args);
   if(lang.Compile(doc.GetName())) {
     lang.Execute();
   }

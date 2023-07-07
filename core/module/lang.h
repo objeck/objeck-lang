@@ -44,11 +44,12 @@
 class ObjeckLang {
   std::wstring source;
   std::wstring lib_uses;
+  std::wstring cmd_args;
   std::vector<std::wstring> errors;
   char* code;
 
 public:
-  ObjeckLang(const std::wstring &s, const std::wstring &u);
+  ObjeckLang(const std::wstring &s, const std::wstring &u, const std::wstring &a);
   ~ObjeckLang();
 
   bool Compile(const std::wstring filename);
