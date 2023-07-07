@@ -37,6 +37,8 @@
 
 #define DEFAULT_FILE_NAME L"shell://repl.obs"
 
+#define USES_STRING L"csv,diags,encrypt,gen_collect,json,math,misc,net,odbc,query,regex,rss,sdl2,sdl_game,xml"
+
 class CodeFormatter;
 
 //
@@ -136,6 +138,7 @@ class Document {
 class Editor {
   Document doc;
   std::wstring lib_uses;
+  std::wstring cmd_args;
   size_t cur_pos;
 
 public:
@@ -159,6 +162,8 @@ public:
   bool DoDeleteLine(std::wstring& in);
   bool DoReplaceLine(std::wstring& in);
   void DoGotoLine(std::wstring& in);
+  void DoCmdArgs(std::wstring& in);
+
 
   // utility functions
   bool AppendLine(std::wstring line);
