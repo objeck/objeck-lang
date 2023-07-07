@@ -239,7 +239,7 @@ class CodeFormatter {
   }
   
   void VerticalSpace(Token* prev_token, long tab_space, long ident_space) {
-    if(prev_token->GetType() == TOKEN_OPEN_BRACE) {
+    if(prev_token && prev_token->GetType() == TOKEN_OPEN_BRACE) {
       AppendBuffer(L"\n\n");
       TabSpace(tab_space, ident_space);
       skip_space = true;
@@ -255,11 +255,6 @@ class CodeFormatter {
         AppendBuffer(' ');
       };
     }
-    else {
-      for(long i = 0; i < tab_space; ++i) {
-        AppendBuffer('\t');
-      };
-    };
   }
 
 public:
