@@ -103,10 +103,33 @@ void ObjeckLang::Execute()
   }
 #endif
 
-  Loader loader(code);
+  // parse command-line argument string
+  std::wstringstream cmd_param_stream;
+  std::vector<std::wstring> params;
+  for(auto& ch : cmd_args) {
+    if(ch == L' ' || ch == L'\t') {
+      std::wstring cmd_param = cmd_param_stream.str();
+      if(!cmd_param.empty()) {
+        params.push_back(cmd_param);
+        cmd_param_stream.str(std::wstring());
+      }
+    }
+    else {
+      cmd_param_stream << ch;
+    }
+  }
+
+  std::wstring cmd_param = cmd_param_stream.str();
+  if(!cmd_param.empty()) {
+    params.push_back(cmd_param);
+    cmd_param_stream.str(std::wstring());
+  }
+
+  // load code
+  Loader loader(code, params);
   loader.Load();
 
-  // TODO: processes argument string: cmd_args
+  // initialize execution
   size_t* op_stack = new size_t[OP_STACK_SIZE];
   long* stack_pos = new long;
   (*stack_pos) = 0;
