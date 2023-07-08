@@ -45,6 +45,8 @@ public:
     IDENT_TYPE,
     NUM_TYPE,
     KEYWORD_TYPE,
+    LESS_TYPE,
+    GTR_TYPE,
     OPER_TYPE,
     CTRL_TYPE,
     COMMA_TYPE,
@@ -108,12 +110,15 @@ class CodeFormatter {
   wchar_t* buffer;
   size_t buffer_size;
   size_t indent_space;
+  bool was_generic;
 
 public:
   CodeFormatter(const std::wstring& s, bool f = false);
   ~CodeFormatter();
 
   std::wstring Format();
+private:
+  void IsGeneric(size_t i, std::vector<Token*> tokens);
 };
 
 #endif
