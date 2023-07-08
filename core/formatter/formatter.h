@@ -110,7 +110,7 @@ class CodeFormatter {
   wchar_t* buffer;
   size_t buffer_size;
   size_t indent_space;
-  bool was_generic;
+  bool is_generic;
 
 public:
   CodeFormatter(const std::wstring& s, bool f = false);

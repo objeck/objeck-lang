@@ -315,7 +315,7 @@ std::vector<Token*> Scanner::Scan()
 CodeFormatter::CodeFormatter(const std::wstring& s, bool f)
 {
   indent_space = 0;
-  was_generic = false;
+  is_generic = false;
 
   // process file input
   if(f) {
@@ -360,7 +360,7 @@ std::wstring CodeFormatter::Format()
 
     case Token::Type::LESS_TYPE:
       IsGeneric(i, tokens);
-      if(was_generic) {
+      if(is_generic) {
         output.pop_back();
         output += cur_token->GetValue();
         skip = true;
@@ -371,10 +371,10 @@ std::wstring CodeFormatter::Format()
       break;
 
     case Token::Type::GTR_TYPE:
-      if(was_generic) {
+      if(is_generic) {
         output.pop_back();
         output += cur_token->GetValue();
-        was_generic = false;
+        is_generic = false;
       }
       else {
         output += cur_token->GetValue();
@@ -468,14 +468,14 @@ void CodeFormatter::IsGeneric(size_t i, std::vector<Token*> tokens)
   for(++i; i < tokens.size(); ++i) {
     Token* token = tokens[i];
     if(token->GetType() == Token::Type::GTR_TYPE) {
-      was_generic = true;
+      is_generic = true;
       return;
     }
     else if(token->GetType() != Token::Type::COMMA_TYPE && token->GetType() != Token::Type::IDENT_TYPE) {
-      was_generic = false;
+      is_generic = false;
       return;
     }
   }
 
-  was_generic = false;
+  is_generic = false;
 }
