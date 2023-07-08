@@ -265,9 +265,15 @@ void Editor::Edit()
         doc.List(cur_pos, false);
         break;
 
+        // list full program
+      case L'p':
+        doc.List(cur_pos, true);
+        break;
+
         // edit command-line arguments
       case L'a':
         DoCmdArgs(in);
+        DoExecute();
         break;
 
         // insert multiple lines
@@ -409,18 +415,8 @@ void Editor::DoCmdArgs(std::wstring& in)
 {
   std::wcout << L"=> Current arguments: " << cmd_args << std::endl;
   std::wcout << L"New arguments] ";
-  std::getline(std::wcin, in);
-
-  in.erase(std::remove_if(in.begin(), in.end(), isspace), in.end());
-  if(!in.empty()) {
-    if(in.back() == L',') {
-      in.pop_back();
-    }
-    cmd_args = in;
-  }
-  else {
-    std::wcout << SYNTAX_ERROR << std::endl;
-  }
+  
+  std::getline(std::wcin, cmd_args);
 }
 
 bool Editor::DoLoadFile(std::wstring& in)
