@@ -19,6 +19,8 @@ class ColorCode {
 		options->Insert("ident-space", "3");
 		options->Insert("trim-trailing", "true");
 
+		x := 4 <   7;
+
 		source := System.IO.Filesystem.FileReader->ReadFile(args[0]);
 		formatter := System.Utility.CodeFormatter->New(options);
 	#	formatter->Format(source, true)->PrintLine();

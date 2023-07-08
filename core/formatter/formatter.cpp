@@ -258,7 +258,7 @@ std::vector<Token*> Scanner::Scan()
           NextChar();
         }
         else {
-          tokens.push_back(new Token(Token::Type::OPER_TYPE, L"<"));
+          tokens.push_back(new Token(Token::Type::LESS_TYPE, L"<"));
           NextChar();
         }
         break;
@@ -270,7 +270,7 @@ std::vector<Token*> Scanner::Scan()
           NextChar();
         }
         else {
-          tokens.push_back(new Token(Token::Type::OPER_TYPE, L">"));
+          tokens.push_back(new Token(Token::Type::GTR_TYPE, L">"));
           NextChar();
         }
         break;
@@ -315,6 +315,7 @@ std::vector<Token*> Scanner::Scan()
 CodeFormatter::CodeFormatter(const std::wstring& s, bool f)
 {
   indent_space = 0;
+  was_generic = false;
 
   // process file input
   if(f) {
@@ -356,6 +357,30 @@ std::wstring CodeFormatter::Format()
     case Token::Type::CHAR_STRING:
       output += cur_token->GetValue();
       break;
+
+    case Token::Type::LESS_TYPE:
+      IsGeneric(i, tokens);
+      if(was_generic) {
+        output.pop_back();
+        output += cur_token->GetValue();
+        skip = true;
+      }
+      else {
+        output += cur_token->GetValue();
+      }
+      break;
+
+    case Token::Type::GTR_TYPE:
+      if(was_generic) {
+        output.pop_back();
+        output += cur_token->GetValue();
+        was_generic = false;
+      }
+      else {
+        output += cur_token->GetValue();
+      }
+      break;
+
 
     case Token::Type::COMMA_TYPE:
       output.pop_back();
@@ -436,4 +461,21 @@ std::wstring CodeFormatter::Format()
   }
 
   return output;
+}
+
+void CodeFormatter::IsGeneric(size_t i, std::vector<Token*> tokens)
+{
+  for(++i; i < tokens.size(); ++i) {
+    Token* token = tokens[i];
+    if(token->GetType() == Token::Type::GTR_TYPE) {
+      was_generic = true;
+      return;
+    }
+    else if(token->GetType() != Token::Type::COMMA_TYPE && token->GetType() != Token::Type::IDENT_TYPE) {
+      was_generic = false;
+      return;
+    }
+  }
+
+  was_generic = false;
 }
