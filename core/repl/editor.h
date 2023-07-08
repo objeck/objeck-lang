@@ -127,6 +127,7 @@ class Document {
    void List(size_t cur_pos, bool all);
    bool InsertLine(size_t line_num, const std::wstring line, Line::Type = Line::Type::RW_LINE);
    bool DeleteLine(size_t line_num);
+   std::wstring GetLine(size_t line_num);
 #ifdef _DEBUG
    void Debug(size_t cur_pos);
 #endif
