@@ -133,7 +133,8 @@ class Loader {
   void LoadConfiguration();
   
 public:
-  Loader(char* b) {
+  Loader(char* b, std::vector<std::wstring> &a) {
+    arguments = a;
     LoadOperInstrs();
 
     string_cls_id = -1;
@@ -144,7 +145,7 @@ public:
 
   Loader(const wchar_t* arg) {
     filename = arg;
-    if(!::EndsWith(filename, L".obe") && !::EndsWith(filename, L".obw")) {
+    if(!::EndsWith(filename, L".obe")) {
       filename += L".obe";
     }
     LoadOperInstrs();
