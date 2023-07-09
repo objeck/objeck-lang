@@ -364,6 +364,9 @@ void Editor::Edit()
       DoInsertLine(in);
       DoExecute();
     }
+    else {
+      DoExecute();
+    }
   }
   while(!done);
 
