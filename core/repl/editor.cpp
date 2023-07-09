@@ -327,7 +327,7 @@ void Editor::Edit()
           std::wcout << L"File saved => '" << doc.GetName() << L".'" << std::endl;
         }
         else {
-          std::wcout << L"Unable to save file => '" << doc.GetName() << L"'.\n  If the file was not loaded, provide a filename." << std::endl;
+          std::wcout << L"Unable to save file => '" << doc.GetName() << L"'.\n  If the file was not loaded, provide a filename.\n  Ensure the location can be save to." << std::endl;
         }
         break;
 
@@ -453,8 +453,8 @@ bool Editor::DoLoadFile(std::wstring& in)
 bool Editor::DoSaveFile(std::wstring& in)
 {
   if(in.size() > 2 && EndsWith(in, L".obs")) {
-    doc.SetName(in.substr(3));
     if(doc.Save()) {
+      doc.SetName(in.substr(3));
       return true;
     }
   }
