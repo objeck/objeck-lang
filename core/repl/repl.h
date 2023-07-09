@@ -37,4 +37,6 @@
 
 #define SYNTAX_ERROR "I cannot do that."
 
+static void SetEnv();
+
 #endif

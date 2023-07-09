@@ -35,8 +35,7 @@
 #include "repl.h"
 
 /****************************
-* Program start. Parses command
-* line parameters.
+* Program start
 ****************************/
 int main(int argc, char* argv[])
 {
@@ -44,6 +43,17 @@ int main(int argc, char* argv[])
   OpenLogger("debug.log");
 #endif
   
+  SetEnv();
+
+  Editor editor;
+  editor.Edit();
+
+#ifdef _DEBUG
+  CloseLogger();
+#endif
+}
+
+void SetEnv() {
 #ifdef _WIN32
 #ifdef _MSYS2_CLANG
   std::ios_base::sync_with_stdio(false);
@@ -74,12 +84,5 @@ int main(int argc, char* argv[])
 #else    
   setlocale(LC_ALL, "en_US.utf8");
 #endif
-#endif
-
-  Editor editor;
-  editor.Edit();
-
-#ifdef _DEBUG
-  CloseLogger();
 #endif
 }
