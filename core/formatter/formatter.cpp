@@ -219,6 +219,16 @@ std::vector<Token*> Scanner::Scan()
         NextChar();
         break;
 
+      case L'=':
+        tokens.push_back(new Token(Token::Type::OPER_TYPE, L"="));
+        NextChar();
+        break;
+
+      case L'%':
+        tokens.push_back(new Token(Token::Type::OPER_TYPE, L"%"));
+        NextChar();
+        break;
+
       case L':':
         if(next_char == L'=') {
           NextChar();
@@ -283,11 +293,57 @@ std::vector<Token*> Scanner::Scan()
         }
         else if(next_char == L'-') {
           NextChar();
-          tokens.push_back(new Token(Token::Type::CTRL_TYPE, L"--"));
+          tokens.push_back(new Token(Token::Type::OPER_TYPE, L"--"));
+          NextChar();
+        }
+        else if(next_char == L'=') {
+          NextChar();
+          tokens.push_back(new Token(Token::Type::OPER_TYPE, L"-="));
           NextChar();
         }
         else {
-          tokens.push_back(new Token(Token::Type::CTRL_TYPE, L"-"));
+          tokens.push_back(new Token(Token::Type::OPER_TYPE, L"-"));
+          NextChar();
+        }
+        break;
+
+      case L'+':
+        if(next_char == L'+') {
+          NextChar();
+          tokens.push_back(new Token(Token::Type::OPER_TYPE, L"++"));
+          NextChar();
+        }
+        else if(next_char == L'=') {
+          NextChar();
+          tokens.push_back(new Token(Token::Type::OPER_TYPE, L"+="));
+          NextChar();
+        }
+        else {
+          tokens.push_back(new Token(Token::Type::OPER_TYPE, L"+"));
+          NextChar();
+        }
+        break;
+
+      case L'*':
+        if(next_char == L'=') {
+          NextChar();
+          tokens.push_back(new Token(Token::Type::OPER_TYPE, L"*="));
+          NextChar();
+        }
+        else {
+          tokens.push_back(new Token(Token::Type::OPER_TYPE, L"*"));
+          NextChar();
+        }
+        break;
+
+      case L'/':
+        if(next_char == L'=') {
+          NextChar();
+          tokens.push_back(new Token(Token::Type::OPER_TYPE, L"/="));
+          NextChar();
+        }
+        else {
+          tokens.push_back(new Token(Token::Type::OPER_TYPE, L"/"));
           NextChar();
         }
         break;
@@ -377,8 +433,16 @@ std::wstring CodeFormatter::Format()
 
     switch(cur_token->GetType()) {
     case Token::Type::CLASS_TYPE:
+      output.pop_back();
+      output += cur_token->GetValue();
+      break;
+
     case Token::Type::FUNC_TYPE:
       output.pop_back();
+      output += L"\n\n";
+      for(size_t i = 0; i < indent_space; ++i) {
+        output += '\t';
+      }
       output += cur_token->GetValue();
       break;
 
@@ -443,7 +507,7 @@ std::wstring CodeFormatter::Format()
           output += '\t';
         }
       }
-      else {
+      else if(!output.empty()) {
         output.pop_back();
       }
 
