@@ -42,6 +42,8 @@
 class Token {
 public:
   enum Type {
+    CLASS_TYPE,
+    FUNC_TYPE,
     IDENT_TYPE,
     NUM_TYPE,
     KEYWORD_TYPE,
@@ -111,6 +113,8 @@ class CodeFormatter {
   size_t buffer_size;
   size_t indent_space;
   bool is_generic;
+
+  std::wstring FormatMultiComment(const std::wstring& input);
 
 public:
   CodeFormatter(const std::wstring& s, bool f = false);
