@@ -73,14 +73,14 @@ void SetEnv() {
 #if defined(_X64)
   char* locale = setlocale(LC_ALL, "");
   std::locale lollocale(locale);
-  setlocale(LC_ALL, locale);
-  wcout.imbue(lollocale);
+  std::setlocale(LC_ALL, locale);
+  std::wcout.imbue(lollocale);
 #elif defined(_ARM64)
   char* locale = setlocale(LC_ALL, "");
   std::locale lollocale(locale);
-  setlocale(LC_ALL, locale);
-  wcout.imbue(lollocale);
-  setlocale(LC_ALL, "en_US.utf8");
+  std::setlocale(LC_ALL, locale);
+  std::wcout.imbue(lollocale);
+  std::setlocale(LC_ALL, "en_US.utf8");
 #else    
   setlocale(LC_ALL, "en_US.utf8");
 #endif
