@@ -108,7 +108,7 @@ void Document::List(size_t cur_pos, bool all)
       std::wcout << L"[All code]" << std::endl;
     }
 
-    size_t index = 0;
+    size_t index = 0, ident_count = 0;
     for(auto& line : lines) {
       ++index;
 
@@ -122,7 +122,22 @@ void Document::List(size_t cur_pos, bool all)
 
         std::wcout << index;
         std::wcout << L": ";
-        std::wcout << line.ToString() << std::endl;
+
+        std::wstring line_str = line.ToString();
+        Editor::Trim(line_str);
+
+        if(!line_str.empty() && line_str.front() == L'}') {
+          ident_count--;
+        }
+
+        for(size_t j = 0; j < ident_count; ++j) {
+          std::wcout << "   ";
+        }
+        std::wcout << line_str << std::endl;
+
+        if(!line_str.empty() && (line_str.front() == L'{' || line_str.back() == L'{')) {
+          ident_count++;
+        }
       }
     }
   }
