@@ -35,7 +35,7 @@
 #include "repl.h"
 #include "../module/lang.h"
 
-#define DEFAULT_FILE_NAME L"shell://repl.obs"
+#define DEFAULT_FILE_NAME L"repl://buffer.obs"
 
 #define USES_STRING L"csv,diags,encrypt,gen_collect,json,math,misc,net,odbc,query,regex,rss,sdl2,sdl_game,xml"
 
