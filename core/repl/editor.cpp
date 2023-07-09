@@ -131,7 +131,7 @@ void Document::List(size_t cur_pos, bool all)
         }
 
         for(size_t j = 0; j < ident_count; ++j) {
-          std::wcout << "   ";
+          std::wcout << L"···";
         }
         std::wcout << line_str << std::endl;
 
@@ -421,7 +421,8 @@ void Editor::DoInsertMultiLine(std::wstring& in)
         line_count++;
       }
     }
-  } while(!multi_line_done);
+  } 
+  while(!multi_line_done);
 
   std::wcout << L"=> Inserted " << line_count << " lines." << std::endl;
 }
