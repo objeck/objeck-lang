@@ -36,75 +36,6 @@
 #include <unordered_map>
 #include <sstream>
 
- /**
-  * Token
-  */
-class Token {
-public:
-  enum Type {
-    CLASS_TYPE,
-    FUNC_TYPE,
-    IDENT_TYPE,
-    NUM_TYPE,
-    KEYWORD_TYPE,
-    LESS_TYPE,
-    GTR_TYPE,
-    OPER_TYPE,
-    CTRL_TYPE,
-    COMMA_TYPE,
-    OPEN_CBRACE,
-    CLOSED_CBRACE,
-    MULTI_COMMENT,
-    LINE_COMMENT,
-    OPEN_BRACKET_TYPE,
-    CLOSED_BRACKET_TYPE,
-    CHAR_STRING,
-    ACCESSOR_TYPE,
-    END_STMT_TYPE
-  };
-
-private:
-  Token::Type type;
-  std::wstring value;
-
-public:
-  Token(Token::Type t, const std::wstring &v);
-  ~Token();
-
-  Token::Type GetType() {
-    return type;
-  }
-
-  const std::wstring GetValue() {
-    return value;
-  }
-};
-
-/**
- * Scanner
- */
-class Scanner {
-  wchar_t* buffer;
-  size_t buffer_size;
-  size_t buffer_pos;
-
-  wchar_t prev_char;
-  wchar_t cur_char;
-  wchar_t next_char;
-
-  std::unordered_map<std::wstring, Token::Type> keywords;
-  std::vector<Token*> tokens;
-  void NextChar();
-  void Whitespace();
-  void LoadKeywords();
-
-public:
-  Scanner(wchar_t* b, size_t s);
-  ~Scanner();
-
-  std::vector<Token*> Scan();
-};
-
 /**
  * Formatter
  */
@@ -112,17 +43,30 @@ class CodeFormatter {
   wchar_t* buffer;
   size_t buffer_size;
   size_t indent_space;
-  bool is_generic;
 
-  std::wstring FormatMultiComment(const std::wstring& input);
+  static inline void LeftTrim(std::wstring& str) {
+    str.erase(str.begin(), std::find_if(str.begin(), str.end(), [](wchar_t ch) {
+      return !std::isspace(ch);
+                                        }));
+  }
+
+  static inline void RightTrim(std::wstring& str) {
+    str.erase(std::find_if(str.rbegin(), str.rend(), [](wchar_t ch) {
+      return !std::isspace(ch);
+                           }).base(), str.end());
+  }
+
+  static inline std::wstring& Trim(std::wstring& str) {
+    LeftTrim(str);
+    RightTrim(str);
+    return str;
+  }
 
 public:
   CodeFormatter(const std::wstring& s, bool f = false);
   ~CodeFormatter();
 
   std::wstring Format();
-private:
-  void IsGeneric(size_t i, std::vector<Token*> tokens);
 };
 
 #endif
