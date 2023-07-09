@@ -20,6 +20,10 @@ class ColorCode {
 		options->Insert("trim-trailing", "true");
 
 		x := 4 <   7;
+		x->PrintLine();
+
+		y : Int[];
+		z := y[2];
 
 		source := System.IO.Filesystem.FileReader->ReadFile(args[0]);
 		formatter := System.Utility.CodeFormatter->New(options);
