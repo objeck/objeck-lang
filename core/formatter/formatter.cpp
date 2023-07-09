@@ -66,8 +66,8 @@ Scanner::~Scanner()
 
 void Scanner::LoadKeywords()
 {
-  keywords[L"class"] = Token::Type::KEYWORD_TYPE;
-  keywords[L"function"] = Token::Type::KEYWORD_TYPE;
+  keywords[L"class"] = Token::Type::CLASS_TYPE;
+  keywords[L"function"] = Token::Type::FUNC_TYPE;
   keywords[L"Nil"] = Token::Type::KEYWORD_TYPE;
 }
 
@@ -126,7 +126,7 @@ std::vector<Token*> Scanner::Scan()
         NextChar();
 
         const std::wstring comment_str(buffer, str_start, buffer_pos - str_start - 1);
-        tokens.push_back(new Token(Token::Type::MULTI_COMMENT, L'\n' + comment_str+ L'\n'));
+        tokens.push_back(new Token(Token::Type::MULTI_COMMENT, comment_str));
       }
       // single line comment
       else {
@@ -169,7 +169,7 @@ std::vector<Token*> Scanner::Scan()
 
       auto keyword = keywords.find(ident_str);
       if(keyword != keywords.end()) {
-        tokens.push_back(new Token(Token::Type::KEYWORD_TYPE, ident_str));
+        tokens.push_back(new Token(keyword->second, ident_str));
       }
       else {
         tokens.push_back(new Token(Token::Type::IDENT_TYPE, ident_str));
@@ -334,6 +334,32 @@ CodeFormatter::~CodeFormatter()
 
 }
 
+std::wstring CodeFormatter::FormatMultiComment(const std::wstring& input)
+{
+  std::wstring buffer;
+
+  bool white_space = false;
+  for(auto &c : input) {
+    if(white_space && (c != ' ' && c != '\t')) {
+      buffer += c;
+      white_space = false;
+    }
+    else if(c == '\n') {      
+      buffer += c;
+      for(size_t i = 0; i < indent_space; ++i) {
+        buffer += '\t';
+      }
+      white_space = true;
+    }
+    else if(c != '\r' && c != '\t') {
+      buffer += c;
+    }
+  }
+  buffer += '\n';
+
+  return buffer ;
+}
+
 std::wstring CodeFormatter::Format()
 {
   std::wstring output;
@@ -350,6 +376,12 @@ std::wstring CodeFormatter::Format()
     bool skip = false;
 
     switch(cur_token->GetType()) {
+    case Token::Type::CLASS_TYPE:
+    case Token::Type::FUNC_TYPE:
+      output.pop_back();
+      output += cur_token->GetValue();
+      break;
+
     case Token::Type::IDENT_TYPE:
     case Token::Type::KEYWORD_TYPE:
     case Token::Type::OPER_TYPE:
@@ -405,10 +437,21 @@ std::wstring CodeFormatter::Format()
       break;
 
     case Token::Type::MULTI_COMMENT:
-      output += L'\n' + cur_token->GetValue();
+      if(i > 0 && tokens[i - 1]->GetType() == Token::Type::CLOSED_CBRACE) {
+        output += L"\n\n";
+        for(size_t i = 0; i < indent_space; ++i) {
+          output += '\t';
+        }
+      }
+      else {
+        output.pop_back();
+      }
+
+      output += FormatMultiComment(cur_token->GetValue());
       for(size_t i = 0; i < indent_space; ++i) {
         output += '\t';
       }
+      skip = true;
       break;
 
     case Token::Type::LINE_COMMENT:
