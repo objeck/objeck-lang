@@ -416,10 +416,8 @@ void Editor::DoInsertMultiLine(std::wstring& in)
     if(in == L"/m") {
       multi_line_done = true;
     }
-    else {
-      if(AppendLine(in)) {
-        line_count++;
-      }
+    else if(AppendLine(in)) {
+      line_count++;
     }
   } 
   while(!multi_line_done);
