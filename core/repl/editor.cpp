@@ -49,7 +49,7 @@ size_t Document::Reset()
   lines.push_back(Line(L"}", Line::Type::RO_CLS_END_LINE));
   shell_count = lines.size();
 
-  return shell_count - 1;
+  return shell_count - 2;
 }
 
 bool Document::LoadFile(const std::wstring& file)
@@ -100,44 +100,47 @@ std::wstring Document::ToString()
 
 void Document::List(size_t cur_pos, bool all)
 {
-  if(!all && lines.size() == shell_count) {
-    std::wcout << L"[No code]" << std::endl;
+  std::wcout << L"[All code]" << std::endl;
+
+  // before code
+  if(cur_pos == 0) {
+    std::wcout << "=> ";
   }
   else {
-    if(all) {
-      std::wcout << L"[All code]" << std::endl;
-    }
+    std::wcout << "   ";
+  }
+  std::wcout << L"0: --- Buffer: '" << name << L"' --- " << std::endl;
 
-    size_t index = 0, ident_count = 0;
-    for(auto& line : lines) {
-      ++index;
+  // list code
+  size_t index = 0, ident_count = 0;
+  for(auto& line : lines) {
+    ++index;
 
-      if(all || line.GetType() == Line::Type::RW_LINE) {
-        if(index == cur_pos) {
-          std::wcout << "=> ";
-        }
-        else {
-          std::wcout << "   ";
-        }
+    if(all || line.GetType() == Line::Type::RW_LINE) {
+      if(index == cur_pos) {
+        std::wcout << "=> ";
+      }
+      else {
+        std::wcout << "   ";
+      }
 
-        std::wcout << index;
-        std::wcout << L": ";
+      std::wcout << index;
+      std::wcout << L": ";
 
-        std::wstring line_str = line.ToString();
-        Editor::Trim(line_str);
+      std::wstring line_str = line.ToString();
+      Editor::Trim(line_str);
 
-        if(!line_str.empty() && line_str.front() == L'}') {
-          ident_count--;
-        }
+      if(!line_str.empty() && line_str.front() == L'}') {
+        ident_count--;
+      }
 
-        for(size_t j = 0; j < ident_count; ++j) {
-          std::wcout << L"  ";
-        }
-        std::wcout << line_str << std::endl;
+      for(size_t j = 0; j < ident_count; ++j) {
+        std::wcout << L"  ";
+      }
+      std::wcout << line_str << std::endl;
 
-        if(!line_str.empty() && (line_str.front() == L'{' || line_str.back() == L'{')) {
-          ident_count++;
-        }
+      if(!line_str.empty() && (line_str.front() == L'{' || line_str.back() == L'{')) {
+        ident_count++;
       }
     }
   }
@@ -145,16 +148,22 @@ void Document::List(size_t cur_pos, bool all)
 
 bool Document::InsertLine(size_t line_num, const std::wstring line, Line::Type type)
 {
-  if(line_num > 0 && line_num < lines.size()) {
-    size_t cur_num = 0;
+  if(line_num >= 0) {
+    if(line_num < lines.size()) {
+      size_t cur_num = 0;
 
-    std::list<Line>::iterator iter = lines.begin();
-    while(cur_num++ < line_num) {
-      ++iter;
+      std::list<Line>::iterator iter = lines.begin();
+      while(cur_num++ < line_num) {
+        ++iter;
+      }
+
+      lines.insert(iter, Line(line, type));
+      return true;
     }
-
-    lines.insert(iter, Line(line, type));
-    return true;
+    else if(line_num == lines.size()) {
+      lines.push_back(Line(line, type));
+      return true;
+    }
   }
 
   return false;
@@ -162,7 +171,7 @@ bool Document::InsertLine(size_t line_num, const std::wstring line, Line::Type t
 
 bool Document::DeleteLine(size_t line_num)
 {
-  if(line_num > 0 && line_num < lines.size()) {
+  if(line_num >= 0 && line_num < lines.size()) {
     size_t cur_num = 0;
 
     std::list<Line>::iterator iter = lines.begin();
@@ -277,11 +286,6 @@ void Editor::Edit()
 
         // list
       case L'l':
-        doc.List(cur_pos, false);
-        break;
-
-        // list full program
-      case L'p':
         doc.List(cur_pos, true);
         break;
 
@@ -378,11 +382,10 @@ void Editor::DoHelp()
   std::wcout << "=> Commands" << std::endl;
   std::wcout << "  /q: quit" << std::endl;
   std::wcout << "  /h: help" << std::endl;
-  std::wcout << "  /l: list lines" << std::endl;
-  std::wcout << "  /a: list full program" << std::endl;
+  std::wcout << "  /l: list program" << std::endl;
   std::wcout << "  /g: goto line" << std::endl;
-  std::wcout << "  /i: insert line above" << std::endl;
-  std::wcout << "  /m: insert multiple lines above" << std::endl;
+  std::wcout << "  /i: insert line below" << std::endl;
+  std::wcout << "  /m: insert multiple lines below" << std::endl;
   std::wcout << "  /r: replace line" << std::endl;
   std::wcout << "  /d: delete line" << std::endl;
   std::wcout << "  /u: change library use statements" << std::endl;
@@ -390,7 +393,7 @@ void Editor::DoHelp()
   std::wcout << "  /s: save buffer or current file" << std::endl;
   std::wcout << "  /x: reset" << std::endl;
   std::wcout << "---" << std::endl;
-  std::wcout << "Online guide: https://objeck.org/getting_started.html" << std::endl;
+  std::wcout << "User guide: https://objeck.org/getting_started.html" << std::endl;
 }
 
 void Editor::DoReset()
@@ -470,7 +473,7 @@ void Editor::DoGotoLine(std::wstring& in)
     in = in.substr(3);
     try {
       const size_t line_pos = std::stoi(in);
-      if(line_pos - 1 < doc.Size()) {
+      if(line_pos >= 0 && line_pos <= doc.Size()) {
         cur_pos = line_pos;
         std::wcout << "=> Cursor at line " << in << L'.' << std::endl;
       }
@@ -496,13 +499,16 @@ bool Editor::DoReplaceLine(std::wstring& in)
     in = in.substr(3);
     try {
       const size_t line_pos = std::stoi(Trim(in));
-      if(doc.DeleteLine(line_pos - 1)) {
-        cur_pos = line_pos;
-        std::wcout << L"Insert] " << line_pos << L"] ";
-        std::getline(std::wcin, in);
-        if(AppendLine(in)) {
-          std::wcout << "=> Replaced line " << line_pos << L'.' << std::endl;
-          return true;
+      if(line_pos >= 0 && line_pos <= doc.Size()) {
+        if(doc.DeleteLine(line_pos - 1)) {
+          std::wcout << L"Insert " << line_pos << L"] ";
+          std::getline(std::wcin, in);
+
+          cur_pos = line_pos - 1;
+          if(AppendLine(in)) {
+            std::wcout << "=> Replaced line " << line_pos << L'.' << std::endl;
+            return true;
+          }
         }
       }
       else {
@@ -585,7 +591,7 @@ void Editor::DoExecute()
 
 bool Editor::AppendLine(std::wstring line)
 {
-  if(doc.InsertLine(cur_pos - 1, line)) {
+  if(doc.InsertLine(cur_pos, line)) {
     cur_pos++;
     return true;
   }
