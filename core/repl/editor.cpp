@@ -397,10 +397,9 @@ void Editor::DoHelp()
 void Editor::DoReset()
 {
   lib_uses = USES_STRING;
-  doc.Reset();
+  cur_pos = doc.Reset();
 
   std::wcout << L"=> Document reset." << std::endl;
-  cur_pos = 3;
 }
 
 void Editor::DoInsertLine(std::wstring& in)
