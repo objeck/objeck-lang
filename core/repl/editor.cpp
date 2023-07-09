@@ -100,8 +100,6 @@ std::wstring Document::ToString()
 
 void Document::List(size_t cur_pos, bool all)
 {
-  std::wcout << L"[All code]" << std::endl;
-
   // before code
   if(cur_pos == 0) {
     std::wcout << "=> ";
@@ -559,7 +557,7 @@ bool Editor::DoDeleteLine(std::wstring& in)
 
 void Editor::DoUseLibraries(std::wstring &in)
 {
-  std::wcout << L"=> Currently used library lisst: " << lib_uses << std::endl;
+  std::wcout << L"=> Currently used library list: " << lib_uses << std::endl;
   std::wcout << L"New list] ";
   std::getline(std::wcin, in);
 
