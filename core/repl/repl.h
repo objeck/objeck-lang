@@ -35,7 +35,7 @@
 #include "editor.h"
 #include "../module/lang.h"
 
-#define SYNTAX_ERROR "I cannot do that."
+#define SYNTAX_ERROR "Huh, cannot do that. Try help '/h'?"
 
 static void SetEnv();
 
