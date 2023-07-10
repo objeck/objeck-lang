@@ -76,9 +76,10 @@ int Execute(const int argc, const char* argv[])
         std::wcout << L"dump: value=" << *(stack_pos + 1) << std::endl;
       }
     }
-#endif
 
     assert(!(*stack_pos));
+#endif
+
 
     delete stack_pos;
     stack_pos = nullptr;

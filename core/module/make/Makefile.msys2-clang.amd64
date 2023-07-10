@@ -1,4 +1,4 @@
-ARGS=-O3 -Wall -std=c++17 -D_NO_JIT -D_X64 -D_OBJECK_NATIVE_LIB_PATH -D_MODULE -Wint-to-pointer-cast -Wno-unused-variable -Wno-unused-function -Wno-int-to-pointer-cast
+ARGS=-O3 -Wall -std=c++17 -D_SANITIZE -D_NO_JIT -D_X64 -D_OBJECK_NATIVE_LIB_PATH -D_MODULE -Wint-to-pointer-cast -Wno-unused-variable -Wno-unused-function -Wno-int-to-pointer-cast
 
 CC=clang++
 SRC=lang.o
