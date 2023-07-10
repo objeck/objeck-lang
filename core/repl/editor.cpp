@@ -107,7 +107,7 @@ void Document::List(size_t cur_pos, bool all)
   else {
     std::wcout << "   ";
   }
-  std::wcout << L"0: --- '" << name << L"' --- " << std::endl;
+  std::wcout << std::setw(3) << 0 << L": --- '" << name << L"' ---" << std::endl;
 
   // list code
   size_t index = 0, ident_count = 0;
@@ -122,7 +122,7 @@ void Document::List(size_t cur_pos, bool all)
         std::wcout << "   ";
       }
 
-      std::wcout << index;
+      std::wcout << std::setw(3) << index;
       std::wcout << L": ";
 
       std::wstring line_str = line.ToString();
@@ -409,30 +409,39 @@ void Editor::DoInsertLine(std::wstring& in)
 
 void Editor::DoInsertMultiLine(std::wstring& in)
 {
-  size_t line_count = 0;
-  bool multi_line_done = false;
-  do {
-    std::wcout << L"Insert '/m' to exit] ";
-    std::getline(std::wcin, in);
-    if(in == L"/m") {
-      multi_line_done = true;
-    }
-    else if(AppendLine(in)) {
-      line_count++;
-    }
-  } 
-  while(!multi_line_done);
+  if(in.size() == 2) {
+    size_t line_count = 0;
+    bool multi_line_done = false;
+    do {
+      std::wcout << L"Insert '/m' to exit] ";
+      std::getline(std::wcin, in);
+      if(in == L"/m") {
+        multi_line_done = true;
+      }
+      else if(AppendLine(in)) {
+        line_count++;
+      }
+    } while(!multi_line_done);
 
-  std::wcout << L"=> Inserted " << line_count << " lines." << std::endl;
+    std::wcout << L"=> Inserted " << line_count << " lines." << std::endl;
+  }
+  else {
+    std::wcout << SYNTAX_ERROR << std::endl;
+  }
 }
 
 void Editor::DoCmdArgs(std::wstring& in)
 {
-  std::wcout << L"=> Current arguments: " << cmd_args << std::endl;
-  std::wcout << L"New arguments] ";
-  
-  std::getline(std::wcin, cmd_args);
-  Trim(cmd_args);
+  if(in.size() == 2) {
+    std::wcout << L"=> Current arguments: " << cmd_args << std::endl;
+    std::wcout << L"New arguments] ";
+
+    std::getline(std::wcin, cmd_args);
+    Trim(cmd_args);
+  }
+  else {
+    std::wcout << SYNTAX_ERROR << std::endl;
+  }
 }
 
 bool Editor::DoLoadFile(std::wstring& in)
@@ -492,7 +501,7 @@ void Editor::DoGotoLine(std::wstring& in)
 
 bool Editor::DoReplaceLine(std::wstring& in)
 {
-  if(in.size() > 2) {
+  if(in.size() == 2) {
     in = in.substr(3);
     try {
       const size_t line_pos = std::stoi(Trim(in));
@@ -556,16 +565,21 @@ bool Editor::DoDeleteLine(std::wstring& in)
 
 void Editor::DoUseLibraries(std::wstring &in)
 {
-  std::wcout << L"=> Currently used library list: " << lib_uses << std::endl;
-  std::wcout << L"New list] ";
-  std::getline(std::wcin, in);
+  if(in.size() == 2) {
+    std::wcout << L"=> Currently used library list: " << lib_uses << std::endl;
+    std::wcout << L"New list] ";
+    std::getline(std::wcin, in);
 
-  in.erase(std::remove_if(in.begin(), in.end(), isspace), in.end());
-  if(!in.empty()) {
-    if(in.back() == L',') {
-      in.pop_back();
+    in.erase(std::remove_if(in.begin(), in.end(), isspace), in.end());
+    if(!in.empty()) {
+      if(in.back() == L',') {
+        in.pop_back();
+      }
+      lib_uses = in;
     }
-    lib_uses = in;
+    else {
+      std::wcout << SYNTAX_ERROR << std::endl;
+    }
   }
   else {
     std::wcout << SYNTAX_ERROR << std::endl;
