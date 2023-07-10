@@ -1,0 +1,5 @@
+# The basics
+class Basics {
+	function : Main(args : String[]) ~ Nil {
+	}
+}
