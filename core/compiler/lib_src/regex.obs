@@ -13,7 +13,7 @@ bundle Query.RegEx {
 	#~
 	Regular expression engine.
 	
-	<p>Support for following matches:<p>
+	<p>Support for following patterns:<p>
 	<ul>
 		<li>. &#8208; any</li>
 		<li>? &#8208; optional</li>
@@ -25,14 +25,14 @@ bundle Query.RegEx {
 		<li>range &#8208; [start-end]</li>
 	</ul>
 	
-	<p>Support for following special patterns:<p>
+	<p>Support for following special groups:<p>
 	<ul>
 		<li>word &#8208; \w</li>
 		<li>not word &#8208; \W</li>
 		<li>digit &#8208; \d</li>
 		<li>not digit &#8208; \D</li>
 		<li>white space &#8208; \s</li>
-		<li>not white space &#8208; \s</li>
+		<li>not white space &#8208; \S</li>
 		<li>repeat &#8208; {least, most}
 	</ul>		
 	~#
