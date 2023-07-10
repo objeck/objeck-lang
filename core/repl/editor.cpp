@@ -432,13 +432,14 @@ void Editor::DoCmdArgs(std::wstring& in)
   std::wcout << L"New arguments] ";
   
   std::getline(std::wcin, cmd_args);
+  Trim(cmd_args);
 }
 
 bool Editor::DoLoadFile(std::wstring& in)
 {
   if(in.size() > 2) {
     in = in.substr(3);
-    if(doc.LoadFile(in)) {
+    if(doc.LoadFile(Trim(in))) {
       cur_pos = 1;
       return true;
     }
@@ -451,7 +452,8 @@ bool Editor::DoSaveFile(std::wstring& in)
 {
   if(in.size() > 2 && EndsWith(in, L".obs")) {
     if(doc.Save()) {
-      doc.SetName(in.substr(3));
+      std::wstring filename = in.substr(3);
+      doc.SetName(Trim(filename));
       return true;
     }
   }
