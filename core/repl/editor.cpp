@@ -272,17 +272,32 @@ void Editor::Edit()
       switch(in.at(1)) {
         // quit
       case L'q':
-        done = true;
+        if(in.size() == 2) {
+          done = true;
+        }
+        else {
+          std::wcout << SYNTAX_ERROR << std::endl;
+        }
         break;
 
         // help
       case L'h':
-        DoHelp();
+        if(in.size() == 2) {
+          DoHelp();
+        }
+        else {
+          std::wcout << SYNTAX_ERROR << std::endl;
+        }
         break;
 
         // list
       case L'l':
-        doc.List(cur_pos, true);
+        if(in.size() == 2) {
+          doc.List(cur_pos, true);
+        }
+        else {
+          std::wcout << SYNTAX_ERROR << std::endl;
+        }
         break;
 
         // edit command-line arguments
