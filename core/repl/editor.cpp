@@ -146,22 +146,20 @@ void Document::List(size_t cur_pos, bool all)
 
 bool Document::InsertLine(size_t line_num, const std::wstring line, Line::Type type)
 {
-  if(line_num >= 0) {
-    if(line_num < lines.size()) {
-      size_t cur_num = 0;
+  if(line_num < lines.size()) {
+    size_t cur_num = 0;
 
-      std::list<Line>::iterator iter = lines.begin();
-      while(cur_num++ < line_num) {
-        ++iter;
-      }
+    std::list<Line>::iterator iter = lines.begin();
+    while(cur_num++ < line_num) {
+      ++iter;
+    }
 
-      lines.insert(iter, Line(line, type));
-      return true;
-    }
-    else if(line_num == lines.size()) {
-      lines.push_back(Line(line, type));
-      return true;
-    }
+    lines.insert(iter, Line(line, type));
+    return true;
+  }
+  else if(line_num == lines.size()) {
+    lines.push_back(Line(line, type));
+    return true;
   }
 
   return false;
@@ -169,7 +167,7 @@ bool Document::InsertLine(size_t line_num, const std::wstring line, Line::Type t
 
 bool Document::DeleteLine(size_t line_num)
 {
-  if(line_num >= 0 && line_num < lines.size()) {
+  if(line_num < lines.size()) {
     size_t cur_num = 0;
 
     std::list<Line>::iterator iter = lines.begin();
@@ -470,7 +468,7 @@ void Editor::DoGotoLine(std::wstring& in)
     in = in.substr(3);
     try {
       const size_t line_pos = std::stoi(in);
-      if(line_pos >= 0 && line_pos <= doc.Size()) {
+      if(line_pos <= doc.Size()) {
         cur_pos = line_pos;
         std::wcout << "=> Cursor at line " << in << L'.' << std::endl;
       }
@@ -496,7 +494,7 @@ bool Editor::DoReplaceLine(std::wstring& in)
     in = in.substr(3);
     try {
       const size_t line_pos = std::stoi(Trim(in));
-      if(line_pos >= 0 && line_pos <= doc.Size()) {
+      if(line_pos <= doc.Size()) {
         if(doc.DeleteLine(line_pos - 1)) {
           std::wcout << L"Insert " << line_pos << L"] ";
           std::getline(std::wcin, in);
