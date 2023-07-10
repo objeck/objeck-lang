@@ -15,14 +15,14 @@ bundle Query.RegEx {
 	
 	<p>Support for following patterns:<p>
 	<ul>
-		<li>. &#8208; any</li>
-		<li>? &#8208; optional</li>
-		<li>* &#8208; zero or more repetitions</li>
-		<li>+ &#8208; one or more repetitions</li>
-		<li>^ &#8208; first single match</li>
-		<li>$ &#8208; last single match</li>
-		<li>group &#8208; (one|two|three)</li>
-		<li>range &#8208; [start-end]</li>
+		<li>any &#8208; .</li>
+		<li>optional &#8208; ?</li>
+		<li>zero or more repetitions &#8208; *</li>
+		<li>one or more repetitions &#8208; +</li>
+		<li>first single match &#8208; ^</li>
+		<li>last single match &#8208; $</li>
+		<li> (one|two|three) &#8208; group</li>
+		<li>[start-end] &#8208; range</li>
 	</ul>
 	
 	<p>Support for following special groups:<p>
