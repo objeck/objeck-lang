@@ -353,13 +353,7 @@ bundle System.Utility {
 
 		#~
 		Constructor
-		@param options options: 
-		<pre class="line-numbers">>options := Map->New()<String, String>;
-options->Insert("function-space", "false");
-options->Insert("ident-space", "3");
-options->Insert("trim-trailing", "true");
-options->Insert("start-line", "1");
-options->Insert("end-line", "2");</pre>
+		@param options options
 		~#
 		New(options : Map<String, String>) {
 			ASCII_CYAN := "\x1B[36m";
@@ -430,7 +424,11 @@ options->Insert("end-line", "2");</pre>
 			return (@start_range < 0 & @end_range < 0) | (@token <> Nil & @start_range <= @token->GetLine() & @end_range >= @token->GetLine());
 		}	
 
-		# TODO: https://gist.github.com/JBlond/2fea43a3049b38287e5e9cefc87b2124
+		#~
+		@param source source code
+		@param is_color true for ascii color formtting, false otherwise
+		@return formatter code
+		~#
 		method : public : native : Format(source : String, is_color : Bool) ~ String {
 			scanner := Scanner->New(source);
 			if(scanner->Scan()) {
@@ -759,8 +757,8 @@ options->Insert("end-line", "2");</pre>
 								AppendBuffer(ASCII_GREY);
 							};
 
-							AppendBuffer('#');
-							AppendBuffer(@token->GetValue());
+							AppendBuffer("# ");
+							AppendBuffer(@token->GetValue()->Trim());
 							
 							if(is_color) {
 								AppendBuffer("\033[0m");
@@ -1373,7 +1371,7 @@ options->Insert("end-line", "2");</pre>
 
 			formatted := @buffer->SubString(offset_start, @buffer->Size() - offset_start - offset_end);
 			
-			if(@trim_trailing) {
+			if(@trim_trailing & formatted <> Nil) {
 				formatted := formatted->Trim();
 			};
 			
