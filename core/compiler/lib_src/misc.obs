@@ -366,10 +366,10 @@ bundle System.Utility {
 		</ul>		
 		~#
 		New(options : Map<String, String>) {
-			ASCII_COLOR_KEYWORD := "\x1B[92m";
-			ASCII_COLOR_TYPE := "\x1B[96m";
-			ASCII_COLOR_OPER := "\x1B[36m";
-			ASCII_COLOR_CONST := "\x1B[94m";
+			ASCII_COLOR_KEYWORD := "\x1B[35m";
+			ASCII_COLOR_TYPE := "\x1B[94m";
+			ASCII_COLOR_OPER := "\x1B[33m";
+			ASCII_COLOR_CONST := "\x1B[36m";
 			ASCII_COLOR_BRACKET := "\x1B[31m";
 			ASCII_COLOR_COMMENT := "\x1B[90m";
 			ASCII_END := "\033[97m";
