@@ -344,24 +344,35 @@ bundle System.Utility {
 
 		@trim_trailing : Bool;
 
-		ASCII_RED : String;
-		ASCII_BLUE_HIGH : String;
-		ASCII_CYAN : String;
-		ASCII_GREEN : String;
-		ASCII_GREY : String;
+		ASCII_COLOR_TYPE : String;
+		ASCII_COLOR_KEYWORD : String;
+		ASCII_COLOR_OPER : String;
+		ASCII_COLOR_CONST : String;
+		ASCII_COLOR_BRACKET : String;
+		ASCII_COLOR_COMMENT : String;
 		ASCII_END : String;
 
 		#~
 		Constructor
 		@param options options
+	
+		<p>Support for following options:<p>
+		<ul>
+		  <li>"function-space" - (true|false)</li>
+		  <li>"ident-space" - (number|0 for tabs)</li>
+		  <li>"trim-trailing" - (true|false)</li>
+		  <li>"start-line" - (optional|number)</li>
+		  <li>"end-line" - (optional|number)</li>
+		</ul>		
 		~#
 		New(options : Map<String, String>) {
-			ASCII_CYAN := "\x1B[36m";
-			ASCII_BLUE_HIGH := "\x1B[42m";
-			ASCII_RED := "\x1B[36m";
-			ASCII_GREEN := "\x1B[32m";
-			ASCII_GREY := "\x1B[90m";
-			ASCII_END := "\033[0m";
+			ASCII_COLOR_KEYWORD := "\x1B[92m";
+			ASCII_COLOR_TYPE := "\x1B[96m";
+			ASCII_COLOR_OPER := "\x1B[36m";
+			ASCII_COLOR_CONST := "\x1B[94m";
+			ASCII_COLOR_BRACKET := "\x1B[31m";
+			ASCII_COLOR_COMMENT := "\x1B[90m";
+			ASCII_END := "\033[97m";
 
 			# get options
 			stmt_space_check := options->Find("function-space");
@@ -473,7 +484,7 @@ bundle System.Utility {
 							VerticalSpace(@prev_token, tab_space, @ident_space);
 							
 							if(is_color) {
-								AppendBuffer(ASCII_GREEN);
+								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
 
 							AppendBuffer("class");
@@ -487,7 +498,7 @@ bundle System.Utility {
 							VerticalSpace(@prev_token, tab_space, @ident_space);
 
 							if(is_color) {
-								AppendBuffer(ASCII_GREEN);
+								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
 							
 							AppendBuffer("function");
@@ -500,7 +511,7 @@ bundle System.Utility {
 						label Token->Type->METHOD_ID {
 							VerticalSpace(@prev_token, tab_space, @ident_space);
 							if(is_color) {
-								AppendBuffer(ASCII_GREEN);
+								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
 
 							AppendBuffer("method");
@@ -512,7 +523,7 @@ bundle System.Utility {
 
 						label Token->Type->PUBLIC_ID {
 							if(is_color) {
-								AppendBuffer(ASCII_CYAN);
+								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
 
 							AppendBuffer("public");
@@ -524,7 +535,7 @@ bundle System.Utility {
 
 						label Token->Type->PRIVATE_ID {
 							if(is_color) {
-								AppendBuffer(ASCII_CYAN);
+								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
 
 							AppendBuffer("private");
@@ -536,7 +547,7 @@ bundle System.Utility {
 
 						label Token->Type->IF_ID {
 							if(is_color) {
-								AppendBuffer(ASCII_CYAN);
+								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
 							
 							AppendBuffer("if");
@@ -548,7 +559,7 @@ bundle System.Utility {
 
 						label Token->Type->ELSE_ID {
 							if(is_color) {
-								AppendBuffer(ASCII_CYAN);
+								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
 							
 							AppendBuffer('\n');
@@ -562,7 +573,7 @@ bundle System.Utility {
 
 						label Token->Type->DO_ID {
 							if(is_color) {
-								AppendBuffer(ASCII_CYAN);
+								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
 							
 							AppendBuffer("do");
@@ -574,7 +585,7 @@ bundle System.Utility {
 
 						label Token->Type->WHILE_ID {
 							if(is_color) {
-								AppendBuffer(ASCII_CYAN);
+								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
 							
 							AppendBuffer("while");
@@ -586,7 +597,7 @@ bundle System.Utility {
 
 						label Token->Type->FOR_ID {
 							if(is_color) {
-								AppendBuffer(ASCII_CYAN);
+								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
 							
 							AppendBuffer("for");
@@ -600,7 +611,7 @@ bundle System.Utility {
 
 						label Token->Type->EACH_ID {
 							if(is_color) {
-								AppendBuffer(ASCII_CYAN);
+								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
 							
 							AppendBuffer("each");
@@ -612,7 +623,7 @@ bundle System.Utility {
 
 						label Token->Type->BREAK_ID {
 							if(is_color) {
-								AppendBuffer(ASCII_CYAN);
+								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
 							
 							AppendBuffer("break");
@@ -624,7 +635,7 @@ bundle System.Utility {
 
 						label Token->Type->CONTINUE_ID {
 							if(is_color) {
-								AppendBuffer(ASCII_CYAN);
+								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
 							
 							AppendBuffer("continue");
@@ -636,7 +647,7 @@ bundle System.Utility {
 
 						label Token->Type->RETURN_ID {
 							if(is_color) {
-								AppendBuffer(ASCII_CYAN);
+								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
 							
 							AppendBuffer("return");
@@ -648,7 +659,7 @@ bundle System.Utility {
 
 						label Token->Type->ALIAS_ID {
 							if(is_color) {
-								AppendBuffer(ASCII_CYAN);
+								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
 							
 							AppendBuffer("alias");
@@ -660,7 +671,7 @@ bundle System.Utility {
 
 						label Token->Type->LEAVING_ID {
 							if(is_color) {
-								AppendBuffer(ASCII_CYAN);
+								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
 							
 							AppendBuffer("leaving");
@@ -668,7 +679,7 @@ bundle System.Utility {
 
 						label Token->Type->USE_ID {
 							if(is_color) {
-								AppendBuffer(ASCII_CYAN);
+								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
 							
 							AppendBuffer("use");
@@ -680,7 +691,7 @@ bundle System.Utility {
 
 						label Token->Type->NATIVE_ID {
 							if(is_color) {
-								AppendBuffer(ASCII_CYAN);
+								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
 							
 							AppendBuffer("native");
@@ -692,7 +703,7 @@ bundle System.Utility {
 
 						label Token->Type->STATIC_ID {
 							if(is_color) {
-								AppendBuffer(ASCII_CYAN);
+								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
 							
 							AppendBuffer("static");
@@ -700,7 +711,7 @@ bundle System.Utility {
 
 						label Token->Type->SELECT_ID {
 							if(is_color) {
-								AppendBuffer(ASCII_CYAN);
+								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
 							
 							AppendBuffer("select");
@@ -714,7 +725,7 @@ bundle System.Utility {
 							VerticalSpace(@prev_token, tab_space, @ident_space);
 
 							if(is_color) {
-								AppendBuffer(ASCII_CYAN);
+								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
 
 							AppendBuffer("label");
@@ -730,7 +741,7 @@ bundle System.Utility {
 						label Token->Type->OTHER_ID {
 							VerticalSpace(@prev_token, tab_space, @ident_space);
 							if(is_color) {
-								AppendBuffer(ASCII_CYAN);
+								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
 							
 							AppendBuffer("other");
@@ -744,7 +755,15 @@ bundle System.Utility {
 						}
 
 						label Token->Type->ASGN {
+							if(is_color) {
+								AppendBuffer(ASCII_COLOR_OPER);
+							};
+
 							AppendBuffer(":=");
+
+							if(is_color) {
+								AppendBuffer(ASCII_END);
+							};
 						}
 
 						label Token->Type->ASSESSOR {
@@ -754,7 +773,7 @@ bundle System.Utility {
 
 						label Token->Type->LINE_COMMENT {
 							if(is_color) {
-								AppendBuffer(ASCII_GREY);
+								AppendBuffer(ASCII_COLOR_COMMENT);
 							};
 
 							AppendBuffer("# ");
@@ -772,7 +791,7 @@ bundle System.Utility {
 							PopBuffer();
 							
 							if(is_color) {
-								AppendBuffer(ASCII_GREY);
+								AppendBuffer(ASCII_COLOR_COMMENT);
 							};
 
 							comment := @token->GetValue()->Trim();
@@ -839,6 +858,7 @@ bundle System.Utility {
 							PopBuffer();
 							AppendBuffer('<');
 							@skip_space := true;
+
 						}
 
 						label Token->Type->GTR {
@@ -857,11 +877,27 @@ bundle System.Utility {
 						}
 
 						label Token->Type->NEQL {
+							if(is_color) {
+								AppendBuffer(ASCII_COLOR_KEYWORD);
+							};
+							
 							AppendBuffer("<>");
+
+							if(is_color) {
+								AppendBuffer(ASCII_END);
+							}
 						}
 
 						label Token->Type->AND {
+							if(is_color) {
+								AppendBuffer(ASCII_COLOR_KEYWORD);
+							};
+							
 							AppendBuffer('&');
+
+							if(is_color) {
+								AppendBuffer(ASCII_END);
+							}
 						}
 
 						label Token->Type->OR {
@@ -869,7 +905,15 @@ bundle System.Utility {
 						}
 
 						label Token->Type->QUESTION {
+							if(is_color) {
+								AppendBuffer(ASCII_COLOR_KEYWORD);
+							};
+							
 							AppendBuffer('?');
+
+							if(is_color) {
+								AppendBuffer(ASCII_END);
+							}
 						}
 
 						label Token->Type->IDENT {
@@ -884,7 +928,7 @@ bundle System.Utility {
 
 						label Token->Type->STRING_LIT {
 							if(is_color) {
-								AppendBuffer(ASCII_CYAN);
+								AppendBuffer(ASCII_COLOR_CONST);
 							}
 							
 							value := @token->GetValue();
@@ -899,7 +943,7 @@ bundle System.Utility {
 
 						label Token->Type->CHAR_LIT {
 							if(is_color) {
-								AppendBuffer(ASCII_CYAN);
+								AppendBuffer(ASCII_COLOR_CONST);
 							}
 
 							AppendBuffer('\'');
@@ -913,7 +957,7 @@ bundle System.Utility {
 
 						label Token->Type->NUM_LIT {
 							if(is_color) {
-								AppendBuffer(ASCII_CYAN);
+								AppendBuffer(ASCII_COLOR_CONST);
 							}
 
 							AppendBuffer(@token->GetValue());
@@ -923,9 +967,12 @@ bundle System.Utility {
 							}
 						}
 
+
+### TODO
+
 						label Token->Type->STRING_ID {
 							if(is_color) {
-								AppendBuffer(ASCII_CYAN);
+								AppendBuffer(ASCII_COLOR_TYPE);
 							};
 
 							AppendBuffer("String");
@@ -937,7 +984,7 @@ bundle System.Utility {
 
 						label Token->Type->INT_ID {
 							if(is_color) {
-								AppendBuffer(ASCII_CYAN);
+								AppendBuffer(ASCII_COLOR_TYPE);
 							};
 
 							AppendBuffer("Int");
@@ -949,7 +996,7 @@ bundle System.Utility {
 
 						label Token->Type->FLOAT_ID {
 							if(is_color) {
-								AppendBuffer(ASCII_CYAN);
+								AppendBuffer(ASCII_COLOR_TYPE);
 							};
 							
 							AppendBuffer("Float");
@@ -961,7 +1008,7 @@ bundle System.Utility {
 
 						label Token->Type->CHAR_ID {
 							if(is_color) {
-								AppendBuffer(ASCII_CYAN);
+								AppendBuffer(ASCII_COLOR_TYPE);
 							};
 
 							AppendBuffer("Char");
@@ -973,7 +1020,7 @@ bundle System.Utility {
 
 						label Token->Type->BOOL_ID {
 							if(is_color) {
-								AppendBuffer(ASCII_CYAN);
+								AppendBuffer(ASCII_COLOR_TYPE);
 							};
 
 							AppendBuffer("Bool");
@@ -985,7 +1032,7 @@ bundle System.Utility {
 
 						label Token->Type->BYTE_ID {
 							if(is_color) {
-								AppendBuffer(ASCII_CYAN);
+								AppendBuffer(ASCII_COLOR_TYPE);
 							};
 
 							AppendBuffer("Byte");
@@ -997,7 +1044,7 @@ bundle System.Utility {
 
 						label Token->Type->NIL_ID {
 							if(is_color) {
-								AppendBuffer(ASCII_CYAN);
+								AppendBuffer(ASCII_COLOR_TYPE);
 							};
 
 							AppendBuffer("Nil");
@@ -1008,20 +1055,44 @@ bundle System.Utility {
 						}
 
 						label Token->Type->AND_ID {
+							if(is_color) {
+								AppendBuffer(ASCII_COLOR_KEYWORD);
+							};
+							
 							AppendBuffer("and");
+
+							if(is_color) {
+								AppendBuffer(ASCII_END);
+							}
 						}
 
 						label Token->Type->OR_ID {
+							if(is_color) {
+								AppendBuffer(ASCII_COLOR_KEYWORD);
+							};
+							
 							AppendBuffer("or");
+
+							if(is_color) {
+								AppendBuffer(ASCII_END);
+							}
 						}
 
 						label Token->Type->XOR_ID {
+							if(is_color) {
+								AppendBuffer(ASCII_COLOR_KEYWORD);
+							};
+
 							AppendBuffer("xor");
+
+							if(is_color) {
+								AppendBuffer(ASCII_END);
+							}
 						}
 
 						label Token->Type->VIRTUAL_ID {
 							if(is_color) {
-								AppendBuffer(ASCII_CYAN);
+								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
 
 							AppendBuffer("virtual");
@@ -1033,7 +1104,7 @@ bundle System.Utility {
 
 						label Token->Type->BUNDLE_ID {
 							if(is_color) {
-								AppendBuffer(ASCII_CYAN);
+								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
 
 							AppendBuffer("bundle");
@@ -1045,7 +1116,7 @@ bundle System.Utility {
 
 						label Token->Type->INTERFACE_ID {
 							if(is_color) {
-								AppendBuffer(ASCII_CYAN);
+								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
 
 							AppendBuffer("interface");
@@ -1057,7 +1128,7 @@ bundle System.Utility {
 
 						label Token->Type->IMPLEMENTS_ID {
 							if(is_color) {
-								AppendBuffer(ASCII_CYAN);
+								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
 
 							AppendBuffer("implements");
@@ -1069,7 +1140,7 @@ bundle System.Utility {
 
 						label Token->Type->ENUM_ID {
 							if(is_color) {
-								AppendBuffer(ASCII_CYAN);
+								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
 
 							AppendBuffer("enum");
@@ -1081,7 +1152,7 @@ bundle System.Utility {
 
 						label Token->Type->CONSTS_ID {
 							if(is_color) {
-								AppendBuffer(ASCII_CYAN);
+								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
 
 							in_consts := true;
@@ -1094,7 +1165,7 @@ bundle System.Utility {
 
 						label Token->Type->REVERSE_ID {
 							if(is_color) {
-								AppendBuffer(ASCII_CYAN);
+								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
 
 							AppendBuffer("reverse");
@@ -1106,7 +1177,7 @@ bundle System.Utility {
 
 						label Token->Type->PARENT_ID {
 							if(is_color) {
-								AppendBuffer(ASCII_CYAN);
+								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
 
 							AppendBuffer("parent");
@@ -1118,7 +1189,7 @@ bundle System.Utility {
 
 						label Token->Type->FROM_ID {
 							if(is_color) {
-								AppendBuffer(ASCII_CYAN);
+								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
 
 							AppendBuffer("from");
@@ -1130,7 +1201,7 @@ bundle System.Utility {
 
 						label Token->Type->TRUE_ID {
 							if(is_color) {
-								AppendBuffer(ASCII_CYAN);
+								AppendBuffer(ASCII_COLOR_CONST);
 							};
 
 							AppendBuffer("true");
@@ -1142,7 +1213,7 @@ bundle System.Utility {
 
 						label Token->Type->FALSE_ID {
 							if(is_color) {
-								AppendBuffer(ASCII_CYAN);
+								AppendBuffer(ASCII_COLOR_CONST);
 							};
 
 							AppendBuffer("false");
@@ -1171,7 +1242,15 @@ bundle System.Utility {
 						}
 
 						label Token->Type->CRITICAL_ID {
+							if(is_color) {
+								AppendBuffer(ASCII_COLOR_CONST);
+							};
+
 							AppendBuffer("critical");
+
+							if(is_color) {
+								AppendBuffer(ASCII_END);
+							};
 						}
 
 						label Token->Type->COLON {
@@ -1182,79 +1261,218 @@ bundle System.Utility {
 						}
 
 						label Token->Type->ADD {
+							if(is_color) {
+								AppendBuffer(ASCII_COLOR_OPER);
+							};
+
 							AppendBuffer('+');
+
+							if(is_color) {
+								AppendBuffer(ASCII_END);
+							};
 						}
 
-						label Token->Type->SUB {
+						label Token->Type->SUB{
+							if(is_color) {
+								AppendBuffer(ASCII_COLOR_OPER);
+							};
+
 							AppendBuffer('-');
+
+							if(is_color) {
+								AppendBuffer(ASCII_END);
+							};
 						}
 
-						label Token->Type->MUL {
+						label Token->Type->MUL{
+							if(is_color) {
+								AppendBuffer(ASCII_COLOR_OPER);
+							};
+
 							AppendBuffer('*');
+
+							if(is_color) {
+								AppendBuffer(ASCII_END);
+							};
 						}
 
-						label Token->Type->DIV {
+						label Token->Type->DIV{
+							if(is_color) {
+								AppendBuffer(ASCII_COLOR_OPER);
+							};
+
 							AppendBuffer('/');
+
+							if(is_color) {
+								AppendBuffer(ASCII_END);
+							};
 						}
 
-						label Token->Type->MOD {
+						label Token->Type->MOD{
+							if(is_color) {
+								AppendBuffer(ASCII_COLOR_OPER);
+							};
 							AppendBuffer('%');
 						}
 
-						label Token->Type->QUOTE {
+						label Token->Type->QUOTE{
+							if(is_color) {
+								AppendBuffer(ASCII_COLOR_OPER);
+							};
+
 							AppendBuffer('\'');
+
+							if(is_color) {
+								AppendBuffer(ASCII_END);
+							};
 						}
 
-						label Token->Type->FWD_SLASH {
+						label Token->Type->FWD_SLASH{
+							if(is_color) {
+								AppendBuffer(ASCII_COLOR_OPER);
+							};
+
 							AppendBuffer('\\');
+
+							if(is_color) {
+								AppendBuffer(ASCII_END);
+							};
 						}
 
-						label Token->Type->EQL {
+						label Token->Type->EQL{
+							if(is_color) {
+								AppendBuffer(ASCII_COLOR_OPER);
+							};
+
 							AppendBuffer('=');
+
+							if(is_color) {
+								AppendBuffer(ASCII_END);
+							};
 						}
 
-						label Token->Type->LESS_EQL {
+						label Token->Type->LESS_EQL{
+							if(is_color) {
+								AppendBuffer(ASCII_COLOR_OPER);
+							};
+
 							AppendBuffer("<=");
+
+							if(is_color) {
+								AppendBuffer(ASCII_END);
+							};
 						}
 
-						label Token->Type->ESCAPE {
+						label Token->Type->ESCAPE{
+							if(is_color) {
+								AppendBuffer(ASCII_COLOR_OPER);
+							};
+
 							AppendBuffer("\e");
+
+							if(is_color) {
+								AppendBuffer(ASCII_END);
+							};
 						}
 
 
-						label Token->Type->GTR_EQL {
+						label Token->Type->GTR_EQL{
+							if(is_color) {
+								AppendBuffer(ASCII_COLOR_OPER);
+							};
+
 							AppendBuffer(">=");
+
+							if(is_color) {
+								AppendBuffer(ASCII_END);
+							};
 						}
 
-						label Token->Type->ADD_ASN {
+						label Token->Type->ADD_ASN{
+							if(is_color) {
+								AppendBuffer(ASCII_COLOR_OPER);
+							};
+
 							AppendBuffer("+=");
+
+							if(is_color) {
+								AppendBuffer(ASCII_END);
+							};
 						}
 
-						label Token->Type->SUB_ASN {
+						label Token->Type->SUB_ASN{
+							if(is_color) {
+								AppendBuffer(ASCII_COLOR_OPER);
+							};
+
 							AppendBuffer("-=");
+
+							if(is_color) {
+								AppendBuffer(ASCII_END);
+							};
 						}
 
-						label Token->Type->ADD_ADD {
+						label Token->Type->ADD_ADD{
+							if(is_color) {
+								AppendBuffer(ASCII_COLOR_OPER);
+							};
+
 							AppendBuffer("++");
+
+							if(is_color) {
+								AppendBuffer(ASCII_END);
+							};
 						}
 
-						label Token->Type->SUB_SUB {
+						label Token->Type->SUB_SUB{
+							if(is_color) {
+								AppendBuffer(ASCII_COLOR_OPER);
+							};
+
 							AppendBuffer("--");
+
+							if(is_color) {
+								AppendBuffer(ASCII_END);
+							};
 						}
 
-						label Token->Type->MUL_ASN {
+						label Token->Type->MUL_ASN{
+							if(is_color) {
+								AppendBuffer(ASCII_COLOR_OPER);
+							};
+
 							AppendBuffer("*=");
+
+							if(is_color) {
+								AppendBuffer(ASCII_END);
+							};
 						}
 
-						label Token->Type->DIV_ASN {
+						label Token->Type->DIV_ASN{
+							if(is_color) {
+								AppendBuffer(ASCII_COLOR_OPER);
+							};
+
 							AppendBuffer("/=");
+
+							if(is_color) {
+								AppendBuffer(ASCII_END);
+							};
 						}
 
-						label Token->Type->LAMBDA {
+						label Token->Type->LAMBDA{
+							if(is_color) {
+								AppendBuffer(ASCII_COLOR_OPER);
+							};
+
 							AppendBuffer("=>");
+
+							if(is_color) {
+								AppendBuffer(ASCII_END);
+							};
 						}
 
-						label Token->Type->TILDE {
+						label Token->Type->TILDE{
 							AppendBuffer('~');
 						}
 
@@ -1262,6 +1480,7 @@ bundle System.Utility {
 							if(@prev_token->GetType() = Token->Type->IDENT) {
 								PopBuffer();
 							};
+
 							AppendBuffer('[');
 							@skip_space := true;
 						}
@@ -1288,7 +1507,6 @@ bundle System.Utility {
 							};
 
 							AppendBuffer('(');
-							
 							@skip_space := true;
 						}
 
