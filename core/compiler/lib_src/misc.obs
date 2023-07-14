@@ -343,6 +343,7 @@ bundle System.Utility {
 		@end_range : Int;
 
 		@trim_trailing : Bool;
+		@is_generic : Bool;
 
 		ASCII_COLOR_TYPE : String;
 		ASCII_COLOR_KEYWORD : String;
@@ -366,13 +367,13 @@ bundle System.Utility {
 		</ul>		
 		~#
 		New(options : Map<String, String>) {
-			ASCII_COLOR_KEYWORD := "\x1B[35m";
+			ASCII_COLOR_KEYWORD := "\x1B[33m";
 			ASCII_COLOR_TYPE := "\x1B[94m";
-			ASCII_COLOR_OPER := "\x1B[33m";
+			ASCII_COLOR_OPER := "\x1B[32m";
 			ASCII_COLOR_CONST := "\x1B[36m";
 			ASCII_COLOR_BRACKET := "\x1B[31m";
 			ASCII_COLOR_COMMENT := "\x1B[90m";
-			ASCII_END := "\033[97m";
+			ASCII_END := "\x1b[0m";
 
 			# get options
 			stmt_space_check := options->Find("function-space");
@@ -434,6 +435,41 @@ bundle System.Utility {
 		method : InRange() ~ Bool {
 			return (@start_range < 0 & @end_range < 0) | (@token <> Nil & @start_range <= @token->GetLine() & @end_range >= @token->GetLine());
 		}	
+
+		method : CheckGeneric(tokens : Vector<Token>, i : Int) ~ Bool {
+			level := 0;
+			
+			token := tokens->Get(i);
+			while(token->GetType() <> Token->Type->SEMI & token->GetType() <> Token->Type->OTHER) {
+				select(token->GetType()) {
+					label Token->Type->LESS {
+						level += 1;
+					}
+
+					label Token->Type->GTR {
+						level -= 1;
+					}
+
+					label Token->Type->IDENT
+					label Token->Type->STRING_ID
+					label Token->Type->COMMA {
+						# skip
+					}
+
+					other {
+						return false;
+					}
+				}
+
+				if(level = 0) {
+					return true;
+				};
+
+				token := tokens->Get(++i);
+			}
+
+			return false;
+		}
 
 		#~
 		@param source source code
@@ -755,15 +791,7 @@ bundle System.Utility {
 						}
 
 						label Token->Type->ASGN {
-							if(is_color) {
-								AppendBuffer(ASCII_COLOR_OPER);
-							};
-
 							AppendBuffer(":=");
-
-							if(is_color) {
-								AppendBuffer(ASCII_END);
-							};
 						}
 
 						label Token->Type->ASSESSOR {
@@ -855,14 +883,25 @@ bundle System.Utility {
 						}
 
 						label Token->Type->LESS {
-							PopBuffer();
-							AppendBuffer('<');
-							@skip_space := true;
+							@is_generic := CheckGeneric(tokens, i);
 
+							if(@is_generic) {
+								PopBuffer();
+							};
+
+							AppendBuffer('<');
+
+							if(@is_generic) {
+								@skip_space := true;
+							};
 						}
 
 						label Token->Type->GTR {
-							PopBuffer();
+							if(@is_generic) {
+								PopBuffer();
+								@is_generic := false;
+							};
+
 							AppendBuffer('>');
 						}
 
@@ -966,10 +1005,7 @@ bundle System.Utility {
 								AppendBuffer(ASCII_END);
 							}
 						}
-
-
-### TODO
-
+						
 						label Token->Type->STRING_ID {
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_TYPE);
@@ -1794,7 +1830,6 @@ bundle System.Utility {
 				# char const
 				else if(@cur_char = '\'') {
 					NextChar();				
-					is_escape := false;
 
 					start := @buffer_index - 1;
 					if(@cur_char <> '\\') {
