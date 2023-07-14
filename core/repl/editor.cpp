@@ -102,14 +102,16 @@ std::wstring Document::ToString()
 
 void Document::List(size_t cur_pos, bool all)
 {
+  std::wstringstream buffer;
+
   // before code
   if(cur_pos == 0) {
-    std::wcout << "=> ";
+    buffer << "=> ";
   }
   else {
-    std::wcout << "   ";
+    buffer << "   ";
   }
-  std::wcout << std::setw(3) << 0 << L": --- '" << name << L"' ---" << std::endl;
+  buffer << std::setw(3) << 0 << L": --- '" << name << L"' ---" << std::endl;
 
   // list code
   size_t index = 0, ident_count = 0;
@@ -118,14 +120,14 @@ void Document::List(size_t cur_pos, bool all)
 
     if(all || line.GetType() == Line::Type::RW_LINE) {
       if(index == cur_pos) {
-        std::wcout << "=> ";
+        buffer << "=> ";
       }
       else {
-        std::wcout << "   ";
+        buffer << "   ";
       }
 
-      std::wcout << std::setw(3) << index;
-      std::wcout << L": ";
+      buffer << std::setw(3) << index;
+      buffer << L": ";
 
       std::wstring line_str = line.ToString();
       Editor::Trim(line_str);
@@ -135,15 +137,17 @@ void Document::List(size_t cur_pos, bool all)
       }
 
       for(size_t j = 0; j < ident_count; ++j) {
-        std::wcout << L"   ";
+        buffer << L"   ";
       }
-      std::wcout << line_str << std::endl;
+      buffer << line_str << std::endl;
 
       if(!line_str.empty() && (line_str.front() == L'{' || line_str.back() == L'{')) {
         ident_count++;
       }
     }
   }
+
+  std::wcout << buffer.str() << std::endl;
 }
 
 bool Document::InsertLine(size_t line_num, const std::wstring line, Line::Type type)
