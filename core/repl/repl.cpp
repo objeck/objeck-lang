@@ -33,6 +33,7 @@
 #define SYSTEM_ERROR -2
 
 #include "repl.h"
+#include <codecvt>
 
 /****************************
 * Program start
