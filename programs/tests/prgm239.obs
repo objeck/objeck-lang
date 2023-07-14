@@ -3,6 +3,10 @@ class Test {
 
 	}
 
+	#~
+	Testing
+	@param args
+	~#
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
 			options := Collection.Map->New()<String,String>;
@@ -11,17 +15,7 @@ class Test {
 			options->Insert("trim-trailing", "true"); 
 #			options->Insert("start-line", "1"); 
 #			options->Insert("end-line", "2");
-
-			a := 3 + 9 * 13;
-			a->PrintLine();
-
-			if(a < 14) {
-				"foo"->PrintLine();
-			}
-			else {
-				"bar"->PrintLine();	
-			}
-
+			
 			formatter := System.Utility.CodeFormatter->New(options);
 			formatter->Format(System.IO.Filesystem.FileReader->ReadFile(args[0]), true)->PrintLine();
 		};
