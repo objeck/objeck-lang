@@ -24,10 +24,9 @@ extern "C" {
  * OpenSSL was configured with the following options:
  */
 
-#ifndef OPENSSL_SYS_MacOSX
-# define OPENSSL_SYS_MacOSX 1
+#ifndef OPENSSL_SYS_MACOSX
+# define OPENSSL_SYS_MACOSX 1
 #endif
-#define OPENSSL_MIN_API 0x10100000L
 #ifndef OPENSSL_NO_MD2
 # define OPENSSL_NO_MD2
 #endif
@@ -46,17 +45,11 @@ extern "C" {
 #ifndef OPENSSL_NO_ASAN
 # define OPENSSL_NO_ASAN
 #endif
-#ifndef OPENSSL_NO_ASYNC
-# define OPENSSL_NO_ASYNC
-#endif
 #ifndef OPENSSL_NO_CRYPTO_MDEBUG
 # define OPENSSL_NO_CRYPTO_MDEBUG
 #endif
 #ifndef OPENSSL_NO_CRYPTO_MDEBUG_BACKTRACE
 # define OPENSSL_NO_CRYPTO_MDEBUG_BACKTRACE
-#endif
-#ifndef OPENSSL_NO_DEPRECATED
-# define OPENSSL_NO_DEPRECATED
 #endif
 #ifndef OPENSSL_NO_DEVCRYPTOENG
 # define OPENSSL_NO_DEVCRYPTOENG
@@ -94,9 +87,6 @@ extern "C" {
 #ifndef OPENSSL_NO_SSL3_METHOD
 # define OPENSSL_NO_SSL3_METHOD
 #endif
-#ifndef OPENSSL_NO_TESTS
-# define OPENSSL_NO_TESTS
-#endif
 #ifndef OPENSSL_NO_UBSAN
 # define OPENSSL_NO_UBSAN
 #endif
@@ -106,8 +96,8 @@ extern "C" {
 #ifndef OPENSSL_NO_WEAK_SSL_CIPHERS
 # define OPENSSL_NO_WEAK_SSL_CIPHERS
 #endif
-#ifndef OPENSSL_NO_DYNAMIC_ENGINE
-# define OPENSSL_NO_DYNAMIC_ENGINE
+#ifndef OPENSSL_NO_STATIC_ENGINE
+# define OPENSSL_NO_STATIC_ENGINE
 #endif
 
 
