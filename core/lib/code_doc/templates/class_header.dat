@@ -97,8 +97,10 @@ strong {
 	font-weight: bold;
 	color: black;
 } 
-
 </style>
+
+<link href="resources/prism.css" rel="stylesheet" />
+
 </head>
 
 <body>

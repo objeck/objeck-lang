@@ -337,7 +337,7 @@ class HtmlMaker {
 				FormatFunctions(class_block->GetShortName(), short_name, class_block->GetFunctions(short_name), html);
 			};
 		};
-		html += "</body></html>";
+		html += "</body><script src=\"resources/prism.js\"></script></html>";
 	
 		file_name := "../html/";
 		file_name += class_block->GetBundleName()->ToLower();
