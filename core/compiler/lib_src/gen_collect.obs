@@ -644,8 +644,16 @@ bundle Collection {
 		Adds a value to the back of the queue
 		@param value value to add
 		~#
-		method : public: Add(value : H) ~ Nil {
+		method : public: AddBack(value : H) ~ Nil {
 			@queue->AddBack(value);
+		}
+
+		#~
+		Adds a value to the front of the queue
+		@param value value to add
+		~#
+		method : public: AddFront(value : H) ~ Nil {
+			@queue->AddFront(value);
 		}
 		
 		#~
@@ -669,6 +677,18 @@ bundle Collection {
 		method : public: Head() ~ H {
 			if(@queue->Size() > 0) {
 				return @queue->Front();
+			};
+			
+			return Nil;
+		}
+
+		#~
+		Get the value from the tail of the queue
+		@return head value, Nil if queue is empty
+		~#
+		method : public: Tail() ~ H {
+			if(@queue->Size() > 0) {
+				return @queue->Back();
 			};
 			
 			return Nil;
