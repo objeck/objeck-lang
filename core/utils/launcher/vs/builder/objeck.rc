@@ -48,8 +48,8 @@ IDI_ICON1               ICON                    "..\\..\\..\\..\\..\\docs\\image
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 2023,7,2
- PRODUCTVERSION 2023,7,2
+ FILEVERSION 2023,7,3
+ PRODUCTVERSION 2023,7,3
  FILEFLAGSMASK 0x17L
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -67,12 +67,12 @@ BEGIN
             VALUE "Comments", "Objeck Native Binary Builder"
             VALUE "CompanyName", "objeck.org"
             VALUE "FileDescription", "Objeck Native Builder"
-            VALUE "FileVersion", "2023.7.2"
+            VALUE "FileVersion", "2023.7.3"
             VALUE "InternalName", "obc"
             VALUE "LegalCopyright", "Copyright (c) 2023 Randy Hollines"
             VALUE "OriginalFilename", "obb.exe"
             VALUE "ProductName", "Objeck Native Builder"
-            VALUE "ProductVersion", "2023.7.2"
+            VALUE "ProductVersion", "2023.7.3"
         END
     END
     BLOCK "VarFileInfo"
