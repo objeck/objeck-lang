@@ -41,13 +41,13 @@ If you are intreated in contributing, take a look at the [system architecture](h
   * Lambda expressions
   * First-class functions
 * [Unicode support](https://en.wikipedia.org/wiki/Unicode)
-* OS support
+* OS-level support
   * File systems
   * Sockets
   * Named pipes
   * Threads
   * Date/times
-  * Extension libraries
+  * Native extension libraries (.so, .dll)
 * [Generational garbage collection](https://en.wikipedia.org/wiki/Tracing_garbage_collection)
 * JIT compilation
   * [arm64](https://github.com/objeck/objeck-lang/tree/master/core/vm/arch/jit/arm64): Linux (Raspberry Pi 4), macOS (Apple silicon)
