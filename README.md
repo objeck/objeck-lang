@@ -40,7 +40,7 @@ If you are intreated in contributing, take a look at the [system architecture](h
   * Closures
   * Lambda expressions
   * First-class functions
-* [Unicode](https://en.wikipedia.org/wiki/Unicode) support
+* [Unicode support](https://en.wikipedia.org/wiki/Unicode)
 * OS support
   * File systems
   * Sockets
