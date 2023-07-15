@@ -22,7 +22,9 @@ class Hello {
 }
 ```
 
-To get started, take a look at the [language guide](https://objeck.org/getting_started.html), [Rosetta Code examples](https://github.com/objeck/objeck-lang/tree/master/programs/tests/rc), [IDE plug-ins](https://github.com/objeck/objeck-lsp) and for new contributors the [system architecture](https://github.com/objeck/objeck-lang/tree/master/core). 
+To get started, take a look at the [guide](https://objeck.org/getting_started.html), [code examples](https://github.com/objeck/objeck-lang/tree/master/programs/tests/rc), and [IDE plug-ins](https://github.com/objeck/objeck-lsp). 
+
+If you are intreated to contribute, look at the [system architecture](https://github.com/objeck/objeck-lang/tree/master/core). 
 
 ## Key Features
 * [Object-oriented](https://en.wikipedia.org/wiki/Object-oriented_programming)
@@ -38,14 +40,14 @@ To get started, take a look at the [language guide](https://objeck.org/getting_s
   * Closures
   * Lambda expressions
   * First-class functions
-* [Unicode](https://en.wikipedia.org/wiki/Unicode)
-* OS support
+* [Unicode support](https://en.wikipedia.org/wiki/Unicode)
+* OS-level support
   * File systems
   * Sockets
   * Named pipes
   * Threads
   * Date/times
-  * Extension libraries
+  * Native extension libraries (.so, .dll)
 * [Generational garbage collection](https://en.wikipedia.org/wiki/Tracing_garbage_collection)
 * JIT compilation
   * [arm64](https://github.com/objeck/objeck-lang/tree/master/core/vm/arch/jit/arm64): Linux (Raspberry Pi 4), macOS (Apple silicon)
