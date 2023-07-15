@@ -22,7 +22,7 @@ class Hello {
 }
 ```
 
-To get started, take a look at the [language guide](https://objeck.org/getting_started.html), [Rosetta Code examples](https://github.com/objeck/objeck-lang/tree/master/programs/tests/rc) and [IDE plug-ins](https://github.com/objeck/objeck-lsp). 
+To get started, take a look at the [language guide](https://objeck.org/getting_started.html), [code examples](https://github.com/objeck/objeck-lang/tree/master/programs/tests/rc), and [IDE plug-ins](https://github.com/objeck/objeck-lsp). 
 
 If you are intreated in contributing, take a look at the [system architecture](https://github.com/objeck/objeck-lang/tree/master/core). 
 
