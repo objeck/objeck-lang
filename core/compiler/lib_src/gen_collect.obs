@@ -671,27 +671,19 @@ bundle Collection {
 		}
 		
 		#~
-		Get the value from the head of the queue
+		Get the value from the front of the queue
 		@return head value, Nil if queue is empty
 		~#
-		method : public: Head() ~ H {
-			if(@queue->Size() > 0) {
-				return @queue->Front();
-			};
-			
-			return Nil;
+		method : public: Front() ~ H {
+			return @queue->Front();
 		}
 
 		#~
-		Get the value from the tail of the queue
+		Get the value from the back of the queue
 		@return head value, Nil if queue is empty
 		~#
-		method : public: Tail() ~ H {
-			if(@queue->Size() > 0) {
-				return @queue->Back();
-			};
-			
-			return Nil;
+		method : public: Back() ~ H {
+			return @queue->Back();
 		}
 		
 		#~
@@ -1167,7 +1159,7 @@ bundle Collection {
 
 		#~
 		Returns the first element in the list
-		@return first element in the list, 0.0 if the list is empty
+		@return first element in the list, Nil if the list is empty
 		~#
 		method : public : Front() ~ H {
 			if(@head <> Nil) {
@@ -1179,7 +1171,7 @@ bundle Collection {
 
 		#~
 		Returns the last element in the list
-		@return last element in the list, 0.0 if the list is empty
+		@return last element in the list, Nil if the list is empty
 		~#
 		method : public : Back() ~ H {
 			if(@tail <> Nil) {
@@ -1681,7 +1673,7 @@ bundle Collection {
 
 		#~
 		Returns the first element in the list
-		@return first element in the list, 0.0 if the list is empty
+		@return first element in the list, Nil if the list is empty
 		~#
 		method : public : Front() ~ H {
 			if(@head <> Nil) {
@@ -1693,7 +1685,7 @@ bundle Collection {
 
 		#~
 		Returns the last element in the list
-		@return last element in the list, 0.0 if the list is empty
+		@return last element in the list, Nil if the list is empty
 		~#
 		method : public : Back() ~ H {
 			if(@tail <> Nil) {
