@@ -522,7 +522,7 @@ void Editor::DoGotoLine(std::wstring& in)
 
 bool Editor::DoReplaceLine(std::wstring& in)
 {
-  if(in.size() == 2) {
+  if(in.size() > 2) {
     in = in.substr(3);
     try {
       const size_t line_pos = std::stoi(Trim(in));
