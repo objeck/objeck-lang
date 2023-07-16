@@ -102,7 +102,7 @@ bytes->Size()->PrintLine();
 ```
 
 ### [Functional](https://en.wikipedia.org/wiki/Functional_programming)
-#### Closures and Lambda expressions
+#### Closures and Lambda Expressions
 ```ruby
 funcs := Vector->New()<FuncRef<IntRef>>;
 for(i := 0; i < 10; i += 1;) {
