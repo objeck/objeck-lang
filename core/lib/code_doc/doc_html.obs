@@ -288,12 +288,7 @@ class HtmlMaker {
 		};
 		html += sec_h;
 
-		code := class_block->GetCode();
-		if(code <> Nil) {
-			html += "<br/><p>Sample example:<hr/><pre><code class=\"language-clike\">";
-			html += code;
-			html += "</code></pre><hr/></p>";
-		};
+		
 
 		##  list of operations
 		sec_c := "";					
@@ -335,6 +330,14 @@ class HtmlMaker {
 			sec_c += "</ul><hr/>";
 		};
 		html += sec_c;
+
+		##  code examples
+		code := class_block->GetCode();
+		if(code <> Nil) {
+			html += "<br/><p>Code example:<pre><code class=\"language-clike\">";
+			html += code;
+			html += "</code></pre></p><hr/>";
+		};
 		
 		##  detailed operations
 		FormatFunctions(class_block->GetShortName(), "New", class_block->GetFunctions("New"), html);
