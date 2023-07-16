@@ -22,7 +22,7 @@ class Hello {
 }
 ```
 
-To get started, take a look at the [guide](https://objeck.org/getting_started.html), [code examples](https://github.com/objeck/objeck-lang/tree/master/programs/tests/rc), and [IDE plug-ins](https://github.com/objeck/objeck-lsp). 
+To get started, take a look at the [guide](https://objeck.org/getting_started.html), [code examples](https://github.com/objeck/objeck-lang/tree/master/programs/tests/rc), and text editor [plug-ins](https://github.com/objeck/objeck-lsp). 
 
 If you are intreated to contribute, look at the [system architecture](https://github.com/objeck/objeck-lang/tree/master/core). 
 
@@ -220,7 +220,7 @@ yesterday->ToString()->PrintLine();
 * [JIT compilation](https://en.wikipedia.org/wiki/Just-in-time_compilation)
   * [arm64](https://github.com/objeck/objeck-lang/tree/master/core/vm/arch/jit/arm64): Linux (Raspberry Pi 4), macOS (Apple silicon)
   * [x86-64](https://github.com/objeck/objeck-lang/tree/master/core/vm/arch/jit/amd64): Windows (10/11), Linux and macOS
-* [LSP support](https://github.com/objeck/objeck-lsp)
+* [LSP](https://github.com/objeck/objeck-lsp) support for text editors
 * Documentation
   * [Tutorial](https://www.objeck.org/getting_started.html)
   * [APIs](https://www.objeck.org/doc/api/index.html)
