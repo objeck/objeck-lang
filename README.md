@@ -69,7 +69,7 @@ klass->GetName()->PrintLine();
 klass->GetMethodNumber()->PrintLine();
 ```
 
-#### Dependency injection
+#### Dependency Injection
 ```ruby
 value := Class->Instance("System.String")->As(String);
 value += "510";
@@ -84,7 +84,7 @@ map->Insert(925, "East Bay");
 map->Size()->PrintLine();
 ```
 
-#### Type boxing
+#### Type Boxing
 ```ruby
 list := Collection.List->New()<IntRef>;
 list->AddBack(17);
@@ -117,7 +117,7 @@ each(i : funcs) {
 };
 ```
 
-#### First-class functions
+#### First-class Functions
 ```ruby
 @f : static : (Int) ~ Int;
 @g : static : (Int) ~ Int;
@@ -146,13 +146,13 @@ function : Composer(f : (Int) ~ Int, g : (Int) ~ Int) ~ (Int) ~ Int {
 }
 ```
 
-### Host support
+### Host Support
 #### [Unicode support](https://en.wikipedia.org/wiki/Unicode)
 ```ruby
 "Καλημέρα κόσμε"->PrintLine();
 ```
 
-#### File systems
+#### File Systems
 ```ruby
 content := Sytem.IO.Filesystem.FileReader->ReadFile(filename);
 content->Size()->PrintLine();
@@ -170,7 +170,7 @@ while(line <> Nil & line->Size() > 0) {
 socket->Close();
 ```
 
-#### Named pipes
+#### Named Pipes
 ```ruby
 pipe := System.IO.Pipe->New("foobar", Pipe->Mode->CREATE);
 if(pipe->Connect()) {
@@ -207,14 +207,14 @@ class CaculateThread from Thread {
   }
 }
 ```
-#### Date/times
+#### Date/Times
 ```ruby
 yesterday := System.Time.Date->New();
 yesterday->AddDays(-1);
 yesterday->ToString()->PrintLine();
 ```
 
-### System support
+### System Support
 * Native extension libraries (.so, .dll)
 * [Generational garbage collection](https://en.wikipedia.org/wiki/Tracing_garbage_collection)
 * [JIT compilation](https://en.wikipedia.org/wiki/Just-in-time_compilation)
