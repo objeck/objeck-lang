@@ -1757,16 +1757,38 @@ bundle Collection {
 	}
 	
 	#~
-	Growable array of generics
-	```		
-	# insert elements
-	vector := Collection.Vector->New()<IntRef>;
-	vector->AddBack(4);
-	vector->AddBack(1);
-	vector->AddBack(5);
+	Growable generic array
+	```
+	function : Example() ~ Nil {	
+	   # insert elements
+	   vector := Collection.Vector->New()<IntRef>;
+	   vector->AddBack(4);
+	   vector->AddBack(1);
+	   vector->AddBack(5);
+	   vector->AddBack(1);
+	   vector->AddBack(0);
+   
+	   # remove last item
+	   vector->RemoveBack();
+   
+	   # get size
+	   vector->Size()->PrintLine();
+	   
+	   # get elements
+	   (vector->Get(0) + vector->Get(1))->PrintLine();
+   
+	   # print all items with a loop
+	   each(item := vector) {
+	   	item->PrintLine();
+	   };
+   
+	   # print all items with a function
+	   vector->Each(Show(IntRef) ~ Nil);
+	}
 
-	# get size
-	vector->Size()->PrintLine();
+	function : Show(value : IntRef) ~ Nil {
+	   value->PrintLine();
+	}
 	```
 	~#
 	class Vector<H> {

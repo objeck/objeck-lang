@@ -290,9 +290,9 @@ class HtmlMaker {
 
 		code := class_block->GetCode();
 		if(code <> Nil) {
-			html += "<br/><p>Code example:<pre><code class=\"language-clike\">";
+			html += "<br/><p>Sample example:<hr/><pre><code class=\"language-clike\">";
 			html += code;
-			html += "</code></pre></p>";
+			html += "</code></pre><hr/></p>";
 		};
 
 		##  list of operations
