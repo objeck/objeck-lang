@@ -3105,7 +3105,58 @@ bundle System {
 	}
 
 	#~
-	Resizeable Unicode string class that supports typical string operations.
+	Resizeable Unicode character string
+
+	```
+# build and print string
+cities_str := "\t\tNapa,";
+cities_str += "Fremont,";
+cities_str += "Alameda,";
+cities_str += "Berkeley,";
+cities_str += "Fremont,";
+cities_str += "San Carlos,";
+cities_str += "Milpitas,  ";
+cities_str->PrintLine();
+
+# show the string size
+cities_str->Size()->PrintLine();
+
+# trim string
+cities_str := cities_str->Trim();
+cities_str->Size()->PrintLine();
+
+# replace city
+cities_str := cities_str->Replace("San Carlos", "Oakland");
+cities_str->PrintLine();
+
+# create a substring
+start := cities_str->Find("Berkeley");
+if(<>start->IsNeg()) {
+   end := cities_str->Find(start, ',');
+   if(<>end->IsNeg()) {
+      city := cities_str->SubString(start, end - start);
+      "They city found was {$city}"->PrintLine();
+   }
+};
+
+# remove ending comma
+cities_str->Pop();
+
+# split string and print values
+cities := cities_str->Split(',');
+cities->Size()->PrintLine();
+
+# iterate over cities
+each(city := cities) {
+   city->PrintLine();
+};
+
+# iterate over cities with an index
+each(i : cities) {
+   city := cities[i];
+   "{$i}: |{$city}|"->PrintLine();
+};
+	```
 	~#	
 	class String implements System.Compare, System.Clone, System.Stringify {
 		@string : Char[];
