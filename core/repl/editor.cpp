@@ -355,6 +355,9 @@ void Editor::Edit()
         if(DoReplaceLine(in)) {
           DoExecute();
         }
+        else {
+          std::wcout << "Line number read-only or invalid." << std::endl;
+        }
         break;
 
         // edit uses
