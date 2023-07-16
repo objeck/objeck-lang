@@ -1758,6 +1758,16 @@ bundle Collection {
 	
 	#~
 	Growable array of generics
+	```		
+	# insert elements
+	vector := Collection.Vector->New()<IntRef>;
+	vector->AddBack(4);
+	vector->AddBack(1);
+	vector->AddBack(5);
+
+	# get size
+	vector->Size()->PrintLine();
+	```
 	~#
 	class Vector<H> {
 		@values : H[];

@@ -113,7 +113,13 @@ class SnippetParser {
 				label '#':
 				label '\0': {
 					done := true;
-				}				
+				}
+
+				label '`': {
+"1111111111111111111111111111111"->PrintLine();			
+					done := true;
+				}
+
 				other: {
 					ident->Append(@cur_char);
 					NextChar();
@@ -463,6 +469,11 @@ class Snippet {
 				label '\0': {
 					done := true;
 				}
+
+				label '`': {
+"22222222222222222222222222"->PrintLine();			
+					done := true;
+				}
 				
 				other: {
 					ident->Append(@cur_char);
@@ -494,6 +505,7 @@ class Snippet {
 					ident->Append(' ');
 				}
 				label '~':
+				label '`':
 				label '@':
 				label '\0': {
 					done := true;
@@ -759,6 +771,7 @@ class ClassSnippet from Snippet {
 	@block_name : String;
 	@from_class : String;
 	@desc : String;
+	@code : String;
 	@funcs : Map<String, Vector<FuncSnippet> >;
 	@implemented : Vector<String>;
 	@is_inf : Bool;
@@ -821,6 +834,10 @@ class ClassSnippet from Snippet {
 
 	method : public : GetDesc() ~ String {
 		return @desc;
+	}
+
+	method : public : GetCode() ~ String {
+		return @code;
 	}
 
 	method : public : AddEnum(block : String) ~ Nil {
@@ -910,6 +927,31 @@ class ClassSnippet from Snippet {
 			return false;
 		};
 		@desc := ParseDesc();
+		if(@cur_char = '`' & @nxt_char = '`') {
+			NextChar();	NextChar();
+			if(@cur_char = '`') {
+				NextChar();
+				buffer := "";
+				while(@cur_char <> '\0' & <>(@cur_char = '`' & @nxt_char = '`')) {
+					if(@cur_char <> '\t') {
+						buffer->Append(@cur_char);
+					};
+					NextChar();
+				};
+
+				if(@cur_char = '`') {
+					NextChar();	NextChar();	NextChar();
+					@code := buffer->Trim();;
+				}
+				else {
+					return false;
+				};
+			}
+			else {
+				return false;
+			};
+		};
+
 		if(<>MatchCommentEnd()) {
 			return false;
 		};
