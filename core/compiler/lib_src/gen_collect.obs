@@ -1342,14 +1342,25 @@ bundle Collection {
 	```
 	function : Example() ~ Nil {	
 	   # insert elements
-	   vector := Collection.List->New()<FloatRef>;
-	   vector->AddBack(33.3);
-	   vector->AddFront(66.6);
-	   vector->AddBack(99.9);
+	   list := Collection.List->New()<FloatRef>;
+	   list->AddBack(33.3);
+	   list->AddFront(66.6);
+	   list->AddBack(99.9);
 	
 	   # get size
-	   vector->Size()->PrintLine();
+	   list->Size()->PrintLine();
+
+	   # get first and last item
+	   list->Front()->PrintLine();
+	   list->Back()->PrintLine();
+
+	   # iterate
+	   while(list->More()) {
+	      list->Get()->PrintLine();
+	      list->Next();
+	   };
 	}
+	```
 	~#
 	class List<H> {
 		@size : Int;
@@ -2381,31 +2392,31 @@ bundle Collection {
 	```
 	function : Example() ~ Nil {	
 	   # insert elements
-	   vector := Collection.Map->New()<IntRef, String>;
-	   vector->Insert(415, "San Francisco");
-	   vector->Insert(510, "Oakland");
-	   vector->Insert(925, "East Bay");
+	   map := Collection.Map->New()<IntRef, String>;
+	   map->Insert(415, "San Francisco");
+	   map->Insert(510, "Oakland");
+	   map->Insert(925, "East Bay");
 
 	   # get size
-	   vector->Size()->PrintLine();
+	   map->Size()->PrintLine();
 
 	   # get value by key
-	   vector->Find(510)->PrintLine();
+	   map->Find(510)->PrintLine();
 
 	   # get key/values
-	   key_values := vector->GetKeyValues()<Pair<IntRef, String>>;
+	   key_values := map->GetKeyValues()<Pair<IntRef, String>>;
 	   each(key_value := key_values) {
 	      key_value->GetFirst()->PrintLine();
 	   };
 
 	   # get values
-	   values := vector->GetValues()<String>;
+	   values := map->GetValues()<String>;
 	   each(value := values) {
 	      value->PrintLine();
 	   };
 
 	   # check for key
-	   vector->Has(408)->PrintLine();
+	   map->Has(408)->PrintLine();
 	}
 	```
 	~#
