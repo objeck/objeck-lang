@@ -661,16 +661,21 @@ hash->Has(408)->PrintLine();
 
 	```
 # insert elements
-set := Collection.Set->New()<String>;
-set->Insert("San Francisco");
-set->Insert("Oakland");
-set->Insert("East Bay");
+queue := Collection.Queue->New()<String>;
+queue->AddFront("San Francisco");
+queue->AddBack("Oakland");
+queue->AddBack("East Bay");
+queue->AddBack("Mountain View");
+
+# remove element
+queue->RemoveBack();
 
 # get size
-set->Size()->PrintLine();
+queue->Size()->PrintLine();
 
 # get value by key
-set->Has("Oakland")->PrintLine();
+queue->Back()->PrintLine();
+queue->Front()->PrintLine();
 	```	
 	~#
 	class Queue<H> {
