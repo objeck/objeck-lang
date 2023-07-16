@@ -336,7 +336,7 @@ class HtmlMaker {
 		if(code <> Nil) {
 			html += "<br/><p>Code example:<pre><code class=\"language-clike\">";
 			html += code;
-			html += "</code></pre></p><hr/>";
+			html += "</code></pre></p>";
 		};
 		
 		##  detailed operations
