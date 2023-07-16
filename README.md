@@ -106,7 +106,8 @@ bytes->Size()->PrintLine();
 ```ruby
 funcs := Vector->New()<FuncRef<IntRef>>;
 for(i := 0; i < 10; i += 1;) {
-  funcs->AddBack(FuncRef->New(\() ~ IntRef : () => System.Math.Routine->Factorial(i) * funcs->Size())<IntRef>);
+  funcs->AddBack(FuncRef->New(\() ~ IntRef : () 
+    => System.Math.Routine->Factorial(i) * funcs->Size())<IntRef>);
 };
 
 each(i : funcs) {
