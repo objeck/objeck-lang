@@ -69,9 +69,8 @@ klass->GetName()->PrintLine();
 klass->GetMethodNumber()->PrintLine();
 ```
 
-### Dependency injection
+#### Dependency injection
 ```ruby
-# load by class name
 value := Class->Instance("System.String")->As(String);
 value += "510";
 value->PrintLine();
