@@ -22,12 +22,14 @@ class Hello {
 }
 ```
 
-To get started, take a look at the [guide](https://objeck.org/getting_started.html), [code examples](https://github.com/objeck/objeck-lang/tree/master/programs/tests/rc), and [text editor plug-ins](https://github.com/objeck/objeck-lsp). 
+To get started, take a look at the [langue guide](https://objeck.org/getting_started.html). If you want to contribute, please look at the [system architecture](https://github.com/objeck/objeck-lang/tree/master/core). 
 
-If you are intreated to contribute, look at the [system architecture](https://github.com/objeck/objeck-lang/tree/master/core). 
+## Screenshots
+| <sub>[VS Code](https://github.com/objeck/objeck-lsp)</sub> | <sub>[Debugger](https://github.com/objeck/objeck-lang/tree/master/core/debugger)</sub> | <sub>[Dungeon Crawler](https://github.com/objeck/objeck-dungeon-crawler)</sub> | <sub>[Platformer](https://github.com/objeck/objeck-lang/blob/master/programs/deploy/2d_game_13.obs)</sub> | <sub>[Windows Utility](https://github.com/objeck/objeck-lang/tree/master/core/release/WindowsLauncher)</sub> |
+| :---: | :----: | :---: | :---: | :---: |
+![alt text](docs/images/web/comp.png "Visual Studio Code") | ![alt text](docs/images/web/debug.jpg "Command line debugger") | ![alt text](docs/images/web/crawler.png "Web Crawler") | ![alt text](docs/images/web/2d_game.jpg "Platformer") | ![alt text](docs/images/web/launch.png "Windows Launcher") |
 
 ## Key Features
-
 ### [Object-oriented](https://en.wikipedia.org/wiki/Object-oriented_programming)
   
 #### Inheritance
@@ -214,23 +216,7 @@ yesterday->AddDays(-1);
 yesterday->ToString()->PrintLine();
 ```
 
-### Toolchain Features
-* Native extension libraries (.so, .dll)
-* [Generational garbage collection](https://en.wikipedia.org/wiki/Tracing_garbage_collection)
-* [JIT compilation](https://en.wikipedia.org/wiki/Just-in-time_compilation)
-  * [arm64](https://github.com/objeck/objeck-lang/tree/master/core/vm/arch/jit/arm64): Linux (Raspberry Pi 4), macOS (Apple silicon)
-  * [x86-64](https://github.com/objeck/objeck-lang/tree/master/core/vm/arch/jit/amd64): Windows (10/11), Linux and macOS
-* [LSP](https://github.com/objeck/objeck-lsp) support for text editors
-* Documentation
-  * [Tutorial](https://www.objeck.org/getting_started.html)
-  * [APIs](https://www.objeck.org/doc/api/index.html)
-
-## Screenshots
-| <sub>[VS Code](https://github.com/objeck/objeck-lsp)</sub> | <sub>[Debugger](https://github.com/objeck/objeck-lang/tree/master/core/debugger)</sub> | <sub>[Dungeon Crawler](https://github.com/objeck/objeck-dungeon-crawler)</sub> | <sub>[Platformer](https://github.com/objeck/objeck-lang/blob/master/programs/deploy/2d_game_13.obs)</sub> | <sub>[Windows Utility](https://github.com/objeck/objeck-lang/tree/master/core/release/WindowsLauncher)</sub> |
-| :---: | :----: | :---: | :---: | :---: |
-![alt text](docs/images/web/comp.png "Visual Studio Code") | ![alt text](docs/images/web/debug.jpg "Command line debugger") | ![alt text](docs/images/web/crawler.png "Web Crawler") | ![alt text](docs/images/web/2d_game.jpg "Platformer") | ![alt text](docs/images/web/launch.png "Windows Launcher") |
-
-## Libraries
+### Libraries
   * [HTTPS](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/net_secure.obs) and [HTTP](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/net.obs) server and client APIs
   * [JSON](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/json.obs), [XML](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/xml.obs) and [CSV](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/csv.obs) parsers
   * [Regular expression](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/regex.obs) library
@@ -240,4 +226,14 @@ yesterday->ToString()->PrintLine();
   * [2D Gaming framework](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/sdl_game.obs) via SDL2
   * [Collections](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/gen_collect.obs) (caches, vectors, queues, trees, hashes, etc.)
   * GTK windowing support [(work-in-progress)](core/lib/experimental/gtk)
-  
+
+### System
+* Native extension libraries (.so, .dll)
+* [Generational garbage collection](https://en.wikipedia.org/wiki/Tracing_garbage_collection)
+* [JIT compilation](https://en.wikipedia.org/wiki/Just-in-time_compilation)
+  * [arm64](https://github.com/objeck/objeck-lang/tree/master/core/vm/arch/jit/arm64): Linux (Raspberry Pi 4), macOS (Apple silicon)
+  * [x86-64](https://github.com/objeck/objeck-lang/tree/master/core/vm/arch/jit/amd64): Windows (10/11), Linux and macOS
+* [LSP](https://github.com/objeck/objeck-lsp) support for text editors
+* Documentation
+  * [Tutorial](https://www.objeck.org/getting_started.html)
+  * [APIs](https://www.objeck.org/doc/api/index.html)
