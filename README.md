@@ -102,7 +102,7 @@ bytes->Size()->PrintLine();
 #### Closures and Lambda Expressions
 ```ruby
 funcs := Vector->New()<FuncRef<IntRef>>;
-for(i := 0; i < 10; i += 1;) {
+each(i : 10) {
   funcs->AddBack(FuncRef->New(\() ~ IntRef : () 
     => System.Math.Routine->Factorial(i) * funcs->Size())<IntRef>);
 };
