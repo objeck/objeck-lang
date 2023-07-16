@@ -27,15 +27,40 @@ To get started, take a look at the [guide](https://objeck.org/getting_started.ht
 If you are intreated to contribute, look at the [system architecture](https://github.com/objeck/objeck-lang/tree/master/core). 
 
 ## Key Features
-* [Object-oriented](https://en.wikipedia.org/wiki/Object-oriented_programming)
-  * Inheritance
-  * Interfaces
+
+### [Object-oriented](https://en.wikipedia.org/wiki/Object-oriented_programming)
+  
+#### Inheritance
+```ruby
+class Triangle from Shape {
+  New() {
+  }
+}
+```
+
+#### Interfaces
+```ruby
+class Triangle from Shape implements Color {
+  New() {
+  }
+
+  method : public : GetRgb() ~ Int {
+    return 0xadd8e6;
+  }
+}
+
+interface Color {
+  method : virtual : public : GetRgb() ~ Int;
+}
+```
+
   * Type Inference
   * Reflection
   * Dependency injection
   * Generics
   * Type boxing
   * Serialization
+
 * [Functional](https://en.wikipedia.org/wiki/Functional_programming)
   * Closures
   * Lambda expressions
