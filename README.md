@@ -117,7 +117,7 @@ each(i : funcs) {
 };
 ```
 
-#### First-class Functions
+#### First-Class Functions
 ```ruby
 @f : static : (Int) ~ Int;
 @g : static : (Int) ~ Int;
