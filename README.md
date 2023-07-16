@@ -24,11 +24,6 @@ class Hello {
 
 To get started, take a look at the [language guide](https://objeck.org/getting_started.html) and [code examples](https://github.com/objeck/objeck-lang/tree/master/programs/examples). If you want to contribute, look at the [system architecture](https://github.com/objeck/objeck-lang/tree/master/core).
 
-## Screenshots
-| <sub>[VS Code](https://github.com/objeck/objeck-lsp)</sub> | <sub>[Debugger](https://github.com/objeck/objeck-lang/tree/master/core/debugger)</sub> | <sub>[Dungeon Crawler](https://github.com/objeck/objeck-dungeon-crawler)</sub> | <sub>[Platformer](https://github.com/objeck/objeck-lang/blob/master/programs/deploy/2d_game_13.obs)</sub> | <sub>[Windows Utility](https://github.com/objeck/objeck-lang/tree/master/core/release/WindowsLauncher)</sub> |
-| :---: | :----: | :---: | :---: | :---: |
-![alt text](docs/images/web/comp.png "Visual Studio Code") | ![alt text](docs/images/web/debug.jpg "Command line debugger") | ![alt text](docs/images/web/crawler.png "Web Crawler") | ![alt text](docs/images/web/2d_game.jpg "Platformer") | ![alt text](docs/images/web/launch.png "Windows Launcher") |
-
 ## Key Features
 ### [Object-oriented](https://en.wikipedia.org/wiki/Object-oriented_programming)
   
@@ -237,3 +232,8 @@ yesterday->ToString()->PrintLine();
 * Documentation
   * [Tutorial](https://www.objeck.org/getting_started.html)
   * [APIs](https://www.objeck.org/doc/api/index.html)
+
+## Screenshots
+| <sub>[VS Code](https://github.com/objeck/objeck-lsp)</sub> | <sub>[Debugger](https://github.com/objeck/objeck-lang/tree/master/core/debugger)</sub> | <sub>[Dungeon Crawler](https://github.com/objeck/objeck-dungeon-crawler)</sub> | <sub>[Platformer](https://github.com/objeck/objeck-lang/blob/master/programs/deploy/2d_game_13.obs)</sub> | <sub>[Windows Utility](https://github.com/objeck/objeck-lang/tree/master/core/release/WindowsLauncher)</sub> |
+| :---: | :----: | :---: | :---: | :---: |
+![alt text](docs/images/web/comp.png "Visual Studio Code") | ![alt text](docs/images/web/debug.jpg "Command line debugger") | ![alt text](docs/images/web/crawler.png "Web Crawler") | ![alt text](docs/images/web/2d_game.jpg "Platformer") | ![alt text](docs/images/web/launch.png "Windows Launcher") |
