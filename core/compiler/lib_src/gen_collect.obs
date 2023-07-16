@@ -1338,6 +1338,18 @@ bundle Collection {
 
 	#~
 	List of generics
+
+	```
+	function : Example() ~ Nil {	
+	   # insert elements
+	   vector := Collection.List->New()<FloatRef>;
+	   vector->AddBack(33.3);
+	   vector->AddFront(66.6);
+	   vector->AddBack(99.9);
+	
+	   # get size
+	   vector->Size()->PrintLine();
+	}
 	~#
 	class List<H> {
 		@size : Int;
