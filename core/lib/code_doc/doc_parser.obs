@@ -941,7 +941,7 @@ class ClassSnippet from Snippet {
 
 				if(@cur_char = '`') {
 					NextChar();	NextChar();	NextChar();
-					@code := buffer->Trim();;
+					@code := Data.XML.XmlElement->EncodeString(buffer->Trim());
 				}
 				else {
 					return false;
