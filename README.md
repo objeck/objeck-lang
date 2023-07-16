@@ -22,7 +22,7 @@ class Hello {
 }
 ```
 
-To get started, take a look at the [guide](https://objeck.org/getting_started.html), [code examples](https://github.com/objeck/objeck-lang/tree/master/programs/tests/rc), and text editor [plug-ins](https://github.com/objeck/objeck-lsp). 
+To get started, take a look at the [guide](https://objeck.org/getting_started.html), [code examples](https://github.com/objeck/objeck-lang/tree/master/programs/tests/rc), and [text editor plug-ins](https://github.com/objeck/objeck-lsp). 
 
 If you are intreated to contribute, look at the [system architecture](https://github.com/objeck/objeck-lang/tree/master/core). 
 
