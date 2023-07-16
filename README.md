@@ -217,7 +217,7 @@ yesterday->ToString()->PrintLine();
 ### System support
 * Native extension libraries (.so, .dll)
 * [Generational garbage collection](https://en.wikipedia.org/wiki/Tracing_garbage_collection)
-* JIT compilation
+* [JIT compilation](https://en.wikipedia.org/wiki/Just-in-time_compilation)
   * [arm64](https://github.com/objeck/objeck-lang/tree/master/core/vm/arch/jit/arm64): Linux (Raspberry Pi 4), macOS (Apple silicon)
   * [x86-64](https://github.com/objeck/objeck-lang/tree/master/core/vm/arch/jit/amd64): Windows (10/11), Linux and macOS
 * [LSP support](https://github.com/objeck/objeck-lsp)
