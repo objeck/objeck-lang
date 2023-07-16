@@ -146,9 +146,8 @@ function : Composer(f : (Int) ~ Int, g : (Int) ~ Int) ~ (Int) ~ Int {
 }
 ```
 
-
-### [Unicode support](https://en.wikipedia.org/wiki/Unicode)
-#### OS-level support
+### Host support
+#### [Unicode support](https://en.wikipedia.org/wiki/Unicode)
 ```ruby
 "Καλημέρα κόσμε"->PrintLine();
 ```
@@ -160,11 +159,63 @@ content->Size()->PrintLine();
 Sytem.IO.Filesystem.File->Size(filename)->PrintLine();
 ```
 
-  * Sockets
-  * Named pipes
-  * Threads
-  * Date/times
-  * Native extension libraries (.so, .dll)
+#### Sockets
+```ruby
+socket->WriteString("GET / HTTP/1.1\nHost:google.com\nUser Agent: Mozilla/5.0 (compatible)\nConnection: Close\n\n");
+line := socket->ReadString();
+while(line <> Nil & line->Size() > 0) {
+  line->PrintLine();  
+  line := socket->ReadString();
+};
+socket->Close();
+```
+
+#### Named pipes
+```ruby
+pipe := System.IO.Pipe->New("foobar", Pipe->Mode->CREATE);
+if(pipe->Connect()) {
+  pipe->ReadLine()->PrintLine();
+  pipe->WriteString("Hi Ya!");
+  pipe->Close();
+};
+```
+
+#### Threads
+```ruby
+class CaculateThread from Thread {
+  ...
+  @inc_mutex : static : ThreadMutex;
+
+  New() {
+    @inc_mutex := ThreadMutex->New("inc_mutex");
+  }
+  
+  method : public : Run(param : System.Base) ~ Nil {
+    Compute();
+  }
+
+  method : native : Compute() ~ Nil {
+    y : Int;
+
+    while(true) {
+      critical(@inc_mutex) {
+        y := @current_line;
+        @current_line+=1;
+      };
+      ...
+    };
+  }
+}
+```
+#### Date/times
+```ruby
+yesterday := System.Time.Date->New();
+yesterday->AddDays(-1);
+yesterday->ToString()->PrintLine();
+```
+
+### System support
+* Native extension libraries (.so, .dll)
 * [Generational garbage collection](https://en.wikipedia.org/wiki/Tracing_garbage_collection)
 * JIT compilation
   * [arm64](https://github.com/objeck/objeck-lang/tree/master/core/vm/arch/jit/arm64): Linux (Raspberry Pi 4), macOS (Apple silicon)
