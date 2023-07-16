@@ -1758,6 +1758,7 @@ bundle Collection {
 	
 	#~
 	Growable generic array
+	
 	```
 	function : Example() ~ Nil {	
 	   # insert elements
@@ -2363,7 +2364,38 @@ bundle Collection {
 	}
 	
 	#~
-	Balanced tree of generics
+	Balanced tree of 'Compare' keys and 'Base' values
+	
+	```
+	function : Example() ~ Nil {	
+	   # insert elements
+	   vector := Collection.Map->New()<IntRef, String>;
+	   vector->Insert(415, "San Francisco");
+	   vector->Insert(510, "Oakland");
+	   vector->Insert(925, "East Bay");
+
+	   # get size
+	   vector->Size()->PrintLine();
+
+	   # get value by key
+	   vector->Find(510)->PrintLine();
+
+	   # get key/values
+	   key_values := vector->GetKeyValues()<Pair<IntRef, String>>;
+	   each(key_value := key_values) {
+	      key_value->GetFirst()->PrintLine();
+	   };
+
+	   # get values
+	   values := vector->GetValues()<String>;
+	   each(value := values) {
+	      value->PrintLine();
+	   };
+
+	   # check for key
+	   vector->Has(408)->PrintLine();
+	}
+	```
 	~#
 	class Map<K : Compare, V> {
 		@root : TreeNode<K, V>;
