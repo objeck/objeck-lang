@@ -34,6 +34,7 @@ If you are intreated to contribute, look at the [system architecture](https://gi
 ```ruby
 class Triangle from Shape {
   New() {
+    Parent();
   }
 }
 ```
@@ -42,6 +43,7 @@ class Triangle from Shape {
 ```ruby
 class Triangle from Shape implements Color {
   New() {
+    Parent();
   }
 
   method : public : GetRgb() ~ Int {
@@ -54,12 +56,51 @@ interface Color {
 }
 ```
 
-  * Type Inference
-  * Reflection
-  * Dependency injection
-  * Generics
-  * Type boxing
-  * Serialization
+#### Type Inference
+```ruby
+value := "Hello World!";
+value->Size()->PrintLine();
+```
+#### Reflection
+```ruby
+value := "Hello World!";
+klass := value->GetClass();
+klass->GetName()->PrintLine();
+klass->GetMethodNumber()->PrintLine();
+```
+
+### Dependency injection
+```ruby
+# load by class name
+value := Class->Instance("System.String")->As(String);
+value += "510";
+value->PrintLine();
+```
+#### Generics
+```ruby
+map := Collection.Map->New()<IntRef, String>;
+map->Insert(415, "San Francisco");
+map->Insert(510, "Oakland");
+map->Insert(925, "East Bay");
+map->Size()->PrintLine();
+```
+
+#### Type boxing
+```ruby
+list := Collection.List->New()<IntRef>;
+list->AddBack(17);
+list->AddFront(4);
+(list->Back() + list->Front())->PrintLine();
+```
+
+#### Serialization
+```
+serializer := System.IO.Serializer->New();
+serializer->Write(map);
+serializer->Write("Fin.");
+bytes := serializer->Serialize();
+bytes->Size()->PrintLine();
+```
 
 * [Functional](https://en.wikipedia.org/wiki/Functional_programming)
   * Closures
