@@ -93,7 +93,7 @@ list->AddFront(4);
 ```
 
 #### Serialization
-```
+```ruby
 serializer := System.IO.Serializer->New();
 serializer->Write(map);
 serializer->Write("Fin.");
@@ -101,10 +101,51 @@ bytes := serializer->Serialize();
 bytes->Size()->PrintLine();
 ```
 
-* [Functional](https://en.wikipedia.org/wiki/Functional_programming)
-  * Closures
-  * Lambda expressions
-  * First-class functions
+### [Functional](https://en.wikipedia.org/wiki/Functional_programming)
+#### Closures and Lambda expressions
+```ruby
+funcs := Vector->New()<FuncRef<IntRef>>;
+for(i := 0; i < 10; i += 1;) {
+  funcs->AddBack(FuncRef->New(\() ~ IntRef : () => System.Math.Routine->Factorial(i) * funcs->Size())<IntRef>);
+};
+
+each(i : funcs) {
+  value := funcs->Get(i)<FuncRef>;
+  func := value->Get();
+  func()->Get()->PrintLine();
+};
+```
+
+#### First-class functions
+```ruby
+@f : static : (Int) ~ Int;
+@g : static : (Int) ~ Int;
+
+function : Main(args : String[]) ~ Nil {
+  compose := Composer(F(Int) ~ Int, G(Int) ~ Int);
+  compose(13)->PrintLine();
+}
+
+function : F(a : Int) ~ Int {
+  return a + 14;
+}
+
+function : G(a : Int) ~ Int {
+  return a + 15;
+}
+
+function : native : Compose(x : Int) ~ Int {
+  return @f(@g(x));
+}
+
+function : Composer(f : (Int) ~ Int, g : (Int) ~ Int) ~ (Int) ~ Int {
+  @f := f;
+  @g := g;
+  return Compose(Int) ~ Int;
+}
+```
+
+
 * [Unicode support](https://en.wikipedia.org/wiki/Unicode)
 * OS-level support
   * File systems
