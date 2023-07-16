@@ -147,9 +147,19 @@ function : Composer(f : (Int) ~ Int, g : (Int) ~ Int) ~ (Int) ~ Int {
 ```
 
 
-* [Unicode support](https://en.wikipedia.org/wiki/Unicode)
-* OS-level support
-  * File systems
+### [Unicode support](https://en.wikipedia.org/wiki/Unicode)
+#### OS-level support
+```ruby
+"Καλημέρα κόσμε"->PrintLine();
+```
+
+#### File systems
+```ruby
+content := Sytem.IO.Filesystem.FileReader->ReadFile(filename);
+content->Size()->PrintLine();
+Sytem.IO.Filesystem.File->Size(filename)->PrintLine();
+```
+
   * Sockets
   * Named pipes
   * Threads
