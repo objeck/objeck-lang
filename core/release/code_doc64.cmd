@@ -9,6 +9,8 @@ rmdir /s /q ..\doc\api
 mkdir ..\doc\api
 copy ..\..\..\lib\code_doc\templates\index.html ..\doc\api
 xcopy /e ..\html\* ..\doc\api
+mkdir ..\doc\api\resources
+copy ..\..\..\lib\code_doc\templates\resources\* ..\doc\api\resources
 rmdir /s /q ..\html
 cd ..\doc
 %ZIP_BIN%\7z.exe a -r -tzip api.zip api\*

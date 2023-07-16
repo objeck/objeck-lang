@@ -286,7 +286,14 @@ class HtmlMaker {
 			};
 			sec_h += "</i></p>";
 		};
-		html += sec_h;					
+		html += sec_h;
+
+		code := class_block->GetCode();
+		if(code <> Nil) {
+			html += "<br/><p>Code example:<pre><code class=\"language-clike\">";
+			html += code;
+			html += "</code></pre></p>";
+		};
 
 		##  list of operations
 		sec_c := "";					
