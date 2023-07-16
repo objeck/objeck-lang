@@ -147,12 +147,12 @@ function : Composer(f : (Int) ~ Int, g : (Int) ~ Int) ~ (Int) ~ Int {
 ```
 
 ### Host Support
-#### [Unicode support](https://en.wikipedia.org/wiki/Unicode)
+#### Unicode
 ```ruby
 "Καλημέρα κόσμε"->PrintLine();
 ```
 
-#### File Systems
+#### File System
 ```ruby
 content := Sytem.IO.Filesystem.FileReader->ReadFile(filename);
 content->Size()->PrintLine();
@@ -214,7 +214,7 @@ yesterday->AddDays(-1);
 yesterday->ToString()->PrintLine();
 ```
 
-### System Support
+### Toolchain Features
 * Native extension libraries (.so, .dll)
 * [Generational garbage collection](https://en.wikipedia.org/wiki/Tracing_garbage_collection)
 * [JIT compilation](https://en.wikipedia.org/wiki/Just-in-time_compilation)
