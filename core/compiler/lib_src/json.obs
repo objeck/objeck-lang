@@ -264,6 +264,27 @@ bundle Data.JSON {
 
 	#~
 	Support for Json parsing
+
+	```
+doc := Web.HTTP.HttpsClient->QuickGet(Web.HTTP.Url->New("https://dummyjson.com/carts"));
+if(doc <> Nil) {
+   parser := Data.JSON.JsonParser->New(String->New(doc));
+   if(parser->Parse()) {
+      carts := parser->GetRoot()->Get("carts");
+      if(carts->Size() > 0) {
+         cart := carts->Get(Int->Random(carts->Size()));
+         cart_id := cart->Get("id")->GetInt();
+         "cart id={$cart_id}\n---"->PrintLine();
+         products := cart->Get("products");
+         each(product := products) {
+            product_id := product->Get("id")->GetInt();
+            product_title := product->Get("title")->GetString();
+            "\tid={$product_id}, title: '{$product_title}'"->PrintLine();
+         };
+      };
+   };
+};
+	```
 	~#
 	class JsonParser {
 		@input : Char[];

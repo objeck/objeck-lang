@@ -490,10 +490,14 @@ size_t MemoryManager::AlignMemorySize(size_t size) {
   return 0;
 }
 
-void MemoryManager::ClearFreeMemory(bool all) {
+void MemoryManager::ClearFreeMemory(size_t* op_stack, long stack_pos, bool all) {
 #ifndef _GC_SERIAL
   MUTEX_LOCK(&free_memory_cache_lock);
 #endif
+  if(op_stack) {
+    CollectAllMemory(op_stack, stack_pos);
+  }
+
   std::unordered_map<size_t, std::list<size_t*>*>::iterator iter = free_memory_cache.begin();
   for(; iter != free_memory_cache.end(); ++iter) {
     std::list<size_t*>* free_cache = iter->second;
