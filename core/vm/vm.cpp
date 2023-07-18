@@ -64,10 +64,6 @@ int Execute(const int argc, const char* argv[])
     }
 #endif
 
-    // clean up
-    delete[] op_stack;
-    op_stack = nullptr;
-    
 #ifdef _SANITIZE
 #ifdef _DEBUG
     std::wcout << L"# final std::stack: pos=" << (*stack_pos) << L" #" << std::endl;
@@ -76,26 +72,26 @@ int Execute(const int argc, const char* argv[])
         std::wcout << L"dump: value=" << *(stack_pos + 1) << std::endl;
       }
     }
-
     assert(!(*stack_pos));
 #endif
-
-
-    delete stack_pos;
-    stack_pos = nullptr;
+    
 
     Runtime::StackInterpreter::RemoveThread(intpr);
     Runtime::StackInterpreter::HaltAll();
 
     Runtime::StackInterpreter::Clear();
-    MemoryManager::Clear();
+    MemoryManager::Clear(op_stack, *stack_pos);
 
     delete intpr;
     intpr = nullptr;
-
-    Runtime::StackInterpreter::Clear();
-    MemoryManager::Clear();
 #endif
+
+    // clean up
+    delete[] op_stack;
+    op_stack = nullptr;
+
+    delete stack_pos;
+    stack_pos = nullptr;
     
 #ifdef _TIMING    
     clock_t end = clock();
