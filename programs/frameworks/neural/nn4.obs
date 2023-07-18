@@ -21,7 +21,7 @@ class NeuralNetwork {
 		hidden_nodes := 200;
 		output_nodes := 10;
 		learning_rate := 0.2;
-		epoch := 7;
+		epoch := 9;
 
 		value := IntRef->New();
 		if(args->Size() = 2) {

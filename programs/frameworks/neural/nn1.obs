@@ -8,8 +8,8 @@ class NeuralNetwork​ {
 		hidden := 3;
 		output := 3;
 		rate := 0.3;
-
-		n := NeuralNetwork​->New(input, hidden, output, rate);
+		
+		n := NeuralNetwork->New(input, hidden, output, rate);
 	}
 
 	New(input : Int, hidden : Int, output : Int, rate : Float) {
