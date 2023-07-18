@@ -111,12 +111,8 @@ class SnippetParser {
 				label ')':
 				label '~':
 				label '#':
+				label '`':
 				label '\0': {
-					done := true;
-				}
-
-				label '`': {
-"1111111111111111111111111111111"->PrintLine();			
 					done := true;
 				}
 
@@ -466,11 +462,8 @@ class Snippet {
 				label '#':
 				label '<':
 				label '>':
+				label '`':
 				label '\0': {
-					done := true;
-				}
-
-				label '`': {
 					done := true;
 				}
 				
