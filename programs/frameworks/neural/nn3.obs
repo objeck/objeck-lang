@@ -14,11 +14,11 @@ class NeuralNetwork {
 		}
 	}
 
-	function : Brun(left : Bool, right : Bool) ~ Nil {
+	function : native : Brun(left : Bool, right : Bool) ~ Nil {
 		input_nodes := 2;
 		hidden_nodes := 2;
 		output_nodes := 1;
-		learning_rate := 0.175;
+		learning_rate := 0.15;
 		iterations := 5000;
 
 		# ---
