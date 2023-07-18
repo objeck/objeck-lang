@@ -34,7 +34,22 @@ bundle Query.RegEx {
 		<li>white space &#8208; \s</li>
 		<li>not white space &#8208; \S</li>
 		<li>repeat &#8208; {least, most}
-	</ul>		
+	</ul>
+	
+	```
+output := HttpsClient->New()->QuickGet(Web.HTTP.Url->New(url))->ToString();
+output_len := output->Size();
+"URL: {$input}, read: {$output_len} character(s)"->PrintLine();
+
+"running regex..."->PrintLine();      
+expr := "(href|HREF|src|SRC)=(\"|')(http://|https://|/)?((\\w|\\d|-|_)+(\\.|/)?)+(\\?(\\w|\\d|-|_)+=(\\w|\\d|-|_)+)?(&(\\w|\\d|-|_)+=(\\w|\\d|-|_)+)?(\"|')";
+
+found := Query.RegEx.RegEx->New(expr)->Find(output)<Result>;
+"---"->PrintLine();
+each(i : found) {
+   found->Get(i)->ToString()->PrintLine();
+};
+	```		
 	~#
 	
 	class RegEx {
