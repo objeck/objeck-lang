@@ -471,7 +471,6 @@ class Snippet {
 				}
 
 				label '`': {
-"22222222222222222222222222"->PrintLine();			
 					done := true;
 				}
 				

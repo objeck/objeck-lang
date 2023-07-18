@@ -1946,7 +1946,7 @@ void Runtime::Debugger::ClearProgram(bool clear_loader) {
   }
 
   if(loader) {
-    MemoryManager::Clear();
+    MemoryManager::Clear(nullptr, 0);
   }
 
   is_step_into = is_next_line = is_step_out = false;

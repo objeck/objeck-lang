@@ -2191,7 +2191,7 @@ bundle Game.SDL2 {
 
 		#~
 		Query or change current state of Game Controller events
-		@param state can be one of `SDL_QUERY`, `SDL_IGNORE`, or `SDL_ENABLE`
+		@param state can be one of 'SDL_QUERY', 'SDL_IGNORE', or 'SDL_ENABLE'
 		@return the same value passed to the function, with exception to -1, which will return the current state
 		~#
 		function : EventState(state : Int) ~ Int {
