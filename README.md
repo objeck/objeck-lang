@@ -22,7 +22,7 @@ class Hello {
 }
 ```
 
-To get started, take a look at the [language guide](https://objeck.org/getting_started.html) and [code examples](https://github.com/objeck/objeck-lang/tree/master/programs/examples). If you want to contribute, look at the [system architecture](https://github.com/objeck/objeck-lang/tree/master/core).
+To get started, take a look at the [language guide](https://objeck.org/getting_started.html) and [code examples](https://github.com/objeck/objeck-lang/tree/master/programs/examples). If you want to contribute, start with the [system architecture](https://github.com/objeck/objeck-lang/tree/master/core).
 
 ## Key Features
 ### [Object-oriented](https://en.wikipedia.org/wiki/Object-oriented_programming)
