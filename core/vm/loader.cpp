@@ -45,7 +45,7 @@ void Loader::LoadConfiguration()
   if(in.good()) {
     std::string line;
     do {
-      getline(in, line);
+      std::getline(in, line);
       size_t pos = line.find('=');
       if(pos != std::string::npos) {
         std::string name = line.substr(0, pos);
