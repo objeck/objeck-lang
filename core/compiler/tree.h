@@ -3689,6 +3689,7 @@ namespace frontend {
       
       // clear factories
       TreeFactory::Instance()->Clear();
+      TypeFactory::Instance()->Clear();
     }
 
 #ifdef _DIAG_LIB
