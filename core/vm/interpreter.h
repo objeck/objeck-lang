@@ -73,6 +73,11 @@ namespace Runtime {
     static StackProgram* program;
     static std::set<StackInterpreter*> intpr_threads;
     static std::stack<StackFrame*> cached_frames;
+
+#ifdef _WIN32
+    static bool is_stdio_binary;
+#endif
+
 #ifdef _WIN32
     static CRITICAL_SECTION cached_frames_cs;
     static CRITICAL_SECTION intpr_threads_cs;
@@ -345,6 +350,20 @@ namespace Runtime {
   public:
 		// initialize the runtime system
     static void Initialize(StackProgram* p);
+
+#ifdef _WIN32
+    inline static void SetBinaryStdio(bool i) {
+      is_stdio_binary = i;
+    }
+
+    inline static bool IsBinaryStdio() {
+      return is_stdio_binary;
+    }
+#else 
+    inline static bool IsBinaryStdio() {
+      return false;
+    }
+#endif
 
     static void AddThread(StackInterpreter* i) {
 #ifdef _WIN32
