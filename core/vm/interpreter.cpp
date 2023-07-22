@@ -60,6 +60,10 @@ std::stack<StackFrame*> StackInterpreter::cached_frames;
 std::set<StackInterpreter*> StackInterpreter::intpr_threads;
 
 #ifdef _WIN32
+bool StackInterpreter::is_stdio_binary;
+#endif
+
+#ifdef _WIN32
 CRITICAL_SECTION StackInterpreter::cached_frames_cs;
 CRITICAL_SECTION StackInterpreter::intpr_threads_cs;
 #else

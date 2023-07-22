@@ -43,7 +43,7 @@
 extern "C"
 {
 #ifdef _WIN32
-  __declspec(dllexport) int Execute(const int argc, const char* argv[]);
+  __declspec(dllexport) int Execute(const int argc, const char* argv[], bool is_stdio_binary);
 #else
   int Execute(const int argc, const char* argv[]);
 #endif

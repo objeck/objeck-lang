@@ -45,7 +45,7 @@
 #include <codecvt>
 #endif
 
-void SetStdIo(const char* value);
+bool SetStdIo(const char* value);
 
 // program start
 int main(const int argc, const char* argv[])
@@ -81,11 +81,12 @@ int main(const int argc, const char* argv[])
     //
 
     // check for OBJECK_STDIO
+    bool is_stdio_binary = false;
     size_t value_len;
     char value[SMALL_BUFFER_MAX];
     if(!set_stdio_param) {
       if(!getenv_s(&value_len, value, SMALL_BUFFER_MAX, "OBJECK_STDIO") && strlen(value) > 0) {
-        SetStdIo(value);
+        is_stdio_binary = SetStdIo(value);
       }
       // set default as utf8
       else {
@@ -124,7 +125,7 @@ int main(const int argc, const char* argv[])
     }
     else {
       // execute program
-      status = Execute(argc - vm_param_count, argv + vm_param_count);
+      status = Execute(argc - vm_param_count, argv + vm_param_count, is_stdio_binary);
     }
 
     // release Winsock
@@ -164,7 +165,7 @@ int main(const int argc, const char* argv[])
   return 1;
 }
 
-void SetStdIo(const char* value)
+bool SetStdIo(const char* value)
 {
   // set as binary
   if(!strcmp("binary", value)) {
@@ -176,6 +177,8 @@ void SetStdIo(const char* value)
     if(_setmode(_fileno(stdout), _O_BINARY) < 0) {
       exit(1);
     }
+
+    return true;
 #endif
   }
   // set as utf16
@@ -212,4 +215,6 @@ void SetStdIo(const char* value)
     }
 #endif
   }
+
+  return false;
 }

@@ -35,7 +35,7 @@
 #define USAGE_ERROR -1
 
 // common execution point for all platforms
-int Execute(const int argc, const char* argv[])
+int Execute(const int argc, const char* argv[], bool is_stdio_binary)
 {
   if(argc > 1) {
     wchar_t** commands = ProcessCommandLine(argc, argv);
@@ -52,6 +52,7 @@ int Execute(const int argc, const char* argv[])
 #endif
     // start the interpreter...
     Runtime::StackInterpreter* intpr = new Runtime::StackInterpreter(Loader::GetProgram());
+    Runtime::StackInterpreter::SetBinaryStdio(is_stdio_binary);
     Runtime::StackInterpreter::AddThread(intpr);
     intpr->Execute(op_stack, stack_pos, 0, loader.GetProgram()->GetInitializationMethod(), nullptr, false);
     
