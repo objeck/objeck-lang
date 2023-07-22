@@ -3011,7 +3011,14 @@ bool TrapProcessor::StdInString(StackProgram* program, size_t* inst, size_t*& op
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(array) {
     std::wstring wbuffer;
-    std::getline(std::wcin, wbuffer);
+    if(Runtime::StackInterpreter::IsBinaryStdio()) {
+      std::string buffer;
+      std::getline(std::cin, buffer);
+      wbuffer = BytesToUnicode(buffer);
+    }
+    else {
+      std::getline(std::wcin, wbuffer);
+    }
 
     // copy to dest
     wchar_t* dest = (wchar_t*)(array + 3);
