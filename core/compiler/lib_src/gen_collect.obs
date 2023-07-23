@@ -13,7 +13,7 @@ Collection collections (-lib gen_collect)
 bundle Collection {
 	#~
 	MRU/LRU object cache
-
+	
 	```
 cache := Collection.Cache->New(Cache->Type->LRU, 3)<IntRef, String>;
 cache->Insert(415, "San Francisco");
