@@ -11,6 +11,13 @@ Web client support (-lib net)
 bundle Web.HTTP {
 	#~
 	HTTPS client
+
+	```
+html := HttpsClient->QuickGet(Web.HTTP.Url->New("https://www.nasa.gov")->ToString();
+if(html <> Nil) {
+   html->PrintLine();
+};
+	```
 	~#
 	class HttpsClient {
 		@request_headers : Hash<String, String>;
@@ -534,7 +541,31 @@ Web server support (-lib net)
 ~#
 bundle Web.HTTP.Server {
 	#~
-	Request handler for HTTPS GET and POST requests
+	Request handler for HTTPS GET and POST requests. <p>Sample <a href="https://github.com/objeck/objeck-web-server/blob/master/config/simple_config.json" target="_blank">configuration</a> file<./p>
+
+	```
+use Web.HTTP.Server;
+
+class Test {
+   function : Main(args : String[]) ~ Nil {
+      WebServer->ServeSecure("config/simple_config.json");
+   }
+}
+
+class RequestHandler from HttpsRequestHandler {
+   New() {
+      Parent();
+   }
+   
+   method : ProcessGet(request : Request, response : Response) ~ Bool {
+      return response->HasStaticHandler();
+   }
+
+   method : ProcessPost(request : Request, response : Response) ~ Bool {
+      return false;
+   }
+}      
+	```
 	~#
 	class HttpsRequestHandler from System.Concurrency.Thread {
 		@client : TCPSecureSocket;
