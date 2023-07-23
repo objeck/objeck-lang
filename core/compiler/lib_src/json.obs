@@ -12,6 +12,22 @@ Support for parsing JSON strings and documents (-lib json.obl)
 bundle Data.JSON {
 	#~
 	Table driven JSON builder
+
+	```
+builder := JsonBuilder->New();
+money := builder->PushObject();
+
+money->Insert("type", "usd");
+money->Insert("amount", "1013");
+
+deposits := JsonElement->New(JsonElement->JsonType->ARRAY);
+deposits->Add(115);
+deposits->Add(318);
+deposits->Add(580);
+money->Insert("deposits", deposits);
+
+builder->Pop()->ToString()->PrintLine();
+	```
 	~#
 	class JsonBuilder {
 		@stack : Stack<JsonElement>;
