@@ -60,8 +60,7 @@ value->Size()->PrintLine();
 ```
 #### Reflection
 ```ruby
-value := "Hello World!";
-klass := value->GetClass();
+klass := "Hello World!"->GetClass();
 klass->GetName()->PrintLine();
 klass->GetMethodNumber()->PrintLine();
 ```
