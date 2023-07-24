@@ -1362,11 +1362,11 @@
 			</v:userDefs>
 			<g id="shadow72-535" v:groupContext="shadow" v:shadowOffsetX="1.44" v:shadowOffsetY="-1.44" v:shadowType="1"
 					transform="matrix(1,0,0,1,1.44,1.44)" class="st1">
-				<path d="M28.8 748.8 A38.5574 121.697 0 0 1 14.4 676.08 L14.4 385.2 L0 385.2 L14.4 385.2 L14.4 94.32 A38.5574 121.697
-							 0 0 1 28.8 21.6" class="st21"/>
+				<path d="M28.8 748.8 A38.5574 115.672 0 0 1 14.4 679.68 L14.4 403.2 L0 403.2 L14.4 403.2 L14.4 126.72 A38.5574 115.672
+							 0 0 1 28.8 57.6" class="st21"/>
 			</g>
-			<path d="M28.8 748.8 A38.5574 121.697 0 0 1 14.4 676.08 L14.4 385.2 L0 385.2 L14.4 385.2 L14.4 94.32 A38.5574 121.697
-						 0 0 1 28.8 21.6" class="st22"/>
+			<path d="M28.8 748.8 A38.5574 115.672 0 0 1 14.4 679.68 L14.4 403.2 L0 403.2 L14.4 403.2 L14.4 126.72 A38.5574 115.672
+						 0 0 1 28.8 57.6" class="st22"/>
 		</g>
 		<g id="shape71-541" v:mID="71" v:groupContext="shape" v:layerMember="0" transform="translate(12.0459,-344.102)">
 			<title>Process.71</title>
