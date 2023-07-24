@@ -15,7 +15,7 @@ class TicTacToe {
 		MIN := -1000,
 		MAX := 1000
 	}
-
+	
 	function : Main(args : String[]) ~ Nil {
 		cpu_score := 0;
 		player_score := 0;
