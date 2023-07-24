@@ -12,11 +12,13 @@ Objeck release process
 ---
 3. Update system libraries on Linux x64; run SA; push code
 4. Full build on Windows (reminder: escape signtool password) with LSP binaries; push code; copy binaries to network directory
-5. Build other OSs and copy binaries to network directory (9 items, with 'old' in total)
-	a. Linux x64
-	b. Linux arm64
-	c. macOS x64
-	d. macOS arm64
+5. Build other OSs and copy binaries to network directory (8 items, including 'old' directory)
+	a. Windows x64 (msi, achieve)
+	b. Linux x64 (archive)
+	c. Linux arm64 (archive)
+	d. macOS arm64 (archive)
+	e. LSP (archive)
+	f. readme.txt
 ---
 6. Run binary renaming tool
 7. Upload binaries to Sourceforge and GitHub
