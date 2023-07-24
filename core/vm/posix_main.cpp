@@ -23,7 +23,7 @@
  * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
  * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED
  * TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
- *  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
  * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
@@ -39,10 +39,6 @@ using namespace std;
 int main(const int argc, const char* argv[])
 {
   if(argc > 1) {
-    //
-    // Note: OBJECK_STDIO not needed for POSIX environments
-    //
-    
     // enable UTF-8 environment
 #if defined(_X64)
     char* locale = setlocale(LC_ALL, ""); 
@@ -59,7 +55,14 @@ int main(const int argc, const char* argv[])
     setlocale(LC_ALL, "en_US.utf8"); 
 #endif
     
+    //
+    // Note: OBJECK_STDIO not needed for POSIX-like environments, ignore for MSYS2
+    //
+#ifdef _MSYS2
+    return Execute(argc, argv, false);
+#else    
     return Execute(argc, argv);
+#endif    
   } 
   else {
     wstring usage;
