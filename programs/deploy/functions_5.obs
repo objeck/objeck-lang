@@ -15,7 +15,7 @@ class FofG {
 	function : F(a : Int) ~ Int {
 		return a + 14;
 	}
-
+	
 	function : G(a : Int) ~ Int {
 		return a + 15;
 	}

@@ -465,10 +465,9 @@ class LibraryClass {
        generic_interface = frontend::TypeFactory::Instance()->MakeType(frontend::CLASS_TYPE, g);
      }
      is_generic = true;
+     
      library = nullptr;
-
-     cls_entries = nullptr;
-     inst_entries = nullptr;
+     cls_entries= inst_entries = nullptr;
    }
    
    LibraryClass(const std::wstring& n, const std::wstring& p, const std::vector<std::wstring> i, bool is, bool ip, const std::vector<std::wstring> g, 
