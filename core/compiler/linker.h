@@ -466,6 +466,9 @@ class LibraryClass {
      }
      is_generic = true;
      library = nullptr;
+
+     cls_entries = nullptr;
+     inst_entries = nullptr;
    }
    
    LibraryClass(const std::wstring& n, const std::wstring& p, const std::vector<std::wstring> i, bool is, bool ip, const std::vector<std::wstring> g, 
@@ -484,7 +487,6 @@ class LibraryClass {
 
     lib_children.clear();
 
-/*
     while(!generic_classes.empty()) {
       LibraryClass* tmp = generic_classes.back();
       generic_classes.pop_back();
@@ -492,7 +494,6 @@ class LibraryClass {
       delete tmp;
       tmp = nullptr;
     }
-*/
 
     // clean up
     if(cls_entries) {
