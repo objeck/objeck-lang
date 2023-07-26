@@ -152,12 +152,21 @@ void ObjeckLang::Execute()
   const std::wstring output = intpr->GetOutputBuffer().str();
 #endif
 
+  Runtime::StackInterpreter::RemoveThread(intpr);
+  Runtime::StackInterpreter::HaltAll();
+
+  Runtime::StackInterpreter::Clear();
+  MemoryManager::Clear(op_stack, *stack_pos);
+
+  delete intpr;
+  intpr = nullptr;
+
   // clean up
   delete[] op_stack;
   op_stack = nullptr;
 
-  delete intpr;
-  intpr = nullptr;
+  delete stack_pos;
+  stack_pos = nullptr;
 
 #ifdef _MODULE_STDIO
   return output;

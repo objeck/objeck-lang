@@ -455,9 +455,8 @@ void Loader::LoadInitializationCode(StackMethod* method)
 
   instrs.push_back(new StackInstr(-1, LOAD_LOCL_INT_VAR, 0L, LOCL));
   instrs.push_back(new StackInstr(-1, LOAD_INST_MEM));
-  instrs.push_back(new StackInstr(-1, MTHD_CALL, (long)start_class_id, 
-          (long)start_method_id, 0L));
-  instrs.push_back(new StackInstr(-1, RTRN));
+  instrs.push_back(new StackInstr(-1, MTHD_CALL, (long)start_class_id, (long)start_method_id, 0L));
+  instrs.push_back(cached_instrs[RTRN]);
 
   // copy and set instructions
   StackInstr** mthd_instrs = new StackInstr*[instrs.size()];
