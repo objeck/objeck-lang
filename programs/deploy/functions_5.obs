@@ -23,7 +23,7 @@ class FofG {
 	function : native : Compose(x : Int) ~ Int {
 		return @f(@g(x));
 	}
-
+	
 	function : Composer(f : (Int) ~ Int, g : (Int) ~ Int) ~ (Int) ~ Int {
 		@f := f;
 		@g := g;
