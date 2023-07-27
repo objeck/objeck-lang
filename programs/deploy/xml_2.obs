@@ -47,7 +47,7 @@ class Test {
 			results := parser->FindElements("/inventory/section/item/price")<XmlElement>;
 			if(results <> Nil) {
 				each(i : results) {					
-					element := results->Get(i)->As(XmlElement);
+					element := results->Get(i);
 					element->GetContent()->PrintLine();
 				};
 			};
