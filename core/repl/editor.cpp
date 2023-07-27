@@ -408,6 +408,7 @@ void Editor::DoHelp()
   std::wcout << "  /m: insert multiple lines below" << std::endl;
   std::wcout << "  /r: replace line" << std::endl;
   std::wcout << "  /d: delete line" << std::endl;
+  std::wcout << "  /a: add command line arguments" << std::endl;
   std::wcout << "  /u: change library use statements" << std::endl;
   std::wcout << "  /o: open file by name" << std::endl;
   std::wcout << "  /s: save buffer or current file" << std::endl;
