@@ -991,6 +991,7 @@ if(parser->Parse()) {
 		
 		#~
 		XmlElement types
+		@class XmlElement
 		~#
 		enum Type {
 			DECLARATION,

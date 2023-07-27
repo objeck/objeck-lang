@@ -87,6 +87,7 @@ bundle System {
 		#~
 		Number formats.<br/>
 		<p><pre>Number->Format</pre></p>
+		@class Number
 		~#
 		enum Format := -20 {
 			FIXED,
@@ -4839,6 +4840,7 @@ each(i : cities) {
 		#~
 		Runtime signal types.<br/>
 		<p><pre>Runtime->Signal</pre></p>
+		@class Runtime
 		~#
 		enum Signal := -40 {
 			SIGABRT,
@@ -6791,6 +6793,7 @@ bundle System.IO {
 		
 		#~
 		Pipe modes
+		@class Pipe
 		~#
 		enum Mode := -4 {
 			OPEN,
@@ -9301,6 +9304,7 @@ bundle System.Introspection {
 		#~
 		Data type types<br/>
 		<p><pre>DataType->TypeId</pre></p>
+		@class DataType
 		~#
 		enum TypeId := -60 {
 			BOOL,

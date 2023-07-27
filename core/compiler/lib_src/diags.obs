@@ -354,6 +354,7 @@ bundle System.Diagnostics {
 	class Result {
 		#~
 		Analysis type
+		@class Result
 		~#
 		consts Kind {
 			ERROR := 101,
