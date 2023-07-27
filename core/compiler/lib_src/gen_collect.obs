@@ -48,6 +48,7 @@ each(value := values) {
 
 		#~
 		Cache type
+		@class Cache
 		~#
 		enum Type {
 			LRU,
@@ -305,6 +306,7 @@ hash->Has(408)->PrintLine();
 
 		#~
 		Hash table capacity: SMALL <= 64 items, MEDIUM <= 256, LARGE <= 2048, EX-LARGE >= 8192
+		@class Hash
 		~#
 		consts Capacity {
 			SMALL := 83,
