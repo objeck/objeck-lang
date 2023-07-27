@@ -25,6 +25,8 @@ class Hello {
 To get started, take a look at the [language guide](https://objeck.org/getting_started.html) and [code examples](https://github.com/objeck/objeck-lang/tree/master/programs/examples). If you want to contribute, start with the [system architecture](https://github.com/objeck/objeck-lang/tree/master/core).
 
 ## Key Features
+Start with the API [documentation](https://www.objeck.org/doc/api/index.html).
+
 ### [Object-oriented](https://en.wikipedia.org/wiki/Object-oriented_programming)
   
 #### Inheritance
