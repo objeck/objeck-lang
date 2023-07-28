@@ -35,8 +35,8 @@
 #include "instrs.h"
 #include "traps.h"
 
-#define MAGIC_NUM_EXE 0xffbe // bitmask 'e'
-#define MAGIC_NUM_LIB 0xffb6 // bitmask 'k'
+#define MAGIC_NUM_EXE 0x0065 // 'e'
+#define MAGIC_NUM_LIB 0x0049 // 'k'
 
 #define VER_NUM 202380
 #define VERSION_STRING L"2023.8.0"
