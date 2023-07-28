@@ -61,8 +61,8 @@ void Loader::LoadConfiguration()
 void Loader::Load()
 {
   const int ver_num = ReadInt();
-  if(ver_num != VER_NUM) {
-    std::wcerr << L"This executable appears to be invalid or compiled with a different version of the toolchain." << std::endl;
+  if(ver_num != INSTR_VER_NUM) {
+    std::wcerr << L"This executable appears to be invalid or compiled with an incompatible version of the tool chain." << std::endl;
     exit(1);
   } 
 
