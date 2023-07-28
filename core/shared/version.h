@@ -35,12 +35,12 @@
 #include "instrs.h"
 #include "traps.h"
 
-#define MAGIC_NUM_WEB 0xdddf
-#define MAGIC_NUM_LIB 0xddde
-#define MAGIC_NUM_EXE 0xdddd
-#define INSTR_VER_NUM InstructionType::END_STMTS * 10000 + Traps::EXIT
-// #define VER_NUM 202380
+#define MAGIC_NUM_EXE 0xffbe // bitmask 'e'
+#define MAGIC_NUM_LIB 0xffb6 // bitmask 'k'
 
+#define VER_NUM 202380
 #define VERSION_STRING L"2023.8.0"
+
+#define INSTR_VER_NUM InstructionType::END_STMTS * 10000 + Traps::EXIT
 
 #endif
