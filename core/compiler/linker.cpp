@@ -624,11 +624,11 @@ void Library::LoadFile(const std::wstring &file_name)
     }
 
     const int magic_num = ReadInt();
-    if(magic_num == 0xdddd) {
+    if(magic_num == MAGIC_NUM_EXE) {
       std::wcerr << L"Unable to use executable '" << file_name << L"' as linked library." << std::endl;
       exit(1);
     }
-    else if(magic_num != 0xddde) {
+    else if(magic_num != MAGIC_NUM_LIB) {
       std::wcerr << L"Unable to link invalid library file '" << file_name << L"'." << std::endl;
       exit(1);
     }
