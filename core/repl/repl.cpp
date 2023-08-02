@@ -47,10 +47,10 @@ int main(int argc, char* argv[])
   SetEnv();
 
   Editor editor;
-  if(argc == 3 && argc, !strcmp("-open", argv[1])) {
+  if(argc == 3 && !strcmp("-open", argv[1])) {
     editor.Edit(BytesToUnicode(argv[2]), true);
   }
-  else if(argc == 3 && argc, !strcmp("-src", argv[1])) {
+  else if(argc == 3 && !strcmp("-src", argv[1])) {
     editor.Edit(BytesToUnicode(argv[2]), false);
   }
   else if(argc > 1) {
