@@ -432,6 +432,7 @@ void Editor::DoHelp()
 {
   std::wcout << "=> Commands" << std::endl;
   std::wcout << "  /q: quit" << std::endl;
+  std::wcout << "  /x: reset" << std::endl;
   std::wcout << "  /h: help" << std::endl;
   std::wcout << "  /l: list program" << std::endl;
   std::wcout << "  /g: goto line" << std::endl;
@@ -443,7 +444,6 @@ void Editor::DoHelp()
   std::wcout << "  /u: change library use statements" << std::endl;
   std::wcout << "  /o: open file by name" << std::endl;
   std::wcout << "  /s: save buffer or current file" << std::endl;
-  std::wcout << "  /x: reset" << std::endl;
   std::wcout << "---" << std::endl;
   std::wcout << "User guide: https://objeck.org/getting_started.html" << std::endl;
 }
