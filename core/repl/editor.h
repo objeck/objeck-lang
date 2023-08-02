@@ -149,7 +149,7 @@ public:
   }
 
   // start REPL loop
-  void Edit(std::wstring input, int mode, bool is_exit);
+  void Edit(std::wstring input, std::wstring libs, int mode, bool is_exit);
 
   // commands
   void DoReset();
