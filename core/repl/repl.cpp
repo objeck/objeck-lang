@@ -40,21 +40,45 @@ int main(int argc, char* argv[])
 #ifdef _DEBUG
   OpenLogger("debug.log");
 #endif
+
+  // parse command line
+  std::wstring cmd_line;
+  std::map<const std::wstring, std::wstring> arguments = ParseCommnadLine(argc, argv, cmd_line);
   
   SetEnv();
 
-  Editor editor;
-  if(argc == 3 && !strcmp("-open", argv[1])) {
-    editor.Edit(BytesToUnicode(argv[2]), true);
+  std::wstring input;
+  int mode = 0;
+  bool is_exit = false;
+
+  auto result = arguments.find(FILE_PARAM);
+  if(result != arguments.end()) {
+    input = result->second;
+    mode = 1;
+    arguments.erase(FILE_PARAM);
   }
-  else if(argc == 3 && !strcmp("-src", argv[1])) {
-    editor.Edit(BytesToUnicode(argv[2]), false);
+
+  result = arguments.find(INLINE_PARAM);
+  if(result != arguments.end()) {
+    input = result->second;
+    mode = 2;
+    arguments.erase(INLINE_PARAM);
   }
-  else if(argc > 1) {
+
+  result = arguments.find(EXIT_PARAM);
+  if(result != arguments.end()) {
+    is_exit = true;
+    arguments.erase(EXIT_PARAM);
+  }
+
+  // input check
+  if(arguments.size()) {
     Usage();
   }
+  // start repl loop
   else {
-    editor.Edit();
+    Editor editor;
+    editor.Edit(input, mode, is_exit);
   }
 
 #ifdef _DEBUG
