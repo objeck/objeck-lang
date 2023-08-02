@@ -149,7 +149,7 @@ public:
   }
 
   // start REPL loop
-  void Edit(std::wstring filename = L"");
+  void Edit(std::wstring input = L"", bool is_file = false);
 
   // commands
   void DoReset();
