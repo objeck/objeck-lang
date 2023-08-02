@@ -32,9 +32,6 @@
 #include "repl.h"
 #include <codecvt>
 
-// forward declarations
-void Usage();
-
 /****************************
 * Program start
 ****************************/

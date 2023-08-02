@@ -38,5 +38,6 @@
 #define SYNTAX_ERROR "Huh, cannot do that. Try help '/h'?"
 
 static void SetEnv();
+static void Usage();
 
 #endif
