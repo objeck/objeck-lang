@@ -264,11 +264,24 @@ Editor::Editor() : doc(DEFAULT_FILE_NAME)
   cur_pos = doc.Reset();
 }
 
-void Editor::Edit()
+void Editor::Edit(std::wstring filename)
 {
   std::wcout << L"Objeck REPL (" << VERSION_STRING << L")\n['/h' for help]\n---" << std::endl;
 
-  std::wstring in; bool done = false;
+  // load file from command line
+  if(!filename.empty()) {
+    filename.insert(0, L"/o ");
+    if(DoLoadFile(filename)) {
+      DoExecute();
+    }
+    else {
+      std::wcout << L"Unable to read file: '" << filename << L'.' << std::endl;
+      DoReset();
+    }
+  }
+
+  std::wstring in; 
+  bool done = false;
   do {
     std::wcout << L"> ";
     std::getline(std::wcin, in);
@@ -336,7 +349,8 @@ void Editor::Edit()
           DoExecute();
         }
         else {
-          std::wcout << L"Unable to read file." << std::endl;
+          std::wcout << L"Unable to read file: '" << in << L'.' << std::endl;
+          DoReset();
         }
         break;
 
