@@ -658,32 +658,38 @@ static std::map<const std::wstring, std::wstring> ParseCommnadLine(int argc, cha
         pos++;
       }
       const std::wstring key = path_string.substr(start, pos - start);
-      // parse value
+      
+      // parse white space
       while(pos < end && (path_string[pos] == L' ' || path_string[pos] == L'\t')) {
         pos++;
       }
-      start = pos;
-      bool is_string = false;
-      if(pos < end && path_string[pos] == L'\'') {
-        is_string = true;
-        start++;
-        pos++;
-      }
-      bool not_end = true;
-      while(pos < end && not_end) {
-        // check for end
-        if(is_string) {
-          not_end = path_string[pos] != L'\'';
-        }
-        else {
-          not_end = !(path_string[pos] == L' ' || path_string[pos] == L'\t');
-        }
-        // update position
-        if(not_end) {
+
+      // parse value
+      std::wstring value;
+      if(pos < end && path_string[pos] != L'-') {
+        start = pos;
+        bool is_string = false;
+        if(pos < end && path_string[pos] == L'\'') {
+          is_string = true;
+          start++;
           pos++;
         }
+        bool not_end = true;
+        while(pos < end && not_end) {
+          // check for end
+          if(is_string) {
+            not_end = path_string[pos] != L'\'';
+          }
+          else {
+            not_end = !(path_string[pos] == L' ' || path_string[pos] == L'\t');
+          }
+          // update position
+          if(not_end) {
+            pos++;
+          }
+        }
+        value = path_string.substr(start, pos - start);
       }
-      std::wstring value = path_string.substr(start, pos - start);
 
       // close string and add
       if(path_string[pos] == L'\'') {
