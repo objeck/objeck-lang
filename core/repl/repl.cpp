@@ -48,6 +48,7 @@ int main(int argc, char* argv[])
   SetEnv();
 
   std::wstring input;
+  std::wstring libs;
   int mode = 0;
   bool is_exit = false;
 
@@ -71,6 +72,12 @@ int main(int argc, char* argv[])
     arguments.erase(EXIT_PARAM);
   }
 
+  result = arguments.find(LIBS_PARAM);
+  if(result != arguments.end()) {
+    libs = result->second;
+    arguments.erase(LIBS_PARAM);
+  }
+
   // input check
   if(arguments.size()) {
     Usage();
@@ -78,7 +85,7 @@ int main(int argc, char* argv[])
   // start repl loop
   else {
     Editor editor;
-    editor.Edit(input, mode, is_exit);
+    editor.Edit(input, libs, mode, is_exit);
   }
 
 #ifdef _DEBUG
@@ -144,6 +151,6 @@ void Usage()
   std::wcout << L"This is free software; see the source for copying conditions.There is NO" << std::endl;
   std::wcout << L"warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE." << std::endl;
   std::wcout << L"---" << std::endl << std::endl;
-  std::wcerr << L"usage: obi [-help] [-open <filename>] [-src <source>]" << std::endl;
+  std::wcerr << L"usage: obi [-help] [-file <filename>] [-inline <source>] [-exit (exit shell after execution)] [-lib <include libraries using ','>" << std::endl;
   exit(1);
 }

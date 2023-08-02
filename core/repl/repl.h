@@ -38,6 +38,7 @@
 #define SYNTAX_ERROR "Huh, cannot do that. Try help '/h'?"
 #define FILE_PARAM L"file"
 #define INLINE_PARAM L"inline"
+#define LIBS_PARAM L"lib"
 #define EXIT_PARAM L"exit"
 
 static void SetEnv();
