@@ -264,12 +264,17 @@ Editor::Editor() : doc(DEFAULT_FILE_NAME)
   cur_pos = doc.Reset();
 }
 
-void Editor::Edit(std::wstring input, int mode, bool is_exit)
+void Editor::Edit(std::wstring input, std::wstring libs, int mode, bool is_exit)
 {
   std::wcout << L"Objeck REPL (" << VERSION_STRING << L")\n['/h' for help]\n---" << std::endl;
 
   // load file from command line
   if(!input.empty()) {
+    // set libraries
+    if(!libs.empty()) {
+      lib_uses = libs;
+    }
+
     // file name
     if(mode == 1) {
       input.insert(0, L"/o ");
