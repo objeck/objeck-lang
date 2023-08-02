@@ -47,7 +47,38 @@ int main(int argc, char* argv[])
   SetEnv();
 
   Editor editor;
-  editor.Edit();
+  if(argc == 3 && argc, !strcmp("-open", argv[1])) {
+    editor.Edit(BytesToUnicode(argv[2]));
+  }
+  else if(argc > 1) {
+#if defined(_WIN64) && defined(_WIN32)
+    std::wcout << VERSION_STRING << L" Objeck (Windows x86_64)" << std::endl;
+#elif _WIN32
+    std::wcout << VERSION_STRING << L" Objeck (Windows x86)" << std::endl;
+#elif _OSX
+#ifdef _ARM64
+    std::wcout << VERSION_STRING << L" Objeck (macOS ARM64)" << std::endl;
+#else
+    std::wcout << VERSION_STRING << L" Objeck (macOS x86_64)" << std::endl;
+#endif
+#elif _X64
+    std::wcout << VERSION_STRING << L" Objeck (Linux x86_64)" << std::endl;
+#elif _ARM32
+    std::wcout << VERSION_STRING << L" Objeck (Linux ARMv7)" << std::endl;
+#else
+    std::wcout << VERSION_STRING << L" Objeck (Linux x86)" << std::endl;
+#endif 
+    std::wcout << L"---" << std::endl;
+    std::wcout << L"Copyright (c) 2023, Randy Hollines" << std::endl;
+    std::wcout << L"This is free software; see the source for copying conditions.There is NO" << std::endl;
+    std::wcout << L"warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE." << std::endl;
+    std::wcout << L"---" << std::endl << std::endl;
+    std::wcerr << L"usage: obi [-help] [-open filename]" << std::endl;
+    exit(1);
+  }
+  else {
+    editor.Edit();
+  }
 
 #ifdef _DEBUG
   CloseLogger();
