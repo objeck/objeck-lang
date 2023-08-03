@@ -1,5 +1,5 @@
 CC=g++
-ARGS=-O3 -Wall -std=c++17 -D_X64 -D_NO_JIT -D_NO_HALT -D_OBJECK_NATIVE_LIB_PATH -Wno-unused-function 
+ARGS=-O3 -Wall -std=c++17 -D_X64 -D_NO_HALT -D_OBJECK_NATIVE_LIB_PATH -Wno-unused-function 
 SRC=editor.o repl.o
 OBJ_LIBS=../module/module.a objeck.res
 MODULE_PATH=../module
