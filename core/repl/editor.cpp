@@ -266,10 +266,11 @@ Editor::Editor() : doc(DEFAULT_FILE_NAME)
 
 void Editor::Edit(std::wstring input, std::wstring libs, int mode, bool is_exit)
 {
-  std::wcout << L"Objeck REPL (" << VERSION_STRING << L")\n['/h' for help]\n---" << std::endl;
-
   // process command line
-  if(!input.empty()) {
+  if(input.empty()) {
+    std::wcout << L"Objeck REPL (" << VERSION_STRING << L")\n['/h' for help]\n---" << std::endl;
+  }
+  else {
     // set libraries
     if(!libs.empty()) {
       lib_uses = libs;
