@@ -1201,7 +1201,8 @@ void Scanner::ParseToken(int index)
     }
     // mark
     end_pos = buffer_pos - 1;
-    if(double_state == 1 || double_state == 2) {
+    // state 1, 2 or 3
+    if(double_state > 0 && double_state < 4) {
       ParseDouble(index);
     } 
     else if(hex_state == 2) {
