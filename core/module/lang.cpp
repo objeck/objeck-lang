@@ -43,16 +43,15 @@ ObjeckLang::~ObjeckLang()
 {
 }
 
-bool ObjeckLang::Compile(const std::wstring filename)
+bool ObjeckLang::Compile(const std::wstring file, const std::wstring opt)
 {
   const bool is_debug = false;
   const bool is_lib = false;
   const bool show_asm = false;
-  const std::wstring opt = L"s1";
   const std::wstring sys_lib_path = lib_uses;
 
   std::vector<std::pair<std::wstring, std::wstring> > programs;
-  programs.push_back(make_pair(filename + L".obs", source));
+  programs.push_back(make_pair(file + L".obs", source));
 
   // parse source code
   Parser parser(L"", false, programs);
@@ -71,7 +70,7 @@ bool ObjeckLang::Compile(const std::wstring filename)
       optimizer.Optimize();
 
       // emit target code
-      FileEmitter target(optimizer.GetProgram(), is_lib, is_debug, show_asm, filename + L".obe");
+      FileEmitter target(optimizer.GetProgram(), is_lib, is_debug, show_asm, file + L".obe");
       code = target.GetBinary();
 
       return code != nullptr;

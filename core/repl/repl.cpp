@@ -49,6 +49,7 @@ int main(int argc, char* argv[])
 
   std::wstring input;
   std::wstring libs;
+  std::wstring opt;
   int mode = 0;
   bool is_exit = false;
 
@@ -78,6 +79,12 @@ int main(int argc, char* argv[])
     arguments.erase(LIBS_PARAM);
   }
 
+  result = arguments.find(OPT_PARAM);
+  if(result != arguments.end()) {
+    opt = result->second;
+    arguments.erase(OPT_PARAM);
+  }
+
   // input check
   if(arguments.size()) {
     Usage();
@@ -85,7 +92,7 @@ int main(int argc, char* argv[])
   // start repl loop
   else {
     Editor editor;
-    editor.Edit(input, libs, mode, is_exit);
+    editor.Edit(input, libs, opt, mode, is_exit);
   }
 
 #ifdef _DEBUG
@@ -129,6 +136,17 @@ void SetEnv() {
 
 void Usage()
 {
+  std::wcerr << L"Usage: obi" << std::endl << std::endl;
+  std::wcerr << std::endl << L"Options:" << std::endl;
+  std::wcerr << L"  -file: [optional] source file" << std::endl;
+  std::wcerr << L"  -inline: [optional] inline source code" << std::endl;
+  std::wcerr << L"  -lib: [optional] list of linked libraries (separated by commas)" << std::endl;
+  std::wcerr << L"  -opt: [optional] compiler optimizations s0-s3 (s3 being the most aggressive and default)" << std::endl;
+  std::wcerr << L"  -help: [optional] comand line options" << std::endl;
+  std::wcerr << L"  -exit: [optional] shell will exit after command-line execution" << std::endl;
+
+  std::wcout << std::endl << L"---" << std::endl; 
+
 #if defined(_WIN64) && defined(_WIN32)
   std::wcout << VERSION_STRING << L" Objeck (Windows x86_64)" << std::endl;
 #elif _WIN32
@@ -145,12 +163,9 @@ void Usage()
   std::wcout << VERSION_STRING << L" Objeck (Linux ARMv7)" << std::endl;
 #else
   std::wcout << VERSION_STRING << L" Objeck (Linux x86)" << std::endl;
-#endif 
-  std::wcout << L"---" << std::endl;
-  std::wcout << L"Copyright (c) 2023, Randy Hollines" << std::endl;
+#endif
+
+  std::wcout << std::endl << L"Copyright (c) 2023, Randy Hollines" << std::endl;
   std::wcout << L"This is free software; see the source for copying conditions.There is NO" << std::endl;
   std::wcout << L"warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE." << std::endl;
-  std::wcout << L"---" << std::endl << std::endl;
-  std::wcerr << L"usage: obi [-help] [-file <filename>] [-inline <source>] [-exit (exit shell after execution)] [-lib <include libraries using ','>" << std::endl;
-  exit(1);
 }
