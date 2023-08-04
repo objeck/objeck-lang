@@ -269,6 +269,7 @@ each(value := values) {
 	#~
 	Hash table of generics
 
+
 	```
 # insert elements
 hash := Collection.Hash->New()<IntRef, String>;
@@ -901,6 +902,7 @@ queue->Front()->PrintLine();
 	#~
 	List of comparable generics
 
+
 	```
 function : Example() ~ Nil {	
    # insert elements
@@ -1461,6 +1463,7 @@ function : Example() ~ Nil {
 
 	#~
 	Generic list
+
 
 	```
 function : Example() ~ Nil {	
@@ -2179,6 +2182,7 @@ function : Example() ~ Nil {
 	#~
 	Growable array of comparable generics
 
+
 	```
 function : Example() ~ Nil {	
    # insert elements
@@ -2555,6 +2559,7 @@ function : Show(value : IntRef) ~ Nil {
 	
 	#~
 	Balanced tree of 'Compare' keys and 'Base' values
+	
 	
 	```
 	function : Example() ~ Nil {	
