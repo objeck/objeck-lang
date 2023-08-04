@@ -39,6 +39,7 @@
 #define FILE_PARAM L"file"
 #define INLINE_PARAM L"inline"
 #define LIBS_PARAM L"lib"
+#define OPT_PARAM L"opt"
 #define EXIT_PARAM L"exit"
 
 static void SetEnv();
