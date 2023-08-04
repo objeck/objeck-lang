@@ -260,11 +260,12 @@ void Document::Debug(size_t cur_pos)
 //
 Editor::Editor() : doc(DEFAULT_FILE_NAME)
 {
-  lib_uses = USES_STRING;
+  compiler_libs = USES_STRING;
+  compiler_opt_level = L"s1";
   cur_pos = doc.Reset();
 }
 
-void Editor::Edit(std::wstring input, std::wstring libs, int mode, bool is_exit)
+void Editor::Edit(std::wstring input, std::wstring libs, std::wstring opt, int mode, bool is_exit)
 {
   // process command line
   if(input.empty()) {
@@ -273,7 +274,12 @@ void Editor::Edit(std::wstring input, std::wstring libs, int mode, bool is_exit)
   else {
     // set libraries
     if(!libs.empty()) {
-      lib_uses = libs;
+      compiler_libs = libs;
+    }
+
+    // set optimizations 
+    if(!opt.empty()) {
+      compiler_opt_level = opt;
     }
 
     // file name
@@ -397,6 +403,11 @@ void Editor::Edit(std::wstring input, std::wstring libs, int mode, bool is_exit)
         DoUseLibraries(in);
         break;
 
+        // edit uses
+      case L'p':
+        DoOptLevel(in);
+        break;
+
         // reset
       case L'x':
         DoReset();
@@ -442,7 +453,8 @@ void Editor::DoHelp()
   std::wcout << "  /r: replace line" << std::endl;
   std::wcout << "  /d: delete line" << std::endl;
   std::wcout << "  /a: add command line arguments" << std::endl;
-  std::wcout << "  /u: change library use statements" << std::endl;
+  std::wcout << "  /u: set library use statements" << std::endl;
+  std::wcout << "  /p: set compiler optimization" << std::endl;
   std::wcout << "  /o: open file by name" << std::endl;
   std::wcout << "  /s: save buffer or current file" << std::endl;
   std::wcout << "---" << std::endl;
@@ -451,7 +463,8 @@ void Editor::DoHelp()
 
 void Editor::DoReset()
 {
-  lib_uses = USES_STRING;
+  compiler_libs = USES_STRING;
+  compiler_opt_level = L"s1";
   cur_pos = doc.Reset();
 
   std::wcout << L"=> Document reset." << std::endl;
@@ -620,11 +633,36 @@ bool Editor::DoDeleteLine(std::wstring& in)
   return false;
 }
 
+void Editor::DoOptLevel(std::wstring& in)
+{
+  if(in.size() == 2) {
+    std::wcout << L"=> Currently optimization level: " << compiler_opt_level << std::endl;
+    std::wcout << L"New level (s0, s1, s2, s3): ";
+    std::getline(std::wcin, in);
+
+    in.erase(std::remove_if(in.begin(), in.end(), isspace), in.end());
+    if(!in.empty()) {
+      if(in == L"s0" || in == L"s1" || in == L"s2" || in == L"s3") {
+        compiler_opt_level = in;
+      }
+      else {
+        std::wcout << SYNTAX_ERROR << std::endl;
+      }
+    }
+    else {
+      std::wcout << SYNTAX_ERROR << std::endl;
+    }
+  }
+  else {
+    std::wcout << SYNTAX_ERROR << std::endl;
+  }
+}
+
 void Editor::DoUseLibraries(std::wstring &in)
 {
   if(in.size() == 2) {
-    std::wcout << L"=> Currently used library list: " << lib_uses << std::endl;
-    std::wcout << L"New list] ";
+    std::wcout << L"=> Currently used library list: " << compiler_libs << std::endl;
+    std::wcout << L"New comma separated list: ";
     std::getline(std::wcin, in);
 
     in.erase(std::remove_if(in.begin(), in.end(), isspace), in.end());
@@ -632,7 +670,7 @@ void Editor::DoUseLibraries(std::wstring &in)
       if(in.back() == L',') {
         in.pop_back();
       }
-      lib_uses = in;
+      compiler_libs = in;
     }
     else {
       std::wcout << SYNTAX_ERROR << std::endl;
@@ -645,8 +683,8 @@ void Editor::DoUseLibraries(std::wstring &in)
 
 void Editor::DoExecute()
 {
-  ObjeckLang lang(doc.ToString(), L"lang.obl," + lib_uses, cmd_args);
-  if(lang.Compile(doc.GetName())) {
+  ObjeckLang lang(doc.ToString(), L"lang.obl," + compiler_libs, cmd_args);
+  if(lang.Compile(doc.GetName(), compiler_opt_level)) {
     lang.Execute();
   }
   else {

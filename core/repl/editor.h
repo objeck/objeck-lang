@@ -138,7 +138,8 @@ class Document {
 //
 class Editor {
   Document doc;
-  std::wstring lib_uses;
+  std::wstring compiler_libs;
+  std::wstring compiler_opt_level;
   std::wstring cmd_args;
   size_t cur_pos;
 
@@ -149,13 +150,14 @@ public:
   }
 
   // start REPL loop
-  void Edit(std::wstring input, std::wstring libs, int mode, bool is_exit);
+  void Edit(std::wstring input, std::wstring libs, std::wstring opt, int mode, bool is_exit);
 
   // commands
   void DoReset();
   void DoHelp();
   void DoExecute();
   void DoUseLibraries(std::wstring &in);
+  void DoOptLevel(std::wstring& in);
   void DoInsertLine(std::wstring &in);
   bool DoLoadFile(std::wstring &in);
   bool DoSaveFile(std::wstring& in);
