@@ -118,7 +118,7 @@ void Loader::Load()
     std::wcout << L"Loaded static int std::string[" << i << L"]: '";
 #endif
     for(int j = 0; j < int_string_length; ++j) {
-      int_string[j] = ReadInt();
+      int_string[j] = ReadInt64();
 #ifdef _DEBUG
       std::wcout << int_string[j] << L",";
 #endif
