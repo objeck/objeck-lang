@@ -317,7 +317,7 @@ public:
   inline void WriteString(const std::wstring &in) {
     std::string out;
     if(!UnicodeToBytes(in, out)) {
-      std::wcerr << L">>> Unable to write unicode std::string <<<" << std::endl;
+      std::wcerr << L">>> Unable to write unicode string <<<" << std::endl;
       exit(1);
     }
     WriteInt((int)out.size());
