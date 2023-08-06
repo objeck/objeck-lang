@@ -337,7 +337,7 @@ void Parser::ParseBundle(int depth)
         ProcessError(L"Expected ';'", TOKEN_SEMI_COLON);
       }
     }
-    else if(Match(TOKEN_STATIC_ID)) {
+    else if(Match(TOKEN_CLASS_ID)) {
       NextToken();
 
       // TOOD: static use
