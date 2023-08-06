@@ -1903,6 +1903,21 @@ bundle System {
 		}
 
 		#~
+		Creates an array of references from primitives
+		@param in array of primitives
+		@return an array of references
+		~#
+		function : FromArray(in : Bool[]) ~ BoolRef[] {
+			out := BoolRef->New[in->Size()];
+
+			each(i : in) {
+				out[i] := BoolRef->New(in[i]);
+			};
+			
+			return out;
+		}
+
+		#~
 		Get boolean value
 		@return boolean value
 		~#
@@ -1989,6 +2004,21 @@ bundle System {
 		New(value : Byte) {
 			Parent();
 			@value := value;
+		}
+
+		#~
+		Creates an array of references from primitives
+		@param in array of primitives
+		@return an array of references
+		~#
+		function : FromArray(in : Byte[]) ~ ByteRef[] {
+			out := ByteRef->New[in->Size()];
+
+			each(i : in) {
+				out[i] := ByteRef->New(in[i]);
+			};
+			
+			return out;
 		}
 
 		#~
@@ -2084,6 +2114,21 @@ bundle System {
 		}
 
 		#~
+		Creates an array of references from primitives
+		@param in array of primitives
+		@return an array of references
+		~#
+		function : FromArray(in : Char[]) ~ CharRef[] {
+			out := CharRef->New[in->Size()];
+
+			each(i : in) {
+				out[i] := CharRef->New(in[i]);
+			};
+			
+			return out;
+		}
+
+		#~
 		Get character value
 		@return character value
 		~#
@@ -2173,6 +2218,21 @@ bundle System {
 		New(value : Int) {
 			Parent();
 			@value := value;
+		}
+
+		#~
+		Creates an array of references from primitives
+		@param in array of primitives
+		@return an array of references
+		~#
+		function : FromArray(in : Int[]) ~ IntRef[] {
+			out := IntRef->New[in->Size()];
+
+			each(i : in) {
+				out[i] := IntRef->New(in[i]);
+			};
+			
+			return out;
 		}
 
 		#~
@@ -2311,6 +2371,21 @@ bundle System {
 		New(value : Float) {
 			Parent();
 			@value := value;
+		}
+
+		#~
+		Creates an array of references from primitives
+		@param in array of primitives
+		@return an array of references
+		~#
+		function : FromArray(in : Float[]) ~ FloatRef[] {
+			out := FloatRef->New[in->Size()];
+
+			each(i : in) {
+				out[i] := FloatRef->New(in[i]);
+			};
+			
+			return out;
 		}
 
 		#~
