@@ -255,6 +255,7 @@ class ContextAnalyzer {
   int char_str_index;
   int int_str_index;
   int float_str_index;
+  bool use_static_check;
   int in_loop;
   bool in_assignment;
   bool in_return;
@@ -566,7 +567,7 @@ class ContextAnalyzer {
     program->SetLinker(linker);
     char_str_index = int_str_index = float_str_index= 0;
     in_loop = nested_call_depth = 0;
-    in_assignment = in_return = in_expression = false;
+    in_assignment = in_return = in_expression = use_static_check = false;
     
     // setup type map
     type_map[L"Byte"] = TypeFactory::Instance()->MakeType(frontend::BYTE_TYPE, L"System.Byte");

@@ -3095,9 +3095,9 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, b
   if(!method) {
     const auto static_uses = program->GetStaticUses(current_class->GetFileName());
     if(!static_uses.empty()) {
-      std::wstring class_name;
-
       for(auto& static_use : static_uses) {
+        std::wstring class_name;
+
         switch(static_use->GetType()) {
         case BYTE_TYPE:
           class_name = L"$Byte";
@@ -3126,32 +3126,36 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, b
         default:
           break;
         }
-      }
 
-      Class* static_klass = nullptr; LibraryClass* static_lib_klass = nullptr;
-      if(GetProgramOrLibraryClass(class_name, static_klass, static_lib_klass)) {
-        // program class
-        if(static_klass) {
+        Class* static_klass = nullptr; LibraryClass* static_lib_klass = nullptr;
+        if(GetProgramOrLibraryClass(class_name, static_klass, static_lib_klass)) {
           method_call->SetOriginalClass(klass);
           std::wstring encoding;
-          AnalyzeMethodCall(static_klass, method_call, is_expr, encoding, depth + 1);
-          if(method_call->GetMethod()) {
-            return;
+
+          // program class
+          if(static_klass) {
+            use_static_check = true;
+            AnalyzeMethodCall(static_klass, method_call, is_expr, encoding, depth + 1);
+            use_static_check = false;
+
+            if(method_call->GetMethod()) {
+              return;
+            }
+          }
+
+          else {
+            use_static_check = true;
+            AnalyzeMethodCall(static_lib_klass, method_call, is_expr, encoding, true, depth + 1);
+            use_static_check = false;
+
+            if(method_call->GetLibraryMethod()) {
+              return;
+            }
           }
         }
-
         else {
-          method_call->SetOriginalClass(klass);
-          std::wstring encoding;
-          // TODO: ok trial name resolution without errors...
-          AnalyzeMethodCall(static_lib_klass, method_call, is_expr, encoding, true, depth + 1);
-          if(method_call->GetLibraryMethod()) {
-            return;
-          }
+          ProcessError(klass, L"Undefined static class: '" + class_name + L"'");
         }
-      }
-      else {
-        ProcessError(klass, L"Undefined static class: '" + class_name + L"'");
       }
     }
 
@@ -3314,13 +3318,13 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, b
 
     if(mthd_name.size() > 0) {
       std::wstring message = L"Undefined function/method call: '" +
-        mthd_name + L"(..)'\n\tEnsure the object and it's calling parameters are properly casted";
+        mthd_name + L"(..)'\n\tEnsure calling parameters are properly casted\n\tConsider first class and static use function calls";
       ProcessErrorAlternativeMethods(message);
       ProcessError(static_cast<Expression*>(method_call), message);
     }
     else {
       std::wstring message = L"Undefined function/method call: '" +
-        var_name + L"(..)'\n\tEnsure the object and it's calling parameters are properly casted";
+        var_name + L"(..)'\n\tEnsure calling parameters are properly casted\n\tConsider first class and static use function calls";
       ProcessErrorAlternativeMethods(message);
       ProcessError(static_cast<Expression*>(method_call), message);
     }
@@ -3630,7 +3634,7 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
     // next call
     AnalyzeExpressionMethodCall(method_call, depth + 1);
   }
-  else {
+  else if(!use_static_check) {
     AnalyzeVariableFunctionCall(method_call, depth + 1);
   }
 }
@@ -3697,7 +3701,7 @@ void ContextAnalyzer::AnalyzeVariableFunctionCall(MethodCall* method_call, const
     const std::wstring call_params_str = EncodeMethodCall(boxed_resolved_params, depth);
     if(dyn_func_params_str != call_params_str) {
       ProcessError(static_cast<Expression*>(method_call), L"Undefined function/method call: '" + method_call->GetMethodName() +
-                   L"(..)'\n\tEnsure the object and it's calling parameters are properly casted");
+                   L"(..)'\n\tEnsure calling parameters are properly casted\n\tConsider first class and static use function calls");
     }
     // reset calling parameters
     method_call->SetCallingParameters(boxed_resolved_params);
@@ -3722,13 +3726,13 @@ void ContextAnalyzer::AnalyzeVariableFunctionCall(MethodCall* method_call, const
 
     if(mthd_name.size() > 0) {
       std::wstring message = L"Undefined function/method call: '" + mthd_name +
-        L"(..)'\n\tEnsure the object and it's calling parameters are properly casted";
+        L"(..)'\n\tEnsure calling parameters are properly casted\n\tConsider first class and static use function calls";
       ProcessErrorAlternativeMethods(message);
       ProcessError(static_cast<Expression*>(method_call), message);
     }
     else {
       std::wstring message = L"Undefined function/method call: '" + var_name +
-        L"(..)'\n\tEnsure the object and it's calling parameters are properly casted";
+        L"(..)'\n\tEnsure calling parameters are properly casted\n\tConsider first class and static use function calls";
       ProcessErrorAlternativeMethods(message);
       ProcessError(static_cast<Expression*>(method_call), message);
     }
@@ -3789,11 +3793,11 @@ void ContextAnalyzer::AnalyzeFunctionReference(Class* klass, MethodCall* method_
 
     if(mthd_name.size() > 0) {
       ProcessError(static_cast<Expression*>(method_call), L"Undefined function/method call: '" +
-                   mthd_name + L"(..)'\n\tEnsure the object and it's calling parameters are properly casted");
+                   mthd_name + L"(..)'\n\tEnsure calling parameters are properly casted\n\tConsider first class and static use function calls");
     }
     else {
       ProcessError(static_cast<Expression*>(method_call), L"Undefined function/method call: '" +
-                   var_name + L"(..)'\n\tEnsure the object and it's calling parameters are properly casted");
+                   var_name + L"(..)'\n\tEnsure calling parameters are properly casted\n\tConsider first class and static use function calls");
     }
   }
 }
@@ -3850,11 +3854,11 @@ void ContextAnalyzer::AnalyzeFunctionReference(LibraryClass* klass, MethodCall* 
 
     if(mthd_name.size() > 0) {
       ProcessError(static_cast<Expression*>(method_call), L"Undefined function/method call: '" +
-                   mthd_name + L"(..)'\n\tEnsure the object and it's calling parameters are properly casted");
+                   mthd_name + L"(..)'\n\tEnsure calling parameters are properly casted\n\tConsider first class and static use function calls");
     }
     else {
       ProcessError(static_cast<Expression*>(method_call), L"Undefined function/method call: '" +
-                   var_name + L"(..)'\n\tEnsure the object and it's calling parameters are properly casted");
+                   var_name + L"(..)'\n\tEnsure calling parameters are properly casted\n\tConsider first class and static use function calls");
     }
   }
 }
