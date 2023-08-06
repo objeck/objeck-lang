@@ -109,10 +109,10 @@ void Loader::Load()
 
   // read int strings
   num_int_strings = ReadInt();
-  INT_VALUE** int_strings = new INT_VALUE*[num_int_strings];
+  INT64_VALUE** int_strings = new INT64_VALUE *[num_int_strings];
   for(i = 0; i < num_int_strings; ++i) {
     const int int_string_length = ReadInt();
-    INT_VALUE* int_string = new INT_VALUE[int_string_length];
+    INT64_VALUE* int_string = new INT64_VALUE[int_string_length];
     // copy string    
 #ifdef _DEBUG
     std::wcout << L"Loaded static int std::string[" << i << L"]: '";

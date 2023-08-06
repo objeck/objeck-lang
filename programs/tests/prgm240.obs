@@ -1,0 +1,8 @@
+use Collection;
+use static Int;
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		Random(10)->PrintLine();
+	}
+}

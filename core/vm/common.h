@@ -908,7 +908,7 @@ class StackProgram {
   FLOAT_VALUE** float_strings;
   int num_float_strings;
 
-  INT_VALUE** int_strings;
+  INT64_VALUE** int_strings;
   int num_int_strings;
 
   wchar_t** char_strings;
@@ -976,7 +976,7 @@ class StackProgram {
 
     if(int_strings) {
       for(int i = 0; i < num_int_strings; ++i) {
-        INT_VALUE* tmp = int_strings[i];
+        INT64_VALUE* tmp = int_strings[i];
         delete[] tmp;
         tmp = nullptr;
       }
@@ -1180,7 +1180,7 @@ class StackProgram {
     num_float_strings = n;
   }
 
-  void SetIntStrings(INT_VALUE** s, int n) {
+  void SetIntStrings(INT64_VALUE** s, int n) {
     int_strings = s;
     num_int_strings = n;
   }
@@ -1194,7 +1194,7 @@ class StackProgram {
     return float_strings;
   }
 
-  INT_VALUE** GetIntStrings() const {
+  INT64_VALUE** GetIntStrings() const {
     return int_strings;
   }
 
