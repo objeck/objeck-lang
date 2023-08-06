@@ -1,9 +1,9 @@
 use Collection;
-use static String, Float;
+use static Int, Float;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		Random(10)->PrintLine();
-#		Sqrt(256)->PrintLine();
+		Random()->PrintLine();
+		Sqrt(256)->PrintLine();
 	}
 }
