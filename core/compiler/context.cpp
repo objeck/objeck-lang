@@ -3135,14 +3135,19 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, b
           method_call->SetOriginalClass(klass);
           std::wstring encoding;
           AnalyzeMethodCall(static_klass, method_call, is_expr, encoding, depth + 1);
-          return;
+          if(method_call->GetMethod()) {
+            return;
+          }
         }
 
         else {
           method_call->SetOriginalClass(klass);
           std::wstring encoding;
+          // TODO: ok trial name resolution without errors...
           AnalyzeMethodCall(static_lib_klass, method_call, is_expr, encoding, true, depth + 1);
-          return;
+          if(method_call->GetLibraryMethod()) {
+            return;
+          }
         }
       }
       else {
