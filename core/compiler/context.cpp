@@ -3122,6 +3122,9 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, b
         case CLASS_TYPE:
           class_name = static_use->GetName();
           break;
+
+        default:
+          break;
         }
       }
 
@@ -3612,7 +3615,6 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
       }
     }
 
-    // TODO: refactor, side effects?
     const std::vector<Type*> concrete_types = method_call->GetConcreteTypes();
     if(method_call->GetCallType() != NEW_INST_CALL && concrete_types.size() > 0 && concrete_types[0]->GetGenerics().size() == 1) {
       Type* first_type = concrete_types[0];
@@ -4170,7 +4172,6 @@ void ContextAnalyzer::AnalyzeFor(For* for_stmt, const int depth)
         mthd_call_entry = mthd_call_expr->GetVariable()->GetEntry();
       }
       
-      // TODO: build right-hand expression
       Expression* right_expr = nullptr;
       if(mthd_call_entry && mthd_call_entry->GetType()) {
         // array variable
