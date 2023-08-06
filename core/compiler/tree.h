@@ -3656,9 +3656,11 @@ namespace frontend {
     std::map<std::wstring, int> char_string_ids;
     std::vector<std::wstring> char_strings;
     
-    std::map<std::wstring, std::vector<std::wstring> > file_uses;
-    std::vector<std::wstring> use_names;
+    std::map<std::wstring, std::vector<std::wstring>> lib_use_mapping;
+    std::vector<std::wstring> lib_use_names;
     std::vector<std::wstring> tiered_use_names;
+
+    std::map<std::wstring, std::vector<Type*>> lib_static_mapping;
 
     std::vector<ParsedBundle*> bundles;
     std::vector<std::wstring> bundle_names;
@@ -3714,27 +3716,30 @@ namespace frontend {
 #endif
     
     std::wstring GetFileName() const {
-      if(file_uses.size() > 0) {
-        return file_uses.begin()->first;
+      if(lib_use_mapping.size() > 0) {
+        return lib_use_mapping.begin()->first;
       }
       
       return L"unknown";
     }
 
     void AddUse(const std::wstring &u, const std::wstring &f) {
-      std::vector<std::wstring> uses;
-      uses.push_back(u);
-      AddUses(uses, f);
+      std::vector<std::wstring> lib_uses;
+      lib_uses.push_back(u);
+
+      AddUses(lib_uses, std::vector<Type*>(), f);
     }
 
-    void AddUses(std::vector<std::wstring> &u, const std::wstring &f) {
+    void AddUses(std::vector<std::wstring> &u, std::vector<Type*> &s, const std::wstring &f) {
       for(size_t i = 0; i < u.size(); ++i) {
-        std::vector<std::wstring>::iterator found = find(use_names.begin(), use_names.end(), u[i]);
-        if(found == use_names.end()) {
-          use_names.push_back(u[i]);
+        std::vector<std::wstring>::iterator found = find(lib_use_names.begin(), lib_use_names.end(), u[i]);
+        if(found == lib_use_names.end()) {
+          lib_use_names.push_back(u[i]);
         }
       }
-      file_uses[f] = u;
+
+      lib_use_mapping[f] = u;
+      lib_static_mapping[f] = s;
     }
 
     bool HasBundleName(const std::wstring &name) {
@@ -3746,10 +3751,14 @@ namespace frontend {
       return true;
     }
 
-    const std::vector<std::wstring> GetUses();
+    const std::vector<std::wstring> GetLibUses();
 
-    const std::vector<std::wstring> GetUses(const std::wstring &f) {
-      return file_uses[f];
+    const std::vector<std::wstring> GetLibUses(const std::wstring &f) {
+      return lib_use_mapping[f];
+    }
+
+    const std::vector<Type*> GetStaticUses(const std::wstring& f) {
+      return lib_static_mapping[f];
     }
 
     void AddBundle(ParsedBundle* b) {

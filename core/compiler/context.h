@@ -408,12 +408,12 @@ class ContextAnalyzer {
   
   // helper function for program enum searches
   inline bool HasProgramOrLibraryEnum(const std::wstring &n) {
-    return SearchProgramEnums(n) || linker->SearchEnumLibraries(n, program->GetUses(current_class->GetFileName()));
+    return SearchProgramEnums(n) || linker->SearchEnumLibraries(n, program->GetLibUses(current_class->GetFileName()));
   }
 
   // helper function for program class searches
   inline bool HasProgramOrLibraryClass(const std::wstring &n) {
-    return SearchProgramClasses(n) || linker->SearchClassLibraries(n, program->GetUses(current_class->GetFileName()));
+    return SearchProgramClasses(n) || linker->SearchClassLibraries(n, program->GetLibUses(current_class->GetFileName()));
   }
 
   // class query by name

@@ -250,7 +250,7 @@ std::wstring Method::EncodeType(Type* type, Class* klass, ParsedProgram* program
 
     case CLASS_TYPE: {
       name = L"o.";
-      const std::vector<std::wstring> uses = program->GetUses();
+      const std::vector<std::wstring> uses = program->GetLibUses();
 
       // program class check
       const std::wstring type_klass_name = type->GetName();
@@ -911,7 +911,7 @@ std::wstring Alias::EncodeType(Type* type, ParsedProgram* program, Linker* linke
 
     case CLASS_TYPE: {
       name = L"o.";
-      const std::vector<std::wstring> uses = program->GetUses();
+      const std::vector<std::wstring> uses = program->GetLibUses();
 
       // program class check
       const std::wstring type_klass_name = type->GetName();
@@ -1014,7 +1014,7 @@ std::wstring Alias::EncodeFunctionType(std::vector<Type*> func_params, Type* fun
 /****************************
  * class Lambda
  ****************************/
-const std::vector<std::wstring> ParsedProgram::GetUses() {
+const std::vector<std::wstring> ParsedProgram::GetLibUses() {
   // Sort into tiers:
   // 1. System bundles
   // 2. User bundles
@@ -1024,8 +1024,8 @@ const std::vector<std::wstring> ParsedProgram::GetUses() {
     std::vector<std::wstring> mid_level;
     std::vector<std::wstring> bottom_level;
 
-    for(size_t i = 0; i < use_names.size(); ++i) {
-      const std::wstring use_name = use_names[i];
+    for(size_t i = 0; i < lib_use_names.size(); ++i) {
+      const std::wstring use_name = lib_use_names[i];
       if(use_name.rfind(L"System", 0) == 0) {
         top_level.push_back(use_name);
       }
