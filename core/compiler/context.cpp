@@ -3091,8 +3091,62 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, b
     method = klass->GetMethod(encoded_name);
   }
 
+  // TODO: test...
   if(!method) {
-    // TODO: 'use static' grab classes for statements by filename
+    const auto static_uses = program->GetStaticUses(current_class->GetFileName());
+    if(!static_uses.empty()) {
+      std::wstring class_name;
+
+      for(auto& static_use : static_uses) {
+        switch(static_use->GetType()) {
+        case BYTE_TYPE:
+          class_name = L"$Byte";
+          break;
+
+        case CHAR_TYPE:
+          class_name = L"$Char";
+          break;
+
+        case INT_TYPE:
+          class_name = L"$Int";
+          break;
+
+        case FLOAT_TYPE:
+          class_name = L"$Float";
+          break;
+
+        case BOOLEAN_TYPE:
+          class_name = L"$Bool";
+          break;
+
+        case CLASS_TYPE:
+          class_name = static_use->GetName();
+          break;
+        }
+      }
+
+      Class* static_klass = nullptr; LibraryClass* static_lib_klass = nullptr;
+      if(GetProgramOrLibraryClass(class_name, static_klass, static_lib_klass)) {
+        // program class
+        if(static_klass) {
+          method_call->SetOriginalClass(klass);
+          std::wstring encoding;
+          AnalyzeMethodCall(static_klass, method_call, is_expr, encoding, depth + 1);
+          return;
+        }
+
+        else {
+          method_call->SetOriginalClass(klass);
+          std::wstring encoding;
+          AnalyzeMethodCall(static_lib_klass, method_call, is_expr, encoding, true, depth + 1);
+          return;
+        }
+      }
+      else {
+        ProcessError(klass, L"Undefined static class: '" + class_name + L"'");
+      }
+    }
+
     if(klass->GetParent()) {
       Class* parent = klass->GetParent();
       method_call->SetOriginalClass(klass);
