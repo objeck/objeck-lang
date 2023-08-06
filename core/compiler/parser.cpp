@@ -305,29 +305,86 @@ void Parser::ParseBundle(int depth)
   }
 
   // default system uses
-  std::vector<std::wstring> uses;
-  uses.push_back(L"System");
-  uses.push_back(L"System.IO");
-  uses.push_back(L"System.Introspection");
-  const size_t initial_uses_size = uses.size();
+  std::vector<std::wstring> lib_uses;
+  lib_uses.push_back(L"System");
+  lib_uses.push_back(L"System.IO");
+  lib_uses.push_back(L"System.Introspection");
+  const size_t initial_uses_size = lib_uses.size();
+
+  std::vector<Type*> static_uses;
 
   while(Match(TOKEN_USE_ID) && !Match(TOKEN_END_OF_STREAM)) {
     NextToken();
 
-    while(Match(TOKEN_IDENT)) {
-      const std::wstring ident = ParseBundleName();
+    if(Match(TOKEN_IDENT)) {
+      while(Match(TOKEN_IDENT)) {
+        const std::wstring ident = ParseBundleName();
 #ifdef _DEBUG
-      Debug(L"search: " + ident, depth);
+        Debug(L"search: " + ident, depth);
 #endif
-      uses.push_back(ident);
+        lib_uses.push_back(ident);
 
-      if(Match(TOKEN_COMMA) && !Match(TOKEN_SEMI_COLON, SECOND_INDEX)) {
-        NextToken();
+        if(Match(TOKEN_COMMA) && !Match(TOKEN_SEMI_COLON, SECOND_INDEX)) {
+          NextToken();
+        }
+      }
+
+      if(lib_uses.size() == initial_uses_size) {
+        ProcessError(L"Expected 'use' arguments", TOKEN_SEMI_COLON);
+      }
+
+      if(!Match(TOKEN_SEMI_COLON)) {
+        ProcessError(L"Expected ';'", TOKEN_SEMI_COLON);
       }
     }
+    else if(Match(TOKEN_STATIC_ID)) {
+      NextToken();
 
-    if(uses.size() == initial_uses_size) {
-      ProcessError(L"Expected 'use' arguments", TOKEN_SEMI_COLON);
+      // TOOD: static use
+      bool is_types = false;
+      while(!is_types) {
+        switch(GetToken()) {
+        case TOKEN_BYTE_ID:
+          static_uses.push_back(TypeFactory::Instance()->MakeType(BYTE_TYPE));
+          NextToken();
+          break;
+
+        case TOKEN_CHAR_ID:
+          static_uses.push_back(TypeFactory::Instance()->MakeType(CHAR_TYPE));
+          NextToken();
+          break;
+
+        case TOKEN_INT_ID:
+          static_uses.push_back(TypeFactory::Instance()->MakeType(INT_TYPE));
+          NextToken();
+          break;
+
+        case TOKEN_FLOAT_ID:
+          static_uses.push_back(TypeFactory::Instance()->MakeType(FLOAT_TYPE));
+          NextToken();
+          break;
+
+        case TOKEN_BOOLEAN_ID:
+          static_uses.push_back(TypeFactory::Instance()->MakeType(BOOLEAN_TYPE));
+          NextToken();
+          break;
+
+        case TOKEN_IDENT: {
+          const std::wstring name = scanner->GetToken()->GetIdentifier();
+          static_uses.push_back(TypeFactory::Instance()->MakeType(CLASS_TYPE, name));
+          NextToken();
+        }
+          break;
+
+        case TOKEN_COMMA:
+          NextToken();
+          break;
+
+        default:
+          is_types = true;
+          break;
+        }
+      }
     }
 
     if(!Match(TOKEN_SEMI_COLON)) {
@@ -348,7 +405,7 @@ void Parser::ParseBundle(int depth)
           bundle_name = L"";
         }
         else {
-          uses.push_back(bundle_name);
+          lib_uses.push_back(bundle_name);
         }
         
         ParsedBundle* bundle = program->GetBundle(bundle_name);
@@ -408,7 +465,7 @@ void Parser::ParseBundle(int depth)
 
       }
 
-      program->AddUses(uses, file_name);
+      program->AddUses(lib_uses, static_uses, file_name);
     }
     // parse class
     else if(Match(TOKEN_CLASS_ID) || Match(TOKEN_ENUM_ID) || Match(TOKEN_CONSTS_ID) || Match(TOKEN_INTERFACE_ID) || Match(TOKEN_ALIAS_ID)) {
@@ -462,7 +519,7 @@ void Parser::ParseBundle(int depth)
       bundle->SetEndLineNumber(GetLineNumber());
       bundle->SetEndLinePosition(GetLinePosition());
 
-      program->AddUses(uses, file_name);
+      program->AddUses(lib_uses, static_uses, file_name);
     }
     // error
     else {

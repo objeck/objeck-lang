@@ -174,7 +174,7 @@ bool ContextAnalyzer::Analyze()
 
   // check uses
   const std::wstring file_name = program->GetFileName();
-  std::vector<std::wstring> program_uses = program->GetUses();
+  std::vector<std::wstring> program_uses = program->GetLibUses();
   for(size_t i = 0; i < program_uses.size(); ++i) {
     const std::wstring &name = program_uses[i];
     if(!program->HasBundleName(name) && !linker->HasBundleName(name)) {
@@ -253,7 +253,7 @@ bool ContextAnalyzer::Analyze()
           parent->AddChild(klass);
         }
         else {
-          LibraryClass* lib_parent = linker->SearchClassLibraries(parent_name, program->GetUses(klass->GetFileName()));
+          LibraryClass* lib_parent = linker->SearchClassLibraries(parent_name, program->GetLibUses(klass->GetFileName()));
           if(lib_parent) {
             klass->SetLibraryParent(lib_parent);
             lib_parent->AddChild(klass);
@@ -323,8 +323,8 @@ void ContextAnalyzer::AnalyzeEnum(Enum* eenum, const int depth)
     ProcessError(eenum, L"Undefined enum: '" + FormatTypeString(eenum->GetName()));
   }
 
-  if(linker->SearchClassLibraries(eenum->GetName(), program->GetUses(eenum->GetFileName())) ||
-     linker->SearchEnumLibraries(eenum->GetName(), program->GetUses(eenum->GetFileName()))) {
+  if(linker->SearchClassLibraries(eenum->GetName(), program->GetLibUses(eenum->GetFileName())) ||
+     linker->SearchEnumLibraries(eenum->GetName(), program->GetLibUses(eenum->GetFileName()))) {
     ProcessError(eenum, L"Enum '" + FormatTypeString(eenum->GetName()) + L"' defined in program and shared libraries");
   }
 }
@@ -491,8 +491,8 @@ void ContextAnalyzer::AnalyzeClass(Class* klass, const int id, const int depth)
     ProcessError(klass, L"Undefined class: '" + klass->GetName() + L"'");
   }
 
-  if(linker->SearchClassLibraries(klass->GetName(), program->GetUses(klass->GetFileName())) ||
-     linker->SearchEnumLibraries(klass->GetName(), program->GetUses(klass->GetFileName()))) {
+  if(linker->SearchClassLibraries(klass->GetName(), program->GetLibUses(klass->GetFileName())) ||
+     linker->SearchEnumLibraries(klass->GetName(), program->GetLibUses(klass->GetFileName()))) {
     ProcessError(klass, L"Class '" + klass->GetName() + L"' defined in shared libraries");
   }
 
@@ -680,7 +680,7 @@ void ContextAnalyzer::AnalyzeInterfaces(Class* klass, const int depth)
       }
     }
     else {
-      LibraryClass* inf_lib_klass = linker->SearchClassLibraries(interface_name, program->GetUses(current_class->GetFileName()));
+      LibraryClass* inf_lib_klass = linker->SearchClassLibraries(interface_name, program->GetLibUses(current_class->GetFileName()));
       if(inf_lib_klass) {
         if(!inf_lib_klass->IsInterface()) {
           ProcessError(klass, L"Expected an interface type");
@@ -743,9 +743,9 @@ void ContextAnalyzer::AnalyzeVirtualMethod(Class* impl_class, MethodType impl_mt
     Class* virtual_cls = SearchProgramClasses(virtual_return->GetName());
     if(impl_cls && virtual_cls && impl_cls != virtual_cls) {
       LibraryClass* impl_lib_cls = linker->SearchClassLibraries(impl_return->GetName(),
-                                                                program->GetUses(current_class->GetFileName()));
+                                                                program->GetLibUses(current_class->GetFileName()));
       LibraryClass* virtual_lib_cls = linker->SearchClassLibraries(virtual_return->GetName(),
-                                                                   program->GetUses(current_class->GetFileName()));
+                                                                   program->GetLibUses(current_class->GetFileName()));
       if(impl_lib_cls && virtual_lib_cls && impl_lib_cls != virtual_lib_cls) {
         ProcessError(impl_class, L"Not all virtual methods have been defined for class/interface: " +
                      virtual_method->GetClass()->GetName());
@@ -825,9 +825,9 @@ void ContextAnalyzer::AnalyzeVirtualMethod(Class* impl_class, MethodType impl_mt
     Class* virtual_cls = SearchProgramClasses(virtual_return->GetName());
     if(impl_cls && virtual_cls && impl_cls != virtual_cls) {
       LibraryClass* impl_lib_cls = linker->SearchClassLibraries(impl_return->GetName(),
-                                                                program->GetUses(current_class->GetFileName()));
+                                                                program->GetLibUses(current_class->GetFileName()));
       LibraryClass* virtual_lib_cls = linker->SearchClassLibraries(virtual_return->GetName(),
-                                                                   program->GetUses(current_class->GetFileName()));
+                                                                   program->GetLibUses(current_class->GetFileName()));
       if(impl_lib_cls && virtual_lib_cls && impl_lib_cls != virtual_lib_cls) {
         ProcessError(impl_class, L"Not all virtual methods have been defined for class/interface: " +
                      virtual_method->GetLibraryClass()->GetName());
@@ -1023,7 +1023,7 @@ Type* ContextAnalyzer::ResolveAlias(const std::wstring& name, const std::wstring
     }
   }
   else {
-    LibraryAlias* lib_alias = linker->SearchAliasLibraries(alias_name, program->GetUses(fn));
+    LibraryAlias* lib_alias = linker->SearchAliasLibraries(alias_name, program->GetLibUses(fn));
     if(lib_alias) {
       alias_type = lib_alias->GetType(type_name);
       if(alias_type) {
@@ -1737,7 +1737,7 @@ void ContextAnalyzer::AnalyzeCharacterString(CharacterString* char_str, const in
   }
 
 #ifndef _SYSTEM
-  LibraryClass* lib_klass = linker->SearchClassLibraries(L"System.String", program->GetUses(current_class->GetFileName()));
+  LibraryClass* lib_klass = linker->SearchClassLibraries(L"System.String", program->GetLibUses(current_class->GetFileName()));
   if(lib_klass) {
     lib_klass->SetCalled(true);
   }
@@ -1966,9 +1966,9 @@ void ContextAnalyzer::AnalyzeEnumCall(MethodCall* method_call, bool regress, con
   // check library enum reference; fully qualified name
   //
   LibraryEnum* lib_eenum = linker->SearchEnumLibraries(variable_name + L"#" + method_name,
-                                                       program->GetUses(current_class->GetFileName()));
+                                                       program->GetLibUses(current_class->GetFileName()));
   if(!lib_eenum) {
-    lib_eenum = linker->SearchEnumLibraries(variable_name, program->GetUses(current_class->GetFileName()));
+    lib_eenum = linker->SearchEnumLibraries(variable_name, program->GetLibUses(current_class->GetFileName()));
   }
 
   if(lib_eenum && method_call->GetMethodCall()) {
@@ -2064,8 +2064,8 @@ void ContextAnalyzer::AnalyzeEnumCall(MethodCall* method_call, bool regress, con
         klass->SetCalled(true);
         type_of->SetName(klass->GetName());
       }
-      else if(linker->SearchClassLibraries(type_of->GetName(), program->GetUses(current_class->GetFileName()))) {
-        LibraryClass* lib_klass = linker->SearchClassLibraries(type_of->GetName(), program->GetUses(current_class->GetFileName()));
+      else if(linker->SearchClassLibraries(type_of->GetName(), program->GetLibUses(current_class->GetFileName()))) {
+        LibraryClass* lib_klass = linker->SearchClassLibraries(type_of->GetName(), program->GetLibUses(current_class->GetFileName()));
         lib_klass->SetCalled(true);
         type_of->SetName(lib_klass->GetName());
       }
@@ -2432,7 +2432,7 @@ bool ContextAnalyzer::AnalyzeExpressionMethodCall(Type* type, const int dimensio
   switch(type->GetType()) {
   case BOOLEAN_TYPE:
     klass = program->GetClass(BOOL_CLASS_ID);
-    lib_klass = linker->SearchClassLibraries(BOOL_CLASS_ID, program->GetUses(current_class->GetFileName()));
+    lib_klass = linker->SearchClassLibraries(BOOL_CLASS_ID, program->GetLibUses(current_class->GetFileName()));
     encoding = L"l";
     break;
 
@@ -2442,43 +2442,43 @@ bool ContextAnalyzer::AnalyzeExpressionMethodCall(Type* type, const int dimensio
 
   case BYTE_TYPE:
     klass = program->GetClass(BYTE_CLASS_ID);
-    lib_klass = linker->SearchClassLibraries(BYTE_CLASS_ID, program->GetUses(current_class->GetFileName()));
+    lib_klass = linker->SearchClassLibraries(BYTE_CLASS_ID, program->GetLibUses(current_class->GetFileName()));
     encoding = L"b";
     break;
 
   case CHAR_TYPE:
     klass = program->GetClass(CHAR_CLASS_ID);
-    lib_klass = linker->SearchClassLibraries(CHAR_CLASS_ID, program->GetUses(current_class->GetFileName()));
+    lib_klass = linker->SearchClassLibraries(CHAR_CLASS_ID, program->GetLibUses(current_class->GetFileName()));
     encoding = L"c";
     break;
 
   case INT_TYPE:
     klass = program->GetClass(INT_CLASS_ID);
-    lib_klass = linker->SearchClassLibraries(INT_CLASS_ID, program->GetUses(current_class->GetFileName()));
+    lib_klass = linker->SearchClassLibraries(INT_CLASS_ID, program->GetLibUses(current_class->GetFileName()));
     encoding = L"i";
     break;
 
   case FLOAT_TYPE:
     klass = program->GetClass(FLOAT_CLASS_ID);
-    lib_klass = linker->SearchClassLibraries(FLOAT_CLASS_ID, program->GetUses(current_class->GetFileName()));
+    lib_klass = linker->SearchClassLibraries(FLOAT_CLASS_ID, program->GetLibUses(current_class->GetFileName()));
     encoding = L"f";
     break;
 
   case CLASS_TYPE: {
     if(dimension > 0 && type->GetDimension() > 0) {
       klass = program->GetClass(BASE_ARRAY_CLASS_ID);
-      lib_klass = linker->SearchClassLibraries(BASE_ARRAY_CLASS_ID, program->GetUses(current_class->GetFileName()));
+      lib_klass = linker->SearchClassLibraries(BASE_ARRAY_CLASS_ID, program->GetLibUses(current_class->GetFileName()));
       encoding = L"o.System.Base";
     }
     else {
       const std::wstring &cls_name = type->GetName();
       klass = SearchProgramClasses(cls_name);
-      lib_klass = linker->SearchClassLibraries(cls_name, program->GetUses(current_class->GetFileName()));
+      lib_klass = linker->SearchClassLibraries(cls_name, program->GetLibUses(current_class->GetFileName()));
 
       if(!klass && !lib_klass) {
         if(HasProgramOrLibraryEnum(cls_name)) {
           klass = program->GetClass(INT_CLASS_ID);
-          lib_klass = linker->SearchClassLibraries(INT_CLASS_ID, program->GetUses(current_class->GetFileName()));
+          lib_klass = linker->SearchClassLibraries(INT_CLASS_ID, program->GetLibUses(current_class->GetFileName()));
           encoding = L"i,";
           is_enum_call = true;
         }
@@ -2817,7 +2817,7 @@ LibraryClass* ContextAnalyzer::AnalyzeLibraryMethodCall(MethodCall* method_call,
       (!method_call->GetVariable() ||
        !method_call->GetVariable()->GetIndices())) {
 
-      klass = linker->SearchClassLibraries(BASE_ARRAY_CLASS_ID, program->GetUses(current_class->GetFileName()));
+      klass = linker->SearchClassLibraries(BASE_ARRAY_CLASS_ID, program->GetLibUses(current_class->GetFileName()));
       encoding = L"o.System.Base";
       for(int i = 0; i < entry->GetType()->GetDimension(); ++i) {
         encoding += L"*";
@@ -2828,16 +2828,16 @@ LibraryClass* ContextAnalyzer::AnalyzeLibraryMethodCall(MethodCall* method_call,
     else if(method_call->GetVariable() && method_call->GetVariable()->GetCastType() &&
             method_call->GetVariable()->GetCastType()->GetType() == CLASS_TYPE) {
       klass = linker->SearchClassLibraries(method_call->GetVariable()->GetCastType()->GetName(),
-                                           program->GetUses(current_class->GetFileName()));
+                                           program->GetLibUses(current_class->GetFileName()));
       method_call->SetTypes(entry->GetType());
     }
     else {
-      klass = linker->SearchClassLibraries(entry->GetType()->GetName(), program->GetUses(current_class->GetFileName()));
+      klass = linker->SearchClassLibraries(entry->GetType()->GetName(), program->GetLibUses(current_class->GetFileName()));
     }
   }
   // static method call
   if(!klass) {
-    klass = linker->SearchClassLibraries(variable_name, program->GetUses(current_class->GetFileName()));
+    klass = linker->SearchClassLibraries(variable_name, program->GetLibUses(current_class->GetFileName()));
   }
 
   if(method_call->GetCastType() && method_call->GetCastType()->GetType() == CLASS_TYPE) {
@@ -2925,7 +2925,7 @@ int ContextAnalyzer::MatchCallingParameter(Expression* calling_param, Type* meth
             // calculate relative match
             const std::wstring &from_klass_name = calling_type->GetName();
             Class* from_klass = SearchProgramClasses(from_klass_name);
-            LibraryClass* from_lib_klass = linker->SearchClassLibraries(from_klass_name, program->GetUses(current_class->GetFileName()));
+            LibraryClass* from_lib_klass = linker->SearchClassLibraries(from_klass_name, program->GetLibUses(current_class->GetFileName()));
 
             const std::wstring &to_klass_name = method_type->GetName();
             Class* to_klass = SearchProgramClasses(to_klass_name);
@@ -2933,7 +2933,7 @@ int ContextAnalyzer::MatchCallingParameter(Expression* calling_param, Type* meth
               return ValidDownCast(to_klass->GetName(), from_klass, from_lib_klass) ? 1 : -1;
             }
 
-            LibraryClass* to_lib_klass = linker->SearchClassLibraries(to_klass_name, program->GetUses(current_class->GetFileName()));
+            LibraryClass* to_lib_klass = linker->SearchClassLibraries(to_klass_name, program->GetLibUses(current_class->GetFileName()));
             if(to_lib_klass) {
               return ValidDownCast(to_lib_klass->GetName(), from_klass, from_lib_klass) ? 1 : -1;
             }
@@ -2941,7 +2941,7 @@ int ContextAnalyzer::MatchCallingParameter(Expression* calling_param, Type* meth
           else if(method_type->GetType() == INT_TYPE) {
             // program
             if(program->GetEnum(calling_type->GetName()) ||
-               linker->SearchEnumLibraries(calling_type->GetName(), program->GetUses())) {
+               linker->SearchEnumLibraries(calling_type->GetName(), program->GetLibUses())) {
               return 1;
             }
           }
@@ -3092,6 +3092,7 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, b
   }
 
   if(!method) {
+    // TODO: 'use static' grab classes for statements by filename
     if(klass->GetParent()) {
       Class* parent = klass->GetParent();
       method_call->SetOriginalClass(klass);
@@ -3374,10 +3375,10 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryClass* klass, MethodCall* method_
   AnalyzeExpressions(call_params, depth + 1);
   LibraryMethod* lib_method = ResolveMethodCall(klass, method_call, depth);
   if(!lib_method) {
-    LibraryClass* parent = linker->SearchClassLibraries(klass->GetParentName(), program->GetUses(current_class->GetFileName()));
+    LibraryClass* parent = linker->SearchClassLibraries(klass->GetParentName(), program->GetLibUses(current_class->GetFileName()));
     while(!lib_method && parent) {
       lib_method = ResolveMethodCall(parent, method_call, depth);
-      parent = linker->SearchClassLibraries(parent->GetParentName(), program->GetUses(current_class->GetFileName()));
+      parent = linker->SearchClassLibraries(parent->GetParentName(), program->GetLibUses(current_class->GetFileName()));
     }
   }
 
@@ -3843,8 +3844,8 @@ void ContextAnalyzer::AnalyzeCast(Expression* expression, const int depth)
       klass->SetCalled(true);
       type_of->SetName(klass->GetName());
     }
-    else if(linker->SearchClassLibraries(type_of->GetName(), program->GetUses(current_class->GetFileName()))) {
-      LibraryClass* lib_klass = linker->SearchClassLibraries(type_of->GetName(), program->GetUses(current_class->GetFileName()));
+    else if(linker->SearchClassLibraries(type_of->GetName(), program->GetLibUses(current_class->GetFileName()))) {
+      LibraryClass* lib_klass = linker->SearchClassLibraries(type_of->GetName(), program->GetLibUses(current_class->GetFileName()));
       lib_klass->SetCalled(true);
       type_of->SetName(lib_klass->GetName());
     }
@@ -4508,7 +4509,7 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType ty
     bool check_right_cast = true;
     if(left_type && left_type->GetType() == CLASS_TYPE) {
 #ifndef _SYSTEM
-      LibraryClass* left_class = linker->SearchClassLibraries(left_type->GetName(), program->GetUses(current_class->GetFileName()));
+      LibraryClass* left_class = linker->SearchClassLibraries(left_type->GetName(), program->GetLibUses(current_class->GetFileName()));
 #else
       Class* left_class = SearchProgramClasses(left_type->GetName());
 #endif
@@ -4521,7 +4522,7 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType ty
           Type* right_type = GetExpressionType(expression, depth + 1);
           if(right_type && right_type->GetType() == CLASS_TYPE) {
 #ifndef _SYSTEM
-            LibraryClass* right_class = linker->SearchClassLibraries(right_type->GetName(), program->GetUses(current_class->GetFileName()));
+            LibraryClass* right_class = linker->SearchClassLibraries(right_type->GetName(), program->GetLibUses(current_class->GetFileName()));
 #else
             Class* right_class = SearchProgramClasses(right_type->GetName());
 #endif
@@ -6162,8 +6163,8 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Type* right, Expression* expr
       }
     }
     // library
-    else if(right && linker->SearchEnumLibraries(right->GetName(), program->GetUses(current_class->GetFileName()))) {
-      LibraryEnum* right_lib_enum = linker->SearchEnumLibraries(right->GetName(), program->GetUses(current_class->GetFileName()));
+    else if(right && linker->SearchEnumLibraries(right->GetName(), program->GetLibUses(current_class->GetFileName()))) {
+      LibraryEnum* right_lib_enum = linker->SearchEnumLibraries(right->GetName(), program->GetLibUses(current_class->GetFileName()));
       if(right_lib_enum && (left_enum->GetName() != right_lib_enum->GetName())) {
         const std::wstring left_str = FormatTypeString(left->GetName());
         const std::wstring right_str = FormatTypeString(right->GetName());
@@ -6209,8 +6210,8 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Type* right, Expression* expr
       }
     }
     // library
-    else if(linker->SearchClassLibraries(right->GetName(), program->GetUses(current_class->GetFileName()))) {
-      LibraryClass* right_lib_class = linker->SearchClassLibraries(right->GetName(), program->GetUses(current_class->GetFileName()));
+    else if(linker->SearchClassLibraries(right->GetName(), program->GetLibUses(current_class->GetFileName()))) {
+      LibraryClass* right_lib_class = linker->SearchClassLibraries(right->GetName(), program->GetLibUses(current_class->GetFileName()));
       // downcast
       if(ValidDownCast(left_class->GetName(), nullptr, right_lib_class)) {
         if(left_class->IsInterface() && !generic_check) {
@@ -6260,7 +6261,7 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Type* right, Expression* expr
   //
   // enum library
   //
-  else if(left && right && (left_lib_enum = linker->SearchEnumLibraries(left->GetName(), program->GetUses(current_class->GetFileName())))) {
+  else if(left && right && (left_lib_enum = linker->SearchEnumLibraries(left->GetName(), program->GetLibUses(current_class->GetFileName())))) {
     // program
     Enum* right_enum = SearchProgramEnums(right->GetName());
     if(right_enum) {
@@ -6271,8 +6272,8 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Type* right, Expression* expr
       }
     }
     // library
-    else if(linker->SearchEnumLibraries(right->GetName(), program->GetUses(current_class->GetFileName()))) {
-      LibraryEnum* right_lib_enum = linker->SearchEnumLibraries(right->GetName(), program->GetUses(current_class->GetFileName()));
+    else if(linker->SearchEnumLibraries(right->GetName(), program->GetLibUses(current_class->GetFileName()))) {
+      LibraryEnum* right_lib_enum = linker->SearchEnumLibraries(right->GetName(), program->GetLibUses(current_class->GetFileName()));
       if(left_lib_enum->GetName() != right_lib_enum->GetName()) {
         const std::wstring left_str = FormatTypeString(left_lib_enum->GetName());
         const std::wstring right_str = FormatTypeString(right_lib_enum->GetName());
@@ -6286,7 +6287,7 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Type* right, Expression* expr
   //
   // class library
   //
-  else if(left && right && (left_lib_class = linker->SearchClassLibraries(left->GetName(), program->GetUses(current_class->GetFileName())))) {
+  else if(left && right && (left_lib_class = linker->SearchClassLibraries(left->GetName(), program->GetLibUses(current_class->GetFileName())))) {
     // program and generic
     Class* right_class = SearchProgramClasses(right->GetName());
     if(!right_class) {
@@ -6316,8 +6317,8 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Type* right, Expression* expr
       }
     }
     // library
-    else if(linker->SearchClassLibraries(right->GetName(), program->GetUses(current_class->GetFileName()))) {
-      LibraryClass* right_lib_class = linker->SearchClassLibraries(right->GetName(), program->GetUses(current_class->GetFileName()));
+    else if(linker->SearchClassLibraries(right->GetName(), program->GetLibUses(current_class->GetFileName()))) {
+      LibraryClass* right_lib_class = linker->SearchClassLibraries(right->GetName(), program->GetLibUses(current_class->GetFileName()));
       // downcast
       if(ValidDownCast(left_lib_class->GetName(), nullptr, right_lib_class)) {
         left_lib_class->SetCalled(true);
@@ -6554,7 +6555,7 @@ std::wstring ContextAnalyzer::EncodeFunctionReference(ExpressionList* calling_pa
         const std::wstring klass_name = variable->GetName();
         Class* klass = program->GetClass(klass_name);
         if(!klass) {
-          std::vector<std::wstring> uses = program->GetUses(current_class->GetFileName());
+          std::vector<std::wstring> uses = program->GetLibUses(current_class->GetFileName());
           for(size_t i = 0; !klass && i < uses.size(); ++i) {
             klass = program->GetClass(uses[i] + L"." + klass_name);
           }
@@ -6566,7 +6567,7 @@ std::wstring ContextAnalyzer::EncodeFunctionReference(ExpressionList* calling_pa
         }
         // search libraries
         else {
-          LibraryClass* lib_klass = linker->SearchClassLibraries(klass_name, program->GetUses(current_class->GetFileName()));
+          LibraryClass* lib_klass = linker->SearchClassLibraries(klass_name, program->GetLibUses(current_class->GetFileName()));
           if(lib_klass) {
             encoded_name += lib_klass->GetName();
             variable->SetEvalType(TypeFactory::Instance()->MakeType(CLASS_TYPE, lib_klass->GetName()), true);
@@ -6745,7 +6746,7 @@ bool ContextAnalyzer::IsEnumExpression(Expression* expression)
         return true;
       }
       // library
-      if(linker->SearchEnumLibraries(eval_type->GetName(), program->GetUses())) {
+      if(linker->SearchEnumLibraries(eval_type->GetName(), program->GetLibUses())) {
         return true;
       }
     }
@@ -6782,7 +6783,7 @@ bool ContextAnalyzer::IsIntegerExpression(Expression* expression)
         return true;
       }
       // library
-      if(linker->SearchEnumLibraries(eval_type->GetName(), program->GetUses())) {
+      if(linker->SearchEnumLibraries(eval_type->GetName(), program->GetLibUses())) {
         return true;
       }
     }
@@ -7016,7 +7017,7 @@ bool ContextAnalyzer::ValidDownCast(const std::wstring& cls_name, Class* class_t
         return true;
       }
       else {
-        LibraryClass* lib_klass = linker->SearchClassLibraries(interface_names[i], program->GetUses());
+        LibraryClass* lib_klass = linker->SearchClassLibraries(interface_names[i], program->GetLibUses());
         if(lib_klass && lib_klass->GetName() == cls_name) {
           return true;
         }
@@ -7037,7 +7038,7 @@ bool ContextAnalyzer::ValidDownCast(const std::wstring& cls_name, Class* class_t
     }
     // library parent
     else {
-      lib_class_tmp = linker->SearchClassLibraries(lib_class_tmp->GetParentName(), program->GetUses());
+      lib_class_tmp = linker->SearchClassLibraries(lib_class_tmp->GetParentName(), program->GetLibUses());
       class_tmp = nullptr;
     }
   }
@@ -7064,7 +7065,7 @@ bool ContextAnalyzer::ValidUpCast(const std::wstring& to, Class* from_klass)
       return true;
     }
     else {
-      LibraryClass* lib_klass = linker->SearchClassLibraries(interface_names[i], program->GetUses());
+      LibraryClass* lib_klass = linker->SearchClassLibraries(interface_names[i], program->GetLibUses());
       if(lib_klass && lib_klass->GetName() == to) {
         return true;
       }
@@ -7101,7 +7102,7 @@ bool ContextAnalyzer::ValidUpCast(const std::wstring& to, LibraryClass* from_kla
       return true;
     }
     else {
-      LibraryClass* lib_klass = linker->SearchClassLibraries(interface_names[i], program->GetUses());
+      LibraryClass* lib_klass = linker->SearchClassLibraries(interface_names[i], program->GetLibUses());
       if(lib_klass && lib_klass->GetName() == to) {
         return true;
       }
@@ -7134,7 +7135,7 @@ bool ContextAnalyzer::GetProgramOrLibraryClass(const std::wstring &cls_name, Cla
     return true;
   }
 
-  lib_klass = linker->SearchClassLibraries(cls_name, program->GetUses(current_class->GetFileName()));
+  lib_klass = linker->SearchClassLibraries(cls_name, program->GetLibUses(current_class->GetFileName()));
   if(lib_klass) {
     return true;
   }
@@ -7301,7 +7302,7 @@ bool ContextAnalyzer::ResolveClassEnumType(Type* type, Class* context_klass)
     return true;
   }
 
-  LibraryClass* lib_klass = linker->SearchClassLibraries(type->GetName(), program->GetUses());
+  LibraryClass* lib_klass = linker->SearchClassLibraries(type->GetName(), program->GetLibUses());
   if(lib_klass) {
     lib_klass->SetCalled(true);
     type->SetName(lib_klass->GetName());
@@ -7344,14 +7345,14 @@ bool ContextAnalyzer::ResolveClassEnumType(Type* type, Class* context_klass)
     }
   }
 
-  LibraryEnum* lib_eenum = linker->SearchEnumLibraries(type->GetName(), program->GetUses());
+  LibraryEnum* lib_eenum = linker->SearchEnumLibraries(type->GetName(), program->GetLibUses());
   if(lib_eenum) {
     type->SetName(lib_eenum->GetName());
     type->SetResolved(true);
     return true;
   }
   else {
-    lib_eenum = linker->SearchEnumLibraries(type->GetName(), program->GetUses());
+    lib_eenum = linker->SearchEnumLibraries(type->GetName(), program->GetLibUses());
     if(lib_eenum) {
       type->SetName(lib_eenum->GetName());
       type->SetResolved(true);
@@ -7390,7 +7391,7 @@ bool ContextAnalyzer::IsClassEnumParameterMatch(Type* calling_type, Type* method
   }
 
   if(!from_klass) {
-    from_lib_klass = linker->SearchClassLibraries(from_klass_name, program->GetUses());
+    from_lib_klass = linker->SearchClassLibraries(from_klass_name, program->GetLibUses());
   }
 
   // resolve to class name
@@ -7404,7 +7405,7 @@ bool ContextAnalyzer::IsClassEnumParameterMatch(Type* calling_type, Type* method
   }
 
   if(!to_klass) {
-    LibraryClass* to_lib_klass = linker->SearchClassLibraries(method_type->GetName(), program->GetUses());
+    LibraryClass* to_lib_klass = linker->SearchClassLibraries(method_type->GetName(), program->GetLibUses());
     if(to_lib_klass) {
       to_klass_name = to_lib_klass->GetName();
     }
@@ -7413,7 +7414,7 @@ bool ContextAnalyzer::IsClassEnumParameterMatch(Type* calling_type, Type* method
   // check enum types
   if(!from_klass && !from_lib_klass) {
     Enum* from_enum = SearchProgramEnums(from_klass_name);
-    LibraryEnum* from_lib_enum = linker->SearchEnumLibraries(from_klass_name, program->GetUses());
+    LibraryEnum* from_lib_enum = linker->SearchEnumLibraries(from_klass_name, program->GetLibUses());
 
     std::wstring to_enum_name;
     Enum* to_enum = SearchProgramEnums(method_type->GetName());
@@ -7421,7 +7422,7 @@ bool ContextAnalyzer::IsClassEnumParameterMatch(Type* calling_type, Type* method
       to_enum_name = to_enum->GetName();
     }
     else {
-      LibraryEnum* to_lib_enum = linker->SearchEnumLibraries(method_type->GetName(), program->GetUses());
+      LibraryEnum* to_lib_enum = linker->SearchEnumLibraries(method_type->GetName(), program->GetLibUses());
       if(to_lib_enum) {
         to_enum_name = to_lib_enum->GetName();
       }
@@ -7537,7 +7538,7 @@ StringConcat* ContextAnalyzer::AnalyzeStringConcat(Expression* expression, int d
                 }
               }
               else {
-                LibraryClass* lib_klass = linker->SearchClassLibraries(cls_name, program->GetUses());
+                LibraryClass* lib_klass = linker->SearchClassLibraries(cls_name, program->GetLibUses());
                 if(lib_klass) {
                   LibraryMethod* lib_method = lib_klass->GetMethod(cls_name + L":ToString:");
                   if(lib_method && lib_method->GetMethodType() != PRIVATE_METHOD) {
@@ -7604,7 +7605,7 @@ void ContextAnalyzer::AnalyzeCharacterStringVariable(SymbolEntry* entry, Charact
         }
       }
       else {
-        LibraryClass* lib_klass = linker->SearchClassLibraries(cls_name, program->GetUses());
+        LibraryClass* lib_klass = linker->SearchClassLibraries(cls_name, program->GetLibUses());
         if(lib_klass) {
           LibraryMethod* lib_method = lib_klass->GetMethod(cls_name + L":ToString:");
           if(lib_method && lib_method->GetMethodType() != PRIVATE_METHOD) {
@@ -7635,7 +7636,7 @@ void ContextAnalyzer::AnalyzeVariableCast(Type* to_type, Expression* expression)
      to_type->GetName() != L"System.Base" && to_type->GetName() != L"Base") {
     const std::wstring to_class_name = to_type->GetName();
     if(SearchProgramEnums(to_class_name) ||
-       linker->SearchEnumLibraries(to_class_name, program->GetUses(current_class->GetFileName()))) {
+       linker->SearchEnumLibraries(to_class_name, program->GetLibUses(current_class->GetFileName()))) {
       return;
     }
 
@@ -7644,7 +7645,7 @@ void ContextAnalyzer::AnalyzeVariableCast(Type* to_type, Expression* expression)
       expression->SetToClass(to_class);
     }
     else {
-      LibraryClass* to_lib_class = linker->SearchClassLibraries(to_class_name, program->GetUses());
+      LibraryClass* to_lib_class = linker->SearchClassLibraries(to_class_name, program->GetLibUses());
       if(to_lib_class) {
         expression->SetToLibraryClass(to_lib_class);
       }
@@ -7915,7 +7916,7 @@ Type* ContextAnalyzer::ResolveGenericType(Type* type, Expression* expression, Cl
   int concrete_index = -1;
   const std::wstring left_type_name = type->GetName();
 
-  if(program->GetEnum(left_type_name) || linker->SearchEnumLibraries(left_type_name, program->GetUses())) {
+  if(program->GetEnum(left_type_name) || linker->SearchEnumLibraries(left_type_name, program->GetLibUses())) {
     ProcessError(expression, L"Generic must be a class type");
   }
 
@@ -7953,7 +7954,7 @@ Class* ContextAnalyzer::SearchProgramClasses(const std::wstring& klass_name)
   if(!klass) {
     klass = program->GetClass(bundle->GetName() + L"." + klass_name);
     if(!klass) {
-      std::vector<std::wstring> uses = program->GetUses();
+      std::vector<std::wstring> uses = program->GetLibUses();
       for(size_t i = 0; !klass && i < uses.size(); ++i) {
         klass = program->GetClass(uses[i] + L"." + klass_name);
       }
@@ -7969,7 +7970,7 @@ Enum* ContextAnalyzer::SearchProgramEnums(const std::wstring& eenum_name)
   if(!eenum) {
     eenum = program->GetEnum(bundle->GetName() + L"." + eenum_name);
     if(!eenum) {
-      std::vector<std::wstring> uses = program->GetUses();
+      std::vector<std::wstring> uses = program->GetLibUses();
       for(size_t i = 0; !eenum && i < uses.size(); ++i) {
         eenum = program->GetEnum(uses[i] + L"." + eenum_name);
         if(!eenum) {
@@ -8408,30 +8409,30 @@ void ContextAnalyzer::FindSignatureClass(Type* type, const std::wstring mthd_str
     break;
 
   case BOOLEAN_TYPE:
-    lib_klass = linker->SearchClassLibraries(BOOL_CLASS_ID, program->GetUses(context_klass->GetFileName()));
+    lib_klass = linker->SearchClassLibraries(BOOL_CLASS_ID, program->GetLibUses(context_klass->GetFileName()));
     break;
 
   case BYTE_TYPE:
-    lib_klass = linker->SearchClassLibraries(BYTE_CLASS_ID, program->GetUses(context_klass->GetFileName()));
+    lib_klass = linker->SearchClassLibraries(BYTE_CLASS_ID, program->GetLibUses(context_klass->GetFileName()));
 
     break;
 
   case CHAR_TYPE:
-    lib_klass = linker->SearchClassLibraries(CHAR_CLASS_ID, program->GetUses(context_klass->GetFileName()));
+    lib_klass = linker->SearchClassLibraries(CHAR_CLASS_ID, program->GetLibUses(context_klass->GetFileName()));
     break;
 
   case INT_TYPE:
-    lib_klass = linker->SearchClassLibraries(INT_CLASS_ID, program->GetUses(context_klass->GetFileName()));
+    lib_klass = linker->SearchClassLibraries(INT_CLASS_ID, program->GetLibUses(context_klass->GetFileName()));
     break;
 
   case FLOAT_TYPE:
-    lib_klass = linker->SearchClassLibraries(FLOAT_CLASS_ID, program->GetUses(context_klass->GetFileName()));
+    lib_klass = linker->SearchClassLibraries(FLOAT_CLASS_ID, program->GetLibUses(context_klass->GetFileName()));
     break;
 
   case CLASS_TYPE:
     klass = SearchProgramClasses(type->GetName());
     if(!klass) {
-      lib_klass = linker->SearchClassLibraries(type->GetName(), program->GetUses(context_klass->GetFileName()));
+      lib_klass = linker->SearchClassLibraries(type->GetName(), program->GetLibUses(context_klass->GetFileName()));
     }
     break;
 
