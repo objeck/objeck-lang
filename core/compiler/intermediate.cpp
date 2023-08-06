@@ -221,7 +221,7 @@ void IntermediateEmitter::Translate()
     LibraryClass* lib_class = lib_classes[i]; 
     std::vector<std::wstring> interface_names = lib_class->GetInterfaceNames();
     for(size_t j = 0; j < interface_names.size(); ++j) {
-      LibraryClass* inf_klass = parsed_program->GetLinker()->SearchClassLibraries(interface_names[j], parsed_program->GetUses());
+      LibraryClass* inf_klass = parsed_program->GetLinker()->SearchClassLibraries(interface_names[j], parsed_program->GetLibUses());
       if(inf_klass) {
         lib_class->AddInterfaceId(inf_klass->GetId());
       }
@@ -274,7 +274,7 @@ void IntermediateEmitter::EmitLibraries(Linker* linker)
     std::vector<LibraryClass*> lib_classes = linker->GetAllClasses();
     for(size_t i = 0; i < lib_classes.size(); ++i) {
       if(is_lib || lib_classes[i]->GetCalled()) {
-        LibraryClass* parent_class = linker->SearchClassLibraries(lib_classes[i]->GetParentName(), parsed_program->GetUses());
+        LibraryClass* parent_class = linker->SearchClassLibraries(lib_classes[i]->GetParentName(), parsed_program->GetLibUses());
         imm_program->AddClass(new IntermediateClass(lib_classes[i], parent_class ? parent_class->GetId() : -1));
       }
     }
@@ -856,7 +856,7 @@ void IntermediateEmitter::EmitLambda(Lambda* lambda)
 #endif
           closure_dclrs->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_PARM));
         }
-        else if(parsed_program->GetLinker()->SearchEnumLibraries(entry->GetType()->GetName(), parsed_program->GetUses())) {
+        else if(parsed_program->GetLinker()->SearchEnumLibraries(entry->GetType()->GetName(), parsed_program->GetLibUses())) {
 #ifdef _DEBUG
           GetLogger() << L"\t" << entry->GetId() << L": INT_ARY_PARM: name=" << entry->GetName() << std::endl;
 #endif
@@ -889,7 +889,7 @@ void IntermediateEmitter::EmitLambda(Lambda* lambda)
 #endif
           closure_dclrs->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_PARM));
         }
-        else if(parsed_program->GetLinker()->SearchEnumLibraries(entry->GetType()->GetName(), parsed_program->GetUses())) {
+        else if(parsed_program->GetLinker()->SearchEnumLibraries(entry->GetType()->GetName(), parsed_program->GetLibUses())) {
 #ifdef _DEBUG
           GetLogger() << L"\t" << entry->GetId() << L": INT_PARM: name=" << entry->GetName() << std::endl;
 #endif
@@ -1329,7 +1329,7 @@ void IntermediateEmitter::EmitMethodCallStatement(MethodCall* method_call)
       if(method_call->GetMethod()) {
         Method* method = method_call->GetMethod();
         if(method->GetReturn()->GetType() == CLASS_TYPE) {
-          bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(method->GetReturn()->GetName(), parsed_program->GetUses()) || 
+          bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(method->GetReturn()->GetName(), parsed_program->GetLibUses()) || 
             SearchProgramEnums(method->GetReturn()->GetName());
           if(!is_enum) {
             is_nested = true;
@@ -1345,7 +1345,7 @@ void IntermediateEmitter::EmitMethodCallStatement(MethodCall* method_call)
       else if(method_call->GetLibraryMethod()) {
         LibraryMethod* lib_method = method_call->GetLibraryMethod();
         if(lib_method->GetReturn()->GetType() == CLASS_TYPE) {
-          bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(lib_method->GetReturn()->GetName(), parsed_program->GetUses()) || 
+          bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(lib_method->GetReturn()->GetName(), parsed_program->GetLibUses()) || 
             SearchProgramEnums(lib_method->GetReturn()->GetName());
           if(!is_enum) {
             is_nested = true;
@@ -1409,7 +1409,7 @@ void IntermediateEmitter::EmitMethodCallStatement(MethodCall* method_call)
       if(method_call->GetMethod()) {
         Method* method = method_call->GetMethod();
         if(method->GetReturn()->GetType() == CLASS_TYPE) {
-          bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(method->GetReturn()->GetName(), parsed_program->GetUses()) || 
+          bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(method->GetReturn()->GetName(), parsed_program->GetLibUses()) || 
             SearchProgramEnums(method->GetReturn()->GetName());
           if(!is_enum) {
             is_nested = true;
@@ -1425,7 +1425,7 @@ void IntermediateEmitter::EmitMethodCallStatement(MethodCall* method_call)
       else if(method_call->GetLibraryMethod()) {
         LibraryMethod* lib_method = method_call->GetLibraryMethod();
         if(lib_method->GetReturn()->GetType() == CLASS_TYPE) {
-          bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(lib_method->GetReturn()->GetName(), parsed_program->GetUses()) || 
+          bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(lib_method->GetReturn()->GetName(), parsed_program->GetLibUses()) || 
             SearchProgramEnums(lib_method->GetReturn()->GetName());
           if(!is_enum) {
             is_nested = true;
@@ -3224,7 +3224,7 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LOAD_INST_MEM));
     }
     else {
-      const long id = parsed_program->GetLinker()->SearchClassLibraries(type_of->GetName(), parsed_program->GetUses())->GetId();
+      const long id = parsed_program->GetLinker()->SearchClassLibraries(type_of->GetName(), parsed_program->GetLibUses())->GetId();
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, OBJ_TYPE_OF, id));
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LOAD_INST_MEM));
     }
@@ -3288,7 +3288,7 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
       if(method_call->GetMethod()) {
         Method* method = method_call->GetMethod();
         if(method->GetReturn()->GetType() == CLASS_TYPE) {
-          bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(method->GetReturn()->GetName(), parsed_program->GetUses()) || 
+          bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(method->GetReturn()->GetName(), parsed_program->GetLibUses()) || 
             SearchProgramEnums(method->GetReturn()->GetName());
           if(!is_enum) {
             is_nested = true;
@@ -3304,7 +3304,7 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
       else if(method_call->GetLibraryMethod()) {
         LibraryMethod* lib_method = method_call->GetLibraryMethod();
         if(lib_method->GetReturn()->GetType() == CLASS_TYPE) {
-          bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(lib_method->GetReturn()->GetName(), parsed_program->GetUses()) || 
+          bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(lib_method->GetReturn()->GetName(), parsed_program->GetLibUses()) || 
             SearchProgramEnums(lib_method->GetReturn()->GetName());
           if(!is_enum) {
             is_nested = true;
@@ -3448,7 +3448,7 @@ void IntermediateEmitter::EmitMethodCallExpression(MethodCall* method_call, bool
       if(method_call->GetMethod()) {
         Method* method = method_call->GetMethod();
         if(method->GetReturn()->GetType() == CLASS_TYPE) {
-          bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(method->GetReturn()->GetName(), parsed_program->GetUses()) || 
+          bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(method->GetReturn()->GetName(), parsed_program->GetLibUses()) || 
             SearchProgramEnums(method->GetReturn()->GetName());
           if(!is_enum) {
             is_nested = true;
@@ -3464,7 +3464,7 @@ void IntermediateEmitter::EmitMethodCallExpression(MethodCall* method_call, bool
       else if(method_call->GetLibraryMethod()) {
         LibraryMethod* lib_method = method_call->GetLibraryMethod();
         if(lib_method->GetReturn()->GetType() == CLASS_TYPE) {
-          bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(lib_method->GetReturn()->GetName(), parsed_program->GetUses()) || 
+          bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(lib_method->GetReturn()->GetName(), parsed_program->GetLibUses()) || 
             SearchProgramEnums(lib_method->GetReturn()->GetName());
           if(!is_enum) {
             is_nested = true;
@@ -3511,7 +3511,7 @@ void IntermediateEmitter::EmitMethodCallExpression(MethodCall* method_call, bool
       if(method_call->GetMethod()) {
         Method* method = method_call->GetMethod();
         if(method->GetReturn()->GetType() == CLASS_TYPE) {
-          bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(method->GetReturn()->GetName(), parsed_program->GetUses()) || 
+          bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(method->GetReturn()->GetName(), parsed_program->GetLibUses()) || 
             SearchProgramEnums(method->GetReturn()->GetName());
           if(!is_enum) {
             is_nested = true;
@@ -3527,7 +3527,7 @@ void IntermediateEmitter::EmitMethodCallExpression(MethodCall* method_call, bool
       else if(method_call->GetLibraryMethod()) {
         LibraryMethod* lib_method = method_call->GetLibraryMethod();
         if(lib_method->GetReturn()->GetType() == CLASS_TYPE) {
-          bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(lib_method->GetReturn()->GetName(), parsed_program->GetUses()) || 
+          bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(lib_method->GetReturn()->GetName(), parsed_program->GetLibUses()) || 
             SearchProgramEnums(lib_method->GetReturn()->GetName());
           if(!is_enum) {
             is_nested = true;
@@ -4423,7 +4423,7 @@ void IntermediateEmitter::EmitCast(Expression* expression)
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LIB_OBJ_TYPE_OF, type_of->GetName()));
       }
       else {
-        long id = parsed_program->GetLinker()->SearchClassLibraries(type_of->GetName(), parsed_program->GetUses())->GetId();
+        long id = parsed_program->GetLinker()->SearchClassLibraries(type_of->GetName(), parsed_program->GetLibUses())->GetId();
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, OBJ_TYPE_OF, id));
         expression->GetTypeOf()->SetResolved(true);
       }
@@ -5204,7 +5204,7 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
             break;
 
           case frontend::CLASS_TYPE:
-            if(parsed_program->GetLinker()->SearchEnumLibraries(entry->GetType()->GetName(), parsed_program->GetUses()) || 
+            if(parsed_program->GetLinker()->SearchEnumLibraries(entry->GetType()->GetName(), parsed_program->GetLibUses()) || 
                SearchProgramEnums(entry->GetType()->GetName())) {
               imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_INST_MEM));
             }
@@ -5248,7 +5248,7 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
             break;
 
           case frontend::CLASS_TYPE:
-            if(parsed_program->GetLinker()->SearchEnumLibraries(entry->GetType()->GetName(), parsed_program->GetUses()) || 
+            if(parsed_program->GetLinker()->SearchEnumLibraries(entry->GetType()->GetName(), parsed_program->GetLibUses()) || 
                SearchProgramEnums(entry->GetType()->GetName()) || is_index_size) {
               imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_INST_MEM));
             }
@@ -5259,7 +5259,7 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
           }
           // enum check
           if(entry->GetType()->GetType() == frontend::CLASS_TYPE && 
-             parsed_program->GetLinker()->SearchEnumLibraries(entry->GetType()->GetName(), parsed_program->GetUses())) {
+             parsed_program->GetLinker()->SearchEnumLibraries(entry->GetType()->GetName(), parsed_program->GetLibUses())) {
             imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_INST_MEM));
           }
         }
@@ -5428,7 +5428,7 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index, Int
 #endif
               declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_PARM));
             }
-            else if(parsed_program->GetLinker()->SearchEnumLibraries(entry->GetType()->GetName(), parsed_program->GetUses())) {
+            else if(parsed_program->GetLinker()->SearchEnumLibraries(entry->GetType()->GetName(), parsed_program->GetLibUses())) {
 #ifdef _DEBUG
               GetLogger() << L"\t" << index << L": INT_ARY_PARM: name=" << entry->GetName() << std::endl;
 #endif
@@ -5461,7 +5461,7 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index, Int
 #endif
               declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_PARM));
             }
-            else if(parsed_program->GetLinker()->SearchEnumLibraries(entry->GetType()->GetName(), parsed_program->GetUses())) {
+            else if(parsed_program->GetLinker()->SearchEnumLibraries(entry->GetType()->GetName(), parsed_program->GetLibUses())) {
 #ifdef _DEBUG
               GetLogger() << L"\t" << index << L": INT_PARM: name=" << entry->GetName() << std::endl;
 #endif
@@ -5649,7 +5649,7 @@ frontend::Class* IntermediateEmitter::SearchProgramClasses(const std::wstring& k
   if(!klass) {
     klass = parsed_program->GetClass(parsed_bundle->GetName() + L"." + klass_name);
     if(!klass) {
-      std::vector<std::wstring> uses = parsed_program->GetUses();
+      std::vector<std::wstring> uses = parsed_program->GetLibUses();
       for(size_t i = 0; !klass && i < uses.size(); ++i) {
         klass = parsed_program->GetClass(uses[i] + L"." + klass_name);
       }
@@ -5665,7 +5665,7 @@ frontend::Enum* IntermediateEmitter::SearchProgramEnums(const std::wstring& eenu
   if(!eenum) {
     eenum = parsed_program->GetEnum(parsed_bundle->GetName() + L"." + eenum_name);
     if(!eenum) {
-      std::vector<std::wstring> uses = parsed_program->GetUses();
+      std::vector<std::wstring> uses = parsed_program->GetLibUses();
       for(size_t i = 0; !eenum && i < uses.size(); ++i) {
         eenum = parsed_program->GetEnum(uses[i] + L"." + eenum_name);
       }
