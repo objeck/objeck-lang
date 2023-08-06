@@ -3727,7 +3727,8 @@ namespace frontend {
       std::vector<std::wstring> lib_uses;
       lib_uses.push_back(u);
 
-      AddUses(lib_uses, std::vector<Type*>(), f);
+      std::vector<Type*> static_uses;
+      AddUses(lib_uses, static_uses, f);
     }
 
     void AddUses(std::vector<std::wstring> &u, std::vector<Type*> &s, const std::wstring &f) {
