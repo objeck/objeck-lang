@@ -316,7 +316,11 @@ void Parser::ParseBundle(int depth)
   while(Match(TOKEN_USE_ID) && !Match(TOKEN_END_OF_STREAM)) {
     NextToken();
 
-    if(Match(TOKEN_IDENT)) {
+    if(Match(TOKEN_IDENT) || Match(TOKEN_BUNDLE_ID)) {
+      if(Match(TOKEN_BUNDLE_ID)) {
+        NextToken();
+      }
+
       while(Match(TOKEN_IDENT)) {
         const std::wstring ident = ParseBundleName();
 #ifdef _DEBUG
