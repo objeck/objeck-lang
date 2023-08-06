@@ -1,5 +1,5 @@
 use Collection;
-use static Int, Float;
+use class Int, Float;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
