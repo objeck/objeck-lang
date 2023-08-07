@@ -1987,6 +1987,29 @@ function : Example() ~ Nil {
 			};
 		}
 
+		method : public : ToString() ~ String {
+			buffer := "";
+
+			each(i := 0; i < @size; i += 1;) {
+				e := @values[i];
+				klass := e->GetClass();
+				methods := klass->GetMethods();
+				
+				found := false;
+				each(m := methods) {
+					if(m->GetParameters()->Size() = 0 & m->GetName->Equals("ToString")) {
+						buffer := m->ToString();
+					};
+				};
+
+				if(!found) {
+					buffer := e->GetInstanceID()->ToString();
+				};
+			};
+			
+			return buffer;
+		}
+
 		#~
 		Compresses the Vector freeing unused memory
 		~#

@@ -6,6 +6,11 @@ class Test {
 		Print(1)->Print(',')->Print(2)->Print(',')->PrintLine(3);
 		Abs(-256)->Sqrt()->PrintLine();
 		Bar(32)->PrintLine();
+
+		v := Collection.Vector->New()<IntRef>;
+		v->AddBack(13);
+		v->AddBack(7);
+		v->ToString()->PrintLine();
 	}
 }
 
