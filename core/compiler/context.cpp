@@ -3091,32 +3091,32 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, b
     method = klass->GetMethod(encoded_name);
   }
 
-  // TODO: test...
   if(!method) {
-    const auto static_uses = program->GetStaticUses(current_class->GetFileName());
+    // check static classes
+    const const std::vector<Type*> static_uses = program->GetStaticUses(current_class->GetFileName());
     if(!static_uses.empty()) {
       for(auto& static_use : static_uses) {
         std::wstring class_name;
 
         switch(static_use->GetType()) {
         case BYTE_TYPE:
-          class_name = L"$Byte";
+          class_name = L"System.$Byte";
           break;
 
         case CHAR_TYPE:
-          class_name = L"$Char";
+          class_name = L"System.$Char";
           break;
 
         case INT_TYPE:
-          class_name = L"$Int";
+          class_name = L"System.$Int";
           break;
 
         case FLOAT_TYPE:
-          class_name = L"$Float";
+          class_name = L"System.$Float";
           break;
 
         case BOOLEAN_TYPE:
-          class_name = L"$Bool";
+          class_name = L"System.$Bool";
           break;
 
         case CLASS_TYPE:
@@ -3135,19 +3135,21 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, b
           // program class
           if(static_klass) {
             use_static_check = true;
+            method_call->SetVariableName(static_klass->GetName());
             AnalyzeMethodCall(static_klass, method_call, is_expr, encoding, depth + 1);
             use_static_check = false;
-
+            // found, exit
             if(method_call->GetMethod()) {
               return;
             }
           }
-
+          // library class
           else {
             use_static_check = true;
+            method_call->SetVariableName(static_lib_klass->GetName());
             AnalyzeMethodCall(static_lib_klass, method_call, is_expr, encoding, true, depth + 1);
             use_static_check = false;
-
+            // found, exit
             if(method_call->GetLibraryMethod()) {
               return;
             }
@@ -3159,6 +3161,7 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, b
       }
     }
 
+    // proceed with class resolution 
     if(klass->GetParent()) {
       Class* parent = klass->GetParent();
       method_call->SetOriginalClass(klass);
