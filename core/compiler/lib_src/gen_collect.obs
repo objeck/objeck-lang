@@ -1991,22 +1991,22 @@ function : Example() ~ Nil {
 			buffer := "";
 
 			each(i := 0; i < @size; i += 1;) {
-				e := @values[i];
-				klass := e->GetClass();
-				methods := klass->GetMethods();
+				value := @values[i];
+				klass := value->GetClass();
+				mthds := klass->GetMethods();
 				
 				found := false;
-				each(m := methods) {
-					if(m->GetParameters()->Size() = 0 & m->GetName->Equals("ToString")) {
-						buffer := m->ToString();
+				each(mthd := mthds) {
+					if(mthd->GetParameters()->Size() = 0 & mthd->GetName->Equals("ToString")) {
+						buffer := mthd->ToString();
 					};
 				};
-
+				
 				if(!found) {
 					buffer := e->GetInstanceID()->ToString();
 				};
 			};
-			
+
 			return buffer;
 		}
 
