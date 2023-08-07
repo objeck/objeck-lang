@@ -68,6 +68,14 @@ each(value := values) {
 		}
 
 		#~
+		Formats the collection into a string
+		@return string representation
+		~#
+		method : public : ToString() ~ String {
+			return @cache->ToString();
+		}
+
+		#~
 		Inserts a value into the hash
 		@param key key
 		@param value value
@@ -335,6 +343,52 @@ hash->Has(408)->PrintLine();
 			@buckets := CompareList->New[@capacity]<K>;
 			@auto_resize := true;
 			@size := 0;
+		}
+
+		#~
+		Formats the collection into a string
+		@return string representation
+		~#
+		method : public : ToString() ~ String {
+			buffer := "[";
+
+			pairs := GetKeyValues()<Pair<K,V>>;
+			each(i : pairs) {
+				# get string value if instance implements 'Stringify'
+				pair := pairs->Get(i)<Pair<K,V>>;
+
+				key := pair->GetFirst();
+				if(key->TypeOf(Stringify)) {
+					buffer->Append('(');
+					buffer->Append(key->As(System.Stringify)->ToString());
+				}
+				# use instance ID instead
+				else {
+					buffer->Append('(');
+					buffer->Append(key->GetInstanceID()->ToHexString());
+				};
+
+				buffer->Append(':');
+
+				value := pair->GetSecond()->As(Base);
+				if(value->TypeOf(Stringify)) {
+					buffer->Append(value->As(System.Stringify)->ToString());
+					buffer->Append(')');
+				}
+				# use instance ID instead
+				else {
+					buffer->Append(value->GetInstanceID()->ToHexString());
+					buffer->Append(')');
+				};
+
+				# add in comma
+				if(i + 1 < pairs->Size()) {
+					buffer->Append(',');
+				};
+			};
+			buffer->Append(']');
+
+			return buffer;
 		}
 		
 		#~
@@ -624,6 +678,14 @@ hash->Has(408)->PrintLine();
 		~#
 		New() {
 			@values := Vector->New()<H>	;
+		}
+
+		#~
+		Formats the collection into a string
+		@return string representation
+		~#
+		method : public : ToString() ~ String {
+			return @values->ToString();
 		}
 
 		#~
