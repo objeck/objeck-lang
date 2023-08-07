@@ -39,8 +39,11 @@ contexts:
       scope: keyword.other
 
     - match: '\b(bundle)\b'
-      scope: storage.type.trait.objeck-obs
+      scope: storage.type.impl.objeck-obs
 
+    - match: '\b(method|function)\b'
+      scope: storage.type.function.objeck-obs
+      
     - match: '\b(Byte|ByteRef|Int|IntRef|Float|FloatRef|Char|CharRef|Bool|BoolRef|String|BaseArrayRef|BoolArrayRef|ByteArrayRef|CharArrayRef|FloatArrayRef|IntArrayRef|StringArrayRef|Func2Ref|Func3Ref|Func4Ref|FuncRef)\b'
       scope: storage.type.objeck-obs
 
