@@ -3093,7 +3093,7 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, b
 
   if(!method) {
     // check static classes
-    const const std::vector<Type*> static_uses = program->GetStaticUses(current_class->GetFileName());
+    const std::vector<Type*> static_uses = program->GetStaticUses(current_class->GetFileName());
     if(!static_uses.empty()) {
       for(auto& static_use : static_uses) {
         std::wstring class_name;
@@ -3138,6 +3138,7 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, b
             method_call->SetVariableName(static_klass->GetName());
             AnalyzeMethodCall(static_klass, method_call, is_expr, encoding, depth + 1);
             use_static_check = false;
+            
             // found, exit
             if(method_call->GetMethod()) {
               return;
@@ -3149,6 +3150,7 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, b
             method_call->SetVariableName(static_lib_klass->GetName());
             AnalyzeMethodCall(static_lib_klass, method_call, is_expr, encoding, true, depth + 1);
             use_static_check = false;
+
             // found, exit
             if(method_call->GetLibraryMethod()) {
               return;
