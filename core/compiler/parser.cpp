@@ -374,7 +374,7 @@ void Parser::ParseBundle(int depth)
           break;
 
         case TOKEN_IDENT: {
-          const std::wstring name = scanner->GetToken()->GetIdentifier();
+          const std::wstring name = ParseBundleName();
           static_uses.push_back(TypeFactory::Instance()->MakeType(CLASS_TYPE, name));
           NextToken();
         }
