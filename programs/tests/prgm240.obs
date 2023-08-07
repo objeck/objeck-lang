@@ -1,9 +1,16 @@
 use bundle Collection;
-use function System.IO.Standard, Int;
+use function System.IO.Standard, Foo, Int;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
 		Print(1)->Print(',')->Print(2)->Print(',')->PrintLine(3);
 		Abs(-256)->Sqrt()->PrintLine();
+		Bar(32)->PrintLine();
+	}
+}
+
+class Foo {
+	function : Bar(v : Int) ~ Int {
+		return v * 2;
 	}
 }
