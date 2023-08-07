@@ -1,4 +1,4 @@
-use class System.IO.Standard, Int;
+use static System.IO.Standard, Int;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
