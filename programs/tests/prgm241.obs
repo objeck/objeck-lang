@@ -1,0 +1,15 @@
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		v := Collection.Map->New()<String,IntRef>;
+		v->Insert("one", 1);
+		v->Insert("two", 2);
+		v->Insert("three", 3);
+		v->ToString()->PrintLine();
+
+		s := Collection.Set->New()<String>;
+		s->Insert("four");
+		s->Insert("five");
+		s->Insert("six");
+		s->ToString()->PrintLine();
+	}
+}
