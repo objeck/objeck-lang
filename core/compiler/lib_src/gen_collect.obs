@@ -950,6 +950,39 @@ function : Example() ~ Nil {
 		}
 
 		#~
+		Formats the collection into a string
+		@return string representation
+		~#
+		method : public : ToString() ~ String {
+			buffer := "[";
+
+			elem := @head;
+			while(elem <> Nil) {
+				# get string value if instance implements 'Stringify'				
+				value := elem->Get()->As(Base);
+				if(value->TypeOf(Stringify)) {
+					buffer->Append(value->As(System.Stringify)->ToString());
+				}
+				# use instance ID instead
+				else {
+					buffer->Append(value->GetInstanceID()->ToHexString());
+				};
+
+				# next
+				elem := elem->GetNext();
+
+				# add comma, if needed
+				if(elem <> Nil) {
+					buffer->Append(',');
+				};
+				
+			};
+			buffer->Append(']');
+
+			return buffer;
+		}
+
+		#~
 		Instance of a forward iterator
 		@return forward iterator
 		~#
@@ -1575,6 +1608,39 @@ function : Example() ~ Nil {
 		}
 
 		#~
+		Formats the collection into a string
+		@return string representation
+		~#
+		method : public : ToString() ~ String {
+			buffer := "[";
+
+			elem := @head;
+			while(elem <> Nil) {
+				# get string value if instance implements 'Stringify'				
+				value := elem->Get()->As(Base);
+				if(value->TypeOf(Stringify)) {
+					buffer->Append(value->As(System.Stringify)->ToString());
+				}
+				# use instance ID instead
+				else {
+					buffer->Append(value->GetInstanceID()->ToHexString());
+				};
+
+				# next
+				elem := elem->GetNext();
+
+				# add comma, if needed
+				if(elem <> Nil) {
+					buffer->Append(',');
+				};
+				
+			};
+			buffer->Append(']');
+
+			return buffer;
+		}
+
+		#~
 		Returns a limited list
 		@param l limit
 		@return limited list
@@ -1987,26 +2053,30 @@ function : Example() ~ Nil {
 			};
 		}
 
+		#~
+		Formats the collection into a string
+		@return string representation
+		~#
 		method : public : ToString() ~ String {
-			buffer := "";
+			buffer := "[";
 
-			for(i := 0; i < @size; i += 1;) {
-				value := @values[i];
-				klass := value->GetClass();
-				mthds := klass->GetMethods();
-				
-				found := false;
-				each(mthd := mthds) {
-					if(mthd->GetParameters()->Size() = 0 & mthd->GetName->Equals("ToString")) {
-						buffer := mthd->ToString();
-						found := true;
-					};
+			each(i : @size) {
+				# get string value if instance implements 'Stringify'
+				value := @values[i]->As(Base);
+				if(value->TypeOf(Stringify)) {
+					buffer->Append(value->As(System.Stringify)->ToString());
+				}
+				# use instance ID instead
+				else {
+					buffer->Append(value->GetInstanceID()->ToHexString());
 				};
 
-				if(<>found) {
-					buffer := e->GetInstanceID()->ToString();
+				# add in comma
+				if(i + 1 < @size) {
+					buffer->Append(',');
 				};
 			};
+			buffer->Append(']');
 
 			return buffer;
 		}
@@ -2273,6 +2343,34 @@ function : Show(value : IntRef) ~ Nil {
 		New(values : Vector<H>) {
 			@values := values->ToArray();
 			@size := values->Size();
+		}
+
+		#~
+		Formats the collection into a string
+		@return string representation
+		~#
+		method : public : ToString() ~ String {
+			buffer := "[";
+
+			each(i : @size) {
+				# get string value if instance implements 'Stringify'
+				value := @values[i]->As(Base);
+				if(value->TypeOf(Stringify)) {
+					buffer->Append(value->As(System.Stringify)->ToString());
+				}
+				# use instance ID instead
+				else {
+					buffer->Append(value->GetInstanceID()->ToHexString());
+				};
+
+				# add in comma
+				if(i + 1 < @size) {
+					buffer->Append(',');
+				};
+			};
+			buffer->Append(']');
+
+			return buffer;
 		}
 
 		method : Expand() ~ Nil {
