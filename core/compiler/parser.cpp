@@ -374,14 +374,26 @@ void Parser::ParseBundle(int depth)
           break;
 
         case TOKEN_IDENT: {
-          const std::wstring name = ParseBundleName();
-          static_uses.push_back(TypeFactory::Instance()->MakeType(CLASS_TYPE, name));
-          NextToken();
+          const std::wstring ident = ParseBundleName();
+          static_uses.push_back(TypeFactory::Instance()->MakeType(CLASS_TYPE, ident));
         }
           break;
 
         case TOKEN_COMMA:
           NextToken();
+          switch(GetToken()) {
+            case TOKEN_BYTE_ID:
+            case TOKEN_CHAR_ID:
+            case TOKEN_INT_ID:
+            case TOKEN_FLOAT_ID:
+            case TOKEN_BOOLEAN_ID:
+            case TOKEN_IDENT:
+              break;
+
+            default:
+              ProcessError(TOKEN_IDENT);
+              break;
+          }
           break;
 
         default:

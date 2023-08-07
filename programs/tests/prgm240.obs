@@ -1,10 +1,8 @@
-use  Foo;
-use class Int, Float;
+use class System.IO.Standard, Int;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		Random()->PrintLine();
+		Print(1)->Print(',')->Print(2)->Print(',')->PrintLine(3);
 		Sqrt(256)->PrintLine();
-
 	}
 }
