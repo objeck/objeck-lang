@@ -381,7 +381,7 @@ hash->Has(408)->PrintLine();
 					buffer->Append(')');
 				};
 
-				# add in comma
+				# add comma
 				if(i + 1 < pairs->Size()) {
 					buffer->Append(',');
 				};
@@ -2133,7 +2133,7 @@ function : Example() ~ Nil {
 					buffer->Append(value->GetInstanceID()->ToHexString());
 				};
 
-				# add in comma
+				# add comma
 				if(i + 1 < @size) {
 					buffer->Append(',');
 				};
@@ -2425,7 +2425,7 @@ function : Show(value : IntRef) ~ Nil {
 					buffer->Append(value->GetInstanceID()->ToHexString());
 				};
 
-				# add in comma
+				# add comma
 				if(i + 1 < @size) {
 					buffer->Append(',');
 				};
@@ -3006,7 +3006,7 @@ function : Show(value : IntRef) ~ Nil {
 					buffer->Append(')');
 				};
 
-				# add in comma
+				# add comma
 				if(i + 1 < pairs->Size()) {
 					buffer->Append(',');
 				};
@@ -3308,7 +3308,7 @@ set->Has("Oakland")->PrintLine();
 					buffer->Append(key->GetInstanceID()->ToHexString());
 				};
 
-				# add in comma
+				# add comma
 				if(i + 1 < keys->Size()) {
 					buffer->Append(',');
 				};
@@ -3430,6 +3430,59 @@ set->Has("Oakland")->PrintLine();
 			};
 
 			return values;
+		}
+
+		#~
+		Formats the collection into a string
+		@return string representation
+		~#
+		method : public : ToString() ~ String {
+			buffer := "[";
+
+			keys := @map->GetKeys();
+			each(i : keys) {
+				# get key
+				key := keys->Get(i);
+				if(key->TypeOf(Stringify)) {
+					buffer->Append('(');
+					buffer->Append(key->As(System.Stringify)->ToString());
+				}
+				# use instance ID instead
+				else {
+					buffer->Append('(');
+					buffer->Append(key->GetInstanceID()->ToHexString());
+				};
+				buffer->Append(':');
+
+				# get values
+				values := @map->Find(key)<V>;
+				each(j : values) {
+					value := values->Get(i)->As(Base);
+					
+					if(value->TypeOf(Stringify)) {
+						buffer->Append(value->As(System.Stringify)->ToString());
+						
+					}
+					# use instance ID instead
+					else {
+						buffer->Append(value->GetInstanceID()->ToHexString());
+					};
+
+					# add comma
+					if(j + 1 < values->Size()) {
+						buffer->Append(',');
+					};
+				};
+				buffer->Append(')');
+
+				# add comma
+				if(i + 1 < keys->Size()) {
+					buffer->Append(',');
+				};
+			};
+			buffer->Append(']');
+
+			return buffer;
 		}
 
 		#~
