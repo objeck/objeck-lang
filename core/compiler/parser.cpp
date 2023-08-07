@@ -311,14 +311,17 @@ void Parser::ParseBundle(int depth)
   lib_uses.push_back(L"System.Introspection");
   const size_t initial_uses_size = lib_uses.size();
 
+  // parse 'use' type declarations 
   std::vector<Type*> static_uses;
-
-  // parse 'use' declarations 
   while(Match(TOKEN_USE_ID) && !Match(TOKEN_END_OF_STREAM)) {
     NextToken();
 
-    // 'use' for bundles
-    if(Match(TOKEN_IDENT)) {
+    // 'use' or 'use bundle' to import classes via bundles
+    if(Match(TOKEN_IDENT) || Match(TOKEN_BUNDLE_ID)) {
+      if(Match(TOKEN_BUNDLE_ID)) {
+        NextToken();
+      }
+
       while(Match(TOKEN_IDENT)) {
         const std::wstring ident = ParseBundleName();
 #ifdef _DEBUG
@@ -332,15 +335,15 @@ void Parser::ParseBundle(int depth)
       }
 
       if(lib_uses.size() == initial_uses_size) {
-        ProcessError(L"Expected 'use' arguments", TOKEN_SEMI_COLON);
+        ProcessError(L"Expected 'use bundle' or 'use' arguments", TOKEN_SEMI_COLON);
       }
 
       if(!Match(TOKEN_SEMI_COLON)) {
         ProcessError(L"Expected ';'", TOKEN_SEMI_COLON);
       }
     }
-    // 'use static' for classes
-    else if(Match(TOKEN_STATIC_ID)) {
+    // 'use function' to import functions via classes
+    else if(Match(TOKEN_FUNCTION_ID)) {
       NextToken();
 
       bool is_types = false;
@@ -398,6 +401,10 @@ void Parser::ParseBundle(int depth)
           is_types = true;
           break;
         }
+      }
+
+      if(static_uses.empty()) {
+        ProcessError(L"Expected 'use function' arguments", TOKEN_SEMI_COLON);
       }
     }
 
