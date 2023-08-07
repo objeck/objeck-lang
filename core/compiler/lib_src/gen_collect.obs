@@ -3441,8 +3441,9 @@ set->Has("Oakland")->PrintLine();
 
 			keys := @map->GetKeys();
 			each(i : keys) {
+
 				# get key
-				key := keys->Get(i);
+				key := keys->Get(i)->As(Compare);
 				if(key->TypeOf(Stringify)) {
 					buffer->Append('(');
 					buffer->Append(key->As(System.Stringify)->ToString());
@@ -3457,15 +3458,16 @@ set->Has("Oakland")->PrintLine();
 				# get values
 				values := @map->Find(key)<V>;
 				each(j : values) {
-					value := values->Get(i)->As(Base);
-					
-					if(value->TypeOf(Stringify)) {
-						buffer->Append(value->As(System.Stringify)->ToString());
-						
-					}
-					# use instance ID instead
-					else {
-						buffer->Append(value->GetInstanceID()->ToHexString());
+					value := values->Get(j)->As(Base);
+					if(value <> Nil) {
+						if(value->TypeOf(Stringify)) {
+							buffer->Append(value->As(System.Stringify)->ToString());
+							
+						}
+						# use instance ID instead
+						else {
+							buffer->Append(value->GetInstanceID()->ToHexString());
+						};
 					};
 
 					# add comma

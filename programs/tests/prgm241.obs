@@ -11,5 +11,15 @@ class Test {
 		s->Insert("five");
 		s->Insert("six");
 		s->ToString()->PrintLine();
+
+		m := Collection.MultiMap->New()<String,IntRef>;
+		m->Insert("one", 1);
+		m->Insert("one", 11);
+		m->Insert("two", 2);
+		m->Insert("two", 22);
+		m->Insert("three", 3);
+		m->Insert("three", 33);
+		m->ToString()->PrintLine();
+
 	}
 }
