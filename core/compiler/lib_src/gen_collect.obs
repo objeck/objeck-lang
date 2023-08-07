@@ -1999,10 +1999,11 @@ function : Example() ~ Nil {
 				each(mthd := mthds) {
 					if(mthd->GetParameters()->Size() = 0 & mthd->GetName->Equals("ToString")) {
 						buffer := mthd->ToString();
+						found := true;
 					};
 				};
 
-				if(!found) {
+				if(<>found) {
 					buffer := e->GetInstanceID()->ToString();
 				};
 			};
