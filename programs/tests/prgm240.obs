@@ -4,6 +4,6 @@ use function System.IO.Standard, Int;
 class Test {
 	function : Main(args : String[]) ~ Nil {
 		Print(1)->Print(',')->Print(2)->Print(',')->PrintLine(3);
-		Sqrt(256)->PrintLine();
+		Abs(-256)->Sqrt()->PrintLine();
 	}
 }
