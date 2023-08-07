@@ -313,14 +313,12 @@ void Parser::ParseBundle(int depth)
 
   std::vector<Type*> static_uses;
 
+  // parse 'use' declarations 
   while(Match(TOKEN_USE_ID) && !Match(TOKEN_END_OF_STREAM)) {
     NextToken();
 
-    if(Match(TOKEN_IDENT) || Match(TOKEN_BUNDLE_ID)) {
-      if(Match(TOKEN_BUNDLE_ID)) {
-        NextToken();
-      }
-
+    // 'use' for bundles
+    if(Match(TOKEN_IDENT)) {
       while(Match(TOKEN_IDENT)) {
         const std::wstring ident = ParseBundleName();
 #ifdef _DEBUG
@@ -341,10 +339,10 @@ void Parser::ParseBundle(int depth)
         ProcessError(L"Expected ';'", TOKEN_SEMI_COLON);
       }
     }
-    else if(Match(TOKEN_CLASS_ID)) {
+    // 'use static' for classes
+    else if(Match(TOKEN_STATIC_ID)) {
       NextToken();
 
-      // TOOD: static use
       bool is_types = false;
       while(!is_types) {
         switch(GetToken()) {
