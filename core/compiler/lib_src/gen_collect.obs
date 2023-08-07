@@ -1990,7 +1990,7 @@ function : Example() ~ Nil {
 		method : public : ToString() ~ String {
 			buffer := "";
 
-			each(i := 0; i < @size; i += 1;) {
+			for(i := 0; i < @size; i += 1;) {
 				value := @values[i];
 				klass := value->GetClass();
 				mthds := klass->GetMethods();
@@ -2001,7 +2001,7 @@ function : Example() ~ Nil {
 						buffer := mthd->ToString();
 					};
 				};
-				
+
 				if(!found) {
 					buffer := e->GetInstanceID()->ToString();
 				};
