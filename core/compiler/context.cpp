@@ -3315,6 +3315,7 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, b
     }
 
     // next call
+    use_static_check = false;
     AnalyzeExpressionMethodCall(method_call, depth + 1);
   }
   else {
@@ -3637,9 +3638,10 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
     }
 
     // next call
+    use_static_check = false;
     AnalyzeExpressionMethodCall(method_call, depth + 1);
   }
-  else if(!use_static_check) {
+  else {
     AnalyzeVariableFunctionCall(method_call, depth + 1);
   }
 }
@@ -3725,7 +3727,7 @@ void ContextAnalyzer::AnalyzeVariableFunctionCall(MethodCall* method_call, const
     nested_call_depth--;
     RogueReturn(method_call);
   }
-  else {
+  else if(!use_static_check) {
     const std::wstring &mthd_name = method_call->GetMethodName();
     const std::wstring &var_name = method_call->GetVariableName();
 
