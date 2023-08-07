@@ -2850,16 +2850,16 @@ function : Show(value : IntRef) ~ Nil {
 			if(node <> Nil) {
 				# process left 
 				Each(node->GetLeft(), f);
-				
+
 				key := node->GetKey()->As(Clone)->Clone();
 				value := node->Get();
 				f(key->As(Compare), value);
-				
+
 				# process right
 				Each(node->GetRight(), f);
 			};
-        }
-        
+		}
+
 		#~
 		Get a collection of keys
 		@return vector of keys
@@ -2906,6 +2906,52 @@ function : Show(value : IntRef) ~ Nil {
 				# process right
 				GetKeyValues(node->GetRight(), vector);
 			};
+		}
+
+		#~
+		Formats the collection into a string
+		@return string representation
+		~#
+		method : public : ToString() ~ String {
+			buffer := "[";
+
+			pairs := GetKeyValues()<Pair<K,V>>;
+			each(i : pairs) {
+				# get string value if instance implements 'Stringify'
+				pair := pairs->Get(i)<Pair<K,V>>;
+
+				key := pair->GetFirst();
+				if(key->TypeOf(Stringify)) {
+					buffer->Append('(');
+					buffer->Append(key->As(System.Stringify)->ToString());
+				}
+				# use instance ID instead
+				else {
+					buffer->Append('(');
+					buffer->Append(key->GetInstanceID()->ToHexString());
+				};
+
+				buffer->Append(':');
+
+				value := pair->GetSecond()->As(Base);
+				if(value->TypeOf(Stringify)) {
+					buffer->Append(value->As(System.Stringify)->ToString());
+					buffer->Append(')');
+				}
+				# use instance ID instead
+				else {
+					buffer->Append(value->GetInstanceID()->ToHexString());
+					buffer->Append(')');
+				};
+
+				# add in comma
+				if(i + 1 < @size) {
+					buffer->Append(',');
+				};
+			};
+			buffer->Append(']');
+
+			return buffer;
 		}
         
 		#~
