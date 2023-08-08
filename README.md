@@ -36,8 +36,7 @@ To get started, take a look at the [language guide](https://objeck.org/getting_s
   * 2D gaming framework and matrix mathematics APIs
   * Basics such as: files, directories, sockets, STDIO, logging, serialization, and pipe
 * REPL and IDE LSP support (for VSCode, Sublime, Kate, etc.) 
-
-Try starting with the API [documentation](https://www.objeck.org/doc/api/index.html).
+* Online guides and API [documentation](https://www.objeck.org).
 
 ### [Object-oriented](https://en.wikipedia.org/wiki/Object-oriented_programming)
   
