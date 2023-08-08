@@ -15,11 +15,19 @@ class Test {
 		m := Collection.MultiMap->New()<String,IntRef>;
 		m->Insert("one", 1);
 		m->Insert("one", 11);
+		m->Insert("one", 111);
 		m->Insert("two", 2);
 		m->Insert("two", 22);
+		m->Insert("two", 222);
+		m->Insert("two", 2222);
 		m->Insert("three", 3);
 		m->Insert("three", 33);
 		m->ToString()->PrintLine();
 
+		a := String->New[3];
+		a[0] := "Pacifica";
+		a[1] := "San Mateo";
+		a[2] := "Mountain View";
+		a->ToString()->PrintLine();
 	}
 }
