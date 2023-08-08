@@ -26,13 +26,16 @@ To get started, take a look at the [language guide](https://objeck.org/getting_s
 
 ## Key Features
 * Modern object-oriented and functional
-* APIs that support
+* Cross-platform: Linux (x64 and ARM64), macOS (ARM64), Windows (x64)
+* Optimized and JIT-compiled runtime
+* API support for
   * Secure web servers and clients
   * Encryption
   * Native parsing of JSON, CSV, and XML
   * Regular expressions
   * 2D gaming framework and matrix mathematics APIs
-  * Basics such as: files, directories, sockets, STDIO, logging, serialization and pipes
+  * Basics such as: files, directories, sockets, STDIO, logging, serialization, and pipe
+* REPL and IDE LSP support (for VSCode, Sublime, Kate, etc.) 
 
 Try starting with the API [documentation](https://www.objeck.org/doc/api/index.html).
 
@@ -70,7 +73,7 @@ value := "Hello World!";
 value->Size()->PrintLine();
 ```
 
-#### Anonymous classes
+#### Anonymous Classes
 ```ruby
 interface Greetings {
   method : virtual : public : SayHi() ~ Nil;
