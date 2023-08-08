@@ -25,7 +25,16 @@ class Hello {
 To get started, take a look at the [language guide](https://objeck.org/getting_started.html) and [code examples](https://github.com/objeck/objeck-lang/tree/master/programs/examples). If you want to contribute, start with the [system architecture](https://github.com/objeck/objeck-lang/tree/master/core).
 
 ## Key Features
-Start with the API [documentation](https://www.objeck.org/doc/api/index.html).
+* Modern object-oriented and functional
+* APIs that support
+  * Secure web servers and clients
+  * Encryption
+  * Native parsing of JSON, CSV and XML
+  * Regular expressions
+  * 2D gaming framework and matrix mathematics APIs
+  * Basics such as: files, directories, sockets, STDIO, logging, serialization and pipes
+
+Try starting with the API [documentation](https://www.objeck.org/doc/api/index.html).
 
 ### [Object-oriented](https://en.wikipedia.org/wiki/Object-oriented_programming)
   
@@ -60,6 +69,25 @@ interface Color {
 value := "Hello World!";
 value->Size()->PrintLine();
 ```
+
+#### Anonymous Classes
+```ruby
+interface Greetings {
+  method : virtual : public : SayHi() ~ Nil;
+}
+
+class Hello {
+  function : Main(args : String[]) ~ Nil {
+    hey := Base->New() implements Greetings {
+      New() {}
+
+      method : public : SayHi() ~ Nil {
+        "Hey..."->PrintLine();
+      }
+    };
+}
+```
+
 #### Reflection
 ```ruby
 klass := "Hello World!"->GetClass();
@@ -79,7 +107,7 @@ map := Collection.Map->New()<IntRef, String>;
 map->Insert(415, "San Francisco");
 map->Insert(510, "Oakland");
 map->Insert(925, "East Bay");
-map->Size()->PrintLine();
+map->ToString()->PrintLine();
 ```
 
 #### Type Boxing
@@ -88,6 +116,17 @@ list := Collection.List->New()<IntRef>;
 list->AddBack(17);
 list->AddFront(4);
 (list->Back() + list->Front())->PrintLine();
+```
+
+#### Static import
+```ruby
+use function Int;
+
+class Test {
+  function : Main(args : String[]) ~ Nil {
+    Abs(-256)->Sqrt()->PrintLine();
+  }
+}
 ```
 
 #### Serialization
