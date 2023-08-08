@@ -1,10 +1,10 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		v := Collection.Map->New()<String,IntRef>;
-		v->Insert("one", 1);
-		v->Insert("two", 2);
-		v->Insert("three", 3);
-		v->ToString()->PrintLine();
+		m := Collection.Map->New()<String,IntRef>;
+		m->Insert("one", 1);
+		m->Insert("two", 2);
+		m->Insert("three", 3);
+		m->ToString()->PrintLine();
 
 		s := Collection.Set->New()<String>;
 		s->Insert("four");
@@ -12,18 +12,18 @@ class Test {
 		s->Insert("six");
 		s->ToString()->PrintLine();
 
-		m := Collection.MultiMap->New()<String,IntRef>;
-		m->Insert("one", 1);
-		m->Insert("one", 11);
-		m->Insert("one", 111);
-		m->Insert("two", 2);
-		m->Insert("two", 22);
-		m->Insert("two", 222);
-		m->Insert("two", 2222);
-		m->Insert("three", 3);
-		m->Insert("three", 33);
-		m->ToString()->PrintLine();
-
+		mm := Collection.MultiMap->New()<String,IntRef>;
+		mm->Insert("one", 1);
+		mm->Insert("one", 11);
+		mm->Insert("one", 111);
+		mm->Insert("two", 2);
+		mm->Insert("two", 22);
+		mm->Insert("two", 222);
+		mm->Insert("two", 2222);
+		mm->Insert("three", 3);
+		mm->Insert("three", 33);
+		mm->ToString()->PrintLine();
+		
 		a := String->New[3];
 		a[0] := "Pacifica";
 		a[1] := "San Mateo";
