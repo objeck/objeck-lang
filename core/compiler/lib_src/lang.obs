@@ -1943,6 +1943,21 @@ bundle System {
 		}
 
 		#~
+		Creates an array of primitives from references
+		@param in array of references
+		@return an array of primitives
+		~#
+		function : ToArray(in : BoolRef[]) ~ Bool[] {
+			out := Bool->New[in->Size()];
+
+			each(i : in) {
+				out[i] := in[i]->Get();
+			};
+			
+			return out;
+		}
+
+		#~
 		Get boolean value
 		@return boolean value
 		~#
@@ -2041,6 +2056,21 @@ bundle System {
 
 			each(i : in) {
 				out[i] := ByteRef->New(in[i]);
+			};
+			
+			return out;
+		}
+
+		#~
+		Creates an array of primitives from references
+		@param in array of references
+		@return an array of primitives
+		~#
+		function : ToArray(in : ByteRef[]) ~ Byte[] {
+			out := Byte->New[in->Size()];
+
+			each(i : in) {
+				out[i] := in[i]->Get();
 			};
 			
 			return out;
@@ -2154,6 +2184,21 @@ bundle System {
 		}
 
 		#~
+		Creates an array of primitives from references
+		@param in array of references
+		@return an array of primitives
+		~#
+		function : ToArray(in : CharRef[]) ~ Char[] {
+			out := Char->New[in->Size()];
+
+			each(i : in) {
+				out[i] := in[i]->Get();
+			};
+			
+			return out;
+		}
+
+		#~
 		Get character value
 		@return character value
 		~#
@@ -2255,6 +2300,21 @@ bundle System {
 
 			each(i : in) {
 				out[i] := IntRef->New(in[i]);
+			};
+			
+			return out;
+		}
+
+		#~
+		Creates an array of primitives from references
+		@param in array of references
+		@return an array of primitives
+		~#
+		function : ToArray(in : IntRef[]) ~ Int[] {
+			out := Int->New[in->Size()];
+
+			each(i : in) {
+				out[i] := in[i]->Get();
 			};
 			
 			return out;
@@ -2408,6 +2468,21 @@ bundle System {
 
 			each(i : in) {
 				out[i] := FloatRef->New(in[i]);
+			};
+			
+			return out;
+		}
+
+		#~
+		Creates an array of primitives from references
+		@param in array of references
+		@return an array of primitives
+		~#
+		function : ToArray(in : FloatRef[]) ~ Float[] {
+			out := Float->New[in->Size()];
+
+			each(i : in) {
+				out[i] := in[i]->Get();
 			};
 			
 			return out;
