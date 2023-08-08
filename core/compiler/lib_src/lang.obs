@@ -1871,7 +1871,7 @@ bundle System {
 			
 			each(i : array) {
 				# get string value if instance implements 'Stringify'
-				value := array->Get(i);
+				value := array[i];
 
 				if(value->TypeOf(Stringify)) {
 					buffer->Append(value->As(System.Stringify)->ToString());
