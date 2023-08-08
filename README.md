@@ -29,7 +29,7 @@ To get started, take a look at the [language guide](https://objeck.org/getting_s
 * APIs that support
   * Secure web servers and clients
   * Encryption
-  * Native parsing of JSON, CSV and XML
+  * Native parsing of JSON, CSV, and XML
   * Regular expressions
   * 2D gaming framework and matrix mathematics APIs
   * Basics such as: files, directories, sockets, STDIO, logging, serialization and pipes
@@ -70,7 +70,7 @@ value := "Hello World!";
 value->Size()->PrintLine();
 ```
 
-#### Anonymous Classes
+#### Anonymous classes
 ```ruby
 interface Greetings {
   method : virtual : public : SayHi() ~ Nil;
