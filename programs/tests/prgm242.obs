@@ -1,0 +1,15 @@
+class Test<K:Compare,V> {
+	function : Main(args : String[]) ~ Nil {
+		a : V[];
+		b := a[0];
+#		b := a[0]->As(Base);
+		b->GetInstanceID();
+
+		pair : Collection.Pair<K,V>;
+		c := pair->GetFirst();
+		c->GetInstanceID();
+
+		d := pair->GetSecond();
+		d->GetInstanceID();
+	}
+}
