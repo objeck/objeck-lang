@@ -55,11 +55,11 @@ int main(int argc, char* argv[])
   usage += L"  -ver:    [input] displays the compiler version\n";
   usage += L"  -tar:    [output] target type 'lib' for linkable library or 'exe' for executable (the default)\n";
   usage += L"  -dest:   [output] output file name\n";
-  usage += L"  -asm:    [output][end-flag] emits a human readable debug byte assembly file\n";
+  usage += L"  -asm:    [output] emits a human readable debug byte assembly file\n";
   usage += L"  -opt:    [optional] compiler optimizations s0-s3 (s3 being the most aggressive and default)\n";
-  usage += L"  -alt:    [optional][end-flag] use alternative C like syntax\n";
-  usage += L"  -debug:  [optional][end-flag] compile with debug symbols\n";
-  usage += L"  -strict: [input][end-flag] exclude default system libraries and specify them manually\n";
+  usage += L"  -alt:    [optional] use alternative C like syntax\n";
+  usage += L"  -debug:  [optional] compile with debug symbols\n";
+  usage += L"  -strict: [input] exclude default system libraries and specify them manually\n";
   usage += L"\nExample: \"obc hello.obs\"\n\nVersion: ";
   usage += VERSION_STRING;
   
