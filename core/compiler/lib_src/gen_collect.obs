@@ -68,7 +68,8 @@ each(value := values) {
 		}
 
 		#~
-		Formats the collection into a string
+		Formats the collection into a string. If an element implements the 'Stringify' 
+		interface, it's 'ToString()' is called.
 		@return string representation
 		~#
 		method : public : ToString() ~ String {
@@ -346,7 +347,8 @@ hash->Has(408)->PrintLine();
 		}
 
 		#~
-		Formats the collection into a string
+		Formats the collection into a string. If an element implements the 'Stringify' 
+		interface, it's 'ToString()' is called.
 		@return string representation
 		~#
 		method : public : ToString() ~ String {
@@ -681,7 +683,8 @@ hash->Has(408)->PrintLine();
 		}
 
 		#~
-		Formats the collection into a string
+		Formats the collection into a string. If an element implements the 'Stringify' 
+		interface, it's 'ToString()' is called.
 		@return string representation
 		~#
 		method : public : ToString() ~ String {
@@ -1012,12 +1015,13 @@ function : Example() ~ Nil {
 		}
 
 		#~
-		Formats the collection into a string
+		Formats the collection into a string. If an element implements the 'Stringify' 
+		interface, it's 'ToString()' is called.
 		@return string representation
 		~#
 		method : public : ToString() ~ String {
 			buffer := "[";
-			
+
 			elem := @head;
 			while(elem <> Nil) {
 				# get string value if instance implements 'Stringify'				
@@ -1670,7 +1674,8 @@ function : Example() ~ Nil {
 		}
 
 		#~
-		Formats the collection into a string
+		Formats the collection into a string. If an element implements the 'Stringify' 
+		interface, it's 'ToString()' is called.
 		@return string representation
 		~#
 		method : public : ToString() ~ String {
@@ -2116,7 +2121,8 @@ function : Example() ~ Nil {
 		}
 
 		#~
-		Formats the collection into a string
+		Formats the collection into a string. If an element implements the 'Stringify' 
+		interface, it's 'ToString()' is called.
 		@return string representation
 		~#
 		method : public : ToString() ~ String {
@@ -2408,7 +2414,8 @@ function : Show(value : IntRef) ~ Nil {
 		}
 
 		#~
-		Formats the collection into a string
+		Formats the collection into a string. If an element implements the 'Stringify' 
+		interface, it's 'ToString()' is called.
 		@return string representation
 		~#
 		method : public : ToString() ~ String {
@@ -2971,7 +2978,8 @@ function : Show(value : IntRef) ~ Nil {
 		}
 
 		#~
-		Formats the collection into a string
+		Formats the collection into a string. If an element implements the 'Stringify' 
+		interface, it's 'ToString()' is called.
 		@return string representation
 		~#
 		method : public : ToString() ~ String {
@@ -3289,7 +3297,8 @@ set->Has("Oakland")->PrintLine();
 		}
 
 		#~
-		Formats the collection into a string
+		Formats the collection into a string. If an element implements the 'Stringify' 
+		interface, it's 'ToString()' is called.
 		@return string representation
 		~#
 		method : public : ToString() ~ String {
@@ -3433,7 +3442,8 @@ set->Has("Oakland")->PrintLine();
 		}
 
 		#~
-		Formats the collection into a string
+		Formats the collection into a string. If an element implements the 'Stringify' 
+		interface, it's 'ToString()' is called.
 		@return string representation
 		~#
 		method : public : ToString() ~ String {

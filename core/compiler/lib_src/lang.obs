@@ -1866,15 +1866,40 @@ bundle System {
 
 	# Array class support
 	class $BaseArray {
-		function : Size(f : System.Base[]) ~ Int {
+		function : public : ToString(array : System.Base[]) ~ String {
+			buffer := "[";
+			
+			each(i : array) {
+				# get string value if instance implements 'Stringify'
+				value := array->Get(i);
+
+				if(value->TypeOf(Stringify)) {
+					buffer->Append(value->As(System.Stringify)->ToString());
+				}
+				# use instance ID instead
+				else {
+					buffer->Append(value->GetInstanceID()->ToHexString());
+				};
+
+				# add comma
+				if(i + 1 < array->Size()) {
+					buffer->Append(',');
+				};
+			};
+			buffer->Append(']');
+
+			return buffer;
+		}
+
+		function : Size(array : System.Base[]) ~ Int {
 			LOAD_ARY_SIZE;
 		}
 
-		function : Size(f : System.Base[,]) ~ Int[] {
+		function : Size(array : System.Base[,]) ~ Int[] {
 			LOAD_MULTI_ARY_SIZE;
 		}
 
-		function : Size(f : System.Base[,,]) ~ Int[] {
+		function : Size(array : System.Base[,,]) ~ Int[] {
 			LOAD_MULTI_ARY_SIZE;
 		}
 	}
