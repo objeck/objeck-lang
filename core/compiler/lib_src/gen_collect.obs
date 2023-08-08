@@ -370,7 +370,7 @@ hash->Has(408)->PrintLine();
 
 				buffer->Append(':');
 
-				value := pair->GetSecond()->As(Base);
+				value := pair->GetSecond();
 				if(value->TypeOf(Stringify)) {
 					buffer->Append(value->As(System.Stringify)->ToString());
 					buffer->Append(')');
@@ -1017,11 +1017,11 @@ function : Example() ~ Nil {
 		~#
 		method : public : ToString() ~ String {
 			buffer := "[";
-
+			
 			elem := @head;
 			while(elem <> Nil) {
 				# get string value if instance implements 'Stringify'				
-				value := elem->Get()->As(Base);
+				value := elem->Get();
 				if(value->TypeOf(Stringify)) {
 					buffer->Append(value->As(System.Stringify)->ToString());
 				}
@@ -1679,7 +1679,7 @@ function : Example() ~ Nil {
 			elem := @head;
 			while(elem <> Nil) {
 				# get string value if instance implements 'Stringify'				
-				value := elem->Get()->As(Base);
+				value := elem->Get();
 				if(value->TypeOf(Stringify)) {
 					buffer->Append(value->As(System.Stringify)->ToString());
 				}
@@ -2124,7 +2124,7 @@ function : Example() ~ Nil {
 
 			each(i : @size) {
 				# get string value if instance implements 'Stringify'
-				value := @values[i]->As(Base);
+				value := @values[i];
 				if(value->TypeOf(Stringify)) {
 					buffer->Append(value->As(System.Stringify)->ToString());
 				}
@@ -2416,7 +2416,7 @@ function : Show(value : IntRef) ~ Nil {
 
 			each(i : @size) {
 				# get string value if instance implements 'Stringify'
-				value := @values[i]->As(Base);
+				value := @values[i];
 				if(value->TypeOf(Stringify)) {
 					buffer->Append(value->As(System.Stringify)->ToString());
 				}
@@ -2995,7 +2995,7 @@ function : Show(value : IntRef) ~ Nil {
 
 				buffer->Append(':');
 
-				value := pair->GetSecond()->As(Base);
+				value := pair->GetSecond();
 				if(value->TypeOf(Stringify)) {
 					buffer->Append(value->As(System.Stringify)->ToString());
 					buffer->Append(')');
@@ -3298,7 +3298,7 @@ set->Has("Oakland")->PrintLine();
 			keys := GetKeys()<K>;
 			each(i : keys) {
 				# get string value if instance implements 'Stringify'
-				key := keys->Get(i)->As(Base);
+				key := keys->Get(i);
 
 				if(key->TypeOf(Stringify)) {
 					buffer->Append(key->As(System.Stringify)->ToString());
@@ -3458,7 +3458,7 @@ set->Has("Oakland")->PrintLine();
 				# get values
 				values := @map->Find(key)<V>;
 				each(j : values) {
-					value := values->Get(j)->As(Base);
+					value := values->Get(j);
 					if(value <> Nil) {
 						if(value->TypeOf(Stringify)) {
 							buffer->Append(value->As(System.Stringify)->ToString());

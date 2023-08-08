@@ -2148,8 +2148,8 @@ void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, const int depth
       }
     }
     
-    std::wstring encoding;
     // local call
+    std::wstring encoding;
     Class* klass = AnalyzeProgramMethodCall(method_call, encoding, depth);
     if(klass) {
       if(method_call->IsFunctionDefinition()) {
@@ -2833,6 +2833,12 @@ LibraryClass* ContextAnalyzer::AnalyzeLibraryMethodCall(MethodCall* method_call,
     }
     else {
       klass = linker->SearchClassLibraries(entry->GetType()->GetName(), program->GetLibUses(current_class->GetFileName()));
+      if(!klass && current_class->HasGenerics()) {
+        Class* generic_class = current_class->GetGenericClass(entry->GetType()->GetName());
+        if(generic_class) {
+          return linker->SearchClassLibraries(L"System.Base", program->GetLibUses(current_class->GetFileName()));
+        }
+      }
     }
   }
   // static method call
