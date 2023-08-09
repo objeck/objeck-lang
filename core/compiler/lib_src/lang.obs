@@ -78,6 +78,24 @@ bundle System {
 			
 			return "false";
 		}
+
+		#~
+		Formats the boolean array into a string
+		@param b boolean array
+		@return string value
+		~#
+		function : native : ToString(b : Bool[]) ~ String {
+			buffer := "[";
+			each(i : b) {
+				buffer->Append(b[i]);
+				if(i + 1 < b->Size()) {
+					buffer->Append(',');
+				}
+			};
+			buffer := "]";
+			
+			return buffer;
+		}
 	}
 	
 	#~
@@ -442,6 +460,38 @@ bundle System {
 		}
 
 		#~
+		Returns a string representation of the byte array
+		@param bytes byte array
+		@return string representation of the byte array
+		~#
+		function : ToString(v : Byte[,]) ~ String {
+			buffer := "";
+
+			dims := v->Size();
+			rows := dims[0];
+			cols := dims[1];
+
+			for(r := 0; r < rows; r +=1;) {
+				buffer->Append('[');
+				for(c := 0; c < cols; c +=1;) {
+					buffer->Append(v[r,c]);
+					if(c + 1 < cols) {
+						buffer->Append(", ");
+					};
+				};
+
+				if(r + 1 < rows) {
+					buffer->Append("]\n");
+				}
+				else {
+					buffer->Append(']');
+				};
+			};
+
+			return buffer;
+		}
+
+		#~
 		Searches for all occurrences of the byte array
 		@param bytes byte array to search
 		@param search byte array to search for
@@ -801,6 +851,38 @@ bundle System {
 
 		function : ToString(c : Char[]) ~ String {
 			return String->New(c);
+		}
+
+		#~
+		Returns a string representation of the char array
+		@param bytes char array
+		@return string representation of the char array
+		~#
+		function : ToString(v : Char[,]) ~ String {
+			buffer := "";
+
+			dims := v->Size();
+			rows := dims[0];
+			cols := dims[1];
+
+			for(r := 0; r < rows; r +=1;) {
+				buffer->Append('[');
+				for(c := 0; c < cols; c +=1;) {
+					buffer->Append(v[r,c]);
+					if(c + 1 < cols) {
+						buffer->Append(", ");
+					};
+				};
+
+				if(r + 1 < rows) {
+					buffer->Append("]\n");
+				}
+				else {
+					buffer->Append(']');
+				};
+			};
+
+			return buffer;
 		}
 
 		#~
@@ -1369,6 +1451,38 @@ bundle System {
 			out->Append(']');
 			return out;
 		}
+		
+		#~
+		Returns a string representation of the int array
+		@param bytes int array
+		@return string representation of the int array
+		~#
+		function : ToString(v : Int[,]) ~ String {
+			buffer := "";
+
+			dims := v->Size();
+			rows := dims[0];
+			cols := dims[1];
+
+			for(r := 0; r < rows; r +=1;) {
+				buffer->Append('[');
+				for(c := 0; c < cols; c +=1;) {
+					buffer->Append(v[r,c]);
+					if(c + 1 < cols) {
+						buffer->Append(", ");
+					};
+				};
+
+				if(r + 1 < rows) {
+					buffer->Append("]\n");
+				}
+				else {
+					buffer->Append(']');
+				};
+			};
+
+			return buffer;
+		}
 	}
 
 	#~
@@ -1794,6 +1908,11 @@ bundle System {
 			return out;
 		}
 		
+		#~
+		Returns a string representation of the float array
+		@param bytes float array
+		@return string representation of the float array
+		~#
 		function : ToString(v : Float[,]) ~ String {
 			buffer := "";
 
