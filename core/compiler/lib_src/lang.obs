@@ -451,12 +451,28 @@ bundle System {
 		}
 		
 		#~
+		Prints values
+		@param bytes values to print
+		~#
+		function : native : PrintLine(v : Byte[]) ~ Nil {
+			String->New(v)->PrintLine();
+		}
+
+		#~
+		Prints values
+		@param bytes values to print
+		~#
+		function : native : PrintLine(v : Byte[,]) ~ Nil {
+			ToString(v)->PrintLine();
+		}
+
+		#~
 		Returns a string representation of the byte array
 		@param bytes byte array
 		@return string representation of the byte array
 		~#
-		function : native : ToString(bytes : Byte[]) ~ String {
-			return String->New(bytes);
+		function : native : ToString(v : Byte[]) ~ String {
+			return String->New(v);
 		}
 
 		#~
@@ -1432,6 +1448,22 @@ bundle System {
 
 			return comma_str->Reverse();
 		}
+
+		#~
+		Prints values
+		@param bytes values to print
+		~#
+		function : native : PrintLine(v : Int[]) ~ Nil {
+			ToString(v)->PrintLine();
+		}
+
+		#~
+		Prints values
+		@param bytes values to print
+		~#
+		function : native : PrintLine(v : Int[,]) ~ Nil {
+			ToString(v)->PrintLine();
+		}
 		
 		#~
 		Returns a string representation of the value
@@ -1884,6 +1916,22 @@ bundle System {
 		}
 
 		#~
+		Prints values
+		@param bytes values to print
+		~#
+		function : native : PrintLine(v : Float[]) ~ Nil {
+			ToString(v)->PrintLine();
+		}
+
+		#~
+		Prints values
+		@param bytes values to print
+		~#
+		function : native : PrintLine(v : Float[,]) ~ Nil {
+			ToString(v)->PrintLine();
+		}
+
+		#~
 		Returns a string representation of the value
 		@ignore-params
 		@return string representation of the value
@@ -1985,6 +2033,14 @@ bundle System {
 
 	# Array class support
 	class $BaseArray {
+		function : native : PrintLine(v : System.Base[]) ~ Nil {
+			ToString(v)->PrintLine();
+		}
+
+		function : native : PrintLine(v : System.Base[,]) ~ Nil {
+			ToString(v)->PrintLine();
+		}
+
 		function : public : ToString(array : System.Base[]) ~ String {
 			buffer := "[";
 			
@@ -2010,11 +2066,6 @@ bundle System {
 			return buffer;
 		}
 
-		#~
-		Returns a string representation of the object array
-		@param bytes object array
-		@return string representation of the object array
-		~#
 		function : ToString(v : System.Base[,]) ~ String {
 			buffer := "";
 
