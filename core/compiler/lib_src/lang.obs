@@ -468,7 +468,7 @@ bundle System {
 
 		#~
 		Returns a string representation of the byte array
-		@param bytes byte array
+		@param v byte array
 		@return string representation of the byte array
 		~#
 		function : native : ToString(v : Byte[]) ~ String {
@@ -477,7 +477,7 @@ bundle System {
 
 		#~
 		Returns a string representation of the byte array
-		@param bytes byte array
+		@param v v array
 		@return string representation of the byte array
 		~#
 		function : ToString(v : Byte[,]) ~ String {
@@ -871,7 +871,7 @@ bundle System {
 
 		#~
 		Returns a string representation of the char array
-		@param bytes char array
+		@param v char array
 		@return string representation of the char array
 		~#
 		function : ToString(v : Char[,]) ~ String {
@@ -1958,7 +1958,7 @@ bundle System {
 		
 		#~
 		Returns a string representation of the float array
-		@param bytes float array
+		@param v float array
 		@return string representation of the float array
 		~#
 		function : ToString(v : Float[,]) ~ String {
