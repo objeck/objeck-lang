@@ -93,7 +93,7 @@ bundle System {
 				}
 			};
 			buffer := "]";
-			
+
 			return buffer;
 		}
 	}
@@ -2006,6 +2006,47 @@ bundle System {
 				};
 			};
 			buffer->Append(']');
+
+			return buffer;
+		}
+
+		#~
+		Returns a string representation of the object array
+		@param bytes object array
+		@return string representation of the object array
+		~#
+		function : ToString(v : System.Base[,]) ~ String {
+			buffer := "";
+
+			dims := v->Size();
+			rows := dims[0];
+			cols := dims[1];
+
+			for(r := 0; r < rows; r +=1;) {
+				buffer->Append('[');
+				for(c := 0; c < cols; c +=1;) {
+					value := v[r,c];
+
+					if(value->TypeOf(Stringify)) {
+						buffer->Append(value->As(System.Stringify)->ToString());
+					}
+					# use instance ID instead
+					else {
+						buffer->Append(value->GetInstanceID()->ToHexString());
+					};
+
+					if(c + 1 < cols) {
+						buffer->Append(", ");
+					};
+				};
+
+				if(r + 1 < rows) {
+					buffer->Append("]\n");
+				}
+				else {
+					buffer->Append(']');
+				};
+			};
 
 			return buffer;
 		}
