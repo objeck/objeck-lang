@@ -27,14 +27,15 @@ To get started, take a look at the [language guide](https://objeck.org/getting_s
 ## Features
 * Modern object-oriented and functional
 * Cross-platform: Linux (x64 and ARM64), macOS (ARM64), Windows (x64)
-* Optimized and JIT-compiled runtime
+* Optimized and JIT-compiled runtimes
 * API support for
   * Secure web servers and clients
   * Encryption
   * Generation and parsing of JSON, CSV, and XML
   * Regular expressions
+  * Collections
   * 2D gaming framework and matrix mathematics APIs
-  * Basics such as: files, directories, sockets, STDIO, logging, serialization, and pipe
+  * Basics such as files, directories, sockets, STDIO, logging, serialization, and pipe
 * REPL and IDE [LSP](https://github.com/objeck/objeck-lsp) support (for VSCode, Sublime, Kate, etc.) 
 * Online guides and API [documentation](https://www.objeck.org).
 
