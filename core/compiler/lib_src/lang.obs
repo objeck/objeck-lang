@@ -452,7 +452,7 @@ bundle System {
 		
 		#~
 		Prints values
-		@param bytes values to print
+		@param v values to print
 		~#
 		function : native : PrintLine(v : Byte[]) ~ Nil {
 			String->New(v)->PrintLine();
@@ -460,7 +460,7 @@ bundle System {
 
 		#~
 		Prints values
-		@param bytes values to print
+		@param v values to print
 		~#
 		function : native : PrintLine(v : Byte[,]) ~ Nil {
 			ToString(v)->PrintLine();
@@ -1451,7 +1451,7 @@ bundle System {
 
 		#~
 		Prints values
-		@param bytes values to print
+		@param v values to print
 		~#
 		function : native : PrintLine(v : Int[]) ~ Nil {
 			ToString(v)->PrintLine();
@@ -1459,7 +1459,7 @@ bundle System {
 
 		#~
 		Prints values
-		@param bytes values to print
+		@param v values to print
 		~#
 		function : native : PrintLine(v : Int[,]) ~ Nil {
 			ToString(v)->PrintLine();
@@ -1917,7 +1917,7 @@ bundle System {
 
 		#~
 		Prints values
-		@param bytes values to print
+		@param v values to print
 		~#
 		function : native : PrintLine(v : Float[]) ~ Nil {
 			ToString(v)->PrintLine();
@@ -1925,7 +1925,7 @@ bundle System {
 
 		#~
 		Prints values
-		@param bytes values to print
+		@param v values to print
 		~#
 		function : native : PrintLine(v : Float[,]) ~ Nil {
 			ToString(v)->PrintLine();
