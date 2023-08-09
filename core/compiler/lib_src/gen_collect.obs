@@ -683,6 +683,14 @@ hash->Has(408)->PrintLine();
 		}
 
 		#~
+		Converts the stack into an object array
+		@return object array
+		~#
+		method : public : ToArray() ~ H[] {
+			return @values->ToArray();
+		}
+
+		#~
 		Formats the collection into a string. If an element implements the 'Stringify' 
 		interface, it's 'ToString()' is called.
 		@return string representation
@@ -780,6 +788,14 @@ queue->Front()->PrintLine();
 		~#
 		New() {
 			@queue := List->New()<H>;
+		}
+
+		#~
+		Converts the queue into an object array
+		@return object array
+		~#
+		method : public : ToArray() ~ H[] {
+			return @queue->ToArray();
 		}
 
 		#~
@@ -1046,6 +1062,23 @@ function : Example() ~ Nil {
 			buffer->Append(']');
 
 			return buffer;
+		}
+
+		#~
+		Converts the list into an object array
+		@return object array
+		~#
+		method : public : ToArray() ~ H[] {
+			array := H->New[@size];
+
+			i := 0;
+			start := @head;
+			while(start <> Nil) {
+				array[i++] := start->Get();
+				start := start->GetNext();
+			};
+
+			return array;
 		}
 
 		#~
@@ -1605,6 +1638,23 @@ function : Example() ~ Nil {
 		~#
 		New() {
 			@size := 0;
+		}
+
+		#~
+		Converts the list into an object array
+		@return object array
+		~#
+		method : public : ToArray() ~ H[] {
+			array := H->New[@size];
+
+			i := 0;
+			start := @head;
+			while(start <> Nil) {
+				array[i++] := start->Get();
+				start := start->GetNext();
+			};
+
+			return array;
 		}
 
 		#~
