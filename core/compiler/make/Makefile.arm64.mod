@@ -14,8 +14,8 @@ $(LIB): $(SRC) $(OBJ_LIBS)
 	$(CC) $(ARGS) -c $< 
 
 logger.a:
-	cd $(LOGGER_PATH); make -f make/Makefile.arm64
+	cd $(LOGGER_PATH); $(MAKE) -f make/Makefile.arm64
 
 clean:
-	cd $(LOGGER_PATH); make -f make/Makefile.arm64 clean
+	cd $(LOGGER_PATH); $(MAKE) -f make/Makefile.arm64 clean
 	rm -f $(LIB) *.o *~

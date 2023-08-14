@@ -13,15 +13,15 @@ $(LIB): $(SRC) $(OBJ_LIBS)
 	cp $(LIB) ../module
 
 memory.a:
-	cd $(MEM_PATH); make -f make/Makefile.amd64
+	cd $(MEM_PATH); $(MAKE) -f make/Makefile.amd64
 	
 jit_amd_lp64.a:
-	cd $(JIT_PATH); make -f make/Makefile.amd64
+	cd $(JIT_PATH); $(MAKE) -f make/Makefile.amd64
 	
 %.o: %.cpp
 	$(CC) -m64 $(ARGS) -c $< 
 
 clean:
-	cd $(MEM_PATH); make clean -f make/Makefile.amd64
-	cd $(JIT_PATH); make clean -f make/Makefile.amd64
+	cd $(MEM_PATH); $(MAKE) clean -f make/Makefile.amd64
+	cd $(JIT_PATH); $(MAKE) clean -f make/Makefile.amd64
 	rm -f $(LIB) *.o *~
