@@ -111,16 +111,16 @@ fi
 
 cd ../../utils/launcher
 if [ ! -z "$1" ] && [ "$1" = "rpi" ]; then
-	make -f make/Makefile.obb.arm64 clean; make -f make/Makefile.obb.arm64
+	make -f make/Makefile.obb.arm64 clean; make -f make/Makefile.obb.arm64 -j3
 else
-	make -f make/Makefile.obb.amd64 clean; make -f make/Makefile.obb.amd64
+	make -f make/Makefile.obb.amd64 clean; make -f make/Makefile.obb.amd64 -j3
 fi
 cp obb ../../release/deploy/bin
 
 if [ ! -z "$1" ] && [ "$1" = "rpi" ]; then
-	make -f make/Makefile.obn.arm64 clean; make -f make/Makefile.obn.arm64
+	make -f make/Makefile.obn.arm64 clean; make -f make/Makefile.obn.arm64 -j3
 else
-	make -f make/Makefile.obn.amd64 clean; make -f make/Makefile.obn.amd64
+	make -f make/Makefile.obn.amd64 clean; make -f make/Makefile.obn.amd64 -j3
 fi
 cp obn ../../release/deploy/lib/native/misc/
 
