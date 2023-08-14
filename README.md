@@ -35,7 +35,7 @@ To get started, take a look at the [language guide](https://objeck.org/getting_s
   * Regular expressions
   * 2D gaming and matrix mathematics
   * Collections
-  * The basics: files, directories, sockets, STDIO, logging, serialization, and pipe
+  * Files, directories, sockets, STDIO, logging, serialization, and pipe
 * REPL and IDE [LSP](https://github.com/objeck/objeck-lsp) support (for VSCode, Sublime, Kate, etc.) 
 * Online guides and API [documentation](https://www.objeck.org).
 
