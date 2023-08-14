@@ -12,11 +12,11 @@ $(EXE): $(SRC) $(OBJ_LIBS)
 	$(CC) -m64 $(ARGS) -c $< 
 
 ../module/module.a:
-	cd $(MODULE_PATH); make -f make/Makefile.msys2-clang.amd64
+	cd $(MODULE_PATH); $(MAKE) -f make/Makefile.msys2-clang.amd64
 
 objeck.res:
 	windres vs/objeck.rc -O coff -o objeck.res -D_MSYS2_CLANG
 
 clean:
-	cd $(MODULE_PATH); make -f make/Makefile.msys2-clang.amd64 clean
+	cd $(MODULE_PATH); $(MAKE) -f make/Makefile.msys2-clang.amd64 clean
 	rm -f $(EXE) *.a *.o *~

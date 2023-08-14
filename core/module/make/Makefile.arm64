@@ -14,16 +14,16 @@ $(LIB): $(SRC) $(OBJ_LIBS)
 	$(AR) -cvq $(LIB) $(SRC)
 
 ../compiler/compiler.a:
-	cd $(COMPILER_PATH); make -f make/Makefile.arm64.mod
+	cd $(COMPILER_PATH); $(MAKE) -f make/Makefile.arm64.mod
 
 ../vm/vm.a:
-	cd $(VM_PATH); make -f make/Makefile.arm64.mod
+	cd $(VM_PATH); $(MAKE) -f make/Makefile.arm64.mod
 	
 %.o: %.cpp
 	$(CC) $(ARGS) -c $< 
 
 clean:
-	cd $(COMPILER_PATH); make -f make/Makefile.arm64.mod clean
-	cd $(VM_PATH); make -f make/Makefile.arm64.mod clean
+	cd $(COMPILER_PATH); $(MAKE) -f make/Makefile.arm64.mod clean
+	cd $(VM_PATH); $(MAKE) -f make/Makefile.arm64.mod clean
 	rm -f $(LIB) *.o *~
 
