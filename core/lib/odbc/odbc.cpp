@@ -33,14 +33,14 @@
 
 extern "C" {
   SQLLEN sql_null;
-  
+
   //
   // initialize odbc environment
   //
 #ifdef _WIN32
-  __declspec(dllexport) 
+  __declspec(dllexport)
 #endif
-  void load_lib(VMContext& context) 
+    void load_lib(VMContext& context)
   {
     if(!env) {
       SQLAllocHandle(SQL_HANDLE_ENV, SQL_NULL_HANDLE, &env);
@@ -53,9 +53,9 @@ extern "C" {
   // release odbc resources
   //
 #ifdef _WIN32
-  __declspec(dllexport) 
+  __declspec(dllexport)
 #endif
-  void unload_lib() 
+    void unload_lib()
   {
     if(env) {
       SQLFreeHandle(SQL_HANDLE_ENV, env);
@@ -66,9 +66,9 @@ extern "C" {
   // connects to an ODBC data source
   //
 #ifdef _WIN32
-  __declspec(dllexport) 
+  __declspec(dllexport)
 #endif
-  void odbc_connect(VMContext& context) 
+    void odbc_connect(VMContext& context)
   {
     SQLHDBC conn;
 
@@ -77,42 +77,42 @@ extern "C" {
     const std::wstring wpassword(APITools_GetStringValue(context, 3));
 
 #ifdef _DEBUG
-    std::wcout << L"### connect: " << L"ds=" << wds << L", username=" 
-          << wusername << L", password=" << wpassword << L" ###" << std::endl;
+    std::wcout << L"### connect: " << L"ds=" << wds << L", username="
+      << wusername << L", password=" << wpassword << L" ###" << std::endl;
 #endif
-		
+
     const std::string ds = UnicodeToBytes(wds);
     const std::string username = UnicodeToBytes(wusername);
     const std::string password = UnicodeToBytes(wpassword);
-		
+
     SQLRETURN status = SQLAllocHandle(SQL_HANDLE_DBC, env, &conn);
     if(SQL_FAIL) {
       SQLFreeHandle(SQL_HANDLE_DBC, conn);
       APITools_SetIntValue(context, 0, 0);
       return;
     }
-		
-    status = SQLConnect(conn, (SQLCHAR*)ds.c_str(), SQL_NTS, (SQLCHAR*)username.c_str(), 
-                        SQL_NTS, (SQLCHAR*)password.c_str(), SQL_NTS);     
+
+    status = SQLConnect(conn, (SQLCHAR*)ds.c_str(), SQL_NTS, (SQLCHAR*)username.c_str(),
+                        SQL_NTS, (SQLCHAR*)password.c_str(), SQL_NTS);
     if(SQL_FAIL) {
       SQLFreeHandle(SQL_HANDLE_DBC, conn);
       conn = NULL;
       APITools_SetIntValue(context, 0, 0);
       return;
     }
-		
+
     APITools_SetIntValue(context, 0, (size_t)conn);
   }
-	
+
   //
   // disconnects from an ODBC data source
   //
 #ifdef _WIN32
-  __declspec(dllexport) 
+  __declspec(dllexport)
 #endif
-  void odbc_disconnect(VMContext& context) 
+    void odbc_disconnect(VMContext& context)
   {
-    SQLHDBC conn = (SQLHDBC)APITools_GetIntValue(context, 0);    
+    SQLHDBC conn = (SQLHDBC)APITools_GetIntValue(context, 0);
     if(conn) {
       SQLDisconnect(conn);
       SQLFreeHandle(SQL_HANDLE_DBC, conn);
@@ -127,9 +127,9 @@ extern "C" {
   // executes and update statement
   //
 #ifdef _WIN32
-  __declspec(dllexport) 
+  __declspec(dllexport)
 #endif
-  void odbc_update_statement(VMContext& context) 
+    void odbc_update_statement(VMContext& context)
   {
     SQLHDBC conn = (SQLHDBC)APITools_GetIntValue(context, 1);
     const std::wstring wsql(APITools_GetStringValue(context, 2));
@@ -142,7 +142,7 @@ extern "C" {
       APITools_SetIntValue(context, 0, -1);
       return;
     }
-		
+
     SQLHSTMT stmt = NULL;
     SQLRETURN status = SQLAllocHandle(SQL_HANDLE_STMT, conn, &stmt);
     if(SQL_FAIL) {
@@ -153,7 +153,7 @@ extern "C" {
       APITools_SetIntValue(context, 0, -1);
       return;
     }
-		
+
     const std::string sql = UnicodeToBytes(wsql);
     status = SQLExecDirect(stmt, (SQLCHAR*)sql.c_str(), SQL_NTS);
     if(SQL_FAIL) {
@@ -163,7 +163,7 @@ extern "C" {
       APITools_SetIntValue(context, 0, -1);
       return;
     }
-		
+
     SQLLEN count;
     status = SQLRowCount(stmt, &count);
     if(SQL_FAIL) {
@@ -172,19 +172,19 @@ extern "C" {
       APITools_SetIntValue(context, 0, -1);
       return;
     }
-		
+
     SQLFreeStmt(stmt, SQL_UNBIND);
     SQLFreeHandle(SQL_HANDLE_STMT, stmt);
     APITools_SetIntValue(context, 0, count);
   }
-	
+
   //
   // executes a prepared select statement
   //
 #ifdef _WIN32
-  __declspec(dllexport) 
+  __declspec(dllexport)
 #endif
-  void odbc_stmt_select_statement(VMContext& context) 
+    void odbc_stmt_select_statement(VMContext& context)
   {
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 0);
 
@@ -195,14 +195,14 @@ extern "C" {
       SQLExecute(stmt);
     }
   }
-	
+
   //
   // executes a select statement
   //
 #ifdef _WIN32
-  __declspec(dllexport) 
+  __declspec(dllexport)
 #endif
-  void odbc_select_statement(VMContext& context) 
+    void odbc_select_statement(VMContext& context)
   {
     SQLHDBC conn = (SQLHDBC)APITools_GetIntValue(context, 3);
     const std::wstring wsql(APITools_GetStringValue(context, 4));
@@ -215,7 +215,7 @@ extern "C" {
       APITools_SetIntValue(context, 0, 0);
       return;
     }
-		
+
     SQLHSTMT stmt = NULL;
     SQLRETURN status = SQLAllocHandle(SQL_HANDLE_STMT, conn, &stmt);
     if(SQL_FAIL) {
@@ -227,7 +227,7 @@ extern "C" {
       APITools_SetIntValue(context, 2, 0);
       return;
     }
-		
+
     const std::string sql = UnicodeToBytes(wsql);
     status = SQLPrepare(stmt, (SQLCHAR*)sql.c_str(), SQL_NTS);
     if(SQL_FAIL) {
@@ -239,7 +239,7 @@ extern "C" {
       APITools_SetIntValue(context, 2, 0);
       return;
     }
-		
+
     SQLSMALLINT columns;
     status = SQLNumResultCols(stmt, &columns);
     if(SQL_FAIL) {
@@ -256,9 +256,9 @@ extern "C" {
     std::map<int, std::pair<void*, SQLLEN> >* exec_data = new std::map<int, std::pair<void*, SQLLEN> >;
     for(SQLSMALLINT i = 1; i <= columns; i++) {
       ColumnDescription description;
-      status = SQLDescribeCol(stmt, i, (SQLCHAR*)&description.column_name, COL_NAME_MAX, 
-                              &description.column_name_size, &description.type, 
-                              &description.column_size, &description.decimal_length, 
+      status = SQLDescribeCol(stmt, i, (SQLCHAR*)&description.column_name, COL_NAME_MAX,
+                              &description.column_name_size, &description.type,
+                              &description.column_size, &description.decimal_length,
                               &description.nullable);
       if(SQL_FAIL) {
         // ShowError(SQL_HANDLE_STMT, stmt);
@@ -267,7 +267,7 @@ extern "C" {
         APITools_SetIntValue(context, 0, 0);
         APITools_SetIntValue(context, 1, 0);
         APITools_SetIntValue(context, 2, 0);
-        
+
         if(exec_data) {
           delete exec_data;
           exec_data = NULL;
@@ -277,10 +277,10 @@ extern "C" {
           delete column_names;
           column_names = NULL;
         }
-        
+
         return;
       }
-			
+
       const std::string column_name((const char*)description.column_name);
       const std::wstring wcolumn_name(column_name.begin(), column_name.end());
       column_names->insert(std::pair<std::wstring, int>(wcolumn_name, i));
@@ -288,9 +288,9 @@ extern "C" {
       std::wcout << L"  name=" << wcolumn_name << L", type=" << description.type << L", index=" << i << std::endl;
 #endif
     }
-		
+
     // execute query
-    status = SQLExecute(stmt); 
+    status = SQLExecute(stmt);
     if(SQL_FAIL) {
       // ShowError(SQL_HANDLE_STMT, stmt);
       SQLFreeStmt(stmt, SQL_UNBIND);
@@ -298,50 +298,50 @@ extern "C" {
       APITools_SetIntValue(context, 0, 0);
       APITools_SetIntValue(context, 1, 0);
       APITools_SetIntValue(context, 2, 0);
-      
+
       if(exec_data) {
         delete exec_data;
         exec_data = NULL;
       }
-      
+
       if(column_names) {
         delete column_names;
         column_names = NULL;
-      } 
-      
+      }
+
       return;
     }
-	
+
     APITools_SetIntValue(context, 0, (size_t)stmt);
     APITools_SetIntValue(context, 1, (size_t)column_names);
     APITools_SetIntValue(context, 2, (size_t)exec_data);
 #ifdef _DEBUG
     std::wcout << L"### select OK: stmt=" << stmt << L" ###" << std::endl;
 #endif  
-  }		
-	
+  }
+
   //
   // executes a select statement
   //
 #ifdef _WIN32
-  __declspec(dllexport) 
+  __declspec(dllexport)
 #endif
-  void odbc_pepare_statement(VMContext& context) 
+    void odbc_pepare_statement(VMContext& context)
   {
     SQLHDBC conn = (SQLHDBC)APITools_GetIntValue(context, 3);
     const std::wstring wsql(APITools_GetStringValue(context, 4));
-		
+
 #ifdef _DEBUG
     std::wcout << L"### select: conn=" << conn << L", stmt=" << wsql << L"  ###" << std::endl;
 #endif    
-		
+
     if(!conn || wsql.size() < 1) {
       APITools_SetIntValue(context, 0, 0);
       APITools_SetIntValue(context, 1, 0);
       APITools_SetIntValue(context, 2, 0);
       return;
     }
-		
+
     SQLHSTMT stmt = NULL;
     SQLRETURN status = SQLAllocHandle(SQL_HANDLE_STMT, conn, &stmt);
     if(SQL_FAIL) {
@@ -353,7 +353,7 @@ extern "C" {
       APITools_SetIntValue(context, 2, 0);
       return;
     }
-		
+
     const std::string sql = UnicodeToBytes(wsql);
     status = SQLPrepare(stmt, (SQLCHAR*)sql.c_str(), SQL_NTS);
     if(SQL_FAIL) {
@@ -383,9 +383,9 @@ extern "C" {
     std::map<const std::wstring, int>* column_names = new std::map<const std::wstring, int>;
     for(SQLSMALLINT i = 1; i <= columns; i++) {
       ColumnDescription description;
-      status = SQLDescribeCol(stmt, i, (SQLCHAR*)&description.column_name, COL_NAME_MAX, 
-                              &description.column_name_size, &description.type, 
-                              &description.column_size, &description.decimal_length, 
+      status = SQLDescribeCol(stmt, i, (SQLCHAR*)&description.column_name, COL_NAME_MAX,
+                              &description.column_name_size, &description.type,
+                              &description.column_size, &description.decimal_length,
                               &description.nullable);
       if(SQL_FAIL) {
         // ShowError(SQL_HANDLE_STMT, stmt);
@@ -399,15 +399,15 @@ extern "C" {
           delete exec_data;
           exec_data = NULL;
         }
-        
+
         if(column_names) {
           delete column_names;
           column_names = NULL;
-        } 
-        
+        }
+
         return;
       }
-			
+
       const std::string column_name((const char*)description.column_name);
       const std::wstring wcolumn_name(column_name.begin(), column_name.end());
       column_names->insert(std::pair<std::wstring, int>(wcolumn_name, i));
@@ -415,11 +415,150 @@ extern "C" {
       std::wcout << L"  name=" << wcolumn_name << L", type=" << description.type << L", index=" << i << std::endl;
 #endif
     }
-		
+
     // return statement
     APITools_SetIntValue(context, 0, (size_t)stmt);
     APITools_SetIntValue(context, 1, (size_t)column_names);
     APITools_SetIntValue(context, 2, (size_t)exec_data);
+  }
+
+  //
+  // get result set metadata
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void odbc_result_metadata_by_id(VMContext& context)
+  {
+    SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 1);
+    if(!stmt) {
+      APITools_SetIntValue(context, 0, 0);
+      return;
+    }
+
+    SQLUSMALLINT index = (SQLUSMALLINT)APITools_GetIntValue(context, 2);
+
+    SQLSMALLINT columns;
+    SQLRETURN status = SQLNumResultCols(stmt, &columns);
+    if(!SQL_OK) {
+      SQLFreeStmt(stmt, SQL_UNBIND);
+      SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+      APITools_SetIntValue(context, 0, 0);
+      return;
+    }
+
+    char column_name[SMALL_BUFFER_MAX];
+    SQLSMALLINT column_name_length;
+    SQLSMALLINT column_type;
+    SQLULEN column_size;
+    SQLSMALLINT column_decimal_digits;
+    SQLSMALLINT column_nullable;
+
+    status = SQLDescribeCol(stmt, index, (SQLCHAR*)column_name, SMALL_BUFFER_MAX, &column_name_length,
+                            &column_type, &column_size, &column_decimal_digits, &column_nullable);
+    if(SQL_FAIL) {
+      SQLFreeStmt(stmt, SQL_UNBIND);
+      SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+      APITools_SetIntValue(context, 0, 0);
+      return;
+    }
+
+    size_t* metadata_obj = APITools_CreateObject(context, L"Database.ODBC.ColumnMetadata");
+    metadata_obj[0] = column_type;
+    metadata_obj[1] = (size_t)APITools_CreateStringObject(context, BytesToUnicode(column_name));
+    metadata_obj[2] = column_size;
+    metadata_obj[3] = column_decimal_digits;
+    metadata_obj[4] = column_nullable ? 1 : 0;
+
+    APITools_SetObjectValue(context, 0, metadata_obj);
+  }
+
+  //
+  // get result set metadata
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+    void odbc_result_metadata_by_name(VMContext& context)
+  {
+    SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 1);
+    if(!stmt) {
+      APITools_SetIntValue(context, 0, 0);
+      return;
+    }
+
+    const std::wstring name = APITools_GetStringValue(context, 2);
+
+    std::map<const std::wstring, int>* names = (std::map<const std::wstring, int>*)APITools_GetIntValue(context, 3);
+    std::map<const std::wstring, int>::iterator result = names->find(name);
+    if(result != names->end()) {
+      SQLSMALLINT columns;
+      const SQLUSMALLINT index = result->second;
+
+      SQLRETURN status = SQLNumResultCols(stmt, &columns);
+      if(!SQL_OK) {
+        SQLFreeStmt(stmt, SQL_UNBIND);
+        SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+        APITools_SetIntValue(context, 0, 0);
+        return;
+      }
+
+      char column_name[SMALL_BUFFER_MAX];
+      SQLSMALLINT column_name_length;
+      SQLSMALLINT column_type;
+      SQLULEN column_size;
+      SQLSMALLINT column_decimal_digits;
+      SQLSMALLINT column_nullable;
+
+      status = SQLDescribeCol(stmt, index, (SQLCHAR*)column_name, SMALL_BUFFER_MAX, &column_name_length,
+                              &column_type, &column_size, &column_decimal_digits, &column_nullable);
+      if(SQL_FAIL) {
+        SQLFreeStmt(stmt, SQL_UNBIND);
+        SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+        APITools_SetIntValue(context, 0, 0);
+        return;
+      }
+
+      size_t* metadata_obj = APITools_CreateObject(context, L"Database.ODBC.ColumnMetadata");
+      metadata_obj[0] = column_type;
+      metadata_obj[1] = (size_t)APITools_CreateStringObject(context, BytesToUnicode(column_name));
+      metadata_obj[2] = column_size;
+      metadata_obj[3] = column_decimal_digits;
+      metadata_obj[4] = column_nullable ? 1 : 0;
+
+      APITools_SetObjectValue(context, 0, metadata_obj);
+    }
+    else {
+      SQLFreeStmt(stmt, SQL_UNBIND);
+      SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+      APITools_SetIntValue(context, 0, 0);
+    }
+  }
+
+  //
+  // get number of results
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void odbc_result_num_columns(VMContext& context)
+  {
+    SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 1);
+    if(!stmt) {
+      APITools_SetIntValue(context, 0, 0);
+      return;
+    }
+
+    SQLSMALLINT columns;
+    SQLRETURN status = SQLNumResultCols(stmt, &columns);
+    if(SQL_OK) {
+      APITools_SetIntValue(context, 0, columns);
+    }
+    else {
+      SQLFreeStmt(stmt, SQL_UNBIND);
+      SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+      APITools_SetIntValue(context, 0, -1);
+    }
   }
 
   //

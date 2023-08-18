@@ -683,13 +683,78 @@ bundle Database.ODBC {
 		@native_names : Int;
 		@exec_data : Int;
 		@is_null : Bool;
-		
+
 		New(native_stmt : Int, native_names : Int, exec_data : Int) {
 			@native_stmt := native_stmt;
 			@native_names := native_names;
 			@exec_data := exec_data;
 		}
 		
+
+		#~
+		Get the number of columns in result set
+		@param column column ID
+		@return number of columns in result set
+		~#
+		method : public : GetMetadata(column : Int) ~ ColumnMetadata {
+			if(@native_stmt <> 0 & @native_names <> 0) {
+      			array_args := Base->New[3];
+
+				array_args[0] := Nil;
+				array_args[1] := IntRef->New(@native_stmt);
+				array_args[2] := IntRef->New(column);
+				
+				@lib_proxy := Proxy->GetDllProxy();
+				@lib_proxy->CallFunction("odbc_result_metadata_by_id", array_args);
+				
+				return array_args[0];
+      		};
+      		
+      		return Nil;
+		}
+
+		#~
+		Get the number of columns in result set
+		@param column column name
+		@return number of columns in result set
+		~#
+		method : public : GetMetadata(column : String) ~ ColumnMetadata {
+			if(@native_stmt <> 0 & @native_names <> 0) {
+      			array_args := Base->New[4];
+
+				array_args[0] := Nil;
+				array_args[1] := IntRef->New(@native_stmt);
+				array_args[2] := column;
+				array_args[3] := IntRef->New(@native_names);
+
+				@lib_proxy := Proxy->GetDllProxy();
+				@lib_proxy->CallFunction("odbc_result_metadata_by_name", array_args);
+				
+				return array_args[0];
+      		};
+      		
+      		return Nil;
+		}
+
+		#~
+		Get the number of columns in result set
+		@return number of columns in result set
+		~#
+		method : public : ColumnCount() ~ Int {
+			if(@native_stmt <> 0 & @native_names <> 0) {
+      			array_args := Base->New[2];
+				array_args[0] := IntRef->New();
+				array_args[1] := IntRef->New(@native_stmt);
+				@lib_proxy := Proxy->GetDllProxy();
+				@lib_proxy->CallFunction("odbc_result_num_columns", array_args);
+				
+				value := array_args[0]->As(IntRef);
+				return value->Get();
+      		};
+      		
+      		return -1;
+		}
+
 		#~
 		Moves the cursor to the next row in the result set
 		@return true if cursor was moved, false otherwise
@@ -1204,6 +1269,77 @@ bundle Database.ODBC {
 	      	}
 	}
 	
+	#~
+	Result set metadata
+	~#
+	class ColumnMetadata {
+		@type : ColumnMetadata->Type;
+		@name : String;
+		@size : Int;
+		@decimal_digits : Int;
+		@nullable : Bool;
+
+		#~
+		Column type
+		~#
+		consts Type {
+			SQL_UNKNOWN_TYPE := 0,
+			SQL_CHAR := 1,
+			SQL_NUMERIC := 2,
+			SQL_DECIMAL := 3,
+			SQL_INTEGER := 4,
+			SQL_SMALLINT := 5,
+			SQL_FLOAT := 6,
+			SQL_REAL := 7,
+			SQL_DOUBLE := 8,
+			SQL_DATETIME := 9,
+			SQL_VARCHAR := 12,
+			SQL_TYPE_DATE := 91,
+			SQL_TYPE_TIME := 92,
+			SQL_TYPE_TIMESTAMP := 93
+		}
+
+		#~
+		Get column type
+		@return column type
+		~#
+		method : public : GetType() ~ ColumnMetadata->Type {
+			return @type;
+		}
+
+		#~
+		Get column name
+		@return column name
+		~#
+		method : public : GetName() ~ String {
+			return @name;
+		}
+
+		#~
+		Get column size
+		@return column size
+		~#
+		method : public : GetSize() ~ Int {
+			return @size;
+		}
+
+		#~
+		Get column decimal digits 
+		@return decimal digits
+		~#
+		method : public : GetDecimalDigits() ~ Int {
+			return @decimal_digits;
+		}
+
+		#~
+		Determine if column is nullable
+		@return if column is nullable, false otherwise
+		~#
+		method : public : IsNullable() ~ Bool {
+			return @nullable;
+		}
+	}
+
 	#~
 	ODBC date
 	~#
