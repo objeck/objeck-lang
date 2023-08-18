@@ -692,9 +692,9 @@ bundle Database.ODBC {
 		
 
 		#~
-		Get the number of columns in result set
+		Get the metadata for a given column
 		@param column column ID
-		@return number of columns in result set
+		@return column metadata
 		~#
 		method : public : GetMetadata(column : Int) ~ ColumnMetadata {
 			if(@native_stmt <> 0 & @native_names <> 0) {
@@ -703,7 +703,7 @@ bundle Database.ODBC {
 				array_args[0] := Nil;
 				array_args[1] := IntRef->New(@native_stmt);
 				array_args[2] := IntRef->New(column);
-				
+
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("odbc_result_metadata_by_id", array_args);
 				
@@ -712,11 +712,11 @@ bundle Database.ODBC {
       		
       		return Nil;
 		}
-
+		
 		#~
-		Get the number of columns in result set
+		Get the metadata for a given column
 		@param column column name
-		@return number of columns in result set
+		@return column metadata
 		~#
 		method : public : GetMetadata(column : String) ~ ColumnMetadata {
 			if(@native_stmt <> 0 & @native_names <> 0) {
