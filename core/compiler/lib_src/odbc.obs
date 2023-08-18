@@ -712,7 +712,7 @@ bundle Database.ODBC {
       		
       		return Nil;
 		}
-		
+
 		#~
 		Get the metadata for a given column
 		@param column column name
@@ -1281,6 +1281,7 @@ bundle Database.ODBC {
 
 		#~
 		Column type
+		@class ColumnMetadata
 		~#
 		consts Type {
 			SQL_UNKNOWN_TYPE := 0,

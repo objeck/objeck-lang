@@ -432,6 +432,8 @@ extern "C" {
   {
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 1);
     if(!stmt) {
+      SQLFreeStmt(stmt, SQL_UNBIND);
+      SQLFreeHandle(SQL_HANDLE_STMT, stmt);
       APITools_SetIntValue(context, 0, 0);
       return;
     }
@@ -483,6 +485,8 @@ extern "C" {
   {
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 1);
     if(!stmt) {
+      SQLFreeStmt(stmt, SQL_UNBIND);
+      SQLFreeHandle(SQL_HANDLE_STMT, stmt);
       APITools_SetIntValue(context, 0, 0);
       return;
     }
@@ -545,6 +549,8 @@ extern "C" {
   {
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 1);
     if(!stmt) {
+      SQLFreeStmt(stmt, SQL_UNBIND);
+      SQLFreeHandle(SQL_HANDLE_STMT, stmt);
       APITools_SetIntValue(context, 0, 0);
       return;
     }
@@ -571,6 +577,8 @@ extern "C" {
   {
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 1);
     if(!stmt) {
+      SQLFreeStmt(stmt, SQL_UNBIND);
+      SQLFreeHandle(SQL_HANDLE_STMT, stmt);
       APITools_SetIntValue(context, 0, 0);
       return;
     }
