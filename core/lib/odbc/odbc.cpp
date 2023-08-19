@@ -428,7 +428,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-  void odbc_result_metadata_by_id(VMContext& context)
+  void odbc_result_metadata(VMContext& context)
   {
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 1);
     if(!stmt) {
@@ -438,6 +438,51 @@ extern "C" {
       return;
     }
 
+    SQLSMALLINT columns;
+    SQLRETURN status = SQLNumResultCols(stmt, &columns);
+    if(SQL_FAIL && columns > 0) {
+      // ShowError(SQL_HANDLE_STMT, stmt);
+      SQLFreeStmt(stmt, SQL_UNBIND);
+      SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+      APITools_SetIntValue(context, 0, 0);
+      return;
+    }
+
+    size_t* metadata_array = APITools_MakeIntArray(context, columns);
+    size_t* metadata_array_ptr = metadata_array + 3;
+
+    for(SQLSMALLINT index = 1; index <= columns; ++index) {
+      char column_name[SMALL_BUFFER_MAX];
+      SQLSMALLINT column_name_length;
+      SQLSMALLINT column_type;
+      SQLULEN column_size;
+      SQLSMALLINT column_decimal_digits;
+      SQLSMALLINT column_nullable;
+
+      status = SQLDescribeCol(stmt, index, (SQLCHAR*)column_name, SMALL_BUFFER_MAX, &column_name_length,
+                              &column_type, &column_size, &column_decimal_digits, &column_nullable);
+      if(SQL_FAIL) {
+        SQLFreeStmt(stmt, SQL_UNBIND);
+        SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+        APITools_SetIntValue(context, 0, 0);
+        return;
+      }
+
+      size_t* column_obj = APITools_CreateObject(context, L"Database.ODBC.ColumnColumnInfo");
+      column_obj[0] = column_type;
+      column_obj[1] = (size_t)APITools_CreateStringObject(context, BytesToUnicode(column_name));
+      column_obj[2] = column_size;
+      column_obj[3] = column_decimal_digits;
+      column_obj[4] = column_nullable ? 1 : 0;
+
+      metadata_array_ptr[index] = (size_t)column_obj;
+    }
+
+    size_t* resultset_metadata_obj = APITools_CreateObject(context, L"Database.ODBC.ResultSetInfo");
+    resultset_metadata_obj[0] = (size_t)metadata_array;
+
+    APITools_SetObjectValue(context, 0, resultset_metadata_obj);
+/*
     SQLUSMALLINT index = (SQLUSMALLINT)APITools_GetIntValue(context, 2);
 
     SQLSMALLINT columns;
@@ -473,70 +518,7 @@ extern "C" {
     metadata_obj[4] = column_nullable ? 1 : 0;
 
     APITools_SetObjectValue(context, 0, metadata_obj);
-  }
-
-  //
-  // get result set metadata
-  //
-#ifdef _WIN32
-  __declspec(dllexport)
-#endif
-  void odbc_result_metadata_by_name(VMContext& context)
-  {
-    SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 1);
-    if(!stmt) {
-      SQLFreeStmt(stmt, SQL_UNBIND);
-      SQLFreeHandle(SQL_HANDLE_STMT, stmt);
-      APITools_SetIntValue(context, 0, 0);
-      return;
-    }
-
-    const std::wstring name = APITools_GetStringValue(context, 2);
-
-    std::map<const std::wstring, int>* names = (std::map<const std::wstring, int>*)APITools_GetIntValue(context, 3);
-    std::map<const std::wstring, int>::iterator result = names->find(name);
-    if(result != names->end()) {
-      SQLSMALLINT columns;
-      const SQLUSMALLINT index = result->second;
-
-      SQLRETURN status = SQLNumResultCols(stmt, &columns);
-      if(!SQL_OK) {
-        SQLFreeStmt(stmt, SQL_UNBIND);
-        SQLFreeHandle(SQL_HANDLE_STMT, stmt);
-        APITools_SetIntValue(context, 0, 0);
-        return;
-      }
-
-      char column_name[SMALL_BUFFER_MAX];
-      SQLSMALLINT column_name_length;
-      SQLSMALLINT column_type;
-      SQLULEN column_size;
-      SQLSMALLINT column_decimal_digits;
-      SQLSMALLINT column_nullable;
-
-      status = SQLDescribeCol(stmt, index, (SQLCHAR*)column_name, SMALL_BUFFER_MAX, &column_name_length,
-                              &column_type, &column_size, &column_decimal_digits, &column_nullable);
-      if(SQL_FAIL) {
-        SQLFreeStmt(stmt, SQL_UNBIND);
-        SQLFreeHandle(SQL_HANDLE_STMT, stmt);
-        APITools_SetIntValue(context, 0, 0);
-        return;
-      }
-
-      size_t* metadata_obj = APITools_CreateObject(context, L"Database.ODBC.ColumnMetadata");
-      metadata_obj[0] = column_type;
-      metadata_obj[1] = (size_t)APITools_CreateStringObject(context, BytesToUnicode(column_name));
-      metadata_obj[2] = column_size;
-      metadata_obj[3] = column_decimal_digits;
-      metadata_obj[4] = column_nullable ? 1 : 0;
-
-      APITools_SetObjectValue(context, 0, metadata_obj);
-    }
-    else {
-      SQLFreeStmt(stmt, SQL_UNBIND);
-      SQLFreeHandle(SQL_HANDLE_STMT, stmt);
-      APITools_SetIntValue(context, 0, 0);
-    }
+*/
   }
 
   //

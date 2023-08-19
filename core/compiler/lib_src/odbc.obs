@@ -693,66 +693,23 @@ bundle Database.ODBC {
 
 		#~
 		Get the metadata for a given column
-		@param column column ID
-		@return column metadata
-		~#
-		method : public : GetMetadata(column : Int) ~ ColumnMetadata {
-			if(@native_stmt <> 0 & @native_names <> 0) {
-      			array_args := Base->New[3];
-
-				array_args[0] := Nil;
-				array_args[1] := IntRef->New(@native_stmt);
-				array_args[2] := IntRef->New(column);
-
-				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("odbc_result_metadata_by_id", array_args);
-				
-				return array_args[0];
-      		};
-      		
-      		return Nil;
-		}
-
-		#~
-		Get the metadata for a given column
 		@param column column name
 		@return column metadata
 		~#
-		method : public : GetMetadata(column : String) ~ ColumnMetadata {
+		method : public : GetColumnInfo() ~ ResultSetInfo {
 			if(@native_stmt <> 0 & @native_names <> 0) {
-      			array_args := Base->New[4];
+      			array_args := Base->New[2];
 
 				array_args[0] := Nil;
 				array_args[1] := IntRef->New(@native_stmt);
-				array_args[2] := column;
-				array_args[3] := IntRef->New(@native_names);
 
 				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("odbc_result_metadata_by_name", array_args);
+				@lib_proxy->CallFunction("odbc_result_metadata", array_args);
 				
 				return array_args[0];
       		};
       		
       		return Nil;
-		}
-
-		#~
-		Get the number of columns in result set
-		@return number of columns in result set
-		~#
-		method : public : ColumnCount() ~ Int {
-			if(@native_stmt <> 0 & @native_names <> 0) {
-      			array_args := Base->New[2];
-				array_args[0] := IntRef->New();
-				array_args[1] := IntRef->New(@native_stmt);
-				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("odbc_result_num_columns", array_args);
-				
-				value := array_args[0]->As(IntRef);
-				return value->Get();
-      		};
-      		
-      		return -1;
 		}
 
 		#~
@@ -1272,16 +1229,45 @@ bundle Database.ODBC {
 	#~
 	Result set metadata
 	~#
-	class ColumnMetadata {
-		@type : ColumnMetadata->Type;
+	class ResultSetInfo {
+		@column_info : ColumnColumnInfo[];
+
+		#~
+		Get column type
+		@return column type
+		~#
+		method : public : GetColumnInfo() ~ ColumnColumnInfo[] {
+			return @column_info;
+		}
+
+		#~
+		String representation of column metadata
+		@return string representation of column metadata
+		~#
+		method : public : ToString() ~ String {
+			buffer := "";
+
+			buffer += "13";
+
+			return buffer;
+		}
+	}
+
+	#~
+	Result set column metadata
+	~#
+	class ColumnColumnInfo {
+		@type : ColumnColumnInfo->Type;
 		@name : String;
 		@size : Int;
 		@decimal_digits : Int;
 		@nullable : Bool;
 
+		New() {}
+
 		#~
 		Column type
-		@class ColumnMetadata
+		@class ColumnColumnInfo
 		~#
 		consts Type {
 			SQL_UNKNOWN_TYPE := 0,
@@ -1304,7 +1290,7 @@ bundle Database.ODBC {
 		Get column type
 		@return column type
 		~#
-		method : public : GetType() ~ ColumnMetadata->Type {
+		method : public : GetType() ~ ColumnColumnInfo->Type {
 			return @type;
 		}
 
@@ -1338,6 +1324,18 @@ bundle Database.ODBC {
 		~#
 		method : public : IsNullable() ~ Bool {
 			return @nullable;
+		}
+
+		#~
+		String representation of column metadata
+		@return string representation of column metadata
+		~#
+		method : public : ToString() ~ String {
+			buffer := "";
+
+
+
+			return buffer;
 		}
 	}
 
