@@ -696,7 +696,7 @@ bundle Database.ODBC {
 		@param column column name
 		@return column metadata
 		~#
-		method : public : GetColumnInfo() ~ ResultSetInfo {
+		method : public : GetColumnInfo() ~ ColumnInfo[] {
 			if(@native_stmt <> 0 & @native_names <> 0) {
       			array_args := Base->New[2];
 
@@ -706,7 +706,8 @@ bundle Database.ODBC {
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("odbc_result_metadata", array_args);
 				
-				return array_args[0]->As(ResultSetInfo);
+				value := array_args[0]->As(ColumnInfoRef);
+				return value->Get();
       		};
       		
       		return Nil;
@@ -1226,41 +1227,22 @@ bundle Database.ODBC {
 	      	}
 	}
 	
-	#~
-	Result set metadata
-	~#
-	class ResultSetInfo {
-		@column_info : ColumnColumnInfo[];
+	class : private : ColumnInfoRef {
+		@column_info : ColumnInfo[];
 
 		New() {
 		}
 
-		#~
-		Get column type
-		@return column type
-		~#
-		method : public : GetColumnInfo() ~ ColumnColumnInfo[] {
+		method : public : Get() ~ ColumnInfo[] {
 			return @column_info;
-		}
-
-		#~
-		String representation of column metadata
-		@return string representation of column metadata
-		~#
-		method : public : ToString() ~ String {
-			buffer := "";
-
-			buffer += "13";
-
-			return buffer;
 		}
 	}
 
 	#~
 	Result set column metadata
 	~#
-	class ColumnColumnInfo {
-		@type : ColumnColumnInfo->Type;
+	class ColumnInfo {
+		@type : ColumnInfo->Type;
 		@name : String;
 		@size : Int;
 		@decimal_digits : Int;
@@ -1270,7 +1252,7 @@ bundle Database.ODBC {
 
 		#~
 		Column type
-		@class ColumnColumnInfo
+		@class ColumnInfo
 		~#
 		consts Type {
 			SQL_UNKNOWN_TYPE := 0,
@@ -1293,7 +1275,7 @@ bundle Database.ODBC {
 		Get column type
 		@return column type
 		~#
-		method : public : GetType() ~ ColumnColumnInfo->Type {
+		method : public : GetType() ~ ColumnInfo->Type {
 			return @type;
 		}
 
@@ -1336,7 +1318,69 @@ bundle Database.ODBC {
 		method : public : ToString() ~ String {
 			buffer := "";
 
+			select(@type) {
+				label ColumnInfo->Type->SQL_UNKNOWN_TYPE {
+					buffer += "SQL_UNKNOWN_TYPE";
+				}
 
+				label ColumnInfo->Type->SQL_CHAR {
+					buffer += "SQL_CHAR";
+				}
+
+				label ColumnInfo->Type->SQL_NUMERIC {
+					buffer += "SQL_NUMERIC";
+				}
+
+				label ColumnInfo->Type->SQL_DECIMAL {
+					buffer += "SQL_DECIMAL";
+				}
+
+				label ColumnInfo->Type->SQL_INTEGER {
+					buffer += "SQL_INTEGER";
+				}
+
+				label ColumnInfo->Type->SQL_SMALLINT {
+					buffer += "SQL_SMALLINT";
+				}
+
+				label ColumnInfo->Type->SQL_FLOAT {
+					buffer += "SQL_FLOAT";
+				}
+
+				label ColumnInfo->Type->SQL_REAL {
+					buffer += "SQL_REAL";
+				}
+
+				label ColumnInfo->Type->SQL_DOUBLE {
+					buffer += "SQL_DOUBLE";
+				}
+
+				label ColumnInfo->Type->SQL_DATETIME {
+					buffer += "SQL_DATETIME";
+				}
+
+				label ColumnInfo->Type->SQL_VARCHAR {
+					buffer += "SQL_VARCHAR";
+				}
+
+				label ColumnInfo->Type->SQL_TYPE_DATE {
+					buffer += "SQL_TYPE_DATE";
+				}
+
+				label ColumnInfo->Type->SQL_TYPE_TIME {
+					buffer += "SQL_TYPE_TIME";
+				}
+
+				label ColumnInfo->Type->SQL_TYPE_TIMESTAMP {
+					buffer += "SQL_TYPE_TIMESTAMP";
+				}
+
+				other {
+					buffer += ">> OTHER <<";
+				}
+			}
+
+			buffer += ", '{$@name}', {$@size}, {$@decimal_digits}, {$@nullable}";
 
 			return buffer;
 		}
