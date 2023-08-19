@@ -16,7 +16,7 @@
 #  project is concerned is the original GNU Library General Public License
 #  Version 2, dated June 1991.
 #
-#  While not mandated by the BSD license, any patches you $(MAKE) to the
+#  While not mandated by the BSD license, any patches you make to the
 #  iODBC source code may be contributed back into the iODBC project
 #  at your discretion. Contributions will benefit the Open Source and
 #  Data Access community as a whole. Submissions may be made at:
