@@ -6531,6 +6531,17 @@ void ContextAnalyzer::AnalyzeDeclaration(Declaration * declaration, Class* klass
 {
   SymbolEntry* entry = declaration->GetEntry();
   if(entry) {
+    // load entry
+    if(!entry->IsLoaded()) {
+      const size_t offset = entry->GetName().find(L':');
+      if(offset != std::wstring::npos) {
+        const std::wstring short_name = entry->GetName().substr(0, offset);
+        if(HasProgramOrLibraryClass(short_name)) {
+          entry->WasLoaded();
+        }
+      }
+    }
+
     if(entry->GetType() && entry->GetType()->GetType() == CLASS_TYPE) {
       // resolve declaration type
       Type* type = entry->GetType();

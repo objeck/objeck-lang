@@ -706,7 +706,7 @@ bundle Database.ODBC {
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("odbc_result_metadata", array_args);
 				
-				return array_args[0];
+				return array_args[0]->As(ResultSetInfo);
       		};
       		
       		return Nil;
@@ -1231,6 +1231,9 @@ bundle Database.ODBC {
 	~#
 	class ResultSetInfo {
 		@column_info : ColumnColumnInfo[];
+
+		New() {
+		}
 
 		#~
 		Get column type
