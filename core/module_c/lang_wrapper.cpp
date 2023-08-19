@@ -1,4 +1,4 @@
-#include "lang_capi.h"
+#include "lang_wrapper.h"
 
 	CObjL* CObjL_new(const char* source, const char* lib_uses, const char* cmd_args) {
 		auto _source = BytesToUnicode(string(source));
