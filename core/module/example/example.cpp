@@ -12,8 +12,7 @@ int main(int argc, char* argv[]) {
     // setup file name/source pair
     std::vector<std::pair<std::wstring, std::wstring>> file_source;
     const std::wstring filename = BytesToUnicode(argv[1]);
-    const std::wstring source = ReadFile(filename);
-    file_source.push_back(std::make_pair(filename, source));
+    file_source.push_back(std::make_pair(filename, ReadFile(filename)));
 
     // compile code
     ObjeckLang lang(L"lang.obl");
