@@ -11,7 +11,7 @@ int main(int argc, char* argv[]) {
   if(argc == 2) {
     // setup file name/source pair
     std::vector<std::pair<std::wstring, std::wstring>> file_source;
-    const std::wstring filename = BytesToUnicode(argv[1]);
+    const std::wstring filename(BytesToUnicode(argv[1]));
     file_source.push_back(std::make_pair(filename, ReadFile(filename)));
 
     // compile code
