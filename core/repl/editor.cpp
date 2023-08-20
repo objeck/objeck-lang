@@ -683,11 +683,18 @@ void Editor::DoUseLibraries(std::wstring &in)
 
 void Editor::DoExecute()
 {
-  ObjeckLang lang(doc.ToString(), L"lang.obl," + compiler_libs, cmd_args);
-  if(lang.Compile(doc.GetName(), compiler_opt_level)) {
-    lang.Execute();
+  // setup file name and source pair
+  std::vector<std::pair<std::wstring, std::wstring>> file_source;
+  file_source.push_back(make_pair(doc.GetName(), doc.ToString()));
+
+  // compile code
+  ObjeckLang lang(L"lang.obl," + compiler_libs);
+  if(lang.Compile(file_source, compiler_opt_level)) {
+    // execute
+    lang.Execute(cmd_args);
   }
   else {
+    // show errors
     auto errors = lang.GetErrors();
     for(auto& error : errors) {
       std::wcout << error << std::endl;

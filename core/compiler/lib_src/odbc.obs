@@ -671,8 +671,8 @@ bundle Database.ODBC {
 				@lib_proxy->CallFunction("odbc_stmt_close", array_args);
 				@params->Empty();
 				@native_stmt := 0;
-	      		};
-	      	}
+      		};
+      	}
 	}
 	
 	#~
@@ -696,7 +696,7 @@ bundle Database.ODBC {
 		@param column column name
 		@return column metadata
 		~#
-		method : public : GetColumnInfo() ~ ColumnInfo[] {
+		method : public : () ~ ColumnInfo[] {
 			if(@native_stmt <> 0 & @native_names <> 0) {
       			array_args := Base->New[2];
 

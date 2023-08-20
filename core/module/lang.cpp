@@ -31,34 +31,35 @@
 
 #include "lang.h"
 
-ObjeckLang::ObjeckLang(const std::wstring &s, const std::wstring &u, const std::wstring &a)
+ObjeckLang::ObjeckLang(const std::wstring &u)
 {
-  source = s;
   lib_uses = u;
-  cmd_args = a;
   code = nullptr;
 }
 
 ObjeckLang::~ObjeckLang()
 {
+  if(code) {
+    free(code);
+    code = nullptr;
+  }
 }
 
-bool ObjeckLang::Compile(const std::wstring file, const std::wstring opt)
+//
+// Compile
+//
+bool ObjeckLang::Compile(std::vector<std::pair<std::wstring, std::wstring>> &file_source, const std::wstring opt_level)
 {
   const bool is_debug = false;
   const bool is_lib = false;
   const bool show_asm = false;
-  const std::wstring sys_lib_path = lib_uses;
-
-  std::vector<std::pair<std::wstring, std::wstring> > programs;
-  programs.push_back(make_pair(file + L".obs", source));
 
   // parse source code
-  Parser parser(L"", false, programs);
+  Parser parser(L"", false, file_source);
   if(parser.Parse()) {
     // analyze parse tree
     ParsedProgram* program = parser.GetProgram();
-    ContextAnalyzer analyzer(program, sys_lib_path, is_lib);
+    ContextAnalyzer analyzer(program, lib_uses, is_lib);
 
     if(analyzer.Analyze()) {
       // emit intermediate code
@@ -66,11 +67,12 @@ bool ObjeckLang::Compile(const std::wstring file, const std::wstring opt)
       intermediate.Translate();
 
       // intermediate optimizer
-      ItermediateOptimizer optimizer(intermediate.GetProgram(), intermediate.GetUnconditionalLabel(), opt, is_lib, is_debug);
+      ItermediateOptimizer optimizer(intermediate.GetProgram(), intermediate.GetUnconditionalLabel(), opt_level, is_lib, is_debug);
       optimizer.Optimize();
 
       // emit target code
-      FileEmitter target(optimizer.GetProgram(), is_lib, is_debug, show_asm, file + L".obe");
+      const std::wstring target_name = file_source.front().first;
+      FileEmitter target(optimizer.GetProgram(), is_lib, is_debug, show_asm, target_name + L".obe");
       code = target.GetBinary();
 
       return code != nullptr;
@@ -86,10 +88,13 @@ bool ObjeckLang::Compile(const std::wstring file, const std::wstring opt)
   return false;
 }
 
+//
+// Execute
+//
 #ifdef _MODULE_STDIO
-const std::wstring ObjeckLang::Execute()
+const std::wstring ObjeckLang::Execute(const std::wstring cmd_args)
 #else
-void ObjeckLang::Execute()
+void ObjeckLang::Execute(const std::wstring cmd_args)
 #endif
 {
 #ifdef _WIN32
@@ -172,6 +177,9 @@ void ObjeckLang::Execute()
 #endif
 }
 
+//
+// Errors
+//
 std::vector<std::wstring> ObjeckLang::GetErrors() 
 {
   return errors;

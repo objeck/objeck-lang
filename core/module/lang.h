@@ -39,26 +39,30 @@
 #include "../shared/version.h"
 
 //
-// Language
+// Objeck module
 //
 class ObjeckLang {
-  std::wstring source;
   std::wstring lib_uses;
-  std::wstring cmd_args;
   std::vector<std::wstring> errors;
   char* code;
 
 public:
-  ObjeckLang(const std::wstring &s, const std::wstring &u, const std::wstring &a);
+  ObjeckLang(const std::wstring &lib_uses);
   ~ObjeckLang();
 
-  bool Compile(const std::wstring file, const std::wstring opt);
+  // compile code, 'file_source' are pairs of filename/source instances. this is done bacuase 
+  // source code stored as a string still needs a filename. the 'opt_levl' are "s0" to "s3"
+  bool Compile(std::vector<std::pair<std::wstring, std::wstring>>& file_source, const std::wstring opt_level);
+
+  // gets compiler errors
   std::vector<std::wstring> GetErrors();
 
 #ifdef _MODULE_STDIO
-  const std::wstring Execute();
+  // executes the program, returns the ouptut as string
+  const std::wstring Execute(const std::wstring cmd_args);
 #else
-  void Execute();
+  // executes the program
+  void Execute(const std::wstring cmd_args);
 #endif
 };
 
