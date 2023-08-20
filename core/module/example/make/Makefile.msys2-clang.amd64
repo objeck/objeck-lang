@@ -1,28 +1,19 @@
-ARGS=-O3 -Wall -std=c++17 -D_SANITIZE -D_X64 -D_OBJECK_NATIVE_LIB_PATH -D_MODULE -Wint-to-pointer-cast -Wno-unused-variable -Wno-unused-function -Wno-int-to-pointer-cast
-
 CC=clang++
-SRC=lang.o
-OBJ_LIBS=../compiler/compiler.a ../vm/vm.a
-COMPILER_PATH=../compiler
-VM_PATH=../vm
-MEM_PATH=../vm/arch
-JIT_PATH=../vm/arch/jit/amd64
-AR=ar
-LIB=module.a
+ARGS=-O3 -Wall -std=c++17 -D_X64 -D_OBJECK_NATIVE_LIB_PATH -Wno-unused-function
+SRC=example.o
+OBJ_LIBS=../module.a
+MODULE_PATH=..
+EXE=example
 
-$(LIB): $(SRC) $(OBJ_LIBS)
-	$(AR) -cvq $(LIB) $(SRC)
+$(EXE): $(SRC) $(OBJ_LIBS)
+	$(CC) -m64 -o $(EXE) $(SRC) $(OBJ_LIBS) ../../compiler/compiler.a ../../compiler/logger.a ../../vm/vm.a ../../vm/memory.a ../../vm/arch/jit/amd64/jit_common.a ../../vm/arch/jit/amd64/jit_amd_lp64.o -ldl -lcrypto -lreadline -lssl -lz
 
-../compiler/compiler.a:
-	cd $(COMPILER_PATH); $(MAKE) -f make/Makefile.msys2-clang.amd64.mod
-
-../vm/vm.a:
-	cd $(VM_PATH); $(MAKE) -f make/Makefile.msys2-clang.amd64.mod
-	
 %.o: %.cpp
 	$(CC) -m64 $(ARGS) -c $< 
 
+../module.a:
+	cd $(MODULE_PATH); $(MAKE) -f make/Makefile.amd64
+
 clean:
-	cd $(COMPILER_PATH); $(MAKE) -f make/Makefile.msys2-clang.amd64.mod clean
-	cd $(VM_PATH); $(MAKE) -f make/Makefile.msys2-clang.amd64.mod clean
-	rm -f $(LIB) *.o *~
+	cd $(MODULE_PATH); $(MAKE) -f make/Makefile.amd64 clean
+	rm -f $(EXE) *.a *.o *~
