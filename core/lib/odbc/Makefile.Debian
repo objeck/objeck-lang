@@ -1,4 +1,3 @@
-CC=g++
 ARGS=-O3 -Wall -fPIC -Wno-unused-function
 SRC=odbc.o
 EXE=libobjk_odbc.so
@@ -6,10 +5,10 @@ EXE=libobjk_odbc.so
 all: $(EXE)
 
 $(EXE): $(SRC)
-	$(CC) -shared -Wl,-soname,$1.so.1  -o $(EXE) $(SRC) -lodbc
+	$(CXX) -shared -Wl,-soname,$1.so.1  -o $(EXE) $(SRC) -lodbc
 
 %.o: %.cpp
-	$(CC) $(ARGS) -c $< -lodbc 
+	$(CXX) $(ARGS) -c $< -lodbc 
 
 clean:
 	rm -f $(EXE) *.so *.o *~

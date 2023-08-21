@@ -1,4 +1,3 @@
-CC=g++
 ARGS=-O3 -Wall -std=c++17 -D_MODULE -D_ARM64 -Wno-unused-function -Wno-maybe-uninitialized
 SRC=types.o tree.o scanner.o parser.o linker.o context.o intermediate.o optimization.o emit.o compiler.o 
 LOGGER_PATH=../shared
@@ -11,7 +10,7 @@ $(LIB): $(SRC) $(OBJ_LIBS)
 	cp $(LIB) ../module
 
 %.o: %.cpp
-	$(CC) $(ARGS) -c $< 
+	$(CXX) $(ARGS) -c $< 
 
 logger.a:
 	cd $(LOGGER_PATH); $(MAKE) -f make/Makefile.arm64

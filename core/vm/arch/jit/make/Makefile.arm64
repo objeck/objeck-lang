@@ -1,6 +1,5 @@
 ARGS=-O3 -Wall -Wno-unused-function -std=c++17 -Wno-unused-variable
 
-CC=g++
 AR=ar
 SRC=jit_common.o
 LIB=arm64/jit_common.a
@@ -9,7 +8,7 @@ $(LIB): $(SRC)
 	$(AR) -cvq $(LIB) $(SRC)
 
 %.o: %.cpp
-	$(CC) $(ARGS) -c $< 
+	$(CXX) $(ARGS) -c $< 
 
 clean:
 	rm -f *.o *~ $(LIB)

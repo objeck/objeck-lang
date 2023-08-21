@@ -1,4 +1,3 @@
-CC=g++
 ARGS=-O3 -Wall -std=c++17 -D_X64 -D_OBJECK_NATIVE_LIB_PATH -Wno-unused-function
 SRC=example.o
 OBJ_LIBS=../module.a
@@ -6,10 +5,10 @@ MODULE_PATH=..
 EXE=example
 
 $(EXE): $(SRC) $(OBJ_LIBS)
-	$(CC) -m64 -o $(EXE) $(SRC) $(OBJ_LIBS) ../../compiler/compiler.a ../../compiler/logger.a ../../vm/vm.a ../../vm/memory.a ../../vm/arch/jit/amd64/jit_common.a ../../vm/arch/win32/win32.o ../../vm/arch/jit/amd64/jit_amd_lp64.o -lssl -lcrypto -lz -pthread -lwsock32 -luserenv -lws2_32 -lz
+	$(CXX) -m64 -o $(EXE) $(SRC) $(OBJ_LIBS) ../../compiler/compiler.a ../../compiler/logger.a ../../vm/vm.a ../../vm/memory.a ../../vm/arch/jit/amd64/jit_common.a ../../vm/arch/win32/win32.o ../../vm/arch/jit/amd64/jit_amd_lp64.o -lssl -lcrypto -lz -pthread -lwsock32 -luserenv -lws2_32 -lz
 
 %.o: %.cpp
-	$(CC) -m64 $(ARGS) -c $< 
+	$(CXX) -m64 $(ARGS) -c $< 
 
 ../module.a:
 	cd $(MODULE_PATH); $(MAKE) -f make/Makefile.msys2-ucrt.amd64

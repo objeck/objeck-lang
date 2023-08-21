@@ -20,7 +20,7 @@ $(LIB): $(SRC) $(OBJ_LIBS)
 	cd $(VM_PATH); $(MAKE) -f make/Makefile.msys2-clang.amd64.mod
 	
 %.o: %.cpp
-	$(CC) -m64 $(ARGS) -c $< 
+	$(CXX) -m64 $(ARGS) -c $< 
 
 clean:
 	cd $(COMPILER_PATH); $(MAKE) -f make/Makefile.msys2-clang.amd64.mod clean

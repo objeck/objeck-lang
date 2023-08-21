@@ -1,6 +1,5 @@
 ARGS=-O3 -Wall -std=c++17 -D_SANITIZE -D_X64 -D_OBJECK_NATIVE_LIB_PATH -D_MODULE -Wint-to-pointer-cast -Wno-unused-variable -Wno-unused-function -Wno-int-to-pointer-cast
 
-CC=g++
 SRC=lang.o
 OBJ_LIBS=../compiler/compiler.a ../vm/vm.a
 COMPILER_PATH=../compiler
@@ -20,7 +19,7 @@ $(LIB): $(SRC) $(OBJ_LIBS)
 	cd $(VM_PATH); $(MAKE) -f make/Makefile.amd64.mod
 	
 %.o: %.cpp
-	$(CC) -m64 $(ARGS) -c $< 
+	$(CXX) -m64 $(ARGS) -c $< 
 
 clean:
 	cd $(COMPILER_PATH); $(MAKE) -f make/Makefile.amd64.mod clean

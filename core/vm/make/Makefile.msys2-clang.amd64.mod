@@ -23,7 +23,7 @@ win32.a:
 	cd $(WIN32_PATH); $(MAKE) -f make/Makefile.msys2-clang.amd64
 	
 %.o: %.cpp
-	$(CC) -m64 $(ARGS) -c $< 
+	$(CXX) -m64 $(ARGS) -c $< 
 
 clean:
 	cd $(MEM_PATH); $(MAKE) clean -f make/Makefile.msys2-clang.amd64
