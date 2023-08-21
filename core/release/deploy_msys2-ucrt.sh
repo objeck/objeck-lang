@@ -27,8 +27,6 @@ cp make/Makefile.msys2-ucrt.amd64 Makefile
 make clean; make -j3
 cp obr ../release/deploy-msys2-ucrt/bin
 
-make clean; make -j3
-
 # build debugger
 cd ../debugger
 cp make/Makefile.msys2-ucrt.amd64 Makefile
