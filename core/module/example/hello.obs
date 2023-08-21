@@ -1,5 +1,8 @@
 class Hello {
   function : Main(args : String[]) ~ Nil {
-    "Hello World"->PrintLine();
+    if(args->Size() = 1) {
+      arg := args[0];
+     "echo: {$arg}"->PrintLine();
+   };
   }
 }

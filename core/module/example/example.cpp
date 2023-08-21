@@ -18,7 +18,8 @@ int main(int argc, char* argv[]) {
     ObjeckLang lang(L"lang.obl");
     if(lang.Compile(file_source, L"s2")) {
       // execute
-      lang.Execute(L"");
+      lang.Execute(L"1");
+      lang.Execute(L"2");
     }
     // show errors
     else {
@@ -40,7 +41,7 @@ std::wstring ReadFile(const std::wstring filename)
 {
   std::wstring buffer;
 
-  std::wifstream file(filename);
+  std::wifstream file(L"");
   if(file.good()) {
     std::wstring line;
     while(getline(file, line)) {
