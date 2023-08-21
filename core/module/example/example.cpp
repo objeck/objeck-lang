@@ -23,8 +23,7 @@ int main(int argc, char* argv[]) {
     }
     // show errors
     else {
-      auto errors = lang.GetErrors();
-      for(auto& error : errors) {
+      for(auto& error : lang.GetErrors()) {
         std::wcout << error << std::endl;
       }
     }
