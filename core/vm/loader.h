@@ -52,6 +52,7 @@ class Loader {
   int start_class_id;
   int start_method_id;
   std::map<const std::wstring, const int> params;
+  bool from_mem;
   
   inline long ReadInt() {
     int32_t value = *((int32_t*)buffer);
@@ -134,6 +135,7 @@ class Loader {
   
 public:
   Loader(char* b, std::vector<std::wstring> &a) {
+    from_mem = true;
     arguments = a;
     LoadOperInstrs();
 
@@ -144,6 +146,7 @@ public:
   }
 
   Loader(const wchar_t* arg) {
+    from_mem = false;
     filename = arg;
     if(!::EndsWith(filename, L".obe")) {
       filename += L".obe";
@@ -156,6 +159,7 @@ public:
   }
 
   Loader(const int argc, wchar_t** argv) {
+    from_mem = false;
     filename = argv[1];
     if(!::EndsWith(filename, L".obe")) {
       filename += L".obe";
@@ -171,7 +175,7 @@ public:
   }
 
   ~Loader() {
-    if(arguments.empty() && alloc_buffer) {
+    if(!from_mem && alloc_buffer) {
       free(alloc_buffer);
       alloc_buffer = nullptr;
     }
