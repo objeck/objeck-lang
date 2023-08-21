@@ -170,6 +170,26 @@ public:
     program = new StackProgram;
   }
 
+  ~Loader() {
+    if(arguments.empty() && alloc_buffer) {
+      free(alloc_buffer);
+      alloc_buffer = nullptr;
+    }
+
+    delete program;
+    program = nullptr;
+
+    for(size_t i = 0; i < END_STMTS; ++i) {
+      StackInstr* tmp = cached_instrs[i];
+      if(tmp) {
+        delete tmp;
+        tmp = nullptr;
+      }
+    }
+    delete[] cached_instrs;
+    cached_instrs = nullptr;
+  }
+
   void LoadOperInstrs() {
     cached_instrs = new StackInstr * [END_STMTS] {};
 
@@ -263,25 +283,6 @@ public:
     cached_instrs[SHR_INT] = new StackInstr(-1, SHR_INT);
   }
 
-  ~Loader() {
-    if(alloc_buffer) {
-      free(alloc_buffer);
-      alloc_buffer = nullptr;
-    }
-
-    delete program;
-    program = nullptr;
-
-    for(size_t i = 0; i < END_STMTS; ++i) {
-      StackInstr* tmp = cached_instrs[i];
-      if(tmp) {
-        delete tmp;
-        tmp = nullptr;
-      }
-    }
-    delete[] cached_instrs;
-    cached_instrs = nullptr;
-  }
 
   static StackProgram* GetProgram();
 

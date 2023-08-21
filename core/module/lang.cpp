@@ -34,11 +34,15 @@
 ObjeckLang::ObjeckLang(const std::wstring &u)
 {
   lib_uses = u;
+  code = nullptr;
 }
 
 ObjeckLang::~ObjeckLang()
 {
-
+  if(code) {
+    free(code);
+    code = nullptr;
+  }
 }
 
 //
@@ -69,6 +73,12 @@ bool ObjeckLang::Compile(std::vector<std::pair<std::wstring, std::wstring>> &fil
       // emit target code
       const std::wstring target_name = file_source.front().first;
       FileEmitter target(optimizer.GetProgram(), is_lib, is_debug, show_asm, target_name + L".obe");
+
+      // free and set compiled code
+      if(code) {
+        free(code);
+        code = nullptr;
+      }
       code = target.GetBinary();
 
       return code != nullptr;
@@ -167,8 +177,6 @@ void ObjeckLang::Execute(const std::wstring cmd_args)
 
   delete stack_pos;
   stack_pos = nullptr;
-
-  // program code freed by loader
 
 #ifdef _MODULE_STDIO
   return output;
