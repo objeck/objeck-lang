@@ -1,6 +1,5 @@
 ARGS=-O3 -Wall -std=c++17 -D_ARM64 -D_OBJECK_NATIVE_LIB_PATH -Wno-unused-variable -Wno-unused-function -Wno-int-to-pointer-cast
 
-CC=g++
 SRC=common.o interpreter.o loader.o vm.o posix_main.o 
 OBJ_LIBS=jit_arm_a64.a memory.a
 MEM_PATH=arch
@@ -19,7 +18,7 @@ jit_arm_a64.a:
 	cd $(JIT_PATH); $(MAKE) -f make/Makefile.arm64
 	
 %.o: %.cpp
-	$(CC) $(ARGS) -c $< 
+	$(CXX) $(ARGS) -c $< 
 
 clean:
 	cd $(MEM_PATH); $(MAKE) clean -f make/Makefile.arm64

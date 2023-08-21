@@ -14,7 +14,7 @@ jit_common.a:
 	cd $(COMMON_PATH); $(MAKE) -f make/Makefile.msys2-clang.amd64
 
 %.o: %.cpp
-	$(CC) -m64 $(ARGS) -c $< 
+	$(CXX) -m64 $(ARGS) -c $< 
 
 clean:
 	cd $(COMMON_PATH); $(MAKE) -f make/Makefile.msys2-clang.amd64 clean

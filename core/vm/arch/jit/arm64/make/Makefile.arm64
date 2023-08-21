@@ -1,6 +1,5 @@
 ARGS=-O3 -D_ARM64 -Wall -Wno-unused-function -std=c++17 -Wno-deprecated-declarations
 
-CC=g++
 AR=ar
 COMMON_LIBS=jit_common.a
 COMMON_PATH=..
@@ -14,7 +13,7 @@ jit_common.a:
 	cd $(COMMON_PATH); $(MAKE) -f make/Makefile.arm64
 
 %.o: %.cpp
-	$(CC) $(ARGS) -c $< 
+	$(CXX) $(ARGS) -c $< 
 
 clean:
 	cd $(COMMON_PATH); $(MAKE) -f make/Makefile.arm64 clean

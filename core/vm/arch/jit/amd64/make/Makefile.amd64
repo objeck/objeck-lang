@@ -1,6 +1,5 @@
 ARGS=-O3 -D_X64 -Wall -Wno-unused-function -std=c++17 -Wno-deprecated-declarations -Wunused-variable
 
-CC=g++
 AR=ar
 COMMON_LIBS=jit_common.a
 COMMON_PATH=..
@@ -14,7 +13,7 @@ jit_common.a:
 	cd $(COMMON_PATH); $(MAKE) -f make/Makefile.amd64
 
 %.o: %.cpp
-	$(CC) -m64 $(ARGS) -c $< 
+	$(CXX) -m64 $(ARGS) -c $< 
 
 clean:
 	cd $(COMMON_PATH); $(MAKE) -f make/Makefile.amd64 clean
