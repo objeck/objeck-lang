@@ -42,8 +42,6 @@ fi
 make clean; make -j3
 cp obr ../release/deploy/bin
 
-make clean; make -j3
-
 # build debugger
 cd ../debugger
 if [ ! -z "$1" ] && [ "$1" = "rpi" ]; then
