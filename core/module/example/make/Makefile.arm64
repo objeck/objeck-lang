@@ -1,4 +1,3 @@
-CC=g++
 ARGS=-O3 -Wall -std=c++17 -D_X64 -D_OBJECK_NATIVE_LIB_PATH -Wno-unused-function
 SRC=example.o
 OBJ_LIBS=../module.a
@@ -6,10 +5,10 @@ MODULE_PATH=..
 EXE=example
 
 $(EXE): $(SRC) $(OBJ_LIBS)
-	$(CC) -o $(EXE) $(SRC) $(OBJ_LIBS) ../../compiler/compiler.a ../../compiler/logger.a ../../vm/vm.a ../../vm/memory.a ../../vm/arch/jit/arm64/jit_common.a ../../vm/arch/jit/arm64/jit_arm_a64.o -ldl -lcrypto -lreadline -lssl -pthread -lz
+	$(CXX) -o $(EXE) $(SRC) $(OBJ_LIBS) ../../compiler/compiler.a ../../compiler/logger.a ../../vm/vm.a ../../vm/memory.a ../../vm/arch/jit/arm64/jit_common.a ../../vm/arch/jit/arm64/jit_arm_a64.o -ldl -lcrypto -lreadline -lssl -pthread -lz
 
 %.o: %.cpp
-	$(CC) -m64 $(ARGS) -c $< 
+	$(CXX) -m64 $(ARGS) -c $< 
 
 ../module.a:
 	cd $(MODULE_PATH); $(MAKE) -f make/Makefile.arm64

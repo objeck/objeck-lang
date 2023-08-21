@@ -11,7 +11,7 @@ $(LIB): $(SRC) $(OBJ_LIBS)
 	cp $(LIB) ../module
 
 %.o: %.cpp
-	$(CC) -m64 $(ARGS) -c $< 
+	$(CXX) -m64 $(ARGS) -c $< 
 
 logger.a:
 	cd $(LOGGER_PATH); $(MAKE) -f make/Makefile.amd64

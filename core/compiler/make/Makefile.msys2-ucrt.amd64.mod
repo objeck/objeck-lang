@@ -1,4 +1,3 @@
-CC=g++
 ARGS=-O3 -Wall -D_MODULE -std=c++17 -Wno-unused-function -Wno-sequence-point
 SRC=types.o tree.o scanner.o parser.o linker.o context.o intermediate.o optimization.o emit.o compiler.o 
 OBJ_LIBS=logger.a
@@ -11,7 +10,7 @@ $(LIB): $(SRC) $(OBJ_LIBS)
 	cp $(LIB) ../module
 
 %.o: %.cpp
-	$(CC) -m64 $(ARGS) -c $< 
+	$(CXX) -m64 $(ARGS) -c $< 
 
 logger.a:
 	cd $(LOGGER_PATH); $(MAKE) -f make/Makefile.amd64
