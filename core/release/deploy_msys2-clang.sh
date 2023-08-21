@@ -27,8 +27,6 @@ cp make/Makefile.msys2-clang.amd64 Makefile
 make clean; make -j3
 cp obr ../release/deploy-msys2-clang/bin
 
-make clean; make -j3
-
 # build debugger
 cd ../debugger
 cp make/Makefile.msys2-clang.amd64 Makefile
