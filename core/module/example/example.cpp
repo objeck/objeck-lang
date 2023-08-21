@@ -41,7 +41,7 @@ std::wstring ReadFile(const std::wstring filename)
 {
   std::wstring buffer;
 
-  std::wifstream file(filename);
+  std::wifstream file(filename.c_str());
   if(file.good()) {
     std::wstring line;
     while(getline(file, line)) {
