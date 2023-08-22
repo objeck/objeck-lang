@@ -42,7 +42,6 @@
 #define OPT_PARAM L"opt"
 #define EXIT_PARAM L"exit"
 
-static void SetEnv();
 static void Usage();
 
 #endif

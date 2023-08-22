@@ -103,16 +103,6 @@ const std::wstring ObjeckLang::Execute(const std::wstring cmd_args)
 void ObjeckLang::Execute(const std::wstring cmd_args)
 #endif
 {
-#ifdef _WIN32
-  if(_setmode(_fileno(stdin), _O_U8TEXT) < 0) {
-    exit(1);
-  }
-
-  if(_setmode(_fileno(stdout), _O_U8TEXT) < 0) {
-    exit(1);
-  }
-#endif
-
   // parse command-line argument string
   std::wstringstream cmd_param_stream;
   std::vector<std::wstring> params;
@@ -191,6 +181,40 @@ void ObjeckLang::Execute() {
   Execute(L"");
 }
 #endif
+
+void SetEnv() {
+#ifdef _WIN32
+#ifdef _MSYS2_CLANG
+  std::ios_base::sync_with_stdio(false);
+  std::locale utf8(std::locale(), new std::codecvt_utf8_utf16<wchar_t>);
+  std::wcout.imbue(utf8);
+  std::wcin.imbue(utf8);
+#else
+  if(_setmode(_fileno(stdin), _O_U8TEXT) < 0) {
+    exit(1);
+  }
+
+  if(_setmode(_fileno(stdout), _O_U8TEXT) < 0) {
+    exit(1);
+  }
+#endif
+#else
+#if defined(_X64)
+  char* locale = setlocale(LC_ALL, "");
+  std::locale lollocale(locale);
+  std::setlocale(LC_ALL, locale);
+  std::wcout.imbue(lollocale);
+#elif defined(_ARM64)
+  char* locale = setlocale(LC_ALL, "");
+  std::locale lollocale(locale);
+  std::setlocale(LC_ALL, locale);
+  std::wcout.imbue(lollocale);
+  std::setlocale(LC_ALL, "en_US.utf8");
+#else    
+  setlocale(LC_ALL, "en_US.utf8");
+#endif
+#endif
+}
 
 //
 // Errors
