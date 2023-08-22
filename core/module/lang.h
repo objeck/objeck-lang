@@ -66,8 +66,6 @@ public:
   void Execute(const std::wstring cmd_args);
   void Execute();
 #endif
-
-  void SetEnv();
 };
 
 #endif

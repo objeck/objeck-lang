@@ -90,20 +90,7 @@ int main(const int argc, const char* argv[])
       }
       // set default as utf8
       else {
-#ifdef _MSYS2_CLANG
-        std::ios_base::sync_with_stdio(false);
-        std::locale utf8(std::locale(), new std::codecvt_utf8_utf16<wchar_t>);
-        std::wcout.imbue(utf8);
-        std::wcin.imbue(utf8);
-#else
-        if(_setmode(_fileno(stdin), _O_U8TEXT) < 0) {
-          exit(1);
-        }
-
-        if(_setmode(_fileno(stdout), _O_U8TEXT) < 0) {
-          exit(1);
-        }
-#endif
+        SetEnv();
       }
     }
     /* TODO: add if needed
