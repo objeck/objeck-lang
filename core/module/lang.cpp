@@ -183,6 +183,15 @@ void ObjeckLang::Execute(const std::wstring cmd_args)
 #endif
 }
 
+#ifdef _MODULE_STDIO
+const std::wstring ObjeckLang::Execute{
+  return Execute(L"");
+#else
+void ObjeckLang::Execute() {
+  Execute(L"");
+}
+#endif
+
 //
 // Errors
 //
