@@ -176,6 +176,7 @@
     <ClCompile Include="..\..\compiler\scanner.cpp" />
     <ClCompile Include="..\..\compiler\tree.cpp" />
     <ClCompile Include="..\..\compiler\types.cpp" />
+    <ClCompile Include="..\..\shared\sys.cpp" />
     <ClCompile Include="..\..\vm\arch\jit\amd64\jit_amd_lp64.cpp" />
     <ClCompile Include="..\..\vm\arch\jit\jit_common.cpp" />
     <ClCompile Include="..\..\vm\arch\memory.cpp" />
