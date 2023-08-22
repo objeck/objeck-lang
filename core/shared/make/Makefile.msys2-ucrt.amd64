@@ -1,12 +1,12 @@
 ARGS=-O3 -Wall -Wno-unused-function -std=c++17
 
 AR=ar
-SRC=logger.o
-LIB=logger.a
+SRC=logger.o sys.o
+LIB=sys.a
 
 $(LIB): $(SRC)
 	$(AR) -cvq $(LIB) $(SRC)
-	cp logger.a ../compiler; cp logger.a ../vm
+	cp sys.a ../compiler; cp sys.a ../vm
 	
 %.o: %.cpp
 	$(CXX) -m64 $(ARGS) -c $< 
