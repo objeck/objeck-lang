@@ -103,16 +103,6 @@ const std::wstring ObjeckLang::Execute(const std::wstring cmd_args)
 void ObjeckLang::Execute(const std::wstring cmd_args)
 #endif
 {
-#ifdef _WIN32
-  if(_setmode(_fileno(stdin), _O_U8TEXT) < 0) {
-    exit(1);
-  }
-
-  if(_setmode(_fileno(stdout), _O_U8TEXT) < 0) {
-    exit(1);
-  }
-#endif
-
   // parse command-line argument string
   std::wstringstream cmd_param_stream;
   std::vector<std::wstring> params;
