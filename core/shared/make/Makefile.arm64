@@ -1,8 +1,8 @@
 ARGS=-O3 -Wall -Wno-unused-function -std=c++17
 
 AR=ar
-SRC=logger.o
-LIB=../compiler/logger.a
+SRC=logger.o sys.o
+LIB=../compiler/sys.a
 
 $(LIB): $(SRC)
 	$(AR) -cvq $(LIB) $(SRC)

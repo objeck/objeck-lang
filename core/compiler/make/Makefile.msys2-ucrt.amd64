@@ -1,7 +1,7 @@
 ARGS=-O3 -Wall -Wno-unused-function -D_X64 -std=c++17 -Wno-sequence-point
 
 SRC=types.o tree.o scanner.o parser.o linker.o context.o intermediate.o optimization.o emit.o compiler.o posix_main.o
-OBJ_LIBS=logger.a objeck.res
+OBJ_LIBS=sys.a objeck.res
 LOGGER_PATH=../shared
 EXE=obc
 
@@ -11,7 +11,7 @@ $(EXE): $(SRC) $(OBJ_LIBS)
 %.o: %.cpp
 	$(CXX) -m64 $(ARGS) -c $< 
 
-logger.a:
+sys.a:
 	cd $(LOGGER_PATH); $(MAKE) -f make/Makefile.msys2-ucrt.amd64
 
 objeck.res:
