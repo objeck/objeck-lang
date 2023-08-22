@@ -34,6 +34,8 @@
 #if defined(_WIN32)
 #include <windows.h>
 #include <stdint.h>
+#include <fcntl.h>
+#include <io.h>
 #elif defined(_ARM64)
 #include <codecvt>
 #endif
@@ -799,5 +801,7 @@ static wchar_t* LoadFileBuffer(const std::wstring &filename, size_t& buffer_size
   free(buffer);
   return wbuffer;
 }
+
+void SetEnv();
 
 #endif

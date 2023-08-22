@@ -37,6 +37,8 @@
 ****************************/
 int main(int argc, char* argv[])
 {
+  SetEnv();
+
 #ifdef _DEBUG
   OpenLogger("debug.log");
 #endif
