@@ -60,9 +60,11 @@ public:
 #ifdef _MODULE_STDIO
   // executes the program, returns the ouptut as string
   const std::wstring Execute(const std::wstring cmd_args);
+  const std::wstring Execute();
 #else
   // executes the program
   void Execute(const std::wstring cmd_args);
+  void Execute();
 #endif
 };
 
