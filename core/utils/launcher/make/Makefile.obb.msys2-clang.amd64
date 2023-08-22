@@ -1,6 +1,5 @@
 ARGS=-O3 -Wall -std=c++17 -Wno-unused-function
 
-CC=clang++
 SRC=builder.o
 OBJ_LIBS=objeck.res
 EXE=obb
