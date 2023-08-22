@@ -1,4 +1,3 @@
-CC=clang++
 ARGS=-O3 -Wall -std=c++17 -D_X64 -D_OBJECK_NATIVE_LIB_PATH -Wno-unused-function
 SRC=example.o
 OBJ_LIBS=../module.a
