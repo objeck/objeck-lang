@@ -1,4 +1,3 @@
-CC=clang++
 ARGS=-O3 -Wall -D_MODULE -std=c++17 -Wno-unused-function -Wno-sequence-point
 SRC=types.o tree.o scanner.o parser.o linker.o context.o intermediate.o optimization.o emit.o compiler.o 
 OBJ_LIBS=logger.a

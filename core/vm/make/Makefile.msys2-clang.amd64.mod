@@ -1,6 +1,5 @@
 ARGS=-O3 -Wall -D_MODULE -D_X64 -D_OBJECK_NATIVE_LIB_PATH -D_MSYS2 -D_MSYS2_CLANG -std=c++17 -Wno-uninitialized -Wno-unused-function -Wno-unused-variable -Wno-int-to-pointer-cast -Wno-unknown-pragmas -Wno-unused-but-set-variable
 
-CC=clang++
 SRC=common.o interpreter.o loader.o vm.o posix_main.o 
 OBJ_LIBS=win32.a jit_amd_lp64.a memory.a
 MEM_PATH=arch
