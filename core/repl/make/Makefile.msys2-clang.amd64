@@ -1,4 +1,4 @@
-ARGS=-O3 -Wall -std=c++17 -D_NO_HALT -D_MSYS2 -D_MSYS2_CLANG -D_X64 -D_OBJECK_NATIVE_LIB_PATH -Wno-unused-function -Wno-deprecated-declarations
+ARGS=-O3 -Wall -std=c++17 -D_NO_HALT -D_MSYS2 -D_MSYS2_CLANG -D_WIN32 -D_X64 -D_OBJECK_NATIVE_LIB_PATH -Wno-unused-function -Wno-deprecated-declarations
 SRC=editor.o repl.o
 OBJ_LIBS=../module/module.a objeck.res
 MODULE_PATH=../module
