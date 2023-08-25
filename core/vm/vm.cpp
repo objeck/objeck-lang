@@ -30,6 +30,7 @@
  ***************************************************************************/
 
 #include "vm.h"
+#include <codecvt>
 
 #define SUCCESS 0
 #define USAGE_ERROR -1
