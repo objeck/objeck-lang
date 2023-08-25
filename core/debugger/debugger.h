@@ -52,7 +52,7 @@
 namespace Runtime {
   class StackInterpreter;
   class Debugger;
-
+  
   typedef struct _UserBreak {
     int line_num;
     std::wstring file_name;
@@ -269,4 +269,5 @@ namespace Runtime {
     void ProcessInstruction(StackInstr* instr, long ip, StackFrame** call_stack, long call_stack_pos, StackFrame* frame);
   };
 }
+
 #endif

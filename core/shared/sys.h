@@ -802,6 +802,4 @@ static wchar_t* LoadFileBuffer(const std::wstring &filename, size_t& buffer_size
   return wbuffer;
 }
 
-void SetEnv();
-
 #endif

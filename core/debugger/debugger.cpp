@@ -71,7 +71,6 @@ int main(int argc, char* argv[])
 
   if(argc >= 3) {
 #ifdef _WIN32
-    SetEnv();
     
     WSADATA data;
     if(WSAStartup(MAKEWORD(2, 2), &data)) {
