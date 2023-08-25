@@ -175,6 +175,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\shared\sys.cpp" />
     <ClCompile Include="..\..\vm\arch\jit\amd64\jit_amd_lp64.h" Condition="'$(Platform)'=='x64'" />
     <ClCompile Include="..\..\vm\arch\jit\ia32\jit_intel_lp32.h" Condition="'$(Platform)'=='Win32'" />
     <ClInclude Include="..\..\vm\arch\memory.h" />

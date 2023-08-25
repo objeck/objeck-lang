@@ -148,6 +148,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\..\shared\logger.cpp" />
+    <ClCompile Include="..\..\shared\sys.cpp" />
     <ClCompile Include="..\editor.cpp" />
     <ClCompile Include="..\repl.cpp" />
   </ItemGroup>

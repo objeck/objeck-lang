@@ -118,6 +118,7 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\shared\sys.cpp" />
     <ClCompile Include="..\arch\jit\amd64\jit_amd_lp64.cpp" Condition="'$(Platform)'=='x64'" />
     <ClCompile Include="..\arch\jit\jit_common.cpp" />
     <ClCompile Include="..\arch\memory.cpp" />
