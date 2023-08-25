@@ -7,9 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		ED20957D2A41DC1C0084045A /* editor.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED20957B2A41DC1C0084045A /* editor.cpp */; };
-		ED20957E2A41DC1C0084045A /* repl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED20957C2A41DC1C0084045A /* repl.cpp */; };
-		EDE985122A95380C0015A888 /* sys.cpp in Sources */ = {isa = PBXBuildFile; fileRef = EDE985112A95380C0015A888 /* sys.cpp */; };
+		ED1BDBDD2A99354700F57191 /* repl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED1BDBDA2A99354700F57191 /* repl.cpp */; };
+		ED1BDBDE2A99354700F57191 /* editor.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED1BDBDB2A99354700F57191 /* editor.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -25,12 +24,10 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		ED2095792A41DC1C0084045A /* repl.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = repl.h; path = ../../repl.h; sourceTree = "<group>"; };
-		ED20957A2A41DC1C0084045A /* editor.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = editor.h; path = ../../editor.h; sourceTree = "<group>"; };
-		ED20957B2A41DC1C0084045A /* editor.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = editor.cpp; path = ../../editor.cpp; sourceTree = "<group>"; };
-		ED20957C2A41DC1C0084045A /* repl.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = repl.cpp; path = ../../repl.cpp; sourceTree = "<group>"; };
-		EDE985112A95380C0015A888 /* sys.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = sys.cpp; sourceTree = "<group>"; };
-		EDE985132A95383F0015A888 /* sys.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = sys.h; path = ../../../shared/sys.h; sourceTree = "<group>"; };
+		ED1BDBD92A99354700F57191 /* editor.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = editor.h; path = ../editor.h; sourceTree = "<group>"; };
+		ED1BDBDA2A99354700F57191 /* repl.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = repl.cpp; path = ../repl.cpp; sourceTree = "<group>"; };
+		ED1BDBDB2A99354700F57191 /* editor.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = editor.cpp; path = ../editor.cpp; sourceTree = "<group>"; };
+		ED1BDBDC2A99354700F57191 /* repl.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = repl.h; path = ../repl.h; sourceTree = "<group>"; };
 		EDF1142C2A41DBE400E5C2C3 /* obi */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = obi; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -48,7 +45,10 @@
 		EDF114232A41DBE400E5C2C3 = {
 			isa = PBXGroup;
 			children = (
-				EDF1142E2A41DBE400E5C2C3 /* repl */,
+				ED1BDBDB2A99354700F57191 /* editor.cpp */,
+				ED1BDBD92A99354700F57191 /* editor.h */,
+				ED1BDBDA2A99354700F57191 /* repl.cpp */,
+				ED1BDBDC2A99354700F57191 /* repl.h */,
 				EDF1142D2A41DBE400E5C2C3 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -59,19 +59,6 @@
 				EDF1142C2A41DBE400E5C2C3 /* obi */,
 			);
 			name = Products;
-			sourceTree = "<group>";
-		};
-		EDF1142E2A41DBE400E5C2C3 /* repl */ = {
-			isa = PBXGroup;
-			children = (
-				EDE985132A95383F0015A888 /* sys.h */,
-				EDE985112A95380C0015A888 /* sys.cpp */,
-				ED20957B2A41DC1C0084045A /* editor.cpp */,
-				ED20957A2A41DC1C0084045A /* editor.h */,
-				ED20957C2A41DC1C0084045A /* repl.cpp */,
-				ED2095792A41DC1C0084045A /* repl.h */,
-			);
-			path = repl;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -131,9 +118,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				EDE985122A95380C0015A888 /* sys.cpp in Sources */,
-				ED20957E2A41DC1C0084045A /* repl.cpp in Sources */,
-				ED20957D2A41DC1C0084045A /* editor.cpp in Sources */,
+				ED1BDBDE2A99354700F57191 /* editor.cpp in Sources */,
+				ED1BDBDD2A99354700F57191 /* repl.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
