@@ -43,6 +43,6 @@
 #define EXIT_PARAM L"exit"
 
 static void Usage();
-static void SetEnv();
+void SetEnv();
 
 #endif
