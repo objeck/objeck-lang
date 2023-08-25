@@ -28,6 +28,7 @@
     <ClCompile Include="..\arch\jit\jit_common.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\shared\sys.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\common.h">

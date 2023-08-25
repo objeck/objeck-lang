@@ -33,6 +33,7 @@
     <ClCompile Include="..\..\vm\arch\win32\win32.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\shared\sys.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\vm\common.h">
