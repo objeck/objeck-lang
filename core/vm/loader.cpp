@@ -219,7 +219,7 @@ char* Loader::LoadFileBuffer(std::wstring filename, size_t& buffer_size)
     return out;
   }
   else {
-    std::wcerr << L"Unable to open file: " << filename << std::endl;
+    std::wcerr << L"Unable to open file: '" << filename << L"'" << std::endl;
     exit(1);
   }
 

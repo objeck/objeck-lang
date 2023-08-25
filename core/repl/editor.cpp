@@ -289,8 +289,10 @@ void Editor::Edit(std::wstring input, std::wstring libs, std::wstring opt, int m
         DoExecute();
       }
       else {
-        std::wcout << L"Unable to read file: '" << input << L'.' << std::endl;
-        DoReset();
+        std::wcout << L"Unable to read file: '" << input << L"', resetting document." << std::endl;
+        if(!is_exit) {
+          DoReset();
+        }
       }
     }
     // source code
@@ -373,7 +375,7 @@ void Editor::Edit(std::wstring input, std::wstring libs, std::wstring opt, int m
           DoExecute();
         }
         else {
-          std::wcout << L"Unable to read file: '" << in << L'.' << std::endl;
+          std::wcout << L"Unable to read file: '" << in << L"'." << std::endl;
           DoReset();
         }
         break;
