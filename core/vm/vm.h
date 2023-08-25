@@ -39,6 +39,7 @@
 #include "common.h"
 #include "loader.h"
 #include "interpreter.h"
+#include <clocale>
 
 extern "C"
 {
