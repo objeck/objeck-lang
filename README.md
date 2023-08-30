@@ -39,7 +39,7 @@ To get started, take a look at the [language guide](https://objeck.org/getting_s
 * REPL and IDE [LSP](https://github.com/objeck/objeck-lsp) support (for VSCode, Sublime, Kate, etc.) 
 * Online guides and API [documentation](https://www.objeck.org).
 
-## Constructs 
+## Functionality
 
 ### [Object-oriented](https://en.wikipedia.org/wiki/Object-oriented_programming)
   
