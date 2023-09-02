@@ -216,8 +216,8 @@ static bool UnicodeToBytes(const std::wstring &in, std::string &out) {
   }
   char* buffer = new char[size + 1];
   
-  wcstombs(buffer, in.c_str(), size);
-  if(size == (size_t)-1) {
+  size_t check = wcstombs(buffer, in.c_str(), size);
+  if(check == (size_t)-1) {
     delete[] buffer;
     buffer = nullptr;
     return false;
