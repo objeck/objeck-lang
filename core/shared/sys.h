@@ -153,8 +153,7 @@ static std::wstring BytesToUnicode(const std::string &in) {
 }
 
 /**
- * Converts UTF-8 bytes to
- * native a unicode character
+ * Converts UTF-8 bytes to a Unicode character
  */
 static bool BytesToCharacter(const std::string &in, wchar_t &out) {
   std::wstring buffer;
@@ -182,8 +181,7 @@ static bool BytesToCharacter(const std::string &in, wchar_t &out) {
 }
 
 /**
- * Converts a native std::string
- * to UTF-8 bytes
+ * Convertsa a Unicode character to UTF-8 bytes
  */
 static bool UnicodeToBytes(const std::wstring &in, std::string &out) {
 #ifdef _WIN32
