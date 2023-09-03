@@ -88,10 +88,10 @@ namespace instructions {
   };
 }
 
-/****************************
- * Converts UTF-8 bytes to a 
- * native Unicode std::string 
- ****************************/
+/**
+ * Converts UTF-8 bytes a 
+ * Unicode string 
+ */
 static bool BytesToUnicode(const std::string &in, std::wstring &out) {    
 #ifdef _WIN32
   // allocate space
@@ -181,7 +181,7 @@ static bool BytesToCharacter(const std::string &in, wchar_t &out) {
 }
 
 /**
- * Convertsa a Unicode character to UTF-8 bytes
+ * Converts a Unicode character to UTF-8 bytes
  */
 static bool UnicodeToBytes(const std::wstring &in, std::string &out) {
 #ifdef _WIN32
@@ -243,8 +243,7 @@ static std::string UnicodeToBytes(const std::wstring &in) {
 }
 
 /**
- * Converts a native character
- * to UTF-8 bytes
+ * Converts a Unicode character to UTF-8 bytes
  */
 static bool CharacterToBytes(wchar_t in, std::string &out) {
   if(in == L'\0') {
@@ -263,7 +262,7 @@ static bool CharacterToBytes(wchar_t in, std::string &out) {
 }
 
 /**
- * Byte output stream
+ * Byte output stream buffer
  */
 class OutputStream {
   std::wstring file_name;
@@ -623,6 +622,9 @@ public:
   }
 };
 
+/**
+ * Parses command line arguments 
+ */
 static std::map<const std::wstring, std::wstring> ParseCommnadLine(int argc, char* argv[], std::wstring &path_string) {
   std::map<const std::wstring, std::wstring> arguments;
 
@@ -745,10 +747,9 @@ static std::wstring GetLibraryPath() {
   return path;
 }
 
-/****************************
- * Load a UTF-8 source file (text)
- * into memory.
- ****************************/
+/**
+ * Load a UTF-8 text into memory.
+ */
 static wchar_t* LoadFileBuffer(const std::wstring &filename, size_t& buffer_size)
 {
   char* buffer;
