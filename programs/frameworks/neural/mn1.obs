@@ -19,7 +19,7 @@ class NeuralNetwork {
 		targets := Collection.Vector->New()<MatrixRef>;
 		LoadTests(inputs, targets);
 
-		runs := 875;
+		runs := 900;
 		training_perc := 0.8;
 		training_runs := runs * training_perc;
 		test_runs := runs * (1.0 - training_perc);
