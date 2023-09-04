@@ -6662,6 +6662,7 @@ bundle System.Matrix {
 		Default constructor
 		~#
 		New() {
+			Parent();
 		}
 
 		#~
@@ -6669,6 +6670,7 @@ bundle System.Matrix {
 		@param value boolean value
 		~#
 		New(value : Float[,]) {
+			Parent();
 			@value := value;
 		}
 
