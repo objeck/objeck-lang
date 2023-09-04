@@ -38,8 +38,8 @@
 #define MAGIC_NUM_EXE 0xffbe // bitmask 'e'
 #define MAGIC_NUM_LIB 0xffb6 // bitmask 'k'
 
-#define VER_NUM 202382
-#define VERSION_STRING L"2023.8.2"
+#define VER_NUM 202390
+#define VERSION_STRING L"2023.9.0"
 
 #define INSTR_VER_NUM InstructionType::END_STMTS * 10000 + Traps::EXIT
 

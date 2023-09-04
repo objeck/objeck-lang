@@ -14,347 +14,22 @@ class NeuralNetwork {
 		output_nodes := 10;
 		learning_rate := 0.0678;
 
-		#~
-		led digit encoding:
-
-             1   		
-	  	   -----
-		6 |     | 2
-		  |--7--| 
-		5 |     | 3
-		   -----
-		     4
-		~#
-
-		# --- 0 ---
-
-		i0 := [
-			[0.0]
-			[1.0]
-			[1.0]
-			[1.0]
-			[1.0]
-			[1.0]
-			[1.0]
-			[0.0]];
-
-		t0 := [
-			[0.0]
-			[0.0]
-			[0.0]
-			[0.0]
-			[0.0]
-			[0.0]
-			[0.0]
-			[0.0]
-			[0.0]
-			[0.0]];
-
-		# --- 1 ---
-
-		i1 := [
-			[0.0]
-			[0.0]
-			[1.0]
-			[1.0]
-			[0.0]
-			[0.0]
-			[0.0]
-			[0.0]];
-
-		t1 := [
-			[0.0]
-			[1.0]
-			[0.0]
-			[0.0]
-			[0.0]
-			[0.0]
-			[0.0]
-			[0.0]
-			[0.0]
-			[0.0]];
-
-		# --- 2 ---
-
-		i2 := [
-			[0.0]
-			[1.0]
-			[1.0]
-			[0.0]
-			[1.0]
-			[1.0]
-			[0.0]
-			[1.0]];
-
-		t2 := [
-			[0.0]
-			[0.0]
-			[1.0]
-			[0.0]
-			[0.0]
-			[0.0]
-			[0.0]
-			[0.0]
-			[0.0]
-			[0.0]];
-
-		# --- 3 ---
-
-		i3 := [
-			[0.0]
-			[1.0]
-			[1.0]
-			[1.0]
-			[1.0]
-			[0.0]
-			[0.0]
-			[1.0]];
-
-		t3 := [
-			[0.0]
-			[0.0]
-			[0.0]
-			[1.0]
-			[0.0]
-			[0.0]
-			[0.0]
-			[0.0]
-			[0.0]
-			[0.0]];
-
-		# --- 4 ---
-
-		i4 := [
-			[0.0]
-			[0.0]
-			[1.0]
-			[1.0]
-			[0.0]
-			[0.0]
-			[1.0]
-			[1.0]];
-
-		t4 := [
-			[0.0]
-			[0.0]
-			[0.0]
-			[0.0]
-			[1.0]
-			[0.0]
-			[0.0]
-			[0.0]
-			[0.0]
-			[0.0]];
-
-		# --- 5 ---
-
-		i5 := [
-			[0.0]
-			[1.0]
-			[0.0]
-			[1.0]
-			[1.0]
-			[0.0]
-			[0.0]
-			[1.0]];
-
-		t5 := [
-			[0.0]
-			[0.0]
-			[0.0]
-			[0.0]
-			[0.0]
-			[1.0]
-			[0.0]
-			[0.0]
-			[0.0]
-			[0.0]];
-
-		# --- 6 ---
-
-		i6 := [
-			[0.0]
-			[1.0]
-			[0.0]
-			[1.0]
-			[1.0]
-			[1.0]
-			[1.0]
-			[1.0]];
-
-		t6 := [
-			[0.0]
-			[0.0]
-			[0.0]
-			[0.0]
-			[0.0]
-			[0.0]
-			[1.0]
-			[0.0]
-			[0.0]
-			[0.0]];
-
-		# --- 7 ---
-
-		i7 := [
-			[0.0]
-			[1.0]
-			[1.0]
-			[1.0]
-			[0.0]
-			[0.0]
-			[0.0]
-			[0.0]];
-
-		t7 := [
-			[0.0]
-			[0.0]
-			[0.0]
-			[0.0]
-			[0.0]
-			[0.0]
-			[0.0]
-			[1.0]
-			[0.0]
-			[0.0]];
-
-		# --- 8 ---
-
-		i8 := [
-			[1.0]
-			[1.0]
-			[1.0]
-			[1.0]
-			[1.0]
-			[1.0]
-			[1.0]
-			[1.0]];
-
-		t8 := [
-			[0.0]
-			[0.0]
-			[0.0]
-			[0.0]
-			[0.0]
-			[0.0]
-			[0.0]
-			[0.0]
-			[1.0]
-			[0.0]];
-
-		# --- 9 ---
-
-		i9 := [
-			[0.0]
-			[1.0]
-			[1.0]
-			[1.0]
-			[1.0]
-			[0.0]
-			[1.0]
-			[1.0]];
-
-		t9 := [
-			[0.0]
-			[0.0]
-			[0.0]
-			[0.0]
-			[0.0]
-			[0.0]
-			[0.0]
-			[0.0]
-			[0.0]
-			[1.0]];
-
-		# --- (blank) ---
-
-		i10 := [
-			[0.0]
-			[0.0]
-			[0.0]
-			[0.0]
-			[0.0]
-			[0.0]
-			[0.0]
-			[0.0]];
-
-		t10 := [
-			[0.0]
-			[0.0]
-			[0.0]
-			[0.0]
-			[0.0]
-			[0.0]
-			[0.0]
-			[0.0]
-			[0.0]
-			[0.0]];
-
-
+		# load test data
+		inputs := Collection.Vector->New()<MatrixRef>;
+		targets := Collection.Vector->New()<MatrixRef>;
+		LoadTests(inputs, targets);
+		
+		# create network and train
 		network := NeuralNetwork->New(input_nodes, hidden_nodes, output_nodes, learning_rate);
-
 		for(i := 0; i < 2250; i += 1;) {
-			inputs : Float[,];	targets : Float[,];
-			select(i % 11) {
-				label 0: {
-					inputs := i0;
-					targets := t0;
-				}
-
-				label 1: {
-					inputs := i1;
-					targets := t1;
-				}
-
-				label 2: {
-					inputs := i2;
-					targets := t2;
-				}
-
-				label 3: {
-					inputs := i3;
-					targets := t3;
-				}
-
-				label 4: {
-					inputs := i4;
-					targets := t4;
-				}
-
-				label 5: {
-					inputs := i5;
-					targets := t5;
-				}
-
-				label 6: {
-					inputs := i6;
-					targets := t6;
-				}
-
-				label 7: {
-					inputs := i7;
-					targets := t7;
-				}
-
-				label 8: {
-					inputs := i8;
-					targets := t8;
-				}
-
-				label 9: {
-					inputs := i9;
-					targets := t9;
-				}
-
-				label 10: {
-					inputs := i10;
-					targets := t10;
-				}
-			};
-			
-			network->Train(inputs, targets, learning_rate);
+			index := i % 11;
+			network->Train(
+				inputs->Get(index)->Get(), 
+				targets->Get(index)->Get(), 
+				learning_rate);
 		};
 
+		# test
 		in := [
 			[0.0]
 			[0.0]
@@ -363,9 +38,8 @@ class NeuralNetwork {
 			[0.0]
 			[0.0]
 			[1.0]
-			[1.0]];
-		out := network->Query(in);
-		Matrix2D->Divide(out, 0.5)->ToString()->PrintLine();
+			[1.0]];	
+		network->Test(in)->PrintLine();
 
 		"---"->PrintLine();
 
@@ -378,8 +52,7 @@ class NeuralNetwork {
 			[0.0]
 			[0.0]
 			[0.0]];
-		out := network->Query(in);
-		Matrix2D->Divide(out, 0.5)->ToString()->PrintLine();
+		network->Test(in)->PrintLine();
 	}
 	
 	New(input_nodes : Float, hidden_nodes : Float, output_nodes : Float, learning_rate : Float) {
@@ -418,5 +91,304 @@ class NeuralNetwork {
 
 	method : Adjust(rate : Float, errors : Float[,], outputs : Float[,], inputs : Float[,]) ~ Float[,] {
 		return Matrix2D->Multiple(rate, Matrix2D->Dot(Matrix2D->Multiple(errors, Matrix2D->Multiple(outputs, Matrix2D->Subtract(1.0, outputs))), Matrix2D->Transpose(inputs)));
+	}
+
+	method : Test(in : Float[,]) ~ Int {
+		found := 0.0;
+		index := -1;
+
+		each(i : 10) {
+			outputs := Query(in)
+			
+			dim := outputs->Size();
+			len := dim[0];
+			each(j : len) {
+				output := outputs[j,0];
+				if(output > found) {
+					found := output;
+					index := j;
+				};
+			};
+		};
+
+		return index;
+	}
+
+	function : LoadTests(inputs : Collection.Vector<MatrixRef>, targets : Collection.Vector<MatrixRef>) ~ Nil {
+		#~
+		led digit encoding:
+
+             1   		
+	  	   -----
+		6 |     | 2
+		  |--7--| 
+		5 |     | 3
+		   -----
+		     4
+		~#
+
+		# --- 0 ---
+
+		inputs->AddBack(MatrixRef->New([
+			[0.0]
+			[1.0]
+			[1.0]
+			[1.0]
+			[1.0]
+			[1.0]
+			[1.0]
+			[0.0]]));
+
+		targets->AddBack(MatrixRef->New([
+			[0.0]
+			[0.0]
+			[0.0]
+			[0.0]
+			[0.0]
+			[0.0]
+			[0.0]
+			[0.0]
+			[0.0]
+			[0.0]]));
+
+		# --- 1 ---
+
+		inputs->AddBack(MatrixRef->New([
+			[0.0]
+			[0.0]
+			[1.0]
+			[1.0]
+			[0.0]
+			[0.0]
+			[0.0]
+			[0.0]]));
+
+		targets->AddBack(MatrixRef->New([
+			[0.0]
+			[1.0]
+			[0.0]
+			[0.0]
+			[0.0]
+			[0.0]
+			[0.0]
+			[0.0]
+			[0.0]
+			[0.0]]));
+
+		# --- 2 ---
+
+		inputs->AddBack(MatrixRef->New([
+			[0.0]
+			[1.0]
+			[1.0]
+			[0.0]
+			[1.0]
+			[1.0]
+			[0.0]
+			[1.0]]));
+
+		targets->AddBack(MatrixRef->New([
+			[0.0]
+			[0.0]
+			[1.0]
+			[0.0]
+			[0.0]
+			[0.0]
+			[0.0]
+			[0.0]
+			[0.0]
+			[0.0]]));
+
+		# --- 3 ---
+
+		inputs->AddBack(MatrixRef->New([
+			[0.0]
+			[1.0]
+			[1.0]
+			[1.0]
+			[1.0]
+			[0.0]
+			[0.0]
+			[1.0]]));
+
+		targets->AddBack(MatrixRef->New([
+			[0.0]
+			[0.0]
+			[0.0]
+			[1.0]
+			[0.0]
+			[0.0]
+			[0.0]
+			[0.0]
+			[0.0]
+			[0.0]]));
+
+		# --- 4 ---
+
+		inputs->AddBack(MatrixRef->New([
+			[0.0]
+			[0.0]
+			[1.0]
+			[1.0]
+			[0.0]
+			[0.0]
+			[1.0]
+			[1.0]]));
+
+		targets->AddBack(MatrixRef->New([
+			[0.0]
+			[0.0]
+			[0.0]
+			[0.0]
+			[1.0]
+			[0.0]
+			[0.0]
+			[0.0]
+			[0.0]
+			[0.0]]));
+
+		# --- 5 ---
+
+		inputs->AddBack(MatrixRef->New([
+			[0.0]
+			[1.0]
+			[0.0]
+			[1.0]
+			[1.0]
+			[0.0]
+			[0.0]
+			[1.0]]));
+
+		targets->AddBack(MatrixRef->New([
+			[0.0]
+			[0.0]
+			[0.0]
+			[0.0]
+			[0.0]
+			[1.0]
+			[0.0]
+			[0.0]
+			[0.0]
+			[0.0]]));
+
+		# --- 6 ---
+
+		inputs->AddBack(MatrixRef->New([
+			[0.0]
+			[1.0]
+			[0.0]
+			[1.0]
+			[1.0]
+			[1.0]
+			[1.0]
+			[1.0]]));
+
+		targets->AddBack(MatrixRef->New([
+			[0.0]
+			[0.0]
+			[0.0]
+			[0.0]
+			[0.0]
+			[0.0]
+			[1.0]
+			[0.0]
+			[0.0]
+			[0.0]]));
+
+		# --- 7 ---
+
+		inputs->AddBack(MatrixRef->New([
+			[0.0]
+			[1.0]
+			[1.0]
+			[1.0]
+			[0.0]
+			[0.0]
+			[0.0]
+			[0.0]]));
+
+		targets->AddBack(MatrixRef->New([
+			[0.0]
+			[0.0]
+			[0.0]
+			[0.0]
+			[0.0]
+			[0.0]
+			[0.0]
+			[1.0]
+			[0.0]
+			[0.0]]));
+
+		# --- 8 ---
+
+		inputs->AddBack(MatrixRef->New([
+			[1.0]
+			[1.0]
+			[1.0]
+			[1.0]
+			[1.0]
+			[1.0]
+			[1.0]
+			[1.0]]));
+
+		targets->AddBack(MatrixRef->New([
+			[0.0]
+			[0.0]
+			[0.0]
+			[0.0]
+			[0.0]
+			[0.0]
+			[0.0]
+			[0.0]
+			[1.0]
+			[0.0]]));
+
+		# --- 9 ---
+
+		inputs->AddBack(MatrixRef->New([
+			[0.0]
+			[1.0]
+			[1.0]
+			[1.0]
+			[1.0]
+			[0.0]
+			[1.0]
+			[1.0]]));
+
+		targets->AddBack(MatrixRef->New([
+			[0.0]
+			[0.0]
+			[0.0]
+			[0.0]
+			[0.0]
+			[0.0]
+			[0.0]
+			[0.0]
+			[0.0]
+			[1.0]]));
+
+		# --- (blank) ---
+
+		inputs->AddBack(MatrixRef->New([
+			[0.0]
+			[0.0]
+			[0.0]
+			[0.0]
+			[0.0]
+			[0.0]
+			[0.0]
+			[0.0]]));
+
+		targets->AddBack(MatrixRef->New([
+			[0.0]
+			[0.0]
+			[0.0]
+			[0.0]
+			[0.0]
+			[0.0]
+			[0.0]
+			[0.0]
+			[0.0]
+			[0.0]]));
 	}
 }
