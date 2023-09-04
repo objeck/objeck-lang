@@ -1,0 +1,44 @@
+class MiniNet {
+	@lr : Float;
+	@bias : Float;
+	@weights : Float[];
+
+	function : Main(args : String[]) ~ Nil {
+		net := MiniNet->New();
+		each(i : 50) {
+			net->Perceptron(1,1,1) #True or true
+			net->Perceptron(1,0,1) #True or false
+			net->Perceptron(0,1,1) #False or true
+			net->Perceptron(0,0,0) #False or false
+		};
+
+		net->Perceptron(0,1,0)->PrintLine();
+	}
+	
+	New() {
+		@lr := 1.0 # learning rate
+		@bias := 1.0 # bias
+		@weights := Float->New[3];
+		each(i : @weights) {
+			@weights[i] := Float->Random();
+		};
+	}
+
+	method : native : Perceptron(input1 : Float, input2 : Float, output : Float) ~ Float {
+		outputP := input1*@weights[0]+input2*@weights[1]+@bias*@weights[2];
+		
+		if(outputP > 0) { #activation function (here Heaviside)
+			outputP := 1;
+		}
+		else {
+			outputP := 0;
+		};
+
+		error := output - outputP;
+		@weights[0] += error * input1 * @lr;
+		@weights[1] += error * input2 * @lr;
+		@weights[2] += error * @bias * @lr;
+
+		return outputP;
+	}
+}
