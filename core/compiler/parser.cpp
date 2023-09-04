@@ -5114,11 +5114,17 @@ For* Parser::ParseEach(bool reverse, int depth)
                                                                  size_left_var, L"Size", TreeFactory::Instance()->MakeExpressionList());
       }
       else if(left_pre_count->GetExpressionType() == VAR_EXPR) {
-        // set variable
-        const std::wstring list_ident = scanner->GetToken()->GetIdentifier();
-        const int line_pos = GetLinePosition();
-        left_pre_count = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, GetLineNumber(), line_pos, -1, -1,
-                                                                 list_ident, L"Size", TreeFactory::Instance()->MakeExpressionList());
+        Variable* variable = static_cast<Variable*>(left_pre_count);
+        if(!variable->GetIndices()) {
+          // set variable
+          const std::wstring list_ident = variable->GetName();
+          const int line_pos = GetLinePosition();
+          left_pre_count = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, GetLineNumber(), line_pos, -1, -1,
+            list_ident, L"Size", TreeFactory::Instance()->MakeExpressionList());
+        }
+        else {
+          ProcessError(L"Variable must be a scalar type");
+        }
       }
       else {
         ProcessError(L"Expected variable or literal expression", TOKEN_SEMI_COLON);
