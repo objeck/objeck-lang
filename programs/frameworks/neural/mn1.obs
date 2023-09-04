@@ -12,7 +12,7 @@ class NeuralNetwork {
 		input_nodes := 8;
 		hidden_nodes := 8;
 		output_nodes := 10;
-		learning_rate := 0.0678;
+		learning_rate := 0.56;
 
 		# load test data
 		inputs := Collection.Vector->New()<MatrixRef>;
@@ -97,6 +97,7 @@ class NeuralNetwork {
 		found := 0.0;
 		index := -1;
 
+		# TODO: winner across 10 trials
 		each(i : 10) {
 			outputs := Query(in)
 			
