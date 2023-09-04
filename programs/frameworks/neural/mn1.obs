@@ -360,7 +360,7 @@ class NeuralNetwork {
 			[0.001]
 			[0.999]]));
 
-		# --- (blank) ---
+		# --- (empty) ---
 
 		inputs->AddBack(MatrixRef->New([
 			[0.001]
