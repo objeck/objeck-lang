@@ -6651,6 +6651,51 @@ bundle System.Matrix {
 			return c;
 		}
 	}
+
+	#~
+	Matrix reference
+	~#
+	class MatrixRef {
+		@value : Float[,];
+
+		#~
+		Default constructor
+		~#
+		New() {
+		}
+
+		#~
+		Copy constructor
+		@param value boolean value
+		~#
+		New(value : Float[,]) {
+			@value := value;
+		}
+
+		#~
+		Get boolean value
+		@return boolean value
+		~#
+		method : public : Get() ~ Float[,] {
+			return @value;
+		}
+		
+		#~
+		Set boolean value
+		@param value boolean value		
+		~#
+		method : public : Set(value : Float[,]) ~ Nil {
+			@value := value;
+		}
+		
+		#~
+		Formats the matrix into a string
+		@return string value
+		~#
+		method : public : ToString() ~ String {
+			return @value->ToString();
+		}
+	}
 }
 
 #~
