@@ -18,10 +18,14 @@ class NeuralNetwork {
 		inputs := Collection.Vector->New()<MatrixRef>;
 		targets := Collection.Vector->New()<MatrixRef>;
 		LoadTests(inputs, targets);
-		
+
+		runs := 2250;
+		training_runs := runs * 0.8;
+		test_runs := runs * 0.2;
+
 		# create network and train
 		network := NeuralNetwork->New(input_nodes, hidden_nodes, output_nodes, learning_rate);
-		for(i := 0; i < 2250; i += 1;) {
+		each(i : training_runs) {
 			index := i % 11;
 			network->Train(
 				inputs->Get(index)->Get(), 
@@ -29,30 +33,18 @@ class NeuralNetwork {
 				learning_rate);
 		};
 
-		# test
-		in := [
-			[0.0]
-			[0.0]
-			[1.0]
-			[1.0]
-			[0.0]
-			[0.0]
-			[1.0]
-			[1.0]];	
-		network->Test(in)->PrintLine();
+		correct_count := 0;
+		each(i : test_runs) {
+			test := Int->Random(9);
+			in := inputs->Get(test)->Get();
+			result := network->Test(in);
+			if(test = result) {
+				correct_count += 1;
+			};
+		};
 
-		"---"->PrintLine();
-
-		in := [
-			[0.0]
-			[1.0]
-			[1.0]
-			[1.0]
-			[0.0]
-			[0.0]
-			[0.0]
-			[0.0]];
-		network->Test(in)->PrintLine();
+		correct_perc := 100.0* correct_count->As(Float) / test_runs->As(Float);
+		"{$correct_perc}% correct"->PrintLine();
 	}
 	
 	New(input_nodes : Float, hidden_nodes : Float, output_nodes : Float, learning_rate : Float) {
@@ -93,24 +85,22 @@ class NeuralNetwork {
 		return Matrix2D->Multiple(rate, Matrix2D->Dot(Matrix2D->Multiple(errors, Matrix2D->Multiple(outputs, Matrix2D->Subtract(1.0, outputs))), Matrix2D->Transpose(inputs)));
 	}
 
-	method : Test(in : Float[,]) ~ Int {
-		found := 0.0;
+	method : Test(test : Float[,]) ~ Int {
+		outputs := Query(test);
+
+		dim := outputs->Size();
+		len := dim[0];
+
+		result : Float;
 		index := -1;
 
-		# TODO: winner across 10 trials
-		each(i : 10) {
-			outputs := Query(in)
-			
-			dim := outputs->Size();
-			len := dim[0];
-			each(j : len) {
-				output := outputs[j,0];
-				if(output > found) {
-					found := output;
-					index := j;
-				};
-			};
-		};
+		each(i : len) {
+			output := outputs[i, 0];
+			if(output > result) {
+				result := output;
+				index := i;
+			}
+		};		
 
 		return index;
 	}
