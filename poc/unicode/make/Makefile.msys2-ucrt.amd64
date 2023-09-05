@@ -17,4 +17,4 @@ sys.a:
 
 clean:
 	cd $(SYS_PATH); $(MAKE) -f make/Makefile.msys2-ucrt.amd64 clean
-	rm -f $(EXE) $(EXE).exe *.o *.res *~
+	rm -f $(EXE) $(EXE).exe *.o *.a *.res *~
