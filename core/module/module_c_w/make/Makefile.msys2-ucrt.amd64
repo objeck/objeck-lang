@@ -1,0 +1,26 @@
+ARGS=-g -Wall -D_X64 -std=c++17 -Wno-maybe-uninitialized -Wno-unused-function
+
+SRC=lang_wrapper_w.o
+OBJ_LIBS=sys.a module.a
+SYS_PATH=../../../core/shared
+MOD_PATH=../../../core/module
+EXE=obc
+
+$(EXE): $(SRC) $(OBJ_LIBS) 
+	$(CXX) -m64 -o $(EXE) $(SRC) $(OBJ_LIBS) compiler.a vm.a sys.a ../../vm/memory.a ../../vm/arch/jit/amd64/jit_common.a ../../vm/jit_amd_lp64.a ../../vm/arch/win32/win32.o -lssl -lcrypto -lz -pthread -lwsock32 -luserenv -lws2_32
+
+%.o: %.cpp
+	$(CXX) -m64 $(ARGS) -c $< 
+
+sys.a:
+	cd $(SYS_PATH); $(MAKE) -f make/Makefile.msys2-ucrt.amd64
+	cp $(SYS_PATH)/*.a .
+
+module.a:
+	cd $(MOD_PATH); $(MAKE) -f make/Makefile.msys2-ucrt.amd64
+	cp $(MOD_PATH)/*.a .
+
+clean:
+	cd $(SYS_PATH); $(MAKE) -f make/Makefile.msys2-ucrt.amd64 clean
+	cd $(MOD_PATH); $(MAKE) -f make/Makefile.msys2-ucrt.amd64 clean
+	rm -f $(EXE) $(EXE).exe *.o *.a *.res *~
