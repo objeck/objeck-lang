@@ -1,8 +1,8 @@
-ARGS=-O3 -Wall -Wno-unused-function -D_X64 -std=c++17 -Wno-sequence-point
+ARGS=-g -Wall -D_X64 -std=c++17 -Wno-maybe-uninitialized -Wno-unused-function
 
-SRC=types.o tree.o scanner.o parser.o linker.o context.o intermediate.o optimization.o emit.o compiler.o posix_main.o
-OBJ_LIBS=sys.a objeck.res
-LOGGER_PATH=../shared
+SRC=unicode.o
+OBJ_LIBS=sys.a
+SYS_PATH=../../core/shared
 EXE=obc
 
 $(EXE): $(SRC) $(OBJ_LIBS) 
@@ -12,11 +12,9 @@ $(EXE): $(SRC) $(OBJ_LIBS)
 	$(CXX) -m64 $(ARGS) -c $< 
 
 sys.a:
-	cd $(LOGGER_PATH); $(MAKE) -f make/Makefile.msys2-ucrt.amd64
-
-objeck.res:
-	windres vs/objeck.rc -O coff -o objeck.res -D_MSYS2_CLANG
+	cd $(SYS_PATH); $(MAKE) -f make/Makefile.msys2-ucrt.amd64
+	cp ../../core/shared/sys.a .
 
 clean:
-	cd $(LOGGER_PATH); $(MAKE) -f make/Makefile.msys2-ucrt.amd64 clean
+	cd $(SYS_PATH); $(MAKE) -f make/Makefile.msys2-ucrt.amd64 clean
 	rm -f $(EXE) $(EXE).exe *.o *.res *~
