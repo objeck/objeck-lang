@@ -10,16 +10,16 @@ class NeuralNetwork {
 
 	function : Main(args : String[]) ~ Nil {
 		input_nodes := 8;
-		hidden_nodes := 14;
+		hidden_nodes := 12;
 		output_nodes := 10;
-		learning_rate := 0.567;
+		learning_rate := 0.9137;
 
 		# load test data
 		inputs := Collection.Vector->New()<MatrixRef>;
 		targets := Collection.Vector->New()<MatrixRef>;
 		LoadTests(inputs, targets);
 
-		runs := 10925;
+		runs := 925;
 		training_perc := 0.825;
 		training_runs := runs * training_perc;
 		test_runs := runs * (0.999 - training_perc);
