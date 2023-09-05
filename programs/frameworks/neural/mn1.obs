@@ -10,17 +10,17 @@ class NeuralNetwork {
 
 	function : Main(args : String[]) ~ Nil {
 		input_nodes := 8;
-		hidden_nodes := 8;
+		hidden_nodes := 14;
 		output_nodes := 10;
-		learning_rate := 0.567;
+		learning_rate := 0.9137;
 
 		# load test data
 		inputs := Collection.Vector->New()<MatrixRef>;
 		targets := Collection.Vector->New()<MatrixRef>;
 		LoadTests(inputs, targets);
 
-		runs := 1000;
-		training_perc := 0.8; 
+		runs := 925;
+		training_perc := 0.825;
 		training_runs := runs * training_perc;
 		test_runs := runs * (0.999 - training_perc);
 
@@ -55,7 +55,7 @@ class NeuralNetwork {
 		@learning_rate := learning_rate;
 
 		@weight_inputs_hidden := Matrix2D->RandomNormal(0.001, Float->Pow(@input_nodes, -0.05), @hidden_nodes, @input_nodes);
-		@weight_outputs_hidden := Matrix2D->RandomNormal(0.001, Float->Pow(@input_nodes, -0.05), @output_nodes, @input_nodes);
+		@weight_outputs_hidden := Matrix2D->RandomNormal(0.001, Float->Pow(@input_nodes, -0.05), @output_nodes, @hidden_nodes);
 	}
 
 	method : Query(inputs : Float[,]) ~ Float[,] {
