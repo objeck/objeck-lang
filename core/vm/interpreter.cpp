@@ -112,7 +112,7 @@ void StackInterpreter::Initialize(StackProgram* p)
  ********************************/
 void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackMethod* method, size_t* instance, bool jit_called)
 {
-  int64_t left;
+  INT64_VALUE left;
   double left_double, right_double;
   
 #ifdef _TIMING
@@ -463,14 +463,14 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
 #ifdef _DEBUG
       std::wcout << L"stack oper: I2F; call_pos=" << (*call_stack_pos) << std::endl;
 #endif
-      PushFloat((double)((int64_t)PopInt(op_stack, stack_pos)), op_stack, stack_pos);
+      PushFloat((double)((INT64_VALUE)PopInt(op_stack, stack_pos)), op_stack, stack_pos);
       break;
 
     case F2I:
 #ifdef _DEBUG
       std::wcout << L"stack oper: F2I; call_pos=" << (*call_stack_pos) << std::endl;
 #endif
-      PushInt((int64_t)PopFloat(op_stack, stack_pos), op_stack, stack_pos);
+      PushInt((INT64_VALUE)PopFloat(op_stack, stack_pos), op_stack, stack_pos);
       break;
 
     case S2I:
@@ -547,7 +547,7 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
       if(instr->GetOperand2() < 0) {
         ip = instr->GetOperand();
       }
-      else if((int64_t)PopInt(op_stack, stack_pos) == instr->GetOperand2()) {
+      else if((INT64_VALUE)PopInt(op_stack, stack_pos) == instr->GetOperand2()) {
         ip = instr->GetOperand();
       }      
       break;
@@ -642,7 +642,7 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
 #endif
 
 #ifdef _WIN32
-      left = (int64_t)PopInt(op_stack, stack_pos);
+      left = (INT64_VALUE)PopInt(op_stack, stack_pos);
       Sleep((long)left);
 #else
       left = PopInt(op_stack, stack_pos);
@@ -908,7 +908,7 @@ void StackInterpreter::Int2Str(size_t* &op_stack, long* &stack_pos)
   if(str_ptr) {
     wchar_t* str = (wchar_t*)(str_ptr + 3);
     const size_t base = PopInt(op_stack, stack_pos);
-    const int64_t value = (int64_t)PopInt(op_stack, stack_pos);
+    const INT64_VALUE value = (INT64_VALUE)PopInt(op_stack, stack_pos);
     
     std::wstring conv;
     std::wstringstream formatter;
@@ -1022,8 +1022,8 @@ void StackInterpreter::ShlInt(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   std::wcout << L"stack oper: SHL_INT; call_pos=" << (*call_stack_pos) << std::endl;
 #endif
-  const int64_t left = (int64_t)op_stack[(*stack_pos) - 1];
-  const int64_t right = (int64_t)op_stack[(*stack_pos) - 2];
+  const INT64_VALUE left = (INT64_VALUE)op_stack[(*stack_pos) - 1];
+  const INT64_VALUE right = (INT64_VALUE)op_stack[(*stack_pos) - 2];
   op_stack[(*stack_pos) - 2] = left << right;
   (*stack_pos)--;
 }
@@ -1033,8 +1033,8 @@ void StackInterpreter::ShrInt(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   std::wcout << L"stack oper: SHR_INT; call_pos=" << (*call_stack_pos) << std::endl;
 #endif
-  const int64_t left = (int64_t)op_stack[(*stack_pos) - 1];
-  const int64_t right = (int64_t)op_stack[(*stack_pos) - 2];
+  const INT64_VALUE left = (INT64_VALUE)op_stack[(*stack_pos) - 1];
+  const INT64_VALUE right = (INT64_VALUE)op_stack[(*stack_pos) - 2];
   op_stack[(*stack_pos) - 2] = left >> right;
   (*stack_pos)--;
 }
@@ -1072,8 +1072,8 @@ void StackInterpreter::AndInt(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   std::wcout << L"stack oper: AND; call_pos=" << (*call_stack_pos) << std::endl;
 #endif
-  const int64_t left = (int64_t)op_stack[(*stack_pos) - 1];
-  const int64_t right = (int64_t)op_stack[(*stack_pos) - 2];
+  const INT64_VALUE left = (INT64_VALUE)op_stack[(*stack_pos) - 1];
+  const INT64_VALUE right = (INT64_VALUE)op_stack[(*stack_pos) - 2];
   op_stack[(*stack_pos) - 2] = left && right;
   (*stack_pos)--;
 }
@@ -1083,8 +1083,8 @@ void StackInterpreter::OrInt(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   std::wcout << L"stack oper: OR; call_pos=" << (*call_stack_pos) << std::endl;
 #endif
-  const int64_t left = (int64_t)op_stack[(*stack_pos) - 1];
-  const int64_t right = (int64_t)op_stack[(*stack_pos) - 2];
+  const INT64_VALUE left = (INT64_VALUE)op_stack[(*stack_pos) - 1];
+  const INT64_VALUE right = (INT64_VALUE)op_stack[(*stack_pos) - 2];
   op_stack[(*stack_pos) - 2] = left || right;
   (*stack_pos)--;
 }
@@ -1094,8 +1094,8 @@ void StackInterpreter::AddInt(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   std::wcout << L"stack oper: ADD; call_pos=" << (*call_stack_pos) << std::endl;
 #endif
-  const int64_t left = (int64_t)op_stack[(*stack_pos) - 1];
-  const int64_t right = (int64_t)op_stack[(*stack_pos) - 2];
+  const INT64_VALUE left = (INT64_VALUE)op_stack[(*stack_pos) - 1];
+  const INT64_VALUE right = (INT64_VALUE)op_stack[(*stack_pos) - 2];
   op_stack[(*stack_pos) - 2] = left + right;
   (*stack_pos)--;
 }
@@ -1105,8 +1105,8 @@ void StackInterpreter::AddFloat(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   std::wcout << L"stack oper: ADD; call_pos=" << (*call_stack_pos) << std::endl;
 #endif  
-  const double left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 1]));
-  const double right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
+  const FLOAT_VALUE left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 1]));
+  const FLOAT_VALUE right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
   *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2])) = left_double + right_double;
   (*stack_pos)--;
 }
@@ -1116,8 +1116,8 @@ void StackInterpreter::SubInt(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   std::wcout << L"stack oper: SUB; call_pos=" << (*call_stack_pos) << std::endl;
 #endif
-  const int64_t left = (int64_t)op_stack[(*stack_pos) - 1];
-  const int64_t right = (int64_t)op_stack[(*stack_pos) - 2];
+  const INT64_VALUE left = (INT64_VALUE)op_stack[(*stack_pos) - 1];
+  const INT64_VALUE right = (INT64_VALUE)op_stack[(*stack_pos) - 2];
   op_stack[(*stack_pos) - 2] = left - right;
   (*stack_pos)--;
 }
@@ -1127,8 +1127,8 @@ void StackInterpreter::SubFloat(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   std::wcout << L"stack oper: SUB; call_pos=" << (*call_stack_pos) << std::endl;
 #endif
-  const double left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 1]));
-  const double right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
+  const FLOAT_VALUE left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 1]));
+  const FLOAT_VALUE right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
   *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2])) = left_double - right_double;
   (*stack_pos)--;
 }
@@ -1138,8 +1138,8 @@ void StackInterpreter::MulInt(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   std::wcout << L"stack oper: MUL; call_pos=" << (*call_stack_pos) << std::endl;
 #endif
-  const int64_t left = (int64_t)op_stack[(*stack_pos) - 1];
-  const int64_t right = (int64_t)op_stack[(*stack_pos) - 2];
+  const INT64_VALUE left = (INT64_VALUE)op_stack[(*stack_pos) - 1];
+  const INT64_VALUE right = (INT64_VALUE)op_stack[(*stack_pos) - 2];
   op_stack[(*stack_pos) - 2] = left *  right;
   (*stack_pos)--;
 }
@@ -1149,8 +1149,8 @@ void StackInterpreter::DivInt(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   std::wcout << L"stack oper: DIV; call_pos=" << (*call_stack_pos) << std::endl;
 #endif
-  const int64_t left = (int64_t)op_stack[(*stack_pos) - 1];
-  const int64_t right = (int64_t)op_stack[(*stack_pos) - 2];
+  const INT64_VALUE left = (INT64_VALUE)op_stack[(*stack_pos) - 1];
+  const INT64_VALUE right = (INT64_VALUE)op_stack[(*stack_pos) - 2];
   if(!right) {
     std::wcerr << L">>> Attempting to divide by zero <<<" << std::endl;
     StackErrorUnwind();
@@ -1170,8 +1170,8 @@ void StackInterpreter::MulFloat(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   std::wcout << L"stack oper: MUL; call_pos=" << (*call_stack_pos) << std::endl;
 #endif
-  const double left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 1]));
-  const double right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
+  const FLOAT_VALUE left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 1]));
+  const FLOAT_VALUE right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
   *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2])) = left_double * right_double;
   (*stack_pos)--;
 }
@@ -1181,8 +1181,8 @@ void StackInterpreter::DivFloat(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   std::wcout << L"stack oper: DIV; call_pos=" << (*call_stack_pos) << std::endl;
 #endif
-  const double left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 1]));
-  const double right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
+  const FLOAT_VALUE left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 1]));
+  const FLOAT_VALUE right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
   *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2])) = left_double / right_double;
   (*stack_pos)--;
 }
@@ -1192,8 +1192,8 @@ void StackInterpreter::ModInt(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   std::wcout << L"stack oper: MOD; call_pos=" << (*call_stack_pos) << std::endl;
 #endif
-  const int64_t left = (int64_t)op_stack[(*stack_pos) - 1];
-  const int64_t right = (int64_t)op_stack[(*stack_pos) - 2];
+  const INT64_VALUE left = (INT64_VALUE)op_stack[(*stack_pos) - 1];
+  const INT64_VALUE right = (INT64_VALUE)op_stack[(*stack_pos) - 2];
   op_stack[(*stack_pos) - 2] = left % right;
   (*stack_pos)--;
 }
@@ -1203,8 +1203,8 @@ void StackInterpreter::BitAndInt(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   std::wcout << L"stack oper: BIT_AND; call_pos=" << (*call_stack_pos) << std::endl;
 #endif
-  const int64_t left = (int64_t)op_stack[(*stack_pos) - 1];
-  const int64_t right = (int64_t)op_stack[(*stack_pos) - 2];
+  const INT64_VALUE left = (INT64_VALUE)op_stack[(*stack_pos) - 1];
+  const INT64_VALUE right = (INT64_VALUE)op_stack[(*stack_pos) - 2];
   op_stack[(*stack_pos) - 2] = left & right;
   (*stack_pos)--;
 }
@@ -1214,8 +1214,8 @@ void StackInterpreter::BitOrInt(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   std::wcout << L"stack oper: BIT_OR; call_pos=" << (*call_stack_pos) << std::endl;
 #endif
-  const int64_t left = (int64_t)op_stack[(*stack_pos) - 1];
-  const int64_t right = (int64_t)op_stack[(*stack_pos) - 2];
+  const INT64_VALUE left = (INT64_VALUE)op_stack[(*stack_pos) - 1];
+  const INT64_VALUE right = (INT64_VALUE)op_stack[(*stack_pos) - 2];
   op_stack[(*stack_pos) - 2] = left | right;
   (*stack_pos)--;
 }
@@ -1225,8 +1225,8 @@ void StackInterpreter::BitXorInt(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   std::wcout << L"stack oper: BIT_XOR; call_pos=" << (*call_stack_pos) << std::endl;
 #endif
-  const int64_t left = (int64_t)op_stack[(*stack_pos) - 1];
-  const int64_t right = (int64_t)op_stack[(*stack_pos) - 2];
+  const INT64_VALUE left = (INT64_VALUE)op_stack[(*stack_pos) - 1];
+  const INT64_VALUE right = (INT64_VALUE)op_stack[(*stack_pos) - 2];
   op_stack[(*stack_pos) - 2] = left ^ right;
   (*stack_pos)--;
 }
@@ -1236,8 +1236,8 @@ void StackInterpreter::LesEqlInt(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   std::wcout << L"stack oper: LES_EQL; call_pos=" << (*call_stack_pos) << std::endl;
 #endif
-  const int64_t left = (int64_t)op_stack[(*stack_pos) - 1];
-  const int64_t right = (int64_t)op_stack[(*stack_pos) - 2];
+  const INT64_VALUE left = (INT64_VALUE)op_stack[(*stack_pos) - 1];
+  const INT64_VALUE right = (INT64_VALUE)op_stack[(*stack_pos) - 2];
   op_stack[(*stack_pos) - 2] = left <= right;
   (*stack_pos)--;
 }
@@ -1247,8 +1247,8 @@ void StackInterpreter::GtrEqlInt(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   std::wcout << L"stack oper: GTR_EQL; call_pos=" << (*call_stack_pos) << std::endl;
 #endif
-  const int64_t left = (int64_t)op_stack[(*stack_pos) - 1];
-  const int64_t right = (int64_t)op_stack[(*stack_pos) - 2];
+  const INT64_VALUE left = (INT64_VALUE)op_stack[(*stack_pos) - 1];
+  const INT64_VALUE right = (INT64_VALUE)op_stack[(*stack_pos) - 2];
   op_stack[(*stack_pos) - 2] = left >= right;
   (*stack_pos)--;
 }
@@ -1258,8 +1258,8 @@ void StackInterpreter::LesEqlFloat(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   std::wcout << L"stack oper: LES_EQL; call_pos=" << (*call_stack_pos) << std::endl;
 #endif
-  const double left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 1]));
-  const double right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
+  const FLOAT_VALUE left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 1]));
+  const FLOAT_VALUE right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
   op_stack[(*stack_pos) - 2] = left_double <= right_double;
   (*stack_pos)--;
 }
@@ -1269,8 +1269,8 @@ void StackInterpreter::GtrEqlFloat(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   std::wcout << L"stack oper: GTR_EQL; call_pos=" << (*call_stack_pos) << std::endl;
 #endif
-  const double left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 1]));
-  const double right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
+  const FLOAT_VALUE left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 1]));
+  const FLOAT_VALUE right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
   op_stack[(*stack_pos) - 2] = left_double >= right_double;
   (*stack_pos)--;
 }
@@ -1280,8 +1280,8 @@ void StackInterpreter::EqlInt(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   std::wcout << L"stack oper: EQL; call_pos=" << (*call_stack_pos) << std::endl;
 #endif
-  const int64_t left = (int64_t)op_stack[(*stack_pos) - 1];
-  const int64_t right = (int64_t)op_stack[(*stack_pos) - 2];
+  const INT64_VALUE left = (INT64_VALUE)op_stack[(*stack_pos) - 1];
+  const INT64_VALUE right = (INT64_VALUE)op_stack[(*stack_pos) - 2];
   op_stack[(*stack_pos) - 2] = left == right;
   (*stack_pos)--;
 }
@@ -1291,8 +1291,8 @@ void StackInterpreter::NeqlInt(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   std::wcout << L"stack oper: NEQL; call_pos=" << (*call_stack_pos) << std::endl;
 #endif
-  const int64_t left = (int64_t)op_stack[(*stack_pos) - 1];
-  const int64_t right = (int64_t)op_stack[(*stack_pos) - 2];
+  const INT64_VALUE left = (INT64_VALUE)op_stack[(*stack_pos) - 1];
+  const INT64_VALUE right = (INT64_VALUE)op_stack[(*stack_pos) - 2];
   op_stack[(*stack_pos) - 2] = left != right;
   (*stack_pos)--;
 }
@@ -1302,8 +1302,8 @@ void StackInterpreter::LesInt(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   std::wcout << L"stack oper: LES; call_pos=" << (*call_stack_pos) << std::endl;
 #endif
-  const int64_t left = (int64_t)op_stack[(*stack_pos) - 1];
-  const int64_t right = (int64_t)op_stack[(*stack_pos) - 2];
+  const INT64_VALUE left = (INT64_VALUE)op_stack[(*stack_pos) - 1];
+  const INT64_VALUE right = (INT64_VALUE)op_stack[(*stack_pos) - 2];
   op_stack[(*stack_pos) - 2] = left < right;
   (*stack_pos)--;
 }
@@ -1313,8 +1313,8 @@ void StackInterpreter::GtrInt(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   std::wcout << L"stack oper: GTR; call_pos=" << (*call_stack_pos) << std::endl;
 #endif
-  const int64_t left = (int64_t)op_stack[(*stack_pos) - 1];
-  const int64_t right = (int64_t)op_stack[(*stack_pos) - 2];
+  const INT64_VALUE left = (INT64_VALUE)op_stack[(*stack_pos) - 1];
+  const INT64_VALUE right = (INT64_VALUE)op_stack[(*stack_pos) - 2];
   op_stack[(*stack_pos) - 2] = left > right;
   (*stack_pos)--;
 }
@@ -1324,8 +1324,8 @@ void StackInterpreter::EqlFloat(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   std::wcout << L"stack oper: EQL; call_pos=" << (*call_stack_pos) << std::endl;
 #endif
-  const double left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 1]));
-  const double right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
+  const FLOAT_VALUE left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 1]));
+  const FLOAT_VALUE right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
   op_stack[(*stack_pos) - 2] = left_double == right_double;
   (*stack_pos)--;
 }
@@ -1335,8 +1335,8 @@ void StackInterpreter::NeqlFloat(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   std::wcout << L"stack oper: NEQL; call_pos=" << (*call_stack_pos) << std::endl;
 #endif
-  const double left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 1]));
-  const double right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
+  const FLOAT_VALUE left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 1]));
+  const FLOAT_VALUE right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
   op_stack[(*stack_pos) - 2] = left_double != right_double;
   (*stack_pos)--;
 }
@@ -1346,8 +1346,8 @@ void StackInterpreter::LesFloat(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   std::wcout << L"stack oper: LES; call_pos=" << (*call_stack_pos) << std::endl;
 #endif
-  const double left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 1]));
-  const double right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
+  const FLOAT_VALUE left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 1]));
+  const FLOAT_VALUE right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
   op_stack[(*stack_pos) - 2] = left_double < right_double;
   (*stack_pos)--;
 }
@@ -1357,8 +1357,8 @@ void StackInterpreter::GtrFloat(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   std::wcout << L"stack oper: GTR_FLOAT; call_pos=" << (*call_stack_pos) << std::endl;
 #endif
-  const double left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 1]));
-  const double right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
+  const FLOAT_VALUE left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 1]));
+  const FLOAT_VALUE right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
   op_stack[(*stack_pos) - 2] = left_double > right_double;
   (*stack_pos)--;;
 }
@@ -1404,8 +1404,8 @@ void StackInterpreter::CpyByteAry(size_t* &op_stack, long* &stack_pos)
 #endif
   }
 
-  const int64_t src_array_len = (int64_t)src_array[2];
-  const int64_t dest_array_len = (int64_t)dest_array[2];
+  const INT64_VALUE src_array_len = (INT64_VALUE)src_array[2];
+  const INT64_VALUE dest_array_len = (INT64_VALUE)dest_array[2];
   if(length > 0 && static_cast<long long>(src_offset) + length <= src_array_len && dest_offset + length <= dest_array_len) {
     const char* src_array_ptr = (char*)(src_array + 3);
     char* dest_array_ptr = (char*)(dest_array + 3);
@@ -2414,9 +2414,9 @@ void StackInterpreter::ProcessLoadIntArrayElement(StackInstr* instr, size_t* &op
     exit(1);
 #endif
   }
-  const int64_t size = (long)array[0];
+  const INT64_VALUE size = (long)array[0];
   array += 2;
-  const int64_t index = ArrayIndex(instr, array, size, op_stack, stack_pos);
+  const INT64_VALUE index = ArrayIndex(instr, array, size, op_stack, stack_pos);
 #ifdef _NO_HALT
   if(halt) {
     return;
@@ -2447,9 +2447,9 @@ void StackInterpreter::ProcessStoreIntArrayElement(StackInstr* instr, size_t* &o
 #endif
   }
   
-  const int64_t size = (long)array[0];
+  const INT64_VALUE size = (long)array[0];
   array += 2;
-  const int64_t index = ArrayIndex(instr, array, size, op_stack, stack_pos);
+  const INT64_VALUE index = ArrayIndex(instr, array, size, op_stack, stack_pos);
 #ifdef _NO_HALT
   if(halt) {
     return;
@@ -2478,9 +2478,9 @@ void StackInterpreter::ProcessLoadByteArrayElement(StackInstr* instr, size_t* &o
     exit(1);
 #endif
   }
-  const int64_t size = (int64_t)array[0];
+  const INT64_VALUE size = (INT64_VALUE)array[0];
   array += 2;
-  const int64_t index = ArrayIndex(instr, array, size, op_stack, stack_pos);
+  const INT64_VALUE index = ArrayIndex(instr, array, size, op_stack, stack_pos);
 #ifdef _NO_HALT
   if(halt) {
     return;
@@ -2510,9 +2510,9 @@ void StackInterpreter::ProcessLoadCharArrayElement(StackInstr* instr, size_t* &o
     exit(1);
 #endif
   }
-  const int64_t size = (int64_t)array[0];
+  const INT64_VALUE size = (INT64_VALUE)array[0];
   array += 2;
-  const int64_t index = ArrayIndex(instr, array, size, op_stack, stack_pos);
+  const INT64_VALUE index = ArrayIndex(instr, array, size, op_stack, stack_pos);
 #ifdef _NO_HALT
   if(halt) {
     return;
@@ -2542,9 +2542,9 @@ void StackInterpreter::ProcessStoreByteArrayElement(StackInstr* instr, size_t* &
     exit(1);
 #endif
   }
-  const int64_t size = (int64_t)array[0];
+  const INT64_VALUE size = (INT64_VALUE)array[0];
   array += 2;
-  const int64_t index = ArrayIndex(instr, array, size, op_stack, stack_pos);
+  const INT64_VALUE index = ArrayIndex(instr, array, size, op_stack, stack_pos);
 #ifdef _NO_HALT
   if(halt) {
     return;
@@ -2576,7 +2576,7 @@ void StackInterpreter::ProcessStoreCharArrayElement(StackInstr* instr, size_t* &
   }
   const long size = (long)array[0];
   array += 2;
-  const int64_t index = ArrayIndex(instr, array, size, op_stack, stack_pos);
+  const INT64_VALUE index = ArrayIndex(instr, array, size, op_stack, stack_pos);
 #ifdef _NO_HALT
   if(halt) {
     return;
@@ -2608,7 +2608,7 @@ void StackInterpreter::ProcessLoadFloatArrayElement(StackInstr* instr, size_t* &
   }
   const long size = (long)array[0];
   array += 2;
-  const int64_t index = ArrayIndex(instr, array, size, op_stack, stack_pos);
+  const INT64_VALUE index = ArrayIndex(instr, array, size, op_stack, stack_pos);
 #ifdef _NO_HALT
   if(halt) {
     return;
@@ -2641,7 +2641,7 @@ void StackInterpreter::ProcessStoreFloatArrayElement(StackInstr* instr, size_t* 
   }
   const long size = (long)array[0];
   array += 2;
-  const int64_t index = ArrayIndex(instr, array, size, op_stack, stack_pos);
+  const INT64_VALUE index = ArrayIndex(instr, array, size, op_stack, stack_pos);
 #ifdef _NO_HALT
   if(halt) {
     return;
@@ -3029,15 +3029,15 @@ void Runtime::StackInterpreter::StackErrorUnwind()
 #endif
 }
 
-int64_t Runtime::StackInterpreter::ArrayIndex(StackInstr* instr, size_t* array, const int64_t size, size_t*& op_stack, long*& stack_pos)
+INT64_VALUE Runtime::StackInterpreter::ArrayIndex(StackInstr* instr, size_t* array, const INT64_VALUE size, size_t*& op_stack, long*& stack_pos)
 {
   // generate index
-  int64_t index = (int64_t)PopInt(op_stack, stack_pos);
+  INT64_VALUE index = (INT64_VALUE)PopInt(op_stack, stack_pos);
   const long dim = instr->GetOperand();
 
   for(long i = 1; i < dim; i++) {
     index *= (long)array[i];
-    index += (int64_t)PopInt(op_stack, stack_pos);
+    index += (INT64_VALUE)PopInt(op_stack, stack_pos);
   }
 
 #ifdef _DEBUG
