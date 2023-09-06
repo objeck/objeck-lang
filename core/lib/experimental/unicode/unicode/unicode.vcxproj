@@ -74,10 +74,10 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>..\..\..\core\lib\zlib\win;$(IncludePath)</IncludePath>
+    <IncludePath>..\..\..\..\..\core\lib\zlib\win;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <IncludePath>..\..\..\core\lib\zlib\win;$(IncludePath)</IncludePath>
+    <IncludePath>..\..\..\..\..\core\lib\zlib\win;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
