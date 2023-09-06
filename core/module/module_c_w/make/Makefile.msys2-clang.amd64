@@ -1,4 +1,4 @@
-ARGS=-g -Wall -D_X64 -std=c++17 -D_MSYS2_CLANG -Wint-to-pointer-cast -Wno-unused-variable -Wno-unused-function -Wno-int-to-pointer-cast
+ARGS=-g -Wall -D_X64 -std=c++17 -D_MSYS2_CLANG -Wno-unused-variable -Wno-unused-function -Wno-int-to-pointer-cast
 
 SRC=lang_wrapper_w.o
 OBJ_LIBS=sys.a module.a
