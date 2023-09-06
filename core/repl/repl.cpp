@@ -152,10 +152,12 @@ void SetEnv() {
   std::wcin.imbue(utf8);
 #else
   if(_setmode(_fileno(stdin), _O_U8TEXT) < 0) {
+    std::wcerr << "Unable to initialize I/O subsystem" << std::endl;
     exit(1);
   }
 
   if(_setmode(_fileno(stdout), _O_U8TEXT) < 0) {
+    std::wcerr << "Unable to initialize I/O subsystem" << std::endl;
     exit(1);
   }
 #endif
