@@ -1,6 +1,6 @@
 ARGS=-g -Wall -D_X64 -std=c++17 -Wno-maybe-uninitialized -Wno-unused-function
 
-SRC=lang_wrapper_w.o
+SRC=lang_wrapper.o
 OBJ_LIBS=sys.a module.a
 SYS_PATH=../../../core/shared
 MOD_PATH=../../../core/module
