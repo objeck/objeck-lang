@@ -453,7 +453,7 @@ void Editor::DoHelp()
   std::wcout << "  /i: insert line below" << std::endl;
   std::wcout << "  /m: insert multiple lines below" << std::endl;
   std::wcout << "  /r: replace line" << std::endl;
-  std::wcout << "  /d: delete line" << std::endl;
+  std::wcout << "  /d: delete line (or lines i.e., '2-4')" << std::endl;
   std::wcout << "  /a: add command line arguments" << std::endl;
   std::wcout << "  /u: set library use statements" << std::endl;
   std::wcout << "  /p: set compiler optimization" << std::endl;
