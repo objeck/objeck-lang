@@ -462,7 +462,6 @@ void JitArm64::ProcessInstructions() {
     case COSH_FLOAT:
     case TANH_FLOAT:
     case LOG_FLOAT:
-    case LOG_FLOAT:
     case EXP_FLOAT:
     case LOG10_FLOAT:
     case GAMMA_FLOAT:
