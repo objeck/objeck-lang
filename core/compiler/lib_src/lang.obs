@@ -1754,7 +1754,7 @@ bundle System {
 		@ignore-params
 		@return hyperbolic cosine value
 		~#
-		function : ArcCos(f : Float) ~ Float {
+		function : Cosh(f : Float) ~ Float {
 			COSH_FLOAT;
 		}
 
@@ -1763,7 +1763,7 @@ bundle System {
 		@ignore-params
 		@return hyperbolic sine value
 		~#
-		function : ArcSin(f : Float) ~ Float {
+		function : Sinh(f : Float) ~ Float {
 			SINH_FLOAT;
 		}
 
@@ -1772,10 +1772,10 @@ bundle System {
 		@ignore-params
 		@return hyperbolic tangent value
 		~#
-		function : ArcTan(f : Float) ~ Float {
+		function : Tanh(f : Float) ~ Float {
 			TANH_FLOAT;
 		}
-		
+
 		#~
 		Calculates the cosine value
 		@ignore-params
