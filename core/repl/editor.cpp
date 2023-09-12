@@ -519,7 +519,7 @@ void Editor::DoCmdArgs(std::wstring& in)
 bool Editor::DoLoadFile(std::wstring& in)
 {
   if(in.size() > 2) {
-    in = in.substr(3);
+    in = in.substr(2);
     if(doc.LoadFile(Trim(in))) {
       cur_pos = 1;
       return true;
@@ -533,7 +533,7 @@ bool Editor::DoSaveFile(std::wstring& in)
 {
   if(in.size() > 2 && EndsWith(in, L".obs")) {
     if(doc.Save()) {
-      std::wstring filename = in.substr(3);
+      std::wstring filename = in.substr(2);
       doc.SetName(Trim(filename));
       return true;
     }
@@ -548,7 +548,7 @@ bool Editor::DoSaveFile(std::wstring& in)
 void Editor::DoGotoLine(std::wstring& in)
 {
   if(in.size() > 2) {
-    in = in.substr(3);
+    in = in.substr(2);
     try {
       const size_t line_pos = std::stoi(in);
       if(line_pos <= doc.Size()) {
@@ -574,7 +574,7 @@ void Editor::DoGotoLine(std::wstring& in)
 bool Editor::DoReplaceLine(std::wstring& in)
 {
   if(in.size() > 2) {
-    in = in.substr(3);
+    in = in.substr(2);
     try {
       const size_t line_pos = std::stoi(Trim(in));
       if(line_pos <= doc.Size()) {
@@ -610,15 +610,49 @@ bool Editor::DoReplaceLine(std::wstring& in)
 bool Editor::DoDeleteLine(std::wstring& in)
 {
   if(in.size() > 2) {
-    in = in.substr(3);
+    in = in.substr(2);
     try {
-      const int line_pos = std::stoi(Trim(in));
-      if(doc.DeleteLine(line_pos - 1)) {
-        std::wcout << L"=> Removed line " << line_pos << L'.' << std::endl;
-        return true;
+    
+      const size_t range_index = in.find('-');
+      if(range_index != std::wstring::npos && range_index < in.size()) {
+        std::wstring start_range_str(in.substr(0, range_index));
+        const int start_line_pos = std::stoi(Trim(start_range_str));
+
+        std::wstring end_range_str = in.substr(range_index + 1);
+        const int end_line_pos = std::stoi(Trim(end_range_str));
+
+        if(start_line_pos < end_line_pos) {
+          for(int i = start_line_pos; i <= end_line_pos; ++i) {
+            if(!doc.DeleteLine(start_line_pos - 1)) {
+              std::wcout << "=> Line " << start_line_pos << L" is read-only." << std::endl;
+              return false;
+            }
+          }
+          
+          std::wcout << L"=> Removed lines " << start_line_pos << L" through " << end_line_pos << L'.' << std::endl;
+          if(start_line_pos < doc.Size()) {
+            cur_pos = start_line_pos - 1;
+          }
+
+          return true;
+        }
+        else {
+          std::wcout << SYNTAX_ERROR << std::endl;
+        }
       }
       else {
-        std::wcout << "=> Line " << in << L" is read-only." << std::endl;
+        const int line_pos = std::stoi(Trim(in));
+        if(doc.DeleteLine(line_pos - 1)) {
+          std::wcout << L"=> Removed line " << line_pos << L'.' << std::endl;
+          if(line_pos < doc.Size()) {
+            cur_pos = line_pos - 1;
+          }
+
+          return true;
+        }
+        else {
+          std::wcout << "=> Line " << line_pos << L" is read-only." << std::endl;
+        }
       }
     }
     catch(std::invalid_argument& e) {
