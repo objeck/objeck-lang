@@ -1723,7 +1723,7 @@ bundle System {
 		}
 
 		#~
-		Calculates the hyperbolic cosine
+		Calculates the arc-hyperbolic cosine
 		@ignore-params
 		@return hyperbolic cosine value
 		~#
@@ -1732,7 +1732,7 @@ bundle System {
 		}
 
 		#~
-		Calculates the hyperbolic sine
+		Calculates the arc-hyperbolic sine
 		@ignore-params
 		@return hyperbolic sine value
 		~#
@@ -1741,14 +1741,41 @@ bundle System {
 		}
 
 		#~
-		Calculates the hyperbolic tangent
+		Calculates the arc-hyperbolic tangent
 		@ignore-params
 		@return hyperbolic tangent value
 		~#
 		function : ArcTanh(f : Float) ~ Float {
 			ATANH_FLOAT;
 		}
-		
+
+		#~
+		Calculates the hyperbolic cosine
+		@ignore-params
+		@return hyperbolic cosine value
+		~#
+		function : Cosh(f : Float) ~ Float {
+			COSH_FLOAT;
+		}
+
+		#~
+		Calculates the hyperbolic sine
+		@ignore-params
+		@return hyperbolic sine value
+		~#
+		function : Sinh(f : Float) ~ Float {
+			SINH_FLOAT;
+		}
+
+		#~
+		Calculates the hyperbolic tangent
+		@ignore-params
+		@return hyperbolic tangent value
+		~#
+		function : Tanh(f : Float) ~ Float {
+			TANH_FLOAT;
+		}
+			
 		#~
 		Calculates the cosine value
 		@ignore-params
