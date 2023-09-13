@@ -126,12 +126,6 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>objeck.lib;libz-static.lib;libcrypto-1_1-static.lib;libssl-1_1-static.lib;crypt32.lib;objeck.lib;libz-static.lib;libcrypto-1_1-static.lib;libssl-1_1-static.lib;crypt32.lib;$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
-    <Manifest>
-      <OutputManifestFile />
-    </Manifest>
-    <ManifestResourceCompile>
-      <ResourceOutputFileName />
-    </ManifestResourceCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
