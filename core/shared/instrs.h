@@ -99,6 +99,7 @@ namespace instructions {
     DIV_FLOAT,
     FLOR_FLOAT,
     CEIL_FLOAT,
+    TRUNC_FLOAT,
     SIN_FLOAT,
     COS_FLOAT,
     TAN_FLOAT,

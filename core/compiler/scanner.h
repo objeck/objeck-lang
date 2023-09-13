@@ -170,6 +170,7 @@ enum ScannerTokenType {
   ZERO_FLOAT_ARY,
   FLOR_FLOAT,
   CEIL_FLOAT,
+  TRUNC_FLOAT,
   SIN_FLOAT,
   COS_FLOAT,
   TAN_FLOAT,
