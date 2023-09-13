@@ -1,5 +1,19 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
+		Brun();
+
+		3.451->Sinh()->PrintLine();
+		3.451->Cosh()->PrintLine();
+		3.451->Tanh()->PrintLine();
+		3.451->Log2()->PrintLine();
+		3.451->Cbrt()->PrintLine();
+
+		-3.451->Sign()->PrintLine();
+		3.451->Sign()->PrintLine();
+		0.000->Sign()->PrintLine();
+	}
+
+	function : native : Brun() ~ Nil {
 		3.451->Sinh()->PrintLine();
 		3.451->Cosh()->PrintLine();
 		3.451->Tanh()->PrintLine();
