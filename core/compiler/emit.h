@@ -62,7 +62,7 @@ namespace backend {
       out_stream.WriteString(in);
     }
 
-    inline void WriteByte(char value, OutputStream& out_stream) {
+    inline void WriteShort(uint16_t value, OutputStream& out_stream) {
       out_stream.WriteShort(value);
     }
 
