@@ -1318,18 +1318,6 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
       instrs.push_back(new LibraryInstr(line_num, ACOSH_FLOAT));
       break;
 
-    case COSH_FLOAT:
-      instrs.push_back(new LibraryInstr(line_num, COSH_FLOAT));
-      break;
-
-    case SINH_FLOAT:
-      instrs.push_back(new LibraryInstr(line_num, SINH_FLOAT));
-      break;
-
-    case TANH_FLOAT:
-      instrs.push_back(new LibraryInstr(line_num, TANH_FLOAT));
-      break;
-
     case ASINH_FLOAT:
       instrs.push_back(new LibraryInstr(line_num, ASINH_FLOAT));
       break;
