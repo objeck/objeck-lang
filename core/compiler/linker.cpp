@@ -803,8 +803,8 @@ void Library::LoadClasses()
       interface_names.push_back(ReadString());
     }
 
-    const bool is_interface = ReadByte() != 0;
-    const bool is_public = ReadByte() != 0;
+    const bool is_interface = ReadShort() != 0;
+    const bool is_public = ReadShort() != 0;
 
     // read generic names
     std::vector<std::wstring> generic_names;
@@ -813,8 +813,8 @@ void Library::LoadClasses()
       generic_names.push_back(ReadString());
     }
 
-    bool is_virtual = ReadByte() != 0;
-    bool is_debug = ReadByte() != 0;
+    bool is_virtual = ReadShort() != 0;
+    bool is_debug = ReadShort() != 0;
     std::wstring file_name;
     if(is_debug) {
       file_name = ReadString();
@@ -863,11 +863,11 @@ void Library::LoadMethods(LibraryClass* cls, bool is_debug)
   for(int i = 0; i < number; ++i) {
     int id = ReadInt();
     frontend::MethodType type = (frontend::MethodType)ReadInt();
-    bool is_virtual = ReadByte() != 0;
-    bool has_and_or = ReadByte() != 0;
-    bool is_lambda = ReadByte() != 0;
-    bool is_native = ReadByte() != 0;
-    bool is_static = ReadByte() != 0;
+    bool is_virtual = ReadShort() != 0;
+    bool has_and_or = ReadShort() != 0;
+    bool is_lambda = ReadShort() != 0;
+    bool is_native = ReadShort() != 0;
+    bool is_static = ReadShort() != 0;
     const std::wstring &name = ReadString();
     const std::wstring &rtrn_name = ReadString();
     int params = ReadInt();
@@ -917,7 +917,7 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
       line_num = ReadInt();
     }    
 
-    const int type = ReadByte();
+    const int type = ReadShort();
     switch(type) {
     case LOAD_INT_LIT:
       instrs.push_back(new LibraryInstr(line_num, LOAD_INT_LIT, ReadInt64()));

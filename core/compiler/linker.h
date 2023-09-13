@@ -750,7 +750,7 @@ class Library {
     return value;
   }
 
-  inline int ReadByte() {
+  inline int ReadShort() {
     uint16_t value = *((uint16_t*)buffer);
     buffer += sizeof(value);
     return value;

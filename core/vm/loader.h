@@ -72,8 +72,8 @@ class Loader {
     return value;
   }
   
-  inline int ReadByte() {
-    char value = *((char*)buffer);
+  inline int ReadShort() {
+    uint16_t value = *((uint16_t*)buffer);
     buffer += sizeof(value);
     return value;
   }
