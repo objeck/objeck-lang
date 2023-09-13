@@ -751,7 +751,7 @@ class Library {
   }
 
   inline int ReadShort() {
-    uint16_t value = *((uint16_t*)buffer);
+    uint8_t value = *((uint8_t*)buffer);
     buffer += sizeof(value);
     return value;
   }
