@@ -41,6 +41,6 @@
 #define VER_NUM @VERSION_NUMBER@
 #define VERSION_STRING L"@VERSION@"
 
-#define INSTR_VER_NUM InstructionType::END_STMTS * 10000 + Traps::EXIT
+#define INSTR_VER_NUM @VERSION_NUMBER@
 
 #endif
