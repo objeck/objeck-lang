@@ -1725,7 +1725,7 @@ bundle System {
 		@return truncated value
 		~#
 		function : Trunc(f : Float) ~ Float {
-			TRUC_FLOAT;
+			TRUNC_FLOAT;
 		}
 		
 		#~
