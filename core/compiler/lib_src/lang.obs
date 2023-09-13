@@ -3,7 +3,7 @@ Objeck system classes.
 Copyright (c) 2023 Randy Hollines
 note: compile compiler with -D_SYSTEM flag (on Linux)
 ~#	
-
+4
 #~
 Core system classes 
 ~#
@@ -192,6 +192,18 @@ bundle System {
 			CRC32_BYTES;
 		}
 		
+		#~
+		Returns a given value between an upper and lower bound
+		@param min minimal value
+		@param value value between the min and max
+		@param max maximum value
+		@return min if vaule is less than main, max if max is less than value, otherwise the value
+		~#
+		function : Clamp(min : Byte, value : Byte, max : Byte) ~ Byte {
+			temp := value < min ? min : value;
+			return temp > max ? max : temp;
+		}
+
 		#~
 		Returns the smallest byte value
 		@param l value to compare
@@ -786,16 +798,16 @@ bundle System {
 		}
 
 		#~
-                Returns a given value between an upper and lower bound
-                @param min minimal value
-                @param value value between the min and max
-                @param max maximum value
-                @return min if vaule is less than main, max if max is less than value, otherwise the value
-                ~#
-                function : Clamp(min : Char, value : Char, max : Char) ~ Char {
-                        temp := value < min ? min : value;
-                        return temp > max ? max : temp;
-                }
+		Returns a given value between an upper and lower bound
+		@param min minimal value
+		@param value value between the min and max
+		@param max maximum value
+		@return min if vaule is less than main, max if max is less than value, otherwise the value
+		~#
+		function : Clamp(min : Char, value : Char, max : Char) ~ Char {
+			temp := value < min ? min : value;
+			return temp > max ? max : temp;
+		}
 
 		#~
 		Prints value 
@@ -1211,16 +1223,16 @@ bundle System {
 		}
 
 		#~
-                Returns a given value between an upper and lower bound
-                @param min minimal value
-                @param value value between the min and max
-                @param max maximum value
-                @return min if vaule is less than main, max if max is less than value, otherwise the value
-                ~#
-                function : Clamp(min : Int, value : Int, max : Int) ~ Int {
-                        temp := value < min ? min : value;
-                        return temp > max ? max : temp;
-                }
+		Returns a given value between an upper and lower bound
+		@param min minimal value
+		@param value value between the min and max
+		@param max maximum value
+		@return min if vaule is less than main, max if max is less than value, otherwise the value
+		~#
+		function : Clamp(min : Int, value : Int, max : Int) ~ Int {
+			temp := value < min ? min : value;
+			return temp > max ? max : temp;
+		}
 
 		#~
 		Returns the absolute value
@@ -1539,6 +1551,18 @@ bundle System {
 		~#
 		function : E() ~ Float {
 			return 2.7182818285;
+		}
+
+		#~
+		Returns a given value between an upper and lower bound
+		@param min minimal value
+		@param value value between the min and max
+		@param max maximum value
+		@return min if vaule is less than main, max if max is less than value, otherwise the value
+		~#
+		function : Clamp(min : Float, value : Float, max : Float) ~ Float {
+			temp := value < min ? min : value;
+			return temp > max ? max : temp;
 		}
 
 		#~
