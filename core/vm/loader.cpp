@@ -259,8 +259,8 @@ void Loader::LoadClasses()
       cls_interfaces[id] = nullptr;
     }
     
-    const bool is_virtual = ReadByte() != 0;
-    const bool is_debug = ReadByte() != 0;
+    const bool is_virtual = ReadShort() != 0;
+    const bool is_debug = ReadShort() != 0;
     std::wstring file_name;
     if(is_debug) {
       file_name = ReadString();
@@ -346,11 +346,11 @@ void Loader::LoadMethods(StackClass* cls, bool is_debug)
     // id
     const int id = ReadInt();
     // method type
-    const bool is_virtual = ReadByte() != 0;
+    const bool is_virtual = ReadShort() != 0;
     // has and/or
-    const bool has_and_or = ReadByte() != 0;
+    const bool has_and_or = ReadShort() != 0;
     // is lambda expression
-    const bool is_lambda = ReadByte() != 0;
+    const bool is_lambda = ReadShort() != 0;
     // name
     const std::wstring name = ReadString();
     // return
@@ -471,7 +471,7 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
   StackInstr** mthd_instrs = new StackInstr*[num_instrs];
 
   for(unsigned long i = 0; i < num_instrs; ++i) {
-    const int type = ReadByte();
+    const int type = ReadShort();
     if(is_debug) {
       line_num = ReadInt();
     }
