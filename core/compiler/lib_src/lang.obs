@@ -1168,6 +1168,7 @@ bundle System {
 
 		#~
 		Returns the sign of a number
+		@ignore-params
 		@return sign of a number
 		~#
 		function : Sign(a : Int) ~ Int {
@@ -1927,6 +1928,7 @@ bundle System {
 
 		#~
 		Returns the sign of a number
+		@ignore-params
 		@return sign of a number
 		~#
 		function : Sign(a : Float) ~ Float {
