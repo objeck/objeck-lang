@@ -751,7 +751,7 @@ class Library {
   }
 
   inline int ReadByte() {
-    char value = *((char*)buffer);
+    uint16_t value = *((uint16_t*)buffer);
     buffer += sizeof(value);
     return value;
   }
