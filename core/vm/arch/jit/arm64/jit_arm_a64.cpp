@@ -471,6 +471,7 @@ void JitArm64::ProcessInstructions() {
     case LOG_FLOAT:
     case EXP_FLOAT:
     case LOG10_FLOAT:
+    case TRUNC_FLOAT:
     case GAMMA_FLOAT:
 #ifdef _DEBUG_JIT_JIT
       wcout << L"FLOAT SIN/COS/TAN/SQRT/FLOR/CEIL: regs=" << aval_regs.size() << endl;
@@ -3691,6 +3692,10 @@ void JitArm64::ProcessFloatOperation(StackInstr* instruction)
 
   case LOG10_FLOAT:
     func_ptr = log10;
+    break;
+    
+  case TRUNC_FLOAT:
+    func_ptr = trunc;
     break;
 
   case LOG_FLOAT:

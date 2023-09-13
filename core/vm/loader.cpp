@@ -705,6 +705,7 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
     case LES_EQL_INT:
     case GTR_EQL_INT:
     case CEIL_FLOAT:
+    case TRUNC_FLOAT:
     case FLOR_FLOAT:
     case SIN_FLOAT:
     case COS_FLOAT:

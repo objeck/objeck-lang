@@ -412,6 +412,7 @@ class StackMethod {
       case POW_FLOAT:
       case GAMMA_FLOAT:
       case CEIL_FLOAT:
+      case TRUNC_FLOAT:
       case FLOR_FLOAT:
       case SIN_FLOAT:
       case COS_FLOAT:

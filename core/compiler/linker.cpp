@@ -1275,6 +1275,10 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
       instrs.push_back(new LibraryInstr(line_num, CEIL_FLOAT));
       break;
 
+    case TRUNC_FLOAT:
+      instrs.push_back(new LibraryInstr(line_num, TRUNC_FLOAT));
+      break;
+
     case SIN_FLOAT:
       instrs.push_back(new LibraryInstr(line_num, SIN_FLOAT));
       break;

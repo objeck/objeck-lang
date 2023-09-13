@@ -164,6 +164,7 @@ void Scanner::LoadKeywords()
   ident_map[L"ZERO_FLOAT_ARY"] = ZERO_FLOAT_ARY;
   ident_map[L"FLOR_FLOAT"] = FLOR_FLOAT;
   ident_map[L"CEIL_FLOAT"] = CEIL_FLOAT;
+  ident_map[L"TRUNC_FLOAT"] = TRUNC_FLOAT;
   ident_map[L"SIN_FLOAT"] = SIN_FLOAT;
   ident_map[L"COS_FLOAT"] = COS_FLOAT;
   ident_map[L"TAN_FLOAT"] = TAN_FLOAT;
@@ -452,6 +453,7 @@ void Scanner::CheckIdentifier(int index)
     case ZERO_FLOAT_ARY:
     case FLOR_FLOAT:
     case CEIL_FLOAT:
+    case TRUNC_FLOAT:
     case SIN_FLOAT:
     case COS_FLOAT:
     case TAN_FLOAT:

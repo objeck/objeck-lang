@@ -794,6 +794,10 @@ void IntermediateInstruction::Debug(size_t i) {
     GetLogger()  << i << L":\tCEIL_FLOAT" << std::endl;
     break;
 
+  case instructions::TRUNC_FLOAT:
+    GetLogger() << i << L":\tTRUC_FLOAT" << std::endl;
+    break;
+
   case instructions::RAND_FLOAT:
     GetLogger()  << i << L":\tRAND_FLOAT" << std::endl;
     break;

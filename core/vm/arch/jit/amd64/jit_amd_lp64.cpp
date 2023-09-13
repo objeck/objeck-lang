@@ -477,12 +477,13 @@ void JitAmd64::ProcessInstructions() {
     case LOG_FLOAT:
     case EXP_FLOAT:
     case LOG10_FLOAT:
+    case TRUNC_FLOAT:
     case GAMMA_FLOAT:
     case ATAN2_FLOAT:
     case MOD_FLOAT:
     case POW_FLOAT:
 #ifdef _DEBUG_JIT
-      std::wcout << L"FLOAT ROUND_FLOAT/CEIL_FLOAT/FLOR_FLOAT/SIN/COS/TAN/SQRT/ASIN/ACOS/ATAN2/POW/MOD_FLOAT: regs=" << aval_regs.size() << L"," << aux_regs.size() << std::endl;
+      std::wcout << L"FLOAT SIN/COS/TAN/SQRT/ASIN/ACOS/ATAN2/POW/MOD_FLOAT: regs=" << aval_regs.size() << L"," << aux_regs.size() << std::endl;
 #endif
       ProcessFloatOperation(instr);
       break;
@@ -2242,16 +2243,8 @@ void JitAmd64::ProcessFloatOperation(StackInstr* instruction) {
     flog10();
     break;
 
-  case ROUND_FLOAT:
-    holder = call_xfunc(round, left);
-    break;
-
-  case CEIL_FLOAT:
-    holder = call_xfunc(ceil, left);
-    break;
-
-  case FLOR_FLOAT:
-    holder = call_xfunc(floor, left);
+  case TRUNC_FLOAT:
+    holder = call_xfunc(trunc, left);
     break;
 
   case EXP_FLOAT:
