@@ -456,9 +456,15 @@ void JitArm64::ProcessInstructions() {
     case TAN_FLOAT:
     case ASIN_FLOAT:
     case ACOS_FLOAT:
+    case ATAN_FLOAT:
     case ACOSH_FLOAT:
     case ASINH_FLOAT:
     case ATANH_FLOAT:
+    case COSH_FLOAT:
+    case SINH_FLOAT:
+    case TANH_FLOAT:
+    case LOG2_FLOAT:
+    case CBRT_FLOAT:
     case COSH_FLOAT:
     case SINH_FLOAT:
     case TANH_FLOAT:
@@ -3647,6 +3653,10 @@ void JitArm64::ProcessFloatOperation(StackInstr* instruction)
     func_ptr = asin;
     break;
 
+  case ATAN_FLOAT:
+    func_ptr = atan;
+    break;
+
   case ACOS_FLOAT:
     func_ptr = acos;
     break;
@@ -3690,7 +3700,27 @@ void JitArm64::ProcessFloatOperation(StackInstr* instruction)
   case GAMMA_FLOAT:
     func_ptr = tgamma;
     break;
-    
+
+  case LOG2_FLOAT:
+    holder = call_xfunc(log2, left);
+    break;
+
+  case CBRT_FLOAT:
+    holder = call_xfunc(cbrt, left);
+    break;
+
+   case COSH_FLOAT:
+     holder = call_xfunc(cosh, left);
+     break;
+
+   case SINH_FLOAT:
+     holder = call_xfunc(sinh, left);
+     break;
+
+   case TANH_FLOAT:
+     holder = call_xfunc(tanh, left);
+     break;
+     
   default:
     throw runtime_error("Invalid function call!");
     break;
