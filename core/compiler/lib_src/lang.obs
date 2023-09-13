@@ -1167,12 +1167,21 @@ bundle System {
 		}
 
 		#~
-		Calculates the natural log value
+		Calculates the square root
 		@ignore-params
-		@return natural log value
+		@return square root value
 		~#
 		function : Sqrt(a : Int) ~ Int {
 			return Float->Sqrt(a->As(Float))->Round();
+		}
+
+		#~
+		Calculates the cube root
+		@ignore-params
+		@return cube root value
+		~#
+		function : Cbrt(a : Int) ~ Int {
+			return Float->Cbrt(a->As(Float))->Round();
 		}
 
 		#~
@@ -1893,9 +1902,9 @@ bundle System {
 		}
 		
 		#~
-		Calculates the natural log value
+		Calculates the square root value
 		@ignore-params
-		@return natural log value
+		@return square root value
 		~#
 		function : Sqrt(f : Float) ~ Float {
 			SQRT_FLOAT;
