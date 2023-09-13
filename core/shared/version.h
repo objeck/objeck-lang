@@ -41,6 +41,4 @@
 #define VER_NUM 202391
 #define VERSION_STRING L"2023.9.1"
 
-#define INSTR_VER_NUM 202391
-
 #endif
