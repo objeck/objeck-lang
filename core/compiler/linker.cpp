@@ -618,7 +618,7 @@ void Library::LoadFile(const std::wstring &file_name)
   ReadFile(file_name);
   if(buffer) {
     const int ver_num = ReadInt();
-    if(ver_num != INSTR_VER_NUM) {
+    if(ver_num != VER_NUM) {
       std::wcerr << L"The " << lib_path << L" library appears to be compiled with a different version of the tool chain.  Please recompile the libraries or link the correct version." << std::endl;
       exit(1);
     }

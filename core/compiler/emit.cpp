@@ -126,7 +126,7 @@ IntermediateProgram* IntermediateProgram::instance;
 
 void IntermediateProgram::Write(bool emit_lib, bool is_debug, OutputStream& out_stream, bool mute) {
   // version
-  WriteInt(INSTR_VER_NUM, out_stream);
+  WriteInt(VER_NUM, out_stream);
 
   // magic number
   if(emit_lib) {
