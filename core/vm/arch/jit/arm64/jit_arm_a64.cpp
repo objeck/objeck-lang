@@ -465,9 +465,6 @@ void JitArm64::ProcessInstructions() {
     case TANH_FLOAT:
     case LOG2_FLOAT:
     case CBRT_FLOAT:
-    case COSH_FLOAT:
-    case SINH_FLOAT:
-    case TANH_FLOAT:
     case LOG_FLOAT:
     case EXP_FLOAT:
     case LOG10_FLOAT:
@@ -3707,24 +3704,12 @@ void JitArm64::ProcessFloatOperation(StackInstr* instruction)
     break;
 
   case LOG2_FLOAT:
-    holder = call_xfunc(log2, left);
+    func_ptr = log2;
     break;
 
   case CBRT_FLOAT:
-    holder = call_xfunc(cbrt, left);
+    func_ptr = cbrt;
     break;
-
-   case COSH_FLOAT:
-     holder = call_xfunc(cosh, left);
-     break;
-
-   case SINH_FLOAT:
-     holder = call_xfunc(sinh, left);
-     break;
-
-   case TANH_FLOAT:
-     holder = call_xfunc(tanh, left);
-     break;
      
   default:
     throw runtime_error("Invalid function call!");
