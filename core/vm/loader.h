@@ -268,10 +268,11 @@ public:
     cached_instrs[TAN_FLOAT] = new StackInstr(-1, TAN_FLOAT);
     cached_instrs[SQRT_FLOAT] = new StackInstr(-1, SQRT_FLOAT);
     cached_instrs[RAND_FLOAT] = new StackInstr(-1, RAND_FLOAT);
-
     cached_instrs[ASIN_FLOAT] = new StackInstr(-1, ASIN_FLOAT);
     cached_instrs[ACOS_FLOAT] = new StackInstr(-1, ACOS_FLOAT);
     cached_instrs[ATAN_FLOAT] = new StackInstr(-1, ATAN_FLOAT);
+    cached_instrs[LOG2_FLOAT] = new StackInstr(-1, LOG2_FLOAT);
+    cached_instrs[CBRT_FLOAT] = new StackInstr(-1, CBRT_FLOAT);
     cached_instrs[ATAN2_FLOAT] = new StackInstr(-1, ATAN2_FLOAT);
     cached_instrs[ASINH_FLOAT] = new StackInstr(-1, ASINH_FLOAT);
     cached_instrs[ACOSH_FLOAT] = new StackInstr(-1, ACOSH_FLOAT);

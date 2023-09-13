@@ -396,6 +396,8 @@ class StackMethod {
       case ASIN_FLOAT:
       case ACOS_FLOAT:
       case ATAN_FLOAT:
+      case LOG2_FLOAT:
+      case CBRT_FLOAT:
       case ATAN2_FLOAT:
       case ACOSH_FLOAT:
       case ASINH_FLOAT:

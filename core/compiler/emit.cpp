@@ -822,6 +822,14 @@ void IntermediateInstruction::Debug(size_t i) {
     GetLogger()  << i << L":\tATAN_FLOAT" << std::endl;
     break;
 
+  case instructions::LOG2_FLOAT:
+    GetLogger() << i << L":\tLOG2_FLOAT" << std::endl;
+    break;
+
+  case instructions::CBRT_FLOAT:
+    GetLogger() << i << L":\tCBRT_FLOAT" << std::endl;
+    break;
+
   case instructions::ATAN2_FLOAT:
     GetLogger()  << i << L":\tATAN2_FLOAT" << std::endl;
     break;

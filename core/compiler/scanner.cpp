@@ -170,6 +170,8 @@ void Scanner::LoadKeywords()
   ident_map[L"ASIN_FLOAT"] = ASIN_FLOAT;
   ident_map[L"ACOS_FLOAT"] = ACOS_FLOAT;
   ident_map[L"ATAN_FLOAT"] = ATAN_FLOAT;
+  ident_map[L"LOG2_FLOAT"] = LOG2_FLOAT;
+  ident_map[L"CBRT_FLOAT"] = CBRT_FLOAT;
   ident_map[L"ATAN2_FLOAT"] = ATAN2_FLOAT;
   ident_map[L"ACOSH_FLOAT"] = ACOSH_FLOAT;
   ident_map[L"ASINH_FLOAT"] = ASINH_FLOAT;
@@ -462,6 +464,8 @@ void Scanner::CheckIdentifier(int index)
     case TANH_FLOAT:
     case ACOS_FLOAT:
     case ATAN_FLOAT:
+    case CBRT_FLOAT:
+    case LOG2_FLOAT:
     case ATAN2_FLOAT:
     case MOD_FLOAT:
     case LOG_FLOAT:
