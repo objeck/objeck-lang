@@ -326,8 +326,10 @@ public:
     }
   }
 
-  inline void WriteByte(char value) {
-    out_buffer.push_back(value);
+  inline void WriteShort(uint16_t value) {
+    char temp[sizeof(value)];
+    memcpy(temp, &value, sizeof(value));
+    std::copy(std::begin(temp), std::end(temp), std::back_inserter(out_buffer));
   }
 
   inline void WriteInt(int32_t value) {
