@@ -430,6 +430,14 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
       PushFloat(acosh(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
       break;
 
+    case ASINH_FLOAT:
+      PushFloat(asinh(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
+      break;
+
+    case ATANH_FLOAT:
+      PushFloat(atanh(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
+      break;
+
     case COSH_FLOAT:
       PushFloat(cosh(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
       break;
@@ -440,14 +448,9 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
 
     case TANH_FLOAT:
       PushFloat(tanh(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
-
-    case ASINH_FLOAT:
-      PushFloat(asinh(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
       break;
 
-    case ATANH_FLOAT:
-      PushFloat(atanh(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
-      break;
+
 
     case ATAN2_FLOAT:
       left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));

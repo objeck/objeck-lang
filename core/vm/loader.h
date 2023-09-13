@@ -273,19 +273,15 @@ public:
     cached_instrs[ACOS_FLOAT] = new StackInstr(-1, ACOS_FLOAT);
     cached_instrs[ATAN_FLOAT] = new StackInstr(-1, ATAN_FLOAT);
     cached_instrs[ATAN2_FLOAT] = new StackInstr(-1, ATAN2_FLOAT);
-    cached_instrs[ACOSH_FLOAT] = new StackInstr(-1, ACOSH_FLOAT);
-    cached_instrs[COSH_FLOAT] = new StackInstr(-1, COSH_FLOAT);
-    cached_instrs[SINH_FLOAT] = new StackInstr(-1, SINH_FLOAT);
-    cached_instrs[TANH_FLOAT] = new StackInstr(-1, TANH_FLOAT);
     cached_instrs[ASINH_FLOAT] = new StackInstr(-1, ASINH_FLOAT);
-    cached_instrs[COSH_FLOAT] = new StackInstr(-1, COSH_FLOAT);
-    cached_instrs[SINH_FLOAT] = new StackInstr(-1, SINH_FLOAT);
-    cached_instrs[TANH_FLOAT] = new StackInstr(-1, TANH_FLOAT);
-
+    cached_instrs[ACOSH_FLOAT] = new StackInstr(-1, ACOSH_FLOAT);
     cached_instrs[ATANH_FLOAT] = new StackInstr(-1, ATANH_FLOAT);
     cached_instrs[COSH_FLOAT] = new StackInstr(-1, COSH_FLOAT);
     cached_instrs[SINH_FLOAT] = new StackInstr(-1, SINH_FLOAT);
     cached_instrs[TANH_FLOAT] = new StackInstr(-1, TANH_FLOAT);
+    
+    
+
     cached_instrs[LOG_FLOAT] = new StackInstr(-1, LOG_FLOAT);
     cached_instrs[ROUND_FLOAT] = new StackInstr(-1, ROUND_FLOAT);
     cached_instrs[EXP_FLOAT] = new StackInstr(-1, EXP_FLOAT);
