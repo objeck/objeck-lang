@@ -1,5 +1,7 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		3.451->Sinh()->PrintLine();
+#		3.451->Sinh()->PrintLine();
+#		3.451->Cosh()->PrintLine();
+		3.451->Tanh()->PrintLine();
 	}
 }
