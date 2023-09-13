@@ -469,9 +469,6 @@ void JitAmd64::ProcessInstructions() {
     case ACOSH_FLOAT:
     case ASINH_FLOAT:
     case ATANH_FLOAT:
-    case SINH_FLOAT:
-    case COSH_FLOAT:
-    case TANH_FLOAT:
     case LOG_FLOAT:
     case EXP_FLOAT:
     case LOG10_FLOAT:
@@ -2274,18 +2271,6 @@ void JitAmd64::ProcessFloatOperation(StackInstr* instruction) {
 
   case ATANH_FLOAT:
     holder = call_xfunc(atanh, left);
-    break;
-
-  case SINH_FLOAT:
-    holder = call_xfunc(sinh, left);
-    break;
-
-  case COSH_FLOAT:
-    holder = call_xfunc(cosh, left);
-    break;
-
-  case TANH_FLOAT:
-    holder = call_xfunc(tanh, left);
     break;
 
   case GAMMA_FLOAT:
