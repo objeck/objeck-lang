@@ -105,6 +105,8 @@ namespace instructions {
     ASIN_FLOAT,
     ACOS_FLOAT,
     ATAN_FLOAT,
+    LOG2_FLOAT,
+    CBRT_FLOAT,
     COSH_FLOAT,
     SINH_FLOAT,
     TANH_FLOAT,

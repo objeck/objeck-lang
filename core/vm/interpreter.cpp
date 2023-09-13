@@ -397,6 +397,14 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
     case ATAN_FLOAT:
       PushFloat(atan(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
       break;
+
+    case LOG2_FLOAT:
+      PushFloat(log2(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
+      break;
+
+    case CBRT_FLOAT:
+      PushFloat(cbrt(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
+      break;
     
     case LOG_FLOAT:
       PushFloat(log(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);

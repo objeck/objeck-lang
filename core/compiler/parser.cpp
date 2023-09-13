@@ -2221,6 +2221,18 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
       NextToken();
       break;
 
+    case LOG2_FLOAT:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::LOG2_FLOAT);
+      NextToken();
+      break;
+
+    case CBRT_FLOAT:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::CBRT_FLOAT);
+      NextToken();
+      break;
+
     case ATAN2_FLOAT:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::ATAN2_FLOAT);

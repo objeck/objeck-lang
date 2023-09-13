@@ -1749,7 +1749,7 @@ bundle System {
 		#~
 		Calculates the arc-hyperbolic cosine
 		@ignore-params
-		@return hyperbolic cosine value
+		@return hyperbolic arc-cosine value
 		~#
 		function : ArcCosh(f : Float) ~ Float {
 			ACOSH_FLOAT;
@@ -1758,7 +1758,7 @@ bundle System {
 		#~
 		Calculates the arc-hyperbolic sine
 		@ignore-params
-		@return hyperbolic sine value
+		@return hyperbolic arc-sine value
 		~#
 		function : ArcSinh(f : Float) ~ Float {
 			ASINH_FLOAT;
@@ -1767,7 +1767,7 @@ bundle System {
 		#~
 		Calculates the arc-hyperbolic tangent
 		@ignore-params
-		@return hyperbolic tangent value
+		@return hyperbolic arc-tangent value
 		~#
 		function : ArcTanh(f : Float) ~ Float {
 			ATANH_FLOAT;
@@ -1816,6 +1816,24 @@ bundle System {
 		~#
 		function : ArcTan(f : Float) ~ Float {
 			ATAN_FLOAT;
+		}
+
+		#~
+		Calculates the binary logarithm
+		@ignore-params
+		@return binary logarithm
+		~#
+		function : Log2(f : Float) ~ Float {
+			LOG2_FLOAT;
+		}
+
+		#~
+		Calculates the cubic root
+		@ignore-params
+		@return cubic root
+		~#
+		function : Log2(f : Float) ~ Float {
+			LOG2_FLOAT;
 		}
 		
 		#~

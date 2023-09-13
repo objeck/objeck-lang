@@ -725,6 +725,8 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
     case ASIN_FLOAT:
     case ACOS_FLOAT:
     case ATAN_FLOAT:
+    case LOG2_FLOAT:
+    case CBRT_FLOAT:
     case ATAN2_FLOAT:
     case COSH_FLOAT:
     case SINH_FLOAT:
