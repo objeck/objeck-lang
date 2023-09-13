@@ -1832,8 +1832,8 @@ bundle System {
 		@ignore-params
 		@return cubic root
 		~#
-		function : Log2(f : Float) ~ Float {
-			LOG2_FLOAT;
+		function : Cbrt(f : Float) ~ Float {
+			CBRT_FLOAT;
 		}
 		
 		#~
