@@ -1718,6 +1718,15 @@ bundle System {
 		function : Ceil(f : Float) ~ Float {
 			CEIL_FLOAT;
 		}
+
+		#~
+		Truncates the value
+		@ignore-params
+		@return truncated value
+		~#
+		function : Trunc(f : Float) ~ Float {
+			TRUC_FLOAT;
+		}
 		
 		#~
 		Calculates the sine value

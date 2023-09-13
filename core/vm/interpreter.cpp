@@ -370,6 +370,10 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
       PushFloat(ceil(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
       break;
 
+    case TRUNC_FLOAT:
+      PushFloat(trunc(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
+      break;
+
     case FLOR_FLOAT:
       PushFloat(floor(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
       break;
