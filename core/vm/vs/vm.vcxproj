@@ -81,7 +81,7 @@
       <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
     </Link>
     <PostBuildEvent>
-      <Command>mt.exe -manifest $(SolutionDir)$(Platform)\$(Configuration)\..\..\vs\manifest.xml -outputresource:$(SolutionDir)$(Platform)\$(Configuration)\obr.exe;1</Command>
+      <Command></Command>
       <Message>Add manifest</Message>
     </PostBuildEvent>
   </ItemDefinitionGroup>
