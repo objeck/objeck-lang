@@ -5,5 +5,9 @@ class Test {
 		3.451->Tanh()->PrintLine();
 		3.451->Log2()->PrintLine();
 		3.451->Cbrt()->PrintLine();
+
+		-3.451->Sign()->PrintLine();
+		3.451->Sign()->PrintLine();
+		0.000->Sign()->PrintLine();
 	}
 }
