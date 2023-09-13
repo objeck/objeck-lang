@@ -3,7 +3,7 @@ Objeck system classes.
 Copyright (c) 2023 Randy Hollines
 note: compile compiler with -D_SYSTEM flag (on Linux)
 ~#	
-4
+
 #~
 Core system classes 
 ~#
