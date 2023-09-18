@@ -1129,7 +1129,21 @@ bundle System {
 				return min;
 			};
 
-			return min + (Float->Random() * 10000000.0)->As(Int) % diff;
+			return min + (Float->Random() * 100000000.0)->As(Int) % diff;
+		}
+
+		#~
+		Returns a pseudo random value between 0.0 and 1.0
+		@ignore-params
+		@return pseudo random value
+		~#
+		function : Random(range_start : Int, range_end : Int) ~ Int {
+			if(Int->Random(1) = 0) {
+				return Int->Random() * range_start;
+			}
+			else {
+				return -1 * Int->Random() * range_start;
+			};
 		}
 
 		#~
@@ -1958,6 +1972,20 @@ bundle System {
 		~#
 		function : Random() ~ Float {
 			RAND_FLOAT;
+		}
+
+		#~
+		Returns a pseudo random value between 0.0 and 1.0
+		@ignore-params
+		@return pseudo random value
+		~#
+		function : Random(range_start : Float, range_end : Float) ~ Float {
+			if(Int->Random(1) = 0) {
+				return Float->Random() * range_start;
+			}
+			else {
+				return -1.0 * Float->Random() * range_start;
+			};
 		}
 		
 		#~
