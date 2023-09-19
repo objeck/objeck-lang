@@ -107,28 +107,53 @@ class App {
 
 
 class Neuron {
-  @propertyToChange : Int;
-  @changeFactor : Float;
+	@oldBias : Float;
+	@bias : Float;
 
-  New() {
-    @propertyToChange := Int->Random(0, 3);
-    @changeFactor := (learnFactor = Nil) ? Double->Random(-1, 1) : (learnFactor * Double->Random(-1, 1));
-  }
+	@oldWeight1 : Float;
+	@weight1 : Float;
+	
+	@oldWeight2 : Float;
+	@weight2 : Float;
 
-  method : public : Forget() ~ Nil {
-    bias := oldBias;
-    weight1 := oldWeight1;
-    weight2 := oldWeight2;
-  }
+	New() {
+		@oldBias := Float->Random(-1, 1);
+		@bias := Float->Random(-1, 1); 
+		@oldWeight1 := Float->Random(-1, 1);
+		@weight1 := Float->Random(-1, 1); 
+		@oldWeight2 := Float->Random(-1, 1);
+		@weight2 := Float->Random(-1, 1);
+	}
+
+	method : public : Mutate(learnFactor : FloatRef) ~ Nil {
+      propertyToChange := Int->Random(0, 3);
+      changeFactor := (learnFactor = Nil) ? Float->Random(-1.0, 1.0) : (learnFactor * Float->Random(-1.0, 1.0));      
+		if(propertyToChange = 0){ 
+			@bias += changeFactor; 
+		} 
+		else if (propertyToChange = 1){ 
+			@weight1 += changeFactor; 
+		} 
+		else { 
+			@weight2 += changeFactor; 
+		};
+	}
+
+	method : public : Forget() ~ Nil {
+		@bias := @oldBias;
+		@weight1 := @oldWeight1;
+		@weight2 := @oldWeight2;
+	}
+
   method : public : Remember() ~ Nil {
-    oldBias := bias;
-    oldWeight1 := weight1;
-    oldWeight2 := weight2;
+    @oldBias := @bias;
+    @oldWeight1 := @weight1;
+    @oldWeight2 := @weight2;
   }
   
   method : public : Compute(input1 : Float, input2 : Float) ~ Float {
     preActivation := (@weight1 * input1) + (@weight2 * input2) + @bias;
-    output := Util.sigmoid(preActivation);
+    output := Util->Sigmoid(preActivation);
     return output;
   }
 }

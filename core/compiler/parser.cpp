@@ -1029,7 +1029,7 @@ Class* Parser::ParseClass(const std::wstring &bundle_name, int depth)
 
       NextToken();
 
-      klass->AddStatement(ParseDeclaration(ident_context, false, depth + 1));
+      klass->AddStatement(ParseDeclaration(ident_context, true, depth + 1));
       if(!Match(TOKEN_SEMI_COLON)) {
         ProcessError(L"Expected ';'", TOKEN_SEMI_COLON);
       }
@@ -4123,6 +4123,7 @@ Expression* Parser::ParseSimpleExpression(int depth)
 #endif
   
   Expression* expression = nullptr;
+
   if(Match(TOKEN_IDENT) || Match(TOKEN_ADD_ADD) ||
      Match(TOKEN_SUB_SUB) || IsBasicType(GetToken())) {
     std::wstring ident;
@@ -4259,12 +4260,22 @@ Expression* Parser::ParseSimpleExpression(int depth)
       const int line_num = GetLineNumber();
       const int line_pos = GetLinePosition();
       IdentifierContext ident_context(ident, line_num, line_pos);
-
-      Variable* left = ParseVariable(ident_context, depth + 1);
-      Expression* right = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos, -1);
-      CalculatedExpression* calc = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, line_pos, MUL_EXPR, left, right);
-      expression = calc;
       NextToken();
+
+      if(Match(TOKEN_OPEN_PAREN)) {
+        MethodCall* right = ParseMethodCall(ident_context, depth + 1);
+        if(right) {
+          Expression* left = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos, -1);
+          CalculatedExpression* calc = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, line_pos, MUL_EXPR, left, right);
+          expression = calc;
+        }
+      }
+      else {
+        Variable* left = ParseVariable(ident_context, depth + 1);
+        Expression* right = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos, -1);
+        CalculatedExpression* calc = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, line_pos, MUL_EXPR, left, right);
+        expression = calc;
+      }
     }
       break;
 
