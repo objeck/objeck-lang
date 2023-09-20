@@ -2,25 +2,30 @@ use Collection;
 
 class App {
 	function : Main(args : String[]) ~ Nil {
-#		App app := new App();
-#    app.trainAndPredict();		
+		App->New()->TrainAndPredict();		
 	}
 
+	New() {
+	}
+
+	method : public : TrainAndPredict() ~ Nil {
+		data := Vector->New()<IntArrayRef>;
+		data->AddBack(IntArrayRef->New([115, 66]));
+		data->AddBack(IntArrayRef->New([175, 78]));
+		data->AddBack(IntArrayRef->New([205, 72]));
+		data->AddBack(IntArrayRef->New([120, 67]));
+
+		answers := Vector->New()<FloatRef>;
+		answers->AddBack(1.0); answers->AddBack(0.0);
+		answers->AddBack(0.0); answers->AddBack(1.0);
+
+		network500 := Network->New(500);
+		network500->Train(data, answers);
+		
+		network1000 := Network->New(1000);
+		network1000->Train(data, answers);
+		
 #~
-	public void trainAndPredict() {
-		List<List<Integer>> data := new ArrayList<List<Integer>>();
-		data.add(Arrays.asList(115, 66));
-		data.add(Arrays.asList(175, 78));
-		data.add(Arrays.asList(205, 72));
-		data.add(Arrays.asList(120, 67));
-		Vector<FloatRef> answers := Arrays.asList(1.0,0.0,0.0,1.0);	
-
-		Network network500 := new Network(500);
-		network500.train(data, answers);
-
-		Network network1000 := new Network(1000);
-		network1000.train(data, answers);
-
 		System.out.println("");
 		System.out.println(String.format("	male, 167, 73: network500: %.10f | network1000: %.10f", network500.predict(167, 73), network1000.predict(167, 73)));
 		System.out.println(String.format("female, 105, 67: network500: %.10f | network1000: %.10f", network500.predict(105, 67), network1000.predict(105, 67))); 
@@ -28,7 +33,7 @@ class App {
 		System.out.println(String.format("	male, 143, 67: network500: %.10f | network1000: %.10f", network500.predict(143, 67), network1000.predict(120, 72)));
 		System.out.println(String.format(" male', 130, 66: network500: %.10f | network1000: %.10f", network500.predict(130, 66), network1000.predict(130, 66)));
 
-/*
+		/*
 		Network network500learn1 := new Network(500, 2.0);
 		network500learn1.train(data, answers);
 
@@ -41,10 +46,11 @@ class App {
 		System.out.println(String.format("female, 120, 72: network500learn1: %.10f | network1000learn1: %.10f", network500learn1.predict(120, 72), network1000learn1.predict(120, 72))); 
 		System.out.println(String.format("	male, 143, 67: network500learn1: %.10f | network1000learn1: %.10f", network500learn1.predict(143, 67), network1000learn1.predict(120, 72)));
 		System.out.println(String.format(" male', 130, 66: network500learn1: %.10f | network1000learn1: %.10f", network500learn1.predict(130, 66), network1000learn1.predict(130, 66)));
-*/
+		*/
 ~#
+		"Fin."->PrintLine();
 	}
- 
+}
 
 class Network {
 	@epochs : Int; # 1000;
@@ -84,36 +90,41 @@ class Network {
 		);
 	}
 
-#~	
-	public void train(List<List<Integer>> data, Vector<FloatRef> answers){
-		Double bestEpochLoss := null;
-		for (int epoch := 0; epoch < epochs; epoch++){
-			// adapt neuron
-			Neuron epochNeuron := neurons.get(epoch % 6);
-epochNeuron.mutate(@learnFactor);
+	
+	method : public : Train(data : Vector<IntArrayRef>, answers : Vector<FloatRef>) ~ Nil {
+		bestEpochLoss : FloatRef;
 
-Vector<FloatRef> predictions := new ArrayVector<FloatRef>();
-for (int i := 0; i < data.size(); i++){
-				predictions.add(i, @predict(data.get(i).get(0), data.get(i).get(1)));
-}
-			Double thisEpochLoss := Util.meanSquareLoss(answers, predictions);
+		each(epoch : @epochs) {
+			# adapt neuron
+			epochNeuron := @neurons->Get(epoch % 6);
+			epochNeuron->Mutate(@learnFactor);
 
-if (epoch % 10 == 0) System.out.println(String.format("Epoch: %s | bestEpochLoss: %.15f | thisEpochLoss: %.15f", epoch, bestEpochLoss, thisEpochLoss));
+			predictions := Vector->New()<FloatRef>;
+			each(i : data) {
+				array := data->Get(i)->Get();
+				predictions->AddBack(Predict(array[0], array[1]));
+			};
+			thisEpochLoss := Util->MeanSquareLoss(answers, predictions);
 
-if (bestEpochLoss == null){
+			if(epoch % 10 = 0) {
+				# System.out.println(String.format("Epoch: %s | bestEpochLoss: %.15f | thisEpochLoss: %.15f", epoch, bestEpochLoss, thisEpochLoss));
+			};
+
+			if(bestEpochLoss = Nil){
 				bestEpochLoss := thisEpochLoss;
-	epochNeuron.remember();
-} else {
-	if (thisEpochLoss < bestEpochLoss){
-		bestEpochLoss := thisEpochLoss;
-		epochNeuron.remember();
-	} else {
-					epochNeuron.forget();
-				}
-}
-		}
+				epochNeuron->Remember();
+			}
+			else {
+				if(thisEpochLoss < bestEpochLoss->Get()) {
+					bestEpochLoss := thisEpochLoss;
+					epochNeuron->Remember();
+				} 
+				else {
+					epochNeuron->Forget();
+				};
+			};
+		};
 	}
-	~#
 }
 
 
@@ -175,7 +186,7 @@ class Util {
   }
 
   # Assumes array args are same length
-  function : meanSquareLoss(correctAnswers : Vector<FloatRef>, predictedAnswers : Vector<FloatRef>) ~ Float {
+  function : MeanSquareLoss(correctAnswers : Vector<FloatRef>, predictedAnswers : Vector<FloatRef>) ~ Float {
     sumSquare := 0;
     each(i : correctAnswers) {
       error := correctAnswers->Get(i) - predictedAnswers->Get(i);
