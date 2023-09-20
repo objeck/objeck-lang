@@ -1,0 +1,27 @@
+use Collection;
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		data := Vector->New()<Vector<IntRef>>;
+
+		list := Vector->New()<IntRef>; list->AddBack(115); list->AddBack(66);
+		data->AddBack(list);
+
+		list := Vector->New()<IntRef>; list->AddBack(175); list->AddBack(78);
+		data->AddBack(list);
+		
+		list := Vector->New()<IntRef>; list->AddBack(205); list->AddBack(72);
+		data->AddBack(list);
+		
+		list := Vector->New()<IntRef>; list->AddBack(120); list->AddBack(67);
+		data->AddBack(list);
+
+		answers := Vector->New()<FloatRef>;
+		answers->AddBack(1.0); answers->AddBack(0.0);
+		answers->AddBack(0.0); answers->AddBack(1.0);
+
+
+		data->Size()->PrintLine();
+		data->Get(0)->ToString()->PrintLine();
+	}
+}
