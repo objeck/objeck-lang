@@ -42,79 +42,85 @@ class App {
 		System.out.println(String.format("	male, 143, 67: network500learn1: %.10f | network1000learn1: %.10f", network500learn1.predict(143, 67), network1000learn1.predict(120, 72)));
 		System.out.println(String.format(" male', 130, 66: network500learn1: %.10f | network1000learn1: %.10f", network500learn1.predict(130, 66), network1000learn1.predict(130, 66)));
 */
+~#
 	}
  
 
-	class Network {
-		int epochs := 0; //1000;
-		Double learnFactor := null;
-		List<Neuron> neurons := Arrays.asList(
-			new Neuron(), new Neuron(), new Neuron(), 
-			new Neuron(), new Neuron(), 
-			new Neuron());
-		
-		public Network(int epochs){
-			@epochs := epochs;
-		}
-		public Network(int epochs, Double learnFactor) {
-			@epochs := epochs;
-			@learnFactor := learnFactor;
+class Network {
+	@epochs : Int; # 1000;
+	@learnFactor : FloatRef;
+	@neurons : Vector<Neuron>;
+	
+	New(epochs : Int) {
+		@neurons := Vector->New()<Neuron>;
+		each(i : 6) {
+			@neurons->AddBack(Neuron->New());
 		}
 
-		public Double predict(Integer input1, Integer input2){
-			return neurons.get(5).compute(
-				neurons.get(4).compute(
-		neurons.get(2).compute(input1, input2),
-		neurons.get(1).compute(input1, input2)
-	),
-	neurons.get(3).compute(
-		neurons.get(1).compute(input1, input2),
-		neurons.get(0).compute(input1, input2)
-	)
-			);
-		}
-		public void train(List<List<Integer>> data, Vector<FloatRef> answers){
-			Double bestEpochLoss := null;
-			for (int epoch := 0; epoch < epochs; epoch++){
-				// adapt neuron
-				Neuron epochNeuron := neurons.get(epoch % 6);
-	epochNeuron.mutate(@learnFactor);
-
-	Vector<FloatRef> predictions := new ArrayVector<FloatRef>();
-	for (int i := 0; i < data.size(); i++){
-					predictions.add(i, @predict(data.get(i).get(0), data.get(i).get(1)));
+		@epochs := epochs;
 	}
-				Double thisEpochLoss := Util.meanSquareLoss(answers, predictions);
 
-	if (epoch % 10 == 0) System.out.println(String.format("Epoch: %s | bestEpochLoss: %.15f | thisEpochLoss: %.15f", epoch, bestEpochLoss, thisEpochLoss));
+	New(epochs : Int, learnFactor : FloatRef) {
+		@neurons := Vector->New()<Neuron>;
+		each(i : 6) {
+			@neurons->AddBack(Neuron->New());
+		}
 
-	if (bestEpochLoss == null){
-					bestEpochLoss := thisEpochLoss;
+		@epochs := epochs;
+		@learnFactor := learnFactor;
+	}
+
+
+	method : public : Predict(input1 : Int, input2 : Int) ~ FloatRef {
+		return @neurons->Get(5)->Compute(
+			@neurons->Get(4)->Compute(
+				@neurons->Get(2)->Compute(input1, input2),
+				@neurons->Get(1)->Compute(input1, input2)
+			),
+			@neurons->Get(3)->Compute(
+				@neurons->Get(1)->Compute(input1, input2),
+				@neurons->Get(0)->Compute(input1, input2)
+			)
+		);
+	}
+
+#~	
+	public void train(List<List<Integer>> data, Vector<FloatRef> answers){
+		Double bestEpochLoss := null;
+		for (int epoch := 0; epoch < epochs; epoch++){
+			// adapt neuron
+			Neuron epochNeuron := neurons.get(epoch % 6);
+epochNeuron.mutate(@learnFactor);
+
+Vector<FloatRef> predictions := new ArrayVector<FloatRef>();
+for (int i := 0; i < data.size(); i++){
+				predictions.add(i, @predict(data.get(i).get(0), data.get(i).get(1)));
+}
+			Double thisEpochLoss := Util.meanSquareLoss(answers, predictions);
+
+if (epoch % 10 == 0) System.out.println(String.format("Epoch: %s | bestEpochLoss: %.15f | thisEpochLoss: %.15f", epoch, bestEpochLoss, thisEpochLoss));
+
+if (bestEpochLoss == null){
+				bestEpochLoss := thisEpochLoss;
+	epochNeuron.remember();
+} else {
+	if (thisEpochLoss < bestEpochLoss){
+		bestEpochLoss := thisEpochLoss;
 		epochNeuron.remember();
 	} else {
-		if (thisEpochLoss < bestEpochLoss){
-			bestEpochLoss := thisEpochLoss;
-			epochNeuron.remember();
-		} else {
-						epochNeuron.forget();
-					}
-	}
-			}
+					epochNeuron.forget();
+				}
+}
 		}
 	}
-~#
+	~#
 }
 
 
 class Neuron {
-	@oldBias : Float;
-	@bias : Float;
-
-	@oldWeight1 : Float;
-	@weight1 : Float;
-	
-	@oldWeight2 : Float;
-	@weight2 : Float;
+	@oldBias, @bias : Float;
+	@oldWeight1, @weight1 : Float;
+	@oldWeight2, @weight2 : Float;
 
 	New() {
 		@oldBias := Float->Random(-1, 1);
