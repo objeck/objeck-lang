@@ -24,10 +24,9 @@ class App {
 		
 		network1000 := Network->New(1000);
 		network1000->Train(data, answers);
-		
-#~
-		System.out.println("");
-		System.out.println(String.format("	male, 167, 73: network500: %.10f | network1000: %.10f", network500.predict(167, 73), network1000.predict(167, 73)));
+
+		Standard->Print("\n	male, 167, 73: network500: ")->Print(network500->Predict(167, 73)->Get())->Print(" | network1000: ")->PrintLine(network500->Predict(167, 73)->Get());
+#~		
 		System.out.println(String.format("female, 105, 67: network500: %.10f | network1000: %.10f", network500.predict(105, 67), network1000.predict(105, 67))); 
 		System.out.println(String.format("female, 120, 72: network500: %.10f | network1000: %.10f", network500.predict(120, 72), network1000.predict(120, 72))); 
 		System.out.println(String.format("	male, 143, 67: network500: %.10f | network1000: %.10f", network500.predict(143, 67), network1000.predict(120, 72)));
