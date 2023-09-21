@@ -1515,7 +1515,9 @@ if(parser->Parse()) {
 							# process child queries
 							element := children->Get(j);
 							filtered := ProcessExpression(filter, element);
-							all_filtered->AddBack(filtered);
+							each(filter := filtered) {
+								all_filtered->AddBack(filter);
+							};
 						};
 						children := all_filtered;
 					};
