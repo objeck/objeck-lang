@@ -7034,14 +7034,7 @@ Type* ContextAnalyzer::GetExpressionType(Expression* expression, int depth)
 {
   Type* type = nullptr;
 
-  MethodCall* mthd_call;
-  if(expression->GetExpressionType() != METHOD_CALL_EXPR) {
-    mthd_call = expression->GetMethodCall();
-  }
-  else {
-    mthd_call = static_cast<MethodCall*>(expression);
-  }
-
+  MethodCall* mthd_call = expression->GetMethodCall();
   if(expression->GetExpressionType() == METHOD_CALL_EXPR &&
      static_cast<MethodCall*>(expression)->GetCallType() == ENUM_CALL) {
     // favor casts
