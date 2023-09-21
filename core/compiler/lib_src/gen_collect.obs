@@ -2271,23 +2271,6 @@ function : Example() ~ Nil {
 		}
 
 		#~
-		Adds a vector of values to the end of the vector
-		@param values values to append 
-		~#
-		method : public : AddBack(values : Vector<H>) ~ Nil {
-			max := values->Size() + @size;
-			if(max >= @values->Size()) {
-				temp : H[] := H->New[max + max >> 1];
-				Runtime->Copy(temp, 0, @values, 0, @size);
-				@values := temp;
-			};
-			
-			temp := values->ToArray();
-			Runtime->Copy(@values, @size, temp, 0, temp->Size());
-			@size := max;
-		}
-
-		#~
 		Adds a value to the end
 		@param value value to append 
 		~#
@@ -2552,23 +2535,6 @@ function : Show(value : IntRef) ~ Nil {
 				f(@values[i]);
 			};
 			return @self;
-		}
-
-		#~
-		Adds a vector of values to the end of the vector
-		@param values values to append 
-		~#
-		method : public : AddBack(values : Vector<H>) ~ Nil {
-			max := values->Size() + @size;
-			if(max >= @values->Size()) {
-				temp : H[] := H->New[max + max >> 1];
-				Runtime->Copy(temp, 0, @values, 0, @size);
-				@values := temp;
-			};
-			
-			temp := values->ToArray();
-			Runtime->Copy(@values, @size, temp, 0, temp->Size());
-			@size := max;
 		}
 
 		#~
