@@ -9,6 +9,7 @@ make -f make/Makefile.amd64
 
 ./obc -src lib_src/gen_collect.obs -lib ../lib/lang -tar lib -opt s3 -dest ../lib/gen_collect.obl -strict
 ./obc -src lib_src/math.obs -tar lib -opt s3 -dest ../lib/math.obl
+./obc -src lib_src/ml.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/ml.obl
 ./obc -src lib_src/diags.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/diags.obl
 ./obc -src lib_src/misc.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/misc.obl
 ./obc -src lib_src/xml.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/xml.obl
