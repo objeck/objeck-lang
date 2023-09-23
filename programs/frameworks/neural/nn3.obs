@@ -16,7 +16,7 @@ class NeuralNetwork {
 
 	function : native : Brun(left : Bool, right : Bool) ~ Nil {
 		input_nodes := 2;
-		hidden_nodes := 32;
+		hidden_nodes := 64;
 		output_nodes := 1;
 		learning_rate := 0.0125;
 		iterations := 75000;
