@@ -9,15 +9,11 @@ class NeuralNetwork {
 	@weight_outputs_hidden : Float[,];
 
 	function : Main(args : String[]) ~ Nil {
-		Brun();
+		Brun(2, 64, 1, 0.0125, 50000);
 	}
 
-	function : native : Brun() ~ Nil {
-		input_nodes := 2;
-		hidden_nodes := 64;
-		output_nodes := 1;
-		learning_rate := 0.0125;
-		iterations := 75000;
+	function : native : Brun(input_nodes : Int, hidden_nodes : Int, output_nodes : Int, learning_rate : Float, iterations : Int) ~ Nil {
+		network := NeuralNetwork->New(input_nodes, hidden_nodes, output_nodes, learning_rate);
 
 		# ---
 		i0 := [
@@ -61,17 +57,23 @@ class NeuralNetwork {
 
 		# ---
 		i5 := [
-			[225.0]
-			[85.0]];
+			[95.0]
+			[75.0]];
 
 		t5 := [
 			[1.0]];
 
-		network := NeuralNetwork->New(input_nodes, hidden_nodes, output_nodes, learning_rate);
+		# ---
+		i6 := [
+			[225.0]
+			[73.0]];
+
+		t6 := [
+			[0.0]];
 
 		each(i : iterations) {
 			inputs : Float[,]; targets : Float[,];
-			select(i % 5) {
+			select(i % 7) {
 				label 0: {
 					inputs := i0;
 					targets := t0;
@@ -101,6 +103,11 @@ class NeuralNetwork {
 					inputs := i5;
 					targets := t5;
 				}
+
+				label 6:  {
+					inputs := i6;
+					targets := t6;
+				}
 			};
 			
 			network->Train(inputs, targets, learning_rate);
@@ -120,7 +127,7 @@ class NeuralNetwork {
  		in[0,0] := 120.0; in[1,0] := 72.0;
 		network->Evaluate(in)->PrintLine();
 
- 		in[0,0] := 143.0; in[1,0] := 67.0;
+ 		in[0,0] := 143.0; in[1,0] := 68.0;
 		network->Evaluate(in)->PrintLine();
 
  		in[0,0] := 115.0; in[1,0] := 58.0;
@@ -134,13 +141,13 @@ class NeuralNetwork {
 	}
 	
 	New(input_nodes : Float, hidden_nodes : Float, output_nodes : Float, learning_rate : Float) {
-		@input_nodes  := input_nodes;
-		@hidden_nodes  := hidden_nodes;
-		@output_nodes  := output_nodes;
+		@input_nodes := input_nodes;
+		@hidden_nodes := hidden_nodes;
+		@output_nodes := output_nodes;
 		@learning_rate := learning_rate;
 
-		@weight_inputs_hidden := Matrix2D->RandomNormal(-0.5, Float->Pow(@input_nodes, -0.5), @hidden_nodes, @input_nodes);
-		@weight_outputs_hidden := Matrix2D->RandomNormal(-0.5, Float->Pow(@input_nodes, -0.5), @output_nodes, @hidden_nodes);
+		@weight_inputs_hidden := Matrix2D->RandomNormal(0.0, Float->Pow(@input_nodes, -1.0), @hidden_nodes, @input_nodes);
+		@weight_outputs_hidden := Matrix2D->RandomNormal(0.0, Float->Pow(@input_nodes, -1.0), @output_nodes, @hidden_nodes);
 	}
 
 	method : Evaluate(inputs : Float[,]) ~ Bool {
