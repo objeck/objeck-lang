@@ -126,5 +126,17 @@ class NeuralNetwork {
 }
 
 class MatrixReader {
-	New() {}
+	@filename : String;
+
+	New(filename : String) {
+		@filename := filename;
+	}
+
+	method : public : ToMatrix() ~ MatrixRef {
+		return Nil;
+	}
+
+	method : public : SplitMatrix(tain_perc : Float) ~ MatrixRef[] {
+		return Nil;
+	}
 }
