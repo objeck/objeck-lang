@@ -49,8 +49,8 @@ class NeuralNetwork {
 		network->Query(MatrixRef->New([[95.0], [55.0]]))->PrintLine();
 	}
 
-	function : Train(input_nodes : Int, inputs : Vector<MatrixRef>, hidden_nodes : Int, output_nodes : Int, targets : Vector<MatrixRef>, learning_rate : Float, iterations : Int) ~ NeuralNetwork {
-		network := NeuralNetwork->New(input_nodes, hidden_nodes, output_nodes, learning_rate);
+	function : Train(input_nodes : Int, inputs : Vector<MatrixRef>, hidden_factor : Int, output_nodes : Int, targets : Vector<MatrixRef>, learning_rate : Float, iterations : Int) ~ NeuralNetwork {
+		network := NeuralNetwork->New(input_nodes, hidden_factor * input_nodes, output_nodes, learning_rate);
 		network->Train(inputs, targets, learning_rate, iterations);
 		return network;		
 	}
