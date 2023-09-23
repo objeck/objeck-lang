@@ -37,7 +37,7 @@ class NeuralNetwork {
 		targets->AddBack(MatrixRef->New([[0.0]]));
 
 		# test
-		network := Train(2, inputs, 32, 1, targets, 0.0125, 50000);
+		network := Train(2, inputs, 9, 1, targets, 0.0127, 40000);
 		network->SetActivation(0.85, 5);
 
 		network->Query(MatrixRef->New([[167.0], [73.0]]))->PrintLine();
@@ -123,4 +123,8 @@ class NeuralNetwork {
 	method : Adjust(rate : Float, errors : Float[,], outputs : Float[,], inputs : Float[,]) ~ Float[,] {
 		return Matrix2D->Multiple(rate, Matrix2D->Dot(Matrix2D->Multiple(errors, Matrix2D->Multiple(outputs, Matrix2D->Subtract(1.0, outputs))), Matrix2D->Transpose(inputs)));
 	}
+}
+
+class MatrixReader {
+	New() {}
 }
