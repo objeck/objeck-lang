@@ -1,6 +1,10 @@
 use Collection;
 use System.Matrix;
 
+
+# TODO: ml.obs
+# add: (move)Matrix2d, (move)MatrixRef, (add)NeuralNetwork and (add)MatrixReader
+
 class NeuralNetwork {
 	@input_nodes : Float;
 	@hidden_nodes : Float;
@@ -132,7 +136,7 @@ class MatrixReader {
 		@filename := filename;
 	}
 
-	method : public : ToMatrix() ~ MatrixRef {
+	method : public : GetMatrix() ~ MatrixRef {
 		return Nil;
 	}
 
