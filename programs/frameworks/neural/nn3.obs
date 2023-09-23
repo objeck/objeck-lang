@@ -9,12 +9,13 @@ class NeuralNetwork {
 	@weight_inputs_hidden : Float[,];
 	@weight_outputs_hidden : Float[,];
 	@threshold : Float;
+	@attempts : Int;
 
 	function : Main(args : String[]) ~ Nil {
 		# train data weight and height, true female
 		inputs := Vector->New()<MatrixRef>; targets := Vector->New()<MatrixRef>;
-		
-		inputs->AddBack(MatrixRef->New([[115.0][66.0]]));
+
+		inputs->AddBack(MatrixRef->New([[115.0], [66.0]]));
 		targets->AddBack(MatrixRef->New([[1.0]]));
 
 		inputs->AddBack(MatrixRef->New([[175.0], [78.0]]));
@@ -37,7 +38,7 @@ class NeuralNetwork {
 
 		# test
 		network := Train(2, inputs, 32, 1, targets, 0.0125, 50000);
-		network->SetActivation(0.85);
+		network->SetActivation(0.85, 5);
 
 		network->Query(MatrixRef->New([[167.0], [73.0]]))->PrintLine();
 		network->Query(MatrixRef->New([[105.0], [67.0]]))->PrintLine();
@@ -60,19 +61,21 @@ class NeuralNetwork {
 		@output_nodes := output_nodes;
 		@learning_rate := learning_rate;
 		@threshold := 0.80;
+		@attempts := 10;
 
 		@weight_inputs_hidden := Matrix2D->RandomNormal(0.0, Float->Pow(@input_nodes, -1.0), @hidden_nodes, @input_nodes);
 		@weight_outputs_hidden := Matrix2D->RandomNormal(0.0, Float->Pow(@input_nodes, -1.0), @output_nodes, @hidden_nodes);
 	}
 
-	method : public : SetActivation(threshold : Float) ~ Nil {
+	method : public : SetActivation(threshold : Float, attempts : Int) ~ Nil {
 		@threshold := threshold;
+		@attempts := attempts;
 	}
 
 	method : public : Query(inputs : MatrixRef) ~ Bool {
 		# try 10x and fail
 		values :=  inputs->Get();
-		each(i : 10) {
+		each(i : @attempts) {
 			outputs := Query(values);
 
 			if(outputs[0,0] > @threshold) {
