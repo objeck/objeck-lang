@@ -1,3 +1,4 @@
+use Collection;
 use System.Matrix;
 
 class NeuralNetwork {
@@ -15,122 +16,40 @@ class NeuralNetwork {
 	function : native : Brun(input_nodes : Int, hidden_nodes : Int, output_nodes : Int, learning_rate : Float, iterations : Int) ~ Nil {
 		network := NeuralNetwork->New(input_nodes, hidden_nodes, output_nodes, learning_rate);
 
-		# ---
-		i0 := [
-			[115.0]
-			[66.0]];
-		t0 := [
-			[1.0]];
+		# train data weight and height, true female
+		inputs := Vector->New()<MatrixRef>;
+		targets := Vector->New()<MatrixRef>;
+		inputs->AddBack(MatrixRef->New([[115.0][66.0]]));
+		targets->AddBack(MatrixRef->New([[1.0]]));
 
-		# ---
-		i1 := [
-			[175.0]
-			[78.0]];
-		t1 := [
-			[0.0]];
+		inputs->AddBack(MatrixRef->New([[175.0], [78.0]]));
+		targets->AddBack(MatrixRef->New([[0.0]]));
 
-		# ---
-		i2 := [
-			[205.0]
-			[72.0]];
-		t2 :=[
-			[0.0]];
+		inputs->AddBack(MatrixRef->New([[205.0], [72.0]]));
+		targets->AddBack(MatrixRef->New([[0.0]]));
 
-		# ---
-		i3 := [
-			[120.0]
-			[67.0]];
-		t3 := [
-			[1.0]];
+		inputs->AddBack(MatrixRef->New([[120.0], [67.0]]));
+		targets->AddBack(MatrixRef->New([[1.0]]));
 
-		# ---
-		i4 := [
-			[100.0]
-			[58.0]];
-		t4 := [
-			[1.0]];
+		inputs->AddBack(MatrixRef->New([[100.0], [58.0]]));
+		targets->AddBack(MatrixRef->New([[1.0]]));
 
-		# ---
-		i5 := [
-			[95.0]
-			[75.0]];
-		t5 := [
-			[1.0]];
+		inputs->AddBack(MatrixRef->New([[95.0], [75.0]]));
+		targets->AddBack(MatrixRef->New([[1.0]]));
 
-		# ---
-		i6 := [
-			[225.0]
-			[73.0]];
-		t6 := [
-			[0.0]];
+		inputs->AddBack(MatrixRef->New([[225.0], [73.0]]));
+		targets->AddBack(MatrixRef->New([[0.0]]));
 
-		each(i : iterations) {
-			inputs : Float[,]; targets : Float[,];
-			select(i % 7) {
-				label 0: {
-					inputs := i0;
-					targets := t0;
-				}
+		network->Train(inputs, targets, learning_rate, iterations);
 
-				label 1: {
-					inputs := i1;
-					targets := t1;
-				}
-
-				label 2: {
-					inputs := i2;
-					targets := t2;
-				}
-
-				label 3: {
-					inputs := i3;
-					targets := t3;
-				}
-
-				label 4: {
-					inputs := i4;
-					targets := t4;
-				}
-
-				label 5:  {
-					inputs := i5;
-					targets := t5;
-				}
-
-				label 6:  {
-					inputs := i6;
-					targets := t6;
-				}
-			};
-			
-			network->Train(inputs, targets, learning_rate);
-		};
-
-		in := Float->New[2,1];
-		
-		in[0,0] := 167.0; in[1,0] := 73.0;
-		network->Evaluate(in)->PrintLine();
-
-		in[0,0] := 125.0; in[1,0] := 73.0;
-		network->Evaluate(in)->PrintLine();
-
- 		in[0,0] := 105.0; in[1,0] := 67.0;
-		network->Evaluate(in)->PrintLine();
-
- 		in[0,0] := 120.0; in[1,0] := 72.0;
-		network->Evaluate(in)->PrintLine();
-
- 		in[0,0] := 143.0; in[1,0] := 68.0;
-		network->Evaluate(in)->PrintLine();
-
- 		in[0,0] := 115.0; in[1,0] := 58.0;
-		network->Evaluate(in)->PrintLine();
-
-		in[0,0] := 205.0; in[1,0] := 82.0;
-		network->Evaluate(in)->PrintLine();
-
-		in[0,0] := 95.0; in[1,0] := 55.0;
-		network->Evaluate(in)->PrintLine();
+		# test
+		network->Query(MatrixRef->New([[167.0], [73.0]]))->PrintLine();
+		network->Query(MatrixRef->New([[105.0], [67.0]]))->PrintLine();
+		network->Query(MatrixRef->New([[120.0], [72.0]]))->PrintLine();
+		network->Query(MatrixRef->New([[143.0], [68.0]]))->PrintLine();
+		network->Query(MatrixRef->New([[115.0], [58.0]]))->PrintLine();
+		network->Query(MatrixRef->New([[205.0], [82.0]]))->PrintLine();
+		network->Query(MatrixRef->New([[95.0], [55.0]]))->PrintLine();
 	}
 	
 	New(input_nodes : Float, hidden_nodes : Float, output_nodes : Float, learning_rate : Float) {
@@ -143,9 +62,12 @@ class NeuralNetwork {
 		@weight_outputs_hidden := Matrix2D->RandomNormal(0.0, Float->Pow(@input_nodes, -1.0), @output_nodes, @hidden_nodes);
 	}
 
-	method : Evaluate(inputs : Float[,]) ~ Bool {
-		while(true) {
-			outputs := Query(inputs);
+	method : public : Query(inputs : MatrixRef) ~ Bool {
+		# try 10x and fail
+		values :=  inputs->Get();
+		each(i : 10) {
+			outputs := Query(values);
+
 			if(outputs[0,0] > 0.85) {
 				return true;
 			}
@@ -164,19 +86,28 @@ class NeuralNetwork {
 		return Matrix2D->DotSigmoid(@weight_outputs_hidden, hidden_outputs);
 	}
 
-	method : Train(inputs : Float[,], targets : Float[,], rate : Float) ~ Nil {
-		# calculate signals into hidden layer
-	        hidden_outputs := Matrix2D->DotSigmoid(@weight_inputs_hidden, inputs);
-	        # calculate signals into final output layer
-	        final_outputs  := Matrix2D->DotSigmoid(@weight_outputs_hidden, hidden_outputs);
-	        # output layer error is the (target - actual)
-	        output_errors := Matrix2D->Subtract(targets, final_outputs);
-	        # hidden layer error is the output_errors, split by weights, recombined at hidden nodes
-		hidden_errors := Matrix2D->Dot(Matrix2D->Transpose(@weight_outputs_hidden), output_errors);
-		# update the weights for the links between the input and hidden layers
-		@weight_inputs_hidden := Matrix2D->Add(@weight_inputs_hidden, Adjust(rate, hidden_errors, hidden_outputs, inputs));
-		# update the weights for the links between the hidden and output layers
-		@weight_outputs_hidden := Matrix2D->Add(@weight_outputs_hidden, Adjust(rate, output_errors, final_outputs, hidden_outputs));		
+	method : public : Train(inputs : Vector<MatrixRef>, targets : Vector<MatrixRef>, rate : Float, iterations : Int) ~ Nil {
+		if(inputs->Size() = targets->Size()) {
+			each(i : iterations) {
+				each(j : inputs) {
+					input := inputs->Get(j)->Get();
+					target := targets->Get(j)->Get();
+
+					# calculate signals into hidden layer
+					hidden_outputs := Matrix2D->DotSigmoid(@weight_inputs_hidden, input);
+					# calculate signals into final output layer
+					final_outputs  := Matrix2D->DotSigmoid(@weight_outputs_hidden, hidden_outputs);
+					# output layer error is the (target - actual)
+					output_errors := Matrix2D->Subtract(target, final_outputs);
+					# hidden layer error is the output_errors, split by weights, recombined at hidden nodes
+					hidden_errors := Matrix2D->Dot(Matrix2D->Transpose(@weight_outputs_hidden), output_errors);
+					# update the weights for the links between the input and hidden layers
+					@weight_inputs_hidden := Matrix2D->Add(@weight_inputs_hidden, Adjust(rate, hidden_errors, hidden_outputs, input));
+					# update the weights for the links between the hidden and output layers
+					@weight_outputs_hidden := Matrix2D->Add(@weight_outputs_hidden, Adjust(rate, output_errors, final_outputs, hidden_outputs));
+				};
+			};
+		};
 	}
 
 	method : Adjust(rate : Float, errors : Float[,], outputs : Float[,], inputs : Float[,]) ~ Float[,] {
