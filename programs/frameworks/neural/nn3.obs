@@ -16,48 +16,56 @@ class NeuralNetwork {
 
 	function : native : Brun(left : Bool, right : Bool) ~ Nil {
 		input_nodes := 2;
-		hidden_nodes := 2;
+		hidden_nodes := 32;
 		output_nodes := 1;
-		learning_rate := 0.15;
-		iterations := 5000;
+		learning_rate := 0.0125;
+		iterations := 75000;
 
 		# ---
 		i0 := [
-			[0.01]
-			[0.01]];
+			[115.0]
+			[66.0]];
 
 		t0 := [
-			[0.01]];
+			[1.0]];
 
 		# ---
 		i1 := [
-			[0.99]
-			[0.99]];
+			[175.0]
+			[78.0]];
 
 		t1 := [
-			[0.99]];
+			[0.0]];
 
 		# ---
 		i2 := [
-			[0.99]
-			[0.01]];
+			[205.0]
+			[72.0]];
 
 		t2 :=[
-			[0.01]];
+			[0.0]];
 
 		# ---
 		i3 := [
-			[0.01]
-			[0.99]];
+			[120.0]
+			[67.0]];
 
 		t3 := [
-			[0.01]];
+			[1.0]];
+
+		# ---
+		i4 := [
+			[100.0]
+			[58.0]];
+
+		t4 := [
+			[1.0]];
 
 		network := NeuralNetwork->New(input_nodes, hidden_nodes, output_nodes, learning_rate);
 
 		each(i : iterations) {
-			inputs : Float[,];	targets : Float[,];
-			select(i % 4) {
+			inputs : Float[,]; targets : Float[,];
+			select(i % 5) {
 				label 0: {
 					inputs := i0;
 					targets := t0;
@@ -77,18 +85,41 @@ class NeuralNetwork {
 					inputs := i3;
 					targets := t3;
 				}
+
+				label 4: {
+					inputs := i4;
+					targets := t4;
+				}
 			};
 			
 			network->Train(inputs, targets, learning_rate);
 		};
 
 		in := Float->New[2,1];
-		in[0,0] := left ? 0.99 :0.01;
-		in[1,0] := right ? 0.99 :0.01;
 		
+		in[0,0] := 167.0; in[1,0] := 73.0;
 		out := network->Query(in);
-		
- 		Matrix2D->Divide(out, 0.5)->ToString()->Print();
+ 		Matrix2D->Divide(out, 1.0)->ToString()->Print();
+
+ 		in[0,0] := 120.0; in[1,0] := 72.0;
+		out := network->Query(in);
+ 		Matrix2D->Divide(out, 1.0)->ToString()->Print();
+
+ 		in[0,0] := 105.0; in[1,0] := 67.0;
+		out := network->Query(in);
+ 		Matrix2D->Divide(out, 1.0)->ToString()->Print();
+
+ 		in[0,0] := 120.0; in[1,0] := 72.0;
+		out := network->Query(in);
+ 		Matrix2D->Divide(out, 1.0)->ToString()->Print();
+
+ 		in[0,0] := 143.0; in[1,0] := 67.0;
+		out := network->Query(in);
+ 		Matrix2D->Divide(out, 1.0)->ToString()->Print();
+
+ 		in[0,0] := 120.0; in[1,0] := 72.0;
+		out := network->Query(in);
+ 		Matrix2D->Divide(out, 1.0)->ToString()->Print();
 	}
 	
 	New(input_nodes : Float, hidden_nodes : Float, output_nodes : Float, learning_rate : Float) {
@@ -97,8 +128,8 @@ class NeuralNetwork {
 		@output_nodes  := output_nodes;
 		@learning_rate := learning_rate;
 
-		@weight_inputs_hidden := Matrix2D->RandomNormal(0.01, Float->Pow(@input_nodes, -0.5), @hidden_nodes, @input_nodes);
-		@weight_outputs_hidden := Matrix2D->RandomNormal(0.01, Float->Pow(@input_nodes, -0.5), @output_nodes, @hidden_nodes);
+		@weight_inputs_hidden := Matrix2D->RandomNormal(-0.5, Float->Pow(@input_nodes, -0.5), @hidden_nodes, @input_nodes);
+		@weight_outputs_hidden := Matrix2D->RandomNormal(-0.5, Float->Pow(@input_nodes, -0.5), @output_nodes, @hidden_nodes);
 	}
 
 	method : Query(inputs : Float[,]) ~ Float[,] {
@@ -127,7 +158,7 @@ class NeuralNetwork {
 	}
 
 	method : Adjust(rate : Float, errors : Float[,], outputs : Float[,], inputs : Float[,]) ~ Float[,] {
-		return Matrix2D->Multiple(rate, Matrix2D->Dot(Matrix2D->Multiple(errors, Matrix2D->Multiple(outputs, Matrix2D->Subtract(0.99, outputs))), Matrix2D->Transpose(inputs)));
+		return Matrix2D->Multiple(rate, Matrix2D->Dot(Matrix2D->Multiple(errors, Matrix2D->Multiple(outputs, Matrix2D->Subtract(1.0, outputs))), Matrix2D->Transpose(inputs)));
 	}
 
 	function : DebugMeta(a : Float[,], b : Float[,]) ~ Nil {
