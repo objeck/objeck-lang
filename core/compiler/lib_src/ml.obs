@@ -1,6 +1,9 @@
 #~
 Provides support for machine learning
 ~#
+
+use Collection;
+
 bundle System.Matrix {
 	#~
 	Encapsulates 2D matrix operations
