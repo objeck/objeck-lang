@@ -3,19 +3,21 @@ use System.Matrix;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		reader := MatrixReader->New("test.csv");
-		inputs_outputs := reader->LoadMatrices(1);
+		inputs_targets := MatrixReader->SplitMatrices("test.csv", 1, 0.8);
+		if(inputs_targets <> Nil) {
+			inputs := inputs_targets[0]; 
+			targets := inputs_targets[1];
 
-		inputs := inputs_outputs[0];
-		inputs->Get()->Size()->PrintLine();
+			# train
+			network := NeuralNetwork->Train(2, inputs, 9, 1, targets, 0.0127, 40000);
+			network->SetActivation(0.85, 5);
 
-		outputs := inputs_outputs[1];
-		outputs->Get()->Size()->PrintLine();
-#~		
-		each(input := inputs) {
-			input->ToString()->PrintLine();
+			# test
+			tests := targets := inputs_targets[2];
+			each(test := tests) {
+				input := test->Get();
+				network->Query(MatrixRef->New(input))->PrintLine();
+			};
 		};
-		NeuralNetwork->Train(2, inputs, 10, 2, targets : Vector<MatrixRef>, learning_rate : Float, iterations : Int) ~ NeuralNetwork {)
-~#			
 	}
 }
