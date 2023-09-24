@@ -3,6 +3,7 @@ Provides support for machine learning
 ~#
 
 use Collection;
+use Data.CSV;
 
 bundle System.Matrix {
 	#~
@@ -622,6 +623,16 @@ bundle System.Matrix {
 		@threshold : Float;
 		@attempts : Int;
 
+		#~
+		Trains the network
+		@param input_nodes number of input nodes
+		@param inputs : training inputs
+		@param hidden_factor size of hidden layer, factor of input (i.e. input_nodes * hidden_factor)
+		@param output_nodes training outputs
+		@param targets training targets
+		@param learning_rate learning rate
+		@param iterations number of training iterations
+		~#
 		function : Train(input_nodes : Int, inputs : Vector<MatrixRef>, hidden_factor : Int, output_nodes : Int, targets : Vector<MatrixRef>, learning_rate : Float, iterations : Int) ~ NeuralNetwork {
 			network := NeuralNetwork->New(input_nodes, hidden_factor * input_nodes, output_nodes, learning_rate);
 			network->Train(inputs, targets, learning_rate, iterations);
@@ -640,11 +651,19 @@ bundle System.Matrix {
 			@weight_outputs_hidden := Matrix2D->RandomNormal(0.0, Float->Pow(@input_nodes, -1.0), @output_nodes, @hidden_nodes);
 		}
 
+		#~
+		Sets the activation threshold. Activation if output > threshold or < 1.0 - threshold
+		@param threshold activation threshold default is 0.85
+		~#
 		method : public : SetActivation(threshold : Float, attempts : Int) ~ Nil {
 			@threshold := threshold;
 			@attempts := attempts;
 		}
 
+		#~
+		Query the network
+		@return true if activated, false otherwise
+		~#
 		method : public : Query(inputs : MatrixRef) ~ Bool {
 			# try 10x and fail
 			values :=  inputs->Get();
@@ -699,20 +718,53 @@ bundle System.Matrix {
 	}
 
 	#~
-	Utilities to import CSV files
+	Utilities for reading data from CSV files
 	~#
 	class MatrixReader {
 		@filename : String;
 
+		#~
+		Constructor
+		@param filename filename
+		~#
 		New(filename : String) {
 			@filename := filename;
 		}
 
-		method : public : GetMatrix() ~ MatrixRef {
-			return Nil;
-		}
+		#~
+		Converts CSV data into a matrix
+		@return matrix
+		~#
+		method : public : LoadMatrices(offset : Int) ~ MatrixRef[] {
+			table := CsvTable->New(System.IO.Filesystem.FileReader->ReadFile(@filename));
 
-		method : public : SplitMatrix(tain_perc : Float) ~ MatrixRef[] {
+			if(table <> Nil & table->Size() > 0) {
+				each(row := table) {
+					input_length := row->Size() - offset;
+					output_length := row->Size() - input_length;
+
+					if(input_length > 0) {
+						inputs := Float->New[1, input_length];
+						outputs := Float->New[1, output_length];
+
+						each(i : input_length) {
+							inputs[0, i] := row->Get(i)->ToFloat();
+						};
+
+						output_index := 0;
+						for(i := input_length; i < row->Size(); i += 1;) {
+							outputs[0, output_index] := row->Get(i)->ToFloat();
+						}
+
+						inputs_outputs := MatrixRef->New[2];
+						inputs_outputs[0] := MatrixRef->New(inputs);
+						inputs_outputs[1] := MatrixRef->New(outputs);
+
+						return inputs_outputs;
+					};
+				};
+			};
+
 			return Nil;
 		}
 	}
