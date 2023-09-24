@@ -665,7 +665,7 @@ bundle System.Matrix {
 		@return true if activated, false otherwise
 		~#
 		method : public : Query(inputs : MatrixRef) ~ Bool {
-			# try 10x and fail
+			# try and fail is unsuccessful
 			values :=  inputs->Get();
 			each(i : @attempts) {
 				outputs := Query(values);
@@ -721,48 +721,109 @@ bundle System.Matrix {
 	Utilities for reading data from CSV files
 	~#
 	class MatrixReader {
-		@filename : String;
-
 		#~
-		Constructor
+		Load input and output data into matrices
 		@param filename filename
+		@param output_offset index of first column with output data
+		@return input and output matrix data
 		~#
-		New(filename : String) {
-			@filename := filename;
+		function : public : LoadMatrices(filename : String, target_offset : Int) ~ Vector[]<MatrixRef> {
+			table := CsvTable->New(System.IO.Filesystem.FileReader->ReadFile(filename));
+			if(table <> Nil & table->Size() > 0) {
+				inputs := Vector->New()<MatrixRef>;
+				targets := Vector->New()<MatrixRef>;
+
+				each(row := table) {
+					input_length := row->Size() - target_offset;
+					target_length := row->Size() - input_length;
+					if(input_length < 0) {
+						return Nil;
+					};
+
+					input_array := Float->New[input_length, 1];
+					target_array := Float->New[target_length, 1];
+
+					each(i : input_length) {
+						input_array[i, 0] := row->Get(i)->ToFloat();
+					};
+
+					target_index := 0;
+					for(i := input_length; i < row->Size(); i += 1;) {
+						target_array[target_index, 0] := row->Get(i)->ToFloat();
+					};
+
+					inputs->AddBack(MatrixRef->New(input_array));
+					targets->AddBack(MatrixRef->New(target_array));
+				};
+
+				input_targets := Vector->New[2]<MatrixRef>;
+				input_targets[0] := inputs;
+				input_targets[1] := targets;
+
+				return input_targets;
+			};
+
+			return Nil;
 		}
 
 		#~
-		Converts CSV data into a matrix
-		@return matrix
+		Load input and output data into matrices
+		@param output_offset index of first column with output data
+		@return input and output matrix data
 		~#
-		method : public : LoadMatrices(offset : Int) ~ MatrixRef[] {
-			table := CsvTable->New(System.IO.Filesystem.FileReader->ReadFile(@filename));
-
+		function : public : SplitMatrices(filename : String, target_offset : Int, training_perc : Float) ~ Vector[]<MatrixRef> {
+			table := CsvTable->New(System.IO.Filesystem.FileReader->ReadFile(filename));
 			if(table <> Nil & table->Size() > 0) {
-				each(row := table) {
-					input_length := row->Size() - offset;
-					output_length := row->Size() - input_length;
-
-					if(input_length > 0) {
-						inputs := Float->New[1, input_length];
-						outputs := Float->New[1, output_length];
-
-						each(i : input_length) {
-							inputs[0, i] := row->Get(i)->ToFloat();
-						};
-
-						output_index := 0;
-						for(i := input_length; i < row->Size(); i += 1;) {
-							outputs[0, output_index] := row->Get(i)->ToFloat();
-						}
-
-						inputs_outputs := MatrixRef->New[2];
-						inputs_outputs[0] := MatrixRef->New(inputs);
-						inputs_outputs[1] := MatrixRef->New(outputs);
-
-						return inputs_outputs;
-					};
+				train_count := (table->Size()->As(Float) * training_perc)->As(Int);
+				if(train_count < 1) {
+					return Nil;
 				};
+
+				training_inputs := Vector->New()<MatrixRef>;
+				training_targets := Vector->New()<MatrixRef>;
+
+				test_inputs := Vector->New()<MatrixRef>;
+				test_targets := Vector->New()<MatrixRef>;
+
+				count := 0;
+				each(row := table) {
+					input_length := row->Size() - target_offset;
+					target_length := row->Size() - input_length;
+					if(input_length < 0) {
+						return Nil;
+					};
+					
+					input_array := Float->New[input_length, 1];
+					target_array := Float->New[target_length, 1];
+
+					each(i : input_length) {
+						input_array[i, 0] := row->Get(i)->ToFloat();
+					};
+
+					target_count := 0;
+					for(i := input_length; i < row->Size(); i += 1;) {
+						target_array[target_count, 0] := row->Get(i)->ToFloat();
+					};
+
+					if(count < train_count) {
+						training_inputs->AddBack(MatrixRef->New(input_array));
+						training_targets->AddBack(MatrixRef->New(target_array));
+					}
+					else {
+						test_inputs->AddBack(MatrixRef->New(input_array));
+						test_targets->AddBack(MatrixRef->New(target_array));
+					};
+
+					count += 1;
+				};
+
+				input_training_targets := Vector->New[4]<MatrixRef>;
+				input_training_targets[0] := training_inputs;
+				input_training_targets[1] := training_targets;
+				input_training_targets[2] := test_inputs;
+				input_training_targets[3] := test_targets;
+
+				return input_training_targets;
 			};
 
 			return Nil;
