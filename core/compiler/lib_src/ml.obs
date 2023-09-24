@@ -718,7 +718,7 @@ bundle System.Matrix {
 	}
 
 	#~
-	Utilities for reading data from CSV files
+	Utilities for reading data from CSV data sources 
 	~#
 	class MatrixReader {
 		#~
