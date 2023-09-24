@@ -1141,7 +1141,7 @@ bundle System {
 				return 0;
 			};
 
-			return (Float->Random() * 10000000.0)->As(Int) % max;
+			return (Float->Random() * 1000000000.0)->As(Int) % max;
 		}
 
 		#~
