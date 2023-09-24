@@ -10,7 +10,6 @@ class Test {
 
 			# train
 			network := NeuralNetwork->Train(2, inputs, 9, 1, targets, 0.0126, 2750);
-			network->SetActivation(0.85, 5);
 
 			# test
 			tests := targets := inputs_targets[2];
