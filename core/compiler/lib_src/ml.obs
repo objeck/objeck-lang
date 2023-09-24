@@ -769,7 +769,7 @@ bundle System.Matrix {
 		#~
 		Load input and output data into split matrices for training and testing
 		@param output_offset index of first column with output data
-		@return split matrices for training and testing, first two matrices are training, latter test
+		@return split matrices for training and testing, first two matrices are training, latter two test
 		~#
 		function : public : SplitMatrices(filename : String, target_offset : Int, training_perc : Float) ~ Vector[]<MatrixRef> {
 			table := CsvTable->New(System.IO.Filesystem.FileReader->ReadFile(filename));
