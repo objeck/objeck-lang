@@ -681,6 +681,15 @@ bundle System.Matrix {
 			return false;
 		}
 
+		#~
+		Query the network confidence
+		@return confidence percentage
+		~#
+		method : public : Confidence(inputs : MatrixRef) ~ Float {
+			outputs := Query(inputs->Get());
+			return outputs[0,0];
+		}
+
 		method : Query(inputs : Float[,]) ~ Float[,] {
 			# calculate signals into hidden layer
 			hidden_outputs := Matrix2D->DotSigmoid(@weight_inputs_hidden, inputs);
