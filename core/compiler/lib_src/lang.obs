@@ -1123,7 +1123,7 @@ bundle System {
 		@return pseudo random value
 		~#
 		function : Random(range_start : Int, range_end : Int) ~ Int {
-			if(range_start < range_end) {
+			if(range_start >= range_end) {
 				return 0;
 			};
 				
@@ -1964,7 +1964,7 @@ bundle System {
 		@return pseudo random value
 		~#
 		function : Random(range_start : Float, range_end : Float) ~ Float {
-			if(range_start < range_end) {
+			if(range_start >= range_end) {
         return 0;
       };
 			
