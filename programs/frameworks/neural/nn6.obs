@@ -1,0 +1,21 @@
+use Collection;
+use System.Matrix;
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		reader := MatrixReader->New("test.csv");
+		inputs_outputs := reader->LoadMatrices(1);
+
+		inputs := inputs_outputs[0];
+		inputs->Get()->Size()->PrintLine();
+
+		outputs := inputs_outputs[1];
+		outputs->Get()->Size()->PrintLine();
+#~		
+		each(input := inputs) {
+			input->ToString()->PrintLine();
+		};
+		NeuralNetwork->Train(2, inputs, 10, 2, targets : Vector<MatrixRef>, learning_rate : Float, iterations : Int) ~ NeuralNetwork {)
+~#			
+	}
+}
