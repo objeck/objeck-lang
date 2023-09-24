@@ -6,12 +6,17 @@ class Test {
 		inputs_targets := MatrixReader->SplitMatrices("test.csv", 1, 0.8);
 		if(inputs_targets <> Nil) {
 			# train
-			network := NeuralNetwork->Train(2, inputs_targets[0], 12, 1, inputs_targets[1], 0.0175, 1000);
+			network := NeuralNetwork->Train(2, inputs_targets[0], 64, 1, inputs_targets[1], 0.0125, 500);
 
 			# test
 			tests := targets := inputs_targets[2];
-			each(test := tests) {
-				network->Query(MatrixRef->New(test->Get()))->PrintLine();
+			answers := targets := inputs_targets[3];
+			each(i : tests) {
+				test := tests->Get(i);
+				answer := answers->Get(i);
+
+				predict := network->Query(MatrixRef->New(test->Get()));
+				"{$predict},{$answer}"->PrintLine();
 			};
 		};
 	}
