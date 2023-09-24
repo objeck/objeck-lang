@@ -6,7 +6,7 @@ class Test {
 		inputs_targets := MatrixReader->SplitMatrices("test.csv", 1, 0.8);
 		if(inputs_targets <> Nil) {
 			# train
-			network := NeuralNetwork->Train(2, inputs_targets[0], 9, 1, inputs_targets[1], 0.0127, 5000);
+			network := NeuralNetwork->Train(2, inputs_targets[0], 16, 1, inputs_targets[1], 0.00835, 5000);
 
 			# test
 			tests := targets := inputs_targets[2];
