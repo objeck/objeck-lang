@@ -9,13 +9,12 @@ class Test {
 			targets := inputs_targets[1];
 
 			# train
-			network := NeuralNetwork->Train(2, inputs, 9, 1, targets, 0.0126, 2750);
+			network := NeuralNetwork->Train(2, inputs, 9, 1, targets, 0.0126, 5000);
 
 			# test
 			tests := targets := inputs_targets[2];
 			each(test := tests) {
-				input := test->Get();
-				network->Query(MatrixRef->New(input))->PrintLine();
+				network->Query(MatrixRef->New(test->Get()))->PrintLine();
 			};
 		};
 	}
