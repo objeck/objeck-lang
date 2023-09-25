@@ -3,28 +3,30 @@ use System.Matrix;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		inputs_targets := MatrixReader->SplitMatrices("test.csv", 1, 0.8);
-		if(inputs_targets <> Nil) {
-			# train
-			network := NeuralNetwork->Train(2, inputs_targets[0], 8, 1, inputs_targets[1], 0.0125, 250);
+		if(args->Size() = 1) {
+			inputs_targets := MatrixReader->SplitMatrices(args[0], 1, 0.8);
+			if(inputs_targets <> Nil) {
+				# train
+				network := NeuralNetwork->Train(2, inputs_targets[0], 8, 1, inputs_targets[1], 0.0125, 250);
 
-			# test
-			tests := targets := inputs_targets[2];
-			answers := targets := inputs_targets[3];
+				# test
+				tests := targets := inputs_targets[2];
+				answers := targets := inputs_targets[3];
 
-			failures := 0;
-			each(i : tests) {
-				test := tests->Get(i);
-				
-				answer := answers->Get(i)->ToBool();
-				predict := network->Query(MatrixRef->New(test->Get()));
-				if(predict <> answer) {
-					failures += 1;
+				failures := 0;
+				each(i : tests) {
+					test := tests->Get(i);
+					
+					answer := answers->Get(i)->ToBool();
+					predict := network->Query(MatrixRef->New(test->Get()));
+					if(predict <> answer) {
+						failures += 1;
+					};
 				};
-			};
 
-			correct := 100.0 * (1.0 - failures->As(Float) / tests->Size()->As(Float));
-			"% correct => {$correct}"->PrintLine();
+				correct := 100.0 * (1.0 - failures->As(Float) / tests->Size()->As(Float));
+				"% correct => {$correct}"->PrintLine();
+			};
 		};
 	}
 }
