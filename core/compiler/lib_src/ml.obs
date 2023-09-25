@@ -592,6 +592,15 @@ bundle System.Matrix {
 		method : public : Get() ~ Float[,] {
 			return @value;
 		}
+
+		method : GetBoolen() ~ Bool {
+			dim := @value->Size();
+			if(dim->Size() = 2 & dim[0] = 1 & dim[1] = 1) {
+				return @value[0,0] = 1.0;
+			}
+			
+			return false;
+		}
 		
 		#~
 		Set boolean value
@@ -600,7 +609,7 @@ bundle System.Matrix {
 		method : public : Set(value : Float[,]) ~ Nil {
 			@value := value;
 		}
-		
+
 		#~
 		Formats the matrix into a string
 		@return string value
