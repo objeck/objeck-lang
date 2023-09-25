@@ -7,7 +7,7 @@ class Test {
 			inputs_targets := MatrixReader->SplitMatrices(args[0], 1, 0.8); # 20% test data
 			if(inputs_targets <> Nil) {
 				# train
-				network := NeuralNetwork->Train(2, inputs_targets[0], 8, 1, inputs_targets[1], 0.0125, 250);
+				network := NeuralNetwork->Train(2, inputs_targets[0], 8, 1, inputs_targets[1], 0.0125, 256);
 				# TODO: save model
 				# network->Save("foo.csv")
 
