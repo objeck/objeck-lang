@@ -3,31 +3,28 @@ use System.Matrix;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		matrix := MatrixRef->New([[13.5]]);
-		values := matrix->Get();
-
-		dim := values->Size();
-		if(dim->Size() = 2 & dim[0] = 1 & dim[1] = 1) {
-			values[0,0]->PrintLine();
-		};
-
-#~		
 		inputs_targets := MatrixReader->SplitMatrices("test.csv", 1, 0.8);
 		if(inputs_targets <> Nil) {
 			# train
-			network := NeuralNetwork->Train(2, inputs_targets[0], 64, 1, inputs_targets[1], 0.0125, 500);
+			network := NeuralNetwork->Train(2, inputs_targets[0], 8, 1, inputs_targets[1], 0.0125, 250);
 
 			# test
 			tests := targets := inputs_targets[2];
 			answers := targets := inputs_targets[3];
+
+			failures := 0;
 			each(i : tests) {
 				test := tests->Get(i);
-				answer := answers->Get(i);
-
+				
+				answer := answers->Get(i)->ToBool();
 				predict := network->Query(MatrixRef->New(test->Get()));
-				"{$predict},{$answer}"->PrintLine();
+				if(predict <> answer) {
+					failures += 1;
+				};
 			};
+
+			correct := 100.0 * (1.0 - failures->As(Float) / tests->Size()->As(Float));
+			"% correct => {$correct}"->PrintLine();
 		};
-~#		
 	}
 }
