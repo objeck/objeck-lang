@@ -8,6 +8,8 @@ class Test {
 			if(inputs_targets <> Nil) {
 				# train
 				network := NeuralNetwork->Train(2, inputs_targets[0], 8, 1, inputs_targets[1], 0.0125, 250);
+				# TODO: save model
+				# network->Save("foo.csv")
 
 				# test
 				tests := targets := inputs_targets[2];
