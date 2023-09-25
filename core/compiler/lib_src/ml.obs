@@ -631,7 +631,7 @@ bundle System.Matrix {
 		@return integer value
 		~#
 		method : public : ToInt() ~ Int {
-			return Float->Round(ToFloat())->As(Int);
+			return Float->Round(ToFloat());
 		}
 
 		#~
