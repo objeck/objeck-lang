@@ -654,7 +654,7 @@ bundle System.Matrix {
 	```
 network : NeuralNetwork;
 filename := "data/model.dat";
-inputs_targets := MatrixReader->SplitMatrices(args[0], 1, 0.8); # 20% test data
+inputs_targets := MatrixReader->LoadSplitMatrices(args[0], 1, 0.8); # 20% test data
 
 # load model
 if(args->Size() = 2) {
@@ -964,7 +964,7 @@ System.IO.Standard->Print("tests: ")->Print(tests->Size())->Print(", correct: ")
 		@param training_perc percentage of data used for training
 		@return split matrices for training and testing, first two matrices are training, latter two test
 		~#
-		function : public : SplitMatrices(filename : String, target_offset : Int, training_perc : Float) ~ Vector[]<MatrixRef> {
+		function : public : LoadSplitMatrices(filename : String, target_offset : Int, training_perc : Float) ~ Vector[]<MatrixRef> {
 			table := CsvTable->New(System.IO.Filesystem.FileReader->ReadFile(filename));
 			if(table <> Nil & table->Size() > 0) {
 				train_count := (table->Size()->As(Float) * training_perc)->As(Int);
