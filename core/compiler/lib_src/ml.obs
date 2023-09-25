@@ -619,15 +619,15 @@ bundle System.Matrix {
 		}
 
 		#~
-		Parsers integer value
-		@return integer value
+		Parsers a boolean value
+		@return boolean value
 		~#
 		method : public : ToBool() ~ Bool {
 			return ToInt() <> 0;
 		}
-		
+
 		#~
-		Parsers integer value
+		Parsers an integer value
 		@return integer value
 		~#
 		method : public : ToInt() ~ Int {
@@ -635,7 +635,7 @@ bundle System.Matrix {
 		}
 
 		#~
-		Parsers decimal value
+		Parsers a decimal value
 		@return decimal value
 		~#
 		method : public : ToFloat() ~ Float {
