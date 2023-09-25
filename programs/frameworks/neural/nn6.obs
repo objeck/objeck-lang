@@ -3,6 +3,15 @@ use System.Matrix;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
+		matrix := MatrixRef->New([[13.5]]);
+		values := matrix->Get();
+
+		dim := values->Size();
+		if(dim->Size() = 2 & dim[0] = 1 & dim[1] = 1) {
+			values[0,0]->PrintLine();
+		};
+
+#~		
 		inputs_targets := MatrixReader->SplitMatrices("test.csv", 1, 0.8);
 		if(inputs_targets <> Nil) {
 			# train
@@ -19,5 +28,6 @@ class Test {
 				"{$predict},{$answer}"->PrintLine();
 			};
 		};
+~#		
 	}
 }

@@ -617,6 +617,35 @@ bundle System.Matrix {
 		method : public : ToString() ~ String {
 			return @value->ToString();
 		}
+
+		#~
+		Parsers integer value
+		@return integer value
+		~#
+		method : public : ToBool() ~ Bool {
+			return ToInt() <> 0;
+		}
+		
+		#~
+		Parsers integer value
+		@return integer value
+		~#
+		method : public : ToInt() ~ Int {
+			return Float->Round(ToFloat())->As(Int);
+		}
+
+		#~
+		Parsers decimal value
+		@return decimal value
+		~#
+		method : public : ToFloat() ~ Float {
+			dim := @value->Size();
+			if(dim->Size() = 2 & dim[0] = 1 & dim[1] = 1) {
+				return @value[0,0];;
+			};
+
+			return 0.0;
+		}
 	}
 
 	#~
