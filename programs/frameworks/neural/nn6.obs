@@ -4,7 +4,7 @@ use System.Matrix;
 class Test {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
-			inputs_targets := MatrixReader->SplitMatrices(args[0], 1, 0.8);
+			inputs_targets := MatrixReader->SplitMatrices(args[0], 1, 0.8); # 20% test data
 			if(inputs_targets <> Nil) {
 				# train
 				network := NeuralNetwork->Train(2, inputs_targets[0], 8, 1, inputs_targets[1], 0.0125, 250);
@@ -25,7 +25,7 @@ class Test {
 				};
 
 				correct := 100.0 * (1.0 - failures->As(Float) / tests->Size()->As(Float));
-				"% correct => {$correct}"->PrintLine();
+				System.IO.Standard->Print("correct => ")->SetFloatPrecision(5)->Print(correct)->PrintLine("%");
 			};
 		};
 	}
