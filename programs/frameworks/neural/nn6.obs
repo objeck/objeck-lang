@@ -4,12 +4,13 @@ use System.Matrix;
 class Test {
 	function : Main(args : String[]) ~ Nil {
 		network : NeuralNetwork;
+		filename := "data/model.dat";
 		inputs_targets := MatrixReader->SplitMatrices(args[0], 1, 0.8); # 20% test data
 
 		# load model
 		if(args->Size() = 2) {
 			"Loading model..."->PrintLine();
-			network := NeuralNetwork->Load("data/model.dat");
+			network := NeuralNetwork->Load(filename);
 		}
 		# tain and store model
 		else if(args->Size() = 1) {
@@ -17,7 +18,7 @@ class Test {
 			network := NeuralNetwork->Train(2, inputs_targets[0], 8, 1, inputs_targets[1], 0.01725, 256);
 			if(inputs_targets <> Nil) {
 				"Storing model..."->PrintLine();
-				network->Store("data/model.dat");
+				network->Store(filename);
 			};
 		}
 
