@@ -650,6 +650,44 @@ bundle System.Matrix {
 	#~
 	Simple neural network. Input values should be scaled to between 0.0 to 1.0. 
 	The tuned network should return outputs between 0.0 to 1.0.
+
+	```
+network : NeuralNetwork;
+filename := "data/model.dat";
+inputs_targets := MatrixReader->SplitMatrices(args[0], 1, 0.8); # 20% test data
+
+# load model
+if(args->Size() = 2) {
+   "Loading model..."->PrintLine();
+   network := NeuralNetwork->Load(filename);
+}
+# train and store model
+else if(args->Size() = 1) {
+   "Training model..."->PrintLine();
+   network := NeuralNetwork->Train(2, inputs_targets[0], 8, 1, inputs_targets[1], 0.01725, 256);
+   if(inputs_targets <> Nil) {
+      "Storing model..."->PrintLine();
+      network->Store(filename);
+   };
+}
+
+# test model
+"Testing model..."->PrintLine();
+tests := inputs_targets[2];
+answers := inputs_targets[3];
+
+failures := 0;
+each(i : answers) {
+   answer := answers->Get(i)->ToBool();
+   predict := network->Query(MatrixRef->New(tests->Get(i)->Get()));
+   if(predict <> answer) {
+      failures += 1;
+   };
+};
+
+correct := 100.0 * (1.0 - failures->As(Float) / tests->Size()->As(Float));
+System.IO.Standard->Print("tests: ")->Print(tests->Size())->Print(", correct: ")->SetFloatPrecision(5)->Print(correct)->PrintLine("%");
+	```
 	~#
 	class NeuralNetwork {
 		@input_nodes : Float;
@@ -685,7 +723,7 @@ bundle System.Matrix {
 			
 			@threshold := 0.80;
 			@attempts := 10;
-			
+
 			@weight_inputs_hidden := Matrix2D->RandomNormal(0.0, Float->Pow(@input_nodes, -1.0), @hidden_nodes, @input_nodes);
 			@weight_outputs_hidden := Matrix2D->RandomNormal(0.0, Float->Pow(@input_nodes, -1.0), @output_nodes, @hidden_nodes);
 		}
