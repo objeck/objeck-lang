@@ -5,7 +5,7 @@ class Test {
 	function : Main(args : String[]) ~ Nil {
 		network : NeuralNetwork;
 		filename := "data/model.dat";
-		inputs_targets := MatrixReader->SplitMatrices(args[0], 1, 0.8); # 20% test data
+		inputs_targets := MatrixReader->LoadSplitMatrices(args[0], 1, 0.8); # 20% test data
 
 		# load model
 		if(args->Size() = 2) {
