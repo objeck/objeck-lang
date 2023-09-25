@@ -15,10 +15,8 @@ class Test {
 
 				failures := 0;
 				each(i : tests) {
-					test := tests->Get(i);
-					
 					answer := answers->Get(i)->ToBool();
-					predict := network->Query(MatrixRef->New(test->Get()));
+					predict := network->Query(MatrixRef->New(tests->Get(i)->Get()));
 					if(predict <> answer) {
 						failures += 1;
 					};
