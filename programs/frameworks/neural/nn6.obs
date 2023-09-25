@@ -3,31 +3,39 @@ use System.Matrix;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		if(args->Size() = 1) {
-			# data: data/test.csv
-			inputs_targets := MatrixReader->SplitMatrices(args[0], 1, 0.8); # 20% test data
+		network : NeuralNetwork;
+		inputs_targets := MatrixReader->SplitMatrices(args[0], 1, 0.8); # 20% test data
+
+		# load model
+		if(args->Size() = 2) {
+			"Loading model..."->PrintLine();
+			network := NeuralNetwork->Load("data/model.dat");
+		}
+		# tain and store model
+		else if(args->Size() = 1) {
+			"Training model..."->PrintLine();
+			network := NeuralNetwork->Train(2, inputs_targets[0], 8, 1, inputs_targets[1], 0.01725, 256);
 			if(inputs_targets <> Nil) {
-				# train
-				network := NeuralNetwork->Train(2, inputs_targets[0], 8, 1, inputs_targets[1], 0.0125, 256);
-				# TODO: save model
-				# network->Save("foo.csv")
+				"Storing model..."->PrintLine();
+				network->Store("data/model.dat");
+			};
+		}
 
-				# test
-				tests := targets := inputs_targets[2];
-				answers := targets := inputs_targets[3];
+		# test model
+		"Testing model..."->PrintLine();
+		tests := inputs_targets[2];
+		answers := inputs_targets[3];
 
-				failures := 0;
-				each(i : tests) {
-					answer := answers->Get(i)->ToBool();
-					predict := network->Query(MatrixRef->New(tests->Get(i)->Get()));
-					if(predict <> answer) {
-						failures += 1;
-					};
-				};
-
-				correct := 100.0 * (1.0 - failures->As(Float) / tests->Size()->As(Float));
-				System.IO.Standard->Print("tests: ")->Print(tests->Size())->Print(", correct: ")->SetFloatPrecision(5)->Print(correct)->PrintLine("%");
+		failures := 0;
+		each(i : answers) {
+			answer := answers->Get(i)->ToBool();
+			predict := network->Query(MatrixRef->New(tests->Get(i)->Get()));
+			if(predict <> answer) {
+				failures += 1;
 			};
 		};
+
+		correct := 100.0 * (1.0 - failures->As(Float) / tests->Size()->As(Float));
+		System.IO.Standard->Print("tests: ")->Print(tests->Size())->Print(", correct: ")->SetFloatPrecision(5)->Print(correct)->PrintLine("%");
 	}
 }

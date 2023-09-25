@@ -640,7 +640,7 @@ bundle System.Matrix {
 		method : public : ToFloat() ~ Float {
 			dim := @value->Size();
 			if(dim->Size() = 2 & dim[0] = 1 & dim[1] = 1) {
-				return @value[0,0];;
+				return @value[0,0];
 			};
 
 			return 0.0;
@@ -682,11 +682,20 @@ bundle System.Matrix {
 			@hidden_nodes := hidden_nodes;
 			@output_nodes := output_nodes;
 			@learning_rate := learning_rate;
+			
 			@threshold := 0.80;
 			@attempts := 10;
-
+			
 			@weight_inputs_hidden := Matrix2D->RandomNormal(0.0, Float->Pow(@input_nodes, -1.0), @hidden_nodes, @input_nodes);
 			@weight_outputs_hidden := Matrix2D->RandomNormal(0.0, Float->Pow(@input_nodes, -1.0), @output_nodes, @hidden_nodes);
+		}
+
+		New : private (weight_inputs_hidden : Float[,], weight_outputs_hidden : Float[,]) {
+			@weight_inputs_hidden := weight_inputs_hidden;
+			@weight_outputs_hidden := weight_outputs_hidden;
+
+			@threshold := 0.80;
+			@attempts := 10;
 		}
 
 		#~
@@ -706,16 +715,11 @@ bundle System.Matrix {
 		~#
 		method : public : Query(inputs : MatrixRef) ~ Bool {
 			# try and fail is unsuccessful
-			values :=  inputs->Get();
 			each(i : @attempts) {
-				outputs := Query(values);
-
-				if(outputs[0,0] > @threshold) {
+				result := Confidence(inputs);
+				if(result > @threshold) {
 					return true;
-				}
-				else if(outputs[0,0] < 1.0 - @threshold) {
-					return false;
-				}
+				};		
 			};
 
 			return false;
@@ -728,7 +732,106 @@ bundle System.Matrix {
 		~#
 		method : public : Confidence(inputs : MatrixRef) ~ Float {
 			outputs := Query(inputs->Get());
-			return outputs[0,0];
+			if(outputs <> Nil) {
+				dims := outputs->Size();
+				if(dims->Size() = 2 & dims[0] = 1 & dims[1] = 1) {
+					return outputs[0,0];
+				};
+			};
+
+			return 0.0
+		}
+
+		#~
+		Loads network inputs and outputs
+		@param filename file to store to
+		@return true if successful, false otherwise
+		~#
+		function : Load(filename : String) ~ NeuralNetwork {
+			data := System.IO.Filesystem.FileReader->ReadBinaryFile(filename);
+			if(data <> Nil) {
+				# read inputs weight
+				deserializer := System.IO.Deserializer->New(data);
+				height := deserializer->ReadInt();
+				width := deserializer->ReadInt();
+
+				weight_inputs_hidden := Float->New[height, width];
+				each(i : height) {
+					each(j : width) {
+						weight_inputs_hidden[i,j] := deserializer->ReadFloat();
+					};
+				};
+# "--- Read A ---"->PrintLine();
+# weight_inputs_hidden->ToString()->PrintLine();				
+							
+				height := deserializer->ReadInt();
+				width := deserializer->ReadInt();
+
+				weight_outputs_hidden := Float->New[height, width];
+				each(i : height) {
+					each(j : width) {
+						weight_outputs_hidden[i,j] := deserializer->ReadFloat();
+					};
+				};
+# "--- Read B ---"->PrintLine();
+# weight_outputs_hidden->ToString()->PrintLine();
+
+				return NeuralNetwork->New(weight_inputs_hidden, weight_outputs_hidden);
+			}
+
+			return Nil;
+		}
+
+		#~
+		Saves final network inputs and outputs
+		@param filename file to store to
+		@return true if successful, false otherwise
+		~#
+		method : public : Store(filename : String) ~ Bool {
+			input_dims := @weight_inputs_hidden->Size();
+			if((input_dims->Size() = 2 & input_dims[0] > 0 & input_dims[1] > 0) = false) {
+				return false;
+			}
+
+			# write inputs weight
+			height := input_dims[0];
+			width := input_dims[1];
+
+			serializer := System.IO.Serializer->New();
+
+			serializer->Write(height);
+			serializer->Write(width);
+
+			each(i : height) {
+				each(j : width) {
+					serializer->Write(@weight_inputs_hidden[i,j])
+				};
+			};
+# "--- Write A ---"->PrintLine();
+# @weight_inputs_hidden->ToString()->PrintLine();
+
+			# write outputs weight
+			output_dims := @weight_outputs_hidden->Size();
+			if((output_dims->Size() = 2 & output_dims[0] > 0 & output_dims[1] > 0) = false) {
+				return false;
+			}
+
+			# write outputs weight
+			height := output_dims[0];
+			width := output_dims[1];
+
+			serializer->Write(height);
+			serializer->Write(width);
+
+			each(i : height) {
+				each(j : width) {
+					serializer->Write(@weight_outputs_hidden[i,j])
+				};
+			};
+# "--- Write B ---"->PrintLine();
+# @weight_outputs_hidden->ToString()->PrintLine();
+
+			return System.IO.Filesystem.FileWriter->WriteFile(filename, serializer->Serialize());
 		}
 
 		method : Query(inputs : Float[,]) ~ Float[,] {
