@@ -4,6 +4,7 @@ use System.Matrix;
 class Test {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
+			# data: data/test.csv
 			inputs_targets := MatrixReader->SplitMatrices(args[0], 1, 0.8); # 20% test data
 			if(inputs_targets <> Nil) {
 				# train
