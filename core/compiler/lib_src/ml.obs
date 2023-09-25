@@ -1,13 +1,12 @@
-#~
-Provides support for machine learning
-~#
-
 use Collection;
 use Data.CSV;
 
+#~
+Provides support for machine learning
+~#
 bundle System.Matrix {
 	#~
-	Encapsulates 2D matrix operations
+	2D matrix operations
 	~#
 	class Matrix2D {
 		#~
@@ -564,7 +563,7 @@ bundle System.Matrix {
 	}
 
 	#~
-	Matrix reference
+	Matrix reference with convenience methods
 	~#
 	class MatrixRef {
 		@value : Float[,];
@@ -649,7 +648,8 @@ bundle System.Matrix {
 	}
 
 	#~
-	Simple neural network 
+	Simple neural network. Input values should be scaled to between 0.0 to 1.0. 
+	The tuned network should return outputs between 0.0 to 1.0.
 	~#
 	class NeuralNetwork {
 		@input_nodes : Float;
@@ -692,6 +692,7 @@ bundle System.Matrix {
 		#~
 		Sets the activation threshold. Activation if output > threshold or < 1.0 - threshold
 		@param threshold activation threshold default is 0.85
+		@param attempts number of activation attempts
 		~#
 		method : public : SetActivation(threshold : Float, attempts : Int) ~ Nil {
 			@threshold := threshold;
@@ -700,6 +701,7 @@ bundle System.Matrix {
 
 		#~
 		Query the network
+		@param inputs query inputs
 		@return true if activated, false otherwise
 		~#
 		method : public : Query(inputs : MatrixRef) ~ Bool {
@@ -720,7 +722,8 @@ bundle System.Matrix {
 		}
 
 		#~
-		Query the network confidence
+		Query the network's confidence for the give inputs
+		@param inputs query inputs
 		@return confidence percentage
 		~#
 		method : public : Confidence(inputs : MatrixRef) ~ Float {
@@ -770,8 +773,8 @@ bundle System.Matrix {
 	class MatrixReader {
 		#~
 		Load input and output data into matrices
-		@param filename filename
-		@param output_offset index of first column with output data
+		@param filename file to process
+		@param target_offset index of first column with target data
 		@return input and output matrix data
 		~#
 		function : public : LoadMatrices(filename : String, target_offset : Int) ~ Vector[]<MatrixRef> {
@@ -815,7 +818,9 @@ bundle System.Matrix {
 
 		#~
 		Load input and output data into split matrices for training and testing
-		@param output_offset index of first column with output data
+		@param filename file to process
+		@param target_offset index of first column with output data
+		@param training_perc percentage of data used for training
 		@return split matrices for training and testing, first two matrices are training, latter two test
 		~#
 		function : public : SplitMatrices(filename : String, target_offset : Int, training_perc : Float) ~ Vector[]<MatrixRef> {
