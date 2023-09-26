@@ -11,9 +11,11 @@ copy /y ..\..\..\core\lib\ml.obl ..\..\..\core\release\deploy64\lib\ml.obl
 obc -src nn6 -lib csv,ml
 
 if [%1] NEQ [test] goto test
+	echo:
 	echo [Training]
 	obr nn6 data\test.csv
-	
+	echo:
 	echo [Testing]
 	obr nn6 data\test.csv test
+	echo:
 :test

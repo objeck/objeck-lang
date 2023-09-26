@@ -10,7 +10,7 @@ class Test {
 		# load model
 		if(args->Size() = 2) {
 			network := NeuralNetwork->Load(filename);
-			"Loaded model..."->PrintLine();
+			"Loaded model"->PrintLine();
 
 			"Testing model..."->PrintLine();
 			tests := inputs_targets[2];
@@ -31,10 +31,10 @@ class Test {
 		# train and store model
 		else if(args->Size() = 1) {
 			"Training model..."->PrintLine();
-			network := NeuralNetwork->Train(2, inputs_targets[0], 8, 1, inputs_targets[1], 0.01725, 256);
+			network := NeuralNetwork->Train(2, inputs_targets[0], 8, 1, inputs_targets[1], 0.01625, 196);
 			if(inputs_targets <> Nil) {
 				network->Store(filename);
-				"Stored model..."->PrintLine();
+				"Stored model"->PrintLine();
 			};
 		}		
 	}
