@@ -1,0 +1,11 @@
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		a := Int->New[2];
+		a[0] := 7;
+		a[1] := 13;
+
+		each(i : a[1]) {
+			i->PrintLine();
+		}		
+	}
+}

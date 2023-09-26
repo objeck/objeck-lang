@@ -5071,6 +5071,7 @@ For* Parser::ParseEach(bool reverse, int depth)
       break;
 
     case TOKEN_IDENT: {
+      // TODO: fix up
       const std::wstring list_ident = scanner->GetToken()->GetIdentifier();
       const std::wstring ident = L"Size";
       const int line_pos = GetLinePosition() - 1;
@@ -5167,10 +5168,7 @@ For* Parser::ParseEach(bool reverse, int depth)
           const std::wstring list_ident = variable->GetName();
           const int line_pos = GetLinePosition();
           left_pre_count = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, GetLineNumber(), line_pos, -1, -1,
-            list_ident, L"Size", TreeFactory::Instance()->MakeExpressionList());
-        }
-        else {
-          ProcessError(L"Variable must be a scalar type");
+                                                                   list_ident, L"Size", TreeFactory::Instance()->MakeExpressionList());
         }
       }
       else {
