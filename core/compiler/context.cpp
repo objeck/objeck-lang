@@ -4164,8 +4164,34 @@ void ContextAnalyzer::AnalyzeFor(For* for_stmt, const int depth)
   Expression* expression = for_stmt->GetExpression();
   if(expression) {
     AnalyzeExpression(expression, depth + 1);
+
     if(!IsBooleanExpression(expression)) {
       ProcessError(expression, L"Expected Bool expression");
+    }
+
+    switch(expression->GetExpressionType()) {
+    case AND_EXPR:
+    case OR_EXPR:
+    case EQL_EXPR:
+    case NEQL_EXPR:
+    case LES_EXPR:
+    case GTR_EXPR:
+    case LES_EQL_EXPR:
+    case GTR_EQL_EXPR: {
+      CalculatedExpression* calc_expr = static_cast<CalculatedExpression*>(expression);
+      Expression* right_expr = calc_expr->GetRight();
+      if(right_expr && right_expr->GetExpressionType() == VAR_EXPR && right_expr->GetEvalType()) {
+        Variable* var_expr = static_cast<Variable*>(right_expr);
+        if(var_expr->GetIndices() && right_expr->GetEvalType() && 
+           var_expr->GetIndices()->GetExpressions().size() != right_expr->GetEvalType()->GetDimension()) {
+          ProcessError(expression, L"Dimension size mismatch");
+        }
+      }
+    }
+      break;
+
+    defaut:
+      break;
     }
   }
 
@@ -4784,14 +4810,7 @@ void ContextAnalyzer::AnalyzeCalculation(CalculatedExpression* expression, const
 
   if(left && right) {
     switch(left->GetExpressionType()) {
-    case AND_EXPR:
-    case OR_EXPR:
-    case EQL_EXPR:
-    case NEQL_EXPR:
-    case LES_EXPR:
-    case GTR_EXPR:
-    case LES_EQL_EXPR:
-    case GTR_EQL_EXPR:
+    
     case ADD_EXPR:
     case SUB_EXPR:
     case MUL_EXPR:
