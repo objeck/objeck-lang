@@ -9,34 +9,36 @@ class Test {
 
 		# load model
 		if(args->Size() = 2) {
-			"Loading model..."->PrintLine();
 			network := NeuralNetwork->Load(filename);
+			"Loaded model..."->PrintLine();
+
+			"Testing model..."->PrintLine();
+			tests := inputs_targets[2];
+			answers := inputs_targets[3];
+
+			failures := 0;
+			each(i : answers) {
+				answer := answers->Get(i)->ToBool();
+				predict := network->Query(MatrixRef->New(tests->Get(i)->Get()));
+				if(predict <> answer) {
+					failures += 1;
+				};
+			};
+
+			correct := 100.0 * (1.0 - failures->As(Float) / tests->Size()->As(Float));
+			System.IO.Standard->Print("Tests: ")->Print(tests->Size())->Print(", correct: ")->SetFloatPrecision(5)->Print(correct)->PrintLine("%");
 		}
-		# tain and store model
+		# train and store model
 		else if(args->Size() = 1) {
 			"Training model..."->PrintLine();
 			network := NeuralNetwork->Train(2, inputs_targets[0], 8, 1, inputs_targets[1], 0.01725, 256);
 			if(inputs_targets <> Nil) {
-				"Storing model..."->PrintLine();
 				network->Store(filename);
+				"Stored model..."->PrintLine();
 			};
 		}
 
 		# test model
-		"Testing model..."->PrintLine();
-		tests := inputs_targets[2];
-		answers := inputs_targets[3];
-
-		failures := 0;
-		each(i : answers) {
-			answer := answers->Get(i)->ToBool();
-			predict := network->Query(MatrixRef->New(tests->Get(i)->Get()));
-			if(predict <> answer) {
-				failures += 1;
-			};
-		};
-
-		correct := 100.0 * (1.0 - failures->As(Float) / tests->Size()->As(Float));
-		System.IO.Standard->Print("tests: ")->Print(tests->Size())->Print(", correct: ")->SetFloatPrecision(5)->Print(correct)->PrintLine("%");
+		
 	}
 }
