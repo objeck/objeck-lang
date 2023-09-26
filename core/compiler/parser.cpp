@@ -5152,7 +5152,7 @@ For* Parser::ParseEach(bool reverse, int depth)
       if(left_pre_count->GetExpressionType() == VAR_EXPR) {
         Variable* variable = static_cast<Variable*>(left_pre_count);
         if(!variable->GetIndices()) {
-          // set indicies
+          // set method call to 'x->Size()'
           const int line_pos = GetLinePosition();
           left_pre_count = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, GetLineNumber(), line_pos, -1, -1,
                                                                    variable->GetName(), L"Size", TreeFactory::Instance()->MakeExpressionList());
