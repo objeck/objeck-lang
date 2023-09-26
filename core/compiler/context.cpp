@@ -4810,7 +4810,14 @@ void ContextAnalyzer::AnalyzeCalculation(CalculatedExpression* expression, const
 
   if(left && right) {
     switch(left->GetExpressionType()) {
-    
+    case AND_EXPR:
+    case OR_EXPR:
+    case EQL_EXPR:
+    case NEQL_EXPR:
+    case LES_EXPR:
+    case GTR_EXPR:
+    case LES_EQL_EXPR:
+    case GTR_EQL_EXPR:
     case ADD_EXPR:
     case SUB_EXPR:
     case MUL_EXPR:

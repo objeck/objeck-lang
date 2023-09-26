@@ -1,11 +1,26 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
 		a := Int->New[2];
-		a[0] := 7;
-		a[1] := 13;
+		a[0] := 6;
+		a[1] := 9;
+
+		each(i : a[0]) {
+			i->PrintLine();
+		}
+		"---"->PrintLine();
 
 		reverse(i : a) {
 			i->PrintLine();
-		}		
+		}
+		"---"->PrintLine();
+
+		reverse(i : a[1]) {
+			i->PrintLine();
+		}	
+
+		"---"->PrintLine();
+		each(i : a->Size()) {	
+			"##"->PrintLine();
+		}
 	}
 }
