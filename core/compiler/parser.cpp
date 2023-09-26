@@ -5060,23 +5060,34 @@ For* Parser::ParseEach(bool reverse, int depth)
     switch(GetToken()) {
     case TOKEN_CHAR_LIT:
       left_pre_count = TreeFactory::Instance()->MakeCharacterLiteral(file_name, line_num, line_pos, scanner->GetToken()->GetCharLit());
+      NextToken();
       break;
 
     case TOKEN_INT_LIT:
       left_pre_count = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos, scanner->GetToken()->GetInt64Lit());
+      NextToken();
       break;
 
     case TOKEN_FLOAT_LIT:
       left_pre_count = TreeFactory::Instance()->MakeFloatLiteral(file_name, line_num, line_pos, scanner->GetToken()->GetFloatLit());
+      NextToken();
       break;
 
     case TOKEN_IDENT: {
-      // TODO: fix up
-      const std::wstring list_ident = scanner->GetToken()->GetIdentifier();
-      const std::wstring ident = L"Size";
-      const int line_pos = GetLinePosition() - 1;
-      left_pre_count = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, GetLineNumber(), line_pos, 
-                                                               -1, -1, list_ident, ident, TreeFactory::Instance()->MakeExpressionList());
+      left_pre_count = ParseExpression(depth + 1);
+      if(left_pre_count->GetExpressionType() == VAR_EXPR) {
+        Variable* variable = static_cast<Variable*>(left_pre_count);
+        if(!variable->GetIndices()) {
+          // set indices
+          const std::wstring list_ident = variable->GetName();
+          const int line_pos = GetLinePosition();
+          left_pre_count = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, GetLineNumber(), line_pos, -1, -1,
+                                                                   list_ident, L"Size", TreeFactory::Instance()->MakeExpressionList());
+        }
+      }
+      else {
+        ProcessError(L"Expected variable or literal expression", TOKEN_SEMI_COLON);
+      }
     }
       break;
 
@@ -5084,7 +5095,6 @@ For* Parser::ParseEach(bool reverse, int depth)
       ProcessError(L"Expected variable or literal expression", TOKEN_SEMI_COLON);
       break;
     }
-    NextToken();
 
     // pre-condition
     Variable* count_left = TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, count_ident);
@@ -5164,7 +5174,7 @@ For* Parser::ParseEach(bool reverse, int depth)
       else if(left_pre_count->GetExpressionType() == VAR_EXPR) {
         Variable* variable = static_cast<Variable*>(left_pre_count);
         if(!variable->GetIndices()) {
-          // set variable
+          // set indicies
           const std::wstring list_ident = variable->GetName();
           const int line_pos = GetLinePosition();
           left_pre_count = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, GetLineNumber(), line_pos, -1, -1,
