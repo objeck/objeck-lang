@@ -36,9 +36,6 @@ class Test {
 				network->Store(filename);
 				"Stored model..."->PrintLine();
 			};
-		}
-
-		# test model
-		
+		}		
 	}
 }
