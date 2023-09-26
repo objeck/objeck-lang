@@ -5147,41 +5147,18 @@ For* Parser::ParseEach(bool reverse, int depth)
       break;
 
     case TOKEN_IDENT: {
-      left_pre_count = ParseExpression(depth + 1);      
-      if(left_pre_count->GetExpressionType() == METHOD_CALL_EXPR) {
-        // set method call and variable assignment
-        const std::wstring size_scope_name = GetScopeName(L'#' + bound_ident + L"_size");
-        Type* size_left_type = TypeFactory::Instance()->MakeType(VAR_TYPE);
-        SymbolEntry* size_entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num, line_pos, size_scope_name,
-                                                                           size_left_type, false, current_method != nullptr);
-    #ifdef _DEBUG
-        Debug(L"Adding size variable: '" + size_scope_name + L"'", depth + 2);
-    #endif
-        if(!symbol_table->CurrentParseScope()->AddEntry(size_entry)) {
-          ProcessError(L"Variable already defined in this scope: '" + size_scope_name + L"'");
-        }
-        Variable* size_left_var = TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, size_scope_name);
-        size_left_var->SetInternalVariable(true);
+      left_pre_count = ParseExpression(depth + 1);
 
-        Assignment* size_assign = TreeFactory::Instance()->MakeAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), size_left_var, left_pre_count);
-        pre_statements->AddStatement(size_assign);
-
-        // set variable
-        const int line_pos = GetLinePosition();
-        left_pre_count = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, GetLineNumber(), line_pos, -1, -1,
-                                                                 size_left_var, L"Size", TreeFactory::Instance()->MakeExpressionList());
-      }
-      else if(left_pre_count->GetExpressionType() == VAR_EXPR) {
+      if(left_pre_count->GetExpressionType() == VAR_EXPR) {
         Variable* variable = static_cast<Variable*>(left_pre_count);
         if(!variable->GetIndices()) {
           // set indicies
-          const std::wstring list_ident = variable->GetName();
           const int line_pos = GetLinePosition();
           left_pre_count = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, GetLineNumber(), line_pos, -1, -1,
-                                                                   list_ident, L"Size", TreeFactory::Instance()->MakeExpressionList());
+                                                                   variable->GetName(), L"Size", TreeFactory::Instance()->MakeExpressionList());
         }
       }
-      else {
+      else if(left_pre_count->GetExpressionType() != METHOD_CALL_EXPR) {
         ProcessError(L"Expected variable or literal expression", TOKEN_SEMI_COLON);
       }
     }
