@@ -4183,14 +4183,14 @@ void ContextAnalyzer::AnalyzeFor(For* for_stmt, const int depth)
       if(right_expr && right_expr->GetExpressionType() == VAR_EXPR && right_expr->GetEvalType()) {
         Variable* var_expr = static_cast<Variable*>(right_expr);
         if(var_expr->GetIndices() && right_expr->GetEvalType() && 
-           var_expr->GetIndices()->GetExpressions().size() != right_expr->GetEvalType()->GetDimension()) {
+           (int)(var_expr->GetIndices()->GetExpressions().size()) != right_expr->GetEvalType()->GetDimension()) {
           ProcessError(expression, L"Dimension size mismatch");
         }
       }
     }
       break;
 
-    defaut:
+    default:
       break;
     }
   }
