@@ -12,7 +12,8 @@ obc -src nn6 -lib csv,ml
 
 if [%1] NEQ [test] goto test
 	echo [Training]
-	obr nn6 data\test.csv test
-	echo [Testing]
 	obr nn6 data\test.csv
+	
+	echo [Testing]
+	obr nn6 data\test.csv test
 :test
