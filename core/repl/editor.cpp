@@ -630,7 +630,7 @@ bool Editor::DoDeleteLine(std::wstring& in)
           }
           
           std::wcout << L"=> Removed lines " << start_line_pos << L" through " << end_line_pos << L'.' << std::endl;
-          if(start_line_pos < doc.Size()) {
+          if(start_line_pos < (int)doc.Size()) {
             cur_pos = start_line_pos - 1;
           }
 
