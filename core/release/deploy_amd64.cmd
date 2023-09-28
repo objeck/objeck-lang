@@ -74,6 +74,7 @@ del  /s /q ..\..\programs\*.obe
 xcopy /e ..\..\programs\deploy\*.obs deploy64\examples\
 xcopy /e ..\..\programs\deploy\media\*.png deploy64\examples\media\
 xcopy /e ..\..\programs\deploy\media\*.wav deploy64\examples\media\
+xcopy /e ..\..\programs\deploy\data\* deploy64\examples\data\
 
 REM build and update docs
 mkdir deploy64\doc 
