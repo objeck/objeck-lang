@@ -7,7 +7,7 @@ class Test {
 		a := Int->New[2];
 		a[0] := 6;
 		a[1] := 9;
-
+#~
 		each(i : a[0]) {
 			i->PrintLine();
 		}
@@ -17,14 +17,15 @@ class Test {
 			i->PrintLine();
 		}
 		"---"->PrintLine();
-
+~#
 		reverse(i : a[1]) {
 			i->PrintLine();
 		}	
-
+#~
 		"---"->PrintLine();
 		each(i : a->Size()) {	
 			"##"->PrintLine();
 		}
+~#		
 	}
 }
