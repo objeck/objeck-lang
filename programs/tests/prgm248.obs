@@ -1,0 +1,14 @@
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		Brun();
+	}
+
+	function : native : Brun() ~ Nil {
+		a := 0;
+		(3.5 / a)->PrintLine();
+
+#		Float->NaN()->PrintLine();
+#		Float->Inf()->PrintLine();
+#		Float->NegInf()->PrintLine();
+	}
+}
