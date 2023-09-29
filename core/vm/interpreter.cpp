@@ -1202,7 +1202,7 @@ void StackInterpreter::DivInt(size_t* &op_stack, long* &stack_pos)
   const INT64_VALUE left = (INT64_VALUE)op_stack[(*stack_pos) - 1];
   const INT64_VALUE right = (INT64_VALUE)op_stack[(*stack_pos) - 2];
   if(!right) {
-    std::wcerr << L">>> Attempting to divide by zero <<<" << std::endl;
+    std::wcerr << L">>> Divide by zero <<<" << std::endl;
     StackErrorUnwind();
 #ifdef _NO_HALT
     halt = true;
@@ -1233,6 +1233,16 @@ void StackInterpreter::DivFloat(size_t* &op_stack, long* &stack_pos)
 #endif
   const FLOAT_VALUE left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 1]));
   const FLOAT_VALUE right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
+  if(right_double == 0.0) {
+    std::wcerr << L">>> Divide by zero <<<" << std::endl;
+    StackErrorUnwind();
+#ifdef _NO_HALT
+    halt = true;
+    return;
+#else
+    exit(1);
+#endif
+  }
   *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2])) = left_double / right_double;
   (*stack_pos)--;
 }
