@@ -2335,6 +2335,42 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
       NextToken();
       break;
 
+    case NAN_INT:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::NAN_INT);
+      NextToken();
+      break;
+
+    case INF_INT:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::INF_INT);
+      NextToken();
+      break;
+
+    case NEG_INF_INT:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::NEG_INF_INT);
+      NextToken();
+      break;
+
+    case NAN_FLOAT:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::NAN_FLOAT);
+      NextToken();
+      break;
+
+    case INF_FLOAT:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::INF_FLOAT);
+      NextToken();
+      break;
+
+    case NEG_INF_FLOAT:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::NEG_INF_FLOAT);
+      NextToken();
+      break;
+
     case STD_OUT_BOOL:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::STD_OUT_BOOL);

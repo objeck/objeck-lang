@@ -189,6 +189,12 @@ void Scanner::LoadKeywords()
   ident_map[L"SQRT_FLOAT"] = SQRT_FLOAT;
   ident_map[L"GAMMA_FLOAT"] = GAMMA_FLOAT;
   ident_map[L"RAND_FLOAT"] = RAND_FLOAT;
+  ident_map[L"NAN_INT"] = NAN_INT;
+  ident_map[L"INF_INT"] = INF_INT;
+  ident_map[L"NEG_INF_INT"] = NEG_INF_INT;
+  ident_map[L"NAN_FLOAT"] = NAN_FLOAT;
+  ident_map[L"INF_FLOAT"] = INF_FLOAT;
+  ident_map[L"NEG_INF_FLOAT"] = NEG_INF_FLOAT;
   ident_map[L"LOAD_CLS_INST_ID"] = LOAD_CLS_INST_ID;
   ident_map[L"LOAD_CLS_BY_INST"] = LOAD_CLS_BY_INST;
   ident_map[L"LOAD_NEW_OBJ_INST"] = LOAD_NEW_OBJ_INST;
@@ -477,6 +483,12 @@ void Scanner::CheckIdentifier(int index)
     case POW_FLOAT:
     case SQRT_FLOAT:
     case GAMMA_FLOAT:
+    case NAN_INT:
+    case INF_INT:
+    case NEG_INF_INT:
+    case NAN_FLOAT:
+    case INF_FLOAT:
+    case NEG_INF_FLOAT:
     case RAND_FLOAT:
     case LOAD_CLS_INST_ID:
     case LOAD_CLS_BY_INST:

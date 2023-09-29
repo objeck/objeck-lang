@@ -411,6 +411,12 @@ class StackMethod {
       case LOG10_FLOAT:
       case POW_FLOAT:
       case GAMMA_FLOAT:
+      case NAN_INT:
+      case INF_INT:
+      case NEG_INF_INT:
+      case NAN_FLOAT:
+      case INF_FLOAT:
+      case NEG_INF_FLOAT:
       case CEIL_FLOAT:
       case TRUNC_FLOAT:
       case FLOR_FLOAT:

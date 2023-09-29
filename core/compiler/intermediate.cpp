@@ -1594,6 +1594,30 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, GAMMA_FLOAT));
     break;
 
+  case instructions::NAN_INT:
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, NAN_INT));
+    break;
+
+  case instructions::INF_INT:
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, INF_INT));
+    break;
+
+  case instructions::NEG_INF_INT:
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, NEG_INF_INT));
+    break;
+
+  case instructions::NAN_FLOAT:
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, NAN_FLOAT));
+    break;
+
+  case instructions::INF_FLOAT:
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, INF_FLOAT));
+    break;
+
+  case instructions::NEG_INF_FLOAT:
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, NEG_INF_FLOAT));
+    break;
+
   case instructions::SIN_FLOAT:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_FLOAT_VAR, 0, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, SIN_FLOAT));
