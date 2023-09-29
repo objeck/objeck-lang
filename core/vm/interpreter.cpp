@@ -434,6 +434,30 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
       PushFloat(tgamma(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
       break;
 
+    case NAN_INT:
+      PushFloat(std::numeric_limits<INT_VALUE>::quiet_NaN(), op_stack, stack_pos);
+      break;
+
+    case INF_INT:
+      PushFloat(std::numeric_limits<INT_VALUE>::infinity(), op_stack, stack_pos);
+      break;
+
+    case NEG_INF_INT:
+      PushFloat(-1 * std::numeric_limits<INT_VALUE>::infinity(), op_stack, stack_pos);
+      break;
+
+    case NAN_FLOAT:
+      PushFloat(std::numeric_limits<double>::quiet_NaN(), op_stack, stack_pos);
+      break;
+
+    case INF_FLOAT:
+      PushFloat(std::numeric_limits<double>::infinity(), op_stack, stack_pos);
+      break;
+
+    case NEG_INF_FLOAT:
+      PushFloat(-1.0 * std::numeric_limits<double>::infinity(), op_stack, stack_pos);
+      break;
+
     case RAND_FLOAT:
       PushFloat(GetRandomValue(), op_stack, stack_pos);
       break;

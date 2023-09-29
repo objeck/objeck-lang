@@ -741,6 +741,12 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
     case LOG10_FLOAT:
     case POW_FLOAT:
     case GAMMA_FLOAT:
+    case NAN_INT:
+    case INF_INT:
+    case NEG_INF_INT:
+    case NAN_FLOAT:
+    case INF_FLOAT:
+    case NEG_INF_FLOAT:
     case F2I:
     case I2F:
     case S2I:
