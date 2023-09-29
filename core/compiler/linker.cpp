@@ -1371,6 +1371,30 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
       instrs.push_back(new LibraryInstr(line_num, GAMMA_FLOAT));
       break;
 
+    case NAN_INT:
+      instrs.push_back(new LibraryInstr(line_num, NAN_INT));
+      break;
+
+    case INF_INT:
+      instrs.push_back(new LibraryInstr(line_num, INF_INT));
+      break;
+
+    case NEG_INF_INT:
+      instrs.push_back(new LibraryInstr(line_num, NEG_INF_INT));
+      break;
+
+    case NAN_FLOAT:
+      instrs.push_back(new LibraryInstr(line_num, NAN_FLOAT));
+      break;
+
+    case INF_FLOAT:
+      instrs.push_back(new LibraryInstr(line_num, INF_FLOAT));
+      break;
+
+    case NEG_INF_FLOAT:
+      instrs.push_back(new LibraryInstr(line_num, NEG_INF_FLOAT));
+      break;
+
     case RAND_FLOAT:
       instrs.push_back(new LibraryInstr(line_num, RAND_FLOAT));
       break;

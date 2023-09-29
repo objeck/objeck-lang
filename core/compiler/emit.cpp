@@ -894,6 +894,30 @@ void IntermediateInstruction::Debug(size_t i) {
     GetLogger() << i << L":\tTGAMMA_FLOAT" << std::endl;
     break;
 
+  case instructions::NAN_INT:
+    GetLogger() << i << L":\tTNAN_INT" << std::endl;
+    break;
+
+  case instructions::INF_INT:
+    GetLogger() << i << L":\tTINF_INT" << std::endl;
+    break;
+
+  case instructions::NEG_INF_INT:
+    GetLogger() << i << L":\tTNEG_INF_INT" << std::endl;
+    break;
+
+  case instructions::NAN_FLOAT:
+    GetLogger() << i << L":\tTNAN_FLOAT" << std::endl;
+    break;
+
+  case instructions::INF_FLOAT:
+    GetLogger() << i << L":\tTINF_FLOAT" << std::endl;
+    break;
+
+  case instructions::NEG_INF_FLOAT:
+    GetLogger() << i << L":\tNEG_INF_FLOAT" << std::endl;
+    break;
+
   case I2F:
     GetLogger()  << i << L":\tI2F" << std::endl;
     break;

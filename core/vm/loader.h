@@ -281,8 +281,6 @@ public:
     cached_instrs[COSH_FLOAT] = new StackInstr(-1, COSH_FLOAT);
     cached_instrs[SINH_FLOAT] = new StackInstr(-1, SINH_FLOAT);
     cached_instrs[TANH_FLOAT] = new StackInstr(-1, TANH_FLOAT);
-    
-    
 
     cached_instrs[LOG_FLOAT] = new StackInstr(-1, LOG_FLOAT);
     cached_instrs[ROUND_FLOAT] = new StackInstr(-1, ROUND_FLOAT);
@@ -290,6 +288,13 @@ public:
     cached_instrs[LOG10_FLOAT] = new StackInstr(-1, LOG10_FLOAT);
     cached_instrs[POW_FLOAT] = new StackInstr(-1, POW_FLOAT);
     cached_instrs[GAMMA_FLOAT] = new StackInstr(-1, GAMMA_FLOAT);
+
+    cached_instrs[NAN_INT] = new StackInstr(-1, NAN_INT);
+    cached_instrs[INF_INT] = new StackInstr(-1, INF_INT);
+    cached_instrs[NEG_INF_INT] = new StackInstr(-1, NEG_INF_INT);
+    cached_instrs[NAN_FLOAT] = new StackInstr(-1, NAN_FLOAT);
+    cached_instrs[INF_FLOAT] = new StackInstr(-1, INF_FLOAT);
+    cached_instrs[NEG_INF_FLOAT] = new StackInstr(-1, NEG_INF_FLOAT);
 
     cached_instrs[SHL_INT] = new StackInstr(-1, SHL_INT);
     cached_instrs[SHR_INT] = new StackInstr(-1, SHR_INT);

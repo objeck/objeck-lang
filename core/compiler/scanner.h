@@ -200,6 +200,13 @@ enum ScannerTokenType {
   LOAD_NEW_OBJ_INST,
   LOAD_INST_UID,
   LOAD_MULTI_ARY_SIZE,
+  // limits
+  NAN_INT,
+  INF_INT,
+  NEG_INF_INT,
+  NAN_FLOAT,
+  INF_FLOAT,
+  NEG_INF_FLOAT
   // standard i/o
   STD_OUT_BOOL,
   STD_OUT_BYTE,

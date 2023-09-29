@@ -66,6 +66,13 @@ namespace instructions {
     STOR_INT_ARY_ELM,
     STOR_FLOAT_ARY_ELM,
     LOAD_ARY_SIZE,
+    // limits
+    NAN_INT,
+    INF_INT,
+    NEG_INF_INT,
+    NAN_FLOAT,
+    INF_FLOAT,
+    NEG_INF_FLOAT,
     // logical operations
     EQL_INT,
     NEQL_INT,

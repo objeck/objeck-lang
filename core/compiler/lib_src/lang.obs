@@ -1102,6 +1102,30 @@ bundle System {
 	~#
 	class $Int from Number {
 		#~
+		Returns a NaN value
+		@return NaN value
+		~#
+		function : NaN() ~ Int {
+			NAN_INT;
+		}
+
+		#~
+		Returns a positive infinity value
+		@return positive infinity value
+		~#
+		function : Inf() ~ Int {
+			INF_INT;
+		}
+
+		#~
+		Returns a negative infinity value
+		@return negative infinity value
+		~#
+		function : NegInf() ~ Int {
+			NEG_INF_INT;
+		}
+
+		#~
 		Returns the maximum size of an integer
 		@return maximum size of an integer
 		~#
@@ -1556,6 +1580,30 @@ bundle System {
 	Float class represents a double-precision floating-point value
 	~#	
 	class $Float from Number {
+		#~
+		Returns a NaN value
+		@return NaN value
+		~#
+		function : NaN() ~ Float {
+			NAN_FLOAT;
+		}
+
+		#~
+		Returns a positive infinity value
+		@return positive infinity value
+		~#
+		function : Inf() ~ Float {
+			INF_FLOAT;
+		}
+
+		#~
+		Returns a negative infinity value
+		@return negative infinity value
+		~#
+		function : NegInf() ~ Float {
+			NEG_INF_FLOAT;
+		}
+		
 		#~
 		Value of Pi
 		@return value of Pi
