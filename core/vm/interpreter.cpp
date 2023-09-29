@@ -2406,7 +2406,7 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, size_t* instanc
       break;
 
     case -4:
-      std::wcerr << L">>> Attempting to divide by zero in native JIT code <<<" << std::endl;
+      std::wcerr << L">>> Divide by zero in native JIT code <<<" << std::endl;
       break;
     }
     StackErrorUnwind(called);
