@@ -1,0 +1,15 @@
+use Collection;
+use Data.JSON;
+use System.IO.Filesystem;
+
+class Test1 {
+	function : Main(args : String[]) ~ Nil {
+		data := FileReaderWriter->ReadFile("test.json")
+		parser := Data.JSON.JsonParser->New(data)
+		if(parser->Parse()) {
+			root := parser->GetRoot()
+			foobar := root->FindElements("menu/popup/menuitem/[0]/value")->GetString()
+			foobar->PrintLine()
+		}
+	}
+}
