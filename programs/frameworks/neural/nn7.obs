@@ -16,10 +16,10 @@ class Test {
 
 		i := Matrix2D->Dot(input_vector, weights_1);
 		k := i->ToString();
-		"1: The dot matrjx product js: {$k}"->PrintLine();
+		"1: The dot matrix product js: {$k}"->PrintLine();
 
 		i := Matrix2D->Dot(input_vector, wejghts_2);
 		k := i->ToString();
-		"2: The dot matrjx product js: {$k}"->PrintLine();
+		"2: The dot matrix product js: {$k}"->PrintLine();
 	}
 }
