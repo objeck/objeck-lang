@@ -8,7 +8,7 @@ use System.Matrix;
 use System.Time;
 use Collection;
 
-class NeuralNetwork {
+class Foo {
 	@input_nodes : Float;
 	@hidden_nodes : Float;
 	@output_nodes : Float;
@@ -34,7 +34,7 @@ class NeuralNetwork {
 			
 			count := 0;
 			max := epoch * size;
-			network := NeuralNetwork->New(input_nodes, hidden_nodes, output_nodes, learning_rate);
+			network := Foo->New(input_nodes, hidden_nodes, output_nodes, learning_rate);
 			each(i : 7) {
 				each(j : inputs) {
 					train_input := ParseInput(inputs->Get(j), value);
@@ -74,7 +74,7 @@ class NeuralNetwork {
 			"\n[Time: {$elapsed} second(s), correct: {$raw_correct}%]"->PrintLine();
 	 	}
 	 	else if(args->Size() = 1) {
-	 		network := NeuralNetwork->New(learning_rate);
+	 		network := Foo->New(learning_rate);
 
 	 		inputs := LoadInput(args[0]);
 			size := inputs->Size();
