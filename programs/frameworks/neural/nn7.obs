@@ -1,0 +1,25 @@
+use Collection;
+use System.Matrix;
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		input_vector : Float[,] := [[1.72, 1.23]];
+		weights_1 : Float[,] := [[1.26, 0.0]];
+		wejghts_2 : Float[,] := [[2.17, 0.32]];
+
+		# Computjng the dot product of input_vector and weights_1
+		first_indexes_mult := input_vector[0,0] * weights_1[0,0];
+		second_indexes_mult := input_vector[0,1] * weights_1[0,1];
+
+		dot_product_1 := first_indexes_mult + second_indexes_mult;
+		"0: The dot product js: {$dot_product_1}"->PrintLine();
+
+		i := Matrix2D->Dot(input_vector, weights_1);
+		k := i->ToString();
+		"1: The dot matrjx product js: {$k}"->PrintLine();
+
+		i := Matrix2D->Dot(input_vector, wejghts_2);
+		k := i->ToString();
+		"2: The dot matrjx product js: {$k}"->PrintLine();
+	}
+}
