@@ -128,15 +128,15 @@ bundle System.Matrix {
 
 			b_dims := b->Size();
 			b_cols := b_dims[1];
-
-			c := Float->New[a_rows, b_cols];
+			
+			r := Float->New[a_rows, b_cols];
 			for(i := 0; i < a_rows; i += 1;) {
 				for(j := 0; j < b_cols; j += 1;) {
-					c[i,j] := a[i,j] - b[i,j];
+					r[i,j] := a[i,j] - b[i,j];
 				};
 			};
 
-			return c;
+			return r;
 		}
 
 		#~
@@ -306,9 +306,11 @@ bundle System.Matrix {
 			c := Float->New[a_rows, b_cols];
 			each(i : a_rows) {
 				each(j : b_cols) {
+					cp := 0.0;
 					each(k : a_cols) {
-						c[i,j] += a[i,k] * b[k,j];
+						cp += a[i,k] * b[k,j];
 					};
+					c[i,j] := cp;
 				};
 			};
 
