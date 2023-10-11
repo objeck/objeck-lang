@@ -31,7 +31,7 @@ To get started, take a look at the [language guide](https://objeck.org/getting_s
 * API support for
   * Secure web servers and clients
   * Encryption
-  * Generation and parsing of JSON, CSV, and XML
+  * JSON, CSV, and XML parsing libraries
   * Regular expressions
   * 2D gaming and matrix mathematics
   * Collections
