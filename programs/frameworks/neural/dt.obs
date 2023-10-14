@@ -1,21 +1,37 @@
+use Collection;
+
 class Test {
    function : Main(args : String[]) ~ Nil {
-      px := 16.0; py := 14.0;
+      p := Node->New(16, 14);
+      c := Vector->New()<Node>;
+      c->AddBack(Node->New(12, 1));
+      c->AddBack(Node->New(4, 13));
+
+      Foo(p, c);      
+   }
+
+   function : Foo(parent : Node, children : Vector<Node>) ~ Nil {
+      px := parent->GetX(); py := parent->GetY();
+
       lx := 12.0; ly := 1.0;
       rx := 4.0; ry := 13.0;
 
-      p := Entropy(px, py);
+      pe := Entropy(px, py);
       pxy := px + py;
 
-      ph := Entropy(lx, ly);
+      # --- start ---
+      le := Entropy(lx, ly);
       lxy := (lx + ly) / pxy;
-      
-      pl := Entropy(rx, ry);
+
+      re := Entropy(rx, ry);
       rxy := (rx + ry) / pxy;
+      
+      e := lxy * le + rxy * re;
+      # --- end ---
+      
+      ig := pe - e;
 
-      foo := lxy * ph + rxy * pl;
-
-      "p={$p},pxy={$pxy}; ph={$ph},lxy={$lxy}; pl={$pl},rxy={$rxy}; foo={$foo}"->PrintLine();
+      "pe={$pe},pxy={$pxy}; le={$le},lxy={$lxy}; re={$re},rxy={$rxy}; e={$e},ig={$ig}"->PrintLine();
    }
 
    function : Entropy(x : Float, y : Float) ~ Float {
@@ -28,3 +44,27 @@ class Test {
    }
 }
 
+class Node {
+   @x : Float;
+   @y : Float;
+   @children : Vector<Node>;
+
+   New(x : Float, y : Float) {
+      @x := x;
+      @y := y;
+
+      @children := Vector->New()<Node>;
+   }
+
+   method : public : GetX() ~ Float {
+      return @x;
+   }
+
+   method : public : GetY() ~ Float {
+      return @y;
+   }
+
+   method : public : GetChildren() ~ Vector<Node> {
+      return @children;
+   }
+}
