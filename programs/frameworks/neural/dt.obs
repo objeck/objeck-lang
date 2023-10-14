@@ -39,11 +39,7 @@ class DecisionTree {
 
    function : Entropy(x : Float, y : Float) ~ Float {
       xy := x + y;
-
-      l := -1.0 * (Float->Log2(x / xy) * (x / xy));
-      r := -1.0 * (Float->Log2(y / xy) * (y / xy));
-
-      return l + r;
+      return -1.0 * (Float->Log2(x / xy) * (x / xy)) + -1.0 * (Float->Log2(y / xy) * (y / xy));
    }
 }
 
