@@ -3,35 +3,35 @@ use Collection;
 class Test {
    function : Main(args : String[]) ~ Nil {
       p := Node->New(16, 14);
-      c := Vector->New()<Node>;
-      c->AddBack(Node->New(12, 1));
-      c->AddBack(Node->New(4, 13));
+      p->AddChild(7, 1);
+      p->AddChild(4, 6);
+      p->AddChild(5, 7);
 
-      Foo(p, c);      
+      Gain(p);
    }
 
-   function : Foo(parent : Node, children : Vector<Node>) ~ Nil {
-      px := parent->GetX(); py := parent->GetY();
+   function : Gain(parent : Node) ~ Nil {
+      px := parent->GetX(); 
+      py := parent->GetY();
+      children := parent->GetChildren();
 
-      lx := 12.0; ly := 1.0;
-      rx := 4.0; ry := 13.0;
-
-      pe := Entropy(px, py);
       pxy := px + py;
 
-      # --- start ---
-      le := Entropy(lx, ly);
-      lxy := (lx + ly) / pxy;
+      e : Float;
+      values := Float->New[2, children->Size()];
+      each(i : children) {
+         child := children->Get(i);
+         x := child->GetX();
+         y := child->GetY();
 
-      re := Entropy(rx, ry);
-      rxy := (rx + ry) / pxy;
-      
-      e := lxy * le + rxy * re;
-      # --- end ---
-      
-      ig := pe - e;
+         values[i, 0] := Entropy(x, y);
+         values[i, 1] := (x + y) / pxy;
+         
+         e += values[i, 1] * values[i, 0];
+      };
 
-      "pe={$pe},pxy={$pxy}; le={$le},lxy={$lxy}; re={$re},rxy={$rxy}; e={$e},ig={$ig}"->PrintLine();
+      ig := Entropy(px, py) - e;
+      "e={$e},ig={$ig}"->PrintLine();
    }
 
    function : Entropy(x : Float, y : Float) ~ Float {
@@ -62,6 +62,10 @@ class Node {
 
    method : public : GetY() ~ Float {
       return @y;
+   }
+
+   method : public : AddChild(x : Float, y : Float) ~ Nil {
+      @children->AddBack(Node->New(x, y));
    }
 
    method : public : GetChildren() ~ Vector<Node> {
