@@ -4,7 +4,7 @@ Make Your Own Neural Network
 ~#
 
 use System.IO.Filesystem;
-use System.Matrix;
+use System.ML;
 use System.Time;
 use Collection;
 

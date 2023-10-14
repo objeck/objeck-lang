@@ -4,7 +4,7 @@ use Data.CSV;
 #~
 Provides support for machine learning
 ~#
-bundle System.Matrix {
+bundle System.ML {
 	#~
 	2D matrix operations
 	~#
