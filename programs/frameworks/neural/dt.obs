@@ -22,9 +22,9 @@ bundle System.ML {
 			px := parent->GetX(); 
 			py := parent->GetY();
 			pxy := px + py;
-			children := parent->GetChildren();
-
+			
 			e : Float;
+			children := parent->GetChildren();
 			each(i : children) {
 				child := children->Get(i);
 				x := child->GetX();
