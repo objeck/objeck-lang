@@ -7,6 +7,7 @@ class DecisionTree {
       p->AddChild(12, 1);
       p->AddChild(4, 13);
       Gain(p)->PrintLine();
+
       #---
       p := DecisionElem->New(16, 14);
       p->AddChild(7, 1);
@@ -22,16 +23,11 @@ class DecisionTree {
       children := parent->GetChildren();
 
       e : Float;
-      values := Float->New[2, children->Size()];
       each(i : children) {
          child := children->Get(i);
          x := child->GetX();
          y := child->GetY();
-
-         values[i, 0] := Entropy(x, y);
-         values[i, 1] := (x + y) / pxy;
-         
-         e += values[i, 0] * values[i, 1];
+         e += Entropy(x, y) * (x + y) / pxy;
       };
 
       return Entropy(px, py) - e;
