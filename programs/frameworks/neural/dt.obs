@@ -1,21 +1,25 @@
 use Collection;
 
-class Test {
+class DecisionTree {
    function : Main(args : String[]) ~ Nil {
+      #---
+      p := Node->New(16, 14);
+      p->AddChild(12, 1);
+      p->AddChild(4, 13);
+      Gain(p)->PrintLine();
+      #---
       p := Node->New(16, 14);
       p->AddChild(7, 1);
       p->AddChild(4, 6);
       p->AddChild(5, 7);
-
-      Gain(p);
+      Gain(p)->PrintLine();
    }
 
-   function : Gain(parent : Node) ~ Nil {
+   function : native : Gain(parent : Node) ~ Float {
       px := parent->GetX(); 
       py := parent->GetY();
-      children := parent->GetChildren();
-
       pxy := px + py;
+      children := parent->GetChildren();
 
       e : Float;
       values := Float->New[2, children->Size()];
@@ -27,11 +31,10 @@ class Test {
          values[i, 0] := Entropy(x, y);
          values[i, 1] := (x + y) / pxy;
          
-         e += values[i, 1] * values[i, 0];
+         e += values[i, 0] * values[i, 1];
       };
 
-      ig := Entropy(px, py) - e;
-      "e={$e},ig={$ig}"->PrintLine();
+      return Entropy(px, py) - e;
    }
 
    function : Entropy(x : Float, y : Float) ~ Float {
