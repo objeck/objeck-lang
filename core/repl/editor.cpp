@@ -77,9 +77,29 @@ bool Document::Save(std::wstring filename)
 {
   std::ofstream write_file(UnicodeToBytes(filename));
   if(write_file.good()) {
+    // list code
+    std::wstringstream buffer;
+    size_t ident_count = 0;
     for(auto& line : lines) {
-      write_file << UnicodeToBytes(line.ToString()) << std::endl;
+      std::wstring line_str = line.ToString();
+      Editor::Trim(line_str);
+
+      if(!line_str.empty() && line_str.front() == L'}') {
+        ident_count--;
+      }
+
+      for(size_t j = 0; j < ident_count; ++j) {
+        buffer << L"   ";
+      }
+      buffer << line_str << std::endl;
+
+      if(!line_str.empty() && (line_str.front() == L'{' || line_str.back() == L'{')) {
+        ident_count++;
+      }
+
     }
+
+    write_file << UnicodeToBytes(buffer.str()) << std::endl;
     write_file.close();
 
     return true;
