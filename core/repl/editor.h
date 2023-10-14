@@ -119,7 +119,7 @@ class Document {
      name = n;
    }
 
-   bool Save();
+   bool Save(std::wstring filename);
 
    size_t Reset();
    bool LoadFile(const std::wstring &file);
