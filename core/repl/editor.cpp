@@ -73,9 +73,9 @@ bool Document::LoadFile(const std::wstring& file)
   return false;
 }
 
-bool Document::Save()
+bool Document::Save(std::wstring filename)
 {
-  std::ofstream write_file(UnicodeToBytes(name));
+  std::ofstream write_file(UnicodeToBytes(filename));
   if(write_file.good()) {
     for(auto& line : lines) {
       write_file << UnicodeToBytes(line.ToString()) << std::endl;
@@ -383,10 +383,10 @@ void Editor::Edit(std::wstring input, std::wstring libs, std::wstring opt, int m
         // save file
       case L's':
         if(DoSaveFile(in)) {
-          std::wcout << L"File saved => '" << doc.GetName() << L".'" << std::endl;
+          std::wcout << L"File saved => '" << in << L".'" << std::endl;
         }
         else {
-          std::wcout << L"Unable to save file: '" << doc.GetName() << L"'.\n  If the file was not loaded, provide a filename.\n  Ensure the location can be save to." << std::endl;
+          std::wcout << L"Unable to save file: '" << in << L"'.\n  If the file was not loaded, provide a filename.\n  Ensure the location can be save to." << std::endl;
         }
         break;
 
@@ -532,14 +532,13 @@ bool Editor::DoLoadFile(std::wstring& in)
 bool Editor::DoSaveFile(std::wstring& in)
 {
   if(in.size() > 2 && EndsWith(in, L".obs")) {
-    if(doc.Save()) {
-      std::wstring filename = in.substr(2);
-      doc.SetName(Trim(filename));
+    in = in.substr(2);
+
+    const std::wstring filename = Trim(in);
+    if(doc.Save(filename)) {
+      doc.SetName(filename);
       return true;
     }
-  }
-  else if(doc.GetName() != DEFAULT_FILE_NAME && doc.Save()) {
-    return true;
   }
 
   return false;
