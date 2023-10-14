@@ -1,4 +1,4 @@
-use System.Matrix;
+use System.ML;
 
 class NeuralNetwork {
 	@input_nodes : Float;
