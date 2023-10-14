@@ -1,5 +1,5 @@
 use Collection;
-use System.Matrix;
+use System.ML;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
