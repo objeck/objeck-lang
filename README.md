@@ -24,6 +24,10 @@ class Hello {
 
 To get started, take a look at the [language guide](https://objeck.org/getting_started.html) and [code examples](https://github.com/objeck/objeck-lang/tree/master/programs/examples). If you want to contribute, start with the [system architecture](https://github.com/objeck/objeck-lang/tree/master/core).
 
+## Latest
+* Adding more ML features and algorithms (for 2023.10.x)
+* Soliciting feedback on ways to enhance language expressiveness (for 2023.11.x)
+
 ## Features
 * Modern object-oriented and functional
 * Cross-platform: Linux (x64 and ARM64), macOS (ARM64), Windows (x64)
@@ -31,7 +35,7 @@ To get started, take a look at the [language guide](https://objeck.org/getting_s
 * API support for
   * Secure web servers and clients
   * Encryption
-  * Generation and parsing of JSON, CSV, and XML
+  * JSON, CSV, and XML parsing libraries
   * Regular expressions
   * 2D gaming and matrix mathematics
   * Collections
