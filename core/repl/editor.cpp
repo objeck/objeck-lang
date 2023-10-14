@@ -620,7 +620,30 @@ bool Editor::DoReplaceLine(std::wstring& in)
     }
   }
   else {
-    std::wcout << SYNTAX_ERROR << std::endl;
+    try {
+      const size_t line_pos = cur_pos;
+      if(line_pos <= doc.Size()) {
+        if(doc.DeleteLine(line_pos - 1)) {
+          std::wcout << L"Insert " << line_pos << L"] ";
+          std::getline(std::wcin, in);
+
+          cur_pos = line_pos - 1;
+          if(AppendLine(in)) {
+            std::wcout << "=> Replaced line " << line_pos << L'.' << std::endl;
+            return true;
+          }
+        }
+      }
+      else {
+        std::wcout << "=> Line number " << in << L" is invalid or read-only." << std::endl;
+      }
+    }
+    catch(std::invalid_argument& e) {
+#ifdef _WIN32
+      UNREFERENCED_PARAMETER(e);
+#endif
+      std::wcout << SYNTAX_ERROR << std::endl;
+    }
   }
 
   return false;
