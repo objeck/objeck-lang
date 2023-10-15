@@ -5,18 +5,20 @@ class Repl {
 		# 50/50 dateset for playing, what is the predictor?
 		p := Node->New(10.0, 10.0); 
 
-		# test: performance contrib
+		# test: performance contrib to playing
 		p->AddChild(14.0, 8.0);
 		p->AddChild(6.0, 2.0);
 		gi := p->GiniImpurity();
 		"perf={$gi}"->PrintLine();
 
-		# test: class contrib
+		# test: class contrib to playing
 		p := Node->New(10.0, 10.0);
 		p->AddChild(10.0, 8.0);
 		p->AddChild(10.0, 2.0);
 		gi := p->GiniImpurity();
 		"class={$gi}"->PrintLine();
+
+		
 	}
 }
 
