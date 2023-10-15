@@ -1,24 +1,28 @@
 use Collection;
 
 bundle System.ML {
-	class TreeNode {
+	class DecisionTree {
 		function : Main(args : String[]) ~ Nil {
-			p := TreeElem->New(16, 14);
+			p := TreeNode->New(20, 10);
 
-			p->AddChild(12, 1);
-			p->AddChild(4, 13);
-			g := Gain(p);
+			p->AddChild(14, 8);
+			p->AddChild(6, 2);
+			g1 := Gain(p);
 
-			p := TreeElem->New(16, 14);
+			"energy={$g1}"->PrintLine();
+
+#~
+			p := TreeNode->New(16, 14);
 			p->AddChild(7, 1);
 			p->AddChild(4, 6);
 			p->AddChild(5, 7);
-			g := Gain(p);
+			g2 := Gain(p);
 			
-			"energy={$g}, motivation={$g}"->PrintLine();
+			"energy={$g1}, motivation={$g2}"->PrintLine();
+~#
 		}
 
-		function : native : Gain(parent : TreeElem) ~ Float {
+		function : native : Gain(parent : TreeNode) ~ Float {
 			px := parent->GetX(); 
 			py := parent->GetY();
 			pxy := px + py;
@@ -41,16 +45,16 @@ bundle System.ML {
 		}
 	}
 
-	class TreeElem {
+	class TreeNode {
 		@x : Float;
 		@y : Float;
-		@children : Vector<TreeElem>;
+		@children : Vector<TreeNode>;
 
 		New(x : Float, y : Float) {
 			@x := x;
 			@y := y;
 
-			@children := Vector->New()<TreeElem>;
+			@children := Vector->New()<TreeNode>;
 		}
 
 		method : public : GetX() ~ Float {
@@ -62,11 +66,15 @@ bundle System.ML {
 		}
 
 		method : public : AddChild(x : Float, y : Float) ~ Nil {
-			@children->AddBack(TreeElem->New(x, y));
+			@children->AddBack(TreeNode->New(x, y));
 		}
 
-		method : public : GetChildren() ~ Vector<TreeElem> {
+		method : public : GetChildren() ~ Vector<TreeNode> {
 			return @children;
+		}
+
+		method : public : IsLeaf() ~ Bool {
+			return @children->IsEmpty();
 		}
 	}
 }

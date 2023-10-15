@@ -1,0 +1,27 @@
+use Collection;
+
+class Repl {
+	function : Main(args : String[]) ~ Nil {
+		pxy := 20.0;
+		
+		xl := 14.0; yl := 8.0;
+		xr := 6.0; yr := 2.0;
+		gi := GiniImpurity(xl, yl, xr, yr, pxy);
+		"performance={$gi}"->PrintLine();
+		
+		xl := 10.0; yl := 8.0;
+		xr := 10.0; yr := 2.0;
+		gi := GiniImpurity(xl, yl, xr, yr, pxy);
+		"class={$gi}"->PrintLine();
+	}
+
+	function : GiniImpurity(xl : Float, yl : Float, xr : Float, yr : Float, pxy : Float) ~ Float {	
+		return  (xl/pxy) * Gini(xl, yl) + (xr/pxy) * Gini(xr, yr);
+	}
+
+	function : Gini(x : Float, y : Float) ~ Float {
+		l := y/x; r := 1-l;
+		return 1 - (l*l + r*r);
+	}
+}
+
