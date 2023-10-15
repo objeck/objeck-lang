@@ -2,33 +2,39 @@ use Collection;
 
 class Repl {
 	function : Main(args : String[]) ~ Nil {
+		# performance node
 		p := Node->New(10.0, 10.0);
-		
-		l := Node->New(14.0, 8.0);
-		r := Node->New(6.0, 2.0);
-		gi := GiniImpurity(l, r, p);
+		p->AddChild(14.0, 8.0);
+		p->AddChild(6.0, 2.0);
+		gi := p->GiniImpurity();
 		"perf={$gi}"->PrintLine();
 
-		l := Node->New(10.0, 8.0);
-		r := Node->New(10.0, 2.0);
-		gi := GiniImpurity(l, r, p);
+		# class node
+		p := Node->New(10.0, 10.0);
+		p->AddChild(10.0, 8.0);
+		p->AddChild(10.0, 2.0);
+		gi := p->GiniImpurity();
 		"class={$gi}"->PrintLine();
-	}
-
-	function : GiniImpurity(l : Node, r : Node, p : Node) ~ Float {	
-		pxy := p->GetX() + p->GetY();
-		return  (l->GetX() / pxy) * l->Gini() + (r->GetX() / pxy) * r->Gini();
 	}
 }
 
 class Node {
 	@x : Float;
 	@y : Float;
+	@parent : Node;
 	@children : Vector<Node>;
 
 	New(x : Float, y : Float) {
 		@x := x;
 		@y := y;
+
+		@children := Vector->New()<Node>;
+	}
+
+	New(x : Float, y : Float, p : Node) {
+		@x := x;
+		@y := y;
+		@parent := p;
 
 		@children := Vector->New()<Node>;
 	}
@@ -41,13 +47,26 @@ class Node {
 		return @y;
 	}
 
-	method : public : Gini() ~ Float {
+	method : public : GiniImpurity() ~ Float {	
+		pxy := @x + @y;
+
+		gi := 0.0;
+		each(child := @children) {
+			gi += (child->GetX() / pxy) * child->Gini();
+		};
+
+		return gi;
+	}
+
+	method : Gini() ~ Float {
 		l := @y/@x; r := 1-l;
 		return 1 - (l*l + r*r);
 	}
 
-	method : public : AddChild(x : Float, y : Float) ~ Nil {
-		@children->AddBack(Node->New(x, y));
+	method : public : AddChild(x : Float, y : Float) ~ Node {
+		n := Node->New(x, y, @self);
+		@children->AddBack(n);
+		return n;
 	}
 
 	method : public : GetChildren() ~ Vector<Node> {
