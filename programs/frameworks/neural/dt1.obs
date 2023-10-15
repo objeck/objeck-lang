@@ -2,14 +2,16 @@ use Collection;
 
 class Repl {
 	function : Main(args : String[]) ~ Nil {
-		# performance node
-		p := Node->New(10.0, 10.0);
+		# 50/50 dateset for playing, what is the predictor?
+		p := Node->New(10.0, 10.0); 
+
+		# test: performance contrib
 		p->AddChild(14.0, 8.0);
 		p->AddChild(6.0, 2.0);
 		gi := p->GiniImpurity();
 		"perf={$gi}"->PrintLine();
 
-		# class node
+		# test: class contrib
 		p := Node->New(10.0, 10.0);
 		p->AddChild(10.0, 8.0);
 		p->AddChild(10.0, 2.0);
