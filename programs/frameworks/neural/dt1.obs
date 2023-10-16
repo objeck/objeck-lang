@@ -2,22 +2,19 @@ use Collection;
 
 class Repl {
 	function : Main(args : String[]) ~ Nil {
-		# 50/50 dateset for playing, what is the predictor?
-		p := Node->New(20.0, 10.0); 
-
 		# test: performance contrib to playing
+		p := Node->New(20.0, 10.0); # 50/50 dateset for playing, what is the predictor?
 		p->AddChild(14.0, 8.0); # left
 		p->AddChild(6.0, 2.0); # right
 		gi := p->GiniImpurity();
 		"perf={$gi}"->PrintLine();
 		
 		# test: class contrib to playing
-		p := Node->New(20.0, 10.0); 
+		p := Node->New(20.0, 10.0); # 50/50 dateset for playing, what is the predictor?
 		p->AddChild(10.0, 8.0); # left
 		p->AddChild(10.0, 2.0); # right
 		gi := p->GiniImpurity();
 		"class={$gi}"->PrintLine();
-
 	}
 }
 
