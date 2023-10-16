@@ -3,67 +3,64 @@ use Collection;
 class Repl {
 	function : Main(args : String[]) ~ Nil {
 		# 50/50 dateset for playing, what is the predictor?
-		p := Node->New(10.0, 10.0); 
+		p := Node->New(20.0, 10.0); 
 
 		# test: performance contrib to playing
-		p->AddChild(14.0, 8.0);
-		p->AddChild(6.0, 2.0);
+		p->AddChild(14.0, 8.0); # left
+		p->AddChild(6.0, 2.0); # right
 		gi := p->GiniImpurity();
 		"perf={$gi}"->PrintLine();
-
+		
 		# test: class contrib to playing
-		p := Node->New(10.0, 10.0);
-		p->AddChild(10.0, 8.0);
-		p->AddChild(10.0, 2.0);
+		p := Node->New(20.0, 10.0); 
+		p->AddChild(10.0, 8.0); # left
+		p->AddChild(10.0, 2.0); # right
 		gi := p->GiniImpurity();
 		"class={$gi}"->PrintLine();
 
-		
 	}
 }
 
 class Node {
-	@x : Float;
-	@y : Float;
+	@goal : Float;
+	@achieved : Float;
 	@parent : Node;
 	@children : Vector<Node>;
 
-	New(x : Float, y : Float) {
-		@x := x;
-		@y := y;
-
+	New(g : Float, a : Float) {
+		@goal := g;
+		@achieved := a;
 		@children := Vector->New()<Node>;
 	}
 
-	New(x : Float, y : Float, p : Node) {
-		@x := x;
-		@y := y;
+	New : private (g : Float, a : Float, p : Node) {
+		@goal := g;
+		@achieved := a;
 		@parent := p;
-
 		@children := Vector->New()<Node>;
 	}
 
-	method : public : GetX() ~ Float {
-		return @x;
+	method : public : GetGoal() ~ Float {
+		return @goal;
 	}
 
-	method : public : GetY() ~ Float {
-		return @y;
+	method : public : GetAchieved() ~ Float {
+		return @achieved;
 	}
 
 	method : public : GiniImpurity() ~ Float {	
-		pxy := @x + @y;
+		pxy := @goal;
 
 		gi := 0.0;
 		each(child := @children) {
-			gi += (child->GetX() / pxy) * child->Gini();
+			gi += (child->GetGoal() / pxy) * child->Gini();
 		};
 
 		return gi;
 	}
 
 	method : Gini() ~ Float {
-		l := @y/@x; r := 1-l;
+		l := @achieved/@goal; r := 1-l;
 		return 1 - (l*l + r*r);
 	}
 
