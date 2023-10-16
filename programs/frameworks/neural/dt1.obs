@@ -45,6 +45,10 @@ class Node {
 		return @achieved;
 	}
 
+	method : public : GetAchievedPercentage() ~ Float {
+		return @achieved/@goal;
+	}
+	
 	method : public : GiniImpurity() ~ Float {	
 		pxy := @goal;
 
