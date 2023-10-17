@@ -1,47 +1,56 @@
 use Collection;
 
-class Repl {
+class DecisionTree {
 	function : Main(args : String[]) ~ Nil {
 		# test: performance contrib to playing
 		p := Node->New(20.0, 10.0); # 50/50 dateset for playing, what is the predictor?
 		p->AddChild(14.0, 8.0); # left
 		p->AddChild(6.0, 2.0); # right
 		gi := p->GiniImpurity();
-		"perf={$gi}"->PrintLine();
+		"|perf={$gi}"->PrintLine();
 		
 		# test: class contrib to playing
 		p := Node->New(20.0, 10.0); # 50/50 dateset for playing, what is the predictor?
 		p->AddChild(10.0, 8.0); # left
 		p->AddChild(10.0, 2.0); # right
 		gi := p->GiniImpurity();
-		"class={$gi}"->PrintLine();
+		"|class={$gi}"->PrintLine();
 
-		# todo: subsplit
+		# todo: subsplit on performance
 		p := Node->New(10.0, 8.0); # 50/50 dateset for playing, what is the predictor?
-		p->AddChild(8.0, 7.0); # left
+		p->AddChild(8.0, 6.0); # left
 		p->AddChild(2.0, 2.0); # right
 		gi := p->GiniImpurity();
-		"class`={$gi}"->PrintLine();
+		"|class|perf={$gi}"->PrintLine();
+
+#~
+		# todo: subsplit on class
+		p := Node->New(10.0, 8.0); # 50/50 dateset for playing, what is the predictor?
+		p->AddChild(8.0, 8.0); # left
+		p->AddChild(0.0, 0.0); # right
+		gi := p->GiniImpurity();
+		"|class|perf={$gi}"->PrintLine();
+~#		
 	}
 }
 
 class Node {
 	@target : Float;
 	@actual : Float;
-	@gi : Float;
+	@gini_impr : Float;
 	@parent : Node;
 	@children : Vector<Node>;
 
-	New(g : Float, a : Float) {
-		@target := g;
-		@actual := a;
+	New(target : Float, actual : Float) {
+		@target := target;
+		@actual := actual;
 		@children := Vector->New()<Node>;
 	}
 
-	New : private (g : Float, a : Float, p : Node) {
-		@target := g;
-		@actual := a;
-		@parent := p;
+	New : private (target : Float, actual : Float, parent : Node) {
+		@target := target;
+		@actual := actual;
+		@parent := parent;
 		@children := Vector->New()<Node>;
 	}
 
@@ -52,23 +61,23 @@ class Node {
 	method : public : GetActual() ~ Float {
 		return @actual;
 	}
-	
+
 	method : public : GetTargetPercentage() ~ Float {
 		return @actual/@target;
 	}
 
 	method : public : GiniImpurity() ~ Float {	
-		if(@gi = 0.0) {
+		if(@gini_impr = 0.0) {
 			pxy := @target;
 
 			each(child := @children) {
-				@gi += (child->GetTarget() / pxy) * child->Gini();
+				@gini_impr += (child->GetTarget() / pxy) * child->Gini();
 			};
 
-			return @gi;
+			return @gini_impr;
 		};
 
-		return @gi;
+		return @gini_impr;
 	}
 
 	method : Gini() ~ Float {
