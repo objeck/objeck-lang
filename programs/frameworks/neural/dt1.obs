@@ -15,12 +15,20 @@ class Repl {
 		p->AddChild(10.0, 2.0); # right
 		gi := p->GiniImpurity();
 		"class={$gi}"->PrintLine();
+
+		# todo: subsplit
+		p := Node->New(10.0, 8.0); # 50/50 dateset for playing, what is the predictor?
+		p->AddChild(8.0, 7.0); # left
+		p->AddChild(2.0, 2.0); # right
+		gi := p->GiniImpurity();
+		"class`={$gi}"->PrintLine();
 	}
 }
 
 class Node {
 	@goal : Float;
 	@achieved : Float;
+	@gi : Float;
 	@parent : Node;
 	@children : Vector<Node>;
 
@@ -48,16 +56,19 @@ class Node {
 	method : public : GetAchievedPercentage() ~ Float {
 		return @achieved/@goal;
 	}
-	
-	method : public : GiniImpurity() ~ Float {	
-		pxy := @goal;
 
-		gi := 0.0;
-		each(child := @children) {
-			gi += (child->GetGoal() / pxy) * child->Gini();
+	method : public : GiniImpurity() ~ Float {	
+		if(@gi = 0.0) {
+			pxy := @goal;
+
+			each(child := @children) {
+				@gi += (child->GetGoal() / pxy) * child->Gini();
+			};
+
+			return @gi;
 		};
 
-		return gi;
+		return @gi;
 	}
 
 	method : Gini() ~ Float {
