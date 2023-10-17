@@ -26,43 +26,43 @@ class Repl {
 }
 
 class Node {
-	@goal : Float;
-	@achieved : Float;
+	@target : Float;
+	@actual : Float;
 	@gi : Float;
 	@parent : Node;
 	@children : Vector<Node>;
 
 	New(g : Float, a : Float) {
-		@goal := g;
-		@achieved := a;
+		@target := g;
+		@actual := a;
 		@children := Vector->New()<Node>;
 	}
 
 	New : private (g : Float, a : Float, p : Node) {
-		@goal := g;
-		@achieved := a;
+		@target := g;
+		@actual := a;
 		@parent := p;
 		@children := Vector->New()<Node>;
 	}
 
-	method : public : GetGoal() ~ Float {
-		return @goal;
+	method : public : GetTarget() ~ Float {
+		return @target;
 	}
 
-	method : public : GetAchieved() ~ Float {
-		return @achieved;
+	method : public : GetActual() ~ Float {
+		return @actual;
 	}
-
-	method : public : GetAchievedPercentage() ~ Float {
-		return @achieved/@goal;
+	
+	method : public : GetTargetPercentage() ~ Float {
+		return @actual/@target;
 	}
 
 	method : public : GiniImpurity() ~ Float {	
 		if(@gi = 0.0) {
-			pxy := @goal;
+			pxy := @target;
 
 			each(child := @children) {
-				@gi += (child->GetGoal() / pxy) * child->Gini();
+				@gi += (child->GetTarget() / pxy) * child->Gini();
 			};
 
 			return @gi;
@@ -72,7 +72,7 @@ class Node {
 	}
 
 	method : Gini() ~ Float {
-		l := @achieved/@goal; r := 1-l;
+		l := @actual/@target; r := 1-l;
 		return 1 - (l*l + r*r);
 	}
 
