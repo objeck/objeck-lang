@@ -39,9 +39,9 @@
 int main(int argc, char* argv[])
 {
   std::wstring usage;
-  usage += L"Usage: obd -exe <program> [-src <source directory>] [-args \"'<arg 0>' '<arg 1>'\"]\n\n";
+  usage += L"Usage: obd -bin <program> [-src <source directory>] [-args \"'<arg 0>' '<arg 1>'\"]\n\n";
   usage += L"Parameters:\n";
-  usage += L"  -bin: [input] binary executable file\n";
+  usage += L"  -bin: [input] Objeck binary file\n";
   usage += L"  -src_dir: [option] source directory path, default is '.'\n";
   usage += L"  -args: [option][end-flag] list of arguments\n\n";
   usage += L"Example: \"obd -exe ..\\examples\\hello.obe -src ..\\examples\"\n\nVersion: ";
