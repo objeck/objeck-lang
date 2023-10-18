@@ -2,35 +2,52 @@ use Collection;
 
 class DecisionTree {
 	function : Main(args : String[]) ~ Nil {
-		# test: performance contrib to playing
-		p := Node->New(20.0, 10.0); # 50/50 dateset for playing, what is the predictor?
-		p->AddChild(14.0, 8.0); # left
-		p->AddChild(6.0, 2.0); # right
-		gi := p->GiniImpurity();
-		"|perf={$gi}"->PrintLine();
-		
-		# test: class contrib to playing
-		p := Node->New(20.0, 10.0); # 50/50 dateset for playing, what is the predictor?
-		p->AddChild(10.0, 8.0); # left
-		p->AddChild(10.0, 2.0); # right
-		gi := p->GiniImpurity();
-		"|class={$gi}"->PrintLine();
+		left := Node->New(20.0, 10.0);
+		left->AddChild(14.0, 8.0); # left
+		left->AddChild(6.0, 2.0); # right
 
-		# todo: subsplit on performance
-		p := Node->New(10.0, 8.0); # 50/50 dateset for playing, what is the predictor?
+		right := Node->New(20.0, 10.0);
+		right->AddChild(10.0, 8.0); # left
+		right->AddChild(10.0, 2.0); # right
+
+		next := Pick(left, right);
+		next->GetTargetPercentage()->PrintLine();
+		next->Split();
+
+		# todo: subsplit on class
+		p := Node->New(10.0, 8.0);
 		p->AddChild(8.0, 6.0); # left
 		p->AddChild(2.0, 2.0); # right
 		gi := p->GiniImpurity();
 		"|class|perf={$gi}"->PrintLine();
 
-#~
-		# todo: subsplit on class
-		p := Node->New(10.0, 8.0); # 50/50 dateset for playing, what is the predictor?
+		# todo: subsplit on feature
+		p := Node->New(10.0, 8.0);
 		p->AddChild(8.0, 8.0); # left
 		p->AddChild(0.0, 0.0); # right
 		gi := p->GiniImpurity();
-		"|class|perf={$gi}"->PrintLine();
-~#		
+		"|class|class={$gi}"->PrintLine();
+
+	}
+
+	function : Pick(left : Node, right : Node) ~ Node {
+		best : Node;
+
+		children : Vector<Node>;
+		if(left->GiniImpurity() < right->GiniImpurity()) {
+			children := right->GetChildren()<Node>;
+		}
+		else {
+			children := right->GetChildren()<Node>;
+		};
+
+		each(child := children) {
+			if(best = Nil | best->GetTargetPercentage() < child->GetTargetPercentage()) {
+				best := child;
+			};
+		};
+
+		return best;
 	}
 }
 
@@ -66,6 +83,15 @@ class Node {
 		return @actual/@target;
 	}
 
+	method : public : Split() ~ Pair<Node> {
+		left := @target - @actual;
+		right := @actual - left;
+
+"{$left},{$right},"->PrintLine();
+
+		return Nil;
+	}
+
 	method : public : GiniImpurity() ~ Float {	
 		if(@gini_impr = 0.0) {
 			pxy := @target;
@@ -81,6 +107,10 @@ class Node {
 	}
 
 	method : Gini() ~ Float {
+		if(@target = 0.0) {
+			return 0.0;
+		};
+
 		l := @actual/@target; r := 1-l;
 		return 1 - (l*l + r*r);
 	}
