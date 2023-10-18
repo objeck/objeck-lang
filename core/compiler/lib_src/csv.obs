@@ -487,11 +487,11 @@ bundle Data.CSV {
 		@return true if deleted false otherwise
 		~#
 		method : public : Delete(id : Int) ~ Bool {
-			if(id <  @data->Size()) {
-				return @data->Remove(id) <> Nil;
+			if(id = 0) {
+				return false;
 			};
 			
-			return false;
+			return @data->Remove(id) <> Nil;
 		}
 		
 		#~
