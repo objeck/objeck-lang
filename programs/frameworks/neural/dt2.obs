@@ -1,0 +1,12 @@
+use Collection;
+use Data.CSV;
+
+class DecisionTree {
+	function : Main(args : String[]) ~ Nil {
+		csv := CsvTable->New(System.IO.Filesystem.FileReader->ReadFile(args[0]));
+		# remove header row
+		if(csv->Delete(1)) {
+			csv->Size()->PrintLine();
+		};
+	}
+}
