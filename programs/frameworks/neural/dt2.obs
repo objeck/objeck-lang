@@ -3,10 +3,40 @@ use Data.CSV;
 
 class DecisionTree {
 	function : Main(args : String[]) ~ Nil {
-		csv := CsvTable->New(System.IO.Filesystem.FileReader->ReadFile(args[0]));
-		# remove header row
-		if(csv->Delete(1)) {
-			csv->Size()->PrintLine();
+		table := CsvTable->New(System.IO.Filesystem.FileReader->ReadFile(args[0]));
+
+		wgi := 0.0;
+		size := (table->Size() - 1)->As(Float);
+		size->PrintLine();
+
+		goal := table->Count("Perf", "1")->As(Float);
+		acheived := 0.0;
+		each(row := table) {
+			if(row->Get("Play")->Equals("1") & row->Get("Perf")->Equals("1")) {
+				acheived += 1.0;
+			};
 		};
+		reached := acheived / goal;
+		not_reached := (goal - acheived) / goal;
+		gi := 1 - (reached*reached + not_reached*not_reached);
+		"Left: goal={$goal}\tacheived={$acheived}\treached={$reached}\tnot_reached={$not_reached}\tgi={$gi}"->PrintLine();
+		wgi += goal / size * gi;
+		# ---
+
+		goal := table->Count("Perf", "0")->As(Float);
+		acheived := 0.0;
+		each(row := table) {
+			if(row->Get("Play")->Equals("1") & row->Get("Perf")->Equals("0")) {
+				acheived += 1.0;
+			};
+		};
+		reached := acheived / goal;
+		not_reached := (goal - acheived) / goal;
+		gi := 1 - (reached*reached + not_reached*not_reached);
+		wgi += goal / size * gi;
+		"Left: goal={$goal}\tacheived={$acheived}\treached={$reached}\tnot_reached={$not_reached}\tgi={$gi}"->PrintLine();
+
+		"weighted-impur={$wgi}"->PrintLine();
+
 	}
 }
