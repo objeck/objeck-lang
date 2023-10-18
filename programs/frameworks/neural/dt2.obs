@@ -4,15 +4,18 @@ use Data.CSV;
 class DecisionTree {
 	function : Main(args : String[]) ~ Nil {
 		table := CsvTable->New(System.IO.Filesystem.FileReader->ReadFile(args[0]));
+		Calculate(table, "Perf")->PrintLine();
+	}
 
+	function : Calculate(table : CsvTable, cn : String) ~ Float {
 		wgi := 0.0;
 		size := (table->Size() - 1)->As(Float);
 		size->PrintLine();
 
-		goal := table->Count("Perf", "1")->As(Float);
+		goal := table->Count(cn, "1")->As(Float);
 		acheived := 0.0;
 		each(row := table) {
-			if(row->Get("Play")->Equals("1") & row->Get("Perf")->Equals("1")) {
+			if(row->Get("Play")->Equals("1") & row->Get(cn)->Equals("1")) {
 				acheived += 1.0;
 			};
 		};
@@ -23,10 +26,10 @@ class DecisionTree {
 		wgi += goal / size * gi;
 		# ---
 
-		goal := table->Count("Perf", "0")->As(Float);
+		goal := table->Count(cn, "0")->As(Float);
 		acheived := 0.0;
 		each(row := table) {
-			if(row->Get("Play")->Equals("1") & row->Get("Perf")->Equals("0")) {
+			if(row->Get("Play")->Equals("1") & row->Get(cn)->Equals("0")) {
 				acheived += 1.0;
 			};
 		};
@@ -38,5 +41,6 @@ class DecisionTree {
 
 		"weighted-impur={$wgi}"->PrintLine();
 
+		return wgi;
 	}
 }
