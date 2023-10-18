@@ -5,6 +5,7 @@ class DecisionTree {
 	function : Main(args : String[]) ~ Nil {
 		table := CsvTable->New(System.IO.Filesystem.FileReader->ReadFile(args[0]));
 		Calculate(table, "Perf")->PrintLine();
+		Calculate(table, "Class")->PrintLine();
 	}
 
 	function : Calculate(table : CsvTable, cn : String) ~ Float {
