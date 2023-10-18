@@ -23,7 +23,7 @@ class DecisionTree {
 		reached := acheived / goal;
 		not_reached := (goal - acheived) / goal;
 		gi := 1 - (reached*reached + not_reached*not_reached);
-		"Left: goal={$goal}\tacheived={$acheived}\treached={$reached}\tnot_reached={$not_reached}\tgi={$gi}"->PrintLine();
+		"Left: goal={$goal}\tacheived={$acheived}\tgi={$gi}"->PrintLine();
 		wgi += goal / size * gi;
 		# ---
 
@@ -38,7 +38,7 @@ class DecisionTree {
 		not_reached := (goal - acheived) / goal;
 		gi := 1 - (reached*reached + not_reached*not_reached);
 		wgi += goal / size * gi;
-		"Left: goal={$goal}\tacheived={$acheived}\treached={$reached}\tnot_reached={$not_reached}\tgi={$gi}"->PrintLine();
+		"Left: goal={$goal}\tacheived={$acheived}\tgi={$gi}"->PrintLine();
 
 		"weighted-impur={$wgi}"->PrintLine();
 
