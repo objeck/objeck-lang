@@ -1,0 +1,44 @@
+use Collection;
+use Data.CSV;
+
+class DecisionTree {
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() > 0) {
+			matrix := ToMatrix(args[0]);
+			matrix->ToString()->PrintLine();
+
+			dims := matrix->Size();
+			rows := dims[0];
+			cols := dims[1];
+			"cols={$cols}, rows={$rows}"->PrintLine();
+		};
+	}
+
+	function : ToMatrix(filename : String) ~ Float[,] {
+		table := CsvTable->New(System.IO.Filesystem.FileReader->ReadFile(filename));
+		if(table->IsParsed()) {
+			row_size := table->Size();
+			if(row_size->Size() > 1) {
+				column := table->Get(1);
+				column_size := column->Size();
+
+				matrix := Float->New[row_size - 1, column_size];
+				for(i := 1; i < row_size; i += 1;) {
+					each(j : column_size) {
+						value := table->Get(i)->Get(j)->ToLower();
+						if(value->Equals("0") | value->StartsWith("0.0")  | value->Equals("false")) {
+							matrix[i - 1, j] := 0;
+						}
+						else {
+							matrix[i - 1, j] := 1;	
+						};
+					};
+				};
+
+				return matrix;
+			};
+		};
+
+		return Nil;
+	}
+}
