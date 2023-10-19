@@ -14,6 +14,10 @@ class DecisionTree {
 		};
 	}
 
+	function : Matches(matrix : Float[,], index : Int) ~ Int {
+		return 0;
+	}
+
 	function : ToMatrix(filename : String) ~ Float[,] {
 		table := CsvTable->New(System.IO.Filesystem.FileReader->ReadFile(filename));
 		if(table->IsParsed()) {
