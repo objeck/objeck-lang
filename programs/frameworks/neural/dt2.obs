@@ -4,43 +4,54 @@ use Data.CSV;
 class DecisionTree {
 	function : Main(args : String[]) ~ Nil {
 		table := CsvTable->New(System.IO.Filesystem.FileReader->ReadFile(args[0]));
-		Calculate(table, "Perf")->PrintLine();
-		Calculate(table, "Class")->PrintLine();
+		Calculate(table, "Perf", "Class");
 	}
 
-	function : Calculate(table : CsvTable, cn : String) ~ Float {
+	#
+	# matrix : Float[,], left_index : Int, right_index : Int
+	#
+	function : Calculate(table : CsvTable, left_name : String, right_name : String) ~ Float {
 		wgi := 0.0;
+
+		# --- Left ---
 		size := (table->Size() - 1)->As(Float);
-		size->PrintLine();
 
-		goal := table->Count(cn, "1")->As(Float);
+		left_goal := table->Count(left_name, "1")->As(Float);
 		acheived := 0.0;
 		each(row := table) {
-			if(row->Get("Play")->Equals("1") & row->Get(cn)->Equals("1")) {
+			if(row->Get(right_name)->Equals("1") & row->Get(left_name)->Equals("1")) {
 				acheived += 1.0;
 			};
 		};
-		reached := acheived / goal;
-		not_reached := (goal - acheived) / goal;
-		gi := 1 - (reached*reached + not_reached*not_reached);
-		"Left: goal={$goal}\tacheived={$acheived}\tgi={$gi}"->PrintLine();
-		wgi += goal / size * gi;
-		# ---
+		reached := acheived / left_goal;
+		not_reached := (left_goal - acheived) / left_goal;
+		left_gi := 1 - (reached*reached + not_reached*not_reached);
+		"Left: left_goal={$left_goal}\tacheived={$acheived}\tleft_gi={$left_gi}"->PrintLine();
+		wgi += left_goal / size * left_gi;
+		
+		# --- Right ---
 
-		goal := table->Count(cn, "0")->As(Float);
+		right_goal := table->Count(left_name, "0")->As(Float);
 		acheived := 0.0;
 		each(row := table) {
-			if(row->Get("Play")->Equals("1") & row->Get(cn)->Equals("0")) {
+			if(row->Get(right_name)->Equals("1") & row->Get(left_name)->Equals("0")) {
 				acheived += 1.0;
 			};
 		};
-		reached := acheived / goal;
-		not_reached := (goal - acheived) / goal;
-		gi := 1 - (reached*reached + not_reached*not_reached);
-		wgi += goal / size * gi;
-		"Left: goal={$goal}\tacheived={$acheived}\tgi={$gi}"->PrintLine();
+		reached := acheived / right_goal;
+		not_reached := (right_goal - acheived) / right_goal;
+		right_gi := 1 - (reached*reached + not_reached*not_reached);
+		wgi += right_goal / size * right_gi;
+		"Right: right_goal={$right_goal}\tacheived={$acheived}\tright_gi={$right_gi}"->PrintLine();
 
 		"weighted-impur={$wgi}"->PrintLine();
+
+		if(left_gi < right_gi) {
+
+		}
+		else {
+
+		};
 
 		return wgi;
 	}
