@@ -5,41 +5,82 @@ class DecisionTree {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() > 0) {
 			matrix := ToMatrix(args[0]);
-			matrix->ToString()->PrintLine();
+matrix->ToString()->PrintLine();
 
-			Test(1,2,matrix)->PrintLine();
-			Test(0,2,matrix)->PrintLine();
+			done := false;
+			while(<>done) {
+				left_wgi := WeightedGini(1,2,matrix); # left
+				right_wgi := WeightedGini(0,2,matrix); # right
+"left_wgi={$left_wgi},right_wgi={$right_wgi}"->PrintLine();
+
+				if(left_wgi <> 0.0 & right_wgi <> 0.0) {
+					matrix := Split(0, matrix);
+				}
+				else {
+					done := true;
+				};
+			}
 		};
 	}
 
-	function : Test(test : Int, target : Int, matrix : Float[,]) ~ Float {
+	function : Split(index : Int, in : Float[,]) ~ Float[,] {
+		split_len := Matches(index, in)->ToInt();
+		if(split_len > 0) {
+			dims := in->Size();
+			rows := dims[0];
+			cols := dims[1];
+
+			out := Float->New[split_len, cols];
+			count := 0;
+			if(index > -1 & index < rows) {
+				each(row : rows) {
+					if(in[row, index] <> 0.0) {
+						each(k : cols) {
+							out[count, k] := in[row, k];
+						};
+						count += 1;
+					};
+				};
+			};
+
+			return out;
+		};
+
+		return Nil;
+	}
+
+	function : WeightedGini(test : Int, target : Int, matrix : Float[,]) ~ Float {
 		wgi := 0.0;
 		dims := matrix->Size();
 		size := dims[0]->As(Float);
 
 		# --- Left ---
 		goal := Matches(test, matrix);
-		acheived := Acheived(test, target, matrix);
-		reached := acheived / goal;
-		not_reached := (goal - acheived) / goal;
-		left_gi := 1 - (reached*reached + not_reached*not_reached);
-# "Left:\tgoal={$goal}\tacheived={$acheived}\tgi={$left_gi}"->PrintLine();
-		wgi += goal / size * left_gi;
+		if(goal > 0.0) {
+			acheived := Acheived(test, target, matrix);
+			reached := acheived / goal;
+			not_reached := (goal - acheived) / goal;
+			left_gi := 1 - (reached*reached + not_reached*not_reached);
+			wgi += goal / size * left_gi;
+		}
+		else {
+			return 0.0;
+		};
 
 		# --- Right ---
 		goal := Mismatch(test, matrix);
-		acheived := Unacheived(test, target, matrix);
-		reached := acheived / goal;
-		not_reached := (goal - acheived) / goal;
-		right_gi := 1 - (reached*reached + not_reached*not_reached);
-# "right:\tgoal={$goal}\tacheived={$acheived}\tgi={$right_gi}"->PrintLine();
-		wgi += goal / size * right_gi;
+		if(goal > 0.0) {
+			acheived := Unacheived(test, target, matrix);
+			reached := acheived / goal;
+			not_reached := (goal - acheived) / goal;
+			right_gi := 1 - (reached*reached + not_reached*not_reached);
+			wgi += goal / size * right_gi;
+		}
+		else {
+			return 0.0;
+		};
 
 		return wgi;
-	}
-
-	function : Split(index : Int, matrix : Float[,]) ~ Float[,] {
-		return Nil;
 	}
 
 	function : Matches(index : Int, matrix : Float[,]) ~ Float {
