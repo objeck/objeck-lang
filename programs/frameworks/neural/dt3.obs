@@ -7,22 +7,42 @@ class DecisionTree {
 			matrix := ToMatrix(args[0]);
 			matrix->ToString()->PrintLine();
 
-			dims := matrix->Size();
-			rows := dims[0];
-			cols := dims[1];
-			"cols={$cols}, rows={$rows}"->PrintLine();
-
-			MatchCount(0, matrix)->PrintLine();
-			MatchCount(1, matrix)->PrintLine();
-			MatchCount(2, matrix)->PrintLine();
+			Test(1,2,matrix)->PrintLine();
+			Test(0,2,matrix)->PrintLine();
 		};
+	}
+
+	function : Test(test : Int, target : Int, matrix : Float[,]) ~ Float {
+		wgi := 0.0;
+		dims := matrix->Size();
+		size := dims[0]->As(Float);
+
+		# --- Left ---
+		goal := Matches(test, matrix);
+		acheived := Acheived(test, target, matrix);
+		reached := acheived / goal;
+		not_reached := (goal - acheived) / goal;
+		left_gi := 1 - (reached*reached + not_reached*not_reached);
+# "Left:\tgoal={$goal}\tacheived={$acheived}\tgi={$left_gi}"->PrintLine();
+		wgi += goal / size * left_gi;
+
+		# --- Right ---
+		goal := Mismatch(test, matrix);
+		acheived := Unacheived(test, target, matrix);
+		reached := acheived / goal;
+		not_reached := (goal - acheived) / goal;
+		right_gi := 1 - (reached*reached + not_reached*not_reached);
+# "right:\tgoal={$goal}\tacheived={$acheived}\tgi={$right_gi}"->PrintLine();
+		wgi += goal / size * right_gi;
+
+		return wgi;
 	}
 
 	function : Split(index : Int, matrix : Float[,]) ~ Float[,] {
 		return Nil;
 	}
 
-	function : MatchCount(index : Int, matrix : Float[,]) ~ Int {
+	function : Matches(index : Int, matrix : Float[,]) ~ Float {
 		dims := matrix->Size();
 		rows := dims[0];
 
@@ -38,7 +58,39 @@ class DecisionTree {
 		return count;
 	}
 
-	function : MismatchCount(index : Int, matrix : Float[,]) ~ Int {
+	function : Acheived(test_index : Int, goal_index : Int, matrix : Float[,]) ~ Float {
+		dims := matrix->Size();
+		rows := dims[0];
+
+		count := 0;
+		if(test_index > -1 & test_index < rows & goal_index > -1 & goal_index < rows) {
+			each(row : rows) {
+				if(matrix[row, test_index] <> 0.0 & matrix[row, goal_index] <> 0.0) {
+					count += 1;
+				};
+			};
+		};
+
+		return count;
+	}
+
+	function : Unacheived(test_index : Int, goal_index : Int, matrix : Float[,]) ~ Float {
+		dims := matrix->Size();
+		rows := dims[0];
+
+		count := 0;
+		if(test_index > -1 & test_index < rows & goal_index > -1 & goal_index < rows) {
+			each(row : rows) {
+				if(matrix[row, test_index] = 0.0 & matrix[row, goal_index] <> 0.0) {
+					count += 1;
+				};
+			};
+		};
+
+		return count;
+	}
+
+	function : Mismatch(index : Int, matrix : Float[,]) ~ Float {
 		dims := matrix->Size();
 		rows := dims[0];
 

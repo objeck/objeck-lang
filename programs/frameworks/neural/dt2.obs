@@ -26,7 +26,7 @@ class DecisionTree {
 		reached := acheived / left_goal;
 		not_reached := (left_goal - acheived) / left_goal;
 		left_gi := 1 - (reached*reached + not_reached*not_reached);
-		"Left: left_goal={$left_goal}\tacheived={$acheived}\tleft_gi={$left_gi}"->PrintLine();
+"Left: left_goal={$left_goal}\tacheived={$acheived}\tleft_gi={$left_gi}"->PrintLine();
 		wgi += left_goal / size * left_gi;
 		
 		# --- Right ---
