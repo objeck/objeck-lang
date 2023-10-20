@@ -9,8 +9,8 @@ matrix->ToString()->PrintLine();
 
 			done := false;
 			while(<>done) {
-				left_wgi := WeightedGini(1,2,matrix); # left
-				right_wgi := WeightedGini(0,2,matrix); # right
+				left_wgi := WeightedGini(0,2,matrix); # left
+				right_wgi := WeightedGini(1,2,matrix); # right
 "left_wgi={$left_wgi},right_wgi={$right_wgi}"->PrintLine();
 
 				if(left_wgi <> 0.0 & right_wgi <> 0.0) {
