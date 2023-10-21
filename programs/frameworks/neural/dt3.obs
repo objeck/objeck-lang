@@ -8,22 +8,40 @@ class DecisionTree {
 			dims := matrix->Size();
 			rows := dims[0];
 
-			root := Node->New(rows, Matches(2, matrix));
-root->ToString()->PrintLine();
+			root := node := Node->New(rows, Matches(2, matrix));
+# root->ToString()->PrintLine();
 
 			done := false;
 			while(<>done) {
-				left_wgi := WeightedGini(0,2,matrix); # left
-				right_wgi := WeightedGini(1,2,matrix); # right
+				left_wgi := 0.0;
+				left := WeightedGini(0,2,matrix); # left
+				if(left <> Nil) {
+					left_wgi := left->GetWeightedGini();
+				};
+
+				right_wgi := 0.0;
+				right := WeightedGini(1,2,matrix); # right
+				if(right <> Nil) {
+					right_wgi := right->GetWeightedGini();
+				};
 # "left_wgi={$left_wgi},right_wgi={$right_wgi}"->PrintLine();
 
-				if(left_wgi <> 0.0 & right_wgi <> 0.0) {
+				if(left_wgi <> 0.0 & left_wgi < right_wgi) {
 					matrix := Split(0, matrix);
+					node->SetLeft(left->GetLeft());
+					node->SetRight(left->GetRight());
+				}
+				else if(right_wgi <> 0.0) {
+					matrix := Split(1, matrix);
+					node->SetLeft(right->GetLeft());
+					node->SetRight(right->GetRight());	
 				}
 				else {
 					done := true;
 				};
-			}
+			};
+
+			root->ToString()->PrintLine();
 		};
 	}
 
@@ -53,12 +71,13 @@ root->ToString()->PrintLine();
 		return Nil;
 	}
 
-	function : WeightedGini(test : Int, target : Int, matrix : Float[,]) ~ Float {
+	function : WeightedGini(test : Int, target : Int, matrix : Float[,]) ~ Result {
 		wgi := 0.0;
 		dims := matrix->Size();
 		size := dims[0]->As(Float);
 
 		# --- Left ---
+		left, right : Node;
 		goal := Matches(test, matrix);
 		if(goal > 0.0) {
 			acheived := Acheived(test, target, matrix);
@@ -66,11 +85,11 @@ root->ToString()->PrintLine();
 			not_reached := (goal - acheived) / goal;
 			left_gi := 1 - (reached*reached + not_reached*not_reached);
 			left := Node->New(goal, acheived, left_gi);
-left->ToString()->PrintLine();
+# left->ToString()->PrintLine();
 			wgi += goal / size * left_gi;
 		}
 		else {
-			return 0.0;
+			return Nil;
 		};
 
 		# --- Right ---
@@ -81,14 +100,14 @@ left->ToString()->PrintLine();
 			not_reached := (goal - acheived) / goal;
 			right_gi := 1 - (reached*reached + not_reached*not_reached);
 			right := Node->New(goal, acheived, right_gi);
-right->ToString()->PrintLine();
+# right->ToString()->PrintLine();
 			wgi += goal / size * right_gi;
 		}
 		else {
-			return 0.0;
+			return Nil;
 		};
 
-		return wgi;
+		return Result->New(left, right, wgi);
 	}
 
 	function : Matches(index : Int, matrix : Float[,]) ~ Float {
@@ -184,10 +203,36 @@ right->ToString()->PrintLine();
 	}
 }
 
+class Result {
+	@left : Node;
+	@right : Node;
+	@weighted_gini : Float;
+
+	New(left : Node, right : Node, weighted_gini : Float) {
+		@weighted_gini := weighted_gini;
+		@left := left;
+		@right := right;
+	}
+
+	method : public : GetLeft() ~ Node {
+		return @left;
+	}
+
+	method : public : GetRight() ~ Node {
+		return @right;
+	}
+
+	method : public : GetWeightedGini() ~ Float {
+		return @weighted_gini
+	}
+}
+
 class Node {
 	@goal : Float;
 	@acheived : Float;
 	@gini : Float;
+	@left : Node;
+	@right : Node;
 
 	New(goal : Float, acheived : Float, gini : Float) {
 		@goal := goal;
@@ -213,13 +258,39 @@ class Node {
 		return @gini;
 	}
 
+	method : public : GetLeft() ~ Node {
+		return @left;
+	}
+
+	method : public : SetLeft(left : Node) ~ Nil {
+		@left := left;
+	}
+
+	method : public : GetRight() ~ Node {
+		return @right;
+	}
+
+	method : public : SetRight(right : Node) ~ Nil {
+		@right := right;
+	}
+
 	method : public : ToString() ~ String {
 		buffer := "";
+		ToString(buffer);
+		return buffer;
+	}
 
+	method : public : ToString(buffer : String) ~ Nil {
 		buffer += "goal={$@goal},";
 		buffer += "acheived={$@acheived},";
-		buffer += "gini={$@gini}";	
-			
-		return buffer;
+		buffer += "gini={$@gini}\n";
+
+		if(@left <> Nil) {
+			@left->ToString(buffer);
+		};
+		
+		if(@right <> Nil) {
+			@right->ToString(buffer);
+		};
 	}
 }
