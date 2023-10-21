@@ -8,7 +8,7 @@ class DecisionTree {
 			dims := matrix->Size();
 			rows := dims[0];
 
-			root := node := Node->New(rows, Matches(2, matrix));
+			root := node := Node->New(2, rows, Matches(2, matrix));
 # root->ToString()->PrintLine();
 
 			done := false;
@@ -84,7 +84,7 @@ class DecisionTree {
 			reached := acheived / goal;
 			not_reached := (goal - acheived) / goal;
 			left_gi := 1 - (reached*reached + not_reached*not_reached);
-			left := Node->New(goal, acheived, left_gi);
+			left := Node->New(test, goal, acheived, left_gi);
 # left->ToString()->PrintLine();
 			wgi += goal / size * left_gi;
 		}
@@ -99,7 +99,7 @@ class DecisionTree {
 			reached := acheived / goal;
 			not_reached := (goal - acheived) / goal;
 			right_gi := 1 - (reached*reached + not_reached*not_reached);
-			right := Node->New(goal, acheived, right_gi);
+			right := Node->New(test, goal, acheived, right_gi);
 # right->ToString()->PrintLine();
 			wgi += goal / size * right_gi;
 		}
@@ -228,19 +228,22 @@ class Result {
 }
 
 class Node {
+	@test : Int;
 	@goal : Float;
 	@acheived : Float;
 	@gini : Float;
 	@left : Node;
 	@right : Node;
 
-	New(goal : Float, acheived : Float, gini : Float) {
+	New(test : Int, goal : Float, acheived : Float, gini : Float) {
+		@test := test;
 		@goal := goal;
 		@acheived := acheived;
 		@gini := gini;
 	}
 
-	New(goal : Float, acheived : Float) {
+	New(test : Int, goal : Float, acheived : Float) {
+		@test := test;
 		@goal := goal;
 		@acheived := acheived;
 		@gini := 0.0;
@@ -281,6 +284,7 @@ class Node {
 	}
 
 	method : public : ToString(buffer : String) ~ Nil {
+		buffer += "test={$@test},";
 		buffer += "goal={$@goal},";
 		buffer += "acheived={$@acheived},";
 		buffer += "gini={$@gini}\n";
@@ -288,7 +292,7 @@ class Node {
 		if(@left <> Nil) {
 			@left->ToString(buffer);
 		};
-		
+
 		if(@right <> Nil) {
 			@right->ToString(buffer);
 		};
