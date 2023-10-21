@@ -5,13 +5,17 @@ class DecisionTree {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() > 0) {
 			matrix := ToMatrix(args[0]);
-matrix->ToString()->PrintLine();
+			dims := matrix->Size();
+			rows := dims[0];
+
+			root := Node->New(rows, Matches(2, matrix));
+root->ToString()->PrintLine();
 
 			done := false;
 			while(<>done) {
 				left_wgi := WeightedGini(0,2,matrix); # left
 				right_wgi := WeightedGini(1,2,matrix); # right
-"left_wgi={$left_wgi},right_wgi={$right_wgi}"->PrintLine();
+# "left_wgi={$left_wgi},right_wgi={$right_wgi}"->PrintLine();
 
 				if(left_wgi <> 0.0 & right_wgi <> 0.0) {
 					matrix := Split(0, matrix);
@@ -61,6 +65,8 @@ matrix->ToString()->PrintLine();
 			reached := acheived / goal;
 			not_reached := (goal - acheived) / goal;
 			left_gi := 1 - (reached*reached + not_reached*not_reached);
+			left := Node->New(goal, acheived, left_gi);
+left->ToString()->PrintLine();
 			wgi += goal / size * left_gi;
 		}
 		else {
@@ -74,6 +80,8 @@ matrix->ToString()->PrintLine();
 			reached := acheived / goal;
 			not_reached := (goal - acheived) / goal;
 			right_gi := 1 - (reached*reached + not_reached*not_reached);
+			right := Node->New(goal, acheived, right_gi);
+right->ToString()->PrintLine();
 			wgi += goal / size * right_gi;
 		}
 		else {
@@ -173,5 +181,45 @@ matrix->ToString()->PrintLine();
 		};
 
 		return Nil;
+	}
+}
+
+class Node {
+	@goal : Float;
+	@acheived : Float;
+	@gini : Float;
+
+	New(goal : Float, acheived : Float, gini : Float) {
+		@goal := goal;
+		@acheived := acheived;
+		@gini := gini;
+	}
+
+	New(goal : Float, acheived : Float) {
+		@goal := goal;
+		@acheived := acheived;
+		@gini := 0.0;
+	}
+
+	method : public : GetGoal() ~ Float {
+		return @goal;
+	}
+
+	method : public : GetAcheived() ~ Float {
+		return @acheived;
+	}
+
+	method : public : GetGini() ~ Float {
+		return @gini;
+	}
+
+	method : public : ToString() ~ String {
+		buffer := "";
+
+		buffer += "goal={$@goal},";
+		buffer += "acheived={$@acheived},";
+		buffer += "gini={$@gini}";	
+			
+		return buffer;
 	}
 }
