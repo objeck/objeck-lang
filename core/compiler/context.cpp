@@ -5944,9 +5944,9 @@ Expression* ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expressio
           if(boxed_expression) {
             return boxed_expression;
           }
-          else if(left->GetType() != CLASS_TYPE) {
+ //         else if(left->GetType() != CLASS_TYPE) {
             ProcessError(expression, L"Invalid cast with classes: " + FormatTypeString(left->GetName()) + L" and System.Byte");
-          }
+ //         }
         }
         break;
 
@@ -5956,9 +5956,9 @@ Expression* ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expressio
           if(boxed_expression) {
             return boxed_expression;
           }
-          else if(left->GetType() != CLASS_TYPE) {
+//          else if(left->GetType() != CLASS_TYPE) {
             ProcessError(expression, L"Invalid cast with classes: " + FormatTypeString(left->GetName()) + L" and System.Char");
-          }
+//          }
         }
         break;
 
@@ -5968,9 +5968,9 @@ Expression* ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expressio
           if(boxed_expression) {
             return boxed_expression;
           }
-          else if(left->GetType() != CLASS_TYPE) {
+//          else if(left->GetType() != CLASS_TYPE) {
             ProcessError(expression, L"Invalid cast with classes: " + FormatTypeString(left->GetName()) + L" and Int");
-          }
+//          }
         }
         break;
 
@@ -5980,9 +5980,9 @@ Expression* ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expressio
           if(boxed_expression) {
             return boxed_expression;
           }
-          else if(left->GetType() != CLASS_TYPE) {
+ //         else if(left->GetType() != CLASS_TYPE) {
             ProcessError(expression, L"Invalid cast with classes: " + FormatTypeString(left->GetName()) + L" and System.Float");
-          }
+ //         }
         }
         break;
 
@@ -5996,9 +5996,9 @@ Expression* ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expressio
           if(boxed_expression) {
             return boxed_expression;
           }
-          else if(left->GetType() != CLASS_TYPE) {
+//          else if(left->GetType() != CLASS_TYPE) {
             ProcessError(expression, L"Invalid cast with classes: " + left->GetName() + L" and System.Bool");
-          }
+//          }
         }
         else {
           ProcessError(expression, L"Invalid cast with classes: " + FormatTypeString(left->GetName()) + L" and System.Bool");
