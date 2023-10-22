@@ -12,21 +12,21 @@ class DecisionTree {
 			done := false;
 
 			while(<>done) {
-				# left
+				# left (choose)
 				left := WeightedGini(0,2,matrix);
 				left_wgi := left->GetWeightedGini();
 				
-				# right
+				# right (choose)
 				right := WeightedGini(1,2,matrix);
 				right_wgi := right->GetWeightedGini();
 
 				if(left_wgi <> 0.0 & left_wgi < right_wgi) {
 					matrix := Split(0, matrix);
-					node->SetLeft(Node->New(left_wgi, left->GetLeft(), left->GetLeft()));
+					node->SetLeft(Node->New(left_wgi, left->GetLeft(), left->GetRight()));
 				}
 				else if(right_wgi <> 0.0) {
 					matrix := Split(1, matrix);
-					node->SetRight(Node->New(right_wgi, right->GetLeft(), right->GetLeft()));
+					node->SetRight(Node->New(right_wgi, right->GetLeft(), right->GetRight()));
 				}
 				else {
 					done := true;
