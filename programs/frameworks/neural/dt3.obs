@@ -9,9 +9,8 @@ class DecisionTree {
 			rows := dims[0];
 
 			root := node := Node->New(2, rows, Matches(2, matrix));
-# root->ToString()->PrintLine();
-
 			done := false;
+
 			while(<>done) {
 				left_wgi := 0.0;
 				left := WeightedGini(0,2,matrix); # left
@@ -24,17 +23,16 @@ class DecisionTree {
 				if(right <> Nil) {
 					right_wgi := right->GetWeightedGini();
 				};
-# "left_wgi={$left_wgi},right_wgi={$right_wgi}"->PrintLine();
 
 				if(left_wgi <> 0.0 & left_wgi < right_wgi) {
 					matrix := Split(0, matrix);
-					node->SetLeft(left->GetLeft());
-					node->SetRight(left->GetRight());
+					temp := Node->New(left_wgi, left->GetLeft(), left->GetLeft());
+					node->SetLeft(temp);
 				}
 				else if(right_wgi <> 0.0) {
 					matrix := Split(1, matrix);
-					node->SetLeft(right->GetLeft());
-					node->SetRight(right->GetRight());	
+					temp := Node->New(right_wgi, right->GetLeft(), right->GetLeft());
+					node->SetRight(temp);
 				}
 				else {
 					done := true;
@@ -85,7 +83,6 @@ class DecisionTree {
 			not_reached := (goal - acheived) / goal;
 			left_gi := 1 - (reached*reached + not_reached*not_reached);
 			left := Node->New(test, goal, acheived, left_gi);
-# left->ToString()->PrintLine();
 			wgi += goal / size * left_gi;
 		}
 		else {
@@ -100,7 +97,6 @@ class DecisionTree {
 			not_reached := (goal - acheived) / goal;
 			right_gi := 1 - (reached*reached + not_reached*not_reached);
 			right := Node->New(test, goal, acheived, right_gi);
-# right->ToString()->PrintLine();
 			wgi += goal / size * right_gi;
 		}
 		else {
@@ -235,6 +231,12 @@ class Node {
 	@left : Node;
 	@right : Node;
 
+	New(gini : Float, left : Node, right : Node) {
+		@gini : Float;
+		@left := left;
+		@right := right;
+	}
+
 	New(test : Int, goal : Float, acheived : Float, gini : Float) {
 		@test := test;
 		@goal := goal;
@@ -259,6 +261,10 @@ class Node {
 
 	method : public : GetGini() ~ Float {
 		return @gini;
+	}
+
+	method : public : SetGini(gini : Float) ~ Nil {
+		@gini := gini;
 	}
 
 	method : public : GetLeft() ~ Node {
