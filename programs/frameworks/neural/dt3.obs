@@ -12,27 +12,21 @@ class DecisionTree {
 			done := false;
 
 			while(<>done) {
-				left_wgi := 0.0;
-				left := WeightedGini(0,2,matrix); # left
-				if(left <> Nil) {
-					left_wgi := left->GetWeightedGini();
-				};
-
-				right_wgi := 0.0;
-				right := WeightedGini(1,2,matrix); # right
-				if(right <> Nil) {
-					right_wgi := right->GetWeightedGini();
-				};
+				# left
+				left := WeightedGini(0,2,matrix);
+				left_wgi := left->GetWeightedGini();
+				
+				# right
+				right := WeightedGini(1,2,matrix);
+				right_wgi := right->GetWeightedGini();
 
 				if(left_wgi <> 0.0 & left_wgi < right_wgi) {
 					matrix := Split(0, matrix);
-					temp := Node->New(left_wgi, left->GetLeft(), left->GetLeft());
-					node->SetLeft(temp);
+					node->SetLeft(Node->New(left_wgi, left->GetLeft(), left->GetLeft()));
 				}
 				else if(right_wgi <> 0.0) {
 					matrix := Split(1, matrix);
-					temp := Node->New(right_wgi, right->GetLeft(), right->GetLeft());
-					node->SetRight(temp);
+					node->SetRight(Node->New(right_wgi, right->GetLeft(), right->GetLeft()));
 				}
 				else {
 					done := true;
@@ -86,7 +80,7 @@ class DecisionTree {
 			wgi += goal / size * left_gi;
 		}
 		else {
-			return Nil;
+			return Result->New(Nil, Nil, 0.0);
 		};
 
 		# --- Right ---
@@ -100,7 +94,7 @@ class DecisionTree {
 			wgi += goal / size * right_gi;
 		}
 		else {
-			return Nil;
+			return Result->New(Nil, Nil, 0.0);
 		};
 
 		return Result->New(left, right, wgi);
@@ -224,6 +218,8 @@ class Result {
 }
 
 class Node {
+	@uid : static : Int;
+	@id : Int;
 	@test : Int;
 	@goal : Float;
 	@acheived : Float;
@@ -235,6 +231,9 @@ class Node {
 		@gini : Float;
 		@left := left;
 		@right := right;
+
+		@id := @uid;
+		@uid += 1;
 	}
 
 	New(test : Int, goal : Float, acheived : Float, gini : Float) {
@@ -242,6 +241,9 @@ class Node {
 		@goal := goal;
 		@acheived := acheived;
 		@gini := gini;
+
+		@id := @uid;
+		@uid += 1;
 	}
 
 	New(test : Int, goal : Float, acheived : Float) {
@@ -249,6 +251,9 @@ class Node {
 		@goal := goal;
 		@acheived := acheived;
 		@gini := 0.0;
+
+		@id := @uid;
+		@uid += 1;
 	}
 
 	method : public : GetGoal() ~ Float {
@@ -290,6 +295,7 @@ class Node {
 	}
 
 	method : public : ToString(buffer : String) ~ Nil {
+		buffer += "id={$@id},";
 		buffer += "test={$@test},";
 		buffer += "goal={$@goal},";
 		buffer += "acheived={$@acheived},";
