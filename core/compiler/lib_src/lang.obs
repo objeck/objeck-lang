@@ -5329,7 +5329,7 @@ each(i : cities) {
 		#~
 		Compares two strings, ignoring the case
 		@param rhs string to compare
-		@return true if equal, false otherwise, ignoring case
+		@return true if equal, false otherwise
 		~#
 		method : public : EqualsIgnoreCase(rhs : String) ~ Bool {
 			if(rhs->Size() <> @pos) {
