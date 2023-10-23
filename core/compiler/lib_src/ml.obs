@@ -992,4 +992,241 @@ else if(args->Size() = 1) {
 			return Nil;
 		}
 	}
+	
+	#~
+	Decision tree algorithm 
+	~#
+	class DecisionTree {
+		@matrix : Bool[,];
+
+		#~
+		Constructor
+		@param matrix boolean training matrix, last column is the result
+		~#
+		New(matrix : Bool[,]) {
+			@matrix := matrix;
+		}
+
+		#~
+		Trains the network and returns a list of decisions
+		@return list of decisions
+		~#
+		method : public : Decisions() ~ Vector<Decision> {					
+			paths := Vector->New()<Decision>;
+
+			done := false;
+			while(<>done) {
+				left_wgi := WeightedGini(0,2);
+				right_wgi := WeightedGini(1,2);
+
+				if(left_wgi <> 0.0 & left_wgi < right_wgi) {
+					@matrix := Split(0);
+					paths->AddBack(Decision->New(0, left_wgi));
+				}
+				else if(right_wgi <> 0.0) {
+					@matrix := Split(1);
+					paths->AddBack(Decision->New(1, right_wgi));
+				}
+				else {
+					done := true;
+				};
+			};
+
+			return paths
+		}
+
+		method : Split(index : Int) ~ Bool[,] {
+			split_len := Matches(index, @matrix)->ToInt();
+			if(split_len > 0) {
+				dims := @matrix->Size();
+				rows := dims[0];
+				cols := dims[1];
+
+				out := Bool->New[split_len, cols];
+				count := 0;
+				if(index > -1 & index < rows) {
+					each(row : rows) {
+						if(@matrix[row, index] <> false) {
+							each(k : cols) {
+								out[count, k] := @matrix[row, k];
+							};
+							count += 1;
+						};
+					};
+				};
+
+				return out;
+			};
+
+			return Nil;
+		}
+
+		method : WeightedGini(test : Int, target : Int) ~ Float {
+			wgi := 0.0;
+			dims := @matrix->Size();
+			size := dims[0]->As(Float);
+
+			# --- left ---
+			left, right : Decision;
+			goal := Matches(test, @matrix);
+			if(goal > 0.0) {
+				acheived := Acheived(test, target, @matrix);
+				reached := acheived / goal;
+				not_reached := (goal - acheived) / goal;
+				left_gi := 1 - (reached*reached + not_reached*not_reached);
+				wgi += goal / size * left_gi;
+			}
+			else {
+				return 0.0;
+			};
+
+			# --- right ---
+			goal := Mismatches(test, @matrix);
+			if(goal > 0.0) {
+				acheived := Unacheived(test, target, @matrix);
+				reached := acheived / goal;
+				not_reached := (goal - acheived) / goal;
+				right_gi := 1 - (reached*reached + not_reached*not_reached);
+				wgi += goal / size * right_gi;
+			}
+			else {
+				return 0.0;
+			};
+
+			return wgi;
+		}
+
+		method : Matches(index : Int, matrix : Bool[,]) ~ Float {
+			dims := matrix->Size();
+			rows := dims[0];
+
+			count := 0;
+			if(index > -1 & index < rows) {
+				each(row : rows) {
+					if(matrix[row, index] <> false) {
+						count += 1;
+					};
+				};
+			};
+
+			return count;
+		}
+
+		method : Acheived(test_index : Int, goal_index : Int, matrix : Bool[,]) ~ Float {
+			dims := matrix->Size();
+			rows := dims[0];
+
+			count := 0;
+			if(test_index > -1 & test_index < rows & goal_index > -1 & goal_index < rows) {
+				each(row : rows) {
+					if(matrix[row, test_index] <> false & matrix[row, goal_index] <> false) {
+						count += 1;
+					};
+				};
+			};
+
+			return count;
+		}
+
+		method : Unacheived(test_index : Int, goal_index : Int, matrix : Bool[,]) ~ Float {
+			dims := matrix->Size();
+			rows := dims[0];
+
+			count := 0;
+			if(test_index > -1 & test_index < rows & goal_index > -1 & goal_index < rows) {
+				each(row : rows) {
+					if(matrix[row, test_index] = false & matrix[row, goal_index] <> false) {
+						count += 1;
+					};
+				};
+			};
+
+			return count;
+		}
+
+		method : Mismatches(index : Int, matrix : Bool[,]) ~ Float {
+			dims := matrix->Size();
+			rows := dims[0];
+
+			count := 0;
+			if(index > -1 & index < rows) {
+				each(row : rows) {
+					if(matrix[row, index] = false) {
+						count += 1;
+					};
+				};
+			};
+
+			return count;
+		}
+
+		#~
+		Load a matrix from a CSV file of 1s and 0s
+		@return boolean matrix
+		~#
+		function : LoadMatrix(filename : String) ~ Bool[,] {
+			table := CsvTable->New(System.IO.Filesystem.FileReader->ReadFile(filename));
+			if(table->IsParsed()) {
+				row_size := table->Size();
+				if(row_size->Size() > 1) {
+					column := table->Get(1);
+					column_size := column->Size();
+
+					matrix := Bool->New[row_size - 1, column_size];
+					for(i := 1; i < row_size; i += 1;) {
+						each(j : column_size) {
+							value := table->Get(i)->Get(j)->ToLower();
+							if(value->Equals("0") | value->StartsWith("0.0")  | value->Equals("false")) {
+								matrix[i - 1, j] := false;
+							}
+							else {
+								matrix[i - 1, j] := true;	
+							};
+						};
+					};
+
+					return matrix;
+				};
+			};
+
+			return Nil;
+		}
+	}
+
+	#~
+	Decision node
+	~#
+	class Decision {
+		@test : Int;
+		@weighted_gini : Float;
+
+		New(test : Int, weighted_gini : Float) {
+			@test := test;
+			@weighted_gini := weighted_gini;
+		}
+
+		#~
+		Gets the weighted gini value
+		@return weighted gini value
+		~#
+		method : public : GetWeightedGini() ~ Float {
+			return @weighted_gini;
+		}
+
+		#~
+		Gets the test column
+		@return test column
+		~#
+		method : public : GetTest() ~ Int {
+			return @test;
+		}
+
+		#~
+		Creates a string representation
+		@return string representation
+		~#
+		method : public : ToString() ~ String {
+			return "test={$@test},weighted_gini={$@weighted_gini}";
+		}
+	}
 }
