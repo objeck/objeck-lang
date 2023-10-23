@@ -1,5 +1,5 @@
 use System.ML;
-	
+
 class Test {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() > 0) {
@@ -8,15 +8,10 @@ class Test {
 			
 			"---"->PrintLine();
 
-			tree := DecisionTree->New(input);
-			decisions := tree->Decide();
-			
-			temp := input;
-			each(decision := decisions) {
-				temp := DecisionTree->Split(decision->GetIndex(), temp);
-			};
-			temp->ToString()->PrintLine();
-			DecisionTree->Matches(2,temp)->PrintLine();
+			tree := DecisionTree->New(input);			
+			split := tree->Split(input);
+			split->ToString()->PrintLine();
+			DecisionTree->Matches(2,split)->PrintLine();
 		};
 	}
 }
