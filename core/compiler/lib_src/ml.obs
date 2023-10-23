@@ -3,6 +3,7 @@ use Data.CSV;
 
 #~
 Provides support for machine learning
+Copyright (c) 2023 Randy Hollines
 ~#
 bundle System.ML {
 	#~
