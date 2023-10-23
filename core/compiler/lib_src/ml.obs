@@ -994,41 +994,50 @@ else if(args->Size() = 1) {
 	}
 	
 	#~
-	Decision tree algorithm 
+	Decision tree algorithm
 	~#
 	class DecisionTree {
 		@matrix : Bool[,];
 
 		#~
 		Constructor
-		@param matrix boolean training matrix, last column is the result
+		@param boolean input training matrix, last row is the result
 		~#
 		New(matrix : Bool[,]) {
 			@matrix := matrix;
 		}
 
 		#~
-		Trains the network and returns a list of decisions
-		@return list of decisions
+		Calculates a list of splits
+		@return list of decision tree splits
 		~#
 		method : public : Decisions() ~ Vector<Decision> {					
 			paths := Vector->New()<Decision>;
+			dims := @matrix->Size();
+			
+			cols := dims[1] - 1;
+			if(cols > 0) {
+				done := false;
+				while(<>done) {
+					best_wgi := 1000000.0;
+					best_index := -1;
 
-			done := false;
-			while(<>done) {
-				left_wgi := WeightedGini(0,2);
-				right_wgi := WeightedGini(1,2);
+					each(i : cols) {
+						wgi := WeightedGini(i, cols);
+						if(wgi <> 0.0 & wgi < best_wgi) {
+							best_wgi := wgi;
+							best_index := i;
+						}
+					}
 
-				if(left_wgi <> 0.0 & left_wgi < right_wgi) {
-					@matrix := Split(0);
-					paths->AddBack(Decision->New(0, left_wgi));
-				}
-				else if(right_wgi <> 0.0) {
-					@matrix := Split(1);
-					paths->AddBack(Decision->New(1, right_wgi));
-				}
-				else {
-					done := true;
+					if(best_index > - 1) {
+						@matrix := Split(best_index);
+						paths->AddBack(Decision->New(best_index, best_wgi));
+
+					}
+					else {
+						done := true;
+					};
 				};
 			};
 
@@ -1161,7 +1170,7 @@ else if(args->Size() = 1) {
 		}
 
 		#~
-		Load a matrix from a CSV file of 1s and 0s
+		Loads a boolean matrix from a CSV file of 1s and 0s
 		@return boolean matrix
 		~#
 		function : LoadMatrix(filename : String) ~ Bool[,] {
@@ -1194,36 +1203,36 @@ else if(args->Size() = 1) {
 	}
 
 	#~
-	Decision node
+	Decision tree node
 	~#
 	class Decision {
 		@test : Int;
 		@weighted_gini : Float;
-
+		
 		New(test : Int, weighted_gini : Float) {
 			@test := test;
 			@weighted_gini := weighted_gini;
 		}
 
 		#~
-		Gets the weighted gini value
-		@return weighted gini value
+		Gets the weighted Gini value
+		@return weighted Gini value
 		~#
 		method : public : GetWeightedGini() ~ Float {
 			return @weighted_gini;
 		}
 
 		#~
-		Gets the test column
-		@return test column
+		Gets the test index
+		@return test index
 		~#
 		method : public : GetTest() ~ Int {
 			return @test;
 		}
 
 		#~
-		Creates a string representation
-		@return string representation
+		Returns the string representation 
+		@return string representation 
 		~#
 		method : public : ToString() ~ String {
 			return "test={$@test},weighted_gini={$@weighted_gini}";
