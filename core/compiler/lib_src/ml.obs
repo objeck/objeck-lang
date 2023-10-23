@@ -1001,7 +1001,7 @@ else if(args->Size() = 1) {
 
 		#~
 		Constructor
-		@param boolean input training matrix, last row is the result
+		@param matrix boolean input training matrix, last row is the result
 		~#
 		New(matrix : Bool[,]) {
 			@matrix := matrix;
@@ -1044,7 +1044,7 @@ else if(args->Size() = 1) {
 			return paths
 		}
 
-		method : Split(index : Int) ~ Bool[,] {
+		method : native : Split(index : Int) ~ Bool[,] {
 			split_len := Matches(index, @matrix)->ToInt();
 			if(split_len > 0) {
 				dims := @matrix->Size();
@@ -1070,7 +1070,7 @@ else if(args->Size() = 1) {
 			return Nil;
 		}
 
-		method : WeightedGini(test : Int, target : Int) ~ Float {
+		method : native : WeightedGini(test : Int, target : Int) ~ Float {
 			wgi := 0.0;
 			dims := @matrix->Size();
 			size := dims[0]->As(Float);
@@ -1105,7 +1105,7 @@ else if(args->Size() = 1) {
 			return wgi;
 		}
 
-		method : Matches(index : Int, matrix : Bool[,]) ~ Float {
+		method : native : Matches(index : Int, matrix : Bool[,]) ~ Float {
 			dims := matrix->Size();
 			rows := dims[0];
 
@@ -1121,7 +1121,7 @@ else if(args->Size() = 1) {
 			return count;
 		}
 
-		method : Acheived(test_index : Int, goal_index : Int, matrix : Bool[,]) ~ Float {
+		method : native : Acheived(test_index : Int, goal_index : Int, matrix : Bool[,]) ~ Float {
 			dims := matrix->Size();
 			rows := dims[0];
 
@@ -1137,7 +1137,7 @@ else if(args->Size() = 1) {
 			return count;
 		}
 
-		method : Unacheived(test_index : Int, goal_index : Int, matrix : Bool[,]) ~ Float {
+		method : native : Unacheived(test_index : Int, goal_index : Int, matrix : Bool[,]) ~ Float {
 			dims := matrix->Size();
 			rows := dims[0];
 
@@ -1153,7 +1153,7 @@ else if(args->Size() = 1) {
 			return count;
 		}
 
-		method : Mismatches(index : Int, matrix : Bool[,]) ~ Float {
+		method : native : Mismatches(index : Int, matrix : Bool[,]) ~ Float {
 			dims := matrix->Size();
 			rows := dims[0];
 
@@ -1171,6 +1171,7 @@ else if(args->Size() = 1) {
 
 		#~
 		Loads a boolean matrix from a CSV file of 1s and 0s
+		@param filename CSV file to load
 		@return boolean matrix
 		~#
 		function : LoadMatrix(filename : String) ~ Bool[,] {
