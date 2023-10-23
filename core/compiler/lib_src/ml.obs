@@ -405,7 +405,7 @@ bundle System.ML {
 		@param cols columns
 		@return updated matrix
 		~#
-		function : RandomNormal(mean : Float, variance : Float, rows : Int, cols : Int) ~ Float[,] {
+		function : native : RandomNormal(mean : Float, variance : Float, rows : Int, cols : Int) ~ Float[,] {
 			m := Float->New[rows, cols];
 
 			for(i := 0; i < rows; i += 1;) {
@@ -423,7 +423,7 @@ bundle System.ML {
 		@param variance variance in values
 		@return updated matrix
 		~#
-		function : RandomNormal(mean : Float, variance : Float) ~ Float {
+		function : native : RandomNormal(mean : Float, variance : Float) ~ Float {
 			return  (-2.0 * variance * Float->Random()->Log())->Sqrt() * (2.0 * Float->Pi() * Float->Random())->Cos() + mean;
 		}
 
@@ -435,7 +435,7 @@ bundle System.ML {
 		@param is_row true for row split, false for column
 		@return copied matrix
 		~#
-		function : Split(b : Float[,], offset : Int, count : Int, is_row : Bool) ~ Float[,] {
+		function : native : Split(b : Float[,], offset : Int, count : Int, is_row : Bool) ~ Float[,] {
 			b_dims := b->Size();
 			b_rows := b_dims[0];
 			b_cols := b_dims[1];
