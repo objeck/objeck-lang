@@ -5310,6 +5310,21 @@ each(i : cities) {
 		method : public : Equals(rhs : String) ~ Bool {
 			return Compare(rhs->As(System.Compare)) = 0;
 		}
+
+		#~
+		Compares a string to an array of values
+		@param rhs array of values to compare
+		@return true if at last one match, false otherwise
+		~#
+		method : public : Equals(rhs : String[]) ~ Bool {
+			each(str := rhs) {
+				if(Equals(str)) {
+					return true;
+				};
+			};
+
+			return false;
+		}
 		
 		#~
 		Compares two strings, ignoring the case
@@ -5330,6 +5345,21 @@ each(i : cities) {
 			};
 
 			return true;
+		}
+		
+		#~
+		Compares a string to an array of values, ignoring the case
+		@param rhs array of values to compare
+		@return true if at last one match, false otherwise, ignoring the case
+		~#
+		method : public : EqualsIgnoreCase(rhs : String[]) ~ Bool {
+			each(str := rhs) {
+				if(EqualsIgnoreCase(str)) {
+					return true;
+				};
+			};
+
+			return false;
 		}
 
 		#~
