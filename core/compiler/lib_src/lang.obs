@@ -96,6 +96,38 @@ bundle System {
 
 			return buffer;
 		}
+		
+		#~
+		Returns a string representation of the boolean array
+		@param v boolean array
+		@return string representation of the boolean array
+		~#
+		function : ToString(v : Bool[,]) ~ String {
+			buffer := "";
+
+			dims := v->Size();
+			rows := dims[0];
+			cols := dims[1];
+
+			for(r := 0; r < rows; r +=1;) {
+				buffer->Append('[');
+				for(c := 0; c < cols; c +=1;) {
+					buffer->Append(v[r,c]);
+					if(c + 1 < cols) {
+						buffer->Append(", ");
+					};
+				};
+
+				if(r + 1 < rows) {
+					buffer->Append("]\n");
+				}
+				else {
+					buffer->Append(']');
+				};
+			};
+
+			return buffer;
+		}
 	}
 	
 	#~

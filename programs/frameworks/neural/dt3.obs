@@ -2,33 +2,40 @@ use Collection;
 use Data.CSV;
 
 class DecisionTree {
+	@matrix : Bool[,];
+
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() > 0) {
-			data := ToMatrix(args[0]);
-			data->ToString()->PrintLine();
-			
-			paths := Decisions(data);
+			data := DecisionTree->LoadMatrix(args[0]);
+#			data->ToString()->PrintLine();
+	
+			dt := DecisionTree->New(data);
+			paths := dt->Decisions();
 			each(path := paths) {
 				path->ToString()->PrintLine();
 			};
 		};
 	}
 
-	function : Decisions(matrix : Float[,]) ~ Vector<Node> {					
-		paths := Vector->New()<Node>;
+	New(matrix : Bool[,]) {
+		@matrix := matrix;
+	}
+
+	method : public : Decisions() ~ Vector<Decision> {					
+		paths := Vector->New()<Decision>;
 
 		done := false;
 		while(<>done) {
-			left_wgi := WeightedGini(0,2,matrix);				
-			right_wgi := WeightedGini(1,2,matrix);
+			left_wgi := WeightedGini(0,2);
+			right_wgi := WeightedGini(1,2);
 
 			if(left_wgi <> 0.0 & left_wgi < right_wgi) {
-				matrix := Split(0, matrix);
-				paths->AddBack(Node->New(0, left_wgi));
+				@matrix := Split(0);
+				paths->AddBack(Decision->New(0, left_wgi));
 			}
 			else if(right_wgi <> 0.0) {
-				matrix := Split(1, matrix);
-				paths->AddBack(Node->New(1, right_wgi));
+				@matrix := Split(1);
+				paths->AddBack(Decision->New(1, right_wgi));
 			}
 			else {
 				done := true;
@@ -38,20 +45,20 @@ class DecisionTree {
 		return paths
 	}
 
-	function : Split(index : Int, in : Float[,]) ~ Float[,] {
-		split_len := Matches(index, in)->ToInt();
+	method : Split(index : Int) ~ Bool[,] {
+		split_len := Matches(index, @matrix)->ToInt();
 		if(split_len > 0) {
-			dims := in->Size();
+			dims := @matrix->Size();
 			rows := dims[0];
 			cols := dims[1];
 
-			out := Float->New[split_len, cols];
+			out := Bool->New[split_len, cols];
 			count := 0;
 			if(index > -1 & index < rows) {
 				each(row : rows) {
-					if(in[row, index] <> 0.0) {
+					if(@matrix[row, index] <> false) {
 						each(k : cols) {
-							out[count, k] := in[row, k];
+							out[count, k] := @matrix[row, k];
 						};
 						count += 1;
 					};
@@ -64,16 +71,16 @@ class DecisionTree {
 		return Nil;
 	}
 
-	function : WeightedGini(test : Int, target : Int, matrix : Float[,]) ~ Float {
+	method : WeightedGini(test : Int, target : Int) ~ Float {
 		wgi := 0.0;
-		dims := matrix->Size();
+		dims := @matrix->Size();
 		size := dims[0]->As(Float);
 
-		# --- Left ---
-		left, right : Node;
-		goal := Matches(test, matrix);
+		# --- left ---
+		left, right : Decision;
+		goal := Matches(test, @matrix);
 		if(goal > 0.0) {
-			acheived := Acheived(test, target, matrix);
+			acheived := Acheived(test, target, @matrix);
 			reached := acheived / goal;
 			not_reached := (goal - acheived) / goal;
 			left_gi := 1 - (reached*reached + not_reached*not_reached);
@@ -83,10 +90,10 @@ class DecisionTree {
 			return 0.0;
 		};
 
-		# --- Right ---
-		goal := Mismatch(test, matrix);
+		# --- right ---
+		goal := Mismatches(test, @matrix);
 		if(goal > 0.0) {
-			acheived := Unacheived(test, target, matrix);
+			acheived := Unacheived(test, target, @matrix);
 			reached := acheived / goal;
 			not_reached := (goal - acheived) / goal;
 			right_gi := 1 - (reached*reached + not_reached*not_reached);
@@ -99,14 +106,14 @@ class DecisionTree {
 		return wgi;
 	}
 
-	function : Matches(index : Int, matrix : Float[,]) ~ Float {
+	method : Matches(index : Int, matrix : Bool[,]) ~ Float {
 		dims := matrix->Size();
 		rows := dims[0];
 
 		count := 0;
 		if(index > -1 & index < rows) {
 			each(row : rows) {
-				if(matrix[row, index] <> 0.0) {
+				if(matrix[row, index] <> false) {
 					count += 1;
 				};
 			};
@@ -115,14 +122,14 @@ class DecisionTree {
 		return count;
 	}
 
-	function : Acheived(test_index : Int, goal_index : Int, matrix : Float[,]) ~ Float {
+	method : Acheived(test_index : Int, goal_index : Int, matrix : Bool[,]) ~ Float {
 		dims := matrix->Size();
 		rows := dims[0];
 
 		count := 0;
 		if(test_index > -1 & test_index < rows & goal_index > -1 & goal_index < rows) {
 			each(row : rows) {
-				if(matrix[row, test_index] <> 0.0 & matrix[row, goal_index] <> 0.0) {
+				if(matrix[row, test_index] <> false & matrix[row, goal_index] <> false) {
 					count += 1;
 				};
 			};
@@ -131,14 +138,14 @@ class DecisionTree {
 		return count;
 	}
 
-	function : Unacheived(test_index : Int, goal_index : Int, matrix : Float[,]) ~ Float {
+	method : Unacheived(test_index : Int, goal_index : Int, matrix : Bool[,]) ~ Float {
 		dims := matrix->Size();
 		rows := dims[0];
 
 		count := 0;
 		if(test_index > -1 & test_index < rows & goal_index > -1 & goal_index < rows) {
 			each(row : rows) {
-				if(matrix[row, test_index] = 0.0 & matrix[row, goal_index] <> 0.0) {
+				if(matrix[row, test_index] = false & matrix[row, goal_index] <> false) {
 					count += 1;
 				};
 			};
@@ -147,14 +154,14 @@ class DecisionTree {
 		return count;
 	}
 
-	function : Mismatch(index : Int, matrix : Float[,]) ~ Float {
+	method : Mismatches(index : Int, matrix : Bool[,]) ~ Float {
 		dims := matrix->Size();
 		rows := dims[0];
 
 		count := 0;
 		if(index > -1 & index < rows) {
 			each(row : rows) {
-				if(matrix[row, index] = 0.0) {
+				if(matrix[row, index] = false) {
 					count += 1;
 				};
 			};
@@ -163,7 +170,7 @@ class DecisionTree {
 		return count;
 	}
 
-	function : ToMatrix(filename : String) ~ Float[,] {
+	function : LoadMatrix(filename : String) ~ Bool[,] {
 		table := CsvTable->New(System.IO.Filesystem.FileReader->ReadFile(filename));
 		if(table->IsParsed()) {
 			row_size := table->Size();
@@ -171,15 +178,15 @@ class DecisionTree {
 				column := table->Get(1);
 				column_size := column->Size();
 
-				matrix := Float->New[row_size - 1, column_size];
+				matrix := Bool->New[row_size - 1, column_size];
 				for(i := 1; i < row_size; i += 1;) {
 					each(j : column_size) {
 						value := table->Get(i)->Get(j)->ToLower();
 						if(value->Equals("0") | value->StartsWith("0.0")  | value->Equals("false")) {
-							matrix[i - 1, j] := 0;
+							matrix[i - 1, j] := false;
 						}
 						else {
-							matrix[i - 1, j] := 1;	
+							matrix[i - 1, j] := true;	
 						};
 					};
 				};
@@ -192,7 +199,7 @@ class DecisionTree {
 	}
 }
 
-class Node {
+class Decision {
 	@test : Int;
 	@weighted_gini : Float;
 	
