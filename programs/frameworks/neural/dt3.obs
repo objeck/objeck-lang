@@ -6,11 +6,16 @@ class Test {
 			input := DecisionTree->LoadMatrix(args[0]);
 			input->ToString()->PrintLine();
 			
+			"---"->PrintLine();
+
 			tree := DecisionTree->New(input);
 			decisions := tree->Decide();
+			
+			temp := input;
 			each(decision := decisions) {
-				decision->ToString()->PrintLine();
+				temp := DecisionTree->Split(decision->GetIndex(), temp);
 			};
+			temp->ToString()->PrintLine();
 		};
 	}
 }
