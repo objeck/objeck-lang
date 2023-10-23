@@ -16,6 +16,7 @@ class Test {
 				temp := DecisionTree->Split(decision->GetIndex(), temp);
 			};
 			temp->ToString()->PrintLine();
+			DecisionTree->Matches(2,temp)->PrintLine();
 		};
 	}
 }
