@@ -999,7 +999,7 @@ else if(args->Size() = 1) {
 	~#
 	class DecisionTree {
 		@matrix : Bool[,];
-
+		@decisions : Vector<Decision>;
 		#~
 		Constructor
 		@param matrix boolean input training matrix, last row is the result
@@ -1012,8 +1012,8 @@ else if(args->Size() = 1) {
 		Calculates a list of decision splits
 		@return list of decision tree splits
 		~#
-		method : public : Decide() ~ Vector<Decision> {					
-			paths := Vector->New()<Decision>;
+		method : public : Train() ~ Vector<Decision> {					
+			decisions := Vector->New()<Decision>;
 			dims := @matrix->Size();
 			
 			cols := dims[1] - 1;
@@ -1033,7 +1033,7 @@ else if(args->Size() = 1) {
 
 					if(best_index > - 1) {
 						@matrix := Split(best_index, @matrix);
-						paths->AddBack(Decision->New(best_index, best_wgi));
+						decisions->AddBack(Decision->New(best_index, best_wgi));
 
 					}
 					else {
@@ -1042,11 +1042,30 @@ else if(args->Size() = 1) {
 				};
 			};
 
-			return paths
+			return decisions;
+		}
+
+
+		#~
+		Splits a matrix along the decisions columns
+		@param in matrix to split
+		@return split matrix
+		~#
+		method : public : Split(in : Bool[,]) ~ Bool[,] {
+			decisions := Train();
+			if(decisions <> Nil) {
+				each(decision := decisions) {
+					in := DecisionTree->Split(decision->GetIndex(), in);
+				};
+
+				return in;
+			};
+
+			return Nil;
 		}
 
 		#~
-		Split a matrix along the given column
+		Splits a matrix along the given column
 		@param index index used to split
 		@param in matrix to split
 		@return split matrix
