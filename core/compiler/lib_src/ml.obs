@@ -1055,7 +1055,7 @@ else if(args->Size() = 1) {
 				count := 0;
 				if(index > -1 & index < rows) {
 					each(row : rows) {
-						if(@matrix[row, index] <> false) {
+						if(@matrix[row, index]) {
 							each(k : cols) {
 								out[count, k] := @matrix[row, k];
 							};
@@ -1112,7 +1112,7 @@ else if(args->Size() = 1) {
 			count := 0;
 			if(index > -1 & index < rows) {
 				each(row : rows) {
-					if(matrix[row, index] <> false) {
+					if(matrix[row, index]) {
 						count += 1;
 					};
 				};
@@ -1128,7 +1128,7 @@ else if(args->Size() = 1) {
 			count := 0;
 			if(test_index > -1 & test_index < rows & goal_index > -1 & goal_index < rows) {
 				each(row : rows) {
-					if(matrix[row, test_index] <> false & matrix[row, goal_index] <> false) {
+					if(matrix[row, test_index] & matrix[row, goal_index]) {
 						count += 1;
 					};
 				};
@@ -1144,7 +1144,7 @@ else if(args->Size() = 1) {
 			count := 0;
 			if(test_index > -1 & test_index < rows & goal_index > -1 & goal_index < rows) {
 				each(row : rows) {
-					if(matrix[row, test_index] = false & matrix[row, goal_index] <> false) {
+					if(matrix[row, test_index] = false & matrix[row, goal_index]) {
 						count += 1;
 					};
 				};
