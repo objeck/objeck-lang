@@ -47,7 +47,7 @@
 int main(int argc, char* argv[])
 {
   std::wstring usage;
-  usage += L"Usage: obc -src <source files> <optionals> -dest <output file>\n\n";
+  usage += L"Usage: obc -src <source files> <options> -dest <output file>\n\n";
   usage += L"Options:\n";
   usage += L"  -src:    [input] source files (separated by commas)\n";
   usage += L"  -in:     [input] inline source code statements instead of specifying files\n";
