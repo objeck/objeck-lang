@@ -994,7 +994,7 @@ else if(args->Size() = 1) {
 	}
 	
 	#~
-	Decision tree algorithm
+	Binary decision tree algorithm
 	~#
 	class DecisionTree {
 		@matrix : Bool[,];
@@ -1008,7 +1008,7 @@ else if(args->Size() = 1) {
 		}
 
 		#~
-		Calculates a list of splits
+		Calculates a list of decision splits
 		@return list of decision tree splits
 		~#
 		method : public : Decide() ~ Vector<Decision> {					
