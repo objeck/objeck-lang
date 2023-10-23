@@ -1031,7 +1031,7 @@ else if(args->Size() = 1) {
 					}
 
 					if(best_index > - 1) {
-						@matrix := Split(best_index);
+						@matrix := Split(best_index, @matrix);
 						paths->AddBack(Decision->New(best_index, best_wgi));
 
 					}
@@ -1044,10 +1044,16 @@ else if(args->Size() = 1) {
 			return paths
 		}
 
-		method : native : Split(index : Int) ~ Bool[,] {
-			split_len := Matches(index, @matrix)->ToInt();
+		#~
+		Split a matrix along the given column
+		@param index index used to split
+		@param in matrix to split
+		@return split matrix
+		~#
+		function : Split(index : Int, in : Bool[,]) ~ Bool[,] {
+			split_len := Matches(index, in);
 			if(split_len > 0) {
-				dims := @matrix->Size();
+				dims := in->Size();
 				rows := dims[0];
 				cols := dims[1];
 
@@ -1055,9 +1061,9 @@ else if(args->Size() = 1) {
 				count := 0;
 				if(index > -1 & index < rows) {
 					each(row : rows) {
-						if(@matrix[row, index]) {
+						if(in[row, index]) {
 							each(k : cols) {
-								out[count, k] := @matrix[row, k];
+								out[count, k] := in[row, k];
 							};
 							count += 1;
 						};
@@ -1105,7 +1111,13 @@ else if(args->Size() = 1) {
 			return wgi;
 		}
 
-		method : native : Matches(index : Int, matrix : Bool[,]) ~ Float {
+		#~
+		Count matches in a column
+		@param index column index
+		@param matrix matrix to inspect
+		@return number of matches
+		~#
+		function : Matches(index : Int, matrix : Bool[,]) ~ Int {
 			dims := matrix->Size();
 			rows := dims[0];
 
@@ -1113,6 +1125,28 @@ else if(args->Size() = 1) {
 			if(index > -1 & index < rows) {
 				each(row : rows) {
 					if(matrix[row, index]) {
+						count += 1;
+					};
+				};
+			};
+
+			return count;
+		}
+
+		#~
+		Count mismatches in a column
+		@param index column index
+		@param matrix matrix to inspect
+		@return number of mismatches
+		~#
+		function : Mismatches(index : Int, matrix : Bool[,]) ~ Int {
+			dims := matrix->Size();
+			rows := dims[0];
+
+			count := 0;
+			if(index > -1 & index < rows) {
+				each(row : rows) {
+					if(matrix[row, index] = false) {
 						count += 1;
 					};
 				};
@@ -1145,22 +1179,6 @@ else if(args->Size() = 1) {
 			if(test_index > -1 & test_index < rows & goal_index > -1 & goal_index < rows) {
 				each(row : rows) {
 					if(matrix[row, test_index] = false & matrix[row, goal_index]) {
-						count += 1;
-					};
-				};
-			};
-
-			return count;
-		}
-
-		method : native : Mismatches(index : Int, matrix : Bool[,]) ~ Float {
-			dims := matrix->Size();
-			rows := dims[0];
-
-			count := 0;
-			if(index > -1 & index < rows) {
-				each(row : rows) {
-					if(matrix[row, index] = false) {
 						count += 1;
 					};
 				};
