@@ -1011,7 +1011,7 @@ else if(args->Size() = 1) {
 		Calculates a list of splits
 		@return list of decision tree splits
 		~#
-		method : public : Decisions() ~ Vector<Decision> {					
+		method : public : Decide() ~ Vector<Decision> {					
 			paths := Vector->New()<Decision>;
 			dims := @matrix->Size();
 			
@@ -1206,11 +1206,11 @@ else if(args->Size() = 1) {
 	Decision tree node
 	~#
 	class Decision {
-		@test : Int;
+		@index : Int;
 		@weighted_gini : Float;
 		
-		New(test : Int, weighted_gini : Float) {
-			@test := test;
+		New(index : Int, weighted_gini : Float) {
+			@index := index;
 			@weighted_gini := weighted_gini;
 		}
 
@@ -1226,8 +1226,8 @@ else if(args->Size() = 1) {
 		Gets the test index
 		@return test index
 		~#
-		method : public : GetTest() ~ Int {
-			return @test;
+		method : public : GetIndex() ~ Int {
+			return @index;
 		}
 
 		#~
@@ -1235,7 +1235,7 @@ else if(args->Size() = 1) {
 		@return string representation 
 		~#
 		method : public : ToString() ~ String {
-			return "test={$@test},weighted_gini={$@weighted_gini}";
+			return "index={$@index},weighted_gini={$@weighted_gini}";
 		}
 	}
 }
