@@ -1204,7 +1204,7 @@ else if(args->Size() = 1) {
 					for(i := 1; i < row_size; i += 1;) {
 						each(j : column_size) {
 							value := table->Get(i)->Get(j)->ToLower();
-							if(value->Equals("0") | value->Equals("o") | value->StartsWith("0.0")  | value->Equals("false")) {
+							if(value->Equals(["0", "o", "0.0", "false"])) {
 								matrix[i - 1, j] := false;
 							}
 							else {
