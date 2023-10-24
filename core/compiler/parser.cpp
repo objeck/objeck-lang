@@ -338,8 +338,8 @@ void Parser::ParseBundle(int depth)
         ProcessError(L"Expected 'use bundle' or 'use' arguments", TOKEN_SEMI_COLON);
       }
 
-      if(!Match(TOKEN_SEMI_COLON)) {
-        ProcessError(L"Expected ';'", TOKEN_SEMI_COLON);
+      if(Match(TOKEN_SEMI_COLON)) {
+        NextToken();
       }
     }
     // 'use function' to import functions via classes
@@ -407,11 +407,6 @@ void Parser::ParseBundle(int depth)
         ProcessError(L"Expected 'use function' arguments", TOKEN_SEMI_COLON);
       }
     }
-
-    if(!Match(TOKEN_SEMI_COLON)) {
-      ProcessError(L"Expected ';'", TOKEN_SEMI_COLON);
-    }
-    NextToken();
   }
 
   // parse file
