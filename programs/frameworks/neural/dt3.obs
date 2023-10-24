@@ -3,15 +3,19 @@ use System.ML;
 class Test {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() > 0) {
-			input := DecisionTree->LoadMatrix(args[0]);
-			input->ToString()->PrintLine();
+			matrix := DecisionTree->LoadMatrix(args[0])
+			matrix->ToString()->PrintLine()
 			
 			"---"->PrintLine();
 
-			tree := DecisionTree->New(input);			
-			split := tree->Split(input);
-			split->ToString()->PrintLine();
-			DecisionTree->Matches(2,split)->PrintLine();
-		};
+			split := DecisionTree->New(matrix)->Split(matrix)
+			split->ToString()->PrintLine()
+			(split = matrix)->PrintLine()
+			
+			cols := DecisionTree->Columns(split)->As(Float);
+			rows := DecisionTree->Rows(split)->As(Float);
+			matches := DecisionTree->Matches(cols-1,split)->As(Float);
+			(matches/rows)->PrintLine();
+		}
 	}
 }
