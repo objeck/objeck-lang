@@ -10,7 +10,7 @@ class Test {
 
 			split := DecisionTree->New(matrix)->Split(matrix)
 			split->ToString()->PrintLine()
-			(split = matrix)->PrintLine()
+			(split <> matrix)->PrintLine()
 			
 			cols := DecisionTree->Columns(split)->As(Float);
 			rows := DecisionTree->Rows(split)->As(Float);
