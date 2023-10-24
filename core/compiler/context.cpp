@@ -4885,7 +4885,7 @@ void ContextAnalyzer::AnalyzeCalculation(CalculatedExpression* expression, const
       break;
 
     case EQL_EXPR:
-    case NEQL_EXPR: {
+    case NEQL_EXPR:
       if(IsBooleanExpression(left) && !IsBooleanExpression(right)) {
         ProcessError(expression, L"Invalid mathematical operation");
       }
@@ -4893,7 +4893,6 @@ void ContextAnalyzer::AnalyzeCalculation(CalculatedExpression* expression, const
         ProcessError(expression, L"Invalid mathematical operation");
       }
       expression->SetEvalType(TypeFactory::Instance()->MakeType(BOOLEAN_TYPE), true);
-    }
       break;
 
     case LES_EXPR:
