@@ -1051,9 +1051,11 @@ else if(args->Size() = 1) {
 		@param in matrix to split
 		@return split matrix
 		~#
-		method : public : Split(in : Bool[,]) ~ Bool[,] {
+		method : public : Split() ~ Bool[,] {
 			decisions := Train();
 			if(decisions <> Nil) {
+				in := @matrix;
+
 				each(decision := decisions) {
 					in := DecisionTree->Split(decision->GetIndex(), in);
 				};
