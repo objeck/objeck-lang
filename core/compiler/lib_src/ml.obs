@@ -1065,35 +1065,6 @@ else if(args->Size() = 1) {
 		}
 
 		#~
-		Returns the number of rows in the matrix
-		@param matrix matrix to process
-		@return number of rows in the matrix
-		~#
-		
-		function : Rows(matrix : Bool[,]) ~ Int {
-			if(matrix <> Nil) {
-				dims := matrix->Size();
-				return dims[0];
-			};
-
-			return 0;
-		}
-
-		#~
-		Returns the number of columns in the matrix
-		@param matrix matrix to process
-		@return number of columns in the matrix
-		~#
-		function : Columns(matrix : Bool[,]) ~ Int {
-			if(matrix <> Nil) {
-				dims := matrix->Size();
-				return dims[1];
-			};
-
-			return 0;
-		}
-
-		#~
 		Splits a matrix along the given column
 		@param index index used to split
 		@param in matrix to split

@@ -10,11 +10,11 @@ class Test {
 			"---"->PrintLine();
 			split := DecisionTree->New(matrix)->Split(matrix)
 			split->ToString()->PrintLine()
-			cols := DecisionTree->Columns(split)->As(Float);
+			cols := split->Columns()->As(Float);
 
 			"---"->PrintLine();
 			(split <> matrix)->PrintLine()
-			rows := DecisionTree->Rows(split)->As(Float);
+			rows := split->Rows()->As(Float);
 			matches := DecisionTree->Matches(cols-1,split)->As(Float);
 			(matches/rows)->PrintLine();
 		}
