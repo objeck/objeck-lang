@@ -1682,7 +1682,23 @@ bundle System {
 		@param target_offset index of first column with target data
 		@return split matrix
 		~#
-		function : Split(target_offset : Int, matrix : Bool[,]) ~ Bool[,] {
+		function : Split(target_offset : Float, matrix : Bool[,]) ~ Bool[,] {
+			if(target_offset >= 0.0 & target_offset <= 1.0 & matrix <> Nil) {
+				dims := matrix->Size();
+				rows := dims[0];
+				cols := dims[1];
+
+				target_rows := (rows->As(Float) * target_offset)->As(Int);
+				target_matrix := Bool->New[cols, target_rows];
+				each(i : rows) {
+					each(j : cols) {
+						target_matrix[j, i] := matrix[j, i];
+					};
+				};
+
+				return target_matrix;
+			};
+
 			return Nil;
 		}
 
