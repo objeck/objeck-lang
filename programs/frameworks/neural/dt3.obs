@@ -6,12 +6,10 @@ class Test {
 			"---"->PrintLine();
 			matrix := DecisionTree->LoadMatrix(args[0])
 			matrix->ToString()->PrintLine()
-"---"->PrintLine();
-			foo := Split(0.2, matrix)
-			foo->ToString()->PrintLine()
 
-#~
-			foo->Size()->PrintLine()
+			"---"->PrintLine();
+			foo := Split(0.15, matrix)
+			foo->ToString()->PrintLine()
 
 			"---"->PrintLine();
 			split := DecisionTree->New(matrix)->Split(matrix)
@@ -20,39 +18,40 @@ class Test {
 
 			"---"->PrintLine();
 			(split <> matrix)->PrintLine()
-			rows := split->Rows()->As(Float);
-			matches := DecisionTree->Matches(cols-1,split)->As(Float)
+			rows := foo->Rows()->As(Float);
+			matches := DecisionTree->Matches(cols-1,foo)->As(Float)
 			(matches/rows)->PrintLine()
-~#			
 		}
 	}
 
-		#~
-		Split a 2D boolean matrix
-		@param target_offset index of first column with target data
-		@return split matrix
-		~#
-		function : Split(target_offset : Float, matrix : Bool[,]) ~ Bool[,] {
-			if(target_offset >= 0.0 & target_offset <= 1.0 & matrix <> Nil) {
-				dims := matrix->Size();
-				rows := dims[0];
-				cols := dims[1];
+#~
+Split a 2D boolean matrix
+@param target_offset index of first column with target data
+@return split matrix
+~#
+function : Split(target_offset : Float, matrix : Bool[,]) ~ Bool[,] {
+	if(target_offset >= 0.0 & target_offset <= 1.0 & matrix <> Nil) {
+		dims := matrix->Size();
+		rows := dims[0];
+		cols := dims[1];
 
-				target_rows := (rows->As(Float) * target_offset)->As(Int);
-				
-				target_matrix := Bool->New[target_rows, cols];
-				dims := target_matrix->Size();
-				rows := dims[0];
-				cols := dims[1];
-				each(i : rows) {
-					each(j : cols) {
-						target_matrix[i, j] := matrix[i, j];
-					};
-				};
-
-				return target_matrix;
+		target_rows := (rows->As(Float) * target_offset)->As(Int);
+		
+		target_matrix := Bool->New[target_rows, cols];
+		dims := target_matrix->Size();
+		rows := dims[0];
+		cols := dims[1];
+		each(i : rows) {
+			each(j : cols) {
+				target_matrix[i, j] := matrix[i, j];
 			};
+		};
 
-			return Nil;
-		}
+		return target_matrix;
+	};
+
+	return Nil;
+}
+
+
 }
