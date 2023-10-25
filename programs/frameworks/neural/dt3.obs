@@ -6,6 +6,9 @@ class Test {
 			"---"->PrintLine();
 			matrix := DecisionTree->LoadMatrix(args[0])
 			matrix->ToString()->PrintLine()
+
+			foo := Float->Split(0.2, matrix)
+			foo->Size()->PrintLine()
 			
 			"---"->PrintLine();
 			split := DecisionTree->New(matrix)->Split(matrix)
@@ -15,8 +18,8 @@ class Test {
 			"---"->PrintLine();
 			(split <> matrix)->PrintLine()
 			rows := split->Rows()->As(Float);
-			matches := DecisionTree->Matches(cols-1,split)->As(Float);
-			(matches/rows)->PrintLine();
+			matches := DecisionTree->Matches(cols-1,split)->As(Float)
+			(matches/rows)->PrintLine()
 		}
 	}
 }
