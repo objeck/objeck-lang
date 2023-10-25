@@ -8,7 +8,7 @@ class Test {
 			matrix->ToString()->PrintLine()
 
 			"---"->PrintLine();
-			foo := Split(0.15, matrix)
+			foo := matrix->Split(0.15)
 			foo->ToString()->PrintLine()
 
 			"---"->PrintLine();
