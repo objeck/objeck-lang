@@ -9,10 +9,10 @@ class Test {
 
 			"---"->PrintLine();
 			foo := Bool->Split(0.15, matrix)
-			foo->ToString()->PrintLine()
+			 ->ToString()->PrintLine()
 
 			"---"->PrintLine();
-			split := DecisionTree->New(matrix)->Split(matrix)
+			split := DecisionTree->New(matrix)->Split()
 			split->ToString()->PrintLine()
 			cols := split->Columns()->As(Float);
 
