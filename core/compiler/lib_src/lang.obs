@@ -1649,6 +1649,45 @@ bundle System {
 		}
 
 		#~
+		Returns the number of rows in the matrix
+		@param matrix matrix to process
+		@return number of rows in the matrix
+		~#
+		
+		function : Rows(matrix : Bool[,]) ~ Int {
+			if(matrix <> Nil) {
+				dims := matrix->Size();
+				return dims[0];
+			};
+
+			return 0;
+		}
+
+		#~
+		Returns the number of columns in the matrix
+		@param matrix matrix to process
+		@return number of columns in the matrix
+		~#
+		function : Columns(matrix : Bool[,]) ~ Int {
+			if(matrix <> Nil) {
+				dims := matrix->Size();
+				return dims[1];
+			};
+
+			return 0;
+		}
+
+		#~
+		Split a 2D boolean matrix
+		@param target_offset index of first column with target data
+		@return split matrix
+		~#
+		function : Split(target_offset : Int, matrix : Bool[,]) ~ Bool[,] {
+			return Nil;
+		}
+
+
+		#~
 		Value of E
 		@return value of E
 		~#
