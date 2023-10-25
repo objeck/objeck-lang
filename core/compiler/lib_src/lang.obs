@@ -120,7 +120,11 @@ bundle System {
 				cols := dims[1];
 
 				target_rows := (rows->As(Float) * target_offset)->As(Int);
+				
 				target_matrix := Bool->New[target_rows, cols];
+				dims := target_matrix->Size();
+				rows := dims[0];
+				cols := dims[1];
 				each(i : rows) {
 					each(j : cols) {
 						target_matrix[i, j] := matrix[i, j];
