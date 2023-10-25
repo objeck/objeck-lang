@@ -78,7 +78,7 @@ bundle System {
 			
 			return "false";
 		}
-		
+
 		#~
 		Returns the number of rows in the matrix
 		@param matrix matrix to process
@@ -113,7 +113,7 @@ bundle System {
 		@param target_offset index of first column with target data
 		@return split matrix
 		~#
-		function : Split(target_offset : Float, matrix : Bool[,]) ~ Bool[,] {
+		function : Split(matrix : Bool[,], target_offset : Float) ~ Bool[,] {
 			if(target_offset >= 0.0 & target_offset <= 1.0 & matrix <> Nil) {
 				dims := matrix->Size();
 				rows := dims[0];
