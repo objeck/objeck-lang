@@ -4,52 +4,23 @@ class Test {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() > 0) {
 			"---"->PrintLine();
-			matrix := DecisionTree->LoadMatrix(args[0])
-			matrix->ToString()->PrintLine()
+			input := DecisionTree->LoadMatrix(args[0])
+			input->ToString()->PrintLine()
 
 			"---"->PrintLine();
-			foo := Bool->Split(0.15, matrix)
-			foo->ToString()->PrintLine()
+			training := Bool->Split(0.2, input)
+			training->ToString()->PrintLine()
 
 			"---"->PrintLine();
-			split := DecisionTree->New(matrix)->Split()
-			split->ToString()->PrintLine()
-			cols := split->Columns()->As(Float);
+			output := DecisionTree->New(input)->Train()
+			output->ToString()->PrintLine()
+			cols := Bool->Columns()->As(Float);
 
 			"---"->PrintLine();
-			(split <> matrix)->PrintLine()
-			matches := DecisionTree->Matches(cols-1,foo)->As(Float)
-			rows := foo->Rows()->As(Float);
-			(matches/rows)->PrintLine()
+			(output <> input)->PrintLine()
+			training_matches := DecisionTree->Matches(cols-1,training)->As(Float)
+			training_rows := training->Rows()->As(Float);
+			(training_matches/training_rows)->PrintLine()
 		}
-	}
-
-	#~
-	Split a 2D boolean matrix
-	@param target_offset index of first column with target data
-	@return split matrix
-	~#
-	function : Split(target_offset : Float, matrix : Bool[,]) ~ Bool[,] {
-		if(target_offset >= 0.0 & target_offset <= 1.0 & matrix <> Nil) {
-			dims := matrix->Size();
-			rows := dims[0];
-			cols := dims[1];
-
-			target_rows := (rows->As(Float) * target_offset)->As(Int);
-			
-			target_matrix := Bool->New[target_rows, cols];
-			dims := target_matrix->Size();
-			rows := dims[0];
-			cols := dims[1];
-			each(i : rows) {
-				each(j : cols) {
-					target_matrix[i, j] := matrix[i, j];
-				};
-			};
-
-			return target_matrix;
-		};
-
-		return Nil;
 	}
 }
