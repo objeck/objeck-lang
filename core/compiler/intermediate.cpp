@@ -3772,7 +3772,14 @@ void IntermediateEmitter::EmitStaticArray(StaticArray* array) {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(current_statement, array, cur_line_num, instructions::CPY_INT_STR_ARY));
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, array, cur_line_num, TRAP_RTRN, 3L));
       break;
-    
+
+    case frontend::BOOLEAN_TYPE:
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, array, cur_line_num, NEW_BYTE_ARY, (long)array->GetDimension()));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(current_statement, array, cur_line_num, array->GetId()));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(current_statement, array, cur_line_num, instructions::CPY_BOOL_STR_ARY));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, array, cur_line_num, TRAP_RTRN, 3L));
+      break;
+
     case frontend::FLOAT_TYPE:
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, array, cur_line_num, NEW_FLOAT_ARY, (long)array->GetDimension()));
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(current_statement, array, cur_line_num, array->GetId()));

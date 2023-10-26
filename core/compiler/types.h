@@ -447,6 +447,11 @@ namespace frontend {
     int length;
   };
 
+  struct BoolStringHolder {
+    bool* value;
+    int length;
+  };
+
   bool EndsWith(std::wstring const& str, std::wstring const& ending);
   void RemoveSubString(std::wstring& str_in, const std::wstring& find);
 }
