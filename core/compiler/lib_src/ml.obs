@@ -1048,7 +1048,6 @@ else if(args->Size() = 1) {
 
 		#~
 		Splits a matrix along the decisions columns
-		@param in matrix to split
 		@return split matrix
 		~#
 		method : public : Train() ~ Bool[,] {
