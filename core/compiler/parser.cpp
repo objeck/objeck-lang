@@ -3308,6 +3308,16 @@ StaticArray* Parser::ParseStaticArray(int depth) {
           NextToken();
           break;
 
+        case TOKEN_TRUE_ID:
+          expression = TreeFactory::Instance()->MakeBooleanLiteral(file_name, line_num, line_pos, true);
+          NextToken();
+          break;
+
+        case TOKEN_FALSE_ID:
+          expression = TreeFactory::Instance()->MakeBooleanLiteral(file_name, line_num, line_pos, false);
+          NextToken();
+          break;
+
         case TOKEN_FLOAT_LIT:
           expression = TreeFactory::Instance()->MakeFloatLiteral(file_name, line_num, line_pos,
                                                                  scanner->GetToken()->GetFloatLit());
