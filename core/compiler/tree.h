@@ -682,7 +682,10 @@ namespace frontend {
     }
 
     EntryType GetType() {
-      switch(cur_type) {      
+      switch(cur_type) {
+      case BOOLEAN_LIT_EXPR:
+        return BOOLEAN_TYPE;
+
       case INT_LIT_EXPR:
         return INT_TYPE;
 
@@ -3643,6 +3646,12 @@ namespace frontend {
     }
   };
 
+  struct bool_string_comp {
+    bool operator() (BoolStringHolder* lhs, BoolStringHolder* rhs) const {
+      return std::tie(lhs->length, lhs->value) == std::tie(rhs->length, rhs->value);
+    }
+  };
+
   /****************************
    * ParsedProgram class
    ****************************/
@@ -3652,6 +3661,9 @@ namespace frontend {
 
     std::map<FloatStringHolder*, int, float_string_comp> float_string_ids;
     std::vector<FloatStringHolder*> float_strings;
+
+    std::map<BoolStringHolder*, int, bool_string_comp> bool_string_ids;
+    std::vector<BoolStringHolder*> bool_strings;
 
     std::map<std::wstring, int> char_string_ids;
     std::vector<std::wstring> char_strings;
@@ -3840,6 +3852,48 @@ namespace frontend {
 
       float_string_ids.insert(std::pair<FloatStringHolder*, int>(holder, id));
       float_strings.push_back(holder);
+    }
+
+    void AddBoolString(std::vector<Expression*>& bool_elements, int id) {
+      bool* bool_array = new bool[bool_elements.size()];
+      for(size_t i = 0; i < bool_elements.size(); ++i) {
+        bool_array[i] = static_cast<BooleanLiteral*>(bool_elements[i])->GetValue();
+      }
+
+      BoolStringHolder* holder = new BoolStringHolder;
+      holder->value = bool_array;
+      holder->length = (int)bool_elements.size();
+
+      bool_string_ids.insert(std::pair<BoolStringHolder*, int>(holder, id));
+      bool_strings.push_back(holder);
+    }
+
+    int GetBoolStringId(std::vector<Expression*>& Bool_elements) {
+      bool* Bool_array = new bool[Bool_elements.size()];
+      for(size_t i = 0; i < Bool_elements.size(); ++i) {
+        Bool_array[i] = static_cast<BooleanLiteral*>(Bool_elements[i])->GetValue();
+      }
+
+      BoolStringHolder* holder = new BoolStringHolder;
+      holder->value = Bool_array;
+      holder->length = (int)Bool_elements.size();
+
+      std::map<BoolStringHolder*, int, bool_string_comp>::iterator result = bool_string_ids.find(holder);
+      if(result != bool_string_ids.end()) {
+        delete[] holder->value;
+        holder->value = nullptr;
+        delete holder;
+        holder = nullptr;
+
+        return result->second;
+      }
+
+      delete[] holder->value;
+      holder->value = nullptr;
+      delete holder;
+      holder = nullptr;
+
+      return -1;
     }
 
     int GetFloatStringId(std::vector<Expression*> &float_elements) {
