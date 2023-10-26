@@ -700,6 +700,11 @@ struct CharStringInstruction {
   std::vector<LibraryInstr*> instrs;
 };
 
+struct BoolStringInstruction {
+  frontend::BoolStringHolder* value;
+  std::vector<LibraryInstr*> instrs;
+};
+
 struct IntStringInstruction {
   frontend::IntStringHolder* value;
   std::vector<LibraryInstr*> instrs;
@@ -724,6 +729,7 @@ class Library {
   std::vector<LibraryClass*> class_list;
   std::map<const std::wstring, const std::wstring> hierarchies;
   std::vector<CharStringInstruction*> char_strings;
+  std::vector<BoolStringInstruction*> bool_strings;
   std::vector<IntStringInstruction*> int_strings;
   std::vector<FloatStringInstruction*> float_strings;
   std::vector<std::wstring> bundle_names;

@@ -45,6 +45,7 @@ namespace instructions {
     CPY_CHAR_STR_ARY,
     CPY_CHAR_STR_ARYS,
     CPY_INT_STR_ARY,
+    CPY_BOOL_STR_ARY,
     CPY_FLOAT_STR_ARY,
     BYTES_TO_UNICODE,
     UNICODE_TO_BYTES,
