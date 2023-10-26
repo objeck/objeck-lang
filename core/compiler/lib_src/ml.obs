@@ -1012,7 +1012,7 @@ else if(args->Size() = 1) {
 		Calculates a list of decision splits
 		@return list of decision tree splits
 		~#
-		method : public : Train() ~ Vector<Decision> {					
+		method : public : Step() ~ Vector<Decision> {					
 			decisions := Vector->New()<Decision>;
 			dims := @matrix->Size();
 			
@@ -1051,8 +1051,8 @@ else if(args->Size() = 1) {
 		@param in matrix to split
 		@return split matrix
 		~#
-		method : public : Split() ~ Bool[,] {
-			decisions := Train();
+		method : public : Train() ~ Bool[,] {
+			decisions := Step();
 			if(decisions <> Nil) {
 				in := @matrix;
 
