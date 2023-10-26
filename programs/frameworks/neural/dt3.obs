@@ -8,19 +8,19 @@ class Test {
 			input->ToString()->PrintLine()
 
 			"---"->PrintLine();
-			training := Bool->Split(0.2, input)
+			training := Bool->Split(0.25, input)
 			training->ToString()->PrintLine()
 
 			"---"->PrintLine();
 			output := DecisionTree->New(input)->Train()
 			output->ToString()->PrintLine()
-			cols := Bool->Columns()->As(Float);
+			cols := training->Columns()->As(Float)
 
 			"---"->PrintLine();
 			(output <> input)->PrintLine()
-			training_matches := DecisionTree->Matches(cols-1,training)->As(Float)
-			training_rows := training->Rows()->As(Float);
-			(training_matches/training_rows)->PrintLine()
+			training_matches := DecisionTree->Matches(cols-1,output)->As(Float)
+			training_rows := training->Rows()->As(Float)
+			(training_rows / training_matches)->PrintLine()
 		}
 	}
 }
