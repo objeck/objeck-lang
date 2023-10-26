@@ -1806,6 +1806,19 @@ void ContextAnalyzer::AnalyzeStaticArray(StaticArray* array, const int depth)
   }
     break;
 
+  case BOOLEAN_TYPE: {
+    int id = program->GetBoolStringId(all_elements);
+    if(id > -1) {
+      array->SetId(id);
+    }
+    else {
+      array->SetId(bool_str_index);
+      program->AddBoolString(all_elements, bool_str_index);
+      bool_str_index++;
+    }
+  }
+    break;
+
   case CHAR_TYPE: {
     // copy string elements
     std::wstring char_str;

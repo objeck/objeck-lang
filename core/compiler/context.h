@@ -255,6 +255,7 @@ class ContextAnalyzer {
   int char_str_index;
   int int_str_index;
   int float_str_index;
+  int bool_str_index;
   bool use_static_check;
   int in_loop;
   bool in_assignment;
@@ -565,7 +566,7 @@ class ContextAnalyzer {
     // initialize linker
     linker = new Linker(lib_path);
     program->SetLinker(linker);
-    char_str_index = int_str_index = float_str_index= 0;
+    char_str_index = int_str_index = bool_str_index = float_str_index= 0;
     in_loop = nested_call_depth = 0;
     in_assignment = in_return = in_expression = use_static_check = false;
     
