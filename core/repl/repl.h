@@ -60,6 +60,6 @@ static void RemoveArgument(std::map<const std::wstring, std::wstring>& arguments
 static bool HasArgument(std::map<const std::wstring, std::wstring> arguments, const std::wstring values[]);
 
 static void Usage();
-static void SetEnv();
+void SetEnv();
 
 #endif
