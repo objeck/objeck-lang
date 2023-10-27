@@ -36,13 +36,29 @@
 #include "../module/lang.h"
 
 #define SYNTAX_ERROR "Huh, cannot do that. Try help '/h'?"
+
+#define HELP_PARAM L"help"
+#define HELP_ALT_PARAM L"h"
+
 #define FILE_PARAM L"file"
+#define FILE_ALT_PARAM L"f"
+
 #define INLINE_PARAM L"inline"
+#define INLINE_ALT_PARAM L"i"
+
 #define LIBS_PARAM L"lib"
+#define LIBS_ALT_PARAM L"l"
+
 #define OPT_PARAM L"opt"
+#define OPT_ALT_PARAM L"o"
+
 #define EXIT_PARAM L"exit"
+#define EXIT_ALT_PARAM L"e"
+
+static std::wstring GetArg(std::map<const std::wstring, std::wstring> arguments, const std::wstring values[]);
+static void RemoveArg(std::map<const std::wstring, std::wstring>& arguments, const std::wstring values[]);
 
 static void Usage();
-void SetEnv();
+static void SetEnv();
 
 #endif
