@@ -906,6 +906,14 @@ class Library {
       tmp = nullptr;
     }
 
+    while(!bool_strings.empty()) {
+      BoolStringInstruction* tmp = bool_strings.front();
+      bool_strings.erase(bool_strings.begin());
+      // delete
+      delete tmp;
+      tmp = nullptr;
+    }
+
     while(!float_strings.empty()) {
       FloatStringInstruction* tmp = float_strings.front();
       float_strings.erase(float_strings.begin());
@@ -970,6 +978,10 @@ class Library {
 
   std::vector<CharStringInstruction*> GetCharStringInstructions() {
     return char_strings;
+  }
+
+  std::vector<BoolStringInstruction*> GetBoolStringInstructions() {
+    return bool_strings;
   }
 
   std::vector<IntStringInstruction*> GetIntStringInstructions() {

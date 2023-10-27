@@ -288,6 +288,7 @@ void IntermediateEmitter::EmitStrings()
 {
   std::vector<std::wstring> char_string_values = parsed_program->GetCharStrings();
   std::vector<IntStringHolder*> int_string_values = parsed_program->GetIntStrings();
+  std::vector<BoolStringHolder*> bool_string_values = parsed_program->GetBoolStrings();
   std::vector<FloatStringHolder*> float_string_values = parsed_program->GetFloatStrings();
   
   Linker* linker = parsed_program->GetLinker();
@@ -297,11 +298,29 @@ void IntermediateEmitter::EmitStrings()
     // create master list of library strings
     std::vector<std::wstring> lib_char_string_values;
     std::vector<IntStringHolder*> lib_int_string_values;
+    std::vector<BoolStringHolder*> lib_bool_string_values;
     std::vector<FloatStringHolder*> lib_float_string_values;
 
     for(size_t i = 0; i < libraries.size(); ++i) {
       Library* library = libraries[i];
 
+      // bool string processing
+      std::vector<BoolStringInstruction*> bool_str_insts = library->GetBoolStringInstructions();
+      for(size_t i = 0; i < bool_str_insts.size(); ++i) {
+        // check for duplicates
+        bool found = false;
+
+        // boolean string processing
+        for(size_t j = 0; !found && j < lib_bool_string_values.size(); ++j) {
+          if(BoolStringHolderEqual(bool_str_insts[i]->value, lib_bool_string_values[j])) {
+            found = true;
+          }
+        }
+        // add string
+        if(!found) {
+          lib_bool_string_values.push_back(bool_str_insts[i]->value);
+        }
+      }
       // char string processing
       std::vector<CharStringInstruction*> char_str_insts = library->GetCharStringInstructions();
       for(size_t i = 0; i < char_str_insts.size(); ++i) {
@@ -316,7 +335,7 @@ void IntermediateEmitter::EmitStrings()
         if(!found) {
           lib_char_string_values.push_back(char_str_insts[i]->value);
         }
-      }      
+      }
       // int string processing
       std::vector<IntStringInstruction*> int_str_insts = library->GetIntStringInstructions();
       for(size_t i = 0; i < int_str_insts.size(); ++i) {
@@ -449,6 +468,7 @@ void IntermediateEmitter::EmitStrings()
   }
   // set static strings
   imm_program->SetCharStrings(char_string_values);
+  imm_program->SetBoolStrings(bool_string_values);
   imm_program->SetIntStrings(int_string_values);
   imm_program->SetFloatStrings(float_string_values);
 }
