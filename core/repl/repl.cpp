@@ -81,8 +81,7 @@ int main(int argc, char* argv[])
     }
 
     std::wstring exit_flags[] = { EXIT_PARAM, EXIT_ALT_PARAM };
-    result = GetArg(arguments, exit_flags);
-    if(!result.empty()) {
+    if(HasArg(arguments, exit_flags)) {
       is_exit = true;
       RemoveArg(arguments, exit_flags);
     }
@@ -210,6 +209,20 @@ std::wstring GetArg(std::map<const std::wstring, std::wstring> arguments, const 
   }
 
   return L"";
+}
+
+bool HasArg(std::map<const std::wstring, std::wstring> arguments, const std::wstring values[]) {
+  auto result = arguments.find(values[0]);
+  if(result != arguments.end()) {
+    return true;
+  }
+
+  result = arguments.find(values[1]);
+  if(result != arguments.end()) {
+    return true;
+  }
+
+  return false;
 }
 
 void RemoveArg(std::map<const std::wstring, std::wstring>& arguments, const std::wstring values[]) {
