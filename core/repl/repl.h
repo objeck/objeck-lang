@@ -57,6 +57,7 @@
 
 static std::wstring GetArg(std::map<const std::wstring, std::wstring> arguments, const std::wstring values[]);
 static void RemoveArg(std::map<const std::wstring, std::wstring>& arguments, const std::wstring values[]);
+static bool HasArg(std::map<const std::wstring, std::wstring> arguments, const std::wstring values[]);
 
 static void Usage();
 static void SetEnv();
