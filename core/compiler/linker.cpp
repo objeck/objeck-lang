@@ -653,6 +653,26 @@ void Library::LoadFile(const std::wstring &file_name)
       str_instr->value = holder;
       float_strings.push_back(str_instr);
     }
+    // read bool strings
+    const int num_bool_strings = ReadInt();
+    for(int i = 0; i < num_bool_strings; ++i) {
+      frontend::BoolStringHolder* holder = new frontend::BoolStringHolder;
+      holder->length = ReadInt();
+      holder->value = new bool[holder->length];
+      for(int j = 0; j < holder->length; ++j) {
+        holder->value[j] = ReadDouble();
+      }
+#ifdef _DEBUG
+      GetLogger() << L"bool std::string: id=" << i << L"; value=";
+      for(int j = 0; j < holder->length; ++j) {
+        GetLogger() << holder->value[j] << L",";
+      }
+      GetLogger() << std::endl;
+#endif
+      BoolStringInstruction* str_instr = new BoolStringInstruction;
+      str_instr->value = holder;
+      bool_strings.push_back(str_instr);
+    }
     // read int strings
     const int num_int_strings = ReadInt();
     for(int i = 0; i < num_int_strings; ++i) {
