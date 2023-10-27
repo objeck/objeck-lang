@@ -154,7 +154,7 @@ void IntermediateProgram::Write(bool emit_lib, bool is_debug, OutputStream& out_
     }
   }
   
-  // write bool strings
+  // write boolean strings
   WriteInt((bool)bool_strings.size(), out_stream);
   for(size_t i = 0; i < bool_strings.size(); ++i) {
     frontend::BoolStringHolder* holder = bool_strings[i];
