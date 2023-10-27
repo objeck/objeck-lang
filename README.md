@@ -26,8 +26,8 @@ To get started, take a look at the [language guide](https://objeck.org/getting_s
 
 ## Latest
 * Adding more ML features and algorithms (for 2023.10.x)
-  * ~~Decision tree class~~
-  * ~~Additional dataset operations~~
+  * ~~ML decision-tree support~~
+  * ~~Additional operations for 2D arrays~~
   * ~~Static boolean array initialization~~
 * Enhance language expressiveness per community feedback (for 2023.11.x)
   * What are the rough edges?
