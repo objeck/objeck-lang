@@ -2656,7 +2656,27 @@ bool TrapProcessor::CpyCharStrArys(StackProgram* program, size_t* inst, size_t* 
 
 bool TrapProcessor::CpyBoolStrAry(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
 {
-  return false;
+  INT64_VALUE index = (INT64_VALUE)PopInt(op_stack, stack_pos);
+  bool* value_str = program->GetBoolStrings()[index];
+  // copy array
+  size_t* array = (size_t*)PopInt(op_stack, stack_pos);
+  if(!array) {
+    std::wcerr << L">>> Attempting to dereference a 'Nil' memory element <<<" << std::endl;
+    return false;
+  }
+  const long size = (long)array[0];
+  const long dim = (long)array[1];
+  bool* str = (bool*)(array + dim + 2);
+  for(long i = 0; i < size; i++) {
+    str[i] = value_str[i];
+  }
+
+#ifdef _DEBUG
+  std::wcout << L"stack oper: CPY_Bool_STR_ARY" << std::endl;
+#endif
+  PushInt((size_t)array, op_stack, stack_pos);
+
+  return true;
 }
 
 bool TrapProcessor::CpyIntStrAry(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
