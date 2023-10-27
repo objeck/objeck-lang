@@ -154,6 +154,16 @@ void IntermediateProgram::Write(bool emit_lib, bool is_debug, OutputStream& out_
     }
   }
   
+  // write bool strings
+  WriteInt((bool)bool_strings.size(), out_stream);
+  for(size_t i = 0; i < bool_strings.size(); ++i) {
+    frontend::BoolStringHolder* holder = bool_strings[i];
+    WriteInt(holder->length, out_stream);
+    for(int j = 0; j < holder->length; ++j) {
+      WriteByte(holder->value[j] ? 1 : 0, out_stream);
+    }
+  }
+
   // write int strings
   WriteInt((int)int_strings.size(), out_stream);
   for(size_t i = 0; i < int_strings.size(); ++i) {
