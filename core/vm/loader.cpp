@@ -110,6 +110,7 @@ void Loader::Load()
   }
   program->SetFloatStrings(float_strings, num_float_strings);
 
+/*
   //
   // read boolean strings
   //
@@ -134,6 +135,7 @@ void Loader::Load()
     bool_strings[i] = bool_string;
   }
   program->SetBoolStrings(bool_strings, num_bool_strings);
+*/
 
   //
   // read int strings
