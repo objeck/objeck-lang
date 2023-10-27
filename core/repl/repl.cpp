@@ -62,43 +62,47 @@ int main(int argc, char* argv[])
 
   // help
   std::wstring help_flags[] = { HELP_PARAM, HELP_ALT_PARAM };
-  auto result = GetArg(arguments, help_flags);
-  if(result.empty()) {
+  auto result = GetArgument(arguments, help_flags);
+  if(!result.empty()) {
+    Usage();
+    RemoveArgument(arguments, help_flags);
+  }
+  else {
     std::wstring file_flags[] = { FILE_PARAM, FILE_ALT_PARAM };
-    result = GetArg(arguments, file_flags);
+    result = GetArgument(arguments, file_flags);
     if(!result.empty()) {
       input = result;
       mode = 1;
-      RemoveArg(arguments, file_flags);
+      RemoveArgument(arguments, file_flags);
     }
 
     std::wstring inline_flags[] = { INLINE_PARAM, INLINE_ALT_PARAM };
-    result = GetArg(arguments, inline_flags);
+    result = GetArgument(arguments, inline_flags);
     if(!result.empty()) {
       input = result;
       mode = 2;
-      RemoveArg(arguments, inline_flags);
+      RemoveArgument(arguments, inline_flags);
     }
 
     std::wstring exit_flags[] = { EXIT_PARAM, EXIT_ALT_PARAM };
-    if(HasArg(arguments, exit_flags)) {
+    if(HasArgument(arguments, exit_flags)) {
       is_exit = true;
-      RemoveArg(arguments, exit_flags);
+      RemoveArgument(arguments, exit_flags);
     }
 
     std::wstring lib_flags[] = { LIBS_PARAM, LIBS_ALT_PARAM };
-    result = GetArg(arguments, lib_flags);
+    result = GetArgument(arguments, lib_flags);
     if(!result.empty()) {
       libs = result;
       mode = 2;
-      RemoveArg(arguments, lib_flags);
+      RemoveArgument(arguments, lib_flags);
     }
 
     std::wstring opt_flags[] = { OPT_PARAM, OPT_ALT_PARAM };
-    result = GetArg(arguments, opt_flags);
+    result = GetArgument(arguments, opt_flags);
     if(!result.empty()) {
       input = result;
-      RemoveArg(arguments, opt_flags);
+      RemoveArgument(arguments, opt_flags);
     }
 
     // input check
@@ -110,11 +114,6 @@ int main(int argc, char* argv[])
       Editor editor;
       editor.Edit(input, libs, opt, mode, is_exit);
     }
-  }
-  // usage
-  else {
-    RemoveArg(arguments, help_flags);
-    Usage();
   }
 
 #ifdef _DEBUG
@@ -161,7 +160,8 @@ void Usage()
   std::wcerr << usage << std::endl;
 }
 
-void SetEnv() {
+void SetEnv() 
+{
 #ifdef _WIN32
 #ifdef _MSYS2_CLANG
   std::ios_base::sync_with_stdio(false);
@@ -197,7 +197,8 @@ void SetEnv() {
 #endif
 }
 
-std::wstring GetArg(std::map<const std::wstring, std::wstring> arguments, const std::wstring values[]) {
+std::wstring GetArgument(std::map<const std::wstring, std::wstring> arguments, const std::wstring values[]) 
+{
   auto result = arguments.find(values[0]);
   if(result != arguments.end()) {
     return result->second;
@@ -211,7 +212,8 @@ std::wstring GetArg(std::map<const std::wstring, std::wstring> arguments, const 
   return L"";
 }
 
-bool HasArg(std::map<const std::wstring, std::wstring> arguments, const std::wstring values[]) {
+bool HasArgument(std::map<const std::wstring, std::wstring> arguments, const std::wstring values[]) 
+{
   auto result = arguments.find(values[0]);
   if(result != arguments.end()) {
     return true;
@@ -225,7 +227,8 @@ bool HasArg(std::map<const std::wstring, std::wstring> arguments, const std::wst
   return false;
 }
 
-void RemoveArg(std::map<const std::wstring, std::wstring>& arguments, const std::wstring values[]) {
+void RemoveArgument(std::map<const std::wstring, std::wstring>& arguments, const std::wstring values[]) 
+{
   arguments.erase(values[0]);
   arguments.erase(values[1]);
 }
