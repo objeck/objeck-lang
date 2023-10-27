@@ -84,7 +84,10 @@ void Loader::Load()
   string_cls_id = ReadInt();
 
   int i;
+
+  //
   // read float strings
+  //
   num_float_strings = ReadInt();
   FLOAT_VALUE** float_strings = new FLOAT_VALUE*[num_float_strings];
   for(i = 0; i < num_float_strings; ++i) {
@@ -107,7 +110,35 @@ void Loader::Load()
   }
   program->SetFloatStrings(float_strings, num_float_strings);
 
+  //
+  // read boolean strings
+  //
+  num_bool_strings = ReadInt();
+  bool** bool_strings = new bool* [num_bool_strings];
+  for(i = 0; i < num_bool_strings; ++i) {
+    const int bool_string_length = ReadInt();
+    bool* bool_string = new bool[bool_string_length];
+    // copy string    
+#ifdef _DEBUG
+    std::wcout << L"Loaded static bool std::string[" << i << L"]: '";
+#endif
+    for(int j = 0; j < bool_string_length; j++) {
+      bool_string[j] = ReadByte() ? true : false;
+#ifdef _DEBUG
+      std::wcout << bool_string[j] << L",";
+#endif
+    }
+#ifdef _DEBUG
+    std::wcout << L"'" << std::endl;
+#endif
+    bool_strings[i] = bool_string;
+  }
+  program->SetBoolStrings(bool_strings, num_bool_strings);
+
+
+  //
   // read int strings
+  //
   num_int_strings = ReadInt();
   INT64_VALUE** int_strings = new INT64_VALUE *[num_int_strings];
   for(i = 0; i < num_int_strings; ++i) {
@@ -130,7 +161,9 @@ void Loader::Load()
   }
   program->SetIntStrings(int_strings, num_int_strings);
   
+  //
   // read char strings
+  //
   num_char_strings = ReadInt();
   wchar_t** char_strings = new wchar_t*[num_char_strings + arguments.size()];
   for(i = 0; i < num_char_strings; ++i) {

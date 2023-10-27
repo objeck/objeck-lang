@@ -920,6 +920,9 @@ class StackProgram {
   FLOAT_VALUE** float_strings;
   int num_float_strings;
 
+  bool** bool_strings;
+  int num_bool_strings;
+
   INT64_VALUE** int_strings;
   int num_int_strings;
 
@@ -1190,6 +1193,11 @@ class StackProgram {
   void SetFloatStrings(FLOAT_VALUE** s, int n) {
     float_strings = s;
     num_float_strings = n;
+  }
+
+  void SetBoolStrings(bool** s, int n) {
+    bool_strings = s;
+    num_bool_strings = n;
   }
 
   void SetIntStrings(INT64_VALUE** s, int n) {
