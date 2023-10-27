@@ -52,8 +52,8 @@ xcodebuild -project macos/xcode/objk_openssl.xcodeproj clean build
 cp macos/xcode/build/Release/libobjk_openssl.dylib ../../release/deploy/lib/native/libobjk_openssl.dylib
 
 cd ../sdl
-xcodebuild -project macos/xcode/SDL2.xcodeproj clean build
-cp macos/xcode/build/Release/libobjk_openssl.dylib ../../release/deploy/lib/native/libobjk_sdl.dylib
+xcodebuild -project macos/xcode/sdl.xcodeproj build
+cp macos/xcode/build/Release/libxcode.dylib ../../release/deploy/lib/native/libobjk_sdl.dylib
 cp macos/sdl2_arm64.tgz ../../release/deploy/lib/native
 cp lib/fonts/*.ttf ../../release/deploy/lib/sdl/fonts
 
