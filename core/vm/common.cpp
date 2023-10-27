@@ -1961,6 +1961,9 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
   case CPY_INT_STR_ARY:
     return CpyIntStrAry(program, inst, op_stack, stack_pos, frame);
 
+  case CPY_BOOL_STR_ARY:
+    return CpyBoolStrAry(program, inst, op_stack, stack_pos, frame);
+
   case CPY_FLOAT_STR_ARY:
     return CpyFloatStrAry(program, inst, op_stack, stack_pos, frame);
 
@@ -2649,6 +2652,11 @@ bool TrapProcessor::CpyCharStrArys(StackProgram* program, size_t* inst, size_t* 
   PushInt((size_t)array, op_stack, stack_pos);
 
   return true;
+}
+
+bool TrapProcessor::CpyBoolStrAry(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
+{
+  return false;
 }
 
 bool TrapProcessor::CpyIntStrAry(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)

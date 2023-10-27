@@ -135,7 +135,6 @@ void Loader::Load()
   }
   program->SetBoolStrings(bool_strings, num_bool_strings);
 
-
   //
   // read int strings
   //
