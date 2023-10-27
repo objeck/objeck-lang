@@ -643,7 +643,7 @@ void Library::LoadFile(const std::wstring &file_name)
         holder->value[j] = ReadDouble();
       }
 #ifdef _DEBUG
-      GetLogger() << L"float std::string: id=" << i << L"; value=";
+      GetLogger() << L"float string id=" << i << L"; value=";
       for(int j = 0; j < holder->length; ++j) {
         GetLogger() << holder->value[j] << L",";
       }
@@ -660,10 +660,10 @@ void Library::LoadFile(const std::wstring &file_name)
       holder->length = ReadInt();
       holder->value = new bool[holder->length];
       for(int j = 0; j < holder->length; ++j) {
-        holder->value[j] = ReadDouble();
+        holder->value[j] = ReadByte();
       }
 #ifdef _DEBUG
-      GetLogger() << L"bool std::string: id=" << i << L"; value=";
+      GetLogger() << L"bool string id=" << i << L"; value=";
       for(int j = 0; j < holder->length; ++j) {
         GetLogger() << holder->value[j] << L",";
       }
@@ -683,7 +683,7 @@ void Library::LoadFile(const std::wstring &file_name)
         holder->value[j] = ReadInt64();
       }
 #ifdef _DEBUG
-      GetLogger() << L"int std::string: id=" << i << L"; value=";
+      GetLogger() << L"int string id=" << i << L"; value=";
       for(int j = 0; j < holder->length; ++j) {
         GetLogger() << holder->value[j] << L",";
       }
@@ -698,7 +698,7 @@ void Library::LoadFile(const std::wstring &file_name)
     for(int i = 0; i < num_char_strings; ++i) {
       const std::wstring& char_str_value = ReadString();
 #ifdef _DEBUG
-      const std::wstring& msg = L"char std::string: id=" + Linker::ToString(i) + L"; value='" + char_str_value + L"'";
+      const std::wstring& msg = L"char string id=" + Linker::ToString(i) + L"; value='" + char_str_value + L"'";
       Linker::Debug(msg, -1, 0);
 #endif
       CharStringInstruction* str_instr = new CharStringInstruction;
@@ -823,8 +823,8 @@ void Library::LoadClasses()
       interface_names.push_back(ReadString());
     }
 
-    const bool is_interface = ReadShort() != 0;
-    const bool is_public = ReadShort() != 0;
+    const bool is_interface = ReadByte() != 0;
+    const bool is_public = ReadByte() != 0;
 
     // read generic names
     std::vector<std::wstring> generic_names;
@@ -833,8 +833,8 @@ void Library::LoadClasses()
       generic_names.push_back(ReadString());
     }
 
-    bool is_virtual = ReadShort() != 0;
-    bool is_debug = ReadShort() != 0;
+    bool is_virtual = ReadByte() != 0;
+    bool is_debug = ReadByte() != 0;
     std::wstring file_name;
     if(is_debug) {
       file_name = ReadString();
@@ -883,11 +883,11 @@ void Library::LoadMethods(LibraryClass* cls, bool is_debug)
   for(int i = 0; i < number; ++i) {
     int id = ReadInt();
     frontend::MethodType type = (frontend::MethodType)ReadInt();
-    bool is_virtual = ReadShort() != 0;
-    bool has_and_or = ReadShort() != 0;
-    bool is_lambda = ReadShort() != 0;
-    bool is_native = ReadShort() != 0;
-    bool is_static = ReadShort() != 0;
+    bool is_virtual = ReadByte() != 0;
+    bool has_and_or = ReadByte() != 0;
+    bool is_lambda = ReadByte() != 0;
+    bool is_native = ReadByte() != 0;
+    bool is_static = ReadByte() != 0;
     const std::wstring &name = ReadString();
     const std::wstring &rtrn_name = ReadString();
     int params = ReadInt();
@@ -937,7 +937,7 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
       line_num = ReadInt();
     }    
 
-    const int type = ReadShort();
+    const int type = ReadByte();
     switch(type) {
     case LOAD_INT_LIT:
       instrs.push_back(new LibraryInstr(line_num, LOAD_INT_LIT, ReadInt64()));
