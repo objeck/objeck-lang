@@ -52,8 +52,8 @@
 #define OPT_PARAM L"opt"
 #define OPT_ALT_PARAM L"o"
 
-#define EXIT_PARAM L"exit"
-#define EXIT_ALT_PARAM L"e"
+#define EXIT_PARAM L"quit"
+#define EXIT_ALT_PARAM L"q"
 
 static std::wstring GetArg(std::map<const std::wstring, std::wstring> arguments, const std::wstring values[]);
 static void RemoveArg(std::map<const std::wstring, std::wstring>& arguments, const std::wstring values[]);

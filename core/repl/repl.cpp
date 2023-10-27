@@ -133,7 +133,7 @@ void Usage()
   usage += L"  -inline|-i: [optional] inline source code statements\n";
   usage += L"  -lib|-l:    [optional] list of linked libraries (separated by commas)\n";
   usage += L"  -opt|-o:    [optional] compiler optimizations s0-s3 (s3 being the most aggressive and default)\n";
-  usage += L"  -exit|-e:   [optional] exits shell after executiong code\n";
+  usage += L"  -quit|-q:   [optional] exits shell after executiong code\n";
   usage += L"\nExample: \"obi -f hello.obs\"\n\nVersion: ";
   usage += VERSION_STRING;
 
