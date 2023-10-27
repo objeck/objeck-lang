@@ -3896,6 +3896,10 @@ namespace frontend {
       return -1;
     }
 
+    std::vector<BoolStringHolder*> GetBoolStrings() {
+      return bool_strings;
+    }
+
     int GetFloatStringId(std::vector<Expression*> &float_elements) {
       FLOAT_VALUE* float_array = new FLOAT_VALUE[float_elements.size()];
       for(size_t i = 0; i < float_elements.size(); ++i) {
