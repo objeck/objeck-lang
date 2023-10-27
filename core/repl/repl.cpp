@@ -60,46 +60,62 @@ int main(int argc, char* argv[])
   int mode = 0;
   bool is_exit = false;
 
-  auto result = arguments.find(FILE_PARAM);
-  if(result != arguments.end()) {
-    input = result->second;
-    mode = 1;
-    arguments.erase(FILE_PARAM);
-  }
+  // help
+  std::wstring help_flags[] = { HELP_PARAM, HELP_ALT_PARAM };
+  auto result = GetArg(arguments, help_flags);
+  if(result.empty()) {
+    std::wstring file_flags[] = { FILE_PARAM, FILE_ALT_PARAM };
+    result = GetArg(arguments, file_flags);
+    if(!result.empty()) {
+      input = result;
+      mode = 1;
+      RemoveArg(arguments, file_flags);
+    }
 
-  result = arguments.find(INLINE_PARAM);
-  if(result != arguments.end()) {
-    input = result->second;
-    mode = 2;
-    arguments.erase(INLINE_PARAM);
-  }
+    std::wstring inline_flags[] = { INLINE_PARAM, INLINE_ALT_PARAM };
+    result = GetArg(arguments, inline_flags);
+    if(!result.empty()) {
+      input = result;
+      mode = 2;
+      RemoveArg(arguments, inline_flags);
+    }
 
-  result = arguments.find(EXIT_PARAM);
-  if(result != arguments.end()) {
-    is_exit = true;
-    arguments.erase(EXIT_PARAM);
-  }
+    std::wstring exit_flags[] = { EXIT_PARAM, EXIT_ALT_PARAM };
+    result = GetArg(arguments, exit_flags);
+    if(!result.empty()) {
+      is_exit = true;
+      RemoveArg(arguments, exit_flags);
+    }
 
-  result = arguments.find(LIBS_PARAM);
-  if(result != arguments.end()) {
-    libs = result->second;
-    arguments.erase(LIBS_PARAM);
-  }
+    std::wstring lib_flags[] = { LIBS_PARAM, LIBS_ALT_PARAM };
+    result = GetArg(arguments, lib_flags);
+    if(!result.empty()) {
+      libs = result;
+      mode = 2;
+      RemoveArg(arguments, lib_flags);
+    }
 
-  result = arguments.find(OPT_PARAM);
-  if(result != arguments.end()) {
-    opt = result->second;
-    arguments.erase(OPT_PARAM);
-  }
+    std::wstring opt_flags[] = { OPT_PARAM, OPT_ALT_PARAM };
+    result = GetArg(arguments, opt_flags);
+    if(!result.empty()) {
+      input = result;
+      RemoveArg(arguments, opt_flags);
+    }
 
-  // input check
-  if(arguments.size()) {
-    Usage();
+    // input check
+    if(arguments.size()) {
+      Usage();
+    }
+    // start repl loop
+    else {
+      Editor editor;
+      editor.Edit(input, libs, opt, mode, is_exit);
+    }
   }
-  // start repl loop
+  // usage
   else {
-    Editor editor;
-    editor.Edit(input, libs, opt, mode, is_exit);
+    RemoveArg(arguments, help_flags);
+    Usage();
   }
 
 #ifdef _DEBUG
@@ -109,38 +125,41 @@ int main(int argc, char* argv[])
 
 void Usage()
 {
-  std::wcerr << L"Usage: obi" << std::endl << std::endl;
-  std::wcerr << std::endl << L"Options:" << std::endl;
-  std::wcerr << L"  -file: [optional] source file" << std::endl;
-  std::wcerr << L"  -inline: [optional] inline source code" << std::endl;
-  std::wcerr << L"  -lib: [optional] list of linked libraries (separated by commas)" << std::endl;
-  std::wcerr << L"  -opt: [optional] compiler optimizations s0-s3 (s3 being the most aggressive and default)" << std::endl;
-  std::wcerr << L"  -help: [optional] comand line options" << std::endl;
-  std::wcerr << L"  -exit: [optional] shell will exit after command-line execution" << std::endl;
-
-  std::wcout << std::endl << L"---" << std::endl; 
+  std::wstring usage;
+  usage += L"Usage: obi <options>\n\n";
+  usage += L"Options:\n";
+  usage += L"  -help|-h:   [optional] shows help\n";
+  usage += L"  -file|-f:   [optional] optional source files (separated by commas)\n";
+  usage += L"  -inline|-i: [optional] inline source code statements\n";
+  usage += L"  -lib|-l:    [optional] list of linked libraries (separated by commas)\n";
+  usage += L"  -opt|-o:    [optional] compiler optimizations s0-s3 (s3 being the most aggressive and default)\n";
+  usage += L"  -exit|-e:   [optional] exits shell after executiong code\n";
+  usage += L"\nExample: \"obi -f hello.obs\"\n\nVersion: ";
+  usage += VERSION_STRING;
 
 #if defined(_WIN64) && defined(_WIN32)
-  std::wcout << VERSION_STRING << L" Objeck (Windows x86_64)" << std::endl;
+  usage += L" (Windows x86_64)";
 #elif _WIN32
-  std::wcout << VERSION_STRING << L" Objeck (Windows x86)" << std::endl;
+  usage += L" (Windows x86)";
 #elif _OSX
 #ifdef _ARM64
-  std::wcout << VERSION_STRING << L" Objeck (macOS ARM64)" << std::endl;
+  usage += L" (macOS ARM64)";
 #else
-  std::wcout << VERSION_STRING << L" Objeck (macOS x86_64)" << std::endl;
+  usage += L" (macOS x86_64)";
 #endif
+#elif _ARM64
+  usage += L" (Linux ARM64)";
 #elif _X64
-  std::wcout << VERSION_STRING << L" Objeck (Linux x86_64)" << std::endl;
+  usage += L" (Linux x86_64)";
 #elif _ARM32
-  std::wcout << VERSION_STRING << L" Objeck (Linux ARMv7)" << std::endl;
+  usage += L" (Linux ARMv7)";
 #else
-  std::wcout << VERSION_STRING << L" Objeck (Linux x86)" << std::endl;
+  usage += L" (Linux x86)";
 #endif
 
-  std::wcout << std::endl << L"Copyright (c) 2023, Randy Hollines" << std::endl;
-  std::wcout << L"This is free software; see the source for copying conditions.There is NO" << std::endl;
-  std::wcout << L"warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE." << std::endl;
+  usage += L"\nWeb: https://www.objeck.org";
+
+  std::wcerr << usage << std::endl;
 }
 
 void SetEnv() {
@@ -177,4 +196,23 @@ void SetEnv() {
   setlocale(LC_ALL, "en_US.utf8");
 #endif
 #endif
+}
+
+std::wstring GetArg(std::map<const std::wstring, std::wstring> arguments, const std::wstring values[]) {
+  auto result = arguments.find(values[0]);
+  if(result != arguments.end()) {
+    return result->second;
+  }
+
+  result = arguments.find(values[1]);
+  if(result != arguments.end()) {
+    return result->second;
+  }
+
+  return L"";
+}
+
+void RemoveArg(std::map<const std::wstring, std::wstring>& arguments, const std::wstring values[]) {
+  arguments.erase(values[0]);
+  arguments.erase(values[1]);
 }
