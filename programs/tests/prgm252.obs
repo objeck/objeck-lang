@@ -1,9 +1,5 @@
 class Test1 {
 	function : Main(args : String[]) ~ Nil {
-		bb := [false,true,true,false]
-		bb->Size()->PrintLine()
-		each(b := bb) {
-			b->PrintLine();
-		}
+		"Hello"->PrintLine();
 	}
 }
