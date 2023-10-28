@@ -22,14 +22,14 @@ class Hello {
 }
 ```
 
-To get started, take a look at the [language guide](https://objeck.org/getting_started.html) and [code examples](https://github.com/objeck/objeck-lang/tree/master/programs/examples). If you want to contribute, start with the [system architecture](https://github.com/objeck/objeck-lang/tree/master/core).
+Want to get started? Take a look at the [language guide](https://objeck.org/getting_started.html) and [code examples](https://github.com/objeck/objeck-lang/tree/master/programs/examples). If you want to contribute, start with the [system architecture](https://github.com/objeck/objeck-lang/tree/master/core).
 
 ## Latest
 * v2023.11.x
   * Support for additional ML models
   * Switch for JIT support
 
-* Discovery
+* Under discovery
   * Enhanced expressiveness
   * UI toolkit
   * Remote objects
