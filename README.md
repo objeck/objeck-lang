@@ -25,7 +25,7 @@ class Hello {
 To get started, take a look at the [language guide](https://objeck.org/getting_started.html) and [code examples](https://github.com/objeck/objeck-lang/tree/master/programs/examples). If you want to contribute, start with the [system architecture](https://github.com/objeck/objeck-lang/tree/master/core).
 
 ## Latest
-* 2023.11.x
+* v2023.11.x
   * Support for additional ML models
   * Switch for JIT support
 
@@ -33,7 +33,7 @@ To get started, take a look at the [language guide](https://objeck.org/getting_s
   * Enhanced expressiveness
   * UI toolkit
   * Remote objects
-  
+
 ## Features
 * Modern object-oriented and functional
 * Cross-platform: Linux (x64 and ARM64), macOS (ARM64), Windows (x64)
