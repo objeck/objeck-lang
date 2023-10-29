@@ -26,10 +26,11 @@ Want to get started? Take a look at the [language guide](https://objeck.org/gett
 
 ## Latest
 * v2023.11.x
-  * Support for additional [ML models](https://www.amazon.com/dp/B0BT911HDM?psc=1&ref=ppx_yo2ov_dt_b_product_details)
+  * ML support for Random Forests
   * Switch for [JIT support](https://github.com/objeck/objeck-lang/tree/master/core/vm/arch/jit)
 
 * Under discovery
+  * ML K-means clustering
   * Enhanced expressiveness
   * [UI toolkit](https://github.com/objeck/objeck-lang/tree/master/core/lib/experimental/gtk)
   * Remote objects

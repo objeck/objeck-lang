@@ -28,11 +28,11 @@ class Test {
 		input->ToString()->PrintLine()
 		
 		training := Bool->Split(0.25, input)
-		"\n--- Training Set ---"->PrintLine();
+		"\n--- Training ---"->PrintLine();
 		training->ToString()->PrintLine()
 		
 		output := DecisionTree->New(input)->Train()
-		"\n--- Split Set ---"->PrintLine();
+		"\n--- Split ---"->PrintLine();
 		output->ToString()->PrintLine()
 
 		cols := training->Columns()->As(Float)
