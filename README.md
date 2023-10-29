@@ -30,7 +30,7 @@ Want to get started? Take a look at the [language guide](https://objeck.org/gett
   * Switch for [JIT support](https://github.com/objeck/objeck-lang/tree/master/core/vm/arch/jit)
 
 * Under discovery
-  * ML K-means clustering
+  * ML support for K-means clustering
   * Enhanced expressiveness
   * [UI toolkit](https://github.com/objeck/objeck-lang/tree/master/core/lib/experimental/gtk)
   * Remote objects
