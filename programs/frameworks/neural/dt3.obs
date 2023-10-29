@@ -2,25 +2,43 @@ use System.ML;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		if(args->Size() > 0) {
-			"---"->PrintLine();
-			input := DecisionTree->LoadMatrix(args[0])
-			input->ToString()->PrintLine()
+		input := [
+			[true, false, true]
+			[true, false, true]
+			[true, true, true]
+			[true, true, true]
+			[true, true, true]
+			[true, true, true]
+			[true, true, true]
+			[true, true, true]
+			[false, true, true]
+			[false, true, true]
+			[true, true, false]
+			[true, true, false]
+			[false, true, false]
+			[false, true, false]
+			[false, true, false]
+			[false, true, false]
+			[false, false, false]
+			[false, false, false]
+			[false, false, false]
+			[false, false, false]
+		];
+		"--- Dataset ---"->PrintLine();
+		input->ToString()->PrintLine()
+		
+		training := Bool->Split(0.25, input)
+		"\n--- Training Set ---"->PrintLine();
+		training->ToString()->PrintLine()
+		
+		output := DecisionTree->New(input)->Train()
+		"\n--- Split Set ---"->PrintLine();
+		output->ToString()->PrintLine()
 
-			"---"->PrintLine();
-			training := Bool->Split(0.25, input)
-			training->ToString()->PrintLine()
-
-			"---"->PrintLine();
-			output := DecisionTree->New(input)->Train()
-			output->ToString()->PrintLine()
-			cols := training->Columns()->As(Float)
-
-			"---"->PrintLine();
-			(output <> input)->PrintLine()
-			training_matches := DecisionTree->Matches(cols-1,output)->As(Float)
-			training_rows := training->Rows()->As(Float)
-			(training_rows / training_matches)->PrintLine()
-		}
+		cols := training->Columns()->As(Float)
+		training_matches := DecisionTree->Matches(cols - 1,output)->As(Float)
+		"\n--- Confidence ---"->PrintLine();
+		(output <> input)->PrintLine()
+		(training->Rows()->As(Float) / training_matches)->PrintLine()
 	}
 }
