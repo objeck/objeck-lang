@@ -996,6 +996,47 @@ else if(args->Size() = 1) {
 	
 	#~
 	Binary decision tree algorithm
+	
+```
+input := [
+	[true, false, true]
+	[true, false, true]
+	[true, true, true]
+	[true, true, true]
+	[true, true, true]
+	[true, true, true]
+	[true, true, true]
+	[true, true, true]
+	[false, true, true]
+	[false, true, true]
+	[true, true, false]
+	[true, true, false]
+	[false, true, false]
+	[false, true, false]
+	[false, true, false]
+	[false, true, false]
+	[false, false, false]
+	[false, false, false]
+	[false, false, false]
+	[false, false, false]
+];
+"--- Dataset ---"->PrintLine();
+input->ToString()->PrintLine()
+
+training := Bool->Split(0.25, input)
+"\n--- Training ---"->PrintLine();
+training->ToString()->PrintLine()
+
+output := DecisionTree->New(input)->Train()
+"\n--- Split ---"->PrintLine();
+output->ToString()->PrintLine()
+
+cols := training->Columns()->As(Float)
+training_matches := DecisionTree->Matches(cols - 1,output)->As(Float)
+"\n--- Confidence ---"->PrintLine();
+(output <> input)->PrintLine()
+(training->Rows()->As(Float) / training_matches)->PrintLine()
+```
 	~#
 	class DecisionTree {
 		@matrix : Bool[,];
@@ -1097,33 +1138,38 @@ else if(args->Size() = 1) {
 			return Nil;
 		}
 
+		#~
+		Calculates the Gini index
+		@param achieved number achieved
+		@param goal achievement target
+		@return Gini index
+		~#
+		function : native : Gini(acheived : Float, goal : Float) ~ Float {
+			reached := acheived / goal;
+			not_reached := (goal - acheived) / goal;
+			return 1 - (reached*reached + not_reached*not_reached);
+		}
+
 		method : native : WeightedGini(test : Int, target : Int) ~ Float {
 			wgi := 0.0;
+
 			dims := @matrix->Size();
 			size := dims[0]->As(Float);
 
-			# --- left ---
-			left, right : Decision;
+			# left
 			goal := Matches(test, @matrix);
 			if(goal > 0.0) {
-				acheived := Acheived(test, target, @matrix);
-				reached := acheived / goal;
-				not_reached := (goal - acheived) / goal;
-				left_gi := 1 - (reached*reached + not_reached*not_reached);
-				wgi += goal / size * left_gi;
+				wgi += goal / size * Gini(Acheived(test, target, @matrix), goal);
 			}
 			else {
 				return 0.0;
 			};
 
-			# --- right ---
+			
+			# right
 			goal := Mismatches(test, @matrix);
 			if(goal > 0.0) {
-				acheived := Unacheived(test, target, @matrix);
-				reached := acheived / goal;
-				not_reached := (goal - acheived) / goal;
-				right_gi := 1 - (reached*reached + not_reached*not_reached);
-				wgi += goal / size * right_gi;
+				wgi += goal / size * Gini(Unacheived(test, target, @matrix), goal);
 			}
 			else {
 				return 0.0;

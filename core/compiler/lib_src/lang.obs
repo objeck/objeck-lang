@@ -111,6 +111,7 @@ bundle System {
 		#~
 		Split a 2D boolean matrix
 		@param target_offset index of first column with target data
+		@param matrix matrix to split
 		@return split matrix
 		~#
 		function : Split(target_offset : Float, matrix : Bool[,]) ~ Bool[,] {
