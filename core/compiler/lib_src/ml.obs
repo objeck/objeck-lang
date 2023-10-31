@@ -464,7 +464,7 @@ bundle System.ML {
 		@param is_row true for row split, false for column
 		@return copied matrix
 		~#
-		function : Split(b : Float[,], offset : Int, count : Int, is_row : Bool) ~ Float[,] {
+		function : native : Split(b : Float[,], offset : Int, count : Int, is_row : Bool) ~ Float[,] {
 			b_dims := b->Size();
 			b_rows := b_dims[0];
 			b_cols := b_dims[1];
