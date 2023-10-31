@@ -1168,7 +1168,7 @@ training_matches := DecisionTree->Matches(cols - 1,output)->As(Float)
 
 		#~
 		Calculates the Gini index
-		@param achieved number achieved
+		@param acheived number acheived
 		@param goal achievement target
 		@return Gini index
 		~#
