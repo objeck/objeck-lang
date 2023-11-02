@@ -599,16 +599,14 @@ bundle System.ML {
 		method : public : ToString() ~ String {
 			return @value->ToString();
 		}
-
-
-
+		
 		#~
 		Splits a 2D boolean matrix
 		@param target_offset index of first column with target data
 		@param matrix matrix to split
 		@return split matrix
 		~#
-		method : Split(training_offset : Float) ~ BoolMatrixRef[] {
+		method : public : Split(training_offset : Float) ~ BoolMatrixRef[] {
 			dims := @value->Size();
 			input_rows := dims[0];
 			input_cols := dims[1];
