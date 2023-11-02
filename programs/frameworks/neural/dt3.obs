@@ -43,6 +43,6 @@ class Test {
 		cols := data_matrix->Columns()->As(Float)
 		training_matrix_matches := DecisionTree->Matches(cols - 1, data_matrix)->As(Float)
 # (data_matrix <> training_matrix)->PrintLine()
-		(1 - (training_matrix_matches / data_matrix->Rows()->As(Float)))->PrintLine()
+		(training_matrix_matches / data_matrix->Rows()->As(Float))->PrintLine()
 	}
 }
