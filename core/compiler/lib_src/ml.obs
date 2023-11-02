@@ -613,13 +613,11 @@ bundle System.ML {
 			input_rows := dims[0];
 			input_cols := dims[1];
 
-			training_offset := 0.25;
 			training_rows := (input_rows->As(Float) * training_offset)->As(Int);
-			# training_rows->PrintLine();
-
 			training_matrix := Bool->New[training_rows, input_cols];
 			dims := training_matrix->Size();
 			train_rows := dims[0];
+			
 			each(i : train_rows) {
 				each(j : input_cols) {
 					training_matrix[i, j] := matrix[i, j];
@@ -629,7 +627,6 @@ bundle System.ML {
 
 			data_rows := input_rows - training_rows;
 			data_matrix := Bool->New[data_rows, input_cols];
-			# data_rows->PrintLine();		
 			dims := data_matrix->Size();
 			data_rows := dims[0];
 
