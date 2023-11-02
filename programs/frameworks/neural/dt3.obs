@@ -30,28 +30,26 @@ class Test {
 		matrix->ToString()->PrintLine()
 		
 		"\n--- Training ---"->PrintLine();
-		split := matrix->Split(0.25)
-		training := split[0]->Get()
-		training->ToString()->PrintLine()
+		split_matrix := matrix->Split(0.25)
+		training_matrix := split_matrix[0]->Get()
 		"---"->PrintLine()
-
-		"\n--- Datasets ---"->PrintLine();
-		training->ToString()->PrintLine()		
-		output := DecisionTree->New(training)->Train()
-		"---"->PrintLine()
-
 
 		"\n--- Split ---"->PrintLine();
+		output := DecisionTree->New(training_matrix)->Train()
 
-		foo := split[1]->Get()
-foo->ToString()->PrintLine();
+		data_matrix := split_matrix[1]->Get()
+
+training_matrix->ToString()->PrintLine()
+		"---"->PrintLine();
+
+data_matrix->ToString()->PrintLine();
 	
-		cols := foo->Columns()->As(Float)
-		training_matches := DecisionTree->Matches(cols - 1, output)->As(Float)
+		cols := data_matrix->Columns()->As(Float)
+		training_matrix_matches := DecisionTree->Matches(cols - 1, data_matrix)->As(Float)
 
 		"\n--- Confidence ---"->PrintLine();
-		(foo <> training)->PrintLine()
-		(foo->Rows()->As(Float) / training_matches)->PrintLine()
+		(data_matrix <> training_matrix)->PrintLine()
+		(data_matrix->Rows()->As(Float) / training_matrix_matches)->PrintLine()
 		
 	}
 }
