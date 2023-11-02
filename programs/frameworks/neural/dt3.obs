@@ -27,7 +27,11 @@ class Test {
 		"--- Dataset ---"->PrintLine();
 		input->ToString()->PrintLine()
 		
-		training := Bool->Split(0.25, input)
+		foo := input->Split(.025)
+		training := foo[0]->Get();
+
+
+
 		"\n--- Training ---"->PrintLine();
 		training->ToString()->PrintLine()
 		
