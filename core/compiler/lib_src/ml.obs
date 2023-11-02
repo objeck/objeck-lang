@@ -1164,10 +1164,10 @@ training_matches := DecisionTree->Matches(cols - 1,output)->As(Float)
 		Get the output matrix
 		@return output matrix
 		~#
-		method : public : GetOutput() {
+		method : public : GetOutput() ~ Bool[,] {
 			return @output_matrix;
 		}
-		
+
 		#~
 		Calculates a list of decision splits
 		@return list of decision tree splits
