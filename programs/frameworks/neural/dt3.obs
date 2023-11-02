@@ -25,35 +25,34 @@ class Test {
 			[false, false, false]
 		]);
 
-		"--- Dataset ---"->PrintLine();
-		matrix->ToString()->PrintLine()
-		
-		"\n--- Training ---"->PrintLine();
-		split_matrix := matrix->Split(0.20)
+		"\n--- Training ---"->PrintLine();		
+		split_matrix := matrix->Split(0.99)
 		training_matrix := split_matrix[0]->Get()
+		training_matrix->ToString()->PrintLine()
+
 		"---"->PrintLine()
 
 		data_matrix := split_matrix[1]->Get()
-		data_matrix->ToString()->PrintLine();
+		data_matrix->ToString()->PrintLine()
 
-		"\n--- Split ---"->PrintLine();
+		"\n--- Split Datasets ---"->PrintLine();
 		output := DecisionTree->New(training_matrix)->Train()
 		output->ToString()->PrintLine()
 		foo := output->Size();
 		rows := foo[0];
 		rows->PrintLine()
-#~
-training_matrix->ToString()->PrintLine()
-		"---"->PrintLine();
-
-data_matrix->ToString()->PrintLine();
-	
+		
+		"\n--- Confidence ---"->PrintLine();
 		cols := data_matrix->Columns()->As(Float)
 		training_matrix_matches := DecisionTree->Matches(cols - 1, data_matrix)->As(Float)
 
-		"\n--- Confidence ---"->PrintLine();
+foo := data_matrix->Size();
+fie := foo->Size();
+fum := foo[0]
+bar := data_matrix->Rows();
+"{$fie}, {$fum}"->PrintLine();
+
 		(data_matrix <> training_matrix)->PrintLine()
 		(training_matrix_matches / data_matrix->Rows()->As(Float))->PrintLine()
-~#		
 	}
 }
