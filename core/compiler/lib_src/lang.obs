@@ -109,36 +109,6 @@ bundle System {
 		}
 
 		#~
-		Splits a 2D boolean matrix
-		@param target_offset index of first column with target data
-		@param matrix matrix to split
-		@return split matrix
-		~#
-		function : Split(target_offset : Float, matrix : Bool[,]) ~ Bool[,] {
-			if(target_offset >= 0.0 & target_offset <= 1.0 & matrix <> Nil) {
-				dims := matrix->Size();
-				rows := dims[0];
-				cols := dims[1];
-
-				target_rows := (rows->As(Float) * target_offset)->As(Int);
-				
-				target_matrix := Bool->New[target_rows, cols];
-				dims := target_matrix->Size();
-				rows := dims[0];
-				cols := dims[1];
-				each(i : rows) {
-					each(j : cols) {
-						target_matrix[i, j] := matrix[i, j];
-					};
-				};
-
-				return target_matrix;
-			};
-
-			return Nil;
-		}
-
-		#~
 		Formats the boolean array into a string
 		@param b boolean array
 		@return string value
