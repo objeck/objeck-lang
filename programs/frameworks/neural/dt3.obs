@@ -66,14 +66,18 @@ class Test {
 		data_matrix->ToString()->PrintLine()
 
 		"\n--- Trained ---"->PrintLine();
-		output := DecisionTree->New(training_matrix)->Train()
-		output->ToString()->PrintLine()
-		
-		"\n--- Confidence ---"->PrintLine();
-		cols := data_matrix->Columns()->As(Float)
-		training_matrix_matches := DecisionTree->Matches(cols - 1, output)->As(Float)
-		training_matrix_matches->PrintLine();		
-		data_matrix_row := data_matrix->Rows()->As(Float)
-		(1 - (training_matrix_matches / data_matrix_row))->PrintLine()
+		decision_tree := DecisionTree->New(training_matrix)
+		if(decision_tree->Train()) {
+			output_matrix := decision_tree->GetOutput()
+			# TODO: save output matrix
+			output_matrix->ToString()->PrintLine()
+			
+			"\n--- Confidence ---"->PrintLine();
+			cols := data_matrix->Columns()->As(Float)
+			training_matrix_matches := DecisionTree->Matches(cols - 1, output_matrix)->As(Float)
+			training_matrix_matches->PrintLine();
+			data_matrix_row := data_matrix->Rows()->As(Float)
+			(1 - (training_matrix_matches / data_matrix_row))->PrintLine()
+		};
 	}
 }

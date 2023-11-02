@@ -1148,23 +1148,33 @@ training_matches := DecisionTree->Matches(cols - 1,output)->As(Float)
 ```
 	~#
 	class DecisionTree {
-		@matrix : Bool[,];
+		@input_matrix : Bool[,];
+		@output_matrix : Bool[,];
 		@decisions : Vector<Decision>;
+
 		#~
 		Constructor
 		@param matrix boolean input training matrix, last row is the result
 		~#
 		New(matrix : Bool[,]) {
-			@matrix := matrix;
+			@input_matrix := matrix;
 		}
 
+		#~
+		Get the output matrix
+		@return output matrix
+		~#
+		method : public : GetOutput() {
+			return @output_matrix;
+		}
+		
 		#~
 		Calculates a list of decision splits
 		@return list of decision tree splits
 		~#
 		method : public : Step() ~ Vector<Decision> {					
 			decisions := Vector->New()<Decision>;
-			dims := @matrix->Size();
+			dims := @input_matrix->Size();
 			
 			cols := dims[1] - 1;
 			if(cols > 0) {
@@ -1182,7 +1192,7 @@ training_matches := DecisionTree->Matches(cols - 1,output)->As(Float)
 					}
 
 					if(best_index > - 1) {
-						@matrix := Split(best_index, @matrix);
+						@input_matrix := Split(best_index, @input_matrix);
 						decisions->AddBack(Decision->New(best_index, best_wgi));
 
 					}
@@ -1200,19 +1210,20 @@ training_matches := DecisionTree->Matches(cols - 1,output)->As(Float)
 		Splits a matrix along the decisions columns
 		@return split matrix
 		~#
-		method : public : Train() ~ Bool[,] {
+		method : public : Train() ~ Bool {
 			decisions := Step();
 			if(decisions <> Nil) {
-				in := @matrix;
+				in := @input_matrix;
 
 				each(decision := decisions) {
 					in := DecisionTree->Split(decision->GetIndex(), in);
 				};
+				@output_matrix := in;
 
-				return in;
+				return true;
 			};
 
-			return Nil;
+			return false;
 		}
 
 		#~
@@ -1262,13 +1273,13 @@ training_matches := DecisionTree->Matches(cols - 1,output)->As(Float)
 		method : native : WeightedGini(test : Int, target : Int) ~ Float {
 			wgi := 0.0;
 
-			dims := @matrix->Size();
+			dims := @input_matrix->Size();
 			size := dims[0]->As(Float);
 
 			# left
-			goal := Matches(test, @matrix);
+			goal := Matches(test, @input_matrix);
 			if(goal > 0.0) {
-				wgi += goal / size * Gini(Acheived(test, target, @matrix), goal);
+				wgi += goal / size * Gini(Acheived(test, target, @input_matrix), goal);
 			}
 			else {
 				return 0.0;
@@ -1276,9 +1287,9 @@ training_matches := DecisionTree->Matches(cols - 1,output)->As(Float)
 
 			
 			# right
-			goal := Mismatches(test, @matrix);
+			goal := Mismatches(test, @input_matrix);
 			if(goal > 0.0) {
-				wgi += goal / size * Gini(Unacheived(test, target, @matrix), goal);
+				wgi += goal / size * Gini(Unacheived(test, target, @input_matrix), goal);
 			}
 			else {
 				return 0.0;
