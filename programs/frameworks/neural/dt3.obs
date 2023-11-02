@@ -2,7 +2,7 @@ use System.ML;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		input := [
+		raw_input := [
 			[true, false, true]
 			[true, false, true]
 			[true, true, true]
@@ -24,25 +24,26 @@ class Test {
 			[false, false, false]
 			[false, false, false]
 		];
-		"--- Dataset ---"->PrintLine();
-		input->ToString()->PrintLine()
+
+		input := BoolMatrixRef->New(raw_input)->Split(0.33);
 		
-		foo := input->Split(.025)
-		training := foo[0]->Get();
-
-
+		"--- Dataset ---"->PrintLine();
+		training := input[0]->Get();
+#~		
+		training->ToString()->PrintLine()
 
 		"\n--- Training ---"->PrintLine();
 		training->ToString()->PrintLine()
 		
-		output := DecisionTree->New(input)->Train()
+		output := DecisionTree->New(training)->Train()
 		"\n--- Split ---"->PrintLine();
 		output->ToString()->PrintLine()
 
 		cols := training->Columns()->As(Float)
 		training_matches := DecisionTree->Matches(cols - 1,output)->As(Float)
 		"\n--- Confidence ---"->PrintLine();
-		(output <> input)->PrintLine()
+		(output <> training)->PrintLine()
 		(training->Rows()->As(Float) / training_matches)->PrintLine()
+~#		
 	}
 }
