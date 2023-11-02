@@ -608,8 +608,8 @@ bundle System.ML {
 		@param matrix matrix to split
 		@return split matrix
 		~#
-		method : Split(training_offset : Float, matrix : Bool[,]) ~ BoolMatrixRef[] {
-			dims := matrix->Size();
+		method : Split(training_offset : Float) ~ BoolMatrixRef[] {
+			dims := @value->Size();
 			input_rows := dims[0];
 			input_cols := dims[1];
 
@@ -617,10 +617,10 @@ bundle System.ML {
 			training_matrix := Bool->New[training_rows, input_cols];
 			dims := training_matrix->Size();
 			train_rows := dims[0];
-			
+
 			each(i : train_rows) {
 				each(j : input_cols) {
-					training_matrix[i, j] := matrix[i, j];
+					training_matrix[i, j] := @value[i, j];
 				};
 			};
 
@@ -632,7 +632,7 @@ bundle System.ML {
 
 			each(i : data_rows) {
 				each(j : input_cols) {
-					data_matrix[i, j] := matrix[training_rows, j];
+					data_matrix[i, j] := @value[training_rows, j];
 				};
 				training_rows += 1;
 			};
