@@ -25,7 +25,7 @@ class Test {
 			[false, false, false]
 		]);
 
-		"\n--- Datasets ---"->PrintLine();		
+		"\n--- Dataset ---"->PrintLine();		
 		split_matrix := matrix->Split(0.33)
 		training_matrix := split_matrix[0]->Get()
 		training_matrix->ToString()->PrintLine()
