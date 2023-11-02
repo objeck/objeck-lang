@@ -2,13 +2,14 @@ use System.ML;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		raw_input := [
+		matrix := BoolMatrixRef->New([
 			[true, false, true]
 			[true, false, true]
 			[true, true, true]
 			[true, true, true]
 			[true, true, true]
-			[true, true, true]
+			[true, true, false]
+			[true, true, false]
 			[true, true, true]
 			[true, true, true]
 			[false, true, true]
@@ -23,27 +24,34 @@ class Test {
 			[false, false, false]
 			[false, false, false]
 			[false, false, false]
-		];
+		]);
 
-		input := BoolMatrixRef->New(raw_input)->Split(0.33);
-		
 		"--- Dataset ---"->PrintLine();
-		training := input[0]->Get();
-#~		
-		training->ToString()->PrintLine()
-
-		"\n--- Training ---"->PrintLine();
-		training->ToString()->PrintLine()
+		matrix->ToString()->PrintLine()
 		
-		output := DecisionTree->New(training)->Train()
-		"\n--- Split ---"->PrintLine();
-		output->ToString()->PrintLine()
+		"\n--- Training ---"->PrintLine();
+		split := matrix->Split(0.25)
+		training := split[0]->Get()
+		training->ToString()->PrintLine()
+		"---"->PrintLine()
 
-		cols := training->Columns()->As(Float)
-		training_matches := DecisionTree->Matches(cols - 1,output)->As(Float)
+		"\n--- Datasets ---"->PrintLine();
+		training->ToString()->PrintLine()		
+		output := DecisionTree->New(training)->Train()
+		"---"->PrintLine()
+
+
+		"\n--- Split ---"->PrintLine();
+
+		foo := split[1]->Get()
+foo->ToString()->PrintLine();
+	
+		cols := foo->Columns()->As(Float)
+		training_matches := DecisionTree->Matches(cols - 1, output)->As(Float)
+
 		"\n--- Confidence ---"->PrintLine();
-		(output <> training)->PrintLine()
-		(training->Rows()->As(Float) / training_matches)->PrintLine()
-~#		
+		(foo <> training)->PrintLine()
+		(foo->Rows()->As(Float) / training_matches)->PrintLine()
+		
 	}
 }
