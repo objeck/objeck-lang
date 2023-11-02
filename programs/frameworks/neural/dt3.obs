@@ -25,8 +25,8 @@ class Test {
 			[false, false, false]
 		]);
 
-		"\n--- Training ---"->PrintLine();		
-		split_matrix := matrix->Split(0.99)
+		"\n--- Datasets ---"->PrintLine();		
+		split_matrix := matrix->Split(0.33)
 		training_matrix := split_matrix[0]->Get()
 		training_matrix->ToString()->PrintLine()
 
@@ -35,24 +35,14 @@ class Test {
 		data_matrix := split_matrix[1]->Get()
 		data_matrix->ToString()->PrintLine()
 
-		"\n--- Split Datasets ---"->PrintLine();
+		"\n--- Trained ---"->PrintLine();
 		output := DecisionTree->New(training_matrix)->Train()
 		output->ToString()->PrintLine()
-		foo := output->Size();
-		rows := foo[0];
-		rows->PrintLine()
 		
 		"\n--- Confidence ---"->PrintLine();
 		cols := data_matrix->Columns()->As(Float)
 		training_matrix_matches := DecisionTree->Matches(cols - 1, data_matrix)->As(Float)
-
-foo := data_matrix->Size();
-fie := foo->Size();
-fum := foo[0]
-bar := data_matrix->Rows();
-"{$fie}, {$fum}"->PrintLine();
-
-		(data_matrix <> training_matrix)->PrintLine()
-		(training_matrix_matches / data_matrix->Rows()->As(Float))->PrintLine()
+# (data_matrix <> training_matrix)->PrintLine()
+		(1 - (training_matrix_matches / data_matrix->Rows()->As(Float)))->PrintLine()
 	}
 }
