@@ -8,8 +8,7 @@ class Test {
 			[true, true, true]
 			[true, true, true]
 			[true, true, true]
-			[true, true, false]
-			[true, true, false]
+			[true, true, true]
 			[true, true, true]
 			[true, true, true]
 			[false, true, true]
@@ -30,15 +29,20 @@ class Test {
 		matrix->ToString()->PrintLine()
 		
 		"\n--- Training ---"->PrintLine();
-		split_matrix := matrix->Split(0.25)
+		split_matrix := matrix->Split(0.20)
 		training_matrix := split_matrix[0]->Get()
 		"---"->PrintLine()
 
+		data_matrix := split_matrix[1]->Get()
+		data_matrix->ToString()->PrintLine();
+
 		"\n--- Split ---"->PrintLine();
 		output := DecisionTree->New(training_matrix)->Train()
-
-		data_matrix := split_matrix[1]->Get()
-
+		output->ToString()->PrintLine()
+		foo := output->Size();
+		rows := foo[0];
+		rows->PrintLine()
+#~
 training_matrix->ToString()->PrintLine()
 		"---"->PrintLine();
 
@@ -49,7 +53,7 @@ data_matrix->ToString()->PrintLine();
 
 		"\n--- Confidence ---"->PrintLine();
 		(data_matrix <> training_matrix)->PrintLine()
-		(data_matrix->Rows()->As(Float) / training_matrix_matches)->PrintLine()
-		
+		(training_matrix_matches / data_matrix->Rows()->As(Float))->PrintLine()
+~#		
 	}
 }
