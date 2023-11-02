@@ -51,9 +51,9 @@ training_matrix->ToString()->PrintLine();
 		};
 data_matrix->ToString()->PrintLine();
 
-		output := BoolArrayRef->New[2];
-		output[0] := BoolArrayRef->New(training_matrix);
-		output[1] := BoolArrayRef->New(data_matrix);
+		output := System.ML.BoolMatrixRef->New[2];
+		output[0] := System.ML.BoolMatrixRef->New(training_matrix);
+		output[1] := System.ML.BoolMatrixRef->New(data_matrix);
 
 "Fin."->PrintLine();		
 	}

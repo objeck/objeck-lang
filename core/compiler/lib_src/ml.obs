@@ -599,6 +599,53 @@ bundle System.ML {
 		method : public : ToString() ~ String {
 			return @value->ToString();
 		}
+
+
+
+		#~
+		Splits a 2D boolean matrix
+		@param target_offset index of first column with target data
+		@param matrix matrix to split
+		@return split matrix
+		~#
+		method : Split(training_offset : Float, matrix : Bool[,]) ~ BoolMatrixRef[] {
+			dims := matrix->Size();
+			input_rows := dims[0];
+			input_cols := dims[1];
+
+			training_offset := 0.25;
+			training_rows := (input_rows->As(Float) * training_offset)->As(Int);
+			# training_rows->PrintLine();
+
+			training_matrix := Bool->New[training_rows, input_cols];
+			dims := training_matrix->Size();
+			train_rows := dims[0];
+			each(i : train_rows) {
+				each(j : input_cols) {
+					training_matrix[i, j] := matrix[i, j];
+				};
+			};
+
+
+			data_rows := input_rows - training_rows;
+			data_matrix := Bool->New[data_rows, input_cols];
+			# data_rows->PrintLine();		
+			dims := data_matrix->Size();
+			data_rows := dims[0];
+
+			each(i : data_rows) {
+				each(j : input_cols) {
+					data_matrix[i, j] := matrix[training_rows, j];
+				};
+				training_rows += 1;
+			};
+
+			outputs := BoolMatrixRef->New[2];
+			outputs[0] := BoolMatrixRef->New(training_matrix);
+			outputs[1] := BoolMatrixRef->New(data_matrix);
+
+			return outputs;
+		}
 	}
 
 	#~
@@ -630,7 +677,7 @@ bundle System.ML {
 		method : public : Get() ~ Float[,] {
 			return @value;
 		}
-		
+
 		method : GetBoolen() ~ Bool {
 			dim := @value->Size();
 			if(dim->Size() = 2 & dim[0] = 1 & dim[1] = 1) {
