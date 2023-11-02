@@ -630,14 +630,7 @@ bundle System.ML {
 		method : public : Get() ~ Float[,] {
 			return @value;
 		}
-
-		#~
-		Get boolean value
-		@return boolean value
-		~#
-		method : public : Get() ~ Float[,] {
-			return @value;
-		}
+		
 		method : GetBoolen() ~ Bool {
 			dim := @value->Size();
 			if(dim->Size() = 2 & dim[0] = 1 & dim[1] = 1) {
