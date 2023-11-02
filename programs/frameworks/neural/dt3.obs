@@ -3,34 +3,69 @@ use System.ML;
 class Test {
 	function : Main(args : String[]) ~ Nil {
 		matrix := BoolMatrixRef->New([
+			[false, true, false]
+			[true, false, true]
+			[false, true, false]
 			[true, false, true]
 			[true, false, true]
-			[true, true, true]
+			[true, false, true]
 			[false, true, false]
-			[true, true, true]
-			[true, true, true]
-			[false, false, false]
-			[true, true, true]
-			[true, true, true]
-			[true, true, true]
-			[false, true, true]
-			[false, true, true]
-			[true, true, false]
-			[true, true, false]
+			[true, false, true]
 			[false, true, false]
-			[false, true, false]
-			[false, true, false]
-			[false, false, true]
-			[false, false, false]
-			[false, false, false]
-			[false, false, false]
-			[true, true, true]
-			[true, true, true]
+			[true, false, true]
+			[true, false, true]
+			[true, false, true]
+			[true, false, true]
+			[true, false, true]
+			[true, false, true]
 
+			[true, false, true]
+			[true, false, true]
+			[true, false, true]
+			[true, false, true]
+			[true, false, true]
+			[true, false, true]
+
+			[false, true, false]
+			[true, false, true]
+			[false, true, false]
+			[true, false, true]
+			[true, false, true]
+			[true, false, true]
+			[false, true, false]
+			[true, false, true]
+			[false, true, false]
+			[true, false, true]
+			[true, false, true]
+			[true, false, true]
+			[true, false, true]
+			[true, false, true]
+			[true, false, true]
+
+
+
+			[true, false, true]
+			[true, false, true]
+			[true, false, true]
+			[true, false, true]
+			[true, false, true]
+			[true, false, true]
+
+
+
+
+			[false, true, false]
+
+
+			[true, true, false]
+			[true, true, false]
+			[true, true, false]
+			[true, true, false]
+			[true, true, false]
 		]);
 
 		"\n--- Dataset ---"->PrintLine();		
-		split_matrix := matrix->Split(0.66)
+		split_matrix := matrix->Split(0.25)
 		training_matrix := split_matrix[0]->Get()
 		training_matrix->ToString()->PrintLine()
 
@@ -48,6 +83,6 @@ class Test {
 		training_matrix_matches := DecisionTree->Matches(cols - 1, output)->As(Float)
 		training_matrix_matches->PrintLine();		
 		data_matrix_row := data_matrix->Rows()->As(Float)
-		(training_matrix_matches / data_matrix_row)->PrintLine()
+		(1 - (training_matrix_matches / data_matrix_row))->PrintLine()
 	}
 }
