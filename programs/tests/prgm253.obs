@@ -1,0 +1,60 @@
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		input := [
+			[true, false, true]
+			[true, false, true]
+			[true, true, false]
+
+			[false, false, false]
+			[false, true, true]
+			[true, true, true]
+			[false, true, false]
+			[true, false, true]
+			[true, false, true]
+			[true, true, false]
+			[true, true, false]
+			[false, true, true]
+			[true, true, true]
+			[false, true, false]
+		];
+
+		dims := input->Size();
+		input_rows := dims[0];
+		input_cols := dims[1];
+
+		training_offset := 0.25;
+		training_rows := (input_rows->As(Float) * training_offset)->As(Int);
+		# training_rows->PrintLine();
+
+		training_matrix := Bool->New[training_rows, input_cols];
+		dims := training_matrix->Size();
+		train_rows := dims[0];
+		each(i : train_rows) {
+			each(j : input_cols) {
+				training_matrix[i, j] := input[i, j];
+			};
+		};
+training_matrix->ToString()->PrintLine();
+
+
+		data_rows := input_rows - training_rows;
+		data_matrix := Bool->New[data_rows, input_cols];
+		# data_rows->PrintLine();		
+		dims := data_matrix->Size();
+		data_rows := dims[0];
+
+		each(i : data_rows) {
+			each(j : input_cols) {
+				data_matrix[i, j] := input[training_rows, j];
+			};
+			training_rows += 1;
+		};
+data_matrix->ToString()->PrintLine();
+
+		output := BoolArrayRef->New[2];
+		output[0] := BoolArrayRef->New(training_matrix);
+		output[1] := BoolArrayRef->New(data_matrix);
+
+"Fin."->PrintLine();		
+	}
+}
