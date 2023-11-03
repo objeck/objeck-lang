@@ -4,12 +4,10 @@ class Test {
 	function : Main(args : String[]) ~ Nil {
 		matrix := BoolMatrixRef->New([
 			[false, true, true]
-[false, true, false]
+			[false, true, false]
 			[false, true, true]
-[false, true, false]
-[false, true, false]
-
-			[false, true, true]
+			[false, true, false]
+			[false, true, false]
 			[false, true, true]
 			[false, true, true]
 			[false, true, true]
@@ -24,12 +22,10 @@ class Test {
 			[false, true, true]
 			[false, true, true]
 			[false, true, true]
-
-[false, true, false]
-[false, true, false]
-[false, true, false]
-
-
+			[false, true, true]
+			[false, true, false]
+			[false, true, false]
+			[false, true, false]
 			[false, true, true]
 			[false, true, true]
 			[false, true, true]
@@ -52,7 +48,6 @@ class Test {
 			[false, true, true]
 			[false, true, true]
 			[false, true, true]
-			
 		]);
 
 		"\n--- Dataset ---"->PrintLine();		
