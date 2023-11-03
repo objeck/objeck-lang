@@ -602,9 +602,8 @@ bundle System.ML {
 		
 		#~
 		Splits a 2D boolean matrix
-		@param target_offset index of first column with target data
-		@param matrix matrix to split
-		@return split matrix
+		@param training_offset index of first column with target data
+		@return split matrix of traning and data sets
 		~#
 		method : public : Split(training_offset : Float) ~ BoolMatrixRef[] {
 			dims := @value->Size();
