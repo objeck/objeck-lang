@@ -1160,6 +1160,10 @@ training_matches := DecisionTree->Matches(cols - 1,output)->As(Float)
 			@input_matrix := matrix;
 		}
 
+		New : private(decisions : Vector<Decision>) {
+			@decisions := decisions;
+		}
+
 		#~
 		Get the output matrix
 		@return output matrix
@@ -1204,7 +1208,6 @@ training_matches := DecisionTree->Matches(cols - 1,output)->As(Float)
 
 			return decisions;
 		}
-
 
 		#~
 		Splits a matrix along the decisions columns
@@ -1375,11 +1378,49 @@ training_matches := DecisionTree->Matches(cols - 1,output)->As(Float)
 		}
 
 		#~
-		Loads a boolean matrix from a CSV file of 1s and 0s
+		Loads a list of pre calculated decisions
+		@param filename name of file to load
+		@return a DecisionTree instance
+		~#
+		function : LoadDecisions(filename : String) ~ DecisionTree {
+			data := System.IO.Filesystem.FileReader->ReadBinaryFile(filename);
+			if(data <> Nil) {
+				deserializer := System.IO.Deserializer->New(data);
+
+				decisions := Vector->New()<Decision>;
+				size := deserializer->ReadInt();
+				each(i : size) {
+					decisions->AddBack(deserializer->ReadObject()->As(Decision));
+				};
+
+				return DecisionTree->New(decisions);
+			};
+
+			return Nil;
+		}
+
+		#~
+		Save a list of calculated decisions
+		@param filename name of file to save to
+		@return true if successful, false otherwise
+		~#
+		method : public : SaveDecisions(filename : String) ~ Bool {
+			serializer := System.IO.Serializer->New();
+
+			serializer->Write(@decisions->Size());
+			each(decision : @decisions) {
+				serializer->Write(decision);
+			};
+
+			return System.IO.Filesystem.FileWriter->WriteFile(filename, serializer->Serialize());
+		}
+
+		#~
+		Loads a boolean input matrix from a CSV file of 1s and 0s
 		@param filename CSV file to load
 		@return boolean matrix
 		~#
-		function : LoadMatrix(filename : String) ~ Bool[,] {
+		function : LoadCsv(filename : String) ~ Bool[,] {
 			table := CsvTable->New(System.IO.Filesystem.FileReader->ReadFile(filename));
 			if(table->IsParsed()) {
 				row_size := table->Size();
@@ -1391,7 +1432,7 @@ training_matches := DecisionTree->Matches(cols - 1,output)->As(Float)
 					for(i := 1; i < row_size; i += 1;) {
 						each(j : column_size) {
 							value := table->Get(i)->Get(j)->ToLower();
-							if(value->Equals(["0", "o", "0.0", "false"])) {
+							if(value->Equals(["0", "0.0", "false", "o", "f"])) {
 								matrix[i - 1, j] := false;
 							}
 							else {
