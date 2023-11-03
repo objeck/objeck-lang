@@ -878,9 +878,6 @@ else if(args->Size() = 1) {
 						weight_inputs_hidden[i,j] := deserializer->ReadFloat();
 					};
 				};
-# "--- Read A ---"->PrintLine();
-# weight_inputs_hidden->ToString()->PrintLine();				
-							
 				height := deserializer->ReadInt();
 				width := deserializer->ReadInt();
 
@@ -890,8 +887,6 @@ else if(args->Size() = 1) {
 						weight_outputs_hidden[i,j] := deserializer->ReadFloat();
 					};
 				};
-# "--- Read B ---"->PrintLine();
-# weight_outputs_hidden->ToString()->PrintLine();
 
 				return NeuralNetwork->New(weight_inputs_hidden, weight_outputs_hidden);
 			}
@@ -924,9 +919,6 @@ else if(args->Size() = 1) {
 					serializer->Write(@weight_inputs_hidden[i,j])
 				};
 			};
-# "--- Write A ---"->PrintLine();
-# @weight_inputs_hidden->ToString()->PrintLine();
-
 			# write outputs weight
 			output_dims := @weight_outputs_hidden->Size();
 			if((output_dims->Size() = 2 & output_dims[0] > 0 & output_dims[1] > 0) = false) {
@@ -945,9 +937,7 @@ else if(args->Size() = 1) {
 					serializer->Write(@weight_outputs_hidden[i,j])
 				};
 			};
-# "--- Write B ---"->PrintLine();
-# @weight_outputs_hidden->ToString()->PrintLine();
-
+			
 			return System.IO.Filesystem.FileWriter->WriteFile(filename, serializer->Serialize());
 		}
 
