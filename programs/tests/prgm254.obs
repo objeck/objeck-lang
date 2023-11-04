@@ -3,17 +3,23 @@ use System.ML;
 class Foo {
 	function : Main(argv : String[]) ~ Nil {
 		data := Bool->New[8,48]
-		pre_1 := 1; pre_2 := 3; pre_3 := 5;
 
 		dims := data->Size();
 		rows := dims[0];
 		cols := dims[1];
 
-		foo := 0.25;
+		foo := 0.65; # same
+
+		bar := 3;
 
 		each(i : rows) {
 			each(j : cols) {
-				data[i, j] := Float->Random() > foo;
+				if(j = bar) {
+					data[i, j] := true
+				}
+				else {
+					data[i, j] := Float->Random() < foo;	
+				}
 			}
 		}
 
@@ -25,7 +31,7 @@ class Foo {
 		each(i : trials) {
 			bag := matrix->RandomBag()->Get()
 			goal := bag->Columns()
-			acheived := DecisionTree->Matches(pre_1, bag)
+			acheived := DecisionTree->Matches(bar, bag)
 			results += DecisionTree->Gini(acheived, goal)->As(Float)
 		}
 		(trials / results)->PrintLine()
