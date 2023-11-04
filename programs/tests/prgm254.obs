@@ -4,12 +4,12 @@ class Foo {
 	function : Main(argv : String[]) ~ Nil {
 		data := Bool->New[8,48]
 
-		dims := data->Size();
-		rows := dims[0];
-		cols := dims[1];
+		dims := data->Size()
+		rows := dims[0]
+		cols := dims[1]
 
-		same_perc := 0.75; # same
-		test_col := 3;
+		same_perc := 0.75 # same
+		test_col := 3
 		each(i : rows) {
 			each(j : cols) {
 				if(j = test_col) {
@@ -24,8 +24,8 @@ class Foo {
 		matrix := BoolMatrixRef->New(data)
 
 		"---"->PrintLine()
-		trials := 12;
-		results := 0.0;
+		trials := 12
+		results := 0.0
 		each(i : trials) {
 			bag := matrix->RandomBag()->Get()
 			goal := bag->Columns()
@@ -35,8 +35,8 @@ class Foo {
 		(trials / results)->PrintLine()
 
 		"---"->PrintLine()
-		trials := 8;
-		results := 0.0;
+		trials := 8
+		results := 0.0
 		each(i : trials) {
 			bag := matrix->RandomBag()->Get()
 			goal := bag->Columns()
