@@ -24,7 +24,7 @@ class Foo {
 		matrix := BoolMatrixRef->New(data)
 
 		"---"->PrintLine()
-		trials := 8;
+		trials := 12;
 		results := 0.0;
 		each(i : trials) {
 			bag := matrix->RandomBag()->Get()
