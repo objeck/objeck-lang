@@ -601,6 +601,27 @@ bundle System.ML {
 		}
 		
 		#~
+		Builds a random bag
+		@return random bag
+		~#
+		method : public : RandomBag() ~ BoolMatrixRef {
+			dims := @value->Size();
+			input_rows := dims[0];
+			input_cols := dims[1];
+
+			bag_matrix := Bool->New[input_rows, input_cols];
+			
+			each(i : input_rows) {
+				random_row := (input_rows - 1)->Random();
+				each(j : input_cols) {
+					bag_matrix[random_row, j] := @value[random_row, j];
+				};
+			};
+
+			return BoolMatrixRef->New(bag_matrix);
+		}
+
+		#~
 		Splits a 2D boolean matrix
 		@param training_offset index of first column with target data
 		@return split matrix of traning and data sets
