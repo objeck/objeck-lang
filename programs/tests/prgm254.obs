@@ -8,17 +8,15 @@ class Foo {
 		rows := dims[0];
 		cols := dims[1];
 
-		foo := 0.65; # same
-
-		bar := 3;
-
+		same_perc := 0.75; # same
+		test_col := 3;
 		each(i : rows) {
 			each(j : cols) {
-				if(j = bar) {
+				if(j = test_col) {
 					data[i, j] := true
 				}
 				else {
-					data[i, j] := Float->Random() < foo;	
+					data[i, j] := Float->Random() < same_perc;	
 				}
 			}
 		}
@@ -31,7 +29,7 @@ class Foo {
 		each(i : trials) {
 			bag := matrix->RandomBag()->Get()
 			goal := bag->Columns()
-			acheived := DecisionTree->Matches(bar, bag)
+			acheived := DecisionTree->Matches(test_col, bag)
 			results += DecisionTree->Gini(acheived, goal)->As(Float)
 		}
 		(trials / results)->PrintLine()
