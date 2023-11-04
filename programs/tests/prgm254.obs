@@ -2,59 +2,43 @@ use System.ML;
 
 class Foo {
 	function : Main(argv : String[]) ~ Nil {
-		matrix := BoolMatrixRef->New([
-			[false, true, true]
-			[true, true, false]
-			[true, true, true]
-			[false, true, false]
-			[false, true, false]
-			[false, true, true]
-			[false, true, true]
-			[false, true, true]
-			[false, true, true]
-			[false, true, true]
-			[false, true, true]
-			[true, true, true]
-			[true, true, true]
-			[true, true, true]
-			[true, true, true]
-			[true, true, true]
-			[true, true, true]
-			[true, true, true]
-			[true, true, true]
-			[true, true, true]
-			[false, true, false]
-			[false, true, false]
-			[false, true, false]
-			[false, true, true]
-			[false, true, true]
-			[false, true, true]
-			[false, true, true]
-			[false, true, true]
-			[false, true, true]
-			[false, true, true]
-			[false, true, true]
-			[false, true, true]
-			[true, true, true]
-			[true, true, true]
-			[true, true, true]
-			[false, true, true]
-			[false, true, true]
-			[false, true, true]
-			[false, true, true]
-			[false, true, true]
-			[false, true, true]
-			[false, true, true]
-			[true, true, true]
-			[true, true, true]
-			[false, true, true]
-		])
+		data := Bool->New[8,48]
+		pre_1 := 1; pre_2 := 3; pre_3 := 5;
 
-		matrix->ToString()->PrintLine()
+		dims := data->Size();
+		rows := dims[0];
+		cols := dims[1];
+
+		foo := 0.25;
+
+		each(i : rows) {
+			each(j : cols) {
+				data[i, j] := Float->Random() > foo;
+			}
+		}
+
+		matrix := BoolMatrixRef->New(data)
+
 		"---"->PrintLine()
-		bag := matrix->RandomBag()->Get()
-		goal := bag->Columns()
-		acheived := DecisionTree->Matches(0, bag)
-		DecisionTree->Gini(acheived, goal)->PrintLine()
+		trials := 8;
+		results := 0.0;
+		each(i : trials) {
+			bag := matrix->RandomBag()->Get()
+			goal := bag->Columns()
+			acheived := DecisionTree->Matches(pre_1, bag)
+			results += DecisionTree->Gini(acheived, goal)->As(Float)
+		}
+		(trials / results)->PrintLine()
+
+		"---"->PrintLine()
+		trials := 8;
+		results := 0.0;
+		each(i : trials) {
+			bag := matrix->RandomBag()->Get()
+			goal := bag->Columns()
+			acheived := DecisionTree->Matches(7, bag)
+			results += DecisionTree->Gini(acheived, goal)->As(Float)
+		}
+		(trials / results)->PrintLine()
 	}
 }
