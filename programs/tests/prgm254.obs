@@ -2,17 +2,18 @@ use System.ML;
 
 class Foo {
 	function : Main(argv : String[]) ~ Nil {
-		data := Bool->New[8,48]
+		data := Bool->New[32,8]
 
 		dims := data->Size()
-		rows := dims[0]
 		cols := dims[1]
+		rows := dims[0]
 
-		same_perc := 0.75 # same
-		test_col := 3
+
+		same_perc := 0.25 # same
+		test_col_0 := 4; test_col_1 := 5; test_col_1 := 2
 		each(i : rows) {
 			each(j : cols) {
-				if(j = test_col) {
+				if(j = test_col_0 | j = test_col_1) {
 					data[i, j] := true
 				}
 				else {
@@ -20,29 +21,9 @@ class Foo {
 				}
 			}
 		}
-
 		matrix := BoolMatrixRef->New(data)
 
-		"---"->PrintLine()
-		trials := 12
-		results := 0.0
-		each(i : trials) {
-			bag := matrix->RandomBag()->Get()
-			goal := bag->Columns()
-			acheived := DecisionTree->Matches(test_col, bag)
-			results += DecisionTree->Gini(acheived, goal)->As(Float)
-		}
-		(trials / results)->PrintLine()
-
-		"---"->PrintLine()
-		trials := 8
-		results := 0.0
-		each(i : trials) {
-			bag := matrix->RandomBag()->Get()
-			goal := bag->Columns()
-			acheived := DecisionTree->Matches(7, bag)
-			results += DecisionTree->Gini(acheived, goal)->As(Float)
-		}
-		(trials / results)->PrintLine()
+		bag := matrix->RandomBag()->Get()
+		bag->ToString()->PrintLine()
 	}
 }
