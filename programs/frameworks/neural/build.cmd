@@ -1,15 +1,12 @@
 @echo off
 
-REM if [%2] NEQ [data] goto data
-REM 	obc data\gen
-REM 	obr data\gen > data\test.csv
-REM :data
+set BASE_DIR=..\..\..
 
-obc -src ..\..\..\core\compiler\lib_src\ml.obs -tar lib -lib csv -dest ..\..\..\core\lib\ml.obl
-copy /y ..\..\..\core\lib\ml.obl ..\..\..\core\release\deploy64\lib\ml.obl
+obc -src %BASE_DIR%\core\compiler\lib_src\ml.obs -tar lib -lib csv -dest %BASE_DIR%\core\lib\ml.obl
+copy /y %BASE_DIR%\core\lib\ml.obl %BASE_DIR%\core\release\deploy64\lib\ml.obl
 
-obc -src dt3 -lib csv,ml
+obc -src %BASE_DIR%\programs\tests\prgm254.obs -lib csv,ml
 
 if [%1] NEQ [test] goto test
-	obr dt3
+	obr %BASE_DIR%\programs\tests\prgm254.obe
 :test
