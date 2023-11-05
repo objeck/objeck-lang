@@ -23,7 +23,10 @@ class Foo {
 		}
 		matrix := BoolMatrixRef->New(data)
 
-		bag := matrix->RandomBag()->Get()
-		bag->ToString()->PrintLine()
+		x := (cols - 1)->Random();
+		y := (cols - 1)->Random();
+		bag := matrix->RandomBag();
+		"{$x},{$y}"->PrintLine();
+		bag->ToString()->PrintLine();
 	}
 }
