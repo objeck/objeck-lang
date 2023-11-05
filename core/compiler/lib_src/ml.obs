@@ -1229,6 +1229,9 @@ training_matches := DecisionTree->Matches(cols - 1,output)->As(Float)
 				in := @input_matrix;
 
 				each(decision := decisions) {
+					if(in = Nil) {
+						return false;
+					};
 					in := DecisionTree->Split(decision->GetIndex(), in);
 				};
 				@output_matrix := in;
