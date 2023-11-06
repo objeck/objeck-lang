@@ -604,7 +604,9 @@ bundle System.ML {
 		Builds a random bag
 		@return random bag
 		~#
-		function : RandomBag(in : Bool[,]) ~ Bool[,] {
+		function : RandomBag(bag : BoolMatrixRef) ~ BoolMatrixRef {
+			in := bag->Get();
+			
 			dims := in->Size();
 			input_rows := dims[0];
 			input_cols := dims[1];
@@ -618,7 +620,7 @@ bundle System.ML {
 				};
 			};
 
-			return bag_matrix;
+			return BoolMatrixRef->New(bag_matrix);
 		}
 
 		#~
@@ -1164,16 +1166,24 @@ training_matches := DecisionTree->Matches(cols - 1,output)->As(Float)
 		@param in matrix to be split
 		@return split matrix
 		~#
-		function : native : Decide(decisions : Vector<Decision>, in : Bool[,]) ~ Bool[,] {
-			return Nil;
+		function : native : Decide(decisions : Vector<Split>, in : Bool[,]) ~ Bool[,] {
+			each(decision := decisions) {
+				out := Split(decision->GetIndex(), in);
+				if(out = Nil) {
+					return in;
+				};
+				in := out;
+			}
+
+			return in;
 		}
 
 		#~
 		Calculates a list of decision splits
 		@return list of decision tree splits
 		~#
-		function : native : Split(in : Bool[,]) ~ Vector<Decision> {					
-			decisions := Vector->New()<Decision>;
+		function : native : Split(in : Bool[,]) ~ Vector<Split> {					
+			decisions := Vector->New()<Split>;
 			dims := in->Size();
 			
 			cols := dims[1] - 1;
@@ -1193,7 +1203,7 @@ training_matches := DecisionTree->Matches(cols - 1,output)->As(Float)
 
 					if(best_index > - 1) {
 						in := Split(best_index, in);
-						decisions->AddBack(Decision->New(best_index, best_wgi));
+						decisions->AddBack(Split->New(best_index, best_wgi));
 
 					}
 					else {
@@ -1388,9 +1398,9 @@ training_matches := DecisionTree->Matches(cols - 1,output)->As(Float)
 	}
 
 	#~
-	Decision tree node
+	Split tree node
 	~#
-	class Decision {
+	class Split {
 		@index : Int;
 		@weighted_gini : Float;
 		
