@@ -1130,6 +1130,16 @@ else if(args->Size() = 1) {
 
 	#~
 	Random forest algorithm
+```
+forest := RandomForest->New(8);
+forest->Train(0.3, data);
+result := forest->Query(data);
+
+possible := Bool->Rows(result)->As(Float);
+matched := DecisionTree->Matches(result->Columns() - 1, result)->As(Float);
+matched_perc := (matched / possible * 100.0)->As(Int);
+"matched {$matched_perc}%"->PrintLine();
+```
 	~#
 	class RandomForest {
 		@decisions : Vector<Split>;
