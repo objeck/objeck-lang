@@ -72,14 +72,17 @@ class Test {
 			[true, true, true]
 			[true, true, true]
 		]);
+		data := data->Bootstrap();
 
-		forest := RandomForest->New(8);
-		forest->Train(data);
-		result := forest->Query(data);
+		split_data := data->Split(0.3);
+		training_data := split_data[0];
+		test_data := split_data[1];
 
-		possible := Bool->Rows(result)->As(Float);
-		matched := DecisionTree->Matches(result->Columns() - 1, result)->As(Float);
-		matched_perc := (matched / possible * 100.0)->As(Int);
-		"matched {$matched_perc}%"->PrintLine();
+		splits := DecisionTree->Train(training_data->Get());
+		result := DecisionTree->Query(splits, test_data->Get());
+
+		possible := result->Rows()->As(Float);
+		acheived := DecisionTree->Matches(2, result)->As(Float);
+		(acheived / possible)->PrintLine();
 	}
 }
