@@ -74,7 +74,7 @@ class Test {
 		]);
 
 		forest := RandomForest->New(8);
-		forest->Train(data);
+		forest->Train(0.3, data);
 		result := forest->Query(data);
 
 		possible := Bool->Rows(result)->As(Float);
