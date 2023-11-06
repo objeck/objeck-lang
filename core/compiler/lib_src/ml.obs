@@ -601,10 +601,10 @@ bundle System.ML {
 		}
 		
 		#~
-		Builds a random bag
-		@return random bag
+		Builds random bootstrapped dataset
+		@return bootstrapped dataset
 		~#
-		method : public : native : RandomBag() ~ BoolMatrixRef {		
+		method : public : native : Bootstrap() ~ BoolMatrixRef {		
 			dims := @value->Size();
 			input_rows := dims[0];
 			input_cols := dims[1];
@@ -624,7 +624,7 @@ bundle System.ML {
 		#~
 		Splits a 2D boolean matrix
 		@param training_offset index of first column with target data
-		@return split matrix of traning and data sets
+		@return split matrix of training and data sets
 		~#
 		method : public : Split(training_offset : Float) ~ BoolMatrixRef[] {
 			dims := @value->Size();
@@ -641,8 +641,7 @@ bundle System.ML {
 					training_matrix[i, j] := @value[i, j];
 				};
 			};
-
-
+			
 			data_rows := input_rows - training_rows;
 			data_matrix := Bool->New[data_rows, input_cols];
 			dims := data_matrix->Size();
@@ -1117,15 +1116,76 @@ else if(args->Size() = 1) {
 	Random forest algorithm
 	~#
 	class RandomForest {
-		@trees : Vector<Vector<Split>>;
+		@decisions : Vector<Split>;
+		@num_trees : Int;
 
-		New(num_trees : Int, training_data : Bool[,]) {
-			@trees := Vector->New()<Vector<Split>>;
+		New(filename : String) {
+		}
 
-			each(i : num_trees) {
-				splits := DecisionTree->Split(training_data);
-				@trees->AddBack(splits);
-			}
+		New(num_trees : Int) {
+			@num_trees := num_trees;
+		}
+
+		#~
+		Calculates a list of decision splits
+		@return list of decision tree splits
+		~#
+		method : public : native : Train(in : BoolMatrixRef) ~ Nil {
+			Train(in->Get());
+		}
+
+		#~
+		Calculates a list of decision splits
+		@return list of decision tree splits
+		~#
+		method : public : native : Train(in : Bool[,]) ~ Nil {
+			data := BoolMatrixRef->New(in);
+			best_match := 0.0;
+
+			each(i : @num_trees) {				
+				split_data := data->Split(0.3);
+				training_data := split_data[0];
+				test_data := split_data[1];
+
+				split_data := data->Split(0.3);
+				training_data := split_data[0];
+				test_data := split_data[1];
+
+				decisions := DecisionTree->Train(training_data->Get());
+				result := DecisionTree->Query(decisions, test_data->Get());
+
+				possible := result->Rows()->As(Float);
+				acheived := DecisionTree->Matches(2, result)->As(Float);
+
+				outcome := acheived / possible;
+				if(outcome > best_match) {
+					best_match := outcome;
+					@decisions := decisions; 
+				};
+				data := data->Bootstrap();
+			};
+		}
+
+		#~
+		Splits a matrix based on a list of decisions
+		@param in matrix to be split
+		@return split matrix
+		~#
+		method : public : native : Query(in : BoolMatrixRef) ~ Bool[,] {
+			return Query(in->Get());
+		}
+
+		#~
+		Splits a matrix based on a list of decisions
+		@param in matrix to be split
+		@return split matrix
+		~#
+		method : public : native : Query(in : Bool[,]) ~ Bool[,] {
+			if(@decisions <> Nil) {
+				return DecisionTree->Query(@decisions, in);
+			};
+
+			return Nil;
 		}
 	}
 
@@ -1159,8 +1219,8 @@ split_data := data->Split(0.3);
 training_data := split_data[0];
 test_data := split_data[1];
 
-splits := DecisionTree->Split(training_data->Get());
-result := DecisionTree->Decide(splits, test_data->Get());
+decisions := DecisionTree->Split(training_data->Get());
+result := DecisionTree->Decide(decisions, test_data->Get());
 
 possible := result->Rows()->As(Float);
 acheived := DecisionTree->Matches(2, result)->As(Float);
@@ -1174,7 +1234,7 @@ acheived := DecisionTree->Matches(2, result)->As(Float);
 		@param in matrix to be split
 		@return split matrix
 		~#
-		function : native : Decide(decisions : Vector<Split>, in : Bool[,]) ~ Bool[,] {
+		function : native : Query(decisions : Vector<Split>, in : Bool[,]) ~ Bool[,] {
 			each(decision := decisions) {
 				out := Split(decision->GetIndex(), in);
 				if(out = Nil) {
@@ -1190,7 +1250,7 @@ acheived := DecisionTree->Matches(2, result)->As(Float);
 		Calculates a list of decision splits
 		@return list of decision tree splits
 		~#
-		function : native : Split(in : Bool[,]) ~ Vector<Split> {					
+		function : native : Train(in : Bool[,]) ~ Vector<Split> {					
 			decisions := Vector->New()<Split>;
 			dims := in->Size();
 			

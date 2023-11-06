@@ -73,18 +73,23 @@ class Test {
 			[true, true, true]
 		]);
 
-		data := data->RandomBag();
 
+		forest := RandomForest->New(5);
+		forest->Train(data);
+		forest->Query(data)->ToString()->PrintLine();
+#~
+		data := data->Bootstrap();
 
 		split_data := data->Split(0.3);
 		training_data := split_data[0];
 		test_data := split_data[1];
 
-		splits := DecisionTree->Split(training_data->Get());
-		result := DecisionTree->Decide(splits, test_data->Get());
+		splits := DecisionTree->Train(training_data->Get());
+		result := DecisionTree->Query(splits, test_data->Get());
 
 		possible := result->Rows()->As(Float);
 		acheived := DecisionTree->Matches(2, result)->As(Float);
 		(acheived / possible)->PrintLine();
+~#		
 	}
 }
