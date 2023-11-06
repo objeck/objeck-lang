@@ -76,7 +76,10 @@ class Test {
 
 		forest := RandomForest->New(5);
 		forest->Train(data);
-		forest->Query(data)->ToString()->PrintLine();
+		result := forest->Query(data);
+
+		Bool->Rows(data->Get())->PrintLine();
+		Bool->Rows(result)->PrintLine();
 #~
 		data := data->Bootstrap();
 
