@@ -585,6 +585,22 @@ bundle System.ML {
 		}
 
 		#~
+		Returns the number of rows in the matrix
+		@return number of rows in the matrix
+		~#
+		method : public : Rows() ~ Int {
+			return @value->Rows();
+		}
+
+		#~
+		Returns the number of columns in the matrix
+		@return number of columns in the matrix
+		~#
+		method : public : Columns() ~ Int {
+			return @value->Columns();
+		}
+
+		#~
 		Get boolean value
 		@return boolean value
 		~#
@@ -641,7 +657,7 @@ bundle System.ML {
 					training_matrix[i, j] := @value[i, j];
 				};
 			};
-			
+
 			data_rows := input_rows - training_rows;
 			data_matrix := Bool->New[data_rows, input_cols];
 			dims := data_matrix->Size();
