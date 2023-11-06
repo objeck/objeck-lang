@@ -1137,7 +1137,7 @@ else if(args->Size() = 1) {
 
 		#~
 		Constructor
-		@param num_trees number of tree to generate
+		@param num_trees number of trees to generate
 		~#
 		New(num_trees : Int) {
 			@num_trees := num_trees;
@@ -1150,7 +1150,8 @@ else if(args->Size() = 1) {
 
 		#~
 		Calculates a list of decision splits
-		@return list of decision tree splits
+		@param split_perc percentage of data to use for training
+		@param in training matrix
 		~#
 		method : public : native : Train(split_perc : Float, in : BoolMatrixRef) ~ Nil {
 			Train(split_perc, in->Get());
@@ -1158,7 +1159,8 @@ else if(args->Size() = 1) {
 
 		#~
 		Calculates a list of decision splits
-		@return list of decision tree splits
+		@param split_perc percentage of data to use for training
+		@param in training matrix
 		~#
 		method : public : native : Train(split_perc : Float, in : Bool[,]) ~ Nil {
 			data := BoolMatrixRef->New(in);
@@ -1214,7 +1216,6 @@ else if(args->Size() = 1) {
 		function : Load(filename : String) ~ RandomForest {
 			data := System.IO.Filesystem.FileReader->ReadBinaryFile(filename);
 			if(data <> Nil) {
-				# read inputs weight
 				deserializer := System.IO.Deserializer->New(data);
 				
 				num_trees := deserializer->ReadInt();
@@ -1313,6 +1314,7 @@ acheived := DecisionTree->Matches(2, result)->As(Float);
 
 		#~
 		Calculates a list of decision splits
+		@param in training matrix
 		@return list of decision tree splits
 		~#
 		function : native : Train(in : Bool[,]) ~ Vector<Split> {					
