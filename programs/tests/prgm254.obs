@@ -78,7 +78,7 @@ class Test {
 		forest->Train(data);
 		result := forest->Query(data);
 
-		Bool->Rows(data->Get())->PrintLine();
+		data->Rows()->PrintLine();
 		Bool->Rows(result)->PrintLine();
 #~
 		data := data->Bootstrap();
