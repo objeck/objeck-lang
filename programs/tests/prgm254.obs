@@ -2,50 +2,37 @@ use System.ML;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		data := Bool->New[32, 4];
-		data_dim := data->Size();
-		data_row := data_dim[0];
-		data_col := data_dim[1];
+		data := [
+			[true, false, true]
+			[true, false, true]
+			[true, true, true]
+			[true, true, true]
+			[true, true, true]
+			[true, true, true]
+			[true, true, true]
+			[true, true, true]
+			[false, true, true]
+			[false, true, true]
+			[true, true, false]
+			[true, true, false]
+			[false, true, false]
+			[false, true, false]
+			[false, true, false]
+			[false, true, false]
+			[false, false, false]
+			[false, false, false]
+			[false, false, false]
+			[false, false, false]
+		];
+		data->ToString()->PrintLine();
 
-		flip := 3;
-
-		each(i : data_row) {
-			if(flip->Random() % flip = 0) {
-				each(j: data_col) {
-					data[i,j] := 9->Random() < 4;
-				}
+		each(i : 5) {
+			"---"->PrintLine();
+			splits := DecisionTree->Split(data);
+			each(split := splits) {
+				split->ToString()->PrintLine();
 			}
-			else {
-				each(j: data_col) {
-					data[i,j] := true;
-				}
-			}
-		}
-		matrix := BoolMatrixRef->New(data);
-
-		score := 0.0;
-		trees := 4;
-		each(i : trees) {
-			split_matrix := matrix->Split(0.25)
-			training_matrix := split_matrix[0]->Get()
-
-			data_matrix := split_matrix[1]->Get()
-			decision_tree := DecisionTree->New(training_matrix)
-			
-			if(decision_tree->Train()) {
-				output_matrix := decision_tree->GetOutput()
-
-				cols := data_matrix->Columns()->As(Float)
-				if(output_matrix <> Nil) {
-					training_matrix_matches := DecisionTree->Matches(cols - 1, output_matrix)->As(Float)
-					data_matrix_row := data_matrix->Rows()->As(Float)
-					score += 1 - (training_matrix_matches / data_matrix_row);
-				};
-			};
-
-			matrix := matrix->RandomBag();
+			data := BoolMatrixRef->RandomBag(data);
 		};
-
-		(score/ trees->As(Float))->PrintLine();
-	}	
+	}
 }
