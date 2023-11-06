@@ -1135,10 +1135,16 @@ else if(args->Size() = 1) {
 		@decisions : Vector<Split>;
 		@num_trees : Int;
 
-		New(filename : String) {
+		#~
+		Constructor
+		@param num_trees number of tree to generate
+		~#
+		New(num_trees : Int) {
+			@num_trees := num_trees;
 		}
 
-		New(num_trees : Int) {
+		New : private (num_trees : Int, decisions : Vector<Split>) {
+			@decisions := decisions;
 			@num_trees := num_trees;
 		}
 
@@ -1146,24 +1152,20 @@ else if(args->Size() = 1) {
 		Calculates a list of decision splits
 		@return list of decision tree splits
 		~#
-		method : public : native : Train(in : BoolMatrixRef) ~ Nil {
-			Train(in->Get());
+		method : public : native : Train(split_perc : Float, in : BoolMatrixRef) ~ Nil {
+			Train(split_perc, in->Get());
 		}
 
 		#~
 		Calculates a list of decision splits
 		@return list of decision tree splits
 		~#
-		method : public : native : Train(in : Bool[,]) ~ Nil {
+		method : public : native : Train(split_perc : Float, in : Bool[,]) ~ Nil {
 			data := BoolMatrixRef->New(in);
 			best_match := 0.0;
 
 			each(i : @num_trees) {				
-				split_data := data->Split(0.3);
-				training_data := split_data[0];
-				test_data := split_data[1];
-
-				split_data := data->Split(0.3);
+				split_data := data->Split(split_perc);
 				training_data := split_data[0];
 				test_data := split_data[1];
 
@@ -1202,6 +1204,53 @@ else if(args->Size() = 1) {
 			};
 
 			return Nil;
+		}
+
+		#~
+		Loads a saved random forest
+		@param filename file to store to
+		@return random forest
+		~#
+		function : Load(filename : String) ~ RandomForest {
+			data := System.IO.Filesystem.FileReader->ReadBinaryFile(filename);
+			if(data <> Nil) {
+				# read inputs weight
+				deserializer := System.IO.Deserializer->New(data);
+				
+				num_trees := deserializer->ReadInt();
+				
+				decisions := Vector->New()<Split>;
+				num_decisions := deserializer->ReadInt();
+				each(i : num_decisions) {
+					decisions->AddBack(deserializer->ReadObject()->As(Split));
+				};
+
+				return RandomForest->New(num_trees, decisions);
+			}
+
+			return Nil;
+		}
+
+		#~
+		Saves a random forest
+		@param filename file to save to
+		@return true if successful, false otherwise
+		~#
+		method : public : Store(filename : String) ~ Bool {
+			if(@decisions <> Nil) {
+				serializer := System.IO.Serializer->New();
+
+				serializer->Write(@num_trees);
+				
+				serializer->Write(@decisions->Size());
+				each(decision : @decisions) {
+					serializer->Write(decision);
+				};
+
+				return System.IO.Filesystem.FileWriter->WriteFile(filename, serializer->Serialize());
+			};
+
+			return false;
 		}
 	}
 
