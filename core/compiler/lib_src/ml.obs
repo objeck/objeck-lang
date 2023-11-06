@@ -604,8 +604,8 @@ bundle System.ML {
 		Builds a random bag
 		@return random bag
 		~#
-		method : public : RandomBag() ~ BoolMatrixRef {
-			dims := @value->Size();
+		function : RandomBag(in : Bool[,]) ~ Bool[,] {
+			dims := in->Size();
 			input_rows := dims[0];
 			input_cols := dims[1];
 
@@ -614,11 +614,11 @@ bundle System.ML {
 			each(i : input_rows) {
 				random_row := (input_rows - 1)->Random();
 				each(j : input_cols) {
-					bag_matrix[random_row, j] := @value[random_row, j];
+					bag_matrix[random_row, j] := in[random_row, j];
 				};
 			};
 
-			return BoolMatrixRef->New(bag_matrix);
+			return bag_matrix;
 		}
 
 		#~
@@ -1158,37 +1158,13 @@ training_matches := DecisionTree->Matches(cols - 1,output)->As(Float)
 ```
 	~#
 	class DecisionTree {
-		@input_matrix : Bool[,];
-		@output_matrix : Bool[,];
-		@decisions : Vector<Decision>;
-
-		#~
-		Constructor
-		@param matrix boolean input training matrix, last row is the result
-		~#
-		New(matrix : Bool[,]) {
-			@input_matrix := matrix;
-		}
-
-		New : private(decisions : Vector<Decision>) {
-			@decisions := decisions;
-		}
-
-		#~
-		Get the output matrix
-		@return output matrix
-		~#
-		method : public : GetOutput() ~ Bool[,] {
-			return @output_matrix;
-		}
-
 		#~
 		Calculates a list of decision splits
 		@return list of decision tree splits
 		~#
-		method : public : Step() ~ Vector<Decision> {					
+		function : native : Split(in : Bool[,]) ~ Vector<Decision> {					
 			decisions := Vector->New()<Decision>;
-			dims := @input_matrix->Size();
+			dims := in->Size();
 			
 			cols := dims[1] - 1;
 			if(cols > 0) {
@@ -1198,7 +1174,7 @@ training_matches := DecisionTree->Matches(cols - 1,output)->As(Float)
 					best_index := -1;
 
 					each(i : cols) {
-						wgi := WeightedGini(i, cols);
+						wgi := WeightedGini(i, cols, in);
 						if(wgi <> 0.0 & wgi < best_wgi) {
 							best_wgi := wgi;
 							best_index := i;
@@ -1206,7 +1182,7 @@ training_matches := DecisionTree->Matches(cols - 1,output)->As(Float)
 					}
 
 					if(best_index > - 1) {
-						@input_matrix := Split(best_index, @input_matrix);
+						in := Split(best_index, in);
 						decisions->AddBack(Decision->New(best_index, best_wgi));
 
 					}
@@ -1220,35 +1196,12 @@ training_matches := DecisionTree->Matches(cols - 1,output)->As(Float)
 		}
 
 		#~
-		Splits a matrix along the decisions columns
-		@return split matrix
-		~#
-		method : public : Train() ~ Bool {
-			decisions := Step();
-			if(decisions <> Nil) {
-				in := @input_matrix;
-
-				each(decision := decisions) {
-					if(in = Nil) {
-						return false;
-					};
-					in := DecisionTree->Split(decision->GetIndex(), in);
-				};
-				@output_matrix := in;
-
-				return true;
-			};
-
-			return false;
-		}
-
-		#~
 		Splits a matrix along the given column
 		@param index index used to split
 		@param in matrix to split
 		@return split matrix
 		~#
-		function : Split(index : Int, in : Bool[,]) ~ Bool[,] {
+		function : native : Split(index : Int, in : Bool[,]) ~ Bool[,] {
 			split_len := Matches(index, in);
 			if(split_len > 0) {
 				dims := in->Size();
@@ -1286,16 +1239,16 @@ training_matches := DecisionTree->Matches(cols - 1,output)->As(Float)
 			return 1 - (reached*reached + not_reached*not_reached);
 		}
 
-		method : native : WeightedGini(test : Int, target : Int) ~ Float {
+		function : native : WeightedGini(test : Int, target : Int, in : Bool[,]) ~ Float {
 			wgi := 0.0;
 
-			dims := @input_matrix->Size();
+			dims := in->Size();
 			size := dims[0]->As(Float);
 
 			# left
-			goal := Matches(test, @input_matrix);
+			goal := Matches(test, in);
 			if(goal > 0.0) {
-				wgi += goal / size * Gini(Acheived(test, target, @input_matrix), goal);
+				wgi += goal / size * Gini(Acheived(test, target, in), goal);
 			}
 			else {
 				return 0.0;
@@ -1303,9 +1256,9 @@ training_matches := DecisionTree->Matches(cols - 1,output)->As(Float)
 
 			
 			# right
-			goal := Mismatches(test, @input_matrix);
+			goal := Mismatches(test, in);
 			if(goal > 0.0) {
-				wgi += goal / size * Gini(Unacheived(test, target, @input_matrix), goal);
+				wgi += goal / size * Gini(Unacheived(test, target, in), goal);
 			}
 			else {
 				return 0.0;
@@ -1358,7 +1311,7 @@ training_matches := DecisionTree->Matches(cols - 1,output)->As(Float)
 			return count;
 		}
 
-		method : native : Acheived(test_index : Int, goal_index : Int, matrix : Bool[,]) ~ Float {
+		function : native : Acheived(test_index : Int, goal_index : Int, matrix : Bool[,]) ~ Float {
 			dims := matrix->Size();
 			rows := dims[0];
 
@@ -1374,7 +1327,7 @@ training_matches := DecisionTree->Matches(cols - 1,output)->As(Float)
 			return count;
 		}
 
-		method : native : Unacheived(test_index : Int, goal_index : Int, matrix : Bool[,]) ~ Float {
+		function : native : Unacheived(test_index : Int, goal_index : Int, matrix : Bool[,]) ~ Float {
 			dims := matrix->Size();
 			rows := dims[0];
 
@@ -1388,44 +1341,6 @@ training_matches := DecisionTree->Matches(cols - 1,output)->As(Float)
 			};
 
 			return count;
-		}
-
-		#~
-		Loads a list of pre calculated decisions
-		@param filename name of file to load
-		@return a DecisionTree instance
-		~#
-		function : LoadDecisions(filename : String) ~ DecisionTree {
-			data := System.IO.Filesystem.FileReader->ReadBinaryFile(filename);
-			if(data <> Nil) {
-				deserializer := System.IO.Deserializer->New(data);
-
-				decisions := Vector->New()<Decision>;
-				size := deserializer->ReadInt();
-				each(i : size) {
-					decisions->AddBack(deserializer->ReadObject()->As(Decision));
-				};
-
-				return DecisionTree->New(decisions);
-			};
-
-			return Nil;
-		}
-
-		#~
-		Save a list of calculated decisions
-		@param filename name of file to save to
-		@return true if successful, false otherwise
-		~#
-		method : public : SaveDecisions(filename : String) ~ Bool {
-			serializer := System.IO.Serializer->New();
-
-			serializer->Write(@decisions->Size());
-			each(decision : @decisions) {
-				serializer->Write(decision);
-			};
-
-			return System.IO.Filesystem.FileWriter->WriteFile(filename, serializer->Serialize());
 		}
 
 		#~
