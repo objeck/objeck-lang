@@ -1116,6 +1116,19 @@ else if(args->Size() = 1) {
 	}
 
 	#~
+	Random forest algorithm
+	~#
+	class RandomForest {
+		@trees : Vector<Split>[];
+		@data : Bool[,];
+		
+		New(tree_count : Int, data : Bool[,]) {
+			@trees := Vector<Split>->New[tree_count];
+			@data := data;
+		}
+	}
+
+	#~
 	Binary decision tree algorithm
 	
 ```
