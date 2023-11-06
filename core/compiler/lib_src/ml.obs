@@ -1159,6 +1159,16 @@ training_matches := DecisionTree->Matches(cols - 1,output)->As(Float)
 	~#
 	class DecisionTree {
 		#~
+		Splits a matrix based on a list of decisions
+		@param decisions list of decisions
+		@param in matrix to be split
+		@return split matrix
+		~#
+		function : native : Decide(decisions : Vector<Decision>, in : Bool[,]) ~ Bool[,] {
+			return Nil;
+		}
+
+		#~
 		Calculates a list of decision splits
 		@return list of decision tree splits
 		~#
