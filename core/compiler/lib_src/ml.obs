@@ -604,10 +604,8 @@ bundle System.ML {
 		Builds a random bag
 		@return random bag
 		~#
-		function : RandomBag(bag : BoolMatrixRef) ~ BoolMatrixRef {
-			in := bag->Get();
-			
-			dims := in->Size();
+		method : public : native : RandomBag() ~ BoolMatrixRef {		
+			dims := @value->Size();
 			input_rows := dims[0];
 			input_cols := dims[1];
 
@@ -616,7 +614,7 @@ bundle System.ML {
 			each(i : input_rows) {
 				random_row := (input_rows - 1)->Random();
 				each(j : input_cols) {
-					bag_matrix[random_row, j] := in[random_row, j];
+					bag_matrix[random_row, j] := @value[random_row, j];
 				};
 			};
 
@@ -1119,12 +1117,15 @@ else if(args->Size() = 1) {
 	Random forest algorithm
 	~#
 	class RandomForest {
-		@trees : Vector<Split>[];
-		@data : Bool[,];
-		
-		New(tree_count : Int, data : Bool[,]) {
-			@trees := Vector<Split>->New[tree_count];
-			@data := data;
+		@trees : Vector<Vector<Split>>;
+
+		New(num_trees : Int, training_data : Bool[,]) {
+			@trees := Vector->New()<Vector<Split>>;
+
+			each(i : num_trees) {
+				splits := DecisionTree->Split(training_data);
+				@trees->AddBack(splits);
+			}
 		}
 	}
 
@@ -1132,7 +1133,7 @@ else if(args->Size() = 1) {
 	Binary decision tree algorithm
 	
 ```
-input := [
+data := BoolMatrixRef->New([
 	[true, false, true]
 	[true, false, true]
 	[true, true, true]
@@ -1153,23 +1154,17 @@ input := [
 	[false, false, false]
 	[false, false, false]
 	[false, false, false]
-];
-"--- Dataset ---"->PrintLine();
-input->ToString()->PrintLine()
+]);
+split_data := data->Split(0.3);
+training_data := split_data[0];
+test_data := split_data[1];
 
-training := Bool->Split(0.25, input)
-"\n--- Training ---"->PrintLine();
-training->ToString()->PrintLine()
+splits := DecisionTree->Split(training_data->Get());
+result := DecisionTree->Decide(splits, test_data->Get());
 
-output := DecisionTree->New(input)->Train()
-"\n--- Split ---"->PrintLine();
-output->ToString()->PrintLine()
-
-cols := training->Columns()->As(Float)
-training_matches := DecisionTree->Matches(cols - 1,output)->As(Float)
-"\n--- Confidence ---"->PrintLine();
-(output <> input)->PrintLine()
-(training->Rows()->As(Float) / training_matches)->PrintLine()
+possible := result->Rows()->As(Float);
+acheived := DecisionTree->Matches(2, result)->As(Float);
+(acheived / possible)->PrintLine();
 ```
 	~#
 	class DecisionTree {
