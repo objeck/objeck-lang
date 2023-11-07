@@ -1,0 +1,14 @@
+use Collection;
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		refs := Vector->New()<IntRef>;
+		refs->AddBack(IntRef->New(13));
+
+		value := 8;
+		each(ref := refs) {
+			value += ref;
+		}
+		value->PrintLine();
+	}
+}
