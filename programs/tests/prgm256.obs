@@ -1,18 +1,40 @@
-use System.ML;
+use Collection;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		data := BoolMatrixRef->New([
-			[true, false, true]
-			[false, false, false]
-			[true, true, false]
-			[true, true, true]
-			[false, false, false]
-			[true, true, false]
-		]);
+		positive := Map->New()<String, FloatRef>;
+		positive->Insert("Dear", 2);
+		positive->Insert("Friend", 1);
+		positive->Insert("Lunch", 1);
+		positive->Insert("Mondy", 4);
+		Foo(positive);
 
-		data->ToString()->PrintLine();
 		"---"->PrintLine();
-		data->Bootstrap()->ToString()->PrintLine();
+
+		negative := Map->New()<String, FloatRef>;
+		negative->Insert("Dear", 2);
+		negative->Insert("Friend", 1);
+		negative->Insert("Lunch", 0);
+		negative->Insert("Mondy", 4);
+		Foo(negative);
+	}
+
+	function : Foo(in : Map<String, FloatRef>) ~ Nil {
+		sum := 0.0;
+
+		values := in->GetValues()<FloatRef>;
+		each(value := values) {
+			sum += value->Get();
+		}
+		sum += 1.0;
+
+
+
+		each(foo := values) {
+foo += 1;
+sum->PrintLine();
+
+			(foo /sum)->PrintLine();
+		}
 	}
 }
