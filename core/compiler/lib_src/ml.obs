@@ -648,27 +648,27 @@ bundle System.ML {
 		~#
 		method : public : Split(training_offset : Float) ~ BoolMatrixRef[] {
 			dims := @value->Size();
-			input_rows := dims[0];
-			input_cols := dims[1];
+			rows := dims[0];
+			cols := dims[1];
 
-			training_rows := (input_rows->As(Float) * training_offset)->As(Int);
-			training_matrix := Bool->New[training_rows, input_cols];
+			training_rows := (rows->As(Float) * training_offset)->As(Int);
+			training_matrix := Bool->New[training_rows, cols];
 			dims := training_matrix->Size();
 			train_rows := dims[0];
 
 			each(i : train_rows) {
-				each(j : input_cols) {
+				each(j : cols) {
 					training_matrix[i, j] := @value[i, j];
 				};
 			};
 
-			data_rows := input_rows - training_rows;
-			data_matrix := Bool->New[data_rows, input_cols];
+			data_rows := rows - training_rows;
+			data_matrix := Bool->New[data_rows, cols];
 			dims := data_matrix->Size();
 			data_rows := dims[0];
 
 			each(i : data_rows) {
-				each(j : input_cols) {
+				each(j : cols) {
 					data_matrix[i, j] := @value[training_rows, j];
 				};
 				training_rows += 1;
