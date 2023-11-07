@@ -620,17 +620,21 @@ bundle System.ML {
 		Builds random bootstrapped dataset
 		@return bootstrapped dataset
 		~#
-		method : public : native : Bootstrap() ~ BoolMatrixRef {		
+		method : native : public : Bootstrap() ~ BoolMatrixRef {		
 			dims := @value->Size();
-			input_rows := dims[0];
-			input_cols := dims[1];
-
-			bag_matrix := Bool->New[input_rows, input_cols];
+			rows := dims[0];
+			cols := dims[1];
 			
-			each(i : input_rows) {
-				random_row := (input_rows - 1)->Random();
-				each(j : input_cols) {
-					bag_matrix[random_row, j] := @value[random_row, j];
+			random_rows := Int->New[rows];
+			each(i : rows) {
+				random_rows[i] := (rows - 1)->Random();
+			};
+			
+			bag_matrix := Bool->New[rows, cols];
+			each(i : rows) {
+				random_row := random_rows[i];
+				each(j : cols) {
+					bag_matrix[i, j] := @value[random_row, j];
 				};
 			};
 
