@@ -1,0 +1,18 @@
+use System.ML;
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		data := BoolMatrixRef->New([
+			[true, false, true]
+			[false, false, false]
+			[true, true, false]
+			[true, true, true]
+			[false, false, false]
+			[true, true, false]
+		]);
+
+		data->ToString()->PrintLine();
+		"---"->PrintLine();
+		data->Bootstrap()->ToString()->PrintLine();
+	}
+}
