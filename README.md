@@ -27,6 +27,7 @@ Want to get started? Take a look at the [language guide](https://objeck.org/gett
 ## Latest
 * v2023.11.x
   * ML algorithms 
+    * ~~Decision Trees~~
     *  ~~Random Forests~~
     * Naive Bayes
     * KNN
