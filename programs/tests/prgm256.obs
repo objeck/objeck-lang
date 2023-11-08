@@ -2,39 +2,36 @@ use Collection;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
+		"--- Positive ---"->PrintLine();
+		positive := Map->New()<String, FloatRef>;
+		positive->Insert("Dear", 8);
+		positive->Insert("Friend", 5);
+		positive->Insert("Lunch", 3);
+		positive->Insert("Monday", 1);
+		Foo(positive)->ToString()->PrintLine();
+
+		"\n--- Negative ---"->PrintLine();
 		positive := Map->New()<String, FloatRef>;
 		positive->Insert("Dear", 2);
 		positive->Insert("Friend", 1);
-		positive->Insert("Lunch", 1);
-		positive->Insert("Mondy", 4);
-		Foo(positive);
-
-		"---"->PrintLine();
-
-		negative := Map->New()<String, FloatRef>;
-		negative->Insert("Dear", 2);
-		negative->Insert("Friend", 1);
-		negative->Insert("Lunch", 0);
-		negative->Insert("Mondy", 4);
-		Foo(negative);
+		positive->Insert("Lunch", 0);
+		positive->Insert("Monday", 4);
+		Foo(positive)->ToString()->PrintLine();
 	}
 
-	function : Foo(in : Map<String, FloatRef>) ~ Nil {
+	function : Foo(in : Map<String, FloatRef>) ~ Float[] {
 		sum := 0.0;
-
 		values := in->GetValues()<FloatRef>;
 		each(value := values) {
 			sum += value->Get();
 		}
-		sum += 1.0;
 
-
-
-		each(foo := values) {
-foo += 1;
-sum->PrintLine();
-
-			(foo /sum)->PrintLine();
+		out := Float->New[in->Size()];
+		each(i : values) {
+			value := values->Get(i);
+			out[i] := value / sum;
 		}
+
+		return out;
 	}
 }
