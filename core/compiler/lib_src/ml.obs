@@ -643,7 +643,7 @@ bundle System.ML {
 
 		#~
 		Splits a 2D boolean matrix
-		@param training_offset index of first column with target data
+		@param training_offset index of first column with target data. The first element is the train dateset, while the second is the test data
 		@return split matrix of training and data sets
 		~#
 		method : public : Split(training_offset : Float) ~ BoolMatrixRef[] {
@@ -1071,7 +1071,7 @@ else if(args->Size() = 1) {
 		@param filename file to process
 		@param target_offset index of first column with output data
 		@param training_perc percentage of data used for training
-		@return split matrices for training and testing, first two matrices are training, latter two test
+		@return split matrices for training and testing, first two matrices are training, latter two test data
 		~#
 		function : public : LoadSplitMatrices(filename : String, target_offset : Int, training_perc : Float) ~ Vector[]<FloatMatrixRef> {
 			table := CsvTable->New(System.IO.Filesystem.FileReader->ReadFile(filename));
@@ -1580,6 +1580,15 @@ acheived := DecisionTree->Matches(2, result)->As(Float);
 		~#
 		method : public : ToString() ~ String {
 			return "index={$@index},weighted_gini={$@weighted_gini}";
+		}
+	}
+
+	#~
+	TODO
+	~#
+	class NaiveBayes {
+		New() {
+			
 		}
 	}
 }
