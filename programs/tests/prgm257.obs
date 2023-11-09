@@ -4,18 +4,18 @@ use System.ML;
 class Test {
 	function : Main(args : String[]) ~ Nil {
 		cat := Map->New()<String, BayesElement>;
-		cat->Insert(BayesElement->New("furry", 3));
-		cat->Insert(BayesElement->New("walks", 0));
-		cat->Insert(BayesElement->New("barks", 0));
-		cat->Insert(BayesElement->New("sleeps", 3));
-		cat->Insert(BayesElement->New("meow", 4));
+		cat->Insert("furry", BayesElement->New("furry", 3));
+		cat->Insert("walks", BayesElement->New("walks", 0));
+		cat->Insert("barks", BayesElement->New("barks", 0));
+		cat->Insert("sleeps", BayesElement->New("sleeps", 3));
+		cat->Insert("meow", BayesElement->New("meow", 4));
 
 		dog := Map->New()<String, BayesElement>;
-		dog->Insert(BayesElement->New("furry", 3));
-		dog->Insert(BayesElement->New("walks", 0));
-		dog->Insert(BayesElement->New("barks", 2));
-		dog->Insert(BayesElement->New("sleeps", 3));
-		dog->Insert(BayesElement->New("meow", 12));
+		dog->Insert("furry", BayesElement->New("furry", 3));
+		dog->Insert("walks", BayesElement->New("walks", 0));
+		dog->Insert("barks", BayesElement->New("barks", 2));
+		dog->Insert("sleeps", BayesElement->New("sleeps", 3));
+		dog->Insert("meow", BayesElement->New("meow", 2));
 
 		bt := NaiveBayes->New(cat, dog);
 		bt->Query();
