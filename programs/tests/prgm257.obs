@@ -3,14 +3,14 @@ use System.ML;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		cat : Map<String, IntRef>;
+		cat := Map->New()<String, IntRef>;
 		cat->Insert("furry", 3);
 		cat->Insert("walks", 0);
 		cat->Insert("barks", 0);
 		cat->Insert("meow", 4);
 		cat->Insert("sleeps", 3);
 
-		dog : Map<String, IntRef>;
+		dog := Map->New()<String, IntRef>;
 		dog->Insert("furry", 3);
 		dog->Insert("walks", 0);
 		dog->Insert("barks", 1);
