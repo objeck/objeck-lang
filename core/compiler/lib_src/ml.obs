@@ -1587,15 +1587,29 @@ acheived := DecisionTree->Matches(2, result)->As(Float);
 	TODO
 	~#
 	class NaiveBayes {
+		@distro : Float;
 		@a : Map<String, IntRef>;
 		@b : Map<String, IntRef>;
 	
 		New(a : Map<String, IntRef>, b : Map<String, IntRef>) {
 			@a := a;
 			@b := b;
+			@distro := 0.60;
 		}
 
 		method : public : Query() ~ Map<String, IntRef> {
+			sum := 0.0;
+
+			a_values := @a->GetValues()<IntRef>;
+			each(a_value := a_values) {
+				sum += a_value->Get();
+			};
+			sum->PrintLine();
+
+			each(a_value := a_values) {
+				(@distro * (a_value / sum))->PrintLine();
+			};
+
 			return Nil;
 		}
 	}
