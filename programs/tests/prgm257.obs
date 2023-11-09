@@ -3,21 +3,21 @@ use System.ML;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		a : Map<String, IntRef>;
-		a->Insert("furry", 2);
-		a->Insert("walks", 3);
-		a->Insert("barks", 5);
-		a->Insert("meow", 0);
-		a->Insert("sleeps", 3);
+		cat : Map<String, IntRef>;
+		cat->Insert("furry", 3);
+		cat->Insert("walks", 0);
+		cat->Insert("barks", 0);
+		cat->Insert("meow", 4);
+		cat->Insert("sleeps", 3);
 
-		b : Map<String, IntRef>;
-		b->Insert("furry", 2);
-		b->Insert("walks", 0);
-		b->Insert("barks", 1);
-		b->Insert("sleeps", 3);
-		b->Insert("meow", 5);
+		dog : Map<String, IntRef>;
+		dog->Insert("furry", 3);
+		dog->Insert("walks", 0);
+		dog->Insert("barks", 1);
+		dog->Insert("sleeps", 3);
+		dog->Insert("meow", 4);
 
-		bt := NaiveBayes->New(a, b);
+		bt := NaiveBayes->New(cat, dog);
 		bt->Query();
 	}
 }
