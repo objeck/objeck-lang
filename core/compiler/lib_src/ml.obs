@@ -1583,33 +1583,79 @@ acheived := DecisionTree->Matches(2, result)->As(Float);
 		}
 	}
 
+	class BayesElement {
+		@name : String;
+		@count : Int;
+		@bayes : Float;
+
+		New(name : String, count : Int) {
+			@name := name;
+			@count := count;
+		}
+
+		method : public : GetName() ~ String {
+			return @name;
+		}
+
+		method : public : GetCount() ~ Int {
+			return @count;
+		}
+
+		method : public : GetBayes() ~ Float {
+			return @bayes;
+		}
+
+		method : public : SetBayes(bayes : Float) ~ Nil {
+			@bayes := bayes;
+		}
+	}
+
 	#~
 	TODO
 	~#
 	class NaiveBayes {
 		@distro : Float;
-		@a : Map<String, IntRef>;
-		@b : Map<String, IntRef>;
+		@a : Map<String, BayesElement>;
+		@b : Map<String, BayesElement>;
 	
-		New(a : Map<String, IntRef>, b : Map<String, IntRef>) {
+		New(a : Map<String, BayesElement>, b : Map<String, BayesElement>) {
 			@a := a;
 			@b := b;
 			@distro := 0.60;
 		}
 
 		method : public : Query() ~ Map<String, IntRef> {
+#~			
 			sum := 0.0;
-
 			a_values := @a->GetValues()<IntRef>;
 			each(a_value := a_values) {
 				sum += a_value->Get();
 			};
-			sum->PrintLine();
 
 			each(a_value := a_values) {
+				if(a_value = 0) {
+					a_value := 1;
+					sum += a_values->Size();
+				};
 				(@distro * (a_value / sum))->PrintLine();
 			};
 
+			"---"->PrintLine();
+
+			sum := 0.0;
+			b_values := @b->GetValues()<IntRef>;
+			each(b_value := b_values) {
+				sum += b_value->Get();
+			};
+
+			each(b_value := b_values) {
+				if(b_value = 0) {
+					b_value := 1;
+					sum += b_values->Size();
+				};
+				(@distro * (b_value / sum))->PrintLine();
+			};
+~#
 			return Nil;
 		}
 	}
