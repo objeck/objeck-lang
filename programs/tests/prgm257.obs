@@ -1,14 +1,23 @@
 use Collection;
+use System.ML;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		refs := Vector->New()<IntRef>;
-		refs->AddBack(IntRef->New(13));
+		a : Map<String, IntRef>;
+		a->Insert("furry", 2);
+		a->Insert("walks", 3);
+		a->Insert("barks", 5);
+		a->Insert("meow", 0);
+		a->Insert("sleeps", 3);
 
-		value := 8;
-		each(ref := refs) {
-			value += ref;
-		}
-		value->PrintLine();
+		b : Map<String, IntRef>;
+		b->Insert("furry", 2);
+		b->Insert("walks", 0);
+		b->Insert("barks", 1);
+		b->Insert("sleeps", 3);
+		b->Insert("meow", 5);
+
+		bt := NaiveBayes->New(a, b);
+		bt->Query();
 	}
 }
