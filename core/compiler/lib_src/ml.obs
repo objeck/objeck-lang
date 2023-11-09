@@ -1587,8 +1587,16 @@ acheived := DecisionTree->Matches(2, result)->As(Float);
 	TODO
 	~#
 	class NaiveBayes {
-		New() {
-			
+		@a : Map<String, IntRef>;
+		@b : Map<String, IntRef>;
+	
+		New(a : Map<String, IntRef>, b : Map<String, IntRef>) {
+			@a := a;
+			@b := b;
+		}
+
+		method : public : Query() ~ Map<String, IntRef> {
+			return Nil;
 		}
 	}
 }
