@@ -15,7 +15,16 @@ class Test {
 		spam->AddEntry(BayesEntry->New("money", 4));
 
 		bayes := NaiveBayes->New(normal, spam);
-		finding := bayes->Query(["dear", "friend"]);
-		finding->PrintLine();		
+		finding := bayes->Query(["lunch", "money", "money", "money", "money"]);
+
+		if(finding = 0) {
+			"normal"->PrintLine();
+		}
+		else if(finding = 1) {
+			"spam"->PrintLine();	
+		}
+		else {
+			"invalid"->PrintLine();	
+		}
 	}
 }
