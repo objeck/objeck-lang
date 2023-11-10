@@ -1584,52 +1584,69 @@ acheived := DecisionTree->Matches(2, result)->As(Float);
 	}
 
 	#~
-	TODO
+	Naive Bayes entry of term with counts
 	~#
 	class BayesEntry {
 		@name : String;
 		@count : Int;
 		@bayes : Float;
 
-		New(count : Int) {
-			@count := count;
-		}
-
+		#~
+		Constructor
+		@param name entry name
+		@param count count of occurrences 
+		~#
 		New(name : String, count : Int) {
 			@name := name;
 			@count := count;
 		}
 
+		#~
+		Get the entry name
+		@return entry name
+		~#
 		method : public : GetName() ~ String {
 			return @name;
 		}
 
+		#~
+		Get the entry count
+		@return entry count
+		~#
 		method : public : GetCount() ~ Int {
 			return @count;
 		}
 
+		#~
+		Set the entry count
+		@param count entry count
+		~#
 		method : public : SetCount(count : Int) ~ Nil {
 			@count := count;
 		}
-
-		method : public : GetBayes() ~ Float {
-			return @bayes;
-		}
-
-		method : public : SetBayes(bayes : Float) ~ Nil {
-			@bayes := bayes;
-		}
 	}
 
-	class NaiveGroup {
+	#~
+	Naive Bayes group of entries
+	~#
+	class BayesGroup {
 		@entries : Map<String, BayesEntry>;
 		@prob : Float;
 
+		#~
+		Sets the initial probability
+		@param prob initial probability
+		~#
 		New(prob : Float) {
 			@prob := prob;
 			@entries := Map->New()<String, BayesEntry>;
 		}
 
+		#~
+		Adds an entry
+		@param entry entry to add
+		@return true if added, false otherwise
+		~#
 		method : public : AddEntry(entry : BayesEntry) ~ Bool {
 			if(@entries->Has(entry->GetName())) {
 				return false;
@@ -1639,57 +1656,70 @@ acheived := DecisionTree->Matches(2, result)->As(Float);
 			return true;
 		}
 
+		#~
+		Gets entries
+		@return entries
+		~#
 		method : public : GetEntries() ~ Map<String, BayesEntry> {
 			return @entries;
 		}
 
+		#~
+		Gets the initial probability
+		@return probability
+		~#
 		method : public : GetProbability() ~ Float {
 			return @prob;
 		}
 	}
 
 	class NaiveBayes {
-		@left_group : NaiveGroup;
-		@left : Map<String, BayesEntry>;
-		@left_prob : Float;
+		@left : BayesGroup;
+		@right : BayesGroup;
 
-		@right_group : NaiveGroup;
-		@right : Map<String, BayesEntry>;
-		@right_prob : Float;
-
-		New(left : NaiveGroup, right : NaiveGroup) {
-			@left_group := left;
-			@left := left->GetEntries();
-			@left_prob := right->GetProbability();
-
-			@right_group := right;
-			@right := right->GetEntries();
-			@right_prob := right->GetProbability();
+		#~
+		Constructor
+		@param left left group
+		@param right right group
+		~#
+		New(left : BayesGroup, right : BayesGroup) {
+			@left := left;
+			@right := right;
 		}
 
-		method : public : Query(terms : String[]) ~ NaiveGroup {
-			left := Query(terms, @left, @left_prob);
-			right := Query(terms, @right, @right_prob);
-			if(left < 0.0 | right < 0.0 ) {
-				return Nil;
+		#~
+		Query to Naive Bayes
+		@param terms list of term to calculate
+		@return 0 if left, 1 if right, -1 otherwise
+		~#
+		method : public : Query(terms : String[]) ~ Int {
+			left := Query(terms, @left);
+			right := Query(terms, @right);
+
+"left={$left}, right={$right}"->PrintLine();
+
+			if(left = 0.0 | right = 0.0) {
+				return -1;
 			};
 
-# "left={$left}, right={$right}"->PrintLine();
-
-			if(left < right) {
-				return @right_group;
+			if(left > right) {
+				return 0;
 			};
 
-			return @left_group;
+			return 1;
 		}
 
-		method : Query(terms : String[], entries : Map<String, BayesEntry>, prob : Float) ~ Float {
+		method : Query(terms : String[], group : BayesGroup) ~ Float {
+			entries := group->GetEntries();
+			prob := group->GetProbability();
+
 			sum := 0.0;
 			values := entries->GetValues()<BayesEntry>;
 			each(value := values) {
 				sum += value->GetCount();
 			};
 
+			index := 0;
 			results := Map->New()<String, FloatRef>;
 			each(value := values) {
 				if(value->GetCount() = 0) {
@@ -1700,7 +1730,10 @@ acheived := DecisionTree->Matches(2, result)->As(Float);
 				name := value->GetName();
 				result := count / sum;
 				results->Insert(name, result);
-# "{$name}: ({$count}/{$sum})={$result} * {$prob}"->PrintLine();				
+
+# "{$name}: ({$count}/{$sum})={$result} * {$prob}"->PrintLine();
+				
+				index += 1;
 			};
 
 			result :=  0.0;
@@ -1713,10 +1746,7 @@ acheived := DecisionTree->Matches(2, result)->As(Float);
 					else {
 						result *= find;
 					};
-				}
-				else {
-					return -1.0;
-				}
+				};
 			};
 
 			return prob * result;
