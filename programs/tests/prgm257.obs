@@ -2,13 +2,13 @@ use System.ML;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		normal := NaiveGroup->New(8.0 / 12.0);
+		normal := BayesGroup->New(8.0 / 12.0);
 		normal->AddEntry(BayesEntry->New("dear", 8));		
 		normal->AddEntry(BayesEntry->New("friend", 5));
 		normal->AddEntry(BayesEntry->New("lunch", 3));
 		normal->AddEntry(BayesEntry->New("money", 1));
 
-		spam := NaiveGroup->New(4.0 / 12.0);
+		spam := BayesGroup->New(4.0 / 12.0);
 		spam->AddEntry(BayesEntry->New("dear", 2));
 		spam->AddEntry(BayesEntry->New("friend", 1));
 		spam->AddEntry(BayesEntry->New("lunch", 0));
@@ -16,16 +16,6 @@ class Test {
 
 		bayes := NaiveBayes->New(normal, spam);
 		finding := bayes->Query(["dear", "friend"]);
-		
-		if(finding = normal) {
-			"normal"->PrintLine();
-		}
-		else if(finding = spam) {
-			"spam"->PrintLine();
-		}
-		else {
-			"invalid entry"->PrintLine();
-		};
-		
+		finding->PrintLine();		
 	}
 }
