@@ -3,21 +3,21 @@ use System.ML;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		cat := Map->New()<String, BayesElement>;
-		cat->Insert("furry", BayesElement->New("furry", 3));
-		cat->Insert("walks", BayesElement->New("walks", 0));
-		cat->Insert("barks", BayesElement->New("barks", 0));
-		cat->Insert("sleeps", BayesElement->New("sleeps", 3));
-		cat->Insert("meow", BayesElement->New("meow", 4));
+		normal := Map->New()<String, BayesElement>;
+		normal->Insert("dear", BayesElement->New("dear", 8));
+		normal->Insert("friend", BayesElement->New("friend", 5));
+		normal->Insert("lunch", BayesElement->New("lunch", 3));
+		normal->Insert("money", BayesElement->New("money", 1));
+		normal_prob := 8.0 / 12.0;
 
-		dog := Map->New()<String, BayesElement>;
-		dog->Insert("furry", BayesElement->New("furry", 3));
-		dog->Insert("walks", BayesElement->New("walks", 0));
-		dog->Insert("barks", BayesElement->New("barks", 2));
-		dog->Insert("sleeps", BayesElement->New("sleeps", 3));
-		dog->Insert("meow", BayesElement->New("meow", 2));
+		spam := Map->New()<String, BayesElement>;
+		spam->Insert("dear", BayesElement->New("dear", 2));
+		spam->Insert("friend", BayesElement->New("friend", 1));
+		spam->Insert("lunch", BayesElement->New("lunch", 0));
+		spam->Insert("money", BayesElement->New("money", 4));
+		spam_prob := 4.0 / 12.0;
 
-		bt := NaiveBayes->New(cat, dog);
+		bt := NaiveBayes->New(normal, normal_prob, spam, spam_prob);
 		bt->Query();
 	}
 }
