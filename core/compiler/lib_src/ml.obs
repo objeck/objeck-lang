@@ -1274,26 +1274,26 @@ matched_perc := (matched / possible * 100.0)->As(Int);
 	
 ```
 data := BoolMatrixRef->New([
-	[true, false, true]
-	[true, false, true]
-	[true, true, true]
-	[true, true, true]
-	[true, true, true]
-	[true, true, true]
-	[true, true, true]
-	[true, true, true]
-	[false, true, true]
-	[false, true, true]
-	[true, true, false]
-	[true, true, false]
-	[false, true, false]
-	[false, true, false]
-	[false, true, false]
-	[false, true, false]
-	[false, false, false]
-	[false, false, false]
-	[false, false, false]
-	[false, false, false]
+  [true, false, true]
+  [true, false, true]
+  [true, true, true]
+  [true, true, true]
+  [true, true, true]
+  [true, true, true]
+  [true, true, true]
+  [true, true, true]
+  [false, true, true]
+  [false, true, true]
+  [true, true, false]
+  [true, true, false]
+  [false, true, false]
+  [false, true, false]
+  [false, true, false]
+  [false, true, false]
+  [false, false, false]
+  [false, false, false]
+  [false, false, false]
+  [false, false, false]
 ]);
 split_data := data->Split(0.3);
 training_data := split_data[0];
@@ -1673,6 +1673,36 @@ acheived := DecisionTree->Matches(2, result)->As(Float);
 		}
 	}
 
+	#~
+	Naive Bayes ML algorithm
+
+```
+normal := BayesGroup->New(8.0 / 12.0);
+normal->AddEntry(BayesEntry->New("dear", 8));		
+normal->AddEntry(BayesEntry->New("friend", 5));
+normal->AddEntry(BayesEntry->New("lunch", 3));
+normal->AddEntry(BayesEntry->New("money", 1));
+
+spam := BayesGroup->New(4.0 / 12.0);
+spam->AddEntry(BayesEntry->New("dear", 2));
+spam->AddEntry(BayesEntry->New("friend", 1));
+spam->AddEntry(BayesEntry->New("lunch", 0));
+spam->AddEntry(BayesEntry->New("money", 4));
+
+bayes := NaiveBayes->New(normal, spam);
+finding := bayes->Query(["lunch", "money", "money", "money", "money"]);
+
+if(finding = 0) {
+  "normal"->PrintLine();
+}
+else if(finding = 1) {
+  "spam"->PrintLine();	
+}
+else {
+  "invalid"->PrintLine();	
+}	
+	```
+	~#
 	class NaiveBayes {
 		@left : BayesGroup;
 		@right : BayesGroup;
@@ -1696,7 +1726,7 @@ acheived := DecisionTree->Matches(2, result)->As(Float);
 			left := Query(terms, @left);
 			right := Query(terms, @right);
 
-"left={$left}, right={$right}"->PrintLine();
+# "left={$left}, right={$right}"->PrintLine();
 
 			if(left = 0.0 | right = 0.0) {
 				return -1;
