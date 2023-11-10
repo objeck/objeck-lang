@@ -16,13 +16,13 @@ bundle System.ML {
 		@return updated matrix
 		~#
 		function : native : Add(x : Float, b : Float[,]) ~ Float[,] {
-			b_dims := b->Size();
-			b_rows := b_dims[0];
-			b_cols := b_dims[1];
+			right_dims := b->Size();
+			right_rows := right_dims[0];
+			right_cols := right_dims[1];
 
-			c := Float->New[b_rows, b_cols];
-			for(i := 0; i < b_rows; i += 1;) {
-				for(j := 0; j < b_cols; j += 1;) {
+			c := Float->New[right_rows, right_cols];
+			for(i := 0; i < right_rows; i += 1;) {
+				for(j := 0; j < right_cols; j += 1;) {
 					c[i,j] := x + b[i,j];
 				};
 			};
@@ -37,13 +37,13 @@ bundle System.ML {
 		@return updated matrix
 		~#
 		function : native : Add(b : Float[,], x : Float) ~ Float[,] {
-			b_dims := b->Size();
-			b_rows := b_dims[0];
-			b_cols := b_dims[1];
+			right_dims := b->Size();
+			right_rows := right_dims[0];
+			right_cols := right_dims[1];
 
-			c := Float->New[b_rows, b_cols];
-			for(i := 0; i < b_rows; i += 1;) {
-				for(j := 0; j < b_cols; j += 1;) {
+			c := Float->New[right_rows, right_cols];
+			for(i := 0; i < right_rows; i += 1;) {
+				for(j := 0; j < right_cols; j += 1;) {
 					c[i,j] := b[i,j] + x;
 				};
 			};
@@ -62,17 +62,17 @@ bundle System.ML {
 			a_rows := a_dims[0];
 			a_cols := a_dims[1];
 
-			b_dims := b->Size();
-			b_rows := b_dims[0];
-			b_cols := b_dims[1];
+			right_dims := b->Size();
+			right_rows := right_dims[0];
+			right_cols := right_dims[1];
 
-			if( a_rows <> b_rows | a_cols <> b_cols) {
+			if( a_rows <> right_rows | a_cols <> right_cols) {
 				return Nil;
 			};
 
-			c := Float->New[a_rows, b_cols];
+			c := Float->New[a_rows, right_cols];
 			for(i := 0; i < a_rows; i += 1;) {
-				for(j := 0; j < b_cols; j += 1;) {
+				for(j := 0; j < right_cols; j += 1;) {
 					c[i,j] := a[i,j] + b[i,j];
 				};
 			};
@@ -87,13 +87,13 @@ bundle System.ML {
 		@return updated matrix
 		~#
 		function : native : Subtract(x : Float, b : Float[,]) ~ Float[,] {
-			b_dims := b->Size();
-			b_rows := b_dims[0];
-			b_cols := b_dims[1];
+			right_dims := b->Size();
+			right_rows := right_dims[0];
+			right_cols := right_dims[1];
 
-			c := Float->New[b_rows, b_cols];
-			for(i := 0; i < b_rows; i += 1;) {
-				for(j := 0; j < b_cols; j += 1;) {
+			c := Float->New[right_rows, right_cols];
+			for(i := 0; i < right_rows; i += 1;) {
+				for(j := 0; j < right_cols; j += 1;) {
 					c[i,j] := x - b[i,j];
 				};
 			};
@@ -108,13 +108,13 @@ bundle System.ML {
 		@return updated matrix
 		~#
 		function : native : Subtract(b : Float[,], x : Float) ~ Float[,] {
-			b_dims := b->Size();
-			b_rows := b_dims[0];
-			b_cols := b_dims[1];
+			right_dims := b->Size();
+			right_rows := right_dims[0];
+			right_cols := right_dims[1];
 
-			c := Float->New[b_rows, b_cols];
-			for(i := 0; i < b_rows; i += 1;) {
-				for(j := 0; j < b_cols; j += 1;) {
+			c := Float->New[right_rows, right_cols];
+			for(i := 0; i < right_rows; i += 1;) {
+				for(j := 0; j < right_cols; j += 1;) {
 					c[i,j] := b[i,j] - x;
 				};
 			};
@@ -133,17 +133,17 @@ bundle System.ML {
 			a_rows := a_dims[0];
 			a_cols := a_dims[1];
 
-			b_dims := b->Size();
-			b_rows := b_dims[0];
-			b_cols := b_dims[1];
+			right_dims := b->Size();
+			right_rows := right_dims[0];
+			right_cols := right_dims[1];
 
-			if( a_rows <> b_rows | a_cols <> b_cols) {
+			if( a_rows <> right_rows | a_cols <> right_cols) {
 				return Nil;
 			};
 
-			c := Float->New[a_rows, b_cols];
+			c := Float->New[a_rows, right_cols];
 			for(i := 0; i < a_rows; i += 1;) {
-				for(j := 0; j < b_cols; j += 1;) {
+				for(j := 0; j < right_cols; j += 1;) {
 					c[i,j] := a[i,j] - b[i,j];
 				};
 			};
@@ -158,13 +158,13 @@ bundle System.ML {
 		@return updated matrix
 		~#
 		function : native : Multiple(x : Float, b : Float[,]) ~ Float[,] {
-			b_dims := b->Size();
-			b_rows := b_dims[0];
-			b_cols := b_dims[1];
+			right_dims := b->Size();
+			right_rows := right_dims[0];
+			right_cols := right_dims[1];
 
-			c := Float->New[b_rows, b_cols];
-			for(i := 0; i < b_rows; i += 1;) {
-				for(j := 0; j < b_cols; j += 1;) {
+			c := Float->New[right_rows, right_cols];
+			for(i := 0; i < right_rows; i += 1;) {
+				for(j := 0; j < right_cols; j += 1;) {
 					c[i,j] := x * b[i,j];
 				};
 			};
@@ -179,13 +179,13 @@ bundle System.ML {
 		@return updated matrix
 		~#
 		function : native : Multiple(b : Float[,], x : Float) ~ Float[,] {
-			b_dims := b->Size();
-			b_rows := b_dims[0];
-			b_cols := b_dims[1];
+			right_dims := b->Size();
+			right_rows := right_dims[0];
+			right_cols := right_dims[1];
 
-			c := Float->New[b_rows, b_cols];
-			for(i := 0; i < b_rows; i += 1;) {
-				for(j := 0; j < b_cols; j += 1;) {
+			c := Float->New[right_rows, right_cols];
+			for(i := 0; i < right_rows; i += 1;) {
+				for(j := 0; j < right_cols; j += 1;) {
 					c[i,j] := b[i,j] * x;
 				};
 			};
@@ -204,17 +204,17 @@ bundle System.ML {
 			a_rows := a_dims[0];
 			a_cols := a_dims[1];
 
-			b_dims := b->Size();
-			b_rows := b_dims[0];
-			b_cols := b_dims[1];
+			right_dims := b->Size();
+			right_rows := right_dims[0];
+			right_cols := right_dims[1];
 
-			if( a_rows <> b_rows | a_cols <> b_cols) {
+			if( a_rows <> right_rows | a_cols <> right_cols) {
 				return Nil;
 			};
 
-			c := Float->New[a_rows, b_cols];
+			c := Float->New[a_rows, right_cols];
 			for(i := 0; i < a_rows; i += 1;) {
-				for(j := 0; j < b_cols; j += 1;) {
+				for(j := 0; j < right_cols; j += 1;) {
 					c[i,j] := a[i,j] * b[i,j];
 				};
 			};
@@ -229,13 +229,13 @@ bundle System.ML {
 		@return updated matrix
 		~#
 		function : native : Divide(b : Float[,], x : Float) ~ Float[,] {
-			b_dims := b->Size();
-			b_rows := b_dims[0];
-			b_cols := b_dims[1];
+			right_dims := b->Size();
+			right_rows := right_dims[0];
+			right_cols := right_dims[1];
 
-			c := Float->New[b_rows, b_cols];
-			for(i := 0; i < b_rows; i += 1;) {
-				for(j := 0; j < b_cols; j += 1;) {
+			c := Float->New[right_rows, right_cols];
+			for(i := 0; i < right_rows; i += 1;) {
+				for(j := 0; j < right_cols; j += 1;) {
 					c[i,j] := b[i,j] / x;
 				};
 			};
@@ -250,13 +250,13 @@ bundle System.ML {
 		@return updated matrix
 		~#
 		function : native : Divide(x : Float, b : Float[,]) ~ Float[,] {
-			b_dims := b->Size();
-			b_rows := b_dims[0];
-			b_cols := b_dims[1];
+			right_dims := b->Size();
+			right_rows := right_dims[0];
+			right_cols := right_dims[1];
 
-			c := Float->New[b_rows, b_cols];
-			for(i := 0; i < b_rows; i += 1;) {
-				for(j := 0; j < b_cols; j += 1;) {
+			c := Float->New[right_rows, right_cols];
+			for(i := 0; i < right_rows; i += 1;) {
+				for(j := 0; j < right_cols; j += 1;) {
 					c[i,j] := b[i,j] / x;
 				};
 			};
@@ -275,17 +275,17 @@ bundle System.ML {
 			a_rows := a_dims[0];
 			a_cols := a_dims[1];
 
-			b_dims := b->Size();
-			b_rows := b_dims[0];
-			b_cols := b_dims[1];
+			right_dims := b->Size();
+			right_rows := right_dims[0];
+			right_cols := right_dims[1];
 
-			if( a_rows <> b_rows | a_cols <> b_cols) {
+			if( a_rows <> right_rows | a_cols <> right_cols) {
 				return Nil;
 			};
 
-			c := Float->New[a_rows, b_cols];
+			c := Float->New[a_rows, right_cols];
 			for(i := 0; i < a_rows; i += 1;) {
-				for(j := 0; j < b_cols; j += 1;) {
+				for(j := 0; j < right_cols; j += 1;) {
 					c[i,j] := a[i,j] / b[i,j];
 				};
 			};
@@ -324,22 +324,22 @@ bundle System.ML {
 			a_rows := a_dims[0];
 			a_cols := a_dims[1];
 
-			b_dims := b->Size();
-			b_rows := b_dims[0];
-			b_cols := b_dims[1];
+			right_dims := b->Size();
+			right_rows := right_dims[0];
+			right_cols := right_dims[1];
 
-			if(a_cols <> b_rows & a_rows <> b_cols) {
+			if(a_cols <> right_rows & a_rows <> right_cols) {
 				return Nil;
 			};
 
-			c := Float->New[a_rows, b_cols];
+			c := Float->New[a_rows, right_cols];
 			for(a_col := 0; a_col < a_rows; a_col += 1;) {
-				for(b_col := 0; b_col < b_cols; b_col += 1;) {
+				for(right_col := 0; right_col < right_cols; right_col += 1;) {
 					cx := 0.0;
-					for(x_col := 0; x_col < b_rows; x_col += 1;) {
-						cx += a[a_col, x_col] * b[x_col, b_col];
+					for(x_col := 0; x_col < right_rows; x_col += 1;) {
+						cx += a[a_col, x_col] * b[x_col, right_col];
 					};
-					c[a_col, b_col] := cx;
+					c[a_col, right_col] := cx;
 				};
 			};
 
@@ -361,13 +361,13 @@ bundle System.ML {
 		@return updated matrix
 		~#
 		function : native : Sigmoid(b : Float[,]) ~ Float[,] {
-			b_dims := b->Size();
-			b_rows := b_dims[0];
-			b_cols := b_dims[1];
+			right_dims := b->Size();
+			right_rows := right_dims[0];
+			right_cols := right_dims[1];
 
-			c := Float->New[b_rows, b_cols];
-			for(i := 0; i < b_rows; i += 1;) {
-				for(j := 0; j < b_cols; j += 1;) {
+			c := Float->New[right_rows, right_cols];
+			for(i := 0; i < right_rows; i += 1;) {
+				for(j := 0; j < right_cols; j += 1;) {
 					c[i,j] := Sigmoid(b[i,j]);
 				};
 			};
@@ -386,22 +386,22 @@ bundle System.ML {
 			a_rows := a_dims[0];
 			a_cols := a_dims[1];
 
-			b_dims := b->Size();
-			b_rows := b_dims[0];
-			b_cols := b_dims[1];
+			right_dims := b->Size();
+			right_rows := right_dims[0];
+			right_cols := right_dims[1];
 			
-			if(a_cols <> b_rows & a_rows <> b_cols) {
+			if(a_cols <> right_rows & a_rows <> right_cols) {
 				return Nil;
 			};
 
-			c := Float->New[a_rows, b_cols];
+			c := Float->New[a_rows, right_cols];
 			for(a_col := 0; a_col < a_rows; a_col += 1;) {
-				for(b_col := 0; b_col < b_cols; b_col += 1;) {
+				for(right_col := 0; right_col < right_cols; right_col += 1;) {
 					cx := 0.0;
-					for(x_col := 0; x_col < b_rows; x_col += 1;) {
-						cx += a[a_col, x_col] * b[x_col, b_col];
+					for(x_col := 0; x_col < right_rows; x_col += 1;) {
+						cx += a[a_col, x_col] * b[x_col, right_col];
 					};
-					c[a_col, b_col] := Sigmoid(cx);
+					c[a_col, right_col] := Sigmoid(cx);
 				};
 			};
 
@@ -465,32 +465,32 @@ bundle System.ML {
 		@return copied matrix
 		~#
 		function : native : Split(b : Float[,], offset : Int, count : Int, is_row : Bool) ~ Float[,] {
-			b_dims := b->Size();
-			b_rows := b_dims[0];
-			b_cols := b_dims[1];
+			right_dims := b->Size();
+			right_rows := right_dims[0];
+			right_cols := right_dims[1];
 			
 			c : Float[,];
 			if(is_row) {
-				if(count + offset <= 0 | count + offset > b_rows) {
+				if(count + offset <= 0 | count + offset > right_rows) {
 					return Nil;
 				};
 
-				c := Float->New[count, b_cols];
+				c := Float->New[count, right_cols];
 				count := count + offset;
 				for(row := offset; row < count; row += 1;) {
-					for(col := 0; col < b_cols; col += 1;) {
+					for(col := 0; col < right_cols; col += 1;) {
 						c[row - offset, col] := b[row, col];
 					};
 				};
 			}
 			else {
-				if(count + offset <= 0 | count + offset > b_cols) {
+				if(count + offset <= 0 | count + offset > right_cols) {
 					return Nil;
 				};
 
-				c := Float->New[b_rows, count];
+				c := Float->New[right_rows, count];
 				count := count + offset;
-				for(row := 0; row < b_rows; row += 1;) {
+				for(row := 0; row < right_rows; row += 1;) {
 					for(col := offset; col < count; col += 1;) {
 						c[row, col - offset] := b[row, col];
 					};
@@ -512,17 +512,17 @@ bundle System.ML {
 			a_rows := a_dims[0];
 			a_cols := a_dims[1];
 
-			b_dims := b->Size();
-			b_rows := b_dims[0];
-			b_cols := b_dims[1];
+			right_dims := b->Size();
+			right_rows := right_dims[0];
+			right_cols := right_dims[1];
 
 			c : Float[,];
 			if(is_row) {
-				if(a_cols <> b_cols) {
+				if(a_cols <> right_cols) {
 					return Nil;
 				};
 
-				c_rows := a_rows + b_rows;
+				c_rows := a_rows + right_rows;
 				c := Float->New[c_rows, a_cols];
 
 				for(row := 0; row < a_rows; row += 1;) {
@@ -531,18 +531,18 @@ bundle System.ML {
 					};
 				};
 
-				for(row := 0; row < b_rows; row += 1;) {
-					for(col := 0; col < b_cols; col += 1;) {
+				for(row := 0; row < right_rows; row += 1;) {
+					for(col := 0; col < right_cols; col += 1;) {
 						c[row + a_rows, col] := b[row, col];
 					};
 				};
 			}
 			else {
-				if(a_rows <> b_rows) {
+				if(a_rows <> right_rows) {
 					return Nil;
 				};
 
-				c_cols := a_cols + b_cols;
+				c_cols := a_cols + right_cols;
 				c := Float->New[a_rows, c_cols];
 
 				for(row := 0; row < a_rows; row += 1;) {
@@ -551,8 +551,8 @@ bundle System.ML {
 					};
 				};
 
-				for(row := 0; row < b_rows; row += 1;) {
-					for(col := 0; col < b_cols; col += 1;) {
+				for(row := 0; row < right_rows; row += 1;) {
+					for(col := 0; col < right_cols; col += 1;) {
 						c[row, col + a_cols] := b[row, col];
 					};
 				};
@@ -1583,7 +1583,10 @@ acheived := DecisionTree->Matches(2, result)->As(Float);
 		}
 	}
 
-	class BayesElement {
+	#~
+	TODO
+	~#
+	class BayesEntry {
 		@name : String;
 		@count : Int;
 		@bayes : Float;
@@ -1618,85 +1621,105 @@ acheived := DecisionTree->Matches(2, result)->As(Float);
 		}
 	}
 
-	#~
-	TODO
-	~#
+	class NaiveGroup {
+		@entries : Map<String, BayesEntry>;
+		@prob : Float;
+
+		New(prob : Float) {
+			@prob := prob;
+			@entries := Map->New()<String, BayesEntry>;
+		}
+
+		method : public : AddEntry(entry : BayesEntry) ~ Bool {
+			if(@entries->Has(entry->GetName())) {
+				return false;
+			};
+
+			@entries->Insert(entry->GetName(), entry);
+			return true;
+		}
+
+		method : public : GetEntries() ~ Map<String, BayesEntry> {
+			return @entries;
+		}
+
+		method : public : GetProbability() ~ Float {
+			return @prob;
+		}
+	}
+
 	class NaiveBayes {
-		@a : Map<String, BayesElement>;
-		@a_prob : Float;
+		@left_group : NaiveGroup;
+		@left : Map<String, BayesEntry>;
+		@left_prob : Float;
 
-		@b : Map<String, BayesElement>;
-		@b_prob : Float;
+		@right_group : NaiveGroup;
+		@right : Map<String, BayesEntry>;
+		@right_prob : Float;
 
-		New(a : Map<String, BayesElement>, a_prob : Float, b : Map<String, BayesElement>, b_prob : Float) {
-			@a := a;
-			@b := b;
-			@a_prob := a_prob;
-			@b_prob := b_prob;
+		New(left : NaiveGroup, right : NaiveGroup) {
+			@left_group := left;
+			@left := left->GetEntries();
+			@left_prob := right->GetProbability();
+
+			@right_group := right;
+			@right := right->GetEntries();
+			@right_prob := right->GetProbability();
 		}
 
-		method : public : Query() ~ Map<String, BayesElement> {
-			sum := 0.0;
-			a_values := @a->GetValues()<BayesElement>;
-			each(a_value := a_values) {
-				sum += a_value->GetCount();
+		method : public : Query(terms : String[]) ~ NaiveGroup {
+			left := Query(terms, @left, @left_prob);
+			right := Query(terms, @right, @right_prob);
+			if(left < 0.0 | right < 0.0 ) {
+				return Nil;
 			};
 
-			index := 0;
-			a_results := Float->New[4];
-			each(a_value := a_values) {
-				if(a_value->GetCount() = 0) {
-					a_value->SetCount(1);
-					sum += a_values->Size();
-				};
-				a_count := a_value->GetCount()
-				a_results[index] := a_count / sum;
-				a_name := a_value->GetName();
+# "left={$left}, right={$right}"->PrintLine();
 
-if(index = 0 | index = 1) {
-"* "->Print();
-};
-a_bayes := a_results[index];	
-"{$a_name}: ({$a_count}/{$sum})={$a_bayes} * {$@a_prob}"->PrintLine();
-
-				index += 1;
+			if(left < right) {
+				return @right_group;
 			};
 
-foo := @a_prob * a_results[0] * a_results[1];
-"={$foo}"->PrintLine();
-
-			"---"->PrintLine();
-
-			sum := 0.0;
-			b_values := @b->GetValues()<BayesElement>;
-			each(b_value := b_values) {
-				sum += b_value->GetCount();
-			};
-
-			index := 0;
-			b_results := Float->New[4];
-			each(b_value := b_values) {
-				if(b_value->GetCount() = 0) {
-					b_value->SetCount(1);
-					sum += b_values->Size();
-				};
-				b_count := b_value->GetCount()
-				b_results[index] := b_count / sum;
-				b_name := b_value->GetName();
-
-if(index = 0 | index = 1) {
-"* "->Print();
-};
-b_bayes := b_results[index];	
-"{$b_name}: ({$b_count}/{$sum})={$b_bayes} * {$@b_prob}"->PrintLine();
-
-				index += 1;
-			};
-
-foo := @b_prob * b_results[0] * b_results[1];
-"={$foo}"->PrintLine();
-
-			return Nil;
+			return @left_group;
 		}
+
+		method : Query(terms : String[], entries : Map<String, BayesEntry>, prob : Float) ~ Float {
+			sum := 0.0;
+			values := entries->GetValues()<BayesEntry>;
+			each(value := values) {
+				sum += value->GetCount();
+			};
+
+			results := Map->New()<String, FloatRef>;
+			each(value := values) {
+				if(value->GetCount() = 0) {
+					value->SetCount(1);
+					sum += values->Size();
+				};
+				count := value->GetCount()
+				name := value->GetName();
+				result := count / sum;
+				results->Insert(name, result);
+# "{$name}: ({$count}/{$sum})={$result} * {$prob}"->PrintLine();				
+			};
+
+			result :=  0.0;
+			each(term := terms) {
+				find := results->Find(term);
+				if(find <> Nil) {
+					if(result = 0.0) {
+						result := find;
+					}
+					else {
+						result *= find;
+					};
+				}
+				else {
+					return -1.0;
+				}
+			};
+
+			return prob * result;
+		}		
 	}
 }
