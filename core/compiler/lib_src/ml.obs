@@ -1653,8 +1653,11 @@ acheived := DecisionTree->Matches(2, result)->As(Float);
 				a_results[index] := a_count / sum;
 				a_name := a_value->GetName();
 
+if(index = 0 | index = 1) {
+"* "->Print();
+};
 a_bayes := a_results[index];	
-"{$@a_prob}: ({$a_count}/{$sum}) {$a_name}: {$a_bayes}"->PrintLine();
+"{$a_name}: ({$a_count}/{$sum})={$a_bayes} * {$@a_prob}"->PrintLine();
 
 				index += 1;
 			};
@@ -1681,8 +1684,11 @@ foo := @a_prob * a_results[0] * a_results[1];
 				b_results[index] := b_count / sum;
 				b_name := b_value->GetName();
 
+if(index = 0 | index = 1) {
+"* "->Print();
+};
 b_bayes := b_results[index];	
-"{$@b_prob}: ({$b_count}/{$sum}) {$b_name}: {$b_bayes}"->PrintLine();
+"{$b_name}: ({$b_count}/{$sum})={$b_bayes} * {$@b_prob}"->PrintLine();
 
 				index += 1;
 			};
