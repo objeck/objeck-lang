@@ -1622,14 +1622,17 @@ acheived := DecisionTree->Matches(2, result)->As(Float);
 	TODO
 	~#
 	class NaiveBayes {
-		@distro : Float;
 		@a : Map<String, BayesElement>;
+		@a_prob : Float;
+
 		@b : Map<String, BayesElement>;
-	
-		New(a : Map<String, BayesElement>, b : Map<String, BayesElement>) {
+		@b_prob : Float;
+
+		New(a : Map<String, BayesElement>, a_prob : Float, b : Map<String, BayesElement>, b_prob : Float) {
 			@a := a;
 			@b := b;
-			@distro := 0.60;
+			@a_prob := a_prob;
+			@b_prob := b_prob;
 		}
 
 		method : public : Query() ~ Map<String, BayesElement> {
@@ -1639,15 +1642,25 @@ acheived := DecisionTree->Matches(2, result)->As(Float);
 				sum += a_value->GetCount();
 			};
 
+			index := 0;
+			a_results := Float->New[4];
 			each(a_value := a_values) {
 				if(a_value->GetCount() = 0) {
 					a_value->SetCount(1);
 					sum += a_values->Size();
 				};
-				a_bayes := @distro * (a_value->GetCount() / sum);
+				a_count := a_value->GetCount()
+				a_results[index] := a_count / sum;
 				a_name := a_value->GetName();
-"{$a_name}: {$a_bayes}"->PrintLine();
+
+a_bayes := a_results[index];	
+"{$@a_prob}: ({$a_count}/{$sum}) {$a_name}: {$a_bayes}"->PrintLine();
+
+				index += 1;
 			};
+
+foo := @a_prob * a_results[0] * a_results[1];
+"={$foo}"->PrintLine();
 
 			"---"->PrintLine();
 
@@ -1657,15 +1670,25 @@ acheived := DecisionTree->Matches(2, result)->As(Float);
 				sum += b_value->GetCount();
 			};
 
+			index := 0;
+			b_results := Float->New[4];
 			each(b_value := b_values) {
 				if(b_value->GetCount() = 0) {
 					b_value->SetCount(1);
 					sum += b_values->Size();
 				};
-				b_bayes := (1 - @distro) * (b_value->GetCount() / sum);
+				b_count := b_value->GetCount()
+				b_results[index] := b_count / sum;
 				b_name := b_value->GetName();
-"{$b_name}: {$b_bayes}"->PrintLine();
+
+b_bayes := b_results[index];	
+"{$@b_prob}: ({$b_count}/{$sum}) {$b_name}: {$b_bayes}"->PrintLine();
+
+				index += 1;
 			};
+
+foo := @b_prob * b_results[0] * b_results[1];
+"={$foo}"->PrintLine();
 
 			return Nil;
 		}
