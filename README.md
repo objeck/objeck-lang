@@ -30,7 +30,7 @@ Want to get started? Take a look at the [language guide](https://objeck.org/gett
     * ~~Neural Networks~~
     * ~~Decision Trees~~
     *  ~~Random Forests~~
-    * Naive Bayes
+    * ~~Naive Bayes~~
     * KNN
     
 * Under discovery
