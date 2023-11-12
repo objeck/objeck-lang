@@ -25,7 +25,7 @@ class Test {
 			"normal"];
 
 		query := [57.0, 170.0];
-		
+
 		"--- Query ---"->PrintLine();
 		query_str := query->ToString();
 		"k={$k}, query={$query_str}"->PrintLine()
@@ -43,7 +43,7 @@ class Test {
 			};
 			row_str := row->ToString();
 			dist := EuclideanDistance(row, query);
-			results->AddBack(Result->New(dist, i));
+			results->AddBack(Result->New(dist, i, categories[i]));
 			"{$row_str}: {$dist}"->PrintLine();
 		};
 
@@ -52,10 +52,7 @@ class Test {
 		results->Sort();
 		each(i : k) {
 			result := results->Get(i);
-			index := result->GetRow();
-			dist := result->GetDistance();
-			category := categories[index]
-			"{$index}: knn={$dist}, category={$category}"->PrintLine();
+			"{$result}"->PrintLine();
 		};
 	}
 
@@ -78,10 +75,12 @@ class Test {
 class Result implements Compare {
 	@dist : Float;
 	@row : Int;
+	@cat : String;
 
-	New(dist : Float, row : Int) {
+	New(dist : Float, row : Int, cat : String) {
 		@dist := dist;
 		@row := row;
+		@cat := cat;
 	}
 
 	method : public : Compare(rhs:System.Compare) ~ Int {
@@ -89,12 +88,12 @@ class Result implements Compare {
 			return -1;
 		};
 		
-		right : Result := rhs->As(Result);
+		right := rhs->As(Result);
 		return Float->Compare(right->GetDistance(), @dist)
 	}
 
 	method : public : HashID() ~ Int {
-		return 0;
+		return @dist * 1000000;
 	}
 
 	method : public : GetDistance() ~ Float {
@@ -105,7 +104,11 @@ class Result implements Compare {
 		return @row;
 	}
 
+	method : public : GetCategory() ~ String {
+		return @cat;
+	}
+
 	method : public : ToString() ~ String {
-		return "{$@row}={$@dist}";
+		return "{$@row}: knn={$@dist}, category={$@cat}";
 	}
 }
