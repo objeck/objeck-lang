@@ -43,7 +43,7 @@ class Test {
 		};
 	}
 
-	function : EuclideanDistance(a : Float[], b : Float[]) ~ Float {
+	function : native : EuclideanDistance(a : Float[], b : Float[]) ~ Float {
 		if(a->Size() <> b->Size()) {
 			return 0.0;
 		};
