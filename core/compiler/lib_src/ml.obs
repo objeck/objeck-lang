@@ -1798,7 +1798,7 @@ matrix := [
   [57.0, 173.0]
   [55.0, 170.0]];
 
-categories := [
+labels := [
   "underweight", 
   "normal", 
   "normal", 
@@ -1809,7 +1809,7 @@ categories := [
   "normal", 
   "normal"];
 
-knn := KNearestNeighbors->New(matrix, categories);
+knn := KNearestNeighbors->New(matrix, labels);
 nearest := knn->Query(3, [57.0, 170.0]);
 each(neighbor := nearest) {
   neighbor->ToString()->PrintLine();
@@ -1818,16 +1818,16 @@ each(neighbor := nearest) {
 ~#
 	class KNearestNeighbors {
 		@matrix : Float[,];
-		@categories : String[];
+		@labels : String[];
 
 		#~
 		Constructor.
 		@param matrix input matrix
-		@param categories categories labels
+		@param labels categories labels
 		~#
-		New(matrix : Float[,], categories : String[]) {
+		New(matrix : Float[,], labels : String[]) {
 			@matrix := matrix;
-			@categories := categories;
+			@labels := labels;
 		}
 
 		#~
@@ -1852,7 +1852,7 @@ each(neighbor := nearest) {
 					row[j] := @matrix[i,j];
 				};
 				dist := EuclideanDistance(row, query);
-				distances->AddBack(KNeighbor->New(dist, i, @categories[i]));
+				distances->AddBack(KNeighbor->New(dist, i, @labels[i]));
 			};
 
 			distances->Sort();			
