@@ -1,15 +1,22 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
+		Float->Compare(0.50, 0.45)->PrintLine();
+		Float->Compare(0.45, 0.50)->PrintLine();
+		Float->Compare(0.45, 0.45)->PrintLine();
+
+		Int->Compare(45, 45)->PrintLine();
+
+
 		k := 3;
 
 		matrix := [
 			[51.0,  167.0]
+			[58.0, 169.0]
 			[62.0, 182.0]
 			[69.0, 176.0]
 			[64.0, 173.0]
 			[65.0, 172.0]
 			[56.0, 174.0]
-			[58.0, 169.0]
 			[57.0, 173.0]
 			[55.0, 170.0]];
 
@@ -28,7 +35,7 @@ class Test {
 
 		"--- Query ---"->PrintLine();
 		query_str := query->ToString();
-		"k={$k}, query={$query_str}"->PrintLine();
+		"k={$k}, query={$query_str}"->PrintLine()
 		
 		"\n--- Data ---"->PrintLine();
 		dims := matrix->Size();
@@ -50,7 +57,7 @@ class Test {
 		"\n--- K-Results ---"->PrintLine();
 
 		results->Sort();
-		each(i : k) {
+		each(i : results) {
 			result := results->Get(i);
 			"{$result}"->PrintLine();
 		};
@@ -87,13 +94,22 @@ class Result implements Compare {
 		if(@self->GetClassID() <> rhs->GetClassID()) {
 			return -1;
 		};
-		
-		right := rhs->As(Result);
-		return Float->Compare(right->GetDistance(), @dist)
+		right : Result := rhs->As(Result);
+		bar := right->GetDistance();
+		# foo := Float->Compare(bar, @dist);
+
+		if(bar < @dist) {
+			return -1;
+		}
+		else if(bar > @dist) {
+			return 1;
+		};
+
+		return 0;
 	}
 
 	method : public : HashID() ~ Int {
-		return @dist * 1000000;
+		return 0;
 	}
 
 	method : public : GetDistance() ~ Float {
