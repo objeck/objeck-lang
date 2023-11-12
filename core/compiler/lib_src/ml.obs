@@ -1546,9 +1546,6 @@ acheived := DecisionTree->Matches(2, result)->As(Float);
 		}
 	}
 
-	#~
-	Split tree node
-	~#
 	class Split {
 		@index : Int;
 		@weighted_gini : Float;
@@ -1558,31 +1555,19 @@ acheived := DecisionTree->Matches(2, result)->As(Float);
 			@weighted_gini := weighted_gini;
 		}
 
-		#~
-		Gets the weighted Gini value
-		@return weighted Gini value
-		~#
 		method : public : GetWeightedGini() ~ Float {
 			return @weighted_gini;
 		}
 
-		#~
-		Gets the test index
-		@return test index
-		~#
 		method : public : GetIndex() ~ Int {
 			return @index;
 		}
 
-		#~
-		Returns the string representation 
-		@return string representation 
-		~#
 		method : public : ToString() ~ String {
 			return "index={$@index},weighted_gini={$@weighted_gini}";
 		}
 	}
-
+	
 	#~
 	Naive Bayes entry of term with counts
 	~#
