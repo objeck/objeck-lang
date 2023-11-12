@@ -17,12 +17,12 @@ class Test {
 		test_str := test->ToString();
 		"k={$k}, query={$test_str}"->PrintLine()
 		
-		"--- Data ---"->PrintLine();
+		"\n--- Data ---"->PrintLine();
 		dims := matrix->Size();
 		rows := dims[0];
 		cols := dims[1];
 
-		results := Collection.CompareVector->New()<FloatRef>;
+		results := Collection.CompareVector->New()<Result>;
 		row := Float->New[cols];	
 		each(i : rows) {
 			each(j : cols) {
@@ -30,16 +30,16 @@ class Test {
 			};
 			row_str := row->ToString();
 			dist := EuclideanDistance(row, test);
-			results->AddBack(dist);
+			results->AddBack(Result->New(dist, i));
 			"{$row_str}: {$dist}"->PrintLine();
 		};
 
-		"--- K-Results ---"->PrintLine();
+		"\n--- K-Results ---"->PrintLine();
 
 		results->Sort();
 		each(i : k) {
-			result := results->Get(i)->Get();
-			"{$i}: {$result}"->PrintLine();
+			result := results->Get(i);
+			"{$result}"->PrintLine();
 		};
 	}
 
@@ -56,5 +56,41 @@ class Test {
 		};
 
 		return total->Sqrt();
+	}
+}
+
+class Result implements Compare {
+	@dist : Float;
+	@row : Int;
+#	@category : String;
+
+	New(dist : Float, row : Int) {
+		@dist := dist;
+		@row := row;
+	}
+
+	method : public : Compare(rhs:System.Compare) ~ Int {
+		if(@self->GetClassID() <> rhs->GetClassID()) {
+			return -1;
+		};
+		
+		right : Result := rhs->As(Result);
+		return Float->Compare(right->GetDistance(), @dist)
+	}
+
+	method : public : HashID() ~ Int {
+		return 0;
+	}
+
+	method : public : GetDistance() ~ Int {
+		return @dist;
+	}
+
+	method : public : GetRow() ~ Int {
+		return @row;
+	}
+
+	method : public : ToString() ~ String {
+		return "{$@row}={$@dist}";
 	}
 }
