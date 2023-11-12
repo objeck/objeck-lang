@@ -1,5 +1,7 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
+		k := 3;
+
 		matrix := [
 			[51.0,  167.0]
 			[62.0, 182.0]
@@ -22,12 +24,11 @@ class Test {
 			"normal", 
 			"normal"];
 
-		test := [57.0, 170.0];
-		k := 3;
-
-		"--- Test ---"->PrintLine();
-		test_str := test->ToString();
-		"k={$k}, query={$test_str}"->PrintLine()
+		query := [57.0, 170.0];
+		
+		"--- Query ---"->PrintLine();
+		query_str := query->ToString();
+		"k={$k}, query={$query_str}"->PrintLine()
 		
 		"\n--- Data ---"->PrintLine();
 		dims := matrix->Size();
@@ -41,7 +42,7 @@ class Test {
 				row[j] := matrix[i,j];
 			};
 			row_str := row->ToString();
-			dist := EuclideanDistance(row, test);
+			dist := EuclideanDistance(row, query);
 			results->AddBack(Result->New(dist, i));
 			"{$row_str}: {$dist}"->PrintLine();
 		};
