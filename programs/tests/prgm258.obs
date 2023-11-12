@@ -10,6 +10,18 @@ class Test {
 			[58.0, 169.0]
 			[57.0, 173.0]
 			[55.0, 170.0]];
+
+		categories := [
+			"underweight", 
+			"normal", 
+			"normal", 
+			"normal", 
+			"normal", 
+			"underweight", 
+			"normal", 
+			"normal", 
+			"normal"];
+
 		test := [57.0, 170.0];
 		k := 3;
 
@@ -39,7 +51,10 @@ class Test {
 		results->Sort();
 		each(i : k) {
 			result := results->Get(i);
-			"{$result}"->PrintLine();
+			index := result->GetRow();
+			dist := result->GetDistance();
+			category := categories[index]
+			"{$index}: knn={$dist}, category={$category}"->PrintLine();
 		};
 	}
 
@@ -62,7 +77,6 @@ class Test {
 class Result implements Compare {
 	@dist : Float;
 	@row : Int;
-#	@category : String;
 
 	New(dist : Float, row : Int) {
 		@dist := dist;
@@ -82,7 +96,7 @@ class Result implements Compare {
 		return 0;
 	}
 
-	method : public : GetDistance() ~ Int {
+	method : public : GetDistance() ~ Float {
 		return @dist;
 	}
 
