@@ -1,19 +1,49 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		x1 := 3.0; x2 := 4.0;
-		y1 := 4.0; y2 := 3.0;
-		PointDistance(x1, y1, x2, y2)->PrintLine();
+		matrix := [
+			[51.0,  167.0]
+			[62.0, 182.0]
+			[69.0, 176.0]
+			[64.0, 173.0]
+			[65.0, 172.0]
+			[56.0, 174.0]
+			[58.0, 169.0]
+			[57.0, 173.0]
+			[55.0, 170.0]];
+		test := [57.0, 170.0];
+		k := 3;
 
-		x := [3.0, 4.0];
-		y := [4.0, 3.0];
-		NDistance(x, y)->PrintLine();
+		"--- Test ---"->PrintLine();
+		test_str := test->ToString();
+		"k={$k}, query={$test_str}"->PrintLine()
+		
+		"--- Data ---"->PrintLine();
+		dims := matrix->Size();
+		rows := dims[0];
+		cols := dims[1];
+
+		results := Collection.CompareVector->New()<FloatRef>;
+		row := Float->New[cols];	
+		each(i : rows) {
+			each(j : cols) {
+				row[j] := matrix[i,j];
+			};
+			row_str := row->ToString();
+			dist := EuclideanDistance(row, test);
+			results->AddBack(dist);
+			"{$row_str}: {$dist}"->PrintLine();
+		};
+
+		"--- K-Results ---"->PrintLine();
+
+		results->Sort();
+		each(i : k) {
+			result := results->Get(i)->Get();
+			"{$i}: {$result}"->PrintLine();
+		};
 	}
 
-	function : PointDistance(x1 : Float, y1 : Float, x2 : Float, y2 : Float) ~ Float {
-		return Float->Sqrt( (y2 - y1) * (y2 - y1) + (x2 - x1) * (x2 - x1) );
-	}
-
-	function : NDistance(a : Float[], b : Float[]) ~ Float {
+	function : EuclideanDistance(a : Float[], b : Float[]) ~ Float {
 		if(a->Size() <> b->Size()) {
 			return 0.0;
 		};
