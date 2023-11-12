@@ -1,11 +1,15 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		Float->Compare(0.50, 0.45)->PrintLine();
-		Float->Compare(0.45, 0.50)->PrintLine();
-		Float->Compare(0.45, 0.45)->PrintLine();
+#		Float->Compare(0.50, 0.45)->PrintLine();
+#		Float->Compare(0.45, 0.50)->PrintLine();
+#		Float->Compare(0.45, 0.45)->PrintLine();
 
-		Int->Compare(45, 45)->PrintLine();
+#		0.0->Compare(0.3)->PrintLine();
+		Float->Compare(0.2, 0.9)->PrintLine();
+		Float->Compare(0.9, 0.2)->PrintLine();
 
+		(0.3 <= 0.2)->PrintLine();
+		(0.3 > 0.2)->PrintLine();
 
 		k := 3;
 
