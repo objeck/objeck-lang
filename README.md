@@ -29,9 +29,9 @@ Want to get started? Take a look at the [language guide](https://objeck.org/gett
   * ML algorithms
     * ~~Neural Networks~~
     * ~~Decision Trees~~
-    *  ~~Random Forests~~
+    * ~~Random Forests~~
     * ~~Naive Bayes~~
-    * KNN
+    * ~~KNN~~
     
 * Under discovery
   * Switch for [JIT support](https://github.com/objeck/objeck-lang/tree/master/core/vm/arch/jit)
