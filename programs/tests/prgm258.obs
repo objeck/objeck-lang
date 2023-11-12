@@ -28,7 +28,7 @@ class Test {
 
 		"--- Query ---"->PrintLine();
 		query_str := query->ToString();
-		"k={$k}, query={$query_str}"->PrintLine()
+		"k={$k}, query={$query_str}"->PrintLine();
 		
 		"\n--- Data ---"->PrintLine();
 		dims := matrix->Size();
