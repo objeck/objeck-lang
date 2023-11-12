@@ -1785,7 +1785,7 @@ bundle System {
 		@param r right compare object
 		@return 0 if equal, -1 if types differ, 1 if equal
 		~#
-		function : native : Compare(l : Float, r : Float) ~ Int {
+		function : Compare(l : Float, r : Float) ~ Int {
 			r := 0;
 
 			if(l < r) {
