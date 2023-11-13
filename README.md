@@ -37,7 +37,7 @@ Want to get started? Take a look at the [language guide](https://objeck.org/gett
     * ~~Neural Networks~~
     * ~~Decision Trees~~ 
     
-* Under discovery
+* Enqueue
   * Command line toggle for [JIT support](https://github.com/objeck/objeck-lang/tree/master/core/vm/arch/jit)
   * [UI toolkit](https://github.com/objeck/objeck-lang/tree/master/core/lib/experimental/gtk)
   * Enhanced expressiveness
