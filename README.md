@@ -25,19 +25,22 @@ class Hello {
 Want to get started? Take a look at the [language guide](https://objeck.org/getting_started.html) and [code examples](https://github.com/objeck/objeck-lang/tree/master/programs/examples). If you want to contribute, start with the [system architecture](https://github.com/objeck/objeck-lang/tree/master/core).
 
 ## Latest
-* v2023.11.x
-  * ML algorithms
-    * ~~Neural Networks~~
-    * ~~Decision Trees~~
+* ML algorithms
+  * v2023.11.2
+    * K-means
+    * SVM
+  * v2023.11.1
     * ~~Random Forests~~
     * ~~Naive Bayes~~
     * ~~KNN~~
+  * v2023.11.0
+    * ~~Neural Networks~~
+    * ~~Decision Trees~~ 
     
 * Under discovery
-  * Switch for [JIT support](https://github.com/objeck/objeck-lang/tree/master/core/vm/arch/jit)
+  * Command line toggle for [JIT support](https://github.com/objeck/objeck-lang/tree/master/core/vm/arch/jit)
   * [UI toolkit](https://github.com/objeck/objeck-lang/tree/master/core/lib/experimental/gtk)
   * Enhanced expressiveness
-  * Remote objects
 
 ## Features
 * Modern object-oriented and functional
