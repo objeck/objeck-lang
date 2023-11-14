@@ -129,7 +129,7 @@ value->PrintLine();
 map := Collection.Map->New()<IntRef, String>;
 map->Insert(415, "San Francisco");
 map->Insert(510, "Oakland");
-map->Insert(925, "East Bay");
+map->Insert(408, "Sunnyvale");
 map->ToString()->PrintLine();
 ```
 
