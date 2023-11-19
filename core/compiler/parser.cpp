@@ -406,6 +406,11 @@ void Parser::ParseBundle(int depth)
       if(static_uses.empty()) {
         ProcessError(L"Expected 'use function' arguments", TOKEN_SEMI_COLON);
       }
+
+      // semi-colon at the end of block statements, optional
+      if(Match(TOKEN_SEMI_COLON)) {
+        NextToken();
+      }
     }
   }
 
