@@ -71,12 +71,19 @@ int main(int argc, char* argv[])
 
   if(argc >= 3) {
 #ifdef _WIN32
-    
     WSADATA data;
     if(WSAStartup(MAKEWORD(2, 2), &data)) {
       std::wcerr << L"Unable to load Winsock 2.2!" << std::endl;
       exit(1);
     }
+
+    // set to efficiency mode
+    SetPriorityClass(GetCurrentProcess(), IDLE_PRIORITY_CLASS);
+    PROCESS_POWER_THROTTLING_STATE PowerThrottling = { 0 };
+    PowerThrottling.Version = PROCESS_POWER_THROTTLING_CURRENT_VERSION;
+    PowerThrottling.ControlMask = PROCESS_POWER_THROTTLING_EXECUTION_SPEED;
+    PowerThrottling.StateMask = PROCESS_POWER_THROTTLING_EXECUTION_SPEED;
+    SetProcessInformation(GetCurrentProcess(), ProcessPowerThrottling, &PowerThrottling, sizeof(PowerThrottling));
 #endif
 
     std::wstring cmd_line;
