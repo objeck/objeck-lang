@@ -178,6 +178,15 @@ void SetEnv()
     std::wcerr << "Unable to initialize I/O subsystem" << std::endl;
     exit(1);
   }
+
+  // set to efficiency mode
+  SetPriorityClass(GetCurrentProcess(), IDLE_PRIORITY_CLASS);
+  PROCESS_POWER_THROTTLING_STATE PowerThrottling = { 0 };
+  PowerThrottling.Version = PROCESS_POWER_THROTTLING_CURRENT_VERSION;
+  PowerThrottling.ControlMask = PROCESS_POWER_THROTTLING_EXECUTION_SPEED;
+  PowerThrottling.StateMask = PROCESS_POWER_THROTTLING_EXECUTION_SPEED;
+  SetProcessInformation(GetCurrentProcess(), ProcessPowerThrottling, &PowerThrottling, sizeof(PowerThrottling));
+
 #endif
 #else
 #if defined(_X64)
