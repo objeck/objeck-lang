@@ -1,0 +1,45 @@
+class KMeans {
+	function : Main(args : String[]) ~ Nil {
+		data := [
+			[3.3, 4.0]
+			[3.9, 2.2]
+			[3.0, 3.0]
+			[4.5, 4.0]
+			[1.5, 3.5]
+			[1.0, 2.0]
+			[0.6, 4.2]
+			[0.4, 3.0]
+			[1.2, 4.8]
+			[0.6, 5.0]
+			[3.0, 5.0]
+			[4.5, 1.0]
+		];
+		k := 2;
+		
+		dims := data->Size();
+		rows := dims[0]; 
+		cols := dims[1];
+
+		each(a : k) {
+			each(i : cols) {
+				col_avg := 0.0;
+				each(j : rows) {
+					col_avg += data[j, i];
+				};
+				col_avg /= rows;
+
+				center := 0.0;
+				if(a % 2 = 0) {
+					center := col_avg - col_avg / k;
+				}
+				else {
+					center := col_avg + col_avg / k;	
+				};
+				center->PrintLine();
+			};
+			"---"->PrintLine();
+		};
+
+		data->ToString()->PrintLine();
+	}
+}
