@@ -10,6 +10,8 @@
 
 <h1 align="center">Intuitive, Fast & Efficient</h1>
 
+Object-oriented and functional programming language designed to be fast, intuitive, lightweight, and nativity cross-functional.
+
 ```ruby
 class Hello {
    function : Main(args : String[]) ~ Nil {
