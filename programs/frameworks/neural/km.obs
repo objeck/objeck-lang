@@ -1,6 +1,52 @@
 class KMeans {
 	function : Main(args : String[]) ~ Nil {
-		data := [
+		data := LoadData();
+		k := 2;
+
+		dims := data->Size();
+		rows := dims[0]; 
+		cols := dims[1];
+
+		centers := Float->New[2, k];
+		each(a : k) {
+			each(b : cols) {
+				col_avg := 0.0;
+				each(c : rows) {
+					col_avg += data[c, b];
+				};
+				col_avg /= rows;
+
+				center := 0.0;
+				if(a % 2 = 0) {
+					center := col_avg - col_avg / k;
+				}
+				else {
+					center := col_avg + col_avg / k;	
+				};
+				centers[a, b] := center;
+			};
+		};
+
+		centers->ToString()->PrintLine();
+		dims := centers->Size();
+		rows := dims[0]; 
+		cols := dims[1];
+		
+		each(a : rows) {
+			x1 := centers[0, a];
+			x2 := centers[1, a];
+			"--- x1={$x1}, x2={$x2} ---"->PrintLine();
+		}
+
+		data->ToString()->PrintLine();
+	}
+
+	function : native : Distance(x1 : Float, x2 : Float, y1  : Float, y2 : Float) ~ Float {
+		return Float->Sqrt(Float->Pow(x2 - x1, 2.0) + Float->Pow(y2 - y1, 2.0));
+	}
+
+	function : LoadData() ~ Float[,] {
+		return [
 			[3.3, 4.0]
 			[3.9, 2.2]
 			[3.0, 3.0]
@@ -12,34 +58,6 @@ class KMeans {
 			[1.2, 4.8]
 			[0.6, 5.0]
 			[3.0, 5.0]
-			[4.5, 1.0]
-		];
-		k := 2;
-		
-		dims := data->Size();
-		rows := dims[0]; 
-		cols := dims[1];
-
-		each(a : k) {
-			each(i : cols) {
-				col_avg := 0.0;
-				each(j : rows) {
-					col_avg += data[j, i];
-				};
-				col_avg /= rows;
-
-				center := 0.0;
-				if(a % 2 = 0) {
-					center := col_avg - col_avg / k;
-				}
-				else {
-					center := col_avg + col_avg / k;	
-				};
-				center->PrintLine();
-			};
-			"---"->PrintLine();
-		};
-
-		data->ToString()->PrintLine();
+			[4.5, 1.0]];
 	}
 }
