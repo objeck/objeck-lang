@@ -1,0 +1,17 @@
+class Tester {
+	function : Main(args : String[]) ~ Nil {
+		x1 := 3.0;
+		x2 := 4.0;
+
+		y1 := 2.0;
+		y2 := 1.0;
+
+		left := Float->Pow(x2 - x1, 2.0);
+		right := Float->Pow(y2 - y1, 2.0);
+		"{$left}, {$right}"->PrintLine();
+
+		distance := Float->Sqrt(left + right);
+
+		distance->PrintLine();
+	}
+}
