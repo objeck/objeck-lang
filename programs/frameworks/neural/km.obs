@@ -6,6 +6,7 @@ class KMeans {
 		dims := data->Size();
 		rows := dims[0]; 
 		cols := dims[1];
+		"--- rows={$rows}, cols={$cols} ---"->PrintLine();
 
 		centers := Float->New[2, k];
 		each(a : k) {
@@ -29,13 +30,18 @@ class KMeans {
 
 		centers->ToString()->PrintLine();
 		dims := centers->Size();
-		rows := dims[0]; 
-		cols := dims[1];
+		center_rows := dims[0]; 
 		
-		each(a : rows) {
+		each(a : center_rows) {
 			x1 := centers[0, a];
 			x2 := centers[1, a];
-			"--- x1={$x1}, x2={$x2} ---"->PrintLine();
+			"\n### x1={$x1}, x2={$x2} ###"->PrintLine();
+
+			each(b : rows) {
+				y1 := data[b, 0];
+				y2 := data[b, 1];
+				"--- y1={$y1}, y2={$y2} ---"->PrintLine();
+			};
 		}
 
 		data->ToString()->PrintLine();
