@@ -38,10 +38,9 @@ centers->ToString()->PrintLine();
 			dims := centers->Size();
 			centers_rows := dims[0]; 
 
-			groups := FloatArrayRef->New[k];
+			groups := Collection.Vector->New[k]<FloatRef>;
 			each(a : groups) {
-				groups[a] := FloatArrayRef->New();
-
+				groups[a] := Collection.Vector->New()<FloatRef>;
 			}
 
 			each(a : data_rows) {
