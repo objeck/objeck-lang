@@ -1,7 +1,7 @@
 class KMeans {
 	function : Main(args : String[]) ~ Nil {
 		data := LoadData();
-		k := 2;
+		k := 3;
 
 		dims := data->Size();
 		data_rows := dims[0]; 
@@ -37,6 +37,12 @@ centers->ToString()->PrintLine();
 
 			dims := centers->Size();
 			centers_rows := dims[0]; 
+
+			groups := FloatArrayRef->New[k];
+			each(a : groups) {
+				groups[a] := FloatArrayRef->New();
+
+			}
 
 			each(a : data_rows) {
 				x1 := data[a, 0];
