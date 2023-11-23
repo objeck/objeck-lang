@@ -4,69 +4,73 @@ class KMeans {
 		k := 2;
 
 		dims := data->Size();
-		rows := dims[0]; 
-		cols := dims[1];
-		"--- rows={$rows}, cols={$cols} ---"->PrintLine();
+		data_rows := dims[0]; 
 
-		centers := Float->New[2, k];
-		each(a : k) {
-			each(b : cols) {
-				col_avg := 0.0;
-				each(c : rows) {
-					col_avg += data[c, b];
-				};
-				col_avg /= rows;
+		Distance(3, 7, 4, 7)->PrintLine();
 
-				center := 0.0;
-				if(a % 2 = 0) {
-					center := col_avg - col_avg / k;
-				}
-				else {
-					center := col_avg + col_avg / k;	
+		if(dims[1] = 2) {
+			cols := dims[1];
+"data_rows={$data_rows}, cols={$cols}"->PrintLine();
+
+			centers := Float->New[k->As(Int), cols];
+			each(a : k) {
+				each(b : cols) {
+					data_sum := 0.0;
+					each(c : data_rows) {
+						data_sum += data[c, b];
+					};
+					data_sum /= data_rows;
+
+					point : Float;
+					if(a % 2 = 0) {
+						point := data_sum - (data_sum / k->As(Float));
+					}
+					else {
+						point := data_sum + (data_sum / k->As(Float));
+					};
+
+					centers[a, b] := point;
 				};
-				centers[a, b] := center;
+			};
+centers->ToString()->PrintLine();
+"---"->PrintLine();
+
+			dims := centers->Size();
+			centers_rows := dims[0]; 
+
+			each(a : data_rows) {
+				x1 := data[a, 0];
+				y1 := data[a, 1];
+
+				each(b : centers_rows) {
+					x2 := centers[b, 0];
+					y2 := centers[b, 1];
+
+					dist := Distance(x1, x2, y1, y2);
+"[{$x1}, {$y1}], {$x2}, {$y2}: {$dist}"->PrintLine();
+				};
+"---"->PrintLine();
 			};
 		};
-
-		centers->ToString()->PrintLine();
-		dims := centers->Size();
-		center_rows := dims[0]; 
-		
-		each(b : rows) {
-			x1 := data[b, 0];
-			x2 := data[b, 1];
-
-			each(a : center_rows) {
-				y1 := centers[0, a];
-				y2 := centers[1, a];
-
-				d := Distance(x1, x2, y1, y2);
-
-				"dist={$d}; x1={$x1}, x2={$x2}; y1={$y1}, y2={$y2}"->PrintLine();				
-			};
-			"---"->PrintLine();
-		};
-
-		data->ToString()->PrintLine();
 	}
 
-	function : native : Distance(x1 : Float, x2 : Float, y1  : Float, y2 : Float) ~ Float {
-		return Float->Sqrt(Float->Pow(x2 - x1, 2.0) + Float->Pow(y2 - y1, 2.0));
+	function : Distance(x1 : Float, x2 : Float, y1  : Float, y2 : Float) ~ Float {
+		return Float->Sqrt(Float->Pow(x2 - x1, 2.0) + Float->Pow(y2 - y1, 2.0) * 1.0);
 	}
 
 	function : LoadData() ~ Float[,] {
 		return [
-			[3.3, 4.0]
-			[3.9, 2.2]
-			[3.0, 3.0]
-			[4.5, 4.0]
-			[1.5, 3.5]
-			[1.0, 2.0]
-			[0.6, 4.2]
-			[0.4, 3.0]
-			[1.2, 4.8]
 			[0.6, 5.0]
+			[1.2, 4.8]
+			[0.6, 4.2]
+			[1.5, 3.5]
+			[0.4, 3.0]
+			[1.0, 2.0]
 			[3.0, 5.0]
-			[4.5, 1.0]];
+			[3.3, 4.0]
+			[3.0, 3.0]
+			[3.9, 2.2]
+			[3.0, 5.0]
+			[3.5, 2.0]];
 	}
 }
