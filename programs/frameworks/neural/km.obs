@@ -32,17 +32,20 @@ class KMeans {
 		dims := centers->Size();
 		center_rows := dims[0]; 
 		
-		each(a : center_rows) {
-			x1 := centers[0, a];
-			x2 := centers[1, a];
-			"\n### x1={$x1}, x2={$x2} ###"->PrintLine();
+		each(b : rows) {
+			x1 := data[b, 0];
+			x2 := data[b, 1];
 
-			each(b : rows) {
-				y1 := data[b, 0];
-				y2 := data[b, 1];
-				"--- y1={$y1}, y2={$y2} ---"->PrintLine();
+			each(a : center_rows) {
+				y1 := centers[0, a];
+				y2 := centers[1, a];
+
+				d := Distance(x1, x2, y1, y2);
+
+				"dist={$d}; x1={$x1}, x2={$x2}; y1={$y1}, y2={$y2}"->PrintLine();				
 			};
-		}
+			"---"->PrintLine();
+		};
 
 		data->ToString()->PrintLine();
 	}
