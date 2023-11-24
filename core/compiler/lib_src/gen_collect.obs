@@ -273,6 +273,34 @@ each(value := values) {
 		method : public : SetSecond(second : S) ~ Nil {
 			@second := second;
 		}
+
+		#~
+		Formats the collection into a string. If an element implements the 'Stringify' 
+		interface, it's 'ToString()' is called.
+		@return string representation
+		~#
+		method : public : ToString() ~ String {
+			buffer := "[";
+
+			if(@first->TypeOf(Stringify)) {
+				buffer->Append(@first->As(System.Stringify)->ToString());
+			}
+			# use instance ID instead
+			else {
+				buffer->Append(@first->GetInstanceID()->ToHexString());
+			};
+
+			buffer += ", ";
+
+			if(@second->TypeOf(Stringify)) {
+				buffer->Append(@second->As(System.Stringify)->ToString());
+			}
+			# use instance ID instead
+			else {
+				buffer->Append(@second->GetInstanceID()->ToHexString());
+			};
+
+			buffer += "]";
 	}
 
 	#~
