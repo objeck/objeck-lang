@@ -301,9 +301,11 @@ each(value := values) {
 			};
 
 			buffer += "]";
+
+			return buffer;
 		}
 	}
-	
+
 	#~
 	Hash table of generics
 
