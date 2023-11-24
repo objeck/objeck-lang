@@ -280,7 +280,7 @@ each(value := values) {
 		@return string representation
 		~#
 		method : public : ToString() ~ String {
-			buffer := "[";
+			buffer := "{";
 
 			if(@first->TypeOf(Stringify)) {
 				buffer->Append(@first->As(System.Stringify)->ToString());
@@ -300,7 +300,7 @@ each(value := values) {
 				buffer->Append(@first->GetInstanceID()->ToHexString());
 			};
 
-			buffer += "]";
+			buffer += "}";
 
 			return buffer;
 		}
