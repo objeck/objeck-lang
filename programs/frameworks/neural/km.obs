@@ -30,8 +30,9 @@ class KMeans {
 					centers[a, b] := point;
 				};
 			};
-centers->ToString()->PrintLine();
-"---"->PrintLine();
+
+# centers->ToString()->PrintLine();
+# "---"->PrintLine();
 
 			dims := centers->Size();
 			centers_rows := dims[0]; 
@@ -74,9 +75,10 @@ centers->ToString()->PrintLine();
 	}
 
 	function : DoStuff(groups : Collection.Vector[]<Collection.Pair<FloatRef,FloatRef>>) ~ Nil {
+		# TODO: recenter
 		each(a : groups) {
 			group := groups[a];
-			group->ToString()->PrintLine();
+			"{$a} => {$group}"->PrintLine();
 		};
 	}
 
