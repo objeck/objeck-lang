@@ -211,7 +211,7 @@ each(value := values) {
 	#~
 	Collection pair
 	~#
-	class Pair<F : Compare, S> implements System.Compare  {
+	class Pair<F : Compare, S> implements System.Compare, System.Stringify {
 		@first : F;
 		@second : S;
 

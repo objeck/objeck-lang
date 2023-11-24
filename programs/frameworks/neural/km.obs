@@ -71,10 +71,7 @@ centers->ToString()->PrintLine();
 
 			each(a : k) {
 				group := groups[a];
-				each(point := group) {
-					point->ToString()->PrintLine();
-				};
-				"###"->PrintLine();
+				group->ToString()->PrintLine();
 			};
 		};
 	}
