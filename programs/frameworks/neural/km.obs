@@ -41,27 +41,37 @@ centers->ToString()->PrintLine();
 				groups[a] := Collection.Vector->New()<FloatRef>;
 			}
 
-			foo := Collection.CompareVector->New()<FloatRef>;
+			temp := Float->New[k];
 			each(a : data_rows) {
 				x1 := data[a, 0];
 				y1 := data[a, 1];
 
-				foo->Empty();
 				each(b : centers_rows) {
 					x2 := centers[b, 0];
 					y2 := centers[b, 1];
 
-#					group := groups[0];
-#					group->AddBack(FloatRef->New(1.2));
-
 					dist := Distance(x1, x2, y1, y2);
 # "{$k} :[{$x1}, {$y1}], {$x2}, {$y2}: {$dist}"->PrintLine();
-					foo->AddBack(dist);
+					temp[b] := dist;
 				};
 
-foo->Sort();
-foo->ToString()->PrintLine();				
-"---"->PrintLine();
+				index := 0;
+				value := Float->Inf();
+				each(b : temp) {
+					if(temp[b] < value) {
+						value := temp[b];
+						index := b;
+					}
+				};
+"{$index}: {$value}"->PrintLine();		
+				
+				group := groups[index];
+				group->AddBack(FloatRef->New(value));
+			};
+
+			each(a : k) {
+				group := groups[a];
+				group->ToString()->PrintLine();
 			};
 		};
 	}
