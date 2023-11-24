@@ -69,10 +69,14 @@ centers->ToString()->PrintLine();
 				group->AddBack(Collection.Pair->New(x1, y1)<FloatRef, FloatRef>);
 			};
 
-			each(a : k) {
-				group := groups[a];
-				group->ToString()->PrintLine();
-			};
+			DoStuff(groups);
+		};
+	}
+
+	function : DoStuff(groups : Collection.Vector[]<Collection.Pair<FloatRef,FloatRef>>) ~ Nil {
+		each(a : groups) {
+			group := groups[a];
+			group->ToString()->PrintLine();
 		};
 	}
 
