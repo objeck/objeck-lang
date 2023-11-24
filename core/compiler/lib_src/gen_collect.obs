@@ -297,12 +297,13 @@ each(value := values) {
 			}
 			# use instance ID instead
 			else {
-				buffer->Append(@second->GetInstanceID()->ToHexString());
+				buffer->Append(@first->GetInstanceID()->ToHexString());
 			};
 
 			buffer += "]";
+		}
 	}
-
+	
 	#~
 	Hash table of generics
 
