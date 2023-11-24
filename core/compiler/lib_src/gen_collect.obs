@@ -290,7 +290,7 @@ each(value := values) {
 				buffer->Append(@first->GetInstanceID()->ToHexString());
 			};
 
-			buffer += ", ";
+			buffer += ',';
 
 			if(@second->TypeOf(Stringify)) {
 				buffer->Append(@second->As(System.Stringify)->ToString());
@@ -416,7 +416,7 @@ hash->Has(408)->PrintLine();
 
 				# add comma
 				if(i + 1 < pairs->Size()) {
-					buffer->Append(", ");
+					buffer->Append(',');
 				};
 			};
 			buffer->Append(']');
@@ -1086,7 +1086,7 @@ function : Example() ~ Nil {
 
 				# add comma, if needed
 				if(elem <> Nil) {
-					buffer->Append(", ");
+					buffer->Append(',');
 				};
 				
 			};
@@ -1779,7 +1779,7 @@ function : Example() ~ Nil {
 
 				# add comma, if needed
 				if(elem <> Nil) {
-					buffer->Append(", ");
+					buffer->Append(',');
 				};
 				
 			};
@@ -2222,7 +2222,7 @@ function : Example() ~ Nil {
 
 				# add comma
 				if(i + 1 < @size) {
-					buffer->Append(", ");
+					buffer->Append(',');
 				};
 			};
 			buffer->Append(']');
@@ -2498,7 +2498,7 @@ function : Show(value : IntRef) ~ Nil {
 
 				# add comma
 				if(i + 1 < @size) {
-					buffer->Append(", ");
+					buffer->Append(',');
 				};
 			};
 			buffer->Append(']');
@@ -3063,7 +3063,7 @@ function : Show(value : IntRef) ~ Nil {
 
 				# add comma
 				if(i + 1 < pairs->Size()) {
-					buffer->Append(", ");
+					buffer->Append(',');
 				};
 			};
 			buffer->Append(']');
@@ -3366,7 +3366,7 @@ set->Has("Oakland")->PrintLine();
 
 				# add comma
 				if(i + 1 < keys->Size()) {
-					buffer->Append(", ");
+					buffer->Append(',');
 				};
 			};
 			buffer->Append(']');
@@ -3529,14 +3529,14 @@ set->Has("Oakland")->PrintLine();
 
 					# add comma
 					if(j + 1 < values->Size()) {
-						buffer->Append(", ");
+						buffer->Append(',');
 					};
 				};
 				buffer->Append(')');
 
 				# add comma
 				if(i + 1 < keys->Size()) {
-					buffer->Append(", ");
+					buffer->Append(',');
 				};
 			};
 			buffer->Append(']');
