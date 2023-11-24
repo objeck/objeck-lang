@@ -36,9 +36,9 @@ centers->ToString()->PrintLine();
 			dims := centers->Size();
 			centers_rows := dims[0]; 
 
-			groups := Collection.Vector->New[k]<FloatRef>;
+			groups := Collection.Vector->New[k]<Collection.Pair<FloatRef,FloatRef>>;
 			each(a : groups) {
-				groups[a] := Collection.Vector->New()<FloatRef>;
+				groups[a] := Collection.Vector->New()<Collection.Pair<FloatRef,FloatRef>>;
 			}
 
 			temp := Float->New[k];
@@ -63,15 +63,20 @@ centers->ToString()->PrintLine();
 						index := b;
 					}
 				};
-"{$index}: {$value}"->PrintLine();		
-				
+# "{$index}: {$value}"->PrintLine();
+								
 				group := groups[index];
-				group->AddBack(FloatRef->New(value));
+				group->AddBack(Collection.Pair->New(x1, y1)<FloatRef, FloatRef>);
 			};
 
 			each(a : k) {
 				group := groups[a];
-				group->ToString()->PrintLine();
+				each(point := group) {
+					point->GetFirst()->PrintLine();
+					point->GetSecond()->PrintLine();
+					"---"->PrintLine();
+				};
+				"###"->PrintLine();
 			};
 		};
 	}
