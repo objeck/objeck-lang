@@ -1,16 +1,14 @@
 class KMeans {
 	function : Main(args : String[]) ~ Nil {
 		data := LoadData();
-		k := 3;
+		k := 2;
 
 		dims := data->Size();
 		data_rows := dims[0]; 
 
-		Distance(3, 7, 4, 7)->PrintLine();
-
 		if(dims[1] = 2) {
 			cols := dims[1];
-"data_rows={$data_rows}, cols={$cols}"->PrintLine();
+"data_rows={$data_rows}, cols={$cols}\n---"->PrintLine();
 
 			centers := Float->New[k->As(Int), cols];
 			each(a : k) {
@@ -43,17 +41,26 @@ centers->ToString()->PrintLine();
 				groups[a] := Collection.Vector->New()<FloatRef>;
 			}
 
+			foo := Collection.CompareVector->New()<FloatRef>;
 			each(a : data_rows) {
 				x1 := data[a, 0];
 				y1 := data[a, 1];
 
+				foo->Empty();
 				each(b : centers_rows) {
 					x2 := centers[b, 0];
 					y2 := centers[b, 1];
 
+#					group := groups[0];
+#					group->AddBack(FloatRef->New(1.2));
+
 					dist := Distance(x1, x2, y1, y2);
-"[{$x1}, {$y1}], {$x2}, {$y2}: {$dist}"->PrintLine();
+# "{$k} :[{$x1}, {$y1}], {$x2}, {$y2}: {$dist}"->PrintLine();
+					foo->AddBack(dist);
 				};
+
+foo->Sort();
+foo->ToString()->PrintLine();				
 "---"->PrintLine();
 			};
 		};
