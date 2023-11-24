@@ -78,7 +78,18 @@ class KMeans {
 		# TODO: recenter
 		each(a : groups) {
 			group := groups[a];
-			"{$a} => {$group}"->PrintLine();
+
+			x_total := 0.0;
+			y_total := 0.0;
+			each(pair := group) {
+				x_total += pair->GetFirst();
+				y_total += pair->GetSecond();
+			};
+			x_total /= group->Size();
+			y_total /= group->Size();
+
+			"{$x_total}|{$y_total}"->PrintLine();
+			"---"->PrintLine();
 		};
 	}
 
