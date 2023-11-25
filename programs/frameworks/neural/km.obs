@@ -40,19 +40,21 @@ class KMeans {
 		};
 
 "==="->PrintLine();
+		
+		centroids->Empty();
 		each(i : k) {
 			bucket := buckets[i];
 
-			x_total := y_total := 0.0;
+			x_update := y_update := 0.0;
 			each(item := bucket) {
-#				item->ToString()->PrintLine();
-				x_total += item->GetX();
-				y_total += item->GetY();
+				x_update += item->GetX();
+				y_update += item->GetY();
 			};
-			x_total /= bucket->Size()->As(Float);
-			y_total /= bucket->Size()->As(Float);
+			x_update /= bucket->Size()->As(Float);
+			y_update /= bucket->Size()->As(Float);
 
-			"{$i}: {$x_total}, {$y_total}"->PrintLine();
+			centroids->AddBack(Point->New(x_update, y_update))
+#			"{$i}: {$x_update}, {$y_update}"->PrintLine();
 		};
 	}
 
