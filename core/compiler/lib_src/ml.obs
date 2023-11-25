@@ -1980,6 +1980,8 @@ each(neighbor := nearest) {
 	class KMeans {
 		@points : Vector<Point>;
 		@k : Int;
+		@min : Float;
+		@max : Float;
 		@debug : Bool;
 
 		#~
@@ -1987,9 +1989,12 @@ each(neighbor := nearest) {
 		@param k k number of clusters
 		@param points input data points
 		~#
-		New(k : Int, points : Vector<Point> ) {
+		New(k : Int, min : Float, max : Float, points : Vector<Point>) {
 			@k := k;
+			@min := min;
+			@max := max;
 			@points := points;
+
 			@debug := true;
 		}
 
@@ -2108,7 +2113,7 @@ each(neighbor := nearest) {
 			centroids := Vector->New()<Point>;
 
 			each(i : @k) {
-				centroids->AddBack(Point->New(Float->Random() * 10.0, Float->Random() * 10.0));
+				centroids->AddBack(Point->New(Float->Random(@min, @max), Float->Random(@min, @max)));
 			};
 
 			return centroids;

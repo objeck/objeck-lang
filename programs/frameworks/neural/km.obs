@@ -3,7 +3,7 @@ use System.ML;
 class Test {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
-			kmeans := KMeans->New(2, KMeans->LoadData(args[0]));
+			kmeans := KMeans->New(2, 0.0, 10.0, KMeans->LoadData(args[0]));
 			clusters := kmeans->Cluster();
 
 			"\n======"->PrintLine();
