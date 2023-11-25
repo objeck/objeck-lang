@@ -1997,7 +1997,7 @@ each(neighbor := nearest) {
 			@max := max;
 			@points := points;
 
-			@debug := true;
+			@debug := false;
 		}
 
 		#~
