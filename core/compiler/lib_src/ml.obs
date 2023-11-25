@@ -1029,7 +1029,7 @@ else if(args->Size() = 1) {
 		~#
 		function : public : LoadMatrices(filename : String, target_offset : Int) ~ Vector[]<FloatMatrixRef> {
 			table := CsvTable->New(System.IO.Filesystem.FileReader->ReadFile(filename));
-			if(table <> Nil & table->Size() > 0) {
+			if(table->IsParsed()) {
 				inputs := Vector->New()<FloatMatrixRef>;
 				targets := Vector->New()<FloatMatrixRef>;
 
@@ -1075,7 +1075,7 @@ else if(args->Size() = 1) {
 		~#
 		function : public : LoadSplitMatrices(filename : String, target_offset : Int, training_perc : Float) ~ Vector[]<FloatMatrixRef> {
 			table := CsvTable->New(System.IO.Filesystem.FileReader->ReadFile(filename));
-			if(table <> Nil & table->Size() > 0) {
+			if(table->IsParsed()) {
 				train_count := (table->Size()->As(Float) * training_perc)->As(Int);
 				if(train_count < 1) {
 					return Nil;
@@ -1949,4 +1949,212 @@ each(neighbor := nearest) {
 			return "{$@row}: distance={$@dist}, category={$@cat}";
 		}
 	}
+
+
+
+
+
+	
+	# TOOD: document 
+	class KMeans {
+	@points : Vector<Point>;
+	@k : Int;
+	@debug : Bool;
+
+	New(k : Int, points : Vector<Point> ) {
+		@k := k;
+		@points := points;
+		@debug := true;
+	}
+
+	method : public : Cluster() ~ Vector[]<Point> {
+		centroids := InitializeCentroids();
+		k := centroids->Size();
+
+		buckets := Vector->New[k]<Point>;
+		each(i : k) {
+			buckets[i] := Vector->New()<Point>;
+		};
+		results := Distance->New[k];
+
+		last_centroids := Point->New[k];
+		each(i : last_centroids) {
+			last_centroids[i] := Point->New();
+		};
+
+		converged := false;
+		do {
+			if(@debug) {
+				"\n=>{$centroids}\n------"->PrintLine();
+			};
+
+			each(point := @points) {
+				each(i : centroids) {
+					centroid := centroids->Get(i);
+					distance := GetDistance(centroid, point);
+					result := Distance->New(point, distance);
+
+					if(@debug) {
+						"{$centroid}: {$result}"->PrintLine();
+					};
+					results[i] := result;
+				};
+
+				if(@debug) {
+					"------"->PrintLine();
+				};
+
+				pt_index := -1;
+				min_dist := Float->Inf();
+				each(i : results) {
+					result := results[i];
+					if(result->GetDistance() < min_dist) {
+						min_dist := result->GetDistance();
+						pt_index := i;
+					}
+				};
+
+				result := results[pt_index];
+				bucket := buckets[pt_index];
+				bucket->AddBack(result->GetPoint());
+			};
+
+			each(i : k) {
+				last_centroids[i] := centroids->Get(i);
+			};
+			
+			centroids->Empty();
+			each(i : k) {
+				bucket := buckets[i];
+
+				x_update := y_update := 0.0;
+				each(item := bucket) {
+					x_update += item->GetX();
+					y_update += item->GetY();
+				};
+				x_update /= bucket->Size()->As(Float);
+				y_update /= bucket->Size()->As(Float);
+
+				if(@debug) {
+					"C{$i}->{$x_update}, {$y_update}"->PrintLine();
+				};
+
+				centroids->AddBack(Point->New(x_update, y_update));
+			};
+
+			converged := HasConverged(centroids, last_centroids);
+			if(<>converged) {
+				each(i : k) {
+					buckets[i]->Empty();
+				};
+			}
+		}
+		while(<>converged);
+
+		return buckets;
+	}
+
+	method : native : HasConverged(current : Vector<Point>, last : Point[]) ~ Bool {
+		each(i : current) {
+			left := current->Get(i);
+			right := last[i];
+
+			if(<>left->Equals(right)) {
+				return false;
+			};
+		}
+
+		return true;
+	}
+
+	method : native : GetDistance(a : Point, b : Point) ~ Float {
+		x1 := a->GetX(); y1 := a->GetY();
+		x2 := b->GetX(); y2 := b->GetY();
+
+		return Float->Sqrt(Float->Pow(x2 - x1, 2.0) + Float->Pow(y2 - y1, 2.0));
+	}
+
+	method : InitializeCentroids() ~ Vector<Point> {
+		centroids := Vector->New()<Point>;
+
+		each(i : @k) {
+			centroids->AddBack(Point->New(Float->Random() * 10.0, Float->Random() * 10.0));
+		};
+
+		return centroids;
+	}
+
+	function : LoadData(filename : String) ~ Vector<Point> {
+		points := Vector->New()<Point>;
+		
+		table := CsvTable->New(System.IO.Filesystem.FileReader->ReadFile(filename));
+		if(table->IsParsed()) {
+			each(row := table) {
+				if(row->Size() <> 2) {
+					return Nil;
+				};
+
+				x := row->Get(0)->ToFloat();
+				y := row->Get(1)->ToFloat();
+
+				points->AddBack(Point->New(x, y));
+			};
+		};
+
+		return points;
+	}
+}
+
+class : private : Distance implements Stringify {
+	@point : Point;
+	@distance : Float;
+
+	New(point : Point, distance : Float) {
+		@point := point;
+		@distance := distance;
+	}
+
+	method : public : GetPoint() ~ Point {
+		return @point;
+	}
+
+	method : public : GetDistance() ~ Float {
+		return @distance;
+	}
+
+	method : public : ToString() ~ String {
+		return "{$@point}: {$@distance}";
+	}
+}
+
+class : private : Point implements Stringify {
+	@x : Float;
+	@y : Float;
+
+	New() {
+		@x := 0.0;
+		@y := 0.0;
+	}
+
+	New(x : Float, y : Float) {
+		@x := x;
+		@y := y;
+	}
+
+	method : public : GetX() ~ Float {
+		return @x;
+	}
+
+	method : public : GetY() ~ Float {
+		return @y;
+	}
+
+	method : public : Equals(point : Point) ~ Bool {
+		return point->GetX() = @x & point->GetY() = @y;
+	}
+
+	method : public : ToString() ~ String {
+		return "{{$@x}, {$@y}}";
+	}
+}
 }
