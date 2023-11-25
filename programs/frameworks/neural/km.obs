@@ -42,10 +42,17 @@ class KMeans {
 "==="->PrintLine();
 		each(i : k) {
 			bucket := buckets[i];
+
+			x_total := y_total := 0.0;
 			each(item := bucket) {
-				item->ToString()->PrintLine();
+#				item->ToString()->PrintLine();
+				x_total += item->GetX();
+				y_total += item->GetY();
 			};
-			"---"->PrintLine();
+			x_total /= bucket->Size()->As(Float);
+			y_total /= bucket->Size()->As(Float);
+
+			"{$i}: {$x_total}, {$y_total}"->PrintLine();
 		};
 	}
 
@@ -61,7 +68,7 @@ class KMeans {
 
 		centroids->AddBack(Point->New(3, 4));
 		centroids->AddBack(Point->New(7, 8));
-		centroids->AddBack(Point->New(5, 5));
+#		centroids->AddBack(Point->New(5, 5));
 
 		return centroids;
 	}
