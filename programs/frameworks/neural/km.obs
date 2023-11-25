@@ -1,115 +1,116 @@
+use Collection;
+
 class KMeans {
 	function : Main(args : String[]) ~ Nil {
-		data := LoadData();
-		k := 2;
+		points := LoadData();
+		centroids := LoadCentroids();
+		k := centroids->Size();
 
-		dims := data->Size();
-		data_rows := dims[0]; 
+		# test centroids size eqals k
 
-		if(dims[1] = 2) {
-			cols := dims[1];
-"data_rows={$data_rows}, cols={$cols}\n---"->PrintLine();
+#		distances := Vector->New[k]<Point>;
 
-			centers := Float->New[k->As(Int), cols];
-			each(a : k) {
-				each(b : cols) {
-					data_sum := 0.0;
-					each(c : data_rows) {
-						data_sum += data[c, b];
-					};
-					data_sum /= data_rows;
-
-					point : Float;
-					if(a % 2 = 0) {
-						point := data_sum - (data_sum / k->As(Float));
-					}
-					else {
-						point := data_sum + (data_sum / k->As(Float));
-					};
-
-					centers[a, b] := point;
-				};
+		results := DistanceResult->New[k];
+		each(point := points) {
+			each(i : centroids) {
+				centroid := centroids->Get(i);
+				distance := Distance(centroid, point);
+				results[i] := DistanceResult->New(point, distance);
+"{$point} | {$centroid} => {$distance}"->PrintLine();
 			};
 
-# centers->ToString()->PrintLine();
-# "---"->PrintLine();
-
-			dims := centers->Size();
-			centers_rows := dims[0]; 
-
-			groups := Collection.Vector->New[k]<Collection.Pair<FloatRef,FloatRef>>;
-			each(a : groups) {
-				groups[a] := Collection.Vector->New()<Collection.Pair<FloatRef,FloatRef>>;
-			}
-
-			temp := Float->New[k];
-			each(a : data_rows) {
-				x1 := data[a, 0];
-				y1 := data[a, 1];
-
-				each(b : centers_rows) {
-					x2 := centers[b, 0];
-					y2 := centers[b, 1];
-
-					dist := Distance(x1, x2, y1, y2);
-# "{$k} :[{$x1}, {$y1}], {$x2}, {$y2}: {$dist}"->PrintLine();
-					temp[b] := dist;
-				};
-
-				index := 0;
-				value := Float->Inf();
-				each(b : temp) {
-					if(temp[b] < value) {
-						value := temp[b];
-						index := b;
-					}
-				};
-# "{$index}: {$value}"->PrintLine();
-								
-				group := groups[index];
-				group->AddBack(Collection.Pair->New(x1, y1)<FloatRef, FloatRef>);
+			index := -1;
+			min := Float->Inf();
+			each(i : results) {
+				result := results[i];
+				if(result->GetDistance() < min) {
+					min := result->GetDistance();
+					index := i;
+				}
 			};
 
-			DoStuff(groups);
+			result := results[index];
+"---\n{$result}\n"->PrintLine();
 		};
 	}
 
-	function : DoStuff(groups : Collection.Vector[]<Collection.Pair<FloatRef,FloatRef>>) ~ Nil {
-		# TODO: recenter
-		each(a : groups) {
-			group := groups[a];
+	function : native : Distance(a : Point, b : Point) ~ Float {
+		x1 := a->GetX(); y1 := a->GetY();
+		x2 := b->GetX(); y2 := b->GetY();
 
-			x_total := 0.0;
-			y_total := 0.0;
-			each(pair := group) {
-				x_total += pair->GetFirst();
-				y_total += pair->GetSecond();
-			};
-			x_total /= group->Size();
-			y_total /= group->Size();
-
-			"{$x_total}|{$y_total}"->PrintLine();
-			"---"->PrintLine();
-		};
+		return Float->Sqrt(Float->Pow(x2 - x1, 2.0) + Float->Pow(y2 - y1, 2.0));
 	}
 
-	function : Distance(x1 : Float, x2 : Float, y1  : Float, y2 : Float) ~ Float {
-		return Float->Sqrt(Float->Pow(x2 - x1, 2.0) + Float->Pow(y2 - y1, 2.0) * 1.0);
+	function : LoadCentroids() ~ Vector<Point> {
+		centroids := Vector->New()<Point>;
+
+		centroids->AddBack(Point->New(3, 4));
+		centroids->AddBack(Point->New(7, 8));
+		centroids->AddBack(Point->New(5, 5));
+
+		return centroids;
 	}
 
-	function : LoadData() ~ Float[,] {
-		return [
-			[0.6, 5.0]
-			[1.2, 4.8]
-			[0.6, 4.2]
-			[1.5, 3.5]
-			[0.4, 3.0]
-			[1.0, 2.0]
-			[3.0, 5.0]
-			[3.3, 4.0]
-			[3.0, 3.0]
-			[3.9, 2.2]
-			[3.0, 5.0]
-			[3.5, 2.0]];
+	function : LoadData() ~ Vector<Point> {
+		points := Vector->New()<Point>;
+
+		points->AddBack(Point->New(9.78, 7.86));
+		points->AddBack(Point->New(0.81, 0.77));
+		points->AddBack(Point->New(8.82, 5.48));
+		points->AddBack(Point->New(1.80, 0.43));
+		points->AddBack(Point->New(6.16, 6.60));
+		points->AddBack(Point->New(6.51, 8.72));
+		points->AddBack(Point->New(1.10, 2.56));
+		points->AddBack(Point->New(7.89, 4.49));
+		points->AddBack(Point->New(3.33, 2.89));
+		points->AddBack(Point->New(0.74, 3.99));
+		points->AddBack(Point->New(3.15, 1.70));
+		points->AddBack(Point->New(0.55, 6.27));
+
+		return points;
+	}
+}
+
+class DistanceResult {
+	@point : Point;
+	@distance : Float;
+
+	New(point : Point, distance : Float) {
+		@point := point;
+		@distance := distance;
+	}
+
+	method : public : GetPoint() ~ Point {
+		return @point;
+	}
+
+	method : public : GetDistance() ~ Float {
+		return @distance;
+	}
+
+	method : public : ToString() ~ String {
+		return "{$@point}: {$@distance}";
+	}
+}
+
+class Point {
+	@x : Float;
+	@y : Float;
+
+	New(x : Float, y : Float) {
+		@x := x;
+		@y := y;
+	}
+
+	method : public : GetX() ~ Float {
+		return @x;
+	}
+
+	method : public : GetY() ~ Float {
+		return @y;
+	}
+
+	method : public : ToString() ~ String {
+		return "{{$@x}, {$@y}}";
 	}
 }
