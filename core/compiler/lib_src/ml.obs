@@ -2186,8 +2186,8 @@ each(neighbor := nearest) {
 
 		#~
 		Constructor
-		@parm x x value
-		@parm y y value
+		@param x x value
+		@param y y value
 		~#
 		New(x : Float, y : Float) {
 			@x := x;
@@ -2212,6 +2212,7 @@ each(neighbor := nearest) {
 
 		#~
 		Test if two points are equal
+		@param point compare point
 		@return true if equal, false otherwise
 		~#
 		method : public : Equals(point : KMeansPoint) ~ Bool {
