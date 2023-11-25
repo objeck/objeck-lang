@@ -53,18 +53,18 @@ class KMeans {
 					"------"->PrintLine();
 				};
 
-				index := -1;
-				min := Float->Inf();
+				pt_index := -1;
+				min_dist := Float->Inf();
 				each(i : results) {
 					result := results[i];
-					if(result->GetDistance() < min) {
-						min := result->GetDistance();
-						index := i;
+					if(result->GetDistance() < min_dist) {
+						min_dist := result->GetDistance();
+						pt_index := i;
 					}
 				};
-
-				result := results[index];
-				bucket := buckets[index];
+				
+				result := results[pt_index];
+				bucket := buckets[pt_index];
 				bucket->AddBack(result->GetPoint());
 			};
 
