@@ -41,9 +41,8 @@ Want to get started? Take a look at the [language guide](https://objeck.org/gett
     * ~~Decision Trees~~ 
     
 * Enqueue
-  * Command line toggle for [JIT support](https://github.com/objeck/objeck-lang/tree/master/core/vm/arch/jit)
-  * [UI toolkit](https://github.com/objeck/objeck-lang/tree/master/core/lib/experimental/gtk)
   * Enhanced expressiveness
+  * [UI toolkit](https://github.com/objeck/objeck-lang/tree/master/core/lib/experimental/gtk)
 
 ## Features
 * Modern object-oriented and functional
