@@ -28,9 +28,10 @@ Want to get started? Take a look at the [language guide](https://objeck.org/gett
 
 ## Latest
 * ML algorithms
-  * v2023.11.2
-    * K-means (enqueue)
+  * v2023.11.3
     * SVM
+  * v2023.11.2
+    * ~~K-means~~
   * v2023.11.1
     * ~~Random Forests~~
     * ~~Naive Bayes~~
