@@ -2169,32 +2169,59 @@ each(neighbor := nearest) {
 		}
 	}
 
-	class : private : Point implements Stringify {
+	#~
+	K-Means point
+	~#
+	class Point implements Stringify {
 		@x : Float;
 		@y : Float;
 
+		#~
+		Default constructor
+		~#
 		New() {
 			@x := 0.0;
 			@y := 0.0;
 		}
 
+		#~
+		Constructor
+		@parm x x value
+		@parm y y value
+		~#
 		New(x : Float, y : Float) {
 			@x := x;
 			@y := y;
 		}
 
+		#~
+		Get x value
+		@return x value
+		~#
 		method : public : GetX() ~ Float {
 			return @x;
 		}
 
+		#~
+		Get y value
+		@return y value
+		~#
 		method : public : GetY() ~ Float {
 			return @y;
 		}
 
+		#~
+		Test if two points are equal
+		@return true if equal, false otherwise
+		~#
 		method : public : Equals(point : Point) ~ Bool {
 			return point->GetX() = @x & point->GetY() = @y;
 		}
 
+		#~
+		String representation of the object
+		@return representation of the object
+		~#
 		method : public : ToString() ~ String {
 			return "{{$@x}, {$@y}}";
 		}
