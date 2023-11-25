@@ -14,14 +14,18 @@ class KMeans {
 		};
 		results := DistanceResult->New[k];
 
-		each(c : 3) {
+		each(c : 2) {
+"\n{$centroids}\n==="->PrintLine();
+
 			each(point := points) {
 				each(i : centroids) {
 					centroid := centroids->Get(i);
 					distance := Distance(centroid, point);
-					results[i] := DistanceResult->New(point, distance);
-"{$point} | {$centroid} => {$distance}"->PrintLine();
+					result := DistanceResult->New(point, distance);
+"{$centroid}: {$result}"->PrintLine();
+					results[i] := result;
 				};
+"---"->PrintLine();
 
 				index := -1;
 				min := Float->Inf();
@@ -36,8 +40,6 @@ class KMeans {
 				result := results[index];
 				bucket := buckets[index];
 				bucket->AddBack(result->GetPoint());
-
-"---\n{$index}: {$result}\n"->PrintLine();
 			};
 
 	
@@ -55,13 +57,10 @@ class KMeans {
 				y_update /= bucket->Size()->As(Float);
 
 				centroids->AddBack(Point->New(x_update, y_update))
-# "{$i}: {$x_update}, {$y_update}"->PrintLine();
+"{$i}: {$x_update}, {$y_update}"->PrintLine();
 				bucket->Empty();
+# bucket->Size()->PrintLine();
 			};
-
-			"==="->PrintLine();
-			centroids->ToString()->PrintLine();
-			"==="->PrintLine();
 		};
 	}
 
