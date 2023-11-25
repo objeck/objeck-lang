@@ -8,7 +8,10 @@ class KMeans {
 
 		# test centroids size eqals k
 
-#		distances := Vector->New[k]<Point>;
+		buckets := Vector->New[k]<Point>;
+		each(i : k) {
+			buckets[i] := Vector->New()<Point>;
+		};
 
 		results := DistanceResult->New[k];
 		each(point := points) {
@@ -30,7 +33,19 @@ class KMeans {
 			};
 
 			result := results[index];
-"---\n{$result}\n"->PrintLine();
+			bucket := buckets[index];
+			bucket->AddBack(result->GetPoint());
+
+"---\n{$index}: {$result}\n"->PrintLine();
+		};
+
+"==="->PrintLine();
+		each(i : k) {
+			bucket := buckets[i];
+			each(item := bucket) {
+				item->ToString()->PrintLine();
+			};
+			"---"->PrintLine();
 		};
 	}
 
