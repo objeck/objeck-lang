@@ -14,8 +14,8 @@ class KMeans {
 		};
 		results := DistanceResult->New[k];
 
-		each(c : 3) {
-"\n{$centroids}\n==="->PrintLine();
+		each(c : 2) {
+"\n=>{$centroids}\n---"->PrintLine();
 
 			each(point := points) {
 				each(i : centroids) {
