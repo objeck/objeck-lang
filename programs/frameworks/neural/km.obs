@@ -1,18 +1,30 @@
 use Collection;
 
 class KMeans {
+	@debug : static : Bool;
+
 	function : Main(args : String[]) ~ Nil {
-		debug := true;
+		@debug := true;
 
 		points := LoadData();
 		centroids := LoadCentroids();
+		results := CalculateMean(points, centroids);
+
+		"\n======"->PrintLine();
+		each(i : results) {
+			result := results[i];
+			"G{$i}->{$result}"->PrintLine();
+		};
+	}
+
+	function : CalculateMean(points : Vector<Point>, centroids : Vector<Point>) ~ Vector[]<Point> {
 		k := centroids->Size();
 
 		buckets := Vector->New[k]<Point>;
 		each(i : k) {
 			buckets[i] := Vector->New()<Point>;
 		};
-		results := DistanceResult->New[k];
+		results := Distance->New[k];
 
 		last_centroids := Point->New[k];
 		each(i : last_centroids) {
@@ -21,24 +33,24 @@ class KMeans {
 
 		converged := false;
 		do {
-			if(debug) {
-				"\n=>{$centroids}\n---"->PrintLine();
+			if(@debug) {
+				"\n=>{$centroids}\n------"->PrintLine();
 			};
 
 			each(point := points) {
 				each(i : centroids) {
 					centroid := centroids->Get(i);
-					distance := Distance(centroid, point);
-					result := DistanceResult->New(point, distance);
+					distance := GetDistance(centroid, point);
+					result := Distance->New(point, distance);
 
-					if(debug) {
+					if(@debug) {
 						"{$centroid}: {$result}"->PrintLine();
 					};
 					results[i] := result;
 				};
 
-				if(debug) {
-					"---"->PrintLine();
+				if(@debug) {
+					"------"->PrintLine();
 				};
 
 				index := -1;
@@ -72,7 +84,7 @@ class KMeans {
 				x_update /= bucket->Size()->As(Float);
 				y_update /= bucket->Size()->As(Float);
 
-				if(debug) {
+				if(@debug) {
 					"C{$i}->{$x_update}, {$y_update}"->PrintLine();
 				};
 
@@ -87,14 +99,8 @@ class KMeans {
 			}
 		}
 		while(<>converged);
-
-		if(debug) {
-			"\n---"->PrintLine();
-			each(i : k) {
-				bucket := buckets[i];
-				"G{$i}->{$bucket}"->PrintLine();
-			};
-		};
+		
+		return buckets;
 	}
 
 	function : native : HasConverged(current : Vector<Point>, last : Point[]) ~ Bool {
@@ -110,7 +116,7 @@ class KMeans {
 		return true;
 	}
 
-	function : native : Distance(a : Point, b : Point) ~ Float {
+	function : native : GetDistance(a : Point, b : Point) ~ Float {
 		x1 := a->GetX(); y1 := a->GetY();
 		x2 := b->GetX(); y2 := b->GetY();
 
@@ -120,9 +126,9 @@ class KMeans {
 	function : LoadCentroids() ~ Vector<Point> {
 		centroids := Vector->New()<Point>;
 
-		centroids->AddBack(Point->New(2.5, 6.0));
+		centroids->AddBack(Point->New(4.0, 6.0));
 		centroids->AddBack(Point->New(7.25, 6.75));
-#		centroids->AddBack(Point->New(5, 5));
+		centroids->AddBack(Point->New(5, 5));
 
 		return centroids;
 	}
@@ -147,7 +153,7 @@ class KMeans {
 	}
 }
 
-class DistanceResult implements Stringify {
+class : private : Distance implements Stringify {
 	@point : Point;
 	@distance : Float;
 
@@ -169,7 +175,7 @@ class DistanceResult implements Stringify {
 	}
 }
 
-class Point implements Stringify {
+class : private : Point implements Stringify {
 	@x : Float;
 	@y : Float;
 
