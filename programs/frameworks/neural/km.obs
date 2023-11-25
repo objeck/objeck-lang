@@ -52,18 +52,12 @@ class KMeans {
 				each(item := bucket) {
 					x_update += item->GetX();
 					y_update += item->GetY();
-
-					x := item->GetX();
-					y := item->GetY();
-
-"{$x}, {$y}"->PrintLine();
 				};
-# "{$x_update}, {$y_update}"->PrintLine();
 				x_update /= bucket->Size()->As(Float);
 				y_update /= bucket->Size()->As(Float);
+# "{$i}: {$x_update}, {$y_update}"->PrintLine();
 
 				centroids->AddBack(Point->New(x_update, y_update))
-# "{$i}: {$x_update}, {$y_update}"->PrintLine();
 				bucket->Empty();
 			};
 		};
