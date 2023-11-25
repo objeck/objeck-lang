@@ -120,8 +120,8 @@ class KMeans {
 	function : LoadCentroids() ~ Vector<Point> {
 		centroids := Vector->New()<Point>;
 
-		centroids->AddBack(Point->New(2, 1));
-		centroids->AddBack(Point->New(8, 9));
+		centroids->AddBack(Point->New(2.5, 6.0));
+		centroids->AddBack(Point->New(7.25, 6.75));
 #		centroids->AddBack(Point->New(5, 5));
 
 		return centroids;
