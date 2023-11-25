@@ -2,11 +2,11 @@ use Collection;
 
 class KMeans {
 	function : Main(args : String[]) ~ Nil {
+		debug := true;
+
 		points := LoadData();
 		centroids := LoadCentroids();
 		k := centroids->Size();
-
-		# test centroids size eqals k
 
 		buckets := Vector->New[k]<Point>;
 		each(i : k) {
@@ -14,18 +14,32 @@ class KMeans {
 		};
 		results := DistanceResult->New[k];
 
-		each(c : 2) {
-"\n=>{$centroids}\n---"->PrintLine();
+		last_centroids := Point->New[k];
+		each(i : last_centroids) {
+			last_centroids[i] := Point->New();
+		};
+
+		converged := false;
+		do {
+			if(debug) {
+				"\n=>{$centroids}\n---"->PrintLine();
+			};
 
 			each(point := points) {
 				each(i : centroids) {
 					centroid := centroids->Get(i);
 					distance := Distance(centroid, point);
 					result := DistanceResult->New(point, distance);
-"{$centroid}: {$result}"->PrintLine();
+
+					if(debug) {
+						"{$centroid}: {$result}"->PrintLine();
+					};
 					results[i] := result;
 				};
-"---"->PrintLine();
+
+				if(debug) {
+					"---"->PrintLine();
+				};
 
 				index := -1;
 				min := Float->Inf();
@@ -42,7 +56,9 @@ class KMeans {
 				bucket->AddBack(result->GetPoint());
 			};
 
-	
+			each(i : k) {
+				last_centroids[i] := centroids->Get(i);
+			};
 			
 			centroids->Empty();
 			each(i : k) {
@@ -55,12 +71,43 @@ class KMeans {
 				};
 				x_update /= bucket->Size()->As(Float);
 				y_update /= bucket->Size()->As(Float);
-# "{$i}: {$x_update}, {$y_update}"->PrintLine();
 
-				centroids->AddBack(Point->New(x_update, y_update))
-				bucket->Empty();
+				if(debug) {
+					"C{$i}->{$x_update}, {$y_update}"->PrintLine();
+				};
+
+				centroids->AddBack(Point->New(x_update, y_update));
+			};
+
+			converged := HasConverged(centroids, last_centroids);
+			if(<>converged) {
+				each(i : k) {
+					buckets[i]->Empty();
+				};
+			}
+		}
+		while(<>converged);
+
+		if(debug) {
+			"\n---"->PrintLine();
+			each(i : k) {
+				bucket := buckets[i];
+				"G{$i}->{$bucket}"->PrintLine();
 			};
 		};
+	}
+
+	function : native : HasConverged(current : Vector<Point>, last : Point[]) ~ Bool {
+		each(i : current) {
+			left := current->Get(i);
+			right := last[i];
+
+			if(<>left->Equals(right)) {
+				return false;
+			};
+		}
+
+		return true;
 	}
 
 	function : native : Distance(a : Point, b : Point) ~ Float {
@@ -73,8 +120,8 @@ class KMeans {
 	function : LoadCentroids() ~ Vector<Point> {
 		centroids := Vector->New()<Point>;
 
-		centroids->AddBack(Point->New(3, 4));
-		centroids->AddBack(Point->New(7, 8));
+		centroids->AddBack(Point->New(2, 1));
+		centroids->AddBack(Point->New(8, 9));
 #		centroids->AddBack(Point->New(5, 5));
 
 		return centroids;
@@ -126,6 +173,11 @@ class Point implements Stringify {
 	@x : Float;
 	@y : Float;
 
+	New() {
+		@x := 0.0;
+		@y := 0.0;
+	}
+
 	New(x : Float, y : Float) {
 		@x := x;
 		@y := y;
@@ -137,6 +189,10 @@ class Point implements Stringify {
 
 	method : public : GetY() ~ Float {
 		return @y;
+	}
+
+	method : public : Equals(point : Point) ~ Bool {
+		return point->GetX() = @x & point->GetY() = @y;
 	}
 
 	method : public : ToString() ~ String {
