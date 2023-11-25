@@ -14,7 +14,7 @@ class KMeans {
 		};
 		results := DistanceResult->New[k];
 
-		each(c : 2) {
+		each(c : 3) {
 "\n{$centroids}\n==="->PrintLine();
 
 			each(point := points) {
@@ -52,14 +52,19 @@ class KMeans {
 				each(item := bucket) {
 					x_update += item->GetX();
 					y_update += item->GetY();
+
+					x := item->GetX();
+					y := item->GetY();
+
+"{$x}, {$y}"->PrintLine();
 				};
+# "{$x_update}, {$y_update}"->PrintLine();
 				x_update /= bucket->Size()->As(Float);
 				y_update /= bucket->Size()->As(Float);
 
 				centroids->AddBack(Point->New(x_update, y_update))
-"{$i}: {$x_update}, {$y_update}"->PrintLine();
+# "{$i}: {$x_update}, {$y_update}"->PrintLine();
 				bucket->Empty();
-# bucket->Size()->PrintLine();
 			};
 		};
 	}
