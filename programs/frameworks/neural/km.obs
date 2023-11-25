@@ -7,7 +7,7 @@ class KMeans {
 		@debug := true;
 
 		points := LoadData();
-		centroids := LoadCentroids();
+		centroids := InitializeCentroids();
 		results := CalculateMean(points, centroids);
 
 		"\n======"->PrintLine();
@@ -62,7 +62,7 @@ class KMeans {
 						pt_index := i;
 					}
 				};
-				
+
 				result := results[pt_index];
 				bucket := buckets[pt_index];
 				bucket->AddBack(result->GetPoint());
@@ -99,7 +99,7 @@ class KMeans {
 			}
 		}
 		while(<>converged);
-		
+
 		return buckets;
 	}
 
@@ -123,12 +123,12 @@ class KMeans {
 		return Float->Sqrt(Float->Pow(x2 - x1, 2.0) + Float->Pow(y2 - y1, 2.0));
 	}
 
-	function : LoadCentroids() ~ Vector<Point> {
+	function : InitializeCentroids() ~ Vector<Point> {
 		centroids := Vector->New()<Point>;
 
-		centroids->AddBack(Point->New(4.0, 6.0));
-		centroids->AddBack(Point->New(7.25, 6.75));
-		centroids->AddBack(Point->New(5, 5));
+		centroids->AddBack(Point->New(Float->Random() * 10.0, Float->Random() * 10.0));
+		centroids->AddBack(Point->New(Float->Random() * 10.0, Float->Random() * 10.0));
+#		centroids->AddBack(Point->New(5, 5));
 
 		return centroids;
 	}
