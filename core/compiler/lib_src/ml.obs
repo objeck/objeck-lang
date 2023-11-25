@@ -1954,19 +1954,19 @@ each(neighbor := nearest) {
 	K-Means clustering algorithm
 	
 	```
-	points := Vector->New()<Point>;
-	points->AddBack(Point->New(9.78, 7.86));
-	points->AddBack(Point->New(0.81, 0.77));
-	points->AddBack(Point->New(8.82, 5.48));
-	points->AddBack(Point->New(1.80, 0.43));
-	points->AddBack(Point->New(6.16, 6.60));
-	points->AddBack(Point->New(6.51, 8.72));
-	points->AddBack(Point->New(1.10, 2.56));
-	points->AddBack(Point->New(7.89, 4.49));
-	points->AddBack(Point->New(3.33, 2.89));
-	points->AddBack(Point->New(0.74, 3.99));
-	points->AddBack(Point->New(3.15, 1.70));
-	points->AddBack(Point->New(0.55, 6.27));
+	points := Vector->New()<KMeansPoint>;
+	points->AddBack(KMeansPoint->New(9.78, 7.86));
+	points->AddBack(KMeansPoint->New(0.81, 0.77));
+	points->AddBack(KMeansPoint->New(8.82, 5.48));
+	points->AddBack(KMeansPoint->New(1.80, 0.43));
+	points->AddBack(KMeansPoint->New(6.16, 6.60));
+	points->AddBack(KMeansPoint->New(6.51, 8.72));
+	points->AddBack(KMeansPoint->New(1.10, 2.56));
+	points->AddBack(KMeansPoint->New(7.89, 4.49));
+	points->AddBack(KMeansPoint->New(3.33, 2.89));
+	points->AddBack(KMeansPoint->New(0.74, 3.99));
+	points->AddBack(KMeansPoint->New(3.15, 1.70));
+	points->AddBack(KMeansPoint->New(0.55, 6.27));
 
 	kmeans := KMeans->New(2, 0.0, 10.0, points);
 	clusters := kmeans->Cluster();
@@ -1978,7 +1978,7 @@ each(neighbor := nearest) {
 	```
 ~#
 	class KMeans {
-		@points : Vector<Point>;
+		@points : Vector<KMeansPoint>;
 		@k : Int;
 		@min : Float;
 		@max : Float;
@@ -1991,7 +1991,7 @@ each(neighbor := nearest) {
 		@param max maximum starting centroid point
 		@param points input data points
 		~#
-		New(k : Int, min : Float, max : Float, points : Vector<Point>) {
+		New(k : Int, min : Float, max : Float, points : Vector<KMeansPoint>) {
 			@k := k;
 			@min := min;
 			@max := max;
@@ -2004,19 +2004,19 @@ each(neighbor := nearest) {
 		Cluster input points
 		@return clustered input points
 		~#
-		method : public : Cluster() ~ Vector[]<Point> {
+		method : public : Cluster() ~ Vector[]<KMeansPoint> {
 			centroids := InitializeCentroids();
 			k := centroids->Size();
 
-			buckets := Vector->New[k]<Point>;
+			buckets := Vector->New[k]<KMeansPoint>;
 			each(i : k) {
-				buckets[i] := Vector->New()<Point>;
+				buckets[i] := Vector->New()<KMeansPoint>;
 			};
 			results := Distance->New[k];
 
-			last_centroids := Point->New[k];
+			last_centroids := KMeansPoint->New[k];
 			each(i : last_centroids) {
-				last_centroids[i] := Point->New();
+				last_centroids[i] := KMeansPoint->New();
 			};
 
 			converged := false;
@@ -2076,7 +2076,7 @@ each(neighbor := nearest) {
 						"C{$i}->{$x_update}, {$y_update}"->PrintLine();
 					};
 
-					centroids->AddBack(Point->New(x_update, y_update));
+					centroids->AddBack(KMeansPoint->New(x_update, y_update));
 				};
 
 				converged := HasConverged(centroids, last_centroids);
@@ -2091,7 +2091,7 @@ each(neighbor := nearest) {
 			return buckets;
 		}
 
-		method : native : HasConverged(current : Vector<Point>, last : Point[]) ~ Bool {
+		method : native : HasConverged(current : Vector<KMeansPoint>, last : KMeansPoint[]) ~ Bool {
 			each(i : current) {
 				left := current->Get(i);
 				right := last[i];
@@ -2104,18 +2104,18 @@ each(neighbor := nearest) {
 			return true;
 		}
 
-		method : native : GetDistance(a : Point, b : Point) ~ Float {
+		method : native : GetDistance(a : KMeansPoint, b : KMeansPoint) ~ Float {
 			x1 := a->GetX(); y1 := a->GetY();
 			x2 := b->GetX(); y2 := b->GetY();
 
 			return Float->Sqrt(Float->Pow(x2 - x1, 2.0) + Float->Pow(y2 - y1, 2.0));
 		}
 
-		method : InitializeCentroids() ~ Vector<Point> {
-			centroids := Vector->New()<Point>;
+		method : InitializeCentroids() ~ Vector<KMeansPoint> {
+			centroids := Vector->New()<KMeansPoint>;
 
 			each(i : @k) {
-				centroids->AddBack(Point->New(Float->Random(@min, @max), Float->Random(@min, @max)));
+				centroids->AddBack(KMeansPoint->New(Float->Random(@min, @max), Float->Random(@min, @max)));
 			};
 
 			return centroids;
@@ -2126,8 +2126,8 @@ each(neighbor := nearest) {
 		@param filename input filename
 		@return input data points
 		~#
-		function : LoadData(filename : String) ~ Vector<Point> {
-			points := Vector->New()<Point>;
+		function : LoadData(filename : String) ~ Vector<KMeansPoint> {
+			points := Vector->New()<KMeansPoint>;
 			
 			table := CsvTable->New(System.IO.Filesystem.FileReader->ReadFile(filename));
 			if(table->IsParsed()) {
@@ -2139,7 +2139,7 @@ each(neighbor := nearest) {
 					x := row->Get(0)->ToFloat();
 					y := row->Get(1)->ToFloat();
 
-					points->AddBack(Point->New(x, y));
+					points->AddBack(KMeansPoint->New(x, y));
 				};
 			};
 
@@ -2148,15 +2148,15 @@ each(neighbor := nearest) {
 	}
 
 	class : private : Distance implements Stringify {
-		@point : Point;
+		@point : KMeansPoint;
 		@distance : Float;
 
-		New(point : Point, distance : Float) {
+		New(point : KMeansPoint, distance : Float) {
 			@point := point;
 			@distance := distance;
 		}
 
-		method : public : GetPoint() ~ Point {
+		method : public : GetPoint() ~ KMeansPoint {
 			return @point;
 		}
 
@@ -2172,7 +2172,7 @@ each(neighbor := nearest) {
 	#~
 	K-Means point
 	~#
-	class Point implements Stringify {
+	class KMeansPoint implements Stringify {
 		@x : Float;
 		@y : Float;
 
@@ -2214,7 +2214,7 @@ each(neighbor := nearest) {
 		Test if two points are equal
 		@return true if equal, false otherwise
 		~#
-		method : public : Equals(point : Point) ~ Bool {
+		method : public : Equals(point : KMeansPoint) ~ Bool {
 			return point->GetX() = @x & point->GetY() = @y;
 		}
 
