@@ -1987,6 +1987,8 @@ each(neighbor := nearest) {
 		#~
 		Constructor
 		@param k k number of clusters
+		@param min minimum starting centroid point
+		@param max maximum starting centroid point
 		@param points input data points
 		~#
 		New(k : Int, min : Float, max : Float, points : Vector<Point>) {
