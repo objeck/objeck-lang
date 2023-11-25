@@ -1968,7 +1968,7 @@ each(neighbor := nearest) {
 	points->AddBack(Point->New(3.15, 1.70));
 	points->AddBack(Point->New(0.55, 6.27));
 
-	kmeans := KMeans->New(2, points);
+	kmeans := KMeans->New(2, 0.0, 10.0, points);
 	clusters := kmeans->Cluster();
 
 	each(i : clusters) {
