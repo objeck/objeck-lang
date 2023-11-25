@@ -56,6 +56,7 @@ class KMeans {
 
 				centroids->AddBack(Point->New(x_update, y_update))
 # "{$i}: {$x_update}, {$y_update}"->PrintLine();
+				bucket->Empty();
 			};
 
 			"==="->PrintLine();
