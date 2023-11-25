@@ -1950,211 +1950,246 @@ each(neighbor := nearest) {
 		}
 	}
 
-
-
-
-
+#~
+	K-Means clustering algorithm
 	
-	# TOOD: document 
+	```
+	points := Vector->New()<Point>;
+	points->AddBack(Point->New(9.78, 7.86));
+	points->AddBack(Point->New(0.81, 0.77));
+	points->AddBack(Point->New(8.82, 5.48));
+	points->AddBack(Point->New(1.80, 0.43));
+	points->AddBack(Point->New(6.16, 6.60));
+	points->AddBack(Point->New(6.51, 8.72));
+	points->AddBack(Point->New(1.10, 2.56));
+	points->AddBack(Point->New(7.89, 4.49));
+	points->AddBack(Point->New(3.33, 2.89));
+	points->AddBack(Point->New(0.74, 3.99));
+	points->AddBack(Point->New(3.15, 1.70));
+	points->AddBack(Point->New(0.55, 6.27));
+
+	kmeans := KMeans->New(2, points);
+	clusters := kmeans->Cluster();
+
+	each(i : clusters) {
+	  cluster := clusters[i];
+	  "G{$i}->{$cluster}"->PrintLine();
+	};
+	```
+~#
 	class KMeans {
-	@points : Vector<Point>;
-	@k : Int;
-	@debug : Bool;
+		@points : Vector<Point>;
+		@k : Int;
+		@debug : Bool;
 
-	New(k : Int, points : Vector<Point> ) {
-		@k := k;
-		@points := points;
-		@debug := true;
-	}
+		#~
+		Constructor
+		@param k k number of clusters
+		@param points input data points
+		~#
+		New(k : Int, points : Vector<Point> ) {
+			@k := k;
+			@points := points;
+			@debug := true;
+		}
 
-	method : public : Cluster() ~ Vector[]<Point> {
-		centroids := InitializeCentroids();
-		k := centroids->Size();
+		#~
+		Cluster input points
+		@return clustered input points
+		~#
+		method : public : Cluster() ~ Vector[]<Point> {
+			centroids := InitializeCentroids();
+			k := centroids->Size();
 
-		buckets := Vector->New[k]<Point>;
-		each(i : k) {
-			buckets[i] := Vector->New()<Point>;
-		};
-		results := Distance->New[k];
+			buckets := Vector->New[k]<Point>;
+			each(i : k) {
+				buckets[i] := Vector->New()<Point>;
+			};
+			results := Distance->New[k];
 
-		last_centroids := Point->New[k];
-		each(i : last_centroids) {
-			last_centroids[i] := Point->New();
-		};
-
-		converged := false;
-		do {
-			if(@debug) {
-				"\n=>{$centroids}\n------"->PrintLine();
+			last_centroids := Point->New[k];
+			each(i : last_centroids) {
+				last_centroids[i] := Point->New();
 			};
 
-			each(point := @points) {
-				each(i : centroids) {
-					centroid := centroids->Get(i);
-					distance := GetDistance(centroid, point);
-					result := Distance->New(point, distance);
+			converged := false;
+			do {
+				if(@debug) {
+					"\n=>{$centroids}\n------"->PrintLine();
+				};
+
+				each(point := @points) {
+					each(i : centroids) {
+						centroid := centroids->Get(i);
+						distance := GetDistance(centroid, point);
+						result := Distance->New(point, distance);
+
+						if(@debug) {
+							"{$centroid}: {$result}"->PrintLine();
+						};
+						results[i] := result;
+					};
 
 					if(@debug) {
-						"{$centroid}: {$result}"->PrintLine();
+						"------"->PrintLine();
 					};
-					results[i] := result;
+
+					pt_index := -1;
+					min_dist := Float->Inf();
+					each(i : results) {
+						result := results[i];
+						if(result->GetDistance() < min_dist) {
+							min_dist := result->GetDistance();
+							pt_index := i;
+						}
+					};
+
+					result := results[pt_index];
+					bucket := buckets[pt_index];
+					bucket->AddBack(result->GetPoint());
 				};
 
-				if(@debug) {
-					"------"->PrintLine();
-				};
-
-				pt_index := -1;
-				min_dist := Float->Inf();
-				each(i : results) {
-					result := results[i];
-					if(result->GetDistance() < min_dist) {
-						min_dist := result->GetDistance();
-						pt_index := i;
-					}
-				};
-
-				result := results[pt_index];
-				bucket := buckets[pt_index];
-				bucket->AddBack(result->GetPoint());
-			};
-
-			each(i : k) {
-				last_centroids[i] := centroids->Get(i);
-			};
-			
-			centroids->Empty();
-			each(i : k) {
-				bucket := buckets[i];
-
-				x_update := y_update := 0.0;
-				each(item := bucket) {
-					x_update += item->GetX();
-					y_update += item->GetY();
-				};
-				x_update /= bucket->Size()->As(Float);
-				y_update /= bucket->Size()->As(Float);
-
-				if(@debug) {
-					"C{$i}->{$x_update}, {$y_update}"->PrintLine();
-				};
-
-				centroids->AddBack(Point->New(x_update, y_update));
-			};
-
-			converged := HasConverged(centroids, last_centroids);
-			if(<>converged) {
 				each(i : k) {
-					buckets[i]->Empty();
+					last_centroids[i] := centroids->Get(i);
+				};
+				
+				centroids->Empty();
+				each(i : k) {
+					bucket := buckets[i];
+
+					x_update := y_update := 0.0;
+					each(item := bucket) {
+						x_update += item->GetX();
+						y_update += item->GetY();
+					};
+					x_update /= bucket->Size()->As(Float);
+					y_update /= bucket->Size()->As(Float);
+
+					if(@debug) {
+						"C{$i}->{$x_update}, {$y_update}"->PrintLine();
+					};
+
+					centroids->AddBack(Point->New(x_update, y_update));
+				};
+
+				converged := HasConverged(centroids, last_centroids);
+				if(<>converged) {
+					each(i : k) {
+						buckets[i]->Empty();
+					};
+				}
+			}
+			while(<>converged);
+
+			return buckets;
+		}
+
+		method : native : HasConverged(current : Vector<Point>, last : Point[]) ~ Bool {
+			each(i : current) {
+				left := current->Get(i);
+				right := last[i];
+
+				if(<>left->Equals(right)) {
+					return false;
 				};
 			}
+
+			return true;
 		}
-		while(<>converged);
 
-		return buckets;
-	}
+		method : native : GetDistance(a : Point, b : Point) ~ Float {
+			x1 := a->GetX(); y1 := a->GetY();
+			x2 := b->GetX(); y2 := b->GetY();
 
-	method : native : HasConverged(current : Vector<Point>, last : Point[]) ~ Bool {
-		each(i : current) {
-			left := current->Get(i);
-			right := last[i];
+			return Float->Sqrt(Float->Pow(x2 - x1, 2.0) + Float->Pow(y2 - y1, 2.0));
+		}
 
-			if(<>left->Equals(right)) {
-				return false;
+		method : InitializeCentroids() ~ Vector<Point> {
+			centroids := Vector->New()<Point>;
+
+			each(i : @k) {
+				centroids->AddBack(Point->New(Float->Random() * 10.0, Float->Random() * 10.0));
 			};
+
+			return centroids;
 		}
 
-		return true;
-	}
+		#~
+		Load input data point from a CSV file
+		@param filename input filename
+		@return input data points
+		~#
+		function : LoadData(filename : String) ~ Vector<Point> {
+			points := Vector->New()<Point>;
+			
+			table := CsvTable->New(System.IO.Filesystem.FileReader->ReadFile(filename));
+			if(table->IsParsed()) {
+				each(row := table) {
+					if(row->Size() <> 2) {
+						return Nil;
+					};
 
-	method : native : GetDistance(a : Point, b : Point) ~ Float {
-		x1 := a->GetX(); y1 := a->GetY();
-		x2 := b->GetX(); y2 := b->GetY();
+					x := row->Get(0)->ToFloat();
+					y := row->Get(1)->ToFloat();
 
-		return Float->Sqrt(Float->Pow(x2 - x1, 2.0) + Float->Pow(y2 - y1, 2.0));
-	}
-
-	method : InitializeCentroids() ~ Vector<Point> {
-		centroids := Vector->New()<Point>;
-
-		each(i : @k) {
-			centroids->AddBack(Point->New(Float->Random() * 10.0, Float->Random() * 10.0));
-		};
-
-		return centroids;
-	}
-
-	function : LoadData(filename : String) ~ Vector<Point> {
-		points := Vector->New()<Point>;
-		
-		table := CsvTable->New(System.IO.Filesystem.FileReader->ReadFile(filename));
-		if(table->IsParsed()) {
-			each(row := table) {
-				if(row->Size() <> 2) {
-					return Nil;
+					points->AddBack(Point->New(x, y));
 				};
-
-				x := row->Get(0)->ToFloat();
-				y := row->Get(1)->ToFloat();
-
-				points->AddBack(Point->New(x, y));
 			};
-		};
 
-		return points;
-	}
-}
-
-class : private : Distance implements Stringify {
-	@point : Point;
-	@distance : Float;
-
-	New(point : Point, distance : Float) {
-		@point := point;
-		@distance := distance;
+			return points;
+		}
 	}
 
-	method : public : GetPoint() ~ Point {
-		return @point;
+	class : private : Distance implements Stringify {
+		@point : Point;
+		@distance : Float;
+
+		New(point : Point, distance : Float) {
+			@point := point;
+			@distance := distance;
+		}
+
+		method : public : GetPoint() ~ Point {
+			return @point;
+		}
+
+		method : public : GetDistance() ~ Float {
+			return @distance;
+		}
+
+		method : public : ToString() ~ String {
+			return "{$@point}: {$@distance}";
+		}
 	}
 
-	method : public : GetDistance() ~ Float {
-		return @distance;
-	}
+	class : private : Point implements Stringify {
+		@x : Float;
+		@y : Float;
 
-	method : public : ToString() ~ String {
-		return "{$@point}: {$@distance}";
-	}
-}
+		New() {
+			@x := 0.0;
+			@y := 0.0;
+		}
 
-class : private : Point implements Stringify {
-	@x : Float;
-	@y : Float;
+		New(x : Float, y : Float) {
+			@x := x;
+			@y := y;
+		}
 
-	New() {
-		@x := 0.0;
-		@y := 0.0;
-	}
+		method : public : GetX() ~ Float {
+			return @x;
+		}
 
-	New(x : Float, y : Float) {
-		@x := x;
-		@y := y;
-	}
+		method : public : GetY() ~ Float {
+			return @y;
+		}
 
-	method : public : GetX() ~ Float {
-		return @x;
-	}
+		method : public : Equals(point : Point) ~ Bool {
+			return point->GetX() = @x & point->GetY() = @y;
+		}
 
-	method : public : GetY() ~ Float {
-		return @y;
+		method : public : ToString() ~ String {
+			return "{{$@x}, {$@y}}";
+		}
 	}
-
-	method : public : Equals(point : Point) ~ Bool {
-		return point->GetX() = @x & point->GetY() = @y;
-	}
-
-	method : public : ToString() ~ String {
-		return "{{$@x}, {$@y}}";
-	}
-}
 }
