@@ -12,49 +12,55 @@ class KMeans {
 		each(i : k) {
 			buckets[i] := Vector->New()<Point>;
 		};
-
 		results := DistanceResult->New[k];
-		each(point := points) {
-			each(i : centroids) {
-				centroid := centroids->Get(i);
-				distance := Distance(centroid, point);
-				results[i] := DistanceResult->New(point, distance);
+
+		each(c : 3) {
+			each(point := points) {
+				each(i : centroids) {
+					centroid := centroids->Get(i);
+					distance := Distance(centroid, point);
+					results[i] := DistanceResult->New(point, distance);
 "{$point} | {$centroid} => {$distance}"->PrintLine();
-			};
+				};
 
-			index := -1;
-			min := Float->Inf();
-			each(i : results) {
-				result := results[i];
-				if(result->GetDistance() < min) {
-					min := result->GetDistance();
-					index := i;
-				}
-			};
+				index := -1;
+				min := Float->Inf();
+				each(i : results) {
+					result := results[i];
+					if(result->GetDistance() < min) {
+						min := result->GetDistance();
+						index := i;
+					}
+				};
 
-			result := results[index];
-			bucket := buckets[index];
-			bucket->AddBack(result->GetPoint());
+				result := results[index];
+				bucket := buckets[index];
+				bucket->AddBack(result->GetPoint());
 
 "---\n{$index}: {$result}\n"->PrintLine();
-		};
-
-"==="->PrintLine();
-		
-		centroids->Empty();
-		each(i : k) {
-			bucket := buckets[i];
-
-			x_update := y_update := 0.0;
-			each(item := bucket) {
-				x_update += item->GetX();
-				y_update += item->GetY();
 			};
-			x_update /= bucket->Size()->As(Float);
-			y_update /= bucket->Size()->As(Float);
 
-			centroids->AddBack(Point->New(x_update, y_update))
-#			"{$i}: {$x_update}, {$y_update}"->PrintLine();
+	
+			
+			centroids->Empty();
+			each(i : k) {
+				bucket := buckets[i];
+
+				x_update := y_update := 0.0;
+				each(item := bucket) {
+					x_update += item->GetX();
+					y_update += item->GetY();
+				};
+				x_update /= bucket->Size()->As(Float);
+				y_update /= bucket->Size()->As(Float);
+
+				centroids->AddBack(Point->New(x_update, y_update))
+# "{$i}: {$x_update}, {$y_update}"->PrintLine();
+			};
+
+			"==="->PrintLine();
+			centroids->ToString()->PrintLine();
+			"==="->PrintLine();
 		};
 	}
 
@@ -95,7 +101,7 @@ class KMeans {
 	}
 }
 
-class DistanceResult {
+class DistanceResult implements Stringify {
 	@point : Point;
 	@distance : Float;
 
@@ -117,7 +123,7 @@ class DistanceResult {
 	}
 }
 
-class Point {
+class Point implements Stringify {
 	@x : Float;
 	@y : Float;
 
