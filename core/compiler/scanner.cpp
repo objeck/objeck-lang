@@ -745,20 +745,17 @@ void Scanner::ParseDouble(int index)
   std::wstring ident(buffer, start_pos, length);
   
   // parse and check for errors
-  wchar_t* str_end;
-  tokens[index]->SetFloatLit(wcstod(ident.c_str(), &str_end));
-  if(wcslen(str_end)) {
+  wchar_t* ending;
+  tokens[index]->SetFloatLit(wcstod(ident.c_str(), &ending));
+  if(wcslen(ending)) {
     tokens[index]->SetType(TOKEN_UNKNOWN);
-    tokens[index]->SetLineNbr(line_nbr);
-    tokens[index]->SetLinePos((int)(line_pos - length - 1));
-    tokens[index]->SetFileName(filename);
   }
   else {
     tokens[index]->SetType(TOKEN_FLOAT_LIT);
-    tokens[index]->SetLineNbr(line_nbr);
-    tokens[index]->SetLinePos((int)(line_pos - length - 1));
-    tokens[index]->SetFileName(filename);
   }
+  tokens[index]->SetLineNbr(line_nbr);
+  tokens[index]->SetLinePos((int)(line_pos - length - 1));
+  tokens[index]->SetFileName(filename);
 }
 
 void Scanner::ParseUnicodeChar(int index)
