@@ -1,6 +1,6 @@
 class Tester {
 	function : Main(args : String[]) ~ Nil {
-		v := 1.;
+		v := 1..;
 		v->PrintLine();
 	}
 }
