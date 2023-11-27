@@ -21,11 +21,12 @@ class KVM {
 
 		"--- DistancePointLine ---"->PrintLine();
 		DistancePointLine(3, 5, x_value, x_inter, y_inter)->PrintLine();
+		DistancePointLine(3, 1, x_value, x_inter, y_inter)->PrintLine();
 
 		"--- DistanceLineLine ---"->PrintLine();
-		DistanceLineLine(x_value, x_inter, y_inter, y_inter + 2.5)->PrintLine(); # original line
-		DistanceLineLine(x_value, x_inter, y_inter, y_inter - 2.5)->PrintLine(); # original line
-
+		DistanceLineLine(x_value, x_inter, y_inter, y_inter + 3.)->PrintLine(); # original line
+		DistanceLineLine(x_value, x_inter, y_inter, y_inter)->PrintLine(); # original line
+		DistanceLineLine(x_value, x_inter, y_inter, y_inter - 3.)->PrintLine(); # original line
 	}
 
 	function : native : DistanceLineLine(x_value : Float, x_inter : Float, y0_inter : Float, y1_inter : Float) ~ Float {
