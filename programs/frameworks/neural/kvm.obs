@@ -14,7 +14,7 @@ class KVM {
 	}
 
 	function : native : StrightLine(x_value : Float, x_inter : Float, y_inter : Float) ~ Float {
-		slope := -1. * (y_inter / x_inter);
+		slope := -1. * y_inter / x_inter;
 		return slope * x_value + y_inter;
 	}
 }
