@@ -10,7 +10,7 @@ class KVM {
 
 	function : native : DistancePointFromLine(x : Float, y : Float, x_value : Float, x_inter : Float, y_inter : Float) ~ Float {
 		slope := y_inter / x_inter;
-		return x * slope + (y_inter * y) - y_inter;
+		return x * slope + y_inter * y - y_inter;
 	}
 
 	function : native : StrightLine(x_value : Float, x_inter : Float, y_inter : Float) ~ Float {
