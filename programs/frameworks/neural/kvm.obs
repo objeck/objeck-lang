@@ -11,6 +11,7 @@ class KVM {
 		"---"->PrintLine();
 		
 		PointAboveBelowLine(5, 4, x_value, x_inter, y_inter)->PrintLine();
+		PointAboveBelowLine(4, 3, x_value, x_inter, y_inter)->PrintLine();
 		PointAboveBelowLine(5, 3, x_value, x_inter, y_inter)->PrintLine();
 	}
 
