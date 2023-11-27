@@ -10,10 +10,11 @@ class KVM {
 		
 		"---"->PrintLine();
 		
-		DistancePointFromLine(5, 3, x_value, x_inter, y_inter)->PrintLine();
+		PointAboveBelowLine(5, 4, x_value, x_inter, y_inter)->PrintLine();
+		PointAboveBelowLine(5, 3, x_value, x_inter, y_inter)->PrintLine();
 	}
 
-	function : native : DistancePointFromLine(x : Float, y : Float, x_value : Float, x_inter : Float, y_inter : Float) ~ Float {
+	function : native : PointAboveBelowLine(x : Float, y : Float, x_value : Float, x_inter : Float, y_inter : Float) ~ Float {
 		slope := y_inter / x_inter;
 		return x * slope + y_inter * y - y_inter;
 	}
