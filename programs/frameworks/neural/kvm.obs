@@ -1,20 +1,19 @@
 class KVM {
 	function : Main(args : String[]) ~ Nil {
-		m := 0.5; # slop
-		b := 1.0; # y-intercept
-		x := 4.0; # x-point on the line
+		x_value := 3;
+		x_inter := -4;
+		y_inter := 1;
+		StrightLine(x_value, x_inter, y_inter)->PrintLine();
 
-		SlopeIntercept(m, x, b)->PrintLine();
-		StrightLine(4, -4, 1)->PrintLine();
+		x_value := 4;
+		x_inter := -1;
+		y_inter := 1;
+		StrightLine(x_value, x_inter, y_inter)->PrintLine();
 	}
 
 	function : StrightLine(x_value : Float, x_inter : Float, y_inter : Float) ~ Float {
 		slope := -1. * (y_inter / x_inter);
 # "slope={$slope}"->PrintLine();		
-		return slope*x_value + y_inter;
-	}
-
-	function : SlopeIntercept(slope : Float, x_value : Float, y_inter : Float) ~ Float {
 		return slope*x_value + y_inter;
 	}
 }
