@@ -4,14 +4,32 @@ class KVM {
 		x_inter := -2;
 		y_inter := 1;
 
-		StrightLine(x_value + 1, x_inter, y_inter)->PrintLine(); # move line up
+#~
+		StrightLine(x_value + 1.25, x_inter, y_inter)->PrintLine(); # move line up
 		StrightLine(x_value, x_inter, y_inter)->PrintLine(); # original line
-		StrightLine(x_value - 1, x_inter, y_inter)->PrintLine(); # move line down
+		StrightLine(x_value - 1.25, x_inter, y_inter)->PrintLine(); # move line down
 		
 		"---"->PrintLine();
-		PointAboveBelowLine(5, 4, x_value, x_inter, y_inter)->PrintLine();
-		PointAboveBelowLine(4, 3, x_value, x_inter, y_inter)->PrintLine();
-		PointAboveBelowLine(5, 3, x_value, x_inter, y_inter)->PrintLine();
+
+		StrightLine(x_value + .05, x_inter, y_inter)->PrintLine(); # move line up
+		StrightLine(x_value, x_inter, y_inter)->PrintLine(); # original line
+		StrightLine(x_value - .05, x_inter, y_inter)->PrintLine(); # move line down
+
+		"---"->PrintLine();
+
+		PointAboveBelowLine(5, 4, x_value, x_inter, y_inter)->PrintLine(); # above line
+		PointAboveBelowLine(4, 3, x_value, x_inter, y_inter)->PrintLine(); # on line
+		PointAboveBelowLine(5, 3, x_value, x_inter, y_inter)->PrintLine(); # below line
+~#
+
+		PointLineDistance(3, 5, x_value, x_inter, y_inter)->PrintLine();
+	}
+
+	function : native : PointLineDistance(x : Float, y : Float, x_value : Float, x_inter : Float, y_inter : Float) ~ Float {
+		slope := y_inter / x_inter;
+		top := Float->Abs(slope * x + y_inter * y - y_inter);
+		bottom := Float->Sqrt(Float->Pow(slope, 2.) + Float->Pow(y_inter, 2.));
+		return top / bottom;
 	}
 
 	function : native : PointAboveBelowLine(x : Float, y : Float, x_value : Float, x_inter : Float, y_inter : Float) ~ Float {
