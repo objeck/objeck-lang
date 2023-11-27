@@ -1,19 +1,20 @@
 class KVM {
 	function : Main(args : String[]) ~ Nil {
-		x_value := 3;
-		x_inter := -4;
-		y_inter := 1;
-		StrightLine(x_value, x_inter, y_inter)->PrintLine();
-
 		x_value := 4;
-		x_inter := -1;
+		x_inter := -2;
 		y_inter := 1;
+
 		StrightLine(x_value, x_inter, y_inter)->PrintLine();
+		DistancePointFromLine(5, 3, x_value, x_inter, y_inter)->PrintLine();
+	}
+
+	function : native : DistancePointFromLine(x : Float, y : Float, x_value : Float, x_inter : Float, y_inter : Float) ~ Float {
+		slope := y_inter / x_inter;
+		return x * slope + (y_inter * y) - y_inter;
 	}
 
 	function : native : StrightLine(x_value : Float, x_inter : Float, y_inter : Float) ~ Float {
 		slope := -1. * (y_inter / x_inter);
-# "slope={$slope}"->PrintLine();		
-		return slope*x_value + y_inter;
+		return slope * x_value + y_inter;
 	}
 }
