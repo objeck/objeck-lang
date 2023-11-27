@@ -23,7 +23,7 @@ class KVM {
 		DistancePointLine(3, 5, x_value, x_inter, y_inter)->PrintLine();
 
 		"--- DistanceLineLine ---"->PrintLine();
-		DistanceLineLine(x_value, x_inter, y_inter, 3.5)->PrintLine(); # original line
+		DistanceLineLine(x_value, x_inter, y_inter, 4)->PrintLine(); # original line
 
 	}
 
