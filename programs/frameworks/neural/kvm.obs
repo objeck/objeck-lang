@@ -4,7 +4,12 @@ class KVM {
 		x_inter := -2;
 		y_inter := 1;
 
+		StrightLine(x_value + 1, x_inter, y_inter)->PrintLine();
 		StrightLine(x_value, x_inter, y_inter)->PrintLine();
+		StrightLine(x_value - 1, x_inter, y_inter)->PrintLine();
+		
+		"---"->PrintLine();
+		
 		DistancePointFromLine(5, 3, x_value, x_inter, y_inter)->PrintLine();
 	}
 
