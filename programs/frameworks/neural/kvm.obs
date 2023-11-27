@@ -24,6 +24,7 @@ class KVM {
 
 		"--- DistanceLineLine ---"->PrintLine();
 		DistanceLineLine(x_value, x_inter, y_inter, y_inter + 2.5)->PrintLine(); # original line
+		DistanceLineLine(x_value, x_inter, y_inter, y_inter - 2.5)->PrintLine(); # original line
 
 	}
 
