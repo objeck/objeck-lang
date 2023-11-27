@@ -1,8 +1,10 @@
 class KVM {
 	function : Main(args : String[]) ~ Nil {
-		x_value := 4;
 		x_inter := -2;
 		y_inter := 1;
+		x_value := 4;
+		"x_inter={$x_inter}, y_inter={$y_inter}, x_value={$x_value}\n"->PrintLine();
+
 		
 		"--- StrightLine (Apart) ---"->PrintLine();
 		StrightLine(x_value + 1.25, x_inter, y_inter)->PrintLine(); # move line up
@@ -33,7 +35,6 @@ class KVM {
 		slope := y0_inter / x_inter;
 		top := Float->Abs(y0_inter - y1_inter);
 		bottom := Float->Sqrt(Float->Pow(slope, 2.) + Float->Pow(y0_inter, 2.));
-
 		return top / bottom;
 	}
 
