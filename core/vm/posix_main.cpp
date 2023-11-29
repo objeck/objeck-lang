@@ -42,9 +42,11 @@ int main(const int argc, const char* argv[])
     //
     // check for command line parameters
     //
-    bool set_stdio_param = false;
-    // bool set_foo_bar_param = false; // TODO: add if needed
+    
+    // bool set_stdio_param = false;
+    size_t gc_threshold = 0;
     int vm_param_count = 0;
+    
     for(int i = 1; i < argc; ++i) {
       const std::string name_value(argv[i]);
       // check for OBJECK_STDIO
@@ -54,7 +56,26 @@ int main(const int argc, const char* argv[])
           ++vm_param_count;
           const std::string value(name_value.substr(name_value_index + 1));
 
-          // TODO: do stuff
+          char* str_end;
+          gc_threshold = strtol(value.c_str(), &str_end, 10);
+          if (str_end) {
+            switch (*str_end) {
+            case 'k':
+            case 'K':
+              gc_threshold *= 1024;
+              break;
+
+            case 'm':
+            case 'M':
+              gc_threshold *= 1048576;
+              break;
+
+            case 'g':
+            case 'G':
+              gc_threshold *= 1099511627776;
+              break;
+            }
+          }
         }
       }
       /* TODO: add if needed
@@ -84,9 +105,9 @@ int main(const int argc, const char* argv[])
     // Note: OBJECK_STDIO not needed for POSIX-like environments, ignore for MSYS2
     //
 #ifdef _MSYS2
-    return Execute(argc - vm_param_count, argv + vm_param_count, false);
+    return Execute(argc - vm_param_count, argv + vm_param_count, false, gc_threshold);
 #else    
-    Execute(argc - vm_param_count, argv + vm_param_count);
+    Execute(argc - vm_param_count, argv + vm_param_count, gc_threshold);
 #endif    
   } 
   else {
