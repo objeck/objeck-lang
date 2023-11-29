@@ -41,15 +41,14 @@ int main(const int argc, const char* argv[])
   if(argc > 1) {
     //
     // check for command line parameters
-    //
-    
-    // bool set_stdio_param = false;
+    //  
     size_t gc_threshold = 0;
     int vm_param_count = 0;
     
+    // bool set_foo_bar_param = false; // TODO: add if needed
     for(int i = 1; i < argc; ++i) {
       const std::string name_value(argv[i]);
-      // check for OBJECK_STDIO
+      // check for GC_THRESHOLD
       if (!name_value.rfind("--GC_THRESHOLD=", 0)) {
         const size_t name_value_index = name_value.find_first_of(L'=');
         if (name_value_index != std::string::npos) {

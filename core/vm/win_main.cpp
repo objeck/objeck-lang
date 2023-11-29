@@ -56,6 +56,7 @@ int main(const int argc, const char* argv[])
     //
     bool set_stdio_param = false;
     size_t gc_threshold = 0;
+
     // bool set_foo_bar_param = false; // TODO: add if needed
     int vm_param_count = 0;
     for(int i = 1; i < argc; ++i) {
@@ -71,7 +72,7 @@ int main(const int argc, const char* argv[])
           set_stdio_param = true;
         }
       }
-      // check for OBJECK_STDIO
+      // check for GC_THRESHOLD
       else if (!name_value.rfind("--GC_THRESHOLD=", 0)) {
         const size_t name_value_index = name_value.find_first_of(L'=');
         if(name_value_index != std::string::npos) {
