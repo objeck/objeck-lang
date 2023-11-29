@@ -1,0 +1,27 @@
+use Data.JSON; 
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() <> 1) {
+			"args!"->PrintLine();
+		}
+		else {
+			input := System.IO.Filesystem.FileReader->ReadFile(args[0]);
+	        if(input <> Nil) {
+	            parser := JsonParser->New(input);
+	            if(parser->Parse()) {
+	                root := parser->GetRoot();
+	                if(root <> Nil) {
+	                    constants := root->Get("Constants");
+	                    if(constants <> Nil) {
+	                        Constant1 := constants->Get(0);
+	                        if(Constant1 <> Nil) {
+	                            Constant1->Get("Name")->GetString()->PrintLine();
+	                        }
+	                    }
+	                }
+	            }
+	        }
+	    }
+	}
+}
