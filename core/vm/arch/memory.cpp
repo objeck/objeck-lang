@@ -35,7 +35,7 @@
 #ifdef _WIN32
 #include "win32/win32.h"
 #else
-#include "posix/posix.h
+#include "posix/posix.h"
 #endif
 
 StackProgram* MemoryManager::prgm;
