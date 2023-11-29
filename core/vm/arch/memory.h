@@ -174,7 +174,7 @@ class MemoryManager {
   
  public:
   static size_t MEM_START_MAX;
-  static void Initialize(StackProgram* p);
+  static void Initialize(StackProgram* p, size_t t);
 
   static void Clear(size_t* op_stack, long stack_pos) {
 #ifdef _MEM_LOGGING
