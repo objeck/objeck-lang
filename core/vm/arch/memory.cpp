@@ -79,15 +79,20 @@ pthread_mutex_t MemoryManager::marked_sweep_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t MemoryManager::free_memory_cache_lock = PTHREAD_MUTEX_INITIALIZER;
 #endif
 
-void MemoryManager::Initialize(StackProgram* p)
+void MemoryManager::Initialize(StackProgram* p, size_t t)
 {
   prgm = p;
   allocation_size = 0;
-  
-  const size_t min_mb = 1048576 * 16; // 16 MB -> min start
-  MEM_START_MAX = System::GetTotalSystemMemory() / 16; // 1/16th of system memory -> max start
-  if(MEM_START_MAX < min_mb) {
-    MEM_START_MAX = min_mb;
+
+  if(t) {
+    MEM_START_MAX = t;
+  }
+  else {
+    const size_t min_mb = 1048576 * 16; // 16 MB -> min start
+    MEM_START_MAX = System::GetTotalSystemMemory() / 16; // 1/16th of system memory -> max start
+    if (MEM_START_MAX < min_mb) {
+      MEM_START_MAX = min_mb;
+    }
   }
   mem_max_size = MEM_START_MAX;
 

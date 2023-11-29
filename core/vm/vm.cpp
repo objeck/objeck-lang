@@ -59,7 +59,7 @@ int Execute(const int argc, const char* argv[], size_t gc_threshold)
 #ifdef _WIN32
     Runtime::StackInterpreter::SetBinaryStdio(is_stdio_binary);
 #endif
-    Runtime::StackInterpreter* intpr = new Runtime::StackInterpreter(Loader::GetProgram());
+    Runtime::StackInterpreter* intpr = new Runtime::StackInterpreter(Loader::GetProgram(), gc_threshold);
     Runtime::StackInterpreter::AddThread(intpr);
     intpr->Execute(op_stack, stack_pos, 0, loader.GetProgram()->GetInitializationMethod(), nullptr, false);
     

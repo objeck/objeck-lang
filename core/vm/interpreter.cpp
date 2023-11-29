@@ -74,7 +74,7 @@ pthread_mutex_t StackInterpreter::intpr_threads_mutex = PTHREAD_MUTEX_INITIALIZE
 /********************************
  * VM initialization
  ********************************/
-void StackInterpreter::Initialize(StackProgram* p)
+void StackInterpreter::Initialize(StackProgram* p, size_t t)
 {
   program = p;
   
@@ -99,7 +99,7 @@ void StackInterpreter::Initialize(StackProgram* p)
   JitArm64::Initialize(program);
 #endif
 #endif
-  MemoryManager::Initialize(program);
+  MemoryManager::Initialize(program, t);
 
 #ifdef _MODULE
   TrapProcessor::Initialize(program);
