@@ -630,6 +630,13 @@ class System {
     
     return platform;
   }
+
+  static size_t GetTotalSystemMemory()
+  {
+    const size_t pages = sysconf(_SC_PHYS_PAGES);
+    const size_t page_size = sysconf(_SC_PAGE_SIZE);
+    return pages * page_size;
+  }
 };
 
 #endif
