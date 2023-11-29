@@ -39,6 +39,31 @@ using namespace std;
 int main(const int argc, const char* argv[])
 {
   if(argc > 1) {
+    //
+    // check for command line parameters
+    //
+    bool set_stdio_param = false;
+    // bool set_foo_bar_param = false; // TODO: add if needed
+    int vm_param_count = 0;
+    for(int i = 1; i < argc; ++i) {
+      const std::string name_value(argv[i]);
+      // check for OBJECK_STDIO
+      if (!name_value.rfind("--GC_THRESHOLD=", 0)) {
+        const size_t name_value_index = name_value.find_first_of(L'=');
+        if (name_value_index != std::string::npos) {
+          ++vm_param_count;
+          const std::string value(name_value.substr(name_value_index + 1));
+
+          // TODO: do stuff
+        }
+      }
+      /* TODO: add if needed
+      // check for FOO_BAR
+      else if(!name_value.rfind("--FOO_BAR=", 0)) {
+      }
+      */
+    }
+
     // enable UTF-8 environment
 #if defined(_X64)
     char* locale = setlocale(LC_ALL, ""); 
@@ -59,9 +84,9 @@ int main(const int argc, const char* argv[])
     // Note: OBJECK_STDIO not needed for POSIX-like environments, ignore for MSYS2
     //
 #ifdef _MSYS2
-    return Execute(argc, argv, false);
+    return Execute(argc - vm_param_count, argv + vm_param_count, false);
 #else    
-    return Execute(argc, argv);
+    Execute(argc - vm_param_count, argv + vm_param_count);
 #endif    
   } 
   else {

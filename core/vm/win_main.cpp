@@ -63,10 +63,24 @@ int main(const int argc, const char* argv[])
       if(!name_value.rfind("--OBJECK_STDIO=", 0)) {
         const size_t name_value_index = name_value.find_first_of(L'=');
         if(name_value_index != std::string::npos) {
-          const std::string value(name_value.substr(name_value_index + 1));
-          SetStdIo(value.c_str());
           ++vm_param_count;
+          const std::string value(name_value.substr(name_value_index + 1));
+
+          SetStdIo(value.c_str());
           set_stdio_param = true;
+        }
+      }
+      // check for OBJECK_STDIO
+      else if (!name_value.rfind("--GC_THRESHOLD=", 0)) {
+        const size_t name_value_index = name_value.find_first_of(L'=');
+        if(name_value_index != std::string::npos) {
+          const size_t name_value_index = name_value.find_first_of(L'=');
+          if(name_value_index != std::string::npos) {
+            ++vm_param_count;
+            const std::string value(name_value.substr(name_value_index + 1));
+
+            // TODO: do stuff
+          }
         }
       }
       /* TODO: add if needed
