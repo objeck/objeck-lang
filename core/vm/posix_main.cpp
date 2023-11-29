@@ -115,7 +115,7 @@ int main(const int argc, const char* argv[])
     usage += L"Usage: obr <program>\n\n";
 
     usage += L"Options:\n";
-    usage += L"\t--GC_THRESHOLD:\t[input] inital garbage collection threshold <number>(K|M|G)\n";
+    usage += L"\t--GC_THRESHOLD:\t[prepend] inital garbage collection threshold <number>(K|M|G)\n";
 
     usage += L"\nExample: \"obr hello.obe\"\n\nVersion: ";
     usage += VERSION_STRING;
