@@ -84,9 +84,9 @@ void MemoryManager::Initialize(StackProgram* p)
   prgm = p;
   allocation_size = 0;
   
-  const size_t four_mb = 1048576 * 4;
+  const size_t min_mb = 1048576 * 16;
   MEM_START_MAX = System::GetTotalSystemMemory() / 16;
-  if(MEM_START_MAX < four_mb) {
+  if(MEM_START_MAX < min_mb) {
     MEM_START_MAX = MEM_START_MAX;
   }
 
