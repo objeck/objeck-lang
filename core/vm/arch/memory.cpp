@@ -89,8 +89,8 @@ void MemoryManager::Initialize(StackProgram* p)
   if(MEM_START_MAX < min_mb) {
     MEM_START_MAX = min_mb;
   }
-
   mem_max_size = MEM_START_MAX;
+
   uncollected_count = 0;
   free_memory_cache_size = 0;
 
