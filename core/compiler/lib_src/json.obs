@@ -348,9 +348,9 @@ if(doc <> Nil) {
 		method : public : Parse() ~ Bool {
 			NextToken();
 			if(@cur_token->GetType() <> Token->Type->OTHER) {
-"--- Start Parsing --"->PrintLine();
+# "--- Start Parsing --"->PrintLine();
 				@root := ParseValue();
-"--- End Parsing --"->PrintLine();				
+# "--- End Parsing --"->PrintLine();				
 				return @root <> Nil;
 			};
 			
