@@ -113,7 +113,11 @@ int main(const int argc, const char* argv[])
   else {
     wstring usage;
     usage += L"Usage: obr <program>\n\n";
-    usage += L"Example: \"obr hello.obe\"\n\nVersion: ";
+
+    usage += L"Options:\n";
+    usage += L"\t--GC_THRESHOLD:\t[input] inital garbage collection threshold <number>(K|M|G)\n";
+
+    usage += L"\nExample: \"obr hello.obe\"\n\nVersion: ";
     usage += VERSION_STRING;
     
 #if defined(_WIN64) && defined(_WIN32)
