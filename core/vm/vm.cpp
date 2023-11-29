@@ -37,9 +37,9 @@
 
 // common execution point for all platforms
 #ifdef _WIN32
-int Execute(const int argc, const char* argv[], bool is_stdio_binary)
+int Execute(const int argc, const char* argv[], bool is_stdio_binary, size_t gc_threshold)
 #else
-int Execute(const int argc, const char* argv[])
+int Execute(const int argc, const char* argv[], size_t gc_threshold)
 #endif
 {
   if(argc > 1) {
