@@ -38,13 +38,13 @@
 
 /* FOR DEBUGGING ONLY
 #define MEM_MAX 4096 * 2
-*/
 
 #ifdef _RPI4
 #define MEM_START_MAX 1048576 * 4 // 4 MB, augh cute!
 #else
 #define MEM_START_MAX 1048576 * 4 * 256 // 4 MB + C, let's go!
 #endif
+*/
 
 #define UNCOLLECTED_COUNT 11
 #define COLLECTED_COUNT 29
@@ -173,6 +173,7 @@ class MemoryManager {
   static void ClearFreeMemory(size_t* op_stack = nullptr, long stack_pos = 0, bool all = false);
   
  public:
+  static size_t MEM_START_MAX;
   static void Initialize(StackProgram* p);
 
   static void Clear(size_t* op_stack, long stack_pos) {

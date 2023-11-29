@@ -32,6 +32,12 @@
 #include "memory.h"
 #include <iomanip>
 
+#ifdef _WIN32
+#include "win32/win32.h"
+#else
+#include "posix/posix.h
+#endif
+
 StackProgram* MemoryManager::prgm;
 
 std::unordered_set<StackFrame**> MemoryManager::pda_frames;
@@ -41,6 +47,7 @@ std::set<size_t*> MemoryManager::allocated_memory;
 
 std::unordered_map<size_t, std::list<size_t*>*> MemoryManager::free_memory_cache;
 size_t MemoryManager::free_memory_cache_size;
+size_t MemoryManager::MEM_START_MAX;
 
 bool MemoryManager::initialized;
 size_t MemoryManager::allocation_size;
@@ -76,6 +83,7 @@ void MemoryManager::Initialize(StackProgram* p)
 {
   prgm = p;
   allocation_size = 0;
+  MEM_START_MAX = System::GetTotalSystemMemory() / 16;
   mem_max_size = MEM_START_MAX;
   uncollected_count = 0;
   free_memory_cache_size = 0;
