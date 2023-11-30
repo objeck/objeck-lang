@@ -215,7 +215,6 @@ class VectorResult {
 	}
 
 	method : public : ToString() ~ String {
-		buffer := "";
 		diff_sums_str := @diff_sums->ToString();
 		diff_sums_sqrd_str := @diff_sums_sqrd->ToString();
 		diff_sums_total := GetDiffSquaredSum();
