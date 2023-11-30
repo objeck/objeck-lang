@@ -1,34 +1,57 @@
 class SVM {
 	function : Main(args : String[]) ~ Nil {
 		data := LoadData();
-		data_dims := data->Size();
-		rows := data_dims[0];
-		cols := data_dims[1];
+		
+		x_results := CalculateVectors(0, data);
+		x_results->ToString()->PrintLine();
+"---"->PrintLine();
 
-		"{$rows}x{$cols}"->PrintLine();
+		y_results := CalculateVectors(1, data);
+		y_results->ToString()->PrintLine();
 
-		x_sqrd := SumSquare(0, data);
-		x_sqrd := SumSquare(0, data);
+"---"->PrintLine();
+		
+		xy_products := CalculateVectorProducts(x_results->GetDiffVector(), y_results->GetDiffVector())
+		xy_products->ToString()->PrintLine();
+		xy_products_sum := Sum(xy_products);
 
-		y_sqrd := SumSquare(1, data);
-		"---"->PrintLine();
-		Sum(y_sqrd)->PrintLine();
-#		Average(1, data)->PrintLine();
+"---"->PrintLine();
+
+		r := GetR(xy_products_sum, x_results->GetDiffSquaredSum(), y_results->GetDiffSquaredSum());
+		slope := GetSlope(x_results->GetDiffSquaredSum(), y_results->GetDiffSquaredSum(), r, data);
+		y_iter := GetYIntercept(x_results->GetDataAverage(), y_results->GetDataAverage(), slope);
+
+		"r={$r}, slope={$slope}, y_iter={$y_iter}"->PrintLine();
 	}
 
-	function : native : SumSquare(col : Int, data : Float[,]) ~ Float[] {
+	function : native : GetYIntercept(x_diff_sum : Float, y_diff_sum : Float, slope : Float) ~ Float {
+		return y_diff_sum - slope * x_diff_sum;
+	}
+
+	function : native : GetSlope(x_diff_sqrd_sum : Float, y_diff_sqrd_sum : Float, r : Float, data : Float[,]) ~ Float {
 		data_dims := data->Size();
-		rows := data_dims[0];
-		cols := data_dims[1];
+		
+		rows := (data_dims[0] - 1)->As(Float);
+		sx := Float->Sqrt(x_diff_sqrd_sum / rows);
+		sy := Float->Sqrt(y_diff_sqrd_sum / rows);
 
-		col_sum := Average(col, data);
+		return r * sy / sx;
+	}
 
-		if(col < cols) {
-			results := Float->New[rows];
+	function : native : GetR(xy_products_sum : Float, x_diff_sqrd_sum : Float, y_diff_sqrd_sum : Float) ~ Float {
+		return xy_products_sum / Float->Sqrt(x_diff_sqrd_sum * y_diff_sqrd_sum);
+	}
 
-			each(row : rows) {
-				results[row] := Float->Pow(data[row, col] - col_sum, 2.);
-			};
+	function : native : CalculateVectorProducts(x_sums : Float[], y_sums : Float[]) ~ Float[] {
+		x_size := x_sums->Size();
+		y_size := y_sums->Size();
+
+		if(x_size = y_size) {
+			results := Float->New[x_size];
+
+			each(row : x_size) {
+				results[row] := x_sums[row] * y_sums[row];
+			}
 
 			return results;
 		};
@@ -36,13 +59,35 @@ class SVM {
 		return Nil;
 	}
 
-	function : native : Sum(data : Float[]) ~ Float {
-		sum := 0.0;
-			
-		each(row : data) {
-			sum += data[row];
+	function : native : CalculateVectors(col : Int, data : Float[,]) ~ Result {
+		avg := Average(col, data);
+
+		data_dims := data->Size();
+		rows := data_dims[0];
+		cols := data_dims[1];
+
+		if(col < cols) {
+			min_sums := Float->New[rows];
+			diff_sums_sqrd := Float->New[rows];
+
+			each(row : rows) {
+				min_sums[row] := data[row, col] - avg;
+				diff_sums_sqrd[row] := Float->Pow(min_sums[row], 2.);
+			};
+
+			return Result->New(avg, min_sums, diff_sums_sqrd);
 		};
 
+		return Nil;
+	}
+
+	function : native : Sum(data : Float[]) ~ Float {
+		sum := 0.0;
+		
+		each(i : data) {
+			sum += data[i];
+		};
+		
 		return sum;
 	}
 
@@ -76,5 +121,51 @@ class SVM {
 			[16.0, 79.0]
 			[18.0, 77.0]
 			[19.0, 91.0]];
+	}
+}
+
+class Result {
+	@values_avg : Float;
+	@diff_sums : Float[];
+	@diff_sums_sqrd : Float[];
+	@diff_sums_total : Float;
+
+	New(avg : Float, diff_sums : Float[], diff_sums_sqrd : Float[]) {
+		@values_avg := avg;
+		@diff_sums := diff_sums;
+		@diff_sums_sqrd := diff_sums_sqrd;
+	}
+
+	method : public : GetDataAverage() ~ Float {
+		return @values_avg;
+	}
+
+	method : public : GetDiffVector() ~ Float[] {
+		return @diff_sums;
+	}
+
+	method : public : GetDiffSquaredVector() ~ Float[] {
+		return @diff_sums_sqrd;
+	}
+
+	method : public : GetDiffSquaredSum() ~ Float {
+		if(@diff_sums_total = 0.0) {
+			each(i : @diff_sums_sqrd) {
+				@diff_sums_total += @diff_sums_sqrd[i];
+			};
+		};
+
+		return @diff_sums_total;
+	}
+
+	method : public : ToString() ~ String {
+		buffer := "";
+		diff_sums_str := @diff_sums->ToString();
+		diff_sums_sqrd_str := @diff_sums_sqrd->ToString();
+		diff_sums_total := GetDiffSquaredSum();
+
+		buffer += "values_avg={$@values_avg}; diff_sums_total={$diff_sums_total}\n  diff_sums={$diff_sums_str}\n  diff_sums_sqrd={$diff_sums_sqrd_str}";
+		return buffer;
+
 	}
 }
