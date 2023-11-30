@@ -135,7 +135,7 @@ void ObjeckLang::Execute(const std::wstring cmd_args)
   (*stack_pos) = 0;
 
   // execute
-  Runtime::StackInterpreter* intpr = new Runtime::StackInterpreter(Loader::GetProgram());
+  Runtime::StackInterpreter* intpr = new Runtime::StackInterpreter(Loader::GetProgram(), 0);
   Runtime::StackInterpreter::AddThread(intpr);
   intpr->Execute(op_stack, stack_pos, 0, loader.GetProgram()->GetInitializationMethod(), nullptr, false);
 
