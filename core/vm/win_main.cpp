@@ -87,17 +87,17 @@ int main(const int argc, const char* argv[])
               switch (*str_end) {
               case 'k':
               case 'K':
-                gc_threshold *= 1024;
+                gc_threshold *= 1024UL;
                 break;
 
               case 'm':
               case 'M':
-                gc_threshold *= 1048576;
+                gc_threshold *= 1048576UL;
                 break;
 
               case 'g':
               case 'G':
-                gc_threshold *= 1099511627776;
+                gc_threshold *= 1099511627776UL;
                 break;
               }
             }
