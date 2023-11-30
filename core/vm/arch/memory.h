@@ -38,12 +38,6 @@
 
 /* FOR DEBUGGING ONLY
 #define MEM_MAX 4096 * 2
-
-#ifdef _RPI4
-#define MEM_START_MAX 1048576 * 4 // 4 MB, augh cute!
-#else
-#define MEM_START_MAX 1048576 * 4 * 256 // 4 MB + C, let's go!
-#endif
 */
 
 #define UNCOLLECTED_COUNT 11
