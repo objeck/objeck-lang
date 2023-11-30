@@ -94,12 +94,21 @@ class LinearRegression {
 
 	method : public : Calculate() ~ Bool {
 		x_results := CalculateVectors(0, @data);
-		y_results := CalculateVectors(1, @data);
-			
-		xy_products := CalculateVectorProducts(x_results->GetDiffVector(), y_results->GetDiffVector())
-		xy_products_sum := SumVector(xy_products);
+		if(x_results = Nil) {
+			return false;
+		};
 
-		@r := CalculateR(xy_products_sum, x_results->GetDiffSquaredSum(), y_results->GetDiffSquaredSum());
+		y_results := CalculateVectors(1, @data);
+		if(x_results = Nil) {
+			return false;
+		};
+
+		xy_products := CalculateVectorProducts(x_results->GetDiffVector(), y_results->GetDiffVector())
+		if(xy_products = Nil) {
+			return false;
+		};
+
+		@r := CalculateR(SumVector(xy_products), x_results->GetDiffSquaredSum(), y_results->GetDiffSquaredSum());
 		@slope := CalculateSlope(x_results->GetDiffSquaredSum(), y_results->GetDiffSquaredSum(), @r, @data);
 		@y_iter := CalculateYIntercept(x_results->GetVectorAverage(), y_results->GetVectorAverage(), @slope);
 
@@ -211,8 +220,6 @@ class VectorResult {
 		diff_sums_sqrd_str := @diff_sums_sqrd->ToString();
 		diff_sums_total := GetDiffSquaredSum();
 
-		buffer += "data_avg={$@data_avg}; diff_sums_total={$diff_sums_total}\n  diff_sums={$diff_sums_str}\n  diff_sums_sqrd={$diff_sums_sqrd_str}";
-		return buffer;
-
+		return "data_avg={$@data_avg}; diff_sums_total={$diff_sums_total}\n  diff_sums={$diff_sums_str}\n  diff_sums_sqrd={$diff_sums_sqrd_str}";
 	}
 }
