@@ -487,7 +487,7 @@ namespace Runtime {
   
 #ifdef _DEBUGGER
     StackInterpreter(StackProgram* p, Debugger* d) {
-      Initialize(p);
+      Initialize(p, 0);
       
       debugger = d;
       

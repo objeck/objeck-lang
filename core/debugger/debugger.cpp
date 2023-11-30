@@ -386,7 +386,7 @@ void Runtime::Debugger::DoLoad()
   loader->Load();
 
   if(do_mem_init) {
-    MemoryManager::Initialize(loader->GetProgram());
+    MemoryManager::Initialize(loader->GetProgram(), 0);
     cur_line_num = 1;
   }
 
