@@ -103,7 +103,7 @@ int main(const int argc, const char* argv[])
     //
     // Note: OBJECK_STDIO not needed for POSIX-like environments, ignore for MSYS2
     //
-#ifdef _MSYS2
+#ifdef _WIN32
     return Execute(argc - vm_param_count, argv + vm_param_count, false, gc_threshold);
 #else    
     Execute(argc - vm_param_count, argv + vm_param_count, gc_threshold);
