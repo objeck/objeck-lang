@@ -7,8 +7,12 @@ class SVM {
 
 		"{$rows}x{$cols}"->PrintLine();
 
-		SumSquare(0, data)->PrintLine();
-		SumSquare(1, data)->PrintLine();
+		x_sqrd := SumSquare(0, data);
+		x_sqrd := SumSquare(0, data);
+
+		y_sqrd := SumSquare(1, data);
+		"---"->PrintLine();
+		Sum(y_sqrd)->PrintLine();
 #		Average(1, data)->PrintLine();
 	}
 
@@ -32,6 +36,16 @@ class SVM {
 		return Nil;
 	}
 
+	function : native : Sum(data : Float[]) ~ Float {
+		sum := 0.0;
+			
+		each(row : data) {
+			sum += data[row];
+		};
+
+		return sum;
+	}
+
 	function : native : Average(col : Int, data : Float[,]) ~ Float {
 		data_dims := data->Size();
 		rows := data_dims[0];
@@ -39,11 +53,12 @@ class SVM {
 
 		if(col < cols) {
 			sum := 0.0;
+			
 			each(row : rows) {
 				sum += data[row, col];
 			};
+			
 			return sum / rows->As(Float);
-
 		}
 
 		return 0.0;
