@@ -1,0 +1,64 @@
+class SVM {
+	function : Main(args : String[]) ~ Nil {
+		x_inter := 3;
+		y_inter := 0;
+		x_value := 1;
+		"x_inter={$x_inter}, y_inter={$y_inter}, x_value={$x_value}\n"->PrintLine();
+
+		StraightLine(x_value, x_inter, y_inter)->PrintLine(); # move line up
+
+#~				
+		"--- StraightLine (Apart) ---"->PrintLine();
+		StraightLine(x_value + 1.25, x_inter, y_inter)->PrintLine(); # move line up
+		StraightLine(x_value, x_inter, y_inter)->PrintLine(); # original line
+		StraightLine(x_value - 1.25, x_inter, y_inter)->PrintLine(); # move line down
+
+		"--- StraightLine (Close) ---"->PrintLine();
+		StraightLine(x_value + .05, x_inter, y_inter)->PrintLine(); # move line up
+		StraightLine(x_value, x_inter, y_inter)->PrintLine(); # original line
+		StraightLine(x_value - .05, x_inter, y_inter)->PrintLine(); # move line down
+
+		"--- PointAboveBelowLine ---"->PrintLine();
+		PointAboveBelowLine(5, 4, x_value, x_inter, y_inter)->PrintLine(); # above line
+		PointAboveBelowLine(4, 3, x_value, x_inter, y_inter)->PrintLine(); # on line
+		PointAboveBelowLine(5, 3, x_value, x_inter, y_inter)->PrintLine(); # below line
+
+		"--- DistancePointLine ---"->PrintLine();
+		DistancePointLine(3, 5, x_value, x_inter, y_inter)->PrintLine();
+		DistancePointLine(3, 1, x_value, x_inter, y_inter)->PrintLine();
+
+		"--- DistanceLineLine ---"->PrintLine();
+		DistanceLineLine(x_value, x_inter, y_inter, y_inter + 3.)->PrintLine(); # original line
+		DistanceLineLine(x_value, x_inter, y_inter, y_inter)->PrintLine(); # original line
+		DistanceLineLine(x_value, x_inter, y_inter, y_inter - 3.)->PrintLine(); # original line
+~#		
+	}
+
+	function : native : StraightLine(x_value : Float, x_inter : Float, y_inter : Float) ~ Float {
+"x_value={$x_value}, x_inter={$x_inter}, y_inter={$y_inter}"->PrintLine();
+		slope := 0.0;
+		if(x_inter <> 0.0) {
+			slope := -1. * y_inter / x_inter;
+		};
+		return slope * x_value + y_inter;
+	}
+
+	function : native : DistanceLineLine(x_value : Float, x_inter : Float, y0_inter : Float, y1_inter : Float) ~ Float {
+		slope := y0_inter / x_inter;
+		top := Float->Abs(y0_inter - y1_inter);
+		bottom := Float->Sqrt(Float->Pow(slope, 2.) + Float->Pow(y0_inter, 2.));
+		return top / bottom;
+	}
+
+	function : native : DistancePointLine(x : Float, y : Float, x_value : Float, x_inter : Float, y_inter : Float) ~ Float {
+		slope := y_inter / x_inter;
+		top := Float->Abs(slope * x + y_inter * y - y_inter);
+		bottom := Float->Sqrt(Float->Pow(slope, 2.) + Float->Pow(y_inter, 2.));
+		return top / bottom;
+	}
+
+	function : native : PointAboveBelowLine(x : Float, y : Float, x_value : Float, x_inter : Float, y_inter : Float) ~ Float {
+		slope := y_inter / x_inter;
+		return x * slope + y_inter * y - y_inter;
+	}
+}
