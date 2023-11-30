@@ -49,29 +49,29 @@ int main(const int argc, const char* argv[])
     for(int i = 1; i < argc; ++i) {
       const std::string name_value(argv[i]);
       // check for GC_THRESHOLD
-      if (!name_value.rfind("--GC_THRESHOLD=", 0)) {
+      if(!name_value.rfind("--GC_THRESHOLD=", 0)) {
         const size_t name_value_index = name_value.find_first_of(L'=');
-        if (name_value_index != std::string::npos) {
+        if(name_value_index != std::string::npos) {
           ++vm_param_count;
           const std::string value(name_value.substr(name_value_index + 1));
 
           char* str_end;
           gc_threshold = strtol(value.c_str(), &str_end, 10);
-          if (str_end) {
+          if(str_end) {
             switch (*str_end) {
             case 'k':
             case 'K':
-              gc_threshold *= 1024;
+              gc_threshold *= 1024UL;
               break;
 
             case 'm':
             case 'M':
-              gc_threshold *= 1048576;
+              gc_threshold *= 1048576UL;
               break;
 
             case 'g':
             case 'G':
-              gc_threshold *= 1099511627776;
+              gc_threshold *= 1099511627776UL;
               break;
             }
           }
