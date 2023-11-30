@@ -1,7 +1,7 @@
 /***************************************************************************
- * Starting point for the VM on Linux and macOS
+ * Starting point for the VM on Linux and macOS x64
  *
- * Copyright (c) 2008-2017 Randy Hollines
+ * Copyright (c) 2008-2024 Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
