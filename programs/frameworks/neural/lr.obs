@@ -1,48 +1,81 @@
-class SVM {
+class LinearRegression {
+	@data : Float[,];
+	@r : Float;
+	@slope : Float;
+	@y_iter : Float;
+#	@x_iter : Float;
+
 	function : Main(args : String[]) ~ Nil {
 		data := LoadData();
-		
-		x_results := CalculateVectors(0, data);
-		x_results->ToString()->PrintLine();
-"---"->PrintLine();
-
-		y_results := CalculateVectors(1, data);
-		y_results->ToString()->PrintLine();
-
-"---"->PrintLine();
-		
-		xy_products := CalculateVectorProducts(x_results->GetDiffVector(), y_results->GetDiffVector())
-		xy_products->ToString()->PrintLine();
-		xy_products_sum := Sum(xy_products);
-
-"---"->PrintLine();
-
-		r := GetR(xy_products_sum, x_results->GetDiffSquaredSum(), y_results->GetDiffSquaredSum());
-		slope := GetSlope(x_results->GetDiffSquaredSum(), y_results->GetDiffSquaredSum(), r, data);
-		y_iter := GetYIntercept(x_results->GetDataAverage(), y_results->GetDataAverage(), slope);
-
-		"r={$r}, slope={$slope}, y_iter={$y_iter}"->PrintLine();
+		lr := LinearRegression->New(data);
+		if(lr->Calculate()) {
+			r := lr->GetR();
+			slope := lr->GetSlope();
+			y_iter := lr->GetYIntercept();
+			
+			"r={$r}, slope={$slope}, y_iter={$y_iter}"->PrintLine();
+			
+			data_dims := data->Size();
+			rows := data_dims[0];
+			each(row : rows) {
+				x := data[row, 0];
+				y := lr->GetY(x);
+				"{$x}, {$y}"->PrintLine();
+			};
+		};
 	}
 
-	function : native : GetYIntercept(x_diff_sum : Float, y_diff_sum : Float, slope : Float) ~ Float {
-		return y_diff_sum - slope * x_diff_sum;
+	New(data : Float[,]) {
+		@data := data;
 	}
 
-	function : native : GetSlope(x_diff_sqrd_sum : Float, y_diff_sqrd_sum : Float, r : Float, data : Float[,]) ~ Float {
-		data_dims := data->Size();
-		
-		rows := (data_dims[0] - 1)->As(Float);
-		sx := Float->Sqrt(x_diff_sqrd_sum / rows);
-		sy := Float->Sqrt(y_diff_sqrd_sum / rows);
-
-		return r * sy / sx;
+	method : public : native : GetY(x : Float) ~ Float {
+		return @y_iter + @slope * x;
 	}
 
-	function : native : GetR(xy_products_sum : Float, x_diff_sqrd_sum : Float, y_diff_sqrd_sum : Float) ~ Float {
-		return xy_products_sum / Float->Sqrt(x_diff_sqrd_sum * y_diff_sqrd_sum);
+	method : public : native : GetR() ~ Float {
+		return @r;
 	}
 
-	function : native : CalculateVectorProducts(x_sums : Float[], y_sums : Float[]) ~ Float[] {
+	method : public : native : GetSlope() ~ Float {
+		return @slope;
+	}
+
+	method : public : native : GetYIntercept() ~ Float {
+		return @y_iter;
+	}
+
+	method : public : native : CalculateYIntercept(x_diff_sum : Float, y_diff_sum : Float, slope : Float) ~ Float {
+		if(@y_iter = 0.0) {
+			@y_iter := y_diff_sum - slope * x_diff_sum;
+		};
+
+		return @y_iter;
+	}
+
+	method : native : CalculateSlope(x_diff_sqrd_sum : Float, y_diff_sqrd_sum : Float, r : Float, data : Float[,]) ~ Float {
+		if(@slope = 0.0) {
+			data_dims := data->Size();
+			
+			rows := (data_dims[0] - 1)->As(Float);
+			sx := Float->Sqrt(x_diff_sqrd_sum / rows);
+			sy := Float->Sqrt(y_diff_sqrd_sum / rows);
+
+			@slope := r * sy / sx;
+		};
+
+		return @slope;
+	}
+
+	method : public : native : CalculateR(xy_products_sum : Float, x_diff_sqrd_sum : Float, y_diff_sqrd_sum : Float) ~ Float {
+		if(@r = 0.0) {
+			@r := xy_products_sum / Float->Sqrt(x_diff_sqrd_sum * y_diff_sqrd_sum);
+		};
+
+		return @r;
+	}
+
+	method : native : CalculateVectorProducts(x_sums : Float[], y_sums : Float[]) ~ Float[] {
 		x_size := x_sums->Size();
 		y_size := y_sums->Size();
 
@@ -59,7 +92,21 @@ class SVM {
 		return Nil;
 	}
 
-	function : native : CalculateVectors(col : Int, data : Float[,]) ~ Result {
+	method : public : Calculate() ~ Bool {
+		x_results := CalculateVectors(0, @data);
+		y_results := CalculateVectors(1, @data);
+			
+		xy_products := CalculateVectorProducts(x_results->GetDiffVector(), y_results->GetDiffVector())
+		xy_products_sum := SumVector(xy_products);
+
+		@r := CalculateR(xy_products_sum, x_results->GetDiffSquaredSum(), y_results->GetDiffSquaredSum());
+		@slope := CalculateSlope(x_results->GetDiffSquaredSum(), y_results->GetDiffSquaredSum(), @r, @data);
+		@y_iter := CalculateYIntercept(x_results->GetVectorAverage(), y_results->GetVectorAverage(), @slope);
+
+		return true;
+	}
+
+	method : native : CalculateVectors(col : Int, data : Float[,]) ~ VectorResult {
 		avg := Average(col, data);
 
 		data_dims := data->Size();
@@ -75,13 +122,13 @@ class SVM {
 				diff_sums_sqrd[row] := Float->Pow(min_sums[row], 2.);
 			};
 
-			return Result->New(avg, min_sums, diff_sums_sqrd);
+			return VectorResult->New(avg, min_sums, diff_sums_sqrd);
 		};
 
 		return Nil;
 	}
 
-	function : native : Sum(data : Float[]) ~ Float {
+	method : native : SumVector(data : Float[]) ~ Float {
 		sum := 0.0;
 		
 		each(i : data) {
@@ -91,7 +138,7 @@ class SVM {
 		return sum;
 	}
 
-	function : native : Average(col : Int, data : Float[,]) ~ Float {
+	method : native : Average(col : Int, data : Float[,]) ~ Float {
 		data_dims := data->Size();
 		rows := data_dims[0];
 		cols := data_dims[1];
@@ -124,20 +171,20 @@ class SVM {
 	}
 }
 
-class Result {
-	@values_avg : Float;
+class VectorResult {
+	@data_avg : Float;
 	@diff_sums : Float[];
 	@diff_sums_sqrd : Float[];
 	@diff_sums_total : Float;
 
 	New(avg : Float, diff_sums : Float[], diff_sums_sqrd : Float[]) {
-		@values_avg := avg;
+		@data_avg := avg;
 		@diff_sums := diff_sums;
 		@diff_sums_sqrd := diff_sums_sqrd;
 	}
 
-	method : public : GetDataAverage() ~ Float {
-		return @values_avg;
+	method : public : GetVectorAverage() ~ Float {
+		return @data_avg;
 	}
 
 	method : public : GetDiffVector() ~ Float[] {
@@ -164,7 +211,7 @@ class Result {
 		diff_sums_sqrd_str := @diff_sums_sqrd->ToString();
 		diff_sums_total := GetDiffSquaredSum();
 
-		buffer += "values_avg={$@values_avg}; diff_sums_total={$diff_sums_total}\n  diff_sums={$diff_sums_str}\n  diff_sums_sqrd={$diff_sums_sqrd_str}";
+		buffer += "data_avg={$@data_avg}; diff_sums_total={$diff_sums_total}\n  diff_sums={$diff_sums_str}\n  diff_sums_sqrd={$diff_sums_sqrd_str}";
 		return buffer;
 
 	}
