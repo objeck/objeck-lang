@@ -115,8 +115,7 @@ int main(const int argc, const char* argv[])
 
     usage += L"Options:\n";
     usage += L"\t--GC_THRESHOLD:\t[prepend] inital garbage collection threshold <number>(k|m|g)\n";
-
-    usage += L"\nExample: \"obr hello.obe\"\n\nVersion: ";
+    usage += L"\nExamples:\n\t\"obr hello.obe\"\n\t\"obr --GC_THRESHOLD=2m hello.obe\"\n \nVersion: ";
     usage += VERSION_STRING;
     
 #if defined(_WIN64) && defined(_WIN32)
