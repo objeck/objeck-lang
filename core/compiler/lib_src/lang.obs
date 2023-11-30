@@ -2181,7 +2181,7 @@ bundle System {
 				buffer := Char->New[64];
 				Number->FloatToString(v[i], buffer);
 				out->Append(buffer);
-				if(i + i < v->Size()) {
+				if(i + 1 < v->Size()) {
 				  out->Append(',');
 				};
 			};
