@@ -73,7 +73,7 @@ int main(const int argc, const char* argv[])
         }
       }
       // check for GC_THRESHOLD
-      else if (!name_value.rfind("--GC_THRESHOLD=", 0)) {
+      else if(!name_value.rfind("--GC_THRESHOLD=", 0)) {
         const size_t name_value_index = name_value.find_first_of(L'=');
         if(name_value_index != std::string::npos) {
           const size_t name_value_index = name_value.find_first_of(L'=');
