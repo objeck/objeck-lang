@@ -29,19 +29,19 @@ class LinearRegression {
 		@data := data;
 	}
 
-	method : public : native : GetY(x : Float) ~ Float {
+	method : public : GetY(x : Float) ~ Float {
 		return @y_iter + @slope * x;
 	}
 
-	method : public : native : GetR() ~ Float {
+	method : public : GetR() ~ Float {
 		return @r;
 	}
 
-	method : public : native : GetSlope() ~ Float {
+	method : public : GetSlope() ~ Float {
 		return @slope;
 	}
 
-	method : public : native : GetYIntercept() ~ Float {
+	method : public : GetYIntercept() ~ Float {
 		return @y_iter;
 	}
 
