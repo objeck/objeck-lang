@@ -58,12 +58,27 @@ x_product->PrintLine();
 			for(j := 1; j < x_squares->Size(); j += 1;) {
 				term_sum *= x_squares[j];
 			};
-			x_product *= x_product;
+			x_product_pow := x_product * x_product;
 
 			"=== 3 ==="->PrintLine();
-			d := term_sum - x_product;
-d->PrintLine();
+			coff_d := term_sum - x_product_pow;
+
+			x_num := GetX(1, x_squares, 0, 1, xy_products, 2, x_product);
+			x1 := x_num/coff_d;
+			x1->PrintLine();
+
+			x_num := GetX(0, x_squares, 1, 0, xy_products, 2, x_product);
+			x2 := x_num/coff_d;
+			x2->PrintLine();
 		}
+	}
+
+	function : GetX(i : Int, x_squares : Float[], j1 : Int, j2 : Int, xy_products : Float[], k : Int, x_product : Float) ~ Float {
+		x_square := x_squares[i];
+		xy_product_a := xy_products[j1];
+		xy_product_b := xy_products[j2];
+
+		return x_square * xy_product_a - xy_product_b * x_product;
 	}
 
 	function : ProductSum(in : Float[,], col_a : Int, col_b : Int) ~ Float[] {
