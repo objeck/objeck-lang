@@ -19,35 +19,50 @@ class MultiRegression {
 			data_means->PrintLine();
 
 			"=== 2 ==="->PrintLine();
+			x_squares := Float->New[cols - 1];
 			for(i := 1; i < cols; i += 1;) {
 				term_vector := VectorPower(data, i, 2.);
-				term_sum := VectorSum(term_vector);
-				coff := term_sum - Float->Pow(data_sums[i], 2.) / rows;			
-# term_sum->PrintLine();
-coff->PrintLine();
+				term := VectorSum(term_vector);
+				coff := term - Float->Pow(data_sums[i], 2.) / rows;			
+# term->PrintLine();
+# coff->PrintLine();
+				x_squares[i - 1] := coff;
 			};
+			x_squares->ToString()->PrintLine();
 
 			y_index := 0;
+			xy_products := Float->New[cols - 1];
 			for(i := 1; i < cols; i += 1;) {
-				term_sumvector := ProductSum(data, 0, i);
-				term_sumsum := VectorSum(term_sumvector);
-				coff := term_sumsum - data_sums[y_index] * data_sums[i] / rows;
-# term_sumsum->PrintLine();
-coff->PrintLine();
+				termvector := ProductSum(data, 0, i);
+				termsum := VectorSum(termvector);
+				coff := termsum - data_sums[y_index] * data_sums[i] / rows;
+# termsum->PrintLine();
+# coff->PrintLine();
+				xy_products[i - 1] := coff;
 			};
+			xy_products->ToString()->PrintLine();
 
 			# TODO: pick indexes, consider a range
-			term_vector := term_sumvector := ProductSum(data, 1, 2);
-			term_sum := VectorSum(term_vector);
+			x_products := ProductSum(data, 1, 2);
+			x_product_sum := VectorSum(x_products);
 
-			sub_sum := data_sums[1];
+			coff_sum := data_sums[1];
 			for(j := 2; j < data_sums->Size(); j += 1;) {
-				sub_sum *= data_sums[j];
+				coff_sum *= data_sums[j];
 			};
+			x_product := x_product_sum - coff_sum / rows;
+# x_product_sum->PrintLine();
+x_product->PrintLine();
 
-			coff := term_sum - sub_sum / rows;
-# term_sum->PrintLine();
-coff->PrintLine();
+			term_sum := x_squares[0];
+			for(j := 1; j < x_squares->Size(); j += 1;) {
+				term_sum *= x_squares[j];
+			};
+			x_product *= x_product;
+
+			"=== 3 ==="->PrintLine();
+			d := term_sum - x_product;
+d->PrintLine();
 		}
 	}
 
