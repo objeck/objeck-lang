@@ -1,0 +1,138 @@
+class MultiRegression {
+	# TODO: save calculated vectors
+	function : Main(args : String[]) ~ Nil {
+		data := LoadData();
+		dims := data->Size();
+		cols := dims[1];
+
+		data->ToString()->PrintLine();
+		"==="->PrintLine();
+
+		Sums(data)->PrintLine();
+		"---"->PrintLine();
+
+		Means(data)->PrintLine();
+		"==="->PrintLine();
+
+		for(i := 1; i < cols; i += 1;) {
+			power_sum := PowerSum(data, i);
+			power_sum->PrintLine();
+			Sum(power_sum)->PrintLine();
+			"---"->PrintLine();
+		};
+		"==="->PrintLine();
+
+		for(i := 1; i < cols; i += 1;) {
+			product_sum := ProductSum(data, 0, i);
+			product_sum->PrintLine();
+			Sum(product_sum)->PrintLine();
+			"---"->PrintLine();
+		};
+		"==="->PrintLine();
+
+		product_sum := ProductSum(data, 1, 2);
+		product_sum->PrintLine();
+		Sum(product_sum)->PrintLine();
+		"==="->PrintLine();
+	}
+
+	function : ProductSum(in : Float[,], col_a : Int, col_b : Int) ~ Float[] {
+		dims := in->Size();
+		rows := dims[0];
+		cols := dims[1];
+
+		if(col_a < cols & col_b < cols) {
+			out := Float->New[rows];
+
+			each(r : rows) {		
+				out[r] := in[r, col_a] * in[r, col_b]
+			};
+
+			return out;
+		};
+
+		return Nil;
+	}
+
+	function : PowerSum(in : Float[,], col : Int) ~ Float[] {
+		dims := in->Size();
+		rows := dims[0];
+		cols := dims[1];
+
+		if(col < cols) {
+			out := Float->New[rows];
+
+			each(r : rows) {		
+				out[r] := Float->Pow(in[r, col], 2.);
+			};
+
+			return out;
+		};
+
+		return Nil;
+	}
+
+	function : Means(in : Float[,]) ~ Float[] {
+		dims := in->Size();
+		rows := dims[0];
+		cols := dims[1];
+
+		out := Float->New[cols];
+		
+		each(c : cols) {
+			sum := 0.;
+
+			each(r : rows) {
+				sum += in[r, c];
+			};
+
+			out[c] := sum / rows;
+		};
+
+		return out;
+	}
+
+	function : Sum(in : Float[]) ~ Float {
+		rows := in->Size();
+		
+		sum := 0.;
+
+		each(r : rows) {
+			sum += in[r];
+		};
+
+		return sum;
+	}
+
+	function : Sums(in : Float[,]) ~ Float[] {
+		dims := in->Size();
+		rows := dims[0];
+		cols := dims[1];
+
+		out := Float->New[cols];
+		
+		each(c : cols) {
+			sum := 0.;
+
+			each(r : rows) {
+				sum += in[r, c];
+			};
+
+			out[c] := sum;
+		};
+
+		return out;
+	}
+
+	function : LoadData() ~ Float[,] {
+		return [
+			[140., 60., 22.]
+			[155., 62., 25.]
+			[159., 67., 24.]
+			[179., 70., 20.]
+			[192., 71., 15.]
+			[200., 72., 14.]
+			[212., 75., 14.]
+			[215., 78., 11.]];
+	}
+}
