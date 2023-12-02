@@ -61,6 +61,8 @@ x_product->PrintLine();
 			x_product_pow := x_product * x_product;
 
 			"=== 3 ==="->PrintLine();
+			# TODO: looped based solution
+			
 			coff_d := term_sum - x_product_pow;
 
 			x_num := GetX(1, x_squares, 0, 1, xy_products, 2, x_product);
@@ -70,7 +72,17 @@ x_product->PrintLine();
 			x_num := GetX(0, x_squares, 1, 0, xy_products, 2, x_product);
 			x2 := x_num/coff_d;
 			x2->PrintLine();
+
+			GetConst(x1, x2, data_means)->PrintLine();
 		}
+	}
+
+	function : GetConst(x1 : Float, x2 : Float, data_means : Float[]) ~ Float {
+		xterm_1 := data_means[0];
+		xmul_1 := x1 * data_means[1];
+		xmul_2 := x2 * data_means[2];
+
+		return xterm_1 - xmul_1 - xmul_2;
 	}
 
 	function : GetX(i : Int, x_squares : Float[], j1 : Int, j2 : Int, xy_products : Float[], k : Int, x_product : Float) ~ Float {
