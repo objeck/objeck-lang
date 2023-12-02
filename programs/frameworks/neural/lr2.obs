@@ -3,37 +3,52 @@ class MultiRegression {
 	function : Main(args : String[]) ~ Nil {
 		data := LoadData();
 		dims := data->Size();
+		rows := dims[0]->As(Float);
 		cols := dims[1];
 
-		data->ToString()->PrintLine();
-		"==="->PrintLine();
+		if(cols > 1) {
+			"=== 0 ==="->PrintLine();
+			data->ToString()->PrintLine();
 
-		Sums(data)->PrintLine();
-		"---"->PrintLine();
-
-		Means(data)->PrintLine();
-		"==="->PrintLine();
-
-		for(i := 1; i < cols; i += 1;) {
-			power_sum := PowerSum(data, i);
-			power_sum->PrintLine();
-			Sum(power_sum)->PrintLine();
+			data_sums := VectorSums(data);
+			data_sums->PrintLine();
 			"---"->PrintLine();
-		};
-		"==="->PrintLine();
 
-		for(i := 1; i < cols; i += 1;) {
-			product_sum := ProductSum(data, 0, i);
-			product_sum->PrintLine();
-			Sum(product_sum)->PrintLine();
-			"---"->PrintLine();
-		};
-		"==="->PrintLine();
+			"=== 1 ==="->PrintLine();
+			data_means := VectorMeans(data);
+			data_means->PrintLine();
 
-		product_sum := ProductSum(data, 1, 2);
-		product_sum->PrintLine();
-		Sum(product_sum)->PrintLine();
-		"==="->PrintLine();
+			"=== 2 ==="->PrintLine();
+			for(i := 1; i < cols; i += 1;) {
+				term_vector := VectorPower(data, i, 2.);
+				term_sum := VectorSum(term_vector);
+				coff := term_sum - Float->Pow(data_sums[i], 2.) / rows;			
+# term_sum->PrintLine();
+coff->PrintLine();
+			};
+
+			y_index := 0;
+			for(i := 1; i < cols; i += 1;) {
+				term_sumvector := ProductSum(data, 0, i);
+				term_sumsum := VectorSum(term_sumvector);
+				coff := term_sumsum - data_sums[y_index] * data_sums[i] / rows;
+# term_sumsum->PrintLine();
+coff->PrintLine();
+			};
+
+			# TODO: pick indexes, consider a range
+			term_vector := term_sumvector := ProductSum(data, 1, 2);
+			term_sum := VectorSum(term_vector);
+
+			sub_sum := data_sums[1];
+			for(j := 2; j < data_sums->Size(); j += 1;) {
+				sub_sum *= data_sums[j];
+			};
+
+			coff := term_sum - sub_sum / rows;
+# term_sum->PrintLine();
+coff->PrintLine();
+		}
 	}
 
 	function : ProductSum(in : Float[,], col_a : Int, col_b : Int) ~ Float[] {
@@ -54,7 +69,7 @@ class MultiRegression {
 		return Nil;
 	}
 
-	function : PowerSum(in : Float[,], col : Int) ~ Float[] {
+	function : VectorPower(in : Float[,], col : Int, pow : Float) ~ Float[] {
 		dims := in->Size();
 		rows := dims[0];
 		cols := dims[1];
@@ -63,7 +78,7 @@ class MultiRegression {
 			out := Float->New[rows];
 
 			each(r : rows) {		
-				out[r] := Float->Pow(in[r, col], 2.);
+				out[r] := Float->Pow(in[r, col], pow);
 			};
 
 			return out;
@@ -72,7 +87,7 @@ class MultiRegression {
 		return Nil;
 	}
 
-	function : Means(in : Float[,]) ~ Float[] {
+	function : VectorMeans(in : Float[,]) ~ Float[] {
 		dims := in->Size();
 		rows := dims[0];
 		cols := dims[1];
@@ -92,7 +107,7 @@ class MultiRegression {
 		return out;
 	}
 
-	function : Sum(in : Float[]) ~ Float {
+	function : VectorSum(in : Float[]) ~ Float {
 		rows := in->Size();
 		
 		sum := 0.;
@@ -104,7 +119,7 @@ class MultiRegression {
 		return sum;
 	}
 
-	function : Sums(in : Float[,]) ~ Float[] {
+	function : VectorSums(in : Float[,]) ~ Float[] {
 		dims := in->Size();
 		rows := dims[0];
 		cols := dims[1];
