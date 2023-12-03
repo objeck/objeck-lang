@@ -281,7 +281,7 @@ bundle System.ML {
 		@param a matrix
 		@param b matrix
 		@return updated matrix
-		~#
+		
 		function : native : Divide(a : Float[,], b : Float[,]) ~ Float[,] {
 			a_dims := a->Size();
 			a_rows := a_dims[0];
@@ -304,6 +304,7 @@ bundle System.ML {
 
 			return c;
 		}
+		~#
 
 		#~
 		Transpose a matrix swapping rows and columns.
