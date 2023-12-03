@@ -63,14 +63,14 @@ x_product->PrintLine();
 			"=== 3 ==="->PrintLine();
 			# TODO: looped based solution
 			
-			coff_d := term_sum - x_product_pow;
-
+			coff_dom := term_sum - x_product_pow;
+			
 			x_num := GetX(1, x_squares, 0, 1, xy_products, 2, x_product);
-			x1 := x_num/coff_d;
+			x1 := x_num / coff_dom;
 			x1->PrintLine();
 
 			x_num := GetX(0, x_squares, 1, 0, xy_products, 2, x_product);
-			x2 := x_num/coff_d;
+			x2 := x_num / coff_dom;
 			x2->PrintLine();
 
 			GetConst(x1, x2, data_means)->PrintLine();
