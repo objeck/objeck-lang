@@ -225,10 +225,7 @@ bundle System.ML {
 						sum += left * right;
 					}
 					out[i,k] := sum;
-
-#					"--- {$sum} ---"->PrintLine();
 				};
-#				"==="->PrintLine();
 			};
 
 			return out;
@@ -244,6 +241,10 @@ bundle System.ML {
 			rows := dim[0];
 			cols := dim[1];
 
+			if(rows <> cols) {
+				return Nil;
+			};
+
 			b := Float->New[cols, rows];
 			for(r := 0; r < rows; r += 1;) {
 				for(c := 0; c < cols; c += 1;) {
@@ -253,7 +254,43 @@ bundle System.ML {
 
 			return b;
 		}
-		
+
+		#~
+		Calculates the inverse matrix.
+		@param a matrix
+		@return inverse matrix
+		~#
+		function : native : Inverse(a : Float[,]) ~ Float[,] {
+			dim := a->Size();
+			rows := dim[0];
+			cols := dim[1];
+
+			if(rows <> cols) {
+				return Nil;
+			};
+
+"a={$rows}x{$cols}"->PrintLine();
+
+a->ToString()->PrintLine();
+"---"->PrintLine();
+
+			count := 0;
+			each(i : rows) {
+				each(j : cols) {
+					if(count % 2 <> 0) {
+						a[i,j] := -a[i,j];
+					};
+					count += 1;
+				};
+			};
+
+a->ToString()->PrintLine();
+"---"->PrintLine();
+
+
+			return Nil;
+		}
+
 		#~
 		Calculates the dot product.
 		@param a matrix
@@ -275,7 +312,7 @@ bundle System.ML {
 			if(a_cols <> b_rows) {
 				return Nil;
 			};
-			
+
 			c := Float->New[a_rows, b_cols];
 			for(a_col := 0; a_col < a_rows; a_col += 1;) {
 				for(right_col := 0; right_col < b_cols; right_col += 1;) {
