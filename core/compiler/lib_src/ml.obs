@@ -287,6 +287,9 @@ a->ToString()->PrintLine();
 a->ToString()->PrintLine();
 "---"->PrintLine();
 
+			a := Transpose(a);
+a->ToString()->PrintLine();
+"---"->PrintLine();
 
 			return Nil;
 		}
