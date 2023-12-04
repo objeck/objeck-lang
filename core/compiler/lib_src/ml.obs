@@ -66,7 +66,7 @@ bundle System.ML {
 			right_rows := right_dims[0];
 			right_cols := right_dims[1];
 
-			if( a_rows <> right_rows | a_cols <> right_cols) {
+			if(a_rows <> right_rows | a_cols <> right_cols) {
 				return Nil;
 			};
 
@@ -239,7 +239,7 @@ bundle System.ML {
 		@param b matrix
 		@param x constant to divide
 		@return updated matrix
-		~#
+		
 		function : native : Divide(b : Float[,], x : Float) ~ Float[,] {
 			right_dims := b->Size();
 			right_rows := right_dims[0];
@@ -260,7 +260,7 @@ bundle System.ML {
 		@param x constant to divide
 		@param b matrix
 		@return updated matrix
-		~#
+		
 		function : native : Divide(x : Float, b : Float[,]) ~ Float[,] {
 			right_dims := b->Size();
 			right_rows := right_dims[0];
@@ -275,8 +275,7 @@ bundle System.ML {
 
 			return c;
 		}
-
-		#~
+		
 		Divides two matrices
 		@param a matrix
 		@param b matrix
@@ -332,24 +331,47 @@ bundle System.ML {
 		@return transposed matrix
 		~#
 		function : native : Foo(a : Float[,]) ~ Float[,] {
-			"###"->PrintLine();
-
 			dim := a->Size();
 			rows := dim[0];
 			cols := dim[1];
 
+			if(rows <> cols) {
+				return Nil;
+			};
+
+			c := Float->New[rows, cols];
+
+			aa, bb : Int;
+
+			alt_i := rows - 1;
 			each(i : rows) {
-				each(j : cols) {
-
-
-
-					a[i, j]->PrintLine();
+				alt_j := cols - 1;
+				each(j : rows) {
 					
-				}
-				"---"->PrintLine();
-			}
+					if(alt_i = j) {
+						c[i,j] := -a[i,j];
+					}
+					else if(alt_i < j) {
+						c[j,i] := a[alt_i,alt_j];
+						aa := a[i,alt_j];
+					}
+					else {
+						c[i,j] := a[alt_i,alt_j];
+						bb += a[i, alt_j];
+					};					
 
-			return Nil;
+
+					alt_j -= 1;
+#					"---"->PrintLine();
+				};
+"{$aa}x{$bb}"->PrintLine();
+
+				alt_i -= 1;
+#				"==="->PrintLine();
+			};
+
+
+			return c;
 		}
 
 		#~
