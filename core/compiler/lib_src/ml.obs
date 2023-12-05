@@ -8,6 +8,10 @@ bundle System.ML {
 	#~
 	2D matrix operations
 	~#
+
+	#
+	# TOOD: replace with Eigen library class (https://eigen.tuxfamily.org/)
+	#
 	class Matrix2D {
 		#~
 		Adds a constant to a matrix
