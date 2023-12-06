@@ -10,11 +10,11 @@ bundle System.ML {
 	~#
 
 	class Proxy {
-		@lib_proxy : static : DllProxy;
+		@lib_proxy : static : System.API.DllProxy;
 		
-		function : GetDllProxy() ~ DllProxy {
+		function : GetDllProxy() ~ System.API.DllProxy {
 			if(@lib_proxy = Nil) {
-				@lib_proxy := DllProxy->New("libobjk_ml");
+				@lib_proxy := System.API.DllProxy->New("libobjk_ml");
 			};
 
 			return @lib_proxy;
@@ -32,15 +32,15 @@ bundle System.ML {
 		@return updated matrix
 		~#
 		function : native : Add(x : Float, b : Float[,]) ~ Float[,] {
-			if(input <> Nil) {
+			if(b <> Nil) {
 				array_args := Base->New[2];
 				array_args[0] := IntRef->New();
-				array_args[1] := FloatArrayRef->New(x);				
-				array_args[2] := ByteFloatyRef->New(b);				
+				array_args[1] := FloatRef->New(x);				
+				array_args[2] := FloatMatrixRef->New(b);				
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("ml_matrix_add_sm", array_args);
 				
-				holder := array_args[0]->As(FloatArrayRef);
+				holder := array_args[0]->As(FloatMatrixRef);
 				return holder->Get();
 			};
 			
