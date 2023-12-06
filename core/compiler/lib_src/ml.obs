@@ -32,8 +32,8 @@ bundle System.ML {
 		@return updated matrix
 		~#
 		function : native : Add(x : Float, b : Float[,]) ~ Float[,] {
-			if(b <> Nil) {
-				array_args := Base->New[2];
+			if(b <> Nil) {				
+				array_args := Base->New[3];
 				array_args[0] := IntRef->New();
 				array_args[1] := FloatRef->New(x);				
 				array_args[2] := FloatMatrixRef->New(b);				
