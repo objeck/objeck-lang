@@ -30,10 +30,35 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
 
-#include <stdio.h>
 #include "../../vm/lib_api.h"
 #include "../../shared/sys.h"
 #include <Eigen/Dense>
+
+ //
+   // matrix core
+   //
+#ifdef _WIN32
+__declspec(dllexport)
+#endif
+void ml_matrix_add_sm(VMContext& context) {
+  const double c = (double)APITools_GetFloatValue(context, 1);
+  size_t* m_obj = APITools_GetObjectValue(context, 2);
+  m_obj = (size_t*)*m_obj;
+
+  std::wcout << c << std::endl;
+
+  const size_t m_dims = m_obj[1];
+  if (m_dims == 2) {
+    const size_t m_dim_rows = m_obj[2];
+    const size_t m_dim_cols = m_obj[3];
+
+    // std::wcout << m_dim_a << L", " << m_dim_b << std::endl;
+      
+    return;
+  }
+
+  APITools_SetIntValue(context, 0, 0);
+}
 
 extern "C" {
   //
@@ -54,13 +79,5 @@ extern "C" {
   void unload_lib() {
   }
 
-  //
-  // matrix core
-  //
-#ifdef _WIN32
-  __declspec(dllexport)
-#endif
-  void ml_matrix_add_sm(VMContext& context) {
-    
-  }
+  
 }
