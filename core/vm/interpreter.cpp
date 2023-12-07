@@ -2031,7 +2031,9 @@ void StackInterpreter::ProcessNewArray(StackInstr* instr, size_t* &op_stack, lon
     indices[dim++] = value;
   }
 
-  size_t* mem = (size_t*)MemoryManager::AllocateArray((long)(static_cast<size_t>(size) + dim + 2), INT_TYPE, op_stack, *stack_pos);
+  size_t* mem = is_float ? 
+    (size_t*)MemoryManager::AllocateArray((long)(static_cast<size_t>(size) + dim + 2), FLOAT_TYPE, op_stack, *stack_pos) :
+    (size_t*)MemoryManager::AllocateArray((long)(static_cast<size_t>(size) + dim + 2), INT_TYPE, op_stack, *stack_pos);
   mem[0] = size;
   mem[1] = dim;
 
