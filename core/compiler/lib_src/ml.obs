@@ -38,7 +38,7 @@ bundle System.ML {
 				array_args[1] := FloatRef->New(x);				
 				array_args[2] := FloatMatrixRef->New(b);				
 				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("ml_matrix_add_sm", array_args);
+				@lib_proxy->CallFunction("ml_matrix_add_scalar_matrix", array_args);
 				
 				holder := array_args[0]->As(FloatMatrixRef);
 				return holder->Get();
