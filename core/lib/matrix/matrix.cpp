@@ -151,3 +151,15 @@ extern "C" {
     APITools_SetObjectValue(context, 0, result_obj);
   }
 }
+
+size_t ResultsFromMatrix(size_t input_values)
+{
+  const size_t array_size = data_ptr[0];
+  size_t* output_ptr = APITools_MakeFloatArray(context, array_size + array_dim + 2);
+  FLOAT_VALUE* output_values = (FLOAT_VALUE*)(output_ptr + array_dim + 2);
+
+  // copy results to output matrix
+  Eigen::Map<Matrix2D>(output_values, matrix.rows(), matrix.cols()) = matrix;
+  size_t* result_obj = APITools_GetObjectValue(context, 0);
+  result_obj[0] = (size_t)output_ptr;
+}
