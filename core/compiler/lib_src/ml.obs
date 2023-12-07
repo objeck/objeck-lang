@@ -45,21 +45,6 @@ bundle System.ML {
 			};
 			
 			return Nil;
-
-#~			
-			b_dims := b->Size();
-			b_rows := b_dims[0];
-			b_cols := b_dims[1];
-
-			c := Float->New[b_rows, b_cols];
-			for(i := 0; i < b_rows; i += 1;) {
-				for(j := 0; j < b_cols; j += 1;) {
-					c[i,j] := x + b[i,j];
-				};
-			};
-
-			return c;
-~#			
 		}
 
 		#~
@@ -119,18 +104,19 @@ bundle System.ML {
 		@return updated matrix
 		~#
 		function : native : Subtract(x : Float, b : Float[,]) ~ Float[,] {
-			b_dims := b->Size();
-			b_rows := b_dims[0];
-			b_cols := b_dims[1];
-
-			c := Float->New[b_rows, b_cols];
-			for(i := 0; i < b_rows; i += 1;) {
-				for(j := 0; j < b_cols; j += 1;) {
-					c[i,j] := x - b[i,j];
-				};
+			if(b <> Nil) {				
+				array_args := Base->New[3];
+				array_args[0] := FloatMatrixRef->New();
+				array_args[1] := FloatRef->New(x);				
+				array_args[2] := FloatMatrixRef->New(b);				
+				@lib_proxy := Proxy->GetDllProxy();
+				@lib_proxy->CallFunction("ml_matrix_sub_scalar_matrix", array_args);
+				
+				holder := array_args[0]->As(FloatMatrixRef);
+				return holder->Get();
 			};
-
-			return c;
+			
+			return Nil;
 		}
 		
 		#~
