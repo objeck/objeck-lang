@@ -174,7 +174,7 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
       indices[dim++] = value;
     }
 
-    size_t* mem = (size_t*)MemoryManager::AllocateArray((int64_t)(size + dim + 2), INT_TYPE, op_stack, *stack_pos);
+    size_t* mem = (size_t*)MemoryManager::AllocateArray((int64_t)(size + dim + 2), FLOAT_TYPE, op_stack, *stack_pos);
     mem[0] = size;
     mem[1] = dim;
 
