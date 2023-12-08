@@ -46,28 +46,7 @@ bundle System.ML {
 			
 			return Nil;
 		}
-
-		#~
-		Adds a constant to a matrix
-		@param b matrix
-		@param x constant to add
-		@return updated matrix
-		~#
-		function : native : Add(b : Float[,], x : Float) ~ Float[,] {
-			b_dims := b->Size();
-			b_rows := b_dims[0];
-			b_cols := b_dims[1];
-
-			c := Float->New[b_rows, b_cols];
-			for(i := 0; i < b_rows; i += 1;) {
-				for(j := 0; j < b_cols; j += 1;) {
-					c[i,j] := b[i,j] + x;
-				};
-			};
-
-			return c;
-		}
-		
+				
 		#~
 		Adds two matrices
 		@param a matrix
@@ -75,26 +54,19 @@ bundle System.ML {
 		@return updated matrix
 		~#
 		function : native : Add(a : Float[,], b : Float[,]) ~ Float[,] {
-			a_dims := a->Size();
-			a_rows := a_dims[0];
-			a_cols := a_dims[1];
-
-			b_dims := b->Size();
-			b_rows := b_dims[0];
-			b_cols := b_dims[1];
-
-			if(a_rows <> b_rows | a_cols <> b_cols) {
-				return Nil;
+			if(b <> Nil) {				
+				array_args := Base->New[3];
+				array_args[0] := FloatMatrixRef->New();
+				array_args[1] := FloatMatrixRef->New(a);				
+				array_args[2] := FloatMatrixRef->New(b);				
+				@lib_proxy := Proxy->GetDllProxy();
+				@lib_proxy->CallFunction("ml_matrix_add_matrix_matrix", array_args);
+				
+				holder := array_args[0]->As(FloatMatrixRef);
+				return holder->Get();
 			};
-
-			c := Float->New[a_rows, b_cols];
-			for(i := 0; i < a_rows; i += 1;) {
-				for(j := 0; j < b_cols; j += 1;) {
-					c[i,j] := a[i,j] + b[i,j];
-				};
-			};
-
-			return c;
+			
+			return Nil;
 		}
 
 		#~
@@ -104,19 +76,18 @@ bundle System.ML {
 		@return updated matrix
 		~#
 		function : native : Subtract(x : Float, b : Float[,]) ~ Float[,] {
-			if(b <> Nil) {				
-				array_args := Base->New[3];
-				array_args[0] := FloatMatrixRef->New();
-				array_args[1] := FloatRef->New(x);				
-				array_args[2] := FloatMatrixRef->New(b);				
-				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("ml_matrix_sub_scalar_matrix", array_args);
-				
-				holder := array_args[0]->As(FloatMatrixRef);
-				return holder->Get();
+			b_dims := b->Size();
+			b_rows := b_dims[0];
+			b_cols := b_dims[1];
+
+			c := Float->New[b_rows, b_cols];
+			for(i := 0; i < b_rows; i += 1;) {
+				for(j := 0; j < b_cols; j += 1;) {
+					c[i,j] := x - b[i,j];
+				};
 			};
-			
-			return Nil;
+
+			return c;
 		}
 		
 		#~
