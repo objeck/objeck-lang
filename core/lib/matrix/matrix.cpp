@@ -34,8 +34,10 @@
 #include "../../shared/sys.h"
 #include <Eigen/Dense>
 
-typedef Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::ColMajor> EigenMatrix;
-typedef Eigen::Vector<double, Eigen::Dynamic> EigenVector;
+typedef Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::ColMajor> MatrixIn;
+typedef Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> MatrixOut;
+
+typedef Eigen::Vector<double, Eigen::Dynamic> VectorIn;
 
 static Eigen::MatrixXd PtrToMatrix(size_t* matrix_data_ptr);
 static Eigen::VectorXd PtrToVector(size_t* matrix_data_ptr);
@@ -81,6 +83,8 @@ extern "C" {
 
     // add value
     matrix.array() += value;
+
+std::cout << matrix(0, 0) << ", " << matrix(1, 2) << std::endl;
     
     // create and set results from matrix
     size_t* result_obj = MatrixToPtr(matrix, matrix_data_ptr, context);
@@ -151,7 +155,7 @@ Eigen::VectorXd PtrToVector(size_t* vector_data_ptr)
   const size_t array_size = vector_data_ptr[0];
 
   FLOAT_VALUE* input_values = (FLOAT_VALUE*)(vector_data_ptr + array_dim + 2);
-  Eigen::VectorXd vector = Eigen::Map<EigenVector>(input_values, array_size);
+  Eigen::VectorXd vector = Eigen::Map<VectorIn>(input_values, array_size);
 
   return vector;
 }
@@ -165,11 +169,11 @@ Eigen::MatrixXd PtrToMatrix(size_t* matrix_data_ptr)
   }
 
   // copy input values
-  const size_t array_rows = matrix_data_ptr[2];
-  const size_t array_cols = matrix_data_ptr[3];
+  const size_t array_rows = matrix_data_ptr[3];
+  const size_t array_cols = matrix_data_ptr[2];
 
   FLOAT_VALUE* input_values = (FLOAT_VALUE*)(matrix_data_ptr + array_dim + 2);
-  Eigen::MatrixXd matrix = Eigen::Map<EigenMatrix>(input_values, array_rows, array_cols);
+  Eigen::MatrixXd matrix = Eigen::Map<MatrixIn>(input_values, array_rows, array_cols);
 
   return matrix;
 }
@@ -179,11 +183,11 @@ size_t* MatrixToPtr(Eigen::MatrixXd& matrix, size_t* matrix_data_ptr, VMContext&
   const size_t array_size = matrix_data_ptr[0];
   const size_t array_dim = matrix_data_ptr[1];
 
-  size_t* output_ptr = APITools_MakeFloatArray(context, array_size + array_dim + 2);
+  size_t* output_ptr = APITools_MakeFloatMatrix(context, matrix.rows(), matrix.cols());
   FLOAT_VALUE* output_values = (FLOAT_VALUE*)(output_ptr + array_dim + 2);
 
   // copy results to output matrix
-  Eigen::Map<EigenMatrix>(output_values, matrix.rows(), matrix.cols()) = matrix;
+  Eigen::Map<MatrixIn>(output_values, matrix.rows(), matrix.cols()) = matrix;
   size_t* result_obj = APITools_GetObjectValue(context, 0);
   result_obj[0] = (size_t)output_ptr;
 
