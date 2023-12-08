@@ -160,6 +160,24 @@ size_t* APITools_MakeFloatArray(VMContext& context, const size_t float_array_siz
 }
 
 //
+// Creates a managed 2D Float Objeck matrix instance
+//
+size_t* APITools_MakeFloatMatrix(VMContext& context, const size_t rows, const size_t cols) {
+  const long float_array_dim = 2;
+  const size_t float_array_size = rows * cols + float_array_dim + 2;
+
+  size_t* float_array = (size_t*)context.alloc_managed_array(float_array_size + float_array_dim + 2, instructions::FLOAT_TYPE,
+    context.op_stack, *context.stack_pos, false);
+  
+  float_array[0] = float_array_size;
+  float_array[1] = float_array_dim;
+  float_array[2] = rows;
+  float_array[3] = cols;
+
+  return float_array;
+}
+
+//
 // Creates a managed Char Objeck array instance
 //
 size_t* APITools_MakeCharArray(VMContext& context, const size_t char_array_size) {
