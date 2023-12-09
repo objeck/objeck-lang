@@ -293,12 +293,7 @@ std::cout << "lhs: " << lhs_matrix(0, 0) << ", " << lhs_matrix(1, 2) << std::end
     // caculate value
     Eigen::MatrixXd result = lhs_matrix.transpose();
 // std::cout << "r: " << result(0, 0) << ", " << result(0, 1) << ", " << result(0, 2) << std::endl;
-  
-    if(lhs_matrix.cols() != lhs_matrix.rows()) {
-      APITools_SetObjectValue(context, 0, 0);
-      return;
-    }
-
+    
     // create and set results from matrix
     size_t* result_obj = MatrixToPtr(result, lhs_data_ptr, context);
     APITools_SetObjectValue(context, 0, result_obj);
