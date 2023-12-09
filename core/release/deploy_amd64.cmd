@@ -40,6 +40,12 @@ devenv openssl.sln /rebuild "Release|x64"
 copy Release\win64\*.dll ..\..\release\deploy64\lib\native
 cd ..\..\release
 
+REM matrix support
+cd ..\lib\matrix
+devenv matrix.sln /rebuild "Release|x64"
+copy Release\x64\*.dll ..\..\release\deploy64\lib\native
+cd ..\..\release
+
 REM odbc support
 cd ..\lib\odbc
 devenv odbc.sln /rebuild "Release|x64"
