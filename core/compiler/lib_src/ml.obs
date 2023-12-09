@@ -220,42 +220,6 @@ bundle System.ML {
 		}
 
 		#~
-		Calculates the dot product.
-		@param a matrix
-		@param b matrix
-		@return updated matrix
-		~#
-		function : native : Dot(a : Float[,], b : Float[,]) ~ Float[,] {
-			a_dims := a->Size();
-			a_rows := a_dims[0];
-			a_cols := a_dims[1];
-
-			b_dims := b->Size();
-			b_rows := b_dims[0];
-			b_cols := b_dims[1];
-
-
-# "a=*{$a_cols}x{$a_rows}, b=*{$b_rows}x{$b_cols}"->PrintLine();
-
-			if(a_cols <> b_rows) {
-				return Nil;
-			};
-
-			c := Float->New[a_rows, b_cols];
-			for(a_col := 0; a_col < a_rows; a_col += 1;) {
-				for(right_col := 0; right_col < b_cols; right_col += 1;) {
-					cx := 0.0;
-					for(x_col := 0; x_col < b_rows; x_col += 1;) {
-						cx += a[a_col, x_col] * b[x_col, right_col];
-					};
-					c[a_col, right_col] := cx;
-				};
-			};
-
-			return c;
-		}
-
-		#~
 		Sigmoid 'S' function
 		@param x input value
 		@return Sigmoid value
@@ -911,7 +875,7 @@ else if(args->Size() = 1) {
 						# output layer error is the (target - actual)
 						output_errors := Matrix2D->Sub(target, final_outputs);
 						# hidden layer error is the output_errors, split by weights, recombined at hidden nodes
-						hidden_errors := Matrix2D->Dot(Matrix2D->Transpose(@weight_outputs_hidden), output_errors);
+						hidden_errors := Matrix2D->Mul(Matrix2D->Transpose(@weight_outputs_hidden), output_errors);
 						# update the weights for the links between the input and hidden layers
 						@weight_inputs_hidden := Matrix2D->Add(@weight_inputs_hidden, Adjust(rate, hidden_errors, hidden_outputs, input));
 						# update the weights for the links between the hidden and output layers
@@ -922,7 +886,7 @@ else if(args->Size() = 1) {
 		}
 
 		method : Adjust(rate : Float, errors : Float[,], outputs : Float[,], inputs : Float[,]) ~ Float[,] {
-			return Matrix2D->Mul(Matrix2D->Dot(Matrix2D->Mul(Matrix2D->Mul(outputs, Matrix2D->Sub(outputs, 1.)), errors), Matrix2D->Transpose(inputs)), rate);
+			return Matrix2D->Mul(Matrix2D->Mul(Matrix2D->Mul(Matrix2D->Mul(outputs, Matrix2D->Sub(outputs, 1.)), errors), Matrix2D->Transpose(inputs)), rate);
 		}
 	}
 
