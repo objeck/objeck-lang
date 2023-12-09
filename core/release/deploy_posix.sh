@@ -86,6 +86,16 @@ else
 	cp openssl.so ../../release/deploy/lib/native/libobjk_openssl.so
 fi
 
+cd ../matrix
+
+if [ ! -z "$1" ] && [ "$1" = "macos" ]; then
+	./build_osx_x64.sh matrix
+	cp matrix.dylib ../../release/deploy/lib/native/libobjk_matrix.dylib
+else
+	./build_linux.sh matrix
+	cp matrix.so ../../release/deploy/lib/native/libobjk_ml.so
+fi
+
 cd ../sdl
 
 if [ ! -z "$1" ] && [ "$1" = "macos" ]; then
