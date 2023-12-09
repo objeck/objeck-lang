@@ -6,7 +6,7 @@ Provides support for machine learning
 ~#
 bundle System.ML {
 	#~
-	2D matrix operations
+	ML and data science algorithms
 	~#
 
 	class Proxy {
@@ -21,24 +21,24 @@ bundle System.ML {
 		}
 	}
 
-	#
-	# TOOD: replace with Eigen library class (https://eigen.tuxfamily.org/)
-	#
+	#~
+	2D matrix operations
+	~#
 	class Matrix2D {
 		#~
-		Adds a constant to a matrix
+		Adds a matrix to constant
 		@param x constant to add
 		@param b matrix
 		@return updated matrix
 		~#
-		function : native : Add(x : Float, b : Float[,]) ~ Float[,] {
-			if(b <> Nil) {				
+		function : native : Add(a : Float[,], x : Float) ~ Float[,] {
+			if(a <> Nil) {
 				array_args := Base->New[3];
 				array_args[0] := FloatMatrixRef->New();
-				array_args[1] := FloatRef->New(x);				
-				array_args[2] := FloatMatrixRef->New(b);				
+				array_args[1] := FloatMatrixRef->New(a);				
+				array_args[2] := FloatRef->New(x);				
 				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("ml_matrix_add_scalar_matrix", array_args);
+				@lib_proxy->CallFunction("ml_matrix_add_matrix_scalar", array_args);
 				
 				holder := array_args[0]->As(FloatMatrixRef);
 				return holder->Get();
@@ -54,7 +54,7 @@ bundle System.ML {
 		@return updated matrix
 		~#
 		function : native : Add(a : Float[,], b : Float[,]) ~ Float[,] {
-			if(b <> Nil) {				
+			if(a <> Nil | b <> Nil) {
 				array_args := Base->New[3];
 				array_args[0] := FloatMatrixRef->New();
 				array_args[1] := FloatMatrixRef->New(a);				
@@ -70,216 +70,152 @@ bundle System.ML {
 		}
 
 		#~
-		Subtracts a constant from a matrix
-		@param x constant to subtract
-		@param b matrix
-		@return updated matrix
-		~#
-		function : native : Subtract(x : Float, b : Float[,]) ~ Float[,] {
-			b_dims := b->Size();
-			b_rows := b_dims[0];
-			b_cols := b_dims[1];
-
-			c := Float->New[b_rows, b_cols];
-			for(i := 0; i < b_rows; i += 1;) {
-				for(j := 0; j < b_cols; j += 1;) {
-					c[i,j] := x - b[i,j];
-				};
-			};
-
-			return c;
-		}
-		
-		#~
-		Adds a constant to a matrix
-		@param b matrix
+		Subtracts matrix from constant
 		@param x constant to add
+		@param b matrix
 		@return updated matrix
 		~#
-		function : native : Subtract(b : Float[,], x : Float) ~ Float[,] {
-			b_dims := b->Size();
-			b_rows := b_dims[0];
-			b_cols := b_dims[1];
-
-			c := Float->New[b_rows, b_cols];
-			for(i := 0; i < b_rows; i += 1;) {
-				for(j := 0; j < b_cols; j += 1;) {
-					c[i,j] := b[i,j] - x;
-				};
+		function : native : Sub(a : Float[,], x : Float) ~ Float[,] {
+			if(a <> Nil) {
+				array_args := Base->New[3];
+				array_args[0] := FloatMatrixRef->New();
+				array_args[1] := FloatMatrixRef->New(a);
+				array_args[2] := FloatRef->New(x);				
+				@lib_proxy := Proxy->GetDllProxy();
+				@lib_proxy->CallFunction("ml_matrix_sub_matrix_scalar", array_args);
+				
+				holder := array_args[0]->As(FloatMatrixRef);
+				return holder->Get();
 			};
-
-			return c;
+			
+			return Nil;
 		}
-
+				
 		#~
 		Subtracts two matrices
 		@param a matrix
 		@param b matrix
 		@return updated matrix
 		~#
-		function : native : Subtract(a : Float[,], b : Float[,]) ~ Float[,] {
-			a_dims := a->Size();
-			a_rows := a_dims[0];
-			a_cols := a_dims[1];
-
-			b_dims := b->Size();
-			b_rows := b_dims[0];
-			b_cols := b_dims[1];
-
-			if( a_rows <> b_rows | a_cols <> b_cols) {
-				return Nil;
+		function : native : Sub(a : Float[,], b : Float[,]) ~ Float[,] {
+			if(a <> Nil | b <> Nil) {
+				array_args := Base->New[3];
+				array_args[0] := FloatMatrixRef->New();
+				array_args[1] := FloatMatrixRef->New(a);				
+				array_args[2] := FloatMatrixRef->New(b);				
+				@lib_proxy := Proxy->GetDllProxy();
+				@lib_proxy->CallFunction("ml_matrix_sub_matrix_matrix", array_args);
+				
+				holder := array_args[0]->As(FloatMatrixRef);
+				return holder->Get();
 			};
-
-			c := Float->New[a_rows, b_cols];
-			for(i := 0; i < a_rows; i += 1;) {
-				for(j := 0; j < b_cols; j += 1;) {
-					c[i,j] := a[i,j] - b[i,j];
-				};
-			};
-
-			return c;
+			
+			return Nil;
 		}
 
 		#~
-		Multiplies a constant by a matrix
+		Multiply matrix by a constant
 		@param x constant to multiple
 		@param b matrix
 		@return updated matrix
 		~#
-		function : native : Multiple(x : Float, b : Float[,]) ~ Float[,] {
-			b_dims := b->Size();
-			b_rows := b_dims[0];
-			b_cols := b_dims[1];
-
-			c := Float->New[b_rows, b_cols];
-			for(i := 0; i < b_rows; i += 1;) {
-				for(j := 0; j < b_cols; j += 1;) {
-					c[i,j] := x * b[i,j];
-				};
+		function : native : Mul(a : Float[,], x : Float) ~ Float[,] {
+			if(a <> Nil) {
+				array_args := Base->New[3];
+				array_args[0] := FloatMatrixRef->New();
+				array_args[1] := FloatMatrixRef->New(a);
+				array_args[2] := FloatRef->New(x);				
+				@lib_proxy := Proxy->GetDllProxy();
+				@lib_proxy->CallFunction("ml_matrix_mul_matrix_scalar", array_args);
+				
+				holder := array_args[0]->As(FloatMatrixRef);
+				return holder->Get();
 			};
-
-			return c;
+			
+			return Nil;
 		}
 
 		#~
-		Multiplies a constant by a matrix
-		@param b matrix
-		@param x constant to multiple
-		@return updated matrix
-		~#
-		function : native : Multiple(b : Float[,], x : Float) ~ Float[,] {
-			b_dims := b->Size();
-			b_rows := b_dims[0];
-			b_cols := b_dims[1];
-
-			c := Float->New[b_rows, b_cols];
-			for(i := 0; i < b_rows; i += 1;) {
-				for(j := 0; j < b_cols; j += 1;) {
-					c[i,j] := b[i,j] * x;
-				};
-			};
-
-			return c;
-		}
-		
-		#~
-		Multiplies two matrices using the Hadamard rule
+		Multiply two matrices
 		@param a matrix
 		@param b matrix
 		@return updated matrix
 		~#
-		function : native : Multiple(a : Float[,], b : Float[,]) ~ Float[,] {
-			a_dims := a->Size();
-			a_rows := a_dims[0];
-			a_cols := a_dims[1];
-
-			b_dims := b->Size();
-			b_rows := b_dims[0];
-			b_cols := b_dims[1];
-
-# "a={$a_rows}x{$a_cols}, b={$b_rows}x{$b_cols}"->PrintLine();
-
-			if(a_cols <> b_rows) {
-				return Nil;
-			}
-
-			out := Float->New[a_rows, b_cols];
-			each(i : a_rows) {
-				each(k : b_cols) {
-					sum := 0.0;
-
-					each(j : a_cols) {
-						left := a[i,j];
-						right := b[j,k];
-						sum += left * right;
-					}
-					out[i,k] := sum;
-				};
+		function : native : Mul(a : Float[,], b : Float[,]) ~ Float[,] {
+			if(a <> Nil | b <> Nil) {
+				array_args := Base->New[3];
+				array_args[0] := FloatMatrixRef->New();
+				array_args[1] := FloatMatrixRef->New(a);				
+				array_args[2] := FloatMatrixRef->New(b);				
+				@lib_proxy := Proxy->GetDllProxy();
+				@lib_proxy->CallFunction("ml_matrix_mul_matrix_matrix", array_args);
+				
+				holder := array_args[0]->As(FloatMatrixRef);
+				return holder->Get();
 			};
-
-			return out;
+			
+			return Nil;
 		}
 
 		#~
-		Transpose a matrix swapping rows and columns.
+		Divides a constant by a matrix
+		@param x constant to divide
+		@param b matrix
+		@return updated matrix
+		~#
+		function : native : Div(a : Float[,], x : Float) ~ Float[,] {
+			if(a <> Nil) {
+				array_args := Base->New[3];
+				array_args[0] := FloatMatrixRef->New();
+				array_args[1] := FloatMatrixRef->New(a);
+				array_args[2] := FloatRef->New(x);				
+				@lib_proxy := Proxy->GetDllProxy();
+				@lib_proxy->CallFunction("ml_matrix_div_matrix_scalar", array_args);
+				
+				holder := array_args[0]->As(FloatMatrixRef);
+				return holder->Get();
+			};
+			
+			return Nil;
+		}
+
+		#~
+		Transpose of matrix
 		@param a matrix
 		@return transposed matrix
 		~#
 		function : native : Transpose(a : Float[,]) ~ Float[,] {
-			dim := a->Size();
-			rows := dim[0];
-			cols := dim[1];
-
-			if(rows <> cols) {
-				return Nil;
+			if(a <> Nil) {
+				array_args := Base->New[2];
+				array_args[0] := FloatMatrixRef->New();
+				array_args[1] := FloatMatrixRef->New(a);
+				@lib_proxy := Proxy->GetDllProxy();
+				@lib_proxy->CallFunction("ml_matrix_transpose", array_args);
+				
+				holder := array_args[0]->As(FloatMatrixRef);
+				return holder->Get();
 			};
-
-			b := Float->New[cols, rows];
-			for(r := 0; r < rows; r += 1;) {
-				for(c := 0; c < cols; c += 1;) {
-					b[c,r] := a[r,c];
-				};
-			};
-
-			return b;
+			
+			return Nil;
 		}
 
 		#~
-		Calculates the inverse matrix.
+		Inverse of matrix
 		@param a matrix
-		@return inverse matrix
+		@return inverted matrix
 		~#
 		function : native : Inverse(a : Float[,]) ~ Float[,] {
-			dim := a->Size();
-			rows := dim[0];
-			cols := dim[1];
-
-			if(rows <> cols) {
-				return Nil;
+			if(a <> Nil) {
+				array_args := Base->New[2];
+				array_args[0] := FloatMatrixRef->New();
+				array_args[1] := FloatMatrixRef->New(a);
+				@lib_proxy := Proxy->GetDllProxy();
+				@lib_proxy->CallFunction("ml_matrix_inverse", array_args);
+				
+				holder := array_args[0]->As(FloatMatrixRef);
+				return holder->Get();
 			};
-
-"a={$rows}x{$cols}"->PrintLine();
-
-a->ToString()->PrintLine();
-"---"->PrintLine();
-
-			count := 0;
-			each(i : rows) {
-				each(j : cols) {
-					if(count % 2 <> 0) {
-						a[i,j] := -a[i,j];
-					};
-					count += 1;
-				};
-			};
-
-a->ToString()->PrintLine();
-"---"->PrintLine();
-
-			a := Transpose(a);
-a->ToString()->PrintLine();
-"---"->PrintLine();
-
+			
 			return Nil;
 		}
 
@@ -973,7 +909,7 @@ else if(args->Size() = 1) {
 						# calculate signals into final output layer
 						final_outputs  := Matrix2D->DotSigmoid(@weight_outputs_hidden, hidden_outputs);
 						# output layer error is the (target - actual)
-						output_errors := Matrix2D->Subtract(target, final_outputs);
+						output_errors := Matrix2D->Sub(target, final_outputs);
 						# hidden layer error is the output_errors, split by weights, recombined at hidden nodes
 						hidden_errors := Matrix2D->Dot(Matrix2D->Transpose(@weight_outputs_hidden), output_errors);
 						# update the weights for the links between the input and hidden layers
@@ -986,7 +922,7 @@ else if(args->Size() = 1) {
 		}
 
 		method : Adjust(rate : Float, errors : Float[,], outputs : Float[,], inputs : Float[,]) ~ Float[,] {
-			return Matrix2D->Multiple(rate, Matrix2D->Dot(Matrix2D->Multiple(errors, Matrix2D->Multiple(outputs, Matrix2D->Subtract(1.0, outputs))), Matrix2D->Transpose(inputs)));
+			return Matrix2D->Mul(Matrix2D->Dot(Matrix2D->Mul(Matrix2D->Mul(outputs, Matrix2D->Sub(outputs, 1.)), errors), Matrix2D->Transpose(inputs)), rate);
 		}
 	}
 

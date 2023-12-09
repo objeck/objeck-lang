@@ -34,10 +34,8 @@
 #include "../../shared/sys.h"
 #include <Eigen/Dense>
 
-typedef Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::ColMajor> MatrixIn;
-typedef Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> MatrixOut;
-
-typedef Eigen::Vector<double, Eigen::Dynamic> VectorIn;
+typedef Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::ColMajor> ObjkMatrix;
+typedef Eigen::Vector<double, Eigen::Dynamic> ObjkVector;
 
 static Eigen::MatrixXd PtrToMatrix(size_t* matrix_data_ptr);
 static Eigen::VectorXd PtrToVector(size_t* matrix_data_ptr);
@@ -64,17 +62,17 @@ extern "C" {
   }
 
   //
-  // matrix core
+  // Addition
   //
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-  void ml_matrix_add_scalar_matrix(VMContext& context) {
-    const double value = (double)APITools_GetFloatValue(context, 1);
-    size_t* matrix_obj = APITools_GetObjectValue(context, 2); // pointer to 'FloatMatrixRef'
-    
+  void ml_matrix_add_matrix_scalar(VMContext& context) {
+    size_t* matrix_obj = APITools_GetObjectValue(context, 1); // pointer to 'FloatMatrixRef'
+    const double value = (double)APITools_GetFloatValue(context, 2);
+
     // create matrix from 2d double array
-    if(!matrix_obj || !(*matrix_obj)) {
+    if (!matrix_obj || !(*matrix_obj)) {
       std::wcerr << L">>> Attempting to dereference a 'Nil' memory element <<<" << std::endl;
       return;
     }
@@ -84,8 +82,6 @@ extern "C" {
     // add value
     matrix.array() += value;
 
-std::cout << matrix(0, 0) << ", " << matrix(1, 2) << std::endl;
-    
     // create and set results from matrix
     size_t* result_obj = MatrixToPtr(matrix, matrix_data_ptr, context);
     APITools_SetObjectValue(context, 0, result_obj);
@@ -94,37 +90,49 @@ std::cout << matrix(0, 0) << ", " << matrix(1, 2) << std::endl;
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-  void ml_matrix_add_vector_matrix(VMContext& context) {
+  void ml_matrix_add_matrix_matrix(VMContext& context) {
     size_t* lhs_matrix_obj = APITools_GetObjectValue(context, 1); // pointer to 'FloatArrayRef'
     if(!lhs_matrix_obj || !(*lhs_matrix_obj)) {
       std::wcerr << L">>> Attempting to dereference a 'Nil' memory element <<<" << std::endl;
       return;
     }
     size_t* lhs_data_ptr = (size_t*)*lhs_matrix_obj; // pointer to double array
-    Eigen::MatrixXd lhs_matrix = PtrToVector(lhs_data_ptr);
-    
-    size_t* rhs_matrix_obj = APITools_GetObjectValue(context, 1); // pointer to 'FloatArrayRef'
-    if (!rhs_matrix_obj || !(*rhs_matrix_obj)) {
+    Eigen::MatrixXd lhs_matrix = PtrToMatrix(lhs_data_ptr);
+std::cout << "lhs: " << lhs_matrix(0, 0) << ", " << lhs_matrix(1, 2) << std::endl;
+
+
+    size_t* rhs_matrix_obj = APITools_GetObjectValue(context, 2); // pointer to 'FloatArrayRef'
+    if(!rhs_matrix_obj || !(*rhs_matrix_obj)) {
       std::wcerr << L">>> Attempting to dereference a 'Nil' memory element <<<" << std::endl;
       return;
     }
     size_t* rhs_data_ptr = (size_t*)*rhs_matrix_obj; // pointer to double array
-    Eigen::MatrixXd rhs_matrix = PtrToVector(rhs_data_ptr);
+    Eigen::MatrixXd rhs_matrix = PtrToMatrix(rhs_data_ptr);
+// std::cout << "rhs: " << rhs_matrix(0, 0) << ", " << rhs_matrix(1, 2) << std::endl;
 
-    // subract value
+    if(lhs_matrix.rows() != rhs_matrix.rows() || lhs_matrix.cols() != rhs_matrix.cols()) {
+      APITools_SetObjectValue(context, 0, 0);
+      return;
+    }
+
+    // calculate value
     Eigen::MatrixXd result = lhs_matrix + rhs_matrix;
+// std::cout << "r: " << result(0, 0) << ", " << result(1, 2) << std::endl;
 
     // create and set results from matrix
     size_t* result_obj = MatrixToPtr(result, lhs_data_ptr, context);
     APITools_SetObjectValue(context, 0, result_obj);
   }
 
+  //
+  // Subtract
+  //
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-  void ml_matrix_sub_scalar_matrix(VMContext& context) {
-    const double value = (double)APITools_GetFloatValue(context, 1);
-    size_t* matrix_obj = APITools_GetObjectValue(context, 2); // pointer to 'FloatMatrixRef'
+  void ml_matrix_sub_matrix_scalar(VMContext& context) {
+    size_t* matrix_obj = APITools_GetObjectValue(context, 1); // pointer to 'FloatMatrixRef'
+    const double value = (double)APITools_GetFloatValue(context, 2);
 
     // create matrix from 2d double array
     if (!matrix_obj || !(*matrix_obj)) {
@@ -132,7 +140,7 @@ std::cout << matrix(0, 0) << ", " << matrix(1, 2) << std::endl;
       return;
     }
     size_t* matrix_data_ptr = (size_t*)*matrix_obj; // pointer to 2d double array
-    Eigen::MatrixXd matrix = PtrToMatrix(matrix_obj);
+    Eigen::MatrixXd matrix = PtrToMatrix(matrix_data_ptr);
 
     // subract value
     matrix.array() -= value;
@@ -141,8 +149,192 @@ std::cout << matrix(0, 0) << ", " << matrix(1, 2) << std::endl;
     size_t* result_obj = MatrixToPtr(matrix, matrix_data_ptr, context);
     APITools_SetObjectValue(context, 0, result_obj);
   }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void ml_matrix_sub_matrix_matrix(VMContext& context) {
+    size_t* lhs_matrix_obj = APITools_GetObjectValue(context, 1); // pointer to 'FloatArrayRef'
+    if(!lhs_matrix_obj || !(*lhs_matrix_obj)) {
+      std::wcerr << L">>> Attempting to dereference a 'Nil' memory element <<<" << std::endl;
+      return;
+    }
+    size_t* lhs_data_ptr = (size_t*)*lhs_matrix_obj; // pointer to double array
+    Eigen::MatrixXd lhs_matrix = PtrToMatrix(lhs_data_ptr);
+    // std::cout << "lhs: " << lhs_matrix(0, 0) << ", " << lhs_matrix(1, 2) << std::endl;
+
+    size_t* rhs_matrix_obj = APITools_GetObjectValue(context, 2); // pointer to 'FloatArrayRef'
+    if(!rhs_matrix_obj || !(*rhs_matrix_obj)) {
+      std::wcerr << L">>> Attempting to dereference a 'Nil' memory element <<<" << std::endl;
+      return;
+    }
+    size_t* rhs_data_ptr = (size_t*)*rhs_matrix_obj; // pointer to double array
+    Eigen::MatrixXd rhs_matrix = PtrToMatrix(rhs_data_ptr);
+    // std::cout << "rhs: " << rhs_matrix(0, 0) << ", " << rhs_matrix(1, 2) << std::endl;
+
+    if(lhs_matrix.cols() != rhs_matrix.cols() || lhs_matrix.cols() != rhs_matrix.cols()) {
+      APITools_SetObjectValue(context, 0, 0);
+      return;
+    }
+
+    // caculate value
+    Eigen::MatrixXd result = lhs_matrix - rhs_matrix;
+    // std::cout << "r: " << result(0, 0) << ", " << result(1, 2) << std::endl;
+
+        // create and set results from matrix
+    size_t* result_obj = MatrixToPtr(result, lhs_data_ptr, context);
+    APITools_SetObjectValue(context, 0, result_obj);
+  }
+  
+  //
+  // Multiply
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void ml_matrix_mul_matrix_scalar(VMContext& context) {
+    size_t* matrix_obj = APITools_GetObjectValue(context, 1); // pointer to 'FloatMatrixRef'
+    const double value = (double)APITools_GetFloatValue(context, 2);
+
+    // create matrix from 2d double array
+    if(!matrix_obj || !(*matrix_obj)) {
+      std::wcerr << L">>> Attempting to dereference a 'Nil' memory element <<<" << std::endl;
+      return;
+    }
+    size_t* matrix_data_ptr = (size_t*)*matrix_obj; // pointer to 2d double array
+    Eigen::MatrixXd matrix = PtrToMatrix(matrix_data_ptr);
+
+    // subract value
+    matrix.array() *= value;
+
+    // create and set results from matrix
+    size_t* result_obj = MatrixToPtr(matrix, matrix_data_ptr, context);
+    APITools_SetObjectValue(context, 0, result_obj);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void ml_matrix_mul_matrix_matrix(VMContext& context) {
+    size_t* lhs_matrix_obj = APITools_GetObjectValue(context, 1); // pointer to 'FloatArrayRef'
+    if(!lhs_matrix_obj || !(*lhs_matrix_obj)) {
+      std::wcerr << L">>> Attempting to dereference a 'Nil' memory element <<<" << std::endl;
+      return;
+    }
+    size_t* lhs_data_ptr = (size_t*)*lhs_matrix_obj; // pointer to double array
+    Eigen::MatrixXd lhs_matrix = PtrToMatrix(lhs_data_ptr);
+    // std::cout << "lhs: " << lhs_matrix(0, 0) << ", " << lhs_matrix(2, 0) << std::endl;
+
+    size_t* rhs_matrix_obj = APITools_GetObjectValue(context, 2); // pointer to 'FloatArrayRef'
+    if(!rhs_matrix_obj || !(*rhs_matrix_obj)) {
+      std::wcerr << L">>> Attempting to dereference a 'Nil' memory element <<<" << std::endl;
+      return;
+    }
+    size_t* rhs_data_ptr = (size_t*)*rhs_matrix_obj; // pointer to double array
+    Eigen::MatrixXd rhs_matrix = PtrToMatrix(rhs_data_ptr);
+    // std::cout << "rhs: " << rhs_matrix(0, 0) << ", " << rhs_matrix(2, 2) << std::endl;
+
+    if(lhs_matrix.cols() != rhs_matrix.rows()) {
+      APITools_SetObjectValue(context, 0, 0);
+      return;
+    }
+
+    // caculate value
+    Eigen::MatrixXd result = lhs_matrix * rhs_matrix;
+    // std::cout << "r: " << result(0, 0) << ", " << result(0, 1) << ", " << result(0, 2) << std::endl;
+
+       // create and set results from matrix
+    size_t* result_obj = MatrixToPtr(result, lhs_data_ptr, context);
+    APITools_SetObjectValue(context, 0, result_obj);
+  }
+
+  //
+  // Divide
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void ml_matrix_div_matrix_scalar(VMContext& context) {
+    size_t* matrix_obj = APITools_GetObjectValue(context, 1); // pointer to 'FloatMatrixRef'
+    const double value = (double)APITools_GetFloatValue(context, 2);
+
+    // create matrix from 2d double array
+    if(!matrix_obj || !(*matrix_obj)) {
+      std::wcerr << L">>> Attempting to dereference a 'Nil' memory element <<<" << std::endl;
+      return;
+    }
+    size_t* matrix_data_ptr = (size_t*)*matrix_obj; // pointer to 2d double array
+    Eigen::MatrixXd matrix = PtrToMatrix(matrix_data_ptr);
+
+    // subract value
+    matrix.array() /= value;
+
+    // create and set results from matrix
+    size_t* result_obj = MatrixToPtr(matrix, matrix_data_ptr, context);
+    APITools_SetObjectValue(context, 0, result_obj);
+  }
+
+  // 
+  // Transpose
+  //
+#ifdef _WIN32
+    __declspec(dllexport)
+#endif
+  void ml_matrix_transpose(VMContext& context) {
+    size_t* lhs_matrix_obj = APITools_GetObjectValue(context, 1); // pointer to 'FloatArrayRef'
+    if(!lhs_matrix_obj || !(*lhs_matrix_obj)) {
+      std::wcerr << L">>> Attempting to dereference a 'Nil' memory element <<<" << std::endl;
+      return;
+    }
+    size_t* lhs_data_ptr = (size_t*)*lhs_matrix_obj; // pointer to double array
+    Eigen::MatrixXd lhs_matrix = PtrToMatrix(lhs_data_ptr);
+// std::cout << "lhs: " << lhs_matrix(0, 0) << ", " << lhs_matrix(1, 0) << std::endl;
+    
+    // caculate value
+    Eigen::MatrixXd result = lhs_matrix.transpose();
+// std::cout << "r: " << result(0, 0) << ", " << result(0, 1) << ", " << result(0, 2) << std::endl;
+  
+    if(lhs_matrix.cols() != lhs_matrix.rows()) {
+      APITools_SetObjectValue(context, 0, 0);
+      return;
+    }
+
+    // create and set results from matrix
+    size_t* result_obj = MatrixToPtr(result, lhs_data_ptr, context);
+    APITools_SetObjectValue(context, 0, result_obj);
+  }
+  
+#ifdef _WIN32
+      __declspec(dllexport)
+#endif
+  void ml_matrix_inverse(VMContext& context) {
+    size_t* lhs_matrix_obj = APITools_GetObjectValue(context, 1); // pointer to 'FloatArrayRef'
+    if(!lhs_matrix_obj || !(*lhs_matrix_obj)) {
+      std::wcerr << L">>> Attempting to dereference a 'Nil' memory element <<<" << std::endl;
+      return;
+    }
+    size_t* lhs_data_ptr = (size_t*)*lhs_matrix_obj; // pointer to double array
+    Eigen::MatrixXd lhs_matrix = PtrToMatrix(lhs_data_ptr);
+ // std::cout << "lhs: " << lhs_matrix(0, 0) << ", " << lhs_matrix(1, 0) << std::endl;
+
+    // caculate value
+    Eigen::MatrixXd result = lhs_matrix.inverse();
+ // std::cout << "r: " << result(0, 0) << ", " << result(0, 1) << ", " << result(0, 2) << std::endl;
+
+    if(lhs_matrix.cols() != lhs_matrix.rows()) {
+      APITools_SetObjectValue(context, 0, 0);
+      return;
+    }
+
+    // create and set results from matrix
+    size_t* result_obj = MatrixToPtr(result, lhs_data_ptr, context);
+    APITools_SetObjectValue(context, 0, result_obj);
+  }
 }
 
+//
+// Utilities
+//
 Eigen::VectorXd PtrToVector(size_t* vector_data_ptr)
 {
   // ensure 2d matrix
@@ -155,7 +347,7 @@ Eigen::VectorXd PtrToVector(size_t* vector_data_ptr)
   const size_t array_size = vector_data_ptr[0];
 
   FLOAT_VALUE* input_values = (FLOAT_VALUE*)(vector_data_ptr + array_dim + 2);
-  Eigen::VectorXd vector = Eigen::Map<VectorIn>(input_values, array_size);
+  Eigen::VectorXd vector = Eigen::Map<ObjkVector>(input_values, array_size);
 
   return vector;
 }
@@ -173,7 +365,7 @@ Eigen::MatrixXd PtrToMatrix(size_t* matrix_data_ptr)
   const size_t array_cols = matrix_data_ptr[2];
 
   FLOAT_VALUE* input_values = (FLOAT_VALUE*)(matrix_data_ptr + array_dim + 2);
-  Eigen::MatrixXd matrix = Eigen::Map<MatrixIn>(input_values, array_rows, array_cols);
+  Eigen::MatrixXd matrix = Eigen::Map<ObjkMatrix>(input_values, array_rows, array_cols);
 
   return matrix;
 }
@@ -187,7 +379,7 @@ size_t* MatrixToPtr(Eigen::MatrixXd& matrix, size_t* matrix_data_ptr, VMContext&
   FLOAT_VALUE* output_values = (FLOAT_VALUE*)(output_ptr + array_dim + 2);
 
   // copy results to output matrix
-  Eigen::Map<MatrixIn>(output_values, matrix.rows(), matrix.cols()) = matrix;
+  Eigen::Map<ObjkMatrix>(output_values, matrix.rows(), matrix.cols()) = matrix;
   size_t* result_obj = APITools_GetObjectValue(context, 0);
   result_obj[0] = (size_t)output_ptr;
 
