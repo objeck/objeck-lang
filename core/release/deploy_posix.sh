@@ -77,7 +77,6 @@ else
 fi
 
 cd ../openssl
-
 if [ ! -z "$1" ] && [ "$1" = "macos" ]; then
 	./build_osx_x64.sh openssl
 	cp openssl.dylib ../../release/deploy/lib/native/libobjk_openssl.dylib

@@ -50,6 +50,10 @@ cd ../openssl
 ./build_msys2-clang.sh openssl
 cp openssl.dll ../../release/deploy-msys2-clang/lib/native/libobjk_openssl.dll
 
+cd ../matrix
+./build_msys2-clang.sh matrix
+cp matrix.dll ../../release/deploy-msys2-clang/lib/native/libobjk_ml.dll
+
 cd ../sdl
 ./build_msys2-clang.sh sdl
 cp sdl.dll ../../release/deploy-msys2-clang/lib/native/libobjk_sdl.dll
