@@ -1,7 +1,7 @@
 /***************************************************************************
  * Vector matrix math library
  *
- * Copyright (c) 2015-2019, Randy Hollines
+ * Copyright (c) 2024, Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -35,7 +35,6 @@
 #include <Eigen/Dense>
 
 typedef Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::ColMajor> ObjkMatrix;
-typedef Eigen::Vector<double, Eigen::Dynamic> ObjkVector;
 
 static Eigen::MatrixXd PtrToMatrix(size_t* matrix_data_ptr);
 static Eigen::VectorXd PtrToVector(size_t* matrix_data_ptr);
@@ -142,7 +141,7 @@ std::cout << "lhs: " << lhs_matrix(0, 0) << ", " << lhs_matrix(1, 2) << std::end
     size_t* matrix_data_ptr = (size_t*)*matrix_obj; // pointer to 2d double array
     Eigen::MatrixXd matrix = PtrToMatrix(matrix_data_ptr);
 
-    // subract value
+    // calculate value
     matrix.array() -= value;
 
     // create and set results from matrix
@@ -177,11 +176,11 @@ std::cout << "lhs: " << lhs_matrix(0, 0) << ", " << lhs_matrix(1, 2) << std::end
       return;
     }
 
-    // caculate value
+    // calculate value
     Eigen::MatrixXd result = lhs_matrix - rhs_matrix;
     // std::cout << "r: " << result(0, 0) << ", " << result(1, 2) << std::endl;
 
-        // create and set results from matrix
+    // create and set results from matrix
     size_t* result_obj = MatrixToPtr(result, lhs_data_ptr, context);
     APITools_SetObjectValue(context, 0, result_obj);
   }
@@ -204,7 +203,7 @@ std::cout << "lhs: " << lhs_matrix(0, 0) << ", " << lhs_matrix(1, 2) << std::end
     size_t* matrix_data_ptr = (size_t*)*matrix_obj; // pointer to 2d double array
     Eigen::MatrixXd matrix = PtrToMatrix(matrix_data_ptr);
 
-    // subract value
+    // calculate value
     matrix.array() *= value;
 
     // create and set results from matrix
@@ -239,11 +238,11 @@ std::cout << "lhs: " << lhs_matrix(0, 0) << ", " << lhs_matrix(1, 2) << std::end
       return;
     }
 
-    // caculate value
+    // calculate value
     Eigen::MatrixXd result = lhs_matrix * rhs_matrix;
     // std::cout << "r: " << result(0, 0) << ", " << result(0, 1) << ", " << result(0, 2) << std::endl;
 
-       // create and set results from matrix
+    // create and set results from matrix
     size_t* result_obj = MatrixToPtr(result, lhs_data_ptr, context);
     APITools_SetObjectValue(context, 0, result_obj);
   }
@@ -266,7 +265,7 @@ std::cout << "lhs: " << lhs_matrix(0, 0) << ", " << lhs_matrix(1, 2) << std::end
     size_t* matrix_data_ptr = (size_t*)*matrix_obj; // pointer to 2d double array
     Eigen::MatrixXd matrix = PtrToMatrix(matrix_data_ptr);
 
-    // subract value
+    // calculate value
     matrix.array() /= value;
 
     // create and set results from matrix
@@ -290,7 +289,7 @@ std::cout << "lhs: " << lhs_matrix(0, 0) << ", " << lhs_matrix(1, 2) << std::end
     Eigen::MatrixXd lhs_matrix = PtrToMatrix(lhs_data_ptr);
 // std::cout << "lhs: " << lhs_matrix(0, 0) << ", " << lhs_matrix(1, 0) << std::endl;
     
-    // caculate value
+    // calculate value
     Eigen::MatrixXd result = lhs_matrix.transpose();
 // std::cout << "r: " << result(0, 0) << ", " << result(0, 1) << ", " << result(0, 2) << std::endl;
     
@@ -299,6 +298,9 @@ std::cout << "lhs: " << lhs_matrix(0, 0) << ", " << lhs_matrix(1, 2) << std::end
     APITools_SetObjectValue(context, 0, result_obj);
   }
   
+  // 
+  // Inverse
+  //
 #ifdef _WIN32
       __declspec(dllexport)
 #endif
@@ -312,7 +314,7 @@ std::cout << "lhs: " << lhs_matrix(0, 0) << ", " << lhs_matrix(1, 2) << std::end
     Eigen::MatrixXd lhs_matrix = PtrToMatrix(lhs_data_ptr);
  // std::cout << "lhs: " << lhs_matrix(0, 0) << ", " << lhs_matrix(1, 0) << std::endl;
 
-    // caculate value
+    // calculate value
     Eigen::MatrixXd result = lhs_matrix.inverse();
  // std::cout << "r: " << result(0, 0) << ", " << result(0, 1) << ", " << result(0, 2) << std::endl;
 
@@ -328,25 +330,8 @@ std::cout << "lhs: " << lhs_matrix(0, 0) << ", " << lhs_matrix(1, 2) << std::end
 }
 
 //
-// Utilities
+// Conversions
 //
-Eigen::VectorXd PtrToVector(size_t* vector_data_ptr)
-{
-  // ensure 2d matrix
-  const size_t array_dim = vector_data_ptr[1];
-  if(array_dim != 1) {
-    return Eigen::VectorXd();
-  }
-
-  // copy input values
-  const size_t array_size = vector_data_ptr[0];
-
-  FLOAT_VALUE* input_values = (FLOAT_VALUE*)(vector_data_ptr + array_dim + 2);
-  Eigen::VectorXd vector = Eigen::Map<ObjkVector>(input_values, array_size);
-
-  return vector;
-}
-
 Eigen::MatrixXd PtrToMatrix(size_t* matrix_data_ptr)
 {
   // ensure 2d matrix
