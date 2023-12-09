@@ -1,0 +1,87 @@
+use System.ML;
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		a := [ 
+			[1., 2., 3.]];
+		b := [ 
+			[1., 2., .5]];
+		
+		Matrix2D->Mul(a,Matrix2D->Transpose(b))->ToString()->PrintLine();
+#~
+		a := [ 
+			[1., 2., 3.]
+			[4., 5., 6.]];
+
+		b := [ 
+			[11., 22., 33.]
+			[44., 55., 66.]];
+
+		"--- Add (MxM) ---"->PrintLine();
+		c := Matrix2D->Add(a,b);
+		c[0,0]->PrintLine();
+		c[1,2]->PrintLine();
+
+		"--- Sub (MxM) ---"->PrintLine();
+		c := Matrix2D->Sub(a,b);
+		c[0,0]->PrintLine();
+		c[1,2]->PrintLine();
+
+		"--- Mul (MxM) ---"->PrintLine();
+		b := [ 
+			[11., 22.]
+			[44., 55.]];
+
+		c := Matrix2D->Mul(b,a);
+		c[0,0]->PrintLine();
+		c[1,2]->PrintLine();
+
+		# ---
+		"--- Add (MxC) ---"->PrintLine();
+		c := Matrix2D->Add(a,4);
+		c[0,0]->PrintLine();
+		c[1,2]->PrintLine();
+
+		"--- Sub (MxC) ---"->PrintLine();
+		c := Matrix2D->Sub(a,4);
+		c[0,0]->PrintLine();
+		c[1,2]->PrintLine();
+
+		"--- Mul (MxC) ---"->PrintLine();
+		c := Matrix2D->Mul(a,4.);
+		c[0,0]->PrintLine();
+		c[1,2]->PrintLine();
+
+		"--- Div (MxC) ---"->PrintLine();
+		c := Matrix2D->Div(a,4.);
+		c[0,0]->PrintLine();
+		c[1,2]->PrintLine();
+
+		"--- Tranpose (M) ---"->PrintLine();
+		a := [ 
+			[1., 2., 3.]
+			[4., 5., 6.]
+			[7., 8., 9.]];
+		a->ToString()->PrintLine();
+		"---"->PrintLine();
+		c := Matrix2D->Transpose(a);
+		c->ToString()->PrintLine();
+
+		"--- Tranpose (M) ---"->PrintLine();
+		a := [ 
+			[2., 0., -1.]
+			[5., 1., 0.]
+			[0., 1., 3.]];
+		a->ToString()->PrintLine();
+		"---"->PrintLine();
+		c := Matrix2D->Transpose(a);
+		c->ToString()->PrintLine();
+
+		"--- Inverse (M) ---"->PrintLine();
+		a->ToString()->PrintLine();
+		"---"->PrintLine();
+		c := Matrix2D->Inverse(a);
+		c->ToString()->PrintLine();
+~#
+	}
+}
