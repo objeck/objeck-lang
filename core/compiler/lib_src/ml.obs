@@ -26,17 +26,39 @@ bundle System.ML {
 	~#
 	class Matrix2D {
 		#~
-		Adds a matrix to constant
+		Adds a constant to a matrix
 		@param x constant to add
 		@param b matrix
 		@return updated matrix
 		~#
-		function : native : Add(a : Float[,], x : Float) ~ Float[,] {
-			if(a <> Nil) {
+		function : native : Add(c : Float, m : Float[,]) ~ Float[,] {
+			if(m <> Nil) {
 				array_args := Base->New[3];
 				array_args[0] := FloatMatrixRef->New();
-				array_args[1] := FloatMatrixRef->New(a);				
-				array_args[2] := FloatRef->New(x);				
+				array_args[1] := FloatRef->New(c);
+				array_args[2] := FloatMatrixRef->New(m);
+				@lib_proxy := Proxy->GetDllProxy();
+				@lib_proxy->CallFunction("ml_matrix_add_scalar_matrix", array_args);
+				
+				holder := array_args[0]->As(FloatMatrixRef);
+				return holder->Get();
+			};
+			
+			return Nil;
+		}
+
+		#~
+		Adds a constant to a matrix
+		@param b matrix
+		@param x constant to add
+		@return updated matrix
+		~#
+		function : native : Add(m : Float[,], c : Float) ~ Float[,] {
+			if(m <> Nil) {
+				array_args := Base->New[3];
+				array_args[0] := FloatMatrixRef->New();
+				array_args[1] := FloatMatrixRef->New(m);				
+				array_args[2] := FloatRef->New(c);				
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("ml_matrix_add_matrix_scalar", array_args);
 				
@@ -46,19 +68,19 @@ bundle System.ML {
 			
 			return Nil;
 		}
-				
+		
 		#~
 		Adds two matrices
 		@param a matrix
 		@param b matrix
 		@return updated matrix
 		~#
-		function : native : Add(a : Float[,], b : Float[,]) ~ Float[,] {
-			if(a <> Nil | b <> Nil) {
+		function : native : Add(m1 : Float[,], m2 : Float[,]) ~ Float[,] {
+			if(m1 <> Nil | m2 <> Nil) {
 				array_args := Base->New[3];
 				array_args[0] := FloatMatrixRef->New();
-				array_args[1] := FloatMatrixRef->New(a);				
-				array_args[2] := FloatMatrixRef->New(b);				
+				array_args[1] := FloatMatrixRef->New(m1);
+				array_args[2] := FloatMatrixRef->New(m2);
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("ml_matrix_add_matrix_matrix", array_args);
 				
@@ -70,17 +92,39 @@ bundle System.ML {
 		}
 
 		#~
-		Subtracts matrix from constant
-		@param x constant to add
+		Subtracts a constant from a matrix
+		@param x constant to subtract
 		@param b matrix
 		@return updated matrix
 		~#
-		function : native : Sub(a : Float[,], x : Float) ~ Float[,] {
-			if(a <> Nil) {
+		function : native : Subtract(c : Float, m : Float[,]) ~ Float[,] {
+			if(m <> Nil) {
 				array_args := Base->New[3];
 				array_args[0] := FloatMatrixRef->New();
-				array_args[1] := FloatMatrixRef->New(a);
-				array_args[2] := FloatRef->New(x);				
+				array_args[1] := FloatRef->New(c);
+				array_args[2] := FloatMatrixRef->New(m);
+				@lib_proxy := Proxy->GetDllProxy();
+				@lib_proxy->CallFunction("ml_matrix_sub_scalar_matrix", array_args);
+				
+				holder := array_args[0]->As(FloatMatrixRef);
+				return holder->Get();
+			};
+			
+			return Nil;
+		}
+		
+		#~
+		Adds a constant to a matrix
+		@param b matrix
+		@param x constant to add
+		@return updated matrix
+		~#
+		function : native : Subtract(m : Float[,], c : Float) ~ Float[,] {
+			if(m <> Nil) {
+				array_args := Base->New[3];
+				array_args[0] := FloatMatrixRef->New();
+				array_args[1] := FloatMatrixRef->New(m);				
+				array_args[2] := FloatRef->New(c);				
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("ml_matrix_sub_matrix_scalar", array_args);
 				
@@ -90,19 +134,19 @@ bundle System.ML {
 			
 			return Nil;
 		}
-				
+
 		#~
 		Subtracts two matrices
 		@param a matrix
 		@param b matrix
 		@return updated matrix
 		~#
-		function : native : Sub(a : Float[,], b : Float[,]) ~ Float[,] {
-			if(a <> Nil | b <> Nil) {
+		function : native : Subtract(m1 : Float[,], m2 : Float[,]) ~ Float[,] {
+			if(m1 <> Nil | m2 <> Nil) {
 				array_args := Base->New[3];
 				array_args[0] := FloatMatrixRef->New();
-				array_args[1] := FloatMatrixRef->New(a);				
-				array_args[2] := FloatMatrixRef->New(b);				
+				array_args[1] := FloatMatrixRef->New(m1);
+				array_args[2] := FloatMatrixRef->New(m2);
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("ml_matrix_sub_matrix_matrix", array_args);
 				
@@ -114,17 +158,39 @@ bundle System.ML {
 		}
 
 		#~
-		Multiply matrix by a constant
+		Multiplies a constant by a matrix
 		@param x constant to multiple
 		@param b matrix
 		@return updated matrix
 		~#
-		function : native : Mul(a : Float[,], x : Float) ~ Float[,] {
-			if(a <> Nil) {
+		function : native : Multiple(c : Float, m : Float[,]) ~ Float[,] {
+			if(m <> Nil) {
 				array_args := Base->New[3];
 				array_args[0] := FloatMatrixRef->New();
-				array_args[1] := FloatMatrixRef->New(a);
-				array_args[2] := FloatRef->New(x);				
+				array_args[1] := FloatRef->New(c);
+				array_args[2] := FloatMatrixRef->New(m);
+				@lib_proxy := Proxy->GetDllProxy();
+				@lib_proxy->CallFunction("ml_matrix_mul_scalar_matrix", array_args);
+				
+				holder := array_args[0]->As(FloatMatrixRef);
+				return holder->Get();
+			};
+			
+			return Nil;
+		}
+
+		#~
+		Multiplies a constant by a matrix
+		@param b matrix
+		@param x constant to multiple
+		@return updated matrix
+		~#
+		function : native : Multiple(m : Float[,], c : Float) ~ Float[,] {
+			if(m <> Nil) {
+				array_args := Base->New[3];
+				array_args[0] := FloatMatrixRef->New();
+				array_args[1] := FloatMatrixRef->New(m);				
+				array_args[2] := FloatRef->New(c);				
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("ml_matrix_mul_matrix_scalar", array_args);
 				
@@ -136,19 +202,70 @@ bundle System.ML {
 		}
 
 		#~
-		Multiply two matrices
+		Multiplies two matrices using the Hadamard rule
 		@param a matrix
 		@param b matrix
 		@return updated matrix
 		~#
-		function : native : Mul(a : Float[,], b : Float[,]) ~ Float[,] {
-			if(a <> Nil | b <> Nil) {
+		function : native : HadamardProduct(m1 : Float[,], m2 : Float[,]) ~ Float[,] {
+			m1_dims := m1->Size();
+			m1_rows := m1_dims[0];
+			m1_cols := m1_dims[1];
+
+			m2_dims := m2->Size();
+			m2_rows := m2_dims[0];
+			m2_cols := m2_dims[1];
+
+			if(m1_rows <> m2_rows | m1_cols <> m2_cols) {
+				return Nil;
+			};
+
+			c := Float->New[m1_rows, m2_cols];
+			for(i := 0; i < m1_rows; i += 1;) {
+				for(j := 0; j < m2_cols; j += 1;) {
+					c[i,j] := m1[i,j] * m2[i,j];
+				};
+			};
+
+			return c;
+		}
+
+		#~
+		Calculates the dot product.
+		@param a matrix
+		@param b matrix
+		@return updated matrix
+		~#
+		function : native : DotProduct(m1 : Float[,], m2 : Float[,]) ~ Float[,] {
+			if(m1 <> Nil | m2 <> Nil) {
 				array_args := Base->New[3];
 				array_args[0] := FloatMatrixRef->New();
-				array_args[1] := FloatMatrixRef->New(a);				
-				array_args[2] := FloatMatrixRef->New(b);				
+				array_args[1] := FloatMatrixRef->New(m1);
+				array_args[2] := FloatMatrixRef->New(m2);
 				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("ml_matrix_mul_matrix_matrix", array_args);
+				@lib_proxy->CallFunction("ml_matrix_dot_matrix_matrix", array_args);
+				
+				holder := array_args[0]->As(FloatMatrixRef);
+				return holder->Get();
+			};
+			
+			return Nil;
+		}
+		
+		#~
+		Divides a constant by a matrix
+		@param x constant to divide
+		@param b matrix
+		@return updated matrix
+		~#
+		function : native : Divide(c : Float, m : Float[,]) ~ Float[,] {
+			if(m <> Nil) {
+				array_args := Base->New[3];
+				array_args[0] := FloatMatrixRef->New();
+				array_args[1] := FloatRef->New(c);
+				array_args[2] := FloatMatrixRef->New(m);
+				@lib_proxy := Proxy->GetDllProxy();
+				@lib_proxy->CallFunction("ml_matrix_div_scalar_matrix", array_args);
 				
 				holder := array_args[0]->As(FloatMatrixRef);
 				return holder->Get();
@@ -159,16 +276,16 @@ bundle System.ML {
 
 		#~
 		Divides a constant by a matrix
-		@param x constant to divide
 		@param b matrix
+		@param x constant to divide
 		@return updated matrix
 		~#
-		function : native : Div(a : Float[,], x : Float) ~ Float[,] {
-			if(a <> Nil) {
+		function : native : Divide(m : Float[,], c : Float) ~ Float[,] {
+			if(m <> Nil) {
 				array_args := Base->New[3];
 				array_args[0] := FloatMatrixRef->New();
-				array_args[1] := FloatMatrixRef->New(a);
-				array_args[2] := FloatRef->New(x);				
+				array_args[1] := FloatMatrixRef->New(m);				
+				array_args[2] := FloatRef->New(c);				
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("ml_matrix_div_matrix_scalar", array_args);
 				
@@ -177,6 +294,35 @@ bundle System.ML {
 			};
 			
 			return Nil;
+		}
+
+		#~
+		Divides two matrices using the Hadamard rule
+		@param a matrix
+		@param b matrix
+		@return updated matrix
+		~#
+		function : native : HadamardDivide(m1 : Float[,], m2 : Float[,]) ~ Float[,] {
+			m1_dims := m1->Size();
+			m1_rows := m1_dims[0];
+			m1_cols := m1_dims[1];
+
+			m2_dims := m2->Size();
+			m2_rows := m2_dims[0];
+			m2_cols := m2_dims[1];
+
+			if(m1_rows <> m2_rows | m1_cols <> m2_cols) {
+				return Nil;
+			};
+
+			c := Float->New[m1_rows, m2_cols];
+			for(i := 0; i < m1_rows; i += 1;) {
+				for(j := 0; j < m2_cols; j += 1;) {
+					c[i,j] := m1[i,j] / m2[i,j];
+				};
+			};
+
+			return c;
 		}
 
 		#~
@@ -218,7 +364,7 @@ bundle System.ML {
 			
 			return Nil;
 		}
-
+		
 		#~
 		Sigmoid 'S' function
 		@param x input value
@@ -873,9 +1019,9 @@ else if(args->Size() = 1) {
 						# calculate signals into final output layer
 						final_outputs  := Matrix2D->DotSigmoid(@weight_outputs_hidden, hidden_outputs);
 						# output layer error is the (target - actual)
-						output_errors := Matrix2D->Sub(target, final_outputs);
+						output_errors := Matrix2D->Subtract(target, final_outputs);
 						# hidden layer error is the output_errors, split by weights, recombined at hidden nodes
-						hidden_errors := Matrix2D->Mul(Matrix2D->Transpose(@weight_outputs_hidden), output_errors);
+						hidden_errors := Matrix2D->DotProduct(Matrix2D->Transpose(@weight_outputs_hidden), output_errors);
 						# update the weights for the links between the input and hidden layers
 						@weight_inputs_hidden := Matrix2D->Add(@weight_inputs_hidden, Adjust(rate, hidden_errors, hidden_outputs, input));
 						# update the weights for the links between the hidden and output layers
@@ -886,7 +1032,7 @@ else if(args->Size() = 1) {
 		}
 
 		method : Adjust(rate : Float, errors : Float[,], outputs : Float[,], inputs : Float[,]) ~ Float[,] {
-			return Matrix2D->Mul(Matrix2D->Mul(Matrix2D->Mul(Matrix2D->Mul(outputs, Matrix2D->Sub(outputs, 1.)), errors), Matrix2D->Transpose(inputs)), rate);
+			return Matrix2D->Multiple(rate, Matrix2D->DotProduct(Matrix2D->HadamardProduct(errors, Matrix2D->HadamardProduct(outputs, Matrix2D->Subtract(1.0, outputs))), Matrix2D->Transpose(inputs)));
 		}
 	}
 
