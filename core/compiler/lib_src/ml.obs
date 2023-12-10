@@ -45,8 +45,7 @@ bundle System.ML {
 				array_args[0] := FloatMatrixRef->New();
 				array_args[1] := FloatRef->New(c);
 				array_args[2] := FloatMatrixRef->New(m);
-				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("ml_matrix_add_scalar_matrix", array_args);
+				Proxy->GetDllProxy()->CallFunction("ml_matrix_add_scalar_matrix", array_args);
 				
 				holder := array_args[0]->As(FloatMatrixRef);
 				return holder->Get();
@@ -67,8 +66,7 @@ bundle System.ML {
 				array_args[0] := FloatMatrixRef->New();
 				array_args[1] := FloatMatrixRef->New(m);				
 				array_args[2] := FloatRef->New(c);				
-				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("ml_matrix_add_matrix_scalar", array_args);
+				Proxy->GetDllProxy()->CallFunction("ml_matrix_add_matrix_scalar", array_args);
 				
 				holder := array_args[0]->As(FloatMatrixRef);
 				return holder->Get();
@@ -89,8 +87,7 @@ bundle System.ML {
 				array_args[0] := FloatMatrixRef->New();
 				array_args[1] := FloatMatrixRef->New(m1);
 				array_args[2] := FloatMatrixRef->New(m2);
-				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("ml_matrix_add_matrix_matrix", array_args);
+				Proxy->GetDllProxy()->CallFunction("ml_matrix_add_matrix_matrix", array_args);
 				
 				holder := array_args[0]->As(FloatMatrixRef);
 				return holder->Get();
@@ -111,8 +108,7 @@ bundle System.ML {
 				array_args[0] := FloatMatrixRef->New();
 				array_args[1] := FloatRef->New(c);
 				array_args[2] := FloatMatrixRef->New(m);
-				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("ml_matrix_sub_scalar_matrix", array_args);
+				Proxy->GetDllProxy()->CallFunction("ml_matrix_sub_scalar_matrix", array_args);
 				
 				holder := array_args[0]->As(FloatMatrixRef);
 				return holder->Get();
@@ -133,8 +129,7 @@ bundle System.ML {
 				array_args[0] := FloatMatrixRef->New();
 				array_args[1] := FloatMatrixRef->New(m);				
 				array_args[2] := FloatRef->New(c);				
-				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("ml_matrix_sub_matrix_scalar", array_args);
+				Proxy->GetDllProxy()->CallFunction("ml_matrix_sub_matrix_scalar", array_args);
 				
 				holder := array_args[0]->As(FloatMatrixRef);
 				return holder->Get();
@@ -155,8 +150,7 @@ bundle System.ML {
 				array_args[0] := FloatMatrixRef->New();
 				array_args[1] := FloatMatrixRef->New(m1);
 				array_args[2] := FloatMatrixRef->New(m2);
-				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("ml_matrix_sub_matrix_matrix", array_args);
+				Proxy->GetDllProxy()->CallFunction("ml_matrix_sub_matrix_matrix", array_args);
 				
 				holder := array_args[0]->As(FloatMatrixRef);
 				return holder->Get();
@@ -177,8 +171,7 @@ bundle System.ML {
 				array_args[0] := FloatMatrixRef->New();
 				array_args[1] := FloatRef->New(c);
 				array_args[2] := FloatMatrixRef->New(m);
-				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("ml_matrix_mul_scalar_matrix", array_args);
+				Proxy->GetDllProxy()->CallFunction("ml_matrix_mul_scalar_matrix", array_args);
 				
 				holder := array_args[0]->As(FloatMatrixRef);
 				return holder->Get();
@@ -199,8 +192,7 @@ bundle System.ML {
 				array_args[0] := FloatMatrixRef->New();
 				array_args[1] := FloatMatrixRef->New(m);				
 				array_args[2] := FloatRef->New(c);				
-				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("ml_matrix_mul_matrix_scalar", array_args);
+				Proxy->GetDllProxy()->CallFunction("ml_matrix_mul_matrix_scalar", array_args);
 				
 				holder := array_args[0]->As(FloatMatrixRef);
 				return holder->Get();
@@ -250,8 +242,7 @@ bundle System.ML {
 				array_args[0] := FloatMatrixRef->New();
 				array_args[1] := FloatMatrixRef->New(m1);
 				array_args[2] := FloatMatrixRef->New(m2);
-				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("ml_matrix_dot_matrix_matrix", array_args);
+				Proxy->GetDllProxy()->CallFunction("ml_matrix_dot_matrix_matrix", array_args);
 				
 				holder := array_args[0]->As(FloatMatrixRef);
 				return holder->Get();
@@ -272,8 +263,7 @@ bundle System.ML {
 				array_args[0] := FloatMatrixRef->New();
 				array_args[1] := FloatRef->New(c);
 				array_args[2] := FloatMatrixRef->New(m);
-				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("ml_matrix_div_scalar_matrix", array_args);
+				Proxy->GetDllProxy()->CallFunction("ml_matrix_div_scalar_matrix", array_args);
 				
 				holder := array_args[0]->As(FloatMatrixRef);
 				return holder->Get();
@@ -294,8 +284,7 @@ bundle System.ML {
 				array_args[0] := FloatMatrixRef->New();
 				array_args[1] := FloatMatrixRef->New(m);				
 				array_args[2] := FloatRef->New(c);				
-				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("ml_matrix_div_matrix_scalar", array_args);
+				Proxy->GetDllProxy()->CallFunction("ml_matrix_div_matrix_scalar", array_args);
 				
 				holder := array_args[0]->As(FloatMatrixRef);
 				return holder->Get();
@@ -343,8 +332,7 @@ bundle System.ML {
 				array_args := Base->New[2];
 				array_args[0] := FloatMatrixRef->New();
 				array_args[1] := FloatMatrixRef->New(a);
-				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("ml_matrix_transpose", array_args);
+				Proxy->GetDllProxy()->CallFunction("ml_matrix_transpose", array_args);
 				
 				holder := array_args[0]->As(FloatMatrixRef);
 				return holder->Get();
@@ -363,8 +351,7 @@ bundle System.ML {
 				array_args := Base->New[2];
 				array_args[0] := FloatMatrixRef->New();
 				array_args[1] := FloatMatrixRef->New(a);
-				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("ml_matrix_inverse", array_args);
+				Proxy->GetDllProxy()->CallFunction("ml_matrix_inverse", array_args);
 				
 				holder := array_args[0]->As(FloatMatrixRef);
 				return holder->Get();
