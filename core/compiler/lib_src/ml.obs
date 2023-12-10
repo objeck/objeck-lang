@@ -1,3 +1,11 @@
+#~~
+# Objeck matrix manipulation and machine learning libraries 
+# Copyright (c) 2024 Randy Hollines
+# 
+# Credits:
+# Eigen matrix library - https://eigen.tuxfamily.org/index.php?title=Main_Page
+~~#	
+
 use Collection;
 use Data.CSV;
 
@@ -6,9 +14,9 @@ Provides support for machine learning
 ~#
 bundle System.ML {
 	#~
-	ML and data science routines
+	Machine learning and data science routines
 	~#
-	
+
 	class Proxy {
 		@lib_proxy : static : System.API.DllProxy;
 		

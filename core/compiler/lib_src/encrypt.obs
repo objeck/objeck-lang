@@ -1,10 +1,6 @@
 #~~
 # Objeck encryption routines 
 # Copyright (c) 2023 Randy Hollines
-# 
-# credits/contributor:
-# Greg Canty - Base64 support (http://www.the9375.com/cc/base64/base64.cpp.html)
-# Copyright (c) 2012 Greg Canty  
 ~~#	
 
 use System.API;
