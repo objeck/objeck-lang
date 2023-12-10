@@ -3,8 +3,8 @@ use System.ML;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		input_file := "c:/users/objec/documents/code/objeck-lang/programs/frameworks/neural/data/gender.csv";
-		model_file := "c:/users/objec/documents/code/objeck-lang/programs/frameworks/neural/data/gender.dat";
+		input_file := "data/gender.csv";
+		model_file := "data/gender.dat";
 
 		network : NeuralNetwork;
 		inputs_targets := MatrixReader->LoadSplitMatrices(input_file, 1, 0.8); # 20% test data
