@@ -7,7 +7,7 @@ class Test {
 		b := [ 
 			[1., 2., .5]];
 		
-		Matrix2D->Mul(a,Matrix2D->Transpose(b))->ToString()->PrintLine();
+		Matrix2D->DotProduct(a,Matrix2D->Transpose(b))->ToString()->PrintLine();
 #~
 		a := [ 
 			[1., 2., 3.]
