@@ -132,7 +132,6 @@ extern "C" {
     }
 // std::cout << "lhs: " << lhs_matrix(0, 0) << ", " << lhs_matrix(1, 2) << std::endl;
 
-
     size_t* rhs_matrix_obj = APITools_GetObjectValue(context, 2); // pointer to 'FloatArrayRef'
     if(!rhs_matrix_obj || !(*rhs_matrix_obj)) {
       std::wcerr << L">>> Attempting to dereference a 'Nil' memory element <<<" << std::endl;
