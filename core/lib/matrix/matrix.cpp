@@ -37,8 +37,6 @@
 typedef Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::ColMajor> ObjkMatrix;
 
 static Eigen::MatrixXd PtrToMatrix(size_t* matrix_data_ptr);
-static Eigen::VectorXd PtrToVector(size_t* matrix_data_ptr);
-
 static size_t* MatrixToPtr(Eigen::MatrixXd& matrix, size_t* matrix_data_ptr, VMContext& context);
 
 extern "C" {
@@ -422,7 +420,7 @@ extern "C" {
 }
 
 //
-// Conversions
+// Utilities
 //
 Eigen::MatrixXd PtrToMatrix(size_t* matrix_data_ptr)
 {
