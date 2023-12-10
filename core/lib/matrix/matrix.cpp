@@ -96,7 +96,7 @@ extern "C" {
     const double value = (double)APITools_GetFloatValue(context, 2);
 
     // create matrix from 2d double array
-    if (!matrix_obj || !(*matrix_obj)) {
+    if(!matrix_obj || !(*matrix_obj)) {
       std::wcerr << L">>> Attempting to dereference a 'Nil' memory element <<<" << std::endl;
       return;
     }
@@ -198,7 +198,7 @@ extern "C" {
     const double value = (double)APITools_GetFloatValue(context, 2);
 
     // create matrix from 2d double array
-    if (!matrix_obj || !(*matrix_obj)) {
+    if(!matrix_obj || !(*matrix_obj)) {
       std::wcerr << L">>> Attempting to dereference a 'Nil' memory element <<<" << std::endl;
       return;
     }
