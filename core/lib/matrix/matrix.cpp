@@ -46,7 +46,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-    void load_lib(VMContext& context) {
+  void load_lib(VMContext& context) {
   }
 
   //
@@ -55,7 +55,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-    void unload_lib() {
+  void unload_lib() {
   }
 
   //
@@ -75,6 +75,10 @@ extern "C" {
     }
     size_t* matrix_data_ptr = (size_t*)*matrix_obj; // pointer to 2d double array
     Eigen::MatrixXd matrix = PtrToMatrix(matrix_data_ptr);
+    if(!matrix.size()) {
+      APITools_SetObjectValue(context, 0, 0);
+      return;
+    }
 
     // add value
     Eigen::MatrixXd result = value + matrix.array();
@@ -98,6 +102,10 @@ extern "C" {
     }
     size_t* matrix_data_ptr = (size_t*)*matrix_obj; // pointer to 2d double array
     Eigen::MatrixXd matrix = PtrToMatrix(matrix_data_ptr);
+    if(!matrix.size()) {
+      APITools_SetObjectValue(context, 0, 0);
+      return;
+    }
 
     // add value
     matrix.array() += value;
@@ -118,6 +126,10 @@ extern "C" {
     }
     size_t* lhs_data_ptr = (size_t*)*lhs_matrix_obj; // pointer to double array
     Eigen::MatrixXd lhs_matrix = PtrToMatrix(lhs_data_ptr);
+    if(!lhs_matrix.size()) {
+      APITools_SetObjectValue(context, 0, 0);
+      return;
+    }
 // std::cout << "lhs: " << lhs_matrix(0, 0) << ", " << lhs_matrix(1, 2) << std::endl;
 
 
@@ -128,6 +140,10 @@ extern "C" {
     }
     size_t* rhs_data_ptr = (size_t*)*rhs_matrix_obj; // pointer to double array
     Eigen::MatrixXd rhs_matrix = PtrToMatrix(rhs_data_ptr);
+    if(!rhs_matrix.size()) {
+      APITools_SetObjectValue(context, 0, 0);
+      return;
+    }
 // std::cout << "rhs: " << rhs_matrix(0, 0) << ", " << rhs_matrix(1, 2) << std::endl;
 
     if(lhs_matrix.rows() != rhs_matrix.rows() || lhs_matrix.cols() != rhs_matrix.cols()) {
@@ -161,6 +177,10 @@ extern "C" {
     }
     size_t* matrix_data_ptr = (size_t*)*matrix_obj; // pointer to 2d double array
     Eigen::MatrixXd matrix = PtrToMatrix(matrix_data_ptr);
+    if(!matrix.size()) {
+      APITools_SetObjectValue(context, 0, 0);
+      return;
+    }
 
     // add value
     Eigen::MatrixXd result = value - matrix.array();
@@ -184,6 +204,10 @@ extern "C" {
     }
     size_t* matrix_data_ptr = (size_t*)*matrix_obj; // pointer to 2d double array
     Eigen::MatrixXd matrix = PtrToMatrix(matrix_data_ptr);
+    if(!matrix.size()) {
+      APITools_SetObjectValue(context, 0, 0);
+      return;
+    }
 
     // calculate value
     matrix.array() -= value;
@@ -204,6 +228,10 @@ extern "C" {
     }
     size_t* lhs_data_ptr = (size_t*)*lhs_matrix_obj; // pointer to double array
     Eigen::MatrixXd lhs_matrix = PtrToMatrix(lhs_data_ptr);
+    if(!lhs_matrix.size()) {
+      APITools_SetObjectValue(context, 0, 0);
+      return;
+    }
     // std::cout << "lhs: " << lhs_matrix(0, 0) << ", " << lhs_matrix(1, 2) << std::endl;
 
     size_t* rhs_matrix_obj = APITools_GetObjectValue(context, 2); // pointer to 'FloatArrayRef'
@@ -213,6 +241,10 @@ extern "C" {
     }
     size_t* rhs_data_ptr = (size_t*)*rhs_matrix_obj; // pointer to double array
     Eigen::MatrixXd rhs_matrix = PtrToMatrix(rhs_data_ptr);
+    if(!rhs_matrix.size()) {
+      APITools_SetObjectValue(context, 0, 0);
+      return;
+    }
     // std::cout << "rhs: " << rhs_matrix(0, 0) << ", " << rhs_matrix(1, 2) << std::endl;
 
     if(lhs_matrix.cols() != rhs_matrix.cols() || lhs_matrix.cols() != rhs_matrix.cols()) {
@@ -246,6 +278,10 @@ extern "C" {
     }
     size_t* matrix_data_ptr = (size_t*)*matrix_obj; // pointer to 2d double array
     Eigen::MatrixXd matrix = PtrToMatrix(matrix_data_ptr);
+    if(!matrix.size()) {
+      APITools_SetObjectValue(context, 0, 0);
+      return;
+    }
 
     // add value
     Eigen::MatrixXd result = value * matrix.array();
@@ -269,6 +305,10 @@ extern "C" {
     }
     size_t* matrix_data_ptr = (size_t*)*matrix_obj; // pointer to 2d double array
     Eigen::MatrixXd matrix = PtrToMatrix(matrix_data_ptr);
+    if(!matrix.size()) {
+      APITools_SetObjectValue(context, 0, 0);
+      return;
+    }
 
     // calculate value
     matrix.array() *= value;
@@ -290,6 +330,10 @@ extern "C" {
     size_t* lhs_data_ptr = (size_t*)*lhs_matrix_obj; // pointer to double array
     Eigen::MatrixXd lhs_matrix = PtrToMatrix(lhs_data_ptr);
     // std::cout << "lhs: " << lhs_matrix(0, 0) << ", " << lhs_matrix(2, 0) << std::endl;
+    if(!lhs_matrix.size()) {
+      APITools_SetObjectValue(context, 0, 0);
+      return;
+    }
 
     size_t* rhs_matrix_obj = APITools_GetObjectValue(context, 2); // pointer to 'FloatArrayRef'
     if(!rhs_matrix_obj || !(*rhs_matrix_obj)) {
@@ -299,6 +343,10 @@ extern "C" {
     size_t* rhs_data_ptr = (size_t*)*rhs_matrix_obj; // pointer to double array
     Eigen::MatrixXd rhs_matrix = PtrToMatrix(rhs_data_ptr);
     // std::cout << "rhs: " << rhs_matrix(0, 0) << ", " << rhs_matrix(2, 2) << std::endl;
+    if(!rhs_matrix.size()) {
+      APITools_SetObjectValue(context, 0, 0);
+      return;
+    }
 
     if(lhs_matrix.cols() != rhs_matrix.rows()) {
       APITools_SetObjectValue(context, 0, 0);
@@ -315,7 +363,7 @@ extern "C" {
   }
 
   //
-  // Divide
+  // Division
   //
 #ifdef _WIN32
   __declspec(dllexport)
@@ -331,6 +379,10 @@ extern "C" {
     }
     size_t* matrix_data_ptr = (size_t*)*matrix_obj; // pointer to 2d double array
     Eigen::MatrixXd matrix = PtrToMatrix(matrix_data_ptr);
+    if(!matrix.size()) {
+      APITools_SetObjectValue(context, 0, 0);
+      return;
+    }
 
     // add value
     Eigen::MatrixXd result = value / matrix.array();
@@ -354,6 +406,10 @@ extern "C" {
     }
     size_t* matrix_data_ptr = (size_t*)*matrix_obj; // pointer to 2d double array
     Eigen::MatrixXd matrix = PtrToMatrix(matrix_data_ptr);
+    if(!matrix.size()) {
+      APITools_SetObjectValue(context, 0, 0);
+      return;
+    }
 
     // calculate value
     matrix.array() /= value;
@@ -378,10 +434,18 @@ extern "C" {
     size_t* lhs_data_ptr = (size_t*)*lhs_matrix_obj; // pointer to double array
     Eigen::MatrixXd lhs_matrix = PtrToMatrix(lhs_data_ptr);
 // std::cout << "lhs: " << lhs_matrix(0, 0) << ", " << lhs_matrix(1, 0) << std::endl;
+    if(!lhs_matrix.size()) {
+      APITools_SetObjectValue(context, 0, 0);
+      return;
+    }
     
     // calculate value
     Eigen::MatrixXd result = lhs_matrix.transpose();
 // std::cout << "r: " << result(0, 0) << ", " << result(0, 1) << ", " << result(0, 2) << std::endl;
+    if(!result.size()) {
+      APITools_SetObjectValue(context, 0, 0);
+      return;
+    }
     
     // create and set results from matrix
     size_t* result_obj = MatrixToPtr(result, lhs_data_ptr, context);
@@ -403,6 +467,10 @@ extern "C" {
     size_t* lhs_data_ptr = (size_t*)*lhs_matrix_obj; // pointer to double array
     Eigen::MatrixXd lhs_matrix = PtrToMatrix(lhs_data_ptr);
  // std::cout << "lhs: " << lhs_matrix(0, 0) << ", " << lhs_matrix(1, 0) << std::endl;
+    if(!lhs_matrix.size()) {
+      APITools_SetObjectValue(context, 0, 0);
+      return;
+    }
 
     // calculate value
     Eigen::MatrixXd result = lhs_matrix.inverse();

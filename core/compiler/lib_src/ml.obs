@@ -6,9 +6,9 @@ Provides support for machine learning
 ~#
 bundle System.ML {
 	#~
-	ML and data science algorithms
+	ML and data science routines
 	~#
-
+	
 	class Proxy {
 		@lib_proxy : static : System.API.DllProxy;
 		
@@ -27,8 +27,8 @@ bundle System.ML {
 	class Matrix2D {
 		#~
 		Adds a constant to a matrix
-		@param x constant to add
-		@param b matrix
+		@param c constant
+		@param m matrix
 		@return updated matrix
 		~#
 		function : native : Add(c : Float, m : Float[,]) ~ Float[,] {
@@ -49,8 +49,8 @@ bundle System.ML {
 
 		#~
 		Adds a constant to a matrix
-		@param b matrix
-		@param x constant to add
+		@param m matrix
+		@param c constant
 		@return updated matrix
 		~#
 		function : native : Add(m : Float[,], c : Float) ~ Float[,] {
@@ -71,8 +71,8 @@ bundle System.ML {
 		
 		#~
 		Adds two matrices
-		@param a matrix
-		@param b matrix
+		@param m1 left matrix
+		@param m2 right matrix
 		@return updated matrix
 		~#
 		function : native : Add(m1 : Float[,], m2 : Float[,]) ~ Float[,] {
@@ -93,8 +93,8 @@ bundle System.ML {
 
 		#~
 		Subtracts a constant from a matrix
-		@param x constant to subtract
-		@param b matrix
+		@param c constant
+		@param m matrix
 		@return updated matrix
 		~#
 		function : native : Subtract(c : Float, m : Float[,]) ~ Float[,] {
@@ -115,8 +115,8 @@ bundle System.ML {
 		
 		#~
 		Adds a constant to a matrix
-		@param b matrix
-		@param x constant to add
+		@param m matrix
+		@param c constant
 		@return updated matrix
 		~#
 		function : native : Subtract(m : Float[,], c : Float) ~ Float[,] {
@@ -137,8 +137,8 @@ bundle System.ML {
 
 		#~
 		Subtracts two matrices
-		@param a matrix
-		@param b matrix
+		@param m1 left matrix
+		@param m2 right matrix
 		@return updated matrix
 		~#
 		function : native : Subtract(m1 : Float[,], m2 : Float[,]) ~ Float[,] {
@@ -159,8 +159,8 @@ bundle System.ML {
 
 		#~
 		Multiplies a constant by a matrix
-		@param x constant to multiple
-		@param b matrix
+		@param c constant
+		@param m matrix
 		@return updated matrix
 		~#
 		function : native : Multiple(c : Float, m : Float[,]) ~ Float[,] {
@@ -181,8 +181,8 @@ bundle System.ML {
 
 		#~
 		Multiplies a constant by a matrix
-		@param b matrix
-		@param x constant to multiple
+		@param m matrix
+		@param c constant
 		@return updated matrix
 		~#
 		function : native : Multiple(m : Float[,], c : Float) ~ Float[,] {
@@ -203,8 +203,8 @@ bundle System.ML {
 
 		#~
 		Multiplies two matrices using the Hadamard rule
-		@param a matrix
-		@param b matrix
+		@param m1 left matrix
+		@param m2 right matrix
 		@return updated matrix
 		~#
 		function : native : HadamardProduct(m1 : Float[,], m2 : Float[,]) ~ Float[,] {
@@ -232,8 +232,8 @@ bundle System.ML {
 
 		#~
 		Calculates the dot product.
-		@param a matrix
-		@param b matrix
+		@param m1 left matrix
+		@param m2 right matrix
 		@return updated matrix
 		~#
 		function : native : DotProduct(m1 : Float[,], m2 : Float[,]) ~ Float[,] {
@@ -254,8 +254,8 @@ bundle System.ML {
 		
 		#~
 		Divides a constant by a matrix
-		@param x constant to divide
-		@param b matrix
+		@param c constant
+		@param m matrix
 		@return updated matrix
 		~#
 		function : native : Divide(c : Float, m : Float[,]) ~ Float[,] {
@@ -276,8 +276,8 @@ bundle System.ML {
 
 		#~
 		Divides a constant by a matrix
-		@param b matrix
-		@param x constant to divide
+		@param m matrix
+		@param c constant
 		@return updated matrix
 		~#
 		function : native : Divide(m : Float[,], c : Float) ~ Float[,] {
@@ -298,8 +298,8 @@ bundle System.ML {
 
 		#~
 		Divides two matrices using the Hadamard rule
-		@param a matrix
-		@param b matrix
+		@param m1 left matrix
+		@param m2 right matrix
 		@return updated matrix
 		~#
 		function : native : HadamardDivide(m1 : Float[,], m2 : Float[,]) ~ Float[,] {
