@@ -65,7 +65,7 @@ extern "C" {
   __declspec(dllexport)
 #endif
   void ml_matrix_add_scalar_matrix(VMContext& context) {
-    const double value = (double)APITools_GetFloatValue(context, 1);
+    const double value = APITools_GetFloatValue(context, 1);
     size_t* matrix_obj = APITools_GetObjectValue(context, 2); // pointer to 'FloatMatrixRef'
 
     // create matrix from 2d double array
@@ -93,7 +93,7 @@ extern "C" {
 #endif
   void ml_matrix_add_matrix_scalar(VMContext& context) {
     size_t* matrix_obj = APITools_GetObjectValue(context, 1); // pointer to 'FloatMatrixRef'
-    const double value = (double)APITools_GetFloatValue(context, 2);
+    const double value = APITools_GetFloatValue(context, 2);
 
     // create matrix from 2d double array
     if(!matrix_obj || !(*matrix_obj)) {
@@ -167,7 +167,7 @@ extern "C" {
   __declspec(dllexport)
 #endif
   void ml_matrix_sub_scalar_matrix(VMContext& context) {
-    const double value = (double)APITools_GetFloatValue(context, 1);
+    const double value = APITools_GetFloatValue(context, 1);
     size_t* matrix_obj = APITools_GetObjectValue(context, 2); // pointer to 'FloatMatrixRef'
 
     // create matrix from 2d double array
@@ -195,7 +195,7 @@ extern "C" {
 #endif
   void ml_matrix_sub_matrix_scalar(VMContext& context) {
     size_t* matrix_obj = APITools_GetObjectValue(context, 1); // pointer to 'FloatMatrixRef'
-    const double value = (double)APITools_GetFloatValue(context, 2);
+    const double value = APITools_GetFloatValue(context, 2);
 
     // create matrix from 2d double array
     if(!matrix_obj || !(*matrix_obj)) {
@@ -268,7 +268,7 @@ extern "C" {
   __declspec(dllexport)
 #endif
   void ml_matrix_mul_scalar_matrix(VMContext& context) {
-    const double value = (double)APITools_GetFloatValue(context, 1);
+    const double value = APITools_GetFloatValue(context, 1);
     size_t* matrix_obj = APITools_GetObjectValue(context, 2); // pointer to 'FloatMatrixRef'
 
     // create matrix from 2d double array
@@ -296,7 +296,7 @@ extern "C" {
 #endif
   void ml_matrix_mul_matrix_scalar(VMContext& context) {
     size_t* matrix_obj = APITools_GetObjectValue(context, 1); // pointer to 'FloatMatrixRef'
-    const double value = (double)APITools_GetFloatValue(context, 2);
+    const double value = APITools_GetFloatValue(context, 2);
 
     // create matrix from 2d double array
     if(!matrix_obj || !(*matrix_obj)) {
@@ -369,7 +369,7 @@ extern "C" {
   __declspec(dllexport)
 #endif
   void ml_matrix_div_scalar_matrix(VMContext& context) {
-    const double value = (double)APITools_GetFloatValue(context, 1);
+    const double value = APITools_GetFloatValue(context, 1);
     size_t* matrix_obj = APITools_GetObjectValue(context, 2); // pointer to 'FloatMatrixRef'
 
     // create matrix from 2d double array
@@ -397,7 +397,7 @@ extern "C" {
 #endif
   void ml_matrix_div_matrix_scalar(VMContext& context) {
     size_t* matrix_obj = APITools_GetObjectValue(context, 1); // pointer to 'FloatMatrixRef'
-    const double value = (double)APITools_GetFloatValue(context, 2);
+    const double value = APITools_GetFloatValue(context, 2);
 
     // create matrix from 2d double array
     if(!matrix_obj || !(*matrix_obj)) {
