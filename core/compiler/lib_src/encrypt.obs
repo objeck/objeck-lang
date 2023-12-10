@@ -35,8 +35,7 @@ bundle Encryption {
 				array_args := Base->New[2];
 				array_args[0] := ByteArrayRef->New(Nil->As(Byte[]));
 				array_args[1] := ByteArrayRef->New(input);				
-				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("openssl_hash_sha256", array_args);
+				Proxy->GetDllProxy()->CallFunction("openssl_hash_sha256", array_args);
 				
 				holder := array_args[0]->As(ByteArrayRef);
 				return holder->Get();
@@ -55,8 +54,7 @@ bundle Encryption {
 				array_args := Base->New[2];
 				array_args[0] := ByteArrayRef->New(Nil->As(Byte[]));
 				array_args[1] := ByteArrayRef->New(input);				
-				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("openssl_hash_sha512", array_args);
+				Proxy->GetDllProxy()->CallFunction("openssl_hash_sha512", array_args);
 				
 				holder := array_args[0]->As(ByteArrayRef);
 				return holder->Get();
@@ -75,8 +73,7 @@ bundle Encryption {
 				array_args := Base->New[2];
 				array_args[0] := ByteArrayRef->New(Nil->As(Byte[]));
 				array_args[1] := ByteArrayRef->New(input);				
-				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("openssl_hash_md5", array_args);
+				Proxy->GetDllProxy()->CallFunction("openssl_hash_md5", array_args);
 				
 				holder := array_args[0]->As(ByteArrayRef);
 				return holder->Get();
@@ -95,8 +92,7 @@ bundle Encryption {
 				array_args := Base->New[2];
 				array_args[0] := ByteArrayRef->New(Nil->As(Byte[]));
 				array_args[1] := ByteArrayRef->New(input);				
-				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("openssl_hash_ripemd160", array_args);
+				Proxy->GetDllProxy()->CallFunction("openssl_hash_ripemd160", array_args);
 				
 				holder := array_args[0]->As(ByteArrayRef);
 				return holder->Get();
@@ -122,8 +118,7 @@ bundle Encryption {
 				array_args[0] := ByteArrayRef->New(Nil->As(Byte[]));
 				array_args[1] := ByteArrayRef->New(key);
 				array_args[2] := ByteArrayRef->New(input);				
-				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("openssl_encrypt_aes256", array_args);
+				Proxy->GetDllProxy()->CallFunction("openssl_encrypt_aes256", array_args);
 				
 				holder := array_args[0]->As(ByteArrayRef);
 				return holder->Get();
@@ -164,8 +159,7 @@ bundle Encryption {
 				array_args[0] := ByteArrayRef->New(Nil->As(Byte[]));
 				array_args[1] := ByteArrayRef->New(key);
 				array_args[2] := ByteArrayRef->New(input);				
-				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("openssl_decrypt_aes256", array_args);
+				Proxy->GetDllProxy()->CallFunction("openssl_decrypt_aes256", array_args);
 				
 				holder := array_args[0]->As(ByteArrayRef);
 				return holder->Get();
