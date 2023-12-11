@@ -1,0 +1,22 @@
+use Web.HTTP, Collection;
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		urls := Vector->New()<Url>;
+		urls->AddBack(Url->New("https://archive.archlinux.org/iso/0.5/arch-0.5-full-i686.iso"));
+		urls->AddBack(Url->New("https://archive.archlinux.org/iso/0.3/arch-0.3-full-i686.iso"));
+
+		headers := Map->New()<String, String>;
+		headers->Insert("accept", "application/json");
+		headers->Insert("Keep-Alive", "timeout=600");
+
+		download_data := WebDownloader->Download(urls, headers)<Pair<Url, ByteArrayRef>>;
+		each(download := download_data) {
+			url := download->GetFirst()->As(Url);
+			data := download->GetSecond()->As(ByteArrayRef);
+			
+			url->ToString()->PrintLine();
+			System.IO.Filesystem.FileWriter->WriteFile("url_{$url}.dat", data->Get());
+		};
+	}
+}
