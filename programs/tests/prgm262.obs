@@ -17,9 +17,8 @@ class Test {
 
 			file_name := GetFilename(url);
 			file_size := data->Size();
-			"file: name='{$file_name}', size={$file_size}"->PrintLine();
-
-			System.IO.Filesystem.FileWriter->WriteFile(file_name, data)->PrintLine();
+			file_written := System.IO.Filesystem.FileWriter->WriteFile(file_name, data);
+			"file: name='{$file_name}', size={$file_size}, written={$file_written}"->PrintLine();
 		};
 	}
 
