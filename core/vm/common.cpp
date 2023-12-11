@@ -3983,11 +3983,13 @@ bool TrapProcessor::SockTcpSslInString(StackProgram* program, size_t* inst, size
       // copy content
       const std::wstring in = BytesToUnicode(buffer);
       wchar_t* out = (wchar_t*)(array + 3);
+      if(wcslen(out) > 0) {
 #ifdef _WIN32
-      wcsncpy_s(out, array[0] + 1, in.c_str(), in.size());
+        wcsncpy_s(out, array[0] + 1, in.c_str(), in.size());
 #else
-      wcsncpy(out, in.c_str(), in.size());
+        wcsncpy(out, in.c_str(), in.size());
 #endif
+      }
     }
   }
 
