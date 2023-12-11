@@ -10,13 +10,31 @@ class Test {
 		headers->Insert("accept", "application/json");
 		headers->Insert("Keep-Alive", "timeout=600");
 
-		download_data := WebDownloader->Download(urls, headers)<Pair<Url, ByteArrayRef>>;
-		each(download := download_data) {
+		downloads := WebDownloader->Download(urls, headers)<Pair<Url, ByteArrayRef>>;
+		each(download := downloads) {
 			url := download->GetFirst()->As(Url);
-			data := download->GetSecond()->As(ByteArrayRef);
-			
-			url->ToString()->PrintLine();
-			System.IO.Filesystem.FileWriter->WriteFile("url_{$url}.dat", data->Get());
+			data := download->GetSecond()->As(ByteArrayRef)->Get();
+
+			file_name := GetFilename(url);
+			file_size := data->Size();
+			"file: name='{$file_name}', size={$file_size}"->PrintLine();
+
+			System.IO.Filesystem.FileWriter->WriteFile(file_name, data)->PrintLine();
 		};
+	}
+
+	function : GetFilename(url : Url) ~ String {
+		name := url->GetUrl();
+		index := name->FindLast('/');
+		if(index < 0) {
+			index := name->FindLast('\\');
+		};
+
+		if(index > -1) {
+			index += 1;
+			return name->SubString(index, name->Size() - index);
+		};
+
+		return "";
 	}
 }
