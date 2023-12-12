@@ -3816,7 +3816,7 @@ bool TrapProcessor::SockTcpInString(StackProgram* program, size_t* inst, size_t*
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(array && instance && (long)instance[0] > -1) {
-    char buffer[LARGE_BUFFER_MAX] = {0};
+    char buffer[MID_BUFFER_MAX] = {0};
     SOCKET sock = (SOCKET)instance[0];
     int status;
 
@@ -3826,7 +3826,7 @@ bool TrapProcessor::SockTcpInString(StackProgram* program, size_t* inst, size_t*
       bool end_line = false;
       do {
         value = IPSocket::ReadByte(sock, status);
-        if(value != '\0' && value != '\r' && value != '\n' && index < LARGE_BUFFER_MAX - 1 && status > 0) {
+        if(value != '\0' && value != '\r' && value != '\n' && index < MID_BUFFER_MAX - 1 && status > 0) {
           buffer[index++] = value;
         }
         else {
