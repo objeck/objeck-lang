@@ -3833,7 +3833,7 @@ bool TrapProcessor::SockTcpInString(StackProgram* program, size_t* inst, size_t*
           end_line = true;
         }
       }
-      while(!end_line);
+      while(!end_line && index < array[0] - 1);
       buffer[index] = '\0';
 
       // assume LF
@@ -3955,7 +3955,7 @@ bool TrapProcessor::SockTcpSslInString(StackProgram* program, size_t* inst, size
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(array && instance) {
-    char buffer[LARGE_BUFFER_MAX] = {0};
+    char buffer[MID_BUFFER_MAX] = {0};
     SSL_CTX* ctx = (SSL_CTX*)instance[0];
     BIO* bio = (BIO*)instance[1];
     int status;
@@ -3965,14 +3965,14 @@ bool TrapProcessor::SockTcpSslInString(StackProgram* program, size_t* inst, size
       bool end_line = false;
       do {
         value = IPSecureSocket::ReadByte(ctx, bio, status);
-        if(value != '\0' && value != '\r' && value != '\n' && index < LARGE_BUFFER_MAX - 1 && status > 0) {
+        if(value != '\0' && value != '\r' && value != '\n' && index < MID_BUFFER_MAX - 1 && status > 0) {
           buffer[index++] = value;
         }
         else {
           end_line = true;
         }
       }
-      while(!end_line);
+      while(!end_line && index < array[0] - 1);
       buffer[index] = '\0';
 
       // assume LF
@@ -3983,13 +3983,11 @@ bool TrapProcessor::SockTcpSslInString(StackProgram* program, size_t* inst, size
       // copy content
       const std::wstring in = BytesToUnicode(buffer);
       wchar_t* out = (wchar_t*)(array + 3);
-      if(wcslen(out) > 0) {
 #ifdef _WIN32
-        wcsncpy_s(out, array[0] + 1, in.c_str(), in.size());
+      wcsncpy_s(out, array[0], in.c_str(), in.size());
 #else
-        wcsncpy(out, in.c_str(), in.size());
+      wcsncpy(out, in.c_str(), in.size());
 #endif
-      }
     }
   }
 
@@ -4418,7 +4416,7 @@ bool TrapProcessor::DeserlFloatAry(StackProgram* program, size_t* inst, size_t* 
 bool TrapProcessor::CompressZlibBytes(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
-  if (!array) {
+  if(!array) {
     std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
     return false;
   }
