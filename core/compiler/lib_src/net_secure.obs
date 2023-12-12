@@ -415,11 +415,6 @@ if(html <> Nil) {
 				if(port < 0) {
 					port := 443;
 				};
-
-				port := url->GetPort();
-				if(port < 0) {
-					port := 443;
-				};
 				# "### address='{$address}', port={$port}, location='{$location}'"->PrintLine();
 
 				socket := TCPSecureSocket->New(address, port);
