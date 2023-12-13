@@ -425,30 +425,36 @@ extern "C" {
     __declspec(dllexport)
 #endif
   void ml_matrix_transpose(VMContext& context) {
-    size_t* lhs_matrix_obj = APITools_GetObjectValue(context, 1); // pointer to 'FloatArrayRef'
-    if(!lhs_matrix_obj || !(*lhs_matrix_obj)) {
-      std::wcerr << L">>> Attempting to dereference a 'Nil' memory element <<<" << std::endl;
-      return;
+    try {
+      size_t* lhs_matrix_obj = APITools_GetObjectValue(context, 1); // pointer to 'FloatArrayRef'
+      if(!lhs_matrix_obj || !(*lhs_matrix_obj)) {
+        std::wcerr << L">>> Attempting to dereference a 'Nil' memory element <<<" << std::endl;
+        return;
+      }
+      size_t* lhs_data_ptr = (size_t*)*lhs_matrix_obj; // pointer to double array
+      Eigen::MatrixXd lhs_matrix = PtrToMatrix(lhs_data_ptr);
+      // std::cout << "lhs: " << lhs_matrix(0, 0) << ", " << lhs_matrix(1, 0) << std::endl;
+      if(!lhs_matrix.size()) {
+        APITools_SetObjectValue(context, 0, 0);
+        return;
+      }
+
+      // calculate value
+      Eigen::MatrixXd result = lhs_matrix.transpose();
+      // std::cout << "r: " << result(0, 0) << ", " << result(0, 1) << ", " << result(0, 2) << std::endl;
+      if(!result.size()) {
+        APITools_SetObjectValue(context, 0, 0);
+        return;
+      }
+
+      // create and set results from matrix
+      size_t* result_obj = MatrixToPtr(result, lhs_data_ptr, context);
+      APITools_SetObjectValue(context, 0, result_obj);
     }
-    size_t* lhs_data_ptr = (size_t*)*lhs_matrix_obj; // pointer to double array
-    Eigen::MatrixXd lhs_matrix = PtrToMatrix(lhs_data_ptr);
-// std::cout << "lhs: " << lhs_matrix(0, 0) << ", " << lhs_matrix(1, 0) << std::endl;
-    if(!lhs_matrix.size()) {
+    catch(std::exception& e) {
       APITools_SetObjectValue(context, 0, 0);
       return;
     }
-    
-    // calculate value
-    Eigen::MatrixXd result = lhs_matrix.transpose();
-// std::cout << "r: " << result(0, 0) << ", " << result(0, 1) << ", " << result(0, 2) << std::endl;
-    if(!result.size()) {
-      APITools_SetObjectValue(context, 0, 0);
-      return;
-    }
-    
-    // create and set results from matrix
-    size_t* result_obj = MatrixToPtr(result, lhs_data_ptr, context);
-    APITools_SetObjectValue(context, 0, result_obj);
   }
   
   // 
