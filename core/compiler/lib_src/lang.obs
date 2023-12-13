@@ -1,6 +1,6 @@
 #~
 Objeck system classes.
-Copyright (c) 2023 Randy Hollines
+Copyright (c) 2008-2024 Randy Hollines
 note: compile compiler with -D_SYSTEM flag (on Linux)
 ~#	
 
@@ -6968,7 +6968,7 @@ bundle System.IO {
 				return Nil;
 			};
 			
-			buffer : Char[] := Char->New[4096];
+			buffer : Char[] := Char->New[8192];
 			ReadString(buffer);
 			return System.String->New(buffer);
 		}
@@ -7044,7 +7044,7 @@ bundle System.IO {
 		}
 
 		method : public : ReadString() ~ System.String {
-			buffer : Char[] := Char->New[4096];
+			buffer : Char[] := Char->New[8192];
 			ReadString(buffer);
 			return System.String->New(buffer);
 		}
@@ -7905,7 +7905,7 @@ bundle System.IO.Filesystem {
 				return Nil;
 			};
 
-			buffer : Char[] := Char->New[4096];
+			buffer : Char[] := Char->New[8192];
 			ReadString(buffer);
 			return System.String->New(buffer);
 		}
@@ -8152,7 +8152,7 @@ bundle System.IO.Filesystem {
 				return Nil;
 			};
 
-			buffer : Char[] := Char->New[4096];
+			buffer : Char[] := Char->New[8192];
 			ReadString(buffer);
 			return System.String->New(buffer);
 		}
@@ -8914,7 +8914,7 @@ bundle System.IO.Net {
 				return Nil;
 			};
 
-			buffer : Char[] := Char->New[4096];
+			buffer : Char[] := Char->New[8192];
 			ReadString(buffer);
 			return System.String->New(buffer);
 		}
@@ -9125,7 +9125,7 @@ bundle System.IO.Net {
 				return Nil;
 			};
 
-			buffer : Char[] := Char->New[4096];
+			buffer : Char[] := Char->New[8192];
 			ReadString(buffer);
 			return System.String->New(buffer);
 		}
