@@ -88,9 +88,8 @@ class Test {
 		};
 		r_sqrt := resid_sum / data_avg;
 resid_sum->PrintLine();
-data_avg->PrintLine();
-		
-		r_sqrt->PrintLine();
+
+#		r_sqrt->PrintLine();
 		"---"->PrintLine();
 	}
 }
