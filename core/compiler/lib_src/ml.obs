@@ -34,6 +34,150 @@ bundle System.ML {
 	~#
 	class Matrix2D {
 		#~
+		Get the row from a matrix
+		@param r row index
+		@matrix matrix
+		@return row from matrix
+		~#
+		function : native : GetRow(r : Int, matrix : Float[,]) ~ Float[] {
+			dims := matrix->Size();
+			rows := dims[0];
+			cols := dims[1];
+
+			if(r < rows) {
+				row := Float->New[cols];
+
+				each(i : cols) {
+					row[i] := matrix[r, i];
+				};
+
+				return row;
+			};
+			
+			return Nil;
+		}
+
+		#~
+		Sum of the given row
+		@param r row index
+		@matrix matrix
+		@return sum of the row
+		~#
+		function : native : SumRow(r : Int, matrix : Float[,]) ~ Float {
+			dims := matrix->Size();
+			rows := dims[0];
+			cols := dims[1];
+
+			if(r < rows) {
+				sum := 0.0;
+
+				each(i : cols) {
+					sum += matrix[r, i];
+				};
+
+				return sum;
+			};
+			
+			return 0.0;
+		}
+
+		#~
+		Average of the given row
+		@param r row index
+		@matrix matrix
+		@return average of the row
+		~#
+		function : native : AverageRow(r : Int, matrix : Float[,]) ~ Float {
+			dims := matrix->Size();
+			rows := dims[0];
+			cols := dims[1];
+
+			if(r < rows) {
+				sum := 0.0;
+
+				each(i : cols) {
+					sum += matrix[r, i];
+				};
+
+				return sum / cols->As(Float);
+			};
+			
+			return 0.0;
+		}
+
+		#~
+		Get the column from a matrix
+		@param r column index
+		@matrix matrix
+		@return column from matrix
+		~#
+		function : native : GetColumn(c : Int, matrix : Float[,]) ~ Float[] {
+			dims := matrix->Size();
+			rows := dims[0];
+			cols := dims[1];
+
+			if(c < cols) {
+				col := Float->New[rows];
+
+				each(i : rows) {
+					col[i] := matrix[i, c];
+				};
+
+				return col;
+			};
+			
+			return Nil;
+		}
+
+		#~
+		Sum of the given column
+		@param r column index
+		@matrix matrix
+		@return sum of the column
+		~#
+		function : native : SumColumn(c : Int, matrix : Float[,]) ~ Float {
+			dims := matrix->Size();
+			rows := dims[0];
+			cols := dims[1];
+
+			if(c < cols) {
+				sum := 0;
+
+				each(i : rows) {
+					sum += matrix[i, c];
+				};
+
+				return sum;
+			};
+			
+			return 0.0;
+		}
+
+		#~
+		Average of the given column
+		@param r column index
+		@matrix matrix
+		@return average of the column
+		~#
+		function : native : AverageColumn(c : Int, matrix : Float[,]) ~ Float {
+			dims := matrix->Size();
+			rows := dims[0];
+			cols := dims[1];
+
+			if(c < cols) {
+				sum := 0;
+				
+				each(i : rows) {
+					sum += matrix[i, c];
+				};
+
+				return sum / rows->As(Float);
+			};
+			
+			return 0.0;
+		}
+
+		#~
 		Adds a constant to a matrix
 		@param c constant
 		@param m matrix
