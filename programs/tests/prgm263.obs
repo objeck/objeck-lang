@@ -69,25 +69,35 @@ class Test {
 		data_rows := dim[0];
 #		data_cols := dim[1];
 
-		resid_sum := 0.0;
+
 		data_avg := System.ML.Matrix2D->AverageColumn(0, m2);
+
+		total_sum := 0.0;
 		each(i : data_rows) {
-			total := 0.0;
+			result := m2[i,0] - data_avg;
+			total_sum += result * result;
+		};
+		total_sum->PrintLine();
+
+		regress_sum := 0.0;
+		each(i : data_rows) {
+			term := 0.0;
 
 			each(j : coeff_rows) {
 				if(j = 0) {
-					total += coeffs[j, 0];
+					term += coeffs[j, 0];
 				}
 				else {
-					total += (m1[i,1] * coeffs[j, 0]);
+					term += (m1[i,1] * coeffs[j, 0]);
 				}
 				
 			};
-			term := total - data_avg;
-			resid_sum += term * term;
+			result := term - data_avg;
+			regress_sum += result * result;
 		};
-		r_sqrt := resid_sum / data_avg;
-resid_sum->PrintLine();
+		
+		r_sqrt := regress_sum / total_sum;
+r_sqrt->PrintLine();
 
 #		r_sqrt->PrintLine();
 		"---"->PrintLine();
