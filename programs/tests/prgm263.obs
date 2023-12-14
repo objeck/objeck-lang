@@ -19,7 +19,7 @@ class Test {
 			[7., 9.]];
 		System.ML.Matrix2D->Transpose(a);
 		# "---"->PrintLine();
-~#
+
 	
 		# linear regression
 
@@ -39,5 +39,68 @@ class Test {
 		lhs := System.ML.Matrix2D->Inverse(System.ML.Matrix2D->DotProduct(m1_t, m1));
 		rhs := System.ML.Matrix2D->DotProduct(m1_t, m2);
 		System.ML.Matrix2D->DotProduct(lhs, rhs)->ToString()->PrintLine();
+~#	
+
+		# linear regression
+
+		m1 := [
+			[1., 1.]
+			[1., 2.]
+			[1., 3.]
+			[1., 4.]
+			[1., 5.]];
+		m2 := [
+			[2.]
+			[4.]
+			[5.]
+			[4.]
+			[5.]];
+
+		m1_t := System.ML.Matrix2D->Transpose(m1);
+		lhs := System.ML.Matrix2D->Inverse(System.ML.Matrix2D->DotProduct(m1_t, m1));
+		rhs := System.ML.Matrix2D->DotProduct(m1_t, m2);
+		coeffs := System.ML.Matrix2D->DotProduct(lhs, rhs);
+
+		coeffs->ToString()->PrintLine();
+
+		dims := coeffs->Size();
+		rows := dims[0];
+		cols := dims[1];
+
+		total := 0.0;
+		each(i : m2) {
+			coeff := coeffs[i,0];
+m2[i,0]->PrintLine();			
+			if(i = 0) {
+"0: {$coeff}"->PrintLine();				
+				total += coeff;
+			}
+			else {
+				foo := m2[i,0];
+"1: {$total}, {$foo}"->PrintLine();								
+				total += coeff * m2[i,0];
+			};
+		}
+total->PrintLine();
+		"---"->PrintLine();
+
+		dims := m1->Size();
+		rows := dims[0];
+#		cols := dims[1];
+
+		estimate_mean := System.ML.Matrix2D->AverageColumn(0, m2);
+		estimates := Float->New[rows];
+		each(i : rows) {
+			estimate := m2[i,0] - estimate_mean;
+			estimates[i] := estimate * estimate;
+		}
+		estimates->ToString()->PrintLine();
+
+#~			
+		m1_t := System.ML.Matrix2D->Transpose(m1);
+		lhs := System.ML.Matrix2D->Inverse(System.ML.Matrix2D->DotProduct(m1_t, m1));
+		rhs := System.ML.Matrix2D->DotProduct(m1_t, m2);
+		System.ML.Matrix2D->DotProduct(lhs, rhs)->ToString()->PrintLine();	
+~#		
 	}
 }
