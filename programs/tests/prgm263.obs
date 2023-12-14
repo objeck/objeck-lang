@@ -35,10 +35,10 @@ class Test {
 			[13.]
 			[14.]
 			[16.]];
-		m1_t := System.ML.Matrix2D->Transpose(m1);
-		lhs := System.ML.Matrix2D->Inverse(System.ML.Matrix2D->DotProduct(m1_t, m1));
-		rhs := System.ML.Matrix2D->DotProduct(m1_t, m2);
-		System.ML.Matrix2D->DotProduct(lhs, rhs)->ToString()->PrintLine();
+		m1_trans := System.ML.Matrix2D->Transpose(m1);
+		lhs_coeffs := System.ML.Matrix2D->Inverse(System.ML.Matrix2D->DotProduct(m1_trans, m1));
+		rhs_coeffs := System.ML.Matrix2D->DotProduct(m1_trans, m2);
+		System.ML.Matrix2D->DotProduct(lhs_coeffs, rhs_coeffs)->ToString()->PrintLine();
 ~#	
 
 		# linear regression
@@ -56,11 +56,11 @@ class Test {
 			[4.]
 			[5.]];
 
-		m1_t := System.ML.Matrix2D->Transpose(m1);
-		lhs := System.ML.Matrix2D->Inverse(System.ML.Matrix2D->DotProduct(m1_t, m1));
-		rhs := System.ML.Matrix2D->DotProduct(m1_t, m2);
+		m1_trans := System.ML.Matrix2D->Transpose(m1);
+		lhs_coeffs := System.ML.Matrix2D->Inverse(System.ML.Matrix2D->DotProduct(m1_trans, m1));
+		rhs_coeffs := System.ML.Matrix2D->DotProduct(m1_trans, m2);
 		
-		coeffs := System.ML.Matrix2D->DotProduct(lhs, rhs);
+		coeffs := System.ML.Matrix2D->DotProduct(lhs_coeffs, rhs_coeffs);
 		dim := coeffs->Size();
 		coeff_rows := dim[0];
 #		coeff_cols := dim[1];
@@ -68,7 +68,9 @@ class Test {
 		dim := m1->Size();
 		data_rows := dim[0];
 #		data_cols := dim[1];
-		
+
+		resid_sum := 0.0;
+		data_avg := System.ML.Matrix2D->AverageColumn(0, m2);
 		each(i : data_rows) {
 			total := 0.0;
 
@@ -81,7 +83,14 @@ class Test {
 				}
 				
 			};
-			total->PrintLine();
-		}
+			term := total - data_avg;
+			resid_sum += term * term;
+		};
+		r_sqrt := resid_sum / data_avg;
+resid_sum->PrintLine();
+data_avg->PrintLine();
+		
+		r_sqrt->PrintLine();
+		"---"->PrintLine();
 	}
 }
