@@ -82,7 +82,7 @@
     <OutDir>$(SolutionDir)$(Configuration)\$(Platform)\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>..\lib\eigen-3.4.0;..\..\openssl\win\include;..\..\zlib\win;..\..\include;$(IncludePath)</IncludePath>
+    <IncludePath>..\lib\eigen-3.4.0;..\..\openssl\win\include;..\..\zlib\win;$(IncludePath)</IncludePath>
     <LibraryPath>..\lib\eigen-3.4.0;..\zlib\lib\x64;..\..\openssl\win\x64\lib;$(LibraryPath)</LibraryPath>
     <TargetName>libobjk_ml</TargetName>
     <OutDir>$(SolutionDir)$(Configuration)\$(Platform)\</OutDir>
