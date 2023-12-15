@@ -37,29 +37,30 @@ class Test {
 		coeffs := GetCoefficients(m1, m2);
 		coeffs->PrintLine();
 
-		GetRSquared(m1, m2, coeffs)->PrintLine();
+		GetRSquared(m1, 1, m2, coeffs)->PrintLine();
 	}
 
-	function : GetRSquared(m1 : Float[,], m2 : Float[,], coeffs : Float[,]) ~ Float {
+	function : GetRSquared(m1 : Float[,], m1_col : Int, m2 : Float[,], coeffs : Float[,]) ~ Float {
 		m2_mean := System.ML.Matrix2D->AverageColumn(0, m2);
 
-		pred_var := PredVar(m1,coeffs,m2_mean);
+		pred_var := PredVar(m1,m1_col,coeffs,m2_mean);
 		total_var := TotalVar(m2, m2_mean);
 
 		return pred_var / total_var;
 	}
 
-	function : PredVar(m : Float[,], coeffs : Float[,], mean : Float) ~ Float {
+	function : PredVar(m : Float[,], m1_col : Int, coeffs : Float[,], mean : Float) ~ Float {
 		m_dim := m->Size();
 		m_rows := m_dim[0];
 
 		total := 0.0;
 
+		# TODO: cols
 		each(i : m_rows) {
 			coeff_dim := coeffs->Size();
 			coeff_rows := coeff_dim[0];
 
-			value := m[i,1];
+			value := m[i,m1_col];
 			inner_total := 0.0;
 			each(j : coeff_rows) {
 				if(j = 0) {
