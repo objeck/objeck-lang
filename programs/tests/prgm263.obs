@@ -2,77 +2,113 @@ use Web.HTTP, Collection;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-#~
+
 		m1 := [
-			[1., 1., 10.]
-			[1., 3., 14.]
-			[1., 4., 15.]
-			[1., 6., 18.]
-			[1., 7., 20.]];
+			[1., 1.]
+			[1., 3.]
+			[1., 4.]
+			[1., 6.]
+			[1., 7.]];
 		m2 := [
 			[9.]
 			[10.]
 			[13.]
 			[14.]
 			[16.]];
-~#	
+	
 
+#~
 		# linear regression
 
 		m1 := [
-			[1., 49.]
-			[1., 69.]
-			[1., 89.]
-			[1., 99.]
-			[1., 109.]];
-		
+			[1., 1.]
+			[1., 2.]
+			[1., 3.]
+			[1., 4.]
+			[1., 5.]];
+			
 		m2 := [
-			[124.]
-			[95.]
-			[71.]
-			[45.]
-			[18.]];
-
+			[2.]
+			[4.]
+			[5.]
+			[4.]
+			[5.]];
+~#
 		coeffs := GetCoefficients(m1, m2);
-		coeffs->PrintLine()
+		coeffs->PrintLine();
 
-		GetRSquared(coeffs, 0, m1, m2)->PrintLine();
+		GetRSquared(m1, m2, coeffs)->PrintLine();
 	}
 
-	function : GetRSquared(coeffs : Float[,], col : Int, m1 : Float[,], m2 : Float[,]) ~ Float {
-		dim := coeffs->Size();
-		coeff_rows := dim[0];
+	function : GetRSquared(m1 : Float[,], m2 : Float[,], coeffs : Float[,]) ~ Float {
+		m2_mean := System.ML.Matrix2D->AverageColumn(0, m2);
 
-		dim := m1->Size();
-		data_rows := dim[0];
+		pred_var := PredVar(m1,coeffs,m2_mean);
+		total_var := TotalVar(m2, m2_mean);
 
-		data_avg := System.ML.Matrix2D->AverageColumn(col, m2);
+		return pred_var / total_var;
+	}
 
-		total_sum := 0.0;
-		each(i : data_rows) {
-			result := m2[i, col] - data_avg;
-			total_sum += result * result;
-		};
+	function : PredVar(m : Float[,], coeffs : Float[,], mean : Float) ~ Float {
+		m_dim := m->Size();
+		m_rows := m_dim[0];
 
-		regress_sum := 0.0;
-		each(i : data_rows) {
-			term := 0.0;
+		total := 0.0;
 
+		each(i : m_rows) {
+			coeff_dim := coeffs->Size();
+			coeff_rows := coeff_dim[0];
+
+			value := m[i,1];
+			inner_total := 0.0;
 			each(j : coeff_rows) {
 				if(j = 0) {
-					term += coeffs[j, col];
+					inner_total += coeffs[j,0];
 				}
 				else {
-					term += (m1[i,1] * coeffs[j, col]);
-				}
-				
+					inner_total += coeffs[j,0] * value;
+				};
 			};
-			result := term - data_avg;
-			regress_sum += result * result;
-		};
-		"{$regress_sum} / {$total_sum}"->PrintLine();
 
-		return regress_sum / total_sum;
+			inner_total -= mean;
+			total += inner_total * inner_total;
+		};
+
+		return total;
+	}
+
+	function : TotalVar(m : Float[,], m_mean : Float) ~ Float {
+		m_dim := m->Size();
+		m_rows := m_dim[0];
+
+		m_sum := 0.0;
+
+		each(i : m_rows) {
+			term := m[i,0] - m_mean;
+			m_sum += term * term;
+		}
+
+		return m_sum;
+	}
+
+
+	function : GetStdDev(col : Int, m : Float[,]) ~ Float {
+		m_dim := m->Size();
+		m_rows := m_dim[0];
+
+		total_sum := 0.0;
+		each(i : m_rows) {
+			total_sum += m[i,0];
+		};
+		m_avg := total_sum / m_rows->Size()->As(Float);
+
+		total_sum := 0.0;
+		each(i : m_rows) {
+			term := m[i,0] - m_avg;
+			total_sum += term * term;
+		};
+
+		return Float->Sqrt(total_sum / (m_rows->As(Float) - 1.));
 	}
 
 	function : GetCoefficients(m1 : Float[,], m2 : Float[,]) ~ Float[,] {
