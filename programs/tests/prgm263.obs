@@ -61,14 +61,13 @@ class Test {
 		each(i : m_rows) {
 			equ_sum := 0.0;
 
+			# TODO: replace 1 with cols - 1
 			each(j : c_rows) {
 				if(j = 0) {
 					equ_sum := c[j,0];
 				}
 				else {
-					a := c[j,0];
-					b := m1[i,1];
-					equ_sum += a * b;
+					equ_sum += c[j,0] * m1[i,1];
 				};
 			};
 
