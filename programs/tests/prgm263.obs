@@ -2,27 +2,26 @@ use Web.HTTP, Collection;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
+#~		
 		m1 := [
-			[7.]
-			[11.]
-			[18.]
-			[18.]
-			[17.]
-			[21.]
-			[35.]
-			[57.]];
+			[1., 4.0]
+			[1., 4.5]
+			[1., 5.0]
+			[1., 5.5]
+			[1., 6.0]
+			[1., 6.5]
+			[1., 7.0]];
 
 		m2 := [
-			[5.]
-			[6.]
-			[7.]
-			[8.]
-			[8.]
-			[8.]
-			[8.]
-			[9.]];
-			
-#~
+			[33.]
+			[42.]
+			[45.]
+			[51.]
+			[53.]
+			[61.]
+			[62.]];
+~#
+
 		# linear regression
 
 		m1 := [
@@ -38,46 +37,46 @@ class Test {
 			[5.]
 			[4.]
 			[5.]];
-~#		
-		GetCoefficients(m1, m2)->PrintLine();
-		GetRSquared(m1, m2)->PrintLine();
+
+		coeff := GetCoefficients(m1, m2);
+		GetRSquared(coeff, m1, m2)->PrintLine();
 	}
 
-	function : GetRSquared(m1 : Float[,], m2 : Float[,]) ~ Float {
-		x1_std_dev := GetStdDev(0,m1);
-		x1_mean := System.ML.Matrix2D->AverageColumn(0,m1);
-		m1_dim := m1->Size();
-		m1_rows := m1_dim[0];
-		m1_cols := m1_dim[1];
+	function : GetRSquared(c : Float[,], m1 : Float[,], m2 : Float[,]) ~ Float {
+		avg := System.ML.Matrix2D->AverageColumn(0, m2);
 
-		results := Float->New[m1_rows];
+		m_dim := m2->Size();
+		m_rows := m_dim[0];
 
-		each(i : m1_cols) {
-			each(j : m1_rows) {
-				term := (m1[j,i] - x1_mean) / x1_std_dev;
-				if(i = 0) {
-					results[j] := term;
+		dom := 0.;
+		each(i : m_rows) {
+			term := m2[i,0] - avg;
+			dom += term * term;
+		};
+
+		c_dim := c->Size();
+		c_rows := c_dim[0];
+
+		num := 0.;
+		each(i : m_rows) {
+			equ_sum := 0.0;
+
+			each(j : c_rows) {
+				if(j = 0) {
+					equ_sum := c[j,0];
 				}
 				else {
-					results[j] *= term;
+					a := c[j,0];
+					b := m1[i,1];
+					equ_sum += a * b;
 				};
 			};
+
+			term := equ_sum - avg;
+			num += term * term;
 		};
 
-		y_std_dev := GetStdDev(0,m2);
-		y_dim := m2->Size();
-		y_rows := y_dim[0];
-		y_mean := System.ML.Matrix2D->AverageColumn(0,m2);
-
-		total := 0.0;
-
-		each(i : y_rows) {
-			term := (m2[i,0] - y_mean) / y_std_dev;
-			results[i] *= term;
-			total += results[i];
-		};
-
-		return (1. / (m1_rows - 1)->ToFloat()) * total;
+		return num/dom;
 	}
 
 	function : TotalVar(m : Float[,], m_mean : Float) ~ Float {
