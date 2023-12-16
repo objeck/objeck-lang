@@ -2,7 +2,6 @@ use Web.HTTP, Collection;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-#~		
 		m1 := [
 			[1., 4.0]
 			[1., 4.5]
@@ -20,8 +19,8 @@ class Test {
 			[53.]
 			[61.]
 			[62.]];
-~#
 
+#~
 		# linear regression
 
 		m1 := [
@@ -37,8 +36,9 @@ class Test {
 			[5.]
 			[4.]
 			[5.]];
-
+~#
 		coeff := GetCoefficients(m1, m2);
+		coeff->ToString()->PrintLine();
 		GetRSquared(coeff, m1, m2)->PrintLine();
 	}
 
@@ -61,7 +61,7 @@ class Test {
 		each(i : m_rows) {
 			equ_sum := 0.0;
 
-			# TODO: replace 1 with cols - 1
+			# TODO: replace 1 with cols (i.e. n+1 from offset)
 			each(j : c_rows) {
 				if(j = 0) {
 					equ_sum := c[j,0];
