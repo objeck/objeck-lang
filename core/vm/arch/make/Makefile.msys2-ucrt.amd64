@@ -1,4 +1,4 @@
-ARGS=-O3 -Wall -D_X64 -D_MSYS2 -std=c++17 -Wno-unused-command-line-argument -Wno-unused-function -Wno-maybe-uninitialized
+ARGS=-O3 -Wall -D_X64 -D_MSYS2 -std=c++17 -Wno-unknown-pragmas -Wno-unused-function -Wno-maybe-uninitialized
 
 AR=ar
 SRC=memory.o 
