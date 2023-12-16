@@ -2,7 +2,7 @@ use Web.HTTP, Collection;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-
+#~
 		m1 := [
 			[7.]
 			[11.]
@@ -23,8 +23,8 @@ class Test {
 			[8.]
 			[9.]];
 	
+~#
 
-#~
 		# linear regression
 
 		m1 := [
@@ -40,7 +40,6 @@ class Test {
 			[5.]
 			[4.]
 			[5.]];
-~#
 		
 		GetCoefficients(m1, m2)->PrintLine();
 		GetRSquared(m1, m2)->PrintLine();
