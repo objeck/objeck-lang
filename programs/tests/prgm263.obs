@@ -37,9 +37,14 @@ class Test {
 			[4.]
 			[5.]];
 ~#
+		Calculate(m1, m2)->ToString()->PrintLine();
+	}
+
+	function : Calculate(m1 : Float[,], m2 : Float[,]) ~ LinearResult {
 		coeff := GetCoefficients(m1, m2);
-		coeff->ToString()->PrintLine();
-		GetRSquared(coeff, m1, m2)->PrintLine();
+		r_sq := GetRSquared(coeff, m1, m2);
+		
+		return LinearResult->New(coeff, r_sq);
 	}
 
 	function : GetRSquared(c : Float[,], m1 : Float[,], m2 : Float[,]) ~ Float {
@@ -78,45 +83,55 @@ class Test {
 		return num/dom;
 	}
 
-	function : TotalVar(m : Float[,], m_mean : Float) ~ Float {
-		m_dim := m->Size();
-		m_rows := m_dim[0];
-
-		m_sum := 0.0;
-
-		each(i : m_rows) {
-			term := m[i,0] - m_mean;
-			m_sum += term * term;
-		}
-
-		return m_sum;
-	}
-
-
-	function : GetStdDev(col : Int, m : Float[,]) ~ Float {
-		m_dim := m->Size();
-		m_rows := m_dim[0];
-
-		total_sum := 0.0;
-		each(i : m_rows) {
-			total_sum += m[i,0];
-		};
-		m_avg := total_sum / m_rows->Size()->As(Float);
-
-		total_sum := 0.0;
-		each(i : m_rows) {
-			term := m[i,0] - m_avg;
-			total_sum += term * term;
-		};
-
-		return Float->Sqrt(total_sum / (m_rows->As(Float) - 1.));
-	}
-
 	function : GetCoefficients(m1 : Float[,], m2 : Float[,]) ~ Float[,] {
 		m1_trans := System.ML.Matrix2D->Transpose(m1);
 		lhs_coeffs := System.ML.Matrix2D->Inverse(System.ML.Matrix2D->DotProduct(m1_trans, m1));
 		rhs_coeffs := System.ML.Matrix2D->DotProduct(m1_trans, m2);
 		
 		return System.ML.Matrix2D->DotProduct(lhs_coeffs, rhs_coeffs);
+	}
+}
+
+class LinearResult {
+	@coeffs : Float[];
+	@r_sq : Float;
+
+	New(coeff : Float[,], r_sq : Float) {
+		coeff_dim := coeff->Size();
+		coeff_rows := coeff_dim[0];
+
+		@coeffs := Float->New[coeff_rows];
+		each(i : coeff_rows) {
+			@coeffs[i] := coeff[i,0];
+		};		
+
+		@r_sq := r_sq;
+	}
+
+	method : public : GetCoefficients() ~ Float[] {
+		return @coeffs;
+	}
+
+	method : public : GetRSquared() ~ Float {
+		return @r_sq;
+	}
+
+	method : public : ToString() ~ String {
+		buffer := "";
+
+		count := 0;
+		coeff_num := @coeffs->Size();
+		buffer += "r^2={$@r_sq}, coeffs={$coeff_num}\n";
+		each(coeff := @coeffs) {
+			if(count = 0) {
+				buffer += "  slope={$coeff}\n";
+			}
+			else {
+				buffer += "  x{$count}={$coeff}\n";
+			};
+			count += 1;
+		};
+
+		return buffer;
 	}
 }
