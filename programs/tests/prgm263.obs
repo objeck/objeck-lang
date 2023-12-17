@@ -42,12 +42,20 @@ class Test {
 
 	function : Calculate(m1 : Float[,], m2 : Float[,]) ~ LinearResult {
 		coeff := GetCoefficients(m1, m2);
-		r_sq := GetRSquared(coeff, m1, m2);
+		r_sq := GetRSquared(m1, m2, coeff);
 		
 		return LinearResult->New(coeff, r_sq);
 	}
 
-	function : GetRSquared(c : Float[,], m1 : Float[,], m2 : Float[,]) ~ Float {
+	function : GetCoefficients(m1 : Float[,], m2 : Float[,]) ~ Float[,] {
+		m1_trans := System.ML.Matrix2D->Transpose(m1);
+		lhs_coeffs := System.ML.Matrix2D->Inverse(System.ML.Matrix2D->DotProduct(m1_trans, m1));
+		rhs_coeffs := System.ML.Matrix2D->DotProduct(m1_trans, m2);
+		
+		return System.ML.Matrix2D->DotProduct(lhs_coeffs, rhs_coeffs);
+	}
+
+	function : GetRSquared(m1 : Float[,], m2 : Float[,], c : Float[,]) ~ Float {
 		avg := System.ML.Matrix2D->AverageColumn(0, m2);
 
 		m_dim := m2->Size();
@@ -81,14 +89,6 @@ class Test {
 		};
 
 		return num/dom;
-	}
-
-	function : GetCoefficients(m1 : Float[,], m2 : Float[,]) ~ Float[,] {
-		m1_trans := System.ML.Matrix2D->Transpose(m1);
-		lhs_coeffs := System.ML.Matrix2D->Inverse(System.ML.Matrix2D->DotProduct(m1_trans, m1));
-		rhs_coeffs := System.ML.Matrix2D->DotProduct(m1_trans, m2);
-		
-		return System.ML.Matrix2D->DotProduct(lhs_coeffs, rhs_coeffs);
 	}
 }
 
