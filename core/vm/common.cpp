@@ -3960,7 +3960,7 @@ bool TrapProcessor::SockTcpSslInString(StackProgram* program, size_t* inst, size
     BIO* bio = (BIO*)instance[1];
     int status;
     if(instance[3]) {
-      int index = 0;
+      size_t index = 0;
       char value;
       bool end_line = false;
       do {
