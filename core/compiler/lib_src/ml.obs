@@ -105,6 +105,25 @@ bundle System.ML {
 			return 0.0;
 		}
 
+		function : StdDevRow(row : Int, m : Float[,]) ~ Float {
+			m_dim := m->Size();
+			m_rows := m_dim[1];
+
+			total_sum := 0.0;
+			each(i : m_rows) {
+				total_sum += m[0,i];
+			};
+			m_avg := total_sum / m_rows->Size()->As(Float);
+			
+			total_sum := 0.0;
+			each(i : m_rows) {
+				term := m[0,i] - m_avg;
+				total_sum += term * term;
+			};
+
+			return Float->Sqrt(total_sum / (m_rows->As(Float) - 1.));
+		}
+
 		#~
 		Get the column from a matrix
 		@param r column index
@@ -175,6 +194,25 @@ bundle System.ML {
 			};
 			
 			return 0.0;
+		}
+
+		function : StdDevColumn(col : Int, m : Float[,]) ~ Float {
+			m_dim := m->Size();
+			m_rows := m_dim[0];
+
+			total_sum := 0.0;
+			each(i : m_rows) {
+				total_sum += m[i,0];
+			};
+			m_avg := total_sum / m_rows->Size()->As(Float);
+
+			total_sum := 0.0;
+			each(i : m_rows) {
+				term := m[i,0] - m_avg;
+				total_sum += term * term;
+			};
+
+			return Float->Sqrt(total_sum / (m_rows->As(Float) - 1.));
 		}
 
 		#~
