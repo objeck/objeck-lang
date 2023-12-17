@@ -42,9 +42,9 @@ class Test {
 
 	function : Calculate(m1 : Float[,], m2 : Float[,]) ~ LinearResult {
 		coeff := GetCoefficients(m1, m2);
-		r_sq := GetRSquared(m1, m2, coeff);
+		r_sqrd := GetRSquared(m1, m2, coeff);
 		
-		return LinearResult->New(coeff, r_sq);
+		return LinearResult->New(coeff, r_sqrd);
 	}
 
 	function : GetCoefficients(m1 : Float[,], m2 : Float[,]) ~ Float[,] {
@@ -94,9 +94,9 @@ class Test {
 
 class LinearResult {
 	@coeffs : Float[];
-	@r_sq : Float;
+	@r_sqrd : Float;
 
-	New(coeff : Float[,], r_sq : Float) {
+	New(coeff : Float[,], r_sqrd : Float) {
 		coeff_dim := coeff->Size();
 		coeff_rows := coeff_dim[0];
 
@@ -105,7 +105,7 @@ class LinearResult {
 			@coeffs[i] := coeff[i,0];
 		};		
 
-		@r_sq := r_sq;
+		@r_sqrd := r_sqrd;
 	}
 
 	method : public : GetCoefficients() ~ Float[] {
@@ -113,7 +113,7 @@ class LinearResult {
 	}
 
 	method : public : GetRSquared() ~ Float {
-		return @r_sq;
+		return @r_sqrd;
 	}
 
 	method : public : ToString() ~ String {
@@ -121,7 +121,7 @@ class LinearResult {
 
 		count := 0;
 		coeff_num := @coeffs->Size();
-		buffer += "r^2={$@r_sq}, coeffs={$coeff_num}\n";
+		buffer += "r^2={$@r_sqrd}, coeffs={$coeff_num}\n";
 		each(coeff := @coeffs) {
 			if(count = 0) {
 				buffer += "  slope={$coeff}\n";
