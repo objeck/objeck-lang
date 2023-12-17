@@ -67,7 +67,7 @@ class Test {
 					equ_sum := c[j,0];
 				}
 				else {
-					equ_sum += c[j,0] * m1[i,1];
+					equ_sum += c[j,0] * m1[i,1]; # replace 1 with offset
 				};
 			};
 
