@@ -37,7 +37,6 @@ class Test {
 	function : Calculate(m1 : Float[,], m2 : Float[,]) ~ LinearResult {
 		coeff := System.ML.Matrix2D->Solve(m1, m2);
 		r_sqrd := GetRSquared(m1, m2, coeff);
-		
 		return LinearResult->New(coeff, r_sqrd);
 	}
 
@@ -66,6 +65,7 @@ class Test {
 				}
 				else {
 					equ_sum += c[j] * m1[i,1]; # replace 1 with offset
+					equ_sum += c[j] * m1[i,2]; # replace 1 with offset
 				};
 			};
 
