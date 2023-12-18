@@ -3040,6 +3040,18 @@ bundle System {
 		@values : Byte[];
 
 		#~
+		Default constructor 
+		~#
+		New() {
+		}
+
+		#~
+		Default constructor 
+		~#
+		New(values : Byte[]) {
+		}
+
+		#~
 		Copy constructor 
 		@param values byte array 
 		~#
@@ -3070,6 +3082,12 @@ bundle System {
 	~#
 	class CharArrayRef {
 		@values : Char[];
+
+		#~
+		Default constructor 
+		~#
+		New(values : Char[]) {
+		}
 
 		#~
 		Copy constructor 
@@ -3104,6 +3122,12 @@ bundle System {
 		@values : Int[];
 
 		#~
+		Default constructor 
+		~#
+		New(values : Int[]) {
+		}
+
+		#~
 		Copy constructor 
 		@param values integer array 
 		~#
@@ -3134,6 +3158,12 @@ bundle System {
 	~#
 	class BoolArrayRef {
 		@values : Bool[];
+
+		#~
+		Default constructor 
+		~#
+		New(values : Bool[]) {
+		}
 
 		#~
 		Copy constructor 
@@ -3168,6 +3198,12 @@ bundle System {
 		@values : Float[];
 
 		#~
+		Default constructor 
+		~#
+		New() {
+		}
+
+		#~
 		Copy constructor 
 		@param values float array 
 		~#
@@ -3200,6 +3236,12 @@ bundle System {
 		@values : Base[];
 
 		#~
+		Default constructor 
+		~#
+		New() {
+		}
+
+		#~
 		Copy constructor 
 		@param values Base array 
 		~#
@@ -3230,6 +3272,12 @@ bundle System {
 	~#
 	class StringArrayRef {
 		@values : String[];
+
+		#~
+		Default constructor 
+		~#
+		New(values : String[]) {
+		}
 
 		#~
 		Copy constructor

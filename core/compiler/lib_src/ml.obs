@@ -39,6 +39,27 @@ bundle System.ML {
 		@matrix matrix
 		@return row from matrix
 		~#
+		function : native : Solve(m1 : Float[,], m2 : Float[,]) ~ Float[] {
+			if(m1 <> Nil | m2 <> Nil) {
+				array_args := Base->New[3];
+				array_args[0] := FloatArrayRef->New();
+				array_args[1] := FloatMatrixRef->New(m1);
+				array_args[2] := FloatMatrixRef->New(m2);
+				Proxy->GetDllProxy()->CallFunction("ml_matrix_solve_matrix_matrix", array_args);
+				
+				holder := array_args[0]->As(FloatArrayRef);
+				return holder->Get();
+			};
+			
+			return Nil;
+		}
+
+		#~
+		Get the row from a matrix
+		@param r row index
+		@matrix matrix
+		@return row from matrix
+		~#
 		function : native : GetRow(r : Int, matrix : Float[,]) ~ Float[] {
 			dims := matrix->Size();
 			rows := dims[0];
