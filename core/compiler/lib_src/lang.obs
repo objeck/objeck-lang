@@ -3270,7 +3270,7 @@ bundle System {
 		#~
 		Default constructor 
 		~#
-		New(values : String[]) {
+		New() {
 		}
 
 		#~
