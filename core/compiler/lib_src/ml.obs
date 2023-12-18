@@ -34,10 +34,10 @@ bundle System.ML {
 	~#
 	class Matrix2D {
 		#~
-		Get the row from a matrix
-		@param r row index
-		@matrix matrix
-		@return row from matrix
+		Solves a unit of equations
+		@param m1 data matrix
+		@param m2 result matrix
+		@return least squares
 		~#
 		function : native : Solve(m1 : Float[,], m2 : Float[,]) ~ Float[] {
 			if(m1 <> Nil | m2 <> Nil) {

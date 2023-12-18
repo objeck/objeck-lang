@@ -2,6 +2,7 @@ use Web.HTTP, Collection;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
+		
 		m1 := [
 			[1.,  4.,  3.]
 			[4.,  25.,  6.]
@@ -31,20 +32,21 @@ class Test {
 			[5.]];
 ~#
 		
-		Calculate(m1, m2)->ToString()->PrintLine();
+		Calculate(m1, m2, 0)->ToString()->PrintLine();
 	}
 
-	function : Calculate(m1 : Float[,], m2 : Float[,]) ~ LinearResult {
+	function : Calculate(m1 : Float[,], m2 : Float[,], offset : Int) ~ LinearResult {
 		coeff := System.ML.Matrix2D->Solve(m1, m2);
-		r_sqrd := GetRSquared(m1, m2, coeff);
+		r_sqrd := GetRSquared(m1, m2, coeff, offset);
 		return LinearResult->New(coeff, r_sqrd);
 	}
 
-	function : GetRSquared(m1 : Float[,], m2 : Float[,], c : Float[]) ~ Float {
+	function : GetRSquared(m1 : Float[,], m2 : Float[,], c : Float[], offset : Int) ~ Float {
 		avg := System.ML.Matrix2D->AverageColumn(0, m2);
 
 		m_dim := m2->Size();
 		m_rows := m_dim[0];
+		m_cols := m_dim[1];
 
 		dom := 0.;
 		each(i : m_rows) {
@@ -64,8 +66,9 @@ class Test {
 					equ_sum := c[j];
 				}
 				else {
-					equ_sum += c[j] * m1[i,1]; # replace 1 with offset
-					equ_sum += c[j] * m1[i,2]; # replace 1 with offset
+					for(k := offset; k < m_cols; k += 1;) {
+						equ_sum += c[j] * m1[i,k]; # replace 1 with offset
+					};
 				};
 			};
 
