@@ -3,22 +3,16 @@ use Web.HTTP, Collection;
 class Test {
 	function : Main(args : String[]) ~ Nil {
 		m1 := [
-			[1., 4.0]
-			[1., 4.5]
-			[1., 5.0]
-			[1., 5.5]
-			[1., 6.0]
-			[1., 6.5]
-			[1., 7.0]];
+			[1.,  2.,  3.]
+			[4.,  5.,  6.]
+			[7.,  8.,  9.]
+			[10., 11., 12.]];
 
 		m2 := [
-			[33.]
-			[42.]
-			[45.]
-			[51.]
-			[53.]
-			[61.]
-			[62.]];
+			[6.]
+			[15.]
+			[24.]
+			[33.]];
 
 #~
 		# linear regression
@@ -37,7 +31,7 @@ class Test {
 			[4.]
 			[5.]];
 ~#
-		Calculate(m1, m2)->ToString()->PrintLine();
+		System.ML.Matrix2D->Solve(m1, m2)->ToString()->PrintLine();
 	}
 
 	function : Calculate(m1 : Float[,], m2 : Float[,]) ~ LinearResult {
