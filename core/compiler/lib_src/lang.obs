@@ -3046,12 +3046,6 @@ bundle System {
 		}
 
 		#~
-		Default constructor 
-		~#
-		New(values : Byte[]) {
-		}
-
-		#~
 		Copy constructor 
 		@param values byte array 
 		~#
@@ -3086,7 +3080,7 @@ bundle System {
 		#~
 		Default constructor 
 		~#
-		New(values : Char[]) {
+		New() {
 		}
 
 		#~
@@ -3124,7 +3118,7 @@ bundle System {
 		#~
 		Default constructor 
 		~#
-		New(values : Int[]) {
+		New() {
 		}
 
 		#~
@@ -3162,7 +3156,7 @@ bundle System {
 		#~
 		Default constructor 
 		~#
-		New(values : Bool[]) {
+		New() {
 		}
 
 		#~
