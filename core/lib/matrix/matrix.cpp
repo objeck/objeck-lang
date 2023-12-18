@@ -530,24 +530,18 @@ extern "C" {
       return;
     }
     
-     // Eigen::VectorXd  coeffs = lhs_matrix.colPivHouseholderQr().solve(rhs_matrix);
-    lhs_matrix.template bdcSvd<Eigen::ComputeThinU | Eigen::ComputeThinV>(0, 1).solve(rhs_matrix);
-
-
-
-    /*
+    Eigen::VectorXd  coeffs = lhs_matrix.colPivHouseholderQr().solve(rhs_matrix);
+    
     size_t* rtrn_array = APITools_MakeFloatArray(context, coeffs.size());
     double* rtrn_ptr = (double*)(rtrn_array + 3);
-    // TODO: copy
+
     for(size_t i = 0; i < (long)coeffs.size(); ++i) {
-      double foo = coeffs(i);
-      rtrn_ptr[i] = foo;
+      rtrn_ptr[i] = coeffs(i);
     }
 
     size_t* rtrn_obj = APITools_GetObjectValue(context, 0); // pointer to 'FloatArrayRef'
     rtrn_obj[0] = (size_t)rtrn_array;
     APITools_SetObjectValue(context, 0, rtrn_obj);
-    */
   }
 }
 
