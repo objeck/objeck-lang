@@ -14,9 +14,8 @@ class Test {
 			[24.]
 			[33.]];
 
-#~
+#~	
 		# linear regression
-
 		m1 := [
 			[1., 1.]
 			[1., 2.]
@@ -31,25 +30,18 @@ class Test {
 			[4.]
 			[5.]];
 ~#
-		System.ML.Matrix2D->Solve(m1, m2)->ToString()->PrintLine();
+		
+		Calculate(m1, m2)->ToString()->PrintLine();
 	}
 
 	function : Calculate(m1 : Float[,], m2 : Float[,]) ~ LinearResult {
-		coeff := GetCoefficients(m1, m2);
+		coeff := System.ML.Matrix2D->Solve(m1, m2);
 		r_sqrd := GetRSquared(m1, m2, coeff);
 		
 		return LinearResult->New(coeff, r_sqrd);
 	}
 
-	function : GetCoefficients(m1 : Float[,], m2 : Float[,]) ~ Float[,] {
-		m1_trans := System.ML.Matrix2D->Transpose(m1);
-		lhs_coeffs := System.ML.Matrix2D->Inverse(System.ML.Matrix2D->DotProduct(m1_trans, m1));
-		rhs_coeffs := System.ML.Matrix2D->DotProduct(m1_trans, m2);
-		
-		return System.ML.Matrix2D->DotProduct(lhs_coeffs, rhs_coeffs);
-	}
-
-	function : GetRSquared(m1 : Float[,], m2 : Float[,], c : Float[,]) ~ Float {
+	function : GetRSquared(m1 : Float[,], m2 : Float[,], c : Float[]) ~ Float {
 		avg := System.ML.Matrix2D->AverageColumn(0, m2);
 
 		m_dim := m2->Size();
@@ -61,8 +53,7 @@ class Test {
 			dom += term * term;
 		};
 
-		c_dim := c->Size();
-		c_rows := c_dim[0];
+		c_rows := c->Size();
 
 		num := 0.;
 		each(i : m_rows) {
@@ -71,10 +62,10 @@ class Test {
 			# TODO: replace 1 with cols (i.e. n+1 from offset)
 			each(j : c_rows) {
 				if(j = 0) {
-					equ_sum := c[j,0];
+					equ_sum := c[j];
 				}
 				else {
-					equ_sum += c[j,0] * m1[i,1]; # replace 1 with offset
+					equ_sum += c[j] * m1[i,1]; # replace 1 with offset
 				};
 			};
 
@@ -90,15 +81,8 @@ class LinearResult {
 	@coeffs : Float[];
 	@r_sqrd : Float;
 
-	New(coeff : Float[,], r_sqrd : Float) {
-		coeff_dim := coeff->Size();
-		coeff_rows := coeff_dim[0];
-
-		@coeffs := Float->New[coeff_rows];
-		each(i : coeff_rows) {
-			@coeffs[i] := coeff[i,0];
-		};		
-
+	New(coeffs : Float[], r_sqrd : Float) {
+		@coeffs := coeffs;
 		@r_sqrd := r_sqrd;
 	}
 
