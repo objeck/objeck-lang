@@ -531,12 +531,17 @@ extern "C" {
     }
     
     Eigen::VectorXd  coeffs = lhs_matrix.colPivHouseholderQr().solve(rhs_matrix);
+    size_t* rtrn_array = APITools_MakeFloatArray(context, coeffs.size());
+    double* rtrn_ptr = (double*)(rtrn_array + 3);
+    // TODO: copy
+    for(size_t i = 0; i < (long)coeffs.size(); ++i) {
+      double foo = coeffs(i);
+      rtrn_ptr[i] = foo;
+    }
 
     size_t* rtrn_obj = APITools_GetObjectValue(context, 0); // pointer to 'FloatArrayRef'
-    size_t* rtrn_array = APITools_MakeFloatArray(context, coeffs.size());
-    size_t* rtrn_ptr = (size_t*)(rtrn_obj + 3);
-  
-    APITools_SetObjectValue(context, 0, rtrn_array);
+    rtrn_obj[0] = (size_t)rtrn_array;
+    APITools_SetObjectValue(context, 0, rtrn_obj);
   }
 }
 
