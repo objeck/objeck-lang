@@ -535,7 +535,7 @@ extern "C" {
     size_t* rtrn_array = APITools_MakeFloatArray(context, coeffs.size());
     double* rtrn_ptr = (double*)(rtrn_array + 3);
 
-    for(size_t i = 0; i < (long)coeffs.size(); ++i) {
+    for(size_t i = 0; i < coeffs.size(); ++i) {
       rtrn_ptr[i] = coeffs(i);
     }
 
@@ -568,7 +568,6 @@ Eigen::MatrixXd PtrToMatrix(size_t* matrix_data_ptr)
 
 size_t* MatrixToPtr(Eigen::MatrixXd& matrix, size_t* matrix_data_ptr, VMContext& context)
 {
-  const size_t array_size = matrix_data_ptr[0];
   const size_t array_dim = matrix_data_ptr[1];
 
   size_t* output_ptr = APITools_MakeFloatMatrix(context, matrix.rows(), matrix.cols());
