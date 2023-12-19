@@ -1,6 +1,8 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		
+		# linear regression
+
+#~		
 		m1 := [
 			[1.,  2.,  3.]
 			[4.,  5.,  6.]
@@ -12,7 +14,8 @@ class Test {
 			[15.]
 			[25.]
 			[33.]];
-		# linear regression
+~#
+
 		m1 := [
 			[1., 1.]
 			[1., 2.]
@@ -27,6 +30,6 @@ class Test {
 			[4.]
 			[5.]];
 		
-		System.ML.LinearSolver->New(m1, m2)->Calculate(0)->ToString()->PrintLine();
+		System.ML.LinearSolver->New(m1, m2)->Calculate(1)->ToString()->PrintLine();
 	}
 }
