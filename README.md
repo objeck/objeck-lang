@@ -28,8 +28,10 @@ Want to get started? Take a look at the [language guide](https://objeck.org/gett
 
 ## Latest
 * ML algorithms
-  * v2023.11.3
+  * v2023.12.1
     * SVM
+  * v2023.12.0
+    * ~~Linear Regression~~
   * v2023.11.2
     * ~~K-means~~
   * v2023.11.1
@@ -39,10 +41,6 @@ Want to get started? Take a look at the [language guide](https://objeck.org/gett
   * v2023.11.0
     * ~~Neural Networks~~
     * ~~Decision Trees~~ 
-    
-* Enqueue
-  * Enhanced expressiveness
-  * [UI toolkit](https://github.com/objeck/objeck-lang/tree/master/core/lib/experimental/gtk)
 
 ## Features
 * Modern object-oriented and functional
