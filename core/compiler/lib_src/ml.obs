@@ -856,7 +856,7 @@ bundle System.ML {
 		#~
 		Constructor
 		@param m1 first matrix
-		@param m2 second matrix
+		@param r_sqrd r-squared value
 		~#
 		New(coeffs : Float[], r_sqrd : Float) {
 			@coeffs := coeffs;
