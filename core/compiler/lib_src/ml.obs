@@ -888,7 +888,7 @@ bundle System.ML {
 
 			count := 0;
 			coeff_num := @coeffs->Size();
-			buffer += "r^2={$@r_sqrd}, coeffs={$coeff_num}\n";
+			buffer += "r_sqrt={$@r_sqrd}, # of coeffs={$coeff_num}\n";
 			each(coeff := @coeffs) {
 				if(count = 0) {
 					buffer += "  slope={$coeff}\n";
