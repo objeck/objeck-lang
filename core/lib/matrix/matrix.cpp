@@ -33,7 +33,11 @@
 #include "../../vm/lib_api.h"
 #include "../../shared/sys.h"
 
+#ifdef _WIN32
 #include <eigen-3.4.0/Eigen/Dense>
+#else
+#include <Eigen/Dense>
+#endif
 
 typedef Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::ColMajor> ObjkMatrix;
 
