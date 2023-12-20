@@ -61,6 +61,10 @@ cd ../odbc
 xcodebuild -project macos/xcode/ODBC.xcodeproj clean build
 cp macos/xcode/build/Release/libobjk_odbc.dylib ../../release/deploy/lib/native/libobjk_odbc.dylib
 
+cd ../matrix
+xcodebuild -project macos/xcode/matrix.xcodeproj clean build
+cp macos/xcode/build/Release/libxcode.dylib ../../release/deploy/lib/native/libobjk_ml.dylib
+
 cd ../diags
 xcodebuild -project macos/xcode/objk_diags.xcodeproj clean build
 cp macos/xcode/build/Release/libobjk_diags.dylib ../../release/deploy/lib/native/libobjk_diags.dylib
