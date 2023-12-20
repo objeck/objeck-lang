@@ -10,13 +10,9 @@ use Collection;
 use Data.CSV;
 
 #~
-Provides support for machine learning
+Machine learning and data science routines
 ~#
 bundle System.ML {
-	#~
-	Machine learning and data science routines
-	~#
-
 	class Proxy {
 		@lib_proxy : static : System.API.DllProxy;
 		
