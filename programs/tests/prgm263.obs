@@ -25,11 +25,19 @@ class Test {
 			[15.]
 			[24.]];
 
-		coffe := System.ML.LinearSolver->New(m1, m2)->Calculate(1);
-		eigens := coffe->GetCoefficients();
+		calc := System.ML.LinearSolver->New(m1, m2)->Calculate(1);
+		eigens := calc->GetCoefficients();
 
-		each(e := eigens) {
-			e->PrintLine();
+
+		dim := m1->Size();
+		each(i : dim[0]) {
+			value := 0.;
+
+			each(j :  dim[1]) {
+				value += eigens[j] * m1[i,j];
+			};
+
+			value->PrintLine();
 		};
 	}
 }
