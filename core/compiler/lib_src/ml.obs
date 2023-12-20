@@ -3,7 +3,7 @@
 # Copyright (c) 2024 Randy Hollines
 # 
 # Credits:
-# Eigen matrix library - https://eigen.tuxfamily.org/index.php?title=Main_Page
+# Eigen matrix library - https://eigen.tuxfamily.org
 ~~#	
 
 use Collection;
