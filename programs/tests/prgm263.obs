@@ -25,6 +25,11 @@ class Test {
 			[15.]
 			[24.]];
 
-		System.ML.LinearSolver->New(m1, m2)->Calculate(1)->ToString()->PrintLine();
+		coffe := System.ML.LinearSolver->New(m1, m2)->Calculate(1);
+		eigens := coffe->GetCoefficients();
+
+		each(e := eigens) {
+			e->PrintLine();
+		};
 	}
 }
