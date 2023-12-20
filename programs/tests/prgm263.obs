@@ -16,9 +16,9 @@ class Test {
 ~#
 
 		m1 := [
-			[1., 1., 2., 3.]
-			[1., 4., 5., 6.]
-			[1., 7., 8., 9.]];
+			[1., 1., 4., 3.]
+			[1., 4., 25., 6.]
+			[1., 7., 64., 9.]];
 
 		m2 := [
 			[6.]
@@ -27,7 +27,6 @@ class Test {
 
 		calc := System.ML.LinearSolver->New(m1, m2)->Calculate(1);
 		eigens := calc->GetCoefficients();
-
 
 		dim := m1->Size();
 		each(i : dim[0]) {
