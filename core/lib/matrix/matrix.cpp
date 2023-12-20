@@ -536,7 +536,7 @@ extern "C" {
     }
     
     // Eigen::VectorXd  coeffs = lhs_matrix.colPivHouseholderQr().solve(rhs_matrix);
-    Eigen::BDCSVD<Eigen::MatrixXd> bdcSvd(lhs_matrix, Eigen::ComputeThinU | Eigen::ComputeFullU);
+    Eigen::BDCSVD<Eigen::MatrixXd> bdcSvd(lhs_matrix, Eigen::ComputeThinU | Eigen::ComputeThinV);
     Eigen::VectorXd coeffs = bdcSvd.solve(rhs_matrix);
     
     size_t* rtrn_array = APITools_MakeFloatArray(context, coeffs.size());
