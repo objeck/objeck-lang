@@ -21,11 +21,11 @@ class Test {
 			[1., 7., 8., 10.]];
 
 		m2 := [
-			[-3.]
-			[0.]
-			[3.]];
+			[6.]
+			[15.]
+			[25.]];
 
 		System.ML.LinearSolver->New(m1, m2)->Calculate(0)->ToString()->PrintLine();
-		System.ML.Matrix2D->Identity(4)->ToString()->PrintLine();
+		System.ML.Matrix2D->Identity(2)->ToString()->PrintLine();
 	}
 }
