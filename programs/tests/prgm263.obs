@@ -31,5 +31,6 @@ class Test {
 			[5.]];
 		
 		System.ML.LinearSolver->New(m1, m2)->Calculate(1)->ToString()->PrintLine();
+		System.ML.Matrix2D->Identity(4)->ToString()->PrintLine();
 	}
 }

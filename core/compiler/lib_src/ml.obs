@@ -55,9 +55,28 @@ bundle System.ML {
 		}
 
 		#~
+		Creates an identity a matrix
+		@param s size of matrix
+		@return row from matrix
+		~#
+		function : native : Identity(s : Int) ~ Float[,] {
+			m := Float->New[s,s];
+
+			each(i : s) {
+				each(j : s) {
+					if(i = j) {
+						m[i,j] := 1;
+					};
+				};
+			};
+
+			return m;
+		}
+
+		#~
 		Get the row from a matrix
 		@param r row index
-		@matrix matrix
+		@param matrix matrix
 		@return row from matrix
 		~#
 		function : native : GetRow(r : Int, matrix : Float[,]) ~ Float[] {
@@ -81,7 +100,7 @@ bundle System.ML {
 		#~
 		Sum of the given row
 		@param r row index
-		@matrix matrix
+		@param matrix matrix
 		@return sum of the row
 		~#
 		function : native : SumRow(r : Int, matrix : Float[,]) ~ Float {
@@ -105,7 +124,7 @@ bundle System.ML {
 		#~
 		Average of the given row
 		@param r row index
-		@matrix matrix
+		@param matrix matrix
 		@return average of the row
 		~#
 		function : native : AverageRow(r : Int, matrix : Float[,]) ~ Float {
@@ -147,8 +166,8 @@ bundle System.ML {
 
 		#~
 		Get the column from a matrix
-		@param r column index
-		@matrix matrix
+		@param c column index
+		@param matrix matrix
 		@return column from matrix
 		~#
 		function : native : GetColumn(c : Int, matrix : Float[,]) ~ Float[] {
@@ -171,8 +190,8 @@ bundle System.ML {
 
 		#~
 		Sum of the given column
-		@param r column index
-		@matrix matrix
+		@param c column index
+		@param matrix matrix
 		@return sum of the column
 		~#
 		function : native : SumColumn(c : Int, matrix : Float[,]) ~ Float {
@@ -195,8 +214,8 @@ bundle System.ML {
 
 		#~
 		Average of the given column
-		@param r column index
-		@matrix matrix
+		@param c column index
+		@param matrix matrix
 		@return average of the column
 		~#
 		function : native : AverageColumn(c : Int, matrix : Float[,]) ~ Float {
@@ -872,7 +891,7 @@ m1 := [
 
 		#~
 		Constructor
-		@param m1 first matrix
+		@param coeffs coefficient matrix
 		@param r_sqrd r-squared value
 		~#
 		New(coeffs : Float[], r_sqrd : Float) {
@@ -1797,7 +1816,7 @@ acheived := DecisionTree->Matches(2, result)->As(Float);
 		#~
 		Count matches in a column
 		@param index column index
-		@param matrix matrix to inspect
+		@param matrix matrix matrix to inspect
 		@return number of matches
 		~#
 		function : Matches(index : Int, matrix : Bool[,]) ~ Int {
@@ -1819,7 +1838,7 @@ acheived := DecisionTree->Matches(2, result)->As(Float);
 		#~
 		Count mismatches in a column
 		@param index column index
-		@param matrix matrix to inspect
+		@param matrix matrix matrix to inspect
 		@return number of mismatches
 		~#
 		function : Mismatches(index : Int, matrix : Bool[,]) ~ Int {
@@ -2165,7 +2184,7 @@ each(neighbor := nearest) {
 
 		#~
 		Constructor.
-		@param matrix input matrix
+		@param matrix matrix input matrix
 		@param labels categories labels
 		~#
 		New(matrix : Float[,], labels : String[]) {
