@@ -535,7 +535,9 @@ extern "C" {
       return;
     }
     
-    Eigen::VectorXd  coeffs = lhs_matrix.colPivHouseholderQr().solve(rhs_matrix);
+    // Eigen::VectorXd  coeffs = lhs_matrix.colPivHouseholderQr().solve(rhs_matrix);
+    Eigen::BDCSVD<Eigen::MatrixXd> bdcSvd(lhs_matrix, Eigen::ComputeThinU | Eigen::ComputeFullU);
+    Eigen::VectorXd coeffs = bdcSvd.solve(rhs_matrix);
     
     size_t* rtrn_array = APITools_MakeFloatArray(context, coeffs.size());
     double* rtrn_ptr = (double*)(rtrn_array + 3);
