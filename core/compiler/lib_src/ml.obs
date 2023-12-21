@@ -801,25 +801,14 @@ m1 := [
   [1., 1., 2., 3.]
   [1., 4., 5., 6.]
   [1., 7., 8., 9.]];
-  
+
 m2 := [
   [6.]
-  [15.]
-  [24.]];
-  
-calc := System.ML.LinearSolver->New(m1, m2)->Calculate(1);
-eigens := calc->GetCoefficients();
+  [16.]
+  [23.]];
 
-dim := m1->Size();  
-each(i : dim[0]) {
-  value := 0.;
-  
-  each(j : dim[1]) {
-    value += eigens[j] * m1[i,j];
-  };
-  
-  value->PrintLine();
-};	
+solver := System.ML.LinearSolver->New(m1, m2)->Calculate(1);
+solver->GetRSquared()->PrintLine();
 ```
 	~#
 	class LinearSolver {
@@ -878,7 +867,7 @@ each(i : dim[0]) {
 			return num/dom;
 		}
 	}
-	
+
 	#~
 	Result of liner equations
 	~#
