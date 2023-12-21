@@ -25,7 +25,7 @@ class Test {
 			[16.]
 			[23.]];
 
-		calc := System.ML.LinearSolver->New(m1, m2)->Calculate(1);
-		calc->GetRSquared()->PrintLine();
+		solver := System.ML.LinearSolver->New(m1, m2)->Calculate(1);
+		solver->GetRSquared()->PrintLine();
 	}
 }
