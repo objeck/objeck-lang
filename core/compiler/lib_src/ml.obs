@@ -872,7 +872,11 @@ m1_cols->PrintLine();
 					total += c[j] * @m1[i,j];
 				};
 
-"{$total}"->PrintLine();
+				term := avg - total;
+				term *= 2;
+
+
+"{$term}"->PrintLine();
 
 "---"->PrintLine();				
 			};
