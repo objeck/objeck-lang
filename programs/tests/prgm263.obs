@@ -21,9 +21,9 @@ class Test {
 			[1., 7., 64., 9.]];
 
 		m2 := [
-			[6.]
-			[15.]
-			[24.]];
+			[8.]
+			[35.]
+			[80.]];
 
 		calc := System.ML.LinearSolver->New(m1, m2)->Calculate(1);
 		eigens := calc->GetCoefficients();
