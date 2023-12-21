@@ -858,33 +858,27 @@ each(i : dim[0]) {
 				term := @m2[i,0] - avg;
 				dom += term * term;
 			};
-# dom->PrintLine();
 
 			m1_dims := @m1->Size();
 			m1_cols := m1_dims[1];
-m1_cols->PrintLine();
 
-			
+			num := 0.;
 			each(i : m2_rows) {
-				total := 0.;
+				sub_total := 0.;
 
 				for(j := offset; j < m1_cols; j += 1;) {
-					total += c[j] * @m1[i,j];
+					sub_total += c[j] * @m1[i,j];
 				};
 
-				term := avg - total;
-				term *= 2;
-
-
-"{$term}"->PrintLine();
-
-"---"->PrintLine();				
+				term := avg - sub_total;
+				num += term * term;
 			};
-
-			return 0.;
+# "{$num} / {$dom}"->PrintLine();				
+			
+			return num/dom;
 		}
 	}
-
+	
 	#~
 	Result of liner equations
 	~#
