@@ -849,41 +849,27 @@ each(i : dim[0]) {
 
 		method : GetRSquared(c : Float[], offset : Int) ~ Float {
 			avg := System.ML.Matrix2D->AverageColumn(0, @m2);
-avg->PrintLine();
 
-			m_dim := @m2->Size();
-			m_rows := m_dim[0];
-			m_cols := m_dim[1];
+			m1_dims := @m2->Size();
+			m2_rows := m1_dims[0];
 
 			dom := 0.;
-			each(i : m_rows) {
+			each(i : m2_rows) {
 				term := @m2[i,0] - avg;
 				dom += term * term;
 			};
-dom->PrintLine();
+# dom->PrintLine();
 
-			c_rows := c->Size();
-
+			m1_dims := @m1->Size();
+			m1_cols := m1_dims[1];
+m1_cols->PrintLine();
 			num := 0.;
-			each(i : m_rows) {
-				equ_sum := 0.0;
-
-				# TODO: replace 1 with cols (i.e. n+1 from offset)
-				each(j : c_rows) {
-					if(j = 0) {
-						equ_sum := c[j];
-					}
-					else {
-						for(k := offset; k < m_cols; k += 1;) {
-							equ_sum += c[j] * @m1[i,k]; # replace 1 with offset
-						};
-					};
+			each(i : m2_rows) {
+				for(j := offset; j < m1_cols; j += 1;) {
+					@m1[i,j]->PrintLine();
 				};
-
-				term := equ_sum - avg;
-				num += term * term;
+"---"->PrintLine();				
 			};
-num->PrintLine();
 
 			return num/dom;
 		}
