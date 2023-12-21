@@ -863,15 +863,21 @@ each(i : dim[0]) {
 			m1_dims := @m1->Size();
 			m1_cols := m1_dims[1];
 m1_cols->PrintLine();
-			num := 0.;
+
+			
 			each(i : m2_rows) {
+				total := 0.;
+
 				for(j := offset; j < m1_cols; j += 1;) {
-					@m1[i,j]->PrintLine();
+					total += c[j] * @m1[i,j];
 				};
+
+"{$total}"->PrintLine();
+
 "---"->PrintLine();				
 			};
 
-			return num/dom;
+			return 0.;
 		}
 	}
 
