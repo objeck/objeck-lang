@@ -245,6 +245,9 @@ size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, long 
 
   size_t* mem = nullptr;
   if(cls) {
+#ifndef _GC_SERIAL
+    MUTEX_LOCK(&allocated_lock);
+#endif
     const long size = cls->GetInstanceMemorySize();
 
     // collect memory
@@ -264,9 +267,6 @@ size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, long 
     mem += EXTRA_BUF_SIZE;
 
     // record
- #ifndef _GC_SERIAL
-    MUTEX_LOCK(&allocated_lock);
- #endif
     allocation_size += size;
     allocated_memory.insert(mem);
  #ifndef _GC_SERIAL
@@ -313,8 +313,12 @@ size_t* MemoryManager::AllocateArray(const size_t size, const MemoryType type, s
     exit(1);
   }
 
+#ifndef _GC_SERIAL
+  MUTEX_LOCK(&allocated_lock);
+#endif
+
   // collect memory
-  if (collect && allocation_size + calc_size > mem_max_size) {
+  if(collect && allocation_size + calc_size > mem_max_size) {
     CollectAllMemory(op_stack, stack_pos);
   }
 
@@ -328,12 +332,10 @@ size_t* MemoryManager::AllocateArray(const size_t size, const MemoryType type, s
   mem[EXTRA_BUF_SIZE + TYPE] = type;
   mem[EXTRA_BUF_SIZE + SIZE_OR_CLS] = calc_size;
   mem += EXTRA_BUF_SIZE;
-
-#ifndef _GC_SERIAL
-  MUTEX_LOCK(&allocated_lock);
-#endif
+  
   allocation_size += calc_size;
   allocated_memory.insert(mem);
+
 #ifndef _GC_SERIAL
   MUTEX_UNLOCK(&allocated_lock);
 #endif
