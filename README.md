@@ -51,7 +51,8 @@ Want to get started? Take a look at the [language guide](https://objeck.org/gett
   * Encryption
   * JSON, CSV, and XML parsing libraries
   * Regular expressions
-  * 2D gaming and matrix mathematics
+  * 2D gaming
+  * Linear matrix mathematics
   * Collections
   * Files, directories, sockets, STDIO, logging, serialization, and pipe
 * REPL and IDE [LSP](https://github.com/objeck/objeck-lsp) support (for VSCode, Sublime, Kate, etc.) 
