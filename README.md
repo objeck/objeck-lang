@@ -28,10 +28,8 @@ Want to get started? Take a look at the [language guide](https://objeck.org/gett
 
 ## Latest
 * ML algorithms
-  * v2023.12.1
-    * SVM
   * v2023.12.0
-    * ~~Linear Regression~~
+    * ~~Linear Regression Solver~~
   * v2023.11.2
     * ~~K-means~~
   * v2023.11.1
@@ -276,6 +274,7 @@ yesterday->ToString()->PrintLine();
 ```
 
 ### Notable Libraries
+  * [Machine learning](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/ml.obs)
   * [HTTPS](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/net_secure.obs) and [HTTP](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/net.obs) server and client APIs
   * [JSON](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/json.obs), [XML](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/xml.obs) and [CSV](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/csv.obs) parsers
   * [Regular expression](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/regex.obs) library
