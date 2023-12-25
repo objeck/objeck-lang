@@ -2170,7 +2170,7 @@ function : Example() ~ Nil {
 		Default constructor 
 		~#
 		New() {
-			@values := H->New[8];
+			@values := H->New[32];
 			@size := 0;
 		}
 		
@@ -2195,7 +2195,7 @@ function : Example() ~ Nil {
 
 		method : Expand() ~ Nil {
 			if(@size >= @values->Size()) {
-				temp : H[] := H->New[@size + @size >> 1];
+				temp : H[] := H->New[@size + @size >> 2];
 				Runtime->Copy(temp, 0, @values, 0, @size);
 				@values := temp;
 			};
@@ -2374,7 +2374,7 @@ function : Example() ~ Nil {
 		Clears the vector
 		~#
 		method : public : Empty() ~ Nil {
-			@values := H->New[8];
+			@values := H->New[32];
 			@size := 0;
 		}
 		
@@ -2454,7 +2454,7 @@ function : Show(value : IntRef) ~ Nil {
 		Default constructor 
 		~#
 		New() {
-			@values := H->New[8];
+			@values := H->New[32];
 			@size := 0;
 		}
 		
@@ -2508,7 +2508,7 @@ function : Show(value : IntRef) ~ Nil {
 
 		method : Expand() ~ Nil {
 			if(@size >= @values->Size()) {
-				temp : H[] := H->New[@size + @size >> 1];
+				temp : H[] := H->New[@size + @size >> 2];
 				Runtime->Copy(temp, 0, @values, 0, @size);
 				@values := temp;
 			};
@@ -2641,7 +2641,7 @@ function : Show(value : IntRef) ~ Nil {
 		Clears the vector
 		~#
 		method : public : Empty() ~ Nil {
-			@values := H->New[8];
+			@values := H->New[32];
 			@size := 0;
 		}
 		
