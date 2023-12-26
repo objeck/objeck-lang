@@ -1,6 +1,6 @@
 #~~
 # Json parsing library
-# Copyright (c) 2012,2021, 2022 Randy Hollines
+# Copyright (c) 2012-2024
 # Music: Hustler's Ambition
 ~~#
 
@@ -11,7 +11,7 @@ Support for parsing JSON strings and documents (-lib json.obl)
 ~#
 bundle Data.JSON {
 	#~
-	Table driven JSON builder
+	Stack driven JSON builder
 
 	```
 builder := JsonBuilder->New();
@@ -328,7 +328,7 @@ if(doc <> Nil) {
 		}
 
 		#~
-		Parses a Json text
+		Parses JSON text
 		@param text JSON text
 		@return root document element
 		~#
