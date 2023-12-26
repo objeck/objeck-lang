@@ -6312,7 +6312,7 @@ bundle System.Time {
 		Formats the timer into a string
 		@return formatted string
 		~#
-		function : ToString(b : Bool) ~ String {
+		method : public : ToString() ~ String {
 			return GetElapsedTime()->ToString();
 		}
 	}
