@@ -6271,9 +6271,14 @@ bundle System.Time {
 	~#	
 	class Timer {
 		@elapsed : Int;
+		@running : Bool;
 		
-		New() {
+		New(start : Bool := false) {
 			Parent();
+
+			if(start) {
+				Start();
+			};
 		}
 		
 		#~
@@ -6281,6 +6286,7 @@ bundle System.Time {
 		~#
 		method : public : Start() ~ Nil {
 			TIMER_START;
+			@running := true;
 		}
 		
 		#~
@@ -6288,12 +6294,17 @@ bundle System.Time {
 		~#
 		method : public : End() ~ Nil {
 			TIMER_END;
+			@running := false;
 		}
 		
 		#~
 		Gets the elapsed time in seconds
 		~#
 		method : public : GetElapsedTime() ~ Float {
+			if(@running) {
+				End();
+			};
+			
 			TIMER_ELAPSED;
 		}
 	}
