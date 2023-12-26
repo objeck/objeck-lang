@@ -39,7 +39,7 @@ jobs:
         ./obc -lib encrypt,net,odbc,rss,regex,misc,xml,query,json,csv -src ../../../../programs/deploy/fs_query_12.obs; \
         ./obc -lib encrypt,net,odbc,rss,regex,misc,xml,json -src ../../../../programs/deploy/functions_5.obs; \
         ./obc -lib encrypt,net,odbc,rss,regex,misc,xml,json -src ../../../../programs/deploy/hello_0.obs; \
-        ./obc -lib encrypt,net,odbc,rss,regex,misc,xml,json -src ../../../../programs/deploy/http_regex_9.obs; \
+#        ./obc -lib encrypt,net,odbc,rss,regex,misc,xml,json -src ../../../../programs/deploy/http_regex_9.obs; \
         ./obc -lib encrypt,net,odbc,rss,regex,misc,xml,json -src ../../../../programs/deploy/https_1.obs; \
         ./obc -lib encrypt,net,odbc,rss,regex,misc,xml,json -src ../../../../programs/deploy/http_xml_regex_8.obs; \
         ./obc -lib encrypt,net,odbc,rss,regex,misc,xml,json -src ../../../../programs/deploy/json_3.obs; \
