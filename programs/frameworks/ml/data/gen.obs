@@ -1,0 +1,22 @@
+class Test {
+		function : Main(args : String[]) ~ Nil {
+			f_weight := 140; f_height := 60;	
+			f_dev := 15;
+
+			m_weight := 225; m_height := 70;
+			m_dev := 15;
+			
+			each(i : 1000) {
+				if(Int->Random(1) = 0) {
+					weight := f_weight->As(Float) * (1.0 - (Int->Random(f_dev)->As(Float) / 100.0)) / 300.0;
+					height := f_height->As(Float) * (1.0 - (Int->Random(f_dev)->As(Float) / 100.0)) / 300.0;
+					"{$weight},{$height},1"->PrintLine();
+				}
+				else {
+					weight := m_weight->As(Float) * (1.0 - (Int->Random(m_dev)->As(Float) / 100.0)) / 300.0;
+					height := m_height->As(Float) * (1.0 - (Int->Random(m_dev)->As(Float) / 100.0)) / 300.0;
+					"{$weight},{$height},0"->PrintLine();
+				};
+			};			
+		}
+}
