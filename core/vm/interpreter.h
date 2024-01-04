@@ -73,6 +73,7 @@ namespace Runtime {
     static StackProgram* program;
     static std::set<StackInterpreter*> intpr_threads;
     static std::stack<StackFrame*> cached_frames;
+    static std::random_device gen;
 
 #ifdef _WIN32
     static bool is_stdio_binary;
@@ -256,7 +257,6 @@ namespace Runtime {
     size_t* CreateStringObject(const std::wstring &value_str, size_t* &op_stack, long* &stack_pos);
 
     inline FLOAT_VALUE GetRandomValue() {
-      std::random_device gen;
       return (FLOAT_VALUE)gen() / (FLOAT_VALUE)gen.max();
     }
     

@@ -55,6 +55,7 @@
 
 using namespace Runtime;
 
+std::random_device StackInterpreter::gen;
 StackProgram* StackInterpreter::program;
 std::stack<StackFrame*> StackInterpreter::cached_frames;
 std::set<StackInterpreter*> StackInterpreter::intpr_threads;
@@ -77,7 +78,7 @@ pthread_mutex_t StackInterpreter::intpr_threads_mutex = PTHREAD_MUTEX_INITIALIZE
 void StackInterpreter::Initialize(StackProgram* p, size_t t)
 {
   program = p;
-  
+    
 #ifdef _WIN32
   InitializeCriticalSection(&cached_frames_cs);
   InitializeCriticalSection(&intpr_threads_cs);
