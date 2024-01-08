@@ -401,7 +401,7 @@ bundle Web.HTTP {
 				};
 				# "### address='{$address}', port={$port}, location='{$location}'"->PrintLine();
 
-				socket := TCPSecureSocket->New(address, port);
+				socket := TCPSocket->New(address, port);
 				if(socket->IsOpen()) {
 					get := "GET ";
 					get->Append(location);
