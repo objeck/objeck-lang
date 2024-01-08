@@ -1446,35 +1446,19 @@ void TrapProcessor::ProcessSetTime1(size_t* &op_stack, long* &stack_pos)
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
   if(instance) {
-    // get current time
-    time_t raw_time;
-    time(&raw_time);
-        
-    struct tm* curr_time;
-    const bool got_time = GetTime(curr_time, raw_time, is_gmt);
+    struct tm curr_time;
+    memset(&curr_time, 0, sizeof(struct tm));
 
-    // update time
-    if(got_time) {
-      curr_time->tm_year = year - 1900;
-      curr_time->tm_mon = month - 1;
-      curr_time->tm_mday = day;
-      curr_time->tm_hour = 0;
-      curr_time->tm_min = 0;
-      curr_time->tm_sec = 0;
-      curr_time->tm_isdst = -1;
-      mktime(curr_time);
+    curr_time.tm_mday = day;
+    curr_time.tm_mon = month - 1;
+    curr_time.tm_year = year - 1900;
+    mktime(&curr_time);
 
-      // set instance values
-      instance[0] = curr_time->tm_mday;          // day
-      instance[1] = curr_time->tm_mon + 1;       // month
-      instance[2] = curr_time->tm_year + 1900;   // year
-      instance[3] = curr_time->tm_hour;          // hours
-      instance[4] = curr_time->tm_min;           // mins
-      instance[5] = curr_time->tm_sec;           // secs
-      instance[6] = curr_time->tm_isdst;         // savings time
-      instance[7] = curr_time->tm_wday;          // day of week
-      instance[8] = is_gmt;                      // is GMT
-    }
+    // set instance values
+    instance[0] = curr_time.tm_mday;          // day
+    instance[1] = curr_time.tm_mon + 1;       // month
+    instance[2] = curr_time.tm_year + 1900;   // year
+    instance[8] = is_gmt;                     // is GMT
   }
 }
 
@@ -1494,35 +1478,27 @@ void TrapProcessor::ProcessSetTime2(size_t* &op_stack, long* &stack_pos)
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
   if(instance) {
-    // get current time
-    time_t raw_time;
-    time(&raw_time);
+    struct tm curr_time;
+    memset(&curr_time, 0, sizeof(struct tm));
 
-    struct tm* curr_time;
-    const bool got_time = GetTime(curr_time, raw_time, is_gmt);
+    // update time
+    curr_time.tm_year = year - 1900;
+    curr_time.tm_mon = month - 1;
+    curr_time.tm_mday = day;
+    curr_time.tm_hour = hours;
+    curr_time.tm_min = mins;
+    curr_time.tm_sec = secs;
+    mktime(&curr_time);
 
-    if(got_time) {
-      // update time
-      curr_time->tm_year = year - 1900;
-      curr_time->tm_mon = month - 1;
-      curr_time->tm_mday = day;
-      curr_time->tm_hour = hours;
-      curr_time->tm_min = mins;
-      curr_time->tm_sec = secs;
-      curr_time->tm_isdst = -1;
-      mktime(curr_time);
-
-      // set instance values
-      instance[0] = curr_time->tm_mday;          // day
-      instance[1] = curr_time->tm_mon + 1;       // month
-      instance[2] = curr_time->tm_year + 1900;   // year
-      instance[3] = curr_time->tm_hour;          // hours
-      instance[4] = curr_time->tm_min;           // mins
-      instance[5] = curr_time->tm_sec;           // secs
-      instance[6] = curr_time->tm_isdst;         // savings time
-      instance[7] = curr_time->tm_wday;          // day of week
-      instance[8] = is_gmt;                      // is GMT
-    }
+    // set instance values
+    instance[0] = curr_time.tm_mday;          // day
+    instance[1] = curr_time.tm_mon + 1;       // month
+    instance[2] = curr_time.tm_year + 1900;   // year
+    instance[3] = curr_time.tm_hour;          // hours
+    instance[4] = curr_time.tm_min;           // mins
+    instance[5] = curr_time.tm_sec;           // secs
+    instance[7] = curr_time.tm_wday;          // day of week
+    instance[8] = is_gmt;                     // is GMT
   }
 }
 
@@ -1579,14 +1555,15 @@ void TrapProcessor::ProcessAddTime(TimeInterval t, size_t* &op_stack, long* &sta
 
     // set instance values
     if(got_time) {
-      instance[0] = curr_time->tm_mday;          // day
-      instance[1] = curr_time->tm_mon + 1;       // month
-      instance[2] = curr_time->tm_year + 1900;   // year
-      instance[3] = curr_time->tm_hour;          // hours
-      instance[4] = curr_time->tm_min;           // mins
-      instance[5] = curr_time->tm_sec;           // secs
-      instance[6] = curr_time->tm_isdst;         // savings time
-      instance[7] = curr_time->tm_wday;          // day of week
+      instance[0] = curr_time->tm_mday;           // day
+      instance[1] = curr_time->tm_mon + 1;        // month
+      instance[2] = curr_time->tm_year + 1900;    // year
+      instance[3] = curr_time->tm_hour;           // hours
+      instance[4] = curr_time->tm_min;            // mins
+      instance[5] = curr_time->tm_sec;            // secs
+      instance[6] = curr_time->tm_isdst;          // savings time
+      instance[7] = curr_time->tm_wday;           // day of week
+      instance[8] = is_gmt;                       // is GMT
     }
   }
 }

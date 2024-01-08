@@ -1,0 +1,38 @@
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		ParseTime("2024-01-07T13:15Z");
+	}
+
+	function : ParseTime(str : String) ~ System.Time.Date {
+		parts := str->Split('T');
+		if(parts->Size() = 2 & parts[1]->EndsWith('Z')) {
+			date := parts[0];
+			date_parts := date->Split('-');
+			
+			year_str, month_str, day_str : String;
+			if(date_parts->Size() = 3) {
+				year_str := date_parts[0];
+				month_str := date_parts[1];
+				day_str := date_parts[2];
+			}
+			else {
+				return Nil;
+			};
+
+			time := parts[1];
+			time->Pop();
+			time_parts := time->Split(':');
+			if(time_parts->Size() = 2) {
+				time_parts[0]->PrintLine();
+				time_parts[1]->PrintLine();
+				
+				System.Time.DateUtility->Parse("01/01/2024 15", "MM/dd/yyyy mm", false)->ToString()->PrintLine();
+			}
+			else {
+				return Nil;
+			};
+		};
+
+		return Nil;
+	}
+}
