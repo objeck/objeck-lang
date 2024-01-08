@@ -1569,7 +1569,7 @@ void TrapProcessor::ProcessAddTime(TimeInterval t, size_t* &op_stack, long* &sta
 }
 
 /********************************
- * Get platform std::string
+ * Get platform string
  ********************************/
 void TrapProcessor::ProcessPlatform(StackProgram* program, size_t* &op_stack, long* &stack_pos)
 {
@@ -1579,7 +1579,7 @@ void TrapProcessor::ProcessPlatform(StackProgram* program, size_t* &op_stack, lo
 }
 
 /********************************
- * Get file owner std::string
+ * Get file owner string
  ********************************/
 void TrapProcessor::ProcessFileOwner(const char* name, bool is_account,
                                      StackProgram* program, size_t* &op_stack, long* &stack_pos) {
