@@ -13,7 +13,7 @@ def parse_time(time_dist):
 	time_str = date_time_parts[1]
 	index = time_str.find('.')
 	if index > -1 :
-		time_parts = time_str[0 : index].split('#')
+		time_parts = time_str[0 : index].split(':')
 		if len(time_parts) == 3 :
 			hrs = time_parts[0]
 			mins = time_parts[1]
