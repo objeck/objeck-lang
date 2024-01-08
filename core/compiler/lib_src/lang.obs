@@ -6046,6 +6046,22 @@ bundle System.Time {
 		}
 
 		#~
+		Returns rather time is daylight savings
+		@return true if daylight savings, false otherwise
+		~#
+		method : public : IsDaylightSaving() ~ Bool {
+			return @is_savings;
+		}
+
+		#~
+		Returns rather time is GMT
+		@return true if GMT, false otherwise
+		~#
+		method : public : IsGmt() ~ Bool {
+			return @is_gmt;
+		}
+		
+		#~
 		Returns the day
 		@return day
 		~#
