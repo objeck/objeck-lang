@@ -1,20 +1,11 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-#~		
-		System.Time.DateUtility->Parse(
-			"1/1/2024 0:15", 
-			"MM/dd/yyyy hh:mm", 
-			true)->ToString()->PrintLine();
-~#		
-		
-		time_str := Web.HTTP.HttpClient->QuickGet(Web.HTTP.Url->New("http://worldclockapi.com/api/json/utc/now"))->ToString();
+		time_str := Web.HTTP.HttpClient->QuickGet(Web.HTTP.Url->New("http://worldtimeapi.org/api/ip"))->ToString();
 		if(time_str <> Nil) {
 			parser := Data.JSON.JsonParser->New(time_str);
 			if(parser->Parse()) {
-				root := parser->GetRoot();
-				cur_time_str := root->Get("currentDateTime")->GetString();
+				cur_time_str := parser->GetRoot()->Get("datetime")->GetString();
 				if(cur_time_str <> Nil) {
-					cur_time_str->PrintLine();
 					cur_time := ParseTime(cur_time_str, false);
 					if(cur_time <> Nil) {
 						cur_time->IsGmt()->PrintLine();
@@ -23,42 +14,44 @@ class Test {
 				};
 			};
 		};
-		
 	}
 
 	function : ParseTime(str : String, is_gmt : Bool) ~ System.Time.Date {
 		parts := str->Split('T');
-		if(parts->Size() = 2 & parts[1]->EndsWith('Z')) {
-			date := parts[0];
-			date_parts := date->Split('-');
-			
-			year_str, month_str, day_str : String;
-			if(date_parts->Size() = 3) {
-				year_str := date_parts[0];
-				month_str := date_parts[1];
-				day_str := date_parts[2];
-			}
-			else {
-				return Nil;
-			};
-
-			time := parts[1];
-			time->Pop();
-			time_parts := time->Split(':');
-			if(time_parts->Size() = 2) {
-				hours := time_parts[0];
-				minutes := time_parts[1];
-
-				return System.Time.DateUtility->Parse(
-					"{$month_str}/{$day_str}/{$year_str} {$hours}:{$minutes}", 
-					"MM/dd/yyyy hh:mm", 
-					is_gmt);
-			}
-			else {
-				return Nil;
-			};
+		if(parts->Size() <> 2) {
+			return Nil;
 		};
 
-		return Nil;
+		date := parts[0];
+		date_parts := date->Split('-');
+			
+		year_str, month_str, day_str : String;
+		if(date_parts->Size() <> 3) {
+			return Nil;
+		};
+		
+		year_str := date_parts[0];
+		month_str := date_parts[1];
+		day_str := date_parts[2];
+		
+		time := parts[1];		
+		index := time->Find('.');
+		if(index < 0) {
+			return Nil;
+		};
+		time := time->SubString(index);
+
+		time_parts := time->Split(':');
+		if(time_parts->Size() <> 3) {
+			return Nil;
+		};
+
+		hours := time_parts[0];
+		minutes := time_parts[1];
+		seconds := time_parts[2];
+
+		return System.Time.DateUtility->Parse(
+			"{$month_str}/{$day_str}/{$year_str} {$hours}:{$minutes}:{$seconds}", 
+			"MM/dd/yyyy hh:mm:ss", is_gmt);
 	}
 }
