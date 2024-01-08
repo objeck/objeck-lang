@@ -1,8 +1,7 @@
 import requests
 import json
-import datetime
 
-from datetime
+from datetime import datetime
 
 response = requests.get('http://worldtimeapi.org/api/ip')
 if response.status_code == 200 :
