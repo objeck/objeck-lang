@@ -8,8 +8,11 @@ if response.status_code == 200 :
 
 	date_str = date_time_strs[0]
 	print(date_str)
-	
+
 	time_str = date_time_strs[1]
 	index = time_str.find('.')
 	if index > -1 :
 		print(time_str[0 : index])
+
+# TODO: convert to a string to a date
+# datetime.strptime(datetime_str, '%m/%d/%y %H:%M:%S')

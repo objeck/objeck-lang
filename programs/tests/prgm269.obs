@@ -29,7 +29,6 @@ class Test {
 		if(date_parts->Size() <> 3) {
 			return Nil;
 		};
-		
 		year_str := date_parts[0];
 		month_str := date_parts[1];
 		day_str := date_parts[2];
