@@ -1,5 +1,12 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
+#~		
+		System.Time.DateUtility->Parse(
+			"1/1/2024 0:15", 
+			"MM/dd/yyyy hh:mm", 
+			true)->ToString()->PrintLine();
+~#		
+		
 		time_str := Web.HTTP.HttpClient->QuickGet(Web.HTTP.Url->New("http://worldclockapi.com/api/json/utc/now"))->ToString();
 		if(time_str <> Nil) {
 			parser := Data.JSON.JsonParser->New(time_str);
@@ -7,14 +14,16 @@ class Test {
 				root := parser->GetRoot();
 				cur_time_str := root->Get("currentDateTime")->GetString();
 				if(cur_time_str <> Nil) {
-					cur_time := ParseTime(cur_time_str, true)->ToString();
+					cur_time_str->PrintLine();
+					cur_time := ParseTime(cur_time_str, false);
 					if(cur_time <> Nil) {
-						cur_time->IsGmt();
-						cur_time->PrintLine();
+						cur_time->IsGmt()->PrintLine();
+						cur_time->ToString()->PrintLine();
 					};
 				};
 			};
 		};
+		
 	}
 
 	function : ParseTime(str : String, is_gmt : Bool) ~ System.Time.Date {
@@ -42,7 +51,7 @@ class Test {
 
 				return System.Time.DateUtility->Parse(
 					"{$month_str}/{$day_str}/{$year_str} {$hours}:{$minutes}", 
-					"MM/dd/yyyy hh:ss", 
+					"MM/dd/yyyy hh:mm", 
 					is_gmt);
 			}
 			else {
