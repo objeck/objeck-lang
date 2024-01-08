@@ -7,8 +7,9 @@ class Test {
 				root := parser->GetRoot();
 				cur_time_str := root->Get("currentDateTime")->GetString();
 				if(cur_time_str <> Nil) {
-					cur_time := ParseTime(cur_time_str)->ToString();
+					cur_time := ParseTime(cur_time_str, true)->ToString();
 					if(cur_time <> Nil) {
+						cur_time->IsGmt();
 						cur_time->PrintLine();
 					};
 				};
@@ -16,7 +17,7 @@ class Test {
 		};
 	}
 
-	function : ParseTime(str : String) ~ System.Time.Date {
+	function : ParseTime(str : String, is_gmt : Bool) ~ System.Time.Date {
 		parts := str->Split('T');
 		if(parts->Size() = 2 & parts[1]->EndsWith('Z')) {
 			date := parts[0];
@@ -42,7 +43,7 @@ class Test {
 				return System.Time.DateUtility->Parse(
 					"{$month_str}/{$day_str}/{$year_str} {$hours}:{$minutes}", 
 					"MM/dd/yyyy hh:ss", 
-					false);
+					is_gmt);
 			}
 			else {
 				return Nil;
