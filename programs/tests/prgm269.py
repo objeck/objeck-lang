@@ -1,11 +1,8 @@
+from datetime import datetime
 import requests
 import json
 
-from datetime import datetime
-
-response = requests.get('http://worldtimeapi.org/api/ip')
-if response.status_code == 200 :
-	time_dist = json.loads(response.content)
+def parse_time(time_dist):
 	date_time_parts = time_dist['datetime'].split('T')
 	if len(date_time_parts) == 2 :
 		date_parts = date_time_parts[0].split('-')
@@ -23,4 +20,8 @@ if response.status_code == 200 :
 			secs = time_parts[2]
 
 			date_time_str = "{}/{}/{} {}:{}:{}".format(mon, day, year, hrs, mins, secs)
-			print(datetime.strptime(date_time_str, '%m/%d/%Y %H:%M:%S'))
+			return datetime.strptime(date_time_str, '%m/%d/%Y %H:%M:%S')
+
+response = requests.get('http://worldtimeapi.org/api/ip')
+if response.status_code == 200 :
+	print(parse_time(json.loads(response.content)))
