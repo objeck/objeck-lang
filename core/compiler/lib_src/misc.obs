@@ -11,9 +11,9 @@ bundle System.Time {
 	~#
 	class DateUtility {
 		#~
-		Parses a date from a String. Format <i>MM: </i>month, <i>dd: </i>day, <i>yy(yy): </i>year, <i>hh: </i>hour, <i>mm: </i>minutes and <i>ss: </i>seconds. 
+		Parses a date from a String.
 		@param date_str date
-		@param format date string format 
+		@param format date string format <p>options: <ul> <li>month=MM</li><li>day=dd</li><li>year=yy(yy)</li><li>hour=hh</li><li>minutes=mm</li><li>seconds=ss</p><ul>
 		@param gmt true is GMT, false otherwise
 		@return Date instance
 		~#
