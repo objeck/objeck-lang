@@ -1,21 +1,21 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		time_str := Web.HTTP.HttpClient->QuickGet(Web.HTTP.Url->New("http://worldtimeapi.org/api/ip"))->ToString();
-		if(time_str <> Nil) {
-			root := Data.JSON.JsonParser->TextToElement(time_str);
-			if(root <> Nil) {
-				cur_time_elem := root->Get("datetime");
-				if(cur_time_elem <> Nil) {
-					cur_time := ParseTime(cur_time_elem->GetString(), false);
-					if(cur_time <> Nil) {
-						cur_time->ToString()->PrintLine();
+		get_buf := Web.HTTP.HttpClient->QuickGet(Web.HTTP.Url->New("http://worldtimeapi.org/api/ip"));
+		if(get_buf <> Nil) {
+			json_elem := Data.JSON.JsonParser->TextToElement(get_buf->ToString());
+			if(json_elem <> Nil) {
+				date_time_elem := json_elem->Get("datetime");
+				if(date_time_elem <> Nil) {
+					date_time := ParseTime(date_time_elem->GetString());
+					if(date_time <> Nil) {
+						date_time->ToString()->PrintLine();
 					};
 				};
 			};
 		};
 	}
 
-	function : ParseTime(str : String, is_gmt : Bool) ~ System.Time.Date {
+	function : ParseTime(str : String) ~ System.Time.Date {
 		parts := str->Split('T');
 		if(parts->Size() <> 2) {
 			return Nil;
@@ -50,6 +50,6 @@ class Test {
 
 		return System.Time.DateUtility->Parse(
 			"{$month_str}/{$day_str}/{$year_str} {$hours}:{$minutes}:{$seconds}", 
-			"MM/dd/yyyy hh:mm:ss", is_gmt);
+			"MM/dd/yyyy hh:mm:ss", false);
 	}
 }
