@@ -2,11 +2,11 @@ class Test {
 	function : Main(args : String[]) ~ Nil {
 		time_str := Web.HTTP.HttpClient->QuickGet(Web.HTTP.Url->New("http://worldtimeapi.org/api/ip"))->ToString();
 		if(time_str <> Nil) {
-			parser := Data.JSON.JsonParser->New(time_str);
-			if(parser->Parse()) {
-				cur_time_str := parser->GetRoot()->Get("datetime")->GetString();
-				if(cur_time_str <> Nil) {
-					cur_time := ParseTime(cur_time_str, false);
+			root := Data.JSON.JsonParser->TextToElement(time_str);
+			if(root <> Nil) {
+				cur_time_elem := root->Get("datetime");
+				if(cur_time_elem <> Nil) {
+					cur_time := ParseTime(cur_time_elem->GetString(), false);
 					if(cur_time <> Nil) {
 						cur_time->ToString()->PrintLine();
 					};
