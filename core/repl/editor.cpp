@@ -43,6 +43,7 @@ size_t Document::Reset()
 {
   lines.clear();
 
+  lines.push_back(Line(L"use class System.IO.Standard;", Line::Type::RW_LINE));
   lines.push_back(Line(L"use Collection;", Line::Type::RW_LINE));
   lines.push_back(Line(L"", Line::Type::RW_LINE));
   lines.push_back(Line(L"class Repl {", Line::Type::RO_CLS_START_LINE));

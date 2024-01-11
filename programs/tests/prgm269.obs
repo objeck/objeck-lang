@@ -43,11 +43,10 @@ class Test {
 		if(time_parts->Size() <> 3) {
 			return Nil;
 		};
-
 		hours := time_parts[0];
 		minutes := time_parts[1];
 		seconds := time_parts[2];
-
+		
 		return System.Time.DateUtility->Parse(
 			"{$month_str}/{$day_str}/{$year_str} {$hours}:{$minutes}:{$seconds}", 
 			"MM/dd/yyyy hh:mm:ss", false);

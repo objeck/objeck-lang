@@ -342,8 +342,8 @@ void Parser::ParseBundle(int depth)
         NextToken();
       }
     }
-    // 'use function' to import functions via classes
-    else if(Match(TOKEN_FUNCTION_ID)) {
+    // 'use class' to import functions via classes
+    else if(Match(TOKEN_CLASS_ID)) {
       NextToken();
 
       bool is_types = false;
