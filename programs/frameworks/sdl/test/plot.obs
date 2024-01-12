@@ -1,0 +1,112 @@
+use Game.SDL2;
+use Game.Framework;
+
+class Demo {
+	@framework : GameFramework;
+
+	@unit : Int;
+	@unit_16 : Int;
+	@unit_32 : Int;
+	@x_start : Int; 
+	@x_end : Int;
+	@y_start : Int;
+	@y_end : Int;
+	@point_color : Color;
+
+	function : Main(args : String[]) ~ Nil {
+		Demo->New()->Run();
+	}
+
+	New() {
+		@framework := GameFramework->New(Game->SCREEN_WIDTH, Game->SCREEN_HEIGHT, "Plot");
+		@framework->SetClearColor(Color->New(0, 0, 120));
+		@unit := 2;
+		@unit_16 := @unit * 16;
+		@unit_32 := @unit * 32;
+		@point_color := Color->New(240, 10, 10);
+	}
+
+	method : Run() ~ Nil {
+		MakeGrid();
+
+		if(@framework->IsOk()) {
+			quit := false;
+			e := @framework->GetEvent();
+						
+			while(<>quit) {
+				@framework->FrameStart();
+				@framework->Clear();
+				
+				# process input
+				while(e->Poll() <> 0) {
+					if(e->GetType() = EventType->SDL_QUIT) {
+						quit := true;
+					};
+				};
+
+				# draw
+				DrawGrid(@framework->GetRenderer());
+				DrawPoints(@framework->GetRenderer());
+
+				# show
+				@framework->Show();
+				@framework->FrameEnd();
+			};
+		}
+		else {
+			"--- Error Initializing Game Environment ---"->ErrorLine();
+			return;
+		};
+
+		leaving {
+			@framework->Quit();
+		};
+	}
+
+	method : MakeGrid() ~ Nil {
+		@y_start := @unit_16;
+		@y_end := Game->SCREEN_HEIGHT - @unit_32;
+
+		@x_start := @unit_16;
+		@x_end := Game->SCREEN_WIDTH - @unit_32;
+	}
+
+	method : DrawGrid(renderer : Renderer) ~ Nil {
+		
+
+		renderer->SetDrawColor(255, 255, 240, 0);
+
+		# draw y-line		
+		renderer->FillRect(Rect->New(@unit_16, @y_start, @unit, @y_end));
+		renderer->FillRect(Rect->New(@x_start, Game->SCREEN_HEIGHT - @unit_16, @x_end, @unit));
+	}
+
+	method : DrawPoints(renderer : Renderer) ~ Nil {
+		points := [
+			[0,0]
+			[1,1]
+			[2,2]
+			[3,3]
+			[4,4]
+			[5,5]
+		];
+
+		step := 32;
+
+		points_size := points->Size();
+		points_len := points_size[0];
+		each(i : points_len) {
+			x := points[i, 0];
+			y := points[i, 1];
+
+			renderer->FilledCircleColor(@x_start + x * step, @y_end + @unit_16 - y * step, @unit * 2, @point_color);
+
+#			"{$x}, {$y}"->PrintLine();
+		};
+	}
+}
+
+consts Game {
+	SCREEN_WIDTH := 480,
+	SCREEN_HEIGHT := 480
+}
