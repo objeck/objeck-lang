@@ -6289,7 +6289,6 @@ bundle System.Time {
 		@timer : Timer;
 		@param : System.Base;
 
-
 		#~
 		Constructor
 		@param time alarm time
@@ -6324,7 +6323,7 @@ bundle System.Time {
 			@timer->Stop();
 		}
 
-		method : GetParam() ~ System.Base {
+		method : public : GetParam() ~ System.Base {
 			return @param;
 		}
 
