@@ -6324,6 +6324,21 @@ bundle System.Time {
 			@timer->Stop();
 		}
 
+		#~
+		Get the current timer interval
+		~#
+		method : public : GetInterval() ~ Int {
+			@timer->GetTime();
+		}
+		
+		#~
+		Set the timer interval
+		@param time timer interval
+		~#
+		method : public : SetInterval(time : Int) ~ Nil {
+			@timer->SetTime(time);
+		}
+
 		method : public : GetParam() ~ System.Base {
 			return @param;
 		}
@@ -6351,6 +6366,14 @@ bundle System.Time {
 
 			@time := time;
 			@recur := true;
+		}
+
+		method : public : GetTime() ~ Int {
+			return @time;
+		}
+
+		method : public : SetTime(time : Int) ~ Nil {
+			@time := time;
 		}
 
 		method : public : Stop() ~ Nil {
