@@ -691,14 +691,8 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
 #ifdef _DEBUG
       std::wcout << L"stack oper: THREAD_SLEEP; call_pos=" << (*call_stack_pos) << std::endl;
 #endif
-
-#ifdef _WIN32
       left = (INT64_VALUE)PopInt(op_stack, stack_pos);
-      Sleep((long)left);
-#else
-      left = PopInt(op_stack, stack_pos);
-      usleep(left * 1000);
-#endif
+      std::this_thread::sleep_for(std::chrono::milliseconds(left));
       break;
 
     case LOAD_CLS_MEM:

@@ -35,6 +35,7 @@
 #include "common.h"
 #include <random>
 #include <string.h>
+#include <thread>
 
 #ifdef _WIN32
 #include "arch/memory.h"
