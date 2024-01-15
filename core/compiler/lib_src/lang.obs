@@ -6294,6 +6294,7 @@ bundle System.Time {
 		@param recur true if reoccurring, false otherwise
 		~#
 		New(time : Int, recur : Bool) {
+			Parent();
 			@timer := Timer->New(time, recur);
 		}
 
@@ -6302,6 +6303,7 @@ bundle System.Time {
 		@param time alarm time
 		~#
 		New(time : Int) {
+			Parent();
 			@timer := Timer->New(time);
 		}
 
