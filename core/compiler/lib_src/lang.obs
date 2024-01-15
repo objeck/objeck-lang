@@ -6332,6 +6332,77 @@ bundle System.Time {
 			return GetElapsedTime()->ToString();
 		}
 	}
+
+	#~
+	Provides system alarm
+	~#
+	class Alarm {
+		@timer : Timer;
+
+		#~
+		Constructor
+		@param time alarm time
+		@param recur true if reoccurring, false otherwise
+		~#
+		New(time : Int, recur : Bool) {
+			@timer := Timer->New(time, recur);
+		}
+
+		#~
+		Constructor
+		@param time alarm time
+		~#
+		New(time : Int) {
+			@timer := Timer->New(time);
+		}
+
+		#~
+		Start the alarm
+		~#
+		method : public : Start() ~ Nil {
+			@timer->Execute(@self);
+		}
+
+		#~
+		Ends the alarm if it's reoccurring
+		~#
+		method : public : Stop() ~ Nil {
+			@timer->Stop();
+		}
+
+		method : virtual : public : Ring() ~ Nil;
+	}
+
+	class : private : Timer from System.Concurrency.Thread {
+		@time : Int;
+		@recur : Bool;
+
+		New(time : Int, recur : Bool) {
+			Parent();
+
+			@time := time;
+			@recur := recur;
+		}
+
+		New(time : Int) {
+			Parent();
+
+			@time := time;
+			@recur := true;
+		}
+
+		method : public : Stop() ~ Nil {
+			@recur := false;
+		}
+
+		method : public : Run(param : System.Base) ~ Nil {
+			alarm := param->As(Alarm);
+			while(@recur) {
+				System.Concurrency.Thread->Sleep(@time);
+				alarm->Ring();
+			};
+		}
+	}
 }
 
 #~
