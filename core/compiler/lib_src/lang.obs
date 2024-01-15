@@ -6286,7 +6286,7 @@ bundle System.Time {
 	Provides a system timer
 	~#
 	class Alarm {
-		@timer : Timer;
+		@timer : Clock;
 		@param : System.Base;
 
 		#~
@@ -6296,7 +6296,7 @@ bundle System.Time {
 		~#
 		New(time : Int, recur : Bool) {
 			Parent();
-			@timer := Timer->New(time, recur);
+			@timer := Clock->New(time, recur);
 		}
 
 		#~
@@ -6305,7 +6305,7 @@ bundle System.Time {
 		~#
 		New(time : Int) {
 			Parent();
-			@timer := Timer->New(time);
+			@timer := Clock->New(time);
 		}
 
 		#~
@@ -6350,7 +6350,7 @@ bundle System.Time {
 		method : virtual : public : Ring(param : System.Base) ~ Nil;
 	}
 
-	class : private : Timer from System.Concurrency.Thread {
+	class : private : Clock from System.Concurrency.Thread {
 		@time : Int;
 		@recur : Bool;
 
