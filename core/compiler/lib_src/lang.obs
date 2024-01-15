@@ -6332,14 +6332,14 @@ bundle System.Time {
 			Parent();
 
 			@time := time;
-			@recur := recur ? -1 : 1;
+			@recur := recur;
 		}
 
 		New(time : Int) {
 			Parent();
 
 			@time := time;
-			@recur := -1;
+			@recur := true;
 		}
 
 		method : public : Stop() ~ Nil {
@@ -6348,13 +6348,15 @@ bundle System.Time {
 
 		method : public : Run(param : System.Base) ~ Nil {
 			alarm := param->As(Alarm);
-			while(@recur <> 0) {
+			if(@recur) {
+				while(@recur) {
+					System.Concurrency.Thread->Sleep(@time);
+					alarm->Ring();
+				};
+			}
+			else {
 				System.Concurrency.Thread->Sleep(@time);
 				alarm->Ring();
-				# update
-				if(@recur = 1) {
-					@recur = 0;
-				};
 			};
 		}
 	}
