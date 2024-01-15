@@ -6287,6 +6287,8 @@ bundle System.Time {
 	~#
 	class Alarm {
 		@timer : Timer;
+		@param : System.Base;
+
 
 		#~
 		Constructor
@@ -6310,7 +6312,8 @@ bundle System.Time {
 		#~
 		Start the alarm
 		~#
-		method : public : Start() ~ Nil {
+		method : public : Start(param : System.Base) ~ Nil {
+			@param := param;
 			@timer->Execute(@self);
 		}
 
@@ -6319,6 +6322,10 @@ bundle System.Time {
 		~#
 		method : public : Stop() ~ Nil {
 			@timer->Stop();
+		}
+
+		method : GetParam() ~ System.Base {
+			return @param;
 		}
 
 		method : virtual : public : Ring() ~ Nil;
@@ -6351,12 +6358,14 @@ bundle System.Time {
 			if(@recur) {
 				while(@recur) {
 					System.Concurrency.Thread->Sleep(@time);
-					alarm->Ring();
+					# pass param
+					alarm->Ring(alarm->GetParam());
 				};
 			}
 			else {
 				System.Concurrency.Thread->Sleep(@time);
-				alarm->Ring();
+				# pass param
+				alarm->Ring(alarm->GetParam());
 			};
 		}
 	}
