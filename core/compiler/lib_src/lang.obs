@@ -6352,7 +6352,7 @@ bundle System.Time {
 				System.Concurrency.Thread->Sleep(@time);
 				alarm->Ring();
 				# update
-				if(@recur = 1)
+				if(@recur = 1) {
 					@recur = 0;
 				};
 			};
