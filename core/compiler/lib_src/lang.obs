@@ -6327,7 +6327,10 @@ bundle System.Time {
 			return @param;
 		}
 
-		method : virtual : public : Ring() ~ Nil;
+		#~
+		Alarm callback method
+		~#
+		method : virtual : public : Ring(System.Base param) ~ Nil;
 	}
 
 	class : private : Timer from System.Concurrency.Thread {
