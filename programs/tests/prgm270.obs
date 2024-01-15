@@ -6,9 +6,10 @@ class Foo {
 			}
 			
 			method : public : Ring(b : Base) ~ Nil {
-				"Foo!"->PrintLine();
+				v := b->As(IntRef)->Get();
+				"Foo {$v}!"->PrintLine();
 			}
-		}->Start(Nil);
+		}->Start(IntRef->New(7));
 
 		System.Time.Alarm->New() {
 			New() {
