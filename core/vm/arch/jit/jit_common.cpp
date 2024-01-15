@@ -428,11 +428,7 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
     break;
 
   case THREAD_SLEEP:
-#ifdef _WIN32    
-    Sleep((DWORD)PopInt(op_stack, stack_pos));
-#else
-    usleep(PopInt(op_stack, stack_pos));
-#endif      
+    std::this_thread::sleep_for(std::chrono::milliseconds(PopInt(op_stack, stack_pos)));
     break;
 
   case THREAD_MUTEX: {
