@@ -2129,8 +2129,8 @@ void StackInterpreter::ProcessAsyncMethodCall(StackMethod* called, size_t* param
   size_t* instance = (size_t*)(*frame)->mem[0];
   ThreadHolder* holder = new ThreadHolder;
   holder->called = called;
-  holder->self = instance;
   holder->param = param;
+  holder->self = instance;
 
 #ifdef _WIN32
   HANDLE vm_thread = (HANDLE)_beginthreadex(nullptr, 0, AsyncMethodCall, holder, 0, nullptr);
@@ -2179,10 +2179,9 @@ unsigned int WINAPI StackInterpreter::AsyncMethodCall(LPVOID arg)
   // set parameter
   thread_op_stack[(*thread_stack_pos)++] = (size_t)holder->param;
 
+#ifdef _DEBUG
   HANDLE vm_thread;
   DuplicateHandle(GetCurrentProcess(), GetCurrentThread(), GetCurrentProcess(), &vm_thread, 0, TRUE, DUPLICATE_SAME_ACCESS);
-
-#ifdef _DEBUG
   std::wcout << L"# Starting thread=" << vm_thread << L" #" << std::endl;
 #endif  
 
