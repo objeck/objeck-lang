@@ -6362,13 +6362,11 @@ bundle System.Time {
 			if(@recur) {
 				while(@recur) {
 					System.Concurrency.Thread->Sleep(@time);
-					# pass param
 					alarm->Ring(alarm->GetParam());
 				};
 			}
 			else {
 				System.Concurrency.Thread->Sleep(@time);
-				# pass param
 				alarm->Ring(alarm->GetParam());
 			};
 		}
