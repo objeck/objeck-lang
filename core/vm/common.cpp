@@ -3810,7 +3810,7 @@ bool TrapProcessor::SockTcpInString(StackProgram* program, size_t* inst, size_t*
           end_line = true;
         }
       }
-      while(!end_line && index < array[0] - 1);
+      while(!end_line && index < (int)array[0] - 1);
       buffer[index] = '\0';
 
       // assume LF
