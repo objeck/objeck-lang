@@ -6330,7 +6330,7 @@ bundle System.Time {
 		#~
 		Alarm callback method
 		~#
-		method : virtual : public : Ring(System.Base param) ~ Nil;
+		method : virtual : public : Ring(param : System.Base) ~ Nil;
 	}
 
 	class : private : Timer from System.Concurrency.Thread {
