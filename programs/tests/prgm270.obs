@@ -1,0 +1,38 @@
+class Foo {
+	function : Main(args : String[]) ~ Nil {
+		System.Time.Alarm->New() {
+			New() {
+				Parent(1500);
+			}
+			
+			method : public : Ring(b : Base) ~ Nil {
+				"Foo!"->PrintLine();
+			}
+		}->Start(Nil);
+
+		System.Time.Alarm->New() {
+			New() {
+				Parent(3000);
+			}
+			
+			method : public : Ring(b : Base) ~ Nil {
+				str := b->As(String);
+				"Bar {$str}."->PrintLine();
+			}
+		}->Start("It's Math...");
+
+		System.Time.Alarm->New() {
+			New() {
+				Parent(5000, true);
+			}
+			
+			method : public : Ring(b : Base) ~ Nil {
+				"!Soap!"->PrintLine();
+			}
+		}->Start(Nil);
+
+		"Thread started..."->PrintLine();
+		System.Concurrency.Thread->Sleep(30000);
+		"Done."->PrintLine();
+	}
+}
