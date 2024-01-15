@@ -6283,58 +6283,7 @@ bundle System.Time {
 	}
 	
 	#~
-	Provides elapsed time 
-	~#	
-	class Timer {
-		@elapsed : Int;
-		@running : Bool;
-		
-		New(start : Bool := false) {
-			Parent();
-
-			if(start) {
-				Start();
-			};
-		}
-		
-		#~
-		Starts the timer
-		~#
-		method : public : Start() ~ Nil {
-			TIMER_START;
-			@running := true;
-		}
-		
-		#~
-		Ends the timer
-		~#
-		method : public : End() ~ Nil {
-			TIMER_END;
-			@running := false;
-		}
-		
-		#~
-		Gets the elapsed time in seconds
-		~#
-		method : public : GetElapsedTime() ~ Float {
-			if(@running) {
-				End();
-			};
-			
-			TIMER_ELAPSED;
-		}
-		
-		#~
-		Formats the timer into a string
-		@return formatted string
-		~#
-		method : public : ToString() ~ String {
-			return GetElapsedTime()->ToString();
-		}
-	}
-
-	#~
-	Provides system alarm
+	Provides a system timer
 	~#
 	class Alarm {
 		@timer : Timer;
