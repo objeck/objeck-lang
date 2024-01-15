@@ -6310,6 +6310,7 @@ bundle System.Time {
 
 		#~
 		Start the alarm
+		@param param callback parameter
 		~#
 		method : public : Start(param : System.Base) ~ Nil {
 			@param := param;
@@ -6329,6 +6330,7 @@ bundle System.Time {
 
 		#~
 		Alarm callback method
+		@param param callback parameter
 		~#
 		method : virtual : public : Ring(param : System.Base) ~ Nil;
 	}
