@@ -67,16 +67,16 @@ bundle System.ML {
 		Parsers a boolean value
 		@return boolean value
 		~#
-		method : public : ToBool() ~ Bool {
-			return ToInt() <> 0;
+		method : public : ToBool(m : Float[,]) ~ Bool {
+			return ToInt(m) <> 0;
 		}
 
 		#~
 		Parsers an integer value
 		@return integer value
 		~#
-		method : public : ToInt() ~ Int {
-			return Float->Round(ToFloat());
+		method : public : ToInt(m : Float[,]) ~ Int {
+			return Float->Round(ToFloat(m));
 		}
 
 		#~
