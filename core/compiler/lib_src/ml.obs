@@ -54,7 +54,7 @@ bundle System.ML {
 		Parsers a decimal value
 		@return decimal value
 		~#
-		function : native : ToFloat(m : Float[,]) ~ Float {
+		function : ToFloat(m : Float[,]) ~ Float {
 			dim := m->Size();
 			if(dim->Size() = 2 & dim[0] = 1 & dim[1] = 1) {
 				return m[0,0];
@@ -67,7 +67,7 @@ bundle System.ML {
 		Parsers a boolean value
 		@return boolean value
 		~#
-		method : public : ToBool(m : Float[,]) ~ Bool {
+		function : ToBool(m : Float[,]) ~ Bool {
 			return ToInt(m) <> 0;
 		}
 
@@ -75,7 +75,7 @@ bundle System.ML {
 		Parsers an integer value
 		@return integer value
 		~#
-		method : public : ToInt(m : Float[,]) ~ Int {
+		function : ToInt(m : Float[,]) ~ Int {
 			return Float->Round(ToFloat(m));
 		}
 

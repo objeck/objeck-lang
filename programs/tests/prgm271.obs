@@ -1,5 +1,5 @@
 use class System.IO.Standard;
-use class System.ML.Foo;
+use class System.ML.Matrix2D;
 
 use Collection;
 
@@ -10,6 +10,6 @@ class Repl {
       x := [[10.,20.,30.]];
 
       r := Add(b,DotProduct(w,Transpose(x)));
-      PrintLine(r[0,0]);
+      PrintLine(ToInt(r));
    }
 }
