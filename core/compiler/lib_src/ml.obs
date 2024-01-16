@@ -51,6 +51,35 @@ bundle System.ML {
 		}
 
 		#~
+		Parsers a decimal value
+		@return decimal value
+		~#
+		function : native : ToFloat(m : Float[,]) ~ Float {
+			dim := m->Size();
+			if(dim->Size() = 2 & dim[0] = 1 & dim[1] = 1) {
+				return m[0,0];
+			};
+
+			return 0.0;
+		}
+
+		#~
+		Parsers a boolean value
+		@return boolean value
+		~#
+		method : public : ToBool() ~ Bool {
+			return ToInt() <> 0;
+		}
+
+		#~
+		Parsers an integer value
+		@return integer value
+		~#
+		method : public : ToInt() ~ Int {
+			return Float->Round(ToFloat());
+		}
+
+		#~
 		Creates an identity a matrix
 		@param s size of matrix
 		@return row from matrix
@@ -1075,15 +1104,6 @@ solver->GetRSquared()->PrintLine();
 			return @value;
 		}
 
-		method : GetBoolen() ~ Bool {
-			dim := @value->Size();
-			if(dim->Size() = 2 & dim[0] = 1 & dim[1] = 1) {
-				return @value[0,0] = 1.0;
-			}
-			
-			return false;
-		}
-		
 		#~
 		Set boolean value
 		@param value boolean value		
