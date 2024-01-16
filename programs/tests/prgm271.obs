@@ -1,0 +1,15 @@
+use class System.IO.Standard;
+use class System.ML.Matrix2D;
+
+use Collection;
+
+class Repl {
+   function : Main(args : String[]) ~ Nil {
+      w := [[1.0,2.5,-3.3]];
+      b := 4.;
+      x := [[10.,20.,30.]];
+
+      r := Add(b,DotProduct(w,Transpose(x)));
+      PrintLine(r->ToString());
+   }
+}

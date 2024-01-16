@@ -3170,7 +3170,13 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, b
             if(!use_static_check) {
               use_static_check = true;
               method_call->SetVariableName(static_lib_klass->GetName());
-              AnalyzeMethodCall(static_lib_klass, method_call, is_expr, encoding, true, depth + 1);
+
+              const std::wstring encoded_name = static_lib_klass->GetName() + L':' + method_call->GetMethodName() + L':' +
+                encoding + EncodeMethodCall(method_call->GetCallingParameters(), depth);
+              LibraryMethod* method = static_lib_klass->GetMethod(encoded_name);
+              if(method) {
+                AnalyzeMethodCall(static_lib_klass, method_call, is_expr, encoding, true, depth + 1); 
+              }
               use_static_check = false;
             }
 
