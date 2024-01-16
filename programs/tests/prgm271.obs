@@ -10,6 +10,6 @@ class Repl {
       x := [[10.,20.,30.]];
 
       r := Add(b,DotProduct(w,Transpose(x)));
-      PrintLine(r->ToString());
+      PrintLine(r[0,0]);
    }
 }
