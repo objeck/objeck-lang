@@ -3188,7 +3188,8 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, b
           }
         }
         else {
-          ProcessError(klass, L"Undefined static class: '" + class_name + L"'");
+          ProcessError(program->GetFileName(), L"Undefined static class: '" + class_name + L"'");
+//          ProcessError(klass, L"Undefined static class: '" + class_name + L"'");
         }
       }
     }
