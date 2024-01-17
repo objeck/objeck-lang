@@ -132,7 +132,7 @@ bundle System {
 		@return string representation of the boolean array
 		~#
 		function : ToString(v : Bool[,]) ~ String {
-			buffer := "";
+			buffer := "[";
 
 			dims := v->Size();
 			rows := dims[0];
@@ -154,6 +154,7 @@ bundle System {
 					buffer->Append(']');
 				};
 			};
+			buffer->Append(']');
 
 			return buffer;
 		}
@@ -552,7 +553,7 @@ bundle System {
 		@return string representation of the byte array
 		~#
 		function : ToString(v : Byte[,]) ~ String {
-			buffer := "";
+			buffer := "[";
 
 			dims := v->Size();
 			rows := dims[0];
@@ -567,13 +568,9 @@ bundle System {
 					};
 				};
 
-				if(r + 1 < rows) {
-					buffer->Append("]\n");
-				}
-				else {
-					buffer->Append(']');
-				};
+				buffer->Append(']');
 			};
+			buffer->Append(']');
 
 			return buffer;
 		}
@@ -944,7 +941,7 @@ bundle System {
 		@return string representation of the char array
 		~#
 		function : ToString(v : Char[,]) ~ String {
-			buffer := "";
+			buffer := "[";
 
 			dims := v->Size();
 			rows := dims[0];
@@ -966,6 +963,7 @@ bundle System {
 					buffer->Append(']');
 				};
 			};
+			buffer->Append(']');
 
 			return buffer;
 		}
@@ -1605,7 +1603,7 @@ bundle System {
 		@return string representation of the int array
 		~#
 		function : ToString(v : Int[,]) ~ String {
-			buffer := "";
+			buffer := "[";
 
 			dims := v->Size();
 			rows := dims[0];
@@ -1627,6 +1625,7 @@ bundle System {
 					buffer->Append(']');
 				};
 			};
+			buffer->Append(']');
 
 			return buffer;
 		}
@@ -2195,7 +2194,7 @@ bundle System {
 		@return string representation of the float array
 		~#
 		function : ToString(v : Float[,]) ~ String {
-			buffer := "";
+			buffer := "[";
 
 			dims := v->Size();
 			rows := dims[0];
@@ -2217,6 +2216,7 @@ bundle System {
 					buffer->Append(']');
 				};
 			};
+			buffer->Append(']');
 
 			return buffer;
 		}
