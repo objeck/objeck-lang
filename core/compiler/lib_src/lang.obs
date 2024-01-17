@@ -3274,9 +3274,48 @@ bundle System {
 			@values := values;
 		}
 	}
+
+	#~
+	Holds an array of 'Compare' values
+	~#
+	class CompareArrayRef {
+		@values : Compare[];
+
+		#~
+		Default constructor 
+		~#
+		New() {
+			Parent();
+		}
+
+		#~
+		Copy constructor 
+		@param values Compare array 
+		~#
+		New(values : Compare[]) {
+			Parent();
+			@values := values;
+		}
+
+		#~
+		Get values
+		@return values
+		~#
+		method : public : Get() ~ Compare[] {
+			return @values;
+		}
+		
+		#~
+		Set values
+		@param values Compare array 
+		~#
+		method : public : Set(values : Compare[]) ~ Nil {
+			@values := values;
+		}
+	}
 	
 	#~
-	Holds an base array
+	Holds an array of strings
 	~#
 	class StringArrayRef {
 		@values : String[];
