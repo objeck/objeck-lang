@@ -1,0 +1,118 @@
+use Collection;
+
+class Repl {
+    function : Main(args : String[]) ~ Nil {
+        matrix := Matrix->New(5);
+        matrix->ToString()->PrintLine();
+        "---"->PrintLine();
+
+        index := 4;
+        sorted := Map->New()<Compare, CompareArrayRef>;
+        each(row := matrix) {
+            row_elems := row->Get();
+            each(e : row_elems) {
+                if(e = index) {
+                    elem := row_elems[e];
+                    sorted->Insert(elem, row);
+                };
+            };
+        };
+
+
+        buffer :=  "";
+        sorted_values := sorted->GetValues()<CompareArrayRef>;
+        each(sorted_value := sorted_values) {
+            sorted_row := sorted_value->Get();
+            each(elem := sorted_row) {
+                if(elem->TypeOf(IntRef)) {
+                    buffer += elem->As(IntRef)->ToString();
+                }
+                else if(elem->TypeOf(FloatRef)) {
+                    buffer += elem->As(FloatRef)->ToString();
+                }
+                else if(elem->TypeOf(BoolRef)) {
+                    buffer += elem->As(BoolRef)->ToString();
+                }
+                else if(elem->TypeOf(String)) {
+                    buffer += elem->As(String);
+                }
+                buffer += ',';
+            };
+            buffer += '\n';
+        };
+
+        buffer->PrintLine();
+    }    
+}
+
+class Matrix {
+    @matrix : Vector<CompareArrayRef>;
+
+    New(size : Int) {
+        @matrix := Vector->New()<CompareArrayRef>;
+
+        each(i : size) {
+            row := Compare->New[5];
+
+            row[0] := IntRef->New(i);
+            row[1] := IntRef->New(Int->Random(15));
+            rand_str := "";
+            each(j : 5) {
+                rand_str += 'a' + Int->Random(26);
+            };
+            row[2] := rand_str;
+            row[3] := FloatRef->New(Float->Random() * 25);
+            row[4] := Int->Random(1) = 1 ? BoolRef->New(true) :  BoolRef->New(false);
+
+            @matrix->AddBack(CompareArrayRef->New(row));
+        };
+    }
+
+    method : public : Size() ~ Int {
+        return @matrix->Size();
+    }
+
+    method : public : Get(r : Int) ~ CompareArrayRef {
+        if(r < @matrix->Size()) {
+            return @matrix->Get(r);
+        }
+
+        return Nil;
+    }
+
+    method : public : Elem(r : Int, c : Int) ~ Compare {
+        if(r < @matrix->Size()) {
+            row := @matrix->Get(r)->Get();
+            if(c < row->Size()) {
+                return row[c];
+            };
+        };
+
+        return Nil;
+    }
+
+    method : public : ToString() ~ String {
+        buffer := "";
+        each(row := @matrix) {
+            row_elems := row->Get();
+            each(elem := row_elems) {
+                if(elem->TypeOf(IntRef)) {
+                    buffer += elem->As(IntRef)->ToString();
+                }
+                else if(elem->TypeOf(FloatRef)) {
+                    buffer += elem->As(FloatRef)->ToString();
+                }
+                else if(elem->TypeOf(BoolRef)) {
+                    buffer += elem->As(BoolRef)->ToString();
+                }
+                else if(elem->TypeOf(String)) {
+                    buffer += elem->As(String);
+                }
+                buffer += ',';
+            };
+            buffer += "\n";
+        };
+
+        return buffer;
+    }
+}
