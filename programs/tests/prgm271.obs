@@ -1,5 +1,4 @@
-use class System.IO.Standard;
-use class System.ML.Matrix2D;
+use class System.IO.Standard, System.ML.Matrix2D;
 
 class Repl {
    function : Main(args : String[]) ~ Nil {
