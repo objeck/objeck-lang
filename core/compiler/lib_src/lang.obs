@@ -2,6 +2,14 @@
 Objeck system classes.
 Copyright (c) 2008-2024 Randy Hollines
 note: compile compiler with -D_SYSTEM flag (on Linux)
+
+THE RULES---
+* This is a special file that bootstraps the compiler
+* If you are using a string use 'Append' instead of '+=' otherwise the runtime will crash
+* You only have access to class within this file, so you are unable to use collections
+* Return values are not checked in this file as value may come directly from the VM
+* Bootstrap directives for the VM an TRAP instruction are used frequently, you will have to dig into the VM code to figure out what is going on
+* Primitive classes such as 'Int' and 'Bool' start with at '$'
 ~#	
 
 #~

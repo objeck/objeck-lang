@@ -6,6 +6,8 @@ class Repl {
       b := 4.;
       x := [[10.,20.,30.]];
 
+      Add(w, x)->PrintLine();
+
       r := Add(b,DotProduct(w,Transpose(x)));
       PrintLine(ToFloat(r));
    }
