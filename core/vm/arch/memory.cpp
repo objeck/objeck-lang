@@ -90,7 +90,7 @@ void MemoryManager::Initialize(StackProgram* p, size_t t)
   }
   // else, look at host memory 
   else {
-    MEM_START_MAX = 256 * 1048576; // 256 MB
+    MEM_START_MAX = 768 * 1048576; // 1 GB MB
     /*
     const size_t min_mb = 1048576 * 16; // 16 MB -> min start
     MEM_START_MAX = System::GetTotalSystemMemory() / 16; // 1/16th of system memory -> max start
