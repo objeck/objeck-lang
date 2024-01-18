@@ -54,9 +54,9 @@ namespace Runtime {
   class Debugger;
 #endif
   
-#define FRAME_CACHE_SIZE 24
-#define CALL_STACK_SIZE 1024
-#define OP_STACK_SIZE 128
+#define FRAME_CACHE_SIZE 768
+#define CALL_STACK_SIZE 32
+#define OP_STACK_SIZE 24
 
   // holds the calling context for async
   // method calls
