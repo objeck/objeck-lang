@@ -6,12 +6,12 @@ class Repl {
         matrix->ToString()->PrintLine();
         "---"->PrintLine();
 
-        SortBy(1, matrix);
+        SortBy(4, matrix);
     }
 
     function : SortBy(index : Int, matrix : Matrix) ~ Nil {
         # should be mult-map
-        sorted := Map->New()<Compare, CompareArrayRef>;
+        sorted := MultiMap->New()<Compare, CompareArrayRef>;
         each(row := matrix) {
             row_elems := row->Get();
             each(e : row_elems) {
