@@ -6,7 +6,11 @@ class Repl {
         matrix->ToString()->PrintLine();
         "---"->PrintLine();
 
-        index := 4;
+        SortBy(1, matrix);
+    }
+
+    function : SortBy(index : Int, matrix : Matrix) ~ Nil {
+        # should be mult-map
         sorted := Map->New()<Compare, CompareArrayRef>;
         each(row := matrix) {
             row_elems := row->Get();
@@ -17,7 +21,6 @@ class Repl {
                 };
             };
         };
-
 
         buffer :=  "";
         sorted_values := sorted->GetValues()<CompareArrayRef>;
