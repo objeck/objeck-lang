@@ -3427,16 +3427,16 @@ set->Has("Oakland")->PrintLine();
 
 	```
 # insert elements
-set := Collection.Set->New()<String>;
-set->Insert("San Francisco");
-set->Insert("Oakland");
-set->Insert("East Bay");
+set_hash := Collection.SetHash->New()<String>;
+set_hash->Insert("San Francisco");
+set_hash->Insert("Oakland");
+set_hash->Insert("East Bay");
 
 # get size
-set->Size()->PrintLine();
+set_hash->Size()->PrintLine();
 
 # get value by key
-set->Has("Oakland")->PrintLine();
+set_hash->Has("Oakland")->PrintLine();
 	```	
 	~#
 	class SetHash<K : Compare> {
