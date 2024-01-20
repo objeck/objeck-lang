@@ -1,10 +1,11 @@
 import json
  
-f = open('C:\\Users\\objec\\Documents\\Temp\\Web.MsHtml.json', 'r')
-data = json.load(f)
+file = open('C:\\Users\\objec\\Documents\\Temp\\Web.MsHtml.json', 'r')
+data = json.load(file)
  
 const = data['Constants']
-first = const[0];
-name = first['Name']
+fileirst = const[0];
+name = fileirst['Name']
 print(name)
-f.close()
+
+file.close()
