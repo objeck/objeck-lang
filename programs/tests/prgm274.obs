@@ -11,6 +11,7 @@ class StreamParser {
         NULL,
         UNKNOWN
     }
+    
     function : Main(args : String[]) ~ Nil {
         if(args->Size() = 1) {
             stream := System.IO.Filesystem.FileReader->ReadFile(args[0])->Trim();
