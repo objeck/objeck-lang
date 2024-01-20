@@ -1,0 +1,69 @@
+use Query.RegEx;
+use Collection;
+
+class StreamParser {
+    enum Type {
+        NUMBER,
+        STRING,
+        BOOLEAN,
+        ARRAY,
+        OBJECT,
+        NULL,
+        UNKNOWN
+    }
+    function : Main(args : String[]) ~ Nil {
+        if(args->Size() = 1) {
+            stream := System.IO.Filesystem.FileReader->ReadFile(args[0])->Trim();
+            ParseType(stream);
+        }
+    }
+
+    function : native : ParseType(stream : String) ~ StreamParser->Type {
+        first := 0;
+        last := stream->Size() - 1;
+        if(last > 0) {
+            count := 0;
+
+            while(first <= last) {
+                # advance start
+                done := false;
+                while(<>done) {
+                    select(stream->Get(first)) {
+                        label '{':
+                        label '[':
+                        label '"': {
+                            first += 1;                        
+                            done := true;     
+                        }
+
+                        other {
+                            first += 1;                        
+                        }
+                    };
+                };
+
+                # advance end
+                done := false;
+                while(<>done) {
+                    select(stream->Get(last)) {
+                        label '}':
+                        label ']':
+                        label '"': {
+                            last -= 1;                        
+                            done := true;     
+                        }
+
+                        other {
+                            last -= 1;                        
+                        }
+                    };
+                };
+                count += 1;
+# ("{$first}, {$last}")->PrintLine();
+            };
+            count->PrintLine();
+        };
+
+        return StreamParser->Type->UNKNOWN;
+    }
+}
