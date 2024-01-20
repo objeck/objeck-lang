@@ -1,0 +1,99 @@
+use Query.RegEx;
+use Collection;
+
+class ReqParser {
+    function : Main(args : String[]) ~ Nil {
+        if(args->Size() = 1) {
+            content := System.IO.Filesystem.FileReader->ReadFile(args[0]);
+            expr := "([a-z]|[A-Z])+('|’)*([a-z])*";
+            matches := RegEx->New(expr)->Find(content)<Result>;
+
+            word_count_map := Map->New()<String, IntRef>;
+            each(match := matches) {
+                key := match->ToString()->ToString()->ToLower()->ReplaceAll('’', '\'');
+                value := word_count_map->Find(key);
+                if(value <> Nil) {
+                    value->Add(1);
+                }
+                else {
+                    word_count_map->Insert(key, IntRef->New(1));
+                };
+            };
+
+            # ignore works
+            ignore_words_set := Set->New()<String>;
+            ignore_words := [
+                "an", "and", "to", "are", "of", "on", "for", "is", "have", 
+                "how", "by", "as", "the", "with", "or", "in", "it", "be",
+                "this", "professional", "work", "that", "from"];
+            each(ignore_word := ignore_words) {
+                ignore_words_set->Insert(ignore_word);
+            };
+
+            intrest_words_set := Set->New()<String>;
+            intrest_words := [
+                "security", "management", "manager", "python", "java", "remote", 
+                "devsecops", "colorado", " california", "customer", "customers", 
+                "success", "adoption", "technical", "team", "experience", "education", 
+                "year", "years", " kpis", " kpi", "csat", "development", "service", 
+                "services", "on-boarding", "onboarding", "on-board", "onboard", 
+                "sow", "grow", "growing", "growth","solution", "solutions", "renew", 
+                "sale", "sales"];
+            each(intrest_word := intrest_words) {
+                intrest_words_set->Insert(intrest_word);
+            };
+
+            counts := CompareVector->New()<Count>;
+
+            key_values := word_count_map->GetKeyValues()<Pair<String, IntRef>>;
+            each(key_value := key_values) {
+                word := key_value->GetFirst()->Trim();
+                count := key_value->GetSecond();
+
+                if(word->Size() > 1) {
+                    if(intrest_words_set->Has(word)) {
+                        counts->AddBack(Count->New("`" + word, count));
+                    }
+                    else if(<>ignore_words_set->Has(word)) {
+                        counts->AddBack(Count->New(word, count));
+                    };
+                };
+            };
+
+            out_buffer := "";
+            counts->Sort();
+            index := 1;
+            reverse(count := counts) {
+                out_buffer += "{$count}\n";
+                index += 1;
+           };
+           System.IO.Filesystem.FileWriter->WriteFile("out.csv", out_buffer);
+        };
+    }
+}
+
+class Count implements Compare {
+    @word : String;
+    @count : IntRef;
+
+    New(word : String, count : IntRef) {
+        @word := word;
+        @count := count;
+    }
+
+    method : public : Compare(c : System.Compare) ~ Int {
+        return @count->Compare(c->As(Count)->GetCount());
+    }
+
+    method : public : HashID() ~ Int {
+        return @word->HashID();
+    }
+
+    method : public : GetCount() ~ IntRef {
+        return @count;
+    }
+
+    method : public : ToString() ~ String {
+        return "{$@word}, {$@count},"
+    }
+}
