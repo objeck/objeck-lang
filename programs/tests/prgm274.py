@@ -5,7 +5,7 @@ data = json.load(file)
  
 const = data['Constants']
 first_const = const[0];
-name = first_const['Name']
-print(name)
+first_const_name = first_const['Name']
+print(first_const_name)
 
 file.close()
