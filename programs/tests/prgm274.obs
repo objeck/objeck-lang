@@ -11,10 +11,12 @@ class StreamParser {
         NULL,
         UNKNOWN
     }
-    
+
     function : Main(args : String[]) ~ Nil {
         if(args->Size() = 1) {
-            stream := System.IO.Filesystem.FileReader->ReadFile(args[0])->Trim();
+#            stream := System.IO.Filesystem.FileReader->ReadFile(args[0])->Trim();
+
+            stream := "{\"count\": 3, \"results\": [\"a\", \"b\", \"c\"]}"
             ParseType(stream);
         }
     }
@@ -25,16 +27,15 @@ class StreamParser {
         if(last > 0) {
             count := 0;
 
-            while(first <= last) {
+            while(first < last) {
                 # advance start
                 done := false;
                 while(<>done) {
                     select(stream->Get(first)) {
                         label '{':
-                        label '[':
-                        label '"': {
-                            first += 1;                        
+                        label '[': {
                             done := true;     
+                            first += 1;                        
                         }
 
                         other {
@@ -43,24 +44,10 @@ class StreamParser {
                     };
                 };
 
-                # advance end
-                done := false;
-                while(<>done) {
-                    select(stream->Get(last)) {
-                        label '}':
-                        label ']':
-                        label '"': {
-                            last -= 1;                        
-                            done := true;     
-                        }
+                
 
-                        other {
-                            last -= 1;                        
-                        }
-                    };
-                };
-                count += 1;
-# ("{$first}, {$last}")->PrintLine();
+                "{$first}"->PrintLine();
+
             };
             count->PrintLine();
         };
