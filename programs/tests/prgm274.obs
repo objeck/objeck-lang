@@ -22,34 +22,26 @@ class StreamParser {
     }
 
     function : native : ParseType(stream : String) ~ StreamParser->Type {
-        first := 0;
-        last := stream->Size() - 1;
-        if(last > 0) {
-            count := 0;
+        start_pos := 0;
+        last_pos := stream->Size() - 1;
+        
+        while(start_pos < last_pos) {
+            
 
-            while(first < last) {
-                # advance start
-                done := false;
-                while(<>done) {
-                    select(stream->Get(first)) {
-                        label '{':
-                        label '[': {
-                            done := true;     
-                            first += 1;                        
-                        }
-
-                        other {
-                            first += 1;                        
-                        }
-                    };
-                };
-
-                
-
-                "{$first}"->PrintLine();
-
+            if(stream->Get(start_pos) = '{' | stream->Get(start_pos) = '[') {
+                start_pos += 1;
+start_pos->PrintLine();                
             };
-            count->PrintLine();
+
+            if(stream->Get(last_pos) = '}' | stream->Get(last_pos) = ']') {
+last_pos->PrintLine();                
+                last_pos -= 1;
+            };
+
+stream->SubString(start_pos, last_pos - start_pos + 1)->PrintLine();
+
+            start_pos += 1;
+            last_pos -= 1;
         };
 
         return StreamParser->Type->UNKNOWN;
