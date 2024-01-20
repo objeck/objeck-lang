@@ -3440,13 +3440,13 @@ set_hash->Has("Oakland")->PrintLine();
 	```	
 	~#
 	class SetHash<K : Compare> {
-		@set : Set<K>;
+		@hash : Hash<K>;
 
 		#~
 		Default constructor 
 		~#
 		New() {
-			@set := Set->New()<K>;
+			@hash := Hash->New()<K, K>;
 		}
 
 		#~
@@ -3454,7 +3454,7 @@ set_hash->Has("Oakland")->PrintLine();
 		@param key key
 		~#
 		method : public : Insert(key : K) ~ Nil {
-			@set->Insert(key);
+			@hash->Insert(key);
 		}
 
 		#~
@@ -3494,7 +3494,7 @@ set_hash->Has("Oakland")->PrintLine();
 		@return true if removed, false otherwise		
 		~#
 		method : public : Remove(key : K) ~ Bool {
-			return @set->Remove(key);
+			return @hash->Remove(key);
 		}
     
     	#~
@@ -3503,7 +3503,7 @@ set_hash->Has("Oakland")->PrintLine();
 		@return true if found, false otherwise
 		~#
 		method : public : Has(key : K) ~ Bool {
-			return @set->Has(key);
+			return @hash->Has(key);
 		}
     
 		#~
@@ -3511,14 +3511,14 @@ set_hash->Has("Oakland")->PrintLine();
 		@return vector of keys
 		~#
 		method : public : GetKeys() ~ Vector<K> {
-			return @set->GetKeys();
+			return @hash->GetKeys();
 		}
 
 		#~
 		Clears the set
 		~#
 		method : public : Empty() ~ Nil {
-			@set->Empty();
+			@hash->Empty();
 		}
 
 		#~
@@ -3526,7 +3526,7 @@ set_hash->Has("Oakland")->PrintLine();
 		@return true if empty, false otherwise
 		~#
 		method : public : IsEmpty() ~ Bool {
-			return @set->IsEmpty();
+			return @hash->IsEmpty();
 		}
 		
 		#~
@@ -3534,7 +3534,7 @@ set_hash->Has("Oakland")->PrintLine();
 		@return size of queue
 		~#
 		method : public : Size() ~ Int {
-			return @set->Size();
+			return @hash->Size();
 		}
 	}
 		
