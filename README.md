@@ -28,6 +28,8 @@ Want to get started? Take a look at the [language guide](https://objeck.org/gett
 
 ## Latest
 * ML algorithms
+  * v2023.12.1
+    * Gradient Descent
   * v2023.12.0
     * ~~Linear Regression Solver~~
   * v2023.11.2
