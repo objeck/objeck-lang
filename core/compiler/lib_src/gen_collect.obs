@@ -307,9 +307,8 @@ each(value := values) {
 	}
 
 	#~
-	Hash table of generics
-
-
+	Hash unordered table of generics
+	
 	```
 # insert elements
 hash := Collection.Hash->New()<IntRef, String>;
@@ -2796,8 +2795,7 @@ function : Show(value : IntRef) ~ Nil {
 	}
 	
 	#~
-	Balanced tree of 'Compare' keys and 'Base' values
-	
+	Balanced ordered tree of 'Compare' keys and 'Base' values
 	
 	```
 	function : Example() ~ Nil {	
@@ -3423,9 +3421,9 @@ set->Has("Oakland")->PrintLine();
 			return @map->Size();
 		}
 	}
-
+	
 	#~
-	Binary tree that holds multiple values with the same key
+	Ordered binary tree that holds multiple values with the same key
 	~#
 	class MultiMap<K : Compare, V> {
 		@map : Map<K, Vector<V> >;
