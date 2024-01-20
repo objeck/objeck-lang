@@ -26,24 +26,28 @@ class StreamParser {
         last_pos := stream->Size() - 1;
         
         while(start_pos < last_pos) {
-            
-
             if(stream->Get(start_pos) = '{' | stream->Get(start_pos) = '[') {
                 start_pos += 1;
-start_pos->PrintLine();                
+# start_pos->PrintLine();                
             };
 
             if(stream->Get(last_pos) = '}' | stream->Get(last_pos) = ']') {
-last_pos->PrintLine();                
+# last_pos->PrintLine();                
                 last_pos -= 1;
+            };
+
+            end := start_pos + 1;
+            if(stream->Get(end) <> '"') {
+                while(stream->Get(end) <> '"') {
+                    end += 1;
+                };
+                start_pos += end + 1;
             };
 
             # substring... tbd
 
-stream->SubString(start_pos, last_pos - start_pos + 1)->PrintLine();
-
-            start_pos += 1;
-            last_pos -= 1;
+stream->SubString(start_pos, last_pos - start_pos + 1)->Trim()->PrintLine();
+ParseType(stream->SubString(start_pos, last_pos - start_pos + 1)->Trim());
         };
 
         return StreamParser->Type->UNKNOWN;
