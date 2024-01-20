@@ -23,6 +23,11 @@ class StreamParser {
     function : native : ParseType(stream : String) ~ StreamParser->Type {
         start_pos := 0;
         last_pos := stream->Size() - 1;
+
+        # TODO: 
+        # 1. rework to capture indices/offsets, first
+        # 1. parse values, looking for match
+        # 3. if a match is found continue to parse the next element
         
         each(i : 1) {
             if(stream->Get(start_pos) = '{' | stream->Get(start_pos) = '[' | stream->Get(start_pos) = ':' | stream->Get(start_pos) = ' ') {
@@ -41,7 +46,7 @@ class StreamParser {
                 while(stream->Get(end) <> '"') {
                     end += 1;
                 };
-                
+
 stream->SubString(start_pos, end - start_pos + 1)->PrintLine();
 "---"->PrintLine();
                 start_pos := end + 1;
@@ -61,8 +66,8 @@ stream->SubString(start_pos, end - start_pos)->PrintLine();
 "---"->PrintLine();
             };
 
-stream->SubString(start_pos, last_pos - start_pos + 1)->PrintLine();
-"---"->PrintLine();
+# stream->SubString(start_pos, last_pos - start_pos + 1)->PrintLine();
+# "---"->PrintLine();
 # ParseType(stream->SubString(start_pos, last_pos - start_pos + 1));
         };
 
