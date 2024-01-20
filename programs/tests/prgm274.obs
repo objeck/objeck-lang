@@ -38,6 +38,8 @@ last_pos->PrintLine();
                 last_pos -= 1;
             };
 
+            # substring... tbd
+
 stream->SubString(start_pos, last_pos - start_pos + 1)->PrintLine();
 
             start_pos += 1;
