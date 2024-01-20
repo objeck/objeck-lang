@@ -24,7 +24,7 @@ class StreamParser {
         start_pos := 0;
         end_pos := stream->Size() - 1;
 
-        # TODO: 
+        # TODO
         # 1. rework to capture indices/offsets, first
         # 2. parse values, looking for match
         # 3. if a match is found continue to parse the next element
@@ -42,7 +42,9 @@ class StreamParser {
             end_char := stream->Get(end_pos);
 
             if(start_char = '{' & end_char = '}') {
-                # TODO: go in with index offsets
+                # TODO
+                # 1.  parse this level
+                # 2. go in with index offsets
                 "'{$start_char}' => '{$end_char}'"->PrintLine();
             };
         }
