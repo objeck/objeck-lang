@@ -3421,7 +3421,123 @@ set->Has("Oakland")->PrintLine();
 			return @map->Size();
 		}
 	}
-	
+
+	#~
+	Unordered set of generic objects
+
+	```
+# insert elements
+set := Collection.Set->New()<String>;
+set->Insert("San Francisco");
+set->Insert("Oakland");
+set->Insert("East Bay");
+
+# get size
+set->Size()->PrintLine();
+
+# get value by key
+set->Has("Oakland")->PrintLine();
+	```	
+	~#
+	class SetHash<K : Compare> {
+		@set : Set<K>;
+
+		#~
+		Default constructor 
+		~#
+		New() {
+			@set := Set->New()<K>;
+		}
+
+		#~
+		Inserts a key into the set
+		@param key key
+		~#
+		method : public : Insert(key : K) ~ Nil {
+			@set->Insert(key);
+		}
+
+		#~
+		Formats the collection into a string. If an element implements the 'Stringify' 
+		interface, it's 'ToString()' is called.
+		@return string representation
+		~#
+		method : public : ToString() ~ String {
+			buffer := "[";
+
+			keys := GetKeys()<K>;
+			each(i : keys) {
+				# get string value if instance implements 'Stringify'
+				key := keys->Get(i);
+
+				if(key->TypeOf(Stringify)) {
+					buffer->Append(key->As(System.Stringify)->ToString());
+				}
+				# use instance ID instead
+				else {
+					buffer->Append(key->GetInstanceID()->ToHexString());
+				};
+
+				# add comma
+				if(i + 1 < keys->Size()) {
+					buffer->Append(',');
+				};
+			};
+			buffer->Append(']');
+
+			return buffer;
+		}
+		
+		#~
+		Removes a key from the set
+		@param key key for value to remove
+		@return true if removed, false otherwise		
+		~#
+		method : public : Remove(key : K) ~ Bool {
+			return @set->Remove(key);
+		}
+    
+    	#~
+		Checks for key in set
+		@param key search key
+		@return true if found, false otherwise
+		~#
+		method : public : Has(key : K) ~ Bool {
+			return @set->Has(key);
+		}
+    
+		#~
+		Get a collection of keys
+		@return vector of keys
+		~#
+		method : public : GetKeys() ~ Vector<K> {
+			return @set->GetKeys();
+		}
+
+		#~
+		Clears the set
+		~#
+		method : public : Empty() ~ Nil {
+			@set->Empty();
+		}
+
+		#~
+		Checks to see if the set is empty
+		@return true if empty, false otherwise
+		~#
+		method : public : IsEmpty() ~ Bool {
+			return @set->IsEmpty();
+		}
+		
+		#~
+		Size of map
+		@return size of queue
+		~#
+		method : public : Size() ~ Int {
+			return @set->Size();
+		}
+	}
+		
 	#~
 	Ordered binary tree that holds multiple values with the same key
 	~#
