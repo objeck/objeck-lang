@@ -41,12 +41,7 @@ class StreamParser {
             }
             end_char := stream->Get(end_pos);
 
-            if(start_char <> end_char) {
-                "{$start_pos}, {$end_pos}"->PrintLine();
-            }
-            else {
-                "Error"->ErrorLine();
-            }
+            "{$start_char}, {$end_char}"->PrintLine();
         }
             
 
