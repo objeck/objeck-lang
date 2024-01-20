@@ -41,7 +41,10 @@ class StreamParser {
             }
             end_char := stream->Get(end_pos);
 
-            "{$start_char}, {$end_char}"->PrintLine();
+            if(start_char = '{' & end_char = '}') {
+                # TODO: go in with index offsets
+                "'{$start_char}' => '{$end_char}'"->PrintLine();
+            };
         }
             
 
