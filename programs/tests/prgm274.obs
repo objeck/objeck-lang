@@ -14,7 +14,7 @@ class StreamParser {
 
     function : Main(args : String[]) ~ Nil {
         if(args->Size() = 1) {
-#            stream := System.IO.Filesystem.FileReader->ReadFile(args[0])->Trim();
+#            stream := System.IO.Filesystem.FileReader->ReadFile(args[0]);
 
             stream := "{\"count\": 3, \"results\": [\"a\", \"b\", \"c\"]}"
             ParseType(stream);
@@ -36,18 +36,19 @@ class StreamParser {
                 last_pos -= 1;
             };
 
-            end := start_pos + 1;
-            if(stream->Get(end) <> '"') {
+            if(stream->Get(start_pos + 1) <> '"') {
+                end := start_pos + 1;
                 while(stream->Get(end) <> '"') {
                     end += 1;
                 };
+stream->SubString(start_pos, end - start_pos + 1)->PrintLine();
                 start_pos += end + 1;
             };
 
             # substring... tbd
 
-stream->SubString(start_pos, last_pos - start_pos + 1)->Trim()->PrintLine();
-ParseType(stream->SubString(start_pos, last_pos - start_pos + 1)->Trim());
+stream->SubString(start_pos, last_pos - start_pos + 1)->PrintLine();
+# ParseType(stream->SubString(start_pos, last_pos - start_pos + 1));
         };
 
         return StreamParser->Type->UNKNOWN;
