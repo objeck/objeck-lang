@@ -3440,7 +3440,7 @@ set_hash->Has("Oakland")->PrintLine();
 	```	
 	~#
 	class SetHash<K : Compare> {
-		@hash : Hash<K>;
+		@hash : Hash<K, K>;
 
 		#~
 		Default constructor 
@@ -3454,7 +3454,7 @@ set_hash->Has("Oakland")->PrintLine();
 		@param key key
 		~#
 		method : public : Insert(key : K) ~ Nil {
-			@hash->Insert(key);
+			@hash->Insert(key, key);
 		}
 
 		#~
