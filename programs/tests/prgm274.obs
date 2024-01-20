@@ -43,8 +43,8 @@ class StreamParser {
 
             if(start_char = '{' & end_char = '}') {
                 # TODO
-                # 1.  parse this level
-                # 2. go in with index offsets
+                # 1. parse this level
+                # 2. go in with index offsets to the next level
                 "'{$start_char}' => '{$end_char}'"->PrintLine();
             };
         }
