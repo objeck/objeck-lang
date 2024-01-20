@@ -41,6 +41,7 @@ class StreamParser {
             }
             end_char := stream->Get(end_pos);
 
+            # note: string, boolean, and null are single elements
             if(start_char = '{' & end_char = '}') {
                 # TODO
                 # 1. parse this level
