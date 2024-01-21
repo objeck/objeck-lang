@@ -1,0 +1,15 @@
+class Test {
+    function : Main(args : String[]) ~ Nil {
+        set_hash := Collection.SetHash->New()<String>;
+        set_hash->Insert("San Francisco");
+        set_hash->Insert("Oakland");
+        set_hash->Insert("East Bay");
+
+        # get size
+        set_hash->Size()->PrintLine();
+
+        # get value by key
+        set_hash->Has("Oakland")->PrintLine();
+        set_hash->Has("New York")->PrintLine();
+    }
+}
