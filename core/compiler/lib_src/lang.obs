@@ -1640,6 +1640,33 @@ bundle System {
 	}
 
 	#~
+	Range support for integers
+	~#
+	class IntRange {
+		@start : Int;
+		@end : Int;
+		@step : Int;
+
+		New(end : Int, start : Int, step : Int) {
+			@end := end;
+			@start := start;
+			@step := step;
+		}
+
+		New(end : Int, start : Int) {
+			@end := end;
+			@start := start;
+			@step := 1;
+		}
+		
+		New(end : Int) {
+			@end := end;
+			@start := 0;
+			@step := 1;
+		}
+	}
+
+	#~
 	Float class represents a double-precision floating-point value
 	~#	
 	class $Float from Number {
