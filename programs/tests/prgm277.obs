@@ -1,0 +1,9 @@
+class Repl {
+    function : Main(args : String[]) ~ Nil {
+        a : IntRange := Range->New(1,2,3);
+        b := a;
+        each(b) {
+            b->PrintLine();
+        };
+    }
+}
