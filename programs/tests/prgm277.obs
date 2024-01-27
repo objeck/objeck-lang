@@ -1,0 +1,29 @@
+class Repl {
+    function : Main(args : String[]) ~ Nil {
+#~
+        b : Bool[];
+        each(i : b) {
+            i->PrintLine();
+        };
+~#
+
+#        r0 : IntRange := IntRange->New(1,11,2);
+
+       each(e : IntRange->New(5,21,3)) {
+#       each(a : r0) {    
+            e->PrintLine();
+        };
+#~
+        r1 := r0;
+
+        each(e : r1) {
+            a->PrintLine();
+        };
+
+
+        for(a := 0; a < 11; a += 2;) {
+            a->PrintLine();
+        };
+~#        
+    }
+}

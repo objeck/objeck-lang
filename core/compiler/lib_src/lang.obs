@@ -17,6 +17,13 @@ Core system classes
 ~#
 bundle System {
 	#~
+	Range interface
+	~#
+	interface Range {
+	    
+	}
+
+	#~
 	Boolean class
 	~#
 	class $Bool {
@@ -1159,6 +1166,33 @@ bundle System {
 			return -1;
 		}
 	}
+
+	#~
+	Character range used for loops
+	~#	
+	class CharRange implements Range {
+		@start : Char;
+		@end : Char;
+		@step : Char;
+
+		New(start : Char, end : Char, step : Char) {
+			@start := start;
+			@end := end;
+			@step := step;
+		}
+
+		public : method : GetStart() ~ Char {
+			return @start;
+		}
+
+		public : method : GetEnd() ~ Char {
+			return @end;
+		}
+
+		public : method : GetStep() ~ Char {
+			return @step;
+		}
+	}
 	
 	#~
 	Integer class represents an operating system long value
@@ -1636,6 +1670,33 @@ bundle System {
 			buffer->Append(']');
 
 			return buffer;
+		}
+	}
+
+	#~
+	Integer range used for loops
+	~#	
+	class IntRange implements Range {
+		@start : Int;
+		@end : Int;
+		@step : Int;
+
+		New(start : Int, end : Int, step : Int) {
+			@start := start;
+			@end := end;
+			@step := step;
+		}
+
+		public : method : GetStart() ~ Int {
+			return @start;
+		}
+
+		public : method : GetEnd() ~ Int {
+			return @end;
+		}
+
+		public : method : GetStep() ~ Int {
+			return @step;
 		}
 	}
 
@@ -2269,6 +2330,33 @@ bundle System {
 			if(i < high) {
 				Sort(array, i, high);
 			};
+		}
+	}
+
+	#~
+	Float range used for loops
+	~#	
+	class FloatRange implements Range {
+		@start : Float;
+		@end : Float;
+		@step : Float;
+
+		New(start : Float, end : Float, step : Float) {
+			@start := start;
+			@end := end;
+			@step := step;
+		}
+
+		public : method : GetStart() ~ Float {
+			return @start;
+		}
+
+		public : method : GetEnd() ~ Float {
+			return @end;
+		}
+
+		public : method : GetStep() ~ Float {
+			return @step;
 		}
 	}
 
