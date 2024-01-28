@@ -4174,68 +4174,68 @@ void ContextAnalyzer::AnalyzeCritical(CriticalSection* mutex, const int depth)
 void ContextAnalyzer::AnalyzeFor(For* for_stmt, const int depth)
 {
   current_table->NewScope();
-
-  // pre-expression
-  std::vector<Statement*> pre_statements = for_stmt->GetPreStatements()->GetStatements();
-  if(pre_statements.size() == 1 && pre_statements.front()->GetStatementType() == DECLARATION_STMT) {
-    SymbolEntry* pre_dclr_entry = static_cast<Declaration*>(pre_statements.front())->GetEntry();
-    // range expression
-    if(pre_dclr_entry->GetType()->GetType() == CLASS_TYPE) {
-      const std::wstring cls_name = pre_dclr_entry->GetType()->GetName();
-      if(!EndsWith(cls_name, L"Range")) {
-        ProcessError(for_stmt, L"Expected Range instance");
-      }
+  
+  bool is_range = false;
+  CalculatedExpression* cond_expr = static_cast<CalculatedExpression*>(for_stmt->GetExpression());
+  
+  if(cond_expr->GetRight()->GetExpressionType() == METHOD_CALL_EXPR) {
+    const std::wstring cond_expr_name = static_cast<MethodCall*>(cond_expr->GetRight())->GetVariableName();
+    SymbolEntry* cond_expr_type = current_table->GetEntry(current_method->GetName() + L':' + cond_expr_name);
+    if(cond_expr_type && cond_expr_type->GetType()->GetType() == CLASS_TYPE) {
+      is_range = true;
     }
-    // declared values
-    else {
-      for(size_t i = 0; i < pre_statements.size(); ++i) {
-        AnalyzeStatement(pre_statements[i], depth + 1);
-      }
-
-      // conditional expression
-      Expression* expression = for_stmt->GetExpression();
-      if(expression) {
-        AnalyzeExpression(expression, depth + 1);
-
-        if(!IsBooleanExpression(expression)) {
-          ProcessError(expression, L"Expected Bool expression");
-        }
-
-        switch(expression->GetExpressionType()) {
-        case AND_EXPR:
-        case OR_EXPR:
-        case EQL_EXPR:
-        case NEQL_EXPR:
-        case LES_EXPR:
-        case GTR_EXPR:
-        case LES_EQL_EXPR:
-        case GTR_EQL_EXPR:
-        {
-          CalculatedExpression* calc_expr = static_cast<CalculatedExpression*>(expression);
-          Expression* right_expr = calc_expr->GetRight();
-          if(right_expr && right_expr->GetExpressionType() == VAR_EXPR && right_expr->GetEvalType()) {
-            Variable* var_expr = static_cast<Variable*>(right_expr);
-            if(var_expr->GetIndices() && right_expr->GetEvalType() &&
-               (int)(var_expr->GetIndices()->GetExpressions().size()) != right_expr->GetEvalType()->GetDimension()) {
-              ProcessError(expression, L"Dimension size mismatch");
-            }
-          }
-        }
-        break;
-
-        default:
-          break;
-        }
-      }
-
-      // update expression
-      AnalyzeStatement(for_stmt->GetUpdateStatement(), depth + 1);
-    }
+  }
+  
+  if(is_range) {
+    for_stmt->SetRange(true);
   }
   else {
-    ProcessError(for_stmt, L"Expected declaration");
-  }
+    // pre-expression
+    std::vector<Statement*> pre_statements = for_stmt->GetPreStatements()->GetStatements();
+    for(size_t i = 0; i < pre_statements.size(); ++i) {
+      AnalyzeStatement(pre_statements[i], depth + 1);
+    }
 
+    // conditional expression
+    Expression* expression = for_stmt->GetExpression();
+    if(expression) {
+      AnalyzeExpression(expression, depth + 1);
+
+      if(!IsBooleanExpression(expression)) {
+        ProcessError(expression, L"Expected Bool expression");
+      }
+
+      switch(expression->GetExpressionType()) {
+      case AND_EXPR:
+      case OR_EXPR:
+      case EQL_EXPR:
+      case NEQL_EXPR:
+      case LES_EXPR:
+      case GTR_EXPR:
+      case LES_EQL_EXPR:
+      case GTR_EQL_EXPR:
+      {
+        CalculatedExpression* calc_expr = static_cast<CalculatedExpression*>(expression);
+        Expression* right_expr = calc_expr->GetRight();
+        if(right_expr && right_expr->GetExpressionType() == VAR_EXPR && right_expr->GetEvalType()) {
+          Variable* var_expr = static_cast<Variable*>(right_expr);
+          if(var_expr->GetIndices() && right_expr->GetEvalType() &&
+             (int)(var_expr->GetIndices()->GetExpressions().size()) != right_expr->GetEvalType()->GetDimension()) {
+            ProcessError(expression, L"Dimension size mismatch");
+          }
+        }
+      }
+      break;
+
+      default:
+        break;
+      }
+    }
+
+    // update expression
+    AnalyzeStatement(for_stmt->GetUpdateStatement(), depth + 1);
+  }
+  
   // statements
   in_loop++;
   StatementList* statements = for_stmt->GetStatements();
@@ -4244,7 +4244,6 @@ void ContextAnalyzer::AnalyzeFor(For* for_stmt, const int depth)
   if(for_stmt->IsBoundAssignment()) {
     MethodCall* mthd_call_expr = nullptr;
     if(for_stmt->GetExpression()->GetExpressionType() == LES_EXPR) {
-      CalculatedExpression* cond_expr = static_cast<CalculatedExpression*>(for_stmt->GetExpression());
       mthd_call_expr = static_cast<MethodCall*>(cond_expr->GetRight());
     }
     else {
@@ -4317,9 +4316,8 @@ void ContextAnalyzer::AnalyzeFor(For* for_stmt, const int depth)
       assignment->SetExpression(right_expr);
       statements->PrependStatement(assignment);
     }
-    else {
-      ProcessError(for_stmt, L"Expected class or array type");
-    }
+
+    ProcessError(for_stmt, L"Expected class or array type");
   }
   AnalyzeStatements(statements, depth + 1);
   in_loop--;
