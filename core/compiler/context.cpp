@@ -4181,12 +4181,12 @@ void ContextAnalyzer::AnalyzeFor(For* for_stmt, const int depth)
   if(cond_expr->GetRight()->GetExpressionType() == METHOD_CALL_EXPR) {
     const std::wstring cond_expr_name = static_cast<MethodCall*>(cond_expr->GetRight())->GetVariableName();
     SymbolEntry* cond_expr_type = current_table->GetEntry(current_method->GetName() + L':' + cond_expr_name);
-    if(cond_expr_type && cond_expr_type->GetType()->GetType() == CLASS_TYPE) {
+    if(cond_expr_type && cond_expr_type->GetType()->GetType() == CLASS_TYPE && EndsWith(cond_expr_type->GetType()->GetName(), L"Range")) {
       is_range = true;
     }
   }
   
-  if(false) {
+  if(is_range) {
     for_stmt->SetRange(true);
   }
   else {
