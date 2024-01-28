@@ -4191,11 +4191,12 @@ void ContextAnalyzer::AnalyzeFor(For* for_stmt, const int depth)
     }
   }
   
+  // range expression
   if(is_range) {
     for_stmt->SetRange(true);
   }
+  // pre-expressions
   else {
-    // pre-expression
     std::vector<Statement*> pre_statements = for_stmt->GetPreStatements()->GetStatements();
     for(size_t i = 0; i < pre_statements.size(); ++i) {
       AnalyzeStatement(pre_statements[i], depth + 1);
