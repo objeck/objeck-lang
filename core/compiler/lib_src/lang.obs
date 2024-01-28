@@ -1176,6 +1176,7 @@ bundle System {
 		@step : Char;
 
 		New(start : Char, end : Char, step : Char) {
+			Parent();
 			@start := start;
 			@end := end;
 			@step := step;
@@ -1682,6 +1683,7 @@ bundle System {
 		@step : Int;
 
 		New(start : Int, end : Int, step : Int) {
+			Parent();
 			@start := start;
 			@end := end;
 			@step := step;
@@ -2342,6 +2344,7 @@ bundle System {
 		@step : Float;
 
 		New(start : Float, end : Float, step : Float) {
+			Parent();
 			@start := start;
 			@end := end;
 			@step := step;
