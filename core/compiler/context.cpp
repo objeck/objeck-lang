@@ -4186,7 +4186,7 @@ void ContextAnalyzer::AnalyzeFor(For* for_stmt, const int depth)
     }
   }
   
-  if(is_range) {
+  if(false) {
     for_stmt->SetRange(true);
   }
   else {
