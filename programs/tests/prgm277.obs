@@ -6,7 +6,8 @@ class Repl {
 
         n := 10;
 ~#        
-        each(e : IntRange->New(5,21,3)) {
+
+        each(e : 13) {
             1010->PrintLine();
         };
     }
