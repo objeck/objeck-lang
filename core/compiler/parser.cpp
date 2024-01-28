@@ -5204,6 +5204,15 @@ For* Parser::ParseEach(bool reverse, int depth)
                                                                    variable->GetName(), L"Size", TreeFactory::Instance()->MakeExpressionList());
         }
       }
+      else if(left_pre_count->GetExpressionType() == METHOD_CALL_EXPR) {
+        MethodCall* method_call = static_cast<MethodCall*>(left_pre_count);
+        const std::wstring method_name = method_call->GetVariableName();
+        if(!EndsWith(method_name, L"Range")) {
+          ProcessError(L"Expected Range instance", TOKEN_SEMI_COLON);
+        }
+        count_type->SetType(CLASS_TYPE);
+        count_type->SetName(method_name);
+      }
       else if(left_pre_count->GetExpressionType() != METHOD_CALL_EXPR) {
         ProcessError(L"Expected variable or literal expression", TOKEN_SEMI_COLON);
       }
