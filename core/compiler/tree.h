@@ -1647,6 +1647,7 @@ namespace frontend {
     Statement* update_stmt;
     Assignment* bind_assign;
     StatementList* statements;
+    bool is_range;
 
     For(const std::wstring& file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos,
         StatementList* pre, Expression* cond, Statement* update, Assignment* bind_assignment, StatementList* stmts) : Statement(file_name, line_num, line_pos, end_line_num, end_line_pos) {
@@ -1655,6 +1656,7 @@ namespace frontend {
       update_stmt = update;
       bind_assign = bind_assignment;
       statements = stmts;
+      is_range = false;
     }
 
     For(const std::wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, 
@@ -1664,12 +1666,21 @@ namespace frontend {
       update_stmt = update;
       bind_assign = nullptr;
       statements = stmts;
+      is_range = false;
     }
 
     ~For() {
     }
 
   public:
+    const bool IsRange() {
+      return is_range;
+    }
+
+    void SetRange(bool r) {
+      is_range = r;
+    }
+
     const StatementType GetStatementType() {
       return FOR_STMT;
     }

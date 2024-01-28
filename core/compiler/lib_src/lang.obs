@@ -1181,15 +1181,15 @@ bundle System {
 			@step := step;
 		}
 
-		public : method : GetStart() ~ Char {
+		method : method : GetStart() ~ Char {
 			return @start;
 		}
 
-		public : method : GetEnd() ~ Char {
+		method : method : GetEnd() ~ Char {
 			return @end;
 		}
 
-		public : method : GetStep() ~ Char {
+		method : method : GetStep() ~ Char {
 			return @step;
 		}
 	}
@@ -1687,15 +1687,15 @@ bundle System {
 			@step := step;
 		}
 
-		public : method : GetStart() ~ Int {
+		method : method : GetStart() ~ Int {
 			return @start;
 		}
 
-		public : method : GetEnd() ~ Int {
+		method : method : GetEnd() ~ Int {
 			return @end;
 		}
 
-		public : method : GetStep() ~ Int {
+		method : method : GetStep() ~ Int {
 			return @step;
 		}
 	}
@@ -2347,15 +2347,15 @@ bundle System {
 			@step := step;
 		}
 
-		public : method : GetStart() ~ Float {
+		method : method : GetStart() ~ Float {
 			return @start;
 		}
 
-		public : method : GetEnd() ~ Float {
+		method : method : GetEnd() ~ Float {
 			return @end;
 		}
 
-		public : method : GetStep() ~ Float {
+		method : method : GetStep() ~ Float {
 			return @step;
 		}
 	}
