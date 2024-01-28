@@ -4316,8 +4316,9 @@ void ContextAnalyzer::AnalyzeFor(For* for_stmt, const int depth)
       assignment->SetExpression(right_expr);
       statements->PrependStatement(assignment);
     }
-
-    ProcessError(for_stmt, L"Expected class or array type");
+    else {
+      ProcessError(for_stmt, L"Expected class or array type");
+    }
   }
   AnalyzeStatements(statements, depth + 1);
   in_loop--;
