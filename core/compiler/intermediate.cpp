@@ -3085,40 +3085,45 @@ void IntermediateEmitter::EmitFor(For* for_stmt)
 {
   cur_line_num = for_stmt->GetLineNumber();
   
-  // pre statement
-  std::vector<Statement*> pre_statements = for_stmt->GetPreStatements()->GetStatements();
-  for(size_t i = 0; i < pre_statements.size(); ++i) {
-    EmitStatement(pre_statements[i]);
+  if(for_stmt->IsRange()) {
+    std::wcout << "### TODO: Range support ###" << std::endl;
   }
+  // declared values
+  else {
+    std::vector<Statement*> pre_statements = for_stmt->GetPreStatements()->GetStatements();
+    for(size_t i = 0; i < pre_statements.size(); ++i) {
+      EmitStatement(pre_statements[i]);
+    }
 
-  // conditional expression
-  long unconditional = ++unconditional_label;
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LBL, unconditional));
-  EmitExpression(for_stmt->GetExpression());
+    // conditional expression
+    long unconditional = ++unconditional_label;
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LBL, unconditional));
+    EmitExpression(for_stmt->GetExpression());
 
-  // break and continue
-  const long break_label = ++conditional_label;
-  const long unconditional_continue = ++unconditional_label;
-  break_labels.push(std::pair<int, int>(break_label, unconditional_continue));
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, JMP, break_label, false));
-  
-  // statements
-  std::vector<Statement*> for_statements = for_stmt->GetStatements()->GetStatements();
-  for(size_t i = 0; i < for_statements.size(); ++i) {
-    EmitStatement(for_statements[i]);
+    // break and continue
+    const long break_label = ++conditional_label;
+    const long unconditional_continue = ++unconditional_label;
+    break_labels.push(std::pair<int, int>(break_label, unconditional_continue));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, JMP, break_label, false));
+
+    // statements
+    std::vector<Statement*> for_statements = for_stmt->GetStatements()->GetStatements();
+    for(size_t i = 0; i < for_statements.size(); ++i) {
+      EmitStatement(for_statements[i]);
+    }
+
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LBL, unconditional_continue));
+
+    // update statement
+    EmitStatement(for_stmt->GetUpdateStatement());
+
+    // conditional jump
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, JMP, unconditional, -1));
+
+    std::pair<int, int> break_continue_label = break_labels.top();
+    break_labels.pop();
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LBL, (long)break_continue_label.first));
   }
-
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LBL, unconditional_continue));
-
-  // update statement
-  EmitStatement(for_stmt->GetUpdateStatement());
-
-  // conditional jump
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, JMP, unconditional, -1));
-  
-  std::pair<int, int> break_continue_label = break_labels.top();
-  break_labels.pop();
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LBL, (long)break_continue_label.first));
 }
 
 /****************************
