@@ -4200,7 +4200,7 @@ void ContextAnalyzer::AnalyzeFor(For* for_stmt, const int depth)
   // range expression
   if(is_range) {
     Variable* var_expr = static_cast<Variable*>(cond_expr->GetLeft());
-    const std::wstring index_name = current_method->GetName() + L":#" + var_expr->GetName() + L"_index";
+    const std::wstring index_name = current_method->GetName() + L":#" + var_expr->GetName() + L"_range";
     SymbolEntry* index_entry = current_table->GetEntry(index_name);
     for_stmt->SetRangeEntry(index_entry);
     for_stmt->SetRange(true);
