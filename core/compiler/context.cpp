@@ -4180,8 +4180,16 @@ void ContextAnalyzer::AnalyzeFor(For* for_stmt, const int depth)
   
   if(cond_expr->GetRight()->GetExpressionType() == METHOD_CALL_EXPR) {
     const std::wstring cond_expr_name = static_cast<MethodCall*>(cond_expr->GetRight())->GetVariableName();
-    if(EndsWith(cond_expr_name, L"Range")) {
+    if(cond_expr_name == L"CharRange" || cond_expr_name == L"IntRange" || cond_expr_name == L"FloatRange") {
       // TODO: look up and bind class/method
+      LibraryClass* right_class = linker->SearchClassLibraries(L"System." + cond_expr_name, program->GetLibUses(current_class->GetFileName()));
+
+      is_range = true;
+    }
+    else if(cond_expr_name == L"System.CharRange" || cond_expr_name == L"System.IntRange" || cond_expr_name == L"System.FloatRange") {
+      // TODO: look up and bind class/method
+      LibraryClass* right_class = linker->SearchClassLibraries(cond_expr_name, program->GetLibUses(current_class->GetFileName()));
+
       is_range = true;
     }
     else {
