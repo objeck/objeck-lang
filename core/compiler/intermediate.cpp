@@ -3089,22 +3089,20 @@ void IntermediateEmitter::EmitFor(For* for_stmt)
     CalculatedExpression* calc_expr = static_cast<CalculatedExpression*>(for_stmt->GetExpression());
     Expression* right_expr = calc_expr->GetRight();
     if(right_expr->GetExpressionType() == METHOD_CALL_EXPR) {
-      SymbolEntry* range_entry = for_stmt->GetRangeEntry();
-      Declaration* dclr_stmt = (static_cast<Declaration*>(for_stmt->GetPreStatements()->GetStatements().front()));
-      
-      MethodCall* mthd_call = static_cast<MethodCall*>(right_expr);
-      EmitMethodCall(mthd_call, false);
+      Declaration* dclr_stmt = (static_cast<Declaration*>(for_stmt->GetPreStatements()->GetStatements().front()));      
+      EmitMethodCall(static_cast<MethodCall*>(right_expr), false);
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, STOR_INT_VAR, dclr_stmt->GetEntry()->GetId(), LOCL));
 
-      // load start
+      // load pre-condition
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LOAD_INT_VAR, dclr_stmt->GetEntry()->GetId(), LOCL));
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LOAD_INT_VAR, 0, INST));
-
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, STOR_INT_VAR, range_entry->GetId(), LOCL));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, STOR_INT_VAR, for_stmt->GetRangeEntry()->GetId(), LOCL));
 
       // conditional expression
       long unconditional = ++unconditional_label;
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LBL, unconditional));
+
+      // TODO: more to come...
     }
   }
   // declared values
