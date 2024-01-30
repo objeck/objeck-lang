@@ -3084,13 +3084,12 @@ void IntermediateEmitter::EmitWhile(While* while_stmt)
 void IntermediateEmitter::EmitFor(For* for_stmt)
 {
   cur_line_num = for_stmt->GetLineNumber();
-  
+
   if(for_stmt->IsRange()) {
-    // load range
-    Declaration* range_dclr = static_cast<Declaration*>(for_stmt->GetPreStatements()->GetStatements().front());
-    SymbolEntry* range_entry = range_dclr->GetEntry();
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LOAD_INT_VAR, range_entry->GetId(), LOCL));
-    // TODO: get start
+    Expression* right_expr = static_cast<CalculatedExpression*>(for_stmt->GetExpression())->GetRight();
+    if(right_expr->GetExpressionType() == METHOD_CALL_EXPR) {
+      EmitMethodCall(static_cast<MethodCall*>(right_expr), false);
+    }
   }
   // declared values
   else {
