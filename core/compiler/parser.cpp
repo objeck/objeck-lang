@@ -5205,13 +5205,13 @@ For* Parser::ParseEach(bool reverse, int depth)
         }
       }
       else if(left_pre_count->GetExpressionType() == METHOD_CALL_EXPR) {
-        MethodCall* method_call = static_cast<MethodCall*>(left_pre_count);
-        count_type->SetType(CLASS_TYPE);
-        count_type->SetName(method_call->GetVariableName());
+        // MethodCall* method_call = static_cast<MethodCall*>(left_pre_count);
+        // count_type->SetType(CLASS_TYPE);
+        // count_type->SetName(method_call->GetVariableName());
 
         // add count entry
-        const std::wstring count_scope_name = GetScopeName(L'#' + count_ident + L"_index");
-        Type* count_type = TypeFactory::Instance()->MakeType(INT_TYPE);
+        const std::wstring count_scope_name = GetScopeName(L'#' + count_ident + L"_range");
+        Type* count_type = TypeFactory::Instance()->MakeType(CLASS_TYPE);
         SymbolEntry* count_entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num, line_pos, count_scope_name,
                                                                             count_type, false, current_method != nullptr);
 #ifdef _DEBUG

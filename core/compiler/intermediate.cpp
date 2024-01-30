@@ -3094,20 +3094,20 @@ void IntermediateEmitter::EmitFor(For* for_stmt)
       EmitMethodCallParameters(mthd_call);
       EmitMethodCall(mthd_call, false);
 
-      Declaration* dclr_stmt = (static_cast<Declaration*>(for_stmt->GetPreStatements()->GetStatements().front()));
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, STOR_INT_VAR, dclr_stmt->GetEntry()->GetId(), LOCL));
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LOAD_INT_VAR, dclr_stmt->GetEntry()->GetId(), LOCL));
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LOAD_INT_VAR, 0, INST));
+     Declaration* dclr_stmt = (static_cast<Declaration*>(for_stmt->GetPreStatements()->GetStatements().front()));
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, STOR_INT_VAR, for_stmt->GetRangeEntry()->GetId(), LOCL));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LOAD_INT_VAR, for_stmt->GetRangeEntry()->GetId(), LOCL));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LOAD_INT_VAR, 0, INST));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, STOR_INT_VAR, dclr_stmt->GetEntry()->GetId(), LOCL));
       
       // 0
       long unconditional = ++unconditional_label;
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LBL, unconditional));
 
       // 1
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LOAD_INT_VAR, dclr_stmt->GetEntry()->GetId(), LOCL));
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LOAD_INT_VAR, 1, INST));
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LOAD_INT_VAR, for_stmt->GetRangeEntry()->GetId(), LOCL));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LOAD_INT_VAR, 1, INST));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LOAD_INT_VAR, dclr_stmt->GetEntry()->GetId(), LOCL));
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LES_INT));
 
       // 2
@@ -3126,11 +3126,11 @@ void IntermediateEmitter::EmitFor(For* for_stmt)
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LBL, unconditional_continue));
 
       // 5
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LOAD_INT_VAR, dclr_stmt->GetEntry()->GetId(), LOCL));
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LOAD_INT_VAR, 2, INST));
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LOAD_INT_VAR, for_stmt->GetRangeEntry()->GetId(), LOCL));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LOAD_INT_VAR, 2, INST));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LOAD_INT_VAR, dclr_stmt->GetEntry()->GetId(), LOCL));
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, ADD_INT));
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, STOR_INT_VAR, for_stmt->GetRangeEntry()->GetId(), LOCL));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, STOR_INT_VAR, dclr_stmt->GetEntry()->GetId(), LOCL));
 
       // 6
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, JMP, unconditional, -1));
