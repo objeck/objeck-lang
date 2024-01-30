@@ -5065,7 +5065,6 @@ For* Parser::ParseEach(bool reverse, int depth)
     bound_ident = count_ident;
     count_ident = L'#' + count_ident + L"_index";
   }
-  std::wstring count_scope_name = GetScopeName(count_ident);
 
   // add bind variable entry
   Assignment* bind_assign = nullptr;
@@ -5086,6 +5085,7 @@ For* Parser::ParseEach(bool reverse, int depth)
   }
 
   // add count entry
+  const std::wstring count_scope_name = GetScopeName(count_ident);
   Type* count_type = TypeFactory::Instance()->MakeType(INT_TYPE);
   SymbolEntry* count_entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num, line_pos, count_scope_name, 
                                                                       count_type, false, current_method != nullptr);
@@ -5208,6 +5208,18 @@ For* Parser::ParseEach(bool reverse, int depth)
         MethodCall* method_call = static_cast<MethodCall*>(left_pre_count);
         count_type->SetType(CLASS_TYPE);
         count_type->SetName(method_call->GetVariableName());
+
+        // add count entry
+        const std::wstring count_scope_name = GetScopeName(L'#' + count_ident + L"_index");
+        Type* count_type = TypeFactory::Instance()->MakeType(INT_TYPE);
+        SymbolEntry* count_entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num, line_pos, count_scope_name,
+                                                                            count_type, false, current_method != nullptr);
+#ifdef _DEBUG
+        Debug(L"Adding count variable: '" + count_scope_name + L"'", depth + 2);
+#endif
+        if(!symbol_table->CurrentParseScope()->AddEntry(count_entry)) {
+          ProcessError(L"Variable already defined in this scope: '" + count_ident + L"'");
+        }
       }
       else if(left_pre_count->GetExpressionType() != METHOD_CALL_EXPR) {
         ProcessError(L"Expected variable or literal expression", TOKEN_SEMI_COLON);
