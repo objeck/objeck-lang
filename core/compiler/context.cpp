@@ -948,7 +948,7 @@ void ContextAnalyzer::CheckUnreferencedVariables(Method* method)
         const int end_line = method->GetEndLineNumber();
         for(size_t j = 0; j < variables.size(); ++j) {
           Variable* variable = variables[j];
-          // range check required for method overloading (not ideals)
+          // range check required for method overloading (not ideal)
           if(variable->GetLineNumber() >= start_line && variable->GetLineNumber() < end_line) {
             ProcessWarning(variable, L"Variable '" + variable->GetName() + L"' is unreferenced");
           }
@@ -4181,6 +4181,7 @@ void ContextAnalyzer::AnalyzeFor(For* for_stmt, const int depth)
   if(cond_expr->GetRight()->GetExpressionType() == METHOD_CALL_EXPR) {
     const std::wstring cond_expr_name = static_cast<MethodCall*>(cond_expr->GetRight())->GetVariableName();
     if(EndsWith(cond_expr_name, L"Range")) {
+      // TODO: look up and bind class/method
       is_range = true;
     }
     else {
