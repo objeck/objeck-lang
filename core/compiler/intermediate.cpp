@@ -3101,7 +3101,21 @@ void IntermediateEmitter::EmitFor(For* for_stmt)
       long unconditional = ++unconditional_label;
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LBL, unconditional));
 
-      // TODO: more to come...
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, STOR_INT_VAR, dclr_stmt->GetEntry()->GetId(), LOCL));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LOAD_INT_VAR, dclr_stmt->GetEntry()->GetId(), LOCL));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LOAD_INT_VAR, 1, INST));
+
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LOAD_INT_VAR, for_stmt->GetRangeEntry()->GetId(), LOCL));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LES_INT));
+
+
+      /*
+      TODO: more to come...
+
+      LOAD_INT_LIT: value=21
+      LOAD_INT_VAR: id=1; local=true
+      LES_INT
+      */
     }
   }
   // declared values
