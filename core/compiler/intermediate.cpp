@@ -3086,7 +3086,11 @@ void IntermediateEmitter::EmitFor(For* for_stmt)
   cur_line_num = for_stmt->GetLineNumber();
   
   if(for_stmt->IsRange()) {
-    std::wcout << "### TODO: Range support ###" << std::endl;
+    // load range
+    Declaration* range_dclr = static_cast<Declaration*>(for_stmt->GetPreStatements()->GetStatements().front());
+    SymbolEntry* range_entry = range_dclr->GetEntry();
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LOAD_INT_VAR, range_entry->GetId(), LOCL));
+    // TODO: get start
   }
   // declared values
   else {
