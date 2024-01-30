@@ -3089,11 +3089,14 @@ void IntermediateEmitter::EmitFor(For* for_stmt)
     CalculatedExpression* calc_expr = static_cast<CalculatedExpression*>(for_stmt->GetExpression());
     Expression* right_expr = calc_expr->GetRight();
     if(right_expr->GetExpressionType() == METHOD_CALL_EXPR) {
+      Declaration* dclr_stmt = (static_cast<Declaration*>(for_stmt->GetPreStatements()->GetStatements().front()));
+//      EmitVariable(static_cast<Variable*>(calc_expr->GetLeft()));
+      
       MethodCall* mthd_call = static_cast<MethodCall*>(right_expr);
       EmitMethodCall(mthd_call, false);
       
       // load start
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LOAD_INT_VAR, 0, INST));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LOAD_INT_VAR, dclr_stmt->GetEntry()->GetId(), INST));
       Variable* var_expr = static_cast<Variable*>(calc_expr->GetLeft());
 
       SymbolEntry* foo = for_stmt->GetRangeEntry();
