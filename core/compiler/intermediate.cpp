@@ -3086,9 +3086,22 @@ void IntermediateEmitter::EmitFor(For* for_stmt)
   cur_line_num = for_stmt->GetLineNumber();
 
   if(for_stmt->IsRange()) {
-    Expression* right_expr = static_cast<CalculatedExpression*>(for_stmt->GetExpression())->GetRight();
+    CalculatedExpression* calc_expr = static_cast<CalculatedExpression*>(for_stmt->GetExpression());
+    Expression* right_expr = calc_expr->GetRight();
     if(right_expr->GetExpressionType() == METHOD_CALL_EXPR) {
-      EmitMethodCall(static_cast<MethodCall*>(right_expr), false);
+      MethodCall* mthd_call = static_cast<MethodCall*>(right_expr);
+      EmitMethodCall(mthd_call, false);
+      
+      // load start
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LOAD_INT_VAR, 0, INST));
+      Variable* var_expr = static_cast<Variable*>(calc_expr->GetLeft());
+
+      SymbolEntry* foo = for_stmt->GetRangeEntry();
+      foo->GetName();
+
+      // conditional expression
+      long unconditional = ++unconditional_label;
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LBL, unconditional));
     }
   }
   // declared values

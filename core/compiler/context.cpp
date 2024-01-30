@@ -4179,17 +4179,14 @@ void ContextAnalyzer::AnalyzeFor(For* for_stmt, const int depth)
   CalculatedExpression* cond_expr = static_cast<CalculatedExpression*>(for_stmt->GetExpression());
   
   if(cond_expr->GetRight()->GetExpressionType() == METHOD_CALL_EXPR) {
-    const std::wstring cond_expr_name = static_cast<MethodCall*>(cond_expr->GetRight())->GetVariableName();
+    MethodCall* mthd_call_expr = static_cast<MethodCall*>(cond_expr->GetRight());
+    const std::wstring cond_expr_name = mthd_call_expr->GetVariableName();
     if(cond_expr_name == L"CharRange" || cond_expr_name == L"IntRange" || cond_expr_name == L"FloatRange") {
-      // TODO: look up and bind class/method
-      LibraryClass* right_class = linker->SearchClassLibraries(L"System." + cond_expr_name, program->GetLibUses(current_class->GetFileName()));
-
+      AnalyzeMethodCall(mthd_call_expr, depth + 1);
       is_range = true;
     }
     else if(cond_expr_name == L"System.CharRange" || cond_expr_name == L"System.IntRange" || cond_expr_name == L"System.FloatRange") {
-      // TODO: look up and bind class/method
-      LibraryClass* right_class = linker->SearchClassLibraries(cond_expr_name, program->GetLibUses(current_class->GetFileName()));
-
+      AnalyzeMethodCall(mthd_call_expr, depth + 1);
       is_range = true;
     }
     else {
@@ -4202,6 +4199,10 @@ void ContextAnalyzer::AnalyzeFor(For* for_stmt, const int depth)
   
   // range expression
   if(is_range) {
+    Variable* var_expr = static_cast<Variable*>(cond_expr->GetLeft());
+    const std::wstring index_name = current_method->GetName() + L":#" + var_expr->GetName() + L"_index";
+    SymbolEntry* index_entry = current_table->GetEntry(index_name);
+    for_stmt->SetRangeEntry(index_entry);
     for_stmt->SetRange(true);
   }
   // pre-expressions
