@@ -3094,10 +3094,10 @@ void IntermediateEmitter::EmitFor(For* for_stmt)
       EmitMethodCallParameters(mthd_call);
       EmitMethodCall(mthd_call, false);
 
-      Declaration* dclr_stmt = (static_cast<Declaration*>(for_stmt->GetPreStatements()->GetStatements().front()));
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, STOR_INT_VAR, for_stmt->GetRangeEntry()->GetId(), LOCL));
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LOAD_INT_VAR, for_stmt->GetRangeEntry()->GetId(), LOCL));
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LOAD_INT_VAR, 0, INST));
+      Declaration* dclr_stmt = (static_cast<Declaration*>(for_stmt->GetPreStatements()->GetStatements().front()));
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, STOR_INT_VAR, dclr_stmt->GetEntry()->GetId(), LOCL));
       
       // 0
