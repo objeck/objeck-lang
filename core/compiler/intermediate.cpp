@@ -3097,9 +3097,63 @@ void IntermediateEmitter::EmitFor(For* for_stmt)
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LOAD_INT_VAR, 0, INST));
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, STOR_INT_VAR, for_stmt->GetRangeEntry()->GetId(), LOCL));
 
+      // 0: conditional expression
+      long unconditional = ++unconditional_label;
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LBL, unconditional));
+
+      // 1
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LOAD_INT_VAR, dclr_stmt->GetEntry()->GetId(), LOCL));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LOAD_INT_VAR, 1, INST));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LOAD_INT_VAR, for_stmt->GetRangeEntry()->GetId(), LOCL));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LES_INT));
+
+
+      // 2
+      const long break_label = ++conditional_label;
+      const long unconditional_continue = ++unconditional_label;
+      break_labels.push(std::pair<int, int>(break_label, unconditional_continue));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, JMP, break_label, false));
+
+      // 3
+      std::vector<Statement*> for_statements = for_stmt->GetStatements()->GetStatements();
+      for(size_t i = 0; i < for_statements.size(); ++i) {
+        EmitStatement(for_statements[i]);
+      }
+
+      // 4
+
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LBL, unconditional_continue));
+
+      // 5
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LOAD_INT_VAR, dclr_stmt->GetEntry()->GetId(), LOCL));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LOAD_INT_VAR, 2, INST));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LOAD_INT_VAR, for_stmt->GetRangeEntry()->GetId(), LOCL));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, ADD_INT));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, STOR_INT_VAR, for_stmt->GetRangeEntry()->GetId(), LOCL));
+
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, JMP, unconditional, -1));
+      std::pair<int, int> break_continue_label = break_labels.top();
+      break_labels.pop();
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LBL, (long)break_continue_label.first));
+
+
+      /*
       // conditional expression
       long unconditional = ++unconditional_label;
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LBL, unconditional));
+
+      // break and continue
+      const long break_label = ++conditional_label;
+      const long unconditional_continue = ++unconditional_label;
+      break_labels.push(std::pair<int, int>(break_label, unconditional_continue));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, JMP, break_label, false));
+
+      // statements
+      std::vector<Statement*> for_statements = for_stmt->GetStatements()->GetStatements();
+      for(size_t i = 0; i < for_statements.size(); ++i) {
+        EmitStatement(for_statements[i]);
+      }
+
 
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, STOR_INT_VAR, dclr_stmt->GetEntry()->GetId(), LOCL));
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LOAD_INT_VAR, dclr_stmt->GetEntry()->GetId(), LOCL));
@@ -3109,12 +3163,15 @@ void IntermediateEmitter::EmitFor(For* for_stmt)
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LES_INT));
 
 
-      /*
-      TODO: more to come...
+      
 
-      LOAD_INT_LIT: value=21
-      LOAD_INT_VAR: id=1; local=true
-      LES_INT
+      // conditional jump
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, JMP, unconditional, -1));
+
+      std::pair<int, int> break_continue_label = break_labels.top();
+      break_labels.pop();
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LBL, (long)break_continue_label.first));
+
       */
     }
   }
