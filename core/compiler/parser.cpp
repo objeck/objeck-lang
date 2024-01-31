@@ -5218,7 +5218,6 @@ For* Parser::ParseEach(bool reverse, int depth)
       //
       // TODO: error handling
       //
-
       left_pre_count = ParseExpression(depth + 1);
 
       if(left_pre_count->GetExpressionType() == VAR_EXPR) {
