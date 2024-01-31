@@ -3101,9 +3101,9 @@ void IntermediateEmitter::EmitFor(For* for_stmt)
       EmitVariable(variable);
       range_id = variable->GetId();
 
-      const std::wstring foo = variable->GetEntry()->GetType()->GetName();
-      if(variable->GetEntry() && foo == L"System.FloatRange") {
-        is_float = true;
+      if(variable->GetEntry()) {
+        const std::wstring range_type_name = variable->GetEntry()->GetType()->GetName();
+        is_float = range_type_name == L"System.FloatRange";
       }
     }
     else if(right_expr->GetExpressionType() == METHOD_CALL_EXPR) {
@@ -3112,8 +3112,12 @@ void IntermediateEmitter::EmitFor(For* for_stmt)
       EmitMethodCallParameters(mthd_call);
       EmitMethodCall(mthd_call, false);
       range_id = for_stmt->GetRangeEntry()->GetId();
-
-      // TODO: is_float check
+      
+      if(mthd_call->GetLibraryMethod() && mthd_call->GetLibraryMethod()->GetLibraryClass()) {
+        LibraryClass* bar = mthd_call->GetLibraryMethod()->GetLibraryClass();
+        const std::wstring range_type_name = bar->GetName();
+        is_float = range_type_name == L"System.FloatRange";
+      }
     }
 
     // 'FloatRange'
