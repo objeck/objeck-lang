@@ -1,13 +1,14 @@
 class Repl {
     function : Main(args : String[]) ~ Nil {
+#~
         x := 21;
 
-#~        
+        
         for(i := 5; i < x; i += 3;) {
             i->PrintLine();
         }        
 ~#
-        r := IntRange->New(5,x,3);
+        r := IntRange->New(5,21,3);
         each(i : r) {
             i->PrintLine();
         };
