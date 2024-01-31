@@ -3112,6 +3112,8 @@ void IntermediateEmitter::EmitFor(For* for_stmt)
       EmitMethodCallParameters(mthd_call);
       EmitMethodCall(mthd_call, false);
       range_id = for_stmt->GetRangeEntry()->GetId();
+
+      // TODO: is_float check
     }
 
     // 'FloatRange'
