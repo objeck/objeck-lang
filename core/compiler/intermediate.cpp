@@ -3147,6 +3147,10 @@ void IntermediateEmitter::EmitFor(For* for_stmt)
     std::pair<int, int> break_continue_label = break_labels.top();
     break_labels.pop();
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LBL, (long)break_continue_label.first));
+
+#ifdef _DEBUG
+    assert(range_id > -1);
+#endif
   }
   // declared values
   else {

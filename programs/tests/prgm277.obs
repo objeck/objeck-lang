@@ -8,8 +8,8 @@ class Repl {
             i->PrintLine();
         }        
 ~#
-        r := IntRange->New(5,21,3);
-        each(i : r) {
+        
+        each(i : IntRange->New(5,55,3)) {
             i->PrintLine();
         };
     }
