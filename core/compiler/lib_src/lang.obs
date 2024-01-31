@@ -1681,7 +1681,13 @@ bundle System {
 		@start : Int;
 		@end : Int;
 		@step : Int;
-
+		
+		#~
+		Constructor.
+		@param start starting index
+		@param end ending index
+		@param step step by value
+		~#
 		New(start : Int, end : Int, step : Int) {
 			Parent();
 			@start := start;
@@ -1689,14 +1695,49 @@ bundle System {
 			@step := step;
 		}
 
+		#~
+		Constructor.
+		@param start starting index
+		@param end ending index
+		~#
+		New(start : Int, end : Int) {
+			Parent();
+			@start := start;
+			@end := end;
+			@step := 1;
+		}
+
+		#~
+		Constructor.
+		@param end ending index
+		~#
+		New(end : Int) {
+			Parent();
+			@start := 0;
+			@end := end;
+			@step := 1;
+		}
+
+		#~
+		Gets the starting index
+		@return starting index
+		~#
 		method : public : GetStart() ~ Int {
 			return @start;
 		}
 
+		#~
+		Gets the ending index
+		@return ending index
+		~#
 		method : public : GetEnd() ~ Int {
 			return @end;
 		}
 
+		#~
+		Gets the step value
+		@return step value
+		~#
 		method : public : GetStep() ~ Int {
 			return @step;
 		}
