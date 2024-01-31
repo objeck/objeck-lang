@@ -29,7 +29,7 @@ Want to get started? Take a look at the [language guide](https://objeck.org/gett
 ## Latest
 
 * Tuple support
-  * v2023.12.2
+  * v2024.1.1
 
 * Range support
     * v2024.1.0
