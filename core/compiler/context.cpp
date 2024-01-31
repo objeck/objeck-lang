@@ -4194,6 +4194,9 @@ void ContextAnalyzer::AnalyzeFor(For* for_stmt, const int depth)
         variable->SetEvalType(cond_expr_type->GetType(), true);
         cond_expr->SetRight(variable);
         is_range = true;
+
+        cond_expr_type->SetType(TypeFactory::Instance()->MakeType(CHAR_TYPE));
+
       }
     }
   }
