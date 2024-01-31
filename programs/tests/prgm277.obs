@@ -9,7 +9,7 @@ class Repl {
         }        
 ~#
         
-        each(i : IntRange->New(5,55,3)) {
+        each(i : IntRange->New(5)) {
             i->PrintLine();
         };
     }
