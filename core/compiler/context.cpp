@@ -4186,17 +4186,29 @@ void ContextAnalyzer::AnalyzeFor(For* for_stmt, const int depth)
       is_range = true;
     }
     else {
-      SymbolEntry* cond_expr_type = current_table->GetEntry(current_method->GetName() + L':' + cond_expr_name);
-      if(cond_expr_type && cond_expr_type->GetType()->GetType() == CLASS_TYPE && IsRangeName(cond_expr_type->GetType()->GetName())) {
+      SymbolEntry* cond_expr_entry = current_table->GetEntry(current_method->GetName() + L':' + cond_expr_name);
+      if(cond_expr_entry && cond_expr_entry->GetType()->GetType() == CLASS_TYPE && IsRangeName(cond_expr_entry->GetType()->GetName())) {
         Variable* variable = TreeFactory::Instance()->MakeVariable(for_stmt->GetFileName(), for_stmt->GetLineNumber(), for_stmt->GetLinePosition(), cond_expr_name);
-        cond_expr_type->WasLoaded();
-        variable->SetEntry(cond_expr_type);
-        variable->SetEvalType(cond_expr_type->GetType(), true);
+        cond_expr_entry->WasLoaded();
+        variable->SetEntry(cond_expr_entry);
+        variable->SetEvalType(cond_expr_entry->GetType(), true);
         cond_expr->SetRight(variable);
         is_range = true;
 
-        cond_expr_type->SetType(TypeFactory::Instance()->MakeType(CHAR_TYPE));
-
+        Variable* range_var = static_cast<Variable*>(cond_expr->GetLeft());
+        SymbolEntry* range_entry = current_table->GetEntry(current_method->GetName() + L':' + range_var->GetName());
+        if(range_entry && cond_expr_entry && cond_expr_entry->GetType()) {
+          const std::wstring range_name = cond_expr_entry->GetType()->GetName();
+          if(range_name == L"System.CharRange") {
+            range_entry->SetType(TypeFactory::Instance()->MakeType(CHAR_TYPE));
+          }
+          else if(range_name == L"System.IntRange") {
+            range_entry->SetType(TypeFactory::Instance()->MakeType(INT_TYPE));
+          }
+          else if(range_name == L"System.FloatRange") {
+            range_entry->SetType(TypeFactory::Instance()->MakeType(FLOAT_TYPE));
+          }
+        }
       }
     }
   }

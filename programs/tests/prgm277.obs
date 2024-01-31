@@ -7,7 +7,7 @@ class Repl {
         }        
 ~#
               
-        r := CharRange->New('a','f',1);
+        r := CharRange->New('a','f',2);
         each(i : r) {
             i->PrintLine();
         };
