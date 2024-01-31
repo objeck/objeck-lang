@@ -5083,12 +5083,6 @@ For* Parser::ParseEach(bool reverse, int depth)
     bind_assign = TreeFactory::Instance()->MakeAssignment(file_name, line_num, line_pos, GetLineNumber(), 
                                                           GetLinePosition(), bind_left_var, nullptr);
   }
- 
-
-
-  //
-  // TODO: CharRange and FloatRange
-  //
 
   // add count entry
   Type* count_type = nullptr;
@@ -5108,8 +5102,6 @@ For* Parser::ParseEach(bool reverse, int depth)
   }
   SymbolEntry* count_entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num, line_pos, count_scope_name, 
                                                                       count_type, false, current_method != nullptr);
-
-
 
 #ifdef _DEBUG
   Debug(L"Adding count variable: '" + count_scope_name + L"'", depth + 2);
