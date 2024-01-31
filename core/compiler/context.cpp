@@ -4187,20 +4187,17 @@ void ContextAnalyzer::AnalyzeFor(For* for_stmt, const int depth)
     }
     else {
       SymbolEntry* cond_expr_type = current_table->GetEntry(current_method->GetName() + L':' + cond_expr_name);
-      if(cond_expr_type) {
-        const std::wstring type_name = cond_expr_type->GetType()->GetName();
-        if(cond_expr_type->GetType()->GetType() == CLASS_TYPE && IsRangeName(type_name)) {
-          Variable* variable = TreeFactory::Instance()->MakeVariable(for_stmt->GetFileName(), for_stmt->GetLineNumber(), for_stmt->GetLinePosition(), cond_expr_name);
-          cond_expr_type->WasLoaded();
-          variable->SetEntry(cond_expr_type);
-          variable->SetEvalType(cond_expr_type->GetType(), true);
-          cond_expr->SetRight(variable);
-          is_range = true;
-        }
+      if(cond_expr_type && cond_expr_type->GetType()->GetType() == CLASS_TYPE && IsRangeName(cond_expr_type->GetType()->GetName())) {
+        Variable* variable = TreeFactory::Instance()->MakeVariable(for_stmt->GetFileName(), for_stmt->GetLineNumber(), for_stmt->GetLinePosition(), cond_expr_name);
+        cond_expr_type->WasLoaded();
+        variable->SetEntry(cond_expr_type);
+        variable->SetEvalType(cond_expr_type->GetType(), true);
+        cond_expr->SetRight(variable);
+        is_range = true;
       }
     }
   }
-  
+    
   // range expression
   if(is_range) {
     Variable* var_expr = static_cast<Variable*>(cond_expr->GetLeft());
