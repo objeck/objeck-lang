@@ -33,7 +33,7 @@ Want to get started? Take a look at the [language guide](https://objeck.org/gett
 
 * Range support
     * v2023.12.1
-      * ~~Added ``CharRange``, ``IntRange`` and, ``FloatRange``~~
+      * ~~Added ``CharRange``, ``IntRange`` and, ``FloatRange`` classes~~
   
 * ML algorithms
   * v2023.12.0
