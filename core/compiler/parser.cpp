@@ -5084,6 +5084,10 @@ For* Parser::ParseEach(bool reverse, int depth)
                                                           GetLinePosition(), bind_left_var, nullptr);
   }
 
+  //
+  // TODO: CharRange and FloatRange
+  //
+   
   // add count entry
   const std::wstring count_scope_name = GetScopeName(count_ident);
   Type* count_type = TypeFactory::Instance()->MakeType(INT_TYPE);
@@ -5205,10 +5209,6 @@ For* Parser::ParseEach(bool reverse, int depth)
         }
       }
       else if(left_pre_count->GetExpressionType() == METHOD_CALL_EXPR) {
-        // MethodCall* method_call = static_cast<MethodCall*>(left_pre_count);
-        // count_type->SetType(CLASS_TYPE);
-        // count_type->SetName(method_call->GetVariableName());
-
         // add count entry
         const std::wstring count_scope_name = GetScopeName(L'#' + count_ident + L"_range");
         Type* count_type = TypeFactory::Instance()->MakeType(CLASS_TYPE);

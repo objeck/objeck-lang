@@ -3085,6 +3085,10 @@ void IntermediateEmitter::EmitFor(For* for_stmt)
 {
   cur_line_num = for_stmt->GetLineNumber();
 
+  //
+  // TODO: CharRange and FloatRange
+  //
+
   if(for_stmt->IsRange()) {
     CalculatedExpression* calc_expr = static_cast<CalculatedExpression*>(for_stmt->GetExpression());
     Expression* right_expr = calc_expr->GetRight();
