@@ -1,13 +1,13 @@
 class Repl {
     function : Main(args : String[]) ~ Nil {
-        x := 21;
+        x := 2.3;
 #~
         for(i := 5; i < x; i += 3;) {
             i->PrintLine();
         }        
 ~#
               
-        each(i : FloatRange->New(0.1, 1.8, 0.2)) {
+        each(i : FloatRange->New(0.1, x, 0.2)) {
             i->PrintLine();
         };
     }
