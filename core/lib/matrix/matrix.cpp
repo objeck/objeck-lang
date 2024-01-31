@@ -429,6 +429,9 @@ extern "C" {
       APITools_SetObjectValue(context, 0, result_obj);
     }
     catch(std::exception& e) {
+#ifdef _WIN32      
+      UNREFERENCED_PARAMETER(e);
+#endif      
       APITools_SetObjectValue(context, 0, 0);
       return;
     }
@@ -514,7 +517,7 @@ extern "C" {
     size_t* rtrn_array = APITools_MakeFloatArray(context, coeffs.size());
     double* rtrn_ptr = (double*)(rtrn_array + 3);
 
-    for(size_t i = 0; i < coeffs.size(); ++i) {
+    for(int i = 0; i < coeffs.size(); ++i) {
       rtrn_ptr[i] = coeffs(i);
     }
 
