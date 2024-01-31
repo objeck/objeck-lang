@@ -1806,6 +1806,30 @@ bundle System {
 		method : public : GetStep() ~ Int {
 			return @step;
 		}
+
+		#~
+		Sets the starting index
+		@param start starting index
+		~#
+		method : public : SetStart(start : Char) ~ Nil {
+			@start := start;
+		}
+
+		#~
+		Sets the ending index
+		@param end ending index
+		~#
+		method : public : SetEnd(end : Char) ~ Nil {
+			@end := end;
+		}
+
+		#~
+		Sets the step value
+		@param step step value
+		~#
+		method : public : SetStep(step : Char) ~ Nil {
+			@step := step;
+		}
 	}
 
 	#~
@@ -2507,6 +2531,30 @@ bundle System {
 		~#
 		method : public : GetStep() ~ Float {
 			return @step;
+		}
+
+		#~
+		Sets the starting index
+		@param start starting index
+		~#
+		method : public : SetStart(start : Char) ~ Nil {
+			@start := start;
+		}
+
+		#~
+		Sets the ending index
+		@param end ending index
+		~#
+		method : public : SetEnd(end : Char) ~ Nil {
+			@end := end;
+		}
+
+		#~
+		Sets the step value
+		@param step step value
+		~#
+		method : public : SetStep(step : Char) ~ Nil {
+			@step := step;
 		}
 	}
 
