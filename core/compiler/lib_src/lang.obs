@@ -1168,13 +1168,19 @@ bundle System {
 	}
 
 	#~
-	Character range used for loops
+	Character range used primarily for looping
 	~#	
 	class CharRange implements Range {
 		@start : Char;
 		@end : Char;
 		@step : Char;
-
+		
+		#~
+		Constructor.
+		@param start starting index
+		@param end ending index
+		@param step step by value
+		~#
 		New(start : Char, end : Char, step : Char) {
 			Parent();
 			@start := start;
@@ -1182,14 +1188,49 @@ bundle System {
 			@step := step;
 		}
 
+		#~
+		Constructor.
+		@param start starting index
+		@param end ending index
+		~#
+		New(start : Char, end : Char) {
+			Parent();
+			@start := start;
+			@end := end;
+			@step := 1;
+		}
+
+		#~
+		Constructor.
+		@param end ending index
+		~#
+		New(end : Char) {
+			Parent();
+			@start := '\0';
+			@end := end;
+			@step := 1;
+		}
+
+		#~
+		Gets the starting index
+		@return starting index
+		~#
 		method : public : GetStart() ~ Char {
 			return @start;
 		}
 
+		#~
+		Gets the ending index
+		@return ending index
+		~#
 		method : public : GetEnd() ~ Char {
 			return @end;
 		}
 
+		#~
+		Gets the step value
+		@return step value
+		~#
 		method : public : GetStep() ~ Char {
 			return @step;
 		}
@@ -1675,7 +1716,7 @@ bundle System {
 	}
 	
 	#~
-	Integer range used for loops
+	Integer range used primarily for looping
 	~#	
 	class IntRange implements Range {
 		@start : Int;
@@ -2377,13 +2418,19 @@ bundle System {
 	}
 
 	#~
-	Float range used for loops
+	Float range used primarily for looping
 	~#	
 	class FloatRange implements Range {
 		@start : Float;
 		@end : Float;
 		@step : Float;
-
+		
+		#~
+		Constructor.
+		@param start starting index
+		@param end ending index
+		@param step step by value
+		~#
 		New(start : Float, end : Float, step : Float) {
 			Parent();
 			@start := start;
@@ -2391,14 +2438,49 @@ bundle System {
 			@step := step;
 		}
 
+		#~
+		Constructor.
+		@param start starting index
+		@param end ending index
+		~#
+		New(start : Float, end : Float) {
+			Parent();
+			@start := start;
+			@end := end;
+			@step := 1.;
+		}
+
+		#~
+		Constructor.
+		@param end ending index
+		~#
+		New(end : Float) {
+			Parent();
+			@start := 0.;
+			@end := end;
+			@step := 1.;
+		}
+
+		#~
+		Gets the starting index
+		@return starting index
+		~#
 		method : public : GetStart() ~ Float {
 			return @start;
 		}
 
+		#~
+		Gets the ending index
+		@return ending index
+		~#
 		method : public : GetEnd() ~ Float {
 			return @end;
 		}
 
+		#~
+		Gets the step value
+		@return step value
+		~#
 		method : public : GetStep() ~ Float {
 			return @step;
 		}
