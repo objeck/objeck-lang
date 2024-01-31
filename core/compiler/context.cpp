@@ -4216,7 +4216,7 @@ void ContextAnalyzer::AnalyzeFor(For* for_stmt, const int depth)
       }
     }
   }
-    
+
   // range expression
   if(is_range) {
     Variable* var_expr = static_cast<Variable*>(cond_expr->GetLeft());
