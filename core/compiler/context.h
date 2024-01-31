@@ -262,7 +262,8 @@ class ContextAnalyzer {
   bool in_return;
   bool in_expression;
   int nested_call_depth;
-
+  std::set<std::wstring> range_names;
+  
 #if defined(_DIAG_LIB) || defined(_MODULE)
   std::vector<std::wstring> error_strings;
 #ifdef _DIAG_LIB
@@ -297,6 +298,11 @@ class ContextAnalyzer {
   // returns true if this entry is duplicated in parent classes
   inline bool InvalidStatic(SymbolEntry* entry) {
     return current_method->IsStatic() && !entry->IsLocal() && !entry->IsStatic();
+  }
+
+  // returns true name match a 'Range' class name
+  bool IsRangeName(const std::wstring value) {
+    return range_names.find(value) != range_names.end();
   }
 
   // returns true if a duplicate value is found in the list
@@ -584,6 +590,13 @@ class ContextAnalyzer {
     holder_types.insert(L"System.CharRef");
     holder_types.insert(L"System.IntRef");
     holder_types.insert(L"System.FloatRef");
+
+    range_names.insert(L"System.CharRange");
+    range_names.insert(L"System.IntRange");
+    range_names.insert(L"System.FloatRange");
+    range_names.insert(L"CharRange");
+    range_names.insert(L"IntRange");
+    range_names.insert(L"FloatRange");
 
     capture_method = nullptr;
     capture_table = nullptr;
