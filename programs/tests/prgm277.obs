@@ -6,8 +6,8 @@ class Test {
             i->PrintLine();
         }        
 ~#
-              
-        each(i : FloatRange->New(10., x, .5)) {
+        r := FloatRange->New(10., x, .5);
+        each(i : r) {
             i->PrintLine();
         };
     }
