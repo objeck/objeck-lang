@@ -7,7 +7,7 @@ class Repl {
         }        
 ~#
               
-        each(i : FloatRange->New(10.)) {
+        each(i : FloatRange->New(10., 20., .5)) {
             i->PrintLine();
         };
     }
