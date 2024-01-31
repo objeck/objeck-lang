@@ -3114,6 +3114,7 @@ void IntermediateEmitter::EmitFor(For* for_stmt)
       range_id = for_stmt->GetRangeEntry()->GetId();
     }
 
+    // 'FloatRange'
     if(is_float) {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, STOR_INT_VAR, range_id, LOCL));
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LOAD_INT_VAR, range_id, LOCL));
@@ -3131,6 +3132,7 @@ void IntermediateEmitter::EmitFor(For* for_stmt)
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LOAD_FLOAT_VAR, dclr_stmt->GetEntry()->GetId(), LOCL));
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LES_FLOAT));
     }
+    // 'CharRange' and 'IntRange'
     else {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, STOR_INT_VAR, range_id, LOCL));
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LOAD_INT_VAR, range_id, LOCL));
