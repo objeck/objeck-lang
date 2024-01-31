@@ -3086,7 +3086,7 @@ void IntermediateEmitter::EmitFor(For* for_stmt)
   cur_line_num = for_stmt->GetLineNumber();
 
   //
-  // TODO: CharRange and FloatRange
+  // TODO: error handling
   //
 
   if(for_stmt->IsRange()) {

@@ -4178,6 +4178,10 @@ void ContextAnalyzer::AnalyzeFor(For* for_stmt, const int depth)
   bool is_range = false;
   CalculatedExpression* cond_expr = static_cast<CalculatedExpression*>(for_stmt->GetExpression());
   
+  //
+  // TODO: error handling and peformance 
+  //
+
   if(cond_expr->GetRight()->GetExpressionType() == METHOD_CALL_EXPR) {
     MethodCall* mthd_call_expr = static_cast<MethodCall*>(cond_expr->GetRight());
     const std::wstring cond_expr_name = mthd_call_expr->GetVariableName();
