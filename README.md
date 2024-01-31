@@ -27,9 +27,14 @@ class Hello {
 Want to get started? Take a look at the [language guide](https://objeck.org/getting_started.html) and [code examples](https://github.com/objeck/objeck-lang/tree/master/programs/examples). If you want to contribute, start with the [system architecture](https://github.com/objeck/objeck-lang/tree/master/core).
 
 ## Latest
+
+* Tuple support
+  * v2023.12.2
+
+* Range support
+    * ~~v2023.12.1~~
+  
 * ML algorithms
-  * v2023.12.1
-    * Gradient Descent
   * v2023.12.0
     * ~~Linear Regression Solver~~
   * v2023.11.2
