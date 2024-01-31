@@ -3089,7 +3089,9 @@ void IntermediateEmitter::EmitFor(For* for_stmt)
     CalculatedExpression* calc_expr = static_cast<CalculatedExpression*>(for_stmt->GetExpression());
     Expression* right_expr = calc_expr->GetRight();
     if(right_expr->GetExpressionType() == VAR_EXPR) {
-      EmitVariable(static_cast<Variable*>(right_expr));
+      Variable* variable = static_cast<Variable*>(right_expr);
+      variable->SetId(variable->GetEntry()->GetId());
+      EmitVariable(variable);
     }
     else if(right_expr->GetExpressionType() == METHOD_CALL_EXPR) {
       // load pre-condition
