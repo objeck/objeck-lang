@@ -4178,20 +4178,22 @@ void ContextAnalyzer::AnalyzeFor(For* for_stmt, const int depth)
   bool is_range = false;
   CalculatedExpression* cond_expr = static_cast<CalculatedExpression*>(for_stmt->GetExpression());
   
+  // TODO: hash string values
   if(cond_expr->GetRight()->GetExpressionType() == METHOD_CALL_EXPR) {
     MethodCall* mthd_call_expr = static_cast<MethodCall*>(cond_expr->GetRight());
     const std::wstring cond_expr_name = mthd_call_expr->GetVariableName();
-    if(cond_expr_name == L"CharRange" || cond_expr_name == L"IntRange" || cond_expr_name == L"FloatRange") {
-      AnalyzeMethodCall(mthd_call_expr, depth + 1);
-      is_range = true;
-    }
-    else if(cond_expr_name == L"System.CharRange" || cond_expr_name == L"System.IntRange" || cond_expr_name == L"System.FloatRange") {
+    if(IsRangeName(cond_expr_name)) {
       AnalyzeMethodCall(mthd_call_expr, depth + 1);
       is_range = true;
     }
     else {
       SymbolEntry* cond_expr_type = current_table->GetEntry(current_method->GetName() + L':' + cond_expr_name);
-      if(cond_expr_type && cond_expr_type->GetType()->GetType() == CLASS_TYPE && EndsWith(cond_expr_type->GetType()->GetName(), L"Range")) {
+      const std::wstring type_name = cond_expr_type->GetType()->GetName();
+      if(cond_expr_type && cond_expr_type->GetType()->GetType() == CLASS_TYPE && IsRangeName(type_name)) {
+        Variable* variable = TreeFactory::Instance()->MakeVariable(for_stmt->GetFileName(), for_stmt->GetLineNumber(), for_stmt->GetLinePosition(), cond_expr_name);
+        cond_expr_type->WasLoaded();
+        variable->SetEntry(cond_expr_type);
+        cond_expr->SetRight(variable);
         is_range = true;
       }
     }

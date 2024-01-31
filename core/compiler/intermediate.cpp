@@ -3088,7 +3088,10 @@ void IntermediateEmitter::EmitFor(For* for_stmt)
   if(for_stmt->IsRange()) {
     CalculatedExpression* calc_expr = static_cast<CalculatedExpression*>(for_stmt->GetExpression());
     Expression* right_expr = calc_expr->GetRight();
-    if(right_expr->GetExpressionType() == METHOD_CALL_EXPR) {
+    if(right_expr->GetExpressionType() == VAR_EXPR) {
+      EmitVariable(static_cast<Variable*>(right_expr));
+    }
+    else if(right_expr->GetExpressionType() == METHOD_CALL_EXPR) {
       // load pre-condition
       MethodCall* mthd_call = static_cast<MethodCall*>(right_expr);
       EmitMethodCallParameters(mthd_call);
