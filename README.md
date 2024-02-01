@@ -28,7 +28,7 @@ Want to get started? Take a look at the [language guide](https://objeck.org/gett
 
 ## Latest
 
-* Tuple support
+* Tuple support for ML
   * v2024.1.1
 
 * Range support
