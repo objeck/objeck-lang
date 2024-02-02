@@ -32,9 +32,6 @@ Want to get started? Take a look at the [language guide](https://objeck.org/gett
 
 ## Latest
 
-* Tuple support for ML
-  * v2024.2.1
-
 * Range support
     * v2024.2.0
       * ~~Added ``CharRange``, ``IntRange`` and, ``FloatRange`` classes~~
