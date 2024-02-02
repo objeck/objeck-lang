@@ -1,14 +1,22 @@
 class Test {
     function : Main(args : String[]) ~ Nil {
-        x := 23.5;
-#~
+        (0.1 + 0.2 = 0.3)->PrintLine();
+
+        x := 13.3;
+
         for(i := 5; i < x; i += 3;) {
             i->PrintLine();
         }        
-~#
-        r := FloatRange->New(10., x, .5);
-        each(i : r) {
+
+        each(i : IntRange->New(5., x, 3)) {
+            i->PrintLine();
+        }
+
+          
+#~
+        each(i : FloatRange->New(1., x, .3)) {
             i->PrintLine();
         };
+~#        
     }
 }
