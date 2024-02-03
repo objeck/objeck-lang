@@ -38,7 +38,6 @@ Want to get started? Take a look at the [language guide](https://objeck.org/gett
 
 * Immutable Java-like Tuple support
   * v2024.2.1
-    * Unit<A>
     * Pair<A,B>
     * Triplet<A,B,C>
     * Quartet<A,B,C,D>
