@@ -36,11 +36,11 @@ Want to get started? Take a look at the [language guide](https://objeck.org/gett
   * v2024.2.1 or v2024.2.1
     * Improved parsing performance for large JSON documents
 
-* Immutable Java-like Tuple support
-  * v2024.2.1
-    * Pair<A,B>
-    * Triplet<A,B,C>
-    * Quartet<A,B,C,D>
+* Immutable Tuple types
+  * v2024.2.0
+    * ~~Pair<A,B>~~
+    * ~~Triplet<A,B,C>~~
+    * ~~Quartet<A,B,C,D>~~
 
 * Range support
     * v2024.2.0
