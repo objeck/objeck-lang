@@ -2,7 +2,7 @@
  * Translates a parse tree into an intermediate format.  This format
  * is used for optimizations and target output.
  *
- * Copyright (c) 2023, Randy Hollines
+ * Copyright (c) 2024, Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -3084,41 +3084,174 @@ void IntermediateEmitter::EmitWhile(While* while_stmt)
 void IntermediateEmitter::EmitFor(For* for_stmt)
 {
   cur_line_num = for_stmt->GetLineNumber();
-  
-  // pre statement
-  std::vector<Statement*> pre_statements = for_stmt->GetPreStatements()->GetStatements();
-  for(size_t i = 0; i < pre_statements.size(); ++i) {
-    EmitStatement(pre_statements[i]);
+
+  //
+  // TODO: error handling
+  //
+
+  if(for_stmt->IsRange()) {
+    CalculatedExpression* calc_expr = static_cast<CalculatedExpression*>(for_stmt->GetExpression());
+    Expression* right_expr = calc_expr->GetRight();
+
+    bool is_float = false;
+    long range_id = -1;
+    if(right_expr->GetExpressionType() == VAR_EXPR) {
+      Variable* variable = static_cast<Variable*>(right_expr);
+      variable->SetId(variable->GetEntry()->GetId());
+      EmitVariable(variable);
+      range_id = variable->GetId();
+
+      if(variable->GetEntry()) {
+        const std::wstring range_type_name = variable->GetEntry()->GetType()->GetName();
+        is_float = range_type_name == L"System.FloatRange";
+      }
+    }
+    else if(right_expr->GetExpressionType() == METHOD_CALL_EXPR) {
+      // load pre-condition
+      MethodCall* mthd_call = static_cast<MethodCall*>(right_expr);
+      EmitMethodCallParameters(mthd_call);
+      EmitMethodCall(mthd_call, false);
+      range_id = for_stmt->GetRangeEntry()->GetId();
+      
+      if(mthd_call->GetLibraryMethod() && mthd_call->GetLibraryMethod()->GetLibraryClass()) {
+        LibraryClass* bar = mthd_call->GetLibraryMethod()->GetLibraryClass();
+        const std::wstring range_type_name = bar->GetName();
+        is_float = range_type_name == L"System.FloatRange";
+      }
+    }
+
+    // 'FloatRange'
+    if(is_float) {
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, STOR_INT_VAR, range_id, LOCL));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LOAD_INT_VAR, range_id, LOCL));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LOAD_FLOAT_VAR, 0, INST));
+      Declaration* dclr_stmt = (static_cast<Declaration*>(for_stmt->GetPreStatements()->GetStatements().front()));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, STOR_FLOAT_VAR, dclr_stmt->GetEntry()->GetId(), LOCL));
+
+      // 0
+      long unconditional = ++unconditional_label;
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LBL, unconditional));
+
+      // 1
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LOAD_INT_VAR, range_id, LOCL));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LOAD_FLOAT_VAR, 1, INST));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LOAD_FLOAT_VAR, dclr_stmt->GetEntry()->GetId(), LOCL));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LES_FLOAT));
+
+      // 2
+      const long break_label = ++conditional_label;
+      const long unconditional_continue = ++unconditional_label;
+      break_labels.push(std::pair<int, int>(break_label, unconditional_continue));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, JMP, break_label, false));
+
+      // 3
+      std::vector<Statement*> for_statements = for_stmt->GetStatements()->GetStatements();
+      for(size_t i = 0; i < for_statements.size(); ++i) {
+        EmitStatement(for_statements[i]);
+      }
+
+      // 4
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LBL, unconditional_continue));
+
+      // 5
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LOAD_INT_VAR, range_id, LOCL));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LOAD_FLOAT_VAR, 2, INST));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LOAD_FLOAT_VAR, dclr_stmt->GetEntry()->GetId(), LOCL));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, ADD_FLOAT));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, STOR_FLOAT_VAR, dclr_stmt->GetEntry()->GetId(), LOCL));
+
+      // 6
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, JMP, unconditional, -1));
+      std::pair<int, int> break_continue_label = break_labels.top();
+      break_labels.pop();
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LBL, (long)break_continue_label.first));
+    }
+    // 'CharRange' and 'IntRange'
+    else {
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, STOR_INT_VAR, range_id, LOCL));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LOAD_INT_VAR, range_id, LOCL));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LOAD_INT_VAR, 0, INST));
+      Declaration* dclr_stmt = (static_cast<Declaration*>(for_stmt->GetPreStatements()->GetStatements().front()));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, STOR_INT_VAR, dclr_stmt->GetEntry()->GetId(), LOCL));
+
+      // 0
+      long unconditional = ++unconditional_label;
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LBL, unconditional));
+
+      // 1
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LOAD_INT_VAR, range_id, LOCL));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LOAD_INT_VAR, 1, INST));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LOAD_INT_VAR, dclr_stmt->GetEntry()->GetId(), LOCL));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LES_INT));
+
+      // 2
+      const long break_label = ++conditional_label;
+      const long unconditional_continue = ++unconditional_label;
+      break_labels.push(std::pair<int, int>(break_label, unconditional_continue));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, JMP, break_label, false));
+
+      // 3
+      std::vector<Statement*> for_statements = for_stmt->GetStatements()->GetStatements();
+      for(size_t i = 0; i < for_statements.size(); ++i) {
+        EmitStatement(for_statements[i]);
+      }
+
+      // 4
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LBL, unconditional_continue));
+
+      // 5
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LOAD_INT_VAR, range_id, LOCL));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LOAD_INT_VAR, 2, INST));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LOAD_INT_VAR, dclr_stmt->GetEntry()->GetId(), LOCL));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, ADD_INT));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, STOR_INT_VAR, dclr_stmt->GetEntry()->GetId(), LOCL));
+
+      // 6
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, JMP, unconditional, -1));
+      std::pair<int, int> break_continue_label = break_labels.top();
+      break_labels.pop();
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LBL, (long)break_continue_label.first));
+    }
+#ifdef _DEBUG
+    assert(range_id > -1);
+#endif
   }
+  // declared values
+  else {
+    std::vector<Statement*> pre_statements = for_stmt->GetPreStatements()->GetStatements();
+    for(size_t i = 0; i < pre_statements.size(); ++i) {
+      EmitStatement(pre_statements[i]);
+    }
 
-  // conditional expression
-  long unconditional = ++unconditional_label;
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LBL, unconditional));
-  EmitExpression(for_stmt->GetExpression());
+    // conditional expression
+    long unconditional = ++unconditional_label;
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LBL, unconditional));
+    EmitExpression(for_stmt->GetExpression());
 
-  // break and continue
-  const long break_label = ++conditional_label;
-  const long unconditional_continue = ++unconditional_label;
-  break_labels.push(std::pair<int, int>(break_label, unconditional_continue));
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, JMP, break_label, false));
-  
-  // statements
-  std::vector<Statement*> for_statements = for_stmt->GetStatements()->GetStatements();
-  for(size_t i = 0; i < for_statements.size(); ++i) {
-    EmitStatement(for_statements[i]);
+    // break and continue
+    const long break_label = ++conditional_label;
+    const long unconditional_continue = ++unconditional_label;
+    break_labels.push(std::pair<int, int>(break_label, unconditional_continue));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, JMP, break_label, false));
+
+    // statements
+    std::vector<Statement*> for_statements = for_stmt->GetStatements()->GetStatements();
+    for(size_t i = 0; i < for_statements.size(); ++i) {
+      EmitStatement(for_statements[i]);
+    }
+
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LBL, unconditional_continue));
+
+    // update statement
+    EmitStatement(for_stmt->GetUpdateStatement());
+
+    // conditional jump
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, JMP, unconditional, -1));
+
+    std::pair<int, int> break_continue_label = break_labels.top();
+    break_labels.pop();
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LBL, (long)break_continue_label.first));
   }
-
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LBL, unconditional_continue));
-
-  // update statement
-  EmitStatement(for_stmt->GetUpdateStatement());
-
-  // conditional jump
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, JMP, unconditional, -1));
-  
-  std::pair<int, int> break_continue_label = break_labels.top();
-  break_labels.pop();
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LBL, (long)break_continue_label.first));
 }
 
 /****************************

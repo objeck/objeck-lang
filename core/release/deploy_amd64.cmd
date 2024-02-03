@@ -1,4 +1,4 @@
-dbdbREM clean up
+REM clean up
 rmdir /s /q deploy64
 mkdir deploy64
 mkdir deploy64\app
