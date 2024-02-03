@@ -1,7 +1,7 @@
 /***************************************************************************
  * Performs contextual analysis.
  *
- * Copyright (c) 2023, Randy Hollines
+ * Copyright (c) 2024, Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -948,7 +948,7 @@ void ContextAnalyzer::CheckUnreferencedVariables(Method* method)
         const int end_line = method->GetEndLineNumber();
         for(size_t j = 0; j < variables.size(); ++j) {
           Variable* variable = variables[j];
-          // range check required for method overloading (not ideals)
+          // range check required for method overloading (not ideal)
           if(variable->GetLineNumber() >= start_line && variable->GetLineNumber() < end_line) {
             ProcessWarning(variable, L"Variable '" + variable->GetName() + L"' is unreferenced");
           }
@@ -4175,49 +4175,102 @@ void ContextAnalyzer::AnalyzeFor(For* for_stmt, const int depth)
 {
   current_table->NewScope();
   
-  // pre-expression
-  std::vector<Statement*> pre_statements = for_stmt->GetPreStatements()->GetStatements();
-  for(size_t i = 0; i < pre_statements.size(); ++i) {
-    AnalyzeStatement(pre_statements[i], depth + 1);
-  }
+  bool is_range = false;
+  CalculatedExpression* cond_expr = static_cast<CalculatedExpression*>(for_stmt->GetExpression());
+  
+  //
+  // TODO: error handling and peformance 
+  //
 
-  // conditional expression
-  Expression* expression = for_stmt->GetExpression();
-  if(expression) {
-    AnalyzeExpression(expression, depth + 1);
-
-    if(!IsBooleanExpression(expression)) {
-      ProcessError(expression, L"Expected Bool expression");
+  if(cond_expr->GetRight()->GetExpressionType() == METHOD_CALL_EXPR) {
+    MethodCall* mthd_call_expr = static_cast<MethodCall*>(cond_expr->GetRight());
+    const std::wstring cond_expr_name = mthd_call_expr->GetVariableName();
+    if(IsRangeName(cond_expr_name)) {
+      AnalyzeMethodCall(mthd_call_expr, depth + 1);
+      is_range = true;
     }
+    else {
+      SymbolEntry* cond_expr_entry = current_table->GetEntry(current_method->GetName() + L':' + cond_expr_name);
+      if(cond_expr_entry && cond_expr_entry->GetType() && cond_expr_entry->GetType()->GetType() == CLASS_TYPE && IsRangeName(cond_expr_entry->GetType()->GetName())) {
+        Variable* variable = TreeFactory::Instance()->MakeVariable(for_stmt->GetFileName(), for_stmt->GetLineNumber(), for_stmt->GetLinePosition(), cond_expr_name);
+        cond_expr_entry->WasLoaded();
+        variable->SetEntry(cond_expr_entry);
+        variable->SetEvalType(cond_expr_entry->GetType(), true);
+        cond_expr->SetRight(variable);
+        is_range = true;
 
-    switch(expression->GetExpressionType()) {
-    case AND_EXPR:
-    case OR_EXPR:
-    case EQL_EXPR:
-    case NEQL_EXPR:
-    case LES_EXPR:
-    case GTR_EXPR:
-    case LES_EQL_EXPR:
-    case GTR_EQL_EXPR: {
-      CalculatedExpression* calc_expr = static_cast<CalculatedExpression*>(expression);
-      Expression* right_expr = calc_expr->GetRight();
-      if(right_expr && right_expr->GetExpressionType() == VAR_EXPR && right_expr->GetEvalType()) {
-        Variable* var_expr = static_cast<Variable*>(right_expr);
-        if(var_expr->GetIndices() && right_expr->GetEvalType() && 
-           (int)(var_expr->GetIndices()->GetExpressions().size()) != right_expr->GetEvalType()->GetDimension()) {
-          ProcessError(expression, L"Dimension size mismatch");
+        Variable* range_var = static_cast<Variable*>(cond_expr->GetLeft());
+        SymbolEntry* range_entry = current_table->GetEntry(current_method->GetName() + L':' + range_var->GetName());
+        if(range_entry && cond_expr_entry && cond_expr_entry->GetType()) {
+          const std::wstring range_name = cond_expr_entry->GetType()->GetName();
+          if(range_name == L"System.CharRange") {
+            range_entry->SetType(TypeFactory::Instance()->MakeType(CHAR_TYPE));
+          }
+          else if(range_name == L"System.IntRange") {
+            range_entry->SetType(TypeFactory::Instance()->MakeType(INT_TYPE));
+          }
+          else if(range_name == L"System.FloatRange") {
+            range_entry->SetType(TypeFactory::Instance()->MakeType(FLOAT_TYPE));
+          }
         }
       }
     }
-      break;
-
-    default:
-      break;
-    }
   }
 
-  // update expression
-  AnalyzeStatement(for_stmt->GetUpdateStatement(), depth + 1);
+  // range expression
+  if(is_range) {
+    Variable* var_expr = static_cast<Variable*>(cond_expr->GetLeft());
+    const std::wstring index_name = current_method->GetName() + L":#" + var_expr->GetName() + L"_range";
+    SymbolEntry* index_entry = current_table->GetEntry(index_name);
+    for_stmt->SetRangeEntry(index_entry);
+    for_stmt->SetRange(true);
+  }
+  // pre-expressions
+  else {
+    std::vector<Statement*> pre_statements = for_stmt->GetPreStatements()->GetStatements();
+    for(size_t i = 0; i < pre_statements.size(); ++i) {
+      AnalyzeStatement(pre_statements[i], depth + 1);
+    }
+
+    // conditional expression
+    Expression* expression = for_stmt->GetExpression();
+    if(expression) {
+      AnalyzeExpression(expression, depth + 1);
+
+      if(!IsBooleanExpression(expression)) {
+        ProcessError(expression, L"Expected Bool expression");
+      }
+
+      switch(expression->GetExpressionType()) {
+      case AND_EXPR:
+      case OR_EXPR:
+      case EQL_EXPR:
+      case NEQL_EXPR:
+      case LES_EXPR:
+      case GTR_EXPR:
+      case LES_EQL_EXPR:
+      case GTR_EQL_EXPR:
+      {
+        CalculatedExpression* calc_expr = static_cast<CalculatedExpression*>(expression);
+        Expression* right_expr = calc_expr->GetRight();
+        if(right_expr && right_expr->GetExpressionType() == VAR_EXPR && right_expr->GetEvalType()) {
+          Variable* var_expr = static_cast<Variable*>(right_expr);
+          if(var_expr->GetIndices() && right_expr->GetEvalType() &&
+             (int)(var_expr->GetIndices()->GetExpressions().size()) != right_expr->GetEvalType()->GetDimension()) {
+            ProcessError(expression, L"Dimension size mismatch");
+          }
+        }
+      }
+      break;
+
+      default:
+        break;
+      }
+    }
+
+    // update expression
+    AnalyzeStatement(for_stmt->GetUpdateStatement(), depth + 1);
+  }
   
   // statements
   in_loop++;
@@ -4227,7 +4280,6 @@ void ContextAnalyzer::AnalyzeFor(For* for_stmt, const int depth)
   if(for_stmt->IsBoundAssignment()) {
     MethodCall* mthd_call_expr = nullptr;
     if(for_stmt->GetExpression()->GetExpressionType() == LES_EXPR) {
-      CalculatedExpression* cond_expr = static_cast<CalculatedExpression*>(for_stmt->GetExpression());
       mthd_call_expr = static_cast<MethodCall*>(cond_expr->GetRight());
     }
     else {
@@ -4300,8 +4352,8 @@ void ContextAnalyzer::AnalyzeFor(For* for_stmt, const int depth)
       assignment->SetExpression(right_expr);
       statements->PrependStatement(assignment);
     }
-    else if(expression) {
-      ProcessError(expression, L"Expected class or array type");
+    else {
+      ProcessError(for_stmt, L"Expected class or array type");
     }
   }
   AnalyzeStatements(statements, depth + 1);

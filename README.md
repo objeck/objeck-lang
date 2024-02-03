@@ -24,12 +24,29 @@ class Hello {
 }
 ```
 
+| <sub>[VS Code](https://github.com/objeck/objeck-lsp)</sub> | <sub>[Debugger](https://github.com/objeck/objeck-lang/tree/master/core/debugger)</sub> | <sub>[Dungeon Crawler](https://github.com/objeck/objeck-dungeon-crawler)</sub> | <sub>[Platformer](https://github.com/objeck/objeck-lang/blob/master/programs/deploy/2d_game_13.obs)</sub> | <sub>[Windows Utility](https://github.com/objeck/objeck-lang/tree/master/core/release/WindowsLauncher)</sub> |
+| :---: | :----: | :---: | :---: | :---: |
+![alt text](docs/images/web/comp.png "Visual Studio Code") | ![alt text](docs/images/web/debug.jpg "Command line debugger") | ![alt text](docs/images/web/crawler.png "Web Crawler") | ![alt text](docs/images/web/2d_game.jpg "Platformer") | ![alt text](docs/images/web/launch.png "Windows Launcher") |
+
 Want to get started? Take a look at the [language guide](https://objeck.org/getting_started.html) and [code examples](https://github.com/objeck/objeck-lang/tree/master/programs/examples). If you want to contribute, start with the [system architecture](https://github.com/objeck/objeck-lang/tree/master/core).
 
-## Latest
+## What's New?
+
+* Incremental JSON parser
+  * v2024.2.1 or v2024.2.1
+    * Improved parsing performance for large JSON documents
+
+* Immutable Tuple types
+  * v2024.2.0
+    * ~~Pair<A,B>~~
+    * ~~Triplet<A,B,C>~~
+    * ~~Quartet<A,B,C,D>~~
+
+* Range support
+    * v2024.2.0
+      * ~~Added ``CharRange``, ``IntRange`` and, ``FloatRange`` classes~~
+  
 * ML algorithms
-  * v2023.12.1
-    * Gradient Descent
   * v2023.12.0
     * ~~Linear Regression Solver~~
   * v2023.11.2
@@ -42,7 +59,8 @@ Want to get started? Take a look at the [language guide](https://objeck.org/gett
     * ~~Neural Networks~~
     * ~~Decision Trees~~ 
 
-## Features
+## Functionality
+
 * Modern object-oriented and functional
 * Cross-platform: Linux (x64 and ARM64), macOS (ARM64), Windows (x64)
 * Optimized and JIT-compiled runtimes
@@ -58,7 +76,7 @@ Want to get started? Take a look at the [language guide](https://objeck.org/gett
 * REPL and IDE [LSP](https://github.com/objeck/objeck-lsp) support (for VSCode, Sublime, Kate, etc.) 
 * Online guides and API [documentation](https://www.objeck.org).
 
-## Functionality
+## Features
 
 ### [Object-oriented](https://en.wikipedia.org/wiki/Object-oriented_programming)
   
@@ -286,8 +304,3 @@ yesterday->ToString()->PrintLine();
   * [2D Gaming framework](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/sdl_game.obs) via SDL2
   * [Collections](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/gen_collect.obs) (caches, vectors, queues, trees, hashes, etc.)
   * GTK windowing support [(on-hold)](core/lib/experimental/gtk)
-
-## Screenshots
-| <sub>[VS Code](https://github.com/objeck/objeck-lsp)</sub> | <sub>[Debugger](https://github.com/objeck/objeck-lang/tree/master/core/debugger)</sub> | <sub>[Dungeon Crawler](https://github.com/objeck/objeck-dungeon-crawler)</sub> | <sub>[Platformer](https://github.com/objeck/objeck-lang/blob/master/programs/deploy/2d_game_13.obs)</sub> | <sub>[Windows Utility](https://github.com/objeck/objeck-lang/tree/master/core/release/WindowsLauncher)</sub> |
-| :---: | :----: | :---: | :---: | :---: |
-![alt text](docs/images/web/comp.png "Visual Studio Code") | ![alt text](docs/images/web/debug.jpg "Command line debugger") | ![alt text](docs/images/web/crawler.png "Web Crawler") | ![alt text](docs/images/web/2d_game.jpg "Platformer") | ![alt text](docs/images/web/launch.png "Windows Launcher") |

@@ -17,6 +17,13 @@ Core system classes
 ~#
 bundle System {
 	#~
+	Range interface
+	~#
+	interface Range {
+	    
+	}
+
+	#~
 	Boolean class
 	~#
 	class $Bool {
@@ -1159,6 +1166,99 @@ bundle System {
 			return -1;
 		}
 	}
+
+	#~
+	Character range used primarily for looping
+	~#	
+	class CharRange implements Range {
+		@start : Char;
+		@end : Char;
+		@step : Char;
+		
+		#~
+		Constructor.
+		@param start starting index
+		@param end ending index
+		@param step step by value
+		~#
+		New(start : Char, end : Char, step : Char) {
+			Parent();
+			@start := start;
+			@end := end;
+			@step := step;
+		}
+
+		#~
+		Constructor.
+		@param start starting index
+		@param end ending index
+		~#
+		New(start : Char, end : Char) {
+			Parent();
+			@start := start;
+			@end := end;
+			@step := 1;
+		}
+
+		#~
+		Constructor.
+		@param end ending index
+		~#
+		New(end : Char) {
+			Parent();
+			@start := '\0';
+			@end := end;
+			@step := 1;
+		}
+
+		#~
+		Gets the starting index
+		@return starting index
+		~#
+		method : public : GetStart() ~ Char {
+			return @start;
+		}
+
+		#~
+		Sets the starting index
+		@param start starting index
+		~#
+		method : public : SetStart(start : Char) ~ Nil {
+			@start := start;
+		}
+
+		#~
+		Gets the ending index
+		@return ending index
+		~#
+		method : public : GetEnd() ~ Char {
+			return @end;
+		}
+
+		#~
+		Sets the ending index
+		@param end ending index
+		~#
+		method : public : SetEnd(end : Char) ~ Nil {
+			@end := end;
+		}
+
+		#~
+		Gets the step value
+		@return step value
+		~#
+		method : public : GetStep() ~ Char {
+			return @step;
+		}
+
+		#~
+		Sets the step value
+		@param step step value
+		~#
+		method : public : SetStep(step : Char) ~ Nil {
+			@step := step;
+		}
+	}
 	
 	#~
 	Integer class represents an operating system long value
@@ -1636,6 +1736,99 @@ bundle System {
 			buffer->Append(']');
 
 			return buffer;
+		}
+	}
+	
+	#~
+	Integer range used primarily for looping
+	~#	
+	class IntRange implements Range {
+		@start : Int;
+		@end : Int;
+		@step : Int;
+		
+		#~
+		Constructor.
+		@param start starting index
+		@param end ending index
+		@param step step by value
+		~#
+		New(start : Int, end : Int, step : Int) {
+			Parent();
+			@start := start;
+			@end := end;
+			@step := step;
+		}
+
+		#~
+		Constructor.
+		@param start starting index
+		@param end ending index
+		~#
+		New(start : Int, end : Int) {
+			Parent();
+			@start := start;
+			@end := end;
+			@step := 1;
+		}
+
+		#~
+		Constructor.
+		@param end ending index
+		~#
+		New(end : Int) {
+			Parent();
+			@start := 0;
+			@end := end;
+			@step := 1;
+		}
+
+		#~
+		Gets the starting index
+		@return starting index
+		~#
+		method : public : GetStart() ~ Int {
+			return @start;
+		}
+
+		#~
+		Gets the ending index
+		@return ending index
+		~#
+		method : public : GetEnd() ~ Int {
+			return @end;
+		}
+
+		#~
+		Gets the step value
+		@return step value
+		~#
+		method : public : GetStep() ~ Int {
+			return @step;
+		}
+
+		#~
+		Sets the starting index
+		@param start starting index
+		~#
+		method : public : SetStart(start : Char) ~ Nil {
+			@start := start;
+		}
+
+		#~
+		Sets the ending index
+		@param end ending index
+		~#
+		method : public : SetEnd(end : Char) ~ Nil {
+			@end := end;
+		}
+
+		#~
+		Sets the step value
+		@param step step value
+		~#
+		method : public : SetStep(step : Char) ~ Nil {
+			@step := step;
 		}
 	}
 
@@ -2296,6 +2489,99 @@ bundle System {
 			if(i < high) {
 				Sort(array, i, high);
 			};
+		}
+	}
+
+	#~
+	Float range used primarily for looping
+	~#	
+	class FloatRange implements Range {
+		@start : Float;
+		@end : Float;
+		@step : Float;
+		
+		#~
+		Constructor.
+		@param start starting index
+		@param end ending index
+		@param step step by value
+		~#
+		New(start : Float, end : Float, step : Float) {
+			Parent();
+			@start := start;
+			@end := end;
+			@step := step;
+		}
+
+		#~
+		Constructor.
+		@param start starting index
+		@param end ending index
+		~#
+		New(start : Float, end : Float) {
+			Parent();
+			@start := start;
+			@end := end;
+			@step := 1.;
+		}
+
+		#~
+		Constructor.
+		@param end ending index
+		~#
+		New(end : Float) {
+			Parent();
+			@start := 0.;
+			@end := end;
+			@step := 1.;
+		}
+
+		#~
+		Gets the starting index
+		@return starting index
+		~#
+		method : public : GetStart() ~ Float {
+			return @start;
+		}
+
+		#~
+		Gets the ending index
+		@return ending index
+		~#
+		method : public : GetEnd() ~ Float {
+			return @end;
+		}
+
+		#~
+		Gets the step value
+		@return step value
+		~#
+		method : public : GetStep() ~ Float {
+			return @step;
+		}
+
+		#~
+		Sets the starting index
+		@param start starting index
+		~#
+		method : public : SetStart(start : Char) ~ Nil {
+			@start := start;
+		}
+
+		#~
+		Sets the ending index
+		@param end ending index
+		~#
+		method : public : SetEnd(end : Char) ~ Nil {
+			@end := end;
+		}
+
+		#~
+		Sets the step value
+		@param step step value
+		~#
+		method : public : SetStep(step : Char) ~ Nil {
+			@step := step;
 		}
 	}
 
