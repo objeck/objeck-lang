@@ -8,6 +8,83 @@
 ~~#
 
 #~
+Imutuable tuple classes
+~#	
+bundle Tuple {
+	class TuplePair<A, B> {
+		@a : A;
+		@b : B;
+
+		New(a : A, b : B) {
+			@a := a;
+			@b := b;
+		}
+
+		method : public : GetFirst() ~ A {
+			return @a;
+		}
+
+		method : public : GetSecond() ~ B {
+			return @b;
+		}
+	}
+	
+	class TupleTriplet<A, B, C> {
+		@a : A;
+		@b : B;
+		@c : C;
+
+		New(a : A, b : B, c : C) {
+			@a := a;
+			@b := b;
+			@c := c;
+		}
+
+		method : public : GetFirst() ~ A {
+			return @a;
+		}
+
+		method : public : GetSecond() ~ B {
+			return @b;
+		}
+
+		method : public : GetThird() ~ C {
+			return @c;
+		}
+	}
+
+	class TupleQuartet<A, B, C, D> {
+		@a : A;
+		@b : B;
+		@c : C;
+		@d : D;
+
+		New(a : A, b : B, c : C, d : D) {
+			@a := a;
+			@b := b;
+			@c := c;
+			@d := d;
+		}
+
+		method : public : GetFirst() ~ A {
+			return @a;
+		}
+
+		method : public : GetSecond() ~ B {
+			return @b;
+		}
+
+		method : public : GetThird() ~ C {
+			return @c;
+		}
+
+		method : public : GetForth() ~ D {
+			return @d;
+		}
+	}
+}
+
+#~
 Collection collections (-lib gen_collect)
 ~#	
 bundle Collection {
