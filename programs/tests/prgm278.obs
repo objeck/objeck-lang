@@ -1,6 +1,6 @@
 class Test {
     function : Main(args : String[]) ~ Nil {
-        t := Tuple.Tuple->New(1, 2)<IntRef, IntRef>;
+        t := Tuples.TuplePair->New(1, "One")<IntRef, String>;
         t->GetFirst()->PrintLine();
         t->GetSecond()->PrintLine();
     }
