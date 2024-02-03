@@ -4191,7 +4191,7 @@ void ContextAnalyzer::AnalyzeFor(For* for_stmt, const int depth)
     }
     else {
       SymbolEntry* cond_expr_entry = current_table->GetEntry(current_method->GetName() + L':' + cond_expr_name);
-      if(cond_expr_entry && cond_expr_entry->GetType()->GetType() == CLASS_TYPE && IsRangeName(cond_expr_entry->GetType()->GetName())) {
+      if(cond_expr_entry && cond_expr_entry->GetType() && cond_expr_entry->GetType()->GetType() == CLASS_TYPE && IsRangeName(cond_expr_entry->GetType()->GetName())) {
         Variable* variable = TreeFactory::Instance()->MakeVariable(for_stmt->GetFileName(), for_stmt->GetLineNumber(), for_stmt->GetLinePosition(), cond_expr_name);
         cond_expr_entry->WasLoaded();
         variable->SetEntry(cond_expr_entry);
