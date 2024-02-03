@@ -30,7 +30,7 @@ class Hello {
 
 Want to get started? Take a look at the [language guide](https://objeck.org/getting_started.html) and [code examples](https://github.com/objeck/objeck-lang/tree/master/programs/examples). If you want to contribute, start with the [system architecture](https://github.com/objeck/objeck-lang/tree/master/core).
 
-## Plan
+## What's New?
 
 * Incremental JSON parser
   * v2024.2.1 or v2024.2.1
