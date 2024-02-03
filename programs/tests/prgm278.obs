@@ -1,0 +1,7 @@
+class Test {
+    function : Main(args : String[]) ~ Nil {
+        t := Tuple.Tuple->New(1, 2)<IntRef, IntRef>;
+        t->GetFirst()->PrintLine();
+        t->GetSecond()->PrintLine();
+    }
+}
