@@ -1,7 +1,7 @@
 /***************************************************************************
  * Language parser.
  *
- * Copyright (c) 2023, Randy Hollines
+ * Copyright (c) 2024, Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -5065,7 +5065,6 @@ For* Parser::ParseEach(bool reverse, int depth)
     bound_ident = count_ident;
     count_ident = L'#' + count_ident + L"_index";
   }
-  std::wstring count_scope_name = GetScopeName(count_ident);
 
   // add bind variable entry
   Assignment* bind_assign = nullptr;
@@ -5086,9 +5085,24 @@ For* Parser::ParseEach(bool reverse, int depth)
   }
 
   // add count entry
-  Type* count_type = TypeFactory::Instance()->MakeType(INT_TYPE);
+  Type* count_type = nullptr;
+  const std::wstring count_scope_name = GetScopeName(count_ident);
+  if(Match(TOKEN_IDENT)) {
+    const std::wstring ident_type = scanner->GetToken()->GetIdentifier();
+    if(ident_type == L"CharRange" || ident_type == L"System.CharRange") {
+      count_type = TypeFactory::Instance()->MakeType(CHAR_TYPE);
+    }
+    else if(ident_type == L"FloatRange" || ident_type == L"System.FloatRange") {
+      count_type = TypeFactory::Instance()->MakeType(FLOAT_TYPE);
+    }
+  }
+
+  if(!count_type) {
+    count_type = TypeFactory::Instance()->MakeType(INT_TYPE);
+  }
   SymbolEntry* count_entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num, line_pos, count_scope_name, 
                                                                       count_type, false, current_method != nullptr);
+
 #ifdef _DEBUG
   Debug(L"Adding count variable: '" + count_scope_name + L"'", depth + 2);
 #endif
@@ -5193,6 +5207,9 @@ For* Parser::ParseEach(bool reverse, int depth)
       break;
 
     case TOKEN_IDENT: {
+      //
+      // TODO: error handling
+      //
       left_pre_count = ParseExpression(depth + 1);
 
       if(left_pre_count->GetExpressionType() == VAR_EXPR) {
@@ -5202,6 +5219,19 @@ For* Parser::ParseEach(bool reverse, int depth)
           const int line_pos = GetLinePosition();
           left_pre_count = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, GetLineNumber(), line_pos, -1, -1,
                                                                    variable->GetName(), L"Size", TreeFactory::Instance()->MakeExpressionList());
+        }
+      }
+      else if(left_pre_count->GetExpressionType() == METHOD_CALL_EXPR) {
+        // add count entry
+        const std::wstring count_scope_name = GetScopeName(L'#' + count_ident + L"_range");
+        Type* count_type = TypeFactory::Instance()->MakeType(CLASS_TYPE);
+        SymbolEntry* count_entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num, line_pos, count_scope_name,
+                                                                            count_type, false, current_method != nullptr);
+#ifdef _DEBUG
+        Debug(L"Adding count variable: '" + count_scope_name + L"'", depth + 2);
+#endif
+        if(!symbol_table->CurrentParseScope()->AddEntry(count_entry)) {
+          ProcessError(L"Variable already defined in this scope: '" + count_ident + L"'");
         }
       }
       else if(left_pre_count->GetExpressionType() != METHOD_CALL_EXPR) {
