@@ -761,7 +761,7 @@ hash->Has(408)->PrintLine();
 
 			if(n > 0) {
 				do {
-					value : H := Pop();
+					value := Pop();
 					n -= 1;
 				}
 				while(value <> Nil & n > -1);
