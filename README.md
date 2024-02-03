@@ -60,7 +60,8 @@ Want to get started? Take a look at the [language guide](https://objeck.org/gett
     * ~~Neural Networks~~
     * ~~Decision Trees~~ 
 
-## Features
+## Functionality
+
 * Modern object-oriented and functional
 * Cross-platform: Linux (x64 and ARM64), macOS (ARM64), Windows (x64)
 * Optimized and JIT-compiled runtimes
@@ -76,7 +77,7 @@ Want to get started? Take a look at the [language guide](https://objeck.org/gett
 * REPL and IDE [LSP](https://github.com/objeck/objeck-lsp) support (for VSCode, Sublime, Kate, etc.) 
 * Online guides and API [documentation](https://www.objeck.org).
 
-## Functionality
+## Features
 
 ### [Object-oriented](https://en.wikipedia.org/wiki/Object-oriented_programming)
   
