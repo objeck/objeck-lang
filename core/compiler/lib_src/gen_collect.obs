@@ -10,7 +10,7 @@
 #~
 Immutable tuple classes
 ~#	
-bundle Tuple {
+bundle Tuples {
 	#~
 	Tuple class that supports 2 values
 	~#
