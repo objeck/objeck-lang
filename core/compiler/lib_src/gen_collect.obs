@@ -738,7 +738,7 @@ hash->Has(408)->PrintLine();
 		}
 		
 		#~
-		Pushes a value from the stack
+		Pops a value from the stack
 		@return popped valued, Nil if stack is empty
 		~#
 		method : public : Pop() ~ H {
@@ -750,6 +750,24 @@ hash->Has(408)->PrintLine();
 			};
 			
 			return Nil;
+		}
+
+		#~
+		Pops values from the stack
+		@return popped valued, Nil if stack is empty
+		~#
+		method : public : Pop(n : Int) ~ H {
+			value : H := Nil;
+
+			if(n > 0) {
+				do {
+					value : H := Pop();
+					n -= 1;
+				}
+				while(value <> Nil & n > -1);
+			}
+			
+			return value;
 		}
 		
 		#~
