@@ -8,57 +8,104 @@
 ~~#
 
 #~
-Imutuable tuple classes
+Immutable tuple classes
 ~#	
 bundle Tuple {
+	#~
+	Tuple class that supports 2 values
+	~#
 	class TuplePair<A, B> {
 		@a : A;
 		@b : B;
 
+		#~
+		Constructor.
+		@param a first parameter
+		@param b second parameter
+		~#
 		New(a : A, b : B) {
 			@a := a;
 			@b := b;
 		}
 
+		#~
+		Returns the first value
+		@return first value
+		~#
 		method : public : GetFirst() ~ A {
 			return @a;
 		}
 
+		#~
+		Returns the second value
+		@return second value
+		~#
 		method : public : GetSecond() ~ B {
 			return @b;
 		}
 	}
 	
+	#~
+	Tuple class that supports 3 values
+	~#
 	class TupleTriplet<A, B, C> {
 		@a : A;
 		@b : B;
 		@c : C;
 
+		#~
+		Constructor.
+		@param a first parameter
+		@param b second parameter
+		@param c third parameter
+		~#
 		New(a : A, b : B, c : C) {
 			@a := a;
 			@b := b;
 			@c := c;
 		}
 
+		#~
+		Returns the first value
+		@return first value
+		~#
 		method : public : GetFirst() ~ A {
 			return @a;
 		}
 
+		#~
+		Returns the second value
+		@return second value
+		~#
 		method : public : GetSecond() ~ B {
 			return @b;
 		}
 
+		#~
+		Returns the third value
+		@return third value
+		~#
 		method : public : GetThird() ~ C {
 			return @c;
 		}
 	}
 
+	#~
+	Tuple class that supports 4 values
+	~#
 	class TupleQuartet<A, B, C, D> {
 		@a : A;
 		@b : B;
 		@c : C;
 		@d : D;
 
+		#~
+		Constructor.
+		@param a first parameter
+		@param b second parameter
+		@param c third parameter
+		@param d forth parameter
+		~#
 		New(a : A, b : B, c : C, d : D) {
 			@a := a;
 			@b := b;
@@ -66,18 +113,34 @@ bundle Tuple {
 			@d := d;
 		}
 
+		#~
+		Returns the first value
+		@return first value
+		~#
 		method : public : GetFirst() ~ A {
 			return @a;
 		}
 
+		#~
+		Returns the second value
+		@return second value
+		~#
 		method : public : GetSecond() ~ B {
 			return @b;
 		}
 
+		#~
+		Returns the third value
+		@return third value
+		~#
 		method : public : GetThird() ~ C {
 			return @c;
 		}
 
+		#~
+		Returns the forth value
+		@return forth value
+		~#
 		method : public : GetForth() ~ D {
 			return @d;
 		}
@@ -831,6 +894,7 @@ hash->Has(408)->PrintLine();
 
 		#~
 		Pops values from the stack
+		@param n number of items to pop
 		@return popped valued, Nil if stack is empty
 		~#
 		method : public : Pop(n : Int) ~ H {
