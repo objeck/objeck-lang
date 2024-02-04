@@ -23,12 +23,7 @@ class JsonStreamParser {
 		@document := document->ToCharArray();
 		@parse_stack := Stack->New()<Pair<IntRef, Base>>;
 
-		@is_debug := false;
-	}
-
-	# TODO: 
-	method : public : native : NextMatch(key : String) ~ Bool {
-		return false; # TODO: return an object
+		@is_debug := true;
 	}
 
 	# TODO: 
@@ -41,24 +36,36 @@ class JsonStreamParser {
 		return false; # TODO: return an object
 	}
 
-	#~
-	1-pass parsing; 
-	while element searching; 
-	if the element is found;
-	parsing stops; 
-	lazy @documentument is done
-	~#
+	# TODO: return object
 	method : public : native : FindMatch(key : String) ~ Bool {
-		# TODO: return an object
 		while(@doc_pos < @document->Size()) {
+			if(<>NextMatch(key)) {
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	# TODO: return object
+	method : public : native : NextMatch(key : String) ~ Bool {
+		# TODO: return an object
+		if(@doc_pos < @document->Size()) {
 			doc_char := @document[@doc_pos];
 
 			# ignore white space
 			while(doc_char->IsWhitespace()) {
 				doc_char := @document[++@doc_pos]
 			}
+
+			if(@is_debug) {
+				stack_size := @parse_stack->Size();
+				each(i : stack_size) {
+					"..|"->Print();
+				}
+			}
 			
-			# parse document
+			# parse token
 			select(doc_char) {
 				# null
 				label 'n' {
@@ -248,13 +255,10 @@ class JsonStreamParser {
 				}
 			}
 
+
+
 			# update
 			@doc_pos += 1;
-		}
-
-		if(<>@parse_stack->IsEmpty()) {
-			"\texpected: '}' or ']'"->ErrorLine();
-			return false;
 		}
 
 		return true;
