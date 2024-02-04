@@ -214,10 +214,7 @@ class JsonStreamParser {
 					}
 
 					if(is_key & match_key->Equals(value)) {
-						if(@is_debug) {
-							"\t*** Found '{$value}' at pos={$@doc_pos} ***"->PrintLine();
-						}
-						# note, check above
+						# note, notice posisiton check above
 						@doc_pos += 2;
 						return JsonStreamParser->Status->FOUND;
 					}
