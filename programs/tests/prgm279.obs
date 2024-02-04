@@ -26,7 +26,7 @@ class JsonStreamParser {
 
 #			parser->NextElement(Nil);
 
-			result := parser->FindObject(search);
+			result := parser->GetElement(search);
 			"Element search for '{$search}', found={$result}"->PrintLine();
 		}
 	}
@@ -41,12 +41,12 @@ class JsonStreamParser {
 	}
 
 	# TODO: return object
-	method : public : native : FindElement(match_index : Int) ~ Bool {
+	method : public : native : GetElement(match_index : Int) ~ Bool {
 		return false;
 	}
 
 	# TODO: return object
-	method : public : native : FindObject(match_key : String) ~ Bool {
+	method : public : native : GetElement(match_key : String) ~ Bool {
 		if(@doc_stream <> Nil) {
 			# check for valid document start
 			doc_char := @doc_stream[@doc_stream_pos]
@@ -58,7 +58,7 @@ class JsonStreamParser {
 				while(@doc_stream_pos < @doc_stream->Size()) {
 					status := NextElement(match_key);
 					if(status = JsonStreamParser->StreamStatus->FOUND) {
-						GetElement();
+						NextElement();
 						return true;
 					}
 					else if(status = JsonStreamParser->StreamStatus->ERROR) {
@@ -72,7 +72,7 @@ class JsonStreamParser {
 	}
 
 	# TODO: all types and package up
-	method : public : GetElement() ~ Nil {
+	method : public : NextElement() ~ Nil {
 		if(@is_debug) {
 			"--- Found Key Element ---"->PrintLine();
 		}
