@@ -1,5 +1,6 @@
 use Collection;
 
+bundle Abc {
 class Test {
 	enum Type := -100 {
 		A,
@@ -8,7 +9,22 @@ class Test {
 	}
 
 	function : Main(args : String[]) ~ Nil {
-		aa := Test->Type->New[3];
-		aa->Size()->PrintLine();
+#		Type->A->PrintLine();
+#		Foo->New();
 	}
+}
+
+class Foo {
+	enum Type := 100 {
+		A,
+		B,
+		C
+	}
+
+	New() {
+		tt := Abc.Test->Type->New[2];
+#		tt := Type->New[2];
+		tt->Size()->PrintLine();
+	}
+}
 }

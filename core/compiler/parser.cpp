@@ -4231,7 +4231,14 @@ Expression* Parser::ParseSimpleExpression(int depth)
       // method call
     case TOKEN_ASSESSOR:
     case TOKEN_OPEN_PAREN:
+      // class->enum reference
       if(!Match(TOKEN_AS_ID, SECOND_INDEX) && !Match(TOKEN_TYPE_OF_ID, SECOND_INDEX)) {
+        if(Match(TOKEN_ASSESSOR) && Match(TOKEN_IDENT, SECOND_INDEX) && Match(TOKEN_ASSESSOR, THIRD_INDEX)) {
+          NextToken();
+          ident += L'#' + scanner->GetToken()->GetIdentifier();
+          NextToken();
+        }
+
         IdentifierContext ident_context(ident, line_num, line_pos);
         expression = ParseMethodCall(ident_context, depth + 1);
       }
@@ -4613,7 +4620,6 @@ MethodCall* Parser::ParseMethodCall(IdentifierContext& context, int depth)
       }
       NextToken();
     }
-
     else {
       ProcessError(L"Expected identifier", TOKEN_SEMI_COLON);
     }
