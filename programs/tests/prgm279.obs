@@ -51,8 +51,64 @@ class JsonStreamParser {
 
 			# TODO: "true", "false"
 
+			# true
+			if(char = 't') {
+				char := @document[++char_pos]
+				if(char <> 'r') {
+					"\texpected: null"->ErrorLine();
+					return false;
+				}
+
+				char := @document[++char_pos]
+				if(char <> 'u') {
+					"\texpected: null"->ErrorLine();
+					return false;
+				}
+
+				char := @document[++char_pos]
+				if(char <> 'e') {
+					"\texpected: null"->ErrorLine();
+					return false;
+				}
+
+				if(@is_debug) {
+					stack_size := @parse_stack->Size();
+					"TRUE => level={$stack_size}"->PrintLine();
+				}
+			}
+			# false
+			else if(char = 'f') {
+				char := @document[++char_pos]
+				if(char <> 'a') {
+					"\texpected: null"->ErrorLine();
+					return false;
+				}
+
+				char := @document[++char_pos]
+				if(char <> 'l') {
+					"\texpected: null"->ErrorLine();
+					return false;
+				}
+
+				char := @document[++char_pos]
+				if(char <> 's') {
+					"\texpected: null"->ErrorLine();
+					return false;
+				}
+
+				char := @document[++char_pos]
+				if(char <> 'e') {
+					"\texpected: null"->ErrorLine();
+					return false;
+				}
+
+				if(@is_debug) {
+					stack_size := @parse_stack->Size();
+					"FALSE => level={$stack_size}"->PrintLine();
+				}
+			}
 			# null
-			if(char = 'n') {
+			else if(char = 'n') {
 				char := @document[++char_pos]
 				if(char <> 'u') {
 					"\texpected: null"->ErrorLine();
