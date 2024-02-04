@@ -1,11 +1,11 @@
 use Collection;
 
 class JsonStreamParser {
-	@parse_stack : Stack<Pair<IntRef, Base>>;
-	@document : Char[];
+	@elem_stack : Stack<Pair<IntRef, Base>>;
+	@doc : Char[];
 	@doc_pos : Int;
 	@is_debug : Bool;
-
+	
 	enum Type {
 		OBJECT,
 		ARRAY,
@@ -20,8 +20,8 @@ class JsonStreamParser {
 	}
 
 	New(document : String) {
-		@document := document->ToCharArray();
-		@parse_stack := Stack->New()<Pair<IntRef, Base>>;
+		@doc := document->ToCharArray();
+		@elem_stack := Stack->New()<Pair<IntRef, Base>>;
 
 		@is_debug := true;
 	}
@@ -38,7 +38,7 @@ class JsonStreamParser {
 
 	# TODO: return object
 	method : public : native : FindMatch(key : String) ~ Bool {
-		while(@doc_pos < @document->Size()) {
+		while(@doc_pos < @doc->Size()) {
 			if(<>NextMatch(key)) {
 				return false;
 			}
@@ -50,38 +50,38 @@ class JsonStreamParser {
 	# TODO: return object
 	method : public : native : NextMatch(key : String) ~ Bool {
 		# TODO: return an object
-		if(@doc_pos < @document->Size()) {
-			doc_char := @document[@doc_pos];
+		if(@doc_pos < @doc->Size()) {
+			doc_char := @doc[@doc_pos];
 
 			# ignore white space
 			while(doc_char->IsWhitespace()) {
-				doc_char := @document[++@doc_pos]
+				doc_char := @doc[++@doc_pos]
 			}
 
 			# parse token
 			select(doc_char) {
 				# null
 				label 'n' {
-					doc_char := @document[++@doc_pos]
+					doc_char := @doc[++@doc_pos]
 					if(doc_char <> 'u') {
 						"\texpected: null"->ErrorLine();
 						return false;
 					}
 
-					doc_char := @document[++@doc_pos]
+					doc_char := @doc[++@doc_pos]
 					if(doc_char <> 'l') {
 						"\texpected: null"->ErrorLine();
 						return false;
 					}
 
-					doc_char := @document[++@doc_pos]
+					doc_char := @doc[++@doc_pos]
 					if(doc_char <> 'l') {
 						"\texpected: null"->ErrorLine();
 						return false;
 					}
 
 					if(@is_debug) {
-						stack_size := @parse_stack->Size();
+						stack_size := @elem_stack->Size();
 						each(i : stack_size) {
 							"..|"->Print();
 						}
@@ -91,26 +91,26 @@ class JsonStreamParser {
 
 				# true
 				label 't' {
-					doc_char := @document[++@doc_pos]
+					doc_char := @doc[++@doc_pos]
 					if(doc_char <> 'r') {
 						"\texpected: null"->ErrorLine();
 						return false;
 					}
 
-					doc_char := @document[++@doc_pos]
+					doc_char := @doc[++@doc_pos]
 					if(doc_char <> 'u') {
 						"\texpected: null"->ErrorLine();
 						return false;
 					}
 
-					doc_char := @document[++@doc_pos]
+					doc_char := @doc[++@doc_pos]
 					if(doc_char <> 'e') {
 						"\texpected: null"->ErrorLine();
 						return false;
 					}
 
 					if(@is_debug) {
-						stack_size := @parse_stack->Size();
+						stack_size := @elem_stack->Size();
 						each(i : stack_size) {
 							"..|"->Print();
 						}
@@ -120,32 +120,32 @@ class JsonStreamParser {
 
 				# false
 				label 'f' {
-					doc_char := @document[++@doc_pos]
+					doc_char := @doc[++@doc_pos]
 					if(doc_char <> 'a') {
 						"\texpected: null"->ErrorLine();
 						return false;
 					}
 
-					doc_char := @document[++@doc_pos]
+					doc_char := @doc[++@doc_pos]
 					if(doc_char <> 'l') {
 						"\texpected: null"->ErrorLine();
 						return false;
 					}
 
-					doc_char := @document[++@doc_pos]
+					doc_char := @doc[++@doc_pos]
 					if(doc_char <> 's') {
 						"\texpected: null"->ErrorLine();
 						return false;
 					}
 
-					doc_char := @document[++@doc_pos]
+					doc_char := @doc[++@doc_pos]
 					if(doc_char <> 'e') {
 						"\texpected: null"->ErrorLine();
 						return false;
 					}
 
 					if(@is_debug) {
-						stack_size := @parse_stack->Size();
+						stack_size := @elem_stack->Size();
 						each(i : stack_size) {
 							"..|"->Print();
 						}
@@ -155,10 +155,10 @@ class JsonStreamParser {
 
 				# string
 				label '"' {
-					doc_char := @document[++@doc_pos]
+					doc_char := @doc[++@doc_pos]
 					start_pos := @doc_pos;
 					while(doc_char->IsChar()) {
-						doc_char := @document[++@doc_pos]
+						doc_char := @doc[++@doc_pos]
 					}
 
 					if(doc_char <> '"') {
@@ -166,9 +166,9 @@ class JsonStreamParser {
 						return false;
 					}
 
-					value := String->New(@document, start_pos, @doc_pos - start_pos);
+					value := String->New(@doc, start_pos, @doc_pos - start_pos);
 					if(@is_debug) {
-						stack_size := @parse_stack->Size();
+						stack_size := @elem_stack->Size();
 						each(i : stack_size) {
 							"..|"->Print();
 						}
@@ -183,17 +183,17 @@ class JsonStreamParser {
 
 				label '{' {
 					if(@is_debug) {
-						stack_size := @parse_stack->Size();
+						stack_size := @elem_stack->Size();
 						each(i : stack_size) {
 							"..|"->Print();
 						}
 						"OBJECT => level={$stack_size}"->PrintLine();
 					}
-					@parse_stack->Push(Pair->New(IntRef->New(Type->OBJECT), Nil)<IntRef, Base>);
+					@elem_stack->Push(Pair->New(IntRef->New(Type->OBJECT), Nil)<IntRef, Base>);
 				}
 
 				label '}' {
-					type := @parse_stack->Pop()<Pair<IntRef, Base>>;
+					type := @elem_stack->Pop()<Pair<IntRef, Base>>;
 					if(type = Nil | type->GetFirst()->Get() <> Type->OBJECT) {
 						"\texpected: '}'"->ErrorLine();
 						return false;
@@ -202,17 +202,17 @@ class JsonStreamParser {
 
 				label '[' {
 					if(@is_debug) {
-						stack_size := @parse_stack->Size();
+						stack_size := @elem_stack->Size();
 						each(i : stack_size) {
 							"..|"->Print();
 						}
 						"ARRAY => level={$stack_size}"->PrintLine();
 					}
-					@parse_stack->Push(Pair->New(IntRef->New(Type->ARRAY), Nil)<IntRef, Base>);						
+					@elem_stack->Push(Pair->New(IntRef->New(Type->ARRAY), Nil)<IntRef, Base>);						
 				}
 
 				label ']' {
-					type := @parse_stack->Pop()<Pair<IntRef, Base>>;
+					type := @elem_stack->Pop()<Pair<IntRef, Base>>;
 					if(type = Nil | type->GetFirst()->Get() <> Type->ARRAY) {
 						"\texpected: ']'"->ErrorLine();
 						return false;
@@ -224,12 +224,12 @@ class JsonStreamParser {
 					if(doc_char->IsDigit()) {
 						start_pos := @doc_pos;
 						while(doc_char->IsDigit() | doc_char = '.') {
-							doc_char := @document[++@doc_pos]
+							doc_char := @doc[++@doc_pos]
 						}
 
 						if(@is_debug) {
-							stack_size := @parse_stack->Size();
-							num := String->New(@document, start_pos, @doc_pos - start_pos);
+							stack_size := @elem_stack->Size();
+							num := String->New(@doc, start_pos, @doc_pos - start_pos);
 								each(i : stack_size) {
 								"..|"->Print();
 							}
@@ -238,7 +238,7 @@ class JsonStreamParser {
 					}
 					# error
 					else if(doc_char <> ':' & doc_char <> ',') {
-						stack_size := @parse_stack->Size();
+						stack_size := @elem_stack->Size();
 						"\tunexpected token => level={$stack_size}, value='{$doc_char}'"->ErrorLine();
 						return false;
 					}
