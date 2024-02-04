@@ -58,8 +58,6 @@ class JsonStreamParser {
 				doc_char := @document[++@doc_pos]
 			}
 
-			
-			
 			# parse token
 			select(doc_char) {
 				# null
@@ -84,6 +82,9 @@ class JsonStreamParser {
 
 					if(@is_debug) {
 						stack_size := @parse_stack->Size();
+						each(i : stack_size) {
+							"..|"->Print();
+						}
 						"NULL => level={$stack_size}"->PrintLine();
 					}
 				}
@@ -110,6 +111,9 @@ class JsonStreamParser {
 
 					if(@is_debug) {
 						stack_size := @parse_stack->Size();
+						each(i : stack_size) {
+							"..|"->Print();
+						}
 						"TRUE => level={$stack_size}"->PrintLine();
 					}
 				}
@@ -142,6 +146,9 @@ class JsonStreamParser {
 
 					if(@is_debug) {
 						stack_size := @parse_stack->Size();
+						each(i : stack_size) {
+							"..|"->Print();
+						}
 						"FALSE => level={$stack_size}"->PrintLine();
 					}
 				}
@@ -216,7 +223,7 @@ class JsonStreamParser {
 					# number
 					if(doc_char->IsDigit()) {
 						start_pos := @doc_pos;
-						while(doc_char->IsDigit()) {
+						while(doc_char->IsDigit() | doc_char = '.') {
 							doc_char := @document[++@doc_pos]
 						}
 
