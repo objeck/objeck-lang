@@ -128,8 +128,11 @@ class JsonStreamParser {
 					}
 
 					other {
-						"\tunexpected: token -> '{$char}'"->ErrorLine();
-						return false;
+						if(char <> ':' | char <> ',') {
+							stack_size := parse_stack->Size();
+							"\tunexpected token: level={$stack_size}: value='{$char}'"->ErrorLine();
+							return false;
+						}
 					}
 				}
 			}
