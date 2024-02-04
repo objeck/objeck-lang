@@ -2,8 +2,8 @@ use Collection;
 
 class JsonStreamParser {
 	@elem_stack : Stack<Pair<IntRef, Base>>;
-	@doc : Char[];
-	@doc_pos : Int;
+	@doc_stream : Char[];
+	@doc_stream_pos : Int;
 	@is_debug : Bool;
 	
 	enum ComplexType {
@@ -29,10 +29,12 @@ class JsonStreamParser {
 	}
 
 	New(document : String) {
-		@doc := document->ToCharArray();
-		@elem_stack := Stack->New()<Pair<IntRef, Base>>;
-
 		@is_debug := true;
+
+		if(document <> Nil) {
+			@doc_stream := document->ToCharArray();
+			@elem_stack := Stack->New()<Pair<IntRef, Base>>;
+		}
 	}
 
 	# TODO: 
@@ -47,18 +49,28 @@ class JsonStreamParser {
 
 	# TODO: return object
 	method : public : native : FindMatch(match_key : String) ~ Bool {
-		# TODO: look at bottom up, along side t<<p>p</p>></p>op down parsing
-		while(@doc_pos < @doc->Size()) {
-			status := NextMatch(match_key);
-			if(status = JsonStreamParser->StreamStatus->FOUND) {
-				GetElement();
-				return true;
+		if(@doc_stream <> Nil) {
+			# check for valid document start
+			doc_char := @doc_stream[@doc_stream_pos]
+			while(@doc_stream_pos < @doc_stream->Size() & doc_char->IsWhitespace()) {
+				doc_char := @doc_stream[++@doc_stream_pos]
 			}
-			else if(status = JsonStreamParser->StreamStatus->ERROR) {
-				return false;
-			};
+			
+			if(doc_char = '{' | doc_char = '[') {
+				# TODO: look at bottom up, along side t<<p>p</p>></p>op down parsing
+				while(@doc_stream_pos < @doc_stream->Size()) {
+					status := NextMatch(match_key);
+					if(status = JsonStreamParser->StreamStatus->FOUND) {
+						GetElement();
+						return true;
+					}
+					else if(status = JsonStreamParser->StreamStatus->ERROR) {
+						return false;
+					};
+				}
+			}
 		}
-
+		
 		return false;
 	}
 
@@ -78,31 +90,30 @@ class JsonStreamParser {
 	# TODO: return object
 	method : public : native : NextMatch(match_key : String) ~ JsonStreamParser->StreamStatus {
 		# TODO: return an object
-		if(@doc_pos < @doc->Size()) {
-			doc_char := @doc[@doc_pos];
-
+		if(@doc_stream_pos < @doc_stream->Size()) {
+			doc_char := @doc_stream[@doc_stream_pos];
 			# ignore white space
-			while(@doc_pos < @doc->Size() & doc_char->IsWhitespace()) {
-				doc_char := @doc[++@doc_pos]
+			while(@doc_stream_pos < @doc_stream->Size() & doc_char->IsWhitespace()) {
+				doc_char := @doc_stream[++@doc_stream_pos]
 			}
 
 			# parse token
 			select(doc_char) {
 				# null
 				label 'n' {
-					doc_char := @doc[++@doc_pos]
+					doc_char := @doc_stream[++@doc_stream_pos]
 					if(doc_char <> 'u') {
 						"\texpected: null"->ErrorLine();
 						return JsonStreamParser->StreamStatus->ERROR;
 					}
 
-					doc_char := @doc[++@doc_pos]
+					doc_char := @doc_stream[++@doc_stream_pos]
 					if(doc_char <> 'l') {
 						"\texpected: null"->ErrorLine();
 						return JsonStreamParser->StreamStatus->ERROR;
 					}
 
-					doc_char := @doc[++@doc_pos]
+					doc_char := @doc_stream[++@doc_stream_pos]
 					if(doc_char <> 'l') {
 						"\texpected: null"->ErrorLine();
 						return JsonStreamParser->StreamStatus->ERROR;
@@ -119,19 +130,19 @@ class JsonStreamParser {
 
 				# true
 				label 't' {
-					doc_char := @doc[++@doc_pos]
+					doc_char := @doc_stream[++@doc_stream_pos]
 					if(doc_char <> 'r') {
 						"\texpected: null"->ErrorLine();
 						return JsonStreamParser->StreamStatus->ERROR;
 					}
 
-					doc_char := @doc[++@doc_pos]
+					doc_char := @doc_stream[++@doc_stream_pos]
 					if(doc_char <> 'u') {
 						"\texpected: null"->ErrorLine();
 						return JsonStreamParser->StreamStatus->ERROR;
 					}
 
-					doc_char := @doc[++@doc_pos]
+					doc_char := @doc_stream[++@doc_stream_pos]
 					if(doc_char <> 'e') {
 						"\texpected: null"->ErrorLine();
 						return JsonStreamParser->StreamStatus->ERROR;
@@ -148,25 +159,25 @@ class JsonStreamParser {
 
 				# false
 				label 'f' {
-					doc_char := @doc[++@doc_pos]
+					doc_char := @doc_stream[++@doc_stream_pos]
 					if(doc_char <> 'a') {
 						"\texpected: null"->ErrorLine();
 						return JsonStreamParser->StreamStatus->ERROR;
 					}
 
-					doc_char := @doc[++@doc_pos]
+					doc_char := @doc_stream[++@doc_stream_pos]
 					if(doc_char <> 'l') {
 						"\texpected: null"->ErrorLine();
 						return JsonStreamParser->StreamStatus->ERROR;
 					}
 
-					doc_char := @doc[++@doc_pos]
+					doc_char := @doc_stream[++@doc_stream_pos]
 					if(doc_char <> 's') {
 						"\texpected: null"->ErrorLine();
 						return JsonStreamParser->StreamStatus->ERROR;
 					}
 
-					doc_char := @doc[++@doc_pos]
+					doc_char := @doc_stream[++@doc_stream_pos]
 					if(doc_char <> 'e') {
 						"\texpected: null"->ErrorLine();
 						return JsonStreamParser->StreamStatus->ERROR;
@@ -183,10 +194,10 @@ class JsonStreamParser {
 
 				# string
 				label '"' {
-					doc_char := @doc[++@doc_pos]
-					start_pos := @doc_pos;
-					while(@doc_pos < @doc->Size() & doc_char <> '"') {
-						doc_char := @doc[++@doc_pos]
+					doc_char := @doc_stream[++@doc_stream_pos]
+					start_pos := @doc_stream_pos;
+					while(@doc_stream_pos < @doc_stream->Size() & doc_char <> '"') {
+						doc_char := @doc_stream[++@doc_stream_pos]
 					}
 
 					if(doc_char <> '"') {
@@ -194,8 +205,8 @@ class JsonStreamParser {
 						return JsonStreamParser->StreamStatus->ERROR;
 					}
 
-					value := String->New(@doc, start_pos, @doc_pos - start_pos);
-					found_key := match_key <> Nil & @doc_pos + 1 < @doc->Size() & @doc[@doc_pos + 1] = ':';
+					value := String->New(@doc_stream, start_pos, @doc_stream_pos - start_pos);
+					found_key := match_key <> Nil & @doc_stream_pos + 1 < @doc_stream->Size() & @doc_stream[@doc_stream_pos + 1] = ':';
 					if(@is_debug) {
 						stack_size := @elem_stack->Size();
 						each(i : stack_size) {
@@ -212,7 +223,7 @@ class JsonStreamParser {
 
 					if(found_key & match_key->Equals(value)) {
 						# note, notice posisiton check above
-						@doc_pos += 2;
+						@doc_stream_pos += 2;
 						return JsonStreamParser->StreamStatus->FOUND;
 					}
 				}
@@ -258,21 +269,19 @@ class JsonStreamParser {
 				other {
 					# number
 					if(doc_char->IsDigit()) {
-						start_pos := @doc_pos;
-						while(@doc_pos < @doc->Size() & (doc_char->IsDigit() | doc_char = '.')) {
-							doc_char := @doc[++@doc_pos]
+						start_pos := @doc_stream_pos;
+						while(@doc_stream_pos + 1 < @doc_stream->Size() & (doc_char->IsDigit() | doc_char = '.')) {
+							doc_char := @doc_stream[++@doc_stream_pos]
 						}
 
 						if(@is_debug) {
 							stack_size := @elem_stack->Size();
-							num := String->New(@doc, start_pos, @doc_pos - start_pos);
+							num := String->New(@doc_stream, start_pos, @doc_stream_pos - start_pos);
 								each(i : stack_size) {
 								"..|"->Print();
 							}
 							"NUMBER => level={$stack_size}, value={$num}"->PrintLine();
 						}
-
-						@doc_pos -= 1;
 					}
 					# error
 					else if(doc_char <> ':' & doc_char <> ',') {
@@ -284,7 +293,7 @@ class JsonStreamParser {
 			}
 
 			# update
-			@doc_pos += 1;
+			@doc_stream_pos += 1;
 		}
 
 		return JsonStreamParser->StreamStatus->OK_NEXT;
