@@ -32,7 +32,7 @@ class JsonStreamParser {
 
 #			parser->NextElement(Nil);
 
-			result := parser->GetElement(search);
+			result := parser->GetElement(2);
 			"Element search for '{$search}', found={$result}"->PrintLine();
 		}
 	}
@@ -56,6 +56,24 @@ class JsonStreamParser {
 
 	# TODO: return object
 	method : public : native : GetElement(match_index : Int) ~ Bool {
+		if(@doc_stream <> Nil) {
+			# check for valid document start
+			doc_char := @doc_stream[@doc_stream_pos]
+			while(@doc_stream_pos < @doc_stream->Size() & doc_char->IsWhitespace()) {
+				doc_char := @doc_stream[++@doc_stream_pos]
+			}
+						
+			if(doc_char = '[') {
+				NextElement();
+				each(i : match_index) {
+					if(NextElement() = JsonStreamParser->StreamStatus->ERROR) {
+						return false;
+					}
+				}
+				return true;
+			}
+		}
+
 		return false;
 	}
 
@@ -68,12 +86,12 @@ class JsonStreamParser {
 				doc_char := @doc_stream[++@doc_stream_pos]
 			}
 						
-			if(doc_char = '{' | doc_char = '[') {
+			if(doc_char = '{') {
 				while(@doc_stream_pos < @doc_stream->Size()) {
-					status := NextElement(match_key);
+					status := NextTag(match_key);
 					if(status = JsonStreamParser->StreamStatus->FOUND) {
-						NextElement();
-						return true;
+						status := NextElement();
+						return status <>  JsonStreamParser->StreamStatus->ERROR;
 					}
 					else if(status = JsonStreamParser->StreamStatus->ERROR) {
 						return false;
@@ -86,20 +104,20 @@ class JsonStreamParser {
 	}
 
 	# TODO: all types and package up
-	method : public : NextElement() ~ Nil {
-		if(@is_debug) {
-			"--- Found Key Element ---"->PrintLine();
-		}
-
+	method : public : NextElement() ~ JsonStreamParser->StreamStatus {
 		level := @elem_stack->Size()
 		do {
-			NextElement(Nil);
+			if(NextTag(Nil) = JsonStreamParser->StreamStatus->ERROR) {
+				return JsonStreamParser->StreamStatus->ERROR;
+			}
 		}
 		while(level <> @elem_stack->Size());
+
+		return JsonStreamParser->StreamStatus->OK_NEXT;
 	}
 
 	# TODO: return object
-	method : public : native : NextElement(match_key : String) ~ JsonStreamParser->StreamStatus {
+	method : public : native : NextTag(match_key : String) ~ JsonStreamParser->StreamStatus {
 		# TODO: return an object
 		if(@doc_stream_pos < @doc_stream->Size()) {
 			doc_char := @doc_stream[@doc_stream_pos];
