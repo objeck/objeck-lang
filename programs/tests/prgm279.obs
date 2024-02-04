@@ -10,15 +10,17 @@ class JsonStreamParser {
 	}
 
 	function : Main(args : String[]) ~ Nil {
-	  is_debug := false;
+        is_debug := false;
+        success := Parse(args[0]);
+        "Success={$success}."->PrintLine();
+    }
 
-      # 1 pass parsing; 
-      # while element searching; 
-      # if the element is found;
-      # parsing stops; 
-      # lazy document is done
-
-	  doc := System.IO.Filesystem.FileReader->ReadFile(args[0]);
+    # 1 pass parsing; 
+    # while element searching; 
+    # if the element is found;
+    # parsing stops; 
+    # lazy document is done
+    function : native : Parse(doc : String) ~ Bool {
 		# TODO: store values
         parse_stack := Stack->New()<Pair<IntRef, Base>>;
 		
@@ -47,6 +49,7 @@ class JsonStreamParser {
 
 						if(char <> '"') {
 							"\texpected: STRING_END"->ErrorLine();
+                            return false;
 						}
 
 						if(is_debug) {
@@ -72,6 +75,7 @@ class JsonStreamParser {
 
 						if(type = Nil | type->GetFirst()->Get() <> Type->OBJECT) {
 							"\texpected: OBJECT_END"->ErrorLine();
+                            return false;
 						}
 					}
 
@@ -92,6 +96,7 @@ class JsonStreamParser {
 
 						if(type = Nil | type->GetFirst()->Get() <> Type->ARRAY) {
 							"\texpected: ARRAY_END"->ErrorLine();
+                            return false;
 						}
 					}
 				}
@@ -100,6 +105,9 @@ class JsonStreamParser {
 
 		if(<>parse_stack->IsEmpty()) {
 			"\texpected: OBJECT_END or ARRAY_END"->ErrorLine();
+            return false;
 		}
+
+        return true;
    }
 }
