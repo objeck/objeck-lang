@@ -1,7 +1,9 @@
 use Collection;
 
 class JsonStreamParser {
-	@elem_stack : Stack<IntRef>;
+	@elem_stack : ComplexType[];
+	@elem_stack_pos : Int;
+
 	@doc_stream : Char[];
 	@doc_stream_pos : Int;
 	@is_debug : Bool;
@@ -15,6 +17,10 @@ class JsonStreamParser {
 		OK_NEXT,
 		FOUND,
 		ERROR
+	}
+
+	consts Limit {
+		DEPTH_MAX := 256
 	}
 
 	function : Main(args : String[]) ~ Nil {
@@ -36,8 +42,16 @@ class JsonStreamParser {
 
 		if(document <> Nil) {
 			@doc_stream := document->ToCharArray();
-			@elem_stack := Stack->New()<IntRef>;
+			@elem_stack := JsonStreamParser->ComplexType->New[Limit->DEPTH_MAX];
 		}
+	}
+
+	method : Push(type : JsonStreamParser->ComplexType) ~ Nil {
+		@elem_stack[@elem_stack_pos++] := type;
+	}
+
+	method : Pop() ~ JsonStreamParser->ComplexType {
+		return @elem_stack[--@elem_stack_pos];
 	}
 
 	# TODO: return object
@@ -118,7 +132,7 @@ class JsonStreamParser {
 
 					if(@is_debug) {
 						stack_size := @elem_stack->Size();
-						each(i : stack_size) {
+						each(i : @elem_stack_pos) {
 							"..|"->Print();
 						}
 						"NULL => level={$stack_size}"->PrintLine();
@@ -147,7 +161,7 @@ class JsonStreamParser {
 
 					if(@is_debug) {
 						stack_size := @elem_stack->Size();
-						each(i : stack_size) {
+						each(i : @elem_stack_pos) {
 							"..|"->Print();
 						}
 						"TRUE => level={$stack_size}"->PrintLine();
@@ -182,7 +196,7 @@ class JsonStreamParser {
 
 					if(@is_debug) {
 						stack_size := @elem_stack->Size();
-						each(i : stack_size) {
+						each(i : @elem_stack_pos) {
 							"..|"->Print();
 						}
 						"FALSE => level={$stack_size}"->PrintLine();
@@ -206,7 +220,7 @@ class JsonStreamParser {
 					found_key := match_key <> Nil & @doc_stream_pos + 1 < @doc_stream->Size() & @doc_stream[@doc_stream_pos + 1] = ':';
 					if(@is_debug) {
 						stack_size := @elem_stack->Size();
-						each(i : stack_size) {
+						each(i : @elem_stack_pos) {
 							"..|"->Print();
 						}
 					
@@ -228,17 +242,17 @@ class JsonStreamParser {
 				label '{' {
 					if(@is_debug) {
 						stack_size := @elem_stack->Size();
-						each(i : stack_size) {
+						each(i : @elem_stack_pos) {
 							"..|"->Print();
 						}
 						"OBJECT => level={$stack_size}"->PrintLine();
 					}
-					@elem_stack->Push(IntRef->New(ComplexType->OBJECT));
+					Push(JsonStreamParser->ComplexType->OBJECT);
 				}
 
 				label '}' {
-					type := @elem_stack->Pop();
-					if(type->Get() <> ComplexType->OBJECT & type->Get() <> ComplexType->ARRAY) {
+					type := Pop();
+					if(type <> JsonStreamParser->ComplexType->OBJECT & type <> JsonStreamParser->ComplexType->ARRAY) {
 						"\texpected: '}'"->ErrorLine();
 						return JsonStreamParser->StreamStatus->ERROR;
 					}
@@ -247,17 +261,17 @@ class JsonStreamParser {
 				label '[' {
 					if(@is_debug) {
 						stack_size := @elem_stack->Size();
-						each(i : stack_size) {
+						each(i : @elem_stack_pos) {
 							"..|"->Print();
 						}
 						"ARRAY => level={$stack_size}"->PrintLine();
 					}
-					@elem_stack->Push(IntRef->New(ComplexType->ARRAY));
+					Push(JsonStreamParser->ComplexType->ARRAY);
 				}
 
 				label ']' {
-					type := @elem_stack->Pop();
-					if(type->Get() <> ComplexType->OBJECT & type->Get() <> ComplexType->ARRAY) {
+					type := Pop();
+					if(type <> JsonStreamParser->ComplexType->OBJECT & type <> JsonStreamParser->ComplexType->ARRAY) {
 						"\texpected: ']'"->ErrorLine();
 						return JsonStreamParser->StreamStatus->ERROR;
 					}
@@ -274,7 +288,7 @@ class JsonStreamParser {
 						if(@is_debug) {
 							stack_size := @elem_stack->Size();
 							num := String->New(@doc_stream, start_pos, @doc_stream_pos - start_pos);
-								each(i : stack_size) {
+								each(i : @elem_stack_pos) {
 								"..|"->Print();
 							}
 							"NUMBER => level={$stack_size}, value={$num}"->PrintLine();
