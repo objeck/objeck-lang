@@ -1,7 +1,7 @@
 use Collection;
 
 class JsonStreamParser {
-	@elem_stack : Stack<Pair<IntRef, Base>>;
+	@elem_stack : Stack<IntRef>;
 	@doc_stream : Char[];
 	@doc_stream_pos : Int;
 	@is_debug : Bool;
@@ -36,7 +36,7 @@ class JsonStreamParser {
 
 		if(document <> Nil) {
 			@doc_stream := document->ToCharArray();
-			@elem_stack := Stack->New()<Pair<IntRef, Base>>;
+			@elem_stack := Stack->New()<IntRef>;
 		}
 	}
 
@@ -233,12 +233,12 @@ class JsonStreamParser {
 						}
 						"OBJECT => level={$stack_size}"->PrintLine();
 					}
-					@elem_stack->Push(Pair->New(IntRef->New(ComplexType->OBJECT), Nil)<IntRef, Base>);
+					@elem_stack->Push(IntRef->New(ComplexType->OBJECT));
 				}
 
 				label '}' {
-					type := @elem_stack->Pop()<Pair<IntRef, Base>>;
-					if(type = Nil | (type->GetFirst()->Get() <> ComplexType->OBJECT & type->GetFirst()->Get() <> ComplexType->ARRAY)) {
+					type := @elem_stack->Pop();
+					if(type->Get() <> ComplexType->OBJECT & type->Get() <> ComplexType->ARRAY) {
 						"\texpected: '}'"->ErrorLine();
 						return JsonStreamParser->StreamStatus->ERROR;
 					}
@@ -252,12 +252,12 @@ class JsonStreamParser {
 						}
 						"ARRAY => level={$stack_size}"->PrintLine();
 					}
-					@elem_stack->Push(Pair->New(IntRef->New(ComplexType->ARRAY), Nil)<IntRef, Base>);						
+					@elem_stack->Push(IntRef->New(ComplexType->ARRAY));
 				}
 
 				label ']' {
-					type := @elem_stack->Pop()<Pair<IntRef, Base>>;
-					if(type = Nil | (type->GetFirst()->Get() <> ComplexType->OBJECT & type->GetFirst()->Get() <> ComplexType->ARRAY)) {
+					type := @elem_stack->Pop();
+					if(type->Get() <> ComplexType->OBJECT & type->Get() <> ComplexType->ARRAY) {
 						"\texpected: ']'"->ErrorLine();
 						return JsonStreamParser->StreamStatus->ERROR;
 					}
