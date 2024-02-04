@@ -1,4 +1,6 @@
 { 
-    "ages": ["a", "b", "c"]
-    
+    "names": ["alex", "bob", "coral"],
+    "ages": [58, 41, 19],
+    "type": "bad",
+    "active": [true, true, false]
 }
