@@ -1,0 +1,105 @@
+use Collection;
+
+class JsonStreamParser {
+	is_debug : static : Bool;
+
+	enum Type {
+		OBJECT,
+		ARRAY,
+		NUM
+	}
+
+	function : Main(args : String[]) ~ Nil {
+	  is_debug := false;
+
+      # 1 pass parsing; 
+      # while element searching; 
+      # if the element is found;
+      # parsing stops; 
+      # lazy document is done
+
+	  doc := System.IO.Filesystem.FileReader->ReadFile(args[0]);
+		# TODO: store values
+        parse_stack := Stack->New()<Pair<IntRef, Base>>;
+		
+        each(char_pos : doc) {
+			char := doc->Get(char_pos);
+
+			if(char->IsDigit()) {
+				start_pos := char_pos;
+				while(char->IsDigit()) {
+					char := doc->Get(++char_pos);
+				}
+
+                if(is_debug) {
+                    num := doc->SubString(start_pos, char_pos - start_pos);
+                    "NUM: num='{$num}'"->PrintLine();
+                }
+			}
+			else {
+				select(char) {
+					label '"' {
+						char := doc->Get(++char_pos);
+						start_pos := char_pos;
+						while(char->IsChar()) {
+							char := doc->Get(++char_pos);
+						}
+
+						if(char <> '"') {
+							"\texpected: STRING_END"->ErrorLine();
+						}
+
+						if(is_debug) {
+							string := doc->SubString(start_pos, char_pos - start_pos);
+							"QUOTE: string='{$string}'"->PrintLine();
+						}
+					}
+
+					label '{' {
+						if(is_debug) {
+							stack_size := parse_stack->Size();
+							"OBJECT_START: level={$stack_size}"->PrintLine();
+						}
+						parse_stack->Push(Pair->New(IntRef->New(Type->OBJECT), Nil)<IntRef, Base>);
+					}
+
+					label '}' {
+						type := parse_stack->Pop()<Pair<IntRef, Base>>;
+						if(is_debug) {
+							stack_size := parse_stack->Size();
+							"OBJECT_END: level={$stack_size}"->PrintLine();
+						}
+
+						if(type = Nil | type->GetFirst()->Get() <> Type->OBJECT) {
+							"\texpected: OBJECT_END"->ErrorLine();
+						}
+					}
+
+					label '[' {
+						if(is_debug) {
+							stack_size := parse_stack->Size();
+							"ARRAY_START: level={$stack_size}"->PrintLine();
+						}
+						parse_stack->Push(Pair->New(IntRef->New(Type->ARRAY), Nil)<IntRef, Base>);						
+					}
+
+					label ']' {
+						type := parse_stack->Pop()<Pair<IntRef, Base>>;
+						if(is_debug) {
+							stack_size := parse_stack->Size();
+							"ARRAY_END: level={$stack_size}"->PrintLine();
+						}
+
+						if(type = Nil | type->GetFirst()->Get() <> Type->ARRAY) {
+							"\texpected: ARRAY_END"->ErrorLine();
+						}
+					}
+				}
+			}
+		}
+
+		if(<>parse_stack->IsEmpty()) {
+			"\texpected: OBJECT_END or ARRAY_END"->ErrorLine();
+		}
+   }
+}
