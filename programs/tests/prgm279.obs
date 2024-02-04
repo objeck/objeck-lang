@@ -3,6 +3,7 @@ use Collection;
 class JsonStreamParser {
 	@parse_stack : Stack<Pair<IntRef, Base>>;
 	@document : Char[];
+	@doc_pos : Int;
 	@is_debug : Bool;
 
 	enum Type {
@@ -14,229 +15,241 @@ class JsonStreamParser {
 
 	function : Main(args : String[]) ~ Nil {
 		parser := JsonStreamParser->New(System.IO.Filesystem.FileReader->ReadFile(args[0]));
-		success := parser->GetMatch("Luke");
-		"Success? {$success}."->PrintLine();
+		result := parser->FindMatch("Luke");
+		"Parsed? {$result}"->PrintLine();
 	}
 
 	New(document : String) {
 		@document := document->ToCharArray();
-		@is_debug := true;
 		@parse_stack := Stack->New()<Pair<IntRef, Base>>;
+
+		@is_debug := false;
 	}
 
-	# TODO: get
-	method : public : native : GetNextMatch(key : String) ~ Bool {
+	# TODO: 
+	method : public : native : NextMatch(key : String) ~ Bool {
 		return false; # TODO: return an object
 	}
 
-	method : public : native : GetNextMatch(index : Int) ~ Bool {
+	# TODO: 
+	method : public : native : NextMatch(index : Int) ~ Bool {
 		return false; # TODO: return an object
 	}
 
-	# 1 pass parsing; 
-	# while element searching; 
-	# if the element is found;
-	# parsing stops; 
-	# lazy @documentument is done
-	method : public : native : GetMatch(key : String) ~ Bool {
+	# TODO: 
+	method : public : native : FindMatch(index : Int) ~ Bool {
+		return false; # TODO: return an object
+	}
+
+	#~
+	1-pass parsing; 
+	while element searching; 
+	if the element is found;
+	parsing stops; 
+	lazy @documentument is done
+	~#
+	method : public : native : FindMatch(key : String) ~ Bool {
 		# TODO: return an object
-		
-		each(char_pos : @document) {
-			char := @document[char_pos];
+		while(@doc_pos < @document->Size()) {
+			doc_char := @document[@doc_pos];
 
-			# white space
-			while(char->IsWhitespace()) {
-				char := @document[++char_pos]
+			# ignore white space
+			while(doc_char->IsWhitespace()) {
+				doc_char := @document[++@doc_pos]
 			}
-
-			# TODO: "true", "false"
-
-			# true
-			if(char = 't') {
-				char := @document[++char_pos]
-				if(char <> 'r') {
-					"\texpected: null"->ErrorLine();
-					return false;
-				}
-
-				char := @document[++char_pos]
-				if(char <> 'u') {
-					"\texpected: null"->ErrorLine();
-					return false;
-				}
-
-				char := @document[++char_pos]
-				if(char <> 'e') {
-					"\texpected: null"->ErrorLine();
-					return false;
-				}
-
-				if(@is_debug) {
-					stack_size := @parse_stack->Size();
-					"TRUE => level={$stack_size}"->PrintLine();
-				}
-			}
-			# false
-			else if(char = 'f') {
-				char := @document[++char_pos]
-				if(char <> 'a') {
-					"\texpected: null"->ErrorLine();
-					return false;
-				}
-
-				char := @document[++char_pos]
-				if(char <> 'l') {
-					"\texpected: null"->ErrorLine();
-					return false;
-				}
-
-				char := @document[++char_pos]
-				if(char <> 's') {
-					"\texpected: null"->ErrorLine();
-					return false;
-				}
-
-				char := @document[++char_pos]
-				if(char <> 'e') {
-					"\texpected: null"->ErrorLine();
-					return false;
-				}
-
-				if(@is_debug) {
-					stack_size := @parse_stack->Size();
-					"FALSE => level={$stack_size}"->PrintLine();
-				}
-			}
-			# null
-			else if(char = 'n') {
-				char := @document[++char_pos]
-				if(char <> 'u') {
-					"\texpected: null"->ErrorLine();
-					return false;
-				}
-
-				char := @document[++char_pos]
-				if(char <> 'l') {
-					"\texpected: null"->ErrorLine();
-					return false;
-				}
-
-				char := @document[++char_pos]
-				if(char <> 'l') {
-					"\texpected: null"->ErrorLine();
-					return false;
-				}
-
-				if(@is_debug) {
-					stack_size := @parse_stack->Size();
-					"NULL => level={$stack_size}"->PrintLine();
-				}
-			}
-			# number
-			else if(char->IsDigit()) {
-				start_pos := char_pos;
-				while(char->IsDigit()) {
-					char := @document[++char_pos]
-				}
-
-				if(@is_debug) {
-					stack_size := @parse_stack->Size();
-					num := String->New(@document, start_pos, char_pos - start_pos);
-					"NUMBER => level={$stack_size}, value={$num}"->PrintLine();
-				}
-			}
-			else {
-				select(char) {
-					# string
-					label '"' {
-						char := @document[++char_pos]
-						start_pos := char_pos;
-						while(char->IsChar()) {
-							char := @document[++char_pos]
-						}
-
-						if(char <> '"') {
-							"\texpected: '\""->ErrorLine();
-							return false;
-						}
-
-						value := String->New(@document, start_pos, char_pos - start_pos);
-						if(@is_debug) {
-							stack_size := @parse_stack->Size();
-							"STRING => level={$stack_size}, value='{$value}'"->PrintLine();
-						}
-
-						if(key->Equals(value)) {
-							"*** Found at pos={$char_pos} ***"->PrintLine();
-							return true;
-						}
+			
+			# parse document
+			select(doc_char) {
+				# null
+				label 'n' {
+					doc_char := @document[++@doc_pos]
+					if(doc_char <> 'u') {
+						"\texpected: null"->ErrorLine();
+						return false;
 					}
 
-					label '{' {
-						if(@is_debug) {
-							stack_size := @parse_stack->Size();
-							"OBJ_ST => level={$stack_size}"->PrintLine();
-						}
-						@parse_stack->Push(Pair->New(IntRef->New(Type->OBJECT), Nil)<IntRef, Base>);
+					doc_char := @document[++@doc_pos]
+					if(doc_char <> 'l') {
+						"\texpected: null"->ErrorLine();
+						return false;
 					}
 
-					label '}' {
-						type := @parse_stack->Pop()<Pair<IntRef, Base>>;
-						if(@is_debug) {
-							stack_size := @parse_stack->Size();
-							"OBJ_ED => level={$stack_size}"->PrintLine();
-						}
-
-						if(type = Nil | type->GetFirst()->Get() <> Type->OBJECT) {
-							"\texpected: '}'"->ErrorLine();
-							return false;
-						}
+					doc_char := @document[++@doc_pos]
+					if(doc_char <> 'l') {
+						"\texpected: null"->ErrorLine();
+						return false;
 					}
 
-					label '[' {
-						if(@is_debug) {
+					if(@is_debug) {
 						stack_size := @parse_stack->Size();
-							"ARY_ST => level={$stack_size}"->PrintLine();
-						}
-						@parse_stack->Push(Pair->New(IntRef->New(Type->ARRAY), Nil)<IntRef, Base>);						
+						"NULL => level={$stack_size}"->PrintLine();
+					}
+				}
+
+				# true
+				label 't' {
+					doc_char := @document[++@doc_pos]
+					if(doc_char <> 'r') {
+						"\texpected: null"->ErrorLine();
+						return false;
 					}
 
-					label ']' {
-						type := @parse_stack->Pop()<Pair<IntRef, Base>>;
+					doc_char := @document[++@doc_pos]
+					if(doc_char <> 'u') {
+						"\texpected: null"->ErrorLine();
+						return false;
+					}
+
+					doc_char := @document[++@doc_pos]
+					if(doc_char <> 'e') {
+						"\texpected: null"->ErrorLine();
+						return false;
+					}
+
+					if(@is_debug) {
+						stack_size := @parse_stack->Size();
+						"TRUE => level={$stack_size}"->PrintLine();
+					}
+				}
+
+				# false
+				label 'f' {
+					doc_char := @document[++@doc_pos]
+					if(doc_char <> 'a') {
+						"\texpected: null"->ErrorLine();
+						return false;
+					}
+
+					doc_char := @document[++@doc_pos]
+					if(doc_char <> 'l') {
+						"\texpected: null"->ErrorLine();
+						return false;
+					}
+
+					doc_char := @document[++@doc_pos]
+					if(doc_char <> 's') {
+						"\texpected: null"->ErrorLine();
+						return false;
+					}
+
+					doc_char := @document[++@doc_pos]
+					if(doc_char <> 'e') {
+						"\texpected: null"->ErrorLine();
+						return false;
+					}
+
+					if(@is_debug) {
+						stack_size := @parse_stack->Size();
+						"FALSE => level={$stack_size}"->PrintLine();
+					}
+				}
+
+				# string
+				label '"' {
+					doc_char := @document[++@doc_pos]
+					start_pos := @doc_pos;
+					while(doc_char->IsChar()) {
+						doc_char := @document[++@doc_pos]
+					}
+
+					if(doc_char <> '"') {
+						"\texpected: '\""->ErrorLine();
+						return false;
+					}
+
+					value := String->New(@document, start_pos, @doc_pos - start_pos);
+					if(@is_debug) {
+						stack_size := @parse_stack->Size();
+						"STRING => level={$stack_size}, value='{$value}'"->PrintLine();
+					}
+
+					if(key->Equals(value)) {
+						"*** Found at pos={$@doc_pos} ***"->PrintLine();
+						return true;
+					}
+				}
+
+				label '{' {
+					if(@is_debug) {
+						stack_size := @parse_stack->Size();
+						"OBJ_ST => level={$stack_size}"->PrintLine();
+					}
+					@parse_stack->Push(Pair->New(IntRef->New(Type->OBJECT), Nil)<IntRef, Base>);
+				}
+
+				label '}' {
+					type := @parse_stack->Pop()<Pair<IntRef, Base>>;
+					if(@is_debug) {
+						stack_size := @parse_stack->Size();
+						"OBJ_ED => level={$stack_size}"->PrintLine();
+					}
+
+					if(type = Nil | type->GetFirst()->Get() <> Type->OBJECT) {
+						"\texpected: '}'"->ErrorLine();
+						return false;
+					}
+				}
+
+				label '[' {
+					if(@is_debug) {
+					stack_size := @parse_stack->Size();
+						"ARY_ST => level={$stack_size}"->PrintLine();
+					}
+					@parse_stack->Push(Pair->New(IntRef->New(Type->ARRAY), Nil)<IntRef, Base>);						
+				}
+
+				label ']' {
+					type := @parse_stack->Pop()<Pair<IntRef, Base>>;
+					if(@is_debug) {
+						stack_size := @parse_stack->Size();
+						"ARY_ED => level={$stack_size}"->PrintLine();
+					}
+
+					if(type = Nil | type->GetFirst()->Get() <> Type->ARRAY) {
+						"\texpected: ']'"->ErrorLine();
+						return false;
+					}
+				}
+
+				label ':' {
+					if(@is_debug) {
+						stack_size := @parse_stack->Size();
+						"COLON => level={$stack_size}"->PrintLine();
+					}
+				}
+
+				label ',' {
+					if(@is_debug) {
+						stack_size := @parse_stack->Size();
+						"COMMA => level={$stack_size}"->PrintLine();
+					}
+				}
+
+				other {
+					# number
+					if(doc_char->IsDigit()) {
+						start_pos := @doc_pos;
+						while(doc_char->IsDigit()) {
+							doc_char := @document[++@doc_pos]
+						}
+
 						if(@is_debug) {
 							stack_size := @parse_stack->Size();
-							"ARY_ED => level={$stack_size}"->PrintLine();
-						}
-
-						if(type = Nil | type->GetFirst()->Get() <> Type->ARRAY) {
-							"\texpected: ']'"->ErrorLine();
-							return false;
+							num := String->New(@document, start_pos, @doc_pos - start_pos);
+							"NUMBER => level={$stack_size}, value={$num}"->PrintLine();
 						}
 					}
-
-					label ':' {
-						if(@is_debug) {
-							stack_size := @parse_stack->Size();
-							"COLON => level={$stack_size}"->PrintLine();
-						}
-					}
-
-					label ',' {
-						if(@is_debug) {
-							stack_size := @parse_stack->Size();
-							"COMMA => level={$stack_size}"->PrintLine();
-						}
-					}
-
-					other {
-						if(char <> ':' | char <> ',') {
-							stack_size := @parse_stack->Size();
-							"\tunexpected token => level={$stack_size}, value='{$char}'"->ErrorLine();
-							return false;
-						}
+					# error
+					else if(doc_char <> ':' | doc_char <> ',') {
+						stack_size := @parse_stack->Size();
+						"\tunexpected token => level={$stack_size}, value='{$doc_char}'"->ErrorLine();
+						return false;
 					}
 				}
 			}
+
+			# update
+			@doc_pos += 1;
 		}
 
 		if(<>@parse_stack->IsEmpty()) {
