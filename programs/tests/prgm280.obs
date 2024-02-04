@@ -1,0 +1,14 @@
+use Collection;
+
+class Test {
+	enum Type := -100 {
+		A,
+		B,
+		C
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		aa := Test->Type->New[3];
+		aa->Size()->PrintLine();
+	}
+}
