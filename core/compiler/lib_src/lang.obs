@@ -826,6 +826,21 @@ bundle System {
 		}
 
 		#~
+		Checks of the character is white space
+		@ignore-params
+		@return true if white space, false otherwise
+		~#
+		function : native : IsWhitespace(c : Char) ~ Bool {
+			if(c = ' ' | c = '\t' | c = '\r' | c = '\n' | c = 0xa0 | c = 0x1680 | 
+					c >= 0x2000 & c <= 0x200a | c >= 0x000a & c <= 0x000d | c = 0x202f | 
+					c = 0x205f | c = 0x3000 | c = 0x0085 | c = 0x2029) {
+				return true;
+			};
+			
+			return false;
+		}
+
+		#~
 		Checks of the character is a alpha digit
 		@ignore-params
 		@return true if alpha digit, false otherwise
