@@ -1,67 +1,77 @@
 use Collection;
 
 class JsonStreamParser {
-	is_debug : static : Bool;
+	@parse_stack : Stack<Pair<IntRef, Base>>;
+	@document : Char[];
+	@is_debug : Bool;
 
 	enum Type {
 		OBJECT,
 		ARRAY,
-		NUM
+		NUMBER
 	}
 
 	function : Main(args : String[]) ~ Nil {
-		is_debug := false;
+		parser := JsonStreamParser->New(System.IO.Filesystem.FileReader->ReadFile(args[0]));
+		success := parser->GetMatch("Mary");
+		"Success? {$success}."->PrintLine();
+	}
 
-		success := ParseSearch(System.IO.Filesystem.FileReader->ReadFile(args[0]), "Mary");
-		"Success={$success}."->PrintLine();
+	New(document : String) {
+		@document := document->ToCharArray();
+		@is_debug := true;
+		@parse_stack := Stack->New()<Pair<IntRef, Base>>;
+	}
+
+	method : public : native : GetNextMatch(value : String) ~ Bool {
+		return false; # TODO: return an object
 	}
 
 	# 1 pass parsing; 
 	# while element searching; 
 	# if the element is found;
 	# parsing stops; 
-	# lazy document is done
-	function : native : ParseSearch(doc : String, value : String) ~ Bool {
-		# TODO: store values
-		parse_stack := Stack->New()<Pair<IntRef, Base>>;
+	# lazy @documentument is done
+	method : public : native : GetMatch(value : String) ~ Bool {
+		# TODO: return an object
 		
-		each(char_pos : doc) {
-			char := doc->Get(char_pos);
+		each(char_pos : @document) {
+			char := @document[char_pos];
 
 			# white space
 			while(char->IsWhitespace()) {
-				char := doc->Get(++char_pos);
+				char := @document[++char_pos]
 			}
 
 			# number
 			if(char->IsDigit()) {
 				start_pos := char_pos;
 				while(char->IsDigit()) {
-					char := doc->Get(++char_pos);
+					char := @document[++char_pos]
 				}
 
-				if(is_debug) {
-					num := doc->SubString(start_pos, char_pos - start_pos);
-					"NUM: num='{$num}'"->PrintLine();
+				if(@is_debug) {
+					num := String->New(@document, start_pos, char_pos - start_pos);
+					"NUMBER: num='{$num}'"->PrintLine();
 				}
 			}
 			else {
 				select(char) {
 					# string
 					label '"' {
-						char := doc->Get(++char_pos);
+						char := @document[++char_pos]
 						start_pos := char_pos;
 						while(char->IsChar()) {
-							char := doc->Get(++char_pos);
+							char := @document[++char_pos]
 						}
 
 						if(char <> '"') {
-							"\texpected: STRING_END"->ErrorLine();
+							"\texpected: '\""->ErrorLine();
 							return false;
 						}
 
-						string := doc->SubString(start_pos, char_pos - start_pos);
-						if(is_debug) {
+						string := String->New(@document, start_pos, char_pos - start_pos);
+						if(@is_debug) {
 							"QUOTE: string='{$string}'"->PrintLine();
 						}
 
@@ -72,64 +82,64 @@ class JsonStreamParser {
 					}
 
 					label '{' {
-						if(is_debug) {
-							stack_size := parse_stack->Size();
+						if(@is_debug) {
+							stack_size := @parse_stack->Size();
 							"OBJECT_START: level={$stack_size}"->PrintLine();
 						}
-						parse_stack->Push(Pair->New(IntRef->New(Type->OBJECT), Nil)<IntRef, Base>);
+						@parse_stack->Push(Pair->New(IntRef->New(Type->OBJECT), Nil)<IntRef, Base>);
 					}
 
 					label '}' {
-						type := parse_stack->Pop()<Pair<IntRef, Base>>;
-						if(is_debug) {
-							stack_size := parse_stack->Size();
+						type := @parse_stack->Pop()<Pair<IntRef, Base>>;
+						if(@is_debug) {
+							stack_size := @parse_stack->Size();
 							"OBJECT_END: level={$stack_size}"->PrintLine();
 						}
 
 						if(type = Nil | type->GetFirst()->Get() <> Type->OBJECT) {
-							"\texpected: OBJECT_END"->ErrorLine();
+							"\texpected: '}'"->ErrorLine();
 							return false;
 						}
 					}
 
 					label '[' {
-						if(is_debug) {
-						stack_size := parse_stack->Size();
+						if(@is_debug) {
+						stack_size := @parse_stack->Size();
 							"ARRAY_START: level={$stack_size}"->PrintLine();
 						}
-						parse_stack->Push(Pair->New(IntRef->New(Type->ARRAY), Nil)<IntRef, Base>);						
+						@parse_stack->Push(Pair->New(IntRef->New(Type->ARRAY), Nil)<IntRef, Base>);						
 					}
 
 					label ']' {
-						type := parse_stack->Pop()<Pair<IntRef, Base>>;
-						if(is_debug) {
-							stack_size := parse_stack->Size();
+						type := @parse_stack->Pop()<Pair<IntRef, Base>>;
+						if(@is_debug) {
+							stack_size := @parse_stack->Size();
 							"ARRAY_END: level={$stack_size}"->PrintLine();
 						}
 
 						if(type = Nil | type->GetFirst()->Get() <> Type->ARRAY) {
-							"\texpected: ARRAY_END"->ErrorLine();
+							"\texpected: ']'"->ErrorLine();
 							return false;
 						}
 					}
 
 					label ':' {
-						if(is_debug) {
-							stack_size := parse_stack->Size();
+						if(@is_debug) {
+							stack_size := @parse_stack->Size();
 							"COLON: level={$stack_size}"->PrintLine();
 						}
 					}
 
 					label ',' {
-						if(is_debug) {
-							stack_size := parse_stack->Size();
+						if(@is_debug) {
+							stack_size := @parse_stack->Size();
 							"COMMA: level={$stack_size}"->PrintLine();
 						}
 					}
 
 					other {
 						if(char <> ':' | char <> ',') {
-							stack_size := parse_stack->Size();
+							stack_size := @parse_stack->Size();
 							"\tunexpected token: level={$stack_size}: value='{$char}'"->ErrorLine();
 							return false;
 						}
@@ -138,8 +148,8 @@ class JsonStreamParser {
 			}
 		}
 
-		if(<>parse_stack->IsEmpty()) {
-			"\texpected: OBJECT_END or ARRAY_END"->ErrorLine();
+		if(<>@parse_stack->IsEmpty()) {
+			"\texpected: '}' or ']'"->ErrorLine();
 			return false;
 		}
 
