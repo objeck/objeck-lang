@@ -22,14 +22,12 @@ class JsonStreamParser {
 	# parsing stops; 
 	# lazy document is done
 	function : native : ParseSearch(doc : String, value : String) ~ Bool {
-		doc->PrintLine();
-
 		# TODO: store values
 		parse_stack := Stack->New()<Pair<IntRef, Base>>;
 		
 		each(char_pos : doc) {
 			char := doc->Get(char_pos);
-			
+
 			# white space
 			while(char->IsWhitespace()) {
 				char := doc->Get(++char_pos);
@@ -68,7 +66,7 @@ class JsonStreamParser {
 						}
 
 						if(value->Equals(string)) {
-							"*** Found! ***"->PrintLine();
+							"*** Found at pos={$char_pos} ***"->PrintLine();
 							return true;
 						}
 					}
@@ -115,8 +113,22 @@ class JsonStreamParser {
 						}
 					}
 
+					label ':' {
+						if(is_debug) {
+							stack_size := parse_stack->Size();
+							"COLON: level={$stack_size}"->PrintLine();
+						}
+					}
+
+					label ',' {
+						if(is_debug) {
+							stack_size := parse_stack->Size();
+							"COMMA: level={$stack_size}"->PrintLine();
+						}
+					}
+
 					other {
-						"\tunexpected: token={$char}"->ErrorLine();
+						"\tunexpected: token -> '{$char}'"->ErrorLine();
 						return false;
 					}
 				}
