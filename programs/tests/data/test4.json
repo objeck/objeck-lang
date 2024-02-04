@@ -1,6 +1,31 @@
 { 
-    "names": ["alex", "bob", "coral"],
-    "ages": [58, 41, 19],
-    "type": "bad",
-    "active": [true, true, false]
+    "aa|aa": [58, 41, 19, 48, 55],
+    "aa|ab": [[7, 13], "two", "three", {"five": 5, "six": 6}, "five"],
+    "aa|ac": [1, 2, 3, 4, 5],
+    "aa|ad": [1, 2, 3, 4, 5],
+    "aa|ae": [[7, 13], "two", "three", {"five": 5, "six": 6}, "five"],
+
+    "ab|aa": [58, 41, 19, 48, 55],
+    "ab|ab": [[7, 13], "two", "three", {"five": 5, "six": 6}, "five"],
+    "ab|ac": [1, 2, 3, 4, 5],
+    "ab|ad": [1, 2, 3, 4, 5],
+    "ab|ae": [[7, 13], "two", "three", {"five": 5, "six": 6}, "five"],
+    
+    "ac|aa": [58, 41, 19, 48, 55],
+    "ac|ab": [[7, 13], "two", "three", {"five": 5, "six": 6}, "five"],
+    "ac|ac": [1, 2, 3, 4, 5],
+    "ac|ad": [1, 2, 3, 4, 5],
+    "ac|ae": [[7, 13], "two", "three", {"five": 5, "six": 6}, "five"],
+
+    "ad|aa": [58, 41, 19, 48, 55],
+    "ad|ab": [[7, 13], "two", "** WINNER **", {"five": 5, "six": 6}, "five"],
+    "ad|ac": [1, 2, 3, 4, 5],
+    "ad|ad": [1, 2, 3, 4, 5],
+    "ad|ae": [[7, 13], "two", "three", {"five": 5, "six": 6}, "five"],
+    
+    "ae|aa": [58, 41, 19, 48, 55],
+    "ae|ab": [[7, 13], "two", "three", {"five": 5, "six": 6}, "five"],
+    "ae|ac": [1, 2, 3, 4, 5],
+    "ae|ad": [1, 2, 3, 4, 5],
+    "ae|ae": [[7, 13], "two", "three", {"five": 5, "six": 6}, "five"]
 }
