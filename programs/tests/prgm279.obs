@@ -55,9 +55,8 @@ class JsonStreamParser {
 			while(@doc_stream_pos < @doc_stream->Size() & doc_char->IsWhitespace()) {
 				doc_char := @doc_stream[++@doc_stream_pos]
 			}
-			
+						
 			if(doc_char = '{' | doc_char = '[') {
-				# TODO: look at bottom up, along side t<<p>p</p>></p>op down parsing
 				while(@doc_stream_pos < @doc_stream->Size()) {
 					status := NextMatch(match_key);
 					if(status = JsonStreamParser->StreamStatus->FOUND) {
@@ -70,7 +69,7 @@ class JsonStreamParser {
 				}
 			}
 		}
-		
+
 		return false;
 	}
 
