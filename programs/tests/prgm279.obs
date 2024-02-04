@@ -58,12 +58,7 @@ class JsonStreamParser {
 				doc_char := @document[++@doc_pos]
 			}
 
-			if(@is_debug) {
-				stack_size := @parse_stack->Size();
-				each(i : stack_size) {
-					"..|"->Print();
-				}
-			}
+			
 			
 			# parse token
 			select(doc_char) {
@@ -167,6 +162,9 @@ class JsonStreamParser {
 					value := String->New(@document, start_pos, @doc_pos - start_pos);
 					if(@is_debug) {
 						stack_size := @parse_stack->Size();
+						each(i : stack_size) {
+							"..|"->Print();
+						}
 						"STRING => level={$stack_size}, value='{$value}'"->PrintLine();
 					}
 
@@ -179,18 +177,16 @@ class JsonStreamParser {
 				label '{' {
 					if(@is_debug) {
 						stack_size := @parse_stack->Size();
-						"OBJ_ST => level={$stack_size}"->PrintLine();
+						each(i : stack_size) {
+							"..|"->Print();
+						}
+						"OBJECT => level={$stack_size}"->PrintLine();
 					}
 					@parse_stack->Push(Pair->New(IntRef->New(Type->OBJECT), Nil)<IntRef, Base>);
 				}
 
 				label '}' {
 					type := @parse_stack->Pop()<Pair<IntRef, Base>>;
-					if(@is_debug) {
-						stack_size := @parse_stack->Size();
-						"OBJ_ED => level={$stack_size}"->PrintLine();
-					}
-
 					if(type = Nil | type->GetFirst()->Get() <> Type->OBJECT) {
 						"\texpected: '}'"->ErrorLine();
 						return false;
@@ -199,36 +195,20 @@ class JsonStreamParser {
 
 				label '[' {
 					if(@is_debug) {
-					stack_size := @parse_stack->Size();
-						"ARY_ST => level={$stack_size}"->PrintLine();
+						stack_size := @parse_stack->Size();
+						each(i : stack_size) {
+							"..|"->Print();
+						}
+						"ARRAY => level={$stack_size}"->PrintLine();
 					}
 					@parse_stack->Push(Pair->New(IntRef->New(Type->ARRAY), Nil)<IntRef, Base>);						
 				}
 
 				label ']' {
 					type := @parse_stack->Pop()<Pair<IntRef, Base>>;
-					if(@is_debug) {
-						stack_size := @parse_stack->Size();
-						"ARY_ED => level={$stack_size}"->PrintLine();
-					}
-
 					if(type = Nil | type->GetFirst()->Get() <> Type->ARRAY) {
 						"\texpected: ']'"->ErrorLine();
 						return false;
-					}
-				}
-
-				label ':' {
-					if(@is_debug) {
-						stack_size := @parse_stack->Size();
-						"COLON => level={$stack_size}"->PrintLine();
-					}
-				}
-
-				label ',' {
-					if(@is_debug) {
-						stack_size := @parse_stack->Size();
-						"COMMA => level={$stack_size}"->PrintLine();
 					}
 				}
 
@@ -243,19 +223,20 @@ class JsonStreamParser {
 						if(@is_debug) {
 							stack_size := @parse_stack->Size();
 							num := String->New(@document, start_pos, @doc_pos - start_pos);
+								each(i : stack_size) {
+								"..|"->Print();
+							}
 							"NUMBER => level={$stack_size}, value={$num}"->PrintLine();
 						}
 					}
 					# error
-					else if(doc_char <> ':' | doc_char <> ',') {
+					else if(doc_char <> ':' & doc_char <> ',') {
 						stack_size := @parse_stack->Size();
 						"\tunexpected token => level={$stack_size}, value='{$doc_char}'"->ErrorLine();
 						return false;
 					}
 				}
 			}
-
-
 
 			# update
 			@doc_pos += 1;
