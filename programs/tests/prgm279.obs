@@ -24,9 +24,9 @@ class JsonStreamParser {
 
 			parser := JsonStreamParser->New(System.IO.Filesystem.FileReader->ReadFile(file));
 
-#			parser->NextMatch(Nil);
+#			parser->NextElement(Nil);
 
-			result := parser->FindMatch(search);
+			result := parser->FindObject(search);
 			"Element search for '{$search}', found={$result}"->PrintLine();
 		}
 	}
@@ -40,18 +40,13 @@ class JsonStreamParser {
 		}
 	}
 
-	# TODO: 
-	method : public : native : NextMatch(index : Int) ~ Bool {
-		return false; # TODO: return an object
-	}
-
-	# TODO: 
-	method : public : native : FindMatch(index : Int) ~ Bool {
-		return false; # TODO: return an object
+	# TODO: return object
+	method : public : native : FindElement(match_index : Int) ~ Bool {
+		return false;
 	}
 
 	# TODO: return object
-	method : public : native : FindMatch(match_key : String) ~ Bool {
+	method : public : native : FindObject(match_key : String) ~ Bool {
 		if(@doc_stream <> Nil) {
 			# check for valid document start
 			doc_char := @doc_stream[@doc_stream_pos]
@@ -61,7 +56,7 @@ class JsonStreamParser {
 						
 			if(doc_char = '{' | doc_char = '[') {
 				while(@doc_stream_pos < @doc_stream->Size()) {
-					status := NextMatch(match_key);
+					status := NextElement(match_key);
 					if(status = JsonStreamParser->StreamStatus->FOUND) {
 						GetElement();
 						return true;
@@ -84,13 +79,13 @@ class JsonStreamParser {
 
 		level := @elem_stack->Size()
 		do {
-			NextMatch(Nil);
+			NextElement(Nil);
 		}
 		while(level <> @elem_stack->Size());
 	}
 
 	# TODO: return object
-	method : public : native : NextMatch(match_key : String) ~ JsonStreamParser->StreamStatus {
+	method : public : native : NextElement(match_key : String) ~ JsonStreamParser->StreamStatus {
 		# TODO: return an object
 		if(@doc_stream_pos < @doc_stream->Size()) {
 			doc_char := @doc_stream[@doc_stream_pos];
