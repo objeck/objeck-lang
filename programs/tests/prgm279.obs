@@ -20,10 +20,14 @@ class JsonStreamParser {
 	}
 
 	function : Main(args : String[]) ~ Nil {
-		search := "age";
-		parser := JsonStreamParser->New(System.IO.Filesystem.FileReader->ReadFile(args[0]));
-		result := parser->FindMatch(search);
-		"Search for '{$search}'; found={$result}"->PrintLine();
+		if(args->Size() = 2) {
+			file := args[0];
+			search := args[1]
+
+			parser := JsonStreamParser->New(System.IO.Filesystem.FileReader->ReadFile(file));
+			result := parser->FindMatch(search);
+			"Element search for '{$search}', found={$result}"->PrintLine();
+		}
 	}
 
 	New(document : String) {
@@ -57,14 +61,22 @@ class JsonStreamParser {
 			};
 		}
 
-		return true;
+		return false;
 	}
 
 	# TODO: all types and package up
 	method : GetElement() ~ Nil {
-		NextMatch("");
-	}
+		if(@is_debug) {
+			"--- Found Element ---"->PrintLine();
+		}
 
+		level := @elem_stack->Size()
+		do {
+			
+			NextMatch("");
+		}
+		while(level <> @elem_stack->Size());
+	}
 
 	# TODO: return object
 	method : public : native : NextMatch(match_key : String) ~ JsonStreamParser->Status {
@@ -224,7 +236,7 @@ class JsonStreamParser {
 
 				label '}' {
 					type := @elem_stack->Pop()<Pair<IntRef, Base>>;
-					if(type = Nil | type->GetFirst()->Get() <> Type->OBJECT) {
+					if(type = Nil | (type->GetFirst()->Get() <> Type->OBJECT & type->GetFirst()->Get() <> Type->ARRAY)) {
 						"\texpected: '}'"->ErrorLine();
 						return JsonStreamParser->Status->ERROR;
 					}

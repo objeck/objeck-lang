@@ -1,5 +1,4 @@
 { 
-    "name": "Ken",
-    "age": 38,
-    "cars": ["Chevy", "Ford"]
+    "ages": ["a", "b", "c"]
+    
 }
