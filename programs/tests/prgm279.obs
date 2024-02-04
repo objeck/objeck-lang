@@ -38,6 +38,7 @@ class JsonStreamParser {
 
 	# TODO: return object
 	method : public : native : FindMatch(key : String) ~ Bool {
+		# TODO: look at bottom up, along side top down parsing
 		while(@doc_pos < @doc->Size()) {
 			if(<>NextMatch(key)) {
 				return false;
