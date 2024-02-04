@@ -6,14 +6,14 @@ class JsonStreamParser {
 	@doc_pos : Int;
 	@is_debug : Bool;
 	
-	enum Type {
+	enum ComplexType {
 		OBJECT,
 		ARRAY
 	}
 
-	enum Status {
+	enum StreamStatus {
+		OK_NEXT,
 		FOUND,
-		NEXT,
 		ERROR
 	}
 
@@ -50,11 +50,11 @@ class JsonStreamParser {
 		# TODO: look at bottom up, along side t<<p>p</p>></p>op down parsing
 		while(@doc_pos < @doc->Size()) {
 			status := NextMatch(match_key);
-			if(status = JsonStreamParser->Status->FOUND) {
+			if(status = JsonStreamParser->StreamStatus->FOUND) {
 				GetElement();
 				return true;
 			}
-			else if(status = JsonStreamParser->Status->ERROR) {
+			else if(status = JsonStreamParser->StreamStatus->ERROR) {
 				return false;
 			};
 		}
@@ -76,7 +76,7 @@ class JsonStreamParser {
 	}
 
 	# TODO: return object
-	method : public : native : NextMatch(match_key : String) ~ JsonStreamParser->Status {
+	method : public : native : NextMatch(match_key : String) ~ JsonStreamParser->StreamStatus {
 		# TODO: return an object
 		if(@doc_pos < @doc->Size()) {
 			doc_char := @doc[@doc_pos];
@@ -93,19 +93,19 @@ class JsonStreamParser {
 					doc_char := @doc[++@doc_pos]
 					if(doc_char <> 'u') {
 						"\texpected: null"->ErrorLine();
-						return JsonStreamParser->Status->ERROR;
+						return JsonStreamParser->StreamStatus->ERROR;
 					}
 
 					doc_char := @doc[++@doc_pos]
 					if(doc_char <> 'l') {
 						"\texpected: null"->ErrorLine();
-						return JsonStreamParser->Status->ERROR;
+						return JsonStreamParser->StreamStatus->ERROR;
 					}
 
 					doc_char := @doc[++@doc_pos]
 					if(doc_char <> 'l') {
 						"\texpected: null"->ErrorLine();
-						return JsonStreamParser->Status->ERROR;
+						return JsonStreamParser->StreamStatus->ERROR;
 					}
 
 					if(@is_debug) {
@@ -122,19 +122,19 @@ class JsonStreamParser {
 					doc_char := @doc[++@doc_pos]
 					if(doc_char <> 'r') {
 						"\texpected: null"->ErrorLine();
-						return JsonStreamParser->Status->ERROR;
+						return JsonStreamParser->StreamStatus->ERROR;
 					}
 
 					doc_char := @doc[++@doc_pos]
 					if(doc_char <> 'u') {
 						"\texpected: null"->ErrorLine();
-						return JsonStreamParser->Status->ERROR;
+						return JsonStreamParser->StreamStatus->ERROR;
 					}
 
 					doc_char := @doc[++@doc_pos]
 					if(doc_char <> 'e') {
 						"\texpected: null"->ErrorLine();
-						return JsonStreamParser->Status->ERROR;
+						return JsonStreamParser->StreamStatus->ERROR;
 					}
 
 					if(@is_debug) {
@@ -151,25 +151,25 @@ class JsonStreamParser {
 					doc_char := @doc[++@doc_pos]
 					if(doc_char <> 'a') {
 						"\texpected: null"->ErrorLine();
-						return JsonStreamParser->Status->ERROR;
+						return JsonStreamParser->StreamStatus->ERROR;
 					}
 
 					doc_char := @doc[++@doc_pos]
 					if(doc_char <> 'l') {
 						"\texpected: null"->ErrorLine();
-						return JsonStreamParser->Status->ERROR;
+						return JsonStreamParser->StreamStatus->ERROR;
 					}
 
 					doc_char := @doc[++@doc_pos]
 					if(doc_char <> 's') {
 						"\texpected: null"->ErrorLine();
-						return JsonStreamParser->Status->ERROR;
+						return JsonStreamParser->StreamStatus->ERROR;
 					}
 
 					doc_char := @doc[++@doc_pos]
 					if(doc_char <> 'e') {
 						"\texpected: null"->ErrorLine();
-						return JsonStreamParser->Status->ERROR;
+						return JsonStreamParser->StreamStatus->ERROR;
 					}
 
 					if(@is_debug) {
@@ -191,7 +191,7 @@ class JsonStreamParser {
 
 					if(doc_char <> '"') {
 						"\texpected: '\""->ErrorLine();
-						return JsonStreamParser->Status->ERROR;
+						return JsonStreamParser->StreamStatus->ERROR;
 					}
 
 					value := String->New(@doc, start_pos, @doc_pos - start_pos);
@@ -213,7 +213,7 @@ class JsonStreamParser {
 					if(found_key & match_key->Equals(value)) {
 						# note, notice posisiton check above
 						@doc_pos += 2;
-						return JsonStreamParser->Status->FOUND;
+						return JsonStreamParser->StreamStatus->FOUND;
 					}
 				}
 
@@ -225,14 +225,14 @@ class JsonStreamParser {
 						}
 						"OBJECT => level={$stack_size}"->PrintLine();
 					}
-					@elem_stack->Push(Pair->New(IntRef->New(Type->OBJECT), Nil)<IntRef, Base>);
+					@elem_stack->Push(Pair->New(IntRef->New(ComplexType->OBJECT), Nil)<IntRef, Base>);
 				}
 
 				label '}' {
 					type := @elem_stack->Pop()<Pair<IntRef, Base>>;
-					if(type = Nil | (type->GetFirst()->Get() <> Type->OBJECT & type->GetFirst()->Get() <> Type->ARRAY)) {
+					if(type = Nil | (type->GetFirst()->Get() <> ComplexType->OBJECT & type->GetFirst()->Get() <> ComplexType->ARRAY)) {
 						"\texpected: '}'"->ErrorLine();
-						return JsonStreamParser->Status->ERROR;
+						return JsonStreamParser->StreamStatus->ERROR;
 					}
 				}
 
@@ -244,14 +244,14 @@ class JsonStreamParser {
 						}
 						"ARRAY => level={$stack_size}"->PrintLine();
 					}
-					@elem_stack->Push(Pair->New(IntRef->New(Type->ARRAY), Nil)<IntRef, Base>);						
+					@elem_stack->Push(Pair->New(IntRef->New(ComplexType->ARRAY), Nil)<IntRef, Base>);						
 				}
 
 				label ']' {
 					type := @elem_stack->Pop()<Pair<IntRef, Base>>;
-					if(type = Nil | (type->GetFirst()->Get() <> Type->OBJECT & type->GetFirst()->Get() <> Type->ARRAY)) {
+					if(type = Nil | (type->GetFirst()->Get() <> ComplexType->OBJECT & type->GetFirst()->Get() <> ComplexType->ARRAY)) {
 						"\texpected: ']'"->ErrorLine();
-						return JsonStreamParser->Status->ERROR;
+						return JsonStreamParser->StreamStatus->ERROR;
 					}
 				}
 
@@ -278,7 +278,7 @@ class JsonStreamParser {
 					else if(doc_char <> ':' & doc_char <> ',') {
 						stack_size := @elem_stack->Size();
 						"\tunexpected token => level={$stack_size}, value='{$doc_char}'"->ErrorLine();
-						return JsonStreamParser->Status->ERROR;
+						return JsonStreamParser->StreamStatus->ERROR;
 					}
 				}
 			}
@@ -287,6 +287,6 @@ class JsonStreamParser {
 			@doc_pos += 1;
 		}
 
-		return JsonStreamParser->Status->NEXT;
+		return JsonStreamParser->StreamStatus->OK_NEXT;
 	}
 }
