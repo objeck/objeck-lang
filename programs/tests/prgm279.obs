@@ -8,14 +8,12 @@ class JsonStreamParser {
 	
 	enum Type {
 		OBJECT,
-		ARRAY,
-		NUMBER,
-		NULL
+		ARRAY
 	}
 
 	enum Status {
 		FOUND,
-		OK,
+		NEXT,
 		ERROR
 	}
 
@@ -49,7 +47,7 @@ class JsonStreamParser {
 
 	# TODO: return object
 	method : public : native : FindMatch(match_key : String) ~ Bool {
-		# TODO: look at bottom up, along side top down parsing
+		# TODO: look at bottom up, along side t<<p>p</p>></p>op down parsing
 		while(@doc_pos < @doc->Size()) {
 			status := NextMatch(match_key);
 			if(status = JsonStreamParser->Status->FOUND) {
@@ -67,13 +65,12 @@ class JsonStreamParser {
 	# TODO: all types and package up
 	method : GetElement() ~ Nil {
 		if(@is_debug) {
-			"--- Found Element ---"->PrintLine();
+			"--- Found Key Element ---"->PrintLine();
 		}
 
 		level := @elem_stack->Size()
 		do {
-			
-			NextMatch("");
+			NextMatch(Nil);
 		}
 		while(level <> @elem_stack->Size());
 	}
@@ -85,7 +82,7 @@ class JsonStreamParser {
 			doc_char := @doc[@doc_pos];
 
 			# ignore white space
-			while(doc_char->IsWhitespace()) {
+			while(@doc_pos < @doc->Size() & doc_char->IsWhitespace()) {
 				doc_char := @doc[++@doc_pos]
 			}
 
@@ -188,7 +185,7 @@ class JsonStreamParser {
 				label '"' {
 					doc_char := @doc[++@doc_pos]
 					start_pos := @doc_pos;
-					while(doc_char->IsChar()) {
+					while(@doc_pos < @doc->Size() & doc_char <> '"') {
 						doc_char := @doc[++@doc_pos]
 					}
 
@@ -198,14 +195,14 @@ class JsonStreamParser {
 					}
 
 					value := String->New(@doc, start_pos, @doc_pos - start_pos);
-					is_key := @doc_pos + 1 < @doc->Size() & @doc[@doc_pos + 1] = ':';
+					found_key := match_key <> Nil & @doc_pos + 1 < @doc->Size() & @doc[@doc_pos + 1] = ':';
 					if(@is_debug) {
 						stack_size := @elem_stack->Size();
 						each(i : stack_size) {
 							"..|"->Print();
 						}
 					
-						if(is_key) {
+						if(found_key) {
 							"KEY => level={$stack_size}, value='{$value}'"->PrintLine();
 						}
 						else {
@@ -213,7 +210,7 @@ class JsonStreamParser {
 						}
 					}
 
-					if(is_key & match_key->Equals(value)) {
+					if(found_key & match_key->Equals(value)) {
 						# note, notice posisiton check above
 						@doc_pos += 2;
 						return JsonStreamParser->Status->FOUND;
@@ -252,7 +249,7 @@ class JsonStreamParser {
 
 				label ']' {
 					type := @elem_stack->Pop()<Pair<IntRef, Base>>;
-					if(type = Nil | type->GetFirst()->Get() <> Type->ARRAY) {
+					if(type = Nil | (type->GetFirst()->Get() <> Type->OBJECT & type->GetFirst()->Get() <> Type->ARRAY)) {
 						"\texpected: ']'"->ErrorLine();
 						return JsonStreamParser->Status->ERROR;
 					}
@@ -262,7 +259,7 @@ class JsonStreamParser {
 					# number
 					if(doc_char->IsDigit()) {
 						start_pos := @doc_pos;
-						while(doc_char->IsDigit() | doc_char = '.') {
+						while(@doc_pos < @doc->Size() & (doc_char->IsDigit() | doc_char = '.')) {
 							doc_char := @doc[++@doc_pos]
 						}
 
@@ -274,6 +271,8 @@ class JsonStreamParser {
 							}
 							"NUMBER => level={$stack_size}, value={$num}"->PrintLine();
 						}
+
+						@doc_pos -= 1;
 					}
 					# error
 					else if(doc_char <> ':' & doc_char <> ',') {
@@ -288,6 +287,6 @@ class JsonStreamParser {
 			@doc_pos += 1;
 		}
 
-		return JsonStreamParser->Status->OK;
+		return JsonStreamParser->Status->NEXT;
 	}
 }
