@@ -33,7 +33,7 @@ Want to get started? Take a look at the [language guide](https://objeck.org/gett
 ## What's New?
 
 * Incremental JSON parser
-  * v2024.2.1 or v2024.2.1
+  * v2024.2.1
     * Improved parsing performance for large JSON documents
 
 * Immutable Tuple types
