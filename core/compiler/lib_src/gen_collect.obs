@@ -43,6 +43,36 @@ bundle Tuples {
 		method : public : GetSecond() ~ B {
 			return @b;
 		}
+
+		#~
+		Formats tuple into a string
+		@return string representation
+		~#
+		method : public : ToString() ~ String {
+			buffer := "[";
+
+			if(@a->TypeOf(Stringify)) {
+				buffer->Append(@a->As(System.Stringify)->ToString());
+			}
+			# use instance ID instead
+			else {
+				buffer->Append(@a->GetInstanceID()->ToHexString());
+			};
+
+			buffer += ',';
+
+			if(@second->TypeOf(Stringify)) {
+				buffer->Append(@b->As(System.Stringify)->ToString());
+			}
+			# use instance ID instead
+			else {
+				buffer->Append(@b->GetInstanceID()->ToHexString());
+			};
+
+			buffer += "]";
+
+			return buffer;
+		}
 	}
 	
 	#~
@@ -87,6 +117,46 @@ bundle Tuples {
 		~#
 		method : public : GetThird() ~ C {
 			return @c;
+		}
+
+		#~
+		Formats tuple into a string
+		@return string representation
+		~#
+		method : public : ToString() ~ String {
+			buffer := "[";
+
+			if(@a->TypeOf(Stringify)) {
+				buffer->Append(@a->As(System.Stringify)->ToString());
+			}
+			# use instance ID instead
+			else {
+				buffer->Append(@a->GetInstanceID()->ToHexString());
+			};
+
+			buffer += ',';
+
+			if(@b->TypeOf(Stringify)) {
+				buffer->Append(@b->As(System.Stringify)->ToString());
+			}
+			# use instance ID instead
+			else {
+				buffer->Append(@b->GetInstanceID()->ToHexString());
+			};
+
+			buffer += ',';
+
+			if(@c->TypeOf(Stringify)) {
+				buffer->Append(@c->As(System.Stringify)->ToString());
+			}
+			# use instance ID instead
+			else {
+				buffer->Append(@c->GetInstanceID()->ToHexString());
+			};
+
+			buffer += "]";
+
+			return buffer;
 		}
 	}
 	
@@ -143,6 +213,56 @@ bundle Tuples {
 		~#
 		method : public : GetForth() ~ D {
 			return @d;
+		}
+
+		#~
+		Formats tuple into a string
+		@return string representation
+		~#
+		method : public : ToString() ~ String {
+			buffer := "[";
+
+			if(@a->TypeOf(Stringify)) {
+				buffer->Append(@a->As(System.Stringify)->ToString());
+			}
+			# use instance ID instead
+			else {
+				buffer->Append(@a->GetInstanceID()->ToHexString());
+			};
+
+			buffer += ',';
+
+			if(@b->TypeOf(Stringify)) {
+				buffer->Append(@b->As(System.Stringify)->ToString());
+			}
+			# use instance ID instead
+			else {
+				buffer->Append(@b->GetInstanceID()->ToHexString());
+			};
+
+			buffer += ',';
+
+			if(@c->TypeOf(Stringify)) {
+				buffer->Append(@c->As(System.Stringify)->ToString());
+			}
+			# use instance ID instead
+			else {
+				buffer->Append(@c->GetInstanceID()->ToHexString());
+			};
+
+			buffer += ',';
+
+			if(@d->TypeOf(Stringify)) {
+				buffer->Append(@d->As(System.Stringify)->ToString());
+			}
+			# use instance ID instead
+			else {
+				buffer->Append(@d->GetInstanceID()->ToHexString());
+			};
+
+			buffer += "]";
+
+			return buffer;
 		}
 	}
 }
@@ -437,7 +557,7 @@ each(value := values) {
 			}
 			# use instance ID instead
 			else {
-				buffer->Append(@first->GetInstanceID()->ToHexString());
+				buffer->Append(@second->GetInstanceID()->ToHexString());
 			};
 
 			buffer += "}";
