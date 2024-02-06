@@ -10,10 +10,8 @@ class StreamParser {
 	enum Type {
 		ARRAY,
 		STRING,
-		NUMBER,
-		ERROR
+		NUMBER
 	}
-
 
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 2) {
@@ -61,22 +59,21 @@ class StreamParser {
 	# TODO: return value parsed; as tuple: type, value, level
 	method : GetElement(index : Int) ~ Nil {
 		each(i : index) {
-			ParseElement()->ToString()->PrintLine();
+			ParseElement();
 		};
 	}
 
 	# TODO: return value parsed; as tuple: type, value, level
-	method : native : ParseElement() ~ Tuples.Triplet<IntRef, String, IntRef> {
+	method : native : ParseElement() ~ Nil {
 		Whitespace();
 
 		value : String;
-		type : StreamParser->Type;
+		type : StreamParser
 
 		#
 		# number
 		#
 		if(GetChar()->IsDigit()) {
-			type := StreamParser->Type->NUMBER;
 			start := @stream_position;
 			while(GetChar()->IsDigit() | GetChar() = '.') {
 				NextChar();
@@ -93,7 +90,6 @@ class StreamParser {
 		else if(GetChar() = '"') {
 			NextChar();
 
-			type := StreamParser->Type->STRING;
 			start := @stream_position;
 			while(GetChar() <> '"') {
 				NextChar();
@@ -110,7 +106,6 @@ class StreamParser {
 		#
 		else if(GetChar() = '[' | GetChar() = ',') {
 			if(GetChar() = '[') {
-				type := StreamParser->Type->ARRAY;
 				if(@is_debug) {
 					Print("Array: level={$@stream_level}");
 				};
@@ -136,10 +131,7 @@ class StreamParser {
 		# error
 		#
 		else {
-			type := StreamParser->Type->ERROR;
 			Standard->Error("*** Error: '")->Error(GetChar()->ToInt())->ErrorLine("'");
 		};
-
-		return Tuples.Triplet->New(type->As(Int), value, @stream_level)<IntRef, String, IntRef>;
 	}
 }
