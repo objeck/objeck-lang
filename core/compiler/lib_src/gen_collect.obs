@@ -61,7 +61,7 @@ bundle Tuples {
 
 			buffer += ',';
 
-			if(@second->TypeOf(Stringify)) {
+			if(@b->TypeOf(Stringify)) {
 				buffer->Append(@b->As(System.Stringify)->ToString());
 			}
 			# use instance ID instead
