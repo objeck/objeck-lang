@@ -22,9 +22,17 @@ class StreamParser {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
 			parser := StreamParser->New(System.IO.Filesystem.FileReader->ReadFile(args[0]));
+			
 			parser->GetElement(1);
 			parser->GetElement(1);
 			parser->GetElement(1);
+			parser->GetElement(1);
+						parser->GetElement(1);
+						parser->GetElement(1);
+						parser->GetElement(1);
+"--- 0 ---"->PrintLine();						
+						parser->GetElement(1);
+#						parser->GetElement(1);
 		}
 	}
 
@@ -42,7 +50,6 @@ class StreamParser {
 		if(@doc_stream_pos < @doc_stream->Size()) {
 			return @doc_stream[@doc_stream_pos];
 		};
-
 		return '\0';
 	}
 
@@ -73,7 +80,9 @@ class StreamParser {
 	method : Parse() ~ Nil {
 		Whitespace();
 
+		#
 		# number
+		#
 		char := GetChar();
 		if(char->IsDigit()) {
 			start := @doc_stream_pos;
@@ -85,27 +94,31 @@ class StreamParser {
 			value := String->New(@doc_stream, start, @doc_stream_pos - start);
 Print("Number: level={$@level}: value={$value}");
 		}
+		#
 		# array
+		#
 		else if(char = '[' | char = ',') {
-Print("Array: level={$@level}");
-
 			if(GetChar() = '[') {
+Print("Array: level={$@level}");
 				@level += 1;
 			};
 
+			if(GetChar() = ',') {
+tmp := GetChar();				
+"--- 1: '{$tmp}' ---"->PrintLine();		
+						
+			};
+
 			NextChar();
+			Whitespace();
 
-			max := 2;
-			count := 0;
-			while(GetChar() <> ']' & count < max) {
-				Parse();
 
-				Whitespace();
-				if(GetChar() = ',') {
-					NextChar();
-				};
 
-				count += 1;
+tmp := GetChar();				
+"--- 2: '{$tmp}' ---"->PrintLine();		
+
+			if(GetChar() <> ']') {				
+				Parse();				
 			};
 
 			if(GetChar() = ']') {
@@ -119,7 +132,8 @@ Print("Array: level={$@level}");
 			NextChar();
 		}
 		else {
-			"*** Error: '{$char}' ***"->ErrorLine();
+			value := char->ToInt();
+			"*** Error: '{$value}' ***"->ErrorLine();
 		};
 	}
 }
