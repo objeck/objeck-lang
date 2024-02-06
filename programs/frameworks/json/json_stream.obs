@@ -3,8 +3,10 @@ use Collection;
 class StreamParser {
 	@elem_stack : StreamParser->Type[];
 	@elem_stack_pos : Int;
+
 	@doc_stream : Char[];
 	@doc_stream_pos : Int;
+	
 	@is_debug : Bool;
 	
 	enum Type {
@@ -64,7 +66,6 @@ class StreamParser {
 	}
 
 	method : Parse(level : Int) ~ Nil {
-		@level := level;
 		Whitespace();
 
 		# number
@@ -77,14 +78,11 @@ class StreamParser {
 				char := GetChar();
 			};
 			value := String->New(@doc_stream, start, @doc_stream_pos - start);
-Print("Number: level={$level}: value={$value}", level);	
-			@level := level;		
+Print("Number: level={$level}: value={$value}", level);
 		}
 		# array
 		else if(char = '[' | char = ',') {
 Print("Array: level={$level}", level);
-			@level := level;
-
 			NextChar();
 
 			while(GetChar() <> ']') {
