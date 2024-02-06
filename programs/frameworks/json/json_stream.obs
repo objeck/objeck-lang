@@ -6,6 +6,8 @@ class StreamParser {
 
 	@doc_stream : Char[];
 	@doc_stream_pos : Int;
+
+	@level : Int;
 	
 	@is_debug : Bool;
 	
@@ -54,7 +56,8 @@ class StreamParser {
 		}
 	}
 
-	method : Print(msg : String, level : Int) ~ Nil {
+	method : Print(msg : String) ~ Nil {
+		level := @level;
 		each(i : level) {
 			"..|"->Print();
 		};
@@ -62,10 +65,10 @@ class StreamParser {
 	}
 
 	method : GetElement(index : Int) ~ Nil {
-		Parse(0);
+		Parse();
 	}
 
-	method : Parse(level : Int) ~ Nil {
+	method : Parse() ~ Nil {
 		Whitespace();
 
 		# number
@@ -78,22 +81,32 @@ class StreamParser {
 				char := GetChar();
 			};
 			value := String->New(@doc_stream, start, @doc_stream_pos - start);
-Print("Number: level={$level}: value={$value}", level);
+Print("Number: level={$@level}: value={$value}");
 		}
 		# array
 		else if(char = '[' | char = ',') {
-Print("Array: level={$level}", level);
+Print("Array: level={$@level}");
 			NextChar();
+
+			@level += 1;
+# "up: level={$@level}"->PrintLine();
+
 
 			while(GetChar() <> ']') {
 				# TODO: push what to operate on
-				Parse(level + 1);
+				Parse();
 
 				Whitespace();
 				if(GetChar() = ',') {
 					NextChar();
 				};
 			};
+
+			if(GetChar() = ']') {
+				@level -= 1;
+# "down: level={$@level}"->PrintLine();			
+			};
+
 			NextChar();	
 		}
 		else {
