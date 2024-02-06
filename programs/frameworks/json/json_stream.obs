@@ -10,7 +10,7 @@ class StreamParser {
 	enum Type {
 		ARRAY
 	}
-	
+
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 2) {
 			parser := StreamParser->New(System.IO.Filesystem.FileReader->ReadFile(args[0]));
@@ -74,7 +74,10 @@ class StreamParser {
 				NextChar();
 			};
 			value := String->New(@stream, start, @stream_position - start);
-Print("Number: level={$@stream_level}: value={$value}");
+			
+			if(@is_debug) {
+				Print("Number: level={$@stream_level}: value={$value}");
+			};
 		}
 		#
 		# character
@@ -88,19 +91,22 @@ Print("Number: level={$@stream_level}: value={$value}");
 			};
 			value := String->New(@stream, start, @stream_position - start);
 			NextChar();
-Print("String: level={$@stream_level}: value={$value}");
+
+			if(@is_debug) {
+				Print("String: level={$@stream_level}: value={$value}");
+			};
 		}
 		#
 		# array
 		#
 		else if(GetChar() = '[' | GetChar() = ',') {
 			if(GetChar() = '[') {
-Print("Array: level={$@stream_level}");
+				if(@is_debug) {
+					Print("Array: level={$@stream_level}");
+				};
 				@stream_level += 1;
 			};
-
 			NextChar();
-			Whitespace();
 
 			if(GetChar() <> ']') {				
 				ParseElement();				
