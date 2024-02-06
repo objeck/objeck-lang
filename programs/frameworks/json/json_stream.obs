@@ -23,6 +23,8 @@ class StreamParser {
 		if(args->Size() = 1) {
 			parser := StreamParser->New(System.IO.Filesystem.FileReader->ReadFile(args[0]));
 			parser->GetElement(1);
+			parser->GetElement(1);
+			parser->GetElement(1);
 		}
 	}
 
@@ -93,14 +95,17 @@ Print("Array: level={$@level}");
 
 			NextChar();
 
-			while(GetChar() <> ']') {
-				# TODO: push what to operate on
+			max := 2;
+			count := 0;
+			while(GetChar() <> ']' & count < max) {
 				Parse();
 
 				Whitespace();
 				if(GetChar() = ',') {
 					NextChar();
 				};
+
+				count += 1;
 			};
 
 			if(GetChar() = ']') {
@@ -109,8 +114,12 @@ Print("Array: level={$@level}");
 
 			NextChar();	
 		}
+		else if(GetChar() = ']') {
+			@level -= 1;
+			NextChar();
+		}
 		else {
 			"*** Error: '{$char}' ***"->ErrorLine();
-		}
+		};
 	}
 }
