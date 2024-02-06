@@ -14,7 +14,7 @@ bundle Tuples {
 	#~
 	Tuple class that supports 2 values
 	~#
-	class TuplePair<A, B> {
+	class Pair<A, B> {
 		@a : A;
 		@b : B;
 
@@ -48,7 +48,7 @@ bundle Tuples {
 	#~
 	Tuple class that supports 3 values
 	~#
-	class TupleTriplet<A, B, C> {
+	class Triplet<A, B, C> {
 		@a : A;
 		@b : B;
 		@c : C;
@@ -89,11 +89,11 @@ bundle Tuples {
 			return @c;
 		}
 	}
-
+	
 	#~
 	Tuple class that supports 4 values
 	~#
-	class TupleQuartet<A, B, C, D> {
+	class Quartet<A, B, C, D> {
 		@a : A;
 		@b : B;
 		@c : C;
