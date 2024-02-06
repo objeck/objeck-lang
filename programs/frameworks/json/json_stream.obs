@@ -120,6 +120,9 @@ Print("Array: level={$@stream_level}");
 			@stream_level -= 1;
 			NextChar();
 		}
+		#
+		# error
+		#
 		else {
 			value := GetChar()->ToInt();
 			"*** Error: '{$value}' ***"->ErrorLine();
