@@ -50,12 +50,12 @@ class StreamParser {
 		}
 	}
 
-	method : Print(msg : String) ~ Nil {
+	method : Print(message : String) ~ Nil {
 		level := @stream_level;
-		each(i : level) {
+		while(level-- > 0) {
 			"..|"->Print();
 		};
-		msg->PrintLine();
+		message->PrintLine();
 	}
 
 	# TODO: return value parsed; as tuple: type, value, level
