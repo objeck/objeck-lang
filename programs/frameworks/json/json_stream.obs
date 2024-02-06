@@ -10,11 +10,7 @@ class StreamParser {
 	enum Type {
 		ARRAY
 	}
-
-	consts Limit {
-		DEPTH_MAX := 512
-	}
-
+	
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 2) {
 			parser := StreamParser->New(System.IO.Filesystem.FileReader->ReadFile(args[0]));
