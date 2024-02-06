@@ -86,11 +86,12 @@ Print("Number: level={$@level}: value={$value}");
 		# array
 		else if(char = '[' | char = ',') {
 Print("Array: level={$@level}");
+
+			if(GetChar() = '[') {
+				@level += 1;
+			};
+
 			NextChar();
-
-			@level += 1;
-# "up: level={$@level}"->PrintLine();
-
 
 			while(GetChar() <> ']') {
 				# TODO: push what to operate on
@@ -104,7 +105,6 @@ Print("Array: level={$@level}");
 
 			if(GetChar() = ']') {
 				@level -= 1;
-# "down: level={$@level}"->PrintLine();			
 			};
 
 			NextChar();	
