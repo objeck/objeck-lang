@@ -61,7 +61,7 @@ class StreamParser {
 	# TODO: return value parsed; as tuple: type, value, level
 	method : GetElement(index : Int) ~ Nil {
 		each(i : index) {
-			ParseElement();
+			ParseElement()->ToString()->PrintLine();
 		};
 	}
 
