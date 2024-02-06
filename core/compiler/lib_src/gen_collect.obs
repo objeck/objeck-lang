@@ -51,23 +51,33 @@ bundle Tuples {
 		method : public : ToString() ~ String {
 			buffer := "[";
 
-			if(@a->TypeOf(Stringify)) {
-				buffer->Append(@a->As(System.Stringify)->ToString());
+			if(@a = Nil) {
+				buffer += "<Nil>";
 			}
-			# use instance ID instead
 			else {
-				buffer->Append(@a->GetInstanceID()->ToHexString());
-			};
+				if(@a->TypeOf(Stringify)) {
+					buffer->Append(@a->As(System.Stringify)->ToString());
+				}
+				# use instance ID instead
+				else {
+					buffer->Append(@a->GetInstanceID()->ToHexString());
+				};
+			}
 
 			buffer += ',';
 
-			if(@b->TypeOf(Stringify)) {
-				buffer->Append(@b->As(System.Stringify)->ToString());
+			if(@b = Nil) {
+				buffer += "<Nil>";
 			}
-			# use instance ID instead
 			else {
-				buffer->Append(@b->GetInstanceID()->ToHexString());
-			};
+				if(@b->TypeOf(Stringify)) {
+					buffer->Append(@b->As(System.Stringify)->ToString());
+				}
+				# use instance ID instead
+				else {
+					buffer->Append(@b->GetInstanceID()->ToHexString());
+				};
+			}
 
 			buffer += "]";
 
@@ -126,32 +136,47 @@ bundle Tuples {
 		method : public : ToString() ~ String {
 			buffer := "[";
 
-			if(@a->TypeOf(Stringify)) {
-				buffer->Append(@a->As(System.Stringify)->ToString());
+			if(@a = Nil) {
+				buffer += "<Nil>";
 			}
-			# use instance ID instead
 			else {
-				buffer->Append(@a->GetInstanceID()->ToHexString());
+				if(@a->TypeOf(Stringify)) {
+					buffer->Append(@a->As(System.Stringify)->ToString());
+				}
+				# use instance ID instead
+				else {
+					buffer->Append(@a->GetInstanceID()->ToHexString());
+				};
 			};
 
 			buffer += ',';
 
-			if(@b->TypeOf(Stringify)) {
-				buffer->Append(@b->As(System.Stringify)->ToString());
+			if(@b = Nil) {
+				buffer += "<Nil>";
 			}
-			# use instance ID instead
 			else {
-				buffer->Append(@b->GetInstanceID()->ToHexString());
+				if(@b->TypeOf(Stringify)) {
+					buffer->Append(@b->As(System.Stringify)->ToString());
+				}
+				# use instance ID instead
+				else {
+					buffer->Append(@b->GetInstanceID()->ToHexString());
+				};
 			};
 
 			buffer += ',';
 
-			if(@c->TypeOf(Stringify)) {
-				buffer->Append(@c->As(System.Stringify)->ToString());
+			if(@c = Nil) {
+				buffer += "<Nil>";
 			}
-			# use instance ID instead
 			else {
-				buffer->Append(@c->GetInstanceID()->ToHexString());
+				if(@c->TypeOf(Stringify)) {
+					buffer->Append(@c->As(System.Stringify)->ToString());
+				}
+				# use instance ID instead
+				else {
+					buffer->Append(@c->GetInstanceID()->ToHexString());
+				};
 			};
 
 			buffer += "]";
@@ -222,42 +247,60 @@ bundle Tuples {
 		method : public : ToString() ~ String {
 			buffer := "[";
 
-			if(@a->TypeOf(Stringify)) {
-				buffer->Append(@a->As(System.Stringify)->ToString());
+			if(@a = Nil) {
+				buffer += "<Nil>";
 			}
-			# use instance ID instead
 			else {
-				buffer->Append(@a->GetInstanceID()->ToHexString());
+				if(@a->TypeOf(Stringify)) {
+					buffer->Append(@a->As(System.Stringify)->ToString());
+				}
+				# use instance ID instead
+				else {
+					buffer->Append(@a->GetInstanceID()->ToHexString());
+				};
+			};
+			buffer += ',';
+
+			if(@b = Nil) {
+				buffer += "<Nil>";
+			}
+			else {
+				if(@b->TypeOf(Stringify)) {
+					buffer->Append(@b->As(System.Stringify)->ToString());
+				}
+				# use instance ID instead
+				else {
+					buffer->Append(@b->GetInstanceID()->ToHexString());
+				};
 			};
 
 			buffer += ',';
 
-			if(@b->TypeOf(Stringify)) {
-				buffer->Append(@b->As(System.Stringify)->ToString());
+			if(@c = Nil) {
+				buffer += "<Nil>";
 			}
-			# use instance ID instead
 			else {
-				buffer->Append(@b->GetInstanceID()->ToHexString());
+				if(@c->TypeOf(Stringify)) {
+					buffer->Append(@c->As(System.Stringify)->ToString());
+				}
+				# use instance ID instead
+				else {
+					buffer->Append(@c->GetInstanceID()->ToHexString());
+				};
 			};
-
 			buffer += ',';
 
-			if(@c->TypeOf(Stringify)) {
-				buffer->Append(@c->As(System.Stringify)->ToString());
+			if(@d = Nil) {
+				buffer += "<Nil>";
 			}
-			# use instance ID instead
 			else {
-				buffer->Append(@c->GetInstanceID()->ToHexString());
-			};
-
-			buffer += ',';
-
-			if(@d->TypeOf(Stringify)) {
-				buffer->Append(@d->As(System.Stringify)->ToString());
-			}
-			# use instance ID instead
-			else {
-				buffer->Append(@d->GetInstanceID()->ToHexString());
+				if(@d->TypeOf(Stringify)) {
+					buffer->Append(@d->As(System.Stringify)->ToString());
+				}
+				# use instance ID instead
+				else {
+					buffer->Append(@d->GetInstanceID()->ToHexString());
+				};
 			};
 
 			buffer += "]";
