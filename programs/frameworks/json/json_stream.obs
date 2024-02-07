@@ -98,13 +98,71 @@ class StreamParser {
 			NextChar();
 
 			if(@is_debug) {
-				Print("String: level={$@stream_level}: value={$value}");
+				Print("String: level={$@stream_level}: value='{$value}'");
 			};
+		}
+		#
+		# object
+		#
+		else if(GetChar() = '{') {
+"--- 0 ---"->PrintLine();						
+			@stream_level += 1;
+			NextChar();
+
+			if(@is_debug) {
+				Print("Object: level={$@stream_level}");
+			};
+
+			Whitespace();
+			if(GetChar() <> '}') {
+				# parsing attribute name
+
+
+				if(GetChar() = '"') {
+					NextChar();
+
+					start := @stream_position;
+					while(GetChar() <> '"') {
+						NextChar();
+					};
+					name := String->New(@stream, start, @stream_position - start);
+					NextChar();
+
+					if(@is_debug) {
+						Print("Attribute: level={$@stream_level}, name='{$name}'");
+					};
+
+					if(GetChar() = ':') {
+						NextChar();
+						ParseElement();
+# GetChar()->PrintLine();						
+					}
+					else {
+						Standard->Error("*** Error: '")->Error(GetChar()->ToInt())->ErrorLine("'");
+					};
+				}
+				else {
+					Standard->Error("*** Error: '")->Error(GetChar()->ToInt())->ErrorLine("'");
+				};
+
+
+			};
+
+			if(GetChar() = ',') {
+"--- 1---"->PrintLine();			
+			}
+GetChar()->PrintLine();						
+
+			if(GetChar() = '}') {
+				@stream_level -= 1;
+			};
+			NextChar();	
 		}
 		#
 		# array
 		#
 		else if(GetChar() = '[' | GetChar() = ',') {
+"--- 2 ---"->PrintLine();			
 			if(GetChar() = '[') {
 				if(@is_debug) {
 					Print("Array: level={$@stream_level}");
@@ -120,7 +178,6 @@ class StreamParser {
 			if(GetChar() = ']') {
 				@stream_level -= 1;
 			};
-
 			NextChar();	
 		}
 		else if(GetChar() = ']') {
