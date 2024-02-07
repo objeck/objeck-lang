@@ -6,7 +6,7 @@ class StreamParser {
 	@stream : Char[];
 	@stream_position : Int;
 	@stream_level : Int;
-		
+
 	enum Type {
 		ARRAY,
 		STRING,
@@ -69,48 +69,18 @@ class StreamParser {
 
 		value : String;
 		type : StreamParser
-
-		#
-		# number
-		#
-		if(GetChar()->IsDigit()) {
-			start := @stream_position;
-			while(GetChar()->IsDigit() | GetChar() = '.') {
-				NextChar();
-			};
-			value := String->New(@stream, start, @stream_position - start);
-			
-			if(@is_debug) {
-				Print("Number: level={$@stream_level}: value={$value}");
-			};
-		}
-		#
-		# character
-		#
-		else if(GetChar() = '"') {
-			NextChar();
-
-			start := @stream_position;
-			while(GetChar() <> '"') {
-				NextChar();
-			};
-			value := String->New(@stream, start, @stream_position - start);
-			NextChar();
-
-			if(@is_debug) {
-				Print("String: level={$@stream_level}: value='{$value}'");
-			};
-		}
+		
 		#
 		# object
 		#
-		else if(GetChar() = '{') {
-"--- 0 ---"->PrintLine();						
-			@stream_level += 1;
-			NextChar();
-
-			if(@is_debug) {
-				Print("Object: level={$@stream_level}");
+		if(GetChar() = '{') {
+"--- OBJECT ---"->PrintLine();
+			if(GetChar() = '{') {
+				if(@is_debug) {
+					Print("Object: level={$@stream_level}");
+				};
+				@stream_level += 1;
+				NextChar();
 			};
 
 			Whitespace();
@@ -135,23 +105,19 @@ class StreamParser {
 					if(GetChar() = ':') {
 						NextChar();
 						ParseElement();
-# GetChar()->PrintLine();						
+# TODO: treat as unit						
+						return;			
 					}
 					else {
-						Standard->Error("*** Error: '")->Error(GetChar()->ToInt())->ErrorLine("'");
+						Standard->Error("*** Error: '")->Error(GetChar())->Error("' (")->Print(GetChar()->ToInt())->PrintLine(")");
 					};
 				}
 				else {
-					Standard->Error("*** Error: '")->Error(GetChar()->ToInt())->ErrorLine("'");
+					Standard->Error("*** Error: '")->Error(GetChar())->Error("' (")->Print(GetChar()->ToInt())->PrintLine(")");
 				};
 
 
 			};
-
-			if(GetChar() = ',') {
-"--- 1---"->PrintLine();			
-			}
-GetChar()->PrintLine();						
 
 			if(GetChar() = '}') {
 				@stream_level -= 1;
@@ -162,7 +128,7 @@ GetChar()->PrintLine();
 		# array
 		#
 		else if(GetChar() = '[' | GetChar() = ',') {
-"--- 2 ---"->PrintLine();			
+"--- ARRAY ---"->PrintLine();			
 			if(GetChar() = '[') {
 				if(@is_debug) {
 					Print("Array: level={$@stream_level}");
@@ -183,6 +149,37 @@ GetChar()->PrintLine();
 		else if(GetChar() = ']') {
 			@stream_level -= 1;
 			NextChar();
+		}
+		#
+		# character
+		#
+		else if(GetChar() = '"') {
+			NextChar();
+
+			start := @stream_position;
+			while(GetChar() <> '"') {
+				NextChar();
+			};
+			value := String->New(@stream, start, @stream_position - start);
+			NextChar();
+
+			if(@is_debug) {
+				Print("String: level={$@stream_level}: value='{$value}'");
+			};
+		}
+		#
+		# number
+		#
+		else if(GetChar()->IsDigit()) {
+			start := @stream_position;
+			while(GetChar()->IsDigit() | GetChar() = '.') {
+				NextChar();
+			};
+			value := String->New(@stream, start, @stream_position - start);
+			
+			if(@is_debug) {
+				Print("Number: level={$@stream_level}: value={$value}");
+			};
 		}
 		#
 		# error
