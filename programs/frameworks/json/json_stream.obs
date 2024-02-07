@@ -188,7 +188,7 @@ GetChar()->PrintLine();
 		# error
 		#
 		else {
-			Standard->Error("*** Error: '")->Error(GetChar()->ToInt())->ErrorLine("'");
+			Standard->Error("*** Error: '")->Error(GetChar())->Error("' (")->Print(GetChar()->ToInt())->PrintLine(")");
 		};
 	}
 }
