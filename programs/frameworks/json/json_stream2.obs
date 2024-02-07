@@ -67,6 +67,10 @@ class StreamParser {
 	method : native : ParseElement() ~ Nil {
 		Whitespace();
 
+		if(@stream_stack_pos > 0 & @stream_stack[@stream_stack_pos] = StreamParser->Type->ARRAY & GetChar() = ',') {
+			NextChar();
+		};
+
 		#
 		# number
 		#
@@ -122,17 +126,7 @@ class StreamParser {
 			NextChar();
 			NextChar();
 		}
-		#
-		# in array
-		#
-		else if(@stream_stack_pos > 0 & @stream_stack[@stream_stack_pos] = StreamParser->Type->ARRAY) {
-			if(GetChar() <> ',') {
-				Standard->Error("*** Error: '")->Error(GetChar())->Error("' (")->Print(GetChar()->ToInt())->PrintLine(")");
-				Runtime->Exit(1);
-			};
-			NextChar();
-		}
-
+		
 		#
 		# object start
 		#
