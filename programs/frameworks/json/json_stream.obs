@@ -5,10 +5,12 @@ class StreamParser {
 
 	@stream : Char[];
 	@stream_position : Int;
-	@stream_level : Int;
+#	@stream_level : Int;
+	@stream_context_stack : Stack<IntRef>;
 
 	enum Type {
 		ARRAY,
+		OBJECT,
 		STRING,
 		NUMBER
 	}
@@ -23,6 +25,7 @@ class StreamParser {
 	New(stream : String) {
 		@is_debug := true;
 		@stream := stream->ToCharArray();
+		@stream_context_stack := Stack->New()<IntRef>;
 	}
 
 	method : MatchChar(char : Char) ~ Bool {
@@ -49,7 +52,7 @@ class StreamParser {
 	}
 
 	method : Print(message : String) ~ Nil {
-		level := @stream_level;
+		level := @stream_context_stack->Size();
 		while(level-- > 0) {
 			"..|"->Print();
 		};
@@ -77,9 +80,11 @@ class StreamParser {
 "--- OBJECT ---"->PrintLine();
 			if(GetChar() = '{') {
 				if(@is_debug) {
-					Print("Object: level={$@stream_level}");
+					stream_level := @stream_context_stack->Size();
+					Print("Object: level={$stream_level}");
 				};
-				@stream_level += 1;
+#				@stream_level += 1;
+				@stream_context_stack->Push(StreamParser->Type->OBJECT->As(Int));
 				NextChar();
 			};
 
@@ -99,13 +104,15 @@ class StreamParser {
 					NextChar();
 
 					if(@is_debug) {
-						Print("Attribute: level={$@stream_level}, name='{$name}'");
+						stream_level := @stream_context_stack->Size();
+						Print("Attribute: level={$stream_level}, name='{$name}'");
 					};
 
 					if(GetChar() = ':') {
 						NextChar();
 						ParseElement();
-# TODO: treat as unit						
+# TODO: treat as unit	
+					
 						return;			
 					}
 					else {
@@ -120,9 +127,14 @@ class StreamParser {
 			};
 
 			if(GetChar() = '}') {
-				@stream_level -= 1;
+#				@stream_level -= 1;
+				@stream_context_stack->Pop();
 			};
 			NextChar();	
+		}
+		else if(GetChar() = '}') {
+			@stream_context_stack->Pop();
+			NextChar();
 		}
 		#
 		# array
@@ -131,9 +143,12 @@ class StreamParser {
 "--- ARRAY ---"->PrintLine();			
 			if(GetChar() = '[') {
 				if(@is_debug) {
-					Print("Array: level={$@stream_level}");
+					stream_level := @stream_context_stack->Size();
+					Print("Array: level={$stream_level}");
 				};
-				@stream_level += 1;
+#				@stream_level += 1;
+				@stream_context_stack->Push(StreamParser->Type->ARRAY->As(Int));
+
 			};
 			NextChar();
 
@@ -142,12 +157,13 @@ class StreamParser {
 			};
 
 			if(GetChar() = ']') {
-				@stream_level -= 1;
+#				@stream_level -= 1;
+				@stream_context_stack->Pop();
 			};
 			NextChar();	
 		}
 		else if(GetChar() = ']') {
-			@stream_level -= 1;
+			@stream_context_stack->Pop();
 			NextChar();
 		}
 		#
@@ -164,7 +180,8 @@ class StreamParser {
 			NextChar();
 
 			if(@is_debug) {
-				Print("String: level={$@stream_level}: value='{$value}'");
+				stream_level := @stream_context_stack->Size();
+				Print("String: level={$stream_level}: value='{$value}'");
 			};
 		}
 		#
@@ -178,7 +195,8 @@ class StreamParser {
 			value := String->New(@stream, start, @stream_position - start);
 			
 			if(@is_debug) {
-				Print("Number: level={$@stream_level}: value={$value}");
+				stream_level := @stream_context_stack->Size();
+				Print("Number: level={$stream_level}: value={$value}");
 			};
 		}
 		#
