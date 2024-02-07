@@ -23,7 +23,7 @@ class StreamParser {
 
 	New(stream : String) {
 		@stream := stream->ToCharArray();
-		@stream_stack := Int->New[256]; # TODO: type and potion, for get_next_sibling
+		@stream_stack := Int->New[256]; # TODO: type and position, for get_next_sibling
 		@is_debug := true;
 	}
 
