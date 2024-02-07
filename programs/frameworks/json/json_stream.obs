@@ -65,8 +65,9 @@ class StreamParser {
 			ParseElement();
 		};
 	}
-
+	
 	# TODO: return value parsed; as tuple: type, value, level
+	# TODO: better error handling, check skipped tokens
 	method : native : ParseElement() ~ Nil {
 		Whitespace();
 
@@ -77,13 +78,12 @@ class StreamParser {
 		# object
 		#
 		if(GetChar() = '{') {
-"--- OBJECT ---"->PrintLine();
+# "--- OBJECT ---"->PrintLine();
 			if(GetChar() = '{') {
 				if(@is_debug) {
 					stream_level := @stream_context_stack->Size();
 					Print("Object: level={$stream_level}");
 				};
-#				@stream_level += 1;
 				@stream_context_stack->Push(StreamParser->Type->OBJECT->As(Int));
 				NextChar();
 			};
@@ -91,8 +91,6 @@ class StreamParser {
 			Whitespace();
 			if(GetChar() <> '}') {
 				# parsing attribute name
-
-
 				if(GetChar() = '"') {
 					NextChar();
 
@@ -111,8 +109,10 @@ class StreamParser {
 					if(GetChar() = ':') {
 						NextChar();
 						ParseElement();
-# TODO: treat as unit	
-					
+						if(GetChar() <> ',') {
+							Standard->Error("*** Error: '")->Error(GetChar())->Error("' (")->Print(GetChar()->ToInt())->PrintLine(")");
+						}
+						ParseElement();					
 						return;			
 					}
 					else {
@@ -122,12 +122,9 @@ class StreamParser {
 				else {
 					Standard->Error("*** Error: '")->Error(GetChar())->Error("' (")->Print(GetChar()->ToInt())->PrintLine(")");
 				};
-
-
 			};
 
 			if(GetChar() = '}') {
-#				@stream_level -= 1;
 				@stream_context_stack->Pop();
 			};
 			NextChar();	
@@ -137,16 +134,15 @@ class StreamParser {
 			NextChar();
 		}
 		#
-		# array
+		# array or element
 		#
 		else if(GetChar() = '[' | GetChar() = ',') {
-"--- ARRAY ---"->PrintLine();			
+# "--- ARRAY ---"->PrintLine();			
 			if(GetChar() = '[') {
 				if(@is_debug) {
 					stream_level := @stream_context_stack->Size();
 					Print("Array: level={$stream_level}");
 				};
-#				@stream_level += 1;
 				@stream_context_stack->Push(StreamParser->Type->ARRAY->As(Int));
 
 			};
@@ -157,7 +153,6 @@ class StreamParser {
 			};
 
 			if(GetChar() = ']') {
-#				@stream_level -= 1;
 				@stream_context_stack->Pop();
 			};
 			NextChar();	
