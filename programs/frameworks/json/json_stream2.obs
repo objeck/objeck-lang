@@ -78,6 +78,7 @@ class StreamParser {
 				(@stream_stack_pos > 0 & @stream_stack[@stream_stack_pos] = StreamParser->Type->ARRAY |
 				@stream_stack_pos > 0 & @stream_stack[@stream_stack_pos] = StreamParser->Type->OBJECT)) {
 			NextChar();
+			Whitespace();
 		}
 		
 
