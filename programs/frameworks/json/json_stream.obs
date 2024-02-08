@@ -1,3 +1,9 @@
+#~~
+# Stream JSON parser (POC)
+# Copyright (c) 2024
+# Music: 7th Chamber, 122
+~~#
+
 #~
 Support for JSON steam parsing (-lib json_stream.obl)
 ~#
