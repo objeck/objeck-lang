@@ -32,11 +32,8 @@ bundle Data.JSON.Stream {
 		function : Main(args : String[]) ~ Nil {
 			if(args->Size() = 2) {
 				parser := StreamParser->New(System.IO.Filesystem.FileReader->ReadFile(args[0]));
-				if(parser->GetNextElement(1)) {
-					if(parser->GetSiblingElement(args[1]->ToInt())) {
-						parser->GetValue()->PrintLine();
-					};
-				};
+				"---"->PrintLine();
+				parser->GetNextElement(args[1]->ToInt())->PrintLine();
 			};
 		}
 
@@ -84,20 +81,10 @@ bundle Data.JSON.Stream {
 			return @stream_stack_position;
 		}
 
-		# TODO: method : GetSiblingElement(index : Int) ~ Bool, NOTE: path down/{up:name}
+		# TODO: method : GetSiblingElement(offset : Int) ~ Bool, NOTE: path down/{up:name}
 
-		method : GetSiblingElement(index : Int) ~ Bool {
-			each(i : index) {
-				position := @stream_stack_position;
-				while(position = @stream_stack_position) {
-					ParseElement();
-					if(@is_error) {
-						return false;
-					};
-				};
-			};
-
-			return true;
+		method : GetSiblingElement(offset : Int) ~ Bool {
+			return false;
 		}
 
 		# NOTE: path right
@@ -106,18 +93,22 @@ bundle Data.JSON.Stream {
 		}
 
 		# NOTE: path right
-		method : GetNextElement(index : Int) ~ Bool {
-			@current_value := Nil;
-			@current_type := StreamParser->Type->UNKNOWN;
+		method : GetNextElement(offset : Int) ~ Bool {
+			if(offset > 0) {
+				@current_value := Nil;
+				@current_type := StreamParser->Type->UNKNOWN;
 
-			each(i : index) {
-				ParseElement();
-				if(@is_error) {
-					return false;
-				};			
+				each(i : offset) {
+					ParseElement();
+					if(@is_error) {
+						return false;
+					};			
+				};
+
+				return true;
 			};
 
-			return true;
+			return false;
 		}
 		#
 		# End: API
@@ -134,7 +125,7 @@ bundle Data.JSON.Stream {
 					@stream_stack_position > 0 & @stream_stack[@stream_stack_position]->GetType() = StreamParser->Type->OBJECT)) {
 				NextChar();
 				Whitespace();
-			}
+			};
 			
 			#
 			# number
@@ -176,9 +167,6 @@ bundle Data.JSON.Stream {
 						Print("---");
 						Print("Attribute: level={$stream_level}: value='{$value}'");
 					};
-
-					ParseElement();
-					Whitespace();
 				}
 				else {
 					if(@is_debug) {
@@ -231,13 +219,12 @@ bundle Data.JSON.Stream {
 			#
 			# array and object endings
 			#
-			while(GetChar() = ']' | GetChar() = '}') {
+			if(GetChar() = ']' | GetChar() = '}') {
 				last := @stream_stack[--@stream_stack_position];
 				@current_type := last->GetType();
 				@current_value := last->GetValue();
 
 				NextChar();
-				Whitespace();
 			};
 		}
 
