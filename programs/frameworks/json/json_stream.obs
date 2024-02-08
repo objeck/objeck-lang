@@ -76,9 +76,9 @@ bundle Data.JSON.Stream {
 			return @stream_stack_position;
 		}
 
-		#TODO: method : GetSiblingElement(index : Int) ~ Bool, NOTE: path down/{up:name}
+		# TODO: method : GetSiblingElement(index : Int) ~ Bool, NOTE: path down/{up:name}
 
-		#TODO: method : GetSiblingElement(value : String) ~ Bool, NOTE: path down/{up:name}
+		# TODO: method : GetSiblingElement(value : String) ~ Bool, NOTE: path down/{up:name}
 
 		# NOTE: path right
 		method : GetNextElement(value : String) ~ Bool {
