@@ -1,12 +1,10 @@
 class StreamParser {
 	@stream : Char[];
 	@stream_position : Int;
-
 	@stream_stack : Int[];
 	@stream_stack_pos : Int;
-
 	@is_error : Bool;
-
+	
 	@is_debug : Bool;
 
 	enum Type {
@@ -161,7 +159,7 @@ class StreamParser {
 		# error
 		#
 		else {
-			Standard->Error("-> *** Error: '")->Error(GetChar())->Error("' (")->Print(GetChar()->ToInt())->PrintLine(")");
+			Standard->Error("*** Error: '")->Error(GetChar())->Error("' (")->Print(GetChar()->ToInt())->PrintLine(")");
 			@is_error := true;
 			return;
 		};
