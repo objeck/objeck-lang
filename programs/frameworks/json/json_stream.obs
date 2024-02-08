@@ -1,263 +1,294 @@
-class StreamParser {
-	@stream : Char[];
-	@stream_position : Int;
-	
-	@stream_stack : ParserConext[];
-	@stream_stack_pos : Int;
-	
-	@is_error : Bool;
+#~
+Support for JSON steam parsing (-lib json_stream.obl)
+~#
+bundle Data.JSON.Stream {
+	class StreamParser {
+		@stream : Char[];
+		@stream_position : Int;
+		
+		@stream_stack : ParseScope[];
+		@stream_stack_position : Int;
+		
+		@current_value : String;
+		@current_type : StreamParser->Type;
+		@is_error : Bool;
 
-	@is_debug : Bool;
+		@is_debug : Bool;
 
-	enum Type {
-		ARRAY,
-		OBJECT,
-		STRING,
-		NUMBER
-	}
-
-	function : Main(args : String[]) ~ Nil {
-		if(args->Size() = 2) {
-			parser := StreamParser->New(System.IO.Filesystem.FileReader->ReadFile(args[0]));
-			context := parser->GetElement(args[1]->ToInt());
-			if(context <> Nil) {
-				context->ToString()->PrintLine();
-			};
-		};
-	}
-
-	New(stream : String) {
-		@stream := stream->ToCharArray();
-		@is_debug := true;
-
-		max := 64;
-		@stream_stack := ParserConext->New[max];
-		each(i : max) {
-			 @stream_stack[i] := ParserConext->New();
-		};
-	}
-
-	method : MatchChar(char : Char) ~ Bool {
-		return GetChar() = char;
-	}
-
-	method : native : GetChar() ~ Char {
-		if(@stream_position < @stream->Size()) {
-			return @stream[@stream_position];
-		};
-
-		return '\0';
-	}
-
-	method : NextChar() ~ Nil {
-		@stream_position += 1;
-	}
-	
-	method : native : Whitespace() ~ Nil {
-		char := GetChar();
-		while(char = ' ' | char = '\t' | char = '\r' | char = '\n' | char = 0xa0 | char = 0x1680 | 
-				char >= 0x2000 & char <= 0x200a | char >= 0x000a & char <= 0x000d | char = 0x202f | 
-				char = 0x205f | char = 0x3000 | char = 0x0085 | char = 0x2029) {
-			NextChar();
-			char := GetChar();
+		enum Type {
+			ARRAY,
+			OBJECT,
+			STRING,
+			NUMBER,
+			UNKNOWN
 		}
-	}
 
-	method : Print(message : String) ~ Nil {
-		level := @stream_stack_pos;
-		while(level-- > 0) {
-			"..|"->Print();
-		};
-		message->PrintLine();
-	}
+		function : Main(args : String[]) ~ Nil {
+			if(args->Size() = 2) {
+				parser := StreamParser->New(System.IO.Filesystem.FileReader->ReadFile(args[0]));
+				if(parser->GetElement(args[1]->ToInt())) {
+					parser->GetValue()->PrintLine();
+				};
+			};
+		}
 
-	# TODO: check stack for return value
-	method : GetElement(index : Int) ~ ParserConext {
-		each(i : index) {
+		New(stream : String) {
+			@stream := stream->ToCharArray();
+			@is_debug := true;
+
+			max := 64;
+			@stream_stack := ParseScope->New[max];
+			each(i : max) {
+				 @stream_stack[i] := ParseScope->New();
+			};
+		}
+
+		#
+		# Start: API
+		#
+		method : GetType() ~ StreamParser->Type {
+			if(@is_error) {
+				return StreamParser->Type->UNKNOWN;
+			};
+
+			return @current_type;
+		}
+
+		method : GetValue() ~ String {
 			if(@is_error) {
 				return Nil;
 			};
-			
-			ParseElement();
-		};
 
-		if(@stream_stack_pos > 0) {
-			context := @stream_stack[@stream_stack_pos - 1];
-
-			if(context->GetType() = StreamParser->Type->ARRAY | context->GetType() = StreamParser->Type->OBJECT) {
-				return @stream_stack[@stream_stack_pos - 1];
-			}
-			else {
-				return @stream_stack[--@stream_stack_pos];
-			};
-		};
-
-		return Nil;
-	}
-
-	method : native : ParseElement() ~ Nil {
-		Whitespace();
-
-		#
-		# additional array and object elements
-		#
-		if(GetChar() = ',' & 
-				(@stream_stack_pos > 0 & @stream_stack[@stream_stack_pos]->GetType() = StreamParser->Type->ARRAY |
-				@stream_stack_pos > 0 & @stream_stack[@stream_stack_pos]->GetType() = StreamParser->Type->OBJECT)) {
-			NextChar();
-			Whitespace();
+			return @current_value;
 		}
-		
-		#
-		# number
-		#
-		if(GetChar()->IsDigit()) {
-			start := @stream_position;
-			while(GetChar()->IsDigit() | GetChar() = '.') {
-				NextChar();
-			};
-			value := String->New(@stream, start, @stream_position - start);
-			
-			if(@is_debug) {
-				stream_level := @stream_stack_pos;
-				Print("Number: level={$stream_level}: value={$value}");
-			};
+
+		method : GetLevel() ~ Int {
+			return @stream_stack_position;
 		}
-		
-		#
-		# string or attribute
-		#
-		else if(GetChar() = '"') {
-			NextChar();
 
-			start := @stream_position;
-			while(GetChar() <> '"') {
-				NextChar();
-			};
-			value := String->New(@stream, start, @stream_position - start);
-			NextChar();	Whitespace();
+		method : GetElement(value : String) ~ Bool {
+			return @current_type;
+		}
 
-			if(GetChar() = ':' & @stream_stack_pos > 0 & @stream_stack[@stream_stack_pos - 1]->GetType() = StreamParser->Type->OBJECT) {
-				NextChar();	Whitespace();
+		method : GetElement(index : Int) ~ Bool {
+			@current_value := Nil;
+			@current_type := StreamParser->Type->UNKNOWN;
 
-				if(@is_debug) {
-					stream_level := @stream_stack_pos;
-					Print("---");
-					Print("Attribute: level={$stream_level}: value='{$value}'");
-				};
-
+			each(i : index) {
 				ParseElement();
+				if(@is_error) {
+					return false;
+				};			
+			};
+
+			return true;
+		}
+		#
+		# End: API
+		#
+
+		method : native : ParseElement() ~ Nil {
+			Whitespace();
+
+			#
+			# additional array and object elements
+			#
+			if(GetChar() = ',' & 
+					(@stream_stack_position > 0 & @stream_stack[@stream_stack_position]->GetType() = StreamParser->Type->ARRAY |
+					@stream_stack_position > 0 & @stream_stack[@stream_stack_position]->GetType() = StreamParser->Type->OBJECT)) {
+				NextChar();
 				Whitespace();
 			}
-			else {
-				if(@is_debug) {
-					stream_level := @stream_stack_pos;
-					Print("String: level={$stream_level}: value='{$value}'");
-				};
-			};
-		}
-
-		#
-		# array start
-		#
-		else if(GetChar() = '[') {
-			if(@is_debug) {
-				stream_level := @stream_stack_pos;
-				Print("Array: level={$stream_level}");
-			};
-
-			@stream_stack[@stream_stack_pos++]->Set(StreamParser->Type->ARRAY, @stream_stack_pos);
-			NextChar();
-		}
-		#
-		# object start
-		#
-		else if(GetChar() = '{') {
 			
+			#
+			# number
+			#
+			if(GetChar()->IsDigit()) {
+				start := @stream_position;
+				while(GetChar()->IsDigit() | GetChar() = '.') {
+					NextChar();
+				};
+				value := String->New(@stream, start, @stream_position - start);
+				
+				if(@is_debug) {
+					stream_level := @stream_stack_position;
+					Print("Number: level={$stream_level}: value={$value}");
+				};
 
-			if(@is_debug) {
-				stream_level := @stream_stack_pos;
-				Print("Object: level={$stream_level}");
+				@current_value := value;
+				@current_type := StreamParser->Type->NUMBER;
+			}
+			
+			#
+			# string or attribute
+			#
+			else if(GetChar() = '"') {
+				NextChar();
+
+				start := @stream_position;
+				while(GetChar() <> '"') {
+					NextChar();
+				};
+				value := String->New(@stream, start, @stream_position - start);
+				NextChar();	Whitespace();
+
+				if(GetChar() = ':' & @stream_stack_position > 0 & @stream_stack[@stream_stack_position - 1]->GetType() = StreamParser->Type->OBJECT) {
+					NextChar();	Whitespace();
+
+					if(@is_debug) {
+						stream_level := @stream_stack_position;
+						Print("---");
+						Print("Attribute: level={$stream_level}: value='{$value}'");
+					};
+
+					ParseElement();
+					Whitespace();
+				}
+				else {
+					if(@is_debug) {
+						stream_level := @stream_stack_position;
+						Print("String: level={$stream_level}: value='{$value}'");
+					};
+				};
+			}
+
+			#
+			# array start
+			#
+			else if(GetChar() = '[') {
+				if(@is_debug) {
+					stream_level := @stream_stack_position;
+					Print("Array: level={$stream_level}");
+				};
+
+				@stream_stack[@stream_stack_position++]->Set(StreamParser->Type->ARRAY, @stream_stack_position);
+				NextChar();
+			}
+			#
+			# object start
+			#
+			else if(GetChar() = '{') {
+				
+
+				if(@is_debug) {
+					stream_level := @stream_stack_position;
+					Print("Object: level={$stream_level}");
+				};
+
+				@stream_stack[@stream_stack_position++]->Set(StreamParser->Type->OBJECT, @stream_stack_position);
+				NextChar();
+			}
+			#
+			# error
+			#
+			else {
+				Standard->Error("*** Error: '")->Error(GetChar())->Error("' (")->Print(GetChar()->ToInt())->PrintLine(")");
+				@is_error := true;
+				return;
 			};
 
-			@stream_stack[@stream_stack_pos++]->Set(StreamParser->Type->OBJECT, @stream_stack_pos);
-			NextChar();
+			#
+			# array and object endings
+			#
+			while(GetChar() = ']' | GetChar() = '}') {
+				@stream_stack_position -= 1;
+				NextChar();
+				Whitespace();
+			};
 		}
-		#
-		# error
-		#
-		else {
-			Standard->Error("*** Error: '")->Error(GetChar())->Error("' (")->Print(GetChar()->ToInt())->PrintLine(")");
-			@is_error := true;
-			return;
-		};
 
-		#
-		# array and object endings
-		#
-		while(GetChar() = ']' | GetChar() = '}') {
-			@stream_stack_pos -= 1;
-			NextChar();
-			Whitespace();
-		};
-	}
-}
-
-class ParserConext {
-	@level : Int;
-	@type : StreamParser->Type;
-	@value : Base;
-
-	New() {
-
-	}
-
-	method : public : Set(type : StreamParser->Type, level : Int) ~ Nil {
-		@level := level;
-		@type := type;
-		@value := Nil;
-	}
-
-	method : public : Set(type : StreamParser->Type, value : Base, level : Int) ~ Nil {
-		@level := level;
-		@type := type;
-		@value := value;
-	}
-
-	method : public : GetLevel() ~ Int {
-		return @level;
-	}
-
-	method : public : GetType() ~ StreamParser->Type {
-		return @type;
-	}
-
-	method : public : GetValue() ~ Base {
-		return @value;
-	}
-
-	method : public : ToString() ~ String {
-		type_str : String;
-		if(@type = StreamParser->Type->OBJECT) {
-			type_str := "Object";
+		method : MatchChar(char : Char) ~ Bool {
+			return GetChar() = char;
 		}
-		else {
-			type_str := "Array";
 
-		};
+		method : native : GetChar() ~ Char {
+			if(@stream_position < @stream->Size()) {
+				return @stream[@stream_position];
+			};
 
-		value_str : String;
-		if(@value = Nil) {
-			value_str := "<Nil>";
+			return '\0';
 		}
-		else if(@value->TypeOf(Stringify)) {
-			value_str := @value->As(System.Stringify)->ToString();
-		}
-		# use instance ID instead
-		else {
-			value_str := @value->GetInstanceID()->ToHexString();
-		};
 
-		return "type={$type_str}, value={$value_str}, level={$@level}";
+		method : NextChar() ~ Nil {
+			@stream_position += 1;
+		}
+		
+		method : native : Whitespace() ~ Nil {
+			char := GetChar();
+			while(char = ' ' | char = '\t' | char = '\r' | char = '\n' | char = 0xa0 | char = 0x1680 | 
+					char >= 0x2000 & char <= 0x200a | char >= 0x000a & char <= 0x000d | char = 0x202f | 
+					char = 0x205f | char = 0x3000 | char = 0x0085 | char = 0x2029) {
+				NextChar();
+				char := GetChar();
+			}
+		}
+
+		method : Print(message : String) ~ Nil {
+			level := @stream_stack_position;
+			while(level-- > 0) {
+				"..|"->Print();
+			};
+			message->PrintLine();
+		}
+
+	}
+
+	class : private : ParseScope {
+		@level : Int;
+		@current_type : StreamParser->Type;
+		@current_value : Base;
+
+		New() {
+
+		}
+
+		method : public : Set(type : StreamParser->Type, level : Int) ~ Nil {
+			@level := level;
+			@current_type := type;
+			@current_value := Nil;
+		}
+
+		method : public : Set(type : StreamParser->Type, value : Base, level : Int) ~ Nil {
+			@level := level;
+			@current_type := type;
+			@current_value := value;
+		}
+
+		method : public : GetLevel() ~ Int {
+			return @level;
+		}
+
+		method : public : GetType() ~ StreamParser->Type {
+			return @current_type;
+		}
+
+		method : public : GetValue() ~ Base {
+			return @current_value;
+		}
+
+		method : public : ToString() ~ String {
+			type_str : String;
+			if(@current_type = StreamParser->Type->OBJECT) {
+				type_str := "Object";
+			}
+			else {
+				type_str := "Array";
+
+			};
+
+			value_str : String;
+			if(@current_value = Nil) {
+				value_str := "<Nil>";
+			}
+			else if(@current_value->TypeOf(Stringify)) {
+				value_str := @current_value->As(System.Stringify)->ToString();
+			}
+			# use instance ID instead
+			else {
+				value_str := @current_value->GetInstanceID()->ToHexString();
+			};
+
+			return "type={$type_str}, value={$value_str}, level={$@level}";
+		}
 	}
 }
