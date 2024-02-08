@@ -19,8 +19,11 @@ class StreamParser {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 2) {
 			parser := StreamParser->New(System.IO.Filesystem.FileReader->ReadFile(args[0]));
-			parser->GetElement(args[1]->ToInt());
-		}
+			context := parser->GetElement(args[1]->ToInt());
+			if(context <> Nil) {
+				context->ToString()->PrintLine();
+			};
+		};
 	}
 
 	New(stream : String) {
@@ -69,16 +72,27 @@ class StreamParser {
 	}
 
 	# TODO: check stack for return value
-	method : GetElement(index : Int) ~ Nil {
+	method : GetElement(index : Int) ~ ParserConext {
 		each(i : index) {
-			if(<>@is_error) {
-				ParseElement();
+			if(@is_error) {
+				return Nil;
+			};
+			
+			ParseElement();
+		};
 
-				if(@stream_stack_pos > 0) {
-					@stream_stack[@stream_stack_pos - 1]->ToString()->PrintLine();
-				};
+		if(@stream_stack_pos > 0) {
+			context := @stream_stack[@stream_stack_pos - 1];
+
+			if(context->GetType() = StreamParser->Type->ARRAY | context->GetType() = StreamParser->Type->OBJECT) {
+				return @stream_stack[@stream_stack_pos - 1];
+			}
+			else {
+				return @stream_stack[--@stream_stack_pos];
 			};
 		};
+
+		return Nil;
 	}
 
 	method : native : ParseElement() ~ Nil {
