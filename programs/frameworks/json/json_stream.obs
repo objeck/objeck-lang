@@ -89,13 +89,12 @@ bundle Data.JSON.Stream {
 		method : GetSiblingElement(index : Int) ~ Bool {
 			each(i : index) {
 				position := @stream_stack_position;
-				do {
+				while(position = @stream_stack_position) {
 					ParseElement();
 					if(@is_error) {
 						return false;
 					};
-				}
-				while(position < @stream_stack_position);
+				};
 			};
 
 			return true;
