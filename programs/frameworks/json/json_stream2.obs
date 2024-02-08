@@ -1,10 +1,12 @@
 class StreamParser {
 	@stream : Char[];
 	@stream_position : Int;
-	@stream_stack : Int[];
-	@stream_stack_pos : Int;
-	@is_error : Bool;
 	
+	@stream_stack : ParserConext[];
+	@stream_stack_pos : Int;
+	
+	@is_error : Bool;
+
 	@is_debug : Bool;
 
 	enum Type {
@@ -23,8 +25,12 @@ class StreamParser {
 
 	New(stream : String) {
 		@stream := stream->ToCharArray();
-		@stream_stack := Int->New[128]; # TODO: type and position, for get_next_sibling
 		@is_debug := true;
+
+		@stream_stack := ParserConext->New[128];
+		each(i : 128) {
+			 @stream_stack[i] := ParserConext->New();
+		};
 	}
 
 	method : MatchChar(char : Char) ~ Bool {
@@ -45,7 +51,9 @@ class StreamParser {
 	
 	method : native : Whitespace() ~ Nil {
 		char := GetChar();
-		while(char = ' ' | char = '\t' | char = '\r' | char = '\n') {
+		while(char = ' ' | char = '\t' | char = '\r' | char = '\n' | char = 0xa0 | char = 0x1680 | 
+				char >= 0x2000 & char <= 0x200a | char >= 0x000a & char <= 0x000d | char = 0x202f | 
+				char = 0x205f | char = 0x3000 | char = 0x0085 | char = 0x2029) {
 			NextChar();
 			char := GetChar();
 		}
@@ -63,6 +71,10 @@ class StreamParser {
 		each(i : index) {
 			if(<>@is_error) {
 				ParseElement();
+
+				if(@stream_stack_pos > 0) {
+					@stream_stack[@stream_stack_pos - 1]->ToString()->PrintLine();
+				};
 			};
 		};
 	}
@@ -74,8 +86,8 @@ class StreamParser {
 		# additional array and object elements
 		#
 		if(GetChar() = ',' & 
-				(@stream_stack_pos > 0 & @stream_stack[@stream_stack_pos] = StreamParser->Type->ARRAY |
-				@stream_stack_pos > 0 & @stream_stack[@stream_stack_pos] = StreamParser->Type->OBJECT)) {
+				(@stream_stack_pos > 0 & @stream_stack[@stream_stack_pos]->GetType() = StreamParser->Type->ARRAY |
+				@stream_stack_pos > 0 & @stream_stack[@stream_stack_pos]->GetType() = StreamParser->Type->OBJECT)) {
 			NextChar();
 			Whitespace();
 		}
@@ -109,7 +121,7 @@ class StreamParser {
 			value := String->New(@stream, start, @stream_position - start);
 			NextChar();	Whitespace();
 
-			if(GetChar() = ':' & @stream_stack_pos > 0 & @stream_stack[@stream_stack_pos - 1] = StreamParser->Type->OBJECT) {
+			if(GetChar() = ':' & @stream_stack_pos > 0 & @stream_stack[@stream_stack_pos - 1]->GetType() = StreamParser->Type->OBJECT) {
 				NextChar();	Whitespace();
 
 				if(@is_debug) {
@@ -138,7 +150,7 @@ class StreamParser {
 				Print("Array: level={$stream_level}");
 			};
 
-			@stream_stack[@stream_stack_pos++] := StreamParser->Type->ARRAY;
+			@stream_stack[@stream_stack_pos++]->Set(StreamParser->Type->ARRAY, @stream_stack_pos);
 			NextChar();
 		}
 		#
@@ -152,7 +164,7 @@ class StreamParser {
 				Print("Object: level={$stream_level}");
 			};
 
-			@stream_stack[@stream_stack_pos++] := StreamParser->Type->OBJECT;
+			@stream_stack[@stream_stack_pos++]->Set(StreamParser->Type->OBJECT, @stream_stack_pos);
 			NextChar();
 		}
 		#
@@ -172,5 +184,64 @@ class StreamParser {
 			NextChar();
 			Whitespace();
 		};
+	}
+}
+
+class ParserConext {
+	@level : Int;
+	@type : StreamParser->Type;
+	@value : Base;
+
+	New() {
+
+	}
+
+	method : public : Set(type : StreamParser->Type, level : Int) ~ Nil {
+		@level := level;
+		@type := type;
+		@value := Nil;
+	}
+
+	method : public : Set(type : StreamParser->Type, value : Base, level : Int) ~ Nil {
+		@level := level;
+		@type := type;
+		@value := value;
+	}
+
+	method : public : GetLevel() ~ Int {
+		return @level;
+	}
+
+	method : public : GetType() ~ StreamParser->Type {
+		return @type;
+	}
+
+	method : public : GetValue() ~ Base {
+		return @value;
+	}
+
+	method : public : ToString() ~ String {
+		type_str : String;
+		if(@type = StreamParser->Type->OBJECT) {
+			type_str := "Object";
+		}
+		else {
+			type_str := "Array";
+
+		};
+
+		value_str : String;
+		if(@value = Nil) {
+			value_str := "<Nil>";
+		}
+		else if(@value->TypeOf(Stringify)) {
+			value_str := @value->As(System.Stringify)->ToString();
+		}
+		# use instance ID instead
+		else {
+			value_str := @value->GetInstanceID()->ToHexString();
+		};
+
+		return "type={$type_str}, value={$value_str}, level={$@level}";
 	}
 }
