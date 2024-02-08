@@ -27,8 +27,9 @@ class StreamParser {
 		@stream := stream->ToCharArray();
 		@is_debug := true;
 
-		@stream_stack := ParserConext->New[128];
-		each(i : 128) {
+		max := 64;
+		@stream_stack := ParserConext->New[max];
+		each(i : max) {
 			 @stream_stack[i] := ParserConext->New();
 		};
 	}
@@ -67,6 +68,7 @@ class StreamParser {
 		message->PrintLine();
 	}
 
+	# TODO: check stack for return value
 	method : GetElement(index : Int) ~ Nil {
 		each(i : index) {
 			if(<>@is_error) {
