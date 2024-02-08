@@ -81,7 +81,6 @@ class StreamParser {
 			Whitespace();
 		}
 		
-
 		#
 		# number
 		#
@@ -99,7 +98,7 @@ class StreamParser {
 		}
 		
 		#
-		# character
+		# string or attribute
 		#
 		else if(GetChar() = '"') {
 			NextChar();
@@ -109,11 +108,24 @@ class StreamParser {
 				NextChar();
 			};
 			value := String->New(@stream, start, @stream_position - start);
-			NextChar();
+			NextChar();	Whitespace();
 
-			if(@is_debug) {
-				stream_level := @stream_stack_pos;
-				Print("String: level={$stream_level}: value='{$value}'");
+			if(GetChar() = ':' & @stream_stack_pos > 0 & @stream_stack[@stream_stack_pos - 1] = StreamParser->Type->OBJECT) {
+				NextChar();	Whitespace();
+
+				if(@is_debug) {
+					stream_level := @stream_stack_pos;
+					Print("Attribute: level={$stream_level}: value='{$value}'");
+				};
+
+				ParseElement();
+				Whitespace();
+			}
+			else {
+				if(@is_debug) {
+					stream_level := @stream_stack_pos;
+					Print("String: level={$stream_level}: value='{$value}'");
+				};
 			};
 		}
 
@@ -133,34 +145,19 @@ class StreamParser {
 		# object start
 		#
 		else if(GetChar() = '{') {
-			@stream_stack[@stream_stack_pos++] := StreamParser->Type->OBJECT;
-"--- OBJECT_START ---"->PrintLine();
-		}
-		#
-		# object end
-		#
-		else if(GetChar() = '}') {
-"--- OBJECT_END ---"->PrintLine();
-			@stream_stack_pos -= 1;
-			NextChar();
-		}
-		#
-		# in object
-		#
-		else if(@stream_stack_pos > 0 & @stream_stack[@stream_stack_pos] = StreamParser->Type->OBJECT) {
-"--- IN_OBJECT ---"->PrintLine();
-			if(GetChar() <> ',') {
-				Standard->Error("*** Error: '")->Error(GetChar())->Error("' (")->Print(GetChar()->ToInt())->PrintLine(")");
-				@is_error := true;
-				return;
+			if(@is_debug) {
+				stream_level := @stream_stack_pos;
+				Print("Object: level={$stream_level}");
 			};
+
+			@stream_stack[@stream_stack_pos++] := StreamParser->Type->OBJECT;
 			NextChar();
 		}
 		#
 		# error
 		#
 		else {
-			Standard->Error("*** Error: '")->Error(GetChar())->Error("' (")->Print(GetChar()->ToInt())->PrintLine(")");
+			Standard->Error("-> *** Error: '")->Error(GetChar())->Error("' (")->Print(GetChar()->ToInt())->PrintLine(")");
 			@is_error := true;
 			return;
 		};
