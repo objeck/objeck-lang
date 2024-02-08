@@ -1,7 +1,7 @@
 #~~
 # Stream JSON parser (POC)
 # Copyright (c) 2024
-# Music: 7th Chamber, 122
+# Music: 7th Chamber, 1:22
 ~~#
 
 #~
@@ -32,8 +32,8 @@ bundle Data.JSON.Stream {
 		function : Main(args : String[]) ~ Nil {
 			if(args->Size() = 2) {
 				parser := StreamParser->New(System.IO.Filesystem.FileReader->ReadFile(args[0]));
-				if(parser->GetNextElement(args[1]->ToInt())) {
-					parser->GetValue()->PrintLine();
+				if(parser->GetNextElement(1)) {
+					parser->Foo(args[1]->ToInt())->PrintLine();
 				};
 			};
 		}
@@ -85,6 +85,20 @@ bundle Data.JSON.Stream {
 		# TODO: method : GetSiblingElement(index : Int) ~ Bool, NOTE: path down/{up:name}
 
 		# TODO: method : GetSiblingElement(value : String) ~ Bool, NOTE: path down/{up:name}
+
+		method : Foo(index : Int) ~ Bool {
+
+			each(i : index) {
+"### {$index} ###"->PrintLine();
+				position := @stream_stack_position;
+				do {
+					ParseElement();
+				}
+				while(position < @stream_stack_position);
+			};
+
+			return false;
+		}
 
 		# NOTE: path right
 		method : GetNextElement(value : String) ~ Bool {
