@@ -59,6 +59,14 @@ bundle Data.JSON.Stream {
 				return Nil;
 			};
 
+			if(@current_type = StreamParser->Type->ARRAY) {
+				return "@array@";
+			}
+
+			if(@current_type = StreamParser->Type->OBJECT) {
+				return "@class@";
+			}
+
 			return @current_value;
 		}
 
@@ -149,6 +157,9 @@ bundle Data.JSON.Stream {
 						stream_level := @stream_stack_position;
 						Print("String: level={$stream_level}: value='{$value}'");
 					};
+
+					@current_value := value;
+					@current_type := StreamParser->Type->STRING;
 				};
 			}
 
@@ -161,6 +172,7 @@ bundle Data.JSON.Stream {
 					Print("Array: level={$stream_level}");
 				};
 
+				@current_type := StreamParser->Type->ARRAY;
 				@stream_stack[@stream_stack_position++]->Set(StreamParser->Type->ARRAY, @stream_stack_position);
 				NextChar();
 			}
@@ -175,6 +187,7 @@ bundle Data.JSON.Stream {
 					Print("Object: level={$stream_level}");
 				};
 
+				@current_type := StreamParser->Type->OBJECT;
 				@stream_stack[@stream_stack_position++]->Set(StreamParser->Type->OBJECT, @stream_stack_position);
 				NextChar();
 			}
