@@ -33,7 +33,9 @@ bundle Data.JSON.Stream {
 			if(args->Size() = 2) {
 				parser := StreamParser->New(System.IO.Filesystem.FileReader->ReadFile(args[0]));
 				if(parser->GetNextElement(1)) {
-					parser->Foo(args[1]->ToInt())->PrintLine();
+					if(parser->GetSiblingElement(args[1]->ToInt())) {
+						parser->GetValue()->PrintLine();
+					};
 				};
 			};
 		}
@@ -84,20 +86,19 @@ bundle Data.JSON.Stream {
 
 		# TODO: method : GetSiblingElement(index : Int) ~ Bool, NOTE: path down/{up:name}
 
-		# TODO: method : GetSiblingElement(value : String) ~ Bool, NOTE: path down/{up:name}
-
-		method : Foo(index : Int) ~ Bool {
-
+		method : GetSiblingElement(index : Int) ~ Bool {
 			each(i : index) {
-"### {$index} ###"->PrintLine();
 				position := @stream_stack_position;
 				do {
 					ParseElement();
+					if(@is_error) {
+						return false;
+					};
 				}
 				while(position < @stream_stack_position);
 			};
 
-			return false;
+			return true;
 		}
 
 		# NOTE: path right
@@ -232,7 +233,10 @@ bundle Data.JSON.Stream {
 			# array and object endings
 			#
 			while(GetChar() = ']' | GetChar() = '}') {
-				@stream_stack_position -= 1;
+				last := @stream_stack[--@stream_stack_position];
+				@current_type := last->GetType();
+				@current_value := last->GetValue();
+
 				NextChar();
 				Whitespace();
 			};
@@ -276,7 +280,7 @@ bundle Data.JSON.Stream {
 	class : private : ParseScope {
 		@level : Int;
 		@current_type : StreamParser->Type;
-		@current_value : Base;
+		@current_value : String;
 
 		New() {
 
@@ -288,7 +292,7 @@ bundle Data.JSON.Stream {
 			@current_value := Nil;
 		}
 
-		method : public : Set(type : StreamParser->Type, value : Base, level : Int) ~ Nil {
+		method : public : Set(type : StreamParser->Type, value : String, level : Int) ~ Nil {
 			@level := level;
 			@current_type := type;
 			@current_value := value;
@@ -302,7 +306,7 @@ bundle Data.JSON.Stream {
 			return @current_type;
 		}
 
-		method : public : GetValue() ~ Base {
+		method : public : GetValue() ~ String {
 			return @current_value;
 		}
 
