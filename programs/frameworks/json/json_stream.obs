@@ -26,7 +26,7 @@ bundle Data.JSON.Stream {
 		function : Main(args : String[]) ~ Nil {
 			if(args->Size() = 2) {
 				parser := StreamParser->New(System.IO.Filesystem.FileReader->ReadFile(args[0]));
-				if(parser->GetElement(args[1]->ToInt())) {
+				if(parser->GetNextElement(args[1]->ToInt())) {
 					parser->GetValue()->PrintLine();
 				};
 			};
@@ -45,6 +45,8 @@ bundle Data.JSON.Stream {
 
 		#
 		# Start: API
+		#
+		# Notes: cursor like API with functions to move right and down per conditions
 		#
 		method : GetType() ~ StreamParser->Type {
 			if(@is_error) {
@@ -74,11 +76,17 @@ bundle Data.JSON.Stream {
 			return @stream_stack_position;
 		}
 
-		method : GetElement(value : String) ~ Bool {
-			return @current_type;
+		#TODO: method : GetSiblingElement(index : Int) ~ Bool, NOTE: path down/{up:name}
+
+		#TODO: method : GetSiblingElement(value : String) ~ Bool, NOTE: path down/{up:name}
+
+		# NOTE: path right
+		method : GetNextElement(value : String) ~ Bool {
+			return false;
 		}
 
-		method : GetElement(index : Int) ~ Bool {
+		# NOTE: path right
+		method : GetNextElement(index : Int) ~ Bool {
 			@current_value := Nil;
 			@current_type := StreamParser->Type->UNKNOWN;
 
@@ -243,7 +251,6 @@ bundle Data.JSON.Stream {
 			};
 			message->PrintLine();
 		}
-
 	}
 
 	class : private : ParseScope {
