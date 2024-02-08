@@ -37,6 +37,7 @@ class StreamParser {
 		if(@stream_position < @stream->Size()) {
 			return @stream[@stream_position];
 		};
+
 		return '\0';
 	}
 
@@ -115,6 +116,7 @@ class StreamParser {
 
 				if(@is_debug) {
 					stream_level := @stream_stack_pos;
+					Print("---");
 					Print("Attribute: level={$stream_level}: value='{$value}'");
 				};
 
@@ -145,6 +147,8 @@ class StreamParser {
 		# object start
 		#
 		else if(GetChar() = '{') {
+			
+
 			if(@is_debug) {
 				stream_level := @stream_stack_pos;
 				Print("Object: level={$stream_level}");
@@ -165,9 +169,10 @@ class StreamParser {
 		#
 		# array and object endings
 		#
-		if(GetChar() = ']' | GetChar() = '}') {
+		while(GetChar() = ']' | GetChar() = '}') {
 			@stream_stack_pos -= 1;
 			NextChar();
+			Whitespace();
 		};
 	}
 }
