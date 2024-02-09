@@ -3,12 +3,15 @@ use Data.JSON.Stream;
 class Test {
 	function : Main(args : String[]) ~ Nil {
 		stream := System.IO.Filesystem.FileReader->ReadFile(args[0]);
-		stream->PrintLine();
+#		stream->PrintLine();
 
 		parser := StreamParser->New(stream);
-		if(parser->GetNextElement("person")) {
+		if(parser->GetNextElement("Constants") & parser->GetNextElement() & 
+				parser->GetNextElement("Name") & parser->GetNextElement()) {
 			parser->GetValue()->PrintLine();
 		};
+		
+#~		
 		parser->Reset();
 
 		"---"->PrintLine();
@@ -19,6 +22,6 @@ class Test {
 			};
 			parser->Next();
 		};
-	
+~#	
 	}
 }
