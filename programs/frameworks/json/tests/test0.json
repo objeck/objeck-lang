@@ -1,7 +1,7 @@
 {
     "person": {
         "age": 25,
-        "first": "mark",
+        "first": "m\\ark",
         "last": "andrew"
     }
 }

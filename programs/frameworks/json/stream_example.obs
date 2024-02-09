@@ -3,10 +3,21 @@ use Data.JSON.Stream;
 class Test {
 	function : Main(args : String[]) ~ Nil {
 		stream := System.IO.Filesystem.FileReader->ReadFile(args[0]);
-		stream->PrintLine();
+#		stream->PrintLine();
+
+		size := stream->Size();
+		half_size := size / 2;
+		
+		left := stream->SubString(half_size);
+		"'{$left}'"->PrintLine();
 
 		"---"->PrintLine();
 
+		right := stream->SubString(half_size, size - half_size);
+		"'{$right}'"->PrintLine();
+		
+
+#		parser := StreamParser->New(left);
 		parser := StreamParser->New(stream);
 		if(parser->GetNextElement("person")) {
 			parser->GetValue()->PrintLine();
@@ -21,5 +32,6 @@ class Test {
 			};
 			parser->Next();
 		};
+	
 	}
 }
