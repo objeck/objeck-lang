@@ -1,8 +1,22 @@
+use Data.JSON.Stream;
+
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		parser := Data.JSON.Stream.StreamParser->New(args[0]);
-		if(parser->GetNextElement("person") & parser->GetNextElement("age")) {
-			parser->GetValue()->ToInt();
+		stream := System.IO.Filesystem.FileReader->ReadFile(args[0]);
+		parser := StreamParser->New(stream);
+		if(parser->GetNextElement("person") & parser->GetNextElement("age") & parser->GetNextElement()) {
+			parser->GetValue()->PrintLine();
+		};
+
+		parser->Reset();
+		parser->GetNextElement();
+		while(parser->GetType() <> StreamParser->Type->END & parser->GetType() <> StreamParser->Type->ERROR) {
+			if(parser->GetType() = StreamParser->Type->OBJECT_LIT) {
+				if(parser->GetNextElement() & parser->GetNextElement()) {
+					parser->GetValue()->PrintLine();
+				};
+			};
+			parser->GetNextElement();
 		};
 	}
 }

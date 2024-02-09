@@ -12,9 +12,10 @@ bundle Data.JSON.Stream {
 	Event driven stream JSON parser
 
 	```
-parser := StreamParser->New(stream);
-if(parser->GetNextElement("person") & parser->GetNextElement("age")) {
-  parser->GetValue()->ToInt();
+stream := System.IO.Filesystem.FileReader->ReadFile(args[0]);
+parser := Data.JSON.Stream.StreamParser->New(stream);
+if(parser->GetNextElement("person") & parser->GetNextElement("age") & parser->GetNextElement()) {
+  parser->GetValue()->PrintLine();
 };
 
 parser->Reset();
@@ -157,21 +158,23 @@ while(parser->GetType() <> StreamParser->Type->END & parser->GetType() <> Stream
 		@return true if element match, false otherwise
 		~#
 		method : public : native : GetNextElement(value : String) ~ Bool {
-			@current_value := Nil;
-			@current_type := StreamParser->Type->ERROR;
+			if(<>@is_error) {
+				@current_value := Nil;
+				@current_type := StreamParser->Type->ERROR;
 
-			do {
-				ParseElement();
-				if(@is_error) {
-					return false;
-				}
-				else if(@current_type = StreamParser->Type->OBJECT_LIT) {
-					if(@current_value <> Nil & @current_value->Equals(value)) {
-						return true;
+				do {
+					ParseElement();
+					if(@is_error) {
+						return false;
+					}
+					else if(@current_type = StreamParser->Type->OBJECT_LIT) {
+						if(@current_value <> Nil & @current_value->Equals(value)) {
+							return true;
+						};
 					};
-				};
-			}
-			while(@current_type <> StreamParser->Type->END);
+				}
+				while(@current_type <> StreamParser->Type->END);
+			};
 
 			return false;
 		}
@@ -190,17 +193,21 @@ while(parser->GetType() <> StreamParser->Type->END & parser->GetType() <> Stream
 		@return true if element match, false otherwise
 		~#
 		method : public : native : GetNextElement(offset : Int) ~ Bool {
-			@current_value := Nil;
-			@current_type := StreamParser->Type->ERROR;
+			if(<>@is_error) {
+				@current_value := Nil;
+				@current_type := StreamParser->Type->ERROR;
 
-			each(i : offset) {
-				ParseElement();
-				if(@is_error) {
-					return false;
-				};			
+				each(i : offset) {
+					ParseElement();
+					if(@is_error) {
+						return false;
+					};			
+				};
+
+				return true;
 			};
 
-			return true;
+			return false;
 		}
 
 		method : native : ParseElement() ~ Nil {
