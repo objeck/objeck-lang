@@ -78,41 +78,35 @@ bundle Data.JSON.Stream {
 		@return current stream type name
 		~#
 		method : GetTypeName() ~ String {
-			if(@is_error) {
-				return "@error@";
+			if(<>@is_error) {
+				select(@current_type) {
+					label StreamParser->Type->ARRAY {
+						return "@array@";
+					}
+					
+					label StreamParser->Type->OBJECT {
+						return "@object@";
+					}
+					
+					label StreamParser->Type->OBJECT_LIT {
+						return "@object_literal@";
+					}
+					
+					label StreamParser->Type->STRING {
+						return "@string@";
+					}
+					
+					label StreamParser->Type->NUMBER {
+						return "@number@";
+					}
+					
+					label StreamParser->Type->END {
+						return "@end-of-stream@";
+					}
+				};
 			};
 
-			select(@current_type) {
-				label StreamParser->Type->ARRAY {
-					return "@array@";
-				}
-				
-				label StreamParser->Type->OBJECT {
-					return "@object@";
-				}
-				
-				label StreamParser->Type->OBJECT_LIT {
-					return "@object_literal@";
-				}
-				
-				label StreamParser->Type->STRING {
-					return "@string@";
-				}
-				
-				label StreamParser->Type->NUMBER {
-					return "@number@";
-				}
-				
-				label StreamParser->Type->END {
-					return "@end-of-stream@";
-				}
-				
-				label StreamParser->Type->ERROR {
-					return "@error@";
-				}
-			};
-
-			return "<UNKNOWN>";
+			return "@error@";
 		}
 
 		#~
