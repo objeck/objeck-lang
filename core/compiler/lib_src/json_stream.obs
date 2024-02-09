@@ -62,9 +62,9 @@ while(parser->GetType() <> StreamParser->Type->END & parser->GetType() <> Stream
 			@stream := stream->ToCharArray();
 			@is_debug := false;
 
-			max := 64;
-			@stream_stack := ParseScope->New[max];
-			each(i : max) {
+			max_level := 64;
+			@stream_stack := ParseScope->New[max_level];
+			each(i : max_level) {
 				 @stream_stack[i] := ParseScope->New();
 			};
 		}
@@ -277,11 +277,20 @@ while(parser->GetType() <> StreamParser->Type->END & parser->GetType() <> Stream
 			else if(GetChar() = '"') {
 				NextChar();
 
+
+
 				start := @stream_position;
-				while(GetChar() <> '"') {
+				cur_char := GetChar();
+				prev_char := '\0';
+				while(cur_char <> '"' | (cur_char = '"' & prev_char = '\\')) {
+					prev_char := cur_char;
 					NextChar();
+					cur_char := GetChar();
 				};
 				value := String->New(@stream, start, @stream_position - start);
+
+
+
 				NextChar();	Whitespace();
 
 				if(GetChar() = ':' & @stream_stack_position > 0 & @stream_stack[@stream_stack_position - 1]->GetType() = StreamParser->Type->OBJECT) {
