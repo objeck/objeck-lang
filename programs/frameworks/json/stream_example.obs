@@ -5,18 +5,17 @@ class Test {
 		stream := System.IO.Filesystem.FileReader->ReadFile(args[0]);
 		parser := StreamParser->New(stream);
 		if(parser->GetNextElement("person") & parser->GetNextElement("age") & parser->GetNextElement()) {
-			parser->GetValue()->PrintLine();
+#			parser->GetValue()->PrintLine();
 		};
 
 		parser->Reset();
-		parser->GetNextElement();
-		while(parser->GetType() <> StreamParser->Type->END & parser->GetType() <> StreamParser->Type->ERROR) {
+		while(parser->More()) {
 			if(parser->GetType() = StreamParser->Type->OBJECT_LIT) {
-				if(parser->GetNextElement() & parser->GetNextElement()) {
-					parser->GetValue()->PrintLine();
-				};
+				parser->GetValue()->PrintLine();
 			};
-			parser->GetNextElement();
+
+			# update
+			parser->GetNext();
 		};
 	}
 }
