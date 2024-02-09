@@ -2277,7 +2277,7 @@ void ContextAnalyzer::ValidateGenericConcreteMapping(const std::vector<Type*> co
             }
           }
           else {
-            ProcessError(node, L"Undefined class or interface: '" + concrete_name + L"'");
+            ProcessError(node, L"Undefined class or interface: '" + FormatTypeString(concrete_name) + L"'");
           }
         }
       }
@@ -2286,7 +2286,7 @@ void ContextAnalyzer::ValidateGenericConcreteMapping(const std::vector<Type*> co
         Class* generic_klass = nullptr; LibraryClass* generic_lib_klass = nullptr;
         if(!GetProgramOrLibraryClass(concrete_type, generic_klass, generic_lib_klass) &&
            !current_class->GetGenericClass(concrete_type_name)) {
-          ProcessError(node, L"Undefined class or interface: '" + concrete_type_name + L"'");
+          ProcessError(node, L"Undefined class or interface: '" + FormatTypeString(concrete_type_name) + L"'");
         }
       }
     }
@@ -2325,7 +2325,7 @@ void ContextAnalyzer::ValidateGenericConcreteMapping(const std::vector<Type*> co
             }
           }
           else {
-            ProcessError(node, L"Undefined class or interface: '" + concrete_name + L"'");
+            ProcessError(node, L"Undefined class or interface: '" + FormatTypeString(concrete_name) + L"'");
           }
         }
       }
@@ -2334,7 +2334,7 @@ void ContextAnalyzer::ValidateGenericConcreteMapping(const std::vector<Type*> co
         Class* generic_klass = nullptr; LibraryClass* generic_lib_klass = nullptr;
         if(!GetProgramOrLibraryClass(concrete_type, generic_klass, generic_lib_klass) &&
            !current_class->GetGenericClass(concrete_type_name)) {
-          ProcessError(node, L"Undefined class or interface: '" + concrete_type_name + L"'");
+          ProcessError(node, L"Undefined class or interface: '" + FormatTypeString(concrete_type_name) + L"'");
         }
       }
     }
@@ -2368,11 +2368,11 @@ void ContextAnalyzer::ValidateGenericBacking(Type* type, const std::wstring back
       mthd_call->SetConcreteTypes(concrete_copies);
     }
     else {
-      ProcessError(expression, L"Undefined class or interface: '" + concrete_name + L"'");
+      ProcessError(expression, L"Undefined class or interface: '" + FormatTypeString(concrete_name) + L"'");
     }
   }
   else {
-    ProcessError(expression, L"Undefined class or interface: '" + concrete_name + L"'");
+    ProcessError(expression, L"Undefined class or interface: '" + FormatTypeString(concrete_name) + L"'");
   }
 }
 /****************************
@@ -6514,7 +6514,7 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Type* right, Expression* expr
       }
     }
     else {
-      ProcessError(expression, L"Invalid cast between class or enum: '" + left->GetName() + L"' and '" + right->GetName() + L"'");
+      ProcessError(expression, L"Invalid cast between class or enum: '" + FormatTypeString(left->GetName()) + L"' and '" + FormatTypeString(right->GetName()) + L"'");
     }
   }
   else {
