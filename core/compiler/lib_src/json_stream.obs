@@ -14,7 +14,16 @@ bundle Data.JSON.Stream {
 	```
 parser := StreamParser->New(stream);
 if(parser->GetNextElement("person") & parser->GetNextElement("age")) {
-	parser->GetValue()->ToInt();
+  parser->GetValue()->ToInt();
+};
+
+parser->Reset();
+while(parser->GetType() <> StreamParser->Type->END & parser->GetType() <> StreamParser->Type->ERROR) {
+  if(parser->GetType() = StreamParser->Type->OBJECT_LIT) {
+    if(parser->GetNextElement()) {
+      parser->GetValue()->PrintLine();
+    };
+  };
 };
 	```
 	~#
@@ -57,6 +66,13 @@ if(parser->GetNextElement("person") & parser->GetNextElement("age")) {
 			each(i : max) {
 				 @stream_stack[i] := ParseScope->New();
 			};
+		}
+
+		#~
+		Resets the stream's cursor to the beginning
+		~#
+		method : Reset() ~ Nil {
+			@stream_stack_position := @stream_position := 0;
 		}
 
 		#~
