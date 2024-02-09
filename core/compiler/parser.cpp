@@ -164,7 +164,7 @@ void Parser::ProcessError(const std::wstring &msg, ScannerTokenType sync)
   const std::wstring &str_line_num = ToString(GetLineNumber());
   const std::wstring& str_line_pos = ToString(GetLinePosition());
 
-  errors.insert(std::pair<int, std::wstring>(GetLineNumber(), GetFileName()+ L":(" + str_line_num + L',' + str_line_pos + L"): " + msg));
+  errors.insert(std::pair<int, std::wstring>(GetLineNumber(), GetFileName() + L":(" + str_line_num + L',' + str_line_pos + L"): " + msg));
   ScannerTokenType token = GetToken();
   while(token != sync && token != TOKEN_END_OF_STREAM) {
     NextToken();
@@ -183,7 +183,7 @@ void Parser::ProcessError(const std::wstring &msg, ParseNode * node)
 #endif
 
   const std::wstring &str_line_num = ToString(node->GetLineNumber());
-  errors.insert(std::pair<int, std::wstring>(node->GetLineNumber(), node->GetFileName() + L':' + str_line_num + L": " + msg));
+  errors.insert(std::pair<int, std::wstring>(node->GetLineNumber(), node->GetFileName() + L":(" + str_line_num + L",1): " + msg));
 }
 
 /****************************

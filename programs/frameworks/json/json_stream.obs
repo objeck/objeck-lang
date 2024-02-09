@@ -5,7 +5,7 @@
 ~~#
 
 #~
-Support for JSON steam parsing (-lib json_stream.obl)
+Support for JSON stream parsing (-lib json_stream.obl)
 ~#
 bundle Data.JSON.Stream {
 	class StreamParser {
@@ -21,6 +21,9 @@ bundle Data.JSON.Stream {
 
 		@is_debug : Bool;
 
+		#~
+		Stream JSON type
+		~#
 		enum Type {
 			ARRAY,
 			OBJECT,
@@ -28,7 +31,7 @@ bundle Data.JSON.Stream {
 			STRING,
 			NUMBER,
 			END,
-			UNKNOWN
+			ERROR
 		}
 
 		function : Main(args : String[]) ~ Nil {
@@ -37,11 +40,16 @@ bundle Data.JSON.Stream {
 				"---"->PrintLine();
 #				parser->GetNextElement(args[1]->ToInt())->PrintLine();
 				parser->GetNextElement(args[1])->PrintLine();
-				parser->GetNextElement(3)->PrintLine();
-				parser->GetNextElement("a")->PrintLine();
+				parser->GetTypeName()->PrintLine();
+				parser->GetNextElement("c")->PrintLine();
+				parser->GetTypeName()->PrintLine();
+				parser->GetValue()->PrintLine();
 			};
 		}
 
+		#~
+		Constructor
+		~#
 		New(stream : String) {
 			@stream := stream->ToCharArray();
 			@is_debug := true;
@@ -53,17 +61,64 @@ bundle Data.JSON.Stream {
 			};
 		}
 
-		#
-		# Start: API
-		#
+		#~
+		Gets the current stream type
+		@return current stream type
+		~#
 		method : GetType() ~ StreamParser->Type {
 			if(@is_error) {
-				return StreamParser->Type->UNKNOWN;
+				return StreamParser->Type->ERROR;
 			};
 
 			return @current_type;
 		}
 
+		#~
+		Gets the current stream type name
+		@return current stream type name
+		~#
+		method : GetTypeName() ~ String {
+			if(@is_error) {
+				return "@error@";
+			};
+
+			select(@current_type) {
+				label StreamParser->Type->ARRAY {
+					return "@array@";
+				}
+				
+				label StreamParser->Type->OBJECT {
+					return "@object@";
+				}
+				
+				label StreamParser->Type->OBJECT_LIT {
+					return "@object_literal@";
+				}
+				
+				label StreamParser->Type->STRING {
+					return "@string@";
+				}
+				
+				label StreamParser->Type->NUMBER {
+					return "@number@";
+				}
+				
+				label StreamParser->Type->END {
+					return "@end-of-stream@";
+				}
+				
+				label StreamParser->Type->ERROR {
+					return "@error@";
+				}
+			};
+
+			return "<UNKNOWN>";
+		}
+
+		#~
+		Gets the current stream value
+		@return current stream value
+		~#
 		method : GetValue() ~ String {
 			if(@is_error) {
 				return Nil;
@@ -74,20 +129,28 @@ bundle Data.JSON.Stream {
 			}
 
 			if(@current_type = StreamParser->Type->OBJECT) {
-				return "@class@";
+				return "@object@";
 			}
 
 			return @current_value;
 		}
 
+		#~
+		Gets the current stream document tree level. 0 is the document root.
+		@return current stream document tree level
+		~#
 		method : GetLevel() ~ Int {
 			return @stream_stack_position;
 		}
 
-		# NOTE: path right
-		method : GetNextElement(value : String) ~ Bool {
+		#~
+		Gets the next element that matches the object literal name
+		@param value value to match
+		@return true if element match, false otherwise
+		~#
+		method : native : GetNextElement(value : String) ~ Bool {
 			@current_value := Nil;
-			@current_type := StreamParser->Type->UNKNOWN;
+			@current_type := StreamParser->Type->ERROR;
 
 			do {
 				ParseElement();
@@ -105,15 +168,22 @@ bundle Data.JSON.Stream {
 			return false;
 		}
 
-		# NOTE: path right
+		#~
+		Gets the next element
+		@return true if successful match, false otherwise
+		~#
 		method : GetNextElement() ~ Bool {
 			return GetNextElement(1);
 		}
 
-		# NOTE: path right
-		method : GetNextElement(offset : Int) ~ Bool {
+		#~
+		Gets the nth element per offset
+		@param offset offset from current position
+		@return true if element match, false otherwise
+		~#
+		method : native : GetNextElement(offset : Int) ~ Bool {
 			@current_value := Nil;
-			@current_type := StreamParser->Type->UNKNOWN;
+			@current_type := StreamParser->Type->ERROR;
 
 			each(i : offset) {
 				ParseElement();
@@ -124,9 +194,6 @@ bundle Data.JSON.Stream {
 
 			return true;
 		}
-		#
-		# End: API
-		#
 
 		method : native : ParseElement() ~ Nil {
 			Whitespace();
