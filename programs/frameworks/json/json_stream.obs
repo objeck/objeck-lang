@@ -24,8 +24,10 @@ bundle Data.JSON.Stream {
 		enum Type {
 			ARRAY,
 			OBJECT,
+			OBJECT_LIT,
 			STRING,
 			NUMBER,
+			END,
 			UNKNOWN
 		}
 
@@ -33,7 +35,10 @@ bundle Data.JSON.Stream {
 			if(args->Size() = 2) {
 				parser := StreamParser->New(System.IO.Filesystem.FileReader->ReadFile(args[0]));
 				"---"->PrintLine();
-				parser->GetNextElement(args[1]->ToInt())->PrintLine();
+#				parser->GetNextElement(args[1]->ToInt())->PrintLine();
+				parser->GetNextElement(args[1])->PrintLine();
+				parser->GetNextElement(3)->PrintLine();
+				parser->GetNextElement("a")->PrintLine();
 			};
 		}
 
@@ -50,8 +55,6 @@ bundle Data.JSON.Stream {
 
 		#
 		# Start: API
-		#
-		# Notes: cursor like API with functions to move right and down per conditions
 		#
 		method : GetType() ~ StreamParser->Type {
 			if(@is_error) {
@@ -81,34 +84,45 @@ bundle Data.JSON.Stream {
 			return @stream_stack_position;
 		}
 
-		# TODO: method : GetSiblingElement(offset : Int) ~ Bool, NOTE: path down/{up:name}
+		# NOTE: path right
+		method : GetNextElement(value : String) ~ Bool {
+			@current_value := Nil;
+			@current_type := StreamParser->Type->UNKNOWN;
 
-		method : GetSiblingElement(offset : Int) ~ Bool {
+			do {
+				ParseElement();
+				if(@is_error) {
+					return false;
+				}
+				else if(@current_type = StreamParser->Type->OBJECT_LIT) {
+					if(@current_value <> Nil & @current_value->Equals(value)) {
+						return true;
+					};
+				};
+			}
+			while(@current_type <> StreamParser->Type->END);
+
 			return false;
 		}
 
 		# NOTE: path right
-		method : GetNextElement(value : String) ~ Bool {
-			return false;
+		method : GetNextElement() ~ Bool {
+			return GetNextElement(1);
 		}
 
 		# NOTE: path right
 		method : GetNextElement(offset : Int) ~ Bool {
-			if(offset > 0) {
-				@current_value := Nil;
-				@current_type := StreamParser->Type->UNKNOWN;
+			@current_value := Nil;
+			@current_type := StreamParser->Type->UNKNOWN;
 
-				each(i : offset) {
-					ParseElement();
-					if(@is_error) {
-						return false;
-					};			
-				};
-
-				return true;
+			each(i : offset) {
+				ParseElement();
+				if(@is_error) {
+					return false;
+				};			
 			};
 
-			return false;
+			return true;
 		}
 		#
 		# End: API
@@ -167,6 +181,9 @@ bundle Data.JSON.Stream {
 						Print("---");
 						Print("Attribute: level={$stream_level}: value='{$value}'");
 					};
+
+					@current_value := value;
+					@current_type := StreamParser->Type->OBJECT_LIT;
 				}
 				else {
 					if(@is_debug) {
@@ -205,6 +222,13 @@ bundle Data.JSON.Stream {
 
 				@current_type := StreamParser->Type->OBJECT;
 				@stream_stack[@stream_stack_position++]->Set(StreamParser->Type->OBJECT, @stream_stack_position);
+				NextChar();
+			}
+			#
+			# document end
+			#
+			else if(GetChar() = '}') {
+				@current_type := StreamParser->Type->END;
 				NextChar();
 			}
 			#
