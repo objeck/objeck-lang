@@ -1,5 +1,5 @@
 #~~
-# Stream JSON parser (POC)
+# Stream JSON parser
 # Copyright (c) 2024
 # Music: 7th Chamber, 1:22
 ~~#
@@ -37,7 +37,7 @@ while(parser->GetType() <> StreamParser->Type->END & parser->GetType() <> Stream
 		
 		@current_value : String;
 		@current_type : StreamParser->Type;
-		@is_error : Bool;
+		@error_message : String;
 
 		@is_debug : Bool;
 
@@ -60,7 +60,7 @@ while(parser->GetType() <> StreamParser->Type->END & parser->GetType() <> Stream
 		~#
 		New(stream : String) {
 			@stream := stream->ToCharArray();
-			@is_debug := false;
+			@is_debug := true;
 
 			max_level := 64;
 			@stream_stack := ParseScope->New[max_level];
@@ -81,7 +81,7 @@ while(parser->GetType() <> StreamParser->Type->END & parser->GetType() <> Stream
 		@return current stream type
 		~#
 		method : public : GetType() ~ StreamParser->Type {
-			if(@is_error) {
+			if(@error_message <> Nil) {
 				return StreamParser->Type->ERROR;
 			};
 
@@ -93,7 +93,7 @@ while(parser->GetType() <> StreamParser->Type->END & parser->GetType() <> Stream
 		@return current stream type name
 		~#
 		method : public : GetTypeName() ~ String {
-			if(<>@is_error) {
+			if(@error_message = Nil) {
 				select(@current_type) {
 					label StreamParser->Type->ARRAY {
 						return "@array@";
@@ -129,7 +129,7 @@ while(parser->GetType() <> StreamParser->Type->END & parser->GetType() <> Stream
 		@return current stream value
 		~#
 		method : public : GetValue() ~ String {
-			if(@is_error) {
+			if(@error_message <> Nil) {
 				return Nil;
 			};
 
@@ -158,7 +158,7 @@ while(parser->GetType() <> StreamParser->Type->END & parser->GetType() <> Stream
 		@return true if element match, false otherwise
 		~#
 		method : public : native : GetNextElement(value : String) ~ Bool {
-			if(@is_error) {
+			if(@error_message <> Nil) {
 				return false;
 			};
 
@@ -167,7 +167,7 @@ while(parser->GetType() <> StreamParser->Type->END & parser->GetType() <> Stream
 
 			do {
 				ParseElement();
-				if(@is_error) {
+				if(@error_message <> Nil) {
 					return false;
 				}
 				else if(@current_type = StreamParser->Type->OBJECT_LIT) {
@@ -210,7 +210,7 @@ while(parser->GetType() <> StreamParser->Type->END & parser->GetType() <> Stream
 		@return true if element match, false otherwise
 		~#
 		method : public : native : GetNextElement(offset : Int) ~ Bool {
-			if(@is_error) {
+			if(@error_message <> Nil) {
 				return false;
 			};
 
@@ -219,7 +219,7 @@ while(parser->GetType() <> StreamParser->Type->END & parser->GetType() <> Stream
 
 			each(i : offset) {
 				ParseElement();
-				if(@is_error) {
+				if(@error_message <> Nil) {
 					return false;
 				};			
 			};
@@ -350,12 +350,16 @@ while(parser->GetType() <> StreamParser->Type->END & parser->GetType() <> Stream
 			# error
 			#
 			else {
-				Standard->Error("*** Error: '")->Error(GetChar())->Error("' (")->Print(GetChar()->ToInt())->PrintLine(")");
-				@is_error := true;
+				buffer := "*** Error: '";
+				buffer->Append(GetChar());
+				buffer->Append("' (");
+				buffer->Append(GetChar()->ToInt());
+				buffer->Append(")");
+				@error_message := buffer;
 				return;
 			};			
 		}
-
+		
 		method : MatchChar(char : Char) ~ Bool {
 			return GetChar() = char;
 		}
@@ -396,9 +400,7 @@ while(parser->GetType() <> StreamParser->Type->END & parser->GetType() <> Stream
 		@current_type : StreamParser->Type;
 		@current_value : String;
 
-		New() {
-
-		}
+		New() {}
 
 		method : public : Set(type : StreamParser->Type, level : Int) ~ Nil {
 			@level := level;
