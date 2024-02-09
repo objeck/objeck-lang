@@ -207,8 +207,11 @@ bundle Data.JSON.Stream {
 			#
 			if(GetChar()->IsDigit()) {
 				start := @stream_position;
-				while(GetChar()->IsDigit() | GetChar() = '.') {
+
+				char := GetChar();
+				while(char->IsDigit() | char = '.' | char = 'E' | char = 'e' | char = '+' | char = '-') {
 					NextChar();
+					char := GetChar();
 				};
 				value := String->New(@stream, start, @stream_position - start);
 				
