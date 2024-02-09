@@ -8,6 +8,16 @@
 Support for JSON stream parsing (-lib json_stream.obl)
 ~#
 bundle Data.JSON.Stream {
+	#~
+	Event driven stream JSON parser
+
+	```
+parser := StreamParser->New(stream);
+if(parser->GetNextElement("person") & parser->GetNextElement("age")) {
+	parser->GetValue()->ToInt();
+};
+	```
+	~#
 	class StreamParser {
 		@stream : Char[];
 		@stream_position : Int;
@@ -33,7 +43,7 @@ bundle Data.JSON.Stream {
 			END,
 			ERROR
 		}
-		
+
 		#~
 		Constructor
 		@param stream input stream
