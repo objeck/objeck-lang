@@ -3,19 +3,23 @@ use Data.JSON.Stream;
 class Test {
 	function : Main(args : String[]) ~ Nil {
 		stream := System.IO.Filesystem.FileReader->ReadFile(args[0]);
-		parser := StreamParser->New(stream);
-		if(parser->GetNextElement("person") & parser->GetNextElement("age") & parser->GetNextElement()) {
-#			parser->GetValue()->PrintLine();
-		};
+		stream->PrintLine();
 
+		"---"->PrintLine();
+
+		parser := StreamParser->New(stream);
+		if(parser->GetNextElement("person")) {
+			parser->GetValue()->PrintLine();
+		};
 		parser->Reset();
+
+		"---"->PrintLine();
+
 		while(parser->More()) {
-			if(parser->GetType() = StreamParser->Type->OBJECT_LIT) {
+			if(parser->GetType() = StreamParser->Type->STRING) {
 				parser->GetValue()->PrintLine();
 			};
-
-			# update
-			parser->GetNext();
+			parser->Next();
 		};
 	}
 }
