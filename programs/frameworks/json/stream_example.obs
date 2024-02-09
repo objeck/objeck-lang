@@ -1,0 +1,8 @@
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		parser := Data.JSON.Stream.StreamParser->New(args[0]);
+		if(parser->GetNextElement("person") & parser->GetNextElement("age")) {
+			parser->GetValue()->ToInt();
+		};
+	}
+}
