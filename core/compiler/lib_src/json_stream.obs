@@ -180,6 +180,21 @@ while(parser->GetType() <> StreamParser->Type->END & parser->GetType() <> Stream
 		}
 
 		#~
+		Advances the element pointer
+		~#
+		method : public : Next() ~ Nil {
+			return GetNextElement();
+		}
+
+		#~
+		Checks to see the element pointer can be advanced
+		@return true if element pointer can be advanced, false otherwise
+		~#
+		method : public : More() ~ Bool {
+			return @current_type <> StreamParser->Type->END & @current_type <> StreamParser->Type->ERROR;
+		}
+
+		#~
 		Gets the next element
 		@return true if successful match, false otherwise
 		~#
