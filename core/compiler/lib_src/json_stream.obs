@@ -158,40 +158,42 @@ while(parser->GetType() <> StreamParser->Type->END & parser->GetType() <> Stream
 		@return true if element match, false otherwise
 		~#
 		method : public : native : GetNextElement(value : String) ~ Bool {
-			if(<>@is_error) {
-				@current_value := Nil;
-				@current_type := StreamParser->Type->ERROR;
-
-				do {
-					ParseElement();
-					if(@is_error) {
-						return false;
-					}
-					else if(@current_type = StreamParser->Type->OBJECT_LIT) {
-						if(@current_value <> Nil & @current_value->Equals(value)) {
-							return true;
-						};
-					};
-				}
-				while(@current_type <> StreamParser->Type->END);
+			if(@is_error) {
+				return false;
 			};
 
+			@current_value := Nil;
+			@current_type := StreamParser->Type->ERROR;
+
+			do {
+				ParseElement();
+				if(@is_error) {
+					return false;
+				}
+				else if(@current_type = StreamParser->Type->OBJECT_LIT) {
+					if(@current_value <> Nil & @current_value->Equals(value)) {
+						return true;
+					};
+				};
+			}
+			while(@current_type <> StreamParser->Type->END);
+
 			return false;
+		}
+
+		#~
+		Checks to see the element pointer can be advanced
+		@return true if pointer can be advanced, false otherwise
+		~#
+		method : public : More() ~ Bool {
+			return @current_type <> StreamParser->Type->END & @current_type <> StreamParser->Type->ERROR;
 		}
 
 		#~
 		Advances the element pointer
 		~#
 		method : public : Next() ~ Nil {
-			return GetNextElement();
-		}
-
-		#~
-		Checks to see the element pointer can be advanced
-		@return true if element pointer can be advanced, false otherwise
-		~#
-		method : public : More() ~ Bool {
-			return @current_type <> StreamParser->Type->END & @current_type <> StreamParser->Type->ERROR;
+			GetNextElement();
 		}
 
 		#~
@@ -208,30 +210,39 @@ while(parser->GetType() <> StreamParser->Type->END & parser->GetType() <> Stream
 		@return true if element match, false otherwise
 		~#
 		method : public : native : GetNextElement(offset : Int) ~ Bool {
-			if(<>@is_error) {
-				@current_value := Nil;
-				@current_type := StreamParser->Type->ERROR;
-
-				each(i : offset) {
-					ParseElement();
-					if(@is_error) {
-						return false;
-					};			
-				};
-
-				return true;
+			if(@is_error) {
+				return false;
 			};
 
-			return false;
+			@current_value := Nil;
+			@current_type := StreamParser->Type->ERROR;
+
+			each(i : offset) {
+				ParseElement();
+				if(@is_error) {
+					return false;
+				};			
+			};
+
+			return true;
 		}
 
 		method : native : ParseElement() ~ Nil {
 			Whitespace();
 
 			#
+			# array and object endings
+			#
+			if(GetChar() = ']' | GetChar() = '}') {
+				last := @stream_stack[--@stream_stack_position];
+				@current_type := last->GetType();
+				@current_value := last->GetValue();
+			}
+
+			#
 			# additional array and object elements
 			#
-			if(GetChar() = ',' & 
+			else if(GetChar() = ',' & 
 					(@stream_stack_position > 0 & @stream_stack[@stream_stack_position]->GetType() = StreamParser->Type->ARRAY |
 					@stream_stack_position > 0 & @stream_stack[@stream_stack_position]->GetType() = StreamParser->Type->OBJECT)) {
 				NextChar();
@@ -338,18 +349,7 @@ while(parser->GetType() <> StreamParser->Type->END & parser->GetType() <> Stream
 				Standard->Error("*** Error: '")->Error(GetChar())->Error("' (")->Print(GetChar()->ToInt())->PrintLine(")");
 				@is_error := true;
 				return;
-			};
-
-			#
-			# array and object endings
-			#
-			if(GetChar() = ']' | GetChar() = '}') {
-				last := @stream_stack[--@stream_stack_position];
-				@current_type := last->GetType();
-				@current_value := last->GetValue();
-
-				NextChar();
-			};
+			};			
 		}
 
 		method : MatchChar(char : Char) ~ Bool {
