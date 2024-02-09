@@ -38,11 +38,8 @@ bundle Data.JSON.Stream {
 			if(args->Size() = 2) {
 				parser := StreamParser->New(System.IO.Filesystem.FileReader->ReadFile(args[0]));
 				"---"->PrintLine();
-#				parser->GetNextElement(args[1]->ToInt())->PrintLine();
-				parser->GetNextElement(args[1])->PrintLine();
-				parser->GetTypeName()->PrintLine();
-				parser->GetNextElement("c")->PrintLine();
-				parser->GetTypeName()->PrintLine();
+				parser->GetNextElement("b")->PrintLine();
+				parser->GetNextElement(3)->PrintLine();
 				parser->GetValue()->PrintLine();
 			};
 		}
@@ -52,7 +49,7 @@ bundle Data.JSON.Stream {
 		~#
 		New(stream : String) {
 			@stream := stream->ToCharArray();
-			@is_debug := true;
+			@is_debug := false;
 
 			max := 64;
 			@stream_stack := ParseScope->New[max];
