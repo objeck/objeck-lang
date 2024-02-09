@@ -71,7 +71,7 @@ while(parser->GetType() <> StreamParser->Type->END & parser->GetType() <> Stream
 		#~
 		Resets the stream's cursor to the beginning
 		~#
-		method : Reset() ~ Nil {
+		method : public : Reset() ~ Nil {
 			@stream_stack_position := @stream_position := 0;
 		}
 
@@ -79,7 +79,7 @@ while(parser->GetType() <> StreamParser->Type->END & parser->GetType() <> Stream
 		Gets the current stream type
 		@return current stream type
 		~#
-		method : GetType() ~ StreamParser->Type {
+		method : public : GetType() ~ StreamParser->Type {
 			if(@is_error) {
 				return StreamParser->Type->ERROR;
 			};
@@ -91,7 +91,7 @@ while(parser->GetType() <> StreamParser->Type->END & parser->GetType() <> Stream
 		Gets the current stream type name
 		@return current stream type name
 		~#
-		method : GetTypeName() ~ String {
+		method : public : GetTypeName() ~ String {
 			if(<>@is_error) {
 				select(@current_type) {
 					label StreamParser->Type->ARRAY {
@@ -127,7 +127,7 @@ while(parser->GetType() <> StreamParser->Type->END & parser->GetType() <> Stream
 		Gets the current stream value
 		@return current stream value
 		~#
-		method : GetValue() ~ String {
+		method : public : GetValue() ~ String {
 			if(@is_error) {
 				return Nil;
 			};
@@ -147,7 +147,7 @@ while(parser->GetType() <> StreamParser->Type->END & parser->GetType() <> Stream
 		Gets the current stream document tree level. 0 is the document root.
 		@return current stream document tree level
 		~#
-		method : GetLevel() ~ Int {
+		method : public : GetLevel() ~ Int {
 			return @stream_stack_position;
 		}
 
@@ -156,7 +156,7 @@ while(parser->GetType() <> StreamParser->Type->END & parser->GetType() <> Stream
 		@param value value to match
 		@return true if element match, false otherwise
 		~#
-		method : native : GetNextElement(value : String) ~ Bool {
+		method : public : native : GetNextElement(value : String) ~ Bool {
 			@current_value := Nil;
 			@current_type := StreamParser->Type->ERROR;
 
@@ -180,7 +180,7 @@ while(parser->GetType() <> StreamParser->Type->END & parser->GetType() <> Stream
 		Gets the next element
 		@return true if successful match, false otherwise
 		~#
-		method : GetNextElement() ~ Bool {
+		method : public : GetNextElement() ~ Bool {
 			return GetNextElement(1);
 		}
 
@@ -189,7 +189,7 @@ while(parser->GetType() <> StreamParser->Type->END & parser->GetType() <> Stream
 		@param offset offset from current position
 		@return true if element match, false otherwise
 		~#
-		method : native : GetNextElement(offset : Int) ~ Bool {
+		method : public : native : GetNextElement(offset : Int) ~ Bool {
 			@current_value := Nil;
 			@current_type := StreamParser->Type->ERROR;
 
