@@ -277,8 +277,6 @@ while(parser->GetType() <> StreamParser->Type->END & parser->GetType() <> Stream
 			else if(GetChar() = '"') {
 				NextChar();
 
-
-
 				start := @stream_position;
 				cur_char := GetChar();
 				prev_char := '\0';
@@ -288,11 +286,8 @@ while(parser->GetType() <> StreamParser->Type->END & parser->GetType() <> Stream
 					cur_char := GetChar();
 				};
 				value := String->New(@stream, start, @stream_position - start);
-
-
-
+				
 				NextChar();	Whitespace();
-
 				if(GetChar() = ':' & @stream_stack_position > 0 & @stream_stack[@stream_stack_position - 1]->GetType() = StreamParser->Type->OBJECT) {
 					NextChar();	Whitespace();
 
