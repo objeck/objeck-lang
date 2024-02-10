@@ -25,11 +25,12 @@ class Test {
 			char := @line->Get(@line_pos++);
 			while(@line_pos < @line->Size() & (char = ' ' | char = '\t' | char = '\r' | char = '\n')) {
 				char := @line->Get(@line_pos++);
-			}
+			};
 
 			return char;
 		};
 
+		reader->Close();
 		return '\0';
 	}
 }
