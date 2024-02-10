@@ -77,7 +77,7 @@ while(parser->GetType() <> StreamParser->Type->END & parser->GetType() <> Stream
 		~#
 		method : public : Reset() ~ Nil {
 			@stream_stack_position := @stream_position := 0;
-			@error_message = Nil;
+			@error_message := Nil;
 		}
 
 		#~
@@ -87,7 +87,7 @@ while(parser->GetType() <> StreamParser->Type->END & parser->GetType() <> Stream
 		method : public : Reset(stream : String) ~ Nil {
 			@stream := stream->ToCharArray();
 			@stream_stack_position := @stream_position := 0;
-			@error_message = Nil;
+			@error_message := Nil;
 		}
 
 		#~
