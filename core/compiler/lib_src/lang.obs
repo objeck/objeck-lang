@@ -6218,11 +6218,11 @@ bundle System.API {
 		@ptr : Int;
 		
 		#~
-		Path to the shared library. The file 
-		name must start with "libobjk_". The file 
+		<p>Path to the shared library.</p></strong>The file 
+		name must start with 'libobjk_'. The file 
 		ending should not include the extension 
 		name (i.e. .dll, .so, etc.) for portability. 
-		@param name shared library path
+		@param name shared library path<strong>
 		~#
 		New(name : String) {
 			Parent();
