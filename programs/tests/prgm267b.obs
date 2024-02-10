@@ -1,0 +1,14 @@
+use Data.JSON.Stream;
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+timer := System.Time.Timer->New(true);		
+		input := System.IO.Filesystem.FileReader->ReadFile(args[0]);
+		parser := StreamParser->New(input);
+		if(parser->GetNextElement("Constants") & parser->GetNextElement() & 
+				parser->GetNextElement("Name") & parser->GetNextElement()) {
+			parser->GetValue()->PrintLine();
+"parse file: {$timer}"->PrintLine();                    
+		};
+	}
+}

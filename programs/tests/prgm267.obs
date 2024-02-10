@@ -1,0 +1,19 @@
+use Data.JSON;
+
+class Test {
+    function : Main(args : String[]) ~ Nil {
+timer := System.Time.Timer->New(true);
+        input := System.IO.Filesystem.FileReader->ReadFile(args[0]);   
+        root := Data.JSON.JsonParser->TextToElement(input);
+        if(root <> Nil) {
+            constants := root->Get("Constants");
+            if(constants <> Nil) {
+                Constant1 := constants->Get(0);
+                if(Constant1 <> Nil) {
+                    Constant1->Get("Name")->GetString()->PrintLine();
+"parse file: {$timer}"->PrintLine();                    
+                }
+            }
+        }                
+    }
+}
