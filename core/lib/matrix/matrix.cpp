@@ -34,7 +34,14 @@
 #include "../../shared/sys.h"
 
 #ifdef _WIN32
+// MSYS2
+#ifdef _MSYS2 
+#include <Eigen/Dense>
+#else
+// Windows
 #include <eigen-3.4.0/Eigen/Dense>
+#endif
+// Linux
 #else
 #include <Eigen/Dense>
 #endif
