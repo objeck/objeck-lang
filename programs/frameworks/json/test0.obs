@@ -1,0 +1,18 @@
+use Data.JSON.Stream;
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		input := System.IO.Filesystem.FileReader->ReadFile(args[0]);
+		input->PrintLine();
+		
+		"---"->PrintLine();
+		
+timer := System.Time.Timer->New(true);
+		parser := StreamParser->New(input);
+		if(parser->GetNextElement("age") & parser->GetNextElement() & 
+				parser->GetNextElement("first") & parser->GetNextElement()) {
+			parser->GetValue()->PrintLine();
+		};
+"parse file: {$timer}"->PrintLine();                    
+	}
+}
