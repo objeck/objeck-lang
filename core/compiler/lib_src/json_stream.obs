@@ -71,12 +71,23 @@ while(parser->GetType() <> StreamParser->Type->END & parser->GetType() <> Stream
 				 @stream_stack[i] := ParseScope->New();
 			};
 		}
-
+		
 		#~
-		Resets the stream's cursor to the beginning
+		Reset stream cursor to the beginning
 		~#
 		method : public : Reset() ~ Nil {
 			@stream_stack_position := @stream_position := 0;
+			@error_message = Nil;
+		}
+
+		#~
+		Reset stream cursor to the beginning and reset buffer
+		@param stream input stream buffer
+		~#
+		method : public : Reset(stream : String) ~ Nil {
+			@stream := stream->ToCharArray();
+			@stream_stack_position := @stream_position := 0;
+			@error_message = Nil;
 		}
 
 		#~
@@ -156,6 +167,14 @@ while(parser->GetType() <> StreamParser->Type->END & parser->GetType() <> Stream
 		}
 
 		#~
+		Get the last error message
+		@return last error message
+		~#
+		method : public : GetLastError() ~ String {
+			return @error_message;
+		}
+
+		#~
 		Gets the next element that matches the object literal name
 		@param value value to match
 		@return true if element match, false otherwise
@@ -232,6 +251,7 @@ while(parser->GetType() <> StreamParser->Type->END & parser->GetType() <> Stream
 
 		method : native : ParseElement() ~ Nil {
 			Whitespace();
+
 			if(@stream_position >= @stream->Size()) {
 				@current_type := StreamParser->Type->END;
 				return;
@@ -245,7 +265,6 @@ while(parser->GetType() <> StreamParser->Type->END & parser->GetType() <> Stream
 				@current_type := last->GetType();
 				@current_value := last->GetValue();
 			}
-
 			#
 			# additional array and object elements
 			#
@@ -254,12 +273,11 @@ while(parser->GetType() <> StreamParser->Type->END & parser->GetType() <> Stream
 					@stream_stack_position > 0 & @stream_stack[@stream_stack_position]->GetType() = StreamParser->Type->OBJECT)) {
 				NextChar();
 				Whitespace();
-			};
-			
+			}			
 			#
 			# number
 			#
-			if(GetChar()->IsDigit()) {
+			else if(GetChar()->IsDigit()) {
 				start := @stream_position;
 
 				char := GetChar();
