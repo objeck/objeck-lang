@@ -50,6 +50,9 @@ while(parser->GetType() <> StreamParser->Type->END & parser->GetType() <> Stream
 			OBJECT_LIT,
 			STRING,
 			NUMBER,
+			TRUE,
+			FALSE,
+			NULL,
 			END,
 			ERROR
 		}
@@ -60,7 +63,7 @@ while(parser->GetType() <> StreamParser->Type->END & parser->GetType() <> Stream
 		~#
 		New(stream : String) {
 			@stream := stream->ToCharArray();
-			@is_debug := true;
+			@is_debug := false;
 
 			max_level := 64;
 			@stream_stack := ParseScope->New[max_level];
@@ -229,6 +232,10 @@ while(parser->GetType() <> StreamParser->Type->END & parser->GetType() <> Stream
 
 		method : native : ParseElement() ~ Nil {
 			Whitespace();
+			if(@stream_position >= @stream->Size()) {
+				@current_type := StreamParser->Type->END;
+				return;
+			};
 
 			#
 			# array and object endings
@@ -270,7 +277,6 @@ while(parser->GetType() <> StreamParser->Type->END & parser->GetType() <> Stream
 				@current_value := value;
 				@current_type := StreamParser->Type->NUMBER;
 			}
-			
 			#
 			# string or attribute
 			#
@@ -310,7 +316,6 @@ while(parser->GetType() <> StreamParser->Type->END & parser->GetType() <> Stream
 					@current_type := StreamParser->Type->STRING;
 				};
 			}
-
 			#
 			# array start
 			#
@@ -328,8 +333,6 @@ while(parser->GetType() <> StreamParser->Type->END & parser->GetType() <> Stream
 			# object start
 			#
 			else if(GetChar() = '{') {
-				
-
 				if(@is_debug) {
 					stream_level := @stream_stack_position;
 					Print("Object: level={$stream_level}");
@@ -340,26 +343,111 @@ while(parser->GetType() <> StreamParser->Type->END & parser->GetType() <> Stream
 				NextChar();
 			}
 			#
-			# document end
+			# 'null' literal
 			#
-			else if(GetChar() = '}') {
-				@current_type := StreamParser->Type->END;
+			else if(GetChar() = 'n') {
 				NextChar();
+				
+				if(GetChar() <> 'u') {
+					@error_message := MakeErrorMessage();
+					return;
+				};
+				NextChar();
+
+				if(GetChar() <> 'l') {
+					@error_message := MakeErrorMessage();
+					return;
+				};
+				NextChar();
+
+				if(GetChar() <> 'l') {
+					@error_message := MakeErrorMessage();
+					return;
+				};
+				NextChar();
+
+				@current_value := "null";
+				@current_type := StreamParser->Type->NULL;
+			}
+			#
+			# 'true' literal
+			#
+			else if(GetChar() = 't') {
+				NextChar();
+				
+				if(GetChar() <> 'r') {
+					@error_message := MakeErrorMessage();
+					return;
+				};
+				NextChar();
+
+				if(GetChar() <> 'u') {
+					@error_message := MakeErrorMessage();
+					return;
+				};
+				NextChar();
+
+				if(GetChar() <> 'e') {
+					@error_message := MakeErrorMessage();
+					return;
+				};
+				NextChar();
+
+				@current_value := "true";
+				@current_type := StreamParser->Type->TRUE;
+			}
+			#
+			# 'false' literal
+			#
+			else if(GetChar() = 'f') {
+				NextChar();
+				
+				if(GetChar() <> 'a') {
+					@error_message := MakeErrorMessage();
+					return;
+				};
+				NextChar();
+
+				if(GetChar() <> 'l') {
+					@error_message := MakeErrorMessage();
+					return;
+				};
+				NextChar();
+
+				if(GetChar() <> 's') {
+					@error_message := MakeErrorMessage();
+					return;
+				};
+				NextChar();
+
+				if(GetChar() <> 'e') {
+					@error_message := MakeErrorMessage();
+					return;
+				};
+				NextChar();
+
+				@current_value := "false";
+				@current_type := StreamParser->Type->FALSE;
 			}
 			#
 			# error
 			#
 			else {
-				buffer := "*** Error: '";
-				buffer->Append(GetChar());
-				buffer->Append("' (");
-				buffer->Append(GetChar()->ToInt());
-				buffer->Append(")");
-				@error_message := buffer;
+				@error_message := MakeErrorMessage();
 				return;
 			};			
 		}
-		
+
+		method : MakeErrorMessage() ~ String {
+			buffer := "*** Error: '";
+			buffer->Append(GetChar());
+			buffer->Append("' (");
+			buffer->Append(GetChar()->ToInt());
+			buffer->Append(")");
+
+			return buffer;
+		}
+
 		method : MatchChar(char : Char) ~ Bool {
 			return GetChar() = char;
 		}
