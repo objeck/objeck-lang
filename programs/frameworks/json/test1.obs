@@ -6,6 +6,11 @@ class Test {
 	@buffer_pos : static : Int;
 
 	function : Main(args : String[]) ~ Nil {
+		r := IntRange->New(7,13);
+		each(i : r) {
+			i->PrintLine();
+		};
+
 		reader := FileReader->New(args[0]);
 		
 		c := GetNext(reader);
@@ -18,6 +23,7 @@ class Test {
 	function : GetNext(reader : FileReader) ~ Char {
 		if(@buffer = Nil | @buffer_pos >= @buffer->Size()) {
 			@buffer_pos := 0;
+			
 			line := reader->ReadLine();
 			if(line <> Nil) {
 				@buffer := line->ToCharArray();
