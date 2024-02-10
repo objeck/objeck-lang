@@ -1,0 +1,35 @@
+use Data.JSON.Stream;
+use System.IO.Filesystem;
+
+class Test {
+	@line : static : String;
+	@line_pos : static : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		reader := FileReader->New(args[0]);
+		
+		c := GetNext(reader);
+		while(c <> '\0') {
+			c->PrintLine();
+			c := GetNext(reader);
+		};	
+	}
+
+	function : GetNext(reader : FileReader) ~ Char {
+		if(@line = Nil | @line_pos >= @line->Size()) {
+			@line_pos := 0;
+			@line := reader->ReadLine();
+		};
+		
+		if(@line <> Nil & @line_pos < @line->Size()) {
+			char := @line->Get(@line_pos++);
+			while(@line_pos < @line->Size() & (char = ' ' | char = '\t' | char = '\r' | char = '\n')) {
+				char := @line->Get(@line_pos++);
+			}
+
+			return char;
+		};
+
+		return '\0';
+	}
+}
