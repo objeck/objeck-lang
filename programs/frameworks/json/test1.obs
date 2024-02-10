@@ -2,8 +2,8 @@ use Data.JSON.Stream;
 use System.IO.Filesystem;
 
 class Test {
-	@line : static : String;
-	@line_pos : static : Int;
+	@buffer : static : Char[];
+	@buffer_pos : static : Int;
 
 	function : Main(args : String[]) ~ Nil {
 		reader := FileReader->New(args[0]);
@@ -16,15 +16,21 @@ class Test {
 	}
 
 	function : GetNext(reader : FileReader) ~ Char {
-		if(@line = Nil | @line_pos >= @line->Size()) {
-			@line_pos := 0;
-			@line := reader->ReadLine();
+		if(@buffer = Nil | @buffer_pos >= @buffer->Size()) {
+			@buffer_pos := 0;
+			line := reader->ReadLine();
+			if(line <> Nil) {
+				@buffer := line->ToCharArray();
+			}
+			else {
+				@buffer := Nil;
+			};
 		};
 		
-		if(@line <> Nil & @line_pos < @line->Size()) {
-			char := @line->Get(@line_pos++);
-			while(@line_pos < @line->Size() & (char = ' ' | char = '\t' | char = '\r' | char = '\n')) {
-				char := @line->Get(@line_pos++);
+		if(@buffer <> Nil & @buffer_pos < @buffer->Size()) {
+			char := @buffer[@buffer_pos++];
+			while(@buffer_pos < @buffer->Size() & (char = ' ' | char = '\t' | char = '\r' | char = '\n')) {
+				char := @buffer[@buffer_pos++];
 			};
 
 			return char;
