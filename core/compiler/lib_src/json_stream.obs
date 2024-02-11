@@ -13,14 +13,14 @@ bundle Data.JSON.Stream {
 
 	```
 stream := System.IO.Filesystem.FileReader->ReadFile(args[0]);
-parser := Data.JSON.Stream.StreamParser->New(stream);
+parser := Data.JSON.Stream.JsonStreamParser->New(stream);
 if(parser->GetNextElement("person") & parser->GetNextElement("age") & parser->GetNextElement()) {
   parser->GetValue()->PrintLine();
 };
 
 parser->Reset();
-while(parser->GetType() <> StreamParser->Type->END & parser->GetType() <> StreamParser->Type->ERROR) {
-  if(parser->GetType() = StreamParser->Type->OBJECT_LIT) {
+while(parser->GetType() <> JsonStreamParser->JsonStreamType->END & parser->GetType() <> JsonStreamParser->JsonStreamType->ERROR) {
+  if(parser->GetType() = JsonStreamParser->JsonStreamType->OBJECT_LIT) {
     if(parser->GetNextElement()) {
       parser->GetValue()->PrintLine();
     };
@@ -28,7 +28,7 @@ while(parser->GetType() <> StreamParser->Type->END & parser->GetType() <> Stream
 };
 	```
 	~#
-	class StreamParser {
+	class JsonStreamParser {
 		@stream : Char[];
 		@stream_position : Int;
 		
@@ -36,7 +36,7 @@ while(parser->GetType() <> StreamParser->Type->END & parser->GetType() <> Stream
 		@stream_stack_position : Int;
 		
 		@current_value : String;
-		@current_type : StreamParser->Type;
+		@current_type : JsonStreamParser->JsonStreamType;
 		@error_message : String;
 
 		@is_debug : Bool;
@@ -44,7 +44,7 @@ while(parser->GetType() <> StreamParser->Type->END & parser->GetType() <> Stream
 		#~
 		Stream JSON type
 		~#
-		enum Type {
+		enum JsonStreamType {
 			ARRAY,
 			OBJECT,
 			OBJECT_LIT,
@@ -94,9 +94,9 @@ while(parser->GetType() <> StreamParser->Type->END & parser->GetType() <> Stream
 		Gets the current stream type
 		@return current stream type
 		~#
-		method : public : GetType() ~ StreamParser->Type {
+		method : public : GetType() ~ JsonStreamParser->JsonStreamType {
 			if(@error_message <> Nil) {
-				return StreamParser->Type->ERROR;
+				return JsonStreamParser->JsonStreamType->ERROR;
 			};
 
 			return @current_type;
@@ -109,27 +109,27 @@ while(parser->GetType() <> StreamParser->Type->END & parser->GetType() <> Stream
 		method : public : GetTypeName() ~ String {
 			if(@error_message = Nil) {
 				select(@current_type) {
-					label StreamParser->Type->ARRAY {
+					label JsonStreamParser->JsonStreamType->ARRAY {
 						return "@array@";
 					}
 					
-					label StreamParser->Type->OBJECT {
+					label JsonStreamParser->JsonStreamType->OBJECT {
 						return "@object@";
 					}
 					
-					label StreamParser->Type->OBJECT_LIT {
+					label JsonStreamParser->JsonStreamType->OBJECT_LIT {
 						return "@object_literal@";
 					}
 					
-					label StreamParser->Type->STRING {
+					label JsonStreamParser->JsonStreamType->STRING {
 						return "@string@";
 					}
 					
-					label StreamParser->Type->NUMBER {
+					label JsonStreamParser->JsonStreamType->NUMBER {
 						return "@number@";
 					}
 					
-					label StreamParser->Type->END {
+					label JsonStreamParser->JsonStreamType->END {
 						return "@end-of-stream@";
 					}
 				};
@@ -147,11 +147,11 @@ while(parser->GetType() <> StreamParser->Type->END & parser->GetType() <> Stream
 				return Nil;
 			};
 
-			if(@current_type = StreamParser->Type->ARRAY) {
+			if(@current_type = JsonStreamParser->JsonStreamType->ARRAY) {
 				return "@array@";
 			}
 
-			if(@current_type = StreamParser->Type->OBJECT) {
+			if(@current_type = JsonStreamParser->JsonStreamType->OBJECT) {
 				return "@object@";
 			}
 
@@ -185,20 +185,20 @@ while(parser->GetType() <> StreamParser->Type->END & parser->GetType() <> Stream
 			};
 
 			@current_value := Nil;
-			@current_type := StreamParser->Type->ERROR;
+			@current_type := JsonStreamParser->JsonStreamType->ERROR;
 
 			do {
 				ParseElement();
 				if(@error_message <> Nil) {
 					return false;
 				}
-				else if(@current_type = StreamParser->Type->OBJECT_LIT) {
+				else if(@current_type = JsonStreamParser->JsonStreamType->OBJECT_LIT) {
 					if(@current_value <> Nil & @current_value->Equals(value)) {
 						return true;
 					};
 				};
 			}
-			while(@current_type <> StreamParser->Type->END);
+			while(@current_type <> JsonStreamParser->JsonStreamType->END);
 
 			return false;
 		}
@@ -208,7 +208,7 @@ while(parser->GetType() <> StreamParser->Type->END & parser->GetType() <> Stream
 		@return true if pointer can be advanced, false otherwise
 		~#
 		method : public : More() ~ Bool {
-			return @current_type <> StreamParser->Type->END & @current_type <> StreamParser->Type->ERROR;
+			return @current_type <> JsonStreamParser->JsonStreamType->END & @current_type <> JsonStreamParser->JsonStreamType->ERROR;
 		}
 
 		#~
@@ -237,7 +237,7 @@ while(parser->GetType() <> StreamParser->Type->END & parser->GetType() <> Stream
 			};
 
 			@current_value := Nil;
-			@current_type := StreamParser->Type->ERROR;
+			@current_type := JsonStreamParser->JsonStreamType->ERROR;
 
 			each(i : offset) {
 				ParseElement();
@@ -253,7 +253,7 @@ while(parser->GetType() <> StreamParser->Type->END & parser->GetType() <> Stream
 			Whitespace();
 
 			if(@stream_position >= @stream->Size()) {
-				@current_type := StreamParser->Type->END;
+				@current_type := JsonStreamParser->JsonStreamType->END;
 				return;
 			};
 
@@ -269,8 +269,8 @@ while(parser->GetType() <> StreamParser->Type->END & parser->GetType() <> Stream
 			# additional array and object elements
 			#
 			else if(GetChar() = ',' & 
-					(@stream_stack_position > 0 & @stream_stack[@stream_stack_position]->GetType() = StreamParser->Type->ARRAY |
-					@stream_stack_position > 0 & @stream_stack[@stream_stack_position]->GetType() = StreamParser->Type->OBJECT)) {
+					(@stream_stack_position > 0 & @stream_stack[@stream_stack_position]->GetType() = JsonStreamParser->JsonStreamType->ARRAY |
+					@stream_stack_position > 0 & @stream_stack[@stream_stack_position]->GetType() = JsonStreamParser->JsonStreamType->OBJECT)) {
 				NextChar();
 				Whitespace();
 			}			
@@ -293,7 +293,7 @@ while(parser->GetType() <> StreamParser->Type->END & parser->GetType() <> Stream
 				};
 
 				@current_value := value;
-				@current_type := StreamParser->Type->NUMBER;
+				@current_type := JsonStreamParser->JsonStreamType->NUMBER;
 			}
 			#
 			# string or attribute
@@ -312,7 +312,7 @@ while(parser->GetType() <> StreamParser->Type->END & parser->GetType() <> Stream
 				value := String->New(@stream, start, @stream_position - start);
 				
 				NextChar();	Whitespace();
-				if(GetChar() = ':' & @stream_stack_position > 0 & @stream_stack[@stream_stack_position - 1]->GetType() = StreamParser->Type->OBJECT) {
+				if(GetChar() = ':' & @stream_stack_position > 0 & @stream_stack[@stream_stack_position - 1]->GetType() = JsonStreamParser->JsonStreamType->OBJECT) {
 					NextChar();	Whitespace();
 
 					if(@is_debug) {
@@ -322,7 +322,7 @@ while(parser->GetType() <> StreamParser->Type->END & parser->GetType() <> Stream
 					};
 
 					@current_value := value;
-					@current_type := StreamParser->Type->OBJECT_LIT;
+					@current_type := JsonStreamParser->JsonStreamType->OBJECT_LIT;
 				}
 				else {
 					if(@is_debug) {
@@ -331,7 +331,7 @@ while(parser->GetType() <> StreamParser->Type->END & parser->GetType() <> Stream
 					};
 
 					@current_value := value;
-					@current_type := StreamParser->Type->STRING;
+					@current_type := JsonStreamParser->JsonStreamType->STRING;
 				};
 			}
 			#
@@ -343,8 +343,8 @@ while(parser->GetType() <> StreamParser->Type->END & parser->GetType() <> Stream
 					Print("Array: level={$stream_level}");
 				};
 
-				@current_type := StreamParser->Type->ARRAY;
-				@stream_stack[@stream_stack_position++]->Set(StreamParser->Type->ARRAY, @stream_stack_position);
+				@current_type := JsonStreamParser->JsonStreamType->ARRAY;
+				@stream_stack[@stream_stack_position++]->Set(JsonStreamParser->JsonStreamType->ARRAY, @stream_stack_position);
 				NextChar();
 			}
 			#
@@ -356,8 +356,8 @@ while(parser->GetType() <> StreamParser->Type->END & parser->GetType() <> Stream
 					Print("Object: level={$stream_level}");
 				};
 
-				@current_type := StreamParser->Type->OBJECT;
-				@stream_stack[@stream_stack_position++]->Set(StreamParser->Type->OBJECT, @stream_stack_position);
+				@current_type := JsonStreamParser->JsonStreamType->OBJECT;
+				@stream_stack[@stream_stack_position++]->Set(JsonStreamParser->JsonStreamType->OBJECT, @stream_stack_position);
 				NextChar();
 			}
 			#
@@ -385,7 +385,7 @@ while(parser->GetType() <> StreamParser->Type->END & parser->GetType() <> Stream
 				NextChar();
 
 				@current_value := "null";
-				@current_type := StreamParser->Type->NULL;
+				@current_type := JsonStreamParser->JsonStreamType->NULL;
 			}
 			#
 			# 'true' literal
@@ -412,7 +412,7 @@ while(parser->GetType() <> StreamParser->Type->END & parser->GetType() <> Stream
 				NextChar();
 
 				@current_value := "true";
-				@current_type := StreamParser->Type->TRUE;
+				@current_type := JsonStreamParser->JsonStreamType->TRUE;
 			}
 			#
 			# 'false' literal
@@ -445,7 +445,7 @@ while(parser->GetType() <> StreamParser->Type->END & parser->GetType() <> Stream
 				NextChar();
 
 				@current_value := "false";
-				@current_type := StreamParser->Type->FALSE;
+				@current_type := JsonStreamParser->JsonStreamType->FALSE;
 			}
 			#
 			# error
@@ -503,18 +503,18 @@ while(parser->GetType() <> StreamParser->Type->END & parser->GetType() <> Stream
 
 	class : private : ParseScope {
 		@level : Int;
-		@current_type : StreamParser->Type;
+		@current_type : JsonStreamParser->JsonStreamType;
 		@current_value : String;
 
 		New() {}
 
-		method : public : Set(type : StreamParser->Type, level : Int) ~ Nil {
+		method : public : Set(type : JsonStreamParser->JsonStreamType, level : Int) ~ Nil {
 			@level := level;
 			@current_type := type;
 			@current_value := Nil;
 		}
 
-		method : public : Set(type : StreamParser->Type, value : String, level : Int) ~ Nil {
+		method : public : Set(type : JsonStreamParser->JsonStreamType, value : String, level : Int) ~ Nil {
 			@level := level;
 			@current_type := type;
 			@current_value := value;
@@ -524,7 +524,7 @@ while(parser->GetType() <> StreamParser->Type->END & parser->GetType() <> Stream
 			return @level;
 		}
 
-		method : public : GetType() ~ StreamParser->Type {
+		method : public : GetType() ~ JsonStreamParser->JsonStreamType {
 			return @current_type;
 		}
 
@@ -534,7 +534,7 @@ while(parser->GetType() <> StreamParser->Type->END & parser->GetType() <> Stream
 
 		method : public : ToString() ~ String {
 			type_str : String;
-			if(@current_type = StreamParser->Type->OBJECT) {
+			if(@current_type = JsonStreamParser->JsonStreamType->OBJECT) {
 				type_str := "Object";
 			}
 			else {
