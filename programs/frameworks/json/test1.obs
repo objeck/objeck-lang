@@ -1,48 +1,53 @@
 use Data.JSON.Stream;
 use System.IO.Filesystem;
 
-class Test {
-	@buffer : static : Char[];
-	@buffer_pos : static : Int;
+class StreamReader {
+	@stream : InputStream;
 
-	function : Main(args : String[]) ~ Nil {
-		r := IntRange->New(7,13);
-		each(i : r) {
-			i->PrintLine();
-		};
+	@buffer : Char[];
+	@buffer_pos : Int;
+	
+	@is_eof : Bool;
 
-		reader := FileReader->New(args[0]);
-		
-		c := GetNext(reader);
-		while(c <> '\0') {
-			c->PrintLine();
-			c := GetNext(reader);
-		};	
+	New(stream : InputStream) {
+		@stream := stream;
 	}
 
-	function : GetNext(reader : FileReader) ~ Char {
-		if(@buffer = Nil | @buffer_pos >= @buffer->Size()) {
-			@buffer_pos := 0;
-			
-			line := reader->ReadLine();
-			if(line <> Nil) {
-				@buffer := line->ToCharArray();
+	method : public : NextChar() ~ Char {
+		if(@buffer = Nil) {
+			line := @stream->ReadLine();
+			if(line = Nil) {
+				@is_eof := true;
 			}
 			else {
-				@buffer := Nil;
+line->Size()->PrintLine();				
+				@buffer := line->ToCharArray();
 			};
 		};
-		
-		if(@buffer <> Nil & @buffer_pos < @buffer->Size()) {
-			char := @buffer[@buffer_pos++];
-			while(@buffer_pos < @buffer->Size() & (char = ' ' | char = '\t' | char = '\r' | char = '\n')) {
-				char := @buffer[@buffer_pos++];
+
+		return ' ';
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		stream := StreamReader->New(FileReader->New(args[0]));
+		stream->NextChar()->PrintLine();
+		stream->NextChar()->PrintLine();
+		stream->NextChar()->PrintLine();
+		stream->NextChar()->PrintLine();
+#~		
+		count := 0;
+		do {
+			line := reader->ReadLine();
+			if(line <> Nil) {
+				line->Size()->PrintLine();
+				if(line->Size() = 0) {
+					"WTF: {$count}"->PrintLine();
+					return;
+				};
 			};
-
-			return char;
-		};
-
-		reader->Close();
-		return '\0';
+			count += 1;
+		}
+		while(<>reader->IsEoF());
+~#		
 	}
 }
