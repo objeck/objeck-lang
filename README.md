@@ -36,15 +36,14 @@ Want to get started? Take a look at the [language guide](https://objeck.org/gett
   * Incremental JSON parser
     *  Line buffering for files and sockets
 * v2024.2.0
-  * Incremental JSON parser
-    * ~~Improved parsing performance for large JSON documents~~
-    Immutable Tuple types
-    * v2024.2.0
-      * ~~Pair<A,B>~~
-      * ~~Triplet<A,B,C>~~
-      * ~~Quartet<A,B,C,D>~~
-    * Range support
-      * ~~Added ``CharRange``, ``IntRange`` and, ``FloatRange`` classes~~
+  * ~~Incremental JSON parser~~
+    * Improved parsing performance for large JSON documents
+  * ~~Immutable Tuple types~~
+    * Pair<A,B>
+    * Triplet<A,B,C>
+    * Quartet<A,B,C,D>
+  * ~~Range support~~
+    * Added ``CharRange``, ``IntRange`` and, ``FloatRange`` classes
 
 ## Functionality
 
