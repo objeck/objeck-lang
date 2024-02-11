@@ -1,40 +1,9 @@
 use Data.JSON.Stream;
 use System.IO.Filesystem;
 
-class StreamReader {
-	@stream : InputStream;
-
-	@buffer : Char[];
-	@buffer_pos : Int;
-	
-	@is_eof : Bool;
-
-	New(stream : InputStream) {
-		@stream := stream;
-	}
-
-	method : public : NextChar() ~ Char {
-		if(@buffer = Nil) {
-			line := @stream->ReadLine();
-			if(line = Nil) {
-				@is_eof := true;
-			}
-			else {
-line->Size()->PrintLine();				
-				@buffer := line->ToCharArray();
-			};
-		};
-
-		return ' ';
-	}
-
+class Test {
 	function : Main(args : String[]) ~ Nil {
-		stream := StreamReader->New(FileReader->New(args[0]));
-		stream->NextChar()->PrintLine();
-		stream->NextChar()->PrintLine();
-		stream->NextChar()->PrintLine();
-		stream->NextChar()->PrintLine();
-#~		
+		reader := FileReader->New(args[0]);
 		count := 0;
 		do {
 			line := reader->ReadLine();
@@ -42,12 +11,11 @@ line->Size()->PrintLine();
 				line->Size()->PrintLine();
 				if(line->Size() = 0) {
 					"WTF: {$count}"->PrintLine();
-					return;
+#					return;
 				};
 			};
 			count += 1;
 		}
 		while(<>reader->IsEoF());
-~#		
 	}
 }
