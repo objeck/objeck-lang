@@ -33,7 +33,7 @@ Want to get started? Take a look at the [language guide](https://objeck.org/gett
 ## What's New?
 
 * v2024.2.1
-  * New incremental JSON parser
+  * Enhanced incremental JSON parsing
     *  Line buffering for files and sockets
 * v2024.2.0
   * ~~Incremental JSON parser~~
