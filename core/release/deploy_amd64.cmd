@@ -104,7 +104,7 @@ if [%1] NEQ [deploy] goto end
 	copy ..\..\docs\eula.rtf "%USERPROFILE%\Desktop\objeck-lang-win64\doc"
 	copy /y ..\utils\setup64 .
 	devenv setup.sln /rebuild "Release"
-	signtool sign /f "%USERPROFILE%\Dropbox\Personal\signing keys\2022\code\randy_hollines.p12" /p %2 /d "Objeck: Windows Toolchain" /t http://timestamp.sectigo.com /fd sha256 Release64\setup.msi
+	signtool sign /fd sha256 /f "%USERPROFILE%\Dropbox\Personal\signing keys\2022\code\randy_hollines.p12" /p %2 /d "Objeck: Windows Toolchain" /t http://timestamp.sectigo.com Release64\setup.msi
 	copy Release64\setup.msi "%USERPROFILE%\Desktop\objeck-windows-x64_0.0.0.msi"
 	
 	rmdir /s /q "%USERPROFILE%\Desktop\Release64"
