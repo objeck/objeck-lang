@@ -34,18 +34,20 @@ Want to get started? Take a look at the [language guide](https://objeck.org/gett
 
 * Incremental JSON parser
   * v2024.2.1
-    * Improved parsing performance for large JSON documents
+    * ~~Improved parsing performance for large JSON documents~~
+  * v2024.2.1
+    * Stream support for files and sockets
 
 * Immutable Tuple types
-  * v2024.2.0
+  * v2024.2.1
     * ~~Pair<A,B>~~
     * ~~Triplet<A,B,C>~~
     * ~~Quartet<A,B,C,D>~~
 
 * Range support
-    * v2024.2.0
+    * v2024.2.1
       * ~~Added ``CharRange``, ``IntRange`` and, ``FloatRange`` classes~~
-  
+    
 * ML algorithms
   * v2023.12.0
     * ~~Linear Regression Solver~~
