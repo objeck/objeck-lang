@@ -1,11 +1,14 @@
 class Test {
     function : Main(args : String[]) ~ Nil {
         if(args->Size() = 1) {
-            container := Collection.Map->New()<String, IntRef>;
+            container := Collection.Hash->New()<String, IntRef>;
             keys := Collection.Vector->New()<String>;
 
+foo :=args[0]->ToInt();
+foo->PrintLine();
+
             z := 1;
-            each(i : args[0]->ToInt()) {
+            each(i : foo) {
                 key := "";
                 each(j : 64) {
                     key += Int->Random('a', '~')->As(Char);
@@ -21,6 +24,7 @@ class Test {
                     z += 1;  
                 };
                 container->Insert(key, IntRef->New());
+"."->Print();                
             };
             ""->PrintLine();
             container->Size()->PrintLine();
