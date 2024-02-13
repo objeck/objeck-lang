@@ -657,6 +657,7 @@ hash->Has(408)->PrintLine();
 			LARGE := 65537;
 			EX_LARGE := 1048577;
 			HUGE := 16777217;
+		}
 		
 		#~
 		Default constructor 
