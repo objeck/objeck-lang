@@ -46,10 +46,12 @@
 #include <aclapi.h>
 #include <versionhelpers.h>
 
+#ifndef _MSYS2
 #pragma comment(lib, "Ws2_32.lib")
 #pragma comment(lib, "User32.lib")
 #pragma comment(lib, "UserEnv.lib")
 #pragma comment(lib, "shlwapi.lib")
+#endif
 
 typedef void (WINAPI *PGNSI)(LPSYSTEM_INFO);
 typedef BOOL (WINAPI *PGPI)(DWORD, DWORD, DWORD, DWORD, PDWORD);
