@@ -1,11 +1,12 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-#~		
-		System.IO.Standard->SetFloatPrecision(2);
-		System.IO.Standard->SetFloatFormat(Number->Format->SCIENTIFIC);
-		value := 3.145;
-		value->PrintLine();
+		value := 0.000004512345678912345;
+		String->SetFloatPrecision(2);
+		String->SetFloatFormat(Number->Format->SCIENTIFIC);
+		value->ToString()->PrintLine();
 
+		
+#~
 		String->SetFloatPrecision(1);
 		str := value->ToString();
 		
@@ -15,7 +16,7 @@ class Test {
 		str := 13->ToString();
 		str->PrintLine();
 ~#
-		System.IO.Standard->SetWidth(16)->SetFill('*')->PrintLine(3.3335);
+#		System.IO.Standard->SetWidth(16)->SetFill('*')->PrintLine(3.3335);
 #		System.IO.Standard->Print(101.515)->SetWidth(16)->PrintLine(33.33);
 	}
 }

@@ -117,7 +117,7 @@ namespace Runtime {
     //
     inline void PushFrame(StackFrame* f) {
       if((*call_stack_pos) >= CALL_STACK_SIZE) {
-        std::wcerr << L">>> call std::stack bounds have been exceeded! <<<" << std::endl;
+        std::wcerr << L">>> call stack bounds have been exceeded! <<<" << std::endl;
         exit(1);
       }
       
@@ -129,7 +129,7 @@ namespace Runtime {
     //
     inline StackFrame* PopFrame() {
       if((*call_stack_pos) <= 0) {
-        std::wcerr << L">>> call std::stack bounds have been exceeded! <<<" << std::endl;
+        std::wcerr << L">>> call stack bounds have been exceeded! <<<" << std::endl;
         exit(1);
       }
       
