@@ -652,11 +652,11 @@ hash->Has(408)->PrintLine();
 		@class Hash
 		~#
 		consts Capacity {
-			SMALL := 257;
-			MEDIUM : 4097;
-			LARGE := 65537;
-			EX_LARGE := 1048577;
-			HUGE := 16777217;
+			SMALL := 257,
+			MEDIUM := 4097,
+			LARGE := 65537,
+			EX_LARGE := 1048577,
+			HUGE := 16777217
 		}
 		
 		#~
@@ -850,16 +850,16 @@ hash->Has(408)->PrintLine();
 						@size -= 1;
 
 						if(@auto_resize) {
-							if(@size < Hash->Capacity->HUGE && @size >= Hash->Capacity->EX_LARGE) {
+							if(@size < Hash->Capacity->HUGE & @size >= Hash->Capacity->EX_LARGE) {
 								Resize(Hash->Capacity->HUGE);						
 							}
-							else if(@size < Hash->Capacity->EX_LARGE && @size >= Hash->Capacity->LARGE) {
+							else if(@size < Hash->Capacity->EX_LARGE & @size >= Hash->Capacity->LARGE) {
 								Resize(Hash->Capacity->EX_LARGE);
 							}				
-							else if(@size < Hash->Capacity->LARGE && @size >= Hash->Capacity->MEDIUM) {
+							else if(@size < Hash->Capacity->LARGE & @size >= Hash->Capacity->MEDIUM) {
 								Resize(Hash->Capacity->LARGE);
 							}
-							else if(@size < Hash->Capacity->MEDIUM && @size >= Hash->Capacity->SMALL) {
+							else if(@size < Hash->Capacity->MEDIUM & @size >= Hash->Capacity->SMALL) {
 								Resize(Hash->Capacity->MEDIUM);
 							}
 							else {
