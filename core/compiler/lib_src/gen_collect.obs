@@ -648,7 +648,7 @@ hash->Has(408)->PrintLine();
 		@auto_resize : Bool;
 
 		#~
-		Hash table capacity: SMALL <= 64 items, MEDIUM <= 256, LARGE <= 2048, EX-LARGE >= 8192
+		Hash table capacity: SMALL <= 256 items, MEDIUM <= 2048, LARGE <= 16384, EX-LARGE >= 8192
 		@class Hash
 		~#
 		consts Capacity {
@@ -851,15 +851,15 @@ hash->Has(408)->PrintLine();
 
 						if(@auto_resize) {
 							select(@size) {
-								label 64: {
+								label 256: {
 									Resize(Hash->Capacity->SMALL);
 								}
 
-								label 256: {
+								label 2048: {
 									Resize(Hash->Capacity->MEDIUM);
 								}
 
-								label 2048: {
+								label 16384: {
 									Resize(Hash->Capacity->LARGE);
 								}
 							};
