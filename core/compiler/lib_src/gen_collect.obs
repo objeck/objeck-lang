@@ -850,13 +850,16 @@ hash->Has(408)->PrintLine();
 						@size -= 1;
 
 						if(@auto_resize) {
-							if(@size < Hash->Capacity->HUGE >= Hash->Capacity->EX_LARGE) {
-								Resize(Hash->Capacity->EX_LARGE);						
+							if(@size < Hash->Capacity->HUGE && @size >= Hash->Capacity->EX_LARGE) {
+								Resize(Hash->Capacity->HUGE);						
 							}
-							else if(@size < Hash->Capacity->EX_LARGE >= Hash->Capacity->LARGE) {
-								Resize(Hash->Capacity->LARGE);
+							else if(@size < Hash->Capacity->EX_LARGE && @size >= Hash->Capacity->LARGE) {
+								Resize(Hash->Capacity->EX_LARGE);
 							}				
-							else if(@size < Hash->Capacity->LARGE >= Hash->Capacity->MEDIUM) {
+							else if(@size < Hash->Capacity->LARGE && @size >= Hash->Capacity->MEDIUM) {
+								Resize(Hash->Capacity->LARGE);
+							}
+							else if(@size < Hash->Capacity->MEDIUM && @size >= Hash->Capacity->SMALL) {
 								Resize(Hash->Capacity->MEDIUM);
 							}
 							else {
