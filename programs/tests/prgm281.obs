@@ -1,0 +1,34 @@
+class Test {
+    function : Main(args : String[]) ~ Nil {
+        if(args->Size() = 1) {
+            container := Collection.Map->New()<String, IntRef>;
+            keys := Collection.Vector->New()<String>;
+
+            z := 1;
+            each(i : args[0]->ToInt()) {
+                key := "";
+                each(j : 64) {
+                    key += Int->Random('a', '~')->As(Char);
+                };
+
+                if(i % 50000 = 0) {
+                    '#'->Print();
+                    keys->AddBack(key);
+
+                    if(z % 3 = 0) {
+                        '|'->Print();
+                    };
+                    z += 1;  
+                };
+                container->Insert(key, IntRef->New());
+            };
+            ""->PrintLine();
+            container->Size()->PrintLine();
+
+            each(i : keys) {
+                key := keys->Get(i)
+                "{$i}:\t{$key}"->PrintLine();
+            };
+        };
+    }
+}
