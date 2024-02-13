@@ -652,10 +652,10 @@ hash->Has(408)->PrintLine();
 		@class Hash
 		~#
 		consts Capacity {
-			SMALL := 83,
-			MEDIUM := 331,
-			LARGE := 2609,
-			EX_LARGE := 10211
+			SMALL := 331,
+			MEDIUM := 2609,
+			LARGE := 20483,
+			EX_LARGE := 163841
 		}
 		
 		#~
@@ -734,15 +734,15 @@ hash->Has(408)->PrintLine();
 		method : public : Insert(key : K, value : V) ~ Nil {
 			if(@auto_resize) {
 				select(@size + 1) {
-					label 65: {
+					label 256: {
 						Resize(Hash->Capacity->MEDIUM);
 					}
 
-					label 257: {
+					label 2048: {
 						Resize(Hash->Capacity->LARGE);
 					}
 
-					label 2049: {
+					label 16384: {
 						Resize(Hash->Capacity->EX_LARGE);
 					}
 				};
