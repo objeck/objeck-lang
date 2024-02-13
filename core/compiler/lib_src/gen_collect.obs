@@ -653,7 +653,7 @@ hash->Has(408)->PrintLine();
 		~#
 		consts Capacity {
 			SMALL := 257;
-			MEDIUM : 55987;
+			MEDIUM : 4097;
 			LARGE := 65537;
 			EX_LARGE := 1048577;
 			HUGE := 16777217;
