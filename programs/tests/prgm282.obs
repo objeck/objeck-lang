@@ -9,7 +9,8 @@ class Test {
         name := "DJ";
 name += ' ';
 name += "Premier";
-name += $"bell \b \b bell";
+name += $"bell \n \n bell";
+name->PrintLine();
 name->SubString(2)->PrintLine();
 name->Size()->PrintLine();
     }
