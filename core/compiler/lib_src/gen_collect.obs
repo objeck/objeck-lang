@@ -648,14 +648,15 @@ hash->Has(408)->PrintLine();
 		@auto_resize : Bool;
 
 		#~
-		Hash table capacity: SMALL <= 256 items, MEDIUM <= 2048, LARGE <= 16384, EX-LARGE >= 8192
+		Hash table capacity: SMALL <= 32 items, MEDIUM <= 256 items, LARGE <= 2048, EX_LARGE <= 16384, EX-EX_LARGE >= 8192
 		@class Hash
 		~#
 		consts Capacity {
-			SMALL := 331,
-			MEDIUM := 2609,
-			LARGE := 20483,
-			EX_LARGE := 163841
+			SMALL := 37,
+			MEDIUM := 331,
+			LARGE := 2609,
+			EX_LARGE := 20483,
+			HUGE := 163841
 		}
 		
 		#~
@@ -734,16 +735,20 @@ hash->Has(408)->PrintLine();
 		method : public : Insert(key : K, value : V) ~ Nil {
 			if(@auto_resize) {
 				select(@size + 1) {
-					label 256: {
+					label 32: {
 						Resize(Hash->Capacity->MEDIUM);
 					}
-
-					label 2048: {
+					
+					label 256: {
 						Resize(Hash->Capacity->LARGE);
 					}
 
-					label 16384: {
+					label 2048: {
 						Resize(Hash->Capacity->EX_LARGE);
+					}
+
+					label 16384: {
+						Resize(Hash->Capacity->HUGE);
 					}
 				};
 			};
@@ -851,16 +856,20 @@ hash->Has(408)->PrintLine();
 
 						if(@auto_resize) {
 							select(@size) {
-								label 256: {
+								label 32: {
 									Resize(Hash->Capacity->SMALL);
 								}
 
-								label 2048: {
+								label 256: {
 									Resize(Hash->Capacity->MEDIUM);
 								}
 
-								label 16384: {
+								label 2048: {
 									Resize(Hash->Capacity->LARGE);
+								}
+
+								label 16384: {
+									Resize(Hash->Capacity->EX_LARGE);
 								}
 							};
 						};
