@@ -2,8 +2,9 @@ class Test {
     function : Main(args : String[]) ~ Nil {
         if(args->Size() = 1) {
             container := Collection.Hash->New()<String, IntRef>;
+            container->Insert(Nil, IntRef->New(13));
+#~
             keys := Collection.Vector->New()<String>;
-
             z := 1;
             each(i : args[0]->ToInt()) {
                 key := "";
@@ -27,7 +28,7 @@ class Test {
             ""->PrintLine();
             container->Size()->PrintLine();
 
-#~medium
+
             each(i : keys) {
                 key := keys->Get(i)
                 "{$i}:\t{$key}"->PrintLine();
