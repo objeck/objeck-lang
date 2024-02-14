@@ -1,7 +1,7 @@
 class Test {
     function : Main(args : String[]) ~ Nil {
         if(args->Size() = 1) {
-            container := Collection.Map->New()<String, IntRef>;
+            container := Collection.Hash->New()<String, IntRef>;
             keys := Collection.Vector->New()<String>;
 
             z := 1;
