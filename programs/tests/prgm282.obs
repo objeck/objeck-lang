@@ -5,5 +5,12 @@ class Test {
         v1 := $"c:\documents\files\u0066.txt";
         v2 := "c:\\documents\\files\\u0066.txt";
         v1->Equals(v2)->PrintLine();
+
+        name := "DJ";
+name += ' ';
+name += "Premier";
+name += $"bell \b \b bell";
+name->SubString(2)->PrintLine();
+name->Size()->PrintLine();
     }
 }
