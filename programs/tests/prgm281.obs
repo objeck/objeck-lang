@@ -1,8 +1,13 @@
+use Collection;
+
 class Test {
     function : Main(args : String[]) ~ Nil {
         if(args->Size() = 1) {
             container := Collection.Hash->New()<String, IntRef>;
             container->Insert(Nil, IntRef->New(13));
+
+            values := Collection.Vector->New()<Pair<String, IntRef>>;
+            values->AddBack(Collection.Pair->New("3", 3)<String, IntRef>);
 #~
             keys := Collection.Vector->New()<String>;
             z := 1;
