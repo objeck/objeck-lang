@@ -6,12 +6,11 @@ class Test {
         v2 := "c:\\documents\\files\\u0066.txt";
         v1->Equals(v2)->PrintLine();
 
-        name := "DJ";
-name += ' ';
-name += "Premier";
-name += $"bell \n \n bell";
-name->PrintLine();
-name->SubString(2)->PrintLine();
-name->Size()->PrintLine();
+        dj_name := "Scratch";
+        name := "DJ {$dj_name}";
+        name += $"bell \n \n bell";
+        name->PrintLine();
+        name->SubString(2)->PrintLine();
+        name->Size()->PrintLine();
     }
 }
