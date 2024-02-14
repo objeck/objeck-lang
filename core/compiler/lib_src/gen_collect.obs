@@ -652,7 +652,7 @@ hash->Has(408)->PrintLine();
 		@auto_resize : Bool;
 
 		#~
-		Hash table capacity: SMALL <= 32 items, MEDIUM <= 256 items, LARGE <= 2048, EX_LARGE <= 16384, EX-EX_LARGE >= 8192
+		Hash table capacity: SMALL <= 32 items, MEDIUM <= 256 items, LARGE <= 2048, EX_LARGE <= 16384, HUGE >= 16384
 		@class Hash
 		~#
 		consts Capacity {
