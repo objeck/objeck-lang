@@ -3337,7 +3337,8 @@ StaticArray* Parser::ParseStaticArray(int depth) {
 
         case TOKEN_CHAR_STRING_LIT: {
           const std::wstring ident = scanner->GetToken()->GetIdentifier();
-          expression = TreeFactory::Instance()->MakeCharacterString(file_name, line_num, line_pos, ident);
+          const bool is_lit = scanner->GetToken()->GetByteLit();
+          expression = TreeFactory::Instance()->MakeCharacterString(file_name, line_num, line_pos, ident, is_lit);
           NextToken();
         }
                                     break;
@@ -4360,7 +4361,8 @@ Expression* Parser::ParseSimpleExpression(int depth)
 
     case TOKEN_CHAR_STRING_LIT: {
       const std::wstring ident = scanner->GetToken()->GetIdentifier();
-      expression = TreeFactory::Instance()->MakeCharacterString(file_name, line_num, line_pos, ident);
+      const bool is_lit = scanner->GetToken()->GetByteLit();
+      expression = TreeFactory::Instance()->MakeCharacterString(file_name, line_num, line_pos, ident, is_lit);
       NextToken();
     }
       break;

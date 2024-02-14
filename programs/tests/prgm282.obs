@@ -1,0 +1,9 @@
+use Collection;
+
+class Test {
+    function : Main(args : String[]) ~ Nil {
+        v1 := $"c:\documents\files\u0066.txt";
+        v2 := "c:\\documents\\files\\u0066.txt";
+        v1->Equals(v2)->PrintLine();
+    }
+}

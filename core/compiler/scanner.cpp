@@ -693,7 +693,7 @@ void Scanner::CheckIdentifier(int index)
   }
 }
 
-void Scanner::CheckString(int index, bool is_valid)
+void Scanner::CheckString(int index, bool is_lit, bool is_valid)
 {
   // copy string
   const size_t length = end_pos - start_pos;
@@ -705,6 +705,8 @@ void Scanner::CheckString(int index, bool is_valid)
   else {
     tokens[index]->SetType(TOKEN_BAD_CHAR_STRING_LIT);
   }
+  tokens[index]->SetByteLit(is_lit ? 1 : 0);
+
   tokens[index]->SetIdentifier(char_string);
   tokens[index]->SetLineNbr(line_nbr);
 	tokens[index]->SetLinePos((int)(line_pos - length - 2));
@@ -948,15 +950,21 @@ void Scanner::ParseToken(int index)
   Comments();
 
   // character string
-  if(cur_char == L'\"') {
+  if(cur_char == L'\"' || (cur_char == L'$' && nxt_char == L'\"')) {
+    bool is_lit = false;
+    if(cur_char == L'$') {
+      is_lit = true;
+      NextChar();
+    }
     NextChar();
+
     // mark
     start_pos = buffer_pos - 1;
     bool is_valid = true;
     while(cur_char != L'\"' && cur_char != EOB) {
       if(cur_char == L'\\') {
         NextChar();
-        if(!std::isdigit(cur_char)) {
+        if(!is_lit && !std::isdigit(cur_char)) {
           switch(cur_char) {
           case L'"':
           case L'\\':
@@ -996,7 +1004,7 @@ void Scanner::ParseToken(int index)
     end_pos = buffer_pos - 1;
     // check string
     NextChar();
-    CheckString(index, is_valid);
+    CheckString(index, is_lit, is_valid);
     return;
   }
   // character

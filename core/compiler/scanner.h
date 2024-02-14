@@ -432,6 +432,9 @@ class Token {
   } kind;
 
  public:
+   Token() {
+
+   }
 
   inline void Copy(Token* token) {
     line_nbr = token->line_nbr;
@@ -549,7 +552,7 @@ class Scanner {
   size_t line_pos;
   
   // parsers a character string
-  void CheckString(int index, bool is_valid);
+  void CheckString(int index, bool is_lit, bool is_valid);
   // parse an integer
   void ParseInteger(int index, int base = 0);
   // parse a double
