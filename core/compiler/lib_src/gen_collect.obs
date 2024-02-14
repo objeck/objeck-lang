@@ -385,6 +385,10 @@ each(value := values) {
 		@param value value
 		~#
 		method : public : Insert(key : K, value : S) ~ Bool {
+			if(key = Nil) {
+				return false;
+			};
+
 			if(@priority->Size() < @max) {
 				@priority->Rewind();
 				found := @priority->Find(key);
@@ -733,12 +737,16 @@ hash->Has(408)->PrintLine();
 		@param value value
 		~#
 		method : public : Insert(key : K, value : V) ~ Nil {
+			if(key = Nil) {
+				return;
+			};
+
 			if(@auto_resize) {
 				select(@size + 1) {
 					label 32: {
 						Resize(Hash->Capacity->MEDIUM);
 					}
-					
+
 					label 256: {
 						Resize(Hash->Capacity->LARGE);
 					}
@@ -3429,6 +3437,10 @@ function : Show(value : IntRef) ~ Nil {
 		@param value value
 		~#
 		method : public : Insert(key : K, value : V) ~ Nil {
+			if(key = Nil) {
+				return;
+			};
+
 			if(@root = Nil) {
 				@root := Insert(key, value, Nil->As(Collection.TreeNode<K, V>));
 			}
@@ -3888,6 +3900,10 @@ set_hash->Has("Oakland")->PrintLine();
 		@param value value
 		~#
 		method : public : Insert(key : K, value : V) ~ Nil {
+			if(key = Nil) {
+				return;
+			};
+
 			values := Find(key);
 			if(values = Nil) {
 				values := Vector->New()<V>;
