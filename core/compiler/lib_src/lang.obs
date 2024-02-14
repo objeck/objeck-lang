@@ -4106,7 +4106,7 @@ bundle System {
 			str := @buffer->ToString(); #  Unicode conversion 
 			out := Byte->New[str->Size()];
 
-			for(i : str) {
+			each(i : str) {
 				out[i] := str->Get(i);
 			};
 
@@ -4368,7 +4368,7 @@ each(i : cities) {
 			str := @string->ToString(); #  Unicode conversion 
 			out := Byte->New[str->Size()];
 
-			for(i : str) {
+			each(i : str) {
 				out[i] := str->Get(i);
 			};
 
