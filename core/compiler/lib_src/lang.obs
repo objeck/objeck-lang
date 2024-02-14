@@ -4102,14 +4102,15 @@ bundle System {
 		Returns a trimmed byte array
 		@return byte array
 		~#
-		method : public : native : ToByteArray() ~ Byte[] {
-			output := Byte->New[@pos];
+		method : public : ToByteArray() ~ Byte[] {
+			str := @buffer->ToString(); #  Unicode conversion 
+			out := Byte->New[str->Size()];
 
-			for(i := 0; i < @pos; i += 1;) {
-				output[i] := @buffer[i];
+			for(i : str) {
+				out[i] := str->Get(i);
 			};
 
-			return output;
+			return out;
 		}
 		
 		#~
@@ -4364,13 +4365,14 @@ each(i : cities) {
 		@return byte array
 		~#
 		method : public : native : ToByteArray() ~ Byte[] {
-			array := Byte->New[@pos];
+			str := @string->ToString(); #  Unicode conversion 
+			out := Byte->New[str->Size()];
 
-			each(i : @pos) {
-				array[i] := @string[i];
+			for(i : str) {
+				out[i] := str->Get(i);
 			};
 
-			return array;
+			return out;
 		}
 		
 		#~
