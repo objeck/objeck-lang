@@ -86,7 +86,7 @@ void CharacterString::AddSegment(const std::wstring& orig)
         i += escaped__sub_str.size();
         is_unicode_str = false;
       }
-      else if(skip > 1 && c == L'\\' && i + 1 < orig.size()) {
+      else if(!is_lit && skip > 1 && c == L'\\' && i + 1 < orig.size()) {
         wchar_t cc = orig[i + 1];
         switch(cc) {
         case L'"':

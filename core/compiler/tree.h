@@ -813,11 +813,14 @@ namespace frontend {
     std::wstring char_string;
     std::vector<CharacterStringSegment*> segments;
     SymbolEntry* concat;
+    bool is_lit;
 
-    CharacterString(const std::wstring &file_name, const int line_num, const int line_pos, const std::wstring &c) : Expression(file_name, line_num, line_pos, Type::CharStringType()) {
+    CharacterString(const std::wstring &file_name, const int line_num, const int line_pos, const std::wstring &c, const bool l) : 
+        Expression(file_name, line_num, line_pos, Type::CharStringType()) {
       char_string = c;
       is_processed = false;
       concat = nullptr;
+      is_lit = l;
     }
 
     ~CharacterString() {      
@@ -3381,8 +3384,9 @@ namespace frontend {
       return tmp;
     }
 
-    CharacterString* MakeCharacterString(const std::wstring &file_name, const int line_num, const int line_pos, const std::wstring &char_string) {
-      CharacterString* tmp = new CharacterString(file_name, line_num, line_pos, char_string);
+    CharacterString* MakeCharacterString(const std::wstring &file_name, const int line_num, const int line_pos, 
+                                         const std::wstring &char_string, const bool is_lit) {
+      CharacterString* tmp = new CharacterString(file_name, line_num, line_pos, char_string, is_lit);
       expressions.push_back(tmp);
       return tmp;
     }
