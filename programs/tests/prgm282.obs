@@ -8,7 +8,7 @@ class Test {
 
         dj_name := "Scratch";
         name := "DJ {$dj_name}";
-        name += $" and, 'Double L' must rock the \b\b's";
+        name += $" and, 'Double L' must rock (without) the \a\a's";
         name->PrintLine();
         name->SubString(2)->PrintLine();
         name->Size()->PrintLine();
