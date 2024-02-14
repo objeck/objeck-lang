@@ -3681,7 +3681,7 @@ set->Has("Oakland")->PrintLine();
 		@param key key
 		~#
 		method : public : Insert(key : K) ~ Nil {
-			@map->Insert(key, Base->New());
+			@map->Insert(key, key);
 		}
 
 		#~
