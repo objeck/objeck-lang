@@ -8,7 +8,7 @@ class Test {
 
         dj_name := "Scratch";
         name := "DJ {$dj_name}";
-        name += $"bell \n \n bell";
+        name += $" and, 'Double L' must rock the \b\b's";
         name->PrintLine();
         name->SubString(2)->PrintLine();
         name->Size()->PrintLine();
