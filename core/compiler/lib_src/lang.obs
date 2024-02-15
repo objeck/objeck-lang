@@ -2658,9 +2658,15 @@ bundle System {
 	}
 
 	#~
+	Interface for primitive types
+	~#
+	interface Primitive {
+	}
+
+	#~
 	Holds a boolean value
 	~#
-	class BoolRef implements System.Compare, System.Clone, System.Stringify {
+	class BoolRef implements System.Compare, System.Clone, System.Stringify, Primitive {
 		@value : Bool;
 
 		#~
@@ -2779,7 +2785,7 @@ bundle System {
 	#~
 	Holds an byte value
 	~#
-	class ByteRef implements System.Compare, System.Clone, System.Stringify {
+	class ByteRef implements System.Compare, System.Clone, System.Stringify, Primitive {
 		@value : Byte;
 
 		#~
@@ -2901,7 +2907,7 @@ bundle System {
 	#~
 	Holds an character value
 	~#
-	class CharRef implements System.Compare, System.Clone, System.Stringify {
+	class CharRef implements System.Compare, System.Clone, System.Stringify, Primitive {
 		@value : Char;
 
 		#~
@@ -3023,7 +3029,7 @@ bundle System {
 	#~
 	Holds an integer value
 	~#
-	class IntRef implements System.Compare, System.Clone, System.Stringify {
+	class IntRef implements System.Compare, System.Clone, System.Stringify, Primitive {
 		@value : Int;
 
 		#~
@@ -3191,7 +3197,7 @@ bundle System {
 	#~
 	Holds a float
 	~#
-	class FloatRef implements System.Compare, System.Clone, System.Stringify {
+	class FloatRef implements System.Compare, System.Clone, System.Stringify, Primitive {
 		@value : Float;
 
 		#~
@@ -3345,7 +3351,7 @@ bundle System {
 	#~
 	Holds a byte array
 	~#
-	class ByteArrayRef {
+	class ByteArrayRef implements Primitive {
 		@values : Byte[];
 
 		#~
@@ -3384,7 +3390,7 @@ bundle System {
 	#~
 	Holds a character array
 	~#
-	class CharArrayRef {
+	class CharArrayRef implements Primitive {
 		@values : Char[];
 
 		#~
@@ -3423,7 +3429,7 @@ bundle System {
 	#~
 	Holds an integer array
 	~#
-	class IntArrayRef {
+	class IntArrayRef implements Primitive {
 		@values : Int[];
 
 		#~
@@ -3462,7 +3468,7 @@ bundle System {
 	#~
 	Holds an boolean array
 	~#
-	class BoolArrayRef {
+	class BoolArrayRef implements Primitive {
 		@values : Bool[];
 
 		#~
@@ -3501,7 +3507,7 @@ bundle System {
 	#~
 	Holds a float array
 	~#
-	class FloatArrayRef {
+	class FloatArrayRef implements Primitive {
 		@values : Float[];
 
 		#~
@@ -3540,7 +3546,7 @@ bundle System {
 	#~
 	Holds an base array
 	~#
-	class BaseArrayRef {
+	class BaseArrayRef implements Primitive {
 		@values : Base[];
 
 		#~
@@ -3579,7 +3585,7 @@ bundle System {
 	#~
 	Holds an array of 'Compare' values
 	~#
-	class CompareArrayRef {
+	class CompareArrayRef implements Primitive {
 		@values : Compare[];
 
 		#~
@@ -3618,7 +3624,7 @@ bundle System {
 	#~
 	Holds an array of strings
 	~#
-	class StringArrayRef {
+	class StringArrayRef implements Primitive {
 		@values : String[];
 
 		#~
