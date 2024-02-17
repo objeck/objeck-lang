@@ -4,8 +4,7 @@ class Test {
     function : Main(args : String[]) ~ Nil {
         value := IntRef->New(13);
         value->TypeOf(Primitive)->PrintLine();
-
-        u8str := "My native string"->ToByteArray();
-        u8str->PrintLine();
+        
+        u8str := "My native string"->ToByteArray()->PrintLine();
     }
 }
