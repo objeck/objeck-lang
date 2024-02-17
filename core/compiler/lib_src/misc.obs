@@ -212,34 +212,34 @@ bundle System.Utility {
 	class Parser {
 		#~
 		Simple tokenizer 
-		@param input source input
+		@param stream_in source input
 		@return vector of string tokens
 		~#
-		function : Tokenize(input : String) ~ Vector<String> {
+		function : Tokenize(stream_in : String) ~ Vector<String> {
 			tokens := Vector->New()<String>;
 
-			each(i : input) {
+			each(i : stream_in) {
 				# identifier
-				if(input->Get(i)->IsChar()) {
+				if(stream_in->Get(i)->IsChar()) {
 					start := i;
-					while(input->Get(i)->IsChar() | input->Get(i)->IsDigit() | input->Get(i) = '_') {
+					while(stream_in->Get(i)->IsChar() | stream_in->Get(i)->IsDigit() | stream_in->Get(i) = '_') {
 						i += 1;
 					};
-					tokens->AddBack(input->SubString(start, i - start));
+					tokens->AddBack(stream_in->SubString(start, i - start));
 					i -= 1;
 				}
 				# number
-				else if(input->Get(i)->IsDigit()) {
+				else if(stream_in->Get(i)->IsDigit()) {
 					start := i;
-					while(input->Get(i)->IsDigit() | input->Get(i) = '.') {
+					while(stream_in->Get(i)->IsDigit() | stream_in->Get(i) = '.') {
 						i += 1;
 					};
-					tokens->AddBack(input->SubString(start, i - start));
+					tokens->AddBack(stream_in->SubString(start, i - start));
 					i -= 1;
 				}
 				# other
 				else {
-					value := input->Get(i);
+					value := stream_in->Get(i);
 					if(value <> ' ' & value <> '\t' & value <> '\r' & value <> '\n') {
 						tokens->AddBack(value->ToString());
 					};
@@ -1667,8 +1667,8 @@ bundle System.Utility {
 		@keywords : Hash<String, Token>;
 		@tokens : Vector<Token>;
 
-		New(input : String) {
-			@buffer := input->ToCharArray();
+		New(stream_in : String) {
+			@buffer := stream_in->ToCharArray();
 			@line_num := @line_pos := 1;
 			@tokens := Vector->New()<Token>;
 
