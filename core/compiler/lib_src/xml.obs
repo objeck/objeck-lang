@@ -116,35 +116,35 @@ bundle Data.XML {
 	Parses an XML document
 
 	```
-in := "";
-in += "<inventory title=\"OmniCorp Store #45x10^3\">";
-in += "<section name=\"health\">";
-in += "<item upc=\"123456789\" stock=\"12\">";
-in += "<name>Invisibility Cream</name>";
-in += "<price>14.50</price>";
-in += "<description>Makes you invisible</description>";
-in += "</item>";
-in += "<item upc=\"445322344\" stock=\"18\">";
-in += "<name>Levitation Salve</name>";
-in += "<price>23.99</price>";
-in += "<description>Levitate yourself for up to 3 hours per application</description>";
-in += "</item>";
-in += "</section>";
-in += "<section name=\"food\">";
-in += "<item upc=\"485672034\" stock=\"653\">";
-in += "<name>Blork and Freen Instameal</name>";
-in += "<price>4.95</price>";
-in += "<description>A tasty meal in a tablet; just add water</description>";
-in += "</item>";
-in += "<item upc=\"132957764\" stock=\"44\">";
-in += "<name>Grob winglets</name>";
-in += "<price>3.56</price>";
-in += "<description>Tender winglets of Grob. Just add water</description>";
-in += "</item>";
-in += "</section>";
-in += "</inventory>";
+input := "";
+input += "<inventory title=\"OmniCorp Store #45x10^3\">";
+input += "<section name=\"health\">";
+input += "<item upc=\"123456789\" stock=\"12\">";
+input += "<name>Invisibility Cream</name>";
+input += "<price>14.50</price>";
+input += "<description>Makes you invisible</description>";
+input += "</item>";
+input += "<item upc=\"445322344\" stock=\"18\">";
+input += "<name>Levitation Salve</name>";
+input += "<price>23.99</price>";
+input += "<description>Levitate yourself for up to 3 hours per application</description>";
+input += "</item>";
+input += "</section>";
+input += "<section name=\"food\">";
+input += "<item upc=\"485672034\" stock=\"653\">";
+input += "<name>Blork and Freen Instameal</name>";
+input += "<price>4.95</price>";
+input += "<description>A tasty meal input a tablet; just add water</description>";
+input += "</item>";
+input += "<item upc=\"132957764\" stock=\"44\">";
+input += "<name>Grob winglets</name>";
+input += "<price>3.56</price>";
+input += "<description>Tender winglets of Grob. Just add water</description>";
+input += "</item>";
+input += "</section>";
+input += "</inventory>";
 
-parser := XmlParser->New(in);
+parser := XmlParser->New(input);
 if(parser->Parse()) {
    # get first item
    results := parser->FindElements("/inventory/section[1]/item[1]")<XmlElement>;
@@ -1213,25 +1213,25 @@ if(parser->Parse()) {
 		@return string representation of the element
 		~#
 		method : public : ToString() ~ String {
-			in := String->New();
-			ToString(in);
-			return in;
+			input := String->New();
+			ToString(input);
+			return input;
 		}
 		
 		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		# serializes an element 
 		# into a string
 		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~# 
-		method : ToString(in : String) ~ Nil {
+		method : ToString(input : String) ~ Nil {
 			# element
 			if(@name <> Nil & @type = XmlElement->Type->ELEMENT) {
-				in->Append('<');
+				input->Append('<');
 				# name and namespace
 				if(@namespace <> Nil & @namespace->Size() > 0) {
-					in->Append(@namespace);
-					in->Append(':');
+					input->Append(@namespace);
+					input->Append(':');
 				};				
-				in->Append(@name);
+				input->Append(@name);
 				
 				# attribs
 				if(@attribs <> Nil) {
@@ -1239,45 +1239,45 @@ if(parser->Parse()) {
 					each(i : keys) {
 						key : String := keys->Get(i)->As(String);
 						attrib := @attribs->Find(key);
-						in->Append(' ');
+						input->Append(' ');
 						namespace := attrib->GetNamespace();
 						if(namespace <> Nil & namespace->Size() > 0) {
-							in->Append(namespace);
-							in->Append(':');
+							input->Append(namespace);
+							input->Append(':');
 						};
-						in->Append(key);
-						in->Append('=');
-						in->Append('"');
-						in->Append(attrib->GetValue());
-						in->Append('"');
+						input->Append(key);
+						input->Append('=');
+						input->Append('"');
+						input->Append(attrib->GetValue());
+						input->Append('"');
 					};
 				};
-				in->Append('>');
+				input->Append('>');
 				
 				# process content
 				if(@content <> Nil) {
-					in->Append(@content);
+					input->Append(@content);
 				};
 					
 				# process children
 				if(@children <> Nil) {
 					each(i : @children) {
 						child : XmlElement := @children->Get(i);
-						child->ToString(in);
+						child->ToString(input);
 					};
 				};
-				in->Append('<');
-				in->Append('/');
-				in->Append(@name);
-				in->Append('>');
+				input->Append('<');
+				input->Append('/');
+				input->Append(@name);
+				input->Append('>');
 			}
 			# cdata
 			else if(@type = XmlElement->Type->CDATA) {
-				in->Append("<![CDATA[");
+				input->Append("<![CDATA[");
 				if(@content <> Nil) {
-					in->Append(@content);
+					input->Append(@content);
 				};
-				in->Append("]]>");
+				input->Append("]]>");
 			};
 		}
 		
@@ -1529,14 +1529,14 @@ if(parser->Parse()) {
 		
 		#~
 		Encodes an XML string
-		@param in string to encode
+		@param input string to encode
 		@return encoded string
 		~#
-		function : EncodeString(in : String) ~ String {
+		function : EncodeString(input : String) ~ String {
 			out := String->New();
 			
-			each(i : in) {
-				c := in->Get(i);
+			each(i : input) {
+				c := input->Get(i);
 				select(c) {
 					label ' ': {
 						out->Append("&#x20;");
@@ -1581,176 +1581,176 @@ if(parser->Parse()) {
 		
 		#~
 		Decodes an XML string
-		@param in string to decode
+		@param input string to decode
 		@return decoded string
 		~#
-		function : DecodeString(in : String) ~ String {
-			max := in->Size();
+		function : DecodeString(input : String) ~ String {
+			max := input->Size();
 			i := 0;
 			
 			out := String->New();
 			while(i < max) {
-				c := in->Get(i);
+				c := input->Get(i);
 				# &lt;
 				if(c = '&') {
 					start := i;
 					i += 1;
-					if(i < max & in->Get(i) = 'l') {
+					if(i < max & input->Get(i) = 'l') {
 						i += 1;
-						if(i < max & in->Get(i) = 't') {
+						if(i < max & input->Get(i) = 't') {
 							i += 1;
-							if(i < max & in->Get(i) = ';') {
+							if(i < max & input->Get(i) = ';') {
 								i += 1;
 								out->Append('<');
 							}
 							else {
 								for(j := start; j < i; j += 1;) {
-									out->Append(in->Get(j));
+									out->Append(input->Get(j));
 								};
 								out->Append(c);
 							};
 						}
 						else {
 							for(j := start; j < i; j += 1;) {
-								out->Append(in->Get(j));
+								out->Append(input->Get(j));
 							};
 							out->Append(c);
 						};
 					}
 					# &gt;
-					else if(i < max & in->Get(i) = 'g') {
+					else if(i < max & input->Get(i) = 'g') {
 						i += 1;
-						if(i < max & in->Get(i) = 't') {
+						if(i < max & input->Get(i) = 't') {
 							i += 1;
-							if(i < max & in->Get(i) = ';') {
+							if(i < max & input->Get(i) = ';') {
 								i += 1;
 								out->Append('>');
 							}
 							else {
 								for(j := start; j < i; j += 1;) {
-									out->Append(in->Get(j));
+									out->Append(input->Get(j));
 								};
 								out->Append(c);
 							};
 						}
 						else {
 							for(j := start; j < i; j += 1;) {
-								out->Append(in->Get(j));
+								out->Append(input->Get(j));
 							};
 							out->Append(c);
 						};
 					}
 					# &amp;
-					else if(i < max & in->Get(i) = 'a') {
+					else if(i < max & input->Get(i) = 'a') {
 						i += 1;
-						if(i < max & in->Get(i) = 'm') {
+						if(i < max & input->Get(i) = 'm') {
 							i += 1;
-							if(i < max & in->Get(i) = 'p') {
+							if(i < max & input->Get(i) = 'p') {
 								i += 1;
-								if(i < max & in->Get(i) = ';') {
+								if(i < max & input->Get(i) = ';') {
 									i += 1;
 									out->Append('&');
 								}
 								else {
 									for(j := start; j < i; j += 1;) {
-										out->Append(in->Get(j));
+										out->Append(input->Get(j));
 									};
 									out->Append(c);
 								};
 							}
 							else {
 								for(j := start; j < i; j += 1;) {
-									out->Append(in->Get(j));
+									out->Append(input->Get(j));
 								};
 								out->Append(c);
 							};
 						}
-						else if(i < max & in->Get(i) = 'p') {
+						else if(i < max & input->Get(i) = 'p') {
 							i += 1;
-							if(i < max & in->Get(i) = 'o') {
+							if(i < max & input->Get(i) = 'o') {
 								i += 1;
-								if(i < max & in->Get(i) = 's') {
+								if(i < max & input->Get(i) = 's') {
 									i += 1;
-									if(i < max & in->Get(i) = ';') {
+									if(i < max & input->Get(i) = ';') {
 										out->Append('\'');
 									}
 									else {
 										for(j := start; j < i; j += 1;) {
-											out->Append(in->Get(j));
+											out->Append(input->Get(j));
 										};
 										out->Append(c);
 									};
 								}
 								else {
 									for(j := start; j < i; j += 1;) {
-										out->Append(in->Get(j));
+										out->Append(input->Get(j));
 									};
 									out->Append(c);
 								};
 							}
 							else {
 								for(j := start; j < i; j += 1;) {
-									out->Append(in->Get(j));
+									out->Append(input->Get(j));
 								};
 								out->Append(c);
 							};
 						};
 					}
 					# &quot;
-					else if(i < max & in->Get(i) = 'q') {
+					else if(i < max & input->Get(i) = 'q') {
 						i += 1;
-						if(i < max & in->Get(i) = 'u') {
+						if(i < max & input->Get(i) = 'u') {
 							i += 1;
-							if(i < max & in->Get(i) = 'o') {
+							if(i < max & input->Get(i) = 'o') {
 								i += 1;
-								if(i < max & in->Get(i) = 't') {
+								if(i < max & input->Get(i) = 't') {
 									i += 1;
-									if(i < max & in->Get(i) = ';') {
+									if(i < max & input->Get(i) = ';') {
 										i += 1;
 										out->Append('"');
 									}
 									else {
 										for(j := start; j < i; j += 1;) {
-											out->Append(in->Get(j));
+											out->Append(input->Get(j));
 										};
 										out->Append(c);
 									};
 								}
 								else {
 									for(j := start; j < i; j += 1;) {
-										out->Append(in->Get(j));
+										out->Append(input->Get(j));
 									};
 									out->Append(c);
 								};
 							}
 							else {
 								for(j := start; j < i; j += 1;) {
-									out->Append(in->Get(j));
+									out->Append(input->Get(j));
 								};
 								out->Append(c);
 							};
 						}
 						else {
 							for(j := start; j < i; j += 1;) {
-								out->Append(in->Get(j));
+								out->Append(input->Get(j));
 							};
 							out->Append(c);
 						};
 					}
 					# other
-					else if(i < max & in->Get(i) = '#') {
+					else if(i < max & input->Get(i) = '#') {
 						i += 1;
-						if(i < max & in->Get(i) = 'x') {
+						if(i < max & input->Get(i) = 'x') {
 							i += 1;
 							str_num := "0x";
-							while(i < max & (in->Get(i)->IsDigit() | 
-								(in->Get(i) >= 'a' & in->Get(i) <= 'f') |
-								(in->Get(i) >= 'A' & in->Get(i) <= 'F'))) {
-								str_num->Append(in->Get(i));
+							while(i < max & (input->Get(i)->IsDigit() | 
+								(input->Get(i) >= 'a' & input->Get(i) <= 'f') |
+								(input->Get(i) >= 'A' & input->Get(i) <= 'F'))) {
+								str_num->Append(input->Get(i));
 								i += 1;
 							};
 							
-							if(i < max & in->Get(i) = ';') {
+							if(i < max & input->Get(i) = ';') {
 								out->Append(str_num->ToInt()->As(Char));
 								i += 1;
 							}
@@ -1758,14 +1758,14 @@ if(parser->Parse()) {
 								out->Append(str_num);
 							};
 						}
-						else if(i < max & in->Get(i)->IsDigit()) {
+						else if(i < max & input->Get(i)->IsDigit()) {
 							str_num := "";
-							while(i < max & (in->Get(i)->IsDigit())) {
-								str_num->Append(in->Get(i));
+							while(i < max & (input->Get(i)->IsDigit())) {
+								str_num->Append(input->Get(i));
 								i += 1;
 							};
 
-							if(i < max & in->Get(i) = ';') {
+							if(i < max & input->Get(i) = ';') {
 								out->Append(str_num->ToInt()->As(Char));
 								i += 1;
 							}
@@ -1775,14 +1775,14 @@ if(parser->Parse()) {
 						}
 						else {
 							for(j := start; j < i; j += 1;) {
-								out->Append(in->Get(j));
+								out->Append(input->Get(j));
 							};
 							out->Append(c);
 						};
 					}
 					else {
 						for(j := start; j < i; j += 1;) {
-							out->Append(in->Get(j));
+							out->Append(input->Get(j));
 						};
 						out->Append(c);
 					};

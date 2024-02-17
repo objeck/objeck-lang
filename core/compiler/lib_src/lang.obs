@@ -211,7 +211,7 @@ bundle System {
 		@ignore-params
 		@return compressed bytes
 		~#
-		function : CompressZlib(in : Byte[]) ~ Byte[] {
+		function : CompressZlib(input : Byte[]) ~ Byte[] {
 			COMPRESS_ZLIB_BYTES;
 		}
 
@@ -220,7 +220,7 @@ bundle System {
 		@ignore-params
 		@return uncompressed bytes
 		~#
-		function : UncompressZlib(in : Byte[]) ~ Byte[] {
+		function : UncompressZlib(input : Byte[]) ~ Byte[] {
 			UNCOMPRESS_ZLIB_BYTES;
 		}
 
@@ -229,7 +229,7 @@ bundle System {
 		@ignore-params
 		@return compressed bytes
 		~#
-		function : CompressGzip(in : Byte[]) ~ Byte[] {
+		function : CompressGzip(input : Byte[]) ~ Byte[] {
 			COMPRESS_GZIP_BYTES;
 		}
 
@@ -238,7 +238,7 @@ bundle System {
 		@ignore-params
 		@return uncompressed bytes
 		~#
-		function : UncompressGzip(in : Byte[]) ~ Byte[] {
+		function : UncompressGzip(input : Byte[]) ~ Byte[] {
 			UNCOMPRESS_GZIP_BYTES;
 		}
 
@@ -247,7 +247,7 @@ bundle System {
 		@ignore-params
 		@return compressed bytes
 		~#
-		function : CompressBr(in : Byte[]) ~ Byte[] {
+		function : CompressBr(input : Byte[]) ~ Byte[] {
 			COMPRESS_BR_BYTES;
 		}
 
@@ -256,7 +256,7 @@ bundle System {
 		@ignore-params
 		@return uncompressed bytes
 		~#
-		function : UncompressBr(in : Byte[]) ~ Byte[] {
+		function : UncompressBr(input : Byte[]) ~ Byte[] {
 			UNCOMPRESS_BR_BYTES;
 		}
 
@@ -265,7 +265,7 @@ bundle System {
 		@ignore-params
 		@return signed CRC32
 		~#
-		function : CRC32(in : Byte[]) ~ Int {
+		function : CRC32(input : Byte[]) ~ Int {
 			CRC32_BYTES;
 		}
 		
@@ -2688,14 +2688,14 @@ bundle System {
 
 		#~
 		Creates an array of references from primitives
-		@param in array of primitives
+		@param input array of primitives
 		@return an array of references
 		~#
-		function : FromArray(in : Bool[]) ~ BoolRef[] {
-			out := BoolRef->New[in->Size()];
+		function : FromArray(input : Bool[]) ~ BoolRef[] {
+			out := BoolRef->New[input->Size()];
 
-			each(i : in) {
-				out[i] := BoolRef->New(in[i]);
+			each(i : input) {
+				out[i] := BoolRef->New(input[i]);
 			};
 			
 			return out;
@@ -2703,14 +2703,14 @@ bundle System {
 
 		#~
 		Creates an array of primitives from references
-		@param in array of references
+		@param input array of references
 		@return an array of primitives
 		~#
-		function : ToArray(in : BoolRef[]) ~ Bool[] {
-			out := Bool->New[in->Size()];
+		function : ToArray(input : BoolRef[]) ~ Bool[] {
+			out := Bool->New[input->Size()];
 
-			each(i : in) {
-				out[i] := in[i]->Get();
+			each(i : input) {
+				out[i] := input[i]->Get();
 			};
 			
 			return out;
@@ -2807,14 +2807,14 @@ bundle System {
 
 		#~
 		Creates an array of references from primitives
-		@param in array of primitives
+		@param input array of primitives
 		@return an array of references
 		~#
-		function : FromArray(in : Byte[]) ~ ByteRef[] {
-			out := ByteRef->New[in->Size()];
+		function : FromArray(input : Byte[]) ~ ByteRef[] {
+			out := ByteRef->New[input->Size()];
 
-			each(i : in) {
-				out[i] := ByteRef->New(in[i]);
+			each(i : input) {
+				out[i] := ByteRef->New(input[i]);
 			};
 			
 			return out;
@@ -2822,14 +2822,14 @@ bundle System {
 
 		#~
 		Creates an array of primitives from references
-		@param in array of references
+		@param input array of references
 		@return an array of primitives
 		~#
-		function : ToArray(in : ByteRef[]) ~ Byte[] {
-			out := Byte->New[in->Size()];
+		function : ToArray(input : ByteRef[]) ~ Byte[] {
+			out := Byte->New[input->Size()];
 
-			each(i : in) {
-				out[i] := in[i]->Get();
+			each(i : input) {
+				out[i] := input[i]->Get();
 			};
 			
 			return out;
@@ -2929,14 +2929,14 @@ bundle System {
 
 		#~
 		Creates an array of references from primitives
-		@param in array of primitives
+		@param input array of primitives
 		@return an array of references
 		~#
-		function : FromArray(in : Char[]) ~ CharRef[] {
-			out := CharRef->New[in->Size()];
+		function : FromArray(input : Char[]) ~ CharRef[] {
+			out := CharRef->New[input->Size()];
 
-			each(i : in) {
-				out[i] := CharRef->New(in[i]);
+			each(i : input) {
+				out[i] := CharRef->New(input[i]);
 			};
 			
 			return out;
@@ -2944,14 +2944,14 @@ bundle System {
 
 		#~
 		Creates an array of primitives from references
-		@param in array of references
+		@param input array of references
 		@return an array of primitives
 		~#
-		function : ToArray(in : CharRef[]) ~ Char[] {
-			out := Char->New[in->Size()];
+		function : ToArray(input : CharRef[]) ~ Char[] {
+			out := Char->New[input->Size()];
 
-			each(i : in) {
-				out[i] := in[i]->Get();
+			each(i : input) {
+				out[i] := input[i]->Get();
 			};
 			
 			return out;
@@ -3051,14 +3051,14 @@ bundle System {
 
 		#~
 		Creates an array of references from primitives
-		@param in array of primitives
+		@param input array of primitives
 		@return an array of references
 		~#
-		function : FromArray(in : Int[]) ~ IntRef[] {
-			out := IntRef->New[in->Size()];
+		function : FromArray(input : Int[]) ~ IntRef[] {
+			out := IntRef->New[input->Size()];
 
-			each(i : in) {
-				out[i] := IntRef->New(in[i]);
+			each(i : input) {
+				out[i] := IntRef->New(input[i]);
 			};
 			
 			return out;
@@ -3066,14 +3066,14 @@ bundle System {
 
 		#~
 		Creates an array of primitives from references
-		@param in array of references
+		@param input array of references
 		@return an array of primitives
 		~#
-		function : ToArray(in : IntRef[]) ~ Int[] {
-			out := Int->New[in->Size()];
+		function : ToArray(input : IntRef[]) ~ Int[] {
+			out := Int->New[input->Size()];
 
-			each(i : in) {
-				out[i] := in[i]->Get();
+			each(i : input) {
+				out[i] := input[i]->Get();
 			};
 			
 			return out;
@@ -3219,14 +3219,14 @@ bundle System {
 
 		#~
 		Creates an array of references from primitives
-		@param in array of primitives
+		@param input array of primitives
 		@return an array of references
 		~#
-		function : FromArray(in : Float[]) ~ FloatRef[] {
-			out := FloatRef->New[in->Size()];
+		function : FromArray(input : Float[]) ~ FloatRef[] {
+			out := FloatRef->New[input->Size()];
 
-			each(i : in) {
-				out[i] := FloatRef->New(in[i]);
+			each(i : input) {
+				out[i] := FloatRef->New(input[i]);
 			};
 			
 			return out;
@@ -3234,14 +3234,14 @@ bundle System {
 
 		#~
 		Creates an array of primitives from references
-		@param in array of references
+		@param input array of references
 		@return an array of primitives
 		~#
-		function : ToArray(in : FloatRef[]) ~ Float[] {
-			out := Float->New[in->Size()];
+		function : ToArray(input : FloatRef[]) ~ Float[] {
+			out := Float->New[input->Size()];
 
-			each(i : in) {
-				out[i] := in[i]->Get();
+			each(i : input) {
+				out[i] := input[i]->Get();
 			};
 			
 			return out;
@@ -8478,10 +8478,10 @@ bundle System.IO.Filesystem {
 			len := File->Size(name);
 			if(len > 0) {
 				buffer := Char->New[len + 1];
-				in := FileReader->New(name);
-				if(in->IsOpen()) {
-					in->ReadBuffer(0, len, buffer);
-					in->Close();
+				input := FileReader->New(name);
+				if(input->IsOpen()) {
+					input->ReadBuffer(0, len, buffer);
+					input->Close();
 					
 					return String->New(buffer);
 				};
@@ -8498,10 +8498,10 @@ bundle System.IO.Filesystem {
 		function : ReadBinaryFile(name : String) ~ Byte[] {
 			len := File->Size(name);
 			buffer := Byte->New[len];
-			in := FileReader->New(name);
-			if(in->IsOpen()) {
-				in->ReadBuffer(0, len, buffer);
-				in->Close();
+			input := FileReader->New(name);
+			if(input->IsOpen()) {
+				input->ReadBuffer(0, len, buffer);
+				input->Close();
 				
 				return buffer;
 			};
@@ -8725,10 +8725,10 @@ bundle System.IO.Filesystem {
 			len := File->Size(name);
 			if(len > 0) {
 				buffer := Char->New[len + 1];
-				in := FileReader->New(name);
-				if(in->IsOpen()) {
-					in->ReadBuffer(0, len, buffer);
-					in->Close();
+				input := FileReader->New(name);
+				if(input->IsOpen()) {
+					input->ReadBuffer(0, len, buffer);
+					input->Close();
 					
 					return String->New(buffer);
 				};
@@ -8745,10 +8745,10 @@ bundle System.IO.Filesystem {
 		function : ReadBinaryFile(name : String) ~ Byte[] {
 			len := File->Size(name);
 			buffer := Byte->New[len];
-			in := FileReader->New(name);
-			if(in->IsOpen()) {
-				in->ReadBuffer(0, len, buffer);
-				in->Close();
+			input := FileReader->New(name);
+			if(input->IsOpen()) {
+				input->ReadBuffer(0, len, buffer);
+				input->Close();
 				
 				return buffer;
 			};

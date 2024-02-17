@@ -181,12 +181,12 @@ bundle Database.ODBC {
 		~#
 		method : public : SetBit(pos : Int, value : Bool) ~ Bool {
 			if(@native_stmt <> 0 & @native_names <> 0) {
-				in := IntRef->New(value ? 1 : 0);
-				@params->AddBack(in);
+				input := IntRef->New(value ? 1 : 0);
+				@params->AddBack(input);
 				
 				array_args := Base->New[4];
 				array_args[0] := IntRef->New();
-				array_args[1] := in;
+				array_args[1] := input;
 				array_args[2] := IntRef->New(pos);
 				array_args[3] := IntRef->New(@native_stmt);
 				@lib_proxy := Proxy->GetDllProxy();
@@ -228,12 +228,12 @@ bundle Database.ODBC {
 		~#
 		method : public : SetSmallInt(pos : Int, value : Int) ~ Bool {
 			if(@native_stmt <> 0 & @native_names <> 0) {
-				in := IntRef->New(value);
-				@params->AddBack(in);
+				input := IntRef->New(value);
+				@params->AddBack(input);
 				
 				array_args := Base->New[4];
 				array_args[0] := IntRef->New();
-				array_args[1] := in;
+				array_args[1] := input;
 				array_args[2] := IntRef->New(pos);
 				array_args[3] := IntRef->New(@native_stmt);
 				@lib_proxy := Proxy->GetDllProxy();
@@ -276,12 +276,12 @@ bundle Database.ODBC {
 		~#
 		method : public : SetInt(pos : Int, value : Int) ~ Bool {
 			if(@native_stmt <> 0 & @native_names <> 0) {
-				in := IntRef->New(value);
-				@params->AddBack(in);
+				input := IntRef->New(value);
+				@params->AddBack(input);
 				
 				array_args := Base->New[4];
 				array_args[0] := IntRef->New();
-				array_args[1] := in;
+				array_args[1] := input;
 				array_args[2] := IntRef->New(pos);
 				array_args[3] := IntRef->New(@native_stmt);
 				@lib_proxy := Proxy->GetDllProxy();
@@ -323,12 +323,12 @@ bundle Database.ODBC {
 		~#
 		method : public : SetDouble(pos : Int, value : Float) ~ Bool {
 			if(@native_stmt <> 0 & @native_names <> 0) {
-				in := FloatRef->New(value);
-				@params->AddBack(in);
+				input := FloatRef->New(value);
+				@params->AddBack(input);
 				
 				array_args := Base->New[4];
 				array_args[0] := IntRef->New();
-				array_args[1] := in;
+				array_args[1] := input;
 				array_args[2] := IntRef->New(pos);
 				array_args[3] := IntRef->New(@native_stmt);
 				@lib_proxy := Proxy->GetDllProxy();
@@ -370,12 +370,12 @@ bundle Database.ODBC {
 		~#
 		method : public : SetReal(pos : Int, value : Float) ~ Bool {
 			if(@native_stmt <> 0 & @native_names <> 0) {
-				in := FloatRef->New(value);
-				@params->AddBack(in);
+				input := FloatRef->New(value);
+				@params->AddBack(input);
 				
 				array_args := Base->New[4];
 				array_args[0] := IntRef->New();
-				array_args[1] := in;
+				array_args[1] := input;
 				array_args[2] := IntRef->New(pos);
 				array_args[3] := IntRef->New(@native_stmt);
 				@lib_proxy := Proxy->GetDllProxy();
@@ -417,12 +417,12 @@ bundle Database.ODBC {
 		~#
 		method : public : SetVarchar(pos : Int, value : String) ~ Bool {		
 			if(@native_stmt <> 0 & @native_names <> 0) {
-				in := ByteArrayRef->New(value->ToByteArray());
-				@params->AddBack(in);
+				input := ByteArrayRef->New(value->ToByteArray());
+				@params->AddBack(input);
 				
 				array_args := Base->New[4];
 				array_args[0] := IntRef->New();
-				array_args[1] := in;
+				array_args[1] := input;
 				array_args[2] := IntRef->New(pos);
 				array_args[3] := IntRef->New(@native_stmt);
 				@lib_proxy := Proxy->GetDllProxy();
@@ -464,12 +464,12 @@ bundle Database.ODBC {
 		~#
 		method : public : SetBlob(pos : Int, buffer : Byte[]) ~ Bool {		
 			if(@native_stmt <> 0 & @native_names <> 0) {
-				in := ByteArrayRef->New(buffer);
-				@params->AddBack(in);
+				input := ByteArrayRef->New(buffer);
+				@params->AddBack(input);
 				
 				array_args := Base->New[5];
 				array_args[0] := IntRef->New();
-				array_args[1] := in;
+				array_args[1] := input;
 				array_args[2] := IntRef->New(pos);
 				array_args[3] := IntRef->New(@native_stmt);
 				array_args[4] := IntRef->New(@exec_data);
@@ -500,12 +500,12 @@ bundle Database.ODBC {
 					length := buffer->Size();
 				};
 
-				in := ByteArrayRef->New(buffer);
-				@params->AddBack(in);
+				input := ByteArrayRef->New(buffer);
+				@params->AddBack(input);
 				
 				array_args := Base->New[6];
 				array_args[0] := IntRef->New();
-				array_args[1] := in;
+				array_args[1] := input;
 				array_args[2] := IntRef->New(length);
 				array_args[3] := IntRef->New(pos);
 				array_args[4] := IntRef->New(@native_stmt);
