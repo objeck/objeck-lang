@@ -4,35 +4,35 @@ use XML;
 bundle Default {
 	class Test {
 		function : Main(args : String[]) ~ Nil {
-			in := "";
-			in += "<inventory title=\"OmniCorp Store #45x10^3\">";
-			in += "<section name=\"health\">";
-			in += "<item upc=\"123456789\" stock=\"12\">";
-			in += "<name>Invisibility Cream</name>";
-			in += "<price>14.50</price>";
-			in += "<description>Makes you invisible</description>";
-			in += "</item>";
-			in += "<item upc=\"445322344\" stock=\"18\">";
-			in += "<name>Levitation Salve</name>";
-			in += "<price>23.99</price>";
-			in += "<description>Levitate yourself for up to 3 hours per application</description>";
-			in += "</item>";
-			in += "</section>";
-			in += "<section name=\"food\">";
-			in += "<item upc=\"485672034\" stock=\"653\">";
-			in += "<name>Blork and Freen Instameal</name>";
-			in += "<price>4.95</price>";
-			in += "<description>A tasty meal in a tablet; just add water</description>";
-			in += "</item>";
-			in += "<item upc=\"132957764\" stock=\"44\">";
-			in += "<name>Grob winglets</name>";
-			in += "<price>3.56</price>";
-			in += "<description>Tender winglets of Grob. Just add water</description>";
-			in += "</item>";
-			in += "</section>";
-			in += "</inventory>";
+			input := "";
+			input += "<inventory title=\"OmniCorp Store #45x10^3\">";
+			input += "<section name=\"health\">";
+			input += "<item upc=\"123456789\" stock=\"12\">";
+			input += "<name>Invisibility Cream</name>";
+			input += "<price>14.50</price>";
+			input += "<description>Makes you invisible</description>";
+			input += "</item>";
+			input += "<item upc=\"445322344\" stock=\"18\">";
+			input += "<name>Levitation Salve</name>";
+			input += "<price>23.99</price>";
+			input += "<description>Levitate yourself for up to 3 hours per application</description>";
+			input += "</item>";
+			input += "</section>";
+			input += "<section name=\"food\">";
+			input += "<item upc=\"485672034\" stock=\"653\">";
+			input += "<name>Blork and Freen Instameal</name>";
+			input += "<price>4.95</price>";
+			input += "<description>A tasty meal input a tablet; just add water</description>";
+			input += "</item>";
+			input += "<item upc=\"132957764\" stock=\"44\">";
+			input += "<name>Grob winglets</name>";
+			input += "<price>3.56</price>";
+			input += "<description>Tender winglets of Grob. Just add water</description>";
+			input += "</item>";
+			input += "</section>";
+			input += "</inventory>";
 			
-			parser := XmlParser->New(in);
+			parser := XmlParser->New(input);
 			if(parser->Parse()) {
 				# get first item
 				results := parser->FindElements("/inventory/section[1]/item[1]");

@@ -15,10 +15,10 @@ class Chaocipher {
 		System.IO.Console->Print("The recovered plaintext is: ")->PrintLine(plainText2);
 	}
 
-	function : Chao(in : Char[], mode : Mode, show_steps : Bool) ~ Char[] {	
+	function : Chao(input : Char[], mode : Mode, show_steps : Bool) ~ Char[] {	
 		i : Int; j : Int; index : Int;
 		store : Char;
-		len := in->Size();
+		len := input->Size();
 		left := Char->New[26]; 	right := Char->New[26]; temp := Char->New[26];
 		eText := Char->New[len];
 
@@ -30,11 +30,11 @@ class Chaocipher {
 				System.IO.Console->Print(left)->Print(' ')->PrintLine(right);
 			};
 			if (mode = Mode->ENCRYPT) {
-				index := IndexOf(right, in[i]);
+				index := IndexOf(right, input[i]);
 				eText[i] := left[index];
 			}
 			else {
-				index := IndexOf(left, in[i]);
+				index := IndexOf(left, input[i]);
 				eText[i] := right[index];
 			};
 

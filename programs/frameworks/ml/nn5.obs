@@ -175,13 +175,13 @@ class Neuron {
 }
 
 class Util {
-  function : Sigmoid(in : Float) ~ Float {
-  	return 1 / (1 + Float->Exp(-in));
+  function : Sigmoid(input : Float) ~ Float {
+  	return 1 / (1 + Float->Exp(-input));
   }
 
-  function : SigmoidDeriv(in : Float) ~ Float {
-  	sigmoid := Sigmoid(in);
-  	return sigmoid * (1 - in);
+  function : SigmoidDeriv(input : Float) ~ Float {
+  	sigmoid := Sigmoid(input);
+  	return sigmoid * (1 - input);
   }
 
   # Assumes array args are same length

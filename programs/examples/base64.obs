@@ -27,7 +27,7 @@
 		Decode(e)->PrintLine();
 	}
 	
-	function : native : Encode(in : String) ~ String {
+	function : native : Encode(input : String) ~ String {
 		lut :=  [ 
 			'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',  
 			'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P',  
@@ -38,7 +38,7 @@
 			'w', 'x', 'y', 'z', '0', '1', '2', '3',  
 			'4', '5', '6', '7', '8', '9', '+', '/' 
 		];
-		data := in->ToCharArray();
+		data := input->ToCharArray();
 		dSize := data->Size();
   				
 		# Order of ops is critical in this block 
@@ -78,7 +78,7 @@
 		return r;
 	}
 	
-	function : native : Decode(in : String) ~ String {
+	function : native : Decode(input : String) ~ String {
 		lut := [ 
 			   0,    0,    0,    0,    0,    0,    0,    0, 
 			   0,    0,    0,    0,    0,    0,    0,    0, 
@@ -123,7 +123,7 @@
 	
 		a := 0; b := 0; c := 0; d := 0; z := 0;
 		
-		ustr := in->ToCharArray();
+		ustr := input->ToCharArray();
 		strSize := ustr->Size(); 
 
 		# Order of ops is critical in this block 

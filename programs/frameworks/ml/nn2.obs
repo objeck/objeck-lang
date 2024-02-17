@@ -71,10 +71,10 @@ class NeuralNetwork {
 			network->Train(inputs, targets, learning_rate);
 		};
 
-		in := [
+		input := [
 			[1.0]
 			[1.0]];
-		out := network->Query(in);
+		out := network->Query(input);
 
 #		out->ToString()->Print();
 		Matrix2D->Divide(out, 0.5)->ToString()->Print();

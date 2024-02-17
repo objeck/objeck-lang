@@ -37,8 +37,8 @@ class NeuralNetwork {
 		correct_count := 0;
 		each(i : test_runs) {
 			test := Int->Random(9);
-			in := inputs->Get(test)->Get();
-			result := network->Test(in);
+			input := inputs->Get(test)->Get();
+			result := network->Test(input);
 			if(test = result) {
 				correct_count += 1;
 			};

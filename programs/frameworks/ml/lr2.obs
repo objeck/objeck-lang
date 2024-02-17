@@ -93,8 +93,8 @@ x_product->PrintLine();
 		return x_square * xy_product_a - xy_product_b * x_product;
 	}
 
-	function : ProductSum(in : Float[,], col_a : Int, col_b : Int) ~ Float[] {
-		dims := in->Size();
+	function : ProductSum(input : Float[,], col_a : Int, col_b : Int) ~ Float[] {
+		dims := input->Size();
 		rows := dims[0];
 		cols := dims[1];
 
@@ -102,7 +102,7 @@ x_product->PrintLine();
 			out := Float->New[rows];
 
 			each(r : rows) {		
-				out[r] := in[r, col_a] * in[r, col_b]
+				out[r] := input[r, col_a] * input[r, col_b]
 			};
 
 			return out;
@@ -111,8 +111,8 @@ x_product->PrintLine();
 		return Nil;
 	}
 
-	function : VectorPower(in : Float[,], col : Int, pow : Float) ~ Float[] {
-		dims := in->Size();
+	function : VectorPower(input : Float[,], col : Int, pow : Float) ~ Float[] {
+		dims := input->Size();
 		rows := dims[0];
 		cols := dims[1];
 
@@ -120,7 +120,7 @@ x_product->PrintLine();
 			out := Float->New[rows];
 
 			each(r : rows) {		
-				out[r] := Float->Pow(in[r, col], pow);
+				out[r] := Float->Pow(input[r, col], pow);
 			};
 
 			return out;
@@ -129,8 +129,8 @@ x_product->PrintLine();
 		return Nil;
 	}
 
-	function : VectorMeans(in : Float[,]) ~ Float[] {
-		dims := in->Size();
+	function : VectorMeans(input : Float[,]) ~ Float[] {
+		dims := input->Size();
 		rows := dims[0];
 		cols := dims[1];
 
@@ -140,7 +140,7 @@ x_product->PrintLine();
 			sum := 0.;
 
 			each(r : rows) {
-				sum += in[r, c];
+				sum += input[r, c];
 			};
 
 			out[c] := sum / rows;
@@ -149,20 +149,20 @@ x_product->PrintLine();
 		return out;
 	}
 
-	function : VectorSum(in : Float[]) ~ Float {
-		rows := in->Size();
+	function : VectorSum(input : Float[]) ~ Float {
+		rows := input->Size();
 		
 		sum := 0.;
 
 		each(r : rows) {
-			sum += in[r];
+			sum += input[r];
 		};
 
 		return sum;
 	}
 
-	function : VectorSums(in : Float[,]) ~ Float[] {
-		dims := in->Size();
+	function : VectorSums(input : Float[,]) ~ Float[] {
+		dims := input->Size();
 		rows := dims[0];
 		cols := dims[1];
 
@@ -172,7 +172,7 @@ x_product->PrintLine();
 			sum := 0.;
 
 			each(r : rows) {
-				sum += in[r, c];
+				sum += input[r, c];
 			};
 
 			out[c] := sum;

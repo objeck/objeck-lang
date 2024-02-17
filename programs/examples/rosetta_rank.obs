@@ -20,12 +20,12 @@ class RosettaRank {
 	function : GetLanguages() ~ StringSet {
 		langs_xml := "";
 		client := HttpClient->New();
-		in := client->Get("http://rosettacode.org/mw/api.php?action=query&list=categorymembers&cmtitle=Category:Programming_Languages&cmlimit=5000&format=xml");
-		if(in = Nil) {
+		input := client->Get("http://rosettacode.org/mw/api.php?action=query&list=categorymembers&cmtitle=Category:Programming_Languages&cmlimit=5000&format=xml");
+		if(input = Nil) {
 			return Nil;
 		};
-		each(i : in) {
-			langs_xml += in->Get(i)->As(String);
+		each(i : input) {
+			langs_xml += input->Get(i)->As(String);
 		};
 		
 		langs := StringSet->New();

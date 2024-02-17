@@ -7,16 +7,16 @@ class Test {
 		len->PrintLine();
 		buffer : Byte[] := Byte->New[len];
 
-		in := FileReader->New("in.txt");
-		if(in->IsOpen()) {
-			in->ReadBuffer(0, len, buffer);
+		input := FileReader->New("input.txt");
+		if(input->IsOpen()) {
+			input->ReadBuffer(0, len, buffer);
 			out := FileWriter->New("output.txt");
 			if(out->IsOpen()) {
 				out->WriteBuffer(0, len, buffer);
 				out->Close();
 				"done!"->PrintLine();
 			};
-			in->Close();
+			input->Close();
 		};
 	}
 }
