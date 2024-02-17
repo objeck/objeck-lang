@@ -37,9 +37,9 @@
 
 // common execution point for all platforms
 #ifdef _WIN32
-int Execute(const int argc, const char* argv[], bool is_stdio_binary, size_t gc_threshold)
+int Execute(int argc, const char* argv[], bool is_stdio_binary, size_t gc_threshold)
 #else
-int Execute(const int argc, const char* argv[], size_t gc_threshold)
+int Execute(int argc, const char* argv[], size_t gc_threshold)
 #endif
 {
   if(argc > 1) {
@@ -116,8 +116,10 @@ int Execute(const int argc, const char* argv[], size_t gc_threshold)
   }
 }
 
-wchar_t** ProcessCommandLine(const int argc, const char* argv[])
+wchar_t** ProcessCommandLine(int &argc, const char* argv[])
 {
+  bool is_response_file = 0;
+
   wchar_t** wide_args = new wchar_t* [argc];
   for(int i = 0; i < argc; ++i) {
     const char* arg = argv[i];
@@ -127,7 +129,52 @@ wchar_t** ProcessCommandLine(const int argc, const char* argv[])
       wide_arg[j] = arg[j];
     }
     wide_arg[len] = L'\0';
+
+    if(argc == 3 && wcslen(wide_arg) > 0 && wide_arg[0] == L'@') {
+      is_response_file = true;
+    }
     wide_args[i] = wide_arg;
+  }
+
+  if(is_response_file) {
+    // skip '@'
+    std::wifstream file_in(wide_args[2] + 1);
+    if(file_in.is_open()) {
+      constexpr int ARG_OFFSET = 2;
+
+      // copy vm and file parameters
+      wchar_t* vm_name = wide_args[0];
+      wchar_t* file_name = wide_args[1];
+
+      delete[] wide_args;
+      wide_args = nullptr;
+
+      // copy file parameters
+      std::wstring line;
+      std::vector<std::wstring> file_line_params;
+      while(std::getline(file_in, line)) {
+        file_line_params.push_back(line);
+      }
+      file_in.close();
+      
+      // rebuilt command line with file parameters
+      wide_args = new wchar_t*[file_line_params.size() + ARG_OFFSET];
+      wide_args[0] = vm_name;
+      wide_args[1] = file_name;
+
+      const size_t response_file_size = file_line_params.size();
+      for(size_t i = 0; i < response_file_size; ++i) {
+        const std::wstring file_line_arg = file_line_params[i];
+        wchar_t* wide_arg = new wchar_t[file_line_arg.size() + 1];
+#ifdef _WIN32
+        wcsncpy_s(wide_arg, file_line_arg.size() + 1, file_line_arg.c_str(), file_line_arg.size());
+#else
+        wcsncpy(wide_arg, line_arg.c_str(), line_arg.size());
+#endif
+        wide_args[i + ARG_OFFSET] = wide_arg;
+      }
+      argc = (int)response_file_size + ARG_OFFSET;
+    }
   }
 
   return wide_args;
