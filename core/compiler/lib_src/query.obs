@@ -834,7 +834,7 @@ bundle Query.Structured {
 			return BuildTable("<rs>", column_names, results, Nil);
 		}
 		
-		method : Unique(col : String, in : Vector<Row>) ~ Vector<Row> {
+		method : Unique(col : String, input : Vector<Row>) ~ Vector<Row> {
 			out := Vector->New()<Row>;
 			
 			index := @table->GetIndex(col);
@@ -842,8 +842,8 @@ bundle Query.Structured {
 				return out;
 			};
 			
-			each(i : in) {
-				in_row := in->Get(i);
+			each(i : input) {
+				in_row := input->Get(i);
 				left := in_row->Get(index);
 				
 				found := false;
