@@ -129,13 +129,13 @@ bundle Encryption {
 
 		#~
 		Encode input using Base64
-		@param in bytes to encoded
+		@param input bytes to encoded
 		@return encoded bytes
 		~#
-		function : native : Base64(in : String) ~ String {
+		function : native : Base64(input : String) ~ String {
 			array_args := Base->New[2];
 			array_args[0] := Nil;
-			array_args[1] := in;
+			array_args[1] := input;
 
 			Proxy->GetDllProxy()->CallFunction("openssl_encrypt_base64", array_args);
 
@@ -170,13 +170,13 @@ bundle Encryption {
 
 		#~
 		Decrypts input using Base64
-		@param in input bytes to decrypted
+		@param input input bytes to decrypted
 		@return decrypted bytes
 		~#
-		function : native : Base64(in : String) ~ String {
+		function : native : Base64(input : String) ~ String {
 			array_args := Base->New[2];
 			array_args[0] := Nil;
-			array_args[1] := in;
+			array_args[1] := input;
 
 			Proxy->GetDllProxy()->CallFunction("openssl_decrypt_base64", array_args);
 

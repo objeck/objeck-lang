@@ -1551,19 +1551,19 @@ matched_perc := (matched / possible * 100.0)->As(Int);
 		#~
 		Calculates a list of decision splits
 		@param split_perc percentage of data to use for training
-		@param in training matrix
+		@param input training matrix
 		~#
-		method : public : native : Train(split_perc : Float, in : BoolMatrixRef) ~ Nil {
-			Train(split_perc, in->Get());
+		method : public : native : Train(split_perc : Float, input : BoolMatrixRef) ~ Nil {
+			Train(split_perc, input->Get());
 		}
 
 		#~
 		Calculates a list of decision splits
 		@param split_perc percentage of data to use for training
-		@param in training matrix
+		@param input training matrix
 		~#
-		method : public : native : Train(split_perc : Float, in : Bool[,]) ~ Nil {
-			data := BoolMatrixRef->New(in);
+		method : public : native : Train(split_perc : Float, input : Bool[,]) ~ Nil {
+			data := BoolMatrixRef->New(input);
 			best_match := 0.0;
 
 			each(i : @num_trees) {				
@@ -1588,21 +1588,21 @@ matched_perc := (matched / possible * 100.0)->As(Int);
 
 		#~
 		Splits a matrix based on a list of decisions
-		@param in matrix to be split
+		@param input matrix to be split
 		@return split matrix
 		~#
-		method : public : native : Query(in : BoolMatrixRef) ~ Bool[,] {
-			return Query(in->Get());
+		method : public : native : Query(input : BoolMatrixRef) ~ Bool[,] {
+			return Query(input->Get());
 		}
 
 		#~
 		Splits a matrix based on a list of decisions
-		@param in matrix to be split
+		@param input matrix to be split
 		@return split matrix
 		~#
-		method : public : native : Query(in : Bool[,]) ~ Bool[,] {
+		method : public : native : Query(input : Bool[,]) ~ Bool[,] {
 			if(@decisions <> Nil) {
-				return DecisionTree->Query(@decisions, in);
+				return DecisionTree->Query(@decisions, input);
 			};
 
 			return Nil;
@@ -1697,29 +1697,29 @@ acheived := DecisionTree->Matches(2, result)->As(Float);
 		#~
 		Splits a matrix based on a list of decisions
 		@param decisions list of decisions
-		@param in matrix to be split
+		@param input matrix to be split
 		@return split matrix
 		~#
-		function : native : Query(decisions : Vector<Split>, in : Bool[,]) ~ Bool[,] {
+		function : native : Query(decisions : Vector<Split>, input : Bool[,]) ~ Bool[,] {
 			each(decision := decisions) {
-				out := Split(decision->GetIndex(), in);
+				out := Split(decision->GetIndex(), input);
 				if(out = Nil) {
-					return in;
+					return input;
 				};
-				in := out;
+				input := out;
 			}
 
-			return in;
+			return input;
 		}
 
 		#~
 		Calculates a list of decision splits
-		@param in training matrix
+		@param input training matrix
 		@return list of decision tree splits
 		~#
-		function : native : Train(in : Bool[,]) ~ Vector<Split> {					
+		function : native : Train(input : Bool[,]) ~ Vector<Split> {					
 			decisions := Vector->New()<Split>;
-			dims := in->Size();
+			dims := input->Size();
 			
 			cols := dims[1] - 1;
 			if(cols > 0) {
@@ -1729,7 +1729,7 @@ acheived := DecisionTree->Matches(2, result)->As(Float);
 					best_index := -1;
 
 					each(i : cols) {
-						wgi := WeightedGini(i, cols, in);
+						wgi := WeightedGini(i, cols, input);
 						if(wgi <> 0.0 & wgi < best_wgi) {
 							best_wgi := wgi;
 							best_index := i;
@@ -1737,7 +1737,7 @@ acheived := DecisionTree->Matches(2, result)->As(Float);
 					}
 
 					if(best_index > - 1) {
-						in := Split(best_index, in);
+						input := Split(best_index, input);
 						decisions->AddBack(Split->New(best_index, best_wgi));
 
 					}
@@ -1753,13 +1753,13 @@ acheived := DecisionTree->Matches(2, result)->As(Float);
 		#~
 		Splits a matrix along the given column
 		@param index index used to split
-		@param in matrix to split
+		@param input matrix to split
 		@return split matrix
 		~#
-		function : native : Split(index : Int, in : Bool[,]) ~ Bool[,] {
-			split_len := Matches(index, in);
+		function : native : Split(index : Int, input : Bool[,]) ~ Bool[,] {
+			split_len := Matches(index, input);
 			if(split_len > 0) {
-				dims := in->Size();
+				dims := input->Size();
 				rows := dims[0];
 				cols := dims[1];
 
@@ -1767,9 +1767,9 @@ acheived := DecisionTree->Matches(2, result)->As(Float);
 				count := 0;
 				if(index > -1 & index < rows) {
 					each(row : rows) {
-						if(in[row, index]) {
+						if(input[row, index]) {
 							each(k : cols) {
-								out[count, k] := in[row, k];
+								out[count, k] := input[row, k];
 							};
 							count += 1;
 						};
@@ -1794,16 +1794,16 @@ acheived := DecisionTree->Matches(2, result)->As(Float);
 			return 1 - (reached*reached + not_reached*not_reached);
 		}
 
-		function : native : WeightedGini(test : Int, target : Int, in : Bool[,]) ~ Float {
+		function : native : WeightedGini(test : Int, target : Int, input : Bool[,]) ~ Float {
 			wgi := 0.0;
 
-			dims := in->Size();
+			dims := input->Size();
 			size := dims[0]->As(Float);
 
 			# left
-			goal := Matches(test, in);
+			goal := Matches(test, input);
 			if(goal > 0.0) {
-				wgi += goal / size * Gini(Acheived(test, target, in), goal);
+				wgi += goal / size * Gini(Acheived(test, target, input), goal);
 			}
 			else {
 				return 0.0;
@@ -1811,9 +1811,9 @@ acheived := DecisionTree->Matches(2, result)->As(Float);
 
 			
 			# right
-			goal := Mismatches(test, in);
+			goal := Mismatches(test, input);
 			if(goal > 0.0) {
-				wgi += goal / size * Gini(Unacheived(test, target, in), goal);
+				wgi += goal / size * Gini(Unacheived(test, target, input), goal);
 			}
 			else {
 				return 0.0;
