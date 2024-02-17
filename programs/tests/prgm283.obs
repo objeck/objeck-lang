@@ -1,7 +1,8 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		each(arg in args) {
-			arg->PrintLine()
+		values := [1,2,3,4,5];
+		each(value in values) {
+			value->PrintLine()
 		}
 	}
 }

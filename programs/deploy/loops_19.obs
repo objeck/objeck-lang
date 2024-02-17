@@ -28,7 +28,7 @@ class Test {
 
 		# ---
 
-		each(num := nums) {
+		each(num in nums) {
 			num->PrintLine();
 		};
 
@@ -42,7 +42,7 @@ class Test {
 
 		reverse(string := strings) {
 			string += ", 123";
-			each(letter := string) {
+			each(letter in string) {
 				letter->PrintLine();
 			};
 		};
