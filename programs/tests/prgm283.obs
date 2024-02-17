@@ -1,6 +1,6 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		each(arg within args) {
+		each(arg in args) {
 			arg->PrintLine()
 		}
 	}
