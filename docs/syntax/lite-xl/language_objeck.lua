@@ -47,7 +47,7 @@ syntax.add {
     ["else"] = "keyword",
     ["do"] = "keyword",
     ["while"] = "keyword",
-    ["within"] = "keyword",
+    ["in"] = "keyword",
     ["select"] = "keyword",
     ["break"] = "keyword",
     ["continue"] = "keyword",
