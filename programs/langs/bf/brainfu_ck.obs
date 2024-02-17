@@ -49,8 +49,8 @@ class Brainfu_k {
 				label '-': { @mem[@mem_ptr] := @mem[@mem_ptr] - 1; }
 				label '.': { value := @mem[@mem_ptr] → As(Char); value → Print(); }				
 				label ',': { 
-					in := Read(); 
-					if(in <> 0) { @mem[@mem_ptr] := in; }
+					input := Read(); 
+					if(input <> 0) { @mem[@mem_ptr] := input; }
 					else { Runtime → Exit(0); };
 				}
 				label '[': { Forward(); }
@@ -104,9 +104,9 @@ class Brainfu_k {
 		};
 		
 		if(@input_ptr < @input → Size()) {
-			in := @input → Get(@input_ptr);
+			input := @input → Get(@input_ptr);
 			@input_ptr += 1;
-			return in;
+			return input;
 		};
 		
 		return 0;
