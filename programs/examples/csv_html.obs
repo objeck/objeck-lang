@@ -37,11 +37,11 @@ class CsvToHtml {
 		buffer += "</tr>";
 	}
 
-	function : Encode(in : String) ~ String {
+	function : Encode(input : String) ~ String {
 		out := "";
 
-		each(i : in) {
-			c := in->Get(i);
+		each(i : input) {
+			c := input->Get(i);
 			select(c) {
 				label '"': { 
 					out->Append("&quot;");

@@ -2,20 +2,20 @@
 
 class Mode {
 	function : Main(args : String[]) ~ Nil {
-		in := Vector->New();
-		in->AddBack(IntRef->New(1)); in->AddBack(IntRef->New(3));
-		in->AddBack(IntRef->New(6)); in->AddBack(IntRef->New(6));
-		in->AddBack(IntRef->New(6)); in->AddBack(IntRef->New(6));
-		in->AddBack(IntRef->New(7)); in->AddBack(IntRef->New(7));
-		in->AddBack(IntRef->New(12)); in->AddBack(IntRef->New(12));
-		in->AddBack(IntRef->New(17));
-		Print(Mode(in));
+		input := Vector->New();
+		input->AddBack(IntRef->New(1)); input->AddBack(IntRef->New(3));
+		input->AddBack(IntRef->New(6)); input->AddBack(IntRef->New(6));
+		input->AddBack(IntRef->New(6)); input->AddBack(IntRef->New(6));
+		input->AddBack(IntRef->New(7)); input->AddBack(IntRef->New(7));
+		input->AddBack(IntRef->New(12)); input->AddBack(IntRef->New(12));
+		input->AddBack(IntRef->New(17));
+		Print(Mode(input));
 
-		in := Vector->New();
-		in->AddBack(IntRef->New(1)); in->AddBack(IntRef->New(2));
-		in->AddBack(IntRef->New(4)); in->AddBack(IntRef->New(4));
-		in->AddBack(IntRef->New(1));
-		Print(Mode(in));
+		input := Vector->New();
+		input->AddBack(IntRef->New(1)); input->AddBack(IntRef->New(2));
+		input->AddBack(IntRef->New(4)); input->AddBack(IntRef->New(4));
+		input->AddBack(IntRef->New(1));
+		Print(Mode(input));
 	}
 	
 	function : Mode(coll : Vector) ~ Vector {
