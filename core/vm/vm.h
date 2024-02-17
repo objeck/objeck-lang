@@ -44,13 +44,13 @@
 extern "C"
 {
 #ifdef _WIN32
-  __declspec(dllexport) int Execute(const int argc, const char* argv[], bool is_stdio_binary, size_t gc_threshold);
+  __declspec(dllexport) int Execute(int argc, const char* argv[], bool is_stdio_binary, size_t gc_threshold);
 #else
-  int Execute(const int argc, const char* argv[], size_t gc_threshold);
+  int Execute(int argc, const char* argv[], size_t gc_threshold);
 #endif
 }
 
-static wchar_t** ProcessCommandLine(const int argc, const char* argv[]);
+static wchar_t** ProcessCommandLine(int &argc, const char* argv[]);
 static void CleanUpCommandLine(const int argc, wchar_t** wide_args);
 void SetEnv();
 
