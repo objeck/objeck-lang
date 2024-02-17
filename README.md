@@ -35,7 +35,7 @@ Want to get started? Take a look at the [language guide](https://objeck.org/gett
 * v2024.2.1
   * Enhanced incremental JSON parsing
     * Line buffering for files and sockets
-  * ~~Add an optional 'within' keyword for use in 'each' loops; an alternative to ':='~~
+  * ~~Add an optional 'in' keyword for use in 'each' loops; an alternative to ':=' operator~~
   * ~~Added support for response files #545~~
 * v2024.2.0
   * ~~Incremental JSON parser~~
