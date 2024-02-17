@@ -138,7 +138,7 @@ wchar_t** ProcessCommandLine(int &argc, const char* argv[])
 
   if(is_response_file) {
     // skip '@'
-    std::wifstream file_in(wide_args[2] + 1);
+    std::ifstream file_in(wide_args[2] + 1);
     if(file_in.is_open()) {
       constexpr int ARG_OFFSET = 2;
 
@@ -150,10 +150,10 @@ wchar_t** ProcessCommandLine(int &argc, const char* argv[])
       wide_args = nullptr;
 
       // copy file parameters
-      std::wstring line;
+      std::string line;
       std::vector<std::wstring> file_line_params;
       while(std::getline(file_in, line)) {
-        file_line_params.push_back(line);
+        file_line_params.push_back(BytesToUnicode(line));
       }
       file_in.close();
       
