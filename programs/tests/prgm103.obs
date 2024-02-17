@@ -2,15 +2,15 @@ use Data.JSON;
 
 class Hello {
 	function : Main(args : String[]) ~ Nil {
-		in := "\\\"Finding Twitter webhooks a challenge to set up? With Autohook, it\\u2019s so easy you can actually build a complete autor\\u2026 https:\\/\\/t.co\\/srRymga55Y\\\"";
-		in->PrintLine();
+		input := "\\\"Finding Twitter webhooks a challenge to set up? With Autohook, it\\u2019s so easy you can actually build a complete autor\\u2026 https:\\/\\/t.co\\/srRymga55Y\\\"";
+		input->PrintLine();
 
-		foo := JsonElement->Decode(in);
+		foo := JsonElement->Decode(input);
 		foo->PrintLine();
 
 		bar := JsonElement->Encode(foo);
 		bar->PrintLine();
 
-		in->Equals(bar)->PrintLine();
+		input->Equals(bar)->PrintLine();
 	}
 }

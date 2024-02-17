@@ -19,14 +19,14 @@ class Test {
 		Foo(positive)->ToString()->PrintLine();
 	}
 
-	function : Foo(in : Map<String, FloatRef>) ~ Float[] {
+	function : Foo(input : Map<String, FloatRef>) ~ Float[] {
 		sum := 0.0;
-		values := in->GetValues()<FloatRef>;
+		values := input->GetValues()<FloatRef>;
 		each(value := values) {
 			sum += value->Get();
 		}
 
-		out := Float->New[in->Size()];
+		out := Float->New[input->Size()];
 		each(i : values) {
 			value := values->Get(i);
 			out[i] := value / sum;
