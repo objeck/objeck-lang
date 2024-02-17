@@ -169,7 +169,7 @@ wchar_t** ProcessCommandLine(int &argc, const char* argv[])
 #ifdef _WIN32
         wcsncpy_s(wide_arg, file_line_arg.size() + 1, file_line_arg.c_str(), file_line_arg.size());
 #else
-        wcsncpy(wide_arg, line_arg.c_str(), line_arg.size());
+        wcsncpy(wide_arg, file_line_arg.c_str(), file_line_arg.size());
 #endif
         wide_args[i + ARG_OFFSET] = wide_arg;
       }
