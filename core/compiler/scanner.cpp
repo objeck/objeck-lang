@@ -117,6 +117,7 @@ void Scanner::LoadKeywords()
   ident_map[L"static"] = TOKEN_STATIC_ID;
   ident_map[L"public"] = TOKEN_PUBLIC_ID;
   ident_map[L"private"] = TOKEN_PRIVATE_ID;
+  ident_map[L"within"] = TOKEN_WITHIN_ID;
   ident_map[L"class"] = TOKEN_CLASS_ID;
   ident_map[L"interface"] = TOKEN_INTERFACE_ID;
   ident_map[L"alias"] = TOKEN_ALIAS_ID;
@@ -130,6 +131,7 @@ void Scanner::LoadKeywords()
   ident_map[L"consts"] = TOKEN_CONSTS_ID;
   ident_map[L"for"] = TOKEN_FOR_ID;
   ident_map[L"each"] = TOKEN_EACH_ID;
+  ident_map[L"within"] = TOKEN_WITHIN_ID;
   ident_map[L"reverse"] = TOKEN_REVERSE_ID;
   ident_map[L"label"] = TOKEN_LABEL_ID;
   ident_map[L"return"] = TOKEN_RETURN_ID;
@@ -408,6 +410,7 @@ void Scanner::CheckIdentifier(int index)
     case TOKEN_CONSTS_ID:
     case TOKEN_FOR_ID:
     case TOKEN_EACH_ID:
+    case TOKEN_WITHIN_ID:
     case TOKEN_REVERSE_ID:
     case TOKEN_SELECT_ID:
     case TOKEN_LABEL_ID:

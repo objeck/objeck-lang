@@ -5059,7 +5059,7 @@ For* Parser::ParseEach(bool reverse, int depth)
 
   // colon with integer binding, assignment for variable binding
   bool bind_var = false;
-  if(Match(TOKEN_ASSIGN)) {
+  if(Match(TOKEN_ASSIGN) || Match(TOKEN_WITHIN_ID)) {
     bind_var = true;
   }
   else if(!Match(TOKEN_COLON)) {
