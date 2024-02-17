@@ -138,7 +138,7 @@ wchar_t** ProcessCommandLine(int &argc, const char* argv[])
 
   if(is_response_file) {
     // skip '@'
-    std::ifstream file_in(wide_args[2] + 1);
+    std::ifstream file_in(UnicodeToBytes(wide_args[2] + 1));
     if(file_in.is_open()) {
       constexpr int ARG_OFFSET = 2;
 
