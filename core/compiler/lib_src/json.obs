@@ -317,10 +317,10 @@ if(doc <> Nil) {
 		
 		#~
 		Creates a new parser
-		@param input Json input string
+		@param stream_in Json input string
 		~#
-		New(input : String) {
-			@input := input->Trim()->ToCharArray();
+		New(stream_in : String) {
+			@input := stream_in->Trim()->ToCharArray();
 			@input_index := 0;
 
 			@tokens_max := 32;

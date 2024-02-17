@@ -39,7 +39,7 @@ bundle Query.RegEx {
 	```
 output := HttpsClient->New()->QuickGet(Web.HTTP.Url->New(url))->ToString();
 output_len := output->Size();
-"URL: {$input}, read: {$output_len} character(s)"->PrintLine();
+"URL: {$output}, read: {$output_len} character(s)"->PrintLine();
 
 "running regex..."->PrintLine();      
 expr := "(href|HREF|src|SRC)=(\"|')(http://|https://|/)?((\\w|\\d|-|_)+(\\.|/)?)+(\\?(\\w|\\d|-|_)+=(\\w|\\d|-|_)+)?(&(\\w|\\d|-|_)+=(\\w|\\d|-|_)+)?(\"|')";
@@ -74,8 +74,8 @@ each(i : found) {
 		Default constructor
 		@param input regex pattern
 		~#
-		New(input : String) {
-			@tokens := input->ToCharArray();
+		New(stream_in : String) {
+			@tokens := stream_in->ToCharArray();
 			@expressions := Vector->New()<Expression>;
 			@backtrack_positions := Vector->New()<IntRef>;
 			@backtrack_cache := Map->New()<IntRef, Expression>;
@@ -93,32 +93,32 @@ each(i : found) {
 		
 		#~
 		Looks for an exact regex match
-		@param input string to match against
+		@param stream_in string to match against
 		@return true if exact, false otherwise
 		~#
-		method : public : MatchExact(input : String) ~ Bool {
-			return Evaluate(input, 0) > -1 & @is_exact;
+		method : public : MatchExact(stream_in : String) ~ Bool {
+			return Evaluate(stream_in, 0) > -1 & @is_exact;
 		}
 		
 		#~
 		Matches as much of the string as possible
-		@param input string to match against
+		@param stream_in string to match against
 		@return matched string if found, empty string otherwise
 		~#
-		method : public : Match(input : String) ~ String {
-			return Match(input, 0);
+		method : public : Match(stream_in : String) ~ String {
+			return Match(stream_in, 0);
 		}
 		
 		#~
 		Matches as much of the string as possible
-		@param input string to match against
+		@param stream_in string to match against
 		@param offset offset into the to match against
 		@return matched string if found, empty string otherwise
 		~#
-		method : public : Match(input : String, offset : Int) ~ String {
-			right := Evaluate(input, offset);
+		method : public : Match(stream_in : String, offset : Int) ~ String {
+			right := Evaluate(stream_in, offset);
 			if(right > -1) {
-				return input->SubString(offset, right - offset);
+				return stream_in->SubString(offset, right - offset);
 			};
 			
 			return "";
@@ -126,17 +126,17 @@ each(i : found) {
 		
 		#~
 		Matches the first occurrence 
-		@param input string to match against
+		@param stream_in string to match against
 		@return matched string if found, empty string otherwise
 		~#
-		method : public : native : FindFirst(input : String) ~ Result {
+		method : public : native : FindFirst(stream_in : String) ~ Result {
 			left := 0;
-			while(left < input->Size()) {
-				right := Evaluate(input, left);
+			while(left < stream_in->Size()) {
+				right := Evaluate(stream_in, left);
 				if(right > -1) {
-# return input->SubString(left, right - left);
+# return stream_in->SubString(left, right - left);
 					length := right - left;
-					return Result->New(left, length, input->SubString(left, length));
+					return Result->New(left, length, stream_in->SubString(left, length));
 				};
 				left += 1;
 			};
@@ -146,21 +146,21 @@ each(i : found) {
 
 		#~
 		Finds all occurrences 
-		@param input string to match against
+		@param stream_in string to match against
 		@return vector of string matches
 		~#
-		method : public : native : Find(input : String) ~ Vector<Result> {
+		method : public : native : Find(stream_in : String) ~ Vector<Result> {
 			matches := Vector->New()<Result>;
 
 			left := 0;
-			while(left < input->Size()) {
-				right := Evaluate(input, left);
+			while(left < stream_in->Size()) {
+				right := Evaluate(stream_in, left);
 				if(right > -1 & left <> right) {
 # IO.Console->Print("\t=== left=")->Print(left)->Print(", right=")->Print(right)->PrintLine(" ===");
 					if(left < right) {
-# matches->AddBack(input->SubString(left, right - left));
+# matches->AddBack(stream_in->SubString(left, right - left));
 						length := right - left;
-						matches->AddBack(Result->New(left, length, input->SubString(left, length)));
+						matches->AddBack(Result->New(left, length, stream_in->SubString(left, length)));
 						left := right - 1;
 					};
 				};
@@ -172,65 +172,65 @@ each(i : found) {
 
 		#~
 		Replaces the first occurrence with the given string
-		@param input string to match against
+		@param stream_in string to match against
 		@param replace string to replace the match with
 		@return replaced string
 		~#
-		method : public : native : ReplaceFirst(input : String, replace : String) ~ String {
+		method : public : native : ReplaceFirst(stream_in : String, replace : String) ~ String {
 			left := 0;
-			while(left < input->Size()) {
-				right := Evaluate(input, left);
+			while(left < stream_in->Size()) {
+				right := Evaluate(stream_in, left);
 				if(right > -1 & left <> right) {
-					# identify start and end of input string
-					start := input->SubString(left);
-					end := input->SubString(right, input->Size() - right);
+					# identify start and end of stream_in string
+					start := stream_in->SubString(left);
+					end := stream_in->SubString(right, stream_in->Size() - right);
 					# insert the replacement string
-					input := String->New(start);
-					input->Append(replace);
-					input->Append(end);	
+					stream_in := String->New(start);
+					stream_in->Append(replace);
+					stream_in->Append(end);	
 					
-					return input;
+					return stream_in;
 				};
 				left += 1;
 			};
 
-			return input;
+			return stream_in;
 		}
 
 		#~
 		Replaces all occurrences of the given string
-		@param input string to match against
+		@param stream_in string to match against
 		@param replace string to replace the match with
 		@return replaced string
 		~#
-		method : public : native : ReplaceAll(input : String, replace : String) ~ String {
+		method : public : native : ReplaceAll(stream_in : String, replace : String) ~ String {
 			left := 0;
-			while(left < input->Size()) {
-				right := Evaluate(input, left);
+			while(left < stream_in->Size()) {
+				right := Evaluate(stream_in, left);
 				if(right > -1 & left <> right) {
-					# identify start and end of input string
-					start := input->SubString(left);
-					end := input->SubString(right, input->Size() - right);
+					# identify start and end of stream_in string
+					start := stream_in->SubString(left);
+					end := stream_in->SubString(right, stream_in->Size() - right);
 					# insert the replacement string
-					input := String->New(start);
-					input->Append(replace);
-					input->Append(end);	
+					stream_in := String->New(start);
+					stream_in->Append(replace);
+					stream_in->Append(end);	
 					# update search index
 					left += replace->Size() - 1;
 				};
 				left += 1;
 			};
 
-			return input;
+			return stream_in;
 		}
 
-		method : native : Evaluate(input : String, offset : Int) ~ Int {
+		method : native : Evaluate(stream_in : String, offset : Int) ~ Int {
 			if(@error <> Nil) {
 				@error->PrintLine();
 				return -1;
 			};
 
-			if(offset >= input->Size()) {
+			if(offset >= stream_in->Size()) {
 				return -1;
 			};
 			
@@ -243,7 +243,7 @@ each(i : found) {
 
 			# process string
 			@input_pos := offset;			
-			@input := input->ToCharArray();			
+			@input := stream_in->ToCharArray();			
 			NextInput();
 
 			# match with regex and check final position
