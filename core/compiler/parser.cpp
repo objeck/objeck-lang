@@ -5099,7 +5099,7 @@ For* Parser::ParseEach(bool reverse, int depth)
         count_type = TypeFactory::Instance()->MakeType(CHAR_TYPE);
       }
       else {
-        ProcessError(L"'" + ident_type + L"' range variable must be bound using the ':' operator");
+        ProcessError(L"'" + ident_type + L"' range index must be bound using the ':' operator");
       }
     }
     else if((ident_type == L"IntRange" || ident_type == L"System.IntRange")) {
@@ -5107,7 +5107,7 @@ For* Parser::ParseEach(bool reverse, int depth)
         count_type = TypeFactory::Instance()->MakeType(INT_TYPE);
       }
       else {
-        ProcessError(L"'" + ident_type + L"' range variable must be bound using the ':' operator");
+        ProcessError(L"'" + ident_type + L"' range index must be bound using the ':' operator");
       }
     }
     else if(ident_type == L"FloatRange" || ident_type == L"System.FloatRange") {
@@ -5115,7 +5115,7 @@ For* Parser::ParseEach(bool reverse, int depth)
         count_type = TypeFactory::Instance()->MakeType(FLOAT_TYPE);
       }
       else {
-        ProcessError(L"'" + ident_type + L"' range variable must be bound using the ':' operator");
+        ProcessError(L"'" + ident_type + L"' range index must be bound using the ':' operator");
       }
     }
   }
