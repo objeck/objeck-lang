@@ -1,7 +1,8 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		each(value in IntRange->New(1,4)) {
-			value->Print()
+		x := 13;
+		each(i : x) {
+			i->Print()
 		}
 	}
 }
