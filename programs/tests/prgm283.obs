@@ -2,7 +2,7 @@ class Test {
 	function : Main(args : String[]) ~ Nil {
 		x := 13;
 		each(i : x) {
-			i->Print()
+			"{$i},"->Print()
 		}
 	}
 }
