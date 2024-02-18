@@ -5058,9 +5058,9 @@ For* Parser::ParseEach(bool reverse, int depth)
   NextToken();
 
   // colon with integer binding, assignment for variable binding
-  bool bind_var = false;
+  bool is_bound = false;
   if(Match(TOKEN_ASSIGN) || Match(TOKEN_IN_ID)) {
-    bind_var = true;
+    is_bound = true;
   }
   else if(!Match(TOKEN_COLON)) {
     ProcessError(L"Expected ':' or ':='", TOKEN_COLON);
@@ -5070,7 +5070,7 @@ For* Parser::ParseEach(bool reverse, int depth)
   // add count entry
   Assignment* bind_assign = nullptr;
   std::wstring bound_ident;
-  if(bind_var) {
+  if(is_bound) {
     bound_ident = count_ident;
     count_ident = L'#' + count_ident + L"_index";
     
@@ -5095,7 +5095,7 @@ For* Parser::ParseEach(bool reverse, int depth)
   if(Match(TOKEN_IDENT)) {
     const std::wstring ident_type = scanner->GetToken()->GetIdentifier();
     if(ident_type == L"CharRange" || ident_type == L"System.CharRange") {
-      if(!bind_var) {
+      if(!is_bound) {
         count_type = TypeFactory::Instance()->MakeType(CHAR_TYPE);
       }
       else {
@@ -5103,7 +5103,7 @@ For* Parser::ParseEach(bool reverse, int depth)
       }
     }
     else if((ident_type == L"IntRange" || ident_type == L"System.IntRange")) {
-      if(!bind_var) {
+      if(!is_bound) {
         count_type = TypeFactory::Instance()->MakeType(INT_TYPE);
       }
       else {
@@ -5111,7 +5111,7 @@ For* Parser::ParseEach(bool reverse, int depth)
       }
     }
     else if(ident_type == L"FloatRange" || ident_type == L"System.FloatRange") {
-      if(!bind_var) {
+      if(!is_bound) {
         count_type = TypeFactory::Instance()->MakeType(FLOAT_TYPE);
       }
       else {
@@ -5215,7 +5215,7 @@ For* Parser::ParseEach(bool reverse, int depth)
     Expression* left_pre_count = nullptr;
     switch(GetToken()) {
     case TOKEN_CHAR_LIT:
-      if(bind_var) {
+      if(is_bound) {
         ProcessError(L"index variable must be bound using the ':' operator");
       }
       else {
@@ -5225,7 +5225,7 @@ For* Parser::ParseEach(bool reverse, int depth)
       break;
 
     case TOKEN_INT_LIT:
-      if(bind_var) {
+      if(is_bound) {
         ProcessError(L"index variable must be bound using the ':' operator");
       }
       else {
@@ -5235,7 +5235,7 @@ For* Parser::ParseEach(bool reverse, int depth)
       break;
 
     case TOKEN_FLOAT_LIT:
-      if(bind_var) {
+      if(is_bound) {
         ProcessError(L"index variable must be bound using the ':' operator");
       }
       else {
@@ -5245,11 +5245,7 @@ For* Parser::ParseEach(bool reverse, int depth)
       break;
 
     case TOKEN_IDENT: {
-      //
-      // TODO: error handling
-      //
       left_pre_count = ParseExpression(depth + 1);
-
       if(left_pre_count && left_pre_count->GetExpressionType() == VAR_EXPR) {
         Variable* variable = static_cast<Variable*>(left_pre_count);
         if(!variable->GetIndices()) {
@@ -5312,7 +5308,7 @@ For* Parser::ParseEach(bool reverse, int depth)
     symbol_table->CurrentParseScope()->PreviousParseScope();
   }
 
-  if(bind_var) {
+  if(is_bound) {
     return TreeFactory::Instance()->MakeFor(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), pre_statements, cond_expr, update_stmt, bind_assign, statements);
   }
 
