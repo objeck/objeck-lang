@@ -72,7 +72,7 @@ each(i : found) {
         
 		#~
 		Default constructor
-		@param input regex pattern
+		@param stream_in regex pattern
 		~#
 		New(stream_in : String) {
 			@tokens := stream_in->ToCharArray();
