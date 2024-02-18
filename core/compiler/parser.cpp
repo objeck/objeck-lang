@@ -5215,17 +5215,32 @@ For* Parser::ParseEach(bool reverse, int depth)
     Expression* left_pre_count = nullptr;
     switch(GetToken()) {
     case TOKEN_CHAR_LIT:
-      left_pre_count = TreeFactory::Instance()->MakeCharacterLiteral(file_name, line_num, line_pos, scanner->GetToken()->GetCharLit());
+      if(bind_var) {
+        ProcessError(L"index variable must be bound using the ':' operator");
+      }
+      else {
+        left_pre_count = TreeFactory::Instance()->MakeCharacterLiteral(file_name, line_num, line_pos, scanner->GetToken()->GetCharLit());
+      }
       NextToken();
       break;
 
     case TOKEN_INT_LIT:
-      left_pre_count = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos, scanner->GetToken()->GetInt64Lit());
+      if(bind_var) {
+        ProcessError(L"index variable must be bound using the ':' operator");
+      }
+      else {
+        left_pre_count = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos, scanner->GetToken()->GetInt64Lit());
+      }
       NextToken();
       break;
 
     case TOKEN_FLOAT_LIT:
-      left_pre_count = TreeFactory::Instance()->MakeFloatLiteral(file_name, line_num, line_pos, scanner->GetToken()->GetFloatLit());
+      if(bind_var) {
+        ProcessError(L"index variable must be bound using the ':' operator");
+      }
+      else {
+        left_pre_count = TreeFactory::Instance()->MakeFloatLiteral(file_name, line_num, line_pos, scanner->GetToken()->GetFloatLit());
+      }
       NextToken();
       break;
 
