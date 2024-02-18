@@ -3,12 +3,12 @@ class Test {
         (0.1 + 0.2 = 0.3)->PrintLine();
 
         x := 13.3;
-
+#~
         for(i := 5; i < x; i += 3;) {
             i->PrintLine();
         }        
-
-        each(i : IntRange->New(5., x, 3)) {
+~#
+        each(i : IntRange->New(5)) {
             i->PrintLine();
         }
 
