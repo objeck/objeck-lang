@@ -4347,10 +4347,14 @@ void ContextAnalyzer::AnalyzeFor(For* for_stmt, const int depth)
         }
       }
 
-      Assignment* assignment = for_stmt->GetBoundAssignment();
-
-      assignment->SetExpression(right_expr);
-      statements->PrependStatement(assignment);
+      if(right_expr) {
+        Assignment* assignment = for_stmt->GetBoundAssignment();
+        assignment->SetExpression(right_expr);
+        statements->PrependStatement(assignment);
+      }
+      else {
+        ProcessError(for_stmt, L"Invalid class type or assignment");
+      }
     }
     else {
       ProcessError(for_stmt, L"Expected class or array type");
