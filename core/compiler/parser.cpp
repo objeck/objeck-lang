@@ -5068,15 +5068,12 @@ For* Parser::ParseEach(bool reverse, int depth)
   NextToken();
 
   // add count entry
+  Assignment* bind_assign = nullptr;
   std::wstring bound_ident;
   if(bind_var) {
     bound_ident = count_ident;
     count_ident = L'#' + count_ident + L"_index";
-  }
-
-  // add bind variable entry
-  Assignment* bind_assign = nullptr;
-  if(bind_var) {
+    
     const std::wstring bind_scope_name = GetScopeName(bound_ident);
     Type* bind_left_type = TypeFactory::Instance()->MakeType(VAR_TYPE);
     SymbolEntry* bind_entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num, line_pos, bind_scope_name, 
@@ -5098,10 +5095,28 @@ For* Parser::ParseEach(bool reverse, int depth)
   if(Match(TOKEN_IDENT)) {
     const std::wstring ident_type = scanner->GetToken()->GetIdentifier();
     if(ident_type == L"CharRange" || ident_type == L"System.CharRange") {
-      count_type = TypeFactory::Instance()->MakeType(CHAR_TYPE);
+      if(!bind_var) {
+        count_type = TypeFactory::Instance()->MakeType(CHAR_TYPE);
+      }
+      else {
+        ProcessError(L"Range class '" + ident_type + L"' cannot be bound to index variable '" + bound_ident + L"', try using the ':' operator");
+      }
+    }
+    else if((ident_type == L"IntRange" || ident_type == L"System.IntRange")) {
+      if(!bind_var) {
+        count_type = TypeFactory::Instance()->MakeType(INT_TYPE);
+      }
+      else {
+        ProcessError(L"Range class '" + ident_type + L"' cannot be bound to index variable '" + bound_ident + L"', try using the ':' operator");
+      }
     }
     else if(ident_type == L"FloatRange" || ident_type == L"System.FloatRange") {
-      count_type = TypeFactory::Instance()->MakeType(FLOAT_TYPE);
+      if(!bind_var) {
+        count_type = TypeFactory::Instance()->MakeType(FLOAT_TYPE);
+      }
+      else {
+        ProcessError(L"Range class '" + ident_type + L"' cannot be bound to index variable '" + bound_ident + L"', try using the ':' operator");
+      }
     }
   }
 
@@ -5220,7 +5235,7 @@ For* Parser::ParseEach(bool reverse, int depth)
       //
       left_pre_count = ParseExpression(depth + 1);
 
-      if(left_pre_count->GetExpressionType() == VAR_EXPR) {
+      if(left_pre_count && left_pre_count->GetExpressionType() == VAR_EXPR) {
         Variable* variable = static_cast<Variable*>(left_pre_count);
         if(!variable->GetIndices()) {
           // set method call to 'x->Size()'
@@ -5229,7 +5244,7 @@ For* Parser::ParseEach(bool reverse, int depth)
                                                                    variable->GetName(), L"Size", TreeFactory::Instance()->MakeExpressionList());
         }
       }
-      else if(left_pre_count->GetExpressionType() == METHOD_CALL_EXPR) {
+      else if(left_pre_count && left_pre_count->GetExpressionType() == METHOD_CALL_EXPR) {
         // add count entry
         const std::wstring count_scope_name = GetScopeName(L'#' + count_ident + L"_range");
         Type* count_type = TypeFactory::Instance()->MakeType(CLASS_TYPE);
@@ -5242,7 +5257,7 @@ For* Parser::ParseEach(bool reverse, int depth)
           ProcessError(L"Variable already defined in this scope: '" + count_ident + L"'");
         }
       }
-      else if(left_pre_count->GetExpressionType() != METHOD_CALL_EXPR) {
+      else if(left_pre_count && left_pre_count->GetExpressionType() != METHOD_CALL_EXPR) {
         ProcessError(L"Expected variable or literal expression", TOKEN_SEMI_COLON);
       }
     }
