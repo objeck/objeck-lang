@@ -2488,8 +2488,7 @@ bool TrapProcessor::LoadClsByInst(StackProgram* program, size_t* inst, size_t* &
     return false;
   }
   // set name and create 'Class' instance
-  size_t* cls_obj = MemoryManager::AllocateObject(program->GetClassObjectId(),
-                                                  op_stack, *stack_pos, false);
+  size_t* cls_obj = MemoryManager::AllocateObject(program->GetClassObjectId(), op_stack, *stack_pos, false);
   cls_obj[0] = (size_t)CreateStringObject(cls->GetName(), program, op_stack, stack_pos);
   frame->mem[1] = (size_t)cls_obj;
   CreateClassObject(cls, cls_obj, op_stack, stack_pos, program);

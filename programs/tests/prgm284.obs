@@ -3,6 +3,7 @@ class Test {
 		FreeBase(IntRef->New(13));
 		FreeBase(Collection.Vector->New()<Base>);
 		FreeBase(Collection.Map->New()<String, Base>);
+		FreeBase(11->As(Base));
 	}
 
 	function : FreeBase(base : Base) ~ Nil {
@@ -12,7 +13,7 @@ class Test {
 #			"System.IntRef"->Equals(cls->GetName())->PrintLine();
 		}
 		else {
-			"<Unknown Primitive>"->PrintLine();
+			"<unknown>"->PrintLine();
 		}
 	}
 }
