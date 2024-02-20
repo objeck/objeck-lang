@@ -5,38 +5,75 @@ use Collection;
 
 class ForcastDemo {
 	function : Main(args : String[]) ~ Nil {
-		loc_data : Tuples.Pair<String, String>;
-
+		forcast_data : Tuples.Pair<String, String>;
+		
 		if(args->Size() = 1 & (args[0]->StartsWith("data/") | args[0]->StartsWith("data\\"))) {
-			loc_data := FromFile(args[0]);
+			forcast_data := FromFile(args[0]);
 		}
 		else {
-			loc_data := FromNet();
+			forcast_data := FromNet();
 		}
 
-		if(loc_data <> Nil) {
-			loc_data->GetSecond()->PrintLine();
-			"---"->PrintLine();
-
-			html := "<html><header></header<body>Hello";
-			daily_forcasts := ProcessResponse(loc_data->GetFirst())
-			each(forcast in daily_forcasts) {
-				forcast->ToString()->PrintLine()
-			}
-			html += "</body></html>";
-
-			html->PrintLine();
+		if(forcast_data <> Nil) {
+			FormatHtml(forcast_data);
 		}
 		else {
 			"-- Invalid URL or filename --"->ErrorLine()
 		}
 	}
 
+	function : FormatHtml(forcast_data : Tuples.Pair<String, String>) ~ Nil {
+		daily_data := ParseDailyForcast(forcast_data->GetFirst())
+
+		loc_str := forcast_data->GetSecond();
+		elev_str := daily_data->GetSecond();
+		html := "<html><header></header<body>";
+
+		html += "<b>";
+		html += loc_str;
+		html += ": "
+		String->SetFloatPrecision(5);
+		html += elev_str->ToString();
+		html += " ft.</b><p>";
+
+		html += "<table><tr><th>Date</th><th>WHen</th><th>Temperature</th><th>Rain/Snow</th><th>Description</th></tr>";
+		daily_forcasts := daily_data->GetFirst();
+		each(forcast in daily_forcasts) {
+			html += "<tr>"
+			
+			html += "<td>"
+			html += forcast->GetDate();
+			html += "</td>"
+
+			html += "<td>"
+			html += forcast->GetName();
+			html += "</td>"
+
+			html += "<td>"
+			html += forcast->GetTemperature();
+			html += "</td>"
+
+			html += "<td>"
+			html += forcast->GetRainSnow();
+			html += "%</td>"
+
+			html += "<td width='400'>"
+			html += forcast->GetDescription();
+			html += "</td>"
+
+			html += "</tr>";
+		}
+		html += "</table></p></body></html>";
+
+		filename := "data/out.html";
+		FileWriter->WriteFile(filename, html)
+		"Write file: {$filename}..."->PrintLine();
+	}
+
 	function : FromNet() ~ Tuples.Pair<String, String> {
 		forcast_doc : String;
 		loc_str : String;
 
-"From net..."->PrintLine();					
 		lat_lon := PromptGeocodeAddress();			
 		if(lat_lon <> Nil) {
 			lat := lat_lon->GetFirst();
@@ -45,7 +82,7 @@ class ForcastDemo {
 			location := "https://api.weather.gov/points/{$lat},{$lon}"
 			grid_bytes := HttpsClient->QuickGet(Url->New(location))
 			if(grid_bytes <> Nil) {
-				loc_data := GetLocation(grid_bytes->ToString());
+				loc_data := ParseLocation(grid_bytes->ToString());
 				forcast_bytes := HttpsClient->QuickGet(Url->New(loc_data->GetThird()))
 				if(forcast_bytes <> Nil) {
 					forcast_doc := forcast_bytes->ToString();
@@ -78,7 +115,6 @@ class ForcastDemo {
 	}
 
 	function : FromFile(path_name : String) ~ Tuples.Pair<String, String> {
-"From file..."->PrintLine()
 		forcast_doc := FileReader->ReadFile(path_name)
 		loc_str : String;
 
@@ -141,7 +177,7 @@ class ForcastDemo {
 		return Nil
 	}
 
-	function : GetLocation(location : String) ~ Tuples.Triplet<String, String, String> {
+	function : ParseLocation(location : String) ~ Tuples.Triplet<String, String, String> {
 		parser := Data.JSON.JsonParser->New(location);
 		if(parser->Parse()) {
 			root := parser->GetRoot();
@@ -194,12 +230,17 @@ class ForcastDemo {
 		return Nil;
 	}
 
-	function : ProcessResponse(response : String) ~ Vector<DailyForcast> {
+	function : ParseDailyForcast(response : String) ~ Tuples.Pair<Vector<DailyForcast>, FloatRef> {
 		daily_forcasts := Vector->New()<DailyForcast>;
+		elevation : String;
 
 		parser := Data.JSON.JsonParser->New(response);
 		if(parser->Parse()) {
-			period_elems := parser->GetRoot()->FindElements("properties/periods");
+
+			root := parser->GetRoot();
+			elevation := root->FindElements("properties/elevation/value")->GetString();
+
+			period_elems := root->FindElements("properties/periods");
 			if(period_elems <> Nil) {
 				each(period_elem in period_elems) {
 					name := period_elem->Get("name")->GetString();
@@ -229,7 +270,7 @@ class ForcastDemo {
 			"-- Invalid JSON document --"->ErrorLine()
 		}
 
-		return daily_forcasts;
+		return Tuples.Pair->New(daily_forcasts, elevation->ToFloat())<Vector<DailyForcast>, FloatRef>;
 	}
 
 	function : FormatDate(time : Date) ~ String {
@@ -282,6 +323,30 @@ class DailyForcast {
 		@temp_str := temp_str;
 		@rain_snow_perc := rain_snow_perc;
 		@description := description;
+	}
+
+	method : public : GetName() ~ String {
+		return @name;
+	}
+
+	method : public : GetTime() ~ String {
+		return @time_str;
+	}
+
+	method : public : GetDate() ~ String {
+		return @date_str;
+	}
+
+	method : public : GetTemperature() ~ String {
+		return @temp_str;
+	}
+
+	method : public : GetRainSnow() ~ String {
+		return @rain_snow_perc;
+	}
+
+	method : public : GetDescription() ~ String {
+		return @description;
 	}
 
 	method : public : ToString() ~ String {
