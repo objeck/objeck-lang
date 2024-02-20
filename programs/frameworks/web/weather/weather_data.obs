@@ -27,16 +27,16 @@ class ForcastDemo {
 
 		loc_str := forcast_data->GetSecond();
 		elev_str := daily_data->GetSecond();
-		html := "<html><header></header<body>";
+		html := "<html><header><link rel='stylesheet' href='styles.css'></header<body>";
 
-		html += "<b>";
+		html += "<h2>";
 		html += loc_str;
-		html += ": "
+		html += "</h2>"
 		String->SetFloatPrecision(5);
 		html += elev_str->ToString();
-		html += " ft.</b><p>";
+		html += " ft.<p>";
 
-		html += "<table><tr><th>Date</th><th>When</th><th>Temperature</th><th>Rain/Snow</th><th>Description</th></tr>";
+		html += "<table class='styled-table'><tr><th>Date</th><th>When</th><th>Temperature</th><th>Rain/Snow</th><th>Description</th></tr>";
 		daily_forcasts := daily_data->GetFirst();
 		each(forcast in daily_forcasts) {
 			html += "<tr>"
@@ -57,7 +57,7 @@ class ForcastDemo {
 			html += forcast->GetRainSnow();
 			html += "%</td>"
 
-			html += "<td width='400'>"
+			html += "<td>"
 			html += forcast->GetDescription();
 			html += "</td>"
 
