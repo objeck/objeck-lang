@@ -6,7 +6,7 @@ use Collection;
 class ForcastDemo {
 	function : Main(args : String[]) ~ Nil {
 		forcast_data : Tuples.Pair<String, String>;
-		
+
 		if(args->Size() = 1 & (args[0]->StartsWith("data/") | args[0]->StartsWith("data\\"))) {
 			forcast_data := FromFile(args[0]);
 		}
@@ -36,7 +36,7 @@ class ForcastDemo {
 		html += elev_str->ToString();
 		html += " ft.</b><p>";
 
-		html += "<table><tr><th>Date</th><th>WHen</th><th>Temperature</th><th>Rain/Snow</th><th>Description</th></tr>";
+		html += "<table><tr><th>Date</th><th>When</th><th>Temperature</th><th>Rain/Snow</th><th>Description</th></tr>";
 		daily_forcasts := daily_data->GetFirst();
 		each(forcast in daily_forcasts) {
 			html += "<tr>"
