@@ -50,14 +50,14 @@ class ForcastDemo {
 			name := forcast->GetName();
 			html += name;
 			if(name->Has("Night")) {
-				html += "<p><img src='night.png' width=40px height=40px/></p></center></td>"
+				html += "<p><img src='images/night.png' width=40px height=40px/></p></center></td>"
 			}
 			else if(first) {
-				html += "<p><img src='now.png' width=40px height=40px/></p></center></td>"
+				html += "<p><img src='images/now.png' width=40px height=40px/></p></center></td>"
 				first := false;
 			}
 			else {
-				html += "<p><img src='day.png' width=40px height=40px/</p>></center></td>"
+				html += "<p><img src='images/day.png' width=40px height=40px/</p></center></td>"
 			}
 
 			html += "<td>"
