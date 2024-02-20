@@ -308,6 +308,154 @@ bundle Tuples {
 			return buffer;
 		}
 	}
+
+	#~
+	Tuple class that supports 5 values
+	~#
+	class Quintet <A, B, C, D, E> {
+		@a : A;
+		@b : B;
+		@c : C;
+		@d : D;
+		@e : e;
+
+		#~
+		Constructor.
+		@param a first parameter
+		@param b second parameter
+		@param c third parameter
+		@param d forth parameter
+		~#
+		New(a : A, b : B, c : C, d : D, e : E) {
+			@a := a;
+			@b := b;
+			@c := c;
+			@d := d;
+			@e := e;
+		}
+
+		#~
+		Returns the first value
+		@return first value
+		~#
+		method : public : GetFirst() ~ A {
+			return @a;
+		}
+
+		#~
+		Returns the second value
+		@return second value
+		~#
+		method : public : GetSecond() ~ B {
+			return @b;
+		}
+
+		#~
+		Returns the third value
+		@return third value
+		~#
+		method : public : GetThird() ~ C {
+			return @c;
+		}
+
+		#~
+		Returns the forth value
+		@return forth value
+		~#
+		method : public : GetForth() ~ D {
+			return @d;
+		}
+
+		#~
+		Returns the fith value
+		@return fith value
+		~#
+		method : public : GetFith() ~ D {
+			return @e;
+		}
+
+		#~
+		Formats tuple into a string
+		@return string representation
+		~#
+		method : public : ToString() ~ String {
+			buffer := "[";
+
+			if(@a = Nil) {
+				buffer += "<Nil>";
+			}
+			else {
+				if(@a->TypeOf(Stringify)) {
+					buffer->Append(@a->As(System.Stringify)->ToString());
+				}
+				# use instance ID instead
+				else {
+					buffer->Append(@a->GetInstanceID()->ToHexString());
+				};
+			};
+			buffer += ',';
+
+			if(@b = Nil) {
+				buffer += "<Nil>";
+			}
+			else {
+				if(@b->TypeOf(Stringify)) {
+					buffer->Append(@b->As(System.Stringify)->ToString());
+				}
+				# use instance ID instead
+				else {
+					buffer->Append(@b->GetInstanceID()->ToHexString());
+				};
+			};
+
+			buffer += ',';
+
+			if(@c = Nil) {
+				buffer += "<Nil>";
+			}
+			else {
+				if(@c->TypeOf(Stringify)) {
+					buffer->Append(@c->As(System.Stringify)->ToString());
+				}
+				# use instance ID instead
+				else {
+					buffer->Append(@c->GetInstanceID()->ToHexString());
+				};
+			};
+			buffer += ',';
+
+			if(@d = Nil) {
+				buffer += "<Nil>";
+			}
+			else {
+				if(@d->TypeOf(Stringify)) {
+					buffer->Append(@d->As(System.Stringify)->ToString());
+				}
+				# use instance ID instead
+				else {
+					buffer->Append(@d->GetInstanceID()->ToHexString());
+				};
+			};
+			buffer += ',';
+
+			if(@e = Nil) {
+				buffer += "<Nil>";
+			}
+			else {
+				if(@e->TypeOf(Stringify)) {
+					buffer->Append(@e->As(System.Stringify)->ToString());
+				}
+				# use instance ID instead
+				else {
+					buffer->Append(@e->GetInstanceID()->ToHexString());
+				};
+			};
+			
+			buffer += "]";
+
+			return buffer;
+		}
+	}
 }
 
 #~
