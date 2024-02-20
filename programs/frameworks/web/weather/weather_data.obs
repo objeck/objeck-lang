@@ -18,10 +18,14 @@ class ForcastDemo {
 			loc_data->GetSecond()->PrintLine();
 			"---"->PrintLine();
 
+			html := "<html><header></header<body>Hello";
 			daily_forcasts := ProcessResponse(loc_data->GetFirst())
 			each(forcast in daily_forcasts) {
 				forcast->ToString()->PrintLine()
 			}
+			html += "</body></html>";
+
+			html->PrintLine();
 		}
 		else {
 			"-- Invalid URL or filename --"->ErrorLine()
