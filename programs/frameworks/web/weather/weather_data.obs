@@ -57,7 +57,7 @@ class ForcastDemo {
 				first := false;
 			}
 			else {
-				html += "<p><img src='images/day.png' width=40px height=40px/</p></center></td>"
+				html += "<p><img src='images/day.png' width=40px height=40px/></p></center></td>"
 			}
 
 			html += "<td>"
