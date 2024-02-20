@@ -27,7 +27,7 @@ class ForcastDemo {
 
 		loc_str := forcast_data->GetSecond();
 		elev_str := daily_data->GetSecond();
-		html := "<html><header><link rel='stylesheet' href='styles.css'></header<body>";
+		html := "<html><header><link rel='stylesheet' href='styles.css'></header><body>";
 
 		html += "<h2>";
 		html += loc_str;
@@ -36,6 +36,7 @@ class ForcastDemo {
 		html += elev_str->ToString();
 		html += " ft.<p>";
 
+		first := true;
 		html += "<table class='styled-table'><tr><th>Date</th><th>When</th><th>Temperature</th><th>Rain/Snow</th><th>Description</th></tr>";
 		daily_forcasts := daily_data->GetFirst();
 		each(forcast in daily_forcasts) {
@@ -45,9 +46,19 @@ class ForcastDemo {
 			html += forcast->GetDate();
 			html += "</td>"
 
-			html += "<td>"
-			html += forcast->GetName();
-			html += "</td>"
+			html += "<td><center>"
+			name := forcast->GetName();
+			html += name;
+			if(name->Has("Night")) {
+				html += "<p><img src='night.png' width=40px height=40px/></p></center></td>"
+			}
+			else if(first) {
+				html += "<p><img src='now.png' width=40px height=40px/></p></center></td>"
+				first := false;
+			}
+			else {
+				html += "<p><img src='day.png' width=40px height=40px/</p>></center></td>"
+			}
 
 			html += "<td>"
 			html += forcast->GetTemperature();
