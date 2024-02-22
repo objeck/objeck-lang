@@ -995,10 +995,9 @@ bundle Web.HTTP.Server {
 
 	  		Runtime->SetSignal(Runtime->Signal->SIGINT, Shutdown(Int) ~ Nil);
 			if(@secure_server->Listen()) {
-				platform := Runtime->GetPlatform();
-				host := TCPSocket->HostName();
-
 				if(@is_debug) {
+					platform := Runtime->GetPlatform();
+					host := TCPSocket->HostName();
 					"=> Running on '{$host}' ({$platform}) port {$port}..."->PrintLine();
 				};
 
@@ -1009,20 +1008,19 @@ bundle Web.HTTP.Server {
 						}
 
 						method : public : Run(arg : System.Base) ~ Nil {
-							params := arg->As(Tuples.Quartet<Class, TCPSecureSocketServer, WebServerConfig, BoolRef>);
+							params := arg->As(Tuples.Quartet<Class, TCPSecureSocket, WebServerConfig, BoolRef>);
 							callback := params->GetFirst();
-							secure_server := params->GetSecond();
+							secure_client := params->GetSecond();
 							server_config := params->GetThird();
 							is_debug := params->GetForth();
 
 							handler := callback->Instance(callback->GetName())->As(HttpsRequestHandler);
 							handler->SetConfig(server_config, is_debug->Get());
-							handler->Execute(secure_server->Accept());
+							handler->Execute(secure_client);
 						}
 					};
 
-					params := Tuples.Quartet->New(callback, @secure_server, @server_config, BoolRef->New(@is_debug))<Class, TCPSecureSocketServer, WebServerConfig, BoolRef>;
-
+					params := Tuples.Quartet->New(callback, @secure_server->Accept(), @server_config, BoolRef->New(@is_debug))<Class, TCPSecureSocket, WebServerConfig, BoolRef>;
 					thread->Execute(params);
 				};
 			}
@@ -1065,10 +1063,9 @@ bundle Web.HTTP.Server {
 
 	  		Runtime->SetSignal(Runtime->Signal->SIGINT, Shutdown(Int) ~ Nil);
 			if(@server->Listen(8)) {
-				platform := Runtime->GetPlatform();
-				host := TCPSocket->HostName();
-
 				if(@is_debug) {
+					platform := Runtime->GetPlatform();
+					host := TCPSocket->HostName();
 					"=> Running on '{$host}' ({$platform}) port {$port}..."->PrintLine();
 				};
                 
@@ -1079,19 +1076,19 @@ bundle Web.HTTP.Server {
 						}
 
 						method : public : Run(arg : System.Base) ~ Nil {
-							params := arg->As(Tuples.Quartet<Class, TCPSocketServer, WebServerConfig, BoolRef>);
+							params := arg->As(Tuples.Quartet<Class, TCPSocket, WebServerConfig, BoolRef>);
 							callback := params->GetFirst();
-							server := params->GetSecond();
+							client := params->GetSecond();
 							server_config := params->GetThird();
 							is_debug := params->GetForth();
 
 							handler := callback->Instance(callback->GetName())->As(HttpRequestHandler);
 							handler->SetConfig(server_config, is_debug->Get());
-							handler->Execute(server->Accept());
+							handler->Execute(client);
 						}
 					};
 
-					params := Tuples.Quartet->New(callback, @server, @server_config, BoolRef->New(@is_debug))<Class, TCPSocketServer, WebServerConfig, BoolRef>;
+					params := Tuples.Quartet->New(callback, @server->Accept(), @server_config, BoolRef->New(@is_debug))<Class, TCPSocket, WebServerConfig, BoolRef>;
 					thread->Execute(params);
 				};
 			}
