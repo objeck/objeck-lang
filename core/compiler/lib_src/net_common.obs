@@ -1003,9 +1003,27 @@ bundle Web.HTTP.Server {
 				};
 
 				while(true) {
-					handler := callback->Instance(callback->GetName())->As(HttpsRequestHandler);
-					handler->SetConfig(@server_config, @is_debug);
-					handler->Execute(@secure_server->Accept());
+					thread := System.Concurrency.Thread->New() {
+						New() {
+							Parent()
+						}
+
+						method : public : Run(arg : System.Base) ~ Nil {
+							params := arg->As(Tuples.Quartet<Class, TCPSecureSocketServer, WebServerConfig, BoolRef>);
+							callback := params->GetFirst();
+							secure_server := params->GetSecond();
+							server_config := params->GetThird();
+							is_debug := params->GetForth();
+
+							handler := callback->Instance(callback->GetName())->As(HttpsRequestHandler);
+							handler->SetConfig(server_config, is_debug->Get());
+							handler->Execute(secure_server->Accept());
+						}
+					};
+
+					params := Tuples.Quartet->New(callback, @secure_server, @server_config, BoolRef->New(@is_debug))<Class, TCPSecureSocketServer, WebServerConfig, BoolRef>;
+
+					thread->Execute(params);
 				};
 			}
 			else {
@@ -1055,9 +1073,26 @@ bundle Web.HTTP.Server {
 				};
                 
 				while(true) {
-					handler := callback->Instance(callback->GetName())->As(HttpRequestHandler);
-					handler->SetConfig(@server_config, @is_debug);
-					handler->Execute(@server->Accept());
+					thread := System.Concurrency.Thread->New() {
+						New() {
+							Parent()
+						}
+
+						method : public : Run(arg : System.Base) ~ Nil {
+							params := arg->As(Tuples.Quartet<Class, TCPSocketServer, WebServerConfig, BoolRef>);
+							callback := params->GetFirst();
+							server := params->GetSecond();
+							server_config := params->GetThird();
+							is_debug := params->GetForth();
+
+							handler := callback->Instance(callback->GetName())->As(HttpRequestHandler);
+							handler->SetConfig(server_config, is_debug->Get());
+							handler->Execute(server->Accept());
+						}
+					};
+
+					params := Tuples.Quartet->New(callback, @server, @server_config, BoolRef->New(@is_debug))<Class, TCPSocketServer, WebServerConfig, BoolRef>;
+					thread->Execute(params);
 				};
 			}
 			else {
@@ -1078,6 +1113,7 @@ bundle Web.HTTP.Server {
 			if(@is_debug) {
 				"Shutting down..."->PrintLine();
 			};
+			
 			Runtime->Exit(0);
 		}
 	}
