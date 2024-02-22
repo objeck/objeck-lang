@@ -32,7 +32,10 @@ Want to get started? Take a look at the [language guide](https://objeck.org/gett
 
 ## What's New?
 
-* v2024.2.1
+* **Gist**
+  * Lately lots of [rain](https://gist.github.com/objeck/bce87bf73e5bdf0880cc0dcbc21b70f2) in the Bay Area
+    
+* **v2024.2.1**
   * Enhanced incremental JSON parsing
     * Line buffering for files and sockets
   * ~~Add an optional 'in' keyword for use in 'each' loops; an alternative to ':=' operator~~
