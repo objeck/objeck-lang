@@ -317,7 +317,7 @@ bundle Tuples {
 		@b : B;
 		@c : C;
 		@d : D;
-		@e : e;
+		@e : E;
 
 		#~
 		Constructor.
