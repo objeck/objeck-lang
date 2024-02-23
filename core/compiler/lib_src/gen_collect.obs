@@ -1,6 +1,6 @@
 #~~
-# Core "generic" collections for Objeck
-# Copyright (c) 2019-2023 Randy Hollines
+# Generic collections for Objeck
+# Copyright (c) 2024 Randy Hollines
 # 
 # credits:
 # - H.W. Lang - merge sort implementation based on his work
