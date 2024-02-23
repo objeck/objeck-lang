@@ -2,7 +2,7 @@ ARGS=-O3 -D_SYSTEM -Wall -Wno-unused-function -std=c++17
 SRC=types.o tree.o scanner.o parser.o linker.o context.o intermediate.o optimization.o emit.o compiler.o posix_main.o
 OBJ_LIBS=sys.a
 LOGGER_PATH=../shared
-EXE=obc
+EXE=sys_obc
 
 $(EXE): $(SRC) $(OBJ_LIBS)
 	$(CXX) -m64 -o $(EXE) $(SRC) $(OBJ_LIBS) -lz

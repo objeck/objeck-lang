@@ -2,7 +2,7 @@
 
 make -f make/Makefile.sys.amd64 clean
 make -f make/Makefile.sys.amd64
-./obc -src lib_src/lang.obs -tar lib -opt s2 -dest ../lib/lang.obl -strict
+./sys_obc -src lib_src/lang.obs -tar lib -opt s2 -dest ../lib/lang.obl -strict
 
 make -f make/Makefile.amd64 clean
 make -f make/Makefile.amd64
