@@ -371,7 +371,7 @@ bundle Tuples {
 		Returns the fith value
 		@return fith value
 		~#
-		method : public : GetFith() ~ D {
+		method : public : GetFith() ~ E {
 			return @e;
 		}
 
