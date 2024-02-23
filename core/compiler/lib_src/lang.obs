@@ -6508,28 +6508,28 @@ bundle System.Time {
 		   			is_pm := true;
 		   		};
 		   	};
-	   		buffer += @hours;
+	   		update_str->Append(@hours);
 
 			if(@mins < 9) {
-	   			buffer += ":0{$@mins}";
+	   			update_str->Append(":0{$@mins}");
 	   		}
 	   		else {
-	   			buffer += ":{$@mins}";
+	   			update_str->Append(":{$@mins}");
 	   		}
 
 	   		if(@secs < 9) {
-	   			buffer += ":0{$@secs}";
+	   			update_str->Append(":0{$@secs}");
 	   		}
 	   		else {
-	   			buffer += ":{$@secs}";
+	   			update_str->Append(":{$@secs}");
 	   		}
 
 	   		if(is_24hr) {
 		   		if(is_pm) {
-		   			buffer += " AM";
+		   			update_str->Append(" AM");
 		   		}
 		   		else {
-		   			buffer += " PM";
+		   			update_str->Append(" PM");
 		   		};
 		   	};
 
@@ -6543,11 +6543,11 @@ bundle System.Time {
 		method : public : GetDateString() ~ String {
 			buffer := "";
 
-			buffer += @month;
-	   		buffer += '/';
-	   		buffer += @day;
-	   		buffer += '/';
-	   		buffer += @year;
+			buffer->Append(@month);
+	   		buffer->Append('/');
+	   		buffer->Append(@day);
+	   		buffer->Append('/');
+	   		buffer->Append(@year);
 
 			return buffer;
 		}
