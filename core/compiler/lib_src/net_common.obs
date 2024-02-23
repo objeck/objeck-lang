@@ -1126,6 +1126,7 @@ bundle Web.HTTP.Server {
 		@cert_key_path : String;
 		@cert_passwd : String;
 		@file_group_handler_map : Hash<String, FileGroupHandler>;
+		@default_handler : FileHandler;
 		@content_cache : Map<String, ByteArrayRef>;
 
 		New(filename : String) {
@@ -1191,7 +1192,7 @@ bundle Web.HTTP.Server {
 				};
 			};
 
-			return false;
+			return @default_handler <> Nil;
 		}
 
 		method : public : Load() ~ Bool {
@@ -1245,6 +1246,46 @@ bundle Web.HTTP.Server {
 						};
 					};
 
+					# default handler
+					default_json := files_json->Get("default");
+					if(default_json <> Nil & <>default_json->IsNull()) {
+						group_str := "<None>";
+						group_json := default_json->Get("groups");
+						if(group_json <> Nil & <>group_json->IsNull()) {
+							group_str := group_json->GetString();
+						};
+
+						alias_str := "<None>";
+						alias_json := default_json->Get("alias");
+						if(alias_json <> Nil & <>alias_json->IsNull()) {
+							alias_str := alias_json->GetString();
+						};
+
+						if(alias_str->StartsWith('.') | alias_str->EndsWith('.') | alias_str->Count('.') <> 1) {
+							"Error: 'alias' value must have a file extension: {$alias_str}"->ErrorLine();
+							return false;
+						};
+
+						location_str := "<None>";
+						location_json := default_json->Get("location");
+						if(location_json <> Nil & <>location_json->IsNull()) {
+							location_str := location_json->GetString();
+						};
+
+						mime_type_str := "text/plain";
+						mime_type_json := default_json->Get("mime-type");
+						if(mime_type_json <> Nil & <>mime_type_json->IsNull()) {
+							mime_type_str := mime_type_json->GetString();
+						};
+
+						cache_flag : Bool;
+						cache_json := default_json->Get("cache");
+						if(cache_json <> Nil & <>cache_json->IsNull()) {
+							cache_flag := cache_json->GetBool();
+						};
+
+						@default_handler := FileHandler->New(group_str, alias_str, location_str, mime_type_str, cache_flag);
+					};
 					# individual files
 					items_json := files_json->Get("items");
 					if(items_json <> Nil & <>items_json->IsNull()) {
@@ -1257,7 +1298,6 @@ bundle Web.HTTP.Server {
 							};
 						};
 					};
-				
 					@is_handling_files := true;
 				};
 
@@ -1311,7 +1351,7 @@ bundle Web.HTTP.Server {
 			};
 
 			if(alias_str->StartsWith('.') | alias_str->EndsWith('.') | alias_str->Count('.') <> 1) {
-				"Error: 'alias' value must have a file extension"->ErrorLine();
+				"Error: 'alias' value must have a file extension: {$alias_str}"->ErrorLine();
 				return false;
 			};
 
@@ -1404,78 +1444,93 @@ bundle Web.HTTP.Server {
 					return false;
 				};
 
-				file_group_handler := @file_group_handler_map->Find(request_group);
-				if(file_group_handler = Nil) {
-					return false;
-				};
-
 				alias_str := request_path->SubString(1, request_path->Size() - 1);
 				if(alias_str = Nil) {
 					return false;
 				};
 
-				file_handler := file_group_handler->GetFileHander(alias_str);
-				if(file_handler = Nil) {
+				file_group_handler := @file_group_handler_map->Find(request_group);
+				if(file_group_handler = Nil) {
 					return false;
 				};
 
-				if(@is_debug) {
-					file_handler_str := file_handler->ToString();
-					"Item properties: {$file_handler_str}"->PrintLine();
-				};
-				
-				buffer : Byte[];
-
-				file_location : String;
-
-				if(@base_dir <> Nil) {
-					file_location := String->New(@base_dir);
-					if(<>file_location->EndsWith('/') & <>file_location->EndsWith('\\')) {
-						file_location += System.IO.Filesystem.Directory->GetSlash();
-					};
-					file_location += file_handler->GetLocation();
-				}
-				else {
-					file_location := file_handler->GetLocation();
-				};
-
-				if(@is_debug) {
-					"File location='{$file_location}'"->PrintLine();
-				};
-
-				# use caching
-				if(file_handler->IsCached()) {
-					buffer_holder := @content_cache->Find(file_location);
-					if(buffer_holder = Nil) {
-						buffer := System.IO.Filesystem.FileReader->ReadBinaryFile(file_location);
-						if(buffer = Nil) {
-							return false;
-						};
-						@content_cache->Insert(file_location, ByteArrayRef->New(buffer));
-						if(@is_debug) {
-							"---"->PrintLine();
-						};
+				file_handler := file_group_handler->GetFileHander(alias_str);
+				if(file_handler = Nil) {
+					# last ditch effort...
+					if(@default_handler <> Nil) {
+						file_handler := @default_handler;
 					}
 					else {
-						if(@is_debug) {
-							"=> Cached\n---"->PrintLine();
-						};
-						buffer := buffer_holder->Get();
+						return false;
 					};
-				}
-				# non-caching
-				else {	
+				};
+
+				return Process(file_handler, response);
+			};
+
+			# last ditch effort...
+			if(@default_handler <> Nil) {
+				return Process(@default_handler, response);
+			};
+			
+			return false;
+		}
+
+		method : Process(file_handler : FileHandler, response : Response) ~ Bool {
+			if(@is_debug) {
+				file_handler_str := file_handler->ToString();
+				"Item properties: {$file_handler_str}"->PrintLine();
+			};
+			
+			buffer : Byte[];
+
+			file_location : String;
+
+			if(@base_dir <> Nil) {
+				file_location := String->New(@base_dir);
+				if(<>file_location->EndsWith('/') & <>file_location->EndsWith('\\')) {
+					file_location += System.IO.Filesystem.Directory->GetSlash();
+				};
+				file_location += file_handler->GetLocation();
+			}
+			else {
+				file_location := file_handler->GetLocation();
+			};
+
+			if(@is_debug) {
+				"File location='{$file_location}'"->PrintLine();
+			};
+
+			# use caching
+			if(file_handler->IsCached()) {
+				buffer_holder := @content_cache->Find(file_location);
+				if(buffer_holder = Nil) {
 					buffer := System.IO.Filesystem.FileReader->ReadBinaryFile(file_location);
 					if(buffer = Nil) {
 						return false;
-					};					
+					};
+					@content_cache->Insert(file_location, ByteArrayRef->New(buffer));
+					if(@is_debug) {
+						"---"->PrintLine();
+					};
+				}
+				else {
+					if(@is_debug) {
+						"=> Cached\n---"->PrintLine();
+					};
+					buffer := buffer_holder->Get();
 				};
-				response->SetCodeContent(200, buffer);
-				
-				return true;
+			}
+			# non-caching
+			else {	
+				buffer := System.IO.Filesystem.FileReader->ReadBinaryFile(file_location);
+				if(buffer = Nil) {
+					return false;
+				};					
 			};
-
-			return false;
+			response->SetCodeContent(200, buffer);
+			
+			return true;
 		}
 	}
 
