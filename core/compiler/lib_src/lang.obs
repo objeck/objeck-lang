@@ -6502,11 +6502,9 @@ bundle System.Time {
 			buffer := "";
 			is_pm := false;
 
-			if(is_24hr) {
-		   		if(@hours > 12) {
-		   			@hours /= 2;
-		   			is_pm := true;
-		   		};
+			if(is_24hr & @hours > 12) {
+	   			@hours /= 2;
+	   			is_pm := true;
 		   	};
 	   		buffer->Append(@hours);
 
