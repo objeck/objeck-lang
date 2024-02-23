@@ -6492,6 +6492,65 @@ bundle System.Time {
 		method : public : GetMinutes() ~ Int {
 			return @mins;
 		}
+
+		#~
+		Gets the time string
+		@param is_24hr true if 24-hour clock, false otherwise
+		@return time string
+		~#
+		method : public : GetTimeString(is_24hr := true) ~ String {
+			buffer := "";
+			is_pm := false;
+
+			if(is_24hr) {
+		   		if(@hours > 12) {
+		   			@hours /= 2;
+		   			is_pm := true;
+		   		};
+		   	};
+	   		update_str += @hours;
+
+			if(@mins < 9) {
+	   			update_str += ":0{$@mins}";
+	   		}
+	   		else {
+	   			update_str += ":{$@mins}";
+	   		}
+
+	   		if(@secs < 9) {
+	   			update_str += ":0{$@secs}";
+	   		}
+	   		else {
+	   			update_str += ":{$@secs}";
+	   		}
+
+	   		if(is_24hr) {
+		   		if(is_pm) {
+		   			update_str += " AM";
+		   		}
+		   		else {
+		   			update_str += " PM";
+		   		};
+		   	};
+
+			return buffer;
+		}
+
+		#~
+		Gets the date string
+		@return date string
+		~#
+		method : public : GetDateString() ~ String {
+			buffer := "";
+
+			buffer += @month;
+	   		buffer += '/';
+	   		buffer += @day;
+	   		buffer += '/';
+	   		buffer += @year;
+
+			return buffer;
+		}
 		
 		#~
 		Returns the seconds  
