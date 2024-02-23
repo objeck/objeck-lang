@@ -938,7 +938,7 @@ bundle Web.HTTP.Server {
         
 		#~
 		Starts a HTTPS server that listens for requests
-		@param filename configuration file (an <a href='https://github.com/objeck/objeck-web-server/blob/master/config/simple_config.json' target='_blank'>example</a>)
+		@param filename configuration file (an <a href='https://github.com/objeck/objeck-web-server/blob/master/config/weather_config.json' target='_blank'>example</a>)
 		~#
 		function : ServeSecure(filename : String) ~ Nil {
 			if(@server_config = Nil) {
@@ -1244,62 +1244,76 @@ bundle Web.HTTP.Server {
 						if(common_base_dir_json <> Nil & <>common_base_dir_json->IsNull()) {
 							@base_dir := common_base_dir_json->GetString();
 						};
+
+						# default file handler
+						default_json := common_json->Get("default");
+						if(default_json <> Nil & <>default_json->IsNull()) {
+							group_str := "<None>";
+							group_json := default_json->Get("groups");
+							if(group_json <> Nil & <>group_json->IsNull()) {
+								group_str := group_json->GetString();
+							};
+
+							alias_str := "<None>";
+							alias_json := default_json->Get("alias");
+							if(alias_json <> Nil & <>alias_json->IsNull()) {
+								alias_str := alias_json->GetString();
+							};
+
+							if(alias_str->StartsWith('.') | alias_str->EndsWith('.') | alias_str->Count('.') <> 1) {
+								"Error: 'alias' value must have a file extension: {$alias_str}"->ErrorLine();
+								return false;
+							};
+
+							location_str := "<None>";
+							location_json := default_json->Get("location");
+							if(location_json <> Nil & <>location_json->IsNull()) {
+								location_str := location_json->GetString();
+							};
+
+							mime_type_str := "text/plain";
+							mime_type_json := default_json->Get("mime-type");
+							if(mime_type_json <> Nil & <>mime_type_json->IsNull()) {
+								mime_type_str := mime_type_json->GetString();
+							};
+
+							cache_flag : Bool;
+							cache_json := default_json->Get("cache");
+							if(cache_json <> Nil & <>cache_json->IsNull()) {
+								cache_flag := cache_json->GetBool();
+							};
+
+							@default_handler := FileHandler->New(group_str, alias_str, location_str, mime_type_str, cache_flag);
+						};
+
 					};
 
-					# default handler
-					default_json := files_json->Get("default");
-					if(default_json <> Nil & <>default_json->IsNull()) {
-						group_str := "<None>";
-						group_json := default_json->Get("groups");
-						if(group_json <> Nil & <>group_json->IsNull()) {
-							group_str := group_json->GetString();
-						};
-
-						alias_str := "<None>";
-						alias_json := default_json->Get("alias");
-						if(alias_json <> Nil & <>alias_json->IsNull()) {
-							alias_str := alias_json->GetString();
-						};
-
-						if(alias_str->StartsWith('.') | alias_str->EndsWith('.') | alias_str->Count('.') <> 1) {
-							"Error: 'alias' value must have a file extension: {$alias_str}"->ErrorLine();
-							return false;
-						};
-
-						location_str := "<None>";
-						location_json := default_json->Get("location");
-						if(location_json <> Nil & <>location_json->IsNull()) {
-							location_str := location_json->GetString();
-						};
-
-						mime_type_str := "text/plain";
-						mime_type_json := default_json->Get("mime-type");
-						if(mime_type_json <> Nil & <>mime_type_json->IsNull()) {
-							mime_type_str := mime_type_json->GetString();
-						};
-
-						cache_flag : Bool;
-						cache_json := default_json->Get("cache");
-						if(cache_json <> Nil & <>cache_json->IsNull()) {
-							cache_flag := cache_json->GetBool();
-						};
-
-						@default_handler := FileHandler->New(group_str, alias_str, location_str, mime_type_str, cache_flag);
-					};
 					# individual files
-					items_json := files_json->Get("items");
-					if(items_json <> Nil & <>items_json->IsNull()) {
-						each(i : items_json) {
-							item_json := items_json->Get(i);
-							if(item_json->Has("groups")) {
-								if(<>AddFiles(item_json)) {
-									return false;
+					groups_json := files_json->Get("groups");
+					if(groups_json <> Nil & <>groups_json->IsNull()) {
+						each(group_json in groups_json) {
+							if(group_json->Has("group") & group_json->Has("items") & group_json->Size() = 2) {
+								group_str := group_json->Get("group")->GetString();
+								items_json :=  group_json->Get("items");
+								each(item_json in items_json) {
+									if(<>AddFiles(group_str, item_json)) {
+										return false;
+									};
 								};
+							}
+							else {
+								"Error: group have a 'group' label and an array of 'items'."->ErrorLine();
+								return false;
 							};
 						};
 					};
 					@is_handling_files := true;
 				};
+
+				if(@is_debug) {
+					group_handler_size := @file_group_handler_map->Size();
+					"Total file group handles: {$group_handler_size}"->PrintLine();
+				}
 
 				return true;
 			};
@@ -1307,45 +1321,22 @@ bundle Web.HTTP.Server {
 			return false;
 		}
 
-		method : AddFiles(file_json : JsonElement) ~ Bool {
-			groups_json := file_json->Get("groups");
-			location_json :=  file_json->Get("location");
-			mime_type_json := file_json->Get("mime-type");
+		method : AddFiles(group : String, item_json : JsonElement) ~ Bool {		
+			if(<>group->StartsWith('.')) {
+				"Error: file 'group' value must start with '.'"->ErrorLine();
+				return false;
+			};
 
-			if(groups_json <> Nil & <>groups_json->IsNull() & location_json <> Nil & <>location_json->IsNull()) {
-				groups_str := groups_json->GetString();
-				type_strs := groups_str->Split(',');
-				if(type_strs->Size() > 0) {
-					each(i : type_strs) {
-						type_str := type_strs[i];
-						if(<>type_str->StartsWith('.')) {
-							"Error: 'groups' values must start with '.'"->ErrorLine();
-							return false;
-						};
-
-						if(<>AddHandler(type_str, file_json, mime_type_json)) {
-							return false;
-						};
-					};
-				}
-				else {
-					if(<>groups_str->StartsWith('.')) {
-						"Error: 'groups' value must start with '.'"->ErrorLine();
-						return false;
-					};
-
-					if(<>AddHandler(groups_str, file_json, mime_type_json)) {
-						return false;
-					};
-				};
+			if(<>AddHandler(group, item_json)) {
+				return false;
 			};
 
 			return true;
 		}
 
-		method : AddHandler(group : String, file_json : JsonElement, mime_type_json : JsonElement) ~ Bool {
+		method : AddHandler(group : String, item_json : JsonElement) ~ Bool {
 			alias_str := "<None>";
-			alias_json := file_json->Get("alias");
+			alias_json := item_json->Get("alias");
 			if(alias_json <> Nil & <>alias_json->IsNull()) {
 				alias_str := alias_json->GetString();
 			};
@@ -1356,19 +1347,19 @@ bundle Web.HTTP.Server {
 			};
 
 			location_str := "<None>";
-			location_json := file_json->Get("location");
+			location_json := item_json->Get("location");
 			if(location_json <> Nil & <>location_json->IsNull()) {
 				location_str := location_json->GetString();
 			};
 
 			mime_type_str := "text/plain";
-			mime_type_json := file_json->Get("mime-type");
+			mime_type_json := item_json->Get("mime-type");
 			if(mime_type_json <> Nil & <>mime_type_json->IsNull()) {
 				mime_type_str := mime_type_json->GetString();
 			};
 
 			cache_flag : Bool;
-			cache_json := file_json->Get("cache");
+			cache_json := item_json->Get("cache");
 			if(cache_json <> Nil & <>cache_json->IsNull()) {
 				cache_flag := cache_json->GetBool();
 			};
