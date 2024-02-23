@@ -1200,14 +1200,15 @@ bundle Web.HTTP.Server {
 			if(parser->Parse()) {				
 				# process network config
 				network_json := parser->GetRoot()->Get("network");
-				if(network_json = Nil) {
+				if(network_json = Nil | network_json->IsNull()) {
 					"Error: missing 'network' tag"->ErrorLine();
 					return false;
 				};
 				
 				network_instance_json := network_json->Get("instance");
 				network_port_json := network_json->Get("port");
-				if(network_instance_json = Nil | network_port_json = Nil) {
+				if(network_instance_json = Nil | network_instance_json->IsNull() | 
+						network_port_json = Nil| network_port_json->IsNull()) {
 					"Error: missing 'instance' or 'port' tag"->ErrorLine();
 					return false;
 				};
@@ -1225,7 +1226,9 @@ bundle Web.HTTP.Server {
 					network_cert_key_json := network_secure_json->Get("cert_key_path");
 					network_cert_passwd_json := network_secure_json->Get("cert_passwd");
 
-					if(network_cert_path_json = Nil | network_cert_key_json = Nil | network_cert_passwd_json = Nil) {
+					if(network_cert_path_json = Nil | network_cert_path_json->IsNull() |
+							network_cert_key_json = Nil | network_cert_key_json->IsNull() | 
+							network_cert_passwd_json = Nil | network_cert_passwd_json->IsNull()) {
 						"Error: missing SSL certificate tags"->ErrorLine();
 						return false;
 					};
@@ -1239,7 +1242,7 @@ bundle Web.HTTP.Server {
 				if(files_json <> Nil & <>files_json->IsNull()) {
 					# common configuration 
 					common_json := files_json->Get("common");
-					if(common_json <> Nil) {
+					if(common_json <> Nil & <>common_json->IsNull()) {
 						common_base_dir_json := common_json->Get("base_dir");
 						if(common_base_dir_json <> Nil & <>common_base_dir_json->IsNull()) {
 							@base_dir := common_base_dir_json->GetString();
@@ -1248,12 +1251,6 @@ bundle Web.HTTP.Server {
 						# default file handler
 						default_json := common_json->Get("default");
 						if(default_json <> Nil & <>default_json->IsNull()) {
-							group_str := "<None>";
-							group_json := default_json->Get("groups");
-							if(group_json <> Nil & <>group_json->IsNull()) {
-								group_str := group_json->GetString();
-							};
-
 							alias_str := "<None>";
 							alias_json := default_json->Get("alias");
 							if(alias_json <> Nil & <>alias_json->IsNull()) {
@@ -1283,7 +1280,7 @@ bundle Web.HTTP.Server {
 								cache_flag := cache_json->GetBool();
 							};
 
-							@default_handler := FileHandler->New(group_str, alias_str, location_str, mime_type_str, cache_flag);
+							@default_handler := FileHandler->New("[default]", alias_str, location_str, mime_type_str, cache_flag);
 						};
 
 					};
@@ -1292,11 +1289,12 @@ bundle Web.HTTP.Server {
 					groups_json := files_json->Get("groups");
 					if(groups_json <> Nil & <>groups_json->IsNull()) {
 						each(group_json in groups_json) {
-							if(group_json->Has("group") & group_json->Has("items") & group_json->Size() = 2) {
+							if(group_json->Has("group") & group_json->Has("items")  & group_json->Has("mime-type") & group_json->Size() = 3) {
 								group_str := group_json->Get("group")->GetString();
+								mime_str := group_json->Get("mime-type")->GetString();
 								items_json :=  group_json->Get("items");
 								each(item_json in items_json) {
-									if(<>AddFiles(group_str, item_json)) {
+									if(<>AddFiles(group_str, mime_str, item_json)) {
 										return false;
 									};
 								};
@@ -1306,8 +1304,18 @@ bundle Web.HTTP.Server {
 								return false;
 							};
 						};
-					};
+
+						@is_handling_files := true;
+					}
+					else {
+						"Error: missing 'groups' tag"->ErrorLine();
+						return false;
+					}
 					@is_handling_files := true;
+				}
+				else {
+					"Error: missing 'files' tag"->ErrorLine();
+					return false;
 				};
 
 				if(@is_debug) {
@@ -1321,20 +1329,20 @@ bundle Web.HTTP.Server {
 			return false;
 		}
 
-		method : AddFiles(group : String, item_json : JsonElement) ~ Bool {		
+		method : AddFiles(group : String, mimi : String, item_json : JsonElement) ~ Bool {		
 			if(<>group->StartsWith('.')) {
 				"Error: file 'group' value must start with '.'"->ErrorLine();
 				return false;
 			};
 
-			if(<>AddHandler(group, item_json)) {
+			if(<>AddHandler(group, mimi, item_json)) {
 				return false;
 			};
 
 			return true;
 		}
 
-		method : AddHandler(group : String, item_json : JsonElement) ~ Bool {
+		method : AddHandler(group : String, mimi : String, item_json : JsonElement) ~ Bool {
 			alias_str := "<None>";
 			alias_json := item_json->Get("alias");
 			if(alias_json <> Nil & <>alias_json->IsNull()) {
@@ -1352,12 +1360,6 @@ bundle Web.HTTP.Server {
 				location_str := location_json->GetString();
 			};
 
-			mime_type_str := "text/plain";
-			mime_type_json := item_json->Get("mime-type");
-			if(mime_type_json <> Nil & <>mime_type_json->IsNull()) {
-				mime_type_str := mime_type_json->GetString();
-			};
-
 			cache_flag : Bool;
 			cache_json := item_json->Get("cache");
 			if(cache_json <> Nil & <>cache_json->IsNull()) {
@@ -1371,7 +1373,7 @@ bundle Web.HTTP.Server {
 				@file_group_handler_map->Insert(group, group_handler);
 			};
 
-			if(<>group_handler->Insert(alias_str, location_str, mime_type_str, cache_flag)) {
+			if(<>group_handler->Insert(alias_str, location_str, mimi, cache_flag)) {
 				"Unable to add file: alias='{$alias_str}', location='{$location_str}'"->ErrorLine();
 				return false;
 			};
