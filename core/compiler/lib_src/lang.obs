@@ -6498,7 +6498,7 @@ bundle System.Time {
 		@param is_24hr true if 24-hour clock, false otherwise
 		@return time string
 		~#
-		method : public : GetTimeString(is_24hr := true) ~ String {
+		method : public : GetTimeString(is_24hr : Bool := true) ~ String {
 			buffer := "";
 			is_pm := false;
 
