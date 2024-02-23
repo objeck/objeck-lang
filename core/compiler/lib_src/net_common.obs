@@ -1,5 +1,5 @@
 #~~
-Copyright (c) 2023 Randy Hollines
+Copyright (c) 2024 Randy Hollines
 ~~#
 
 use System.IO.Net; 
@@ -1320,7 +1320,7 @@ bundle Web.HTTP.Server {
 
 				if(@is_debug) {
 					group_handler_size := @file_group_handler_map->Size();
-					"Total file group handles: {$group_handler_size}"->PrintLine();
+					"File group count: {$group_handler_size}"->PrintLine();
 				}
 
 				return true;
