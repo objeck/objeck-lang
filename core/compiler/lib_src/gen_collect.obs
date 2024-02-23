@@ -325,6 +325,7 @@ bundle Tuples {
 		@param b second parameter
 		@param c third parameter
 		@param d forth parameter
+		@param e fifth parameter
 		~#
 		New(a : A, b : B, c : C, d : D, e : E) {
 			@a := a;
