@@ -6508,28 +6508,28 @@ bundle System.Time {
 		   			is_pm := true;
 		   		};
 		   	};
-	   		update_str->Append(@hours);
+	   		buffer->Append(@hours);
 
 			if(@mins < 9) {
-	   			update_str->Append(":0{$@mins}");
+	   			buffer->Append(":0{$@mins}");
 	   		}
 	   		else {
-	   			update_str->Append(":{$@mins}");
+	   			buffer->Append(":{$@mins}");
 	   		}
 
 	   		if(@secs < 9) {
-	   			update_str->Append(":0{$@secs}");
+	   			buffer->Append(":0{$@secs}");
 	   		}
 	   		else {
-	   			update_str->Append(":{$@secs}");
+	   			buffer->Append(":{$@secs}");
 	   		}
 
 	   		if(is_24hr) {
 		   		if(is_pm) {
-		   			update_str->Append(" AM");
+		   			buffer->Append(" AM");
 		   		}
 		   		else {
-		   			update_str->Append(" PM");
+		   			buffer->Append(" PM");
 		   		};
 		   	};
 
