@@ -1,0 +1,31 @@
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		x := Counter->New("x,128");
+		y := Counter->New("y,32");
+		
+		x->Execute(Nil);
+		y->Execute(Nil);		
+
+		x->Join();
+		y->Join();
+	}
+}
+
+class Counter from System.Concurrency.Thread {
+	@name : String;
+	@max : Int;
+
+	New(tag : String) {
+		Parent();
+		parts := tag->Split(',');
+		@name := parts[0]->Trim();
+		@max := parts[1]->Trim()->ToInt();
+	}
+
+	method : public : Run(param:System.Base) ~ Nil {
+		count := 0;
+		while(count++ < @max) {
+			"{$@name}: {$count}"->PrintLine();
+		};
+	}
+}
