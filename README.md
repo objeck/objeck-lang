@@ -33,7 +33,7 @@ Want to get started? Take a look at the [language guide](https://objeck.org/gett
 ## What's New?
 
 * **Gist**
-  * Lately lots of [rain](https://gist.github.com/objeck/bce87bf73e5bdf0880cc0dcbc21b70f2) in the Bay Area
+  * Tiny [weather app](https://gist.github.com/objeck/bce87bf73e5bdf0880cc0dcbc21b70f2) in under 500 LoC
     
 * **v2024.2.1**
   * Enhanced incremental JSON parsing
