@@ -4111,7 +4111,7 @@ bundle System {
 		method : public : ToByteArray() ~ Byte[] {
 			out := Byte->New[@buffer->Size()];
 
-			each(i : str) {
+			each(i : @buffer) {
 				out[i] := @buffer[i];
 			};
 
@@ -4374,7 +4374,7 @@ each(i : cities) {
 			out := Byte->New[bytes->Size()];
 
 			each(i : bytes) {
-				out[i] := bytes->Get(i);
+				out[i] := bytes[i];
 			};
 
 			return out;
