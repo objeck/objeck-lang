@@ -519,7 +519,8 @@ bundle System {
 			out := String->New();
 			each(i : b) {
 				buffer := Char->New[72];
-				Number->IntToString(b[i]->As(Int)->Abs(), 16, buffer);
+				v := b[i];
+				Number->IntToString(v->As(Int)->Abs(), 16, buffer);
 				out->Append(buffer);
 			};
 			
