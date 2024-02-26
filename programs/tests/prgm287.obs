@@ -1,6 +1,6 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		str := "Здравствуйте";
+		str := "𤭢";
 		System.IO.Standard->SetIntFormat(System.Number->Format->HEX);
 		u8str := str->ToByteArray();
 		each(i := u8str) {
