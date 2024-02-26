@@ -24,7 +24,7 @@ class Counter from System.Concurrency.Thread {
 
 	method : public : Run(param:System.Base) ~ Nil {
 		count := 0;
-		while(count++ < @max) {
+		while(++count < @max + 1) {
 			"{$@name}: {$count}"->PrintLine();
 		};
 	}
