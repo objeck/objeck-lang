@@ -536,6 +536,17 @@ bundle System {
 			Number->IntToString(b->As(Int), 10, buffer);
 			return String->New(buffer, false);
 		}
+
+		#~
+		Returns an unsigned string representation of the value
+		@ignore-params
+		@return unsigned string representation of the value
+		~#
+		function : native : ToStringUnsigned(b : Byte) ~ String {
+			buffer := Char->New[16];
+			Number->IntToString(b->As(Int)->Abs(), 10, buffer);
+			return String->New(buffer, false);
+		}
 		
 		#~
 		Prints values
@@ -1061,6 +1072,17 @@ bundle System {
 		function : native : ToString(c : Char) ~ String {
 			string := String->New();
 			string->Append(c);
+			return string;
+		}
+
+		#~
+		Returns an unsigned string representation of the value
+		@ignore-params
+		@return unsigned string representation of the value
+		~#
+		function : native : ToStringUnsigned(c : Char) ~ String {
+			string := String->New();
+			string->Append(c->As(Int)->Abs());
 			return string;
 		}
 		
