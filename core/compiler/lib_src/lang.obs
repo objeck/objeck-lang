@@ -1041,7 +1041,7 @@ bundle System {
 		@param c character array
 		@return byte array
 		~#
-		function : I(c : Char[]) ~ Byte[] {		
+		function : ToBytes(c : Char[]) ~ Byte[] {		
 			UNICODE_TO_BYTES;
 		}
 		
@@ -4109,11 +4109,10 @@ bundle System {
 		@return byte array
 		~#
 		method : public : ToByteArray() ~ Byte[] {
-			str := @buffer->ToString(); #  Unicode conversion 
-			out := Byte->New[str->Size()];
+			out := Byte->New[@buffer->Size()];
 
 			each(i : str) {
-				out[i] := str->Get(i);
+				out[i] := @buffer[i];
 			};
 
 			return out;
@@ -4371,11 +4370,11 @@ each(i : cities) {
 		@return byte array
 		~#
 		method : public : native : ToByteArray() ~ Byte[] {
-			str := @string->ToBytes(); #  Unicode conversion 
-			out := Byte->New[str->Size()];
+			bytes := @string->ToBytes(); #  Unicode conversion 
+			out := Byte->New[bytes->Size()];
 
-			each(i : str) {
-				out[i] := str->Get(i);
+			each(i : bytes) {
+				out[i] := bytes->Get(i);
 			};
 
 			return out;
