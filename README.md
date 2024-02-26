@@ -36,8 +36,9 @@ Want to get started? Take a look at the [language guide](https://objeck.org/gett
   * Tiny [weather](https://gist.github.com/objeck/bce87bf73e5bdf0880cc0dcbc21b70f2) web server in under 500 LoC
     
 * **v2024.2.1**
-  * Enhanced incremental JSON parsing
-    * Line buffering for files and sockets
+  * ~~Webserver library enhancements~~
+    * Improved performance
+    * Better configuration
   * ~~Add an optional 'in' keyword for use in 'each' loops; an alternative to ':=' operator~~
   * ~~Added support for response files #545~~
 * v2024.2.0
