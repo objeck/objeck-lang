@@ -510,16 +510,16 @@ bundle System {
 		@return hexadecimal string representation of the value
 		~#
 		function : native : ToHexString(b : Byte) ~ String {
-			buffer := Char->New[64 * 8];
-			Number->IntToString(b->As(Int), 64 * 8 + 1, buffer);
+			buffer := Char->New[64 * 4 + 2];
+			Number->IntToString(b->As(Int), 64 * 4 + 1, buffer);
 			return String->New(buffer, false);
 		}
 		
 		function : native : ToHexString(b : Byte[]) ~ String {
 			out := String->New();
 			each(i : b) {
-				buffer := Char->New[128];
-				Number->IntToString(b[i]->As(Int), 64 * 8 + 1, buffer);
+				buffer := Char->New[64 * 4 + 2];
+				Number->IntToString(b[i]->As(Int), 64 * 4 + 1, buffer);
 				out->Append(buffer);
 			};
 			
