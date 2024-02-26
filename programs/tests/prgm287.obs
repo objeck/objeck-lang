@@ -14,5 +14,7 @@ class Test {
 			c->Print();
 			" "->Print();
 		}
+
+		-1->ToHexString()->Print();
 	}
 }
