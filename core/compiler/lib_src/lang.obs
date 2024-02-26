@@ -505,12 +505,12 @@ bundle System {
 		}
 
 		#~
-		Returns a hexadecimal string representation of the value
+		Returns a positive hexadecimal string representation of the value
 		@ignore-params
 		@return hexadecimal string representation of the value
 		~#
 		function : native : ToHexString(b : Byte) ~ String {
-			buffer := Char->New[72];
+			buffer := Char->New[4];
 			Number->IntToString(b->As(Int)->Abs(), 10, buffer);
 			return String->New(buffer, false);
 		}
@@ -518,9 +518,9 @@ bundle System {
 		function : native : ToHexString(b : Byte[]) ~ String {
 			out := String->New();
 			each(i : b) {
-				buffer := Char->New[72];
-				v := b[i];
-				Number->IntToString(v->As(Int)->Abs(), 16, buffer);
+				buffer := Char->New[4];
+				v := b[i]->As(Int);
+				Number->IntToString(v->Abs(), 16, buffer);
 				out->Append(buffer);
 			};
 			
@@ -533,19 +533,8 @@ bundle System {
 		@return string representation of the value
 		~#
 		function : native : ToString(b : Byte) ~ String {
-			buffer := Char->New[72];
+			buffer := Char->New[4];
 			Number->IntToString(b->As(Int), 10, buffer);
-			return String->New(buffer, false);
-		}
-
-		#~
-		Returns an unsigned string representation of the value
-		@ignore-params
-		@return unsigned string representation of the value
-		~#
-		function : native : ToStringUnsigned(b : Byte) ~ String {
-			buffer := Char->New[72];
-			Number->IntToString(b->As(Int)->Abs(), 16, buffer);
 			return String->New(buffer, false);
 		}
 		
@@ -739,6 +728,29 @@ bundle System {
 
 		function : Size(v : Char) ~ Char {
 			return v;
+		}
+
+		#~
+		Returns a hex string value
+		@ignore-params
+		@return hex string value
+		~#
+		function : native : ToHexString(v : Char) ~ String {
+			buffer := Char->New[34];
+			Number->IntToString(v->As(Int), 16, buffer);
+			return String->New(buffer, false);
+		}
+		
+		function : native : ToHexString(v : Char[]) ~ String {
+			out := String->New();
+
+			each(i : v) {
+				buffer := Char->New[34];
+				Number->IntToString(v[i]->As(Int)->Abs(), 16, buffer);
+				out->Append(buffer);
+			};
+			
+			return out;
 		}
 
 		#~
@@ -1610,13 +1622,13 @@ bundle System {
 		}
 		
 		#~
-		Returns the hex string value
+		Returns a hex string value
 		@ignore-params
 		@return hex string value
 		~#
 		function : native : ToHexString(v : Int) ~ String {
-			buffer := Char->New[72];
-			Number->IntToString(v->As(Int)->Abs(), 16, buffer);
+			buffer := Char->New[34];
+			Number->IntToString(v->As(Int), 16, buffer);
 			return String->New(buffer, false);
 		}
 		
@@ -1624,7 +1636,7 @@ bundle System {
 			out := String->New();
 
 			each(i : v) {
-				buffer := Char->New[72];
+				buffer := Char->New[34];
 				Number->IntToString(v[i]->As(Int)->Abs(), 16, buffer);
 				out->Append(buffer);
 			};
