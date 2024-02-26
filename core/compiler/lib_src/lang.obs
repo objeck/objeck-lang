@@ -510,7 +510,7 @@ bundle System {
 		@return hexadecimal string representation of the value
 		~#
 		function : native : ToHexString(b : Byte) ~ String {
-			buffer := Char->New[64 * 4 + 2];
+			buffer := Char->New[72];
 			Number->IntToString(b->As(Int), 10, buffer);
 			return String->New(buffer, false);
 		}
@@ -518,7 +518,7 @@ bundle System {
 		function : native : ToHexString(b : Byte[]) ~ String {
 			out := String->New();
 			each(i : b) {
-				buffer := Char->New[64 * 4 + 2];
+				buffer := Char->New[72];
 				Number->IntToString(b[i]->As(Int), 16, buffer);
 				out->Append(buffer);
 			};
@@ -532,7 +532,7 @@ bundle System {
 		@return string representation of the value
 		~#
 		function : native : ToString(b : Byte) ~ String {
-			buffer := Char->New[16];
+			buffer := Char->New[72];
 			Number->IntToString(b->As(Int), 10, buffer);
 			return String->New(buffer, false);
 		}
@@ -543,8 +543,8 @@ bundle System {
 		@return unsigned string representation of the value
 		~#
 		function : native : ToStringUnsigned(b : Byte) ~ String {
-			buffer := Char->New[4  * 8];
-			Number->IntToString(b->As(Int)->Abs(), 10, buffer);
+			buffer := Char->New[72];
+			Number->IntToString(b->As(Int)->Abs(), 16, buffer);
 			return String->New(buffer, false);
 		}
 		
@@ -1614,7 +1614,7 @@ bundle System {
 		@return hex string value
 		~#
 		function : native : ToHexString(v : Int) ~ String {
-			buffer := Char->New[16];
+			buffer := Char->New[72];
 			Number->IntToString(v->As(Int), 16, buffer);
 			return String->New(buffer, false);
 		}
@@ -1623,7 +1623,7 @@ bundle System {
 			out := String->New();
 
 			each(i : v) {
-				buffer := Char->New[16];
+				buffer := Char->New[72];
 				Number->IntToString(v[i]->As(Int), 16, buffer);
 				out->Append(buffer);
 			};
@@ -1679,7 +1679,7 @@ bundle System {
 		@return string value
 		~#
 		function : ToString(v : Int) ~ String {
-			buffer := Char->New[32];
+			buffer := Char->New[72];
 			Number->IntToString(v->As(Int), 10, buffer);
 			return String->New(buffer, false);
 		}
@@ -1690,7 +1690,7 @@ bundle System {
 		@return string value
 		~#
 		function : native : ToCommaString(v : Int) ~ String {
-			buffer := Char->New[32];
+			buffer := Char->New[256];
 			Number->IntToString(v->As(Int), 10, buffer);
 			str := String->New(buffer, false);
 
@@ -1731,7 +1731,7 @@ bundle System {
 		function : native : ToString(v : Int[]) ~ String {
 			out := "[";
 			each(i : v) {
-				buffer := Char->New[32];
+				buffer := Char->New[128];
 				Number->IntToString(v[i]->As(Int), 10, buffer);
 				out->Append(buffer);
 				if(i + 1 < v->Size()) {
