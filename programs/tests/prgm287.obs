@@ -1,18 +1,5 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		str := "𤭢";
-		System.IO.Standard->SetIntFormat(System.Number->Format->HEX);
-		u8str := str->ToByteArray();
-		each(b in u8str) {
-			b->ToHexString()->Print();
-			" "->Print();
-		}
-		""->PrintLine();
-		u16str := str->ToCharArray();
-		each(i in u16str) {
-			c : Int := i;
-			c->Print();
-			" "->Print();
-		}
+		-1->ToHexString()->Print();
 	}
 }
