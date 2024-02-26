@@ -1,5 +1,6 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		-1->ToHexString()->Print();
+		b : Byte := -16;
+		b->ToHexString()->Print();
 	}
 }
