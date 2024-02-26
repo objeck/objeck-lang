@@ -4,8 +4,7 @@ class Test {
 		System.IO.Standard->SetIntFormat(System.Number->Format->HEX);
 		u8str := str->ToByteArray();
 		each(b in u8str) {
-			i := b->As(Int)->Abs()->ToString();
-			i->ToInt()->Print();
+			b->ToHexString()->Print();
 			" "->Print();
 		}
 		""->PrintLine();
