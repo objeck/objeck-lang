@@ -237,9 +237,9 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
         conv = formatter.str();
       }
 
-      const size_t max = conv.size() < 32 ? conv.size() : 32;
+      const size_t max = str_ptr[0];
 #ifdef _WIN32
-      wcsncpy_s(str, str_ptr[0], conv.c_str(), max);
+      wcsncpy_s(str, str_ptr[0] + 1, conv.c_str(), max);
 #else
       wcsncpy(str, conv.c_str(), max);
 #endif
