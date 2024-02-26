@@ -510,8 +510,8 @@ bundle System {
 		@return hexadecimal string representation of the value
 		~#
 		function : native : ToHexString(b : Byte) ~ String {
-			buffer := Char->New[16];
-			Number->IntToString(b->As(Int), 64 * 8, buffer);
+			buffer := Char->New[64 * 8];
+			Number->IntToString(b->As(Int), 64 * 8 + 1, buffer);
 			return String->New(buffer, false);
 		}
 		
@@ -519,7 +519,7 @@ bundle System {
 			out := String->New();
 			each(i : b) {
 				buffer := Char->New[128];
-				Number->IntToString(b[i]->As(Int), 64 * 8, buffer);
+				Number->IntToString(b[i]->As(Int), 64 * 8 + 1, buffer);
 				out->Append(buffer);
 			};
 			
@@ -543,7 +543,7 @@ bundle System {
 		@return unsigned string representation of the value
 		~#
 		function : native : ToStringUnsigned(b : Byte) ~ String {
-			buffer := Char->New[16];
+			buffer := Char->New[4  * 8];
 			Number->IntToString(b->As(Int)->Abs(), 10, buffer);
 			return String->New(buffer, false);
 		}
