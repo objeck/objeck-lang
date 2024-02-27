@@ -510,7 +510,7 @@ bundle System {
 		@return hexadecimal string representation of the value
 		~#
 		function : native : ToHexString(b : Byte) ~ String {
-			buffer := Char->New[34];
+			buffer := Char->New[32];
 			Number->IntToString(b->As(Int), 16, buffer);
 			return String->New(buffer, false);
 		}
@@ -518,7 +518,7 @@ bundle System {
 		function : native : ToHexString(b : Byte[]) ~ String {
 			out := String->New();
 			each(i : b) {
-				buffer := Char->New[34];
+				buffer := Char->New[32];
 				Number->IntToString(b[i]->As(Int), 16, buffer);
 				out->Append(buffer);
 			};
@@ -533,7 +533,7 @@ bundle System {
 		~#
 		function : native : ToString(b : Byte) ~ String {
 			buffer := Char->New[4];
-			Number->IntToString(b->As(Int), 34, buffer);
+			Number->IntToString(b->As(Int), 32, buffer);
 			return String->New(buffer, false);
 		}
 		
@@ -735,7 +735,7 @@ bundle System {
 		@return hex string value
 		~#
 		function : native : ToHexString(v : Char) ~ String {
-			buffer := Char->New[34];
+			buffer := Char->New[32];
 			Number->IntToString(v->As(Int), 16, buffer);
 			return String->New(buffer, false);
 		}
@@ -744,7 +744,7 @@ bundle System {
 			out := String->New();
 
 			each(i : v) {
-				buffer := Char->New[34];
+				buffer := Char->New[32];
 				n := v[i]->As(Int);
 				Number->IntToString(n->Abs(), 16, buffer);
 				out->Append(buffer);
@@ -1627,7 +1627,7 @@ bundle System {
 		@return hex string value
 		~#
 		function : native : ToHexString(v : Int) ~ String {
-			buffer := Char->New[34];
+			buffer := Char->New[32];
 			Number->IntToString(v->As(Int), 16, buffer);
 			return String->New(buffer, false);
 		}
@@ -1636,7 +1636,7 @@ bundle System {
 			out := String->New();
 
 			each(i : v) {
-				buffer := Char->New[34];
+				buffer := Char->New[32];
 				n := v[i]->As(Int);
 				Number->IntToString(n->Abs(), 16, buffer);
 				out->Append(buffer);
