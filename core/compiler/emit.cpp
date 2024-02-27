@@ -948,6 +948,10 @@ void IntermediateInstruction::Debug(size_t i) {
     GetLogger()  << i << L":\tI2S" << std::endl;
     break;
 
+  case instructions::BC2I:
+    GetLogger() << i << L":\tBC2I" << std::endl;
+    break;
+
   case instructions::F2S:
     GetLogger()  << i << L":\tF2S" << std::endl;
     break;
