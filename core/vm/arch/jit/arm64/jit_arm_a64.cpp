@@ -45,7 +45,7 @@ void JitArm64::Initialize(StackProgram* p) {
 // setup of stack frame
 void JitArm64::Prolog() {
 #ifdef _DEBUG_JIT_JIT
-  std::wcout << L"  " << (++instr_count) << L": [<prolog>]" << endl;
+  std::wcout << L"  " << (++instr_count) << L": [<prolog>]" << std::endl;
 #endif
 
   const long final_local_space = local_space + RED_ZONE;
@@ -80,7 +80,7 @@ void JitArm64::Prolog() {
 // tear down of stack frame
 void JitArm64::Epilog() {
 #ifdef _DEBUG_JIT_JIT
-  std::wcout << L"  " << (++instr_count) << L": [<epilog>]" << endl;
+  std::wcout << L"  " << (++instr_count) << L": [<epilog>]" << std::endl;
 #endif
   
   epilog_index = code_index;
@@ -137,7 +137,7 @@ void JitArm64::RegisterRoot() {
   size_t offset = local_space - TMP_D3;
   if(realign_stack) {
 #ifdef _DEBUG_JIT_JIT
-    std::wcout << L"*** Realign Stack ***" << endl;
+    std::wcout << L"*** Realign Stack ***" << std::endl;
 #endif
     offset += sizeof(size_t);
   }
@@ -186,7 +186,7 @@ void JitArm64::RegisterRoot() {
   add_imm_reg(8, start_reg->GetRegister());
   
 #ifdef _DEBUG_JIT_JIT
-  std::wcout << L"  " << (++instr_count) << L": [b <imm>]" << endl;
+  std::wcout << L"  " << (++instr_count) << L": [b <imm>]" << std::endl;
 #endif
   
   uint32_t op_code = 0x17000000;
@@ -907,7 +907,7 @@ void JitArm64::ProcessInstructions() {
       
     default: {
       InstructionType error = (InstructionType)instr->GetType();
-      wcerr << L"Unknown instruction: " << error << L"!" << endl;
+      wcerr << L"Unknown instruction: " << error << L"!" << std::endl;
       exit(1);
     }
       break;
@@ -1016,7 +1016,7 @@ void JitArm64::ProcessJump(StackInstr* instr) {
 #endif
     if(instr->GetOperand2() < 0) {
 #ifdef _DEBUG_JIT_JIT
-      std::wcout << L"  " << (++instr_count) << L": [b <imm>]" << endl;
+      std::wcout << L"  " << (++instr_count) << L": [b <imm>]" << std::endl;
 #endif
       AddMachineCode(B_INSTR);
     }
@@ -1047,7 +1047,7 @@ void JitArm64::ProcessJump(StackInstr* instr) {
         break;
 
       default:
-        wcerr << L">>> Should never occur (compiler bug?) type=" << left->GetType() << L" <<<" << endl;
+        wcerr << L">>> Should never occur (compiler bug?) type=" << left->GetType() << L" <<<" << std::endl;
         exit(1);
         break;
       }
@@ -2076,7 +2076,7 @@ void JitArm64::ProcessIntCalculation(StackInstr* instruction) {
 
 void JitArm64::move_sp_reg(Register dest) {
 #ifdef _DEBUG_JIT_JIT
-    std::wcout << L"  " << (++instr_count) << L": [sub " << GetRegisterName(dest)<< L", sp, #0]" << endl;
+    std::wcout << L"  " << (++instr_count) << L": [sub " << GetRegisterName(dest)<< L", sp, #0]" << std::endl;
 #endif
   
   uint32_t op_code = 0xD10003E0;
@@ -2089,7 +2089,7 @@ void JitArm64::move_reg_reg(Register src, Register dest) {
 #ifdef _DEBUG_JIT_JIT
     assert(src != SP);
     std::wcout << L"  " << (++instr_count) << L": [mov " << GetRegisterName(dest)
-    << L", " << GetRegisterName(src) << L"]" << endl;
+    << L", " << GetRegisterName(src) << L"]" << std::endl;
 #endif
     
     uint32_t op_code = 0xAA0003E0;
@@ -2106,7 +2106,7 @@ void JitArm64::move_reg_reg(Register src, Register dest) {
 
 void JitArm64::move_reg_mem(Register src, long offset, Register dest) {
 #ifdef _DEBUG_JIT_JIT
-  std::wcout << L"  " << (++instr_count) << L": [str " << GetRegisterName(src) << L", (" << GetRegisterName(dest) << L", #" << offset << L")]" << endl;
+  std::wcout << L"  " << (++instr_count) << L": [str " << GetRegisterName(src) << L", (" << GetRegisterName(dest) << L", #" << offset << L")]" << std::endl;
   assert(offset > -1);
 #endif
   
@@ -2126,7 +2126,7 @@ void JitArm64::move_reg_mem(Register src, long offset, Register dest) {
 
 void JitArm64::move_reg_mem32(Register src, long offset, Register dest) {
 #ifdef _DEBUG_JIT_JIT
-  std::wcout << L"  " << (++instr_count) << L": [str.w " << GetRegisterName(src) << L", (" << GetRegisterName(dest) << L", #" << offset << L")]" << endl;
+  std::wcout << L"  " << (++instr_count) << L": [str.w " << GetRegisterName(src) << L", (" << GetRegisterName(dest) << L", #" << offset << L")]" << std::endl;
   assert(offset > -1);
 #endif
   
@@ -2146,7 +2146,7 @@ void JitArm64::move_reg_mem32(Register src, long offset, Register dest) {
 
 void JitArm64::move_mem_reg(long offset, Register src, Register dest) {
 #ifdef _DEBUG_JIT_JIT
-    std::wcout << L"  " << (++instr_count) << L": [ldr " << GetRegisterName(dest) << L", (" << GetRegisterName(src) << L", #" << offset << L")]" << endl;
+    std::wcout << L"  " << (++instr_count) << L": [ldr " << GetRegisterName(dest) << L", (" << GetRegisterName(src) << L", #" << offset << L")]" << std::endl;
     assert(offset > -1);
 #endif
   
@@ -2166,7 +2166,7 @@ void JitArm64::move_mem_reg(long offset, Register src, Register dest) {
 
 void JitArm64::move_mem32_reg(long offset, Register src, Register dest) {
 #ifdef _DEBUG_JIT_JIT
-    std::wcout << L"  " << (++instr_count) << L": [ldr.w " << GetRegisterName(dest) << L", (" << GetRegisterName(src) << L", #" << offset << L")]" << endl;
+    std::wcout << L"  " << (++instr_count) << L": [ldr.w " << GetRegisterName(dest) << L", (" << GetRegisterName(src) << L", #" << offset << L")]" << std::endl;
     assert(offset > -1);
 #endif
   
@@ -2187,7 +2187,7 @@ void JitArm64::move_mem32_reg(long offset, Register src, Register dest) {
 void JitArm64::move_imm_reg(long imm, Register reg) {
   if(imm >= -4096 && imm < 0) {
 #ifdef _DEBUG_JIT_JIT
-    std::wcout << L"  " << (++instr_count) << L": [mvn " << GetRegisterName(reg) << L", #" << imm << L"]" << endl;
+    std::wcout << L"  " << (++instr_count) << L": [mvn " << GetRegisterName(reg) << L", #" << imm << L"]" << std::endl;
 #endif
     uint32_t op_code = 0x92800000;
     
@@ -2198,7 +2198,7 @@ void JitArm64::move_imm_reg(long imm, Register reg) {
   }
   else if(imm >= 0 && imm <= 4095) {
 #ifdef _DEBUG_JIT_JIT
-    std::wcout << L"  " << (++instr_count) << L": [mov " << GetRegisterName(reg) << L", #" << imm << L"]" << endl;
+    std::wcout << L"  " << (++instr_count) << L": [mov " << GetRegisterName(reg) << L", #" << imm << L"]" << std::endl;
 #endif
     uint32_t op_code = 0xd2800000;
     
@@ -2222,7 +2222,7 @@ void JitArm64::move_imm_reg32(int32_t imm, Register reg) {
 void JitArm64::add_reg_reg(Register src, Register dest) {
 #ifdef _DEBUG_JIT_JIT
   std::wcout << L"  " << (++instr_count) << L": [add " << GetRegisterName(dest)
-  << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
+  << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << std::endl;
 #endif
   uint32_t op_code = 0x8B000000;
   
@@ -2247,7 +2247,7 @@ void JitArm64::add_imm_reg(long imm, Register reg) {
   else if(imm >= 0 && imm <= 4095) {
 #ifdef _DEBUG_JIT_JIT
   std::wcout << L"  " << (++instr_count) << L": [add " << GetRegisterName(reg) << L", "
-        << GetRegisterName(reg)  << L", #" << imm << L"]" << endl;
+        << GetRegisterName(reg)  << L", #" << imm << L"]" << std::endl;
 #endif
     uint32_t op_code = 0x91000000;
       
@@ -2293,7 +2293,7 @@ void JitArm64::add_imm_mem(long imm, long offset, Register dest) {
 void JitArm64::sub_reg_reg(Register src, Register dest) {
 #ifdef _DEBUG_JIT_JIT
   std::wcout << L"  " << (++instr_count) << L": [subs " << GetRegisterName(dest) << L", "
-  << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
+  << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << std::endl;
 #endif
   uint32_t op_code = 0xEB000000;
   
@@ -2322,7 +2322,7 @@ void JitArm64::sub_imm_reg(long imm, Register reg) {
   }
   else if(imm >= 0 && imm <= 4095) {
 #ifdef _DEBUG_JIT_JIT
-  std::wcout << L"  " << (++instr_count) << L": [sub " << GetRegisterName(reg) << L", " << GetRegisterName(reg)  << L", #" << imm << L"]" << endl;
+  std::wcout << L"  " << (++instr_count) << L": [sub " << GetRegisterName(reg) << L", " << GetRegisterName(reg)  << L", #" << imm << L"]" << std::endl;
 #endif
   
     uint32_t op_code = 0xF1000000;
@@ -2378,7 +2378,7 @@ void JitArm64::mul_mem_reg(long offset, Register src, Register dest) {
 
 void JitArm64::mul_reg_reg(Register src, Register dest) {
 #ifdef _DEBUG_JIT_JIT
-  std::wcout << L"  " << (++instr_count) << L": [mul " << GetRegisterName(dest) << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
+  std::wcout << L"  " << (++instr_count) << L": [mul " << GetRegisterName(dest) << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << std::endl;
 #endif
   uint32_t op_code = 0x9B007C00;
   
@@ -2412,7 +2412,7 @@ void JitArm64::div_mem_reg(long offset, Register src, Register dest, bool is_mod
 
 void JitArm64::div_reg_reg(Register src, Register dest, bool is_mod) {
 #ifdef _DEBUG_JIT_JIT
-  std::wcout << L"  " << (++instr_count) << L": [sdiv " << GetRegisterName(dest) << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
+  std::wcout << L"  " << (++instr_count) << L": [sdiv " << GetRegisterName(dest) << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << std::endl;
 #endif
   
   CheckIntDivideByZero(src);
@@ -2446,7 +2446,7 @@ void JitArm64::div_reg_reg(Register src, Register dest, bool is_mod) {
 
 void JitArm64::shl_imm_reg(long value, Register dest) {
 #ifdef _DEBUG_JIT_JIT
-  std::wcout << L"  " << (++instr_count) << L": [lsl " << GetRegisterName(dest) << L", " << GetRegisterName(dest) << L", #" << value << L"]" << endl;
+  std::wcout << L"  " << (++instr_count) << L": [lsl " << GetRegisterName(dest) << L", " << GetRegisterName(dest) << L", #" << value << L"]" << std::endl;
 #endif
                                  
   uint32_t op_code = 0xD3400000;
@@ -2483,7 +2483,7 @@ void JitArm64::shl_mem_reg(long offset, Register src, Register dest)
 void JitArm64::shl_reg_reg(Register src, Register dest)
 {
 #ifdef _DEBUG_JIT_JIT
-  std::wcout << L"  " << (++instr_count) << L": [lsl " << GetRegisterName(dest) << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
+  std::wcout << L"  " << (++instr_count) << L": [lsl " << GetRegisterName(dest) << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << std::endl;
 #endif
   uint32_t op_code = 0x9AC02000;
   
@@ -2503,7 +2503,7 @@ void JitArm64::shl_reg_reg(Register src, Register dest)
 
 void JitArm64::shr_imm_reg(long value, Register dest) {
 #ifdef _DEBUG_JIT_JIT
-  std::wcout << L"  " << (++instr_count) << L": [asr $" << value << L", %" << GetRegisterName(dest) << L"]" << endl;
+  std::wcout << L"  " << (++instr_count) << L": [asr $" << value << L", %" << GetRegisterName(dest) << L"]" << std::endl;
 #endif
   uint32_t op_code = 0x9340FC00;
   
@@ -2529,7 +2529,7 @@ void JitArm64::shr_mem_reg(long offset, Register src, Register dest)
 void JitArm64::shr_reg_reg(Register src, Register dest)
 {
 #ifdef _DEBUG_JIT_JIT
-  std::wcout << L"  " << (++instr_count) << L": [asr " << GetRegisterName(dest) << L", " << GetRegisterName(src) << L"]" << endl;
+  std::wcout << L"  " << (++instr_count) << L": [asr " << GetRegisterName(dest) << L", " << GetRegisterName(src) << L"]" << std::endl;
 #endif
   uint32_t op_code = 0x9AC02800;
   
@@ -2550,7 +2550,7 @@ void JitArm64::shr_reg_reg(Register src, Register dest)
 // --- function calls ---
 void JitArm64::call_reg(Register reg) {
 #ifdef _DEBUG_JIT_JIT
-  std::wcout << L"  " << (++instr_count) << L": [blr %" << GetRegisterName(reg) << L"]" << endl;
+  std::wcout << L"  " << (++instr_count) << L": [blr %" << GetRegisterName(reg) << L"]" << std::endl;
 #endif
   
   move_reg_mem(LR, TMP_LR, SP);
@@ -2565,7 +2565,7 @@ void JitArm64::call_reg(Register reg) {
 void JitArm64::and_reg_reg(Register src, Register dest) {
 #ifdef _DEBUG_JIT_JIT
   std::wcout << L"  " << (++instr_count) << L": [and " << GetRegisterName(dest)
-        << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
+        << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << std::endl;
 #endif
   uint32_t op_code = 0x8A000000;
   
@@ -2620,7 +2620,7 @@ void JitArm64::not_reg(Register reg) {
 void JitArm64::or_reg_reg(Register src, Register dest) {
 #ifdef _DEBUG_JIT_JIT
   std::wcout << L"  " << (++instr_count) << L": [orr " << GetRegisterName(dest)
-        << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
+        << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << std::endl;
 #endif
   uint32_t op_code = 0xAA000000;
   
@@ -2655,7 +2655,7 @@ void JitArm64::or_mem_reg(long offset, Register src, Register dest) {
 void JitArm64::xor_reg_reg(Register src, Register dest) {
 #ifdef _DEBUG_JIT_JIT
   std::wcout << L"  " << (++instr_count) << L": [eor " << GetRegisterName(dest)
-        << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
+        << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << std::endl;
 #endif
   uint32_t op_code = 0xCA000000;
   
@@ -2690,7 +2690,7 @@ void JitArm64::xor_mem_reg(long offset, Register src, Register dest) {
 void JitArm64::cmp_imm_reg(long imm, Register reg) {
   if(imm >= 0 && imm <= 4096) {
 #ifdef _DEBUG_JIT_JIT
-  std::wcout << L"  " << (++instr_count) << L": [cmp/cmn " << GetRegisterName(reg) << L", " << imm << L"]" << endl;
+  std::wcout << L"  " << (++instr_count) << L": [cmp/cmn " << GetRegisterName(reg) << L", " << imm << L"]" << std::endl;
 #endif
     
     uint32_t op_code = 0xF100001F;
@@ -2720,7 +2720,7 @@ void JitArm64::cmp_mem_reg(long offset, Register src, Register dest) {
 void JitArm64::cmp_reg_reg(Register src, Register dest) {
 #ifdef _DEBUG_JIT_JIT
   std::wcout << L"  " << (++instr_count) << L": [cmp " << GetRegisterName(dest)
-       << L", " << GetRegisterName(src) << L"]" << endl;
+       << L", " << GetRegisterName(src) << L"]" << std::endl;
 #endif
   uint32_t op_code = 0xEB00001F;
   
@@ -2733,7 +2733,7 @@ void JitArm64::cmp_reg_reg(Register src, Register dest) {
 void JitArm64::move_mem_freg(long offset, Register src, Register dest) {
 #ifdef _DEBUG_JIT_JIT
   std::wcout << L"  " << (++instr_count) << L": [f.ldr " << offset << L"(%"
-        << GetRegisterName(src) << L"), %" << GetRegisterName(dest) << L"]" << endl;
+        << GetRegisterName(src) << L"), %" << GetRegisterName(dest) << L"]" << std::endl;
 #endif
   
   uint32_t op_code = 0xFD400000;
@@ -2789,7 +2789,7 @@ void JitArm64::move_imm_freg(RegInstr* instr, Register reg) {
 void JitArm64::add_freg_freg(Register src, Register dest) {
 #ifdef _DEBUG_JIT_JIT
   std::wcout << L"  " << (++instr_count) << L": [fadd " << GetRegisterName(dest)
-        << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
+        << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << std::endl;
 #endif
   
   uint32_t op_code = 0x1E602800;
@@ -2811,7 +2811,7 @@ void JitArm64::add_freg_freg(Register src, Register dest) {
 void JitArm64::sub_freg_freg(Register src, Register dest) {
 #ifdef _DEBUG_JIT_JIT
   std::wcout << L"  " << (++instr_count) << L": [fsub " << GetRegisterName(dest)
-        << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
+        << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << std::endl;
 #endif
   
   uint32_t op_code = 0x1E603800;
@@ -2833,7 +2833,7 @@ void JitArm64::sub_freg_freg(Register src, Register dest) {
 void JitArm64::mul_freg_freg(Register src, Register dest) {
 #ifdef _DEBUG_JIT_JIT
   std::wcout << L"  " << (++instr_count) << L": [fmul " << GetRegisterName(dest)
-        << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
+        << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << std::endl;
 #endif
   
   uint32_t op_code = 0x1E600800;
@@ -2855,7 +2855,7 @@ void JitArm64::mul_freg_freg(Register src, Register dest) {
 void JitArm64::div_freg_freg(Register src, Register dest) {
 #ifdef _DEBUG_JIT_JIT
   std::wcout << L"  " << (++instr_count) << L": [fdiv " << GetRegisterName(dest)
-        << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
+        << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << std::endl;
 #endif
 
   CheckFloatDivideByZero(src);
@@ -2878,7 +2878,7 @@ void JitArm64::div_freg_freg(Register src, Register dest) {
 
 void JitArm64::round_freg_freg(Register src, Register dest) {
 #ifdef _DEBUG_JIT_JIT
-  std::wcout << L"  " << (++instr_count) << L": [frinta " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
+  std::wcout << L"  " << (++instr_count) << L": [frinta " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << std::endl;
 #endif
   
   uint32_t op_code = 0x1E664000;
@@ -2895,7 +2895,7 @@ void JitArm64::round_freg_freg(Register src, Register dest) {
 
 void JitArm64::floor_freg_freg(Register src, Register dest) {
 #ifdef _DEBUG_JIT_JIT
-  std::wcout << L"  " << (++instr_count) << L": [frintm " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
+  std::wcout << L"  " << (++instr_count) << L": [frintm " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << std::endl;
 #endif
   
   uint32_t op_code = 0x1E654000;
@@ -2912,7 +2912,7 @@ void JitArm64::floor_freg_freg(Register src, Register dest) {
 
 void JitArm64::ceil_freg_freg(Register src, Register dest) {
 #ifdef _DEBUG_JIT_JIT
-  std::wcout << L"  " << (++instr_count) << L": [frintp " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
+  std::wcout << L"  " << (++instr_count) << L": [frintp " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << std::endl;
 #endif
   
   uint32_t op_code = 0x1E64C000;
@@ -2929,7 +2929,7 @@ void JitArm64::ceil_freg_freg(Register src, Register dest) {
 
 void JitArm64::sqrt_freg_freg(Register src, Register dest) {
 #ifdef _DEBUG_JIT_JIT
-  std::wcout << L"  " << (++instr_count) << L": [fsqrt " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
+  std::wcout << L"  " << (++instr_count) << L": [fsqrt " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << std::endl;
 #endif
   
   uint32_t op_code = 0x1E61C000;
@@ -2963,7 +2963,7 @@ void JitArm64::vcvt_imm_freg(RegInstr* instr, Register reg) {
 void JitArm64::vcvt_reg_freg(Register src, Register dest) {
 #ifdef _DEBUG_JIT_JIT
   std::wcout << L"  " << (++instr_count) << L": [scvtf %" << GetRegisterName(src)
-        << L", %" << GetRegisterName(dest) << L"]" << endl;
+        << L", %" << GetRegisterName(dest) << L"]" << std::endl;
 #endif
   uint32_t op_code = 0x9E620000;
   
@@ -2983,7 +2983,7 @@ void JitArm64::vcvt_mem_freg(long offset, Register src, Register dest) {
 void JitArm64::vcvt_freg_reg(Register src, Register dest) {
 #ifdef _DEBUG_JIT_JIT
   std::wcout << L"  " << (++instr_count) << L": [fcvtzs %" << GetRegisterName(src)
-        << L", %" << GetRegisterName(dest) << L"]" << endl;
+        << L", %" << GetRegisterName(dest) << L"]" << std::endl;
 #endif
   uint32_t op_code = 0x9E780000;
   
@@ -3387,7 +3387,7 @@ void JitArm64::move_freg_freg(Register src, Register dest) {
   if(src != dest) {
 #ifdef _DEBUG_JIT_JIT
   std::wcout << L"  " << (++instr_count) << L": [fmov " << GetRegisterName(X10)
-        << L", " << GetRegisterName(src) << L", " << GetRegisterName(src) << L"]" << endl;
+        << L", " << GetRegisterName(src) << L", " << GetRegisterName(src) << L"]" << std::endl;
 #endif
     uint32_t op_code = 0x9E67000A;
     op_code |= src << 5;
@@ -3395,7 +3395,7 @@ void JitArm64::move_freg_freg(Register src, Register dest) {
     
 #ifdef _DEBUG_JIT_JIT
   std::wcout << L"  " << (++instr_count) << L": [fmov " << GetRegisterName(dest)
-        << L", " << GetRegisterName(src) << L", " << GetRegisterName(X19) << L"]" << endl;
+        << L", " << GetRegisterName(src) << L", " << GetRegisterName(X19) << L"]" << std::endl;
 #endif
     op_code = 0x9E660140;
     op_code |= dest;
@@ -3406,7 +3406,7 @@ void JitArm64::move_freg_freg(Register src, Register dest) {
 void JitArm64::cmp_freg_freg(Register src, Register dest) {
 #ifdef _DEBUG_JIT_JIT
   std::wcout << L"  " << (++instr_count) << L": [fcmp " << GetRegisterName(dest)
-        << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
+        << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << std::endl;
 #endif
   
   uint32_t op_code = 0x1E602000;
@@ -3422,7 +3422,7 @@ void JitArm64::cmp_freg_freg(Register src, Register dest) {
 void JitArm64::move_reg_mem8(Register src, long offset, Register dest) {
 #ifdef _DEBUG_JIT_JIT
   std::wcout << L"  " << (++instr_count) << L": [strb " << GetRegisterName(src)
-        << L", (" << GetRegisterName(dest) << L", #" << offset << L")]" << endl;
+        << L", (" << GetRegisterName(dest) << L", #" << offset << L")]" << std::endl;
   assert(offset > -1);
 #endif
   
@@ -3443,7 +3443,7 @@ void JitArm64::move_reg_mem8(Register src, long offset, Register dest) {
 void JitArm64::move_mem8_reg(long offset, Register src, Register dest) {
 #ifdef _DEBUG_JIT_JIT
   std::wcout << L"  " << (++instr_count) << L": [ldrb " << GetRegisterName(dest)
-        << L", (" << GetRegisterName(src) << L", #" << offset << L")]" << endl;
+        << L", (" << GetRegisterName(src) << L", #" << offset << L")]" << std::endl;
   assert(offset > -1);
 #endif
 
@@ -3604,14 +3604,14 @@ void JitArm64::cmov_reg(Register reg, InstructionType oper)
   switch (oper) {
   case LES_INT:
 #ifdef _DEBUG_JIT_JIT
-    std::wcout << L"  " << (++instr_count) << L": [cset  w9, lt]" << endl;
+    std::wcout << L"  " << (++instr_count) << L": [cset  w9, lt]" << std::endl;
 #endif
     AddMachineCode(0x1A9FA7E9);
     break;
       
   case LES_FLOAT:
 #ifdef _DEBUG_JIT_JIT
-    std::wcout << L"  " << (++instr_count) << L": [cset  w9, mi]" << endl;
+    std::wcout << L"  " << (++instr_count) << L": [cset  w9, mi]" << std::endl;
 #endif
     AddMachineCode(0x1A9F57E9);
     break;
@@ -3619,7 +3619,7 @@ void JitArm64::cmov_reg(Register reg, InstructionType oper)
   case GTR_INT:
   case GTR_FLOAT:
 #ifdef _DEBUG_JIT_JIT
-    std::wcout << L"  " << (++instr_count) << L": [cset  w9, gt]" << endl;
+    std::wcout << L"  " << (++instr_count) << L": [cset  w9, gt]" << std::endl;
 #endif
     AddMachineCode(0x1A9FD7E9);
     break;
@@ -4062,7 +4062,7 @@ RegisterHolder* JitArm64::ArrayIndex(StackInstr* instr, MemoryType type)
   RegisterHolder* array_holder;
   switch(holder->GetType()) {
   case IMM_INT:
-    wcerr << L">>> trying to index a constant! <<<" << endl;
+    wcerr << L">>> trying to index a constant! <<<" << std::endl;
     exit(1);
     break;
 
@@ -4076,7 +4076,7 @@ RegisterHolder* JitArm64::ArrayIndex(StackInstr* instr, MemoryType type)
     break;
 
   default:
-    wcerr << L"internal error" << endl;
+    wcerr << L"internal error" << std::endl;
     exit(1);
     break;
   }
@@ -4115,7 +4115,7 @@ RegisterHolder* JitArm64::ArrayIndex(StackInstr* instr, MemoryType type)
     break;
 
   default:
-    wcerr << L"internal error" << endl;
+    wcerr << L"internal error" << std::endl;
     exit(1);
     break;
   }
@@ -4144,7 +4144,7 @@ RegisterHolder* JitArm64::ArrayIndex(StackInstr* instr, MemoryType type)
       break;
 
     default:
-      wcerr << L"internal error" << endl;
+      wcerr << L"internal error" << std::endl;
       exit(1);
       break;
     }
@@ -4190,7 +4190,7 @@ RegisterHolder* JitArm64::ArrayIndex(StackInstr* instr, MemoryType type)
 void JitArm64::ProcessIndices()
 {
 #ifdef _DEBUG_JIT_JIT
-  std::wcout << L"Calculating indices for variables..." << endl;
+  std::wcout << L"Calculating indices for variables..." << std::endl;
 #endif
   multimap<long, StackInstr*> values;
   for(long i = 0; i < method->GetInstructionCount(); ++i) {
@@ -4268,7 +4268,7 @@ void JitArm64::ProcessIndices()
   }
   
 #ifdef _DEBUG_JIT_JIT
-  std::wcout << L"Local space required: " << local_space << L" byte(s)" << endl;
+  std::wcout << L"Local space required: " << local_space << L" byte(s)" << std::endl;
 #endif
 }
 
@@ -4288,7 +4288,7 @@ bool JitArm64::Compile(StackMethod* cm)
     const long mthd_id = method->GetId();
     std::wcout << L"---------- Compiling Native Code: method_id=" << cls_id << L","
       << mthd_id << L"; mthd_name='" << method->GetName() << L"'; params="
-      << method->GetParamCount() << L" ----------" << endl;
+      << method->GetParamCount() << L" ----------" << std::endl;
 #endif
 
     code = (uint32_t*)malloc(BUFFER_SIZE);
@@ -4332,7 +4332,7 @@ bool JitArm64::Compile(StackMethod* cm)
     aval_fregs.push_back(new RegisterHolder(D1, true));
     aval_fregs.push_back(new RegisterHolder(D0, true));
 #ifdef _DEBUG_JIT_JIT
-    std::wcout << L"Compiling code for AArch64 architecture..." << endl;
+    std::wcout << L"Compiling code for AArch64 architecture..." << std::endl;
 #endif
     
     // process offsets
@@ -4462,10 +4462,10 @@ bool JitArm64::Compile(StackMethod* cm)
     }
         
 #ifdef _DEBUG_JIT_JIT
-    std::wcout << L"------------------------" << endl;
+    std::wcout << L"------------------------" << std::endl;
     std::wcout << L"int const pool: size=" << int_pool_cache.size() << L" ["
-          << int_pool_cache.size() * sizeof(size_t) << L" of " << sizeof(size_t) * MAX_INTS << L" byte(s)]" << endl;
-    std::wcout << L"Caching JIT code: actual=" << code_index << L", buffer=" << code_buf_max << L" byte(s)" << endl;
+          << int_pool_cache.size() * sizeof(size_t) << L" of " << sizeof(size_t) * MAX_INTS << L" byte(s)]" << std::endl;
+    std::wcout << L"Caching JIT code: actual=" << code_index << L", buffer=" << code_buf_max << L" byte(s)" << std::endl;
 #endif
     
     // store compiled code
@@ -4504,7 +4504,7 @@ long JitRuntime::Execute(StackMethod* method, size_t* inst, size_t* op_stack, lo
   std::wcout << L"=== MTHD_CALL (native): id=" << cls_id << L"," << mthd_id << L"; name='" << method->GetName()
         << L"'; self=" << inst << L"(" << (size_t)inst << L"); stack=" << op_stack << L"; stack_pos="
         << (*stack_pos) << L"; params=" << method->GetParamCount() << L"; code=" << (size_t *)native_code->GetCode() << L"; code_index="
-        << code_size << L" ===" << endl;
+        << code_size << L" ===" << std::endl;
   assert((*stack_pos) >= method->GetParamCount());
 #endif
   
