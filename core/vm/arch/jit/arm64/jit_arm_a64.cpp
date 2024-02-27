@@ -2601,32 +2601,20 @@ void JitArm64::not_reg(Register reg) {
 #ifdef _DEBUG_JIT
   std::std::wcout << L"  " << (++instr_count) << L": [not $" << GetRegisterName(reg) << L"]" << std::endl;
 #endif
-  std::wcout << "TODO: TBD" << std::endl;
-
   uint32_t op_code = 0X2A2003E0;
   
   // rn <- src
-  uint32_t op_src = src << 16;
+  uint32_t op_src = reg << 16;
   op_code |= op_src;
   
   // rm=rd <- dest
-  uint32_t op_dest = dest << 5;
+  uint32_t op_dest = reg << 5;
   op_code |= op_dest;
 
-  op_dest = dest;
+  op_dest = reg;
   op_code |= op_dest;
 
   AddMachineCode(op_code);
-  
-  /*
-      <std::operator~(std::_Ios_Fmtflags)>:
-      d10043ff        sub     sp, sp, #0x10
-      b9000fe0        str     w0, [sp, #12]
-      b9400fe0        ldr     w0, [sp, #12]
-***   2a2003e0        mvn     w0, w0 ***
-      910043ff        add     sp, sp, #0x10
-      d65f03c0        ret
-  */
 }
 
 void JitArm64::or_reg_reg(Register src, Register dest) {
