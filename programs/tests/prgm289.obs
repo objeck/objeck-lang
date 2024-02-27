@@ -1,7 +1,9 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		a := 5; b := 27;
+		a := 7; # b := 27;
 
+		Foo(a)->PrintLine();
+#~
 		c := not a - not b;
 		c->PrintLine();
 
@@ -9,8 +11,12 @@ class Test {
 		Standard->Print("a&b = ")->PrintLine(a or b);
 		Standard->Print("a&b = ")->PrintLine(a xor b);
 		Standard->Print("~a = ")->PrintLine(not a);
+~#		
+	}
+
+#	function : Foo(i : Int) ~ Int {
+	function : native : Foo(i : Int) ~ Int {
+		x := i;
+		return not x;
 	}
 }
-
-# NEQL_EXPR
-# NEQL_INT
