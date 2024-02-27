@@ -3404,6 +3404,16 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LOAD_INT_VAR, 0, LOCL));
     break;
 
+  case BIT_NOT_EXPR:
+    EmitExpression(static_cast<CalculatedExpression*>(expression)->GetLeft());
+    break;
+
+  case BIT_XOR_EXPR: {
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, BIT_NOT_INT));
+    EmitExpression(static_cast<CalculatedExpression*>(expression)->GetLeft());
+  }
+    break;
+
   case EQL_EXPR:
   case NEQL_EXPR:
   case LES_EXPR:
@@ -3419,7 +3429,6 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
   case SHR_EXPR:
   case BIT_AND_EXPR:
   case BIT_OR_EXPR:
-  case BIT_XOR_EXPR:
     EmitCalculation(static_cast<CalculatedExpression*>(expression));
     break;
   }

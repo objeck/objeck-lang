@@ -696,6 +696,10 @@ void IntermediateInstruction::Debug(size_t i) {
     GetLogger()  << i << L":\tBIT_XOR_INT" << std::endl;
     break;
 
+  case BIT_NOT_INT:
+    GetLogger() << i << L":\tBIT_NOT_INT" << std::endl;
+    break;
+
   case EQL_INT:
     GetLogger()  << i << L":\tEQL_INT" << std::endl;
     break;
