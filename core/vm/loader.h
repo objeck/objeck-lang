@@ -263,6 +263,7 @@ public:
     cached_instrs[BIT_AND_INT] = new StackInstr(-1, BIT_AND_INT);
     cached_instrs[BIT_OR_INT] = new StackInstr(-1, BIT_OR_INT);
     cached_instrs[BIT_XOR_INT] = new StackInstr(-1, BIT_XOR_INT);
+    cached_instrs[BIT_NOT_INT] = new StackInstr(-1, BIT_NOT_INT);
 
     cached_instrs[CEIL_FLOAT] = new StackInstr(-1, CEIL_FLOAT);
     cached_instrs[TRUNC_FLOAT] = new StackInstr(-1, TRUNC_FLOAT);

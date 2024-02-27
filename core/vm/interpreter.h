@@ -288,7 +288,8 @@ namespace Runtime {
     void inline ModInt(size_t* &op_stack, long* &stack_pos);
     void inline BitAndInt(size_t* &op_stack, long* &stack_pos);
     void inline BitOrInt(size_t* &op_stack, long* &stack_pos);
-    void inline BitXorInt(size_t* &op_stack, long* &stack_pos);
+    void inline BitXorInt(size_t*& op_stack, long*& stack_pos);
+    void inline BitNotInt(size_t*& op_stack, long*& stack_pos);
     void inline LesEqlInt(size_t* &op_stack, long* &stack_pos);
     void inline GtrEqlInt(size_t* &op_stack, long* &stack_pos);
     void inline LesEqlFloat(size_t* &op_stack, long* &stack_pos);

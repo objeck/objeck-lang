@@ -104,7 +104,7 @@
 					"name": "keyword.operator.objeck"
 				},
 				{
-					"match": "\\b(and|or|xor|not)\\b",
+					"match": "\\b(not|and|or|xor|not)\\b",
 					"name": "keyword.operator.objeck"
 				},
 				{
