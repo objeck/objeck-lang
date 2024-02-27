@@ -511,7 +511,7 @@ bundle System {
 		~#
 		function : native : ToHexString(b : Byte) ~ String {
 			buffer := Char->New[4];
-			Number->IntToString(b->As(Int)->Abs(), 16, buffer);
+			Number->IntToString(b->As(Int), 16, buffer);
 			return String->New(buffer, false);
 		}
 		
@@ -519,8 +519,7 @@ bundle System {
 			out := String->New();
 			each(i : b) {
 				buffer := Char->New[4];
-				v := b[i]->As(Int);
-				Number->IntToString(v->Abs(), 16, buffer);
+				Number->IntToString(b[i]->As(Int), 16, buffer);
 				out->Append(buffer);
 			};
 			

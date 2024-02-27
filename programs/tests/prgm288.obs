@@ -5,18 +5,18 @@ class Test {
 		System.IO.Standard->SetIntFormat(System.Number->Format->HEX);
 		u8str := str->ToByteArray();
 
-#~		
+
 		each(b in u8str) {
 			b->ToHexString()->Print();
 			" "->Print();
 		}
-~#		
-
+		
 		""->PrintLine();
-
-
-		each(b in u8str) {
-			b->ToInt()->Print();
+		
+		u16str := str->ToCharArray();
+		each(i := u16str) {
+			c : Int := i;
+			c->Print();
 			" "->Print();
 		}
 	}
