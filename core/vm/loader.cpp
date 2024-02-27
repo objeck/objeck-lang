@@ -785,6 +785,7 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
     case S2I:
     case S2F:
     case I2S:
+    case BC2I:
     case F2S:
     case LOAD_ARY_SIZE:
     case EXT_LIB_LOAD:

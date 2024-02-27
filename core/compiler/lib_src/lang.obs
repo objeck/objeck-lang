@@ -350,7 +350,7 @@ bundle System {
 		@return value
 		~#
 		function : ToInt(v : Byte) ~ Int {
-			return v->As(Int);
+			BC2I;
 		}
 
 		function : Size(v : Byte) ~ Byte {
@@ -511,7 +511,7 @@ bundle System {
 		~#
 		function : native : ToHexString(b : Byte) ~ String {
 			buffer := Char->New[4];
-			Number->IntToString(b->As(Int)->Abs(), 10, buffer);
+			Number->IntToString(b->As(Int)->Abs(), 16, buffer);
 			return String->New(buffer, false);
 		}
 		
@@ -791,7 +791,7 @@ bundle System {
 		@return value
 		~#
 		function : ToInt(v : Char) ~ Int {
-			return v->As(Int);
+			BC2I;
 		}
 		
 		#~

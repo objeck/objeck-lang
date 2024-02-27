@@ -138,6 +138,8 @@ namespace instructions {
     S2F,
     I2S,
     F2S,
+    // widening
+    BC2I,
     // control
     MTHD_CALL,
     DYN_MTHD_CALL,
