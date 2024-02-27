@@ -1,7 +1,8 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
 		b : Byte := 1024;
-		# change to hex string
+		# change to hex string, do not widen
+		# add: ToInt()
 		b->ToHexString()->Print();
 	}
 }
