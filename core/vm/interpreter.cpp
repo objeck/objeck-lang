@@ -535,6 +535,10 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
     case I2S:
       Int2Str(op_stack, stack_pos);
       break;
+
+    case BC2I:
+      ByteChar2Int(op_stack, stack_pos);
+      break;
       
     case F2S:
       Float2Str(op_stack, stack_pos);
@@ -945,6 +949,12 @@ void StackInterpreter::Str2Float(size_t* &op_stack, long* &stack_pos)
     exit(1);
 #endif
   }
+}
+
+void StackInterpreter::ByteChar2Int(size_t*& op_stack, long*& stack_pos)
+{
+  const size_t value = PopInt(op_stack, stack_pos);
+  PushInt(value, op_stack, stack_pos);
 }
 
 void StackInterpreter::Int2Str(size_t* &op_stack, long* &stack_pos)

@@ -230,6 +230,8 @@ public:
     cached_instrs[I2S] = new StackInstr(-1, I2S);
     cached_instrs[F2S] = new StackInstr(-1, F2S);
 
+    cached_instrs[BC2I] = new StackInstr(-1, BC2I);
+
     cached_instrs[LOAD_ARY_SIZE] = new StackInstr(-1, LOAD_ARY_SIZE);
     cached_instrs[EXT_LIB_LOAD] = new StackInstr(-1, EXT_LIB_LOAD);
     cached_instrs[EXT_LIB_UNLOAD] = new StackInstr(-1, EXT_LIB_UNLOAD);
