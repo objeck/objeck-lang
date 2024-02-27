@@ -913,7 +913,7 @@ void JitAmd64::ProcessInstructions() {
       std::wcout << L"BIT_NOT_INT: regs=" << aval_regs.size() << L","
         << aux_regs.size() << std::endl;
 #endif
-std::wcout << L"TODO: BIT_NOT_INT" << std::endl;
+      ProcessNot(instr);
       break;
       
     case JMP:
@@ -933,6 +933,40 @@ std::wcout << L"TODO: BIT_NOT_INT" << std::endl;
     }
       break;
     }
+  }
+}
+
+void Runtime::JitAmd64::ProcessNot(StackInstr* instr)
+{
+  RegInstr* left = working_stack.front();
+  working_stack.pop_front();
+
+  switch(left->GetType()) {
+  case IMM_INT: {
+    RegisterHolder* holder = GetRegister();
+    move_imm_reg(left->GetOperand(), holder->GetRegister());
+    not_reg(holder->GetRegister());
+    working_stack.push_front(new RegInstr(holder));
+  }
+    break;
+
+  case REG_INT:
+    not_reg(left->GetRegister()->GetRegister());
+    working_stack.push_front(new RegInstr(left->GetRegister()));
+    break;
+
+  case MEM_INT: {
+    RegisterHolder* holder = GetRegister();
+    move_mem_reg((long)left->GetOperand(), RBP, holder->GetRegister());
+    not_reg(holder->GetRegister());
+    working_stack.push_front(new RegInstr(holder));
+  }
+    break;
+
+  default:
+    std::wcerr << L">>> Should never occur (compiler bug?) type=" << left->GetType() << L" <<<" << std::endl;
+    exit(1);
+    break;
   }
 }
 
@@ -4246,6 +4280,17 @@ void JitAmd64::and_mem_reg(long offset, Register src, Register dest) {
   AddMachineCode(ModRM(src, dest));
   // write value
   AddImm(offset);
+}
+
+// TODO: 64-bit literal operation for Windows
+void JitAmd64::not_reg(Register reg) {
+#ifdef _DEBUG_JIT
+  std::wcout << L"  " << (++instr_count) << L": [not $" << GetRegisterName(reg) << L"]" << std::endl;
+#endif
+  // encode
+  AddMachineCode(B(reg));
+  AddMachineCode(0xf7);
+  AddMachineCode(REXW(reg));
 }
 
 // TODO: 64-bit literal operation for Windows
