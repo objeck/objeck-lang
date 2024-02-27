@@ -353,6 +353,7 @@ namespace Runtime {
     void RegisterRoot();
     void ProcessInstructions();
     void ProcessNot(StackInstr* instr);
+
     void ProcessLoad(StackInstr* instr);
     void ProcessStore(StackInstr* instruction);
     void ProcessCopy(StackInstr* instr);
