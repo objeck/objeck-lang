@@ -136,6 +136,7 @@
                     <keyword>and</keyword>
                     <keyword>or</keyword>
                     <keyword>xor</keyword>
+                    <keyword>not</keyword>
                     <keyword>virtual</keyword>
                     <keyword>if</keyword>
                     <keyword>else</keyword>

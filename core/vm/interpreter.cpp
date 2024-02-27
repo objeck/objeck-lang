@@ -283,6 +283,10 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
       BitXorInt(op_stack, stack_pos);
       break;
 
+    case BIT_NOT_INT:
+      BitNotInt(op_stack, stack_pos);
+      break;
+
     case LES_EQL_INT:
       LesEqlInt(op_stack, stack_pos);
       break;
@@ -1289,6 +1293,15 @@ void StackInterpreter::BitOrInt(size_t* &op_stack, long* &stack_pos)
   const INT64_VALUE right = (INT64_VALUE)op_stack[(*stack_pos) - 2];
   op_stack[(*stack_pos) - 2] = left | right;
   (*stack_pos)--;
+}
+
+void StackInterpreter::BitNotInt(size_t*& op_stack, long*& stack_pos)
+{
+#ifdef _DEBUG
+  std::wcout << L"stack oper: BIT_NOT; call_pos=" << (*call_stack_pos) << std::endl;
+#endif
+  const INT64_VALUE left = (INT64_VALUE)op_stack[(*stack_pos) - 1];
+  op_stack[(*stack_pos) - 1] = ~left;
 }
 
 void StackInterpreter::BitXorInt(size_t* &op_stack, long* &stack_pos)

@@ -1,9 +1,9 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
 		# Initial values
-        a := 5; b := 7;
+        a := 5; b := 27;
 
-        c := not a;
+        c :=  b + not 13;
         c->PrintLine();
 
 #       Standard->Print("a&b = ")->PrintLine(a and b);

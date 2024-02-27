@@ -723,6 +723,7 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
     case BIT_AND_INT:
     case BIT_OR_INT:
     case BIT_XOR_INT:
+    case BIT_NOT_INT:
     case OR_INT:
     case AND_INT:
     case SWAP_INT:

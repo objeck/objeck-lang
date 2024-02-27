@@ -17,6 +17,7 @@
 		<string>and</string>
 		<string>or</string>
 		<string>xor</string>
+		<string>not</string>
 		<string>virtual</string>
 		<string>if</string>
 		<string>else</string>

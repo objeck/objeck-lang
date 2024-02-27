@@ -71,7 +71,7 @@ contexts:
     - match: \+|\-|/|%|\*
       scope: keyword.operator.arithmetic.objeck-obs
 
-    - match: '\b(and|or|xor)\b'
+    - match: '\b(not|and|or|xor)\b'
       scope: keyword.operator.bitwise.objeck-obs
     
     - match: '(class)\s+:\s+(native|public|private)\s*:\s+'
