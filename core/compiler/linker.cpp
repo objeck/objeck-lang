@@ -1484,6 +1484,10 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
       instrs.push_back(new LibraryInstr(line_num, BIT_OR_INT));
       break;
 
+    case BIT_NOT_INT:
+      instrs.push_back(new LibraryInstr(line_num, BIT_NOT_INT));
+      break;
+
     case BIT_XOR_INT:
       instrs.push_back(new LibraryInstr(line_num, BIT_XOR_INT));
       break;

@@ -3837,6 +3837,12 @@ Expression* Parser::ParseExpression(int depth)
   if(Match(TOKEN_NEQL) || (alt_syntax && Match(TOKEN_NOT))) {
     return ParseLogic(depth + 1);
   }
+  else if(Match(TOKEN_NOT_ID)) {
+    NextToken();
+    CalculatedExpression* calc_expr = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, line_pos, BIT_NOT_EXPR);
+    calc_expr->SetLeft(ParseLogic(depth + 1));
+    expression = calc_expr;
+  }
   else {
     expression = ParseLogic(depth + 1);
     //
