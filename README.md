@@ -36,6 +36,7 @@ Want to get started? Take a look at the [language guide](https://objeck.org/gett
   * Tiny [weather](https://gist.github.com/objeck/bce87bf73e5bdf0880cc0dcbc21b70f2) web server in under 500 LoC
     
 * **v2024.2.1**
+  * ~~Support for the unary bitwise not operation~~
   * ~~Webserver library enhancements~~
     * Improved performance
     * Better configuration
