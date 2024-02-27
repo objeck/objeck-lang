@@ -377,6 +377,7 @@ class StackMethod {
       case BIT_AND_INT:
       case BIT_OR_INT:
       case BIT_XOR_INT:
+      case BIT_NOT_INT:
       case SHL_INT:
       case SHR_INT:
         // float operations

@@ -3837,12 +3837,6 @@ Expression* Parser::ParseExpression(int depth)
   if(Match(TOKEN_NEQL) || (alt_syntax && Match(TOKEN_NOT))) {
     return ParseLogic(depth + 1);
   }
-  else if(Match(TOKEN_NOT_ID)) {
-    NextToken();
-    CalculatedExpression* calc_expr = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, line_pos, BIT_NOT_EXPR);
-    calc_expr->SetLeft(ParseLogic(depth + 1));
-    expression = calc_expr;
-  }
   else {
     expression = ParseLogic(depth + 1);
     //
@@ -3881,7 +3875,7 @@ Expression* Parser::ParseLogic(int depth)
 #endif
 
   Expression* left;
-  if(Match(TOKEN_NEQL) || (alt_syntax && Match(TOKEN_NOT))) {
+  if(Match(TOKEN_NEQL) || Match(TOKEN_NOT_ID) || (alt_syntax && Match(TOKEN_NOT))) {
     NextToken();
     CalculatedExpression* not_expr = static_cast<CalculatedExpression*>(TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, line_pos, NEQL_EXPR));
     not_expr->SetLeft(ParseMathLogic(depth + 1));
@@ -4305,6 +4299,13 @@ Expression* Parser::ParseSimpleExpression(int depth)
   else if(Match(TOKEN_BACK_SLASH)) {
     NextToken();
     expression = ParseLambda(depth + 1);
+  }
+  // negation 
+  else if(Match(TOKEN_NOT_ID)) {
+    NextToken();
+    CalculatedExpression* calc_expr = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, line_pos, BIT_NOT_EXPR);
+    calc_expr->SetLeft(ParseTerm(depth + 1));
+    expression = calc_expr;
   }
   // negation 
   else if(Match(TOKEN_SUB)) {
