@@ -2602,6 +2602,16 @@ void JitArm64::not_reg(Register reg) {
   std::std::wcout << L"  " << (++instr_count) << L": [not $" << GetRegisterName(reg) << L"]" << std::endl;
 #endif
   std::wcout << "TODO: TBD" << std::endl;
+
+  /*
+      <std::operator~(std::_Ios_Fmtflags)>:
+      d10043ff        sub     sp, sp, #0x10
+      b9000fe0        str     w0, [sp, #12]
+      b9400fe0        ldr     w0, [sp, #12]
+***   2a2003e0        mvn     w0, w0 ***
+      910043ff        add     sp, sp, #0x10
+      d65f03c0        ret
+  */
 }
 
 void JitArm64::or_reg_reg(Register src, Register dest) {
