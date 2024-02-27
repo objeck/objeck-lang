@@ -907,6 +907,14 @@ void JitAmd64::ProcessInstructions() {
 #endif
       ProcessLoadFloatElement(instr);
       break;
+
+    case BIT_NOT_INT:
+#ifdef _DEBUG_JIT
+      std::wcout << L"BIT_NOT_INT: regs=" << aval_regs.size() << L","
+        << aux_regs.size() << std::endl;
+#endif
+std::wcout << L"TODO: BIT_NOT_INT" << std::endl;
+      break;
       
     case JMP:
       ProcessJump(instr);
