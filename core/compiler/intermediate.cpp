@@ -3409,8 +3409,8 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
     break;
 
   case BIT_XOR_EXPR: {
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, BIT_NOT_INT));
     EmitExpression(static_cast<CalculatedExpression*>(expression)->GetLeft());
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, BIT_NOT_INT));
   }
     break;
 
