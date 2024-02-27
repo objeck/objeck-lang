@@ -2603,6 +2603,21 @@ void JitArm64::not_reg(Register reg) {
 #endif
   std::wcout << "TODO: TBD" << std::endl;
 
+  uint32_t op_code = 0X2A2003E0;
+  
+  // rn <- src
+  uint32_t op_src = src << 16;
+  op_code |= op_src;
+  
+  // rm=rd <- dest
+  uint32_t op_dest = dest << 5;
+  op_code |= op_dest;
+
+  op_dest = dest;
+  op_code |= op_dest;
+
+  AddMachineCode(op_code);
+  
   /*
       <std::operator~(std::_Ios_Fmtflags)>:
       d10043ff        sub     sp, sp, #0x10
