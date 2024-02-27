@@ -1,14 +1,11 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		# Initial values
-        a := 5; b := 27;
+       a := 5; b := 27;
 
-        c :=  b + not 13;
-        c->PrintLine();
-
-#       Standard->Print("a&b = ")->PrintLine(a and b);
-#       Standard->Print("a&b = ")->PrintLine(a or b);
-#       Standard->Print("a&b = ")->PrintLine(a xor b);
+		Standard->Print("a&b = ")->PrintLine(a and b);
+		Standard->Print("a&b = ")->PrintLine(a or b);
+		Standard->Print("a&b = ")->PrintLine(a xor b);
+		Standard->Print("~a = ")->PrintLine(not a);
 	}
 }
 
