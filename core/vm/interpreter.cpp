@@ -953,7 +953,13 @@ void StackInterpreter::Str2Float(size_t* &op_stack, long* &stack_pos)
 
 void StackInterpreter::ByteChar2Int(size_t*& op_stack, long*& stack_pos)
 {
-  const size_t value = PopInt(op_stack, stack_pos);
+  int64_t value = (int64_t)PopInt(op_stack, stack_pos);
+  if(value < UCHAR_MAX) {
+    value += UCHAR_MAX + 1;
+  }
+  else if(value < USHRT_MAX) {
+    value += USHRT_MAX + 1;
+  }
   PushInt(value, op_stack, stack_pos);
 }
 
