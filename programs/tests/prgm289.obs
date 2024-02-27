@@ -1,0 +1,13 @@
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		# Initial values
+        a := 5; b := 7;
+
+        Standard->Print("a&b = ")->PrintLine(a and b);
+        Standard->Print("a&b = ")->PrintLine(a or b);
+        Standard->Print("a&b = ")->PrintLine(a xor b);
+	}
+}
+
+# NEQL_EXPR
+# NEQL_INT

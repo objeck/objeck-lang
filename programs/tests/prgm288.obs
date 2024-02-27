@@ -24,5 +24,6 @@ class Test {
 			i->Print();
 			" "->Print();
 		}
+		""->PrintLine();
 	}
 }
