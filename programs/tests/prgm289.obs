@@ -4,7 +4,9 @@ class Test {
 
 		Foo(a,b)->PrintLine();
 
+		"---"->PrintLine();
 		c := not a - not b;
+		c->ToHexString()->PrintLine();
 		c->PrintLine();
 #~
 		Standard->Print("a&b = ")->PrintLine(a and b);
@@ -16,6 +18,6 @@ class Test {
 
 #	function : Foo(i : Int) ~ Int {
 	function : native : Foo(a : Int, b : Int) ~ Int {
-		return not a - not b + 4;
+		return not a - not b;
 	}
 }
