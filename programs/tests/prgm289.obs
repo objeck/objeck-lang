@@ -16,6 +16,6 @@ class Test {
 
 #	function : Foo(i : Int) ~ Int {
 	function : native : Foo(a : Int, b : Int) ~ Int {
-		return not a - not b;
+		return not a - not b + 4;
 	}
 }
