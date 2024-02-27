@@ -3875,7 +3875,7 @@ Expression* Parser::ParseLogic(int depth)
 #endif
 
   Expression* left;
-  if(Match(TOKEN_NEQL) || Match(TOKEN_NOT_ID) || (alt_syntax && Match(TOKEN_NOT))) {
+  if(Match(TOKEN_NEQL) || (alt_syntax && Match(TOKEN_NOT))) {
     NextToken();
     CalculatedExpression* not_expr = static_cast<CalculatedExpression*>(TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, line_pos, NEQL_EXPR));
     not_expr->SetLeft(ParseMathLogic(depth + 1));
