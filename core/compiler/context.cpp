@@ -1570,6 +1570,24 @@ void ContextAnalyzer::AnalyzeExpression(Expression* expression, const int depth)
 #endif
         break;
 
+      case BIT_NOT_EXPR: {
+        Expression* left = static_cast<CalculatedExpression*>(expression)->GetLeft();
+        AnalyzeExpression(left, depth + 1);
+        if(left->GetEvalType()) {
+          switch(left->GetEvalType()->GetType()) {
+          case BYTE_TYPE:
+          case CHAR_TYPE:
+          case INT_TYPE:
+            break;
+
+          default:
+            ProcessError(expression, L"Expected Byte, Char, Int or Enum class type");
+            break;
+          }
+        }
+      }
+        break;
+
       case EQL_EXPR:
       case NEQL_EXPR:
       case LES_EXPR:

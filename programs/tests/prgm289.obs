@@ -3,9 +3,12 @@ class Test {
 		# Initial values
         a := 5; b := 7;
 
-        Standard->Print("a&b = ")->PrintLine(a and b);
-        Standard->Print("a&b = ")->PrintLine(a or b);
-        Standard->Print("a&b = ")->PrintLine(a xor b);
+        c := not a;
+        c->PrintLine();
+
+#       Standard->Print("a&b = ")->PrintLine(a and b);
+#       Standard->Print("a&b = ")->PrintLine(a or b);
+#       Standard->Print("a&b = ")->PrintLine(a xor b);
 	}
 }
 

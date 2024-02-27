@@ -97,6 +97,7 @@ namespace instructions {
     BIT_AND_INT,
     BIT_OR_INT,
     BIT_XOR_INT,
+    BIT_NOT_INT,
     SHL_INT,
     SHR_INT,
     // float operations
