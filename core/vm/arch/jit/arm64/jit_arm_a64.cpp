@@ -2599,7 +2599,7 @@ void JitArm64::and_mem_reg(long offset, Register src, Register dest) {
 
 void JitArm64::not_reg(Register reg) {
 #ifdef _DEBUG_JIT
-  std::std::wcout << L"  " << (++instr_count) << L": [not $" << GetRegisterName(reg) << L"]" << std::endl;
+  std::std::wcout << L"  " << (++instr_count) << L": [not " << GetRegisterName(reg) << L"]" << std::endl;
 #endif
   uint32_t op_code = 0X2A2003E0;
   
