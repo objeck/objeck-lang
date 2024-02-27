@@ -848,10 +848,7 @@ namespace Runtime {
     void and_imm_reg(int64_t imm, Register reg);
     void and_reg_reg(Register src, Register dest);
     void and_mem_reg(long offset, Register src, Register dest);
-
-
     void not_reg(Register reg);
-
 
     void or_imm_reg(int64_t imm, Register reg);
     void or_reg_reg(Register src, Register dest);

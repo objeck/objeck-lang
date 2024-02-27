@@ -352,6 +352,7 @@ namespace Runtime {
     void ProcessParameters(long count);
     void RegisterRoot();
     void ProcessInstructions();
+    void ProcessNot(StackInstr* instr);
     void ProcessLoad(StackInstr* instr);
     void ProcessStore(StackInstr* instruction);
     void ProcessCopy(StackInstr* instr);
@@ -601,7 +602,8 @@ namespace Runtime {
     void xor_imm_reg(long imm, Register reg);
     void xor_reg_reg(Register src, Register dest);
     void xor_mem_reg(long offset, Register src, Register dest);
-    
+    void not_reg(Register reg);
+
     // add instructions
     void add_imm_mem(long imm, long offset, Register dest);
     void add_imm_reg(long imm, Register reg);
