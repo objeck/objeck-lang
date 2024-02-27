@@ -349,6 +349,7 @@ namespace Runtime {
     void ProcessParameters(long count);
     void RegisterRoot();
     void ProcessInstructions();
+    void ProcessNot(StackInstr* instr);
     void ProcessLoad(StackInstr* instr);
     void ProcessStore(StackInstr* instruction);
     void ProcessCopy(StackInstr* instr);
@@ -438,6 +439,68 @@ namespace Runtime {
       }    
     }
 #endif
+
+    /**
+     * Encoding for AMD64 "REX.W" bits
+     */
+    inline unsigned char REXW(Register reg) {
+      switch(reg) {
+      case RAX:
+      case XMM0:
+      case R8:
+      case XMM8:
+        return 0xd0;
+
+      case RBX:
+      case XMM3:
+      case R11:
+      case XMM11:
+        return 0xd0 + 0x3;
+
+      case RCX:
+      case XMM1:
+      case R9:
+      case XMM9:
+        return 0xd0 + 0x1;
+
+      case RDX:
+      case XMM2:
+      case R10:
+      case XMM10:
+        return 0xd0 + 0x2;
+
+      case RDI:
+      case XMM7:
+      case R15:
+      case XMM15:
+        return 0xd0 + 0x7;
+
+      case RSI:
+      case XMM6:
+      case R14:
+      case XMM14:
+        return 0xd0 + 0x6;
+
+      case RSP:
+      case XMM4:
+      case R12:
+      case XMM12:
+        return 0xd0 + 0x4;
+
+      case RBP:
+      case XMM5:
+      case R13:
+      case XMM13:
+        return 0xd0 + 0x5;
+
+      default:
+        std::wcerr << L"internal error" << std::endl;
+        exit(1);
+        break;
+      }
+
+      return 0;
+    }
 
     /**
      * Encoding for AMD64 "B" bits
@@ -785,6 +848,11 @@ namespace Runtime {
     void and_imm_reg(int64_t imm, Register reg);
     void and_reg_reg(Register src, Register dest);
     void and_mem_reg(long offset, Register src, Register dest);
+
+
+    void not_reg(Register reg);
+
+
     void or_imm_reg(int64_t imm, Register reg);
     void or_reg_reg(Register src, Register dest);
     void or_mem_reg(long offset, Register src, Register dest);
