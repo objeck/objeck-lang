@@ -308,6 +308,18 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
   }
     break;
 
+  case BC2I: {
+    int64_t value = (int64_t)PopInt(op_stack, stack_pos);
+    if(value < UCHAR_MAX + 1) {
+      value += UCHAR_MAX + 1;
+    }
+    else if(value < USHRT_MAX + 1) {
+      value += USHRT_MAX + 1;
+    }
+    PushInt(op_stack, stack_pos, value);
+  }
+    break;
+
   case S2F: {
     size_t* str_ptr = (size_t*)PopInt(op_stack, stack_pos);
     if(str_ptr) {
