@@ -954,10 +954,10 @@ void StackInterpreter::Str2Float(size_t* &op_stack, long* &stack_pos)
 void StackInterpreter::ByteChar2Int(size_t*& op_stack, long*& stack_pos)
 {
   int64_t value = (int64_t)PopInt(op_stack, stack_pos);
-  if(value < UCHAR_MAX) {
+  if(value < UCHAR_MAX + 1) {
     value += UCHAR_MAX + 1;
   }
-  else if(value < USHRT_MAX) {
+  else if(value < USHRT_MAX + 1) {
     value += USHRT_MAX + 1;
   }
   PushInt(value, op_stack, stack_pos);
