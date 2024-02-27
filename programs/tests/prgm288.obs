@@ -1,22 +1,27 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-#		str := "Здравствуйте";
-		str := "𤭢";
+		str := "Здравствуйте";
+#		str := "𤭢";
 		System.IO.Standard->SetIntFormat(System.Number->Format->HEX);
 		u8str := str->ToByteArray();
 
+		"Byte to Int\n---"->PrintLine();
+		each(b in u8str) {
+			b->ToInt()->Print();
+			" "->Print();
+		}
 
+		"\n\nByte to Hex String\n---"->PrintLine();
 		each(b in u8str) {
 			b->ToHexString()->Print();
 			" "->Print();
 		}
-		
-		""->PrintLine();
-		
+
+		"\n\nChar to Int\n---"->PrintLine();
 		u16str := str->ToCharArray();
-		each(i := u16str) {
-			c : Int := i;
-			c->Print();
+		each(c in u16str) {
+			i : Int := c;
+			i->Print();
 			" "->Print();
 		}
 	}
