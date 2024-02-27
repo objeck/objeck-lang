@@ -915,7 +915,7 @@ void JitArm64::ProcessInstructions() {
   }
 }
 
-void Runtime::JitAmd64::ProcessNot(StackInstr* instr)
+void Runtime::JitArm64::ProcessNot(StackInstr* instr)
 {
   RegInstr* left = working_stack.front();
   working_stack.pop_front();
@@ -936,7 +936,7 @@ void Runtime::JitAmd64::ProcessNot(StackInstr* instr)
 
   case MEM_INT: {
     RegisterHolder* holder = GetRegister();
-    move_mem_reg((long)left->GetOperand(), RBP, holder->GetRegister());
+    move_mem_reg((long)left->GetOperand(), SP, holder->GetRegister());
     not_reg(holder->GetRegister());
     working_stack.push_front(new RegInstr(holder));
   }
@@ -2597,7 +2597,7 @@ void JitArm64::and_mem_reg(long offset, Register src, Register dest) {
   ReleaseRegister(mem_holder);
 }
 
-void JitAmd64::not_reg(Register reg) {
+void JitArm64::not_reg(Register reg) {
 #ifdef _DEBUG_JIT
   std::std::wcout << L"  " << (++instr_count) << L": [not $" << GetRegisterName(reg) << L"]" << std::endl;
 #endif
