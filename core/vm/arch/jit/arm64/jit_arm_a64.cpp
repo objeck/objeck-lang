@@ -178,7 +178,7 @@ void JitArm64::RegisterRoot() {
 #ifdef _DEBUG_JIT_JIT
   std::std::wcout << L"  " << (++instr_count) << L": [b.lt]" << std::endl;
 #endif
-  AddMachineCode(0x540000cB);
+  AddMachineCode(0x540000CB);
   
   // zero out address and advance
   move_reg_reg(start_reg->GetRegister(), cur_reg->GetRegister());
@@ -2601,7 +2601,7 @@ void JitArm64::not_reg(Register reg) {
 #ifdef _DEBUG_JIT
   std::std::wcout << L"  " << (++instr_count) << L": [not " << GetRegisterName(reg) << L"]" << std::endl;
 #endif
-  uint32_t op_code = 0X2A2003E0;
+  uint32_t op_code = 0x2A2003E0;
   
   // rn <- src
   uint32_t op_src = reg << 16;
