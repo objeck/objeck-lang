@@ -2662,10 +2662,7 @@ void JitArm64::xor_reg_reg(Register src, Register dest) {
   // rn <- src
   uint32_t op_src = src << 16;
   op_code |= op_src;
-  
-  // rm <- dest
-  op_dest = dest;
-  op_code |= op_dest;
+  op_code |= dest;
 
   AddMachineCode(op_code);
 }
