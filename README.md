@@ -31,25 +31,22 @@ class Hello {
 Want to get started? Take a look at the [language guide](https://objeck.org/getting_started.html) and [code examples](https://github.com/objeck/objeck-lang/tree/master/programs/examples). If you want to contribute, start with the [system architecture](https://github.com/objeck/objeck-lang/tree/master/core).
 
 ## What's New?
-
-* **Gist**
-  * Tiny [weather](https://gist.github.com/objeck/bce87bf73e5bdf0880cc0dcbc21b70f2) web server in under 500 LoC
-    
+  
 * **v2024.2.1**
-  * ~~Support for the unary bitwise not operator #480~~
-  * ~~Webserver library enhancements~~
+  * Support for the unary bitwise not operator (#480)
+  * Webserver library enhancements
     * Improved performance
     * Better configuration
-  * ~~Add an optional 'in' keyword for use in 'each' loops; an alternative to ':=' operator~~
-  * ~~Added support for response files #545~~
+  * Add an optional `in` keyword for use in `each` loops; an alternative to `:=` operator
+  * Added support for response files (#545)
 * v2024.2.0
-  * ~~Incremental JSON parser~~
+  * Incremental JSON parser
     * Improved parsing performance for large JSON documents
-  * ~~Immutable Tuple types~~
+  * Immutable Tuple types
     * Pair<A,B>
     * Triplet<A,B,C>
     * Quartet<A,B,C,D>
-  * ~~Range support~~
+  * Range support
     * Added ``CharRange``, ``IntRange`` and, ``FloatRange`` classes
 
 ## Functionality
