@@ -38,7 +38,7 @@ Want to get started? Take a look at the [language guide](https://objeck.org/gett
   * Webserver library enhancements
     * Improved performance
     * [Simpler configuration](https://github.com/objeck/objeck-web-server/blob/master/config/weather_config.json)
-  * Add an optional `in` keyword for use in `each` loops; an alternative to `:=` operator
+  * Add an optional [in](<script src="https://gist.github.com/objeck/b1a11ea34f4697b06e31f8cadb59f601.js"></script>) keyword for use in `each` loops; an alternative to `:=` operator
 * v2024.2.0
   * Incremental JSON parser
     * Improved parsing performance for large JSON documents
