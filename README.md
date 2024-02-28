@@ -4,13 +4,13 @@
   <a href="https://www.objeck.org"><img src="docs/images/vcr.png"  width="512" alt="An Objeck"/></a>
 </p>
 
+<hr/>
+
 <p align="center">
   <a href="https://github.com/objeck/objeck-lang/actions/workflows/c-cpp.yml"><img src="https://github.com/objeck/objeck-lang/actions/workflows/c-cpp.yml/badge.svg" alt="C/C++ CI"></a>
   <a href="https://discord.gg/qEaCGWR7nb"><img src="https://badgen.net/badge/icon/discord?icon=discord&label" alt="Discord"></a>
   <a href="https://scan.coverity.com/projects/objeck"><img src="https://img.shields.io/coverity/scan/10314.svg" alt="Coverity Scan Build Status"></a>
 </p>
-
-<hr/>
 
 Objeck is a fast, intuitive, and lightweight programming language that supports both object-oriented and functional programming paradigms, and is designed to be compatible with multiple platforms, including Windows, Linux, and macOS.
 
