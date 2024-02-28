@@ -67,7 +67,7 @@ Want to get started? Take a look at the [language guide](https://objeck.org/gett
   * Range support
     * Added ``CharRange``, ``IntRange`` and, ``FloatRange`` classes
 
-## How it's Used?
+## How to Use It?
 
 ### [Object-oriented](https://en.wikipedia.org/wiki/Object-oriented_programming)
   
