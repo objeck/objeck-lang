@@ -2679,7 +2679,7 @@ function : Example() ~ Nil {
 			@values := values->ToArray();
 			@size := values->Size();
 		}
-
+		
 		method : Expand() ~ Nil {
 			if(@size >= @values->Size()) {
 				temp : H[] := H->New[@size + @size >> 2];
@@ -2688,7 +2688,11 @@ function : Example() ~ Nil {
 			};
 		}
 
-		method : Reverse() ~ Vector<H> {
+		#~
+		Reverses element order
+		@return reversed vector
+		~#
+		method : public : Reverse() ~ Vector<H> {
 			len := @size;
 			reversed := Collection.Vector->New()<H>;
 			each(i : values) {
@@ -2972,6 +2976,20 @@ function : Show(value : IntRef) ~ Nil {
 		New(values : Vector<H>) {
 			@values := values->ToArray();
 			@size := values->Size();
+		}
+
+		#~
+		Reverses element order
+		@return reversed vector
+		~#
+		method : public : Reverse() ~ Vector<H> {
+			len := @size;
+			reversed := Collection.Vector->New()<H>;
+			each(i : values) {
+				reversed->AddBack(@values[--len])
+			};
+
+			return reversed;
 		}
 
 		#~
