@@ -9,6 +9,8 @@ class Test {
 		m->Insert("printer");
 
 		k := m->GetKeys()<String>;
+		k->ToString()->PrintLine();
+		"---"->PrintLine();
 		k->Reverse()->ToString()->PrintLine();
 	}
 }
