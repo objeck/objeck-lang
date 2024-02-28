@@ -30,6 +30,23 @@ class Hello {
 
 Want to get started? Take a look at the [language guide](https://objeck.org/getting_started.html) and [code examples](https://github.com/objeck/objeck-lang/tree/master/programs/examples). If you want to contribute, start with the [system architecture](https://github.com/objeck/objeck-lang/tree/master/core).
 
+## What is it?
+
+* Modern object-oriented and functional
+* Cross-platform: Linux (x64 and ARM64), macOS (ARM64), Windows (x64)
+* Optimized and JIT-compiled runtimes
+* API support for
+  * Secure web servers and clients
+  * Encryption
+  * JSON, CSV, and XML parsing libraries
+  * Regular expressions
+  * 2D gaming
+  * Linear matrix mathematics
+  * Collections
+  * Files, directories, sockets, STDIO, logging, serialization, and pipe
+* REPL and IDE [LSP](https://github.com/objeck/objeck-lsp) support (for VSCode, Sublime, Kate, etc.) 
+* Online guides and API [documentation](https://www.objeck.org).
+
 ## What's New?
   
 * v2024.2.1
@@ -49,23 +66,6 @@ Want to get started? Take a look at the [language guide](https://objeck.org/gett
     * Quartet<A,B,C,D>
   * Range support
     * Added ``CharRange``, ``IntRange`` and, ``FloatRange`` classes
-
-## What is it?
-
-* Modern object-oriented and functional
-* Cross-platform: Linux (x64 and ARM64), macOS (ARM64), Windows (x64)
-* Optimized and JIT-compiled runtimes
-* API support for
-  * Secure web servers and clients
-  * Encryption
-  * JSON, CSV, and XML parsing libraries
-  * Regular expressions
-  * 2D gaming
-  * Linear matrix mathematics
-  * Collections
-  * Files, directories, sockets, STDIO, logging, serialization, and pipe
-* REPL and IDE [LSP](https://github.com/objeck/objeck-lsp) support (for VSCode, Sublime, Kate, etc.) 
-* Online guides and API [documentation](https://www.objeck.org).
 
 ## Features
 
