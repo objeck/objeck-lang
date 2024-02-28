@@ -40,9 +40,9 @@ Want to get started? Take a look at the [language guide](https://objeck.org/gett
     * [Simpler configuration](https://github.com/objeck/objeck-web-server/blob/master/config/weather_config.json)
   * Add an optional [in keyword](https://gist.github.com/objeck/27219d777b636208d88ab197d1cf1270) for use in `each` loops; an alternative to `:=` operator
 * v2024.2.0
-  * Incremental JSON parser
+  * Incremental [JSON parser](https://www.objeck.org/doc/api/classes.html#data.json.stream)
     * Improved parsing performance for large JSON documents
-  * Immutable Tuple types
+  * Immutable [Tuple types](https://www.objeck.org/doc/api/classes.html#tuples)
     * Pair<A,B>
     * Triplet<A,B,C>
     * Quartet<A,B,C,D>
