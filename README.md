@@ -34,11 +34,11 @@ Want to get started? Take a look at the [language guide](https://objeck.org/gett
   
 * **v2024.2.1**
   * Support for the unary bitwise not operator (#480)
+  * Added support for [response files](https://gist.github.com/objeck/27219d777b636208d88ab197d1cf1270#file-response_file-obs) (#545)
   * Webserver library enhancements
     * Improved performance
-    * Better configuration
+    * [Simpler configuration](https://github.com/objeck/objeck-web-server/blob/master/config/weather_config.json)
   * Add an optional `in` keyword for use in `each` loops; an alternative to `:=` operator
-  * Added support for response files (#545)
 * v2024.2.0
   * Incremental JSON parser
     * Improved parsing performance for large JSON documents
