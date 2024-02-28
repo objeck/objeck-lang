@@ -50,7 +50,7 @@ Want to get started? Take a look at the [language guide](https://objeck.org/gett
   * Range support
     * Added ``CharRange``, ``IntRange`` and, ``FloatRange`` classes
 
-## What it is
+## What is it?
 
 * Modern object-oriented and functional
 * Cross-platform: Linux (x64 and ARM64), macOS (ARM64), Windows (x64)
