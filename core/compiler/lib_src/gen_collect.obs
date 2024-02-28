@@ -2695,10 +2695,10 @@ function : Example() ~ Nil {
 		method : public : Reverse() ~ Vector<H> {
 			len := @size;
 			reversed := Collection.Vector->New()<H>;
-			each(i : @values) {
+			each(i : @size) {
 				reversed->AddBack(@values[--len])
 			};
-
+			
 			return reversed;
 		}
 
