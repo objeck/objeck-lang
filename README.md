@@ -1,5 +1,7 @@
+<h1 align="center">It's Programmable</h1>
+
 <p align="center">
-  <a href="https://www.objeck.org"><img src="docs/images/gear_wheel_256.png"  width="192" height="192" alt="An Objeck"/></a>
+  <a href="https://www.objeck.org"><img src="docs/images/vcr.png"  width="512" alt="An Objeck"/></a>
 </p>
 
 <p align="center">
@@ -8,9 +10,9 @@
   <a href="https://scan.coverity.com/projects/objeck"><img src="https://img.shields.io/coverity/scan/10314.svg" alt="Coverity Scan Build Status"></a>
 </p>
 
-<h1 align="center">It's Programmable</h1>
+<hr/>
 
-Objeck is a 64-bit object-oriented and functional programming language designed to be fast, intuitive, and lightweight.
+Objeck is a fast, intuitive, and lightweight programming language that supports both object-oriented and functional programming paradigms, and is designed to be compatible with multiple platforms, including Windows, Linux, and macOS.
 
 ```ruby
 class Hello {
