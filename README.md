@@ -8,7 +8,7 @@
   <a href="https://scan.coverity.com/projects/objeck"><img src="https://img.shields.io/coverity/scan/10314.svg" alt="Coverity Scan Build Status"></a>
 </p>
 
-<h1 align="center">Fully Programmable</h1>
+<h1 align="center">It's Programmable</h1>
 
 Objeck is a 64-bit object-oriented and functional programming language designed to be fast, intuitive, and lightweight.
 
