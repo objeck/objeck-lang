@@ -1,0 +1,14 @@
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		m := Collection.Set->New()<String>;
+		m->Insert("return")
+		m->Insert("lecture");
+		m->Insert("circumstance");
+		m->Insert("cigarette");
+		m->Insert("respectable");
+		m->Insert("printer");
+
+		k := m->GetKeys()<String>;
+		k->Reverse()->ToString()->PrintLine();
+	}
+}
