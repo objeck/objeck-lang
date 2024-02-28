@@ -2688,6 +2688,16 @@ function : Example() ~ Nil {
 			};
 		}
 
+		method : Reverse() ~ Vector<H> {
+			len := @size;
+			reversed := Collection.Vector->New()<H>;
+			each(i : values) {
+				reversed->AddBack(@values[--len])
+			};
+
+			return reversed;
+		}
+
 		#~
 		Formats the collection into a string. If an element implements the 'Stringify' 
 		interface, it's 'ToString()' is called.
