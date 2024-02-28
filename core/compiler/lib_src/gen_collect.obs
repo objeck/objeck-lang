@@ -2986,13 +2986,13 @@ function : Show(value : IntRef) ~ Nil {
 		Reverses element order
 		@return reversed vector
 		~#
-		method : public : Reverse() ~ Vector<H> {
+		method : public : Reverse() ~ CompareVector<H> {
 			if(@size < 2) {
 				return @self;
 			}
 
 			len := @size;
-			reversed := Collection.Vector->New()<H>;
+			reversed := Collection.CompareVector->New()<H>;
 			each(i : @values) {
 				reversed->AddBack(@values[--len])
 			};
