@@ -2693,12 +2693,16 @@ function : Example() ~ Nil {
 		@return reversed vector
 		~#
 		method : public : Reverse() ~ Vector<H> {
+			if(@size < 2) {
+				return @self;
+			}
+			
 			len := @size;
 			reversed := Collection.Vector->New()<H>;
 			each(i : @size) {
 				reversed->AddBack(@values[--len])
 			};
-			
+
 			return reversed;
 		}
 
@@ -2983,6 +2987,10 @@ function : Show(value : IntRef) ~ Nil {
 		@return reversed vector
 		~#
 		method : public : Reverse() ~ Vector<H> {
+			if(@size < 2) {
+				return @self;
+			}
+
 			len := @size;
 			reversed := Collection.Vector->New()<H>;
 			each(i : @values) {
