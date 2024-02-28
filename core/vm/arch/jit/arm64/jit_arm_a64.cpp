@@ -2654,7 +2654,7 @@ void JitArm64::or_mem_reg(long offset, Register src, Register dest) {
 
 void JitArm64::xor_reg_reg(Register src, Register dest) {
 #ifdef _DEBUG_JIT_JIT
-  std::wcout << L"  " << (++instr_count) << L": [eor " << GetRegisterName(dest)
+  std::wcout << L"  " << (++instr_count) << L": [mvn " << GetRegisterName(dest)
         << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << std::endl;
 #endif
   uint32_t op_code = 0xCA000000;
@@ -2663,10 +2663,7 @@ void JitArm64::xor_reg_reg(Register src, Register dest) {
   uint32_t op_src = src << 16;
   op_code |= op_src;
   
-  // rm=rd <- dest
-  uint32_t op_dest = dest << 5;
-  op_code |= op_dest;
-
+  // rm <- dest
   op_dest = dest;
   op_code |= op_dest;
 
