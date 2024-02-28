@@ -32,7 +32,7 @@ Want to get started? Take a look at the [language guide](https://objeck.org/gett
 
 ## What's New?
   
-* **v2024.2.1**
+* v2024.2.1
   * Support for the [unary bitwise not operator](https://gist.github.com/objeck/d7d5c94de9a1361a20f0eccd65226ded) (#480)
   * Added support for [response files](https://gist.github.com/objeck/b1a11ea34f4697b06e31f8cadb59f601) (#545)
   * Webserver library enhancements
