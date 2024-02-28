@@ -33,7 +33,7 @@ Want to get started? Take a look at the [language guide](https://objeck.org/gett
 ## What's New?
   
 * **v2024.2.1**
-  * Support for the unary bitwise not operator (#480)
+  * Support for the [unary bitwise not operator](https://gist.github.com/objeck/d7d5c94de9a1361a20f0eccd65226ded) (#480)
   * Added support for [response files](https://gist.github.com/objeck/27219d777b636208d88ab197d1cf1270) (#545)
   * Webserver library enhancements
     * Improved performance
