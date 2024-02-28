@@ -1,4 +1,4 @@
-<h1 align="center">It's Programmable</h1>
+<h1 align="center">Fully Programmable</h1>
 
 <p align="center">
   <a href="https://www.objeck.org"><img src="docs/images/vcr.png"  width="512" alt="An Objeck"/></a>
