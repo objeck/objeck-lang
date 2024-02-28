@@ -2690,7 +2690,7 @@ function : Example() ~ Nil {
 
 		#~
 		Reverses element order
-		@return reversed vector
+		@return reversed vector, if the vector is empty or hold 1 item then the original list is returned
 		~#
 		method : public : Reverse() ~ Vector<H> {
 			if(@size < 2) {
@@ -2984,7 +2984,7 @@ function : Show(value : IntRef) ~ Nil {
 
 		#~
 		Reverses element order
-		@return reversed vector
+		@return reversed vector, if the vector is empty or hold 1 item then the original list is returned
 		~#
 		method : public : Reverse() ~ CompareVector<H> {
 			if(@size < 2) {
