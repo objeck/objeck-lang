@@ -71,7 +71,6 @@ class MinHeap {
         return true; 
     }
 
-
     # Decreases value of given index to value.  
     # It is assumed that value is smaller  
     # than @heap[index].  
@@ -88,8 +87,8 @@ class MinHeap {
     # root) from min heap  
     method : public : Peek() ~ Int { 
         return @heap[0]; 
-    } 
-      
+    }
+    
     # A recursive method to heapify a subtree with the root at given index 
     # This method assumes that the subtrees are already heapified 
     method : native : MinHeapify(i : Int) ~ Nil { 
