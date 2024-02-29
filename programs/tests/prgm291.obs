@@ -5,13 +5,10 @@ class HeapTest {
         h->Insert(2);
         h->Insert(1);
         h->Insert(5);
+        h->Insert(33);
         h->Insert(3);
         
-        Standard->Print(h->Pop())->PrintLine();
-        Standard->Print(h->Pop())->PrintLine();
-        Standard->Print(h->Pop())->PrintLine();
-        Standard->Print(h->Pop())->PrintLine();
-        Standard->Print(h->Pop())->PrintLine();
+        Standard->Print(h->Peek())->PrintLine();
     } 
 } 
 
