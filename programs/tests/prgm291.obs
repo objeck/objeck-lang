@@ -1,166 +1,170 @@
-#~
-Original implementation by rishabmalhdijo 
-~#
+# A class for Min Heap  
 class MinHeap { 
-    @heap : Int[]; 
-    @max : Int;
-    @size : Int; 
+      
+    # To store array of elements in heap 
+    heapArray : Int[];
+    capacity : Int;
+    current_heap_size : Int;
     
-    New(max : Int) { 
-        @max := max; 
-        @heap :=Int->New[@max]; 
-    }
-
-    function : Main(args : String[]) ~ Nil {
-        h := MinHeap->New(11); 
-        h->Insert(3); 
-        h->Insert(2); 
-        h->Delete(1); 
-        h->Insert(15); 
-        h->Insert(5); 
-        h->Insert(4); 
-        h->Insert(45); 
-
-        Standard->Print(h->Pop())->Print(' ');
-        Standard->Print(h->Peek())->Print(' ');
-        
-        h->Decrease(2, 1); 
-        h->Peek()->PrintLine(); 
-    }
-
+    # Constructor  
+    New(n : Int) { 
+        capacity := n; 
+        heapArray := Int->New[capacity]; 
+        current_heap_size := 0; 
+    } 
+      
     # Swapping using reference  
-    method : Swap(array : Int[], a : Int, b : Int) ~ Nil { 
-        temp := array[a]; 
-        array[a] := array[b]; 
-        array[b] := temp; 
-    } 
-
-    # Get the GetParent index for the given index 
-    method : GetParent(index : Int) ~ Int { 
-        return (index - 1) / 2; 
+    method : swap(arr : Int[], a : Int, b : Int) ~ Nil { 
+        temp := arr[a]; 
+        arr[a] := arr[b]; 
+        arr[b] := temp; 
     } 
       
-    # Get the GetLeft Child index for the given index 
-    method : GetLeft(index : Int) ~ Int {
-        return 2 * index + 1; 
+      
+    # Get the Parent index for the given index 
+    method : parent(key : Int) ~ Int { 
+        return (key - 1) / 2; 
     } 
       
-    # Get the GetRight Child index for the given index 
-    method : GetRight(index : Int) ~ Int { 
-        return 2 * index + 2; 
-    }
+    # Get the Left Child index for the given index 
+    method : left(key : Int) ~ Int { 
+        return 2 * key + 1; 
+    } 
+      
+    # Get the Right Child index for the given index 
+    method : right(key : Int) ~ Int { 
+        return 2 * key + 2; 
+    } 
 
-    # Inserts a new index 
-    method : public : Insert(index : Int) ~ Bool { 
-        if(@size = @max) {
+    # Inserts a new key 
+    method : public : insertKey(key : Int) ~ Bool { 
+        if (current_heap_size = capacity) { 
+              
             # heap is full 
             return false; 
         } 
       
-        # First insert the new index at the end  
-        i := @size; 
-        @heap[i] := index; 
-        @size++; 
+        # First insert the new key at the end  
+        i := current_heap_size; 
+        heapArray[i] := key; 
+        current_heap_size++; 
           
         # Fix the min heap property if it is violated  
-        while(i <> 0 &  @heap[i] < @heap[GetParent(i)]) { 
-            Swap(@heap, i, GetParent(i)); 
-            i := GetParent(i); 
-        };
-
+        while (i <> 0 & heapArray[i] < heapArray[parent(i)]) { 
+            swap(heapArray, i, parent(i)); 
+            i := parent(i); 
+        } 
         return true; 
-    }
-
-    # Decreases value of given index to value.  
-    # It is assumed that value is smaller  
-    # than @heap[index].  
-    method : Decrease(index : Int, value : Int) ~ Nil { 
-        @heap[index] := value; 
-  
-        while(index <> 0 & @heap[index] < @heap[GetParent(index)]) { 
-            Swap(@heap, index, GetParent(index)); 
-            index := GetParent(index); 
-        };
-    }
-
-    # Returns the minimum index (index at 
-    # root) from min heap  
-    method : public : Peek() ~ Int { 
-        return @heap[0]; 
-    }
-    
-    # A recursive method to heapify a subtree with the root at given index 
-    # This method assumes that the subtrees are already heapified 
-    method : native : MinHeapify(i : Int) ~ Nil { 
-        l := GetLeft(i); 
-        r := GetRight(i);
-        smallest := i; 
-
-        if(l < @size & @heap[l] < @heap[i]) {
-            smallest := l; 
-        }
-        else if(r < @size & @heap[r] < @heap[smallest]) {
-            smallest := r;
-        };
-
-        if(smallest <> i) { 
-            Swap(@heap, i, smallest); 
-            MinHeapify(smallest); 
-        };
     } 
+      
+    # Decreases value of given key to new_val.  
+    # It is assumed that new_val is smaller  
+    # than heapArray[key].  
+    method : decreaseKey(key : Int, new_val : Int) ~ Nil { 
+        heapArray[key] := new_val; 
+  
+        while (key <> 0 & heapArray[key] < heapArray[parent(key)]) { 
+            swap(heapArray, key, parent(key)); 
+            key := parent(key); 
+        } 
+    } 
+      
+    # Returns the minimum key (key at 
+    # root) from min heap  
+    method : getMin() ~ Int { 
+        return heapArray[0]; 
+    } 
+      
       
     # Method to remove minimum element  
     # (or root) from min heap  
-    method : public : Pop() ~ Int { 
-        if(@size <= 0) { 
+    method : public : extractMin() ~ Int { 
+        if (current_heap_size <= 0) { 
             return Int->MaxSize(); 
         } 
-        else if(@size = 1) { 
-            @size--; 
-            return @heap[0]; 
-        };
+  
+        if (current_heap_size = 1) { 
+            current_heap_size--; 
+            return heapArray[0]; 
+        } 
           
         # Store the minimum value,  
         # and remove it from heap  
-        root := @heap[0]; 
+        root := heapArray[0]; 
   
-        @heap[0] := @heap[@size - 1]; 
-        @size--; 
+        heapArray[0] := heapArray[current_heap_size - 1]; 
+        current_heap_size--; 
         MinHeapify(0); 
-
+  
         return root; 
     } 
-
-    # This function deletes index at the  
+          
+    # This function deletes key at the  
     # given index. It first reduced value  
     # to minus infinite, then calls extractMin() 
-    method : Delete(index : Int) ~ Nil {
-        Decrease(index, Int->MinSize()); 
-        Pop(); 
-    }
-
-    # Increases value of given index to value. 
-    # It is assumed that value is greater  
-    # than @heap[index].  
-    # Heapify from the given index 
-    method : public : Increase(index : Int, value : Int) ~ Nil {
-        if(@heap[index] > value) {
-            @heap[index] := value; 
-            MinHeapify(index);
-        };
+    method : public : deleteKey(key : Int) ~ Nil { 
+        decreaseKey(key, Int->MinSize()); 
+        extractMin(); 
     } 
       
-    # Changes value on a index 
-    method : public : Update(index : Int, value : Int) ~ Nil { 
-        if(@heap[index] = value) { 
-            return; 
-        };
-        
-        if(@heap[index] < value) { 
-            Increase(index, value); 
+    # A recursive method to heapify a subtree  
+    # with the root at given index  
+    # This method assumes that the subtrees 
+    # are already heapified 
+    method : MinHeapify(key : Int) ~ Nil { 
+        l := left(key); 
+        r := right(key); 
+  
+        smallest := key; 
+        if (l < current_heap_size & heapArray[l] < heapArray[smallest]) { 
+            smallest := l; 
         } 
-        else { 
-            Decrease(index, value); 
-        };
+        if (r < current_heap_size & heapArray[r] < heapArray[smallest]) { 
+            smallest := r; 
+        } 
+  
+        if (smallest <> key) { 
+            swap(heapArray, key, smallest); 
+            MinHeapify(smallest); 
+        } 
     } 
-}
+      
+    # Increases value of given key to new_val. 
+    # It is assumed that new_val is greater  
+    # than heapArray[key].  
+    # Heapify from the given key 
+    method : increaseKey(key : Int, new_val : Int) ~ Nil { 
+        heapArray[key] := new_val; 
+        MinHeapify(key); 
+    } 
+      
+    # Changes value on a key 
+    method : changeValueOnAKey(key : Int, new_val : Int) ~ Nil { 
+        if (heapArray[key] = new_val) { 
+            return; 
+        } 
+        if (heapArray[key] < new_val) { 
+            increaseKey(key, new_val); 
+        } else { 
+            decreaseKey(key, new_val); 
+        } 
+    } 
+} 
+  
+# Driver Code 
+class MinHeapTest { 
+    function : Main(args : String[]) ~ Nil {
+        h := MinHeap->New(11); 
+        h->insertKey(13); 
+        h->insertKey(2); 
+        h->insertKey(1); 
+        h->insertKey(5); 
+        h->insertKey(3);  
+        
+        Standard->Print(h->extractMin())->PrintLine(); 
+        Standard->Print(h->extractMin())->PrintLine(); 
+        Standard->Print(h->extractMin())->PrintLine(); 
+        Standard->Print(h->extractMin())->PrintLine(); 
+        Standard->Print(h->extractMin())->PrintLine(); 
+    } 
+} 
