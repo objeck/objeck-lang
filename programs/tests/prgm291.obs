@@ -9,7 +9,6 @@ class MinHeap {
     New(n : Int) { 
         @max := n; 
         @heap :=Int->New[@max]; 
-        @size := 0; 
     }
 
     function : Main(args : String[]) ~ Nil {
@@ -68,7 +67,7 @@ class MinHeap {
             Swap(@heap, i, GetParent(i)); 
             i := GetParent(i); 
         };
-        
+
         return true; 
     }
 
