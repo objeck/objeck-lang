@@ -142,8 +142,7 @@ class Heap {
     }
 
     # Decreases value of given key to new_val.  
-    # It is assumed that new_val is smaller  
-    # than @heap[key].  
+    # It is assumed that new_val is smaller than @heap[key].  
     method : Decrease(key : Int, new_val : Int) ~ Nil { 
         @heap[key] := new_val; 
   
