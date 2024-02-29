@@ -53,7 +53,7 @@ class MinHeap {
 
     # Inserts a new key 
     method : public : InsertKey(key : Int) ~ Bool { 
-        if (@size = @max) {
+        if(@size = @max) {
             # heap is full 
             return false; 
         } 
@@ -64,7 +64,7 @@ class MinHeap {
         @size++; 
           
         # Fix the min heap property if it is violated  
-        while (i <> 0 &  @heap[i] < @heap[GetParent(i)]) { 
+        while(i <> 0 &  @heap[i] < @heap[GetParent(i)]) { 
             Swap(@heap, i, GetParent(i)); 
             i := GetParent(i); 
         } 
@@ -78,7 +78,7 @@ class MinHeap {
     method : DecreaseKey(key : Int, new_val : Int) ~ Nil { 
         @heap[key] := new_val; 
   
-        while (key <> 0 & @heap[key] < @heap[GetParent(key)]) { 
+        while(key <> 0 & @heap[key] < @heap[GetParent(key)]) { 
             Swap(@heap, key, GetParent(key)); 
             key := GetParent(key); 
         } 
@@ -92,7 +92,7 @@ class MinHeap {
       
     # A recursive method to heapify a subtree with the root at given index 
     # This method assumes that the subtrees are already heapified 
-    method : MinHeapify(i : Int) ~ Nil { 
+    method : native : MinHeapify(i : Int) ~ Nil { 
         l := GetLeft(i); 
         r := GetRight(i);
         smallest := i; 
@@ -151,12 +151,14 @@ class MinHeap {
       
     # Changes value on a key 
     method : public : changeValueOnAKey(key : Int, new_val : Int) ~ Nil { 
-        if (@heap[key] = new_val) { 
+        if(@heap[key] = new_val) { 
             return; 
         } 
-        if (@heap[key] < new_val) { 
+        
+        if(@heap[key] < new_val) { 
             IncreaseKey(key, new_val); 
-        } else { 
+        } 
+        else { 
             DecreaseKey(key, new_val); 
         } 
     } 
