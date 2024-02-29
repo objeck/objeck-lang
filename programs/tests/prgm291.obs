@@ -24,8 +24,11 @@ class MinHeap {
         Standard->Print(h->Pop())->Print(' ');
         Standard->Print(h->Peek())->PrintLine(' ');
         
-        h->Decrease(1, 3); 
+        h->Decrease(0, 2);
+
         h->Peek()->PrintLine(); 
+        Standard->Print(h->Pop())->Print(' ');
+        Standard->Print(h->Pop())->Print(' ');
     }
 
     # Swapping using reference  
