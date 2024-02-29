@@ -1,6 +1,6 @@
 class HeapTest { 
     function : Main(args : String[]) ~ Nil {
-        h := Heap->New(11, Heap->Type->MIN); 
+        h := Heap->New(11, Heap->Type->MAX); 
         h->Insert(13);
         h->Insert(2);
         h->Insert(1);
@@ -44,10 +44,17 @@ class Heap {
         @heap[i] := key; 
         @size++; 
           
-        # Fix the min heap property if it is violated  
-        while(i <> 0 & @heap[i] < @heap[GetParent(i)]) { 
-            Swap(@heap, i, GetParent(i)); 
-            i := GetParent(i); 
+        if(@type = Heap->Type->MIN) {
+            while(i <> 0 & @heap[i] < @heap[GetParent(i)]) { 
+                Swap(@heap, i, GetParent(i)); 
+                i := GetParent(i); 
+            }
+        }
+        else {
+            while(i <> 0 & @heap[i] > @heap[GetParent(i)]) { 
+                Swap(@heap, i, GetParent(i)); 
+                i := GetParent(i); 
+            }
         }
 
         return true; 
@@ -61,7 +68,12 @@ class Heap {
     # Method to remove minimum element (or root) from min heap  
     method : public : Pop() ~ Int { 
         if(@size <= 0) { 
-            return Int->MaxSize(); 
+            if(@type = Heap->Type->MIN) {
+                return Int->MaxSize(); 
+            }
+            else {
+                return Int->MaxSize(); 
+            }
         } 
   
         if(@size = 1) { 
@@ -118,18 +130,29 @@ class Heap {
         left := GetLeft(key); 
         right := GetRight(key); 
   
-        smallest := key; 
-        if(left < @size & @heap[left] < @heap[smallest]) { 
-            smallest := left; 
-        } 
+        value := key; 
+        if(@type = Heap->Type->MIN) {
+            if(left < @size & @heap[left] < @heap[value]) { 
+                value := left; 
+            } 
 
-        if(right < @size & @heap[right] < @heap[smallest]) { 
-            smallest := right; 
-        } 
-  
-        if(smallest <> key) { 
-            Swap(@heap, key, smallest); 
-            Heapify(smallest); 
+            if(right < @size & @heap[right] < @heap[value]) { 
+                value := right; 
+            } 
+        }
+        else {
+            if(left < @size & @heap[left] > @heap[value]) { 
+                value := left; 
+            } 
+
+            if(right < @size & @heap[right] > @heap[value]) { 
+                value := right; 
+            } 
+        }
+        
+        if(value <> key) { 
+            Swap(@heap, key, value); 
+            Heapify(value); 
         } 
     } 
       
@@ -146,23 +169,41 @@ class Heap {
     method : Decrease(key : Int, new_val : Int) ~ Nil { 
         @heap[key] := new_val; 
   
-        while(key <> 0 & @heap[key] < @heap[GetParent(key)]) { 
-            Swap(@heap, key, GetParent(key)); 
-            key := GetParent(key); 
-        } 
+        if(@type = Heap->Type->MIN) {
+            while(key <> 0 & @heap[key] < @heap[GetParent(key)]) { 
+                Swap(@heap, key, GetParent(key)); 
+                key := GetParent(key); 
+            } 
+        }
+        else {
+            while(key <> 0 & @heap[key] > @heap[GetParent(key)]) { 
+                Swap(@heap, key, GetParent(key)); 
+                key := GetParent(key); 
+            } 
+        }
     }
      
     # Changes value on a key 
     method : Update(key : Int, new_val : Int) ~ Nil { 
         if(@heap[key] = new_val) { 
             return; 
-        } 
-        
-        if(@heap[key] < new_val) { 
-            Increase(key, new_val); 
-        } 
-        else { 
-            Decrease(key, new_val); 
-        } 
+        }
+
+        if(@type = Heap->Type->MIN) {
+            if(@heap[key] < new_val) { 
+                Increase(key, new_val); 
+            } 
+            else { 
+                Decrease(key, new_val); 
+            };
+        }
+        else {
+            if(@heap[key] > new_val) { 
+                Decrease(key, new_val); 
+            } 
+            else { 
+                Increase(key, new_val); 
+            };
+        };
     } 
 }
