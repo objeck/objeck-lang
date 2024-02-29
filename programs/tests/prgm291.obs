@@ -14,14 +14,13 @@ class MinHeap {
 
     function : Main(args : String[]) ~ Nil {
         h := MinHeap->New(11); 
+        h->Insert(1); 
         h->Insert(3); 
-        h->Insert(2); 
-        h->Delete(1); 
-        h->Insert(15); 
+        h->Insert(6); 
         h->Insert(5); 
-        h->Insert(4); 
-        h->Insert(45); 
-
+        h->Insert(9); 
+        h->Insert(8); 
+        
         Standard->Print(h->Pop())->Print(' ');
         Standard->Print(h->Peek())->PrintLine(' ');
         
