@@ -93,18 +93,15 @@ class Heap {
             }
             else {
                 return Int->MaxSize(); 
-            }
-        } 
+            };
+        };
   
         if(@size = 1) { 
             @size--; 
             return @heap[0]; 
-        } 
-          
-        # Store the minimum value,  
-        # and remove it from heap  
+        };
+
         root := @heap[0]; 
-  
         @heap[0] := @heap[@size - 1]; 
         @size--; 
         Heapify(0); 
