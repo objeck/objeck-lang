@@ -1,0 +1,138 @@
+#~
+Original implementation by rishabmalhdijo 
+~#
+class MinHeap { 
+    @heap : Int[]; 
+    @max : Int;
+    @size : Int; 
+    
+    New(n : Int) { 
+        @max := n; 
+        @heap :=Int->New[@max]; 
+        @size := 0; 
+    }
+
+    function : Main(args : String[]) ~ Nil {
+        h := MinHeap->New(11); 
+        h->InsertKey(1); 
+        h->InsertKey(10); 
+        h->InsertKey(40); 
+        h->InsertKey(3);
+
+        h->ExtractMin()->PrintLine();
+        h->DeleteKey(0);
+        h->ExtractMin()->PrintLine();
+        h->ExtractMin()->PrintLine();
+    }
+
+    # Swapping using reference  
+    method : Swap(arr : Int[], a : Int, b : Int) ~ Nil { 
+        temp := arr[a]; 
+        arr[a] := arr[b]; 
+        arr[b] := temp; 
+    } 
+
+    # Get the GetParent index for the given index 
+    method : GetParent(key : Int) ~ Int { 
+        return (key - 1) / 2; 
+    } 
+      
+    # Get the GetLeft Child index for the given index 
+    method : GetLeft(key : Int) ~ Int {
+        return 2 * key + 1; 
+    } 
+      
+    # Get the GetRight Child index for the given index 
+    method : GetRight(key : Int) ~ Int { 
+        return 2 * key + 2; 
+    }
+
+    # Inserts a new key 
+    method : public : InsertKey(key : Int) ~ Bool { 
+        if (@size = @max) {
+            # heap is full 
+            return false; 
+        } 
+      
+        # First insert the new key at the end  
+        i := @size; 
+        @heap[i] := key; 
+        @size++; 
+          
+        # Fix the min heap property if it is violated  
+        while (i <> 0 &  @heap[i] < @heap[GetParent(i)]) { 
+            Swap(@heap, i, GetParent(i)); 
+            i := GetParent(i); 
+        } 
+        return true; 
+    }
+
+
+    # Decreases value of given key to new_val.  
+    # It is assumed that new_val is smaller  
+    # than @heap[key].  
+    method : DecreaseKey(key : Int, new_val : Int) ~ Nil { 
+        @heap[key] := new_val; 
+  
+        while (key <> 0 & @heap[key] < @heap[GetParent(key)]) { 
+            Swap(@heap, key, GetParent(key)); 
+            key := GetParent(key); 
+        } 
+    }
+
+    # Returns the minimum key (key at 
+    # root) from min heap  
+    method : public : GetMin() ~ Int { 
+        return @heap[0]; 
+    } 
+      
+    # A recursive method to heapify a subtree with the root at given index 
+    # This method assumes that the subtrees are already heapified 
+    method : MinHeapify(i : Int) ~ Nil { 
+        l := GetLeft(i); 
+        r := GetRight(i);
+        smallest := i; 
+
+        if(l < @size & @heap[l] < @heap[i]) {
+            smallest := l; 
+        }
+        else if(r < @size & @heap[r] < @heap[smallest]) {
+            smallest := r;
+        }
+
+        if(smallest <> i) { 
+            Swap(@heap, i, smallest); 
+            MinHeapify(smallest); 
+        } 
+    } 
+      
+    # Method to remove minimum element  
+    # (or root) from min heap  
+    method : public : ExtractMin() ~ Int { 
+        if(@size <= 0) { 
+            return Int->MaxSize(); 
+        } 
+        else if(@size = 1) { 
+            @size--; 
+            return @heap[0]; 
+        } 
+          
+        # Store the minimum value,  
+        # and remove it from heap  
+        root := @heap[0]; 
+  
+        @heap[0] := @heap[@size - 1]; 
+        @size--; 
+        MinHeapify(0); 
+
+        return root; 
+    } 
+
+    # This function deletes key at the  
+    # given index. It first reduced value  
+    # to minus infinite, then calls extractMin() 
+    method : DeleteKey(key : Int) ~ Nil {
+        DecreaseKey(key, Int->MinSize()); 
+        ExtractMin(); 
+    } 
+}
