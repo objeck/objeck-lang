@@ -14,15 +14,19 @@ class MinHeap {
 
     function : Main(args : String[]) ~ Nil {
         h := MinHeap->New(11); 
-        h->InsertKey(1); 
-        h->InsertKey(10); 
-        h->InsertKey(40); 
-        h->InsertKey(3);
+        h->InsertKey(3); 
+        h->InsertKey(2); 
+        h->DeleteKey(1); 
+        h->InsertKey(15); 
+        h->InsertKey(5); 
+        h->InsertKey(4); 
+        h->InsertKey(45); 
 
-        h->ExtractMin()->PrintLine();
-        h->DeleteKey(0);
-        h->ExtractMin()->PrintLine();
-        h->ExtractMin()->PrintLine();
+        Standard->Print(h->ExtractMin())->Print(' ');
+        Standard->Print(h->GetMin())->Print(' ');
+        
+        h->DecreaseKey(2, 1); 
+        h->GetMin()->PrintLine(); 
     }
 
     # Swapping using reference  
@@ -134,5 +138,26 @@ class MinHeap {
     method : DeleteKey(key : Int) ~ Nil {
         DecreaseKey(key, Int->MinSize()); 
         ExtractMin(); 
+    }
+
+    # Increases value of given key to new_val. 
+    # It is assumed that new_val is greater  
+    # than @heap[key].  
+    # Heapify from the given key 
+    method : public : IncreaseKey(key : Int, new_val : Int) ~ Nil {
+        @heap[key] := new_val; 
+        MinHeapify(key); 
+    } 
+      
+    # Changes value on a key 
+    method : public : changeValueOnAKey(key : Int, new_val : Int) ~ Nil { 
+        if (@heap[key] = new_val) { 
+            return; 
+        } 
+        if (@heap[key] < new_val) { 
+            IncreaseKey(key, new_val); 
+        } else { 
+            DecreaseKey(key, new_val); 
+        } 
     } 
 }
