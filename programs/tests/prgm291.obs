@@ -14,19 +14,19 @@ class MinHeap {
 
     function : Main(args : String[]) ~ Nil {
         h := MinHeap->New(11); 
-        h->InsertKey(3); 
-        h->InsertKey(2); 
-        h->DeleteKey(1); 
-        h->InsertKey(15); 
-        h->InsertKey(5); 
-        h->InsertKey(4); 
-        h->InsertKey(45); 
+        h->Insert(3); 
+        h->Insert(2); 
+        h->Delete(1); 
+        h->Insert(15); 
+        h->Insert(5); 
+        h->Insert(4); 
+        h->Insert(45); 
 
-        Standard->Print(h->ExtractMin())->Print(' ');
-        Standard->Print(h->GetMin())->Print(' ');
+        Standard->Print(h->Pop())->Print(' ');
+        Standard->Print(h->Peek())->PrintLine(' ');
         
-        h->DecreaseKey(2, 1); 
-        h->GetMin()->PrintLine(); 
+        h->Decrease(1, 3); 
+        h->Peek()->PrintLine(); 
     }
 
     # Swapping using reference  
@@ -37,30 +37,30 @@ class MinHeap {
     } 
 
     # Get the GetParent index for the given index 
-    method : GetParent(key : Int) ~ Int { 
-        return (key - 1) / 2; 
+    method : GetParent(index : Int) ~ Int { 
+        return (index - 1) / 2; 
     } 
       
     # Get the GetLeft Child index for the given index 
-    method : GetLeft(key : Int) ~ Int {
-        return 2 * key + 1; 
+    method : GetLeft(index : Int) ~ Int {
+        return 2 * index + 1; 
     } 
       
     # Get the GetRight Child index for the given index 
-    method : GetRight(key : Int) ~ Int { 
-        return 2 * key + 2; 
+    method : GetRight(index : Int) ~ Int { 
+        return 2 * index + 2; 
     }
 
-    # Inserts a new key 
-    method : public : InsertKey(key : Int) ~ Bool { 
+    # Inserts a new index 
+    method : public : Insert(index : Int) ~ Bool { 
         if(@size = @max) {
             # heap is full 
             return false; 
         } 
       
-        # First insert the new key at the end  
+        # First insert the new index at the end  
         i := @size; 
-        @heap[i] := key; 
+        @heap[i] := index; 
         @size++; 
           
         # Fix the min heap property if it is violated  
@@ -72,21 +72,23 @@ class MinHeap {
     }
 
 
-    # Decreases value of given key to new_val.  
-    # It is assumed that new_val is smaller  
-    # than @heap[key].  
-    method : DecreaseKey(key : Int, new_val : Int) ~ Nil { 
-        @heap[key] := new_val; 
-  
-        while(key <> 0 & @heap[key] < @heap[GetParent(key)]) { 
-            Swap(@heap, key, GetParent(key)); 
-            key := GetParent(key); 
-        } 
+    # Decreases value of given index to value.  
+    # It is assumed that value is smaller  
+    # than @heap[index].  
+    method : Decrease(index : Int, value : Int) ~ Nil { 
+        if(value < @heap[index]) {
+            @heap[index] := value; 
+      
+            while(index <> 0 & @heap[index] < @heap[GetParent(index)]) { 
+                Swap(@heap, index, GetParent(index)); 
+                index := GetParent(index); 
+            } 
+        }
     }
 
-    # Returns the minimum key (key at 
+    # Returns the minimum index (index at 
     # root) from min heap  
-    method : public : GetMin() ~ Int { 
+    method : public : Peek() ~ Int { 
         return @heap[0]; 
     } 
       
@@ -112,7 +114,7 @@ class MinHeap {
       
     # Method to remove minimum element  
     # (or root) from min heap  
-    method : public : ExtractMin() ~ Int { 
+    method : public : Pop() ~ Int { 
         if(@size <= 0) { 
             return Int->MaxSize(); 
         } 
@@ -132,34 +134,36 @@ class MinHeap {
         return root; 
     } 
 
-    # This function deletes key at the  
+    # This function deletes index at the  
     # given index. It first reduced value  
     # to minus infinite, then calls extractMin() 
-    method : DeleteKey(key : Int) ~ Nil {
-        DecreaseKey(key, Int->MinSize()); 
-        ExtractMin(); 
+    method : Delete(index : Int) ~ Nil {
+        Decrease(index, Int->MinSize()); 
+        Pop(); 
     }
 
-    # Increases value of given key to new_val. 
-    # It is assumed that new_val is greater  
-    # than @heap[key].  
-    # Heapify from the given key 
-    method : public : IncreaseKey(key : Int, new_val : Int) ~ Nil {
-        @heap[key] := new_val; 
-        MinHeapify(key); 
+    # Increases value of given index to value. 
+    # It is assumed that value is greater  
+    # than @heap[index].  
+    # Heapify from the given index 
+    method : public : Increase(index : Int, value : Int) ~ Nil {
+        if(value > @heap[index]) {
+            @heap[index] := value; 
+            MinHeapify(index);
+        };
     } 
       
-    # Changes value on a key 
-    method : public : changeValueOnAKey(key : Int, new_val : Int) ~ Nil { 
-        if(@heap[key] = new_val) { 
+    # Changes value on a index 
+    method : public : Update(index : Int, value : Int) ~ Nil { 
+        if(@heap[index] = value) { 
             return; 
         } 
         
-        if(@heap[key] < new_val) { 
-            IncreaseKey(key, new_val); 
+        if(@heap[index] < value) { 
+            Increase(index, value); 
         } 
         else { 
-            DecreaseKey(key, new_val); 
+            Decrease(index, value); 
         } 
     } 
 }
