@@ -1,6 +1,6 @@
 class HeapTest { 
     function : Main(args : String[]) ~ Nil {
-        h := Heap->New(11, Heap->Order->MAX); 
+        h := Heap->New(11, Heap->Order->MAX);
         h->Insert(13);
         h->Insert(2);
         h->Insert(1);
@@ -38,9 +38,9 @@ class Heap {
     @param order sort order
     ~#
     New(max : Int, order : Heap->Order) { 
-        @max := max; 
+        @max := max;
         @order := order;
-        @heap := Int->New[@max]; 
+        @heap := Int->New[@max];
     } 
       
     #~
@@ -50,28 +50,28 @@ class Heap {
     ~#
     method : public : Insert(key : Int) ~ Bool { 
         if(@size = @max) { 
-            return false; 
+            return false;
         } 
       
         # First insert the new key at the end  
-        i := @size; 
-        @heap[i] := key; 
-        @size++; 
+        i := @size;
+        @heap[i] := key;
+        @size++;
           
         if(@order = Heap->Order->MIN) {
             while(i <> 0 & @heap[i] < @heap[GetParent(i)]) { 
-                Swap(@heap, i, GetParent(i)); 
-                i := GetParent(i); 
+                Swap(@heap, i, GetParent(i));
+                i := GetParent(i);
             }
         }
         else {
             while(i <> 0 & @heap[i] > @heap[GetParent(i)]) { 
-                Swap(@heap, i, GetParent(i)); 
-                i := GetParent(i); 
+                Swap(@heap, i, GetParent(i));
+                i := GetParent(i);
             }
         }
 
-        return true; 
+        return true;
     } 
     
     #~
@@ -79,7 +79,7 @@ class Heap {
     @return minimum or maximum value
     ~#
     method : public : Peek() ~ Int { 
-        return @heap[0]; 
+        return @heap[0];
     } 
      
     #~
@@ -89,24 +89,24 @@ class Heap {
     method : public : Pop() ~ Int { 
         if(@size <= 0) { 
             if(@order = Heap->Order->MIN) {
-                return Int->MaxSize(); 
+                return Int->MaxSize();
             }
             else {
-                return Int->MaxSize(); 
+                return Int->MaxSize();
             };
         };
   
         if(@size = 1) { 
-            @size--; 
-            return @heap[0]; 
+            @size--;
+            return @heap[0];
         };
 
-        root := @heap[0]; 
-        @heap[0] := @heap[@size - 1]; 
-        @size--; 
-        Heapify(0); 
+        root := @heap[0];
+        @heap[0] := @heap[@size - 1];
+        @size--;
+        Heapify(0);
   
-        return root; 
+        return root;
     } 
 
     #~
@@ -129,8 +129,8 @@ class Heap {
     Removes the given key value from the heap
     ~#
     method : public : Remove(key : Int) ~ Nil { 
-        Decrease(key, Int->MinSize()); 
-        Pop(); 
+        Decrease(key, Int->MinSize());
+        Pop();
     }
 
     #~
@@ -140,93 +140,93 @@ class Heap {
     ~#
     method : Update(key : Int, value : Int) ~ Nil { 
         if(@heap[key] = value) { 
-            return; 
+            return;
         }
 
         if(@order = Heap->Order->MIN) {
             if(@heap[key] < value) { 
-                Increase(key, value); 
+                Increase(key, value);
             } 
             else { 
-                Decrease(key, value); 
+                Decrease(key, value);
             };
         }
         else {
             if(@heap[key] > value) { 
-                Decrease(key, value); 
+                Decrease(key, value);
             } 
             else { 
-                Increase(key, value); 
+                Increase(key, value);
             };
         };
     } 
 
     method : Swap(array : Int[], a : Int, b : Int) ~ Nil { 
-        temp := array[a]; 
-        array[a] := array[b]; 
-        array[b] := temp; 
+        temp := array[a];
+        array[a] := array[b];
+        array[b] := temp;
     } 
           
     method : GetParent(key : Int) ~ Int { 
-        return (key - 1) / 2; 
+        return (key - 1) / 2;
     } 
       
     method : GetLeft(key : Int) ~ Int { 
-        return 2 * key + 1; 
+        return 2 * key + 1;
     } 
       
     method : GetRight(key : Int) ~ Int { 
-        return 2 * key + 2; 
+        return 2 * key + 2;
     } 
           
     method : Heapify(key : Int) ~ Nil { 
-        left := GetLeft(key); 
-        right := GetRight(key); 
+        left := GetLeft(key);
+        right := GetRight(key);
   
-        value := key; 
+        value := key;
         if(@order = Heap->Order->MIN) {
             if(left < @size & @heap[left] < @heap[value]) { 
-                value := left; 
+                value := left;
             } 
 
             if(right < @size & @heap[right] < @heap[value]) { 
-                value := right; 
+                value := right;
             } 
         }
         else {
             if(left < @size & @heap[left] > @heap[value]) { 
-                value := left; 
+                value := left;
             } 
 
             if(right < @size & @heap[right] > @heap[value]) { 
-                value := right; 
+                value := right;
             } 
         }
         
         if(value <> key) { 
-            Swap(@heap, key, value); 
-            Heapify(value); 
+            Swap(@heap, key, value);
+            Heapify(value);
         } 
     } 
       
     method : Increase(key : Int, value : Int) ~ Nil { 
-        @heap[key] := value; 
-        Heapify(key); 
+        @heap[key] := value;
+        Heapify(key);
     }
 
     method : Decrease(key : Int, value : Int) ~ Nil { 
-        @heap[key] := value; 
+        @heap[key] := value;
   
         if(@order = Heap->Order->MIN) {
             while(key <> 0 & @heap[key] < @heap[GetParent(key)]) { 
-                Swap(@heap, key, GetParent(key)); 
-                key := GetParent(key); 
+                Swap(@heap, key, GetParent(key));
+                key := GetParent(key);
             } 
         }
         else {
             while(key <> 0 & @heap[key] > @heap[GetParent(key)]) { 
-                Swap(@heap, key, GetParent(key)); 
-                key := GetParent(key); 
+                Swap(@heap, key, GetParent(key));
+                key := GetParent(key);
             } 
         }
     }
