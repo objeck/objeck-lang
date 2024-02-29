@@ -1,32 +1,39 @@
-class MinHeapTest { 
+class HeapTest { 
     function : Main(args : String[]) ~ Nil {
-        h := MinHeap->New(11); 
-        h->Insert(13); 
-        h->Insert(2); 
-        h->Insert(1); 
-        h->Insert(5); 
-        h->Insert(3);  
+        h := Heap->New(11, Heap->Type->MIN); 
+        h->Insert(13);
+        h->Insert(2);
+        h->Insert(1);
+        h->Insert(5);
+        h->Insert(3);
         
-        Standard->Print(h->PopMin())->PrintLine(); 
-        Standard->Print(h->PopMin())->PrintLine(); 
-        Standard->Print(h->PopMin())->PrintLine(); 
-        Standard->Print(h->PopMin())->PrintLine(); 
-        Standard->Print(h->PopMin())->PrintLine(); 
+        Standard->Print(h->Pop())->PrintLine();
+        Standard->Print(h->Pop())->PrintLine();
+        Standard->Print(h->Pop())->PrintLine();
+        Standard->Print(h->Pop())->PrintLine();
+        Standard->Print(h->Pop())->PrintLine();
     } 
 } 
 
-class MinHeap { 
+class Heap { 
     @heap : Int[];
     @max : Int;
     @size : Int;
+    @type : Heap->Type;
     
+    enum Type {
+        MIN,
+        MAX
+    }
+
     # Constructor  
-    New(max : Int) { 
+    New(max : Int, type : Heap->Type) { 
         @max := max; 
+        @type := type;
         @heap := Int->New[@max]; 
     } 
       
-   # Inserts a new key 
+    # Inserts a new key 
     method : public : Insert(key : Int) ~ Bool { 
         if(@size = @max) { 
             return false; 
@@ -47,12 +54,12 @@ class MinHeap {
     } 
       
     # Returns the minimum key (key at root) from min heap  
-    method : public : GetMin() ~ Int { 
+    method : public : Peek() ~ Int { 
         return @heap[0]; 
     } 
      
     # Method to remove minimum element (or root) from min heap  
-    method : public : PopMin() ~ Int { 
+    method : public : Pop() ~ Int { 
         if(@size <= 0) { 
             return Int->MaxSize(); 
         } 
@@ -68,17 +75,17 @@ class MinHeap {
   
         @heap[0] := @heap[@size - 1]; 
         @size--; 
-        MinHeapify(0); 
+        Heapify(0); 
   
         return root; 
     } 
           
     # This function deletes key at the  
     # given index. It first reduced value  
-    # to minus infinite, then calls PopMin() 
-    method : public : DeleteKey(key : Int) ~ Nil { 
+    # to minus infinite, then calls Pop() 
+    method : public : Delete(key : Int) ~ Nil { 
         Decrease(key, Int->MinSize()); 
-        PopMin(); 
+        Pop(); 
     } 
 
     # Swapping using reference  
@@ -107,7 +114,7 @@ class MinHeap {
     # with the root at given index  
     # This method assumes that the subtrees 
     # are already heapified 
-    method : MinHeapify(key : Int) ~ Nil { 
+    method : Heapify(key : Int) ~ Nil { 
         left := GetLeft(key); 
         right := GetRight(key); 
   
@@ -122,7 +129,7 @@ class MinHeap {
   
         if(smallest <> key) { 
             Swap(@heap, key, smallest); 
-            MinHeapify(smallest); 
+            Heapify(smallest); 
         } 
     } 
       
@@ -131,7 +138,7 @@ class MinHeap {
     # than @heap[key]. Heapify from the given key 
     method : Increase(key : Int, new_val : Int) ~ Nil { 
         @heap[key] := new_val; 
-        MinHeapify(key); 
+        Heapify(key); 
     }
 
     # Decreases value of given key to new_val.  
