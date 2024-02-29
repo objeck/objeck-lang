@@ -14,28 +14,26 @@ class MinHeap {
 
     function : Main(args : String[]) ~ Nil {
         h := MinHeap->New(11); 
-        h->Insert(1); 
         h->Insert(3); 
-        h->Insert(6); 
+        h->Insert(2); 
+        h->Delete(1); 
+        h->Insert(15); 
         h->Insert(5); 
-        h->Insert(9); 
-        h->Insert(8); 
-        
-        Standard->Print(h->Pop())->Print(' ');
-        Standard->Print(h->Peek())->PrintLine(' ');
-        
-        h->Decrease(0, 2);
+        h->Insert(4); 
+        h->Insert(45); 
 
+        Standard->Print(h->Pop())->Print(' ');
+        Standard->Print(h->Peek())->Print(' ');
+        
+        h->Decrease(2, 1); 
         h->Peek()->PrintLine(); 
-        Standard->Print(h->Pop())->Print(' ');
-        Standard->Print(h->Pop())->Print(' ');
     }
 
     # Swapping using reference  
-    method : Swap(arr : Int[], a : Int, b : Int) ~ Nil { 
-        temp := arr[a]; 
-        arr[a] := arr[b]; 
-        arr[b] := temp; 
+    method : Swap(array : Int[], a : Int, b : Int) ~ Nil { 
+        temp := array[a]; 
+        array[a] := array[b]; 
+        array[b] := temp; 
     } 
 
     # Get the GetParent index for the given index 
@@ -78,14 +76,12 @@ class MinHeap {
     # It is assumed that value is smaller  
     # than @heap[index].  
     method : Decrease(index : Int, value : Int) ~ Nil { 
-        if(value < @heap[index]) {
-            @heap[index] := value; 
-      
-            while(index <> 0 & @heap[index] < @heap[GetParent(index)]) { 
-                Swap(@heap, index, GetParent(index)); 
-                index := GetParent(index); 
-            } 
-        }
+        @heap[index] := value; 
+  
+        while(index <> 0 & @heap[index] < @heap[GetParent(index)]) { 
+            Swap(@heap, index, GetParent(index)); 
+            index := GetParent(index); 
+        } 
     }
 
     # Returns the minimum index (index at 
@@ -149,7 +145,7 @@ class MinHeap {
     # than @heap[index].  
     # Heapify from the given index 
     method : public : Increase(index : Int, value : Int) ~ Nil {
-        if(value > @heap[index]) {
+        if(@heap[index] > value) {
             @heap[index] := value; 
             MinHeapify(index);
         };
