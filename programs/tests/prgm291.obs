@@ -1,6 +1,6 @@
 class HeapTest { 
     function : Main(args : String[]) ~ Nil {
-        h := Heap->New(11, Heap->Type->MAX); 
+        h := Heap->New(11, Heap->Order->MAX); 
         h->Insert(13);
         h->Insert(2);
         h->Insert(1);
@@ -8,29 +8,46 @@ class HeapTest {
         h->Insert(33);
         h->Insert(3);
         
-        Standard->Print(h->Peek())->PrintLine();
+        Standard->Print(h->Pop())->PrintLine();
+        Standard->Print(h->Pop())->PrintLine();
+        Standard->Print(h->Pop())->PrintLine();
+        Standard->Print(h->Pop())->PrintLine();
     } 
 } 
 
+#~
+Min/Max Heap
+~#
 class Heap { 
     @heap : Int[];
     @max : Int;
     @size : Int;
-    @type : Heap->Type;
+    @order : Heap->Order;
     
-    enum Type {
+    #~
+    Sort order
+    ~#
+    enum Order {
         MIN,
         MAX
     }
 
-    # Constructor  
-    New(max : Int, type : Heap->Type) { 
+    #~
+    Constructor
+    @param max maximum size of the heap
+    @param order sort order
+    ~#
+    New(max : Int, order : Heap->Order) { 
         @max := max; 
-        @type := type;
+        @order := order;
         @heap := Int->New[@max]; 
     } 
       
-    # Inserts a new key 
+    #~
+    Add a new key the heap
+    @param key key to insert
+    @return true if successful, false otherwise
+    ~#
     method : public : Insert(key : Int) ~ Bool { 
         if(@size = @max) { 
             return false; 
@@ -41,7 +58,7 @@ class Heap {
         @heap[i] := key; 
         @size++; 
           
-        if(@type = Heap->Type->MIN) {
+        if(@order = Heap->Order->MIN) {
             while(i <> 0 & @heap[i] < @heap[GetParent(i)]) { 
                 Swap(@heap, i, GetParent(i)); 
                 i := GetParent(i); 
@@ -56,16 +73,22 @@ class Heap {
 
         return true; 
     } 
-      
-    # Returns the minimum key (key at root) from min heap  
+    
+    #~
+    Shows the minimum value if sort order is MIN, other the maximum value
+    @return minimum or maximum value
+    ~#
     method : public : Peek() ~ Int { 
         return @heap[0]; 
     } 
      
-    # Method to remove minimum element (or root) from min heap  
+    #~
+    Pops the minimum value if sort order is MIN, other the maximum value
+    @return minimum or maximum value
+    ~#
     method : public : Pop() ~ Int { 
         if(@size <= 0) { 
-            if(@type = Heap->Type->MIN) {
+            if(@order = Heap->Order->MIN) {
                 return Int->MaxSize(); 
             }
             else {
@@ -89,54 +112,82 @@ class Heap {
         return root; 
     } 
 
+    #~
+    Current size of the heap
+    @return current heap size
+    ~#
     method : public : Size() ~ Int {
         return @size;
     }
 
+    #~
+    Maximum size of the heap
+    @return maximum heap size
+    ~#
     method : public : Capacity() ~ Int {
         return @max;
     }
-          
-    # This function deletes key at the  
-    # given index. It first reduced value  
-    # to minus infinite, then calls Pop() 
-    method : public : Delete(key : Int) ~ Nil { 
+
+    #~
+    Removes the given key value from the heap
+    ~#
+    method : public : Remove(key : Int) ~ Nil { 
         Decrease(key, Int->MinSize()); 
         Pop(); 
+    }
+
+    #~
+    Update the heap value for a given array position
+    @param key heap index
+    @param value value to update
+    ~#
+    method : Update(key : Int, value : Int) ~ Nil { 
+        if(@heap[key] = value) { 
+            return; 
+        }
+
+        if(@order = Heap->Order->MIN) {
+            if(@heap[key] < value) { 
+                Increase(key, value); 
+            } 
+            else { 
+                Decrease(key, value); 
+            };
+        }
+        else {
+            if(@heap[key] > value) { 
+                Decrease(key, value); 
+            } 
+            else { 
+                Increase(key, value); 
+            };
+        };
     } 
 
-    # Swapping using reference  
     method : Swap(array : Int[], a : Int, b : Int) ~ Nil { 
         temp := array[a]; 
         array[a] := array[b]; 
         array[b] := temp; 
     } 
           
-    # Get the Parent index for the given index 
     method : GetParent(key : Int) ~ Int { 
         return (key - 1) / 2; 
     } 
       
-    # Get the Left Child index for the given index 
     method : GetLeft(key : Int) ~ Int { 
         return 2 * key + 1; 
     } 
       
-    # Get the Right Child index for the given index 
     method : GetRight(key : Int) ~ Int { 
         return 2 * key + 2; 
     } 
           
-    # A recursive method to heapify a subtree  
-    # with the root at given index  
-    # This method assumes that the subtrees 
-    # are already heapified 
     method : Heapify(key : Int) ~ Nil { 
         left := GetLeft(key); 
         right := GetRight(key); 
   
         value := key; 
-        if(@type = Heap->Type->MIN) {
+        if(@order = Heap->Order->MIN) {
             if(left < @size & @heap[left] < @heap[value]) { 
                 value := left; 
             } 
@@ -161,20 +212,15 @@ class Heap {
         } 
     } 
       
-    # Increases value of given key to new_val. 
-    # It is assumed that new_val is greater  
-    # than @heap[key]. Heapify from the given key 
-    method : Increase(key : Int, new_val : Int) ~ Nil { 
-        @heap[key] := new_val; 
+    method : Increase(key : Int, value : Int) ~ Nil { 
+        @heap[key] := value; 
         Heapify(key); 
     }
 
-    # Decreases value of given key to new_val.  
-    # It is assumed that new_val is smaller than @heap[key].  
-    method : Decrease(key : Int, new_val : Int) ~ Nil { 
-        @heap[key] := new_val; 
+    method : Decrease(key : Int, value : Int) ~ Nil { 
+        @heap[key] := value; 
   
-        if(@type = Heap->Type->MIN) {
+        if(@order = Heap->Order->MIN) {
             while(key <> 0 & @heap[key] < @heap[GetParent(key)]) { 
                 Swap(@heap, key, GetParent(key)); 
                 key := GetParent(key); 
@@ -187,28 +233,4 @@ class Heap {
             } 
         }
     }
-     
-    # Changes value on a key 
-    method : Update(key : Int, new_val : Int) ~ Nil { 
-        if(@heap[key] = new_val) { 
-            return; 
-        }
-
-        if(@type = Heap->Type->MIN) {
-            if(@heap[key] < new_val) { 
-                Increase(key, new_val); 
-            } 
-            else { 
-                Decrease(key, new_val); 
-            };
-        }
-        else {
-            if(@heap[key] > new_val) { 
-                Decrease(key, new_val); 
-            } 
-            else { 
-                Increase(key, new_val); 
-            };
-        };
-    } 
 }
