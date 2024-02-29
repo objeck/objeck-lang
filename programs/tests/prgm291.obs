@@ -1,5 +1,8 @@
 class HeapTest { 
     function : Main(args : String[]) ~ Nil {
+        (Int->NaN() + 1)->PrintLine();
+        (Int->NaN() - 1)->PrintLine();
+
         h := Heap->New(11, Heap->Order->MAX);
         h->Insert(13);
         h->Insert(2);
