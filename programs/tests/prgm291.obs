@@ -6,8 +6,8 @@ class MinHeap {
     @max : Int;
     @size : Int; 
     
-    New(n : Int) { 
-        @max := n; 
+    New(max : Int) { 
+        @max := max; 
         @heap :=Int->New[@max]; 
     }
 
