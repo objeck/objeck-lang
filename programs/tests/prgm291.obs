@@ -91,6 +91,14 @@ class Heap {
   
         return root; 
     } 
+
+    method : public : Size() ~ Int {
+        return @size;
+    }
+
+    method : public : Capacity() ~ Int {
+        return @max;
+    }
           
     # This function deletes key at the  
     # given index. It first reduced value  
