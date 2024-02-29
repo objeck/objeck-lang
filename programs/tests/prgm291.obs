@@ -2,7 +2,7 @@ class HeapTest {
     function : Main(args : String[]) ~ Nil {
         (Int->NaN() + 1)->PrintLine();
         (Int->NaN() - 1)->PrintLine();
-        # assume not objects will allocted pointers with pointers to 1 or -1
+        # assume not objects will allocated pointers with pointers to 1 or -1
 
         h := Heap->New(11, Heap->Order->MAX);
         h->Insert(13);
