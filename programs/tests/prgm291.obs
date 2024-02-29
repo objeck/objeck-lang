@@ -67,7 +67,8 @@ class MinHeap {
         while(i <> 0 &  @heap[i] < @heap[GetParent(i)]) { 
             Swap(@heap, i, GetParent(i)); 
             i := GetParent(i); 
-        } 
+        };
+        
         return true; 
     }
 
@@ -81,7 +82,7 @@ class MinHeap {
         while(index <> 0 & @heap[index] < @heap[GetParent(index)]) { 
             Swap(@heap, index, GetParent(index)); 
             index := GetParent(index); 
-        } 
+        };
     }
 
     # Returns the minimum index (index at 
@@ -102,12 +103,12 @@ class MinHeap {
         }
         else if(r < @size & @heap[r] < @heap[smallest]) {
             smallest := r;
-        }
+        };
 
         if(smallest <> i) { 
             Swap(@heap, i, smallest); 
             MinHeapify(smallest); 
-        } 
+        };
     } 
       
     # Method to remove minimum element  
@@ -119,7 +120,7 @@ class MinHeap {
         else if(@size = 1) { 
             @size--; 
             return @heap[0]; 
-        } 
+        };
           
         # Store the minimum value,  
         # and remove it from heap  
@@ -155,13 +156,13 @@ class MinHeap {
     method : public : Update(index : Int, value : Int) ~ Nil { 
         if(@heap[index] = value) { 
             return; 
-        } 
+        };
         
         if(@heap[index] < value) { 
             Increase(index, value); 
         } 
         else { 
             Decrease(index, value); 
-        } 
+        };
     } 
 }
