@@ -740,11 +740,13 @@ heap->Size()->PrintLine();
 			buffer := "";
 
 			each(elem := @heap) {
-				if(elem->TypeOf(Stringify)) {
-					buffer->Append(elem->As(System.Stringify)->ToString());
-				}
-				else {
+				if(elem <> Nil) {
+					if(elem->TypeOf(Stringify)) {
+						buffer->Append(elem->As(System.Stringify)->ToString());
+					}
+					else {
 						buffer->Append(elem->GetInstanceID()->ToHexString());
+					};
 				};
 			};
 
