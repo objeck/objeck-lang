@@ -8,15 +8,22 @@ class BinaryHeap<H : Compare> {
 
     function : Main(args : String[]) ~ Nil {
         heap := BinaryHeap->New(true)<IntRef>;
-        heap->Add(IntRef->New(3));
-        heap->Add(IntRef->New(1));
-        heap->Add(IntRef->New(9));
-        heap->Add(IntRef->New(0));
+        heap->Insert(IntRef->New(3));
+        heap->Insert(IntRef->New(1));
+        heap->Insert(IntRef->New(9));
+        heap->Insert(IntRef->New(0));
 
-        heap->Remove()->As(IntRef)->PrintLine();
-        heap->Peek()->As(IntRef)->PrintLine();
-        heap->Remove()->As(IntRef)->PrintLine();
-        heap->Remove()->As(IntRef)->PrintLine();
+#        heap->Pop()->As(IntRef)->PrintLine();
+#        heap->Pop()->As(IntRef)->PrintLine();
+
+        "---"->PrintLine();
+
+        values := heap->GetHeap();
+        each(value := values) {
+            (value = Nil)->PrintLine();
+            foo := value->As(IntRef);
+            foo->PrintLine();
+        };
     }
 
     New() {
@@ -31,7 +38,7 @@ class BinaryHeap<H : Compare> {
         @min := min;
 
         each(elem in array) {
-            Add(elem);
+            Insert(elem);
         };
     }
 
@@ -42,11 +49,20 @@ class BinaryHeap<H : Compare> {
     }
 
     method : public : GetHeap() ~ H[] {
+        values := H->New[@length - 1];
+
+        for(i := 1; i < @length; i += 1;) {
+            value := @heap[i];
+            if(value <> Nil) {
+                values[i - 1] := value;
+            };
+        };
+
  # return Arrays.copyOfRange(@heap, 1, @length + 1);
-        return Nil;
+        return values;
     }
 
-    method : public : Add(value : H) ~ Nil {
+    method : public : Insert(value : H) ~ Nil {
         # Resize if needed
         if(@length >= @heap->Size() - 1)
         {
@@ -58,7 +74,7 @@ class BinaryHeap<H : Compare> {
         bubbleUp();
     }
 
-    method : public : Remove() ~ H {
+    method : public : Pop() ~ H {
         result := Peek();
 
         Swap(1, @length);
@@ -70,7 +86,7 @@ class BinaryHeap<H : Compare> {
         return result;
     }
 
-    method : public : Remove(value : H) ~ Bool {
+    method : public : Pop(value : H) ~ Bool {
         for(i := 0; i < @heap->Size(); i += 1;) {
             if(value->Compare(@heap[i]) = 0)
             {
