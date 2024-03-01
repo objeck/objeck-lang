@@ -737,9 +737,11 @@ heap->Size()->PrintLine();
 		@return string representation
 		~#
 		method : public : ToString() ~ String {
-			buffer := "";
+			buffer := "{";
 
-			each(elem := @heap) {
+			for(i := 0; i < @heap->Size(); i += 1;) {
+				elem := @heap[i];
+
 				if(elem <> Nil) {
 					if(elem->TypeOf(Stringify)) {
 						buffer->Append(elem->As(System.Stringify)->ToString());
@@ -747,8 +749,13 @@ heap->Size()->PrintLine();
 					else {
 						buffer->Append(elem->GetInstanceID()->ToHexString());
 					};
+
+					if(i + 1 < @heap->Size()) {
+						buffer->Append(',');
+					};
 				};
 			};
+			buffer->Append(']')
 
 			return buffer;
 		}
