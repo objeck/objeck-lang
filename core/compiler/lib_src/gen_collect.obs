@@ -737,7 +737,7 @@ heap->Size()->PrintLine();
 		@return string representation
 		~#
 		method : public : ToString() ~ String {
-			buffer := "{";
+			buffer := "[";
 
 			for(i := 0; i < @heap->Size(); i += 1;) {
 				elem := @heap[i];
