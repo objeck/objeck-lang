@@ -8,7 +8,7 @@
 ~~#
 
 #~
-Immutable tuple classes
+Immutable tuple classes (-lib gen_collect)
 ~#	
 bundle Tuples {
 	#~
@@ -460,7 +460,7 @@ bundle Tuples {
 }
 
 #~
-Collection collections (-lib gen_collect)
+Generic collection framework (-lib gen_collect)
 ~#	
 bundle Collection {
 	#~
