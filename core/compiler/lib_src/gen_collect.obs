@@ -5,6 +5,7 @@
 # credits:
 # - H.W. Lang - merge sort implementation based on his work
 # - Arne Andersson - map classes use a red-black tree variant he created
+# - Snark Bait - heap implementation based on his work
 ~~#
 
 #~
