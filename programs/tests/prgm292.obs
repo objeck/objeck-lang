@@ -1,231 +1,215 @@
-class HeapTest {
-    function : Main(args : String[]) ~ Nil {
-        h := Heap->New(11, Heap->Order->MAX)<IntRef>;
-        h->Insert(IntRef->New(13));
-        h->Insert(IntRef->New(2));
-        h->Insert(IntRef->New(1));
-        h->Insert(IntRef->New(5));
-        h->Insert(IntRef->New(33));
-        h->Insert(IntRef->New(3));
-        
-        h->Pop()->As(IntRef)->Get()->PrintLine();
-        h->Pop()->As(IntRef)->Get()->PrintLine();
-        h->Pop()->As(IntRef)->Get()->PrintLine();
-        h->Pop()->As(IntRef)->Get()->PrintLine();
-        h->Pop()->As(IntRef)->Get()->PrintLine();
-        h->Pop()->As(IntRef)->Get()->PrintLine();
-    }
-}
-
 #~
-Min/Max Heap
+Credit: translation of snarkbait (https://gist.github.com/snarkbait) Java implementation
 ~#
-class Heap<H : Compare> {
+class BinaryHeap<H : Compare> {
     @heap : H[];
-    @max : Int;
-    @size : Int;
-    @order : Heap->Order;
-    
-    #~
-    Sort order
-    ~#
-    enum Order {
-        MIN,
-        MAX
+    @length : Int;
+    @min : Bool;
+
+    function : Main(args : String[]) ~ Nil {
+        heap := BinaryHeap->New(true)<IntRef>;
+        heap->Add(IntRef->New(3));
+        heap->Add(IntRef->New(1));
+        heap->Add(IntRef->New(9));
+        heap->Add(IntRef->New(0));
+
+        heap->Remove()->As(IntRef)->PrintLine();
+        heap->Remove()->As(IntRef)->PrintLine();
+        heap->Remove()->As(IntRef)->PrintLine();
+        heap->Remove()->As(IntRef)->PrintLine();
     }
 
-    #~
-    Constructor
-    @param max maximum size of the heap
-    @param order sort order
-    ~#
-    New(max : Int, order : Heap->Order) {
-        @max := max;
-        @order := order;
-        @heap := H->New[@max];
+    New() {
+        @heap := H->New[10];
+        @length := 0;
+        @min := true;
     }
-      
-    #~
-    Add a new key the heap
-    @param key key to insert
-    @return true if successful, false otherwise
-    ~#
-    method : public : Insert(key : H) ~ Bool {
-        if(@size = @max) {
-            return false;
-        }
-      
-        # First insert the new key at the end  
-        i := @size;
-        @heap[i] := key;
-        @size++;
-          
-        if(@order = Heap->Order->MIN) {
-            while(i <> 0 & @heap[i]->Compare(@heap[GetParent(i)]) < 0) {
-                Swap(@heap, i, GetParent(i));
-                i := GetParent(i);
-            }
-        }
-        else {
-            while(i <> 0 & @heap[i]->Compare(@heap[GetParent(i)]) > 0) {
-                Swap(@heap, i, GetParent(i));
-                i := GetParent(i);
-            }
+
+    New(array : H[], min : Bool) {
+        @heap := H->New[10];
+        @length := 0;
+        @min := min;
+
+        each(elem in array) {
+            Add(elem);
+        };
+    }
+
+    New(min : Bool) {
+        @heap := H->New[10];
+        @length := 0;
+        @min := min;
+    }
+
+    method : public : GetHeap() ~ H[] {
+ # return Arrays.copyOfRange(@heap, 1, @length + 1);
+        return Nil;
+    }
+
+    method : public : Add(value : H) ~ Nil {
+        # Resize if needed
+        if(@length >= @heap->Size() - 1)
+        {
+            @heap := Resize();
         }
 
-        return true;
+        @length++;
+        @heap[@length] := value;
+        bubbleUp();
     }
-    
-    #~
-    Shows the minimum value if sort order is MIN, other the maximum value
-    @return minimum or maximum value
-    ~#
+
+    method : public : Remove() ~ H {
+        result := Peek();
+
+        Swap(1, @length);
+        @heap[@length] := Nil;
+        @length--;
+
+        BubbleDown();
+
+        return result;
+    }
+
+    method : public : Remove(value : H) ~ Bool {
+        for(i := 0; i < @heap->Size(); i += 1;) {
+            if(value->Compare(@heap[i]) = 0)
+            {
+i->PrintLine();
+                Swap(i, @length);
+                @heap[@length] := Nil;
+                @length--;
+
+                BubbleDown();
+                return true;
+            }
+        }
+        return false;
+    }
+
+    method : public : Poll() ~ H {
+        if(IsEmpty()) {
+            return Nil;
+        }
+
+        result := Peek();
+
+        Swap(1, @length);
+        @heap[@length] := Nil;
+        @length--;
+
+        BubbleDown();
+        return result;
+    }
+
+    method : public : IsEmpty() ~ Bool {
+        return @length = 0;
+    }
+
     method : public : Peek() ~ H {
-        return @heap[0];
-    }
-     
-    #~
-    Pops the minimum value if sort order is MIN, other the maximum value
-    @return minimum or maximum value
-    ~#
-    method : public : Pop() ~ H {
-        if(@size <= 0) {
+        if(IsEmpty()) {
             return Nil;
         };
-  
-        if(@size = 1) {
-            @size--;
-            return @heap[0];
-        };
 
-        root := @heap[0];
-        @heap[0] := @heap[@size - 1];
-        @size--;
-        Heapify(0);
-  
-        return root;
+        return @heap[1];
     }
 
-    #~
-    Current size of the heap
-    @return current heap size
-    ~#
     method : public : Size() ~ Int {
-        return @size;
+        return @length;
     }
 
-    #~
-    Maximum size of the heap
-    @return maximum heap size
-    ~#
-    method : public : Capacity() ~ Int {
-        return @max;
+    method : Resize() ~ H[] {
+        # Add 10 to array capacity
+# return Arrays.copyOf(@heap, @heap->Size() + 10);
+        return Nil;
     }
 
-    #~
-    Removes the given key value from the heap
-    ~#
-    method : public : Remove(key : Int) ~ Nil {
-        # TODO: pass Nil
-        Decrease(key, Nil);
-        Pop();
-    }
-
-    #~
-    Update the heap value for a given array position
-    @param key heap index
-    @param value value to update
-    ~#
-    method : Update(key : Int, value : H) ~ Nil {
-        if(@heap[key] = value) {
-            return;
-        }
-
-        if(@order = Heap->Order->MIN) {
-            if(@heap[key]->Compare(value) < 0) {
-                Increase(key, value);
-            }
-            else {
-                Decrease(key, value);
-            };
+    method : bubbleUp() ~ Nil {
+        index := @length;
+        if(@min) {
+            while(HasParent(index) & (parent(index)->Compare(@heap[index]) > 0)) {
+                Swap(index, ParentIndex(index));
+                index := ParentIndex(index);
+            }   
         }
         else {
-            if(@heap[key]->Compare(value) > 0) {
-                Decrease(key, value);
-            }
-            else {
-                Increase(key, value);
-            };
-        };
+            while(HasParent(index) & (parent(index)->Compare(@heap[index]) < 0)) {
+                Swap(index, ParentIndex(index));
+                index := ParentIndex(index);
+            }   
+
+        }
     }
 
-    method : Swap(array : H[], a : Int, b : Int) ~ Nil {
-        temp := array[a];
-        array[a] := array[b];
-        array[b] := temp;
-    }
-          
-    method : GetParent(key : Int) ~ Int {
-        return (key - 1) / 2;
-    }
-      
-    method : GetLeft(key : Int) ~ Int {
-        return 2 * key + 1;
-    }
-      
-    method : GetRight(key : Int) ~ Int {
-        return 2 * key + 2;
-    }
-          
-    method : Heapify(key : Int) ~ Nil {
-        left := GetLeft(key);
-        right := GetRight(key);
-  
-        value := key;
-        if(@order = Heap->Order->MIN) {
-            if(left < @size & @heap[left]->Compare(@heap[value]) < 0) {
-                value := left;
-            }
+    method : BubbleDown() ~ Nil {
+        index := 1;
+        if(@min) {
+            while(HasLeftChild((index))) {
+                # find smaller of child values
+                smaller := LeftIndex(index);
+                if(HasRightChild(index) & @heap[LeftIndex(index)]->Compare(@heap[RightIndex(index)]) > 0) {
+                    smaller := RightIndex(index);
+                }
+                if(@heap[index]->Compare(@heap[smaller]) > 0)
+                {
+                    Swap(index, smaller);
+                }
+                else {
+                    break;
+                }
 
-            if(right < @size & @heap[right]->Compare(@heap[value]) < 0) {
-                value := right;
-            }
+                index := smaller;
+            }               
         }
         else {
-            if(left < @size & @heap[left]->Compare(@heap[value])  > 0) {
-                value := left;
-            }
+            while(HasLeftChild((index))) {
+                # find larger of child values
+                larger := LeftIndex(index);
+                if(HasRightChild(index) & @heap[LeftIndex(index)]->Compare(@heap[RightIndex(index)]) < 0) {
+                    larger := RightIndex(index);
+                }
 
-            if(right < @size & @heap[right]->Compare(@heap[value]) > 0) {
-                value := right;
-            }
-        }
-        
-        if(value <> key) {
-            Swap(@heap, key, value);
-            Heapify(value);
+                if(@heap[index]->Compare(@heap[larger]) < 0) {
+                    Swap(index, larger);
+                }
+                else { 
+                    break;
+                }
+                index := larger;
+            }               
         }
     }
-      
-    method : Increase(key : Int, value : H) ~ Nil {
-        @heap[key] := value;
-        Heapify(key);
+
+    method : HasParent(i : Int) ~ Bool {
+        return i > 1;
     }
 
-    method : Decrease(key : Int, value : H) ~ Nil {
-        @heap[key] := value;
-  
-        if(@order = Heap->Order->MIN) {
-            while(key <> 0 & @heap[key]->Compare(@heap[GetParent(key)]) < 0) {
-                Swap(@heap, key, GetParent(key));
-                key := GetParent(key);
-            }
-        }
-        else {
-            while(key <> 0 & @heap[key]->Compare(@heap[GetParent(key)]) > 0) {
-                Swap(@heap, key, GetParent(key));
-                key := GetParent(key);
-            }
-        }
+    method : LeftIndex(i : Int)  ~ Int {
+        return i * 2;
+    }
+
+    method : RightIndex(i : Int) ~ Int {
+        return i * 2 + 1;
+    }
+
+    method : HasLeftChild(i : Int) ~ Bool {
+        return LeftIndex(i) <= @length;
+    }
+
+    method : HasRightChild(i : Int) ~ Bool {
+        return RightIndex(i) <= @length;
+    }
+
+    method : ParentIndex(i : Int) ~ Int {
+        return i / 2;
+    }
+
+    method : parent(i : Int) ~ H {
+        return @heap[ParentIndex(i)];
+    }
+
+    method : Swap(index1 : Int, index2 : Int) ~ Nil {
+        temp := @heap[index1];
+        @heap[index1] := @heap[index2];
+        @heap[index2] := temp;
     }
 }
