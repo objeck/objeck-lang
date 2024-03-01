@@ -8,6 +8,8 @@ class Heap<H : Compare> {
         heap->Insert(IntRef->New(6));
         heap->Insert(IntRef->New(2));
 
+        heap->ToString()->PrintLine();
+
         heap->Pop()->As(IntRef)->PrintLine();
         heap->Pop()->As(IntRef)->PrintLine();
 
