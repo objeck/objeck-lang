@@ -612,7 +612,7 @@ bundle Collection {
 			return temp;
 	    }
 
-	    method : ShiftUp() ~ Nil {
+		method : ShiftUp() ~ Nil {
 			index := @length;
 			if(@min) {
 				while(HasParent(index) & (GetParent(index)->Compare(@heap[index]) > 0)) {
@@ -698,11 +698,24 @@ bundle Collection {
 			@heap[index2] := temp;
 		}
 
-		method : ToString() ~ String {
+		#~
+		Formats the collection into a string. If an element implements the 'Stringify' 
+		interface, it's 'ToString()' is called.
+		@return string representation
+		~#
+		method : public : ToString() ~ String {
 			buffer := "";
 
-			return buffer;
+			each(elem := @heap) {
+				if(elem->TypeOf(Stringify)) {
+					buffer->Append(elem->As(System.Stringify)->ToString());
+				}
+				else {
+						buffer->Append(elem->GetInstanceID()->ToHexString());
+				};
+			};
 
+			return buffer;
 		}
 	}
 
