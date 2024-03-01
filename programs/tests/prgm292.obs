@@ -1,25 +1,27 @@
 class HeapTest {
     function : Main(args : String[]) ~ Nil {
-        h := Heap->New(11, Heap->Order->MIN);
-        h->Insert(13);
-        h->Insert(2);
-        h->Insert(1);
-        h->Insert(5);
-        h->Insert(33);
-        h->Insert(3);
+        h := Heap->New(11, Heap->Order->MAX)<IntRef>;
+        h->Insert(IntRef->New(13));
+        h->Insert(IntRef->New(2));
+        h->Insert(IntRef->New(1));
+        h->Insert(IntRef->New(5));
+        h->Insert(IntRef->New(33));
+        h->Insert(IntRef->New(3));
         
-        Standard->Print(h->Pop())->PrintLine();
-        Standard->Print(h->Pop())->PrintLine();
-        Standard->Print(h->Pop())->PrintLine();
-        Standard->Print(h->Pop())->PrintLine();
+        h->Pop()->As(IntRef)->Get()->PrintLine();
+        h->Pop()->As(IntRef)->Get()->PrintLine();
+        h->Pop()->As(IntRef)->Get()->PrintLine();
+        h->Pop()->As(IntRef)->Get()->PrintLine();
+        h->Pop()->As(IntRef)->Get()->PrintLine();
+        h->Pop()->As(IntRef)->Get()->PrintLine();
     }
 }
 
 #~
 Min/Max Heap
 ~#
-class Heap {
-    @heap : Int[];
+class Heap<H : Compare> {
+    @heap : H[];
     @max : Int;
     @size : Int;
     @order : Heap->Order;
@@ -40,7 +42,7 @@ class Heap {
     New(max : Int, order : Heap->Order) {
         @max := max;
         @order := order;
-        @heap := Int->New[@max];
+        @heap := H->New[@max];
     }
       
     #~
@@ -48,7 +50,7 @@ class Heap {
     @param key key to insert
     @return true if successful, false otherwise
     ~#
-    method : public : Insert(key : Int) ~ Bool {
+    method : public : Insert(key : H) ~ Bool {
         if(@size = @max) {
             return false;
         }
@@ -59,13 +61,13 @@ class Heap {
         @size++;
           
         if(@order = Heap->Order->MIN) {
-            while(i <> 0 & @heap[i] < @heap[GetParent(i)]) {
+            while(i <> 0 & @heap[i]->Compare(@heap[GetParent(i)]) < 0) {
                 Swap(@heap, i, GetParent(i));
                 i := GetParent(i);
             }
         }
         else {
-            while(i <> 0 & @heap[i] > @heap[GetParent(i)]) {
+            while(i <> 0 & @heap[i]->Compare(@heap[GetParent(i)]) > 0) {
                 Swap(@heap, i, GetParent(i));
                 i := GetParent(i);
             }
@@ -78,7 +80,7 @@ class Heap {
     Shows the minimum value if sort order is MIN, other the maximum value
     @return minimum or maximum value
     ~#
-    method : public : Peek() ~ Int {
+    method : public : Peek() ~ H {
         return @heap[0];
     }
      
@@ -86,15 +88,9 @@ class Heap {
     Pops the minimum value if sort order is MIN, other the maximum value
     @return minimum or maximum value
     ~#
-    method : public : Pop() ~ Int {
+    method : public : Pop() ~ H {
         if(@size <= 0) {
-            # TODO: return Nil
-            if(@order = Heap->Order->MIN) {
-                return Int->MinSize();
-            }
-            else {
-                return Int->MaxSize();
-            };
+            return Nil;
         };
   
         if(@size = 1) {
@@ -131,7 +127,7 @@ class Heap {
     ~#
     method : public : Remove(key : Int) ~ Nil {
         # TODO: pass Nil
-        Decrease(key, Int->MinSize());
+        Decrease(key, Nil);
         Pop();
     }
 
@@ -140,13 +136,13 @@ class Heap {
     @param key heap index
     @param value value to update
     ~#
-    method : Update(key : Int, value : Int) ~ Nil {
+    method : Update(key : Int, value : H) ~ Nil {
         if(@heap[key] = value) {
             return;
         }
 
         if(@order = Heap->Order->MIN) {
-            if(@heap[key] < value) {
+            if(@heap[key]->Compare(value) < 0) {
                 Increase(key, value);
             }
             else {
@@ -154,7 +150,7 @@ class Heap {
             };
         }
         else {
-            if(@heap[key] > value) {
+            if(@heap[key]->Compare(value) > 0) {
                 Decrease(key, value);
             }
             else {
@@ -163,7 +159,7 @@ class Heap {
         };
     }
 
-    method : Swap(array : Int[], a : Int, b : Int) ~ Nil {
+    method : Swap(array : H[], a : Int, b : Int) ~ Nil {
         temp := array[a];
         array[a] := array[b];
         array[b] := temp;
@@ -187,20 +183,20 @@ class Heap {
   
         value := key;
         if(@order = Heap->Order->MIN) {
-            if(left < @size & @heap[left] < @heap[value]) {
+            if(left < @size & @heap[left]->Compare(@heap[value]) < 0) {
                 value := left;
             }
 
-            if(right < @size & @heap[right] < @heap[value]) {
+            if(right < @size & @heap[right]->Compare(@heap[value]) < 0) {
                 value := right;
             }
         }
         else {
-            if(left < @size & @heap[left] > @heap[value]) {
+            if(left < @size & @heap[left]->Compare(@heap[value])  > 0) {
                 value := left;
             }
 
-            if(right < @size & @heap[right] > @heap[value]) {
+            if(right < @size & @heap[right]->Compare(@heap[value]) > 0) {
                 value := right;
             }
         }
@@ -211,22 +207,22 @@ class Heap {
         }
     }
       
-    method : Increase(key : Int, value : Int) ~ Nil {
+    method : Increase(key : Int, value : H) ~ Nil {
         @heap[key] := value;
         Heapify(key);
     }
 
-    method : Decrease(key : Int, value : Int) ~ Nil {
+    method : Decrease(key : Int, value : H) ~ Nil {
         @heap[key] := value;
   
         if(@order = Heap->Order->MIN) {
-            while(key <> 0 & @heap[key] < @heap[GetParent(key)]) {
+            while(key <> 0 & @heap[key]->Compare(@heap[GetParent(key)]) < 0) {
                 Swap(@heap, key, GetParent(key));
                 key := GetParent(key);
             }
         }
         else {
-            while(key <> 0 & @heap[key] > @heap[GetParent(key)]) {
+            while(key <> 0 & @heap[key]->Compare(@heap[GetParent(key)]) > 0) {
                 Swap(@heap, key, GetParent(key));
                 key := GetParent(key);
             }
