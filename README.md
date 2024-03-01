@@ -45,7 +45,7 @@ Want to get started? Take a look at the [language guide](https://objeck.org/gett
   * 2D gaming
   * Linear matrix mathematics
   * Collections
-  * Files, directories, sockets, STDIO, logging, serialization, and pipe
+  * Files, directories, sockets, STDIO, logging, serialization, and pipes
 * REPL and IDE [LSP](https://github.com/objeck/objeck-lsp) support (for VSCode, Sublime, Kate, etc.) 
 * Online guides and API [documentation](https://www.objeck.org).
 
@@ -57,7 +57,7 @@ Want to get started? Take a look at the [language guide](https://objeck.org/gett
   * Webserver library enhancements
     * Improved performance
     * [Simpler configuration](https://github.com/objeck/objeck-web-server/blob/master/config/weather_config.json)
-  * Add an optional [in keyword](https://gist.github.com/objeck/27219d777b636208d88ab197d1cf1270) for use in `each` loops; an alternative to `:=` operator
+  * Add an optional [in](https://gist.github.com/objeck/27219d777b636208d88ab197d1cf1270) keyword for use in `each` loops; an alternative to `:=` operator
 
 * v2024.2.0
   * New [incremental JSON parser](https://www.objeck.org/doc/api/classes.html#data.json.stream)
