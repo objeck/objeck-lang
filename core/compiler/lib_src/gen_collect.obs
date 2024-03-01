@@ -464,7 +464,30 @@ Collection collections (-lib gen_collect)
 ~#	
 bundle Collection {
 	#~
-	Binary heap
+	Generic binary heap
+
+```
+heap := Collection.Heap->New(Collection.Heap->Order->MIN)<IntRef>;
+heap->Insert(IntRef->New(3));
+heap->Insert(IntRef->New(1));
+heap->Insert(IntRef->New(9));
+heap->Insert(IntRef->New(8));
+heap->Insert(IntRef->New(6));
+heap->Insert(IntRef->New(2));
+
+heap->Pop()->As(IntRef)->PrintLine();
+heap->Pop()->As(IntRef)->PrintLine();
+"---"->PrintLine();
+
+values := heap->ToArray();
+each(ref := values) {
+  value := ref->As(IntRef);
+  value->Get()->PrintLine();
+};
+"---"->PrintLine();
+
+heap->Size()->PrintLine();
+```
 	~#
 	class Heap<H : Compare> {
 		@heap : H[];
@@ -477,7 +500,7 @@ bundle Collection {
 	    enum Order {
 	        MIN,
 	        MAX
-	    }
+		}
 
 		#~
 		Constructor
@@ -485,30 +508,30 @@ bundle Collection {
 		@param order sort order
 		~#
 		New(array : H[], order : Heap->Order) {
-			@heap := H->New[8];
+			@heap := H->New[5];
 			@length := 0;
 			@min := order = Heap->Order->MIN ? true : false;
 
 			each(elem in array) {
 				Insert(elem);
 			};
-	    }
+		}
 
 	   #~
 		Constructor
 		@param order sort order
 		~#
-	    New(order : Heap->Order) {
-			@heap := H->New[8];
+		New(order : Heap->Order) {
+			@heap := H->New[5];
 			@length := 0;
 			@min := order = Heap->Order->MIN ? true : false;
-	    }
+		}
 
 		#~
 		Returns a list of non-Nil values
 		@return list of values
 		~#
-	    method : public : ToArray() ~ H[] {        
+		method : public : ToArray() ~ H[] {        
 			buffer := H->New[@length];
 
 			i := 0;
@@ -519,10 +542,18 @@ bundle Collection {
 			};
 
 			return buffer;
-	    }
+		}
 
 		#~
-		Inserts a value into the heap
+		Returns the heap capacity
+		@return heap capacity
+		~#
+		method : public : Capacity() ~ Int {
+			return @heap->Size();
+		}
+
+		#~
+		Inserts a value into the heap and extends the heap size if necessary
 		@param value value to insert
 		~#
 	    method : public : Insert(value : H) ~ Nil {
@@ -537,7 +568,7 @@ bundle Collection {
 		}
 
 		#~
-		Pop either the smallest or largest value
+		Pop either the smallest or largest value depending upon the sort order
 		@return smallest or largest value
 		~#
 		method : public : Pop() ~ H {
