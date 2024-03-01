@@ -14,7 +14,7 @@ class BinaryHeap<H : Compare> {
         heap->Add(IntRef->New(0));
 
         heap->Remove()->As(IntRef)->PrintLine();
-        heap->Remove()->As(IntRef)->PrintLine();
+        heap->Peek()->As(IntRef)->PrintLine();
         heap->Remove()->As(IntRef)->PrintLine();
         heap->Remove()->As(IntRef)->PrintLine();
     }
