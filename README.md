@@ -45,7 +45,7 @@ Want to get started? Take a look at the [language guide](https://objeck.org/gett
   * 2D gaming
   * Linear matrix mathematics
   * Collections
-  * Files, directories, sockets, STDIO, logging, serialization, and pipe
+  * Files, directories, sockets, STDIO, logging, serialization, and pipes
 * REPL and IDE [LSP](https://github.com/objeck/objeck-lsp) support (for VSCode, Sublime, Kate, etc.) 
 * Online guides and API [documentation](https://www.objeck.org).
 
