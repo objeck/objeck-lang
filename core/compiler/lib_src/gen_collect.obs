@@ -496,6 +496,7 @@ heap->Size()->PrintLine();
 
 		#~
 		Heap sort order
+		@class Heap
 		~#
 	    enum Order {
 	        MIN,
