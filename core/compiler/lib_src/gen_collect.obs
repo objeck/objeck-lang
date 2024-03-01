@@ -592,14 +592,17 @@ heap->Size()->PrintLine();
 		~#
 		method : public : Pop(value : H) ~ Bool {
 			each(i : @heap) {
-				if(value->Compare(@heap[i]) = 0) {
-					Swap(i, @length);
-					@heap[@length] := Nil;
-					@length--;
+				elem := @heap[i];
+				if(@heap <> Nil) {
+					if(value->Compare(elem) = 0) {
+						Swap(i, @length);
+						@heap[@length] := Nil;
+						@length--;
 
-					ShiftDown();
+						ShiftDown();
 
-					return true;
+						return true;
+					};
 				};
 			};
 
