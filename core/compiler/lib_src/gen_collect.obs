@@ -464,6 +464,247 @@ Collection collections (-lib gen_collect)
 ~#	
 bundle Collection {
 	#~
+	TBD
+	~#
+	class Heap<H : Compare> {
+		@heap : H[];
+	   @length : Int;
+	   @min : Bool;
+
+		#~
+		TBD
+		~#
+	    enum Order {
+	        MIN,
+	        MAX
+	    }
+
+		#~
+		TBD
+		~#
+		New() {
+			@heap := H->New[8];
+			@length := 0;
+			@min := true;
+	    }
+
+		#~
+		TBD
+		~#
+		New(array : H[], order : Heap->Order) {
+			@heap := H->New[8];
+			@length := 0;
+			@min := order = Heap->Order->MIN ? true : false;
+
+			each(elem in array) {
+				Insert(elem);
+			};
+	    }
+
+	    #~
+		TBD
+		~#
+	    New(order : Heap->Order) {
+			@heap := H->New[8];
+			@length := 0;
+			@min := order = Heap->Order->MIN ? true : false;
+	    }
+
+		#~
+		TBD
+		~#
+	    method : public : ToArray() ~ H[] {        
+			buffer := H->New[@length];
+
+			i := 0;
+			each(elem := @heap) {
+				if(elem <> Nil) {
+					buffer[i++] := elem;
+				};
+			};
+
+			return buffer;
+	    }
+
+		#~
+		TBD
+		~#
+	    method : public : Insert(value : H) ~ Nil {
+			if(@length >= @heap->Size() - 1) {
+				@heap := Resize();
+			};
+
+			@length++;
+			@heap[@length] := value;
+
+			ShiftUp();
+		}
+
+		#~
+		TBD
+		~#
+		method : public : Pop() ~ H {
+			result := Peek();
+
+			Swap(1, @length);
+			@heap[@length] := Nil;
+			@length--;
+
+			ShiftDown();
+
+			return result;
+		}
+
+		#~
+		TBD
+		~#
+		method : public : Pop(value : H) ~ Bool {
+			each(i : @heap) {
+				if(value->Compare(@heap[i]) = 0) {
+					Swap(i, @length);
+					@heap[@length] := Nil;
+					@length--;
+
+					ShiftDown();
+
+					return true;
+				};
+			};
+
+			return false;
+		}
+
+		#~
+		TBD
+		~#
+		method : public : IsEmpty() ~ Bool {
+			return @length <= 0;
+		}
+
+		#~
+		TBD
+		~#		
+		method : public : Peek() ~ H {
+			if(IsEmpty()) {
+				return Nil;
+			};
+
+			return @heap[1];
+		}
+
+		#~
+		TBD
+		~#
+		method : public : Size() ~ Int {
+			return @length;
+	    }
+
+	    method : Resize() ~ H[] {
+			temp := H->New[@heap->Size() + @heap->Size() / 2];
+
+			each(i : @heap) {
+				elem := @heap[i];
+				temp[i] := elem;
+			};
+
+			return temp;
+	    }
+
+	    method : ShiftUp() ~ Nil {
+			index := @length;
+			if(@min) {
+				while(HasParent(index) & (GetParent(index)->Compare(@heap[index]) > 0)) {
+					Swap(index, GetParentIndex(index));
+					index := GetParentIndex(index);
+				}   
+			}
+			else {
+				while(HasParent(index) & (GetParent(index)->Compare(@heap[index]) < 0)) {
+					Swap(index, GetParentIndex(index));
+					index := GetParentIndex(index);
+				};  
+			};
+		}
+
+		method : ShiftDown() ~ Nil {
+				index := 1;
+				if(@min) {
+					while(HasLeftChild((index))) {
+						smaller := GetLeftIndex(index);
+						if(HasRightChild(index) & @heap[GetLeftIndex(index)]->Compare(@heap[GetRightIndex(index)]) > 0) {
+							smaller := GetRightIndex(index);
+						}
+
+						if(@heap[index]->Compare(@heap[smaller]) > 0) {
+							Swap(index, smaller);
+						}
+						else {
+							break;
+						};
+						index := smaller;
+					}               
+				}
+				else {
+					while(HasLeftChild((index))) {
+						larger := GetLeftIndex(index);
+						if(HasRightChild(index) & @heap[GetLeftIndex(index)]->Compare(@heap[GetRightIndex(index)]) < 0) {
+							larger := GetRightIndex(index);
+						}
+
+						if(@heap[index]->Compare(@heap[larger]) < 0) {
+							Swap(index, larger);
+						}
+						else { 
+							break;
+						};
+						index := larger;
+	            }               
+	        }
+	    }
+
+		method : HasParent(i : Int) ~ Bool {
+			return i > 1;
+		}
+
+		method : GetLeftIndex(i : Int)  ~ Int {
+			return i * 2;
+		}
+
+		method : GetRightIndex(i : Int) ~ Int {
+			return i * 2 + 1;
+		}
+
+		method : HasLeftChild(i : Int) ~ Bool {
+			return GetLeftIndex(i) <= @length;
+		}
+
+		method : HasRightChild(i : Int) ~ Bool {
+		return GetRightIndex(i) <= @length;
+		}
+
+		method : GetParentIndex(i : Int) ~ Int {
+			return i / 2;
+		}
+
+		method : GetParent(i : Int) ~ H {
+			return @heap[GetParentIndex(i)];
+		}
+
+		method : Swap(index1 : Int, index2 : Int) ~ Nil {
+			temp := @heap[index1];
+			@heap[index1] := @heap[index2];
+			@heap[index2] := temp;
+		}
+
+		method : ToString() ~ String {
+			buffer := "";
+
+			return buffer;
+
+		}
+	}
+
+	#~
 	MRU/LRU object cache
 	
 	```

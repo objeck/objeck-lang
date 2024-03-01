@@ -1,77 +1,83 @@
 #~
-Credit: translation of snarkbait (https://gist.github.com/snarkbait) Java implementation
+Credit: translation of snarkbait (https://gist.github.com/snarkbait/86c7a4bc743e8f327dbc) Java implementation
 ~#
-class BinaryHeap<H : Compare> {
+class Heap<H : Compare> {
     @heap : H[];
     @length : Int;
     @min : Bool;
 
     function : Main(args : String[]) ~ Nil {
-        heap := BinaryHeap->New(true)<IntRef>;
+        heap := Heap->New(Heap->Order->MIN)<IntRef>;
         heap->Insert(IntRef->New(3));
         heap->Insert(IntRef->New(1));
         heap->Insert(IntRef->New(9));
         heap->Insert(IntRef->New(0));
 
-#        heap->Pop()->As(IntRef)->PrintLine();
-#        heap->Pop()->As(IntRef)->PrintLine();
+        heap->Resize();
+
+        heap->Pop()->As(IntRef)->PrintLine();
+        heap->Pop()->As(IntRef)->PrintLine();
 
         "---"->PrintLine();
 
-        values := heap->GetHeap();
-        each(value := values) {
-            (value = Nil)->PrintLine();
-            foo := value->As(IntRef);
-            foo->PrintLine();
+        values := heap->ToArray();
+        each(ref := values) {
+            value := ref->As(IntRef);
+            value->Get()->PrintLine();
         };
+
+        heap->Size()->PrintLine();
+    }
+
+    enum Order {
+        MIN,
+        MAX
     }
 
     New() {
-        @heap := H->New[10];
+        @heap := H->New[8];
         @length := 0;
         @min := true;
     }
 
-    New(array : H[], min : Bool) {
-        @heap := H->New[10];
+    New(array : H[], order : Heap->Order) {
+        @heap := H->New[8];
         @length := 0;
-        @min := min;
+        @min := order = Heap->Order->MIN ? true : false;
 
         each(elem in array) {
             Insert(elem);
         };
     }
 
-    New(min : Bool) {
-        @heap := H->New[10];
+    New(order : Heap->Order) {
+        @heap := H->New[8];
         @length := 0;
-        @min := min;
+        @min := order = Heap->Order->MIN ? true : false;
     }
 
-    method : public : GetHeap() ~ H[] {
-        values := H->New[@length - 1];
+    method : public : ToArray() ~ H[] {        
+        buffer := H->New[@length];
 
-        for(i := 1; i < @length; i += 1;) {
-            value := @heap[i];
-            if(value <> Nil) {
-                values[i - 1] := value;
-            };
+        i := 0;
+        each(elem := @heap) {
+            if(elem <> Nil) {
+                buffer[i++] := elem;
+            }
         };
 
- # return Arrays.copyOfRange(@heap, 1, @length + 1);
-        return values;
+        return buffer;
     }
 
     method : public : Insert(value : H) ~ Nil {
-        # Resize if needed
-        if(@length >= @heap->Size() - 1)
-        {
+        if(@length >= @heap->Size() - 1) {
             @heap := Resize();
-        }
+        };
 
         @length++;
         @heap[@length] := value;
-        bubbleUp();
+
+        ShiftUp();
     }
 
     method : public : Pop() ~ H {
@@ -81,24 +87,24 @@ class BinaryHeap<H : Compare> {
         @heap[@length] := Nil;
         @length--;
 
-        BubbleDown();
+        ShiftDown();
 
         return result;
     }
 
     method : public : Pop(value : H) ~ Bool {
-        for(i := 0; i < @heap->Size(); i += 1;) {
-            if(value->Compare(@heap[i]) = 0)
-            {
-i->PrintLine();
+        each(i : @heap) {
+            if(value->Compare(@heap[i]) = 0) {
                 Swap(i, @length);
                 @heap[@length] := Nil;
                 @length--;
 
-                BubbleDown();
+                ShiftDown();
+                
                 return true;
-            }
-        }
+            };
+        };
+
         return false;
     }
 
@@ -108,17 +114,17 @@ i->PrintLine();
         }
 
         result := Peek();
-
         Swap(1, @length);
         @heap[@length] := Nil;
         @length--;
 
-        BubbleDown();
+        ShiftDown();
+        
         return result;
     }
 
     method : public : IsEmpty() ~ Bool {
-        return @length = 0;
+        return @length <= 0;
     }
 
     method : public : Peek() ~ H {
@@ -134,54 +140,57 @@ i->PrintLine();
     }
 
     method : Resize() ~ H[] {
-        # Add 10 to array capacity
-# return Arrays.copyOf(@heap, @heap->Size() + 10);
-        return Nil;
+        temp := H->New[@heap->Size() + @heap->Size() / 2];
+
+        each(i : @heap) {
+            elem := @heap[i];
+            temp[i] := elem;
+        };
+
+        return temp;
     }
 
-    method : bubbleUp() ~ Nil {
+    method : ShiftUp() ~ Nil {
         index := @length;
         if(@min) {
-            while(HasParent(index) & (parent(index)->Compare(@heap[index]) > 0)) {
-                Swap(index, ParentIndex(index));
-                index := ParentIndex(index);
+            while(HasParent(index) & (GetParent(index)->Compare(@heap[index]) > 0)) {
+                Swap(index, GetParentIndex(index));
+                index := GetParentIndex(index);
             }   
         }
         else {
-            while(HasParent(index) & (parent(index)->Compare(@heap[index]) < 0)) {
-                Swap(index, ParentIndex(index));
-                index := ParentIndex(index);
+            while(HasParent(index) & (GetParent(index)->Compare(@heap[index]) < 0)) {
+                Swap(index, GetParentIndex(index));
+                index := GetParentIndex(index);
             }   
-
         }
     }
 
-    method : BubbleDown() ~ Nil {
+    method : ShiftDown() ~ Nil {
         index := 1;
         if(@min) {
             while(HasLeftChild((index))) {
                 # find smaller of child values
-                smaller := LeftIndex(index);
-                if(HasRightChild(index) & @heap[LeftIndex(index)]->Compare(@heap[RightIndex(index)]) > 0) {
-                    smaller := RightIndex(index);
+                smaller := GetLeftIndex(index);
+                if(HasRightChild(index) & @heap[GetLeftIndex(index)]->Compare(@heap[GetRightIndex(index)]) > 0) {
+                    smaller := GetRightIndex(index);
                 }
-                if(@heap[index]->Compare(@heap[smaller]) > 0)
-                {
+
+                if(@heap[index]->Compare(@heap[smaller]) > 0) {
                     Swap(index, smaller);
                 }
                 else {
                     break;
-                }
-
+                };
                 index := smaller;
             }               
         }
         else {
             while(HasLeftChild((index))) {
                 # find larger of child values
-                larger := LeftIndex(index);
-                if(HasRightChild(index) & @heap[LeftIndex(index)]->Compare(@heap[RightIndex(index)]) < 0) {
-                    larger := RightIndex(index);
+                larger := GetLeftIndex(index);
+                if(HasRightChild(index) & @heap[GetLeftIndex(index)]->Compare(@heap[GetRightIndex(index)]) < 0) {
+                    larger := GetRightIndex(index);
                 }
 
                 if(@heap[index]->Compare(@heap[larger]) < 0) {
@@ -189,7 +198,7 @@ i->PrintLine();
                 }
                 else { 
                     break;
-                }
+                };
                 index := larger;
             }               
         }
@@ -199,28 +208,28 @@ i->PrintLine();
         return i > 1;
     }
 
-    method : LeftIndex(i : Int)  ~ Int {
+    method : GetLeftIndex(i : Int)  ~ Int {
         return i * 2;
     }
 
-    method : RightIndex(i : Int) ~ Int {
+    method : GetRightIndex(i : Int) ~ Int {
         return i * 2 + 1;
     }
 
     method : HasLeftChild(i : Int) ~ Bool {
-        return LeftIndex(i) <= @length;
+        return GetLeftIndex(i) <= @length;
     }
 
     method : HasRightChild(i : Int) ~ Bool {
-        return RightIndex(i) <= @length;
+        return GetRightIndex(i) <= @length;
     }
 
-    method : ParentIndex(i : Int) ~ Int {
+    method : GetParentIndex(i : Int) ~ Int {
         return i / 2;
     }
 
-    method : parent(i : Int) ~ H {
-        return @heap[ParentIndex(i)];
+    method : GetParent(i : Int) ~ H {
+        return @heap[GetParentIndex(i)];
     }
 
     method : Swap(index1 : Int, index2 : Int) ~ Nil {
