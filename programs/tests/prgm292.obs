@@ -4,8 +4,10 @@ class Heap<H : Compare> {
         heap->Insert(IntRef->New(3));
         heap->Insert(IntRef->New(1));
         heap->Insert(IntRef->New(9));
-        heap->Insert(IntRef->New(0));
-        
+        heap->Insert(IntRef->New(8));
+        heap->Insert(IntRef->New(6));
+        heap->Insert(IntRef->New(2));
+
         heap->Pop()->As(IntRef)->PrintLine();
         heap->Pop()->As(IntRef)->PrintLine();
 
@@ -16,6 +18,8 @@ class Heap<H : Compare> {
             value := ref->As(IntRef);
             value->Get()->PrintLine();
         };
+
+        "---"->PrintLine();
 
         heap->Size()->PrintLine();
     }
