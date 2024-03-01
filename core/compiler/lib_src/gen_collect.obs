@@ -464,7 +464,7 @@ Collection collections (-lib gen_collect)
 ~#	
 bundle Collection {
 	#~
-	TBD
+	Binary heap
 	~#
 	class Heap<H : Compare> {
 		@heap : H[];
@@ -472,7 +472,7 @@ bundle Collection {
 	   @min : Bool;
 
 		#~
-		TBD
+		Heap sort order
 		~#
 	    enum Order {
 	        MIN,
@@ -480,16 +480,9 @@ bundle Collection {
 	    }
 
 		#~
-		TBD
-		~#
-		New() {
-			@heap := H->New[8];
-			@length := 0;
-			@min := true;
-	    }
-
-		#~
-		TBD
+		Constructor
+		@param array array of values to insert
+		@param order sort order
 		~#
 		New(array : H[], order : Heap->Order) {
 			@heap := H->New[8];
@@ -501,8 +494,9 @@ bundle Collection {
 			};
 	    }
 
-	    #~
-		TBD
+	   #~
+		Constructor
+		@param order sort order
 		~#
 	    New(order : Heap->Order) {
 			@heap := H->New[8];
@@ -511,7 +505,8 @@ bundle Collection {
 	    }
 
 		#~
-		TBD
+		Returns a list of non-Nil values
+		@return list of values
 		~#
 	    method : public : ToArray() ~ H[] {        
 			buffer := H->New[@length];
@@ -527,7 +522,8 @@ bundle Collection {
 	    }
 
 		#~
-		TBD
+		Inserts a value into the heap
+		@param value value to insert
 		~#
 	    method : public : Insert(value : H) ~ Nil {
 			if(@length >= @heap->Size() - 1) {
@@ -541,10 +537,11 @@ bundle Collection {
 		}
 
 		#~
-		TBD
+		Pop either the smallest or largest value
+		@return smallest or largest value
 		~#
 		method : public : Pop() ~ H {
-			result := Peek();
+			result := Top();
 
 			Swap(1, @length);
 			@heap[@length] := Nil;
@@ -556,7 +553,9 @@ bundle Collection {
 		}
 
 		#~
-		TBD
+		Searches and pops the given value
+		@param value value to remove
+		@return true if successful, false otherwise
 		~#
 		method : public : Pop(value : H) ~ Bool {
 			each(i : @heap) {
@@ -575,16 +574,18 @@ bundle Collection {
 		}
 
 		#~
-		TBD
+		Checks to see if the heap is empty
+		@return true if empty, false otherwise
 		~#
 		method : public : IsEmpty() ~ Bool {
 			return @length <= 0;
 		}
 
 		#~
-		TBD
-		~#		
-		method : public : Peek() ~ H {
+		Check the top of the stack
+		@return value on the top of stack, Nil if stack is empty
+		~#
+		method : public : Top() ~ H {
 			if(IsEmpty()) {
 				return Nil;
 			};
@@ -593,7 +594,8 @@ bundle Collection {
 		}
 
 		#~
-		TBD
+		Size of heap, including Nil values
+		@return size of heap
 		~#
 		method : public : Size() ~ Int {
 			return @length;
