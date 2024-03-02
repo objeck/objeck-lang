@@ -1,25 +1,38 @@
 class Heap<H : Compare> {
     function : Main(args : String[]) ~ Nil {
         heap := Collection.Heap->New(Collection.Heap->Order->MIN)<IntRef>;
-        heap->Insert(IntRef->New(3));
-        heap->Insert(IntRef->New(1));
-        heap->Insert(IntRef->New(9));
-        heap->Insert(IntRef->New(8));
-        heap->Insert(IntRef->New(6));
-        heap->Insert(IntRef->New(2));
+        
+        heap->Insert("skin");
+        heap->Insert("hurt");
+        heap->Insert("scream");
+        heap->Insert("energy");
+        heap->Insert("giant");
+        heap->Insert("strong");
+        heap->Insert("paradox");
+        heap->Insert("insure");
+        heap->Insert("resign");
+        heap->Insert("look");
+        heap->Insert("pleasure");
+        heap->Insert("dairy");
 
         heap->ToString()->PrintLine();
 
-        heap->Pop()->As(IntRef)->PrintLine();
-        heap->Pop()->As(IntRef)->PrintLine();
+        heap->Pop()->As(String)->PrintLine();
+        heap->Pop()->As(String)->PrintLine();
 
         "---"->PrintLine();
 
         values := heap->ToArray();
         each(ref := values) {
-            value := ref->As(IntRef);
-            value->Get()->PrintLine();
+            value := ref->As(String);
+            value->PrintLine();
         };
+
+        "---"->PrintLine();
+
+        while(<>heap->IsEmpty()) {
+            heap->Pop()->As(String)->PrintLine();
+        }
 
         "---"->PrintLine();
 
