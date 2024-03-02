@@ -56,7 +56,7 @@ Want to get started? Take a look at the [language guide](https://objeck.org/gett
   * Added support for [response files](https://gist.github.com/objeck/b1a11ea34f4697b06e31f8cadb59f601) (#545)
   * Webserver library enhancements
     * Improved performance
-    * [Simpler configuration](https://github.com/objeck/objeck-web-server/blob/master/config/weather_config.json)
+    * More [configuration](https://github.com/objeck/objeck-web-server/blob/master/config/weather_config.json) options
   * Add an optional [in](https://gist.github.com/objeck/27219d777b636208d88ab197d1cf1270) keyword for use in `each` loops; an alternative to `:=` operator
 
 * v2024.2.0
