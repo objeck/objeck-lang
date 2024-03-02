@@ -635,7 +635,7 @@ heap->Size()->PrintLine();
 		~#
 		method : public : Size() ~ Int {
 			return @length;
-	    }
+		}
 
 		method : Resize() ~ H[] {
 			temp := H->New[@heap->Size() + @heap->Size() / 2];
