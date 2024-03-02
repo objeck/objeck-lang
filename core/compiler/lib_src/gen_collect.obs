@@ -492,16 +492,16 @@ heap->Size()->PrintLine();
 	~#
 	class Heap<H : Compare> {
 		@heap : H[];
-	   @length : Int;
-	   @min : Bool;
+		@length : Int;
+		@min : Bool;
 
 		#~
 		Heap sort order
 		@class Heap
 		~#
-	    enum Order {
-	        MIN,
-	        MAX
+		enum Order {
+			MIN,
+			MAX
 		}
 
 		#~
@@ -558,7 +558,7 @@ heap->Size()->PrintLine();
 		Inserts a value into the heap and extends the heap size if necessary
 		@param value value to insert
 		~#
-	    method : public : Insert(value : H) ~ Nil {
+		method : public : Insert(value : H) ~ Nil {
 			if(@length >= @heap->Size() - 1) {
 				@heap := Resize();
 			};
@@ -637,7 +637,7 @@ heap->Size()->PrintLine();
 			return @length;
 	    }
 
-	    method : Resize() ~ H[] {
+		method : Resize() ~ H[] {
 			temp := H->New[@heap->Size() + @heap->Size() / 2];
 
 			each(i : @heap) {
@@ -646,7 +646,7 @@ heap->Size()->PrintLine();
 			};
 
 			return temp;
-	    }
+		}
 
 		method : ShiftUp() ~ Nil {
 			index := @length;
@@ -717,7 +717,7 @@ heap->Size()->PrintLine();
 		}
 
 		method : HasRightChild(i : Int) ~ Bool {
-		return GetRightIndex(i) <= @length;
+			return GetRightIndex(i) <= @length;
 		}
 
 		method : GetParentIndex(i : Int) ~ Int {
