@@ -12,7 +12,6 @@ class Heap<H : Compare> {
 
         heap->Pop()->As(IntRef)->PrintLine();
         heap->Pop()->As(IntRef)->PrintLine();
-        heap->Pop(IntRef->New(2));
 
         "---"->PrintLine();
 
