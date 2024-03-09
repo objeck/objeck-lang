@@ -14,27 +14,29 @@ class Test {
 					\"messages\": [
 						{
 							\"role\": \"system\",
-							\"content\": \"You are a helpful assistant.\"
+							\"content\": \"You are a calculator\"
 						},
 						{
 							\"role\": \"user\",
-							\"content\": \"Add 13 + 7 as XML\"
+							\"content\": \"evaluate (((3 + 7) * 3) - 17)\"
 						}
 					]
 				}
 			";
 
-			response := HttpsClient->QuickPost(
+			response_doc := HttpsClient->QuickPost(
 				Url->New("https://api.openai.com/v1/chat/completions"), 
 				data, "application/json", headers);
 
-			if(response <> Nil) {
-# response->ToString()->PrintLine();
-				response_json := JsonParser->TextToElement(response->ToString());
-				choices_json := response_json->Get("choices");
-				each(choice_json in choices_json) {
-					content_str := choice_json->FindElements("message/content");
-					JsonElement->Decode(content_str->GetString())->PrintLine();
+			if(response_doc <> Nil) {
+				response_json := JsonParser->TextToElement(response_doc->ToString());
+				if(response_json <> Nil) {
+					choices_json := response_json->Get("choices");
+					each(choice_json in choices_json) {
+						content_str := choice_json->FindElements("message/content");
+						answer := JsonElement->Decode(content_str->GetString());
+answer->PrintLine();						
+					};
 				};
 			};
 		};
