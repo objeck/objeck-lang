@@ -189,7 +189,6 @@ if(html <> Nil) {
 				};
 				# "### address='{$address}', port={$port}, location='{$location}'"->PrintLine();
 
-				
 				socket := TCPSecureSocket->New(address, port);
 				if(socket->IsOpen()) {
 					post := "POST ";
@@ -259,6 +258,7 @@ if(html <> Nil) {
 							};
 						}
 						while(line->Size() > 0);
+						
 						# IO.Standard->Print("cookies: size=")->PrintLine(@cookies->Size());
 						
 						# permanently moved
@@ -284,9 +284,11 @@ if(html <> Nil) {
 						# look for chunked blocks
 						encoding : String := @response_headers->Find("transfer-encoding");
 						if(encoding <> Nil & encoding->Equals("chunked")) {
+							# "chunked"->PrintLine();							
 							content := WebCommon->ReadChunked(socket);
 						}
 						else {
+							# "content-length"->PrintLine();							
 							length_header : String := @response_headers->Find("content-length");
 							if(length_header <> Nil) {
 								content := WebCommon->ReadLength(length_header->ToInt(), socket);
@@ -508,9 +510,11 @@ if(html <> Nil) {
 						# look for chunked blocks
 						encoding : String := @response_headers->Find("transfer-encoding");
 						if(encoding <> Nil & encoding->Equals("chunked")) {
+							# "chunked"->PrintLine();							
 							content := WebCommon->ReadChunked(socket);
 						}
 						else {
+							# "content-length"->PrintLine();							
 							length_header : String := @response_headers->Find("content-length");
 							if(length_header <> Nil) {
 								content := WebCommon->ReadLength(length_header->ToInt(), socket);
