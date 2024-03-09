@@ -510,11 +510,11 @@ if(html <> Nil) {
 						# look for chunked blocks
 						encoding : String := @response_headers->Find("transfer-encoding");
 						if(encoding <> Nil & encoding->Equals("chunked")) {
-"chunked"->PrintLine();							
+							# "chunked"->PrintLine();							
 							content := WebCommon->ReadChunked(socket);
 						}
 						else {
-"content-length"->PrintLine();							
+							# "content-length"->PrintLine();							
 							length_header : String := @response_headers->Find("content-length");
 							if(length_header <> Nil) {
 								content := WebCommon->ReadLength(length_header->ToInt(), socket);
