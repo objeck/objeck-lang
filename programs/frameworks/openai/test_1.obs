@@ -4,13 +4,14 @@ class Test {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
 			key := args[0];
+			
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer sk-{$key}");
 
 			data := "
 				{
 					\"model\": \"tts-1\",
-					\"input\": \"Today is the first day of the weekend!\",
+					\"input\": \"I want to know if you've ever seen the rain...\",
 					\"voice\": \"alloy\"
 				}
 			";
