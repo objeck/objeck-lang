@@ -1,4 +1,4 @@
-use Web.HTTP, Collection, System.IO.Filesystem;
+use Web.HTTP, Collection, System.IO.Filesystem, Data.JSON;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
@@ -10,19 +10,32 @@ class Test {
 
 			data := "
 				{
-					\"model\": \"tts-1\",
-					\"input\": \"I want to know if you've ever seen the rain...\",
-					\"voice\": \"alloy\"
+					\"model\": \"gpt-3.5-turbo\",
+					\"messages\": [
+						{
+							\"role\": \"system\",
+							\"content\": \"You are a helpful assistant.\"
+						},
+						{
+							\"role\": \"user\",
+							\"content\": \"Add 13 + 7 as JSON\"
+						}
+					]
 				}
 			";
 
 			response := HttpsClient->QuickPost(
-				Url->New("https://api.openai.com/v1/audio/speech"), 
+				Url->New("https://api.openai.com/v1/chat/completions"), 
 				data, "application/json", headers);
 
 			if(response <> Nil) {
-				FileWriter->WriteFile("test.mp3", response);
-				"Fin."->PrintLine();
+# response->ToString()->PrintLine();
+				response_json := JsonParser->TextToElement(response->ToString());
+				choices_json := response_json->Get("choices");
+				each(choice_json in choices_json) {
+					content_str := choice_json->FindElements("message/content");
+					JsonElement->Decode(content_str->GetString())->PrintLine();
+				};
 			};
 		};
 	}
