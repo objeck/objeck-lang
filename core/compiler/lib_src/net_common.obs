@@ -454,14 +454,14 @@ bundle Web.HTTP {
 
 		function : ReadChunked(socket : System.IO.InputStream) ~ ByteBuffer {
 			output := ByteBuffer->New();
-			buffer := Byte->New[8192];
+			buffer := Byte->New[64*1024]; # 64k buffer
 			
 			done := false;
 			do {
 				size_line := "0x";
 				size_line->Append(socket->ReadLine());
 				chunk_size := size_line->ToInt();
-				if(chunk_size > 8192) {
+				if(chunk_size > 64*1024) {
 					return Nil;
 				};
 
@@ -485,12 +485,12 @@ bundle Web.HTTP {
 			return output;
 		}
 
-		function : ReadLength(length : Int, socket : System.IO.InputStream) ~ ByteBuffer {
-			if(length > 8192) {
+		function : ReadLength(length : Int, socket : System.IO.InputStream) ~ ByteBuffer {			
+			if(length > 256*1024*1024) { # 256m buffer max
 				return Nil;
 			};
 
-			buffer := Byte->New[8192];
+			buffer := Byte->New[length];
 			each(i : length) {
 				buffer[i] := socket->ReadByte();
 			};
@@ -502,7 +502,7 @@ bundle Web.HTTP {
 			buffer := Byte->New[content_length];
 
 			total_read := 0;
-			temp := Byte->New[8192];
+			temp := Byte->New[64*1024];
 			do {
 				read := socket->ReadBuffer(0, temp->Size(), temp);
 				# "Post: content_length='{$content_length}, read='{$read}, total_read='{$total_read}"->PrintLine();
