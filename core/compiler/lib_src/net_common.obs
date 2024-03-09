@@ -454,66 +454,58 @@ bundle Web.HTTP {
 
 		function : ReadChunked(socket : System.IO.InputStream) ~ ByteBuffer {
 			output := ByteBuffer->New();
+			buffer := Byte->New[8192];
+			
 			done := false;
-
 			do {
 				size_line := "0x";
 				size_line->Append(socket->ReadLine());
 				chunk_size := size_line->ToInt();
-				if(chunk_size > 0) {
+				if(chunk_size > 8192) {
+					return Nil;
+				};
 
-					total_read := 0;								
-					buffer := Byte->New[8192];
-					do {
-						read += socket->ReadBuffer(0, buffer->Size(), buffer);
-						total_read += read;
-						output->Append(read, buffer);
-						buffer->Clear();
-					}
-					while(total_read < chunk_size);
+				if(chunk_size > 0) {
+					each(i : chunk_size) {
+						buffer[i] := socket->ReadByte();
+					};
+					output->Append(chunk_size, buffer);
+					buffer->Clear();
 
 					# read CRLF
-					socket->ReadByte(); 
+					socket->ReadByte();
 					socket->ReadByte();
 				}
 				else {
 					done := true;
 				};
 			}
-			while(done <> true);
-
+			while(<>done);
+			
 			return output;
 		}
 
 		function : ReadLength(length : Int, socket : System.IO.InputStream) ~ ByteBuffer {
-			output := ByteBuffer->New();
-			buffer := Byte->New[8192];
+			if(length > 8192) {
+				return Nil;
+			};
 
-			total_read := 0;	
-			do {
-				read := socket->ReadBuffer(0, buffer->Size(), buffer);
-				total_read += read;
-				output->Append(read, buffer);
-				buffer->Clear();
-			}
-			while(total_read < length);
+			buffer := Byte->New[8192];
+			each(i : length) {
+				buffer[i] := socket->ReadByte();
+			};
 			
-			return output;		
+			return ByteBuffer->New(buffer);		
 		}
 
 		function : ReadPost(content_length : Int, socket : System.IO.InputStream) ~ Byte[] {
 			buffer := Byte->New[content_length];
 
 			total_read := 0;
-			temp := Byte->New[1024];
+			temp := Byte->New[8192];
 			do {
 				read := socket->ReadBuffer(0, temp->Size(), temp);
-				#~									
-				if(@is_debug) {
-					"Post: content_length='{$content_length}, read='{$read}, total_read='{$total_read}"->PrintLine();
-				};
-				~#
-
+				# "Post: content_length='{$content_length}, read='{$read}, total_read='{$total_read}"->PrintLine();
 				Runtime->Copy(buffer, total_read, temp, 0, read);
 				total_read += read;
 			}
