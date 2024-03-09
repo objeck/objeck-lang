@@ -18,7 +18,7 @@ class Test {
 						},
 						{
 							\"role\": \"user\",
-							\"content\": \"Add 13 + 7 as JSON\"
+							\"content\": \"Add 13 + 7 as XML\"
 						}
 					]
 				}
