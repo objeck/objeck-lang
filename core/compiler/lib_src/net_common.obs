@@ -472,7 +472,7 @@ bundle Web.HTTP {
 					output->Append(chunk_size, buffer);
 					buffer->Clear();
 
-					# read CRLF
+					# read CR/LF
 					socket->ReadByte();
 					socket->ReadByte();
 				}
