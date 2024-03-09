@@ -1,0 +1,29 @@
+use Web.HTTP, Collection, System.IO.Filesystem;
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() = 1) {
+			key := args[0];
+			
+			headers := Map->New()<String, String>;
+			headers->Insert("Authorization", "Bearer sk-{$key}");
+
+			data := "
+				{
+					\"model\": \"tts-1\",
+					\"input\": \"I want to know if you've ever seen the rain...\",
+					\"voice\": \"alloy\"
+				}
+			";
+
+			response := HttpsClient->QuickPost(
+				Url->New("https://api.openai.com/v1/audio/speech"), 
+				data, "application/json", headers);
+
+			if(response <> Nil) {
+				FileWriter->WriteFile("test.mp3", response);
+				"Fin."->PrintLine();
+			};
+		};
+	}
+}
