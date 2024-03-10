@@ -5300,7 +5300,7 @@ bool TrapProcessor::SockTcpSslInByteAry(StackProgram* program, size_t* inst, siz
       if(!status) {
         done = true;
       }
-      if(status < 0) {
+      else if(status < 0) {
         PushInt(-1, op_stack, stack_pos);
         return true;
       }
