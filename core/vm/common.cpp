@@ -5291,7 +5291,20 @@ bool TrapProcessor::SockTcpSslInByteAry(StackProgram* program, size_t* inst, siz
     SSL_CTX* ctx = (SSL_CTX*)instance[0];
     BIO* bio = (BIO*)instance[1];
     char* buffer = (char*)(array + 3);
-    PushInt(IPSecureSocket::ReadBytes(buffer + offset, num, ctx, bio), op_stack, stack_pos);
+
+    int status;
+    int read = 0;
+    char* temp = buffer + offset;
+    for(size_t i = 0; i < num; ++i) {
+      temp[i] = IPSecureSocket::ReadByte(ctx, bio, status);
+      if(status < 0) {
+        PushInt(-1, op_stack, stack_pos);
+        return true;
+      }
+      ++read;
+    }
+    
+    PushInt(read, op_stack, stack_pos);
   }
   else {
     PushInt(-1, op_stack, stack_pos);

@@ -464,11 +464,9 @@ bundle Web.HTTP {
 				if(chunk_size > 64*1024) {
 					return Nil;
 				};
-
+				
 				if(chunk_size > 0) {
-					each(i : chunk_size) {
-						buffer[i] := socket->ReadByte();
-					};
+					socket->ReadBuffer(0, chunk_size, buffer);
 					output->Append(chunk_size, buffer);
 					buffer->Clear();
 
@@ -491,10 +489,7 @@ bundle Web.HTTP {
 			};
 
 			buffer := Byte->New[length];
-			each(i : length) {
-				buffer[i] := socket->ReadByte();
-			};
-			
+			socket->ReadBuffer(0, length, buffer);
 			return ByteBuffer->New(buffer);		
 		}
 
