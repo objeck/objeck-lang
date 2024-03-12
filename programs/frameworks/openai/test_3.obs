@@ -1,145 +1,167 @@
 use Web.HTTP, Collection, System.IO.Filesystem, Data.JSON;
 
-class Test {
-	function : Main(args : String[]) ~ Nil {
-		if(args->Size() = 1) {
-			key := args[0];
+bundle API.OpenAI {
+	class Test {
+		function : Main(args : String[]) ~ Nil {
+			if(args->Size() = 1) {
+				key := args[0];
 
-			assistant := Assistant->New("gpt-3.5-turbo-0125", "Tutor", "Personal math tutor");
-			assistant->AddTool("retrieval");
-			assistant->Build();
-			assistant->ToJson()->PrintLine();
+				assistant := API.OpenAI.Assistant->New("gpt-3.5-turbo-0125", "Tutor", "Personal math tutor");
+				assistant->AddTool("retrieval");
+				if(assistant->Build()) {
+					assistant->ToJson()->PrintLine();
+				};
 
 #~			
-			headers := Map->New()<String, String>;
-			headers->Insert("Authorization", "Bearer sk-{$key}");
-			headers->Insert("OpenAI-Beta", "assistants=v1");
+				headers := Map->New()<String, String>;
+				headers->Insert("Authorization", "Bearer sk-{$key}");
+				headers->Insert("OpenAI-Beta", "assistants=v1");
 
-			data := "
-				{
-					\"instructions\": \"You are a personal math tutor. When asked a question, write and run Python code to answer the question.\",
-					\"name\": \"Math Tutor\",
-					\"tools\": [
-						{
-							\"type\": \"code_interpreter\"
-						}
-					],
-					\"file_ids\": [],					
-					\"model\": \"gpt-3.5-turbo-0125\"
-				}
-			";
+				data := "
+					{
+						\"instructions\": \"You are a personal math tutor. When asked a question, write and run Python code to answer the question.\",
+						\"name\": \"Math Tutor\",
+						\"tools\": [
+							{
+								\"type\": \"code_interpreter\"
+							}
+						],
+						\"file_ids\": [],					
+						\"model\": \"gpt-3.5-turbo-0125\"
+					}
+				";
 
-			response_doc := HttpsClient->QuickPost(
-				Url->New("https://api.openai.com/v1/assistants"), 
-				data, "application/json", headers);
+				response_doc := HttpsClient->QuickPost(
+					Url->New("https://api.openai.com/v1/assistants"), 
+					data, "application/json", headers);
 
-			if(response_doc <> Nil) {
-				response_json := JsonParser->TextToElement(response_doc->ToString());
+				if(response_doc <> Nil) {
+					response_json := JsonParser->TextToElement(response_doc->ToString());
 
-				created_at := GetStringValue("created_at", response_json);
-				instructions := GetStringValue("instructions", response_json);
-				id := GetStringValue("id", response_json);
-				description := GetStringValue("description", response_json);
-				model := GetStringValue("model", response_json);
-				name := GetStringValue("name", response_json);
-				object := GetStringValue("object", response_json);
+					created_at := GetStringValue("created_at", response_json);
+					instructions := GetStringValue("instructions", response_json);
+					id := GetStringValue("id", response_json);
+					description := GetStringValue("description", response_json);
+					model := GetStringValue("model", response_json);
+					name := GetStringValue("name", response_json);
+					object := GetStringValue("object", response_json);
 
-				"[{$created_at}], [{$instructions}], [{$id}], [{$description}], [{$model}], [{$name}], [{$object}]"->PrintLine();
-							
-			};
+					"[{$created_at}], [{$instructions}], [{$id}], [{$description}], [{$model}], [{$name}], [{$object}]"->PrintLine();
+								
+				};
 ~#			
-		};
+			};
+		}
+
+		function : GetStringValue(name : String, element : JsonElement) ~ String {
+			value := "";
+
+			value_json := element->Get(name);
+			if(value_json <> Nil & <>value_json->IsNull()) {
+				value := value_json->GetString();
+			};
+
+			return value;
+		}
 	}
 
-	function : GetStringValue(name : String, element : JsonElement) ~ String {
-		value := "";
-
-		value_json := element->Get(name);
-		if(value_json <> Nil & <>value_json->IsNull()) {
-			value := value_json->GetString();
-		};
-
-		return value;
-	}
-}
-
-class Assistant {
-	@request_json : JsonElement;
-	@model : String;
-	@name : String;
-	@description : String;
-	@instructions : String;
-	@tools : Vector<String>;
-
-	New(model : String) {
-		@model := model;
-
-		@tools := Vector->New()<String>;
-		Build();
+	class File {
+		New() {}
 	}
 
-	New(model : String, name : String, description : String) {
-		@model := model;
-		@name := name;
-		@description := description;
+	class Assistant {
+		@request_json : JsonElement;
+		@model : String;
+		@name : String;
+		@description : String;
+		@instructions : String;
 
-		@tools := Vector->New()<String>;
-		Build();
-	}
+		@tools : Vector<String>;
+		@files : Vector<File>;
 
-	method : public : IsLoaded() ~ Bool {
-		return @request_json <> Nil;
-	}
+		New(model : String) {
+			@model := model;
 
-	method : public : SetInstructions(instructions : String) ~ Nil {
-		@instructions := instructions;
-	}
+			@tools := Vector->New()<String>;
+			Build();
+		}
 
-	method : public : AddTool(tool : String) ~ Nil {
-		@tools->AddBack(tool);
-	}
+		New(model : String, name : String, description : String) {
+			@model := model;
+			@name := name;
+			@description := description;
 
-	method : public : Build() ~ Bool {
-		if(@model = Nil) {
-			return false;
-		};
+			@tools := Vector->New()<String>;
+			Build();
+		}
 
-		builder := JsonBuilder->New();
-		create_json := builder->PushObject();
-		create_json->Insert("model", @model);
+		method : public : IsLoaded() ~ Bool {
+			return @request_json <> Nil;
+		}
 
-		if(@name <> Nil) {
-			create_json->Insert("name", @name);
-		};
+		method : public : SetName(name : String) ~ Nil {
+			@name := name;
+		}
 
-		if(@description <> Nil) {
-			create_json->Insert("description", @description);
-		};
+		method : public : SetDescription(description : String) ~ Nil {
+			@description := description;
+		}
 
-		if(@instructions <> Nil) {
-			create_json->Insert("instructions", @instructions);
-		};
+		method : public : SetInstructions(instructions : String) ~ Nil {
+			@instructions := instructions;
+		}
+
+		method : public : AddFile(file : File) ~ Nil {
+			@files->AddBack(file);
+		}
+
+		method : public : AddTool(tool : String) ~ Nil {
+			@tools->AddBack(tool);
+		}
+
+		# TODO: add metadata
+		
+		method : public : Build() ~ Bool {
+			if(@model = Nil) {
+				return false;
+			};
+
+			builder := JsonBuilder->New();
+			create_json := builder->PushObject();
+			create_json->Insert("model", @model);
+
+			if(@name <> Nil) {
+				create_json->Insert("name", @name);
+			};
+
+			if(@description <> Nil) {
+				create_json->Insert("description", @description);
+			};
+
+			if(@instructions <> Nil) {
+				create_json->Insert("instructions", @instructions);
+			};
 
 
-		# tools
-		tools_json := JsonElement->New(JsonElement->JsonType->ARRAY);
-		each(tool in @tools) {
-"### 0 ###"->PrintLine();
-			tool_json := JsonElement->New(JsonElement->JsonType->OBJECT);
-			tool_json->Insert("type", tool);
-			tools_json->Add(tool_json);
-		};
-		create_json->Insert("tools", tools_json);
+			# tools
+			tools_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+			each(tool in @tools) {
+				tool_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+				tool_json->Insert("type", tool);
+				tools_json->Add(tool_json);
+			};
+			create_json->Insert("tools", tools_json);
 
-		@request_json := builder->PopAll();
-		return true;
-	}
+			@request_json := builder->PopAll();
+			return true;
+		}
 
-	method : public : ToJson() ~ String {
-		if(@request_json = Nil) {
-			return "{}";
-		};
+		method : public : ToJson() ~ String {
+			if(@request_json = Nil) {
+				return "{}";
+			};
 
-		return @request_json->ToString();
+			return @request_json->ToString();
+		}
 	}
 }
