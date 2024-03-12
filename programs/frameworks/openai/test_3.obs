@@ -1,0 +1,57 @@
+use Web.HTTP, Collection, System.IO.Filesystem, Data.JSON;
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() = 1) {
+			key := args[0];
+			
+			headers := Map->New()<String, String>;
+			headers->Insert("Authorization", "Bearer sk-{$key}");
+			headers->Insert("OpenAI-Beta", "assistants=v1");
+
+			data := "
+				{
+					\"instructions\": \"You are a personal math tutor. When asked a question, write and run Python code to answer the question.\",
+					\"name\": \"Math Tutor\",
+					\"tools\": [
+						{
+							\"type\": \"code_interpreter\"
+						}
+					],
+					\"file_ids\": [],					
+					\"model\": \"gpt-3.5-turbo-0125\"
+				}
+			";
+
+			response_doc := HttpsClient->QuickPost(
+				Url->New("https://api.openai.com/v1/assistants"), 
+				data, "application/json", headers);
+
+			if(response_doc <> Nil) {
+				response_json := JsonParser->TextToElement(response_doc->ToString());
+
+				created_at := GetStringValue("created_at", response_json);
+				instructions := GetStringValue("instructions", response_json);
+				id := GetStringValue("id", response_json);
+				description := GetStringValue("description", response_json);
+				model := GetStringValue("model", response_json);
+				name := GetStringValue("name", response_json);
+				object := GetStringValue("object", response_json);
+
+				"[{$created_at}], [{$instructions}], [{$id}], [{$description}], [{$model}], [{$name}], [{$object}]"->PrintLine();
+							
+			};
+		};
+	}
+
+	function : GetStringValue(name : String, element : JsonElement) ~ String {
+		value := "";
+
+		value_json := element->Get(name);
+		if(value_json <> Nil & <>value_json->IsNull()) {
+			value := value_json->GetString();
+		};
+
+		return value;
+	}
+}
