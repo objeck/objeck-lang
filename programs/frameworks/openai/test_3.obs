@@ -4,7 +4,13 @@ class Test {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
 			key := args[0];
-			
+
+			assistant := Assistant->New("gpt-3.5-turbo-0125", "Tutor", "Personal math tutor");
+			assistant->AddTool("retrieval");
+			assistant->Build();
+			assistant->ToJson()->PrintLine();
+
+#~			
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer sk-{$key}");
 			headers->Insert("OpenAI-Beta", "assistants=v1");
@@ -41,6 +47,7 @@ class Test {
 				"[{$created_at}], [{$instructions}], [{$id}], [{$description}], [{$model}], [{$name}], [{$object}]"->PrintLine();
 							
 			};
+~#			
 		};
 	}
 
@@ -53,5 +60,86 @@ class Test {
 		};
 
 		return value;
+	}
+}
+
+class Assistant {
+	@request_json : JsonElement;
+	@model : String;
+	@name : String;
+	@description : String;
+	@instructions : String;
+	@tools : Vector<String>;
+
+	New(model : String) {
+		@model := model;
+
+		@tools := Vector->New()<String>;
+		Build();
+	}
+
+	New(model : String, name : String, description : String) {
+		@model := model;
+		@name := name;
+		@description := description;
+
+		@tools := Vector->New()<String>;
+		Build();
+	}
+
+	method : public : IsLoaded() ~ Bool {
+		return @request_json <> Nil;
+	}
+
+	method : public : SetInstructions(instructions : String) ~ Nil {
+		@instructions := instructions;
+	}
+
+	method : public : AddTool(tool : String) ~ Nil {
+		@tools->AddBack(tool);
+	}
+
+	method : public : Build() ~ Bool {
+		if(@model = Nil) {
+			return false;
+		};
+
+		builder := JsonBuilder->New();
+		create_json := builder->PushObject();
+		create_json->Insert("model", @model);
+
+		if(@name <> Nil) {
+			create_json->Insert("name", @name);
+		};
+
+		if(@description <> Nil) {
+			create_json->Insert("description", @description);
+		};
+
+		if(@instructions <> Nil) {
+			create_json->Insert("instructions", @instructions);
+		};
+
+
+		# tools
+		tools_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+		each(tool in @tools) {
+"### 0 ###"->PrintLine();
+			tool_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			tool_json->Insert("type", tool);
+			tools_json->Add(tool_json);
+		};
+		create_json->Insert("tools", tools_json);
+
+		@request_json := builder->PopAll();
+		return true;
+	}
+
+	method : public : ToJson() ~ String {
+		if(@request_json = Nil) {
+			return "{}";
+		};
+
+		return @request_json->ToString();
 	}
 }
