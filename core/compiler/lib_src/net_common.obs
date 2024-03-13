@@ -2215,6 +2215,7 @@ bundle Web.HTTP.Server {
 						buffer->Append(name->ToByteArray());
 						buffer->Append(header_space);
 						buffer->Append(value->ToByteArray());
+						buffer->Append(crlf);
 					};
 					buffer->Append(crlf);
 					buffer->Append(crlf);

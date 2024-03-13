@@ -3,19 +3,31 @@ use Web.HTTP, Collection, System.IO.Filesystem, Data.JSON, Web.HTTP.Server;
 bundle API.OpenAI {
 	class Test {
 		function : Main(args : String[]) ~ Nil {
-			if(args->Size() = 1) {
-#				key := args[0];
+			if(args->Size() = 2) {
+				key := args[1];
 
 				file_in := System.IO.Filesystem.FileReader->ReadBinaryFile(args[0]);
 				
-				headers := Map->New()<String, String>;
-				headers->Insert("Content-Type", "image/jpeg");
-				multi_part := MultipartContent->New(headers, file_in);
+				mime_headers := Map->New()<String, String>;
+				mime_headers->Insert("Content-Type", "application/json");
+				mime_headers->Insert("file", "foo.json");
+				mime_headers->Insert("purpose", "assistants");
+				multi_part := MultipartContent->New(mime_headers, file_in);
 
 				encoder := MultipartEncoder->New();
 				encoder->Add(multi_part);
 				data := encoder->ToByteArray();
-				
+
+				https_headers := Map->New()<String, String>;
+				https_headers->Insert("Authorization", "Bearer sk-{$key}");
+				https_headers->Insert("Content-Disposition", "file=\"filename.jpg\"; purpose=\"assistants\"");
+				https_headers->Insert("OpenAI-Beta", "assistants=v1");
+
+				response_doc := HttpsClient->QuickPost(
+					Url->New("https://api.openai.com/v1/files"), 
+					data, "multipart/form-data", https_headers);
+				response_doc->ToString()->PrintLine();
+#~				
 				decoder := MultipartDecoder->New(data);
 				parts := decoder->Parse()<MultipartContent>;
 
@@ -23,12 +35,12 @@ bundle API.OpenAI {
 				type := part->GetContentType();
 				size := part->GetContent()->Size();
 
-				file := "foo.jpg";
+				file := "bar.json";
 				System.IO.Filesystem.FileWriter->WriteFile(file, part->GetContent());
 				"Wrote: file=\"{$file}\", type='{$type}', {$size} byte(s)"->PrintLine();
 
-
-#~
+###
+				
 				assistant := API.OpenAI.Assistant->New("gpt-3.5-turbo-0125", "Tutor", "Personal math tutor");
 				assistant->SetInstructions("I can only add.")
 				assistant->AddTool("retrieval");
