@@ -104,7 +104,7 @@ if(html <> Nil) {
 		@param data data to post
 		@return string read
 		~#
-		method : public : Post(url : Web.HTTP.Url, data : String) ~ Byte[] {
+		method : public : Post(url : Web.HTTP.Url, data : Byte[]) ~ Byte[] {
 			return Post(url, data, "text/plain");
 		}
 		
@@ -114,7 +114,7 @@ if(html <> Nil) {
 		@param data data to post
 		@return read strings
 		~#
-		function : QuickPost(url : Web.HTTP.Url, data : String) ~ Byte[] {
+		function : QuickPost(url : Web.HTTP.Url, data : Byte[]) ~ Byte[] {
 			return HttpsClient->New()->Post(url, data);
 		}
 
@@ -125,7 +125,7 @@ if(html <> Nil) {
 		@param content_type content type
 		@return read strings
 		~#
-		function : QuickPost(url : Web.HTTP.Url, data : String, content_type : String) ~ Byte[] {
+		function : QuickPost(url : Web.HTTP.Url, data : Byte[], content_type : String) ~ Byte[] {
 			return QuickPost(url, data, content_type, Nil);
 		}
 		
@@ -137,9 +137,9 @@ if(html <> Nil) {
 		@param headers key/value headers
 		@return read strings
 		~#
-		function : QuickPost(url : Web.HTTP.Url, data : String, content_type : String, headers : Map<String, String>) ~ Byte[] {			
+		function : QuickPost(url : Web.HTTP.Url, data : Byte[], content_type : String, headers : Map<String, String>) ~ Byte[] {			
 			client := HttpsClient->New();
-			
+"--- 0 ---"->PrintLine();			
 			if(headers <> Nil) {
 				header_key_values := headers->GetKeyValues()<Pair<String, String>>;
 				each(i : header_key_values) {
@@ -160,7 +160,7 @@ if(html <> Nil) {
 		@param data data to post
 		@return string read
 		~#
-		method : public : Post(url : Web.HTTP.Url, data : String, content_type : String) ~ Byte[] {	
+		method : public : Post(url : Web.HTTP.Url, data : Byte[], content_type : String) ~ Byte[] {	
 			content : ByteBuffer;
 
 			if(url->GetScheme()->Equals("https")) {
@@ -187,7 +187,7 @@ if(html <> Nil) {
 				if(port < 0) {
 					port := 443;
 				};
-				# "### address='{$address}', port={$port}, location='{$location}'"->PrintLine();
+"### address='{$address}', port={$port}, location='{$location}'"->PrintLine();
 
 				socket := TCPSecureSocket->New(address, port);
 				if(socket->IsOpen()) {
@@ -225,7 +225,7 @@ if(html <> Nil) {
 					post->Append(data);
 					socket->WriteString(post);
 					
-					# post->PrintLine();					
+post->PrintLine();					
 					
 					status_code := 500;
 					status_line := socket->ReadLine();
@@ -236,7 +236,7 @@ if(html <> Nil) {
 						status_code := status_line->SubString(index)->ToInt();
 					};
 					
-					# status_line->PrintLine();
+status_line->PrintLine();
 					
 					if(status_code <> 500) {
 						# get request headers
@@ -247,10 +247,10 @@ if(html <> Nil) {
 								name := line->SubString(index);
 								value := line->SubString(index + 1, line->Size() - index - 1)->Trim();
 								
-								# IO.Standard->Print("|")->Print(name)->Print("|, |")->Print(value)->PrintLine("|");
+IO.Standard->Print("|")->Print(name)->Print("|, |")->Print(value)->PrintLine("|");
 								if(@cookies_enabled & name->Equals("Set-Cookie")) {
 									@cookies->AddBack(Cookie->New(value));
-									# IO.Standard->Print("cookie=")->PrintLine(value);
+IO.Standard->Print("cookie=")->PrintLine(value);
 								}
 								else {
 									@response_headers->Insert(name->ToLower(), value);
@@ -259,7 +259,7 @@ if(html <> Nil) {
 						}
 						while(line->Size() > 0);
 						
-						# IO.Standard->Print("cookies: size=")->PrintLine(@cookies->Size());
+IO.Standard->Print("cookies: size=")->PrintLine(@cookies->Size());
 						
 						# permanently moved
 						if(status_code = 301 | status_code = 302) {
@@ -276,7 +276,7 @@ if(html <> Nil) {
 								};
 								@response_headers->Empty();
 
-								# IO.Standard->Print("permanently moved: ")->PrintLine(moved_url_str);
+IO.Standard->Print("permanently moved: ")->PrintLine(moved_url_str);
 								return Get(Url->New(moved_url_str), content_type);
 							};
 						};
@@ -284,11 +284,11 @@ if(html <> Nil) {
 						# look for chunked blocks
 						encoding : String := @response_headers->Find("transfer-encoding");
 						if(encoding <> Nil & encoding->Equals("chunked")) {
-							# "chunked"->PrintLine();							
+"chunked"->PrintLine();							
 							content := WebCommon->ReadChunked(socket);
 						}
 						else {
-							# "content-length"->PrintLine();							
+"content-length"->PrintLine();							
 							length_header : String := @response_headers->Find("content-length");
 							if(length_header <> Nil) {
 								content := WebCommon->ReadLength(length_header->ToInt(), socket);
