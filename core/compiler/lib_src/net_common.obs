@@ -2170,11 +2170,26 @@ bundle Web.HTTP.Server {
 			return "<Nil>";
 		}
 	}
+
+	#~
+	Multipart encoder
+	~#
+	class MultipartEncoder {
+		New() {}
+
+		#~
+		Add a multipart encoding content part
+		@param content content part
+		~#
+	    method : public : Add(content : MultipartContent) ~ Nil {
+	    	
+	    }
+	}
 	
 	#~
-	Multipart encoding
+	Multipart decoder
 	~#
-	class MultipartEncoding {
+	class MultipartDecoder {
 		@encoded : Byte[];
 
 		#~

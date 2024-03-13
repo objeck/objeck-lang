@@ -7,29 +7,14 @@ bundle API.OpenAI {
 				key := args[0];
 
 				assistant := API.OpenAI.Assistant->New("gpt-3.5-turbo-0125", "Tutor", "Personal math tutor");
+				assistant->SetInstructions("I can only add.")
 				assistant->AddTool("retrieval");
-				if(assistant->Build()) {
-					assistant->ToJson()->PrintLine();
-				};
-
-#~			
+				
 				headers := Map->New()<String, String>;
 				headers->Insert("Authorization", "Bearer sk-{$key}");
 				headers->Insert("OpenAI-Beta", "assistants=v1");
 
-				data := "
-					{
-						\"instructions\": \"You are a personal math tutor. When asked a question, write and run Python code to answer the question.\",
-						\"name\": \"Math Tutor\",
-						\"tools\": [
-							{
-								\"type\": \"code_interpreter\"
-							}
-						],
-						\"file_ids\": [],					
-						\"model\": \"gpt-3.5-turbo-0125\"
-					}
-				";
+				data := assistant->ToJson();
 
 				response_doc := HttpsClient->QuickPost(
 					Url->New("https://api.openai.com/v1/assistants"), 
@@ -49,7 +34,6 @@ bundle API.OpenAI {
 					"[{$created_at}], [{$instructions}], [{$id}], [{$description}], [{$model}], [{$name}], [{$object}]"->PrintLine();
 								
 				};
-~#			
 			};
 		}
 
@@ -83,7 +67,6 @@ bundle API.OpenAI {
 			@model := model;
 
 			@tools := Vector->New()<String>;
-			Build();
 		}
 
 		New(model : String, name : String, description : String) {
@@ -92,7 +75,6 @@ bundle API.OpenAI {
 			@description := description;
 
 			@tools := Vector->New()<String>;
-			Build();
 		}
 
 		method : public : IsLoaded() ~ Bool {
@@ -120,7 +102,7 @@ bundle API.OpenAI {
 		}
 
 		# TODO: add metadata
-		
+
 		method : public : Build() ~ Bool {
 			if(@model = Nil) {
 				return false;
@@ -157,6 +139,10 @@ bundle API.OpenAI {
 		}
 
 		method : public : ToJson() ~ String {
+			if(@request_json = Nil) {
+				Build();
+			};
+			
 			if(@request_json = Nil) {
 				return "{}";
 			};
