@@ -4145,9 +4145,9 @@ bundle System {
 		@return byte array
 		~#
 		method : public : ToByteArray() ~ Byte[] {
-			out := Byte->New[@buffer->Size()];
+			out := Byte->New[@pos];
 
-			each(i : @buffer) {
+			each(i : @pos) {
 				out[i] := @buffer[i];
 			};
 
