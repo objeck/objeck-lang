@@ -2220,7 +2220,6 @@ bundle Web.HTTP.Server {
 
 				# content
 				buffer->Append(part->GetContent());
-
 				buffer->Append(crlf);
    	    	};
 
@@ -2419,7 +2418,7 @@ bundle Web.HTTP.Server {
 	}
 
 	#~
-	Multipart content type
+	Multipart content 
 	~#
 	class MultipartContent {
 	    @headers : Map<String, String>;
