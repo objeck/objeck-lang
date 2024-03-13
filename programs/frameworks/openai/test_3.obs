@@ -9,7 +9,7 @@ bundle API.OpenAI {
 				file_in := System.IO.Filesystem.FileReader->ReadBinaryFile(args[0]);
 				
 				headers := Map->New()<String, String>;
-				headers->Insert("Content-Type", "application/json");
+				headers->Insert("Content-Type", "image/jpeg");
 				multi_part := MultipartContent->New(headers, file_in);
 
 				encoder := MultipartEncoder->New();
@@ -20,6 +20,7 @@ bundle API.OpenAI {
 				parts := decoder->Parse()<MultipartContent>;
 
 				part := parts->Get(0);
+				part->GetContentType()->PrintLine();
 				part->GetContent()->Size()->PrintLine();
 
 				System.IO.Filesystem.FileWriter->WriteFile("foo.jpg", part->GetContent());

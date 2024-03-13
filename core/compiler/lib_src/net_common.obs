@@ -2430,8 +2430,15 @@ bundle Web.HTTP.Server {
 		@param content content
 		~#
 	    New(headers :  Map<String, String>, content : Byte[]) {
-	        @headers := headers;
 	        @content := content;
+
+	        @headers := Map->New()<String, String>;
+	        keys_values := headers->GetKeyValues()<Pair<String, String>>;
+	        each(key_value in keys_values) {
+		        key := key_value->GetFirst()->ToLower();
+	        	@headers->Insert(key, key_value->GetSecond());
+	        };
+
 	    }
 
 	    #~
