@@ -95,7 +95,7 @@ bundle Web.HTTP {
 		@param data data to post
 		@return string read
 		~#
-		method : public : Post(url : Web.HTTP.Url, data : String) ~ Byte[] {
+		method : public : Post(url : Web.HTTP.Url, data : Byte[]) ~ Byte[] {
 			return Post(url, data, "text/plain");
 		}
 		
@@ -105,7 +105,7 @@ bundle Web.HTTP {
 		@param data data to post
 		@return read strings
 		~#
-		function : QuickPost(url : Web.HTTP.Url, data : String) ~ Byte[] {
+		function : QuickPost(url : Web.HTTP.Url, data : Byte[]) ~ Byte[] {
 			return HttpClient->New()->Post(url, data);
 		}
 		
@@ -116,7 +116,7 @@ bundle Web.HTTP {
 		@param content_type content type
 		@return read strings
 		~#
-		function : QuickPost(url : Web.HTTP.Url, data : String, content_type : String) ~ Byte[] {
+		function : QuickPost(url : Web.HTTP.Url, data : Byte[], content_type : String) ~ Byte[] {
 			return QuickPost(url, data, content_type, Nil);
 		}
 
@@ -128,7 +128,7 @@ bundle Web.HTTP {
 		@param headers key/value headers
 		@return read strings
 		~#
-		function : QuickPost(url : Web.HTTP.Url, data : String, content_type : String, headers : Map<String, String>) ~ Byte[] {			
+		function : QuickPost(url : Web.HTTP.Url, data : Byte[], content_type : String, headers : Map<String, String>) ~ Byte[] {			
 			client := HttpsClient->New();
 
 			if(headers <> Nil) {
@@ -151,7 +151,7 @@ bundle Web.HTTP {
 		@param data data to post
 		@return string read
 		~#
-		method : public : Post(url : Web.HTTP.Url, data : String, content_type : String) ~ Byte[] {
+		method : public : Post(url : Web.HTTP.Url, data : Byte[], content_type : String) ~ Byte[] {
 			content : ByteBuffer;
 			
 			if(url->GetScheme()->Equals("http")) {
