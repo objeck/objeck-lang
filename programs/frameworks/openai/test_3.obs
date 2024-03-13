@@ -1,4 +1,4 @@
-use Web.HTTP, Collection, System.IO.Filesystem, Data.JSON;
+use Web.HTTP, Collection, System.IO.Filesystem, Data.JSON, Web.HTTP.Server;
 
 bundle API.OpenAI {
 	class Test {
@@ -6,10 +6,14 @@ bundle API.OpenAI {
 			if(args->Size() = 1) {
 				key := args[0];
 
+				content := " {\"value\": 13 }";
+				headers := Map->New()<String, String>;
+				headers->Insert("Content-Type", "application/json");
+				multi_part := MultipartContent->New(headers, content->ToByteArray());
 
-				GenerateBoundary()->PrintLine();
-				GenerateBoundary()->PrintLine();
-				GenerateBoundary()->PrintLine();
+				encoder := MultipartEncoder->New();
+				encoder->Add(multi_part);
+				encoder->ToByteArray()->ToString()->PrintLine();
 
 #~
 				assistant := API.OpenAI.Assistant->New("gpt-3.5-turbo-0125", "Tutor", "Personal math tutor");
