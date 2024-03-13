@@ -20,10 +20,12 @@ bundle API.OpenAI {
 				parts := decoder->Parse()<MultipartContent>;
 
 				part := parts->Get(0);
-				part->GetContentType()->PrintLine();
-				part->GetContent()->Size()->PrintLine();
+				type := part->GetContentType();
+				size := part->GetContent()->Size();
 
-				System.IO.Filesystem.FileWriter->WriteFile("foo.jpg", part->GetContent());
+				file := "foo.jpg";
+				System.IO.Filesystem.FileWriter->WriteFile(file, part->GetContent());
+				"Wrote: file=\"{$file}\", type='{$type}', {$size} byte(s)"->PrintLine();
 
 
 #~
