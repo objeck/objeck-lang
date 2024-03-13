@@ -2198,17 +2198,39 @@ bundle Web.HTTP.Server {
    	    method : public : ToByteArray() ~ Byte[] {
    	    	buffer := ByteBuffer->New();
 
+   	    	crlf := "\r\n"->ToByteArray();
+   	    	header_space := ": "->ToByteArray();
+
    	    	each(part in @parts) {
    	    		buffer->Append(@boundary->ToByteArray());
-				buffer->Append("\r\n"->ToByteArray());
+				buffer->Append(crlf);
 
 				part_headers := part->GetHeaders();
 				names_values := part_headers->GetKeyValues()<Pair<String, String>>;
 				each(name_value in names_values) {
+					name := name_value->GetFirst();
+					value := name_value->GetSecond();
 
+					buffer->Append(name->ToByteArray());
+					buffer->Append(header_space);
+					buffer->Append(value->ToByteArray());
+					buffer->Append(crlf);
 				};
+
+
+				buffer->Append(crlf);
+				buffer->Append(crlf);
+
+				buffer->Append(part->GetContent());
+
+				buffer->Append(crlf);
+				buffer->Append(crlf);
    	    	};
 
+   	    	buffer->Append(@boundary->ToByteArray());
+   	    	buffer->Append("--"->ToByteArray());
+			buffer->Append(crlf);
+			
    	    	return buffer->ToByteArray();
    	    }
 
