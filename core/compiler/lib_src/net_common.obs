@@ -2175,15 +2175,73 @@ bundle Web.HTTP.Server {
 	Multipart encoder
 	~#
 	class MultipartEncoder {
-		New() {}
+		@parts : Vector<MultipartContent>;
+		@boundary : String;
+
+		New() {
+			@parts := Vector->New()<MultipartContent>;
+			@boundary := GenerateBoundary();
+		}
 
 		#~
 		Add a multipart encoding content part
 		@param content content part
 		~#
-	    method : public : Add(content : MultipartContent) ~ Nil {
-	    	
+	    method : public : Add(part : MultipartContent) ~ Nil {
+	    	@parts->AddBack(part);
 	    }
+
+	    #~
+		Formats content into multi-parts bytes
+		@return multi-parts bytes
+		~#
+   	    method : public : ToByteArray() ~ Byte[] {
+   	    	buffer := ByteBuffer->New();
+
+   	    	each(part in @parts) {
+   	    		buffer->Append(@boundary->ToByteArray());
+				buffer->Append("\r\n"->ToByteArray());
+
+				part_headers := part->GetHeaders();
+				names_values := part_headers->GetKeyValues()<Pair<String, String>>;
+				each(name_value in names_values) {
+
+				};
+   	    	};
+
+   	    	return buffer->ToByteArray();
+   	    }
+
+   	    method : GenerateBoundary() ~ String {
+			buffer := "--";
+
+			do {
+				c := Int->Random(0x21, 0x7e)->ToChar();
+				select(c) {
+					label '(' 
+					label ')' 
+					label '<' 
+					label '>' 
+					label '@' 
+					label ',' 
+					label ';' 
+					label ':' 
+					label '\\' 
+					label '/' 
+					label '[' 
+					label ']' 
+					label '?' 
+					label '=' {}
+
+					other {
+						buffer->Append(c);
+					}
+				};
+			}
+			while(buffer->Size() < 62);
+
+			return buffer;
+		}
 	}
 	
 	#~
@@ -2253,7 +2311,7 @@ bundle Web.HTTP.Server {
 	                        header_value := content_str->SubString(content_str_index, content_str->Size() - content_str_index);
 	                        
 	                        if(<>header_name->IsEmpty() & <>header_value->IsEmpty()) {
-	                            headers->Insert(header_name, header_value);
+	                            headers->Insert(header_name->ToLower(), header_value);
 	                        };
 	                    };
 	                }
@@ -2348,6 +2406,11 @@ bundle Web.HTTP.Server {
 	    @headers : Map<String, String>;
 	    @content : Byte[];
 
+	    #~
+		Constructor
+		@param headers name/value headers. Names are store as lower-case.
+		@param content content
+		~#
 	    New(headers :  Map<String, String>, content : Byte[]) {
 	        @headers := headers;
 	        @content := content;
@@ -2360,6 +2423,14 @@ bundle Web.HTTP.Server {
 		~#
 	    method : public : GetHeader(name : String) ~ String {    
 	        return @headers->Find(name);
+	    }
+
+	    #~
+		Get MIME content headers
+		@return content headers 
+		~#
+	    method : public : GetHeaders() ~ Map<String, String> {
+	        return @headers;
 	    }
 
 	    #~
@@ -2376,6 +2447,22 @@ bundle Web.HTTP.Server {
 		~#
 	    method : public : GetContent() ~ Byte[] {
 	        return @content;
+	    }
+
+	    #~
+		Get MIME content type
+		@return MIME content type
+		~#
+	    method : public : GetContentType() ~ String {
+	        return @headers->Find("content-type");
+	    }
+
+	    #~
+		Checks for the MIME content type
+		@return true if found, false otherwise
+		~#
+	    method : public : HasContentType() ~ Bool {
+	        return @headers->Find("content-type") <> Nil;
 	    }
 	}
 

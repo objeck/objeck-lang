@@ -6,6 +6,12 @@ bundle API.OpenAI {
 			if(args->Size() = 1) {
 				key := args[0];
 
+
+				GenerateBoundary()->PrintLine();
+				GenerateBoundary()->PrintLine();
+				GenerateBoundary()->PrintLine();
+
+#~
 				assistant := API.OpenAI.Assistant->New("gpt-3.5-turbo-0125", "Tutor", "Personal math tutor");
 				assistant->SetInstructions("I can only add.")
 				assistant->AddTool("retrieval");
@@ -34,7 +40,39 @@ bundle API.OpenAI {
 					"[{$created_at}], [{$instructions}], [{$id}], [{$description}], [{$model}], [{$name}], [{$object}]"->PrintLine();
 								
 				};
+~#				
 			};
+		}
+
+		function : GenerateBoundary() ~ String {
+			buffer := "--";
+
+			do {
+				c := Int->Random(0x21, 0x7e)->ToChar();
+				select(c) {
+					label '(' 
+					label ')' 
+					label '<' 
+					label '>' 
+					label '@' 
+					label ',' 
+					label ';' 
+					label ':' 
+					label '\\' 
+					label '/' 
+					label '[' 
+					label ']' 
+					label '?' 
+					label '=' {}
+
+					other {
+						buffer->Append(c);
+					}
+				};
+			}
+			while(buffer->Size() < 46)
+
+			return buffer;
 		}
 
 		function : GetStringValue(name : String, element : JsonElement) ~ String {
@@ -142,7 +180,7 @@ bundle API.OpenAI {
 			if(@request_json = Nil) {
 				Build();
 			};
-			
+
 			if(@request_json = Nil) {
 				return "{}";
 			};
