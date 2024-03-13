@@ -4,23 +4,26 @@ bundle API.OpenAI {
 	class Test {
 		function : Main(args : String[]) ~ Nil {
 			if(args->Size() = 1) {
-				key := args[0];
+#				key := args[0];
 
-				content := " {\"value\": 13 }";
+				file_in := System.IO.Filesystem.FileReader->ReadBinaryFile(args[0]);
+				
 				headers := Map->New()<String, String>;
 				headers->Insert("Content-Type", "application/json");
-				multi_part := MultipartContent->New(headers, content->ToByteArray());
+				multi_part := MultipartContent->New(headers, file_in);
 
 				encoder := MultipartEncoder->New();
 				encoder->Add(multi_part);
 				data := encoder->ToByteArray();
-
-data->PrintLine();
 				
 				decoder := MultipartDecoder->New(data);
-				multi_parts := decoder->Parse();
+				parts := decoder->Parse()<MultipartContent>;
 
-#				multi_parts->Size()->PrintLine();
+				part := parts->Get(0);
+				part->GetContent()->Size()->PrintLine();
+
+				System.IO.Filesystem.FileWriter->WriteFile("foo.jpg", part->GetContent());
+
 
 #~
 				assistant := API.OpenAI.Assistant->New("gpt-3.5-turbo-0125", "Tutor", "Personal math tutor");
