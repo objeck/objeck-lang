@@ -7,7 +7,7 @@ bundle API.OpenAI {
 				file := args[0];
 				token := args[1];
 
-#token				Files->Upload(file, FileReader->ReadBinaryFile(file), token)->PrintLine();
+				# Files->Upload(file, FileReader->ReadBinaryFile(file), token)->PrintLine();
 				Files->List(token);
 			};
 		}
@@ -42,12 +42,69 @@ bundle API.OpenAI {
 		}
 	}
 
+	class File {
+		@id : String;
+		@object : String;
+		@bytes : Int;
+		@created_at : Int;
+		@filename : String;
+		@purpose : String;
+
+		New(file_json : JsonElement) {
+			@id := file_json->Get("id")->GetString();
+			@object := file_json->Get("object")->GetString();
+			@bytes := file_json->Get("bytes")->GetInt();
+			@created_at := file_json->Get("created_at")->GetInt();
+			@filename := file_json->Get("filename")->GetString();
+			@purpose := file_json->Get("purpose")->GetString();
+		}
+
+
+		method : public : GetId() ~ String {
+			return @id;
+		}
+
+		method : public : GetObject() ~ String {
+			return @object;
+		}
+
+		method : public : GetBytes() ~ Int {
+			return @bytes;
+		}
+
+		method : public : GetCreatedAt() ~ Int {
+			return @created_at;
+		}
+
+		method : public : GetFilename() ~ String {
+			return @filename;
+		}
+
+		method : public : GetPurpose() ~ String {
+			return @purpose;
+		}
+
+		method : public : ToString() ~ String {
+			return "mmmk";
+		}
+	}
+
 	class Files {
-		function : List(token : String) ~ Nil {
+		function : List(token : String) ~ Vector<API.OpenAI.File> {
+			files := Vector->New()<API.OpenAI.File>
+
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer sk-{$token}");
 			response := HttpsClient->QuickGet(Url->New("https://api.openai.com/v1/files"), "application/json", headers);
-			response->GetContent()->PrintLine();
+			if(response <> Nil) {
+				root_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				files_json := root_json->Get("data");
+				each(file_json in files_json) {
+					files->AddBack(API.OpenAI.File->New(file_json));
+				};
+			};
+
+			return files;
 		}
 
 		function : Upload(name : String, content : Byte[], token : String) ~ Bool {
