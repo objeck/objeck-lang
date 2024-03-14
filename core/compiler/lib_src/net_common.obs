@@ -490,6 +490,7 @@ bundle Web.HTTP {
 
 			buffer := Byte->New[length];
 			socket->ReadBuffer(0, length, buffer);
+
 			return ByteBuffer->New(buffer);		
 		}
 

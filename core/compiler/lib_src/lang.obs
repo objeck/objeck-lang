@@ -3966,10 +3966,9 @@ bundle System {
 		~#
 		New(buffer : Byte[]) {
 			Parent();
-
+			
 			@buffer := buffer;
-			@max := buffer->Size();
-			@pos := 0;
+			@max := @pos := buffer->Size();
 		}
 
 		#~
