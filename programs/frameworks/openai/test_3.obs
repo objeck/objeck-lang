@@ -9,7 +9,7 @@ bundle API.OpenAI {
 				part_a_headers := Map->New()<String, String>;
 				part_a_headers->Insert("Content-Disposition", "form-data; name=\"purpose\"");
 				part_a := MultipartContent->New(part_a_headers, "assistants"->ToByteArray());
-#~
+
 				part_b_headers := Map->New()<String, String>;
 				part_b_headers->Insert("Content-Disposition", "form-data; name=\"file\"; filename=\"foo.json\"");
 				part_b_headers->Insert("Content-Type", "application/octet-stream");
@@ -18,26 +18,28 @@ bundle API.OpenAI {
 				encoder := MultipartEncoder->New();
 				encoder->Add(part_a);
 				encoder->Add(part_b);
+				boundry := encoder->GenerateBoundary();
 				data := encoder->ToByteArray();
-~#
+				FileWriter->WriteFile("debug/broken.txt", data);
 
-
+				# --------
+#~
 				boundry := "--------------------------OH8iaaTMuIlMnbNRt76GZo";
 				cr_lf := "\r\n";
 				
-				temp := "--{$boundry}{$cr_lf}";
-				temp += "Content-Disposition: form-data; name=\"purpose\"{$cr_lf}";
-				temp += "{$cr_lf}";
-				temp += "assistants{$cr_lf}";
-				temp += "--{$boundry}{$cr_lf}";
-				temp += "Content-Disposition: form-data; name=\"file\"; filename=\"foo.json\"{$cr_lf}";
-				temp += "Content-Type: application/octet-stream{$cr_lf}";
-				temp += "{$cr_lf}";
-				temp += "{ \"value\": 17 }{$cr_lf}";
-				temp += "--{$boundry}--";
-				data := temp->ToByteArray();
-
-
+				temp_str := "--{$boundry}{$cr_lf}";
+				temp_str += "Content-Disposition: form-data; name=\"purpose\"{$cr_lf}";
+				temp_str += "{$cr_lf}";
+				temp_str += "assistants{$cr_lf}";
+				temp_str += "--{$boundry}{$cr_lf}";
+				temp_str += "Content-Disposition: form-data; name=\"file\"; filename=\"foo.json\"{$cr_lf}";
+				temp_str += "Content-Type: application/octet-stream{$cr_lf}";
+				temp_str += "{$cr_lf}";
+				temp_str += "{ \"value\": 17 }{$cr_lf}";
+				temp_str += "--{$boundry}--";
+				data := temp_str->ToByteArray();
+				FileWriter->WriteFile("debug/works.txt", data);
+~#
 				headers := Map->New()<String, String>;
 				headers->Insert("Authorization", "Bearer sk-{$key}");
 				headers->Insert("Content-Type", "multipart/form-data; boundary={$boundry}");
@@ -47,37 +49,6 @@ bundle API.OpenAI {
 					data, "multipart/form-data", headers);
 				response_doc->ToString()->PrintLine();
 			};
-		}
-
-		function : GenerateBoundary() ~ String {
-			buffer := "--";
-
-			do {
-				c := Int->Random(0x21, 0x7e)->ToChar();
-				select(c) {
-					label '(' 
-					label ')' 
-					label '<' 
-					label '>' 
-					label '@' 
-					label ',' 
-					label ';' 
-					label ':' 
-					label '\\' 
-					label '/' 
-					label '[' 
-					label ']' 
-					label '?' 
-					label '=' {}
-
-					other {
-						buffer->Append(c);
-					}
-				};
-			}
-			while(buffer->Size() < 46)
-
-			return buffer;
 		}
 
 		function : GetStringValue(name : String, element : JsonElement) ~ String {
