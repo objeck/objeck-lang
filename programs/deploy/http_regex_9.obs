@@ -12,7 +12,7 @@ class RegExUrls {
 		if(args->Size() = 1) {
 			input := args[0];
 
-			output := HttpsClient->New()->QuickGet(Web.HTTP.Url->New(input))->ToString();
+			output := HttpsClient->New()->QuickGet(Web.HTTP.Url->New(input))->GetContent()->ToString();
 			output_len := output->Size();
 			"URL: {$input}, read: {$output_len} character(s)"->PrintLine();
 
