@@ -279,7 +279,7 @@ builder->Pop()->ToString()->PrintLine();
 	}
 
 	#~
-	Support for Json parsing
+	Support for JSON parsing
 
 	```
 doc := Web.HTTP.HttpsClient->QuickGet(Web.HTTP.Url->New("https://dummyjson.com/carts"));
