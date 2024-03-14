@@ -4,11 +4,18 @@ bundle API.OpenAI {
 	class Test {
 		function : Main(args : String[]) ~ Nil {
 			if(args->Size() = 2) {
-				file := args[0];
+				# file := args[0];
 				token := args[1];
 
 				# Files->Upload(file, FileReader->ReadBinaryFile(file), token)->PrintLine();
-				Files->List(token);
+				files := Files->List(token);
+				each(file in files) {
+					file->ToString()->PrintLine();
+				};
+
+				file := File->New("file-ZfOj8q7RASApmJTNGVd6oRMi", token);
+				file->ToString()->PrintLine();
+				file->Retrieve()->ToString()->PrintLine();
 			};
 		}
 
@@ -43,6 +50,8 @@ bundle API.OpenAI {
 	}
 
 	class File {
+		@token : String;
+
 		@id : String;
 		@object : String;
 		@bytes : Int;
@@ -50,7 +59,9 @@ bundle API.OpenAI {
 		@filename : String;
 		@purpose : String;
 
-		New(file_json : JsonElement) {
+		New(file_json : JsonElement, token : String) {
+			@token := token;
+
 			@id := file_json->Get("id")->GetString();
 			@object := file_json->Get("object")->GetString();
 			@bytes := file_json->Get("bytes")->GetInt();
@@ -59,6 +70,28 @@ bundle API.OpenAI {
 			@purpose := file_json->Get("purpose")->GetString();
 		}
 
+		New(id : String, token : String) {
+			@token := token;
+
+			headers := Map->New()<String, String>;
+			headers->Insert("Authorization", "Bearer sk-{$@token}");
+			response := HttpsClient->QuickGet(Url->New("https://api.openai.com/v1/files/{$id}"), "application/json", headers);
+			if(response <> Nil) {
+				file_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				@id := file_json->Get("id")->GetString();
+				@object := file_json->Get("object")->GetString();
+				@bytes := file_json->Get("bytes")->GetInt();
+				@created_at := file_json->Get("created_at")->GetInt();
+				@filename := file_json->Get("filename")->GetString();
+				@purpose := file_json->Get("purpose")->GetString();
+			};
+		}
+
+		method : public : Retrieve() ~ Byte[] {
+			headers := Map->New()<String, String>;
+			headers->Insert("Authorization", "Bearer sk-{$@token}");
+			return HttpsClient->QuickGet(Url->New("https://api.openai.com/v1/files/{$@id}/content"), "application/json", headers)->GetContent();
+		}
 
 		method : public : GetId() ~ String {
 			return @id;
@@ -85,7 +118,7 @@ bundle API.OpenAI {
 		}
 
 		method : public : ToString() ~ String {
-			return "mmmk";
+			return "[id='{$@id}', object='{$@object}', bytes={$@bytes}, created_at={$@created_at}, filename='{$@filename}', purpose='{$@purpose}'']"; 
 		}
 	}
 
@@ -100,7 +133,7 @@ bundle API.OpenAI {
 				root_json := JsonParser->TextToElement(response->GetContent()->ToString());
 				files_json := root_json->Get("data");
 				each(file_json in files_json) {
-					files->AddBack(API.OpenAI.File->New(file_json));
+					files->AddBack(API.OpenAI.File->New(file_json, token));
 				};
 			};
 
