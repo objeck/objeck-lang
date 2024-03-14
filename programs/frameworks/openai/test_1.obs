@@ -18,7 +18,7 @@ class Test {
 
 			response := HttpsClient->QuickPost(
 				Url->New("https://api.openai.com/v1/audio/speech"), 
-				data, "application/json", headers);
+				data->ToByteArray(), "application/json", headers);
 
 			if(response <> Nil) {
 				FileWriter->WriteFile("speech.mp3", response);

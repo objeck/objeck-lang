@@ -139,7 +139,6 @@ if(html <> Nil) {
 		~#
 		function : QuickPost(url : Web.HTTP.Url, data : Byte[], content_type : String, headers : Map<String, String>) ~ Byte[] {			
 			client := HttpsClient->New();
-"--- 0 ---"->PrintLine();			
 			if(headers <> Nil) {
 				header_key_values := headers->GetKeyValues()<Pair<String, String>>;
 				each(i : header_key_values) {
@@ -187,7 +186,7 @@ if(html <> Nil) {
 				if(port < 0) {
 					port := 443;
 				};
-"### address='{$address}', port={$port}, location='{$location}'"->PrintLine();
+				# "### address='{$address}', port={$port}, location='{$location}'"->PrintLine();
 
 				socket := TCPSecureSocket->New(address, port);
 				if(socket->IsOpen()) {
@@ -225,7 +224,7 @@ if(html <> Nil) {
 					post->Append(data);
 					socket->WriteString(post);
 					
-post->PrintLine();					
+					# post->PrintLine();					
 					
 					status_code := 500;
 					status_line := socket->ReadLine();
@@ -236,7 +235,7 @@ post->PrintLine();
 						status_code := status_line->SubString(index)->ToInt();
 					};
 					
-status_line->PrintLine();
+					# status_line->PrintLine();
 					
 					if(status_code <> 500) {
 						# get request headers
@@ -247,10 +246,10 @@ status_line->PrintLine();
 								name := line->SubString(index);
 								value := line->SubString(index + 1, line->Size() - index - 1)->Trim();
 								
-IO.Standard->Print("|")->Print(name)->Print("|, |")->Print(value)->PrintLine("|");
+								# IO.Standard->Print("|")->Print(name)->Print("|, |")->Print(value)->PrintLine("|");
 								if(@cookies_enabled & name->Equals("Set-Cookie")) {
 									@cookies->AddBack(Cookie->New(value));
-IO.Standard->Print("cookie=")->PrintLine(value);
+									# IO.Standard->Print("cookie=")->PrintLine(value);
 								}
 								else {
 									@response_headers->Insert(name->ToLower(), value);
@@ -259,7 +258,7 @@ IO.Standard->Print("cookie=")->PrintLine(value);
 						}
 						while(line->Size() > 0);
 						
-IO.Standard->Print("cookies: size=")->PrintLine(@cookies->Size());
+						# IO.Standard->Print("cookies: size=")->PrintLine(@cookies->Size());
 						
 						# permanently moved
 						if(status_code = 301 | status_code = 302) {
@@ -276,7 +275,7 @@ IO.Standard->Print("cookies: size=")->PrintLine(@cookies->Size());
 								};
 								@response_headers->Empty();
 
-IO.Standard->Print("permanently moved: ")->PrintLine(moved_url_str);
+								# IO.Standard->Print("permanently moved: ")->PrintLine(moved_url_str);
 								return Get(Url->New(moved_url_str), content_type);
 							};
 						};
@@ -284,11 +283,11 @@ IO.Standard->Print("permanently moved: ")->PrintLine(moved_url_str);
 						# look for chunked blocks
 						encoding : String := @response_headers->Find("transfer-encoding");
 						if(encoding <> Nil & encoding->Equals("chunked")) {
-"chunked"->PrintLine();							
+							# "chunked"->PrintLine();							
 							content := WebCommon->ReadChunked(socket);
 						}
 						else {
-"content-length"->PrintLine();							
+							# "Content-Length"->PrintLine();							
 							length_header : String := @response_headers->Find("content-length");
 							if(length_header <> Nil) {
 								content := WebCommon->ReadLength(length_header->ToInt(), socket);
@@ -514,7 +513,7 @@ IO.Standard->Print("permanently moved: ")->PrintLine(moved_url_str);
 							content := WebCommon->ReadChunked(socket);
 						}
 						else {
-							# "content-length"->PrintLine();							
+							# "Content-Length"->PrintLine();							
 							length_header : String := @response_headers->Find("content-length");
 							if(length_header <> Nil) {
 								content := WebCommon->ReadLength(length_header->ToInt(), socket);
@@ -624,7 +623,7 @@ class RequestHandler from HttpsRequestHandler {
 					}
 					# POST request
 					else if(request_verb->Equals("POST")) {
-						content_length_str := request_headers->Find("Content-Length");
+						content_length_str := request_headers->Find("content-length");
 						if(content_length_str <> Nil) {
 							content_length  := content_length_str->ToInt();
 							if(content_length > 0) {
@@ -668,7 +667,7 @@ class RequestHandler from HttpsRequestHandler {
 					content := response->GetContent();
 					if(content <> Nil) {
 						content_size := content->Size();
-						response_header += "Content-Length: {$content_size}\r\nAccept-Ranges: bytes\r\nConnection: close\r\n";
+						response_header += "content-length: {$content_size}\r\nAccept-Ranges: bytes\r\nConnection: close\r\n";
 
 						cookies := response->GetCookies()<Cookie>;
 						each(i : cookies) {

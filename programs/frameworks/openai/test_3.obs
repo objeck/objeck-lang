@@ -20,26 +20,7 @@ bundle API.OpenAI {
 				encoder->Add(part_b);
 				boundry := encoder->GetBoundary();
 				data := encoder->ToByteArray();
-				FileWriter->WriteFile("debug/broken.txt", data);
 
-				# --------
-#~
-				boundry := "--------------------------OH8iaaTMuIlMnbNRt76GZo";
-				cr_lf := "\r\n";
-				
-				temp_str := "--{$boundry}{$cr_lf}";
-				temp_str += "Content-Disposition: form-data; name=\"purpose\"{$cr_lf}";
-				temp_str += "{$cr_lf}";
-				temp_str += "assistants{$cr_lf}";
-				temp_str += "--{$boundry}{$cr_lf}";
-				temp_str += "Content-Disposition: form-data; name=\"file\"; filename=\"foo.json\"{$cr_lf}";
-				temp_str += "Content-Type: application/octet-stream{$cr_lf}";
-				temp_str += "{$cr_lf}";
-				temp_str += "{ \"value\": 17 }{$cr_lf}";
-				temp_str += "--{$boundry}--";
-				data := temp_str->ToByteArray();
-				FileWriter->WriteFile("debug/works.txt", data);
-~#
 				headers := Map->New()<String, String>;
 				headers->Insert("Authorization", "Bearer sk-{$key}");
 				headers->Insert("Content-Type", "multipart/form-data; boundary={$boundry}");
@@ -60,6 +41,24 @@ bundle API.OpenAI {
 			};
 
 			return value;
+		}
+
+		function : DebugRequest(boundry : String) ~ Byte[] {
+			boundry->Append("--------------------------OH8iaaTMuIlMnbNRt76GZo");
+			cr_lf := "\r\n";
+			
+			buffer := "--{$boundry}{$cr_lf}";
+			buffer += "Content-Disposition: form-data; name=\"purpose\"{$cr_lf}";
+			buffer += "{$cr_lf}";
+			buffer += "assistants{$cr_lf}";
+			buffer += "--{$boundry}{$cr_lf}";
+			buffer += "Content-Disposition: form-data; name=\"file\"; filename=\"foo.json\"{$cr_lf}";
+			buffer += "Content-Type: application/octet-stream{$cr_lf}";
+			buffer += "{$cr_lf}";
+			buffer += "{ \"value\": 17 }{$cr_lf}";
+			buffer += "--{$boundry}--";
+
+			return buffer->ToByteArray();
 		}
 	}
 
