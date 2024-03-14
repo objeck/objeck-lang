@@ -6,70 +6,26 @@ bundle API.OpenAI {
 			if(args->Size() = 2) {
 				key := args[1];
 
-				file_in := System.IO.Filesystem.FileReader->ReadBinaryFile(args[0]);
-				
-				mime_headers := Map->New()<String, String>;
-				mime_headers->Insert("Content-Type", "application/json");
-				mime_headers->Insert("file", "foo.json");
-				mime_headers->Insert("purpose", "assistants");
-				multi_part := MultipartContent->New(mime_headers, file_in);
+				temp := "--------------------------OH8iaaTMuIlMnbNRt76GZo\r\n";
+				temp += "Content-Disposition: form-data; name=\"purpose\"\r\n";
+				temp += "\r\n";
+				temp += "assistants\r\n";
+				temp += "--------------------------OH8iaaTMuIlMnbNRt76GZo\r\n";
+				temp += "Content-Disposition: form-data; name=\"file\"; filename=\"foo.json\"\r\n";
+				temp += "Content-Type: application/octet-stream\r\n";
+				temp += "\r\n";
+				temp += "{ \"value\": 17 }\r\n";
+				temp += "--------------------------OH8iaaTMuIlMnbNRt76GZo--";
+				data := temp->ToByteArray();
 
-				encoder := MultipartEncoder->New();
-				encoder->Add(multi_part);
-				data := encoder->ToByteArray();
-
-				https_headers := Map->New()<String, String>;
-				https_headers->Insert("Authorization", "Bearer sk-{$key}");
-				https_headers->Insert("Content-Disposition", "file=\"filename.jpg\"; purpose=\"assistants\"");
-				https_headers->Insert("OpenAI-Beta", "assistants=v1");
+				headers := Map->New()<String, String>;
+				headers->Insert("Authorization", "Bearer sk-{$key}");
+				headers->Insert("Content-Type", "multipart/form-data; boundary=------------------------OH8iaaTMuIlMnbNRt76GZo");
 
 				response_doc := HttpsClient->QuickPost(
 					Url->New("https://api.openai.com/v1/files"), 
-					data, "multipart/form-data", https_headers);
+					data, "multipart/form-data", headers);
 				response_doc->ToString()->PrintLine();
-#~				
-				decoder := MultipartDecoder->New(data);
-				parts := decoder->Parse()<MultipartContent>;
-
-				part := parts->Get(0);
-				type := part->GetContentType();
-				size := part->GetContent()->Size();
-
-				file := "bar.json";
-				System.IO.Filesystem.FileWriter->WriteFile(file, part->GetContent());
-				"Wrote: file=\"{$file}\", type='{$type}', {$size} byte(s)"->PrintLine();
-
-###
-				
-				assistant := API.OpenAI.Assistant->New("gpt-3.5-turbo-0125", "Tutor", "Personal math tutor");
-				assistant->SetInstructions("I can only add.")
-				assistant->AddTool("retrieval");
-				
-				headers := Map->New()<String, String>;
-				headers->Insert("Authorization", "Bearer sk-{$key}");
-				headers->Insert("OpenAI-Beta", "assistants=v1");
-
-				data := assistant->ToJson();
-
-				response_doc := HttpsClient->QuickPost(
-					Url->New("https://api.openai.com/v1/assistants"), 
-					data, "application/json", headers);
-
-				if(response_doc <> Nil) {
-					response_json := JsonParser->TextToElement(response_doc->ToString());
-
-					created_at := GetStringValue("created_at", response_json);
-					instructions := GetStringValue("instructions", response_json);
-					id := GetStringValue("id", response_json);
-					description := GetStringValue("description", response_json);
-					model := GetStringValue("model", response_json);
-					name := GetStringValue("name", response_json);
-					object := GetStringValue("object", response_json);
-
-					"[{$created_at}], [{$instructions}], [{$id}], [{$description}], [{$model}], [{$name}], [{$object}]"->PrintLine();
-								
-				};
-~#				
 			};
 		}
 
