@@ -2180,7 +2180,7 @@ bundle Web.HTTP.Server {
 
 		New() {
 			@parts := Vector->New()<MultipartContent>;
-			@boundary := GenerateBoundary();
+			@boundary := GetBoundary();
 		}
 
 		#~
@@ -2202,66 +2202,52 @@ bundle Web.HTTP.Server {
    	    	header_space := ": "->ToByteArray();
 
    	    	each(part in @parts) {
-   	    		if(part->HasContentType()) {
-	   	    		buffer->Append(@boundary->ToByteArray());
-					buffer->Append(crlf);
+   	    		buffer->Append("--"->ToByteArray());
+   	    		buffer->Append(@boundary->ToByteArray());
+				buffer->Append(crlf);
 
-					part_headers := part->GetHeaders();
-					names_values := part_headers->GetKeyValues()<Pair<String, String>>;
-					each(name_value in names_values) {
-						name := name_value->GetFirst();
-						value := name_value->GetSecond();
+				part_headers := part->GetHeaders();
+				names_values := part_headers->GetKeyValues()<Pair<String, String>>;
+				each(name_value in names_values) {
+					name := name_value->GetFirst();
+					value := name_value->GetSecond();
 
-						buffer->Append(name->ToByteArray());
-						buffer->Append(header_space);
-						buffer->Append(value->ToByteArray());
-						buffer->Append(crlf);
-					};
-					buffer->Append(crlf);
-					buffer->Append(crlf);
-
-					# content
-					buffer->Append(part->GetContent());
+					buffer->Append(name->ToByteArray());
+					buffer->Append(header_space);
+					buffer->Append(value->ToByteArray());
 					buffer->Append(crlf);
 				};
-   	    	};
+				buffer->Append(crlf);
 
+				# content
+				buffer->Append(part->GetContent());
+				buffer->Append(crlf);
+   	    	};
+	
+			buffer->Append("--"->ToByteArray());
    	    	buffer->Append(@boundary->ToByteArray());
    	    	buffer->Append("--"->ToByteArray());
-			buffer->Append(crlf);
 
    	    	return buffer->ToByteArray();
    	    }
 
-   	    method : GenerateBoundary() ~ String {
-			buffer := "--";
+   	    method : public : GetBoundary() ~ String {
+			if(@boundary = Nil) {
+				@boundary := "------------------------";
 
-			do {
-				c := Int->Random(0x21, 0x7e)->ToChar();
-				select(c) {
-					label '(' 
-					label ')' 
-					label '<' 
-					label '>' 
-					label '@' 
-					label ',' 
-					label ';' 
-					label ':' 
-					label '\\' 
-					label '/' 
-					label '[' 
-					label ']' 
-					label '?' 
-					label '=' {}
-
-					other {
-						buffer->Append(c);
+				do {
+					c := Int->Random('a', 'z')->ToChar();
+					if(Int->Random(1) % 2 = 0) {
+						@boundary->Append(c->ToUpper());
 					}
-				};
-			}
-			while(buffer->Size() < 62);
+					else {
+						@boundary->Append(c);
+					};
+				}
+				while(@boundary->Size() < 48);
+			};
 
-			return buffer;
+			return @boundary;		
 		}
 	}
 	
@@ -2475,22 +2461,6 @@ bundle Web.HTTP.Server {
 		~#
 	    method : public : GetContent() ~ Byte[] {
 	        return @content;
-	    }
-
-	    #~
-		Get MIME content type
-		@return MIME content type
-		~#
-	    method : public : GetContentType() ~ String {
-	        return @headers->Find("content-type");
-	    }
-
-	    #~
-		Checks for the MIME content type
-		@return true if found, false otherwise
-		~#
-	    method : public : HasContentType() ~ Bool {
-	        return @headers->Find("content-type") <> Nil;
 	    }
 	}
 
