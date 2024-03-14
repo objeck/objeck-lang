@@ -6,7 +6,23 @@ bundle API.OpenAI {
 			if(args->Size() = 2) {
 				key := args[1];
 
-				boundry := "------------------------OH8iaaTMuIlMnbNRt76GZo";
+				part_a_headers := Map->New()<String, String>;
+				part_a_headers->Insert("Content-Disposition", "form-data; name=\"purpose\"");
+				part_a := MultipartContent->New(part_a_headers, "assistants"->ToByteArray());
+#~
+				part_b_headers := Map->New()<String, String>;
+				part_b_headers->Insert("Content-Disposition", "form-data; name=\"file\"; filename=\"foo.json\"");
+				part_b_headers->Insert("Content-Type", "application/octet-stream");
+				part_b := MultipartContent->New(part_b_headers, "{ \"value\": 17 }"->ToByteArray());
+
+				encoder := MultipartEncoder->New();
+				encoder->Add(part_a);
+				encoder->Add(part_b);
+				data := encoder->ToByteArray();
+~#
+
+
+				boundry := "--------------------------OH8iaaTMuIlMnbNRt76GZo";
 				cr_lf := "\r\n";
 				
 				temp := "--{$boundry}{$cr_lf}";
@@ -20,6 +36,7 @@ bundle API.OpenAI {
 				temp += "{ \"value\": 17 }{$cr_lf}";
 				temp += "--{$boundry}--";
 				data := temp->ToByteArray();
+
 
 				headers := Map->New()<String, String>;
 				headers->Insert("Authorization", "Bearer sk-{$key}");
