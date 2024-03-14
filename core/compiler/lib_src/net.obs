@@ -578,7 +578,7 @@ bundle Web.HTTP.Server {
 					}
 					# POST request
 					else if(request_verb->Equals("POST")) {
-						content_length_str := request_headers->Find("Content-Length");
+						content_length_str := request_headers->Find("content-length");
 						if(content_length_str <> Nil) {
 							content_length  := content_length_str->ToInt();
 							if(content_length > 0) {
