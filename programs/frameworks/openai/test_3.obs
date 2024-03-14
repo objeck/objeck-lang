@@ -18,7 +18,7 @@ bundle API.OpenAI {
 				encoder := MultipartEncoder->New();
 				encoder->Add(part_a);
 				encoder->Add(part_b);
-				boundry := encoder->GenerateBoundary();
+				boundry := encoder->GetBoundary();
 				data := encoder->ToByteArray();
 				FileWriter->WriteFile("debug/broken.txt", data);
 
