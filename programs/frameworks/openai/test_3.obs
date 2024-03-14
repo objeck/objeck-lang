@@ -6,21 +6,24 @@ bundle API.OpenAI {
 			if(args->Size() = 2) {
 				key := args[1];
 
-				temp := "--------------------------OH8iaaTMuIlMnbNRt76GZo\r\n";
-				temp += "Content-Disposition: form-data; name=\"purpose\"\r\n";
-				temp += "\r\n";
-				temp += "assistants\r\n";
-				temp += "--------------------------OH8iaaTMuIlMnbNRt76GZo\r\n";
-				temp += "Content-Disposition: form-data; name=\"file\"; filename=\"foo.json\"\r\n";
-				temp += "Content-Type: application/octet-stream\r\n";
-				temp += "\r\n";
-				temp += "{ \"value\": 17 }\r\n";
-				temp += "--------------------------OH8iaaTMuIlMnbNRt76GZo--";
+				boundry := "------------------------OH8iaaTMuIlMnbNRt76GZo";
+				cr_lf := "\r\n";
+				
+				temp := "--{$boundry}{$cr_lf}";
+				temp += "Content-Disposition: form-data; name=\"purpose\"{$cr_lf}";
+				temp += "{$cr_lf}";
+				temp += "assistants{$cr_lf}";
+				temp += "--{$boundry}{$cr_lf}";
+				temp += "Content-Disposition: form-data; name=\"file\"; filename=\"foo.json\"{$cr_lf}";
+				temp += "Content-Type: application/octet-stream{$cr_lf}";
+				temp += "{$cr_lf}";
+				temp += "{ \"value\": 17 }{$cr_lf}";
+				temp += "--{$boundry}--";
 				data := temp->ToByteArray();
 
 				headers := Map->New()<String, String>;
 				headers->Insert("Authorization", "Bearer sk-{$key}");
-				headers->Insert("Content-Type", "multipart/form-data; boundary=------------------------OH8iaaTMuIlMnbNRt76GZo");
+				headers->Insert("Content-Type", "multipart/form-data; boundary={$boundry}");
 
 				response_doc := HttpsClient->QuickPost(
 					Url->New("https://api.openai.com/v1/files"), 
