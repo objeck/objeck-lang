@@ -2228,7 +2228,7 @@ bundle Web.HTTP.Server {
 
 		#~
 		Add a multipart encoding content part
-		@param content content part
+		@param part content part to add
 		~#
 	    method : public : Add(part : MultipartContent) ~ Nil {
 	    	@parts->AddBack(part);
