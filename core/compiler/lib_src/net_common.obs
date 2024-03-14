@@ -579,10 +579,10 @@ bundle Web.HTTP {
 
 		method : public : Run(param : Base) ~ Nil {
 			if(@url->GetScheme()->Equals("https")) {
-				@content := HttpsClient->QuickGet(@url, @headers);
+				@content := HttpsClient->QuickGet(@url, @headers)->GetContent();
 			}
 			else if(@url->GetScheme()->Equals("http")) {
-				@content := HttpClient->QuickGet(@url, @headers);
+				@content := HttpClient->QuickGet(@url, @headers)->GetContent();
 			};
 		}
 	}
@@ -906,6 +906,48 @@ bundle Web.HTTP {
 			buffer += " GMT";
 
 			return buffer;
+		}
+	}
+
+	#~
+	HTTP response for methods such as GET, POST and PUT
+	~#
+	class Response {
+		@content : Byte[];
+		@code : Int;
+
+		New(content : Byte[], code : Int) {
+			@content := content;
+			@code := code;
+		}
+
+		#~
+		Gets response content
+		@return response content
+		~#
+		method : public : GetContent() ~ Byte[] {
+			return @content;
+		}
+
+		#~
+		Gets the response code
+		@return response code
+		~#
+		method : public : GetCode() ~ Int {
+			return @code;
+		}
+
+		#~
+		Get the string representation
+		@return string representation
+		~#
+		method : public : ToString() ~ String {
+			content_length := 0;
+			if(@content <> Nil) {
+				content_length := @content->Size();
+			};
+
+			return "status={$@code}, content_length={$content_length}";
 		}
 	}
 }

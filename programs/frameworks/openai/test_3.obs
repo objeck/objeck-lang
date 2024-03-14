@@ -4,16 +4,19 @@ bundle API.OpenAI {
 	class Test {
 		function : Main(args : String[]) ~ Nil {
 			if(args->Size() = 2) {
+				file := args[0];
 				key := args[1];
+
+				document := FileReader->ReadBinaryFile(file);
 
 				part_a_headers := Map->New()<String, String>;
 				part_a_headers->Insert("Content-Disposition", "form-data; name=\"purpose\"");
 				part_a := MultipartContent->New(part_a_headers, "assistants"->ToByteArray());
 
 				part_b_headers := Map->New()<String, String>;
-				part_b_headers->Insert("Content-Disposition", "form-data; name=\"file\"; filename=\"foo.json\"");
+				part_b_headers->Insert("Content-Disposition", "form-data; name=\"file\"; filename=\"test.json\"");
 				part_b_headers->Insert("Content-Type", "application/octet-stream");
-				part_b := MultipartContent->New(part_b_headers, "{ \"value\": 17 }"->ToByteArray());
+				part_b := MultipartContent->New(part_b_headers, document);
 
 				encoder := MultipartEncoder->New();
 				encoder->Add(part_a);
@@ -25,10 +28,10 @@ bundle API.OpenAI {
 				headers->Insert("Authorization", "Bearer sk-{$key}");
 				headers->Insert("Content-Type", "multipart/form-data; boundary={$boundry}");
 
-				response_doc := HttpsClient->QuickPost(
+				response := HttpsClient->QuickPost(
 					Url->New("https://api.openai.com/v1/files"), 
 					data, "multipart/form-data", headers);
-				response_doc->ToString()->PrintLine();
+				response->ToString()->PrintLine();
 			};
 		}
 
@@ -52,7 +55,7 @@ bundle API.OpenAI {
 			buffer += "{$cr_lf}";
 			buffer += "assistants{$cr_lf}";
 			buffer += "--{$boundry}{$cr_lf}";
-			buffer += "Content-Disposition: form-data; name=\"file\"; filename=\"foo.json\"{$cr_lf}";
+			buffer += "Content-Disposition: form-data; name=\"file\"; filename=\"bar.json\"{$cr_lf}";
 			buffer += "Content-Type: application/octet-stream{$cr_lf}";
 			buffer += "{$cr_lf}";
 			buffer += "{ \"value\": 17 }{$cr_lf}";

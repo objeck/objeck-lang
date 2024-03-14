@@ -95,7 +95,7 @@ bundle Web.HTTP {
 		@param data data to post
 		@return string read
 		~#
-		method : public : Post(url : Web.HTTP.Url, data : Byte[]) ~ Byte[] {
+		method : public : Post(url : Web.HTTP.Url, data : Byte[]) ~ Web.HTTP.Response {
 			return Post(url, data, "text/plain");
 		}
 		
@@ -105,7 +105,7 @@ bundle Web.HTTP {
 		@param data data to post
 		@return read strings
 		~#
-		function : QuickPost(url : Web.HTTP.Url, data : Byte[]) ~ Byte[] {
+		function : QuickPost(url : Web.HTTP.Url, data : Byte[]) ~ Web.HTTP.Response {
 			return HttpClient->New()->Post(url, data);
 		}
 		
@@ -116,7 +116,7 @@ bundle Web.HTTP {
 		@param content_type content type
 		@return read strings
 		~#
-		function : QuickPost(url : Web.HTTP.Url, data : Byte[], content_type : String) ~ Byte[] {
+		function : QuickPost(url : Web.HTTP.Url, data : Byte[], content_type : String) ~ Web.HTTP.Response {
 			return QuickPost(url, data, content_type, Nil);
 		}
 
@@ -128,7 +128,7 @@ bundle Web.HTTP {
 		@param headers key/value headers
 		@return read strings
 		~#
-		function : QuickPost(url : Web.HTTP.Url, data : Byte[], content_type : String, headers : Map<String, String>) ~ Byte[] {			
+		function : QuickPost(url : Web.HTTP.Url, data : Byte[], content_type : String, headers : Map<String, String>) ~ Web.HTTP.Response {			
 			client := HttpsClient->New();
 
 			if(headers <> Nil) {
@@ -151,8 +151,9 @@ bundle Web.HTTP {
 		@param data data to post
 		@return string read
 		~#
-		method : public : Post(url : Web.HTTP.Url, data : Byte[], content_type : String) ~ Byte[] {
+		method : public : Post(url : Web.HTTP.Url, data : Byte[], content_type : String) ~ Web.HTTP.Response {
 			content : ByteBuffer;
+			status_code := 500;
 			
 			if(url->GetScheme()->Equals("http")) {
 				address := url->GetHost();
@@ -223,7 +224,6 @@ bundle Web.HTTP {
 					
 					# post->PrintLine();					
 					
-					status_code := 500;
 					status_line := socket->ReadLine();
 					if(status_line->StartsWith("HTTP/1.")) {
 						status_line := status_line->SubString("HTTP/1."->Size() + 2, 
@@ -292,7 +292,11 @@ bundle Web.HTTP {
 				};
 			};
 			
-			return content->ToByteArray();
+			if(content <> Nil) {
+				return Web.HTTP.Response->New(content->ToByteArray(), status_code);
+			};
+
+			return Nil;
 		}
 		
 		#~
@@ -300,7 +304,7 @@ bundle Web.HTTP {
 		@param url URL
 		@return output buffer
 		~#
-		function : QuickGet(url : Web.HTTP.Url) ~ Byte[] {
+		function : QuickGet(url : Web.HTTP.Url) ~ Web.HTTP.Response {
 			return QuickGet(url, "text/plain", Nil);
 		}
 
@@ -310,7 +314,7 @@ bundle Web.HTTP {
 		@param headers key/value headers
 		@return output buffer
 		~#
-		function : QuickGet(url : Web.HTTP.Url, headers : Map<String, String>) ~ Byte[] {
+		function : QuickGet(url : Web.HTTP.Url, headers : Map<String, String>) ~ Web.HTTP.Response {
 			return QuickGet(url, "text/plain", headers);
 		}
 
@@ -320,7 +324,7 @@ bundle Web.HTTP {
 		@param content_type content type
 		@return output buffer
 		~#
-		function : QuickGet(url : Web.HTTP.Url, content_type : String) ~ Byte[] {
+		function : QuickGet(url : Web.HTTP.Url, content_type : String) ~ Web.HTTP.Response {
 			return QuickGet(url, content_type, Nil);
 		}
 		
@@ -331,7 +335,7 @@ bundle Web.HTTP {
 		@param headers key/value headers
 		@return output buffer
 		~#
-		function : QuickGet(url : Web.HTTP.Url, content_type : String, headers : Map<String, String>) ~ Byte[] {			
+		function : QuickGet(url : Web.HTTP.Url, content_type : String, headers : Map<String, String>) ~ Web.HTTP.Response {			
 			client := HttpClient->New();
 			if(headers <> Nil) {
 				header_key_values := headers->GetKeyValues()<Pair<String, String>>;
@@ -357,7 +361,7 @@ bundle Web.HTTP {
 		@param url URL
 		@return string read
 		~#
-		method : public : Get(url : Web.HTTP.Url) ~ Byte[] {
+		method : public : Get(url : Web.HTTP.Url) ~ Web.HTTP.Response {
 			return Get(url, "text/plain");
 		}
 		
@@ -367,9 +371,10 @@ bundle Web.HTTP {
 		@param content_type content type
 		@return string read
 		~#
-		method : public : Get(url : Web.HTTP.Url, content_type : String) ~ Byte[] {
+		method : public : Get(url : Web.HTTP.Url, content_type : String) ~ Web.HTTP.Response {
 			content : ByteBuffer;
-			
+			status_code := 500;
+						
 			if(url->GetScheme()->Equals("http")) {
 				address := url->GetHost();
 				
@@ -435,7 +440,6 @@ bundle Web.HTTP {
 					
 					socket->WriteString(get);
 					
-					status_code := 500;
 					status_line := socket->ReadLine();
 					# status_line->PrintLine();
 
@@ -508,7 +512,11 @@ bundle Web.HTTP {
 				};
 			};	
 			
-			return content->ToByteArray();
+			if(content <> Nil) {
+				return Web.HTTP.Response->New(content->ToByteArray(), status_code);
+			};
+
+			return Nil;
 		}
 	}
 }
