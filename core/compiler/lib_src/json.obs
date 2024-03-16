@@ -315,8 +315,8 @@ if(doc <> Nil) {
 		@root : JsonElement;
 		@error_msg : String;
 		
-		#~
-		Creates a new parser
+		#~\7
+		5?gz`	2qaZ me a new parser
 		@param stream_in Json input string
 		~#
 		New(stream_in : String) {
