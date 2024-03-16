@@ -7,6 +7,15 @@ bundle API.OpenAI {
 				# file := args[0];
 				token := args[1];
 
+				file := API.OpenAI.File->New("file-ZfOj8q7RASApmJTNGVd6oRMi", token);
+				file->GetId()->PrintLine();
+
+				assistant := Assistant->New("gpt-3.5-turbo-0125", "DU Basketball", "DU Basketball", "You are historian in the University of Denver Men's basketball", token);
+				assistant->AddFile(file);
+#				assistant->AddTool("retrieval");
+				assistant->Create()->PrintLine();
+
+#~
 				# Files->Upload(file, FileReader->ReadBinaryFile(file), token)->PrintLine();
 				files := Files->List(token);
 				each(file in files) {
@@ -16,6 +25,7 @@ bundle API.OpenAI {
 				file := File->New("file-ZfOj8q7RASApmJTNGVd6oRMi", token);
 				file->ToString()->PrintLine();
 				file->Retrieve()->ToString()->PrintLine();
+~#				
 			};
 		}
 
@@ -49,6 +59,7 @@ bundle API.OpenAI {
 		}
 	}
 
+	# TODO: Okay
 	class File {
 		@token : String;
 
@@ -78,12 +89,19 @@ bundle API.OpenAI {
 			response := HttpsClient->QuickGet(Url->New("https://api.openai.com/v1/files/{$id}"), "application/json", headers);
 			if(response <> Nil) {
 				file_json := JsonParser->TextToElement(response->GetContent()->ToString());
-				@id := file_json->Get("id")->GetString();
-				@object := file_json->Get("object")->GetString();
-				@bytes := file_json->Get("bytes")->GetInt();
-				@created_at := file_json->Get("created_at")->GetInt();
-				@filename := file_json->Get("filename")->GetString();
-				@purpose := file_json->Get("purpose")->GetString();
+
+				if(file_json = Nil | file_json->Has("error")) {
+					error_str := file_json->FindElements("error/message")->GetString();
+					"### Error: {$error_str} ###"->ErrorLine();
+				}
+				else {
+					@id := file_json->Get("id")->GetString();
+					@object := file_json->Get("object")->GetString();
+					@bytes := file_json->Get("bytes")->GetInt();
+					@created_at := file_json->Get("created_at")->GetInt();
+					@filename := file_json->Get("filename")->GetString();
+					@purpose := file_json->Get("purpose")->GetString();
+				};
 			};
 		}
 
@@ -122,6 +140,7 @@ bundle API.OpenAI {
 		}
 	}
 
+	# TODO: Okay
 	class Files {
 		function : List(token : String) ~ Vector<API.OpenAI.File> {
 			files := Vector->New()<API.OpenAI.File>
@@ -131,6 +150,17 @@ bundle API.OpenAI {
 			response := HttpsClient->QuickGet(Url->New("https://api.openai.com/v1/files"), "application/json", headers);
 			if(response <> Nil) {
 				root_json := JsonParser->TextToElement(response->GetContent()->ToString());
+
+				if(root_json = Nil) {
+					return Nil;
+				};
+
+				if(root_json->Has("error")) {
+					error_str := root_json->FindElements("error/message")->GetString();
+					"### Error: {$error_str} ###"->ErrorLine();
+					return Nil;
+				};
+
 				files_json := root_json->Get("data");
 				each(file_json in files_json) {
 					files->AddBack(API.OpenAI.File->New(file_json, token));
@@ -159,38 +189,56 @@ bundle API.OpenAI {
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer sk-{$token}");
 			headers->Insert("Content-Type", "multipart/form-data; boundary={$boundry}");
-
 			response := HttpsClient->QuickPost(Url->New("https://api.openai.com/v1/files"), data, "multipart/form-data", headers);			
 			return response->GetCode() = 200;
 		}
 	}
 
+	# TODO: not okay fix up
 	class Assistant {
-		@request_json : JsonElement;
+		@token : String;
+
+		@id : String;
+		@object : String;
 		@model : String;
 		@name : String;
 		@description : String;
 		@instructions : String;
+		@created_at : Int;
+		@metadata : Map<String, String>;
 
 		@tools : Vector<String>;
 		@files : Vector<File>;
 
-		New(model : String) {
+		New(model : String, token : String) {
 			@model := model;
+			@token := token;
 
 			@tools := Vector->New()<String>;
+			@files := Vector->New()<File>;
+			@metadata := Map->New()<String, String>;
 		}
 
-		New(model : String, name : String, description : String) {
+		New(model : String, name : String, token : String) {
+			@model := model;
+			@name := name;
+			@token := token;
+
+			@tools := Vector->New()<String>;
+			@files := Vector->New()<File>;
+			@metadata := Map->New()<String, String>;
+		}
+
+		New(model : String, name : String, description : String, instructions : String, token : String) {
 			@model := model;
 			@name := name;
 			@description := description;
-
+			@instructions := instructions;
+			@token := token;
+			
 			@tools := Vector->New()<String>;
-		}
-
-		method : public : IsLoaded() ~ Bool {
-			return @request_json <> Nil;
+			@files := Vector->New()<File>;
+			@metadata := Map->New()<String, String>;
 		}
 
 		method : public : SetName(name : String) ~ Nil {
@@ -213,9 +261,11 @@ bundle API.OpenAI {
 			@tools->AddBack(tool);
 		}
 
-		# TODO: add metadata
+		method : public : AddMetadata(key : String, value : String) ~ Nil {
+			@metadata->Insert(key, value);
+		}
 
-		method : public : Build() ~ Bool {
+		method : public : Create() ~ Bool {
 			if(@model = Nil) {
 				return false;
 			};
@@ -236,30 +286,81 @@ bundle API.OpenAI {
 				create_json->Insert("instructions", @instructions);
 			};
 
-
 			# tools
-			tools_json := JsonElement->New(JsonElement->JsonType->ARRAY);
-			each(tool in @tools) {
-				tool_json := JsonElement->New(JsonElement->JsonType->OBJECT);
-				tool_json->Insert("type", tool);
-				tools_json->Add(tool_json);
+			if(<>@tools->IsEmpty()) {
+				tools_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+				each(tool in @tools) {
+					tool_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+					tool_json->Insert("type", tool);
+					tools_json->Add(tool_json);
+				};
+				create_json->Insert("tools", tools_json);
 			};
-			create_json->Insert("tools", tools_json);
 
-			@request_json := builder->PopAll();
-			return true;
+			# files
+			if(<>@files->IsEmpty()) {
+				files_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+				each(file in @files) {
+					files_json->Add(file->GetId());
+				};
+				create_json->Insert("file_ids", files_json);
+			};
+
+#~
+			# metadata
+			if(<>@metadata->IsEmpty()) {
+				metadatas_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+				keys_values := @metadata->GetKeyValues()<Pair<String, String>>;
+				each(key_value in keys_values) {
+					key := key_value->GetFirst();
+					value := key_value->GetSecond();
+
+					metadata_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+					metadata_json->Insert(key, value);
+					metadatas_json->Add(metadata_json);
+				};
+				create_json->Insert("metadata", metadatas_json);
+			};
+~#
+			
+			data := builder->PopAll()->ToString()->ToByteArray();
+			# data->ToString()->PrintLine();			
+
+			headers := Map->New()<String, String>;
+			headers->Insert("Authorization", "Bearer sk-{$@token}");
+			headers->Insert("OpenAI-Beta", "assistants=v1");
+			response := HttpsClient->QuickPost(Url->New("https://api.openai.com/v1/assistants"), data, "application/json", headers);
+			if(response <> Nil) {
+response->GetContent()->ToString()->PrintLine();				
+				assistant_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				if(assistant_json = Nil) {
+					return false;
+				};
+				
+				if(assistant_json->Has("error")) {
+					error_str := assistant_json->FindElements("error/message")->GetString();
+					"### Error: {$error_str} ###"->ErrorLine();
+					return false;
+				}
+
+				@id := assistant_json->Get("id")->GetString();
+				@created_at := assistant_json->Get("created_at")->GetInt();
+				@object := assistant_json->Get("object")->GetString();
+				@name := assistant_json->Get("name")->GetString();
+				@description := assistant_json->Get("description")->GetString();
+				@model := assistant_json->Get("model")->GetString();
+				@instructions := assistant_json->Get("instructions")->GetString();
+
+				return true;
+			};
+
+			return false;
 		}
 
-		method : public : ToJson() ~ String {
-			if(@request_json = Nil) {
-				Build();
-			};
+		method : public : ToString() ~ String {
+			buffer := "";
 
-			if(@request_json = Nil) {
-				return "{}";
-			};
-
-			return @request_json->ToString();
+			return buffer;
 		}
 	}
 }

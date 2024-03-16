@@ -2754,7 +2754,7 @@ void ContextAnalyzer::RogueReturn(MethodCall* method_call)
         method_call->SetRougeReturn(instructions::INT_TYPE);
         return;
       }
-      else {
+      else if(method_call->GetCallType() != NEW_INST_CALL) {
         switch(rtrn->GetType()) {
         case frontend::BOOLEAN_TYPE:
         case frontend::BYTE_TYPE:
@@ -4505,13 +4505,8 @@ void ContextAnalyzer::AnalyzeReturn(Return* rtrn, const int depth)
       ProcessError(rtrn, L"Undefined class or enum: '" + FormatTypeString(mthd_type->GetName()) + L"'");
     }
   }
-  else if(mthd_type->GetType() != NIL_TYPE) {
+  else if(mthd_type->GetType() != NIL_TYPE  && current_method->GetMethodType() != NEW_PUBLIC_METHOD && current_method->GetMethodType() == NEW_PRIVATE_METHOD) {
     ProcessError(rtrn, L"Invalid return statement");
-  }
-
-  if(current_method->GetMethodType() == NEW_PUBLIC_METHOD ||
-     current_method->GetMethodType() == NEW_PRIVATE_METHOD) {
-    ProcessError(rtrn, L"Cannot return value from constructor");
   }
 
   in_return = false;
