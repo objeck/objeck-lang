@@ -50,6 +50,9 @@ Want to get started? Take a look at the [language guide](https://objeck.org/gett
 * Online guides and API [documentation](https://www.objeck.org).
 
 ## What's New?
+
+* v2024.3.0
+  * Adding support for OpenAI APIs
   
 * v2024.2.1
   * Support for the [unary bitwise not operator](https://gist.github.com/objeck/d7d5c94de9a1361a20f0eccd65226ded) (#480)
