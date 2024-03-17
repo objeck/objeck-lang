@@ -156,7 +156,7 @@ void ObjeckLang::Execute(const std::wstring cmd_args)
   Runtime::StackInterpreter::HaltAll();
 
   Runtime::StackInterpreter::Clear();
-  MemoryManager::Clear(op_stack, *stack_pos);
+  MemoryManager::Clear();
 
   delete intpr;
   intpr = nullptr;
