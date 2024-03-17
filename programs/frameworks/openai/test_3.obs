@@ -69,6 +69,7 @@ bundle API.OpenAI {
 		@created_at : Int;
 		@filename : String;
 		@purpose : String;
+		Hello World 
 
 		New(file_json : JsonElement, token : String) {
 			@token := token;
@@ -89,19 +90,22 @@ bundle API.OpenAI {
 			response := HttpsClient->QuickGet(Url->New("https://api.openai.com/v1/files/{$id}"), "application/json", headers);
 			if(response <> Nil) {
 				file_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				if(file_json = Nil) {
+					return;
+				};
 
-				if(file_json = Nil | file_json->Has("error")) {
+				if(file_json->Has("error")) {
 					error_str := file_json->FindElements("error/message")->GetString();
 					"### Error: {$error_str} ###"->ErrorLine();
+					return;
 				}
-				else {
-					@id := file_json->Get("id")->GetString();
-					@object := file_json->Get("object")->GetString();
-					@bytes := file_json->Get("bytes")->GetInt();
-					@created_at := file_json->Get("created_at")->GetInt();
-					@filename := file_json->Get("filename")->GetString();
-					@purpose := file_json->Get("purpose")->GetString();
-				};
+
+				@id := file_json->Get("id")->GetString();
+				@object := file_json->Get("object")->GetString();
+				@bytes := file_json->Get("bytes")->GetInt();
+				@created_at := file_json->Get("created_at")->GetInt();
+				@filename := file_json->Get("filename")->GetString();
+				@purpose := file_json->Get("purpose")->GetString();
 			};
 		}
 
@@ -194,7 +198,7 @@ bundle API.OpenAI {
 		}
 	}
 
-	# TODO: not okay fix up
+	# TODO: Okay
 	class Assistant {
 		@token : String;
 

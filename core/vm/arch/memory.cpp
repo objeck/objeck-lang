@@ -1,7 +1,7 @@
 /***************************************************************************
 * VM memory manager. Implements a "mark and sweep" collection algorithm.
 *
-* Copyright (c) 2024, Randy Hollines
+* Copyright (c) 2023, Randy Hollines
 * All rights reserved.
 *
 * Redistribution and use in source and binary forms, with or without
@@ -32,12 +32,6 @@
 #include "memory.h"
 #include <iomanip>
 
-#ifdef _WIN32
-#include "win32/win32.h"
-#else
-#include "posix/posix.h"
-#endif
-
 StackProgram* MemoryManager::prgm;
 
 std::unordered_set<StackFrame**> MemoryManager::pda_frames;
@@ -47,7 +41,6 @@ std::set<size_t*> MemoryManager::allocated_memory;
 
 std::unordered_map<size_t, std::list<size_t*>*> MemoryManager::free_memory_cache;
 size_t MemoryManager::free_memory_cache_size;
-size_t MemoryManager::MEM_START_MAX;
 
 bool MemoryManager::initialized;
 size_t MemoryManager::allocation_size;
@@ -79,28 +72,16 @@ pthread_mutex_t MemoryManager::marked_sweep_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t MemoryManager::free_memory_cache_lock = PTHREAD_MUTEX_INITIALIZER;
 #endif
 
-void MemoryManager::Initialize(StackProgram* p, size_t t)
+void MemoryManager::Initialize(StackProgram* p, size_t m)
 {
   prgm = p;
-  allocation_size = 0;
-
-  // from command line
-  if(t) {
-    MEM_START_MAX = t;
+  if(m <= 0) {
+    mem_max_size = MEM_START_MAX;
   }
-  // else, look at host memory 
   else {
-    MEM_START_MAX = 512 * 1048576; // 512 MB
-    /*
-    const size_t min_mb = 1048576 * 16; // 16 MB -> min start
-    MEM_START_MAX = System::GetTotalSystemMemory() / 16; // 1/16th of system memory -> max start
-    if (MEM_START_MAX < min_mb) {
-      MEM_START_MAX = min_mb;
-    }
-    */
+    mem_max_size = m;
   }
-  mem_max_size = MEM_START_MAX;
-
+  allocation_size = 0;
   uncollected_count = 0;
   free_memory_cache_size = 0;
 
@@ -248,9 +229,6 @@ size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, long 
 
   size_t* mem = nullptr;
   if(cls) {
-#ifndef _GC_SERIAL
-    MUTEX_LOCK(&allocated_lock);
-#endif
     const long size = cls->GetInstanceMemorySize();
 
     // collect memory
@@ -270,6 +248,9 @@ size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, long 
     mem += EXTRA_BUF_SIZE;
 
     // record
+ #ifndef _GC_SERIAL
+    MUTEX_LOCK(&allocated_lock);
+ #endif
     allocation_size += size;
     allocated_memory.insert(mem);
  #ifndef _GC_SERIAL
@@ -316,12 +297,8 @@ size_t* MemoryManager::AllocateArray(const size_t size, const MemoryType type, s
     exit(1);
   }
 
-#ifndef _GC_SERIAL
-  MUTEX_LOCK(&allocated_lock);
-#endif
-
   // collect memory
-  if(collect && allocation_size + calc_size > mem_max_size) {
+  if (collect && allocation_size + calc_size > mem_max_size) {
     CollectAllMemory(op_stack, stack_pos);
   }
 
@@ -335,10 +312,12 @@ size_t* MemoryManager::AllocateArray(const size_t size, const MemoryType type, s
   mem[EXTRA_BUF_SIZE + TYPE] = type;
   mem[EXTRA_BUF_SIZE + SIZE_OR_CLS] = calc_size;
   mem += EXTRA_BUF_SIZE;
-  
+
+#ifndef _GC_SERIAL
+  MUTEX_LOCK(&allocated_lock);
+#endif
   allocation_size += calc_size;
   allocated_memory.insert(mem);
-
 #ifndef _GC_SERIAL
   MUTEX_UNLOCK(&allocated_lock);
 #endif
@@ -516,14 +495,10 @@ size_t MemoryManager::AlignMemorySize(size_t size) {
   return 0;
 }
 
-void MemoryManager::ClearFreeMemory(size_t* op_stack, long stack_pos, bool all) {
+void MemoryManager::ClearFreeMemory(bool all) {
 #ifndef _GC_SERIAL
   MUTEX_LOCK(&free_memory_cache_lock);
 #endif
-  if(op_stack) {
-    CollectAllMemory(op_stack, stack_pos);
-  }
-
   std::unordered_map<size_t, std::list<size_t*>*>::iterator iter = free_memory_cache.begin();
   for(; iter != free_memory_cache.end(); ++iter) {
     std::list<size_t*>* free_cache = iter->second;
@@ -870,7 +845,7 @@ void* MemoryManager::CollectMemory(void* arg)
       collected_count++;
     } 
     else {
-      mem_max_size >>= 3;
+      mem_max_size >>= 2;
       if(mem_max_size <= 0) {
         mem_max_size = MEM_START_MAX;
       }
