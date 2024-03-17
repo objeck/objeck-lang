@@ -88,7 +88,7 @@ int Execute(int argc, const char* argv[], size_t gc_threshold)
     Runtime::StackInterpreter::HaltAll();
 
     Runtime::StackInterpreter::Clear();
-    MemoryManager::Clear(op_stack, *stack_pos);
+    MemoryManager::Clear();
 
     delete intpr;
     intpr = nullptr;

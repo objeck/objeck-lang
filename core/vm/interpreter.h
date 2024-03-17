@@ -352,7 +352,7 @@ namespace Runtime {
     
   public:
 		// initialize the runtime system
-    static void Initialize(StackProgram* p, size_t t);
+    static void Initialize(StackProgram* p, size_t m);
 
 #ifdef _WIN32
     inline static void SetBinaryStdio(bool i) {
@@ -465,8 +465,8 @@ namespace Runtime {
       MemoryManager::AddPdaMethodRoot(monitor);
     }
   
-    StackInterpreter(StackProgram* p, size_t t) {
-      Initialize(p, t);
+    StackInterpreter(StackProgram* p, size_t m) {
+      Initialize(p, m);
       
       // setup frame
       call_stack = new StackFrame*[CALL_STACK_SIZE];
