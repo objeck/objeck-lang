@@ -1,7 +1,7 @@
 /***************************************************************************
  * Implements a caching "mark and sweep" collector
  *
- * Copyright (c) 2024, Randy Hollines
+ * Copyright (c) 2023, Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -40,8 +40,10 @@
 #define MEM_MAX 4096 * 2
 */
 
-#define UNCOLLECTED_COUNT 11
-#define COLLECTED_COUNT 29
+#define MEM_START_MAX 4096 * 256
+
+#define UNCOLLECTED_COUNT 4
+#define COLLECTED_COUNT 13
 
 #define EXTRA_BUF_SIZE 3
 #define MARKED_FLAG -1
@@ -164,19 +166,18 @@ class MemoryManager {
   void static inline AddFreeCache(size_t pool, size_t* raw_mem);
   static size_t* GetFreeMemory(size_t size);
   static size_t AlignMemorySize(size_t size);
-  static void ClearFreeMemory(size_t* op_stack = nullptr, long stack_pos = 0, bool all = false);
+  static void ClearFreeMemory(bool all = false);
   
  public:
-  static size_t MEM_START_MAX;
-  static void Initialize(StackProgram* p, size_t t);
+  static void Initialize(StackProgram* p, size_t m);
 
-  static void Clear(size_t* op_stack, long stack_pos) {
+  static void Clear() {
 #ifdef _MEM_LOGGING
     mem_logger.close();
 #endif
 
     if(!free_memory_cache.empty()) {
-      ClearFreeMemory(op_stack, stack_pos, true);
+      ClearFreeMemory(true);
       free_memory_cache.clear();
     }
 
