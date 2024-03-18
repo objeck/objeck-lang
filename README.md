@@ -53,6 +53,7 @@ Want to get started? Take a look at the [language guide](https://objeck.org/gett
 
 * v2024.3.0
   * Adding support for OpenAI APIs
+  * Fixed GC bug #462 and #482
   
 * v2024.2.1
   * Support for the [unary bitwise not operator](https://gist.github.com/objeck/d7d5c94de9a1361a20f0eccd65226ded) (#480)
