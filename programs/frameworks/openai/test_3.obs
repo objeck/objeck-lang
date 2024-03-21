@@ -115,7 +115,7 @@ bundle API.OpenAI {
 				#
 				# Runs
 				#
-				else if(action->Equals("create_run") & args_size = 3) {
+				else if(action->Equals("create_thread_and_run") & args_size = 3) {
 					assistant_id := args[2];
 
 					thread := API.OpenAI.Thread->Create(token);
@@ -131,16 +131,50 @@ bundle API.OpenAI {
 					is_done := false;
 					for(i := 0; <>is_done & i < 10; i += 1;) {
 						System.Concurrency.Thread->Sleep(1500);
-						run->Refresh(token)->PrintLine();
+						run->Refresh(token);
+						'.'->Print();
 						is_done := run->GetStatus()->Equals("completed");
 					};
+					'\n'->PrintLine();
 
 					messages := Message->ListMessages(thread, token);
-					each(message in messages) {
-						message->ToString()->PrintLine();
+					if(<>messages->IsEmpty()) {
+						messages->Get(0)->ToString()->PrintLine();
 					};
 
-					Thread->Delete(thread->GetId(), token)->PrintLine();
+#					Thread->Delete(thread->GetId(), token)->PrintLine();
+				}
+				#
+				# Runs
+				#
+				else if(action->Equals("create_run") & args_size = 4) {
+					assistant_id := args[2];
+					thread_id := args[3];
+
+					thread := API.OpenAI.Thread->Load(thread_id, token);
+					thread->ToString()->PrintLine();
+
+					assistant := Assistant->Load(assistant_id, token);
+					assistant->ToString()->PrintLine();
+
+					run := API.OpenAI.Run->Create(assistant, thread, token);
+					run->ToString()->PrintLine();
+
+					is_done := false;
+					for(i := 0; <>is_done & i < 10; i += 1;) {
+						System.Concurrency.Thread->Sleep(1500);
+						run->Refresh(token);
+						'.'->Print();
+						is_done := run->GetStatus()->Equals("completed");
+					};
+					'\n'->Print();
+
+					messages := Message->ListMessages(thread, token);
+					if(<>messages->IsEmpty()) {
+						messages->Get(0)->ToString()->PrintLine();
+					};
+
+#					Thread->Delete(thread->GetId(), token)->PrintLine();
 				}
 				#
 				# Oh, no...
