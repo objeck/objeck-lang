@@ -114,10 +114,7 @@ bundle API.OpenAI {
 
 					thread := API.OpenAI.Thread->Create(token);
 					thread->ToString()->PrintLine();
-					Message->Create("user", "Who were the starting forwards in 1967?", thread, token);
-
-					thread := API.OpenAI.Thread->Load(thread->GetId(), token);
-					thread->ToString()->PrintLine();
+					Message->Create("user", "Was Harry Hollines on the in 1967 team?", thread, token);
 
 					assistant := Assistant->Load(assistant_id, token);
 					assistant->ToString()->PrintLine();
@@ -125,10 +122,11 @@ bundle API.OpenAI {
 					run := API.OpenAI.Run->Create(assistant, thread, token);
 					run->ToString()->PrintLine();
 
-					for(i := 0; i < 6; i += 1;) {
+					is_done := false;
+					for(i := 0; <>is_done & i < 10; i += 1;) {
 						System.Concurrency.Thread->Sleep(1500);
 						run->Refresh(token)->PrintLine();
-						run->ToString()->PrintLine();
+						is_done := run->GetStatus()->Equals("completed");
 					};
 
 					messages := Message->ListMessages(thread, token);
@@ -893,6 +891,14 @@ bundle API.OpenAI {
 
 		New(run_json : JsonElement) {
 			Set(run_json);
+		}
+
+		method : public : GetId() ~ String {
+			return @id;
+		}
+
+		method : public : GetStatus() ~ String {
+			return @status;
 		}
 		
 		method: Set(run_json : JsonElement) ~ Nil {
