@@ -8,7 +8,7 @@ bundle API.OpenAI {
 				token := args[0];
 				action := args[1];
 
-				"action={$action}\n==="->PrintLine();
+				"action={$action}, args={$args_size}\n==="->PrintLine();
 				
 				#
 				# File
@@ -115,12 +115,13 @@ bundle API.OpenAI {
 				#
 				# Runs
 				#
-				else if(action->Equals("create_thread_and_run") & args_size = 3) {
+				else if(action->Equals("create_thread_and_run") & args_size = 4) {
 					assistant_id := args[2];
+					query := args[3];
 
 					thread := API.OpenAI.Thread->Create(token);
 					thread->ToString()->PrintLine();
-					Message->Create("user", "Who were the guards in 1967?", thread, token);
+					Message->Create("user", query, thread, token);
 
 					assistant := Assistant->Load(assistant_id, token);
 					assistant->ToString()->PrintLine();
@@ -147,7 +148,7 @@ bundle API.OpenAI {
 				#
 				# Runs
 				#
-				else if(action->Equals("create_run") & args_size = 4) {
+				else if(action->Equals("create_run") & args_size = 5) {
 					assistant_id := args[2];
 					thread_id := args[3];
 
