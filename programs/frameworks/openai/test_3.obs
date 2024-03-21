@@ -73,7 +73,8 @@ bundle API.OpenAI {
 					thread := API.OpenAI.Thread->Load(id, token);
 					thread->ToString()->PrintLine();
 
-					Message->Create("user", "Who was the leading point guard in 1967?", thread, token);
+					msg := Message->Create("user", "Who was the leading point guard in 1967?", thread, token);
+					msg->ToString()->PrintLine();
 				}
 				else if(action->Equals("load_thread") & args_size = 3) {
 					id := args[2];
@@ -672,7 +673,7 @@ bundle API.OpenAI {
 #			"content[/text/annotations[]]" : Array
 		}
 
-		function : Create(role : String, content : String, thread : API.OpenAI.Thread, token : String) ~ API.OpenAI.Thread {
+		function : Create(role : String, content : String, thread : API.OpenAI.Thread, token : String) ~ API.OpenAI.Message {
 			msg_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 			msg_json->Insert("role", role);
 			msg_json->Insert("content", content);
@@ -697,7 +698,7 @@ response->GetContent()->ToString()->PrintLine();
 					return Nil;
 				};
 
-#				return API.OpenAI.Thread->New(msg_json);
+				return API.OpenAI.Message->New(msg_json);
 			};
 			
 			return Nil;	
@@ -735,7 +736,24 @@ response->GetContent()->ToString()->PrintLine();
 		}
 
 		method : public : ToString() ~ String {
-			return "";
+			buffer := "[id='";
+			buffer += @id;
+
+			buffer += "', object='"
+			buffer += @object;
+
+			buffer += "', created_at='"
+			buffer += @created_at;
+
+			buffer += "', created_at='"
+			buffer += @created_at;
+
+			buffer += "', role='"
+			buffer += @role;
+
+			buffer += "']";
+
+			return buffer;
 		}
 	}
 
