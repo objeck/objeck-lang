@@ -114,7 +114,7 @@ bundle API.OpenAI {
 
 					thread := API.OpenAI.Thread->Create(token);
 					thread->ToString()->PrintLine();
-					Message->Create("user", "Was Harry Hollines on the in 1967 team?", thread, token);
+					Message->Create("user", "Who were the guards in 1967?", thread, token);
 
 					assistant := Assistant->Load(assistant_id, token);
 					assistant->ToString()->PrintLine();
