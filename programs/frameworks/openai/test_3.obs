@@ -121,6 +121,12 @@ bundle API.OpenAI {
 
 					run := API.OpenAI.Run->Create(assistant, thread, token);
 					run->ToString()->PrintLine();
+
+					for(i := 0; i < 5; i += 1;) {
+						System.Concurrency.Thread->Sleep(500);
+						run->Refresh(token)->PrintLine();
+						run->ToString()->PrintLine();
+					};
 				}
 
 				#
@@ -914,6 +920,51 @@ response->GetContent()->ToString()->PrintLine();
 			};
 			
 			return Nil;	
+		}
+
+		method : public : Refresh(token : String) ~ Bool {
+
+			headers := Map->New()<String, String>;
+			headers->Insert("Authorization", "Bearer sk-{$token}");
+			headers->Insert("OpenAI-Beta", "assistants=v1");
+			response := HttpsClient->QuickGet(Url->New("get https://api.openai.com/v1/threads/{$@thread_id}/runs/{$@id}"), "application/json", headers);
+			if(response <> Nil) {
+				# response->GetContent()->ToString()->PrintLine();				
+				run_json := JsonParser->TextToElement(response->GetContent()->ToString());
+
+				if(run_json = Nil) {
+					return false;
+				};
+
+				if(run_json->Has("error")) {
+					error_str := run_json->FindElements("error/message")->GetString();
+					"### Error: {$error_str} ###"->ErrorLine();
+					return false;
+				};
+
+				run_json := JsonParser->TextToElement(response->GetContent()->ToString());
+
+				if(run_json = Nil) {
+					return false;
+				};
+
+				if(run_json->Has("error")) {
+					error_str := run_json->FindElements("error/message")->GetString();
+					"### Error: {$error_str} ###"->ErrorLine();
+					return false;
+				};
+
+				@id := run_json->Get("id")->GetString();
+				@created_at := run_json->Get("created_at")->GetInt();
+				@object := run_json->Get("object")->GetString();
+				@thread_id := run_json->Get("thread_id")->GetString();
+				@assistant_id := run_json->Get("assistant_id")->GetString();
+				@status := run_json->Get("status")->GetString();
+
+				return true;
+			}
+
+			return false;
 		}
 
 		function : Load(id : String, thread : API.OpenAI.Thread, token : String) ~ API.OpenAI.Run {
