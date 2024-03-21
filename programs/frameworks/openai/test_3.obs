@@ -26,6 +26,12 @@ bundle API.OpenAI {
 				#
 				# Assistant
 				#
+				else if(action->Equals("list_assists") & args_size = 2) {
+					assistants := Assistant->ListAssistants(token);
+					each(assistant in assistants) {
+						assistant->ToString()->PrintLine();
+					};
+				}
 				else if(action->Equals("delete_assist") & args_size = 3) {
 					id := args[2];
 					Assistant->Delete(id, token)->PrintLine();
@@ -385,6 +391,36 @@ bundle API.OpenAI {
 		method : public : GetId() ~ String {
 			return @id;
 		}	
+
+		function : ListAssistants(token : String) ~ Vector<API.OpenAI.Assistant> {
+			assistants := Vector->New()<API.OpenAI.Assistant>
+
+			headers := Map->New()<String, String>;
+			headers->Insert("Authorization", "Bearer sk-{$token}");
+			headers->Insert("OpenAI-Beta", "assistants=v1");
+			response := HttpsClient->QuickGet(Url->New("https://api.openai.com/v1/assistants"), "application/json", headers);
+			if(response <> Nil) {
+				# response->GetContent()->ToString()->PrintLine();				
+				assistants_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				if(assistants_json = Nil) {
+					"### Error: Unable to parse assistant response ###"->ErrorLine();
+					return Nil;
+				};
+				
+				if(assistants_json->Has("error")) {
+					error_str := assistants_json->FindElements("error/message")->GetString();
+					"### Error: {$error_str} ###"->ErrorLine();
+					return Nil;
+				};
+
+				assistants_json := assistants_json->Get("data");
+				each(assistant_json in assistants_json) {
+					assistants->AddBack(API.OpenAI.Assistant->New(assistant_json, token));
+				};
+			};
+
+			return assistants;
+		}
 
 		function : Create(model : String, token : String) ~ API.OpenAI.Assistant {
 			return Create(model, Nil, Nil, Nil, Nil, Nil, token);
@@ -815,7 +851,7 @@ bundle API.OpenAI {
 			headers->Insert("OpenAI-Beta", "assistants=v1");
 			response := HttpsClient->QuickGet(Url->New("https://api.openai.com/v1/threads/{$thread_id}/messages"), "application/json", headers);
 			if(response <> Nil) {
-#				 response->GetContent()->ToString()->PrintLine();				
+				# response->GetContent()->ToString()->PrintLine();				
 				root_json := JsonParser->TextToElement(response->GetContent()->ToString());
 
 				if(root_json = Nil) {
