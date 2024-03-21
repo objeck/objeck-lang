@@ -109,11 +109,14 @@ bundle API.OpenAI {
 				#
 				# Runs
 				#
-				else if(action->Equals("create_run") & args_size = 4) {
-					thread_id := args[2];
-					assistant_id := args[3];
+				else if(action->Equals("create_run") & args_size = 3) {
+					assistant_id := args[2];
 
-					thread := API.OpenAI.Thread->Load(thread_id, token);
+					thread := API.OpenAI.Thread->Create(token);
+					thread->ToString()->PrintLine();
+					Message->Create("user", "Who were the starting forwards in 1967?", thread, token);
+
+					thread := API.OpenAI.Thread->Load(thread->GetId(), token);
 					thread->ToString()->PrintLine();
 
 					assistant := Assistant->Load(assistant_id, token);
@@ -122,7 +125,7 @@ bundle API.OpenAI {
 					run := API.OpenAI.Run->Create(assistant, thread, token);
 					run->ToString()->PrintLine();
 
-					for(i := 0; i < 5; i += 1;) {
+					for(i := 0; i < 6; i += 1;) {
 						System.Concurrency.Thread->Sleep(1500);
 						run->Refresh(token)->PrintLine();
 						run->ToString()->PrintLine();
@@ -132,6 +135,8 @@ bundle API.OpenAI {
 					each(message in messages) {
 						message->ToString()->PrintLine();
 					};
+
+					Thread->Delete(thread->GetId(), token)->PrintLine();
 				}
 				#
 				# Oh, no...
