@@ -667,10 +667,10 @@ bundle API.OpenAI {
 			@thread_id := msg_json->Get("thread_id")->GetString();
 			@role := msg_json->Get("role")->GetString();
 
-# TODO:
-#			"content[/type]" : String
-#			"content[/text/value]" : String
-#			"content[/text/annotations[]]" : Array
+#	TODO:
+#	"content[/type]" : String
+#	"content[/text/value]" : String
+#	"content[/text/annotations[]]" : Array
 		}
 
 		function : Create(role : String, content : String, thread : API.OpenAI.Thread, token : String) ~ API.OpenAI.Message {
