@@ -361,7 +361,7 @@ if(html <> Nil) {
 
 			return client->Get(url, content_type);
 		}
-				
+
 		#~
 		Performs a HTTPS GET
 		@param url URL
@@ -372,28 +372,83 @@ if(html <> Nil) {
 		}
 
 		#~
-		Gets the socket's X.509 certificate issurer name
-		@return certificate issurer name
-		~#
-		method : public : GetIssuer() ~ String {
-			return @cert_issuer;
-		}
-
-		#~
-		Gets the socket's X.509 certificate subject name
-		@return certificate subject name
-		~#
-		method : public : GetSubject() ~ String {
-			return @cert_subject;
-		}
-		
-		#~
 		Performs a HTTPS GET
 		@param url URL
 		@param content_type content type
 		@return string read
 		~#
 		method : public : Get(url : Web.HTTP.Url, content_type : String) ~ Web.HTTP.Response {
+			return GetOrDelete(url, content_type, true);
+		}
+
+		#~
+		Performs a HTTPS DELETE and returns results as a String
+		@param url URL
+		@return output buffer
+		~#
+		function : QuickDelete(url : Web.HTTP.Url) ~ Web.HTTP.Response {
+			return QuickDelete(url, "text/plain", Nil);
+		}
+
+		#~
+		Performs a HTTPS DELETE and returns results as a String
+		@param url URL
+		@param headers key/value headers
+		@return output buffer
+		~#
+		function : QuickDelete(url : Web.HTTP.Url, headers : Map<String, String>) ~ Web.HTTP.Response {
+			return QuickDelete(url, "text/plain", headers);
+		}
+
+		#~
+		Performs a HTTPS DELETE and returns results as a String
+		@param url URL
+		@param content_type content type
+		@return output buffer
+		~#
+		function : QuickDelete(url : Web.HTTP.Url, content_type : String) ~ Web.HTTP.Response {
+			return QuickDelete(url, content_type, Nil);
+		}
+		
+		#~
+		Performs a HTTPS DELETE and returns results as a String
+		@param url URL
+		@param content_type content type
+		@param headers key/value headers
+		@return output buffer
+		~#
+		function : QuickDelete(url : Web.HTTP.Url, content_type : String, headers : Map<String, String>) ~ Web.HTTP.Response {			
+			client := HttpsClient->New();
+			if(headers <> Nil) {
+				header_key_values := headers->GetKeyValues()<Pair<String, String>>;
+				each(i : header_key_values) {
+					key_value := header_key_values->Get(i);
+					key := key_value->GetFirst();
+					value := key_value->GetSecond();
+					
+					if(value->IsEmpty()) {
+						client->RemoveHeader(key);
+					}
+					else {
+						client->AddHeader(key, value);
+					};
+				};
+			};
+
+			return client->Delete(url, content_type);
+		}
+
+		#~
+		Performs a HTTPS DELETE
+		@param url URL
+		@param content_type content type
+		@return string read
+		~#
+		method : public : Delete(url : Web.HTTP.Url, content_type : String) ~ Web.HTTP.Response {
+			return GetOrDelete(url, content_type, false);
+		}
+
+		method : GetOrDelete(url : Web.HTTP.Url, content_type : String, is_get : Bool) ~ Web.HTTP.Response {
 			content : ByteBuffer;
 			status_code := 500;
 
@@ -425,7 +480,14 @@ if(html <> Nil) {
 
 				socket := TCPSecureSocket->New(address, port);
 				if(socket->IsOpen()) {
-					get := "GET ";
+					get : String;
+					if(is_get) {
+						get := "GET ";
+					}
+					else {
+						get := "DELETE ";
+					};
+					
 					get->Append(location);
 					get->Append(" HTTP/1.1\r\nHost: ");
 					get->Append(address);
@@ -538,6 +600,22 @@ if(html <> Nil) {
 			};
 
 			return Nil;
+		}
+
+		#~
+		Gets the socket's X.509 certificate issurer name
+		@return certificate issurer name
+		~#
+		method : public : GetIssuer() ~ String {
+			return @cert_issuer;
+		}
+
+		#~
+		Gets the socket's X.509 certificate subject name
+		@return certificate subject name
+		~#
+		method : public : GetSubject() ~ String {
+			return @cert_subject;
 		}
 	}
 }
