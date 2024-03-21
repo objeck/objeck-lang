@@ -685,7 +685,7 @@ bundle API.OpenAI {
 			headers->Insert("OpenAI-Beta", "assistants=v1");
 			response := HttpsClient->QuickPost(Url->New("https://api.openai.com/v1/threads/{$msg_id}/messages"), data, "application/json", headers);
 			if(response <> Nil) {
-response->GetContent()->ToString()->PrintLine();				
+				# response->GetContent()->ToString()->PrintLine();				
 				msg_json := JsonParser->TextToElement(response->GetContent()->ToString());
 				if(msg_json = Nil) {
 					"### Error: Unable to parse thread response ###"->ErrorLine();
