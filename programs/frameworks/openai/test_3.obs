@@ -8,7 +8,7 @@ bundle API.OpenAI {
 				token := args[0];
 				action := args[1];
 
-				"action={$action}"->PrintLine();
+				"action={$action}\n==="->PrintLine();
 				
 				#
 				# File
@@ -16,6 +16,12 @@ bundle API.OpenAI {
 				if(action->Equals("delete_file") & args_size = 3) {
 					id := args[2];
 					File->Delete(id, token)->PrintLine();
+				}
+				else if(action->Equals("list_files") & args_size = 2) {
+					files := File->ListFiles(token);
+					each(file in files) {
+						file->GetId()->PrintLine();
+					};
 				}
 				#
 				# Assist
