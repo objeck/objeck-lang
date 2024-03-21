@@ -4505,7 +4505,7 @@ void ContextAnalyzer::AnalyzeReturn(Return* rtrn, const int depth)
       ProcessError(rtrn, L"Undefined class or enum: '" + FormatTypeString(mthd_type->GetName()) + L"'");
     }
   }
-  else if(mthd_type->GetType() != NIL_TYPE  && current_method->GetMethodType() != NEW_PUBLIC_METHOD && current_method->GetMethodType() == NEW_PRIVATE_METHOD) {
+  else if(mthd_type->GetType() != NIL_TYPE && current_method->GetMethodType() != NEW_PUBLIC_METHOD && current_method->GetMethodType() != NEW_PRIVATE_METHOD) {
     ProcessError(rtrn, L"Invalid return statement");
   }
 
