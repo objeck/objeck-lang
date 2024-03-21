@@ -127,8 +127,12 @@ bundle API.OpenAI {
 						run->Refresh(token)->PrintLine();
 						run->ToString()->PrintLine();
 					};
-				}
 
+					messages := Message->ListMessages(thread, token);
+					each(message in messages) {
+						message->ToString()->PrintLine();
+					};
+				}
 				#
 				# Oh, no...
 				#
