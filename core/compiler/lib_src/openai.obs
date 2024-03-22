@@ -2,19 +2,22 @@ use Web.HTTP, Collection, System.IO.Filesystem, Data.JSON, Web.HTTP.Server;
 
 bundle API.OpenAI {
 	# TODO: Okay
-	class File {
+	class File from EndPoint {
 		@token : String;
 
 		@id : String;
 		@object : String;
-		@bytes : Int;
 		@created_at : Int;
+
+		@bytes : Int;
+		
 		@filename : String;
 		@purpose : String;
 		
 		New(file_json : JsonElement, token : String) {
-			@token := token;
+			Parent();
 
+			@token := token;
 			@id := file_json->Get("id")->GetString();
 			@object := file_json->Get("object")->GetString();
 			@bytes := file_json->Get("bytes")->GetInt();
@@ -61,7 +64,7 @@ bundle API.OpenAI {
 
 				if(file_json->Has("error")) {
 					error_str := file_json->FindElements("error/message")->GetString();
-					"### Error: {$error_str} ###"->ErrorLine();
+					SetLastError(error_str);
 					return Nil;
 				}
 
@@ -86,7 +89,7 @@ bundle API.OpenAI {
 
 				if(file_json->Has("error")) {
 					error_str := file_json->FindElements("error/message")->GetString();
-					"### Error: {$error_str} ###"->ErrorLine();
+					SetLastError(error_str);
 					return false;
 				}
 
@@ -103,12 +106,13 @@ bundle API.OpenAI {
 				# "Uploading file: '{$filename}'"->PrintLine();
 				content := FileReader->ReadBinaryFile(filename);
 				if(content = Nil | content->Size() = 0) {
-					"### Error: Unable to find file: '{$filename}' ###"->PrintLine();
+					"### Error: Unable to load file: '{$filename}' ###"->PrintLine();
 					Runtime->Exit(1);
 				};
 
-				File->Create(filename, content, token);
-				file := LoadByName(filename, token);
+				if(API.OpenAI.File->Create(filename, content, token)) {
+					file := LoadByName(filename, token);
+				};
 			};
 
 			return file;
@@ -117,9 +121,10 @@ bundle API.OpenAI {
 		function : LoadByName(filename : String, token : String) ~ API.OpenAI.File {
 			found : API.OpenAI.File;
 			
-			files := File->ListFiles(token);
+			files := API.OpenAI.File->ListFiles(token);
 			each(file in files) {
-				if(file->GetFilename()->Equals(filename)) {
+				decoded_filename := JsonElement->Decode(file->GetFilename());
+				if(decoded_filename->Equals(filename)) {
 					found := file;
 					break;
 				};
@@ -143,7 +148,7 @@ bundle API.OpenAI {
 
 				if(root_json->Has("error")) {
 					error_str := root_json->FindElements("error/message")->GetString();
-					"### Error: {$error_str} ###"->ErrorLine();
+					SetLastError(error_str);
 					return Nil;
 				};
 
@@ -192,7 +197,7 @@ bundle API.OpenAI {
 	}
 
 	# TODO: Okay
-	class Assistant {
+	class Assistant from EndPoint {
 		@token : String;
 
 		@id : String;
@@ -207,8 +212,9 @@ bundle API.OpenAI {
 		@files : Vector<API.OpenAI.File>;
 
 		New : private(assistant_json : JsonElement, token : String) {
-			@token := token;
+			Parent();
 
+			@token := token;
 			@id := assistant_json->Get("id")->GetString();
 			@created_at := assistant_json->Get("created_at")->GetInt();
 			@object := assistant_json->Get("object")->GetString();
@@ -236,7 +242,31 @@ bundle API.OpenAI {
 
 		method : public : GetId() ~ String {
 			return @id;
-		}	
+		}
+
+		method : public : Getobject() ~ String {
+			return @object;
+		}
+
+		method : public : GetModel() ~ String {
+			return @model;
+		}
+
+		method : public : GetName() ~ String {
+			return @name;
+		}
+
+		method : public : GetDescription() ~ String {
+			return @description;
+		}
+
+		method : public : GetInstructions() ~ String {
+			return @instructions;
+		}
+
+		method : public : GetCreatedAt() ~ Int {
+			return @created_at;
+		}
 
 		function : ListAssistants(token : String) ~ Vector<API.OpenAI.Assistant> {
 			assistants := Vector->New()<API.OpenAI.Assistant>
@@ -255,7 +285,7 @@ bundle API.OpenAI {
 				
 				if(assistants_json->Has("error")) {
 					error_str := assistants_json->FindElements("error/message")->GetString();
-					"### Error: {$error_str} ###"->ErrorLine();
+					SetLastError(error_str);
 					return Nil;
 				};
 
@@ -328,6 +358,7 @@ bundle API.OpenAI {
 			headers->Insert("OpenAI-Beta", "assistants=v1");
 			response := HttpsClient->QuickPost(Url->New("https://api.openai.com/v1/assistants"), data, "application/json", headers);
 			if(response <> Nil) {
+				# response->GetContent()->ToString();				
 				assistant_json := JsonParser->TextToElement(response->GetContent()->ToString());
 				if(assistant_json = Nil) {
 					return Nil;
@@ -335,7 +366,7 @@ bundle API.OpenAI {
 				
 				if(assistant_json->Has("error")) {
 					error_str := assistant_json->FindElements("error/message")->GetString();
-					"### Error: {$error_str} ###"->ErrorLine();
+					SetLastError(error_str);
 					return Nil;
 				}
 
@@ -362,7 +393,7 @@ bundle API.OpenAI {
 				
 				if(assistant_json->Has("error")) {
 					error_str := assistant_json->FindElements("error/message")->GetString();
-					"### Error: {$error_str} ###"->ErrorLine();
+					SetLastError(error_str);
 					return Nil;
 				};
 
@@ -388,7 +419,7 @@ bundle API.OpenAI {
 
 				if(file_json->Has("error")) {
 					error_str := file_json->FindElements("error/message")->GetString();
-					"### Error: {$error_str} ###"->ErrorLine();
+					SetLastError(error_str);
 					return false;
 				}
 
@@ -417,7 +448,7 @@ bundle API.OpenAI {
 				
 				if(file_json->Has("error")) {
 					error_str := file_json->FindElements("error/message")->GetString();
-					"### Error: {$error_str} ###"->ErrorLine();
+					SetLastError(error_str);
 					return false;
 				};
 
@@ -482,12 +513,14 @@ bundle API.OpenAI {
 	}
 
 	# TODO: Implement
-	class Thread {
+	class Thread from EndPoint {
 		@id : String;
 		@object : String;
 		@created_at : Int;
 
 		New : private(thread_json : JsonElement) {
+			Parent();
+
 			@id := thread_json->Get("id")->GetString();
 			@created_at := thread_json->Get("created_at")->GetInt();
 			@object := thread_json->Get("object")->GetString();
@@ -510,7 +543,7 @@ bundle API.OpenAI {
 				
 				if(thread_json->Has("error")) {
 					error_str := thread_json->FindElements("error/message")->GetString();
-					"### Error: {$error_str} ###"->ErrorLine();
+					SetLastError(error_str);
 					return Nil;
 				};
 
@@ -535,7 +568,7 @@ bundle API.OpenAI {
 				
 				if(thread_json->Has("error")) {
 					error_str := thread_json->FindElements("error/message")->GetString();
-					"### Error: {$error_str} ###"->ErrorLine();
+					SetLastError(error_str);
 					return Nil;
 				};
 
@@ -562,7 +595,7 @@ bundle API.OpenAI {
 
 				if(file_json->Has("error")) {
 					error_str := file_json->FindElements("error/message")->GetString();
-					"### Error: {$error_str} ###"->ErrorLine();
+					SetLastError(error_str);
 					return false;
 				}
 
@@ -593,7 +626,7 @@ bundle API.OpenAI {
 	}
 
 	# TODO: Implement
-	class Message {
+	class Message from EndPoint {
 		@id : String;
 		@object : String;
 		@created_at : Int;
@@ -602,6 +635,8 @@ bundle API.OpenAI {
 		@contents : Vector<Pair<String, String>>;
 
 		New(message_json : JsonElement) {
+			Parent();
+
 			@id := message_json->Get("id")->GetString();
 			@created_at := message_json->Get("created_at")->GetInt();
 			@object := message_json->Get("object")->GetString();
@@ -640,7 +675,7 @@ bundle API.OpenAI {
 				
 				if(message_json->Has("error")) {
 					error_str := message_json->FindElements("error/message")->GetString();
-					"### Error: {$error_str} ###"->ErrorLine();
+					SetLastError(error_str);
 					return Nil;
 				};
 
@@ -666,7 +701,7 @@ bundle API.OpenAI {
 
 				if(root_json->Has("error")) {
 					error_str := root_json->FindElements("error/message")->GetString();
-					"### Error: {$error_str} ###"->ErrorLine();
+					SetLastError(error_str);
 					return Nil;
 				};
 
@@ -678,7 +713,7 @@ bundle API.OpenAI {
 
 				if(root_json->Has("error")) {
 					error_str := root_json->FindElements("error/message")->GetString();
-					"### Error: {$error_str} ###"->ErrorLine();
+					SetLastError(error_str);
 					return Nil;
 				};
 
@@ -706,7 +741,7 @@ bundle API.OpenAI {
 
 				if(root_json->Has("error")) {
 					error_str := root_json->FindElements("error/message")->GetString();
-					"### Error: {$error_str} ###"->ErrorLine();
+					SetLastError(error_str);
 					return Nil;
 				};
 
@@ -763,7 +798,7 @@ bundle API.OpenAI {
 	}
 
 	# TODO: Implement
-	class Run {
+	class Run from EndPoint {
 		@id : String;
 		@object : String;
 		@created_at : Int;
@@ -771,7 +806,9 @@ bundle API.OpenAI {
 		@assistant_id : String;
 		@status : String;
 
-		New(run_json : JsonElement) {
+		New : private(run_json : JsonElement) {
+			Parent();
+
 			Set(run_json);
 		}
 
@@ -812,7 +849,7 @@ bundle API.OpenAI {
 				
 				if(run_json->Has("error")) {
 					error_str := run_json->FindElements("error/message")->GetString();
-					"### Error: {$error_str} ###"->ErrorLine();
+					SetLastError(error_str);
 					return Nil;
 				};
 
@@ -837,7 +874,7 @@ bundle API.OpenAI {
 
 				if(run_json->Has("error")) {
 					error_str := run_json->FindElements("error/message")->GetString();
-					"### Error: {$error_str} ###"->ErrorLine();
+					SetLastError(error_str);
 					return false;
 				};
 
@@ -849,7 +886,7 @@ bundle API.OpenAI {
 
 				if(run_json->Has("error")) {
 					error_str := run_json->FindElements("error/message")->GetString();
-					"### Error: {$error_str} ###"->ErrorLine();
+					SetLastError(error_str);
 					return false;
 				};
 
@@ -876,7 +913,7 @@ bundle API.OpenAI {
 
 				if(root_json->Has("error")) {
 					error_str := root_json->FindElements("error/message")->GetString();
-					"### Error: {$error_str} ###"->ErrorLine();
+					SetLastError(error_str);
 					return Nil;
 				};
 
@@ -888,7 +925,7 @@ bundle API.OpenAI {
 
 				if(root_json->Has("error")) {
 					error_str := root_json->FindElements("error/message")->GetString();
-					"### Error: {$error_str} ###"->ErrorLine();
+					SetLastError(error_str);
 					return Nil;
 				};
 
@@ -923,6 +960,19 @@ bundle API.OpenAI {
 			buffer += "']";
 
 			return buffer;
+		}
+	}
+
+	class EndPoint {
+		@last_message : static : String;
+
+		function : SetLastError(last_message : String) ~ Nil {
+			@last_message := last_message;
+
+		}
+
+		function : GetLastError() ~ String {
+			return @last_message;
 		}
 	}
 }
