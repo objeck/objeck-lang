@@ -174,14 +174,14 @@ bundle API.OpenAI {
 		function : Create(name : String, content : Byte[], token : String) ~ Bool {
 			purpose_headers := Map->New()<String, String>;
 			purpose_headers->Insert("Content-Disposition", "form-data; name=\"purpose\"");
-			purpose_content := MultipartContent->New(purpose_headers, "assistants"->ToByteArray());
+			purpose_content := Web.HTTP.Server.MultipartContent->New(purpose_headers, "assistants"->ToByteArray());
 
 			content_headers := Map->New()<String, String>;
 			content_headers->Insert("Content-Disposition", "form-data; name=\"file\"; filename=\"{$name}\"");
 			content_headers->Insert("Content-Type", "application/octet-stream");
-			multi_content := MultipartContent->New(content_headers, content);
+			multi_content := Web.HTTP.Server.MultipartContent->New(content_headers, content);
 
-			encoder := MultipartEncoder->New();
+			encoder := Web.HTTP.Server.MultipartEncoder->New();
 			encoder->Add(purpose_content);
 			encoder->Add(multi_content);
 			boundry := encoder->GetBoundary();
