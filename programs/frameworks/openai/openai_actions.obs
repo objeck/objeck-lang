@@ -1,0 +1,236 @@
+use Web.HTTP, Collection, System.IO.Filesystem, 
+	Data.JSON, Web.HTTP.Server, API.OpenAI;
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		args_size := args->Size();
+		if(args_size > 1) {
+			token := args[0];
+			action := args[1];
+
+			"action={$action}, args={$args_size}\n==="->PrintLine();
+			
+			#
+			# File
+			#
+			if(action->Equals("delete_file") & args_size = 3) {
+				id := args[2];
+				API.OpenAI.File->Delete(id, token)->PrintLine();
+			}
+			else if(action->Equals("list_files") & args_size = 2) {
+				files := API.OpenAI.File->ListFiles(token);
+				each(file in files) {
+					file->GetId()->PrintLine();
+				};
+			}
+			#
+			# Assistant
+			#
+			else if(action->Equals("list_assists") & args_size = 2) {
+				assistants := Assistant->ListAssistants(token);
+				if(assistants->IsEmpty()) {
+					"No Assistants created"->PrintLine();
+				}
+				else {
+					"Assistants:"->PrintLine();
+
+					each(assistant in assistants) {
+						id := assistant->GetId();
+						name := assistant->GetName();
+						model := assistant->GetModel();
+						
+						"\tid='{$id}', name='{$name}', model='{$model}'"->PrintLine();
+					};
+				};
+			}
+			else if(action->Equals("delete_assist") & args_size = 3) {
+				id := args[2];
+				success := Assistant->Delete(id, token);
+				"Deleted: id='{$id}', success={$success}"->PrintLine();
+			}
+			else if(action->Equals("load_assist") & args_size = 3) {
+				id := args[2];
+
+				assistant := Assistant->Load(id, token);
+				if(assistant = Nil) {
+					Assistant->GetLastError()->PrintLine();
+				}
+				else {
+					id := assistant->GetId();
+					name := assistant->GetName();
+					model := assistant->GetModel();
+					"Loaded: id='{$id}', name='{$name}', model='{$model}'"->PrintLine();
+				}
+			}
+			else if(action->Equals("load_assist_add_file") & args_size = 4) {
+				id := args[2];
+				filename := args[3];
+
+				file := API.OpenAI.File->LoadOrCreate(filename, token);
+				if(file = Nil) {
+					API.OpenAI.File->GetLastError()->PrintLine();
+				}
+				else {
+					assistant := Assistant->Load(id, token);
+					assistant->AddFile(file);
+					assistant->ToString()->PrintLine();
+				};
+			}
+			else if(action->Equals("create_assist_with_files") & args_size = 4) {
+				files := Vector->New()<API.OpenAI.File>;
+				files->AddBack(API.OpenAI.File->LoadOrCreate(args[2], token));
+				files->AddBack(API.OpenAI.File->LoadOrCreate(args[3], token));
+				file_count := files->Size();
+
+				tools := Vector->New()<String>;
+				tools->AddBack("retrieval");
+				tool_count := tools->Size();
+				
+				assistant := Assistant->Create("gpt-3.5-turbo-0125", "DU Basketball", "DU Basketball", 
+						"You are historian of University of Denver Men's basketball from the 1960's", 
+						tools, files, token);
+				if(assistant = Nil) {
+					Assistant->GetLastError()->PrintLine();
+				}
+				else {
+					id := assistant->GetId();
+
+					name := assistant->GetName();
+					model := assistant->GetModel();
+					"Created: id='{$id}', name='{$name}', model='{$model}', files={$file_count}, tools={$tool_count}"->PrintLine();
+				};
+			}
+			#
+			# Thread
+			#
+			else if(action->Equals("create_thread_add_message") & args_size = 2) {
+				thread := API.OpenAI.Thread->Create(token);
+				if(thread = Nil) {
+					API.OpenAI.Thread->GetLastError()->PrintLine();
+				}
+				else {
+					thread->ToString()->PrintLine();
+					Message->Create("user", "Who was the leading point guard in 1967?", thread, token);
+				};
+			}
+			else if(action->Equals("load_thread_add_message") & args_size = 3) {
+				id := args[2];
+
+				thread := API.OpenAI.Thread->Load(id, token);
+				if(thread = Nil) {
+					API.OpenAI.Thread->GetLastError()->PrintLine();
+				}
+				else {
+					thread->ToString()->PrintLine();
+					msg := Message->Create("user", "Who was the leading point guard in 1967?", thread, token);
+					msg->ToString()->PrintLine();
+				};
+			}
+			else if(action->Equals("load_thread") & args_size = 3) {
+				id := args[2];
+				thread := API.OpenAI.Thread->Load(id, token);
+				if(thread = Nil) {
+					API.OpenAI.Thread->GetLastError()->PrintLine();
+				}
+				else {
+					thread->ToString()->PrintLine();
+				};
+			}
+			#
+			# Messages
+			#
+			else if(action->Equals("list_messages") & args_size = 3) {
+				thread_id := args[2];
+
+				thread := API.OpenAI.Thread->Load(thread_id, token);
+				thread->ToString()->PrintLine();
+
+				messages := Message->ListMessages(thread, token);
+				each(message in messages) {
+					message->ToString()->PrintLine();
+				};
+			}
+			else if(action->Equals("load_message") & args_size = 4) {
+				thread_id := args[2];
+				message_id := args[3];
+
+				thread := API.OpenAI.Thread->Load(thread_id, token);
+				thread->ToString()->PrintLine();
+
+				message := Message->Load(message_id, thread, token);
+				message->ToString()->PrintLine();
+			}
+			#
+			# Runs
+			#
+			else if(action->Equals("create_thread_and_run") & args_size = 4) {
+				assistant_id := args[2];
+				query := args[3];
+
+				thread := API.OpenAI.Thread->Create(token);
+				thread->ToString()->PrintLine();
+				Message->Create("user", query, thread, token);
+
+				assistant := Assistant->Load(assistant_id, token);
+				assistant->ToString()->PrintLine();
+
+				run := API.OpenAI.Run->Create(assistant, thread, token);
+				run->ToString()->PrintLine();
+
+				is_done := false;
+				for(i := 0; <>is_done & i < 10; i += 1;) {
+					System.Concurrency.Thread->Sleep(1500);
+					run->Refresh(token);
+					'.'->Print();
+					is_done := run->GetStatus()->Equals("completed");
+				};
+				'\n'->PrintLine();
+
+				messages := Message->ListMessages(thread, token);
+				if(<>messages->IsEmpty()) {
+					messages->Get(0)->ToString()->PrintLine();
+				};
+
+				# Thread->Delete(thread->GetId(), token)->PrintLine();
+			}
+			else if(action->Equals("create_run") & args_size = 5) {
+				assistant_id := args[2];
+				thread_id := args[3];
+
+				thread := API.OpenAI.Thread->Load(thread_id, token);
+				thread->ToString()->PrintLine();
+
+				assistant := Assistant->Load(assistant_id, token);
+				assistant->ToString()->PrintLine();
+
+				run := API.OpenAI.Run->Create(assistant, thread, token);
+				run->ToString()->PrintLine();
+
+				is_done := false;
+				for(i := 0; <>is_done & i < 10; i += 1;) {
+					System.Concurrency.Thread->Sleep(1500);
+					run->Refresh(token);
+					'.'->Print();
+					is_done := run->GetStatus()->Equals("completed");
+				};
+				'\n'->Print();
+
+				messages := Message->ListMessages(thread, token);
+				if(<>messages->IsEmpty()) {
+					messages->Get(0)->ToString()->PrintLine();
+				};
+				
+				# Thread->Delete(thread->GetId(), token)->PrintLine();
+			}
+			#
+			# Oh, no...
+			#
+			else {
+				"Usage: Undefined action or invalid parameter..."->ErrorLine();					
+			};
+		}
+		else {
+			"Usage: params: sk-token, action, params..."->ErrorLine();
+		};
+	}
+}
