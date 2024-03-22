@@ -1,7 +1,124 @@
 use Web.HTTP, Collection, System.IO.Filesystem, Data.JSON, Web.HTTP.Server;
 
-bundle API.OpenAI {
+bundle API.OpenAI.Chat {
 	# TODO: Okay
+	class Completion from EndPoint {
+		@id : String;
+		@object : String;
+		@created_at : Int;
+		@model : String;
+		@choices : Vector<API.OpenAI.Chat.Choice>;
+
+		New(chat_json : JsonElement) {
+			Parent();
+
+			@id := chat_json->Get("id")->GetString();
+			@object := chat_json->Get("object")->GetString();
+			@created_at := chat_json->Get("created")->GetInt();
+			@model := chat_json->Get("model")->GetString();
+
+			@choices := Vector->New()<API.OpenAI.Chat.Choice>;
+			choices_json := chat_json->Get("choices");
+			each(choice_json in choices_json) {
+				@choices->AddBack(Choice->New(choice_json));
+			};
+		}
+
+		method : public : ToString() ~ String {			
+			buffer := "[id='";
+			buffer += @id;
+
+			buffer += "', object='"
+			buffer += @object;
+
+			buffer += "', model='"
+			buffer += @model;
+
+			buffer += "', created_at="
+			buffer += @created_at;
+
+			buffer += "\nchoices: ["
+			for(i := 0; i < @choices->Size(); i +=1 ;) {
+				buffer += i;
+				buffer += ": ";
+				
+				buffer += @choices->Get(i)->ToString();
+				
+				if(i + 1 < @choices->Size()) {
+					buffer += ',';
+				};
+			};
+			buffer += ']';
+
+			return buffer;
+		}
+
+		function : Complete(model : String, messages : Vector<Pair<String, String>>, token : String) ~ Completion {
+			completion_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			completion_json->Insert("model", model);
+
+			messages_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+			each(message in messages) {
+				message_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+				message_json->Insert("role", message->GetFirst());
+				message_json->Insert("content", message->GetSecond());
+				messages_json->Add(message_json);
+			};
+			completion_json->Insert("messages", messages_json);
+
+			data := completion_json->ToString()->ToByteArray();
+			# data->ToString()->PrintLine();			
+
+			headers := Map->New()<String, String>;
+			headers->Insert("Authorization", "Bearer sk-{$token}");
+			headers->Insert("OpenAI-Beta", "assistants=v1");
+			response := HttpsClient->QuickPost(Url->New("https://api.openai.com/v1/chat/completions"), data, "application/json", headers);
+			if(response <> Nil) {
+				# response->GetContent()->ToString()->PrintLine();				
+				chat_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				if(chat_json = Nil) {
+					"### Error: Unable to parse assistant response ###"->ErrorLine();
+					return Nil;
+				};
+				
+				if(chat_json->Has("error")) {
+					error_str := chat_json->FindElements("error/message")->GetString();
+					SetLastError(error_str);
+					return Nil;
+				};
+
+				return Completion->New(chat_json);
+			};
+
+			return Nil;
+		}
+	}
+
+	class Choice from EndPoint {
+		@index : Int;
+		@finish_reason : String;
+		@message : Pair<String, String>;
+
+		New(chat_json : JsonElement) {
+			Parent();
+			@index := chat_json->Get("index")->GetInt();
+			@finish_reason := chat_json->Get("finish_reason")->GetString();
+			message_json := chat_json->Get("message");
+
+			role := message_json->Get("role")->GetString();
+			content := message_json->Get("content")->GetString();
+			@message := Pair->New(role, content)<String, String>;
+		}
+
+		method : public : ToString() ~ String {
+			role := @message->GetFirst();
+			content := @message->GetSecond();
+			return "[index={$@index}, finish_reason='{$@finish_reason}', role={$role}, content={$content}]"; 
+		}
+	}
+}
+
+bundle API.OpenAI {
 	class File from EndPoint {
 		@token : String;
 
@@ -24,6 +141,34 @@ bundle API.OpenAI {
 			@created_at := file_json->Get("created_at")->GetInt();
 			@filename := file_json->Get("filename")->GetString();
 			@purpose := file_json->Get("purpose")->GetString();
+		}
+
+		method : public : GetId() ~ String {
+			return @id;
+		}
+
+		method : public : GetObject() ~ String {
+			return @object;
+		}
+
+		method : public : GetBytes() ~ Int {
+			return @bytes;
+		}
+
+		method : public : GetCreatedAt() ~ Int {
+			return @created_at;
+		}
+
+		method : public : GetFilename() ~ String {
+			return @filename;
+		}
+
+		method : public : GetPurpose() ~ String {
+			return @purpose;
+		}
+
+		method : public : ToString() ~ String {
+			return "[id='{$@id}', object='{$@object}', bytes={$@bytes}, created_at={$@created_at}, filename='{$@filename}', purpose='{$@purpose}']"; 
 		}
 
 		function : Create(name : String, content : Byte[], token : String) ~ Bool {
@@ -161,42 +306,13 @@ bundle API.OpenAI {
 			return files;
 		}
 
-		method : public : Retrieve() ~ Byte[] {
+		function : Retrieve(id : String, token : String) ~ Byte[] {
 			headers := Map->New()<String, String>;
-			headers->Insert("Authorization", "Bearer sk-{$@token}");
-			return HttpsClient->QuickGet(Url->New("https://api.openai.com/v1/files/{$@id}/content"), "application/json", headers)->GetContent();
-		}
-
-		method : public : GetId() ~ String {
-			return @id;
-		}
-
-		method : public : GetObject() ~ String {
-			return @object;
-		}
-
-		method : public : GetBytes() ~ Int {
-			return @bytes;
-		}
-
-		method : public : GetCreatedAt() ~ Int {
-			return @created_at;
-		}
-
-		method : public : GetFilename() ~ String {
-			return @filename;
-		}
-
-		method : public : GetPurpose() ~ String {
-			return @purpose;
-		}
-
-		method : public : ToString() ~ String {
-			return "[id='{$@id}', object='{$@object}', bytes={$@bytes}, created_at={$@created_at}, filename='{$@filename}', purpose='{$@purpose}']"; 
+			headers->Insert("Authorization", "Bearer sk-{$token}");
+			return HttpsClient->QuickGet(Url->New("https://api.openai.com/v1/files/{$id}/content"), "application/json", headers)->GetContent();
 		}
 	}
 
-	# TODO: Okay
 	class Assistant from EndPoint {
 		@token : String;
 
@@ -248,6 +364,10 @@ bundle API.OpenAI {
 			return @object;
 		}
 
+		method : public : GetCreatedAt() ~ Int {
+			return @created_at;
+		}
+
 		method : public : GetModel() ~ String {
 			return @model;
 		}
@@ -264,8 +384,82 @@ bundle API.OpenAI {
 			return @instructions;
 		}
 
-		method : public : GetCreatedAt() ~ Int {
-			return @created_at;
+		method : public : AddFile(file : API.OpenAI.File) ~ Bool {
+			file_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			file_json->Insert("file_id", file->GetId());
+			data := file_json->ToString()->ToByteArray();
+
+			headers := Map->New()<String, String>;
+			headers->Insert("Authorization", "Bearer sk-{$@token}");
+			headers->Insert("OpenAI-Beta", "assistants=v1");
+			response := HttpsClient->QuickPost(Url->New("https://api.openai.com/v1/assistants/{$@id}/files"), data, "application/json", headers);
+			if(response <> Nil) {
+				# response->GetContent()->ToString()->PrintLine();				
+				file_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				if(file_json = Nil) {
+					"### Error: Unable to parse assistant response ###"->ErrorLine();
+					return false;
+				};
+				
+				if(file_json->Has("error")) {
+					error_str := file_json->FindElements("error/message")->GetString();
+					SetLastError(error_str);
+					return false;
+				};
+
+				return file->GetId()->Equals(file_json->Get("id")->GetString());
+			}
+
+			return false;
+		}
+
+		method : public : ToString() ~ String {			
+			buffer := "[id='";
+			buffer += @id;
+
+			buffer += "', object='"
+			buffer += @object;
+
+			buffer += "', model='"
+			buffer += @model;
+
+			buffer += "', name='"
+			buffer += @name;
+
+			buffer += "', description='"
+			buffer += @description;
+
+			buffer += "', instructions='"
+			buffer += @instructions;
+
+			buffer += "', created_at="
+			buffer += @created_at;
+
+			buffer += "\ntools: ["
+			for(i := 0; i < @tools->Size(); i +=1 ;) {
+				buffer += i;
+				buffer += ": ";
+				buffer += @tools->Get(i);
+				buffer += '\'';
+				
+				if(i + 1 < @tools->Size()) {
+					buffer += ',';
+				};
+			};
+
+			buffer += "]\nfiles: [";
+			for(i := 0; i < @files->Size(); i +=1 ;) {
+				buffer += i;
+				buffer += ": ";
+				buffer += @files->Get(i)->ToString();
+								
+				if(i + 1 < @files->Size()) {
+					buffer += "\n\t";
+				};
+			};
+			buffer += ']';
+
+			return buffer;
 		}
 
 		function : ListAssistants(token : String) ~ Vector<API.OpenAI.Assistant> {
@@ -428,91 +622,8 @@ bundle API.OpenAI {
 
 			return false;
 		}
-
-		method : public : AddFile(file : API.OpenAI.File) ~ Bool {
-			file_json := JsonElement->New(JsonElement->JsonType->OBJECT);
-			file_json->Insert("file_id", file->GetId());
-			data := file_json->ToString()->ToByteArray();
-
-			headers := Map->New()<String, String>;
-			headers->Insert("Authorization", "Bearer sk-{$@token}");
-			headers->Insert("OpenAI-Beta", "assistants=v1");
-			response := HttpsClient->QuickPost(Url->New("https://api.openai.com/v1/assistants/{$@id}/files"), data, "application/json", headers);
-			if(response <> Nil) {
-				# response->GetContent()->ToString()->PrintLine();				
-				file_json := JsonParser->TextToElement(response->GetContent()->ToString());
-				if(file_json = Nil) {
-					"### Error: Unable to parse assistant response ###"->ErrorLine();
-					return false;
-				};
-				
-				if(file_json->Has("error")) {
-					error_str := file_json->FindElements("error/message")->GetString();
-					SetLastError(error_str);
-					return false;
-				};
-
-				return file->GetId()->Equals(file_json->Get("id")->GetString());
-			}
-
-			return false;
-		}
-
-		# TODO:
-		method : public : AddTool(tools : Vector<String>) ~ Nil {
-		}
-
-		method : public : ToString() ~ String {			
-			buffer := "[id='";
-			buffer += @id;
-
-			buffer += "', object='"
-			buffer += @object;
-
-			buffer += "', model='"
-			buffer += @model;
-
-			buffer += "', name='"
-			buffer += @name;
-
-			buffer += "', description='"
-			buffer += @description;
-
-			buffer += "', instructions='"
-			buffer += @instructions;
-
-			buffer += "', created_at='"
-			buffer += @created_at;
-
-			buffer += "'\ntools: ["
-			for(i := 0; i < @tools->Size(); i +=1 ;) {
-				buffer += i;
-				buffer += ": ";
-				buffer += @tools->Get(i);
-				buffer += '\'';
-				
-				if(i + 1 < @tools->Size()) {
-					buffer += ',';
-				};
-			};
-
-			buffer += "]\nfiles: [";
-			for(i := 0; i < @files->Size(); i +=1 ;) {
-				buffer += i;
-				buffer += ": ";
-				buffer += @files->Get(i)->ToString();
-								
-				if(i + 1 < @files->Size()) {
-					buffer += "\n\t";
-				};
-			};
-			buffer += ']';
-
-			return buffer;
-		}
 	}
 
-	# TODO: Implement
 	class Thread from EndPoint {
 		@id : String;
 		@object : String;
@@ -524,6 +635,33 @@ bundle API.OpenAI {
 			@id := thread_json->Get("id")->GetString();
 			@created_at := thread_json->Get("created_at")->GetInt();
 			@object := thread_json->Get("object")->GetString();
+		}
+
+		method : public : GetId() ~ String {
+			return @id;
+		}
+
+		method : public : Getobject() ~ String {
+			return @object;
+		}
+
+		method : public : GetCreatedAt() ~ Int {
+			return @created_at;
+		}
+
+		method : public : ToString() ~ String {
+			buffer := "[id='";
+			buffer += @id;
+
+			buffer += "', object='"
+			buffer += @object;
+
+			buffer += "', created_at="
+			buffer += @created_at;
+
+			buffer += "]";
+
+			return buffer;
 		}
 
 		function : Create(token : String) ~ API.OpenAI.Thread {
@@ -604,37 +742,19 @@ bundle API.OpenAI {
 
 			return false;
 		}
-	
-		method : public : GetId() ~ String {
-			return @id;
-		}		
-
-		method : public : ToString() ~ String {
-			buffer := "[id='";
-			buffer += @id;
-
-			buffer += "', object='"
-			buffer += @object;
-
-			buffer += "', created_at='"
-			buffer += @created_at;
-
-			buffer += "']";
-
-			return buffer;
-		}
 	}
 
-	# TODO: Implement
 	class Message from EndPoint {
 		@id : String;
 		@object : String;
 		@created_at : Int;
+		
 		@thread_id : String;
 		@role : String;
 		@contents : Vector<Pair<String, String>>;
+		@files : Vector<API.OpenAI.File>;
 
-		New(message_json : JsonElement) {
+		New : private(message_json : JsonElement, token : String) {
 			Parent();
 
 			@id := message_json->Get("id")->GetString();
@@ -649,15 +769,94 @@ bundle API.OpenAI {
 				type := content_json->Get("type")->GetString();
 				value := content_json->Get("text")->Get("value")->GetString();
 				@contents->AddBack(Pair->New(type, value)<String, String>);
-				# "content[/text/annotations[]]" : Array
+			};
+
+			@files := Vector->New()<API.OpenAI.File>;
+			file_ids := message_json->Get("file_ids");
+			each(file_id in file_ids) {
+				file := API.OpenAI.File->Load(file_id->GetString(), token);
+				if(file <> Nil) {
+					@files->AddBack(file);
+				};
 			};
 		}
 
-		# TODO: support adding files
+		method : public : GetId() ~ String {
+			return @id;
+		}
+
+		method : public : Getobject() ~ String {
+			return @object;
+		}
+
+		method : public : GetCreatedAt() ~ Int {
+			return @created_at;
+		}
+
+		method : public : GetThreadId() ~ String {
+			return @thread_id;
+		}
+
+		method : public : GetRole() ~ String {
+			return @role;
+		}
+
+		method : public : GetContents() ~ Vector<Pair<String, String>> {
+			return @contents;
+		}
+
+		method : public : ToString() ~ String {
+			buffer := "[id='";
+			buffer += @id;
+
+			buffer += "', object='"
+			buffer += @object;
+
+			buffer += "', created_at="
+			buffer += @created_at;
+
+			buffer += ", role='"
+			buffer += @role;
+
+			buffer += "''\ncontents: [";
+			for(i := 0; i < @contents->Size(); i +=1 ;) {
+				buffer += '{';
+				buffer += i;
+				buffer += ": type=";
+
+				content := @contents->Get(i);
+				buffer += content->GetFirst();
+				buffer += ", text=\"";
+				buffer += content->GetSecond();
+				buffer += "\"}";
+												
+				if(i + 1 < @contents->Size()) {
+					buffer += "\n\t";
+				};
+			};
+			buffer += ']';
+
+			return buffer;
+		}
+
 		function : Create(role : String, content : String, thread : API.OpenAI.Thread, token : String) ~ API.OpenAI.Message {
+			return Create(role, content , thread, Nil, token);
+		}
+
+		function : Create(role : String, content : String, thread : API.OpenAI.Thread, files : Vector<API.OpenAI.File>, token : String) ~ API.OpenAI.Message {
 			message_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 			message_json->Insert("role", role);
 			message_json->Insert("content", content);
+
+			# files
+			if(<>files->IsEmpty()) {
+				files_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+				each(file in files) {
+					files_json->Add(file->GetId());
+				};
+				message_json->Insert("file_ids", files_json);
+			};
+
 			data := message_json->ToString()->ToByteArray();
 			
 			thread_id := thread->GetId();
@@ -679,7 +878,7 @@ bundle API.OpenAI {
 					return Nil;
 				};
 
-				return API.OpenAI.Message->New(message_json);
+				return API.OpenAI.Message->New(message_json, token);
 			};
 			
 			return Nil;	
@@ -717,7 +916,7 @@ bundle API.OpenAI {
 					return Nil;
 				};
 
-				return API.OpenAI.Message->New(root_json);
+				return API.OpenAI.Message->New(root_json, token);
 			}
 
 			return Nil;
@@ -747,57 +946,14 @@ bundle API.OpenAI {
 
 				messages_json := root_json->Get("data");
 				each(message_json in messages_json) {
-					messages->AddBack(API.OpenAI.Message->New(message_json));
+					messages->AddBack(API.OpenAI.Message->New(message_json, token));
 				};
 			};
 
 			return messages;
 		}
-
-		# TODO: not supported
-		function : Delete(id : String, token : String) ~ Bool {
-			return false;
-		}
-
-		method : public : ToString() ~ String {
-			buffer := "[id='";
-			buffer += @id;
-
-			buffer += "', object='"
-			buffer += @object;
-
-			buffer += "', created_at='"
-			buffer += @created_at;
-
-			buffer += "', created_at='"
-			buffer += @created_at;
-
-			buffer += "', role='"
-			buffer += @role;
-
-			buffer += "''\ncontents: [";
-			for(i := 0; i < @contents->Size(); i +=1 ;) {
-				buffer += '{';
-				buffer += i;
-				buffer += ": type=";
-
-				content := @contents->Get(i);
-				buffer += content->GetFirst();
-				buffer += ", text=\"";
-				buffer += content->GetSecond();
-				buffer += "\"}";
-												
-				if(i + 1 < @contents->Size()) {
-					buffer += "\n\t";
-				};
-			};
-			buffer += ']';
-
-			return buffer;
-		}
 	}
 
-	# TODO: Implement
 	class Run from EndPoint {
 		@id : String;
 		@object : String;
@@ -808,12 +964,19 @@ bundle API.OpenAI {
 
 		New : private(run_json : JsonElement) {
 			Parent();
-
 			Set(run_json);
 		}
 
 		method : public : GetId() ~ String {
 			return @id;
+		}
+
+		method : public : Getobject() ~ String {
+			return @object;
+		}
+
+		method : public : GetCreatedAt() ~ Int {
+			return @created_at;
 		}
 
 		method : public : GetStatus() ~ String {
@@ -945,10 +1108,10 @@ bundle API.OpenAI {
 			buffer += "', created_at='"
 			buffer += @created_at;
 
-			buffer += "', created_at='"
+			buffer += "', created_at="
 			buffer += @created_at;
 
-			buffer += "', assistant_id='"
+			buffer += ", assistant_id='"
 			buffer += @assistant_id;
 
 			buffer += "', thread_id='"

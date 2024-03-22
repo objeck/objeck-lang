@@ -11,9 +11,21 @@ class Test {
 			"action={$action}, args={$args_size}\n==="->PrintLine();
 			
 			#
+			# Chat
+			#
+			if(action->Equals("chat_complete") & args_size = 3) {
+				message := args[2];
+
+				messages := Vector->New()<Pair<String, String>>
+				messages->AddBack(Pair->New("system", "You count by 10s")<String, String>);
+				messages->AddBack(Pair->New("user", message)<String, String>);
+
+				API.OpenAI.Chat.Completion->Complete("gpt-3.5-turbo", messages, token)->ToString()->PrintLine();
+			}
+			#
 			# File
 			#
-			if(action->Equals("delete_file") & args_size = 3) {
+			else if(action->Equals("delete_file") & args_size = 3) {
 				id := args[2];
 				API.OpenAI.File->Delete(id, token)->PrintLine();
 			}
@@ -22,6 +34,10 @@ class Test {
 				each(file in files) {
 					file->GetId()->PrintLine();
 				};
+			}
+			else if(action->Equals("show_file") & args_size = 3) {
+				id := args[2];
+				API.OpenAI.File->Retrieve(id, token)->PrintLine();
 			}
 			#
 			# Assistant
