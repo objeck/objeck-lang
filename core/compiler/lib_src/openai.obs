@@ -29,6 +29,19 @@ bundle API.OpenAI.Audio {
 		@param model available TTS models 'tts-1' or 'tts-1-hd'
 		@param input the text to generate audio for. the maximum length is 4096 characters
 		@param voice voice to use when generating the audio. Supported voices are alloy, 'echo', 'fable', 'onyx', 'nova', and 'shimmer'. 
+		@param response_format format to audio in. Supported formats are 'mp3', 'opus', 'aac', 'flac', 'wav', and 'pcm'.
+		@param token API token
+		@return response with type and content, Nil if unsuccessful
+		~#
+		function : Speak(model : String, input : String, voice : String, response_format : String, token : String) ~ Pair<String, ByteArrayRef> {
+			return Speak(model, input, voice, response_format, 0.0, token);
+		}
+
+		#~
+		Generates audio from the input text
+		@param model available TTS models 'tts-1' or 'tts-1-hd'
+		@param input the text to generate audio for. the maximum length is 4096 characters
+		@param voice voice to use when generating the audio. Supported voices are alloy, 'echo', 'fable', 'onyx', 'nova', and 'shimmer'. 
 		@param speed speed of the generated audio 0.25 to 4.0. 1.0 is the default.
 		@param response_format format to audio in. Supported formats are 'mp3', 'opus', 'aac', 'flac', 'wav', and 'pcm'.
 		@param token API token
@@ -104,7 +117,25 @@ bundle API.OpenAI.Chat {
 			};
 		}
 
-		# TODO: add accessors
+		method : public : GetId() ~ String {
+			return @id;
+		}
+
+		method : public : GetObject() ~ String {
+			return @object;
+		}
+
+		method : public : GetCreatedAt() ~ Int {
+			return @created_at;
+		}
+
+		method : public : GetModel() ~ String {
+			return @model;
+		}
+
+		method : public : GetChoices() ~ Vector<API.OpenAI.Chat.Choice> {
+			return @choices;
+		}
 
 		method : public : ToString() ~ String {			
 			buffer := "[id='";
@@ -192,7 +223,17 @@ bundle API.OpenAI.Chat {
 			@message := Pair->New(role, content)<String, String>;
 		}
 
-		# TODO: add accessors
+		method : public : GetIndex() ~ Int {
+			return @index;
+		}
+
+		method : public : GetFinishReason() ~ String {
+			return @finish_reason;
+		}
+
+		method : public : GetMessage() ~ Pair<String, String> {
+			return @message;
+		}
 
 		method : public : ToString() ~ String {
 			role := @message->GetFirst();
