@@ -1,7 +1,57 @@
 use Web.HTTP, Collection, System.IO.Filesystem, Data.JSON;
 
+bundle API.OpenAI.Audio {
+	class Speech from EndPoint {
+		function : Speak(model : String, input : String, voice : String, token : String) ~ Pair<String, ByteArrayRef> {
+			return Speak(model, input, voice, Nil, 0.0, token);
+		}
+
+		function : Speak(model : String, input : String, voice : String, response_format : String, speed : Float, token : String) ~ Pair<String, ByteArrayRef> {
+			audio_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			audio_json->Insert("model", model);
+			audio_json->Insert("input", input);
+			audio_json->Insert("voice", voice);
+
+			if(response_format <> Nil) {
+				audio_json->Insert("response_format", response_format);
+			};
+
+			if(speed >= 0.25 & speed <= 4.0) {
+				audio_json->Insert("speed", speed);
+			}
+			else {
+				audio_json->Insert("speed", 1.0);
+			};
+			data := audio_json->ToString()->ToByteArray();
+			# data->ToString()->PrintLine();
+
+			headers := Map->New()<String, String>;
+			headers->Insert("Authorization", "Bearer sk-{$token}");
+			
+			response := HttpsClient->QuickPost(Url->New("https://api.openai.com/v1/audio/speech"), data, "application/json", headers);
+			# response->GetContent()->ToString()->PrintLine();		
+
+			if(response->GetType()->Equals("application/json")) {
+				audio_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				if(audio_json = Nil) {
+					"### Error: Unable to parse response ###"->ErrorLine();
+					return Nil;
+				};
+				
+				if(audio_json->Has("error")) {
+					error_str := audio_json->FindElements("error/message")->GetString();
+					SetLastError(error_str);
+					return Nil;
+				};
+			};
+			
+			return Pair->New(response->GetType(), ByteArrayRef->New(response->GetContent()))<String, ByteArrayRef>;
+		}
+	}
+}
+
 bundle API.OpenAI.Chat {
-	# TODO: Okay
+	# TODO: Okay_
 	class Completion from EndPoint {
 		@id : String;
 		@object : String;
@@ -77,7 +127,7 @@ bundle API.OpenAI.Chat {
 				# response->GetContent()->ToString()->PrintLine();				
 				chat_json := JsonParser->TextToElement(response->GetContent()->ToString());
 				if(chat_json = Nil) {
-					"### Error: Unable to parse assistant response ###"->ErrorLine();
+					"### Error: Unable to parse response ###"->ErrorLine();
 					return Nil;
 				};
 				
@@ -120,8 +170,6 @@ bundle API.OpenAI.Chat {
 
 bundle API.OpenAI {
 	class File from EndPoint {
-		@token : String;
-
 		@id : String;
 		@object : String;
 		@created_at : Int;
@@ -134,7 +182,6 @@ bundle API.OpenAI {
 		New(file_json : JsonElement, token : String) {
 			Parent();
 
-			@token := token;
 			@id := file_json->Get("id")->GetString();
 			@object := file_json->Get("object")->GetString();
 			@bytes := file_json->Get("bytes")->GetInt();
@@ -314,8 +361,6 @@ bundle API.OpenAI {
 	}
 
 	class Assistant from EndPoint {
-		@token : String;
-
 		@id : String;
 		@object : String;
 		@model : String;
@@ -326,11 +371,11 @@ bundle API.OpenAI {
 
 		@tools : Vector<String>;
 		@files : Vector<API.OpenAI.File>;
+		@token : String;
 
 		New : private(assistant_json : JsonElement, token : String) {
 			Parent();
 
-			@token := token;
 			@id := assistant_json->Get("id")->GetString();
 			@created_at := assistant_json->Get("created_at")->GetInt();
 			@object := assistant_json->Get("object")->GetString();
@@ -338,6 +383,7 @@ bundle API.OpenAI {
 			@description := assistant_json->Get("description")->GetString();
 			@model := assistant_json->Get("model")->GetString();
 			@instructions := assistant_json->Get("instructions")->GetString();
+			@token := token;
 
 			@tools := Vector->New()<String>;
 			tools := assistant_json->Get("tools");
@@ -397,7 +443,7 @@ bundle API.OpenAI {
 				# response->GetContent()->ToString()->PrintLine();				
 				file_json := JsonParser->TextToElement(response->GetContent()->ToString());
 				if(file_json = Nil) {
-					"### Error: Unable to parse assistant response ###"->ErrorLine();
+					"### Error: Unable to parse response ###"->ErrorLine();
 					return false;
 				};
 				
@@ -473,7 +519,7 @@ bundle API.OpenAI {
 				# response->GetContent()->ToString()->PrintLine();				
 				assistants_json := JsonParser->TextToElement(response->GetContent()->ToString());
 				if(assistants_json = Nil) {
-					"### Error: Unable to parse assistant response ###"->ErrorLine();
+					"### Error: Unable to parse response ###"->ErrorLine();
 					return Nil;
 				};
 				
@@ -581,7 +627,7 @@ bundle API.OpenAI {
 				# response->GetContent()->ToString()->PrintLine();				
 				assistant_json := JsonParser->TextToElement(response->GetContent()->ToString());
 				if(assistant_json = Nil) {
-					"### Error: Unable to parse assistant response ###"->ErrorLine();
+					"### Error: Unable to parse response ###"->ErrorLine();
 					return Nil;
 				};
 				

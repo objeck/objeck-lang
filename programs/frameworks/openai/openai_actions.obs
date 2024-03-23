@@ -11,9 +11,18 @@ class Test {
 			"action={$action}, args={$args_size}\n==="->PrintLine();
 			
 			#
+			# Audio
+			#
+			if(action->Equals("text_to_speech") & args_size = 3) {
+				message := args[2];
+
+				response := API.OpenAI.Audio.Speech->Speak("tts-1", message, "alloy", token)<String, ByteArrayRef>;
+				response->GetFirst()->PrintLine();
+			}
+			#
 			# Chat
 			#
-			if(action->Equals("chat_complete") & args_size = 3) {
+			else if(action->Equals("chat_complete") & args_size = 3) {
 				message := args[2];
 
 				messages := Vector->New()<Pair<String, String>>

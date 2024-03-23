@@ -916,10 +916,20 @@ bundle Web.HTTP {
 	class Response {
 		@content : Byte[];
 		@code : Int;
+		@type : String;
 
-		New(content : Byte[], code : Int) {
+		New(content : Byte[], code : Int, type : String) {
 			@content := content;
 			@code := code;
+			@type := type;
+		}
+
+		#~
+		Gets content type
+		@return content type
+		~#
+		method : public : GetType() ~ String {
+			return @type;
 		}
 
 		#~
@@ -948,7 +958,7 @@ bundle Web.HTTP {
 				content_length := @content->Size();
 			};
 
-			return "status={$@code}, content_length={$content_length}";
+			return "status={$@code}, type={$@type}, content_length={$content_length}";
 		}
 	}
 }

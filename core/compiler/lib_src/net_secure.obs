@@ -245,8 +245,8 @@ if(html <> Nil) {
 								index := line->Find(':');
 								name := line->SubString(index);
 								value := line->SubString(index + 1, line->Size() - index - 1)->Trim();
-								
 								# IO.Standard->Print("|")->Print(name)->Print("|, |")->Print(value)->PrintLine("|");
+								
 								if(@cookies_enabled & name->Equals("Set-Cookie")) {
 									@cookies->AddBack(Cookie->New(value));
 									# IO.Standard->Print("cookie=")->PrintLine(value);
@@ -299,10 +299,20 @@ if(html <> Nil) {
 			};
 			
 			if(content <> Nil) {
-				return Web.HTTP.Response->New(content->ToByteArray(), status_code);
+				content_type := GetContentType();
+				return Web.HTTP.Response->New(content->ToByteArray(), status_code, content_type);
 			};
 
 			return Nil;
+		}
+
+		method : GetContentType() ~ String {
+			value := @response_headers->Find("content-type");
+			if(value <> Nil) {
+				return value;
+			};
+
+			return "text/plain";
 		}
 		
 		#~
@@ -596,7 +606,8 @@ if(html <> Nil) {
 			};	
 			
 			if(content <> Nil) {
-				return Web.HTTP.Response->New(content->ToByteArray(), status_code);
+				content_type := GetContentType();
+				return Web.HTTP.Response->New(content->ToByteArray(), status_code, content_type);
 			};
 
 			return Nil;
