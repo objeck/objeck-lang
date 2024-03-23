@@ -204,7 +204,7 @@ class Test {
 				run->ToString()->PrintLine();
 
 				is_done := false;
-				for(i := 0; <>is_done & i < 10; i += 1;) {
+				for(i := 0; <>is_done & i < 40; i += 1;) {
 					System.Concurrency.Thread->Sleep(1500);
 					run->Refresh(token);
 					'.'->Print();
