@@ -293,10 +293,20 @@ bundle Web.HTTP {
 			};
 			
 			if(content <> Nil) {
-				return Web.HTTP.Response->New(content->ToByteArray(), status_code);
+				content_type := GetContentType();
+				return Web.HTTP.Response->New(content->ToByteArray(), status_code, content_type);
 			};
 
 			return Nil;
+		}
+
+		method : GetContentType() ~ String {
+			value := @response_headers->Find("content-type");
+			if(value <> Nil) {
+				return value;
+			};
+
+			return "text/plain";
 		}
 		
 		#~
@@ -597,7 +607,8 @@ bundle Web.HTTP {
 			};	
 			
 			if(content <> Nil) {
-				return Web.HTTP.Response->New(content->ToByteArray(), status_code);
+				content_type := GetContentType();
+				return Web.HTTP.Response->New(content->ToByteArray(), status_code, content_type);
 			};
 
 			return Nil;
