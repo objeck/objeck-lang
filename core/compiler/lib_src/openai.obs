@@ -1,11 +1,34 @@
 use Web.HTTP, Collection, System.IO.Filesystem, Data.JSON;
 
+# TODO: doc existing APIs
+# TODO: image support
+
+#~
+Support for OpenAI audio APIs
+~#
 bundle API.OpenAI.Audio {
 	class Speech from EndPoint {
+		#~
+		Generates audio from the input text
+		@param model available TTS models 'tts-1' or 'tts-1-hd'
+		@param input the text to generate audio for. the maximum length is 4096 characters
+		@param voice voice to use when generating the audio. Supported voices are alloy, 'echo', 'fable', 'onyx', 'nova', and 'shimmer'. 
+		@param token API token
+		@return response with type and content, Nil if unsuccessful
+		~#
 		function : Speak(model : String, input : String, voice : String, token : String) ~ Pair<String, ByteArrayRef> {
 			return Speak(model, input, voice, Nil, 0.0, token);
 		}
 
+		#~
+		Generates audio from the input text
+		@param model available TTS models 'tts-1' or 'tts-1-hd'
+		@param input the text to generate audio for. the maximum length is 4096 characters
+		@param voice voice to use when generating the audio. Supported voices are alloy, 'echo', 'fable', 'onyx', 'nova', and 'shimmer'. 
+		@param speed speed of the generated audio 0.25 to 4.0. 1.0 is the default.
+		@param token API token
+		@return response with type and content, Nil if unsuccessful
+		~#
 		function : Speak(model : String, input : String, voice : String, response_format : String, speed : Float, token : String) ~ Pair<String, ByteArrayRef> {
 			audio_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 			audio_json->Insert("model", model);
@@ -50,8 +73,10 @@ bundle API.OpenAI.Audio {
 	}
 }
 
+#~
+Support for OpenAI chat APIs
+~#
 bundle API.OpenAI.Chat {
-	# TODO: Okay_
 	class Completion from EndPoint {
 		@id : String;
 		@object : String;
@@ -168,6 +193,9 @@ bundle API.OpenAI.Chat {
 	}
 }
 
+#~
+Support for OpenAIs assistant and general APIs
+~#
 bundle API.OpenAI {
 	class File from EndPoint {
 		@id : String;

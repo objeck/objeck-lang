@@ -16,8 +16,10 @@ class Test {
 			if(action->Equals("text_to_speech") & args_size = 3) {
 				message := args[2];
 
-				response := API.OpenAI.Audio.Speech->Speak("tts-1", message, "alloy", token)<String, ByteArrayRef>;
-				response->GetFirst()->PrintLine();
+				response := API.OpenAI.Audio.Speech->Speak("tts-1", message, "alloy", token)<String, ByteArrayRef>;				
+				if(response->GetFirst()->Equals("audio/mpeg")) {
+					FileWriter->WriteFile("speech.mpeg", response->GetSecond()->Get());
+				};
 			}
 			#
 			# Chat
