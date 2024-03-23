@@ -21,7 +21,7 @@ bundle API.OpenAI.Audio {
 		@return response with type and content, Nil if unsuccessful
 		~#
 		function : Speak(model : String, input : String, voice : String, token : String) ~ Pair<String, ByteArrayRef> {
-			return Speak(model, input, voice, Nil, 0.0, token);
+			return Speak(model, input, voice, "mp3", 0.0, token);
 		}
 
 		#~
