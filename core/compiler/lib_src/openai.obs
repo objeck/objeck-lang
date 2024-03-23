@@ -117,14 +117,26 @@ bundle API.OpenAI.Chat {
 			};
 		}
 
+		#~
+		Get object instance API ID
+		@return instance ID
+		~#
 		method : public : GetId() ~ String {
 			return @id;
 		}
 
+		#~
+		Get the object type
+		@return object type
+		~#
 		method : public : GetObject() ~ String {
 			return @object;
 		}
 
+		#~
+		Unix timestamp (in seconds) of when the object instance was created
+		@return time with the object instance was created
+		~#
 		method : public : GetCreatedAt() ~ Int {
 			return @created_at;
 		}
@@ -268,10 +280,18 @@ bundle API.OpenAI {
 			@purpose := file_json->Get("purpose")->GetString();
 		}
 
+		#~
+		Get object instance API ID
+		@return instance ID
+		~#
 		method : public : GetId() ~ String {
 			return @id;
 		}
 
+		#~
+		Get the object type
+		@return object type
+		~#
 		method : public : GetObject() ~ String {
 			return @object;
 		}
@@ -280,6 +300,10 @@ bundle API.OpenAI {
 			return @bytes;
 		}
 
+		#~
+		Unix timestamp (in seconds) of when the object instance was created
+		@return time with the object instance was created
+		~#
 		method : public : GetCreatedAt() ~ Int {
 			return @created_at;
 		}
@@ -480,14 +504,26 @@ bundle API.OpenAI {
 			};
 		}
 
+		#~
+		Get object instance API ID
+		@return instance ID
+		~#
 		method : public : GetId() ~ String {
 			return @id;
 		}
 
-		method : public : Getobject() ~ String {
+		#~
+		Get the object type
+		@return object type
+		~#
+		method : public : GetObject() ~ String {
 			return @object;
 		}
 
+		#~
+		Unix timestamp (in seconds) of when the object instance was created
+		@return time with the object instance was created
+		~#
 		method : public : GetCreatedAt() ~ Int {
 			return @created_at;
 		}
@@ -761,14 +797,26 @@ bundle API.OpenAI {
 			@object := thread_json->Get("object")->GetString();
 		}
 
+		#~
+		Get object instance API ID
+		@return instance ID
+		~#
 		method : public : GetId() ~ String {
 			return @id;
 		}
 
-		method : public : Getobject() ~ String {
+		#~
+		Get the object type
+		@return object type
+		~#
+		method : public : GetObject() ~ String {
 			return @object;
 		}
 
+		#~
+		Unix timestamp (in seconds) of when the object instance was created
+		@return time with the object instance was created
+		~#
 		method : public : GetCreatedAt() ~ Int {
 			return @created_at;
 		}
@@ -905,14 +953,26 @@ bundle API.OpenAI {
 			};
 		}
 
+		#~
+		Get object instance API ID
+		@return instance ID
+		~#
 		method : public : GetId() ~ String {
 			return @id;
 		}
 
-		method : public : Getobject() ~ String {
+		#~
+		Get the object type
+		@return object type
+		~#
+		method : public : GetObject() ~ String {
 			return @object;
 		}
 
+		#~
+		Unix timestamp (in seconds) of when the object instance was created
+		@return time with the object instance was created
+		~#
 		method : public : GetCreatedAt() ~ Int {
 			return @created_at;
 		}
@@ -1091,14 +1151,26 @@ bundle API.OpenAI {
 			Set(run_json);
 		}
 
+		#~
+		Get object instance API ID
+		@return instance ID
+		~#
 		method : public : GetId() ~ String {
 			return @id;
 		}
 
-		method : public : Getobject() ~ String {
+		#~
+		Get the object type
+		@return object type
+		~#
+		method : public : GetObject() ~ String {
 			return @object;
 		}
 
+		#~
+		Unix timestamp (in seconds) of when the object instance was created
+		@return time with the object instance was created
+		~#
 		method : public : GetCreatedAt() ~ Int {
 			return @created_at;
 		}
