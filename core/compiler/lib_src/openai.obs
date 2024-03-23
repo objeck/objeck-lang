@@ -15,8 +15,8 @@ bundle API.OpenAI.Audio {
 		#~
 		Generates audio from the input text
 		@param model available TTS models 'tts-1' or 'tts-1-hd'
-		@param input the text to generate audio for. the maximum length is 4096 characters
-		@param voice voice to use when generating the audio. Supported voices are alloy, 'echo', 'fable', 'onyx', 'nova', and 'shimmer'. 
+		@param input the text to generate audio for, the maximum length is 4096 characters
+		@param voice voice to use when generating the audio, supported voices are alloy, 'echo', 'fable', 'onyx', 'nova', and 'shimmer'. 
 		@param token API token
 		@return response with type and content, Nil if unsuccessful
 		~#
@@ -27,9 +27,9 @@ bundle API.OpenAI.Audio {
 		#~
 		Generates audio from the input text
 		@param model available TTS models 'tts-1' or 'tts-1-hd'
-		@param input the text to generate audio for. the maximum length is 4096 characters
+		@param input the text to generate audio for, the maximum length is 4096 characters
 		@param voice voice to use when generating the audio. Supported voices are alloy, 'echo', 'fable', 'onyx', 'nova', and 'shimmer'. 
-		@param response_format format to audio in. Supported formats are 'mp3', 'opus', 'aac', 'flac', 'wav', and 'pcm'.
+		@param response_format format to audio in, supported formats are 'mp3', 'opus', 'aac', 'flac', 'wav', and 'pcm'.
 		@param token API token
 		@return response with type and content, Nil if unsuccessful
 		~#
@@ -40,10 +40,10 @@ bundle API.OpenAI.Audio {
 		#~
 		Generates audio from the input text
 		@param model available TTS models 'tts-1' or 'tts-1-hd'
-		@param input the text to generate audio for. the maximum length is 4096 characters
+		@param input the text to generate audio for, the maximum length is 4096 characters
 		@param voice voice to use when generating the audio. Supported voices are alloy, 'echo', 'fable', 'onyx', 'nova', and 'shimmer'. 
 		@param speed speed of the generated audio 0.25 to 4.0. 1.0 is the default.
-		@param response_format format to audio in. Supported formats are 'mp3', 'opus', 'aac', 'flac', 'wav', and 'pcm'.
+		@param response_format format to audio in, supported formats are 'mp3', 'opus', 'aac', 'flac', 'wav', and 'pcm'.
 		@param token API token
 		@return response with type and content, Nil if unsuccessful
 		~#
@@ -95,6 +95,9 @@ bundle API.OpenAI.Audio {
 Support for OpenAI chat APIs
 ~#
 bundle API.OpenAI.Chat {
+	#~
+	Model response for a given chat conversation
+	~#
 	class Completion from EndPoint {
 		@id : String;
 		@object : String;
@@ -141,6 +144,10 @@ bundle API.OpenAI.Chat {
 			return @created_at;
 		}
 
+		#~
+		ID of the model to use
+		@return ID of the model to use
+		~#
 		method : public : GetModel() ~ String {
 			return @model;
 		}
@@ -528,6 +535,10 @@ bundle API.OpenAI {
 			return @created_at;
 		}
 
+		#~
+		ID of the model to use
+		@return ID of the model to use
+		~#
 		method : public : GetModel() ~ String {
 			return @model;
 		}
