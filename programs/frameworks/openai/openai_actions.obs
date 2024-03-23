@@ -26,9 +26,9 @@ class Test {
 			else if(action->Equals("chat_complete") & args_size = 3) {
 				message := args[2];
 
-				messages := Vector->New()<Pair<String, String>>
-				messages->AddBack(Pair->New("system", "You speak pig latin")<String, String>);
-				messages->AddBack(Pair->New("user", message)<String, String>);
+				messages := Vector->New()<Collection.Pair<String, String>>
+				messages->AddBack(Collection.Pair->New("system", "You speak pig latin")<String, String>);
+				messages->AddBack(Collection.Pair->New("user", message)<String, String>);
 
 				API.OpenAI.Chat.Completion->Complete("gpt-3.5-turbo", messages, token)->ToString()->PrintLine();
 			}
