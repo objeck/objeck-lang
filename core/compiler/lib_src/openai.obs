@@ -10,21 +10,47 @@ Support for OpenAI audio APIs
 bundle API.OpenAI.Audio {
 	class Transcription from EndPoint {
 		function : Translate(name : String, content : Byte[], model : String, token : String) ~ String {
+			return Translate(name, content, model, Nil, Nil, -1.0, token)
+		}
+
+		function : Translate(name : String, content : Byte[], model : String, prompt : String, response_format : String, temperature : Float, token : String) ~ String {
+			encoder := Web.HTTP.Server.MultipartEncoder->New();
+
 			model_headers := Map->New()<String, String>;
 			model_headers->Insert("Content-Disposition", "form-data; name=\"model\"");
 			model_content := Web.HTTP.Server.MultipartContent->New(model_headers, model->ToByteArray());
+			encoder->Add(model_content);
 
 			content_headers := Map->New()<String, String>;
 			content_headers->Insert("Content-Disposition", "form-data; name=\"file\"; filename=\"{$name}\"");
 			content_headers->Insert("Content-Type", "application/octet-stream");
 			multi_content := Web.HTTP.Server.MultipartContent->New(content_headers, content);
-
-			encoder := Web.HTTP.Server.MultipartEncoder->New();
 			encoder->Add(multi_content);
-			encoder->Add(model_content);
-			boundry := encoder->GetBoundary();
+
+			if(prompt <> Nil) {
+				prompt_headers := Map->New()<String, String>;
+				prompt_headers->Insert("Content-Disposition", "form-data; name=\"prompt\"");
+				prompt_content := Web.HTTP.Server.MultipartContent->New(prompt_headers, prompt->ToByteArray());
+				encoder->Add(prompt_content);
+			};
+
+			if(response_format <> Nil) {
+				response_format_headers := Map->New()<String, String>;
+				response_format_headers->Insert("Content-Disposition", "form-data; name=\"response_format\"");
+				response_format_content := Web.HTTP.Server.MultipartContent->New(response_format_headers, response_format->ToByteArray());
+				encoder->Add(response_format_content);
+			};
+
+			if(temperature > 0.0) {
+				temperature_headers := Map->New()<String, String>;
+				temperature_headers->Insert("Content-Disposition", "form-data; name=\"temperature\"");
+				temperature_content := Web.HTTP.Server.MultipartContent->New(temperature_headers, temperature->ToString()->ToByteArray());
+				encoder->Add(temperature_content);
+			};
+
 			data := encoder->ToByteArray();
 
+			boundry := encoder->GetBoundary();
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer sk-{$token}");
 			headers->Insert("Content-Type", "multipart/form-data; boundary={$boundry}");
@@ -391,7 +417,7 @@ bundle API.OpenAI {
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer sk-{$token}");
 			headers->Insert("Content-Type", "multipart/form-data; boundary={$boundry}");
-			response := HttpsClient->QuickPost(Url->New("https://api.openai.com/v1/files"), data, "multipart/form-data", headers);
+			response := HttpsClient->QuickPost(Url->New("https://api.openai.com/v1/files"), data, headers);
 
 			return response->GetCode() = 200;
 		}
