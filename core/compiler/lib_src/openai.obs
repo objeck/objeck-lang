@@ -8,6 +8,36 @@ use Web.HTTP, Collection, System.IO.Filesystem, Data.JSON;
 Support for OpenAI audio APIs
 ~#
 bundle API.OpenAI.Audio {
+	class Transcription {
+		function : Translate(name : String, content : Byte[], model : String, token : String) ~ Nil {
+			model_headers := Map->New()<String, String>;
+			model_headers->Insert("Content-Disposition", "form-data; name=\"model\"");
+			model_content := Web.HTTP.Server.MultipartContent->New(model_headers, model->ToByteArray());
+
+			content_headers := Map->New()<String, String>;
+			content_headers->Insert("Content-Disposition", "form-data; name=\"file\"; filename=\"{$name}\"");
+			content_headers->Insert("Content-Type", "application/octet-stream");
+			multi_content := Web.HTTP.Server.MultipartContent->New(content_headers, content);
+
+			encoder := Web.HTTP.Server.MultipartEncoder->New();
+			encoder->Add(multi_content);
+			encoder->Add(model_content);
+			boundry := encoder->GetBoundary();
+			data := encoder->ToByteArray();
+System.IO.Filesystem.FileWriter->WriteFile("foo.txt", data);
+
+			headers := Map->New()<String, String>;
+			headers->Insert("Authorization", "Bearer sk-{$token}");
+			headers->Insert("Content-Type", "multipart/form-data; boundary={$boundry}");
+			response := HttpsClient->QuickPost(Url->New("https://api.openai.com/v1/audio/transcriptions"), data, "multipart/form-data", headers);
+
+response->GetCode()->PrintLine();
+response->GetContent()->ToString()->PrintLine();
+
+		}
+
+	}
+
 	#~
 	Audio APIs provides two speech to text endpoints, transcriptions and translations
 	~#
@@ -347,7 +377,7 @@ bundle API.OpenAI {
 			headers->Insert("Authorization", "Bearer sk-{$token}");
 			headers->Insert("Content-Type", "multipart/form-data; boundary={$boundry}");
 			response := HttpsClient->QuickPost(Url->New("https://api.openai.com/v1/files"), data, "multipart/form-data", headers);
-			
+
 			return response->GetCode() = 200;
 		}
 
