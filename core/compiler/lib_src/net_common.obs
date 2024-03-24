@@ -2288,14 +2288,10 @@ bundle Web.HTTP.Server {
 			if(@boundary = Nil) {
 				@boundary := "------------------------";
 
+				corups := "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 				do {
-					c := Int->Random('a', 'z')->ToChar();
-					if(Int->Random(1) % 2 = 0) {
-						@boundary->Append(c->ToUpper());
-					}
-					else {
-						@boundary->Append(c);
-					};
+					c := corups->Get(Int->Random(0, corups->Size() - 1));
+					@boundary->Append(c);
 				}
 				while(@boundary->Size() < 48);
 			};
