@@ -222,8 +222,9 @@ if(html <> Nil) {
 						post->Append("\r\n");
 					};
 					post->Append("\r\n");					
-					post->Append(data);
+					# post->Append(data);
 					socket->WriteString(post);
+					socket->WriteBuffer(data);
 					
 					# post->PrintLine();					
 					
