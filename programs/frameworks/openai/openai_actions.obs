@@ -15,8 +15,13 @@ class Test {
 			if(action->Equals("translate") & args_size = 3) {
 				file := args[2];
 				content := System.IO.Filesystem.FileReader->ReadBinaryFile(file);
-content->Size()->PrintLine();				
-				API.OpenAI.Audio.Transcription->Translate("{$file}", content, "whisper-1", token);
+				text := API.OpenAI.Audio.Transcription->Translate("{$file}", content, "whisper-1", token);
+				if(text <> Nil) {
+					text->PrintLine();
+				}
+				else {
+					"### Error calling: translate ###"->ErrorLine();
+				};
 			}
 			else if(action->Equals("text_to_speech") & args_size = 3) {
 				message := args[2];
