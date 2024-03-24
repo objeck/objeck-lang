@@ -49,6 +49,10 @@ class Test {
 				id := args[2];
 				API.OpenAI.File->Retrieve(id, token)->PrintLine();
 			}
+			else if(action->Equals("upload_file") & args_size = 3) {
+				name := args[2];
+				API.OpenAI.File->LoadOrCreate(name, token);
+			}
 			#
 			# Assistant
 			#
