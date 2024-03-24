@@ -1,7 +1,7 @@
 use Web.HTTP, Collection, System.IO.Filesystem, Data.JSON;
 
-# TODO: add accessors
 # TODO: doc existing APIs
+# TODO: audo support
 # TODO: image support
 
 #~
@@ -41,7 +41,7 @@ bundle API.OpenAI.Audio {
 				encoder->Add(response_format_content);
 			};
 
-			if(temperature > 0.0) {
+			if(temperature >= 0.0 && temperature <= 1.0) {
 				temperature_headers := Map->New()<String, String>;
 				temperature_headers->Insert("Content-Disposition", "form-data; name=\"temperature\"");
 				temperature_content := Web.HTTP.Server.MultipartContent->New(temperature_headers, temperature->ToString()->ToByteArray());
