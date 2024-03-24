@@ -133,6 +133,17 @@ if(html <> Nil) {
 		Performs a HTTPS POST
 		@param url URL
 		@param data data to post
+		@param headers key/value headers
+		@return read strings
+		~#
+		function : QuickPost(url : Web.HTTP.Url, data : Byte[], headers : Map<String, String>) ~ Web.HTTP.Response {
+			return QuickPost(url, data, Nil, headers);
+		}
+
+		#~
+		Performs a HTTPS POST
+		@param url URL
+		@param data data to post
 		@param content_type content type
 		@param headers key/value headers
 		@return read strings
@@ -195,8 +206,10 @@ if(html <> Nil) {
 					post->Append(location);
 					post->Append(" HTTP/1.1\r\nHost: ");
 					post->Append(address);
-					post->Append("\r\nContent-Type: ");
-					post->Append(content_type);
+					if(content_type <> Nil & <>content_type->IsEmpty()) {
+						post->Append("\r\nContent-Type: ");
+						post->Append(content_type);
+					};
 					post->Append("\r\nContent-Length: ");
 					post->Append(data->Size()->ToString());
 					post->Append("\r\n");
