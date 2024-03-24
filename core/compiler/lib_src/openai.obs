@@ -346,7 +346,8 @@ bundle API.OpenAI {
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer sk-{$token}");
 			headers->Insert("Content-Type", "multipart/form-data; boundary={$boundry}");
-			response := HttpsClient->QuickPost(Url->New("https://api.openai.com/v1/files"), data, "multipart/form-data", headers);			
+			response := HttpsClient->QuickPost(Url->New("https://api.openai.com/v1/files"), data, "multipart/form-data", headers);
+			
 			return response->GetCode() = 200;
 		}
 
