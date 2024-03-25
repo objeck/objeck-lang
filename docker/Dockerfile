@@ -9,6 +9,7 @@ ENV PATH="${PATH}:/opt/objeck/bin"
 ENV OBJECK_LIB_PATH="/opt/objeck/lib"
 RUN mkdir -p /home/objeck
 WORKDIR /home/objeck
-CMD obc -in "\"Hello World\"->PrintLine()" && \
-	obr program.obe
+
+# CMD obc -in "\"Hello World\"->PrintLine()" && \
+# 	obr program.obe
 # ENTRYPOINT ["/bin/bash"]

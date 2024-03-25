@@ -11,6 +11,8 @@ if not "%arg_count%"=="3" (
 
 set ZIP_BIN="\Program Files\7-Zip\7z.exe"
 
+del /q *.tgz
+
 wsl --cd %3/core/release -e git reset --hard origin/master
 wsl --cd %3/core/release -e ./deploy_posix.sh 64
 
