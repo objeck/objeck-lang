@@ -4,10 +4,7 @@ REM cls && build 2024.3.0 "\\wsl.localhost\Ubuntu\home\{user}\Documents\Code\obj
 
 set arg_count=0
 for %%x in (%*) do set /a arg_count += 1
-
-if not "%arg_count%"=="3" (
-	goto usage
-)
+if not %arg_count%=="3" (goto usage)
 
 set ZIP_BIN="\Program Files\7-Zip\7z.exe"
 
