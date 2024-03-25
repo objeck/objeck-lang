@@ -12,11 +12,33 @@ Copyright (c) 2024 Randy Hollines
 Support for OpenAI audio APIs
 ~#
 bundle API.OpenAI.Audio {
+	#~
+	Transcribes audio into the input language.
+	~#
 	class Transcription from EndPoint {
+		#~
+		Transcribes audio into the input language.
+		@param name transcription name
+		@param content byte stream to translate
+		@param model ID of the model to use
+		@param token API token
+		@return translated text
+		~#
 		function : Translate(name : String, content : Byte[], model : String, token : String) ~ String {
 			return Translate(name, content, model, Nil, Nil, -1.0, token)
 		}
 
+		#~
+		Transcribes audio into the input language.
+		@param name transcription name
+		@param content byte stream to translate
+		@param model ID of the model to use
+		@param prompt text to guide the model's style or continue a previous audio segment
+		@param response_format format of the transcript output, options: 'json', 'text', 'srt', 'verbose_json', or 'vtt'
+		@param temperature sampling temperature, between 0 and 1, higher values make the output more random
+		@param token API token
+		@return translated text
+		~#
 		function : Translate(name : String, content : Byte[], model : String, prompt : String, response_format : String, temperature : Float, token : String) ~ String {
 			encoder := Web.HTTP.Server.MultipartEncoder->New();
 
@@ -57,8 +79,8 @@ bundle API.OpenAI.Audio {
 			boundry := encoder->GetBoundary();
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
-			headers->Insert("Content-Type", "multipart/form-data; boundary={$boundry}");
-			response := HttpsClient->QuickPost(Url->New("https://api.openai.com/v1/audio/transcriptions"), data, headers);
+			response := HttpsClient->QuickPost(Url->New("https://api.openai.com/v1/audio/transcriptions"), data, 
+				"multipart/form-data; boundary={$boundry}", headers);
 
 			if(response <> Nil) {
 				# response->GetContent()->ToString()->PrintLine();				
@@ -420,8 +442,8 @@ bundle API.OpenAI {
 
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
-			headers->Insert("Content-Type", "multipart/form-data; boundary={$boundry}");
-			response := HttpsClient->QuickPost(Url->New("https://api.openai.com/v1/files"), data, headers);
+			response := HttpsClient->QuickPost(Url->New("https://api.openai.com/v1/files"), data, 
+				"multipart/form-data; boundary={$boundry}", headers);
 
 			return response->GetCode() = 200;
 		}
