@@ -22,7 +22,7 @@ bundle API.OpenAI.Audio {
 		@param content byte stream to translate
 		@param model ID of the model to use
 		@param token API token
-		@return translated text
+		@return translated text, Nil if unsuccessful
 		~#
 		function : Translate(name : String, content : Byte[], model : String, token : String) ~ String {
 			return Translate(name, content, model, Nil, Nil, -1.0, token)
@@ -37,7 +37,7 @@ bundle API.OpenAI.Audio {
 		@param response_format format of the transcript output, options: 'json', 'text', 'srt', 'verbose_json', or 'vtt'
 		@param temperature sampling temperature, between 0 and 1, higher values make the output more random
 		@param token API token
-		@return translated text
+		@return translated text, Nil if unsuccessful
 		~#
 		function : Translate(name : String, content : Byte[], model : String, prompt : String, response_format : String, temperature : Float, token : String) ~ String {
 			encoder := Web.HTTP.Server.MultipartEncoder->New();
@@ -100,9 +100,7 @@ bundle API.OpenAI.Audio {
 			};
 
 			return Nil;
-
 		}
-
 	}
 
 	#~
@@ -249,10 +247,18 @@ bundle API.OpenAI.Chat {
 			return @model;
 		}
 
+		#~
+		List of chat completion choices
+		@return completion choices
+		~#
 		method : public : GetChoices() ~ Vector<API.OpenAI.Chat.Choice> {
 			return @choices;
 		}
 
+		#~
+		String representation of the object
+		@return string representation
+		~#
 		method : public : ToString() ~ String {			
 			buffer := "[id='";
 			buffer += @id;
@@ -282,6 +288,13 @@ bundle API.OpenAI.Chat {
 			return buffer;
 		}
 
+		#~
+		Model response for the given chat conversation
+		@param messages list of messages comprising the conversation so far.
+		@param model ID of the model to use
+		@param token API token
+		@return completion response
+		~#
 		function : Complete(model : String, messages : Vector<Pair<String, String>>, token : String) ~ Completion {
 			completion_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 			completion_json->Insert("model", model);
@@ -323,6 +336,9 @@ bundle API.OpenAI.Chat {
 		}
 	}
 
+	#~
+	Completion choice
+	~#
 	class Choice from EndPoint {
 		@index : Int;
 		@finish_reason : String;
@@ -339,18 +355,34 @@ bundle API.OpenAI.Chat {
 			@message := Pair->New(role, content)<String, String>;
 		}
 
+		#~
+		Get index
+		@return index
+		~#
 		method : public : GetIndex() ~ Int {
 			return @index;
 		}
 
+		#~
+		Get finish reason
+		@return finish reason
+		~#
 		method : public : GetFinishReason() ~ String {
 			return @finish_reason;
 		}
 
+		#~
+		Get message
+		@return message
+		~#
 		method : public : GetMessage() ~ Pair<String, String> {
 			return @message;
 		}
 
+		#~
+		String representation of the object
+		@return string representation
+		~#
 		method : public : ToString() ~ String {
 			role := @message->GetFirst();
 			content := @message->GetSecond();
@@ -367,9 +399,7 @@ bundle API.OpenAI {
 		@id : String;
 		@object : String;
 		@created_at : Int;
-
 		@bytes : Int;
-		
 		@filename : String;
 		@purpose : String;
 		
@@ -400,6 +430,10 @@ bundle API.OpenAI {
 			return @object;
 		}
 
+		#~
+		Get the size of the file
+		@return size of the file
+		~#
 		method : public : GetBytes() ~ Int {
 			return @bytes;
 		}
@@ -412,18 +446,37 @@ bundle API.OpenAI {
 			return @created_at;
 		}
 
+		#~
+		Get the name of the file
+		@return name of the file
+		~#
 		method : public : GetFilename() ~ String {
 			return @filename;
 		}
 
+		#~
+		Get the purpose
+		@return purpose
+		~#
 		method : public : GetPurpose() ~ String {
 			return @purpose;
 		}
 
+		#~
+		String representation of the object
+		@return string representation
+		~#
 		method : public : ToString() ~ String {
 			return "[id='{$@id}', object='{$@object}', bytes={$@bytes}, created_at={$@created_at}, filename='{$@filename}', purpose='{$@purpose}']"; 
 		}
 
+		#~
+		Upload a file that can be used across various endpoints
+		@param name file object name
+		@param content file content
+		@param token API token
+		@return string representation
+		~#
 		function : Create(name : String, content : Byte[], token : String) ~ Bool {
 			purpose_headers := Map->New()<String, String>;
 			purpose_headers->Insert("Content-Disposition", "form-data; name=\"purpose\"");
@@ -448,6 +501,12 @@ bundle API.OpenAI {
 			return response->GetCode() = 200;
 		}
 
+		#~
+		Loads a file
+		@param id file ID
+		@param token API token
+		@return file reference
+		~#
 		function : Load(id : String, token : String) ~ API.OpenAI.File {
 			file : API.OpenAI.File;
 
@@ -473,6 +532,12 @@ bundle API.OpenAI {
 			return file;
 		}
 
+		#~
+		Deletes a file
+		@param id file ID
+		@param token API token
+		@return true if successful, false otherwise
+		~#
 		function : Delete(id : String, token : String) ~ Bool {
 			file : API.OpenAI.File;
 
@@ -498,6 +563,12 @@ bundle API.OpenAI {
 			return false;
 		}
 		
+		#~
+		Loads or creates an OpenAI file from the local filesystem
+		@param filename local file path
+		@param token API token
+		@return file reference
+		~#
 		function : LoadOrCreate(filename : String, token : String) ~ API.OpenAI.File {
 			file := LoadByName(filename, token);
 			
@@ -517,6 +588,12 @@ bundle API.OpenAI {
 			return file;
 		}
 
+		#~
+		Loads an OpenAI file from the local filesystem
+		@param filename local file path
+		@param token API token
+		@return file reference
+		~#
 		function : LoadByName(filename : String, token : String) ~ API.OpenAI.File {
 			found : API.OpenAI.File;
 			
@@ -532,6 +609,11 @@ bundle API.OpenAI {
 			return found;
 		}
 
+		#~
+		Loads a list available OpenAI files
+		@param token API token
+		@return file reference
+		~#
 		function : ListFiles(token : String) ~ Vector<API.OpenAI.File> {
 			files := Vector->New()<API.OpenAI.File>
 
@@ -560,6 +642,12 @@ bundle API.OpenAI {
 			return files;
 		}
 
+		#~
+		Returns the contents of the specified file
+		@param id file ID
+		@param token API token
+		@return file content
+		~#
 		function : Retrieve(id : String, token : String) ~ Byte[] {
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
@@ -567,6 +655,9 @@ bundle API.OpenAI {
 		}
 	}
 
+	#~
+	Builds assistants that can call models and use tools to perform tasks
+	~#
 	class Assistant from EndPoint {
 		@id : String;
 		@object : String;
@@ -641,18 +732,35 @@ bundle API.OpenAI {
 			return @model;
 		}
 
+		#~
+		Name of the assistant
+		@return name of the assistant
+		~#
 		method : public : GetName() ~ String {
 			return @name;
 		}
 
+		#~
+		Description of the assistant
+		@return description of the assistant
+		~#
 		method : public : GetDescription() ~ String {
 			return @description;
 		}
 
+		#~
+		System instructions that the assistant uses
+		@return system instructions
+		~#
 		method : public : GetInstructions() ~ String {
 			return @instructions;
 		}
 
+		#~
+		Adds a file to assistant
+		@param file file to add to assistant
+		@return true if successful, false otherwise
+		~#
 		method : public : AddFile(file : API.OpenAI.File) ~ Bool {
 			file_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 			file_json->Insert("file_id", file->GetId());
@@ -682,6 +790,10 @@ bundle API.OpenAI {
 			return false;
 		}
 
+		#~
+		String representation of the object
+		@return string representation
+		~#
 		method : public : ToString() ~ String {			
 			buffer := "[id='";
 			buffer += @id;
@@ -731,6 +843,11 @@ bundle API.OpenAI {
 			return buffer;
 		}
 
+		#~
+		Returns a list of assistants
+		@param token API token
+		@return list of assistants
+		~#
 		function : ListAssistants(token : String) ~ Vector<API.OpenAI.Assistant> {
 			assistants := Vector->New()<API.OpenAI.Assistant>
 
@@ -761,14 +878,37 @@ bundle API.OpenAI {
 			return assistants;
 		}
 
+		#~
+		Create an assistant with a model and instructions
+		@param model ID of the model to use
+		@param token API token
+		@return assistant
+		~#
 		function : Create(model : String, token : String) ~ API.OpenAI.Assistant {
 			return Create(model, Nil, Nil, Nil, Nil, Nil, token);
 		}
 
+		#~
+		Create an assistant with a model and instructions
+		@param model ID of the model to use
+		@param instructions the system instructions that the assistant uses
+		@param token API token
+		@return newly created assistant
+		~#
 		function : Create(model : String, name : String, description : String, instructions : String, token : String) ~ API.OpenAI.Assistant {
 			return Create(model, name, description, instructions, Nil, Nil, token);
 		}
 
+		#~
+		Creates an assistant with a model and instructions
+		@param model ID of the model to use
+		@param description description of the assistant.
+		@param instructions the system instructions that the assistant uses
+		@param tools list of tool enabled on the assistant
+		@param files list of file IDs attached to this assistant
+		@param token API token
+		@return newly created assistant
+		~#
 		function : Create(model : String, name : String, description : String, instructions : String, 
 				tools : Vector<String>, files : Vector<API.OpenAI.File>, token : String) ~ API.OpenAI.Assistant {
 			if(model = Nil) {
@@ -839,6 +979,12 @@ bundle API.OpenAI {
 			return Nil;
 		}
 
+		#~
+		Loads an assistant with a model and instructions
+		@param model ID of the model to use
+		@param token API token
+		@return loaded assistant
+		~#
 		function : Load(id : String, token : String) ~ API.OpenAI.Assistant {
 			assistant : API.OpenAI.Assistant;
 
@@ -866,6 +1012,12 @@ bundle API.OpenAI {
 			return assistant;
 		}
 
+		#~
+		Deletes an assistant with a model and instructions
+		@param model ID of the model to use
+		@param token API token
+		@return true if successful, false otherwise
+		~#
 		function : Delete(id : String, token : String) ~ Bool {
 			file : API.OpenAI.File;
 
@@ -893,6 +1045,9 @@ bundle API.OpenAI {
 		}
 	}
 
+	#~
+	Create threads that assistants can interact with
+	~#
 	class Thread from EndPoint {
 		@id : String;
 		@object : String;
@@ -930,6 +1085,10 @@ bundle API.OpenAI {
 			return @created_at;
 		}
 
+		#~
+		String representation of the object
+		@return string representation
+		~#
 		method : public : ToString() ~ String {
 			buffer := "[id='";
 			buffer += @id;
@@ -945,6 +1104,11 @@ bundle API.OpenAI {
 			return buffer;
 		}
 
+		#~
+		Creates a thread
+		@param token API token
+		@return newly created thread
+		~#
 		function : Create(token : String) ~ API.OpenAI.Thread {
 			thread : API.OpenAI.Thread;
 
@@ -972,6 +1136,12 @@ bundle API.OpenAI {
 			return Nil;	
 		}
 
+		#~
+		Loads an existing thread
+		@param id ID of the model to use
+		@param token API token
+		@return loaded thread
+		~#
 		function : Load(id : String, token : String) ~ API.OpenAI.Thread {
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
@@ -998,8 +1168,14 @@ bundle API.OpenAI {
 			return Nil;
 		}
 
+		#~
+		Loads an existing thread
+		@param id ID of the model to use
+		@param token API token
+		@return loaded thread
+		~#
 		function : Delete(id : String, token : String) ~ Bool {
-			file : API.OpenAI.File;
+			thread : API.OpenAI.Thread;
 
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
@@ -1007,24 +1183,27 @@ bundle API.OpenAI {
 			response := HttpsClient->QuickDelete(Url->New("https://api.openai.com/v1/threads/{$id}"), "application/json", headers);
 			
 			if(response <> Nil) {
-				file_json := JsonParser->TextToElement(response->GetContent()->ToString());
-				if(file_json = Nil) {
+				thread_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				if(thread_json = Nil) {
 					return false;
 				};
 
-				if(file_json->Has("error")) {
-					error_str := file_json->FindElements("error/message")->GetString();
+				if(thread_json->Has("error")) {
+					error_str := thread_json->FindElements("error/message")->GetString();
 					SetLastError(error_str);
 					return false;
 				}
 
-				return file_json->Get("deleted")->GetString()->Equals("true");
+				return thread_json->Get("deleted")->GetString()->Equals("true");
 			};
 
 			return false;
 		}
 	}
 
+	#~
+	Create messages within threads
+	~#
 	class Message from EndPoint {
 		@id : String;
 		@object : String;
@@ -1086,18 +1265,34 @@ bundle API.OpenAI {
 			return @created_at;
 		}
 
+		#~
+		Get the ID of the thread associated with message
+		@return thread ID
+		~#
 		method : public : GetThreadId() ~ String {
 			return @thread_id;
 		}
 
+		#~
+		Get the role of the entity that is creating the message
+		@return role of the entity that is creating the message
+		~#
 		method : public : GetRole() ~ String {
 			return @role;
 		}
 
+		#~
+		Get the content of the message
+		@return list of messages with roles
+		~#
 		method : public : GetContents() ~ Vector<Pair<String, String>> {
 			return @contents;
 		}
 
+		#~
+		String representation of the object
+		@return string representation
+		~#
 		method : public : ToString() ~ String {
 			buffer := "[id='";
 			buffer += @id;
@@ -1132,10 +1327,25 @@ bundle API.OpenAI {
 			return buffer;
 		}
 
+		#~
+		Loads a message
+		@param id message ID
+		@param token API token
+		@return loaded Message
+		~#
 		function : Create(role : String, content : String, thread : API.OpenAI.Thread, token : String) ~ API.OpenAI.Message {
 			return Create(role, content , thread, Nil, token);
 		}
 
+		#~
+		Create a message.
+		@param content content of the message.
+		@param role role of the entity that is creating the message
+		@param thread thread associated with message
+		@param files list to attach to the message
+		@param token API token
+		@return newly created message
+		~#
 		function : Create(role : String, content : String, thread : API.OpenAI.Thread, files : Vector<API.OpenAI.File>, token : String) ~ API.OpenAI.Message {
 			message_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 			message_json->Insert("role", role);
@@ -1177,6 +1387,13 @@ bundle API.OpenAI {
 			return Nil;	
 		}
 
+		#~
+		Loads a message
+		@param id message ID
+		@param thread thread associated with message
+		@param token API token
+		@return loaded Message
+		~#
 		function : Load(id : String, thread : API.OpenAI.Thread, token : String) ~ API.OpenAI.Message {
 			thread_id := thread->GetId();
 			headers := Map->New()<String, String>;
@@ -1215,6 +1432,12 @@ bundle API.OpenAI {
 			return Nil;
 		}
 
+		#~
+		Loads a messages associated with thread
+		@param thread thread associated with message
+		@param token API token
+		@return messages associated with thread
+		~#
 		function : ListMessages(thread : API.OpenAI.Thread, token : String) ~ Vector<API.OpenAI.Message> {
 			messages := Vector->New()<API.OpenAI.Message>
 
@@ -1247,6 +1470,9 @@ bundle API.OpenAI {
 		}
 	}
 
+	#~
+	Represents an execution run on a thread
+	~#
 	class Run from EndPoint {
 		@id : String;
 		@object : String;
@@ -1284,6 +1510,10 @@ bundle API.OpenAI {
 			return @created_at;
 		}
 
+		#~
+		The status of the run, which can be either: 'queued', 'in_progress', 
+		'requires_action', 'cancelling', 'cancelled', 'failed', 'completed', or 'expired'.
+		~#
 		method : public : GetStatus() ~ String {
 			return @status;
 		}
@@ -1297,6 +1527,12 @@ bundle API.OpenAI {
 			@status := run_json->Get("status")->GetString();
 		}
 
+		#~
+		Create a run
+		@param thread_id ID of the thread to run
+		@param assistant_id ID of the assistant to use to execute this run
+		@return newly created Run
+		~#
 		function : Create(assistant : API.OpenAI.Assistant, thread : API.OpenAI.Thread, token : String) ~ API.OpenAI.Run {
 			run_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 			run_json->Insert("assistant_id", assistant->GetId());
@@ -1327,6 +1563,11 @@ bundle API.OpenAI {
 			return Nil;	
 		}
 
+		#~
+		Refreshed the run's data such as status
+		@param token API token
+		@return newly created Run
+		~#
 		method : public : Refresh(token : String) ~ Bool {
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
@@ -1365,6 +1606,12 @@ bundle API.OpenAI {
 			return false;
 		}
 
+		#~
+		Loads a run
+		@param id run ID
+		@param token API token
+		@return loaded Run
+		~#
 		function : Load(id : String, thread : API.OpenAI.Thread, token : String) ~ API.OpenAI.Run {
 			thread_id := thread->GetId();
 			headers := Map->New()<String, String>;
@@ -1403,6 +1650,10 @@ bundle API.OpenAI {
 			return Nil;
 		}
 
+		#~
+		String representation of the object
+		@return string representation
+		~#
 		method : public : ToString() ~ String {
 			buffer := "[id='";
 			buffer += @id;
@@ -1431,6 +1682,9 @@ bundle API.OpenAI {
 		}
 	}
 
+	#~
+	OpenAI endpoint
+	~#
 	class EndPoint {
 		@last_message : static : String;
 
@@ -1439,6 +1693,10 @@ bundle API.OpenAI {
 
 		}
 
+		#~
+		Get the last error
+		@return last error
+		~#
 		function : GetLastError() ~ String {
 			return @last_message;
 		}
