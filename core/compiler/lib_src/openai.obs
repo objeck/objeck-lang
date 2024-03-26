@@ -1,9 +1,5 @@
 use Web.HTTP, Collection, System.IO.Filesystem, Data.JSON;
 
-# TODO: doc existing APIs
-# TODO: audio support
-# TODO: image support
-
 #~~
 Copyright (c) 2024 Randy Hollines
 ~~#	
