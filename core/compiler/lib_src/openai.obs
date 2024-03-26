@@ -887,6 +887,8 @@ bundle API.OpenAI {
 		#~
 		Create an assistant with a model and instructions
 		@param model ID of the model to use
+		@param name name to use
+		@param description description of the assistant.
 		@param instructions the system instructions that the assistant uses
 		@param token API token
 		@return newly created assistant
@@ -898,6 +900,7 @@ bundle API.OpenAI {
 		#~
 		Creates an assistant with a model and instructions
 		@param model ID of the model to use
+		@param name name to use
 		@param description description of the assistant.
 		@param instructions the system instructions that the assistant uses
 		@param tools list of tool enabled on the assistant
@@ -977,7 +980,7 @@ bundle API.OpenAI {
 
 		#~
 		Loads an assistant with a model and instructions
-		@param model ID of the model to use
+		@param id model ID of the model to use
 		@param token API token
 		@return loaded assistant
 		~#
@@ -1010,7 +1013,7 @@ bundle API.OpenAI {
 
 		#~
 		Deletes an assistant with a model and instructions
-		@param model ID of the model to use
+		@param id model ID of the model to use
 		@param token API token
 		@return true if successful, false otherwise
 		~#
@@ -1325,7 +1328,9 @@ bundle API.OpenAI {
 
 		#~
 		Loads a message
-		@param id message ID
+		@param role role of the entity that is creating the message
+		@param content content of the message.
+		@param thread thread associated with message
 		@param token API token
 		@return loaded Message
 		~#
@@ -1335,8 +1340,8 @@ bundle API.OpenAI {
 
 		#~
 		Create a message.
-		@param content content of the message.
 		@param role role of the entity that is creating the message
+		@param content content of the message.
 		@param thread thread associated with message
 		@param files list to attach to the message
 		@param token API token
@@ -1525,8 +1530,9 @@ bundle API.OpenAI {
 
 		#~
 		Create a run
-		@param thread_id ID of the thread to run
-		@param assistant_id ID of the assistant to use to execute this run
+		@param assistant the assistant to use to execute this run
+		@param thread thread to run
+		@param token API token
 		@return newly created Run
 		~#
 		function : Create(assistant : API.OpenAI.Assistant, thread : API.OpenAI.Thread, token : String) ~ API.OpenAI.Run {
@@ -1605,6 +1611,7 @@ bundle API.OpenAI {
 		#~
 		Loads a run
 		@param id run ID
+		@param thread instance associated with run
 		@param token API token
 		@return loaded Run
 		~#

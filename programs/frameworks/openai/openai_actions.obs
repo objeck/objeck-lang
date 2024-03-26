@@ -128,8 +128,8 @@ class Test {
 				tool_count := tools->Size();
 				
 				assistant := Assistant->Create("gpt-3.5-turbo-0125", "DU Basketball", "DU Basketball", 
-						"You are historian of University of Denver Men's basketball from the 1960's", 
-						tools, files, token);
+					"You are historian of University of Denver Men's basketball from the 1960's", 
+					tools, files, token);
 				if(assistant = Nil) {
 					Assistant->GetLastError()->PrintLine();
 				}
