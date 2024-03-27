@@ -52,7 +52,7 @@ Want to get started? Take a look at the [language guide](https://objeck.org/gett
 ## What's New?
 
 * v2024.4.0
-  * TBD
+  * Google Gemini API support
 
 * v2024.3.0 [current release]
   * Adding support for OpenAI APIs
