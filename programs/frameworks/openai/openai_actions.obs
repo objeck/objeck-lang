@@ -27,7 +27,7 @@ class Test {
 				message := args[2];
 
 				response := API.OpenAI.Audio.Speech->Speak("tts-1", message, "fable", "mp3", token)<String, ByteArrayRef>;				
-				if(response->GetFirst()->Equals("audio/mp3")) {
+				if(response->GetFirst()->Has("audio")) {
 					System.IO.Filesystem.FileWriter->WriteFile("speech.mp3", response->GetSecond()->Get());
 				};
 			}
