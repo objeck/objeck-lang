@@ -55,7 +55,7 @@ Want to get started? Take a look at the [language guide](https://objeck.org/gett
   * Google Gemini API support
 
 * v2024.3.0 [current release]
-  * Adding support for OpenAI APIs
+  * Added support for OpenAI APIs
   * Fixed GC bug #462 and #482
   
 * v2024.2.1
