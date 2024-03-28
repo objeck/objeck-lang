@@ -1,0 +1,88 @@
+use Web.HTTP, Collection, System.IO.Filesystem, Data.JSON;
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() = 2) {
+			token := args[0];
+			question := args[1];
+
+			data := MakeRequest(question)->ToString()->ToByteArray();
+			url := Url->New("https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={$token}");
+			
+			response := DoRequest(data, url);
+			if(response <> Nil) {
+				content := ParseResponse(response);
+				each(line in content) {
+					line->PrintLine();
+				};
+			};
+		};
+	}
+
+	function : MakeRequest(text : String) ~ JsonElement {
+		part_array_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+		part_array_json->Insert("text", text);
+
+		# ---
+
+		parts_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+		parts_array_json->Add(part_array_json);
+
+		parts_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+		parts_json->Insert("parts", parts_array_json);
+
+		# ---
+
+		contents_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+		contents_array_json->Add(parts_json);
+
+		contents_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+		contents_json->Insert("contents", contents_array_json);
+
+		return contents_json;
+	}
+
+	function : ParseResponse(response : JsonElement) ~ Vector<String> {
+		responses := Vector->New()<String>;
+
+		candidates_json := response->Get("candidates");
+		if(candidates_json <> Nil & candidates_json->Size() > 0) {
+			candidate_json := candidates_json->Get(0);
+			content_json := candidate_json->Get("content");
+
+			parts_json := content_json->Get("parts");
+			if(parts_json <> Nil & parts_json->Size() > 0) {
+				text_json := parts_json->Get(0)->Get("text");
+				role_json := content_json->Get("role");
+
+				responses->AddBack(role_json->GetString());
+				responses->AddBack(text_json->GetString());
+			};
+		};
+
+		return responses;
+	}
+
+	function : DoRequest(data : Byte[], url : Url) ~ JsonElement {
+		headers := Map->New()<String, String>;
+		
+		response := HttpsClient->QuickPost(url, data, "application/json", headers);
+		if(response <> Nil) {
+			response_json := JsonParser->TextToElement(response->GetContent()->ToString());
+			# response->GetContent()->ToString()->PrintLine();			
+			if(response_json = Nil) {
+				"### Error: Unable to parse response ###"->ErrorLine();
+				return Nil;
+			};
+			
+			if(response_json->Has("error")) {
+				"### Error: Error response ###"->ErrorLine();
+				return Nil;
+			};
+
+			return response_json;
+		};
+
+		return Nil;
+	}
+}
