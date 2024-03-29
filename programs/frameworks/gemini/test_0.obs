@@ -7,7 +7,7 @@ class Test {
 			question := args[1];
 
 			request := MakeRequest(question);
-			url := "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=AIzaSyDz77IGBv8A339VTuT3JP4XypYwcpb7Y0c";
+			url := "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={$token}";
 			
 			response := DoRequest(request, url, token);
 			if(response <> Nil) {
