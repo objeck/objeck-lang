@@ -391,6 +391,9 @@ bundle API.OpenAI.Chat {
 Support for OpenAIs assistant and general APIs
 ~#
 bundle API.OpenAI {
+	#~
+	Open AI file
+	~#
 	class File from EndPoint {
 		@id : String;
 		@object : String;
