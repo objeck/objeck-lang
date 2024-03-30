@@ -61,7 +61,9 @@ bundle Web.HTTP {
 			query_keys_values := query->Split('&');
 			each(query_key_value in query_keys_values) {
 				key_value := query_key_value->Split('=');
-				params->Insert(key_value[0], key_value[1])
+				if(key_value->Size() = 2) {
+					params->Insert(key_value[0], key_value[1])
+				};
 			};
 
 			return params;

@@ -5583,7 +5583,7 @@ each(i : cities) {
 		method : public : native : Split(delim : String) ~ String[] {
 			delim_size := delim->Size();
 			if(delim_size = 0 | @pos = 0) {
-				return Nil;
+				return String->New[0];
 			};
 			
 			# first-pass count tokens
