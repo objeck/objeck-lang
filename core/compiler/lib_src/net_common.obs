@@ -437,7 +437,7 @@ bundle Web.HTTP {
 			};
 					
 			return buffer;			
-		}f
+		}
 	}
 
 	class WebCommon {
