@@ -21,6 +21,7 @@ bundle Web.HTTP {
 		@port : Int;
 		@frag : String;
 		@query : String;
+		@query_params : Map->New()<String, String>;
 		@path : String;
 
 		#~
@@ -31,6 +32,7 @@ bundle Web.HTTP {
 			@url := url;
 			@port := -1;
 			@parsed := ParseUrl(url);
+			@query_params := Map->New()<String, String>;
 		}
 
 		#~
@@ -55,18 +57,17 @@ bundle Web.HTTP {
 		@return query parameters
 		~#
 		method : public : GetQueryParameters() ~ Map<String, String> {
-			params := Map->New()<String, String>;
-
-			query := GetQuery();
-			query_keys_values := query->Split('&');
-			each(query_key_value in query_keys_values) {
-				key_value := query_key_value->Split('=');
-				if(key_value->Size() = 2) {
-					params->Insert(key_value[0], key_value[1])
+			if(@parsed & @query_params->IsEmpty()) {
+				query_keys_values := @query->Split('&');
+				each(query_key_value in query_keys_values) {
+					key_value := query_key_value->Split('=');
+					if(key_value->Size() = 2) {
+						@query_params->Insert(key_value[0], key_value[1])
+					};
 				};
 			};
-
-			return params;
+			
+			return @query_params;
 		}
 
 		#~
