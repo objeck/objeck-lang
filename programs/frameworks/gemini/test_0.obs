@@ -7,8 +7,17 @@ class Test {
 			question := args[1];
 
 			request := MakeRequest(question);
-			url := "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={$token}";
-			
+			url := Url->New("https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={$token}&a=b");
+foo := url->GetQuery();
+keys_values := foo->Split('&');
+each(key_value in keys_values) {
+	key_and_value := key_value->Split('=');
+	key := key_and_value[0];
+	value := key_and_value[1];
+
+	"{$key}, {$value}"->PrintLine();
+}
+#~			
 			response := DoRequest(request, url, token);
 			if(response <> Nil) {
 				content := ParseResponse(response);
@@ -16,7 +25,8 @@ class Test {
 					line->PrintLine();
 				};
 			};
-		};
+~#			
+		};		
 	}
 
 	function : MakeRequest(text : String) ~ JsonElement {
@@ -62,10 +72,7 @@ class Test {
 	}
 
 	function : DoRequest(request : JsonElement, url : String, token : String) ~ JsonElement {
-		headers := Map->New()<String, String>;
-		headers->Insert("key", "{$token}");
-
-		response := HttpsClient->QuickPost(Url->New(url), request->ToString()->ToByteArray(), "application/json", headers);
+		response := HttpsClient->QuickPost(Url->New(url), request->ToString()->ToByteArray(), "application/json");
 		if(response <> Nil) {
 			response_json := JsonParser->TextToElement(response->GetContent()->ToString());
 			# response->GetContent()->ToString()->PrintLine();			
