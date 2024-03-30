@@ -32,7 +32,6 @@ bundle Web.HTTP {
 			@url := url;
 			@port := -1;
 			@parsed := ParseUrl(url);
-			@query_params := Map->New()<String, String>;
 		}
 
 		#~
@@ -54,11 +53,13 @@ bundle Web.HTTP {
 
 		#~
 		Gets the name/value query parameters
-		@return query parameters
+		@return query parameters, Nil if URL cannot be parsed
 		~#
 		method : public : GetQueryParameters() ~ Map<String, String> {
-			if(@parsed & @query_params->IsEmpty()) {
+			if(@parsed & @query_params = Nil) {
+				@query_params := Map->New()<String, String>;
 				query_keys_values := @query->Split('&');
+
 				each(query_key_value in query_keys_values) {
 					key_value := query_key_value->Split('=');
 					if(key_value->Size() = 2) {
@@ -436,7 +437,7 @@ bundle Web.HTTP {
 			};
 					
 			return buffer;			
-		}
+		}f
 	}
 
 	class WebCommon {
