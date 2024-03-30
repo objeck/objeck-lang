@@ -51,6 +51,23 @@ bundle Web.HTTP {
 		}
 
 		#~
+		Gets the name/value query parameters
+		@return query parameters
+		~#
+		method : public : GetQueryParameters() ~ Map<String, String> {
+			params := Map->New()<String, String>;
+
+			query := GetQuery();
+			query_keys_values := ->query('&');
+			each(query_key_value in query_keys_values) {
+				key_value := query_key_value->Split('=');
+				params->Insert(key_value[0], key_value[1])
+			};
+
+			return params;
+		}
+
+		#~
 		Determines if given URL has been parsed correctly
 		@return true if parsed, false otherwise
 		~#
