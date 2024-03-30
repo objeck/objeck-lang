@@ -5,19 +5,17 @@ class Test {
 		if(args->Size() = 2) {
 			token := args[0];
 			question := args[1];
-
 			request := MakeRequest(question);
-			url := Url->New("https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={$token}&a=b");
-url->GetQueryParameters()->Find("key")->PrintLine();
-#~			
-			response := DoRequest(request, url, token);
-			if(response <> Nil) {
-				content := ParseResponse(response);
-				each(line in content) {
-					line->PrintLine();
+			url := Url->New("https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={$token}");
+			if(url->GetQueryParameters()->Has("key")) {			
+				response := DoRequest(request, url);
+				if(response <> Nil) {
+					content := ParseResponse(response);
+					each(line in content) {
+						line->PrintLine();
+					};
 				};
-			};
-~#			
+			};			
 		};		
 	}
 
@@ -63,8 +61,8 @@ url->GetQueryParameters()->Find("key")->PrintLine();
 		return responses;
 	}
 
-	function : DoRequest(request : JsonElement, url : String, token : String) ~ JsonElement {
-		response := HttpsClient->QuickPost(Url->New(url), request->ToString()->ToByteArray(), "application/json");
+	function : DoRequest(request : JsonElement, url : Url) ~ JsonElement {
+		response := HttpsClient->QuickPost(url, request->ToString()->ToByteArray(), "application/json");
 		if(response <> Nil) {
 			response_json := JsonParser->TextToElement(response->GetContent()->ToString());
 			# response->GetContent()->ToString()->PrintLine();			
