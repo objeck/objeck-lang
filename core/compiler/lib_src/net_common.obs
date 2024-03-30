@@ -21,7 +21,7 @@ bundle Web.HTTP {
 		@port : Int;
 		@frag : String;
 		@query : String;
-		@query_params : Map->New()<String, String>;
+		@query_params : Map<String, String>;
 		@path : String;
 
 		#~
