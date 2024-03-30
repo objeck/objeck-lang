@@ -8,15 +8,7 @@ class Test {
 
 			request := MakeRequest(question);
 			url := Url->New("https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={$token}&a=b");
-foo := url->GetQuery();
-keys_values := foo->Split('&');
-each(key_value in keys_values) {
-	key_and_value := key_value->Split('=');
-	key := key_and_value[0];
-	value := key_and_value[1];
-
-	"{$key}, {$value}"->PrintLine();
-}
+url->GetQueryParameters()->Find("key")->PrintLine();
 #~			
 			response := DoRequest(request, url, token);
 			if(response <> Nil) {
