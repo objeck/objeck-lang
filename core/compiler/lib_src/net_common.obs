@@ -58,10 +58,18 @@ bundle Web.HTTP {
 		method : public : GetQueryParameters() ~ Map<String, String> {
 			if(@parsed & @query_params = Nil) {
 				@query_params := Map->New()<String, String>;
+				
 				query_keys_values := @query->Split('&');
-
-				each(query_key_value in query_keys_values) {
-					key_value := query_key_value->Split('=');
+				if(query_keys_values->Size() > 0) {
+					each(query_key_value in query_keys_values) {
+						key_value := query_key_value->Split('=');
+						if(key_value->Size() = 2) {
+							@query_params->Insert(key_value[0], key_value[1])
+						};
+					};
+				}
+				else {
+					key_value := @query->Split('=');
 					if(key_value->Size() = 2) {
 						@query_params->Insert(key_value[0], key_value[1])
 					};
