@@ -63,7 +63,7 @@ extern "C" {
   void openssl_hash_sha256(VMContext& context) {
     // get parameters
     size_t* input_array = (size_t*)APITools_GetArray(context, 1)[0];
-    const long input_size = ((long)APITools_GetArraySize(input_array)) - 1;
+    const long input_size = ((long)APITools_GetArraySize(input_array));
     const unsigned char* input = (unsigned char*)APITools_GetArray(input_array);
     size_t* output_holder = APITools_GetArray(context, 0);
 
@@ -121,7 +121,7 @@ extern "C" {
   void openssl_hash_sha512(VMContext& context) {
     // get parameters
     size_t* input_array = (size_t*)APITools_GetArray(context, 1)[0];
-    const long input_size = ((long)APITools_GetArraySize(input_array)) - 1;
+    const long input_size = ((long)APITools_GetArraySize(input_array));
     const unsigned char* input = (unsigned char*)APITools_GetArray(input_array);
     size_t* output_holder = APITools_GetArray(context, 0);
 
@@ -179,7 +179,7 @@ extern "C" {
   void openssl_hash_ripemd160(VMContext& context) {
     // get parameters
     size_t* input_array = (size_t*)APITools_GetArray(context, 1)[0];
-    const long input_size = ((long)APITools_GetArraySize(input_array)) - 1;
+    const long input_size = ((long)APITools_GetArraySize(input_array));
     const unsigned char* input = (unsigned char*)APITools_GetArray(input_array);
     size_t* output_holder = APITools_GetArray(context, 0);
 
@@ -258,7 +258,7 @@ extern "C" {
   void openssl_hash_md5(VMContext& context) {
     // get parameters
     size_t* input_array = (size_t*)APITools_GetArray(context, 1)[0];
-    const long input_size = ((long)APITools_GetArraySize(input_array)) - 1;
+    const long input_size = ((long)APITools_GetArraySize(input_array));
     const unsigned char* input = (unsigned char*)APITools_GetArray(input_array);
     size_t* output_holder = APITools_GetArray(context, 0);
 
@@ -316,11 +316,11 @@ extern "C" {
   void openssl_encrypt_aes256(VMContext& context) {
     // get parameters
     size_t* key_array = (size_t*)APITools_GetArray(context, 1)[0];    
-    const long key_size = ((long)APITools_GetArraySize(key_array)) - 1;
+    const long key_size = ((long)APITools_GetArraySize(key_array));
     const unsigned char* key =  (unsigned char*)APITools_GetArray(key_array);
     
     size_t* input_array = (size_t*)APITools_GetArray(context, 2)[0];    
-    const long input_size = ((long)APITools_GetArraySize(input_array)) - 1;
+    const long input_size = ((long)APITools_GetArraySize(input_array));
     const unsigned char* input =  (unsigned char*)APITools_GetArray(input_array);
 
     size_t* output_holder = APITools_GetArray(context, 0);
@@ -388,7 +388,7 @@ extern "C" {
   void openssl_decrypt_aes256(VMContext& context) {
     // get parameters
     size_t* key_array = (size_t*)APITools_GetArray(context, 1)[0];    
-    const long key_size = ((long)APITools_GetArraySize(key_array)) - 1;
+    const long key_size = ((long)APITools_GetArraySize(key_array));
     const unsigned char* key =  (unsigned char*)APITools_GetArray(key_array);
     
     size_t* input_array = (size_t*)APITools_GetArray(context, 2)[0];    
@@ -463,7 +463,7 @@ extern "C" {
   void openssl_encrypt_base64(VMContext& context) {
     // get parameters
     size_t* input_array = (size_t*)APITools_GetArray(context, 1)[0];
-    const long input_size = ((long)APITools_GetArraySize(input_array)) - 1;
+    const long input_size = ((long)APITools_GetArraySize(input_array));
     const unsigned char* input = (unsigned char*)APITools_GetArray(input_array);
 
     BIO* b64 = BIO_new(BIO_f_base64());
@@ -478,28 +478,9 @@ extern "C" {
     BIO_get_mem_ptr(bio, &bufferPtr);
     BIO_set_close(bio, BIO_NOCLOSE);
     BIO_free_all(bio);
-
-    /*
-    const std::string return_buffer(bufferPtr->data, bufferPtr->length);
-    const std::wstring return_value = BytesToUnicode(return_buffer);
-    APITools_SetStringValue(context, 0, return_value);
-    */
     
     const std::wstring w_value(bufferPtr->data, bufferPtr->data + bufferPtr->length);
     APITools_SetStringValue(context, 0, w_value);
- 
- /*
-    // copy output
-    size_t* output_holder = APITools_GetArray(context, 0);
-    const size_t total_size = bufferPtr->length;
-    size_t* output_byte_array = APITools_MakeByteArray(context, total_size);
-    unsigned char* output_byte_array_buffer = (unsigned char*)(output_byte_array + 3);
-    for(size_t i = 0; i < total_size; i++) {
-      output_byte_array_buffer[i] = bufferPtr->data[i];
-    }
-    
-    output_holder[0] = (size_t)output_byte_array;
- */
   }
 
   size_t calcDecodeLength(const char* b64input) { //Calculates the length of a decoded string
@@ -535,16 +516,14 @@ extern "C" {
     BIO_read(bio, buffer, (int)decode_size);
     BIO_free_all(bio);
 
-    // copy output
-    size_t* output_holder = APITools_GetArray(context, 0);
     const size_t total_size = decode_size;
+    size_t* output_holder = APITools_GetArray(context, 0);
     size_t* output_byte_array = APITools_MakeByteArray(context, total_size);
     unsigned char* output_byte_array_buffer = (unsigned char*)(output_byte_array + 3);
-    for(size_t i = 0; i < total_size; i++) {
+    for(int i = 0; i < total_size; i++) {
       output_byte_array_buffer[i] = buffer[i];
     }
-
-    APITools_SetStringValue(context, 0, BytesToUnicode(buffer));
+    output_holder[0] = (size_t)output_byte_array;
 
     delete[] buffer;
     buffer = nullptr;
