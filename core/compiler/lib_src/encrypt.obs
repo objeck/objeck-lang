@@ -173,14 +173,15 @@ bundle Encryption {
 		@param input input bytes to decrypted
 		@return decrypted bytes
 		~#
-		function : native : Base64(input : String) ~ String {
+		function : native : Base64(input : String) ~ Byte[] {
 			array_args := Base->New[2];
 			array_args[0] := ByteArrayRef->New(Nil->As(Byte[]));
 			array_args[1] := input;
 
 			Proxy->GetDllProxy()->CallFunction("openssl_decrypt_base64", array_args);
 
-			return array_args[0]->As(String);
+			holder := array_args[0]->As(ByteArrayRef);
+			return holder->Get();
 		}
 	}
 }
