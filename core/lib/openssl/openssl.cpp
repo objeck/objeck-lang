@@ -461,15 +461,17 @@ extern "C" {
   __declspec(dllexport)
 #endif
   void openssl_encrypt_base64(VMContext& context) {
-    const std::wstring w_input = APITools_GetStringValue(context, 1);
-    const std::string input = UnicodeToBytes(w_input);
+    // get parameters
+    size_t* input_array = (size_t*)APITools_GetArray(context, 1)[0];
+    const long input_size = ((long)APITools_GetArraySize(input_array)) - 1;
+    const unsigned char* input = (unsigned char*)APITools_GetArray(input_array);
 
     BIO* b64 = BIO_new(BIO_f_base64());
     BIO* bio = BIO_new(BIO_s_mem());
     bio = BIO_push(b64, bio);
 
     BIO_set_flags(bio, BIO_FLAGS_BASE64_NO_NL); //Do not use newlines to flush buffer
-    BIO_write(bio, input.c_str(), (int)input.size());
+    BIO_write(bio, input, input_size);
     BIO_flush(bio);
 
     BUF_MEM* bufferPtr;
