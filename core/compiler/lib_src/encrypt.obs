@@ -134,7 +134,7 @@ bundle Encryption {
 		~#
 		function : native : Base64(input : Byte[]) ~ String {
 			array_args := Base->New[2];
-			array_args[0] := Nil;
+			array_args[0] := ByteArrayRef->New(Nil->As(Byte[]));
 			array_args[1] := ByteArrayRef->New(input);
 
 			Proxy->GetDllProxy()->CallFunction("openssl_encrypt_base64", array_args);
@@ -175,7 +175,7 @@ bundle Encryption {
 		~#
 		function : native : Base64(input : String) ~ String {
 			array_args := Base->New[2];
-			array_args[0] := Nil;
+			array_args[0] := ByteArrayRef->New(Nil->As(Byte[]));
 			array_args[1] := input;
 
 			Proxy->GetDllProxy()->CallFunction("openssl_decrypt_base64", array_args);
