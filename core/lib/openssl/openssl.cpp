@@ -520,7 +520,7 @@ extern "C" {
     size_t* output_holder = APITools_GetArray(context, 0);
     size_t* output_byte_array = APITools_MakeByteArray(context, total_size);
     unsigned char* output_byte_array_buffer = (unsigned char*)(output_byte_array + 3);
-    for(int i = 0; i < total_size; i++) {
+    for(size_t i = 0; i < total_size; ++i) {
       output_byte_array_buffer[i] = buffer[i];
     }
     output_holder[0] = (size_t)output_byte_array;
