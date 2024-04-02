@@ -484,7 +484,11 @@ extern "C" {
     const std::wstring return_value = BytesToUnicode(return_buffer);
     APITools_SetStringValue(context, 0, return_value);
     */
-
+    
+    const std::wstring w_value(bufferPtr->data, bufferPtr->data + bufferPtr->length);
+    APITools_SetStringValue(context, 0, w_value);
+ 
+ /*
     // copy output
     size_t* output_holder = APITools_GetArray(context, 0);
     const size_t total_size = bufferPtr->length;
@@ -495,6 +499,7 @@ extern "C" {
     }
     
     output_holder[0] = (size_t)output_byte_array;
+ */
   }
 
   size_t calcDecodeLength(const char* b64input) { //Calculates the length of a decoded string
