@@ -5295,7 +5295,7 @@ bool TrapProcessor::SockTcpSslInByteAry(StackProgram* program, size_t* inst, siz
     int status; int read = 0;
     char* temp = buffer + offset;
     bool done = false;
-    for(size_t i = 0; !done && i < num; ++i) {
+    for(long i = 0; !done && i < num; ++i) {
       temp[i] = IPSecureSocket::ReadByte(ctx, bio, status);
       if(!status) {
         done = true;
