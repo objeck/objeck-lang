@@ -7,7 +7,7 @@ class Test {
 			image_path := args[1];
 			if(FileReader->Exists(image_path)) {
 				file_content := FileReader->ReadBinaryFile(image_path);
-								
+				
 				base64_content := Encryption.Encrypt->Base64(file_content);
 				decoded_content := Encryption.Decrypt->Base64(base64_content);
 				

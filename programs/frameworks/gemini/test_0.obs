@@ -1,45 +1,62 @@
-use Web.HTTP, Collection, Data.JSON;
+use Web.HTTP, Collection, Data.JSON, System.IO.Filesystem;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 2) {
 			token := args[0];
-			question := args[1];
-			request := MakeRequest(question);
-			url := Url->New("https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={$token}");
-			if(url->GetQueryParameters()->Has("key")) {			
-				response := DoRequest(request, url);
-				if(response <> Nil) {
-					content := ParseResponse(response);
-					each(line in content) {
-						line->PrintLine();
+			image_path := args[1];
+
+			file_content := FileReader->ReadBinaryFile(image_path);
+			if(file_content <> Nil) {
+				data := Encryption.Encrypt->Base64(file_content);
+				request := MakeRequest(data);
+				url := Url->New("https://generativelanguage.googleapis.com/v1beta/models/gemini-pro-vision:generateContent?key={$token}");
+				if(url->GetQueryParameters()->Has("key")) {			
+					response := DoRequest(request, url);
+					if(response <> Nil) {
+						content := ParseResponse(response);
+						each(line in content) {
+							line->PrintLine();
+						};
 					};
 				};
-			};			
+			};
 		};		
 	}
 
-	function : MakeRequest(text : String) ~ JsonElement {
-		part_array_json := JsonElement->New(JsonElement->JsonType->OBJECT);
-		part_array_json->Insert("text", text);
+	function : MakeRequest(data : String) ~ JsonElement {
+		inline_data_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+		inline_data_json->Insert("mime_type", "image/png");
+		inline_data_json->Insert("data", data);
+
+		inline_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+		inline_obj_json->Insert("inline_data", inline_data_json);
 
 		# ---
 
-		parts_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
-		parts_array_json->Add(part_array_json);
+		content_array_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+		content_array_json->Insert("text", "What is this picture?");
+
+		# ---
+
+		part_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+		part_array_json->Add(inline_obj_json);
+		part_array_json->Add(content_array_json);
+
+		# ---
 
 		parts_json := JsonElement->New(JsonElement->JsonType->OBJECT);
-		parts_json->Insert("parts", parts_array_json);
-
-		# ---
+		parts_json->Insert("parts", part_array_json);
 
 		contents_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
 		contents_array_json->Add(parts_json);
 
-		contents_json := JsonElement->New(JsonElement->JsonType->OBJECT);
-		contents_json->Insert("contents", contents_array_json);
+		content_array_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+		content_array_json->Insert("contents", contents_array_json);
 
-		return contents_json;
+content_array_json->ToString()->PrintLine();
+
+		return content_array_json;
 	}
 
 	function : ParseResponse(response : JsonElement) ~ Vector<String> {
