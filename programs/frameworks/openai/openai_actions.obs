@@ -1,19 +1,19 @@
-use Collection, API.OpenAI;
+use Collection, API.OpenAI, System.IO.Filesystem;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
 		args_size := args->Size();
-		if(args_size > 1) {
-			token := args[0];
-			action := args[1];
+		if(args_size > 0) {
+			token := GetApiKey();
+			action := args[0];
 
 			"action={$action}, args={$args_size}\n==="->PrintLine();
 			
 			#
 			# Audio
 			#
-			if(action->Equals("translate") & args_size = 3) {
-				file := args[2];
+			if(action->Equals("translate") & args_size = 2) {
+				file := args[1];
 				content := System.IO.Filesystem.FileReader->ReadBinaryFile(file);
 				text := API.OpenAI.Audio.Transcription->Translate("{$file}", content, "whisper-1", token);
 				if(text <> Nil) {
@@ -23,8 +23,8 @@ class Test {
 					"### Error calling: translate ###"->ErrorLine();
 				};
 			}
-			else if(action->Equals("text_to_speech") & args_size = 3) {
-				message := args[2];
+			else if(action->Equals("text_to_speech") & args_size = 2) {
+				message := args[1];
 
 				response := API.OpenAI.Audio.Speech->Speak("tts-1", message, "fable", "mp3", token)<String, ByteArrayRef>;				
 				if(response->GetFirst()->Has("audio")) {
@@ -34,8 +34,8 @@ class Test {
 			#
 			# Chat
 			#
-			else if(action->Equals("chat_complete") & args_size = 3) {
-				message := args[2];
+			else if(action->Equals("chat_complete") & args_size = 2) {
+				message := args[1];
 
 				messages := Vector->New()<Collection.Pair<String, String>>
 				messages->AddBack(Collection.Pair->New("system", "You speak pig latin")<String, String>);
@@ -46,28 +46,28 @@ class Test {
 			#
 			# File
 			#
-			else if(action->Equals("delete_file") & args_size = 3) {
-				id := args[2];
+			else if(action->Equals("delete_file") & args_size = 2) {
+				id := args[1];
 				API.OpenAI.File->Delete(id, token)->PrintLine();
 			}
-			else if(action->Equals("list_files") & args_size = 2) {
+			else if(action->Equals("list_files") & args_size = 1) {
 				files := API.OpenAI.File->ListFiles(token);
 				each(file in files) {
 					file->GetId()->PrintLine();
 				};
 			}
-			else if(action->Equals("show_file") & args_size = 3) {
-				id := args[2];
+			else if(action->Equals("show_file") & args_size = 2) {
+				id := args[1];
 				API.OpenAI.File->Retrieve(id, token)->PrintLine();
 			}
-			else if(action->Equals("upload_file") & args_size = 3) {
-				name := args[2];
+			else if(action->Equals("upload_file") & args_size = 2) {
+				name := args[1];
 				API.OpenAI.File->LoadOrCreate(name, token);
 			}
 			#
 			# Assistant
 			#
-			else if(action->Equals("list_assists") & args_size = 2) {
+			else if(action->Equals("list_assists") & args_size = 1) {
 				assistants := Assistant->ListAssistants(token);
 				if(assistants->IsEmpty()) {
 					"No Assistants created"->PrintLine();
@@ -84,13 +84,13 @@ class Test {
 					};
 				};
 			}
-			else if(action->Equals("delete_assist") & args_size = 3) {
-				id := args[2];
+			else if(action->Equals("delete_assist") & args_size = 2) {
+				id := args[1];
 				success := Assistant->Delete(id, token);
 				"Deleted: id='{$id}', success={$success}"->PrintLine();
 			}
-			else if(action->Equals("load_assist") & args_size = 3) {
-				id := args[2];
+			else if(action->Equals("load_assist") & args_size = 2) {
+				id := args[1];
 
 				assistant := Assistant->Load(id, token);
 				if(assistant = Nil) {
@@ -103,9 +103,9 @@ class Test {
 					"Loaded: id='{$id}', name='{$name}', model='{$model}'"->PrintLine();
 				}
 			}
-			else if(action->Equals("load_assist_add_file") & args_size = 4) {
-				id := args[2];
-				filename := args[3];
+			else if(action->Equals("load_assist_add_file") & args_size = 3) {
+				id := args[1];
+				filename := args[2];
 
 				file := API.OpenAI.File->LoadOrCreate(filename, token);
 				if(file = Nil) {
@@ -117,10 +117,10 @@ class Test {
 					assistant->ToString()->PrintLine();
 				};
 			}
-			else if(action->Equals("create_assist_with_files") & args_size = 4) {
+			else if(action->Equals("create_assist_with_files") & args_size = 3) {
 				files := Vector->New()<API.OpenAI.File>;
+				files->AddBack(API.OpenAI.File->LoadOrCreate(args[1], token));
 				files->AddBack(API.OpenAI.File->LoadOrCreate(args[2], token));
-				files->AddBack(API.OpenAI.File->LoadOrCreate(args[3], token));
 				file_count := files->Size();
 
 				tools := Vector->New()<String>;
@@ -144,7 +144,7 @@ class Test {
 			#
 			# Thread
 			#
-			else if(action->Equals("create_thread_add_message") & args_size = 2) {
+			else if(action->Equals("create_thread_add_message") & args_size = 1) {
 				thread := API.OpenAI.Thread->Create(token);
 				if(thread = Nil) {
 					API.OpenAI.Thread->GetLastError()->PrintLine();
@@ -154,8 +154,8 @@ class Test {
 					Message->Create("user", "Who was the leading point guard in 1967?", thread, token);
 				};
 			}
-			else if(action->Equals("load_thread_add_message") & args_size = 3) {
-				id := args[2];
+			else if(action->Equals("load_thread_add_message") & args_size = 2) {
+				id := args[1];
 
 				thread := API.OpenAI.Thread->Load(id, token);
 				if(thread = Nil) {
@@ -167,8 +167,8 @@ class Test {
 					msg->ToString()->PrintLine();
 				};
 			}
-			else if(action->Equals("load_thread") & args_size = 3) {
-				id := args[2];
+			else if(action->Equals("load_thread") & args_size = 2) {
+				id := args[1];
 				thread := API.OpenAI.Thread->Load(id, token);
 				if(thread = Nil) {
 					API.OpenAI.Thread->GetLastError()->PrintLine();
@@ -180,8 +180,8 @@ class Test {
 			#
 			# Messages
 			#
-			else if(action->Equals("list_messages") & args_size = 3) {
-				thread_id := args[2];
+			else if(action->Equals("list_messages") & args_size = 2) {
+				thread_id := args[1];
 
 				thread := API.OpenAI.Thread->Load(thread_id, token);
 				thread->ToString()->PrintLine();
@@ -191,9 +191,9 @@ class Test {
 					message->ToString()->PrintLine();
 				};
 			}
-			else if(action->Equals("load_message") & args_size = 4) {
-				thread_id := args[2];
-				message_id := args[3];
+			else if(action->Equals("load_message") & args_size = 3) {
+				thread_id := args[1];
+				message_id := args[2];
 
 				thread := API.OpenAI.Thread->Load(thread_id, token);
 				thread->ToString()->PrintLine();
@@ -204,9 +204,9 @@ class Test {
 			#
 			# Runs
 			#
-			else if(action->Equals("create_thread_and_run") & args_size = 4) {
-				assistant_id := args[2];
-				query := args[3];
+			else if(action->Equals("create_thread_and_run") & args_size = 3) {
+				assistant_id := args[1];
+				query := args[2];
 
 				thread := API.OpenAI.Thread->Create(token);
 				thread->ToString()->PrintLine();
@@ -234,9 +234,9 @@ class Test {
 
 				# Thread->Delete(thread->GetId(), token)->PrintLine();
 			}
-			else if(action->Equals("create_run") & args_size = 5) {
-				assistant_id := args[2];
-				thread_id := args[3];
+			else if(action->Equals("create_run") & args_size = 4) {
+				assistant_id := args[1];
+				thread_id := args[2];
 
 				thread := API.OpenAI.Thread->Load(thread_id, token);
 				thread->ToString()->PrintLine();
@@ -273,5 +273,14 @@ class Test {
 		else {
 			"Usage: params: sk-token, action, params..."->ErrorLine();
 		};
+	}
+
+	function : GetApiKey() ~ String {
+		token := FileReader->ReadFile("api_key.txt");
+		if(token <> Nil) {
+			return token->Trim();
+		};
+
+		return Nil;
 	}
 }
