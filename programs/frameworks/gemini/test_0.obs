@@ -7,11 +7,10 @@ class Test {
 			file_content := FileReader->ReadBinaryFile(args[0]);
 
 			if(api_token <> Nil & file_content <> Nil) {
-				data := Encryption.Encrypt->Base64(file_content);
-				request := MakeRequest(data);
+				request := BuildRequest(Encryption.Encrypt->Base64(file_content));
 				url := Url->New("https://generativelanguage.googleapis.com/v1beta/models/gemini-pro-vision:generateContent?key={$api_token}");
 				if(url->GetQueryParameters()->Has("key")) {			
-					response := DoRequest(request, url);
+					response := SendRequest(request, url);
 					if(response <> Nil) {
 						content := ParseResponse(response);
 						each(line in content) {
@@ -23,10 +22,10 @@ class Test {
 			else {
 				">>> Unable to read API key or invalid image file <<<"->ErrorLine();
 			}
-		};		
+		};
 	}
 
-	function : MakeRequest(data : String) ~ JsonElement {
+	function : BuildRequest(data : String) ~ JsonElement {
 		inline_data_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 		inline_data_json->Insert("mime_type", "image/png");
 		inline_data_json->Insert("data", data);
@@ -72,15 +71,15 @@ class Test {
 				text_json := parts_json->Get(0)->Get("text");
 				role_json := content_json->Get("role");
 
-				responses->AddBack(role_json->GetString());
-				responses->AddBack(JsonElement->Decode(text_json->GetString()));
+				responses->AddBack(role_json->GetString()->Trim());
+				responses->AddBack(JsonElement->Decode(text_json->GetString()->Trim()));
 			};
 		};
 
 		return responses;
 	}
 
-	function : DoRequest(request : JsonElement, url : Url) ~ JsonElement {
+	function : SendRequest(request : JsonElement, url : Url) ~ JsonElement {
 		response := HttpsClient->QuickPost(url, request->ToString()->ToByteArray(), "application/json");
 		if(response <> Nil) {
 			response_json := JsonParser->TextToElement(response->GetContent()->ToString());
