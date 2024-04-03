@@ -2,15 +2,14 @@ use Web.HTTP, Collection, Data.JSON, System.IO.Filesystem;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		if(args->Size() = 2) {
-			token := args[0];
-			image_path := args[1];
+		if(args->Size() = 1) {
+			api_token := GetApiKey();
+			file_content := FileReader->ReadBinaryFile(args[0]);
 
-			file_content := FileReader->ReadBinaryFile(image_path);
-			if(file_content <> Nil) {
+			if(api_token <> Nil & file_content <> Nil) {
 				data := Encryption.Encrypt->Base64(file_content);
 				request := MakeRequest(data);
-				url := Url->New("https://generativelanguage.googleapis.com/v1beta/models/gemini-pro-vision:generateContent?key={$token}");
+				url := Url->New("https://generativelanguage.googleapis.com/v1beta/models/gemini-pro-vision:generateContent?key={$api_token}");
 				if(url->GetQueryParameters()->Has("key")) {			
 					response := DoRequest(request, url);
 					if(response <> Nil) {
@@ -20,7 +19,10 @@ class Test {
 						};
 					};
 				};
-			};
+			}
+			else {
+				">>> Unable to read API key or invalid image file <<<"->ErrorLine();
+			}
 		};		
 	}
 
@@ -54,7 +56,7 @@ class Test {
 		content_array_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 		content_array_json->Insert("contents", contents_array_json);
 
-content_array_json->ToString()->PrintLine();
+		content_array_json->ToString()->PrintLine();
 
 		return content_array_json;
 	}
@@ -89,12 +91,21 @@ content_array_json->ToString()->PrintLine();
 			};
 			
 			if(response_json->Has("error")) {
-response_json->ToString()->PrintLine();				
 				"### Error: Error response ###"->ErrorLine();
+				response_json->ToString()->ErrorLine();				
 				return Nil;
 			};
 
 			return response_json;
+		};
+
+		return Nil;
+	}
+
+	function : GetApiKey() ~ String {
+		token := FileReader->ReadFile("api_key.txt");
+		if(token <> Nil) {
+			return token->Trim();
 		};
 
 		return Nil;
