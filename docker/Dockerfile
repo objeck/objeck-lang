@@ -1,4 +1,4 @@
-FROM debian
+FROM debian:bookworm-slim
 ENV http_proxy=deb.debian.org
 RUN apt-get update && apt-get upgrade -y && apt-get -y install \
 	vim libssl-dev unixodbc-dev libsdl2-dev \
