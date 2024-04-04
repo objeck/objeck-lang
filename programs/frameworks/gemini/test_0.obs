@@ -26,6 +26,9 @@ class Test {
 	}
 
 	function : BuildRequest(data : String) ~ JsonElement {
+		query := "What is this picture?";
+		"Query='{$query}'\nData='{$data}'"->PrintLine();
+
 		inline_data_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 		inline_data_json->Insert("mime_type", "image/png");
 		inline_data_json->Insert("data", data);
@@ -36,7 +39,7 @@ class Test {
 		# ---
 
 		content_array_json := JsonElement->New(JsonElement->JsonType->OBJECT);
-		content_array_json->Insert("text", "What is this picture?");
+		content_array_json->Insert("text", query);
 
 		# ---
 
@@ -55,7 +58,7 @@ class Test {
 		content_array_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 		content_array_json->Insert("contents", contents_array_json);
 
-		content_array_json->ToString()->PrintLine();
+		# content_array_json->ToString()->PrintLine();
 
 		return content_array_json;
 	}
@@ -83,15 +86,18 @@ class Test {
 		response := HttpsClient->QuickPost(url, request->ToString()->ToByteArray(), "application/json");
 		if(response <> Nil) {
 			response_json := JsonParser->TextToElement(response->GetContent()->ToString());
+			
 			# response->GetContent()->ToString()->PrintLine();			
+			
 			if(response_json = Nil) {
 				"### Error: Unable to parse response ###"->ErrorLine();
 				return Nil;
 			};
 			
-			if(response_json->Has("error")) {
-				"### Error: Error response ###"->ErrorLine();
-				response_json->ToString()->ErrorLine();				
+			error_json := response_json->FindElements("error/message")
+			if(error_json <> Nil) {
+				error_message := error_json->GetString();
+				">>> Error: {$error_message} <<<"->ErrorLine();
 				return Nil;
 			};
 
