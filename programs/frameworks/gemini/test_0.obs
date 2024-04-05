@@ -24,8 +24,30 @@ bundle API.Google.Gemini {
 				}
 				else if(verb->Equals("list_models")) {
 					models := GetModels(api_token);
+					
+					supported_methods_models := Map->New()<String, Vector<String>>;
+
 					each(model in models) {
-						model->ToString()->PrintLine();
+						supported_methods := model->GetSupportedGenerationMethods();
+						model_name := model->GetName();
+
+						each(supported_method in supported_methods) {
+							supported_models := supported_methods_models->Find(supported_method);
+							if(supported_models = Nil) {
+								supported_models := Vector->New()<String>;
+								supported_methods_models->Insert(supported_method, supported_models);
+							};
+							supported_models->AddBack(model_name);
+						};
+					};
+
+					supported_models := supported_methods_models->GetKeys()<String>;
+					each(supported_model in supported_models) {
+						supported_methods := supported_methods_models->Find(supported_model);
+						if(supported_methods <> Nil) {
+							supported_method_count := supported_methods->Size();
+							"{$supported_model}, methods={$supported_method_count}"->PrintLine();
+						};
 					};
 				}
 				else {
@@ -217,6 +239,7 @@ bundle API.Google.Gemini {
 		New(description : String, display_name : String, input_token_limit : Int, 
 				name : String, output_token_limit : Int, supported_generation_methods : Vector<String>, 
 				temperature : Float, top_k : Int, top_p : Float, version : String) {
+			@description := description;
 			@display_name := display_name;
 			@input_token_limit := input_token_limit;
 			@name := name;
@@ -275,8 +298,9 @@ bundle API.Google.Gemini {
 			buffer += @name;
 			buffer += "', version="
 			buffer += @version;
-			buffer += "', methods:\n\t"
-
+			buffer += "', description=\""
+			buffer += @description;
+			buffer += "\"\nmethods:\n\t"
 			each(supported_generation_method in @supported_generation_methods) {
 				buffer += supported_generation_method;
 				buffer += "\n\t";
