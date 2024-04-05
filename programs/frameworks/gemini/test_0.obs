@@ -1,118 +1,288 @@
 use Web.HTTP, Collection, Data.JSON, System.IO.Filesystem;
 
-class Test {
-	function : Main(args : String[]) ~ Nil {
-		if(args->Size() = 1) {
-			api_token := GetApiKey();
-			file_content := FileReader->ReadBinaryFile(args[0]);
+bundle API.Google.Gemini {
+	class Test {
+		function : Main(args : String[]) ~ Nil {
+			if(args->Size() = 1) {
+				api_token := GetApiKey();
+				verb := args[0]
+				"do => {$verb}..."->PrintLine();
 
-			if(api_token <> Nil & file_content <> Nil) {
-				request := BuildRequest(Encryption.Encrypt->Base64(file_content));
-				url := Url->New("https://generativelanguage.googleapis.com/v1beta/models/gemini-pro-vision:generateContent?key={$api_token}");
-				if(url->GetQueryParameters()->Has("key")) {			
-					response := SendRequest(request, url);
-					if(response <> Nil) {
-						content := ParseResponse(response);
-						each(line in content) {
-							line->PrintLine();
+				if(verb->Equals("generate_content")) {
+					file_content := FileReader->ReadBinaryFile(args[1]);
+					request := BuildRequest(Encryption.Encrypt->Base64(file_content));
+					url := Url->New("https://generativelanguage.googleapis.com/v1beta/models/gemini-pro-vision:generateContent?key={$api_token}");
+					if(url->GetQueryParameters()->Has("key")) {			
+						response := PostRequest(request, url);
+						if(response <> Nil) {
+							content := ParseResponse(response);
+							each(line in content) {
+								line->PrintLine();
+							};
 						};
 					};
-				};
+				}
+				else if(verb->Equals("list_models")) {
+					models := GetModels(api_token);
+					each(model in models) {
+						model->ToString()->PrintLine();
+					};
+				}
+				else {
+					">>> Error: Unknown verb <<"->ErrorLine();
+				}
 			}
 			else {
-				">>> Unable to read API key or invalid image file <<<"->ErrorLine();
+				">>> Error: Usage <<"->ErrorLine();
 			}
-		};
-	}
+		}
 
-	function : BuildRequest(data : String) ~ JsonElement {
-		query := "What is this picture?";
-		"Query='{$query}'\nData='{$data}'"->PrintLine();
+		function : GetModels(key : String) ~ Vector<Model> {
+			models := Vector->New()<Model>;
 
-		inline_data_json := JsonElement->New(JsonElement->JsonType->OBJECT);
-		inline_data_json->Insert("mime_type", "image/png");
-		inline_data_json->Insert("data", data);
+			url := Url->New("https://generativelanguage.googleapis.com/v1beta/models?key={$key}");
+			response := GetRequest(url);
+			if(response <> Nil) {
+				# response->ToString()->PrintLine();			
+				models_json := response->Get("models");
 
-		inline_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
-		inline_obj_json->Insert("inline_data", inline_data_json);
+				each(model_json in models_json) {
+					description := model_json->Get("description")->GetString();
+					display_name := model_json->Get("displayName")->GetString();
+					input_token_limit := model_json->Get("inputTokenLimit")->GetInt();
+					name := model_json->Get("name")->GetString();
+					output_token_limit := model_json->Get("outputTokenLimit")->GetInt();
 
-		# ---
+					supported_generation_methods := Vector->New()<String>;
+					supported_generation_methods_json := model_json->Get("supportedGenerationMethods");
+					each(supported_generation_method_json in supported_generation_methods_json) {
+						supported_generation_methods->AddBack(supported_generation_method_json->GetString());
+					}
 
-		content_array_json := JsonElement->New(JsonElement->JsonType->OBJECT);
-		content_array_json->Insert("text", query);
+					temperature := 0.9;
+					temperature_json := model_json->Get("temperature");
+					if(temperature_json <> Nil) {
+						temperature := temperature_json->GetFloat();
+					};
 
-		# ---
+					top_k := 0;			
+					top_k_json := model_json->Get("topK");
+					if(top_k_json <> Nil) {
+						top_k := top_k_json->GetInt();
+					};
 
-		part_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
-		part_array_json->Add(inline_obj_json);
-		part_array_json->Add(content_array_json);
+					top_p := 1.0;
+					top_p_json := model_json->Get("topP");
+					if(top_p_json <> Nil) {
+						top_p := top_p_json->GetFloat();
+					};
+					version := model_json->Get("version")->GetString();
 
-		# ---
-
-		parts_json := JsonElement->New(JsonElement->JsonType->OBJECT);
-		parts_json->Insert("parts", part_array_json);
-
-		contents_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
-		contents_array_json->Add(parts_json);
-
-		content_array_json := JsonElement->New(JsonElement->JsonType->OBJECT);
-		content_array_json->Insert("contents", contents_array_json);
-
-		# content_array_json->ToString()->PrintLine();
-
-		return content_array_json;
-	}
-
-	function : ParseResponse(response : JsonElement) ~ Vector<String> {
-		responses := Vector->New()<String>;
-
-		candidates_json := response->Get("candidates");
-		if(candidates_json <> Nil & candidates_json->Size() > 0) {
-			content_json := candidates_json->Get(0)->Get("content");
-			parts_json := content_json->Get("parts");
-			if(parts_json <> Nil & parts_json->Size() > 0) {
-				text_json := parts_json->Get(0)->Get("text");
-				role_json := content_json->Get("role");
-
-				responses->AddBack(role_json->GetString()->Trim());
-				responses->AddBack(JsonElement->Decode(text_json->GetString()->Trim()));
-			};
-		};
-
-		return responses;
-	}
-
-	function : SendRequest(request : JsonElement, url : Url) ~ JsonElement {
-		response := HttpsClient->QuickPost(url, request->ToString()->ToByteArray(), "application/json");
-		if(response <> Nil) {
-			response_json := JsonParser->TextToElement(response->GetContent()->ToString());
-			
-			# response->GetContent()->ToString()->PrintLine();			
-			
-			if(response_json = Nil) {
-				"### Error: Unable to parse response ###"->ErrorLine();
-				return Nil;
-			};
-			
-			error_json := response_json->FindElements("error/message")
-			if(error_json <> Nil) {
-				error_message := error_json->GetString();
-				">>> Error: {$error_message} <<<"->ErrorLine();
-				return Nil;
+					models->AddBack(Model->New(description, display_name, input_token_limit, name, output_token_limit, 
+						supported_generation_methods, temperature, top_k, top_p, version));
+				};
 			};
 
-			return response_json;
-		};
+			return models;
+		}
 
-		return Nil;
+		function : BuildRequest(data : String) ~ JsonElement {
+			query := "What is this picture?";
+			"Query='{$query}'\nData='{$data}'"->PrintLine();
+
+			inline_data_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			inline_data_json->Insert("mime_type", "image/png");
+			inline_data_json->Insert("data", data);
+
+			inline_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			inline_obj_json->Insert("inline_data", inline_data_json);
+
+			# ---
+
+			content_array_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			content_array_json->Insert("text", query);
+
+			# ---
+
+			part_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+			part_array_json->Add(inline_obj_json);
+			part_array_json->Add(content_array_json);
+
+			# ---
+
+			parts_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			parts_json->Insert("parts", part_array_json);
+
+			contents_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+			contents_array_json->Add(parts_json);
+
+			content_array_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			content_array_json->Insert("contents", contents_array_json);
+
+			# content_array_json->ToString()->PrintLine();
+
+			return content_array_json;
+		}
+
+		function : ParseResponse(response : JsonElement) ~ Vector<String> {
+			responses := Vector->New()<String>;
+
+			candidates_json := response->Get("candidates");
+			if(candidates_json <> Nil & candidates_json->Size() > 0) {
+				content_json := candidates_json->Get(0)->Get("content");
+				parts_json := content_json->Get("parts");
+				if(parts_json <> Nil & parts_json->Size() > 0) {
+					text_json := parts_json->Get(0)->Get("text");
+					role_json := content_json->Get("role");
+
+					responses->AddBack(role_json->GetString()->Trim());
+					responses->AddBack(JsonElement->Decode(text_json->GetString()->Trim()));
+				};
+			};
+
+			return responses;
+		}
+
+		function : GetRequest(url : Url) ~ JsonElement {
+			response := HttpsClient->QuickGet(url, "application/json");
+			if(response <> Nil) {
+				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				
+				# response->GetContent()->ToString()->PrintLine();			
+				
+				if(response_json = Nil) {
+					"### Error: Unable to parse response ###"->ErrorLine();
+					return Nil;
+				};
+				
+				error_json := response_json->FindElements("error/message")
+				if(error_json <> Nil) {
+					error_message := error_json->GetString();
+					">>> Error: {$error_message} <<<"->ErrorLine();
+					return Nil;
+				};
+
+				return response_json;
+			};
+
+			return Nil;
+		}
+
+		function : PostRequest(request : JsonElement, url : Url) ~ JsonElement {
+			response := HttpsClient->QuickPost(url, request->ToString()->ToByteArray(), "application/json");
+			if(response <> Nil) {
+				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				
+				# response->GetContent()->ToString()->PrintLine();			
+				
+				if(response_json = Nil) {
+					"### Error: Unable to parse response ###"->ErrorLine();
+					return Nil;
+				};
+				
+				error_json := response_json->FindElements("error/message")
+				if(error_json <> Nil) {
+					error_message := error_json->GetString();
+					">>> Error: {$error_message} <<<"->ErrorLine();
+					return Nil;
+				};
+
+				return response_json;
+			};
+
+			return Nil;
+		}
+
+		function : GetApiKey() ~ String {
+			token := FileReader->ReadFile("api_key.txt");
+			if(token <> Nil) {
+				return token->Trim();
+			};
+			return Nil;
+		}
 	}
 
-	function : GetApiKey() ~ String {
-		token := FileReader->ReadFile("api_key.txt");
-		if(token <> Nil) {
-			return token->Trim();
-		};
+	class Model {
+		@description : String;
+		@display_name : String;
+		@input_token_limit : Int;
+		@name : String;
+		@output_token_limit : Int;
+		@supported_generation_methods : Vector<String>;
+		@temperature : Float;
+		@top_k : Int;
+		@top_p : Float;
+		@version : String;
 
-		return Nil;
+		New(description : String, display_name : String, input_token_limit : Int, 
+				name : String, output_token_limit : Int, supported_generation_methods : Vector<String>, 
+				temperature : Float, top_k : Int, top_p : Float, version : String) {
+			@display_name := display_name;
+			@input_token_limit := input_token_limit;
+			@name := name;
+			@output_token_limit := output_token_limit;
+			@supported_generation_methods := supported_generation_methods;
+			@temperature := temperature;
+			@top_k := top_k;
+			@top_p := top_p;
+			@version := version;
+		}
+
+		method : public : GetDescription() ~ String {
+			return @description;
+		}
+
+		method : public : GetDisplayName() ~ String {
+			return @display_name;
+		}
+
+		method : public : GetInputTokenLimit() ~ Int {
+			return @input_token_limit;
+		}
+
+		method : public : GetName() ~ String {
+			return @name;
+		}
+
+		method : public : GetOutputTokenLimit() ~ Int {
+			return @output_token_limit;
+		}
+
+		method : public : GetSupportedGenerationMethods() ~ Vector<String> {
+			return @supported_generation_methods;
+		}
+
+		method : public : GetTemperature() ~ Float {
+			return @temperature;
+		}
+
+		method : public : GetTopK() ~ Int {
+			return @top_k;
+		}
+
+		method : public : GetTopP() ~ Float {
+			return @top_p;
+		}
+
+		method : public : GetVersion() ~ String {
+			return @version;
+		}
+
+		method : public : ToString() ~ String {
+			buffer := "";
+
+			buffer += "name='"
+			buffer += @name;
+			buffer += "', version="
+			buffer += @version;
+			buffer += "', methods:\n\t"
+
+			each(supported_generation_method in @supported_generation_methods) {
+				buffer += supported_generation_method;
+				buffer += "\n\t";
+			};
+
+			return buffer;
+		}
 	}
 }

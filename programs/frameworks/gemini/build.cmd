@@ -7,6 +7,5 @@ del /q *.obe
 
 if [%1] == [] goto end
 	obc -src %1 -lib net,json,encrypt -dest %1
-	if [%2] == [] goto end
-		obr %1 %2 %3 %4 %5
+	obr %1 %2 %3 %4 %5
 :end
