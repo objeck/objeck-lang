@@ -7,14 +7,14 @@ bundle API.Google.Gemini {
 		@input_token_limit : Int;
 		@name : String;
 		@output_token_limit : Int;
-		@supported_generation_methods : Vector<String>;
+		@generation_methods : Vector<String>;
 		@temperature : Float;
 		@top_k : Int;
 		@top_p : Float;
 		@version : String;
 
 		New(description : String, display_name : String, input_token_limit : Int, 
-				name : String, output_token_limit : Int, supported_generation_methods : Vector<String>, 
+				name : String, output_token_limit : Int, generation_methods : Vector<String>, 
 				temperature : Float, top_k : Int, top_p : Float, version : String) {
 			Parent();
 
@@ -23,7 +23,7 @@ bundle API.Google.Gemini {
 			@input_token_limit := input_token_limit;
 			@name := name;
 			@output_token_limit := output_token_limit;
-			@supported_generation_methods := supported_generation_methods;
+			@generation_methods := generation_methods;
 			@temperature := temperature;
 			@top_k := top_k;
 			@top_p := top_p;
@@ -50,8 +50,8 @@ bundle API.Google.Gemini {
 			return @output_token_limit;
 		}
 
-		method : public : GetSupportedGenerationMethods() ~ Vector<String> {
-			return @supported_generation_methods;
+		method : public : GetGenerationMethods() ~ Vector<String> {
+			return @generation_methods;
 		}
 
 		method : public : GetTemperature() ~ Float {
@@ -87,10 +87,10 @@ bundle API.Google.Gemini {
 					name := model_json->Get("name")->GetString();
 					output_token_limit := model_json->Get("outputTokenLimit")->GetInt();
 
-					supported_generation_methods := Vector->New()<String>;
-					supported_generation_methods_json := model_json->Get("supportedGenerationMethods");
-					each(supported_generation_method_json in supported_generation_methods_json) {
-						supported_generation_methods->AddBack(supported_generation_method_json->GetString());
+					generation_methods := Vector->New()<String>;
+					generation_methods_json := model_json->Get("supportedGenerationMethods");
+					each(generation_method_json in generation_methods_json) {
+						generation_methods->AddBack(generation_method_json->GetString());
 					}
 
 					temperature := 0.9;
@@ -113,7 +113,7 @@ bundle API.Google.Gemini {
 					version := model_json->Get("version")->GetString();
 
 					models->AddBack(Model->New(description, display_name, input_token_limit, name, output_token_limit, 
-						supported_generation_methods, temperature, top_k, top_p, version));
+						generation_methods, temperature, top_k, top_p, version));
 				};
 			};
 
@@ -189,8 +189,8 @@ bundle API.Google.Gemini {
 			buffer += "', description=\""
 			buffer += @description;
 			buffer += "\"\nmethods:\n\t"
-			each(supported_generation_method in @supported_generation_methods) {
-				buffer += supported_generation_method;
+			each(generation_method in @generation_methods) {
+				buffer += generation_method;
 				buffer += "\n\t";
 			};
 
