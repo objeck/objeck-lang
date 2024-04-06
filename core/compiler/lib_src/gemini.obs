@@ -91,6 +91,13 @@ bundle API.Google.Gemini {
 			return models;
 		}
 
+		method : public : GenerateContent(content : Content, safety_settings : Vector<SafetySetting>, config : GenerationConfig, key : String) ~ ContentResponse {
+			contents := Vector->New()<Content>;
+			contents->AddBack(content);
+
+			return GenerateContent(contents, safety_settings, config, key);
+		}
+
 		method : public : GenerateContent(contents : Vector<Content>, safety_settings : Vector<SafetySetting>, config : GenerationConfig, key : String) ~ ContentResponse {
 			content_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
 
