@@ -31,8 +31,7 @@ bundle API.Google.Gemini {
 		}
 		
 		function : Create(model_name : String, key : String) ~ Model { 
-			models := List(key);
-
+			models := ListModels(key);
 			each(model in models) {
 				if(model->GetName()->Equals(model_name)) {
 					return model;
@@ -42,7 +41,7 @@ bundle API.Google.Gemini {
 			return Nil;
 		}
 
-		function : List(key : String) ~ Vector<Model> {
+		function : ListModels(key : String) ~ Vector<Model> {
 			models := Vector->New()<Model>;
 
 			url := Url->New("https://generativelanguage.googleapis.com/v1beta/models?key={$key}");
@@ -93,62 +92,66 @@ bundle API.Google.Gemini {
 		}
 
 		method : public : GenerateContent(contents : Vector<Content>, safety_settings : Vector<SafetySetting>, config : GenerationConfig, key : String) ~ ContentResponse {
-#~
-			query := "What is this picture?";
-			"Query='{$query}'\nData='{$data}'"->PrintLine();
+			content_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
 
-			inline_data_json := JsonElement->New(JsonElement->JsonType->OBJECT);
-			inline_data_json->Insert("mime_type", "image/png");
-			inline_data_json->Insert("data", data);
+			each(content in contents) {
+				parts := content->GetParts();
+				content_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 
-			inline_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
-			inline_obj_json->Insert("inline_data", inline_data_json);
+				content_obj_json->Insert("role", content->GetRole())
 
-			# ---
+				parts_obj_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+				each(part in parts) {
+					part_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 
-			content_array_json := JsonElement->New(JsonElement->JsonType->OBJECT);
-			content_array_json->Insert("text", query);
+					# text
+					if(part->TypeOf(TextPart)) {
+						text_part := part->As(TextPart);
+						part_obj_json->Insert("text", text_part->GetText());
+					}					
+					else {
+						binary_part := part->As(BinaryPart);
 
-			# ---
+						inline_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+						inline_obj_json->Insert("mimeType", binary_part->GetMimeType());
+						inline_obj_json->Insert("data", binary_part->GetBase64Data());
+						
+						part_obj_json->Insert("inlineData", inline_obj_json);
+					};
 
-			part_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
-			part_array_json->Add(inline_obj_json);
-			part_array_json->Add(content_array_json);
+					parts_obj_json->Add(part_obj_json);
+				};
+				content_obj_json->Insert("parts", parts_obj_json);
 
-			# ---
+				content_array_json->Add(content_obj_json)
+			};
+			
+			contents_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			contents_obj_json->Insert("contents", content_array_json);
 
-			parts_json := JsonElement->New(JsonElement->JsonType->OBJECT);
-			parts_json->Insert("parts", part_array_json);
+# TODO: safetySettings and generationConfig
+			# contents_obj_json->ToString()->PrintLine();
 
-			contents_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
-			contents_array_json->Add(parts_json);
+			url := Url->New("https://generativelanguage.googleapis.com/v1beta/models/gemini-pro-vision:generateContent?key={$key}");
+			if(url->GetQueryParameters()->Has("key")) {			
+				response := PostRequest(contents_obj_json, url);
+				if(response <> Nil) {
+					candidates_json := response->Get("candidates");
+					each(candidate_json in candidates_json) {
+						content_json := candidate_json->Get("content");
+						parts_json := content_json->Get("parts");
+						each(part_json in parts_json) {
+							text_json := part_json->Get("text");
+							role_json := content_json->Get("role");
 
-			content_array_json := JsonElement->New(JsonElement->JsonType->OBJECT);
-			content_array_json->Insert("contents", contents_array_json);
-
-			# content_array_json->ToString()->PrintLine();
-
-			return content_array_json;
-
-			---
-
-			responses := Vector->New()<String>;
-
-			candidates_json := response->Get("candidates");
-			if(candidates_json <> Nil & candidates_json->Size() > 0) {
-				content_json := candidates_json->Get(0)->Get("content");
-				parts_json := content_json->Get("parts");
-				if(parts_json <> Nil & parts_json->Size() > 0) {
-					text_json := parts_json->Get(0)->Get("text");
-					role_json := content_json->Get("role");
-
-					responses->AddBack(role_json->GetString()->Trim());
-					responses->AddBack(JsonElement->Decode(text_json->GetString()->Trim()));
+							role_json->GetString()->Trim()->PrintLine();
+							JsonElement->Decode(text_json->GetString()->Trim())->PrintLine();
+							"---"->PrintLine();
+						};
+					};
 				};
 			};
-
-			return responses;
-~#			
+					
 			return Nil;
 		}
 
@@ -217,46 +220,68 @@ bundle API.Google.Gemini {
 
 	class Content from EndPoint {
 		@parts : Vector<Part>;
-
-		New() {
-			Parent();
-		}
-	}
-
-	class Part {
 		@role : String;
-		@parts : Vector<Part>;
 
 		New(role : String) {
+			Parent();
 			@role := role;
+			@parts := Vector->New()<Part>;
+		}
+
+		New(role : String, parts : Vector<Part>) {
+			Parent();
+			@role := role;
+			@parts := parts;
+		}
+
+		method : public : AddPart(part : Part) ~ Nil {
+			@parts->AddBack(part);
+		}
+
+		method : public : GetParts() ~ Vector<Part> {
+			return @parts;
+		}
+
+		method : public : GetRole() ~ String {
+			return @role;
 		}
 	}
 
 	class TextPart from Part {
 		@text : String;
 
-		New(text : String, role : String) {
-			Parent(role);
+		New(text : String) {
+			Parent();
 			@text := text;
 		}
+
+		method : public : GetText() ~ String {
+			return @text;
+		}
 	}
 
-	class InlinePart from Part {
+	class BinaryPart from Part {
 		@data : Byte[];
+		@mime_type : String;
 
-		New(data : Byte[], role : String) {
-			Parent(role);
+		New(data : Byte[], mime_type : String) {
+			Parent();
+
 			@data := data;
+			@mime_type := mime_type;
+		}
+
+		method : public : GetBase64Data() ~ String {
+			return Encryption.Encrypt->Base64(@data);
+		}
+
+		method : public : GetMimeType() ~ String {
+			return @mime_type;
 		}
 	}
-	
-	class FilePart from Part {
-		@file_path : String;
 
-		New(file_path : String, role : String) {
-			Parent(role);
-			@file_path := file_path;
-		}
+	class Part {
+		New() {}
 	}
 
 	class SafetySetting from EndPoint {
