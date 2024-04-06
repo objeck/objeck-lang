@@ -241,8 +241,9 @@ bundle API.Google.Gemini {
 			@parts := parts;
 		}
 
-		method : public : AddPart(part : Part) ~ Nil {
+		method : public : AddPart(part : Part) ~ Content {
 			@parts->AddBack(part);
+			return @self;
 		}
 
 		method : public : GetParts() ~ Vector<Part> {
