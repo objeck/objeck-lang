@@ -13,7 +13,7 @@ bundle API.Google.Gemini {
 		@top_p : Float;
 		@version : String;
 
-		New(description : String, display_name : String, input_token_limit : Int, 
+		New : private(description : String, display_name : String, input_token_limit : Int, 
 				name : String, output_token_limit : Int, generation_methods : Vector<String>, 
 				temperature : Float, top_k : Int, top_p : Float, version : String) {
 			Parent();
@@ -29,45 +29,17 @@ bundle API.Google.Gemini {
 			@top_p := top_p;
 			@version := version;
 		}
+		
+		function : Create(model_name : String, key : String) ~ Model { 
+			models := List(key);
 
-		method : public : GetDescription() ~ String {
-			return @description;
-		}
+			each(model in models) {
+				if(model->GetName()->Equals(model_name)) {
+					return model;
+				};
+			};
 
-		method : public : GetDisplayName() ~ String {
-			return @display_name;
-		}
-
-		method : public : GetInputTokenLimit() ~ Int {
-			return @input_token_limit;
-		}
-
-		method : public : GetName() ~ String {
-			return @name;
-		}
-
-		method : public : GetOutputTokenLimit() ~ Int {
-			return @output_token_limit;
-		}
-
-		method : public : GetGenerationMethods() ~ Vector<String> {
-			return @generation_methods;
-		}
-
-		method : public : GetTemperature() ~ Float {
-			return @temperature;
-		}
-
-		method : public : GetTopK() ~ Int {
-			return @top_k;
-		}
-
-		method : public : GetTopP() ~ Float {
-			return @top_p;
-		}
-
-		method : public : GetVersion() ~ String {
-			return @version;
+			return Nil;
 		}
 
 		function : List(key : String) ~ Vector<Model> {
@@ -120,8 +92,8 @@ bundle API.Google.Gemini {
 			return models;
 		}
 
+		method : public : GenerateContent(contents : Vector<Content>, safety_settings : Vector<SafetySetting>, config : GenerationConfig, key : String) ~ ContentResponse {
 #~
-		method : BuildRequest(data : String) ~ JsonElement {
 			query := "What is this picture?";
 			"Query='{$query}'\nData='{$data}'"->PrintLine();
 
@@ -157,9 +129,9 @@ bundle API.Google.Gemini {
 			# content_array_json->ToString()->PrintLine();
 
 			return content_array_json;
-		}
 
-		method : ParseResponse(response : JsonElement) ~ Vector<String> {
+			---
+
 			responses := Vector->New()<String>;
 
 			candidates_json := response->Get("candidates");
@@ -176,8 +148,53 @@ bundle API.Google.Gemini {
 			};
 
 			return responses;
+~#			
+			return Nil;
 		}
-~#
+
+		method : public : CountTokens(contents : Vector<Content>, key : String) ~ Int {
+			return 0;
+		}
+
+		method : public : GetDescription() ~ String {
+			return @description;
+		}
+
+		method : public : GetDisplayName() ~ String {
+			return @display_name;
+		}
+
+		method : public : GetInputTokenLimit() ~ Int {
+			return @input_token_limit;
+		}
+
+		method : public : GetName() ~ String {
+			return @name;
+		}
+
+		method : public : GetOutputTokenLimit() ~ Int {
+			return @output_token_limit;
+		}
+
+		method : public : GetGenerationMethods() ~ Vector<String> {
+			return @generation_methods;
+		}
+
+		method : public : GetTemperature() ~ Float {
+			return @temperature;
+		}
+
+		method : public : GetTopK() ~ Int {
+			return @top_k;
+		}
+
+		method : public : GetTopP() ~ Float {
+			return @top_p;
+		}
+
+		method : public : GetVersion() ~ String {
+			return @version;
+		}
 
 		method : public : ToString() ~ String {
 			buffer := "";
@@ -196,6 +213,66 @@ bundle API.Google.Gemini {
 
 			return buffer;
 		}
+	}
+
+	class Content from EndPoint {
+		@parts : Vector<Part>;
+
+		New() {
+			Parent();
+		}
+	}
+
+	class Part {
+		@role : String;
+		@parts : Vector<Part>;
+
+		New(role : String) {
+			@role := role;
+		}
+	}
+
+	class TextPart from Part {
+		@text : String;
+
+		New(text : String, role : String) {
+			Parent(role);
+			@text := text;
+		}
+	}
+
+	class InlinePart from Part {
+		@data : Byte[];
+
+		New(data : Byte[], role : String) {
+			Parent(role);
+			@data := data;
+		}
+	}
+	
+	class FilePart from Part {
+		@file_path : String;
+
+		New(file_path : String, role : String) {
+			Parent(role);
+			@file_path := file_path;
+		}
+	}
+
+	class SafetySetting from EndPoint {
+		New() {
+			Parent();
+		}
+	}
+
+	class GenerationConfig from EndPoint {
+		New() {
+			Parent();
+		}
+	}
+
+	class ContentResponse {
+		New() {}
 	}
 
 	#~
