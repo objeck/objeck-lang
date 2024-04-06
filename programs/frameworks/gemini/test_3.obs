@@ -3,19 +3,17 @@ use Collection, API.Google.Gemini, System.IO.Filesystem;
 class Test {
 	function : Main(args : String[]) ~ Nil {
 		key := EndPoint->GetApiKey();
+		
 		models := Model->ListModels(key);
 		each(model in models) {
 			model->GetName()->PrintLine();
 		};
 
-		contents := Vector->New()<Content>;
 		content := Content->New("user");
 		content->AddPart(TextPart->New("What number is this image showing?"));
 		content->AddPart(BinaryPart->New(FileReader->ReadBinaryFile("thirdteen.png"), "image/png"));
-		contents->AddBack(content);
-
-"--- 2 ---"->PrintLine();
-		model := Model->Create("models/text-bison-001", key);
-		model->GenerateContent(contents, Nil, Nil, key);
+				
+		model := Model->Create("models/gemini-1.0-pro-latest", key);
+		model->GenerateContent(content, Nil, Nil, key);
 	}
 }
