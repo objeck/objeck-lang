@@ -1693,6 +1693,7 @@ bundle API.OpenAI {
 	~#
 	class EndPoint {
 		@last_message : static : String;
+		@api_key : static : String;
 
 		function : SetLastError(last_message : String) ~ Nil {
 			@last_message := last_message;
@@ -1705,6 +1706,17 @@ bundle API.OpenAI {
 		~#
 		function : GetLastError() ~ String {
 			return @last_message;
+		}
+
+		function : GetApiKey() ~ String {
+			if(@api_key = Nil) {
+				token := FileReader->ReadFile("api_key.txt");
+				if(token <> Nil) {
+					@api_key := token->Trim();
+				};
+			};
+
+			return @api_key;
 		}
 	}
 }
