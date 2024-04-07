@@ -91,16 +91,20 @@ bundle API.Google.Gemini {
 			return models;
 		}
 
-		method : public : GenerateContent(content : Content, safety_settings : Vector<SafetySetting>, config : GenerationConfig, key : String) ~ ContentResponse {
+		function : GenerateContent(model_name : String, content : Content, key : String) ~ Vector<Candidate> {
+			return GenerateContent(model_name, content, Nil, Nil, key);
+		}
+
+		function : GenerateContent(model_name : String, content : Content, safety_settings : Vector<SafetySetting>, config : GenerationConfig, key : String) ~ Vector<Candidate> {
 			contents := Vector->New()<Content>;
 			contents->AddBack(content);
 
-			return GenerateContent(contents, safety_settings, config, key);
+			return GenerateContent(model_name, contents, safety_settings, config, key);
 		}
 
-		method : public : GenerateContent(contents : Vector<Content>, safety_settings : Vector<SafetySetting>, config : GenerationConfig, key : String) ~ ContentResponse {
+		function : GenerateContent(model_name : String, contents : Vector<Content>, safety_settings : Vector<SafetySetting>, config : GenerationConfig, key : String) ~ Vector<Candidate> {
+			# contents
 			content_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
-
 			each(content in contents) {
 				parts := content->GetParts();
 				content_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
@@ -132,38 +136,122 @@ bundle API.Google.Gemini {
 
 				content_array_json->Add(content_obj_json)
 			};
-			
 			contents_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 			contents_obj_json->Insert("contents", content_array_json);
 
-# TODO: safetySettings and generationConfig
+			# TODO: safetySettings and generationConfig
 			# contents_obj_json->ToString()->PrintLine();
 
-			url := Url->New("https://generativelanguage.googleapis.com/v1/{$@name}:generateContent?key={$key}");
+			url := Url->New("https://generativelanguage.googleapis.com/v1/{$model_name}:generateContent?key={$key}");
 			if(url->GetQueryParameters()->Has("key")) {			
 				response := PostRequest(contents_obj_json, url);
+				# response->ToString()->PrintLine();
 				if(response <> Nil) {
+					candidates := Vector->New()<Candidate>;
+					
 					candidates_json := response->Get("candidates");
-					each(candidate_json in candidates_json) {
-						content_json := candidate_json->Get("content");
-						parts_json := content_json->Get("parts");
-						each(part_json in parts_json) {
-							text_json := part_json->Get("text");
-							role_json := content_json->Get("role");
+					each(candidate_json in candidates_json) {						
+						# general attributes
+						role := candidate_json->Get("content")->Get("role")->GetString();
+						finish_reason := candidate_json->Get("finishReason")->GetString();
+						index := candidate_json->Get("index")->GetInt();
 
-							role_json->GetString()->Trim()->PrintLine();
-							JsonElement->Decode(text_json->GetString()->Trim())->PrintLine();
-							"---"->PrintLine();
+						# parts
+						parts := Vector->New()<Part>;
+						parts_json := candidate_json->Get("content")->Get("parts");
+						each(part_json in parts_json) {
+							part : Part;
+
+							# text part
+							if(part_json->Has("text")) {
+								text_json := part_json->Get("text");
+								part := TextPart->New(text_json->GetString());
+							};
+
+							# inline part
+							if(part_json->Has("inlineData")) {
+								inline_mime_type := part_json->FindElements("inlineData/mimeType")->GetString();
+								inline_data := part_json->FindElements("inlineData/data")->GetString();
+								part := BinaryPart->New(Encryption.Decrypt->Base64(inline_data), inline_mime_type);
+							};
+
+							parts->AddBack(part);
 						};
+
+						# safety ratings
+						safety_ratings := Vector->New()<Tuples.Pair<String,String>>;
+						safety_ratings_json := candidate_json->Get("safetyRatings");
+						each(safety_rating_json in safety_ratings_json) {
+							safety_category := safety_rating_json->Get("category")->GetString();
+							safety_probability := safety_rating_json->Get("probability")->GetString();
+							safety_rating := Tuples.Pair->New(safety_category, safety_probability)<String, String>;
+
+							safety_ratings->AddBack(safety_rating);
+						};
+
+						candidates->AddBack(Candidate->New(index, role, finish_reason, parts, safety_ratings));
 					};
+
+					return candidates;
 				};
 			};
-					
+			
 			return Nil;
 		}
 
-		method : public : CountTokens(contents : Vector<Content>, key : String) ~ Int {
-			return 0;
+		function : CountTokens(model_name : String, content : Content, key : String) ~ Int {
+			contents := Vector->New()<Content>;
+			contents->AddBack(content);
+
+			return CountTokens(model_name, contents, key);
+		}
+
+		function : CountTokens(model_name : String, contents : Vector<Content>, key : String) ~ Int {
+			# contents
+			content_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+			each(content in contents) {
+				parts := content->GetParts();
+				content_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+
+				content_obj_json->Insert("role", content->GetRole())
+
+				parts_obj_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+				each(part in parts) {
+					part_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+
+					# text
+					if(part->TypeOf(TextPart)) {
+						text_part := part->As(TextPart);
+						part_obj_json->Insert("text", text_part->GetText());
+					}					
+					else {
+						binary_part := part->As(BinaryPart);
+
+						inline_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+						inline_obj_json->Insert("mimeType", binary_part->GetMimeType());
+						inline_obj_json->Insert("data", binary_part->GetBase64Data());
+						
+						part_obj_json->Insert("inlineData", inline_obj_json);
+					};
+
+					parts_obj_json->Add(part_obj_json);
+				};
+				content_obj_json->Insert("parts", parts_obj_json);
+
+				content_array_json->Add(content_obj_json)
+			};
+			contents_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			contents_obj_json->Insert("contents", content_array_json);
+
+			url := Url->New("https://generativelanguage.googleapis.com/v1/{$model_name}:countTokens?key={$key}");
+			if(url->GetQueryParameters()->Has("key")) {			
+				response := PostRequest(contents_obj_json, url);
+				if(response <> Nil) {
+					return response->Get("totalTokens")->GetInt();
+				};
+			};
+			
+			return -1;
 		}
 
 		method : public : GetDescription() ~ String {
@@ -266,6 +354,10 @@ bundle API.Google.Gemini {
 		method : public : GetText() ~ String {
 			return @text;
 		}
+
+		method : public : ToString() ~ String {
+			return "[text='{$@text}']";
+		}
 	}
 
 	class BinaryPart from Part {
@@ -286,10 +378,16 @@ bundle API.Google.Gemini {
 		method : public : GetMimeType() ~ String {
 			return @mime_type;
 		}
+
+		method : public : ToString() ~ String {
+			data_size := @data->Size();
+			return "[data_size={$data_size}, mime_type='{$@mime_type}']";
+		}
 	}
 
 	class Part {
 		New() {}
+		method : virtual : public : ToString() ~ String;
 	}
 
 	class SafetySetting from EndPoint {
@@ -304,8 +402,47 @@ bundle API.Google.Gemini {
 		}
 	}
 
-	class ContentResponse {
-		New() {}
+	class Candidate {
+		@index : Int;
+		@role : String;
+		@finish_reason : String;
+		@parts : Vector<Part>;
+		@safety_ratings : Vector<Tuples.Pair<String,String>>;
+		
+		New(index : Int, role : String, finish_reason : String, parts : Vector<Part>, safety_ratings : Vector<Tuples.Pair<String,String>>) {
+			@index := index;
+			@role := role;
+			@finish_reason := finish_reason;
+			@parts := parts;
+			@safety_ratings := safety_ratings;
+		}
+
+		method : public : ToString() ~ String {
+			buffer := "";
+
+			buffer->Append("index='");
+			buffer->Append(@index);
+
+			buffer->Append("', role='");
+			buffer->Append(@role);
+
+			buffer->Append("', finish_reason='");
+			buffer->Append(@finish_reason);
+
+			buffer->Append("'\n\tparts:");
+			each(part in @parts) {
+				buffer->Append("\n\t\t");
+				buffer->Append(part->ToString());
+			};
+
+			buffer->Append("'\n\tsafety_ratings:");
+			each(safety_rating in @safety_ratings) {
+				buffer->Append("\n\t\t");
+				buffer->Append(safety_rating->ToString());
+			};
+
+			return buffer;
+		}
 	}
 
 	#~
@@ -322,7 +459,7 @@ bundle API.Google.Gemini {
 			if(response <> Nil) {
 				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
 				
-				# response->GetContent()->ToString()->PrintLine();			
+				# response->GetContent()->ToString()->PrintLine();
 				
 				if(response_json = Nil) {
 					"### Error: Unable to parse response ###"->ErrorLine();
