@@ -41,6 +41,52 @@ bundle API.Google.Gemini {
 			return Nil;
 		}
 
+		function : GetModel(model_name : String, key : String) ~ Model {
+			url := Url->New("https://generativelanguage.googleapis.com/v1/{$model_name}?key={$key}");
+			model_json := GetRequest(url);
+
+			if(model_json <> Nil) {
+				# model_json->ToString()->PrintLine();
+
+				description := model_json->Get("description")->GetString();
+				display_name := model_json->Get("displayName")->GetString();
+				input_token_limit := model_json->Get("inputTokenLimit")->GetInt();
+				name := model_json->Get("name")->GetString();
+				output_token_limit := model_json->Get("outputTokenLimit")->GetInt();
+
+				generation_methods := Vector->New()<String>;
+				generation_methods_json := model_json->Get("supportedGenerationMethods");
+				each(generation_method_json in generation_methods_json) {
+					generation_methods->AddBack(generation_method_json->GetString());
+				}
+
+				temperature := 0.9;
+				temperature_json := model_json->Get("temperature");
+				if(temperature_json <> Nil) {
+					temperature := temperature_json->GetFloat();
+				};
+
+				top_k := 0;			
+				top_k_json := model_json->Get("topK");
+				if(top_k_json <> Nil) {
+					top_k := top_k_json->GetInt();
+				};
+
+				top_p := 1.0;
+				top_p_json := model_json->Get("topP");
+				if(top_p_json <> Nil) {
+					top_p := top_p_json->GetFloat();
+				};
+				version := model_json->Get("version")->GetString();
+
+				return Model->New(description, display_name, input_token_limit, name, output_token_limit, 
+					generation_methods, temperature, top_k, top_p, version);
+				
+			};
+
+			return Nil;
+		}
+
 		function : ListModels(key : String) ~ Vector<Model> {
 			models := Vector->New()<Model>;
 
@@ -95,14 +141,14 @@ bundle API.Google.Gemini {
 			return GenerateContent(model_name, content, Nil, Nil, key);
 		}
 
-		function : GenerateContent(model_name : String, content : Content, safety_settings : Vector<SafetySetting>, config : GenerationConfig, key : String) ~ Vector<Candidate> {
+		function : GenerateContent(model_name : String, content : Content, safety_settings : Vector<Tuples.Pair<String, String>>, config : GenerationConfig, key : String) ~ Vector<Candidate> {
 			contents := Vector->New()<Content>;
 			contents->AddBack(content);
 
 			return GenerateContent(model_name, contents, safety_settings, config, key);
 		}
 
-		function : GenerateContent(model_name : String, contents : Vector<Content>, safety_settings : Vector<SafetySetting>, config : GenerationConfig, key : String) ~ Vector<Candidate> {
+		function : GenerateContent(model_name : String, contents : Vector<Content>, safety_settings : Vector<Tuples.Pair<String, String>>, config : GenerationConfig, key : String) ~ Vector<Candidate> {
 			# contents
 			content_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
 			each(content in contents) {
@@ -139,14 +185,34 @@ bundle API.Google.Gemini {
 			contents_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 			contents_obj_json->Insert("contents", content_array_json);
 
-			# TODO: safetySettings and generationConfig
+			# safety settings
+			if(safety_settings <> Nil) {
+				safety_setting_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+				each(safety_setting in safety_settings) {
+					safety_setting_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+					safety_setting_obj_json->Insert("category", safety_setting->GetFirst());
+					safety_setting_obj_json->Insert("threshold", safety_setting->GetSecond());
+					safety_setting_array_json->Add(safety_setting_obj_json);
+				};
+				contents_obj_json->Insert("safetySettings", safety_setting_array_json);
+			};
+
+			#~
+			# TODO: GenerationConfig 
+			if(config <> Nil) {
+				#  generation configuration
+				gen_config_obj_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+				contents_obj_json->Insert("generationConfig", gen_config_obj_json);
+			};
+			~#
+
 			# contents_obj_json->ToString()->PrintLine();
 
 			url := Url->New("https://generativelanguage.googleapis.com/v1/{$model_name}:generateContent?key={$key}");
 			if(url->GetQueryParameters()->Has("key")) {			
 				response := PostRequest(contents_obj_json, url);
-				# response->ToString()->PrintLine();
 				if(response <> Nil) {
+					# response->ToString()->PrintLine();
 					candidates := Vector->New()<Candidate>;
 					
 					candidates_json := response->Get("candidates");
@@ -247,10 +313,11 @@ bundle API.Google.Gemini {
 			if(url->GetQueryParameters()->Has("key")) {			
 				response := PostRequest(contents_obj_json, url);
 				if(response <> Nil) {
+					# response->ToString()->PrintLine();
 					return response->Get("totalTokens")->GetInt();
 				};
 			};
-			
+
 			return -1;
 		}
 
@@ -295,19 +362,32 @@ bundle API.Google.Gemini {
 		}
 
 		method : public : ToString() ~ String {
-			buffer := "";
+			buffer := "[";
 
 			buffer += "name='"
 			buffer += @name;
+
+			buffer += "', display_name="
+			buffer += @display_name;
+
 			buffer += "', version="
 			buffer += @version;
-			buffer += "', description=\""
+
+			buffer += "' input_token_limit="
+			buffer += @input_token_limit;
+
+			buffer += ", output_token_limit="
+			buffer += @output_token_limit;
+
+			buffer += ", description=\""
 			buffer += @description;
-			buffer += "\"\nmethods:\n\t"
+
+			buffer += "\"\n\tmethods:"
 			each(generation_method in @generation_methods) {
+				buffer += "\n\t\t";
 				buffer += generation_method;
-				buffer += "\n\t";
 			};
+			buffer += ']';
 
 			return buffer;
 		}
@@ -388,12 +468,6 @@ bundle API.Google.Gemini {
 	class Part {
 		New() {}
 		method : virtual : public : ToString() ~ String;
-	}
-
-	class SafetySetting from EndPoint {
-		New() {
-			Parent();
-		}
 	}
 
 	class GenerationConfig from EndPoint {
