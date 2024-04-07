@@ -4,7 +4,7 @@ use Web.HTTP, Collection, System.IO.Filesystem, Data.JSON;
 Google Gemini ML client APIs
 ~#
 bundle API.Google.Gemini {
-	class Model from EndPoint {
+	class Model from EndPoint implements Stringify {
 		@description : String;
 		@display_name : String;
 		@input_token_limit : Int;
@@ -378,9 +378,9 @@ bundle API.Google.Gemini {
 			buffer += ", description=\""
 			buffer += @description;
 
-			buffer += "\"\n\tmethods:"
+			buffer += "\"\nmethods:"
 			each(generation_method in @generation_methods) {
-				buffer += "\n\t\t";
+				buffer += "\n\t";
 				buffer += generation_method;
 			};
 			buffer += ']';
@@ -389,7 +389,7 @@ bundle API.Google.Gemini {
 		}
 	}
 
-	class Content from EndPoint {
+	class Content from EndPoint implements Stringify {
 		@parts : Vector<Part>;
 		@role : String;
 
@@ -399,7 +399,7 @@ bundle API.Google.Gemini {
 			@parts := Vector->New()<Part>;
 		}
 
-		New(role : String, parts : Vector<Part>) {
+		New(parts : Vector<Part>, role : String) {
 			Parent();
 			@role := role;
 			@parts := parts;
@@ -417,9 +417,25 @@ bundle API.Google.Gemini {
 		method : public : GetRole() ~ String {
 			return @role;
 		}
+
+		method : public : ToString() ~ String {
+			buffer := "{";
+
+			buffer->Append("role='");
+			buffer->Append(@role);
+
+			buffer->Append("'\nparts:");
+			each(part in @parts) {
+				buffer->Append("\n\t");
+				buffer->Append(part->ToString());
+			};
+			buffer->Append('}');
+			
+			return buffer;
+		}
 	}
 
-	class TextPart from Part {
+	class TextPart from Part implements Stringify {
 		@text : String;
 
 		New(text : String) {
@@ -432,11 +448,11 @@ bundle API.Google.Gemini {
 		}
 
 		method : public : ToString() ~ String {
-			return "[text='{$@text}']";
+			return "text='{$@text}'";
 		}
 	}
 
-	class BinaryPart from Part {
+	class BinaryPart from Part implements Stringify {
 		@data : Byte[];
 		@mime_type : String;
 
@@ -457,7 +473,7 @@ bundle API.Google.Gemini {
 
 		method : public : ToString() ~ String {
 			data_size := @data->Size();
-			return "[data_size={$data_size}, mime_type='{$@mime_type}']";
+			return "data_size={$data_size}, mime_type='{$@mime_type}'";
 		}
 	}
 
@@ -472,7 +488,7 @@ bundle API.Google.Gemini {
 		}
 	}
 
-	class Candidate {
+	class Candidate implements Stringify {
 		@index : Int;
 		@role : String;
 		@finish_reason : String;
@@ -523,15 +539,15 @@ bundle API.Google.Gemini {
 			buffer->Append("', finish_reason='");
 			buffer->Append(@finish_reason);
 
-			buffer->Append("'\n\tparts:");
+			buffer->Append("'\nparts:");
 			each(part in @parts) {
-				buffer->Append("\n\t\t");
+				buffer->Append("\n\t");
 				buffer->Append(part->ToString());
 			};
 
 			buffer->Append("'\n\tsafety_ratings:");
 			each(safety_rating in @safety_ratings) {
-				buffer->Append("\n\t\t");
+				buffer->Append("\n\t");
 				buffer->Append(safety_rating->ToString());
 			};
 
@@ -639,6 +655,43 @@ bundle API.Google.Gemini {
 			};
 			
 			return Nil;
+		}
+
+		method : public : GetParts() ~ Vector<Content> {
+			contents := Vector->New()<Content>;
+
+			contents_array_json := @contents_obj_json->Get("contents");
+			each(candidate_json in contents_array_json) {
+candidate_json->ToString()->PrintLine();
+
+				# role and parts
+				role := candidate_json->Get("role")->GetString();
+				parts_json := candidate_json->Get("parts");
+				
+				parts := Vector->New()<Part>;
+				each(part_json in parts_json) {
+					part : Part;
+
+					# text part
+					if(part_json->Has("text")) {
+						text_json := part_json->Get("text");
+						part := TextPart->New(text_json->GetString());
+					};
+
+					# inline part
+					if(part_json->Has("inlineData")) {
+						inline_mime_type := part_json->FindElements("inlineData/mimeType")->GetString();
+						inline_data := part_json->FindElements("inlineData/data")->GetString();
+						part := BinaryPart->New(Encryption.Decrypt->Base64(inline_data), inline_mime_type);
+					};
+
+					parts->AddBack(part);
+				};
+
+				contents->AddBack(Content->New(parts, role));
+			};
+
+			return contents;
 		}
 	}
 
