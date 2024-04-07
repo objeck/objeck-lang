@@ -83,10 +83,6 @@ bundle API.Google.Gemini {
 			return models;
 		}
 
-		function : Chat(model_name : String, key : String) ~ ChatSession {
-			return ChatSession->New(model_name, key);
-		}
-
 		function : GetModel(model_name : String, key : String) ~ Model {
 			url := Url->New("https://generativelanguage.googleapis.com/v1/{$model_name}?key={$key}");
 			model_json := GetRequest(url);
@@ -389,52 +385,6 @@ bundle API.Google.Gemini {
 		}
 	}
 
-	class Content from EndPoint implements Stringify {
-		@parts : Vector<Part>;
-		@role : String;
-
-		New(role : String) {
-			Parent();
-			@role := role;
-			@parts := Vector->New()<Part>;
-		}
-
-		New(parts : Vector<Part>, role : String) {
-			Parent();
-			@role := role;
-			@parts := parts;
-		}
-
-		method : public : AddPart(part : Part) ~ Content {
-			@parts->AddBack(part);
-			return @self;
-		}
-
-		method : public : GetParts() ~ Vector<Part> {
-			return @parts;
-		}
-
-		method : public : GetRole() ~ String {
-			return @role;
-		}
-
-		method : public : ToString() ~ String {
-			buffer := "{";
-
-			buffer->Append("role='");
-			buffer->Append(@role);
-
-			buffer->Append("'\nparts:");
-			each(part in @parts) {
-				buffer->Append("\n\t");
-				buffer->Append(part->ToString());
-			};
-			buffer->Append('}');
-			
-			return buffer;
-		}
-	}
-
 	class TextPart from Part implements Stringify {
 		@text : String;
 
@@ -482,20 +432,70 @@ bundle API.Google.Gemini {
 		method : virtual : public : ToString() ~ String;
 	}
 
+	# TODO: implement, support is spotty
 	class GenerationConfig from EndPoint {
 		New() {
 			Parent();
 		}
 	}
 
-	class Candidate implements Stringify {
-		@index : Int;
-		@role : String;
-		@finish_reason : String;
+	class Content from EndPoint implements Stringify {
 		@parts : Vector<Part>;
+		@role : String;
+
+		New(parts : Vector<Part>, role : String) {
+			Parent();
+			@role := role;
+			@parts := parts;
+		}
+
+		method : public : AddPart(part : Part) ~ Content {
+			@parts->AddBack(part);
+			return @self;
+		}
+
+		method : public : GetParts() ~ Vector<Part> {
+			return @parts;
+		}
+
+		method : public : GetFirstPart() ~ Part {
+			last := @parts->Size() - 1;
+			if(last > -1) {
+				return @parts->Get(last);
+			};
+
+			return Nil;
+		}
+
+		method : public : GetRole() ~ String {
+			return @role;
+		}
+
+		method : public : ToString() ~ String {
+			buffer := "{";
+
+			buffer->Append("role='");
+			buffer->Append(@role);
+
+			buffer->Append("'\nparts:");
+			each(part in @parts) {
+				buffer->Append("\n\t");
+				buffer->Append(part->ToString());
+			};
+			buffer->Append('}');
+			
+			return buffer;
+		}
+	}
+
+	class Candidate from Content implements Stringify {
+		@index : Int;
+		@finish_reason : String;
 		@safety_ratings : Vector<Tuples.Pair<String,String>>;
 		
 		New(index : Int, role : String, finish_reason : String, parts : Vector<Part>, safety_ratings : Vector<Tuples.Pair<String,String>>) {
+			Parent(parts, role);
+
 			@index := index;
 			@role := role;
 			@finish_reason := finish_reason;
@@ -507,20 +507,8 @@ bundle API.Google.Gemini {
 			return @index;
 		}
 
-		method : public : GetRole() ~ String {
-			return @role;
-		}
-
 		method : public : GetFinishReason () ~ String {
 			return @finish_reason;
-		}
-
-		method : public : GetParts() ~ Vector<Part> {
-			return @parts;
-		}
-
-		method : public : GetFirstPart() ~ Part {
-			return @parts->First();
 		}
 
 		method : public : GetSafetyRatings() ~ Vector<Tuples.Pair<String,String>> {
@@ -555,7 +543,7 @@ bundle API.Google.Gemini {
 		}
 	}
 
-	class ChatSession {
+	class Chat implements Stringify {
 		@content_array_json : JsonElement;
 		@contents_obj_json : JsonElement;
 		@model_name : String;
@@ -570,7 +558,7 @@ bundle API.Google.Gemini {
 			@contents_obj_json->Insert("contents", @content_array_json);
 		}
 
-		method : public : AddPart(part : Part, role : String) ~ Candidate {
+		method : public : SendPart(part : Part, role : String) ~ Candidate {
 			content_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 			content_obj_json->Insert("role", role);
 
@@ -657,13 +645,11 @@ bundle API.Google.Gemini {
 			return Nil;
 		}
 
-		method : public : GetParts() ~ Vector<Content> {
+		method : public : GetAllParts() ~ Vector<Content> {
 			contents := Vector->New()<Content>;
 
 			contents_array_json := @contents_obj_json->Get("contents");
 			each(candidate_json in contents_array_json) {
-candidate_json->ToString()->PrintLine();
-
 				# role and parts
 				role := candidate_json->Get("role")->GetString();
 				parts_json := candidate_json->Get("parts");
@@ -692,6 +678,17 @@ candidate_json->ToString()->PrintLine();
 			};
 
 			return contents;
+		}
+
+		method : public : ToString() ~ String {
+			buffer := "";
+
+			buffer->Append("model_name='")
+			buffer->Append(@model_name);
+			buffer->Append("', ")
+			buffer->Append(GetAllParts()->ToString());
+
+			return buffer;
 		}
 	}
 
