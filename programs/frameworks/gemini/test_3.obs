@@ -8,9 +8,9 @@ class Test {
 		each(model in models) {
 			model->GetName()->PrintLine();
 		};
-		
+
 		content := Content->New("user")->AddPart(TextPart->New("What number is this image showing?"))->AddPart(BinaryPart->New(FileReader->ReadBinaryFile("thirdteen.png"), "image/png"));
-		model := Model->Create("models/gemini-1.0-pro-latest", key);
+		model := Model->Create("models/gemini-pro-vision", key);
 		model->GenerateContent(content, Nil, Nil, key);
 	}
 }

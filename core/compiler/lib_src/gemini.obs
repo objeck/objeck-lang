@@ -44,7 +44,7 @@ bundle API.Google.Gemini {
 		function : ListModels(key : String) ~ Vector<Model> {
 			models := Vector->New()<Model>;
 
-			url := Url->New("https://generativelanguage.googleapis.com/v1beta/models?key={$key}");
+			url := Url->New("https://generativelanguage.googleapis.com/v1/models?key={$key}");
 			response := GetRequest(url);
 
 			if(response <> Nil) {
@@ -139,7 +139,7 @@ bundle API.Google.Gemini {
 # TODO: safetySettings and generationConfig
 			# contents_obj_json->ToString()->PrintLine();
 
-			url := Url->New("https://generativelanguage.googleapis.com/v1beta/models/gemini-pro-vision:generateContent?key={$key}");
+			url := Url->New("https://generativelanguage.googleapis.com/v1/{$@name}:generateContent?key={$key}");
 			if(url->GetQueryParameters()->Has("key")) {			
 				response := PostRequest(contents_obj_json, url);
 				if(response <> Nil) {
