@@ -9,10 +9,13 @@ class Test {
 			model->GetName()->PrintLine();
 		};
 
+		Model->GetModel("models/gemini-pro-vision", key)->ToString()->PrintLine();
+#~
 		content := Content->New("user")
 			->AddPart(TextPart->New("What number is this image showing?"))
 			->AddPart(BinaryPart->New(FileReader->ReadBinaryFile("thirdteen.png"), "image/png"));
 		Model->CountTokens("models/gemini-pro-vision", content, key)->PrintLine();
+~#
 
 #~		
 		candidates := Model->GenerateContent("models/gemini-pro-vision", content, key);
