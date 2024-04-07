@@ -17,7 +17,12 @@ class Test {
 
 		candidate := session->AddPart(TextPart->New("Where is it located?"), "user");
 		candidate->GetFirstPart()->ToString()->PrintLine();
-
+"======"->PrintLine();
+		
+		contents := session->GetParts()<Content>;
+		each(content in contents) {
+			content->ToString()->PrintLine();
+		};
 #~		
 		models := Model->ListModels(key);
 		each(model in models) {
