@@ -6,19 +6,26 @@ class Test {
 
 		session := ChatSession->New("models/gemini-pro", key);
 
-		candidates := session->AddPart(TextPart->New("What is the tallest mountain in the US?"), "user");
-		candidates->Last();
+		candidate := session->AddPart(TextPart->New("What is the tallest mountain in the Colorado?"), "user");
+		candidate->GetFirstPart()->ToString()->PrintLine();
 		
-		candidates := session->AddPart(TextPart->New("Why is the mountain so tall?"), "user");
-		candidates->Size()->PrintLine();
+		candidate := session->AddPart(TextPart->New("How tall is it?"), "user");
+		candidate->GetFirstPart()->ToString()->PrintLine();
+
+		candidate := session->AddPart(TextPart->New("Why is it so tall?"), "user");
+		candidate->GetFirstPart()->ToString()->PrintLine();
+
+		candidate := session->AddPart(TextPart->New("Where is it located?"), "user");
+		candidate->GetFirstPart()->ToString()->PrintLine();
 
 #~		
 		models := Model->ListModels(key);
 		each(model in models) {
 			model->GetName()->PrintLine();
 		};
-~#
 		Model->GetModel("models/gemini-pro", key)->ToString()->PrintLine();
+~#
+
 #~
 		content := Content->New("user")
 			->AddPart(TextPart->New("What number is this image showing?"))

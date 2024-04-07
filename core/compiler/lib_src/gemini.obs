@@ -492,6 +492,30 @@ bundle API.Google.Gemini {
 			@safety_ratings := safety_ratings;
 		}
 
+		method : public : GetIndex() ~ Int {
+			return @index;
+		}
+
+		method : public : GetRole() ~ String {
+			return @role;
+		}
+
+		method : public : GetFinishReason () ~ String {
+			return @finish_reason;
+		}
+
+		method : public : GetParts() ~ Vector<Part> {
+			return @parts;
+		}
+
+		method : public : GetFirstPart() ~ Part {
+			return @parts->First();
+		}
+
+		method : public : GetSafetyRatings() ~ Vector<Tuples.Pair<String,String>> {
+			return @safety_ratings;
+		}
+
 		method : public : ToString() ~ String {
 			buffer := "";
 
@@ -535,7 +559,7 @@ bundle API.Google.Gemini {
 			@contents_obj_json->Insert("contents", @content_array_json);
 		}
 
-		method : public : AddPart(part : Part, role : String) ~ Vector<Candidate> {
+		method : public : AddPart(part : Part, role : String) ~ Candidate {
 			content_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 			content_obj_json->Insert("role", role);
 
@@ -615,7 +639,7 @@ bundle API.Google.Gemini {
 						candidates->AddBack(Candidate->New(index, role, finish_reason, parts, safety_ratings));
 					};
 
-					return candidates;
+					return candidates->Last();
 				};
 			};
 			
