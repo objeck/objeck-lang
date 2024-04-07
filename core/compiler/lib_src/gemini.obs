@@ -1,9 +1,12 @@
-use Web.HTTP, Collection, System.IO.Filesystem, Data.JSON;
+use Web.HTTP, Collection, Data.JSON;
 
 #~
 Google Gemini ML client APIs
 ~#
 bundle API.Google.Gemini {
+	#~
+	Gemini model interactions
+	~#
 	class Model from EndPoint implements Stringify {
 		@description : String;
 		@display_name : String;
@@ -33,6 +36,11 @@ bundle API.Google.Gemini {
 			@version := version;
 		}
 		
+		#~
+		Lists available models
+		@param key API key
+		@return available models
+		~#
 		function : ListModels(key : String) ~ Vector<Model> {
 			models := Vector->New()<Model>;
 
@@ -83,6 +91,12 @@ bundle API.Google.Gemini {
 			return models;
 		}
 
+		#~
+		Gets a model by name
+		@param model_name model name
+		@param key API key
+		@return available models
+		~#
 		function : GetModel(model_name : String, key : String) ~ Model {
 			url := Url->New("https://generativelanguage.googleapis.com/v1/{$model_name}?key={$key}");
 			model_json := GetRequest(url);
@@ -385,6 +399,9 @@ bundle API.Google.Gemini {
 		}
 	}
 
+	#~
+	Text message part
+	~#
 	class TextPart from Part implements Stringify {
 		@text : String;
 
@@ -402,6 +419,9 @@ bundle API.Google.Gemini {
 		}
 	}
 
+	#~
+	Binary message part
+	~#
 	class BinaryPart from Part implements Stringify {
 		@data : Byte[];
 		@mime_type : String;
@@ -427,6 +447,9 @@ bundle API.Google.Gemini {
 		}
 	}
 
+	#~
+	Abstract message part
+	~#
 	class Part {
 		New() {}
 		method : virtual : public : ToString() ~ String;
@@ -439,6 +462,9 @@ bundle API.Google.Gemini {
 		}
 	}
 
+	#~
+	Prompt response content
+	~#
 	class Content from EndPoint implements Stringify {
 		@parts : Vector<Part>;
 		@role : String;
@@ -488,6 +514,9 @@ bundle API.Google.Gemini {
 		}
 	}
 
+	#~
+	Candidate prompt response
+	~#
 	class Candidate from Content implements Stringify {
 		@index : Int;
 		@finish_reason : String;
@@ -543,6 +572,9 @@ bundle API.Google.Gemini {
 		}
 	}
 
+	#~
+	Gemini chat session
+	~#
 	class Chat implements Stringify {
 		@content_array_json : JsonElement;
 		@contents_obj_json : JsonElement;
@@ -753,7 +785,7 @@ bundle API.Google.Gemini {
 
 		function : GetApiKey() ~ String {
 			if(@api_key = Nil) {
-				token := FileReader->ReadFile("api_key.txt");
+				token := System.IO.Filesystem.FileReader->ReadFile("api_key.txt");
 				if(token <> Nil) {
 					@api_key := token->Trim();
 				};
