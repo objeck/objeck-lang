@@ -30,6 +30,7 @@ bundle API.Google.Gemini {
 			@version := version;
 		}
 		
+		# TODO: tuned models
 		function : ListModels(key : String) ~ Vector<Model> {
 			models := Vector->New()<Model>;
 
@@ -80,10 +81,12 @@ bundle API.Google.Gemini {
 			return models;
 		}
 
+		# TODO: tuned models
 		function : Chat(model_name : String, key : String) ~ ChatSession {
 			return Nil;
 		}
 
+		# TODO: tuned models
 		function : GetModel(model_name : String, key : String) ~ Model {
 			url := Url->New("https://generativelanguage.googleapis.com/v1/{$model_name}?key={$key}");
 			model_json := GetRequest(url);
@@ -130,10 +133,12 @@ bundle API.Google.Gemini {
 			return Nil;
 		}
 
+		# TODO: tuned models
 		function : GenerateContent(model_name : String, content : Content, key : String) ~ Vector<Candidate> {
 			return GenerateContent(model_name, content, Nil, Nil, key);
 		}
 
+		# TODO: tuned models
 		function : GenerateContent(model_name : String, content : Content, safety_settings : Vector<Tuples.Pair<String, String>>, config : GenerationConfig, key : String) ~ Vector<Candidate> {
 			contents := Vector->New()<Content>;
 			contents->AddBack(content);
@@ -141,6 +146,7 @@ bundle API.Google.Gemini {
 			return GenerateContent(model_name, contents, safety_settings, config, key);
 		}
 
+		# TODO: tuned models
 		function : GenerateContent(model_name : String, contents : Vector<Content>, safety_settings : Vector<Tuples.Pair<String, String>>, config : GenerationConfig, key : String) ~ Vector<Candidate> {
 			# contents
 			content_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
@@ -258,6 +264,7 @@ bundle API.Google.Gemini {
 			return Nil;
 		}
 
+		# TODO: tuned models
 		function : CountTokens(model_name : String, content : Content, key : String) ~ Int {
 			contents := Vector->New()<Content>;
 			contents->AddBack(content);
@@ -265,6 +272,7 @@ bundle API.Google.Gemini {
 			return CountTokens(model_name, contents, key);
 		}
 
+		# TODO: tuned models
 		function : CountTokens(model_name : String, contents : Vector<Content>, key : String) ~ Int {
 			# contents
 			content_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
