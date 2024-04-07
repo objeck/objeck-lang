@@ -30,63 +30,6 @@ bundle API.Google.Gemini {
 			@version := version;
 		}
 		
-		function : Create(model_name : String, key : String) ~ Model { 
-			models := ListModels(key);
-			each(model in models) {
-				if(model->GetName()->Equals(model_name)) {
-					return model;
-				};
-			};
-
-			return Nil;
-		}
-
-		function : GetModel(model_name : String, key : String) ~ Model {
-			url := Url->New("https://generativelanguage.googleapis.com/v1/{$model_name}?key={$key}");
-			model_json := GetRequest(url);
-
-			if(model_json <> Nil) {
-				# model_json->ToString()->PrintLine();
-
-				description := model_json->Get("description")->GetString();
-				display_name := model_json->Get("displayName")->GetString();
-				input_token_limit := model_json->Get("inputTokenLimit")->GetInt();
-				name := model_json->Get("name")->GetString();
-				output_token_limit := model_json->Get("outputTokenLimit")->GetInt();
-
-				generation_methods := Vector->New()<String>;
-				generation_methods_json := model_json->Get("supportedGenerationMethods");
-				each(generation_method_json in generation_methods_json) {
-					generation_methods->AddBack(generation_method_json->GetString());
-				}
-
-				temperature := 0.9;
-				temperature_json := model_json->Get("temperature");
-				if(temperature_json <> Nil) {
-					temperature := temperature_json->GetFloat();
-				};
-
-				top_k := 0;			
-				top_k_json := model_json->Get("topK");
-				if(top_k_json <> Nil) {
-					top_k := top_k_json->GetInt();
-				};
-
-				top_p := 1.0;
-				top_p_json := model_json->Get("topP");
-				if(top_p_json <> Nil) {
-					top_p := top_p_json->GetFloat();
-				};
-				version := model_json->Get("version")->GetString();
-
-				return Model->New(description, display_name, input_token_limit, name, output_token_limit, 
-					generation_methods, temperature, top_k, top_p, version);
-				
-			};
-
-			return Nil;
-		}
-
 		function : ListModels(key : String) ~ Vector<Model> {
 			models := Vector->New()<Model>;
 
@@ -135,6 +78,56 @@ bundle API.Google.Gemini {
 			};
 
 			return models;
+		}
+
+		function : Chat(model_name : String, key : String) ~ ChatSession {
+			return Nil;
+		}
+
+		function : GetModel(model_name : String, key : String) ~ Model {
+			url := Url->New("https://generativelanguage.googleapis.com/v1/{$model_name}?key={$key}");
+			model_json := GetRequest(url);
+
+			if(model_json <> Nil) {
+				# model_json->ToString()->PrintLine();
+
+				description := model_json->Get("description")->GetString();
+				display_name := model_json->Get("displayName")->GetString();
+				input_token_limit := model_json->Get("inputTokenLimit")->GetInt();
+				name := model_json->Get("name")->GetString();
+				output_token_limit := model_json->Get("outputTokenLimit")->GetInt();
+
+				generation_methods := Vector->New()<String>;
+				generation_methods_json := model_json->Get("supportedGenerationMethods");
+				each(generation_method_json in generation_methods_json) {
+					generation_methods->AddBack(generation_method_json->GetString());
+				}
+
+				temperature := 0.9;
+				temperature_json := model_json->Get("temperature");
+				if(temperature_json <> Nil) {
+					temperature := temperature_json->GetFloat();
+				};
+
+				top_k := 0;			
+				top_k_json := model_json->Get("topK");
+				if(top_k_json <> Nil) {
+					top_k := top_k_json->GetInt();
+				};
+
+				top_p := 1.0;
+				top_p_json := model_json->Get("topP");
+				if(top_p_json <> Nil) {
+					top_p := top_p_json->GetFloat();
+				};
+				version := model_json->Get("version")->GetString();
+
+				return Model->New(description, display_name, input_token_limit, name, output_token_limit, 
+					generation_methods, temperature, top_k, top_p, version);
+				
+			};
+
+			return Nil;
 		}
 
 		function : GenerateContent(model_name : String, content : Content, key : String) ~ Vector<Candidate> {
@@ -516,6 +509,21 @@ bundle API.Google.Gemini {
 			};
 
 			return buffer;
+		}
+	}
+
+	class ChatSession {
+		@session : Vector<Part>;
+
+		New() {
+			@session := Vector->New()<Part>;
+		}
+
+		method : public : AddPart(content : Part) ~ Nil {
+		}
+
+		method : public : GetSession() ~ Vector<Part> {
+			return @session;
 		}
 	}
 
