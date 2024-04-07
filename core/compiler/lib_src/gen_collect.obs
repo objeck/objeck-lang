@@ -33,7 +33,7 @@ bundle Tuples {
 		Returns the first value
 		@return first value
 		~#
-		method : public : First() ~ A {
+		method : public : GetFirst() ~ A {
 			return @a;
 		}
 
@@ -110,7 +110,7 @@ bundle Tuples {
 		Returns the first value
 		@return first value
 		~#
-		method : public : First() ~ A {
+		method : public : GetFirst() ~ A {
 			return @a;
 		}
 
@@ -213,7 +213,7 @@ bundle Tuples {
 		Returns the first value
 		@return first value
 		~#
-		method : public : First() ~ A {
+		method : public : GetFirst() ~ A {
 			return @a;
 		}
 
@@ -340,7 +340,7 @@ bundle Tuples {
 		Returns the first value
 		@return first value
 		~#
-		method : public : First() ~ A {
+		method : public : GetFirst() ~ A {
 			return @a;
 		}
 
@@ -1003,7 +1003,7 @@ each(value := values) {
 		Gets the first value
 		@return first value
 		~#
-		method : public : First() ~ F {
+		method : public : GetFirst() ~ F {
 			return @first;
 		}
 
@@ -1082,7 +1082,7 @@ hash->Find(510)->PrintLine();
 # get key/values
 key_values := hash->GetKeyValues()<Pair<IntRef, String>>;
 each(key_value := key_values) {
-   key_value->First()->PrintLine();
+   key_value->GetFirst()->PrintLine();
 };
 
 # get values
@@ -1147,7 +1147,7 @@ hash->Has(408)->PrintLine();
 				# get string value if instance implements 'Stringify'
 				pair := pairs->Get(i)<Pair<K,V>>;
 
-				key := pair->First();
+				key := pair->GetFirst();
 				if(key->TypeOf(Stringify)) {
 					buffer->Append('(');
 					buffer->Append(key->As(System.Stringify)->ToString());
@@ -3689,7 +3689,7 @@ function : Show(value : IntRef) ~ Nil {
 	   # get key/values
 	   key_values := map->GetKeyValues()<Pair<IntRef, String>>;
 	   each(key_value := key_values) {
-	      key_value->First()->PrintLine();
+	      key_value->GetFirst()->PrintLine();
 	   };
 
 	   # get values
@@ -3910,7 +3910,7 @@ function : Show(value : IntRef) ~ Nil {
 				# get string value if instance implements 'Stringify'
 				pair := pairs->Get(i)<Pair<K,V>>;
 
-				key := pair->First();
+				key := pair->GetFirst();
 				if(key->TypeOf(Stringify)) {
 					buffer->Append('(');
 					buffer->Append(key->As(System.Stringify)->ToString());
