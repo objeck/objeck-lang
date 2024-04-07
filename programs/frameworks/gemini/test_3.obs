@@ -2,27 +2,22 @@ use Collection, API.Google.Gemini, System.IO.Filesystem;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		key := EndPoint->GetApiKey();
+		session := Chat->New("models/gemini-pro", EndPoint->GetApiKey());
 
-		session := ChatSession->New("models/gemini-pro", key);
-
-		candidate := session->AddPart(TextPart->New("What is the tallest mountain in the Colorado?"), "user");
-		candidate->GetFirstPart()->ToString()->PrintLine();
+		content := session->SendPart(TextPart->New("What is the tallest mountain in the California?"), "user");
+		content->GetFirstPart()->ToString()->PrintLine();
 		
-		candidate := session->AddPart(TextPart->New("How tall is it?"), "user");
-		candidate->GetFirstPart()->ToString()->PrintLine();
+		content := session->SendPart(TextPart->New("How tall is it?"), "user");
+		content->GetFirstPart()->ToString()->PrintLine();
 
-		candidate := session->AddPart(TextPart->New("Why is it so tall?"), "user");
-		candidate->GetFirstPart()->ToString()->PrintLine();
+		content := session->SendPart(TextPart->New("Why is it so tall?"), "user");
+		content->GetFirstPart()->ToString()->PrintLine();
 
-		candidate := session->AddPart(TextPart->New("Where is it located?"), "user");
-		candidate->GetFirstPart()->ToString()->PrintLine();
+		content := session->SendPart(TextPart->New("Where is it located?"), "user");
+		content->GetFirstPart()->ToString()->PrintLine();
 "======"->PrintLine();
 		
-		contents := session->GetParts()<Content>;
-		each(content in contents) {
-			content->ToString()->PrintLine();
-		};
+		session->ToString()->PrintLine();
 #~		
 		models := Model->ListModels(key);
 		each(model in models) {
@@ -33,8 +28,8 @@ class Test {
 
 #~
 		content := Content->New("user")
-			->AddPart(TextPart->New("What number is this image showing?"))
-			->AddPart(BinaryPart->New(FileReader->ReadBinaryFile("thirdteen.png"), "image/png"));
+			->SendPart(TextPart->New("What number is this image showing?"))
+			->SendPart(BinaryPart->New(FileReader->ReadBinaryFile("thirdteen.png"), "image/png"));
 		Model->CountTokens("models/gemini-pro-vision", content, key)->PrintLine();
 ~#
 
