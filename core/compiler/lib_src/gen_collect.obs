@@ -33,7 +33,7 @@ bundle Tuples {
 		Returns the first value
 		@return first value
 		~#
-		method : public : GetFirst() ~ A {
+		method : public : First() ~ A {
 			return @a;
 		}
 
@@ -110,7 +110,7 @@ bundle Tuples {
 		Returns the first value
 		@return first value
 		~#
-		method : public : GetFirst() ~ A {
+		method : public : First() ~ A {
 			return @a;
 		}
 
@@ -213,7 +213,7 @@ bundle Tuples {
 		Returns the first value
 		@return first value
 		~#
-		method : public : GetFirst() ~ A {
+		method : public : First() ~ A {
 			return @a;
 		}
 
@@ -340,7 +340,7 @@ bundle Tuples {
 		Returns the first value
 		@return first value
 		~#
-		method : public : GetFirst() ~ A {
+		method : public : First() ~ A {
 			return @a;
 		}
 
@@ -1003,7 +1003,7 @@ each(value := values) {
 		Gets the first value
 		@return first value
 		~#
-		method : public : GetFirst() ~ F {
+		method : public : First() ~ F {
 			return @first;
 		}
 
@@ -1082,7 +1082,7 @@ hash->Find(510)->PrintLine();
 # get key/values
 key_values := hash->GetKeyValues()<Pair<IntRef, String>>;
 each(key_value := key_values) {
-   key_value->GetFirst()->PrintLine();
+   key_value->First()->PrintLine();
 };
 
 # get values
@@ -1147,7 +1147,7 @@ hash->Has(408)->PrintLine();
 				# get string value if instance implements 'Stringify'
 				pair := pairs->Get(i)<Pair<K,V>>;
 
-				key := pair->GetFirst();
+				key := pair->First();
 				if(key->TypeOf(Stringify)) {
 					buffer->Append('(');
 					buffer->Append(key->As(System.Stringify)->ToString());
@@ -3166,7 +3166,7 @@ function : Example() ~ Nil {
 		Gets the last value
 		@return last value, or Nil if not set
 		~#
-		method : public : GetLast(index : Int) ~ H {
+		method : public : Last() ~ H {
 			last := @size - 1;
 			if(last > -1) {
 				return @values[last];
@@ -3179,7 +3179,7 @@ function : Example() ~ Nil {
 		Gets the first value
 		@return first value, or Nil if not set
 		~#
-		method : public : GetFirst(index : Int) ~ H {
+		method : public : First() ~ H {
 			if(@size > -1) {
 				return @values[0];
 			}
@@ -3476,7 +3476,7 @@ function : Show(value : IntRef) ~ Nil {
 		Gets the last value
 		@return last value, or Nil if not set
 		~#
-		method : public : GetLast(index : Int) ~ H {
+		method : public : Last() ~ H {
 			last := @size - 1;
 			if(last > -1) {
 				return @values[last];
@@ -3489,7 +3489,7 @@ function : Show(value : IntRef) ~ Nil {
 		Gets the first value
 		@return first value, or Nil if not set
 		~#
-		method : public : GetFirst(index : Int) ~ H {
+		method : public : First() ~ H {
 			if(@size > -1) {
 				return @values[0];
 			}
@@ -3689,7 +3689,7 @@ function : Show(value : IntRef) ~ Nil {
 	   # get key/values
 	   key_values := map->GetKeyValues()<Pair<IntRef, String>>;
 	   each(key_value := key_values) {
-	      key_value->GetFirst()->PrintLine();
+	      key_value->First()->PrintLine();
 	   };
 
 	   # get values
@@ -3910,7 +3910,7 @@ function : Show(value : IntRef) ~ Nil {
 				# get string value if instance implements 'Stringify'
 				pair := pairs->Get(i)<Pair<K,V>>;
 
-				key := pair->GetFirst();
+				key := pair->First();
 				if(key->TypeOf(Stringify)) {
 					buffer->Append('(');
 					buffer->Append(key->As(System.Stringify)->ToString());
