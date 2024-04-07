@@ -3152,12 +3152,37 @@ function : Example() ~ Nil {
 		#~
 		Gets an indexed value
 		@param index index
-		@return value
+		@return value, or Nil if invalid index
 		~#
 		method : public : Get(index : Int) ~ H {
 			if(index > -1 & index < @size) {
 				return @values[index];
 			};
+
+			return Nil;
+		}
+
+		#~
+		Gets the last value
+		@return last value, or Nil if not set
+		~#
+		method : public : GetLast(index : Int) ~ H {
+			last := @size - 1;
+			if(last > -1) {
+				return @values[last];
+			}
+
+			return Nil;
+		}
+
+		#~
+		Gets the first value
+		@return first value, or Nil if not set
+		~#
+		method : public : GetFirst(index : Int) ~ H {
+			if(@size > -1) {
+				return @values[0];
+			}
 
 			return Nil;
 		}
@@ -3443,6 +3468,31 @@ function : Show(value : IntRef) ~ Nil {
 			if(index > -1 & index < @size) {
 				return @values[index];
 			};
+
+			return Nil;
+		}
+
+		#~
+		Gets the last value
+		@return last value, or Nil if not set
+		~#
+		method : public : GetLast(index : Int) ~ H {
+			last := @size - 1;
+			if(last > -1) {
+				return @values[last];
+			}
+
+			return Nil;
+		}
+
+		#~
+		Gets the first value
+		@return first value, or Nil if not set
+		~#
+		method : public : GetFirst(index : Int) ~ H {
+			if(@size > -1) {
+				return @values[0];
+			}
 
 			return Nil;
 		}

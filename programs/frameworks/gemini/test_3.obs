@@ -3,13 +3,22 @@ use Collection, API.Google.Gemini, System.IO.Filesystem;
 class Test {
 	function : Main(args : String[]) ~ Nil {
 		key := EndPoint->GetApiKey();
+
+		session := ChatSession->New("models/gemini-pro", key);
+
+		candidates := session->AddPart(TextPart->New("What is the tallest mountain in the US?"), "user");
+		candidates->Last();
 		
+		candidates := session->AddPart(TextPart->New("Why is the mountain so tall?"), "user");
+		candidates->Size()->PrintLine();
+
+#~		
 		models := Model->ListModels(key);
 		each(model in models) {
 			model->GetName()->PrintLine();
 		};
-
-		Model->GetModel("models/gemini-pro-vision", key)->ToString()->PrintLine();
+~#
+		Model->GetModel("models/gemini-pro", key)->ToString()->PrintLine();
 #~
 		content := Content->New("user")
 			->AddPart(TextPart->New("What number is this image showing?"))
