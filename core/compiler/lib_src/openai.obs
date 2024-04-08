@@ -1356,7 +1356,7 @@ bundle API.OpenAI {
 			message_json->Insert("content", content);
 
 			# files
-			if(<>files->IsEmpty()) {
+			if(files <> Nil & <>files->IsEmpty()) {
 				files_json := JsonElement->New(JsonElement->JsonType->ARRAY);
 				each(file in files) {
 					files_json->Add(file->GetId());
@@ -1365,6 +1365,7 @@ bundle API.OpenAI {
 			};
 
 			data := message_json->ToString()->ToByteArray();
+			# data->ToString()->PrintLine();
 			
 			thread_id := thread->GetId();
 			headers := Map->New()<String, String>;
@@ -1372,7 +1373,8 @@ bundle API.OpenAI {
 			headers->Insert("OpenAI-Beta", "assistants=v1");
 			response := HttpsClient->QuickPost(Url->New("https://api.openai.com/v1/threads/{$thread_id}/messages"), data, "application/json", headers);
 			if(response <> Nil) {
-				# response->GetContent()->ToString()->PrintLine();				
+				# response->GetContent()->ToString()->PrintLine();
+				
 				message_json := JsonParser->TextToElement(response->GetContent()->ToString());
 				if(message_json = Nil) {
 					"### Error: Unable to parse thread response ###"->ErrorLine();

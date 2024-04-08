@@ -204,35 +204,54 @@ class Test {
 			#
 			# Runs
 			#
-			else if(action->Equals("create_thread_and_run") & args_size = 3) {
+			else if(action->Equals("create_thread_and_run") & args_size = 2) {
 				assistant_id := args[1];
-				query := args[2];
-
+				
+				done := false;
 				thread := API.OpenAI.Thread->Create(token);
-				thread->ToString()->PrintLine();
-				Message->Create("user", query, thread, token);
+				do {
+					query := Standard->ReadLine();
+					if(query->Equals("/quit")) {
+						done := true;
+					}
+					else {
+						# thread->ToString()->PrintLine();
+						Message->Create("user", query, thread, token);
 
-				assistant := Assistant->Load(assistant_id, token);
-				assistant->ToString()->PrintLine();
+						assistant := Assistant->Load(assistant_id, token);
+						# assistant->ToString()->PrintLine();
 
-				run := API.OpenAI.Run->Create(assistant, thread, token);
-				run->ToString()->PrintLine();
+						# TODO: reuse thread for chat
+						run := API.OpenAI.Run->Create(assistant, thread, token);
+						# run->ToString()->PrintLine();
 
-				is_done := false;
-				for(i := 0; <>is_done & i < 40; i += 1;) {
-					System.Concurrency.Thread->Sleep(1500);
-					run->Refresh(token);
-					'.'->Print();
-					is_done := run->GetStatus()->Equals("completed");
-				};
-				'\n'->PrintLine();
+						is_done := false;
+						for(i := 0; <>is_done & i < 40; i += 1;) {
+							System.Concurrency.Thread->Sleep(1350);
+							run->Refresh(token);
+							'.'->Print();
+							is_done := run->GetStatus()->Equals("completed");
+						};
+						'\n'->PrintLine();
 
-				messages := Message->ListMessages(thread, token);
-				if(<>messages->IsEmpty()) {
-					messages->Get(0)->ToString()->PrintLine();
-				};
+						# TODO: reuse thread for chat
+						messages := Message->ListMessages(thread, token);
+						if(<>messages->IsEmpty()) {
+							each(message in messages) {
+								contents := message->GetContents();
+								each(content in contents) {
+									user := content->GetFirst()->As(String);
+									text := content->GetSecond()->As(String);
+									"user='{$user}', text='{$text}'"->PrintLine();
+								};
+							};
+						};
+					};
+				}
+				while(<>done);
 
-				# Thread->Delete(thread->GetId(), token)->PrintLine();
+				status := Thread->Delete(thread->GetId(), token);
+				"thread_delete={$status}"->PrintLine();
 			}
 			else if(action->Equals("create_run") & args_size = 4) {
 				assistant_id := args[1];
