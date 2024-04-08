@@ -385,6 +385,83 @@ bundle API.OpenAI.Chat {
 			return "[index={$@index}, finish_reason='{$@finish_reason}', role={$role}, content={$content}]"; 
 		}
 	}
+
+	#~
+	Chat conversation assistant 
+	~#
+	class Conversation {
+		@assistant : Assistant;
+		@enable_spinner : Bool;
+		@thread : API.OpenAI.Thread;
+		@token : String;
+
+		New(assistant : Assistant, enable_spinner : Bool, token : String) {
+			@assistant := assistant;
+			@enable_spinner := enable_spinner;
+			@token := token;
+			@thread := API.OpenAI.Thread->Create(token);
+		}
+
+		New(assistant : Assistant, token : String) {
+			@assistant := assistant;
+			@token := token;
+			@thread := API.OpenAI.Thread->Create(token);
+		}
+
+		method : CallFunction(name : String, params : JsonElement) ~ JsonElement {
+			return JsonElement->New("Mark Andrews");
+		}
+
+		method : public : Send(query : String, user : String)  ~ Message {
+			Message->Create(user, query, @thread, @token);
+
+			run := API.OpenAI.Run->Create(@assistant, @thread, @token);
+
+			# poll ever 3/4 a second for max of 15 seconds
+			is_done := false;
+			for(i := 0; <>is_done & i < 20; i += 1;) {
+				System.Concurrency.Thread->Sleep(750);
+				run->Refresh(@token);
+				
+				if(@enable_spinner) {
+					System.Utility.Spinner->Next();
+				};
+
+				if(run->IsFunctionCall()) {
+					func_call := run->GetFunctionCall()<String, String, String>;
+
+					func_call_name := Data.JSON.JsonElement->Decode(func_call->GetFirst());
+					func_call_params := Data.JSON.JsonElement->Decode(func_call->GetSecond());
+					response_json := CallFunction(func_call_name, JsonParser->TextToElement(func_call_params));
+
+					func_callback_id := Data.JSON.JsonElement->Decode(func_call->GetThird());
+
+					if(<>run->SubmitToolOutputs(response_json, func_callback_id, @token)) {
+						Run->GetLastError()->ErrorLine();
+					}
+				}
+				else {
+					is_done := run->GetStatus()->Equals("completed");
+				};
+			};
+
+			if(@enable_spinner) {
+				System.Utility.Spinner->Last();
+			};
+
+			# last message
+			messages := Message->ListMessages(@thread, @token);
+			if(<>messages->IsEmpty()) {
+				return messages->First();
+			};
+
+			return Nil;
+		}
+
+		method : public : Close() ~ Bool {
+			return Thread->Delete(@thread->GetId(), @token);
+		}
+	}
 }
 
 #~
@@ -1644,22 +1721,16 @@ bundle API.OpenAI {
 		}
 
 		#~
-		Refreshed the run's data such as status
-		@param thread instance associated with run
-		@param output JSON response from function call
-		@param thread_id API token
-		@return newly created Run
+		Submits a tool's response
+		@param func_response_json response in JSON format
+		@param func_callback_id function callback ID
+		@param token API token
+		@return true if successful, false otherwise
 		~#
-		method : public : SubmitToolOutputs(func_call_name : String, func_call_params : JsonElement, func_callback_id : String, token : String) ~ Bool {
-			func_call_str := func_call_params->ToString();
-
-# TODO: make real call
-# "called: {$func_call_name}: {$func_call_str}"->PrintLine();
-
-
+		method : public : SubmitToolOutputs(func_response_json : JsonElement, func_callback_id : String, token : String) ~ Bool {
 			tool_callback_output_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 			tool_callback_output_json->Insert("tool_call_id", func_callback_id);
-			tool_callback_output_json->Insert("output", "Stan Albeck");
+			tool_callback_output_json->Insert("output", func_response_json->GetString());
 
 			tool_callback_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
 			tool_callback_array_json->Add(tool_callback_output_json);

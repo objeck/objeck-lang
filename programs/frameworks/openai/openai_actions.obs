@@ -208,66 +208,28 @@ class Test {
 				assistant_id := args[1];
 				
 				done := false;
-				assistant := Assistant->Load(assistant_id, token);
-				thread := API.OpenAI.Thread->Create(token);
+				session := API.OpenAI.Chat.Conversation->New(Assistant->Load(assistant_id, token), true, token);
 				do {
 					query := Standard->ReadLine();
 					if(query->Equals("/quit")) {
+						session->Close();		
 						done := true;
 					}
 					else {
-						# TODO: chat needs to be abstracted
-						Message->Create("user", query, thread, token);
-						run := API.OpenAI.Run->Create(assistant, thread, token);
+						response := session->Send(query, "user");
 
-						# poll ever 3/4 a second for max of 15 seconds
-						is_done := false;
-						for(i := 0; <>is_done & i < 20; i += 1;) {
-							System.Concurrency.Thread->Sleep(750);
-							run->Refresh(token);
-							System.Utility.Spinner->Next();
+						role := response->GetRole();
+						contents := response->GetContents();
+						count := 0;
+						each(content in contents) {
+							type := content->GetFirst()->As(String);
+							value := content->GetSecond()->As(String);
 
-							if(run->IsFunctionCall()) {
-								func_call := run->GetFunctionCall()<String, String, String>;
-
-								func_call_name := Data.JSON.JsonElement->Decode(func_call->GetFirst());
-								func_call_params := Data.JSON.JsonElement->Decode(func_call->GetSecond());
-								func_callback_id := Data.JSON.JsonElement->Decode(func_call->GetThird());
-
-								run->SubmitToolOutputs(func_call_name, Data.JSON.JsonElement->New(func_call_params), func_callback_id, token);
-							}
-							else {
-								is_done := run->GetStatus()->Equals("completed");
-							};
-						};
-						System.Utility.Spinner->Last();
-
-						# last message
-						messages := Message->ListMessages(thread, token);
-						if(<>messages->IsEmpty()) {
-							message := messages->First();
-							content := message->GetContents()->First()<Pair<String, String>>;
-
-							role := message->GetRole();
-							text := content->GetSecond();
-							"role='{$role}', text='{$text}'"->PrintLine();
-#~	All messages						
-							each(message in messages) {
-								contents := message->GetContents();
-								each(content in contents) {
-									role := message->GetRole();
-									text := content->GetSecond()->As(String);
-									"role='{$role}', text='{$text}'"->PrintLine();
-								};
-							};
-~#							
+							"{$count}: [{$role}, type='{$type}']: value='{$value}'"->PrintLine();
 						};
 					};
 				}
 				while(<>done);
-
-				status := Thread->Delete(thread->GetId(), token);
-				"thread_deleted={$status}"->PrintLine();
 			}
 			else if(action->Equals("create_run") & args_size = 4) {
 				assistant_id := args[1];
