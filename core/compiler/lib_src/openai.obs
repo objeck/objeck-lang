@@ -394,24 +394,65 @@ bundle API.OpenAI.Chat {
 		@enable_spinner : Bool;
 		@thread : API.OpenAI.Thread;
 		@token : String;
+		@funcs : Map<String, Func2Ref<JsonElement, JsonElement>>;
 
+		#~
+		Constructor 
+		@param assistant assistant
+		@param enable_spinner true to enable console spinner, false to disable
+		@param token API token
+		~#
 		New(assistant : Assistant, enable_spinner : Bool, token : String) {
 			@assistant := assistant;
 			@enable_spinner := enable_spinner;
 			@token := token;
 			@thread := API.OpenAI.Thread->Create(token);
+			@funcs := Map->New()<String, Func2Ref<JsonElement, JsonElement>>;
 		}
 
+		#~
+		Constructor 
+		@param assistant assistant
+		@param token API token
+		~#
 		New(assistant : Assistant, token : String) {
 			@assistant := assistant;
 			@token := token;
 			@thread := API.OpenAI.Thread->Create(token);
+			@funcs := Map->New()<String, Func2Ref<JsonElement, JsonElement>>;
+		}
+
+		#~
+		Maps an OpenAI function call (via webhooks) 
+		@param name OpenAI function name
+		@param func function to map
+		@return true if successful, false otherwise
+		~#
+		method : public : AddFunction(name : String, func : (JsonElement) ~ JsonElement) ~ Bool {
+			if(@funcs->Has(name)) {
+				return false;
+			};
+
+			@funcs->Insert(name, Func2Ref->New(func)<JsonElement, JsonElement>);
+			return true;
 		}
 
 		method : CallFunction(name : String, params : JsonElement) ~ JsonElement {
-			return JsonElement->New("Mark Andrews");
+			func_ref := @funcs->Find(name)<Func2Ref<JsonElement, JsonElement>>;
+			if(func_ref <> Nil) {
+				func := func_ref->Get();
+				return func(params);
+			};
+
+			return Nil;
 		}
 
+		#~
+		Sends a message to the assistant 
+		@param query message to send
+		@param user user name
+		@return response message, Nil of error
+		~#
 		method : public : Send(query : String, user : String)  ~ Message {
 			Message->Create(user, query, @thread, @token);
 
@@ -458,6 +499,10 @@ bundle API.OpenAI.Chat {
 			return Nil;
 		}
 
+		#~
+		Closes the chat session
+		@return true if successful, false otherwise
+		~#
 		method : public : Close() ~ Bool {
 			return Thread->Delete(@thread->GetId(), @token);
 		}
