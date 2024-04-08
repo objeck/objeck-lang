@@ -217,17 +217,13 @@ class Test {
 					else {
 						# thread->ToString()->PrintLine();
 						Message->Create("user", query, thread, token);
-
 						assistant := Assistant->Load(assistant_id, token);
-						# assistant->ToString()->PrintLine();
-
-						# TODO: reuse thread for chat
 						run := API.OpenAI.Run->Create(assistant, thread, token);
-						# run->ToString()->PrintLine();
 
+						# poll ever 3/4 a second for max of 15 seconds
 						is_done := false;
-						for(i := 0; <>is_done & i < 30; i += 1;) {
-							System.Concurrency.Thread->Sleep(500);
+						for(i := 0; <>is_done & i < 20; i += 1;) {
+							System.Concurrency.Thread->Sleep(750);
 							run->Refresh(token);
 							System.Utility.Spinner->Next();
 
@@ -246,9 +242,16 @@ class Test {
 						};
 						System.Utility.Spinner->Last();
 
-						# TODO: reuse thread for chat
+						# last message
 						messages := Message->ListMessages(thread, token);
 						if(<>messages->IsEmpty()) {
+							message := messages->First();
+							content := message->GetContents()->First()<Pair<String, String>>;
+
+							role := message->GetRole();
+							text := content->GetSecond();
+							"role='{$role}', text='{$text}'"->PrintLine();
+#~	All messages						
 							each(message in messages) {
 								contents := message->GetContents();
 								each(content in contents) {
@@ -257,6 +260,7 @@ class Test {
 									"role='{$role}', text='{$text}'"->PrintLine();
 								};
 							};
+~#							
 						};
 					};
 				}
