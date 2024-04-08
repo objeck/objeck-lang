@@ -22,7 +22,7 @@ make -f make/Makefile.amd64
 ./obc -src lib_src/rss.obs -tar lib -lib xml,gen_collect,net -opt s3 -dest ../lib/rss.obl
 ./obc -src lib_src/encrypt.obs -tar lib -opt s3 -dest ../lib/encrypt.obl
 ./obc -src lib_src/odbc.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/odbc.obl
-./obc -src lib_src/openai.obs -lib json,net -tar lib -opt s3 -dest ../lib/openai.obl
+./obc -src lib_src/openai.obs -lib json,net,misc -tar lib -opt s3 -dest ../lib/openai.obl
 ./obc -src lib_src/gemini.obs -lib json,net,encrypt -tar lib -opt s3 -dest ../lib/gemini.obl
 ./obc -src lib_src/sdl2.obs -tar lib -dest ../lib/sdl2.obl
 ./obc -src lib_src/sdl_game.obs -lib gen_collect,json,sdl2 -tar lib -dest ../lib/sdl_game.obl
