@@ -208,6 +208,7 @@ class Test {
 				assistant_id := args[1];
 				
 				done := false;
+				assistant := Assistant->Load(assistant_id, token);
 				thread := API.OpenAI.Thread->Create(token);
 				do {
 					query := Standard->ReadLine();
@@ -215,9 +216,8 @@ class Test {
 						done := true;
 					}
 					else {
-						# thread->ToString()->PrintLine();
+						# TODO: chat needs to be abstracted
 						Message->Create("user", query, thread, token);
-						assistant := Assistant->Load(assistant_id, token);
 						run := API.OpenAI.Run->Create(assistant, thread, token);
 
 						# poll ever 3/4 a second for max of 15 seconds

@@ -322,7 +322,7 @@ bundle System.Utility {
 		Prints the final state
 		~#
 		function : Last() ~ Nil {
-			"\b"->PrintLine();
+			"\b."->PrintLine();
 		}
 	}
 
