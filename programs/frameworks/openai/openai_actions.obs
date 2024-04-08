@@ -1,4 +1,4 @@
-use Collection, API.OpenAI, System.IO.Filesystem;
+use Collection, API.OpenAI, System.IO.Filesystem, Data.JSON;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
@@ -207,8 +207,10 @@ class Test {
 			else if(action->Equals("create_chat_thread") & args_size = 2) {
 				assistant_id := args[1];
 				
-				done := false;
 				session := API.OpenAI.Chat.Conversation->New(Assistant->Load(assistant_id, token), true, token);
+				session->AddFunction("get_coach", Callback(JsonElement) ~ JsonElement);
+
+				done := false;
 				do {
 					query := Standard->ReadLine();
 					if(query->Equals("/quit")) {
@@ -218,18 +220,20 @@ class Test {
 					else {
 						response := session->Send(query, "user");
 
+						index := 0;
 						role := response->GetRole();
 						contents := response->GetContents();
-						count := 0;
 						each(content in contents) {
 							type := content->GetFirst()->As(String);
 							value := content->GetSecond()->As(String);
 
-							"{$count}: [{$role}, type='{$type}']: value='{$value}'"->PrintLine();
+							"{$index}: [{$role}, type='{$type}']: value='{$value}'"->PrintLine();
 						};
 					};
 				}
 				while(<>done);
+
+				session->Close();
 			}
 			else if(action->Equals("create_run") & args_size = 4) {
 				assistant_id := args[1];
@@ -270,6 +274,10 @@ class Test {
 		else {
 			"Usage: params: sk-token, action, params..."->ErrorLine();
 		};
+	}
+
+	function : Callback(params : JsonElement) ~ JsonElement {
+		return JsonElement->New("Troy Bledsoe");
 	}
 
 	function : GetApiKey() ~ String {
