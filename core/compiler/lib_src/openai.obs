@@ -1374,7 +1374,6 @@ bundle API.OpenAI {
 			response := HttpsClient->QuickPost(Url->New("https://api.openai.com/v1/threads/{$thread_id}/messages"), data, "application/json", headers);
 			if(response <> Nil) {
 				# response->GetContent()->ToString()->PrintLine();
-				
 				message_json := JsonParser->TextToElement(response->GetContent()->ToString());
 				if(message_json = Nil) {
 					"### Error: Unable to parse thread response ###"->ErrorLine();
@@ -1487,6 +1486,10 @@ bundle API.OpenAI {
 		@assistant_id : String;
 		@status : String;
 
+		@func_callback_id : String;
+		@func_call_name : String;
+		@func_call_params : String;
+
 		New : private(run_json : JsonElement) {
 			Parent();
 			Set(run_json);
@@ -1523,6 +1526,21 @@ bundle API.OpenAI {
 		method : public : GetStatus() ~ String {
 			return @status;
 		}
+
+		#~
+		Get function callback information
+		~#
+		method : public : IsFunctionCall() ~ Bool {
+			return @func_callback_id <> Nil & @func_call_name <> Nil & @func_call_params <> Nil;
+		}
+
+		#~
+		Get function callback information
+		@return pair function name and calling parameters in JSON format
+		~#
+		method : public : GetFunctionCall() ~ Tuples.Triplet<String, String, String> {
+			return Tuples.Triplet->New(@func_call_name, @func_call_params, @func_callback_id)<String, String, String>;
+		}
 		
 		method: Set(run_json : JsonElement) ~ Nil {
 			@id := run_json->Get("id")->GetString();
@@ -1530,7 +1548,19 @@ bundle API.OpenAI {
 			@object := run_json->Get("object")->GetString();
 			@thread_id := run_json->Get("thread_id")->GetString();
 			@assistant_id := run_json->Get("assistant_id")->GetString();
+			
 			@status := run_json->Get("status")->GetString();
+			if(@status->Equals("requires_action")) {
+				tool_calls_json := run_json->FindElements("required_action/submit_tool_outputs/tool_calls");
+				each(tool_call_json in tool_calls_json) {
+					@func_callback_id := tool_call_json->Get("id")->GetString();
+					@func_call_name := tool_call_json->FindElements("function/name")->GetString();
+					@func_call_params := tool_call_json->FindElements("function/arguments")->GetString();
+				};
+			}
+			else {
+				@func_call_name := @func_call_params := Nil;
+			};
 		}
 
 		#~
@@ -1611,6 +1641,70 @@ bundle API.OpenAI {
 			}
 
 			return false;
+		}
+
+		#~
+		Refreshed the run's data such as status
+		@param thread instance associated with run
+		@param output JSON response from function call
+		@param thread_id API token
+		@return newly created Run
+		~#
+		method : public : SubmitToolOutputs(func_call_name : String, func_call_params : JsonElement, func_callback_id : String, token : String) ~ Bool {
+			func_call_str := func_call_params->ToString();
+
+# TODO: make real call
+# "called: {$func_call_name}: {$func_call_str}"->PrintLine();
+
+
+			tool_callback_output_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			tool_callback_output_json->Insert("tool_call_id", func_callback_id);
+			tool_callback_output_json->Insert("output", "Stan Albeck");
+
+			tool_callback_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+			tool_callback_array_json->Add(tool_callback_output_json);
+
+			tool_callback_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			tool_callback_obj_json->Insert("tool_outputs", tool_callback_array_json);
+
+			data := tool_callback_obj_json->ToString()->ToByteArray();
+			# data->ToString()->PrintLine();
+
+			headers := Map->New()<String, String>;
+			headers->Insert("Authorization", "Bearer {$token}");
+			headers->Insert("OpenAI-Beta", "assistants=v1");
+			response := HttpsClient->QuickPost(Url->New("https://api.openai.com/v1/threads/{$@thread_id}/runs/{$@id}/submit_tool_outputs"), data, "application/json", headers);
+			if(response <> Nil) {
+				# response->GetContent()->ToString()->PrintLine();
+				run_json := JsonParser->TextToElement(response->GetContent()->ToString());
+
+				if(run_json = Nil) {
+					return false;
+				};
+
+				if(run_json->Has("error")) {
+					error_str := run_json->FindElements("error/message")->GetString();
+					SetLastError(error_str);
+					return false;
+				};
+
+				run_json := JsonParser->TextToElement(response->GetContent()->ToString());
+
+				if(run_json = Nil) {
+					return false;
+				};
+
+				if(run_json->Has("error")) {
+					error_str := run_json->FindElements("error/message")->GetString();
+					SetLastError(error_str);
+					return false;
+				};
+
+				return true;
+			}
+
+			return false;
+
 		}
 
 		#~

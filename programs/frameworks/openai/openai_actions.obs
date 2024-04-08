@@ -204,7 +204,7 @@ class Test {
 			#
 			# Runs
 			#
-			else if(action->Equals("create_thread_and_run") & args_size = 2) {
+			else if(action->Equals("create_chat_thread") & args_size = 2) {
 				assistant_id := args[1];
 				
 				done := false;
@@ -226,13 +226,25 @@ class Test {
 						# run->ToString()->PrintLine();
 
 						is_done := false;
-						for(i := 0; <>is_done & i < 40; i += 1;) {
-							System.Concurrency.Thread->Sleep(1350);
+						for(i := 0; <>is_done & i < 30; i += 1;) {
+							System.Concurrency.Thread->Sleep(500);
 							run->Refresh(token);
-							'.'->Print();
-							is_done := run->GetStatus()->Equals("completed");
+							System.Utility.Spinner->Next();
+
+							if(run->IsFunctionCall()) {
+								func_call := run->GetFunctionCall()<String, String, String>;
+
+								func_call_name := Data.JSON.JsonElement->Decode(func_call->GetFirst());
+								func_call_params := Data.JSON.JsonElement->Decode(func_call->GetSecond());
+								func_callback_id := Data.JSON.JsonElement->Decode(func_call->GetThird());
+
+								run->SubmitToolOutputs(func_call_name, Data.JSON.JsonElement->New(func_call_params), func_callback_id, token);
+							}
+							else {
+								is_done := run->GetStatus()->Equals("completed");
+							};
 						};
-						'\n'->PrintLine();
+						System.Utility.Spinner->Last();
 
 						# TODO: reuse thread for chat
 						messages := Message->ListMessages(thread, token);
@@ -240,9 +252,9 @@ class Test {
 							each(message in messages) {
 								contents := message->GetContents();
 								each(content in contents) {
-									user := content->GetFirst()->As(String);
+									role := message->GetRole();
 									text := content->GetSecond()->As(String);
-									"user='{$user}', text='{$text}'"->PrintLine();
+									"role='{$role}', text='{$text}'"->PrintLine();
 								};
 							};
 						};
@@ -251,7 +263,7 @@ class Test {
 				while(<>done);
 
 				status := Thread->Delete(thread->GetId(), token);
-				"thread_delete={$status}"->PrintLine();
+				"thread_deleted={$status}"->PrintLine();
 			}
 			else if(action->Equals("create_run") & args_size = 4) {
 				assistant_id := args[1];
