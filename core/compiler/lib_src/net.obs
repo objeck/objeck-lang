@@ -129,7 +129,7 @@ bundle Web.HTTP {
 		@return read strings
 		~#
 		function : QuickPost(url : Web.HTTP.Url, data : Byte[], content_type : String, headers : Map<String, String>) ~ Web.HTTP.Response {			
-			client := HttpsClient->New();
+			client := HttpClient->New();
 
 			if(headers <> Nil) {
 				header_key_values := headers->GetKeyValues()<Pair<String, String>>;
@@ -173,11 +173,6 @@ bundle Web.HTTP {
 				if(frag <> Nil) {
 					location += '#';
 					location += frag;
-				};
-
-				port := url->GetPort();
-				if(port < 0) {
-					port := 443;
 				};
 
 				port := url->GetPort();
