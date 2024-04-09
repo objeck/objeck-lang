@@ -276,8 +276,14 @@ class Test {
 		};
 	}
 
-	function : Callback(params : JsonElement) ~ JsonElement {
-		return JsonElement->New("Troy Bledsoe");
+	function : Callback(params_json : JsonElement) ~ JsonElement {
+		response := Web.HTTP.HttpClient->QuickPost(Web.HTTP.Url->New("http://localhost:5000"), params_json->ToString()->ToByteArray(), "application/json");
+		if(response <> Nil) {
+			response_json := JsonParser->TextToElement(response->GetContent()->ToString());
+			return response_json->Get("coach");
+		};
+
+		return Nil;
 	}
 
 	function : GetApiKey() ~ String {

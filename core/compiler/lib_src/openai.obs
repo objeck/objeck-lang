@@ -474,12 +474,16 @@ bundle API.OpenAI.Chat {
 					func_call_name := Data.JSON.JsonElement->Decode(func_call->GetFirst());
 					func_call_params := Data.JSON.JsonElement->Decode(func_call->GetSecond());
 					response_json := CallFunction(func_call_name, JsonParser->TextToElement(func_call_params));
-
-					func_callback_id := Data.JSON.JsonElement->Decode(func_call->GetThird());
-
-					if(<>run->SubmitToolOutputs(response_json, func_callback_id, @token)) {
-						Run->GetLastError()->ErrorLine();
+					if(response_json <> Nil) {
+						func_callback_id := Data.JSON.JsonElement->Decode(func_call->GetThird());
+						if(<>run->SubmitToolOutputs(response_json, func_callback_id, @token)) {
+							Run->GetLastError()->ErrorLine();
+						};
 					}
+					else {
+						Run->SetLastError("Error: invalid function call response");
+						return Nil;
+					};
 				}
 				else {
 					is_done := run->GetStatus()->Equals("completed");
