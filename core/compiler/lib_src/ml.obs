@@ -1457,10 +1457,11 @@ else if(args->Size() = 1) {
 		@param filename file to process
 		@param target_offset index of first column with output data
 		@param training_perc percentage of data used for training
+		@param line_ending CSV line ending (i.e. Unix, Windows, etc.), default CRLF per the spec 
 		@return split matrices for training and testing, first two matrices are training, latter two test data
 		~#
-		function : public : LoadSplitMatrices(filename : String, target_offset : Int, training_perc : Float) ~ Vector[]<FloatMatrixRef> {
-			table := CsvTable->New(System.IO.Filesystem.FileReader->ReadFile(filename));
+		function : public : LoadSplitMatrices(filename : String, target_offset : Int, training_perc : Float, line_ending : String := "\r\n") ~ Vector[]<FloatMatrixRef> {
+			table := CsvTable->New(System.IO.Filesystem.FileReader->ReadFile(filename), line_ending);
 			if(table->IsParsed()) {
 				train_count := (table->Size()->As(Float) * training_perc)->As(Int);
 				if(train_count < 1) {

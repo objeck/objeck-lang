@@ -8,7 +8,7 @@ class Test {
 
 		network : NeuralNetwork;
 		inputs_targets := MatrixReader->LoadSplitMatrices(input_file, 1, 0.8); # 20% test data
-
+		
 		# load model
 		if(args->Size() = 1) {
 			network := NeuralNetwork->Load(model_file);
