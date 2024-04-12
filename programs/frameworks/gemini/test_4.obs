@@ -5,19 +5,46 @@ class Test {
 		if(args->Size() = 2) {
 			install_json := LoadConfiguration(args[0]);
 			scope := Url->Encode("https://www.googleapis.com/auth/cloud-platform https://www.googleapis.com/auth/generative-language.retriever");
-			redirect_uri := Url->Encode("http://localhost:1313")
+			redirect_uri := Url->Encode("http://localhost:1313");
+			state := GenerateState();
 
 			client_id := install_json->Get("client_id")->GetString();
 			scope->PrintLine();
 
-			login_url_str := "https://accounts.google.com/o/oauth2/auth?client_id={$client_id}&response_type=code&redirect_uri={$redirect_uri}&state=82350325&scope={$scope}"
+			login_url_str := "https://accounts.google.com/o/oauth2/auth?client_id={$client_id}&response_type=code&redirect_uri={$redirect_uri}&state={$state}&scope={$scope}"
 			"Please login: {$login_url_str}"->PrintLine();
+			
+			RequestHandler->Init(install_json, state);
+			WebServer->Serve(RequestHandler->New()->GetClass(), args[1]->ToInt(), false);
 
-			RequestHandler->Init(install_json);
-			WebServer->Serve(RequestHandler->New()->GetClass(), args[1]->ToInt(), true);
-"Hello, Zulu!"->PrintLine();
+			access_token := RequestHandler->GetAccessToken();
+"access_token='{$access_token}'"->PrintLine();
 
+			refresh_token := RequestHandler->GetRefreshToken();
+"refresh_token='{$refresh_token}'"->PrintLine();
 		};
+	}
+
+	function : GenerateState() ~ String {
+		values :=  [ 
+			'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',  
+			'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P',  
+			'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X',  
+			'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f',  
+			'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n',  
+			'o', 'p', 'q', 'r', 's', 't', 'u', 'v',  
+			'w', 'x', 'y', 'z', '0', '1', '2', '3',  
+			'4', '5', '6', '7', '8', '9'
+		];
+
+		buffer := "";
+
+		each(i : 8) {
+			index := Int->Random(0, values->Size() - 1);
+			buffer->Append(values[index]);
+		};
+
+		return buffer;
 	}
 
 	function : LoadConfiguration(filename : String) ~ JsonElement {
@@ -40,14 +67,18 @@ class RequestHandler from HttpRequestHandler {
 	@auth_provider_x509_cert_url: static : String;
 	@client_secret: static : String;
 	@redirect_uri : static : String;
+	@state : static : String;
+	@access_token : static : String;
+	@refresh_token : static : String;
 
-	function : Init(install_json : JsonElement) ~ Nil {
+	function : Init(install_json : JsonElement, state : String) ~ Nil {
 		@client_id := install_json->Get("client_id")->GetString();
 		@project_id := install_json->Get("project_id")->GetString();
 		@auth_uri := install_json->Get("auth_uri")->GetString();
 		@token_uri := install_json->Get("token_uri")->GetString();
 		@auth_provider_x509_cert_url := install_json->Get("auth_provider_x509_cert_url")->GetString();
 		@client_secret := install_json->Get("client_secret")->GetString();
+		@state := state;
 
 		redirect_uris_json := install_json->Get("redirect_uris");
 		if(redirect_uris_json->Size() = 1) {
@@ -59,8 +90,16 @@ class RequestHandler from HttpRequestHandler {
 		Parent();
 	}
 
+	function : GetAccessToken() ~ String {
+		return @access_token;
+	}
+
+	function : GetRefreshToken() ~ String {
+		return @refresh_token;
+	}
+
 	method : ProcessGet(request : Request, response : Response) ~ Bool {
-		if(<>request->HasParam("error")) {
+		if(<>request->HasParam("error") & request->GetParam("state")->Equals(@state)) {
 			code_id := request->GetParam("code");
 			data := "code={$code_id}&client_id={$@client_id}&client_secret={$@client_secret}&redirect_uri={$@redirect_uri}&grant_type=authorization_code"->ToByteArray();
 
@@ -73,19 +112,23 @@ class RequestHandler from HttpRequestHandler {
 				response_json := JsonParser->TextToElement(post_response->GetContent()->ToString());
 					
 				if(response_json->Has("access_token")) {
-					access_token := response_json->Get("access_token")->GetString();
-					refresh_token := response_json->Get("refresh_token")->GetString();
-	"'{$access_token}'"->PrintLine();
+					@access_token := response_json->Get("access_token")->GetString();
+					@refresh_token := response_json->Get("refresh_token")->GetString();
 					WebServer->Stop();
 				};
+			}
+			else {
+				@access_token := Nil;
 			};
-		};
+		}
+		else {
+			@access_token := Nil;
+		}
 
 		return false;
 	}
 
 	method : ProcessPost(request : Request, response : Response) ~ Bool {
-# request->GetContent()->ToString()->PrintLine();
 		return false;
 	}
 } 
