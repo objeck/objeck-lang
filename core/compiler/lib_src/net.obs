@@ -801,7 +801,7 @@ bundle Web.HTTP.Server {
 		@param response HTTP response
 		@return true to continue processing, false otherwise
 		~#
-		method : virtual : ProcessGet(request : Request, response : Response) ~ Bool;
+		method : virtual : ProcessGet(request : Web.HTTP.Server.Request, response : Web.HTTP.Server.Response) ~ Bool;
 
 		#~
 		Callback for POST requests
@@ -809,6 +809,6 @@ bundle Web.HTTP.Server {
 		@param response HTTP response
 		@return true to continue processing, false otherwise
 		~#
-		method : virtual : ProcessPost(request : Request, response : Response) ~ Bool;
+		method : virtual : ProcessPost(request : Web.HTTP.Server.Request, response : Web.HTTP.Server.Response) ~ Bool;
 	}
 }
