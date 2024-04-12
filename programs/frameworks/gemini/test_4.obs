@@ -3,9 +3,32 @@ use Web.HTTP, Web.HTTP.Server, Collection, System.IO.Filesystem, Data.JSON;
 class Test {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 2) {
-			RequestHandler->Init(args[0]);
+			install_json := LoadConfiguration(args[0]);
+			scope := Url->Encode("https://www.googleapis.com/auth/cloud-platform https://www.googleapis.com/auth/generative-language.retriever");
+			redirect_uri := Url->Encode("http://localhost:1313")
+
+			client_id := install_json->Get("client_id")->GetString();
+			scope->PrintLine();
+
+			login_url_str := "https://accounts.google.com/o/oauth2/auth?client_id={$client_id}&response_type=code&redirect_uri={$redirect_uri}&state=82350325&scope={$scope}"
+			"Please login: {$login_url_str}"->PrintLine();
+
+			RequestHandler->Init(install_json);
 			WebServer->Serve(RequestHandler->New()->GetClass(), args[1]->ToInt(), true);
+"Hello, Zulu!"->PrintLine();
+
 		};
+	}
+
+	function : LoadConfiguration(filename : String) ~ JsonElement {
+		config_content := FileReader->ReadFile(filename);
+		if(config_content <> Nil) {
+			client_json := JsonParser->TextToElement(config_content);
+
+			return client_json->Get("installed");
+		};
+
+		return Nil;
 	}
 }
 
@@ -18,25 +41,17 @@ class RequestHandler from HttpRequestHandler {
 	@client_secret: static : String;
 	@redirect_uri : static : String;
 
-	function : Init(filename : String) ~ Nil {
-		config_content := FileReader->ReadFile(filename);
-		if(config_content <> Nil) {
-			client_json := JsonParser->TextToElement(config_content);
+	function : Init(install_json : JsonElement) ~ Nil {
+		@client_id := install_json->Get("client_id")->GetString();
+		@project_id := install_json->Get("project_id")->GetString();
+		@auth_uri := install_json->Get("auth_uri")->GetString();
+		@token_uri := install_json->Get("token_uri")->GetString();
+		@auth_provider_x509_cert_url := install_json->Get("auth_provider_x509_cert_url")->GetString();
+		@client_secret := install_json->Get("client_secret")->GetString();
 
-			install_json := client_json->Get("installed");
-			if(install_json <> Nil) {
-				@client_id := install_json->Get("client_id")->GetString();
-				@project_id := install_json->Get("project_id")->GetString();
-				@auth_uri := install_json->Get("auth_uri")->GetString();
-				@token_uri := install_json->Get("token_uri")->GetString();
-				@auth_provider_x509_cert_url := install_json->Get("auth_provider_x509_cert_url")->GetString();
-				@client_secret := install_json->Get("client_secret")->GetString();
-
-				redirect_uris_json := install_json->Get("redirect_uris");
-				if(redirect_uris_json->Size() = 1) {
-					@redirect_uri := Url->Encode(redirect_uris_json->Get(0)->GetString());
-				};
-			};
+		redirect_uris_json := install_json->Get("redirect_uris");
+		if(redirect_uris_json->Size() = 1) {
+			@redirect_uri := Url->Encode(redirect_uris_json->Get(0)->GetString());
 		};
 	}
 
@@ -60,8 +75,8 @@ class RequestHandler from HttpRequestHandler {
 				if(response_json->Has("access_token")) {
 					access_token := response_json->Get("access_token")->GetString();
 					refresh_token := response_json->Get("refresh_token")->GetString();
-	"'{$access_token}', '{$refresh_token}'"->PrintLine();
-					Stop();
+	"'{$access_token}'"->PrintLine();
+					WebServer->Stop();
 				};
 			};
 		};
