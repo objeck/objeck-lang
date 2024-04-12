@@ -1493,7 +1493,7 @@ bundle Web.HTTP.Server {
 		@param request HTTP request
 		@param response HTTP response
 		~#
-		method : public : ProcessGet(request : Request, response : Response) ~ Bool {
+		method : public : ProcessGet(request : Web.HTTP.Server.Request, response : Web.HTTP.Server.Response) ~ Bool {
 			return Process(request , response);
 		}
 
@@ -1502,7 +1502,7 @@ bundle Web.HTTP.Server {
 		@param request HTTP request
 		@param response HTTP response
 		~#
-		method : public : ProcessPost(request : Request, response : Response) ~ Bool {
+		method : public : ProcessPost(request : Web.HTTP.Server.Request, response : Web.HTTP.Server.Response) ~ Bool {
 			return Process(request , response);
 		}
 
@@ -2568,13 +2568,13 @@ bundle Web.HTTP.Server {
 		@param request HTTP request
 		@param response HTTP response
 		~#
-		method : public : virtual : ProcessGet(request : Request, response : Response) ~ Bool;
+		method : public : virtual : ProcessGet(request : Web.HTTP.Server.Request, response : Web.HTTP.Server.Response) ~ Bool;
 
 		#~
 		Callback for POST requests
 		@param request HTTP request
 		@param response HTTP response
 		~#
-		method : public : virtual : ProcessPost(request : Request, response : Response) ~ Bool;
+		method : public : virtual : ProcessPost(request : Web.HTTP.Server.Request, response : Web.HTTP.Server.Response) ~ Bool;
 	}
 }
