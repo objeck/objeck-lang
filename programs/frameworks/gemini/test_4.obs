@@ -1,0 +1,76 @@
+use Web.HTTP, Web.HTTP.Server, Collection, System.IO.Filesystem, Data.JSON;
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() = 2) {
+			RequestHandler->Init(args[0]);
+			WebServer->Serve(RequestHandler->New()->GetClass(), args[1]->ToInt(), true);
+		};
+	}
+}
+
+class RequestHandler from HttpRequestHandler {
+	@client_id: static : String;
+	@project_id: static : String;
+	@auth_uri: static : String;
+	@token_uri: static : String;
+	@auth_provider_x509_cert_url: static : String;
+	@client_secret: static : String;
+	@redirect_uri : static : String;
+
+	function : Init(filename : String) ~ Nil {
+		config_content := FileReader->ReadFile(filename);
+		if(config_content <> Nil) {
+			client_json := JsonParser->TextToElement(config_content);
+
+			install_json := client_json->Get("installed");
+			if(install_json <> Nil) {
+				@client_id := install_json->Get("client_id")->GetString();
+				@project_id := install_json->Get("project_id")->GetString();
+				@auth_uri := install_json->Get("auth_uri")->GetString();
+				@token_uri := install_json->Get("token_uri")->GetString();
+				@auth_provider_x509_cert_url := install_json->Get("auth_provider_x509_cert_url")->GetString();
+				@client_secret := install_json->Get("client_secret")->GetString();
+
+				redirect_uris_json := install_json->Get("redirect_uris");
+				if(redirect_uris_json->Size() = 1) {
+					@redirect_uri := Url->Encode(redirect_uris_json->Get(0)->GetString());
+				};
+			};
+		};
+	}
+
+	New() {
+		Parent();
+	}
+
+	method : ProcessGet(request : Request, response : Response) ~ Bool {
+		if(<>request->HasParam("error")) {
+			code_id := request->GetParam("code");
+			data := "code={$code_id}&client_id={$@client_id}&client_secret={$@client_secret}&redirect_uri={$@redirect_uri}&grant_type=authorization_code"->ToByteArray();
+
+			headers := Map->New()<String, String>;
+			headers->Insert("Content-Type", "application/x-www-form-urlencoded");
+			post_response := HttpsClient->QuickPost(Url->New("https://accounts.google.com/o/oauth2/token"), data, "application/x-www-form-urlencoded", headers);
+
+			if(post_response <> Nil) {
+				# post_response->GetContent()->ToString()->PrintLine();			
+				response_json := JsonParser->TextToElement(post_response->GetContent()->ToString());
+					
+				if(response_json->Has("access_token")) {
+					access_token := response_json->Get("access_token")->GetString();
+					refresh_token := response_json->Get("refresh_token")->GetString();
+	"'{$access_token}', '{$refresh_token}'"->PrintLine();
+					Stop();
+				};
+			};
+		};
+
+		return false;
+	}
+
+	method : ProcessPost(request : Request, response : Response) ~ Bool {
+# request->GetContent()->ToString()->PrintLine();
+		return false;
+	}
+} 
