@@ -400,6 +400,36 @@ bundle API.Google.Gemini {
 	}
 
 	#~
+	Gemini model interactions
+	~#
+	class Corpus from EndPoint implements Stringify {
+		@corpus_name : String;
+
+		New : private(corpus_json : JsonElement) {
+			Parent();
+		}
+
+		function : Create(corpus_name : String, key : String) ~ Corpus {
+			corpus_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			corpus_obj_json->Insert("displayName", corpus_name);
+
+			headers := Map->New()<String, String>;
+			headers->Insert("Authorization", "Bearer {$key}");
+			url := Url->New("https://generativelanguage.googleapis.com/v1beta/corpora");
+				response := PostRequest(corpus_obj_json, url, headers);
+				if(response <> Nil) {
+response->ToString()->PrintLine();
+			};
+
+			return Nil;
+		}
+
+		method : public : ToString() ~ String {
+			return Nil;
+		}
+	}
+
+	#~
 	Text message part
 	~#
 	class TextPart from Part implements Stringify {
@@ -739,6 +769,31 @@ bundle API.Google.Gemini {
 				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
 				
 				# response->GetContent()->ToString()->PrintLine();
+				
+				if(response_json = Nil) {
+					"### Error: Unable to parse response ###"->ErrorLine();
+					return Nil;
+				};
+				
+				error_json := response_json->FindElements("error/message")
+				if(error_json <> Nil) {
+					error_message := error_json->GetString();
+					">>> Error: {$error_message} <<<"->ErrorLine();
+					return Nil;
+				};
+
+				return response_json;
+			};
+
+			return Nil;
+		}
+
+		function : PostRequest(request : JsonElement, url : Url, headers : Map<String,String>) ~ JsonElement {
+			response := HttpsClient->QuickPost(url, request->ToString()->ToByteArray(), "application/json", headers);
+			if(response <> Nil) {
+				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				
+				# response->GetContent()->ToString()->PrintLine();			
 				
 				if(response_json = Nil) {
 					"### Error: Unable to parse response ###"->ErrorLine();
