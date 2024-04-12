@@ -4,24 +4,39 @@ class Test {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 2) {
 			install_json := LoadConfiguration(args[0]);
-			scope := Url->Encode("https://www.googleapis.com/auth/cloud-platform https://www.googleapis.com/auth/generative-language.retriever");
-			redirect_uri := Url->Encode("http://localhost:1313");
-			state := GenerateState();
-
-			client_id := install_json->Get("client_id")->GetString();
-			scope->PrintLine();
-
-			login_url_str := "https://accounts.google.com/o/oauth2/auth?client_id={$client_id}&response_type=code&redirect_uri={$redirect_uri}&state={$state}&scope={$scope}"
-			"Please login: {$login_url_str}"->PrintLine();
-			
-			RequestHandler->Init(install_json, state);
-			WebServer->Serve(RequestHandler->New()->GetClass(), args[1]->ToInt(), false);
 
 			access_token := RequestHandler->GetAccessToken();
-"access_token='{$access_token}'"->PrintLine();
-
 			refresh_token := RequestHandler->GetRefreshToken();
-"refresh_token='{$refresh_token}'"->PrintLine();
+			
+			if(access_token = Nil) {
+				scope := Url->Encode("https://www.googleapis.com/auth/cloud-platform https://www.googleapis.com/auth/generative-language.retriever");
+				redirect_uri := Url->Encode("http://localhost:1313");
+				state := GenerateState();
+
+				client_id := install_json->Get("client_id")->GetString();
+				scope->PrintLine();
+
+				login_url_str := "https://accounts.google.com/o/oauth2/auth?client_id={$client_id}&response_type=code&redirect_uri={$redirect_uri}&state={$state}&scope={$scope}";
+				"Please login: {$login_url_str}"->PrintLine();
+
+				RequestHandler->Init(install_json, state);
+				WebServer->Serve(RequestHandler->New()->GetClass(), args[1]->ToInt(), false);
+
+				access_token := RequestHandler->GetAccessToken();
+				refresh_token := RequestHandler->GetRefreshToken();
+
+"access_token='{$access_token}'"->PrintLine();
+"refresh_token='{$refresh_token}'"->PrintLine();				
+			}
+			else if(refresh_token <> Nil) {
+				# TODO refersh
+				access_token := RequestHandler->GetAccessToken();
+				refresh_token := RequestHandler->GetRefreshToken();
+			}
+			else {
+				">>> Error <<<"->ErrorLine();
+			}
+
 		};
 	}
 
@@ -98,7 +113,7 @@ class RequestHandler from HttpRequestHandler {
 		return @refresh_token;
 	}
 
-	method : ProcessGet(request : Request, response : Response) ~ Bool {
+	method : ProcessGet(request : Web.HTTP.Server.Request, response : Web.HTTP.Server.Response) ~ Bool {
 		if(<>request->HasParam("error") & request->GetParam("state")->Equals(@state)) {
 			code_id := request->GetParam("code");
 			data := "code={$code_id}&client_id={$@client_id}&client_secret={$@client_secret}&redirect_uri={$@redirect_uri}&grant_type=authorization_code"->ToByteArray();
@@ -114,6 +129,7 @@ class RequestHandler from HttpRequestHandler {
 				if(response_json->Has("access_token")) {
 					@access_token := response_json->Get("access_token")->GetString();
 					@refresh_token := response_json->Get("refresh_token")->GetString();
+					response->SetCodeContent(200, "<html><center><h1>Hello World!</center></h1></html>");
 					WebServer->Stop();
 				};
 			}
@@ -128,7 +144,7 @@ class RequestHandler from HttpRequestHandler {
 		return false;
 	}
 
-	method : ProcessPost(request : Request, response : Response) ~ Bool {
+	method : ProcessPost(request : Web.HTTP.Server.Request, response : Web.HTTP.Server.Response) ~ Bool {
 		return false;
 	}
 } 
