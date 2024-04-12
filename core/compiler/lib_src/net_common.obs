@@ -1000,6 +1000,8 @@ bundle Web.HTTP.Server {
 	HTTP and HTTP web server
 	~#
 	class WebServer {
+		@stop : static : Bool;
+
 		@secure_server : static : TCPSecureSocketServer;
 		@server : static : TCPSocketServer;
 		@server_config : static : WebServerConfig;
@@ -1070,7 +1072,7 @@ bundle Web.HTTP.Server {
 					"=> Running on '{$host}' ({$platform}) port {$port}..."->PrintLine();
 				};
 
-				while(true) {
+				while(<>@stop) {
 					thread := System.Concurrency.Thread->New() {
 						New() {
 							Parent()
@@ -1138,7 +1140,7 @@ bundle Web.HTTP.Server {
 					"=> Running on '{$host}' ({$platform}) port {$port}..."->PrintLine();
 				};
                 
-				while(true) {
+				while(<>@stop) {
 					thread := System.Concurrency.Thread->New() {
 						New() {
 							Parent()
@@ -1167,6 +1169,21 @@ bundle Web.HTTP.Server {
 			};
 	  	}
 
+	  	#~
+		Stops the server
+		~#
+		function : Shutdown(id : Int) ~ Nil {
+			@stop := true;
+
+			if(@secure_server <> Nil) {
+				@secure_server->Close();
+			};
+
+			if(@server <> Nil) {
+				@server->Close();
+			};
+		}
+		
 		function : Shutdown(id : Int) ~ Nil {
 			if(@secure_server <> Nil) {
 				@secure_server->Close();
