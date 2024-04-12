@@ -1172,7 +1172,7 @@ bundle Web.HTTP.Server {
 	  	#~
 		Stops the server
 		~#
-		function : Shutdown(id : Int) ~ Nil {
+		function : Stop() ~ Nil {
 			@stop := true;
 
 			if(@secure_server <> Nil) {
