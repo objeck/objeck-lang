@@ -2,41 +2,79 @@ use Web.HTTP, Web.HTTP.Server, Collection, System.IO.Filesystem, Data.JSON;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		if(args->Size() = 2) {
+		if(args->Size() = 1) {
 			install_json := LoadConfiguration(args[0]);
 
-			access_token := RequestHandler->GetAccessToken();
-			refresh_token := RequestHandler->GetRefreshToken();
-			
-			if(access_token = Nil) {
+			redirect_uri : String;
+			redirect_uris_json := install_json->Get("redirect_uris");
+			if(redirect_uris_json->Size() = 1) {
+				redirect_uri := Url->Encode(redirect_uris_json->Get(0)->GetString());
+			};
+
+			redirect_uri_str := Url->Decode(redirect_uri);
+
+			redirect_port := -1;
+			if(redirect_uri_str->Count(':') > 1) {
+				redirect_uri_str_index := redirect_uri_str->FindLast(':') + 1;
+				redirect_port := redirect_uri_str->SubString(redirect_uri_str_index, redirect_uri_str->Size() - redirect_uri_str_index)->ToInt();
+			};
+
+			if(redirect_uri <> Nil) {
 				scope := Url->Encode("https://www.googleapis.com/auth/cloud-platform https://www.googleapis.com/auth/generative-language.retriever");
-				redirect_uri := Url->Encode("http://localhost:1313");
-				state := GenerateState();
-
-				client_id := install_json->Get("client_id")->GetString();
-				scope->PrintLine();
-
-				login_url_str := "https://accounts.google.com/o/oauth2/auth?client_id={$client_id}&response_type=code&redirect_uri={$redirect_uri}&state={$state}&scope={$scope}";
-				"Please login: {$login_url_str}"->PrintLine();
-
-				RequestHandler->Init(install_json, state);
-				WebServer->Serve(RequestHandler->New()->GetClass(), args[1]->ToInt(), false);
 
 				access_token := RequestHandler->GetAccessToken();
 				refresh_token := RequestHandler->GetRefreshToken();
+				expires_in := RequestHandler->GetExpiresIn();
+				
+				if(access_token = Nil) {
+					
+					state := GenerateState();
 
-"access_token='{$access_token}'"->PrintLine();
-"refresh_token='{$refresh_token}'"->PrintLine();				
-			}
-			else if(refresh_token <> Nil) {
-				# TODO refersh
-				access_token := RequestHandler->GetAccessToken();
-				refresh_token := RequestHandler->GetRefreshToken();
-			}
-			else {
-				">>> Error <<<"->ErrorLine();
-			}
+					client_id := install_json->Get("client_id")->GetString();
+					scope->PrintLine();
 
+					login_url_str := "https://accounts.google.com/o/oauth2/auth?client_id={$client_id}&response_type=code&redirect_uri={$redirect_uri}&state={$state}&scope={$scope}";
+
+					"Please login: {$login_url_str}"->PrintLine();
+
+					RequestHandler->Init(install_json, state, redirect_uri);
+					WebServer->Serve(RequestHandler->New()->GetClass(), redirect_port, false);
+
+					access_token := RequestHandler->GetAccessToken();
+					refresh_token := RequestHandler->GetRefreshToken();
+					expires_in := RequestHandler->GetExpiresIn();
+
+"access_token := \"{$access_token}\";"->PrintLine();
+"refresh_token := \"{$refresh_token}\";"->PrintLine();
+"expires_in := \"{$expires_in}\";"->PrintLine();				
+				}
+				else if(refresh_token <> Nil) {
+					client_id := install_json->Get("client_id")->GetString();
+					client_secret := install_json->Get("client_secret")->GetString();
+
+					data := "&client_secret={$client_secret}&client_id={$client_id}&redirect_uri={$redirect_uri}&refresh_token={$refresh_token}&scope={$scope}&grant_type=refresh_token&"->ToByteArray();
+
+					headers := Map->New()<String, String>;
+					headers->Insert("Content-Type", "application/x-www-form-urlencoded");
+					post_response := HttpsClient->QuickPost(Url->New("https://accounts.google.com/o/oauth2/token"), data, "application/x-www-form-urlencoded", headers);
+
+					if(post_response <> Nil) {
+post_response->GetContent()->ToString()->PrintLine();			
+						response_json := JsonParser->TextToElement(post_response->GetContent()->ToString());
+							
+						if(response_json->Has("access_token")) {
+							access_token := response_json->Get("access_token")->GetString();
+							expires_in := response_json->Get("expires_in")->GetInt();
+
+"access_token := \"{$access_token}\";"->PrintLine();
+"expires_in := \"{$expires_in}\";"->PrintLine();								
+						};
+					};			
+				}
+				else {
+					">>> Error <<<"->ErrorLine();
+				}
+			};
 		};
 	}
 
@@ -85,20 +123,18 @@ class RequestHandler from HttpRequestHandler {
 	@state : static : String;
 	@access_token : static : String;
 	@refresh_token : static : String;
+	@expires_in : static : Int;
 
-	function : Init(install_json : JsonElement, state : String) ~ Nil {
+	function : Init(install_json : JsonElement, state : String, redirect_uri : String) ~ Nil {
+		@state := state;
+		@redirect_uri := redirect_uri;
+
 		@client_id := install_json->Get("client_id")->GetString();
 		@project_id := install_json->Get("project_id")->GetString();
 		@auth_uri := install_json->Get("auth_uri")->GetString();
 		@token_uri := install_json->Get("token_uri")->GetString();
 		@auth_provider_x509_cert_url := install_json->Get("auth_provider_x509_cert_url")->GetString();
 		@client_secret := install_json->Get("client_secret")->GetString();
-		@state := state;
-
-		redirect_uris_json := install_json->Get("redirect_uris");
-		if(redirect_uris_json->Size() = 1) {
-			@redirect_uri := Url->Encode(redirect_uris_json->Get(0)->GetString());
-		};
 	}
 
 	New() {
@@ -111,6 +147,10 @@ class RequestHandler from HttpRequestHandler {
 
 	function : GetRefreshToken() ~ String {
 		return @refresh_token;
+	}
+
+	function : GetExpiresIn() ~ Int {
+		return @expires_in;
 	}
 
 	method : ProcessGet(request : Web.HTTP.Server.Request, response : Web.HTTP.Server.Response) ~ Bool {
@@ -129,7 +169,9 @@ class RequestHandler from HttpRequestHandler {
 				if(response_json->Has("access_token")) {
 					@access_token := response_json->Get("access_token")->GetString();
 					@refresh_token := response_json->Get("refresh_token")->GetString();
-					response->SetCodeContent(200, "<html><center><h1>Hello World!</center></h1></html>");
+					@expires_in := response_json->Get("expires_in")->GetInt();
+
+					response->SetCodeContent(200, "<html><center><h1>Welcome User: <pre>0x000200f1</pre>, we been watching you...</center></h1></html>");
 					WebServer->Stop();
 				};
 			}
