@@ -62,6 +62,34 @@ class Corpus from OAuthEndPoint {
 		headers->Insert("Authorization", "Bearer {$token}");
 		response := HttpsClient->QuickGet(Url->New("https://generativelanguage.googleapis.com/v1beta/{$name}"), 
 			"application/json", headers);
+
+		if(response <> Nil) {
+			#response->GetContent()->ToString()->PrintLine();
+			
+			response_json := JsonParser->TextToElement(response->GetContent()->ToString());
+			if(response_json = Nil) {
+				"### Error: Unable to parse response ###"->ErrorLine();
+				return Nil;
+			};
+			
+			if(response_json->Has("error")) {
+				error_str := response_json->FindElements("error/message")->GetString();
+				SetLastError(error_str);
+				return Nil;
+			};
+
+			return Corpus->New(response_json);
+		};
+
+		return Nil;	
+	}
+
+	function : Delete(name : String) ~ Corpus {
+		token := GetToken();
+		headers := Collection.Map->New()<String, String>;
+		headers->Insert("Authorization", "Bearer {$token}");
+		response := HttpsClient->QuickDelete(Url->New("https://generativelanguage.googleapis.com/v1beta/{$name}"), 
+			"application/json", headers);
 		
 		if(response <> Nil) {
 			#response->GetContent()->ToString()->PrintLine();
