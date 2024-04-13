@@ -3,82 +3,307 @@ use Web.HTTP, Web.HTTP.Server, Collection, System.IO.Filesystem, Data.JSON;
 class Test {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
-			install_json := LoadConfiguration(args[0]);
+			scopes := Vector->New()<String>;
+			scopes->AddBack("https://www.googleapis.com/auth/cloud-platform");
+			scopes->AddBack("https://www.googleapis.com/auth/generative-language.retriever");
+		
+			client := OAuthClient->New(args[0], scopes);
+			client->GetToken()->ToString()->PrintLine();
+		};
+	}
+}
 
-			redirect_uri : String;
-			redirect_uris_json := install_json->Get("redirect_uris");
-			if(redirect_uris_json->Size() = 1) {
-				redirect_uri := Url->Encode(redirect_uris_json->Get(0)->GetString());
-			};
 
-			redirect_uri_str := Url->Decode(redirect_uri);
+class OAuthToken {
+	@access_token : String;
+	@refresh_token : String;
+	@scope : String;
+	@expires_in : Int;
 
-			redirect_port := -1;
-			if(redirect_uri_str->Count(':') > 1) {
-				redirect_uri_str_index := redirect_uri_str->FindLast(':') + 1;
-				redirect_port := redirect_uri_str->SubString(redirect_uri_str_index, redirect_uri_str->Size() - redirect_uri_str_index)->ToInt();
-			};
+	New(access_token : String, refresh_token : String, expires_in : Int, scope : String) {
+		@access_token := access_token;
+		@refresh_token := refresh_token; 
+		@expires_in := expires_in;
+		@scope := scope;
+	}
 
-			if(redirect_uri <> Nil) {
-				scope := Url->Encode("https://www.googleapis.com/auth/cloud-platform https://www.googleapis.com/auth/generative-language.retriever");
+	method : public : ToString() ~ String {
+		buffer := "";
 
-				access_token := RequestHandler->GetAccessToken();
-				refresh_token := RequestHandler->GetRefreshToken();
-				expires_in := RequestHandler->GetExpiresIn();
-				
-				if(access_token = Nil) {
+		buffer->Append("access_token='{$@access_token}'\n");
+		buffer->Append("refresh_token='{$@refresh_token}'\n");
+		buffer->Append("scope={$@scope}\n");
+		buffer->Append("expires_in={$@expires_in}\n");
+
+		return buffer;
+	}
+}
+
+class OAuthClient {
+	@config_json : OAuthConfig;
+	
+	@access_token : String;
+	@refresh_token : String;
+	@scope : String;
+	@expires_in : Int;
+
+	New(filename : String, scopes : Vector<String>)  {
+		@config_json := OAuthConfig->Load(filename, scopes);
+
+		#~ TODO: for refresh testing
+		OAuthHandler->SetAccessToken("<token>");
+		OAuthHandler->SetRefreshToken("<token>");
+		OAuthHandler->SetExpiresIn(3599);
+		~#
+	}
+
+	method : public : GetToken() ~ OAuthToken {
+		@access_token := OAuthHandler->GetAccessToken();
+		@refresh_token := OAuthHandler->GetRefreshToken();
+
+		if(@access_token = Nil) {
+			client_id := @config_json->GetClientId();
+			state := @config_json->GetState();
+			scope := @config_json->GetScope();
+			redirect_uri := @config_json->GetRedirectUri();
+
+			login_url_str := "https://accounts.google.com/o/oauth2/auth?client_id={$client_id}&response_type=code&redirect_uri={$redirect_uri}&state={$state}&scope={$scope}";
+
+			"Please login: {$login_url_str}"->PrintLine();
+
+			OAuthHandler->Initialize(@config_json);				
+			WebServer->Serve(OAuthHandler->New()->GetClass(), @config_json->GetRedirectPort(), false);
+		}
+		else if(@refresh_token <> Nil) {
+			client_id := @config_json->GetClientId();
+			client_secret := @config_json->GetClientSecret();
+			redirect_uri := @config_json->GetRedirectUri();
+			scope := @config_json->GetScope();
+
+			data := "&client_secret={$client_secret}&client_id={$client_id}&redirect_uri={$redirect_uri}&refresh_token={$@refresh_token}&scope={$scope}&grant_type=refresh_token&"->ToByteArray();
+			# data->ToString()->PrintLine();
+
+			headers := Map->New()<String, String>;
+			headers->Insert("Content-Type", "application/x-www-form-urlencoded");
+			post_response := HttpsClient->QuickPost(Url->New("https://accounts.google.com/o/oauth2/token"), data, "application/x-www-form-urlencoded", headers);
+
+			if(post_response <> Nil) {
+				# post_response->GetContent()->ToString()->PrintLine();			
+				response_json := JsonParser->TextToElement(post_response->GetContent()->ToString());
 					
-					state := GenerateState();
-
-					client_id := install_json->Get("client_id")->GetString();
-					scope->PrintLine();
-
-					login_url_str := "https://accounts.google.com/o/oauth2/auth?client_id={$client_id}&response_type=code&redirect_uri={$redirect_uri}&state={$state}&scope={$scope}";
-
-					"Please login: {$login_url_str}"->PrintLine();
-
-					RequestHandler->Init(install_json, state, redirect_uri);
-					WebServer->Serve(RequestHandler->New()->GetClass(), redirect_port, false);
-
-					access_token := RequestHandler->GetAccessToken();
-					refresh_token := RequestHandler->GetRefreshToken();
-					expires_in := RequestHandler->GetExpiresIn();
-
-"access_token := \"{$access_token}\";"->PrintLine();
-"refresh_token := \"{$refresh_token}\";"->PrintLine();
-"expires_in := \"{$expires_in}\";"->PrintLine();				
-				}
-				else if(refresh_token <> Nil) {
-					client_id := install_json->Get("client_id")->GetString();
-					client_secret := install_json->Get("client_secret")->GetString();
-
-					data := "&client_secret={$client_secret}&client_id={$client_id}&redirect_uri={$redirect_uri}&refresh_token={$refresh_token}&scope={$scope}&grant_type=refresh_token&"->ToByteArray();
-
-					headers := Map->New()<String, String>;
-					headers->Insert("Content-Type", "application/x-www-form-urlencoded");
-					post_response := HttpsClient->QuickPost(Url->New("https://accounts.google.com/o/oauth2/token"), data, "application/x-www-form-urlencoded", headers);
-
-					if(post_response <> Nil) {
-post_response->GetContent()->ToString()->PrintLine();			
-						response_json := JsonParser->TextToElement(post_response->GetContent()->ToString());
-							
-						if(response_json->Has("access_token")) {
-							access_token := response_json->Get("access_token")->GetString();
-							expires_in := response_json->Get("expires_in")->GetInt();
-
-"access_token := \"{$access_token}\";"->PrintLine();
-"expires_in := \"{$expires_in}\";"->PrintLine();								
-						};
-					};			
-				}
+				if(response_json->Has("access_token")) {
+					OAuthHandler->SetAccessToken(response_json->Get("access_token")->GetString());
+					OAuthHandler->SetScope(response_json->Get("scope")->GetString());								
+					OAuthHandler->SetExpiresIn(response_json->Get("expires_in")->GetInt());								
+				} 
 				else {
-					">>> Error <<<"->ErrorLine();
-				}
+					return Nil;
+				};
+			};	
+		}
+		else {
+			return Nil;
+		};
+
+		@access_token := OAuthHandler->GetAccessToken();
+		@refresh_token := OAuthHandler->GetRefreshToken();
+		@expires_in := OAuthHandler->GetExpiresIn();
+		@scope := OAuthHandler->GetScope();
+
+		return OAuthToken->New(@access_token, @refresh_token, @expires_in, @scope);
+	}
+}
+
+class OAuthHandler from HttpRequestHandler {
+	@client_id : static : String;
+	@client_secret: static : String;
+	@redirect_uri : static : String;
+	@state : static : String;
+	
+	@access_token : static : String;
+	@refresh_token : static : String;
+	@expires_in : static : Int;
+	@scope : static : String;
+
+	function : Initialize(config : OAuthConfig) ~ Nil {
+		@client_id := config->GetClientId();
+		@client_secret := config->GetClientSecret();
+		@redirect_uri := config->GetRedirectUri();
+		@state := config->GetState();
+	}
+
+	New() {
+		Parent();
+	}
+
+	function : GetAccessToken() ~ String {
+		return @access_token;
+	}
+
+	function : SetAccessToken(access_token : String) ~ Nil {
+		@access_token := access_token;
+	}
+
+	function : GetRefreshToken() ~ String {
+		if(@refresh_token = Nil) {
+			return "";
+		};
+		
+		return @refresh_token;
+	}
+
+	function : SetRefreshToken(refresh_token : String) ~ Nil {
+		@refresh_token := refresh_token;
+	}
+
+	function : GetExpiresIn() ~ Int {
+		return @expires_in;
+	}
+
+	function : SetExpiresIn(expires_in : Int) ~ Nil {
+		@expires_in := expires_in;
+	}
+
+	function : GetScope() ~ String {
+		return @scope;
+	}
+	
+	function : SetScope(scope : String) ~ Nil {
+		@scope := scope;
+	}
+
+	method : ProcessGet(request : Web.HTTP.Server.Request, response : Web.HTTP.Server.Response) ~ Bool {
+		if(<>request->HasParam("error") & request->GetParam("state")->Equals(@state)) {
+			code_id := request->GetParam("code");
+			data := "code={$code_id}&client_id={$@client_id}&client_secret={$@client_secret}&redirect_uri={$@redirect_uri}&grant_type=authorization_code"->ToByteArray();
+
+			headers := Map->New()<String, String>;
+			headers->Insert("Content-Type", "application/x-www-form-urlencoded");
+			post_response := HttpsClient->QuickPost(Url->New("https://accounts.google.com/o/oauth2/token"), data, "application/x-www-form-urlencoded", headers);
+
+			if(post_response <> Nil) {
+				# post_response->GetContent()->ToString()->PrintLine();			
+				response_json := JsonParser->TextToElement(post_response->GetContent()->ToString());
+					
+				if(response_json->Has("access_token")) {
+					@access_token := response_json->Get("access_token")->GetString();
+					@refresh_token := response_json->Get("refresh_token")->GetString();
+					@expires_in := response_json->Get("expires_in")->GetInt();
+					@scope := response_json->Get("scope")->GetString();
+
+					response->SetCodeContent(200, "<html><center>Welcome User: <pre>0x000200f1</pre>, we been expecting you...</center></html>");
+					WebServer->Stop();
+				};
+			}
+			else {
+				@access_token := Nil;
 			};
+		}
+		else {
+			@access_token := Nil;
+		}
+
+		return false;
+	}
+
+	method : ProcessPost(request : Web.HTTP.Server.Request, response : Web.HTTP.Server.Response) ~ Bool {
+		return false;
+	}
+}
+
+class OAuthConfig {
+	@install_json : JsonElement;
+
+	@scope : String;
+	@redirect_uri : String;
+	@redirect_port : Int;
+
+	@client_id : String;
+	@client_secret : String;
+	@state : String;
+
+	New : private(install_json : JsonElement, scopes : Vector<String>) {
+		@install_json := install_json;
+
+		@scope := "";
+		each(scope in scopes) {
+			@scope->Append(scope);
+			@scope->Append(' ');
+		};
+		@scope := Url->Encode(@scope->Trim());
+
+		# get redirects
+		redirect_uris_json := @install_json->Get("redirect_uris");
+		if(redirect_uris_json->Size() = 1) {
+			@redirect_uri := Url->Encode(redirect_uris_json->Get(0)->GetString());
+		};
+
+		# decode and parse
+		redirect_uri_str := Url->Decode(@redirect_uri);
+		@redirect_port := 80;
+		if(redirect_uri_str->Count(':') > 1) {
+			redirect_uri_str_index := redirect_uri_str->FindLast(':') + 1;
+			@redirect_port := redirect_uri_str->SubString(redirect_uri_str_index, redirect_uri_str->Size() - redirect_uri_str_index)->ToInt();
 		};
 	}
 
-	function : GenerateState() ~ String {
+	function : Load(filename : String, scopes : Vector<String>) ~ OAuthConfig {
+		buffer := FileReader->ReadFile(filename);
+		if(buffer <> Nil) {
+			config_json := JsonParser->TextToElement(buffer);
+			if(config_json <> Nil) {
+				return OAuthConfig->New(config_json->Get("installed"), scopes);
+			};
+		};
+
+		return Nil;
+	}
+
+	method : public : GetRedirectUri() ~ String {
+		return @redirect_uri;
+	}
+
+	method : public : GetRedirectPort() ~ Int {
+		return @redirect_port;
+	}
+
+	method : public : GetScope() ~ String {
+		return @scope;
+	}
+
+	method : Get(name : String) ~ String {
+		if(@install_json <> Nil) {
+			return @install_json->Get(name)->GetString();
+		};
+
+		return Nil;
+	}
+
+	method : public : GetClientId() ~ String {
+		if(@client_id = Nil) {
+			@client_id := Get("client_id");
+		};
+
+		return @client_id;
+	}
+
+	method : public : GetClientSecret() ~ String {
+		if(@client_secret = Nil) {
+			@client_secret := Get("client_secret");
+		};
+
+		return @client_secret;
+	}
+
+	method : public : GetState() ~ String {
+		if(@state = Nil) {
+			@state := GenerateState();
+		};
+
+		return @state;
+	}
+
+	method : GenerateState() ~ String {
 		values :=  [ 
 			'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',  
 			'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P',  
@@ -99,94 +324,4 @@ post_response->GetContent()->ToString()->PrintLine();
 
 		return buffer;
 	}
-
-	function : LoadConfiguration(filename : String) ~ JsonElement {
-		config_content := FileReader->ReadFile(filename);
-		if(config_content <> Nil) {
-			client_json := JsonParser->TextToElement(config_content);
-
-			return client_json->Get("installed");
-		};
-
-		return Nil;
-	}
 }
-
-class RequestHandler from HttpRequestHandler {
-	@client_id: static : String;
-	@project_id: static : String;
-	@auth_uri: static : String;
-	@token_uri: static : String;
-	@auth_provider_x509_cert_url: static : String;
-	@client_secret: static : String;
-	@redirect_uri : static : String;
-	@state : static : String;
-	@access_token : static : String;
-	@refresh_token : static : String;
-	@expires_in : static : Int;
-
-	function : Init(install_json : JsonElement, state : String, redirect_uri : String) ~ Nil {
-		@state := state;
-		@redirect_uri := redirect_uri;
-
-		@client_id := install_json->Get("client_id")->GetString();
-		@project_id := install_json->Get("project_id")->GetString();
-		@auth_uri := install_json->Get("auth_uri")->GetString();
-		@token_uri := install_json->Get("token_uri")->GetString();
-		@auth_provider_x509_cert_url := install_json->Get("auth_provider_x509_cert_url")->GetString();
-		@client_secret := install_json->Get("client_secret")->GetString();
-	}
-
-	New() {
-		Parent();
-	}
-
-	function : GetAccessToken() ~ String {
-		return @access_token;
-	}
-
-	function : GetRefreshToken() ~ String {
-		return @refresh_token;
-	}
-
-	function : GetExpiresIn() ~ Int {
-		return @expires_in;
-	}
-
-	method : ProcessGet(request : Web.HTTP.Server.Request, response : Web.HTTP.Server.Response) ~ Bool {
-		if(<>request->HasParam("error") & request->GetParam("state")->Equals(@state)) {
-			code_id := request->GetParam("code");
-			data := "code={$code_id}&client_id={$@client_id}&client_secret={$@client_secret}&redirect_uri={$@redirect_uri}&grant_type=authorization_code"->ToByteArray();
-
-			headers := Map->New()<String, String>;
-			headers->Insert("Content-Type", "application/x-www-form-urlencoded");
-			post_response := HttpsClient->QuickPost(Url->New("https://accounts.google.com/o/oauth2/token"), data, "application/x-www-form-urlencoded", headers);
-
-			if(post_response <> Nil) {
-				# post_response->GetContent()->ToString()->PrintLine();			
-				response_json := JsonParser->TextToElement(post_response->GetContent()->ToString());
-					
-				if(response_json->Has("access_token")) {
-					@access_token := response_json->Get("access_token")->GetString();
-					@refresh_token := response_json->Get("refresh_token")->GetString();
-					@expires_in := response_json->Get("expires_in")->GetInt();
-
-					response->SetCodeContent(200, "<html><center><h1>Welcome User: <pre>0x000200f1</pre>, we been watching you...</center></h1></html>");
-					WebServer->Stop();
-				};
-			}
-			else {
-				@access_token := Nil;
-			};
-		}
-		else {
-			@access_token := Nil;
-		}
-
-		return false;
-	}
-
-	method : ProcessPost(request : Web.HTTP.Server.Request, response : Web.HTTP.Server.Response) ~ Bool {
-		return false;
-	}
-} 
