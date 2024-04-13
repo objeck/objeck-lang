@@ -2579,7 +2579,13 @@ bundle Web.HTTP.Server {
 	}
 }
 
+#~
+OAuth client
+~#
 bundle System.IO.Net.OAuth {
+	#~
+	OAuth token
+	~#
 	class OAuthToken {
 		@access_token : String;
 		@refresh_token : String;
@@ -2593,22 +2599,42 @@ bundle System.IO.Net.OAuth {
 			@scope := scope;
 		}
 
+		#~
+		Get access token
+		@return access token
+		~#
 		method : public : GetAccessToken() ~ String {
 			return @access_token;
 		}
 
+		#~
+		Get refresh token
+		@return refresh token
+		~#
 		method : public : GetRefreshToken() ~ String {
 			return @refresh_token;
 		}
 
+		#~
+		Get scope
+		@return scope
+		~#
 		method : public : GetScope() ~ String {
 			return @scope;
 		}
 
+		#~
+		Get expiration time
+		@return expiration time
+		~#
 		method : public : GetExpiresIn() ~ Int {
 			return @expires_in;
 		}
 
+		#~
+		Get token as string
+		@return token as string
+		~#
 		method : public : ToString() ~ String {
 			buffer := "";
 
@@ -2622,6 +2648,18 @@ bundle System.IO.Net.OAuth {
 		}
 	}
 
+	#~
+	OAuth client
+	
+```
+scopes := ["https://www.googleapis.com/auth/cloud-platform", 
+  "https://www.googleapis.com/auth/generative-language.retriever"];
+client := System.IO.Net.OAuth.OAuthClient->New("client_secret.json", scopes);
+each(i : 3) {
+  client->GetToken()->GetAccessToken()->PrintLine();
+};
+```
+	~#
 	class OAuthClient {
 		@config_json : OAuthConfig;
 		
@@ -2630,6 +2668,11 @@ bundle System.IO.Net.OAuth {
 		@scope : String;
 		@expires_in : Int;
 
+		#~
+		Constructor
+		@param filename OAuth configuration credentials in Google <a href='https://googleapis.github.io/google-api-python-client/docs/client-secrets.html'>installed</a> JSON format
+		@param scopes list of OAuth scopes
+		~#
 		New(filename : String, scopes : String[])  {
 			@config_json := OAuthConfig->Load(filename, scopes);
 
@@ -2644,6 +2687,10 @@ bundle System.IO.Net.OAuth {
 			~#
 		}
 
+		#~
+		Get an OAuth token
+		@return OAuth token, Nil if error
+		~#
 		method : public : GetToken() ~ OAuthToken {
 			@access_token := OAuthHandler->GetAccessToken();
 			@refresh_token := OAuthHandler->GetRefreshToken();
