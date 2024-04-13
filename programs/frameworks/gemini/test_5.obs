@@ -1,0 +1,136 @@
+use Web.HTTP, Data.JSON;
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() = 1) {			
+			Corpus->Get("corpora/test-fupr53vvec9")->ToString()->PrintLine();
+		};
+	}
+}
+
+class Corpus from OAuthEndPoint {
+	@name : String;
+	@display_name : String;
+	@create_time_str : String;
+	@update_time_str : String;
+
+	New : private(request_json : JsonElement) {
+		Parent();
+
+		@name := request_json->Get("name")->GetString();
+		@display_name := request_json->Get("displayName")->GetString();
+		@create_time_str := request_json->Get("createTime")->GetString();
+		@update_time_str := request_json->Get("updateTime")->GetString();
+	}
+
+	function : Create(name : String) ~ Corpus {
+		request_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+		request_json->Insert("displayName", name);
+		data := request_json->ToString()->ToByteArray();
+		# data->ToString()->PrintLine();
+
+		token := GetToken();
+		headers := Collection.Map->New()<String, String>;
+		headers->Insert("Authorization", "Bearer {$token}");
+		response := HttpsClient->QuickPost(Url->New("https://generativelanguage.googleapis.com/v1beta/corpora"), data, 
+			"application/json", headers);
+
+		if(response <> Nil) {
+			#response->GetContent()->ToString()->PrintLine();
+			
+			response_json := JsonParser->TextToElement(response->GetContent()->ToString());
+			if(response_json = Nil) {
+				"### Error: Unable to parse response ###"->ErrorLine();
+				return Nil;
+			};
+			
+			if(response_json->Has("error")) {
+				error_str := response_json->FindElements("error/message")->GetString();
+				SetLastError(error_str);
+				return Nil;
+			};
+
+			return Corpus->New(response_json);
+		};
+
+		return Nil;	
+	}
+
+	function : Get(name : String) ~ Corpus {
+		token := GetToken();
+		headers := Collection.Map->New()<String, String>;
+		headers->Insert("Authorization", "Bearer {$token}");
+		response := HttpsClient->QuickGet(Url->New("https://generativelanguage.googleapis.com/v1beta/{$name}"), 
+			"application/json", headers);
+		
+		if(response <> Nil) {
+			#response->GetContent()->ToString()->PrintLine();
+			
+			response_json := JsonParser->TextToElement(response->GetContent()->ToString());
+			if(response_json = Nil) {
+				"### Error: Unable to parse response ###"->ErrorLine();
+				return Nil;
+			};
+			
+			if(response_json->Has("error")) {
+				error_str := response_json->FindElements("error/message")->GetString();
+				SetLastError(error_str);
+				return Nil;
+			};
+
+			return Corpus->New(response_json);
+		};
+
+		return Nil;	
+	}
+
+	#~
+	String representation of the object
+	@return string representation
+	~#
+	method : public : ToString() ~ String {
+		buffer := "[name='";
+		buffer += @name;
+
+		buffer += "', display_name='"
+		buffer += @display_name;
+
+		buffer += "', create_time_str='"
+		buffer += @create_time_str;
+
+		buffer += "', update_time_str='"
+		buffer += @update_time_str;
+
+		buffer += "']";
+		return buffer;
+	}
+}
+
+class OAuthEndPoint {
+	@client : static : System.IO.Net.OAuth.OAuthClient;
+	@last_message : static : String;
+
+	New() {}
+
+	function : GetToken() ~ String {
+		if(@client = Nil) {
+			scopes := ["https://www.googleapis.com/auth/cloud-platform", 
+				"https://www.googleapis.com/auth/generative-language.retriever"];
+			@client := System.IO.Net.OAuth.OAuthClient->New("client_secret.json", scopes);			
+		};
+
+		return @client->GetToken()->GetAccessToken();
+	}
+
+	function : SetLastError(last_message : String) ~ Nil {
+		@last_message := last_message;
+	}
+
+	#~
+	Get the last error
+	@return last error
+	~#
+	function : GetLastError() ~ String {
+		return @last_message;
+	}
+}
