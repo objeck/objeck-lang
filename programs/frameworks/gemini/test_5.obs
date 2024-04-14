@@ -6,8 +6,14 @@ class Test {
 			corpus := Corpus->Get("corpora/bar-1za0vhw22l9v");
 			corpus->ToString()->PrintLine();
 
-#			Document->Create("bar", Nil, corpus)->ToString()->PrintLine();
-			Document->List(corpus)->Size()->PrintLine();
+			document := Document->Get("corpora/bar-1za0vhw22l9v/documents/bar-v6o5rx09je85");
+			document->ToString()->PrintLine();
+
+			metadata := Map->New()<String, String>;
+			metadata->Insert("hello", "world");
+			chunk := Chunk->Create("foo", "bar", metadata, document)
+			chunk->ToString()->PrintLine();
+
 #			Corpus->Delete("corpora/test1-6ahtb7bda1yj")->ToString()->PrintLine();
 #~			
 			corpuses := Corpus->List();
@@ -205,6 +211,10 @@ class Document from OAuthEndPoint implements Stringify {
 		@update_time_str := request_json->Get("updateTime")->GetString();
 	}
 
+	method : public : GetId() ~ String {
+		return @name;
+	}
+
 	function : Create(name : String, metadata : Collection.Map<String, String>, corpus : Corpus) ~ Document {
 		metadata_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
 		if(metadata <> Nil) {
@@ -371,19 +381,93 @@ class Document from OAuthEndPoint implements Stringify {
 }
 
 class Chunk from OAuthEndPoint implements Stringify {
+	@name : String;
+	@data : String;
 	@state : String;
 	@create_time_str : String;
 	@update_time_str : String;
+	@metadata : Map<String, String>;
 
 	New : private(request_json : JsonElement) {
 		Parent();
 
+		@name := request_json->Get("name")->GetString();
+		@data := request_json->FindElements("data/stringValue")->GetString();
 		@state := request_json->Get("state")->GetString();
 		@create_time_str := request_json->Get("createTime")->GetString();
 		@update_time_str := request_json->Get("updateTime")->GetString();
+
+		@metadata := Map->New()<String, String>;
+		metadata_array_json := request_json->Get("customMetadata");
+		if(metadata_array_json <> Nil) {
+			each(metadata_json in metadata_array_json) {
+				name := metadata_json->Get("key")->GetString();
+				value := metadata_json->Get("stringValue")->GetString();
+				@metadata->Insert(name, value);
+			};
+		};
 	}
-	
-	function : Create(chunks : Map<String, Pair<String, String>>, document : Document) ~ Document {
+
+	method : public : GetId() ~ String {
+		return @name;
+	}
+
+	method : public : GetData() ~ String {
+		return @data;
+	}
+
+	method : public : GetMetadata() ~  Map<String, String> {
+		return @metadata;
+	}
+
+	function : Create(name : String, value : String, metadata : Map<String, String>, document : Document) ~ Chunk {
+		metadata_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+		if(metadata <> Nil) {
+			metadata_keys_values := metadata->GetKeyValues()<Pair<String, String>>;
+			each(metadata_key_value in metadata_keys_values) {
+				metadata_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+				metadata_json->Insert("key", metadata_key_value->GetFirst());
+				metadata_json->Insert("stringValue", metadata_key_value->GetSecond());
+
+				metadata_array_json->Add(metadata_json);
+			};
+		};
+
+		request_data_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+		request_data_json->Insert("stringValue", value);
+		
+		request_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+		request_json->Insert("data", request_data_json);
+		
+		request_json->Insert("customMetadata", metadata_array_json);
+		data := request_json->ToString()->ToByteArray();
+		# data->ToString()->PrintLine();
+
+		doc_id := document->GetId();
+		token := GetToken();
+		headers := Collection.Map->New()<String, String>;
+		headers->Insert("Authorization", "Bearer {$token}");
+		response := HttpsClient->QuickPost(Url->New("https://generativelanguage.googleapis.com/v1beta/{$doc_id}/chunks"), data, 
+			"application/json", headers);
+
+		if(response <> Nil) {
+			# response->GetContent()->ToString()->PrintLine();
+			
+			response_json := JsonParser->TextToElement(response->GetContent()->ToString());
+			if(response_json = Nil) {
+				"### Error: Unable to parse response ###"->ErrorLine();
+				return Nil;
+			};
+			
+			if(response_json->Has("error")) {
+				error_str := response_json->FindElements("error/message")->GetString();
+				SetLastError(error_str);
+				return Nil;
+			};
+
+			return Chunk->New(response_json);
+		};
+
 		return Nil;
 	}
 
@@ -392,8 +476,14 @@ class Chunk from OAuthEndPoint implements Stringify {
 	@return string representation
 	~#
 	method : public : ToString() ~ String {
-		buffer := "[state='";
+		buffer := "[name='";
+		buffer += @name;
+
+		buffer += "', state='"
 		buffer += @state;
+
+		buffer += "', data='"
+		buffer += @data;
 
 		buffer += "', create_time_str='"
 		buffer += @create_time_str;
