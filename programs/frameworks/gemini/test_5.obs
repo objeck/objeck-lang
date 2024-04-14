@@ -3,11 +3,11 @@ use Web.HTTP, Data.JSON;
 class Test {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {			
-#			Corpus->Delete("corpora/test-fupr53vvec9")->ToString()->PrintLine();
+			Corpus->Delete("corpora/test1-ckee03muftrq")->ToString()->PrintLine();
 			
 			corpuses := Corpus->List();
 			each(corpus in corpuses) {
-#				corpuses->ToString()->PrintLine();
+				corpus->ToString()->PrintLine();
 			};
 		};
 	}
@@ -201,10 +201,7 @@ class : private : OAuthEndPoint {
 			if(client_secret_parts->Size() = 2){
 				date_str := client_secret_parts[0];
 				create_time := System.Time.DateUtility->Parse(date_str, "MM/dd/yyyy hh:mm:ss", false);
-create_time->ToString()->PrintLine();
-
 				if(create_time->Compare(System.Time.Date->New(false)) > 0) {
-create_time->ToString()->PrintLine();
 					token_str := client_secret_parts[1];
 					return token_str;
 				};
