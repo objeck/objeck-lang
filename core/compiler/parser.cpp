@@ -1975,12 +1975,6 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
       NextToken();
       break;
 
-    case DATE_TIME_SET_3:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                               instructions::DATE_TIME_SET_3);
-      NextToken();
-      break;
-
     case DATE_TIME_ADD_DAYS:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::DATE_TIME_ADD_DAYS);
