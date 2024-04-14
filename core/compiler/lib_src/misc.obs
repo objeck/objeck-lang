@@ -117,10 +117,10 @@ bundle System.Time {
 						pos := hours + offset + 1;
 						if(pos > -1 & pos < date_str->Size()) { 
 							if(date_str->Get(pos)->IsDigit()) {
-								date_hours := date_str->SubString(hours + offset, 2)->ToInt();
+								date_hours := date_str->SubString(hours + offset, 2)->ToInt() - 1;
 							}
 							else {
-								date_hours := date_str->SubString(hours + offset, 1)->ToInt();
+								date_hours := date_str->SubString(hours + offset, 1)->ToInt() - 1;
 								offset -= 1;
 							};
 						};
