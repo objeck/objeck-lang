@@ -6338,6 +6338,15 @@ bundle System.Time {
 				SYS_TIME;
 			};
 		}
+
+		#~
+		Constructor, set time using Unix time
+		@param unix_time number of seconds elapsed since 00:00 hours, Jan 1, 1970 UTC
+		~#
+		New(unix_time : Int) {
+			Parent();
+			DATE_FROM_UNIX_TIME;
+		}
 		
 		#~
 		Constructor, sets time to midnight of the given day
@@ -6349,6 +6358,21 @@ bundle System.Time {
 		New(day : Int, month : Int, year : Int, gmt : Bool) {
 			Parent();
 			DATE_TIME_SET_1;
+		}
+
+		#~
+		Constructor 
+		@param day day of month
+		@param month month of year
+		@param year year
+		@param hours hours
+		@param mins minutes
+		@param secs seconds
+		@param gmt true of time is in GMT, false for system time zone
+		~#
+		New(day : Int, month : Int, year : Int, hours : Int, mins : Int, secs : Int, gmt : Bool) {
+			Parent();
+			DATE_TIME_SET_2;
 		}
 
 		#~
@@ -6422,21 +6446,6 @@ bundle System.Time {
 			return ToString()->HashID();
 		}
 		
-		#~
-		Constructor 
-		@param day day of month
-		@param month month of year
-		@param year year
-		@param hours hours
-		@param mins minutes
-		@param secs seconds
-		@param gmt true of time is in GMT, false for system time zone
-		~#
-		New(day : Int, month : Int, year : Int, hours : Int, mins : Int, secs : Int, gmt : Bool) {
-			Parent();
-			DATE_TIME_SET_2;
-		}
-
 		#~
 		Returns rather time is daylight savings
 		@return true if daylight savings, false otherwise
