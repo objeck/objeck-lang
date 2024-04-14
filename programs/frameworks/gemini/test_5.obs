@@ -3,12 +3,17 @@ use Web.HTTP, Data.JSON;
 class Test {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {			
-			Corpus->Get("corpora/test-fupr53vvec9")->ToString()->PrintLine();
+#			Corpus->Delete("corpora/test-fupr53vvec9")->ToString()->PrintLine();
+			
+			corpuses := Corpus->List();
+			each(corpus in corpuses) {
+#				corpuses->ToString()->PrintLine();
+			};
 		};
 	}
 }
 
-class Corpus from OAuthEndPoint {
+class Corpus from OAuthEndPoint implements Stringify {
 	@name : String;
 	@display_name : String;
 	@create_time_str : String;
@@ -84,15 +89,15 @@ class Corpus from OAuthEndPoint {
 		return Nil;	
 	}
 
-	function : Delete(name : String) ~ Corpus {
+	function : List() ~ Collection.Vector<Corpus> {
 		token := GetToken();
 		headers := Collection.Map->New()<String, String>;
 		headers->Insert("Authorization", "Bearer {$token}");
-		response := HttpsClient->QuickDelete(Url->New("https://generativelanguage.googleapis.com/v1beta/{$name}"), 
+		response := HttpsClient->QuickGet(Url->New("https://generativelanguage.googleapis.com/v1beta/corpora"), 
 			"application/json", headers);
-		
+
 		if(response <> Nil) {
-			#response->GetContent()->ToString()->PrintLine();
+			# response->GetContent()->ToString()->PrintLine();
 			
 			response_json := JsonParser->TextToElement(response->GetContent()->ToString());
 			if(response_json = Nil) {
@@ -106,10 +111,47 @@ class Corpus from OAuthEndPoint {
 				return Nil;
 			};
 
-			return Corpus->New(response_json);
+			corpuses := Collection.Vector->New()<Corpus>;
+			
+			corporas_json := response_json->Get("corpora");
+			if(corporas_json <> Nil) {
+				each(corpora_json in corporas_json) {
+					corpuses->AddBack(Corpus->New(corpora_json));
+				};
+			};
+
+			return corpuses;
 		};
 
 		return Nil;	
+	}
+
+	function : Delete(name : String) ~ Bool {
+		token := GetToken();
+		headers := Collection.Map->New()<String, String>;
+		headers->Insert("Authorization", "Bearer {$token}");
+		response := HttpsClient->QuickDelete(Url->New("https://generativelanguage.googleapis.com/v1beta/{$name}"), 
+			"application/json", headers);
+		
+		if(response <> Nil) {
+			# response->GetContent()->ToString()->PrintLine();
+			
+			response_json := JsonParser->TextToElement(response->GetContent()->ToString());
+			if(response_json = Nil) {
+				"### Error: Unable to parse response ###"->ErrorLine();
+				return false;
+			};
+			
+			if(response_json->Has("error")) {
+				error_str := response_json->FindElements("error/message")->GetString();
+				SetLastError(error_str);
+				return false;
+			};
+
+			return true;
+		};
+
+		return false;	
 	}
 
 	#~
@@ -134,20 +176,55 @@ class Corpus from OAuthEndPoint {
 	}
 }
 
-class OAuthEndPoint {
-	@client : static : System.IO.Net.OAuth.OAuthClient;
+class : private : OAuthEndPoint {
 	@last_message : static : String;
 
 	New() {}
 
-	function : GetToken() ~ String {
-		if(@client = Nil) {
-			scopes := ["https://www.googleapis.com/auth/cloud-platform", 
-				"https://www.googleapis.com/auth/generative-language.retriever"];
-			@client := System.IO.Net.OAuth.OAuthClient->New("client_secret.json", scopes);			
+	function : WriteNewToken() ~ Nil {
+		scopes := ["https://www.googleapis.com/auth/cloud-platform", 
+			"https://www.googleapis.com/auth/generative-language.retriever"];
+		token := System.IO.Net.OAuth.OAuthClient->New("client_secret.json", scopes)->GetToken();
+
+		token_str := token->GetAccessToken();
+		date := System.Time.Date->New();
+		date->AddSeconds(token->GetExpiresIn());
+		date_str := date->ToShortString();
+
+		System.IO.Filesystem.FileWriter->WriteFile("client_secret.dat", "{$date_str}\r\n{$token_str}");
+	}
+
+	function : ReadToken() ~ String {
+		client_secrets := System.IO.Filesystem.FileReader->ReadFile("client_secret.dat");
+		if(client_secrets <> Nil) {
+			client_secret_parts := client_secrets->Split("\r\n");
+			if(client_secret_parts->Size() = 2){
+				date_str := client_secret_parts[0];
+				create_time := System.Time.DateUtility->Parse(date_str, "MM/dd/yyyy hh:mm:ss", false);
+create_time->ToString()->PrintLine();
+				if(date_str->EndsWith("PM")) {
+					create_time->AddHours(12);
+				}
+
+				if(create_time->Compare(System.Time.Date->New(false)) > 0) {
+create_time->ToString()->PrintLine();
+					token_str := client_secret_parts[1];
+					return token_str;
+				};
+			};
 		};
 
-		return @client->GetToken()->GetAccessToken();
+		return Nil;
+	}
+
+	function : GetToken() ~ String {		
+		token := ReadToken();
+		if(token = Nil) {
+			WriteNewToken();
+			token := ReadToken();
+		};
+
+		return token;
 	}
 
 	function : SetLastError(last_message : String) ~ Nil {
