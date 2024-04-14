@@ -6640,17 +6640,8 @@ bundle System.Time {
 			out->Append(@year);
 			out->Append(" ");
 
-			is_am := true;
 			if(@hours = 0) {
 				out->Append(12);
-			}
-			else if(@hours = 12) {
-				out->Append(12);
-				is_am := false;
-			}
-			else if(@hours > 12) {
-				out->Append(@hours - 12);
-				is_am := false;
 			}
 			else {
 				out->Append(@hours);
@@ -6667,13 +6658,6 @@ bundle System.Time {
 				out->Append('0');
 			};
 			out->Append(@secs);
-
-			if(is_am) {
-				out->Append(" AM");
-			}
-			else {
-				out->Append(" PM");
-			};
 
 			return out;
 		}
@@ -6692,17 +6676,8 @@ bundle System.Time {
 			out->Append(@year);
 			out->Append(" ");
 
-			is_am := true;
 			if(@hours = 0) {
 				out->Append(12);
-			}
-			else if(@hours = 12) {
-				out->Append(12);
-				is_am := false;
-			}
-			else if(@hours > 12) {
-				out->Append(@hours - 12);
-				is_am := false;
 			}
 			else {
 				out->Append(@hours);
@@ -6719,13 +6694,6 @@ bundle System.Time {
 				out->Append('0');
 			};
 			out->Append(@secs);
-
-			if(is_am) {
-				out->Append(" AM");
-			}
-			else {
-				out->Append(" PM");
-			};
 
 			return out;
 		}

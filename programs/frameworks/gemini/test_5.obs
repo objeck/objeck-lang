@@ -202,9 +202,6 @@ class : private : OAuthEndPoint {
 				date_str := client_secret_parts[0];
 				create_time := System.Time.DateUtility->Parse(date_str, "MM/dd/yyyy hh:mm:ss", false);
 create_time->ToString()->PrintLine();
-				if(date_str->EndsWith("PM")) {
-					create_time->AddHours(12);
-				}
 
 				if(create_time->Compare(System.Time.Date->New(false)) > 0) {
 create_time->ToString()->PrintLine();
