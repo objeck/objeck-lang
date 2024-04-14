@@ -41,28 +41,32 @@ class Test {
 			corpus := Corpus->Create("Corpus 1");
 
 			metadata := Map->New()<String, String>;
-			metadata->Insert("about", "1960's DU men's basketball");
+			metadata->Insert("about", "fruit, vegetable, vehicle, human, and animal");
 			document := Document->Create("Document 1", metadata, corpus);
 
 			metadata := Map->New()<String, String>;
-			metadata->Insert("position", "guard");
-			Chunk->Create("Harry Hollines", metadata, document)->ToString()->PrintLine();
+			metadata->Insert("category", "fruit");
+			Chunk->Create("Nature's candy! Seeds' sweet ride to spread, bursting with colors, sugars, and vitamins. Fuel for us, future for plants. Deliciously vital!", metadata, document)->ToString()->PrintLine();
 
 			metadata := Map->New()<String, String>;
-			metadata->Insert("position", "center");
-			Chunk->Create("Byron Beck", metadata, document)->ToString()->PrintLine();
+			metadata->Insert("category", "vegetable");
+			Chunk->Create("Not just leaves! Veggies sprout from roots, stems, flowers, and even bulbs. Packed with vitamins, minerals, and fiber galore, they fuel our bodies and keep us wanting more.", metadata, document)->ToString()->PrintLine();
 
 			metadata := Map->New()<String, String>;
-			metadata->Insert("position", "forward");
-			Chunk->Create("George Roderick", metadata, document)->ToString()->PrintLine();
+			metadata->Insert("category", "vehicle");
+			Chunk->Create("Metal chariots or whirring steeds, gliding on land, skimming seas, piercing clouds. Carrying souls near and far, vehicles weave paths for dreams and scars.", metadata, document)->ToString()->PrintLine();
 
 			metadata := Map->New()<String, String>;
-			metadata->Insert("position", "forward");
-			Chunk->Create("Rick Callahan", metadata, document)->ToString()->PrintLine();
+			metadata->Insert("category", "human");
+			Chunk->Create("Walking contradictions, minds aflame, built for laughter, prone to shame. Woven from stardust, shaped by clay, seeking answers, paving the way.", metadata, document)->ToString()->PrintLine();
 
 			metadata := Map->New()<String, String>;
-			metadata->Insert("position", "guard");
-			Chunk->Create("Tom McCune", metadata, document)->ToString()->PrintLine();
+			metadata->Insert("category", "animal");
+			Chunk->Create("Sentient dance beneath the sun, from buzzing flies to whales that run. Flesh and feather, scale and claw, weaving instincts in nature's law. ", metadata, document)->ToString()->PrintLine();
+
+			metadata := Map->New()<String, String>;
+			metadata->Insert("category", "other");
+			Chunk->Create("Except for fruit, vegetable, vehicle, human, and animal", metadata, document)->ToString()->PrintLine();
 		}
 		else if(args->Size() = 4 & args[1]->Equals("query")) {
 			id := args[2];
@@ -73,7 +77,13 @@ class Test {
 
 			results := corpus->Query(query);
 			each(result in results) {
-				result->GetSecond()->PrintLine();
+				relevance := result->GetFirst()->Get();
+				data := result->GetSecond();
+				metadata := result->GetThird();
+
+				relevance->PrintLine();
+				metadata->ToString()->PrintLine();
+				"---"->PrintLine();
 			}
 		};
 	}
@@ -228,7 +238,7 @@ class Corpus from OAuthEndPoint implements Stringify {
 		return false;	
 	}
 
-	method : public : Query(query : String) ~ Vector<Pair<FloatRef, String>> {
+	method : public : Query(query : String) ~ Vector<Tuples.Triplet<FloatRef, String, Map<String, String>>> {
 		# TODO metadata filters
 		request_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 		request_json->Insert("query", query);
@@ -242,7 +252,7 @@ class Corpus from OAuthEndPoint implements Stringify {
 			"application/json", headers);
 
 		if(response <> Nil) {
-			# response->GetContent()->ToString()->PrintLine();
+response->GetContent()->ToString()->PrintLine();
 			
 			response_json := JsonParser->TextToElement(response->GetContent()->ToString());
 			if(response_json = Nil) {
@@ -257,14 +267,23 @@ class Corpus from OAuthEndPoint implements Stringify {
 			};
 
 			# process results
-			relevance_results := Vector->New()<Pair<FloatRef, String>>;
+			relevance_results := Vector->New()<Tuples.Triplet<FloatRef, String, Map<String, String>>>;
 			chunks_array_json := response_json->Get("relevantChunks");;
 			each(chunk_json in chunks_array_json) {
 				relevance_score := chunk_json->Get("chunkRelevanceScore")->GetFloat();
 				relevance_data := Url->Decode(chunk_json->FindElements("chunk/data/stringValue")->ToString());
 
-				relevance_results->AddBack(Pair->New(relevance_score, relevance_data)<FloatRef, String>);
-				# "### {$relevance_score}: '{$relevance_data}'' ###"->PrintLine();
+				relevance_metadata := Map->New()<String, String>;
+				metadata_array_json := chunk_json->FindElements("chunk/customMetadata");
+				each(metadata_obj_json in metadata_array_json) {
+					key := metadata_obj_json->Get("key")->GetString();
+					value := metadata_obj_json->Get("stringValue")->GetString();
+
+					relevance_metadata->Insert(key, value);
+				}
+
+				result := Tuples.Triplet->New(relevance_score, relevance_data, relevance_metadata)<FloatRef, String, Map<String, String>>;
+				relevance_results->AddBack(result);
 			};
 
 			return relevance_results;
