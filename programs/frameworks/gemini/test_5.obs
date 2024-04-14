@@ -4,15 +4,15 @@ class Test {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {	
 			corpus := Corpus->Get("corpora/bar-1za0vhw22l9v");
-			corpus->ToString()->PrintLine();
+#			corpus->ToString()->PrintLine();
 
 			document := Document->Get("corpora/bar-1za0vhw22l9v/documents/bar-v6o5rx09je85");
-			document->ToString()->PrintLine();
+#			document->ToString()->PrintLine();
 
-			metadata := Map->New()<String, String>;
-			metadata->Insert("hello", "world");
-			chunk := Chunk->Create("foo", "bar", metadata, document)
+			chunk := Chunk->Get("corpora/bar-1za0vhw22l9v/documents/bar-v6o5rx09je85/chunks/obk9l8mbtk10")
 			chunk->ToString()->PrintLine();
+
+			Chunk->List(document)->ToString()->PrintLine();
 
 #			Corpus->Delete("corpora/test1-6ahtb7bda1yj")->ToString()->PrintLine();
 #~			
@@ -469,6 +469,99 @@ class Chunk from OAuthEndPoint implements Stringify {
 		};
 
 		return Nil;
+	}
+
+	function : Get(name : String) ~ Chunk {
+		token := GetToken();
+		headers := Collection.Map->New()<String, String>;
+		headers->Insert("Authorization", "Bearer {$token}");
+		response := HttpsClient->QuickGet(Url->New("https://generativelanguage.googleapis.com/v1beta/{$name}"), 
+			"application/json", headers);
+
+		if(response <> Nil) {
+			#response->GetContent()->ToString()->PrintLine();
+			
+			response_json := JsonParser->TextToElement(response->GetContent()->ToString());
+			if(response_json = Nil) {
+				"### Error: Unable to parse response ###"->ErrorLine();
+				return Nil;
+			};
+			
+			if(response_json->Has("error")) {
+				error_str := response_json->FindElements("error/message")->GetString();
+				SetLastError(error_str);
+				return Nil;
+			};
+
+			return Chunk->New(response_json);
+		};
+
+		return Nil;	
+	}
+
+	function : Delete(name : String) ~ Bool {
+		token := GetToken();
+		headers := Collection.Map->New()<String, String>;
+		headers->Insert("Authorization", "Bearer {$token}");
+		response := HttpsClient->QuickDelete(Url->New("https://generativelanguage.googleapis.com/v1beta/{$name}"), 
+			"application/json", headers);
+		
+		if(response <> Nil) {
+			# response->GetContent()->ToString()->PrintLine();
+			
+			response_json := JsonParser->TextToElement(response->GetContent()->ToString());
+			if(response_json = Nil) {
+				"### Error: Unable to parse response ###"->ErrorLine();
+				return false;
+			};
+			
+			if(response_json->Has("error")) {
+				error_str := response_json->FindElements("error/message")->GetString();
+				SetLastError(error_str);
+				return false;
+			};
+
+			return true;
+		};
+
+		return false;	
+	}
+
+	function : List(document : Document) ~ Collection.Vector<Chunk> {
+		token := GetToken();
+		headers := Collection.Map->New()<String, String>;
+		headers->Insert("Authorization", "Bearer {$token}");
+
+		doc_id := document->GetId();
+		response := HttpsClient->QuickGet(Url->New("https://generativelanguage.googleapis.com/v1beta/{$doc_id}/chunks"), "application/json", headers);
+		if(response <> Nil) {
+			# response->GetContent()->ToString()->PrintLine();
+			
+			response_json := JsonParser->TextToElement(response->GetContent()->ToString());
+			if(response_json = Nil) {
+				"### Error: Unable to parse response ###"->ErrorLine();
+				return Nil;
+			};
+			
+			if(response_json->Has("error")) {
+				error_str := response_json->FindElements("error/message")->GetString();
+				SetLastError(error_str);
+				return Nil;
+			};
+
+			corpuses := Collection.Vector->New()<Chunk>;
+			
+			corporas_json := response_json->Get("chunks");
+			if(corporas_json <> Nil) {
+				each(corpora_json in corporas_json) {
+					corpuses->AddBack(Chunk->New(corpora_json));
+				};
+			};
+
+			return corpuses;
+		};
+
+		return Nil;	
 	}
 
 	#~
