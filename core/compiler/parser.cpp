@@ -2005,9 +2005,9 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
       NextToken();
       break;
 
-    case DATE_TIME_ADD_SECS:
+    case DATE_FROM_UNIX_TIME:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                               instructions::DATE_TIME_ADD_SECS);
+                                                               instructions::DATE_FROM_UNIX_TIME);
       NextToken();
       break;
 
