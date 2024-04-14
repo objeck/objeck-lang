@@ -3485,7 +3485,7 @@ bool TrapProcessor::DateToUnixTime(StackProgram* program, size_t* inst, size_t*&
     PushInt(raw_time, op_stack, stack_pos);
   }
   else {
-    PushInt(0, op_stack, stack_pos);
+    PushInt(-1, op_stack, stack_pos);
   }
 
   return true;
@@ -3493,6 +3493,40 @@ bool TrapProcessor::DateToUnixTime(StackProgram* program, size_t* inst, size_t*&
 
 bool TrapProcessor::DateFromUnixTime(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
 {
+  INT64_VALUE value = (INT64_VALUE)PopInt(op_stack, stack_pos);
+  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+
+  if(instance) {
+#ifdef _WIN32
+    struct tm set_time;
+    if(gmtime_s(&set_time, &value)) {
+      std::wcerr << L">>> Unable to get GMT time <<<" << std::endl;
+      return false;
+    }
+
+    instance[0] = set_time.tm_mday;          // day
+    instance[1] = set_time.tm_mon + 1;       // month
+    instance[2] = set_time.tm_year + 1900;   // year
+    instance[3] = set_time.tm_hour;          // hours
+    instance[4] = set_time.tm_min;           // mins
+    instance[5] = set_time.tm_sec;           // secs
+    instance[6] = set_time.tm_isdst;         // savings time
+    instance[7] = set_time.tm_wday;          // day of week
+    instance[8] = true;                      // is GMT
+#else
+    struct tm* set_time = gmtime(&value);
+    instance[0] = set_time->tm_mday;          // day
+    instance[1] = set_time->tm_mon + 1;       // month
+    instance[2] = set_time->tm_year + 1900;   // year
+    instance[3] = set_time->tm_hour;          // hours
+    instance[4] = set_time->tm_min;           // mins
+    instance[5] = set_time->tm_sec;           // secs
+    instance[6] = set_time->tm_isdst;         // savings time
+    instance[7] = set_time->tm_wday;          // day of week
+    instance[8] = true;                      // is GMT
+#endif
+  }
+
   return true;
 }
 
