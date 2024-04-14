@@ -312,7 +312,6 @@ void Scanner::LoadKeywords()
   ident_map[L"FILE_GROUP_OWNER"] = FILE_GROUP_OWNER;
   ident_map[L"DATE_TIME_SET_1"] = DATE_TIME_SET_1;
   ident_map[L"DATE_TIME_SET_2"] = DATE_TIME_SET_2;
-  ident_map[L"DATE_TIME_SET_3"] = DATE_TIME_SET_3;
   ident_map[L"DATE_TIME_ADD_DAYS"] = DATE_TIME_ADD_DAYS;
   ident_map[L"DATE_TIME_ADD_HOURS"] = DATE_TIME_ADD_HOURS;
   ident_map[L"DATE_TIME_ADD_MINS"] = DATE_TIME_ADD_MINS;
@@ -607,7 +606,6 @@ void Scanner::CheckIdentifier(int index)
     case FILE_GROUP_OWNER:
     case DATE_TIME_SET_1:
     case DATE_TIME_SET_2:
-    case DATE_TIME_SET_3:
     case DATE_TIME_ADD_DAYS:
     case DATE_TIME_ADD_HOURS:
     case DATE_TIME_ADD_MINS:

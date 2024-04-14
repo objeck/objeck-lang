@@ -60,7 +60,6 @@ namespace instructions {
     FILE_GROUP_OWNER,
     DATE_TIME_SET_1,
     DATE_TIME_SET_2,
-    DATE_TIME_SET_3,
     DATE_TIME_ADD_DAYS,
     DATE_TIME_ADD_HOURS,
     DATE_TIME_ADD_MINS,
