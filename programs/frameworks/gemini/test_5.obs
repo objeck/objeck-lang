@@ -3,11 +3,11 @@ use Web.HTTP, Collection, Data.JSON;
 class Test {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {	
-#			corpus := Corpus->Get("corpora/bar-1za0vhw22l9v");
-#			corpus->GetId()->PrintLine();
+			corpus := Corpus->Get("corpora/bar-1za0vhw22l9v");
+			corpus->ToString()->PrintLine();
 
 #			Document->Create("bar", Nil, corpus)->ToString()->PrintLine();
-			Document->Get("corpora/bar-1za0vhw22l9v/documents/bar-v6o5rx09je85")->ToString()->PrintLine();
+			Document->List(corpus)->Size()->PrintLine();
 #			Corpus->Delete("corpora/test1-6ahtb7bda1yj")->ToString()->PrintLine();
 #~			
 			corpuses := Corpus->List();
@@ -280,6 +280,74 @@ class Document from OAuthEndPoint implements Stringify {
 		return Nil;	
 	}
 
+	function : List(corpus : Corpus) ~ Collection.Vector<Document> {
+		token := GetToken();
+		headers := Collection.Map->New()<String, String>;
+		headers->Insert("Authorization", "Bearer {$token}");
+
+		corpora_id := corpus->GetId();
+		response := HttpsClient->QuickGet(Url->New("https://generativelanguage.googleapis.com/v1beta/{$corpora_id}/documents"), 
+			"application/json", headers);
+
+		if(response <> Nil) {
+			
+			# response->GetContent()->ToString()->PrintLine();
+			
+			response_json := JsonParser->TextToElement(response->GetContent()->ToString());
+			if(response_json = Nil) {
+				"### Error: Unable to parse response ###"->ErrorLine();
+				return Nil;
+			};
+			
+			if(response_json->Has("error")) {
+				error_str := response_json->FindElements("error/message")->GetString();
+				SetLastError(error_str);
+				return Nil;
+			};
+
+			corpuses := Collection.Vector->New()<Document>;
+			
+			corporas_json := response_json->Get("documents");
+			if(corporas_json <> Nil) {
+				each(corpora_json in corporas_json) {
+					corpuses->AddBack(Document->New(corpora_json));
+				};
+			};
+
+			return corpuses;
+		};
+
+		return Nil;	
+	}
+
+	function : Delete(name : String) ~ Bool {
+		token := GetToken();
+		headers := Collection.Map->New()<String, String>;
+		headers->Insert("Authorization", "Bearer {$token}");
+		response := HttpsClient->QuickDelete(Url->New("https://generativelanguage.googleapis.com/v1beta/{$name}"), 
+			"application/json", headers);
+		
+		if(response <> Nil) {
+			# response->GetContent()->ToString()->PrintLine();
+			
+			response_json := JsonParser->TextToElement(response->GetContent()->ToString());
+			if(response_json = Nil) {
+				"### Error: Unable to parse response ###"->ErrorLine();
+				return false;
+			};
+			
+			if(response_json->Has("error")) {
+				error_str := response_json->FindElements("error/message")->GetString();
+				SetLastError(error_str);
+				return false;
+			};
+
+			return true;
+		};
+
+		return false;	
+	}
+
 	#~
 	String representation of the object
 	@return string representation
@@ -290,6 +358,44 @@ class Document from OAuthEndPoint implements Stringify {
 
 		buffer += "', display_name='"
 		buffer += @display_name;
+
+		buffer += "', create_time_str='"
+		buffer += @create_time_str;
+
+		buffer += "', update_time_str='"
+		buffer += @update_time_str;
+
+		buffer += "']";
+		return buffer;
+	}
+}
+
+class Chunk from OAuthEndPoint implements Stringify {
+	@state : String;
+	@create_time_str : String;
+	@update_time_str : String;
+
+	New : private(request_json : JsonElement) {
+		Parent();
+
+		@state := request_json->Get("state")->GetString();
+		@create_time_str := request_json->Get("createTime")->GetString();
+		@update_time_str := request_json->Get("updateTime")->GetString();
+	}
+
+	function : Create(chunks : Map<String, Pair<String, String>>) ~ Document {
+		
+
+		return Nil;
+	}
+
+	#~
+	String representation of the object
+	@return string representation
+	~#
+	method : public : ToString() ~ String {
+		buffer := "[state='";
+		buffer += @state;
 
 		buffer += "', create_time_str='"
 		buffer += @create_time_str;
@@ -328,9 +434,6 @@ class : private : OAuthEndPoint {
 				date_str := client_secret_parts[0];
 				create_time := System.Time.Date->New(date_str->ToInt());
 				create_time->AddMinutes(-2);
-
-create_time->ToString()->PrintLine();
-System.Time.Date->New(true)->ToString()->PrintLine();
 
 				if(create_time->Compare(System.Time.Date->New(true)) > 0) {
 					token_str := client_secret_parts[1];
