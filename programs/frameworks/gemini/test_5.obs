@@ -3,7 +3,7 @@ use Web.HTTP, Data.JSON;
 class Test {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {			
-			Corpus->Delete("corpora/test1-ckee03muftrq")->ToString()->PrintLine();
+			Corpus->Delete("corpora/test1-6ahtb7bda1yj")->ToString()->PrintLine();
 			
 			corpuses := Corpus->List();
 			each(corpus in corpuses) {
@@ -201,7 +201,7 @@ class : private : OAuthEndPoint {
 			if(client_secret_parts->Size() = 2){
 				date_str := client_secret_parts[0];
 				create_time := System.Time.Date->New(date_str->ToInt());
-				create_time->AddMinutes(-5);
+				create_time->AddMinutes(-2);
 				if(create_time->Compare(System.Time.Date->New(false)) > 0) {
 					token_str := client_secret_parts[1];
 					return token_str;
