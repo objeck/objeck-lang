@@ -2,12 +2,24 @@ use Data.CSV;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		System.Time.Date->New(true)->ToString()->PrintLine();
-		System.Time.Date->New(1713073858)->ToString()->PrintLine();
+		timestamp_str := "2024-04-14T19:30:44.816811Z";
 
-#		date := System.Time.Date->New(true);
-#		date->ToString()->PrintLine();
-#		date->AddSeconds(3600);
-#		date->ToString()->PrintLine();
+		date_time_str := timestamp_str->Split('T');
+		date_str := date_time_str[0];
+
+		date_parts_str := date_str->Split('-');
+		year_str := date_parts_str[0];
+		month_str := date_parts_str[1];
+		day_str := date_parts_str[2];
+"day = {$month_str}/{$day_str}/{$year_str}"->PrintLine();
+
+		time_str := date_time_str[1]->Split('.');
+		time_parts_str := time_str[0]->Split(':');
+		hour_str := time_parts_str[0];
+		min_str := time_parts_str[1];
+		sec_str := time_parts_str[2];
+"time = {$hour_str}.{$min_str}.{$sec_str}"->PrintLine();
+
+		System.Time.DateUtility->Parse(timestamp_str, "yyyy-MM-ddThh:mm:ss", false)->ToString()->PrintLine();
 	}
 }
