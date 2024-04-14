@@ -382,10 +382,8 @@ class Chunk from OAuthEndPoint implements Stringify {
 		@create_time_str := request_json->Get("createTime")->GetString();
 		@update_time_str := request_json->Get("updateTime")->GetString();
 	}
-
-	function : Create(chunks : Map<String, Pair<String, String>>) ~ Document {
-		
-
+	
+	function : Create(chunks : Map<String, Pair<String, String>>, document : Document) ~ Document {
 		return Nil;
 	}
 
