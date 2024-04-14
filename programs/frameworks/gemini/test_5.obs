@@ -2,25 +2,79 @@ use Web.HTTP, Collection, Data.JSON;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		if(args->Size() = 1) {	
-			corpus := Corpus->Get("corpora/bar-1za0vhw22l9v");
-#			corpus->ToString()->PrintLine();
-
-			document := Document->Get("corpora/bar-1za0vhw22l9v/documents/bar-v6o5rx09je85");
-#			document->ToString()->PrintLine();
-
-			chunk := Chunk->Get("corpora/bar-1za0vhw22l9v/documents/bar-v6o5rx09je85/chunks/obk9l8mbtk10")
-			chunk->ToString()->PrintLine();
-
-			Chunk->List(document)->ToString()->PrintLine();
-
-#			Corpus->Delete("corpora/test1-6ahtb7bda1yj")->ToString()->PrintLine();
-#~			
+		if(args->Size() = 2 & args[1]->Equals("list")) {
 			corpuses := Corpus->List();
 			each(corpus in corpuses) {
-				corpus->ToString()->PrintLine();
+				corpus_id := corpus->GetId();
+				"corpus='{$corpus_id}'"->PrintLine();			
+				
+				documents := Document->List(corpus);
+				each(document in documents) {
+					doc_id := document->GetId();
+					"\tdocument='{$doc_id}'"->PrintLine();
+
+					chunks := Chunk->List(document);
+					each(chunk in chunks) {
+						chunk_id := chunk->GetId();
+						chunk_state := chunk->GetState();
+						"\t\tchunk='{$chunk_id}', state={$chunk_state}"->PrintLine();					
+					};
+				};
 			};
-~#			
+		}
+		else if(args->Size() = 2 & args[1]->Equals("rebuild")) {
+			# clean up
+			corpuses := Corpus->List();
+			each(corpus in corpuses) {
+				documents := Document->List(corpus);
+				each(document in documents) {
+					chunks := Chunk->List(document);
+					each(chunk in chunks) {
+						chunk->Delete()->PrintLine();
+					};
+					document->Delete()->PrintLine();
+				};
+				corpus->Delete()->PrintLine();
+			};
+
+			# corups
+			corpus := Corpus->Create("Corpus 1");
+
+			metadata := Map->New()<String, String>;
+			metadata->Insert("about", "1960's DU men's basketball");
+			document := Document->Create("Document 1", metadata, corpus);
+
+			metadata := Map->New()<String, String>;
+			metadata->Insert("position", "guard");
+			Chunk->Create("Harry Hollines", metadata, document)->ToString()->PrintLine();
+
+			metadata := Map->New()<String, String>;
+			metadata->Insert("position", "center");
+			Chunk->Create("Byron Beck", metadata, document)->ToString()->PrintLine();
+
+			metadata := Map->New()<String, String>;
+			metadata->Insert("position", "forward");
+			Chunk->Create("George Roderick", metadata, document)->ToString()->PrintLine();
+
+			metadata := Map->New()<String, String>;
+			metadata->Insert("position", "forward");
+			Chunk->Create("Rick Callahan", metadata, document)->ToString()->PrintLine();
+
+			metadata := Map->New()<String, String>;
+			metadata->Insert("position", "guard");
+			Chunk->Create("Tom McCune", metadata, document)->ToString()->PrintLine();
+		}
+		else if(args->Size() = 4 & args[1]->Equals("query")) {
+			id := args[2];
+			query := args[3];
+
+			corpus := Corpus->Get(id);
+			corpus->ToString()->PrintLine();
+
+			results := corpus->Query(query);
+			each(result in results) {
+				result->GetSecond()->PrintLine();
+			}
 		};
 	}
 }
@@ -61,7 +115,7 @@ class Corpus from OAuthEndPoint implements Stringify {
 			"application/json", headers);
 
 		if(response <> Nil) {
-			#response->GetContent()->ToString()->PrintLine();
+			# response->GetContent()->ToString()->PrintLine();
 			
 			response_json := JsonParser->TextToElement(response->GetContent()->ToString());
 			if(response_json = Nil) {
@@ -146,11 +200,11 @@ class Corpus from OAuthEndPoint implements Stringify {
 		return Nil;	
 	}
 
-	function : Delete(name : String) ~ Bool {
+	method : public : Delete() ~ Bool {
 		token := GetToken();
 		headers := Collection.Map->New()<String, String>;
 		headers->Insert("Authorization", "Bearer {$token}");
-		response := HttpsClient->QuickDelete(Url->New("https://generativelanguage.googleapis.com/v1beta/{$name}"), 
+		response := HttpsClient->QuickDelete(Url->New("https://generativelanguage.googleapis.com/v1beta/{$@name}"), 
 			"application/json", headers);
 		
 		if(response <> Nil) {
@@ -172,6 +226,51 @@ class Corpus from OAuthEndPoint implements Stringify {
 		};
 
 		return false;	
+	}
+
+	method : public : Query(query : String) ~ Vector<Pair<FloatRef, String>> {
+		# TODO metadata filters
+		request_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+		request_json->Insert("query", query);
+		data := request_json->ToString()->ToByteArray();
+		# data->ToString()->PrintLine();
+
+		token := GetToken();
+		headers := Collection.Map->New()<String, String>;
+		headers->Insert("Authorization", "Bearer {$token}");
+		response := HttpsClient->QuickPost(Url->New("https://generativelanguage.googleapis.com/v1beta/{$@name}:query"), data, 
+			"application/json", headers);
+
+		if(response <> Nil) {
+			# response->GetContent()->ToString()->PrintLine();
+			
+			response_json := JsonParser->TextToElement(response->GetContent()->ToString());
+			if(response_json = Nil) {
+				"### Error: Unable to parse response ###"->ErrorLine();
+				return Nil;
+			};
+			
+			if(response_json->Has("error")) {
+				error_str := response_json->FindElements("error/message")->GetString();
+				SetLastError(error_str);
+				return Nil;
+			};
+
+			# process results
+			relevance_results := Vector->New()<Pair<FloatRef, String>>;
+			chunks_array_json := response_json->Get("relevantChunks");;
+			each(chunk_json in chunks_array_json) {
+				relevance_score := chunk_json->Get("chunkRelevanceScore")->GetFloat();
+				relevance_data := Url->Decode(chunk_json->FindElements("chunk/data/stringValue")->ToString());
+
+				relevance_results->AddBack(Pair->New(relevance_score, relevance_data)<FloatRef, String>);
+				# "### {$relevance_score}: '{$relevance_data}'' ###"->PrintLine();
+			};
+
+			return relevance_results;
+		};
+
+		return Nil;	
 	}
 
 	#~
@@ -225,7 +324,7 @@ class Document from OAuthEndPoint implements Stringify {
 				metadata_json->Insert("stringValue", metadata_key_value->GetSecond());
 
 				metadata_array_json->Add(metadata_json);
-			}
+			};
 		};
 
 		request_json := JsonElement->New(JsonElement->JsonType->OBJECT);
@@ -330,11 +429,11 @@ class Document from OAuthEndPoint implements Stringify {
 		return Nil;	
 	}
 
-	function : Delete(name : String) ~ Bool {
+	method : public : Delete() ~ Bool {
 		token := GetToken();
 		headers := Collection.Map->New()<String, String>;
 		headers->Insert("Authorization", "Bearer {$token}");
-		response := HttpsClient->QuickDelete(Url->New("https://generativelanguage.googleapis.com/v1beta/{$name}"), 
+		response := HttpsClient->QuickDelete(Url->New("https://generativelanguage.googleapis.com/v1beta/{$@name}"), 
 			"application/json", headers);
 		
 		if(response <> Nil) {
@@ -416,11 +515,15 @@ class Chunk from OAuthEndPoint implements Stringify {
 		return @data;
 	}
 
+	method : public : GetState() ~ String {
+		return @state;
+	}
+
 	method : public : GetMetadata() ~  Map<String, String> {
 		return @metadata;
 	}
 
-	function : Create(name : String, value : String, metadata : Map<String, String>, document : Document) ~ Chunk {
+	function : Create(value : String, metadata : Map<String, String>, document : Document) ~ Chunk {
 		metadata_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
 		if(metadata <> Nil) {
 			metadata_keys_values := metadata->GetKeyValues()<Pair<String, String>>;
@@ -435,7 +538,7 @@ class Chunk from OAuthEndPoint implements Stringify {
 
 		request_data_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 		request_data_json->Insert("stringValue", value);
-		
+
 		request_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 		request_json->Insert("data", request_data_json);
 		
@@ -499,11 +602,11 @@ class Chunk from OAuthEndPoint implements Stringify {
 		return Nil;	
 	}
 
-	function : Delete(name : String) ~ Bool {
+	method : public : Delete() ~ Bool {
 		token := GetToken();
 		headers := Collection.Map->New()<String, String>;
 		headers->Insert("Authorization", "Bearer {$token}");
-		response := HttpsClient->QuickDelete(Url->New("https://generativelanguage.googleapis.com/v1beta/{$name}"), 
+		response := HttpsClient->QuickDelete(Url->New("https://generativelanguage.googleapis.com/v1beta/{$@name}"), 
 			"application/json", headers);
 		
 		if(response <> Nil) {
