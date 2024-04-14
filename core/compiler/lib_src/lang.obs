@@ -6625,6 +6625,14 @@ bundle System.Time {
 		}
 
 		#~
+		Get the Unix time, number of seconds elapsed since 00:00 hours, Jan 1, 1970 UTC
+		@param elapsed seconds since Jan 1, 1970 UTC
+		~#
+		method : public : GetUnixTime(value : Int) ~ Int {
+			DATE_TO_UNIX_TIME;
+		}
+
+		#~
 		Creates a string representation of the date
 		@return string representation of the date
 		~#

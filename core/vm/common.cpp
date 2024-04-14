@@ -2064,6 +2064,12 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
   case DATE_TIME_ADD_SECS:
     return DateTimeAddSecs(program, inst, op_stack, stack_pos, frame);
 
+  case DATE_TO_UNIX_TIME:
+    return DateToUnixTime(program, inst, op_stack, stack_pos, frame);
+
+  case DATE_FROM_UNIX_TIME:
+    return DateFromUnixTime(program, inst, op_stack, stack_pos, frame);
+
   case TIMER_START:
     return TimerStart(program, inst, op_stack, stack_pos, frame);
 
@@ -3457,7 +3463,36 @@ bool TrapProcessor::DateTimeAddMins(StackProgram* program, size_t* inst, size_t*
 bool TrapProcessor::DateTimeAddSecs(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   ProcessAddTime(SEC_TIME, op_stack, stack_pos);
+  return true;
+}
 
+bool TrapProcessor::DateToUnixTime(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
+{
+  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+  if(instance) {
+    // create time structure
+    struct tm set_time;
+    set_time.tm_mday = (int)instance[0];          // day
+    set_time.tm_mon = (int)instance[1] - 1;       // month
+    set_time.tm_year = (int)instance[2] - 1900;   // year
+    set_time.tm_hour = (int)instance[3];          // hours
+    set_time.tm_min = (int)instance[4];           // mins
+    set_time.tm_sec = (int)instance[5];           // secs
+    set_time.tm_isdst = (int)instance[6];         // savings time
+
+    // calculate difference
+    const time_t raw_time = mktime(&set_time);
+    PushInt(raw_time, op_stack, stack_pos);
+  }
+  else {
+    PushInt(0, op_stack, stack_pos);
+  }
+
+  return true;
+}
+
+bool TrapProcessor::DateFromUnixTime(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
+{
   return true;
 }
 

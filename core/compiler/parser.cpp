@@ -2005,6 +2005,18 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
       NextToken();
       break;
 
+    case DATE_TIME_ADD_SECS:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::DATE_TIME_ADD_SECS);
+      NextToken();
+      break;
+
+    case DATE_TO_UNIX_TIME:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::DATE_TO_UNIX_TIME);
+      NextToken();
+      break;
+
     case GET_PLTFRM:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::GET_PLTFRM);
