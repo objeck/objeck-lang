@@ -1547,9 +1547,16 @@ void TrapProcessor::ProcessAddTime(TimeInterval t, size_t* &op_stack, long* &sta
 
     // calculate difference
     time_t raw_time = mktime(&set_time);
-    raw_time += offset;
-
     const bool is_gmt = instance[8];
+    if(is_gmt) {
+#ifdef _WIN32
+      long timezone;
+      _get_timezone(&timezone);
+#endif
+      raw_time -= timezone;
+    }
+    raw_time += offset;
+  
     struct tm* curr_time;
     const bool got_time = GetTime(curr_time, raw_time, is_gmt);
 
