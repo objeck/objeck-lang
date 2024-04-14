@@ -1,14 +1,20 @@
-use Web.HTTP, Data.JSON;
+use Web.HTTP, Collection, Data.JSON;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		if(args->Size() = 1) {			
-			Corpus->Delete("corpora/test1-6ahtb7bda1yj")->ToString()->PrintLine();
-			
+		if(args->Size() = 1) {	
+#			corpus := Corpus->Get("corpora/bar-1za0vhw22l9v");
+#			corpus->GetId()->PrintLine();
+
+#			Document->Create("bar", Nil, corpus)->ToString()->PrintLine();
+			Document->Get("corpora/bar-1za0vhw22l9v/documents/bar-v6o5rx09je85")->ToString()->PrintLine();
+#			Corpus->Delete("corpora/test1-6ahtb7bda1yj")->ToString()->PrintLine();
+#~			
 			corpuses := Corpus->List();
 			each(corpus in corpuses) {
 				corpus->ToString()->PrintLine();
 			};
+~#			
 		};
 	}
 }
@@ -18,6 +24,14 @@ class Corpus from OAuthEndPoint implements Stringify {
 	@display_name : String;
 	@create_time_str : String;
 	@update_time_str : String;
+
+	method : public : GetId() ~ String {
+		return @name;
+	}
+
+	method : public : GetName() ~ String {
+		return @display_name;
+	}
 
 	New : private(request_json : JsonElement) {
 		Parent();
@@ -176,6 +190,118 @@ class Corpus from OAuthEndPoint implements Stringify {
 	}
 }
 
+class Document from OAuthEndPoint implements Stringify {
+	@name : String;
+	@display_name : String;
+	@create_time_str : String;
+	@update_time_str : String;
+
+	New : private(request_json : JsonElement) {
+		Parent();
+
+		@name := request_json->Get("name")->GetString();
+		@display_name := request_json->Get("displayName")->GetString();
+		@create_time_str := request_json->Get("createTime")->GetString();
+		@update_time_str := request_json->Get("updateTime")->GetString();
+	}
+
+	function : Create(name : String, metadata : Collection.Map<String, String>, corpus : Corpus) ~ Document {
+		metadata_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+		if(metadata <> Nil) {
+			metadata_keys_values := metadata->GetKeyValues()<Pair<String, String>>;
+			each(metadata_key_value in metadata_keys_values) {
+				metadata_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+				metadata_json->Insert("key", metadata_key_value->GetFirst());
+				metadata_json->Insert("stringValue", metadata_key_value->GetSecond());
+
+				metadata_array_json->Add(metadata_json);
+			}
+		};
+
+		request_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+		request_json->Insert("displayName", name);
+		request_json->Insert("customMetadata", metadata_array_json);
+		data := request_json->ToString()->ToByteArray();
+		# data->ToString()->PrintLine();
+
+		corpora_id := corpus->GetId();
+		token := GetToken();
+		headers := Collection.Map->New()<String, String>;
+		headers->Insert("Authorization", "Bearer {$token}");
+		response := HttpsClient->QuickPost(Url->New("https://generativelanguage.googleapis.com/v1beta/{$corpora_id}/documents"), data, 
+			"application/json", headers);
+
+		if(response <> Nil) {
+			# response->GetContent()->ToString()->PrintLine();
+			
+			response_json := JsonParser->TextToElement(response->GetContent()->ToString());
+			if(response_json = Nil) {
+				"### Error: Unable to parse response ###"->ErrorLine();
+				return Nil;
+			};
+			
+			if(response_json->Has("error")) {
+				error_str := response_json->FindElements("error/message")->GetString();
+				SetLastError(error_str);
+				return Nil;
+			};
+
+			return Document->New(response_json);
+		};
+
+		return Nil;	
+	}
+
+	function : Get(name : String) ~ Document {
+		token := GetToken();
+		headers := Collection.Map->New()<String, String>;
+		headers->Insert("Authorization", "Bearer {$token}");
+		response := HttpsClient->QuickGet(Url->New("https://generativelanguage.googleapis.com/v1beta/{$name}"), 
+			"application/json", headers);
+
+		if(response <> Nil) {
+			#response->GetContent()->ToString()->PrintLine();
+			
+			response_json := JsonParser->TextToElement(response->GetContent()->ToString());
+			if(response_json = Nil) {
+				"### Error: Unable to parse response ###"->ErrorLine();
+				return Nil;
+			};
+			
+			if(response_json->Has("error")) {
+				error_str := response_json->FindElements("error/message")->GetString();
+				SetLastError(error_str);
+				return Nil;
+			};
+
+			return Document->New(response_json);
+		};
+
+		return Nil;	
+	}
+
+	#~
+	String representation of the object
+	@return string representation
+	~#
+	method : public : ToString() ~ String {
+		buffer := "[name='";
+		buffer += @name;
+
+		buffer += "', display_name='"
+		buffer += @display_name;
+
+		buffer += "', create_time_str='"
+		buffer += @create_time_str;
+
+		buffer += "', update_time_str='"
+		buffer += @update_time_str;
+
+		buffer += "']";
+		return buffer;
+	}
+}
+
 class : private : OAuthEndPoint {
 	@last_message : static : String;
 
@@ -202,7 +328,11 @@ class : private : OAuthEndPoint {
 				date_str := client_secret_parts[0];
 				create_time := System.Time.Date->New(date_str->ToInt());
 				create_time->AddMinutes(-2);
-				if(create_time->Compare(System.Time.Date->New(false)) > 0) {
+
+create_time->ToString()->PrintLine();
+System.Time.Date->New(true)->ToString()->PrintLine();
+
+				if(create_time->Compare(System.Time.Date->New(true)) > 0) {
 					token_str := client_secret_parts[1];
 					return token_str;
 				};

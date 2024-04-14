@@ -2,10 +2,12 @@ use Data.CSV;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		System.Time.Date->New(1713061290)->ToString()->PrintLine();
-		timestamp := System.Time.Date->New(false)->GetUnixTime();
+		System.Time.Date->New(true)->ToString()->PrintLine();
+		System.Time.Date->New(1713073858)->ToString()->PrintLine();
 
-		timestamp->PrintLine();
-		System.Time.Date->New(timestamp)->ToString()->PrintLine();
+#		date := System.Time.Date->New(true);
+#		date->ToString()->PrintLine();
+#		date->AddSeconds(3600);
+#		date->ToString()->PrintLine();
 	}
 }
