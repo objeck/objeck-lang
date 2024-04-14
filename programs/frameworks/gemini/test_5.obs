@@ -189,7 +189,7 @@ class : private : OAuthEndPoint {
 		token_str := token->GetAccessToken();
 		date := System.Time.Date->New();
 		date->AddSeconds(token->GetExpiresIn());
-		date_str := date->ToShortString();
+		date_str := date->GetUnixTime()->ToString();
 
 		System.IO.Filesystem.FileWriter->WriteFile("client_secret.dat", "{$date_str}\r\n{$token_str}");
 	}
@@ -200,7 +200,7 @@ class : private : OAuthEndPoint {
 			client_secret_parts := client_secrets->Split("\r\n");
 			if(client_secret_parts->Size() = 2){
 				date_str := client_secret_parts[0];
-				create_time := System.Time.DateUtility->Parse(date_str, "MM/dd/yyyy hh:mm:ss", false);
+				create_time := System.Time.Date->New(date_str->ToInt());
 				create_time->AddMinutes(-5);
 				if(create_time->Compare(System.Time.Date->New(false)) > 0) {
 					token_str := client_secret_parts[1];
