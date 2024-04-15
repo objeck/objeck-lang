@@ -1260,6 +1260,10 @@ Method* Parser::ParseMethod(bool is_function, bool virtual_requried, int depth)
   int mid_line_pos = -1;
 
   MethodType method_type = PRIVATE_METHOD;
+  if(is_function) {
+    method_type = PUBLIC_METHOD;
+  }
+
   std::wstring method_name;
   bool is_native = false;
   bool is_virtual = false;

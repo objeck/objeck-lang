@@ -1,9 +1,9 @@
-class : private : Bar {
+class Bar {
 	function : public : Test1() ~ Nil {
 		"Hello 1"->PrintLine();
 	}
 
-	function : public : Test2() ~ Nil {
+	function : private : Test2() ~ Nil {
 		"Hello 2"->PrintLine();
 	}
 }
