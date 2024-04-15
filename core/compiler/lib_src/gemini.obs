@@ -1,3 +1,7 @@
+#~~
+Copyright (c) 2024 Randy Hollines
+~~#	
+
 use Web.HTTP, Collection, Data.JSON;
 
 #~
