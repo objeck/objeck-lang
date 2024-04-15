@@ -165,7 +165,7 @@ bundle System.Time {
 		#~
 		Formats date into a string
 		@param date date 
-		@param format date string format 
+		@param format date string format <p>options: <ul> <li>month=MM</li><li>day=dd</li><li>year=yy(yy)</li><li>hour=hh</li><li>minutes=mm</li><li>seconds=ss</p><ul>
 		@return Date instance
 		~#
 		function : Format(date : System.Time.Date, format : String) ~ String {

@@ -1,0 +1,5 @@
+class : private : Foo {
+	function : Main(args : String[]) ~ Nil {
+		System.Time.DateUtility->Format(System.Time.Date->New(), "dd/MM/yy, hh:mm")->PrintLine();
+	}
+}

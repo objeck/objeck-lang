@@ -1,0 +1,15 @@
+class : private : Foo {
+	function : Main(args : String[]) ~ Nil {
+		Bar->Foo();
+	}
+
+	function : private : Foo() ~ Nil {
+		
+	}
+}
+
+class : private : Bar {
+	function : private : Foo() ~ Nil {
+		"Hi ya!"->PrintLine();
+	}
+}
