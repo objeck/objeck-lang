@@ -1,11 +1,9 @@
-class Foo {
-	function : Main(args : String[]) ~ Nil {
-		Bar->Test();
+class : private : Bar {
+	function : public : Test1() ~ Nil {
+		"Hello 1"->PrintLine();
 	}
-}
 
-class Bar {
-	function : private : Test() ~ Nil {
-		"Hello"->PrintLine();
+	function : public : Test2() ~ Nil {
+		"Hello 2"->PrintLine();
 	}
 }
