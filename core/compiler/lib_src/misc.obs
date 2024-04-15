@@ -166,11 +166,69 @@ bundle System.Time {
 		Formats date into a string
 		@param date date 
 		@param format date string format 
-		@param gmt true is GMT, false otherwise
 		@return Date instance
 		~#
-		function : Format(date : Date, format : String, gmt : Bool) ~ String {
-			return Nil;
+		function : Format(date : System.Time.Date, format : String) ~ String {
+			day := date->GetDay();
+			hours := date->GetHours();
+			mins := date->GetMinutes();
+			mon := date->GetMonth();
+			secs := date->GetSeconds();
+			year := date->GetYear();
+
+			buffer := "";
+
+			for(i := 0; i < format->Size(); i += 1;) {
+				cur_char := format->Get(i);
+				next_char := '\0';
+				if(i + 1 < format->Size()) {
+					next_char := format->Get(i + 1);
+				};
+
+				# day
+				if(cur_char = 'd' & next_char = 'd') {
+					buffer->Append(day);
+					i += 1;
+				}
+				# month
+				else if(cur_char = 'M' & next_char = 'M') {
+					buffer->Append(mon);
+					i += 1;
+				}
+				# year
+				else if(cur_char = 'y' & next_char = 'y') {
+					if(i + 3 < format->Size() & format->Get(i + 2) = 'y' & format->Get(i + 3) = 'y') {
+						next_char := format->Get(i + 1);
+						i += 3;
+						buffer->Append(year);
+					}
+					else {
+						i += 1;
+						buffer->Append(year - 2000);
+					};
+				}
+				# hours
+				else if(cur_char = 'h' & next_char = 'h') {
+					buffer->Append(hours);
+					i += 1;
+				}
+				# minutes
+				else if(cur_char = 'm' & next_char = 'm') {
+					buffer->Append(mins);
+					i += 1;
+				}
+				# seconds
+				else if(cur_char = 's' & next_char = 's') {
+					buffer->Append(secs);
+					i += 1;
+				}
+				# other
+				else {
+					buffer->Append(cur_char);
+				}
+			};
+
+			return buffer;
 		}
 	}
 	
