@@ -3275,7 +3275,7 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, b
     // public/private check
     if(method->GetClass() != current_method->GetClass()) {
       if(method->IsStatic() && method->GetMethodType() == PRIVATE_METHOD) {
-        ProcessError(static_cast<Expression*>(method_call), L"Cannot reference a private function from this context");
+        ProcessError(static_cast<Expression*>(method_call), L"Cannot reference private '" + method->GetUserName() + L"' method/function from this context");
       }
       else if(!method->IsStatic() && (method->GetMethodType() == PRIVATE_METHOD || method->GetMethodType() == NEW_PRIVATE_METHOD)) {
         bool found = false;
@@ -3290,7 +3290,7 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, b
         }
 
         if(!found) {
-          ProcessError(static_cast<Expression*>(method_call), L"Cannot reference a private method from this context");
+          ProcessError(static_cast<Expression*>(method_call), L"Cannot reference private '" + method->GetUserName() + L"' method/function from this context");
         }
       }
     }
