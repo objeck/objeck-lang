@@ -2830,7 +2830,7 @@ each(i : 3) {
 						@expires_in := response_json->Get("expires_in")->GetInt();
 						@scope := response_json->Get("scope")->GetString();
 
-						response->SetCodeContent(200, "<html><center>Thank you, are are logged in.</center></html>");
+						response->SetCodeContent(200, "<html><center>You are logged in...</center></html>");
 						WebServer->Stop();
 						return false;
 					};
