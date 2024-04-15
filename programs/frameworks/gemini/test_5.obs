@@ -6,18 +6,21 @@ class Test {
 			corpuses := Corpus->List()<Corpus>;
 			each(corpus in corpuses) {
 				corpus_id := corpus->GetId();
-				"corpus='{$corpus_id}'"->PrintLine();			
+				corpus_create_str := corpus->GetCreateTime()->ToShortString();
+				"corpus: id='{$corpus_id}', created={$corpus_create_str}"->PrintLine();			
 				
 				documents := Document->List(corpus->As(Corpus))<Document>;
 				each(document in documents) {
 					doc_id := document->GetId();
-					"\tdocument='{$doc_id}'"->PrintLine();
+					doc_create_str := document->GetCreateTime()->ToShortString();
+					"\tdocument='{$doc_id}', created={$doc_create_str}"->PrintLine();
 
 					chunks := Chunk->List(document);
 					each(chunk in chunks) {
 						chunk_id := chunk->GetId();
 						chunk_state := chunk->GetState();
-						"\t\tchunk='{$chunk_id}', state={$chunk_state}"->PrintLine();					
+						chunk_create_str := corpus->GetCreateTime()->ToShortString();
+						"\t\tchunk='{$chunk_id}', state={$chunk_state}, created={$chunk_create_str}"->PrintLine();					
 					};
 				};
 			};
