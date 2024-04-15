@@ -165,7 +165,7 @@ bundle API.Google.Gemini {
 		@param config generation configuration, currently unsupported
 		@param key API key		
 		~#
-		function : GenerateContent(model_name : String, content : Content, safety_settings : Vector<Tuples.Pair<String, String>>, config : GenerationConfig, key : String) ~ Vector<Candidate> {
+		function : GenerateContent(model_name : String, content : Content, safety_settings : Vector<Collection.Tuple.Pair<String, String>>, config : GenerationConfig, key : String) ~ Vector<Candidate> {
 			contents := Vector->New()<Content>;
 			contents->AddBack(content);
 
@@ -180,7 +180,7 @@ bundle API.Google.Gemini {
 		@param config generation configuration, currently unsupported
 		@param key API key		
 		~#
-		function : GenerateContent(model_name : String, contents : Vector<Content>, safety_settings : Vector<Tuples.Pair<String, String>>, config : GenerationConfig, key : String) ~ Vector<Candidate> {
+		function : GenerateContent(model_name : String, contents : Vector<Content>, safety_settings : Vector<Collection.Tuple.Pair<String, String>>, config : GenerationConfig, key : String) ~ Vector<Candidate> {
 			# contents
 			content_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
 			each(content in contents) {
@@ -277,12 +277,12 @@ bundle API.Google.Gemini {
 						};
 
 						# safety ratings
-						safety_ratings := Vector->New()<Tuples.Pair<String,String>>;
+						safety_ratings := Vector->New()<Collection.Tuple.Pair<String,String>>;
 						safety_ratings_json := candidate_json->Get("safetyRatings");
 						each(safety_rating_json in safety_ratings_json) {
 							safety_category := safety_rating_json->Get("category")->GetString();
 							safety_probability := safety_rating_json->Get("probability")->GetString();
-							safety_rating := Tuples.Pair->New(safety_category, safety_probability)<String, String>;
+							safety_rating := Collection.Tuple.Pair->New(safety_category, safety_probability)<String, String>;
 
 							safety_ratings->AddBack(safety_rating);
 						};
@@ -650,9 +650,9 @@ bundle API.Google.Gemini {
 	class Candidate from Content implements Stringify {
 		@index : Int;
 		@finish_reason : String;
-		@safety_ratings : Vector<Tuples.Pair<String,String>>;
+		@safety_ratings : Vector<Collection.Tuple.Pair<String,String>>;
 		
-		New(index : Int, role : String, finish_reason : String, parts : Vector<Part>, safety_ratings : Vector<Tuples.Pair<String,String>>) {
+		New(index : Int, role : String, finish_reason : String, parts : Vector<Part>, safety_ratings : Vector<Collection.Tuple.Pair<String,String>>) {
 			Parent(parts, role);
 
 			@index := index;
@@ -682,7 +682,7 @@ bundle API.Google.Gemini {
 		Get safety ratings
 		@return list of safety ratings
 		~#
-		method : public : GetSafetyRatings() ~ Vector<Tuples.Pair<String,String>> {
+		method : public : GetSafetyRatings() ~ Vector<Collection.Tuple.Pair<String,String>> {
 			return @safety_ratings;
 		}
 
@@ -811,12 +811,12 @@ bundle API.Google.Gemini {
 						};
 
 						# safety ratings
-						safety_ratings := Vector->New()<Tuples.Pair<String,String>>;
+						safety_ratings := Vector->New()<Collection.Tuple.Pair<String,String>>;
 						safety_ratings_json := candidate_json->Get("safetyRatings");
 						each(safety_rating_json in safety_ratings_json) {
 							safety_category := safety_rating_json->Get("category")->GetString();
 							safety_probability := safety_rating_json->Get("probability")->GetString();
-							safety_rating := Tuples.Pair->New(safety_category, safety_probability)<String, String>;
+							safety_rating := Collection.Tuple.Pair->New(safety_category, safety_probability)<String, String>;
 
 							safety_ratings->AddBack(safety_rating);
 						};
@@ -1202,7 +1202,7 @@ bundle API.Google.Gemini.Corpus {
 		@param query string query
 		@return query results as triple, 1) relevance, 2) string content, 3) content metadata
 		~#
-		method : public : Query(query : String) ~ Vector<Tuples.Triplet<FloatRef, String, Map<String, String>>> {
+		method : public : Query(query : String) ~ Vector<Collection.Tuple.Triplet<FloatRef, String, Map<String, String>>> {
 			# TODO metadata filters
 			request_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 			request_json->Insert("query", query);
@@ -1231,7 +1231,7 @@ bundle API.Google.Gemini.Corpus {
 				};
 
 				# process results
-				relevance_results := Vector->New()<Tuples.Triplet<FloatRef, String, Map<String, String>>>;
+				relevance_results := Vector->New()<Collection.Tuple.Triplet<FloatRef, String, Map<String, String>>>;
 				chunks_array_json := response_json->Get("relevantChunks");;
 				each(chunk_json in chunks_array_json) {
 					relevance_score := chunk_json->Get("chunkRelevanceScore")->GetFloat();
@@ -1246,7 +1246,7 @@ bundle API.Google.Gemini.Corpus {
 						relevance_metadata->Insert(key, value);
 					}
 
-					result := Tuples.Triplet->New(relevance_score, relevance_data, relevance_metadata)<FloatRef, String, Map<String, String>>;
+					result := Collection.Tuple.Triplet->New(relevance_score, relevance_data, relevance_metadata)<FloatRef, String, Map<String, String>>;
 					relevance_results->AddBack(result);
 				};
 
@@ -1333,7 +1333,7 @@ bundle API.Google.Gemini.Corpus {
 		@param query string query
 		@return query results as triple, 1) relevance, 2) string content, 3) content metadata
 		~#
-		method : public : Query(query : String) ~ Vector<Tuples.Triplet<FloatRef, String, Map<String, String>>> {
+		method : public : Query(query : String) ~ Vector<Collection.Tuple.Triplet<FloatRef, String, Map<String, String>>> {
 			# TODO metadata filters
 			request_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 			request_json->Insert("query", query);
@@ -1362,7 +1362,7 @@ bundle API.Google.Gemini.Corpus {
 				};
 
 				# process results
-				relevance_results := Vector->New()<Tuples.Triplet<FloatRef, String, Map<String, String>>>;
+				relevance_results := Vector->New()<Collection.Tuple.Triplet<FloatRef, String, Map<String, String>>>;
 				chunks_array_json := response_json->Get("relevantChunks");;
 				each(chunk_json in chunks_array_json) {
 					relevance_score := chunk_json->Get("chunkRelevanceScore")->GetFloat();
@@ -1377,7 +1377,7 @@ bundle API.Google.Gemini.Corpus {
 						relevance_metadata->Insert(key, value);
 					}
 
-					result := Tuples.Triplet->New(relevance_score, relevance_data, relevance_metadata)<FloatRef, String, Map<String, String>>;
+					result := Collection.Tuple.Triplet->New(relevance_score, relevance_data, relevance_metadata)<FloatRef, String, Map<String, String>>;
 					relevance_results->AddBack(result);
 				};
 
