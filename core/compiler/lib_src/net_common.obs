@@ -1079,7 +1079,7 @@ bundle Web.HTTP.Server {
 						}
 
 						method : public : Run(arg : System.Base) ~ Nil {
-							params := arg->As(Tuples.Quartet<Class, TCPSecureSocket, WebServerConfig, BoolRef>);
+							params := arg->As(Collection.Tuple.Quartet<Class, TCPSecureSocket, WebServerConfig, BoolRef>);
 							callback := params->GetFirst();
 							secure_client := params->GetSecond();
 							server_config := params->GetThird();
@@ -1091,7 +1091,7 @@ bundle Web.HTTP.Server {
 						}
 					};
 
-					params := Tuples.Quartet->New(callback, @secure_server->Accept(), @server_config, BoolRef->New(@is_debug))<Class, TCPSecureSocket, WebServerConfig, BoolRef>;
+					params := Collection.Tuple.Quartet->New(callback, @secure_server->Accept(), @server_config, BoolRef->New(@is_debug))<Class, TCPSecureSocket, WebServerConfig, BoolRef>;
 					thread->Execute(params);
 				};
 			}
@@ -1147,7 +1147,7 @@ bundle Web.HTTP.Server {
 						}
 
 						method : public : Run(arg : System.Base) ~ Nil {
-							params := arg->As(Tuples.Quartet<Class, TCPSocket, WebServerConfig, BoolRef>);
+							params := arg->As(Collection.Tuple.Quartet<Class, TCPSocket, WebServerConfig, BoolRef>);
 							callback := params->GetFirst();
 							client := params->GetSecond();
 							server_config := params->GetThird();
@@ -1159,7 +1159,7 @@ bundle Web.HTTP.Server {
 						}
 					};
 
-					params := Tuples.Quartet->New(callback, @server->Accept(), @server_config, BoolRef->New(@is_debug))<Class, TCPSocket, WebServerConfig, BoolRef>;
+					params := Collection.Tuple.Quartet->New(callback, @server->Accept(), @server_config, BoolRef->New(@is_debug))<Class, TCPSocket, WebServerConfig, BoolRef>;
 					thread->Execute(params);
 				};
 			}
