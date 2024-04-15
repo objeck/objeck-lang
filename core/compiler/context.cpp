@@ -3520,7 +3520,7 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryClass* klass, MethodCall* method_
 
   // check private class scope
   const std::wstring bundle_name = klass->GetBundleName();
-  if(!klass->IsPublic() && current_class && current_class->GetBundleName() != bundle_name) {
+  if(!klass->IsPublic() && current_class && (current_class->GetBundleName() != bundle_name || bundle_name == L"Default")) {
     ProcessError(static_cast<Expression*>(method_call), L"Cannot access private class '" + klass->GetName() + L"' from this bundle scope");
   }
 
@@ -3548,8 +3548,11 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
     }
 
     // public/private check
-    if(method_call->GetCallType() != NEW_INST_CALL && method_call->GetCallType() != PARENT_CALL && 
-       !lib_method->IsStatic() && lib_method->GetLibraryClass() && !lib_method->GetLibraryClass()->GetParentName().empty()) {
+    if(lib_method->IsStatic() && lib_method->GetMethodType() == PRIVATE_METHOD) {
+      ProcessError(static_cast<Expression*>(method_call), L"Cannot reference a private function from this context");
+    }
+    else if(!lib_method->IsStatic() && (lib_method->GetMethodType() == PRIVATE_METHOD || lib_method->GetMethodType() == NEW_PRIVATE_METHOD) &&
+            !lib_method->GetLibraryClass()->GetParentName().empty()) {
       if(method_call->GetPreviousExpression()) {
         Expression* pre_expr = method_call->GetPreviousExpression();
         while(pre_expr->GetPreviousExpression()) {
