@@ -11,7 +11,7 @@
 #~
 Immutable tuple classes (-lib gen_collect)
 ~#	
-bundle Tuples {
+bundle Collection.Tuple {
 	#~
 	Tuple class that supports 2 values
 	~#
