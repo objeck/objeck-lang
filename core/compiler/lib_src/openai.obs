@@ -1664,8 +1664,8 @@ bundle API.OpenAI {
 		Get function callback information
 		@return pair function name and calling parameters in JSON format
 		~#
-		method : public : GetFunctionCall() ~ Tuples.Triplet<String, String, String> {
-			return Tuples.Triplet->New(@func_call_name, @func_call_params, @func_callback_id)<String, String, String>;
+		method : public : GetFunctionCall() ~ Collection.Tuple.Triplet<String, String, String> {
+			return Collection.Tuple.Triplet->New(@func_call_name, @func_call_params, @func_callback_id)<String, String, String>;
 		}
 		
 		method: Set(run_json : JsonElement) ~ Nil {
