@@ -3273,24 +3273,25 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, b
     }
 
     // public/private check
-    if(method->IsStatic() && method->GetMethodType() == PRIVATE_METHOD) {
-      ProcessError(static_cast<Expression*>(method_call), L"Cannot reference a private function from this context");
-    }
-    else if(method->GetClass() != current_method->GetClass() && !method->IsStatic() &&
-       (method->GetMethodType() == PRIVATE_METHOD || method->GetMethodType() == NEW_PRIVATE_METHOD)) {
-      bool found = false;
-      Class* method_class = method->GetClass();
-      Class* parent = current_method->GetClass()->GetParent();
-      while(parent && !found) {
-        if(method_class == parent) {
-          found = true;
-        }
-        // update
-        parent = parent->GetParent();
+    if(method->GetClass() != current_method->GetClass()) {
+      if(method->IsStatic() && method->GetMethodType() == PRIVATE_METHOD) {
+        ProcessError(static_cast<Expression*>(method_call), L"Cannot reference a private function from this context");
       }
+      else if(!method->IsStatic() && (method->GetMethodType() == PRIVATE_METHOD || method->GetMethodType() == NEW_PRIVATE_METHOD)) {
+        bool found = false;
+        Class* method_class = method->GetClass();
+        Class* parent = current_method->GetClass()->GetParent();
+        while(parent && !found) {
+          if(method_class == parent) {
+            found = true;
+          }
+          // update
+          parent = parent->GetParent();
+        }
 
-      if(!found) {
-        ProcessError(static_cast<Expression*>(method_call), L"Cannot reference a private method from this context");
+        if(!found) {
+          ProcessError(static_cast<Expression*>(method_call), L"Cannot reference a private method from this context");
+        }
       }
     }
     
