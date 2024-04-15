@@ -1830,6 +1830,9 @@ bundle API.Google.Gemini.Corpus {
 		}
 	}
 
+	#~
+	OAuth enabled endpoint class
+	~#
 	class : private : OAuthEndPoint {
 		@last_message : static : String;
 
@@ -1867,6 +1870,10 @@ bundle API.Google.Gemini.Corpus {
 			return Nil;
 		}
 
+		#~
+		Get OAuth token
+		@return OAuth token
+		~#
 		function : GetToken() ~ String {		
 			token := ReadToken();
 			if(token = Nil) {
@@ -1889,5 +1896,4 @@ bundle API.Google.Gemini.Corpus {
 			return @last_message;
 		}
 	}
-
 }
