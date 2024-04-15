@@ -143,10 +143,24 @@ bundle API.Google.Gemini {
 			return Nil;
 		}
 
+		#~
+		Generates a response from the model given an input
+		@param model_name model name
+		@param content content for the model
+		@param key API key		
+		~#
 		function : GenerateContent(model_name : String, content : Content, key : String) ~ Vector<Candidate> {
 			return GenerateContent(model_name, content, Nil, Nil, key);
 		}
 
+		#~
+		Generates a response from the model given an input
+		@param model_name model name
+		@param content model content
+		@param safety_settings key/value safety settings
+		@param config generation configuration, currently unsupported
+		@param key API key		
+		~#
 		function : GenerateContent(model_name : String, content : Content, safety_settings : Vector<Tuples.Pair<String, String>>, config : GenerationConfig, key : String) ~ Vector<Candidate> {
 			contents := Vector->New()<Content>;
 			contents->AddBack(content);
@@ -154,6 +168,14 @@ bundle API.Google.Gemini {
 			return GenerateContent(model_name, contents, safety_settings, config, key);
 		}
 
+		#~
+		Generates a response from the model given an input
+		@param model_name model name
+		@param content list of content for the model
+		@param safety_settings key/value safety settings
+		@param config generation configuration, currently unsupported
+		@param key API key		
+		~#
 		function : GenerateContent(model_name : String, contents : Vector<Content>, safety_settings : Vector<Tuples.Pair<String, String>>, config : GenerationConfig, key : String) ~ Vector<Candidate> {
 			# contents
 			content_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
@@ -271,6 +293,12 @@ bundle API.Google.Gemini {
 			return Nil;
 		}
 
+		#~
+		Runs a model's tokenizer on input content and returns the token count
+		@param model_name model name
+		@param content content for the model
+		@param key API key		
+		~#
 		function : CountTokens(model_name : String, content : Content, key : String) ~ Int {
 			contents := Vector->New()<Content>;
 			contents->AddBack(content);
@@ -278,6 +306,12 @@ bundle API.Google.Gemini {
 			return CountTokens(model_name, contents, key);
 		}
 
+		#~
+		Runs a model's tokenizer on input content and returns the token count
+		@param model_name model name
+		@param content list of content for the model
+		@param key API key		
+		~#
 		function : CountTokens(model_name : String, contents : Vector<Content>, key : String) ~ Int {
 			# contents
 			content_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
@@ -327,18 +361,34 @@ bundle API.Google.Gemini {
 			return -1;
 		}
 
+		#~
+		Get the model's description
+		@return model's description
+		~#
 		method : public : GetDescription() ~ String {
 			return @description;
 		}
 
+		#~
+		Get the model's display name
+		@return model's display name
+		~#
 		method : public : GetDisplayName() ~ String {
 			return @display_name;
 		}
 
+		#~
+		Get the model's input token limit
+		@return model's input token limit
+		~#
 		method : public : GetInputTokenLimit() ~ Int {
 			return @input_token_limit;
 		}
 
+		#~
+		Get the model's name
+		@return model's name
+		~#
 		method : public : GetName() ~ String {
 			return @name;
 		}
