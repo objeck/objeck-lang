@@ -171,7 +171,7 @@ bundle API.Google.Gemini {
 		#~
 		Generates a response from the model given an input
 		@param model_name model name
-		@param content list of content for the model
+		@param contents list of content for the model
 		@param safety_settings key/value safety settings
 		@param config generation configuration, currently unsupported
 		@param key API key		
@@ -309,7 +309,7 @@ bundle API.Google.Gemini {
 		#~
 		Runs a model's tokenizer on input content and returns the token count
 		@param model_name model name
-		@param content list of content for the model
+		@param contents list of content for the model
 		@param key API key		
 		~#
 		function : CountTokens(model_name : String, contents : Vector<Content>, key : String) ~ Int {
@@ -393,30 +393,60 @@ bundle API.Google.Gemini {
 			return @name;
 		}
 
+		#~
+		Maximum number of output tokens available for this model
+		@return maximum number of output tokens
+		~#
 		method : public : GetOutputTokenLimit() ~ Int {
 			return @output_token_limit;
 		}
 
+		#~
+		The model's supported generation methods.
+		@return generation methods
+		~#
 		method : public : GetGenerationMethods() ~ Vector<String> {
 			return @generation_methods;
 		}
 
+		#~
+		Controls the randomness of the output. Values can range over [0.0,1.0], 
+		inclusive. A value closer to 1.0 will produce responses that are more 
+		varied, while a value closer to 0.0 will typically result in less 
+		surprising responses from the model.
+		@return model temperature 
+		~#
 		method : public : GetTemperature() ~ Float {
 			return @temperature;
 		}
 
+		#~
+		Get the top-k sampling of the most probable tokens.
+		@return top-k sampling
+		~#
 		method : public : GetTopK() ~ Int {
 			return @top_k;
 		}
 
+		#~
+		Nucleus sampling considers the smallest set of tokens whose probability sum is at least topP.
+		~#
 		method : public : GetTopP() ~ Float {
 			return @top_p;
 		}
 
+		#~
+		Get the model version
+		@return model version
+		~#
 		method : public : GetVersion() ~ String {
 			return @version;
 		}
 
+		#~
+		String representation of the object
+		@return string representation
+		~#
 		method : public : ToString() ~ String {
 			buffer := "[";
 
@@ -460,10 +490,18 @@ bundle API.Google.Gemini {
 			@text := text;
 		}
 
+		#~
+		Get text
+		@return text
+		~#
 		method : public : GetText() ~ String {
 			return @text;
 		}
 
+		#~
+		String representation of the object
+		@return string representation
+		~#
 		method : public : ToString() ~ String {
 			return "text='{$@text}'";
 		}
@@ -483,14 +521,26 @@ bundle API.Google.Gemini {
 			@mime_type := mime_type;
 		}
 
+		#~
+		Get Base64 encoding binary string
+		@return encoding binary string
+		~#
 		method : public : GetBase64Data() ~ String {
 			return Encryption.Encrypt->Base64(@data);
 		}
 
+		#~
+		Get MIME type
+		@return MIME type
+		~#
 		method : public : GetMimeType() ~ String {
 			return @mime_type;
 		}
 
+		#~
+		String representation of the object
+		@return string representation
+		~#
 		method : public : ToString() ~ String {
 			data_size := @data->Size();
 			return "data_size={$data_size}, mime_type='{$@mime_type}'";
@@ -513,27 +563,45 @@ bundle API.Google.Gemini {
 	}
 
 	#~
-	Prompt response content
+	Prompt content
 	~#
 	class Content from EndPoint implements Stringify {
 		@parts : Vector<Part>;
 		@role : String;
 
+		#~
+		Constructor
+		@param parts message parts to add
+		@param role role
+		~#
 		New(parts : Vector<Part>, role : String) {
 			Parent();
 			@role := role;
 			@parts := parts;
 		}
 
+		#~
+		Adds a part to the content
+		@param part to add
+		@return self reference to Content
+		~#
 		method : public : AddPart(part : Part) ~ Content {
 			@parts->AddBack(part);
 			return @self;
 		}
 
+		#~
+		Get all parts
+		@return all parts
+		~#
 		method : public : GetParts() ~ Vector<Part> {
 			return @parts;
 		}
 
+		#~
+		Get the first part
+		@return first part
+		~#
 		method : public : GetFirstPart() ~ Part {
 			last := @parts->Size() - 1;
 			if(last > -1) {
@@ -543,10 +611,18 @@ bundle API.Google.Gemini {
 			return Nil;
 		}
 
+		#~
+		Get the role
+		@return role
+		~#
 		method : public : GetRole() ~ String {
 			return @role;
 		}
 
+		#~
+		String representation of the object
+		@return string representation
+		~#
 		method : public : ToString() ~ String {
 			buffer := "{";
 
@@ -582,18 +658,34 @@ bundle API.Google.Gemini {
 			@safety_ratings := safety_ratings;
 		}
 
+		#~
+		Get index
+		@return index
+		~#
 		method : public : GetIndex() ~ Int {
 			return @index;
 		}
 
+		#~
+		Get finishing reason
+		@return finishing reason
+		~#
 		method : public : GetFinishReason () ~ String {
 			return @finish_reason;
 		}
 
+		#~
+		Get safety ratings
+		@return list of safety ratings
+		~#
 		method : public : GetSafetyRatings() ~ Vector<Tuples.Pair<String,String>> {
 			return @safety_ratings;
 		}
 
+		#~
+		String representation of the object
+		@return string representation
+		~#
 		method : public : ToString() ~ String {
 			buffer := "";
 
@@ -625,13 +717,15 @@ bundle API.Google.Gemini {
 	#~
 	Gemini chat session
 	~#
-	class Chat implements Stringify {
+	class Chat from Content implements Stringify {
 		@content_array_json : JsonElement;
 		@contents_obj_json : JsonElement;
 		@model_name : String;
 		@key : String;
 
 		New(model_name : String, key : String) {
+			Parent();
+
 			@model_name := model_name;
 			@key := key;
 
@@ -640,6 +734,12 @@ bundle API.Google.Gemini {
 			@contents_obj_json->Insert("contents", @content_array_json);
 		}
 
+		#~
+		Send chart part
+		@param part prompt chat part
+		@param role prompt role
+		@return prompt response
+		~#
 		method : public : SendPart(part : Part, role : String) ~ Candidate {
 			content_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 			content_obj_json->Insert("role", role);
@@ -727,6 +827,10 @@ bundle API.Google.Gemini {
 			return Nil;
 		}
 
+		#~
+		Get all chat parts
+		@return list of all chat parts
+		~#
 		method : public : GetAllParts() ~ Vector<Content> {
 			contents := Vector->New()<Content>;
 
@@ -762,6 +866,10 @@ bundle API.Google.Gemini {
 			return contents;
 		}
 
+		#~
+		String representation of the object
+		@return string representation
+		~#
 		method : public : ToString() ~ String {
 			buffer := "";
 
@@ -783,7 +891,7 @@ bundle API.Google.Gemini {
 
 		New() {}
 
-		function : GetRequest(url : Url) ~ JsonElement {
+		function : private : GetRequest(url : Url) ~ JsonElement {
 			response := HttpsClient->QuickGet(url, "application/json");
 			if(response <> Nil) {
 				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
@@ -808,7 +916,7 @@ bundle API.Google.Gemini {
 			return Nil;
 		}
 
-		function : PostRequest(request : JsonElement, url : Url, headers : Map<String,String>) ~ JsonElement {
+		function : private : PostRequest(request : JsonElement, url : Url, headers : Map<String,String>) ~ JsonElement {
 			response := HttpsClient->QuickPost(url, request->ToString()->ToByteArray(), "application/json", headers);
 			if(response <> Nil) {
 				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
@@ -833,7 +941,7 @@ bundle API.Google.Gemini {
 			return Nil;
 		}
 
-		function : PostRequest(request : JsonElement, url : Url) ~ JsonElement {
+		function : private : PostRequest(request : JsonElement, url : Url) ~ JsonElement {
 			response := HttpsClient->QuickPost(url, request->ToString()->ToByteArray(), "application/json");
 			if(response <> Nil) {
 				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
@@ -858,9 +966,13 @@ bundle API.Google.Gemini {
 			return Nil;
 		}
 
+		#~
+		Reads API from 'api_key.dat'
+		@return API key
+		~#
 		function : GetApiKey() ~ String {
 			if(@api_key = Nil) {
-				token := System.IO.Filesystem.FileReader->ReadFile("api_key.txt");
+				token := System.IO.Filesystem.FileReader->ReadFile("api_key.dat");
 				if(token <> Nil) {
 					@api_key := token->Trim();
 				};
@@ -896,18 +1008,34 @@ bundle API.Google.Gemini.Corpus {
 		@create_time_str : String;
 		@update_time_str : String;
 
+		#~
+		Get corpus ID
+		@return corpus ID
+		~#
 		method : public : GetId() ~ String {
 			return @name;
 		}
 
+		#~
+		Get the display name
+		@return display name
+		~#
 		method : public : GetName() ~ String {
 			return @display_name;
 		}
 
+		#~
+		Get creation time
+		@return creation time
+		~#
 		method : public : GetCreateTime() ~ System.Time.Date {
 			return System.Time.DateUtility->Parse(@create_time_str, "yyyy-MM-ddThh:mm:ss", false);
 		}
 
+		#~
+		Get update time
+		@return update time
+		~#
 		method : public : GetUpdateTime() ~ System.Time.Date {
 			return System.Time.DateUtility->Parse(@update_time_str, "yyyy-MM-ddThh:mm:ss", false);
 		}
@@ -921,6 +1049,11 @@ bundle API.Google.Gemini.Corpus {
 			@update_time_str := request_json->Get("updateTime")->GetString();
 		}
 
+		#~
+		Create a new corpus
+		@param name corpus name
+		@return new corpus
+		~#
 		function : Create(name : String) ~ Corpus {
 			request_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 			request_json->Insert("displayName", name);
@@ -954,6 +1087,11 @@ bundle API.Google.Gemini.Corpus {
 			return Nil;	
 		}
 
+		#~
+		Get existing corpus
+		@param name corpus name
+		@return existing corpus
+		~#
 		function : Get(name : String) ~ Corpus {
 			token := GetToken();
 			headers := Collection.Map->New()<String, String>;
@@ -982,6 +1120,10 @@ bundle API.Google.Gemini.Corpus {
 			return Nil;	
 		}
 
+		#~
+		Get all existing corpupa
+		@return list of corpusa
+		~#
 		function : List() ~ Collection.Vector<Corpus> {
 			token := GetToken();
 			headers := Collection.Map->New()<String, String>;
@@ -1019,6 +1161,10 @@ bundle API.Google.Gemini.Corpus {
 			return Nil;	
 		}
 
+		#~
+		Delete existing corpus
+		@return true if successful, false otherwise
+		~#
 		method : public : Delete() ~ Bool {
 			token := GetToken();
 			headers := Collection.Map->New()<String, String>;
@@ -1047,6 +1193,11 @@ bundle API.Google.Gemini.Corpus {
 			return false;	
 		}
 
+		#~
+		Query the corpus
+		@param query string query
+		@return query results as triple, 1) relevance, 2) string content, 3) content metadata
+		~#
 		method : public : Query(query : String) ~ Vector<Tuples.Triplet<FloatRef, String, Map<String, String>>> {
 			# TODO metadata filters
 			request_json := JsonElement->New(JsonElement->JsonType->OBJECT);
@@ -1141,22 +1292,43 @@ bundle API.Google.Gemini.Corpus {
 			@update_time_str := request_json->Get("updateTime")->GetString();
 		}
 
+		#~
+		Get document ID
+		@return document ID
+		~#
 		method : public : GetId() ~ String {
 			return @name;
 		}
 
+		#~
+		Get the display name
+		@return display name
+		~#
 		method : public : GetName() ~ String {
 			return @display_name;
 		}
 
+		#~
+		Get creation time
+		@return creation time
+		~#
 		method : public : GetCreateTime() ~ System.Time.Date {
 			return System.Time.DateUtility->Parse(@create_time_str, "yyyy-MM-ddThh:mm:ss", false);
 		}
 
+		#~
+		Get update time
+		@return update time
+		~#
 		method : public : GetUpdateTime() ~ System.Time.Date {
 			return System.Time.DateUtility->Parse(@update_time_str, "yyyy-MM-ddThh:mm:ss", false);
 		}
 
+		#~
+		Query the corpus
+		@param query string query
+		@return query results as triple, 1) relevance, 2) string content, 3) content metadata
+		~#
 		method : public : Query(query : String) ~ Vector<Tuples.Triplet<FloatRef, String, Map<String, String>>> {
 			# TODO metadata filters
 			request_json := JsonElement->New(JsonElement->JsonType->OBJECT);
@@ -1211,6 +1383,13 @@ bundle API.Google.Gemini.Corpus {
 			return Nil;	
 		}
 
+		#~
+		Create a new document
+		@param name document name
+		@param metadata document metadata
+		@param corpus corpus to attach document
+		@return new Document
+		~#
 		function : Create(name : String, metadata : Collection.Map<String, String>, corpus : Corpus) ~ Document {
 			metadata_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
 			if(metadata <> Nil) {
@@ -1258,6 +1437,11 @@ bundle API.Google.Gemini.Corpus {
 			return Nil;	
 		}
 
+		#~
+		Get existing document
+		@param name document name
+		@return existing document
+		~#
 		function : Get(name : String) ~ Document {
 			token := GetToken();
 			headers := Collection.Map->New()<String, String>;
@@ -1286,6 +1470,11 @@ bundle API.Google.Gemini.Corpus {
 			return Nil;	
 		}
 
+		#~
+		Get all existing documents
+		@param corpus corpus of documents to list
+		@return list of documents
+		~#
 		function : List(corpus : Corpus) ~ Collection.Vector<Document> {
 			token := GetToken();
 			headers := Collection.Map->New()<String, String>;
@@ -1326,6 +1515,10 @@ bundle API.Google.Gemini.Corpus {
 			return Nil;	
 		}
 
+		#~
+		Delete existing document
+		@return true if successful, false otherwise
+		~#
 		method : public : Delete() ~ Bool {
 			token := GetToken();
 			headers := Collection.Map->New()<String, String>;
@@ -1407,6 +1600,10 @@ bundle API.Google.Gemini.Corpus {
 			};
 		}
 
+		#~
+		Get chunk ID
+		@return chunk ID
+		~#
 		method : public : GetId() ~ String {
 			return @name;
 		}
@@ -1423,14 +1620,29 @@ bundle API.Google.Gemini.Corpus {
 			return @metadata;
 		}
 
+		#~
+		Get creation time
+		@return creation time
+		~#
 		method : public : GetCreateTime() ~ System.Time.Date {
 			return System.Time.DateUtility->Parse(@create_time_str, "yyyy-MM-ddThh:mm:ss", false);
 		}
 
+		#~
+		Get update time
+		@return update time
+		~#
 		method : public : GetUpdateTime() ~ System.Time.Date {
 			return System.Time.DateUtility->Parse(@update_time_str, "yyyy-MM-ddThh:mm:ss", false);
 		}
 
+		#~
+		Create a new document
+		@param value check string value
+		@param metadata document metadata
+		@param document document to attach chunk
+		@return new Document
+		~#
 		function : Create(value : String, metadata : Map<String, String>, document : Document) ~ Chunk {
 			metadata_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
 			if(metadata <> Nil) {
@@ -1482,6 +1694,11 @@ bundle API.Google.Gemini.Corpus {
 			return Nil;
 		}
 
+		#~
+		Get existing chunk
+		@param name chunk name
+		@return existing chunk
+		~#
 		function : Get(name : String) ~ Chunk {
 			token := GetToken();
 			headers := Collection.Map->New()<String, String>;
@@ -1510,6 +1727,10 @@ bundle API.Google.Gemini.Corpus {
 			return Nil;	
 		}
 
+		#~
+		Delete existing chunk
+		@return true if successful, false otherwise
+		~#
 		method : public : Delete() ~ Bool {
 			token := GetToken();
 			headers := Collection.Map->New()<String, String>;
@@ -1538,6 +1759,11 @@ bundle API.Google.Gemini.Corpus {
 			return false;	
 		}
 
+		#~
+		Get all existing chunks
+		@param document document of documents to list
+		@return list of chunks
+		~#
 		function : List(document : Document) ~ Collection.Vector<Chunk> {
 			token := GetToken();
 			headers := Collection.Map->New()<String, String>;
