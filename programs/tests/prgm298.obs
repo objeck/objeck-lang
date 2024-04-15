@@ -1,25 +1,11 @@
-use Data.CSV;
-
-class Test {
+class Foo {
 	function : Main(args : String[]) ~ Nil {
-		timestamp_str := "2024-04-14T19:30:44.816811Z";
+		Bar->Test();
+	}
+}
 
-		date_time_str := timestamp_str->Split('T');
-		date_str := date_time_str[0];
-
-		date_parts_str := date_str->Split('-');
-		year_str := date_parts_str[0];
-		month_str := date_parts_str[1];
-		day_str := date_parts_str[2];
-"day = {$month_str}/{$day_str}/{$year_str}"->PrintLine();
-
-		time_str := date_time_str[1]->Split('.');
-		time_parts_str := time_str[0]->Split(':');
-		hour_str := time_parts_str[0];
-		min_str := time_parts_str[1];
-		sec_str := time_parts_str[2];
-"time = {$hour_str}.{$min_str}.{$sec_str}"->PrintLine();
-
-		System.Time.DateUtility->Parse(timestamp_str, "yyyy-MM-ddThh:mm:ss", false)->ToString()->PrintLine();
+class Bar {
+	function : private : Test() ~ Nil {
+		"Hello"->PrintLine();
 	}
 }

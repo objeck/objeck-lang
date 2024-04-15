@@ -3273,8 +3273,11 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, b
     }
 
     // public/private check
-    if(method->GetClass() != current_method->GetClass() && !method->IsStatic() &&
-      (method->GetMethodType() == PRIVATE_METHOD || method->GetMethodType() == NEW_PRIVATE_METHOD)) {
+    if(method->IsStatic() && method->GetMethodType() == PRIVATE_METHOD) {
+      ProcessError(static_cast<Expression*>(method_call), L"Cannot reference a private function from this context");
+    }
+    else if(method->GetClass() != current_method->GetClass() && !method->IsStatic() &&
+       (method->GetMethodType() == PRIVATE_METHOD || method->GetMethodType() == NEW_PRIVATE_METHOD)) {
       bool found = false;
       Class* method_class = method->GetClass();
       Class* parent = current_method->GetClass()->GetParent();
