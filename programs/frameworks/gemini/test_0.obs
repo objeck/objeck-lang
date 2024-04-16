@@ -1,6 +1,5 @@
 use Web.HTTP, Collection, Data.JSON, System.IO.Filesystem;
 
-bundle API.Google.Gemini {
 	class Test {
 		function : Main(args : String[]) ~ Nil {
 			if(args->Size() = 1) {
@@ -224,89 +223,3 @@ bundle API.Google.Gemini {
 		}
 	}
 
-	class Model {
-		@description : String;
-		@display_name : String;
-		@input_token_limit : Int;
-		@name : String;
-		@output_token_limit : Int;
-		@supported_generation_methods : Vector<String>;
-		@temperature : Float;
-		@top_k : Int;
-		@top_p : Float;
-		@version : String;
-
-		New(description : String, display_name : String, input_token_limit : Int, 
-				name : String, output_token_limit : Int, supported_generation_methods : Vector<String>, 
-				temperature : Float, top_k : Int, top_p : Float, version : String) {
-			@description := description;
-			@display_name := display_name;
-			@input_token_limit := input_token_limit;
-			@name := name;
-			@output_token_limit := output_token_limit;
-			@supported_generation_methods := supported_generation_methods;
-			@temperature := temperature;
-			@top_k := top_k;
-			@top_p := top_p;
-			@version := version;
-		}
-
-		method : public : GetDescription() ~ String {
-			return @description;
-		}
-
-		method : public : GetDisplayName() ~ String {
-			return @display_name;
-		}
-
-		method : public : GetInputTokenLimit() ~ Int {
-			return @input_token_limit;
-		}
-
-		method : public : GetName() ~ String {
-			return @name;
-		}
-
-		method : public : GetOutputTokenLimit() ~ Int {
-			return @output_token_limit;
-		}
-
-		method : public : GetSupportedGenerationMethods() ~ Vector<String> {
-			return @supported_generation_methods;
-		}
-
-		method : public : GetTemperature() ~ Float {
-			return @temperature;
-		}
-
-		method : public : GetTopK() ~ Int {
-			return @top_k;
-		}
-
-		method : public : GetTopP() ~ Float {
-			return @top_p;
-		}
-
-		method : public : GetVersion() ~ String {
-			return @version;
-		}
-
-		method : public : ToString() ~ String {
-			buffer := "";
-
-			buffer += "name='"
-			buffer += @name;
-			buffer += "', version="
-			buffer += @version;
-			buffer += "', description=\""
-			buffer += @description;
-			buffer += "\"\nmethods:\n\t"
-			each(supported_generation_method in @supported_generation_methods) {
-				buffer += supported_generation_method;
-				buffer += "\n\t";
-			};
-
-			return buffer;
-		}
-	}
-}
