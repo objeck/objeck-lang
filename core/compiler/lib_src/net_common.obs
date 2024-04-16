@@ -2330,6 +2330,10 @@ bundle Web.HTTP.Server {
    	    	return buffer->ToByteArray();
    	    }
 
+   	    #~
+   	    Get boundary marker
+   	    @return boundary marker
+   	    ~#
    	    method : public : GetBoundary() ~ String {
 			if(@boundary = Nil) {
 				@boundary := "------------------------";
@@ -2584,71 +2588,6 @@ OAuth client
 ~#
 bundle System.IO.Net.OAuth {
 	#~
-	OAuth token
-	~#
-	class OAuthToken {
-		@access_token : String;
-		@refresh_token : String;
-		@scope : String;
-		@expires_in : Int;
-
-		New(access_token : String, refresh_token : String, expires_in : Int, scope : String) {
-			@access_token := access_token;
-			@refresh_token := refresh_token; 
-			@expires_in := expires_in;
-			@scope := scope;
-		}
-
-		#~
-		Get access token
-		@return access token
-		~#
-		method : public : GetAccessToken() ~ String {
-			return @access_token;
-		}
-
-		#~
-		Get refresh token
-		@return refresh token
-		~#
-		method : public : GetRefreshToken() ~ String {
-			return @refresh_token;
-		}
-
-		#~
-		Get scope
-		@return scope
-		~#
-		method : public : GetScope() ~ String {
-			return @scope;
-		}
-
-		#~
-		Get expiration time
-		@return expiration time
-		~#
-		method : public : GetExpiresIn() ~ Int {
-			return @expires_in;
-		}
-
-		#~
-		Get token as string
-		@return token as string
-		~#
-		method : public : ToString() ~ String {
-			buffer := "";
-
-			buffer->Append("Token:\n");
-			buffer->Append("  access_token='{$@access_token}'\n");
-			buffer->Append("  refresh_token='{$@refresh_token}'\n");
-			buffer->Append("  scope='{$@scope}'\n");
-			buffer->Append("  expires_in={$@expires_in}\n");
-
-			return buffer;
-		}
-	}
-
-	#~
 	OAuth client
 	
 ```
@@ -2662,11 +2601,6 @@ each(i : 3) {
 	~#
 	class OAuthClient {
 		@config_json : OAuthConfig;
-		
-		@access_token : String;
-		@refresh_token : String;
-		@scope : String;
-		@expires_in : Int;
 
 		#~
 		Constructor
@@ -2675,16 +2609,6 @@ each(i : 3) {
 		~#
 		New(filename : String, scopes : String[])  {
 			@config_json := OAuthConfig->Load(filename, scopes);
-
-			#~ TODO: for refresh testing 
-			access_token := "<token>";
-			refresh_token := "<token>";
-			expires_in := 3599;
-
-			OAuthHandler->SetAccessToken(access_token);
-			OAuthHandler->SetRefreshToken(refresh_token);
-			OAuthHandler->SetExpiresIn(expires_in);
-			~#
 		}
 
 		#~
@@ -2692,10 +2616,16 @@ each(i : 3) {
 		@return OAuth token, Nil if error
 		~#
 		method : public : GetToken() ~ OAuthToken {
-			@access_token := OAuthHandler->GetAccessToken();
-			@refresh_token := OAuthHandler->GetRefreshToken();
+			access_token : String; 
+			refresh_token : String;
 
-			if(@access_token = Nil) {
+			token := OAuthHandler->Get();
+			if(token <> Nil) {
+				access_token := token->GetAccessToken();
+				refresh_token := token->GetRefreshToken();
+			};
+
+			if(access_token = Nil) {
 				client_id := @config_json->GetClientId();
 				state := @config_json->GetState();
 				scope := @config_json->GetScope();
@@ -2709,13 +2639,13 @@ each(i : 3) {
 				OAuthHandler->Initialize(@config_json);				
 				WebServer->Serve(OAuthHandler->New()->GetClass(), @config_json->GetRedirectPort(), false);
 			}
-			else if(@refresh_token <> Nil) {
+			else if(refresh_token <> Nil) {
 				client_id := @config_json->GetClientId();
 				client_secret := @config_json->GetClientSecret();
 				redirect_uri := @config_json->GetRedirectUri();
 				scope := @config_json->GetScope();
 
-				data := "&client_secret={$client_secret}&client_id={$client_id}&redirect_uri={$redirect_uri}&refresh_token={$@refresh_token}&scope={$scope}&grant_type=refresh_token&"->ToByteArray();
+				data := "&client_secret={$client_secret}&client_id={$client_id}&redirect_uri={$redirect_uri}&refresh_token={$refresh_token}&scope={$scope}&grant_type=refresh_token&"->ToByteArray();
 				# data->ToString()->PrintLine();
 
 				token_uri_str := @config_json->GetTokenUri();
@@ -2728,9 +2658,10 @@ each(i : 3) {
 					response_json := JsonParser->TextToElement(post_response->GetContent()->ToString());
 						
 					if(response_json->Has("access_token")) {
-						OAuthHandler->SetAccessToken(response_json->Get("access_token")->GetString());
-						OAuthHandler->SetScope(response_json->Get("scope")->GetString());								
-						OAuthHandler->SetExpiresIn(response_json->Get("expires_in")->GetInt());								
+						access_token := response_json->Get("access_token")->GetString();
+						expires_in := response_json->Get("expires_in")->GetInt();
+						scope := response_json->Get("scope")->GetString();
+						OAuthHandler->Set(access_token, expires_in, scope);
 					} 
 					else {
 						return Nil;
@@ -2741,12 +2672,17 @@ each(i : 3) {
 				return Nil;
 			};
 
-			@access_token := OAuthHandler->GetAccessToken();
-			@refresh_token := OAuthHandler->GetRefreshToken();
-			@expires_in := OAuthHandler->GetExpiresIn();
-			@scope := OAuthHandler->GetScope();
+			token := OAuthHandler->Get();
+			access_token := token->GetAccessToken(); 
+			expires_in := token->GetExpiresIn(); 
+			scope := token->GetScope();
+			refresh_token := token->GetRefreshToken();
+			
+			if(expires_in > 0 & access_token <> Nil & scope <> Nil & refresh_token <> Nil) {
+				return OAuthToken->New(access_token, refresh_token, expires_in, scope);
+			};
 
-			return OAuthToken->New(@access_token, @refresh_token, @expires_in, @scope);
+			return Nil;
 		}
 	}
 
@@ -2757,11 +2693,7 @@ each(i : 3) {
 		@state : static : String;
 		@token_uri_str : static : String;
 		
-		# TODO: add thread safety
-		@access_token : static : String;
-		@refresh_token : static : String;
-		@expires_in : static : Int;
-		@scope : static : String;
+		@token : static : OAuthToken;
 
 		function : Initialize(config : OAuthConfig) ~ Nil {
 			@client_id := config->GetClientId();
@@ -2775,40 +2707,14 @@ each(i : 3) {
 			Parent();
 		}
 
-		function : GetAccessToken() ~ String {
-			return @access_token;
+		function : Get() ~ OAuthToken {
+			return @token;
 		}
 
-		function : SetAccessToken(access_token : String) ~ Nil {
-			@access_token := access_token;
-		}
-
-		function : GetRefreshToken() ~ String {
-			if(@refresh_token = Nil) {
-				return "";
+		function : Set(access_token : String, expires_in : Int, scope : String) ~ Nil {
+			if(@token <> Nil) {
+				@token->Set(access_token, expires_in, scope);
 			};
-			
-			return @refresh_token;
-		}
-
-		function : SetRefreshToken(refresh_token : String) ~ Nil {
-			@refresh_token := refresh_token;
-		}
-
-		function : GetExpiresIn() ~ Int {
-			return @expires_in;
-		}
-
-		function : SetExpiresIn(expires_in : Int) ~ Nil {
-			@expires_in := expires_in;
-		}
-
-		function : GetScope() ~ String {
-			return @scope;
-		}
-		
-		function : SetScope(scope : String) ~ Nil {
-			@scope := scope;
 		}
 
 		method : ProcessGet(request : Web.HTTP.Server.Request, response : Web.HTTP.Server.Response) ~ Bool {
@@ -2825,10 +2731,12 @@ each(i : 3) {
 					response_json := JsonParser->TextToElement(post_response->GetContent()->ToString());
 						
 					if(response_json->Has("access_token")) {
-						@access_token := response_json->Get("access_token")->GetString();
-						@refresh_token := response_json->Get("refresh_token")->GetString();
-						@expires_in := response_json->Get("expires_in")->GetInt();
-						@scope := response_json->Get("scope")->GetString();
+						access_token := response_json->Get("access_token")->GetString();
+						refresh_token := response_json->Get("refresh_token")->GetString();
+						expires_in := response_json->Get("expires_in")->GetInt();
+						scope := response_json->Get("scope")->GetString();
+
+						@token := OAuthToken->New(access_token, refresh_token, expires_in, scope);
 
 						response->SetCodeContent(200, "<html><center>You are logged in...</center></html>");
 						WebServer->Stop();
@@ -2837,7 +2745,7 @@ each(i : 3) {
 				}
 			};	
 
-			@access_token := @refresh_token := Nil;
+			@token := Nil;
 			return false;
 		}
 
@@ -2974,6 +2882,77 @@ each(i : 3) {
 				index := Int->Random(0, values->Size() - 1);
 				buffer->Append(values[index]);
 			};
+
+			return buffer;
+		}
+	}
+
+	#~
+	OAuth token
+	~#
+	class OAuthToken {
+		@access_token : String;
+		@refresh_token : String;
+		@scope : String;
+		@expires_in : Int;
+
+		New(access_token : String, refresh_token : String, expires_in : Int, scope : String) {
+			@access_token := access_token;
+			@refresh_token := refresh_token; 
+			@expires_in := expires_in;
+			@scope := scope;
+		}
+
+		#~
+		Get access token
+		@return access token
+		~#
+		method : public : GetAccessToken() ~ String {
+			return @access_token;
+		}
+
+		#~
+		Get refresh token
+		@return refresh token
+		~#
+		method : public : GetRefreshToken() ~ String {
+			return @refresh_token;
+		}
+
+		#~
+		Get scope
+		@return scope
+		~#
+		method : public : GetScope() ~ String {
+			return @scope;
+		}
+
+		#~
+		Get expiration time
+		@return expiration time
+		~#
+		method : public : GetExpiresIn() ~ Int {
+			return @expires_in;
+		}
+
+		method : public : Set(access_token : String, expires_in : Int, scope : String) ~ Nil {
+			@access_token := access_token;
+			@expires_in := expires_in;
+			@scope := scope;
+		}
+
+		#~
+		Get token as string
+		@return token as string
+		~#
+		method : public : ToString() ~ String {
+			buffer := "";
+
+			buffer->Append("Token:\n");
+			buffer->Append("  access_token='{$@access_token}'\n");
+			buffer->Append("  refresh_token='{$@refresh_token}'\n");
+			buffer->Append("  scope='{$@scope}'\n");
+			buffer->Append("  expires_in={$@expires_in}\n");
 
 			return buffer;
 		}
