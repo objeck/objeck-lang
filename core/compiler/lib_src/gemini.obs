@@ -1843,17 +1843,17 @@ bundle API.Google.Gemini.Corpus {
 		@return OAuth token
 		~#
 		function : GetToken() ~ String {		
-			token := System.IO.Net.OAuth.OAuthToken->ReadTokenFormat(System.IO.Filesystem.FileReader->ReadFile("client_secret.dat"));
-			if(token = Nil) {
+			token_str := System.IO.Net.OAuth.OAuthToken->ReadTokenFormat(System.IO.Filesystem.FileReader->ReadFile("client_secret.dat"));
+			if(token_str = Nil) {
 				scopes := ["https://www.googleapis.com/auth/cloud-platform", 
 					"https://www.googleapis.com/auth/generative-language.retriever"];
-				client := System.IO.Net.OAuth.OAuthClient->New("client_secret.json", scopes)->GetToken();
+				token := System.IO.Net.OAuth.OAuthClient->New("client_secret.json", scopes)->GetToken();
 				System.IO.Filesystem.FileWriter->WriteFile("client_secret.dat", 
-					System.IO.Net.OAuth.OAuthToken->FormatNewToken(client->GetAccessToken(), client->GetExpiresIn()));
-				token := System.IO.Net.OAuth.OAuthToken->ReadTokenFormat(System.IO.Filesystem.FileReader->ReadFile("client_secret.dat"));
+					System.IO.Net.OAuth.OAuthToken->FormatNewToken(token->GetAccessToken(), token->GetExpiresIn()));
+				token_str := System.IO.Net.OAuth.OAuthToken->ReadTokenFormat(System.IO.Filesystem.FileReader->ReadFile("client_secret.dat"));
 			};
 
-			return token;
+			return token_str;
 		}
 
 		function : SetLastError(last_message : String) ~ Nil {
