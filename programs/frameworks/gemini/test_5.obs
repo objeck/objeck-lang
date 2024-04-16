@@ -81,7 +81,6 @@ class Test {
 			results := document->Query(query);
 			each(result in results) {
 				relevance := result->GetFirst()->As(FloatRef);
-#				data := result->GetSecond();
 				metadata := result->GetThird()->As(Map<String, String>);
 
 				relevance->PrintLine();
