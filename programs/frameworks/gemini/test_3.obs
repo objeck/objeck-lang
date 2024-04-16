@@ -2,42 +2,11 @@ use Collection, API.Google.Gemini, System.IO.Filesystem;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		session := Chat->New("models/gemini-pro", EndPoint->GetApiKey());
-
-		content := session->SendPart(TextPart->New("What is the tallest mountain in the California?"), "user");
-		content->GetFirstPart()->ToString()->PrintLine();
-		
-		content := session->SendPart(TextPart->New("How tall is it?"), "user");
-		content->GetFirstPart()->ToString()->PrintLine();
-
-		content := session->SendPart(TextPart->New("Why is it so tall?"), "user");
-		content->GetFirstPart()->ToString()->PrintLine();
-
-		content := session->SendPart(TextPart->New("Where is it located?"), "user");
-		content->GetFirstPart()->ToString()->PrintLine();
-"======"->PrintLine();
-		
-		session->ToString()->PrintLine();
-#~		
-		models := Model->ListModels(key);
-		each(model in models) {
-			model->GetName()->PrintLine();
-		};
-		Model->GetModel("models/gemini-pro", key)->ToString()->PrintLine();
-~#
-
-#~
-		content := Content->New("user")
-			->SendPart(TextPart->New("What number is this image showing?"))
-			->SendPart(BinaryPart->New(FileReader->ReadBinaryFile("thirdteen.png"), "image/png"));
-		Model->CountTokens("models/gemini-pro-vision", content, key)->PrintLine();
-~#
-
-#~		
-		candidates := Model->GenerateContent("models/gemini-pro-vision", content, key);
+		content := Content->New("user")->AddPart(TextPart->New("What number is this image showing?"))
+			->AddPart(BinaryPart->New(FileReader->ReadBinaryFile("thirdteen.png"), "image/png"));
+		candidates := Model->GenerateContent("models/gemini-pro-vision", content, EndPoint->GetApiKey());
 		each(candidate in candidates) {
 			candidate->ToString()->PrintLine();
 		};
-~#		
 	}
 }
