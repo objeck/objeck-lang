@@ -151,7 +151,16 @@ bundle API.Google.Gemini {
 		Generates a response from the model given an input
 		@param model_name model name
 		@param content content for the model
-		@param key API key		
+		@param key API key
+
+```
+content := Content->New("user")->AddPart(TextPart->New("What number is this image showing?"))
+  ->AddPart(BinaryPart->New(FileReader->ReadBinaryFile("thirdteen.png"), "image/png"));
+candidates := Model->GenerateContent("models/gemini-pro-vision", content, EndPoint->GetApiKey());
+each(candidate in candidates) {
+  candidate->ToString()->PrintLine();
+};
+```
 		~#
 		function : GenerateContent(model_name : String, content : Content, key : String) ~ Vector<Candidate> {
 			return GenerateContent(model_name, content, Nil, Nil, key);
@@ -575,6 +584,16 @@ bundle API.Google.Gemini {
 
 		#~
 		Constructor
+		@param role role
+		~#
+		New(role : String) {
+			Parent();
+			@role := role;
+			@parts := Vector->New()<Part>;
+		}
+
+		#~
+		Constructor
 		@param parts message parts to add
 		@param role role
 		~#
@@ -720,6 +739,25 @@ bundle API.Google.Gemini {
 
 	#~
 	Gemini chat session
+
+```
+session := Chat->New("models/gemini-pro", EndPoint->GetApiKey());
+
+content := session->SendPart(TextPart->New("What is the tallest mountain in the California?"), "user");
+content->GetFirstPart()->ToString()->PrintLine();
+
+content := session->SendPart(TextPart->New("How tall is it?"), "user");
+content->GetFirstPart()->ToString()->PrintLine();
+
+content := session->SendPart(TextPart->New("Why is it so tall?"), "user");
+content->GetFirstPart()->ToString()->PrintLine();
+
+content := session->SendPart(TextPart->New("Where is it located?"), "user");
+content->GetFirstPart()->ToString()->PrintLine();
+"======"->PrintLine();
+
+session->ToString()->PrintLine();
+```
 	~#
 	class Chat from Content implements Stringify {
 		@content_array_json : JsonElement;
@@ -1005,6 +1043,64 @@ Google Gemini corpus APIs
 bundle API.Google.Gemini.Corpus {
 	#~
 	Google Gemini corpus
+
+```
+# clean up
+corpuses := Corpus->List();
+each(corpus in corpuses) {
+	documents := Document->List(corpus);
+	each(document in documents) {
+		chunks := Chunk->List(document);
+		each(chunk in chunks) {
+			chunk->Delete()->PrintLine();
+		};
+		document->Delete()->PrintLine();
+	};
+	corpus->Delete()->PrintLine();
+};
+
+# corups
+corpus := Corpus->Create("Corpus 1");
+
+metadata := Map->New()<String, String>;
+metadata->Insert("about", "fruit, vegetable, vehicle, human, and animal");
+document := Document->Create("Document 1", metadata, corpus);
+
+metadata := Map->New()<String, String>;
+metadata->Insert("category", "fruit");
+Chunk->Create("Nature's candy! Seeds' sweet ride to spread, bursting with colors, sugars, and vitamins. Fuel for us, future for plants. Deliciously vital!", metadata, document)->ToString()->PrintLine();
+
+metadata := Map->New()<String, String>;
+metadata->Insert("category", "vegetable");
+Chunk->Create("Not just leaves! Veggies sprout from roots, stems, flowers, and even bulbs. Packed with vitamins, minerals, and fiber galore, they fuel our bodies and keep us wanting more.", metadata, document)->ToString()->PrintLine();
+
+metadata := Map->New()<String, String>;
+metadata->Insert("category", "vehicle");
+Chunk->Create("Metal chariots or whirring steeds, gliding on land, skimming seas, piercing clouds. Carrying souls near and far, vehicles weave paths for dreams and scars.", metadata, document)->ToString()->PrintLine();
+
+metadata := Map->New()<String, String>;
+metadata->Insert("category", "human");
+Chunk->Create("Walking contradictions, minds aflame, built for laughter, prone to shame. Woven from stardust, shaped by clay, seeking answers, paving the way.", metadata, document)->ToString()->PrintLine();
+
+metadata := Map->New()<String, String>;
+metadata->Insert("category", "animal");
+Chunk->Create("Sentient dance beneath the sun, from buzzing flies to whales that run. Flesh and feather, scale and claw, weaving instincts in nature's law. ", metadata, document)->ToString()->PrintLine();
+
+metadata := Map->New()<String, String>;
+metadata->Insert("category", "other");
+Chunk->Create("Except for fruit, vegetable, vehicle, human, and animal", metadata, document)->ToString()->PrintLine();
+
+# search
+results := document->Query(query);
+each(result in results) {
+  relevance := result->GetFirst()->As(FloatRef);
+  metadata := result->GetThird()->As(Map<String, String>);
+
+  relevance->PrintLine();
+  metadata->ToString()->PrintLine();
+  "---"->PrintLine();
+}
+```	
 	~#
 	class Corpus from OAuthEndPoint implements Stringify {
 		@name : String;
