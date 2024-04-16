@@ -1838,46 +1838,19 @@ bundle API.Google.Gemini.Corpus {
 
 		New() {}
 
-		function : private : WriteNewToken() ~ String {
-			scopes := ["https://www.googleapis.com/auth/cloud-platform", 
-				"https://www.googleapis.com/auth/generative-language.retriever"];
-			token := System.IO.Net.OAuth.OAuthClient->New("client_secret.json", scopes)->GetToken();
-
-			token_str := token->GetAccessToken();
-			date := System.Time.Date->New();
-			date->AddSeconds(token->GetExpiresIn());
-			date_str := date->GetUnixTime()->ToString();
-
-			return "{$date_str}\r\n{$token_str}";
-		}
-
-		function : private : ReadToken(client_secrets : String) ~ String {
-			if(client_secrets <> Nil) {
-				client_secret_parts := client_secrets->Split("\r\n");
-				if(client_secret_parts->Size() = 2){
-					date_str := client_secret_parts[0];
-					create_time := System.Time.Date->New(date_str->ToInt());
-					create_time->AddMinutes(-2);
-
-					if(create_time->Compare(System.Time.Date->New(true)) > 0) {
-						token_str := client_secret_parts[1];
-						return token_str;
-					};
-				};
-			};
-
-			return Nil;
-		}
-
 		#~
 		Get OAuth token
 		@return OAuth token
 		~#
 		function : GetToken() ~ String {		
-			token := ReadToken(System.IO.Filesystem.FileReader->ReadFile("client_secret.dat"));
+			token := System.IO.Net.OAuth.OAuthToken->ReadTokenFormat(System.IO.Filesystem.FileReader->ReadFile("client_secret.dat"));
 			if(token = Nil) {
-				System.IO.Filesystem.FileWriter->WriteFile("client_secret.dat", WriteNewToken());
-				token := ReadToken(System.IO.Filesystem.FileReader->ReadFile("client_secret.dat"));
+				scopes := ["https://www.googleapis.com/auth/cloud-platform", 
+					"https://www.googleapis.com/auth/generative-language.retriever"];
+				client := System.IO.Net.OAuth.OAuthClient->New("client_secret.json", scopes)->GetToken();
+				System.IO.Filesystem.FileWriter->WriteFile("client_secret.dat", 
+					System.IO.Net.OAuth.OAuthToken->FormatNewToken(client->GetAccessToken(), client->GetExpiresIn()));
+				token := System.IO.Net.OAuth.OAuthToken->ReadTokenFormat(System.IO.Filesystem.FileReader->ReadFile("client_secret.dat"));
 			};
 
 			return token;
