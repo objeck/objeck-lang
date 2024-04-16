@@ -3489,7 +3489,7 @@ bool TrapProcessor::DateToUnixTime(StackProgram* program, size_t* inst, size_t*&
 
     // calculate difference
     const time_t raw_time = mktime(&set_time);
-    PushInt(raw_time, op_stack, stack_pos);
+    PushInt((size_t)raw_time, op_stack, stack_pos);
   }
   else {
     PushInt(-1, op_stack, stack_pos);
