@@ -2895,12 +2895,41 @@ each(i : 3) {
 		@refresh_token : String;
 		@scope : String;
 		@expires_in : Int;
+		@session : String;
 
 		New(access_token : String, refresh_token : String, expires_in : Int, scope : String) {
 			@access_token := access_token;
 			@refresh_token := refresh_token; 
 			@expires_in := expires_in;
 			@scope := scope;
+
+			@session := FormatNewToken(@access_token, @expires_in);
+		}
+
+		function : FormatNewToken(access_token : String, expires_in : Int) ~ String {
+			date := System.Time.Date->New();
+			date->AddSeconds(expires_in);
+			date_str := date->GetUnixTime()->ToString();
+
+			return "{$date_str}\r\n{$access_token}";
+		}
+		
+		function : ReadTokenFormat(secret_str : String) ~ String {
+			if(secret_str <> Nil) {
+				client_secret_parts := secret_str->Split("\r\n");
+				if(client_secret_parts->Size() = 2){
+					date_str := client_secret_parts[0];
+					create_time := System.Time.Date->New(date_str->ToInt());
+					create_time->AddMinutes(-2);
+
+					if(create_time->Compare(System.Time.Date->New(true)) > 0) {
+						token_str := client_secret_parts[1];
+						return token_str;
+					};
+				};
+			};
+
+			return Nil;
 		}
 
 		#~
@@ -2916,7 +2945,11 @@ each(i : 3) {
 		@return refresh token
 		~#
 		method : public : GetRefreshToken() ~ String {
-			return @refresh_token;
+			if(ReadTokenFormat(@session) <> Nil) {
+				return @refresh_token;
+			};
+
+			return Nil;
 		}
 
 		#~
