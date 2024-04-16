@@ -1838,7 +1838,7 @@ bundle API.Google.Gemini.Corpus {
 
 		New() {}
 
-		function : private : WriteNewToken() ~ Nil {
+		function : private : WriteNewToken() ~ String {
 			scopes := ["https://www.googleapis.com/auth/cloud-platform", 
 				"https://www.googleapis.com/auth/generative-language.retriever"];
 			token := System.IO.Net.OAuth.OAuthClient->New("client_secret.json", scopes)->GetToken();
@@ -1848,11 +1848,10 @@ bundle API.Google.Gemini.Corpus {
 			date->AddSeconds(token->GetExpiresIn());
 			date_str := date->GetUnixTime()->ToString();
 
-			System.IO.Filesystem.FileWriter->WriteFile("client_secret.dat", "{$date_str}\r\n{$token_str}");
+			return "{$date_str}\r\n{$token_str}";
 		}
 
-		function : private : ReadToken() ~ String {
-			client_secrets := System.IO.Filesystem.FileReader->ReadFile("client_secret.dat");
+		function : private : ReadToken(client_secrets : String) ~ String {
 			if(client_secrets <> Nil) {
 				client_secret_parts := client_secrets->Split("\r\n");
 				if(client_secret_parts->Size() = 2){
@@ -1875,10 +1874,10 @@ bundle API.Google.Gemini.Corpus {
 		@return OAuth token
 		~#
 		function : GetToken() ~ String {		
-			token := ReadToken();
+			token := ReadToken(System.IO.Filesystem.FileReader->ReadFile("client_secret.dat"));
 			if(token = Nil) {
-				WriteNewToken();
-				token := ReadToken();
+				System.IO.Filesystem.FileWriter->WriteFile("client_secret.dat", WriteNewToken());
+				token := ReadToken(System.IO.Filesystem.FileReader->ReadFile("client_secret.dat"));
 			};
 
 			return token;
