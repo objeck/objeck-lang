@@ -622,6 +622,23 @@ each(candidate in candidates) {
 		}
 
 		#~
+		Get all text
+		@return all text
+		~#
+		method : public : GetAllText() ~ String {
+			buffer := "";
+
+			each(part in @parts) {
+				if(part->TypeOf(TextPart)) {
+					text_part := part->As(TextPart);
+					buffer->Append(text_part->GetText());
+				}
+			};
+
+			return buffer;
+		}
+
+		#~
 		Get the first part
 		@return first part
 		~#
