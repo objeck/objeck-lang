@@ -8,13 +8,31 @@
     
     <body>
         <h1>Objeck</h1>
-        <p>v2023.3.0 (March 25, 2024)</p>
+        <p>v2023.3.0 (April 19, 2024)</p>
         
         <h3>Release Notes</h3>
         
-        <p>OpenAI and Docker support</p>
+        <p>Google DeepMind (Gemini) support, enhanced OpenAI functionality, OAuth2 support, and bug fixes</p>
 
-        <p><b><u>v2024.3.0</u></b></p>
+        <p><b><u>v2024.4.0</u></b></p>
+        <ul>
+            <li>Added support for Google DeepMind (Gemini) APIs</li>
+            <ul>
+                <li>Model</li>
+                <li>Corpus (v1beta)</li>
+                <li>Chat</li>
+            </ul>
+            <li>Open AI support for external function calls</li>
+            <li>OAuth2 support (session and file based support)</li>
+            <li>Improved support for <code>Date</code> <=> <code>String</code> operations</li>
+            <li>Improved Base64 encoding and decoding</li>
+            <li>Support for <code>private</code> functions</li>
+            <li>Tuples classes moved to <code>Collection.Tuple</code></li>
+            <li>Added 'First' and 'Last' methods to <code>Vector</code> classes</li>
+            <li>Fixed 'eor' (aka xor) instruction bug in ARM64 JIT compiler</li>
+        </ul>
+
+        <p>v2023.3.0</p>
         <ul>
             <li>Added support for OpenAI APIs</li>
             <ul>
@@ -37,14 +55,6 @@
             </ul>
             <li>Optional keyword <code>in</code> added for use in <code>each</code> loops; an alternative to <code>:=</code> operator</li>
             <li><code>Quintet</code> tuple class added</li>
-        </ul>
-
-        <p>v2023.2.0</p>
-        <ul>
-            <li>Added new <code>JsonStreamParser</code> class for processing large JSON files</li>
-            <li>Support for ranges using the <code>CharRange</code>, <code>IntRange</code>, and <code>FloatRange</code> classes</li>
-            <li>Created tuple classes <code>Pair</code>, <code>Triplet</code>, and <code>Quartet</code></li>
-            <li>Updates to the Windows installer</li>
         </ul>
 
         <p>Please refer to the GitHub <a href='https://github.com/objeck/objeck-lang'>project site</a> 
