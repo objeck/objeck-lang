@@ -3500,7 +3500,7 @@ bool TrapProcessor::DateToUnixTime(StackProgram* program, size_t* inst, size_t*&
 
 bool TrapProcessor::DateFromUnixTime(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
 {
-  INT64_VALUE value = (INT64_VALUE)PopInt(op_stack, stack_pos);
+  time_t value = (time_t)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
   if(instance) {
@@ -3530,7 +3530,7 @@ bool TrapProcessor::DateFromUnixTime(StackProgram* program, size_t* inst, size_t
     instance[5] = set_time->tm_sec;           // secs
     instance[6] = set_time->tm_isdst;         // savings time
     instance[7] = set_time->tm_wday;          // day of week
-    instance[8] = true;                      // is GMT
+    instance[8] = true;                       // is GMT
 #endif
   }
 
