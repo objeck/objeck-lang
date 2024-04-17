@@ -23,6 +23,15 @@ bundle API.Google.Gemini {
 		@top_p : Float;
 		@version : String;
 
+		enum TaskType {
+			TASK_TYPE_UNSPECIFIED,
+			RETRIEVAL_QUERY,
+			RETRIEVAL_DOCUMENT,
+			SEMANTIC_SIMILARITY,
+			CLASSIFICATION,
+			CLUSTERING
+		}
+
 		New : private(description : String, display_name : String, input_token_limit : Int, 
 				name : String, output_token_limit : Int, generation_methods : Vector<String>, 
 				temperature : Float, top_k : Int, top_p : Float, version : String) {
@@ -303,6 +312,89 @@ each(candidate in candidates) {
 				};
 			};
 			
+			return Nil;
+		}
+
+		#~
+		Generates an embedding from the model given an input Content
+		@param content model content=
+		@param key API key		
+		~#
+		function : EmbedContent(content : Content, key : String) ~ Float[] {
+			return EmbedContent(content, Nil, Model->TaskType->TASK_TYPE_UNSPECIFIED, key);
+		}
+
+		#~
+		Generates an embedding from the model given an input Content
+		@param content model content=
+		@param title title for the text. Only applicable when TaskType is RETRIEVAL_DOCUMENT
+		@param type task type for which the embeddings will be used
+		@param key API key		
+		~#
+		function : EmbedContent(content : Content, title : String, type : Model->TaskType, key : String) ~ Float[] {
+			# content
+			parts := content->GetParts();
+			content_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+
+			parts_obj_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+			each(part in parts) {
+				if(part->TypeOf(TextPart)) {
+					part_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+					text_part := part->As(TextPart);
+					part_obj_json->Insert("text", text_part->GetText());
+					parts_obj_json->Add(part_obj_json);
+				};
+			};
+			content_obj_json->Insert("parts", parts_obj_json);
+	
+			embed_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			embed_obj_json->Insert("content", content_obj_json);
+
+			if(type = Model->TaskType->RETRIEVAL_DOCUMENT) {
+				embed_obj_json->Insert("title", title);
+			};
+			
+			select(type) {
+					label Model->TaskType->RETRIEVAL_QUERY {
+						embed_obj_json->Insert("taskType", "RETRIEVAL_QUERY");
+					}
+					
+					label Model->TaskType->RETRIEVAL_DOCUMENT {
+						embed_obj_json->Insert("taskType", "RETRIEVAL_DOCUMENT");
+					}
+					
+					label Model->TaskType->SEMANTIC_SIMILARITY {
+						embed_obj_json->Insert("taskType", "SEMANTIC_SIMILARITY");
+					}
+					
+					label Model->TaskType->CLASSIFICATION {
+						embed_obj_json->Insert("taskType", "CLASSIFICATION");
+					}
+					
+					label Model->TaskType->CLUSTERING {
+						embed_obj_json->Insert("taskType", "CLUSTERING");
+					}
+			};
+			# embed_obj_json->ToString()->PrintLine();
+			
+			model := "models/embedding-001";
+			url := Url->New("https://generativelanguage.googleapis.com/v1/{$model}:embedContent?key={$key}");
+			if(url->GetQueryParameters()->Has("key")) {
+				response_json := PostRequest(embed_obj_json, url);
+				if(response_json <> Nil) {
+					values_array_json := response_json->FindElements("embedding/values");
+					# values_array_json->Size()->PrintLine();
+
+					values := Float->New[values_array_json->Size()];
+					each(i : values_array_json) {
+						value_json := values_array_json->Get(i);
+						values[i] := value_json->GetFloat();
+					};
+
+					return values;
+				};
+			};
+						
 			return Nil;
 		}
 
