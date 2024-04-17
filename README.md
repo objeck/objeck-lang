@@ -15,14 +15,19 @@
 Objeck is a fast, intuitive, and lightweight programming language that supports both object-oriented and functional programming paradigms, and is designed to be compatible with multiple platforms, including Windows, Linux, and macOS.
 
 ```ruby
-class Hello {
-   function : Main(args : String[]) ~ Nil {
-      hiya := Collection.Vector->New()<String>
-      hiya->AddBack("Hello World")
-      hiya->AddBack("Καλημέρα κόσμε")
-      hiya->AddBack("こんにちは 世界")
-      hiya->Each(\^(h) => h->PrintLine())
-   }
+use API.Google.Gemini, System.IO.Filesystem;
+
+class IdentifyImage {
+  function : Main(args : String[]) ~ Nil {
+    content := Content->New("user")->AddPart(TextPart->New("What number is this image showing?"))
+      ->AddPart(BinaryPart->New(FileReader->ReadBinaryFile("thirdteen.png"), "image/png"))
+      ->AddPart(TextPart->New("Format output as JSON"));
+
+    candidates := Model->GenerateContent("models/gemini-pro-vision", content, EndPoint->GetApiKey());
+    if(candidates->Size() > 0) {
+      candidates->First()->GetAllText()->Trim()->PrintLine();
+    };
+  }
 }
 ```
 
