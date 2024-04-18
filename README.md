@@ -57,7 +57,19 @@ Want to get started? Take a look at the [language guide](https://objeck.org/gett
 ## What's New?
 
 * v2024.4.0
-  * Google Gemini API support
+  * Added support for Google DeepMind (Gemini) APIs
+    * Model
+    * Corpus (v1beta)
+    * Chat
+  * Open AI support for external function calls
+  * OAuth2 support (session and file based support)
+  * Improved support for Date <=> String operations
+  * Improved Base64 encoding and decoding
+  * Added support for private functions
+  * Tuples classes moved to Collection.Tuple
+  * Added 'First' and 'Last' methods to Vector classes
+  * Fixed ARM64 JIT compiler 'eor' instruction issue impacting macOS and ARM64
+
 
 * v2024.3.0 [current release]
   * Added support for OpenAI APIs
