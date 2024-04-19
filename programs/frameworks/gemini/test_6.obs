@@ -1,0 +1,38 @@
+use API.Google.Gemini, System.IO.Filesystem;
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		content := Content->New("user")->AddPart(TextPart->New("The most popular snack is almonds because they are hard"));
+		first_embedding := Model->EmbedContent(content, EndPoint->GetApiKey());
+
+		content := Content->New("user")->AddPart(TextPart->New("The most popular snack is cashews because they are hard"));
+		second_embedding := Model->EmbedContent(content, EndPoint->GetApiKey());
+
+		if(first_embedding->Size() = second_embedding->Size()) {
+			embeddings := Float->New[first_embedding->Size(), 2];
+			each(i : first_embedding) {
+				embeddings[i,0] := first_embedding[i];
+				embeddings[i,1] := second_embedding[i];
+			};
+
+			EuclideanDistance(embeddings)->PrintLine();
+		};
+	}
+
+	function : EuclideanDistance(values : Float[,]) ~ Float {
+		dims := values->Size();
+		rows := dims[0];
+
+		accumulator := 0.0;
+		each(i : rows) {
+			value := values[i,0] - values[i,1];
+			if(value < 0.00001) {
+				value := 0.0;
+			};
+			accumulator += value->Sqrt();
+		};
+
+
+		return accumulator;
+	}
+}
