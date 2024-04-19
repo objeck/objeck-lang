@@ -30,6 +30,27 @@ bundle System.ML {
 	~#
 	class Matrix2D {
 		#~
+		Calculates the Euclidean Distance between the two vectors
+		@param m1 data matrix
+		@return Euclidean Distance between the two vectors
+		~#
+		function : native : EuclideanDistance(m1 : Float[,]) ~ Float {
+			dims := values->Size();
+			rows := dims[0];
+
+			accumulator := 0.0;
+			each(i : rows) {
+				value := values[i,0] - values[i,1];
+				if(value > -0.0001 & value < 0.0001) {
+					value := 0.0;
+				};
+				accumulator += value * value;
+			};
+
+			return accumulator->Sqrt();
+		}
+
+		#~
 		Solves a unit of equations
 		@param m1 data matrix
 		@param m2 result matrix

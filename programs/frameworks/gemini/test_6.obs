@@ -2,10 +2,10 @@ use API.Google.Gemini, System.IO.Filesystem;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		content := Content->New("user")->AddPart(TextPart->New("The most popular snack is almonds because they are hard"));
+		content := Content->New("user")->AddPart(TextPart->New("I like ice cream but love chocolate"));
 		first_embedding := Model->EmbedContent(content, EndPoint->GetApiKey());
 
-		content := Content->New("user")->AddPart(TextPart->New("The most popular snack is cashews because they are hard"));
+		content := Content->New("user")->AddPart(TextPart->New("I like ice cream but like chocolate more"));
 		second_embedding := Model->EmbedContent(content, EndPoint->GetApiKey());
 
 		if(first_embedding->Size() = second_embedding->Size()) {
@@ -15,24 +15,36 @@ class Test {
 				embeddings[i,1] := second_embedding[i];
 			};
 
-			EuclideanDistance(embeddings)->PrintLine();
+			System.ML.Matrix2D->EuclideanDistance(embeddings)->PrintLine();
+			System.ML.Matrix2D->EuclideanDistance(embeddings)->PrintLine();
 		};
+
+#~
+		# 8.158431221748456
+		embeddings := [
+			[0.0, 0.0],
+			[0.0, 0.0],
+			[0.0, 0.0],
+			[72.0, 80.0],
+			[12.9, 11.3]];
+
+		EuclideanDistance(embeddings)->PrintLine();
+~#		
 	}
 
-	function : EuclideanDistance(values : Float[,]) ~ Float {
+	function : native : EuclideanDistance(values : Float[,]) ~ Float {
 		dims := values->Size();
 		rows := dims[0];
 
 		accumulator := 0.0;
 		each(i : rows) {
 			value := values[i,0] - values[i,1];
-			if(value < 0.00001) {
+			if(value > -0.0001 & value < 0.0001) {
 				value := 0.0;
 			};
-			accumulator += value->Sqrt();
+			accumulator += value * value;
 		};
 
-
-		return accumulator;
+		return accumulator->Sqrt();
 	}
 }
