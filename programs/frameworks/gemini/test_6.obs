@@ -2,6 +2,7 @@ use API.Google.Gemini, System.IO.Filesystem;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
+#~		
 		content := Content->New("user")->AddPart(TextPart->New("I like ice cream but love chocolate"));
 		first_embedding := Model->EmbedContent(content, EndPoint->GetApiKey());
 
@@ -18,8 +19,8 @@ class Test {
 			System.ML.Matrix2D->EuclideanDistance(embeddings)->PrintLine();
 			System.ML.Matrix2D->EuclideanDistance(embeddings)->PrintLine();
 		};
+~#
 
-#~
 		# 8.158431221748456
 		embeddings := [
 			[0.0, 0.0],
@@ -29,7 +30,6 @@ class Test {
 			[12.9, 11.3]];
 
 		EuclideanDistance(embeddings)->PrintLine();
-~#		
 	}
 
 	function : native : EuclideanDistance(values : Float[,]) ~ Float {
@@ -39,7 +39,7 @@ class Test {
 		accumulator := 0.0;
 		each(i : rows) {
 			value := values[i,0] - values[i,1];
-			if(value > -0.0001 & value < 0.0001) {
+			if(value > -0.1e-4 & value < 0.1e-4) {
 				value := 0.0;
 			};
 			accumulator += value * value;
