@@ -188,7 +188,12 @@ bundle System.ML {
 					sum += matrix[r, i];
 				};
 
-				return sum / cols->As(Float);
+				dom := cols->As(Float);
+				if(dom = 0.0) {
+					return 0.0;
+				};
+
+				return sum / dom;
 			};
 			
 			return 0.0;
@@ -279,7 +284,12 @@ bundle System.ML {
 					sum += matrix[i, c];
 				};
 
-				return sum / rows->As(Float);
+				dom := rows->As(Float);
+				if(dom = 0.0) {
+					return 0.0;
+				};
+
+				return sum / dom;
 			};
 			
 			return 0.0;
@@ -586,7 +596,11 @@ bundle System.ML {
 			c := Float->New[m1_rows, m2_cols];
 			for(i := 0; i < m1_rows; i += 1;) {
 				for(j := 0; j < m2_cols; j += 1;) {
-					c[i,j] := m1[i,j] / m2[i,j];
+					dom := m2[i,j];
+					if(dom = 0.0) {
+						return c;
+					};
+					c[i,j] := m1[i,j] / dom;
 				};
 			};
 
