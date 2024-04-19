@@ -10,6 +10,15 @@ Google Gemini ML client APIs
 bundle API.Google.Gemini {
 	#~
 	Gemini model interactions
+	
+```
+content := Content->New("user")->AddPart(TextPart->New("What number is this image showing?"))
+  ->AddPart(BinaryPart->New(FileReader->ReadBinaryFile("thirdteen.png"), "image/png"));
+candidates := Model->GenerateContent("models/gemini-pro-vision", content, EndPoint->GetApiKey());
+each(candidate in candidates) {
+  candidate->ToString()->PrintLine();
+};
+```
 	~#
 	class Model from EndPoint implements Stringify {
 		@description : String;
@@ -161,15 +170,6 @@ bundle API.Google.Gemini {
 		@param model_name model name
 		@param content content for the model
 		@param key API key
-
-```
-content := Content->New("user")->AddPart(TextPart->New("What number is this image showing?"))
-  ->AddPart(BinaryPart->New(FileReader->ReadBinaryFile("thirdteen.png"), "image/png"));
-candidates := Model->GenerateContent("models/gemini-pro-vision", content, EndPoint->GetApiKey());
-each(candidate in candidates) {
-  candidate->ToString()->PrintLine();
-};
-```
 		~#
 		function : GenerateContent(model_name : String, content : Content, key : String) ~ Vector<Candidate> {
 			return GenerateContent(model_name, content, Nil, Nil, key);
