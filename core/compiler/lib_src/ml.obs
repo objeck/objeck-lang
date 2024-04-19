@@ -41,7 +41,7 @@ bundle System.ML {
 			accumulator := 0.0;
 			each(i : rows) {
 				value := ml[i,0] - ml[i,1];
-				if(value > -0.1e-4 & value < 0.1e-4) {
+				if(value > -0.1e-4 & value < -0.1e-4) {
 					value := 0.0;
 				};
 				accumulator += value * value;
