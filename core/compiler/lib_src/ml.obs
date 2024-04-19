@@ -35,12 +35,12 @@ bundle System.ML {
 		@return Euclidean Distance between the two vectors
 		~#
 		function : native : EuclideanDistance(m1 : Float[,]) ~ Float {
-			dims := values->Size();
+			dims := ml->Size();
 			rows := dims[0];
 
 			accumulator := 0.0;
 			each(i : rows) {
-				value := values[i,0] - values[i,1];
+				value := ml[i,0] - ml[i,1];
 				if(value > -0.1e-4 & value < 0.1e-4) {
 					value := 0.0;
 				};
