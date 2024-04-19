@@ -29,6 +29,14 @@ bundle System.ML {
 	2D matrix operations
 	~#
 	class Matrix2D {
+		function : private : SafeDiv(num : Float, dom : Float) ~ Float {
+			if(dom = 0.0) {
+				return dom;
+			};
+
+			return num / dom;
+		}
+
 		#~
 		Calculates the Euclidean Distance between the two vectors
 		@param m1 data matrix
@@ -188,12 +196,7 @@ bundle System.ML {
 					sum += matrix[r, i];
 				};
 
-				dom := cols->As(Float);
-				if(dom = 0.0) {
-					return 0.0;
-				};
-
-				return sum / dom;
+				return SafeDiv(sum, cols->As(Float));
 			};
 			
 			return 0.0;
@@ -207,7 +210,7 @@ bundle System.ML {
 			each(i : m_rows) {
 				total_sum += m[0,i];
 			};
-			m_avg := total_sum / m_rows->Size()->As(Float);
+			m_avg := SafeDiv(total_sum, m_rows->Size()->As(Float));
 			
 			total_sum := 0.0;
 			each(i : m_rows) {
@@ -215,7 +218,7 @@ bundle System.ML {
 				total_sum += term * term;
 			};
 
-			return Float->Sqrt(total_sum / (m_rows->As(Float) - 1.));
+			return Float->Sqrt(SafeDiv(total_sum, (m_rows->As(Float) - 1.)));
 		}
 
 		#~
@@ -284,12 +287,7 @@ bundle System.ML {
 					sum += matrix[i, c];
 				};
 
-				dom := rows->As(Float);
-				if(dom = 0.0) {
-					return 0.0;
-				};
-
-				return sum / dom;
+				return SafeDiv(sum, rows->As(Float));
 			};
 			
 			return 0.0;
@@ -303,7 +301,7 @@ bundle System.ML {
 			each(i : m_rows) {
 				total_sum += m[i,0];
 			};
-			m_avg := total_sum / m_rows->Size()->As(Float);
+			m_avg := SafeDiv(total_sum, m_rows->Size()->As(Float));
 
 			total_sum := 0.0;
 			each(i : m_rows) {
@@ -311,7 +309,7 @@ bundle System.ML {
 				total_sum += term * term;
 			};
 
-			return Float->Sqrt(total_sum / (m_rows->As(Float) - 1.));
+			return Float->Sqrt(SafeDiv(total_sum, (m_rows->As(Float) - 1.)));
 		}
 
 		#~
@@ -596,11 +594,7 @@ bundle System.ML {
 			c := Float->New[m1_rows, m2_cols];
 			for(i := 0; i < m1_rows; i += 1;) {
 				for(j := 0; j < m2_cols; j += 1;) {
-					dom := m2[i,j];
-					if(dom = 0.0) {
-						return c;
-					};
-					c[i,j] := m1[i,j] / dom;
+					c[i,j] := SafeDiv(m1[i,j], m2[i,j]);
 				};
 			};
 
@@ -651,7 +645,7 @@ bundle System.ML {
 		@return Sigmoid value
 		~#
 		function : native : Sigmoid(x : Float) ~ Float {
-			return 1.0 / (1.0 + Float->Pow(Float->E(), -1.0 * x));
+			return 1.0 / 1.0 + Float->Pow(Float->E(), -1.0 * x));
 		}
 
 		#~
@@ -2491,8 +2485,11 @@ each(neighbor := nearest) {
 						x_update += item->GetX();
 						y_update += item->GetY();
 					};
-					x_update /= bucket->Size()->As(Float);
-					y_update /= bucket->Size()->As(Float);
+
+					if(<>bucket->IsEmpty()) {
+						x_update /= bucket->Size()->As(Float);
+						y_update /= bucket->Size()->As(Float);
+					};
 
 					if(@debug) {
 						"C{$i}->{$x_update}, {$y_update}"->PrintLine();
