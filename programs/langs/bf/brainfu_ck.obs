@@ -100,7 +100,7 @@ class Brainfu_k {
 	
 	method : Read() ~ Byte {		
 		if(@input = Nil) {
-			@input := System.IO.Standard → ReadLine();
+			@input := System.IO.Console → ReadLine();
 		};
 		
 		if(@input_ptr < @input → Size()) {

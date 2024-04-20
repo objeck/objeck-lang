@@ -39,7 +39,7 @@ class AoC {
 				dist := ViewableDistance(@forest[i,j], i, j);
 				if(@debug) {
 					"({$i},{$j}):"->Print();
-					System.IO.Standard->Print(@forest[i,j])->Print('=')->PrintLine(dist);
+					System.IO.Console->Print(@forest[i,j])->Print('=')->PrintLine(dist);
 				};
 				if(dist > largest_dist) {
 					largest_dist := dist;

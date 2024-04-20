@@ -7107,7 +7107,7 @@ bundle System.IO {
  	#~
 	Provides standard I/O operations
 	~#
-	class Standard {
+	class Console {
 		#~
 		Reads bytes from STDIN
 		@param offset destination buffer offset

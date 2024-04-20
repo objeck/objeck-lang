@@ -212,7 +212,7 @@ class Test {
 
 				done := false;
 				do {
-					query := Standard->ReadLine();
+					query := Console->ReadLine();
 					if(query->Equals("/quit")) {
 						session->Close();		
 						done := true;

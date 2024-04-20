@@ -205,13 +205,13 @@ class ForcastDemo {
 
 	function : PromptGeocodeAddress() ~ Tuples.Pair<FloatRef, FloatRef> {
 		"Addess: "->Print();
-		address := System.IO.Standard->ReadLine();
+		address := System.IO.Console->ReadLine();
 
 		"City: "->Print();
-		city := System.IO.Standard->ReadLine();
+		city := System.IO.Console->ReadLine();
 
 		"State: "->Print();
-		state := System.IO.Standard->ReadLine();
+		state := System.IO.Console->ReadLine();
 
 		return GetLatLon(address, city, state);
 	}

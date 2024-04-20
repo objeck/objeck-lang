@@ -1,7 +1,7 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
 		input := Char->New[10];
-		System.IO.Standard->ReadBuffer(0, input->Size() - 1, input);
+		System.IO.Console->ReadBuffer(0, input->Size() - 1, input);
 		input->PrintLine();
 	}
 }

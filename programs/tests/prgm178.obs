@@ -6,7 +6,7 @@ class Test {
 			a->Print();
 			each(j : s) {
 				'\b'->Print();
-				Standard->Flush();
+				Console->Flush();
 			};
 			System.Concurrency.Thread->Sleep(500);
 		};

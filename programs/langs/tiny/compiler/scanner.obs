@@ -165,7 +165,7 @@ class Scanner {
 						};
 						
 						if(@line → Get(@index) <> '\'') {
-							System.IO.Standard → Print("{$@line_num}: *** Invalid token: char='") → Print(@line → Get(@index)) → PrintLine("' ***");
+							System.IO.Console → Print("{$@line_num}: *** Invalid token: char='") → Print(@line → Get(@index)) → PrintLine("' ***");
 							System.Runtime → Exit(1);
 						};
 						@index += 1;
@@ -293,7 +293,7 @@ class Scanner {
 							}
 							
 							other: {
-								System.IO.Standard → Print("{$@line_num}: *** Invalid token: char='") → Print(@line → Get(@index)) → PrintLine("' ***");
+								System.IO.Console → Print("{$@line_num}: *** Invalid token: char='") → Print(@line → Get(@index)) → PrintLine("' ***");
 								System.Runtime → Exit(1);
 							}
 						};

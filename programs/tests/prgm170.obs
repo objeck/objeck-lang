@@ -17,7 +17,7 @@ class JsonText  {
 					doc := FileReader->ReadFile(file_path);
 					parser := JsonParser->New(doc);
 
-					System.IO.Standard->Print('.')->Flush();
+					System.IO.Console->Print('.')->Flush();
 					
 					if(parser->Parse()) {
 						cred_score := parser->GetRoot()->FindElements("productFirmware/riskPercentilesV2/credentials");
