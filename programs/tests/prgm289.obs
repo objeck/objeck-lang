@@ -12,10 +12,10 @@ class Test {
 		c->ToHexString()->PrintLine();
 		c->PrintLine();
 #~
-		Standard->Print("a&b = ")->PrintLine(a and b);
-		Standard->Print("a&b = ")->PrintLine(a or b);
-		Standard->Print("a&b = ")->PrintLine(a xor b);
-		Standard->Print("~a = ")->PrintLine(not a);
+		Console->Print("a&b = ")->PrintLine(a and b);
+		Console->Print("a&b = ")->PrintLine(a or b);
+		Console->Print("a&b = ")->PrintLine(a xor b);
+		Console->Print("~a = ")->PrintLine(not a);
 ~#		
 	}
 

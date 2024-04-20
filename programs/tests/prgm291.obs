@@ -8,10 +8,10 @@ class HeapTest {
         h->Insert(33);
         h->Insert(3);
         
-        Standard->Print(h->Pop())->PrintLine();
-        Standard->Print(h->Pop())->PrintLine();
-        Standard->Print(h->Pop())->PrintLine();
-        Standard->Print(h->Pop())->PrintLine();
+        Console->Print(h->Pop())->PrintLine();
+        Console->Print(h->Pop())->PrintLine();
+        Console->Print(h->Pop())->PrintLine();
+        Console->Print(h->Pop())->PrintLine();
     }
 }
 

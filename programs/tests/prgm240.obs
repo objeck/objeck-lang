@@ -1,5 +1,5 @@
 use bundle Collection;
-use class System.IO.Standard, Foo, Int;
+use class System.IO.Console, Foo, Int;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
