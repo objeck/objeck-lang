@@ -1,0 +1,55 @@
+use Collection;
+
+class KMeanClustering {
+	@featuresData : Vector<FloatArrayRef[]>;
+	@clusters : Hash<String, Vector<FloatArrayRef[]>>;
+	@clusterCentroidValues : Hash<String, FloatArrayRef[]>;
+	@numberOfClusters : Int;
+	@numberOfFeatures : Int;
+	@numberEpochs : Int;
+
+	@debug : Bool;
+
+	function : Main(args : String[]) ~ Nil {
+		each(i : 10) {
+			Int->Random(0,3)->PrintLine();
+		};
+	}
+
+	New(featuresData : Vector<FloatArrayRef[]> , numberOfClusters : Int, numberOfFeatures : Int) {
+		@featuresData := featuresData;
+		@numberOfClusters := numberOfClusters;
+		@numberOfFeatures := numberOfFeatures;
+		
+		@numberEpochs := 1000;
+		@debug := true;
+
+		initializeModel();
+	}
+
+	function : private : getRandomNumberUsingNextInt(min : Int, max : Int) ~ Int {
+		return Int->Random(min, max - 1);
+	}
+
+	method : initializeModel() ~ Nil {
+		@clusters := Hash->New()<String, Vector<FloatArrayRef[]>>;
+		@clusterCentroidValues := Hash->New()<String, FloatArrayRef[]>;
+
+		for(i := 0; i < @numberOfClusters; i += 1;) {
+			list := Vector->New()<FloatArrayRef[]>;
+			randomIndex := getRandomNumberUsingNextInt(0, @featuresData->Size());
+
+			
+			initialValues := @featuresData->Get(randomIndex);
+			clusterId := "id_" + i;
+
+			@clusterCentroidValues->Insert(clusterId, initialValues);
+			if(@debug) {
+				System.IO.Console->Print("Initial  centroid value for Cluster: ")->Print(clusterId)->Print(" Values : ")->PrintLine(@initialValues->ToString());
+			}
+			@clusters->Insert(clusterId, list);
+			
+		}
+
+	}
+}
