@@ -12,7 +12,7 @@ use Data.CSV;
 #~
 Machine learning and data science routines
 ~#
-bundle System.ML {
+bundle System.ML.GOFAI {
 	class Proxy {
 		@lib_proxy : static : System.API.DllProxy;
 		
@@ -868,7 +868,7 @@ m2 := [
   [16.]
   [23.]];
 
-solver := System.ML.LinearSolver->New(m1, m2)->Calculate(1);
+solver := System.ML.GOFAI.LinearSolver->New(m1, m2)->Calculate(1);
 solver->GetRSquared()->PrintLine();
 ```
 	~#
@@ -892,13 +892,13 @@ solver->GetRSquared()->PrintLine();
 		@return equation coefficients and r-squared
 		~#
 		method : public : Calculate(offset : Int) ~ LinearResult {
-			coeff := System.ML.Matrix2D->Solve(@m1, @m2);
+			coeff := System.ML.GOFAI.Matrix2D->Solve(@m1, @m2);
 			r_sqrd := GetRSquared(coeff, offset);
 			return LinearResult->New(coeff, r_sqrd);
 		}
 
 		method : GetRSquared(c : Float[], offset : Int) ~ Float {
-			avg := System.ML.Matrix2D->AverageColumn(0, @m2);
+			avg := System.ML.GOFAI.Matrix2D->AverageColumn(0, @m2);
 
 			m1_dims := @m2->Size();
 			m2_rows := m1_dims[0];

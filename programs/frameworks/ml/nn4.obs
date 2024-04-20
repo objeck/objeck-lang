@@ -4,7 +4,7 @@ Make Your Own Neural Network
 ~#
 
 use System.IO.Filesystem;
-use System.ML;
+use System.ML.GOFAI;
 use System.Time;
 use Collection;
 

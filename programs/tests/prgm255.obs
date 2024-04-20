@@ -1,4 +1,4 @@
-use System.ML;
+use System.ML.GOFAI;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {

@@ -1,6 +1,6 @@
 use Collection;
 
-bundle System.ML {
+bundle System.ML.GOFAI {
 	class DecisionTree {
 		function : Main(args : String[]) ~ Nil {
 			p := TreeNode->New(20, 10);

@@ -1,5 +1,5 @@
 use Collection;
-use System.ML;
+use System.ML.GOFAI;
 
 class TestNetwork {
 	@input_nodes : Float;
