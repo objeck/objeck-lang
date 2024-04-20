@@ -645,7 +645,7 @@ bundle System.ML.GOFAI {
 		@return Sigmoid value
 		~#
 		function : native : Sigmoid(x : Float) ~ Float {
-			return 1.0 / 1.0 + Float->Pow(Float->E(), -1.0 * x));
+			return 1.0 / (1.0 + Float->Pow(Float->E(), -1.0 * x));
 		}
 
 		#~
