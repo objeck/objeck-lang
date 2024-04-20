@@ -1210,7 +1210,7 @@ if(args->Size() = 2) {
    };
 
    correct := 100.0 * (1.0 - failures->As(Float) / tests->Size()->As(Float));
-   System.IO.Standard->Print("Tests: ")->Print(tests->Size())->Print(", correct: ")->SetFloatPrecision(5)->Print(correct)->PrintLine("%");
+   System.IO.Console->Print("Tests: ")->Print(tests->Size())->Print(", correct: ")->SetFloatPrecision(5)->Print(correct)->PrintLine("%");
 }
 # train and store model
 else if(args->Size() = 1) {

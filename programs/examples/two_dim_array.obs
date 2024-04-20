@@ -1,12 +1,12 @@
 class TwoDimArray  {
 	function : Main(args : String[]) ~ Nil {
-		rows := Standard->ReadLine()->ToInt();
-		cols := Standard->ReadLine()->ToInt();
+		rows := Console->ReadLine()->ToInt();
+		cols := Console->ReadLine()->ToInt();
 
 		if(rows > 0 & cols > 0) {
 			array := Float->New[rows, cols];
 			array[0,0] := 42.0;
-			Standard->Print("The number at position [0,0] is ")->PrintLine(array[0,0]);		
+			Console->Print("The number at position [0,0] is ")->PrintLine(array[0,0]);		
 		};
 	}
 }
