@@ -3387,7 +3387,7 @@ bundle System {
 	#~
 	Holds a byte array
 	~#
-	class ByteArrayRef implements Primitive {
+	class ByteArrayRef implements Primitive, Stringify {
 		@values : Byte[];
 
 		#~
@@ -3421,12 +3421,16 @@ bundle System {
 		method : public : Set(values : Byte[]) ~ Nil {
 			@values := values;
 		}
+
+		method : public : ToString() ~ System.String {
+			return @values->ToString();
+		}
 	}
 
 	#~
 	Holds a character array
 	~#
-	class CharArrayRef implements Primitive {
+	class CharArrayRef implements Primitive, Stringify {
 		@values : Char[];
 
 		#~
@@ -3460,12 +3464,16 @@ bundle System {
 		method : public : Set(values : Char[]) ~ Nil {
 			@values := values;
 		}
+
+		method : public : ToString() ~ System.String {
+			return @values->ToString();
+		}
 	}
 	
 	#~
 	Holds an integer array
 	~#
-	class IntArrayRef implements Primitive {
+	class IntArrayRef implements Primitive, Stringify {
 		@values : Int[];
 
 		#~
@@ -3499,12 +3507,16 @@ bundle System {
 		method : public : Set(values : Int[]) ~ Nil {
 			@values := values;
 		}
+
+		method : public : ToString() ~ System.String {
+			return @values->ToString();
+		}
 	}
 
 	#~
 	Holds an boolean array
 	~#
-	class BoolArrayRef implements Primitive {
+	class BoolArrayRef implements Primitive, Stringify {
 		@values : Bool[];
 
 		#~
@@ -3538,12 +3550,16 @@ bundle System {
 		method : public : Set(values : Bool[]) ~ Nil {
 			@values := values;
 		}
+
+		method : public : ToString() ~ System.String {
+			return @values->ToString();
+		}
 	}
 
 	#~
 	Holds a float array
 	~#
-	class FloatArrayRef implements Primitive {
+	class FloatArrayRef implements Primitive, Stringify {
 		@values : Float[];
 
 		#~
@@ -3577,12 +3593,16 @@ bundle System {
 		method : public : Set(values : Float[]) ~ Nil {
 			@values := values;
 		}
+
+		method : public : ToString() ~ System.String {
+			return @values->ToString();
+		}
 	}
 
 	#~
 	Holds an base array
 	~#
-	class BaseArrayRef implements Primitive {
+	class BaseArrayRef implements Primitive, Stringify {
 		@values : Base[];
 
 		#~
@@ -3616,12 +3636,16 @@ bundle System {
 		method : public : Set(values : Base[]) ~ Nil {
 			@values := values;
 		}
+
+		method : public : ToString() ~ System.String {
+			return @values->ToString();
+		}
 	}
 
 	#~
 	Holds an array of 'Compare' values
 	~#
-	class CompareArrayRef implements Primitive {
+	class CompareArrayRef implements Primitive, Stringify {
 		@values : Compare[];
 
 		#~
@@ -3654,6 +3678,10 @@ bundle System {
 		~#
 		method : public : Set(values : Compare[]) ~ Nil {
 			@values := values;
+		}
+
+		method : public : ToString() ~ System.String {
+			return @values->ToString();
 		}
 	}
 	
@@ -3693,6 +3721,10 @@ bundle System {
 		~#
 		method : public : Set(values : String[]) ~ Nil {
 			@values := values;
+		}
+
+		method : public : ToString() ~ System.String {
+			return @values->ToString();
 		}
 	}
 	
@@ -4336,6 +4368,37 @@ each(i : cities) {
 		~#
 		method : public : ToString() ~ String {
 			return @self;
+		}
+
+		#~
+		Returns string of self
+		@return string of self
+		~#
+		method : public : ToString() ~ String {
+			return @self;
+		}
+
+		#~
+		Prints values
+		@param v values to print
+		~#
+		function : native : PrintLine(v : String[]) ~ Nil {
+			buffer := '[';
+
+			each(i : v) {
+				str := v[i];
+				buffer->Append('"');
+				buffer->Append(str);
+				buffer->Append('"');
+
+				if(i + 1 < v->Size()) {
+					buffer->Apeend(',')
+				};
+			};
+
+			buffer := ']';
+
+			return buffer;
 		}
 
 		#~
