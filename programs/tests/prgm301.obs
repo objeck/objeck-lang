@@ -156,4 +156,49 @@ class KMeanClustering {
 			classifiedData->AddBack(data);
 		}
 	}
+
+	method : coreClassifyingLogic(tempfeaturesData : Vector<FloatArrayRef[]>, previousKey : String) ~ Nil {
+		indexToBeRemoved := Vector->New()<IntRef>;
+		for(i := 0; i < tempfeaturesData->Size(); i += 1;) {
+			
+			euclideanDistance := Float->Inf();
+			destinationCluster := "";
+			data := tempfeaturesData->Get(i);
+#~
+			for(String clusterKey : clusterCentroidValues.keySet()) {
+				Double[] clusterCentroids = clusterCentroidValues.get(clusterKey);
+				Double sumSquareDistance = 0.00d;
+				for(int k = 0; k < data.length; k++) {
+					Double tempDistance = (clusterCentroids[k] - data[k]);
+					Double squareDistance = Math.pow(tempDistance, 2);
+					sumSquareDistance = sumSquareDistance + squareDistance;
+				}
+
+				Double clusterSpecificDistance = Math.sqrt(sumSquareDistance);
+				if(clusterSpecificDistance.compareTo(euclideanDistance) < 0) {
+						euclideanDistance = clusterSpecificDistance;
+						destinationCluster = clusterKey;
+					}
+				}
+
+				if(!destinationCluster.equalsIgnoreCase(previousKey)) {
+					List<Double[]> classifiedData = clusters.get(destinationCluster);
+
+					if(classifiedData == null) {
+						classifiedData = new ArrayList<>();
+					}
+
+					classifiedData.add(data);
+					// Cannot remove index in same iteration because of concurrent modification
+					// exception
+					indexToBeRemoved.add(i);
+				}
+			}
+
+			for(int i = 0; i < indexToBeRemoved.size(); i++) {
+				tempfeaturesData.remove(i);
+			}
+~#
+		}		
+	}
 }
