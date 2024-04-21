@@ -72,39 +72,40 @@ class KMeanClustering {
 			cluster_keys_values := @clusters->GetKeyValues()<Pair<String, Vector<FloatArrayRef[]>>>;
 			each(cluster_key_value in cluster_keys_values) {
 				key := cluster_key_value->GetFirst();
-			
+				tempfeaturesData := cluster_key_value->GetSecond();
+
 				# This is move cluster value based on mean of the data points in the cluster to
 				# improve clustering further
 				# TODO this could be easily done in core processing method for code reuse
 				# perspective
 				clusterValues := cluster_key_value->GetSecond();
 
-#~				
-				Double[] newCentriodValues := new Double[clusterValues.length];
-				Arrays.fill(newCentriodValues, 0.0d);
-				for(int i := 0; i < tempfeaturesData.size(); i++) {
-					Double[] data := tempfeaturesData.get(i);
-					for(int j := 0; j < newCentriodValues.length; j++) {
+				newCentriodValues := Float->New[clusterValues->Size()]
+#				newCentriodValues := FloatArrayRef->New();
+				
+				for(i := 0; i < tempfeaturesData->Size(); i += 1;) {
+					data := tempfeaturesData->Get(i)<FloatArrayRef>->Get();
+					for(j := 0; j < newCentriodValues->Size(); j+= 1;) {
 						newCentriodValues[j] := newCentriodValues[j] + data[j];
 					}
 				}
 
 				# TODO this can be easily done in previous loop from code optimization
 				# perspective
-				for(int i := 0; i < newCentriodValues.length; i++) {
-					newCentriodValues[i] := newCentriodValues[i] / tempfeaturesData.size();
+				for(i := 0; i < newCentriodValues->Size(); i += 1;) {
+					newCentriodValues[i] := newCentriodValues[i] / tempfeaturesData->Size();
 				}
-
-				System.out.println(" Old centroid value for Cluster: " + key + " Old Value : "
-					+ Arrays.toString(clusterValues) + " New Values: " + Arrays.toString(newCentriodValues)
-					+ " Previous Number of datapoints in this cluster: " + tempfeaturesData.size());
-
+#~
+				System.IO.Console(" Old centroid value for Cluster: ")->Print(key)->Print(" Old Value : ")
+					->Print(Arrays.toString(clusterValues)->Print(" New Values: )"->Print(Arrays.toString(newCentriodValues)
+					->Print(" Previous Number of datapoints in this cluster: )"->Print(tempfeaturesData->Size());
+~#
 				# Reassign new mean values to centroids based on mean calculation done above.
-				clusterCentroidValues.put(key, newCentriodValues);
+				@clusterCentroidValues->Insert(key, FloatArrayRef->New(newCentriodValues));
 
 				# This is method does reassignment of Cluster based on eulucdean distance
 				coreClassifyingLogic(tempfeaturesData, key);
-~#				
+				
 			}
 		};
 
