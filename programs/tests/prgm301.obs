@@ -67,36 +67,36 @@ class KMeanClustering {
 		while(keepOnClassifying()) {
 #~			
 			for(String key : clusters.keySet()) {
-				List<Double[]> tempfeaturesData = clusters.get(key);
+				List<Double[]> := clusters.get(key);
 
-				// This is move cluster value based on mean of the data points in the cluster to
-				// improve clustering further
-				// TODO this could be easily done in core processing method for code reuse
-				// perspective
-				Double[] clusterValues = clusterCentroidValues.get(key);
-				Double[] newCentriodValues = new Double[clusterValues.length];
+				# This is move cluster value based on mean of the data points in the cluster to
+				# improve clustering further
+				# TODO this could be easily done in core processing method for code reuse
+				# perspective
+				Double[] clusterValues := clusterCentroidValues.get(key);
+				Double[] newCentriodValues := new Double[clusterValues.length];
 				Arrays.fill(newCentriodValues, 0.0d);
-				for(int i = 0; i < tempfeaturesData.size(); i++) {
-					Double[] data = tempfeaturesData.get(i);
-					for(int j = 0; j < newCentriodValues.length; j++) {
-						newCentriodValues[j] = newCentriodValues[j] + data[j];
+				for(int i := 0; i < tempfeaturesData.size(); i++) {
+					Double[] data := tempfeaturesData.get(i);
+					for(int j := 0; j < newCentriodValues.length; j++) {
+						newCentriodValues[j] := newCentriodValues[j] + data[j];
 					}
 				}
 
-				// TODO this can be easily done in previous loop from code optimization
-				// perspective
-				for(int i = 0; i < newCentriodValues.length; i++) {
-					newCentriodValues[i] = newCentriodValues[i] / tempfeaturesData.size();
+				# TODO this can be easily done in previous loop from code optimization
+				# perspective
+				for(int i := 0; i < newCentriodValues.length; i++) {
+					newCentriodValues[i] := newCentriodValues[i] / tempfeaturesData.size();
 				}
 
 				System.out.println(" Old centroid value for Cluster: " + key + " Old Value : "
 					+ Arrays.toString(clusterValues) + " New Values: " + Arrays.toString(newCentriodValues)
 					+ " Previous Number of datapoints in this cluster: " + tempfeaturesData.size());
 
-				// Reassign new mean values to centroids based on mean calculation done above.
+				# Reassign new mean values to centroids based on mean calculation done above.
 				clusterCentroidValues.put(key, newCentriodValues);
 
-				// This is method does reassignment of Cluster based on eulucdean distance
+				# This is method does reassignment of Cluster based on eulucdean distance
 				coreClassifyingLogic(tempfeaturesData, key);
 			}
 ~#			
