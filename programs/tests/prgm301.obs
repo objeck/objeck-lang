@@ -65,15 +65,17 @@ class KMeanClustering {
 
 	method : refiningKClusters() ~ Hash<String, FloatArrayRef> {
 		while(keepOnClassifying()) {
-#~			
-			for(String key : clusters.keySet()) {
-				List<Double[]> := clusters.get(key);
-
+			cluster_keys_values := @clusters->GetKeyValues()<Pair<String, Vector<FloatArrayRef[]>>>;
+			each(cluster_key_value in cluster_keys_values) {
+				key := cluster_key_value->GetFirst();
+			
 				# This is move cluster value based on mean of the data points in the cluster to
 				# improve clustering further
 				# TODO this could be easily done in core processing method for code reuse
 				# perspective
-				Double[] clusterValues := clusterCentroidValues.get(key);
+				clusterValues := cluster_key_value->GetSecond();
+
+#~				
 				Double[] newCentriodValues := new Double[clusterValues.length];
 				Arrays.fill(newCentriodValues, 0.0d);
 				for(int i := 0; i < tempfeaturesData.size(); i++) {
@@ -98,8 +100,8 @@ class KMeanClustering {
 
 				# This is method does reassignment of Cluster based on eulucdean distance
 				coreClassifyingLogic(tempfeaturesData, key);
+~#				
 			}
-~#			
 		};
 
 		return @clusterCentroidValues;
