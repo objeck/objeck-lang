@@ -27,6 +27,11 @@ class KMeanClustering {
 		initializeModel();
 	}
 
+	method : public : buildCluster() ~ Hash<String, FloatArrayRef> {
+		initialClustersCreation();
+		return refiningKClusters();
+	}
+
 	function : private : getRandomNumberUsingNextInt(min : Int, max : Int) ~ Int {
 		return Int->Random(min, max - 1);
 	}
@@ -45,11 +50,103 @@ class KMeanClustering {
 
 			@clusterCentroidValues->Insert(clusterId, initialValues);
 			if(@debug) {
-				System.IO.Console->Print("Initial  centroid value for Cluster: ")->Print(clusterId)->Print(" Values : ")->PrintLine(@initialValues->ToString());
+				values := initialValues->Get();
+				System.IO.Console->Print("Initial  centroid value for Cluster: ")->Print(clusterId)->Print(" Values : ")->PrintLine(values->ToString());
 			}
-			@clusters->Insert(clusterId, list);
-			
+			@clusters->Insert(clusterId, list);			
 		}
+	}
 
+	method : initialClustersCreation() ~ Nil {
+		coreClassifyingLogic(@featuresData);
+	}
+
+###########################
+
+	method : refiningKClusters() ~ Hash<String, FloatArrayRef> {
+		while(keepOnClassifying()) {
+#~			
+			for(String key : clusters.keySet()) {
+				List<Double[]> tempfeaturesData = clusters.get(key);
+
+				// This is move cluster value based on mean of the data points in the cluster to
+				// improve clustering further
+				// TODO this could be easily done in core processing method for code reuse
+				// perspective
+				Double[] clusterValues = clusterCentroidValues.get(key);
+				Double[] newCentriodValues = new Double[clusterValues.length];
+				Arrays.fill(newCentriodValues, 0.0d);
+				for(int i = 0; i < tempfeaturesData.size(); i++) {
+					Double[] data = tempfeaturesData.get(i);
+					for(int j = 0; j < newCentriodValues.length; j++) {
+						newCentriodValues[j] = newCentriodValues[j] + data[j];
+					}
+				}
+
+				// TODO this can be easily done in previous loop from code optimization
+				// perspective
+				for(int i = 0; i < newCentriodValues.length; i++) {
+					newCentriodValues[i] = newCentriodValues[i] / tempfeaturesData.size();
+				}
+
+				System.out.println(" Old centroid value for Cluster: " + key + " Old Value : "
+					+ Arrays.toString(clusterValues) + " New Values: " + Arrays.toString(newCentriodValues)
+					+ " Previous Number of datapoints in this cluster: " + tempfeaturesData.size());
+
+				// Reassign new mean values to centroids based on mean calculation done above.
+				clusterCentroidValues.put(key, newCentriodValues);
+
+				// This is method does reassignment of Cluster based on eulucdean distance
+				coreClassifyingLogic(tempfeaturesData, key);
+			}
+~#			
+		};
+
+		return @clusterCentroidValues;
+	}
+
+###########################
+
+	method : keepOnClassifying() ~ Bool {
+		if(@numberEpochs <= 0) {
+			return false;
+		};
+		@numberEpochs -= 1;
+		
+		return true;
+	}
+
+	method : coreClassifyingLogic(tempfeaturesData : Vector<FloatArrayRef[]>) ~ Nil {
+		for(i := 0; i < tempfeaturesData->Size(); i += 1;) {
+			euclideanDistance := Float->Inf();
+			destinationCluster := "";
+			data := tempfeaturesData->Get(i);
+
+			cluster_centroid_key_values := @clusterCentroidValues->GetKeyValues()<Pair<String, FloatArrayRef>>;
+			each(cluster_centroid_key_value in cluster_centroid_key_values) {
+				clusterKey := cluster_centroid_key_value->GetFirst();
+				clusterCentroids := cluster_centroid_key_value->GetSecond()->Get();
+				sumSquareDistance := 0.00;
+
+				raw_data := data->Get();
+				for(k := 0; k < raw_data->Size(); k += 1;) {
+					tempDistance := (clusterCentroids[k] - raw_data[k]);
+					squareDistance := Float->Pow(tempDistance, 2);
+					sumSquareDistance := sumSquareDistance + squareDistance;
+				}
+				clusterSpecificDistance := Float->Sqrt(sumSquareDistance);
+
+				if(clusterSpecificDistance->Compare(euclideanDistance) < 0) {
+					euclideanDistance := clusterSpecificDistance;
+					destinationCluster := clusterKey;
+				}
+			}
+
+			classifiedData := @clusters->Find(destinationCluster)<Vector<FloatArrayRef[]>>;
+			if(classifiedData = Nil) {
+				classifiedData := Vector->New()<FloatArrayRef[]>;
+			};
+			classifiedData->AddBack(data);
+		}
 	}
 }
