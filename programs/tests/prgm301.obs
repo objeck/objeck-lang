@@ -1,3 +1,7 @@
+#~~
+Credit: Learner1067, https://medium.com/@nirmal1067/java-k-mean-clustering-with-math-4077a6e2b6c0
+~~#
+
 use Collection;
 
 class KMeanClustering {
