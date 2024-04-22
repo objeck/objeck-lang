@@ -2322,7 +2322,7 @@ bundle System {
 				return 0;
 			};
 
-			return Int->Random(range_end - range_start) + range_start;	
+			return Float->Random(range_end - range_start) + range_start;	
 		}
 		
 		#~
