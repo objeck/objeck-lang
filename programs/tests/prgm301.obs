@@ -30,18 +30,25 @@ class KMeans {
 		data->AddBack(FloatArrayRef->New([8.8238, 0.295231]));
 		data->Size()->PrintLine();
 
-		centroids := Vector->New()<FloatArrayRef>;
-		centroids->AddBack(FloatArrayRef->New([1.75, 6.25]));
-		centroids->AddBack(FloatArrayRef->New([4.25, 3.5]));
+FloatArrayRef->New([8.8238, 0.295231])->ToString()->PrintLine();
 
-		groups := Vector->New[centroids->Size()]<Vector<FloatArrayRef>>;
+		centroids := Vector->New()<FloatArrayRef>;
+		centroids->AddBack(FloatArrayRef->New([1.75, 6.25])); # should be random
+		centroids->AddBack(FloatArrayRef->New([4.25, 3.5])); # should be random
+		group_labels := ["group-a","group-b"];
+
+		groups := Hash->New()<String, Vector<FloatArrayRef>>;
+		each(centroid_label in group_labels) {
+			groups->Insert(centroid_label, Vector->New()<FloatArrayRef>);
+		};
+
 		each(datum in data) {
 			shortest_index := -1;
 			shortest_distance := Float->Inf();
 			
 			each(i : centroids) {
 				centroid := centroids->Get(i);
-				
+
 				distance := Distance(datum, centroid);
 				if(distance <= shortest_distance) {
 					shortest_distance := distance;
@@ -49,29 +56,27 @@ class KMeans {
 				}
 			};
 
-			group := groups[shortest_index];
-			if(group = Nil) {
-				group := Vector->New()<Vector<FloatArrayRef>>;
-				groups[shortest_index] := group;
-			}
-			group->AddBack(data);
-			"{$shortest_index}: {$shortest_distance}"->PrintLine();
+			nearest_centroid := centroids->Get(shortest_index);
+			nearest_centroid_label := group_labels[shortest_index];
+
+			group := groups->Find(nearest_centroid_label)<FloatArrayRef>;
+			group->AddBack(nearest_centroid);
+			
+#			"{$nearest_centroid}: {$nearest_centroid_label}"->PrintLine();
 		};
 
-		each(i : groups) {
-			group := groups[i];
-			group->Size()->PrintLine();
-		}
+		group_key_values := groups->GetKeyValues()<Pair<String, Vector<FloatArrayRef>>>;
+		each(group_key_value in group_key_values) {
+			group_label := group_key_value->GetFirst();
+			group := group_key_value->GetSecond();
+			"{$group_label}: {$group}"->PrintLine();
+		};
 	}
 
 	New(buckets : Int, bucket_labels : String[], data : Vector<FloatArrayRef>) {
 		@buckets := buckets;
 		@bucket_labels := bucket_labels;
 		@data := data;
-	}
-
-	method : public : Group() ~ Nil {
-
 	}
 
 	function : native : Distance(left : FloatArrayRef, right : FloatArrayRef) ~ Float {
