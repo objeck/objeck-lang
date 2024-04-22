@@ -5,11 +5,7 @@ Credit: Learner1067, https://medium.com/@nirmal1067/java-k-mean-clustering-with-
 use Collection;
 
 class KMeans {
-	@buckets : Int;
-	@bucket_labels : String[];
-	@data : Vector<FloatArrayRef>;
-
-	@debug : Bool;
+	@debug : static : Bool;
 
 	function : Main(args : String[]) ~ Nil {
 		data := Vector->New()<FloatArrayRef>;
@@ -28,55 +24,130 @@ class KMeans {
 		data->AddBack(FloatArrayRef->New([1.519242, 4.482188]));
 		data->AddBack(FloatArrayRef->New([5.263285, 0.684887]));
 		data->AddBack(FloatArrayRef->New([8.8238, 0.295231]));
-		data->Size()->PrintLine();
+		
+		group_labels := ["group-a","group-b", "group-c"];
 
-FloatArrayRef->New([8.8238, 0.295231])->ToString()->PrintLine();
+		@debug := true;
+		Group(group_labels, data, 2, 0.0, 10.0);
+	}
 
-		centroids := Vector->New()<FloatArrayRef>;
-		centroids->AddBack(FloatArrayRef->New([1.75, 6.25])); # should be random
-		centroids->AddBack(FloatArrayRef->New([4.25, 3.5])); # should be random
-		group_labels := ["group-a","group-b"];
-
+	function : native : Group(group_labels : String[], data : Vector<FloatArrayRef>, length : Int, min_value : Float, max_value : Float) ~ Nil {
+		centroids := FloatArrayRef->New[group_labels->Size()];
+		each(i : centroids) {
+			random_values := Float->New[length];
+			each(j : random_values) {
+				random_values[j] := Float->Random(min_value, max_value);
+			};
+			centroids[i] := FloatArrayRef->New(random_values);
+		};
+		updated_centroids := FloatArrayRef->New[group_labels->Size()];
+		
 		groups := Hash->New()<String, Vector<FloatArrayRef>>;
 		each(centroid_label in group_labels) {
 			groups->Insert(centroid_label, Vector->New()<FloatArrayRef>);
 		};
 
-		each(datum in data) {
-			shortest_index := -1;
-			shortest_distance := Float->Inf();
-			
-			each(i : centroids) {
-				centroid := centroids->Get(i);
+		iter := 0;
+		has_changed := true;
+		while(has_changed) {
+			if(@debug) {
+				"=== {$iter} ==="->PrintLine();
+			}
 
-				distance := Distance(datum, centroid);
-				if(distance <= shortest_distance) {
-					shortest_distance := distance;
-					shortest_index := i;
-				}
+			each(datum in data) {
+				shortest_index := -1;
+				shortest_distance := Float->Inf();
+				
+				each(i : centroids) {
+					centroid := centroids[i];
+
+					distance := Distance(datum, centroid);
+					if(distance <= shortest_distance) {
+						shortest_distance := distance;
+						shortest_index := i;
+					}
+				};
+
+				nearest_centroid_label := group_labels[shortest_index];
+				group := groups->Find(nearest_centroid_label)<FloatArrayRef>;
+				group->AddBack(datum);
+				
+				if(@debug) {
+#					"{$datum}: {$nearest_centroid_label}"->PrintLine();
+				};
 			};
 
-			nearest_centroid := centroids->Get(shortest_index);
-			nearest_centroid_label := group_labels[shortest_index];
+			group_key_values := groups->GetKeyValues()<Pair<String, Vector<FloatArrayRef>>>;
+			each(i : group_key_values) {
+				group_key_value := group_key_values->Get(i);
 
-			group := groups->Find(nearest_centroid_label)<FloatArrayRef>;
-			group->AddBack(nearest_centroid);
-			
-#			"{$nearest_centroid}: {$nearest_centroid_label}"->PrintLine();
-		};
+				group_label := group_key_value->GetFirst();
+				group := group_key_value->GetSecond();
 
-		group_key_values := groups->GetKeyValues()<Pair<String, Vector<FloatArrayRef>>>;
-		each(group_key_value in group_key_values) {
-			group_label := group_key_value->GetFirst();
-			group := group_key_value->GetSecond();
-			"{$group_label}: {$group}"->PrintLine();
+				if(@debug) {
+					group_size := group->Size();
+					"label='{$group_label}', size={$group_size}: {$group}"->PrintLine();
+				};
+
+				updated_centroids[i] := Average(group, length);
+			};
+
+			has_changed := HasChanged(centroids, updated_centroids);
+			if(has_changed) {
+				centroids := updated_centroids;
+				updated_centroids := FloatArrayRef->New[group_labels->Size()];
+
+"????"->PrintLine();				
+				each(centroid_label in group_labels) {
+					if(groups->Remove(centroid_label)) {
+						groups->Insert(centroid_label, Vector->New()<FloatArrayRef>);
+					};
+				};
+			};
+
+			# update
+			iter += 1;
 		};
 	}
 
-	New(buckets : Int, bucket_labels : String[], data : Vector<FloatArrayRef>) {
-		@buckets := buckets;
-		@bucket_labels := bucket_labels;
-		@data := data;
+	function : native : HasChanged(old_centroids : FloatArrayRef[], new_centroids : FloatArrayRef[]) ~ Bool {
+		ok := false;
+		each(i : old_centroids) {
+
+
+			old_centroid_values := old_centroids[i]->Get();
+			new_centroid_values := new_centroids[i]->Get();
+			
+			each(j : old_centroid_values) {
+				old_centroid_value := old_centroid_values[j];
+				new_centroid_value := new_centroid_values[j];
+
+				ok := Float->Abs(old_centroid_value - new_centroid_value) < 0.001;
+				if(<>ok) {
+					return true;
+				}
+"{$old_centroid_value}, {$new_centroid_value}: unchanged={$ok}"->PrintLine();
+			};
+"---"->PrintLine();			
+		};
+
+"==="->PrintLine();			
+		return false;
+	}
+
+	function : native : Average(group : Vector<FloatArrayRef>, length : Int) ~FloatArrayRef {
+		average_values := Float->New[length];
+		each(i : average_values) {
+			sum := 0.0;
+			each(array in group) {
+				array_values := array->Get();
+				sum += array_values[i];
+			};
+			avg := sum / group->Size()->As(Float);
+			average_values[i] := avg;
+		}
+
+		return FloatArrayRef->New(average_values);
 	}
 
 	function : native : Distance(left : FloatArrayRef, right : FloatArrayRef) ~ Float {
