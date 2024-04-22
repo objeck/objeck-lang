@@ -4,201 +4,31 @@ Credit: Learner1067, https://medium.com/@nirmal1067/java-k-mean-clustering-with-
 
 use Collection;
 
-class KMeanClustering {
-	@featuresData : Vector<FloatArrayRef[]>;
-	@clusters : Hash<String, Vector<FloatArrayRef[]>>;
-	@clusterCentroidValues : Hash<String, FloatArrayRef[]>;
-	@numberOfClusters : Int;
-	@numberOfFeatures : Int;
-	@numberEpochs : Int;
+class KMeans {
+	@buckets : Int;
+	@bucket_labels : String[];
+	@data : Vector<FloatArrayRef>;
 
 	@debug : Bool;
 
 	function : Main(args : String[]) ~ Nil {
-		each(i : 10) {
-			Int->Random(0,3)->PrintLine();
-		};
+		x := Float->Random(0.0, 1.0);
+		y := Float->Random(0.0, 1.0);
+
+		"{$x}, {$y}"->PrintLine();
+#~		
+		data := Vector->New()<FloatArrayRef>;
+		data->AddBack(FloatArrayRef->New([0.0,1.1]));
+~#		
 	}
 
-	New(featuresData : Vector<FloatArrayRef[]> , numberOfClusters : Int, numberOfFeatures : Int) {
-		@featuresData := featuresData;
-		@numberOfClusters := numberOfClusters;
-		@numberOfFeatures := numberOfFeatures;
-		
-		@numberEpochs := 1000;
-		@debug := true;
-
-		initializeModel();
+	New(buckets : Int, bucket_labels : String[], data : Vector<FloatArrayRef>) {
+		@buckets := buckets;
+		@bucket_labels := bucket_labels;
+		@data := data;
 	}
 
-	method : public : buildCluster() ~ Hash<String, FloatArrayRef> {
-		initialClustersCreation();
-		return refiningKClusters();
-	}
+	method : public : Group() ~ Nil {
 
-	function : private : getRandomNumberUsingNextInt(min : Int, max : Int) ~ Int {
-		return Int->Random(min, max - 1);
-	}
-
-	method : initializeModel() ~ Nil {
-		@clusters := Hash->New()<String, Vector<FloatArrayRef[]>>;
-		@clusterCentroidValues := Hash->New()<String, FloatArrayRef[]>;
-
-		for(i := 0; i < @numberOfClusters; i += 1;) {
-			list := Vector->New()<FloatArrayRef[]>;
-			randomIndex := getRandomNumberUsingNextInt(0, @featuresData->Size());
-
-			
-			initialValues := @featuresData->Get(randomIndex);
-			clusterId := "id_" + i;
-
-			@clusterCentroidValues->Insert(clusterId, initialValues);
-			if(@debug) {
-				values := initialValues->Get();
-				System.IO.Console->Print("Initial  centroid value for Cluster: ")->Print(clusterId)->Print(" Values : ")->PrintLine(values->ToString());
-			}
-			@clusters->Insert(clusterId, list);			
-		}
-	}
-
-	method : initialClustersCreation() ~ Nil {
-		coreClassifyingLogic(@featuresData);
-	}
-
-###########################
-
-	method : refiningKClusters() ~ Hash<String, FloatArrayRef> {
-		while(keepOnClassifying()) {
-			cluster_keys_values := @clusters->GetKeyValues()<Pair<String, Vector<FloatArrayRef[]>>>;
-			each(cluster_key_value in cluster_keys_values) {
-				key := cluster_key_value->GetFirst();
-				tempfeaturesData := cluster_key_value->GetSecond();
-
-				# This is move cluster value based on mean of the data points in the cluster to
-				# improve clustering further
-				# TODO this could be easily done in core processing method for code reuse
-				# perspective
-				clusterValues := cluster_key_value->GetSecond();
-
-				newCentriodValues := Float->New[clusterValues->Size()]
-#				newCentriodValues := FloatArrayRef->New();
-				
-				for(i := 0; i < tempfeaturesData->Size(); i += 1;) {
-					data := tempfeaturesData->Get(i)<FloatArrayRef>->Get();
-					for(j := 0; j < newCentriodValues->Size(); j+= 1;) {
-						newCentriodValues[j] := newCentriodValues[j] + data[j];
-					}
-				}
-
-				# TODO this can be easily done in previous loop from code optimization
-				# perspective
-				for(i := 0; i < newCentriodValues->Size(); i += 1;) {
-					newCentriodValues[i] := newCentriodValues[i] / tempfeaturesData->Size();
-				}
-#~
-				System.IO.Console(" Old centroid value for Cluster: ")->Print(key)->Print(" Old Value : ")
-					->Print(Arrays.toString(clusterValues)->Print(" New Values: )"->Print(Arrays.toString(newCentriodValues)
-					->Print(" Previous Number of datapoints in this cluster: )"->Print(tempfeaturesData->Size());
-~#
-				# Reassign new mean values to centroids based on mean calculation done above.
-				@clusterCentroidValues->Insert(key, FloatArrayRef->New(newCentriodValues));
-
-				# This is method does reassignment of Cluster based on eulucdean distance
-				coreClassifyingLogic(tempfeaturesData, key);
-				
-			}
-		};
-
-		return @clusterCentroidValues;
-	}
-
-###########################
-
-	method : keepOnClassifying() ~ Bool {
-		if(@numberEpochs <= 0) {
-			return false;
-		};
-		@numberEpochs -= 1;
-		
-		return true;
-	}
-
-	method : coreClassifyingLogic(tempfeaturesData : Vector<FloatArrayRef[]>) ~ Nil {
-		for(i := 0; i < tempfeaturesData->Size(); i += 1;) {
-			euclideanDistance := Float->Inf();
-			destinationCluster := "";
-			data := tempfeaturesData->Get(i);
-
-			cluster_centroid_keys_values := @clusterCentroidValues->GetKeyValues()<Pair<String, FloatArrayRef>>;
-			each(cluster_centroid_key_value in cluster_centroid_keys_values) {
-				clusterKey := cluster_centroid_key_value->GetFirst();
-				clusterCentroids := cluster_centroid_key_value->GetSecond()->Get();
-				sumSquareDistance := 0.00;
-
-				raw_data := data->Get();
-				for(k := 0; k < raw_data->Size(); k += 1;) {
-					tempDistance := (clusterCentroids[k] - raw_data[k]);
-					squareDistance := Float->Pow(tempDistance, 2);
-					sumSquareDistance := sumSquareDistance + squareDistance;
-				};
-
-				clusterSpecificDistance := Float->Sqrt(sumSquareDistance);
-				if(clusterSpecificDistance->Compare(euclideanDistance) < 0) {
-					euclideanDistance := clusterSpecificDistance;
-					destinationCluster := clusterKey;
-				}
-			}
-
-			classifiedData := @clusters->Find(destinationCluster)<Vector<FloatArrayRef[]>>;
-			if(classifiedData = Nil) {
-				classifiedData := Vector->New()<FloatArrayRef[]>;
-			};
-			classifiedData->AddBack(data);
-		}
-	}
-
-	method : coreClassifyingLogic(tempfeaturesData : Vector<FloatArrayRef[]>, previousKey : String) ~ Nil {
-		indexToBeRemoved := Vector->New()<IntRef>;
-		for(i := 0; i < tempfeaturesData->Size(); i += 1;) {
-			
-			euclideanDistance := Float->Inf();
-			destinationCluster := "";
-			data := tempfeaturesData->Get(i)->Get();
-
-			cluster_centroid_keys_values := @clusterCentroidValues->GetKeyValues()<Pair<String, FloatArrayRef>>;
-			each(cluster_centroid_key_value in cluster_centroid_keys_values) {
-				clusterKey := cluster_centroid_key_value->GetFirst();
-				clusterCentroids := cluster_centroid_key_value->GetSecond()->Get();
-				sumSquareDistance := 0.00;
-				
-				for(k := 0; k < data->Size(); k += 1;) {
-					tempDistance := (clusterCentroids[k] - data[k]);
-					squareDistance := Float->Pow(tempDistance, 2.0);
-					sumSquareDistance := sumSquareDistance + squareDistance;
-				};
-
-				clusterSpecificDistance := Float->Sqrt(sumSquareDistance);
-				if(clusterSpecificDistance->Compare(euclideanDistance) < 0) {
-					euclideanDistance := clusterSpecificDistance;
-					destinationCluster := clusterKey;
-				};
-
-				if(<>destinationCluster->EqualsIgnoreCase(previousKey)) {
-					classifiedData := @clusters->Find(destinationCluster);
-					if(classifiedData = Nil) {
-						classifiedData := Vector->New()<FloatArrayRef[]>;
-					}
-
-					classifiedData->AddBack(FloatArrayRef->New(data));
-					# Cannot remove index in same iteration because of concurrent modification
-					# exception
-#					indexToBeRemoved.add(i);					
-				};		
-			}
-
-			for(i := 0; i < indexToBeRemoved->Size(); i += 1;) {
-				tempfeaturesData->Remove(i);
-			};
-		}		
 	}
 }
