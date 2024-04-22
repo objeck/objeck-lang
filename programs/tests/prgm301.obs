@@ -12,14 +12,56 @@ class KMeans {
 	@debug : Bool;
 
 	function : Main(args : String[]) ~ Nil {
-		x := Float->Random(0.0, 1.0);
-		y := Float->Random(0.0, 1.0);
-
-		"{$x}, {$y}"->PrintLine();
-#~		
 		data := Vector->New()<FloatArrayRef>;
-		data->AddBack(FloatArrayRef->New([0.0,1.1]));
-~#		
+		data->AddBack(FloatArrayRef->New([2.541629, 2.574507]));
+		data->AddBack(FloatArrayRef->New([7.616112, 6.131947]));
+		data->AddBack(FloatArrayRef->New([8.020559, 4.51573]));
+		data->AddBack(FloatArrayRef->New([7.190278, 9.831064]));
+		data->AddBack(FloatArrayRef->New([2.40224, 3.81235]));
+		data->AddBack(FloatArrayRef->New([6.603512, 7.846965]));
+		data->AddBack(FloatArrayRef->New([3.971004, 8.486739]));
+		data->AddBack(FloatArrayRef->New([1.864852, 4.898962]));
+		data->AddBack(FloatArrayRef->New([5.263243, 0.096651]));
+		data->AddBack(FloatArrayRef->New([5.428364, 5.170225]));
+		data->AddBack(FloatArrayRef->New([0.090172, 6.369015]));
+		data->AddBack(FloatArrayRef->New([0.6716, 1.170027]));
+		data->AddBack(FloatArrayRef->New([1.519242, 4.482188]));
+		data->AddBack(FloatArrayRef->New([5.263285, 0.684887]));
+		data->AddBack(FloatArrayRef->New([8.8238, 0.295231]));
+		data->Size()->PrintLine();
+
+		centroids := Vector->New()<FloatArrayRef>;
+		centroids->AddBack(FloatArrayRef->New([1.75, 6.25]));
+		centroids->AddBack(FloatArrayRef->New([4.25, 3.5]));
+
+		groups := Vector->New[centroids->Size()]<Vector<FloatArrayRef>>;
+		each(datum in data) {
+			shortest_index := -1;
+			shortest_distance := Float->Inf();
+			
+			each(i : centroids) {
+				centroid := centroids->Get(i);
+				
+				distance := Distance(datum, centroid);
+				if(distance <= shortest_distance) {
+					shortest_distance := distance;
+					shortest_index := i;
+				}
+			};
+
+			group := groups[shortest_index];
+			if(group = Nil) {
+				group := Vector->New()<Vector<FloatArrayRef>>;
+				groups[shortest_index] := group;
+			}
+			group->AddBack(data);
+			"{$shortest_index}: {$shortest_distance}"->PrintLine();
+		};
+
+		each(i : groups) {
+			group := groups[i];
+			group->Size()->PrintLine();
+		}
 	}
 
 	New(buckets : Int, bucket_labels : String[], data : Vector<FloatArrayRef>) {
@@ -31,4 +73,23 @@ class KMeans {
 	method : public : Group() ~ Nil {
 
 	}
+
+	function : native : Distance(left : FloatArrayRef, right : FloatArrayRef) ~ Float {
+		if(left = Nil | right = Nil) {
+			return 0.0;
+		};
+
+		left_values := left->Get(); right_values := right->Get();
+		if(left_values->Size() <> right_values->Size()) {
+			return 0.0;
+		};
+
+		distance := 0.0;
+        each(i : left_values) {
+            distance += Float->Pow(left_values[i] - right_values[i], 2.0);
+        };
+
+        return distance->Sqrt();
+	}
+
 }
