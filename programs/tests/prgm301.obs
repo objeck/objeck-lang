@@ -129,8 +129,8 @@ class KMeanClustering {
 			destinationCluster := "";
 			data := tempfeaturesData->Get(i);
 
-			cluster_centroid_key_values := @clusterCentroidValues->GetKeyValues()<Pair<String, FloatArrayRef>>;
-			each(cluster_centroid_key_value in cluster_centroid_key_values) {
+			cluster_centroid_keys_values := @clusterCentroidValues->GetKeyValues()<Pair<String, FloatArrayRef>>;
+			each(cluster_centroid_key_value in cluster_centroid_keys_values) {
 				clusterKey := cluster_centroid_key_value->GetFirst();
 				clusterCentroids := cluster_centroid_key_value->GetSecond()->Get();
 				sumSquareDistance := 0.00;
@@ -140,9 +140,9 @@ class KMeanClustering {
 					tempDistance := (clusterCentroids[k] - raw_data[k]);
 					squareDistance := Float->Pow(tempDistance, 2);
 					sumSquareDistance := sumSquareDistance + squareDistance;
-				}
-				clusterSpecificDistance := Float->Sqrt(sumSquareDistance);
+				};
 
+				clusterSpecificDistance := Float->Sqrt(sumSquareDistance);
 				if(clusterSpecificDistance->Compare(euclideanDistance) < 0) {
 					euclideanDistance := clusterSpecificDistance;
 					destinationCluster := clusterKey;
@@ -163,42 +163,42 @@ class KMeanClustering {
 			
 			euclideanDistance := Float->Inf();
 			destinationCluster := "";
-			data := tempfeaturesData->Get(i);
-#~
-			for(String clusterKey : clusterCentroidValues.keySet()) {
-				Double[] clusterCentroids = clusterCentroidValues.get(clusterKey);
-				Double sumSquareDistance = 0.00d;
-				for(int k = 0; k < data.length; k++) {
-					Double tempDistance = (clusterCentroids[k] - data[k]);
-					Double squareDistance = Math.pow(tempDistance, 2);
-					sumSquareDistance = sumSquareDistance + squareDistance;
-				}
+			data := tempfeaturesData->Get(i)->Get();
 
-				Double clusterSpecificDistance = Math.sqrt(sumSquareDistance);
-				if(clusterSpecificDistance.compareTo(euclideanDistance) < 0) {
-						euclideanDistance = clusterSpecificDistance;
-						destinationCluster = clusterKey;
+			cluster_centroid_keys_values := @clusterCentroidValues->GetKeyValues()<Pair<String, FloatArrayRef>>;
+			each(cluster_centroid_key_value in cluster_centroid_keys_values) {
+				clusterKey := cluster_centroid_key_value->GetFirst();
+				clusterCentroids := cluster_centroid_key_value->GetSecond()->Get();
+				sumSquareDistance := 0.00;
+				
+				for(k := 0; k < data->Size(); k += 1;) {
+					tempDistance := (clusterCentroids[k] - data[k]);
+					squareDistance := Float->Pow(tempDistance, 2.0);
+					sumSquareDistance := sumSquareDistance + squareDistance;
+				};
+
+				clusterSpecificDistance := Float->Sqrt(sumSquareDistance);
+				if(clusterSpecificDistance->Compare(euclideanDistance) < 0) {
+					euclideanDistance := clusterSpecificDistance;
+					destinationCluster := clusterKey;
+				};
+
+				if(<>destinationCluster->EqualsIgnoreCase(previousKey)) {
+					classifiedData := @clusters->Find(destinationCluster);
+					if(classifiedData = Nil) {
+						classifiedData := Vector->New()<FloatArrayRef[]>;
 					}
-				}
 
-				if(!destinationCluster.equalsIgnoreCase(previousKey)) {
-					List<Double[]> classifiedData = clusters.get(destinationCluster);
-
-					if(classifiedData == null) {
-						classifiedData = new ArrayList<>();
-					}
-
-					classifiedData.add(data);
-					// Cannot remove index in same iteration because of concurrent modification
-					// exception
-					indexToBeRemoved.add(i);
-				}
+					classifiedData->AddBack(FloatArrayRef->New(data));
+					# Cannot remove index in same iteration because of concurrent modification
+					# exception
+#					indexToBeRemoved.add(i);					
+				};		
 			}
 
-			for(int i = 0; i < indexToBeRemoved.size(); i++) {
-				tempfeaturesData.remove(i);
-			}
-~#
+			for(i := 0; i < indexToBeRemoved->Size(); i += 1;) {
+				tempfeaturesData->Remove(i);
+			};
 		}		
 	}
 }
