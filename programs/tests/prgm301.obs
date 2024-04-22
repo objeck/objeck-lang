@@ -41,9 +41,8 @@ class KMeans {
 		data->AddBack(FloatArrayRef->New([9.340432657, 2.896683906]));
 		data->AddBack(FloatArrayRef->New([7.674354483, 4.765027229]));
 		data->AddBack(FloatArrayRef->New([8.656404515, 0.481807722]));
-
 		
-		group_labels := ["group-a","group-b"];
+		group_labels := ["group-a","group-b", "group-c"];
 
 		@debug := true;
 		Group(group_labels, data, 2, 0.0, 10.0);
@@ -62,7 +61,6 @@ class KMeans {
 		iter := 0;
 		has_changed := true;
 		while(has_changed) {
-#		each(z : 100) {
 			if(@debug) {
 				"=== {$iter} ==="->PrintLine();
 				iter += 1;
@@ -99,12 +97,15 @@ class KMeans {
 					"label='{$group_label}', size={$group_size}: {$group}"->PrintLine();
 				};
 
-				updated_centroids[i] := Average(group, length);
+				update := Average(group, length);
+				if(update <> Nil) {
+					updated_centroids[i] := update;
+				};
 			};
 
+			# update of centroids and rebuilding of buckets
 			has_changed := HasChanged(centroids, updated_centroids);
 			if(has_changed) {
-				# update
 				centroids := updated_centroids;
 				updated_centroids := FloatArrayRef->New[group_labels->Size()];
 
@@ -132,10 +133,9 @@ class KMeans {
 	}
 
 	function : native : HasChanged(old_centroids : FloatArrayRef[], new_centroids : FloatArrayRef[]) ~ Bool {
-		ok := false;
+		has_changed := false;
+
 		each(i : old_centroids) {
-
-
 			old_centroid_values := old_centroids[i]->Get();
 			new_centroid_values := new_centroids[i]->Get();
 			
@@ -143,20 +143,21 @@ class KMeans {
 				old_centroid_value := old_centroid_values[j];
 				new_centroid_value := new_centroid_values[j];
 
-				ok := Float->Abs(old_centroid_value - new_centroid_value) = 0.0;
-				if(<>ok) {
+				has_changed := Float->Abs(old_centroid_value - new_centroid_value) = 0.0;
+				if(<>has_changed) {
 					return true;
 				}
-"{$old_centroid_value}, {$new_centroid_value}: unchanged={$ok}"->PrintLine();
 			};
-"---"->PrintLine();			
 		};
 
-"==="->PrintLine();			
 		return false;
 	}
 
 	function : native : Average(group : Vector<FloatArrayRef>, length : Int) ~FloatArrayRef {
+		if(group->IsEmpty()) {
+			return Nil;
+		};
+
 		average_values := Float->New[length];
 		each(i : average_values) {
 			sum := 0.0;
@@ -164,8 +165,8 @@ class KMeans {
 				array_values := array->Get();
 				sum += array_values[i];
 			};
-			avg := sum / group->Size()->As(Float);
-			average_values[i] := avg;
+			average := sum / group->Size()->As(Float);
+			average_values[i] := average;
 		}
 
 		return FloatArrayRef->New(average_values);
@@ -188,5 +189,4 @@ class KMeans {
 
         return distance->Sqrt();
 	}
-
 }
