@@ -25,14 +25,18 @@ class KMeans {
 		data->AddBack(FloatArrayRef->New([5.263285, 0.684887]));
 		data->AddBack(FloatArrayRef->New([8.8238, 0.295231]));
 		
-		group_labels := ["group-a","group-b", "group-c"];
+		group_labels := ["group-a","group-b"];
 
 		@debug := true;
 		Group(group_labels, data, 2, 0.0, 10.0);
 	}
 
 	function : native : Group(group_labels : String[], data : Vector<FloatArrayRef>, length : Int, min_value : Float, max_value : Float) ~ Nil {
+		# https://www.ibm.com/support/pages/how-does-k-mean-cluster-node-select-initial-records-clustering
 		centroids := FloatArrayRef->New[group_labels->Size()];
+		centroids[0] := FloatArrayRef->New([0.5, 5.0]);
+		centroids[1] := FloatArrayRef->New([9.5, 5.0]);
+#~		
 		each(i : centroids) {
 			random_values := Float->New[length];
 			each(j : random_values) {
@@ -40,6 +44,7 @@ class KMeans {
 			};
 			centroids[i] := FloatArrayRef->New(random_values);
 		};
+~#		
 		updated_centroids := FloatArrayRef->New[group_labels->Size()];
 		
 		groups := Hash->New()<String, Vector<FloatArrayRef>>;
@@ -52,6 +57,7 @@ class KMeans {
 		while(has_changed) {
 			if(@debug) {
 				"=== {$iter} ==="->PrintLine();
+				iter += 1;
 			}
 
 			each(datum in data) {
@@ -71,10 +77,6 @@ class KMeans {
 				nearest_centroid_label := group_labels[shortest_index];
 				group := groups->Find(nearest_centroid_label)<FloatArrayRef>;
 				group->AddBack(datum);
-				
-				if(@debug) {
-#					"{$datum}: {$nearest_centroid_label}"->PrintLine();
-				};
 			};
 
 			group_key_values := groups->GetKeyValues()<Pair<String, Vector<FloatArrayRef>>>;
@@ -94,19 +96,16 @@ class KMeans {
 
 			has_changed := HasChanged(centroids, updated_centroids);
 			if(has_changed) {
+				# update
 				centroids := updated_centroids;
 				updated_centroids := FloatArrayRef->New[group_labels->Size()];
 
-"????"->PrintLine();				
 				each(centroid_label in group_labels) {
 					if(groups->Remove(centroid_label)) {
 						groups->Insert(centroid_label, Vector->New()<FloatArrayRef>);
 					};
 				};
 			};
-
-			# update
-			iter += 1;
 		};
 	}
 
