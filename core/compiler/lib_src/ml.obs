@@ -2465,6 +2465,68 @@ groups->Size()->PrintLine();
 			return groups;
 		}
 
+		#~
+		Calculates the Dunn index
+		@param groups K-Mean grouping
+		@return Dunn index, higher values indicate more distinct clusters
+		~#
+		function : native : DunnIndex(groups : Hash<String, Vector<FloatArrayRef>>) ~ Float {
+			group_key_values := groups->GetKeyValues()<Pair<String, Vector<FloatArrayRef>>>;
+
+			max_intra_distance := 0.0;
+			each(group_key_value in group_key_values) {
+				group := group_key_value->GetSecond();
+				group_name := group_key_value->GetFirst();
+				
+				if(@debug) {
+					group_size := group->Size();
+					"group: name='{$group_name}', size={$group_size}\n---"->PrintLine();
+				};
+
+				each(left_array in group) {			
+					each(right_array in group) {
+						if(left_array <> right_array) {
+							distance := Distance(left_array, right_array);
+							if(distance > max_intra_distance) {
+								max_intra_distance := distance;
+							}
+						};
+					};
+				};
+			};
+
+			if(@debug) {
+				"max_intra_distance={$max_intra_distance}\n---"->PrintLine();
+			};
+
+			min_inter_distance := Float->Inf();
+			each(left_key_value in group_key_values) {
+				left_group := left_key_value->GetSecond();
+				left_group_name := left_key_value->GetFirst();
+
+				each(right_key_value in group_key_values) {
+					right_group := right_key_value->GetSecond();
+					right_group_name := right_key_value->GetFirst();
+					if(<>left_group_name->Equals(right_group_name)) {
+						each(left_array in left_group) {
+							each(right_array in right_group) {
+								distance := Distance(left_array, right_array);
+								if(distance < min_inter_distance) {
+									min_inter_distance := distance;
+								};
+							};
+						};
+					};
+				};
+			};
+
+			if(@debug) {
+				"min_inter_distance={$min_inter_distance}\n---"->PrintLine();
+			};
+
+			return min_inter_distance / max_intra_distance;
+		}
+
 		function : native : InitalCentroids(group_labels : String[], records : Vector<FloatArrayRef>, record_length : Int, min_value : Float, max_value : Float) ~ FloatArrayRef[] {
 			centroids := FloatArrayRef->New[group_labels->Size()];
 
