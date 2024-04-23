@@ -2370,199 +2370,171 @@ each(neighbor := nearest) {
 	K-Means clustering algorithm
 	
 	```
-	points := Vector->New()<KMeansPoint>;
-	points->AddBack(KMeansPoint->New(9.78, 7.86));
-	points->AddBack(KMeansPoint->New(0.81, 0.77));
-	points->AddBack(KMeansPoint->New(8.82, 5.48));
-	points->AddBack(KMeansPoint->New(1.80, 0.43));
-	points->AddBack(KMeansPoint->New(6.16, 6.60));
-	points->AddBack(KMeansPoint->New(6.51, 8.72));
-	points->AddBack(KMeansPoint->New(1.10, 2.56));
-	points->AddBack(KMeansPoint->New(7.89, 4.49));
-	points->AddBack(KMeansPoint->New(3.33, 2.89));
-	points->AddBack(KMeansPoint->New(0.74, 3.99));
-	points->AddBack(KMeansPoint->New(3.15, 1.70));
-	points->AddBack(KMeansPoint->New(0.55, 6.27));
+records->AddBack(FloatArrayRef->New([7.991916152, 1.474549104]));
+records->AddBack(FloatArrayRef->New([2.927025216, 9.045466629]));
+records->AddBack(FloatArrayRef->New([9.677901811, 3.044481052]));
+records->AddBack(FloatArrayRef->New([2.103293937, 2.446154204]));
+records->AddBack(FloatArrayRef->New([9.340432657, 2.896683906]));
 
-	kmeans := KMeans->New(2, 0.0, 10.0, points);
-	clusters := kmeans->Cluster();
-
-	each(i : clusters) {
-	  cluster := clusters[i];
-	  "G{$i}->{$cluster}"->PrintLine();
-	};
+group_labels := ["group-a","group-b", "group-c"];
+groups := Group(group_labels, records, 2, 0.0, 10.0);
+groups->Size()->PrintLine();
 	```
 ~#
 	class KMeans {
-		@points : Vector<KMeansPoint>;
-		@k : Int;
-		@min : Float;
-		@max : Float;
-		@debug : Bool;
+		@debug : static : Bool;
 
 		#~
-		Constructor
-		@param k k number of clusters
-		@param min minimum starting centroid point
-		@param max maximum starting centroid point
-		@param points input data points
+		K-Means group clustering
+		@param group_labels group labels used to tag groups also specify K
+		@param records input records
+		@param record_length length of records, all records lengths be the same
+		@param min_value smallest record value
+		@param max_value largest record value
+		@return labeled clustered groups
 		~#
-		New(k : Int, min : Float, max : Float, points : Vector<KMeansPoint>) {
-			@k := k;
-			@min := min;
-			@max := max;
-			@points := points;
-
-			@debug := false;
-		}
-
-		#~
-		Cluster input points
-		@return clustered input points
-		~#
-		method : public : Cluster() ~ Vector[]<KMeansPoint> {
-			centroids := InitializeCentroids();
-			k := centroids->Size();
-
-			buckets := Vector->New[k]<KMeansPoint>;
-			each(i : k) {
-				buckets[i] := Vector->New()<KMeansPoint>;
-			};
-			results := Distance->New[k];
-
-			last_centroids := KMeansPoint->New[k];
-			each(i : last_centroids) {
-				last_centroids[i] := KMeansPoint->New();
+		function : native : Group(group_labels : String[], records : Vector<FloatArrayRef>, record_length : Int, min_value : Float, max_value : Float) ~ Hash<String, Vector<FloatArrayRef>> {
+			# https://www.ibm.com/support/pages/how-does-k-mean-cluster-node-select-initial-records-clustering
+			centroids := InitalCentroids(group_labels, records, record_length, min_value, max_value);
+			updated_centroids := FloatArrayRef->New[group_labels->Size()];
+			
+			groups := Hash->New()<String, Vector<FloatArrayRef>>;
+			each(centroid_label in group_labels) {
+				groups->Insert(centroid_label, Vector->New()<FloatArrayRef>);
 			};
 
-			converged := false;
-			do {
+			iter := 0;
+			has_changed := true;
+			while(has_changed) {
 				if(@debug) {
-					"\n=>{$centroids}\n------"->PrintLine();
-				};
+					"=== {$iter} ==="->PrintLine();
+					iter += 1;
+				}
 
-				each(point := @points) {
+				each(datum in records) {
+					shortest_index := -1;
+					shortest_distance := Float->Inf();
+					
 					each(i : centroids) {
-						centroid := centroids->Get(i);
-						distance := GetDistance(centroid, point);
-						result := Distance->New(point, distance);
+						centroid := centroids[i];
 
-						if(@debug) {
-							"{$centroid}: {$result}"->PrintLine();
-						};
-						results[i] := result;
-					};
-
-					if(@debug) {
-						"------"->PrintLine();
-					};
-
-					pt_index := -1;
-					min_dist := Float->Inf();
-					each(i : results) {
-						result := results[i];
-						if(result->GetDistance() < min_dist) {
-							min_dist := result->GetDistance();
-							pt_index := i;
+						distance := Distance(datum, centroid);
+						if(distance <= shortest_distance) {
+							shortest_distance := distance;
+							shortest_index := i;
 						}
 					};
 
-					result := results[pt_index];
-					bucket := buckets[pt_index];
-					bucket->AddBack(result->GetPoint());
+					nearest_centroid_label := group_labels[shortest_index];
+					group := groups->Find(nearest_centroid_label)<FloatArrayRef>;
+					group->AddBack(datum);
 				};
 
-				each(i : k) {
-					last_centroids[i] := centroids->Get(i);
-				};
-				
-				centroids->Empty();
-				each(i : k) {
-					bucket := buckets[i];
+				group_key_values := groups->GetKeyValues()<Pair<String, Vector<FloatArrayRef>>>;
+				each(i : group_key_values) {
+					group_key_value := group_key_values->Get(i);
 
-					x_update := y_update := 0.0;
-					each(item := bucket) {
-						x_update += item->GetX();
-						y_update += item->GetY();
-					};
-
-					if(<>bucket->IsEmpty()) {
-						x_update /= bucket->Size()->As(Float);
-						y_update /= bucket->Size()->As(Float);
-					};
+					group_label := group_key_value->GetFirst();
+					group := group_key_value->GetSecond();
 
 					if(@debug) {
-						"C{$i}->{$x_update}, {$y_update}"->PrintLine();
+						group_size := group->Size();
+						"label='{$group_label}', size={$group_size}: {$group}"->PrintLine();
 					};
 
-					centroids->AddBack(KMeansPoint->New(x_update, y_update));
-				};
-
-				converged := HasConverged(centroids, last_centroids);
-				if(<>converged) {
-					each(i : k) {
-						buckets[i]->Empty();
+					update := Average(group, record_length);
+					if(update <> Nil) {
+						updated_centroids[i] := update;
 					};
-				}
-			}
-			while(<>converged);
-
-			return buckets;
-		}
-
-		method : native : HasConverged(current : Vector<KMeansPoint>, last : KMeansPoint[]) ~ Bool {
-			each(i : current) {
-				left := current->Get(i);
-				right := last[i];
-
-				if(<>left->Equals(right)) {
-					return false;
 				};
-			}
 
-			return true;
+				# update of centroids and rebuilding of buckets
+				has_changed := HasChanged(centroids, updated_centroids);
+				if(has_changed) {
+					centroids := updated_centroids;
+					updated_centroids := FloatArrayRef->New[group_labels->Size()];
+
+					each(centroid_label in group_labels) {
+						if(groups->Remove(centroid_label)) {
+							groups->Insert(centroid_label, Vector->New()<FloatArrayRef>);
+						};
+					};
+				};
+			};
+
+			return groups;
 		}
 
-		method : native : GetDistance(a : KMeansPoint, b : KMeansPoint) ~ Float {
-			x1 := a->GetX(); y1 := a->GetY();
-			x2 := b->GetX(); y2 := b->GetY();
+		function : native : InitalCentroids(group_labels : String[], records : Vector<FloatArrayRef>, record_length : Int, min_value : Float, max_value : Float) ~ FloatArrayRef[] {
+			centroids := FloatArrayRef->New[group_labels->Size()];
 
-			return Float->Sqrt(Float->Pow(x2 - x1, 2.0) + Float->Pow(y2 - y1, 2.0));
-		}
-
-		method : InitializeCentroids() ~ Vector<KMeansPoint> {
-			centroids := Vector->New()<KMeansPoint>;
-
-			each(i : @k) {
-				centroids->AddBack(KMeansPoint->New(Float->Random(@min, @max), Float->Random(@min, @max)));
+			each(i : centroids) {
+				random_values := Float->New[record_length];
+				each(j : random_values) {
+					random_values[j] := Float->Random(min_value + 0.001, max_value - 0.001);
+				};
+				centroids[i] := FloatArrayRef->New(random_values);
 			};
 
 			return centroids;
 		}
 
-		#~
-		Load input data point from a CSV file
-		@param filename input filename
-		@return input data points
-		~#
-		function : LoadData(filename : String) ~ Vector<KMeansPoint> {
-			points := Vector->New()<KMeansPoint>;
-			
-			table := CsvTable->New(System.IO.Filesystem.FileReader->ReadFile(filename));
-			if(table->IsParsed()) {
-				each(row := table) {
-					if(row->Size() <> 2) {
-						return Nil;
-					};
+		function : native : HasChanged(old_centroids : FloatArrayRef[], new_centroids : FloatArrayRef[]) ~ Bool {
+			has_changed := false;
 
-					x := row->Get(0)->ToFloat();
-					y := row->Get(1)->ToFloat();
+			each(i : old_centroids) {
+				old_centroid_values := old_centroids[i]->Get();
+				new_centroid_values := new_centroids[i]->Get();
+				
+				each(j : old_centroid_values) {
+					old_centroid_value := old_centroid_values[j];
+					new_centroid_value := new_centroid_values[j];
 
-					points->AddBack(KMeansPoint->New(x, y));
+					has_changed := Float->Abs(old_centroid_value - new_centroid_value) = 0.0;
+					if(<>has_changed) {
+						return true;
+					}
 				};
 			};
 
-			return points;
+			return false;
+		}
+
+		function : native : Average(group : Vector<FloatArrayRef>, record_length : Int) ~FloatArrayRef {
+			if(group->IsEmpty()) {
+				return Nil;
+			};
+
+			average_values := Float->New[record_length];
+			each(i : average_values) {
+				sum := 0.0;
+				each(array in group) {
+					array_values := array->Get();
+					sum += array_values[i];
+				};
+				average := sum / group->Size()->As(Float);
+				average_values[i] := average;
+			}
+
+			return FloatArrayRef->New(average_values);
+		}
+
+		function : native : Distance(left : FloatArrayRef, right : FloatArrayRef) ~ Float {
+			if(left = Nil | right = Nil) {
+				return 0.0;
+			};
+
+			left_values := left->Get(); right_values := right->Get();
+			if(left_values->Size() <> right_values->Size()) {
+				return 0.0;
+			};
+
+			distance := 0.0;
+	        each(i : left_values) {
+	            distance += Float->Pow(left_values[i] - right_values[i], 2.0);
+	        };
+
+	        return distance->Sqrt();
 		}
 	}
 
