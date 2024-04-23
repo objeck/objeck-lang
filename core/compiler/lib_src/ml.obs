@@ -2375,10 +2375,12 @@ records->AddBack(FloatArrayRef->New([2.927025216, 9.045466629]));
 records->AddBack(FloatArrayRef->New([9.677901811, 3.044481052]));
 records->AddBack(FloatArrayRef->New([2.103293937, 2.446154204]));
 records->AddBack(FloatArrayRef->New([9.340432657, 2.896683906]));
+# ...
+group_labels := ["Janet","Jack", "Chrissy"];
 
-group_labels := ["group-a","group-b", "group-c"];
-groups := Group(group_labels, records, 2, 0.0, 10.0);
+groups := KMeans->Group(group_labels, records, 2, 0.05, 10.0);
 groups->Size()->PrintLine();
+KMeans->DunnIndex(groups)->PrintLine();
 	```
 ~#
 	class KMeans {
