@@ -8,49 +8,59 @@ class KMeans {
 	@debug : static : Bool;
 
 	function : Main(args : String[]) ~ Nil {
-		data := Vector->New()<FloatArrayRef>;
+		records := Vector->New()<FloatArrayRef>;
 
-		data->AddBack(FloatArrayRef->New([0.38615586, 1.214427208]));
-		data->AddBack(FloatArrayRef->New([1.718464173, 3.372883202]));
-		data->AddBack(FloatArrayRef->New([1.584066635, 9.475994705]));
-		data->AddBack(FloatArrayRef->New([7.163115086, 3.790681535]));
-		data->AddBack(FloatArrayRef->New([3.442126649, 1.697612421]));
-		data->AddBack(FloatArrayRef->New([2.284682944, 1.737259037]));
-		data->AddBack(FloatArrayRef->New([4.421239156, 7.947645822]));
-		data->AddBack(FloatArrayRef->New([0.412965248, 9.610534599]));
-		data->AddBack(FloatArrayRef->New([7.833552317, 7.483994114]));
-		data->AddBack(FloatArrayRef->New([1.513004878, 7.382620369]));
-		data->AddBack(FloatArrayRef->New([3.607487753, 5.005536167]));
-		data->AddBack(FloatArrayRef->New([3.384052126, 3.064628698]));
-		data->AddBack(FloatArrayRef->New([2.13966849, 8.265686125]));
-		data->AddBack(FloatArrayRef->New([4.996348732, 4.698026935]));
-		data->AddBack(FloatArrayRef->New([4.018244149, 4.710124032]));
-		data->AddBack(FloatArrayRef->New([2.125462682, 3.958296964]));
-		data->AddBack(FloatArrayRef->New([5.51003858, 4.950951249]));
-		data->AddBack(FloatArrayRef->New([3.148218579, 5.412938048]));
-		data->AddBack(FloatArrayRef->New([5.809705114, 5.95242922]));
-		data->AddBack(FloatArrayRef->New([6.690433556, 7.809409341]));
-		data->AddBack(FloatArrayRef->New([3.510805088, 0.737320193]));
-		data->AddBack(FloatArrayRef->New([3.973897423, 8.047290782]));
-		data->AddBack(FloatArrayRef->New([7.377464414, 3.034343973]));
-		data->AddBack(FloatArrayRef->New([3.403090072, 6.541184122]));
-		data->AddBack(FloatArrayRef->New([7.991916152, 1.474549104]));
-		data->AddBack(FloatArrayRef->New([2.927025216, 9.045466629]));
-		data->AddBack(FloatArrayRef->New([9.677901811, 3.044481052]));
-		data->AddBack(FloatArrayRef->New([2.103293937, 2.446154204]));
-		data->AddBack(FloatArrayRef->New([9.340432657, 2.896683906]));
-		data->AddBack(FloatArrayRef->New([7.674354483, 4.765027229]));
-		data->AddBack(FloatArrayRef->New([8.656404515, 0.481807722]));
-		
+		records->AddBack(FloatArrayRef->New([0.38615586, 1.214427208]));
+		records->AddBack(FloatArrayRef->New([1.718464173, 3.372883202]));
+		records->AddBack(FloatArrayRef->New([1.584066635, 9.475994705]));
+		records->AddBack(FloatArrayRef->New([7.163115086, 3.790681535]));
+		records->AddBack(FloatArrayRef->New([3.442126649, 1.697612421]));
+		records->AddBack(FloatArrayRef->New([2.284682944, 1.737259037]));
+		records->AddBack(FloatArrayRef->New([4.421239156, 7.947645822]));
+		records->AddBack(FloatArrayRef->New([0.412965248, 9.610534599]));
+		records->AddBack(FloatArrayRef->New([7.833552317, 7.483994114]));
+		records->AddBack(FloatArrayRef->New([1.513004878, 7.382620369]));
+		records->AddBack(FloatArrayRef->New([3.607487753, 5.005536167]));
+		records->AddBack(FloatArrayRef->New([3.384052126, 3.064628698]));
+		records->AddBack(FloatArrayRef->New([2.13966849, 8.265686125]));
+		records->AddBack(FloatArrayRef->New([4.996348732, 4.698026935]));
+		records->AddBack(FloatArrayRef->New([4.018244149, 4.710124032]));
+		records->AddBack(FloatArrayRef->New([2.125462682, 3.958296964]));
+		records->AddBack(FloatArrayRef->New([5.51003858, 4.950951249]));
+		records->AddBack(FloatArrayRef->New([3.148218579, 5.412938048]));
+		records->AddBack(FloatArrayRef->New([5.809705114, 5.95242922]));
+		records->AddBack(FloatArrayRef->New([6.690433556, 7.809409341]));
+		records->AddBack(FloatArrayRef->New([3.510805088, 0.737320193]));
+		records->AddBack(FloatArrayRef->New([3.973897423, 8.047290782]));
+		records->AddBack(FloatArrayRef->New([7.377464414, 3.034343973]));
+		records->AddBack(FloatArrayRef->New([3.403090072, 6.541184122]));
+		records->AddBack(FloatArrayRef->New([7.991916152, 1.474549104]));
+		records->AddBack(FloatArrayRef->New([2.927025216, 9.045466629]));
+		records->AddBack(FloatArrayRef->New([9.677901811, 3.044481052]));
+		records->AddBack(FloatArrayRef->New([2.103293937, 2.446154204]));
+		records->AddBack(FloatArrayRef->New([9.340432657, 2.896683906]));
+		records->AddBack(FloatArrayRef->New([7.674354483, 4.765027229]));
+		records->AddBack(FloatArrayRef->New([8.656404515, 0.481807722]));
+
 		group_labels := ["group-a","group-b", "group-c"];
 
-		@debug := true;
-		Group(group_labels, data, 2, 0.0, 10.0);
+		@debug := false;
+		groups := Group(group_labels, records, 2, 0.0, 10.0);
+		groups->Size()->PrintLine();
 	}
 
-	function : native : Group(group_labels : String[], data : Vector<FloatArrayRef>, length : Int, min_value : Float, max_value : Float) ~ Nil {
+	#~
+	K-Means group clustering
+	@param group_labels group labels used to tag groups also specify K
+	@param records input records
+	@param record_length length of records, all records lengths be the same
+	@param min_value smallest record value
+	@param max_value largest record value
+	@return labeled clustered groups
+	~#
+	function : native : Group(group_labels : String[], records : Vector<FloatArrayRef>, record_length : Int, min_value : Float, max_value : Float) ~ Hash<String, Vector<FloatArrayRef>> {
 		# https://www.ibm.com/support/pages/how-does-k-mean-cluster-node-select-initial-records-clustering
-		centroids := InitalCentroids(group_labels, data, length, min_value, max_value);
+		centroids := InitalCentroids(group_labels, records, record_length, min_value, max_value);
 		updated_centroids := FloatArrayRef->New[group_labels->Size()];
 		
 		groups := Hash->New()<String, Vector<FloatArrayRef>>;
@@ -66,7 +76,7 @@ class KMeans {
 				iter += 1;
 			}
 
-			each(datum in data) {
+			each(datum in records) {
 				shortest_index := -1;
 				shortest_distance := Float->Inf();
 				
@@ -97,7 +107,7 @@ class KMeans {
 					"label='{$group_label}', size={$group_size}: {$group}"->PrintLine();
 				};
 
-				update := Average(group, length);
+				update := Average(group, record_length);
 				if(update <> Nil) {
 					updated_centroids[i] := update;
 				};
@@ -116,13 +126,15 @@ class KMeans {
 				};
 			};
 		};
+
+		return groups;
 	}
 
-	function : InitalCentroids(group_labels : String[], data : Vector<FloatArrayRef>, length : Int, min_value : Float, max_value : Float) ~ FloatArrayRef[] {
+	function : native : InitalCentroids(group_labels : String[], records : Vector<FloatArrayRef>, record_length : Int, min_value : Float, max_value : Float) ~ FloatArrayRef[] {
 		centroids := FloatArrayRef->New[group_labels->Size()];
 
 		each(i : centroids) {
-			random_values := Float->New[length];
+			random_values := Float->New[record_length];
 			each(j : random_values) {
 				random_values[j] := Float->Random(min_value + 0.001, max_value - 0.001);
 			};
@@ -153,12 +165,12 @@ class KMeans {
 		return false;
 	}
 
-	function : native : Average(group : Vector<FloatArrayRef>, length : Int) ~FloatArrayRef {
+	function : native : Average(group : Vector<FloatArrayRef>, record_length : Int) ~FloatArrayRef {
 		if(group->IsEmpty()) {
 			return Nil;
 		};
 
-		average_values := Float->New[length];
+		average_values := Float->New[record_length];
 		each(i : average_values) {
 			sum := 0.0;
 			each(array in group) {
