@@ -1,0 +1,6 @@
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		p := Collection.Tuple.Pair->New("name", "value")<String, String>;
+		p->ToString()->PrintLine();
+	}
+}
