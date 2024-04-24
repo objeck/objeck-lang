@@ -39,6 +39,7 @@ class Test {
 		labels := ["group-a","group-b", "group-c"];
 		groups := KMeans->Group(labels, records, 2, 0.0, 10.0);
 		groups->GetGroupNames()->ToString()->PrintLine();
+		
 		groups->GetDunnIndex()->PrintLine();
 
 		each(group in groups) {
