@@ -56,13 +56,14 @@ Want to get started? Take a look at the [language guide](https://objeck.org/gett
 
 ## What's New?
 
-* v2024.4.0
+* v2024.4.0 **[current release]**
   * Added support for Google DeepMind (Gemini) APIs
     * Model
     * Corpus (v1beta)
     * Chat
   * Open AI support for external function calls
   * OAuth2 support (session and file based support)
+  * Refactored KMeans ML implementation to support arrays
   * Improved support for Date <=> String operations
   * Improved Base64 encoding and decoding
   * Added support for private functions
@@ -71,7 +72,7 @@ Want to get started? Take a look at the [language guide](https://objeck.org/gett
   * Fixed ARM64 JIT compiler 'eor' instruction issue impacting macOS and ARM64
 
 
-* v2024.3.0 [current release]
+* v2024.3.0
   * Added support for OpenAI APIs
   * Fixed GC bug #462 and #482
   
