@@ -2370,18 +2370,22 @@ each(neighbor := nearest) {
 	K-Means clustering algorithm
 	
 	```
-records := Collection.Vector->New()<FloatArrayRef>;
-records->AddBack(FloatArrayRef->New([7.991916152, 1.474549104]));
-records->AddBack(FloatArrayRef->New([2.927025216, 9.045466629]));
 records->AddBack(FloatArrayRef->New([9.677901811, 3.044481052]));
 records->AddBack(FloatArrayRef->New([2.103293937, 2.446154204]));
 records->AddBack(FloatArrayRef->New([9.340432657, 2.896683906]));
-# ...
-cluster_labels := ["Janet","Jack", "Chrissy"];
+records->AddBack(FloatArrayRef->New([7.674354483, 4.765027229]));
+records->AddBack(FloatArrayRef->New([8.656404515, 0.481807722]));
 
-clusters := KMeans->Group(cluster_labels, records, 2, 0.05, 10.0);
-clusters->Size()->PrintLine();
-KMeans->DunnIndex(clusters)->PrintLine();
+labels := ["group-a","group-b", "group-c"];
+groups := KMeans->Group(labels, records, 2, 0.0, 10.0);
+groups->GetGroupNames()->ToString()->PrintLine();
+
+groups->GetDunnIndex()->PrintLine();
+
+each(group in groups) {
+  group->GetName()->PrintLine();
+  group->GetArrayValue(0)->PrintLine();
+}
 	```
 ~#
 	class KMeans {
