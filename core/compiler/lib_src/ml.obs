@@ -2375,6 +2375,7 @@ records->AddBack(FloatArrayRef->New([2.103293937, 2.446154204]));
 records->AddBack(FloatArrayRef->New([9.340432657, 2.896683906]));
 records->AddBack(FloatArrayRef->New([7.674354483, 4.765027229]));
 records->AddBack(FloatArrayRef->New([8.656404515, 0.481807722]));
+# ...
 
 labels := ["group-a","group-b", "group-c"];
 groups := KMeans->Group(labels, records, 2, 0.0, 10.0);
@@ -2487,17 +2488,29 @@ each(group in groups) {
 		}
 
 		function : native : HasChanged(old_centroids : FloatArrayRef[], new_centroids : FloatArrayRef[]) ~ Bool {
-			has_changed := false;
+			if(old_centroids = Nil | new_centroids = Nil) {
+				return false;
+			};
 
+			has_changed := false;
 			each(i : old_centroids) {
-				old_centroid_values := old_centroids[i]->Get();
-				new_centroid_values := new_centroids[i]->Get();
+				temp := old_centroids[i];
+				if(temp = Nil) {
+					return false;
+				};
+				old_centroid_values := temp->Get();
+
+				temp := new_centroids[i];
+				if(temp = Nil) {
+					return false;
+				};
+				new_centroid_values := temp->Get();
 				
 				each(j : old_centroid_values) {
 					old_centroid_value := old_centroid_values[j];
 					new_centroid_value := new_centroid_values[j];
 
-					has_changed := Float->Abs(old_centroid_value - new_centroid_value) = 0.0;
+					has_changed := Float->Abs(old_centroid_value - new_centroid_value) < 0.001;
 					if(<>has_changed) {
 						return true;
 					}
