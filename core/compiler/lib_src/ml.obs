@@ -2370,17 +2370,18 @@ each(neighbor := nearest) {
 	K-Means clustering algorithm
 	
 	```
+records := Collection.Vector->New()<FloatArrayRef>;
 records->AddBack(FloatArrayRef->New([7.991916152, 1.474549104]));
 records->AddBack(FloatArrayRef->New([2.927025216, 9.045466629]));
 records->AddBack(FloatArrayRef->New([9.677901811, 3.044481052]));
 records->AddBack(FloatArrayRef->New([2.103293937, 2.446154204]));
 records->AddBack(FloatArrayRef->New([9.340432657, 2.896683906]));
 # ...
-group_labels := ["Janet","Jack", "Chrissy"];
+cluster_labels := ["Janet","Jack", "Chrissy"];
 
-groups := KMeans->Group(group_labels, records, 2, 0.05, 10.0);
-groups->Size()->PrintLine();
-KMeans->DunnIndex(groups)->PrintLine();
+clusters := KMeans->Group(cluster_labels, records, 2, 0.05, 10.0);
+clusters->Size()->PrintLine();
+KMeans->DunnIndex(clusters)->PrintLine();
 	```
 ~#
 	class KMeans {
@@ -2393,9 +2394,9 @@ KMeans->DunnIndex(groups)->PrintLine();
 		@param record_length length of records, all records lengths be the same
 		@param min_value smallest record value
 		@param max_value largest record value
-		@return labeled clustered groups
+		@return labeled grouping
 		~#
-		function : native : Group(group_labels : String[], records : Vector<FloatArrayRef>, record_length : Int, min_value : Float, max_value : Float) ~ Hash<String, Vector<FloatArrayRef>> {
+		function : native : Group(group_labels : String[], records : Vector<FloatArrayRef>, record_length : Int, min_value : Float, max_value : Float) ~ KMeansGrouping {
 			# https://www.ibm.com/support/pages/how-does-k-mean-cluster-node-select-initial-records-clustering
 			centroids := InitalCentroids(group_labels, records, record_length, min_value, max_value);
 			updated_centroids := FloatArrayRef->New[group_labels->Size()];
@@ -2464,69 +2465,7 @@ KMeans->DunnIndex(groups)->PrintLine();
 				};
 			};
 
-			return groups;
-		}
-
-		#~
-		Calculates the Dunn index
-		@param groups K-Mean grouping
-		@return Dunn index, higher values indicate more distinct clusters
-		~#
-		function : native : DunnIndex(groups : Hash<String, Vector<FloatArrayRef>>) ~ Float {
-			group_key_values := groups->GetKeyValues()<Pair<String, Vector<FloatArrayRef>>>;
-
-			max_intra_distance := 0.0;
-			each(group_key_value in group_key_values) {
-				group := group_key_value->GetSecond();
-				group_name := group_key_value->GetFirst();
-				
-				if(@debug) {
-					group_size := group->Size();
-					"group: name='{$group_name}', size={$group_size}\n---"->PrintLine();
-				};
-
-				each(left_array in group) {			
-					each(right_array in group) {
-						if(left_array <> right_array) {
-							distance := Distance(left_array, right_array);
-							if(distance > max_intra_distance) {
-								max_intra_distance := distance;
-							}
-						};
-					};
-				};
-			};
-
-			if(@debug) {
-				"max_intra_distance={$max_intra_distance}\n---"->PrintLine();
-			};
-
-			min_inter_distance := Float->Inf();
-			each(left_key_value in group_key_values) {
-				left_group := left_key_value->GetSecond();
-				left_group_name := left_key_value->GetFirst();
-
-				each(right_key_value in group_key_values) {
-					right_group := right_key_value->GetSecond();
-					right_group_name := right_key_value->GetFirst();
-					if(<>left_group_name->Equals(right_group_name)) {
-						each(left_array in left_group) {
-							each(right_array in right_group) {
-								distance := Distance(left_array, right_array);
-								if(distance < min_inter_distance) {
-									min_inter_distance := distance;
-								};
-							};
-						};
-					};
-				};
-			};
-
-			if(@debug) {
-				"min_inter_distance={$min_inter_distance}\n---"->PrintLine();
-			};
-
-			return min_inter_distance / max_intra_distance;
+			return KMeansGrouping->New(groups);
 		}
 
 		function : native : InitalCentroids(group_labels : String[], records : Vector<FloatArrayRef>, record_length : Int, min_value : Float, max_value : Float) ~ FloatArrayRef[] {
@@ -2602,84 +2541,279 @@ KMeans->DunnIndex(groups)->PrintLine();
 		}
 	}
 
-	class : private : Distance implements Stringify {
-		@point : KMeansPoint;
-		@distance : Float;
+	#~
+	K-Means grouping result
+	~#
+	class KMeansGrouping {
+		@groups : Hash<String, KMeansGroup>;
+		@group_names : String[];
+		@dunn_index : Float;
 
-		New(point : KMeansPoint, distance : Float) {
-			@point := point;
-			@distance := distance;
+		@debug : static : Bool;
+
+		New(groups : Hash<String, Vector<FloatArrayRef>>) {
+			group_key_values := groups->GetKeyValues()<Pair<String, Vector<FloatArrayRef>>>;
+			@groups := Hash->New()<String, KMeansGroup>;
+			@group_names := String->New[group_key_values->Size()];			
+			@dunn_index := -1.0;
+			
+			each(i : group_key_values) {
+				group_key_value := group_key_values->Get(i);
+
+				group := group_key_value->GetSecond();
+				group_name := group_key_value->GetFirst();
+				@group_names[i] := group_name->Copy();
+				@groups->Insert(group_name, KMeansGroup->New(group_name, group));
+			};
 		}
 
-		method : public : GetPoint() ~ KMeansPoint {
-			return @point;
+		#~
+		Get the number of groups
+		@return number of groups
+		~#
+		method : public : Size() ~ Int {
+			return @groups->Size();
 		}
 
-		method : public : GetDistance() ~ Float {
-			return @distance;
+		#~
+		Get a group by index
+		@param index index
+		@return group
+		~#
+		method : public : Get(i : Int) ~ KMeansGroup {
+			if(i > -1 & i < @group_names->Size()) {
+				return @groups->Find(@group_names[i])
+			};
+
+			return Nil;
 		}
 
+		#~
+		Get an array of group names
+		@return array of group names
+		~#
+		method : public : GetGroupNames() ~ String[] {
+			return @group_names;
+		}
+
+		#~
+		Get a group by name
+		@param index index
+		@return group
+		~#
+		method : public : GetGroup(name : String) ~ KMeansGroup {
+			return @groups->Find(name);
+		}
+
+		#~
+		Calculates the Dunn index
+		@param groups K-Mean grouping
+		@return Dunn index, higher values indicate more distinct clusters
+		~#
+		method : public : GetDunnIndex() ~ Float {
+			if(@dunn_index < 0.0) {
+				group_key_values := @groups->GetKeyValues()<Pair<String, KMeansGroup>>;
+
+				max_intra_distance := 0.0;
+				each(group_key_value in group_key_values) {
+					group := group_key_value->GetSecond()->GetValues();
+					group_name := group_key_value->GetFirst();
+					
+					if(@debug) {
+						group_size := group->Size();
+						"group: name='{$group_name}', size={$group_size}\n---"->PrintLine();
+					};
+
+					each(left_array in group) {			
+						each(right_array in group) {
+							if(left_array <> right_array) {
+								distance := KMeans->Distance(left_array, right_array);
+								if(distance > max_intra_distance) {
+									max_intra_distance := distance;
+								}
+							};
+						};
+					};
+				};
+
+				if(@debug) {
+					"max_intra_distance={$max_intra_distance}\n---"->PrintLine();
+				};
+
+				min_inter_distance := Float->Inf();
+				each(left_key_value in group_key_values) {
+					left_group := left_key_value->GetSecond()->GetValues();
+					left_group_name := left_key_value->GetFirst();
+
+					each(right_key_value in group_key_values) {
+						right_group := right_key_value->GetSecond()->GetValues();
+						right_group_name := right_key_value->GetFirst();
+						if(<>left_group_name->Equals(right_group_name)) {
+							each(left_array in left_group) {
+								each(right_array in right_group) {
+									distance := KMeans->Distance(left_array, right_array);
+									if(distance < min_inter_distance) {
+										min_inter_distance := distance;
+									};
+								};
+							};
+						};
+					};
+				};
+
+				if(@debug) {
+					"min_inter_distance={$min_inter_distance}\n---"->PrintLine();
+				};
+
+				@dunn_index := min_inter_distance / max_intra_distance;
+			};
+
+			return @dunn_index;
+		}
+		
+		#~
+		String representation of the object
+		@return groups representation of the object
+		~#
 		method : public : ToString() ~ String {
-			return "{$@point}: {$@distance}";
+			buffer := "";
+
+			buffer->Append('[');
+			group_key_values := @groups->GetKeyValues()<Pair<String, KMeansGroup>>;			
+			each(i : group_key_values) {
+				group_key_value := group_key_values->Get(i);
+				group := group_key_value->GetSecond();
+				group_name := group_key_value->GetFirst();
+
+				buffer->Append("{\"name\": \"");
+				buffer->Append(group_name);
+				buffer->Append("\",\"values\":[");
+				buffer->Append(group->ToString());
+				buffer->Append("]}");
+
+				if(i + 1 < group_key_values->Size()) {
+					buffer->Append(',');
+				};
+			};
+			buffer->Append(']');
+
+			return buffer;
 		}
 	}
 
 	#~
-	K-Means point
+	KMeans group
 	~#
-	class KMeansPoint implements Stringify {
-		@x : Float;
-		@y : Float;
+	class KMeansGroup {
+		@name : String;
+		@arrays : Vector<FloatArrayRef>;
 
-		#~
-		Default constructor
-		~#
-		New() {
-			@x := 0.0;
-			@y := 0.0;
+		New(name : String, arrays : Vector<FloatArrayRef>) {
+			@name := name;
+			@arrays := arrays;
 		}
 
 		#~
-		Constructor
-		@param x x value
-		@param y y value
+		Get the name of the group
+		@return name of the group
 		~#
-		New(x : Float, y : Float) {
-			@x := x;
-			@y := y;
+		method : public : GetName() ~ String {
+			return @name;
 		}
 
 		#~
-		Get x value
-		@return x value
+		Get group values
+		@return group values
 		~#
-		method : public : GetX() ~ Float {
-			return @x;
+		method : public : GetValues() ~ Vector<FloatArrayRef> {
+			return @arrays;
 		}
 
 		#~
-		Get y value
-		@return y value
+		Get group values as an array
+		@param index index
+		@return group values as an array
 		~#
-		method : public : GetY() ~ Float {
-			return @y;
+		method : public : GetArrayValue(i : Int) ~ Float[] {
+			if(i > -1 & i < @arrays->Size()) {
+				array := @arrays->Get(i)->Get();
+				columns := array->Size();
+
+				matrix := Float->New[columns];
+				each(j : array) {
+					matrix[j] := array[j];
+				};
+
+				return matrix;
+
+			};
+
+			return Nil;
 		}
 
 		#~
-		Test if two points are equal
-		@param point compare point
-		@return true if equal, false otherwise
+		Get the size of the group
+		@return size of the group
 		~#
-		method : public : Equals(point : KMeansPoint) ~ Bool {
-			return point->GetX() = @x & point->GetY() = @y;
+		method : public : Size() ~ Int {
+			return @arrays->Size();
+		}
+
+		#~
+		Get array by index
+		@param index index
+		@return array
+		~#
+		method : public : Get(i : Int) ~ FloatArrayRef {
+			if(i > -1 & i < @arrays->Size()) {
+				return @arrays->Get(i);
+			};
+
+			return Nil;
+		}
+
+		#~
+		Get group as a value matrix
+		@return value matrix
+		~#
+		method : native : public : GetArrayValues() ~ Float[,] {
+			matrix : Float[,];
+
+			if(<>@arrays->IsEmpty()) {
+				rows := @arrays->Size();
+				array := @arrays->Get(0)->Get();
+				columns := array->Size();
+
+				matrix := Float->New[rows, columns];
+				each(i : @arrays) {
+					array := @arrays->Get(i)->Get();
+					each(j : array) {
+						matrix[i, j] := array[j];
+					}
+				};
+			};
+
+			return matrix;
 		}
 
 		#~
 		String representation of the object
-		@return representation of the object
+		@return groups representation of the object
 		~#
 		method : public : ToString() ~ String {
-			return "{{$@x}, {$@y}}";
+			buffer := "";
+
+			if(<>@arrays->IsEmpty()) {
+				each(i : @arrays) {
+					array := @arrays->Get(i)->Get();
+					buffer->Append(array->ToString());
+					if(i + 1 < @arrays->Size()) {
+						buffer->Append(',');
+					};
+				};
+			};
+
+			return buffer;
 		}
 	}
 }
