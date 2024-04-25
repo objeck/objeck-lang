@@ -40,6 +40,10 @@ jobs:
       actions: read
       contents: read
 
+    defaults:
+      run:
+        working-directory: ${{ inputs.WORKING_DIRECTORY }}
+
     strategy:
       fail-fast: false
       matrix:
@@ -83,10 +87,10 @@ jobs:
     # 📚 See https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_idstepsrun
     - if: matrix.build-mode == 'manual'
       name: Build C and C++ code
-      working-directory: core/release
       run: |
         sudo apt-get install build-essential git libssl-dev unixodbc-dev libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev libsdl2-mixer-dev libreadline-dev unzip libeigen3-dev
-        ./deploy_posix 64
+        cd core/release
+        ./deploy_posix.sh 64
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v3
