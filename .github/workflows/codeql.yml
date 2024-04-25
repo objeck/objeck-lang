@@ -40,10 +40,6 @@ jobs:
       actions: read
       contents: read
 
-    defaults:
-      run:
-        working-directory: ${{ inputs.WORKING_DIRECTORY }}
-
     strategy:
       fail-fast: false
       matrix:
