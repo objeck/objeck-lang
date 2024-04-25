@@ -6324,12 +6324,12 @@ void TrapProcessor::SerializeArray(const size_t* array, ParamType type, size_t* 
       // write data
       WriteSerializedBytes(array_ptr, array_size, inst, op_stack, stack_pos);
     }
-                        break;
+      break;
 
     case CHAR_ARY_PARM: {
       // convert
-      char* array_ptr = (char*)(array + 3);
-      const std::string buffer = UnicodeToBytes((const wchar_t*)array_ptr);
+      wchar_t* array_ptr = (wchar_t*)(array + 3);
+      const std::string buffer = UnicodeToBytes(array_ptr);
       // write metadata  
       SerializeInt((INT_VALUE)buffer.size(), inst, op_stack, stack_pos);
       SerializeInt((INT_VALUE)array[1], inst, op_stack, stack_pos);
@@ -6337,7 +6337,7 @@ void TrapProcessor::SerializeArray(const size_t* array, ParamType type, size_t* 
       // write data
       WriteSerializedBytes((const char*)buffer.c_str(), (long)buffer.size(), inst, op_stack, stack_pos);
     }
-                        break;
+      break;
 
     case INT_ARY_PARM: {
       // write metadata
@@ -6348,7 +6348,7 @@ void TrapProcessor::SerializeArray(const size_t* array, ParamType type, size_t* 
       // write data
       WriteSerializedBytes(array_ptr, array_size * sizeof(INT_VALUE), inst, op_stack, stack_pos);
     }
-                       break;
+      break;
 
     case OBJ_ARY_PARM: {
       SerializeInt((INT_VALUE)array[0], inst, op_stack, stack_pos);
@@ -6376,7 +6376,7 @@ void TrapProcessor::SerializeArray(const size_t* array, ParamType type, size_t* 
         inst[1] = dest_pos;
       }
     }
-                       break;
+      break;
 
     case FLOAT_ARY_PARM: {
       // write metadata
@@ -6387,7 +6387,7 @@ void TrapProcessor::SerializeArray(const size_t* array, ParamType type, size_t* 
       // write data
       WriteSerializedBytes(array_ptr, array_size * sizeof(FLOAT_VALUE), inst, op_stack, stack_pos);
     }
-                         break;
+        break;
 
     default:
       break;
@@ -6424,7 +6424,7 @@ void TrapProcessor::ReadSerializedBytes(size_t* dest_array, const size_t* src_ar
         dest_array_size *= sizeof(wchar_t);
         memcpy(dest_array_ptr, out.c_str(), out.size() * sizeof(wchar_t));
       }
-                          break;
+         break;
 
       case INT_ARY_PARM:
         dest_array_size *= sizeof(INT_VALUE);
