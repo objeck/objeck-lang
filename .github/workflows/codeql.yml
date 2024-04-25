@@ -65,6 +65,7 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
+      working-directory: core/release
 
     # Initializes the CodeQL tools for scanning.
     - name: Initialize CodeQL
@@ -89,7 +90,6 @@ jobs:
       name: Build C and C++ code
       run: |
         sudo apt-get install build-essential git libssl-dev unixodbc-dev libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev libsdl2-mixer-dev libreadline-dev unzip libeigen3-dev
-        cd core/release
         ./deploy_posix.sh 64
 
     - name: Perform CodeQL Analysis
