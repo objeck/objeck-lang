@@ -69,15 +69,10 @@ class Test {
 		groups := KMeans->Group(labels, records, 2, 0.0, 10.0);
 		groups->GetGroupNames()->ToString()->PrintLine();
 		
-		groups->GetDunnIndex()->PrintLine();
-
 		each(group in groups) {
 			group->GetName()->PrintLine();
 			group->GetArrayValue(0)->PrintLine();
-		}
-
-#		group := groups->GetGroup("group-a");
-#		group->ToString()->PrintLine();
+		};
 
 		groups->ToString()->PrintLine();
 		groups->GetDunnIndex()->PrintLine();
