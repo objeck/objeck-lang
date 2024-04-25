@@ -84,8 +84,9 @@ jobs:
     - if: matrix.build-mode == 'manual'
       name: Build C and C++ code
       run: |
-        echo 'Drop and give me 50...'
-        exit 1
+        sudo apt-get install build-essential git libssl-dev unixodbc-dev libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev libsdl2-mixer-dev libreadline-dev unzip libeigen3-dev
+        working-directory: core/release
+        ./deploy_posix 64
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v3
