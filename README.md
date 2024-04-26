@@ -58,8 +58,8 @@ Want to get started? Take a look at the [language guide](https://objeck.org/gett
 ## What's New?
 
 * v2024.5.0
-  * Extend LSP functionality
-  * Explore changing all Collection 'ToString()' methods to return JSON
+  * Extended LSP functionality
+  * DeepMind (Gemini) support for functions
 
 * v2024.4.0 **[current release]**
   * Added support for Google DeepMind (Gemini) APIs
