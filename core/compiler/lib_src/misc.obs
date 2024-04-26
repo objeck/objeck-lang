@@ -1,6 +1,4 @@
-use System.Time;
-use Collection;
-use System.IO.Filesystem;
+use Web.HTTP, Collection, Data.JSON, System.Time, System.IO.Filesystem;
 
 #~
 Provides support for conversions (-lib misc)
@@ -229,6 +227,30 @@ bundle System.Time {
 			};
 
 			return buffer;
+		}
+
+		#~
+		Get the network time
+		@return triplet with: unix time, UTC time and local time
+		~#
+		function : GetNetworkTime() ~ Collection.Tuple.Triplet<IntRef, Date, Date> {
+			response := HttpClient->QuickGet(Url->New("http://worldtimeapi.org/api/ip"));
+			if(response->GetCode() = 200) {
+				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				if(response_json <> Nil) {
+					unix_time_json := response_json->Get("unixtime");					
+					utc_time_json := response_json->Get("utc_datetime");
+					dst_time_json := response_json->Get("datetime");
+					if(unix_time_json <> Nil & utc_time_json <> Nil & dst_time_json <> Nil) {
+						utc_date := System.Time.DateUtility->Parse(utc_time_json->GetString(), "yyyy-MM-ddThh:mm:ss", false);
+						dst_date := System.Time.DateUtility->Parse(dst_time_json->GetString(), "yyyy-MM-ddThh:mm:ss", false);	
+						
+						return Collection.Tuple.Triplet->New(IntRef->New(unix_time_json->GetInt()), utc_date, dst_date)<IntRef, Date, Date>;
+					};
+				};
+			};
+
+			return Nil;
 		}
 	}
 	
@@ -498,19 +520,19 @@ bundle System.Utility {
 			level := 0;
 			
 			token := tokens->Get(i);
-			while(token->GetType() <> Token->Type->SEMI & token->GetType() <> Token->Type->OTHER) {
+			while(token->GetType() <> System.Utility.Token->Type->SEMI & token->GetType() <> System.Utility.Token->Type->OTHER) {
 				select(token->GetType()) {
-					label Token->Type->LESS {
+					label System.Utility.Token->Type->LESS {
 						level += 1;
 					}
 
-					label Token->Type->GTR {
+					label System.Utility.Token->Type->GTR {
 						level -= 1;
 					}
 
-					label Token->Type->IDENT
-					label Token->Type->STRING_ID
-					label Token->Type->COMMA {
+					label System.Utility.Token->Type->IDENT
+					label System.Utility.Token->Type->STRING_ID
+					label System.Utility.Token->Type->COMMA {
 						# skip
 					}
 
@@ -545,7 +567,7 @@ bundle System.Utility {
 				in_for := false;
 				in_consts := false;
 
-				@prev_token := Token->New(-1, Token->Type->OTHER, "other");
+				@prev_token := Token->New(-1, System.Utility.Token->Type->OTHER, "other");
 
 				tokens := scanner->GetTokens();
 				each(i : tokens) {
@@ -570,11 +592,11 @@ bundle System.Utility {
 						@next_token := tokens->Get(i + 1);
 					}
 					else {
-						@next_token := Token->New(-1, Token->Type->OTHER, "other");
+						@next_token := Token->New(-1, System.Utility.Token->Type->OTHER, "other");
 					};
 					
 					select(@token->GetType()) {
-						label Token->Type->CLASS_ID {
+						label System.Utility.Token->Type->CLASS_ID {
 							VerticalSpace(@prev_token, tab_space, @ident_space);
 							
 							if(is_color) {
@@ -588,7 +610,7 @@ bundle System.Utility {
 							}
 						}
 
-						label Token->Type->FUNCTION_ID {
+						label System.Utility.Token->Type->FUNCTION_ID {
 							VerticalSpace(@prev_token, tab_space, @ident_space);
 
 							if(is_color) {
@@ -602,7 +624,7 @@ bundle System.Utility {
 							};
 						}
 
-						label Token->Type->METHOD_ID {
+						label System.Utility.Token->Type->METHOD_ID {
 							VerticalSpace(@prev_token, tab_space, @ident_space);
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_KEYWORD);
@@ -615,7 +637,7 @@ bundle System.Utility {
 							};
 						}
 
-						label Token->Type->PUBLIC_ID {
+						label System.Utility.Token->Type->PUBLIC_ID {
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
@@ -627,7 +649,7 @@ bundle System.Utility {
 							};
 						}
 
-						label Token->Type->PRIVATE_ID {
+						label System.Utility.Token->Type->PRIVATE_ID {
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
@@ -639,7 +661,7 @@ bundle System.Utility {
 							};
 						}
 
-						label Token->Type->IF_ID {
+						label System.Utility.Token->Type->IF_ID {
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
@@ -651,7 +673,7 @@ bundle System.Utility {
 							};
 						}
 
-						label Token->Type->ELSE_ID {
+						label System.Utility.Token->Type->ELSE_ID {
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
@@ -665,7 +687,7 @@ bundle System.Utility {
 							};
 						}					
 
-						label Token->Type->DO_ID {
+						label System.Utility.Token->Type->DO_ID {
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
@@ -677,7 +699,7 @@ bundle System.Utility {
 							};
 						}
 
-						label Token->Type->WHILE_ID {
+						label System.Utility.Token->Type->WHILE_ID {
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
@@ -689,7 +711,7 @@ bundle System.Utility {
 							};
 						}
 
-						label Token->Type->FOR_ID {
+						label System.Utility.Token->Type->FOR_ID {
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
@@ -703,7 +725,7 @@ bundle System.Utility {
 							in_for := true;
 						}
 
-						label Token->Type->EACH_ID {
+						label System.Utility.Token->Type->EACH_ID {
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
@@ -715,7 +737,7 @@ bundle System.Utility {
 							};
 						}
 
-						label Token->Type->BREAK_ID {
+						label System.Utility.Token->Type->BREAK_ID {
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
@@ -727,7 +749,7 @@ bundle System.Utility {
 							};
 						}
 
-						label Token->Type->CONTINUE_ID {
+						label System.Utility.Token->Type->CONTINUE_ID {
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
@@ -739,7 +761,7 @@ bundle System.Utility {
 							};
 						}
 
-						label Token->Type->RETURN_ID {
+						label System.Utility.Token->Type->RETURN_ID {
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
@@ -751,7 +773,7 @@ bundle System.Utility {
 							};
 						}
 
-						label Token->Type->ALIAS_ID {
+						label System.Utility.Token->Type->ALIAS_ID {
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
@@ -763,7 +785,7 @@ bundle System.Utility {
 							};
 						}
 
-						label Token->Type->LEAVING_ID {
+						label System.Utility.Token->Type->LEAVING_ID {
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
@@ -771,7 +793,7 @@ bundle System.Utility {
 							AppendBuffer("leaving");
 						}
 
-						label Token->Type->USE_ID {
+						label System.Utility.Token->Type->USE_ID {
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
@@ -783,7 +805,7 @@ bundle System.Utility {
 							};
 						}
 
-						label Token->Type->NATIVE_ID {
+						label System.Utility.Token->Type->NATIVE_ID {
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
@@ -795,7 +817,7 @@ bundle System.Utility {
 							};
 						}
 
-						label Token->Type->STATIC_ID {
+						label System.Utility.Token->Type->STATIC_ID {
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
@@ -803,7 +825,7 @@ bundle System.Utility {
 							AppendBuffer("static");
 						}
 
-						label Token->Type->SELECT_ID {
+						label System.Utility.Token->Type->SELECT_ID {
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
@@ -815,7 +837,7 @@ bundle System.Utility {
 							};
 						}
 
-						label Token->Type->LABEL_ID {
+						label System.Utility.Token->Type->LABEL_ID {
 							VerticalSpace(@prev_token, tab_space, @ident_space);
 
 							if(is_color) {
@@ -832,7 +854,7 @@ bundle System.Utility {
 							@skip_space := false;
 						}
 
-						label Token->Type->OTHER_ID {
+						label System.Utility.Token->Type->OTHER_ID {
 							VerticalSpace(@prev_token, tab_space, @ident_space);
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_KEYWORD);
@@ -848,16 +870,16 @@ bundle System.Utility {
 							@skip_space := false;
 						}
 
-						label Token->Type->ASGN {
+						label System.Utility.Token->Type->ASGN {
 							AppendBuffer(":=");
 						}
 
-						label Token->Type->ASSESSOR {
+						label System.Utility.Token->Type->ASSESSOR {
 							PopBuffer();
 							AppendBuffer("->");
 						}
 
-						label Token->Type->LINE_COMMENT {
+						label System.Utility.Token->Type->LINE_COMMENT {
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_COMMENT);
 							};
@@ -873,7 +895,7 @@ bundle System.Utility {
 							@skip_space := insert_tabs := true;
 						}
 
-						label Token->Type->MULTI_COMMENT {
+						label System.Utility.Token->Type->MULTI_COMMENT {
 							PopBuffer();
 							
 							if(is_color) {
@@ -926,11 +948,11 @@ bundle System.Utility {
 							};
 						}
 
-						label Token->Type->SEMI {
+						label System.Utility.Token->Type->SEMI {
 							PopBuffer();
 							AppendBuffer(';');
 
-							if(@next_token->GetType() <> Token->Type->CCBRACE & @next_token->GetType() <> Token->Type->VTAB & <>in_for) {
+							if(@next_token->GetType() <> System.Utility.Token->Type->CCBRACE & @next_token->GetType() <> System.Utility.Token->Type->VTAB & <>in_for) {
 								AppendBuffer('\n');
 								
 								@skip_space := true;
@@ -940,7 +962,7 @@ bundle System.Utility {
 							};
 						}
 
-						label Token->Type->LESS {
+						label System.Utility.Token->Type->LESS {
 							@is_generic := CheckGeneric(tokens, i);
 
 							if(@is_generic) {
@@ -954,7 +976,7 @@ bundle System.Utility {
 							};
 						}
 
-						label Token->Type->GTR {
+						label System.Utility.Token->Type->GTR {
 							if(@is_generic) {
 								PopBuffer();
 								@is_generic := false;
@@ -963,7 +985,7 @@ bundle System.Utility {
 							AppendBuffer('>');
 						}
 
-						label Token->Type->COMMA {
+						label System.Utility.Token->Type->COMMA {
 							PopBuffer();
 							AppendBuffer(',');
 
@@ -973,7 +995,7 @@ bundle System.Utility {
 							};
 						}
 
-						label Token->Type->NEQL {
+						label System.Utility.Token->Type->NEQL {
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
@@ -985,7 +1007,7 @@ bundle System.Utility {
 							}
 						}
 
-						label Token->Type->AND {
+						label System.Utility.Token->Type->AND {
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
@@ -997,11 +1019,11 @@ bundle System.Utility {
 							}
 						}
 
-						label Token->Type->OR {
+						label System.Utility.Token->Type->OR {
 							AppendBuffer('|');
 						}
 
-						label Token->Type->QUESTION {
+						label System.Utility.Token->Type->QUESTION {
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
@@ -1013,17 +1035,17 @@ bundle System.Utility {
 							}
 						}
 
-						label Token->Type->IDENT {
-							if(@prev_token->GetType() = Token->Type->ASSESSOR | 
-									@prev_token->GetType() = Token->Type->ADD_ADD | 
-									@prev_token->GetType() = Token->Type->SUB_SUB) {
+						label System.Utility.Token->Type->IDENT {
+							if(@prev_token->GetType() = System.Utility.Token->Type->ASSESSOR | 
+									@prev_token->GetType() = System.Utility.Token->Type->ADD_ADD | 
+									@prev_token->GetType() = System.Utility.Token->Type->SUB_SUB) {
 								PopBuffer();
 							};
 							value := @token->GetValue();
 							AppendBuffer("{$value}");
 						}
 
-						label Token->Type->STRING_LIT {
+						label System.Utility.Token->Type->STRING_LIT {
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_CONST);
 							}
@@ -1038,7 +1060,7 @@ bundle System.Utility {
 							}
 						}
 
-						label Token->Type->CHAR_LIT {
+						label System.Utility.Token->Type->CHAR_LIT {
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_CONST);
 							}
@@ -1052,7 +1074,7 @@ bundle System.Utility {
 							}
 						}
 
-						label Token->Type->NUM_LIT {
+						label System.Utility.Token->Type->NUM_LIT {
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_CONST);
 							}
@@ -1064,7 +1086,7 @@ bundle System.Utility {
 							}
 						}
 						
-						label Token->Type->STRING_ID {
+						label System.Utility.Token->Type->STRING_ID {
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_TYPE);
 							};
@@ -1076,7 +1098,7 @@ bundle System.Utility {
 							};
 						}
 
-						label Token->Type->INT_ID {
+						label System.Utility.Token->Type->INT_ID {
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_TYPE);
 							};
@@ -1088,7 +1110,7 @@ bundle System.Utility {
 							};
 						}
 
-						label Token->Type->FLOAT_ID {
+						label System.Utility.Token->Type->FLOAT_ID {
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_TYPE);
 							};
@@ -1100,7 +1122,7 @@ bundle System.Utility {
 							};
 						}
 
-						label Token->Type->CHAR_ID {
+						label System.Utility.Token->Type->CHAR_ID {
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_TYPE);
 							};
@@ -1112,7 +1134,7 @@ bundle System.Utility {
 							};
 						}
 
-						label Token->Type->BOOL_ID {
+						label System.Utility.Token->Type->BOOL_ID {
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_TYPE);
 							};
@@ -1124,7 +1146,7 @@ bundle System.Utility {
 							};
 						}
 
-						label Token->Type->BYTE_ID {
+						label System.Utility.Token->Type->BYTE_ID {
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_TYPE);
 							};
@@ -1136,7 +1158,7 @@ bundle System.Utility {
 							};
 						}
 
-						label Token->Type->NIL_ID {
+						label System.Utility.Token->Type->NIL_ID {
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_TYPE);
 							};
@@ -1148,7 +1170,7 @@ bundle System.Utility {
 							};
 						}
 
-						label Token->Type->AND_ID {
+						label System.Utility.Token->Type->AND_ID {
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
@@ -1160,7 +1182,7 @@ bundle System.Utility {
 							}
 						}
 
-						label Token->Type->OR_ID {
+						label System.Utility.Token->Type->OR_ID {
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
@@ -1172,7 +1194,7 @@ bundle System.Utility {
 							}
 						}
 
-						label Token->Type->XOR_ID {
+						label System.Utility.Token->Type->XOR_ID {
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
@@ -1184,7 +1206,7 @@ bundle System.Utility {
 							}
 						}
 
-						label Token->Type->VIRTUAL_ID {
+						label System.Utility.Token->Type->VIRTUAL_ID {
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
@@ -1196,7 +1218,7 @@ bundle System.Utility {
 							};
 						}
 
-						label Token->Type->BUNDLE_ID {
+						label System.Utility.Token->Type->BUNDLE_ID {
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
@@ -1208,7 +1230,7 @@ bundle System.Utility {
 							};
 						}
 
-						label Token->Type->INTERFACE_ID {
+						label System.Utility.Token->Type->INTERFACE_ID {
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
@@ -1220,7 +1242,7 @@ bundle System.Utility {
 							};
 						}
 
-						label Token->Type->IMPLEMENTS_ID {
+						label System.Utility.Token->Type->IMPLEMENTS_ID {
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
@@ -1232,7 +1254,7 @@ bundle System.Utility {
 							};
 						}
 
-						label Token->Type->ENUM_ID {
+						label System.Utility.Token->Type->ENUM_ID {
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
@@ -1244,7 +1266,7 @@ bundle System.Utility {
 							};
 						}
 
-						label Token->Type->CONSTS_ID {
+						label System.Utility.Token->Type->CONSTS_ID {
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
@@ -1257,7 +1279,7 @@ bundle System.Utility {
 							};
 						}
 
-						label Token->Type->REVERSE_ID {
+						label System.Utility.Token->Type->REVERSE_ID {
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
@@ -1269,7 +1291,7 @@ bundle System.Utility {
 							};
 						}
 
-						label Token->Type->PARENT_ID {
+						label System.Utility.Token->Type->PARENT_ID {
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
@@ -1281,7 +1303,7 @@ bundle System.Utility {
 							};
 						}
 
-						label Token->Type->FROM_ID {
+						label System.Utility.Token->Type->FROM_ID {
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
@@ -1293,7 +1315,7 @@ bundle System.Utility {
 							};
 						}
 
-						label Token->Type->TRUE_ID {
+						label System.Utility.Token->Type->TRUE_ID {
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_CONST);
 							};
@@ -1305,7 +1327,7 @@ bundle System.Utility {
 							};
 						}
 
-						label Token->Type->FALSE_ID {
+						label System.Utility.Token->Type->FALSE_ID {
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_CONST);
 							};
@@ -1317,25 +1339,25 @@ bundle System.Utility {
 							};
 						}
 
-						label Token->Type->NEW_ID {
+						label System.Utility.Token->Type->NEW_ID {
 							PopBuffer();
 							@skip_space := true;
 							AppendBuffer("New");
 						}
 
-						label Token->Type->AS_ID {
+						label System.Utility.Token->Type->AS_ID {
 							PopBuffer();
 							@skip_space := true;
 							AppendBuffer("As");
 						}
 
-						label Token->Type->TYPE_OF_ID {
+						label System.Utility.Token->Type->TYPE_OF_ID {
 							PopBuffer();
 							@skip_space := true;
 							AppendBuffer("TypeOf");
 						}
 
-						label Token->Type->CRITICAL_ID {
+						label System.Utility.Token->Type->CRITICAL_ID {
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_CONST);
 							};
@@ -1347,14 +1369,14 @@ bundle System.Utility {
 							};
 						}
 
-						label Token->Type->COLON {
+						label System.Utility.Token->Type->COLON {
 							if(in_label) {
 								PopBuffer();
 							};
 							AppendBuffer(':');
 						}
 
-						label Token->Type->ADD {
+						label System.Utility.Token->Type->ADD {
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_OPER);
 							};
@@ -1366,7 +1388,7 @@ bundle System.Utility {
 							};
 						}
 
-						label Token->Type->SUB{
+						label System.Utility.Token->Type->SUB{
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_OPER);
 							};
@@ -1378,7 +1400,7 @@ bundle System.Utility {
 							};
 						}
 
-						label Token->Type->MUL{
+						label System.Utility.Token->Type->MUL{
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_OPER);
 							};
@@ -1390,7 +1412,7 @@ bundle System.Utility {
 							};
 						}
 
-						label Token->Type->DIV{
+						label System.Utility.Token->Type->DIV{
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_OPER);
 							};
@@ -1402,14 +1424,14 @@ bundle System.Utility {
 							};
 						}
 
-						label Token->Type->MOD{
+						label System.Utility.Token->Type->MOD{
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_OPER);
 							};
 							AppendBuffer('%');
 						}
 
-						label Token->Type->QUOTE{
+						label System.Utility.Token->Type->QUOTE{
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_OPER);
 							};
@@ -1421,7 +1443,7 @@ bundle System.Utility {
 							};
 						}
 
-						label Token->Type->FWD_SLASH{
+						label System.Utility.Token->Type->FWD_SLASH{
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_OPER);
 							};
@@ -1433,7 +1455,7 @@ bundle System.Utility {
 							};
 						}
 
-						label Token->Type->EQL{
+						label System.Utility.Token->Type->EQL{
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_OPER);
 							};
@@ -1445,7 +1467,7 @@ bundle System.Utility {
 							};
 						}
 
-						label Token->Type->LESS_EQL{
+						label System.Utility.Token->Type->LESS_EQL{
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_OPER);
 							};
@@ -1457,7 +1479,7 @@ bundle System.Utility {
 							};
 						}
 
-						label Token->Type->ESCAPE{
+						label System.Utility.Token->Type->ESCAPE{
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_OPER);
 							};
@@ -1470,7 +1492,7 @@ bundle System.Utility {
 						}
 
 
-						label Token->Type->GTR_EQL{
+						label System.Utility.Token->Type->GTR_EQL{
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_OPER);
 							};
@@ -1482,7 +1504,7 @@ bundle System.Utility {
 							};
 						}
 
-						label Token->Type->ADD_ASN{
+						label System.Utility.Token->Type->ADD_ASN{
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_OPER);
 							};
@@ -1494,7 +1516,7 @@ bundle System.Utility {
 							};
 						}
 
-						label Token->Type->SUB_ASN{
+						label System.Utility.Token->Type->SUB_ASN{
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_OPER);
 							};
@@ -1506,7 +1528,7 @@ bundle System.Utility {
 							};
 						}
 
-						label Token->Type->ADD_ADD{
+						label System.Utility.Token->Type->ADD_ADD{
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_OPER);
 							};
@@ -1518,7 +1540,7 @@ bundle System.Utility {
 							};
 						}
 
-						label Token->Type->SUB_SUB{
+						label System.Utility.Token->Type->SUB_SUB{
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_OPER);
 							};
@@ -1530,7 +1552,7 @@ bundle System.Utility {
 							};
 						}
 
-						label Token->Type->MUL_ASN{
+						label System.Utility.Token->Type->MUL_ASN{
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_OPER);
 							};
@@ -1542,7 +1564,7 @@ bundle System.Utility {
 							};
 						}
 
-						label Token->Type->DIV_ASN{
+						label System.Utility.Token->Type->DIV_ASN{
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_OPER);
 							};
@@ -1554,7 +1576,7 @@ bundle System.Utility {
 							};
 						}
 
-						label Token->Type->LAMBDA{
+						label System.Utility.Token->Type->LAMBDA{
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_OPER);
 							};
@@ -1566,12 +1588,12 @@ bundle System.Utility {
 							};
 						}
 
-						label Token->Type->TILDE{
+						label System.Utility.Token->Type->TILDE{
 							AppendBuffer('~');
 						}
 
-						label Token->Type->OBRACE {
-							if(@prev_token->GetType() = Token->Type->IDENT) {
+						label System.Utility.Token->Type->OBRACE {
+							if(@prev_token->GetType() = System.Utility.Token->Type->IDENT) {
 								PopBuffer();
 							};
 
@@ -1579,22 +1601,22 @@ bundle System.Utility {
 							@skip_space := true;
 						}
 
-						label Token->Type->CBRACE {
-							if(@prev_token->GetType() <> Token->Type->OBRACE) {
+						label System.Utility.Token->Type->CBRACE {
+							if(@prev_token->GetType() <> System.Utility.Token->Type->OBRACE) {
 								PopBuffer();
 							};
 							AppendBuffer(']');
 						}
 
-						label Token->Type->OPREN {
+						label System.Utility.Token->Type->OPREN {
 							if(<>@stmt_space) {
 								select(@prev_token->GetType()) {
-									label Token->Type->IDENT
-									label Token->Type->IF_ID
-									label Token->Type->FOR_ID
-									label Token->Type->EACH_ID
-									label Token->Type->SELECT_ID
-									label Token->Type->WHILE_ID {
+									label System.Utility.Token->Type->IDENT
+									label System.Utility.Token->Type->IF_ID
+									label System.Utility.Token->Type->FOR_ID
+									label System.Utility.Token->Type->EACH_ID
+									label System.Utility.Token->Type->SELECT_ID
+									label System.Utility.Token->Type->WHILE_ID {
 										PopBuffer();
 									}
 								};
@@ -1604,8 +1626,8 @@ bundle System.Utility {
 							@skip_space := true;
 						}
 
-						label Token->Type->CPREN {
-							if(@prev_token->GetType() <> Token->Type->OPREN) {
+						label System.Utility.Token->Type->CPREN {
+							if(@prev_token->GetType() <> System.Utility.Token->Type->OPREN) {
 								PopBuffer();
 							};
 
@@ -1616,7 +1638,7 @@ bundle System.Utility {
 							AppendBuffer(')');
 						}
 
-						label Token->Type->OCBRACE {
+						label System.Utility.Token->Type->OCBRACE {
 							AppendBuffer("{\n");
 							@skip_space := true;
 							tab_space += 1;
@@ -1627,7 +1649,7 @@ bundle System.Utility {
 							};
 						}
 
-						label Token->Type->CCBRACE {
+						label System.Utility.Token->Type->CCBRACE {
 							AppendBuffer('\n');
 							tab_space -= 1;
 							TabSpace(tab_space, @ident_space);
@@ -1638,8 +1660,8 @@ bundle System.Utility {
 							};
 						}
 
-						label Token->Type->VTAB {
-							if(@next_token->GetType() <> Token->Type->CCBRACE) {
+						label System.Utility.Token->Type->VTAB {
+							if(@next_token->GetType() <> System.Utility.Token->Type->CCBRACE) {
 								AppendBuffer("\n\n");
 								TabSpace(tab_space, @ident_space);
 								@skip_space := true;
@@ -1691,7 +1713,7 @@ bundle System.Utility {
 		}
 
 		method : VerticalSpace(@prev_token : Token, tab_space : Int, @ident_space : Int) ~ Nil {
-			if(@prev_token->GetType() = Token->Type->CCBRACE) {
+			if(@prev_token->GetType() = System.Utility.Token->Type->CCBRACE) {
 				AppendBuffer("\n\n");
 				TabSpace(tab_space, @ident_space);
 				@skip_space := true;
@@ -1732,53 +1754,53 @@ bundle System.Utility {
 
 			@keywords := Hash->New()<String, Token>;
 			
-			@keywords->Insert("and", Token->New(@line_num, Token->Type->AND_ID, "and_id"));
-			@keywords->Insert("or", Token->New(@line_num, Token->Type->OR_ID, "or_id"));
-			@keywords->Insert("xor", Token->New(@line_num, Token->Type->XOR_ID, "xor_id"));
-			@keywords->Insert("virtual", Token->New(@line_num, Token->Type->VIRTUAL_ID, "virtual_id"));
-			@keywords->Insert("bundle", Token->New(@line_num, Token->Type->BUNDLE_ID, "bundle_id"));
-			@keywords->Insert("interface", Token->New(@line_num, Token->Type->INTERFACE_ID, "interface_id"));
-			@keywords->Insert("implements", Token->New(@line_num, Token->Type->IMPLEMENTS_ID, "implements_id"));
-			@keywords->Insert("enum", Token->New(@line_num, Token->Type->ENUM_ID, "enum_id"));
-			@keywords->Insert("consts", Token->New(@line_num, Token->Type->CONSTS_ID, "consts_id"));
-			@keywords->Insert("reverse", Token->New(@line_num, Token->Type->REVERSE_ID, "reverse_id"));
-			@keywords->Insert("Parent", Token->New(@line_num, Token->Type->PARENT_ID, "parent_id"));
-			@keywords->Insert("from", Token->New(@line_num, Token->Type->FROM_ID, "from_id"));
-			@keywords->Insert("true", Token->New(@line_num, Token->Type->TRUE_ID, "true_id"));
-			@keywords->Insert("false", Token->New(@line_num, Token->Type->FALSE_ID, "false_id"));
-			@keywords->Insert("New", Token->New(@line_num, Token->Type->NEW_ID, "new_id"));
-			@keywords->Insert("As", Token->New(@line_num, Token->Type->AS_ID, "as_id"));
-			@keywords->Insert("TypeOf", Token->New(@line_num, Token->Type->TYPE_OF_ID, "typeof_id"));
-			@keywords->Insert("critical", Token->New(@line_num, Token->Type->CRITICAL_ID, "critical_id"));
-			@keywords->Insert("use", Token->New(@line_num, Token->Type->USE_ID, "use_id"));
-			@keywords->Insert("class", Token->New(@line_num, Token->Type->CLASS_ID, "class_id"));
-			@keywords->Insert("function", Token->New(@line_num, Token->Type->FUNCTION_ID, "function_id"));
-			@keywords->Insert("alias", Token->New(@line_num, Token->Type->ALIAS_ID, "alias_id"));
-			@keywords->Insert("method", Token->New(@line_num, Token->Type->METHOD_ID, "method_id"));
-			@keywords->Insert("public", Token->New(@line_num, Token->Type->PUBLIC_ID, "public_id"));
-			@keywords->Insert("private", Token->New(@line_num, Token->Type->PRIVATE_ID, "private_id"));
-			@keywords->Insert("native", Token->New(@line_num, Token->Type->NATIVE_ID, "native_id"));
-			@keywords->Insert("static", Token->New(@line_num, Token->Type->STATIC_ID, "static_id"));
-			@keywords->Insert("if", Token->New(@line_num, Token->Type->IF_ID, "if_id"));
-			@keywords->Insert("else", Token->New(@line_num, Token->Type->ELSE_ID, "else_id"));
-			@keywords->Insert("for", Token->New(@line_num, Token->Type->FOR_ID, "for_id"));
-			@keywords->Insert("each", Token->New(@line_num, Token->Type->EACH_ID, "each_id"));
-			@keywords->Insert("do", Token->New(@line_num, Token->Type->DO_ID, "do_id"));
-			@keywords->Insert("while", Token->New(@line_num, Token->Type->WHILE_ID, "while_id"));
-			@keywords->Insert("select", Token->New(@line_num, Token->Type->SELECT_ID, "select_id"));
-			@keywords->Insert("label", Token->New(@line_num, Token->Type->LABEL_ID, "label_id"));
-			@keywords->Insert("break", Token->New(@line_num, Token->Type->BREAK_ID, "break_id"));
-			@keywords->Insert("continue", Token->New(@line_num, Token->Type->CONTINUE_ID, "continue_id"));
-			@keywords->Insert("return", Token->New(@line_num, Token->Type->RETURN_ID, "return_id"));
-			@keywords->Insert("leaving", Token->New(@line_num, Token->Type->LEAVING_ID, "leaving_id"));
-			@keywords->Insert("String", Token->New(@line_num, Token->Type->STRING_ID, "string_id"));
-			@keywords->Insert("Int", Token->New(@line_num, Token->Type->INT_ID, "int_id"));
-			@keywords->Insert("Float", Token->New(@line_num, Token->Type->FLOAT_ID, "float_id"));
-			@keywords->Insert("Char", Token->New(@line_num, Token->Type->CHAR_ID, "char_id"));
-			@keywords->Insert("Bool", Token->New(@line_num, Token->Type->BOOL_ID, "bool_id"));
-			@keywords->Insert("Byte", Token->New(@line_num, Token->Type->BYTE_ID, "byte_id"));
-			@keywords->Insert("Nil", Token->New(@line_num, Token->Type->NIL_ID, "nil_id"));
-			@keywords->Insert("other", Token->New(@line_num, Token->Type->OTHER_ID, "other_id"));
+			@keywords->Insert("and", Token->New(@line_num, System.Utility.Token->Type->AND_ID, "and_id"));
+			@keywords->Insert("or", Token->New(@line_num, System.Utility.Token->Type->OR_ID, "or_id"));
+			@keywords->Insert("xor", Token->New(@line_num, System.Utility.Token->Type->XOR_ID, "xor_id"));
+			@keywords->Insert("virtual", Token->New(@line_num, System.Utility.Token->Type->VIRTUAL_ID, "virtual_id"));
+			@keywords->Insert("bundle", Token->New(@line_num, System.Utility.Token->Type->BUNDLE_ID, "bundle_id"));
+			@keywords->Insert("interface", Token->New(@line_num, System.Utility.Token->Type->INTERFACE_ID, "interface_id"));
+			@keywords->Insert("implements", Token->New(@line_num, System.Utility.Token->Type->IMPLEMENTS_ID, "implements_id"));
+			@keywords->Insert("enum", Token->New(@line_num, System.Utility.Token->Type->ENUM_ID, "enum_id"));
+			@keywords->Insert("consts", Token->New(@line_num, System.Utility.Token->Type->CONSTS_ID, "consts_id"));
+			@keywords->Insert("reverse", Token->New(@line_num, System.Utility.Token->Type->REVERSE_ID, "reverse_id"));
+			@keywords->Insert("Parent", Token->New(@line_num, System.Utility.Token->Type->PARENT_ID, "parent_id"));
+			@keywords->Insert("from", Token->New(@line_num, System.Utility.Token->Type->FROM_ID, "from_id"));
+			@keywords->Insert("true", Token->New(@line_num, System.Utility.Token->Type->TRUE_ID, "true_id"));
+			@keywords->Insert("false", Token->New(@line_num, System.Utility.Token->Type->FALSE_ID, "false_id"));
+			@keywords->Insert("New", Token->New(@line_num, System.Utility.Token->Type->NEW_ID, "new_id"));
+			@keywords->Insert("As", Token->New(@line_num, System.Utility.Token->Type->AS_ID, "as_id"));
+			@keywords->Insert("TypeOf", Token->New(@line_num, System.Utility.Token->Type->TYPE_OF_ID, "typeof_id"));
+			@keywords->Insert("critical", Token->New(@line_num, System.Utility.Token->Type->CRITICAL_ID, "critical_id"));
+			@keywords->Insert("use", Token->New(@line_num, System.Utility.Token->Type->USE_ID, "use_id"));
+			@keywords->Insert("class", Token->New(@line_num, System.Utility.Token->Type->CLASS_ID, "class_id"));
+			@keywords->Insert("function", Token->New(@line_num, System.Utility.Token->Type->FUNCTION_ID, "function_id"));
+			@keywords->Insert("alias", Token->New(@line_num, System.Utility.Token->Type->ALIAS_ID, "alias_id"));
+			@keywords->Insert("method", Token->New(@line_num, System.Utility.Token->Type->METHOD_ID, "method_id"));
+			@keywords->Insert("public", Token->New(@line_num, System.Utility.Token->Type->PUBLIC_ID, "public_id"));
+			@keywords->Insert("private", Token->New(@line_num, System.Utility.Token->Type->PRIVATE_ID, "private_id"));
+			@keywords->Insert("native", Token->New(@line_num, System.Utility.Token->Type->NATIVE_ID, "native_id"));
+			@keywords->Insert("static", Token->New(@line_num, System.Utility.Token->Type->STATIC_ID, "static_id"));
+			@keywords->Insert("if", Token->New(@line_num, System.Utility.Token->Type->IF_ID, "if_id"));
+			@keywords->Insert("else", Token->New(@line_num, System.Utility.Token->Type->ELSE_ID, "else_id"));
+			@keywords->Insert("for", Token->New(@line_num, System.Utility.Token->Type->FOR_ID, "for_id"));
+			@keywords->Insert("each", Token->New(@line_num, System.Utility.Token->Type->EACH_ID, "each_id"));
+			@keywords->Insert("do", Token->New(@line_num, System.Utility.Token->Type->DO_ID, "do_id"));
+			@keywords->Insert("while", Token->New(@line_num, System.Utility.Token->Type->WHILE_ID, "while_id"));
+			@keywords->Insert("select", Token->New(@line_num, System.Utility.Token->Type->SELECT_ID, "select_id"));
+			@keywords->Insert("label", Token->New(@line_num, System.Utility.Token->Type->LABEL_ID, "label_id"));
+			@keywords->Insert("break", Token->New(@line_num, System.Utility.Token->Type->BREAK_ID, "break_id"));
+			@keywords->Insert("continue", Token->New(@line_num, System.Utility.Token->Type->CONTINUE_ID, "continue_id"));
+			@keywords->Insert("return", Token->New(@line_num, System.Utility.Token->Type->RETURN_ID, "return_id"));
+			@keywords->Insert("leaving", Token->New(@line_num, System.Utility.Token->Type->LEAVING_ID, "leaving_id"));
+			@keywords->Insert("String", Token->New(@line_num, System.Utility.Token->Type->STRING_ID, "string_id"));
+			@keywords->Insert("Int", Token->New(@line_num, System.Utility.Token->Type->INT_ID, "int_id"));
+			@keywords->Insert("Float", Token->New(@line_num, System.Utility.Token->Type->FLOAT_ID, "float_id"));
+			@keywords->Insert("Char", Token->New(@line_num, System.Utility.Token->Type->CHAR_ID, "char_id"));
+			@keywords->Insert("Bool", Token->New(@line_num, System.Utility.Token->Type->BOOL_ID, "bool_id"));
+			@keywords->Insert("Byte", Token->New(@line_num, System.Utility.Token->Type->BYTE_ID, "byte_id"));
+			@keywords->Insert("Nil", Token->New(@line_num, System.Utility.Token->Type->NIL_ID, "nil_id"));
+			@keywords->Insert("other", Token->New(@line_num, System.Utility.Token->Type->OTHER_ID, "other_id"));
 		}
 
 		method : NextChar() ~ Nil {
@@ -1813,7 +1835,7 @@ bundle System.Utility {
 			
 			if(new_line_count > 1) {
 				for(i := 0; i < new_line_count; i += 2;) {
-					@tokens->AddBack(Token->New(@line_num, Token->Type->VTAB, "vtab"));
+					@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->VTAB, "vtab"));
 				};
 			};
 		}
@@ -1848,7 +1870,7 @@ bundle System.Utility {
 						NextChar();
 
 						comment :=  String->New(@buffer, start, end - start - 1);
-						@tokens->AddBack(Token->New(@line_num, Token->Type->MULTI_COMMENT, comment));
+						@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->MULTI_COMMENT, comment));
 					}
 					else {
 						start := @buffer_index - 1;
@@ -1859,7 +1881,7 @@ bundle System.Utility {
 						NextChar();
 
 						comment :=  String->New(@buffer, start, end - start - 1);
-						@tokens->AddBack(Token->New(@line_num, Token->Type->LINE_COMMENT, comment));
+						@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->LINE_COMMENT, comment));
 					};
 				}
 				# string literal
@@ -1883,7 +1905,7 @@ bundle System.Utility {
 					NextChar();
 
 					string_lit :=  String->New(@buffer, start, end - start - 1);
-					@tokens->AddBack(Token->New(@line_num, Token->Type->STRING_LIT, string_lit));
+					@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->STRING_LIT, string_lit));
 				}
 				# char const
 				else if(@cur_char = '\'') {
@@ -1900,7 +1922,7 @@ bundle System.Utility {
 					NextChar();
 
 					string_lit :=  String->New(@buffer, start, end - start - 1);
-					@tokens->AddBack(Token->New(@line_num, Token->Type->CHAR_LIT, string_lit));
+					@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->CHAR_LIT, string_lit));
 				}
 				# keyword or variable
 				else if(@cur_char->IsChar() | @cur_char = '@' | @cur_char = '$') {
@@ -1913,7 +1935,7 @@ bundle System.Utility {
 					
 					keyword := @keywords->Find(word);
 					if(keyword = Nil) {
-						@tokens->AddBack(Token->New(@line_num, Token->Type->IDENT, word));
+						@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->IDENT, word));
 					}
 					else {
 						@tokens->AddBack(keyword->Copy(@line_num));
@@ -1935,230 +1957,230 @@ bundle System.Utility {
 					end := @buffer_index;
 
 					num_lit := String->New(@buffer, start, end - start - 1);
-					@tokens->AddBack(Token->New(@line_num, Token->Type->NUM_LIT, num_lit));
+					@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->NUM_LIT, num_lit));
 				}
 				else {
 					select(@cur_char) {
 						label '#' {
-							@tokens->AddBack(Token->New(@line_num, Token->Type->POUND, "pound"));
+							@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->POUND, "pound"));
 							NextChar();
 						}
 
 						label '@' {
-							@tokens->AddBack(Token->New(@line_num, Token->Type->AT, "at"));
+							@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->AT, "at"));
 							NextChar();
 						}
 
 						label '{' {
-							@tokens->AddBack(Token->New(@line_num, Token->Type->OCBRACE, "ocbrace"));
+							@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->OCBRACE, "ocbrace"));
 							NextChar();
 						}
 
 						label '}' {
-							@tokens->AddBack(Token->New(@line_num, Token->Type->CCBRACE, "ccbrace"));
+							@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->CCBRACE, "ccbrace"));
 							NextChar();
 						}
 
 						label '(' {
-							@tokens->AddBack(Token->New(@line_num, Token->Type->OPREN, "opern"));
+							@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->OPREN, "opern"));
 							NextChar();
 						}
 
 						label ')' {
-							@tokens->AddBack(Token->New(@line_num, Token->Type->CPREN, "cpren"));
+							@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->CPREN, "cpren"));
 							NextChar();
 						}
 
 						label '_' {
-							@tokens->AddBack(Token->New(@line_num, Token->Type->DASH, "dash"));
+							@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->DASH, "dash"));
 							NextChar();
 						}
 
 						label '[' {
-							@tokens->AddBack(Token->New(@line_num, Token->Type->OBRACE, "obrace"));
+							@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->OBRACE, "obrace"));
 							NextChar();
 						}
 
 						label ']' {
-							@tokens->AddBack(Token->New(@line_num, Token->Type->CBRACE, "cbrace"));
+							@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->CBRACE, "cbrace"));
 							NextChar();
 						}
 
 						label ',' {
-							@tokens->AddBack(Token->New(@line_num, Token->Type->COMMA, "COMMA"));
+							@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->COMMA, "COMMA"));
 							NextChar();
 						}
 
 						label ':' {
 							if(@next_char = '=') {
-								@tokens->AddBack(Token->New(@line_num, Token->Type->ASGN, "asgn"));
+								@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->ASGN, "asgn"));
 								NextChar();
 							}
 							else {
-								@tokens->AddBack(Token->New(@line_num, Token->Type->COLON, "colon"));
+								@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->COLON, "colon"));
 							};
 							NextChar();
 						}
 
 						label '~' {
-							@tokens->AddBack(Token->New(@line_num, Token->Type->TILDE, "tilde"));
+							@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->TILDE, "tilde"));
 							NextChar();
 						}
 
 						label ';' {
-							@tokens->AddBack(Token->New(@line_num, Token->Type->SEMI, "semi"));
+							@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->SEMI, "semi"));
 							NextChar();
 						}
 
 						label '+' {
 							if(@next_char = '=') {
-								@tokens->AddBack(Token->New(@line_num, Token->Type->ADD_ASN, "add_asn"));
+								@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->ADD_ASN, "add_asn"));
 								NextChar();
 							}
 							else if(@next_char = '+') {
-								@tokens->AddBack(Token->New(@line_num, Token->Type->ADD_ADD, "add_add"));
+								@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->ADD_ADD, "add_add"));
 								NextChar();
 							}
 							else {
-								@tokens->AddBack(Token->New(@line_num, Token->Type->ADD, "add"));
+								@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->ADD, "add"));
 							};
 							NextChar();
 						}
 
 						label '-' {
 							if(@next_char = '>') {
-								@tokens->AddBack(Token->New(@line_num, Token->Type->ASSESSOR, "assessor"));
+								@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->ASSESSOR, "assessor"));
 								NextChar();
 							}
 							else if(@next_char = '=') {
-								@tokens->AddBack(Token->New(@line_num, Token->Type->SUB_ASN, "sub_asn"));
+								@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->SUB_ASN, "sub_asn"));
 								NextChar();
 							}
 							else if(@next_char = '-') {
-								@tokens->AddBack(Token->New(@line_num, Token->Type->SUB_SUB, "sub_sub"));
+								@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->SUB_SUB, "sub_sub"));
 								NextChar();
 							}
 							else {
-								@tokens->AddBack(Token->New(@line_num, Token->Type->SUB, "sub"));
+								@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->SUB, "sub"));
 							};
 							NextChar();
 						}
 
 						label '→' {
-							@tokens->AddBack(Token->New(@line_num, Token->Type->ASSESSOR, "assessor"));
+							@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->ASSESSOR, "assessor"));
 							NextChar();
 						}
 
 						label '←' {
-							@tokens->AddBack(Token->New(@line_num, Token->Type->ASGN, "asgn"));
+							@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->ASGN, "asgn"));
 							NextChar();
 						}
 
 						label '≠' {
-							@tokens->AddBack(Token->New(@line_num, Token->Type->NEQL, "neql"));
+							@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->NEQL, "neql"));
 							NextChar();
 						}
 
 						label '≥' {
-							@tokens->AddBack(Token->New(@line_num, Token->Type->GTR_EQL, "gtr_eql"));
+							@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->GTR_EQL, "gtr_eql"));
 							NextChar();
 						}
 						
 						label '≤' {
-							@tokens->AddBack(Token->New(@line_num, Token->Type->LESS_EQL, "less_eql"));
+							@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->LESS_EQL, "less_eql"));
 							NextChar();
 						}
 
 						label '\e' {
-							@tokens->AddBack(Token->New(@line_num, Token->Type->ESCAPE, "\e"));
+							@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->ESCAPE, "\e"));
 							NextChar();
 						}
 
 						label '*' {
 							if(@next_char = '=') {
-								@tokens->AddBack(Token->New(@line_num, Token->Type->MUL_ASN, "mul_asn"));
+								@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->MUL_ASN, "mul_asn"));
 								NextChar();
 							}
 							else {
-								@tokens->AddBack(Token->New(@line_num, Token->Type->MUL, "mul"));
+								@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->MUL, "mul"));
 							};
 							NextChar();
 						}
 
 						label '/' {
 							if(@next_char = '=') {
-								@tokens->AddBack(Token->New(@line_num, Token->Type->DIV_ASN, "div_asn"));
+								@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->DIV_ASN, "div_asn"));
 								NextChar();
 							}
 							else {
-								@tokens->AddBack(Token->New(@line_num, Token->Type->DIV, "div"));
+								@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->DIV, "div"));
 							};
 							NextChar();
 						}
 
 						label '%' {
-							@tokens->AddBack(Token->New(@line_num, Token->Type->MOD, "mod"));
+							@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->MOD, "mod"));
 							NextChar();
 						}
 
 						label '&' {
-							@tokens->AddBack(Token->New(@line_num, Token->Type->AND, "and"));
+							@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->AND, "and"));
 							NextChar();
 						}
 
 						label '|' {
-							@tokens->AddBack(Token->New(@line_num, Token->Type->OR, "or"));
+							@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->OR, "or"));
 							NextChar();
 						}
 
 						label '?' {
-							@tokens->AddBack(Token->New(@line_num, Token->Type->QUESTION, "question"));
+							@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->QUESTION, "question"));
 							NextChar();
 						}
 
 						label '\'' {
-							@tokens->AddBack(Token->New(@line_num, Token->Type->QUOTE, "quote"));
+							@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->QUOTE, "quote"));
 							NextChar();
 						}
 
 						label '\\' {
-							@tokens->AddBack(Token->New(@line_num, Token->Type->FWD_SLASH, "fwd_slash"));
+							@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->FWD_SLASH, "fwd_slash"));
 							NextChar();
 						}
 
 						label '=' {
 							if(@next_char = '>') {
-								@tokens->AddBack(Token->New(@line_num, Token->Type->NEQL, "neql"));
+								@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->NEQL, "neql"));
 								NextChar();
 							}
 							else {
-								@tokens->AddBack(Token->New(@line_num, Token->Type->EQL, "eql"));
+								@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->EQL, "eql"));
 								NextChar();
 							};
 						}
 
 						label '<' {
 							if(@next_char = '>') {
-								@tokens->AddBack(Token->New(@line_num, Token->Type->NEQL, "neql"));
+								@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->NEQL, "neql"));
 								NextChar();
 							}
 							else if(@next_char = '=') {
-								@tokens->AddBack(Token->New(@line_num, Token->Type->LAMBDA, "less_eql"));
+								@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->LAMBDA, "less_eql"));
 								NextChar();
 							}
 							else {
-								@tokens->AddBack(Token->New(@line_num, Token->Type->LESS, "less"));
+								@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->LESS, "less"));
 							};
 							NextChar();
 						}
 
 						label '>' {
 							if(@next_char = '=') {
-								@tokens->AddBack(Token->New(@line_num, Token->Type->GTR_EQL, "gtr_eql"));
+								@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->GTR_EQL, "gtr_eql"));
 								NextChar();
 							}
 							else { 
-								@tokens->AddBack(Token->New(@line_num, Token->Type->GTR, "gtr"));
+								@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->GTR, "gtr"));
 							};
 							NextChar();
 						}
