@@ -11,6 +11,12 @@ Web client support (-lib net)
 bundle Web.HTTP {
 	#~
 	HTTP client
+```
+html := HttpClient->QuickGet(Url->New("http://worldtimeapi.org/api/ip"))->ToString();
+if(html <> Nil) {
+   html->PrintLine();
+};
+```
 	~#
 	class HttpClient {
 		@request_headers : Hash<String, String>;
@@ -274,9 +280,11 @@ bundle Web.HTTP {
 						# look for chunked blocks
 						encoding : String := @response_headers->Find("transfer-encoding");
 						if(encoding <> Nil & encoding->Equals("chunked")) {
+							# "chunked"->PrintLine();							
 							content := WebCommon->ReadChunked(socket);
 						}
 						else {
+							# "Content-Length"->PrintLine();							
 							length_header : String := @response_headers->Find("content-length");
 							if(length_header <> Nil) {
 								content := WebCommon->ReadLength(length_header->ToInt(), socket);
@@ -457,11 +465,9 @@ bundle Web.HTTP {
 		}
 		
 		method : GetOrDelete(url : Web.HTTP.Url, content_type : String, is_get : Bool) ~ Web.HTTP.Response {
-			return GetOrDelete(url, content_type, true);
-
 			content : ByteBuffer;
 			status_code := 500;
-						
+
 			if(url->GetScheme()->Equals("http")) {
 				address := url->GetHost();
 				
@@ -486,14 +492,9 @@ bundle Web.HTTP {
 				if(port < 0) {
 					port := 443;
 				};
-
-				port := url->GetPort();
-				if(port < 0) {
-					port := 80;
-				};
 				# "### address='{$address}', port={$port}, location='{$location}'"->PrintLine();
 
-				socket := TCPSocket->New(address, port);
+				socket := TCPSecureSocket->New(address, port);
 				if(socket->IsOpen()) {
 					get : String;
 					if(is_get) {
@@ -502,6 +503,11 @@ bundle Web.HTTP {
 					else {
 						get := "DELETE ";
 					};
+					
+					get->Append(location);
+					get->Append(" HTTP/1.1\r\nHost: ");
+					get->Append(address);
+					get->Append("\r\n");
 
 					request_keys := @request_headers->GetKeys()<String>;
 					each(i : request_keys) {		
@@ -585,9 +591,11 @@ bundle Web.HTTP {
 						# look for chunked blocks
 						encoding : String := @response_headers->Find("transfer-encoding");
 						if(encoding <> Nil & encoding->Equals("chunked")) {
+							# "chunked"->PrintLine();							
 							content := WebCommon->ReadChunked(socket);
 						}
 						else {
+							# "Content-Length"->PrintLine();							
 							length_header : String := @response_headers->Find("content-length");
 							if(length_header <> Nil) {
 								content := WebCommon->ReadLength(length_header->ToInt(), socket);
