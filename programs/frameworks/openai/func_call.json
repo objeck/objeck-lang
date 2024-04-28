@@ -1,0 +1,16 @@
+{
+  "name": "get_coach",
+  "description": "Get the coach's name",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "year": {
+        "type": "integer",
+        "description": "Team year"
+      }
+    },
+    "required": [
+      "year"
+    ]
+  }
+}
