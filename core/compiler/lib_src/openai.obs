@@ -1174,6 +1174,243 @@ bundle API.OpenAI {
 	}
 
 	#~
+	Function type definition 
+	~#
+	class FunctionType {
+		@name: String;
+		@desc: String;
+		@param : ParameterType;
+		@req_params : String[];
+
+		New(name : String, param : ParameterType, req_params : String[]) {
+			@name := name;
+			@req_params := req_params;
+			@param := param;
+		}
+
+		New(name : String, param : ParameterType, req_params : String[], desc : String) {
+			@name := name;
+			@req_params := req_params;
+			@param := param;
+			@desc := desc;
+		}
+
+		method : public : GetName() ~ String {
+			return @name;
+		}
+
+		method : public : GetDesc() ~ String {
+			return @desc;
+		}
+		
+		method : public : GetParam() ~ ParameterType {
+			return @param;
+		}
+
+		method : public : GetRequiredParams() ~ String[] {
+			return @req_params;
+		}
+
+		method : public : ToString() ~ String {
+			buffer := "{\"name\": \"";
+			buffer->Append(@name);
+			
+			if(@desc <> Nil) {
+				buffer->Append("\",\"description\": \"");
+				buffer->Append(@desc);
+				buffer->Append("\",\"parameters\": {");
+			}
+			else {
+				buffer->Append("\",");
+			};
+
+			# JSON object parameter
+			buffer->Append("\"type\": \"object\",\"properties\":");
+			if(@param <> Nil) {
+				buffer->Append(@param->ToString());
+			}
+			else {
+				buffer->Append("{}");
+			};
+
+			# required
+			buffer->Append(",\"required\": [");
+			each(i : @req_params) {
+				req_param := @req_params[i];
+				buffer->Append('"');
+				buffer->Append(req_param);
+				buffer->Append('"');
+			}
+			buffer->Append("]}");
+
+			if(@desc <> Nil) {
+				buffer->Append('}');
+			};
+
+			return buffer;
+		}
+	}
+
+	#~
+	Function parameter type definition 
+	~#
+	class ParameterType implements Compare {
+		@name : String;
+		@type : ParameterType->Type;
+		@desc : String;
+		@props : Set<ParameterType>;
+		@is_array : Bool;
+
+		enum Type {
+			STRING,
+			NUMBER,
+			INTEGER,
+			OBJECT,
+			BOOLEAN
+		}
+
+		New(name : String, type : ParameterType->Type) {
+			@name := name;
+			@type := type;
+		}
+
+		New(name : String, type : ParameterType->Type, desc : String) {
+			@name := name;
+			@type := type;
+			@desc := desc;
+		}
+
+		New(name : String, props : Set<ParameterType>) {
+			@name := name;
+			@type := ParameterType->Type->OBJECT;
+			@props := props;
+		}
+
+		New(name : String, props : Set<ParameterType>, desc : String) {
+			@name := name;
+			@type := ParameterType->Type->OBJECT;
+			@props := props;
+			@desc := desc;
+		}
+
+		method : public : SetArray(is_array : Bool) ~ Nil {
+			@is_array := is_array;
+		}
+
+		method : public : IsArray() ~ Bool {
+			return @is_array;
+		}
+
+		method : public : GetName() ~ String {
+			return @name;
+		}
+
+		method : public : GetType() ~ ParameterType->Type {
+			return @type;
+		}
+
+		method : public : GetDesc() ~ String {
+			return @desc;
+		}
+		
+		method : public : GetProps() ~ Set<ParameterType> {
+			return @props;
+		}
+
+		#~
+		Compares two objects
+		@param rhs compare object
+		@return 0 if equal, -1 if right-hand side i greater, 1 if left-hand side is greater
+		~#
+		method : public : Compare(rhs : System.Compare) ~ Int {
+			return @name->Compare(rhs);
+		}
+
+		#~
+		Returns a hash ID for the given class
+		@return hash ID
+		~#
+		method : public : HashID() ~ Int {
+			return @name->HashID();
+		}
+
+		method : public : ToString() ~ String {
+			buffer := "{\"";
+			buffer->Append(@name);
+			buffer->Append("\": {\"type\": \"");
+
+			if(@props <> Nil) {
+				if(@props->IsEmpty()) {
+					buffer->Append("object\", \"properties\": null}");
+				}
+				else {
+					buffer->Append("object\", \"properties\":");			
+					prop_keys := @props->GetKeys()<ParameterType>;
+					each(i : prop_keys) {
+						prop_key := prop_keys->Get(i);
+						temp := prop_key->ToString();
+						
+						if(i > 0) {
+							buffer->Append(temp->SubString(1, temp->Size() - 1));
+						}
+						else {
+							buffer->Append(temp);
+						};
+						
+						if(i + 1 < prop_keys->Size()) {
+							buffer->Pop();
+							buffer->Append(',');
+						}
+						else {
+							buffer->Append('}');
+						}
+					};
+				};
+			}
+			else {
+				if(@is_array) {
+					buffer->Append("array\", \"items\": {\"type\": \"");
+				};
+
+				select(@type) {
+					label ParameterType->Type->STRING {
+						buffer->Append("string");
+					}
+
+					label ParameterType->Type->NUMBER {
+						buffer->Append("number");
+					}
+
+					label ParameterType->Type->INTEGER {
+						buffer->Append("integer");
+					}
+
+					label ParameterType->Type->BOOLEAN {
+						buffer->Append("boolean");
+					}
+				};
+			};
+
+			if(@desc <> Nil) {
+				buffer->Append("\", \"description\": \"");
+				buffer->Append(Data.JSON.JsonElement->Encode(@desc));
+			};
+
+			if(@props <> Nil) {
+				buffer->Append('}');
+			}
+			else {
+				buffer->Append("\"}}");
+				if(@is_array) {
+					buffer->Append('}');
+				};
+			};
+
+			return buffer;
+		}
+	}
+
+	#~
 	Create threads that assistants can interact with
 	~#
 	class Thread from EndPoint {
