@@ -1,0 +1,10 @@
+use System.Time, Web.HTTP, Collection, Data.JSON;
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		time := System.Time.DateUtility->GetNetworkTime()<IntRef, Date, Date>;
+		if(time <> Nil) {
+			time->GetThird()->ToString()->PrintLine();
+		};
+	}
+}
