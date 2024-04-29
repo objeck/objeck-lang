@@ -1,0 +1,118 @@
+use Collection, Data.JSON;
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		p := Parameter->New("first_name", Parameter->Type->STRING, "person first name");
+		p->ToString()->PrintLine();
+	}
+}
+
+class Function {
+
+
+	New() {}
+
+	method : public : ToString() ~ String {
+		buffer := "";
+
+		return buffer;
+	}
+}
+
+class Parameter {
+	@name : String;
+	@type : Parameter->Type;
+	@description : String;
+	@properties : Map<String, Parameter>;
+
+	enum Type {
+		STRING,
+		NUMBER,
+		INTEGER,
+		OBJECT,
+		ARRAY,
+		BOOLEAN,
+		NULL
+	}
+
+	New(name : String, type : Parameter->Type) {
+		@name := name;
+		@type := type;
+	}
+
+	New(name : String, type : Parameter->Type, description : String) {
+		@name := name;
+		@type := type;
+		@description := description;
+	}
+
+	method : public : AddParameter(param : Parameter) ~ Bool {
+		if(@properties = Nil) {
+			@properties := Map->New()<String, Parameter>;
+		};
+
+		name := param->GetName();
+		if(<>@properties->Has(name)) {
+			@properties->Insert(name, param);
+			return true;
+		};
+
+		return false;
+	}
+
+	method : public : GetName() ~ String {
+		return @name;
+	}
+
+	method : public : GetType() ~ Parameter->Type {
+		return @type;
+	}
+
+	method : public : ToString() ~ String {
+		buffer := "\"";
+		buffer->Append(@name);
+		buffer->Append("\": {\"type\": \"");
+
+		select(@type) {
+			label Parameter->Type->STRING {
+				buffer->Append("string");
+			}
+
+			label Parameter->Type->NUMBER {
+				buffer->Append("number");
+			}
+
+			label Parameter->Type->INTEGER {
+				buffer->Append("integer");
+			}
+
+			label Parameter->Type->OBJECT {
+				buffer->Append("object");
+			}
+
+			label Parameter->Type->ARRAY {
+				buffer->Append("array");
+			}
+
+			label Parameter->Type->BOOLEAN {
+				buffer->Append("boolean");
+			}
+
+			label Parameter->Type->NULL {
+				buffer->Append("null");
+			}
+
+			other {
+				return "";
+			}
+		};
+
+		if(@description <> Nil) {
+			buffer->Append("\", \"description\": \"");
+			buffer->Append(@description);
+		};
+		buffer->Append("\"}");
+
+		return buffer;
+	}
+}
