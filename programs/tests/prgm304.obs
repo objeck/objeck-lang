@@ -2,7 +2,8 @@ use Collection, Data.JSON;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		p := Parameter->New("first_name", Parameter->Type->STRING, "person first name");
+		p := Parameter->New("names", Parameter->Type->INTEGER, "person first, middle, last names");
+		p->SetArray(true);
 		p->ToString()->PrintLine();
 	}
 }
@@ -24,15 +25,16 @@ class Parameter {
 	@type : Parameter->Type;
 	@description : String;
 	@props : Map<String, Parameter>;
+	@is_array : Bool;
 
 	enum Type {
 		STRING,
 		NUMBER,
 		INTEGER,
 		OBJECT,
-		ARRAY,
-		BOOLEAN,
-		NULL
+#		ARRAY,
+#		NULL,
+		BOOLEAN
 	}
 
 	New(name : String, type : Parameter->Type) {
@@ -60,7 +62,9 @@ class Parameter {
 	}
 
 
-	
+	method : public : SetArray(is_array : Bool) ~ Nil {
+		@is_array := is_array;
+	}
 
 	method : public : AddParameter(param : Parameter) ~ Bool {
 		if(@props = Nil) {
@@ -85,51 +89,47 @@ class Parameter {
 	}
 
 	method : public : ToString() ~ String {
-		buffer := "\"";
+		buffer := "{\"";
 		buffer->Append(@name);
 		buffer->Append("\": {\"type\": \"");
 
-		select(@type) {
-			label Parameter->Type->STRING {
-				buffer->Append("string");
-			}
+		if(@props <> Nil) {
+			buffer->Append("object\", \"properties\":");
+			# TOOD: format properties 
+		}
+		else {
+			if(@is_array) {
+				buffer->Append("array\", \"items\": {\"type\": \"");
+			};
 
-			label Parameter->Type->NUMBER {
-				buffer->Append("number");
-			}
+			select(@type) {
+				label Parameter->Type->STRING {
+					buffer->Append("string");
+				}
 
-			label Parameter->Type->INTEGER {
-				buffer->Append("integer");
-			}
+				label Parameter->Type->NUMBER {
+					buffer->Append("number");
+				}
 
-			label Parameter->Type->OBJECT {
-				if(@props <> Nil) {
-					buffer->Append("object\", \"properties\": {");
+				label Parameter->Type->INTEGER {
+					buffer->Append("integer");
+				}
 
-					# TOOD: format properties 
-
-					buffer->Append('}')
-				};
-			}
-
-			label Parameter->Type->ARRAY {
-				buffer->Append("array");
-			}
-
-			label Parameter->Type->BOOLEAN {
-				buffer->Append("boolean");
-			}
-
-			label Parameter->Type->NULL {
-				buffer->Append("null");
-			}
+				label Parameter->Type->BOOLEAN {
+					buffer->Append("boolean");
+				}
+			};
 		};
 
 		if(@description <> Nil) {
 			buffer->Append("\", \"description\": \"");
-			buffer->Append(@description);
+			buffer->Append(Data.JSON.JsonElement->Encode(@description));
 		};
-		buffer->Append("\"}");
+
+		buffer->Append("\"}}");
+		if(@is_array) {
+			buffer->Append('}');
+		};
 
 		return buffer;
 	}
