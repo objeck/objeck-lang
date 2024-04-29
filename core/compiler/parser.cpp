@@ -3750,10 +3750,6 @@ ExpressionList* Parser::ParseExpressionList(int &end_pos, int depth, ScannerToke
         NextToken();
         break;
       }
-      else if(!Match(closed)) {
-        ProcessError(L"Invalid token");
-        NextToken();
-      }
     }
     else {
       NextToken();
