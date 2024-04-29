@@ -1,0 +1,12 @@
+class Test {
+	function : Main(args : String[]) ~ Nil {
+#		a := ["hello"];
+#		Foo(a, 13);
+		Foo(["hello", "world!"], 13);
+	}
+
+	function : Foo(a : String[], b : Int) ~ Nil {
+		a->Size()->PrintLine();
+		a[1]->PrintLine();
+	}
+}
