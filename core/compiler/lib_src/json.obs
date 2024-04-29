@@ -315,9 +315,9 @@ if(doc <> Nil) {
 		@root : JsonElement;
 		@error_msg : String;
 		
-		#~\7
-		5?gz`	2qaZ me a new parser
-		@param stream_in Json input string
+		#~
+		Constructor
+		@param stream_in JSON string to process
 		~#
 		New(stream_in : String) {
 			@input := stream_in->Trim()->ToCharArray();
