@@ -1,20 +1,9 @@
 use Collection, Data.JSON, API.OpenAI;
 
 class Test {
-	function : Main(args : String[]) ~ Nil {
-#		params := Set->New()<ParameterType>;
-		
-#		params->Insert(ParameterType->New("name", ParameterType->Type->STRING, "name of person"));
-#		params->Insert(ParameterType->New("age", ParameterType->Type->INTEGER, "age of person"));
-#		params->Insert(ParameterType->New("address", ParameterType->Type->STRING, "age of person"));
-
-#		foo := ParameterType->New("name_age", params);
-#		foo->ToString()->PrintLine();		
-	
+	function : Main(args : String[]) ~ Nil {	
 		params := Set->New()<ParameterType>;
 		params->Insert(ParameterType->New("year", ParameterType->Type->INTEGER, "Team year"));
-		req_params := ["year"];
-
-		FunctionType->New("get_coach", params, req_params, "Get the coach's name")->ToString()->PrintLine();
+		FunctionType->New("get_coach", params, ["year"], "Get the coach's name")->ToString()->PrintLine();
 	}
 }
