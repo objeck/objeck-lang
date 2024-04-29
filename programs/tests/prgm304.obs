@@ -23,7 +23,7 @@ class Parameter {
 	@name : String;
 	@type : Parameter->Type;
 	@description : String;
-	@properties : Map<String, Parameter>;
+	@props : Map<String, Parameter>;
 
 	enum Type {
 		STRING,
@@ -46,14 +46,30 @@ class Parameter {
 		@description := description;
 	}
 
+	New(name : String, props : Map<String, Parameter>) {
+		@name := name;
+		@type := Parameter->Type->OBJECT;
+		@props := props;
+	}
+
+	New(name : String, props : Map<String, Parameter>, description : String) {
+		@name := name;
+		@type := Parameter->Type->OBJECT;
+		@props := props;
+		@description := description;
+	}
+
+
+	
+
 	method : public : AddParameter(param : Parameter) ~ Bool {
-		if(@properties = Nil) {
-			@properties := Map->New()<String, Parameter>;
+		if(@props = Nil) {
+			@props := Map->New()<String, Parameter>;
 		};
 
 		name := param->GetName();
-		if(<>@properties->Has(name)) {
-			@properties->Insert(name, param);
+		if(<>@props->Has(name)) {
+			@props->Insert(name, param);
 			return true;
 		};
 
@@ -87,7 +103,13 @@ class Parameter {
 			}
 
 			label Parameter->Type->OBJECT {
-				buffer->Append("object");
+				if(@props <> Nil) {
+					buffer->Append("object\", \"properties\": {");
+
+					# TOOD: format properties 
+
+					buffer->Append('}')
+				};
 			}
 
 			label Parameter->Type->ARRAY {
@@ -100,10 +122,6 @@ class Parameter {
 
 			label Parameter->Type->NULL {
 				buffer->Append("null");
-			}
-
-			other {
-				return "";
 			}
 		};
 
