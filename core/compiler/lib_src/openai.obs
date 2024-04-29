@@ -1182,12 +1182,29 @@ bundle API.OpenAI {
 		@param : ParameterType;
 		@req_params : String[];
 
+		New : private(func_type_json : JsonElement) {
+			# TODO: parse and set values
+		}
+
+		#~
+		Constructor
+		@param name function name
+		@param param parameter to add to JSON object
+		@param req_params required parameters 
+		~#
 		New(name : String, param : ParameterType, req_params : String[]) {
 			@name := name;
 			@req_params := req_params;
 			@param := param;
 		}
 
+		#~
+		Constructor
+		@param name function name
+		@param param parameter to add to JSON object
+		@param req_params required parameters 
+		@param desc description 
+		~#
 		New(name : String, param : ParameterType, req_params : String[], desc : String) {
 			@name := name;
 			@req_params := req_params;
@@ -1195,22 +1212,42 @@ bundle API.OpenAI {
 			@desc := desc;
 		}
 
+		#~
+		Get the function name
+		@return function name
+		~#
 		method : public : GetName() ~ String {
 			return @name;
 		}
 
+		#~
+		Get the function description
+		@return function description
+		~#
 		method : public : GetDesc() ~ String {
 			return @desc;
 		}
 		
+		#~
+		Get the function parameter
+		@return function parameter
+		~#
 		method : public : GetParam() ~ ParameterType {
 			return @param;
 		}
 
+		#~
+		Get the required function parameters
+		@return required function parameters
+		~#
 		method : public : GetRequiredParams() ~ String[] {
 			return @req_params;
 		}
 
+		#~
+		JSON string representation 
+		@return JSON string representation
+		~# 
 		method : public : ToString() ~ String {
 			buffer := "{\"name\": \"";
 			buffer->Append(@name);
@@ -1260,7 +1297,10 @@ bundle API.OpenAI {
 		@desc : String;
 		@props : Set<ParameterType>;
 		@is_array : Bool;
-
+		
+		#~
+		JSON function parameter type 
+		~#
 		enum Type {
 			STRING,
 			NUMBER,
@@ -1269,23 +1309,49 @@ bundle API.OpenAI {
 			BOOLEAN
 		}
 
+		New : private(param_type_json : JsonElement) {
+			# TODO: parse and set values
+		}
+
+		#~
+		Constructor
+		@param name function parameter name
+		@param type parameter type
+		~#
 		New(name : String, type : ParameterType->Type) {
 			@name := name;
 			@type := type;
 		}
 
+		#~
+		Constructor
+		@param name function parameter name
+		@param type parameter type
+		@param desc description 
+		~#
 		New(name : String, type : ParameterType->Type, desc : String) {
 			@name := name;
 			@type := type;
 			@desc := desc;
 		}
 
+		#~
+		Constructor
+		@param name function parameter name
+		@param props set of named parameter properties 
+		~#
 		New(name : String, props : Set<ParameterType>) {
 			@name := name;
 			@type := ParameterType->Type->OBJECT;
 			@props := props;
 		}
 
+		#~
+		Constructor
+		@param name function parameter name
+		@param props set of named parameter properties 
+		@param desc description 
+		~#
 		New(name : String, props : Set<ParameterType>, desc : String) {
 			@name := name;
 			@type := ParameterType->Type->OBJECT;
@@ -1301,18 +1367,34 @@ bundle API.OpenAI {
 			return @is_array;
 		}
 
+		#~
+		Get the function name
+		@return function name
+		~#
 		method : public : GetName() ~ String {
 			return @name;
 		}
 
+		#~
+		Get the function description
+		@return function description
+		~#
+		method : public : GetDesc() ~ String {
+			return @desc;
+		}
+
+		#~
+		Get parameter type
+		@return parameter type
+		~#
 		method : public : GetType() ~ ParameterType->Type {
 			return @type;
 		}
 
-		method : public : GetDesc() ~ String {
-			return @desc;
-		}
-		
+		#~
+		Get parameter properties object descriptions
+		@return properties object descriptions
+		~#
 		method : public : GetProps() ~ Set<ParameterType> {
 			return @props;
 		}
@@ -1334,6 +1416,10 @@ bundle API.OpenAI {
 			return @name->HashID();
 		}
 
+		#~
+		JSON string representation 
+		@return JSON string representation
+		~# 
 		method : public : ToString() ~ String {
 			buffer := "{\"";
 			buffer->Append(@name);
