@@ -2,35 +2,35 @@ use Collection, Data.JSON;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-#		params := Set->New()<Parameter>;
+#		params := Set->New()<ParameterType>;
 		
-#		params->Insert(Parameter->New("name", Parameter->Type->STRING, "name of person"));
-#		params->Insert(Parameter->New("age", Parameter->Type->INTEGER, "age of person"));
-#		params->Insert(Parameter->New("address", Parameter->Type->STRING, "age of person"));
+#		params->Insert(ParameterType->New("name", ParameterType->Type->STRING, "name of person"));
+#		params->Insert(ParameterType->New("age", ParameterType->Type->INTEGER, "age of person"));
+#		params->Insert(ParameterType->New("address", ParameterType->Type->STRING, "age of person"));
 
-#		foo := Parameter->New("name_age", params);
+#		foo := ParameterType->New("name_age", params);
 #		foo->ToString()->PrintLine();		
 	
-#		Parameter->New("age", Parameter->Type->INTEGER, "age of person")->ToString()->PrintLine();
-
-		req_params := ["foo"];
-		Function->New("get_coach", Nil, req_params, "head coach of the team")->ToString()->PrintLine();
+		
+		req_params := ["year"];
+		coach_year_param := ParameterType->New("year", ParameterType->Type->INTEGER, "Team year");
+		FunctionType->New("get_coach", coach_year_param, req_params, "Get the coach's name")->ToString()->PrintLine();
 	}
 }
 
-class Function {
+class FunctionType {
 	@name: String;
 	@desc: String;
-	@parameter : Parameter;
+	@param : ParameterType;
 	@req_params : String[];
 
-	New(name : String, param : Parameter, req_params : String[]) {
+	New(name : String, param : ParameterType, req_params : String[]) {
 		@name := name;
 		@req_params := req_params;
 		@param := param;
 	}
 
-	New(name : String, param : Parameter, req_params : String[], desc : String) {
+	New(name : String, param : ParameterType, req_params : String[], desc : String) {
 		@name := name;
 		@req_params := req_params;
 		@param := param;
@@ -50,10 +50,17 @@ class Function {
 			buffer->Append("\",");
 		};
 
-		buffer->Append("\"type\": \"object\",\"properties\": {");
-		# loop remove '{}'
-		buffer->Append("},\"required\": [");
+		# JSON object parameter
+		buffer->Append("\"type\": \"object\",\"properties\":");
+		if(@param <> Nil) {
+			buffer->Append(@param->ToString());
+		}
+		else {
+			buffer->Append("{}");
+		};
 
+		# required
+		buffer->Append(",\"required\": [");
 		each(i : @req_params) {
 			req_param := @req_params[i];
 			buffer->Append('"');
@@ -70,11 +77,11 @@ class Function {
 	}
 }
 
-class Parameter implements Compare {
+class ParameterType implements Compare {
 	@name : String;
-	@type : Parameter->Type;
+	@type : ParameterType->Type;
 	@desc : String;
-	@props : Set<Parameter>;
+	@props : Set<ParameterType>;
 	@is_array : Bool;
 
 	enum Type {
@@ -85,26 +92,26 @@ class Parameter implements Compare {
 		BOOLEAN
 	}
 
-	New(name : String, type : Parameter->Type) {
+	New(name : String, type : ParameterType->Type) {
 		@name := name;
 		@type := type;
 	}
 
-	New(name : String, type : Parameter->Type, desc : String) {
+	New(name : String, type : ParameterType->Type, desc : String) {
 		@name := name;
 		@type := type;
 		@desc := desc;
 	}
 
-	New(name : String, props : Set<Parameter>) {
+	New(name : String, props : Set<ParameterType>) {
 		@name := name;
-		@type := Parameter->Type->OBJECT;
+		@type := ParameterType->Type->OBJECT;
 		@props := props;
 	}
 
-	New(name : String, props : Set<Parameter>, desc : String) {
+	New(name : String, props : Set<ParameterType>, desc : String) {
 		@name := name;
-		@type := Parameter->Type->OBJECT;
+		@type := ParameterType->Type->OBJECT;
 		@props := props;
 		@desc := desc;
 	}
@@ -113,12 +120,24 @@ class Parameter implements Compare {
 		@is_array := is_array;
 	}
 
+	method : public : IsArray() ~ Bool {
+		return @is_array;
+	}
+
 	method : public : GetName() ~ String {
 		return @name;
 	}
 
-	method : public : GetType() ~ Parameter->Type {
+	method : public : GetType() ~ ParameterType->Type {
 		return @type;
+	}
+
+	method : public : GetDesc() ~ String {
+		return @desc;
+	}
+	
+	method : public : GetProps() ~ Set<ParameterType> {
+		return @props;
 	}
 
 	#~
@@ -149,7 +168,7 @@ class Parameter implements Compare {
 			}
 			else {
 				buffer->Append("object\", \"properties\":");			
-				prop_keys := @props->GetKeys()<Parameter>;
+				prop_keys := @props->GetKeys()<ParameterType>;
 				each(i : prop_keys) {
 					prop_key := prop_keys->Get(i);
 					temp := prop_key->ToString();
@@ -177,19 +196,19 @@ class Parameter implements Compare {
 			};
 
 			select(@type) {
-				label Parameter->Type->STRING {
+				label ParameterType->Type->STRING {
 					buffer->Append("string");
 				}
 
-				label Parameter->Type->NUMBER {
+				label ParameterType->Type->NUMBER {
 					buffer->Append("number");
 				}
 
-				label Parameter->Type->INTEGER {
+				label ParameterType->Type->INTEGER {
 					buffer->Append("integer");
 				}
 
-				label Parameter->Type->BOOLEAN {
+				label ParameterType->Type->BOOLEAN {
 					buffer->Append("boolean");
 				}
 			};
