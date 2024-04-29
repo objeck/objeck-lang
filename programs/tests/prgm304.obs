@@ -11,9 +11,10 @@ class Test {
 #		foo := ParameterType->New("name_age", params);
 #		foo->ToString()->PrintLine();		
 	
-		
+		params := Set->New()<ParameterType>;
+		params->Insert(ParameterType->New("year", ParameterType->Type->INTEGER, "Team year"));
 		req_params := ["year"];
-		coach_year_param := ParameterType->New("year", ParameterType->Type->INTEGER, "Team year");
-		FunctionType->New("get_coach", coach_year_param, req_params, "Get the coach's name")->ToString()->PrintLine();
+
+		FunctionType->New("get_coach", params, req_params, "Get the coach's name")->ToString()->PrintLine();
 	}
 }
