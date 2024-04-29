@@ -10,19 +10,61 @@ class Test {
 
 #		foo := Parameter->New("name_age", params);
 #		foo->ToString()->PrintLine();		
+	
+#		Parameter->New("age", Parameter->Type->INTEGER, "age of person")->ToString()->PrintLine();
 
-
-		Parameter->New("age", Parameter->Type->INTEGER, "age of person")->ToString()->PrintLine();
+		req_params := ["foo"];
+		Function->New("get_coach", Nil, req_params, "head coach of the team")->ToString()->PrintLine();
 	}
 }
 
 class Function {
+	@name: String;
+	@desc: String;
+	@parameter : Parameter;
+	@req_params : String[];
 
+	New(name : String, param : Parameter, req_params : String[]) {
+		@name := name;
+		@req_params := req_params;
+		@param := param;
+	}
 
-	New() {}
+	New(name : String, param : Parameter, req_params : String[], desc : String) {
+		@name := name;
+		@req_params := req_params;
+		@param := param;
+		@desc := desc;
+	}
 
 	method : public : ToString() ~ String {
-		buffer := "";
+		buffer := "{\"name\": \"";
+		buffer->Append(@name);
+		
+		if(@desc <> Nil) {
+			buffer->Append("\",\"description\": \"");
+			buffer->Append(@desc);
+			buffer->Append("\",\"parameters\": {");
+		}
+		else {
+			buffer->Append("\",");
+		};
+
+		buffer->Append("\"type\": \"object\",\"properties\": {");
+		# loop remove '{}'
+		buffer->Append("},\"required\": [");
+
+		each(i : @req_params) {
+			req_param := @req_params[i];
+			buffer->Append('"');
+			buffer->Append(req_param);
+			buffer->Append('"');
+		}
+		buffer->Append("]}");
+
+		if(@desc <> Nil) {
+			buffer->Append('}');
+		};
 
 		return buffer;
 	}
@@ -31,7 +73,7 @@ class Function {
 class Parameter implements Compare {
 	@name : String;
 	@type : Parameter->Type;
-	@description : String;
+	@desc : String;
 	@props : Set<Parameter>;
 	@is_array : Bool;
 
@@ -40,8 +82,6 @@ class Parameter implements Compare {
 		NUMBER,
 		INTEGER,
 		OBJECT,
-#		ARRAY,
-#		NULL,
 		BOOLEAN
 	}
 
@@ -50,10 +90,10 @@ class Parameter implements Compare {
 		@type := type;
 	}
 
-	New(name : String, type : Parameter->Type, description : String) {
+	New(name : String, type : Parameter->Type, desc : String) {
 		@name := name;
 		@type := type;
-		@description := description;
+		@desc := desc;
 	}
 
 	New(name : String, props : Set<Parameter>) {
@@ -62,11 +102,11 @@ class Parameter implements Compare {
 		@props := props;
 	}
 
-	New(name : String, props : Set<Parameter>, description : String) {
+	New(name : String, props : Set<Parameter>, desc : String) {
 		@name := name;
 		@type := Parameter->Type->OBJECT;
 		@props := props;
-		@description := description;
+		@desc := desc;
 	}
 
 	method : public : SetArray(is_array : Bool) ~ Nil {
@@ -155,9 +195,9 @@ class Parameter implements Compare {
 			};
 		};
 
-		if(@description <> Nil) {
+		if(@desc <> Nil) {
 			buffer->Append("\", \"description\": \"");
-			buffer->Append(Data.JSON.JsonElement->Encode(@description));
+			buffer->Append(Data.JSON.JsonElement->Encode(@desc));
 		};
 
 		if(@props <> Nil) {
