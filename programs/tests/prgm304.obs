@@ -1,4 +1,4 @@
-use Collection, Data.JSON;
+use Collection, Data.JSON, API.OpenAI;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
@@ -17,4 +17,3 @@ class Test {
 		FunctionType->New("get_coach", coach_year_param, req_params, "Get the coach's name")->ToString()->PrintLine();
 	}
 }
-

@@ -790,6 +790,7 @@ bundle API.OpenAI {
 		@name : String;
 		@description : String;
 		@instructions : String;
+		@funcs : Vector<FunctionType>;
 		@created_at : Int;
 
 		@tools : Vector<String>;
@@ -812,6 +813,17 @@ bundle API.OpenAI {
 			tools := assistant_json->Get("tools");
 			each(tool in tools) {
 				tool_desc := tool->Get("type")->GetString();
+				if(tool_desc->Equals("function")) {
+					func_json := tool->Get("function");
+					if(	@funcs = Nil) {
+						@funcs := Vector->New()<FunctionType>;
+					};
+
+					func := FunctionType->New(func_json);
+func->ToString()->PrintLine();					
+					@funcs->AddBack(func);
+				}
+
 				@tools->AddBack(tool_desc);
 			};
 
@@ -1179,36 +1191,79 @@ bundle API.OpenAI {
 	class FunctionType {
 		@name: String;
 		@desc: String;
-		@param : ParameterType;
+		@params : Set<ParameterType>;
 		@req_params : String[];
 
-		New : private(func_type_json : JsonElement) {
+		New(func_type_json : JsonElement) {
+
+			@name := func_type_json->Get("name")->GetString();
+			@desc := func_type_json->Get("description")->GetString();
+
+			# get properties by name
+			@params := Set->New()<ParameterType>;
+
+			params_json := func_type_json->FindElements("parameters/properties");
+			param_names := params_json->GetNames();
+			each(param_name in param_names) {
+				param_json := params_json->Get(param_name);
+
+				param_type := param_json->Get("type")->GetString();
+				param_desc := param_json->Get("description")->GetString();
+
+				param : ParameterType;
+				if(param_type->Equals("string")) {
+					param := ParameterType->New(param_name, ParameterType->Type->STRING, param_desc);
+				}
+				else if(param_type->Equals("number")) {
+					param := ParameterType->New(param_name, ParameterType->Type->NUMBER, param_desc);
+				}
+				else if(param_type->Equals("integer")) {
+					param := ParameterType->New(param_name, ParameterType->Type->INTEGER, param_desc);
+				}
+				else if(param_type->Equals("object")) {
+					param := ParameterType->New(param_name, ParameterType->Type->OBJECT, param_desc);
+				}
+				else if(param_type->Equals("boolean")) {
+					param := ParameterType->New(param_name, ParameterType->Type->BOOLEAN, param_desc);
+				};
+
+				@params->Insert(param);
+				
+				# "param_name='{$param_name}', param_type={$param_type}, param_desc='{$param_desc}'"->PrintLine();
+			};
+
+			required_parms := func_type_json->FindElements("parameters/required");
+			@req_params := String->New[required_parms->Size()];
+			each(i : required_parms) {
+				required_parm := required_parms->Get(i);
+				@req_params[i] := required_parm->GetString();
+			}
 			# TODO: parse and set values
 		}
 
 		#~
 		Constructor
 		@param name function name
-		@param param parameter to add to JSON object
+		@param params parameters to add to JSON object
 		@param req_params required parameters 
 		~#
-		New(name : String, param : ParameterType, req_params : String[]) {
+		New(name : String, params : Set<ParameterType>, req_params : String[]) {
 			@name := name;
 			@req_params := req_params;
-			@param := param;
+			@params := params;
 		}
 
 		#~
 		Constructor
 		@param name function name
-		@param param parameter to add to JSON object
+		@param params parameters to add to JSON object
 		@param req_params required parameters 
 		@param desc description 
 		~#
-		New(name : String, param : ParameterType, req_params : String[], desc : String) {
+		New(name : String, params : Set<ParameterType>, req_params : String[], desc : String) {
 			@name := name;
 			@req_params := req_params;
-			@param := param;
+			@params := params;
 			@desc := desc;
 		}
 
@@ -1229,11 +1284,11 @@ bundle API.OpenAI {
 		}
 		
 		#~
-		Get the function parameter
-		@return function parameter
+		Get function parameters
+		@return function parameters
 		~#
-		method : public : GetParam() ~ ParameterType {
-			return @param;
+		method : public : GetParams() ~ Set<ParameterType> {
+			return @params;
 		}
 
 		#~
@@ -1261,10 +1316,18 @@ bundle API.OpenAI {
 				buffer->Append("\",");
 			};
 
-			# JSON object parameter
+			# JSON parameters
 			buffer->Append("\"type\": \"object\",\"properties\":");
-			if(@param <> Nil) {
-				buffer->Append(@param->ToString());
+			if(@params <> Nil) {
+				param_values := @params->GetKeys()<ParameterType>;
+				each(i : param_values) {
+					param_value := param_values->Get(i);
+					buffer->Append(param_value->ToString());
+
+					if(i + 1 < param_values->Size()) {
+						buffer->Append(',');
+					}
+				};
 			}
 			else {
 				buffer->Append("{}");
@@ -1297,7 +1360,7 @@ bundle API.OpenAI {
 		@desc : String;
 		@props : Set<ParameterType>;
 		@is_array : Bool;
-		
+
 		#~
 		JSON function parameter type 
 		~#
