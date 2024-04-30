@@ -820,7 +820,7 @@ bundle API.OpenAI {
 					};
 
 					func := FunctionType->New(func_json);
-func->ToString()->PrintLine();					
+					# func->ToString()->PrintLine();					
 					@funcs->AddBack(func);
 				}
 
@@ -1022,7 +1022,7 @@ func->ToString()->PrintLine();
 		@return assistant
 		~#
 		function : Create(model : String, token : String) ~ API.OpenAI.Assistant {
-			return Create(model, Nil, Nil, Nil, Nil, Nil, token);
+			return Create(model, Nil, Nil, Nil, Nil, Nil, Nil, token);
 		}
 
 		#~
@@ -1035,7 +1035,7 @@ func->ToString()->PrintLine();
 		@return newly created assistant
 		~#
 		function : Create(model : String, name : String, description : String, instructions : String, token : String) ~ API.OpenAI.Assistant {
-			return Create(model, name, description, instructions, Nil, Nil, token);
+			return Create(model, name, description, instructions, Nil, Nil, Nil, token);
 		}
 
 		#~
@@ -1051,11 +1051,26 @@ func->ToString()->PrintLine();
 		~#
 		function : Create(model : String, name : String, description : String, instructions : String, 
 				tools : Vector<String>, files : Vector<API.OpenAI.File>, token : String) ~ API.OpenAI.Assistant {
+			return Create(model, name, description, instructions, tools, files, Nil, token);
+		}
+		
+		#~
+		Creates an assistant with a model and instructions
+		@param model ID of the model to use
+		@param name name to use
+		@param description description of the assistant.
+		@param instructions the system instructions that the assistant uses
+		@param tools list of tool enabled on the assistant
+		@param files list of file IDs attached to this assistant
+		@param funcs list of callback function definitions
+		@param token API token
+		@return newly created assistant
+		~#
+		function : Create(model : String, name : String, description : String, instructions : String, 
+				tools : Vector<String>, files : Vector<API.OpenAI.File>, funcs : Vector<FunctionType>, token : String) ~ API.OpenAI.Assistant {
 			if(model = Nil) {
 				return Nil;
 			};
-
-			@token : String;
 
 			builder := JsonBuilder->New();
 			create_json := builder->PushObject();
@@ -1074,13 +1089,29 @@ func->ToString()->PrintLine();
 			};
 
 			# tools
-			if(<>tools->IsEmpty()) {
+			if((tools <> Nil & <>tools->IsEmpty()) | (funcs <> Nil & <>funcs->IsEmpty())) {
 				tools_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+
+				# tools to enable, functions are enabled separately below 
 				each(tool in tools) {
+					if(<>tool->Equals("function")) {
+						tool_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+						tool_json->Insert("type", tool);
+						tools_json->Add(tool_json);
+					};
+				};
+
+				# function definitions 
+				each(func in funcs) {
 					tool_json := JsonElement->New(JsonElement->JsonType->OBJECT);
-					tool_json->Insert("type", tool);
+					tool_json->Insert("type", "function");
+
+					func_json := JsonParser->TextToElement(func->ToString());					
+					tool_json->Insert("function", func_json);
+
 					tools_json->Add(tool_json);
 				};
+
 				create_json->Insert("tools", tools_json);
 			};
 
@@ -1094,14 +1125,17 @@ func->ToString()->PrintLine();
 			};
 			
 			data := builder->PopAll()->ToString()->ToByteArray();
+
 			# data->ToString()->PrintLine();			
+			# "---"->PrintLine();
 
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
 			headers->Insert("OpenAI-Beta", "assistants=v1");
 			response := HttpsClient->QuickPost(Url->New("https://api.openai.com/v1/assistants"), data, "application/json", headers);
 			if(response <> Nil) {
-				# response->GetContent()->ToString();				
+				# response->GetContent()->ToString()->PrintLine();
+
 				assistant_json := JsonParser->TextToElement(response->GetContent()->ToString());
 				if(assistant_json = Nil) {
 					return Nil;
