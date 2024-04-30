@@ -123,13 +123,23 @@ class Test {
 				files->AddBack(API.OpenAI.File->LoadOrCreate(args[2], token));
 				file_count := files->Size();
 
+				# set tools
 				tools := Vector->New()<String>;
 				tools->AddBack("retrieval");
 				tool_count := tools->Size();
+
+				# create function definition
+				params := Set->New()<ParameterType>;
+				params->Insert(ParameterType->New("year", ParameterType->Type->INTEGER, "Team year"));
+				func := FunctionType->New("get_coach", params, ["year"], "Get the coach's name");
 				
+				funcs := Vector->New()<FunctionType>;
+				funcs->AddBack(func);
+				
+				# create assistance
 				assistant := Assistant->Create("gpt-3.5-turbo-0125", "DU Basketball", "DU Basketball", 
 					"You are historian of University of Denver Men's basketball from the 1960's", 
-					tools, files, token);
+					tools, files, funcs, token);
 				if(assistant = Nil) {
 					Assistant->GetLastError()->PrintLine();
 				}
