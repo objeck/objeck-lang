@@ -10,7 +10,7 @@
             "position": "G",
             "height": "6-3",
             "point-average": "24.8",
-            "rebounds": "5.2"
+            "rebounds-average": "5.2"
         },
         {
             "name": "Byron Beck",
@@ -18,7 +18,7 @@
             "position": "C",
             "height": "6-8",
             "point-average": "13.9",
-            "rebounds": "9.1"
+            "rebounds-average": "9.1"
         },
         {
             "name": "Brian Clare",
@@ -26,7 +26,7 @@
             "position": "C",
             "height": "6-10",
             "point-average": "12.0",
-            "rebounds": "7.6"
+            "rebounds-average": "7.6"
         },
         {
             "name": "George Roderick",
@@ -34,7 +34,7 @@
             "position": "F",
             "height": "6-7",
             "point-average": "10.6",
-            "rebounds": "9.2"
+            "rebounds-average": "9.2"
         },
         {
             "name": "Gerry Grover",
@@ -42,7 +42,7 @@
             "position": "G",
             "height": "6-1",
             "point-average": "9.9",
-            "rebounds": "3.9"
+            "rebounds-average": "3.9"
         },
         {
             "name": "Rick Callahan",
@@ -50,7 +50,7 @@
             "position": "F",
             "height": "6-3",
             "point-average": "4.8",
-            "rebounds": "4.5"
+            "rebounds-average": "4.5"
         },
         {
             "name": "Mike Boxberger",
@@ -58,7 +58,7 @@
             "position": "F",
             "height": "6-4",
             "point-average": "3.5",
-            "rebounds": "1.2"
+            "rebounds-average": "1.2"
         },
         {
             "name": "Chuck Ducar",
@@ -66,7 +66,7 @@
             "position": "F",
             "height": "",
             "point-average": "2.1",
-            "rebounds": "1.2"
+            "rebounds-average": "1.2"
         },
         {
             "name": "Keith Strohman",
@@ -74,7 +74,7 @@
             "position": "G",
             "height": "6-2",
             "point-average": "1.2",
-            "rebounds": "0.6"
+            "rebounds-average": "0.6"
         },
         {
             "name": "Ken Robinson",
@@ -82,7 +82,7 @@
             "position": "F",
             "height": "",
             "point-average": "0.7",
-            "rebounds": "1.5"
+            "rebounds-average": "1.5"
         },
         {
             "name": "Jim Cox",
