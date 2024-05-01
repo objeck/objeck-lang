@@ -130,8 +130,8 @@ class Test {
 
 				# create function definition
 				params := Set->New()<ParameterType>;
-				params->Insert(ParameterType->New("year", ParameterType->Type->INTEGER, "Team year"));
-				func := FunctionType->New("get_coach", params, ["year"], "Get the coach's name");
+				params->Insert(ParameterType->New("year", ParameterType->Type->INTEGER, "year the team played"));
+				func := FunctionType->New("get_coach", params, ["year"], "The name of the head coach for a given year");
 				
 				funcs := Vector->New()<FunctionType>;
 				funcs->AddBack(func);
@@ -218,7 +218,7 @@ class Test {
 				assistant_id := args[1];
 				
 				session := API.OpenAI.Chat.Conversation->New(Assistant->Load(assistant_id, token), true, token);
-				session->AddFunction("get_coach", Callback(JsonElement) ~ JsonElement);
+				session->AddFunction("get_coach_by_year", Callback(JsonElement) ~ JsonElement);
 
 				done := false;
 				do {
