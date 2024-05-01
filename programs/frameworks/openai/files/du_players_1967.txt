@@ -1,11 +1,11 @@
-Harry Hollines is a guard
-Byron Beck is a center
-Brian Clare is a center
-George Roderick is a forward
-Gerry Grover is a guard
-Rick Callahan  is a forward
-Mike Boxberger is a forward
-Chuck Ducar is a forward
-Keith Strohman is a guard
-Ken Robins is a forward
-Jim Cox is a guard
+{"name": "Harry Hollines", "year": "JR", "position": "G", "height": "6-3", "point-average": "24.8 Pts", "rebounds": "5.2"},
+{"name": "Byron Beck", "year": "", "position": "C", "height": "6-8", "point-average": "13.9 Pts", "rebounds": "9.1"},
+{"name": "Brian Clare", "year": "JR", "position": "C", "height": "6-10", "point-average": "12.0 Pts", "rebounds": "7.6"},
+{"name": "George Roderick", "year": "", "position": "F", "height": "6-7", "point-average": "10.6 Pts", "rebounds": "9.2"},
+{"name": "Gerry Grover", "year": "SR", "position": "G", "height": "6-1", "point-average": "9.9 Pts", "rebounds": "3.9"},
+{"name": "Rick Callahan", "year": "JR", "position": "F", "height": "6-3", "point-average": "4.8 Pts", "rebounds": "4.5"},
+{"name": "Mike Boxberger", "year": "SR", "position": "F", "height": "6-4", "point-average": "3.5 Pts", "rebounds": "1.2"},
+{"name": "Chuck Ducar", "year": "", "position": "F", "height": "", "point-average": "2.1 Pts", "rebounds": "1.2"},
+{"name": "Keith Strohman", "year": "", "position": "G", "height": "6-2", "point-average": "1.2 Pts", "rebounds": "0.6"},
+{"name": "Ken Robinson", "year": "", "position": "F", "height": "", "point-average": "0.7 Pts", "rebounds": "1.5"},
+{"name": "Jim Cox", "year": "", "position": "G", "height": "6-2", "point-average": ""},
