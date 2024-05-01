@@ -135,7 +135,7 @@ class Test {
 				
 				funcs := Vector->New()<FunctionType>;
 				funcs->AddBack(func);
-				
+
 				# create assistance
 				assistant := Assistant->Create("gpt-3.5-turbo-0125", "DU Basketball", "DU Basketball", 
 					"You are historian of University of Denver Men's basketball from the 1960's", 
@@ -287,6 +287,7 @@ class Test {
 	}
 
 	function : Callback(params_json : JsonElement) ~ JsonElement {
+params_json->ToString()->PrintLine();		
 		response := Web.HTTP.HttpClient->QuickPost(Web.HTTP.Url->New("http://localhost:5000"), params_json->ToString()->ToByteArray(), "application/json");
 		if(response <> Nil) {
 			response_json := JsonParser->TextToElement(response->GetContent()->ToString());
