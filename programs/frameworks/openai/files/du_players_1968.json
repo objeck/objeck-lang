@@ -1,12 +1,85 @@
-{"players": [
-{"name": "Harry Hollines", "year": "SR", "position": "G", "height": "6-3", "point-average": "25.0 Pts", "rebounds": "5.4"},
-{"name": "Horace Kearney", "year": "SO", "position": "G", "height": "5-8", "point-average": "17.2 Pts", "rebounds": "5.7"},
-{"name": "Brian Clare", "year": "SR", "position": "C", "height": "6-10", "point-average": "13.0 Pts", "rebounds": "11.1"},
-{"name": "Moses Brewer", "year": "SO", "position": "G", "height": "6-4", "point-average": "9.7 Pts", "rebounds": "6.9"},
-{"name": "Rick Callahan", "year": "SR", "position": "F", "height": "6-3", "point-average": "8.1 Pts", "rebounds": "6.6"},
-{"name": "Al White", "year": "JR", "position": "F", "height": "6-5", "point-average": "4.6 Pts", "rebounds": "5.0"},
-{"name": "Ken Jones", "year": "SO", "position": "F", "height": "6-5", "point-average": "5.4 Pts", "rebounds": "4.6"},
-{"name": "Doug Funk", "year": "SO", "position": "G", "height": "6-0", "point-average": "4.1 Pts", "rebounds": "1.3"},
-{"name": "Jerry Johnson", "year": "SR", "position": "F", "height": "6-4", "point-average": "2.5 Pts", "rebounds": "2.1"},
-{"name": "John Bokan", "year": "SO", "position": "C", "height": "6-7", "point-average": "0.9 Pts", "rebounds": "1.3"}
-]}
+{
+    "players":
+    [
+        {
+            "name": "Harry Hollines",
+            "year": "SR",
+            "position": "G",
+            "height": "6-3",
+            "point-average": "25.0",
+            "rebounds": "5.4"
+        },
+        {
+            "name": "Horace Kearney",
+            "year": "SO",
+            "position": "G",
+            "height": "5-8",
+            "point-average": "17.2",
+            "rebounds": "5.7"
+        },
+        {
+            "name": "Brian Clare",
+            "year": "SR",
+            "position": "C",
+            "height": "6-10",
+            "point-average": "13.0",
+            "rebounds": "11.1"
+        },
+        {
+            "name": "Moses Brewer",
+            "year": "SO",
+            "position": "G",
+            "height": "6-4",
+            "point-average": "9.7",
+            "rebounds": "6.9"
+        },
+        {
+            "name": "Rick Callahan",
+            "year": "SR",
+            "position": "F",
+            "height": "6-3",
+            "point-average": "8.1",
+            "rebounds": "6.6"
+        },
+        {
+            "name": "Al White",
+            "year": "JR",
+            "position": "F",
+            "height": "6-5",
+            "point-average": "4.6",
+            "rebounds": "5.0"
+        },
+        {
+            "name": "Ken Jones",
+            "year": "SO",
+            "position": "F",
+            "height": "6-5",
+            "point-average": "5.4",
+            "rebounds": "4.6"
+        },
+        {
+            "name": "Doug Funk",
+            "year": "SO",
+            "position": "G",
+            "height": "6-0",
+            "point-average": "4.1",
+            "rebounds": "1.3"
+        },
+        {
+            "name": "Jerry Johnson",
+            "year": "SR",
+            "position": "F",
+            "height": "6-4",
+            "point-average": "2.5",
+            "rebounds": "2.1"
+        },
+        {
+            "name": "John Bokan",
+            "year": "SO",
+            "position": "C",
+            "height": "6-7",
+            "point-average": "0.9",
+            "rebounds": "1.3"
+        }
+    ]
+}
