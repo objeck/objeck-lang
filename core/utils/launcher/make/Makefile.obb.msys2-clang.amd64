@@ -1,4 +1,4 @@
-ARGS=-O3 -Wall -std=c++17 -Wno-unused-function
+ARGS=-O3 -Wall -std=c++17 -mavx2 -Wno-unused-function
 
 SRC=builder.o
 OBJ_LIBS=objeck.res
