@@ -1,4 +1,4 @@
-use Collection, API.OpenAI, System.IO.Filesystem, Data.JSON;
+use Collection, API.OpenAI, System.IO.Filesystem, Data.JSON, Data.CSV;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
@@ -46,8 +46,9 @@ class Test {
 		funcs->AddBack(func);
 
 		params := Set->New()<ParameterType>;
-		params->Insert(ParameterType->New("year", ParameterType->Type->INTEGER, "team's home and away games by year"));
-		func := FunctionType->New("get_schedule_by_year", params, ["year"], "The number of home or away games for a given year");
+		params->Insert(ParameterType->New("year", ParameterType->Type->INTEGER, "year the team played"));
+		params->Insert(ParameterType->New("away_or_home", ParameterType->Type->STRING, "away or home game"));
+		func := FunctionType->New("get_schedule_by_year", params, ["year", "away_or_home"], "The number of home or away games for a given year");
 		funcs->AddBack(func);
 
 		# create assistance
@@ -110,12 +111,17 @@ class Test {
 
 	function : ScheduleCallback(params_json : JsonElement) ~ JsonElement {
 		year := params_json->Get("year")->GetInt();
-		if(year = 1967) {
-			return JsonElement->New(11);
-		}
-		else {
-			return JsonElement->New(13);
-		}
+		away_or_home := params_json->Get("away_or_home")->GetInt();
+away_or_home->ToString()->PrintLine();
+		
+		table := CsvTable->New(System.IO.Filesystem.FileReader->ReadFile("files/du_schedule_{$year}.csv"));
+		if(table->IsParsed()) {
+			table->Size()->PrintLine();
+			"Document parsed..."->PrintLine();
+			return JsonElement->New(table->Search("At", "@")->Size());
+		};
+
+		return Nil;
 	}
 
 	function : CoachCallback(params_json : JsonElement) ~ JsonElement {

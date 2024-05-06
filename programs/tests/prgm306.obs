@@ -2,24 +2,23 @@ use Data.CSV;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		if(args->Size() = 2) {
-			table := CsvTable->New(System.IO.Filesystem.FileReader->ReadFile(args[0]));
-			if(table->IsParsed()) {
-				table->Size()->PrintLine();
-				"Document parsed..."->PrintLine();
+		year := 1967;
+		table := CsvTable->New(System.IO.Filesystem.FileReader->ReadFile("files/du_schedule_" + year));
+		if(table->IsParsed()) {
+			table->Size()->PrintLine();
+			"Document parsed..."->PrintLine();
 
-				away_schedule : CsvTable;
-				if(args[1]->Equals("away")) {
-					away_schedule := table->Search("At", "@");
-				}
-				else {
-					away_schedule := table->Search("At", "");
-				}
+			away_schedule : CsvTable;
+			if(args[0]->Equals("away")) {
+				away_schedule := table->Search("At", "@");
+			}
+			else {
+				away_schedule := table->Search("At", "");
+			}
 
-				away_schedule->Size()->PrintLine();
-				each(away_game in away_schedule) {
-					away_game->ToString()->PrintLine();
-				};
+			away_schedule->Size()->PrintLine();
+			each(away_game in away_schedule) {
+				away_game->ToString()->PrintLine();
 			};
 		};
 	}
