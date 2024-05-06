@@ -1,0 +1,104 @@
+use Collection, API.OpenAI, System.IO.Filesystem, Data.JSON;
+
+class Test {
+	@token : static : String;
+
+	function : Main(args : String[]) ~ Nil {
+		@token := GetApiKey();
+
+	}
+
+	function : CreateAssistant(file_one : String, file_two : String) ~ String {
+		files := Vector->New()<API.OpenAI.File>;
+		files->AddBack(API.OpenAI.File->LoadOrCreate(file_one, @token));
+		files->AddBack(API.OpenAI.File->LoadOrCreate(file_two, @token));
+		file_count := files->Size();
+
+		# set tools
+		tools := Vector->New()<String>;
+		tools->AddBack("retrieval");
+		tool_count := tools->Size();
+
+		# create function definition
+		params := Set->New()<ParameterType>;
+		params->Insert(ParameterType->New("year", ParameterType->Type->INTEGER, "year the team played"));
+		func := FunctionType->New("get_coach_by_year", params, ["year"], "The name of the head coach for a given year");
+		
+		funcs := Vector->New()<FunctionType>;
+		funcs->AddBack(func);
+
+		# create assistance
+		assistant := Assistant->Create("gpt-3.5-turbo-0125", "DU Basketball", "DU Basketball", 
+			"You are historian of University of Denver Men's basketball from the 1960's", 
+			tools, files, funcs, @token);
+		if(assistant = Nil) {
+			Assistant->GetLastError()->PrintLine();
+		}
+		else {
+			id := assistant->GetId();
+			name := assistant->GetName();
+			model := assistant->GetModel();
+"Created: id='{$id}', name='{$name}', model='{$model}', files={$file_count}, tools={$tool_count}"->PrintLine();
+
+			return id;
+		};
+
+		return Nil;
+	}
+
+	function : ChatWithAssistant(assistant_id : String) ~ Nil {				
+		session := API.OpenAI.Chat.Conversation->New(Assistant->Load(assistant_id, @token), true, @token);
+		session->AddFunction("get_coach_by_year", Callback(JsonElement) ~ JsonElement);
+
+		done := false;
+		do {
+			query := Console->ReadLine();
+			if(query->Equals("/quit")) {
+				session->Close();		
+				done := true;
+			}
+			else {
+				response := session->Send(query, "user");
+
+				index := 0;
+				role := response->GetRole();
+				contents := response->GetContents();
+				each(content in contents) {
+					type := content->GetFirst()->As(String);
+					value := content->GetSecond()->As(String);
+
+					"{$index}: [{$role}, type='{$type}']: value='{$value}'"->PrintLine();
+				};
+			};
+		}
+		while(<>done);
+
+		session->Close();
+	}
+
+	function : Callback(params_json : JsonElement) ~ JsonElement {
+#~		
+		params_json->ToString()->PrintLine();		
+		response := Web.HTTP.HttpClient->QuickPost(Web.HTTP.Url->New("http://localhost:5000"), params_json->ToString()->ToByteArray(), "application/json");
+		if(response <> Nil) {
+			response_json := JsonParser->TextToElement(response->GetContent()->ToString());
+			return response_json->Get("coach");
+		};
+
+		return Nil;
+~#
+
+		return JsonElement->New("Mr. Duck");		
+	}
+
+	function : GetApiKey() ~ String {
+		if(@token = Nil) {
+			token := FileReader->ReadFile("api_key.txt");
+			if(token <> Nil) {
+				@token := token->Trim();
+			};
+		};
+
+		return @token;
+	}
+}
