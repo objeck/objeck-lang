@@ -32,7 +32,7 @@ class Test {
 		tools->AddBack("retrieval");
 		tool_count := tools->Size();
 
-		# create function definition
+		# create function callback stubs
 		funcs := Vector->New()<FunctionType>;
 
 		params := Set->New()<ParameterType>;
@@ -49,10 +49,13 @@ class Test {
 		assistant := Assistant->Create("gpt-3.5-turbo-0125", "DU Basketball", "DU Basketball", 
 			"You are historian of University of Denver Men's basketball from the 1960's", 
 			tools, files, funcs, @token);
+		# check for error
 		if(assistant = Nil) {
-			Assistant->GetLastError()->PrintLine();
+			error_msg := Assistant->GetLastError();
+			">>> {$error_msg} <<<"->ErrorLine();
 		}
 		else {
+			# show assistance properties
 			id := assistant->GetId();
 			name := assistant->GetName();
 			model := assistant->GetModel();
@@ -64,11 +67,13 @@ class Test {
 		return Nil;
 	}
 
-	function : ChatWithAssistant(assistant_id : String) ~ Nil {				
+	function : ChatWithAssistant(assistant_id : String) ~ Nil {
+		# bind function callbacks		
 		session := API.OpenAI.Chat.Conversation->New(Assistant->Load(assistant_id, @token), true, @token);
 		session->AddFunction("get_coach_by_year", CoachCallback(JsonElement) ~ JsonElement);
 		session->AddFunction("get_schedule_by_year", ScheduleCallback(JsonElement) ~ JsonElement);
 
+		# start chat
 		done := false;
 		do {
 			query := Console->ReadLine();
@@ -77,8 +82,10 @@ class Test {
 				done := true;
 			}
 			else {
+				# send query
 				response := session->Send(query, "user");
 
+				# read response
 				index := 0;
 				role := response->GetRole();
 				contents := response->GetContents();
@@ -96,6 +103,7 @@ class Test {
 	}
 
 	function : ScheduleCallback(params_json : JsonElement) ~ JsonElement {
+params_json->ToString()->PrintLine();
 		">>> Scheudle Callback <<<"->PrintLine();
 		return JsonElement->New(11);
 	}
