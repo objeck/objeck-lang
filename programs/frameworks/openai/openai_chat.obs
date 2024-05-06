@@ -103,13 +103,18 @@ class Test {
 	}
 
 	function : ScheduleCallback(params_json : JsonElement) ~ JsonElement {
-params_json->ToString()->PrintLine();
-		">>> Scheudle Callback <<<"->PrintLine();
-		return JsonElement->New(11);
+		year := params_json->Get("year")->GetInt();
+		if(year = 1967) {
+			return JsonElement->New(11);
+		}
+		else {
+			return JsonElement->New(13);
+		}
 	}
 
 	function : CoachCallback(params_json : JsonElement) ~ JsonElement {
 #~		
+		# python callback`
 		params_json->ToString()->PrintLine();		
 		response := Web.HTTP.HttpClient->QuickPost(Web.HTTP.Url->New("http://localhost:5000"), params_json->ToString()->ToByteArray(), "application/json");
 		if(response <> Nil) {
