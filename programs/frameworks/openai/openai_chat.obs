@@ -5,7 +5,20 @@ class Test {
 
 	function : Main(args : String[]) ~ Nil {
 		@token := GetApiKey();
-
+		
+		if(args->Size() = 3) {
+			assist_id := CreateAssistant(args[1], args[2]);
+			FileWriter->WriteFile("assist_key.txt", assist_id);
+		}
+		else {
+			assist_key := FileReader->ReadFile("assist_key.txt");
+			if(assist_key <> Nil) {
+				ChatWithAssistant(assist_key);
+			}
+			else {
+				">>> Unable to read assistant ID <<<"->PrintLine();
+			};
+		};
 	}
 
 	function : CreateAssistant(file_one : String, file_two : String) ~ String {
@@ -38,7 +51,7 @@ class Test {
 			id := assistant->GetId();
 			name := assistant->GetName();
 			model := assistant->GetModel();
-"Created: id='{$id}', name='{$name}', model='{$model}', files={$file_count}, tools={$tool_count}"->PrintLine();
+			"Created: id='{$id}', name='{$name}', model='{$model}', files={$file_count}, tools={$tool_count}"->PrintLine();
 
 			return id;
 		};
