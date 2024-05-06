@@ -1,23 +1,22 @@
 use Collection, API.OpenAI, System.IO.Filesystem, Data.JSON;
 
 class Test {
-	@token : static : String;
-
 	function : Main(args : String[]) ~ Nil {
-		@token := GetApiKey();
+		token := GetApiKey();
+		if(token <> Nil) {	
+			if(args->Size() = 1 & args[0]->Equals("create")) {
+				assist_key := FileReader->ReadFile("assist_key.txt");
+				if(assist_key <> Nil) {
+					deleted := Assistant->Delete(assist_key, token);
+					"Deleted: id={$assist_key}, status={$deleted}"->PrintLine();
+				};
 
-		if(@token <> Nil) {
-			if(args->Size() = 2) {
-				assist_id := CreateAssistant(args[0], args[1]);
-				FileWriter->WriteFile("assist_key.txt", assist_id);
+				FileWriter->WriteFile("assist_key.txt", CreateAssistant(["files/du_players_1967.json",	"files/du_players_1968.json"], token));
 			}
 			else {
 				assist_key := FileReader->ReadFile("assist_key.txt");
 				if(assist_key <> Nil) {
-					ChatWithAssistant(assist_key);
-				}
-				else {
-					">>> Unable to read assistant ID <<<"->ErrorLine();
+					ChatWithAssistant(assist_key, token);
 				};
 			};
 		}
@@ -26,10 +25,11 @@ class Test {
 		};
 	}
 
-	function : CreateAssistant(file_one : String, file_two : String) ~ String {
+	function : CreateAssistant(filenames : String[], token : String) ~ String {
 		files := Vector->New()<API.OpenAI.File>;
-		files->AddBack(API.OpenAI.File->LoadOrCreate(file_one, @token));
-		files->AddBack(API.OpenAI.File->LoadOrCreate(file_two, @token));
+		each(filename in filenames) {
+			files->AddBack(API.OpenAI.File->LoadOrCreate(filename, token));
+		};
 		file_count := files->Size();
 
 		# set tools
@@ -53,7 +53,7 @@ class Test {
 		# create assistance
 		assistant := Assistant->Create("gpt-3.5-turbo-0125", "DU Basketball", "DU Basketball", 
 			"You are historian of University of Denver Men's basketball from the 1960's", 
-			tools, files, funcs, @token);
+			tools, files, funcs, token);
 		# check for error
 		if(assistant = Nil) {
 			error_msg := Assistant->GetLastError();
@@ -72,15 +72,16 @@ class Test {
 		return Nil;
 	}
 
-	function : ChatWithAssistant(assistant_id : String) ~ Nil {
+	function : ChatWithAssistant(assistant_id : String, token : String) ~ Nil {
 		# bind function callbacks		
-		session := API.OpenAI.Chat.Conversation->New(Assistant->Load(assistant_id, @token), true, @token);
+		session := API.OpenAI.Chat.Conversation->New(Assistant->Load(assistant_id, token), true, token);
 		session->AddFunction("get_coach_by_year", CoachCallback(JsonElement) ~ JsonElement);
 		session->AddFunction("get_schedule_by_year", ScheduleCallback(JsonElement) ~ JsonElement);
 
 		# start chat
 		done := false;
 		do {
+			"> "->Print();
 			query := Console->ReadLine();
 			if(query->Equals("/quit")) {
 				session->Close();		
@@ -119,7 +120,7 @@ class Test {
 
 	function : CoachCallback(params_json : JsonElement) ~ JsonElement {
 #~		
-		# python callback`
+		# python callback
 		params_json->ToString()->PrintLine();		
 		response := Web.HTTP.HttpClient->QuickPost(Web.HTTP.Url->New("http://localhost:5000"), params_json->ToString()->ToByteArray(), "application/json");
 		if(response <> Nil) {
@@ -135,13 +136,11 @@ class Test {
 	}
 
 	function : GetApiKey() ~ String {
-		if(@token = Nil) {
-			token := FileReader->ReadFile("api_key.txt");
-			if(token <> Nil) {
-				@token := token->Trim();
-			};
+		token := FileReader->ReadFile("api_key.txt");
+		if(token <> Nil) {
+			return token->Trim();
 		};
 
-		return @token;
+		return Nil;
 	}
 }
