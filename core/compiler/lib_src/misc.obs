@@ -396,6 +396,8 @@ bundle System.Utility {
 					@state := 0;
 				}
 			};
+
+			Console->Flush();
 		}
 
 		#~
