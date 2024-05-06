@@ -5,9 +5,9 @@ class Test {
 
 	function : Main(args : String[]) ~ Nil {
 		@token := GetApiKey();
-		
-		if(args->Size() = 3) {
-			assist_id := CreateAssistant(args[1], args[2]);
+
+		if(args->Size() = 2) {
+			assist_id := CreateAssistant(args[0], args[1]);
 			FileWriter->WriteFile("assist_key.txt", assist_id);
 		}
 		else {
@@ -33,11 +33,16 @@ class Test {
 		tool_count := tools->Size();
 
 		# create function definition
+		funcs := Vector->New()<FunctionType>;
+
 		params := Set->New()<ParameterType>;
 		params->Insert(ParameterType->New("year", ParameterType->Type->INTEGER, "year the team played"));
 		func := FunctionType->New("get_coach_by_year", params, ["year"], "The name of the head coach for a given year");
-		
-		funcs := Vector->New()<FunctionType>;
+		funcs->AddBack(func);
+
+		params := Set->New()<ParameterType>;
+		params->Insert(ParameterType->New("year", ParameterType->Type->INTEGER, "team's home and away games by year"));
+		func := FunctionType->New("get_schedule_by_year", params, ["year"], "The number of home or away games for a given year");
 		funcs->AddBack(func);
 
 		# create assistance
@@ -61,7 +66,8 @@ class Test {
 
 	function : ChatWithAssistant(assistant_id : String) ~ Nil {				
 		session := API.OpenAI.Chat.Conversation->New(Assistant->Load(assistant_id, @token), true, @token);
-		session->AddFunction("get_coach_by_year", Callback(JsonElement) ~ JsonElement);
+		session->AddFunction("get_coach_by_year", CoachCallback(JsonElement) ~ JsonElement);
+		session->AddFunction("get_schedule_by_year", ScheduleCallback(JsonElement) ~ JsonElement);
 
 		done := false;
 		do {
@@ -89,7 +95,12 @@ class Test {
 		session->Close();
 	}
 
-	function : Callback(params_json : JsonElement) ~ JsonElement {
+	function : ScheduleCallback(params_json : JsonElement) ~ JsonElement {
+		">>> Scheudle Callback <<<"->PrintLine();
+		return JsonElement->New(11);
+	}
+
+	function : CoachCallback(params_json : JsonElement) ~ JsonElement {
 #~		
 		params_json->ToString()->PrintLine();		
 		response := Web.HTTP.HttpClient->QuickPost(Web.HTTP.Url->New("http://localhost:5000"), params_json->ToString()->ToByteArray(), "application/json");
@@ -101,6 +112,7 @@ class Test {
 		return Nil;
 ~#
 
+		">>> Coach Callback <<<"->PrintLine();
 		return JsonElement->New("Mr. Duck");		
 	}
 
