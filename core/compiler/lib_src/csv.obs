@@ -590,11 +590,11 @@ bundle Data.CSV {
 		@return row
 		~#
 		method : public : Get(index : Int) ~ CsvRow {
-			if(<>@is_parsed | index < @data->Size()) {
+			if(<>@is_parsed) {
 				return Nil;
 			};
 			
-			return @data->Get(index + 1)->As(CsvRow);
+			return @data->Get(index)->As(CsvRow);
 		}
 		
 		#~
@@ -606,7 +606,7 @@ bundle Data.CSV {
 				return 0;
 			};
 
-			return @data->Size() + 1;
+			return @data->Size();
 		}
 		
 		#~
