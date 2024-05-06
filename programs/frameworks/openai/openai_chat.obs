@@ -6,18 +6,23 @@ class Test {
 	function : Main(args : String[]) ~ Nil {
 		@token := GetApiKey();
 
-		if(args->Size() = 2) {
-			assist_id := CreateAssistant(args[0], args[1]);
-			FileWriter->WriteFile("assist_key.txt", assist_id);
-		}
-		else {
-			assist_key := FileReader->ReadFile("assist_key.txt");
-			if(assist_key <> Nil) {
-				ChatWithAssistant(assist_key);
+		if(@token <> Nil) {
+			if(args->Size() = 2) {
+				assist_id := CreateAssistant(args[0], args[1]);
+				FileWriter->WriteFile("assist_key.txt", assist_id);
 			}
 			else {
-				">>> Unable to read assistant ID <<<"->PrintLine();
+				assist_key := FileReader->ReadFile("assist_key.txt");
+				if(assist_key <> Nil) {
+					ChatWithAssistant(assist_key);
+				}
+				else {
+					">>> Unable to read assistant ID <<<"->ErrorLine();
+				};
 			};
+		}
+		else {
+			">>> Unable to read API ID <<<"->ErrorLine();
 		};
 	}
 
