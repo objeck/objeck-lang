@@ -5,10 +5,18 @@ class Test {
 		token := GetApiKey();
 		if(token <> Nil) {	
 			if(args->Size() = 1 & args[0]->Equals("create")) {
-				assist_key := FileReader->ReadFile("assist_key.txt");
-				if(assist_key <> Nil) {
-					deleted := Assistant->Delete(assist_key, token);
-					"Deleted: id={$assist_key}, status={$deleted}"->PrintLine();
+				assistants := Assistant->ListAssistants(token);
+				if(assistants->IsEmpty()) {
+					"No Assistants created"->PrintLine();
+				}
+				else {
+					"Assistants:"->PrintLine();
+
+					each(assistant in assistants) {
+						id := assistant->GetId();
+						status := Assistant->Delete(id, token);
+						"Deleted: id='{$id}', status={$status}"->PrintLine();
+					};
 				};
 
 				FileWriter->WriteFile("assist_key.txt", CreateAssistant(["files/du_players_1967.json",	"files/du_players_1968.json"], token));
