@@ -230,6 +230,38 @@ bundle Data.CSV {
 			
 			return buffer;
 		}
+
+		#~
+		Formats the row into a JSON object string
+		@return JSON object string
+		~#
+		method : public : ToJson() ~ String {
+			buffer := "{";
+			each(i : @columns) {
+				header := @columns->Get(j);
+				value := row->Get(j);
+
+				buffer->Append('"');
+				buffer->Append(header);
+				buffer->Append("\":");
+
+				if(value->IsInt() | value->IsFloat()) {
+					buffer->Append(value);
+				}
+				else {
+					buffer->Append('"');
+					buffer->Append(value);
+					buffer->Append('"');
+				};
+
+				if(j + 1 < @columns->Size()) {
+					buffer->Append(',');
+				};
+			};
+			buffer->Append('}');
+			
+			return buffer;
+		}
 	}
 	
 	#~
@@ -734,6 +766,25 @@ bundle Data.CSV {
 				buffer->Append(@ending);
 			};
 		
+			return buffer;
+		}
+
+		#~
+		Formats the table into a string
+		@return string representation of the table
+		~#
+		method : public : ToJson() ~ String {
+			buffer := "["
+			for(i := 1; i < @data->Size(); i += 1;) {
+				row := @data->Get(i);
+				buffer->Append(row->ToString());
+				
+				if(j + 1 < headers->Size()) {
+					buffer->Append(',');
+				};
+			};
+			buffer->Append(']');
+
 			return buffer;
 		}
 		

@@ -15,7 +15,7 @@ class Test {
 					each(assistant in assistants) {
 						id := assistant->GetId();
 						status := Assistant->Delete(id, token);
-						"Deleted: id='{$id}', status={$status}"->PrintLine();
+						"\tDeleted: id='{$id}', status={$status}"->PrintLine();
 					};
 				};
 
