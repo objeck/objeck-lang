@@ -1,0 +1,22 @@
+﻿G,Date,Type,At,Opponent,Conf,SRS, _1,Tm,Opp,OT,W,L,Streak,Arena
+1,12/2/1967,REG,,Brigham Young,WAC,8.04,L,78,88,,0,1,L 1,DU Fieldhouse
+2,12/13/1967,REG,@,Wyoming,WAC,5.55,L,75,107,,0,2,L 2,War Memorial Fieldhouse
+3,12/18/1967,REG,@,Tulane,Ind,-3.66,L,80,85,,0,3,L 3,Avron B. Fogelman Arena
+4,12/20/1967,REG,@,Southern Methodist,SWC,-6.73,W,86,81,,1,3,W 1,Moody Coliseum
+5,12/21/1967,REG,@,Texas Tech,SWC,-8.5,W,73,63,,2,3,W 2,Lubbock Municipal Coliseum
+6,12/23/1967,REG,@,Utah,WAC,6.74,L,87,99,,2,4,L 1,Nielsen Field House
+7,1/1/1968,REG,@,New Mexico (10),WAC,10.48,L,76,87,,2,5,L 2,University Arena
+8,1/6/1968,REG,,Wyoming,WAC,5.55,L,96,107,,2,6,L 3,DU Fieldhouse
+9,1/10/1968,REG,@,Colorado State,Ind,-2.98,W,65,59,,3,6,W 1,Moby Arena
+10,1/13/1968,REG,@,Marquette,Ind,11.51,L,57,82,,3,7,L 1,Milwaukee Arena
+11,1/18/1968,REG,,Utah State,Ind,0.62,W,100,80,,4,7,W 1,DU Fieldhouse
+12,1/20/1968,REG,,Seattle,Ind,0.88,W,91,87,,5,7,W 2,DU Fieldhouse
+13,1/27/1968,REG,@,Oklahoma City,Ind,1.74,L,95,104,,5,8,L 1,State Fair Arena
+14,1/30/1968,REG,,Colorado State,Ind,-2.98,L,70,71,,5,9,L 2,DU Fieldhouse
+15,2/2/1968,REG,,Stanford,AAWU,2.81,L,82,84,,5,10,L 3,DU Fieldhouse
+16,2/3/1968,REG,,California,AAWU,3.53,L,82,96,,5,11,L 4,DU Fieldhouse
+17,2/12/1968,REG,,Oklahoma City,Ind,1.74,L,86,100,,5,12,L 5,DU Fieldhouse
+18,2/14/1968,REG,,Air Force,Ind,-9.31,W,86,81,,6,12,W 1,DU Fieldhouse
+19,2/23/1968,REG,@,Air Force,Ind,-9.31,L,89,94,,6,13,L 1,Cadet Gymnasium
+20,2/24/1968,REG,@,Utah State,Ind,0.62,L,96,98,,6,14,L 2,Nelson Fieldhouse
+21,3/2/1968,REG,,New Mexico (7),WAC,10.48,W,70,68,,7,14,W 1,DU Fieldhouse
