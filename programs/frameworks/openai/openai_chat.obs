@@ -118,10 +118,10 @@ class Test {
 		if(table->IsParsed()) {
 			"Document parsed..."->PrintLine();
 			if(home_or_away->Equals("away")) {
-				return JsonElement->New(table->Search("At", "@")->Size());
+				return JsonElement->New(table->Search("At", "@")->Size() - 1);
 			}
 			else {
-				return JsonElement->New(table->Search("At", "")->Size());
+				return JsonElement->New(table->Search("At", "")->Size() - 1);
 			};
 		};
 

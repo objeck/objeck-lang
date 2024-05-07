@@ -1351,10 +1351,9 @@ bundle API.OpenAI {
 			};
 
 			# JSON parameters
-			buffer->Append("\"type\": \"object\",\"properties\":");
+			buffer->Append("\"type\": \"object\",\"properties\": {");
 			if(@params <> Nil) {
 				param_values := @params->GetKeys()<ParameterType>;
-				buffer->Append('{')
 				each(i : param_values) {
 					param_value := param_values->Get(i);
 					buffer->Append(param_value->ToString());
@@ -1363,11 +1362,8 @@ bundle API.OpenAI {
 						buffer->Append(',');
 					}
 				};
-				buffer->Append('}')
 			}
-			else {
-				buffer->Append("{}");
-			};
+			buffer->Append('}')
 
 			# required
 			buffer->Append(",\"required\": [");
