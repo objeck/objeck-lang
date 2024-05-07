@@ -15,7 +15,8 @@ class Test {
 				schedule := table->Search("At", "");
 			};
 
-#####
+			schedule->ToJson()->PrintLine();
+#~
 
 			headers := schedule->GetHeaders();
 			buffer := "["
@@ -51,9 +52,9 @@ class Test {
 			};
 			buffer += ']';
 
-#####
+			buffer->PrintLine();
+~#
 
-buffer->PrintLine();
 #~			
 			schedule->Size()->PrintLine();
 			each(away_game in schedule) {
