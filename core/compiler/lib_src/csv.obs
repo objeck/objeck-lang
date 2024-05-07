@@ -236,10 +236,10 @@ bundle Data.CSV {
 		@return JSON object string
 		~#
 		method : public : ToJson() ~ String {
-			headers := @columns->Get(0)->As(CsvRow);
+			headers := @table->GetHeaders();
 			
 			buffer := "{";
-			each(i : @columns) {
+			each(i : headers) {
 				header := headers->Get(i);
 				value := @columns->Get(i);
 
@@ -256,7 +256,7 @@ bundle Data.CSV {
 					buffer->Append('"');
 				};
 
-				if(i + 1 < @columns->Size()) {
+				if(i + 1 < headers->Size()) {
 					buffer->Append(',');
 				};
 			};
@@ -772,8 +772,8 @@ bundle Data.CSV {
 		}
 
 		#~
-		Formats the table into a string
-		@return string representation of the table
+		Formats the table into a JSON object string
+		@return JSON object string
 		~#
 		method : public : ToJson() ~ String {
 			buffer := "["
