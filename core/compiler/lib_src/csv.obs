@@ -236,10 +236,12 @@ bundle Data.CSV {
 		@return JSON object string
 		~#
 		method : public : ToJson() ~ String {
+			headers := @columns->Get(0)->As(CsvRow);
+			
 			buffer := "{";
 			each(i : @columns) {
-				header := @columns->Get(j);
-				value := row->Get(j);
+				header := headers->Get(i);
+				value := @columns->Get(i);
 
 				buffer->Append('"');
 				buffer->Append(header);
@@ -254,7 +256,7 @@ bundle Data.CSV {
 					buffer->Append('"');
 				};
 
-				if(j + 1 < @columns->Size()) {
+				if(i + 1 < @columns->Size()) {
 					buffer->Append(',');
 				};
 			};
@@ -779,7 +781,7 @@ bundle Data.CSV {
 				row := @data->Get(i);
 				buffer->Append(row->ToString());
 				
-				if(j + 1 < headers->Size()) {
+				if(i + 1 < @data->Size()) {
 					buffer->Append(',');
 				};
 			};
