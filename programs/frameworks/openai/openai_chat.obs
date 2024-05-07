@@ -47,8 +47,8 @@ class Test {
 
 		params := Set->New()<ParameterType>;
 		params->Insert(ParameterType->New("year", ParameterType->Type->INTEGER, "year the team played"));
-		params->Insert(ParameterType->New("away_or_home", ParameterType->Type->STRING, "away or home game"));
-		func := FunctionType->New("get_schedule_by_year", params, ["year", "away_or_home"], "The number of home or away games for a given year");
+		params->Insert(ParameterType->New("home-or-away", ParameterType->Type->STRING, "indicates rather the game is at home or away"));
+		func := FunctionType->New("get_schedule_by_year", params, ["year", "home-or-away"], "The number of home or away games for a given year");
 		funcs->AddBack(func);
 
 		# create assistance
@@ -111,14 +111,18 @@ class Test {
 
 	function : ScheduleCallback(params_json : JsonElement) ~ JsonElement {
 		year := params_json->Get("year")->GetInt();
-		away_or_home := params_json->Get("away_or_home")->GetInt();
-away_or_home->ToString()->PrintLine();
-		
+		home_or_away := params_json->Get("home-or-away")->GetString();
+				
+		# query csv files
 		table := CsvTable->New(System.IO.Filesystem.FileReader->ReadFile("files/du_schedule_{$year}.csv"));
 		if(table->IsParsed()) {
-			table->Size()->PrintLine();
 			"Document parsed..."->PrintLine();
-			return JsonElement->New(table->Search("At", "@")->Size());
+			if(home_or_away->Equals("away")) {
+				return JsonElement->New(table->Search("At", "@")->Size());
+			}
+			else {
+				return JsonElement->New(table->Search("At", "")->Size());
+			};
 		};
 
 		return Nil;
@@ -126,7 +130,7 @@ away_or_home->ToString()->PrintLine();
 
 	function : CoachCallback(params_json : JsonElement) ~ JsonElement {
 #~		
-		# python callback
+		# python callback example
 		params_json->ToString()->PrintLine();		
 		response := Web.HTTP.HttpClient->QuickPost(Web.HTTP.Url->New("http://localhost:5000"), params_json->ToString()->ToByteArray(), "application/json");
 		if(response <> Nil) {

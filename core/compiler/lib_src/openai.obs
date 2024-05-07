@@ -1354,6 +1354,7 @@ bundle API.OpenAI {
 			buffer->Append("\"type\": \"object\",\"properties\":");
 			if(@params <> Nil) {
 				param_values := @params->GetKeys()<ParameterType>;
+				buffer->Append('{')
 				each(i : param_values) {
 					param_value := param_values->Get(i);
 					buffer->Append(param_value->ToString());
@@ -1362,6 +1363,7 @@ bundle API.OpenAI {
 						buffer->Append(',');
 					}
 				};
+				buffer->Append('}')
 			}
 			else {
 				buffer->Append("{}");
@@ -1374,6 +1376,10 @@ bundle API.OpenAI {
 				buffer->Append('"');
 				buffer->Append(req_param);
 				buffer->Append('"');
+
+				if(i + 1 < @req_params->Size()) {
+					buffer->Append(',');
+				};
 			}
 			buffer->Append("]}");
 
@@ -1518,7 +1524,7 @@ bundle API.OpenAI {
 		@return JSON string representation
 		~# 
 		method : public : ToString() ~ String {
-			buffer := "{\"";
+			buffer := "\"";
 			buffer->Append(@name);
 			buffer->Append("\": {\"type\": \"");
 
@@ -1533,12 +1539,7 @@ bundle API.OpenAI {
 						prop_key := prop_keys->Get(i);
 						temp := prop_key->ToString();
 						
-						if(i > 0) {
-							buffer->Append(temp->SubString(1, temp->Size() - 1));
-						}
-						else {
-							buffer->Append(temp);
-						};
+						buffer->Append(temp);
 						
 						if(i + 1 < prop_keys->Size()) {
 							buffer->Pop();
@@ -1579,14 +1580,8 @@ bundle API.OpenAI {
 				buffer->Append(Data.JSON.JsonElement->Encode(@desc));
 			};
 
-			if(@props <> Nil) {
-				buffer->Append('}');
-			}
-			else {
-				buffer->Append("\"}}");
-				if(@is_array) {
-					buffer->Append('}');
-				};
+			if(@props = Nil) {
+				buffer->Append("\"}");
 			};
 
 			return buffer;
