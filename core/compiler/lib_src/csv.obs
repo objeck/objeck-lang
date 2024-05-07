@@ -779,7 +779,7 @@ bundle Data.CSV {
 			buffer := "["
 			for(i := 1; i < @data->Size(); i += 1;) {
 				row := @data->Get(i);
-				buffer->Append(row->ToString());
+				buffer->Append(row->ToJson());
 				
 				if(i + 1 < @data->Size()) {
 					buffer->Append(',');
