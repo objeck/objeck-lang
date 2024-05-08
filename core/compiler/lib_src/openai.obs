@@ -2320,10 +2320,18 @@ bundle API.OpenAI {
 	class EndPoint {
 		@last_message : static : String;
 		@api_key : static : String;
+		@api_key_dir : static : String;
 
 		function : SetLastError(last_message : String) ~ Nil {
 			@last_message := last_message;
+		}
 
+		#~
+		Set the API key path
+		@param api_key_dir key path
+		~#
+		function : SetApiDirectory(api_key_dir : String) ~ Nil {
+			@api_key_dir := api_key_dir;
 		}
 
 		#~
@@ -2334,8 +2342,20 @@ bundle API.OpenAI {
 			return @last_message;
 		}
 
+		#~
+		Fetches the API key from a file and stores it in memory
+		@return API key
+		~#
 		function : GetApiKey() ~ String {
 			if(@api_key = Nil) {
+				if(@api_key_dir = Nil) {
+					@api_key_dir := ".";
+					@api_key_dir->Append(Directory->GetSlash());
+				}
+				else if(@api_key_dir->EndsWith('/') & @api_key_dir->EndsWith('\\')) {
+					@api_key_dir->Append(Directory->GetSlash());					
+				};
+
 				token := FileReader->ReadFile("api_key.txt");
 				if(token <> Nil) {
 					@api_key := token->Trim();
