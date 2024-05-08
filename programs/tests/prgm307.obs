@@ -1,0 +1,21 @@
+use Database.ODBC;
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		# connect to database
+		connection := Connection->New("DU_Schedule", "", "");
+		if(connection->IsOpen()) {
+			resultset := connection->Select("SELECT * FROM du_schedule where du_schedule.[ID] = 3");
+
+			if(resultset->Next()) {
+				resultset->GetDate("Date")->ToString()->PrintLine();
+#				resultset->GetVarchar("Opponent")->PrintLine();
+
+				resultset->Close();
+			};
+
+			# close connection
+			connection->Close();
+		};
+	}
+}
