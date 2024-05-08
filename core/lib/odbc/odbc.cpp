@@ -1801,7 +1801,7 @@ extern "C" {
     SQLRETURN status = SQLGetData(stmt, i, SQL_C_TYPE_TIMESTAMP, &value, 
                                   sizeof(TIMESTAMP_STRUCT), &is_null);
     if(SQL_OK) {
-      size_t* ts_obj = APITools_CreateObject(context, L"ODBC.Timestamp");
+      size_t* ts_obj = APITools_CreateObject(context, L"Database.ODBC.Timestamp");
       ts_obj[1] = value.year;
       ts_obj[2] = value.month;
       ts_obj[3] = value.day;
@@ -1866,7 +1866,7 @@ extern "C" {
     SQLRETURN status = SQLGetData(stmt, i, SQL_C_TYPE_TIMESTAMP, &value, 
                                   sizeof(TIMESTAMP_STRUCT), &is_null);
     if(SQL_OK) {
-      size_t* ts_obj = APITools_CreateObject(context, L"ODBC.Timestamp");
+      size_t* ts_obj = APITools_CreateObject(context, L"Database.ODBC.Timestamp");
       ts_obj[1] = value.year;
       ts_obj[2] = value.month;
       ts_obj[3] = value.day;
@@ -1922,7 +1922,7 @@ extern "C" {
     DATE_STRUCT value;
     SQLRETURN status = SQLGetData(stmt, i, SQL_C_TYPE_DATE, &value, sizeof(DATE_STRUCT), &is_null);
     if(SQL_OK) {
-      size_t* ts_obj = APITools_CreateObject(context, L"ODBC.Date");
+      size_t* ts_obj = APITools_CreateObject(context, L"Database.ODBC.Date");
       ts_obj[1] = value.year;
       ts_obj[2] = value.month;
       ts_obj[3] = value.day;
@@ -1978,7 +1978,7 @@ extern "C" {
     DATE_STRUCT value;
     SQLRETURN status = SQLGetData(stmt, i, SQL_C_TYPE_DATE, &value, sizeof(DATE_STRUCT), &is_null);
     if(SQL_OK) {
-      size_t* ts_obj = APITools_CreateObject(context, L"ODBC.Date");
+      size_t* ts_obj = APITools_CreateObject(context, L"Database.ODBC.Date");
       ts_obj[1] = value.year;
       ts_obj[2] = value.month;
       ts_obj[3] = value.day;
