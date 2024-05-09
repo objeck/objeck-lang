@@ -260,7 +260,7 @@ class ContextAnalyzer {
   int in_loop;
   bool in_assignment;
   bool in_return;
-  bool in_expression;
+  int expression_depth;
   int nested_call_depth;
   std::set<std::wstring> range_names;
   
@@ -574,8 +574,9 @@ class ContextAnalyzer {
     program->SetLinker(linker);
     char_str_index = int_str_index = bool_str_index = float_str_index= 0;
     in_loop = nested_call_depth = 0;
-    in_assignment = in_return = in_expression = use_static_check = false;
-    
+    in_assignment = in_return = use_static_check = false;
+    expression_depth = 0;
+
     // setup type map
     type_map[L"Byte"] = TypeFactory::Instance()->MakeType(frontend::BYTE_TYPE, L"System.Byte");
     type_map[L"Char"] = TypeFactory::Instance()->MakeType(frontend::CHAR_TYPE, L"System.Char");
