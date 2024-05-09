@@ -11,6 +11,11 @@ class Test {
 		each(value in filtered) {
 			value->PrintLine();
 		};
+
+		filtered := Bar(values, Filter(IntRef) ~ Bool);
+		each(value in filtered) {
+			value->PrintLine();
+		};
 	}
 
 	function : Foo(values : Vector<IntRef>, func : (IntRef) ~ Bool) ~ Vector<IntRef> {
