@@ -1,0 +1,48 @@
+use Collection;
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		values := Vector->New()<IntRef>;
+		each(i : 10) {
+			values->AddBack(i);
+		};
+
+		filtered := Foo(values, Filter(IntRef) ~ Bool);
+		each(value in filtered) {
+			value->PrintLine();
+		};
+	}
+
+	function : Foo(values : Vector<IntRef>, func : (IntRef) ~ Bool) ~ Vector<IntRef> {
+		filtered := Vector->New()<IntRef>;
+
+		each(value in values) {
+			result := func(value);
+			if(result) {
+				filtered->AddBack(value);
+			};
+		};
+
+		return filtered;
+	}
+
+	function : Bar(values : Vector<IntRef>, func : (IntRef) ~ Bool) ~ Vector<IntRef> {
+		filtered := Vector->New()<IntRef>;
+
+		each(value in values) {
+			if(func(value)) {
+				filtered->AddBack(value);
+			};
+		};
+
+		return filtered;
+	}
+
+	function : Filter(value : IntRef) ~ Bool {
+		if(value->Get() < 4) {
+			return true;
+		};
+
+		return false;
+	}
+}
