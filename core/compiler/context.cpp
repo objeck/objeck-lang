@@ -1493,7 +1493,7 @@ void ContextAnalyzer::AnalyzeStatement(Statement* statement, const int depth)
 void ContextAnalyzer::AnalyzeExpression(Expression* expression, const int depth)
 {
   if(expression) {
-    in_expression = true;
+    ++expression_depth;
 
     StringConcat* str_concat = AnalyzeStringConcat(expression, depth + 1);
     if(str_concat) {
@@ -1621,7 +1621,7 @@ void ContextAnalyzer::AnalyzeExpression(Expression* expression, const int depth)
     // check cast
     AnalyzeCast(expression, depth + 1);
 
-    in_expression = false;
+    --expression_depth;
   }
 }
 
@@ -2153,7 +2153,7 @@ void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, const int depth
   //
   else {
     // track rouge return
-    nested_call_depth++;
+    ++nested_call_depth;
 
     // static check
     const std::wstring variable_name = method_call->GetVariableName();
@@ -2193,7 +2193,7 @@ void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, const int depth
       }
       
       // check for rouge return
-      nested_call_depth--;
+      --nested_call_depth;
       RogueReturn(method_call);
       return;
     }
@@ -2208,7 +2208,7 @@ void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, const int depth
       }
 
       // check for rouge return
-      nested_call_depth--;
+      --nested_call_depth;
       RogueReturn(method_call);
       return;
     }
@@ -2253,7 +2253,7 @@ void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, const int depth
     }
 
     // check for rouge return
-    nested_call_depth--;
+    --nested_call_depth;
     RogueReturn(method_call);
   }
 }
@@ -2671,7 +2671,7 @@ void ContextAnalyzer::AnalyzeExpressionMethodCall(Expression* expression, const 
     }
     else {
       // track rouge return
-      nested_call_depth++;
+      ++nested_call_depth;
 
       std::wstring encoding;
       Class* klass = nullptr;
@@ -2719,7 +2719,7 @@ void ContextAnalyzer::AnalyzeExpressionMethodCall(Expression* expression, const 
       }
 
       // check for rouge return
-      nested_call_depth--;
+      --nested_call_depth;
       RogueReturn(method_call);
     }
   }
@@ -2728,8 +2728,7 @@ void ContextAnalyzer::AnalyzeExpressionMethodCall(Expression* expression, const 
 void ContextAnalyzer::RogueReturn(MethodCall* method_call)
 {
   // test if call is mapped to method
-  if((method_call->GetMethod() || method_call->GetLibraryMethod()) && 
-    !nested_call_depth && !in_assignment && !in_return && !in_expression && method_call) {
+  if(!nested_call_depth && !in_assignment && !in_return && !expression_depth && method_call) {
     // get the last method call
     while(method_call->GetMethodCall()) {
       method_call = method_call->GetMethodCall();
@@ -3715,7 +3714,7 @@ void ContextAnalyzer::AnalyzeVariableFunctionCall(MethodCall* method_call, const
     entry->WasLoaded();
 
     // track rouge return
-    nested_call_depth++;
+    ++nested_call_depth;
     
     // generate parameter strings
     Type* type = entry->GetType();
@@ -3781,7 +3780,7 @@ void ContextAnalyzer::AnalyzeVariableFunctionCall(MethodCall* method_call, const
     AnalyzeExpressionMethodCall(method_call, depth + 1);
     
     // check for rouge return
-    nested_call_depth--;
+    --nested_call_depth;
     RogueReturn(method_call);
   }
   else if(!use_static_check) {
