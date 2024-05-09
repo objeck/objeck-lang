@@ -482,35 +482,34 @@ void IntermediateInstruction::Debug(size_t i) {
     const long cls_id = (operand >> (16 * (1))) & 0xFFFF;
     const long mthd_id = (operand >> (16 * (0))) & 0xFFFF;
      
-    GetLogger()  << i << L":\tDYN_MTHD_CALL: cls_id=" << cls_id << L", mthd_id=" << L"," << mthd_id;
-     
+    GetLogger()  << i << L":\tDYN_MTHD_CALL: cls_id=" << cls_id << L", mthd_id=" << mthd_id;
     switch(operand2) {
     case NIL_TYPE:
-      GetLogger()  << i << L", rtrn_type=Nil";
+      GetLogger() << L", rtrn_type=Nil";
       break;
 
     case BYTE_ARY_TYPE:
-      GetLogger()  << i << L", rtrn_type=Byte[]";
+      GetLogger() << L", rtrn_type=Byte[]";
       break;
 
     case CHAR_ARY_TYPE:
-      GetLogger()  << i << L", rtrn_type=Char[]";
+      GetLogger() << L", rtrn_type=Char[]";
       break;
 
     case INT_TYPE:
-      GetLogger()  << i << L", rtrn_type=Int";
+      GetLogger() << L", rtrn_type=Bool/Char/Int";
       break;
 
     case FLOAT_TYPE:
-      GetLogger()  << i << L", rtrn_type=Float";
+      GetLogger() << L", rtrn_type=Float";
       break;
 
     case FUNC_TYPE:
-      GetLogger()  << i << L", rtrn_type=Func";
+      GetLogger() << L", rtrn_type=Func";
       break;
 
     default:
-      GetLogger()  << i << L", rtrn_type=Unknown";
+      GetLogger() << L", rtrn_type=Unknown";
       break;
     }
 
@@ -519,7 +518,7 @@ void IntermediateInstruction::Debug(size_t i) {
     break;
 
   case SHL_INT:
-    GetLogger()  << i << L":\tSHL_INT" << std::endl;
+    GetLogger() << L":\tSHL_INT" << std::endl;
     break;
 
   case SHR_INT:
