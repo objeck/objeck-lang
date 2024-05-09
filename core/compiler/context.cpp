@@ -2727,7 +2727,7 @@ void ContextAnalyzer::AnalyzeExpressionMethodCall(Expression* expression, const 
 
 void ContextAnalyzer::RogueReturn(MethodCall* method_call)
 {
-  if(!nested_call_depth && !in_assignment && !in_return && !in_expression && method_call && method_call->GetMethod() && method_call->GetLibraryMethod()) {
+  if(!nested_call_depth && !in_assignment && !in_return && !in_expression && method_call && (method_call->GetMethod() || method_call->GetLibraryMethod())) {
     // get the last method call
     while(method_call->GetMethodCall()) {
       method_call = method_call->GetMethodCall();
