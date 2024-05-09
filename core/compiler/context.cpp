@@ -2194,7 +2194,7 @@ void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, const int depth
       
       // check for rouge return
       nested_call_depth--;
-      RogueReturn(method_call); // TODO: remove
+      RogueReturn(method_call);
       return;
     }
     // library call
@@ -2209,7 +2209,7 @@ void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, const int depth
 
       // check for rouge return
       nested_call_depth--;
-      RogueReturn(method_call); // TODO: remove
+      RogueReturn(method_call);
       return;
     }
 
@@ -2727,7 +2727,9 @@ void ContextAnalyzer::AnalyzeExpressionMethodCall(Expression* expression, const 
 
 void ContextAnalyzer::RogueReturn(MethodCall* method_call)
 {
-  if(!nested_call_depth && !in_assignment && !in_return && !in_expression && method_call && (method_call->GetMethod() || method_call->GetLibraryMethod())) {
+  // test if call is mapped to method
+  if((method_call->GetMethod() || method_call->GetLibraryMethod()) && 
+    !nested_call_depth && !in_assignment && !in_return && !in_expression && method_call) {
     // get the last method call
     while(method_call->GetMethodCall()) {
       method_call = method_call->GetMethodCall();
@@ -3777,7 +3779,7 @@ void ContextAnalyzer::AnalyzeVariableFunctionCall(MethodCall* method_call, const
 
     // next call
     AnalyzeExpressionMethodCall(method_call, depth + 1);
-
+    
     // check for rouge return
     nested_call_depth--;
     RogueReturn(method_call);
