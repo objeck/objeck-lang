@@ -2,24 +2,33 @@ use Collection;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		values := Vector->New()<IntRef>;
+		values := CompareVector->New()<IntRef>;
 		each(i : 10) {
 			values->AddBack(i);
 		};
+		"values set..."->PrintLine();
 
 		filtered := Foo(values, Filter(IntRef) ~ Bool);
 		each(value in filtered) {
 			value->PrintLine();
 		};
+		"test 1..."->PrintLine();
 
 		filtered := Bar(values, Filter(IntRef) ~ Bool);
 		each(value in filtered) {
 			value->PrintLine();
 		};
+		"test 2..."->PrintLine();
+
+		filtered := values->Filter(Filter(IntRef) ~ Bool);
+		each(value in filtered) {
+			value->PrintLine();
+		};
+		"test 3..."->PrintLine();
 	}
 
-	function : Foo(values : Vector<IntRef>, func : (IntRef) ~ Bool) ~ Vector<IntRef> {
-		filtered := Vector->New()<IntRef>;
+	function : Foo(values : CompareVector<IntRef>, func : (IntRef) ~ Bool) ~ CompareVector<IntRef> {
+		filtered := CompareVector->New()<IntRef>;
 
 		each(value in values) {
 			result := func(value);
@@ -31,8 +40,8 @@ class Test {
 		return filtered;
 	}
 
-	function : Bar(values : Vector<IntRef>, func : (IntRef) ~ Bool) ~ Vector<IntRef> {
-		filtered := Vector->New()<IntRef>;
+	function : Bar(values : CompareVector<IntRef>, func : (IntRef) ~ Bool) ~ CompareVector<IntRef> {
+		filtered := CompareVector->New()<IntRef>;
 
 		each(value in values) {
 			if(func(value)) {
