@@ -2194,7 +2194,7 @@ void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, const int depth
       
       // check for rouge return
       nested_call_depth--;
-//      RogueReturn(method_call); // TODO: remove
+      RogueReturn(method_call); // TODO: remove
       return;
     }
     // library call
@@ -2209,7 +2209,7 @@ void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, const int depth
 
       // check for rouge return
       nested_call_depth--;
-//      RogueReturn(method_call); // TODO: remove
+      RogueReturn(method_call); // TODO: remove
       return;
     }
 
@@ -2727,7 +2727,7 @@ void ContextAnalyzer::AnalyzeExpressionMethodCall(Expression* expression, const 
 
 void ContextAnalyzer::RogueReturn(MethodCall* method_call)
 {
-  if(!nested_call_depth && !in_assignment && !in_return && !in_expression) {
+  if(!nested_call_depth && !in_assignment && !in_return && !in_expression && method_call && method_call->GetMethod() && method_call->GetLibraryMethod()) {
     // get the last method call
     while(method_call->GetMethodCall()) {
       method_call = method_call->GetMethodCall();
