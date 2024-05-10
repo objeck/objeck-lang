@@ -234,9 +234,7 @@ each(candidate in candidates) {
 			};
 			contents_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 			contents_obj_json->Insert("contents", content_array_json);
-
 			
-
 			# safety settings
 			if(safety_settings <> Nil) {
 				safety_setting_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
