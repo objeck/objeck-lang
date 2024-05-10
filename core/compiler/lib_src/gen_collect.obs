@@ -2053,21 +2053,35 @@ function : Example() ~ Nil {
 		}
 
 		#~
+		Uses the given function to reduce the values
+		@param a initial value (i.e. accumulator)
+		@param f function to use a reduce
+		@return reduced vector
+		~#
+		method : public : Reduce(a : H, f : (H, H) ~ H) ~ H {
+			start := @head->GetNext();
+			while(start <> Nil) {
+				a := f(a, start->Get());
+				start := start->GetNext();
+			};
+
+			return a;
+		}
+
+		#~
 		List of all but first element
 		@return all but first element
 		~#
 		method : public : Rest() ~ CompareList<H> {
 			list : CompareList<H> := CompareList->New()<H>;
 			
-			if(@head <> Nil) {
-				start := @head->GetNext();
-				while(start <> Nil) {
-					list->AddBack(start->Get());
-					start := start->GetNext();
-				};
-
-				list->Rewind();
+			start := @head->GetNext();
+			while(start <> Nil) {
+				list->AddBack(start->Get());
+				start := start->GetNext();
 			};
+
+			list->Rewind();
 
 			return list;
 		}
@@ -2616,6 +2630,22 @@ function : Example() ~ Nil {
 
 			list->Rewind();
 			return list;
+		}
+
+		#~
+		Uses the given function to reduce the values
+		@param a initial value (i.e. accumulator)
+		@param f function to use a reduce
+		@return reduced vector
+		~#
+		method : public : Reduce(a : H, f : (H, H) ~ H) ~ H {
+			start := @head->GetNext();
+			while(start <> Nil) {
+				a := f(a, start->Get());
+				start := start->GetNext();
+			};
+
+			return a;
 		}
 
 		#~
@@ -3659,14 +3689,12 @@ function : Show(value : IntRef) ~ Nil {
 		}
 
 		#~
-		Uses the given function to reduce values
+		Uses the given function to reduce the values
 		@param a initial value (i.e. accumulator)
 		@param f function to use a reduce
 		@return reduced vector
 		~#
 		method : public : Reduce(a : H, f : (H, H) ~ H) ~ H {
-			a := IntRef->New(0);
-
 			for(i : Int := 0; i < @size; i += 1;) {
 				a := f(a, @values[i]);
 			};
@@ -4147,8 +4175,24 @@ function : Show(value : IntRef) ~ Nil {
 			
 			return filtered;
 		}
+
+		#~
+		Uses the given function to reduce the values
+		@param a initial value (i.e. accumulator)
+		@param f function to use a reduce
+		@return reduced vector
+		~#
+		method : public : Reduce(a : K, f : (K, K) ~ K) ~ K {
+			keys := GetKeys();
+			each(i : keys) {
+				key := keys->Get(i);
+				a := f(a, key);
+			};
+
+			return a;
+		}
 	}
-	
+		
 	class : private : TreeNode<K : Compare, V> {
 		@key : K;
 		@value : V;
@@ -4603,6 +4647,22 @@ set_hash->Has("Oakland")->PrintLine();
 			return filtered;
 		}
 
+		#~
+		Uses the given function to reduce the values
+		@param a initial value (i.e. accumulator)
+		@param f function to use a reduce
+		@return reduced vector
+		~#
+		method : public : Reduce(a : K, f : (K, K) ~ K) ~ K {
+			keys := GetKeys();
+			each(i : keys) {
+				key := keys->Get(i);
+				a := f(a, key);
+			};
+
+			return a;
+		}
+		
 		#~
 		Creates a map from a vector of keys and values
 		@param keys keys
