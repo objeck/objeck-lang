@@ -1,0 +1,59 @@
+use API.Google.Gemini, System.IO.Filesystem, Data.JSON;
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		args_size := args->Size();
+		if(args_size > 0) {
+			token := EndPoint->GetApiKey();
+			action := args[0];
+
+			"action={$action}, args={$args_size}\n==="->PrintLine();
+			
+			#
+			# Models
+			#
+			if(action->Equals("list_models") & args_size = 1) {				
+				models := Model->ListModels(token);
+				each(model in models) {
+					model->ToString()->PrintLine();
+				};
+			}
+			else if(action->Equals("text_query_model") & args_size = 1) {
+				query := args[1];
+				content := Content->New("user")->AddPart(TextPart->New(query));
+
+				candidates := Model->GenerateContent("models/gemini-1.0-pro-latest", content, token);
+				if(candidates->Size() > 0) {
+					candidates->First()->GetAllText()->Trim()->PrintLine();
+				};
+			}
+			else if(action->Equals("static_chat") & args_size = 1) {
+				session := Chat->New("models/gemini-1.0-pro-latest", EndPoint->GetApiKey());
+
+				content := session->SendPart(TextPart->New("What is the largest lake in Colorado?"), "user");
+				content->GetFirstPart()->ToString()->PrintLine();
+
+				content := session->SendPart(TextPart->New("How big is it?"), "user");
+				content->GetFirstPart()->ToString()->PrintLine();
+
+				content := session->SendPart(TextPart->New("Thank you!"), "user");
+				content->GetFirstPart()->ToString()->PrintLine();
+
+				session->ToString()->PrintLine();
+			}
+			#
+			# Oh, no...
+			#
+			else {
+				"Usage: Undefined action or invalid parameter..."->ErrorLine();					
+			};
+		}
+		else {
+			"Usage: params: sk-token, action, params..."->ErrorLine();
+		};
+	}
+
+	function : Callback(params_json : JsonElement) ~ JsonElement {
+		return Nil;
+	}
+}

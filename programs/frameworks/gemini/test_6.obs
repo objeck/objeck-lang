@@ -17,8 +17,6 @@ class Test {
 
 			System.ML.Matrix2D->EuclideanDistance(embeddings)->PrintLine();
 		};
-
-		EuclideanDistance(embeddings)->PrintLine();
 	}
 
 	function : native : EuclideanDistance(values : Float[,]) ~ Float {
