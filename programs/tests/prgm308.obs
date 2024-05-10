@@ -20,11 +20,15 @@ class Test {
 		};
 		"test 2..."->PrintLine();
 
+		reduced := Baz(values, Reduce(IntRef, IntRef) ~ IntRef);
+		reduced->PrintLine();
+		"test 3..."->PrintLine();
+
 		filtered := values->Filter(Filter(IntRef) ~ Bool);
 		each(value in filtered) {
 			value->PrintLine();
 		};
-		"test 3..."->PrintLine();
+		"test 4..."->PrintLine();
 	}
 
 	function : Foo(values : CompareVector<IntRef>, func : (IntRef) ~ Bool) ~ CompareVector<IntRef> {
@@ -50,6 +54,20 @@ class Test {
 		};
 
 		return filtered;
+	}
+
+	function : Baz(values : CompareVector<IntRef>, func : (IntRef, IntRef) ~ IntRef) ~ IntRef {
+		accum := IntRef->New(0);
+
+		each(value in values) {
+			accum := func(accum, value);
+		};
+
+		return accum;
+	}
+
+	function : Reduce(left : IntRef, right : IntRef) ~ IntRef {
+		return left + right;
 	}
 
 	function : Filter(value : IntRef) ~ Bool {
