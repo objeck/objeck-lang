@@ -1,4 +1,4 @@
-use Data.JSON
+use Collection, Data.JSON;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
@@ -34,5 +34,370 @@ class Test {
 
 		contents_obj_json->ToString()->PrintLine();
 		
+	}
+}
+
+#~
+Function type definition 
+~#
+class FunctionType {
+	@name: String;
+	@desc: String;
+	@params : Set<ParameterType>;
+	@req_params : String[];
+
+	New(func_type_json : JsonElement) {
+
+		@name := func_type_json->Get("name")->GetString();
+		@desc := func_type_json->Get("description")->GetString();
+
+		# get properties by name
+		@params := Set->New()<ParameterType>;
+
+		params_json := func_type_json->FindElements("parameters/properties");
+		param_names := params_json->GetNames();
+		each(param_name in param_names) {
+			param_json := params_json->Get(param_name);
+
+			param_type := param_json->Get("type")->GetString();
+			param_desc := param_json->Get("description")->GetString();
+
+			param : ParameterType;
+			if(param_type->Equals("string")) {
+				param := ParameterType->New(param_name, ParameterType->Type->STRING, param_desc);
+			}
+			else if(param_type->Equals("number")) {
+				param := ParameterType->New(param_name, ParameterType->Type->NUMBER, param_desc);
+			}
+			else if(param_type->Equals("integer")) {
+				param := ParameterType->New(param_name, ParameterType->Type->INTEGER, param_desc);
+			}
+			else if(param_type->Equals("object")) {
+				param := ParameterType->New(param_name, ParameterType->Type->OBJECT, param_desc);
+			}
+			else if(param_type->Equals("boolean")) {
+				param := ParameterType->New(param_name, ParameterType->Type->BOOLEAN, param_desc);
+			};
+
+			@params->Insert(param);
+			
+			# "param_name='{$param_name}', param_type={$param_type}, param_desc='{$param_desc}'"->PrintLine();
+		};
+
+		required_parms := func_type_json->FindElements("parameters/required");
+		@req_params := String->New[required_parms->Size()];
+		each(i : required_parms) {
+			required_parm := required_parms->Get(i);
+			@req_params[i] := required_parm->GetString();
+		}
+		# TODO: parse and set values
+	}
+
+	#~
+	Constructor
+	@param name function name
+	@param params parameters to add to JSON object
+	@param req_params required parameters 
+	~#
+	New(name : String, params : Set<ParameterType>, req_params : String[]) {
+		@name := name;
+		@req_params := req_params;
+		@params := params;
+	}
+
+	#~
+	Constructor
+	@param name function name
+	@param params parameters to add to JSON object
+	@param req_params required parameters 
+	@param desc description 
+	~#
+	New(name : String, params : Set<ParameterType>, req_params : String[], desc : String) {
+		@name := name;
+		@req_params := req_params;
+		@params := params;
+		@desc := desc;
+	}
+
+	#~
+	Get the function name
+	@return function name
+	~#
+	method : public : GetName() ~ String {
+		return @name;
+	}
+
+	#~
+	Get the function description
+	@return function description
+	~#
+	method : public : GetDesc() ~ String {
+		return @desc;
+	}
+	
+	#~
+	Get function parameters
+	@return function parameters
+	~#
+	method : public : GetParams() ~ Set<ParameterType> {
+		return @params;
+	}
+
+	#~
+	Get the required function parameters
+	@return required function parameters
+	~#
+	method : public : GetRequiredParams() ~ String[] {
+		return @req_params;
+	}
+
+	#~
+	JSON string representation 
+	@return JSON string representation
+	~# 
+	method : public : ToString() ~ String {
+		buffer := "{\"name\": \"";
+		buffer->Append(@name);
+		
+		if(@desc <> Nil) {
+			buffer->Append("\",\"description\": \"");
+			buffer->Append(@desc);
+			buffer->Append("\",\"parameters\": {");
+		}
+		else {
+			buffer->Append("\",");
+		};
+
+		# JSON parameters
+		buffer->Append("\"type\": \"object\",\"properties\": {");
+		if(@params <> Nil) {
+			param_values := @params->GetKeys()<ParameterType>;
+			each(i : param_values) {
+				param_value := param_values->Get(i);
+				buffer->Append(param_value->ToString());
+
+				if(i + 1 < param_values->Size()) {
+					buffer->Append(',');
+				}
+			};
+		}
+		buffer->Append('}')
+
+		# required
+		buffer->Append(",\"required\": [");
+		each(i : @req_params) {
+			req_param := @req_params[i];
+			buffer->Append('"');
+			buffer->Append(req_param);
+			buffer->Append('"');
+
+			if(i + 1 < @req_params->Size()) {
+				buffer->Append(',');
+			};
+		}
+		buffer->Append("]}");
+
+		if(@desc <> Nil) {
+			buffer->Append('}');
+		};
+
+		return buffer;
+	}
+}
+
+#~
+Function parameter type definition 
+~#
+class ParameterType implements Compare {
+	@name : String;
+	@type : ParameterType->Type;
+	@desc : String;
+	@props : Set<ParameterType>;
+	@is_array : Bool;
+
+	#~
+	JSON function parameter type 
+	~#
+	enum Type {
+		STRING,
+		NUMBER,
+		INTEGER,
+		OBJECT,
+		BOOLEAN
+	}
+
+	New : private(param_type_json : JsonElement) {
+		# TODO: parse and set values
+	}
+
+	#~
+	Constructor
+	@param name function parameter name
+	@param type parameter type
+	~#
+	New(name : String, type : ParameterType->Type) {
+		@name := name;
+		@type := type;
+	}
+
+	#~
+	Constructor
+	@param name function parameter name
+	@param type parameter type
+	@param desc description 
+	~#
+	New(name : String, type : ParameterType->Type, desc : String) {
+		@name := name;
+		@type := type;
+		@desc := desc;
+	}
+
+	#~
+	Constructor
+	@param name function parameter name
+	@param props set of named parameter properties 
+	~#
+	New(name : String, props : Set<ParameterType>) {
+		@name := name;
+		@type := ParameterType->Type->OBJECT;
+		@props := props;
+	}
+
+	#~
+	Constructor
+	@param name function parameter name
+	@param props set of named parameter properties 
+	@param desc description 
+	~#
+	New(name : String, props : Set<ParameterType>, desc : String) {
+		@name := name;
+		@type := ParameterType->Type->OBJECT;
+		@props := props;
+		@desc := desc;
+	}
+
+	method : public : SetArray(is_array : Bool) ~ Nil {
+		@is_array := is_array;
+	}
+
+	method : public : IsArray() ~ Bool {
+		return @is_array;
+	}
+
+	#~
+	Get the function name
+	@return function name
+	~#
+	method : public : GetName() ~ String {
+		return @name;
+	}
+
+	#~
+	Get the function description
+	@return function description
+	~#
+	method : public : GetDesc() ~ String {
+		return @desc;
+	}
+
+	#~
+	Get parameter type
+	@return parameter type
+	~#
+	method : public : GetType() ~ ParameterType->Type {
+		return @type;
+	}
+
+	#~
+	Get parameter properties object descriptions
+	@return properties object descriptions
+	~#
+	method : public : GetProps() ~ Set<ParameterType> {
+		return @props;
+	}
+
+	#~
+	Compares two objects
+	@param rhs compare object
+	@return 0 if equal, -1 if right-hand side i greater, 1 if left-hand side is greater
+	~#
+	method : public : Compare(rhs : System.Compare) ~ Int {
+		return @name->Compare(rhs);
+	}
+
+	#~
+	Returns a hash ID for the given class
+	@return hash ID
+	~#
+	method : public : HashID() ~ Int {
+		return @name->HashID();
+	}
+
+	#~
+	JSON string representation 
+	@return JSON string representation
+	~# 
+	method : public : ToString() ~ String {
+		buffer := "\"";
+		buffer->Append(@name);
+		buffer->Append("\": {\"type\": \"");
+
+		if(@props <> Nil) {
+			if(@props->IsEmpty()) {
+				buffer->Append("object\", \"properties\": null}");
+			}
+			else {
+				buffer->Append("object\", \"properties\":");			
+				prop_keys := @props->GetKeys()<ParameterType>;
+				each(i : prop_keys) {
+					prop_key := prop_keys->Get(i);
+					temp := prop_key->ToString();
+					
+					buffer->Append(temp);
+					
+					if(i + 1 < prop_keys->Size()) {
+						buffer->Pop();
+						buffer->Append(',');
+					}
+					else {
+						buffer->Append('}');
+					}
+				};
+			};
+		}
+		else {
+			if(@is_array) {
+				buffer->Append("array\", \"items\": {\"type\": \"");
+			};
+
+			select(@type) {
+				label ParameterType->Type->STRING {
+					buffer->Append("string");
+				}
+
+				label ParameterType->Type->NUMBER {
+					buffer->Append("number");
+				}
+
+				label ParameterType->Type->INTEGER {
+					buffer->Append("integer");
+				}
+
+				label ParameterType->Type->BOOLEAN {
+					buffer->Append("boolean");
+				}
+			};
+		};
+
+		if(@desc <> Nil) {
+			buffer->Append("\", \"description\": \"");
+			buffer->Append(Data.JSON.JsonElement->Encode(@desc));
+		};
+
+		if(@props = Nil) {
+			buffer->Append("\"}");
+		};
+
+		return buffer;
 	}
 }
