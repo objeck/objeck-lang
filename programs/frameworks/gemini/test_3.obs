@@ -2,8 +2,8 @@ use API.Google.Gemini, System.IO.Filesystem;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		content := Content->New("user")->AddPart(TextPart->New("When general year was the photo taken?"))
-			->AddPart(BinaryPart->New(FileReader->ReadBinaryFile("campus.jpg"), "image/jpeg"));
+		content := Content->New("user")->AddPart(TextPart->New("What number is this?"))
+			->AddPart(BinaryPart->New(FileReader->ReadBinaryFile("thirteenth.png"), "image/png"));
 
 		candidates := Model->GenerateContent("models/gemini-pro-vision", content, EndPoint->GetApiKey());
 		if(candidates->Size() > 0) {

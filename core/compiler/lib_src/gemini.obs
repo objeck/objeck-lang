@@ -756,9 +756,7 @@ each(candidate in candidates) {
 		@return string representation
 		~#
 		method : public : ToString() ~ String {
-			buffer := "{";
-
-			buffer->Append("role='");
+			buffer := "role='";
 			buffer->Append(@role);
 
 			buffer->Append("'\nparts:");
@@ -766,8 +764,8 @@ each(candidate in candidates) {
 				buffer->Append("\n\t");
 				buffer->Append(part->ToString());
 			};
-			buffer->Append('}');
-			
+			buffer->Append("\n---");
+						
 			return buffer;
 		}
 	}
@@ -1024,10 +1022,19 @@ session->ToString()->PrintLine();
 		method : public : ToString() ~ String {
 			buffer := "";
 
-			buffer->Append("model_name='")
+			buffer->Append("model='")
 			buffer->Append(@model_name);
-			buffer->Append("', ")
-			buffer->Append(GetAllParts()->ToString());
+			buffer->Append("'\n###\n");
+
+			parts := GetAllParts();
+			each(i : parts) {
+				part := parts->Get(i);
+				buffer->Append(part->ToString());
+
+				if(i + 1 < parts->Size()) {
+					buffer->Append("\n");
+				}
+			};
 
 			return buffer;
 		}
