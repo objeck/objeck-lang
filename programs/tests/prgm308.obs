@@ -22,13 +22,17 @@ class Test {
 
 		reduced := Baz(values, Reduce(IntRef, IntRef) ~ IntRef);
 		reduced->PrintLine();
-		"test 3..."->PrintLine();
+		"test 4..."->PrintLine();
 
 		filtered := values->Filter(Filter(IntRef) ~ Bool);
 		each(value in filtered) {
 			value->PrintLine();
 		};
-		"test 4..."->PrintLine();
+		"test 5..."->PrintLine();
+
+		reduced := values->Reduce(IntRef->New(), Reduce(IntRef, IntRef) ~ IntRef);
+		reduced->PrintLine();
+		"test 6..."->PrintLine();
 	}
 
 	function : Foo(values : CompareVector<IntRef>, func : (IntRef) ~ Bool) ~ CompareVector<IntRef> {
