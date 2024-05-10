@@ -199,7 +199,7 @@ each(candidate in candidates) {
 		@param key API key		
 		~#
 		function : GenerateContent(model_name : String, contents : Vector<Content>, safety_settings : Vector<Collection.Tuple.Pair<String, String>>, config : GenerationConfig, key : String) ~ Vector<Candidate> {
-			# contents
+			# add contents
 			content_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
 			each(content in contents) {
 				parts := content->GetParts();
@@ -234,6 +234,8 @@ each(candidate in candidates) {
 			};
 			contents_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 			contents_obj_json->Insert("contents", content_array_json);
+
+			
 
 			# safety settings
 			if(safety_settings <> Nil) {
