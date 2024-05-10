@@ -1,0 +1,38 @@
+use Data.JSON
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		# ...
+		contents_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+		contents_obj_json->Insert("contents", JsonElement->New(JsonElement->JsonType->ARRAY));
+
+		function_declaration_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+		## for each
+		function_declaration_obj_array_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+		# do stuff
+		function_declaration_array_json->Add(function_declaration_obj_array_json);
+		## end
+
+		function_declaration_obj_array_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+		function_declaration_obj_array_json->Insert("function_declarations", function_declaration_array_json);
+
+		tools_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+		tools_array_json->Add(function_declaration_obj_array_json);
+
+		contents_obj_json->Insert("tools", tools_array_json);
+
+#~		
+		# add tools
+		function_declaration_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+
+		function_declaration_obj := JsonElement->New(JsonElement->JsonType->OBJECT);
+		function_declaration_obj->Insert("function_declarations", function_declaration_array_json);
+
+		tools_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+		contents_obj_json->Insert("tools", tools_array_json);
+~#
+
+		contents_obj_json->ToString()->PrintLine();
+		
+	}
+}
