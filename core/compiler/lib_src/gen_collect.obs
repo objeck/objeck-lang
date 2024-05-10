@@ -3657,7 +3657,23 @@ function : Show(value : IntRef) ~ Nil {
 			
 			return filtered;
 		}
-		
+
+		#~
+		Uses the given function to reduce values
+		@param a initial value (i.e. accumulator)
+		@param f function to use a reduce
+		@return reduced vector
+		~#
+		method : public : Reduce(a : H, f : (H, H) ~ H) ~ H {
+			a := IntRef->New(0);
+
+			for(i : Int := 0; i < @size; i += 1;) {
+				a := f(a, @values[i]);
+			};
+
+			return a;
+		}
+
 		#~
 		Converts the vector into an object array
 		@return object array
