@@ -1,0 +1,15 @@
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		a := IntRef->New(7);
+		b := IntRef->New(8);
+		
+		(a < b)->PrintLine();
+		(a = b)->PrintLine();
+
+		c := FloatRef->New(4.175);
+		d := FloatRef->New(17.33);
+		
+		(c < d)->PrintLine();
+		(c = d)->PrintLine();
+	}
+}
