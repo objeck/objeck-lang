@@ -22,12 +22,13 @@ class Test {
 				query := args[1];
 				content := Content->New("user")->AddPart(TextPart->New(query));
 
-				params := Set->New()<ParameterType>;
-				params->Insert(ParameterType->New("year", ParameterType->Type->INTEGER, "year the team played"));
-				func := FunctionType->New("get_coach_by_year", params, ["year"], "The name of the head coach for a given year");
-
-				funcs := Vector->New()<FunctionType>;
-				funcs->AddBack(func);
+				funcs := Map->New()<String, Pair<FunctionType, Func2Ref<JsonElement, JsonElement>>>;
+				params_1 := Set->New()<ParameterType>;
+				params_1->Insert(ParameterType->New("year", ParameterType->Type->INTEGER, "year the team played"));
+				func_1 := FunctionType->New("get_head_coach_by_year", params_1, ["year"], "The name of the head coach for a given year");
+				func_ref_1 := Func2Ref->New(Callback(JsonElement) ~ JsonElement)<JsonElement, JsonElement>;
+				pair_1 := Pair->New(func_1, func_ref_1)<FunctionType, Func2Ref<JsonElement, JsonElement>>;
+				funcs->Insert(func_1->GetName(), pair_1);
 
 				candidates := Model->GenerateContent("models/gemini-1.0-pro-latest", content, funcs, token);
 				if(candidates->Size() > 0) {

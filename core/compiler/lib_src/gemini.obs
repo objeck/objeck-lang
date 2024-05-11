@@ -251,9 +251,22 @@ each(candidate in candidates) {
 			if(funcs <> Nil) {
 				function_declaration_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
 		
+				func_key_values := funcs->GetKeyValues()<Pair<String, Pair<FunctionType, Func2Ref<JsonElement, JsonElement>>>>;
+				each(func_key_value in func_key_values) {
+					func_name := func_key_value->GetFirst();
+					func_def_dclr := func_key_value->GetSecond()<FunctionType, Func2Ref<JsonElement, JsonElement>>;
+					func_dclr := func_def_dclr->GetFirst();
+
+"func_name='{$func_name}'"->PrintLine();
+"----"->PrintLine();
+
+					function_declaration_array_json->Add(JsonParser->TextToElement(func_dclr->ToString()));
+				}
+#~				
 				each(func in funcs) {
 					function_declaration_array_json->Add(JsonParser->TextToElement(func->ToString()));
 				};
+~#				
 				
 				# create array of functions
 				function_declaration_obj_array_json := JsonElement->New(JsonElement->JsonType->OBJECT);
@@ -288,14 +301,14 @@ each(candidate in candidates) {
 			};
 			~#
 
-			# contents_obj_json->ToString()->PrintLine();
+contents_obj_json->ToString()->PrintLine();
 
 			url := Url->New("https://generativelanguage.googleapis.com/v1beta/{$model_name}:generateContent?key={$key}");
 			if(url->GetQueryParameters()->Has("key")) {			
 				response := PostRequest(contents_obj_json, url);
 				if(response <> Nil) {
-					# "---"->PrintLine();			
-					# response->ToString()->PrintLine();
+"---"->PrintLine();			
+response->ToString()->PrintLine();
 
 					candidates := Vector->New()<Candidate>;
 					
