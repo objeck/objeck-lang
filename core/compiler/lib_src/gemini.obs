@@ -264,6 +264,7 @@ each(candidate in candidates) {
 
 				# set tools
 				contents_obj_json->Insert("tools", tools_array_json);
+#				contents_obj_json->Insert("tools", JsonElement->New(JsonElement->JsonType->ARRAY));
 			};
 			
 			# safety settings
@@ -287,13 +288,14 @@ each(candidate in candidates) {
 			};
 			~#
 
-			# contents_obj_json->ToString()->PrintLine();
+contents_obj_json->ToString()->PrintLine();
 
-			url := Url->New("https://generativelanguage.googleapis.com/v1/{$model_name}:generateContent?key={$key}");
+			url := Url->New("https://generativelanguage.googleapis.com/v1beta/{$model_name}:generateContent?key={$key}");
 			if(url->GetQueryParameters()->Has("key")) {			
 				response := PostRequest(contents_obj_json, url);
 				if(response <> Nil) {
-					# response->ToString()->PrintLine();
+"---"->PrintLine();			
+response->ToString()->PrintLine();
 					candidates := Vector->New()<Candidate>;
 					
 					candidates_json := response->Get("candidates");

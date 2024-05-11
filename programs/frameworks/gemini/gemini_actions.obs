@@ -1,4 +1,4 @@
-use API.Google.Gemini, System.IO.Filesystem, Data.JSON;
+use API.Google.Gemini, System.IO.Filesystem, Data.JSON, Data.JSON.Scheme, Collection;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
@@ -18,17 +18,24 @@ class Test {
 					model->ToString()->PrintLine();
 				};
 			}
-			else if(action->Equals("text_query_model") & args_size = 1) {
+			else if(action->Equals("text_query_model") & args_size = 2) {
 				query := args[1];
 				content := Content->New("user")->AddPart(TextPart->New(query));
 
-				candidates := Model->GenerateContent("models/gemini-1.0-pro-latest", content, token);
+				params := Set->New()<ParameterType>;
+				params->Insert(ParameterType->New("year", ParameterType->Type->INTEGER, "year the team played"));
+				func := FunctionType->New("get_coach_by_year", params, ["year"], "The name of the head coach for a given year");
+
+				funcs := Vector->New()<FunctionType>;
+				funcs->AddBack(func);
+
+				candidates := Model->GenerateContent("models/gemini-1.0-pro-latest", content, funcs, token);
 				if(candidates->Size() > 0) {
 					candidates->First()->GetAllText()->Trim()->PrintLine();
 				};
 			}
 			else if(action->Equals("static_chat") & args_size = 1) {
-				session := Chat->New("models/gemini-1.0-pro-latest", EndPoint->GetApiKey());
+				session := Chat->New("models/gemini-1.0-pro-001", EndPoint->GetApiKey());
 
 				content := session->SendPart(TextPart->New("What is the largest lake in Colorado?"), "user");
 				content->GetFirstPart()->ToString()->PrintLine();
