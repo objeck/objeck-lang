@@ -288,14 +288,15 @@ each(candidate in candidates) {
 			};
 			~#
 
-contents_obj_json->ToString()->PrintLine();
+			# contents_obj_json->ToString()->PrintLine();
 
 			url := Url->New("https://generativelanguage.googleapis.com/v1beta/{$model_name}:generateContent?key={$key}");
 			if(url->GetQueryParameters()->Has("key")) {			
 				response := PostRequest(contents_obj_json, url);
 				if(response <> Nil) {
-"---"->PrintLine();			
-response->ToString()->PrintLine();
+					# "---"->PrintLine();			
+					# response->ToString()->PrintLine();
+
 					candidates := Vector->New()<Candidate>;
 					
 					candidates_json := response->Get("candidates");
