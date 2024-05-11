@@ -1,7 +1,9 @@
 use Collection, Data.JSON, Data.JSON.Scheme;
 
 class Test {
-	function : Main(args : String[]) ~ Nil {
+	function : Main(args : String[]) ~ Niparams := Set->New()<ParameterType>;
+		params->Insert(ParameterType->New("year", ParameterType->Type->INTEGER, "year the team played"));
+		func := FunctionType->New("get_coach_by_year", params, ["year"], "The name of the head coach for a given year");l {
 		# other stuff...
 		contents_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 		contents_obj_json->Insert("contents", JsonElement->New(JsonElement->JsonType->ARRAY));
@@ -9,9 +11,7 @@ class Test {
 		function_declaration_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
 		
 		# create function definition
-		params := Set->New()<ParameterType>;
-		params->Insert(ParameterType->New("year", ParameterType->Type->INTEGER, "year the team played"));
-		func := FunctionType->New("get_coach_by_year", params, ["year"], "The name of the head coach for a given year");
+		
 		function_declaration_obj_array_json := JsonParser->TextToElement(func->ToString());
 		function_declaration_array_json->Add(function_declaration_obj_array_json);
 		
