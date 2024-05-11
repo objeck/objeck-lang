@@ -1,10 +1,14 @@
 @echo off
 
 set OBJECK_ROOT=C:\Users\objec\Documents\Code\objeck-lang
-REM obc -src %OBJECK_ROOT%\core\compiler\lib_src\net_common.obs,%OBJECK_ROOT%\core\compiler\lib_src\net.obs,%OBJECK_ROOT%\core\compiler\lib_src\net_secure.obs -lib json -tar lib -dest %OBJECK_ROOT%\core\release\deploy64\lib\net.obl
-REM obc -src %OBJECK_ROOT%\core\compiler\lib_src\json.obs -tar lib -dest %OBJECK_ROOT%\core\release\deploy64\lib\json.obl
-REM obc -src %OBJECK_ROOT%\core\compiler\lib_src\ml.obs -lib json,csv -tar lib -dest %OBJECK_ROOT%\core\release\deploy64\lib\ml.obl
-obc -src %OBJECK_ROOT%\core\compiler\lib_src\gemini.obs -lib misc,json,net,encrypt -tar lib -dest %OBJECK_ROOT%\core\release\deploy64\lib\gemini.obl
+SET OBJECK_LIB_SRC=%OBJECK_ROOT%\core\compiler\lib_src
+SET OBJECK_LIB_DST=%OBJECK_ROOT%\core\release\deploy64\lib
+
+REM obc -src %OBJECK_LIB_SRC%\json.obs -lib gen_collect -tar lib -opt s3 -dest %OBJECK_LIB_DST%\json.obl
+REM obc -src %OBJECK_LIB_SRC%\net_common.obs,%OBJECK_LIB_SRC%\net.obs,%OBJECK_LIB_SRC%\net_secure.obs -lib json -tar lib -dest %OBJECK_LIB_DST%\net.obl
+REM obc -src %OBJECK_LIB_SRC%\json.obs -tar lib -dest %OBJECK_LIB_DST%\json.obl
+REM obc -src %OBJECK_LIB_SRC%\ml.obs -lib json,csv -tar lib -dest %OBJECK_LIB_DST%\ml.obl
+obc -src %OBJECK_LIB_SRC%\gemini.obs -lib misc,json,net,encrypt -tar lib -dest %OBJECK_LIB_DST%\gemini.obl
 
 del /q *.obe
 
