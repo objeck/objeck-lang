@@ -41,11 +41,11 @@ each(candidate in candidates) {
 			CLUSTERING
 		}
 
-		New : private(description : String, display_name : String, input_token_limit : Int, 
-				name : String, output_token_limit : Int, generation_methods : Vector<String>, 
-				temperature : Float, top_k : Int, top_p : Float, version : String) {
+		New : private(description : String, display_name : String, input_token_limit : Int,
+					name : String, output_token_limit : Int, generation_methods : Vector<String>, 
+					temperature : Float, top_k : Int, top_p : Float, version : String) {
 			Parent();
-
+			
 			@description := description;
 			@display_name := display_name;
 			@input_token_limit := input_token_limit;
@@ -172,7 +172,7 @@ each(candidate in candidates) {
 		@param key API key
 		~#
 		function : GenerateContent(model_name : String, content : Content, key : String) ~ Vector<Candidate> {
-			return GenerateContent(model_name, content, Nil, Nil, key);
+			return GenerateContent(model_name, content, Nil, Nil, Nil, key);
 		}
 
 		#~
@@ -183,11 +183,11 @@ each(candidate in candidates) {
 		@param config generation configuration, currently unsupported
 		@param key API key		
 		~#
-		function : GenerateContent(model_name : String, content : Content, safety_settings : Vector<Collection.Tuple.Pair<String, String>>, config : GenerationConfig, key : String) ~ Vector<Candidate> {
+		function : GenerateContent(model_name : String, content : Content, funcs : Vector<FunctionType>, safety_settings : Vector<Collection.Tuple.Pair<String, String>>, config : GenerationConfig, key : String) ~ Vector<Candidate> {
 			contents := Vector->New()<Content>;
 			contents->AddBack(content);
 
-			return GenerateContent(model_name, contents, safety_settings, config, key);
+			return GenerateContent(model_name, contents, funcs, safety_settings, config, key);
 		}
 
 		#~
@@ -198,7 +198,7 @@ each(candidate in candidates) {
 		@param config generation configuration, currently unsupported
 		@param key API key		
 		~#
-		function : GenerateContent(model_name : String, contents : Vector<Content>, safety_settings : Vector<Collection.Tuple.Pair<String, String>>, config : GenerationConfig, key : String) ~ Vector<Candidate> {
+		function : GenerateContent(model_name : String, contents : Vector<Content>, funcs : Vector<FunctionType>, safety_settings : Vector<Collection.Tuple.Pair<String, String>>, config : GenerationConfig, key : String) ~ Vector<Candidate> {
 			# add contents
 			content_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
 			each(content in contents) {
@@ -234,6 +234,10 @@ each(candidate in candidates) {
 			};
 			contents_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 			contents_obj_json->Insert("contents", content_array_json);
+
+			if(funcs <> Nil) {
+
+			};
 			
 			# safety settings
 			if(safety_settings <> Nil) {
