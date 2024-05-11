@@ -1,30 +1,29 @@
 use Collection, Data.JSON, Data.JSON.Scheme;
 
 class Test {
-	function : Main(args : String[]) ~ Niparams := Set->New()<ParameterType>;
-		params->Insert(ParameterType->New("year", ParameterType->Type->INTEGER, "year the team played"));
-		func := FunctionType->New("get_coach_by_year", params, ["year"], "The name of the head coach for a given year");l {
-		# other stuff...
-		contents_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
-		contents_obj_json->Insert("contents", JsonElement->New(JsonElement->JsonType->ARRAY));
+	function : Main(args : String[]) ~ Nil {
+		funcs := Map->New()<String, Pair<FunctionType, Func2Ref<JsonElement, JsonElement>>>;
 
-		function_declaration_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
-		
-		# create function definition
-		
-		function_declaration_obj_array_json := JsonParser->TextToElement(func->ToString());
-		function_declaration_array_json->Add(function_declaration_obj_array_json);
-		
-		# create array of functions
-		function_declaration_obj_array_json := JsonElement->New(JsonElement->JsonType->OBJECT);
-		function_declaration_obj_array_json->Insert("function_declarations", function_declaration_array_json);
+		params_1 := Set->New()<ParameterType>;
+		params_1->Insert(ParameterType->New("year", ParameterType->Type->INTEGER, "year the team played"));
+		func_1 := FunctionType->New("get_head_coach_by_year", params_1, ["year"], "The name of the head coach for a given year");
+		func_ref_1 := Func2Ref->New(Callback_1(JsonElement) ~ JsonElement)<JsonElement, JsonElement>;
+		pair_1 := Pair->New(func_1, func_ref_1)<FunctionType, Func2Ref<JsonElement, JsonElement>>;
+		funcs->Insert(func_1->GetName(), pair_1);
 
-		tools_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
-		tools_array_json->Add(function_declaration_obj_array_json);
+		params_2 := Set->New()<ParameterType>;
+		params_2->Insert(ParameterType->New("sport", ParameterType->Type->STRING, "name of the sport"));
+		func_2 := FunctionType->New("get_num_players_by_sport", params_1, ["sport"], "the sport being played");
+		func_ref_2 := Func2Ref->New(Callback_2(JsonElement) ~ JsonElement)<JsonElement, JsonElement>;
+		pair_2 := Pair->New(func_2, func_ref_2)<FunctionType, Func2Ref<JsonElement, JsonElement>>;
+		funcs->Insert(func_2->GetName(), pair_2);
+	}
 
-		# set tools
-		contents_obj_json->Insert("tools", tools_array_json);
+	function : Callback_1(params : JsonElement) ~ JsonElement {
+		return Nil;
+	}
 
-		contents_obj_json->ToString()->PrintLine();
+	function : Callback_2(params : JsonElement) ~ JsonElement {
+		return Nil;
 	}
 }
