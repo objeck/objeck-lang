@@ -326,8 +326,12 @@ each(candidate in candidates) {
 							# inline part
 							else if(part_json->Has("functionCall")) {
 								func_call_json := part_json->Get("functionCall");
-func_call_json->Get("name")->ToString()->PrintLine();								
-func_call_json->Get("args")->ToString()->PrintLine();								
+								
+								func_name := func_call_json->Get("name")->GetString();
+								func_args := func_call_json->Get("args");
+
+temp_str := func_args->ToString();
+"function: name='{$func_name}', args={$temp_str}"->PrintLine();						
 							};
 
 							parts->AddBack(part);
