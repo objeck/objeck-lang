@@ -1589,7 +1589,7 @@ bundle Data.JSON.Scheme {
 	#~
 	Function type definition 
 	~#
-	class FunctionType {
+	class FunctionType implements Compare {
 		@name: String;
 		@desc: String;
 		@params : Set<ParameterType>;
@@ -1698,6 +1698,23 @@ bundle Data.JSON.Scheme {
 		~#
 		method : public : GetRequiredParams() ~ String[] {
 			return @req_params;
+		}
+
+		#~
+		Compares two objects
+		@param rhs compare object
+		@return 0 if equal, -1 if right-hand side i greater, 1 if left-hand side is greater
+		~#
+		method : public : Compare(rhs : System.Compare) ~ Int {
+			return @name->Compare(rhs);
+		}
+
+		#~
+		Returns a hash ID for the given class
+		@return hash ID
+		~#
+		method : public : HashID() ~ Int {
+			return @name->HashID();
 		}
 
 		#~
