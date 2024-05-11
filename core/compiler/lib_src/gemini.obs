@@ -257,8 +257,8 @@ each(candidate in candidates) {
 					func_def_dclr := func_key_value->GetSecond()<FunctionType, Func2Ref<JsonElement, JsonElement>>;
 					func_dclr := func_def_dclr->GetFirst();
 
-"func_name='{$func_name}'"->PrintLine();
-"----"->PrintLine();
+# "func_name='{$func_name}'"->PrintLine();
+# "----"->PrintLine();
 
 					function_declaration_array_json->Add(JsonParser->TextToElement(func_dclr->ToString()));
 				}
@@ -277,7 +277,6 @@ each(candidate in candidates) {
 
 				# set tools
 				contents_obj_json->Insert("tools", tools_array_json);
-#				contents_obj_json->Insert("tools", JsonElement->New(JsonElement->JsonType->ARRAY));
 			};
 			
 			# safety settings
@@ -343,8 +342,18 @@ response->ToString()->PrintLine();
 								func_name := func_call_json->Get("name")->GetString();
 								func_args := func_call_json->Get("args");
 
-temp_str := func_args->ToString();
-"function: name='{$func_name}', args={$temp_str}"->PrintLine();						
+								func_callback_mapping := funcs->Find(func_name)<FunctionType, Func2Ref<JsonElement, JsonElement>>;
+								if(func_callback_mapping <> Nil) {
+									func_callback_ref := func_callback_mapping->GetSecond()<Func2Ref<JsonElement, JsonElement>>;
+									func_callback := func_callback_ref->Get();
+
+
+									func_callback_response := func_callback(func_args);
+									
+# has_func_callback :=  <> Nil;
+# temp_str := func_args->ToString();
+# "function: found={$has_func_callback}, name='{$func_name}', args={$temp_str}"->PrintLine();
+								};
 							};
 
 							parts->AddBack(part);

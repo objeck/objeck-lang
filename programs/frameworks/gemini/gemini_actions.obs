@@ -62,6 +62,7 @@ class Test {
 	}
 
 	function : Callback(params_json : JsonElement) ~ JsonElement {
-		return Nil;
+"###  0 ###"->PrintLine();		
+		return JsonElement->New("Nee Fadz");
 	}
 }
