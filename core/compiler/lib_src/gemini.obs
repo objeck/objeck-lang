@@ -179,10 +179,10 @@ each(candidate in candidates) {
 		Generates a response from the model given an input
 		@param model_name model name
 		@param content content for the model
-		@param func function call declarations
+		@param funcs map of function callbacks, name must to map to function callback name
 		@param key API key
 		~#
-		function : GenerateContent(model_name : String, content : Content, funcs : Vector<FunctionType>, key : String) ~ Vector<Candidate> {
+		function : GenerateContent(model_name : String, content : Content, funcs : Map<String, Pair<FunctionType, Func2Ref<JsonElement, JsonElement>>>, key : String) ~ Vector<Candidate> {
 			return GenerateContent(model_name, content, funcs, Nil, Nil, key);
 		}
 
@@ -190,12 +190,12 @@ each(candidate in candidates) {
 		Generates a response from the model given an input
 		@param model_name model name
 		@param content model content
-		@param func function call declarations
+		@param funcs map of function callbacks, name must to map to function callback name
 		@param safety_settings key/value safety settings
 		@param config generation configuration, currently unsupported
 		@param key API key		
 		~#
-		function : GenerateContent(model_name : String, content : Content, funcs : Vector<FunctionType>, safety_settings : Vector<Collection.Tuple.Pair<String, String>>, config : GenerationConfig, key : String) ~ Vector<Candidate> {
+		function : GenerateContent(model_name : String, content : Content, funcs : Map<String, Pair<FunctionType, Func2Ref<JsonElement, JsonElement>>>, safety_settings : Vector<Collection.Tuple.Pair<String, String>>, config : GenerationConfig, key : String) ~ Vector<Candidate> {
 			contents := Vector->New()<Content>;
 			contents->AddBack(content);
 
@@ -206,12 +206,12 @@ each(candidate in candidates) {
 		Generates a response from the model given an input
 		@param model_name model name
 		@param contents list of content for the model
-		@param func function call declarations		
+		@param funcs map of function callbacks, name must to map to function callback name		
 		@param safety_settings key/value safety settings
 		@param config generation configuration, currently unsupported
 		@param key API key		
 		~#
-		function : GenerateContent(model_name : String, contents : Vector<Content>, funcs : Vector<FunctionType>, safety_settings : Vector<Collection.Tuple.Pair<String, String>>, config : GenerationConfig, key : String) ~ Vector<Candidate> {
+		function : GenerateContent(model_name : String, contents : Vector<Content>, funcs : Map<String, Pair<FunctionType, Func2Ref<JsonElement, JsonElement>>>, safety_settings : Vector<Collection.Tuple.Pair<String, String>>, config : GenerationConfig, key : String) ~ Vector<Candidate> {
 			# add contents
 			content_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
 			each(content in contents) {
