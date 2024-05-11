@@ -315,13 +315,18 @@ response->ToString()->PrintLine();
 							if(part_json->Has("text")) {
 								text_json := part_json->Get("text");
 								part := TextPart->New(text_json->GetString());
-							};
-
+							}
 							# inline part
-							if(part_json->Has("inlineData")) {
+							else if(part_json->Has("inlineData")) {
 								inline_mime_type := part_json->FindElements("inlineData/mimeType")->GetString();
 								inline_data := part_json->FindElements("inlineData/data")->GetString();
 								part := BinaryPart->New(Encryption.Decrypt->Base64(inline_data), inline_mime_type);
+							}
+							# inline part
+							else if(part_json->Has("functionCall")) {
+								func_call_json := part_json->Get("functionCall");
+func_call_json->Get("name")->ToString()->PrintLine();								
+func_call_json->Get("args")->ToString()->PrintLine();								
 							};
 
 							parts->AddBack(part);
