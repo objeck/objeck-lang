@@ -7,7 +7,7 @@ use Collection;
 use Data.JSON;
 
 #~
-Web client support (-lib net)if(@parsed) {
+Web client support (-lib net)
 ~#
 bundle Web.HTTP {
 	#~
