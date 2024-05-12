@@ -7,7 +7,7 @@ use Collection;
 use Data.JSON;
 
 #~
-Web client support (-lib net)
+Web client support (-lib net)if(@parsed) {
 ~#
 bundle Web.HTTP {
 	#~
@@ -101,7 +101,7 @@ bundle Web.HTTP {
 		~#
 		method : public : GetScheme() ~ String {
 			if(@parsed) {
-				return @scheme;
+				return String->New(@scheme);
 			};
 
 			return Nil;
@@ -113,7 +113,7 @@ bundle Web.HTTP {
 		~#
 		method : public : GetHost() ~ String {
 			if(@parsed) {
-				return @host;
+				return String->New(@host);
 			};
 
 			return Nil;
@@ -125,7 +125,7 @@ bundle Web.HTTP {
 		~#
 		method : public : GetQuery() ~ String {
 			if(@parsed) {
-				return @query;
+				return String->New(@query);
 			};
 
 			return Nil;
@@ -149,7 +149,7 @@ bundle Web.HTTP {
 		~#
 		method : public : GetFragment() ~ String {
 			if(@parsed) {
-				return @frag;
+				return String->New(@frag);
 			};
 
 			return Nil;
@@ -161,7 +161,7 @@ bundle Web.HTTP {
 		~#
 		method : public : GetPath() ~ String {
 			if(@parsed) {
-				return @path;
+				return String->New(@path);
 			};
 
 			return Nil;
