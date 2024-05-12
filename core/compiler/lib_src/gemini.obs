@@ -257,16 +257,8 @@ each(candidate in candidates) {
 					func_def_dclr := func_key_value->GetSecond()<FunctionType, Func2Ref<JsonElement, JsonElement>>;
 					func_dclr := func_def_dclr->GetFirst();
 
-# "func_name='{$func_name}'"->PrintLine();
-# "----"->PrintLine();
-
 					function_declaration_array_json->Add(JsonParser->TextToElement(func_dclr->ToString()));
-				}
-#~				
-				each(func in funcs) {
-					function_declaration_array_json->Add(JsonParser->TextToElement(func->ToString()));
 				};
-~#				
 				
 				# create array of functions
 				function_declaration_obj_array_json := JsonElement->New(JsonElement->JsonType->OBJECT);
@@ -301,26 +293,28 @@ each(candidate in candidates) {
 			~#
 
 contents_obj_json->ToString()->PrintLine();
+"---"->PrintLine();
 
 			url := Url->New("https://generativelanguage.googleapis.com/v1beta/{$model_name}:generateContent?key={$key}");
 			if(url->GetQueryParameters()->Has("key")) {			
 				response := PostRequest(contents_obj_json, url);
 				if(response <> Nil) {
-"---"->PrintLine();			
 response->ToString()->PrintLine();
+"---"->PrintLine();
 
 					candidates := Vector->New()<Candidate>;
 					
 					candidates_json := response->Get("candidates");
 					each(candidate_json in candidates_json) {						
 						# general attributes
-						role := candidate_json->Get("content")->Get("role")->GetString();
+						content_json := candidate_json->Get("content");
+						role := content_json->Get("role")->GetString();
 						finish_reason := candidate_json->Get("finishReason")->GetString();
 						index := candidate_json->Get("index")->GetInt();
 
 						# parts
 						parts := Vector->New()<Part>;
-						parts_json := candidate_json->Get("content")->Get("parts");
+						parts_json := content_json->Get("parts");
 						each(part_json in parts_json) {
 							part : Part;
 
@@ -347,12 +341,47 @@ response->ToString()->PrintLine();
 									func_callback_ref := func_callback_mapping->GetSecond()<Func2Ref<JsonElement, JsonElement>>;
 									func_callback := func_callback_ref->Get();
 
-
+									# call function and response
 									func_callback_response := func_callback(func_args);
+
+									# build response object
+									parts_response_obj := JsonElement->New(JsonElement->JsonType->OBJECT);
+									parts_response_obj->Insert("name", func_name);
+
+
+									foo_obj := JsonElement->New(JsonElement->JsonType->OBJECT);
+									foo_obj->Insert("name", func_name);
+									foo_obj->Insert("content", func_callback_response);
+									parts_response_obj->Insert("response", foo_obj);
+
+
+									# set response object
+									parts_response_wrapper_obj := JsonElement->New(JsonElement->JsonType->OBJECT);
+									parts_response_wrapper_obj->Insert("functionResponse", parts_response_obj);
+
+									# build response parts array
+									parts_obj_array := JsonElement->New(JsonElement->JsonType->ARRAY);
+									parts_obj_array->Add(parts_response_wrapper_obj);
+
+									# set response parts array
+									parts_obj_array_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+									parts_obj_array_json->Insert("parts", parts_obj_array);
 									
-# has_func_callback :=  <> Nil;
-# temp_str := func_args->ToString();
-# "function: found={$has_func_callback}, name='{$func_name}', args={$temp_str}"->PrintLine();
+									# add function callback request
+									content_array_json->Add(content_json);
+
+									# add function response
+									content_array_json->Add(parts_obj_array_json);
+contents_obj_json->ToString()->PrintLine();
+"-- f-0 --"->PrintLine();
+
+									if(url->GetQueryParameters()->Has("key")) {
+										response := PostRequest(contents_obj_json, url);									
+										if(response <> Nil) {
+response->ToString()->PrintLine();
+"-- f-1 --"->PrintLine();
+										};
+									};
 								};
 							};
 
@@ -369,6 +398,7 @@ response->ToString()->PrintLine();
 
 							safety_ratings->AddBack(safety_rating);
 						};
+"-- 4 --"->PrintLine();
 
 						candidates->AddBack(Candidate->New(index, role, finish_reason, parts, safety_ratings));
 					};
@@ -992,13 +1022,13 @@ session->ToString()->PrintLine();
 					candidates_json := response->Get("candidates");
 					each(candidate_json in candidates_json) {						
 						# general attributes
-						role := candidate_json->Get("content")->Get("role")->GetString();
+						content_json := candidate_json->Get("content");
+						role := content_json->Get("role")->GetString();
 						finish_reason := candidate_json->Get("finishReason")->GetString();
 						index := candidate_json->Get("index")->GetInt();
 
 						# parts
 						parts := Vector->New()<Part>;
-						content_json := candidate_json->Get("content");
 						parts_json := content_json->Get("parts");
 
 						@content_array_json->Add(content_json);
