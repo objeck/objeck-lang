@@ -1658,6 +1658,28 @@ bundle Data.JSON.Scheme {
 		Constructor
 		@param name function name
 		@param params parameters to add to JSON object
+		~#
+		New(name : String, params : Set<ParameterType>) {
+			@name := name;
+			@params := params;
+		}
+
+		#~
+		Constructor
+		@param name function name
+		@param params parameters to add to JSON object
+		@param desc description 
+		~#
+		New(name : String, params : Set<ParameterType>, desc : String) {
+			@name := name;
+			@params := params;
+			@desc := desc;
+		}
+
+		#~
+		Constructor
+		@param name function name
+		@param params parameters to add to JSON object
 		@param req_params required parameters 
 		@param desc description 
 		~#
@@ -1738,13 +1760,14 @@ bundle Data.JSON.Scheme {
 				};
 			};
 
-			req_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
-			each(req_param in @req_params) {
-				req_array_json->Add(req_param)
-			};
-
 			params_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
-			params_obj_json->Insert("required", req_array_json);
+			if(@req_params <> Nil) {
+				req_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+				each(req_param in @req_params) {
+					req_array_json->Add(req_param)
+				};
+				params_obj_json->Insert("required", req_array_json);
+			};
 			params_obj_json->Insert("type", "object");
 			params_obj_json->Insert("properties", prop_obj_json);
 
@@ -1786,18 +1809,20 @@ bundle Data.JSON.Scheme {
 			buffer->Append('}')
 
 			# required
+			if(@req_params <> Nil) {
 			buffer->Append(",\"required\": [");
-			each(i : @req_params) {
-				req_param := @req_params[i];
-				buffer->Append('"');
-				buffer->Append(req_param);
-				buffer->Append('"');
+				each(i : @req_params) {
+					req_param := @req_params[i];
+					buffer->Append('"');
+					buffer->Append(req_param);
+					buffer->Append('"');
 
-				if(i + 1 < @req_params->Size()) {
-					buffer->Append(',');
-				};
-			}
-			buffer->Append("]}");
+					if(i + 1 < @req_params->Size()) {
+						buffer->Append(',');
+					};
+				}
+				buffer->Append("]}");
+			};
 
 			if(@desc <> Nil) {
 				buffer->Append('}');
@@ -1815,6 +1840,7 @@ bundle Data.JSON.Scheme {
 		@type : ParameterType->Type;
 		@desc : String;
 		@props : Set<ParameterType>;
+		@req_params : String[];
 		@is_array : Bool;
 
 		#~
@@ -1869,12 +1895,27 @@ bundle Data.JSON.Scheme {
 		Constructor
 		@param name function parameter name
 		@param props set of named parameter properties 
-		@param desc description 
+		@param req_params require parameters
 		~#
-		New(name : String, props : Set<ParameterType>, desc : String) {
+		New(name : String, props : Set<ParameterType>, req_params : String[]) {
 			@name := name;
 			@type := ParameterType->Type->OBJECT;
 			@props := props;
+			@req_params := req_params;
+		}
+
+		#~
+		Constructor
+		@param name function parameter name
+		@param props set of named parameter properties 
+		@param req_params require parameters
+		@param desc description 
+		~#
+		New(name : String, props : Set<ParameterType>, req_params : String[], desc : String) {
+			@name := name;
+			@type := ParameterType->Type->OBJECT;
+			@props := props;
+			@req_params := req_params;
 			@desc := desc;
 		}
 
@@ -1940,7 +1981,92 @@ bundle Data.JSON.Scheme {
 		@return JSON element representation
 		~# 
 		method : public : ToJson() ~ JsonElement {
-			return JsonElement->New(JsonElement->JsonType->OBJECT);
+			param_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+
+			if(@is_array) {
+				items_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+
+				if(@desc <> Nil) {
+					items_obj_json->Insert("description", @desc);
+				};
+
+				select(@type) {
+					label ParameterType->Type->STRING {
+						items_obj_json->Insert("type", "string");
+					}
+
+					label ParameterType->Type->NUMBER {
+						items_obj_json->Insert("type", "number");
+					}
+
+					label ParameterType->Type->INTEGER {
+						items_obj_json->Insert("type", "integer");
+					}
+
+					label ParameterType->Type->BOOLEAN {
+						items_obj_json->Insert("type", "boolean");
+					}
+
+					label ParameterType->Type->OBJECT {
+						items_obj_json->Insert("type", "object");
+					}
+
+					other {
+						items_obj_json->Insert("type", Nil);
+					}
+				};
+
+				param_obj_json->Insert("items", items_obj_json);
+				param_obj_json->Insert("type", "array");
+			}
+			else {
+				if(@desc <> Nil) {
+					param_obj_json->Insert("description", @desc);
+				};
+
+				select(@type) {
+					label ParameterType->Type->STRING {
+						param_obj_json->Insert("type", "string");
+					}
+
+					label ParameterType->Type->NUMBER {
+						param_obj_json->Insert("type", "number");
+					}
+
+					label ParameterType->Type->INTEGER {
+						param_obj_json->Insert("type", "integer");
+					}
+
+					label ParameterType->Type->BOOLEAN {
+						param_obj_json->Insert("type", "boolean");
+					}
+
+					label ParameterType->Type->OBJECT {
+						param_obj_json->Insert("type", "object");
+
+						prop_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+						prop_values := @props->GetKeys()<ParameterType>;
+						each(prop_value in prop_values) {				
+							prop_obj_json->Insert(prop_value->GetName(), prop_value->ToJson());
+						}
+						param_obj_json->Insert("properties", prop_obj_json);
+
+						if(@req_params <> Nil) {
+							req_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+							each(req_param in @req_params) {
+								req_array_json->Add(req_param);
+							};
+							param_obj_json->Insert("required", req_array_json);
+						};
+					}
+
+					other {
+						param_obj_json->Insert("type", Nil);
+					}
+				};
+			};
+
+			return param_obj_json;
 		}
 
 		#~
