@@ -1781,54 +1781,7 @@ bundle Data.JSON.Scheme {
 		@return JSON string representation
 		~# 
 		method : public : ToString() ~ String {
-			buffer := "{\"name\": \"";
-			buffer->Append(@name);
-			
-			if(@desc <> Nil) {
-				buffer->Append("\",\"description\": \"");
-				buffer->Append(@desc);
-				buffer->Append("\",\"parameters\": {");
-			}
-			else {
-				buffer->Append("\",");
-			};
-
-			# JSON parameters
-			buffer->Append("\"type\": \"object\",\"properties\": {");
-			if(@params <> Nil) {
-				param_values := @params->GetKeys()<ParameterType>;
-				each(i : param_values) {
-					param_value := param_values->Get(i);
-					buffer->Append(param_value->ToString());
-
-					if(i + 1 < param_values->Size()) {
-						buffer->Append(',');
-					}
-				};
-			}
-			buffer->Append('}')
-
-			# required
-			if(@req_params <> Nil) {
-			buffer->Append(",\"required\": [");
-				each(i : @req_params) {
-					req_param := @req_params[i];
-					buffer->Append('"');
-					buffer->Append(req_param);
-					buffer->Append('"');
-
-					if(i + 1 < @req_params->Size()) {
-						buffer->Append(',');
-					};
-				}
-				buffer->Append("]}");
-			};
-
-			if(@desc <> Nil) {
-				buffer->Append('}');
-			};
-
-			return buffer;
+			return ToJson()->ToString();
 		}
 	}
 
@@ -2074,67 +2027,7 @@ bundle Data.JSON.Scheme {
 		@return JSON string representation
 		~# 
 		method : public : ToString() ~ String {
-			buffer := "\"";
-			buffer->Append(@name);
-			buffer->Append("\": {\"type\": \"");
-
-			if(@props <> Nil) {
-				if(@props->IsEmpty()) {
-					buffer->Append("object\", \"properties\": null}");
-				}
-				else {
-					buffer->Append("object\", \"properties\":");			
-					prop_keys := @props->GetKeys()<ParameterType>;
-					each(i : prop_keys) {
-						prop_key := prop_keys->Get(i);
-						temp := prop_key->ToString();
-						
-						buffer->Append(temp);
-						
-						if(i + 1 < prop_keys->Size()) {
-							buffer->Pop();
-							buffer->Append(',');
-						}
-						else {
-							buffer->Append('}');
-						}
-					};
-				};
-			}
-			else {
-				if(@is_array) {
-					buffer->Append("array\", \"items\": {\"type\": \"");
-				};
-
-				select(@type) {
-					label ParameterType->Type->STRING {
-						buffer->Append("string");
-					}
-
-					label ParameterType->Type->NUMBER {
-						buffer->Append("number");
-					}
-
-					label ParameterType->Type->INTEGER {
-						buffer->Append("integer");
-					}
-
-					label ParameterType->Type->BOOLEAN {
-						buffer->Append("boolean");
-					}
-				};
-			};
-
-			if(@desc <> Nil) {
-				buffer->Append("\", \"description\": \"");
-				buffer->Append(Data.JSON.JsonElement->Encode(@desc));
-			};
-
-			if(@props = Nil) {
-				buffer->Append("\"}");
-			};
-
-			return buffer;
+			return ToJson()->ToString();
 		}
 	}
 }
