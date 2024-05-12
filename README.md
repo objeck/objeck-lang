@@ -58,8 +58,11 @@ Want to get started? Take a look at the [language guide](https://objeck.org/gett
 ## What's New?
 
 * v2024.5.0
-  * DeepMind (Gemini) support for function calls
-  * Additional support for OpenAI function calls
+  * DeepMind (Gemini) support for function calling
+  * Additional support for OpenAI function calling
+  * Boxing/unboxing support for the '<' and '>' operators
+  * Added  Collection 'Reduce' methods
+  * Bug fixes for Collection 'Filter' methods
   * ODBC bug fixes
 
 * v2024.4.0 **[current release]**
