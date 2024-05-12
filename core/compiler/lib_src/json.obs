@@ -1718,6 +1718,42 @@ bundle Data.JSON.Scheme {
 		}
 
 		#~
+		JSON element representation 
+		@return JSON element representation
+		~# 
+		method : public : ToJson() ~ JsonElement {
+			func_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			func_obj_json->Insert("name", @name);
+			func_obj_json->Insert("description", @desc);
+			
+			# JSON parameters
+			prop_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			if(@params <> Nil) {
+				param_values := @params->GetKeys()<ParameterType>;
+				each(param_value in param_values) {
+					param_name := param_value->GetName();
+					param_obj_json := param_value->ToJson();
+
+					prop_obj_json->Insert(param_name, param_obj_json);
+				};
+			};
+
+			req_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+			each(req_param in @req_params) {
+				req_array_json->Add(req_param)
+			};
+
+			params_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			params_obj_json->Insert("required", req_array_json);
+			params_obj_json->Insert("type", "object");
+			params_obj_json->Insert("properties", prop_obj_json);
+
+			func_obj_json->Insert("parameters", params_obj_json);
+
+			return func_obj_json;
+		}
+
+		#~
 		JSON string representation 
 		@return JSON string representation
 		~# 
@@ -1897,6 +1933,14 @@ bundle Data.JSON.Scheme {
 		~#
 		method : public : HashID() ~ Int {
 			return @name->HashID();
+		}
+
+		#~
+		JSON element representation 
+		@return JSON element representation
+		~# 
+		method : public : ToJson() ~ JsonElement {
+			return JsonElement->New(JsonElement->JsonType->OBJECT);
 		}
 
 		#~
