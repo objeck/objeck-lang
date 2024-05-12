@@ -253,7 +253,6 @@ each(candidate in candidates) {
 		
 				func_key_values := funcs->GetKeyValues()<Pair<String, Pair<FunctionType, Func2Ref<JsonElement, JsonElement>>>>;
 				each(func_key_value in func_key_values) {
-					func_name := func_key_value->GetFirst();
 					func_def_dclr := func_key_value->GetSecond()<FunctionType, Func2Ref<JsonElement, JsonElement>>;
 					func_dclr := func_def_dclr->GetFirst();
 
@@ -302,14 +301,16 @@ each(candidate in candidates) {
 					# response->ToString()->PrintLine();
 					#"---"->PrintLine();
 
-					return BuildContentResponse(contents_obj_json, content_array_json, response, funcs, url);
+					return BuildContentResponse(contents_obj_json, content_array_json, response, funcs, url, false);
 				};
 			};
 			
 			return Nil;
 		}
 
-		function : private : BuildContentResponse(contents_obj_json : JsonElement, content_array_json : JsonElement, response : JsonElement, funcs : Map<String, Pair<FunctionType, Func2Ref<JsonElement, JsonElement>>>, url : Url) ~ Vector<Candidate> {
+		function : BuildContentResponse(contents_obj_json : JsonElement, content_array_json : JsonElement, response : JsonElement, 
+				funcs : Map<String, Pair<FunctionType, Func2Ref<JsonElement, JsonElement>>>, url : Url, is_chat : Bool) ~ Vector<Candidate> {
+			
 			candidates := Vector->New()<Candidate>;
 					
 			candidates_json := response->Get("candidates");
@@ -323,6 +324,11 @@ each(candidate in candidates) {
 				# parts
 				parts := Vector->New()<Part>;
 				parts_json := content_json->Get("parts");
+
+				if(is_chat) {
+					content_array_json->Add(content_json);
+				};
+
 				each(part_json in parts_json) {
 					part : Part;
 
@@ -390,7 +396,7 @@ each(candidate in candidates) {
 									# "-- response to reply with function data --"->PrintLine();
 									# response->ToString()->PrintLine();	
 
-									return BuildContentResponse(contents_obj_json, content_array_json, response, funcs, url);
+									return BuildContentResponse(contents_obj_json, content_array_json, response, funcs, url, is_chat);
 								};
 							};
 						};
@@ -1024,7 +1030,9 @@ session->ToString()->PrintLine();
 				response := EndPoint->PostRequest(@contents_obj_json, url);
 				if(response <> Nil) {
 					# response->ToString()->PrintLine();
-					candidates := Vector->New()<Candidate>;
+					candidates := Model->BuildContentResponse(@contents_obj_json, @content_array_json, response, Nil, url, true);
+#~
+					Vector->New()<Candidate>;
 					candidates_json := response->Get("candidates");
 					each(candidate_json in candidates_json) {						
 						# general attributes
@@ -1069,7 +1077,7 @@ session->ToString()->PrintLine();
 
 						candidates->AddBack(Candidate->New(index, role, finish_reason, parts, safety_ratings));
 					};
-
+~#
 					return candidates->Last();
 				};
 			};
