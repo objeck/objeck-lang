@@ -8,7 +8,7 @@ REM obc -src %OBJECK_LIB_SRC%\json.obs -lib gen_collect -tar lib -opt s3 -dest %
 REM obc -src %OBJECK_LIB_SRC%\net_common.obs,%OBJECK_LIB_SRC%\net.obs,%OBJECK_LIB_SRC%\net_secure.obs -lib json -tar lib -dest %OBJECK_LIB_DST%\net.obl
 REM obc -src %OBJECK_LIB_SRC%\json.obs -tar lib -dest %OBJECK_LIB_DST%\json.obl
 REM obc -src %OBJECK_LIB_SRC%\ml.obs -lib json,csv -tar lib -dest %OBJECK_LIB_DST%\ml.obl
-obc -src %OBJECK_LIB_SRC%\gemini.obs -lib misc,json,net,encrypt -tar lib -dest %OBJECK_LIB_DST%\gemini.obl
+REM obc -src %OBJECK_LIB_SRC%\gemini.obs -lib misc,json,net,encrypt -tar lib -dest %OBJECK_LIB_DST%\gemini.obl
 
 del /q *.obe
 
