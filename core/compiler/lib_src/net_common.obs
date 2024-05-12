@@ -100,8 +100,8 @@ bundle Web.HTTP {
 		@return scheme, Nil if not present
 		~#
 		method : public : GetScheme() ~ String {
-			if(@parsed) {
-				return String->New(@scheme);
+			if(@parsed & @scheme <> Nil) {
+				return @scheme->Clone();
 			};
 
 			return Nil;
@@ -112,8 +112,8 @@ bundle Web.HTTP {
 		@return host, Nil if not present
 		~#
 		method : public : GetHost() ~ String {
-			if(@parsed) {
-				return String->New(@host);
+			if(@parsed & @host <> Nil) {
+				return @host->Clone();
 			};
 
 			return Nil;
@@ -124,8 +124,8 @@ bundle Web.HTTP {
 		@return scheme, Nil if not present
 		~#
 		method : public : GetQuery() ~ String {
-			if(@parsed) {
-				return String->New(@query);
+			if(@parsed & @query <> Nil) {
+				return @query->Clone();
 			};
 
 			return Nil;
@@ -148,8 +148,8 @@ bundle Web.HTTP {
 		@return fragment, Nil if not present
 		~#
 		method : public : GetFragment() ~ String {
-			if(@parsed) {
-				return String->New(@frag);
+			if(@parsed & @frag <> Nil) {
+				return @frag->Clone();
 			};
 
 			return Nil;
@@ -160,8 +160,8 @@ bundle Web.HTTP {
 		@return path, Nil if not present
 		~#
 		method : public : GetPath() ~ String {
-			if(@parsed) {
-				return String->New(@path);
+			if(@parsed & @path <> Nil) {
+				return @path->Clone();
 			};
 
 			return Nil;
