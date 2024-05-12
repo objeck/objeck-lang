@@ -62,7 +62,7 @@ class Test {
 	}
 
 	function : Callback(params_json : JsonElement) ~ JsonElement {
-"###  0 ###"->PrintLine();		
+		"#### Callback, called... ###"->PrintLine();		
 		return JsonElement->New("Nee Fadz");
 	}
 }
