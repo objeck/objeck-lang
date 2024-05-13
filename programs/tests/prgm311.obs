@@ -1,0 +1,19 @@
+use Collection, Data.JSON, Data.JSON.Scheme;
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		param_person := Set->New()<ParameterType>;
+
+		param_first_last := Set->New()<ParameterType>;
+		param_first_last->Insert(ParameterType->New("first-name", ParameterType->Type->STRING, "user's first name"));
+		param_first_last->Insert(ParameterType->New("last-name", ParameterType->Type->STRING, "user's last name"));
+		
+		param_person->Insert(ParameterType->New("first-last-name", param_first_last, ["first-name", "last-name"]));
+		param_person->Insert(ParameterType->New("zip-code", ParameterType->Type->STRING, "user's zip code"));
+		func_1 := FunctionType->New("get_head_coach_by_year", param_person, "The name of the head coach for a given year");
+		
+		func_1->ToString()->PrintLine();
+		"---"->PrintLine();
+		func_1->ToJson()->ToString()->PrintLine();
+	}
+}
