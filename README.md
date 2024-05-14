@@ -62,8 +62,8 @@ Want to get started? Take a look at the [language guide](https://objeck.org/gett
 * v2024.6.x
     * Support for LLaMa 3 APIs
     * Snowflake SQL integration 
-    
-* v2024.5.0 **[release enqueue - by 5/17/2024]**
+
+* v2024.5.0 **[release enqueue]**
   * DeepMind (Gemini) support for function calling
   * Additional support for OpenAI function calling
   * Boxing/unboxing support for the '<' and '>' operators
@@ -71,7 +71,7 @@ Want to get started? Take a look at the [language guide](https://objeck.org/gett
   * Bug fixes for Collection 'Filter' methods
   * ODBC bug fixes
 
-* v2024.4.0 **[current release]**
+* v2024.4.0 [current release]
   * Added support for Google DeepMind (Gemini) APIs
     * Model
     * Corpus (v1beta)
