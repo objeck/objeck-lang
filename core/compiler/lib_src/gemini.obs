@@ -1031,53 +1031,6 @@ session->ToString()->PrintLine();
 				if(response <> Nil) {
 					# response->ToString()->PrintLine();
 					candidates := Model->BuildContentResponse(@contents_obj_json, @content_array_json, response, Nil, url, true);
-#~
-					Vector->New()<Candidate>;
-					candidates_json := response->Get("candidates");
-					each(candidate_json in candidates_json) {						
-						# general attributes
-						content_json := candidate_json->Get("content");
-						role := content_json->Get("role")->GetString();
-						finish_reason := candidate_json->Get("finishReason")->GetString();
-						index := candidate_json->Get("index")->GetInt();
-
-						# parts
-						parts := Vector->New()<Part>;
-						parts_json := content_json->Get("parts");
-
-						@content_array_json->Add(content_json);
-
-						each(part_json in parts_json) {
-							# text part
-							if(part_json->Has("text")) {
-								text_json := part_json->Get("text");
-								part := TextPart->New(text_json->GetString());
-							};
-
-							# inline part
-							if(part_json->Has("inlineData")) {
-								inline_mime_type := part_json->FindElements("inlineData/mimeType")->GetString();
-								inline_data := part_json->FindElements("inlineData/data")->GetString();
-								part := BinaryPart->New(Encryption.Decrypt->Base64(inline_data), inline_mime_type);
-							};
-
-							parts->AddBack(part);
-						};
-
-						# safety ratings
-						safety_ratings := Vector->New()<Collection.Tuple.Pair<String,String>>;
-						safety_ratings_json := candidate_json->Get("safetyRatings");
-						each(safety_rating_json in safety_ratings_json) {
-							safety_category := safety_rating_json->Get("category")->GetString();
-							safety_probability := safety_rating_json->Get("probability")->GetString();
-							safety_rating := Collection.Tuple.Pair->New(safety_category, safety_probability)<String, String>;
-
-							safety_ratings->AddBack(safety_rating);
-						};
-
-						candidates->AddBack(Candidate->New(index, role, finish_reason, parts, safety_ratings));
-					};
-~#
 					return candidates->Last();
 				};
 			};
