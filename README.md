@@ -60,8 +60,8 @@ Want to get started? Take a look at the [language guide](https://objeck.org/gett
 ## What's New?
 
 * v2024.6.x
-    * Support for LLaMa 3 APIs
-    * Snowflake SQL integration 
+    * Support for the LLaMa 3 API
+    * Snowflake SQL integration
 
 * v2024.5.0 **[enqueue]**
   * DeepMind (Gemini) support for function calls
