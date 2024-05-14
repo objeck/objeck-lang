@@ -8,13 +8,29 @@
     
     <body>
         <h1>Objeck</h1>
-        <p>v2023.4.1 (April 26, 2024)</p>
+        <p>v2023.5.0 (May 17, 2024)</p>
         
         <h3>Release Notes</h3>
         
-        <p>DeepMind (Gemini) support, extended OpenAI functionality, OAuth2 support, general enhancements, and bug fixes</p>
+        <p>Google (Gemini) support for function calls, enhancements, and bug fixes</p>
 
-        <p><b><u>v2024.4.1</u></b></p>
+        <p><b><u>v2024.5.0</u></b></p>
+        <ul>
+            <li>DeepMind (Gemini) support for function calls</li>
+            <li>JSON Scheme support for function modeling for OpenAI, Gemini, and LLaMa</li>
+            <li>Enhancements</li>
+            <ul>
+                <li>Added Collection 'Reduce' methods</li>
+                <li>Boxing/unboxing support for the '<' and '>' operators (legacy missing feature)</li>
+            </ul>
+            <li>Bug fixes</li>
+            <ul>
+                <li>Fixed Collection 'Filter' methods</li>
+                <li>Resolved ODBC refactor bug</li>
+            </ul>
+        </ul>
+
+        <p>v2024.4.1</p>
         <ul>
             <li>Added support for Google DeepMind (Gemini) APIs</li>
             <ul>
@@ -45,19 +61,6 @@
             </ul>
             <li>Docker support</li>
             <li>Fixed memory manager bugs #462 and #482</li>
-        </ul>
-
-        <p><b>v2023.2.1</b></p>
-        <ul>
-            <li>Added support for response files (#454)</li>
-            <li>Support for the unary bit wise <code>not</code> operator (#480)</li>
-            <li>Webserver library enhancements</li>
-            <ul>
-                <li>Improved performance</li>
-                <li>Better configuration</li>
-            </ul>
-            <li>Optional keyword <code>in</code> added for use in <code>each</code> loops; an alternative to <code>:=</code> operator</li>
-            <li><code>Quintet</code> tuple class added</li>
         </ul>
 
         <p>Please refer to the GitHub <a href='https://github.com/objeck/objeck-lang'>project site</a> 
