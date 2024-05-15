@@ -1982,7 +1982,7 @@ bundle API.OpenAI {
 		~#
 		function : GetApiKey() ~ String {
 			if(@api_key = Nil) {
-				filename := "gemini_api_key.dat";
+				filename := "openai_api_key.dat";
 				token := System.IO.Filesystem.FileReader->ReadFile(filename);
 				if(token = Nil) {
 					dir_str := System.IO.Filesystem.Directory->GetWorking();
