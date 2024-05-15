@@ -2,28 +2,6 @@ use Collection, Data.JSON, Data.JSON.Scheme;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		funcs := Map->New()<String, Pair<FunctionType, Func2Ref<JsonElement, JsonElement>>>;
-
-		params_1 := Set->New()<ParameterType>;
-		params_1->Insert(ParameterType->New("year", ParameterType->Type->INTEGER, "year the team played"));
-		func_1 := FunctionType->New("get_head_coach_by_year", params_1, ["year"], "The name of the head coach for a given year");
-		func_ref_1 := Func2Ref->New(Callback_1(JsonElement) ~ JsonElement)<JsonElement, JsonElement>;
-		pair_1 := Pair->New(func_1, func_ref_1)<FunctionType, Func2Ref<JsonElement, JsonElement>>;
-		funcs->Insert(func_1->GetName(), pair_1);
-
-		params_2 := Set->New()<ParameterType>;
-		params_2->Insert(ParameterType->New("sport", ParameterType->Type->STRING, "name of the sport"));
-		func_2 := FunctionType->New("get_num_players_by_sport", params_1, ["sport"], "the sport being played");
-		func_ref_2 := Func2Ref->New(Callback_2(JsonElement) ~ JsonElement)<JsonElement, JsonElement>;
-		pair_2 := Pair->New(func_2, func_ref_2)<FunctionType, Func2Ref<JsonElement, JsonElement>>;
-		funcs->Insert(func_2->GetName(), pair_2);
-	}
-
-	function : Callback_1(params : JsonElement) ~ JsonElement {
-		return Nil;
-	}
-
-	function : Callback_2(params : JsonElement) ~ JsonElement {
-		return Nil;
+		System.IO.Filesystem.Directory->GetWorking()->PrintLine();
 	}
 }
