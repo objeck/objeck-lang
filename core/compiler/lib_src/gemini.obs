@@ -1188,7 +1188,7 @@ session->ToString()->PrintLine();
 
 		#~
 		Set the API file key path
-		@param API file key path
+		@param api_key API file key path
 		~#
 		function : SetApiKey(api_key : String) ~ Nil {
 			@api_key := api_key;
