@@ -23,7 +23,7 @@ use API.Google.Gemini, System.IO.Filesystem;
 class IdentifyImage {
   function : Main(args : String[]) ~ Nil {
     content := Content->New("user")->AddPart(TextPart->New("What number is this image showing?"))
-      ->AddPart(BinaryPart->New(FileReader->ReadBinaryFile("thirdteen.png"), "image/png"))
+      ->AddPart(BinaryPart->New(FileReader->ReadBinaryFile("thirteen.png"), "image/png"))
       ->AddPart(TextPart->New("Format output as JSON"));
 
     candidates := Model->GenerateContent("models/gemini-pro-vision", content, EndPoint->GetApiKey());
