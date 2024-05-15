@@ -1187,13 +1187,29 @@ session->ToString()->PrintLine();
 		}
 
 		#~
+		Set the API file key path
+		@param API file key path
+		~#
+		function : SetApiKey(api_key : String) ~ Nil {
+			@api_key := api_key;
+		}
+
+		#~
 		Reads API from 'api_key.dat'
 		@return API key
 		~#
 		function : GetApiKey() ~ String {
 			if(@api_key = Nil) {
-				token := System.IO.Filesystem.FileReader->ReadFile("api_key.dat");
-				if(token <> Nil) {
+				filename := "gemini_api_key.dat";
+				token := System.IO.Filesystem.FileReader->ReadFile(filename);
+				if(token = Nil) {
+					dir_str := System.IO.Filesystem.Directory->GetWorking();
+					dir_str += System.IO.Filesystem.Directory->GetSlash();
+					dir_str += filename;
+					
+					">>> Unable to read API key from: '{$dir_str}', also consider calling SetApiKey(..)"->ErrorLine();
+				}
+				else {
 					@api_key := token->Trim();
 				};
 			};
