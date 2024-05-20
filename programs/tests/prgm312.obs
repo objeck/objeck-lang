@@ -69,17 +69,15 @@ class Node {
 		@level := 0;
 		@is_term := false;
 
-		size := 'z'->ToInt() - 'a'->ToInt() + 1;
-		@children := Node->New[size];
+		@children := Node->New[0x100];
 	}
 
 	New(value : Char, level : Int) {
-		@value := value->ToLower();
+		@value := value;
 		@level := level;
 		@is_term := false;
 
-		size := 'z'->ToInt() - 'a'->ToInt() + 1;
-		@children := Node->New[size];
+		@children := Node->New[0x100];
 	}
 
 	method : public : IsTerminal() ~ Bool {
@@ -95,12 +93,16 @@ class Node {
 	}
 
 	method : public : GetChild(value : Char) ~ Node {
-		index := value->ToInt() - 'a'->ToInt();
+		index := value->As(Int);
+value->PrintLine();		
+index->PrintLine();		
 		return @children[index];
 	}
 
 	method : public : SetChild(value : Char, level : Int) ~ Node {
-		index := value->ToInt() - 'a'->ToInt();
+		index := value->As(Int);
+value->PrintLine();		
+index->PrintLine();		
 		node := Node->New(value, level);
 		@children[index] := node;
 
