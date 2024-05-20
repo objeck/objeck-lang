@@ -1,0 +1,77 @@
+class Test {
+	function : Main(args : System.String[]) ~ Nil {
+		t := Trie->New();
+		t->Search("hello");
+		t->Search("hey");
+	}
+}
+
+
+class Trie {
+	@root : Node;
+
+	New() {
+		@root := Node->New();
+	}
+
+	method : public : Search(word : String) ~ Nil {
+		node := @root;
+		level := 0;
+		
+		each(char in word) {
+			next := node->GetChild(char);
+			if(next = Nil) {
+"Not Found: {$char}"->PrintLine();
+				level += 1;
+				node := node->SetChild(char, level);
+			}
+			else {
+"Found: {$char}"->PrintLine();
+
+				node := next;
+next->GetValue()->PrintLine();				
+			};
+"-"->PrintLine();			
+		};
+		level->PrintLine();
+	}
+}
+
+class Node {
+	@value : Char;
+	@children : Node[];
+	@level : Int;
+
+	New() {
+		@value := '\0';
+		@level := 0;
+
+		size := 'z'->ToInt() - 'a'->ToInt() + 1;
+		@children := Node->New[size];
+	}
+
+	New(value : Char, level : Int) {
+		@value := value->ToLower();
+		@level := level;
+
+		size := 'z'->ToInt() - 'a'->ToInt() + 1;
+		@children := Node->New[size];
+	}
+
+	method : public : GetValue() ~ Char {
+		return @value;
+	}
+
+	method : public : GetChild(value : Char) ~ Node {
+		index := value->ToInt() - 'a'->ToInt();
+		return @children[index];
+	}
+
+	method : public : SetChild(value : Char, level : Int) ~ Node {
+		index := value->ToInt() - 'a'->ToInt();
+		node := Node->New(value, level);
+		@children[index] := node;
+
+		return node;
+	}
+}
