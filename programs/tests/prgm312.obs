@@ -23,10 +23,11 @@ class Test {
 #		t->Has("hella")->PrintLine();
 
 		t->Match("neo")->Size()->PrintLine();
-		t->Delete("hella")->PrintLine();
+		t->Insert("he")->PrintLine();
 
 		t->Has("hello")->PrintLine();
 		t->Has("hella")->PrintLine();
+		t->Has("he")->PrintLine();
 	}
 }
 
