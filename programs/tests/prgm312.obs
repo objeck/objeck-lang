@@ -2,13 +2,19 @@ class Test {
 	function : Main(args : System.String[]) ~ Nil {
 		t := Trie->New();
 		
-		t->Insert("hello")->PrintLine();
-		t->Insert("hella")->PrintLine();
+#		t->Insert("hello")->PrintLine();
+#		t->Insert("hella")->PrintLine();
 		t->Insert("hey")->PrintLine();
+		t->Insert("hi")->PrintLine();
+		t->Insert("dog")->PrintLine();
+#		t->Insert("heha")->PrintLine();
 
-		t->Has("hella")->PrintLine();
+#		t->Has("hella")->PrintLine();
 		t->Has("hey")->PrintLine();
-		t->Has("hella")->PrintLine();
+		t->Has("he")->PrintLine();
+#		t->Has("dog")->PrintLine();
+#		t->Has("cat")->PrintLine();
+#		t->Has("hella")->PrintLine();
 	}
 }
 
@@ -19,11 +25,16 @@ class Trie {
 		@root := Node->New();
 	}
 
-	method : public : Match(word : String) ~ Collection.Vector<String> {
-		return Nil;
+	method : public : Has(word : String) ~ Bool {
+		match := Get(word);
+		if(match <> Nil) {
+			return match->IsTerminal();
+		};
+
+		return false;
 	}
 
-	method : public : Has(word : String) ~ Bool {
+	method : Get(word : String) ~ Node {
 		node := @root;
 
 		each(char in word) {
@@ -32,11 +43,11 @@ class Trie {
 				node := next;
 			}
 			else {
-				return false;
+				return Nil;
 			}
 		};
 
-		return node->IsTerminal();
+		return node;
 	}
 
 	method : public : Insert(word : String) ~ Int {
@@ -92,6 +103,10 @@ class Node {
 
 	method : public : GetValue() ~ Char {
 		return @value;
+	}
+
+	method : public : GetChildren() ~ Node[] {
+		return @children;
 	}
 
 	method : public : GetChild(value : Char) ~ Node {
