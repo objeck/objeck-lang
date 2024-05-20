@@ -350,7 +350,7 @@ bundle System {
 		@return value
 		~#
 		function : ToInt(v : Byte) ~ Int {
-			BC2I;
+			v->ToInt();
 		}
 
 		function : Size(v : Byte) ~ Byte {
@@ -790,7 +790,7 @@ bundle System {
 		@return value
 		~#
 		function : ToInt(v : Char) ~ Int {
-			BC2I;
+			v->ToInt();
 		}
 		
 		#~
