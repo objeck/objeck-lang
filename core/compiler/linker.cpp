@@ -1444,10 +1444,6 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
       instrs.push_back(new LibraryInstr(line_num, I2S));
       break;
 
-    case BC2I:
-      instrs.push_back(new LibraryInstr(line_num, BC2I));
-      break;
-      
     case F2S:
       instrs.push_back(new LibraryInstr(line_num, F2S)); 
       break;

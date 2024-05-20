@@ -161,7 +161,6 @@ enum ScannerTokenType {
   S2F,
   I2S,
   F2S,
-  BC2I,
   LOAD_ARY_SIZE,
   CPY_BYTE_ARY,
   CPY_CHAR_ARY,

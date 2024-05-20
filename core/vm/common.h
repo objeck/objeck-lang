@@ -431,7 +431,6 @@ class StackMethod {
       case S2F:
       case I2S:
       case F2S:
-      case BC2I:
         // shared libraries
       case LOAD_ARY_SIZE:
       case EXT_LIB_LOAD:
