@@ -160,6 +160,7 @@ class Node {
 	}
 
 	method : public : Delete(index : Int) ~ Nil {
+		# TODO: to save memory delete upwards
 		@children[index] := Nil;
 	}
 
