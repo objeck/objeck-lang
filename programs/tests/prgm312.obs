@@ -23,7 +23,10 @@ class Test {
 #		t->Has("hella")->PrintLine();
 
 		t->Match("neo")->Size()->PrintLine();
-		t->Delete("hella")->Size()->PrintLine();
+		t->Delete("hella")->PrintLine();
+
+		t->Has("hello")->PrintLine();
+		t->Has("hella")->PrintLine();
 	}
 }
 
@@ -45,10 +48,11 @@ class Trie {
 
 	method : public : Delete(word : String) ~ Bool {
 		match := Get(word);
-		if(match <> Nil) {
+		if(match <> Nil & match->HasWord()) {
 			parent := match->GetParent();
 			if(parent <> Nil) {
-"mmmk"->PrintLine();
+				parent->Delete(match->GetParentIndex());
+				return true;
 			}
 		};
 
@@ -153,6 +157,10 @@ class Node {
 
 	method : public : HasWord() ~ Bool {
 		return @word <> Nil;
+	}
+
+	method : public : Delete(index : Int) ~ Nil {
+		@children[index] := Nil;
 	}
 
 	method : public : SetWord(word : String) ~ Nil {
