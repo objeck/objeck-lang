@@ -1,11 +1,16 @@
 class Test {
 	function : Main(args : System.String[]) ~ Nil {
 		t := Trie->New();
-		t->Search("hello");
-		t->Search("hey");
+		
+		t->Insert("hello")->PrintLine();
+		t->Insert("hella")->PrintLine();
+		t->Insert("hey")->PrintLine();
+
+		t->Has("hella")->PrintLine();
+		t->Has("hey")->PrintLine();
+		t->Has("hella")->PrintLine();
 	}
 }
-
 
 class Trie {
 	@root : Node;
@@ -14,26 +19,42 @@ class Trie {
 		@root := Node->New();
 	}
 
-	method : public : Search(word : String) ~ Nil {
+	method : public : Has(word : String) ~ Bool {
+		node := @root;
+
+		each(char in word) {
+			next := node->GetChild(char);
+			if(next <> Nil) {
+				node := next;
+			}
+			else {
+				return false;
+			}
+		};
+
+		return node->IsTerminal();
+	}
+
+	method : public : Insert(word : String) ~ Int {
 		node := @root;
 		level := 0;
 		
 		each(char in word) {
 			next := node->GetChild(char);
 			if(next = Nil) {
-"Not Found: {$char}"->PrintLine();
 				level += 1;
 				node := node->SetChild(char, level);
 			}
 			else {
-"Found: {$char}"->PrintLine();
-
 				node := next;
-next->GetValue()->PrintLine();				
 			};
-"-"->PrintLine();			
 		};
-		level->PrintLine();
+
+		if(node <> @root) {
+			node->SetTerminal();
+		};
+		
+		return level;
 	}
 }
 
@@ -41,10 +62,12 @@ class Node {
 	@value : Char;
 	@children : Node[];
 	@level : Int;
+	@is_term : Bool;
 
 	New() {
 		@value := '\0';
 		@level := 0;
+		@is_term := false;
 
 		size := 'z'->ToInt() - 'a'->ToInt() + 1;
 		@children := Node->New[size];
@@ -53,9 +76,18 @@ class Node {
 	New(value : Char, level : Int) {
 		@value := value->ToLower();
 		@level := level;
+		@is_term := false;
 
 		size := 'z'->ToInt() - 'a'->ToInt() + 1;
 		@children := Node->New[size];
+	}
+
+	method : public : IsTerminal() ~ Bool {
+		return @is_term;
+	}
+
+	method : public : SetTerminal() ~ Nil {
+		@is_term := true;
 	}
 
 	method : public : GetValue() ~ Char {
