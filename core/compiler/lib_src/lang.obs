@@ -344,15 +344,6 @@ bundle System {
 			return v->As(Char);
 		}
 
-		#~
-		Returns the Int value
-		@ignore-params
-		@return value
-		~#
-		function : ToInt(v : Byte) ~ Int {
-			BC2I;
-		}
-
 		function : Size(v : Byte) ~ Byte {
 			return v;
 		}
