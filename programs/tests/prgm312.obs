@@ -19,6 +19,10 @@ class Trie {
 		@root := Node->New();
 	}
 
+	method : public : Match(word : String) ~ Collection.Vector<String> {
+		return Nil;
+	}
+
 	method : public : Has(word : String) ~ Bool {
 		node := @root;
 
@@ -51,7 +55,7 @@ class Trie {
 		};
 
 		if(node <> @root) {
-			node->SetTerminal();
+			node->SetTerminal(word);
 		};
 		
 		return level;
@@ -62,12 +66,11 @@ class Node {
 	@value : Char;
 	@children : Node[];
 	@level : Int;
-	@is_term : Bool;
+	@word : String;
 
 	New() {
 		@value := '\0';
 		@level := 0;
-		@is_term := false;
 
 		@children := Node->New[0x100];
 	}
@@ -75,17 +78,16 @@ class Node {
 	New(value : Char, level : Int) {
 		@value := value;
 		@level := level;
-		@is_term := false;
 
 		@children := Node->New[0x100];
 	}
 
 	method : public : IsTerminal() ~ Bool {
-		return @is_term;
+		return @word <> Nil;
 	}
 
-	method : public : SetTerminal() ~ Nil {
-		@is_term := true;
+	method : public : SetTerminal(word : String) ~ Nil {
+		@word := word;
 	}
 
 	method : public : GetValue() ~ Char {
@@ -93,19 +95,13 @@ class Node {
 	}
 
 	method : public : GetChild(value : Char) ~ Node {
-		index := value->As(Int);
-value->PrintLine();		
-index->PrintLine();		
-		return @children[index];
+		return @children[value->ToInt()];
 	}
 
 	method : public : SetChild(value : Char, level : Int) ~ Node {
-		index := value->As(Int);
-value->PrintLine();		
-index->PrintLine();		
 		node := Node->New(value, level);
-		@children[index] := node;
-
+		@children[value->ToInt()] := node;
+		
 		return node;
 	}
 }
