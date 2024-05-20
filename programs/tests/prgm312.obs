@@ -2,19 +2,21 @@ class Test {
 	function : Main(args : System.String[]) ~ Nil {
 		t := Trie->New();
 		
-#		t->Insert("hello")->PrintLine();
-#		t->Insert("hella")->PrintLine();
+		t->Insert("hello")->PrintLine();
+		t->Insert("hella")->PrintLine();
 		t->Insert("hey")->PrintLine();
 		t->Insert("hi")->PrintLine();
 		t->Insert("dog")->PrintLine();
-#		t->Insert("heha")->PrintLine();
+		t->Insert("heha")->PrintLine();
 
 #		t->Has("hella")->PrintLine();
 		t->Has("hey")->PrintLine();
-		t->Has("he")->PrintLine();
+		t->Has("he ")->PrintLine();
 #		t->Has("dog")->PrintLine();
 #		t->Has("cat")->PrintLine();
 #		t->Has("hella")->PrintLine();
+
+		t->Match("he")->Size()->PrintLine();
 	}
 }
 
@@ -28,10 +30,34 @@ class Trie {
 	method : public : Has(word : String) ~ Bool {
 		match := Get(word);
 		if(match <> Nil) {
-			return match->IsTerminal();
+			return match->HasWord();
 		};
 
 		return false;
+	}
+
+	method : public : Match(word : String) ~ Collection.Vector<String> {
+		matches := Collection.Vector->New()<String>;
+
+		Match(word, @root, matches);
+
+		return matches;
+	}
+
+	method : native : Match(word : String, node : Node, matches : Collection.Vector<String>) ~ Nil {
+		if(node <> Nil) {
+			children := node->GetChildren();
+			each(child in children) {
+				if(child <> Nil & child->HasWord()) {
+					check := child->GetWord();
+					if(check->StartsWith(word)) {
+						matches->AddBack(check);
+					};
+				};
+
+				Match(word, child, matches);
+			};
+		};
 	}
 
 	method : Get(word : String) ~ Node {
@@ -66,7 +92,7 @@ class Trie {
 		};
 
 		if(node <> @root) {
-			node->SetTerminal(word);
+			node->SetWord(word);
 		};
 		
 		return level;
@@ -93,12 +119,16 @@ class Node {
 		@children := Node->New[0x100];
 	}
 
-	method : public : IsTerminal() ~ Bool {
+	method : public : HasWord() ~ Bool {
 		return @word <> Nil;
 	}
 
-	method : public : SetTerminal(word : String) ~ Nil {
+	method : public : SetWord(word : String) ~ Nil {
 		@word := word;
+	}
+
+	method : public : GetWord() ~ String {
+		return @word;
 	}
 
 	method : public : GetValue() ~ Char {
