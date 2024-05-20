@@ -23,6 +23,7 @@ class Test {
 #		t->Has("hella")->PrintLine();
 
 		t->Match("neo")->Size()->PrintLine();
+		t->Delete("hella")->Size()->PrintLine();
 	}
 }
 
@@ -45,7 +46,10 @@ class Trie {
 	method : public : Delete(word : String) ~ Bool {
 		match := Get(word);
 		if(match <> Nil) {
-			return match->HasWord();
+			parent := match->GetParent();
+			if(parent <> Nil) {
+"mmmk"->PrintLine();
+			}
 		};
 
 		return false;
@@ -118,26 +122,33 @@ class Node {
 	@value : Char;
 	@children : Node[];
 	@parent : Node;
+	@parent_index : Int;
 	@level : Int;
 	@word : String;
 
 	New() {
 		@value := '\0';
 		@level := 0;
+		@parent_index := -1;
 
 		@children := Node->New[0x100];
 	}
 
-	New(value : Char, level : Int, parent : Node) {
+	New(value : Char, level : Int, parent : Node, parent_index : Int) {
 		@value := value;
 		@level := level;
 		@parent := parent;
+		@parent_index := parent_index;
 
 		@children := Node->New[0x100];
 	}
 
 	method : public : GetParent() ~ Node {
 		return @parent;
+	}
+
+	method : public : GetParentIndex() ~ Int {
+		return @parent_index;
 	}
 
 	method : public : HasWord() ~ Bool {
@@ -165,8 +176,9 @@ class Node {
 	}
 
 	method : public : SetChild(value : Char, level : Int) ~ Node {
-		node := Node->New(value, level, @self);
-		@children[value->ToInt()] := node;
+		index := value->ToInt();
+		node := Node->New(value, level, @self, index);
+		@children[index] := node;
 		
 		return node;
 	}
