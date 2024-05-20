@@ -6,7 +6,7 @@ class Test {
 	}
 
   function : Foo() ~ Nil {
-    "Hello World!"->PrintFOOOOOOO();
+    "Hello World!"->PrintLine();
   }
   
   function : Bar() ~ Nil {
