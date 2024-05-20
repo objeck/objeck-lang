@@ -790,7 +790,7 @@ bundle System {
 		@return value
 		~#
 		function : ToInt(v : Char) ~ Int {
-			BC2I;
+			return v->As(Int);
 		}
 		
 		#~
