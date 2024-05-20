@@ -5,18 +5,24 @@ class Test {
 		t->Insert("hello")->PrintLine();
 		t->Insert("hella")->PrintLine();
 		t->Insert("hey")->PrintLine();
+		t->Insert("neo soul")->PrintLine();
+		t->Insert("neo")->PrintLine();
+		t->Insert("neo punk")->PrintLine();
+		t->Insert("beebop")->PrintLine();
 		t->Insert("hi")->PrintLine();
 		t->Insert("dog")->PrintLine();
 		t->Insert("heha")->PrintLine();
 
 #		t->Has("hella")->PrintLine();
 		t->Has("hey")->PrintLine();
+		t->Has("neo")->PrintLine();
+		t->Has("neo soul")->PrintLine();
 		t->Has("he ")->PrintLine();
 #		t->Has("dog")->PrintLine();
 #		t->Has("cat")->PrintLine();
 #		t->Has("hella")->PrintLine();
 
-		t->Match("he")->Size()->PrintLine();
+		t->Match("neo")->Size()->PrintLine();
 	}
 }
 
@@ -28,6 +34,15 @@ class Trie {
 	}
 
 	method : public : Has(word : String) ~ Bool {
+		match := Get(word);
+		if(match <> Nil) {
+			return match->HasWord();
+		};
+
+		return false;
+	}
+
+	method : public : Delete(word : String) ~ Bool {
 		match := Get(word);
 		if(match <> Nil) {
 			return match->HasWord();
@@ -70,7 +85,7 @@ class Trie {
 			}
 			else {
 				return Nil;
-			}
+			};
 		};
 
 		return node;
@@ -102,6 +117,7 @@ class Trie {
 class Node {
 	@value : Char;
 	@children : Node[];
+	@parent : Node;
 	@level : Int;
 	@word : String;
 
@@ -112,11 +128,16 @@ class Node {
 		@children := Node->New[0x100];
 	}
 
-	New(value : Char, level : Int) {
+	New(value : Char, level : Int, parent : Node) {
 		@value := value;
 		@level := level;
+		@parent := parent;
 
 		@children := Node->New[0x100];
+	}
+
+	method : public : GetParent() ~ Node {
+		return @parent;
 	}
 
 	method : public : HasWord() ~ Bool {
@@ -144,7 +165,7 @@ class Node {
 	}
 
 	method : public : SetChild(value : Char, level : Int) ~ Node {
-		node := Node->New(value, level);
+		node := Node->New(value, level, @self);
 		@children[value->ToInt()] := node;
 		
 		return node;
