@@ -2,8 +2,7 @@ class Test {
 	function : Main(args : System.String[]) ~ Nil {
 		t := Trie->New();
 		
-		words := ["bear", "bell", "bid", "bull", 
-			"buy", "sell", "stock", "stop"];
+		words := ["bear", "bell", "bid", "bull", "buy", "sell", "stock", "stop"];
 
 		each(word in words) {
 			level := t->Insert(word);
