@@ -2,32 +2,20 @@ class Test {
 	function : Main(args : System.String[]) ~ Nil {
 		t := Trie->New();
 		
-		t->Insert("hello")->PrintLine();
-		t->Insert("hella")->PrintLine();
-		t->Insert("hey")->PrintLine();
-		t->Insert("neo soul")->PrintLine();
-		t->Insert("neo")->PrintLine();
-		t->Insert("neo punk")->PrintLine();
-		t->Insert("beebop")->PrintLine();
-		t->Insert("hi")->PrintLine();
-		t->Insert("dog")->PrintLine();
-		t->Insert("heha")->PrintLine();
+		words := ["bear", "bell", "bid", "bull", 
+			"buy", "sell", "stock", "stop"];
 
-#		t->Has("hella")->PrintLine();
-		t->Has("hey")->PrintLine();
-		t->Has("neo")->PrintLine();
-		t->Has("neo soul")->PrintLine();
-		t->Has("he ")->PrintLine();
-#		t->Has("dog")->PrintLine();
-#		t->Has("cat")->PrintLine();
-#		t->Has("hella")->PrintLine();
+		each(word in words) {
+			level := t->Insert(word);
+			"word: '{$word}', level={$level}"->PrintLine();
+		};
 
-		t->Match("neo")->Size()->PrintLine();
-		t->Insert("he")->PrintLine();
+		"---"->PrintLine();
 
-		t->Has("hello")->PrintLine();
-		t->Has("hella")->PrintLine();
-		t->Has("he")->PrintLine();
+		each(word in words) {
+			has := t->Has(word);
+			"word: '{$word}', has={$has}"->PrintLine();
+		};
 	}
 }
 
@@ -125,7 +113,7 @@ class Trie {
 
 class Node {
 	@value : Char;
-	@children : Node[];
+	@children : Node[]; # compress with hash table
 	@parent : Node;
 	@parent_index : Int;
 	@level : Int;
