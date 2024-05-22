@@ -13,9 +13,7 @@
   <a href="https://discord.gg/qEaCGWR7nb"><img src="https://badgen.net/badge/icon/discord?icon=discord&label" alt="Discord"></a>
 </p>
 
-Objeck is a fast, intuitive, and lightweight programming language that supports both object-oriented and functional programming paradigms, and is designed to be compatible with multiple platforms, including Windows, Linux, and macOS.
-
-Recent development has targeted machine learning development namely GOFAI and LLMs (Open AI, Gemini and LLaMa 3). 
+Objeck is a fast, intuitive, and lightweight programming language that supports object-oriented and functional programming paradigms across various platforms such as Windows, Linux, and macOS. Recent development efforts have targeted machine learning APIs and frameworks. 
 
 ```ruby
 use API.Google.Gemini, System.IO.Filesystem;
