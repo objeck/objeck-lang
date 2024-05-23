@@ -65,7 +65,7 @@ Want to get started? Take a look at the [language guide](https://objeck.org/gett
       * OpenAI [enqueue]
       * Gemini
     * Image generation
-      * OpenAI [queueing]
+      * OpenAI [queued]
       * Gemini
       
 * **v2024.5.0 [current]**
