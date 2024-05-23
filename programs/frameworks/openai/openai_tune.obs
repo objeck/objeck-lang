@@ -41,7 +41,7 @@ class Test {
 	}
 
 	function : GetApiKey() ~ String {
-		token := FileReader->ReadFile("api_key.txt");
+		token := FileReader->ReadFile("openai_api_key.dat");
 		if(token <> Nil) {
 			return token->Trim();
 		};
