@@ -518,7 +518,27 @@ Support for OpenAIs assistant and general APIs
 ~#
 bundle API.OpenAI {
 	#~
-	Open AI file
+	OpenAI fine tuning 
+	~#
+	class FineTuning from EndPoint {
+		New(file_json : JsonElement, token : String) {
+			Parent();
+		}
+
+		#~
+		Create a fine-turning job using an uploaded file as training data
+		@param model model name
+		@param training_file training file in JSONL format
+		@param token API token
+		@return fine-tuning job instance
+		~#
+		function : Create(model : String, training_file : String, token : String) ~ API.OpenAI.FineTuning {
+			return Nil;
+		}
+	}
+
+	#~
+	OpenAI file support
 	~#
 	class File from EndPoint {
 		@id : String;
