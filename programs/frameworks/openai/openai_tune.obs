@@ -1,0 +1,18 @@
+use Collection, API.OpenAI, System.IO.Filesystem, Data.JSON, Data.CSV;
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		token := GetApiKey();
+		if(token <> Nil) {	
+		};
+	}
+	
+	function : GetApiKey() ~ String {
+		token := FileReader->ReadFile("api_key.txt");
+		if(token <> Nil) {
+			return token->Trim();
+		};
+
+		return Nil;
+	}
+}
