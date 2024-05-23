@@ -31,9 +31,11 @@ class Test {
 				name := file->GetFilename();
 				id := file->GetId();
 				"file='{$name}', id='{$id}'"->PrintLine();
+
+				FineTuning->Create("gpt-3.5-turbo", id, token->SubString((3), token->Size() - 3));
 			}
 			else {
-				">>> Invalid parameters for '{$command}'' command <<<"->ErrorLine();
+				">>> Invalid command or parameters for '{$command}' <<<"->ErrorLine();
 			}
 		};
 	}

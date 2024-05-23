@@ -521,18 +521,45 @@ bundle API.OpenAI {
 	OpenAI fine tuning 
 	~#
 	class FineTuning from EndPoint {
-		New(file_json : JsonElement, token : String) {
+		New(tune_json : JsonElement, token : String) {
 			Parent();
 		}
 
 		#~
 		Create a fine-turning job using an uploaded file as training data
 		@param model model name
-		@param training_file training file in JSONL format
+		@param training_file_id uploaded training file ID to a file in JSONL format
 		@param token API token
 		@return fine-tuning job instance
 		~#
-		function : Create(model : String, training_file : String, token : String) ~ API.OpenAI.FineTuning {
+		function : Create(model : String, training_file_id : String, token : String) ~ API.OpenAI.FineTuning {
+			tune_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			tune_json->Insert("model", model);
+			tune_json->Insert("training_file", training_file_id);
+			data := tune_json->ToString()->ToByteArray();
+
+			headers := Map->New()<String, String>;
+			headers->Insert("Authorization", "Bearer sk-{$token}");
+#			headers->Insert("OpenAI-Beta", "assistants=v1");
+			response := HttpsClient->QuickPost(Url->New("https://api.openai.com/v1/fine_tuning/jobs"), data, "application/json", headers);
+			if(response <> Nil) {
+response->GetContent()->ToString()->PrintLine();				
+				tune_json := JsonParser->TextToElement(response->GetContent()->ToString());
+">>> Parsed <<<"->PrintLine();
+
+				if(tune_json = Nil) {
+					"### Error: Unable to parse response ###"->ErrorLine();
+					return Nil;
+				};
+				
+				if(tune_json->Has("error")) {
+					error_str := tune_json->FindElements("error/message")->GetString();
+					SetLastError(error_str);
+					return Nil;
+				};
+			};
+">>> Done! <<<"->PrintLine();
+
 			return Nil;
 		}
 	}
