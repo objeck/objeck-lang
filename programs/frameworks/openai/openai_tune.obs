@@ -3,21 +3,38 @@ use Collection, API.OpenAI, System.IO.Filesystem, Data.JSON, Data.CSV;
 class Test {
 	function : Main(args : String[]) ~ Nil {
 		token := GetApiKey();
-		if(token <> Nil) {
-#			filename := args[0];
+		if(token <> Nil & args->Size() > 0) {
+			command := args[0];
 
-			files := API.OpenAI.File->ListFiles(token);
-			if(files <> Nil) {
-				each(file in files) {
-					file->GetId()->PrintLine();
+			if(command->Equals("upload") & args->Size() = 2) {
+				filename := args[1];
+				data := FileReader->ReadFile(filename)->ToByteArray();
+				API.OpenAI.File->Create(filename, "fine-tune", data, token)->PrintLine();
+			}
+			else if(command->Equals("list")) {
+				files := API.OpenAI.File->ListFiles(token);
+				if(files <> Nil) {
+					each(file in files) {
+						name := file->GetFilename();
+						id := file->GetId();
+						"file='{$name}', id='{$id}'"->PrintLine();
+					};
+				}
+				else {
+					API.OpenAI.File->GetLastError()->PrintLine();
 				};
 			}
-			else {
-				API.OpenAI.File->GetLastError()->PrintLine();
-			};
+			else if(command->Equals("tune") & args->Size() = 2) {
+				filename := args[1];
+				file := API.OpenAI.File->LoadOrCreate(filename, token);
 
-#			data := FileReader->ReadFile(filename)->ToByteArray();
-#			API.OpenAI.File->Create(filename, data, token)->PrintLine();
+				name := file->GetFilename();
+				id := file->GetId();
+				"file='{$name}', id='{$id}'"->PrintLine();
+			}
+			else {
+				">>> Invalid parameters for '{$command}'' command <<<"->ErrorLine();
+			}
 		};
 	}
 
