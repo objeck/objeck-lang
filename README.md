@@ -59,10 +59,10 @@ Want to get started? Take a look at the [language guide](https://objeck.org/gett
 
 * v2024.6.x
     * Support for the LLaMa 3 API
-    * Snowflake SQL integration
-
+    * Model tuning for OpenAI and Gemini
+      
 * v2024.5.0 **[current]**
-  * DeepMind (Gemini) support for function calls
+  * Gemini support for function calls
   * JSON Scheme support for function modeling for OpenAI, Gemini, and LLaMa
   * Enhancements
     * Added Collection 'Reduce' methods
