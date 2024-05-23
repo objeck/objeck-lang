@@ -61,9 +61,14 @@ Want to get started? Take a look at the [language guide](https://objeck.org/gett
   * LLaMa 3 local model support
   
 * v2024.6.0
-    * Model tuning for OpenAI and Gemini
+    * Model tuning
+      * OpenAI [enqueue]
+      * Gemini
+    * Image generation
+      * OpenAI [queueing]
+      * Gemini
       
-* v2024.5.0 **[current]**
+* **v2024.5.0 [current]**
   * Gemini support for function calls
   * JSON Scheme support for function modeling for OpenAI, Gemini, and LLaMa
   * Enhancements
