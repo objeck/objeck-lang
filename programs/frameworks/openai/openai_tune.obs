@@ -3,10 +3,24 @@ use Collection, API.OpenAI, System.IO.Filesystem, Data.JSON, Data.CSV;
 class Test {
 	function : Main(args : String[]) ~ Nil {
 		token := GetApiKey();
-		if(token <> Nil) {	
+		if(token <> Nil) {
+#			filename := args[0];
+
+			files := API.OpenAI.File->ListFiles(token);
+			if(files <> Nil) {
+				each(file in files) {
+					file->GetId()->PrintLine();
+				};
+			}
+			else {
+				API.OpenAI.File->GetLastError()->PrintLine();
+			};
+
+#			data := FileReader->ReadFile(filename)->ToByteArray();
+#			API.OpenAI.File->Create(filename, data, token)->PrintLine();
 		};
 	}
-	
+
 	function : GetApiKey() ~ String {
 		token := FileReader->ReadFile("api_key.txt");
 		if(token <> Nil) {
