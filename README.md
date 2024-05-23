@@ -58,8 +58,8 @@ Want to get started? Take a look at the [language guide](https://objeck.org/gett
 ## What's New?
 
 * v2024.6.x
-  * Support for the LLaMa 3 API
-    
+  * LLaMa 3 local model support
+  
 * v2024.6.0
     * Model tuning for OpenAI and Gemini
       
