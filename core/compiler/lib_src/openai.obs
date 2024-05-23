@@ -623,9 +623,21 @@ bundle API.OpenAI {
 		@return string representation
 		~#
 		function : Create(name : String, content : Byte[], token : String) ~ Bool {
+			return Create(name, "assistants", content, token);
+		}
+
+		#~
+		Upload a file that can be used across various endpoints
+		@param name file object name
+		@param content file content
+		@param purpose file purpose 'assistants', 'vision' or 'fine-tune'
+		@param token API token
+		@return string representation
+		~#
+		function : Create(name : String, purpose : String, content : Byte[], token : String) ~ Bool {
 			purpose_headers := Map->New()<String, String>;
 			purpose_headers->Insert("Content-Disposition", "form-data; name=\"purpose\"");
-			purpose_content := Web.HTTP.Server.MultipartContent->New(purpose_headers, "assistants"->ToByteArray());
+			purpose_content := Web.HTTP.Server.MultipartContent->New(purpose_headers, purpose->ToByteArray());
 
 			content_headers := Map->New()<String, String>;
 			content_headers->Insert("Content-Disposition", "form-data; name=\"file\"; filename=\"{$name}\"");
@@ -715,6 +727,17 @@ bundle API.OpenAI {
 		@return file reference
 		~#
 		function : LoadOrCreate(filename : String, token : String) ~ API.OpenAI.File {
+			return LoadOrCreate(filename, "assistants", token);
+		}
+
+		#~
+		Loads or creates an OpenAI file from the local filesystem
+		@param filename local file path
+		@param purpose file purpose 'assistants', 'vision' or 'fine-tune'		
+		@param token API token
+		@return file reference
+		~#
+		function : LoadOrCreate(filename : String, purpose : String, token : String) ~ API.OpenAI.File {
 			file := LoadByName(filename, token);
 			
 			if(file = Nil) {
@@ -725,7 +748,7 @@ bundle API.OpenAI {
 					Runtime->Exit(1);
 				};
 
-				if(API.OpenAI.File->Create(filename, content, token)) {
+				if(API.OpenAI.File->Create(filename, purpose, content, token)) {
 					file := LoadByName(filename, token);
 				};
 			};

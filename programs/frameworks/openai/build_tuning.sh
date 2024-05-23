@@ -8,4 +8,4 @@ obc -src $OBJECK_ROOT/core/compiler/lib_src/openai.obs -lib json,net,misc -tar l
 
 rm -f *.obe
 obc -src openai_tune -lib openai,csv,net,json,misc
-obr openai_tune $1
+obr openai_tune $1 $2
