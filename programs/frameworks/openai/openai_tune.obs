@@ -1,4 +1,4 @@
-use Collection, API.OpenAI, System.IO.Filesystem, Data.JSON, Data.CSV;
+use Collection, API.OpenAI, API.OpenAI.FineTuning, System.IO.Filesystem, Data.JSON, Data.CSV;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
@@ -25,10 +25,22 @@ class Test {
 				};
 			}
 			else if(command->Equals("list-jobs")) {
-				jobs := API.OpenAI.FineTuning->ListJobs(2, token);
+				jobs := API.OpenAI.FineTuning.Tuning->ListJobs(2, token);
 				if(jobs <> Nil) {
 					each(job in jobs) {
 						job->ToString()->PrintLine();
+					};
+				}
+				else {
+					API.OpenAI.File->GetLastError()->PrintLine();
+				};
+			}
+			else if(command->Equals("list-events") & args->Size() = 2) {
+				job_id := args[1];
+				events := API.OpenAI.FineTuning.Tuning->ListEvents(job_id, token);
+				if(events <> Nil) {
+					each(event in events) {
+						event->ToString()->PrintLine();
 					};
 				}
 				else {
@@ -47,7 +59,7 @@ class Test {
 					token := token->SubString((3), token->Size() - 3);
 				};
 
-				tuning_job := FineTuning->Create("gpt-3.5-turbo", id, token);
+				tuning_job := Tuning->Create("gpt-3.5-turbo", id, token);
 				tuning_job->ToString()->PrintLine();
 			}
 			else {
