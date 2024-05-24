@@ -9,11 +9,11 @@ Support for OpenAI audio APIs
 ~#
 bundle API.OpenAI.Audio {
 	#~
-	Transcribes audio into the input language.
+	Transcribes audio into the given output format.
 	~#
 	class Transcription from EndPoint {
 		#~
-		Transcribes audio into the input language.
+		Transcribes audio into the output format.
 		@param name transcription name
 		@param content byte stream to translate
 		@param model ID of the model to use
@@ -25,7 +25,7 @@ bundle API.OpenAI.Audio {
 		}
 
 		#~
-		Transcribes audio into the input language.
+		Transcribes audio into the given output format.
 		@param name transcription name
 		@param content byte stream to translate
 		@param model ID of the model to use
@@ -319,9 +319,9 @@ bundle API.OpenAI.Chat {
 					return Nil;
 				};
 				
-				if(chat_json->Has("error")) {
-					error_str := chat_json->FindElements("error/message")->GetString();
-					SetLastError(error_str);
+				error_str := chat_json->FindElements("error/message");
+				if(error_str <> Nil) {
+					SetLastError(error_str->GetString());
 					return Nil;
 				};
 
@@ -521,8 +521,136 @@ bundle API.OpenAI {
 	OpenAI fine tuning 
 	~#
 	class FineTuning from EndPoint {
-		New(tune_json : JsonElement, token : String) {
+		@id : String;
+		@object : String;
+		@model : String;
+		@created_at : String;
+		@finished_at : String;
+		@fine_tuned_model : String;
+		@organization_id : String;
+		@status : String;
+		@training_file : String;
+		@seed : String;
+		@n_epochs : String;
+		@batch_size : String;
+		@learning_rate_multiplier : String;
+		@validation_file : String;
+		@trained_tokens : String;
+		@user_provided_suffix : String;
+		@estimated_finish : String;
+		
+		@error_code : String;
+		@error_param : String;
+		@error_message : String;
+
+		New(tune_json : JsonElement) {
 			Parent();
+
+			@id := tune_json->Get("id")->GetString();
+			@object := tune_json->Get("object")->GetString();
+			@model := tune_json->Get("model")->GetString();
+			@created_at := tune_json->Get("created_at")->GetString();
+			
+			finished_at_json := tune_json->Get("finished_at");
+			if(finished_at_json <> Nil & <>finished_at_json->IsNull()) {
+				@finished_at := finished_at_json->GetString();
+			};
+
+			fine_tuned_model_json := tune_json->Get("fine_tuned_model");
+			if(fine_tuned_model_json <> Nil & <>fine_tuned_model_json->IsNull()) {
+				@fine_tuned_model := fine_tuned_model_json->GetString();
+			};
+
+			@organization_id := tune_json->Get("organization_id")->GetString();
+			@status := tune_json->Get("status")->GetString();
+			@training_file := tune_json->Get("training_file")->GetString();
+			@seed := tune_json->Get("seed")->GetString();
+
+			hyper_parameters_json := tune_json->Get("hyperparameters");
+			if(hyper_parameters_json <> Nil & <>hyper_parameters_json->IsNull()) {
+				@n_epochs := hyper_parameters_json->Get("n_epochs")->GetString();
+				@batch_size := hyper_parameters_json->Get("batch_size")->GetString();
+				@learning_rate_multiplier := hyper_parameters_json->Get("learning_rate_multiplier")->GetString();
+			};
+
+			validation_file_json := tune_json->Get("validation_file");
+			if(validation_file_json <> Nil & <>validation_file_json->IsNull()) {
+				@validation_file := validation_file_json->GetString();
+			};
+
+			trained_tokens_json := tune_json->Get("trained_tokens");
+			if(trained_tokens_json <> Nil & <>trained_tokens_json->IsNull()) {
+				@trained_tokens := trained_tokens_json->GetString();
+			};
+
+			user_provided_suffix_json := tune_json->Get("user_provided_suffix");
+			if(user_provided_suffix_json <> Nil & <>user_provided_suffix_json->IsNull()) {
+				@user_provided_suffix := user_provided_suffix_json->GetString();
+			};
+
+			error_code_json := tune_json->FindElements("error/code");
+			if(error_code_json <> Nil) {
+				@error_code := error_code_json->GetString();
+				@error_param := tune_json->FindElements("error/param")->GetString();
+				@error_message := tune_json->FindElements("error/message")->GetString();
+			};
+
+			estimated_finish_json := tune_json->Get("estimated_finish");
+
+#~
+			"result_files":	[],
+			"integrations":	[]
+~#
+		}
+
+		#~
+		Get object instance API ID
+		@return instance ID
+		~#
+		method : public : GetId() ~ String {
+			return @id;
+		}
+
+		#~
+		Get the object type
+		@return object type
+		~#
+		method : public : GetObject() ~ String {
+			return @object;
+		}
+
+		#~
+		Get the name of the training file
+		@return name of the training file
+		~#
+		method : public : GetTrainingFilename() ~ String {
+			return @training_file
+		}
+
+		#~
+		String representation of the object
+		@return string representation
+		~#
+		method : public : ToString() ~ String {
+			finished_at := @finished_at = Nil ? "<null>" : @finished_at;
+			fine_tuned_model := @fine_tuned_model = Nil ? "<null>" : @fine_tuned_model;
+			validation_file := @validation_file = Nil ? "<null>" : @validation_file;
+			trained_tokens := @trained_tokens = Nil ? "<null>" : @trained_tokens;
+			user_provided_suffix := @user_provided_suffix = Nil ? "<null>" : @user_provided_suffix;
+			estimated_finish := @estimated_finish = Nil ? "<null>" : @estimated_finish;
+			error_code := @error_code = Nil ? "<null>" : @error_code;
+			error_param := @error_param = Nil ? "<null>" : @error_param;
+			error_message := @error_message = Nil ? "<null>" : @error_message;
+			
+			buffer := "[id='{$@id}', object='{$@object}', model={$@model}, created_at={$@created_at}, ";
+			buffer += "finished_at='{$finished_at}', fine_tuned_model='{$fine_tuned_model}', ";
+			buffer += "n_epochs='{$@n_epochs}', batch_size='{$@batch_size}, learning_rate_multiplier='{$@learning_rate_multiplier}', ";
+			buffer += "validation_file='{$validation_file}', trained_tokens='{$trained_tokens}', ";
+			buffer += "estimated_finish='{$estimated_finish}', status='{$@status}', user_provided_suffix='{$user_provided_suffix}', ";
+			buffer += "error_code='{$error_code}', error_param='{$error_param}', error_message='{$error_message}', ";
+			buffer += "training_file='{$@training_file}, organization_id='{$@organization_id}']";
+
+			return buffer;
 		}
 
 		#~
@@ -540,27 +668,76 @@ bundle API.OpenAI {
 
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer sk-{$token}");
-#			headers->Insert("OpenAI-Beta", "assistants=v1");
 			response := HttpsClient->QuickPost(Url->New("https://api.openai.com/v1/fine_tuning/jobs"), data, "application/json", headers);
 			if(response <> Nil) {
-response->GetContent()->ToString()->PrintLine();				
+				# response->GetContent()->ToString()->PrintLine();
 				tune_json := JsonParser->TextToElement(response->GetContent()->ToString());
-">>> Parsed <<<"->PrintLine();
 
 				if(tune_json = Nil) {
 					"### Error: Unable to parse response ###"->ErrorLine();
 					return Nil;
 				};
-				
-				if(tune_json->Has("error")) {
-					error_str := tune_json->FindElements("error/message")->GetString();
+
+				error_str := tune_json->FindElements("error/message");				
+				if(error_str <> Nil) {
+					SetLastError(error_str->GetString());
+					return Nil;
+				};
+
+				return FineTuning->New(tune_json);
+			};
+
+			return Nil;
+		}
+
+		#~
+		Loads a list fine-tuning jobs
+		@param token API token
+		@return fine-tuning jobs
+		~#
+		function : ListJobs(token : String) ~ Vector<API.OpenAI.FineTuning> {
+			return ListJobs(-1, token);
+		}
+
+		#~
+		Loads a list fine-tuning jobs
+		@param token API token
+		@param limit number of jobs to retrieve
+		@return fine-tuning jobs
+		~#
+		function : ListJobs(limit : Int, token : String) ~ Vector<API.OpenAI.FineTuning> {
+			jobs := Vector->New()<API.OpenAI.FineTuning>
+
+			headers := Map->New()<String, String>;
+			headers->Insert("Authorization", "Bearer {$token}");
+			
+			url_str := "https://api.openai.com/v1/fine_tuning/jobs";
+			if(limit > 0) {
+				url_str += "?limit={$limit}";
+			};
+			
+			response := HttpsClient->QuickGet(Url->New(url_str), headers);
+			if(response <> Nil) {
+				# response->GetContent()->ToString()->PrintLine();
+				root_json := JsonParser->TextToElement(response->GetContent()->ToString());
+
+				if(root_json = Nil) {
+					return Nil;
+				};
+
+				if(root_json->Has("error")) {
+					error_str := root_json->FindElements("error/message")->GetString();
 					SetLastError(error_str);
 					return Nil;
 				};
-			};
-">>> Done! <<<"->PrintLine();
 
-			return Nil;
+				jobs_json := root_json->Get("data");
+				each(job_json in jobs_json) {
+					jobs->AddBack(API.OpenAI.FineTuning->New(job_json));
+				};
+			};
+
+			return jobs;
 		}
 	}
 
