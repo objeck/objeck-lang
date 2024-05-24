@@ -126,7 +126,7 @@ class Embaddings {
 * [LSP pulgins](https://github.com/objeck/objeck-lsp) for VSCode, Sublime, Kate, and more
 * API [documentation](https://www.objeck.org)
 
-## Libraries
+## [Libraries](https://github.com/objeck/objeck-lang/tree/master/core/compiler/lib_src)
 
 * Machine learning (OpenAI, Gemini, GOFAI)
 * Web (server, client, OAuth)
@@ -143,7 +143,7 @@ class Embaddings {
 * 2D gaming
 * 
 
-## Glance of Features
+## Features
 
 ### [Object-oriented](https://en.wikipedia.org/wiki/Object-oriented_programming)
   
