@@ -1090,7 +1090,8 @@ bundle API.OpenAI {
 			DALLE2_1024_1024,
 			DALLE3_1024_1024,
 			DALLE3_1792_1024,
-			DALLE3_1024_1792
+			DALLE3_1024_1792,
+			DALLE_DEFAULT
 		}
 
 		New(image_json : JsonElement) {
@@ -1110,6 +1111,16 @@ bundle API.OpenAI {
 		#~
 		Creates an image given a prompt
 		@param prompt text description of the desired image
+		@param token API token
+		@return generated image
+		~#
+		function : Create(prompt : String, token : String) ~ API.OpenAI.Image {
+			return Create(prompt, Nil, -1, Nil, Nil, Image->Size->DALLE_DEFAULT, Nil, Nil, token);
+		}
+
+		#~
+		Creates an image given a prompt
+		@param prompt text description of the desired image
 		@param model model name
 		@param n number of images
 		@param quality quality of the image that will be generated		
@@ -1117,16 +1128,29 @@ bundle API.OpenAI {
 		@param size size of the generated image
 		@param style style of the generated image
 		@param user identifier representing your end-user
+		@param token API token
 		@return generated image
 		~#
 		function : Create(prompt : String, model : String, n : Int, quality : String, response_format : String,
 				size : Image->Size, style : String, user : String, token : String) ~ API.OpenAI.Image {
 			image_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 			image_json->Insert("prompt", prompt);
-			image_json->Insert("model", model);
-			image_json->Insert("n", n);
-			image_json->Insert("quality", quality);
-			image_json->Insert("response_format", response_format);
+			
+			if(model <> Nil) {
+				image_json->Insert("model", model);
+			}
+			
+			if(n > 0 & n <= 10) {
+				image_json->Insert("n", n);
+			};
+			
+			if(quality <> Nil) {
+				image_json->Insert("quality", quality);
+			};
+
+			if(response_format <> Nil) {
+				image_json->Insert("response_format", response_format);
+			};
 			
 			select(size) {
 				label Image->Size->DALLE2_256_256 {
@@ -1153,8 +1177,14 @@ bundle API.OpenAI {
 					
 				}
 			};
-			image_json->Insert("style", style);
-			image_json->Insert("user", user);
+
+			if(style <> Nil) {
+				image_json->Insert("style", style);
+			};
+
+			if(user <> Nil) {
+				image_json->Insert("user", user);
+			};
 
 			data := image_json->ToString()->ToByteArray();
 
