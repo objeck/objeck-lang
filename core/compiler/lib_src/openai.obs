@@ -514,17 +514,17 @@ bundle API.OpenAI.Chat {
 }
 
 #~
-Support for OpenAIs assistant and general APIs
+Support for fine-tuning models
 ~#
-bundle API.OpenAI {
+bundle API.OpenAI.FineTuning {
 	#~
 	OpenAI fine tuning 
 	~#
-	class FineTuning from EndPoint {
+	class Tuning from EndPoint {
 		@id : String;
 		@object : String;
 		@model : String;
-		@created_at : String;
+		@created_at : Int;
 		@finished_at : String;
 		@fine_tuned_model : String;
 		@organization_id : String;
@@ -549,7 +549,7 @@ bundle API.OpenAI {
 			@id := tune_json->Get("id")->GetString();
 			@object := tune_json->Get("object")->GetString();
 			@model := tune_json->Get("model")->GetString();
-			@created_at := tune_json->Get("created_at")->GetString();
+			@created_at := tune_json->Get("created_at")->GetInt();
 			
 			finished_at_json := tune_json->Get("finished_at");
 			if(finished_at_json <> Nil & <>finished_at_json->IsNull()) {
@@ -596,11 +596,14 @@ bundle API.OpenAI {
 			};
 
 			estimated_finish_json := tune_json->Get("estimated_finish");
+			if(estimated_finish_json <> Nil & <>estimated_finish_json->IsNull()) {
+				@estimated_finish := estimated_finish_json->GetString();
+			};
 
-#~
-			"result_files":	[],
-			"integrations":	[]
-~#
+			#~
+				"result_files":	[],
+				"integrations":	[]
+			~#
 		}
 
 		#~
@@ -660,7 +663,7 @@ bundle API.OpenAI {
 		@param token API token
 		@return fine-tuning job instance
 		~#
-		function : Create(model : String, training_file_id : String, token : String) ~ API.OpenAI.FineTuning {
+		function : Create(model : String, training_file_id : String, token : String) ~ API.OpenAI.FineTuning.Tuning {
 			tune_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 			tune_json->Insert("model", model);
 			tune_json->Insert("training_file", training_file_id);
@@ -684,7 +687,7 @@ bundle API.OpenAI {
 					return Nil;
 				};
 
-				return FineTuning->New(tune_json);
+				return Tuning->New(tune_json);
 			};
 
 			return Nil;
@@ -695,18 +698,18 @@ bundle API.OpenAI {
 		@param token API token
 		@return fine-tuning jobs
 		~#
-		function : ListJobs(token : String) ~ Vector<API.OpenAI.FineTuning> {
+		function : ListJobs(token : String) ~ Vector<API.OpenAI.FineTuning.Tuning> {
 			return ListJobs(-1, token);
 		}
 
 		#~
 		Loads a list fine-tuning jobs
-		@param token API token
 		@param limit number of jobs to retrieve
+		@param token API token
 		@return fine-tuning jobs
 		~#
-		function : ListJobs(limit : Int, token : String) ~ Vector<API.OpenAI.FineTuning> {
-			jobs := Vector->New()<API.OpenAI.FineTuning>
+		function : ListJobs(limit : Int, token : String) ~ Vector<API.OpenAI.FineTuning.Tuning> {
+			jobs := Vector->New()<API.OpenAI.FineTuning.Tuning>
 
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
@@ -715,7 +718,7 @@ bundle API.OpenAI {
 			if(limit > 0) {
 				url_str += "?limit={$limit}";
 			};
-			
+
 			response := HttpsClient->QuickGet(Url->New(url_str), headers);
 			if(response <> Nil) {
 				# response->GetContent()->ToString()->PrintLine();
@@ -725,22 +728,148 @@ bundle API.OpenAI {
 					return Nil;
 				};
 
-				if(root_json->Has("error")) {
-					error_str := root_json->FindElements("error/message")->GetString();
-					SetLastError(error_str);
+				error_str := root_json->FindElements("error/message");				
+				if(error_str <> Nil) {
+					SetLastError(error_str->GetString());
 					return Nil;
 				};
 
 				jobs_json := root_json->Get("data");
 				each(job_json in jobs_json) {
-					jobs->AddBack(API.OpenAI.FineTuning->New(job_json));
+					jobs->AddBack(API.OpenAI.FineTuning.Tuning->New(job_json));
 				};
 			};
 
 			return jobs;
 		}
+
+		#~
+		Lists events for a job
+		@param job_id job ID
+		@param token API token
+		@return job events
+		~#
+		function : ListEvents(job_id : String, token : String) ~ Vector<API.OpenAI.FineTuning.Job> {
+			events := Vector->New()<API.OpenAI.FineTuning.Job>
+
+			headers := Map->New()<String, String>;
+			headers->Insert("Authorization", "Bearer {$token}");
+			
+			response := HttpsClient->QuickGet(Url->New("https://api.openai.com/v1/fine_tuning/jobs/{$job_id}/events"), headers);
+			if(response <> Nil) {
+				response->GetContent()->ToString()->PrintLine();
+
+				root_json := JsonParser->TextToElement(response->GetContent()->ToString());
+
+				if(root_json = Nil) {
+					return Nil;
+				};
+
+				error_str := root_json->FindElements("error/message");				
+				if(error_str <> Nil) {
+					SetLastError(error_str->GetString());
+					return Nil;
+				};
+
+				events_json := root_json->Get("data");
+				each(job_json in events_json) {
+					events->AddBack(API.OpenAI.FineTuning.Job->New(job_json));
+				};
+			};
+
+			return events;
+		}
 	}
 
+	#~
+	OpenAI fine tuning 
+	~#
+	class Job {
+		@id : String;
+		@object : String;
+		@created_at : Int;
+		@level : String;
+		@message : String;
+		@type : String;
+
+#~	      
+		"data": {
+			"error_code": "invalid_n_examples",
+			"error_param": "training_file"
+		},
+~#	      
+
+		New(tune_json : JsonElement) {
+			@id := tune_json->Get("id")->GetString();
+			@object := tune_json->Get("object")->GetString();
+			@created_at := tune_json->Get("created_at")->GetInt();
+			@level := tune_json->Get("level")->GetString();
+			@message := tune_json->Get("message")->GetString();
+			@type := tune_json->Get("type")->GetString();
+		}
+
+		#~
+		Get object instance API ID
+		@return instance ID
+		~#
+		method : public : GetId() ~ String {
+			return @id;
+		}
+
+		#~
+		Get the object type
+		@return object type
+		~#
+		method : public : GetObject() ~ String {
+			return @object;
+		}
+
+		#~
+		Unix timestamp (in seconds) of when the object instance was created
+		@return time with the object instance was created
+		~#
+		method : public : GetCreatedAt() ~ Int {
+			return @created_at;
+		}
+
+		#~
+		Get the level
+		@return level
+		~#
+		method : public : GetLevel() ~ String {
+			return @level;
+		}
+
+		#~
+		Get message
+		@return message
+		~#
+		method : public : GetMessage() ~ String {
+			return @message;
+		}
+
+		#~
+		Get type
+		@return type
+		~#
+		method : public : GetType() ~ String {
+			return @type;
+		}
+
+		#~
+		String representation of the object
+		@return string representation
+		~#
+		method : public : ToString() ~ String {
+			return "[id='{$@id}', object='{$@object}', created_at={$@created_at}, level='{$@level}', message='{$@message}', type='{$@type}']";
+		}
+	}
+}
+
+#~
+Support for OpenAIs assistant and general APIs
+~#
+bundle API.OpenAI {
 	#~
 	OpenAI file support
 	~#
