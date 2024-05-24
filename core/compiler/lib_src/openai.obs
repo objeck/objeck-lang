@@ -791,13 +791,8 @@ bundle API.OpenAI.FineTuning {
 		@level : String;
 		@message : String;
 		@type : String;
-
-#~	      
-		"data": {
-			"error_code": "invalid_n_examples",
-			"error_param": "training_file"
-		},
-~#	      
+		@error_code : String;
+		@error_param : String;
 
 		New(tune_json : JsonElement) {
 			@id := tune_json->Get("id")->GetString();
@@ -806,6 +801,12 @@ bundle API.OpenAI.FineTuning {
 			@level := tune_json->Get("level")->GetString();
 			@message := tune_json->Get("message")->GetString();
 			@type := tune_json->Get("type")->GetString();
+
+			error_code_json := tune_json->FindElements("data/error_code");
+			if(error_code_json <> Nil) {
+				@error_code := error_code_json->GetString();
+				@error_param := tune_json->FindElements("data/error_param")->GetString();
+			};
 		}
 
 		#~
@@ -861,7 +862,13 @@ bundle API.OpenAI.FineTuning {
 		@return string representation
 		~#
 		method : public : ToString() ~ String {
-			return "[id='{$@id}', object='{$@object}', created_at={$@created_at}, level='{$@level}', message='{$@message}', type='{$@type}']";
+			error_code := @error_code = Nil ? "<null>" : @error_code;
+			error_param := @error_param = Nil ? "<null>" : @error_param;
+
+			buffer := "[id='{$@id}', object='{$@object}', created_at={$@created_at}, level='{$@level}', ";
+			buffer += "message='{$@message}', type='{$@type}', error_code='{$error_code}', error_param='{$error_param}']";
+
+			return buffer;
 		}
 	}
 }
