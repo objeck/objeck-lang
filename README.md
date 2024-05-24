@@ -146,7 +146,7 @@ class Embaddings {
 
 ## Features
 
-### [Object-oriented](https://en.wikipedia.org/wiki/Object-oriented_programming)
+### Object-oriented
   
 #### Inheritance
 ```ruby
@@ -248,7 +248,7 @@ bytes := serializer->Serialize();
 bytes->Size()->PrintLine();
 ```
 
-### [Functional](https://en.wikipedia.org/wiki/Functional_programming)
+### Functional
 #### Closures and Lambda Expressions
 ```ruby
 funcs := Vector->New()<FuncRef<IntRef>>;
