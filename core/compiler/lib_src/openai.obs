@@ -872,6 +872,32 @@ bundle API.OpenAI.FineTuning {
 
 			return tuning;
 		}
+
+		#~
+		Cancel a tuning job
+		@param id tuning job ID
+		@param token API token
+		@return canceled tuning reference
+		~#
+		function : Cancel(id : String, token : String) ~ API.OpenAI.FineTuning.Tuning {
+			tuning : API.OpenAI.FineTuning.Tuning;
+
+			headers := Map->New()<String, String>;
+			headers->Insert("Authorization", "Bearer {$token}");
+			response := HttpsClient->QuickGet(Url->New("https://api.openai.com/v1/fine_tuning/jobs/{$id}/cancel"), headers);
+			
+			if(response <> Nil) {
+				# response->GetContent()->ToString()->PrintLine();				
+				tuning_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				if(tuning_json = Nil) {
+					return Nil;
+				};
+
+				tuning := API.OpenAI.FineTuning.Tuning->New(tuning_json);
+			};
+
+			return tuning;
+		}
 	}
 
 	#~
