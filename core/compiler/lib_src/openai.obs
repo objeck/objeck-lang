@@ -779,6 +779,8 @@ bundle API.OpenAI.FineTuning {
 
 			return events;
 		}
+
+		# TODO: https://platform.openai.com/docs/api-reference/fine-tuning/list-checkpoints
 	}
 
 	#~
