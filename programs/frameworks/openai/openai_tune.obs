@@ -57,11 +57,24 @@ class Test {
 					API.OpenAI.File->GetLastError()->PrintLine();
 				};
 			}
+			else if(command->Equals("cancel-job")) {
+				job_id := args[1]
+				job := API.OpenAI.FineTuning.Tuning->Load(job_id, token);
+				if(job <> Nil) {
+					job := job->Cancel(job->GetId(), token);
+					job->GetStatus()->PrintLine();
+				}
+				else {
+					API.OpenAI.File->GetLastError()->PrintLine();
+				};
+			}
 			else if(command->Equals("list-jobs")) {
 				jobs := API.OpenAI.FineTuning.Tuning->ListJobs(2, token);
 				if(jobs <> Nil) {
 					each(job in jobs) {
-						job->ToString()->PrintLine();
+						id := job->GetId();
+						status := job->GetStatus();
+						"job={$id}, status='{$status}"->PrintLine();
 					};
 				}
 				else {
@@ -80,9 +93,9 @@ class Test {
 					API.OpenAI.File->GetLastError()->PrintLine();
 				};
 			}
-			else if(command->Equals("tune") & args->Size() = 2) {
+			else if(command->Equals("create-job") & args->Size() = 2) {
 				filename := args[1];
-				file := API.OpenAI.File->LoadOrCreate(filename, token);
+				file := API.OpenAI.File->LoadOrCreate(filename, "fine-tune", token);
 
 				name := file->GetFilename();
 				id := file->GetId();

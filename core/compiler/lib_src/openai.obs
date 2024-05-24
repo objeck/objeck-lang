@@ -525,7 +525,7 @@ bundle API.OpenAI.FineTuning {
 		@object : String;
 		@model : String;
 		@created_at : Int;
-		@finished_at : String;
+		@finished_at : Int;
 		@fine_tuned_model : String;
 		@organization_id : String;
 		@status : String;
@@ -552,7 +552,7 @@ bundle API.OpenAI.FineTuning {
 			
 			finished_at_json := tune_json->Get("finished_at");
 			if(finished_at_json <> Nil & <>finished_at_json->IsNull()) {
-				@finished_at := finished_at_json->GetString();
+				@finished_at := finished_at_json->GetInt();
 			};
 
 			fine_tuned_model_json := tune_json->Get("fine_tuned_model");
@@ -614,6 +614,22 @@ bundle API.OpenAI.FineTuning {
 		}
 
 		#~
+		Unix timestamp (in seconds) of when the object instance was created
+		@return time with the object instance was created
+		~#
+		method : public : GetCreatedAt() ~ Int {
+			return @created_at;
+		}
+
+		#~
+		Unix timestamp (in seconds) of when the job finished
+		@return time with the job finished
+		~#
+		method : public : GetFinishedAt() ~ Int {
+			return @finished_at;
+		}
+
+		#~
 		Get the object type
 		@return object type
 		~#
@@ -626,7 +642,15 @@ bundle API.OpenAI.FineTuning {
 		@return name of the training file
 		~#
 		method : public : GetTrainingFilename() ~ String {
-			return @training_file
+			return @training_file;
+		}
+
+		#~
+		Get status of the tuning job
+		@return name of the training file
+		~#
+		method : public : GetStatus() ~ String {
+			return @status;
 		}
 
 		#~
@@ -634,7 +658,6 @@ bundle API.OpenAI.FineTuning {
 		@return string representation
 		~#
 		method : public : ToString() ~ String {
-			finished_at := @finished_at = Nil ? "<null>" : @finished_at;
 			fine_tuned_model := @fine_tuned_model = Nil ? "<null>" : @fine_tuned_model;
 			validation_file := @validation_file = Nil ? "<null>" : @validation_file;
 			trained_tokens := @trained_tokens = Nil ? "<null>" : @trained_tokens;
@@ -645,7 +668,7 @@ bundle API.OpenAI.FineTuning {
 			error_message := @error_message = Nil ? "<null>" : @error_message;
 			
 			buffer := "[id='{$@id}', object='{$@object}', model={$@model}, created_at={$@created_at}, ";
-			buffer += "finished_at='{$finished_at}', fine_tuned_model='{$fine_tuned_model}', ";
+			buffer += "finished_at='{$@finished_at}', fine_tuned_model='{$fine_tuned_model}', ";
 			buffer += "n_epochs='{$@n_epochs}', batch_size='{$@batch_size}, learning_rate_multiplier='{$@learning_rate_multiplier}', ";
 			buffer += "validation_file='{$validation_file}', trained_tokens='{$trained_tokens}', ";
 			buffer += "estimated_finish='{$estimated_finish}', status='{$@status}', user_provided_suffix='{$user_provided_suffix}', ";
@@ -849,16 +872,16 @@ bundle API.OpenAI.FineTuning {
 
 		#~
 		Load a tuning job
-		@param id tuning job ID
+		@param job_id tuning job ID
 		@param token API token
 		@return tuning reference
 		~#
-		function : Load(id : String, token : String) ~ API.OpenAI.FineTuning.Tuning {
+		function : Load(job_id : String, token : String) ~ API.OpenAI.FineTuning.Tuning {
 			tuning : API.OpenAI.FineTuning.Tuning;
 
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
-			response := HttpsClient->QuickGet(Url->New("https://api.openai.com/v1/fine_tuning/jobs/{$id}"), "application/json", headers);
+			response := HttpsClient->QuickGet(Url->New("https://api.openai.com/v1/fine_tuning/jobs/{$job_id}"), "application/json", headers);
 			
 			if(response <> Nil) {
 				# response->GetContent()->ToString()->PrintLine();				
@@ -875,17 +898,17 @@ bundle API.OpenAI.FineTuning {
 
 		#~
 		Cancel a tuning job
-		@param id tuning job ID
+		@param job_id tuning job ID
 		@param token API token
 		@return canceled tuning reference
 		~#
-		function : Cancel(id : String, token : String) ~ API.OpenAI.FineTuning.Tuning {
+		function : Cancel(job_id : String, token : String) ~ API.OpenAI.FineTuning.Tuning {
 			tuning : API.OpenAI.FineTuning.Tuning;
 
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
-			response := HttpsClient->QuickGet(Url->New("https://api.openai.com/v1/fine_tuning/jobs/{$id}/cancel"), headers);
-			
+			response := HttpsClient->QuickPost(Url->New("https://api.openai.com/v1/fine_tuning/jobs/{$job_id}/cancel"), 
+				""->ToByteArray(), "application/json", headers);
 			if(response <> Nil) {
 				# response->GetContent()->ToString()->PrintLine();				
 				tuning_json := JsonParser->TextToElement(response->GetContent()->ToString());
