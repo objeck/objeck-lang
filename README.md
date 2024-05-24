@@ -16,9 +16,26 @@
 Objeck is a fast, intuitive, and lightweight programming language that supports object-oriented and functional programming paradigms across various platforms such as Windows, Linux, and macOS. Recent development efforts have targeted machine learning APIs and frameworks. 
 
 ```ruby
+# create an image from a prompt
+use API.OpenAI, API.OpenAI.FineTuning, System.IO.Filesystem, Data.JSON;
+
+class CreateImage {
+  function : Main(args : String[]) ~ Nil {
+    image := Image->Create("Create an image of two old steel gears with a transparent background", token);
+    if(image <> Nil) {
+      urls := image->GetUrls();
+      each(url in urls) {
+        url->ToString()->PrintLine();
+      };
+    };
+  }
+ }
+```
+
+```ruby
+# image identification 
 use API.Google.Gemini, System.IO.Filesystem;
 
-# image identification 
 class IdentifyImage {
   function : Main(args : String[]) ~ Nil {
     content := Content->New("user")->AddPart(TextPart->New("What number is this image showing?"))
@@ -34,26 +51,9 @@ class IdentifyImage {
 ```
 
 ```ruby
-use API.Google.Gemini, System.IO.Filesystem;
+# turn an ML model
+use Collection, API.OpenAI, System.IO.Filesystem, Data.JSON, Data.CSV;
 
-# create an image from a prompt
-class CreateImage {
-  function : Main(args : String[]) ~ Nil {
-    image := Image->Create("Create an image of two old steel gears with a transparent background", token);
-    if(image <> Nil) {
-      urls := image->GetUrls();
-      each(url in urls) {
-        url->ToString()->PrintLine();
-      };
-    };
-  }
- }
-```
-
-```ruby
-use API.Google.Gemini, System.IO.Filesystem;
-
-# turn a ML model
 class CreateImage {
   function : Main(args : String[]) ~ Nil {
     if(args->Size() = 1) {
