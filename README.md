@@ -59,6 +59,9 @@ Want to get started? Take a look at the [language guide](https://objeck.org/gett
 
 * v2024.6.x
   * LLaMa 3 local model support
+ 
+* v2024.6.1
+  * Create a common framework for tuning OpenAI and Gemini models
   
 * v2024.6.0
     * Model tuning
