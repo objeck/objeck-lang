@@ -1074,9 +1074,115 @@ bundle API.OpenAI.FineTuning {
 }
 
 #~
-Support for OpenAIs assistant and general APIs
+Support for OpenAIs models and assistant and general APIs
 ~#
 bundle API.OpenAI {
+	#~
+	OpenAI image generator
+	~#
+	class Image from EndPoint {
+		@created_at : Int;
+		@urls : Url[];
+
+		enum Size {
+			DALLE2_256_256, 
+			DALLE2_512_512,
+			DALLE2_1024_1024,
+			DALLE3_1024_1024,
+			DALLE3_1792_1024,
+			DALLE3_1024_1792
+		}
+
+		New(image_json : JsonElement) {
+			Parent();
+
+			@created_at := image_json->Get("created_at")->GetInt();
+		}
+
+		#~
+		Unix timestamp (in seconds) of when the object instance was created
+		@return time with the object instance was created
+		~#
+		method : public : GetCreatedAt() ~ Int {
+			return @created_at;
+		}
+
+		#~
+		Creates an image given a prompt
+		@param prompt text description of the desired image
+		@param model model name
+		@param n number of images
+		@param quality quality of the image that will be generated		
+		@param response_format format in which the generated images are returned
+		@param size size of the generated image
+		@param style style of the generated image
+		@param user identifier representing your end-user
+		@return generated image
+		~#
+		function : Create(prompt : String, model : String, n : Int, quality : String, response_format : String,
+				size : Image->Size, style : String, user : String, token : String) ~ API.OpenAI.Image {
+			image_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			image_json->Insert("prompt", prompt);
+			image_json->Insert("model", model);
+			image_json->Insert("n", n);
+			image_json->Insert("quality", quality);
+			image_json->Insert("response_format", response_format);
+			
+			select(size) {
+				label Image->Size->DALLE2_256_256 {
+
+				}
+
+				label Image->Size->DALLE2_512_512 {
+					
+				}
+
+				label Image->Size->DALLE2_1024_1024 {
+					
+				}
+
+				label Image->Size->DALLE3_1024_1024 {
+					
+				}
+
+				label Image->Size->DALLE3_1792_1024 {
+					
+				}
+
+				label Image->Size->DALLE3_1024_1792 {
+					
+				}
+			};
+			image_json->Insert("style", style);
+			image_json->Insert("user", user);
+
+			data := image_json->ToString()->ToByteArray();
+
+			headers := Map->New()<String, String>;
+			headers->Insert("Authorization", "Bearer sk-{$token}");
+			response := HttpsClient->QuickPost(Url->New("https://api.openai.com/v1/fine_tuning/jobs"), data, "application/json", headers);
+			if(response <> Nil) {
+				# response->GetContent()->ToString()->PrintLine();
+				image_json := JsonParser->TextToElement(response->GetContent()->ToString());
+
+				if(image_json = Nil) {
+					"### Error: Unable to parse response ###"->ErrorLine();
+					return Nil;
+				};
+
+				error_str := image_json->FindElements("error/message");				
+				if(error_str <> Nil) {
+					SetLastError(error_str->GetString());
+					return Nil;
+				};
+
+				return API.OpenAI.Image->New(image_json);
+			};
+
+			return Nil;
+		}
+	}
+
 	#~
 	OpenAI file support
 	~#
