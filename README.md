@@ -62,10 +62,10 @@ Want to get started? Take a look at the [language guide](https://objeck.org/gett
   
 * v2024.6.0
     * Model tuning
-      * OpenAI [enqueue]
+      * OpenAI [done]
       * Gemini
     * Image generation
-      * OpenAI [queued]
+      * OpenAI [enqueue]
       * Gemini
       
 * **v2024.5.0 [current]**
