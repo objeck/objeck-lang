@@ -11,13 +11,24 @@ class Test {
 				data := FileReader->ReadFile(filename)->ToByteArray();
 				API.OpenAI.File->Create(filename, "fine-tune", data, token)->PrintLine();
 			}
-			else if(command->Equals("list")) {
+			else if(command->Equals("list-files")) {
 				files := API.OpenAI.File->ListFiles(token);
 				if(files <> Nil) {
 					each(file in files) {
 						name := file->GetFilename();
 						id := file->GetId();
 						"file='{$name}', id='{$id}'"->PrintLine();
+					};
+				}
+				else {
+					API.OpenAI.File->GetLastError()->PrintLine();
+				};
+			}
+			else if(command->Equals("list-jobs")) {
+				jobs := API.OpenAI.FineTuning->ListJobs(2, token);
+				if(jobs <> Nil) {
+					each(job in jobs) {
+						job->ToString()->PrintLine();
 					};
 				}
 				else {
@@ -32,7 +43,12 @@ class Test {
 				id := file->GetId();
 				"file='{$name}', id='{$id}'"->PrintLine();
 
-				FineTuning->Create("gpt-3.5-turbo", id, token->SubString((3), token->Size() - 3));
+				if(token->StartsWith("sk-")) {
+					token := token->SubString((3), token->Size() - 3);
+				};
+
+				tuning_job := FineTuning->Create("gpt-3.5-turbo", id, token);
+				tuning_job->ToString()->PrintLine();
 			}
 			else {
 				">>> Invalid command or parameters for '{$command}' <<<"->ErrorLine();
