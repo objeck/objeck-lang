@@ -537,8 +537,7 @@ bundle API.OpenAI.FineTuning {
 		@validation_file : String;
 		@trained_tokens : String;
 		@user_provided_suffix : String;
-		@estimated_finish : String;
-		
+		@estimated_finish : String;		
 		@error_code : String;
 		@error_param : String;
 		@error_message : String;
@@ -750,15 +749,30 @@ bundle API.OpenAI.FineTuning {
 		@return job events
 		~#
 		function : ListEvents(job_id : String, token : String) ~ Vector<API.OpenAI.FineTuning.Job> {
+			return ListEvents(job_id, -1, token);
+		}
+
+		#~
+		Lists events for a job
+		@param job_id job ID
+		@param limit number of jobs to retrieve		
+		@param token API token
+		@return job events
+		~#
+		function : ListEvents(job_id : String, limit : Int, token : String) ~ Vector<API.OpenAI.FineTuning.Job> {
 			events := Vector->New()<API.OpenAI.FineTuning.Job>
 
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
 			
-			response := HttpsClient->QuickGet(Url->New("https://api.openai.com/v1/fine_tuning/jobs/{$job_id}/events"), headers);
-			if(response <> Nil) {
-				response->GetContent()->ToString()->PrintLine();
+			url_str := "https://api.openai.com/v1/fine_tuning/jobs/{$job_id}/events";
+			if(limit > 0) {
+				url_str += "?limit={$limit}";
+			};
 
+			response := HttpsClient->QuickGet(Url->New(url_str), headers);
+			if(response <> Nil) {
+				# response->GetContent()->ToString()->PrintLine();
 				root_json := JsonParser->TextToElement(response->GetContent()->ToString());
 
 				if(root_json = Nil) {
@@ -780,11 +794,143 @@ bundle API.OpenAI.FineTuning {
 			return events;
 		}
 
-		# TODO: https://platform.openai.com/docs/api-reference/fine-tuning/list-checkpoints
+		#~
+		Lists checkpoints for a fine-tuning job
+		@param job_id job ID
+		@param token API token
+		@return job checkpoints
+		~#
+		function : ListCheckpoints(job_id : String, token : String) ~ Vector<API.OpenAI.FineTuning.Checkpoint> {
+			return ListCheckpoints(job_id, -1, token);
+		}
+
+		#~
+		Lists checkpoints for a fine-tuning job
+		@param job_id job ID
+		@param limit number of jobs to retrieve		
+		@param token API token
+		@return job checkpoints
+		~#
+		function : ListCheckpoints(job_id : String, limit : Int, token : String) ~ Vector<API.OpenAI.FineTuning.Checkpoint> {
+			checkpoints := Vector->New()<API.OpenAI.FineTuning.Checkpoint>
+
+			headers := Map->New()<String, String>;
+			headers->Insert("Authorization", "Bearer {$token}");
+			
+			url_str := "https://api.openai.com/v1/fine_tuning/jobs/{$job_id}/checkpoints";
+			if(limit > 0) {
+				url_str += "?limit={$limit}";
+			};
+
+			response := HttpsClient->QuickGet(Url->New(url_str), headers);
+			if(response <> Nil) {
+response->GetContent()->ToString()->PrintLine();
+				
+				root_json := JsonParser->TextToElement(response->GetContent()->ToString());
+
+				if(root_json = Nil) {
+					return Nil;
+				};
+
+				error_str := root_json->FindElements("error/message");				
+				if(error_str <> Nil) {
+					SetLastError(error_str->GetString());
+					return Nil;
+				};
+
+				checkpoints_json := root_json->Get("data");
+				each(checkpoint_json in checkpoints_json) {
+					checkpoints->AddBack(API.OpenAI.FineTuning.Checkpoint->New(checkpoint_json));
+				};
+			};
+
+			return checkpoints;
+		}
 	}
 
 	#~
-	OpenAI fine tuning 
+	Fine-tuning checkpoint
+	~#
+	class Checkpoint {
+		@id : String;
+		@object : String;
+		@created_at : Int;
+		@fine_tuning_job_id : String;
+		@step_number : Int;
+		@full_valid_loss : String;
+		@full_valid_mean_token_accuracy : Float;
+		
+		New(job_json : JsonElement) {
+			@id := job_json->Get("id")->GetString();
+			@object := job_json->Get("object")->GetString();
+			@created_at := job_json->Get("created_at")->GetInt();
+			@fine_tuning_job_id := job_json->Get("fine_tuning_job_id")->GetString();
+			@step_number := job_json->Get("step_number")->GetInt();
+
+			metrics_json := job_json->FindElements("metrics/full_valid_loss");
+			if(metrics_json <> Nil) {
+				@full_valid_loss := metrics_json->GetString();
+				@full_valid_mean_token_accuracy := job_json->FindElements("metrics/full_valid_mean_token_accuracy")->GetFloat();
+			};
+		}
+
+		#~
+		String representation of the object
+		@return string representation
+		~#
+		method : public : ToString() ~ String {
+			full_valid_loss := @full_valid_loss = Nil ? "<null>" : @full_valid_loss;
+			
+			buffer := "[id='{$@id}', object='{$@object}', created_at={$@created_at}, ";
+			buffer += "fine_tuning_job_id='{$@fine_tuning_job_id}', step_number={$@step_number}, ";
+			buffer += "full_valid_loss='{$full_valid_loss}', full_valid_mean_token_accuracy={$@full_valid_mean_token_accuracy}]";
+
+			return buffer;
+		}
+
+		#~
+		Get object instance API ID
+		@return instance ID
+		~#
+		method : public : GetId() ~ String {
+			return @fine_tuning_job_id;
+		}
+
+		#~
+		Get checkpoint step
+		@return checkpoint step
+		~#
+		method : public : GetStep() ~ Int {
+			return @step_number;
+		}
+
+		#~
+		Get the object type
+		@return object type
+		~#
+		method : public : GetObject() ~ String {
+			return @object;
+		}
+
+		#~
+		Unix timestamp (in seconds) of when the object instance was created
+		@return time with the object instance was created
+		~#
+		method : public : GetCreatedAt() ~ Int {
+			return @created_at;
+		}
+
+		#~
+		Get object job API ID
+		@return job ID
+		~#
+		method : public : GetJobId() ~ String {
+			return @id;
+		}
+	}
+
+	#~
+	Fine-tuning job
 	~#
 	class Job {
 		@id : String;

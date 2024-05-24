@@ -24,6 +24,18 @@ class Test {
 					API.OpenAI.File->GetLastError()->PrintLine();
 				};
 			}
+			else if(command->Equals("list-checkpoints") & args->Size() = 2) {
+				job_id := args[1];
+				checkpoints := API.OpenAI.FineTuning.Tuning->ListCheckpoints(job_id, 2, token);
+				if(checkpoints <> Nil) {
+					each(checkpoint in checkpoints) {
+						checkpoint->ToString()->PrintLine();
+					};
+				}
+				else {
+					API.OpenAI.File->GetLastError()->PrintLine();
+				};
+			}
 			else if(command->Equals("list-jobs")) {
 				jobs := API.OpenAI.FineTuning.Tuning->ListJobs(2, token);
 				if(jobs <> Nil) {
