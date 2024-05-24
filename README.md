@@ -79,7 +79,7 @@ class IdentifyImage {
 ```
 
 ```ruby
-# turn an ML model
+# tune ML model
 use Collection, API.OpenAI, System.IO.Filesystem, Data.JSON, Data.CSV;
 
 class CreateImage {
