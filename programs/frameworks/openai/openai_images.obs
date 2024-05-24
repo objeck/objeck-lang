@@ -1,0 +1,27 @@
+use Collection, API.OpenAI, System.IO.Filesystem, Data.JSON, Data.CSV;
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		token := GetApiKey();
+		if(token <> Nil & args->Size() > 0) {
+			command := args[0];
+
+			if(command->Equals("create") & args->Size() = 2) {
+				prompt := args[1];
+
+			}
+			else {
+				">>> Invalid command or parameters for '{$command}' <<<"->ErrorLine();
+			};
+		}
+	}
+
+	function : GetApiKey() ~ String {
+		token := FileReader->ReadFile("openai_api_key.dat");
+		if(token <> Nil) {
+			return token->Trim();
+		};
+
+		return Nil;
+	}
+}
