@@ -41,7 +41,7 @@ Objeck is a general-purpose, cross-platform, object-oriented, and functional pro
     * Fixed Collection 'Filter' methods
     * Resolved ODBC refactor bug
 
-## Code Examples
+## Examples
 
 ```ruby
 # create an image from a prompt
@@ -100,97 +100,19 @@ class CreateImage {
 ```
 
 ```ruby
-# vector embeddings similarities
-use Web.HTTP, Collection, Data.JSON, API.Google.Gemini.Corpus;
+# text to speech
+use Web.HTTP, Collection, Data.JSON, API.OpenAI.Audio;
 
 class Embaddings {
   function : Main(args : String[]) ~ Nil {
-    if(args->Size() = 1 & args[0]->Equals("list")) {
-      corpuses := Corpus->List()<Corpus>;
-      each(corpus in corpuses) {
-        corpus_id := corpus->GetId();
-        corpus_create_str := corpus->GetCreateTime()->ToShortString();
-        "corpus: id='{$corpus_id}', created={$corpus_create_str}"->PrintLine();      
-        
-        documents := Document->List(corpus->As(Corpus))<Document>;
-        each(document in documents) {
-          doc_id := document->GetId();
-          doc_create_str := document->GetCreateTime()->ToShortString();
-          "\tdocument='{$doc_id}', created={$doc_create_str}"->PrintLine();
-
-          chunks := Chunk->List(document);
-          each(chunk in chunks) {
-            chunk_id := chunk->GetId();
-            chunk_state := chunk->GetState();
-            chunk_create_str := corpus->GetCreateTime()->ToShortString();
-            "\t\tchunk='{$chunk_id}', state={$chunk_state}, created={$chunk_create_str}"->PrintLine();          
-          };
-        };
+    if(args->Size() = 1) {
+      message := args[1];
+      response := API.OpenAI.Audio.Speech->Speak("tts-1", message, "fable", "mp3", token)<String, ByteArrayRef>;        
+      
+      if(response->GetFirst()->Has("audio")) {
+        System.IO.Filesystem.FileWriter->WriteFile("speech.mp3", response->GetSecond()->Get());
       };
     }
-    else if(args->Size() = 1 & args[0]->Equals("rebuild")) {
-      # clean up
-      corpuses := Corpus->List();
-      each(corpus in corpuses) {
-        documents := Document->List(corpus);
-        each(document in documents) {
-          chunks := Chunk->List(document);
-          each(chunk in chunks) {
-            chunk->Delete()->PrintLine();
-          };
-          document->Delete()->PrintLine();
-        };
-        corpus->Delete()->PrintLine();
-      };
-
-      # corups
-      corpus := Corpus->Create("Corpus 1");
-
-      metadata := Map->New()<String, String>;
-      metadata->Insert("about", "fruit, vegetable, vehicle, human, and animal");
-      document := Document->Create("Document 1", metadata, corpus);
-
-      metadata := Map->New()<String, String>;
-      metadata->Insert("category", "fruit");
-      Chunk->Create("Nature's candy! Seeds' sweet ride to spread, bursting with colors, sugars, and vitamins. Fuel for us, future for plants. Deliciously vital!", metadata, document)->ToString()->PrintLine();
-
-      metadata := Map->New()<String, String>;
-      metadata->Insert("category", "vegetable");
-      Chunk->Create("Not just leaves! Veggies sprout from roots, stems, flowers, and even bulbs. Packed with vitamins, minerals, and fiber galore, they fuel our bodies and keep us wanting more.", metadata, document)->ToString()->PrintLine();
-
-      metadata := Map->New()<String, String>;
-      metadata->Insert("category", "vehicle");
-      Chunk->Create("Metal chariots or whirring steeds, gliding on land, skimming seas, piercing clouds. Carrying souls near and far, vehicles weave paths for dreams and scars.", metadata, document)->ToString()->PrintLine();
-
-      metadata := Map->New()<String, String>;
-      metadata->Insert("category", "human");
-      Chunk->Create("Walking contradictions, minds aflame, built for laughter, prone to shame. Woven from stardust, shaped by clay, seeking answers, paving the way.", metadata, document)->ToString()->PrintLine();
-
-      metadata := Map->New()<String, String>;
-      metadata->Insert("category", "animal");
-      Chunk->Create("Sentient dance beneath the sun, from buzzing flies to whales that run. Flesh and feather, scale and claw, weaving instincts in nature's law. ", metadata, document)->ToString()->PrintLine();
-
-      metadata := Map->New()<String, String>;
-      metadata->Insert("category", "other");
-      Chunk->Create("Except for fruit, vegetable, vehicle, human, and animal", metadata, document)->ToString()->PrintLine();
-    }
-    else if(args->Size() = 3 & args[0]->Equals("query")) {
-      id := args[1];
-      query := args[2];
-
-      document := Document->Get(id);
-      document->ToString()->PrintLine();
-
-      results := document->Query(query);
-      each(result in results) {
-        relevance := result->GetFirst()->As(FloatRef);
-        metadata := result->GetThird()->As(Map<String, String>);
-
-        relevance->PrintLine();
-        metadata->ToString()->PrintLine();
-        "---"->PrintLine();
-      }
-    };
   }
 }
 ```
