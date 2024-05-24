@@ -1,4 +1,4 @@
-<h1 align="center">Intuitive, Fast & Efficient</h1>
+<h1 align="center">Fully Programmable with Instructions</h1>
 
 <p align="center">
   <a href="https://www.objeck.org"><img src="docs/images/gear_wheel_256.png""  width="300" alt="An Objeck"/></a>
@@ -7,13 +7,41 @@
 <hr/>
 
 <p align="center">
+  <a href="https://github.com/objeck/objeck-lang/actions/workflows/codeql.yml"><img src="https://github.com/objeck/objeck-lang/actions/workflows/codeql.yml/badge.svg" alt="GitHub CodeQL"></a>
   <a href="https://github.com/objeck/objeck-lang/actions/workflows/c-cpp.yml"><img src="https://github.com/objeck/objeck-lang/actions/workflows/c-cpp.yml/badge.svg" alt="GitHub CI"></a>
   <a href="https://scan.coverity.com/projects/objeck"><img src="https://img.shields.io/coverity/scan/10314.svg" alt="Coverity SCA"></a>
-  <a href="https://github.com/objeck/objeck-lang/actions/workflows/codeql.yml"><img src="https://github.com/objeck/objeck-lang/actions/workflows/codeql.yml/badge.svg" alt="GitHub CodeQL"></a>
-  <a href="https://discord.gg/qEaCGWR7nb"><img src="https://badgen.net/badge/icon/discord?icon=discord&label" alt="Discord"></a>
 </p>
 
-Objeck is a fast, intuitive, and lightweight programming language that supports object-oriented and functional programming paradigms across various platforms such as Windows, Linux, and macOS. Recent development efforts have targeted machine learning APIs and frameworks. 
+Objeck is a general-purpose, cross-platform, object-oriented, and functional programming language geared towards machine learning development.
+
+## Releases
+
+* v2024.6.x
+  * LLaMa 3 local model support
+  * Unified ML framework across OpenAI, Gemini and LLaMa
+ 
+* v2024.6.1
+  * Common framework for tuning OpenAI and Gemini models
+  
+* [v2024.6.0](https://github.com/objeck/objeck-lang/tree/v2024.5.1/core)
+    * Model tuning
+      * OpenAI [done]
+      * Gemini
+    * Image generation
+      * OpenAI [enqueue]
+      * Gemini
+      
+* [v2024.5.0](https://github.com/objeck/objeck-lang/tree/master/core) (current)
+  * Gemini support for function calls
+  * JSON Scheme support for function modeling for OpenAI, Gemini, and LLaMa
+  * Enhancements
+    * Added Collection 'Reduce' methods
+    * Boxing/unboxing support for the '<' and '>' operators (legacy missing feature)
+  * Bug fixes
+    * Fixed Collection 'Filter' methods
+    * Resolved ODBC refactor bug
+
+## Code Examples
 
 ```ruby
 # create an image from a prompt
@@ -71,94 +99,129 @@ class CreateImage {
 }
 ```
 
-| <sub>[VS Code](https://github.com/objeck/objeck-lsp)</sub> | <sub>[Debugger](https://github.com/objeck/objeck-lang/tree/master/core/debugger)</sub> | <sub>[Dungeon Crawler](https://github.com/objeck/objeck-dungeon-crawler)</sub> | <sub>[Platformer](https://github.com/objeck/objeck-lang/blob/master/programs/deploy/2d_game_13.obs)</sub> | <sub>[Windows Utility](https://github.com/objeck/objeck-lang/tree/master/core/release/WindowsLauncher)</sub> |
-| :---: | :----: | :---: | :---: | :---: |
-![alt text](docs/images/web/comp.png "Visual Studio Code") | ![alt text](docs/images/web/debug.jpg "Command line debugger") | ![alt text](docs/images/web/crawler.png "Web Crawler") | ![alt text](docs/images/web/2d_game.jpg "Platformer") | ![alt text](docs/images/web/launch.png "Windows Launcher") |
+```ruby
+# vector embeddings similarities
+use Web.HTTP, Collection, Data.JSON, API.Google.Gemini.Corpus;
 
-Want to get started? Take a look at the [language guide](https://objeck.org/getting_started.html) and [code examples](https://github.com/objeck/objeck-lang/tree/master/programs/examples). If you want to contribute, start with the [system architecture](https://github.com/objeck/objeck-lang/tree/master/core).
+class Embaddings {
+  function : Main(args : String[]) ~ Nil {
+    if(args->Size() = 1 & args[0]->Equals("list")) {
+      corpuses := Corpus->List()<Corpus>;
+      each(corpus in corpuses) {
+        corpus_id := corpus->GetId();
+        corpus_create_str := corpus->GetCreateTime()->ToShortString();
+        "corpus: id='{$corpus_id}', created={$corpus_create_str}"->PrintLine();      
+        
+        documents := Document->List(corpus->As(Corpus))<Document>;
+        each(document in documents) {
+          doc_id := document->GetId();
+          doc_create_str := document->GetCreateTime()->ToShortString();
+          "\tdocument='{$doc_id}', created={$doc_create_str}"->PrintLine();
 
-## What is it?
+          chunks := Chunk->List(document);
+          each(chunk in chunks) {
+            chunk_id := chunk->GetId();
+            chunk_state := chunk->GetState();
+            chunk_create_str := corpus->GetCreateTime()->ToShortString();
+            "\t\tchunk='{$chunk_id}', state={$chunk_state}, created={$chunk_create_str}"->PrintLine();          
+          };
+        };
+      };
+    }
+    else if(args->Size() = 1 & args[0]->Equals("rebuild")) {
+      # clean up
+      corpuses := Corpus->List();
+      each(corpus in corpuses) {
+        documents := Document->List(corpus);
+        each(document in documents) {
+          chunks := Chunk->List(document);
+          each(chunk in chunks) {
+            chunk->Delete()->PrintLine();
+          };
+          document->Delete()->PrintLine();
+        };
+        corpus->Delete()->PrintLine();
+      };
 
-* Modern object-oriented and functional
-* Cross-platform: Linux (x64 and ARM64), macOS (ARM64), Windows (x64)
-* Optimized and JIT-compiled runtimes
-* API support for
-  * Secure web servers and clients
-  * Encryption
-  * JSON, CSV, and XML parsing libraries
-  * Regular expressions
-  * 2D gaming
-  * Linear matrix mathematics
-  * Collections
-  * Files, directories, sockets, STDIO, logging, serialization, and pipes
-* REPL and IDE [LSP](https://github.com/objeck/objeck-lsp) support (for VSCode, Sublime, Kate, etc.) 
-* Online guides and API [documentation](https://www.objeck.org).
+      # corups
+      corpus := Corpus->Create("Corpus 1");
 
-## What's New?
+      metadata := Map->New()<String, String>;
+      metadata->Insert("about", "fruit, vegetable, vehicle, human, and animal");
+      document := Document->Create("Document 1", metadata, corpus);
 
-* v2024.6.x
-  * LLaMa 3 local model support
- 
-* v2024.6.1
-  * Create a common framework for tuning OpenAI and Gemini models
-  
-* v2024.6.0
-    * Model tuning
-      * OpenAI [done]
-      * Gemini
-    * Image generation
-      * OpenAI [enqueue]
-      * Gemini
-      
-* **v2024.5.0 [current]**
-  * Gemini support for function calls
-  * JSON Scheme support for function modeling for OpenAI, Gemini, and LLaMa
-  * Enhancements
-    * Added Collection 'Reduce' methods
-    * Boxing/unboxing support for the '<' and '>' operators (legacy missing feature)
-  * Bug fixes
-    * Fixed Collection 'Filter' methods
-    * Resolved ODBC refactor bug
+      metadata := Map->New()<String, String>;
+      metadata->Insert("category", "fruit");
+      Chunk->Create("Nature's candy! Seeds' sweet ride to spread, bursting with colors, sugars, and vitamins. Fuel for us, future for plants. Deliciously vital!", metadata, document)->ToString()->PrintLine();
 
-* v2024.4.0
-  * Added support for Google DeepMind (Gemini) APIs
-    * Model
-    * Corpus (v1beta)
-    * Chat
-  * Open AI support for external function calls
-  * OAuth2 support (session and file based support)
-  * Refactored KMeans ML implementation to support arrays
-  * Improved support for Date <=> String operations
-  * Improved Base64 encoding and decoding
-  * Added support for private functions
-  * Tuples classes moved to Collection.Tuple
-  * Added 'First' and 'Last' methods to Vector classes
-  * Fixed ARM64 JIT compiler 'eor' instruction issue impacting macOS and ARM64
+      metadata := Map->New()<String, String>;
+      metadata->Insert("category", "vegetable");
+      Chunk->Create("Not just leaves! Veggies sprout from roots, stems, flowers, and even bulbs. Packed with vitamins, minerals, and fiber galore, they fuel our bodies and keep us wanting more.", metadata, document)->ToString()->PrintLine();
 
+      metadata := Map->New()<String, String>;
+      metadata->Insert("category", "vehicle");
+      Chunk->Create("Metal chariots or whirring steeds, gliding on land, skimming seas, piercing clouds. Carrying souls near and far, vehicles weave paths for dreams and scars.", metadata, document)->ToString()->PrintLine();
 
-* v2024.3.0
-  * Added support for OpenAI APIs
-  * Fixed GC bug #462 and #482
-  
-* v2024.2.1
-  * Support for the [unary bitwise not operator](https://gist.github.com/objeck/d7d5c94de9a1361a20f0eccd65226ded) (#480)
-  * Added support for [response files](https://gist.github.com/objeck/b1a11ea34f4697b06e31f8cadb59f601) (#545)
-  * Webserver library enhancements
-    * Improved performance
-    * More [configuration](https://github.com/objeck/objeck-web-server/blob/master/config/weather_config.json) options
-  * Add an optional [in](https://gist.github.com/objeck/27219d777b636208d88ab197d1cf1270) keyword for use in `each` loops; an alternative to `:=` operator
+      metadata := Map->New()<String, String>;
+      metadata->Insert("category", "human");
+      Chunk->Create("Walking contradictions, minds aflame, built for laughter, prone to shame. Woven from stardust, shaped by clay, seeking answers, paving the way.", metadata, document)->ToString()->PrintLine();
 
-* v2024.2.0
-  * New [incremental JSON parser](https://www.objeck.org/doc/api/classes.html#data.json.stream)
-    * Improved parsing performance for large JSON documents
-  * Immutable [Tuple types](https://www.objeck.org/doc/api/classes.html#tuples)
-    * Pair<A,B>
-    * Triplet<A,B,C>
-    * Quartet<A,B,C,D>
-  * Range support
-    * Added ``CharRange``, ``IntRange`` and, ``FloatRange`` classes
+      metadata := Map->New()<String, String>;
+      metadata->Insert("category", "animal");
+      Chunk->Create("Sentient dance beneath the sun, from buzzing flies to whales that run. Flesh and feather, scale and claw, weaving instincts in nature's law. ", metadata, document)->ToString()->PrintLine();
 
-## How to Use It?
+      metadata := Map->New()<String, String>;
+      metadata->Insert("category", "other");
+      Chunk->Create("Except for fruit, vegetable, vehicle, human, and animal", metadata, document)->ToString()->PrintLine();
+    }
+    else if(args->Size() = 3 & args[0]->Equals("query")) {
+      id := args[1];
+      query := args[2];
+
+      document := Document->Get(id);
+      document->ToString()->PrintLine();
+
+      results := document->Query(query);
+      each(result in results) {
+        relevance := result->GetFirst()->As(FloatRef);
+        metadata := result->GetThird()->As(Map<String, String>);
+
+        relevance->PrintLine();
+        metadata->ToString()->PrintLine();
+        "---"->PrintLine();
+      }
+    };
+  }
+}
+```
+
+## [Architecture](https://github.com/objeck/objeck-lang/tree/master/core)
+
+* Object-oriented and functional
+* Cross-platform: Linux, macOS, Windows
+* JIT-compiled runtimes (ARM64 and AMD64)
+* REPL shell
+* [LSP pulgins](https://github.com/objeck/objeck-lsp) for VSCode, Sublime, Kate, and more
+* API [documentation](https://www.objeck.org)
+
+## Libraries
+
+* Machine learning (OpenAI, Gemini, GOFAI)
+* Web (server, client, OAuth)
+* Data serialization
+  * JSON (hierarchical, streaming)
+  * XML (parsing, RSS)
+  * Binary
+* Collections
+* Data access
+  * Relational SQL
+  * In-memory
+* Encryption
+* Regular expressions
+* 2D gaming
+* 
+
+## Glance of Features
 
 ### [Object-oriented](https://en.wikipedia.org/wiki/Object-oriented_programming)
   
@@ -375,14 +438,7 @@ yesterday->AddDays(-1);
 yesterday->ToString()->PrintLine();
 ```
 
-### Notable Libraries
-  * [Machine learning](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/ml.obs)
-  * [HTTPS](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/net_secure.obs) and [HTTP](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/net.obs) server and client APIs
-  * [JSON](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/json.obs), [XML](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/xml.obs) and [CSV](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/csv.obs) parsers
-  * [Regular expression](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/regex.obs) library
-  * Encryption and hashing
-  * In memory [query framework](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/query.obs) with SQL-like syntax
-  * Database access
-  * [2D Gaming framework](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/sdl_game.obs) via SDL2
-  * [Collections](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/gen_collect.obs) (caches, vectors, queues, trees, hashes, etc.)
-  * GTK windowing support [(on-hold)](core/lib/experimental/gtk)
+## Screenshots
+| <sub>[VS Code](https://github.com/objeck/objeck-lsp)</sub> | <sub>[Debugger](https://github.com/objeck/objeck-lang/tree/master/core/debugger)</sub> | <sub>[Dungeon Crawler](https://github.com/objeck/objeck-dungeon-crawler)</sub> | <sub>[Platformer](https://github.com/objeck/objeck-lang/blob/master/programs/deploy/2d_game_13.obs)</sub> | <sub>[Windows Utility](https://github.com/objeck/objeck-lang/tree/master/core/release/WindowsLauncher)</sub> |
+| :---: | :----: | :---: | :---: | :---: |
+![alt text](docs/images/web/comp.png "Visual Studio Code") | ![alt text](docs/images/web/debug.jpg "Command line debugger") | ![alt text](docs/images/web/crawler.png "Web Crawler") | ![alt text](docs/images/web/2d_game.jpg "Platformer") | ![alt text](docs/images/web/launch.png "Windows Launcher") |
