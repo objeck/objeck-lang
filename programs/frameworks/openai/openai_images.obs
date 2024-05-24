@@ -6,9 +6,18 @@ class Test {
 		if(token <> Nil & args->Size() > 0) {
 			command := args[0];
 
-			if(command->Equals("create") & args->Size() = 2) {
-				prompt := args[1];
+			if(command->Equals("create")) {
+				if(token->StartsWith("sk-")) {
+					token := token->SubString((3), token->Size() - 3);
+				};
 
+				image := Image->Create("Create an image of two old steel gears with a transparent background", token);
+				if(image <> Nil) {
+					urls := image->GetUrls();
+					each(url in urls) {
+						url->ToString()->PrintLine();
+					};
+				};
 			}
 			else {
 				">>> Invalid command or parameters for '{$command}' <<<"->ErrorLine();
