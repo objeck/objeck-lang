@@ -1277,7 +1277,7 @@ bundle API.OpenAI {
 		}
 
 		#~
-		Creates a variation of a given image.
+		Creates a variation of a given image
 		@param image_path image to edit
 		@param model model name
 		@param n number of images
