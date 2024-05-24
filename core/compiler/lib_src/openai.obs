@@ -908,7 +908,7 @@ bundle API.OpenAI.FineTuning {
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
 			response := HttpsClient->QuickPost(Url->New("https://api.openai.com/v1/fine_tuning/jobs/{$job_id}/cancel"), 
-				""->ToByteArray(), "application/json", headers);
+				Byte->New[0], "application/json", headers);
 			if(response <> Nil) {
 				# response->GetContent()->ToString()->PrintLine();				
 				tuning_json := JsonParser->TextToElement(response->GetContent()->ToString());
@@ -1120,7 +1120,15 @@ bundle API.OpenAI {
 		New(image_json : JsonElement) {
 			Parent();
 
-			@created_at := image_json->Get("created_at")->GetInt();
+			@created_at := image_json->Get("created")->GetInt();
+
+			urls_json := image_json->Get("data");
+			@urls := Url->New[urls_json->Size()];
+			each(i : urls_json) {
+				url_json := urls_json->Get(i);
+				url := url_json->Get("url")->GetString();
+				@urls[i] := Url->New(url);
+			};
 		}
 
 		#~
@@ -1132,6 +1140,14 @@ bundle API.OpenAI {
 		}
 
 		#~
+		Get the generated images URLs
+		@return generated images URLs
+		~#
+		method : public : GetUrls() ~ Url[] {
+			return @urls
+		}
+
+		#~
 		Creates an image given a prompt
 		@param prompt text description of the desired image
 		@param token API token
@@ -1139,6 +1155,18 @@ bundle API.OpenAI {
 		~#
 		function : Create(prompt : String, token : String) ~ API.OpenAI.Image {
 			return Create(prompt, Nil, -1, Nil, Nil, Image->Size->DALLE_DEFAULT, Nil, Nil, token);
+		}
+
+		#~
+		Creates an image given a prompt
+		@param prompt text description of the desired image
+		@param model model name
+		@param size size of the generated image
+		@param token API token
+		@return generated image
+		~#
+		function : Create(prompt : String, model : String, size : Image->Size, token : String) ~ API.OpenAI.Image {
+			return Create(prompt, model, -1, Nil, Nil, Image->Size->DALLE_DEFAULT, Nil, Nil, token);
 		}
 
 		#~
@@ -1177,27 +1205,21 @@ bundle API.OpenAI {
 			
 			select(size) {
 				label Image->Size->DALLE2_256_256 {
-
+					image_json->Insert("size", "256x256");
 				}
 
 				label Image->Size->DALLE2_512_512 {
-					
+					image_json->Insert("size", "512x512");
 				}
 
-				label Image->Size->DALLE2_1024_1024 {
-					
-				}
-
+				label Image->Size->DALLE2_1024_1024:
 				label Image->Size->DALLE3_1024_1024 {
-					
+					image_json->Insert("size", "1024x1024");
 				}
 
-				label Image->Size->DALLE3_1792_1024 {
-					
-				}
-
-				label Image->Size->DALLE3_1024_1792 {
-					
+				label Image->Size->DALLE3_1792_1024:
+				label Image->Size->DALLE3_1024_1792 {					
+					image_json->Insert("size", "1792x1024");
 				}
 			};
 
@@ -1213,7 +1235,7 @@ bundle API.OpenAI {
 
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer sk-{$token}");
-			response := HttpsClient->QuickPost(Url->New("https://api.openai.com/v1/fine_tuning/jobs"), data, "application/json", headers);
+			response := HttpsClient->QuickPost(Url->New("https://api.openai.com/v1/images/generations"), data, "application/json", headers);
 			if(response <> Nil) {
 				# response->GetContent()->ToString()->PrintLine();
 				image_json := JsonParser->TextToElement(response->GetContent()->ToString());
@@ -1234,6 +1256,10 @@ bundle API.OpenAI {
 
 			return Nil;
 		}
+		
+		# TODO: https://api.openai.com/v1/images/edits
+		
+		# TODO: https://api.openai.com/v1/images/variations
 	}
 
 	#~
