@@ -18,6 +18,7 @@ Objeck is a fast, intuitive, and lightweight programming language that supports 
 ```ruby
 use API.Google.Gemini, System.IO.Filesystem;
 
+# image identification 
 class IdentifyImage {
   function : Main(args : String[]) ~ Nil {
     content := Content->New("user")->AddPart(TextPart->New("What number is this image showing?"))
@@ -28,6 +29,44 @@ class IdentifyImage {
     if(candidates->Size() > 0) {
       candidates->First()->GetAllText()->Trim()->PrintLine();
     };
+  }
+}
+```
+
+```ruby
+use API.Google.Gemini, System.IO.Filesystem;
+
+# create an image from a prompt
+class CreateImage {
+  function : Main(args : String[]) ~ Nil {
+    image := Image->Create("Create an image of two old steel gears with a transparent background", token);
+    if(image <> Nil) {
+      urls := image->GetUrls();
+      each(url in urls) {
+        url->ToString()->PrintLine();
+      };
+    };
+  }
+ }
+```
+
+```ruby
+use API.Google.Gemini, System.IO.Filesystem;
+
+# turn a ML model
+class CreateImage {
+  function : Main(args : String[]) ~ Nil {
+    if(args->Size() = 1) {
+      tuning_file := args[1];
+      file := API.OpenAI.File->LoadOrCreate(tuning_file, "fine-tune", token);
+
+      name := file->Gettuning_file();
+      id := file->GetId();
+      "file='{$name}', id='{$id}'"->PrintLine();
+
+      tuning_job := Tuning->Create("gpt-3.5-turbo", id, token);
+      tuning_job->ToString()->PrintLine();
+    }
   }
 }
 ```
