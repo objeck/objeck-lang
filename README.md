@@ -130,9 +130,10 @@ class Embaddings {
 
 * Machine learning (OpenAI, Gemini, GOFAI)
 * Web (server, client, OAuth)
-* Data serialization
+* Data exchange
   * JSON (hierarchical, streaming)
-  * XML (parsing, RSS)
+  * XML
+  * CSV
   * Binary
 * Collections
 * Data access
