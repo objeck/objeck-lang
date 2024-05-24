@@ -1257,9 +1257,41 @@ bundle API.OpenAI {
 			return Nil;
 		}
 		
-		# TODO: https://api.openai.com/v1/images/edits
-		
-		# TODO: https://api.openai.com/v1/images/variations
+		#~
+		Creates an edited or extended image given an original image and a prompt
+		@param image_path image to edit
+		@param prompt text description of the desired image
+		@param mask_path additional image whose fully transparent areas (e.g. where alpha is zero) 
+		@param model model name
+		@param n number of images
+		@param size size of the generated image
+		@param response_format format in which the generated images are returned		
+		@param user identifier representing your end-user
+		@param token API token
+		@return edited image
+		~#
+		function : Edit(image_path : String, prompt : String, mask_path : String, model : String, n : Int, 
+				size : Image->Size, response_format : String, user : String, token : String) ~ API.OpenAI.Image {
+			# TODO: https://api.openai.com/v1/images/edits
+			return Nil;
+		}
+
+		#~
+		Creates a variation of a given image.
+		@param image_path image to edit
+		@param model model name
+		@param n number of images
+		@param response_format format in which the generated images are returned		
+		@param size size of the generated image
+		@param user identifier representing your end-user
+		@param token API token
+		@return edited image
+		~#
+		function : Variation(image_path : String, model : String, n : Int, response_format : String,
+				size : Image->Size, user : String, token : String) ~ API.OpenAI.Image {
+			# TODO: https://api.openai.com/v1/images/variations
+			return Nil;
+		}
 	}
 
 	#~
