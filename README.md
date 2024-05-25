@@ -29,7 +29,6 @@ Objeck is a general-purpose, cross-platform, object-oriented, and functional pro
       * Gemini (enqueue)
     * Image generation, editing, and variation
       * OpenAI (done)
-      * Gemini (queued)
       
 * [v2024.5.0](https://github.com/objeck/objeck-lang/tree/master/core) (current)
   * Gemini support for function calls
