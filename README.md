@@ -1,4 +1,4 @@
-<h1 align="center">Intuitive, Fast & Efficient</h1>
+<h1 align="center">Fully Programmable</h1>
 
 <p align="center">
   <a href="https://www.objeck.org"><img src="docs/images/gear_wheel_256.png""  width="300" alt="An Objeck"/></a>
@@ -7,17 +7,61 @@
 <hr/>
 
 <p align="center">
+  <a href="https://github.com/objeck/objeck-lang/actions/workflows/codeql.yml"><img src="https://github.com/objeck/objeck-lang/actions/workflows/codeql.yml/badge.svg" alt="GitHub CodeQL"></a>
   <a href="https://github.com/objeck/objeck-lang/actions/workflows/c-cpp.yml"><img src="https://github.com/objeck/objeck-lang/actions/workflows/c-cpp.yml/badge.svg" alt="GitHub CI"></a>
   <a href="https://scan.coverity.com/projects/objeck"><img src="https://img.shields.io/coverity/scan/10314.svg" alt="Coverity SCA"></a>
-  <a href="https://github.com/objeck/objeck-lang/actions/workflows/codeql.yml"><img src="https://github.com/objeck/objeck-lang/actions/workflows/codeql.yml/badge.svg" alt="GitHub CodeQL"></a>
-  <a href="https://discord.gg/qEaCGWR7nb"><img src="https://badgen.net/badge/icon/discord?icon=discord&label" alt="Discord"></a>
 </p>
 
-Objeck is a fast, intuitive, and lightweight programming language that supports both object-oriented and functional programming paradigms, and is designed to be compatible with multiple platforms, including Windows, Linux, and macOS.
+Objeck is a general-purpose, cross-platform, object-oriented, and functional programming language geared towards machine learning development.
 
-Recent development has targeted machine learning development namely GOFAI and LLMs (Open AI, Gemini and LLaMa 3). 
+## Releases
+
+* v2024.6.x
+  * LLaMa 3 local model support
+  * Unified ML framework across OpenAI, Gemini and LLaMa
+ 
+* v2024.6.1
+  * Common framework for tuning OpenAI and Gemini models
+  
+* [v2024.6.0](https://github.com/objeck/objeck-lang/tree/v2024.5.1/core)
+    * Model tuning
+      * OpenAI [done]
+      * Gemini
+    * Image generation
+      * OpenAI [enqueue]
+      * Gemini
+      
+* [v2024.5.0](https://github.com/objeck/objeck-lang/tree/master/core) (current)
+  * Gemini support for function calls
+  * JSON Scheme support for function modeling for OpenAI and Gemini
+  * Enhancements
+    * Added Collection 'Reduce' methods
+    * Boxing/unboxing support for the '<' and '>' operators (legacy missing feature)
+  * Bug fixes
+    * Fixed Collection 'Filter' methods
+    * Resolved ODBC refactor bug
+
+## Examples
 
 ```ruby
+# create an image from a prompt
+use API.OpenAI, API.OpenAI.FineTuning, System.IO.Filesystem, Data.JSON;
+
+class CreateImage {
+  function : Main(args : String[]) ~ Nil {
+    image := Image->Create("Create an image of two old steel gears with a transparent background", token);
+    if(image <> Nil) {
+      urls := image->GetUrls();
+      each(url in urls) {
+        url->ToString()->PrintLine();
+      };
+    };
+  }
+ }
+```
+
+```ruby
+# image identification 
 use API.Google.Gemini, System.IO.Filesystem;
 
 class IdentifyImage {
@@ -34,86 +78,75 @@ class IdentifyImage {
 }
 ```
 
-| <sub>[VS Code](https://github.com/objeck/objeck-lsp)</sub> | <sub>[Debugger](https://github.com/objeck/objeck-lang/tree/master/core/debugger)</sub> | <sub>[Dungeon Crawler](https://github.com/objeck/objeck-dungeon-crawler)</sub> | <sub>[Platformer](https://github.com/objeck/objeck-lang/blob/master/programs/deploy/2d_game_13.obs)</sub> | <sub>[Windows Utility](https://github.com/objeck/objeck-lang/tree/master/core/release/WindowsLauncher)</sub> |
-| :---: | :----: | :---: | :---: | :---: |
-![alt text](docs/images/web/comp.png "Visual Studio Code") | ![alt text](docs/images/web/debug.jpg "Command line debugger") | ![alt text](docs/images/web/crawler.png "Web Crawler") | ![alt text](docs/images/web/2d_game.jpg "Platformer") | ![alt text](docs/images/web/launch.png "Windows Launcher") |
+```ruby
+# tune ML model
+use Collection, API.OpenAI, System.IO.Filesystem, Data.JSON, Data.CSV;
 
-Want to get started? Take a look at the [language guide](https://objeck.org/getting_started.html) and [code examples](https://github.com/objeck/objeck-lang/tree/master/programs/examples). If you want to contribute, start with the [system architecture](https://github.com/objeck/objeck-lang/tree/master/core).
+class CreateImage {
+  function : Main(args : String[]) ~ Nil {
+    if(args->Size() = 1) {
+      tuning_file := args[1];
+      file := API.OpenAI.File->LoadOrCreate(tuning_file, "fine-tune", token);
 
-## What is it?
+      name := file->Gettuning_file();
+      id := file->GetId();
+      "file='{$name}', id='{$id}'"->PrintLine();
 
-* Modern object-oriented and functional
-* Cross-platform: Linux (x64 and ARM64), macOS (ARM64), Windows (x64)
-* Optimized and JIT-compiled runtimes
-* API support for
-  * Secure web servers and clients
-  * Encryption
-  * JSON, CSV, and XML parsing libraries
-  * Regular expressions
-  * 2D gaming
-  * Linear matrix mathematics
-  * Collections
-  * Files, directories, sockets, STDIO, logging, serialization, and pipes
-* REPL and IDE [LSP](https://github.com/objeck/objeck-lsp) support (for VSCode, Sublime, Kate, etc.) 
-* Online guides and API [documentation](https://www.objeck.org).
+      tuning_job := Tuning->Create("gpt-3.5-turbo", id, token);
+      tuning_job->ToString()->PrintLine();
+    }
+  }
+}
+```
 
-## What's New?
+```ruby
+# text to speech
+use Web.HTTP, Collection, Data.JSON, API.OpenAI.Audio;
 
-* v2024.6.x
-    * Support for the LLaMa 3 API
-    * Snowflake SQL integration
+class Embaddings {
+  function : Main(args : String[]) ~ Nil {
+    if(args->Size() = 1) {
+      message := args[1];
+      response := API.OpenAI.Audio.Speech->Speak("tts-1", message, "fable", "mp3", token)<String, ByteArrayRef>;        
+      
+      if(response->GetFirst()->Has("audio")) {
+        System.IO.Filesystem.FileWriter->WriteFile("speech.mp3", response->GetSecond()->Get());
+      };
+    }
+  }
+}
+```
 
-* v2024.5.0 **[current]**
-  * DeepMind (Gemini) support for function calls
-  * JSON Scheme support for function modeling for OpenAI, Gemini, and LLaMa
-  * Enhancements
-    * Added Collection 'Reduce' methods
-    * Boxing/unboxing support for the '<' and '>' operators (legacy missing feature)
-  * Bug fixes
-    * Fixed Collection 'Filter' methods
-    * Resolved ODBC refactor bug
+## Design <sub><a href='https://github.com/objeck/objeck-lang/tree/master/core'>[1]</a></sub>
 
-* v2024.4.0
-  * Added support for Google DeepMind (Gemini) APIs
-    * Model
-    * Corpus (v1beta)
-    * Chat
-  * Open AI support for external function calls
-  * OAuth2 support (session and file based support)
-  * Refactored KMeans ML implementation to support arrays
-  * Improved support for Date <=> String operations
-  * Improved Base64 encoding and decoding
-  * Added support for private functions
-  * Tuples classes moved to Collection.Tuple
-  * Added 'First' and 'Last' methods to Vector classes
-  * Fixed ARM64 JIT compiler 'eor' instruction issue impacting macOS and ARM64
+* Object-oriented and functional
+* Cross-platform: Linux, macOS, Windows
+* JIT-compiled runtimes (ARM64 and AMD64)
+* REPL shell
+* [LSP pulgins](https://github.com/objeck/objeck-lsp) for VSCode, Sublime, Kate, and more
+* API [documentation](https://www.objeck.org)
 
+## Libraries <sub><a href='https://github.com/objeck/objeck-lang/tree/master/core/compiler/lib_src'>[2]</a></sub>
 
-* v2024.3.0
-  * Added support for OpenAI APIs
-  * Fixed GC bug #462 and #482
-  
-* v2024.2.1
-  * Support for the [unary bitwise not operator](https://gist.github.com/objeck/d7d5c94de9a1361a20f0eccd65226ded) (#480)
-  * Added support for [response files](https://gist.github.com/objeck/b1a11ea34f4697b06e31f8cadb59f601) (#545)
-  * Webserver library enhancements
-    * Improved performance
-    * More [configuration](https://github.com/objeck/objeck-web-server/blob/master/config/weather_config.json) options
-  * Add an optional [in](https://gist.github.com/objeck/27219d777b636208d88ab197d1cf1270) keyword for use in `each` loops; an alternative to `:=` operator
+* Machine learning (OpenAI, Gemini, GOFAI)
+* Web (server, client, OAuth)
+* Data exchange
+  * JSON (hierarchical, streaming)
+  * XML
+  * CSV
+  * Binary
+* RSS
+* Collections
+* Data access
+  * Relational SQL
+  * In-memory
+* Encryption
+* Regular expressions
+* 2D gaming
 
-* v2024.2.0
-  * New [incremental JSON parser](https://www.objeck.org/doc/api/classes.html#data.json.stream)
-    * Improved parsing performance for large JSON documents
-  * Immutable [Tuple types](https://www.objeck.org/doc/api/classes.html#tuples)
-    * Pair<A,B>
-    * Triplet<A,B,C>
-    * Quartet<A,B,C,D>
-  * Range support
-    * Added ``CharRange``, ``IntRange`` and, ``FloatRange`` classes
+## Features
 
-## How to Use It?
-
-### [Object-oriented](https://en.wikipedia.org/wiki/Object-oriented_programming)
+### Object-oriented
   
 #### Inheritance
 ```ruby
@@ -215,7 +248,7 @@ bytes := serializer->Serialize();
 bytes->Size()->PrintLine();
 ```
 
-### [Functional](https://en.wikipedia.org/wiki/Functional_programming)
+### Functional
 #### Closures and Lambda Expressions
 ```ruby
 funcs := Vector->New()<FuncRef<IntRef>>;
@@ -328,14 +361,7 @@ yesterday->AddDays(-1);
 yesterday->ToString()->PrintLine();
 ```
 
-### Notable Libraries
-  * [Machine learning](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/ml.obs)
-  * [HTTPS](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/net_secure.obs) and [HTTP](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/net.obs) server and client APIs
-  * [JSON](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/json.obs), [XML](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/xml.obs) and [CSV](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/csv.obs) parsers
-  * [Regular expression](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/regex.obs) library
-  * Encryption and hashing
-  * In memory [query framework](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/query.obs) with SQL-like syntax
-  * Database access
-  * [2D Gaming framework](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/sdl_game.obs) via SDL2
-  * [Collections](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/gen_collect.obs) (caches, vectors, queues, trees, hashes, etc.)
-  * GTK windowing support [(on-hold)](core/lib/experimental/gtk)
+## Screenshots
+| <sub>[VS Code](https://github.com/objeck/objeck-lsp)</sub> | <sub>[Debugger](https://github.com/objeck/objeck-lang/tree/master/core/debugger)</sub> | <sub>[Dungeon Crawler](https://github.com/objeck/objeck-dungeon-crawler)</sub> | <sub>[Platformer](https://github.com/objeck/objeck-lang/blob/master/programs/deploy/2d_game_13.obs)</sub> | <sub>[Windows Utility](https://github.com/objeck/objeck-lang/tree/master/core/release/WindowsLauncher)</sub> |
+| :---: | :----: | :---: | :---: | :---: |
+![alt text](docs/images/web/comp.png "Visual Studio Code") | ![alt text](docs/images/web/debug.jpg "Command line debugger") | ![alt text](docs/images/web/crawler.png "Web Crawler") | ![alt text](docs/images/web/2d_game.jpg "Platformer") | ![alt text](docs/images/web/launch.png "Windows Launcher") |

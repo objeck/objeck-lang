@@ -19,13 +19,13 @@ Objeck can be built for a variety of targets. The language is implemented in C++
 *  Build output with binaries and documentation will be located in <code>objeck-lang/core/release/deploy</code>
 *  Reference <code>objeck-lang/core/release/deploy/readme.html</code> to set additional paths and find examples
 
-### macOS (Apple Silicon)
+### macOS (ARM64)
 *  Install Xcode with command line tools
 *  Open a command shell and go to <code>objeck-lang/core/release</code> and run <code>./deploy_macos_arm64.sh</code>
 *  Build output with binaries and documentation will be located in <code>objeck-lang/core/release/deploy</code>
 *  Reference <code>objeck-lang/core/release/deploy/readme.html</code> to set additional paths and find examples
 
-### Windows (Visual Studio)
+### Windows (x64, Visual Studio)
 *  Unzip the OpenSSL Windows libraries in <code>objeck-lang/core/lib/openssl/win/x64</code>
 *  Using Visual Studio 2022 or later open <code>objeck-lang/core/release/objeck.sln</code>
 *  Ensure the core build completes successfully (in Release mode)
@@ -33,7 +33,7 @@ Objeck can be built for a variety of targets. The language is implemented in C++
 *  Build output with binaries and documentation will be located in <code>objeck-lang/core/release/deploy64</code>
 *  Reference <code>objeck-lang/core/release/deploy64/readme.html</code> to learn how to set the environment variables and find code examples
 
-### Windows (MSYS2)
+### Windows (x64, MSYS2)
 * Under the UCRT64 (Unicode shell support)
   * Package dependencies
   * <code>pacman --noconfirm -S mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-openssl make mingw-w64-ucrt-x86_64-SDL2 unzip mingw-w64-ucrt-x86_64-SDL2_ttf mingw-w64-ucrt-x86_64-SDL2_mixer mingw-w64-ucrt-x86_64-SDL2_image mingw-w64-ucrt-x86_64-unixodbc mingw-w64-ucrt-x86_64-eigen3 mingw-w64-ucrt-x86_64-pkgconf</code>
