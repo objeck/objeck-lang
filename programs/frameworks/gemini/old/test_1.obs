@@ -1,0 +1,19 @@
+use Web.HTTP, Collection, Data.JSON, System.IO.Filesystem;
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() = 2) {
+			token := args[0];
+			image_path := args[1];
+			if(FileReader->Exists(image_path)) {
+				file_content := FileReader->ReadBinaryFile(image_path);
+				
+				base64_content := Encryption.Encrypt->Base64(file_content);
+				decoded_content := Encryption.Decrypt->Base64(base64_content);
+				
+				(file_content->Size() = decoded_content->Size())->PrintLine();
+				FileWriter->WriteFile("out.png", decoded_content);
+			};
+		};
+	}
+}

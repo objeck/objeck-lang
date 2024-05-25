@@ -12,13 +12,20 @@ class Test {
 			#
 			# Models
 			#
-			if(action->Equals("list_models") & args_size = 1) {				
-				models := Model->ListModels(token);
+			if(action->Equals("list") & args_size = 1) {
+				models := Model->List(token);
 				each(model in models) {
 					model->ToString()->PrintLine();
 				};
 			}
-			else if(action->Equals("text_query_model") & args_size = 2) {
+			else if(action->Equals("get") & args_size = 2) {
+				model_name := args[1];
+				model := Model->Get(model_name, token);
+				if(model <> Nil) {
+					model->ToString()->PrintLine();
+				};
+			}
+			else if(action->Equals("query") & args_size = 2) {
 				query := args[1];
 				content := Content->New("user")->AddPart(TextPart->New(query));
 
@@ -30,13 +37,16 @@ class Test {
 				pair_1 := Pair->New(func_1, func_ref_1)<FunctionType, Func2Ref<JsonElement, JsonElement>>;
 				funcs->Insert(func_1->GetName(), pair_1);
 
-				candidates := Model->GenerateContent("models/gemini-1.0-pro-latest", content, funcs, token);
+				candidates := Model->GenerateContent("models/gemini-1.5-pro", content, funcs, token);
 				if(candidates->Size() > 0) {
 					candidates->First()->GetAllText()->Trim()->PrintLine();
 				};
 			}
-			else if(action->Equals("static_chat") & args_size = 1) {
-				session := Chat->New("models/gemini-1.0-pro-001", EndPoint->GetApiKey());
+			else if(action->Equals("tune") & args_size = 1) {
+				
+			}
+			else if(action->Equals("chat") & args_size = 1) {
+				session := Chat->New("models/gemini-1.5-pro", EndPoint->GetApiKey());
 
 				content := session->SendPart(TextPart->New("What is the largest lake in Colorado?"), "user");
 				content->GetFirstPart()->ToString()->PrintLine();
