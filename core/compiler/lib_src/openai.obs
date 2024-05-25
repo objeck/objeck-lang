@@ -1237,7 +1237,7 @@ bundle API.OpenAI {
 			headers->Insert("Authorization", "Bearer {$token}");
 			response := HttpsClient->QuickPost(Url->New("https://api.openai.com/v1/images/generations"), data, "application/json", headers);
 			if(response <> Nil) {
-response->GetContent()->ToString()->PrintLine();
+				# response->GetContent()->ToString()->PrintLine();
 				image_json := JsonParser->TextToElement(response->GetContent()->ToString());
 
 				if(image_json = Nil) {
@@ -1261,6 +1261,17 @@ response->GetContent()->ToString()->PrintLine();
 		Creates an edited or extended image given an original image and a prompt
 		@param image_path image to edit
 		@param prompt text description of the desired image
+		@param token API token
+		@return edited image
+		~#
+		function : Edit(image_path : String, prompt : String, token : String) ~ API.OpenAI.Image {
+			return Edit(image_path, prompt, Nil, Nil, -1, Image->Size->DALLE_DEFAULT, Nil, Nil, token);
+		}
+
+		#~
+		Creates an edited or extended image given an original image and a prompt
+		@param image_path image to edit
+		@param prompt text description of the desired image
 		@param mask_path additional image whose fully transparent areas (e.g. where alpha is zero) 
 		@param model model name
 		@param n number of images
@@ -1272,7 +1283,63 @@ response->GetContent()->ToString()->PrintLine();
 		~#
 		function : Edit(image_path : String, prompt : String, mask_path : String, model : String, n : Int, 
 				size : Image->Size, response_format : String, user : String, token : String) ~ API.OpenAI.Image {
-			# TODO: https://api.openai.com/v1/images/edits
+			image_content := FileReader->ReadBinaryFile(image_path);
+			if(image_content <> Nil) {
+				encoder := Web.HTTP.Server.MultipartEncoder->New();
+
+				# image_path
+				image_headers := Map->New()<String, String>;
+				image_headers->Insert("Content-Disposition", "form-data; name=\"image\"; filename=\"{$image_path}\"");
+				image_headers->Insert("Content-Type", "application/octet-stream");
+				multi_content := Web.HTTP.Server.MultipartContent->New(image_headers, image_content);
+				encoder->Add(multi_content);
+
+				# prompt
+				prompt_headers := Map->New()<String, String>;
+				prompt_headers->Insert("Content-Disposition", "form-data; name=\"prompt\"");
+				purpose_content := Web.HTTP.Server.MultipartContent->New(prompt_headers, prompt->ToByteArray());
+				encoder->Add(purpose_content);
+
+				# mask_path
+				if(mask_path <> Nil) {
+					mask_content := FileReader->ReadBinaryFile(image_path);
+					if(mask_content <> Nil) {
+						mask_headers := Map->New()<String, String>;
+						mask_headers->Insert("Content-Disposition", "form-data; name=\"mask\"; filename=\"{$mask_path}\"");
+						mask_headers->Insert("Content-Type", "application/octet-stream");
+						multi_content := Web.HTTP.Server.MultipartContent->New(mask_headers, mask_content);
+						encoder->Add(multi_content);
+					};
+				};
+
+				boundry := encoder->GetBoundary();
+				data := encoder->ToByteArray();
+
+#~
+				headers := Map->New()<String, String>;
+				headers->Insert("Authorization", "Bearer {$token}");
+				response := HttpsClient->QuickPost(Url->New("https://api.openai.com/v1/images/edits"), data, 
+					"multipart/form-data; boundary={$boundry}", headers);
+				if(response <> Nil) {
+					# response->GetContent()->ToString()->PrintLine();
+					image_json := JsonParser->TextToElement(response->GetContent()->ToString());
+
+					if(image_json = Nil) {
+						"### Error: Unable to parse response ###"->ErrorLine();
+						return Nil;
+					};
+
+					error_str := image_json->FindElements("error/message");				
+					if(error_str <> Nil) {
+						SetLastError(error_str->GetString());
+						return Nil;
+					};
+
+					return API.OpenAI.Image->New(image_json);					
+				};
+~#				
+			};
+
 			return Nil;
 		}
 
