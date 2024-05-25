@@ -41,21 +41,37 @@ each(candidate in candidates) {
 			CLUSTERING
 		}
 
-		New : private(description : String, display_name : String, input_token_limit : Int,
-					name : String, output_token_limit : Int, generation_methods : Vector<String>, 
-					temperature : Float, top_k : Int, top_p : Float, version : String) {
+		New : private(model_json : JsonElement) {
 			Parent();
 
-			@description := description;
-			@display_name := display_name;
-			@input_token_limit := input_token_limit;
-			@name := name;
-			@output_token_limit := output_token_limit;
-			@generation_methods := generation_methods;
-			@temperature := temperature;
-			@top_k := top_k;
-			@top_p := top_p;
-			@version := version;
+			@description := model_json->Get("description")->GetString();
+			@display_name := model_json->Get("displayName")->GetString();
+			@input_token_limit := model_json->Get("inputTokenLimit")->GetInt();
+			@name := model_json->Get("name")->GetString();
+			@output_token_limit := model_json->Get("outputTokenLimit")->GetInt();
+
+			@generation_methods := Vector->New()<String>;
+			@generation_methods_json := model_json->Get("supportedGenerationMethods");
+			each(generation_method_json in @generation_methods_json) {
+				@generation_methods->AddBack(generation_method_json->GetString());
+			}
+
+			@temperature := 0.9;
+			@temperature_json := model_json->Get("@temperature");
+			if(@temperature_json <> Nil) {
+				@temperature := @temperature_json->GetFloat();
+			};
+
+			top_k_json := model_json->Get("topK");
+			if(top_k_json <> Nil) {
+				@top_k := top_k_json->GetInt();
+			};
+
+			top_p_json := model_json->Get("topP");
+			if(top_p_json <> Nil) {
+				@top_p := top_p_json->GetFloat();
+			};
+			@version := model_json->Get("version")->GetString();
 		}
 		
 		#~
@@ -74,39 +90,7 @@ each(candidate in candidates) {
 				models_json := response->Get("models");
 
 				each(model_json in models_json) {
-					description := model_json->Get("description")->GetString();
-					display_name := model_json->Get("displayName")->GetString();
-					input_token_limit := model_json->Get("inputTokenLimit")->GetInt();
-					name := model_json->Get("name")->GetString();
-					output_token_limit := model_json->Get("outputTokenLimit")->GetInt();
-
-					generation_methods := Vector->New()<String>;
-					generation_methods_json := model_json->Get("supportedGenerationMethods");
-					each(generation_method_json in generation_methods_json) {
-						generation_methods->AddBack(generation_method_json->GetString());
-					}
-
-					temperature := 0.9;
-					temperature_json := model_json->Get("temperature");
-					if(temperature_json <> Nil) {
-						temperature := temperature_json->GetFloat();
-					};
-
-					top_k := 0;			
-					top_k_json := model_json->Get("topK");
-					if(top_k_json <> Nil) {
-						top_k := top_k_json->GetInt();
-					};
-
-					top_p := 1.0;
-					top_p_json := model_json->Get("topP");
-					if(top_p_json <> Nil) {
-						top_p := top_p_json->GetFloat();
-					};
-					version := model_json->Get("version")->GetString();
-
-					models->AddBack(Model->New(description, display_name, input_token_limit, name, output_token_limit, 
-						generation_methods, temperature, top_k, top_p, version));
+					models->AddBack(Model->New(model_json));
 				};
 			};
 
@@ -125,40 +109,7 @@ each(candidate in candidates) {
 
 			if(model_json <> Nil) {
 				# model_json->ToString()->PrintLine();
-
-				description := model_json->Get("description")->GetString();
-				display_name := model_json->Get("displayName")->GetString();
-				input_token_limit := model_json->Get("inputTokenLimit")->GetInt();
-				name := model_json->Get("name")->GetString();
-				output_token_limit := model_json->Get("outputTokenLimit")->GetInt();
-
-				generation_methods := Vector->New()<String>;
-				generation_methods_json := model_json->Get("supportedGenerationMethods");
-				each(generation_method_json in generation_methods_json) {
-					generation_methods->AddBack(generation_method_json->GetString());
-				}
-
-				temperature := 0.9;
-				temperature_json := model_json->Get("temperature");
-				if(temperature_json <> Nil) {
-					temperature := temperature_json->GetFloat();
-				};
-
-				top_k := 0;			
-				top_k_json := model_json->Get("topK");
-				if(top_k_json <> Nil) {
-					top_k := top_k_json->GetInt();
-				};
-
-				top_p := 1.0;
-				top_p_json := model_json->Get("topP");
-				if(top_p_json <> Nil) {
-					top_p := top_p_json->GetFloat();
-				};
-				version := model_json->Get("version")->GetString();
-
-				return Model->New(description, display_name, input_token_limit, name, output_token_limit, 
-					generation_methods, temperature, top_k, top_p, version);
+				return Model->New(model_json);
 				
 			};
 
@@ -1228,6 +1179,28 @@ session->ToString()->PrintLine();
 		function : GetLastError() ~ String {
 			return @last_message;
 		}
+	}
+}
+
+#~
+Google Gemini support for tuned models
+~#
+bundle API.Google.Gemini.Tuned {
+	class TunedModel {
+		New : private(model_json : JsonElement) {
+			Parent();
+			# description := model_json->Get("description")->GetString();
+		}
+
+		function : Create(display_name : String, description : String, tuningTask : TuningTask, tune_model_source : String,
+				base_model : String, temperature : Float, top_p : Float, top_k : Int, key : String) ~ API.Google.Gemini.Tuned {
+			content_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+
+		}
+	}
+
+	class TuningTask {
+		New() {}
 	}
 }
 
