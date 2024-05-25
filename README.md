@@ -33,7 +33,7 @@ Objeck is a general-purpose, cross-platform, object-oriented, and functional pro
       
 * [v2024.5.0](https://github.com/objeck/objeck-lang/tree/master/core) (current)
   * Gemini support for function calls
-  * JSON Scheme support for function modeling for OpenAI, Gemini, and LLaMa
+  * JSON Scheme support for function modeling for OpenAI and Gemini
   * Enhancements
     * Added Collection 'Reduce' methods
     * Boxing/unboxing support for the '<' and '>' operators (legacy missing feature)
