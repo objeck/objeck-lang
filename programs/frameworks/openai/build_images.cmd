@@ -7,4 +7,4 @@ obc -src %OBJECK_ROOT%\core\compiler\lib_src\openai.obs -lib json,net,misc -tar 
 
 del /q *.obe
 obc -src openai_images -lib openai,csv,net,json,misc
-obr openai_images %1 %2
+obr openai_images %1 %2 %3 %4
