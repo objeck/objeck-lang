@@ -142,7 +142,7 @@ class Embaddings {
 * Encryption
 * Regular expressions
 * 2D gaming
-* 
+* RSS
 
 ## Features
 
