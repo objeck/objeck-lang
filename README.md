@@ -123,7 +123,7 @@ class Embaddings {
 * Cross-platform: Linux, macOS, Windows
 * JIT-compiled runtimes (ARM64 and AMD64)
 * REPL shell
-* [LSP pulgins](https://github.com/objeck/objeck-lsp) for VSCode, Sublime, Kate, and more
+* LSP [pulgins](https://github.com/objeck/objeck-lsp) for VSCode, Sublime, Kate, and more
 * API [documentation](https://www.objeck.org)
 
 ## Libraries <sub><a href='https://github.com/objeck/objeck-lang/tree/master/core/compiler/lib_src'>[2]</a></sub>
