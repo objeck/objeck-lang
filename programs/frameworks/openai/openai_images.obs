@@ -6,17 +6,28 @@ class Test {
 		if(token <> Nil & args->Size() > 0) {
 			command := args[0];
 
-			if(command->Equals("create")) {
-#~				
-				if(token->StartsWith("sk-")) {
-					token := token->SubString((3), token->Size() - 3);
-				};
-~#
-				image := Image->Create("Create a realistic image 1984 dinner table", token);
+			if(command->Equals("create") & args->Size() = 2) {
+				prompt := args[1];
+				
+				image := Image->Create(prompt, token);
 				if(image <> Nil) {
 					urls := image->GetUrls();
 					each(url in urls) {
-						url->ToString()->PrintLine();
+						url->GetUrl()->PrintLine();
+					};
+				};
+			}
+			else if(command->Equals("variation") & args->Size() = 2) {
+				image_content := FileReader->ReadBinaryFile(args[1]);
+				if(image_content <> Nil) {
+					image_name := args[1];
+
+					image := Image->Variation(image_name, image_content, token);
+					if(image <> Nil) {
+						urls := image->GetUrls();
+						each(url in urls) {
+							url->GetUrl()->PrintLine();
+						};
 					};
 				};
 			}
@@ -30,7 +41,7 @@ class Test {
 					if(image <> Nil) {
 						urls := image->GetUrls();
 						each(url in urls) {
-							url->ToString()->PrintLine();
+							url->GetUrl()->PrintLine();
 						};
 					};
 				};
