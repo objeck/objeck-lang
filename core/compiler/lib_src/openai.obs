@@ -1259,20 +1259,25 @@ bundle API.OpenAI {
 		
 		#~
 		Creates an edited or extended image given an original image and a prompt
-		@param image_path image to edit
+		@param image_name image name
+		@param image_content image content
 		@param prompt text description of the desired image
 		@param token API token
 		@return edited image
 		~#
-		function : Edit(image_path : String, prompt : String, token : String) ~ API.OpenAI.Image {
-			return Edit(image_path, prompt, Nil, Nil, -1, Image->Size->DALLE_DEFAULT, Nil, Nil, token);
+		function : Edit(image_name : String, image_content : Byte[], prompt : String, token : String) ~ API.OpenAI.Image {
+			return Edit(image_name, image_content, prompt, Nil, Nil->As(Byte[]), Nil, -1, Image->Size->DALLE_DEFAULT, Nil, Nil, token);
 		}
-
+		
 		#~
 		Creates an edited or extended image given an original image and a prompt
-		@param image_path image to edit
+		@param image_name image name
+		@param image_content image content
 		@param prompt text description of the desired image
-		@param mask_path additional image whose fully transparent areas (e.g. where alpha is zero) 
+		
+		@param mask_name mask name
+		@param mask_content additional image whose fully transparent areas (e.g. where alpha is zero) 
+		
 		@param model model name
 		@param n number of images
 		@param size size of the generated image
@@ -1281,63 +1286,115 @@ bundle API.OpenAI {
 		@param token API token
 		@return edited image
 		~#
-		function : Edit(image_path : String, prompt : String, mask_path : String, model : String, n : Int, 
-				size : Image->Size, response_format : String, user : String, token : String) ~ API.OpenAI.Image {
-			image_content := FileReader->ReadBinaryFile(image_path);
-			if(image_content <> Nil) {
-				encoder := Web.HTTP.Server.MultipartEncoder->New();
+		function : Edit(image_name : String, image_content : Byte[], prompt : String, mask_name : String, mask_content : Byte[], 
+				model : String, n : Int, size : Image->Size, response_format : String, user : String, token : String) ~ API.OpenAI.Image {
+			
+			encoder := Web.HTTP.Server.MultipartEncoder->New();
 
-				# image_path
-				image_headers := Map->New()<String, String>;
-				image_headers->Insert("Content-Disposition", "form-data; name=\"image\"; filename=\"{$image_path}\"");
-				image_headers->Insert("Content-Type", "application/octet-stream");
-				multi_content := Web.HTTP.Server.MultipartContent->New(image_headers, image_content);
-				encoder->Add(multi_content);
+			# image
+			image_headers := Map->New()<String, String>;
+			image_headers->Insert("Content-Disposition", "form-data; name=\"image\"; filename=\"{$image_name}\"");
+			image_headers->Insert("Content-Type", "application/octet-stream");
+			encoder->Add(Web.HTTP.Server.MultipartContent->New(image_headers, image_content));
 
-				# prompt
-				prompt_headers := Map->New()<String, String>;
-				prompt_headers->Insert("Content-Disposition", "form-data; name=\"prompt\"");
-				purpose_content := Web.HTTP.Server.MultipartContent->New(prompt_headers, prompt->ToByteArray());
-				encoder->Add(purpose_content);
+			# prompt
+			prompt_headers := Map->New()<String, String>;
+			prompt_headers->Insert("Content-Disposition", "form-data; name=\"prompt\"");
+			encoder->Add(Web.HTTP.Server.MultipartContent->New(prompt_headers, prompt->ToByteArray()));
 
-				# mask_path
-				if(mask_path <> Nil) {
-					mask_content := FileReader->ReadBinaryFile(image_path);
-					if(mask_content <> Nil) {
-						mask_headers := Map->New()<String, String>;
-						mask_headers->Insert("Content-Disposition", "form-data; name=\"mask\"; filename=\"{$mask_path}\"");
-						mask_headers->Insert("Content-Type", "application/octet-stream");
-						multi_content := Web.HTTP.Server.MultipartContent->New(mask_headers, mask_content);
-						encoder->Add(multi_content);
-					};
-				};
+			# mask
+			if(mask_name <> Nil & mask_content <> Nil) {
+				mask_headers := Map->New()<String, String>;
+				mask_headers->Insert("Content-Disposition", "form-data; name=\"mask\"; filename=\"{$mask_name}\"");
+				mask_headers->Insert("Content-Type", "application/octet-stream");
+				encoder->Add(Web.HTTP.Server.MultipartContent->New(mask_headers, mask_content));
+			};
 
-				boundry := encoder->GetBoundary();
-				data := encoder->ToByteArray();
+			# model
+			if(model <> Nil) {
+				model_headers := Map->New()<String, String>;
+				model_headers->Insert("Content-Disposition", "form-data; name=\"model\"");
+				encoder->Add(Web.HTTP.Server.MultipartContent->New(model_headers, model->ToByteArray()));
+			};
+
+			# n
+			if(n > 0 & n <= 10) {
+				n_headers := Map->New()<String, String>;
+				n_headers->Insert("Content-Disposition", "form-data; name=\"n\"");
+				encoder->Add(Web.HTTP.Server.MultipartContent->New(n_headers, n->ToString()->ToByteArray()));
+			};
+			
+			# size
+			select(size) {
+				label Image->Size->DALLE2_256_256 {
+					size_headers := Map->New()<String, String>;
+					size_headers->Insert("Content-Disposition", "form-data; name=\"size\"");
+					encoder->Add(Web.HTTP.Server.MultipartContent->New(size_headers, "256x256"->ToByteArray()));
+				}
+
+				label Image->Size->DALLE2_512_512 {
+					size_headers := Map->New()<String, String>;
+					size_headers->Insert("Content-Disposition", "form-data; name=\"size\"");
+					encoder->Add(Web.HTTP.Server.MultipartContent->New(size_headers, "512x512"->ToByteArray()));
+				}
+
+				label Image->Size->DALLE2_1024_1024:
+				label Image->Size->DALLE3_1024_1024 {
+					size_headers := Map->New()<String, String>;
+					size_headers->Insert("Content-Disposition", "form-data; name=\"size\"");
+					encoder->Add(Web.HTTP.Server.MultipartContent->New(size_headers, "1024x1024"->ToByteArray()));
+				}
+
+				label Image->Size->DALLE3_1792_1024:
+				label Image->Size->DALLE3_1024_1792 {					
+					size_headers := Map->New()<String, String>;
+					size_headers->Insert("Content-Disposition", "form-data; name=\"size\"");
+					encoder->Add(Web.HTTP.Server.MultipartContent->New(size_headers, "1792x1024"->ToByteArray()));
+				}
+			};
+
+			# response format
+			if(response_format <> Nil) {
+				response_format_headers := Map->New()<String, String>;
+				response_format_headers->Insert("Content-Disposition", "form-data; name=\"response_format\"");
+				encoder->Add(Web.HTTP.Server.MultipartContent->New(response_format_headers, response_format->ToByteArray()));
+			};
+
+			# user
+			if(user <> Nil) {
+				user_headers := Map->New()<String, String>;
+				user_headers->Insert("Content-Disposition", "form-data; name=\"user\"");
+				encoder->Add(Web.HTTP.Server.MultipartContent->New(user_headers, user->ToByteArray()));
+			};
+
+			boundry := encoder->GetBoundary();
+			data := encoder->ToByteArray();
 
 #~
-				headers := Map->New()<String, String>;
-				headers->Insert("Authorization", "Bearer {$token}");
-				response := HttpsClient->QuickPost(Url->New("https://api.openai.com/v1/images/edits"), data, 
-					"multipart/form-data; boundary={$boundry}", headers);
-				if(response <> Nil) {
-					# response->GetContent()->ToString()->PrintLine();
-					image_json := JsonParser->TextToElement(response->GetContent()->ToString());
+temp_data := data->ToString();
+"boundry='{$boundry}'"->PrintLine();
+"data='{$temp_data}'"->PrintLine();
+~#
+			headers := Map->New()<String, String>;
+			headers->Insert("Authorization", "Bearer {$token}");
+			response := HttpsClient->QuickPost(Url->New("https://api.openai.com/v1/images/edits"), data, 
+				"multipart/form-data; boundary={$boundry}", headers);
+			if(response <> Nil) {
+response->GetContent()->ToString()->PrintLine();
+				image_json := JsonParser->TextToElement(response->GetContent()->ToString());
 
-					if(image_json = Nil) {
-						"### Error: Unable to parse response ###"->ErrorLine();
-						return Nil;
-					};
-
-					error_str := image_json->FindElements("error/message");				
-					if(error_str <> Nil) {
-						SetLastError(error_str->GetString());
-						return Nil;
-					};
-
-					return API.OpenAI.Image->New(image_json);					
+				if(image_json = Nil) {
+					"### Error: Unable to parse response ###"->ErrorLine();
+					return Nil;
 				};
-~#				
+
+				error_str := image_json->FindElements("error/message");				
+				if(error_str <> Nil) {
+					SetLastError(error_str->GetString());
+					return Nil;
+				};
+
+				return API.OpenAI.Image->New(image_json);					
 			};
 
 			return Nil;
