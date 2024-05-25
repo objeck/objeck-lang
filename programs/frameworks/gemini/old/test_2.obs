@@ -1,0 +1,7 @@
+use Collection, API.Google.Gemini, System.IO.Filesystem;
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		EndPoint->GetApiKey()->PrintLine();
+	}
+}
