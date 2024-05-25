@@ -25,10 +25,10 @@ Objeck is a general-purpose, cross-platform, object-oriented, and functional pro
   
 * [v2024.6.0](https://github.com/objeck/objeck-lang/tree/v2024.5.1/core)
     * Model tuning
-      * OpenAI [done]
+      * OpenAI (done)
       * Gemini
-    * Image generation
-      * OpenAI [enqueue]
+    * Image generation, editing, and variation
+      * OpenAI (done)
       * Gemini
       
 * [v2024.5.0](https://github.com/objeck/objeck-lang/tree/master/core) (current)
