@@ -692,7 +692,7 @@ bundle API.OpenAI.FineTuning {
 			data := tune_json->ToString()->ToByteArray();
 
 			headers := Map->New()<String, String>;
-			headers->Insert("Authorization", "Bearer sk-{$token}");
+			headers->Insert("Authorization", "Bearer {$token}");
 			response := HttpsClient->QuickPost(Url->New("https://api.openai.com/v1/fine_tuning/jobs"), data, "application/json", headers);
 			if(response <> Nil) {
 				# response->GetContent()->ToString()->PrintLine();
@@ -1234,10 +1234,10 @@ bundle API.OpenAI {
 			data := image_json->ToString()->ToByteArray();
 
 			headers := Map->New()<String, String>;
-			headers->Insert("Authorization", "Bearer sk-{$token}");
+			headers->Insert("Authorization", "Bearer {$token}");
 			response := HttpsClient->QuickPost(Url->New("https://api.openai.com/v1/images/generations"), data, "application/json", headers);
 			if(response <> Nil) {
-				# response->GetContent()->ToString()->PrintLine();
+response->GetContent()->ToString()->PrintLine();
 				image_json := JsonParser->TextToElement(response->GetContent()->ToString());
 
 				if(image_json = Nil) {
@@ -1704,7 +1704,7 @@ bundle API.OpenAI {
 			data := file_json->ToString()->ToByteArray();
 
 			headers := Map->New()<String, String>;
-			headers->Insert("Authorization", "Bearer sk-{$@token}");
+			headers->Insert("Authorization", "Bearer {$@token}");
 			headers->Insert("OpenAI-Beta", "assistants=v1");
 			response := HttpsClient->QuickPost(Url->New("https://api.openai.com/v1/assistants/{$@id}/files"), data, "application/json", headers);
 			if(response <> Nil) {
