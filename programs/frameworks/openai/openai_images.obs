@@ -7,10 +7,11 @@ class Test {
 			command := args[0];
 
 			if(command->Equals("create")) {
+#~				
 				if(token->StartsWith("sk-")) {
 					token := token->SubString((3), token->Size() - 3);
 				};
-
+~#
 				image := Image->Create("Create an image of two old steel gears with a transparent background", token);
 				if(image <> Nil) {
 					urls := image->GetUrls();
