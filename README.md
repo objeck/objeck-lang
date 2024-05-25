@@ -117,7 +117,7 @@ class Embaddings {
 }
 ```
 
-## [Design](https://github.com/objeck/objeck-lang/tree/master/core)
+## Design <sub><a href='https://github.com/objeck/objeck-lang/tree/master/core'>[1]</a></sub>
 
 * Object-oriented and functional
 * Cross-platform: Linux, macOS, Windows
@@ -126,7 +126,7 @@ class Embaddings {
 * [LSP pulgins](https://github.com/objeck/objeck-lsp) for VSCode, Sublime, Kate, and more
 * API [documentation](https://www.objeck.org)
 
-## [Libraries](https://github.com/objeck/objeck-lang/tree/master/core/compiler/lib_src)
+## Libraries <sub><a href='https://github.com/objeck/objeck-lang/tree/master/core/compiler/lib_src'>[2]</a></sub>
 
 * Machine learning (OpenAI, Gemini, GOFAI)
 * Web (server, client, OAuth)
@@ -135,6 +135,7 @@ class Embaddings {
   * XML
   * CSV
   * Binary
+* RSS
 * Collections
 * Data access
   * Relational SQL
@@ -142,7 +143,6 @@ class Embaddings {
 * Encryption
 * Regular expressions
 * 2D gaming
-* RSS
 
 ## Features
 
