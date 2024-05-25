@@ -1268,16 +1268,14 @@ bundle API.OpenAI {
 		function : Edit(image_name : String, image_content : Byte[], prompt : String, token : String) ~ API.OpenAI.Image {
 			return Edit(image_name, image_content, prompt, Nil, Nil->As(Byte[]), Nil, -1, Image->Size->DALLE_DEFAULT, Nil, Nil, token);
 		}
-		
+
 		#~
 		Creates an edited or extended image given an original image and a prompt
 		@param image_name image name
 		@param image_content image content
 		@param prompt text description of the desired image
-		
 		@param mask_name mask name
 		@param mask_content additional image whose fully transparent areas (e.g. where alpha is zero) 
-		
 		@param model model name
 		@param n number of images
 		@param size size of the generated image
@@ -1370,17 +1368,12 @@ bundle API.OpenAI {
 			boundry := encoder->GetBoundary();
 			data := encoder->ToByteArray();
 
-#~
-temp_data := data->ToString();
-"boundry='{$boundry}'"->PrintLine();
-"data='{$temp_data}'"->PrintLine();
-~#
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
 			response := HttpsClient->QuickPost(Url->New("https://api.openai.com/v1/images/edits"), data, 
 				"multipart/form-data; boundary={$boundry}", headers);
 			if(response <> Nil) {
-response->GetContent()->ToString()->PrintLine();
+				# response->GetContent()->ToString()->PrintLine();
 				image_json := JsonParser->TextToElement(response->GetContent()->ToString());
 
 				if(image_json = Nil) {
@@ -1402,18 +1395,119 @@ response->GetContent()->ToString()->PrintLine();
 
 		#~
 		Creates a variation of a given image
-		@param image_path image to edit
+		@param image_name image name
+		@param image_content image content
+		@param token API token
+		@return image variation
+		~#
+		function : Variation(image_name : String, image_content : Byte[], token : String) ~ API.OpenAI.Image {
+			return Variation(image_name, image_content, Nil, -1, Nil, Image->Size->DALLE_DEFAULT, Nil, token);
+		}
+
+		#~
+		Creates a variation of a given image
+		@param image_name image name
+		@param image_content image content
 		@param model model name
 		@param n number of images
 		@param response_format format in which the generated images are returned		
 		@param size size of the generated image
 		@param user identifier representing your end-user
 		@param token API token
-		@return edited image
+		@return image variation
 		~#
-		function : Variation(image_path : String, model : String, n : Int, response_format : String,
-				size : Image->Size, user : String, token : String) ~ API.OpenAI.Image {
-			# TODO: https://api.openai.com/v1/images/variations
+		function : Variation(image_name : String, image_content : Byte[], model : String, n : Int, response_format : String, size : Image->Size, user : String, token : String) ~ API.OpenAI.Image {
+			
+			encoder := Web.HTTP.Server.MultipartEncoder->New();
+
+			# image
+			image_headers := Map->New()<String, String>;
+			image_headers->Insert("Content-Disposition", "form-data; name=\"image\"; filename=\"{$image_name}\"");
+			image_headers->Insert("Content-Type", "application/octet-stream");
+			encoder->Add(Web.HTTP.Server.MultipartContent->New(image_headers, image_content));
+
+			# model
+			if(model <> Nil) {
+				model_headers := Map->New()<String, String>;
+				model_headers->Insert("Content-Disposition", "form-data; name=\"model\"");
+				encoder->Add(Web.HTTP.Server.MultipartContent->New(model_headers, model->ToByteArray()));
+			};
+
+			# n
+			if(n > 0 & n <= 10) {
+				n_headers := Map->New()<String, String>;
+				n_headers->Insert("Content-Disposition", "form-data; name=\"n\"");
+				encoder->Add(Web.HTTP.Server.MultipartContent->New(n_headers, n->ToString()->ToByteArray()));
+			};
+
+			# response format
+			if(response_format <> Nil) {
+				response_format_headers := Map->New()<String, String>;
+				response_format_headers->Insert("Content-Disposition", "form-data; name=\"response_format\"");
+				encoder->Add(Web.HTTP.Server.MultipartContent->New(response_format_headers, response_format->ToByteArray()));
+			};
+			
+			# size
+			select(size) {
+				label Image->Size->DALLE2_256_256 {
+					size_headers := Map->New()<String, String>;
+					size_headers->Insert("Content-Disposition", "form-data; name=\"size\"");
+					encoder->Add(Web.HTTP.Server.MultipartContent->New(size_headers, "256x256"->ToByteArray()));
+				}
+
+				label Image->Size->DALLE2_512_512 {
+					size_headers := Map->New()<String, String>;
+					size_headers->Insert("Content-Disposition", "form-data; name=\"size\"");
+					encoder->Add(Web.HTTP.Server.MultipartContent->New(size_headers, "512x512"->ToByteArray()));
+				}
+
+				label Image->Size->DALLE2_1024_1024:
+				label Image->Size->DALLE3_1024_1024 {
+					size_headers := Map->New()<String, String>;
+					size_headers->Insert("Content-Disposition", "form-data; name=\"size\"");
+					encoder->Add(Web.HTTP.Server.MultipartContent->New(size_headers, "1024x1024"->ToByteArray()));
+				}
+
+				label Image->Size->DALLE3_1792_1024:
+				label Image->Size->DALLE3_1024_1792 {					
+					size_headers := Map->New()<String, String>;
+					size_headers->Insert("Content-Disposition", "form-data; name=\"size\"");
+					encoder->Add(Web.HTTP.Server.MultipartContent->New(size_headers, "1792x1024"->ToByteArray()));
+				}
+			};
+
+			# user
+			if(user <> Nil) {
+				user_headers := Map->New()<String, String>;
+				user_headers->Insert("Content-Disposition", "form-data; name=\"user\"");
+				encoder->Add(Web.HTTP.Server.MultipartContent->New(user_headers, user->ToByteArray()));
+			};
+
+			boundry := encoder->GetBoundary();
+			data := encoder->ToByteArray();
+
+			headers := Map->New()<String, String>;
+			headers->Insert("Authorization", "Bearer {$token}");
+			response := HttpsClient->QuickPost(Url->New("https://api.openai.com/v1/images/variations"), data, 
+				"multipart/form-data; boundary={$boundry}", headers);
+			if(response <> Nil) {
+				# response->GetContent()->ToString()->PrintLine();
+				image_json := JsonParser->TextToElement(response->GetContent()->ToString());
+
+				if(image_json = Nil) {
+					"### Error: Unable to parse response ###"->ErrorLine();
+					return Nil;
+				};
+
+				error_str := image_json->FindElements("error/message");				
+				if(error_str <> Nil) {
+					SetLastError(error_str->GetString());
+					return Nil;
+				};
+
+				return API.OpenAI.Image->New(image_json);					
+			};
+
 			return Nil;
 		}
 	}
