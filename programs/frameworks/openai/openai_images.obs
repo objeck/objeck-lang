@@ -20,17 +20,24 @@ class Test {
 					};
 				};
 			}
-			else if(command->Equals("update")) {
-				image := Image->Create("Create an image of two old steel gears with a transparent background", token);
-				if(image <> Nil) {
-					urls := image->GetUrls();
-					each(url in urls) {
-						url->ToString()->PrintLine();
+			else if(command->Equals("edit") & args->Size() = 3) {
+				image_content := FileReader->ReadBinaryFile(args[1]);
+				if(image_content <> Nil) {
+					image_name := args[1];
+					prompt := args[2];
+
+					image := Image->Edit(image_name, image_content, prompt, token);
+					if(image <> Nil) {
+						urls := image->GetUrls();
+						each(url in urls) {
+							url->ToString()->PrintLine();
+						};
 					};
 				};
 			}
 			else {
-				">>> Invalid command or parameters for '{$command}' <<<"->ErrorLine();
+				args_size := args->Size();
+				">>> Invalid command or parameters for '{$command}' with {$args_size} argument(s) <<<"->ErrorLine();
 			};
 		}
 	}
