@@ -117,7 +117,7 @@ class Embaddings {
 }
 ```
 
-## [Architecture](https://github.com/objeck/objeck-lang/tree/master/core)
+## [Design](https://github.com/objeck/objeck-lang/tree/master/core)
 
 * Object-oriented and functional
 * Cross-platform: Linux, macOS, Windows
