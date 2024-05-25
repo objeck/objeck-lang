@@ -12,7 +12,7 @@ class Test {
 					token := token->SubString((3), token->Size() - 3);
 				};
 ~#
-				image := Image->Create("Create an image of two old steel gears with a transparent background", token);
+				image := Image->Create("Create a realistic image 1984 dinner table", token);
 				if(image <> Nil) {
 					urls := image->GetUrls();
 					each(url in urls) {
@@ -21,10 +21,6 @@ class Test {
 				};
 			}
 			else if(command->Equals("update")) {
-				if(token->StartsWith("sk-")) {
-					token := token->SubString((3), token->Size() - 3);
-				};
-
 				image := Image->Create("Create an image of two old steel gears with a transparent background", token);
 				if(image <> Nil) {
 					urls := image->GetUrls();

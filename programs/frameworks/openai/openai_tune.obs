@@ -101,10 +101,6 @@ class Test {
 				id := file->GetId();
 				"file='{$name}', id='{$id}'"->PrintLine();
 
-				if(token->StartsWith("sk-")) {
-					token := token->SubString((3), token->Size() - 3);
-				};
-
 				tuning_job := Tuning->Create("gpt-3.5-turbo", id, token);
 				tuning_job->ToString()->PrintLine();
 			}
