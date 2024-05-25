@@ -128,21 +128,21 @@ class Embaddings {
 
 ## Libraries <sub><a href='https://github.com/objeck/objeck-lang/tree/master/core/compiler/lib_src'>[2]</a></sub>
 
-* Machine learning (OpenAI, Gemini, GOFAI)
-* Web (server, client, OAuth)
+* Machine learning ([OpenAI](https://github.com/objeck/objeck-lang/blob/v2024.5.1/core/compiler/lib_src/openai.obs), [Gemini](https://github.com/objeck/objeck-lang/blob/v2024.5.1/core/compiler/lib_src/gemini.obs), [GOFAI](https://github.com/objeck/objeck-lang/blob/v2024.5.1/core/compiler/lib_src/ml.obs))
+* Web ([server](https://github.com/objeck/objeck-lang/blob/v2024.5.1/core/compiler/lib_src/net_secure.obs), [client](https://github.com/objeck/objeck-lang/blob/v2024.5.1/core/compiler/lib_src/net_secure.obs), [OAuth](https://github.com/objeck/objeck-lang/blob/v2024.5.1/core/compiler/lib_src/net_common.obs))
 * Data exchange
-  * JSON (hierarchical, streaming)
-  * XML
-  * CSV
-  * Binary
-* RSS
-* Collections
+  * JSON ([hierarchical](https://github.com/objeck/objeck-lang/blob/v2024.5.1/core/compiler/lib_src/json.obs), [streaming](https://github.com/objeck/objeck-lang/blob/v2024.5.1/core/compiler/lib_src/json_stream.obs))
+  * [XML](https://github.com/objeck/objeck-lang/blob/v2024.5.1/core/compiler/lib_src/xml.obs)
+  * [CSV](https://github.com/objeck/objeck-lang/blob/v2024.5.1/core/compiler/lib_src/csv.obs)
+  * [Binary](https://github.com/objeck/objeck-lang/blob/v2024.5.1/core/compiler/lib_src/lang.obs)
+* [RSS](https://github.com/objeck/objeck-lang/blob/v2024.5.1/core/compiler/lib_src/rss.obs)
+* [Collections](https://github.com/objeck/objeck-lang/blob/v2024.5.1/core/compiler/lib_src/gen_collect.obs)
 * Data access
-  * Relational SQL
-  * In-memory
-* Encryption
-* Regular expressions
-* 2D gaming
+  * [Relational SQL](https://github.com/objeck/objeck-lang/blob/v2024.5.1/core/compiler/lib_src/odbc.obs)
+  * [In-memory](https://github.com/objeck/objeck-lang/blob/v2024.5.1/core/compiler/lib_src/query.obs)
+* [Encryption](https://github.com/objeck/objeck-lang/blob/v2024.5.1/core/compiler/lib_src/encrypt.obs)
+* [Regular expressions](https://github.com/objeck/objeck-lang/blob/v2024.5.1/core/compiler/lib_src/regex.obs)
+* [2D gaming](https://github.com/objeck/objeck-lang/blob/v2024.5.1/core/compiler/lib_src/sdl_game.obs)
 
 ## Features
 
