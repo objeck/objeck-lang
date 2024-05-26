@@ -1203,11 +1203,11 @@ session->ToString()->PrintLine();
 #~
 Google Gemini support for tuned models
 ~#
-bundle API.Google.Gemini.Tuned {
+bundle API.Google.Gemini.Tuning {
 	#~
 	Fine-tuning model operations
 	~#
-	class TuningModel from OAuthEndPoint implements Stringify {
+	class Tuner from OAuthEndPoint implements Stringify {
 		@display_name : String;
 		@description : String;
 		@tuning_task : TuningTask;
@@ -1238,7 +1238,7 @@ bundle API.Google.Gemini.Tuned {
 		@param tuning_task the tuning task that creates the tuned model
 		@return snapshot of tuned model and metadata
 		~#
-		function : Create(display_name : String, base_model : String, tuning_task : TuningTask) ~ API.Google.Gemini.Tuned.TunedModel {
+		function : Create(display_name : String, base_model : String, tuning_task : TuningTask) ~ API.Google.Gemini.Tuning.TunedModel {
 			return Create(display_name, Nil, tuning_task, Nil, base_model, -1.0, -1.0, -1)
 		}
 
@@ -1255,8 +1255,8 @@ bundle API.Google.Gemini.Tuned {
 		@return snapshot of tuned model and metadata
 		~#
 		function : Create(display_name : String, description : String, tuning_task : TuningTask, tune_model_source : Pair<String, String>, 
-				base_model : String, temperature : Float, top_p : Float, top_k : Int) ~ API.Google.Gemini.Tuned.TunedModel {
-			query_json := TuningModel->New(display_name, description, tuning_task, tune_model_source, base_model, temperature, top_p, top_k);
+				base_model : String, temperature : Float, top_p : Float, top_k : Int) ~ API.Google.Gemini.Tuning.TunedModel {
+			query_json := Tuner->New(display_name, description, tuning_task, tune_model_source, base_model, temperature, top_p, top_k);
 			data := query_json->ToString()->ToByteArray();
 
 			# data->ToString()->PrintLine();
@@ -1281,7 +1281,7 @@ bundle API.Google.Gemini.Tuned {
 					return Nil;
 				};
 
-				return API.Google.Gemini.Tuned.TunedModel->New(response_json);
+				return API.Google.Gemini.Tuning.TunedModel->New(response_json);
 			};
 
 			return Nil;
@@ -1314,7 +1314,7 @@ bundle API.Google.Gemini.Tuned {
 					return Nil;
 				};
 
-				return API.Google.Gemini.Tuned.TunedModel->New(response_json)
+				return API.Google.Gemini.Tuning.TunedModel->New(response_json)
 			};
 
 			return Nil;
@@ -1378,7 +1378,7 @@ bundle API.Google.Gemini.Tuned {
 					tuned_models_json := response_json->Get("tunedModels");
 					if(tuned_models_json <> Nil) {
 						each(tuned_model_json in tuned_models_json) {						
-							tuned_models->AddBack(API.Google.Gemini.Tuned.TunedModel->New(tuned_model_json));
+							tuned_models->AddBack(API.Google.Gemini.Tuning.TunedModel->New(tuned_model_json));
 						};
 					};
 
@@ -1673,14 +1673,14 @@ bundle API.Google.Gemini.Tuned {
 	~#
 	class TuningTask implements Stringify {
 		@training_data : Dataset;
-		@hyper_params : HyperParameters;
+		@hyper_params : Hyperparameters;
 		
 		#~
 		Constructor
 		@param training_data model training data
 		@param hyper_params hyperparameters controlling the tuning process
 		~#
-		New(training_data : Dataset, hyper_params : HyperParameters) {
+		New(training_data : Dataset, hyper_params : Hyperparameters) {
 			Parent();
 
 			@training_data := training_data;
@@ -1699,7 +1699,7 @@ bundle API.Google.Gemini.Tuned {
 		Get hyperparameters controlling the tuning process
 		@return hyperparameters controlling the tuning process
 		~#
-		method : public : GetHyperparameters() ~ HyperParameters {
+		method : public : GetHyperparameters() ~ Hyperparameters {
 			return @hyper_params;
 		}
 
@@ -1846,7 +1846,7 @@ bundle API.Google.Gemini.Tuned {
 	#~
 	Hyperparameters controlling the tuning process
 	~#
-	class HyperParameters implements Stringify {
+	class Hyperparameters implements Stringify {
 		@batch_size : Int;
 		@learning_rate : Float;
 		@epoch_count : Int;
