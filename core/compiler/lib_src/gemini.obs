@@ -1186,7 +1186,7 @@ session->ToString()->PrintLine();
 Google Gemini support for tuned models
 ~#
 bundle API.Google.Gemini.Tuned {
-	class TunedModel {
+	class TuningModel from OAuthEndPoint implements Stringify {
 		@display_name : String;
 		@description : String;
 		@tuning_task : TuningTask;
@@ -1200,6 +1200,8 @@ bundle API.Google.Gemini.Tuned {
 		New : private(display_name : String, description : String, tuning_task : TuningTask, 
 				tune_model_source : String, base_model : String, temperature : Float, top_p : Float, 
 				top_k : Int, key : String) {
+			Parent();
+
 			@display_name := display_name;
 			@description := description;
 			@tuning_task := tuning_task;
@@ -1211,9 +1213,6 @@ bundle API.Google.Gemini.Tuned {
 			@key := key;
 		}
 
-		New : private(tuned_model_json : JsonElement) {			
-		}
-
 		function : Create(display_name : String, base_model : String, tuning_task : TuningTask, key : String) ~ API.Google.Gemini.Tuned.TunedModel {
 			return Create(display_name, Nil, tuning_task, Nil, base_model, -1.0, -1.0, -1, key)
 		}
@@ -1221,11 +1220,35 @@ bundle API.Google.Gemini.Tuned {
 		function : Create(display_name : String, description : String, tuning_task : TuningTask, 
 				tune_model_source : String, base_model : String, temperature : Float, top_p : Float, 
 				top_k : Int, key : String) ~ API.Google.Gemini.Tuned.TunedModel {
-			
-			input_model := TunedModel->New(display_name, description, tuning_task, 
-				tune_model_source, base_model, temperature, top_p, top_k, key);
+			query_json := TuningModel->New(display_name, description, tuning_task, tune_model_source, base_model, temperature, top_p, top_k, key);
+			data := query_json->ToString()->ToByteArray();
 
-			return input_model;
+			# data->ToString()->PrintLine();
+			# "---"->PrintLine();
+
+			token := GetToken();
+			headers := Collection.Map->New()<String, String>;
+			headers->Insert("Authorization", "Bearer {$token}");
+			response := HttpsClient->QuickPost(Url->New("https://generativelanguage.googleapis.com/v1beta/tunedModels"), data, "application/json", headers);
+			if(response <> Nil) {
+				# response->GetContent()->ToString()->PrintLine();
+				
+				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				if(response_json = Nil) {
+					"### Error: Unable to parse response ###"->ErrorLine();
+					return Nil;
+				};
+				
+				if(response_json->Has("error")) {
+					error_str := response_json->FindElements("error/message")->GetString();
+					SetLastError(error_str);
+					return Nil;
+				};
+
+				return API.Google.Gemini.Tuned.TunedModel->New(response_json);
+			};
+
+			return Nil;
 		}
 
 		method : public : ToJson() ~ JsonElement {
@@ -1257,13 +1280,50 @@ bundle API.Google.Gemini.Tuned {
 
 			return tuned_model_json;
 		}
+
+		method : public : ToString() ~ String {
+			return ToJson()->ToString();
+		}
 	}
 
-	class TuningTask {
+	class TunedModel implements Stringify {
+		@name : String;
+		@type : String;
+		@total_steps : Int;
+		@tuned_model : String;
+
+		New (tuned_model_json : JsonElement) {
+			Parent();
+
+			@name := tuned_model_json->Get("name")->GetString();
+			@type :=  tuned_model_json->FindElements("metadata/@type")->GetString();
+			@total_steps :=  tuned_model_json->FindElements("metadata/totalSteps")->GetInt();
+			@tuned_model :=  tuned_model_json->FindElements("metadata/tunedModel")->GetString();
+		}
+
+		method : public : ToString() ~ String {
+			buffer := "[name='";
+			
+			buffer->Append(@name);
+			buffer->Append("', type='");
+			buffer->Append(@type);
+			buffer->Append("', total_steps='");
+			buffer->Append(@total_steps);
+			buffer->Append("', total_steps='");
+			buffer->Append(@tuned_model);
+			buffer->Append("']");
+
+			return buffer;
+		}
+	}
+
+	class TuningTask implements Stringify {
 		@training_data : Dataset;
 		@hyper_params : HyperParameters;
 		
 		New(training_data : Dataset, hyper_params : HyperParameters) {
+			Parent();
+
 			@training_data := training_data;
 			@hyper_params := hyper_params;
 		}
@@ -1284,12 +1344,18 @@ bundle API.Google.Gemini.Tuned {
 
 			return tuning_task_obj_json;
 		}
+
+		method : public : ToString() ~ String {
+			return ToJson()->ToString();
+		}
 	}
 
-	class Dataset {
+	class Dataset implements Stringify {
 		@examples : Vector<TuningExample>;
 
 		New() {
+			Parent();
+			
 			@examples := Vector->New()<TuningExample>;
 		}
 
@@ -1317,13 +1383,19 @@ bundle API.Google.Gemini.Tuned {
 
 			return dataset_json;
 		}
+
+		method : public : ToString() ~ String {
+			return ToJson()->ToString();
+		}
 	}
 
-	class TuningExample {
+	class TuningExample implements Stringify {
 		@text_input : String;
 		@output : String;
 
 		New(text_input : String, output : String) {
+			Parent();
+			
 			@text_input := text_input;
 			@output := output;
 		}
@@ -1344,15 +1416,21 @@ bundle API.Google.Gemini.Tuned {
 			
 			return tuning_example_json;
 		}
+
+		method : public : ToString() ~ String {
+			return ToJson()->ToString();
+		}
 	}
 
-	class HyperParameters {
+	class HyperParameters implements Stringify {
 		@batch_size : Int;
 		@learning_rate : Float;
 		@epoch_count : Int;
 		@learning_rate_multiplier : Float;
 
 		New(batch_size : Int, learning_rate : Float, epoch_count : Int) {
+			Parent();
+			
 			@batch_size := batch_size;
 			@learning_rate := learning_rate;
 			@epoch_count := epoch_count;
@@ -1360,6 +1438,8 @@ bundle API.Google.Gemini.Tuned {
 		}
 
 		New(batch_size : Int, learning_rate : Float, epoch_count : Int, learning_rate_multiplier : Float) {
+			Parent();
+			
 			@batch_size := batch_size;
 			@learning_rate := learning_rate;
 			@epoch_count := epoch_count;
@@ -1394,6 +1474,10 @@ bundle API.Google.Gemini.Tuned {
 			};
 
 			return hyper_param_json;
+		}
+
+		method : public : ToString() ~ String {
+			return ToJson()->ToString();
 		}
 	}
 }
@@ -2290,7 +2374,7 @@ each(result in results) {
 	#~
 	OAuth enabled endpoint class
 	~#
-	class : private : OAuthEndPoint {
+	class OAuthEndPoint {
 		@last_message : static : String;
 
 		New() {}
@@ -2299,15 +2383,23 @@ each(result in results) {
 		Get OAuth token
 		@return OAuth token
 		~#
-		function : GetToken() ~ String {		
-			token_str := System.IO.Net.OAuth.OAuthToken->ReadTokenFormat(System.IO.Filesystem.FileReader->ReadFile("client_secret.dat"));
+		function : GetToken() ~ String {
+			token_str := System.IO.Net.OAuth.OAuthToken->ReadTokenFormat(System.IO.Filesystem.FileReader->ReadFile("client_secrets.dat"));
 			if(token_str = Nil) {
-				scopes := ["https://www.googleapis.com/auth/cloud-platform", 
-					"https://www.googleapis.com/auth/generative-language.retriever"];
-				token := System.IO.Net.OAuth.OAuthClient->New("client_secret.json", scopes)->GetToken();
-				System.IO.Filesystem.FileWriter->WriteFile("client_secret.dat", 
-					System.IO.Net.OAuth.OAuthToken->FormatNewToken(token->GetAccessToken(), token->GetExpiresIn()));
-				token_str := System.IO.Net.OAuth.OAuthToken->ReadTokenFormat(System.IO.Filesystem.FileReader->ReadFile("client_secret.dat"));
+				scopes := [
+					"https://www.googleapis.com/auth/cloud-platform", 
+					"https://www.googleapis.com/auth/generative-language.retriever",
+					"https://www.googleapis.com/auth/generative-language.tuning"];
+				token := System.IO.Net.OAuth.OAuthClient->New("client_secrets.json", scopes)->GetToken();
+				if(token <> Nil) {
+					System.IO.Filesystem.FileWriter->WriteFile("client_secrets.dat", 
+						System.IO.Net.OAuth.OAuthToken->FormatNewToken(token->GetAccessToken(), token->GetExpiresIn()));
+					token_str := System.IO.Net.OAuth.OAuthToken->ReadTokenFormat(System.IO.Filesystem.FileReader->ReadFile("client_secrets.dat"));
+				}
+				else {
+					">>> OAuth - Unable to load or parse: file='client_secrets.json', file_format='https://developers.google.com/api-client-library/dotnet/guide/aaa_client_secrets' <<<"->ErrorLine();
+					return Nil;
+				}
 			};
 
 			return token_str;
