@@ -1,4 +1,4 @@
-use Collection, API.OpenAI, API.OpenAI.FineTuning, System.IO.Filesystem, Data.JSON, Data.CSV;
+use Collection, API.OpenAI, API.OpenAI.Tuning, System.IO.Filesystem, Data.JSON, Data.CSV;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
@@ -37,7 +37,7 @@ class Test {
 			}
 			else if(command->Equals("list-checkpoints") & args->Size() = 2) {
 				job_id := args[1];
-				checkpoints := API.OpenAI.FineTuning.Tuning->ListCheckpoints(job_id, 2, token);
+				checkpoints := API.OpenAI.Tuning.Tuner->ListCheckpoints(job_id, 2, token);
 				if(checkpoints <> Nil) {
 					each(checkpoint in checkpoints) {
 						checkpoint->ToString()->PrintLine();
@@ -49,7 +49,7 @@ class Test {
 			}
 			else if(command->Equals("load-checkpoint") & args->Size() = 2) {
 				job_id := args[1];
-				checkpoint := API.OpenAI.FineTuning.Tuning->Load(job_id, token);
+				checkpoint := API.OpenAI.Tuning.Tuner->Load(job_id, token);
 				if(checkpoint <> Nil) {
 					checkpoint->ToString()->PrintLine();
 				}
@@ -59,7 +59,7 @@ class Test {
 			}
 			else if(command->Equals("cancel-job")) {
 				job_id := args[1]
-				job := API.OpenAI.FineTuning.Tuning->Load(job_id, token);
+				job := API.OpenAI.Tuning.Tuner->Load(job_id, token);
 				if(job <> Nil) {
 					job := job->Cancel(job->GetId(), token);
 					job->GetStatus()->PrintLine();
@@ -69,7 +69,7 @@ class Test {
 				};
 			}
 			else if(command->Equals("list-jobs")) {
-				jobs := API.OpenAI.FineTuning.Tuning->ListJobs(2, token);
+				jobs := API.OpenAI.Tuning.Tuner->ListJobs(2, token);
 				if(jobs <> Nil) {
 					each(job in jobs) {
 						id := job->GetId();
@@ -83,7 +83,7 @@ class Test {
 			}
 			else if(command->Equals("list-events") & args->Size() = 2) {
 				job_id := args[1];
-				events := API.OpenAI.FineTuning.Tuning->ListEvents(job_id, token);
+				events := API.OpenAI.Tuning.Tuner->ListEvents(job_id, token);
 				if(events <> Nil) {
 					each(event in events) {
 						event->ToString()->PrintLine();
@@ -101,7 +101,7 @@ class Test {
 				id := file->GetId();
 				"file='{$name}', id='{$id}'"->PrintLine();
 
-				tuning_job := Tuning->Create("gpt-3.5-turbo", id, token);
+				tuning_job := Tuner->Create("gpt-3.5-turbo", id, token);
 				tuning_job->ToString()->PrintLine();
 			}
 			else {
