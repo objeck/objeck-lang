@@ -1321,6 +1321,21 @@ bundle API.Google.Gemini.Tuning {
 		}
 
 		#~
+		Deletes all trained models
+		@return true if successful, false otherwise
+		~#
+		function : DeleteAllModels() ~ Bool {
+			tuned_models := List();
+			each(tuned_model in tuned_models) {
+				if(<>tuned_model->Delete()) {
+					return false;
+				}
+			};
+			
+			return true;
+		}
+
+		#~
 		Lists tuned models owned by the user
 		@param model_id resource model identifier
 		@return list of tuned models
@@ -1399,6 +1414,32 @@ bundle API.Google.Gemini.Tuning {
 		@return true if successful, false otherwise
 		~#
 		function : TransferOwnership(new_email : String, model_id : String) ~ Bool {
+			request_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			request_json->Insert("emailAddress", new_email);
+			data := request_json->ToString()->ToByteArray();
+			# data->ToString()->PrintLine();
+
+			token := GetToken();
+			headers := Collection.Map->New()<String, String>;
+			headers->Insert("Authorization", "Bearer {$token}");
+			response := HttpsClient->QuickPost(Url->New("https://generativelanguage.googleapis.com/v1beta/{$model_id}:transferOwnership"), data, "application/json", headers);			
+			if(response <> Nil) {
+				# response->GetContent()->ToString()->PrintLine();
+				
+				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				if(response_json = Nil) {
+					return false;
+				};
+				
+				if(response_json->Has("error")) {
+					error_str := response_json->FindElements("error/message")->GetString();
+					SetLastError(error_str);
+					return false;
+				};
+
+				return true;
+			}
+
 			return false;
 		}
 
