@@ -5,7 +5,7 @@ Copyright (c) 2024 Randy Hollines
 use Web.HTTP, Collection, Data.JSON, Data.JSON.Scheme;
 
 #~
-Google Gemini ML client APIs
+Google Gemini ML client APIs (-lib gemini)
 ~#
 bundle API.Google.Gemini {
 	#~
@@ -1201,7 +1201,7 @@ session->ToString()->PrintLine();
 }
 
 #~
-Google Gemini support for tuned models
+Google Gemini support for tuned models (-lib gemini)
 ~#
 bundle API.Google.Gemini.Tuning {
 	#~
@@ -1855,7 +1855,7 @@ bundle API.Google.Gemini.Tuning {
 		#~
 		Constructor
 		@param batch_size the batch size hyperparameter for tuning
-		@param learning_rate The learning rate hyperparameter for tuning
+		@param learning_rate the learning rate hyperparameter for tuning
 		@param epoch_count number of training epochs
 		~#
 		New(batch_size : Int, learning_rate : Float, epoch_count : Int) {
@@ -1872,7 +1872,7 @@ bundle API.Google.Gemini.Tuning {
 		@param batch_size batch size hyperparameter for tuning
 		@param learning_rate learning rate hyperparameter for tuning
 		@param epoch_count number of training epochs
-		@param learning_rate_multiplier learning rate multiplier is used to calculate a final learningRate based on the default (recommended) value
+		@param learning_rate_multiplier learning rate multiplier is used to calculate a final learningrate based on the default (recommended) value
 		~#
 		New(batch_size : Int, learning_rate : Float, epoch_count : Int, learning_rate_multiplier : Float) {
 			Parent();
@@ -1944,7 +1944,7 @@ bundle API.Google.Gemini.Tuning {
 }
 
 #~
-Google Gemini corpus APIs
+Google Gemini corpus APIs (-lib gemini)
 ~#
 bundle API.Google.Gemini.Corpus {
 	#~

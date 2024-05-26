@@ -1583,7 +1583,7 @@ if(doc <> Nil) {
 }
 
 #~
-Support for e JSON Schema metadata
+Support for e JSON Schema metadata (-lib json)
 ~#
 bundle Data.JSON.Scheme {
 	#~
