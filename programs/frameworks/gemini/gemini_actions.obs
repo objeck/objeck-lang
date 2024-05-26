@@ -74,6 +74,9 @@ class Test {
 					tuned_model->ToString()->PrintLine();
 				};
 			}
+			else if(action->Equals("delete_all_tuned_models") & args_size = 1) {
+				Tuner->DeleteAllModels()->PrintLine();
+			}
 			else if(action->Equals("delete_tuned_model") & args_size = 2) {
 				model_id := args[1];
 
@@ -93,6 +96,12 @@ class Test {
 				else {
 					">>> Unable to find model: model_id='{$model_id}' <<<"->PrintLine();
 				};
+			}
+			else if(action->Equals("transfer_tuned_model") & args_size = 3) {
+				model_id := args[1];
+				email := args[2];
+
+				Tuner->TransferOwnership(email, model_id)->PrintLine();
 			}
 			else if(action->Equals("list_tuned_models") & args_size = 1) {
 				tuned_models := Tuner->List();
