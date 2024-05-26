@@ -1,4 +1,4 @@
-use API.Google.Gemini, System.IO.Filesystem, Data.JSON, Data.JSON.Scheme, Collection;
+use API.Google.Gemini, API.Google.Gemini.Tuned, System.IO.Filesystem, Data.JSON, Data.JSON.Scheme, Collection;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
@@ -43,7 +43,24 @@ class Test {
 				};
 			}
 			else if(action->Equals("tune") & args_size = 1) {
-				
+				training_data := Dataset->New();
+				training_data->AddExample(TuningExample->New("1", "2"));
+				training_data->AddExample(TuningExample->New("3", "4"));
+				training_data->AddExample(TuningExample->New("-3", "-2"));
+				training_data->AddExample(TuningExample->New("twenty two", "twenty three"));
+				hyper_params := HyperParameters->New(2, 0.001, 5);
+				tuning_task := TuningTask->New(training_data, hyper_params);
+
+				display_name := "number generator model";
+				base_model := "models/gemini-1.0-pro-001";
+#				description := String;
+#				tune_model_source := String;
+#				temperature := Float;
+#				top_p := Float;
+#				top_k := Int;
+
+				tuned_model := TunedModel->Create(display_name , base_model, tuning_task, token);
+				tuned_model->ToJson()->ToString()->PrintLine();
 			}
 			else if(action->Equals("chat") & args_size = 1) {
 				session := Chat->New("models/gemini-1.5-pro", EndPoint->GetApiKey());

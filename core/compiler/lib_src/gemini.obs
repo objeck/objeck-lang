@@ -357,7 +357,7 @@ each(candidate in candidates) {
 				};
 
 				# safety ratings
-				safety_ratings := Vector->New()<Collection.Tuple.Pair<String,String>>;
+				safety_ratings := Vector->New()<Collection.Tuple.Pair<String, String>>;
 				safety_ratings_json := candidate_json->Get("safetyRatings");
 				each(safety_rating_json in safety_ratings_json) {
 					safety_category := safety_rating_json->Get("category")->GetString();
@@ -1187,20 +1187,214 @@ Google Gemini support for tuned models
 ~#
 bundle API.Google.Gemini.Tuned {
 	class TunedModel {
-		New : private(model_json : JsonElement) {
-			Parent();
-			# description := model_json->Get("description")->GetString();
+		@display_name : String;
+		@description : String;
+		@tuning_task : TuningTask;
+		@tune_model_source : String;
+		@base_model : String;
+		@temperature : Float;
+		@top_p : Float;
+		@top_k : Int;
+		@key : String;
+
+		New : private(display_name : String, description : String, tuning_task : TuningTask, 
+				tune_model_source : String, base_model : String, temperature : Float, top_p : Float, 
+				top_k : Int, key : String) {
+			@display_name := display_name;
+			@description := description;
+			@tuning_task := tuning_task;
+			@tune_model_source := tune_model_source;
+			@base_model := base_model;
+			@temperature := temperature;
+			@top_p := top_p;
+			@top_k := top_k;
+			@key := key;
 		}
 
-		function : Create(display_name : String, description : String, tuningTask : TuningTask, tune_model_source : String,
-				base_model : String, temperature : Float, top_p : Float, top_k : Int, key : String) ~ API.Google.Gemini.Tuned {
-			content_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+		New : private(tuned_model_json : JsonElement) {			
+		}
 
+		function : Create(display_name : String, base_model : String, tuning_task : TuningTask, key : String) ~ API.Google.Gemini.Tuned.TunedModel {
+			return Create(display_name, Nil, tuning_task, Nil, base_model, -1.0, -1.0, -1, key)
+		}
+
+		function : Create(display_name : String, description : String, tuning_task : TuningTask, 
+				tune_model_source : String, base_model : String, temperature : Float, top_p : Float, 
+				top_k : Int, key : String) ~ API.Google.Gemini.Tuned.TunedModel {
+			
+			input_model := TunedModel->New(display_name, description, tuning_task, 
+				tune_model_source, base_model, temperature, top_p, top_k, key);
+
+			return input_model;
+		}
+
+		method : public : ToJson() ~ JsonElement {
+			tuned_model_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+
+			tuned_model_json->Insert("displayName", @display_name);
+			tuned_model_json->Insert("baseModel", @base_model);
+			tuned_model_json->Insert("tuningTask", @tuning_task->ToJson());
+
+			if(@description <> Nil) {
+				tuned_model_json->Insert("description", @description);
+			};
+
+			if(@tune_model_source <> Nil) {
+				tuned_model_json->Insert("tunedModelSource", @tune_model_source);
+			};
+
+			if(@temperature > 1.0) {
+				tuned_model_json->Insert("temperature", @temperature);
+			};
+
+			if(@top_p > 1.0) {
+				tuned_model_json->Insert("topP", @top_p);
+			};
+
+			if(@top_k > 1.0) {
+				tuned_model_json->Insert("topK", @top_k);
+			};
+
+			return tuned_model_json;
 		}
 	}
 
 	class TuningTask {
-		New() {}
+		@training_data : Dataset;
+		@hyper_params : HyperParameters;
+		
+		New(training_data : Dataset, hyper_params : HyperParameters) {
+			@training_data := training_data;
+			@hyper_params := hyper_params;
+		}
+
+		method : public : GetTrainingData() ~ Dataset {
+			return @training_data;
+		}
+
+		method : public : GetHyperParameters() ~ HyperParameters {
+			return @hyper_params;
+		}
+
+		method : public : ToJson() ~ JsonElement {
+			tuning_task_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+
+			tuning_task_obj_json->Insert("hyperparameters", @hyper_params->ToJson())
+			tuning_task_obj_json->Insert("trainingData", @training_data->ToJson())
+
+			return tuning_task_obj_json;
+		}
+	}
+
+	class Dataset {
+		@examples : Vector<TuningExample>;
+
+		New() {
+			@examples := Vector->New()<TuningExample>;
+		}
+
+		method : public : AddExample(example : TuningExample) ~ Nil {
+			@examples->AddBack(example);
+		}
+
+		method : public : GetExamples() ~  Vector<TuningExample> {
+			return @examples;
+		}
+
+		method : public : ToJson() ~ JsonElement {
+			examples_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+
+			each(example in @examples) {
+				examples_array_json->Add(example->ToJson());
+			};
+
+			examples_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			examples_obj_json->Insert("examples", examples_array_json)
+
+			dataset_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			dataset_json->Insert("examples", examples_obj_json)
+
+
+			return dataset_json;
+		}
+	}
+
+	class TuningExample {
+		@text_input : String;
+		@output : String;
+
+		New(text_input : String, output : String) {
+			@text_input := text_input;
+			@output := output;
+		}
+
+		method : public : GetTextInput() ~ String {
+			return @text_input;
+		}
+
+		method : public : GetOutput() ~ String {
+			return @output;
+		}
+
+		method : public : ToJson() ~ JsonElement {
+			tuning_example_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+
+			tuning_example_json->Insert("textInput", @text_input);
+			tuning_example_json->Insert("output", @output);
+			
+			return tuning_example_json;
+		}
+	}
+
+	class HyperParameters {
+		@batch_size : Int;
+		@learning_rate : Float;
+		@epoch_count : Int;
+		@learning_rate_multiplier : Float;
+
+		New(batch_size : Int, learning_rate : Float, epoch_count : Int) {
+			@batch_size := batch_size;
+			@learning_rate := learning_rate;
+			@epoch_count := epoch_count;
+			@learning_rate_multiplier := -1.0;
+		}
+
+		New(batch_size : Int, learning_rate : Float, epoch_count : Int, learning_rate_multiplier : Float) {
+			@batch_size := batch_size;
+			@learning_rate := learning_rate;
+			@epoch_count := epoch_count;
+			@learning_rate_multiplier := learning_rate_multiplier;
+		}
+
+		method : public : GetBatchSize() ~ Int {
+			return @batch_size;
+		}
+
+		method : public : GetLearningRate() ~ Float {
+			return @learning_rate;
+		}
+
+		method : public : GetEpochCount() ~ Int {
+			return @epoch_count;
+		}
+
+		method : public : GetLearningRateMultiplier() ~ Float {
+			return @learning_rate_multiplier;
+		}
+
+		method : public : ToJson() ~ JsonElement {
+			hyper_param_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+
+			hyper_param_json->Insert("batchSize", @batch_size);
+			hyper_param_json->Insert("learningRate", @learning_rate);
+			hyper_param_json->Insert("epochCount", @epoch_count);
+
+			if(@learning_rate_multiplier > 0.0) {
+				hyper_param_json->Insert("learningRateMultiplier", @learning_rate_multiplier);
+			};
+
+			return hyper_param_json;
+		}
 	}
 }
 
