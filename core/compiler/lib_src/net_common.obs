@@ -2584,7 +2584,7 @@ bundle Web.HTTP.Server {
 }
 
 #~
-OAuth client
+OAuth client (-lib lib)
 ~#
 bundle System.IO.Net.OAuth {
 	#~

@@ -5,7 +5,7 @@ Copyright (c) 2024 Randy Hollines
 use Web.HTTP, Collection, System.IO.Filesystem, Data.JSON, Data.JSON.Scheme;
 
 #~
-Support for OpenAI audio APIs
+Support for OpenAI audio APIs (-lib openai)
 ~#
 bundle API.OpenAI.Audio {
 	#~
@@ -183,7 +183,7 @@ bundle API.OpenAI.Audio {
 }
 
 #~
-Support for OpenAI chat APIs
+Support for OpenAI chat APIs (-lib openai)
 ~#
 bundle API.OpenAI.Chat {
 	#~
@@ -514,7 +514,7 @@ bundle API.OpenAI.Chat {
 }
 
 #~
-Support for fine-tuning models
+Support for fine-tuning models (-lib openai)
 ~#
 bundle API.OpenAI.Tuning {
 	#~
@@ -1097,7 +1097,7 @@ bundle API.OpenAI.Tuning {
 }
 
 #~
-Support for OpenAIs models and assistant and general APIs
+Support for OpenAIs models and assistant and general APIs (-lib openai)
 ~#
 bundle API.OpenAI {
 	#~
