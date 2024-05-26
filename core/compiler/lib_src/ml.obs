@@ -10,7 +10,7 @@ use Collection;
 use Data.CSV;
 
 #~
-Machine learning and data science routines
+Machine learning and data science routines (-lib ml)
 ~#
 bundle System.ML {
 	class Proxy {

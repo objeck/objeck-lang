@@ -1,11 +1,11 @@
 #~~
-# Stream JSON parser
-# Copyright (c) 2024
-# Music: 7th Chamber, 1:22
+Stream JSON parser
+Copyright (c) 2024
+Music: 7th Chamber, 1:22
 ~~#
 
 #~
-Support for JSON stream parsing (-lib json_stream.obl)
+Support for JSON stream parsing (-lib json_stream)
 ~#
 bundle Data.JSON.Stream {
 	#~
