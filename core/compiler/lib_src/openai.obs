@@ -516,11 +516,11 @@ bundle API.OpenAI.Chat {
 #~
 Support for fine-tuning models
 ~#
-bundle API.OpenAI.FineTuning {
+bundle API.OpenAI.Tuning {
 	#~
 	OpenAI fine tuning 
 	~#
-	class Tuning from EndPoint {
+	class Tuner from EndPoint {
 		@id : String;
 		@object : String;
 		@model : String;
