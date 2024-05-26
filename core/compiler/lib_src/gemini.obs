@@ -1204,17 +1204,20 @@ session->ToString()->PrintLine();
 Google Gemini support for tuned models
 ~#
 bundle API.Google.Gemini.Tuned {
+	#~
+	Fine-tuning model operations
+	~#
 	class TuningModel from OAuthEndPoint implements Stringify {
 		@display_name : String;
 		@description : String;
 		@tuning_task : TuningTask;
-		@tune_model_source : String;
+		@tune_model_source : Pair<String, String>;
 		@base_model : String;
 		@temperature : Float;
 		@top_p : Float;
 		@top_k : Int;
 
-		New : private(display_name : String, description : String, tuning_task : TuningTask, tune_model_source : String, 
+		New : private(display_name : String, description : String, tuning_task : TuningTask, tune_model_source : Pair<String, String>, 
 				base_model : String, temperature : Float, top_p : Float, top_k : Int) {
 			Parent();
 
@@ -1228,13 +1231,31 @@ bundle API.Google.Gemini.Tuned {
 			@top_k := top_k;
 		}
 
+		#~
+		Creates a tuned model
+		@param display_name the name to display for this model in user interfaces
+		@param base_model the name of the base model to tune from
+		@param tuning_task the tuning task that creates the tuned model
+		@return snapshot of tuned model and metadata
+		~#
 		function : Create(display_name : String, base_model : String, tuning_task : TuningTask) ~ API.Google.Gemini.Tuned.TunedModel {
 			return Create(display_name, Nil, tuning_task, Nil, base_model, -1.0, -1.0, -1)
 		}
 
-		function : Create(display_name : String, description : String, tuning_task : TuningTask, 
-				tune_model_source : String, base_model : String, temperature : Float, top_p : Float, 
-				top_k : Int) ~ API.Google.Gemini.Tuned.TunedModel {
+		#~
+		Creates a tuned model
+		@param display_name the name to display for this model in user interfaces
+		@param description a short description of this model
+		@param tuning_task the tuning task that creates the tuned model
+		@param tune_model_source used as the starting point for training the new model
+		@param base_model the name of the base model to tune from
+		@param temperature controls the randomness of the output
+		@param top_p for nucleus sampling considers the smallest set of tokens whose probability sum is at least top-p.
+		@param top_k for top-k sampling considers the set of top-k most probable tokens. this value specifies default to be used by the backend while making the call to the model
+		@return snapshot of tuned model and metadata
+		~#
+		function : Create(display_name : String, description : String, tuning_task : TuningTask, tune_model_source : Pair<String, String>, 
+				base_model : String, temperature : Float, top_p : Float, top_k : Int) ~ API.Google.Gemini.Tuned.TunedModel {
 			query_json := TuningModel->New(display_name, description, tuning_task, tune_model_source, base_model, temperature, top_p, top_k);
 			data := query_json->ToString()->ToByteArray();
 
@@ -1266,6 +1287,11 @@ bundle API.Google.Gemini.Tuned {
 			return Nil;
 		}
 
+		#~
+		Creates a tuned model
+		@param model_id resource model identifier
+		@return tuned model
+		~#
 		function : Get(model_id : String) ~ TunedModel {
 			url_str := "https://generativelanguage.googleapis.com/v1beta/{$model_id}";
 
@@ -1294,6 +1320,11 @@ bundle API.Google.Gemini.Tuned {
 			return Nil;
 		}
 
+		#~
+		Lists tuned models owned by the user
+		@param model_id resource model identifier
+		@return list of tuned models
+		~#
 		function : List() ~ Vector<TunedModel> {
 			token := GetToken();
 			headers := Collection.Map->New()<String, String>;
@@ -1361,6 +1392,20 @@ bundle API.Google.Gemini.Tuned {
 			return Nil;
 		}
 
+		#~
+		Creates a tuned model
+		@param new_email email address of new owner
+		@param model_id resource model identifier
+		@return true if successful, false otherwise
+		~#
+		function : TransferOwnership(new_email : String, model_id : String) ~ Bool {
+			return false;
+		}
+
+		#~
+		JSON representation of the instance
+		@return JSON representation of the instance
+		~#
 		method : public : ToJson() ~ JsonElement {
 			tuned_model_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 
@@ -1373,7 +1418,10 @@ bundle API.Google.Gemini.Tuned {
 			};
 
 			if(@tune_model_source <> Nil) {
-				tuned_model_json->Insert("tunedModelSource", @tune_model_source);
+				tune_model_source_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+				tune_model_source_json->Insert("tunedModel", @tune_model_source->GetFirst());
+				tune_model_source_json->Insert("baseModel", @tune_model_source->GetSecond());
+				tuned_model_json->Insert("tunedModelSource", tune_model_source_json);
 			};
 
 			if(@temperature > 1.0) {
@@ -1391,11 +1439,18 @@ bundle API.Google.Gemini.Tuned {
 			return tuned_model_json;
 		}
 
+		#~
+		JSON string representation of the instance
+		@return JSON string representation of the instance
+		~#
 		method : public : ToString() ~ String {
 			return ToJson()->ToString();
 		}
 	}
 
+	#~
+	Fine-tuned model
+	~#
 	class TunedModel from OAuthEndPoint implements Stringify {
 		@name : String;
 		@base_model : String;
@@ -1537,6 +1592,10 @@ bundle API.Google.Gemini.Tuned {
 			return @top_k;
 		}
 
+		#~
+		String representation of the instance
+		@return string representation of the instance
+		~#
 		method : public : ToString() ~ String {
 			buffer := "[name='";
 
@@ -1609,10 +1668,18 @@ bundle API.Google.Gemini.Tuned {
 		}
 	}
 
+	#~
+	Task that create a tuned model
+	~#
 	class TuningTask implements Stringify {
 		@training_data : Dataset;
 		@hyper_params : HyperParameters;
 		
+		#~
+		Constructor
+		@param training_data model training data
+		@param hyper_params hyperparameters controlling the tuning process
+		~#
 		New(training_data : Dataset, hyper_params : HyperParameters) {
 			Parent();
 
@@ -1620,14 +1687,26 @@ bundle API.Google.Gemini.Tuned {
 			@hyper_params := hyper_params;
 		}
 
+		#~
+		Get model training data
+		@return model training data
+		~#
 		method : public : GetTrainingData() ~ Dataset {
 			return @training_data;
 		}
 
-		method : public : GetHyperParameters() ~ HyperParameters {
+		#~
+		Get hyperparameters controlling the tuning process
+		@return hyperparameters controlling the tuning process
+		~#
+		method : public : GetHyperparameters() ~ HyperParameters {
 			return @hyper_params;
 		}
 
+		#~
+		JSON representation of the instance
+		@return JSON representation of the instance
+		~#
 		method : public : ToJson() ~ JsonElement {
 			tuning_task_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 
@@ -1637,28 +1716,50 @@ bundle API.Google.Gemini.Tuned {
 			return tuning_task_obj_json;
 		}
 
+		#~
+		JSON string representation of the instance
+		@return JSON string representation of the instance
+		~#
 		method : public : ToString() ~ String {
 			return ToJson()->ToString();
 		}
 	}
 
+	#~
+	Dataset for training or validation
+	~#
 	class Dataset implements Stringify {
 		@examples : Vector<TuningExample>;
 
+		#~
+		Constructor
+		~#
 		New() {
 			Parent();
 			
 			@examples := Vector->New()<TuningExample>;
 		}
 
+		#~
+		Adds a training example
+		@param example training example to add
+		~#
 		method : public : AddExample(example : TuningExample) ~ Nil {
 			@examples->AddBack(example);
 		}
 
+		#~
+		Gets training examples
+		@return training examples
+		~#
 		method : public : GetExamples() ~  Vector<TuningExample> {
 			return @examples;
 		}
 
+		#~
+		JSON representation of the instance
+		@return JSON representation of the instance
+		~#
 		method : public : ToJson() ~ JsonElement {
 			examples_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
 
@@ -1676,15 +1777,27 @@ bundle API.Google.Gemini.Tuned {
 			return dataset_json;
 		}
 
+		#~
+		JSON string representation of the instance
+		@return JSON string representation of the instance
+		~#
 		method : public : ToString() ~ String {
 			return ToJson()->ToString();
 		}
 	}
 
+	#~
+	Single tuning example
+	~#
 	class TuningExample implements Stringify {
 		@text_input : String;
 		@output : String;
 
+		#~
+		Constructor
+		@param text_input text model input
+		@param output expected model output
+		~#
 		New(text_input : String, output : String) {
 			Parent();
 			
@@ -1692,14 +1805,26 @@ bundle API.Google.Gemini.Tuned {
 			@output := output;
 		}
 
+		#~
+		Get text model input
+		@return text input
+		~#
 		method : public : GetTextInput() ~ String {
 			return @text_input;
 		}
 
+		#~
+		Get expected model output
+		@return expected model output
+		~#
 		method : public : GetOutput() ~ String {
 			return @output;
 		}
 
+		#~
+		JSON representation of the instance
+		@return JSON representation of the instance
+		~#
 		method : public : ToJson() ~ JsonElement {
 			tuning_example_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 
@@ -1709,17 +1834,30 @@ bundle API.Google.Gemini.Tuned {
 			return tuning_example_json;
 		}
 
+		#~
+		JSON string representation of the instance
+		@return JSON string representation of the instance
+		~#
 		method : public : ToString() ~ String {
 			return ToJson()->ToString();
 		}
 	}
 
+	#~
+	Hyperparameters controlling the tuning process
+	~#
 	class HyperParameters implements Stringify {
 		@batch_size : Int;
 		@learning_rate : Float;
 		@epoch_count : Int;
 		@learning_rate_multiplier : Float;
 
+		#~
+		Constructor
+		@param batch_size the batch size hyperparameter for tuning
+		@param learning_rate The learning rate hyperparameter for tuning
+		@param epoch_count number of training epochs
+		~#
 		New(batch_size : Int, learning_rate : Float, epoch_count : Int) {
 			Parent();
 			
@@ -1729,6 +1867,13 @@ bundle API.Google.Gemini.Tuned {
 			@learning_rate_multiplier := -1.0;
 		}
 
+		#~
+		Constructor
+		@param batch_size batch size hyperparameter for tuning
+		@param learning_rate learning rate hyperparameter for tuning
+		@param epoch_count number of training epochs
+		@param learning_rate_multiplier learning rate multiplier is used to calculate a final learningRate based on the default (recommended) value
+		~#
 		New(batch_size : Int, learning_rate : Float, epoch_count : Int, learning_rate_multiplier : Float) {
 			Parent();
 			
@@ -1738,22 +1883,42 @@ bundle API.Google.Gemini.Tuned {
 			@learning_rate_multiplier := learning_rate_multiplier;
 		}
 
+		#~
+		Get the batch size hyperparameter for tuning
+		@return batch size hyperparameter for tuning
+		~#
 		method : public : GetBatchSize() ~ Int {
 			return @batch_size;
 		}
 
+		#~
+		Get the learning rate hyperparameter for tuning
+		@return learning rate hyperparameter for tuning
+		~#
 		method : public : GetLearningRate() ~ Float {
 			return @learning_rate;
 		}
 
+		#~
+		Get the number of training epochs
+		@return number of training epochs
+		~#
 		method : public : GetEpochCount() ~ Int {
 			return @epoch_count;
 		}
 
+		#~
+		Get the learning rate multiplier
+		@return learning rate multiplier
+		~#
 		method : public : GetLearningRateMultiplier() ~ Float {
 			return @learning_rate_multiplier;
 		}
 
+		#~
+		JSON representation of the instance
+		@return JSON representation of the instance
+		~#
 		method : public : ToJson() ~ JsonElement {
 			hyper_param_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 
@@ -1768,6 +1933,10 @@ bundle API.Google.Gemini.Tuned {
 			return hyper_param_json;
 		}
 
+		#~
+		JSON string representation of the instance
+		@return JSON string representation of the instance
+		~#
 		method : public : ToString() ~ String {
 			return ToJson()->ToString();
 		}
