@@ -1304,14 +1304,14 @@ bundle API.Google.Gemini.Tuned {
 		method : public : ToString() ~ String {
 			buffer := "[name='";
 			
-			buffer->Append(@name);
-			buffer->Append("', type='");
-			buffer->Append(@type);
-			buffer->Append("', total_steps='");
-			buffer->Append(@total_steps);
-			buffer->Append("', total_steps='");
-			buffer->Append(@tuned_model);
-			buffer->Append("']");
+			buffer += @name;
+			buffer += "', type='";
+			buffer += @type;
+			buffer += "', total_steps='";
+			buffer += @total_steps;
+			buffer += "', total_steps='";
+			buffer += @tuned_model;
+			buffer += "']";
 
 			return buffer;
 		}
