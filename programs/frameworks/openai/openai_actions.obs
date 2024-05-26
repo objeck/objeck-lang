@@ -280,9 +280,6 @@ class Test {
 			else {
 				"Usage: Undefined action or invalid parameter..."->ErrorLine();					
 			};
-		}
-		else {
-			"Usage: params: sk-token, action, params..."->ErrorLine();
 		};
 	}
 
