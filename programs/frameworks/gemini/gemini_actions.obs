@@ -53,15 +53,25 @@ class Test {
 
 				display_name := "number generator model";
 				base_model := "models/gemini-1.0-pro-001";
-#				description := String;
-#				tune_model_source := String;
-#				temperature := Float;
-#				top_p := Float;
-#				top_k := Int;
+				# description := String;
+				# tune_model_source := String;
+				# temperature := Float;
+				# top_p := Float;
+				# top_k := Int;
 				
-				tuned_model := TuningModel->Create(display_name , base_model, tuning_task, token);
+				tuned_model := TuningModel->Create(display_name , base_model, tuning_task);
 				if(tuned_model <> Nil) {
 					tuned_model->ToString()->PrintLine();
+				};
+			}
+			else if(action->Equals("list_tuned") & args_size = 1) {
+				tuned_models := TuningModel->List();
+				if(tuned_models <> Nil) {
+					each(i : tuned_models) {
+						tuned_model := tuned_models->Get(i);
+						tuned_model->ToString()->PrintLine();
+"==="->PrintLine();						
+					};
 				};
 			}
 			else if(action->Equals("chat") & args_size = 1) {
@@ -82,7 +92,7 @@ class Test {
 			# Oh, no...
 			#
 			else {
-				"Usage: Undefined action or invalid parameter..."->ErrorLine();					
+				"Usage: Undefined action or invalid parameter..."->ErrorLine();
 			};
 		}
 		else {
