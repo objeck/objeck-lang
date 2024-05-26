@@ -2625,7 +2625,7 @@ each(i : 3) {
 				refresh_token := token->GetRefreshToken();
 			};
 
-			if(access_token = Nil) {
+			if(@config_json <> Nil & access_token = Nil) {
 				client_id := @config_json->GetClientId();
 				state := @config_json->GetState();
 				scope := @config_json->GetScope();
@@ -2639,7 +2639,7 @@ each(i : 3) {
 				OAuthHandler->Initialize(@config_json);				
 				WebServer->Serve(OAuthHandler->New()->GetClass(), @config_json->GetRedirectPort(), false);
 			}
-			else if(refresh_token <> Nil) {
+			else if(@config_json <> Nil & refresh_token <> Nil) {
 				client_id := @config_json->GetClientId();
 				client_secret := @config_json->GetClientSecret();
 				redirect_uri := @config_json->GetRedirectUri();
