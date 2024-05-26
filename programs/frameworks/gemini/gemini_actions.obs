@@ -16,6 +16,15 @@ class Test {
 					model->ToString()->PrintLine();
 				};
 			}
+			else if(action->Equals("query_model") & args_size = 2) {
+				query := args[1];
+				
+				content := Content->New("user")->AddPart(TextPart->New(query));
+				candidates := Model->GenerateContent("models/gemini-1.5-flash", content, EndPoint->GetApiKey());
+				if(candidates->Size() > 0) {
+					candidates->First()->GetAllText()->Trim()->PrintLine();
+				};
+			}
 			else if(action->Equals("get_model") & args_size = 2) {
 				model_name := args[1];
 				model := Model->Get(model_name, token);
