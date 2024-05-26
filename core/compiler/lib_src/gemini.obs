@@ -1396,7 +1396,7 @@ bundle API.Google.Gemini.Tuned {
 		}
 	}
 
-	class TunedModel implements Stringify {
+	class TunedModel from OAuthEndPoint implements Stringify {
 		@name : String;
 		@base_model : String;
 		@display_name : String;
@@ -1432,6 +1432,37 @@ bundle API.Google.Gemini.Tuned {
 					@metadata->Insert(metadata_name, metadata_value);
 				};
 			};
+		}
+
+		#~
+		Delete existing tuned model
+		@return true if successful, false otherwise
+		~#
+		method : public : Delete() ~ Bool {
+			token := GetToken();
+			headers := Collection.Map->New()<String, String>;
+			headers->Insert("Authorization", "Bearer {$token}");
+			response := HttpsClient->QuickDelete(Url->New("https://generativelanguage.googleapis.com/v1beta/{$@name}"), "application/json", headers);
+			
+			if(response <> Nil) {
+				# response->GetContent()->ToString()->PrintLine();
+				
+				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				if(response_json = Nil) {
+					"### Error: Unable to parse response ###"->ErrorLine();
+					return false;
+				};
+				
+				if(response_json->Has("error")) {
+					error_str := response_json->FindElements("error/message")->GetString();
+					SetLastError(error_str);
+					return false;
+				};
+
+				return true;
+			};
+
+			return false;	
 		}
 
 		#~

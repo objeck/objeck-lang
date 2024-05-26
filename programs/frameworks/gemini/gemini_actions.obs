@@ -65,12 +65,24 @@ class Test {
 					tuned_model->ToString()->PrintLine();
 				};
 			}
+			else if(action->Equals("delete_tuned_model") & args_size = 2) {
+				model_id := args[1];
+
+				tuned_model := TuningModel->Get(model_id);
+				if(tuned_model <> Nil) {
+					tuned_model->ToString()->PrintLine();
+					tuned_model->Delete()->PrintLine();
+				};
+			}
 			else if(action->Equals("get_tuned_model") & args_size = 2) {
 				model_id := args[1];
 
 				tuned_model := TuningModel->Get(model_id);
 				if(tuned_model <> Nil) {
 					tuned_model->ToString()->PrintLine();
+				}
+				else {
+					">>> Unable to find model: model_id='{$model_id}' <<<"->PrintLine();
 				};
 			}
 			else if(action->Equals("list_tuned_models") & args_size = 1) {
