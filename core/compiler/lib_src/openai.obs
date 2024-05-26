@@ -685,7 +685,7 @@ bundle API.OpenAI.Tuning {
 		@param token API token
 		@return fine-tuning job instance
 		~#
-		function : Create(model : String, training_file_id : String, token : String) ~ API.OpenAI.FineTuning.Tuning {
+		function : Create(model : String, training_file_id : String, token : String) ~ API.OpenAI.Tuning.Tuner {
 			tune_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 			tune_json->Insert("model", model);
 			tune_json->Insert("training_file", training_file_id);
@@ -709,7 +709,7 @@ bundle API.OpenAI.Tuning {
 					return Nil;
 				};
 
-				return Tuning->New(tune_json);
+				return Tuner->New(tune_json);
 			};
 
 			return Nil;
@@ -720,7 +720,7 @@ bundle API.OpenAI.Tuning {
 		@param token API token
 		@return fine-tuning jobs
 		~#
-		function : ListJobs(token : String) ~ Vector<API.OpenAI.FineTuning.Tuning> {
+		function : ListJobs(token : String) ~ Vector<API.OpenAI.Tuning.Tuner> {
 			return ListJobs(-1, token);
 		}
 
@@ -730,8 +730,8 @@ bundle API.OpenAI.Tuning {
 		@param token API token
 		@return fine-tuning jobs
 		~#
-		function : ListJobs(limit : Int, token : String) ~ Vector<API.OpenAI.FineTuning.Tuning> {
-			jobs := Vector->New()<API.OpenAI.FineTuning.Tuning>
+		function : ListJobs(limit : Int, token : String) ~ Vector<API.OpenAI.Tuning.Tuner> {
+			jobs := Vector->New()<API.OpenAI.Tuning.Tuner>
 
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
@@ -758,7 +758,7 @@ bundle API.OpenAI.Tuning {
 
 				jobs_json := root_json->Get("data");
 				each(job_json in jobs_json) {
-					jobs->AddBack(API.OpenAI.FineTuning.Tuning->New(job_json));
+					jobs->AddBack(API.OpenAI.Tuning.Tuner->New(job_json));
 				};
 			};
 
@@ -771,7 +771,7 @@ bundle API.OpenAI.Tuning {
 		@param token API token
 		@return job events
 		~#
-		function : ListEvents(job_id : String, token : String) ~ Vector<API.OpenAI.FineTuning.Job> {
+		function : ListEvents(job_id : String, token : String) ~ Vector<API.OpenAI.Tuning.Job> {
 			return ListEvents(job_id, -1, token);
 		}
 
@@ -782,8 +782,8 @@ bundle API.OpenAI.Tuning {
 		@param token API token
 		@return job events
 		~#
-		function : ListEvents(job_id : String, limit : Int, token : String) ~ Vector<API.OpenAI.FineTuning.Job> {
-			events := Vector->New()<API.OpenAI.FineTuning.Job>
+		function : ListEvents(job_id : String, limit : Int, token : String) ~ Vector<API.OpenAI.Tuning.Job> {
+			events := Vector->New()<API.OpenAI.Tuning.Job>
 
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
@@ -810,7 +810,7 @@ bundle API.OpenAI.Tuning {
 
 				events_json := root_json->Get("data");
 				each(job_json in events_json) {
-					events->AddBack(API.OpenAI.FineTuning.Job->New(job_json));
+					events->AddBack(API.OpenAI.Tuning.Job->New(job_json));
 				};
 			};
 
@@ -823,7 +823,7 @@ bundle API.OpenAI.Tuning {
 		@param token API token
 		@return job checkpoints
 		~#
-		function : ListCheckpoints(job_id : String, token : String) ~ Vector<API.OpenAI.FineTuning.Checkpoint> {
+		function : ListCheckpoints(job_id : String, token : String) ~ Vector<API.OpenAI.Tuning.Checkpoint> {
 			return ListCheckpoints(job_id, -1, token);
 		}
 
@@ -834,8 +834,8 @@ bundle API.OpenAI.Tuning {
 		@param token API token
 		@return job checkpoints
 		~#
-		function : ListCheckpoints(job_id : String, limit : Int, token : String) ~ Vector<API.OpenAI.FineTuning.Checkpoint> {
-			checkpoints := Vector->New()<API.OpenAI.FineTuning.Checkpoint>
+		function : ListCheckpoints(job_id : String, limit : Int, token : String) ~ Vector<API.OpenAI.Tuning.Checkpoint> {
+			checkpoints := Vector->New()<API.OpenAI.Tuning.Checkpoint>
 
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
@@ -863,7 +863,7 @@ bundle API.OpenAI.Tuning {
 
 				checkpoints_json := root_json->Get("data");
 				each(checkpoint_json in checkpoints_json) {
-					checkpoints->AddBack(API.OpenAI.FineTuning.Checkpoint->New(checkpoint_json));
+					checkpoints->AddBack(API.OpenAI.Tuning.Checkpoint->New(checkpoint_json));
 				};
 			};
 
@@ -876,8 +876,8 @@ bundle API.OpenAI.Tuning {
 		@param token API token
 		@return tuning reference
 		~#
-		function : Load(job_id : String, token : String) ~ API.OpenAI.FineTuning.Tuning {
-			tuning : API.OpenAI.FineTuning.Tuning;
+		function : Load(job_id : String, token : String) ~ API.OpenAI.Tuning.Tuner {
+			tuning : API.OpenAI.Tuning.Tuner;
 
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
@@ -890,7 +890,7 @@ bundle API.OpenAI.Tuning {
 					return Nil;
 				};
 
-				tuning := API.OpenAI.FineTuning.Tuning->New(tuning_json);
+				tuning := API.OpenAI.Tuning.Tuner->New(tuning_json);
 			};
 
 			return tuning;
@@ -902,8 +902,8 @@ bundle API.OpenAI.Tuning {
 		@param token API token
 		@return canceled tuning reference
 		~#
-		function : Cancel(job_id : String, token : String) ~ API.OpenAI.FineTuning.Tuning {
-			tuning : API.OpenAI.FineTuning.Tuning;
+		function : Cancel(job_id : String, token : String) ~ API.OpenAI.Tuning.Tuner {
+			tuning : API.OpenAI.Tuning.Tuner;
 
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
@@ -916,7 +916,7 @@ bundle API.OpenAI.Tuning {
 					return Nil;
 				};
 
-				tuning := API.OpenAI.FineTuning.Tuning->New(tuning_json);
+				tuning := API.OpenAI.Tuning.Tuner->New(tuning_json);
 			};
 
 			return tuning;
