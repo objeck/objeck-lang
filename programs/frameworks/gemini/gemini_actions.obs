@@ -58,9 +58,11 @@ class Test {
 #				temperature := Float;
 #				top_p := Float;
 #				top_k := Int;
-
-				tuned_model := TunedModel->Create(display_name , base_model, tuning_task, token);
-				tuned_model->ToJson()->ToString()->PrintLine();
+				
+				tuned_model := TuningModel->Create(display_name , base_model, tuning_task, token);
+				if(tuned_model <> Nil) {
+					tuned_model->ToString()->PrintLine();
+				};
 			}
 			else if(action->Equals("chat") & args_size = 1) {
 				session := Chat->New("models/gemini-1.5-pro", EndPoint->GetApiKey());
