@@ -82,16 +82,34 @@ each(candidate in candidates) {
 		function : List(key : String) ~ Vector<Model> {
 			models := Vector->New()<Model>;
 
-			url := Url->New("https://generativelanguage.googleapis.com/v1/models?key={$key}");
-			response := GetRequest(url);
+			url_str := "https://generativelanguage.googleapis.com/v1/models?key={$key}"
+			response_json := GetRequest(Url->New(url_str));
 
-			if(response <> Nil) {
-				# response->ToString()->PrintLine();			
-				models_json := response->Get("models");
+			if(response_json <> Nil) {
+				# response_json->ToString()->PrintLine();
 
-				each(model_json in models_json) {
-					models->AddBack(Model->New(model_json));
-				};
+				next_page_json : JsonElement;
+				do {
+					# load next page, if it exists
+					if(next_page_json <> Nil) {
+						next_page_str := "&pageToken=";
+						next_page_str += next_page_json->GetString();
+
+						response_json := GetRequest(Url->New(url_str + next_page_str));
+						if(response_json = Nil) {
+							return Nil;
+						};
+					};
+
+					models_json := response_json->Get("models");
+					if(models_json <> Nil) {
+						each(model_json in models_json) {
+							models->AddBack(Model->New(model_json));
+						};
+					};
+					next_page_json := response_json->Get("nextPageToken");
+				}
+				while(next_page_json <> Nil);
 			};
 
 			return models;
@@ -1248,7 +1266,34 @@ bundle API.Google.Gemini.Tuned {
 			return Nil;
 		}
 
-		# TODO: 'nextPageToken' and '?pageToken={$xyz}'
+		function : Get(model_id : String) ~ TunedModel {
+			url_str := "https://generativelanguage.googleapis.com/v1beta/{$model_id}";
+
+			token := GetToken();
+			headers := Collection.Map->New()<String, String>;
+			headers->Insert("Authorization", "Bearer {$token}");
+			response := HttpsClient->QuickGet(Url->New(url_str), "application/json", headers);
+			if(response <> Nil) {
+				# response->GetContent()->ToString()->PrintLine();
+				
+				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				if(response_json = Nil) {
+					"### Error: Unable to parse response ###"->ErrorLine();
+					return Nil;
+				};
+				
+				if(response_json->Has("error")) {
+					error_str := response_json->FindElements("error/message")->GetString();
+					SetLastError(error_str);
+					return Nil;
+				};
+
+				return API.Google.Gemini.Tuned.TunedModel->New(response_json)
+			};
+
+			return Nil;
+		}
+
 		function : List() ~ Vector<TunedModel> {
 			token := GetToken();
 			headers := Collection.Map->New()<String, String>;
@@ -1271,12 +1316,44 @@ bundle API.Google.Gemini.Tuned {
 
 				tuned_models := Vector->New()<TunedModel>;
 
-				tuned_models_json := response_json->Get("tunedModels");
-				if(tuned_models_json <> Nil) {
-					each(tuned_model_json in tuned_models_json) {						
-						tuned_models->AddBack(API.Google.Gemini.Tuned.TunedModel->New(tuned_model_json));
+				next_page_json : JsonElement;
+				do {
+					# load next page, if it exists
+					if(next_page_json <> Nil) {
+						next_page_str := "?pageToken=";
+						next_page_str += next_page_json->GetString();
+
+						url_str := "https://generativelanguage.googleapis.com/v1beta/tunedModels" + next_page_str;
+						response := HttpsClient->QuickGet(Url->New(url_str), "application/json", headers);
+						if(response = Nil) {
+							return Nil;
+						}
+						else {
+							# response->GetContent()->ToString()->PrintLine();							
+							response_json := JsonParser->TextToElement(response->GetContent()->ToString());
+							if(response_json = Nil) {
+								"### Error: Unable to parse response ###"->ErrorLine();
+								return Nil;
+							};
+							
+							if(response_json->Has("error")) {
+								error_str := response_json->FindElements("error/message")->GetString();
+								SetLastError(error_str);
+								return Nil;
+							};
+						};
 					};
-				};
+
+					tuned_models_json := response_json->Get("tunedModels");
+					if(tuned_models_json <> Nil) {
+						each(tuned_model_json in tuned_models_json) {						
+							tuned_models->AddBack(API.Google.Gemini.Tuned.TunedModel->New(tuned_model_json));
+						};
+					};
+
+					next_page_json := response_json->Get("nextPageToken");
+				}
+				while(next_page_json <> Nil);
 
 				return tuned_models;
 			};
@@ -1371,6 +1448,62 @@ bundle API.Google.Gemini.Tuned {
 		~#
 		method : public : GetUpdateTime() ~ System.Time.Date {
 			return System.Time.DateUtility->Parse(@update_time_str, "yyyy-MM-ddThh:mm:ss", false);
+		}
+
+		#~
+		Get name
+		@return name
+		~#
+		method : public : GetName() ~ String {
+			return @name;
+		}
+
+		#~
+		Get base model
+		@return base model
+		~#
+		method : public : GetBaseModel() ~ String {
+			return @base_model;
+		}
+
+		#~
+		Get display name
+		@return display name
+		~#
+		method : public : GetDisplayName() ~ String {
+			return @display_name;
+		}
+
+		#~
+		Get state
+		@return state
+		~#
+		method : public : GetState() ~ String {
+			return @state;
+		}
+
+		#~
+		Get temperature
+		@return temperature
+		~#
+		method : public : GetTemperature() ~ Float {
+			return @temperature;
+		}
+
+		#~
+		Get top p
+		@return top p
+		~#
+		method : public : GetTopP() ~ Float {
+			return @top_p;
+		}
+
+		#~
+		Get top k
+		@return top k
+		~#
+		method : public : GetTopK() ~ Int {
+			return @top_k;
 		}
 
 		method : public : ToString() ~ String {
@@ -1820,13 +1953,45 @@ each(result in results) {
 				};
 
 				corpuses := Collection.Vector->New()<Corpus>;
-				
-				corporas_json := response_json->Get("corpora");
-				if(corporas_json <> Nil) {
-					each(corpora_json in corporas_json) {
-						corpuses->AddBack(Corpus->New(corpora_json));
+
+				next_page_json : JsonElement;
+				do {
+					# load next page, if it exists
+					if(next_page_json <> Nil) {
+						next_page_str := "?pageToken=";
+						next_page_str += next_page_json->GetString();
+
+						url_str := "https://generativelanguage.googleapis.com/v1beta/tunedModels" + next_page_str;
+						response := HttpsClient->QuickGet(Url->New(url_str), "application/json", headers);
+						if(response = Nil) {
+							return Nil;
+						}
+						else {
+							# response->GetContent()->ToString()->PrintLine();							
+							response_json := JsonParser->TextToElement(response->GetContent()->ToString());
+							if(response_json = Nil) {
+								"### Error: Unable to parse response ###"->ErrorLine();
+								return Nil;
+							};
+							
+							if(response_json->Has("error")) {
+								error_str := response_json->FindElements("error/message")->GetString();
+								SetLastError(error_str);
+								return Nil;
+							};
+						};
 					};
-				};
+
+					corporas_json := response_json->Get("corpora");
+					if(corporas_json <> Nil) {
+						each(corpora_json in corporas_json) {
+							corpuses->AddBack(Corpus->New(corpora_json));
+						};
+					};
+
+					next_page_json := response_json->Get("nextPageToken");
+				}
+				while(next_page_json <> Nil);
 
 				return corpuses;
 			};
@@ -2174,12 +2339,44 @@ each(result in results) {
 
 				corpuses := Collection.Vector->New()<Document>;
 				
-				corporas_json := response_json->Get("documents");
-				if(corporas_json <> Nil) {
-					each(corpora_json in corporas_json) {
-						corpuses->AddBack(Document->New(corpora_json));
+				next_page_json : JsonElement;
+				do {
+					# load next page, if it exists
+					if(next_page_json <> Nil) {
+						next_page_str := "?pageToken=";
+						next_page_str += next_page_json->GetString();
+
+						url_str := "https://generativelanguage.googleapis.com/v1beta/tunedModels" + next_page_str;
+						response := HttpsClient->QuickGet(Url->New(url_str), "application/json", headers);
+						if(response = Nil) {
+							return Nil;
+						}
+						else {
+							# response->GetContent()->ToString()->PrintLine();
+							response_json := JsonParser->TextToElement(response->GetContent()->ToString());
+							if(response_json = Nil) {
+								"### Error: Unable to parse response ###"->ErrorLine();
+								return Nil;
+							};
+							
+							if(response_json->Has("error")) {
+								error_str := response_json->FindElements("error/message")->GetString();
+								SetLastError(error_str);
+								return Nil;
+							};
+						};
 					};
-				};
+
+					corporas_json := response_json->Get("documents");
+					if(corporas_json <> Nil) {
+						each(corpora_json in corporas_json) {
+							corpuses->AddBack(Document->New(corpora_json));
+						};
+					};
+
+					next_page_json := response_json->Get("nextPageToken");
+				}
+				while(next_page_json <> Nil);
 
 				return corpuses;
 			};
@@ -2460,12 +2657,44 @@ each(result in results) {
 
 				corpuses := Collection.Vector->New()<Chunk>;
 				
-				corporas_json := response_json->Get("chunks");
-				if(corporas_json <> Nil) {
-					each(corpora_json in corporas_json) {
-						corpuses->AddBack(Chunk->New(corpora_json));
+				next_page_json : JsonElement;
+				do {
+					# load next page, if it exists
+					if(next_page_json <> Nil) {
+						next_page_str := "?pageToken=";
+						next_page_str += next_page_json->GetString();
+
+						url_str := "https://generativelanguage.googleapis.com/v1beta/tunedModels" + next_page_str;
+						response := HttpsClient->QuickGet(Url->New(url_str), "application/json", headers);
+						if(response = Nil) {
+							return Nil;
+						}
+						else {
+							# response->GetContent()->ToString()->PrintLine();
+							response_json := JsonParser->TextToElement(response->GetContent()->ToString());
+							if(response_json = Nil) {
+								"### Error: Unable to parse response ###"->ErrorLine();
+								return Nil;
+							};
+							
+							if(response_json->Has("error")) {
+								error_str := response_json->FindElements("error/message")->GetString();
+								SetLastError(error_str);
+								return Nil;
+							};
+						};
 					};
-				};
+
+					corporas_json := response_json->Get("chunks");
+					if(corporas_json <> Nil) {
+						each(corpora_json in corporas_json) {
+							corpuses->AddBack(Chunk->New(corpora_json));
+						};
+					};
+
+					next_page_json := response_json->Get("nextPageToken");
+				}
+				while(next_page_json <> Nil);
 
 				return corpuses;
 			};
