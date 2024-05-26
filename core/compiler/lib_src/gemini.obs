@@ -1195,11 +1195,9 @@ bundle API.Google.Gemini.Tuned {
 		@temperature : Float;
 		@top_p : Float;
 		@top_k : Int;
-		@key : String;
 
-		New : private(display_name : String, description : String, tuning_task : TuningTask, 
-				tune_model_source : String, base_model : String, temperature : Float, top_p : Float, 
-				top_k : Int, key : String) {
+		New : private(display_name : String, description : String, tuning_task : TuningTask, tune_model_source : String, 
+				base_model : String, temperature : Float, top_p : Float, top_k : Int) {
 			Parent();
 
 			@display_name := display_name;
@@ -1210,17 +1208,16 @@ bundle API.Google.Gemini.Tuned {
 			@temperature := temperature;
 			@top_p := top_p;
 			@top_k := top_k;
-			@key := key;
 		}
 
-		function : Create(display_name : String, base_model : String, tuning_task : TuningTask, key : String) ~ API.Google.Gemini.Tuned.TunedModel {
-			return Create(display_name, Nil, tuning_task, Nil, base_model, -1.0, -1.0, -1, key)
+		function : Create(display_name : String, base_model : String, tuning_task : TuningTask) ~ API.Google.Gemini.Tuned.TunedModel {
+			return Create(display_name, Nil, tuning_task, Nil, base_model, -1.0, -1.0, -1)
 		}
 
 		function : Create(display_name : String, description : String, tuning_task : TuningTask, 
 				tune_model_source : String, base_model : String, temperature : Float, top_p : Float, 
-				top_k : Int, key : String) ~ API.Google.Gemini.Tuned.TunedModel {
-			query_json := TuningModel->New(display_name, description, tuning_task, tune_model_source, base_model, temperature, top_p, top_k, key);
+				top_k : Int) ~ API.Google.Gemini.Tuned.TunedModel {
+			query_json := TuningModel->New(display_name, description, tuning_task, tune_model_source, base_model, temperature, top_p, top_k);
 			data := query_json->ToString()->ToByteArray();
 
 			# data->ToString()->PrintLine();
@@ -1246,6 +1243,42 @@ bundle API.Google.Gemini.Tuned {
 				};
 
 				return API.Google.Gemini.Tuned.TunedModel->New(response_json);
+			};
+
+			return Nil;
+		}
+
+		# TODO: 'nextPageToken' and '?pageToken={$xyz}'
+		function : List() ~ Vector<TunedModel> {
+			token := GetToken();
+			headers := Collection.Map->New()<String, String>;
+			headers->Insert("Authorization", "Bearer {$token}");
+			response := HttpsClient->QuickGet(Url->New("https://generativelanguage.googleapis.com/v1beta/tunedModels"), "application/json", headers);
+			if(response <> Nil) {
+				# response->GetContent()->ToString()->PrintLine();
+				
+				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				if(response_json = Nil) {
+					"### Error: Unable to parse response ###"->ErrorLine();
+					return Nil;
+				};
+				
+				if(response_json->Has("error")) {
+					error_str := response_json->FindElements("error/message")->GetString();
+					SetLastError(error_str);
+					return Nil;
+				};
+
+				tuned_models := Vector->New()<TunedModel>;
+
+				tuned_models_json := response_json->Get("tunedModels");
+				if(tuned_models_json <> Nil) {
+					each(tuned_model_json in tuned_models_json) {						
+						tuned_models->AddBack(API.Google.Gemini.Tuned.TunedModel->New(tuned_model_json));
+					};
+				};
+
+				return tuned_models;
 			};
 
 			return Nil;
@@ -1288,30 +1321,125 @@ bundle API.Google.Gemini.Tuned {
 
 	class TunedModel implements Stringify {
 		@name : String;
-		@type : String;
-		@total_steps : Int;
-		@tuned_model : String;
+		@base_model : String;
+		@display_name : String;
+		@state : String;
+		@create_time_str : String;
+		@update_time_str : String;
+		@temperature : Float;
+		@top_p : Float;
+		@top_k : Int;
+		@metadata : Map<String, String>;
 
 		New (tuned_model_json : JsonElement) {
 			Parent();
 
 			@name := tuned_model_json->Get("name")->GetString();
-			@type :=  tuned_model_json->FindElements("metadata/@type")->GetString();
-			@total_steps :=  tuned_model_json->FindElements("metadata/totalSteps")->GetInt();
-			@tuned_model :=  tuned_model_json->FindElements("metadata/tunedModel")->GetString();
+			if(tuned_model_json->Has("baseModel")) {
+				@base_model := tuned_model_json->Get("baseModel")->GetString();
+				@display_name := tuned_model_json->Get("displayName")->GetString();
+				@state := tuned_model_json->Get("state")->GetString();
+				@create_time_str := tuned_model_json->Get("createTime")->GetString();
+				@update_time_str := tuned_model_json->Get("updateTime")->GetString();
+				@temperature := tuned_model_json->Get("temperature")->GetFloat();
+				@top_p := tuned_model_json->Get("topP")->GetFloat();
+				@top_k := tuned_model_json->Get("topK")->GetInt();
+			};
+
+			metadata_json := tuned_model_json->Get("metadata");
+			if(metadata_json <> Nil) {
+				@metadata := Map->New()<String, String>;
+				metadata_names := metadata_json->GetNames();
+				each(metadata_name in metadata_names) {
+					metadata_value := metadata_json->Get(metadata_name)->GetString();				
+					@metadata->Insert(metadata_name, metadata_value);
+				};
+			};
+		}
+
+		#~
+		Get creation time
+		@return creation time
+		~#
+		method : public : GetCreateTime() ~ System.Time.Date {
+			return System.Time.DateUtility->Parse(@create_time_str, "yyyy-MM-ddThh:mm:ss", false);
+		}
+
+		#~
+		Get update time
+		@return update time
+		~#
+		method : public : GetUpdateTime() ~ System.Time.Date {
+			return System.Time.DateUtility->Parse(@update_time_str, "yyyy-MM-ddThh:mm:ss", false);
 		}
 
 		method : public : ToString() ~ String {
 			buffer := "[name='";
-			
+
 			buffer += @name;
-			buffer += "', type='";
-			buffer += @type;
-			buffer += "', total_steps='";
-			buffer += @total_steps;
-			buffer += "', total_steps='";
-			buffer += @tuned_model;
-			buffer += "']";
+			if(@base_model = Nil) {
+				buffer += '\'';
+			}
+			else {
+				buffer += "', base_model='";
+				buffer += @base_model;
+
+				if(@display_name <> Nil) {
+					buffer += "', display_name='";
+					buffer += @display_name;
+				};
+
+				if(@state <> Nil) {
+					buffer += "', state='";
+					buffer += @state;
+				};
+
+				if(@base_model <> Nil) {
+					buffer += "', base_model='";
+					buffer += @base_model;
+				};
+
+				if(@create_time_str <> Nil) {
+					buffer += "', create_time_str='";
+					buffer += @create_time_str;
+				};
+
+				if(@update_time_str <> Nil) {
+					buffer += "', update_time_str='";
+					buffer += @update_time_str;
+				};
+
+				buffer += "', temperature='";
+				buffer += @temperature;
+
+				buffer += "', top_p='";
+				buffer += @top_p;
+
+				buffer += "', top_k='";
+				buffer += @top_k;
+
+				buffer += '\'';
+			};
+
+			if(@metadata <> Nil) {
+				metadata_keys_values := @metadata->GetKeyValues()<Pair<String, String>>;
+				buffer += "\nmetadata:";
+				each(metadata_key_value in metadata_keys_values) {
+					buffer += "\n\t";
+				
+					metadata_name := metadata_key_value->GetFirst();
+					metadata_value := metadata_key_value->GetSecond();
+
+					buffer += "name='";
+					buffer += metadata_name;
+					buffer += ", value='";
+					buffer += metadata_value;
+					buffer += "'";
+				};
+				buffer += '\n';
+			};
+
+			buffer += ']';
 
 			return buffer;
 		}
@@ -1714,8 +1842,7 @@ each(result in results) {
 			token := GetToken();
 			headers := Collection.Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
-			response := HttpsClient->QuickDelete(Url->New("https://generativelanguage.googleapis.com/v1beta/{$@name}"), 
-				"application/json", headers);
+			response := HttpsClient->QuickDelete(Url->New("https://generativelanguage.googleapis.com/v1beta/{$@name}"), "application/json", headers);
 			
 			if(response <> Nil) {
 				# response->GetContent()->ToString()->PrintLine();
