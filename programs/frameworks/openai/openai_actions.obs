@@ -1,4 +1,4 @@
-use Collection, API.OpenAI, System.IO.Filesystem, Data.JSON;
+use Data.JSON.Scheme, Collection, API.OpenAI, System.IO.Filesystem, Data.JSON;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
