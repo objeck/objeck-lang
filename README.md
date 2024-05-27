@@ -20,10 +20,10 @@ Objeck is a general-purpose, cross-platform, object-oriented, and functional pro
   * LLaMa 3 local model support
   * Unified ML framework across OpenAI, Gemini and LLaMa
  
-* v2024.6.1
+* v2024.6.0
   * Common framework for tuning OpenAI and Gemini models
   
-* [v2024.6.0](https://github.com/objeck/objeck-lang/tree/v2024.5.1/core)
+* [v2024.5.1](https://github.com/objeck/objeck-lang/tree/v2024.5.1/core)
     * Model tuning
       * OpenAI (done)
       * Gemini (enqueue)
