@@ -12,8 +12,6 @@
   <a href="https://scan.coverity.com/projects/objeck"><img src="https://img.shields.io/coverity/scan/10314.svg" alt="Coverity SCA"></a>
 </p>
 
-Objeck is a general-purpose, cross-platform, object-oriented, and functional programming language geared towards machine learning development.
-
 ## Releases
 
 * v2024.6.x
