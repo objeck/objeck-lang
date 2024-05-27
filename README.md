@@ -119,7 +119,7 @@ class Embaddings {
 ## Design <sub><a href='https://github.com/objeck/objeck-lang/tree/master/core'>[1]</a></sub>
 
 * Object-oriented and functional
-* Cross-platform support for Linux, macOS, Windows
+* Cross-platform support for Docker, Linux, macOS, Windows
 * JIT-compiled runtimes (ARM64 and AMD64)
 * REPL shell
 * LSP [plugins](https://github.com/objeck/objeck-lsp) for VSCode, Sublime, Kate, and more
