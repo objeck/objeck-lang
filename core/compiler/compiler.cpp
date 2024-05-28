@@ -148,6 +148,11 @@ int OptionsCompile(std::map<const std::wstring, std::wstring>& arguments, std::l
   else {
     argument_options.remove(L"src");
     src_files = result->second;
+    if(argument_options.empty()) {
+      std::wcerr << usage << std::endl;
+      return COMMAND_ERROR;
+    }
+
     // parse file name w/o extension
     if(!frontend::EndsWith(src_files, L".obs")) {
       src_files += L".obs";
@@ -209,6 +214,11 @@ int OptionsCompile(std::map<const std::wstring, std::wstring>& arguments, std::l
     dest_file = result->second;
     argument_options.remove(L"dest");
   }
+
+  if(dest_file.empty()) {
+    std::wcerr << usage << std::endl;
+    return COMMAND_ERROR;
+  }
   
   if((target.empty() || target == L"exe") && !frontend::EndsWith(dest_file, L".obe")) {
     dest_file += L".obe";
@@ -224,6 +234,10 @@ int OptionsCompile(std::map<const std::wstring, std::wstring>& arguments, std::l
     result = arguments.find(L"lib");
     if(result != arguments.end()) {
       sys_lib_path = result->second;
+      if(sys_lib_path.empty()) {
+        std::wcerr << usage << std::endl;
+        return COMMAND_ERROR;
+      }
       argument_options.remove(L"lib");
     }
     argument_options.remove(L"strict");
@@ -233,6 +247,11 @@ int OptionsCompile(std::map<const std::wstring, std::wstring>& arguments, std::l
     result = arguments.find(L"lib");
     if(result != arguments.end()) {
       std::wstring lib_path = result->second;
+      if(lib_path.empty()) {
+        std::wcerr << usage << std::endl;
+        return COMMAND_ERROR;
+      }
+
       // --- START: command line clean up
       frontend::RemoveSubString(lib_path, L".obl");
       frontend::RemoveSubString(lib_path, L"gen_collect,");
