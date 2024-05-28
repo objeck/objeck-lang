@@ -1758,23 +1758,28 @@ bundle API.OpenAI {
 		@return file reference
 		~#
 		function : ListFiles(token : String) ~ Vector<API.OpenAI.File> {
+"--- 0 ---"->PrintLine();
 			files := Vector->New()<API.OpenAI.File>
 
+"--- 0 ---"->PrintLine();
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
 			response := HttpsClient->QuickGet(Url->New("https://api.openai.com/v1/files"), "application/json", headers);
 			if(response <> Nil) {
+"--- 1 ---"->PrintLine();
 				root_json := JsonParser->TextToElement(response->GetContent()->ToString());
 
 				if(root_json = Nil) {
 					return Nil;
 				};
 
+"--- 2 ---"->PrintLine();
 				if(root_json->Has("error")) {
 					error_str := root_json->FindElements("error/message")->GetString();
 					SetLastError(error_str);
 					return Nil;
 				};
+"--- 3 ---"->PrintLine();
 
 				files_json := root_json->Get("data");
 				each(file_json in files_json) {
@@ -1782,6 +1787,7 @@ bundle API.OpenAI {
 				};
 			};
 
+"--- 4 ---"->PrintLine();
 			return files;
 		}
 
