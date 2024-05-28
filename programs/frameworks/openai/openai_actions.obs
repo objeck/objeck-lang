@@ -4,14 +4,15 @@ class Test {
 	function : Main(args : String[]) ~ Nil {
 		args_size := args->Size();
 		if(args_size > 0) {
-			token := GetApiKey();
+
+			filename := "openai_api_key.dat";
+			token := GetApiKey(filename);
+			if(token = Nil | <>token->StartsWith("sk-")) {
+				">>> Unable to read token from file: '{$filename}' <<"->PrintLine();
+				Runtime->Exit(1);
+			};
+
 			action := args[0];
-
-			if(token = Nil) {
-				">>> Unable to read token file: 'api_key.txt' <<"->PrintLine();
-				return;
-			}
-
 			"action={$action}, args={$args_size}\n==="->PrintLine();
 			
 			#
@@ -303,8 +304,8 @@ params_json->ToString()->PrintLine();
 		return JsonElement->New("Mr. Duck");		
 	}
 
-	function : GetApiKey() ~ String {
-		token := FileReader->ReadFile("api_key.txt");
+	function : GetApiKey(filename : String) ~ String {
+		token := FileReader->ReadFile(filename);
 		if(token <> Nil) {
 			return token->Trim();
 		};
