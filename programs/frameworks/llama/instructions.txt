@@ -1,0 +1,8 @@
+Install
+---
+download: https://ollama.com/download
+install/run: ollama run llama3
+
+API test (on Windows)
+--- 
+* curl -H "Content-Type: application/json" -X POST http://localhost:11434/api/generate -d "{  \"model\": \"llama3\",  \"prompt\": \"Why is the sky blue?\" }"
