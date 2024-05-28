@@ -148,11 +148,7 @@ int OptionsCompile(std::map<const std::wstring, std::wstring>& arguments, std::l
   else {
     argument_options.remove(L"src");
     src_files = result->second;
-    if(argument_options.empty()) {
-      std::wcerr << usage << std::endl;
-      return COMMAND_ERROR;
-    }
-
+    
     // parse file name w/o extension
     if(!frontend::EndsWith(src_files, L".obs")) {
       src_files += L".obs";
