@@ -9,6 +9,53 @@ Google Gemini ML client APIs (-lib gemini)
 ~#
 bundle API.Google.Gemini {
 	#~
+	OAuth enabled endpoint class
+	~#
+	class OAuthEndPoint {
+		@last_message : static : String;
+
+		New() {}
+
+		#~
+		Get OAuth token
+		@return OAuth token
+		~#
+		function : GetToken() ~ String {
+			token_str := System.IO.Net.OAuth.OAuthToken->ReadTokenFormat(System.IO.Filesystem.FileReader->ReadFile("client_secrets.dat"));
+			if(token_str = Nil) {
+				scopes := [
+					"https://www.googleapis.com/auth/cloud-platform", 
+					"https://www.googleapis.com/auth/generative-language.retriever",
+					"https://www.googleapis.com/auth/generative-language.tuning"];
+				token := System.IO.Net.OAuth.OAuthClient->New("client_secrets.json", scopes)->GetToken();
+				if(token <> Nil) {
+					System.IO.Filesystem.FileWriter->WriteFile("client_secrets.dat", 
+						System.IO.Net.OAuth.OAuthToken->FormatNewToken(token->GetAccessToken(), token->GetExpiresIn()));
+					token_str := System.IO.Net.OAuth.OAuthToken->ReadTokenFormat(System.IO.Filesystem.FileReader->ReadFile("client_secrets.dat"));
+				}
+				else {
+					">>> OAuth - Unable to load or parse: file='client_secrets.json', file_format='https://developers.google.com/api-client-library/dotnet/guide/aaa_client_secrets' <<<"->ErrorLine();
+					return Nil;
+				}
+			};
+
+			return token_str;
+		}
+
+		function : SetLastError(last_message : String) ~ Nil {
+			@last_message := last_message;
+		}
+
+		#~
+		Get the last error
+		@return last error
+		~#
+		function : GetLastError() ~ String {
+			return @last_message;
+		}
+	}
+	
+	#~
 	Gemini model interactions
 	
 ```
@@ -2965,53 +3012,6 @@ each(result in results) {
 
 			buffer += "']";
 			return buffer;
-		}
-	}
-
-	#~
-	OAuth enabled endpoint class
-	~#
-	class OAuthEndPoint {
-		@last_message : static : String;
-
-		New() {}
-
-		#~
-		Get OAuth token
-		@return OAuth token
-		~#
-		function : GetToken() ~ String {
-			token_str := System.IO.Net.OAuth.OAuthToken->ReadTokenFormat(System.IO.Filesystem.FileReader->ReadFile("client_secrets.dat"));
-			if(token_str = Nil) {
-				scopes := [
-					"https://www.googleapis.com/auth/cloud-platform", 
-					"https://www.googleapis.com/auth/generative-language.retriever",
-					"https://www.googleapis.com/auth/generative-language.tuning"];
-				token := System.IO.Net.OAuth.OAuthClient->New("client_secrets.json", scopes)->GetToken();
-				if(token <> Nil) {
-					System.IO.Filesystem.FileWriter->WriteFile("client_secrets.dat", 
-						System.IO.Net.OAuth.OAuthToken->FormatNewToken(token->GetAccessToken(), token->GetExpiresIn()));
-					token_str := System.IO.Net.OAuth.OAuthToken->ReadTokenFormat(System.IO.Filesystem.FileReader->ReadFile("client_secrets.dat"));
-				}
-				else {
-					">>> OAuth - Unable to load or parse: file='client_secrets.json', file_format='https://developers.google.com/api-client-library/dotnet/guide/aaa_client_secrets' <<<"->ErrorLine();
-					return Nil;
-				}
-			};
-
-			return token_str;
-		}
-
-		function : SetLastError(last_message : String) ~ Nil {
-			@last_message := last_message;
-		}
-
-		#~
-		Get the last error
-		@return last error
-		~#
-		function : GetLastError() ~ String {
-			return @last_message;
 		}
 	}
 }

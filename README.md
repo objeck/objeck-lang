@@ -15,20 +15,20 @@
 ## Releases
 
 * v2024.6.x
-  * LLaMa 3 local model support
   * Unified ML framework across OpenAI, Gemini and LLaMa
- 
-* v2024.6.0
   * Common framework for tuning OpenAI and Gemini models
+ 
+* v2024.6.1
+  * LLaMa 3 local model support
   
-* [v2024.5.1](https://github.com/objeck/objeck-lang/tree/v2024.5.1/core)
+* [v2024.6.0](https://github.com/objeck/objeck-lang/tree/master/core)
     * Model tuning
       * OpenAI (done)
       * Gemini (enqueue)
     * Image generation, editing, and variation
       * OpenAI (done)
       
-* [v2024.5.0](https://github.com/objeck/objeck-lang/tree/master/core) (current)
+* v2024.5.0 **(current)**
   * Gemini support for function calls
   * JSON Scheme support for function modeling for OpenAI and Gemini
   * Enhancements
