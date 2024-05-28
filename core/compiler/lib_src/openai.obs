@@ -1514,6 +1514,77 @@ bundle API.OpenAI {
 
 	#~
 	OpenAI file support
+
+```
+# upload tuning file
+filename := "tuning.json";
+data := FileReader->ReadFile(filename)->ToByteArray();
+API.OpenAI.File->Create(filename, "fine-tune", data, token)->PrintLine();
+
+# list files
+files := API.OpenAI.File->ListFiles(token);
+if(files <> Nil) {
+  each(file in files) {
+    name := file->GetFilename();
+    id := file->GetId();
+    "file='{$name}', id='{$id}'"->PrintLine();
+  };
+}
+else {
+  API.OpenAI.File->GetLastError()->PrintLine();
+};
+
+# start tuning job
+file := API.OpenAI.File->LoadOrCreate(filename, "fine-tune", token);
+name := file->GetFilename();
+id := file->GetId();
+"file='{$name}', id='{$id}'"->PrintLine();
+
+tuning_job := Tuner->Create("gpt-3.5-turbo", id, token);
+model_id := tuning_job->GetId();
+
+# query model
+
+assistant := Assistant->Create(model_id, token);
+if(assistant = Nil) {
+  Assistant->GetLastError()->PrintLine();
+  return;
+};
+
+assistant_id := assistant->GetId();
+assistant_name := assistant->GetName();
+assistant_model := assistant->GetModel();
+"Created: id='{$id}', name='{$name}', model='{$model}', files={$file_count}, tools={$tool_count}"->PrintLine();
+
+# chat with tuned assistant
+session := API.OpenAI.Chat.Conversation->New(Assistant->Load(assistant_id, token), true, token);
+session->AddFunction("get_coach_by_year", Callback(JsonElement) ~ JsonElement);
+
+done := false;
+do {
+  query := Console->ReadLine();
+  if(query->Equals("/quit")) {
+    session->Close();    
+    done := true;
+  }
+  else {
+    response := session->Send(query, "user");
+
+    index := 0;
+    role := response->GetRole();
+    contents := response->GetContents();
+    each(content in contents) {
+      type := content->GetFirst()->As(String);
+      value := content->GetSecond()->As(String);
+
+      "{$index}: [{$role}, type='{$type}']: value='{$value}'"->PrintLine();
+    };
+  };
+}
+while(<>done);
+
+session->Close();
+```	
 	~#
 	class File from EndPoint {
 		@id : String;
