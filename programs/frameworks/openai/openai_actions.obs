@@ -7,6 +7,11 @@ class Test {
 			token := GetApiKey();
 			action := args[0];
 
+			if(token = Nil) {
+				">>> Unable to read token file: 'api_key.txt' <<"->PrintLine();
+				return;
+			}
+
 			"action={$action}, args={$args_size}\n==="->PrintLine();
 			
 			#
