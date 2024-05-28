@@ -21,10 +21,10 @@
 * v2024.6.1
   * LLaMa 3 local model support
   
-* [v2024.6.0](https://github.com/objeck/objeck-lang/tree/master/core)
+* [v2024.6.0](https://github.com/objeck/objeck-lang/tree/master/core) **In-test**
     * Model tuning
       * OpenAI (done)
-      * Gemini (enqueue)
+      * Gemini (done)
     * Image generation, editing, and variation
       * OpenAI (done)
       
