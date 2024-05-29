@@ -10,7 +10,7 @@ class OpenAICompletion {
 		};
 
 		messages := Vector->New()<Pair<String, String>>;
-		messages->AddBack(Pair->New("user", "What is the longest road in Colorado?")<String, String>);
+		messages->AddBack(Pair->New("user", "What is the longest road in Arizona?")<String, String>);
 
 		completion := Completion->Complete("gpt-4o", messages, token);
 		if(completion <> Nil) {
