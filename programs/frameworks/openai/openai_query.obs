@@ -1,11 +1,11 @@
-use API.OpenAI, System.IO.Filesystem, Data.JSON, Collection;
+use API.OpenAI;
 
 class OpenAIQueary {
 	function : Main(args : String[]) ~ Nil {
 		token := GetApiKey("openai_api_key.dat");
 
 		if(token = Nil | args->Size() < 1) {
-			">>> Please provide a command <<"->PrintLine();
+			">>> Please provide a directive <<"->PrintLine();
 			Runtime->Exit(1);
 		};
 
@@ -51,7 +51,7 @@ class OpenAIQueary {
 		};
 		
 		# create message
-		Message->Create("user", "What is the tallest mountain in Colorado?", thread, token);
+		Message->Create("user", "What oldest hotel in Colorado?", thread, token);
 		
 		# create run
 		run := API.OpenAI.Run->Create(assistant, thread, token);
@@ -79,6 +79,7 @@ class OpenAIQueary {
 			if(message_contents <> Nil) {
 				each(message_content in message_contents) {
 					message_content->GetSecond()->PrintLine();
+					"---"->PrintLine();
 				};
 			};
 		};
@@ -89,7 +90,7 @@ class OpenAIQueary {
 	}
 
 	function : GetApiKey(filename : String) ~ String {
-		token := FileReader->ReadFile(filename);
+		token := System.IO.Filesystem.FileReader->ReadFile(filename);
 		if(token <> Nil) {
 			token := token->Trim();
 			if(<>token->StartsWith("sk-")) {
