@@ -19,7 +19,7 @@
   * Common framework for tuning OpenAI and Gemini models
  
 * v2024.6.1
-  * LLaMa 3 local model support
+  * LLaMa 3 local model support (queued)
   
 * [v2024.6.0](https://github.com/objeck/objeck-lang/tree/master/core) **(in-test)**
     * Model tuning
