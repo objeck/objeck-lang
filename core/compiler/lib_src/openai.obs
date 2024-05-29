@@ -2124,6 +2124,7 @@ session->Close();
 		@return newly created assistant
 		~#
 		function : Create(model : String, name : String, description : String, instructions : String, token : String) ~ API.OpenAI.Assistant {
+"--- 0 ---"->PrintLine();			
 			return Create(model, name, description, instructions, Nil, Nil, Nil, token);
 		}
 
@@ -2157,6 +2158,7 @@ session->Close();
 		~#
 		function : Create(model : String, name : String, description : String, instructions : String, 
 				tools : Vector<String>, files : Vector<API.OpenAI.File>, funcs : Vector<FunctionType>, token : String) ~ API.OpenAI.Assistant {
+
 			if(model = Nil) {
 				return Nil;
 			};
@@ -2205,7 +2207,7 @@ session->Close();
 			};
 
 			# files
-			if(<>files->IsEmpty()) {
+			if(files <> Nil & <>files->IsEmpty()) {
 				files_json := JsonElement->New(JsonElement->JsonType->ARRAY);
 				each(file in files) {
 					files_json->Add(file->GetId());
@@ -2463,6 +2465,34 @@ session->Close();
 			return false;
 		}
 	}
+	
+	#~
+	Message contents
+	~#
+	class Contents {
+		@contents : Vector<Pair<String, String>>;
+
+		New(contents : Vector<Pair<String, String>>) {
+			@contents := contents;
+		}
+
+		#~
+		Get content by index
+		@param index index of content
+		@return content, user and message
+		~#
+		method : public : Get(index : Int) ~ Pair<String, String> {
+			return @contents->Get(index);
+		}
+
+		#~
+		Gets the size of contents
+		@return size of contents
+		~#
+		method : public : Size() ~ Int {
+			return @contents->Size();
+		}
+	}
 
 	#~
 	Create messages within threads
@@ -2548,8 +2578,8 @@ session->Close();
 		Get the content of the message
 		@return list of messages with roles
 		~#
-		method : public : GetContents() ~ Vector<Pair<String, String>> {
-			return @contents;
+		method : public : GetContents() ~ Contents {
+			return Contents->New(@contents);
 		}
 
 		#~
