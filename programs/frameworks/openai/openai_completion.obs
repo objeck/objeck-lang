@@ -1,4 +1,4 @@
-use API.OpenAI, Collection, API.OpenAI.Chat;
+use API.OpenAI, API.OpenAI.Chat, Collection;
 
 class OpenAICompletion {
 	function : Main(args : String[]) ~ Nil {

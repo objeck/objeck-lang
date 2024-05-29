@@ -41,6 +41,49 @@
 ## Examples
 
 ```ruby
+# simple openai query
+use API.OpenAI, API.OpenAI.Chat, Collection;
+
+class OpenAICompletion {
+  function : Main(args : String[]) ~ Nil {
+    token := GetApiKey("openai_api_key.dat");
+
+    if(token = Nil) {
+      ">>> Please provide a directive <<"->PrintLine();
+      Runtime->Exit(1);
+    };
+
+    messages := Vector->New()<Pair<String, String>>;
+    messages->AddBack(Pair->New("user", "What is the longest road in Utah?")<String, String>);
+
+    completion := Completion->Complete("gpt-4-turbo", messages, token);
+    if(completion <> Nil) {
+      choices := completion->GetChoices();
+      each(choice in choices) {
+        message := choice->GetMessage()<String, String>;
+        message->GetSecond()->PrintLine();
+      };
+    };
+  }
+
+  function : GetApiKey(filename : String) ~ String {
+    token := System.IO.Filesystem.FileReader->ReadFile(filename);
+    if(token <> Nil) {
+      token := token->Trim();
+      if(<>token->StartsWith("sk-")) {
+        ">>> Unable to read token from file: '{$filename}' <<"->PrintLine();
+        Runtime->Exit(1);
+      };
+
+      return token;
+    };
+
+    return Nil;
+  }
+}
+```
+
+```ruby
 # create an image from a prompt
 use API.OpenAI, API.OpenAI.FineTuning, System.IO.Filesystem, Data.JSON;
 
