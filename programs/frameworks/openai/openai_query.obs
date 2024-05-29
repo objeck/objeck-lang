@@ -3,7 +3,8 @@ use API.OpenAI, System.IO.Filesystem, Data.JSON, Collection;
 class OpenAIQueary {
 	function : Main(args : String[]) ~ Nil {
 		token := GetApiKey("openai_api_key.dat");
-		if(token = Nil | args->Size() <> 1) {
+
+		if(token = Nil | args->Size() < 1) {
 			">>> Please provide a command <<"->PrintLine();
 			Runtime->Exit(1);
 		};
@@ -22,6 +23,13 @@ class OpenAIQueary {
 
 			id := assistant->GetId();
 			"Created assistant: id={$id}"->PrintLine();
+		}
+		# delete assistant
+		else if(param->Equals("delete") & args->Size() = 2) {
+			id := args[1];
+			status := Assistant->Delete(id, token);
+			"Deleted assistant: id='{$id}', status={$status}"->PrintLine();
+			Runtime->Exit(0);
 		}
 		# load assistant
 		else {
@@ -45,10 +53,12 @@ class OpenAIQueary {
 		# create message
 		Message->Create("user", "What is the tallest mountain in Colorado?", thread, token);
 		
+		# create run
 		run := API.OpenAI.Run->Create(assistant, thread, token);
 		run_id := run->GetId();
 		"Run started: id={$run_id}"->PrintLine();
 
+		# check run
 		is_done := false;
 		for(i := 0; <>is_done & i < 10; i += 1;) {
 			System.Concurrency.Thread->Sleep(1500);
@@ -56,12 +66,13 @@ class OpenAIQueary {
 			'.'->Print();
 			is_done := run->GetStatus()->Equals("completed");
 		};
-		
+
 		if(<>is_done) {
 			">>> Unable complete run <<"->PrintLine();
 			Runtime->Exit(1);
 		};
-		
+
+		# retrieve response messages
 		messages := Message->ListMessages(thread, token);
 		each(message in messages) {
 			message_contents := message->GetContents();
@@ -74,7 +85,7 @@ class OpenAIQueary {
 
 		# remove thread
 		status := Thread->Delete(thread->GetId(), token);
-		"Removed thread: {$status}"->PrintLine();
+		"Removed thread: status={$status}"->PrintLine();
 	}
 
 	function : GetApiKey(filename : String) ~ String {

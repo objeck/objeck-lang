@@ -2124,7 +2124,6 @@ session->Close();
 		@return newly created assistant
 		~#
 		function : Create(model : String, name : String, description : String, instructions : String, token : String) ~ API.OpenAI.Assistant {
-"--- 0 ---"->PrintLine();			
 			return Create(model, name, description, instructions, Nil, Nil, Nil, token);
 		}
 
@@ -2465,7 +2464,7 @@ session->Close();
 			return false;
 		}
 	}
-	
+
 	#~
 	Message contents
 	~#
