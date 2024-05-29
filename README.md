@@ -56,7 +56,7 @@ class OpenAICompletion {
     messages := Vector->New()<Pair<String, String>>;
     messages->AddBack(Pair->New("user", "What is the longest road in Utah?")<String, String>);
 
-    completion := Completion->Complete("gpt-4-turbo", messages, token);
+    completion := Completion->Complete("gpt-4o", messages, token);
     if(completion <> Nil) {
       choices := completion->GetChoices();
       each(choice in choices) {
