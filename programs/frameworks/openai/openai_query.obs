@@ -35,14 +35,14 @@ class OpenAIQueary {
 			"Loaded assistant: id={$id}"->PrintLine();
 		};
 
-
+		# create thread
 		thread := API.OpenAI.Thread->Create(token);
 		if(thread = Nil) {
 			">>> Unable create thread <<"->PrintLine();
 			Runtime->Exit(1);
 		};
 		
-		# create thread
+		# create message
 		Message->Create("user", "What is the tallest mountain in Colorado?", thread, token);
 		
 		run := API.OpenAI.Run->Create(assistant, thread, token);
@@ -56,7 +56,12 @@ class OpenAIQueary {
 			'.'->Print();
 			is_done := run->GetStatus()->Equals("completed");
 		};
-
+		
+		if(<>is_done) {
+			">>> Unable complete run <<"->PrintLine();
+			Runtime->Exit(1);
+		};
+		
 		messages := Message->ListMessages(thread, token);
 		each(message in messages) {
 			message_contents := message->GetContents();
