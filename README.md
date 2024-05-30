@@ -22,7 +22,7 @@
   * Mistral local model support for embedded (i.e. Raspberry Pi Zero 2)
 
 * v2024.6.1
-  * LLaMa 3 local model support (work started)
+  * LlaMa 3 local model support (work started)
   
 * [v2024.6.0](https://github.com/objeck/objeck-lang/tree/master/core) **(in-test)**
     * Model tuning
