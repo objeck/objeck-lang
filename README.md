@@ -15,7 +15,7 @@
 ## Releases
 
 * v2024.6.x
-  * Unified ML framework across OpenAI, Gemini and LLaMa
+  * Unified ML framework across OpenAI, Gemini and LlaMa
   * Common framework for tuning OpenAI and Gemini models
  
 * v2024.6.1
