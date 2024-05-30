@@ -14,12 +14,12 @@
 
 ## Releases
 
-* v2024.6.x
+* v2024.7.x
   * Unified ML framework across OpenAI, Gemini and LlaMa
   * Common framework for tuning OpenAI and Gemini models
 
-* v2024.6.2
-  * Mistral local model support for embedded (i.e. RPI 3/4/5)
+* v2024.7.0
+  * Mistral local model support for embedded (i.e. Raspberry Pi Zero 2)
 
 * v2024.6.1
   * LLaMa 3 local model support (work started)
