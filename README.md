@@ -1,4 +1,4 @@
-<h1 align="center">Down to the Machine Code</h1>
+<h1 align="center">Versatile, Scalable and Efficient</h1>
 
 <p align="center">
   <a href="https://www.objeck.org"><img src="docs/images/gear_wheel_256.png""  width="300" alt="An Objeck"/></a>
