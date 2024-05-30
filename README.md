@@ -17,9 +17,12 @@
 * v2024.6.x
   * Unified ML framework across OpenAI, Gemini and LlaMa
   * Common framework for tuning OpenAI and Gemini models
- 
+
+* v2024.6.2
+  * Mistral local model support for embedded (i.e. RPI 3/4/5)
+
 * v2024.6.1
-  * LLaMa 3 local model support (queued)
+  * LLaMa 3 local model support (work started)
   
 * [v2024.6.0](https://github.com/objeck/objeck-lang/tree/master/core) **(in-test)**
     * Model tuning
