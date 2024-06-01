@@ -1,4 +1,4 @@
-use API.Google.Gemini, API.Google.Gemini.Tuning, System.IO.Filesystem, Data.JSON, Data.JSON.Scheme, Collection;
+use API.Google.Gemini, API.Google.Gemini.Tuning, Data.JSON, Data.JSON.Scheme;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
@@ -11,37 +11,30 @@ class Test {
 				query := args[2];
 
 				tuned_model := Tuner->Get(model_name);
-								
-				content := Content->New("user")->AddPart(TextPart->New(query));
-				candidates := tuned_model->GenerateContent(content);
-				if(candidates->Size() > 0) {
-					candidates->First()->GetAllText()->Trim()->PrintLine();
-				};
+				if(tuned_model <> Nil & tuned_model->GetState()->Equals("ACTIVE")) {
+					content := Content->New("user")->AddPart(TextPart->New(query));
+					candidates := tuned_model->GenerateContent(content);
+					if(candidates->Size() > 0) {
+						candidates->First()->GetAllText()->Trim()->PrintLine();
+					};
+				}
+				else {
+					status := tuned_model->GetState();
+					model_name := tuned_model = Nil ? "<unknown>" : tuned_model->GetName();
+					">>> Model not ready: model_name='{$model_name}', status='{$status}' <<<"->PrintLine();
+				};		
+			}
+			else if(action->Equals("delete_models") & args_size = 1) {
+				status := Tuner->DeleteAllModels();
+				"Delete all tuned models: status={$status}"->PrintLine();
 			}
 			else if(action->Equals("tune_model") & args_size = 1) {
 				training_data := Dataset->New();
-				training_data->AddExample(TuningExample->New("1", "2"));
-				training_data->AddExample(TuningExample->New("0", "1"));
-				training_data->AddExample(TuningExample->New("30", "31"));
-				training_data->AddExample(TuningExample->New("six", "seven"));
-				training_data->AddExample(TuningExample->New("2", "3"));
-				training_data->AddExample(TuningExample->New("1", "2"));
-				training_data->AddExample(TuningExample->New("12", "13"));
-				training_data->AddExample(TuningExample->New("ten", "eleven"));
-				training_data->AddExample(TuningExample->New("-13", "-12"));
-				training_data->AddExample(TuningExample->New("5", "6"));
-				training_data->AddExample(TuningExample->New("-9", "-8"));
-				training_data->AddExample(TuningExample->New("-1", "0"));
-				training_data->AddExample(TuningExample->New("5", "6"));
-				training_data->AddExample(TuningExample->New("thirty three", "thirty four"));
-				training_data->AddExample(TuningExample->New("-10", "-9"));
-				training_data->AddExample(TuningExample->New("8", " 9"));
-				training_data->AddExample(TuningExample->New("-1", "0"));
-				training_data->AddExample(TuningExample->New("8", "9"));
-				training_data->AddExample(TuningExample->New("-5", "-4"));
-				training_data->AddExample(TuningExample->New("3", "4"));
-				training_data->AddExample(TuningExample->New("-3", "-2"));
-				training_data->AddExample(TuningExample->New("twenty two", "twenty three"));
+				each(i : 150) {
+					value := Int->Random(-100, 100);
+					training_data->AddExample(TuningExample->New(value->ToString(), (value - 1)->ToString()));
+				};
+
 				hyper_params := Hyperparameters->New(2, 0.001, 5);
 				tuning_task := TuningTask->New(training_data, hyper_params);
 
