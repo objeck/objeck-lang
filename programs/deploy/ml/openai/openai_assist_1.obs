@@ -14,8 +14,8 @@ class OpenAIQueary {
 
 		# create assistant
 		if(param->Equals("create")) {
-			assistant := Assistant->Create("gpt-4-turbo", "Outdoor Colorado guide",
-				"Outdoor Colorado guide", "You are expert on Colorado outdoor activities", token);
+			assistant := Assistant->Create("gpt-4-turbo", "Outdoor New Mexico guide",
+				"Outdoor New Mexico guide", "You are expert on New Mexico outdoor activities", token);
 			if(assistant = Nil) {
 				">>> Unable create assistant <<"->PrintLine();
 				Runtime->Exit(1);
@@ -51,7 +51,7 @@ class OpenAIQueary {
 		};
 		
 		# create message
-		Message->Create("user", "What oldest hotel in Colorado?", thread, token);
+		Message->Create("user", "What oldest hotel in New Mexico?", thread, token);
 		
 		# create run
 		run := API.OpenAI.Run->Create(assistant, thread, token);
