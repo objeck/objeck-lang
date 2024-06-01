@@ -20,7 +20,7 @@ class Test {
 				query := args[1];
 				
 				content := Content->New("user")->AddPart(TextPart->New(query));
-				candidates := TunedModel->GenerateContent("tunedModels/number-generator-model-60q27spoeqr2", content);
+				candidates := Model->GenerateContent("models/gemini-1.5-pro", content, token);
 				if(candidates->Size() > 0) {
 					candidates->First()->GetAllText()->Trim()->PrintLine();
 				};
@@ -52,14 +52,28 @@ class Test {
 			#
 			# Tuned models
 			#
+			else if(action->Equals("query_tuned_model") & args_size = 3) {
+				model_name := args[1];
+				query := args[2];
+
+				tuned_model := Tuner->Get(model_name);
+								
+				content := Content->New("user")->AddPart(TextPart->New(query));
+				candidates := tuned_model->GenerateContent(content);
+				if(candidates->Size() > 0) {
+					candidates->First()->GetAllText()->Trim()->PrintLine();
+				};
+			}
 			else if(action->Equals("tune_model") & args_size = 1) {
 				training_data := Dataset->New();
 				training_data->AddExample(TuningExample->New("1", "2"));
 				training_data->AddExample(TuningExample->New("0", "1"));
 				training_data->AddExample(TuningExample->New("30", "31"));
+				training_data->AddExample(TuningExample->New("six", "seven"));
 				training_data->AddExample(TuningExample->New("2", "3"));
 				training_data->AddExample(TuningExample->New("1", "2"));
 				training_data->AddExample(TuningExample->New("12", "13"));
+				training_data->AddExample(TuningExample->New("ten", "eleven"));
 				training_data->AddExample(TuningExample->New("-13", "-12"));
 				training_data->AddExample(TuningExample->New("5", "6"));
 				training_data->AddExample(TuningExample->New("-9", "-8"));

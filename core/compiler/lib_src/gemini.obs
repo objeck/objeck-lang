@@ -1582,8 +1582,8 @@ bundle API.Google.Gemini.Tuning {
 		@param model_name model name
 		@param content content for the model
 		~#
-		function : GenerateContent(model_name : String, content : Content) ~ Vector<Candidate> {
-			return GenerateContent(model_name, content, Nil, Nil, Nil);
+		method : public : GenerateContent(content : Content) ~ Vector<Candidate> {
+			return GenerateContent(content, Nil, Nil, Nil);
 		}
 
 		#~
@@ -1592,8 +1592,8 @@ bundle API.Google.Gemini.Tuning {
 		@param content content for the model
 		@param funcs map of function callbacks, name must to map to function callback name
 		~#
-		function : GenerateContent(model_name : String, content : Content, funcs : Map<String, Pair<FunctionType, Func2Ref<JsonElement, JsonElement>>>) ~ Vector<Candidate> {
-			return GenerateContent(model_name, content, funcs, Nil, Nil);
+		method : public : GenerateContent(content : Content, funcs : Map<String, Pair<FunctionType, Func2Ref<JsonElement, JsonElement>>>) ~ Vector<Candidate> {
+			return GenerateContent(content, funcs, Nil, Nil);
 		}
 
 		#~
@@ -1604,11 +1604,11 @@ bundle API.Google.Gemini.Tuning {
 		@param safety_settings key/value safety settings
 		@param config generation configuration, currently unsupported
 		~#
-		function : GenerateContent(model_name : String, content : Content, funcs : Map<String, Pair<FunctionType, Func2Ref<JsonElement, JsonElement>>>, safety_settings : Vector<Collection.Tuple.Pair<String, String>>, config : GenerationConfig) ~ Vector<Candidate> {
+		method : public : GenerateContent(content : Content, funcs : Map<String, Pair<FunctionType, Func2Ref<JsonElement, JsonElement>>>, safety_settings : Vector<Collection.Tuple.Pair<String, String>>, config : GenerationConfig) ~ Vector<Candidate> {
 			contents := Vector->New()<Content>;
 			contents->AddBack(content);
 
-			return GenerateContent(model_name, contents, funcs, safety_settings, config);
+			return GenerateContent(contents, funcs, safety_settings, config);
 		}
 
 		#~
@@ -1619,7 +1619,7 @@ bundle API.Google.Gemini.Tuning {
 		@param safety_settings key/value safety settings
 		@param config generation configuration, currently unsupported
 		~#
-		function : GenerateContent(model_name : String, contents : Vector<Content>, funcs : Map<String, Pair<FunctionType, Func2Ref<JsonElement, JsonElement>>>, safety_settings : Vector<Collection.Tuple.Pair<String, String>>, config : GenerationConfig) ~ Vector<Candidate> {
+		method : public : GenerateContent(contents : Vector<Content>, funcs : Map<String, Pair<FunctionType, Func2Ref<JsonElement, JsonElement>>>, safety_settings : Vector<Collection.Tuple.Pair<String, String>>, config : GenerationConfig) ~ Vector<Candidate> {
 			# add contents
 			content_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
 			each(content in contents) {
@@ -1707,7 +1707,7 @@ bundle API.Google.Gemini.Tuning {
 			headers->Insert("Authorization", "Bearer {$token}");
 
 			data := contents_obj_json->ToString()->ToByteArray();
-			url := Url->New("https://generativelanguage.googleapis.com/v1beta/{$model_name}:generateContent");
+			url := Url->New("https://generativelanguage.googleapis.com/v1beta/{$@name}:generateContent");
 
 			response := HttpsClient->QuickPost(url, data, "application/json", headers);
 			if(response <> Nil) {
@@ -1722,6 +1722,65 @@ bundle API.Google.Gemini.Tuning {
 			};
 
 			return Nil;
+		}
+
+		#~
+		Lists available models
+		@param key API key
+		@return available models
+		~#
+		function : List(key : String) ~ Vector<TunedModel> {
+			tuned_models := Vector->New()<TunedModel>;
+
+			token := GetToken();
+			headers := Collection.Map->New()<String, String>;
+			headers->Insert("Authorization", "Bearer {$token}");
+			
+			url_str := "https://generativelanguage.googleapis.com/v1beta/tunedModels"
+			response := HttpsClient->QuickGet(Url->New(url_str), headers);
+
+			response_json	:= JsonParser->TextToElement(response->GetContent()->ToString());
+
+			next_page_json : JsonElement;
+			do {
+				# load next page, if it exists
+				if(next_page_json <> Nil) {
+					next_page_str := "?pageToken=";
+					next_page_str += next_page_json->GetString();
+
+					url_next_str := url_str + next_page_str;
+					response := HttpsClient->QuickGet(Url->New(url_next_str), "application/json", headers);
+					if(response = Nil) {
+						return Nil;
+					}
+					else {
+						# response->GetContent()->ToString()->PrintLine();							
+						response_json := JsonParser->TextToElement(response->GetContent()->ToString());
+						if(response_json = Nil) {
+							"### Error: Unable to parse response ###"->ErrorLine();
+							return Nil;
+						};
+						
+						if(response_json->Has("error")) {
+							error_str := response_json->FindElements("error/message")->GetString();
+							SetLastError(error_str);
+							return Nil;
+						};
+					};
+				};
+
+				corporas_json := response_json->Get("corpora");
+				if(corporas_json <> Nil) {
+					each(corpora_json in corporas_json) {
+						tuned_models->AddBack(TunedModel->New(corpora_json));
+					};
+				};
+
+				next_page_json := response_json->Get("nextPageToken");
+			}
+			while(next_page_json <> Nil);
+
+			return tuned_models;
 		}
 
 		#~
@@ -2360,80 +2419,7 @@ each(result in results) {
 
 			return Nil;	
 		}
-
-		#~
-		Get all existing corpupa
-		@return list of corpusa
-		~#
-		function : List() ~ Collection.Vector<Corpus> {
-			token := GetToken();
-			headers := Collection.Map->New()<String, String>;
-			headers->Insert("Authorization", "Bearer {$token}");
-			response := HttpsClient->QuickGet(Url->New("https://generativelanguage.googleapis.com/v1beta/corpora"), 
-				"application/json", headers);
-
-			if(response <> Nil) {
-				# response->GetContent()->ToString()->PrintLine();
-				
-				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
-				if(response_json = Nil) {
-					"### Error: Unable to parse response ###"->ErrorLine();
-					return Nil;
-				};
-				
-				if(response_json->Has("error")) {
-					error_str := response_json->FindElements("error/message")->GetString();
-					SetLastError(error_str);
-					return Nil;
-				};
-
-				corpuses := Collection.Vector->New()<Corpus>;
-
-				next_page_json : JsonElement;
-				do {
-					# load next page, if it exists
-					if(next_page_json <> Nil) {
-						next_page_str := "?pageToken=";
-						next_page_str += next_page_json->GetString();
-
-						url_str := "https://generativelanguage.googleapis.com/v1beta/tunedModels" + next_page_str;
-						response := HttpsClient->QuickGet(Url->New(url_str), "application/json", headers);
-						if(response = Nil) {
-							return Nil;
-						}
-						else {
-							# response->GetContent()->ToString()->PrintLine();							
-							response_json := JsonParser->TextToElement(response->GetContent()->ToString());
-							if(response_json = Nil) {
-								"### Error: Unable to parse response ###"->ErrorLine();
-								return Nil;
-							};
-							
-							if(response_json->Has("error")) {
-								error_str := response_json->FindElements("error/message")->GetString();
-								SetLastError(error_str);
-								return Nil;
-							};
-						};
-					};
-
-					corporas_json := response_json->Get("corpora");
-					if(corporas_json <> Nil) {
-						each(corpora_json in corporas_json) {
-							corpuses->AddBack(Corpus->New(corpora_json));
-						};
-					};
-
-					next_page_json := response_json->Get("nextPageToken");
-				}
-				while(next_page_json <> Nil);
-
-				return corpuses;
-			};
-
-			return Nil;	
-		}
-
+		
 		#~
 		Delete existing corpus
 		@return true if successful, false otherwise
