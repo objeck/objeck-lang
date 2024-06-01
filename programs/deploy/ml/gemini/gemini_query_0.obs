@@ -2,9 +2,9 @@ use API.Google.Gemini;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		if(args->Size() = 2) {
+		if(args->Size() = 1) {
 			token := EndPoint->GetApiKey();
-			query := args[1];
+			query := args[0];
 			
 			content := Content->New("user")->AddPart(TextPart->New(query));
 			candidates := Model->GenerateContent("models/gemini-1.5-pro", content, token);
