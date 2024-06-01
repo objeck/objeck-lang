@@ -613,16 +613,11 @@ class HtmlMaker {
 	method : GetClassBlock(type_name : String) ~ ClassSnippet {
 		class_block := GetBundleClass(@bundle_block->GetName(), type_name);
 		
-		if(class_block = Nil) {		
-			class_block := GetBundleClass("System", type_name);
-			if(class_block = Nil) {	
-				class_block := GetBundleClass("System.Introspection", type_name);
-				if(class_block = Nil) {	
-					class_block := GetBundleClass("System.Date", type_name);
-					if(class_block = Nil) {	
-						class_block := GetBundleClass("Collection", type_name);
-					};
-				};
+		if(class_block = Nil) {
+			code_blocks := ["System", "System.Introspection", "System.Date", "Collection", 
+				"Data.JSON", "Data.JSON.Scheme"];
+			for(i := 0; class_block = Nil & i < code_blocks->Size(); i += 1;) {
+				class_block := GetBundleClass(code_blocks[i], type_name);
 			};
 		};
 
