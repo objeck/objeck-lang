@@ -2,22 +2,25 @@ use API.OpenAI, API.OpenAI.Chat, Collection;
 
 class OpenAICompletion {
 	function : Main(args : String[]) ~ Nil {
-		token := GetApiKey("openai_api_key.dat");
+		if(args->Size() = 1) {
+			query := args[0];
+			token := GetApiKey("openai_api_key.dat");
 
-		if(token = Nil) {
-			">>> Please provide a directive <<"->PrintLine();
-			Runtime->Exit(1);
-		};
+			if(token = Nil) {
+				">>> Please provide a directive <<"->PrintLine();
+				Runtime->Exit(1);
+			};
 
-		messages := Vector->New()<Pair<String, String>>;
-		messages->AddBack(Pair->New("user", "What is the longest road in Arizona?")<String, String>);
+			messages := Vector->New()<Pair<String, String>>;
+			messages->AddBack(Pair->New("user", query)<String, String>);
 
-		completion := Completion->Complete("gpt-4o", messages, token);
-		if(completion <> Nil) {
-			choices := completion->GetChoices();
-			each(choice in choices) {
-				message := choice->GetMessage()<String, String>;
-				message->GetSecond()->PrintLine();
+			completion := Completion->Complete("gpt-4o", messages, token);
+			if(completion <> Nil) {
+				choices := completion->GetChoices();
+				each(choice in choices) {
+					message := choice->GetMessage()<String, String>;
+					message->GetSecond()->PrintLine();
+				};
 			};
 		};
 	}
