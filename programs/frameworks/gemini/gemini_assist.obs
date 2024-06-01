@@ -1,0 +1,58 @@
+use API.Google.Gemini, API.Google.Gemini.Tuning, System.IO.Filesystem, Data.JSON, Data.JSON.Scheme, Collection;
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		args_size := args->Size();
+		if(args_size > 0) {
+			action := args[0];
+
+			if(action->Equals("query_tuned_model") & args_size = 3) {
+				model_name := args[1];
+				query := args[2];
+
+				tuned_model := Tuner->Get(model_name);
+								
+				content := Content->New("user")->AddPart(TextPart->New(query));
+				candidates := tuned_model->GenerateContent(content);
+				if(candidates->Size() > 0) {
+					candidates->First()->GetAllText()->Trim()->PrintLine();
+				};
+			}
+			else if(action->Equals("tune_model") & args_size = 1) {
+				training_data := Dataset->New();
+				training_data->AddExample(TuningExample->New("1", "2"));
+				training_data->AddExample(TuningExample->New("0", "1"));
+				training_data->AddExample(TuningExample->New("30", "31"));
+				training_data->AddExample(TuningExample->New("six", "seven"));
+				training_data->AddExample(TuningExample->New("2", "3"));
+				training_data->AddExample(TuningExample->New("1", "2"));
+				training_data->AddExample(TuningExample->New("12", "13"));
+				training_data->AddExample(TuningExample->New("ten", "eleven"));
+				training_data->AddExample(TuningExample->New("-13", "-12"));
+				training_data->AddExample(TuningExample->New("5", "6"));
+				training_data->AddExample(TuningExample->New("-9", "-8"));
+				training_data->AddExample(TuningExample->New("-1", "0"));
+				training_data->AddExample(TuningExample->New("5", "6"));
+				training_data->AddExample(TuningExample->New("thirty three", "thirty four"));
+				training_data->AddExample(TuningExample->New("-10", "-9"));
+				training_data->AddExample(TuningExample->New("8", " 9"));
+				training_data->AddExample(TuningExample->New("-1", "0"));
+				training_data->AddExample(TuningExample->New("8", "9"));
+				training_data->AddExample(TuningExample->New("-5", "-4"));
+				training_data->AddExample(TuningExample->New("3", "4"));
+				training_data->AddExample(TuningExample->New("-3", "-2"));
+				training_data->AddExample(TuningExample->New("twenty two", "twenty three"));
+				hyper_params := Hyperparameters->New(2, 0.001, 5);
+				tuning_task := TuningTask->New(training_data, hyper_params);
+
+				display_name := "number generator model";
+				base_model := "models/gemini-1.0-pro-001";
+				
+				tuned_model := Tuner->Create(display_name , base_model, tuning_task);
+				if(tuned_model <> Nil) {
+					tuned_model->ToString()->PrintLine();
+				};
+			}
+		}
+	}
+}

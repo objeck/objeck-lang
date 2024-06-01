@@ -93,11 +93,6 @@ class Test {
 
 				display_name := "number generator model";
 				base_model := "models/gemini-1.0-pro-001";
-				# description := String;
-				# tune_model_source := String;
-				# temperature := Float;
-				# top_p := Float;
-				# top_k := Int;
 				
 				tuned_model := Tuner->Create(display_name , base_model, tuning_task);
 				if(tuned_model <> Nil) {
