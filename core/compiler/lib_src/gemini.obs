@@ -1578,6 +1578,153 @@ bundle API.Google.Gemini.Tuning {
 		}
 
 		#~
+		Generates a response from the model given an input
+		@param model_name model name
+		@param content content for the model
+		~#
+		function : GenerateContent(model_name : String, content : Content) ~ Vector<Candidate> {
+			return GenerateContent(model_name, content, Nil, Nil, Nil);
+		}
+
+		#~
+		Generates a response from the model given an input
+		@param model_name model name
+		@param content content for the model
+		@param funcs map of function callbacks, name must to map to function callback name
+		~#
+		function : GenerateContent(model_name : String, content : Content, funcs : Map<String, Pair<FunctionType, Func2Ref<JsonElement, JsonElement>>>) ~ Vector<Candidate> {
+			return GenerateContent(model_name, content, funcs, Nil, Nil);
+		}
+
+		#~
+		Generates a response from the model given an input
+		@param model_name model name
+		@param content model content
+		@param funcs map of function callbacks, name must to map to function callback name
+		@param safety_settings key/value safety settings
+		@param config generation configuration, currently unsupported
+		~#
+		function : GenerateContent(model_name : String, content : Content, funcs : Map<String, Pair<FunctionType, Func2Ref<JsonElement, JsonElement>>>, safety_settings : Vector<Collection.Tuple.Pair<String, String>>, config : GenerationConfig) ~ Vector<Candidate> {
+			contents := Vector->New()<Content>;
+			contents->AddBack(content);
+
+			return GenerateContent(model_name, contents, funcs, safety_settings, config);
+		}
+
+		#~
+		Generates a response from the model given an input
+		@param model_name model name
+		@param contents list of content for the model
+		@param funcs map of function callbacks, name must to map to function callback name		
+		@param safety_settings key/value safety settings
+		@param config generation configuration, currently unsupported
+		~#
+		function : GenerateContent(model_name : String, contents : Vector<Content>, funcs : Map<String, Pair<FunctionType, Func2Ref<JsonElement, JsonElement>>>, safety_settings : Vector<Collection.Tuple.Pair<String, String>>, config : GenerationConfig) ~ Vector<Candidate> {
+			# add contents
+			content_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+			each(content in contents) {
+				parts := content->GetParts();
+				content_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+
+				content_obj_json->Insert("role", content->GetRole());
+
+				parts_obj_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+				each(part in parts) {
+					part_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+
+					# text
+					if(part->TypeOf(TextPart)) {
+						text_part := part->As(TextPart);
+						part_obj_json->Insert("text", text_part->GetText());
+					}					
+					else {
+						binary_part := part->As(BinaryPart);
+
+						inline_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+						inline_obj_json->Insert("mimeType", binary_part->GetMimeType());
+						inline_obj_json->Insert("data", binary_part->GetBase64Data());
+						
+						part_obj_json->Insert("inlineData", inline_obj_json);
+					};
+
+					parts_obj_json->Add(part_obj_json);
+				};
+				content_obj_json->Insert("parts", parts_obj_json);
+
+				content_array_json->Add(content_obj_json);
+			};
+			contents_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			contents_obj_json->Insert("contents", content_array_json);
+
+			if(funcs <> Nil) {
+				function_declaration_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+		
+				func_key_values := funcs->GetKeyValues()<Pair<String, Pair<FunctionType, Func2Ref<JsonElement, JsonElement>>>>;
+				each(func_key_value in func_key_values) {
+					func_def_dclr := func_key_value->GetSecond()<FunctionType, Func2Ref<JsonElement, JsonElement>>;
+					func_dclr := func_def_dclr->GetFirst();
+
+					function_declaration_array_json->Add(JsonParser->TextToElement(func_dclr->ToString()));
+				};
+				
+				# create array of functions
+				function_declaration_obj_array_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+				function_declaration_obj_array_json->Insert("function_declarations", function_declaration_array_json);
+
+				tools_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+				tools_array_json->Add(function_declaration_obj_array_json);
+
+				# set tools
+				contents_obj_json->Insert("tools", tools_array_json);
+			};
+			
+			# safety settings
+			if(safety_settings <> Nil) {
+				safety_setting_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+				each(safety_setting in safety_settings) {
+					safety_setting_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+					safety_setting_obj_json->Insert("category", safety_setting->GetFirst());
+					safety_setting_obj_json->Insert("threshold", safety_setting->GetSecond());
+					safety_setting_array_json->Add(safety_setting_obj_json);
+				};
+				contents_obj_json->Insert("safetySettings", safety_setting_array_json);
+			};
+
+			#~
+			# TODO: GenerationConfig 
+			if(config <> Nil) {
+				#  generation configuration
+				gen_config_obj_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+				contents_obj_json->Insert("generationConfig", gen_config_obj_json);
+			};
+			~#
+
+			# contents_obj_json->ToString()->PrintLine();
+			# "---"->PrintLine();
+
+			token := GetToken();
+			headers := Collection.Map->New()<String, String>;
+			headers->Insert("Authorization", "Bearer {$token}");
+
+			data := contents_obj_json->ToString()->ToByteArray();
+			url := Url->New("https://generativelanguage.googleapis.com/v1beta/{$model_name}:generateContent");
+
+			response := HttpsClient->QuickPost(url, data, "application/json", headers);
+			if(response <> Nil) {
+				# response->GetContent()->PrintLine();
+				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				if(response_json = Nil) {
+					"### Error: Unable to parse response ###"->ErrorLine();
+					return Nil;
+				};
+				
+				return Model->BuildContentResponse(contents_obj_json, content_array_json, response_json, funcs, url, false);
+			};
+
+			return Nil;
+		}
+
+		#~
 		Delete existing tuned model
 		@return true if successful, false otherwise
 		~#

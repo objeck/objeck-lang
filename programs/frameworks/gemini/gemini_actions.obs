@@ -20,7 +20,7 @@ class Test {
 				query := args[1];
 				
 				content := Content->New("user")->AddPart(TextPart->New(query));
-				candidates := Model->GenerateContent("models/gemini-1.5-flash", content, EndPoint->GetApiKey());
+				candidates := TunedModel->GenerateContent("tunedModels/number-generator-model-60q27spoeqr2", content);
 				if(candidates->Size() > 0) {
 					candidates->First()->GetAllText()->Trim()->PrintLine();
 				};
@@ -55,6 +55,22 @@ class Test {
 			else if(action->Equals("tune_model") & args_size = 1) {
 				training_data := Dataset->New();
 				training_data->AddExample(TuningExample->New("1", "2"));
+				training_data->AddExample(TuningExample->New("0", "1"));
+				training_data->AddExample(TuningExample->New("30", "31"));
+				training_data->AddExample(TuningExample->New("2", "3"));
+				training_data->AddExample(TuningExample->New("1", "2"));
+				training_data->AddExample(TuningExample->New("12", "13"));
+				training_data->AddExample(TuningExample->New("-13", "-12"));
+				training_data->AddExample(TuningExample->New("5", "6"));
+				training_data->AddExample(TuningExample->New("-9", "-8"));
+				training_data->AddExample(TuningExample->New("-1", "0"));
+				training_data->AddExample(TuningExample->New("5", "6"));
+				training_data->AddExample(TuningExample->New("thirty three", "thirty four"));
+				training_data->AddExample(TuningExample->New("-10", "-9"));
+				training_data->AddExample(TuningExample->New("8", " 9"));
+				training_data->AddExample(TuningExample->New("-1", "0"));
+				training_data->AddExample(TuningExample->New("8", "9"));
+				training_data->AddExample(TuningExample->New("-5", "-4"));
 				training_data->AddExample(TuningExample->New("3", "4"));
 				training_data->AddExample(TuningExample->New("-3", "-2"));
 				training_data->AddExample(TuningExample->New("twenty two", "twenty three"));
