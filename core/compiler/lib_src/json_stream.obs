@@ -31,6 +31,7 @@ while(parser->GetType() <> JsonStreamParser->JsonStreamType->END & parser->GetTy
 	class JsonStreamParser {
 		@stream : Char[];
 		@stream_position : Int;
+		@cur_char : Char;
 		
 		@stream_stack : ParseScope[];
 		@stream_stack_position : Int;
@@ -59,10 +60,11 @@ while(parser->GetType() <> JsonStreamParser->JsonStreamType->END & parser->GetTy
 
 		#~
 		Constructor
-		@param stream input stream
 		~#
-		New(stream : String) {
-			@stream := stream->ToCharArray();
+		New() {
+			@error_message := "*** Error: Empty input stream, consider calling 'Rest(input_stream)' ***";
+			
+			@cur_char := '\0';
 			@is_debug := false;
 
 			max_level := 64;
@@ -71,12 +73,33 @@ while(parser->GetType() <> JsonStreamParser->JsonStreamType->END & parser->GetTy
 				 @stream_stack[i] := ParseScope->New();
 			};
 		}
-		
+
+		#~
+		Constructor
+		@param stream input stream
+		~#
+		New(stream : String) {
+			@stream := stream->ToCharArray();
+			if(@stream->Size() > 0) {
+				@cur_char := @stream[@stream_position];
+			};
+			
+			max_level := 64;
+			@stream_stack := ParseScope->New[max_level];
+			each(i : max_level) {
+				 @stream_stack[i] := ParseScope->New();
+			};
+		}
+
 		#~
 		Reset stream cursor to the beginning
 		~#
 		method : public : Reset() ~ Nil {
 			@stream_stack_position := @stream_position := 0;
+			if(@stream->Size() > 0) {
+				@cur_char := @stream[@stream_position];
+			};
+			
 			@error_message := Nil;
 		}
 
@@ -85,8 +108,13 @@ while(parser->GetType() <> JsonStreamParser->JsonStreamType->END & parser->GetTy
 		@param stream input stream buffer
 		~#
 		method : public : Reset(stream : String) ~ Nil {
-			@stream := stream->ToCharArray();
 			@stream_stack_position := @stream_position := 0;
+			
+			@stream := stream->ToCharArray();
+			if(@stream->Size() > 0) {
+				@cur_char := @stream[@stream_position];
+			};
+
 			@error_message := Nil;
 		}
 
@@ -467,19 +495,21 @@ while(parser->GetType() <> JsonStreamParser->JsonStreamType->END & parser->GetTy
 		}
 
 		method : MatchChar(char : Char) ~ Bool {
-			return GetChar() = char;
+			return @cur_char = char;
 		}
 
-		method : native : GetChar() ~ Char {
-			if(@stream_position < @stream->Size()) {
-				return @stream[@stream_position];
-			};
-
-			return '\0';
+		method : GetChar() ~ Char {
+			return @cur_char;			
 		}
 
-		method : NextChar() ~ Nil {
+		method : native : NextChar() ~ Nil {
 			@stream_position += 1;
+			if(@stream_position < @stream->Size()) {
+				@cur_char := @stream[@stream_position];
+			}
+			else {
+				@cur_char := '\0';
+			};
 		}
 		
 		method : native : Whitespace() ~ Nil {
