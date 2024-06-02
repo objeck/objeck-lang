@@ -1,0 +1,11 @@
+class Test {
+    function : Main(args : String[]) ~ Nil {
+        input := "{  \"model\": \"llama3\",  \"prompt\": \"What is the longest road in Colorado that is not a highway?\" }"->ToByteArray();
+
+        url := Web.HTTP.Url->New("http://localhost:11434/api/generate");
+        data := Web.HTTP.HttpClient->QuickPost(url, input, "application/json");
+        if(data <> Nil) {
+            data->ToString()->PrintLine();
+        };
+    }
+}
