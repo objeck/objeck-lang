@@ -14,24 +14,23 @@
 
 ## Releases
 
+* v2024.8.x
+  * Common training framework across OpenAI, Gemini, Llama, and Mistral
+
 * v2024.7.x
-  * Unified ML framework across OpenAI, Gemini and LlaMa
-  * Common framework for tuning OpenAI and Gemini models
-
-* v2024.7.0
-  * Mistral local model support for embedded (i.e. Raspberry Pi Zero 2)
-
-* v2024.6.1
-  * Llama 3 local model support (work started)
+  * Unified query framework across OpenAI, Gemini, Llama, and Mistral
   
-* [v2024.6.0](https://github.com/objeck/objeck-lang/tree/master/core) **(in-test)**
+* v2024.6.1 (queued)
+  * On-device ML support for Llama and Mistral
+  
+* v2024.6.0  **(current)**
     * Model tuning
-      * OpenAI (done)
-      * Gemini (done)
+      * OpenAI
+      * Gemini
     * Image generation, editing, and variation
-      * OpenAI (done)
+      * OpenAI
       
-* v2024.5.0 **(current)**
+* v2024.5.0
   * Gemini support for function calls
   * JSON Scheme support for function modeling for OpenAI and Gemini
   * Enhancements
