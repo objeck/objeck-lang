@@ -49,12 +49,7 @@ use API.OpenAI, API.OpenAI.Chat, Collection;
 class OpenAICompletion {
   function : Main(args : String[]) ~ Nil {
     token := GetApiKey("openai_api_key.dat");
-
-    if(token = Nil) {
-      ">>> Please provide a directive <<"->PrintLine();
-      Runtime->Exit(1);
-    };
-
+    
     messages := Vector->New()<Pair<String, String>>;
     messages->AddBack(Pair->New("user", "What is the longest road in Utah?")<String, String>);
 
