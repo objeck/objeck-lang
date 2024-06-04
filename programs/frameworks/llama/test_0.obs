@@ -1,0 +1,27 @@
+use Data.JSON, Data.JSON.Stream;
+
+class Test {
+    function : Main(args : String[]) ~ Nil {
+        query := JsonElement->New(JsonElement->JsonType->OBJECT);
+        query->Insert("model", "llama3");
+        query->Insert("prompt", "What is the longest road in Philadelphia that is not a highway?");
+        query->Insert("stream", false);
+
+        url := Web.HTTP.Url->New("http://localhost:11434/api/generate");        
+        post_response := Web.HTTP.HttpClient->QuickPost(url, query->ToString()->ToByteArray(), "application/json");
+        if(post_response <> Nil) {
+            post_response_str := post_response->GetContent()->ToString();
+
+#           post_response_str->PrintLine();
+#           "---"->PrintLine();
+
+            post_response_json := JsonParser->TextToElement(post_response_str);
+            if(post_response_json <> Nil) {
+                response_json := post_response_json->Get("response")
+                if(response_json <> Nil) {
+                    JsonElement->Decode(response_json->GetString())->PrintLine();
+                };
+            };
+        };
+    }
+}
