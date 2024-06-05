@@ -10,7 +10,7 @@ body {
 	font-size: 13px;
 	line-height: 1;
 	color: #404041;
-	background-color: #f1f1f2;
+	background: #e0e0e0;
 	-webkit-font-smoothing: antialiased;
 }
 	
@@ -35,7 +35,7 @@ ul {
 }
 
 .doc-table td {
-	background-color: #E0E0E0;
+	background-color: #d3d3d3;
 	padding: 10px 15px;
 }
 
