@@ -40,7 +40,7 @@ ul {
 }
 
 .doc-table td {
-	background-color: #E0E0E0;
+	background-color: #d3d3d3;
 	padding: 10px 15px;
 }
 
