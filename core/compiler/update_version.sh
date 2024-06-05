@@ -24,5 +24,6 @@ make -f make/Makefile.amd64
 ./obc -src lib_src/odbc.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/odbc.obl
 ./obc -src lib_src/openai.obs -lib json,net,misc -tar lib -opt s3 -dest ../lib/openai.obl
 ./obc -src lib_src/gemini.obs -lib misc,json,net,encrypt -tar lib -opt s3 -dest ../lib/gemini.obl
+./obc -src lib_src/ollama.obs -lib net,json,encrypt,misc -tar lib -opt s3 -dest ../lib/ollama.obl
 ./obc -src lib_src/sdl2.obs -tar lib -dest ../lib/sdl2.obl
 ./obc -src lib_src/sdl_game.obs -lib gen_collect,json,sdl2 -tar lib -dest ../lib/sdl_game.obl
