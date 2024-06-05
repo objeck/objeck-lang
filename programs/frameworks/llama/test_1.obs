@@ -1,31 +1,9 @@
-use Data.JSON, Data.JSON.Stream;
+use API.Llama;
 
 class Test {
     function : Main(args : String[]) ~ Nil {
-        images_json := JsonElement->New(JsonElement->JsonType->ARRAY);        
-        images_json->Add(Encryption.Encrypt->Base64(System.IO.Filesystem.FileReader->ReadBinaryFile("../gemini/thirteen.png")));
-
-        query_json := JsonElement->New(JsonElement->JsonType->OBJECT);
-        query_json->Insert("model", "llava");
-        query_json->Insert("prompt", "What number is this?");
-        query_json->Insert("images", images_json);
-        query_json->Insert("stream", false);
-
-        url := Web.HTTP.Url->New("http://localhost:11434/api/generate");        
-        post_response := Web.HTTP.HttpClient->QuickPost(url, query_json->ToString()->ToByteArray(), "application/json");
-        if(post_response <> Nil) {
-            post_response_str := post_response->GetContent()->ToString();
-
- #          post_response_str->PrintLine();
- #          "---"->PrintLine();
-
-            post_response_json := JsonParser->TextToElement(post_response_str);
-            if(post_response_json <> Nil) {
-                response_json := post_response_json->Get("response")
-                if(response_json <> Nil) {
-                    JsonElement->Decode(response_json->GetString())->PrintLine();
-                };
-            };
-        };
+        prompt := "What number is this?";
+        file := System.IO.Filesystem.File->New("../gemini/thirteen.png");
+        Completion->Generate("llava", prompt, file)->PrintLine();
     }
 }
