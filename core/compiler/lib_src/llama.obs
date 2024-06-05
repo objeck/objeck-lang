@@ -1,0 +1,160 @@
+#~~
+Copyright (c) 2024 Randy Hollines
+~~#	
+
+use Web.HTTP, Collection, Data.JSON, Data.JSON.Scheme, System.IO.Filesystem;
+
+#~
+Lama ML client APIs (-lib llama)
+~#
+bundle API.Llama {
+	#~
+	Llama enabled endpoint class
+	~#
+	class EndPoint {
+		@url : static : Url;
+		@last_error : static : String;
+
+		function : SetLastError(last_error : String) ~ Nil {
+			@last_error := last_error;
+		}
+
+		#~
+		Get the last error
+		@return last error
+		~#
+		function : GetLastError() ~ String {
+			return @last_error;
+		}
+
+		#~
+		Set the url
+		@param url url to set
+		~#
+		function : SetUrl(url : Url) ~ Nil {
+			@url := url;
+		}
+
+		#~
+		Get the last url
+		@return last url
+		~#
+		function : GetUrl() ~ Url {
+			if(@url = Nil) {
+				@url := Url->New("http://localhost:11434/api/generate");
+			};
+
+			return @url;
+		}
+	}
+
+	#~
+	Llama model interactions
+	
+```
+TOD: add code example
+```
+	~#
+	class Completion from EndPoint {
+		#~
+		Generates a response from the model given an input
+		@param model model name (i.e. llama3, llava)
+		@param prompt prompt
+		~#
+		function : Generate(model : String, prompt : String) ~ String {
+			query_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+	        query_json->Insert("model", "llama3");
+	        query_json->Insert("prompt", prompt);
+	        query_json->Insert("stream", false);
+
+	        url := GetUrl();
+	        post_request := query_json->ToString();
+			
+			# post_request->PrintLine();
+
+	        post_response := Web.HTTP.HttpClient->QuickPost(url, post_request->ToByteArray(), "application/json");
+	        if(post_response <> Nil) {
+	            post_response_str := post_response->GetContent()->ToString();
+
+				# post_response_str->PrintLine();
+				# "---"->PrintLine();
+
+	            post_response_json := JsonParser->TextToElement(post_response_str);
+	            if(post_response_json <> Nil) {
+	                response_json := post_response_json->Get("response")
+	                if(response_json <> Nil) {
+	                    return JsonElement->Decode(response_json->GetString());
+	                };
+	            };
+	        };
+
+	        return Nil;
+		}
+
+		#~
+		Generates a response from the model given an input
+		@param model model name (i.e. llama3, llava)
+		@param prompt prompt
+		@param files image file
+		~#
+		function : Generate(model : String, prompt : String, file : File) ~ String {
+			files := File->New[1];
+			files[0] := file;
+
+			return Generate(model, prompt, files);
+		}
+
+		#~
+		Generates a response from the model given an input
+		@param model model name (i.e. llama3, llava)
+		@param prompt prompt
+		@param files image files
+		~#
+		function : Generate(model : String, prompt : String, files : File[]) ~ String {
+			images_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+			each(file in files) {
+				if(<>file->Exists()) {
+					return Nil;
+				};
+
+				# file->GetFullName()->PrintLine();
+
+				file_data := System.IO.Filesystem.FileReader->ReadBinaryFile(file->GetFullName());
+				if(file_data = Nil) {
+					return Nil;
+				};
+
+	        	images_json->Add(Encryption.Encrypt->Base64(file_data));
+	        };
+
+	        query_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+	        query_json->Insert("model", model);
+	        query_json->Insert("prompt", prompt);
+	        query_json->Insert("images", images_json);
+	        query_json->Insert("stream", false);
+
+	        url := GetUrl();
+	        post_request := query_json->ToString();
+			
+			# post_request->PrintLine();
+
+	        post_response := Web.HTTP.HttpClient->QuickPost(url, post_request->ToByteArray(), "application/json");
+	        if(post_response <> Nil) {
+	            post_response_str := post_response->GetContent()->ToString();
+
+				# post_response_str->PrintLine();
+				# "---"->PrintLine();
+
+	            post_response_json := JsonParser->TextToElement(post_response_str);
+	            if(post_response_json <> Nil) {
+	                response_json := post_response_json->Get("response")
+	                if(response_json <> Nil) {
+	                    return JsonElement->Decode(response_json->GetString());
+	                };
+	            };
+	        };
+
+	        return Nil;
+		}
+	}
+}
