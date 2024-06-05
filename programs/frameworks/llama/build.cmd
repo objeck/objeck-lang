@@ -3,16 +3,17 @@
 echo Building...
 echo ---
 
-obc -src ..\..\..\core\compiler\lib_src\json_stream.obs -tar lib -dest ..\..\..\core\release\deploy64\lib\json_stream.obl
-obc -src ..\..\..\core\compiler\lib_src\net_common.obs,..\..\..\core\compiler\lib_src\net.obs,..\..\..\core\compiler\lib_src\net_secure.obs -lib json -tar lib -dest ..\..\..\core\release\deploy64\lib\net.obl
+del /q *.obe
+
+obc -src ..\..\..\core\compiler\lib_src\llama.obs -lib net,json,encrypt,misc -tar lib -dest ..\..\..\core\release\deploy64\lib\llama.obl
 
 if not "%1" == "" (
-	obc -src %1 -lib json_stream,json,net
+	obc -src %1 -lib llama,json,net,encrypt
 	
-	if "%2" == "brun" (
+	if not "%2" == "" (
 		echo Testing...
 		echo ---
 		
-		obr "%1"
+		obr "%1" %2
 	)
 )
