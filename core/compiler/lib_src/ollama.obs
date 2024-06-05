@@ -5,11 +5,11 @@ Copyright (c) 2024 Randy Hollines
 use Web.HTTP, Collection, Data.JSON, Data.JSON.Scheme, System.IO.Filesystem;
 
 #~
-Lama ML client APIs (-lib llama)
+Lama ML client APIs (-lib ollama)
 ~#
-bundle API.Llama {
+bundle API.Ollama {
 	#~
-	Llama enabled endpoint class
+	Ollama enabled endpoint class
 	~#
 	class EndPoint {
 		@url : static : Url;
@@ -49,7 +49,7 @@ bundle API.Llama {
 	}
 
 	#~
-	Llama model interactions
+	Ollama model interactions
 	
 ```
 TOD: add code example
