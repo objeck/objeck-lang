@@ -63,7 +63,7 @@ TOD: add code example
 		~#
 		function : Generate(model : String, prompt : String) ~ String {
 			query_json := JsonElement->New(JsonElement->JsonType->OBJECT);
-	        query_json->Insert("model", "llama3");
+	        query_json->Insert("model", model);
 	        query_json->Insert("prompt", prompt);
 	        query_json->Insert("stream", false);
 
