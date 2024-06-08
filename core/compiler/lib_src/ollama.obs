@@ -108,24 +108,24 @@ TODO: add code example
 		Generates a response from the model given an input
 		@param model model name (i.e. llama3, llava)
 		@param prompt prompt
-		@param files image file
+		@param image image file
 		~#
-		function : Generate(model : String, prompt : String, file : File) ~ String {
-			files := File->New[1];
-			files[0] := file;
+		function : Generate(model : String, prompt : String, image : File) ~ String {
+			images := File->New[1];
+			images[0] := image;
 
-			return Generate(model, prompt, files);
+			return Generate(model, prompt, images);
 		}
 
 		#~
 		Generates a response from the model given an input
 		@param model model name (i.e. llama3, llava)
 		@param prompt prompt
-		@param files image files
+		@param images image images
 		~#
-		function : Generate(model : String, prompt : String, files : File[]) ~ String {
+		function : Generate(model : String, prompt : String, images : File[]) ~ String {
 			images_json := JsonElement->New(JsonElement->JsonType->ARRAY);
-			each(file in files) {
+			each(file in images) {
 				if(<>file->Exists()) {
 					return Nil;
 				};
@@ -138,36 +138,195 @@ TODO: add code example
 				};
 
 	        	images_json->Add(Encryption.Encrypt->Base64(file_data));
-	        };
+			};
 
-	        query_json := JsonElement->New(JsonElement->JsonType->OBJECT);
-	        query_json->Insert("model", model);
-	        query_json->Insert("prompt", prompt);
-	        query_json->Insert("images", images_json);
-	        query_json->Insert("stream", false);
+			query_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			query_json->Insert("model", model);
+			query_json->Insert("prompt", prompt);
+			query_json->Insert("images", images_json);
+			query_json->Insert("stream", false);
 
-	        url := GetUrl();
-	        post_request := query_json->ToString();
+			url := GetUrl();
+			post_request := query_json->ToString();
 			
 			# post_request->PrintLine();
 
-	        post_response := Web.HTTP.HttpClient->QuickPost(url, post_request->ToByteArray(), "application/json");
-	        if(post_response <> Nil) {
-	            post_response_str := post_response->GetContent()->ToString();
+			post_response := Web.HTTP.HttpClient->QuickPost(url, post_request->ToByteArray(), "application/json");
+			if(post_response <> Nil) {
+				post_response_str := post_response->GetContent()->ToString();
 
 				# post_response_str->PrintLine();
 				# "---"->PrintLine();
 
-	            post_response_json := JsonParser->TextToElement(post_response_str);
-	            if(post_response_json <> Nil) {
-	                response_json := post_response_json->Get("response")
-	                if(response_json <> Nil) {
-	                    return JsonElement->Decode(response_json->GetString());
-	                };
-	            };
-	        };
+				post_response_json := JsonParser->TextToElement(post_response_str);
+				if(post_response_json <> Nil) {
+					response_json := post_response_json->Get("response")
+					if(response_json <> Nil) {
+						return JsonElement->Decode(response_json->GetString());
+					};
+				};
+			};
 
-	        return Nil;
+			return Nil;
+		}
+	}
+	
+	#~
+	Ollama chat client
+	
+```
+TODO: add code example
+```
+	~#
+	class Chat from EndPoint {
+		@model : String;
+		@messages_json : JsonElement;
+
+		#~
+		Constructor
+		@param model model name (i.e. llama3, llava)
+		~#
+		New(model : String) {
+			Parent();
+
+			@messages_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+
+			SetUrl(Url->New("http://localhost:11434/api/chat"));
+			query_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			query_json->Insert("model", model);
+			query_json->Insert("stream", false);
+
+			url := GetUrl();
+			# url->ToString()->PrintLine();
+			
+			post_request := query_json->ToString();
+			# post_request->PrintLine();
+
+			post_response := Web.HTTP.HttpClient->QuickPost(url, post_request->ToByteArray(), "application/json");
+			if(post_response <> Nil) {
+				post_response_str := post_response->GetContent()->ToString();
+
+				post_response_json := JsonParser->TextToElement(post_response_str);
+            if(post_response_json <> Nil) {
+					message_json := post_response_json->Get("message")
+					if(message_json <> Nil) {
+						@model := post_response_json->Get("model")->GetString();
+						@messages_json->Add(message_json);
+					};
+            };
+			};
+		}
+
+		#~
+		Chat response from the model given an input
+		@param message chat message
+		@return chat response
+		~#
+		method : public : Send(message : String) ~ String {
+			SetUrl(Url->New("http://localhost:11434/api/chat"));
+			query_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+
+			message_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			message_json->Insert("role", "user");
+			message_json->Insert("content", message);
+			@messages_json->Add(message_json);
+			
+			query_json->Insert("model", @model);
+			query_json->Insert("messages", @messages_json);
+			query_json->Insert("stream", false);
+
+			url := GetUrl();			
+			post_request := query_json->ToString();
+
+			# post_request->PrintLine();
+			post_response := Web.HTTP.HttpClient->QuickPost(url, post_request->ToByteArray(), "application/json");
+			if(post_response <> Nil) {
+				post_response_str := post_response->GetContent()->ToString();
+
+				# post_response_str->PrintLine();
+
+				post_response_json := JsonParser->TextToElement(post_response_str);
+            if(post_response_json <> Nil) {
+					message_json := post_response_json->Get("message")
+					if(message_json <> Nil) {
+						@messages_json->Add(message_json);
+						return message_json->Get("content")->GetString();
+					};
+				};
+			};
+
+			return Nil;
+		}
+
+		#~
+		Chat response from the model given an input
+		@param message chat message
+		@param image image file
+		@return chat response
+		~#
+		method : public : Send(message : String, image : File) ~ String {
+			images := File->New[1];
+			images[0] := image;
+
+			return Send(message, images);
+		}
+		
+		#~
+		Chat response from the model given an input
+		@param message chat query
+		@param images image files
+		@return chat response
+		~#
+		method : public : Send(message : String, images : File[]) ~ String {
+			images_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+			each(file in images) {
+				if(<>file->Exists()) {
+					return Nil;
+				};
+
+				# file->GetFullName()->PrintLine();
+
+				file_data := System.IO.Filesystem.FileReader->ReadBinaryFile(file->GetFullName());
+				if(file_data = Nil) {
+					return Nil;
+				};
+
+				images_json->Add(Encryption.Encrypt->Base64(file_data));
+			};
+
+			query_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+
+			message_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			message_json->Insert("role", "user");
+			message_json->Insert("content", message);
+			@messages_json->Add(message_json);
+			
+			query_json->Insert("model", @model);
+			query_json->Insert("messages", @messages_json);
+			query_json->Insert("images", images_json);
+			query_json->Insert("stream", false);
+
+			url := GetUrl();			
+			post_request := query_json->ToString();
+
+			# post_request->PrintLine();
+			post_response := Web.HTTP.HttpClient->QuickPost(url, post_request->ToByteArray(), "application/json");
+			if(post_response <> Nil) {
+				post_response_str := post_response->GetContent()->ToString();
+
+				# post_response_str->PrintLine();
+
+				post_response_json := JsonParser->TextToElement(post_response_str);
+            if(post_response_json <> Nil) {
+					message_json := post_response_json->Get("message")
+					if(message_json <> Nil) {
+						@messages_json->Add(message_json);
+						return message_json->Get("content")->GetString();
+					};
+				};
+			};
+
+			return Nil;
 		}
 	}
 }

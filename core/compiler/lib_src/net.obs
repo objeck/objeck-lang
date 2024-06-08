@@ -471,8 +471,7 @@ if(html <> Nil) {
 		method : public : Delete(url : Web.HTTP.Url, content_type : String) ~ Web.HTTP.Response {
 			return Operation(url, content_type, HttpClient->Task->DELETE);
 		}
-
-
+		
 		#~
 		Performs a HTTPS CREATE and returns results as a String
 		@param url URL
