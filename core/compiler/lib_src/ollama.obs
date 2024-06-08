@@ -52,7 +52,7 @@ bundle API.Ollama {
 	Ollama model interactions
 	
 ```
-TOD: add code example
+TODO: add code example
 ```
 	~#
 	class Completion from EndPoint {
@@ -62,10 +62,23 @@ TOD: add code example
 		@param prompt prompt
 		~#
 		function : Generate(model : String, prompt : String) ~ String {
+			return Generate(model, prompt, Nil);
+		}
+
+		#~
+		Generates a response from the model given an input
+		@param model model name (i.e. llama3, llava)
+		@param prompt prompt
+		@param format output format
+		~#
+		function : Generate(model : String, prompt : String, format : String) ~ String {
 			query_json := JsonElement->New(JsonElement->JsonType->OBJECT);
-	        query_json->Insert("model", model);
-	        query_json->Insert("prompt", prompt);
-	        query_json->Insert("stream", false);
+			query_json->Insert("model", model);
+			query_json->Insert("prompt", prompt);
+			if(format <> Nil) {
+				query_json->Insert("format", format);
+			};
+			query_json->Insert("stream", false);
 
 	        url := GetUrl();
 	        post_request := query_json->ToString();
