@@ -1,5 +1,5 @@
 #~~
-Copyright (c) 2023 Randy Hollines
+Copyright (c) 2024 Randy Hollines
 ~~#
 
 use System.IO.Net; 
@@ -20,6 +20,14 @@ if(html <> Nil) {
 	```
 	~#
 	class HttpsClient {
+		enum Task {
+			GET,
+			PUT,
+			POST,
+			CREATE,
+			DELETE
+		}
+
 		@request_headers : Hash<String, String>;
 		@response_headers : Hash<String, String>;
 		@cookies_enabled : Bool;
@@ -388,7 +396,7 @@ if(html <> Nil) {
 		@return string read
 		~#
 		method : public : Get(url : Web.HTTP.Url, content_type : String) ~ Web.HTTP.Response {
-			return GetOrDelete(url, content_type, true);
+			return Operation(url, content_type, HttpClient->Task->GET);
 		}
 
 		#~
@@ -455,10 +463,77 @@ if(html <> Nil) {
 		@return string read
 		~#
 		method : public : Delete(url : Web.HTTP.Url, content_type : String) ~ Web.HTTP.Response {
-			return GetOrDelete(url, content_type, false);
+			return Operation(url, content_type, HttpClient->Task->DELETE);
 		}
 
-		method : GetOrDelete(url : Web.HTTP.Url, content_type : String, is_get : Bool) ~ Web.HTTP.Response {
+		#~
+		Performs a HTTPS CREATE and returns results as a String
+		@param url URL
+		@return output buffer
+		~#
+		function : QuickCreate(url : Web.HTTP.Url) ~ Web.HTTP.Response {
+			return QuickCreate(url, "text/plain", Nil);
+		}
+
+		#~
+		Performs a HTTPS CREATE and returns results as a String
+		@param url URL
+		@param headers key/value headers
+		@return output buffer
+		~#
+		function : QuickCreate(url : Web.HTTP.Url, headers : Map<String, String>) ~ Web.HTTP.Response {
+			return QuickCreate(url, "text/plain", headers);
+		}
+
+		#~
+		Performs a HTTPS CREATE and returns results as a String
+		@param url URL
+		@param content_type content type
+		@return output buffer
+		~#
+		function : QuickCreate(url : Web.HTTP.Url, content_type : String) ~ Web.HTTP.Response {
+			return QuickCreate(url, content_type, Nil);
+		}
+
+		#~
+		Performs a HTTPS CREATE and returns results as a String
+		@param url URL
+		@param content_type content type
+		@param headers key/value headers
+		@return output buffer
+		~#
+		function : QuickCreate(url : Web.HTTP.Url, content_type : String, headers : Map<String, String>) ~ Web.HTTP.Response {			
+			client := HttpsClient->New();
+			if(headers <> Nil) {
+				header_key_values := headers->GetKeyValues()<Pair<String, String>>;
+				each(i : header_key_values) {
+					key_value := header_key_values->Get(i);
+					key := key_value->GetFirst();
+					value := key_value->GetSecond();
+					
+					if(value->IsEmpty()) {
+						client->RemoveHeader(key);
+					}
+					else {
+						client->AddHeader(key, value);
+					};
+				};
+			};
+
+			return client->Create(url, content_type);
+		}
+
+		#~
+		Performs a HTTPS CREATE
+		@param url URL
+		@param content_type content type
+		@return string read
+		~#
+		method : public : Create(url : Web.HTTP.Url, content_type : String) ~ Web.HTTP.Response {
+			return Operation(url, content_type, HttpClient->Task->CREATE);
+		}
+		
+		method : Operation(url : Web.HTTP.Url, content_type : String, task : HttpClient->Task) ~ Web.HTTP.Response {
 			content : ByteBuffer;
 			status_code := 500;
 
@@ -490,44 +565,52 @@ if(html <> Nil) {
 
 				socket := TCPSecureSocket->New(address, port);
 				if(socket->IsOpen()) {
-					get : String;
-					if(is_get) {
-						get := "GET ";
-					}
-					else {
-						get := "DELETE ";
+					oper : String;
+
+					select(task) {
+						label HttpClient->Task->GET {
+							oper := "GET ";
+						}
+
+						label HttpClient->Task->DELETE {
+							oper := "DELETE ";
+						}
+
+						label HttpClient->Task->CREATE {
+							oper := "CREATE ";
+						}
 					};
 					
-					get->Append(location);
-					get->Append(" HTTP/1.1\r\nHost: ");
-					get->Append(address);
-					get->Append("\r\n");
+					oper->Append(location);
+					oper->Append(" HTTP/1.1\r\nHost: ");
+					oper->Append(address);
+					oper->Append("\r\n");
 
 					request_keys := @request_headers->GetKeys()<String>;
 					each(i : request_keys) {		
 						request_key := request_keys->Get(i);
 						request_value := @request_headers->Find(request_key);					
-						get->Append(request_key);
-						get->Append(": ");
-						get->Append(request_value);
-						get->Append("\r\n");
+						oper->Append(request_key);
+						oper->Append(": ");
+						oper->Append(request_value);
+						oper->Append("\r\n");
 					};
 					
 					if(@cookies_enabled & @cookies->Size() > 0) {
-						get->Append("Cookie: ");
+						oper->Append("Cookie: ");
 						each(i : @cookies) {
-							get->Append(@cookies->Get(i)->ToShortString());
+							oper->Append(@cookies->Get(i)->ToShortString());
 							if(i + 1 < @cookies->Size()) {
-								get->Append("; ");
+								oper->Append("; ");
 							};
 						};
-						get->Append("\r\n");
+						oper->Append("\r\n");
 					};					
-					get->Append("\r\n");		
+					oper->Append("\r\n");		
 					
-					# IO.Console->Print("Get: |")->Print(get)->PrintLine("|");
+					# IO.Console->Print("Get: |")->Print(oper)->PrintLine("|");
 					
-					socket->WriteString(get);
+					socket->WriteString(oper);
 					
 					status_line := socket->ReadLine();
 					# status_line->PrintLine();
