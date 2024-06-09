@@ -401,19 +401,19 @@ if(html <> Nil) {
 							length_header : String := @response_headers->Find("content-length");
 							if(length_header <> Nil) {
 								content := WebCommon->ReadLength(length_header->ToInt(), socket);
-							};						
+							};
 						};
 					};
 					socket->Close();
 				};
 			};
 			
-			if(content <> Nil) {
-				content_type := GetContentType();
-				return Web.HTTP.Response->New(content->ToByteArray(), status_code, content_type);
+			if(content = Nil) {
+				return Web.HTTP.Response->New(status_code);
 			};
 
-			return Nil;
+			content_type := GetContentType();
+			return Web.HTTP.Response->New(content->ToByteArray(), status_code, content_type);
 		}
 		
 		#~
@@ -707,12 +707,12 @@ if(html <> Nil) {
 				};
 			};	
 			
-			if(content <> Nil) {
-				content_type := GetContentType();
-				return Web.HTTP.Response->New(content->ToByteArray(), status_code, content_type);
+			if(content = Nil) {
+				return Web.HTTP.Response->New(status_code);
 			};
 
-			return Nil;
+			content_type := GetContentType();
+			return Web.HTTP.Response->New(content->ToByteArray(), status_code, content_type);
 		}
 	}
 }

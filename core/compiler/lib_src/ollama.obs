@@ -387,7 +387,7 @@ chat->Send("Goodbye?")->PrintLine();
 			@parameters := model_json->Get("parameters")->GetString();
 			@template := model_json->Get("template")->GetString();
 			@license := model_json->Get("license")->GetString();
-			
+
 			system_json := model_json->Get("system");
 			if(system_json <> Nil) {
 				@system := system_json->GetString();
@@ -733,6 +733,27 @@ chat->Send("Goodbye?")->PrintLine();
 			};
 
 			return Nil;
+		}
+
+		#~
+		Delete a model and its data.
+		@param name name of the model to delete
+		@return true if successful, false otherwise
+		~#
+		function : Delete(name : String) ~ Bool {
+			query_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			query_json->Insert("name", name);
+
+			url := Url->New("http://localhost:11434/api/delete");
+			post_request := query_json->ToString();
+			# post_request->PrintLine();
+				
+			delete_response := Web.HTTP.HttpClient->QuickDelete(url, post_request->ToByteArray(), "application/json");
+			if(delete_response <> Nil) {
+				return delete_response->GetCode() = 200;
+			};
+
+			return false;
 		}
 
 		#~

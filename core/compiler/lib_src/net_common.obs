@@ -947,6 +947,12 @@ bundle Web.HTTP {
 		@code : Int;
 		@type : String;
 
+		New(code : Int) {
+			@content := Nil;
+			@code := code;
+			@type := Nil;
+		}
+
 		New(content : Byte[], code : Int, type : String) {
 			@content := content;
 			@code := code;
@@ -987,7 +993,12 @@ bundle Web.HTTP {
 				content_length := @content->Size();
 			};
 
-			return "status={$@code}, type={$@type}, content_length={$content_length}";
+			type := "<Nil>";
+			if(@type = Nil) {
+				type := @type;
+			};
+
+			return "code={$@code}, type={$type}, content_length={$content_length}";
 		}
 	}
 }
