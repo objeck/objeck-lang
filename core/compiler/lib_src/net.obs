@@ -107,16 +107,6 @@ if(html <> Nil) {
 		Performs a HTTP POST
 		@param url URL
 		@param data data to post
-		@return string read
-		~#
-		method : public : Post(url : Web.HTTP.Url, data : Byte[]) ~ Web.HTTP.Response {
-			return Post(url, data, "text/plain");
-		}
-		
-		#~
-		Performs a HTTP POST
-		@param url URL
-		@param data data to post
 		@return read strings
 		~#
 		function : QuickPost(url : Web.HTTP.Url, data : Byte[]) ~ Web.HTTP.Response {
@@ -155,160 +145,17 @@ if(html <> Nil) {
 				};
 			};
 
-			return client->Post(url, data, content_type);
+			return client->WriteOperation(url, data, content_type, HttpClient->Task->POST);
 		}
 
 		#~
 		Performs a HTTP POST
 		@param url URL
-		@param content_type content type
 		@param data data to post
 		@return string read
 		~#
-		method : public : Post(url : Web.HTTP.Url, data : Byte[], content_type : String) ~ Web.HTTP.Response {
-			content : ByteBuffer;
-			status_code := 500;
-			
-			if(url->GetScheme()->Equals("http")) {
-				address := url->GetHost();
-				
-				location := url->GetPath();
-				if(location = Nil) {
-					location := "/";
-				};
-
-				query := url->GetQuery();
-				if(query <> Nil) {
-					location += '?';
-					location += query;
-				};
-
-				frag := url->GetFragment();
-				if(frag <> Nil) {
-					location += '#';
-					location += frag;
-				};
-
-				port := url->GetPort();
-				if(port < 0) {
-					port := 443;
-				};
-				# "### address='{$address}', port={$port}, location='{$location}'"->PrintLine();
-				
-				socket := TCPSocket->New(address, port);
-				if(socket->IsOpen()) {
-					post := "POST ";
-					post->Append(location);
-					post->Append(" HTTP/1.1\r\nHost: ");
-					post->Append(address);
-					post->Append("\r\nContent-Type: ");
-					post->Append(content_type);
-					post->Append("\r\nContent-Length: ");
-					post->Append(data->Size()->ToString());
-					post->Append("\r\n");
-
-					request_keys := @request_headers->GetKeys()<String>;
-					each(i : request_keys) {		
-						request_key := request_keys->Get(i);
-						request_value := @request_headers->Find(request_key);					
-						post->Append(request_key);
-						post->Append(": ");
-						post->Append(request_value);
-						post->Append("\r\n");
-					};
-
-					if(@cookies_enabled & @cookies->Size() > 0) {
-						post->Append("Cookie: ");
-						each(i : @cookies) {
-							post->Append(@cookies->Get(i)->ToShortString());
-							if(i + 1 < @cookies->Size()) {
-								post->Append("; ");
-							};
-						};
-						post->Append("\r\n");
-					};
-					post->Append("\r\n");					
-					socket->WriteString(post);
-					socket->WriteBuffer(data);
-					
-					# post->PrintLine();					
-					
-					status_line := socket->ReadLine();
-					if(status_line->StartsWith("HTTP/1.")) {
-						status_line := status_line->SubString("HTTP/1."->Size() + 2, 
-							status_line->Size() - "HTTP/1."->Size() - 2);
-						index := status_line->Find(' ');
-						status_code := status_line->SubString(index)->ToInt();
-					};
-					
-					# status_line->PrintLine();
-					
-					if(status_code <> 500) {
-						# get request headers
-						do {
-							line := socket->ReadLine();
-							if(line->Size() > 0) {
-								index := line->Find(':');
-								name := line->SubString(index);
-								value := line->SubString(index + 1, line->Size() - index - 1)->Trim();
-								
-								# IO.Console->Print("|")->Print(name)->Print("|, |")->Print(value)->PrintLine("|");
-								if(@cookies_enabled & name->Equals("Set-Cookie")) {
-									@cookies->AddBack(Cookie->New(value));
-									# IO.Console->Print("cookie=")->PrintLine(value);
-								}
-								else {
-									@response_headers->Insert(name->ToLower(), value);
-								};
-							};
-						}
-						while(line->Size() > 0);
-						# IO.Console->Print("cookies: size=")->PrintLine(@cookies->Size());
-						
-						# permanently moved
-						if(status_code = 301 | status_code = 302) {
-							moved_location := @response_headers->Find("location");
-							if(moved_location <> Nil) {
-								moved_url_str : String;
-								if(moved_location->StartsWith("http://")) {
-									moved_url_str := moved_location;
-								}
-								else {
-									moved_url_str := "http://";
-									moved_url_str += address;
-									moved_url_str += moved_location;
-								};
-								@response_headers->Empty();
-
-								# IO.Console->Print("permanently moved: ")->PrintLine(moved_url_str);
-								return Get(Url->New(moved_url_str), content_type);
-							};
-						};
-
-						# look for chunked blocks
-						encoding : String := @response_headers->Find("transfer-encoding");
-						if(encoding <> Nil & encoding->Equals("chunked")) {
-							# "chunked"->PrintLine();							
-							content := WebCommon->ReadChunked(socket);
-						}
-						else {
-							# "Content-Length"->PrintLine();							
-							length_header : String := @response_headers->Find("content-length");
-							if(length_header <> Nil) {
-								content := WebCommon->ReadLength(length_header->ToInt(), socket);
-							};						
-						};
-					};
-					socket->Close();
-				};
-			};
-			
-			if(content <> Nil) {
-				content_type := GetContentType();
-				return Web.HTTP.Response->New(content->ToByteArray(), status_code, content_type);
-			};
-
-			return Nil;
+		method : public : Post(url : Web.HTTP.Url, data : Byte[]) ~ Web.HTTP.Response {
+			return WriteOperation(url, data, "text/plain", HttpClient->Task->POST);
 		}
 
 		method : GetContentType() ~ String {
@@ -393,7 +240,7 @@ if(html <> Nil) {
 		@return string read
 		~#
 		method : public : Get(url : Web.HTTP.Url, content_type : String) ~ Web.HTTP.Response {
-			return Operation(url, content_type, HttpClient->Task->GET);
+			return ReadOperation(url, content_type, HttpClient->Task->GET);
 		}
 
 		#~
@@ -469,77 +316,290 @@ if(html <> Nil) {
 		@return string read
 		~#
 		method : public : Delete(url : Web.HTTP.Url, content_type : String) ~ Web.HTTP.Response {
-			return Operation(url, content_type, HttpClient->Task->DELETE);
+			return ReadOperation(url, content_type, HttpClient->Task->DELETE);
+		}
+		
+
+
+
+
+
+
+
+
+
+
+
+		#~
+		Performs a HTTP POST
+		@param url URL
+		@param data data to post
+		@return read strings
+		~#
+		function : QuickCreate(url : Web.HTTP.Url, data : Byte[]) ~ Web.HTTP.Response {
+			return HttpClient->New()->Create(url, data);
 		}
 		
 		#~
-		Performs a HTTPS CREATE and returns results as a String
+		Performs a HTTPS POST
 		@param url URL
-		@return output buffer
-		~#
-		function : QuickCreate(url : Web.HTTP.Url) ~ Web.HTTP.Response {
-			return QuickCreate(url, "text/plain", Nil);
-		}
-
-		#~
-		Performs a HTTPS CREATE and returns results as a String
-		@param url URL
-		@param headers key/value headers
-		@return output buffer
-		~#
-		function : QuickCreate(url : Web.HTTP.Url, headers : Map<String, String>) ~ Web.HTTP.Response {
-			return QuickCreate(url, "text/plain", headers);
-		}
-
-		#~
-		Performs a HTTPS CREATE and returns results as a String
-		@param url URL
+		@param data data to post
 		@param content_type content type
-		@return output buffer
+		@return read strings
 		~#
-		function : QuickCreate(url : Web.HTTP.Url, content_type : String) ~ Web.HTTP.Response {
-			return QuickCreate(url, content_type, Nil);
+		function : QuickCreate(url : Web.HTTP.Url, data : Byte[], content_type : String) ~ Web.HTTP.Response {
+			return QuickCreate(url, data, content_type, Nil);
 		}
 
 		#~
-		Performs a HTTPS CREATE and returns results as a String
+		Performs a HTTP POST
 		@param url URL
+		@param data data to post
 		@param content_type content type
 		@param headers key/value headers
-		@return output buffer
+		@return read strings
 		~#
-		function : QuickCreate(url : Web.HTTP.Url, content_type : String, headers : Map<String, String>) ~ Web.HTTP.Response {			
-			client := HttpsClient->New();
+		function : QuickCreate(url : Web.HTTP.Url, data : Byte[], content_type : String, headers : Map<String, String>) ~ Web.HTTP.Response {			
+			client := HttpClient->New();
+
 			if(headers <> Nil) {
 				header_key_values := headers->GetKeyValues()<Pair<String, String>>;
 				each(i : header_key_values) {
 					key_value := header_key_values->Get(i);
 					key := key_value->GetFirst();
 					value := key_value->GetSecond();
-					
-					if(value->IsEmpty()) {
-						client->RemoveHeader(key);
-					}
-					else {
-						client->AddHeader(key, value);
-					};
+					client->AddHeader(key, value);
 				};
 			};
 
-			return client->Create(url, content_type);
+			return client->Create(url, data, content_type);
 		}
 
 		#~
-		Performs a HTTPS CREATE
+		Performs a HTTP POST
 		@param url URL
+		@param data data to post
 		@param content_type content type
 		@return string read
 		~#
-		method : public : Create(url : Web.HTTP.Url, content_type : String) ~ Web.HTTP.Response {
-			return Operation(url, content_type, HttpClient->Task->CREATE);
+		method : public : Create(url : Web.HTTP.Url, data : Byte[]) ~ Web.HTTP.Response {
+			return Create(url, data, "text/plain");
 		}
+
+		#~
+		Performs a HTTP POST
+		@param url URL
+		@param data data to post
+
+		@return string read
+		~#
+		method : public : Create(url : Web.HTTP.Url, data : Byte[], content_type : String) ~ Web.HTTP.Response {
+			return WriteOperation(url, data, content_type, HttpClient->Task->CREATE);
+		}
+
 		
-		method : Operation(url : Web.HTTP.Url, content_type : String, task : HttpClient->Task) ~ Web.HTTP.Response {
+
+		#~
+		Performs a HTTP POST
+		@param url URL
+		@param content_type content type
+		@param data data to post
+		@return string read
+		~#
+		method : public : WriteOperation(url : Web.HTTP.Url, data : Byte[], content_type : String, task : HttpClient->Task) ~ Web.HTTP.Response {
+			content : ByteBuffer;
+			status_code := 500;
+			
+			if(url->GetScheme()->Equals("http")) {
+				address := url->GetHost();
+				
+				location := url->GetPath();
+				if(location = Nil) {
+					location := "/";
+				};
+
+				query := url->GetQuery();
+				if(query <> Nil) {
+					location += '?';
+					location += query;
+				};
+
+				frag := url->GetFragment();
+				if(frag <> Nil) {
+					location += '#';
+					location += frag;
+				};
+
+				port := url->GetPort();
+				if(port < 0) {
+					port := 443;
+				};
+				# "### address='{$address}', port={$port}, location='{$location}'"->PrintLine();
+				
+				socket := TCPSocket->New(address, port);
+				if(socket->IsOpen()) {
+					oper : String;
+					
+					if(task = HttpClient->Task->POST) {
+						oper := "POST ";
+					}
+					else {
+						oper := "CREATE ";
+					};
+					
+
+					oper->Append(location);
+					oper->Append(" HTTP/1.1\r\nHost: ");
+					oper->Append(address);
+					oper->Append("\r\nContent-Type: ");
+					oper->Append(content_type);
+					oper->Append("\r\nContent-Length: ");
+					oper->Append(data->Size()->ToString());
+					oper->Append("\r\n");
+
+					request_keys := @request_headers->GetKeys()<String>;
+					each(i : request_keys) {		
+						request_key := request_keys->Get(i);
+						request_value := @request_headers->Find(request_key);					
+						oper->Append(request_key);
+						oper->Append(": ");
+						oper->Append(request_value);
+						oper->Append("\r\n");
+					};
+
+					if(@cookies_enabled & @cookies->Size() > 0) {
+						oper->Append("Cookie: ");
+						each(i : @cookies) {
+							oper->Append(@cookies->Get(i)->ToShortString());
+							if(i + 1 < @cookies->Size()) {
+								oper->Append("; ");
+							};
+						};
+						oper->Append("\r\n");
+					};
+					oper->Append("\r\n");					
+					socket->WriteString(oper);
+					socket->WriteBuffer(data);
+					
+					# oper->PrintLine();					
+					
+					status_line := socket->ReadLine();
+					if(status_line->StartsWith("HTTP/1.")) {
+						status_line := status_line->SubString("HTTP/1."->Size() + 2, 
+							status_line->Size() - "HTTP/1."->Size() - 2);
+						index := status_line->Find(' ');
+						status_code := status_line->SubString(index)->ToInt();
+					};
+					
+					# status_line->PrintLine();
+					
+					if(status_code <> 500) {
+						# get request headers
+						do {
+							line := socket->ReadLine();
+							if(line->Size() > 0) {
+								index := line->Find(':');
+								name := line->SubString(index);
+								value := line->SubString(index + 1, line->Size() - index - 1)->Trim();
+								
+								# IO.Console->Print("|")->Print(name)->Print("|, |")->Print(value)->PrintLine("|");
+								if(@cookies_enabled & name->Equals("Set-Cookie")) {
+									@cookies->AddBack(Cookie->New(value));
+									# IO.Console->Print("cookie=")->PrintLine(value);
+								}
+								else {
+									@response_headers->Insert(name->ToLower(), value);
+								};
+							};
+						}
+						while(line->Size() > 0);
+						# IO.Console->Print("cookies: size=")->PrintLine(@cookies->Size());
+						
+						# permanently moved
+						if(status_code = 301 | status_code = 302) {
+							moved_location := @response_headers->Find("location");
+							if(moved_location <> Nil) {
+								moved_url_str : String;
+								if(moved_location->StartsWith("http://")) {
+									moved_url_str := moved_location;
+								}
+								else {
+									moved_url_str := "http://";
+									moved_url_str += address;
+									moved_url_str += moved_location;
+								};
+								@response_headers->Empty();
+
+								# IO.Console->Print("permanently moved: ")->PrintLine(moved_url_str);
+								return Get(Url->New(moved_url_str), content_type);
+							};
+						};
+
+						# look for chunked blocks
+						encoding : String := @response_headers->Find("transfer-encoding");
+						if(encoding <> Nil & encoding->Equals("chunked")) {
+							# "chunked"->PrintLine();							
+							content := WebCommon->ReadChunked(socket);
+						}
+						else {
+							# "Content-Length"->PrintLine();							
+							length_header : String := @response_headers->Find("content-length");
+							if(length_header <> Nil) {
+								content := WebCommon->ReadLength(length_header->ToInt(), socket);
+							};						
+						};
+					};
+					socket->Close();
+				};
+			};
+			
+			if(content <> Nil) {
+				content_type := GetContentType();
+				return Web.HTTP.Response->New(content->ToByteArray(), status_code, content_type);
+			};
+
+			return Nil;
+		}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+		
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+		
+		method : ReadOperation(url : Web.HTTP.Url, content_type : String, task : HttpClient->Task) ~ Web.HTTP.Response {
 			content : ByteBuffer;
 			status_code := 500;
 
@@ -569,7 +629,7 @@ if(html <> Nil) {
 				};
 				# "### address='{$address}', port={$port}, location='{$location}'"->PrintLine();
 
-				socket := TCPSecureSocket->New(address, port);
+				socket := TCPSocket->New(address, port);
 				if(socket->IsOpen()) {
 					oper : String;
 					
@@ -614,7 +674,7 @@ if(html <> Nil) {
 					};					
 					oper->Append("\r\n");		
 					
-					# IO.Console->Print("Get: |")->Print(oper)->PrintLine("|");
+IO.Console->Print("Oper: |")->Print(oper)->PrintLine("|");
 					
 					socket->WriteString(oper);
 					
