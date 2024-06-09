@@ -384,6 +384,82 @@ if(html <> Nil) {
 			return WriteOperation(url, data, content_type, HttpClient->Task->PUT);
 		}
 
+		#~
+		Performs a HTTP DELETE and returns results as a String
+		@param url URL
+		@return output buffer
+		~#
+		function : QuickDelete(url : Web.HTTP.Url, data : Byte[]) ~ Web.HTTP.Response {
+			return QuickDelete(url, data, "text/plain", Nil);
+		}
+
+		#~
+		Performs a HTTP DELETE and returns results as a String
+		@param url URL
+		@param headers key/value headers
+		@return output buffer
+		~#
+		function : QuickDelete(url : Web.HTTP.Url, data : Byte[], headers : Map<String, String>) ~ Web.HTTP.Response {
+			return QuickDelete(url, data, "text/plain", headers);
+		}
+
+		#~
+		Performs a HTTP DELETE and returns results as a String
+		@param url URL
+		@param content_type content type
+		@return output buffer
+		~#
+		function : QuickDelete(url : Web.HTTP.Url, data : Byte[], content_type : String) ~ Web.HTTP.Response {
+			return QuickDelete(url, data, content_type, Nil);
+		}
+		
+		#~
+		Performs a HTTP DELETE and returns results as a String
+		@param url URL
+		@param content_type content type
+		@param headers key/value headers
+		@return output buffer
+		~#
+		function : QuickDelete(url : Web.HTTP.Url, data : Byte[], content_type : String, headers : Map<String, String>) ~ Web.HTTP.Response {			
+			client := HttpClient->New();
+			if(headers <> Nil) {
+				header_key_values := headers->GetKeyValues()<Pair<String, String>>;
+				each(i : header_key_values) {
+					key_value := header_key_values->Get(i);
+					key := key_value->GetFirst();
+					value := key_value->GetSecond();
+					
+					if(value->IsEmpty()) {
+						client->RemoveHeader(key);
+					}
+					else {
+						client->AddHeader(key, value);
+					};
+				};
+			};
+
+			return client->Delete(url, data, content_type);
+		}
+				
+		#~
+		Performs a HTTP DELETE
+		@param url URL
+		@return string read
+		~#
+		method : public : Delete(url : Web.HTTP.Url, data : Byte[]) ~ Web.HTTP.Response {
+			return Delete(url, data, "text/plain");
+		}
+		
+		#~
+		Performs a HTTP DELETE
+		@param url URL
+		@param content_type content type
+		@return string read
+		~#
+		method : public : Delete(url : Web.HTTP.Url, data : Byte[], content_type : String) ~ Web.HTTP.Response {
+			return WriteOperation(url, data, content_type, HttpClient->Task->DELETE);
+		}
+
 		method : WriteOperation(url : Web.HTTP.Url, data : Byte[], content_type : String, task : HttpClient->Task) ~ Web.HTTP.Response {
 			content : ByteBuffer;
 			status_code := 500;
@@ -420,6 +496,9 @@ if(html <> Nil) {
 					
 					if(task = HttpClient->Task->POST) {
 						oper := "POST ";
+					}
+					else if(task = HttpClient->Task->DELETE) {
+						oper := "DELETE ";
 					}
 					else {
 						oper := "PUT ";
@@ -490,6 +569,7 @@ if(html <> Nil) {
 							};
 						}
 						while(line->Size() > 0);
+						
 						# IO.Console->Print("cookies: size=")->PrintLine(@cookies->Size());
 						
 						# permanently moved
@@ -522,7 +602,10 @@ if(html <> Nil) {
 							# "Content-Length"->PrintLine();							
 							length_header : String := @response_headers->Find("content-length");
 							if(length_header <> Nil) {
-								content := WebCommon->ReadLength(length_header->ToInt(), socket);
+								length := length_header->ToInt();
+								if(length > 0) {
+									content := WebCommon->ReadLength(length, socket);
+								};
 							};						
 						};
 					};
@@ -530,12 +613,12 @@ if(html <> Nil) {
 				};
 			};
 			
-			if(content <> Nil) {
-				content_type := GetContentType();
-				return Web.HTTP.Response->New(content->ToByteArray(), status_code, content_type);
+			if(content = Nil) {
+				return Web.HTTP.Response->New(status_code);
 			};
 
-			return Nil;
+			content_type := GetContentType();
+			return Web.HTTP.Response->New(content->ToByteArray(), status_code, content_type);
 		}
 				
 		method : ReadOperation(url : Web.HTTP.Url, content_type : String, task : HttpClient->Task) ~ Web.HTTP.Response {
@@ -673,7 +756,10 @@ if(html <> Nil) {
 							# "Content-Length"->PrintLine();							
 							length_header : String := @response_headers->Find("content-length");
 							if(length_header <> Nil) {
-								content := WebCommon->ReadLength(length_header->ToInt(), socket);
+								length := length_header->ToInt();
+								if(length > 0) {
+									content := WebCommon->ReadLength(length, socket);
+								};
 							};
 						};
 					};
@@ -684,12 +770,12 @@ if(html <> Nil) {
 				};
 			};	
 			
-			if(content <> Nil) {
-				content_type := GetContentType();
-				return Web.HTTP.Response->New(content->ToByteArray(), status_code, content_type);
+			if(content = Nil) {
+				return Web.HTTP.Response->New(status_code);
 			};
 
-			return Nil;
+			content_type := GetContentType();
+			return Web.HTTP.Response->New(content->ToByteArray(), status_code, content_type);
 		}
 	}
 }
