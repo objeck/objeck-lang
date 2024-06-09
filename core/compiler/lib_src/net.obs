@@ -129,7 +129,6 @@ if(html <> Nil) {
 		@return read strings
 		~#
 		function : QuickPost(url : Web.HTTP.Url, data : Byte[], content_type : String) ~ Web.HTTP.Response {
-"### 0 ###"->PrintLine();
 			return QuickPost(url, data, content_type, Nil);
 		}
 
@@ -153,7 +152,6 @@ if(html <> Nil) {
 					client->AddHeader(key, value);
 				};
 			};
-"### 1 ###"->PrintLine();
 
 			return client->WriteOperation(url, data, content_type, HttpClient->Task->POST);
 		}
@@ -460,7 +458,7 @@ if(html <> Nil) {
 					socket->WriteString(oper);
 					socket->WriteBuffer(data);
 					
-oper->PrintLine();					
+					# oper->PrintLine();		
 					
 					status_line := socket->ReadLine();
 					if(status_line->StartsWith("HTTP/1.")) {
@@ -470,7 +468,7 @@ oper->PrintLine();
 						status_code := status_line->SubString(index)->ToInt();
 					};
 					
-status_line->PrintLine();
+					# status_line->PrintLine();
 					
 					if(status_code <> 500) {
 						# get request headers
@@ -868,7 +866,7 @@ bundle Web.HTTP.Server {
 				if(@is_debug) {				
 					"header: {$header}"->PrintLine();
 				};
-                
+
 				header_parts := header->Split(": ");
 				if(header_parts->Size() = 2) {
 					headers->Insert(header_parts[0], header_parts[1]);
