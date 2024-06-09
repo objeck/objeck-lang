@@ -5,14 +5,13 @@ Copyright (c) 2024 Randy Hollines
 use Web.HTTP, Collection, Data.JSON, Data.JSON.Scheme, System.IO.Filesystem;
 
 #~
-Lama ML client APIs (-lib ollama)
+Ollama client APIs (-lib ollama)
 ~#
 bundle API.Ollama {
 	#~
 	Ollama enabled endpoint class
 	~#
 	class EndPoint {
-		@url : static : Url;
 		@last_error : static : String;
 
 		function : SetLastError(last_error : String) ~ Nil {
@@ -26,33 +25,15 @@ bundle API.Ollama {
 		function : GetLastError() ~ String {
 			return @last_error;
 		}
-
-		#~
-		Set the url
-		@param url url to set
-		~#
-		function : SetUrl(url : Url) ~ Nil {
-			@url := url;
-		}
-
-		#~
-		Get the last url
-		@return last url
-		~#
-		function : GetUrl() ~ Url {
-			if(@url = Nil) {
-				@url := Url->New("http://localhost:11434/api/generate");
-			};
-
-			return @url;
-		}
 	}
 
 	#~
 	Ollama model interactions
 	
 ```
-TODO: add code example
+prompt := "What number is this?";
+file := System.IO.Filesystem.File->New("../gemini/thirteen.png");
+Completion->Generate("llava", prompt, file)->PrintLine();
 ```
 	~#
 	class Completion from EndPoint {
@@ -62,7 +43,7 @@ TODO: add code example
 		@param prompt prompt
 		~#
 		function : Generate(model : String, prompt : String) ~ String {
-			return Generate(model, prompt, Nil);
+			return JsonElement->Decode(Generate(model, prompt, Nil));
 		}
 
 		#~
@@ -74,13 +55,13 @@ TODO: add code example
 		function : Generate(model : String, prompt : String, format : String) ~ String {
 			query_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 			query_json->Insert("model", model);
-			query_json->Insert("prompt", prompt);
+			query_json->Insert("prompt", JsonElement->Encode(prompt));
 			if(format <> Nil) {
 				query_json->Insert("format", format);
 			};
 			query_json->Insert("stream", false);
 
-	        url := GetUrl();
+	        url := Url->New("http://localhost:11434/api/generate");
 	        post_request := query_json->ToString();
 			
 			# post_request->PrintLine();
@@ -98,7 +79,10 @@ TODO: add code example
 	                if(response_json <> Nil) {
 	                    return JsonElement->Decode(response_json->GetString());
 	                };
-	            };
+	            }
+	            else if(post_response_json->Has("error")) {
+						SetLastError(post_response_json->Get("error")->ToString());
+					};
 	        };
 
 	        return Nil;
@@ -125,6 +109,7 @@ TODO: add code example
 		~#
 		function : Generate(model : String, prompt : String, images : File[]) ~ String {
 			images_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+			
 			each(file in images) {
 				if(<>file->Exists()) {
 					return Nil;
@@ -142,11 +127,11 @@ TODO: add code example
 
 			query_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 			query_json->Insert("model", model);
-			query_json->Insert("prompt", prompt);
+			query_json->Insert("prompt", JsonElement->Encode(prompt));
 			query_json->Insert("images", images_json);
 			query_json->Insert("stream", false);
 
-			url := GetUrl();
+			url := Url->New("http://localhost:11434/api/generate");
 			post_request := query_json->ToString();
 			
 			# post_request->PrintLine();
@@ -163,24 +148,32 @@ TODO: add code example
 					response_json := post_response_json->Get("response")
 					if(response_json <> Nil) {
 						return JsonElement->Decode(response_json->GetString());
+					}
+					else if(post_response_json->Has("error")) {
+						SetLastError(post_response_json->Get("error")->ToString());
 					};
-				};
+				}
 			};
 
 			return Nil;
 		}
 	}
-	
+
 	#~
 	Ollama chat client
 	
 ```
-TODO: add code example
+chat := Chat->New("llama3");
+chat->Send("How many people like in San Pablo, CA?")->PrintLine();
+chat->Send("How of the population identify as Latino??")->PrintLine();
+chat->Send("Thanks, what are the major landmarks?")->PrintLine();
+chat->Send("Goodbye?")->PrintLine();
 ```
 	~#
 	class Chat from EndPoint {
 		@model : String;
 		@messages_json : JsonElement;
+		@url : Url;
 
 		#~
 		Constructor
@@ -191,28 +184,25 @@ TODO: add code example
 
 			@messages_json := JsonElement->New(JsonElement->JsonType->ARRAY);
 
-			SetUrl(Url->New("http://localhost:11434/api/chat"));
 			query_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 			query_json->Insert("model", model);
 			query_json->Insert("stream", false);
 
-			url := GetUrl();
-			# url->ToString()->PrintLine();
+			@url := Url->New("http://localhost:11434/api/chat");
+			# @url->ToString()->PrintLine();
 			
 			post_request := query_json->ToString();
 			# post_request->PrintLine();
 
-			post_response := Web.HTTP.HttpClient->QuickPost(url, post_request->ToByteArray(), "application/json");
+			post_response := Web.HTTP.HttpClient->QuickPost(@url, post_request->ToByteArray(), "application/json");
 			if(post_response <> Nil) {
 				post_response_str := post_response->GetContent()->ToString();
+				# "---"->PrintLine();
+				# post_response_str->PrintLine();
 
 				post_response_json := JsonParser->TextToElement(post_response_str);
             if(post_response_json <> Nil) {
-					message_json := post_response_json->Get("message")
-					if(message_json <> Nil) {
-						@model := post_response_json->Get("model")->GetString();
-						@messages_json->Add(message_json);
-					};
+					@model := post_response_json->Get("model")->GetString();
             };
 			};
 		}
@@ -223,34 +213,37 @@ TODO: add code example
 		@return chat response
 		~#
 		method : public : Send(message : String) ~ String {
-			SetUrl(Url->New("http://localhost:11434/api/chat"));
 			query_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 
 			message_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 			message_json->Insert("role", "user");
-			message_json->Insert("content", message);
+			message_json->Insert("content", JsonElement->Encode(message));
 			@messages_json->Add(message_json);
-			
+
 			query_json->Insert("model", @model);
 			query_json->Insert("messages", @messages_json);
 			query_json->Insert("stream", false);
 
-			url := GetUrl();			
 			post_request := query_json->ToString();
 
 			# post_request->PrintLine();
-			post_response := Web.HTTP.HttpClient->QuickPost(url, post_request->ToByteArray(), "application/json");
+
+			post_response := Web.HTTP.HttpClient->QuickPost(@url, post_request->ToByteArray(), "application/json");
 			if(post_response <> Nil) {
 				post_response_str := post_response->GetContent()->ToString();
 
+				# "---"->PrintLine();
 				# post_response_str->PrintLine();
 
 				post_response_json := JsonParser->TextToElement(post_response_str);
             if(post_response_json <> Nil) {
-					message_json := post_response_json->Get("message")
+					message_json := post_response_json->Get("message");
 					if(message_json <> Nil) {
 						@messages_json->Add(message_json);
-						return message_json->Get("content")->GetString();
+						return JsonElement->Decode(JsonElement->Decode(message_json->Get("content")->GetString()));
+					}
+					else if(post_response_json->Has("error")) {
+						SetLastError(post_response_json->Get("error")->ToString());
 					};
 				};
 			};
@@ -270,7 +263,7 @@ TODO: add code example
 
 			return Send(message, images);
 		}
-		
+
 		#~
 		Chat response from the model given an input
 		@param message chat query
@@ -279,6 +272,7 @@ TODO: add code example
 		~#
 		method : public : Send(message : String, images : File[]) ~ String {
 			images_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+			
 			each(file in images) {
 				if(<>file->Exists()) {
 					return Nil;
@@ -300,20 +294,20 @@ TODO: add code example
 			message_json->Insert("role", "user");
 			message_json->Insert("content", message);
 			@messages_json->Add(message_json);
-			
+
 			query_json->Insert("model", @model);
 			query_json->Insert("messages", @messages_json);
 			query_json->Insert("images", images_json);
 			query_json->Insert("stream", false);
 
-			url := GetUrl();			
 			post_request := query_json->ToString();
-
 			# post_request->PrintLine();
-			post_response := Web.HTTP.HttpClient->QuickPost(url, post_request->ToByteArray(), "application/json");
+
+			post_response := Web.HTTP.HttpClient->QuickPost(@url, post_request->ToByteArray(), "application/json");
 			if(post_response <> Nil) {
 				post_response_str := post_response->GetContent()->ToString();
 
+				# "---"->PrintLine();
 				# post_response_str->PrintLine();
 
 				post_response_json := JsonParser->TextToElement(post_response_str);
@@ -321,10 +315,74 @@ TODO: add code example
 					message_json := post_response_json->Get("message")
 					if(message_json <> Nil) {
 						@messages_json->Add(message_json);
-						return message_json->Get("content")->GetString();
+						return JsonElement->Decode(message_json->Get("content")->GetString());
+					}
+					else if(post_response_json->Has("error")) {
+						SetLastError(post_response_json->Get("error")->ToString());
 					};
 				};
 			};
+
+			return Nil;
+		}
+	}
+
+	#~
+	Ollama model operation
+	
+```
+chat := Chat->New("llama3");
+chat->Send("How many people like in San Pablo, CA?")->PrintLine();
+chat->Send("How of the population identify as Latino??")->PrintLine();
+chat->Send("Thanks, what are the major landmarks?")->PrintLine();
+chat->Send("Goodbye?")->PrintLine();
+```
+	~#
+	class Model from EndPoint {
+		New(response_json : JsonElement) {
+			Parent();
+		}
+
+		#~
+		Creates a mode from a model description
+		@param new_model name of the new model to create
+		@param base_model name of the base model to create from
+		@param modelfile contents of the Modelfile
+		~#
+		function : Create(new_model : String, base_model : String, modelfile  : String) ~ Model {
+			query_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			query_json->Insert("name", new_model);
+			query_json->Insert("model", base_model);
+			query_json->Insert("modelfile", modelfile);
+			query_json->Insert("stream", false);
+
+			url := Url->New("http://localhost:11434/api/create");
+			post_request := query_json->ToString();
+			
+post_request->PrintLine();
+	
+"--- 0 ---"->PrintLine();			
+			post_response := Web.HTTP.HttpClient->QuickCreate(url, post_request->ToByteArray(), "application/json");
+			if(post_response <> Nil) {
+				post_response_str := post_response->GetContent()->ToString();
+"--- 1 ---"->PrintLine();
+post_response_str->PrintLine();
+post_response->GetCode()->ToString();
+
+
+				post_response_json := JsonParser->TextToElement(post_response_str);
+				if(post_response_json <> Nil) {
+					response_json := post_response_json->Get("response")
+					if(response_json <> Nil) {
+						return Model->New(response_json);
+					}
+					else if(post_response_json->Has("error")) {
+						SetLastError(post_response_json->Get("error")->ToString());
+					};
+				};
+
+			};
+"--- 2 ---"->PrintLine();			
 
 			return Nil;
 		}
