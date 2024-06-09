@@ -21,10 +21,9 @@ if(html <> Nil) {
 	class HttpClient {
 		enum Task {
 			GET,
-			PUT,
+			DELETE,
 			POST,
-			CREATE,
-			DELETE
+			PUT
 		}
 
 		@request_headers : Hash<String, String>;
@@ -103,6 +102,15 @@ if(html <> Nil) {
 			@cookies->AddBack(cookie);
 		}
 
+		method : GetContentType() ~ String {
+			value := @response_headers->Find("content-type");
+			if(value <> Nil) {
+				return value;
+			};
+
+			return "text/plain";
+		}
+
 		#~
 		Performs a HTTP POST
 		@param url URL
@@ -121,6 +129,7 @@ if(html <> Nil) {
 		@return read strings
 		~#
 		function : QuickPost(url : Web.HTTP.Url, data : Byte[], content_type : String) ~ Web.HTTP.Response {
+"### 0 ###"->PrintLine();
 			return QuickPost(url, data, content_type, Nil);
 		}
 
@@ -144,6 +153,7 @@ if(html <> Nil) {
 					client->AddHeader(key, value);
 				};
 			};
+"### 1 ###"->PrintLine();
 
 			return client->WriteOperation(url, data, content_type, HttpClient->Task->POST);
 		}
@@ -158,15 +168,6 @@ if(html <> Nil) {
 			return WriteOperation(url, data, "text/plain", HttpClient->Task->POST);
 		}
 
-		method : GetContentType() ~ String {
-			value := @response_headers->Find("content-type");
-			if(value <> Nil) {
-				return value;
-			};
-
-			return "text/plain";
-		}
-		
 		#~
 		Performs a HTTP GET and returns results as a String
 		@param url URL
@@ -319,25 +320,14 @@ if(html <> Nil) {
 			return ReadOperation(url, content_type, HttpClient->Task->DELETE);
 		}
 		
-
-
-
-
-
-
-
-
-
-
-
 		#~
 		Performs a HTTP POST
 		@param url URL
 		@param data data to post
 		@return read strings
 		~#
-		function : QuickCreate(url : Web.HTTP.Url, data : Byte[]) ~ Web.HTTP.Response {
-			return HttpClient->New()->Create(url, data);
+		function : QuickPut(url : Web.HTTP.Url, data : Byte[]) ~ Web.HTTP.Response {
+			return HttpClient->New()->Put(url, data);
 		}
 		
 		#~
@@ -347,8 +337,8 @@ if(html <> Nil) {
 		@param content_type content type
 		@return read strings
 		~#
-		function : QuickCreate(url : Web.HTTP.Url, data : Byte[], content_type : String) ~ Web.HTTP.Response {
-			return QuickCreate(url, data, content_type, Nil);
+		function : QuickPut(url : Web.HTTP.Url, data : Byte[], content_type : String) ~ Web.HTTP.Response {
+			return QuickPut(url, data, content_type, Nil);
 		}
 
 		#~
@@ -359,7 +349,7 @@ if(html <> Nil) {
 		@param headers key/value headers
 		@return read strings
 		~#
-		function : QuickCreate(url : Web.HTTP.Url, data : Byte[], content_type : String, headers : Map<String, String>) ~ Web.HTTP.Response {			
+		function : QuickPut(url : Web.HTTP.Url, data : Byte[], content_type : String, headers : Map<String, String>) ~ Web.HTTP.Response {			
 			client := HttpClient->New();
 
 			if(headers <> Nil) {
@@ -372,7 +362,17 @@ if(html <> Nil) {
 				};
 			};
 
-			return client->Create(url, data, content_type);
+			return client->Put(url, data, content_type);
+		}
+
+		#~
+		Performs a HTTP POST
+		@param url URL
+		@param data data to post
+		@return string read
+		~#
+		method : public : Put(url : Web.HTTP.Url, data : Byte[]) ~ Web.HTTP.Response {
+			return Put(url, data, "text/plain");
 		}
 
 		#~
@@ -382,31 +382,11 @@ if(html <> Nil) {
 		@param content_type content type
 		@return string read
 		~#
-		method : public : Create(url : Web.HTTP.Url, data : Byte[]) ~ Web.HTTP.Response {
-			return Create(url, data, "text/plain");
+		method : public : Put(url : Web.HTTP.Url, data : Byte[], content_type : String) ~ Web.HTTP.Response {
+			return WriteOperation(url, data, content_type, HttpClient->Task->PUT);
 		}
 
-		#~
-		Performs a HTTP POST
-		@param url URL
-		@param data data to post
-
-		@return string read
-		~#
-		method : public : Create(url : Web.HTTP.Url, data : Byte[], content_type : String) ~ Web.HTTP.Response {
-			return WriteOperation(url, data, content_type, HttpClient->Task->CREATE);
-		}
-
-		
-
-		#~
-		Performs a HTTP POST
-		@param url URL
-		@param content_type content type
-		@param data data to post
-		@return string read
-		~#
-		method : public : WriteOperation(url : Web.HTTP.Url, data : Byte[], content_type : String, task : HttpClient->Task) ~ Web.HTTP.Response {
+		method : WriteOperation(url : Web.HTTP.Url, data : Byte[], content_type : String, task : HttpClient->Task) ~ Web.HTTP.Response {
 			content : ByteBuffer;
 			status_code := 500;
 			
@@ -444,10 +424,9 @@ if(html <> Nil) {
 						oper := "POST ";
 					}
 					else {
-						oper := "CREATE ";
+						oper := "PUT ";
 					};
 					
-
 					oper->Append(location);
 					oper->Append(" HTTP/1.1\r\nHost: ");
 					oper->Append(address);
@@ -481,7 +460,7 @@ if(html <> Nil) {
 					socket->WriteString(oper);
 					socket->WriteBuffer(data);
 					
-					# oper->PrintLine();					
+oper->PrintLine();					
 					
 					status_line := socket->ReadLine();
 					if(status_line->StartsWith("HTTP/1.")) {
@@ -491,7 +470,7 @@ if(html <> Nil) {
 						status_code := status_line->SubString(index)->ToInt();
 					};
 					
-					# status_line->PrintLine();
+status_line->PrintLine();
 					
 					if(status_code <> 500) {
 						# get request headers
@@ -560,45 +539,7 @@ if(html <> Nil) {
 
 			return Nil;
 		}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-		
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-		
+				
 		method : ReadOperation(url : Web.HTTP.Url, content_type : String, task : HttpClient->Task) ~ Web.HTTP.Response {
 			content : ByteBuffer;
 			status_code := 500;
@@ -633,18 +574,11 @@ if(html <> Nil) {
 				if(socket->IsOpen()) {
 					oper : String;
 					
-					select(task) {
-						label HttpClient->Task->GET {
-							oper := "GET ";
-						}
-
-						label HttpClient->Task->DELETE {
-							oper := "DELETE ";
-						}
-
-						label HttpClient->Task->CREATE {
-							oper := "CREATE ";
-						}
+					if(task = HttpClient->Task->GET) {
+						oper := "GET ";
+					}
+					else {
+						oper := "DELETE ";
 					};
 					
 					oper->Append(location);
@@ -674,7 +608,7 @@ if(html <> Nil) {
 					};					
 					oper->Append("\r\n");		
 					
-IO.Console->Print("Oper: |")->Print(oper)->PrintLine("|");
+					# IO.Console->Print("Oper: |")->Print(oper)->PrintLine("|");
 					
 					socket->WriteString(oper);
 					
