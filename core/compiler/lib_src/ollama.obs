@@ -328,17 +328,143 @@ chat->Send("Goodbye?")->PrintLine();
 	}
 
 	#~
-	Ollama model operation
-	
-```
-chat := Chat->New("llama3");
-chat->Send("How many people like in San Pablo, CA?")->PrintLine();
-chat->Send("How of the population identify as Latino??")->PrintLine();
-chat->Send("Thanks, what are the major landmarks?")->PrintLine();
-chat->Send("Goodbye?")->PrintLine();
-```
+	Ollama detailed model data
 	~#
-	class Model from EndPoint {
+	class ModelDetails {
+		@parent_model : String;
+		@format : String;
+		@family : String;
+		@parameter_size : String;
+		@quantization_level : String;
+
+		New(details_json : JsonElement) {
+			@parent_model := details_json->Get("parent_model")->GetString();
+			@format := details_json->Get("format")->GetString();
+			@family := details_json->Get("family")->GetString();
+			@parameter_size := details_json->Get("parameter_size")->GetString();
+			@quantization_level := details_json->Get("quantization_level")->GetString();
+		}
+
+		#~
+		String representation of the instance
+		@return string representation of the instance
+		~#
+		method : public : ToString() ~ String {
+			buffer := "parent_model='";
+			buffer->Append(@parent_model);
+
+			buffer->Append("', format='");
+			buffer->Append(@format);
+
+			buffer->Append("', family='");
+			buffer->Append(@family);
+
+			buffer->Append("', parameter_size='");
+			buffer->Append(@parameter_size);
+
+			buffer->Append("', quantization_level='");
+			buffer->Append(@quantization_level);
+
+			buffer->Append('\'');
+			return buffer;
+		}
+
+		# TOO: getters
+	}
+
+	#~
+	Ollama model information
+	~#
+	class ModelInfo {
+		@modelfile : String;
+		@parameters : String;
+		@system : String;
+		@template : String;
+		@license : String;
+
+		New(model_json : JsonElement) {
+			@modelfile := model_json->Get("modelfile")->GetString();
+			@parameters := model_json->Get("parameters")->GetString();
+			@template := model_json->Get("template")->GetString();
+			@license := model_json->Get("license")->GetString();
+			
+			system_json := model_json->Get("system");
+			if(system_json <> Nil) {
+				@system := system_json->GetString();
+			};
+		}
+
+		#~
+		String representation of the instance
+		@return string representation of the instance
+		~#
+		method : public : ToString() ~ String {
+			buffer := "=> modelfile='";
+			buffer->Append(@modelfile->Size());
+
+			buffer->Append("'\n\t=> parameters='");
+			buffer->Append(@parameters);
+
+			buffer->Append("'\n\t=> template='");
+			buffer->Append(@template);
+
+			buffer->Append("'\n\t=> license='");
+			buffer->Append(@license->Size());
+
+			if(@system <> Nil) {
+				buffer->Append("'\n\t=> system='");
+				buffer->Append(@system);
+			};
+
+			buffer->Append('\'');
+			return buffer;
+		}
+
+		#~
+		Get the model file
+		@return model file
+		~#
+		method : public : GetModelFile() ~ String {
+			return @modelfile;
+		}
+
+		#~
+		Get the parameters
+		@return parameters
+		~#
+		method : public : GetParameters() ~ String {
+			return @parameters;
+		}
+		
+		#~
+		Get the template
+		@return template
+		~#
+		method : public : GetTemplate() ~ String {
+			return @template;
+		}
+
+		#~
+		Get the license
+		@return license
+		~#
+		method : public : GetLicense() ~ String {
+			return @license;
+		}
+
+		#~
+		Get the system
+		@return system
+		~#
+		method : public : GetSystem() ~ String {
+			return @system;
+		}
+	}
+
+	#~
+	Ollama pulled model data
+	~#
+	class ModelPulled {
 		@name : String;
 		@model : String;
 		@modified_at_str : String;
@@ -346,8 +472,6 @@ chat->Send("Goodbye?")->PrintLine();
 		@digest : String;
 
 		New(model_json : JsonElement) {
-			Parent();
-
 			@name := model_json->Get("name")->GetString();
 			@model := model_json->Get("model")->GetString();
 			@modified_at_str := model_json->Get("modified_at")->GetString();
@@ -360,9 +484,7 @@ chat->Send("Goodbye?")->PrintLine();
 		@return string representation of the instance
 		~#
 		method : public : ToString() ~ String {
-			buffer := "";
-
-			buffer->Append("name='");
+			buffer := "name='";
 			buffer->Append(@name);
 
 			buffer->Append("', model='");
@@ -378,6 +500,123 @@ chat->Send("Goodbye?")->PrintLine();
 			buffer->Append(@digest);
 
 			buffer->Append('\'');
+			return buffer;
+		}
+
+		#~
+		Get the name
+		@return name
+		~#
+		method : public : GetName() ~ String {
+			return @name;
+		}
+
+		#~
+		Get the model
+		@return model
+		~#
+		method : public : GetModel() ~ String {
+			return @model;
+		}
+
+		#~
+		Get modified time
+		@return modified time
+		~#
+		method : public : GetModifiedTime() ~ System.Time.Date {
+			return System.Time.DateUtility->Parse(@modified_at_str, "yyyy-MM-ddThh:mm:ss", false);
+		}
+
+		#~
+		Get the model size
+		@return model size
+		~#
+		method : public : GetSize() ~ Int {
+			return @size;
+		}
+
+		#~
+		Get the model digest
+		@return model digest
+		~#
+		method : public : GetDigest() ~ String {
+			return @digest;
+		}
+	} 
+
+	#~
+	Ollama model operation
+	
+```
+chat := Chat->New("llama3");
+chat->Send("How many people like in San Pablo, CA?")->PrintLine();
+chat->Send("How of the population identify as Latino??")->PrintLine();
+chat->Send("Thanks, what are the major landmarks?")->PrintLine();
+chat->Send("Goodbye?")->PrintLine();
+```
+	~#
+	class Model from EndPoint {
+		@model_info : ModelInfo;
+		@model_pulled : ModelPulled;
+		@model_details : ModelDetails;
+
+		New(model_json : JsonElement) {
+			Parent();
+
+			if(model_json->Has("modelfile")) {
+				@model_info := ModelInfo->New(model_json);
+			}
+			else {
+				@model_pulled := ModelPulled->New(model_json);
+			};
+
+			details_json := model_json->Get("details");
+			if(details_json <> Nil) {
+				@model_details := ModelDetails->New(details_json);
+			};
+		}
+
+		#~
+		Get the model details
+		@return model details
+		~#
+		method : public : GetDetails() ~ ModelDetails {
+			return @model_details;
+		}
+
+		#~
+		Get the model pulled
+		@return model pulled
+		~#
+		method : public : GetPulled() ~ ModelPulled {
+			return @model_pulled;
+		}
+
+		#~
+		String representation of the instance
+		@return string representation of the instance
+		~#
+		method : public : ToString() ~ String {
+			buffer := "";
+
+			if(@model_info <> Nil ) {
+				buffer->Append("info: [\n\t");
+				buffer->Append(@model_info->ToString());
+				buffer->Append("]");
+			};
+
+			if(@model_pulled <> Nil ) {
+				buffer->Append("created: [\n\t");
+				buffer->Append(@model_pulled->ToString());
+				buffer->Append("]");
+			};
+
+			if(@model_details <> Nil) {
+				buffer->Append("\ndetails: [\n\t");
+				buffer->Append(@model_details->ToString());
+				buffer->Append("]");
+			};
+
 			return buffer;
 		}
 
@@ -401,9 +640,10 @@ chat->Send("Goodbye?")->PrintLine();
 						models := Vector->New()<Model>;
 
 						each(model_json in response_json) {
-							temp := Model->New(model_json);
-temp->ToString()->PrintLine();							
-							models->AddBack(temp);
+							# "==="->PrintLine();
+							# model_json->ToString()->PrintLine();						
+							# "==="->PrintLine();
+							models->AddBack(Model->New(model_json));
 						};
 
 						return models;
@@ -419,31 +659,31 @@ temp->ToString()->PrintLine();
 		}
 
 		#~
-		Creates a mode from a model description
-		@param name name of the new model to create
-		@param modelfile contents of the Modelfile
+		Download a model from the ollama library
+		@param name name of the model to pull
+		@return true if successful, false otherwise
 		~#
-		function : Create(name : String, modelfile  : String) ~ Model {
+		function : Pull(name : String) ~ Bool {
 			query_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 			query_json->Insert("name", name);
-			query_json->Insert("modelfile", modelfile);
+			query_json->Insert("stream", false);
 
-			url := Url->New("http://localhost:11434/api/create");
+			url := Url->New("http://localhost:11434/api/pull");
 			post_request := query_json->ToString();
 	
-post_request->PrintLine();
+			# post_request->PrintLine();
 	
 			post_response := Web.HTTP.HttpClient->QuickPost(url, post_request->ToByteArray(), "application/json");
 			if(post_response <> Nil) {
 				post_response_str := post_response->GetContent()->ToString();
-"---"->PrintLine();
-post_response_str->PrintLine();
+				# "---"->PrintLine();
+				# post_response_str->PrintLine();
 	
 				post_response_json := JsonParser->TextToElement(post_response_str);
 				if(post_response_json <> Nil) {
-					response_json := post_response_json->Get("response")
-					if(response_json <> Nil) {
-						return Model->New(response_json);
+					status_json := post_response_json->Get("status")
+					if(status_json <> Nil) {
+						return status_json->GetString()->Equals("success");
 					}
 					else if(post_response_json->Has("error")) {
 						SetLastError(post_response_json->Get("error")->ToString());
@@ -452,7 +692,86 @@ post_response_str->PrintLine();
 
 			};
 
+			return false;
+		}
+
+		#~
+		Show information about a model
+		@param name name of the model to show
+		@return model
+		~#
+		function : Show(name : String) ~ Model {
+			query_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			query_json->Insert("name", name);
+			query_json->Insert("stream", false);
+
+			url := Url->New("http://localhost:11434/api/show");
+			post_request := query_json->ToString();
+	
+			# post_request->PrintLine();
+	
+			post_response := Web.HTTP.HttpClient->QuickPost(url, post_request->ToByteArray(), "application/json");
+			if(post_response <> Nil) {
+				post_response_str := post_response->GetContent()->ToString();
+				# "---"->PrintLine();
+				# post_response_str->Size()->PrintLine();
+	
+				post_response_json := JsonParser->TextToElement(post_response_str);
+				if(post_response_json <> Nil) {
+					if(post_response_json->Has("error")) {
+						SetLastError(post_response_json->Get("error")->ToString());
+					}
+					else {
+						# "==="->PrintLine();
+						# post_response_json->ToString()->PrintLine();						
+						# "==="->PrintLine();
+
+						return Model->New(post_response_json);
+					};
+				};
+
+			};
+
 			return Nil;
+		}
+
+		#~
+		Create a model from a Modelfile description
+		@param name name of the model to create
+		@param modelfile contents of the Modelfile
+		@return true if successful, false otherwise
+		~#
+		function : Create(name : String, modelfile  : String) ~ Bool {
+			query_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			query_json->Insert("name", name);
+			query_json->Insert("modelfile", JsonElement->Encode(modelfile));
+			query_json->Insert("stream", false);
+
+			url := Url->New("http://localhost:11434/api/create");
+			post_request := query_json->ToString();
+	
+			# post_request->PrintLine();
+	
+			post_response := Web.HTTP.HttpClient->QuickPost(url, post_request->ToByteArray(), "application/json");
+			if(post_response <> Nil) {
+				post_response_str := post_response->GetContent()->ToString();
+				# "---"->PrintLine();
+				# post_response_str->PrintLine();
+	
+				post_response_json := JsonParser->TextToElement(post_response_str);
+				if(post_response_json <> Nil) {
+					status_json := post_response_json->Get("status")
+					if(status_json <> Nil) {
+						return status_json->GetString()->Equals("success");
+					}
+					else if(post_response_json->Has("error")) {
+						SetLastError(post_response_json->Get("error")->ToString());
+					};
+				};
+
+			};
+
+			return false;
 		}
 	}
 }

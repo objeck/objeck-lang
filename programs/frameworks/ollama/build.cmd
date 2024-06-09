@@ -9,12 +9,12 @@ obc -src ..\..\..\core\compiler\lib_src\ollama.obs -lib net,json,encrypt,misc -t
 obc -src ..\..\..\core\compiler\lib_src\net_common.obs,..\..\..\core\compiler\lib_src\net.obs,..\..\..\core\compiler\lib_src\net_secure.obs -tar lib -lib json,gen_collect -opt s3 -dest ..\..\..\core\release\deploy64\lib\net.obl
 
 if not [%1] == [] (
-	obc -src %1 -lib ollama,json,net,encrypt
+	obc -src %1 -lib ollama,json,net,encrypt,misc
 	
 	if not [%2] == [] (
 		echo Testing...
 		echo ---
 		
-		obr "%1" %2
+		obr "%1" %2 %3 %4
 	)
 )
