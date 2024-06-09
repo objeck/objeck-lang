@@ -339,37 +339,106 @@ chat->Send("Goodbye?")->PrintLine();
 ```
 	~#
 	class Model from EndPoint {
-		New(response_json : JsonElement) {
+		@name : String;
+		@model : String;
+		@modified_at_str : String;
+		@size : Int;
+		@digest : String;
+
+		New(model_json : JsonElement) {
 			Parent();
+
+			@name := model_json->Get("name")->GetString();
+			@model := model_json->Get("model")->GetString();
+			@modified_at_str := model_json->Get("modified_at")->GetString();
+			@size := model_json->Get("size")->GetInt();
+			@digest := model_json->Get("digest")->GetString();
+		}
+
+		#~
+		String representation of the instance
+		@return string representation of the instance
+		~#
+		method : public : ToString() ~ String {
+			buffer := "";
+
+			buffer->Append("name='");
+			buffer->Append(@name);
+
+			buffer->Append("', model='");
+			buffer->Append(@model);
+
+			buffer->Append("', modified_at_str='");
+			buffer->Append(@modified_at_str);
+
+			buffer->Append("', size='");
+			buffer->Append(@size);
+
+			buffer->Append("', digest='");
+			buffer->Append(@digest);
+
+			buffer->Append('\'');
+			return buffer;
+		}
+
+		#~
+		List the models available 
+		@return list of models available
+		~#
+		function : List() ~ Vector<Model> {
+			url := Url->New("http://localhost:11434/api/tags");
+
+			get_response := Web.HTTP.HttpClient->QuickGet(url, "application/json");
+			if(get_response <> Nil) {
+				get_response_str := get_response->GetContent()->ToString();
+				# "---"->PrintLine();
+				# get_response_str->PrintLine();
+	
+				get_response_json := JsonParser->TextToElement(get_response_str);
+				if(get_response_json <> Nil) {
+					response_json := get_response_json->Get("models")
+					if(response_json <> Nil) {
+						models := Vector->New()<Model>;
+
+						each(model_json in response_json) {
+							temp := Model->New(model_json);
+temp->ToString()->PrintLine();							
+							models->AddBack(temp);
+						};
+
+						return models;
+					}
+					else if(get_response_json->Has("error")) {
+						SetLastError(get_response_json->Get("error")->ToString());
+					};
+				};
+
+			};
+
+			return Nil;
 		}
 
 		#~
 		Creates a mode from a model description
-		@param new_model name of the new model to create
-		@param base_model name of the base model to create from
+		@param name name of the new model to create
 		@param modelfile contents of the Modelfile
 		~#
-		function : Create(new_model : String, base_model : String, modelfile  : String) ~ Model {
+		function : Create(name : String, modelfile  : String) ~ Model {
 			query_json := JsonElement->New(JsonElement->JsonType->OBJECT);
-			query_json->Insert("name", new_model);
-			query_json->Insert("model", base_model);
+			query_json->Insert("name", name);
 			query_json->Insert("modelfile", modelfile);
-			query_json->Insert("stream", false);
 
 			url := Url->New("http://localhost:11434/api/create");
 			post_request := query_json->ToString();
-			
+	
 post_request->PrintLine();
 	
-"--- 0 ---"->PrintLine();			
-			post_response := Web.HTTP.HttpClient->QuickCreate(url, post_request->ToByteArray(), "application/json");
+			post_response := Web.HTTP.HttpClient->QuickPost(url, post_request->ToByteArray(), "application/json");
 			if(post_response <> Nil) {
 				post_response_str := post_response->GetContent()->ToString();
-"--- 1 ---"->PrintLine();
+"---"->PrintLine();
 post_response_str->PrintLine();
-post_response->GetCode()->ToString();
-
-
+	
 				post_response_json := JsonParser->TextToElement(post_response_str);
 				if(post_response_json <> Nil) {
 					response_json := post_response_json->Get("response")
@@ -382,7 +451,6 @@ post_response->GetCode()->ToString();
 				};
 
 			};
-"--- 2 ---"->PrintLine();			
 
 			return Nil;
 		}

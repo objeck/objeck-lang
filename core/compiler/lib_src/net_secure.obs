@@ -22,10 +22,9 @@ if(html <> Nil) {
 	class HttpsClient {
 		enum Task {
 			GET,
-			PUT,
+			DELETE,
 			POST,
-			CREATE,
-			DELETE
+			PUT
 		}
 
 		@request_headers : Hash<String, String>;
@@ -107,19 +106,34 @@ if(html <> Nil) {
 		}
 
 		#~
-		Performs a HTTPS POST
-		@param url URL
-		@param data data to post
-		@return string read
+		Gets the socket's X.509 certificate issurer name
+		@return certificate issurer name
 		~#
-		method : public : Post(url : Web.HTTP.Url, data : Byte[]) ~ Web.HTTP.Response {
-			return Post(url, data, "text/plain");
+		method : public : GetIssuer() ~ String {
+			return @cert_issuer;
 		}
-		
+
+		#~
+		Gets the socket's X.509 certificate subject name
+		@return certificate subject name
+		~#
+		method : public : GetSubject() ~ String {
+			return @cert_subject;
+		}
+
+		method : GetContentType() ~ String {
+			value := @response_headers->Find("content-type");
+			if(value <> Nil) {
+				return value;
+			};
+
+			return "text/plain";
+		}
+
 		#~
 		Performs a HTTPS POST
 		@param url URL
-		@param data data to post
+		@param data data to oper
 		@return read strings
 		~#
 		function : QuickPost(url : Web.HTTP.Url, data : Byte[]) ~ Web.HTTP.Response {
@@ -129,7 +143,7 @@ if(html <> Nil) {
 		#~
 		Performs a HTTPS POST
 		@param url URL
-		@param data data to post
+		@param data data to oper
 		@param content_type content type
 		@return read strings
 		~#
@@ -140,7 +154,7 @@ if(html <> Nil) {
 		#~
 		Performs a HTTPS POST
 		@param url URL
-		@param data data to post
+		@param data data to oper
 		@param content_type content type
 		@param headers key/value headers
 		@return read strings
@@ -158,16 +172,96 @@ if(html <> Nil) {
 			};
 
 			return client->Post(url, data, content_type);
+		}		
+
+		#~
+		Performs a HTTP POST
+		@param url URL
+		@param data data to oper
+		@return read strings
+		~#
+		function : QuickPut(url : Web.HTTP.Url, data : Byte[]) ~ Web.HTTP.Response {
+			return HttpsClient->New()->Put(url, data);
+		}
+		
+		#~
+		Performs a HTTPS POST
+		@param url URL
+		@param data data to oper
+		@param content_type content type
+		@return read strings
+		~#
+		function : QuickPut(url : Web.HTTP.Url, data : Byte[], content_type : String) ~ Web.HTTP.Response {
+			return QuickPut(url, data, content_type, Nil);
+		}
+
+		#~
+		Performs a HTTP POST
+		@param url URL
+		@param data data to oper
+		@param content_type content type
+		@param headers key/value headers
+		@return read strings
+		~#
+		function : QuickPut(url : Web.HTTP.Url, data : Byte[], content_type : String, headers : Map<String, String>) ~ Web.HTTP.Response {			
+			client := HttpsClient->New();
+
+			if(headers <> Nil) {
+				header_key_values := headers->GetKeyValues()<Pair<String, String>>;
+				each(i : header_key_values) {
+					key_value := header_key_values->Get(i);
+					key := key_value->GetFirst();
+					value := key_value->GetSecond();
+					client->AddHeader(key, value);
+				};
+			};
+
+			return client->Put(url, data, content_type);
 		}
 
 		#~
 		Performs a HTTPS POST
 		@param url URL
+		@param data data to oper
 		@param content_type content type
-		@param data data to post
 		@return string read
 		~#
-		method : public : Post(url : Web.HTTP.Url, data : Byte[], content_type : String) ~ Web.HTTP.Response {	
+		method : public : Post(url : Web.HTTP.Url, data : Byte[], content_type : String) ~ Web.HTTP.Response {
+			return WriteOperation(url, data, content_type, HttpsClient->Task->POST);
+		}
+
+		#~
+		Performs a HTTPS POST
+		@param url URL
+		@param data data to oper
+		@return string read
+		~#
+		method : public : Post(url : Web.HTTP.Url, data : Byte[]) ~ Web.HTTP.Response {
+			return WriteOperation(url, data, "text/plain", HttpsClient->Task->POST);
+		}
+
+		#~
+		Performs a HTTPS PUT
+		@param url URL
+		@param data data to oper
+		@param content_type content type
+		@return string read
+		~#
+		method : public : Put(url : Web.HTTP.Url, data : Byte[], content_type : String) ~ Web.HTTP.Response {
+			return WriteOperation(url, data, content_type, HttpsClient->Task->PUT);
+		}
+
+		#~
+		Performs a HTTPS PUT
+		@param url URL
+		@param data data to oper
+		@return string read
+		~#
+		method : public : Put(url : Web.HTTP.Url, data : Byte[]) ~ Web.HTTP.Response {
+			return WriteOperation(url, data, "text/plain", HttpsClient->Task->PUT);
+		}
+
+		method : WriteOperation(url : Web.HTTP.Url, data : Byte[], content_type : String, task : HttpsClient->Task) ~ Web.HTTP.Response {
 			content : ByteBuffer;
 			status_code := 500;
 
@@ -199,41 +293,49 @@ if(html <> Nil) {
 
 				socket := TCPSecureSocket->New(address, port);
 				if(socket->IsOpen()) {
-					post := "POST ";
-					post->Append(location);
-					post->Append(" HTTP/1.1\r\nHost: ");
-					post->Append(address);
-					post->Append("\r\nContent-Type: ");
-					post->Append(content_type);
-					post->Append("\r\nContent-Length: ");
-					post->Append(data->Size()->ToString());
-					post->Append("\r\n");
+					oper : String;
+					
+					if(task = HttpsClient->Task->POST) {
+						oper := "POST ";
+					}
+					else {
+						oper := "PUT ";
+					};
+
+					oper->Append(location);
+					oper->Append(" HTTP/1.1\r\nHost: ");
+					oper->Append(address);
+					oper->Append("\r\nContent-Type: ");
+					oper->Append(content_type);
+					oper->Append("\r\nContent-Length: ");
+					oper->Append(data->Size()->ToString());
+					oper->Append("\r\n");
 
 					request_keys := @request_headers->GetKeys()<String>;
 					each(i : request_keys) {		
 						request_key := request_keys->Get(i);
 						request_value := @request_headers->Find(request_key);					
-						post->Append(request_key);
-						post->Append(": ");
-						post->Append(request_value);
-						post->Append("\r\n");
+						oper->Append(request_key);
+						oper->Append(": ");
+						oper->Append(request_value);
+						oper->Append("\r\n");
 					};
 
 					if(@cookies_enabled & @cookies->Size() > 0) {
-						post->Append("Cookie: ");
+						oper->Append("Cookie: ");
 						each(i : @cookies) {
-							post->Append(@cookies->Get(i)->ToShortString());
+							oper->Append(@cookies->Get(i)->ToShortString());
 							if(i + 1 < @cookies->Size()) {
-								post->Append("; ");
+								oper->Append("; ");
 							};
 						};
-						post->Append("\r\n");
+						oper->Append("\r\n");
 					};
-					post->Append("\r\n");					
-					socket->WriteString(post);
+					oper->Append("\r\n");					
+					socket->WriteString(oper);
 					socket->WriteBuffer(data);
 					
-					# post->PrintLine();					
+					# oper->PrintLine();					
 					
 					status_line := socket->ReadLine();
 					if(status_line->StartsWith("HTTP/1.")) {
@@ -313,15 +415,6 @@ if(html <> Nil) {
 
 			return Nil;
 		}
-
-		method : GetContentType() ~ String {
-			value := @response_headers->Find("content-type");
-			if(value <> Nil) {
-				return value;
-			};
-
-			return "text/plain";
-		}
 		
 		#~
 		Performs a HTTPS GET and returns results as a String
@@ -396,7 +489,7 @@ if(html <> Nil) {
 		@return string read
 		~#
 		method : public : Get(url : Web.HTTP.Url, content_type : String) ~ Web.HTTP.Response {
-			return Operation(url, content_type, HttpClient->Task->GET);
+			return ReadOperation(url, content_type, HttpsClient->Task->GET);
 		}
 
 		#~
@@ -463,77 +556,10 @@ if(html <> Nil) {
 		@return string read
 		~#
 		method : public : Delete(url : Web.HTTP.Url, content_type : String) ~ Web.HTTP.Response {
-			return Operation(url, content_type, HttpClient->Task->DELETE);
+			return ReadOperation(url, content_type, HttpsClient->Task->DELETE);
 		}
 
-		#~
-		Performs a HTTPS CREATE and returns results as a String
-		@param url URL
-		@return output buffer
-		~#
-		function : QuickCreate(url : Web.HTTP.Url) ~ Web.HTTP.Response {
-			return QuickCreate(url, "text/plain", Nil);
-		}
-
-		#~
-		Performs a HTTPS CREATE and returns results as a String
-		@param url URL
-		@param headers key/value headers
-		@return output buffer
-		~#
-		function : QuickCreate(url : Web.HTTP.Url, headers : Map<String, String>) ~ Web.HTTP.Response {
-			return QuickCreate(url, "text/plain", headers);
-		}
-
-		#~
-		Performs a HTTPS CREATE and returns results as a String
-		@param url URL
-		@param content_type content type
-		@return output buffer
-		~#
-		function : QuickCreate(url : Web.HTTP.Url, content_type : String) ~ Web.HTTP.Response {
-			return QuickCreate(url, content_type, Nil);
-		}
-
-		#~
-		Performs a HTTPS CREATE and returns results as a String
-		@param url URL
-		@param content_type content type
-		@param headers key/value headers
-		@return output buffer
-		~#
-		function : QuickCreate(url : Web.HTTP.Url, content_type : String, headers : Map<String, String>) ~ Web.HTTP.Response {			
-			client := HttpsClient->New();
-			if(headers <> Nil) {
-				header_key_values := headers->GetKeyValues()<Pair<String, String>>;
-				each(i : header_key_values) {
-					key_value := header_key_values->Get(i);
-					key := key_value->GetFirst();
-					value := key_value->GetSecond();
-					
-					if(value->IsEmpty()) {
-						client->RemoveHeader(key);
-					}
-					else {
-						client->AddHeader(key, value);
-					};
-				};
-			};
-
-			return client->Create(url, content_type);
-		}
-
-		#~
-		Performs a HTTPS CREATE
-		@param url URL
-		@param content_type content type
-		@return string read
-		~#
-		method : public : Create(url : Web.HTTP.Url, content_type : String) ~ Web.HTTP.Response {
-			return Operation(url, content_type, HttpClient->Task->CREATE);
-		}
-		
-		method : Operation(url : Web.HTTP.Url, content_type : String, task : HttpClient->Task) ~ Web.HTTP.Response {
+		method : ReadOperation(url : Web.HTTP.Url, content_type : String, task : HttpsClient->Task) ~ Web.HTTP.Response {
 			content : ByteBuffer;
 			status_code := 500;
 
@@ -567,18 +593,11 @@ if(html <> Nil) {
 				if(socket->IsOpen()) {
 					oper : String;
 
-					select(task) {
-						label HttpClient->Task->GET {
-							oper := "GET ";
-						}
-
-						label HttpClient->Task->DELETE {
-							oper := "DELETE ";
-						}
-
-						label HttpClient->Task->CREATE {
-							oper := "CREATE ";
-						}
+					if(task = HttpsClient->Task->GET) {
+						oper := "GET ";
+					}
+					else {
+						oper := "DELETE ";
 					};
 					
 					oper->Append(location);
@@ -694,22 +713,6 @@ if(html <> Nil) {
 			};
 
 			return Nil;
-		}
-
-		#~
-		Gets the socket's X.509 certificate issurer name
-		@return certificate issurer name
-		~#
-		method : public : GetIssuer() ~ String {
-			return @cert_issuer;
-		}
-
-		#~
-		Gets the socket's X.509 certificate subject name
-		@return certificate subject name
-		~#
-		method : public : GetSubject() ~ String {
-			return @cert_subject;
 		}
 	}
 }
