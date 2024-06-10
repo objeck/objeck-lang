@@ -2,7 +2,8 @@ use API.Ollama;
 
 class Test {
     function : Main(args : String[]) ~ Nil {
-        if(args->Size() > 0) {
+        args_size := args->Size();
+        if(args_size > 0) {
             oper := args[0];
 
             if(oper->Equals("list")) {
@@ -15,7 +16,7 @@ class Test {
             else if(oper->Equals("create")) {
                 Model->Create("mario", "FROM llama3\nSYSTEM You are mario from Super Mario Bros.")->PrintLine();
             }
-            else if(oper->Equals("show")) {
+            else if(args_size = 2 & oper->Equals("show")) {
                 name := args[1];
                 Model->Show(name)->ToString()->PrintLine();
             }
@@ -23,9 +24,15 @@ class Test {
                 name := args[1];
                 Model->Pull(name)->PrintLine();
             }
-            else if(oper->Equals("delete")) {
+            else if(args_size = 2 & oper->Equals("delete")) {
                 name := args[1];
                 Model->Delete(name)->PrintLine();
+            }
+            else if(oper->Equals("embed")) {
+                Model->Embeddings("llama3", "How fast goes moss grow?")->PrintLine();
+            }
+            else if(oper->Equals("copy")) {
+                Model->Copy("llama3", "yallam3")->PrintLine();
             };
         };
     }
