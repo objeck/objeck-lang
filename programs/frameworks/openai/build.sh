@@ -1,7 +1,12 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
-# export OBJECK_LIB_PATH=/Users/randyhollines/Documents/Code/objeck-lang/core/release/deploy/lib
-# export PATH=$PATH:/Users/randyhollines/Documents/Code/objeck-lang/core/release/deploy/bin
+if [ "$(uname)" == "Darwin" ]; then
+	export OBJECK_LIB_PATH=/Users/randyhollines/Documents/Code/objeck-lang/core/release/deploy/lib
+	export PATH=$PATH:/Users/randyhollines/Documents/Code/objeck-lang/core/release/deploy/bin
+elif [ "$(expr substr $(uname -s) 1 5)" == "Linux" ]; then
+	export OBJECK_LIB_PATH=/home/randy/Documents/Code/objeck-lang/core/release/deploy/lib
+	export PATH=$PATH:/home/randy/Documents/Code/objeck-lang/core/release/deploy/bin
+fi
 
 rm -f *.obe
 
