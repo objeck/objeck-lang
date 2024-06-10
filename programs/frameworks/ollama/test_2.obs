@@ -1,0 +1,15 @@
+use API.Ollama;
+
+class Test {
+    function : Main(args : String[]) ~ Nil {
+        chat := Chat->New("llama3");
+        
+        chat->Send("How many people live in San Pablo CA")->PrintLine();
+        "---"->PrintLine();        
+        chat->Send("How of the population identify as Latino?")->PrintLine();
+        "---"->PrintLine();        
+        chat->Send("Thanks what are the major landmarks?")->PrintLine();
+        "---"->PrintLine();        
+        chat->Send("Goodbye?")->PrintLine();
+    }
+}
