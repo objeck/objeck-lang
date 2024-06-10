@@ -757,6 +757,69 @@ chat->Send("Goodbye?")->PrintLine();
 		}
 
 		#~
+		Copy a model
+		@param src source name of the model to copy
+		@param dest destination name of the model to copy
+		@return true if successful, false otherwise 
+		~#
+		function : Copy(src : String, dest : String) ~ Bool {
+			query_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			query_json->Insert("source", src);
+			query_json->Insert("destination", dest);
+
+			url := Url->New("http://localhost:11434/api/copy");
+			post_request := query_json->ToString();
+			# post_request->PrintLine();
+				
+			delete_response := Web.HTTP.HttpClient->QuickPost(url, post_request->ToByteArray(), "application/json");
+			if(delete_response <> Nil) {
+				# delete_response->GetCode()->PrintLine();				
+				return delete_response->GetCode() = 200;
+			};
+
+			return false;
+		}
+
+		#~
+		Generate embeddings from a model
+		@param model name of model to generate embeddings from
+		@param prompt text to generate embeddings for
+		@return true if successful, false otherwise
+		~#
+		function : Embeddings(model : String, prompt  : String) ~ Float[] {
+			query_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			query_json->Insert("model", model);
+			query_json->Insert("prompt", JsonElement->Encode(prompt));
+
+			url := Url->New("http://localhost:11434/api/embeddings");
+			post_request := query_json->ToString();
+	
+post_request->PrintLine();
+	
+			post_response := Web.HTTP.HttpClient->QuickPost(url, post_request->ToByteArray(), "application/json");
+post_response->GetCode()->PrintLine();			
+			if(post_response <> Nil) {
+				post_response_str := post_response->GetContent()->ToString();
+"---"->PrintLine();
+post_response_str->PrintLine();
+	
+				post_response_json := JsonParser->TextToElement(post_response_str);
+				if(post_response_json <> Nil) {
+					embeddings_json := post_response_json->Get("embedding")
+					if(embeddings_json <> Nil) {
+embeddings_json->ToString()->PrintLine();						
+					}
+					else if(post_response_json->Has("error")) {
+						SetLastError(post_response_json->Get("error")->ToString());
+					};
+				};
+
+			};
+
+			return Nil;
+		}
+
+		#~
 		Create a model from a Modelfile description
 		@param name name of the model to create
 		@param modelfile contents of the Modelfile
