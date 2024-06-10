@@ -1,0 +1,32 @@
+use API.Ollama;
+
+class Test {
+    function : Main(args : String[]) ~ Nil {
+        if(args->Size() > 0) {
+            oper := args[0];
+
+            if(oper->Equals("list")) {
+                models := Model->List();
+                each(model in models) {
+                    model->ToString()->PrintLine();
+                    "---"->PrintLine();
+                };
+            }
+            else if(oper->Equals("create")) {
+                Model->Create("mario", "FROM llama3\nSYSTEM You are mario from Super Mario Bros.")->PrintLine();
+            }
+            else if(oper->Equals("show")) {
+                name := args[1];
+                Model->Show(name)->ToString()->PrintLine();
+            }
+            else if(oper->Equals("pull")) {
+                name := args[1];
+                Model->Pull(name)->PrintLine();
+            }
+            else if(oper->Equals("delete")) {
+                name := args[1];
+                Model->Delete(name)->PrintLine();
+            };
+        };
+    }
+}
