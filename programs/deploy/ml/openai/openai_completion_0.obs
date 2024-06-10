@@ -6,11 +6,6 @@ class OpenAICompletion {
 			query := args[0];
 			token := GetApiKey("openai_api_key.dat");
 
-			if(token = Nil) {
-				">>> Please provide a directive <<"->PrintLine();
-				Runtime->Exit(1);
-			};
-
 			messages := Vector->New()<Pair<String, String>>;
 			messages->AddBack(Pair->New("user", query)<String, String>);
 
@@ -29,7 +24,7 @@ class OpenAICompletion {
 		token := System.IO.Filesystem.FileReader->ReadFile(filename);
 		if(token <> Nil) {
 			token := token->Trim();
-			if(<>token->StartsWith("sk-")) {
+			if(token = Nil | <>token->StartsWith("sk-")) {
 				">>> Unable to read token from file: '{$filename}' <<"->PrintLine();
 				Runtime->Exit(1);
 			};
