@@ -14,7 +14,7 @@ bundle Web.HTTP {
 ```
 html := HttpClient->QuickGet(Url->New("http://worldtimeapi.org/api/ip"))->ToString();
 if(html <> Nil) {
-   html->PrintLine();
+  html->PrintLine();
 };
 ```
 	~#
@@ -66,7 +66,7 @@ if(html <> Nil) {
 		@param name header name
 		@param value header value
 		~#
-		method : public : AddHeader(name : String, value : String) ~  Nil {
+		method : public : AddHeader(name : String, value : String) ~ Nil {
 			@request_headers->Insert(name->ToLower(), value);
 		}
 
@@ -74,7 +74,7 @@ if(html <> Nil) {
 		Removes a HTTP request header
 		@param name header name
 		~#
-		method : public : RemoveHeader(name : String) ~  Nil {
+		method : public : RemoveHeader(name : String) ~ Nil {
 			@request_headers->Remove(name->ToLower());
 		}
 		
@@ -153,7 +153,7 @@ if(html <> Nil) {
 				};
 			};
 
-			return client->WriteOperation(url, data, content_type, HttpClient->Task->POST);
+			return client->PushPullOperation(url, data, content_type, HttpClient->Task->POST);
 		}
 
 		#~
@@ -163,7 +163,7 @@ if(html <> Nil) {
 		@return string read
 		~#
 		method : public : Post(url : Web.HTTP.Url, data : Byte[]) ~ Web.HTTP.Response {
-			return WriteOperation(url, data, "text/plain", HttpClient->Task->POST);
+			return PushPullOperation(url, data, "text/plain", HttpClient->Task->POST);
 		}
 
 		#~
@@ -239,7 +239,7 @@ if(html <> Nil) {
 		@return string read
 		~#
 		method : public : Get(url : Web.HTTP.Url, content_type : String) ~ Web.HTTP.Response {
-			return ReadOperation(url, content_type, HttpClient->Task->GET);
+			return PullOperation(url, content_type, HttpClient->Task->GET);
 		}
 
 		#~
@@ -315,7 +315,7 @@ if(html <> Nil) {
 		@return string read
 		~#
 		method : public : Delete(url : Web.HTTP.Url, content_type : String) ~ Web.HTTP.Response {
-			return ReadOperation(url, content_type, HttpClient->Task->DELETE);
+			return PullOperation(url, content_type, HttpClient->Task->DELETE);
 		}
 		
 		#~
@@ -381,7 +381,7 @@ if(html <> Nil) {
 		@return string read
 		~#
 		method : public : Put(url : Web.HTTP.Url, data : Byte[], content_type : String) ~ Web.HTTP.Response {
-			return WriteOperation(url, data, content_type, HttpClient->Task->PUT);
+			return PushPullOperation(url, data, content_type, HttpClient->Task->PUT);
 		}
 
 		#~
@@ -457,10 +457,10 @@ if(html <> Nil) {
 		@return string read
 		~#
 		method : public : Delete(url : Web.HTTP.Url, data : Byte[], content_type : String) ~ Web.HTTP.Response {
-			return WriteOperation(url, data, content_type, HttpClient->Task->DELETE);
+			return PushPullOperation(url, data, content_type, HttpClient->Task->DELETE);
 		}
 
-		method : WriteOperation(url : Web.HTTP.Url, data : Byte[], content_type : String, task : HttpClient->Task) ~ Web.HTTP.Response {
+		method : PushPullOperation(url : Web.HTTP.Url, data : Byte[], content_type : String, task : HttpClient->Task) ~ Web.HTTP.Response {
 			content : ByteBuffer;
 			status_code := 500;
 			
@@ -621,7 +621,7 @@ if(html <> Nil) {
 			return Web.HTTP.Response->New(content->ToByteArray(), status_code, content_type);
 		}
 				
-		method : ReadOperation(url : Web.HTTP.Url, content_type : String, task : HttpClient->Task) ~ Web.HTTP.Response {
+		method : PullOperation(url : Web.HTTP.Url, content_type : String, task : HttpClient->Task) ~ Web.HTTP.Response {
 			content : ByteBuffer;
 			status_code := 500;
 
@@ -800,7 +800,7 @@ bundle Web.HTTP.Server {
 			@server_config := server_config;
 			@is_debug := is_debug;
 		}
-        
+
 		method : public : Run(param : Base) ~ Nil {
 			@client := param->As(TCPSocket);
 
@@ -847,7 +847,7 @@ bundle Web.HTTP.Server {
 					else if(request_verb->Equals("POST")) {
 						content_length_str := request_headers->Find("content-length");
 						if(content_length_str <> Nil) {
-							content_length  := content_length_str->ToInt();
+							content_length := content_length_str->ToInt();
 							if(content_length > 0) {
 								buffer := WebCommon->ReadPost(content_length, @client);
 								
