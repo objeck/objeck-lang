@@ -227,7 +227,7 @@ if(html <> Nil) {
 		@return string read
 		~#
 		method : public : Post(url : Web.HTTP.Url, data : Byte[], content_type : String) ~ Web.HTTP.Response {
-			return WriteOperation(url, data, content_type, HttpsClient->Task->POST);
+			return PushPullOperation(url, data, content_type, HttpsClient->Task->POST);
 		}
 
 		#~
@@ -237,7 +237,7 @@ if(html <> Nil) {
 		@return string read
 		~#
 		method : public : Post(url : Web.HTTP.Url, data : Byte[]) ~ Web.HTTP.Response {
-			return WriteOperation(url, data, "text/plain", HttpsClient->Task->POST);
+			return PushPullOperation(url, data, "text/plain", HttpsClient->Task->POST);
 		}
 
 		#~
@@ -248,7 +248,7 @@ if(html <> Nil) {
 		@return string read
 		~#
 		method : public : Put(url : Web.HTTP.Url, data : Byte[], content_type : String) ~ Web.HTTP.Response {
-			return WriteOperation(url, data, content_type, HttpsClient->Task->PUT);
+			return PushPullOperation(url, data, content_type, HttpsClient->Task->PUT);
 		}
 
 		#~
@@ -258,10 +258,10 @@ if(html <> Nil) {
 		@return string read
 		~#
 		method : public : Put(url : Web.HTTP.Url, data : Byte[]) ~ Web.HTTP.Response {
-			return WriteOperation(url, data, "text/plain", HttpsClient->Task->PUT);
+			return PushPullOperation(url, data, "text/plain", HttpsClient->Task->PUT);
 		}
 
-		method : WriteOperation(url : Web.HTTP.Url, data : Byte[], content_type : String, task : HttpsClient->Task) ~ Web.HTTP.Response {
+		method : PushPullOperation(url : Web.HTTP.Url, data : Byte[], content_type : String, task : HttpsClient->Task) ~ Web.HTTP.Response {
 			content : ByteBuffer;
 			status_code := 500;
 
@@ -489,7 +489,7 @@ if(html <> Nil) {
 		@return string read
 		~#
 		method : public : Get(url : Web.HTTP.Url, content_type : String) ~ Web.HTTP.Response {
-			return ReadOperation(url, content_type, HttpsClient->Task->GET);
+			return PullOperation(url, content_type, HttpsClient->Task->GET);
 		}
 
 		#~
@@ -556,10 +556,10 @@ if(html <> Nil) {
 		@return string read
 		~#
 		method : public : Delete(url : Web.HTTP.Url, content_type : String) ~ Web.HTTP.Response {
-			return ReadOperation(url, content_type, HttpsClient->Task->DELETE);
+			return PullOperation(url, content_type, HttpsClient->Task->DELETE);
 		}
 
-		method : ReadOperation(url : Web.HTTP.Url, content_type : String, task : HttpsClient->Task) ~ Web.HTTP.Response {
+		method : PullOperation(url : Web.HTTP.Url, content_type : String, task : HttpsClient->Task) ~ Web.HTTP.Response {
 			content : ByteBuffer;
 			status_code := 500;
 

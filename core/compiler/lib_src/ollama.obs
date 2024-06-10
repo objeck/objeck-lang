@@ -61,31 +61,31 @@ Completion->Generate("llava", prompt, file)->PrintLine();
 			};
 			query_json->Insert("stream", false);
 
-	        url := Url->New("http://localhost:11434/api/generate");
-	        post_request := query_json->ToString();
+			url := Url->New("http://localhost:11434/api/generate");
+			post_request := query_json->ToString();
 			
 			# post_request->PrintLine();
 
-	        post_response := Web.HTTP.HttpClient->QuickPost(url, post_request->ToByteArray(), "application/json");
-	        if(post_response <> Nil) {
-	            post_response_str := post_response->GetContent()->ToString();
+			post_response := Web.HTTP.HttpClient->QuickPost(url, post_request->ToByteArray(), "application/json");
+			if(post_response <> Nil) {
+				post_response_str := post_response->GetContent()->ToString();
 
 				# post_response_str->PrintLine();
 				# "---"->PrintLine();
 
-	            post_response_json := JsonParser->TextToElement(post_response_str);
-	            if(post_response_json <> Nil) {
-	                response_json := post_response_json->Get("response")
-	                if(response_json <> Nil) {
-	                    return JsonElement->Decode(response_json->GetString());
-	                };
-	            }
-	            else if(post_response_json->Has("error")) {
+				post_response_json := JsonParser->TextToElement(post_response_str);
+				if(post_response_json <> Nil) {
+						response_json := post_response_json->Get("response")
+						if(response_json <> Nil) {
+							return JsonElement->Decode(response_json->GetString());
+						};
+					}
+					else if(post_response_json->Has("error")) {
 						SetLastError(post_response_json->Get("error")->ToString());
 					};
-	        };
+				};
 
-	        return Nil;
+				return Nil;
 		}
 
 		#~
@@ -122,7 +122,7 @@ Completion->Generate("llava", prompt, file)->PrintLine();
 					return Nil;
 				};
 
-	        	images_json->Add(Encryption.Encrypt->Base64(file_data));
+				images_json->Add(Encryption.Encrypt->Base64(file_data));
 			};
 
 			query_json := JsonElement->New(JsonElement->JsonType->OBJECT);
@@ -201,9 +201,9 @@ chat->Send("Goodbye?")->PrintLine();
 				# post_response_str->PrintLine();
 
 				post_response_json := JsonParser->TextToElement(post_response_str);
-            if(post_response_json <> Nil) {
+				if(post_response_json <> Nil) {
 					@model := post_response_json->Get("model")->GetString();
-            };
+				;
 			};
 		}
 
@@ -236,7 +236,7 @@ chat->Send("Goodbye?")->PrintLine();
 				# post_response_str->PrintLine();
 
 				post_response_json := JsonParser->TextToElement(post_response_str);
-            if(post_response_json <> Nil) {
+				if(post_response_json <> Nil) {
 					message_json := post_response_json->Get("message");
 					if(message_json <> Nil) {
 						@messages_json->Add(message_json);
@@ -311,7 +311,7 @@ chat->Send("Goodbye?")->PrintLine();
 				# post_response_str->PrintLine();
 
 				post_response_json := JsonParser->TextToElement(post_response_str);
-            if(post_response_json <> Nil) {
+				if(post_response_json <> Nil) {
 					message_json := post_response_json->Get("message")
 					if(message_json <> Nil) {
 						@messages_json->Add(message_json);
@@ -794,20 +794,26 @@ chat->Send("Goodbye?")->PrintLine();
 			url := Url->New("http://localhost:11434/api/embeddings");
 			post_request := query_json->ToString();
 	
-post_request->PrintLine();
+			# post_request->Size()->PrintLine();
 	
 			post_response := Web.HTTP.HttpClient->QuickPost(url, post_request->ToByteArray(), "application/json");
-post_response->GetCode()->PrintLine();			
 			if(post_response <> Nil) {
 				post_response_str := post_response->GetContent()->ToString();
-"---"->PrintLine();
-post_response_str->PrintLine();
+				# "---"->PrintLine();
+				# post_response_str->Size()->PrintLine();
 	
 				post_response_json := JsonParser->TextToElement(post_response_str);
 				if(post_response_json <> Nil) {
 					embeddings_json := post_response_json->Get("embedding")
 					if(embeddings_json <> Nil) {
-embeddings_json->ToString()->PrintLine();						
+						embeddings := Float->New[embeddings_json->Size()];
+
+						each(i : embeddings_json) {
+							embedding_json := embeddings_json->Get(i);
+							embeddings[i] := embedding_json->GetFloat();
+						};
+
+						return embeddings;
 					}
 					else if(post_response_json->Has("error")) {
 						SetLastError(post_response_json->Get("error")->ToString());
