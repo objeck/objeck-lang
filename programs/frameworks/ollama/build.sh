@@ -1,11 +1,11 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
 if [ "$(uname)" == "Darwin" ]; then
 	export OBJECK_LIB_PATH=/Users/randyhollines/Documents/Code/objeck-lang/core/release/deploy/lib
 	export PATH=$PATH:/Users/randyhollines/Documents/Code/objeck-lang/core/release/deploy/bin
 elif [ "$(expr substr $(uname -s) 1 5)" == "Linux" ]; then
-	export OBJECK_LIB_PATH=/Users/randyhollines/Documents/Code/objeck-lang/core/release/deploy/lib
-	export PATH=$PATH:/Users/randyhollines/Documents/Code/objeck-lang/core/release/deploy/bin
+	export OBJECK_LIB_PATH=/home/randy/Documents/Code/objeck-lang/core/release/deploy/lib
+	export PATH=$PATH:/home/randy/Documents/Code/objeck-lang/core/release/deploy/bin
 fi	
 
 obc -src ../../../core/compiler/lib_src/ollama.obs -lib net,json,encrypt,misc -tar lib -dest ../../../core/release/deploy/lib/ollama.obl
