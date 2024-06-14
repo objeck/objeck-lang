@@ -203,7 +203,7 @@ chat->Send("Goodbye?")->PrintLine();
 				post_response_json := JsonParser->TextToElement(post_response_str);
 				if(post_response_json <> Nil) {
 					@model := post_response_json->Get("model")->GetString();
-				;
+				};
 			};
 		}
 
