@@ -5,9 +5,13 @@ from trl import SFTTrainer
 from transformers import TrainingArguments
 from datasets import load_dataset
 max_seq_length = 2048 # Supports RoPE Scaling interally, so choose any!
+from unsloth.chat_templates import get_chat_template
+
 # Get LAION dataset
-url = "https://huggingface.co/datasets/laion/OIG/resolve/main/unified_chip2.jsonl"
-dataset = load_dataset("json", data_files = {"train" : url}, split = "train")
+
+# url = "https://huggingface.co/datasets/laion/OIG/resolve/main/unified_chip2.jsonl"
+file = "inputs/unified_chip2.jsonl"
+dataset = load_dataset("json", data_files = {"train" : file}, split = "train")
 
 # 4bit pre quantized models we support for 4x faster downloading + no OOMs.
 fourbit_models = [
@@ -67,6 +71,34 @@ trainer = SFTTrainer(
 )
 trainer.train()
 
+tokenizer = get_chat_template(
+    tokenizer,
+    chat_template = "llama", # Supports zephyr, chatml, mistral, llama, alpaca, vicuna, vicuna_old, unsloth
+    mapping = {"role" : "from", "content" : "value", "user" : "human", "assistant" : "gpt"}, # ShareGPT style
+)
+
+FastLanguageModel.for_inference(model) # Enable native 2x faster inference
+
+# test model
+messages = [
+    {"from": "human", "value": "In the book, \u2018The Art of Software Cost Estimation\u2019, where does the term \u2018sweat equity\u2019 come from?"},
+]
+inputs = tokenizer.apply_chat_template(
+    messages,
+    tokenize = True,
+    add_generation_prompt = True, # Must add for generation
+    return_tensors = "pt",
+).to("cuda")
+
+outputs = model.generate(input_ids = inputs, max_new_tokens = 64, use_cache = True)
+tokenizer.batch_decode(outputs)
+
+# save model
+# model.save_pretrained("outputs/lora_gguf") # Local saving
+# model.push_to_hub("your_name/lora_model", token = "...") # Online saving
+
+model.save_pretrained_gguf("outputs/lora_gguf", tokenizer, quantization_method = "q4_0")
+
 # GitHub: https://github.com/unslothai/unsloth
 # Install on Windows install under WSL2
 # Go to https://github.com/unslothai/unsloth/wiki for advanced tips like
@@ -74,6 +106,6 @@ trainer.train()
 # (2) Continued training from a saved LoRA adapter
 # (3) Adding an evaluation loop / OOMs
 # (4) Cutomized chat templates
-# (5) Go to: https://colab.research.google.com/drive/1XamvWYinY6FOSX9GLvnqSjjsNflxdhNc?usp=sharing#scrollTo=MKX_XKs_BNZR
+# (5) Go to: https://colab.research.google.com/drive/1XamvWYinY6FOSX9GLvnqSjjsNflxdhNc
 # (6) Pick up at: Show final memory and time stats
 # (7) To safe refer to: Saving, loading finetuned models
