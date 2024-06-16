@@ -1,57 +1,61 @@
 use Data.JSON, Data.JSON.Stream;
 
 class Test {
-    function : Main(args : String[]) ~ Nil {
-        if(args->Size() = 3) {
-            type := args[1];
-            max := args[2]->ToInt();
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() = 2) {
+			file := args[0];
+			options := args[1];
 
-            timer : System.Time.Timer;
-            longest : Int;
-            
-            count := 0;
+			Brun(file, options);
+		};
+	}
 
-            if(type->Equals("dom")) {
-                timer := System.Time.Timer->New(true);
+	function : native : Brun(file : String, options : String) ~ Nil {
+		start := end := 0;
+		range_index := options->Find('-');
+		if(options->Get(0) = '#') {
+			start := -1;
+		}
+		else if(range_index > 0) {
+			start := options->SubString(range_index)->ToInt();
+			range_index += 1;
+			end := options->SubString(range_index, options->Size() - range_index)->ToInt();
+		}
+		else {
+			end := options->ToInt();
+			start := end - 1;
+		};
 
-                reader := System.IO.Filesystem.FileReader->New(args[0]);
-                if(reader->IsOpen()) {
-                    do {
-                        line := reader->ReadLine();
-                        if(line <> Nil) {
-                            parser := JsonParser->TextToElement(line);
-                            if(parser <> Nil) {
-                                text := JsonElement->Decode(parser->Get("text")->GetString());
-                                "{$text}\n---"->PrintLine();
-                            };
-                        };
-                    }
-                    while(line <> Nil & ++count < max);
-                };
-            }
-            else {
-                timer := System.Time.Timer->New(true);
+		reader := System.IO.Filesystem.FileReader->New(file);
+		if(reader->IsOpen()) {
+			count := 0;
+			parser := JsonStreamParser->New();
+			do {
+				line := reader->ReadLine();
+				if(line <> Nil) {
+					parser->Reset(line);
+					if(parser->GetNextElement("text")) {
+						if(parser->GetNextElement()) {
+							if(count >= start & count < end & start >= 0) {
+								text := JsonElement->Decode(parser->GetValue());
+								size := text->Size();
+								next_count := count + 1;
+								"\n⇶ [line={$next_count}, size={$size}]\n{$text}"->PrintLine();
+							};
+						};
+					};
 
-                reader := System.IO.Filesystem.FileReader->New(args[0]);
-                if(reader->IsOpen()) {
-                    do {
-                        line := reader->ReadLine();
-                        if(line <> Nil) {
-                            parser := JsonStreamParser->New(line);
-                          
-                            if(parser->GetNextElement("text")) {
-                                if(parser->GetNextElement()) {
-                                    text := JsonElement->Decode(parser->GetValue());
-                                    "{$text}\n---"->PrintLine();
-                                };
-                            };  
-                        };
-                    }
-                    while(line <> Nil & ++count < max);
-                };
-            };
-            time := timer->GetElapsedTime()
-            "type={$type}, time={$time}, longest={$longest}"->PrintLine();
-        };
-    }
+					count += 1;
+					if(start < 0 & count % 5000 = 0) {
+						'.'->Print();
+					}
+				};
+			}
+			while(line <> Nil & (count < end | start < 0));
+
+			if(start < 0) {
+				"\nline_count={$count}"->PrintLine();
+			};
+		};
+	}
 }
