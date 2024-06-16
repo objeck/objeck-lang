@@ -370,31 +370,30 @@ bundle System.Utility {
 		function : Next() ~ Nil {
 			select(@state) {
 				label 0 {
-					'|'->Print();
+					"|\b"->Print();
 					@state += 1;
 				}
 
 				label 1 {
-					'/'->Print();
+					"/\b"->Print();
 					@state += 1;
 				}
 
 				label 2 {
-					'-'->Print();
+					"—\b"'->Print();
 					@state += 1;
 				}
 
 				label 3 {
-					'\\'->Print();
+					"\\\b"'->Print();
 					@state += 1;
 				}
 
 				label 4 {
-					".|"->Print();
+					".|\b"->Print();
 					@state := 0;
 				}
 			};
-			"\b"->Print();
 
 			Console->Flush();
 		}
