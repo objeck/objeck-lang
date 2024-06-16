@@ -42,7 +42,7 @@ class Test {
 								text := JsonElement->Decode(parser->GetValue());
 								size := text->Size();
 								next_count := count + 1;
-								"\n⇶ [line={$next_count}, size={$size}]\n{$text}"->PrintLine();
+								"\n[❖ line={$next_count}, size={$size}]\n{$text}"->PrintLine();
 							};
 						};
 					};
