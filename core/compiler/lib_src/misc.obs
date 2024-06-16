@@ -371,22 +371,22 @@ bundle System.Utility {
 		function : Next() ~ Nil {
 			select(@state) {
 				label 0 {
-					"|\r"->Print();
+					"(|)\r"->Print();
 					@state += 1;
 				}
 
 				label 1 {
-					"/\r"->Print();
+					"(/)\r"->Print();
 					@state += 1;
 				}
 
 				label 2 {
-					"—\r"->Print();
+					"(—)\r"->Print();
 					@state += 1;
 				}
 
 				label 3 {
-					"\\\r"->Print();
+					"(\\)\r"->Print();
 					@state := 0;
 				}
 			};
@@ -399,7 +399,7 @@ bundle System.Utility {
 		Prints the final state
 		~#
 		function : Last() ~ Nil {
-			"\r|{$@count}|"->PrintLine();
+			"\r({$@count})"->PrintLine();
 		}
 	}
 
