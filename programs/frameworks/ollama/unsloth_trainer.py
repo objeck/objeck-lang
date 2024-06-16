@@ -11,6 +11,10 @@ from unsloth.chat_templates import get_chat_template
 
 # url = "https://huggingface.co/datasets/laion/OIG/resolve/main/unified_chip2.jsonl"
 file = "inputs/unified_chip2.jsonl"
+
+new_model_prefix = "trained_"
+new_model_name = new_model_prefix + "_gguf"
+
 dataset = load_dataset("json", data_files = {"train" : file}, split = "train")
 
 # 4bit pre quantized models we support for 4x faster downloading + no OOMs.
@@ -96,16 +100,13 @@ tokenizer.batch_decode(outputs)
 # save model
 # model.save_pretrained("outputs/lora_gguf") # Local saving
 # model.push_to_hub("your_name/lora_model", token = "...") # Online saving
+model.save_pretrained_gguf("outputs/" + new_model_name, tokenizer, quantization_method = "q4_0")
 
-model.save_pretrained_gguf("outputs/lora_gguf", tokenizer, quantization_method = "q4_0")
+# 1. GitHub: https://github.com/unslothai/unsloth
+# 2. Install on Windows install under WSL2
+# 3. get training data
+# 4. train and export model
+# 5. create: 'Modelfile' insert "FROM <filename>"
+# 6. import: trained model ollama create <new_name> -f Modelfile
+# 7. test: ollama run <new_name> "What is Grafana?"
 
-# GitHub: https://github.com/unslothai/unsloth
-# Install on Windows install under WSL2
-# Go to https://github.com/unslothai/unsloth/wiki for advanced tips like
-# (1) Saving to GGUF / merging to 16bit for vLLM
-# (2) Continued training from a saved LoRA adapter
-# (3) Adding an evaluation loop / OOMs
-# (4) Cutomized chat templates
-# (5) Go to: https://colab.research.google.com/drive/1XamvWYinY6FOSX9GLvnqSjjsNflxdhNc
-# (6) Pick up at: Show final memory and time stats
-# (7) To safe refer to: Saving, loading finetuned models
