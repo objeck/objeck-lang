@@ -368,8 +368,6 @@ bundle System.Utility {
 		Prints and advances the spinner to the next state
 		~#
 		function : Next() ~ Nil {
-			"\b"->Print();
-
 			select(@state) {
 				label 0 {
 					'|'->Print();
@@ -396,6 +394,7 @@ bundle System.Utility {
 					@state := 0;
 				}
 			};
+			"\b"->Print();
 
 			Console->Flush();
 		}
