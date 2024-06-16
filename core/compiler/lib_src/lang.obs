@@ -6908,6 +6908,10 @@ bundle System.Time {
 		@elapsed : Int;
 		@running : Bool;
 		
+		#~
+		Constructor
+		@param start flag, start timer after instantiation, default = true
+		~#
 		New(start : Bool := false) {
 			Parent();
 
