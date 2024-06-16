@@ -26,8 +26,6 @@ class Test {
 			start := end - 1;
 		};
 
-#		spinner := 0;
-
 		reader := System.IO.Filesystem.FileReader->New(file);
 		if(reader->IsOpen()) {
 			count := 0;
@@ -50,36 +48,14 @@ class Test {
 					count += 1;
 					if(start < 0 & count % 5000 = 0) {
 						System.Utility.Spinner->Next();
-
-#~
-						'\b'->Print();
-						spinner += 1;
-						select(spinner) {
-							label 0 {
-								"|\r"->Print();
-							}
-
-							label 1 {
-								"/\r"->Print();
-							}
-
-							label 2 {
-								"—\r"->Print();
-							}
-
-							label 3 {
-								"\\\r"->Print();
-								spinner := 0;
-							}
-						};					
-~#					
 					}
 				};
 			}
 			while(line <> Nil & (count < end | start < 0));
 
 			if(start < 0) {
-				System.Utility.Spinner->Last();
+#				System.Utility.Spinner->Last();
+				"\r|43|"->PrintLine();
 			};
 
 			if(start < 0) {

@@ -363,6 +363,7 @@ bundle System.Utility {
 	~#
 	class Spinner {
 		@state : static : Int;
+		@count : static : Int;
 
 		#~
 		Prints and advances the spinner to the next state
@@ -389,7 +390,8 @@ bundle System.Utility {
 					@state := 0;
 				}
 			};
-			
+
+			@count += 1;
 			Console->Flush();
 		}
 
@@ -397,7 +399,7 @@ bundle System.Utility {
 		Prints the final state
 		~#
 		function : Last() ~ Nil {
-			"\r."->PrintLine();
+			"\r|{$@count}|"->PrintLine();
 		}
 	}
 
