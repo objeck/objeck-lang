@@ -1,0 +1,57 @@
+use Data.JSON, Data.JSON.Stream;
+
+class Test {
+    function : Main(args : String[]) ~ Nil {
+        if(args->Size() = 3) {
+            type := args[1];
+            max := args[2]->ToInt();
+
+            timer : System.Time.Timer;
+            longest : Int;
+            
+            count := 0;
+
+            if(type->Equals("dom")) {
+                timer := System.Time.Timer->New(true);
+
+                reader := System.IO.Filesystem.FileReader->New(args[0]);
+                if(reader->IsOpen()) {
+                    do {
+                        line := reader->ReadLine();
+                        if(line <> Nil) {
+                            parser := JsonParser->TextToElement(line);
+                            if(parser <> Nil) {
+                                text := JsonElement->Decode(parser->Get("text")->GetString());
+                                "{$text}\n---"->PrintLine();
+                            };
+                        };
+                    }
+                    while(line <> Nil & ++count < max);
+                };
+            }
+            else {
+                timer := System.Time.Timer->New(true);
+
+                reader := System.IO.Filesystem.FileReader->New(args[0]);
+                if(reader->IsOpen()) {
+                    do {
+                        line := reader->ReadLine();
+                        if(line <> Nil) {
+                            parser := JsonStreamParser->New(line);
+                          
+                            if(parser->GetNextElement("text")) {
+                                if(parser->GetNextElement()) {
+                                    text := JsonElement->Decode(parser->GetValue());
+                                    "{$text}\n---"->PrintLine();
+                                };
+                            };  
+                        };
+                    }
+                    while(line <> Nil & ++count < max);
+                };
+            };
+            time := timer->GetElapsedTime()
+            "type={$type}, time={$time}, longest={$longest}"->PrintLine();
+        };
+    }
+}
