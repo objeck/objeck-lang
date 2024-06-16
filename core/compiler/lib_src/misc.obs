@@ -386,11 +386,6 @@ bundle System.Utility {
 
 				label 3 {
 					"\\\r"->Print();
-					@state += 1;
-				}
-
-				label 4 {
-					".|\r"->Print();
 					@state := 0;
 				}
 			};
