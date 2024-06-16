@@ -380,12 +380,12 @@ bundle System.Utility {
 				}
 
 				label 2 {
-					"—\r"'->Print();
+					"—\r"->Print();
 					@state += 1;
 				}
 
 				label 3 {
-					"\\\r"'->Print();
+					"\\\r"->Print();
 					@state += 1;
 				}
 
