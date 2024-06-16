@@ -389,10 +389,8 @@ bundle System.Utility {
 					@state := 0;
 				}
 			};
-
-			if(System.IO.Filesystem.Directory->GetSlash() = '/') {
-				Console->Flush();
-			};
+			
+			Console->Flush();
 		}
 
 		#~
