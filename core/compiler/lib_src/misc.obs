@@ -283,7 +283,7 @@ bundle System.Time {
 }
 
 #~
-Provides support utilities (-lib misc)
+Various support utilities (-lib misc)
 ~#	
 bundle System.Utility {
 	#~
