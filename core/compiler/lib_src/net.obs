@@ -387,6 +387,7 @@ if(html <> Nil) {
 		#~
 		Performs a HTTP DELETE and returns results as a String
 		@param url URL
+		@param data data to post
 		@return output buffer
 		~#
 		function : QuickDelete(url : Web.HTTP.Url, data : Byte[]) ~ Web.HTTP.Response {
@@ -396,6 +397,7 @@ if(html <> Nil) {
 		#~
 		Performs a HTTP DELETE and returns results as a String
 		@param url URL
+		@param data data to post
 		@param headers key/value headers
 		@return output buffer
 		~#
@@ -406,6 +408,7 @@ if(html <> Nil) {
 		#~
 		Performs a HTTP DELETE and returns results as a String
 		@param url URL
+		@param data data to post
 		@param content_type content type
 		@return output buffer
 		~#
@@ -416,6 +419,7 @@ if(html <> Nil) {
 		#~
 		Performs a HTTP DELETE and returns results as a String
 		@param url URL
+		@param data data to post
 		@param content_type content type
 		@param headers key/value headers
 		@return output buffer
@@ -444,6 +448,7 @@ if(html <> Nil) {
 		#~
 		Performs a HTTP DELETE
 		@param url URL
+		@param data data to post
 		@return string read
 		~#
 		method : public : Delete(url : Web.HTTP.Url, data : Byte[]) ~ Web.HTTP.Response {
@@ -453,6 +458,7 @@ if(html <> Nil) {
 		#~
 		Performs a HTTP DELETE
 		@param url URL
+		@param data data to post
 		@param content_type content type
 		@return string read
 		~#
