@@ -54,8 +54,8 @@ class Test {
 			while(line <> Nil & (count < end | start < 0));
 
 			if(start < 0) {
-#				System.Utility.Spinner->Last();
-				"\r|43|"->PrintLine();
+				System.Utility.Spinner->Last();
+#				"\r|43|"->PrintLine();
 			};
 
 			if(start < 0) {
