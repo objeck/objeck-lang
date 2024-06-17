@@ -15,10 +15,10 @@
 ## Releases
 
 * v2024.8.x
-  * Common training framework across OpenAI, Gemini, Llama, and Mistral
-
-* v2024.7.x
   * Unified query framework across OpenAI, Gemini, Llama, and Mistral
+  
+* v2024.7.x
+  * Common training framework across OpenAI, Gemini, Llama, and Mistral
   
 * v2024.6.1 (queued)
   * On-device ML support for Llama and Mistral (Llama - done, Mistral - testing)
