@@ -1,0 +1,53 @@
+use Data.CSV, Data.JSON, Collection;
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() = 2) {
+			table := CsvTable->New(System.IO.Filesystem.FileReader->ReadFile(args[0]));
+			if(table->IsParsed()) {
+				headers := table->GetHeaders();
+
+				empty_cols := Bool->New[headers->Size()];
+				each(i : headers) {
+					header := headers->Get(i);
+
+					is_empty := true;
+					for(j := 1; is_empty & j < table->Size(); j += 1;) {
+						is_empty := table->Get(j)->Get(header)->IsEmpty();
+					};
+					empty_cols[i] := is_empty;
+				};
+
+				rows_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+				for(i := 1; i < table->Size(); i += 1;) {
+					row_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+
+					row := table->Get(i);
+					each(j : row) {
+						header := headers->Get(j);
+						if(header->IsEmpty()) {
+							header := "NM";
+						};
+						
+						if(<>empty_cols[j]) {
+							if(header->Equals("NM") | header->StartsWith("Player")) {
+								row_json->Insert(header, row->Get(j));
+							}
+							else {
+								row_json->Insert(header, row->Get(j)->ToFloat());
+							}
+						};
+
+#						"header-'{$header}', empty_col={$empty_col}"->PrintLine();
+					};
+
+					rows_json->Add(row_json)
+				};
+
+				table_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+				table_json->Insert(args[1], rows_json);
+				table_json->ToString()->PrintLine();
+			};
+		};
+	}
+}
