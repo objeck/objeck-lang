@@ -1,53 +1,28 @@
-use Data.CSV, Data.JSON, Collection;
+use Data.CSV, Collection;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		if(args->Size() = 2) {
-			table := CsvTable->New(System.IO.Filesystem.FileReader->ReadFile(args[0]));
-			if(table->IsParsed()) {
-				headers := table->GetHeaders();
+		if(args->Size() = 1) {
+			dir_path := args[0];
 
-				empty_cols := Bool->New[headers->Size()];
-				each(i : headers) {
-					header := headers->Get(i);
+			filenames := System.IO.Filesystem.Directory->List(dir_path);
+			each(filename in filenames) {
+				if(filename->EndsWith(".csv")) {
+					file_path := dir_path->Copy();
 
-					is_empty := true;
-					for(j := 1; is_empty & j < table->Size(); j += 1;) {
-						is_empty := table->Get(j)->Get(header)->IsEmpty();
+					if(<>(file_path->EndsWith('/') | file_path->EndsWith('\\'))) {
+						file_path += System.IO.Filesystem.Directory->GetSlash();
 					};
-					empty_cols[i] := is_empty;
-				};
-
-				rows_json := JsonElement->New(JsonElement->JsonType->ARRAY);
-				for(i := 1; i < table->Size(); i += 1;) {
-					row_json := JsonElement->New(JsonElement->JsonType->OBJECT);
-
-					row := table->Get(i);
-					each(j : row) {
-						header := headers->Get(j);
-						if(header->IsEmpty()) {
-							header := "NM";
-						};
-						
-						if(<>empty_cols[j]) {
-							if(header->Equals("NM") | header->StartsWith("Player")) {
-								row_json->Insert(header, row->Get(j));
-							}
-							else {
-								row_json->Insert(header, row->Get(j)->ToFloat());
-							}
-						};
-
-#						"header-'{$header}', empty_col={$empty_col}"->PrintLine();
+					file_path += filename;
+					
+					table := CsvTable->New(System.IO.Filesystem.FileReader->ReadFile(file_path));
+					if(table->IsParsed()) {
+						"Parsed: '{$file_path}'"->PrintLine();
 					};
-
-					rows_json->Add(row_json)
 				};
-
-				table_json := JsonElement->New(JsonElement->JsonType->OBJECT);
-				table_json->Insert(args[1], rows_json);
-				table_json->ToString()->PrintLine();
 			};
+
+			
 		};
 	}
 }
