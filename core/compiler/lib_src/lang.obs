@@ -137,7 +137,7 @@ bundle System {
 					buffer->Append(',');
 				}
 			};
-			buffer := "]";
+			buffer += "]";
 
 			return buffer;
 		}
