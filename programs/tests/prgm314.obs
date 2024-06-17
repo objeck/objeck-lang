@@ -1,0 +1,20 @@
+class Test {
+	function : Main(args : System.String[]) ~ Nil {
+		chars_index := 0;
+		chars := "⋅•●⬤";
+		each(i : 25) {
+			char := chars->Get(chars_index++);
+			"{$char}\r"->Print();
+			Console->Flush();
+
+			if(chars_index >= chars->Size()) {
+				chars_index := 0;
+			};
+
+			# pause
+			System.Concurrency.Thread->Sleep(1500);
+		};
+		"\r·"->Print();
+		Console->Flush();
+	}
+}
