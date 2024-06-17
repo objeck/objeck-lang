@@ -20,7 +20,7 @@
 * v2024.7.x
   * Common training framework across OpenAI, Gemini, Llama, and Mistral
   
-* v2024.6.1 (testing)
+* v2024.6.1 (done, testing)
   * On-device ML API support for Llama and Mistral
   
 * v2024.6.0  **(current)**
