@@ -43,6 +43,14 @@ bundle System {
 
 			return 0;
 		}
+		
+		#~
+		Pseudo random coin flip
+		@return true or false
+		~#
+		function : Flip() ~ Bool {
+			return Int->Random(1) % 2 = 0;
+		}
 
 		#~
 		Prints a boolean value with a newline
@@ -1356,7 +1364,7 @@ bundle System {
 		}
 		
 		#~
-		Returns a pseudo random value between 0.0 and 1.0
+		Returns a pseudo random value between 0 and 1, inclusive
 		@param range_start minimum value
 		@param range_end maximum value
 		@return pseudo random value
@@ -1370,7 +1378,7 @@ bundle System {
 		}
 
 		#~
-		Returns a random number between 0 and max value
+		Returns a random number between 0 and max value, inclusive
 		@param max max value
 		@return random number within range
 		~#
@@ -2304,7 +2312,7 @@ bundle System {
 		}
 		
 		#~
-		Returns a pseudo random value between 0.0 and 1.0
+		Returns a pseudo random value between 0.0 and 1.0, inclusive
 		@ignore-params
 		@return pseudo random value
 		~#
@@ -2313,7 +2321,7 @@ bundle System {
 		}
 
 		#~
-		Returns a pseudo random value between 0.0 and max
+		Returns a pseudo random value between 0.0 and max, inclusive
 		@param max maximum value
 		@return pseudo random value
 		~#
@@ -2322,7 +2330,7 @@ bundle System {
 		}
 
 		#~
-		Returns a pseudo random value between 0.0 and 1.0
+		Returns a pseudo random value between 0.0 and 1.0, inclusive
 		@param range_start minimum value
 		@param range_end maximum value
 		@return pseudo random value

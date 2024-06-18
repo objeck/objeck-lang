@@ -1,28 +1,62 @@
-use Data.CSV, Collection;
+use Data.CSV, Collection, Collection.Tuple;
 
-class Test {
+class DatasetMaker {
+	@named_tables : Hash<String, CsvTable>;
+
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
-			dir_path := args[0];
+			dataset_maker := DatasetMaker->New(args[0]);
+			dataset_maker->Make();
+		};
+	}
 
-			filenames := System.IO.Filesystem.Directory->List(dir_path);
-			each(filename in filenames) {
-				if(filename->EndsWith(".csv")) {
-					file_path := dir_path->Copy();
+	New(dir_path : String) {
+		@named_tables := Hash->New()<String, CsvTable>;
 
-					if(<>(file_path->EndsWith('/') | file_path->EndsWith('\\'))) {
-						file_path += System.IO.Filesystem.Directory->GetSlash();
-					};
-					file_path += filename;
-					
-					table := CsvTable->New(System.IO.Filesystem.FileReader->ReadFile(file_path));
-					if(table->IsParsed()) {
-						"Parsed: '{$file_path}'"->PrintLine();
-					};
+		filenames := System.IO.Filesystem.Directory->List(dir_path);
+		each(filename in filenames) {
+			if(filename->EndsWith(".csv")) {
+
+				file_path := dir_path->Copy();
+
+				if(<>(file_path->EndsWith('/') | file_path->EndsWith('\\'))) {
+					file_path += System.IO.Filesystem.Directory->GetSlash();
+				};
+				file_path += filename;
+				
+				table := CsvTable->New(System.IO.Filesystem.FileReader->ReadFile(file_path));
+				if(table->IsParsed()) {
+					table_name := filename->SubString(filename->Size() - 4);
+					@named_tables->Insert(table_name, table);
 				};
 			};
-
-			
 		};
+	}
+
+	method : public : Make() ~ Nil {
+		@named_tables->Size()->PrintLine();
+
+		exercise := RandomReboundsPerGame(1967);
+		exercise->ToString()->PrintLine();
+
+
+	}
+
+	method : public : RandomReboundsPerGame(year : Int) ~ Pair<String, String> {
+		table := @named_tables->Find("per-game");
+		if(table <> Nil) {
+			player_index := Int->Random(1, table->Size() - 1);
+
+			player := table->Get(player_index)->Get("Player");
+			if(Int->Random() )
+			rebounds := table->Get(player_index)->Get("TRB");
+
+			query := "In " + year + " how many rebounds did " + player + " have?";
+			response := "" + player + " had " + rebounds + " in " + year + ".";
+
+			return Pair->New(query, response)<String, String>;
+		};
+
+		return Nil;
 	}
 }
