@@ -76,51 +76,31 @@ class DatasetMaker {
 	method : public : Make() ~ Bool {
 		query_responses := Vector->New()<JsonElement>;
 
-#~
-		stats := ["TRB", "FGA", "FTA", "FG%", "AST", "STL", "BLK", "TOV", "PF", "PTS", "FT", "FT%"];
+		stats := ["TRB", "FG%", "PF", "PTS", "FT", "FT%"];
 		each(stat in stats) {
 			if(<>AverageStat(Int->Random(1966, 1968), stat, query_responses)) {
 				return false;
 			};
-		}
-~#
-
-
-		# "FT", "FT%"];
-		if(<>AverageStat(Int->Random(1966, 1968), "FT%", query_responses)) {
-			return false;
 		};
 
-#~
-		if(<>TotalStat(Int->Random(1966, 1968), "TRB", query_responses)) {
-			return false;
+		stats := ["FGA", "FTA"];
+		each(stat in stats) {
+			if(<>TotalStat(Int->Random(1966, 1968), stat, query_responses)) {
+				return false;
+			};
 		};
-
-		if(<>AverageStat(Int->Random(1966, 1968), "FGA", query_responses)) {
-			return false;
-		};
-
-		if(<>TotalStat(Int->Random(1966, 1968), "FGA", query_responses)) {
-			return false;
-		};
-
-		each(i : 5) {
+		
+		each(i : 8) {
 			if(<>ScheduleResult(Int->Random(1966, 1968), query_responses)) {
 				return false;
 			};
 		};
 
-		if(<>TotalTeam(Int->Random(1966, 1968), "TRB", query_responses)) {
-			return false;
-		};
-
-		if(<>TotalTeam(Int->Random(1966, 1968), "FGA", query_responses)) {
-			return false;
-		};
-~#		
 		each(query_response in query_responses) {
 			query_response->ToString()->PrintLine();
 		};
+		query_response_size := query_responses->Size();
+		"---\n{$query_response_size}"->PrintLine();
 
 		return true;
 	}
