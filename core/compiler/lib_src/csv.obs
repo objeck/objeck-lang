@@ -720,10 +720,10 @@ bundle Data.CSV {
 		}
 
 		#~
-		Searches a given column for matching values
+		Searches a given column for like values
 		@param name column name
 		@param value value to search for
-		@return table of matching results 
+		@return table of like results 
 		~#
 		method : public : Contains(name : String, value : String) ~ CsvTable {
 			index := @header_names->Find(name);
@@ -735,10 +735,10 @@ bundle Data.CSV {
 		}
 		
 		#~
-		Searches a given column for matching values
+		Searches a given column for like values
 		@param index column index
 		@param value value to search for
-		@return table of matching results 
+		@return table of like results 
 		~#
 		method : public : Contains(index : Int, value : String) ~ CsvTable {
 			if(index >= RowSize()) {
@@ -759,7 +759,7 @@ bundle Data.CSV {
 		}
 		
 		#~
-		Counts a column for matching values
+		Counts a column for like values
 		@param name column name
 		@param value value to search for
 		@return number of occurrences
@@ -774,7 +774,7 @@ bundle Data.CSV {
 		}
 		
 		#~
-		Counts a column for matching values
+		Counts a column for like values
 		@param index column index
 		@param value value to search for
 		@return number of occurrences
