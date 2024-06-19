@@ -45,7 +45,6 @@ class DatasetMaker {
 					@abbreviations->Insert("Feb", "February");
 					@abbreviations->Insert("Mar", "March");
 
-
 					table_name := filename->SubString(filename->Size() - 4);
 					@named_tables->Insert(table_name, table);
 				};
@@ -65,6 +64,9 @@ class DatasetMaker {
 	method : public : Make() ~ Bool {
 		query_responses := Vector->New()<JsonElement>;
 
+#~
+		TODO: slide stats left->right in an array
+
 		if(<>AverageStat(Int->Random(1966, 1968), "TRB", query_responses)) {
 			return false;
 		};
@@ -81,10 +83,21 @@ class DatasetMaker {
 			return false;
 		};
 
-		if(<>ScheduleResult(Int->Random(1966, 1968), "FGA", query_responses)) {
+		each(i : 5) {
+			if(<>ScheduleResult(Int->Random(1966, 1968), query_responses)) {
+				return false;
+			};
+		};
+~#
+
+		if(<>AverageTeam(Int->Random(1966, 1968), "TRB", query_responses)) {
 			return false;
 		};
 
+		if(<>AverageTeam(Int->Random(1966, 1968), "FGA", query_responses)) {
+			return false;
+		};
+		
 		each(query_response in query_responses) {
 			query_response->ToString()->PrintLine();
 		};
@@ -92,19 +105,55 @@ class DatasetMaker {
 		return true;
 	}
 
-	method : public : ScheduleResult(year : Int, stat_key : String, query_responses : Vector<JsonElement>) ~ Bool {
+	method : public : ScheduleResult(year : Int, query_responses : Vector<JsonElement>) ~ Bool {
 		table := @named_tables->Find("schedule-results");
 		if(table <> Nil) {
+			table_by_year := table->Matches("Year", year->ToString());
+
+			# games played by month
 			schedule_mons := ["Dec", "Jan", "Feb", "Mar"];
 			random_mon := schedule_mons[Int->Random(0, 3)];
 
-			games_by_year_month := table->Matches("Year", year->ToString())->Contains("Date", random_mon);
-			count_by_year_month := (games_by_year_month->Size() - 1);
+			games_year_month := table_by_year->Contains("Date", random_mon);
+			count_year_month := (games_year_month->Size() - 1);
 
 			random_school_name := Bool->Flip() ? "DU" : "University of Denver";
 			random_mon_name := @abbreviations->Find(random_mon);
+
 			query := "<human>: In " + year + " how many games did the " + random_school_name + " men's basketball team play in " + random_mon_name + "?";
-			response := "<bot>: In " + year + ", the " + random_school_name + " men's basketball team played " + count_by_year_month + " games in " + random_mon_name + ".";
+			response := "<bot>: In " + year + ", the " + random_school_name + " men's basketball team played " + count_year_month + " games in " + random_mon_name + ".";
+			query_responses->AddBack(BuildElement(query, response));
+
+			# home vs. away games
+			games_home := table_by_year->Contains("At-Home", "@");
+			count_home := (games_home->Size() - 1);
+			count_away := (table_by_year->Size() - games_home->Size());
+
+			query := "<human>: In " + year + " how many home games did the " + random_school_name + " men's basketball team play?";
+			response := "<bot>: In " + year + ", the " + random_school_name + " men's basketball team played " + count_home + " home games.";
+			query_responses->AddBack(BuildElement(query, response));
+
+			query := "<human>: In " + year + " how many away games did the " + random_school_name + " men's basketball team play?";
+			response := "<bot>: In " + year + ", the " + random_school_name + " men's basketball team played " + count_away + " away games.";
+			query_responses->AddBack(BuildElement(query, response));
+
+			# team played with score and who won
+			random_index := Int->Random(1, table_by_year->Size() - 1);
+			random_opp := table_by_year->Get(random_index);
+			random_opp_name := random_opp->Get("Opponent");
+			found_index := random_opp_name->Find('(');
+			if(found_index > 1) {
+				random_opp_name := random_opp_name->SubString(found_index - 1);
+			};
+
+			team_score := random_opp->Get("Tm")->ToInt();
+			opp_score := random_opp->Get("Opp")->ToInt();
+			game_date := random_opp->Get("Date");
+			game_date := game_date->SubString(5, game_date->Size() - 5);
+
+			query := "<human>: What was the score of the " + year + " game between Denver and " + random_opp_name  + " on " + game_date + "?";
+			response := "<bot>: The score of the game on " + game_date + " between Denver and " + random_opp_name  + " was " +  team_score->ToString() + 
+				" to " + opp_score->ToString() + ", Denver " + (team_score > opp_score ? "won.": "lost.");
 			query_responses->AddBack(BuildElement(query, response));
 
 			return true;
@@ -135,6 +184,37 @@ class DatasetMaker {
 
 			query := "<human>: How many " + stat_word + " did " + player + " average in " + year + "?";
 			response := "<bot>: In " + year + " " + player + " averaged " + stat_value + " " + stat_word + ".";
+			query_responses->AddBack(BuildElement(query, response));
+
+			return true;
+		};
+
+		return false;
+	}
+
+	method : public : AverageTeam(year : Int, stat_key : String, query_responses : Vector<JsonElement>) ~ Bool {
+		table := @named_tables->Find("avg-team-opp");
+		if(table <> Nil) {
+			random_index := Int->Random(1, table->Size() - 1);
+
+			team_desc : String;
+			team := table->Get(random_index)->Get("Side");
+			if(team->Equals("Team")) {
+				team_desc := "University of Denver";
+			}
+			else {
+				team_desc := "opponent";
+			};
+
+			stat_value := table->Get(random_index)->Get(stat_key);
+			stat_word := @abbreviations->Find(stat_key);
+
+			query := "<human>: In " + year + " how many " + stat_word + " did the " + team_desc + " average?";
+			response := "<bot>: The " + team_desc + " averaged " + stat_value + " " + stat_word + " in " + year + ".";
+			query_responses->AddBack(BuildElement(query, response));
+
+			query := "<human>: How many " + stat_word + " did the " + team_desc + " average in " + year + "?";
+			response := "<bot>: In " + year + " the " + team_desc + " averaged " + stat_value + " " + stat_word + ".";
 			query_responses->AddBack(BuildElement(query, response));
 
 			return true;
