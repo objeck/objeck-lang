@@ -104,7 +104,7 @@ class DatasetMaker {
 			random_school_name := Bool->Flip() ? "DU" : "University of Denver";
 			random_mon_name := @abbreviations->Find(random_mon);
 			query := "<human>: In " + year + " how many games did the " + random_school_name + " men's basketball team play in " + random_mon_name + "?";
-			response := "<bot>: In " + year + " the " + random_school_name + " men's basketball team played " + count_by_year_month + " games in " + random_mon_name + ".";
+			response := "<bot>: In " + year + ", the " + random_school_name + " men's basketball team played " + count_by_year_month + " games in " + random_mon_name + ".";
 			query_responses->AddBack(BuildElement(query, response));
 
 			return true;
