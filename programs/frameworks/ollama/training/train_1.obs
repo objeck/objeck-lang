@@ -3,7 +3,7 @@ use Data.CSV, Data.JSON, Collection;
 class DatasetMaker {
 	@named_tables : Hash<String, CsvTable>;
 	@metadata_json : JsonElement;
-	@stat_words : Hash<String, String>;
+	@abbreviations : Hash<String, String>;
 
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
@@ -34,10 +34,17 @@ class DatasetMaker {
 					@metadata_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 					@metadata_json->Insert("source", "du_late_60s_mens_basketball");
 
-					# load stat keywords
-					@stat_words := Hash->New()<String, String>;
-					@stat_words->Insert("TRB", "rebounds");
-					@stat_words->Insert("FGA", "points");
+					# stat abbreviations
+					@abbreviations := Hash->New()<String, String>;
+					@abbreviations->Insert("TRB", "rebounds");
+					@abbreviations->Insert("FGA", "points");
+
+					# month abbreviations
+					@abbreviations->Insert("Dec", "December");
+					@abbreviations->Insert("Jan", "January");
+					@abbreviations->Insert("Feb", "February");
+					@abbreviations->Insert("Mar", "March");
+
 
 					table_name := filename->SubString(filename->Size() - 4);
 					@named_tables->Insert(table_name, table);
@@ -58,7 +65,6 @@ class DatasetMaker {
 	method : public : Make() ~ Bool {
 		query_responses := Vector->New()<JsonElement>;
 
-#~
 		if(<>AverageStat(Int->Random(1966, 1968), "TRB", query_responses)) {
 			return false;
 		};
@@ -74,7 +80,6 @@ class DatasetMaker {
 		if(<>TotalStat(Int->Random(1966, 1968), "FGA", query_responses)) {
 			return false;
 		};
-~#
 
 		if(<>ScheduleResult(Int->Random(1966, 1968), "FGA", query_responses)) {
 			return false;
@@ -90,12 +95,18 @@ class DatasetMaker {
 	method : public : ScheduleResult(year : Int, stat_key : String, query_responses : Vector<JsonElement>) ~ Bool {
 		table := @named_tables->Find("schedule-results");
 		if(table <> Nil) {
-			random_index := Int->Random(1, table->Size() - 1);
-
 			schedule_mons := ["Dec", "Jan", "Feb", "Mar"];
 			random_mon := schedule_mons[Int->Random(0, 3)];
-			
-random_mon->PrintLine();
+
+			games_by_year_month := table->Matches("Year", year->ToString())->Contains("Date", random_mon);
+			count_by_year_month := (games_by_year_month->Size() - 1);
+
+			random_school_name := Bool->Flip() ? "DU" : "University of Denver";
+			random_mon_name := @abbreviations->Find(random_mon);
+			query := "<human>: In " + year + " how many games did the " + random_school_name + " men's basketball team play in " + random_mon_name + "?";
+			response := "<bot>: In " + year + " the " + random_school_name + " men's basketball team played " + count_by_year_month + " games in " + random_mon_name + ".";
+			query_responses->AddBack(BuildElement(query, response));
+
 			return true;
 		};
 
@@ -116,7 +127,7 @@ random_mon->PrintLine();
 				};
 			};
 			stat_value := table->Get(random_index)->Get(stat_key);
-			stat_word := @stat_words->Find(stat_key);
+			stat_word := @abbreviations->Find(stat_key);
 
 			query := "<human>: In " + year + " how many " + stat_word + " did " + player + " average?";
 			response := "<bot>: " + player + " averaged " + stat_value + " " + stat_word + " in " + year + ".";
@@ -146,7 +157,7 @@ random_mon->PrintLine();
 				};
 			};
 			stat_value := table->Get(random_index)->Get(stat_key);
-			stat_word := @stat_words->Find(stat_key);
+			stat_word := @abbreviations->Find(stat_key);
 
 			query := "<human>: In " + year + " how many " + stat_word + " did " + player + " total?";
 			response := "<bot>: " + player + " totaled " + stat_value + " " + stat_word + " in " + year + ".";
