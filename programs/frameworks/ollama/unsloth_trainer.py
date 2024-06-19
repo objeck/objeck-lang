@@ -10,7 +10,8 @@ from unsloth.chat_templates import get_chat_template
 # Get LAION dataset
 
 # url = "https://huggingface.co/datasets/laion/OIG/resolve/main/unified_chip2.jsonl"
-file = "inputs/unified_chip2.jsonl"
+# file = "inputs/unified_chip2.jsonl"
+file = "inputs/du_late60s_mens_basketball.jsonl"
 
 new_model_prefix = "trained_"
 new_model_name = new_model_prefix + "_gguf"
