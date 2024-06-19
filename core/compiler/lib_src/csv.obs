@@ -642,17 +642,17 @@ bundle Data.CSV {
 
 			return @data->Size();
 		}
-		
+				
 		#~
 		Searches a given column for matching values
 		@param name column name
 		@param value value to search for
 		@return table of matching results 
 		~#
-		method : public : Search(name : String, value : String) ~ CsvTable {
+		method : public : Matches(name : String, value : String) ~ CsvTable {
 			index := @header_names->Find(name);
 			if(index <> Nil) {
-				return Search(index->Get(), value);
+				return Matches(index->Get(), value);
 			};
 			
 			return Nil;
@@ -664,7 +664,7 @@ bundle Data.CSV {
 		@param value value to search for
 		@return table of matching results 
 		~#
-		method : public : Search(index : Int, value : String) ~ CsvTable {
+		method : public : Matches(index : Int, value : String) ~ CsvTable {
 			if(index >= RowSize()) {
 				return Nil;
 			};
@@ -683,30 +683,15 @@ bundle Data.CSV {
 		}
 		
 		#~
-		Searches a given column for a string that contains a given 
-		@param name column name
-		@param value value to search for
-		@return true if value is found, false otherwise
-		~#
-		method : public : Contains(name : String, value : String) ~ Bool {
-			index := @header_names->Find(name);
-			if(index <> Nil) {
-				return Contains(index->Get(), value);
-			};
-			
-			return false;
-		}
-		
-		#~
 		Counts a column for matching values
 		@param name column name
 		@param value value to search for
 		@return number of occurrences
 		~#
-		method : public : Count(name : String, value : String) ~ Int {
+		method : public : CountMatches(name : String, value : String) ~ Int {
 			index := @header_names->Find(name);
 			if(index <> Nil) {
-				return Count(index->Get(), value);
+				return CountMatches(index->Get(), value);
 			};
 			
 			return 0;
@@ -718,7 +703,7 @@ bundle Data.CSV {
 		@param value value to search for
 		@return number of occurrences
 		~#
-		method : public : Count(index : Int, value : String) ~ Int {
+		method : public : CountMatches(index : Int, value : String) ~ Int {
 			if(index >= RowSize()) {
 				return 0;
 			};
@@ -733,26 +718,81 @@ bundle Data.CSV {
 			
 			return count;
 		}
-		
+
 		#~
-		Searches a given column for a string that contains a given 
-		@param index column index
+		Searches a given column for matching values
+		@param name column name
 		@param value value to search for
-		@return true if value is found, false otherwise
+		@return table of matching results 
 		~#
-		method : public : Contains(index : Int, value : String) ~ Bool {
-			if(index >= RowSize()) {
-				return false;
+		method : public : Contains(name : String, value : String) ~ CsvTable {
+			index := @header_names->Find(name);
+			if(index <> Nil) {
+				return Contains(index->Get(), value);
 			};
 			
+			return Nil;
+		}
+		
+		#~
+		Searches a given column for matching values
+		@param index column index
+		@param value value to search for
+		@return table of matching results 
+		~#
+		method : public : Contains(index : Int, value : String) ~ CsvTable {
+			if(index >= RowSize()) {
+				return Nil;
+			};
+			
+			found := Vector->New()<CsvRow>;
+			found->AddBack(@data->Get(0));
+			
 			for(i := 1; i < @data->Size(); i +=1;) {
-				row := @data->Get(i)->As(CsvRow);
-				if(row->Get(index)->Find(value) > -1) {
-					return true;
+				row := @data->Get(i);
+				if(row->Get(index)->Has(value)) {
+					found->AddBack(row);
 				};
 			};
 			
-			return false;
+			return CsvTable->New(found, @header_names);
+		}
+		
+		#~
+		Counts a column for matching values
+		@param name column name
+		@param value value to search for
+		@return number of occurrences
+		~#
+		method : public : CountContains(name : String, value : String) ~ Int {
+			index := @header_names->Find(name);
+			if(index <> Nil) {
+				return CountContains(index->Get(), value);
+			};
+			
+			return 0;
+		}
+		
+		#~
+		Counts a column for matching values
+		@param index column index
+		@param value value to search for
+		@return number of occurrences
+		~#
+		method : public : CountContains(index : Int, value : String) ~ Int {
+			if(index >= RowSize()) {
+				return 0;
+			};
+			
+			count := 0;
+			for(i := 1; i < @data->Size(); i +=1;) {
+				row := @data->Get(i)->As(CsvRow);
+				if(row->Get(index)->Has(value)) {
+					count += 1;
+				};
+			};
+			
+			return count;
 		}
 
 		#~

@@ -1,21 +1,26 @@
-use Data.CSV, Collection, Collection.Tuple;
+use Data.CSV, Data.JSON, Collection;
 
 class DatasetMaker {
 	@named_tables : Hash<String, CsvTable>;
+	@metadata_json : JsonElement;
+	@stat_words : Hash<String, String>;
 
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
 			dataset_maker := DatasetMaker->New(args[0]);
-			dataset_maker->Make();
+			status := dataset_maker->Make();
+			"---\nSuccess: {$status}"->PrintLine();
 		};
 	}
 
 	New(dir_path : String) {
 		@named_tables := Hash->New()<String, CsvTable>;
 
+		"Loading files:"->PrintLine();
 		filenames := System.IO.Filesystem.Directory->List(dir_path);
 		each(filename in filenames) {
 			if(filename->EndsWith(".csv")) {
+				"\tfile='{$filename}'"->PrintLine();
 
 				file_path := dir_path->Copy();
 
@@ -26,37 +31,134 @@ class DatasetMaker {
 				
 				table := CsvTable->New(System.IO.Filesystem.FileReader->ReadFile(file_path));
 				if(table->IsParsed()) {
+					@metadata_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+					@metadata_json->Insert("source", "du_late_60s_mens_basketball");
+
+					# load stat keywords
+					@stat_words := Hash->New()<String, String>;
+					@stat_words->Insert("TRB", "rebounds");
+					@stat_words->Insert("FGA", "points");
+
 					table_name := filename->SubString(filename->Size() - 4);
 					@named_tables->Insert(table_name, table);
 				};
 			};
 		};
+		"---"->PrintLine();
 	}
 
-	method : public : Make() ~ Nil {
-		@named_tables->Size()->PrintLine();
+	method : BuildElement(query : String, response : String) ~ JsonElement {
+		query_response_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+		query_response_json->Insert("text", JsonElement->Encode(query + '\n' + response));
+		query_response_json->Insert("metadata", @metadata_json);
 
-		exercise := RandomReboundsPerGame(1967);
-		exercise->ToString()->PrintLine();
-
-
+		return query_response_json;
 	}
 
-	method : public : RandomReboundsPerGame(year : Int) ~ Pair<String, String> {
-		table := @named_tables->Find("per-game");
-		if(table <> Nil) {
-			player_index := Int->Random(1, table->Size() - 1);
+	method : public : Make() ~ Bool {
+		query_responses := Vector->New()<JsonElement>;
 
-			player := table->Get(player_index)->Get("Player");
-			if(Int->Random() )
-			rebounds := table->Get(player_index)->Get("TRB");
-
-			query := "In " + year + " how many rebounds did " + player + " have?";
-			response := "" + player + " had " + rebounds + " in " + year + ".";
-
-			return Pair->New(query, response)<String, String>;
+#~
+		if(<>AverageStat(Int->Random(1966, 1968), "TRB", query_responses)) {
+			return false;
 		};
 
-		return Nil;
+		if(<>TotalStat(Int->Random(1966, 1968), "TRB", query_responses)) {
+			return false;
+		};
+
+		if(<>AverageStat(Int->Random(1966, 1968), "FGA", query_responses)) {
+			return false;
+		};
+
+		if(<>TotalStat(Int->Random(1966, 1968), "FGA", query_responses)) {
+			return false;
+		};
+~#
+
+		if(<>ScheduleResult(Int->Random(1966, 1968), "FGA", query_responses)) {
+			return false;
+		};
+
+		each(query_response in query_responses) {
+			query_response->ToString()->PrintLine();
+		};
+
+		return true;
+	}
+
+	method : public : ScheduleResult(year : Int, stat_key : String, query_responses : Vector<JsonElement>) ~ Bool {
+		table := @named_tables->Find("schedule-results");
+		if(table <> Nil) {
+			random_index := Int->Random(1, table->Size() - 1);
+
+			schedule_mons := ["Dec", "Jan", "Feb", "Mar"];
+			random_mon := schedule_mons[Int->Random(0, 3)];
+			
+random_mon->PrintLine();
+			return true;
+		};
+
+		return false;
+	}
+
+	method : public : AverageStat(year : Int, stat_key : String, query_responses : Vector<JsonElement>) ~ Bool {
+		table := @named_tables->Find("avg-games");
+		if(table <> Nil) {
+			random_index := Int->Random(1, table->Size() - 1);
+
+			player := table->Get(random_index)->Get("Player");
+			if(Bool->Flip()) {
+				split_index := player->Find(' ');
+				if(split_index > 0) {
+					split_index += 1;
+					player := player->SubString(split_index, player->Size() - split_index);
+				};
+			};
+			stat_value := table->Get(random_index)->Get(stat_key);
+			stat_word := @stat_words->Find(stat_key);
+
+			query := "<human>: In " + year + " how many " + stat_word + " did " + player + " average?";
+			response := "<bot>: " + player + " averaged " + stat_value + " " + stat_word + " in " + year + ".";
+			query_responses->AddBack(BuildElement(query, response));
+
+			query := "<human>: How many " + stat_word + " did " + player + " average in " + year + "?";
+			response := "<bot>: In " + year + " " + player + " averaged " + stat_value + " " + stat_word + ".";
+			query_responses->AddBack(BuildElement(query, response));
+
+			return true;
+		};
+
+		return false;
+	}
+
+	method : public : TotalStat(year : Int, stat_key : String, query_responses : Vector<JsonElement>) ~ Bool {
+		table := @named_tables->Find("total-games");
+		if(table <> Nil) {
+			random_index := Int->Random(1, table->Size() - 1);
+
+			player := table->Get(random_index)->Get("Player");
+			if(Bool->Flip()) {
+				split_index := player->Find(' ');
+				if(split_index > 0) {
+					split_index += 1;
+					player := player->SubString(split_index, player->Size() - split_index);
+				};
+			};
+			stat_value := table->Get(random_index)->Get(stat_key);
+			stat_word := @stat_words->Find(stat_key);
+
+			query := "<human>: In " + year + " how many " + stat_word + " did " + player + " total?";
+			response := "<bot>: " + player + " totaled " + stat_value + " " + stat_word + " in " + year + ".";
+			query_responses->AddBack(BuildElement(query, response));
+
+			query := "<human>: How many total " + stat_word + " did " + player + " achieve in " + year + "?";
+			response := "<bot>: In " + year + " " + player + " totaled " + stat_value + " " + stat_word + ".";
+			query_responses->AddBack(BuildElement(query, response));
+
+			return true;
+		};
+
+		return false;
 	}
 }
