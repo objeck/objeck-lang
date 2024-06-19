@@ -7,6 +7,8 @@ class DatasetMaker {
 
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
+			String->SetFloatPrecision(3);
+
 			dataset_maker := DatasetMaker->New(args[0]);
 			status := dataset_maker->Make();
 			"---\nSuccess: {$status}"->PrintLine();
@@ -38,6 +40,16 @@ class DatasetMaker {
 					@abbreviations := Hash->New()<String, String>;
 					@abbreviations->Insert("TRB", "rebounds");
 					@abbreviations->Insert("FGA", "points");
+					@abbreviations->Insert("FTA", "free throws attempts");
+					@abbreviations->Insert("FG%", "average points");
+					@abbreviations->Insert("AST", "assists");
+					@abbreviations->Insert("STL", "steals");
+					@abbreviations->Insert("BLK", "blocks");
+					@abbreviations->Insert("TOV", "turn overs");
+					@abbreviations->Insert("PF", "fouls");
+					@abbreviations->Insert("PTS", "points");
+					@abbreviations->Insert("FT", "free throws points");
+					@abbreviations->Insert("FT%", "average free throws");
 
 					# month abbreviations
 					@abbreviations->Insert("Dec", "December");
@@ -64,14 +76,22 @@ class DatasetMaker {
 	method : public : Make() ~ Bool {
 		query_responses := Vector->New()<JsonElement>;
 
-		stats := ["FG", "FGA", "FG%", "FT", "FTA", "FT%", "TRB", "AST", "STL", "BLK", "TOV", "PF", "PTS"];
+#~
+		stats := ["TRB", "FGA", "FTA", "FG%", "AST", "STL", "BLK", "TOV", "PF", "PTS", "FT", "FT%"];
+		each(stat in stats) {
+			if(<>AverageStat(Int->Random(1966, 1968), stat, query_responses)) {
+				return false;
+			};
+		}
+~#
 
-#		TODO: slide stats left->right in an array
 
-		if(<>AverageStat(Int->Random(1966, 1968), "TRB", query_responses)) {
+		# "FT", "FT%"];
+		if(<>AverageStat(Int->Random(1966, 1968), "FT%", query_responses)) {
 			return false;
 		};
 
+#~
 		if(<>TotalStat(Int->Random(1966, 1968), "TRB", query_responses)) {
 			return false;
 		};
@@ -97,7 +117,7 @@ class DatasetMaker {
 		if(<>TotalTeam(Int->Random(1966, 1968), "FGA", query_responses)) {
 			return false;
 		};
-		
+~#		
 		each(query_response in query_responses) {
 			query_response->ToString()->PrintLine();
 		};
@@ -178,13 +198,29 @@ class DatasetMaker {
 			stat_value := table->Get(random_index)->Get(stat_key);
 			stat_word := @abbreviations->Find(stat_key);
 
-			query := "<human>: In " + year + " how many " + stat_word + " did " + player + " average?";
-			response := "<bot>: " + player + " averaged " + stat_value + " " + stat_word + " in " + year + ".";
-			query_responses->AddBack(BuildElement(query, response));
+			if(stat_key->Equals("FG%") | stat_key->Equals("FT%")) {
+				stat_value_str := (stat_value->ToFloat() * 100.0)->ToString();
+				query := "<human>: In " + year + " what was " + player + " field goal percentage?";
+				response := "<bot>: " + player + " field goal percentage in " + year + " was " + stat_value_str + "%.";
+				query_responses->AddBack(BuildElement(query, response));
+			}
+			else {
+				query := "<human>: In " + year + " how many " + stat_word + " did " + player + " average?";
+				response := "<bot>: " + player + " averaged " + stat_value + " " + stat_word + " in " + year + ".";
+				query_responses->AddBack(BuildElement(query, response));
+			};
 
-			query := "<human>: How many " + stat_word + " did " + player + " average in " + year + "?";
-			response := "<bot>: In " + year + " " + player + " averaged " + stat_value + " " + stat_word + ".";
-			query_responses->AddBack(BuildElement(query, response));
+			if(stat_key->Equals("FG%") | stat_key->Equals("FT%")) {
+				stat_value_str := (stat_value->ToFloat() * 100.0)->Round->ToString();
+				query := "<human>: What was " + player + " field goal percentage in " + year + '?';
+				response := "<bot>: In " + year + " " + player  + " field goal percentage " + stat_value_str + "%.";
+				query_responses->AddBack(BuildElement(query, response));
+			}
+			else {
+				query := "<human>: How many " + stat_word + " did " + player + " average in " + year + "?";
+				response := "<bot>: In " + year + " " + player + " averaged " + stat_value + " " + stat_word + ".";
+				query_responses->AddBack(BuildElement(query, response));
+			}
 
 			return true;
 		};
