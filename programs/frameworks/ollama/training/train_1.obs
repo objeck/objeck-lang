@@ -64,8 +64,9 @@ class DatasetMaker {
 	method : public : Make() ~ Bool {
 		query_responses := Vector->New()<JsonElement>;
 
-#~
-		TODO: slide stats left->right in an array
+		stats := ["FG", "FGA", "FG%", "FT", "FTA", "FT%", "TRB", "AST", "STL", "BLK", "TOV", "PF", "PTS"];
+
+#		TODO: slide stats left->right in an array
 
 		if(<>AverageStat(Int->Random(1966, 1968), "TRB", query_responses)) {
 			return false;
@@ -88,13 +89,12 @@ class DatasetMaker {
 				return false;
 			};
 		};
-~#
 
-		if(<>AverageTeam(Int->Random(1966, 1968), "TRB", query_responses)) {
+		if(<>TotalTeam(Int->Random(1966, 1968), "TRB", query_responses)) {
 			return false;
 		};
 
-		if(<>AverageTeam(Int->Random(1966, 1968), "FGA", query_responses)) {
+		if(<>TotalTeam(Int->Random(1966, 1968), "FGA", query_responses)) {
 			return false;
 		};
 		
@@ -184,6 +184,37 @@ class DatasetMaker {
 
 			query := "<human>: How many " + stat_word + " did " + player + " average in " + year + "?";
 			response := "<bot>: In " + year + " " + player + " averaged " + stat_value + " " + stat_word + ".";
+			query_responses->AddBack(BuildElement(query, response));
+
+			return true;
+		};
+
+		return false;
+	}
+
+	method : public : TotalTeam(year : Int, stat_key : String, query_responses : Vector<JsonElement>) ~ Bool {
+		table := @named_tables->Find("avg-team-opp");
+		if(table <> Nil) {
+			random_index := Int->Random(1, table->Size() - 1);
+
+			team_desc : String;
+			team := table->Get(random_index)->Get("Side");
+			if(team->Equals("Team")) {
+				team_desc := "University of Denver";
+			}
+			else {
+				team_desc := "opponent";
+			};
+
+			stat_value := table->Get(random_index)->Get(stat_key);
+			stat_word := @abbreviations->Find(stat_key);
+
+			query := "<human>: In " + year + " how many " + stat_word + " did the " + team_desc + " total?";
+			response := "<bot>: The " + team_desc + " totaled " + stat_value + " " + stat_word + " in " + year + ".";
+			query_responses->AddBack(BuildElement(query, response));
+
+			query := "<human>: How many " + stat_word + " did the " + team_desc + " total in " + year + "?";
+			response := "<bot>: In " + year + " the " + team_desc + " totaled " + stat_value + " " + stat_word + ".";
 			query_responses->AddBack(BuildElement(query, response));
 
 			return true;
