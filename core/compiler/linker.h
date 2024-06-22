@@ -811,6 +811,9 @@ class Library {
   void ReadFile(const std::wstring &file) {
     buffer_pos = 0;
     alloc_buffer = buffer = LoadFileBuffer(file, buffer_size);
+    if(!alloc_buffer || !buffer) {
+      exit(1);
+    }
   }
 
   void AddEnum(LibraryEnum* e) {

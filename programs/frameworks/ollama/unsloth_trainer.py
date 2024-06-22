@@ -1,4 +1,4 @@
-from unsloth import FastLanguageModel 
+kfrom unsloth import FastLanguageModel 
 from unsloth import is_bfloat16_supported
 import torch
 from trl import SFTTrainer
@@ -84,30 +84,17 @@ tokenizer = get_chat_template(
 
 FastLanguageModel.for_inference(model) # Enable native 2x faster inference
 
-# test model
-messages = [
-    {"from": "human", "value": "In the book, \u2018The Art of Software Cost Estimation\u2019, where does the term \u2018sweat equity\u2019 come from?"},
-]
-inputs = tokenizer.apply_chat_template(
-    messages,
-    tokenize = True,
-    add_generation_prompt = True, # Must add for generation
-    return_tensors = "pt",
-).to("cuda")
-
-outputs = model.generate(input_ids = inputs, max_new_tokens = 64, use_cache = True)
-tokenizer.batch_decode(outputs)
-
 # save model
 # model.save_pretrained("outputs/lora_gguf") # Local saving
 # model.push_to_hub("your_name/lora_model", token = "...") # Online saving
 model.save_pretrained_gguf("outputs/" + new_model_name, tokenizer, quantization_method = "q4_0")
+tokenizer.save_pretrained_gguf("outputs/" + new_model_name, tokenizer, quantization_method = "q4_0")
 
 # 1. GitHub: https://github.com/unslothai/unsloth
 # 2. Install on Windows install under WSL2
 # 3. get training data
 # 4. train and export model
 # 5. create: 'Modelfile' insert "FROM <filename>"
-# 6. import: trained model ollama create <new_name> -f Modelfile
+# 6. import: trained model: ollama create <new_name> -f Modelfile
 # 7. test: ollama run <new_name> "What is Grafana?"
 
