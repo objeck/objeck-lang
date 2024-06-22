@@ -84,7 +84,7 @@ class DatasetMaker {
 			file_writer->Close();
 		};
 		
-		file_writer := System.IO.Filesystem.FileWriter->New("data/du_stats.jsonl");
+		file_writer := System.IO.Filesystem.FileWriter->New("data/du_late60s_mens_basketball.jsonl");
 		if(file_writer->IsOpen()) {
 
 			avg_stats := ["TRB", "FG%", "PF", "PTS", "FT", "FT%"];

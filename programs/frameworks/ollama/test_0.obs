@@ -4,7 +4,7 @@ class Test {
     function : Main(args : String[]) ~ Nil {
         if(args->Size() = 1) {
             prompt := args[0];
-            Completion->Generate("llama3", prompt)->PrintLine();
+            Completion->Generate("du_mens_basketball_late_1960s:latest", prompt)->PrintLine();
         };
     }
 }

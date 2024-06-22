@@ -414,6 +414,9 @@ void Linker::Load()
         offset = index + 1;
         index = master_path.find(',', offset);
       }
+      else {
+        ++index;
+      }
     }
     // insert library
     const std::wstring file_name = master_path.substr(offset, master_path.size());
