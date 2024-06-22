@@ -833,7 +833,6 @@ bundle Web.HTTP.Server {
 					# get request headers
 					request_headers := GetHeaders();
 
-"--- 0: 1 ---"->PrintLine();
 
 					# GET and HEAD request
 					if(request_verb->Equals("GET") | request_verb->Equals("HEAD")) {
@@ -853,9 +852,7 @@ bundle Web.HTTP.Server {
 					}
 					# POST request
 					else if(request_verb->Equals("POST")) {
-"--- 0: 2 ---"->PrintLine();
 						content_length_str := request_headers->Find("content-length");
-"--- 0: 3: {$content_length_str} ---"->PrintLine();
 						if(content_length_str <> Nil) {
 							content_length := content_length_str->ToInt();
 							if(content_length > 0) {
