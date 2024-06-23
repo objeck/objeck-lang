@@ -1,0 +1,97 @@
+#~
+To run, specify the port
+~#
+
+use Collection, Web.HTTP.Server, API.OpenAI, API.OpenAI.Chat;
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() = 2) {
+			token_id := GetApiKey();
+
+			# TODO: update APIs for 'gpt-4o'
+			assistant := Assistant->LoadByName("hike_assist", token_id);
+			if(assistant <> Nil) {
+				params := Map->New()<String, Compare>;
+				params->Insert("token_id", token_id);
+				params->Insert("assist_id", assistant->GetId());
+
+				RequestHandler->SetParams(params);
+				WebServer->Serve(RequestHandler->New()->GetClass(), args[0]->ToInt(), false);
+			};
+		};
+	}
+
+	function : GetApiKey() ~ String {
+		filename := "openai_api_key.dat";
+		token := System.IO.Filesystem.FileReader->ReadFile(filename);
+		if(token <> Nil) {
+			token := token->Trim();
+			if(<>token->StartsWith("sk-")) {
+				">>> Unable to read token from file: '{$filename}' <<"->ErrorLine();
+				Runtime->Exit(1);
+			};
+
+			return token;
+		};
+
+		return Nil;
+	}
+}
+
+class RequestHandler from HttpRequestHandler {
+	@static_html : static : String;
+	@static_css : static : String;
+	@static_js : static : String;
+	@convo : static : Conversation;
+	@token : static : String;
+	@params : static : Map<String, Compare>;
+
+	function : SetParams(params : Map<String, Compare>) ~ Nil {
+		@params := params;
+	}
+
+	New() {
+		Parent();
+
+		if(@static_html = Nil | @static_css = Nil) {
+			@static_html := System.IO.Filesystem.FileReader->ReadFile("chatbot.html");
+			@static_css := System.IO.Filesystem.FileReader->ReadFile("chatbot.css");
+			@static_js := System.IO.Filesystem.FileReader->ReadFile("chatbot.js");
+			
+			@token := @params->Find("token_id")->As(String);
+			assist := Assistant->Load(@params->Find("assist_id")->As(String), @token);
+			
+			@convo := Conversation->New(assist, false, @token);
+		};
+	}
+
+	method : ProcessGet(request : Request, response : Response) ~ Bool {
+		path := request->GetPath();
+		if(path->Equals("/chatbot.css")) {
+			response->SetCodeContent(200, @static_css);
+		}
+		else if(path->Equals("/chatbot.js")) {
+			response->SetCodeContent(200, @static_js);
+		}
+		else {
+			response->SetCodeContent(200, @static_html);
+		};
+
+		return false;
+	}
+
+	method : ProcessPost(request : Request, response : Response) ~ Bool {
+		query := request->GetContent();
+		if(query <> Nil & query->Size() > 0) {
+			query_contents := contents := @convo->Send(Data.JSON.JsonElement->Encode(query), "user")->GetContents();
+			if(query_contents <> Nil & query_contents->Size() > 0) {
+				query_content := query_contents->Get(0);
+				value := Data.JSON.JsonElement->Encode(query_content->GetSecond()->As(String));
+				response->SetCodeContent(200, "\"{$value}\"");
+			};
+		};
+
+		return false;
+	}
+}

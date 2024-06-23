@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport"
+		content="width=device-width, initial-scale=1.0">
+	<title>ChatBot</title>
+	<link rel="stylesheet" href="chatbot.css">
+</head>
+
+<body>
+	<div class="chatBot">
+		<header>
+			<h2>ChatBot</h2>
+			<span alt="Close"
+				id="cross"
+				onclick="cancel()">X</span>
+		</header>
+		<ul class="chatbox">
+			<li class="chat-incoming chat">
+				<p>Hey! How can I assist you today?</p>
+			</li>
+		</ul>
+		<div class="chat-input">
+			<textarea rows="0" cols="17"
+					placeholder="Enter a message..."></textarea>
+			<button id="sendBTN">Send</button>
+		</div>
+	</div>
+	<script src="chatbot.js" defer></script>
+</body>
+
+</html>
