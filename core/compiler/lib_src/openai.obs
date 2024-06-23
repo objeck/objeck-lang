@@ -2109,6 +2109,25 @@ session->Close();
 		}
 
 		#~
+		Loads or creates an OpenAI file from the local filesystem
+		@param name name lookup
+		@param token API token
+		@return file reference
+		~#
+		function : LoadByName(name : String, token : String) ~ API.OpenAI.Assistant {
+			assistants := ListAssistants(token);
+			if(<>assistants->IsEmpty()) {
+				each(assistant in assistants) {
+					if(name->Equals(assistant->GetName())) {
+						return assistant;
+					};
+				};
+			};
+
+			return Nil;
+		}
+
+		#~
 		Create an assistant with a model and instructions
 		@param model ID of the model to use
 		@param token API token
