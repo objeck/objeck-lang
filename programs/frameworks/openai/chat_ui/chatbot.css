@@ -1,0 +1,136 @@
+/*style.css*/
+
+@import url('https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap');
+
+* {
+box-sizing: border-box;
+margin: 0;
+padding: 0;
+}
+
+body {
+font-family: "Poppins", sans-serif;
+font-weight: 400;
+font-style: normal;
+background-color: #f7f7f7;
+}
+
+.chatBot {
+border: 3px solid #2F8D46;
+border-radius: 10px;
+margin: 50px auto;
+overflow: hidden;
+width: 500px;
+overflow-y: clip;
+height: 600px;
+background: rgb(255, 255, 255) url(gfg-gg-logo.svg);
+background-size: contain;
+box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+background-repeat: no-repeat;
+background-position: center;
+}
+
+header {
+background-color: #2F8D46;
+text-align: center;
+padding: 10px 0;
+border-radius: 7px 7px 0 0;
+}
+
+header h2 {
+color: #fff;
+margin: 0;
+}
+
+.chatbox {
+padding: 15px;
+list-style: none;
+overflow-y: auto;
+height: 400px;
+}
+
+.chatbox li {
+margin-bottom: 10px;
+}
+
+.chat p {
+padding: 10px;
+border-radius: 10px;
+max-width: 70%;
+word-wrap: break-word;
+}
+
+.chat-outgoing p {
+background-color: #162887;
+align-self: flex-end;
+color: #fff;
+}
+
+.chat-incoming p {
+background-color: #eaeaea;
+}
+
+.chat-input {
+padding: 10px;
+border-top: 1px solid #ccc;
+}
+
+.chat-input textarea {
+width: 522px;
+padding: 10px;
+border: 1px solid #ccc;
+border-radius: 7px;
+resize: none;
+outline: none;
+overflow-y: scroll;
+background-color: #dcdcdc85;
+font-size: 16px;
+color: green;
+font-weight: 600;
+margin-top: -10px;
+margin-left: -15px;
+height: 71px;
+}
+
+#cross {
+float: right;
+position: relative;
+top: -38px;
+left: -15px;
+cursor: pointer;
+color: white;
+font-weight: bolder;
+font-size: 28px;
+}
+
+#cross:hover {
+color: red;
+transition: all .5s;
+}
+
+.chatbox .chat p.error {
+color: #ffffff;
+background-color: #ff3737e8;
+}
+
+#sendBTN {
+width: 100%;
+padding: 8px;
+border: 0;
+outline: none;
+font-size: 20px;
+font-weight: 600;
+border-radius: 7px;
+background-color: #2F8D46;
+cursor: pointer;
+color: white;
+margin-top: 12px;
+}
+
+.lastMessage {
+margin-top: 50px;
+font-size: 35px;
+font-weight: 600;
+color: darkgreen;
+margin-left: 550px;
+}
