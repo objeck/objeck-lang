@@ -17,7 +17,7 @@ const createChatLi = (message, className) => {
 const generateResponse = (incomingChatLi) => {
 	const messageElement = incomingChatLi.querySelector("p");
 	
-	url = "http://localhost:1123/completion";
+	url = "http://localhost:1187/completion";
 	const requestOptions = {
         method: "POST",
         body:  userMessage,
