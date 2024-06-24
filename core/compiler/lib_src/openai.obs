@@ -313,10 +313,14 @@ bundle API.OpenAI.Chat {
 
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
-			headers->Insert("OpenAI-Beta", "assistants=v1");
+			headers->Insert("OpenAI-Beta", "assistants=v2");
 			response := HttpsClient->QuickPost(Url->New("https://api.openai.com/v1/chat/completions"), data, "application/json", headers);
 			if(response <> Nil) {
-				# response->GetContent()->ToString()->PrintLine();				
+				if(IsDebug()) {
+					"--- Calling: name='https://api.openai.com/v1/chat/completions' ---"->PrintLine();
+					response->GetContent()->ToString()->PrintLine();				
+				};
+
 				chat_json := JsonParser->TextToElement(response->GetContent()->ToString());
 				if(chat_json = Nil) {
 					"### Error: Unable to parse response ###"->ErrorLine();
@@ -1921,11 +1925,14 @@ session->Close();
 			};
 
 			@files := Vector->New()<API.OpenAI.File>;
-			file_ids := assistant_json->Get("file_ids");
-			each(file_id in file_ids) {
-				file := API.OpenAI.File->Load(file_id->GetString(), token);
-				if(file <> Nil) {
-					@files->AddBack(file);
+			file_ids := assistant_json->Get("attachments");
+			if(file_ids <> Nil) {
+				# TODO: parse attachments
+				each(file_id in file_ids) {
+					file := API.OpenAI.File->Load(file_id->GetString(), token);
+					if(file <> Nil) {
+						@files->AddBack(file);
+					};
 				};
 			};
 		}
@@ -1998,10 +2005,14 @@ session->Close();
 
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$@token}");
-			headers->Insert("OpenAI-Beta", "assistants=v1");
+			headers->Insert("OpenAI-Beta", "assistants=v2");
 			response := HttpsClient->QuickPost(Url->New("https://api.openai.com/v1/assistants/{$@id}/files"), data, "application/json", headers);
 			if(response <> Nil) {
-				# response->GetContent()->ToString()->PrintLine();				
+				if(IsDebug()) {
+					"--- Calling: name='https://api.openai.com/v1/assistants/{$@id}/files' ---"->PrintLine();
+					response->GetContent()->ToString()->PrintLine();
+				};
+
 				file_json := JsonParser->TextToElement(response->GetContent()->ToString());
 				if(file_json = Nil) {
 					"### Error: Unable to parse response ###"->ErrorLine();
@@ -2083,10 +2094,14 @@ session->Close();
 
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
-			headers->Insert("OpenAI-Beta", "assistants=v1");
+			headers->Insert("OpenAI-Beta", "assistants=v2");
 			response := HttpsClient->QuickGet(Url->New("https://api.openai.com/v1/assistants"), "application/json", headers);
 			if(response <> Nil) {
-				# response->GetContent()->ToString()->PrintLine();				
+				if(IsDebug()) {
+					"--- Calling: name='https://api.openai.com/v1/assistants' ---"->PrintLine();
+					response->GetContent()->ToString()->PrintLine();
+				};
+
 				assistants_json := JsonParser->TextToElement(response->GetContent()->ToString());
 				if(assistants_json = Nil) {
 					"### Error: Unable to parse response ###"->ErrorLine();
@@ -2234,7 +2249,7 @@ session->Close();
 				each(file in files) {
 					files_json->Add(file->GetId());
 				};
-				create_json->Insert("file_ids", files_json);
+				create_json->Insert("attachments", files_json);
 			};
 			
 			data := builder->PopAll()->ToString()->ToByteArray();
@@ -2244,10 +2259,13 @@ session->Close();
 
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
-			headers->Insert("OpenAI-Beta", "assistants=v1");
+			headers->Insert("OpenAI-Beta", "assistants=v2");
 			response := HttpsClient->QuickPost(Url->New("https://api.openai.com/v1/assistants"), data, "application/json", headers);
 			if(response <> Nil) {
-				# response->GetContent()->ToString()->PrintLine();
+				if(IsDebug()) {
+					"--- Calling: name='https://api.openai.com/v1/assistants' ---"->PrintLine();
+					response->GetContent()->ToString()->PrintLine();
+				};
 
 				assistant_json := JsonParser->TextToElement(response->GetContent()->ToString());
 				if(assistant_json = Nil) {
@@ -2277,10 +2295,14 @@ session->Close();
 
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
-			headers->Insert("OpenAI-Beta", "assistants=v1");
+			headers->Insert("OpenAI-Beta", "assistants=v2");
 			response := HttpsClient->QuickGet(Url->New("https://api.openai.com/v1/assistants/{$id}"), "application/json", headers);
 			if(response <> Nil) {
-				# response->GetContent()->ToString()->PrintLine();				
+				if(IsDebug()) {
+					"--- Calling: name='https://api.openai.com/v1/assistants/{$id}' ---"->PrintLine();
+					response->GetContent()->ToString()->PrintLine();
+				};
+
 				assistant_json := JsonParser->TextToElement(response->GetContent()->ToString());
 				if(assistant_json = Nil) {
 					"### Error: Unable to parse response ###"->ErrorLine();
@@ -2310,10 +2332,14 @@ session->Close();
 
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
-			headers->Insert("OpenAI-Beta", "assistants=v1");
+			headers->Insert("OpenAI-Beta", "assistants=v2");
 			response := HttpsClient->QuickDelete(Url->New("https://api.openai.com/v1/assistants/{$id}"), "application/json", headers);
-			
 			if(response <> Nil) {
+				if(IsDebug()) {
+					"--- Calling: name='https://api.openai.com/v1/assistants/{$id}' ---"->PrintLine();
+					response->GetContent()->ToString()->PrintLine();
+				};
+
 				file_json := JsonParser->TextToElement(response->GetContent()->ToString());
 				if(file_json = Nil) {
 					return false;
@@ -2401,10 +2427,14 @@ session->Close();
 
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
-			headers->Insert("OpenAI-Beta", "assistants=v1");
+			headers->Insert("OpenAI-Beta", "assistants=v2");
 			response := HttpsClient->QuickPost(Url->New("https://api.openai.com/v1/threads"), ""->ToByteArray(), "application/json", headers);
 			if(response <> Nil) {
-				# response->GetContent()->ToString()->PrintLine();				
+				if(IsDebug()) {
+					"--- Calling: name='https://api.openai.com/v1/threads' ---"->PrintLine();
+					response->GetContent()->ToString()->PrintLine();
+				};
+
 				thread_json := JsonParser->TextToElement(response->GetContent()->ToString());
 				if(thread_json = Nil) {
 					"### Error: Unable to parse thread response ###"->ErrorLine();
@@ -2432,10 +2462,14 @@ session->Close();
 		function : Load(id : String, token : String) ~ API.OpenAI.Thread {
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
-			headers->Insert("OpenAI-Beta", "assistants=v1");
+			headers->Insert("OpenAI-Beta", "assistants=v2");
 			response := HttpsClient->QuickGet(Url->New("https://api.openai.com/v1/threads/{$id}"), "application/json", headers);
 			if(response <> Nil) {
-				# response->GetContent()->ToString()->PrintLine();				
+				if(IsDebug()) {
+					"--- Calling: 'https://api.openai.com/v1/threads/{$id}' ---"->PrintLine();
+					response->GetContent()->ToString()->PrintLine();
+				};
+
 				thread_json := JsonParser->TextToElement(response->GetContent()->ToString());
 				if(thread_json = Nil) {
 					"### Error: Unable to parse thread response ###"->ErrorLine();
@@ -2466,10 +2500,14 @@ session->Close();
 
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
-			headers->Insert("OpenAI-Beta", "assistants=v1");
+			headers->Insert("OpenAI-Beta", "assistants=v2");
 			response := HttpsClient->QuickDelete(Url->New("https://api.openai.com/v1/threads/{$id}"), "application/json", headers);
-			
 			if(response <> Nil) {
+				if(IsDebug()) {
+					"--- Calling: 'https://api.openai.com/v1/threads/{$id}' ---"->PrintLine();
+					response->GetContent()->ToString()->PrintLine();
+				};
+
 				thread_json := JsonParser->TextToElement(response->GetContent()->ToString());
 				if(thread_json = Nil) {
 					return false;
@@ -2532,6 +2570,9 @@ session->Close();
 		New : private(message_json : JsonElement, token : String) {
 			Parent();
 
+# "--- Message ---"->PrintLine();
+# message_json->ToString()->PrintLine();
+
 			@id := message_json->Get("id")->GetString();
 			@created_at := message_json->Get("created_at")->GetInt();
 			@object := message_json->Get("object")->GetString();
@@ -2547,11 +2588,14 @@ session->Close();
 			};
 
 			@files := Vector->New()<API.OpenAI.File>;
-			file_ids := message_json->Get("file_ids");
-			each(file_id in file_ids) {
-				file := API.OpenAI.File->Load(file_id->GetString(), token);
-				if(file <> Nil) {
-					@files->AddBack(file);
+			file_ids := message_json->Get("attachments");
+			# TODO: parse correctly
+			if(file_ids <> Nil & file_ids->Size() > 0) {
+				each(file_id in file_ids) {
+					file := API.OpenAI.File->Load(file_id->GetString(), token);
+					if(file <> Nil) {
+						@files->AddBack(file);
+					};
 				};
 			};
 		}
@@ -2674,7 +2718,7 @@ session->Close();
 				each(file in files) {
 					files_json->Add(file->GetId());
 				};
-				message_json->Insert("file_ids", files_json);
+				message_json->Insert("attachments", files_json);
 			};
 
 			data := message_json->ToString()->ToByteArray();
@@ -2683,10 +2727,14 @@ session->Close();
 			thread_id := thread->GetId();
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
-			headers->Insert("OpenAI-Beta", "assistants=v1");
+			headers->Insert("OpenAI-Beta", "assistants=v2");
 			response := HttpsClient->QuickPost(Url->New("https://api.openai.com/v1/threads/{$thread_id}/messages"), data, "application/json", headers);
 			if(response <> Nil) {
-				# response->GetContent()->ToString()->PrintLine();
+				if(IsDebug()) {
+					"--- Calling: 'https://api.openai.com/v1/threads/{$thread_id}/messages' ---"->PrintLine();
+					response->GetContent()->ToString()->PrintLine();
+				};
+
 				message_json := JsonParser->TextToElement(response->GetContent()->ToString());
 				if(message_json = Nil) {
 					"### Error: Unable to parse thread response ###"->ErrorLine();
@@ -2716,10 +2764,14 @@ session->Close();
 			thread_id := thread->GetId();
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
-			headers->Insert("OpenAI-Beta", "assistants=v1");
+			headers->Insert("OpenAI-Beta", "assistants=v2");
 			response := HttpsClient->QuickGet(Url->New("https://api.openai.com/v1/threads/{$thread_id}/messages/{$id}"), "application/json", headers);
 			if(response <> Nil) {
-				# response->GetContent()->ToString()->PrintLine();				
+				if(IsDebug()) {
+					"--- Calling: 'https://api.openai.com/v1/threads/{$thread_id}/messages/{$id}' ---"->PrintLine();
+					response->GetContent()->ToString()->PrintLine();
+				};
+
 				root_json := JsonParser->TextToElement(response->GetContent()->ToString());
 
 				if(root_json = Nil) {
@@ -2762,10 +2814,14 @@ session->Close();
 			thread_id := thread->GetId();
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
-			headers->Insert("OpenAI-Beta", "assistants=v1");
+			headers->Insert("OpenAI-Beta", "assistants=v2");
 			response := HttpsClient->QuickGet(Url->New("https://api.openai.com/v1/threads/{$thread_id}/messages"), "application/json", headers);
 			if(response <> Nil) {
-				# response->GetContent()->ToString()->PrintLine();				
+				if(IsDebug()) {
+					"--- https://api.openai.com/v1/threads/{$thread_id}/messages' ---"->PrintLine();
+					response->GetContent()->ToString()->PrintLine();
+				};
+
 				root_json := JsonParser->TextToElement(response->GetContent()->ToString());
 
 				if(root_json = Nil) {
@@ -2856,6 +2912,11 @@ session->Close();
 		}
 		
 		method: Set(run_json : JsonElement) ~ Nil {
+
+# "--- Run ---"->PrintLine();
+# run_json->ToString()->PrintLine();
+
+
 			@id := run_json->Get("id")->GetString();
 			@created_at := run_json->Get("created_at")->GetInt();
 			@object := run_json->Get("object")->GetString();
@@ -2891,7 +2952,7 @@ session->Close();
 			thread_id := thread->GetId();
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
-			headers->Insert("OpenAI-Beta", "assistants=v1");
+			headers->Insert("OpenAI-Beta", "assistants=v2");
 			response := HttpsClient->QuickPost(Url->New("https://api.openai.com/v1/threads/{$thread_id}/runs"), data, "application/json", headers);
 			if(response <> Nil) {
 				# response->GetContent()->ToString()->PrintLine();				
@@ -2921,10 +2982,14 @@ session->Close();
 		method : public : Refresh(token : String) ~ Bool {
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
-			headers->Insert("OpenAI-Beta", "assistants=v1");
+			headers->Insert("OpenAI-Beta", "assistants=v2");
 			response := HttpsClient->QuickGet(Url->New("https://api.openai.com/v1/threads/{$@thread_id}/runs/{$@id}"), "application/json", headers);
 			if(response <> Nil) {
-				# response->GetContent()->ToString()->PrintLine();				
+				if(IsDebug()) {
+					"--- Calling: 'https://api.openai.com/v1/threads/{$@thread_id}/runs/{$@id}' ---"->PrintLine();
+					response->GetContent()->ToString()->PrintLine();
+				};
+
 				run_json := JsonParser->TextToElement(response->GetContent()->ToString());
 
 				if(run_json = Nil) {
@@ -2979,10 +3044,14 @@ session->Close();
 
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
-			headers->Insert("OpenAI-Beta", "assistants=v1");
+			headers->Insert("OpenAI-Beta", "assistants=v2");
 			response := HttpsClient->QuickPost(Url->New("https://api.openai.com/v1/threads/{$@thread_id}/runs/{$@id}/submit_tool_outputs"), data, "application/json", headers);
 			if(response <> Nil) {
-				# response->GetContent()->ToString()->PrintLine();
+				if(IsDebug()) {
+					"--- Calling: 'https://api.openai.com/v1/threads/{$@thread_id}/runs/{$@id}/submit_tool_outputs' ---"->PrintLine();
+					response->GetContent()->ToString()->PrintLine();
+				};
+
 				run_json := JsonParser->TextToElement(response->GetContent()->ToString());
 
 				if(run_json = Nil) {
@@ -3025,10 +3094,14 @@ session->Close();
 			thread_id := thread->GetId();
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
-			headers->Insert("OpenAI-Beta", "assistants=v1");
+			headers->Insert("OpenAI-Beta", "assistants=v2");
 			response := HttpsClient->QuickGet(Url->New("https://api.openai.com/v1/threads/{$thread_id}/runs/{$id}"), "application/json", headers);
 			if(response <> Nil) {
-				# response->GetContent()->ToString()->PrintLine();				
+				if(IsDebug()) {
+					"--- Calling: 'https://api.openai.com/v1/threads/{$thread_id}/runs/{$id}' ---"->PrintLine();
+					response->GetContent()->ToString()->PrintLine();
+				};
+
 				root_json := JsonParser->TextToElement(response->GetContent()->ToString());
 
 				if(root_json = Nil) {
@@ -3096,6 +3169,10 @@ session->Close();
 	class EndPoint {
 		@last_message : static : String;
 		@api_key : static : String;
+
+		function : IsDebug() ~ Bool {
+			return false;
+		}
 
 		function : SetLastError(last_message : String) ~ Nil {
 			@last_message := last_message;
