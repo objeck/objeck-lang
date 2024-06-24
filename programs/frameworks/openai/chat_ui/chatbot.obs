@@ -10,7 +10,7 @@ class Test {
 			token_id := GetApiKey();
 
 			# TODO: update APIs for 'gpt-4o'
-			assistant := Assistant->LoadByName("hike_assist", token_id);
+			assistant := Assistant->LoadByName(args[1], token_id);
 			if(assistant <> Nil) {
 				params := Map->New()<String, Compare>;
 				params->Insert("token_id", token_id);
@@ -87,7 +87,7 @@ class RequestHandler from HttpRequestHandler {
 			query_contents := contents := @convo->Send(Data.JSON.JsonElement->Encode(query), "user")->GetContents();
 			if(query_contents <> Nil & query_contents->Size() > 0) {
 				query_content := query_contents->Get(0);
-				value := Data.JSON.JsonElement->Encode(query_content->GetSecond()->As(String));
+				value := query_content->GetSecond()->As(String);
 				response->SetCodeContent(200, "\"{$value}\"");
 			};
 		};
