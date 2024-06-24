@@ -31,9 +31,11 @@ const generateResponse = (incomingChatLi) => {
             return res.json();
         })
         .then(data => {
-            messageElement.textContent = data
+            messageElement.textContent = data;
+            chatInput.value = "";
         })
         .catch((error) => {
+        	console.error(error, error.stack);
             messageElement.classList.add("error");
             messageElement.textContent = "Oops! Something went wrong. Please try again!";
         })
@@ -54,7 +56,7 @@ const handleChat = () => {
 		chatbox.appendChild(incomingChatLi);
 		chatbox.scrollTo(0, chatbox.scrollHeight);
 		generateResponse(incomingChatLi);
-	}, 600);
+	}, 900);
 }
 
 sendChatBtn.addEventListener("click", handleChat);
