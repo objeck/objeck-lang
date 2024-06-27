@@ -6187,7 +6187,7 @@ each(i : cities) {
 		
 		#~
 		Returns the current time
-		@param gmt true of time is in GMT, false for system time zone
+		@param gmt true of time is in GMT, false for local time zone
 		@return current time
 		~#
 		function : GetTime(gmt : Bool) ~ Time.Date {
@@ -6407,7 +6407,7 @@ bundle System.Time {
 
 		#~
 		Constructor 
-		@param gmt true of time is in GMT, false for system time zone
+		@param gmt true of time is in GMT, false for local time zone
 		~#
 		New(gmt : Bool) {
 			Parent();
@@ -6422,6 +6422,7 @@ bundle System.Time {
 		#~
 		Constructor, set time using Unix time
 		@param unix_time number of seconds elapsed since 00:00 hours, Jan 1, 1970 UTC
+		@param gmt true of time is in GMT, false for local time zone
 		~#
 		New(unix_time : Int, gmt : Bool) {
 			Parent();
@@ -6438,7 +6439,7 @@ bundle System.Time {
 		@param day day of month
 		@param month day of year
 		@param year year
-		@param gmt true of time is in GMT, false for system time zone
+		@param gmt true of time is in GMT, false for local time zone
 		~#
 		New(day : Int, month : Int, year : Int, gmt : Bool) {
 			Parent();
@@ -6453,7 +6454,7 @@ bundle System.Time {
 		@param hours hours
 		@param mins minutes
 		@param secs seconds
-		@param gmt true of time is in GMT, false for system time zone
+		@param gmt true of time is in GMT, false for local time zone
 		~#
 		New(day : Int, month : Int, year : Int, hours : Int, mins : Int, secs : Int, gmt : Bool) {
 			Parent();
