@@ -317,7 +317,7 @@ bundle API.OpenAI.Chat {
 			response := HttpsClient->QuickPost(Url->New("https://api.openai.com/v1/chat/completions"), data, "application/json", headers);
 			if(response <> Nil) {
 				if(IsDebug()) {
-					"--- Calling: name='https://api.openai.com/v1/chat/completions' ---"->PrintLine();
+					"--- Called: name='https://api.openai.com/v1/chat/completions' ---"->PrintLine();
 					response->GetContent()->ToString()->PrintLine();				
 				};
 
@@ -1520,6 +1520,90 @@ bundle API.OpenAI {
 		}
 	}
 
+		#~
+	OpenAI vector store support
+
+```
+# TODO
+```	
+	~#
+	class VectorStore from EndPoint {
+		@id : String;
+		@object : String;
+		@created_at : Int;
+		@name : String;
+		@bytes : Int;
+		
+		New(file_json : JsonElement, token : String) {
+			Parent();
+
+			@id := file_json->Get("id")->GetString();
+			@object := file_json->Get("object")->GetString();
+			@created_at := file_json->Get("created_at")->GetInt();
+			@name := file_json->Get("created_at")->GetString();
+			@bytes := file_json->Get("bytes")->GetInt();
+		}
+
+		#~
+		Get object instance API ID
+		@return instance ID
+		~#
+		method : public : GetId() ~ String {
+			return @id;
+		}
+
+		#~
+		Get the object type
+		@return object type
+		~#
+		method : public : GetObject() ~ String {
+			return @object;
+		}
+
+		#~
+		Get the size of the file
+		@return size of the file
+		~#
+		method : public : GetBytes() ~ Int {
+			return @bytes;
+		}
+
+		#~
+		Unix timestamp (in seconds) of when the object instance was created
+		@return time with the object instance was created
+		~#
+		method : public : GetCreatedAt() ~ Int {
+			return @created_at;
+		}
+
+		#~
+		Get the name of the vector store
+		@return name of the vector store
+		~#
+		method : public : GetName() ~ String {
+			return @name;
+		}
+
+		#~
+		String representation of the object
+		@return string representation
+		~#
+		method : public : ToString() ~ String {
+			return "[id='{$@id}', object='{$@object}', bytes={$@bytes}, created_at={$@created_at}, name='{$@name}']"; 
+		}
+
+		#~
+		Upload a file that can be used across various endpoints
+		@param name file object name
+		@param content file content
+		@param token API token
+		@return string representation
+		~#
+		function : Create(name : String, content : Byte[], token : String) ~ VectorStore {
+			return Nil;
+		}
+	}
+
 	#~
 	OpenAI file support
 
@@ -1891,7 +1975,7 @@ session->Close();
 		@created_at : Int;
 
 		@tools : Vector<String>;
-		@files : Vector<API.OpenAI.File>;
+		@vector_stores : Vector<String>;
 		@token : String;
 
 		New : private(assistant_json : JsonElement, token : String) {
@@ -1906,33 +1990,30 @@ session->Close();
 			@instructions := assistant_json->Get("instructions")->GetString();
 			@token := token;
 
+			# tools
+			# TODO: fix https://platform.openai.com/docs/assistants/migration/what-has-changed
 			@tools := Vector->New()<String>;
 			tools := assistant_json->Get("tools");
 			each(tool in tools) {
 				tool_desc := tool->Get("type")->GetString();
 				if(tool_desc->Equals("function")) {
 					func_json := tool->Get("function");
-					if(	@funcs = Nil) {
+					if(@funcs = Nil) {
 						@funcs := Vector->New()<FunctionType>;
 					};
 
 					func := FunctionType->New(func_json);
-					# func->ToString()->PrintLine();					
 					@funcs->AddBack(func);
 				}
 
 				@tools->AddBack(tool_desc);
 			};
 
-			@files := Vector->New()<API.OpenAI.File>;
-			file_ids := assistant_json->Get("attachments");
-			if(file_ids <> Nil) {
-				# TODO: parse attachments
-				each(file_id in file_ids) {
-					file := API.OpenAI.File->Load(file_id->GetString(), token);
-					if(file <> Nil) {
-						@files->AddBack(file);
-					};
+			@vector_stores := Vector->New()<String>;
+			vector_store_ids_json := assistant_json->FindElements("tool_resources/file_search/vector_store_ids");
+			if(vector_store_ids_json <> Nil) {
+				each(vector_store_id_json in vector_store_ids_json) {
+					@vector_stores->AddBack(vector_store_id_json->GetString());
 				};
 			};
 		}
@@ -1978,6 +2059,14 @@ session->Close();
 		}
 
 		#~
+		List of vector stores associated with the assistant
+		@return vector stores associated with the assistant
+		~#
+		method : public : GetVectorStores() ~ Vector<String> {
+			return @vector_stores;
+		}
+
+		#~
 		Description of the assistant
 		@return description of the assistant
 		~#
@@ -2009,7 +2098,7 @@ session->Close();
 			response := HttpsClient->QuickPost(Url->New("https://api.openai.com/v1/assistants/{$@id}/files"), data, "application/json", headers);
 			if(response <> Nil) {
 				if(IsDebug()) {
-					"--- Calling: name='https://api.openai.com/v1/assistants/{$@id}/files' ---"->PrintLine();
+					"--- Called: name='https://api.openai.com/v1/assistants/{$@id}/files' ---"->PrintLine();
 					response->GetContent()->ToString()->PrintLine();
 				};
 
@@ -2069,13 +2158,13 @@ session->Close();
 				};
 			};
 
-			buffer += "]\nfiles: [";
-			for(i := 0; i < @files->Size(); i +=1 ;) {
+			buffer += "]\nvector_stores: [";
+			for(i := 0; i < @vector_stores->Size(); i +=1 ;) {
 				buffer += i;
 				buffer += ": ";
-				buffer += @files->Get(i)->ToString();
+				buffer += @vector_stores->Get(i)->ToString();
 								
-				if(i + 1 < @files->Size()) {
+				if(i + 1 < @vector_stores->Size()) {
 					buffer += "\n\t";
 				};
 			};
@@ -2098,7 +2187,7 @@ session->Close();
 			response := HttpsClient->QuickGet(Url->New("https://api.openai.com/v1/assistants"), "application/json", headers);
 			if(response <> Nil) {
 				if(IsDebug()) {
-					"--- Calling: name='https://api.openai.com/v1/assistants' ---"->PrintLine();
+					"--- Called: name='https://api.openai.com/v1/assistants' ---"->PrintLine();
 					response->GetContent()->ToString()->PrintLine();
 				};
 
@@ -2217,6 +2306,7 @@ session->Close();
 			};
 
 			# tools
+			# TODO: fix https://platform.openai.com/docs/assistants/migration/what-has-changed
 			if((tools <> Nil & <>tools->IsEmpty()) | (funcs <> Nil & <>funcs->IsEmpty())) {
 				tools_json := JsonElement->New(JsonElement->JsonType->ARRAY);
 
@@ -2245,17 +2335,32 @@ session->Close();
 
 			# files
 			if(files <> Nil & <>files->IsEmpty()) {
-				files_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+				files_ids_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
 				each(file in files) {
-					files_json->Add(file->GetId());
+					files_ids_array_json->Add(file->GetId());
 				};
-				create_json->Insert("attachments", files_json);
+
+				files_ids_array_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+				files_ids_array_obj_json->Insert("file_ids", files_ids_array_json);
+
+				vector_stores_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+				vector_stores_array_json->Add(files_ids_array_obj_json);
+
+				file_search_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+				file_search_json->Insert("vector_stores", vector_stores_array_json);
+
+				vector_stores_array_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+				vector_stores_array_obj_json->Insert("file_search", file_search_json);
+
+				create_json->Insert("tool_resources", vector_stores_array_obj_json);				
 			};
 			
 			data := builder->PopAll()->ToString()->ToByteArray();
 
-			# data->ToString()->PrintLine();			
-			# "---"->PrintLine();
+			if(IsDebug()) {
+				"--- Prepared ---"->PrintLine();
+				data->ToString()->PrintLine();			
+			};
 
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
@@ -2263,7 +2368,7 @@ session->Close();
 			response := HttpsClient->QuickPost(Url->New("https://api.openai.com/v1/assistants"), data, "application/json", headers);
 			if(response <> Nil) {
 				if(IsDebug()) {
-					"--- Calling: name='https://api.openai.com/v1/assistants' ---"->PrintLine();
+					"--- Called: name='https://api.openai.com/v1/assistants' ---"->PrintLine();
 					response->GetContent()->ToString()->PrintLine();
 				};
 
@@ -2299,7 +2404,7 @@ session->Close();
 			response := HttpsClient->QuickGet(Url->New("https://api.openai.com/v1/assistants/{$id}"), "application/json", headers);
 			if(response <> Nil) {
 				if(IsDebug()) {
-					"--- Calling: name='https://api.openai.com/v1/assistants/{$id}' ---"->PrintLine();
+					"--- Called: name='https://api.openai.com/v1/assistants/{$id}' ---"->PrintLine();
 					response->GetContent()->ToString()->PrintLine();
 				};
 
@@ -2322,6 +2427,22 @@ session->Close();
 		}
 
 		#~
+		Deletes all assistants
+		@param id model ID of the model to use
+		@return true if successful, false otherwise
+		~#
+		function : DeleteAll(token : String) ~ Bool {
+			assists := ListAssistants(token);
+			each(assist in assists) {
+				if(<>assist->Delete(assist->GetId(), token)) {
+					return false;
+				};
+			};
+
+			return true;
+		}
+
+		#~
 		Deletes an assistant with a model and instructions
 		@param id model ID of the model to use
 		@param token API token
@@ -2336,7 +2457,7 @@ session->Close();
 			response := HttpsClient->QuickDelete(Url->New("https://api.openai.com/v1/assistants/{$id}"), "application/json", headers);
 			if(response <> Nil) {
 				if(IsDebug()) {
-					"--- Calling: name='https://api.openai.com/v1/assistants/{$id}' ---"->PrintLine();
+					"--- Called: name='https://api.openai.com/v1/assistants/{$id}' ---"->PrintLine();
 					response->GetContent()->ToString()->PrintLine();
 				};
 
@@ -2431,7 +2552,7 @@ session->Close();
 			response := HttpsClient->QuickPost(Url->New("https://api.openai.com/v1/threads"), ""->ToByteArray(), "application/json", headers);
 			if(response <> Nil) {
 				if(IsDebug()) {
-					"--- Calling: name='https://api.openai.com/v1/threads' ---"->PrintLine();
+					"--- Called: name='https://api.openai.com/v1/threads' ---"->PrintLine();
 					response->GetContent()->ToString()->PrintLine();
 				};
 
@@ -2466,7 +2587,7 @@ session->Close();
 			response := HttpsClient->QuickGet(Url->New("https://api.openai.com/v1/threads/{$id}"), "application/json", headers);
 			if(response <> Nil) {
 				if(IsDebug()) {
-					"--- Calling: 'https://api.openai.com/v1/threads/{$id}' ---"->PrintLine();
+					"--- Called: 'https://api.openai.com/v1/threads/{$id}' ---"->PrintLine();
 					response->GetContent()->ToString()->PrintLine();
 				};
 
@@ -2504,7 +2625,7 @@ session->Close();
 			response := HttpsClient->QuickDelete(Url->New("https://api.openai.com/v1/threads/{$id}"), "application/json", headers);
 			if(response <> Nil) {
 				if(IsDebug()) {
-					"--- Calling: 'https://api.openai.com/v1/threads/{$id}' ---"->PrintLine();
+					"--- Called: 'https://api.openai.com/v1/threads/{$id}' ---"->PrintLine();
 					response->GetContent()->ToString()->PrintLine();
 				};
 
@@ -2731,7 +2852,7 @@ session->Close();
 			response := HttpsClient->QuickPost(Url->New("https://api.openai.com/v1/threads/{$thread_id}/messages"), data, "application/json", headers);
 			if(response <> Nil) {
 				if(IsDebug()) {
-					"--- Calling: 'https://api.openai.com/v1/threads/{$thread_id}/messages' ---"->PrintLine();
+					"--- Called: 'https://api.openai.com/v1/threads/{$thread_id}/messages' ---"->PrintLine();
 					response->GetContent()->ToString()->PrintLine();
 				};
 
@@ -2768,7 +2889,7 @@ session->Close();
 			response := HttpsClient->QuickGet(Url->New("https://api.openai.com/v1/threads/{$thread_id}/messages/{$id}"), "application/json", headers);
 			if(response <> Nil) {
 				if(IsDebug()) {
-					"--- Calling: 'https://api.openai.com/v1/threads/{$thread_id}/messages/{$id}' ---"->PrintLine();
+					"--- Called: 'https://api.openai.com/v1/threads/{$thread_id}/messages/{$id}' ---"->PrintLine();
 					response->GetContent()->ToString()->PrintLine();
 				};
 
@@ -2986,7 +3107,7 @@ session->Close();
 			response := HttpsClient->QuickGet(Url->New("https://api.openai.com/v1/threads/{$@thread_id}/runs/{$@id}"), "application/json", headers);
 			if(response <> Nil) {
 				if(IsDebug()) {
-					"--- Calling: 'https://api.openai.com/v1/threads/{$@thread_id}/runs/{$@id}' ---"->PrintLine();
+					"--- Called: 'https://api.openai.com/v1/threads/{$@thread_id}/runs/{$@id}' ---"->PrintLine();
 					response->GetContent()->ToString()->PrintLine();
 				};
 
@@ -3048,7 +3169,7 @@ session->Close();
 			response := HttpsClient->QuickPost(Url->New("https://api.openai.com/v1/threads/{$@thread_id}/runs/{$@id}/submit_tool_outputs"), data, "application/json", headers);
 			if(response <> Nil) {
 				if(IsDebug()) {
-					"--- Calling: 'https://api.openai.com/v1/threads/{$@thread_id}/runs/{$@id}/submit_tool_outputs' ---"->PrintLine();
+					"--- Called: 'https://api.openai.com/v1/threads/{$@thread_id}/runs/{$@id}/submit_tool_outputs' ---"->PrintLine();
 					response->GetContent()->ToString()->PrintLine();
 				};
 
@@ -3098,7 +3219,7 @@ session->Close();
 			response := HttpsClient->QuickGet(Url->New("https://api.openai.com/v1/threads/{$thread_id}/runs/{$id}"), "application/json", headers);
 			if(response <> Nil) {
 				if(IsDebug()) {
-					"--- Calling: 'https://api.openai.com/v1/threads/{$thread_id}/runs/{$id}' ---"->PrintLine();
+					"--- Called: 'https://api.openai.com/v1/threads/{$thread_id}/runs/{$id}' ---"->PrintLine();
 					response->GetContent()->ToString()->PrintLine();
 				};
 
@@ -3171,7 +3292,7 @@ session->Close();
 		@api_key : static : String;
 
 		function : IsDebug() ~ Bool {
-			return false;
+			return true;
 		}
 
 		function : SetLastError(last_message : String) ~ Nil {
