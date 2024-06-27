@@ -1999,9 +1999,15 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
       NextToken();
       break;
 
-    case DATE_FROM_UNIX_TIME:
+    case DATE_FROM_UNIX_GMT_TIME:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                               instructions::DATE_FROM_UNIX_TIME);
+                                                               instructions::DATE_FROM_UNIX_GMT_TIME);
+      NextToken();
+      break;
+
+    case DATE_FROM_UNIX_LOCAL_TIME:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::DATE_FROM_UNIX_LOCAL_TIME);
       NextToken();
       break;
 
