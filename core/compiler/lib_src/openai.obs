@@ -1531,17 +1531,26 @@ bundle API.OpenAI {
 		@id : String;
 		@object : String;
 		@created_at : Int;
+		@usage_bytes : Int;
+		@completed_count : Int;
 		@name : String;
-		@bytes : Int;
+		@status : String;
 		
-		New(file_json : JsonElement, token : String) {
+		New(response_json : JsonElement) {
 			Parent();
 
-			@id := file_json->Get("id")->GetString();
-			@object := file_json->Get("object")->GetString();
-			@created_at := file_json->Get("created_at")->GetInt();
-			@name := file_json->Get("created_at")->GetString();
-			@bytes := file_json->Get("bytes")->GetInt();
+			@id := response_json->Get("id")->GetString();
+			@object := response_json->Get("object")->GetString();
+			@name := response_json->Get("name")->GetString();
+			@created_at := response_json->Get("created_at")->GetInt();
+			@usage_bytes := response_json->Get("usage_bytes")->GetInt();
+			@name := response_json->Get("created_at")->GetString();
+			@status := response_json->Get("status")->GetString();
+
+			file_counts_json := response_json->Get("file_counts");
+			if(file_counts_json <> Nil) {
+				@completed_count := file_counts_json->Get("completed")->GetInt();
+			};
 		}
 
 		#~
@@ -1561,11 +1570,11 @@ bundle API.OpenAI {
 		}
 
 		#~
-		Get the size of the file
-		@return size of the file
+		Get the store's usage in bytes
+		@return store's usage in bytes
 		~#
 		method : public : GetBytes() ~ Int {
-			return @bytes;
+			return @usage_bytes;
 		}
 
 		#~
@@ -1577,8 +1586,24 @@ bundle API.OpenAI {
 		}
 
 		#~
-		Get the name of the vector store
-		@return name of the vector store
+		Get the number of files successfully processed
+		@return number of files successfully processed
+		~#
+		method : public : CompletedCount() ~ Int {
+			return @completed_count;
+		}
+
+		#~
+		Get the store's status
+		@return store's status
+		~#
+		method : public : GetStatus() ~ String {
+			return @status;
+		}
+
+		#~
+		Get the name of the store
+		@return name of the store
 		~#
 		method : public : GetName() ~ String {
 			return @name;
@@ -1589,7 +1614,7 @@ bundle API.OpenAI {
 		@return string representation
 		~#
 		method : public : ToString() ~ String {
-			return "[id='{$@id}', object='{$@object}', bytes={$@bytes}, created_at={$@created_at}, name='{$@name}']"; 
+			return "[id='{$@id}', object='{$@object}', created_at={$@created_at}, name='{$@name}', usage_bytes='{$@usage_bytes}', completed_count='{$@completed_count}']"; 
 		}
 
 		#~
@@ -1599,8 +1624,134 @@ bundle API.OpenAI {
 		@param token API token
 		@return string representation
 		~#
-		function : Create(name : String, content : Byte[], token : String) ~ VectorStore {
+		function : Create(name : String, token : String) ~ VectorStore {
+			query_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			query_json->Insert("name", name);
+			data := query_json->ToString()->ToByteArray();
+			
+			if(IsDebug()) {
+				query_json->ToString()->PrintLine();
+			};
+
+			headers := Map->New()<String, String>;
+			headers->Insert("Authorization", "Bearer {$token}");
+			headers->Insert("OpenAI-Beta", "assistants=v2");
+			response := HttpsClient->QuickPost(Url->New("https://api.openai.com/v1/vector_stores"), data, "application/json", headers);
+			if(response <> Nil) {
+				if(IsDebug()) {
+					"--- Called: name='https://api.openai.com/v1/vector_stores' ---"->PrintLine();
+					response->GetContent()->ToString()->PrintLine();
+				};
+
+				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				if(response_json = Nil) {
+					"### Error: Unable to parse thread response ###"->ErrorLine();
+					return Nil;
+				};
+				
+				if(response_json->Has("error")) {
+					error_str := response_json->FindElements("error/message")->GetString();
+					SetLastError(error_str);
+					return Nil;
+				};
+
+				return API.OpenAI.VectorStore->New(response_json);
+			};
+			
+			return Nil;	
+		}
+
+		#~
+		Lists vector stores
+		@param name file object name
+		@param content file content
+		@param token API token
+		@return string representation
+		~#
+		function : ListStores(token : String) ~ Vector<VectorStore> {
+			file : API.OpenAI.File;
+
+			headers := Map->New()<String, String>;
+			headers->Insert("Authorization", "Bearer {$token}");
+			headers->Insert("OpenAI-Beta", "assistants=v2");
+			response := HttpsClient->QuickGet(Url->New("https://api.openai.com/v1/vector_stores"), "application/json", headers);
+			
+			if(response <> Nil) {
+				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				if(response_json = Nil) {
+					return Nil;
+				};
+
+				if(response_json->Has("error")) {
+					error_str := response_json->FindElements("error/message")->GetString();
+					SetLastError(error_str);
+					return Nil;
+				};
+
+				stores := Vector->New()<VectorStore>;
+				
+				stores_json := response_json->Get("data");
+				each(store_json in stores_json) {
+					stores->AddBack(VectorStore->New(store_json));
+				};
+
+				return stores;
+			};
+
 			return Nil;
+		}
+
+		#~
+		Deletes a store
+		@param id store ID
+		@param token API token
+		@return true if successful, false otherwise
+		~#
+		function : Delete(id : String, token : String) ~ Bool {
+			file : API.OpenAI.File;
+
+			headers := Map->New()<String, String>;
+			headers->Insert("Authorization", "Bearer {$token}");
+			headers->Insert("OpenAI-Beta", "assistants=v2");
+			response := HttpsClient->QuickDelete(Url->New("https://api.openai.com/v1/vector_stores/{$id}"), "application/json", headers);
+			
+			if(response <> Nil) {
+				if(IsDebug()) {
+					"--- Called: name='https://api.openai.com/v1/vector_stores/{$id}' ---"->PrintLine();
+					response->GetContent()->ToString()->PrintLine();
+				};
+
+				file_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				if(file_json = Nil) {
+					return false;
+				};
+
+				if(file_json->Has("error")) {
+					error_str := file_json->FindElements("error/message")->GetString();
+					SetLastError(error_str);
+					return false;
+				}
+
+				return file_json->Get("deleted")->GetString()->Equals("true");
+			};
+
+			return false;
+		}
+
+		#~
+		Deletes all stores
+		@param token API token
+		@return true if successful, false otherwise
+		~#
+		function : DeleteAll(token : String) ~ Bool {
+			stores := ListStores(token);
+			each(store in stores) {
+				if(<>store->Delete(store->GetId(), token)) {
+					return false;
+				};
+			};
+
+			return true;
 		}
 	}
 
@@ -2428,7 +2579,7 @@ session->Close();
 
 		#~
 		Deletes all assistants
-		@param id model ID of the model to use
+		@param token API token
 		@return true if successful, false otherwise
 		~#
 		function : DeleteAll(token : String) ~ Bool {
@@ -2444,7 +2595,7 @@ session->Close();
 
 		#~
 		Deletes an assistant with a model and instructions
-		@param id model ID of the model to use
+		@param id model ID
 		@param token API token
 		@return true if successful, false otherwise
 		~#
