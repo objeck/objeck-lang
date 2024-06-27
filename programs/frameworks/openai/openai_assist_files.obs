@@ -2,51 +2,68 @@ use API.OpenAI, Data.JSON.Scheme, Collection;
 
 class OpenAIQueary {
 	function : Main(args : String[]) ~ Nil {
-		token := GetApiKey("openai_api_key.dat");
-
-		Assistant->DeleteAll(token)->PrintLine();
-
-		file_ids := ["file-Xbk81J8NdHkcVPeQLc33lrKC", "file-6r7iumdLUZXhZXmiPxacuG9r"];
-		files := Vector->New()<API.OpenAI.File>;
-		each(i : file_ids) {
-			file_id := file_ids[i];
-			file := API.OpenAI.File->Load(file_id, token);
-			if(file <> Nil) {
-				file->ToString()->PrintLine();
-				files->AddBack(file);
-			};
-		};
-		
-		
-		tools := Vector->New()<String>;
-		tools->AddBack("file_search");
-
-		# create function callback stubs
-		funcs := Vector->New()<FunctionType>;
-
-		params := Set->New()<ParameterType>;
-		params->Insert(ParameterType->New("year", ParameterType->Type->INTEGER, "year the team played"));
-		func := FunctionType->New("get_coach_by_year", params, ["year"], "The name of the head coach for a given year");
-		funcs->AddBack(func);
-
-		params := Set->New()<ParameterType>;
-		params->Insert(ParameterType->New("year", ParameterType->Type->INTEGER, "year the team played"));
-		params->Insert(ParameterType->New("home-or-away", ParameterType->Type->STRING, "indicates rather the game is at home or away"));
-		func := FunctionType->New("get_schedule_by_year", params, ["year", "home-or-away"], "The number of home or away games for a given year");
-		funcs->AddBack(func);
-
-		assistant := Assistant->Create("gpt-4o", "du_1960s_basketball", "du_1960s_basketball", "Late 1960s DU Men's Basketball Expert", 
-				tools, files, funcs, token);
-		assistant->ToString()->PrintLine();
-
-#~
-		assistant := Assistant->Create("gpt-4-turbo", "Outdoor Colorado guide",
-			"Outdoor Colorado guide", "You are expert on Colorado outdoor activities", token);
-		if(assistant = Nil) {
-			">>> Unable create assistant <<"->PrintLine();
+		if(args->Size() < 1) {
+			">>> action verb required <<<"->PrintLine();
 			Runtime->Exit(1);
 		};
-~#
+		action := args[0];
+		token := GetApiKey("openai_api_key.dat");
+
+		if(action->Equals("store-create")) {
+			store := VectorStore->Create("test_0", token);
+			if(store <> Nil) {
+				store->ToString()->PrintLine();
+			};
+		}
+		else if(action->Equals("store-list")) {
+			stores := VectorStore->ListStores(token);
+			each(store in stores) {
+				store->ToString()->PrintLine();
+			};
+		}
+		else if(action->Equals("store-delete") & args->Size() = 2) {
+			id := args[1];
+			VectorStore->Delete(id, token)->PrintLine();
+		}
+		else if(action->Equals("store-delete-all")) {
+			VectorStore->DeleteAll(token)->PrintLine();
+		}
+		else if(action->Equals("assist")) {
+			Assistant->DeleteAll(token)->PrintLine();
+
+			file_ids := ["file-Xbk81J8NdHkcVPeQLc33lrKC", "file-6r7iumdLUZXhZXmiPxacuG9r"];
+			files := Vector->New()<API.OpenAI.File>;
+			each(i : file_ids) {
+				file_id := file_ids[i];
+				file := API.OpenAI.File->Load(file_id, token);
+				if(file <> Nil) {
+					file->ToString()->PrintLine();
+					files->AddBack(file);
+				};
+			};
+			
+			
+			tools := Vector->New()<String>;
+			tools->AddBack("file_search");
+
+			# create function callback stubs
+			funcs := Vector->New()<FunctionType>;
+
+			params := Set->New()<ParameterType>;
+			params->Insert(ParameterType->New("year", ParameterType->Type->INTEGER, "year the team played"));
+			func := FunctionType->New("get_coach_by_year", params, ["year"], "The name of the head coach for a given year");
+			funcs->AddBack(func);
+
+			params := Set->New()<ParameterType>;
+			params->Insert(ParameterType->New("year", ParameterType->Type->INTEGER, "year the team played"));
+			params->Insert(ParameterType->New("home-or-away", ParameterType->Type->STRING, "indicates rather the game is at home or away"));
+			func := FunctionType->New("get_schedule_by_year", params, ["year", "home-or-away"], "The number of home or away games for a given year");
+			funcs->AddBack(func);
+
+			assistant := Assistant->Create("gpt-4o", "du_1960s_basketball", "du_1960s_basketball", "Late 1960s DU Men's Basketball Expert", 
+					tools, files, funcs, token);
+			assistant->ToString()->PrintLine();
+		};
 	}
 
 	function : GetApiKey(filename : String) ~ String {
