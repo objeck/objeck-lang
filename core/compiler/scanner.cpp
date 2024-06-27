@@ -611,6 +611,7 @@ void Scanner::CheckIdentifier(int index)
     case DATE_TIME_ADD_SECS:
     case DATE_TO_UNIX_TIME:
     case DATE_FROM_UNIX_GMT_TIME:
+    case DATE_FROM_UNIX_LOCAL_TIME:
     case GET_PLTFRM:
     case GET_VERSION:
     case GET_SYS_PROP:
