@@ -15,6 +15,23 @@ class OpenAIQueary {
 				store->ToString()->PrintLine();
 			};
 		}
+		else if(action->Equals("store-create-files")) {
+			file_ids := ["file-Xbk81J8NdHkcVPeQLc33lrKC", "file-6r7iumdLUZXhZXmiPxacuG9r"];
+			files := Vector->New()<API.OpenAI.File>;
+			each(i : file_ids) {
+				file_id := file_ids[i];
+				file := API.OpenAI.File->Load(file_id, token);
+				if(file <> Nil) {
+					file->ToString()->PrintLine();
+					files->AddBack(file);
+				};
+			};
+
+			store := VectorStore->Create("test_1", files, token);
+			if(store <> Nil) {
+				store->ToString()->PrintLine();
+			};
+		}
 		else if(action->Equals("store-list")) {
 			stores := VectorStore->ListStores(token);
 			each(store in stores) {
@@ -24,6 +41,14 @@ class OpenAIQueary {
 		else if(action->Equals("store-delete") & args->Size() = 2) {
 			id := args[1];
 			VectorStore->Delete(id, token)->PrintLine();
+		}
+		else if(action->Equals("store-load") & args->Size() = 2) {
+			id := args[1];
+			store := VectorStore->Load(id, token);
+			unix_time := store->GetLastActiveAt();
+unix_time->PrintLine();			
+			time := System.Time.Date->New(unix_time);
+			time->ToString()->PrintLine();
 		}
 		else if(action->Equals("store-delete-all")) {
 			VectorStore->DeleteAll(token)->PrintLine();

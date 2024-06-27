@@ -6423,9 +6423,14 @@ bundle System.Time {
 		Constructor, set time using Unix time
 		@param unix_time number of seconds elapsed since 00:00 hours, Jan 1, 1970 UTC
 		~#
-		New(unix_time : Int) {
+		New(unix_time : Int, gmt : Bool) {
 			Parent();
-			DATE_FROM_UNIX_TIME;
+			if(gmt) {
+				DATE_FROM_UNIX_GMT_TIME;
+			}
+			else {
+				DATE_FROM_UNIX_LOCAL_TIME;
+			};
 		}
 		
 		#~

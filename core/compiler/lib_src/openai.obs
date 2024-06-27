@@ -1531,6 +1531,7 @@ bundle API.OpenAI {
 		@id : String;
 		@object : String;
 		@created_at : Int;
+		@last_active_at : Int;
 		@usage_bytes : Int;
 		@completed_count : Int;
 		@name : String;
@@ -1543,8 +1544,8 @@ bundle API.OpenAI {
 			@object := response_json->Get("object")->GetString();
 			@name := response_json->Get("name")->GetString();
 			@created_at := response_json->Get("created_at")->GetInt();
+			@last_active_at := response_json->Get("last_active_at")->GetInt();
 			@usage_bytes := response_json->Get("usage_bytes")->GetInt();
-			@name := response_json->Get("created_at")->GetString();
 			@status := response_json->Get("status")->GetString();
 
 			file_counts_json := response_json->Get("file_counts");
@@ -1586,6 +1587,14 @@ bundle API.OpenAI {
 		}
 
 		#~
+		Unix timestamp (in seconds) of when the object instance was last active
+		@return time with the object instance was last active
+		~#
+		method : public : GetLastActiveAt() ~ Int {
+			return @last_active_at;
+		}
+
+		#~
 		Get the number of files successfully processed
 		@return number of files successfully processed
 		~#
@@ -1618,16 +1627,36 @@ bundle API.OpenAI {
 		}
 
 		#~
-		Upload a file that can be used across various endpoints
-		@param name file object name
-		@param content file content
+		Create a vector store
+		@param name name of the store
 		@param token API token
 		@return string representation
 		~#
 		function : Create(name : String, token : String) ~ VectorStore {
+			return Create(name, Nil, token);
+		}
+
+		#~
+		Create a vector store
+		@param name name of the store
+		@param files to add to the store
+		@param token API token
+		@return string representation
+		~#
+		function : Create(name : String, files : Vector<API.OpenAI.File>, token : String) ~ VectorStore {
 			query_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 			query_json->Insert("name", name);
 			data := query_json->ToString()->ToByteArray();
+
+			if(files <> Nil) {
+				file_ids_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+
+				each(file in files) {
+					file_ids_json->Add(file->GetId());
+				};
+
+				query_json->Insert("file_ids", file_ids_json);				
+			};
 			
 			if(IsDebug()) {
 				query_json->ToString()->PrintLine();
@@ -1666,7 +1695,7 @@ bundle API.OpenAI {
 		@param name file object name
 		@param content file content
 		@param token API token
-		@return string representation
+		@return list of vector stores 
 		~#
 		function : ListStores(token : String) ~ Vector<VectorStore> {
 			file : API.OpenAI.File;
@@ -1752,6 +1781,37 @@ bundle API.OpenAI {
 			};
 
 			return true;
+		}
+
+		#~
+		Load a store
+		@param store_id vector store ID
+		@param token API token
+		@return vector store
+		~#
+		function : Load(store_id : String, token : String) ~ API.OpenAI.VectorStore {
+			tuning : API.OpenAI.Tuning.Tuner;
+
+			headers := Map->New()<String, String>;
+			headers->Insert("Authorization", "Bearer {$token}");
+			headers->Insert("OpenAI-Beta", "assistants=v2");
+			response := HttpsClient->QuickGet(Url->New("https://api.openai.com/v1/vector_stores/{$store_id}"), "application/json", headers);
+			
+			if(response <> Nil) {
+				if(IsDebug()) {
+					"--- Called: name='https://api.openai.com/v1/vector_stores/{$store_id}' ---"->PrintLine();
+					response->GetContent()->ToString()->PrintLine();
+				};
+
+				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				if(response_json = Nil) {
+					return Nil;
+				};
+
+				return API.OpenAI.VectorStore->New(response_json);
+			};
+
+			return Nil;
 		}
 	}
 
@@ -1954,8 +2014,6 @@ session->Close();
 		@return file reference
 		~#
 		function : Load(id : String, token : String) ~ API.OpenAI.File {
-			file : API.OpenAI.File;
-
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
 			response := HttpsClient->QuickGet(Url->New("https://api.openai.com/v1/files/{$id}"), "application/json", headers);
@@ -1972,10 +2030,10 @@ session->Close();
 					return Nil;
 				}
 
-				file := API.OpenAI.File->New(file_json, token);
+				return API.OpenAI.File->New(file_json, token);
 			};
 
-			return file;
+			return Nil;
 		}
 
 		#~

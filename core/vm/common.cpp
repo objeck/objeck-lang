@@ -2074,8 +2074,11 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
   case DATE_TO_UNIX_TIME:
     return DateToUnixTime(program, inst, op_stack, stack_pos, frame);
 
-  case DATE_FROM_UNIX_TIME:
+  case DATE_FROM_UNIX_GMT_TIME:
     return DateFromUnixTime(program, inst, op_stack, stack_pos, frame);
+
+  case DATE_FROM_UNIX_LOCAL_TIME:
+    return DateFromLocalTime(program, inst, op_stack, stack_pos, frame);
 
   case TIMER_START:
     return TimerStart(program, inst, op_stack, stack_pos, frame);
