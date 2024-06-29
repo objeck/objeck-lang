@@ -1851,11 +1851,6 @@ if(store <> Nil) {
 				query_json->ToString()->PrintLine();
 			};
 
-			if(IsDebug()) {
-				"--- Prepared ---"->PrintLine();
-				query_json->ToString()->PrintLine();			
-			};
-
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
 			headers->Insert("OpenAI-Beta", "assistants=v2");
@@ -1921,9 +1916,9 @@ if(store <> Nil) {
 					SetLastError(error_str);
 					return Nil;
 				};
-				
+
 				stores := Vector->New()<VectorStore>;
-				
+
 				stores_json := response_json->Get("data");
 				each(store_json in stores_json) {
 					usage_bytes := store_json->Get("usage_bytes")->GetInt();

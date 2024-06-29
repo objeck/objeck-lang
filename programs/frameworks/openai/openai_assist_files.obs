@@ -38,7 +38,7 @@ class OpenAIQueary {
 			VectorStoreFile->Create(file, store, token)->ToString()->PrintLine();
 		}
 		else if(action->Equals("store-list")) {
-			stores := VectorStore->ListStores(true, token);
+			stores := VectorStore->ListStores(token);
 			count := stores->Size();
 			"vector-store-count = {$count}"->PrintLine();
 
