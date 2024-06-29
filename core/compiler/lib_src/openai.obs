@@ -1650,7 +1650,7 @@ bundle API.OpenAI {
 
 		#~
 		Lists vector store files
-		@param vector store that the files belong to
+		@param store vector store that the files belong to
 		@param token API token
 		@return list of vector store files 
 		~#
@@ -1692,6 +1692,82 @@ bundle API.OpenAI {
 			};
 
 			return Nil;
+		}
+
+		#~
+		Loads vector store file
+		@param store_file_id vector store file ID
+		@param store vector store that the files belong to
+		@param token API token
+		@return store file
+		~#
+		function : Load(store_file_id : String, store : VectorStore, token : String) ~ VectorStoreFile {
+			store_id := store->GetId();
+
+			headers := Map->New()<String, String>;
+			headers->Insert("Authorization", "Bearer {$token}");
+			headers->Insert("OpenAI-Beta", "assistants=v2");
+			response := HttpsClient->QuickGet(Url->New("https://api.openai.com/v1/vector_stores/{$store_id}/files/{$store_file_id}"), "application/json", headers);
+			
+			if(response <> Nil) {
+				if(IsDebug()) {
+					"--- Called: name='https://api.openai.com/v1/vector_stores/{$store_id}/files/{$store_file_id}' ---"->PrintLine();
+					response->GetContent()->ToString()->PrintLine();
+				};
+
+				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				if(response_json = Nil) {
+					return Nil;
+				};
+
+				if(response_json->Has("error")) {
+					error_str := response_json->FindElements("error/message")->GetString();
+					SetLastError(error_str);
+					return Nil;
+				};
+
+				return VectorStoreFile->New(response_json, token);
+			};
+
+			return Nil;
+		}
+
+		#~
+		Deletes a file store
+		@param store_file_id vector store file ID
+		@param store vector store that the files belong to
+		@param token API token
+		@return true if successful, false otherwise
+		~#
+		function : Delete(store_file_id : String, store : VectorStore, token : String) ~ Bool {
+			store_id := store->GetId();
+
+			headers := Map->New()<String, String>;
+			headers->Insert("Authorization", "Bearer {$token}");
+			headers->Insert("OpenAI-Beta", "assistants=v2");
+			response := HttpsClient->QuickDelete(Url->New("https://api.openai.com/v1/vector_stores/{$store_id}/files/{$store_file_id}"), "application/json", headers);
+			
+			if(response <> Nil) {
+				if(IsDebug()) {
+					"--- Called: name='https://api.openai.com/v1/vector_stores/{$store_id}/files/{$store_file_id}' ---"->PrintLine();
+					response->GetContent()->ToString()->PrintLine();
+				};
+
+				file_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				if(file_json = Nil) {
+					return false;
+				};
+
+				if(file_json->Has("error")) {
+					error_str := file_json->FindElements("error/message")->GetString();
+					SetLastError(error_str);
+					return false;
+				}
+
+				return file_json->Get("deleted")->GetString()->Equals("true");
+			};
+
+			return false;
 		}
 	}
 
@@ -1881,6 +1957,7 @@ if(store <> Nil) {
 
 		#~
 		Lists vector stores
+		@param token API token
 		@return list of vector stores 
 		~#
 		function : ListStores(token : String) ~ Vector<VectorStore> {
@@ -1890,6 +1967,7 @@ if(store <> Nil) {
 		#~
 		Lists vector stores
 		@param non_empties if true, non empty stores are include, otherwise excluded
+		@param token API token
 		@return list of vector stores 
 		~#
 		function : ListStores(non_empties : Bool, token : String) ~ Vector<VectorStore> {
