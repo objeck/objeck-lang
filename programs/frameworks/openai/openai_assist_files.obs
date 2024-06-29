@@ -32,10 +32,28 @@ class OpenAIQueary {
 				store->ToString()->PrintLine();
 			};
 		}
+		else if(action->Equals("store-file-create-files")) {
+			store := API.OpenAI.VectorStore->Load("vs_1NTV314SWvADFM2jGI7h4lhH", token);
+			file := API.OpenAI.File->Load("file-Xbk81J8NdHkcVPeQLc33lrKC", token);
+			VectorStoreFile->Create(file, store, token)->ToString()->PrintLine();
+		}
 		else if(action->Equals("store-list")) {
-			stores := VectorStore->ListStores(token);
+			stores := VectorStore->ListStores(true, token);
+			count := stores->Size();
+			"vector-store-count = {$count}"->PrintLine();
+
 			each(store in stores) {
 				store->ToString()->PrintLine();
+			};
+		}
+		else if(action->Equals("store-file-list") & args->Size() = 2) {
+			store_id := args[1];
+			store := VectorStore->Load(store_id, token);
+			if(store <> Nil) {
+				store_files := VectorStoreFile->ListStoreFiles(store, token);
+				each(store_file in store_files) {
+					store_file->ToString()->PrintLine();
+				};
 			};
 		}
 		else if(action->Equals("store-delete") & args->Size() = 2) {
@@ -45,9 +63,7 @@ class OpenAIQueary {
 		else if(action->Equals("store-load") & args->Size() = 2) {
 			id := args[1];
 			store := VectorStore->Load(id, token);
-			unix_time := store->GetLastActiveAt();
-unix_time->PrintLine();			
-			time := System.Time.Date->New(unix_time);
+			time := System.Time.Date->New(store->GetLastActiveAt(), false);
 			time->ToString()->PrintLine();
 		}
 		else if(action->Equals("store-delete-all")) {
