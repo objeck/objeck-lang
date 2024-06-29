@@ -37,6 +37,20 @@ class OpenAIQueary {
 			file := API.OpenAI.File->Load("file-Xbk81J8NdHkcVPeQLc33lrKC", token);
 			VectorStoreFile->Create(file, store, token)->ToString()->PrintLine();
 		}
+		else if(action->Equals("store-file-load") & args->Size() = 3) {
+			store_file_id := args[1];
+			store_id := args[2];
+
+			store := API.OpenAI.VectorStore->Load(store_id, token);
+			API.OpenAI.VectorStoreFile->Load(store_file_id, store, token)->ToString()->PrintLine();
+		}
+		else if(action->Equals("store-file-delete") & args->Size() = 3) {
+			store_file_id := args[1];
+			store_id := args[2];
+			
+			store := API.OpenAI.VectorStore->Load(store_id, token);
+			API.OpenAI.VectorStoreFile->Delete(store_file_id, store, token)->ToString()->PrintLine();
+		}
 		else if(action->Equals("store-list")) {
 			stores := VectorStore->ListStores(token);
 			count := stores->Size();
