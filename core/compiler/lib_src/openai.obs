@@ -1524,7 +1524,11 @@ bundle API.OpenAI {
 	Vector store files represent files inside a vector store
 
 ```
-
+store := API.OpenAI.VectorStore->Load(store_id, token);
+file := API.OpenAI.File->Load(file_id, token);
+if(store <> Nil & file <> Nil) {
+  VectorStoreFile->Create(file, store, token)->ToString()->PrintLine();
+};
 ```	
 	~#
 	class VectorStoreFile from EndPoint {

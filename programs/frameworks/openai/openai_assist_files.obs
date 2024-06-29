@@ -33,9 +33,14 @@ class OpenAIQueary {
 			};
 		}
 		else if(action->Equals("store-file-create-files")) {
-			store := API.OpenAI.VectorStore->Load("vs_1NTV314SWvADFM2jGI7h4lhH", token);
-			file := API.OpenAI.File->Load("file-Xbk81J8NdHkcVPeQLc33lrKC", token);
-			VectorStoreFile->Create(file, store, token)->ToString()->PrintLine();
+			store_id := args[2];
+			file_id := args[1];
+			
+			store := API.OpenAI.VectorStore->Load(store_id, token);
+			file := API.OpenAI.File->Load(file_id, token);
+			if(store <> Nil & file <> Nil) {
+				VectorStoreFile->Create(file, store, token)->ToString()->PrintLine();
+			};
 		}
 		else if(action->Equals("store-file-load") & args->Size() = 3) {
 			store_file_id := args[1];
