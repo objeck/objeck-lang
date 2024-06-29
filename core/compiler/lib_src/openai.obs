@@ -1520,11 +1520,200 @@ bundle API.OpenAI {
 		}
 	}
 
+	#~
+	Vector store files represent files inside a vector store
+
+```
+
+```	
+	~#
+	class VectorStoreFile from EndPoint {
+		@id : String;
+		@object : String;
+		@created_at : Int;
+		@usage_bytes : Int;
+		@store : VectorStore;
+		@status : String;
+		
+		New(response_json : JsonElement, token : String) {
+			Parent();
+
+			@id := response_json->Get("id")->GetString();
+			@object := response_json->Get("object")->GetString();
+			@store := VectorStore->Load(response_json->Get("vector_store_id")->GetString(), token);
+			@created_at := response_json->Get("created_at")->GetInt();
+			@usage_bytes := response_json->Get("usage_bytes")->GetInt();
+			@status := response_json->Get("status")->GetString();
+		}
+
 		#~
+		Get object instance API ID
+		@return instance ID
+		~#
+		method : public : GetId() ~ String {
+			return @id;
+		}
+
+		#~
+		Get the object type
+		@return object type
+		~#
+		method : public : GetObject() ~ String {
+			return @object;
+		}
+
+		#~
+		Get the store's usage in bytes
+		@return store's usage in bytes
+		~#
+		method : public : GetBytes() ~ Int {
+			return @usage_bytes;
+		}
+
+		#~
+		Unix timestamp (in seconds) of when the object instance was created
+		@return time with the object instance was created
+		~#
+		method : public : GetCreatedAt() ~ Int {
+			return @created_at;
+		}
+
+		#~
+		Get the store's status
+		@return store's status
+		~#
+		method : public : GetStatus() ~ String {
+			return @status;
+		}
+
+		#~
+		Get vector store
+		@return vector store
+		~#
+		method : public : GetVectorStore() ~ VectorStore {
+			return @store;
+		}
+
+		#~
+		String representation of the object
+		@return string representation
+		~#
+		method : public : ToString() ~ String {
+			return "[id='{$@id}', object='{$@object}', created_at={$@created_at}, store='{$@store}', usage_bytes='{$@usage_bytes}'']"; 
+		}
+
+		#~
+		Create a vector store
+		@param file file to add to store
+		@param store store to add file to
+		@param token API token
+		@return vector store file
+		~#
+		function : Create(file : API.OpenAI.File, store : VectorStore, token : String) ~ VectorStoreFile {
+			query_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			query_json->Insert("file_id", file->GetId());
+			data := query_json->ToString()->ToByteArray();
+
+			if(IsDebug()) {
+				query_json->ToString()->PrintLine();
+			};
+
+			store_id := store->GetId()
+
+			headers := Map->New()<String, String>;
+			headers->Insert("Authorization", "Bearer {$token}");
+			headers->Insert("OpenAI-Beta", "assistants=v2");
+			response := HttpsClient->QuickPost(Url->New("https://api.openai.com/v1/vector_stores/{$store_id}/files"), data, "application/json", headers);
+			if(response <> Nil) {
+				if(IsDebug()) {
+					"--- Called: name='https://api.openai.com/v1/vector_stores' ---"->PrintLine();
+					response->GetContent()->ToString()->PrintLine();
+				};
+
+				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				if(response_json = Nil) {
+					"### Error: Unable to parse thread response ###"->ErrorLine();
+					return Nil;
+				};
+				
+				if(response_json->Has("error")) {
+					error_str := response_json->FindElements("error/message")->GetString();
+					SetLastError(error_str);
+					return Nil;
+				};
+
+				return API.OpenAI.VectorStoreFile->New(response_json, token);
+			};
+			
+			return Nil;	
+		}
+
+		#~
+		Lists vector store files
+		@param vector store that the files belong to
+		@param token API token
+		@return list of vector store files 
+		~#
+		function : ListStoreFiles(store : VectorStore, token : String) ~ Vector<VectorStoreFile> {
+			file : API.OpenAI.File;
+
+			store_id := store->GetId();
+
+			headers := Map->New()<String, String>;
+			headers->Insert("Authorization", "Bearer {$token}");
+			headers->Insert("OpenAI-Beta", "assistants=v2");
+			response := HttpsClient->QuickGet(Url->New("https://api.openai.com/v1/vector_stores/{$store_id}/files"), "application/json", headers);
+			
+			if(response <> Nil) {
+				if(IsDebug()) {
+					"--- Called: name='https://api.openai.com/v1/vector_stores/{$store_id}/files' ---"->PrintLine();
+					response->GetContent()->ToString()->PrintLine();
+				};
+
+				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				if(response_json = Nil) {
+					return Nil;
+				};
+
+				if(response_json->Has("error")) {
+					error_str := response_json->FindElements("error/message")->GetString();
+					SetLastError(error_str);
+					return Nil;
+				};
+
+				store_files := Vector->New()<VectorStoreFile>;
+				
+				stores_json := response_json->Get("data");
+				each(store_json in stores_json) {
+					store_files->AddBack(VectorStoreFile->New(store_json, token));
+				};
+
+				return store_files;
+			};
+
+			return Nil;
+		}
+	}
+
+	#~
 	OpenAI vector store support
 
 ```
-# TODO
+file_ids := ["file-xxxxxxxxxxxxxxxxxxxxxxxx", "file-yyyyyyyyyyyyyyyyyyyyyyyy", "file-zzzzzzzzzzzzzzzzzzzzzzzz"];
+files := Vector->New()<API.OpenAI.File>;
+each(i : file_ids) {
+  file_id := file_ids[i];
+  file := API.OpenAI.File->Load(file_id, token);
+  if(file <> Nil) {
+  	file->ToString()->PrintLine();
+  	files->AddBack(file);
+  };
+};
+
+store := VectorStore->Create("test_1", files, token);
+if(store <> Nil) {
+  store->ToString()->PrintLine();
+};
 ```	
 	~#
 	class VectorStore from EndPoint {
@@ -1630,7 +1819,7 @@ bundle API.OpenAI {
 		Create a vector store
 		@param name name of the store
 		@param token API token
-		@return string representation
+		@return vector store
 		~#
 		function : Create(name : String, token : String) ~ VectorStore {
 			return Create(name, Nil, token);
@@ -1641,7 +1830,7 @@ bundle API.OpenAI {
 		@param name name of the store
 		@param files to add to the store
 		@param token API token
-		@return string representation
+		@return vector store
 		~#
 		function : Create(name : String, files : Vector<API.OpenAI.File>, token : String) ~ VectorStore {
 			query_json := JsonElement->New(JsonElement->JsonType->OBJECT);
@@ -1660,6 +1849,11 @@ bundle API.OpenAI {
 			
 			if(IsDebug()) {
 				query_json->ToString()->PrintLine();
+			};
+
+			if(IsDebug()) {
+				"--- Prepared ---"->PrintLine();
+				query_json->ToString()->PrintLine();			
 			};
 
 			headers := Map->New()<String, String>;
@@ -1692,12 +1886,18 @@ bundle API.OpenAI {
 
 		#~
 		Lists vector stores
-		@param name file object name
-		@param content file content
-		@param token API token
 		@return list of vector stores 
 		~#
 		function : ListStores(token : String) ~ Vector<VectorStore> {
+			return ListStores(false, token);
+		}
+
+		#~
+		Lists vector stores
+		@param non_empties if true, non empty stores are include, otherwise excluded
+		@return list of vector stores 
+		~#
+		function : ListStores(non_empties : Bool, token : String) ~ Vector<VectorStore> {
 			file : API.OpenAI.File;
 
 			headers := Map->New()<String, String>;
@@ -1706,6 +1906,11 @@ bundle API.OpenAI {
 			response := HttpsClient->QuickGet(Url->New("https://api.openai.com/v1/vector_stores"), "application/json", headers);
 			
 			if(response <> Nil) {
+				if(IsDebug()) {
+					"--- Called: name='https://api.openai.com/v1/vector_stores' ---"->PrintLine();
+					response->GetContent()->ToString()->PrintLine();
+				};
+
 				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
 				if(response_json = Nil) {
 					return Nil;
@@ -1716,12 +1921,18 @@ bundle API.OpenAI {
 					SetLastError(error_str);
 					return Nil;
 				};
-
+				
 				stores := Vector->New()<VectorStore>;
 				
 				stores_json := response_json->Get("data");
 				each(store_json in stores_json) {
-					stores->AddBack(VectorStore->New(store_json));
+					usage_bytes := store_json->Get("usage_bytes")->GetInt();
+					if(non_empties) {
+						stores->AddBack(VectorStore->New(store_json));
+					}
+					else if(usage_bytes > 0) {
+						stores->AddBack(VectorStore->New(store_json));
+					};
 				};
 
 				return stores;
