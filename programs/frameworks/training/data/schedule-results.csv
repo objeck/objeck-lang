@@ -1,0 +1,65 @@
+﻿Year,Date,Type,At-Home,Opponent,Conf,SRS,Win-Loss,Tm,Opp,OT,W,L,Streak,Arena
+1968,"Sat, Dec 2, 1967",REG,,Brigham Young,WAC,8.04,L,78,88,,0,1,L 1,DU Fieldhouse
+1968,"Wed, Dec 13, 1967",REG,@,Wyoming,WAC,5.55,L,75,107,,0,2,L 2,War Memorial Fieldhouse
+1968,"Mon, Dec 18, 1967",REG,@,Tulane,Ind,-3.66,L,80,85,,0,3,L 3,Avron B. Fogelman Arena
+1968,"Wed, Dec 20, 1967",REG,@,Southern Methodist,SWC,-6.73,W,86,81,,1,3,W 1,Moody Coliseum
+1968,"Thu, Dec 21, 1967",REG,@,Texas Tech,SWC,-8.5,W,73,63,,2,3,W 2,Lubbock Municipal Coliseum
+1968,"Sat, Dec 23, 1967",REG,@,Utah,WAC,6.74,L,87,99,,2,4,L 1,Nielsen Field House
+1968,"Mon, Jan 1, 1968",REG,@,New Mexico (10),WAC,10.48,L,76,87,,2,5,L 2,University Arena
+1968,"Sat, Jan 6, 1968",REG,,Wyoming,WAC,5.55,L,96,107,,2,6,L 3,DU Fieldhouse
+1968,"Wed, Jan 10, 1968",REG,@,Colorado State,Ind,-2.98,W,65,59,,3,6,W 1,Moby Arena
+1968,"Sat, Jan 13, 1968",REG,@,Marquette,Ind,11.51,L,57,82,,3,7,L 1,Milwaukee Arena
+1968,"Thu, Jan 18, 1968",REG,,Utah State,Ind,0.62,W,100,80,,4,7,W 1,DU Fieldhouse
+1968,"Sat, Jan 20, 1968",REG,,Seattle,Ind,0.88,W,91,87,,5,7,W 2,DU Fieldhouse
+1968,"Sat, Jan 27, 1968",REG,@,Oklahoma City,Ind,1.74,L,95,104,,5,8,L 1,State Fair Arena
+1968,"Tue, Jan 30, 1968",REG,,Colorado State,Ind,-2.98,L,70,71,,5,9,L 2,DU Fieldhouse
+1968,"Fri, Feb 2, 1968",REG,,Stanford,AAWU,2.81,L,82,84,,5,10,L 3,DU Fieldhouse
+1968,"Sat, Feb 3, 1968",REG,,California,AAWU,3.53,L,82,96,,5,11,L 4,DU Fieldhouse
+1968,"Mon, Feb 12, 1968",REG,,Oklahoma City,Ind,1.74,L,86,100,,5,12,L 5,DU Fieldhouse
+1968,"Wed, Feb 14, 1968",REG,,Air Force,Ind,-9.31,W,86,81,,6,12,W 1,DU Fieldhouse
+1968,"Fri, Feb 23, 1968",REG,@,Air Force,Ind,-9.31,L,89,94,,6,13,L 1,Cadet Gymnasium
+1968,"Sat, Feb 24, 1968",REG,@,Utah State,Ind,0.62,L,96,98,,6,14,L 2,Nelson Fieldhouse
+1968,"Sat, Mar 2, 1968",REG,,New Mexico (7),WAC,10.48,W,70,68,,7,14,W 1,DU Fieldhouse
+1967,"Sat, Dec 3, 1966",REG,,Idaho,Big Sky,-9.48,W,93,77,,1,0,W 1,DU Fieldhouse
+1967,"Fri, Dec 9, 1966",REG,@,Brigham Young (9),WAC,7.49,L,64,87,,1,1,L 1,George Albert Smith Field House
+1967,"Tue, Dec 13, 1966",REG,@,Oklahoma City,Ind,1.05,L,98,103,,1,2,L 2,Fredrickson Fieldhouse
+1967,"Thu, Dec 15, 1966",REG,@,New York University,MCC,-4.17,L,70,76,,1,3,L 3,Alumni Gymnasium
+1967,"Sat, Dec 17, 1966",REG,@,St. Bonaventure,Ind,0.84,W,65,58,,2,3,W 1,Reilly Center
+1967,"Tue, Dec 20, 1966",REG,,Texas Tech,SWC,-5.13,W,76,62,,3,3,W 2,DU Fieldhouse
+1967,"Mon, Jan 2, 1967",REG,@,New Mexico (4),WAC,10.12,L,43,65,,3,4,L 1,University Arena
+1967,"Sat, Jan 7, 1967",REG,@,Wyoming,WAC,0.36,W,75,70,,4,4,W 1,War Memorial Fieldhouse
+1967,"Wed, Jan 11, 1967",REG,@,Colorado State,Ind,2.83,L,52,56,,4,5,L 1,Moby Arena
+1967,"Sat, Jan 14, 1967",REG,,New Mexico (3),WAC,10.12,W,71,66,,5,5,W 1,DU Fieldhouse
+1967,"Sat, Jan 21, 1967",REG,@,Air Force,Ind,-6.12,W,100,80,,6,5,W 2,Cadet Gymnasium
+1967,"Mon, Jan 23, 1967",REG,,Oklahoma City,Ind,1.05,W,115,99,,7,5,W 3,DU Fieldhouse
+1967,"Fri, Feb 3, 1967",REG,@,Stanford,AAWU,2.25,L,58,66,,7,6,L 1,Old Pavilion
+1967,"Sat, Feb 4, 1967",REG,@,California,AAWU,3.88,L,58,63,,7,7,L 2,Oakland–Alameda County Coliseum Arena
+1967,"Mon, Feb 6, 1967",REG,@,Utah State,Ind,9.27,L,83,97,,7,8,L 3,Nelson Fieldhouse
+1967,"Thu, Feb 9, 1967",REG,,Utah State,Ind,9.27,L,81,82,,7,9,L 4,DU Fieldhouse
+1967,"Sat, Feb 11, 1967",REG,@,Creighton,Ind,-3.79,L,70,81,,7,10,L 5,Omaha Civic Auditorium
+1967,"Wed, Feb 15, 1967",REG,,Air Force,Ind,-6.12,W,75,73,,8,10,W 1,DU Fieldhouse
+1967,"Sat, Feb 18, 1967",REG,,Colorado State,Ind,2.83,W,74,67,,9,10,W 2,DU Fieldhouse
+1967,"Thu, Feb 23, 1967",REG,,Marquette,Ind,6.45,W,100,87,,10,10,W 3,DU Fieldhouse
+1967,"Sat, Feb 25, 1967",REG,,Tulane,Ind,-3.72,L,86,88,,10,11,L 1,DU Fieldhouse
+1967,"Thu, Mar 2, 1967",REG,,Wyoming,WAC,0.36,L,62,64,,10,12,L 2,DU Fieldhouse
+1966,"Fri, Dec 3, 1965",REG,,Colorado State,Ind,5.97,L,61,64,,0,1,L 1,DU Fieldhouse
+1966,"Sat, Dec 4, 1965",REG,,Air Force,Ind,0.42,W,90,73,,1,1,W 1,DU Fieldhouse
+1966,"Fri, Dec 17, 1965",REG,@,Washington State,AAWU,4.02,L,73,84,,1,2,L 1,Bohler Gymnasium
+1966,"Sat, Dec 18, 1965",REG,@,Idaho,Big Sky,-8.79,W,106,91,,2,2,W 1,Memorial Gym
+1966,"Mon, Dec 20, 1965",REG,,Oregon,AAWU,0.06,L,56,78,,2,3,L 1,DU Fieldhouse
+1966,"Mon, Dec 27, 1965",REG,,Arizona,WAC,7.43,W,72,70,,3,3,W 1,DU Fieldhouse
+1966,"Thu, Dec 30, 1965",REG,@,New Mexico State,Ind,-21.28,W,88,82,,4,3,W 2,Las Cruces High School Gym
+1966,"Sat, Jan 1, 1966",REG,@,New Mexico,WAC,6.69,L,66,87,,4,4,L 1,Johnson Gymnasium
+1966,"Thu, Jan 6, 1966",REG,,Wyoming,WAC,12.05,L,88,90,,4,5,L 2,DU Fieldhouse
+1966,"Sat, Jan 8, 1966",REG,,Colorado State,Ind,5.97,W,82,65,,5,5,W 1,DU Fieldhouse
+1966,"Thu, Jan 13, 1966",REG,@,Utah State,Ind,2.46,W,79,72,,6,5,W 2,Nelson Fieldhouse
+1966,"Sat, Jan 22, 1966",REG,,New Mexico State,Ind,-21.28,W,115,84,,7,5,W 3,DU Fieldhouse
+1966,"Sat, Jan 29, 1966",REG,@,Oklahoma City,Ind,8.16,L,87,98,,7,6,L 1,Fredrickson Fieldhouse
+1966,"Sat, Feb 5, 1966",REG,@,Colorado State,Ind,5.97,L,65,67,,7,7,L 2,Men's Gym
+1966,"Fri, Feb 11, 1966",REG,@,Wyoming,WAC,12.05,L,69,89,,7,8,L 3,War Memorial Fieldhouse
+1966,"Sat, Feb 12, 1966",REG,@,Brigham Young,WAC,16.89,L,76,102,,7,9,L 4,George Albert Smith Field House
+1966,"Thu, Feb 17, 1966",REG,,Oklahoma City,Ind,8.16,W,84,83,,8,9,W 1,DU Fieldhouse
+1966,"Sat, Feb 19, 1966",REG,,New Mexico,WAC,6.69,L,77,86,,8,10,L 1,DU Fieldhouse
+1966,"Thu, Feb 24, 1966",REG,,Creighton,Ind,2.75,L,77,92,,8,11,L 2,DU Fieldhouse
+1966,"Sat, Feb 26, 1966",REG,,Utah State,Ind,2.46,W,100,81,,9,11,W 1,DU Fieldhouse
+1966,"Wed, Mar 2, 1966",REG,,Air Force,Ind,0.42,W,86,81,,10,11,W 2,DU Fieldhouse

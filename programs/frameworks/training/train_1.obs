@@ -5,18 +5,28 @@ class DatasetMaker {
 	@metadata_json : JsonElement;
 	@abbreviations : Hash<String, String>;
 	@output_json : JsonElement;
+	@target : String;
+	@file_writer : System.IO.Filesystem.FileWriter;
 
 	function : Main(args : String[]) ~ Nil {
-		if(args->Size() = 2) {
+		if(args->Size() = 3) {
 			String->SetFloatPrecision(3);
 
-			dataset_maker := DatasetMaker->New(args[0]);
-			status := dataset_maker->Make(args[1]->ToInt());
+			dir_path := args[0];
+			target := args[1];
+			iters := args[2]->ToInt();
+
+			dataset_maker := DatasetMaker->New(dir_path, target);
+			status := dataset_maker->Make(iters);
 			"\n---\nSuccess: {$status}"->PrintLine();
+		}
+		else {
+
 		};
 	}
 
-	New(dir_path : String) {
+	New(dir_path : String, target : String) {
+		@target := target;
 		@named_tables := Hash->New()<String, CsvTable>;
 
 		"Loading files:"->PrintLine();
@@ -66,66 +76,82 @@ class DatasetMaker {
 		"---"->PrintLine();
 	}
 
-	method : BuildElement(query : String, response : String) ~ JsonElement {
-		query_response_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+	method : BuildElement(query : String, response : String) ~ Nil {
+		if(@target->Equals("alpaca")) {
+			query_response_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 
-		query_response_json->Insert("instruction", query);
-		query_response_json->Insert("input", "");
-		query_response_json->Insert("output", response);
+			query_response_json->Insert("instruction", query);
+			query_response_json->Insert("input", "");
+			query_response_json->Insert("output", response);
 
-		return query_response_json;
+			@output_json->Add(query_response_json);
+		}
+		else if(@target->Equals("openai")) {
+			line := "{\"messages\": [{\"role\": \"system\", \"content\": \"You are a historian in the late 1960s at the Univerity of Denver.\"}, {\"role\": \"user\", \"content\": \"{$query}\"}, {\"role\": \"assistant\", \"content\": \"{$response}\"}]}";
+			# line := "{\"prompt\": \"{$query}\", \"completion\": \"{$response}\"}";
+			WriteToFile(line);
+		};
 	}
 
-	method : WriteToFile(line : String, file_writer : System.IO.Filesystem.FileWriter) ~ Nil {
-		file_writer->WriteString(line);
-		file_writer->WriteString("\r\n");
+	method : WriteToFile(line : String) ~ Nil {
+		@file_writer->WriteString(line);
+		@file_writer->WriteString("\r\n");
 	}
 
 	method : public : Make(inters : Int) ~ Bool {
-		file_writer : System.IO.Filesystem.FileWriter;
 		leaving {
-			file_writer->Close();
+			@file_writer->Close();
+		};
+
+		ending : String;
+		if(@target->Equals("alpaca")) {
+			ending := "json";
+		}
+		else {
+			ending := "jsonl";
 		};
 		
-		file_writer := System.IO.Filesystem.FileWriter->New("data/du_late60s_mens_basketball.json");
-		if(file_writer->IsOpen()) {
+		@file_writer := System.IO.Filesystem.FileWriter->New("data/du_late60s_mens_basketball.{$ending}");
+		if(@file_writer->IsOpen()) {
 			avg_stats := ["TRB", "FG%", "PF", "PTS", "FT", "FT%"];
 			toatl_stats := ["FGA", "FTA"];
 			
 			@output_json := JsonElement->New(JsonElement->JsonType->ARRAY);
 
 			# average of 8M for 384 iterations
-			count_max := 16; count := 0;
+			count_max := 8; count := 0;
 			each(i : inters) {
 				count += 1;
 
 				each(j : 5) {
-					if(count > count_max) {
-						System.Utility.Spinner->Next();
-						count := 0;
-					};
-
 					each(stat in avg_stats) {
-						if(<>AverageStat(Int->Random(1966, 1968), stat, file_writer)) {
+						if(<>AverageStat(Int->Random(1966, 1968), stat)) {
 							return false;
 						};
 					};
 
 					each(stat in toatl_stats) {
-						if(<>TotalStat(Int->Random(1966, 1968), stat, file_writer)) {
+						if(<>TotalStat(Int->Random(1966, 1968), stat)) {
 							return false;
 						};
 					};
 				};
 
 				each(j : 8) {
-					if(<>ScheduleResult(Int->Random(1966, 1968), file_writer)) {
+					if(<>ScheduleResult(Int->Random(1966, 1968))) {
 						return false;
 					};
 				};
+
+				if(count > count_max) {
+					System.Utility.Spinner->Next();
+					count := 0;
+				};
 			};
 
-			WriteToFile(@output_json->ToString(), file_writer);
+			if(@target->Equals("alpaca")) {
+				WriteToFile(@output_json->ToString());
+			};
 
 			System.Utility.Spinner->Last();
 		};
@@ -133,7 +159,7 @@ class DatasetMaker {
 		return true;
 	}
 
-	method : public : ScheduleResult(year : Int, file_writer : System.IO.Filesystem.FileWriter) ~ Bool {
+	method : public : ScheduleResult(year : Int) ~ Bool {
 		table := @named_tables->Find("schedule-results");
 		if(table <> Nil) {
 			table_by_year := table->Matches("Year", year->ToString());
@@ -158,11 +184,11 @@ class DatasetMaker {
 
 			query := "In " + year + " how many home games did the " + random_school_name + " men's basketball team play?";
 			response := "In " + year + ", the " + random_school_name + " men's basketball team played " + count_home + " home games.";
-			@output_json->Add(BuildElement(query, response));
+			BuildElement(query, response);
 
 			query := "In " + year + " how many away games did the " + random_school_name + " men's basketball team play?";
 			response := "In " + year + ", the " + random_school_name + " men's basketball team played " + count_away + " away games.";
-			@output_json->Add(BuildElement(query, response));
+			BuildElement(query, response);
 
 			# team played with score and who won
 			random_index := Int->Random(1, table_by_year->Size() - 1);
@@ -181,7 +207,7 @@ class DatasetMaker {
 			query := "What was the score of the " + year + " game between Denver and " + random_opp_name  + " on " + game_date + "?";
 			response := "The score of the game on " + game_date + " between Denver and " + random_opp_name  + " was " +  team_score->ToString() + 
 				" to " + opp_score->ToString() + ", Denver " + (team_score > opp_score ? "won.": "lost.");
-			@output_json->Add(BuildElement(query, response));
+			BuildElement(query, response);
 
 			return true;
 		};
@@ -189,7 +215,7 @@ class DatasetMaker {
 		return false;
 	}
 
-	method : public : AverageStat(year : Int, stat_key : String, file_writer : System.IO.Filesystem.FileWriter) ~ Bool {
+	method : public : AverageStat(year : Int, stat_key : String) ~ Bool {
 		table := @named_tables->Find("avg-games");
 		if(table <> Nil) {
 			random_index := Int->Random(1, table->Size() - 1);
@@ -207,26 +233,26 @@ class DatasetMaker {
 
 			if(stat_key->Equals("FG%") | stat_key->Equals("FT%")) {
 				stat_value_str := (stat_value->ToFloat() * 100.0)->ToString();
-				query := "In " + year + " what was " + player + " field goal percentage?";
-				response := "" + player + " field goal percentage in " + year + " was " + stat_value_str + "%.";
-				@output_json->Add(BuildElement(query, response));
+				query := "In " + year + " what was " + player + " field goal percentage for the University of Denver?";
+				response := "" + player + " field goal percentage in " + year + " was " + stat_value_str + "% for the University of Denver.";
+				BuildElement(query, response);
 			}
 			else {
-				query := "In " + year + " how many " + stat_word + " did " + player + " average?";
-				response := "" + player + " averaged " + stat_value + " " + stat_word + " in " + year + ".";
-				@output_json->Add(BuildElement(query, response));
+				query := "In " + year + " how many " + stat_word + " did " + player + " average for the University of Denver?";
+				response := "" + player + " averaged " + stat_value + " " + stat_word + " in " + year + " for the University of Denver.";
+				BuildElement(query, response);
 			};
 
 			if(stat_key->Equals("FG%") | stat_key->Equals("FT%")) {
 				stat_value_str := (stat_value->ToFloat() * 100.0)->Round->ToString();
-				query := "What was " + player + " field goal percentage in " + year + '?';
-				response := "In " + year + " " + player  + " field goal percentage " + stat_value_str + "%.";
-				@output_json->Add(BuildElement(query, response));
+				query := "What was " + player + " field goal percentage in " + year + " for the University of Denver?";
+				response := "In " + year + " " + player  + " field goal percentage " + stat_value_str + "% for the University of Denver.";
+				BuildElement(query, response);
 			}
 			else {
-				query := "How many " + stat_word + " did " + player + " average in " + year + "?";
-				response := "In " + year + " " + player + " averaged " + stat_value + " " + stat_word + ".";
-				@output_json->Add(BuildElement(query, response));
+				query := "How many " + stat_word + " did " + player + " average in " + year + " for the University of Denver?";
+				response := "In " + year + " " + player + " averaged " + stat_value + " " + stat_word + " for the University of Denver.";
+				BuildElement(query, response);
 			}
 
 			return true;
@@ -235,7 +261,7 @@ class DatasetMaker {
 		return false;
 	}
 
-	method : public : TotalTeam(year : Int, stat_key : String, file_writer : System.IO.Filesystem.FileWriter) ~ Bool {
+	method : public : TotalTeam(year : Int, stat_key : String) ~ Bool {
 		table := @named_tables->Find("avg-team-opp");
 		if(table <> Nil) {
 			random_index := Int->Random(1, table->Size() - 1);
@@ -254,11 +280,11 @@ class DatasetMaker {
 
 			query := "In " + year + " how many " + stat_word + " did the " + team_desc + " total?";
 			response := "The " + team_desc + " totaled " + stat_value + " " + stat_word + " in " + year + ".";
-			@output_json->Add(BuildElement(query, response));
+			BuildElement(query, response);
 
 			query := "How many " + stat_word + " did the " + team_desc + " total in " + year + "?";
 			response := "In " + year + " the " + team_desc + " totaled " + stat_value + " " + stat_word + ".";
-			@output_json->Add(BuildElement(query, response));
+			BuildElement(query, response);
 
 			return true;
 		};
@@ -266,7 +292,7 @@ class DatasetMaker {
 		return false;
 	}
 
-	method : public : AverageTeam(year : Int, stat_key : String, file_writer : System.IO.Filesystem.FileWriter) ~ Bool {
+	method : public : AverageTeam(year : Int, stat_key : String) ~ Bool {
 		table := @named_tables->Find("avg-team-opp");
 		if(table <> Nil) {
 			random_index := Int->Random(1, table->Size() - 1);
@@ -285,11 +311,11 @@ class DatasetMaker {
 
 			query := "In " + year + " how many " + stat_word + " did the " + team_desc + " average?";
 			response := "The " + team_desc + " averaged " + stat_value + " " + stat_word + " in " + year + ".";
-			@output_json->Add(BuildElement(query, response));
+			BuildElement(query, response);
 
 			query := "How many " + stat_word + " did the " + team_desc + " average in " + year + "?";
 			response := "In " + year + " the " + team_desc + " averaged " + stat_value + " " + stat_word + ".";
-			@output_json->Add(BuildElement(query, response));
+			BuildElement(query, response);
 
 			return true;
 		};
@@ -297,7 +323,7 @@ class DatasetMaker {
 		return false;
 	}
 
-	method : public : TotalStat(year : Int, stat_key : String, file_writer : System.IO.Filesystem.FileWriter) ~ Bool {
+	method : public : TotalStat(year : Int, stat_key : String) ~ Bool {
 		table := @named_tables->Find("total-games");
 		if(table <> Nil) {
 			random_index := Int->Random(1, table->Size() - 1);
@@ -313,13 +339,13 @@ class DatasetMaker {
 			stat_value := table->Get(random_index)->Get(stat_key);
 			stat_word := @abbreviations->Find(stat_key);
 
-			query := "In " + year + " how many " + stat_word + " did " + player + " total?";
-			response := "" + player + " totaled " + stat_value + " " + stat_word + " in " + year + ".";
-			@output_json->Add(BuildElement(query, response));
+			query := "In " + year + " how many " + stat_word + " did " + player + " total for the University of Denver?";
+			response := "" + player + " totaled " + stat_value + " " + stat_word + " in " + year + " for the University of Denver.";
+			BuildElement(query, response);
 
-			query := "How many total " + stat_word + " did " + player + " achieve in " + year + "?";
-			response := "In " + year + " " + player + " totaled " + stat_value + " " + stat_word + ".";
-			@output_json->Add(BuildElement(query, response));
+			query := "How many total " + stat_word + " did " + player + " achieve in " + year + " for the University of Denver?";
+			response := "In " + year + " " + player + " totaled " + stat_value + " " + stat_word + " for the University of Denver.";
+			BuildElement(query, response);
 
 			return true;
 		};
