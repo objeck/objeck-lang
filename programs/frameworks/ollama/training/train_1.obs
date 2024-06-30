@@ -4,6 +4,7 @@ class DatasetMaker {
 	@named_tables : Hash<String, CsvTable>;
 	@metadata_json : JsonElement;
 	@abbreviations : Hash<String, String>;
+	@output_json : JsonElement;
 
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 2) {
@@ -67,8 +68,10 @@ class DatasetMaker {
 
 	method : BuildElement(query : String, response : String) ~ JsonElement {
 		query_response_json := JsonElement->New(JsonElement->JsonType->OBJECT);
-		query_response_json->Insert("text", JsonElement->Encode(query + '\n' + response));
-		query_response_json->Insert("metadata", @metadata_json);
+
+		query_response_json->Insert("instruction", query);
+		query_response_json->Insert("input", "");
+		query_response_json->Insert("output", response);
 
 		return query_response_json;
 	}
@@ -84,12 +87,13 @@ class DatasetMaker {
 			file_writer->Close();
 		};
 		
-		file_writer := System.IO.Filesystem.FileWriter->New("data/du_late60s_mens_basketball.jsonl");
+		file_writer := System.IO.Filesystem.FileWriter->New("data/du_late60s_mens_basketball.json");
 		if(file_writer->IsOpen()) {
-
 			avg_stats := ["TRB", "FG%", "PF", "PTS", "FT", "FT%"];
 			toatl_stats := ["FGA", "FTA"];
 			
+			@output_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+
 			# average of 8M for 384 iterations
 			count_max := 96; count := 0;
 			each(i : inters) {
@@ -120,6 +124,9 @@ class DatasetMaker {
 					};
 				};
 			};
+
+			WriteToFile(@output_json->ToString(), file_writer);
+
 			System.Utility.Spinner->Last();
 		};
 
@@ -141,22 +148,21 @@ class DatasetMaker {
 			random_school_name := Bool->Flip() ? "DU" : "University of Denver";
 			random_mon_name := @abbreviations->Find(random_mon);
 
-			query := "<human>: In " + year + " how many games did the " + random_school_name + " men's basketball team play in " + random_mon_name + "?";
-			response := "<bot>: In " + year + ", the " + random_school_name + " men's basketball team played " + count_year_month + " games in " + random_mon_name + ".";
-			WriteToFile(BuildElement(query, response)->ToString(), file_writer);
-
+			query := "In " + year + " how many games did the " + random_school_name + " men's basketball team play in " + random_mon_name + "?";
+			response := "In " + year + ", the " + random_school_name + " men's basketball team played " + count_year_month + " games in " + random_mon_name + ".";
+			
 			# home vs. away games
 			games_home := table_by_year->Contains("At-Home", "@");
 			count_home := (games_home->Size() - 1);
 			count_away := (table_by_year->Size() - games_home->Size());
 
-			query := "<human>: In " + year + " how many home games did the " + random_school_name + " men's basketball team play?";
-			response := "<bot>: In " + year + ", the " + random_school_name + " men's basketball team played " + count_home + " home games.";
-			WriteToFile(BuildElement(query, response)->ToString(), file_writer);
+			query := "In " + year + " how many home games did the " + random_school_name + " men's basketball team play?";
+			response := "In " + year + ", the " + random_school_name + " men's basketball team played " + count_home + " home games.";
+			@output_json->Add(BuildElement(query, response));
 
-			query := "<human>: In " + year + " how many away games did the " + random_school_name + " men's basketball team play?";
-			response := "<bot>: In " + year + ", the " + random_school_name + " men's basketball team played " + count_away + " away games.";
-			WriteToFile(BuildElement(query, response)->ToString(), file_writer);
+			query := "In " + year + " how many away games did the " + random_school_name + " men's basketball team play?";
+			response := "In " + year + ", the " + random_school_name + " men's basketball team played " + count_away + " away games.";
+			@output_json->Add(BuildElement(query, response));
 
 			# team played with score and who won
 			random_index := Int->Random(1, table_by_year->Size() - 1);
@@ -172,10 +178,10 @@ class DatasetMaker {
 			game_date := random_opp->Get("Date");
 			game_date := game_date->SubString(5, game_date->Size() - 5);
 
-			query := "<human>: What was the score of the " + year + " game between Denver and " + random_opp_name  + " on " + game_date + "?";
-			response := "<bot>: The score of the game on " + game_date + " between Denver and " + random_opp_name  + " was " +  team_score->ToString() + 
+			query := "What was the score of the " + year + " game between Denver and " + random_opp_name  + " on " + game_date + "?";
+			response := "The score of the game on " + game_date + " between Denver and " + random_opp_name  + " was " +  team_score->ToString() + 
 				" to " + opp_score->ToString() + ", Denver " + (team_score > opp_score ? "won.": "lost.");
-			WriteToFile(BuildElement(query, response)->ToString(), file_writer);
+			@output_json->Add(BuildElement(query, response));
 
 			return true;
 		};
@@ -201,26 +207,26 @@ class DatasetMaker {
 
 			if(stat_key->Equals("FG%") | stat_key->Equals("FT%")) {
 				stat_value_str := (stat_value->ToFloat() * 100.0)->ToString();
-				query := "<human>: In " + year + " what was " + player + " field goal percentage?";
-				response := "<bot>: " + player + " field goal percentage in " + year + " was " + stat_value_str + "%.";
-				WriteToFile(BuildElement(query, response)->ToString(), file_writer);
+				query := "In " + year + " what was " + player + " field goal percentage?";
+				response := "" + player + " field goal percentage in " + year + " was " + stat_value_str + "%.";
+				@output_json->Add(BuildElement(query, response));
 			}
 			else {
-				query := "<human>: In " + year + " how many " + stat_word + " did " + player + " average?";
-				response := "<bot>: " + player + " averaged " + stat_value + " " + stat_word + " in " + year + ".";
-				WriteToFile(BuildElement(query, response)->ToString(), file_writer);
+				query := "In " + year + " how many " + stat_word + " did " + player + " average?";
+				response := "" + player + " averaged " + stat_value + " " + stat_word + " in " + year + ".";
+				@output_json->Add(BuildElement(query, response));
 			};
 
 			if(stat_key->Equals("FG%") | stat_key->Equals("FT%")) {
 				stat_value_str := (stat_value->ToFloat() * 100.0)->Round->ToString();
-				query := "<human>: What was " + player + " field goal percentage in " + year + '?';
-				response := "<bot>: In " + year + " " + player  + " field goal percentage " + stat_value_str + "%.";
-				WriteToFile(BuildElement(query, response)->ToString(), file_writer);
+				query := "What was " + player + " field goal percentage in " + year + '?';
+				response := "In " + year + " " + player  + " field goal percentage " + stat_value_str + "%.";
+				@output_json->Add(BuildElement(query, response));
 			}
 			else {
-				query := "<human>: How many " + stat_word + " did " + player + " average in " + year + "?";
-				response := "<bot>: In " + year + " " + player + " averaged " + stat_value + " " + stat_word + ".";
-				WriteToFile(BuildElement(query, response)->ToString(), file_writer);
+				query := "How many " + stat_word + " did " + player + " average in " + year + "?";
+				response := "In " + year + " " + player + " averaged " + stat_value + " " + stat_word + ".";
+				@output_json->Add(BuildElement(query, response));
 			}
 
 			return true;
@@ -246,13 +252,13 @@ class DatasetMaker {
 			stat_value := table->Get(random_index)->Get(stat_key);
 			stat_word := @abbreviations->Find(stat_key);
 
-			query := "<human>: In " + year + " how many " + stat_word + " did the " + team_desc + " total?";
-			response := "<bot>: The " + team_desc + " totaled " + stat_value + " " + stat_word + " in " + year + ".";
-			WriteToFile(BuildElement(query, response)->ToString(), file_writer);
+			query := "In " + year + " how many " + stat_word + " did the " + team_desc + " total?";
+			response := "The " + team_desc + " totaled " + stat_value + " " + stat_word + " in " + year + ".";
+			@output_json->Add(BuildElement(query, response));
 
-			query := "<human>: How many " + stat_word + " did the " + team_desc + " total in " + year + "?";
-			response := "<bot>: In " + year + " the " + team_desc + " totaled " + stat_value + " " + stat_word + ".";
-			WriteToFile(BuildElement(query, response)->ToString(), file_writer);
+			query := "How many " + stat_word + " did the " + team_desc + " total in " + year + "?";
+			response := "In " + year + " the " + team_desc + " totaled " + stat_value + " " + stat_word + ".";
+			@output_json->Add(BuildElement(query, response));
 
 			return true;
 		};
@@ -277,13 +283,13 @@ class DatasetMaker {
 			stat_value := table->Get(random_index)->Get(stat_key);
 			stat_word := @abbreviations->Find(stat_key);
 
-			query := "<human>: In " + year + " how many " + stat_word + " did the " + team_desc + " average?";
-			response := "<bot>: The " + team_desc + " averaged " + stat_value + " " + stat_word + " in " + year + ".";
-			WriteToFile(BuildElement(query, response)->ToString(), file_writer);
+			query := "In " + year + " how many " + stat_word + " did the " + team_desc + " average?";
+			response := "The " + team_desc + " averaged " + stat_value + " " + stat_word + " in " + year + ".";
+			@output_json->Add(BuildElement(query, response));
 
-			query := "<human>: How many " + stat_word + " did the " + team_desc + " average in " + year + "?";
-			response := "<bot>: In " + year + " the " + team_desc + " averaged " + stat_value + " " + stat_word + ".";
-			WriteToFile(BuildElement(query, response)->ToString(), file_writer);
+			query := "How many " + stat_word + " did the " + team_desc + " average in " + year + "?";
+			response := "In " + year + " the " + team_desc + " averaged " + stat_value + " " + stat_word + ".";
+			@output_json->Add(BuildElement(query, response));
 
 			return true;
 		};
@@ -307,13 +313,13 @@ class DatasetMaker {
 			stat_value := table->Get(random_index)->Get(stat_key);
 			stat_word := @abbreviations->Find(stat_key);
 
-			query := "<human>: In " + year + " how many " + stat_word + " did " + player + " total?";
-			response := "<bot>: " + player + " totaled " + stat_value + " " + stat_word + " in " + year + ".";
-			WriteToFile(BuildElement(query, response)->ToString(), file_writer);
+			query := "In " + year + " how many " + stat_word + " did " + player + " total?";
+			response := "" + player + " totaled " + stat_value + " " + stat_word + " in " + year + ".";
+			@output_json->Add(BuildElement(query, response));
 
-			query := "<human>: How many total " + stat_word + " did " + player + " achieve in " + year + "?";
-			response := "<bot>: In " + year + " " + player + " totaled " + stat_value + " " + stat_word + ".";
-			WriteToFile(BuildElement(query, response)->ToString(), file_writer);
+			query := "How many total " + stat_word + " did " + player + " achieve in " + year + "?";
+			response := "In " + year + " " + player + " totaled " + stat_value + " " + stat_word + ".";
+			@output_json->Add(BuildElement(query, response));
 
 			return true;
 		};
