@@ -95,7 +95,7 @@ class DatasetMaker {
 			@output_json := JsonElement->New(JsonElement->JsonType->ARRAY);
 
 			# average of 8M for 384 iterations
-			count_max := 96; count := 0;
+			count_max := 16; count := 0;
 			each(i : inters) {
 				count += 1;
 
