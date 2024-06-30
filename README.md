@@ -119,17 +119,16 @@ class IdentifyImage {
 # tune ML model
 use Collection, API.OpenAI, System.IO.Filesystem, Data.JSON, Data.CSV;
 
-class CreateImage {
+class TuneAssist {
   function : Main(args : String[]) ~ Nil {
     if(args->Size() = 1) {
-      tuning_file := args[1];
-      file := API.OpenAI.File->LoadOrCreate(tuning_file, "fine-tune", token);
+      filename := args[1];
+      file := API.OpenAI.File->LoadOrCreate(filename, "fine-tune", token);
 
-      name := file->Gettuning_file();
+      name := file->GetFilename();
       id := file->GetId();
       "file='{$name}', id='{$id}'"->PrintLine();
-
-      tuning_job := Tuning->Create("gpt-3.5-turbo", id, token);
+      tuning_job := Tuner->Create("gpt-3.5-turbo", id, token);
       tuning_job->ToString()->PrintLine();
     }
   }
