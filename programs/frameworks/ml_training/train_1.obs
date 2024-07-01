@@ -49,18 +49,18 @@ class DatasetMaker {
 
 					# stat abbreviations
 					@abbreviations := Hash->New()<String, String>;
-					@abbreviations->Insert("TRB", "rebounds");
-					@abbreviations->Insert("FGA", "points");
-					@abbreviations->Insert("FTA", "free throws attempts");
-					@abbreviations->Insert("FG%", "average points");
+					@abbreviations->Insert("TRB", "total rebound");
+					@abbreviations->Insert("FGA", "field goals attempted");
+					@abbreviations->Insert("FTA", "free throws attempted");
+					@abbreviations->Insert("FG%", "field goal");
 					@abbreviations->Insert("AST", "assists");
 					@abbreviations->Insert("STL", "steals");
 					@abbreviations->Insert("BLK", "blocks");
 					@abbreviations->Insert("TOV", "turn overs");
-					@abbreviations->Insert("PF", "fouls");
-					@abbreviations->Insert("PTS", "points");
-					@abbreviations->Insert("FT", "free throws points");
-					@abbreviations->Insert("FT%", "average free throws");
+					@abbreviations->Insert("PF", "personal fouls");
+					@abbreviations->Insert("PTS", "total points");
+					@abbreviations->Insert("FT", "free throws made");
+					@abbreviations->Insert("FT%", "free throws");
 
 					# month abbreviations
 					@abbreviations->Insert("Dec", "December");
@@ -216,6 +216,8 @@ class DatasetMaker {
 	}
 
 	method : public : AverageStat(year : Int, stat_key : String) ~ Bool {
+		# TODO: YEAR!!!
+
 		table := @named_tables->Find("avg-games");
 		if(table <> Nil) {
 			random_index := Int->Random(1, table->Size() - 1);
@@ -231,10 +233,16 @@ class DatasetMaker {
 			stat_value := table->Get(random_index)->Get(stat_key);
 			stat_word := @abbreviations->Find(stat_key);
 
-			if(stat_key->Equals("FG%") | stat_key->Equals("FT%")) {
+			if(stat_key->Equals("FG%")) {
 				stat_value_str := (stat_value->ToFloat() * 100.0)->ToString();
 				query := "In " + year + " what was " + player + " field goal percentage for the University of Denver?";
 				response := "" + player + " field goal percentage in " + year + " was " + stat_value_str + "% for the University of Denver.";
+				BuildElement(query, response);
+			}
+			else if(stat_key->Equals("FT%")) {
+				stat_value_str := (stat_value->ToFloat() * 100.0)->ToString();
+				query := "In " + year + " what was " + player + " free throw percentage for the University of Denver?";
+				response := "" + player + " free throw percentage in " + year + " was " + stat_value_str + "% for the University of Denver.";
 				BuildElement(query, response);
 			}
 			else {
@@ -243,10 +251,16 @@ class DatasetMaker {
 				BuildElement(query, response);
 			};
 
-			if(stat_key->Equals("FG%") | stat_key->Equals("FT%")) {
+			if(stat_key->Equals("FG%")) {
 				stat_value_str := (stat_value->ToFloat() * 100.0)->Round->ToString();
 				query := "What was " + player + " field goal percentage in " + year + " for the University of Denver?";
 				response := "In " + year + " " + player  + " field goal percentage " + stat_value_str + "% for the University of Denver.";
+				BuildElement(query, response);
+			}
+			else if(stat_key->Equals("FT%")) {
+				stat_value_str := (stat_value->ToFloat() * 100.0)->Round->ToString();
+				query := "What was " + player + " free throw percentage in " + year + " for the University of Denver?";
+				response := "In " + year + " " + player  + " free throw percentage " + stat_value_str + "% for the University of Denver.";
 				BuildElement(query, response);
 			}
 			else {
@@ -262,6 +276,8 @@ class DatasetMaker {
 	}
 
 	method : public : TotalTeam(year : Int, stat_key : String) ~ Bool {
+		# TODO: YEAR!!!
+		
 		table := @named_tables->Find("avg-team-opp");
 		if(table <> Nil) {
 			random_index := Int->Random(1, table->Size() - 1);
@@ -343,7 +359,7 @@ class DatasetMaker {
 			response := "" + player + " totaled " + stat_value + " " + stat_word + " in " + year + " for the University of Denver.";
 			BuildElement(query, response);
 
-			query := "How many total " + stat_word + " did " + player + " achieve in " + year + " for the University of Denver?";
+			query := "How many total " + stat_word + " did " + player + " total in " + year + " for the University of Denver?";
 			response := "In " + year + " " + player + " totaled " + stat_value + " " + stat_word + " for the University of Denver.";
 			BuildElement(query, response);
 
