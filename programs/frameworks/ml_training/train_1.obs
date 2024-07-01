@@ -50,8 +50,8 @@ class DatasetMaker {
 					# stat abbreviations
 					@abbreviations := Hash->New()<String, String>;
 					@abbreviations->Insert("TRB", "total rebound");
-					@abbreviations->Insert("FGA", "field goals attempted");
-					@abbreviations->Insert("FTA", "free throws attempted");
+					@abbreviations->Insert("FGA", "field goals attempts");
+					@abbreviations->Insert("FTA", "free throws attempts");
 					@abbreviations->Insert("FG%", "field goal");
 					@abbreviations->Insert("AST", "assists");
 					@abbreviations->Insert("STL", "steals");
@@ -60,7 +60,7 @@ class DatasetMaker {
 					@abbreviations->Insert("PF", "personal fouls");
 					@abbreviations->Insert("PTS", "total points");
 					@abbreviations->Insert("FT", "free throws made");
-					@abbreviations->Insert("FT%", "free throws");
+					@abbreviations->Insert("FT%", "free throw percentage");
 
 					# month abbreviations
 					@abbreviations->Insert("Dec", "December");
@@ -88,7 +88,6 @@ class DatasetMaker {
 		}
 		else if(@target->Equals("openai")) {
 			line := "{\"messages\": [{\"role\": \"system\", \"content\": \"You are a historian in the late 1960s at the Univerity of Denver.\"}, {\"role\": \"user\", \"content\": \"{$query}\"}, {\"role\": \"assistant\", \"content\": \"{$response}\"}]}";
-			# line := "{\"prompt\": \"{$query}\", \"completion\": \"{$response}\"}";
 			WriteToFile(line);
 		};
 	}
@@ -220,6 +219,8 @@ class DatasetMaker {
 
 		table := @named_tables->Find("avg-games");
 		if(table <> Nil) {
+			table := table->Matches("Year", year->ToString());
+
 			random_index := Int->Random(1, table->Size() - 1);
 
 			player := table->Get(random_index)->Get("Player");
@@ -280,6 +281,8 @@ class DatasetMaker {
 		
 		table := @named_tables->Find("avg-team-opp");
 		if(table <> Nil) {
+			table := table->Matches("Year", year->ToString());
+
 			random_index := Int->Random(1, table->Size() - 1);
 
 			team_desc : String;
@@ -311,6 +314,8 @@ class DatasetMaker {
 	method : public : AverageTeam(year : Int, stat_key : String) ~ Bool {
 		table := @named_tables->Find("avg-team-opp");
 		if(table <> Nil) {
+			table := table->Matches("Year", year->ToString());
+
 			random_index := Int->Random(1, table->Size() - 1);
 
 			team_desc : String;
@@ -342,6 +347,8 @@ class DatasetMaker {
 	method : public : TotalStat(year : Int, stat_key : String) ~ Bool {
 		table := @named_tables->Find("total-games");
 		if(table <> Nil) {
+			table := table->Matches("Year", year->ToString());
+
 			random_index := Int->Random(1, table->Size() - 1);
 
 			player := table->Get(random_index)->Get("Player");
