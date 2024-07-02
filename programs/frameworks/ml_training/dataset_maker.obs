@@ -5,7 +5,7 @@ class DatasetMaker {
 	@metadata_json : JsonElement;
 	@abbreviations : Hash<String, String>;
 	@output_json : JsonElement;
-	@target : String;
+	@target_format : String;
 	@file_writer : System.IO.Filesystem.FileWriter;
 
 	function : Main(args : String[]) ~ Nil {
@@ -13,20 +13,26 @@ class DatasetMaker {
 			String->SetFloatPrecision(3);
 
 			dir_path := args[0];
-			target := args[1];
+			target_format := args[1];
 			iters := args[2]->ToInt();
 
-			dataset_maker := DatasetMaker->New(dir_path, target);
+			targets := ["alpaca", "openai"]
+			if(target_format->Equals(targets)) {
+				dataset_maker := DatasetMaker->New(dir_path, target_format);
 			status := dataset_maker->Make(iters);
 			"\n---\nSuccess: {$status}"->PrintLine();
+			}
+			else {
+				">>> Valid targets are 'alpaca' and 'openai' <<<"->ErrorLine();
+			};
 		}
 		else {
-
+			">>> Usage: dir_path, target_format, iterations <<<"->ErrorLine();
 		};
 	}
 
-	New(dir_path : String, target : String) {
-		@target := target;
+	New(dir_path : String, target_format : String) {
+		@target_format := target_format;
 		@named_tables := Hash->New()<String, CsvTable>;
 
 		"Loading files:"->PrintLine();
@@ -68,6 +74,10 @@ class DatasetMaker {
 					@abbreviations->Insert("Feb", "February");
 					@abbreviations->Insert("Mar", "March");
 
+					@abbreviations->Insert("G", "guard");
+					@abbreviations->Insert("F", "forward");
+					@abbreviations->Insert("C", "center");
+
 					table_name := filename->SubString(filename->Size() - 4);
 					@named_tables->Insert(table_name, table);
 				};
@@ -77,16 +87,16 @@ class DatasetMaker {
 	}
 
 	method : BuildElement(query : String, response : String) ~ Nil {
-		if(@target->Equals("alpaca")) {
+		if(@target_format->Equals("alpaca")) {
 			query_response_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 
-			query_response_json->Insert("instruction", query);
-			query_response_json->Insert("input", "");
+			query_response_json->Insert("instruction", "You are a historian in the late 1960s at the Univerity of Denver.");
+			query_response_json->Insert("input", query);
 			query_response_json->Insert("output", response);
 
 			@output_json->Add(query_response_json);
 		}
-		else if(@target->Equals("openai")) {
+		else if(@target_format->Equals("openai")) {
 			line := "{\"messages\": [{\"role\": \"system\", \"content\": \"You are a historian in the late 1960s at the Univerity of Denver.\"}, {\"role\": \"user\", \"content\": \"{$query}\"}, {\"role\": \"assistant\", \"content\": \"{$response}\"}]}";
 			WriteToFile(line);
 		};
@@ -103,7 +113,7 @@ class DatasetMaker {
 		};
 
 		ending : String;
-		if(@target->Equals("alpaca")) {
+		if(@target_format->Equals("alpaca")) {
 			ending := "json";
 		}
 		else {
@@ -121,6 +131,10 @@ class DatasetMaker {
 			count_max := 8; count := 0;
 			each(i : inters) {
 				count += 1;
+
+				if(<>Players(Int->Random(1966, 1968))) {
+					return false;
+				};
 
 				each(j : 5) {
 					each(stat in avg_stats) {
@@ -147,8 +161,8 @@ class DatasetMaker {
 					count := 0;
 				};
 			};
-
-			if(@target->Equals("alpaca")) {
+			
+			if(@target_format->Equals("alpaca")) {
 				WriteToFile(@output_json->ToString());
 			};
 
@@ -214,13 +228,48 @@ class DatasetMaker {
 		return false;
 	}
 
-	method : public : AverageStat(year : Int, stat_key : String) ~ Bool {
-		# TODO: YEAR!!!
-
-		table := @named_tables->Find("avg-games");
+	method : public : Players(year : Int) ~ Bool {
+		table := @named_tables->Find("players");
 		if(table <> Nil) {
 			table := table->Matches("Year", year->ToString());
 
+			for(i := 1; i < table->Size(); i += 1;) {
+				row := table->Get(i);
+				pos := row->Get("Pos");
+				
+				position := @abbreviations->Find(pos);
+				player := row->Get("Player");
+				if(Bool->Flip()) {
+					split_index := player->Find(' ');
+					if(split_index > 0) {
+						split_index += 1;
+						player := player->SubString(split_index, player->Size() - split_index);
+					};
+				};
+
+				query := "In " + year + " " + player + " played Men's Basketball for the University of Denver.";
+
+				player := row->Get("Player");
+				if(Bool->Flip()) {
+					split_index := player->Find(' ');
+					if(split_index > 0) {
+						split_index += 1;
+						player := player->SubString(split_index, player->Size() - split_index);
+					};
+				};
+
+				response := "Yes, " + player + " was a " + position +  " who played Men's Basketball for the University of Denver Men's in " + year + '.';
+				BuildElement(query, response);
+			};
+		};
+
+		return true;
+	}
+
+	method : public : AverageStat(year : Int, stat_key : String) ~ Bool {
+		table := @named_tables->Find("avg-games");
+		if(table <> Nil) {
+			table := table->Matches("Year", year->ToString());
 			random_index := Int->Random(1, table->Size() - 1);
 
 			player := table->Get(random_index)->Get("Player");
@@ -277,8 +326,6 @@ class DatasetMaker {
 	}
 
 	method : public : TotalTeam(year : Int, stat_key : String) ~ Bool {
-		# TODO: YEAR!!!
-		
 		table := @named_tables->Find("avg-team-opp");
 		if(table <> Nil) {
 			table := table->Matches("Year", year->ToString());
