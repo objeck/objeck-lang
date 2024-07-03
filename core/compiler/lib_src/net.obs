@@ -32,16 +32,17 @@ if(html <> Nil) {
 		@cookies: Vector<Cookie>;
 		
 		#~
-		Default constructor 
+		Default constructor
+		@param cookies_enabled true if cookies are enabled, false otherwise
 		~#
-		New() {
+		New(cookies_enabled : Bool := false) {
 			@request_headers := Hash->New()<String, String>;
 			@request_headers->Insert("Cache-Control"->ToLower(), "max-age=0");
 			@request_headers->Insert("User-Agent"->ToLower(), "Objeck/1.0");
 			
 			@response_headers := Hash->New()<String, String>;
 
-			@cookies_enabled := false;
+			@cookies_enabled := cookies_enabled;
 			@cookies := Vector->New()<Cookie>;
 		}
 		
@@ -154,6 +155,17 @@ if(html <> Nil) {
 			};
 
 			return client->PushPullOperation(url, data, content_type, HttpClient->Task->POST);
+		}
+
+		#~
+		Performs a HTTPS POST
+		@param url URL
+		@param data data to oper
+		@param content_type content type
+		@return string read
+		~#
+		method : public : Post(url : Web.HTTP.Url, data : Byte[], content_type : String) ~ Web.HTTP.Response {
+			return PushPullOperation(url, data, content_type, HttpClient->Task->POST);
 		}
 
 		#~
@@ -565,7 +577,7 @@ if(html <> Nil) {
 								value := line->SubString(index + 1, line->Size() - index - 1)->Trim();
 								
 								# IO.Console->Print("|")->Print(name)->Print("|, |")->Print(value)->PrintLine("|");
-								if(@cookies_enabled & name->ToLower()->Equals("set-cookie")) {
+								if(@cookies_enabled & name->Equals("Set-Cookie")) {
 									@cookies->AddBack(Cookie->New(value));
 									# IO.Console->Print("cookie=")->PrintLine(value);
 								}
@@ -585,16 +597,36 @@ if(html <> Nil) {
 								moved_url_str : String;
 								if(moved_location->StartsWith("http://")) {
 									moved_url_str := moved_location;
+									if(moved_url_str->EndsWith('/')) {
+										moved_url_str->Pop();
+										moved_url_str += ':';
+										moved_url_str += port;
+										moved_url_str += '/';
+									}
+									else {
+										moved_url_str += ':';
+										moved_url_str += port;
+									};
 								}
 								else {
 									moved_url_str := "http://";
 									moved_url_str += address;
+									if(moved_url_str->EndsWith('/')) {
+										moved_url_str->Pop();
+										moved_url_str += ':';
+										moved_url_str += port;
+										moved_url_str += '/';
+									}
+									else {
+										moved_url_str += ':';
+										moved_url_str += port;
+									};
 									moved_url_str += moved_location;
 								};
 								@response_headers->Empty();
 
 								# IO.Console->Print("permanently moved: ")->PrintLine(moved_url_str);
-								return Get(Url->New(moved_url_str), content_type);
+								return Post(Url->New(moved_url_str), data, content_type);
 							};
 						};
 
@@ -720,7 +752,7 @@ if(html <> Nil) {
 								value := line->SubString(index + 1, line->Size() - index - 1)->Trim();
 								
 								# IO.Console->Print("|")->Print(name)->Print("|, |")->Print(value)->PrintLine("|");
-								if(@cookies_enabled & name->ToLower()->Equals("set-cookie")) {
+								if(@cookies_enabled & name->Equals("Set-Cookie")) {
 									@cookies->AddBack(Cookie->New(value));
 									# IO.Console->Print("cookie=")->PrintLine(value);
 								}
@@ -739,10 +771,30 @@ if(html <> Nil) {
 								moved_url_str : String;
 								if(moved_location->StartsWith("http://")) {
 									moved_url_str := moved_location;
+									if(moved_url_str->EndsWith('/')) {
+										moved_url_str->Pop();
+										moved_url_str += ':';
+										moved_url_str += port;
+										moved_url_str += '/';
+									}
+									else {
+										moved_url_str += ':';
+										moved_url_str += port;
+									};
 								}
 								else {
 									moved_url_str := "http://";
 									moved_url_str += address;
+									if(moved_url_str->EndsWith('/')) {
+										moved_url_str->Pop();
+										moved_url_str += ':';
+										moved_url_str += port;
+										moved_url_str += '/';
+									}
+									else {
+										moved_url_str += ':';
+										moved_url_str += port;
+									};
 									moved_url_str += moved_location;
 								};
 								@response_headers->Empty();
