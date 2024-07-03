@@ -565,7 +565,7 @@ if(html <> Nil) {
 								value := line->SubString(index + 1, line->Size() - index - 1)->Trim();
 								
 								# IO.Console->Print("|")->Print(name)->Print("|, |")->Print(value)->PrintLine("|");
-								if(@cookies_enabled & name->Equals("Set-Cookie")) {
+								if(@cookies_enabled & name>ToLower()->Equals("set-cookie")) {
 									@cookies->AddBack(Cookie->New(value));
 									# IO.Console->Print("cookie=")->PrintLine(value);
 								}
@@ -720,7 +720,7 @@ if(html <> Nil) {
 								value := line->SubString(index + 1, line->Size() - index - 1)->Trim();
 								
 								# IO.Console->Print("|")->Print(name)->Print("|, |")->Print(value)->PrintLine("|");
-								if(@cookies_enabled & name->Equals("Set-Cookie")) {
+								if(@cookies_enabled & name>ToLower()->Equals("set-cookie")) {
 									@cookies->AddBack(Cookie->New(value));
 									# IO.Console->Print("cookie=")->PrintLine(value);
 								}
