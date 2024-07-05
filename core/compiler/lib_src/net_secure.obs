@@ -100,6 +100,7 @@ if(html <> Nil) {
 
 		#~
 		Get a cookie
+		@param name cookie name
 		@return found cookie, Nil otherwise
 		~#
 		method : public : GetCookie(name : String) ~ Cookie {
@@ -114,6 +115,7 @@ if(html <> Nil) {
 
 		#~
 		Checks for a cookie
+		@param name cookie name
 		@return true if found cookie, false otherwise
 		~#
 		method : public : HasCookie(name : String) ~ Bool {
