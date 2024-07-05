@@ -93,7 +93,29 @@ if(html <> Nil) {
 		~#
 		method : public : GetCookies() ~ Vector<Cookie> {
 			return @cookies;
-		}	
+		}
+
+		#~
+		Get a cookie
+		@return found cookie, Nil otherwise
+		~#
+		method : public : GetCookie(name : String) ~ Cookie {
+			each(cookie in @cookies) {
+				if(cookie->GetName()->EqualsIgnoreCase(name)) {
+					return cookie;
+				};
+			};
+
+			return Nil;
+		}
+
+		#~
+		Checks for a cookie
+		@return true if found cookie, false otherwise
+		~#
+		method : public : HasCookie(name : String) ~ Bool {
+			return GetCookie(name) <> Nil;
+		}
 		
 		#~
 		Sets a cookie
@@ -525,6 +547,8 @@ if(html <> Nil) {
 					oper->Append(location);
 					oper->Append(" HTTP/1.1\r\nHost: ");
 					oper->Append(address);
+					oper->Append(':');
+					oper->Append(port);
 					oper->Append("\r\nContent-Type: ");
 					oper->Append(content_type);
 					oper->Append("\r\nContent-Length: ");
@@ -703,6 +727,8 @@ if(html <> Nil) {
 					oper->Append(location);
 					oper->Append(" HTTP/1.1\r\nHost: ");
 					oper->Append(address);
+					oper->Append(':');
+					oper->Append(port);
 					oper->Append("\r\n");
 
 					request_keys := @request_headers->GetKeys()<String>;

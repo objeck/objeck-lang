@@ -30,7 +30,7 @@ if(html <> Nil) {
 		@request_headers : Hash<String, String>;
 		@response_headers : Hash<String, String>;
 		@cookies_enabled : Bool;
-		@cookies: Vector<Cookie>;
+		@cookies : Vector<Cookie>;
 		@cert_issuer : String;
 		@cert_subject : String;
 		
@@ -96,7 +96,29 @@ if(html <> Nil) {
 		~#
 		method : public : GetCookies() ~ Vector<Cookie> {
 			return @cookies;
-		}	
+		}
+
+		#~
+		Get a cookie
+		@return found cookie, Nil otherwise
+		~#
+		method : public : GetCookie(name : String) ~ Cookie {
+			each(cookie in @cookies) {
+				if(cookie->GetName()->EqualsIgnoreCase(name)) {
+					return cookie;
+				};
+			};
+
+			return Nil;
+		}
+
+		#~
+		Checks for a cookie
+		@return true if found cookie, false otherwise
+		~#
+		method : public : HasCookie(name : String) ~ Bool {
+			return GetCookie(name) <> Nil;
+		}
 		
 		#~
 		Sets a cookie
@@ -294,6 +316,8 @@ if(html <> Nil) {
 
 				socket := TCPSecureSocket->New(address, port);
 				if(socket->IsOpen()) {
+					@response_headers->Empty();
+
 					oper : String;
 					
 					if(task = HttpsClient->Task->POST) {
@@ -306,6 +330,8 @@ if(html <> Nil) {
 					oper->Append(location);
 					oper->Append(" HTTP/1.1\r\nHost: ");
 					oper->Append(address);
+					oper->Append(':');
+					oper->Append(port);
 					oper->Append("\r\nContent-Type: ");
 					oper->Append(content_type);
 					oper->Append("\r\nContent-Length: ");
@@ -336,8 +362,8 @@ if(html <> Nil) {
 					socket->WriteString(oper);
 					socket->WriteBuffer(data);
 					
-					# oper->PrintLine();					
-					
+					# IO.Console->Print("Post: |")->Print(oper)->PrintLine("|");
+
 					status_line := socket->ReadLine();
 					if(status_line->StartsWith("HTTP/1.")) {
 						status_line := status_line->SubString("HTTP/1."->Size() + 2, 
@@ -404,7 +430,6 @@ if(html <> Nil) {
 									};
 									moved_url_str += moved_location;
 								};
-								@response_headers->Empty();
 
 								# IO.Console->Print("permanently moved: ")->PrintLine(moved_url_str);
 								return Post(Url->New(moved_url_str), data, content_type);
@@ -612,6 +637,8 @@ if(html <> Nil) {
 
 				socket := TCPSecureSocket->New(address, port);
 				if(socket->IsOpen()) {
+					@response_headers->Empty();
+
 					oper : String;
 
 					if(task = HttpsClient->Task->GET) {
@@ -624,6 +651,8 @@ if(html <> Nil) {
 					oper->Append(location);
 					oper->Append(" HTTP/1.1\r\nHost: ");
 					oper->Append(address);
+					oper->Append(':');
+					oper->Append(port);
 					oper->Append("\r\n");
 
 					request_keys := @request_headers->GetKeys()<String>;
