@@ -1,6 +1,6 @@
 # Architecture  
 
-[Pipeline DFD](https://lucid.app/lucidchart/298021c0-b0bb-488b-b0cf-c56d7050ae51/edit?invitationId=inv_b0b92f3f-ead8-4ca6-aae3-562e89824834)
+[Design Diagram](https://lucid.app/lucidchart/298021c0-b0bb-488b-b0cf-c56d7050ae51/edit?invitationId=inv_b0b92f3f-ead8-4ca6-aae3-562e89824834)
 
 ### Notable Subsystems
 * [Compiler](https://github.com/objeck/objeck-lang/blob/master/core/compiler)
@@ -11,7 +11,7 @@
 * [Just-In-Time (JIT) compilation](https://github.com/objeck/objeck-lang/blob/master/core/vm/arch/jit)
 
 ## Working with the Code
-Objeck can be built for a variety of targets. The language is implemented in C++, assembly (i.e., generated machine code) and assisted by code generators for bindings to SDL2 and GTK 3/4.
+Objeck can be built for various targets. The language is implemented in C++ and assembly (i.e., generated machine code) and assisted by code generators for SDL2 and GTK 3/4 bindings.
 
 ### Linux (x64, ARM64)
 *  For Linux, install required libraries: <code>sudo apt-get install build-essential git libssl-dev unixodbc-dev libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev libsdl2-mixer-dev libreadline-dev unzip libeigen3-dev</code>
