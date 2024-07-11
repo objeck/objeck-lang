@@ -23,7 +23,7 @@
 * v2024.7.0 **(current)**
   * On-device ML API support for Llama and Mistral
   
-* v2024.6.0 **(current)**
+* v2024.6.0
     * Model tuning
       * OpenAI
       * Gemini
