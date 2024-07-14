@@ -15,12 +15,14 @@
 ## Releases
 
 * v2024.8.x
-  * Unified inference framework across OpenAI, Gemini, Llama, and Mistral
+  * Orchestrated inference across OpenAI, Gemini, Llama, Mistral and Perplexity
+  * Cross-platform training tools
   
-* v2024.7.1
-  * Common functional training framework across OpenAI, Gemini, Llama, and Mistral
+* v2024.7.1 **(current)**
+  * Perplexity API support
+  * Bug fixes
   
-* v2024.7.0 **(current)**
+* v2024.7.0
   * Local ML/AI support for Llama and Mistral
   
 * v2024.6.0
@@ -29,16 +31,6 @@
       * Gemini
     * Image generation, editing, and variation
       * OpenAI
-      
-* v2024.5.0
-  * Gemini support for function calls
-  * JSON Scheme support for function modeling for OpenAI and Gemini
-  * Enhancements
-    * Added Collection 'Reduce' methods
-    * Boxing/unboxing support for the '<' and '>' operators (legacy missing feature)
-  * Bug fixes
-    * Fixed Collection 'Filter' methods
-    * Resolved ODBC refactor bug
 
 ## Examples
 
