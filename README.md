@@ -35,7 +35,7 @@
 ## Examples
 
 ```ruby
-# simple openai and inference 
+# simple openai and perplexity inference 
 use API.OpenAI, API.OpenAI.Chat, Collection;
 
 class OpenAICompletion {
