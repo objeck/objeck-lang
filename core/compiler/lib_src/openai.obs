@@ -245,10 +245,22 @@ bundle API.OpenAI.Chat {
 
 		#~
 		List of chat completion choices
-		@return completion choices
+		@return compleCalled: name='/chat/completionstion choices
 		~#
 		method : public : GetChoices() ~ Vector<API.OpenAI.Chat.Choice> {
 			return @choices;
+		}
+
+		#~
+		List of chat completion choices
+		@return completion choices
+		~#
+		method : public : GetFirstChoice() ~ API.OpenAI.Chat.Choice {
+			if(@choices->Size() > 0) {
+				return @choices->Get(0);
+			};
+
+			return Nil;
 		}
 
 		#~
@@ -304,17 +316,13 @@ bundle API.OpenAI.Chat {
 
 		#~
 		Model response for the given chat conversation
-		@param message completion message.
-		@param max_tokens maximum number of completion tokens returned by the API
-		@parm temperature amount of randomness in the response, valued between 0 inclusive and 2 exclusive
-		@param top_p nucleus sampling threshold, valued between 0 and 1 inclusive
 		@param model ID of the model to use
+		@param message completion message
+		@param max_tokens maximum number of completion tokens returned by the API
+		@param temperature amount of randomness in the response, valued between 0 inclusive and 2 exclusive
+		@param top_p nucleus sampling threshold, valued between 0 and 1 inclusive
 		@param token API token
 		@return completion response
-		#
-		# TODO: https://www.youtube.com/watch?v=czvVibB2lRA&list=PLz-ep5RbHosU2hnz5ejezwaYpdMutMVB0&index=2
-		# Add: max_tokens, n, temperature
-		#
 		~#
 		function : Complete(model : String, message : Pair<String, String>, max_tokens : Int, temperature : Float, top_p : Float, token : String) ~ Completion {
 			messages := Vector->New()<Pair<String, String>>;
@@ -340,17 +348,13 @@ bundle API.OpenAI.Chat {
 
 		#~
 		Model response for the given chat conversation
+		@param model ID of the model to use
 		@param messages list of messages comprising the conversation
 		@param max_tokens maximum number of completion tokens returned by the API
-		@parm temperature amount of randomness in the response, valued between 0 inclusive and 2 exclusive
+		@param temperature amount of randomness in the response, valued between 0 inclusive and 2 exclusive
 		@param top_p nucleus sampling threshold, valued between 0 and 1 inclusive
-		@param model ID of the model to use
 		@param token API token
 		@return completion response
-		#
-		# TODO: https://www.youtube.com/watch?v=czvVibB2lRA&list=PLz-ep5RbHosU2hnz5ejezwaYpdMutMVB0&index=2
-		# Add: max_tokens, n, temperature
-		#
 		~#
 		function : Complete(model : String, messages : Vector<Pair<String, String>>, max_tokens : Int, temperature : Float, top_p : Float, token : String) ~ Completion {
 			completion_json := JsonElement->New(JsonElement->JsonType->OBJECT);
@@ -378,7 +382,9 @@ bundle API.OpenAI.Chat {
 			completion_json->Insert("messages", messages_json);
 
 			data := completion_json->ToString()->ToByteArray();
-			# data->ToString()->PrintLine();			
+			if(IsDebug()) {
+				data->ToString()->PrintLine();
+			};
 
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
@@ -3859,7 +3865,7 @@ session->Close();
 		@api_key : static : String;
 
 		function : IsDebug() ~ Bool {
-			return true;
+			return false;
 		}
 
 		#~
