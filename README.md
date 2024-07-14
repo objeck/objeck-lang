@@ -63,7 +63,7 @@ class OpenAICompletion {
     }
 
     message := Pair->New("user", "What is the longest road in Denver?")<String, String>;
-    completion := Completion->Complete(model, message, 100, 1.0, 0.5, token);
+    completion := Completion->Complete(model, message, token);
     if(completion <> Nil) {
       choice := completion->GetFirstChoice();
       if(choice = Nil) {
