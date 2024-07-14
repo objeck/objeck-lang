@@ -49,7 +49,7 @@ class OpenAICompletion {
 
     token := GetApiKey(args[0]);
     if(token = Nil) {
-      ">>> Please provide a directive <<"->PrintLine();
+      ">>> Unable to use API key <<"->PrintLine();
       Runtime->Exit(1);
     };
 
