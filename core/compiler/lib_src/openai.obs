@@ -75,7 +75,7 @@ bundle API.OpenAI.Audio {
 			boundry := encoder->GetBoundary();
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
-			response := HttpsClient->QuickPost(Url->New("https://api.openai.com/v1/audio/transcriptions"), data, 
+			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/audio/transcriptions"), data, 
 				"multipart/form-data; boundary={$boundry}", headers);
 
 			if(response <> Nil) {
@@ -160,7 +160,7 @@ bundle API.OpenAI.Audio {
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
 			
-			response := HttpsClient->QuickPost(Url->New("https://api.openai.com/v1/audio/speech"), data, "application/json", headers);
+			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/audio/speech"), data, "application/json", headers);
 			# response->GetContent()->ToString()->PrintLine();		
 
 			if(response->GetType()->Equals("application/json")) {
@@ -286,7 +286,46 @@ bundle API.OpenAI.Chat {
 
 		#~
 		Model response for the given chat conversation
-		@param messages list of messages comprising the conversation so far.
+		@param message completion message.
+		@param model ID of the model to use
+		@param token API token
+		@return completion response
+		#
+		# TODO: https://www.youtube.com/watch?v=czvVibB2lRA&list=PLz-ep5RbHosU2hnz5ejezwaYpdMutMVB0&index=2
+		# Add: max_tokens, n, temperature
+		#
+		~#
+		function : Complete(model : String, message : Pair<String, String>, token : String) ~ Completion {
+			messages := Vector->New()<Pair<String, String>>;
+			messages->AddBack(message);
+
+			return Complete(model, messages, -1, -1.0, -1.0, token);
+		}
+
+		#~
+		Model response for the given chat conversation
+		@param message completion message.
+		@param max_tokens maximum number of completion tokens returned by the API
+		@parm temperature amount of randomness in the response, valued between 0 inclusive and 2 exclusive
+		@param top_p nucleus sampling threshold, valued between 0 and 1 inclusive
+		@param model ID of the model to use
+		@param token API token
+		@return completion response
+		#
+		# TODO: https://www.youtube.com/watch?v=czvVibB2lRA&list=PLz-ep5RbHosU2hnz5ejezwaYpdMutMVB0&index=2
+		# Add: max_tokens, n, temperature
+		#
+		~#
+		function : Complete(model : String, message : Pair<String, String>, max_tokens : Int, temperature : Float, top_p : Float, token : String) ~ Completion {
+			messages := Vector->New()<Pair<String, String>>;
+			messages->AddBack(message);
+
+			return Complete(model, messages, max_tokens, temperature, top_p, token);
+		}
+
+		#~
+		Model response for the given chat conversation
+		@param messages list of messages comprising the conversation
 		@param model ID of the model to use
 		@param token API token
 		@return completion response
@@ -296,8 +335,38 @@ bundle API.OpenAI.Chat {
 		#
 		~#
 		function : Complete(model : String, messages : Vector<Pair<String, String>>, token : String) ~ Completion {
+			return Complete(model, messages, -1, -1.0, -1.0, token);
+		}
+
+		#~
+		Model response for the given chat conversation
+		@param messages list of messages comprising the conversation
+		@param max_tokens maximum number of completion tokens returned by the API
+		@parm temperature amount of randomness in the response, valued between 0 inclusive and 2 exclusive
+		@param top_p nucleus sampling threshold, valued between 0 and 1 inclusive
+		@param model ID of the model to use
+		@param token API token
+		@return completion response
+		#
+		# TODO: https://www.youtube.com/watch?v=czvVibB2lRA&list=PLz-ep5RbHosU2hnz5ejezwaYpdMutMVB0&index=2
+		# Add: max_tokens, n, temperature
+		#
+		~#
+		function : Complete(model : String, messages : Vector<Pair<String, String>>, max_tokens : Int, temperature : Float, top_p : Float, token : String) ~ Completion {
 			completion_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 			completion_json->Insert("model", model);
+
+			if(max_tokens > -1) {
+				completion_json->Insert("max_tokens", max_tokens);
+			};
+
+			if(temperature >= 0.0) {
+				completion_json->Insert("temperature", temperature);
+			};
+
+			if(top_p >= 0.0) {
+				completion_json->Insert("top_p", top_p);
+			};
 
 			messages_json := JsonElement->New(JsonElement->JsonType->ARRAY);
 			each(message in messages) {
@@ -314,10 +383,10 @@ bundle API.OpenAI.Chat {
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
 			headers->Insert("OpenAI-Beta", "assistants=v2");
-			response := HttpsClient->QuickPost(Url->New("https://api.openai.com/v1/chat/completions"), data, "application/json", headers);
+			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/chat/completions"), data, "application/json", headers);
 			if(response <> Nil) {
 				if(IsDebug()) {
-					"--- Called: name='https://api.openai.com/v1/chat/completions' ---"->PrintLine();
+					"--- Called: name='/chat/completions' ---"->PrintLine();
 					response->GetContent()->ToString()->PrintLine();				
 				};
 
@@ -701,7 +770,7 @@ bundle API.OpenAI.Tuning {
 
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
-			response := HttpsClient->QuickPost(Url->New("https://api.openai.com/v1/fine_tuning/jobs"), data, "application/json", headers);
+			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/fine_tuning/jobs"), data, "application/json", headers);
 			if(response <> Nil) {
 				# response->GetContent()->ToString()->PrintLine();
 				tune_json := JsonParser->TextToElement(response->GetContent()->ToString());
@@ -744,7 +813,7 @@ bundle API.OpenAI.Tuning {
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
 			
-			url_str := "https://api.openai.com/v1/fine_tuning/jobs";
+			url_str := GetBaseUrl() + "/fine_tuning/jobs";
 			if(limit > 0) {
 				url_str += "?limit={$limit}";
 			};
@@ -796,7 +865,7 @@ bundle API.OpenAI.Tuning {
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
 			
-			url_str := "https://api.openai.com/v1/fine_tuning/jobs/{$job_id}/events";
+			url_str := GetBaseUrl() + "/fine_tuning/jobs/{$job_id}/events";
 			if(limit > 0) {
 				url_str += "?limit={$limit}";
 			};
@@ -848,7 +917,7 @@ bundle API.OpenAI.Tuning {
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
 			
-			url_str := "https://api.openai.com/v1/fine_tuning/jobs/{$job_id}/checkpoints";
+			url_str := GetBaseUrl() + "/fine_tuning/jobs/{$job_id}/checkpoints";
 			if(limit > 0) {
 				url_str += "?limit={$limit}";
 			};
@@ -889,7 +958,7 @@ bundle API.OpenAI.Tuning {
 
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
-			response := HttpsClient->QuickGet(Url->New("https://api.openai.com/v1/fine_tuning/jobs/{$job_id}"), "application/json", headers);
+			response := HttpsClient->QuickGet(Url->New(GetBaseUrl() + "/fine_tuning/jobs/{$job_id}"), "application/json", headers);
 			
 			if(response <> Nil) {
 				# response->GetContent()->ToString()->PrintLine();				
@@ -915,7 +984,7 @@ bundle API.OpenAI.Tuning {
 
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
-			response := HttpsClient->QuickPost(Url->New("https://api.openai.com/v1/fine_tuning/jobs/{$job_id}/cancel"), 
+			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/fine_tuning/jobs/{$job_id}/cancel"), 
 				Byte->New[0], "application/json", headers);
 			if(response <> Nil) {
 				# response->GetContent()->ToString()->PrintLine();				
@@ -1243,7 +1312,7 @@ bundle API.OpenAI {
 
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
-			response := HttpsClient->QuickPost(Url->New("https://api.openai.com/v1/images/generations"), data, "application/json", headers);
+			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/images/generations"), data, "application/json", headers);
 			if(response <> Nil) {
 				# response->GetContent()->ToString()->PrintLine();
 				image_json := JsonParser->TextToElement(response->GetContent()->ToString());
@@ -1378,7 +1447,7 @@ bundle API.OpenAI {
 
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
-			response := HttpsClient->QuickPost(Url->New("https://api.openai.com/v1/images/edits"), data, 
+			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/images/edits"), data, 
 				"multipart/form-data; boundary={$boundry}", headers);
 			if(response <> Nil) {
 				# response->GetContent()->ToString()->PrintLine();
@@ -1496,7 +1565,7 @@ bundle API.OpenAI {
 
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
-			response := HttpsClient->QuickPost(Url->New("https://api.openai.com/v1/images/variations"), data, 
+			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/images/variations"), data, 
 				"multipart/form-data; boundary={$boundry}", headers);
 			if(response <> Nil) {
 				# response->GetContent()->ToString()->PrintLine();
@@ -1627,10 +1696,10 @@ if(store <> Nil & file <> Nil) {
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
 			headers->Insert("OpenAI-Beta", "assistants=v2");
-			response := HttpsClient->QuickPost(Url->New("https://api.openai.com/v1/vector_stores/{$store_id}/files"), data, "application/json", headers);
+			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/vector_stores/{$store_id}/files"), data, "application/json", headers);
 			if(response <> Nil) {
 				if(IsDebug()) {
-					"--- Called: name='https://api.openai.com/v1/vector_stores' ---"->PrintLine();
+					"--- Called: name='/vector_stores' ---"->PrintLine();
 					response->GetContent()->ToString()->PrintLine();
 				};
 
@@ -1666,11 +1735,11 @@ if(store <> Nil & file <> Nil) {
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
 			headers->Insert("OpenAI-Beta", "assistants=v2");
-			response := HttpsClient->QuickGet(Url->New("https://api.openai.com/v1/vector_stores/{$store_id}/files"), "application/json", headers);
+			response := HttpsClient->QuickGet(Url->New(GetBaseUrl() + "/vector_stores/{$store_id}/files"), "application/json", headers);
 			
 			if(response <> Nil) {
 				if(IsDebug()) {
-					"--- Called: name='https://api.openai.com/v1/vector_stores/{$store_id}/files' ---"->PrintLine();
+					"--- Called: name='/vector_stores/{$store_id}/files' ---"->PrintLine();
 					response->GetContent()->ToString()->PrintLine();
 				};
 
@@ -1711,11 +1780,11 @@ if(store <> Nil & file <> Nil) {
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
 			headers->Insert("OpenAI-Beta", "assistants=v2");
-			response := HttpsClient->QuickGet(Url->New("https://api.openai.com/v1/vector_stores/{$store_id}/files/{$store_file_id}"), "application/json", headers);
+			response := HttpsClient->QuickGet(Url->New(GetBaseUrl() + "/vector_stores/{$store_id}/files/{$store_file_id}"), "application/json", headers);
 			
 			if(response <> Nil) {
 				if(IsDebug()) {
-					"--- Called: name='https://api.openai.com/v1/vector_stores/{$store_id}/files/{$store_file_id}' ---"->PrintLine();
+					"--- Called: name='/vector_stores/{$store_id}/files/{$store_file_id}' ---"->PrintLine();
 					response->GetContent()->ToString()->PrintLine();
 				};
 
@@ -1749,11 +1818,11 @@ if(store <> Nil & file <> Nil) {
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
 			headers->Insert("OpenAI-Beta", "assistants=v2");
-			response := HttpsClient->QuickDelete(Url->New("https://api.openai.com/v1/vector_stores/{$store_id}/files/{$store_file_id}"), "application/json", headers);
+			response := HttpsClient->QuickDelete(Url->New(GetBaseUrl() + "/vector_stores/{$store_id}/files/{$store_file_id}"), "application/json", headers);
 			
 			if(response <> Nil) {
 				if(IsDebug()) {
-					"--- Called: name='https://api.openai.com/v1/vector_stores/{$store_id}/files/{$store_file_id}' ---"->PrintLine();
+					"--- Called: name='/vector_stores/{$store_id}/files/{$store_file_id}' ---"->PrintLine();
 					response->GetContent()->ToString()->PrintLine();
 				};
 
@@ -1934,10 +2003,10 @@ if(store <> Nil) {
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
 			headers->Insert("OpenAI-Beta", "assistants=v2");
-			response := HttpsClient->QuickPost(Url->New("https://api.openai.com/v1/vector_stores"), data, "application/json", headers);
+			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/vector_stores"), data, "application/json", headers);
 			if(response <> Nil) {
 				if(IsDebug()) {
-					"--- Called: name='https://api.openai.com/v1/vector_stores' ---"->PrintLine();
+					"--- Called: name='/vector_stores' ---"->PrintLine();
 					response->GetContent()->ToString()->PrintLine();
 				};
 
@@ -1980,11 +2049,11 @@ if(store <> Nil) {
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
 			headers->Insert("OpenAI-Beta", "assistants=v2");
-			response := HttpsClient->QuickGet(Url->New("https://api.openai.com/v1/vector_stores"), "application/json", headers);
+			response := HttpsClient->QuickGet(Url->New(GetBaseUrl() + "/vector_stores"), "application/json", headers);
 			
 			if(response <> Nil) {
 				if(IsDebug()) {
-					"--- Called: name='https://api.openai.com/v1/vector_stores' ---"->PrintLine();
+					"--- Called: name='/vector_stores' ---"->PrintLine();
 					response->GetContent()->ToString()->PrintLine();
 				};
 
@@ -2030,11 +2099,11 @@ if(store <> Nil) {
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
 			headers->Insert("OpenAI-Beta", "assistants=v2");
-			response := HttpsClient->QuickDelete(Url->New("https://api.openai.com/v1/vector_stores/{$id}"), "application/json", headers);
+			response := HttpsClient->QuickDelete(Url->New(GetBaseUrl() + "/vector_stores/{$id}"), "application/json", headers);
 			
 			if(response <> Nil) {
 				if(IsDebug()) {
-					"--- Called: name='https://api.openai.com/v1/vector_stores/{$id}' ---"->PrintLine();
+					"--- Called: name='/vector_stores/{$id}' ---"->PrintLine();
 					response->GetContent()->ToString()->PrintLine();
 				};
 
@@ -2083,11 +2152,11 @@ if(store <> Nil) {
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
 			headers->Insert("OpenAI-Beta", "assistants=v2");
-			response := HttpsClient->QuickGet(Url->New("https://api.openai.com/v1/vector_stores/{$store_id}"), "application/json", headers);
+			response := HttpsClient->QuickGet(Url->New(GetBaseUrl() + "/vector_stores/{$store_id}"), "application/json", headers);
 			
 			if(response <> Nil) {
 				if(IsDebug()) {
-					"--- Called: name='https://api.openai.com/v1/vector_stores/{$store_id}' ---"->PrintLine();
+					"--- Called: name='/vector_stores/{$store_id}' ---"->PrintLine();
 					response->GetContent()->ToString()->PrintLine();
 				};
 
@@ -2289,7 +2358,7 @@ session->Close();
 
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
-			response := HttpsClient->QuickPost(Url->New("https://api.openai.com/v1/files"), data, 
+			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/files"), data, 
 				"multipart/form-data; boundary={$boundry}", headers);
 
 			return response->GetCode() = 200;
@@ -2304,7 +2373,7 @@ session->Close();
 		function : Load(id : String, token : String) ~ API.OpenAI.File {
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
-			response := HttpsClient->QuickGet(Url->New("https://api.openai.com/v1/files/{$id}"), "application/json", headers);
+			response := HttpsClient->QuickGet(Url->New(GetBaseUrl() + "/files/{$id}"), "application/json", headers);
 			
 			if(response <> Nil) {
 				file_json := JsonParser->TextToElement(response->GetContent()->ToString());
@@ -2335,7 +2404,7 @@ session->Close();
 
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
-			response := HttpsClient->QuickDelete(Url->New("https://api.openai.com/v1/files/{$id}"), "application/json", headers);
+			response := HttpsClient->QuickDelete(Url->New(GetBaseUrl() + "/files/{$id}"), "application/json", headers);
 			
 			if(response <> Nil) {
 				file_json := JsonParser->TextToElement(response->GetContent()->ToString());
@@ -2422,7 +2491,7 @@ session->Close();
 
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
-			response := HttpsClient->QuickGet(Url->New("https://api.openai.com/v1/files"), "application/json", headers);
+			response := HttpsClient->QuickGet(Url->New(GetBaseUrl() + "/files"), "application/json", headers);
 			if(response <> Nil) {
 				root_json := JsonParser->TextToElement(response->GetContent()->ToString());
 
@@ -2454,7 +2523,7 @@ session->Close();
 		function : Retrieve(id : String, token : String) ~ Byte[] {
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
-			return HttpsClient->QuickGet(Url->New("https://api.openai.com/v1/files/{$id}/content"), "application/json", headers)->GetContent();
+			return HttpsClient->QuickGet(Url->New(GetBaseUrl() + "/files/{$id}/content"), "application/json", headers)->GetContent();
 		}
 	}
 
@@ -2592,10 +2661,10 @@ session->Close();
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$@token}");
 			headers->Insert("OpenAI-Beta", "assistants=v2");
-			response := HttpsClient->QuickPost(Url->New("https://api.openai.com/v1/assistants/{$@id}/files"), data, "application/json", headers);
+			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/assistants/{$@id}/files"), data, "application/json", headers);
 			if(response <> Nil) {
 				if(IsDebug()) {
-					"--- Called: name='https://api.openai.com/v1/assistants/{$@id}/files' ---"->PrintLine();
+					"--- Called: name='/assistants/{$@id}/files' ---"->PrintLine();
 					response->GetContent()->ToString()->PrintLine();
 				};
 
@@ -2681,10 +2750,10 @@ session->Close();
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
 			headers->Insert("OpenAI-Beta", "assistants=v2");
-			response := HttpsClient->QuickGet(Url->New("https://api.openai.com/v1/assistants"), "application/json", headers);
+			response := HttpsClient->QuickGet(Url->New(GetBaseUrl() + "/assistants"), "application/json", headers);
 			if(response <> Nil) {
 				if(IsDebug()) {
-					"--- Called: name='https://api.openai.com/v1/assistants' ---"->PrintLine();
+					"--- Called: name='/assistants' ---"->PrintLine();
 					response->GetContent()->ToString()->PrintLine();
 				};
 
@@ -2862,10 +2931,10 @@ session->Close();
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
 			headers->Insert("OpenAI-Beta", "assistants=v2");
-			response := HttpsClient->QuickPost(Url->New("https://api.openai.com/v1/assistants"), data, "application/json", headers);
+			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/assistants"), data, "application/json", headers);
 			if(response <> Nil) {
 				if(IsDebug()) {
-					"--- Called: name='https://api.openai.com/v1/assistants' ---"->PrintLine();
+					"--- Called: name='/assistants' ---"->PrintLine();
 					response->GetContent()->ToString()->PrintLine();
 				};
 
@@ -2898,10 +2967,10 @@ session->Close();
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
 			headers->Insert("OpenAI-Beta", "assistants=v2");
-			response := HttpsClient->QuickGet(Url->New("https://api.openai.com/v1/assistants/{$id}"), "application/json", headers);
+			response := HttpsClient->QuickGet(Url->New(GetBaseUrl() + "/assistants/{$id}"), "application/json", headers);
 			if(response <> Nil) {
 				if(IsDebug()) {
-					"--- Called: name='https://api.openai.com/v1/assistants/{$id}' ---"->PrintLine();
+					"--- Called: name='/assistants/{$id}' ---"->PrintLine();
 					response->GetContent()->ToString()->PrintLine();
 				};
 
@@ -2951,10 +3020,10 @@ session->Close();
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
 			headers->Insert("OpenAI-Beta", "assistants=v2");
-			response := HttpsClient->QuickDelete(Url->New("https://api.openai.com/v1/assistants/{$id}"), "application/json", headers);
+			response := HttpsClient->QuickDelete(Url->New(GetBaseUrl() + "/assistants/{$id}"), "application/json", headers);
 			if(response <> Nil) {
 				if(IsDebug()) {
-					"--- Called: name='https://api.openai.com/v1/assistants/{$id}' ---"->PrintLine();
+					"--- Called: name='/assistants/{$id}' ---"->PrintLine();
 					response->GetContent()->ToString()->PrintLine();
 				};
 
@@ -3046,10 +3115,10 @@ session->Close();
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
 			headers->Insert("OpenAI-Beta", "assistants=v2");
-			response := HttpsClient->QuickPost(Url->New("https://api.openai.com/v1/threads"), ""->ToByteArray(), "application/json", headers);
+			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/threads"), ""->ToByteArray(), "application/json", headers);
 			if(response <> Nil) {
 				if(IsDebug()) {
-					"--- Called: name='https://api.openai.com/v1/threads' ---"->PrintLine();
+					"--- Called: name='/threads' ---"->PrintLine();
 					response->GetContent()->ToString()->PrintLine();
 				};
 
@@ -3081,7 +3150,7 @@ session->Close();
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
 			headers->Insert("OpenAI-Beta", "assistants=v2");
-			response := HttpsClient->QuickGet(Url->New("https://api.openai.com/v1/threads/{$id}"), "application/json", headers);
+			response := HttpsClient->QuickGet(Url->New(GetBaseUrl() + "/threads/{$id}"), "application/json", headers);
 			if(response <> Nil) {
 				if(IsDebug()) {
 					"--- Called: 'https://api.openai.com/v1/threads/{$id}' ---"->PrintLine();
@@ -3119,7 +3188,7 @@ session->Close();
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
 			headers->Insert("OpenAI-Beta", "assistants=v2");
-			response := HttpsClient->QuickDelete(Url->New("https://api.openai.com/v1/threads/{$id}"), "application/json", headers);
+			response := HttpsClient->QuickDelete(Url->New(GetBaseUrl() + "/threads/{$id}"), "application/json", headers);
 			if(response <> Nil) {
 				if(IsDebug()) {
 					"--- Called: 'https://api.openai.com/v1/threads/{$id}' ---"->PrintLine();
@@ -3346,7 +3415,7 @@ session->Close();
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
 			headers->Insert("OpenAI-Beta", "assistants=v2");
-			response := HttpsClient->QuickPost(Url->New("https://api.openai.com/v1/threads/{$thread_id}/messages"), data, "application/json", headers);
+			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/threads/{$thread_id}/messages"), data, "application/json", headers);
 			if(response <> Nil) {
 				if(IsDebug()) {
 					"--- Called: 'https://api.openai.com/v1/threads/{$thread_id}/messages' ---"->PrintLine();
@@ -3383,7 +3452,7 @@ session->Close();
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
 			headers->Insert("OpenAI-Beta", "assistants=v2");
-			response := HttpsClient->QuickGet(Url->New("https://api.openai.com/v1/threads/{$thread_id}/messages/{$id}"), "application/json", headers);
+			response := HttpsClient->QuickGet(Url->New(GetBaseUrl() + "/threads/{$thread_id}/messages/{$id}"), "application/json", headers);
 			if(response <> Nil) {
 				if(IsDebug()) {
 					"--- Called: 'https://api.openai.com/v1/threads/{$thread_id}/messages/{$id}' ---"->PrintLine();
@@ -3433,7 +3502,7 @@ session->Close();
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
 			headers->Insert("OpenAI-Beta", "assistants=v2");
-			response := HttpsClient->QuickGet(Url->New("https://api.openai.com/v1/threads/{$thread_id}/messages"), "application/json", headers);
+			response := HttpsClient->QuickGet(Url->New(GetBaseUrl() + "/threads/{$thread_id}/messages"), "application/json", headers);
 			if(response <> Nil) {
 				if(IsDebug()) {
 					"--- https://api.openai.com/v1/threads/{$thread_id}/messages' ---"->PrintLine();
@@ -3571,7 +3640,7 @@ session->Close();
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
 			headers->Insert("OpenAI-Beta", "assistants=v2");
-			response := HttpsClient->QuickPost(Url->New("https://api.openai.com/v1/threads/{$thread_id}/runs"), data, "application/json", headers);
+			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/threads/{$thread_id}/runs"), data, "application/json", headers);
 			if(response <> Nil) {
 				# response->GetContent()->ToString()->PrintLine();				
 				run_json := JsonParser->TextToElement(response->GetContent()->ToString());
@@ -3601,7 +3670,7 @@ session->Close();
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
 			headers->Insert("OpenAI-Beta", "assistants=v2");
-			response := HttpsClient->QuickGet(Url->New("https://api.openai.com/v1/threads/{$@thread_id}/runs/{$@id}"), "application/json", headers);
+			response := HttpsClient->QuickGet(Url->New(GetBaseUrl() + "/threads/{$@thread_id}/runs/{$@id}"), "application/json", headers);
 			if(response <> Nil) {
 				if(IsDebug()) {
 					"--- Called: 'https://api.openai.com/v1/threads/{$@thread_id}/runs/{$@id}' ---"->PrintLine();
@@ -3663,7 +3732,7 @@ session->Close();
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
 			headers->Insert("OpenAI-Beta", "assistants=v2");
-			response := HttpsClient->QuickPost(Url->New("https://api.openai.com/v1/threads/{$@thread_id}/runs/{$@id}/submit_tool_outputs"), data, "application/json", headers);
+			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/threads/{$@thread_id}/runs/{$@id}/submit_tool_outputs"), data, "application/json", headers);
 			if(response <> Nil) {
 				if(IsDebug()) {
 					"--- Called: 'https://api.openai.com/v1/threads/{$@thread_id}/runs/{$@id}/submit_tool_outputs' ---"->PrintLine();
@@ -3713,7 +3782,7 @@ session->Close();
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
 			headers->Insert("OpenAI-Beta", "assistants=v2");
-			response := HttpsClient->QuickGet(Url->New("https://api.openai.com/v1/threads/{$thread_id}/runs/{$id}"), "application/json", headers);
+			response := HttpsClient->QuickGet(Url->New(GetBaseUrl() + "/threads/{$thread_id}/runs/{$id}"), "application/json", headers);
 			if(response <> Nil) {
 				if(IsDebug()) {
 					"--- Called: 'https://api.openai.com/v1/threads/{$thread_id}/runs/{$id}' ---"->PrintLine();
@@ -3785,6 +3854,7 @@ session->Close();
 	OpenAI endpoint
 	~#
 	class EndPoint {
+		@base_url : static : String;
 		@last_message : static : String;
 		@api_key : static : String;
 
@@ -3792,16 +3862,34 @@ session->Close();
 			return true;
 		}
 
-		function : SetLastError(last_message : String) ~ Nil {
-			@last_message := last_message;
+		#~
+		Set the base URL
+		@param base_url base URL
+		~#
+		function : SetBaseUrl(base_url : String) ~ Nil {
+			if(base_url <> Nil & <>base_url->IsEmpty()) {
+				if(base_url->EndsWith('/')) {
+					base_url->Pop();
+				};
+
+				@base_url := base_url;
+			};
 		}
 
 		#~
-		Set the API file key path
-		@param api_key API file key path
+		Get the base URL
+		@return base
 		~#
-		function : SetApiKey(api_key : String) ~ Nil {
-			@api_key := api_key;
+		function : GetBaseUrl() ~ String {
+			if(@base_url = Nil) {
+				@base_url := "https://api.openai.com/v1";
+			};
+
+			return @base_url;
+		}
+
+		function : SetLastError(last_message : String) ~ Nil {
+			@last_message := last_message;
 		}
 
 		#~
@@ -3810,6 +3898,14 @@ session->Close();
 		~#
 		function : GetLastError() ~ String {
 			return @last_message;
+		}
+
+		#~
+		Set the API file key path
+		@param api_key API file key path
+		~#
+		function : SetApiKey(api_key : String) ~ Nil {
+			@api_key := api_key;
 		}
 
 		#~
