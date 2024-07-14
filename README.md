@@ -35,23 +35,49 @@
 ## Examples
 
 ```ruby
-# simple openai query
+# simple openai and inference 
 use API.OpenAI, API.OpenAI.Chat, Collection;
 
 class OpenAICompletion {
-  function : Main(args : String[]) ~ Nil {
-    token := GetApiKey("openai_api_key.dat");
-    
-    messages := Vector->New()<Pair<String, String>>;
-    messages->AddBack(Pair->New("user", "What is the longest road in Utah?")<String, String>);
+  @is_pplx : static : Bool;
 
-    completion := Completion->Complete("gpt-4o", messages, token);
+  function : Main(args : String[]) ~ Nil {
+    if(args->Size() <> 1) {
+      ">>> Error: Token file required <<"->ErrorLine();
+      Runtime->Exit(1);
+    };
+
+    token := GetApiKey(args[0]);
+    if(token = Nil) {
+      ">>> Please provide a directive <<"->PrintLine();
+      Runtime->Exit(1);
+    };
+
+    model : String;
+    if(@is_pplx) {
+      Completion->SetBaseUrl("https://api.perplexity.ai");
+      model := "llama-3-sonar-small-32k-online";
+    }
+    else {
+      model := "gpt-4o";
+    }
+
+    message := Pair->New("user", "What is the longest road in Denver?")<String, String>;
+    completion := Completion->Complete(model, message, 100, 1.0, 0.5, token);
     if(completion <> Nil) {
-      choices := completion->GetChoices();
-      each(choice in choices) {
-        message := choice->GetMessage()<String, String>;
-        message->GetSecond()->PrintLine();
+      choice := completion->GetFirstChoice();
+      if(choice = Nil) {
+        ">>> Error: Unable to complete query <<"->ErrorLine();
+        Runtime->Exit(1);
       };
+
+      message := choice->GetMessage()<String, String>;
+      if(message = Nil) {
+        ">>> Error: Unable to read response <<"->ErrorLine();
+        Runtime->Exit(1);
+      };
+
+      message->GetSecond()->PrintLine();
     };
   }
 
@@ -59,9 +85,13 @@ class OpenAICompletion {
     token := System.IO.Filesystem.FileReader->ReadFile(filename);
     if(token <> Nil) {
       token := token->Trim();
-      if(<>token->StartsWith("sk-")) {
+      if(<>token->StartsWith("sk-") & <>token->StartsWith("pplx-")) {
         ">>> Unable to read token from file: '{$filename}' <<"->PrintLine();
         Runtime->Exit(1);
+      };
+
+      if(token->StartsWith("pplx-"))  {
+        @is_pplx := true;
       };
 
       return token;
