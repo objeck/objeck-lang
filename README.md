@@ -60,8 +60,8 @@ class OpenAICompletion {
     }
     else {
       model := "gpt-4o";
-    }
-
+    };
+    
     message := Pair->New("user", "What is the longest road in Denver?")<String, String>;
     completion := Completion->Complete(model, message, token);
     if(completion <> Nil) {
