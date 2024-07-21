@@ -17,7 +17,7 @@ class ReadmeBuilder {
 
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() <> 3) {
-			">>> readme: readme.in readme.tmpl openai_token_file <<"->ErrorLine();
+			">>> readme: obr readme_ai.obe features.in readme.html.in openai_api_key.dat <<"->ErrorLine();
 			Runtime->Exit(1);
 		};
 
@@ -37,11 +37,10 @@ class ReadmeBuilder {
 		if(builder->Build()) {
 			query := "Please format the content after '###' marker into a HTML list without outer tags.
 The lines before '===' marker and '---' are paragraphs.
-Underline the text for line before the first occurrence of '---'
 Lines that start with '*' are list items.
 Lines that start with tab characters are inner lists.
 Make the first paragraph sound like a new product feature statement.
-Do not use markdown.
+Output only HTML.
 ###
 {$input}";
 
