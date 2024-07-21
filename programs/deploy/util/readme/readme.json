@@ -3,7 +3,7 @@
 		"string": "2024.8.0",
 		"year": 2024
 	},
-	"title": "Added Ollama support for Llama 3 and Mistral, Added OpenAI support for vector stores, Added OpenAI Assistants v2 API support, Added Perplexity API support",
+	"title": "Bug fixes, Improved build automation",
 	"files": {
 		"html_template": "readme.in.html",
 		"html_out": "readme.html",
@@ -12,8 +12,16 @@
 	},
 	"features": [
 		{
+			"version": "v2024.8.0",
+			"items": [
+				"More build and deployment automation",
+				"Bug fixes: #500",
+			]
+		},
+		{
 			"version": "v2024.7.1",
 			"items": [
+				"\tML model tuning support",
 				"Added Perplexity API inference support",
 				"Turned off OpenAI JSON debugging"
 			]
@@ -26,20 +34,6 @@
 				"\tSupport for vector stores",
 				"\tAssistants v2 API support",
 				"Cookie support convenience methods added to the HTTP/S clients"
-			]
-		},
-		{
-			"version": "v2024.6.0",
-			"items": [
-				"OpenAI fine-tuning",
-				"\tSupport for vector stores",
-				"\tGemini tuned model support",
-				"OpenAI image generation, editing, and variation",
-				"Optimizations for type conversions",
-				"Improved checking for blank command line parameters",
-				"Windows libraries upgrades",
-				"\tzlib 1.3.1",
-				"\tOpenSSL 1.1.1w"
 			]
 		}
 	]
