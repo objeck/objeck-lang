@@ -855,7 +855,7 @@ namespace frontend {
       return char_string;
     }
 
-    void AddSegment(const std::wstring &orig);
+    bool AddSegment(const std::wstring &orig);
 
     void AddSegment(SymbolEntry* e) {
       e->WasLoaded();
