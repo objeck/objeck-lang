@@ -2,6 +2,8 @@ use API.OpenAI, API.OpenAI.Chat, Data.JSON, Collection;
 
 class ReadmeBuilder {
 	@config_json : JsonElement;
+	@token : String;
+	
 	@title : String;
 	@version : String;
 	@version_year : Int;
@@ -138,8 +140,7 @@ Please format the output as plain text, with no special characters.
 			html += "\t\t</ul>\n"
 		};
 		
-		# merge
-		# write file
+		# merge html template
 		html_template_json := @config_json->FindElements("files/html_template");
 		if(html_template_json = Nil) {
 			">>> Unable to read name of html merge file <<<"->ErrorLine();
@@ -152,12 +153,12 @@ Please format the output as plain text, with no special characters.
 			Runtime->Exit(1);
 		};
 
-		today := System.Time.Date->New(false);
-		release_date := today->GetMonthName();
+		date_today := System.Time.Date->New(false);
+		release_date := date_today->GetMonthName();
 		release_date += ' ';
-		release_date += today->GetDay();
+		release_date += date_today->GetDay();
 		release_date += ", ";
-		release_date += today->GetYear();
+		release_date += date_today->GetYear();
 
 		html_out := html_template->ReplaceAll("<![CDATA[REL_FEATURES]]>", html->Trim())
 			->ReplaceAll("<![CDATA[REL_VERSION]]>", @version)
@@ -283,23 +284,25 @@ Please format the output as plain text, with no special characters.
 	}
 
 	method : GetApiKey() ~ String {
-		openai_token_file_json := @config_json->FindElements("files/openai_token");
-		if(openai_token_file_json = Nil) {
-			">>> Unable to read openai token file <<<"->ErrorLine();
-			Runtime->Exit(1);
-		};
-		filename := openai_token_file_json->GetString();
-
-		@token := System.IO.Filesystem.FileReader->ReadFile(filename);
 		if(@token = Nil) {
-			">>> Unable to read token from file: '{$filename}' <<"->ErrorLine();
-			Runtime->Exit(1);
-		};
+			openai_token_file_json := @config_json->FindElements("files/openai_token");
+			if(openai_token_file_json = Nil) {
+				">>> Unable to read openai token file <<<"->ErrorLine();
+				Runtime->Exit(1);
+			};
+			filename := openai_token_file_json->GetString();
 
-		@token := @token->Trim();
-		if(<>@token->StartsWith("sk-")) {
-			">>> Unable to read a valid token from file: '{$filename}' <<"->ErrorLine();
-			Runtime->Exit(1);
+			@token := System.IO.Filesystem.FileReader->ReadFile(filename);
+			if(@token = Nil) {
+				">>> Unable to read token from file: '{$filename}' <<"->ErrorLine();
+				Runtime->Exit(1);
+			};
+
+			@token := @token->Trim();
+			if(<>@token->StartsWith("sk-")) {
+				">>> Unable to read a valid token from file: '{$filename}' <<"->ErrorLine();
+				Runtime->Exit(1);
+			};
 		};
 
 		return @token;
