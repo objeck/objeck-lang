@@ -159,10 +159,10 @@ Please format the output as plain text, with no special characters.
 		release_date += ", ";
 		release_date += today->GetYear();
 
-		html_out := html_template->ReplaceAll("```¶REL_FEATURES¶```", html->Trim())
-			->ReplaceAll("```¶REL_VERSION¶```", @version)
-			->ReplaceAll("```¶REL_DATE¶```", release_date)
-			->ReplaceAll("```¶VER_YEAR¶```", @version_year->ToString())->Trim();
+		html_out := html_template->ReplaceAll("<![CDATA[REL_FEATURES]]>", html->Trim())
+			->ReplaceAll("<![CDATA[REL_VERSION]]>", @version)
+			->ReplaceAll("<![CDATA[REL_DATE]]>", release_date)
+			->ReplaceAll("<![CDATA[REL_YEAR]]>", @version_year->ToString())->Trim();
 
 		# write file
 		html_out_json := @config_json->FindElements("files/html_out");

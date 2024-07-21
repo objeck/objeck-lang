@@ -5,7 +5,7 @@
 	},
 	"title": "Added Ollama support for Llama 3 and Mistral, Added OpenAI support for vector stores, Added OpenAI Assistants v2 API support, Added Perplexity API support",
 	"files": {
-		"html_template": "readme.html.in",
+		"html_template": "readme.in.html",
 		"html_out": "readme.html",
 		"markdown_out": "readme.md",
 		"openai_token": "openai_api_key.dat"

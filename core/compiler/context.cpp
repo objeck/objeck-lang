@@ -1679,7 +1679,9 @@ void ContextAnalyzer::AnalyzeCharacterString(CharacterString* char_str, const in
 
   // empty string segment
   if(str.empty()) {
-    char_str->AddSegment(L"");
+    if(!char_str->AddSegment(L"")) {
+      ProcessError(char_str, L"Invalid character sequence");
+    }
   }
   else {
     // process segment
@@ -1688,7 +1690,10 @@ void ContextAnalyzer::AnalyzeCharacterString(CharacterString* char_str, const in
       if(str[i] == L'{' && i + 1 < str.size() && str[i + 1] == L'$') {
         var_start = (int)i;
         const std::wstring token = str.substr(str_start, i - str_start);
-        char_str->AddSegment(token);
+        
+        if(!char_str->AddSegment(token)) {
+          ProcessError(char_str, L"Invalid character sequence");
+        }
       }
 
       // variable end
@@ -1723,7 +1728,10 @@ void ContextAnalyzer::AnalyzeCharacterString(CharacterString* char_str, const in
       else if(i + 1 == str.size()) {
         var_start = (int)i;
         const std::wstring token = str.substr(str_start, i - str_start + 1);
-        char_str->AddSegment(token);
+        
+        if(!char_str->AddSegment(token)) {
+          ProcessError(char_str, L"Invalid character sequence");
+        }
       }
     }
   }
