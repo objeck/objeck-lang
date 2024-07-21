@@ -55,6 +55,10 @@ td > code {
 	border-top: 1px solid #aaa;
 }
 
+.center {
+  text-align: center;
+}
+
 p {
 	font-size: 14px;
 }

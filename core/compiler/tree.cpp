@@ -55,6 +55,7 @@ void CharacterString::AddSegment(const std::wstring& orig)
     bool is_unicode_str = false;
     bool is_num_str = false;
 
+    wchar_t* check;
     for(size_t i = 0; i < orig.size(); ++i) {
       wchar_t c = orig[i];
 
@@ -66,11 +67,16 @@ void CharacterString::AddSegment(const std::wstring& orig)
         while(cc >= '0' && cc <= '7') {
           cc = orig[end++];
         }
-        const std::wstring escaped__sub_str = orig.substr(start, end - start - 1);
-        const wchar_t value = std::stoi(escaped__sub_str, 0, 8);
-        escaped_str += value;
-        i += escaped__sub_str.size() - 1;
-        is_num_str = false;
+        const std::wstring escaped_sub_str = orig.substr(start, end - start - 1);
+        const wchar_t value = std::wcstol(escaped_sub_str.c_str(), &check, 8);
+        if(escaped_sub_str.c_str() != check) {
+          escaped_str += value;
+          i += escaped_sub_str.size() - 1;
+          is_num_str = false;
+        }
+        else {
+          ++i;
+        }
       }
       else if(is_unicode_str) {
         const size_t start = i + 1;
@@ -80,11 +86,16 @@ void CharacterString::AddSegment(const std::wstring& orig)
         while(std::isdigit(cc) || (cc >= 'A' && cc <= 'F') || (cc >= 'a' && cc <= 'f')) {
           cc = orig[end++];
         }
-        const std::wstring escaped__sub_str = orig.substr(start, end - start - 1);
-        const wchar_t value = std::stoi(escaped__sub_str, 0, 16);
-        escaped_str += value;
-        i += escaped__sub_str.size();
-        is_unicode_str = false;
+        const std::wstring escaped_sub_str = orig.substr(start, end - start - 1);
+        const wchar_t value = std::wcstol(escaped_sub_str.c_str(), &check, 16);
+        if (escaped_sub_str.c_str() != check) {
+          escaped_str += value;
+          i += escaped_sub_str.size();
+          is_unicode_str = false;
+        }
+        else {
+          ++i;
+        }
       }
       else if(!is_lit && skip > 1 && c == L'\\' && i + 1 < orig.size()) {
         wchar_t cc = orig[i + 1];
