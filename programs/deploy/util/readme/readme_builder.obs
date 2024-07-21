@@ -61,7 +61,7 @@ Please format the output as plain text, with no special characters.
 		};
 		@version_year := version_year_json->GetInt();
 
-		if(<>@config_json->Has("files")) {
+		if(<>@config_json->Has("files") | <>@config_json->Has("features")) {
 			return false;
 		};
 
@@ -78,14 +78,14 @@ Please format the output as plain text, with no special characters.
 
 			# set title
 			if(i = 0) {
-				html += "\n<p><u>" + feature_version + "</u></p>\n";
+				html += "\n\t\t<p><u>" + feature_version + "</u></p>\n";
 			}
 			else {
-				html += "\n<p>" + feature_version + "</p>\n";
+				html += "\n\t\t<p>" + feature_version + "</p>\n";
 			};
 			
 			# set features
-			html += "<ul>\n"
+			html += "\t\t<ul>\n"
 			in_sublist := false;
 			feature_items_json :=  feature_json->Get("items");
 			each(j : feature_items_json) {
@@ -104,7 +104,7 @@ Please format the output as plain text, with no special characters.
 					html += "\t\t";
 				};
 
-				html += "\t<li>";
+				html += "\t\t\t<li>";
 				if(next_feature_item <> Nil & next_feature_item->StartsWith('\t')) {
 					html += feature_item->Trim();
 
@@ -112,7 +112,7 @@ Please format the output as plain text, with no special characters.
 						html += "</li>\n";
 					}
 					else {
-						html += "\n\t\t<ul>\n";
+						html += "\n\t\t\t\t<ul>\n";
 						in_sublist := true;
 					};
 				}
@@ -120,7 +120,7 @@ Please format the output as plain text, with no special characters.
 					html += feature_item->Trim();
 
 					if(in_sublist) {
-						html += "\n\t\t</ul>\n\t</li>\n";
+						html += "\n\t\t\t\t</ul>\n\t\t\t</li>\n";
 					}
 					else {
 						html += "</li>\n";
@@ -131,14 +131,11 @@ Please format the output as plain text, with no special characters.
 
 			# add ending tags
 			if(in_sublist) {
-				html += "\n\t\t</ul>\n\t</li>\n";
+				html += "\t\t\t\t</ul>\n\t\t\t</li>\n";
 			}
-			else {
-				html += "</li>\n";
-			};
 			in_sublist := false;
 
-			html += "</ul>\n"
+			html += "\t\t</ul>\n"
 		};
 		
 		# merge
