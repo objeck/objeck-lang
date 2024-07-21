@@ -3,7 +3,13 @@
 		"string": "2024.8.0",
 		"year": 2024
 	},
-	"title": "Ollama support for Llama 3 and Mistral, OpenAI support for vector stores and Assistants v2 APIs, Perplexity API support",
+	"title": "Added Ollama support for Llama 3 and Mistral, Added OpenAI support for vector stores, Added OpenAI Assistants v2 API support, Added Perplexity API support",
+	"files": {
+		"html_template": "readme.html.in",
+		"html_out": "readme.html",
+		"markdown_out": "readme.md",
+		"openai_token": "openai_api_key.dat"
+	},
 	"features": [
 		{
 			"version": "v2024.7.1",

@@ -12,8 +12,10 @@
     
     <body>
         <h1>Objeck</h1>
-        <p>```¶VER_YEAR¶```.```¶VER_MONTH¶```.```¶VER_NUM¶``` (```¶REL_DATE¶```)</p>
+        <p>```¶REL_VERSION¶``` (```¶REL_DATE¶```)</p>
         
+        <hr/>
+
         ```¶REL_FEATURES¶```
 
         <p>
