@@ -9,13 +9,13 @@ class ReadmeBuilder {
 	New(config_file : String) {
 		input := System.IO.Filesystem.FileReader->ReadFile(config_file);
 		if(input = Nil) {
-			">>> Unable to read configuation file <<<"->ErrorLine();
+			">>> Unable to read configuration file <<<"->ErrorLine();
 			Runtime->Exit(1);
 		};
 
 		@config_json := JsonParser->TextToElement(input);
 		if(@config_json = Nil) {
-			">>> Unable to parse configuation file <<<"->ErrorLine();
+			">>> Unable to parse configuration file <<<"->ErrorLine();
 			Runtime->Exit(1);
 		};
 	}
@@ -60,6 +60,10 @@ Please format the output as plain text, with no special characters.
 			return false;
 		};
 		@version_year := version_year_json->GetInt();
+
+		if(<>@config_json->Has("files")) {
+			return false;
+		};
 
 		return true;
 	}
@@ -173,7 +177,7 @@ Please format the output as plain text, with no special characters.
 		if(html <> Nil & <>html->IsEmpty()) {
 			html_file_out := html_out_json->GetString();
 			System.IO.Filesystem.FileWriter->WriteFile(html_file_out, html_out);
-			"### Wrote HTML file {$html_file_out}..."->PrintLine();
+			"Wrote HTML file '{$html_file_out}'..."->PrintLine();
 		}
 		else {
 			return false;
@@ -251,7 +255,7 @@ Please format the output as plain text, with no special characters.
 		if(markdown <> Nil & <>markdown->IsEmpty()) {
 			markdown_out := markdown_out_json->GetString();
 			System.IO.Filesystem.FileWriter->WriteFile(markdown_out, markdown->Trim());
-			"### Wrote markdown file {$markdown_out}..."->PrintLine();
+			"Wrote markdown file '{$markdown_out}'..."->PrintLine();
 		}
 		else {
 			return false;
