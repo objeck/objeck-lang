@@ -1,4 +1,4 @@
-Introducing the latest updates: Ollama support for Llama 3 and Mistral, OpenAI support for vector stores and Assistants v2 APIs, and enhanced support for Perplexity APIs.
+Introducing Ollama support for Llama 3 and Mistral, OpenAI support for vector stores and Assistants v2 APIs, and support for Perplexity APIs.
 
 v2024.7.1
 
