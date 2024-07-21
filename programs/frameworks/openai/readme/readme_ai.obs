@@ -1,0 +1,143 @@
+use API.OpenAI, API.OpenAI.Chat, Collection;
+
+class ReadmeBuilder {
+	@convo : Conversation;
+	@model : String;
+	@token : String;
+
+	New(filename : String) {
+		@token := GetApiKey(filename);
+		if(@token = Nil) {
+			">>> Unable to API key <<"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		@model := "gpt-4o";
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() <> 3) {
+			">>> readme: readme.in readme.tmpl openai_token_file <<"->ErrorLine();
+			Runtime->Exit(1);
+		};
+
+		input := System.IO.Filesystem.FileReader->ReadFile(args[0]);
+		if(input = Nil) {
+			">>> Unable read input <<"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		html_template := System.IO.Filesystem.FileReader->ReadFile(args[1]);
+		if(html_template = Nil) {
+			">>> Unable read html_template <<"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		builder := ReadmeBuilder->New(args[2]);
+		if(builder->Build()) {
+			# --- HTML ---
+			query := "Please format the content after '###' marker into a HTML list without outer tags.
+The lines before '===' marker and '---' are paragraphs. 
+Lines that start with '*' are list items.
+Lines that start with tab characters are inner lists.
+Make the first paragraph sound like a new product feature statement.
+Do not use markdown.
+###
+{$input}";
+
+			# --- html ---
+			input_html := builder->Send(query);
+			if(input_html = Nil) {
+				">>> Unable process html <<"->PrintLine();
+				Runtime->Exit(1);
+			};
+
+			# --- markdown ---
+			query := "Use the prior instructions however output only markdown instead of HTML.";
+
+			merged_markdown := builder->Send(query);
+			if(merged_markdown = Nil) {
+				">>> Unable process markdown <<"->PrintLine();
+				Runtime->Exit(1);
+			};
+
+			builder->End();
+
+			"-------"->PrintLine();
+
+			merged_html := html_template->Replace("### CONTENT ####", input_html);			
+			System.IO.Filesystem.FileWriter->WriteFile("readme.html", merged_html);
+
+			System.IO.Filesystem.FileWriter->WriteFile("readme.md", merged_markdown);
+
+			merged_html_size := merged_html->Size();
+			"Write 'readme.html', size={$merged_html_size}..."->PrintLine();
+
+			merged_html_size := merged_markdown->Size();
+			"Write 'readme.md', size={$merged_html_size}..."->PrintLine();
+		};
+	}
+
+	method : Build() ~ Bool {
+		assist := Assistant->Create(@model, 
+			"README builder", "README builder that produces HTML and markdown", 
+			"You can format information into HTML or markdown", @token)
+		if(assist = Nil) {
+			return false;
+		};
+
+		@convo := Conversation->New(assist, @token);
+		return @convo <> Nil;
+	}
+
+	method : Complete(message : String) ~ String {
+		query := Collection.Pair->New("user", Data.JSON.JsonElement->Encode(message))<String, String>;
+		
+		completion := Completion->Complete(@model, query, @token);
+		if(completion = Nil) {
+			Completion->GetLastError()->ErrorLine();
+			return Nil;
+		};
+
+		first_choice := completion->GetFirstChoice();
+		if(first_choice = Nil) {
+			return Nil;
+		};
+
+		message_choice := first_choice->GetMessage()<String, String>;
+		return message_choice->GetSecond();
+	}
+
+	method : Send(message : String) ~ String {
+		contents := @convo->Send(Data.JSON.JsonElement->Encode(message), "user")->GetContents();
+		if(contents->Size() > 0) {
+			content := contents->Get(0)<String, String>;
+			return Data.JSON.JsonElement->Decode(content->GetSecond()<String>);
+		};
+
+		return Nil;
+	}
+
+	method : End() ~ Bool {
+		if(@convo <> Nil) {
+			return @convo->Close();
+		};
+
+		return false;
+	}
+
+	method : GetApiKey(filename : String) ~ String {
+		@token := System.IO.Filesystem.FileReader->ReadFile(filename);
+		if(@token <> Nil) {
+			@token := @token->Trim();
+			if(<>@token->StartsWith("sk-")) {
+				">>> Unable to read @token from file: '{$filename}' <<"->PrintLine();
+				Runtime->Exit(1);
+			};
+
+			return @token;
+		};
+
+		return Nil;
+	}
+}
