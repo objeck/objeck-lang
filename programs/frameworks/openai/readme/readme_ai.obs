@@ -35,9 +35,9 @@ class ReadmeBuilder {
 
 		builder := ReadmeBuilder->New(args[2]);
 		if(builder->Build()) {
-			# --- HTML ---
 			query := "Please format the content after '###' marker into a HTML list without outer tags.
-The lines before '===' marker and '---' are paragraphs. 
+The lines before '===' marker and '---' are paragraphs.
+Underline the text for line before the first occurrence of '---'
 Lines that start with '*' are list items.
 Lines that start with tab characters are inner lists.
 Make the first paragraph sound like a new product feature statement.
