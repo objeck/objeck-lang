@@ -1,4 +1,4 @@
-use API.OpenAI, Data.JSON, Collection;
+use API.OpenAI, API.OpenAI.Chat, Data.JSON, Collection;
 
 class ReadmeBuilder {
 	@config_json : JsonElement;
@@ -33,8 +33,8 @@ class ReadmeBuilder {
 			Runtime->Exit(1);
 		};
 
-#		builder->FormatHtml()->PrintLine();
-		builder->FormatMarkdown()->PrintLine();
+		builder->FormatWriteHtml();
+		builder->FormatWriteMarkdown();
 	}
 
 	method : Build() ~ Bool {
@@ -42,9 +42,12 @@ class ReadmeBuilder {
 		if(title_json = Nil) {
 			return false;
 		};
-		@title := title_json->GetString();
+		title := title_json->GetString();
 
-		
+		prompt := "Please make the following text after '---' sound a brief feature announcement.
+Please format the output as plain text, with no special characters.
+--- {$title}";
+		@title := Complete(prompt);
 
 		version_json := @config_json->FindElements("version/string");
 		if(version_json = Nil) {
@@ -61,8 +64,8 @@ class ReadmeBuilder {
 		return true;
 	}
 
-	method : FormatHtml() ~ String {
-		html := "<html> <p>" + @title + "</p>\n";
+	method : FormatWriteHtml() ~ Bool {
+		html := "<p>" + @title + "</p>\n";
 
 		features_json := @config_json->Get("features");
 		each(i : features_json) {
@@ -133,12 +136,53 @@ class ReadmeBuilder {
 
 			html += "</ul>\n"
 		};
-		html += "</html>\n"
+		
+		# merge
+		# write file
+		html_template_json := @config_json->FindElements("files/html_template");
+		if(html_template_json = Nil) {
+			">>> Unable to read name of html merge file <<<"->ErrorLine();
+			Runtime->Exit(1);
+		};
 
-		return html->Trim();
+		html_template := System.IO.Filesystem.FileReader->ReadFile(html_template_json->GetString());
+		if(html_template = Nil) {
+			">>> Unable to read html merge file <<<"->ErrorLine();
+			Runtime->Exit(1);
+		};
+
+		today := System.Time.Date->New(false);
+		release_date := today->GetMonthName();
+		release_date += ' ';
+		release_date += today->GetDay();
+		release_date += ", ";
+		release_date += today->GetYear();
+
+		html_out := html_template->ReplaceAll("```¶REL_FEATURES¶```", html->Trim())
+			->ReplaceAll("```¶REL_VERSION¶```", @version)
+			->ReplaceAll("```¶REL_DATE¶```", release_date)
+			->ReplaceAll("```¶VER_YEAR¶```", @version_year->ToString())->Trim();
+
+		# write file
+		html_out_json := @config_json->FindElements("files/html_out");
+		if(html_out_json = Nil) {
+			">>> Unable to read name of html output file <<<"->ErrorLine();
+			Runtime->Exit(1);
+		};
+
+		if(html <> Nil & <>html->IsEmpty()) {
+			html_file_out := html_out_json->GetString();
+			System.IO.Filesystem.FileWriter->WriteFile(html_file_out, html_out);
+			"### Wrote HTML file {$html_file_out}..."->PrintLine();
+		}
+		else {
+			return false;
+		};
+
+		return true;
 	}
 
-	method : FormatMarkdown() ~ String {
+	method : FormatWriteMarkdown() ~ Bool {
 		markdown := @title + "\n\n";
 
 		features_json := @config_json->Get("features");
@@ -197,21 +241,66 @@ class ReadmeBuilder {
 			in_sublist := false;
 		};
 
-		return markdown->Trim();
-	}
-
-	method : GetApiKey(filename : String) ~ String {
-		@token := System.IO.Filesystem.FileReader->ReadFile(filename);
-		if(@token <> Nil) {
-			@token := @token->Trim();
-			if(<>@token->StartsWith("sk-")) {
-				">>> Unable to read @token from file: '{$filename}' <<"->ErrorLine();
-				Runtime->Exit(1);
-			};
-
-			return @token;
+		# write file
+		markdown_out_json := @config_json->FindElements("files/markdown_out");
+		if(markdown_out_json = Nil) {
+			">>> Unable to read name of html output file <<<"->ErrorLine();
+			Runtime->Exit(1);
 		};
 
-		return Nil;
+		if(markdown <> Nil & <>markdown->IsEmpty()) {
+			markdown_out := markdown_out_json->GetString();
+			System.IO.Filesystem.FileWriter->WriteFile(markdown_out, markdown->Trim());
+			"### Wrote markdown file {$markdown_out}..."->PrintLine();
+		}
+		else {
+			return false;
+		};
+		
+		return true;
+	}
+
+	method : Complete(message : String) ~ String {
+		query := Collection.Pair->New("user", Data.JSON.JsonElement->Encode(message))<String, String>;
+		
+		model := "gpt-4o-mini";
+		token := GetApiKey();
+
+		completion := Completion->Complete(model, query, token);
+		if(completion = Nil) {
+			Completion->GetLastError()->ErrorLine();
+			return Nil;
+		};
+
+		first_choice := completion->GetFirstChoice();
+		if(first_choice = Nil) {
+			return Nil;
+		};
+
+		message_choice := first_choice->GetMessage()<String, String>;
+		return message_choice->GetSecond();
+	}
+
+	method : GetApiKey() ~ String {
+		openai_token_file_json := @config_json->FindElements("files/openai_token");
+		if(openai_token_file_json = Nil) {
+			">>> Unable to read openai token file <<<"->ErrorLine();
+			Runtime->Exit(1);
+		};
+		filename := openai_token_file_json->GetString();
+
+		@token := System.IO.Filesystem.FileReader->ReadFile(filename);
+		if(@token = Nil) {
+			">>> Unable to read token from file: '{$filename}' <<"->ErrorLine();
+			Runtime->Exit(1);
+		};
+
+		@token := @token->Trim();
+		if(<>@token->StartsWith("sk-")) {
+			">>> Unable to read a valid token from file: '{$filename}' <<"->ErrorLine();
+			Runtime->Exit(1);
+		};
+
+		return @token;
 	}
 }
