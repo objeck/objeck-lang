@@ -1,0 +1,166 @@
+<html>
+    <head>
+        <link rel="stylesheet" href="css/readme.css"/>
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+        <meta name="description" content="Objeck release notes"/>
+        <meta name="author" content="Randy Hollines"/>
+    </head>
+    
+    <body>
+        <h1>Objeck</h1>
+        <p>v2024.7.1 (July 14, 2024)</p>
+
+        <hr>
+        
+        ### CONTENT ####
+
+        <p>Please refer to the GitHub <a href='https://github.com/objeck/objeck-lang'>project site</a> 
+        for additional information.</p>
+
+        <p>The Programmer's Guide is in the "doc" directory. Additional examples are
+        available in the <a href='https://rosettacode.org/wiki/Category:Objeck' target='_blank'>Rosetta Code</a>. 
+        If you find issues, please submit a <a href='https://github.com/objeck/objeck-lang/issues' target='_blank'>ticket</a>.</p>
+
+        <h3>Getting Started</h3>
+        <p>For new developers, please refer to the <a href="https://www.objeck.org/getting_started.html">getting starting guide</a>.</p>
+
+        <h4>Package directories</h4>
+        <ul>
+            <li>app/ – Windows launcher (optional)</li>
+            <li>bin/ – compiler, debugger, and VM</li>
+            <li>doc/ – general documentation</li>
+            <li>doc/api/ – class library documentation</li>
+            <li>doc/syntax – files to enable syntax highlighting for supported editors</li>
+            <li>examples/ – source code examples, including a 2D game</li>
+            <li>examples/doc – source code for self-documentation system</li>
+            <li>examples/tiny – "tiny" language compiler and VM</li>
+            <li>lib/ – supporting language libraries</li>
+            <li>lib/native/ – native OS shared libraries</li>
+            <li>lib/native/misc – support files for the portable runtime environment</li>
+            <li>lib/sdl/ – host SDL shared libraries</li>
+        </ul>
+
+        <h4>Windows launcher</h4>
+        <p>
+            The Windows Launcher is a convenient way to run programs and access
+            documentation. On Windows, configuration information is stored in the
+            <code>%ProgramData%\Objeck</code> directory and built the first time the app runs. If
+            you move the install location, delete the <code>%ProgramData%\Objeck</code> directory
+            and rerun the launcher.
+        </p>
+
+        <h4>Compiling and executing programs</h4>
+        <p>To compile programs outside the <code>bin</code>  directory set, the <code>OBJECK_LIB_PATH</code> 
+        environment variable must be set. When this variable is set, all library
+        files must be in the directory specified.</p>
+
+        <p>If the Windows installer is used, these variables will be automatically set.</p>
+        <p>To manually set the environment paths in Windows:</p>
+        <ol>
+            <li><code>set OBECK_LIB_PATH=&lt;program_path&gt;\objeck-lang\lib</code></li>
+            <li><code>set PATH=%PATH%;&lt;program_path&gt;\objeck-lang\bin;&lt;program_path&gt;\objeck-lang\lib\sdl</code></li>
+            <li>Note: If you compiled Objeck from source under MSYS2 you do not need to
+            include the <code>\objeck-lang\lib\sdl</code> path as the required SDL2 DLLs are
+            already in the MSYS2 shell's path.</li>
+        </ol>
+
+        <p>To manually set the environment paths in macOS and Linux:</p>
+        <ol>
+            <li><code>export PATH=$PATH:&lt;program_path&gt;/objeck-lang/bin</code></li>
+            <li><code>export OBJECK_LIB_PATH=&lt;program_path&gt;/objeck-lang/lib</code></li>
+        </ol>
+
+        <p>On Windows STDIO may be configured to be UFT-8, UTF-16, or binary by setting the environment 
+        variable <code>OBJECK_STDIO</code> to "binary" or "utf16", the default if UTF-8.</p>
+
+        <p>Simple compile/execute:</p>
+        <ol>
+            <li><code>obc -src ..\examples\hello_0.obs</code> or 
+            <code>obc -src 'C:\Program Files\Objeck\objeck-lang\examples\encrypt_7.obs' -lib encrypt -dest my_prgm.obe</code>
+            <li><code>obr my_prgm</code></li>
+        </ol>
+
+        <p>Compile/execute for code that has library dependencies:</p>
+        <ol>
+            <li><code>obc -src ..\examples\xml_path.obs -lib collect.obl,xml.obl -dest xml_path.obe</code></li>
+            <li><code>obr xml.obe</code></li>
+        </ol>
+
+        <h3>SDL Support</h3>
+        <p>The 2D gaming framework is built around <a href="https://www.libsdl.org/download-2.0.php">SDL2</a> 
+            (&gt;=2.0.9).
+        The Windows distribution contains the required DLLs. Support for other
+        platforms is below.</p>
+
+        <h4>For Linux</h4>
+        <p>
+            <code>sudo apt install libsdl1.2debian libsdl-gfx1.2-5 libsdl-gfx1.2-dev
+                libsdl-gfx1.2-doc libsdl-image1.2 libsdl-image1.2-dbg libsdl-image1.2-dev
+                libsdl-mixer1.2 libsdl-mixer1.2-dbg libsdl-mixer1.2-dev libsdl-net1.2
+                libsdl-net1.2-dbg libsdl-net1.2-dev libsdl-sound1.2 libsdl-sound1.2-dev
+                libsdl-ttf2.0-0 libsdl-ttf2.0-dev</code>
+        </p>
+
+        <h4>For macOS</h4>
+        <ol>
+            <li>Apple Silicon (arm64)</li>
+            <li>Go to the <code>/lib/native</code> directory an untar the <code>sdl2_arm64.tgz</code> file</li>
+            <li>Copy the include and lib files to <code>/usr/local/include</code> and 
+            <code>/usr/local/lib</code></li>
+        </ol>
+
+        <h3>Secure Web Server Support</h3>
+        <p>The following to generate a self-signed SSL certificate for the
+        'TCPSecureSocketServer' class using OpenSSL commands (for Windows and
+        Linux):
+        </p>
+        
+        <ol>
+            <li><code>openssl req -x509 -newkey rsa:4096 -sha256 -days 3650 -nodes -keyout
+            local.key -out local.crt -subj "/CN=localhost" -addext
+            "subjectAltName=DNS:localhost,DNS:www.local.net,IP:127.0.0.1"</code></li>
+            <li><code>openssl x509 -in local.crt -out cert.pem</code></li>
+            <li><code>openssl rsa -aes256 -in local.key -out local.encrypted.key</code></li>
+            <li><code>mv local.encrypted.key cert.key</code></li>
+            <li><code>rm local.crt local.key</code></li>
+            <li><code>chmod 600 cert.key</code></li>
+            <li>Import 'cert.pem' into the host OS</code></li>
+        </ol>
+
+        <p>Follow these <a href="https://proxyman.io/posts/2020-09-09-Generate-Self-Signed-Certificate-iOS13-Mac-Catalina">instructions</a>
+        for macOS.</p>
+        
+        <h3>Source Code</h3>
+        <p>The Objeck source repository is located <a href="http://github.com/objeck/objeck-lang">here</a>, 
+            and the source can
+        be fetched using the following command GIT command:</p>
+        <ul>
+            <li><code>git clone https://github.com/objeck/objeck-lang.git</code></li>
+        </ul>
+        
+        <h3>License</h3>
+        <p>The software was developed under the FreeBSD <a href="https://opensource.org/licenses/BSD-2-Clause">license</a>. 
+        Supporting software licenses can be found <a href="https://github.com/objeck/objeck-lang/blob/master/LICENSE">here</a>.</p>
+        
+        <h3>Bugs and Limitations</h3>
+        <ul>
+            <li>
+                Tested on the following platforms
+                <ul>
+                    <li>Windows 10/11 - (x64)</li>
+                    <li>Ubuntu 22.04.3 LTS (Jammy Jellyfish) - (x64)</li>
+                    <li>Ubuntu 22.04.3 LTS (Jammy Jellyfish) - (ARM64)</li>
+                    <li>macOS 14.1.1 (Sonoma) - (ARM64)</li>
+                </ul>
+            </li>
+            <li>Intel OS X: You will need to install OpenSSL to use encryption APIs and iODBC to
+            enable database support. Please refer to the following
+            <a href="http://mac-dev-env.patrickbougie.com/openssl">link</a> for OpenSSL directions and this
+            <a href="http://www.iodbc.org/dataspace/iodbc/wiki/iODBC/ODBCMacOSX">link</a> for ODBC support.</li>
+            <li>Please file <a href='https://github.com/objeck/objeck-lang/issues' target='_blank'>bugs</a>, I do not sleep much.</li>
+        </ul>
+        
+        <hr/>
+        <p align="center"><small>&#169;2024 <a href="mailto:objeck@gmail.com">Randy Hollines</a>. All Rights Reserved.</small></p>
+    </body>
+</html>
