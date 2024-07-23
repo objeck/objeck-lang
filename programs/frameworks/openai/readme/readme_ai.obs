@@ -1,92 +1,141 @@
-use API.OpenAI, API.OpenAI.Chat, Collection;
+use API.OpenAI, API.OpenAI.Chat, Data.JSON, Collection;
 
 class ReadmeBuilder {
 	@convo : Conversation;
-	@model : String;
+	@config_json : JsonElement;
+
 	@token : String;
+	@model : String;
+
+	@input_html : String;
+	@merged_markdown : String;
 
 	New(filename : String) {
-		@token := GetApiKey(filename);
-		if(@token = Nil) {
-			">>> Unable to API key <<"->PrintLine();
+		config_data := System.IO.Filesystem.FileReader->ReadFile(filename);
+		if(config_data = Nil) {
+			">>> Unable to read configuration file <<"->PrintLine();
 			Runtime->Exit(1);
 		};
 
-		@model := "gpt-4o";
+		@config_json := JsonParser->TextToElement(config_data);
+
+		openai_token_file_json := @config_json->Get("openai_token_config");
+		if(openai_token_file_json = Nil) {
+			">>> Unable to read openai token file: '{$openai_token_file_json}' <<"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		@token := GetApiKey(openai_token_file_json->GetString());
+		if(@token = Nil) {
+			">>> Unable to parse openai token file <<"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		openai_model_json := @config_json->Get("openai_model");
+		if(openai_model_json = Nil) {
+			">>> Unable to read model file <<"->PrintLine();
+			Runtime->Exit(1);
+		};
+		@model := openai_model_json->GetString();
 	}
 
 	function : Main(args : String[]) ~ Nil {
-		if(args->Size() <> 3) {
-			">>> readme: obr readme_ai.obe features.in readme.html.in openai_api_key.dat <<"->ErrorLine();
+		if(args->Size() <> 1) {
+			">>> readme: obr readme_ai readme_config.json <<<"->ErrorLine();
 			Runtime->Exit(1);
 		};
 
-		input := System.IO.Filesystem.FileReader->ReadFile(args[0]);
-		if(input = Nil) {
-			">>> Unable read input <<"->PrintLine();
-			Runtime->Exit(1);
-		};
-
-		html_template := System.IO.Filesystem.FileReader->ReadFile(args[1]);
-		if(html_template = Nil) {
-			">>> Unable read html_template <<"->PrintLine();
-			Runtime->Exit(1);
-		};
-
-		builder := ReadmeBuilder->New(args[2]);
+		builder := ReadmeBuilder->New(args[0]);
 		if(builder->Build()) {
-			query := "Please format the content after '###' marker into a HTML list without outer tags.
+			builder->MakeHtml()->PrintLine();
+			"---"->PrintLine();
+			builder->MakeMarkdown()->PrintLine();
+		};
+	}
+
+	method : Build() ~ Bool {
+		if(@token = Nil | @model = Nil) {
+			return false;
+		};
+
+		assist := Assistant->Create(@model, "README builder", "README builder that produces HTML and markdown", 
+			"You can format information into HTML or markdown", @token)
+		if(assist = Nil) {
+			return false;
+		};
+		@convo := Conversation->New(assist, @token);
+
+		content_in_file := @config_json->Get("content_in_file");
+		if(content_in_file = Nil) {
+			">>> Unable file input content file <<"->ErrorLine();
+			return false;
+		};
+		
+		content_in := System.IO.Filesystem.FileReader->ReadFile(content_in_file->GetString());
+		if(content_in = Nil) {
+			">>> Unable read input content file <<"->ErrorLine();
+			return false;
+		};
+
+		query := "Please format the content after '###' marker into a HTML list without outer tags.
 The lines before '===' marker and '---' are paragraphs.
 Lines that start with '*' are list items.
 Lines that start with tab characters are inner lists.
 Make the first paragraph sound like a new product feature statement.
 Output only HTML.
 ###
-{$input}";
+{$content_in}";
 
-			# --- html ---
-			input_html := builder->Send(query);
-			if(input_html = Nil) {
-				">>> Unable process html <<"->PrintLine();
-				Runtime->Exit(1);
-			};
-
-			# --- markdown ---
-			query := "Use the prior instructions however output only markdown instead of HTML.";
-
-			merged_markdown := builder->Send(query);
-			if(merged_markdown = Nil) {
-				">>> Unable process markdown <<"->PrintLine();
-				Runtime->Exit(1);
-			};
-
-			builder->End();
-
-			"-------"->PrintLine();
-
-			merged_html := html_template->Replace("### CONTENT ####", input_html);			
-			System.IO.Filesystem.FileWriter->WriteFile("readme.html", merged_html);
-
-			System.IO.Filesystem.FileWriter->WriteFile("readme.md", merged_markdown);
-
-			merged_html_size := merged_html->Size();
-			"Write 'readme.html', size={$merged_html_size}..."->PrintLine();
-
-			merged_html_size := merged_markdown->Size();
-			"Write 'readme.md', size={$merged_html_size}..."->PrintLine();
-		};
-	}
-
-	method : Build() ~ Bool {
-		assist := Assistant->Create(@model, 
-			"README builder", "README builder that produces HTML and markdown", 
-			"You can format information into HTML or markdown", @token)
-		if(assist = Nil) {
+		# make html
+		@input_html := Send(query);
+		if(@input_html = Nil) {
+			">>> Unable process html <<"->ErrorLine();
 			return false;
 		};
 
-		@convo := Conversation->New(assist, @token);
-		return @convo <> Nil;
+		# make markdown
+		query := "Use the prior instructions however output only markdown instead of HTML.";
+
+		@merged_markdown := Send(query);
+		if(@merged_markdown = Nil) {
+			">>> Unable process markdown <<"->ErrorLine();
+			return false;
+		};
+
+		End();
+
+		return true;
+	}
+
+
+	method : MakeHtml() ~ String {
+		template_in_file := @config_json->Get("template_in_file");
+		if(template_in_file = Nil) {
+			">>> Unable file template content file <<"->ErrorLine();
+			return Nil;
+		};
+		
+		html_template := System.IO.Filesystem.FileReader->ReadFile(template_in_file->GetString());
+		if(html_template = Nil) {
+			">>> Unable read template content file <<"->ErrorLine();
+			return Nil;
+		};
+
+		merged_html := html_template->Replace("### CONTENT ####", @input_html);			
+		System.IO.Filesystem.FileWriter->WriteFile("readme.html", merged_html);
+
+		merged_html_size := merged_html->Size();
+		"Write 'readme.html', size={$merged_html_size}..."->PrintLine();
+
+		return merged_html;
+	}
+
+	method : MakeMarkdown() ~ String {
+		System.IO.Filesystem.FileWriter->WriteFile("readme.md", @merged_markdown);
+		@merged_markdown_size := @merged_markdown->Size();
+		"Write 'readme.md', size={$@merged_markdown_size}..."->PrintLine();
+
+		return @merged_markdown;
 	}
 
 	method : Complete(message : String) ~ String {
@@ -130,8 +179,8 @@ Output only HTML.
 		if(@token <> Nil) {
 			@token := @token->Trim();
 			if(<>@token->StartsWith("sk-")) {
-				">>> Unable to read @token from file: '{$filename}' <<"->PrintLine();
-				Runtime->Exit(1);
+				">>> Unable to read openai token file: '{$filename}' <<"->ErrorLine();
+				return Nil;
 			};
 
 			return @token;
