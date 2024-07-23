@@ -1,0 +1,8 @@
+{
+	"openai_token_config": "openai_api_key.dat",
+	"openai_model": "gpt-4o",
+	"content_in_file": "features.in",
+	"template_in_file": "readme.html.in",
+	"release_version": "2024.8.0",
+	"release_date": "7/21/2024"
+}
