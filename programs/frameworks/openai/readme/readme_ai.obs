@@ -1,15 +1,15 @@
 use API.OpenAI, API.OpenAI.Chat, Data.JSON, Collection;
 
 class ReadmeBuilder {
-	@convo : Conversation;
 	@config_json : JsonElement;
 
-	@token : String;
+	@convo : Conversation;	
 	@model : String;
-
+	@token : String;
+	
 	@input_html : String;
 	@merged_markdown : String;
-
+	
 	New(filename : String) {
 		config_data := System.IO.Filesystem.FileReader->ReadFile(filename);
 		if(config_data = Nil) {
@@ -78,13 +78,13 @@ class ReadmeBuilder {
 		};
 
 		query := "Please format the content after '###' marker into a HTML list without outer tags.
-The lines before '===' marker and '---' are paragraphs.
-Lines that start with '*' are list items.
-Lines that start with tab characters are inner lists.
-Make the first paragraph sound like a new product feature statement.
-Output only HTML.
-###
-{$content_in}";
+			The lines before '===' marker and '---' are paragraphs.
+			Lines that start with '*' are list items.
+			Lines that start with tab characters are inner lists.
+			Make the first paragraph sound like a new product feature statement.
+			Output only HTML.
+			###
+			{$content_in}";
 
 		# make html
 		@input_html := Send(query);
@@ -106,7 +106,6 @@ Output only HTML.
 
 		return true;
 	}
-
 
 	method : MakeHtml() ~ String {
 		template_in_file := @config_json->Get("template_in_file");
