@@ -1313,7 +1313,7 @@ bool ContextAnalyzer::AnalyzeDeadReturns(StatementList* statement_list, const in
   }
 
   if(count > 1) {
-    ProcessError(orig_return_stmt, L"Code after this statement will not execute");
+    ProcessWarning(orig_return_stmt, L"Code after this statement will not execute");
   }
 
   return false;
