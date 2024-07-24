@@ -897,12 +897,13 @@ void ContextAnalyzer::AnalyzeMethod(Method* method, const int depth)
 
 #ifndef _SYSTEM
     // check for return
-    if(method->GetMethodType() != NEW_PUBLIC_METHOD &&
-       method->GetMethodType() != NEW_PRIVATE_METHOD &&
+    if(method->GetMethodType() != NEW_PUBLIC_METHOD && method->GetMethodType() != NEW_PRIVATE_METHOD &&
        method->GetReturn() && method->GetReturn()->GetType() != NIL_TYPE) {
       if(!AnalyzeReturnPaths(method->GetStatements(), depth + 1) && !method->IsAlt()) {
         ProcessError(method, L"All method/function paths must return a value");
       }
+
+      AnalyzeDeadReturns(method->GetStatements(), depth + 1);
     }
 #endif
 
@@ -1282,6 +1283,37 @@ bool ContextAnalyzer::AnalyzeReturnPaths(StatementList* statement_list, const in
       }
       break;
     }
+  }
+
+  return false;
+}
+
+/****************************
+ * Detects dead return
+ ****************************/
+bool ContextAnalyzer::AnalyzeDeadReturns(StatementList* statement_list, const int depth)
+{
+  size_t count = 0;
+
+  Statement* orig_return_stmt = nullptr;
+
+  std::vector<Statement*> statements = statement_list->GetStatements();
+  for(const auto& statement : statements) {
+    switch (statement->GetStatementType()) {
+    case RETURN_STMT:
+      ++count;
+      if(!orig_return_stmt) {
+        orig_return_stmt = statement;
+      }
+      break;
+
+    default:
+      break;
+    }
+  }
+
+  if(count > 1) {
+    ProcessError(orig_return_stmt, L"Code after this statement will not execute");
   }
 
   return false;
