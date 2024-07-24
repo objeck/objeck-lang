@@ -1294,7 +1294,6 @@ bool ContextAnalyzer::AnalyzeReturnPaths(StatementList* statement_list, const in
 bool ContextAnalyzer::AnalyzeDeadReturns(StatementList* statement_list, const int depth)
 {
   size_t count = 0;
-
   Statement* orig_return_stmt = nullptr;
 
   std::vector<Statement*> statements = statement_list->GetStatements();
