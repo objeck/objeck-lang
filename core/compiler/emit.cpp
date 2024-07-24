@@ -518,7 +518,7 @@ void IntermediateInstruction::Debug(size_t i) {
     break;
 
   case SHL_INT:
-    GetLogger() << L":\tSHL_INT" << std::endl;
+    GetLogger() << i << L":\tSHL_INT" << std::endl;
     break;
 
   case SHR_INT:
