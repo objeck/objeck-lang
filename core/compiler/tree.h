@@ -2098,6 +2098,8 @@ namespace frontend {
 
     std::wstring EncodeUserType(Type* type);
 
+    std::wstring EncodeGenerics(Type* type);
+
     std::wstring ReplaceSubstring(std::wstring s, const std::wstring f, const std::wstring &r) {
       const size_t index = s.find(f);
       if(index != std::string::npos) {

@@ -1,0 +1,9 @@
+class Fee {
+	function : Fi() ~ Collection.Map<String, String> {
+		return Nil;
+	}
+
+	function : Fo() ~ Collection.Vector<Collection.Pair<String, String>> {
+		return Nil;
+	}
+}
