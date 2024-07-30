@@ -383,7 +383,7 @@ std::wstring Method::EncodeGenerics(Type* type)
 
     // add more types
     if(i + 1 < generic_types.size()) {
-      name += L',';
+      name += L'|';
     }
   }
   name += L'>';
