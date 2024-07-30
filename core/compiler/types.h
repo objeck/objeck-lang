@@ -434,6 +434,7 @@ namespace frontend {
   public:
     static std::vector<frontend::Type*> ParseParameters(const std::wstring& param_str);
     static frontend::Type* ParseType(const std::wstring& type_name);
+    static std::vector<frontend::Type*> ParseGenerics(size_t& index, const std::wstring& param_str);
   };
   
   // static array holders
