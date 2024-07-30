@@ -112,7 +112,7 @@ std::vector<frontend::Type*> TypeParser::ParseParameters(const std::wstring& par
     case 'o': {
       index += 2;
       const size_t start = index;
-      while(index < param_str.size() && param_str[index] != L'*' && param_str[index] != L',' && param_str[index] != L'(') {
+      while(index < param_str.size() && param_str[index] != L'*' && param_str[index] != L',' && param_str[index] != L'<') {
         index++;
       }
       size_t end = index;
@@ -123,7 +123,7 @@ std::vector<frontend::Type*> TypeParser::ParseParameters(const std::wstring& par
     }
 
     // set generics
-    if(index < param_str.size() && param_str[index] == L'(') {
+    if(index < param_str.size() && param_str[index] == L'<') {
       type->SetGenerics(ParseGenerics(index, param_str));
     }
 
@@ -139,7 +139,7 @@ std::vector<frontend::Type*> TypeParser::ParseParameters(const std::wstring& par
     }
 
 #ifdef _DEBUG
-    assert(index >= param_str.size() || param_str[index] == L',' || param_str[index] == L')');
+    assert(index >= param_str.size() || param_str[index] == L',' || param_str[index] == L'>');
 #endif
     index++;
   }
@@ -154,7 +154,7 @@ std::vector<frontend::Type*> TypeParser::ParseGenerics(size_t &index, const std:
   do {
     index++;
     size_t start = index;
-    while(index < generic_str.size() && generic_str[index] != L',' && generic_str[index] != L'(' && generic_str[index] != L')') {
+    while(index < generic_str.size() && generic_str[index] != L',' && generic_str[index] != L'<' && generic_str[index] != L'>') {
       index++;
     }
     size_t end = index;
@@ -162,12 +162,12 @@ std::vector<frontend::Type*> TypeParser::ParseGenerics(size_t &index, const std:
     const std::wstring generic_name = generic_str.substr(start, end - start);
     Type* type = frontend::TypeFactory::Instance()->MakeType(frontend::CLASS_TYPE, generic_name);
 
-    if(index < generic_str.size() && generic_str[index] == L'(') {
+    if(index < generic_str.size() && generic_str[index] == L'<') {
       type->SetGenerics(ParseGenerics(index, generic_str));
     }
     generic_types.push_back(type);
   } 
-  while(index < generic_str.size() && generic_str[index] != L')');
+  while(index < generic_str.size() && generic_str[index] != L'>');
 
   return generic_types;
 }
@@ -240,7 +240,7 @@ frontend::Type* TypeParser::ParseType(const std::wstring& type_name)
 
   case L'o':
     index = 2;
-    while(index < type_name.size() && type_name[index] != L'*' && type_name[index] != L'(') {
+    while(index < type_name.size() && type_name[index] != L'*' && type_name[index] != L'<') {
       index++;
     }
     type = frontend::TypeFactory::Instance()->MakeType(frontend::CLASS_TYPE, type_name.substr(2, index - 2));
@@ -248,7 +248,7 @@ frontend::Type* TypeParser::ParseType(const std::wstring& type_name)
   }
 
   // set generics
-  if(index < type_name.size() && type_name[index] == L'(') {
+  if(index < type_name.size() && type_name[index] == L'<') {
     type->SetGenerics(ParseGenerics(index, type_name));
   }
 
