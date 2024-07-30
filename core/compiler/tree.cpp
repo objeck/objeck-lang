@@ -369,7 +369,7 @@ std::wstring Method::EncodeType(Type* type, Class* klass, ParsedProgram* program
 
 std::wstring Method::EncodeGenerics(Type* type)
 {
-  std::wstring name = L"(";
+  std::wstring name = L"<";
 
   const std::vector<Type*> generic_types = type->GetGenerics();
   for(size_t i = 0; i < generic_types.size(); ++i) {
@@ -386,7 +386,7 @@ std::wstring Method::EncodeGenerics(Type* type)
       name += L',';
     }
   }
-  name += L')';
+  name += L'>';
 
   return name;
 }
