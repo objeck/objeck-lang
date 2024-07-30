@@ -10,9 +10,9 @@ use System.IO.Net;
 class JsonWeb {
 	function : Main(args : String[]) ~ Nil {		
 		url := Web.HTTP.Url->New("https://reqbin.com/echo/get/json");
-		document := HttpsClient->QuickGet(url)->ToString();
+		content := HttpsClient->QuickGet(url)->GetContent();
 		
-		parser := JsonParser->New(document);
+		parser := JsonParser->New(content->ToString());
 		if(parser->Parse()) {
 			root := parser->GetRoot();
 			success := root->Get("success");
