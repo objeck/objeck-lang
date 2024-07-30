@@ -135,12 +135,11 @@ std::vector<frontend::Type*> TypeParser::ParseParameters(const std::wstring& par
 
     if(type) {
       type->SetDimension(dimension);
+      types.push_back(type);
     }
 
-    types.push_back(type);
-
 #ifdef _DEBUG
-    assert(index >= param_str.size() || param_str[index] == L',');
+    assert(index >= param_str.size() || param_str[index] == L',' || param_str[index] == L')');
 #endif
     index++;
   }
