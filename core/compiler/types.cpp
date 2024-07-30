@@ -112,7 +112,6 @@ std::vector<frontend::Type*> TypeParser::ParseParameters(const std::wstring& par
     case 'o': {
       index += 2;
       const size_t start = index;
-      // TODO: remove '|'
       while(index < param_str.size() && param_str[index] != L'*' && param_str[index] != L',' && param_str[index] != L'(') {
         index++;
       }
@@ -124,7 +123,7 @@ std::vector<frontend::Type*> TypeParser::ParseParameters(const std::wstring& par
     }
 
     // set generics
-    if(index < param_str.size() && (param_str[index] == L'|' || param_str[index] == L'(')) {
+    if(index < param_str.size() && param_str[index] == L'(') {
       type->SetGenerics(ParseGenerics(index, param_str));
     }
 
@@ -156,13 +155,18 @@ std::vector<frontend::Type*> TypeParser::ParseGenerics(size_t &index, const std:
   do {
     index++;
     size_t start = index;
-    while(index < generic_str.size() && generic_str[index] != L',' && generic_str[index] != L')') {
+    while(index < generic_str.size() && generic_str[index] != L',' && generic_str[index] != L'(' && generic_str[index] != L')') {
       index++;
     }
     size_t end = index;
 
     const std::wstring generic_name = generic_str.substr(start, end - start);
-    generic_types.push_back(frontend::TypeFactory::Instance()->MakeType(frontend::CLASS_TYPE, generic_name));
+    Type* type = frontend::TypeFactory::Instance()->MakeType(frontend::CLASS_TYPE, generic_name);
+
+    if(index < generic_str.size() && generic_str[index] == L'(') {
+      type->SetGenerics(ParseGenerics(index, generic_str));
+    }
+    generic_types.push_back(type);
   } 
   while(index < generic_str.size() && generic_str[index] != L')');
 
@@ -237,7 +241,6 @@ frontend::Type* TypeParser::ParseType(const std::wstring& type_name)
 
   case L'o':
     index = 2;
-    // TODO: remove '|'
     while(index < type_name.size() && type_name[index] != L'*' && type_name[index] != L'(') {
       index++;
     }
@@ -246,7 +249,7 @@ frontend::Type* TypeParser::ParseType(const std::wstring& type_name)
   }
 
   // set generics
-  if(index < type_name.size() && (type_name[index] == L'|' || type_name[index] == L'(')) {
+  if(index < type_name.size() && type_name[index] == L'(') {
     type->SetGenerics(ParseGenerics(index, type_name));
   }
 
