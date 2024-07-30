@@ -154,7 +154,7 @@ std::vector<frontend::Type*> TypeParser::ParseGenerics(size_t &index, const std:
   do {
     index++;
     size_t start = index;
-    while(index < generic_str.size() && generic_str[index] != L',' && generic_str[index] != L'<' && generic_str[index] != L'>') {
+    while(index < generic_str.size() && generic_str[index] != L'|' && generic_str[index] != L'<' && generic_str[index] != L'>') {
       index++;
     }
     size_t end = index;
