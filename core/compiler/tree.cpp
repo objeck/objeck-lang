@@ -355,10 +355,7 @@ std::wstring Method::EncodeType(Type* type, Class* klass, ParsedProgram* program
 
     // generics
     if(type->HasGenerics()) {
-      const std::vector<Type*> generic_types = type->GetGenerics();
-      for(size_t i = 0; i < generic_types.size(); ++i) {
-        name += L"|" + generic_types[i]->GetName();
-      }
+      name += EncodeGenerics(type);
     }
 
     // dimension
@@ -366,6 +363,30 @@ std::wstring Method::EncodeType(Type* type, Class* klass, ParsedProgram* program
       name += L'*';
     }
   }
+
+  return name;
+}
+
+std::wstring Method::EncodeGenerics(Type* type)
+{
+  std::wstring name = L"<";
+
+  const std::vector<Type*> generic_types = type->GetGenerics();
+  for(size_t i = 0; i < generic_types.size(); ++i) {
+    Type* generic_type = generic_types[i];
+
+    // add type and sub-types
+    name += generic_type->GetName();
+    if(generic_type->HasGenerics()) {
+      name += EncodeGenerics(generic_type);
+    }
+
+    // add more types
+    if(i + 1 < generic_types.size()) {
+      name += L'|';
+    }
+  }
+  name += L'>';
 
   return name;
 }
@@ -439,10 +460,7 @@ std::wstring Method::EncodeType(Type* type) {
 
     // generics
     if(type->HasGenerics()) {
-      const std::vector<Type*> generic_types = type->GetGenerics();
-      for(size_t i = 0; i < generic_types.size(); ++i) {
-        name += L"|" + generic_types[i]->GetName();
-      }
+      name += EncodeGenerics(type);
     }
 
     // dimension
