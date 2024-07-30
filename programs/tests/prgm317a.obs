@@ -6,9 +6,9 @@ class Fee {
 	function : Fo() ~ Collection.Vector<Collection.Pair<String, String>> {
 		values := Collection.Vector->New()<Collection.Pair<String, String>>;
 
-		values->AddBack(Collection.Pair->New("a-", "-b")<String, String>);
-		values->AddBack(Collection.Pair->New("c-", "-d")<String, String>);
-		values->AddBack(Collection.Pair->New("e-", "-f")<String, String>);
+		values->AddBack(Collection.Pair->New("a-", "--b")<String, String>);
+		values->AddBack(Collection.Pair->New("c---", "----d")<String, String>);
+		values->AddBack(Collection.Pair->New("e------", "------f")<String, String>);
 
 		return values;
 	}

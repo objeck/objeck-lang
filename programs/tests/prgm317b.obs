@@ -2,7 +2,7 @@ class Foo {
 	function : Main(args : System.String[]) ~ Nil {
 		 values := Fee->Fo();
 		 each(value in values) {
-		 	value->GetFirst()->PrintLine();
+		 	value->GetFirst()->Size()->PrintLine();
 		 };
 	}
 }
