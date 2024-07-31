@@ -328,6 +328,18 @@ if(doc <> Nil) {
 		}
 
 		#~
+		Constructor
+		@param stream_in JSON character array
+		~#
+		New(stream_in : Char[]) {
+			@input := stream_in;
+			@input_index := 0;
+			
+			@tokens_max := 32;
+			@tokens := Token->New[@tokens_max];
+		}
+
+		#~
 		Parses JSON text
 		@param text JSON text
 		@return root document element
