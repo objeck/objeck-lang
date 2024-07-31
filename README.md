@@ -181,7 +181,7 @@ class Embaddings {
 ## Design <sub><a href='https://github.com/objeck/objeck-lang/tree/master/core'>[1]</a></sub>
 
 * Object-oriented and functional
-* Cross-platform support for Linux, macOS, Windows (including Docker and RPI 3/4/5)
+* Cross-platform support for Linux, macOS, and Windows (including Docker and RPI 3/4/5)
 * JIT-compiled runtimes (ARM64 and AMD64)
 * REPL shell
 * LSP [plugins](https://github.com/objeck/objeck-lsp) for VSCode, Sublime, Kate, and more
@@ -189,7 +189,7 @@ class Embaddings {
 
 ## Libraries <sub><a href='https://github.com/objeck/objeck-lang/tree/master/core/compiler/lib_src'>[2]</a></sub>
 
-* Machine learning ([OpenAI](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/openai.obs), [Gemini](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/gemini.obs), [GOFAI](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/ml.obs))
+* Machine learning ([OpenAI](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/openai.obs), [Gemini](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/gemini.obs), [Ollama](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/ollama.obs), [GOFAI](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/ml.obs))
 * Web ([server](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/net_secure.obs), [client](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/net_secure.obs), [OAuth](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/net_common.obs))
 * Data exchange
   * JSON ([hierarchical](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/json.obs), [streaming](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/json_stream.obs))
