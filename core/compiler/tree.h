@@ -2920,6 +2920,11 @@ namespace frontend {
       return method_name;
     }
 
+    void SetEnumName(const std::wstring &v, const std::wstring& m) {
+      method_name = m;
+      variable_name = v;
+    }
+
     const std::vector<Type*> GetConcreteTypes() {
       return concrete_types;
     }
