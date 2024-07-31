@@ -604,7 +604,10 @@ class Player {
 		player_path += "/player.png";
 		@rect := framework->AddAnimatedImageSprite(player_path, clips);
 		
-		@loc := Vector2->New(GameConsts->PLAYER_BOX_MIN, GameConsts->SCREEN_HEIGHT / 2);
+		a := GameConsts->PLAYER_BOX_MIN->As(Int);
+		b := GameConsts->SCREEN_HEIGHT->As(Int) / 2;
+
+		@loc := Vector2->New(a, b);
 		@vel := Vector2->New();
 		@acc := Vector2->New();
 	}

@@ -2070,13 +2070,24 @@ void ContextAnalyzer::AnalyzeEnumCall(MethodCall* method_call, bool regress, con
       item_name = method_call->GetMethodCall()->GetVariableName();
     }
 
+    // local nested reference
     if(!eenum) {
-      // local nested reference
-      eenum = SearchProgramEnums(current_class->GetName() + L"#" + enum_name);
-      if(!eenum) {
-        // standalone reference
+      // standalone reference
+      const size_t result = enum_name.find(L'#');
+      if(result != std::wstring::npos) {
+        const std::wstring var_name = enum_name.substr(0, result);
+        eenum = SearchProgramEnums(var_name);
+        if(eenum) {
+          item_name = enum_name.substr(result + 1);
+          method_call->SetEnumName(var_name, item_name);
+        }
+      }
+      else {
         eenum = SearchProgramEnums(enum_name);
       }
+    }
+    else {
+      eenum = SearchProgramEnums(current_class->GetName() + L"#" + enum_name);
     }
 
     if(eenum) {

@@ -4179,8 +4179,7 @@ Expression* Parser::ParseSimpleExpression(int depth)
   
   Expression* expression = nullptr;
 
-  if(Match(TOKEN_IDENT) || Match(TOKEN_ADD_ADD) ||
-     Match(TOKEN_SUB_SUB) || IsBasicType(GetToken())) {
+  if(Match(TOKEN_IDENT) || Match(TOKEN_ADD_ADD) || Match(TOKEN_SUB_SUB) || IsBasicType(GetToken())) {
     std::wstring ident;
     bool pre_inc = false;
     bool pre_dec = false;
