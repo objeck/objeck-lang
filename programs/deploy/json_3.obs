@@ -10,18 +10,20 @@ use System.IO.Net;
 class JsonWeb {
 	function : Main(args : String[]) ~ Nil {		
 		url := Web.HTTP.Url->New("https://reqbin.com/echo/get/json");
-		content := HttpsClient->QuickGet(url)->GetContent();
-		
-		parser := JsonParser->New(content->ToString());
-		if(parser->Parse()) {
-			root := parser->GetRoot();
-			success := root->Get("success");
-			if(success <> Nil) {
-				success->GetString()->Equals("true")->PrintLine();
-				return;
+
+		response := HttpsClient->QuickGet(url);
+		if(response <> Nil) {
+			parser := JsonParser->New(response->GetContent());
+			if(parser->Parse()) {
+				root := parser->GetRoot();
+				success := root->Get("success");
+				if(success <> Nil) {
+					success->GetString()->Equals("true")->PrintLine();
+					return;
+				};
 			};
 		};
-		
+			
 		"-- Unable to parse or process JSON! --"->ErrorLine();
 	}
 }
