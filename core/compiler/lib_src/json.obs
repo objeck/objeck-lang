@@ -329,12 +329,24 @@ if(doc <> Nil) {
 
 		#~
 		Constructor
-		@param stream_in JSON character array
+		@param stream_in JSON character stream
 		~#
 		New(stream_in : Char[]) {
-			@input := stream_in;
+			@input := stream_in->ToString()->Trim()->ToCharArray();
 			@input_index := 0;
-			
+
+			@tokens_max := 32;
+			@tokens := Token->New[@tokens_max];
+		}
+
+		#~
+		Constructor
+		@param stream_in JSON byte stream
+		~#
+		New(stream_in : Byte[]) {
+			@input := stream_in->ToString()->Trim()->ToCharArray();
+			@input_index := 0;
+
 			@tokens_max := 32;
 			@tokens := Token->New[@tokens_max];
 		}
