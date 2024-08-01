@@ -2070,12 +2070,10 @@ void ContextAnalyzer::AnalyzeEnumCall(MethodCall* method_call, bool regress, con
       item_name = method_call->GetMethodCall()->GetVariableName();
     }
 
-    /*
     // local nested reference
     if(!eenum) {
       eenum = SearchProgramEnums(enum_name);
     }
-    */
 
     // local nested reference
     if(!eenum) {
