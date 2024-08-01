@@ -2086,6 +2086,13 @@ void ContextAnalyzer::AnalyzeEnumCall(MethodCall* method_call, bool regress, con
           item_name = enum_name.substr(result + 1);
           method_call->SetEnumName(var_name, item_name);
         }
+        else {
+          ParsedBundle* bundle = program->GetBundle(var_name);
+          if(bundle) {
+            const std::wstring enum_child_name = enum_name.substr(result + 1);
+            eenum = bundle->GetEnum(enum_child_name);
+          }
+        }
       }
       else {
         eenum = SearchProgramEnums(enum_name);
