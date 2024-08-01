@@ -17,6 +17,8 @@
 * v2024.8.x
   * Orchestrated inference across OpenAI, Gemini, Llama, Mistral and Perplexity
   * Cross-platform training tools
+
+* v2024.8.0
   * Compiler updates (done)
     * Dead code checker
     * Improved type inference for generic types
