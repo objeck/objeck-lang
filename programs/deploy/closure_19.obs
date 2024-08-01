@@ -1,5 +1,5 @@
 #~
-# compile: obc -src closure_19.obs -lib gen_collect -dest closure_19.obe
+# compile: obc -src closure_19.obs -dest closure_19.obe
 # run: obr closure_19.obe
 ~#
 
@@ -14,7 +14,7 @@ class Capture {
 		 };
 		 
 		 each(i : funcs) {
-		 	value := funcs->Get(i)<FuncRef>;
+		 	value := funcs->Get(i);
 			func := value->Get();
 		 	func()->Get()->PrintLine();
 		 };
