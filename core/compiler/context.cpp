@@ -2072,6 +2072,11 @@ void ContextAnalyzer::AnalyzeEnumCall(MethodCall* method_call, bool regress, con
 
     // local nested reference
     if(!eenum) {
+      eenum = SearchProgramEnums(enum_name);
+    }
+
+    // local nested reference
+    if(!eenum) {
       // standalone reference
       const size_t result = enum_name.find(L'#');
       if(result != std::wstring::npos) {
@@ -2084,10 +2089,8 @@ void ContextAnalyzer::AnalyzeEnumCall(MethodCall* method_call, bool regress, con
       }
       else {
         eenum = SearchProgramEnums(enum_name);
+
       }
-    }
-    else {
-      eenum = SearchProgramEnums(current_class->GetName() + L"#" + enum_name);
     }
 
     if(eenum) {
