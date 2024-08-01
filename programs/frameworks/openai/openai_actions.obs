@@ -240,8 +240,8 @@ class Test {
 						role := response->GetRole();
 						contents := response->GetContents();
 						each(content in contents) {
-							type := content->GetFirst()->As(String);
-							value := content->GetSecond()->As(String);
+							type := content->GetFirst();
+							value := content->GetSecond();
 
 							"{$index}: [{$role}, type='{$type}']: value='{$value}'"->PrintLine();
 						};
