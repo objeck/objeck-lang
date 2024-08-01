@@ -2099,7 +2099,7 @@ void ContextAnalyzer::AnalyzeEnumCall(MethodCall* method_call, bool regress, con
       }
     }
 
-    // 
+    // inner class enum
     if(!eenum) {
       std::wstring inner_enum_name = current_class->GetName();
       inner_enum_name += L'#';
