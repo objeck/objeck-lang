@@ -2099,6 +2099,14 @@ void ContextAnalyzer::AnalyzeEnumCall(MethodCall* method_call, bool regress, con
       }
     }
 
+    // 
+    if(!eenum) {
+      std::wstring inner_enum_name = current_class->GetName();
+      inner_enum_name += L'#';
+      inner_enum_name += enum_name;
+      eenum = bundle->GetEnum(inner_enum_name);
+    }
+
     if(eenum) {
       EnumItem* item = eenum->GetItem(item_name);
       if(item) {
