@@ -315,7 +315,7 @@ bytes->Size()->PrintLine();
 funcs := Vector->New()<FuncRef<IntRef>>;
 each(i : 10) {
   funcs->AddBack(FuncRef->New(\() ~ IntRef : () 
-    => System.Math.Routine->Factorial(i) * funcs->Size())<IntRef>);
+    => i->Factorial() * funcs->Size())<IntRef>);
 };
 
 each(i : funcs) {
