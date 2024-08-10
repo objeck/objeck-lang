@@ -37,7 +37,7 @@
 
 #define DEFAULT_FILE_NAME L"repl://buffer.obs"
 
-#define USES_STRING L"csv,diags,encrypt,gen_collect,json,math,misc,net,odbc,query,regex,rss,sdl2,sdl_game,xml"
+#define USES_STRING L"csv.obl,encrypt.obl,gen_collect.obl,json.obl,misc.obl,net.obl,query.obl,regex.obl,xml.obl"
 
 class CodeFormatter;
 
