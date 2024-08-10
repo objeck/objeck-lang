@@ -29,13 +29,6 @@
   
 * v2024.7.0
   * Local ML/AI support for Llama and Mistral
-  
-* v2024.6.0
-    * Model tuning
-      * OpenAI
-      * Gemini
-    * Image generation, editing, and variation
-      * OpenAI
 
 ## Examples
 
