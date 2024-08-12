@@ -1922,7 +1922,7 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
     return LoadClsInstId(program, inst, op_stack, stack_pos, frame);
 
   case STRING_HASH_ID:
-    return LoadStringId(program, inst, op_stack, stack_pos, frame);
+    return HashStringId(program, inst, op_stack, stack_pos, frame);
 
   case LOAD_NEW_OBJ_INST:
     return LoadNewObjInst(program, inst, op_stack, stack_pos, frame);
@@ -2470,7 +2470,7 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
   return false;
 }
 
-bool TrapProcessor::LoadStringId(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
+bool TrapProcessor::HashStringId(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
 {
   size_t* str_obj = (size_t*)PopInt(op_stack, stack_pos);
 
