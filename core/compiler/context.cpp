@@ -4174,7 +4174,7 @@ void ContextAnalyzer::AnalyzeSelect(Select* select_stmt, const int depth)
     }
 #else
     if(!is_int_expr) {
-      ProcessError(expression, L"Expected integer or string expression");
+      ProcessError(expression, L"Expected integer expression");
     }
 #endif
   }
@@ -4199,17 +4199,26 @@ void ContextAnalyzer::AnalyzeSelect(Select* select_stmt, const int depth)
       Expression* expression = expression_list[i];
       if(expression) {
         switch(expression->GetExpressionType()) {
+        case CHAR_STR_EXPR: {
+          const CharacterString* char_str_expr = static_cast<CharacterString*>(expression);
+          value = HashString(char_str_expr->GetString());
+          if(DuplicateCaseItem(label_statements, value)) {
+            ProcessError(expression, L"Duplicate select hash value for '" + char_str_expr->GetString() + L'\'');
+          }
+        }
+          break;
+
         case CHAR_LIT_EXPR:
           value = static_cast<CharacterLiteral*>(expression)->GetValue();
           if(DuplicateCaseItem(label_statements, value)) {
-            ProcessError(expression, L"Duplicate select value");
+            ProcessError(expression, L"Duplicate select value '" + ToString(value) + L'\'');
           }
           break;
 
         case INT_LIT_EXPR:
           value = static_cast<IntegerLiteral*>(expression)->GetValue();
           if(DuplicateCaseItem(label_statements, value)) {
-            ProcessError(expression, L"Duplicate select value");
+            ProcessError(expression, L"Duplicate select value '" + ToString(value) + L'\'');
           }
           break;
 
@@ -4223,13 +4232,13 @@ void ContextAnalyzer::AnalyzeSelect(Select* select_stmt, const int depth)
           if(mthd_call->GetEnumItem()) {
             value = mthd_call->GetEnumItem()->GetId();
             if(DuplicateCaseItem(label_statements, value)) {
-              ProcessError(expression, L"Duplicate select value");
+              ProcessError(expression, L"Duplicate select value '" + ToString(value) + L'\'');
             }
           }
           else if(mthd_call->GetLibraryEnumItem()) {
             value = mthd_call->GetLibraryEnumItem()->GetId();
             if(DuplicateCaseItem(label_statements, value)) {
-              ProcessError(expression, L"Duplicate select value");
+              ProcessError(expression, L"Duplicate select value '" + ToString(value) + L'\'');
             }
           }
           else {

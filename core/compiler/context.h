@@ -440,7 +440,7 @@ class ContextAnalyzer {
   bool ClassEquals(const std::wstring &left_name, Class* right_klass, LibraryClass* right_lib_klass);
 
   // string utility functions
-  std::wstring ToString(int v) {
+  std::wstring ToString(int64_t v) {
     std::wostringstream str;
     str << v;
     return str.str();
