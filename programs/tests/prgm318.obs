@@ -3,17 +3,17 @@ class Test {
 		a := "objeck";
 		b := "def";
 
-#		a->HashID()->PrintLine();
+		a->HashID()->PrintLine();
 		b->HashID()->PrintLine();
 
 #		select(a->HashID()) {
 		select(b) {	
-			label 6953853312755: {
-				"a"->PrintLine();
+			label "def": {
+				"def"->PrintLine();
 			}
 
-			label 193489332 {
-				"b"->PrintLine();
+			label "objeck " {
+				"objeck"->PrintLine();
 			}
 
 			other: {

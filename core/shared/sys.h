@@ -93,7 +93,7 @@ namespace instructions {
  * Unicode string
  */
 static size_t HashString(const wchar_t* char_ary, const size_t char_ary_pos) {
-  // djb2 hash
+    // djb2 hash
   if(!char_ary) {
     return 0;
   }
@@ -106,6 +106,11 @@ static size_t HashString(const wchar_t* char_ary, const size_t char_ary_pos) {
 
   return hash;
 }
+
+static size_t HashString(const std::wstring &str) {
+  return HashString(str.c_str(), str.size());
+}
+
 
 /**
  * Converts UTF-8 bytes a 
