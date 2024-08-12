@@ -5973,6 +5973,8 @@ each(i : cities) {
 		@return hash ID
 		~#
 		method : public : native : HashID() ~ Int {
+			STRING_HASH_ID;
+#~			
 			# djb2 hash			
 			hash := 5381;
 			
@@ -5981,6 +5983,7 @@ each(i : cities) {
 			};
 				
 			return hash;
+~#			
 		}
 
 		#~
