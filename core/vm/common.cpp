@@ -2472,8 +2472,19 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
 
 bool TrapProcessor::LoadStringId(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
 {
-  size_t* obj = (size_t*)PopInt(op_stack, stack_pos);
-  PushInt(MemoryManager::GetObjectID(obj), op_stack, stack_pos);
+  size_t* str_obj = (size_t*)PopInt(op_stack, stack_pos);
+
+  size_t* char_ary_obj = (size_t*)str_obj[0];
+  const wchar_t* char_ary = (wchar_t*)(char_ary_obj + 3);
+  const size_t char_ary_pos = str_obj[2];
+
+  // djb2 hash
+  size_t hash = 5381;
+  for(size_t i = 0; i < char_ary_pos; ++i) {
+    hash = ((hash << 5) + hash) + char_ary[i];
+  }
+  
+  PushInt(hash, op_stack, stack_pos);
   return true;
 }
 
