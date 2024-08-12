@@ -2515,6 +2515,12 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
       NextToken();
       break;
 
+    case STRING_HASH_ID:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::STRING_HASH_ID);
+      NextToken();
+      break;
+
     case LOAD_CLS_BY_INST:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::LOAD_CLS_BY_INST);
