@@ -1,7 +1,7 @@
 <h1 align="center">Versatile, Scalable and Efficient</h1>
 
 <p align="center">
-  <a href="https://www.objeck.org"><img src="docs/images/gear_wheel_256.png""  width="300" alt="An Objeck"/></a>
+  <a href="https://www.objeck.org"><img src="docs/images/gear_wheel_256.png""  width="256" alt="An Objeck"/></a>
 </p>
 
 <hr/>
