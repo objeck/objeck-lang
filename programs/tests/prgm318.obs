@@ -1,0 +1,29 @@
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		a := "abc";
+		b := "def";
+		c := "hij";
+
+		a->HashID()->PrintLine();
+		b->HashID()->PrintLine();
+		c->HashID()->PrintLine();
+
+		select("abc"->HashID()) {
+			label 193485963: {
+				"a"->PrintLine();
+			}
+
+			label 193489332 {
+				"b"->PrintLine();
+			}
+
+			label 193493824 {
+				"c"->PrintLine();
+			}
+
+			other {
+				"unknown"->PrintLine();
+			}
+		};
+	}
+}
