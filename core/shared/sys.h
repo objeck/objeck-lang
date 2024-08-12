@@ -89,6 +89,25 @@ namespace instructions {
 }
 
 /**
+ * Converts UTF-8 bytes a
+ * Unicode string
+ */
+static size_t HashString(const wchar_t* char_ary, const size_t char_ary_pos) {
+  // djb2 hash
+  if(!char_ary) {
+    return 0;
+  }
+
+  size_t hash = 5381;
+  
+  for(size_t i = 0; i < char_ary_pos; ++i) {
+    hash = ((hash << 5) + hash) + char_ary[i];
+  }
+
+  return hash;
+}
+
+/**
  * Converts UTF-8 bytes a 
  * Unicode string 
  */

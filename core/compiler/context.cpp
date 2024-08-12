@@ -4155,9 +4155,28 @@ void ContextAnalyzer::AnalyzeSelect(Select* select_stmt, const int depth)
   Expression* expression = select_stmt->GetAssignment()->GetExpression();
   if(expression) {
     AnalyzeExpression(expression, depth + 1);
-    if(!IsIntegerExpression(expression)) {
-      ProcessError(expression, L"Expected integer expression");
+    const bool is_int_expr = IsIntegerExpression(expression);
+
+#ifndef _SYSTEM
+    const bool is_str_expr = IsStringExpression(expression);
+    if(!is_int_expr && !is_str_expr) {
+      ProcessError(expression, L"Expected integer or string expression");
     }
+
+    if(is_str_expr && expression->GetExpressionType() == VAR_EXPR) {
+      Variable* var_expr = static_cast<Variable*>(expression);
+      expression = TreeFactory::Instance()->MakeMethodCall(select_stmt->GetFileName(), select_stmt->GetLineNumber(),
+                                                           select_stmt->GetLinePosition(), select_stmt->GetEndLineNumber(),
+                                                           select_stmt->GetEndLinePosition(), -1, -1, var_expr, L"HashID",
+                                                           TreeFactory::Instance()->MakeExpressionList());
+      AnalyzeExpression(expression, depth + 1);
+      select_stmt->GetAssignment()->SetExpression(expression);
+    }
+#else
+    if(!is_int_expr) {
+      ProcessError(expression, L"Expected integer or string expression");
+    }
+#endif
   }
 
   // labels and expressions
@@ -7015,6 +7034,16 @@ bool ContextAnalyzer::IsEnumExpression(Expression* expression)
         return true;
       }
     }
+  }
+
+  return false;
+}
+
+bool ContextAnalyzer::IsStringExpression(Expression* expression) 
+{
+  Type* eval_type = expression->GetEvalType();
+  if(eval_type->GetType() == CLASS_TYPE && eval_type->GetName() == L"System.String") {
+    return true;
   }
 
   return false;

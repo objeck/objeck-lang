@@ -292,6 +292,9 @@ class ContextAnalyzer {
   // returns true if expression is of integer or enum type
   bool IsIntegerExpression(Expression* expression);
 
+  // returns true if expression is a character string
+  bool IsStringExpression(Expression* expression);
+
   // returns true if entry static context is not valid
   bool DuplicateParentEntries(SymbolEntry* entry, Class* klass);
 

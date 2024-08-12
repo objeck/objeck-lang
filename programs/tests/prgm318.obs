@@ -1,8 +1,29 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-#		a := "objeck";
+		a := "objeck";
+		b := "def";
+
 #		a->HashID()->PrintLine();
-		
+		b->HashID()->PrintLine();
+
+#		select(a->HashID()) {
+		select(b) {	
+			label 6953853312755: {
+				"a"->PrintLine();
+			}
+
+			label 193489332 {
+				"b"->PrintLine();
+			}
+
+			other: {
+				"o"->PrintLine();
+			}
+		};
+
+#		a->HashID()->PrintLine();
+
+#~		
 		a := "abc";
 		b := "def";
 		c := "hij";
@@ -10,6 +31,7 @@ class Test {
 		a->HashID()->PrintLine();
 		b->HashID()->PrintLine();
 		c->HashID()->PrintLine();
+~#
 
 #~
 		select("abc"->HashID()) {

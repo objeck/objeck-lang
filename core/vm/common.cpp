@@ -2478,13 +2478,9 @@ bool TrapProcessor::LoadStringId(StackProgram* program, size_t* inst, size_t*& o
   const wchar_t* char_ary = (wchar_t*)(char_ary_obj + 3);
   const size_t char_ary_pos = str_obj[2];
 
-  // djb2 hash
-  size_t hash = 5381;
-  for(size_t i = 0; i < char_ary_pos; ++i) {
-    hash = ((hash << 5) + hash) + char_ary[i];
-  }
-  
+  const size_t hash = HashString(char_ary, char_ary_pos);
   PushInt(hash, op_stack, stack_pos);
+
   return true;
 }
 
