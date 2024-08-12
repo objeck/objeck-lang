@@ -198,6 +198,7 @@ void Scanner::LoadKeywords()
   ident_map[L"INF_FLOAT"] = INF_FLOAT;
   ident_map[L"NEG_INF_FLOAT"] = NEG_INF_FLOAT;
   ident_map[L"LOAD_CLS_INST_ID"] = LOAD_CLS_INST_ID;
+  ident_map[L"STRING_HASH_ID"] = STRING_HASH_ID;
   ident_map[L"LOAD_CLS_BY_INST"] = LOAD_CLS_BY_INST;
   ident_map[L"LOAD_NEW_OBJ_INST"] = LOAD_NEW_OBJ_INST;
   ident_map[L"LOAD_INST_UID"] = LOAD_INST_UID;
@@ -497,6 +498,7 @@ void Scanner::CheckIdentifier(int index)
     case NEG_INF_FLOAT:
     case RAND_FLOAT:
     case LOAD_CLS_INST_ID:
+    case STRING_HASH_ID:
     case LOAD_CLS_BY_INST:
     case LOAD_NEW_OBJ_INST:
     case LOAD_INST_UID:

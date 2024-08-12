@@ -1921,6 +1921,9 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
   case LOAD_CLS_INST_ID:
     return LoadClsInstId(program, inst, op_stack, stack_pos, frame);
 
+  case STRING_HASH_ID:
+    return LoadStringId(program, inst, op_stack, stack_pos, frame);
+
   case LOAD_NEW_OBJ_INST:
     return LoadNewObjInst(program, inst, op_stack, stack_pos, frame);
 
@@ -2465,6 +2468,13 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
   }
 
   return false;
+}
+
+bool TrapProcessor::LoadStringId(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
+{
+  size_t* obj = (size_t*)PopInt(op_stack, stack_pos);
+  PushInt(MemoryManager::GetObjectID(obj), op_stack, stack_pos);
+  return true;
 }
 
 bool TrapProcessor::LoadClsInstId(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)

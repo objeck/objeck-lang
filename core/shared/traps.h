@@ -49,6 +49,7 @@ namespace instructions {
     CPY_FLOAT_STR_ARY,
     BYTES_TO_UNICODE,
     UNICODE_TO_BYTES,
+    STRING_HASH_ID,
     // time
     SYS_TIME,
     GMT_TIME,
