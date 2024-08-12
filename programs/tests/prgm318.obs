@@ -1,5 +1,8 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
+#		a := "objeck";
+#		a->HashID()->PrintLine();
+		
 		a := "abc";
 		b := "def";
 		c := "hij";
@@ -8,6 +11,7 @@ class Test {
 		b->HashID()->PrintLine();
 		c->HashID()->PrintLine();
 
+#~
 		select("abc"->HashID()) {
 			label 193485963: {
 				"a"->PrintLine();
@@ -25,5 +29,6 @@ class Test {
 				"unknown"->PrintLine();
 			}
 		};
+~#		
 	}
 }
