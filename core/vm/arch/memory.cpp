@@ -746,7 +746,7 @@ void* MemoryManager::CollectMemory(void* arg)
   
 #ifdef _TIMING
   clock_t end = clock();
-  std::wcout << dec << L"Mark time: " << (double)(end - start) / CLOCKS_PER_SEC << L" second(s)." << std::endl;
+  std::wcout << std::dec << L"Mark time: " << (double)(end - start) / CLOCKS_PER_SEC << L" second(s)." << std::endl;
   start = clock();
 #endif
   
@@ -874,7 +874,7 @@ void* MemoryManager::CollectMemory(void* arg)
   
 #ifdef _TIMING
   end = clock();
-  std::wcout << dec << L"Sweep time: " << (double)(end - start) / CLOCKS_PER_SEC << L" second(s)." << std::endl;
+  std::wcout << std::dec << L"Sweep time: " << (double)(end - start) / CLOCKS_PER_SEC << L" second(s)." << std::endl;
 #endif
   
 #ifndef _WIN32
