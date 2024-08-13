@@ -4163,14 +4163,22 @@ void ContextAnalyzer::AnalyzeSelect(Select* select_stmt, const int depth)
       ProcessError(expression, L"Expected integer or string expression");
     }
 
-    if(is_str_expr && expression->GetExpressionType() == VAR_EXPR) {
-      Variable* var_expr = static_cast<Variable*>(expression);
-      expression = TreeFactory::Instance()->MakeMethodCall(select_stmt->GetFileName(), select_stmt->GetLineNumber(),
-                                                           select_stmt->GetLinePosition(), select_stmt->GetEndLineNumber(),
-                                                           select_stmt->GetEndLinePosition(), -1, -1, var_expr, L"HashID",
-                                                           TreeFactory::Instance()->MakeExpressionList());
-      AnalyzeExpression(expression, depth + 1);
-      select_stmt->GetAssignment()->SetExpression(expression);
+    if(is_str_expr) {
+      if(expression->GetExpressionType() == VAR_EXPR) {
+        Variable* var_expr = static_cast<Variable*>(expression);
+        expression = TreeFactory::Instance()->MakeMethodCall(select_stmt->GetFileName(), select_stmt->GetLineNumber(),
+                                                             select_stmt->GetLinePosition(), select_stmt->GetEndLineNumber(),
+                                                             select_stmt->GetEndLinePosition(), -1, -1, var_expr, L"HashID",
+                                                             TreeFactory::Instance()->MakeExpressionList());
+        AnalyzeExpression(expression, depth + 1);
+        select_stmt->GetAssignment()->SetExpression(expression);
+      }
+      else {
+        const CharacterString* char_str_expr = static_cast<CharacterString*>(expression);
+        expression = TreeFactory::Instance()->MakeIntegerLiteral(select_stmt->GetFileName(), select_stmt->GetLineNumber(), 
+                                                                 select_stmt->GetLinePosition(), HashString(char_str_expr->GetString()));
+        select_stmt->GetAssignment()->SetExpression(expression);
+      }
     }
 #else
     if(!is_int_expr) {

@@ -1,19 +1,27 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
 		a := "objeck";
-		b := "def";
+		b := "abc";
+		c := "def";
 
-		a->HashID()->PrintLine();
-		b->HashID()->PrintLine();
+		m := Collection.Vector->New()<String>;
 
-#		select(a->HashID()) {
-		select(b) {	
-			label "def": {
-				"def"->PrintLine();
+#		a->HashID()->PrintLine();
+#		b->HashID()->PrintLine();
+#		c->HashID()->PrintLine();
+
+		select("abc") {
+#		select(b) {	
+			label "abc": {
+				"abc"->PrintLine();
 			}
 
 			label "objeck " {
 				"objeck"->PrintLine();
+			}
+
+			label "def " {
+				"def"->PrintLine();
 			}
 
 			other: {
