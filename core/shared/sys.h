@@ -94,7 +94,7 @@ namespace instructions {
  */
 static size_t HashString(const wchar_t* char_ary, const size_t char_ary_pos) {
     // djb2 hash
-  if(!char_ary) {
+  if(!char_ary || !char_ary_pos) {
     return 0;
   }
 
@@ -107,8 +107,8 @@ static size_t HashString(const wchar_t* char_ary, const size_t char_ary_pos) {
   return hash;
 }
 
-static size_t HashString(const std::wstring &str) {
-  return HashString(str.c_str(), str.size());
+static size_t HashString(const wchar_t* char_ary) {
+  return HashString(char_ary, wcslen(char_ary));
 }
 
 
