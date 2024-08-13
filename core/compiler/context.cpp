@@ -4176,7 +4176,7 @@ void ContextAnalyzer::AnalyzeSelect(Select* select_stmt, const int depth)
       else {
         const CharacterString* char_str_expr = static_cast<CharacterString*>(expression);
         expression = TreeFactory::Instance()->MakeIntegerLiteral(select_stmt->GetFileName(), select_stmt->GetLineNumber(), 
-                                                                 select_stmt->GetLinePosition(), HashString(char_str_expr->GetString()));
+                                                                 select_stmt->GetLinePosition(), HashString(char_str_expr->GetString().c_str()));
         select_stmt->GetAssignment()->SetExpression(expression);
       }
     }
@@ -4209,7 +4209,7 @@ void ContextAnalyzer::AnalyzeSelect(Select* select_stmt, const int depth)
         switch(expression->GetExpressionType()) {
         case CHAR_STR_EXPR: {
           const CharacterString* char_str_expr = static_cast<CharacterString*>(expression);
-          value = HashString(char_str_expr->GetString());
+          value = HashString(char_str_expr->GetString().c_str());
           if(DuplicateCaseItem(label_statements, value)) {
             ProcessError(expression, L"Duplicate select hash value for '" + char_str_expr->GetString() + L'\'');
           }

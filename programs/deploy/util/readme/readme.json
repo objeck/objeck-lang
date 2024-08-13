@@ -3,7 +3,7 @@
 		"string": "2024.8.1",
 		"year": 2024
 	},
-	"title": "Bug fixes, Improved build automation",
+	"title": "Support for strings in select statement, Improved runtime performance, bug fixes",
 	"files": {
 		"html_template": "readme.in.html",
 		"html_out": "readme.html",
@@ -11,6 +11,15 @@
 		"openai_token": "openai_api_key.dat"
 	},
 	"features": [
+		{
+			"version": "v2024.8.1",
+			"items": [
+				"Support for strings in select statement",
+				"Bug fixes",
+				"\tFixed REPL start up issues",
+				"\tCode refactoring for performance"
+			]
+		},
 		{
 			"version": "v2024.8.0",
 			"items": [
@@ -21,19 +30,9 @@
 		{
 			"version": "v2024.7.1",
 			"items": [
-				"\tML model tuning support",
+				"ML model tuning support",
 				"Added Perplexity API inference support",
 				"Turned off OpenAI JSON debugging"
-			]
-		},
-		{
-			"version": "v2024.7.0",
-			"items": [
-				"Ollama API support for Llama 3 and Mistral",
-				"OpenAI updates",
-				"\tSupport for vector stores",
-				"\tAssistants v2 API support",
-				"Cookie support convenience methods added to the HTTP/S clients"
 			]
 		}
 	]
