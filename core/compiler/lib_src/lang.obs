@@ -5972,11 +5972,11 @@ each(i : cities) {
 		Returns a unique hash ID for a given string sequence
 		@return hash ID
 		~#
-#		method : public : native : HashID() ~ Int {
 		method : public : HashID() ~ Int {
 			STRING_HASH_ID;
+#~		
+		method : public : native : HashID() ~ Int {
 
-#~
 			# djb2 hash			
 			hash := 5381;
 			
