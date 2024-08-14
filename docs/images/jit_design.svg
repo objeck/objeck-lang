@@ -128,7 +128,7 @@
 						x="17.19" dy="1.2em" class="st6">Memory Manager</tspan></text>		</g>
 		<g id="shape4-21" v:mID="4" v:groupContext="shape" transform="translate(-129.6,227.202) rotate(-90)">
 			<title>Horizontal callout</title>
-			<desc>JIT’ed objects on the process stack need to “marked”</desc>
+			<desc>JIT’ed objects on the process stack are “marked”</desc>
 			<v:userDefs>
 				<v:ud v:nameU="visVersion" v:val="VT0(15):26"/>
 				<v:ud v:nameU="msvThemeColors" v:val="VT0(36):26"/>
@@ -139,7 +139,7 @@
 			<rect v:rectContext="textBkgnd" x="153.662" y="-40.0017" width="92.2769" height="36.0003" transform="rotate(90)"
 					class="st8"/>
 			<text x="153.66" y="-31" transform="rotate(90)" class="st9" v:langID="1033"><v:paragraph v:horizAlign="1"/><v:tabList/>JIT’ed objects on the <tspan
-						x="156.72" dy="1.2em" class="st6">process stack need </tspan><tspan x="174.24" dy="1.2em" class="st6">to </tspan>“marked”</text>		</g>
+						x="160.62" dy="1.2em" class="st6">process stack are </tspan><tspan x="179.8" dy="1.2em" class="st6">“</tspan>marked”</text>		</g>
 		<g id="shape5-28" v:mID="5" v:groupContext="shape" transform="translate(234,-90)">
 			<title>Rectangle.5</title>
 			<desc>Store Locals onto the Process Stack</desc>
