@@ -14,12 +14,15 @@ class Client {
 				ReadFile();
 			}
 			else if(args[0]->Equals("write")) {
+				pair := Pair->New(4, 13)<IntRef, IntRef>;
+
 				values := Map->New()<String, Compare>;
 				values->Insert("name", "Objeck");
 				values->Insert("age", IntRef->New(10));
 				values->Insert("pi", FloatRef->New(3.145));
 
 				serializer := Serializer->New();
+				serializer->Write(pair);
 				serializer->Write(values);
 				serializer->Write("Fin.");
 				bytes := serializer->Serialize();
@@ -42,9 +45,12 @@ class Client {
 		"server: file='{$file_name}', size={$size} bytes"->PrintLine();
 		
 		deserializer := Deserializer->New(bytes);
+
+		pair := deserializer->ReadObject()->As(Pair<IntRef, IntRef>);
+		pair->GetFirst()->PrintLine();
+		pair->GetSecond()->PrintLine();
+
 		values := deserializer->ReadObject()->As(Map<String, Compare>);
-
-
 		values->Size()->PrintLine();
 
 		name := values->Find("name")->As(String);
@@ -55,6 +61,8 @@ class Client {
 
 		fin := deserializer->ReadObject()->As(String);
 		fin->PrintLine();
+
+		File->Delete(file_name);
 	}
 
 	function : WriteFile(bytes : Byte[]) ~ Nil {
