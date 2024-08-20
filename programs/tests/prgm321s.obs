@@ -62,18 +62,6 @@ bundle JsonRpc {
 		}
 	}
 
-	class Client {
-		@url : Web.HTTP.Url;
-
-		New(url : Web.HTTP.Url) {
-			@url := url;
-		}
-
-		method : Call(func_name : String,  str_params: String) ~ Result {
-			return Nil;
-		}
-	}
-
 	class Result {
 		@code : Int;
 		@err_msg : String;
