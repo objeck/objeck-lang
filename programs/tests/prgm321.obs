@@ -24,7 +24,8 @@ bundle JsonRpc {
 					server->Process();
 				}
 				else if(args[0]->Equals("client")) {
-
+					client := Client->New("localhost", 7231);
+					client->Call("primes", "[13,17,33]");
 				}
 				else {
 					">>> Usage <<<"->ErrorLine();
@@ -47,7 +48,7 @@ bundle JsonRpc {
 			@server := TCPSocketServer->New(@port);
 			while(@server->Listen(16)) {
 				client := @server->Accept();
-				
+
 				line := client->ReadLine();
 				"Received: '{$line}'..."->PrintLine();
 			}
@@ -89,13 +90,23 @@ bundle JsonRpc {
 	}
 
 	class Client {
-		@url : Web.HTTP.Url;
+		@address : String;
+		@port : Int;
 
-		New(url : Web.HTTP.Url) {
-			@url := url;
+		New(address : String, port : Int) {
+			@address := address;
+			@port := port;
 		}
 
-		method : Call(func_name : String,  str_params: String) ~ RpcResult {
+		method : public : Call(func_name : String,  str_params: String) ~ RpcResult {
+			@server := TCPSocket->New(@address, @port);
+			if(@server->IsOpen()) {
+				@server->WriteString(func_name);
+				@server->WriteString(str_params);
+
+				@server->Close();
+			};
+
 			return Nil;
 		}
 	}
