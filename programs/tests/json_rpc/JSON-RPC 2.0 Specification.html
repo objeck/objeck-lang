@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html;charset=utf-8" >
+    <TITLE>JSON-RPC 2.0 Specification</TITLE>
+    <!-- Le styles -->
+    <link href="assets/css/bootstrap.css" rel="stylesheet">
+    <style type="text/css">
+      body {
+        padding-top: 60px;
+        padding-bottom: 40px;
+      }
+      .sidebar-nav {
+        padding: 9px 0;
+      }
+    </style>
+    <link href="assets/css/bootstrap-responsive.css" rel="stylesheet">
+
+    <!-- Le HTML5 shim, for IE6-8 support of HTML5 elements -->
+    <!--[if lt IE 9]>
+      <script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+
+    <!-- Le fav and touch icons -->
+    <link rel="shortcut icon" href="assets/ico/favicon.ico">
+    <link rel="apple-touch-icon-precomposed" sizes="114x114" href="assets/ico/apple-touch-icon-114-precomposed.png">
+    <link rel="apple-touch-icon-precomposed" sizes="72x72" href="assets/ico/apple-touch-icon-72-precomposed.png">
+    <link rel="apple-touch-icon-precomposed" href="assets/ico/apple-touch-icon-57-precomposed.png">
+ 
+<script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-287797-10']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+ 
+  </head>
+    <body>
+      <div class="navbar navbar-fixed-top">
+        <div class="navbar-inner">
+          <div class="container">
+            <a class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+              <span class="icon-bar"></span>
+              <span class="icon-bar"></span>
+              <span class="icon-bar"></span>
+            </a>
+            <a class="brand" href="http://www.jsonrpc.org">JSON-RPC</a>
+            <div class="nav-collapse">
+            <ul class="nav">
+              <li><a href="http://www.jsonrpc.org">Home</a></li>
+            </ul>
+            </div><!--/.nav-collapse -->
+          </div>
+        </div>
+      </div>
+
+      <div class="container">
+        <div class="row-fluid">
+          <div class="span3">
+            <div class="well sidebar-nav">
+              <ul class="nav nav-list">
+                <li class="nav-header">Specs</li>
+                <li><a href="specification">2.0</a></li>
+                <li><a href="specification_v1">1.0</a></li>
+                <li class="nav-header">More Details</li>
+                <li><a href="http://www.json.org">What is JSON?</a> </li>
+                <li><a href="http://en.wikipedia.org/wiki/Remote_procedure_call">What is RPC?</a></li>
+                <li><a href="http://www.simple-is-better.org/rpc/#differences-between-1-0-and-2-0">1.0 vs. 2.0</a></li>
+                <li><a href="http://en.wikipedia.org/wiki/JSON-RPC#Implementations">Implementations</a></li>
+                <li><a href="http://groups.google.com/group/json-rpc/">Join the Discussion</a></li>
+<li><a href="http://json-rpc.info">What uses JSON-RPC</a></li>
+
+		<li class="nav-header">Translations</li>
+               <li><a href="http://wiki.geekdream.com/Specification/json-rpc_2.0.html">(译)
+JSON-RPC 2.0 规范(中文版)</a></li>
+
+                <li class="nav-header">Social</li>
+                <li>
+<!-- AddThis Button BEGIN -->
+<div class="addthis_toolbox addthis_default_style ">
+<a class="addthis_button_preferred_1"></a>
+<a class="addthis_button_preferred_2"></a>
+<a class="addthis_button_preferred_3"></a>
+<a class="addthis_button_preferred_4"></a>
+<a class="addthis_button_compact"></a>
+<a class="addthis_counter addthis_bubble_style"></a>
+</div>
+<script type="text/javascript"
+src="https://s7.addthis.com/js/250/addthis_widget.js#pubid=ra-4f9b0be933d20df1"></script>
+<!-- AddThis Button END -->
+ </li>
+              </ul>
+            </div><!--/.well -->
+          </div><!--/span-->
+          <div class="span9">
+            <div class="page-header">
+              <h1>JSON-RPC 2.0 Specification</h1>
+            </div>
+            
+            <div>
+               <div>
+                  <dl><dt>Origin Date:</dt> <dd>2010-03-26 (based on the 2009-05-24 version)</dd></dl>
+                </div>
+
+                <div>
+                  <dl><dt>Updated:</dt> <dd>2013-01-04</dd></dl>
+                </div>
+
+                <div>
+                  <dl><dt>Author:</dt> <dd><a href="https://groups.google.com/forum/#!forum/json-rpc">JSON-RPC Working Group</a> &lt;json-rpc@googlegroups.com&gt;</dd></dl>
+                </div>
+            </div>
+            <br />
+            <div class="well">
+              <b>Table of Contents</b>
+              <ol>
+                <li><a href="#overview">Overview</a></li>
+                <li><a href="#conventions">Conventions</a></li>
+                <li><a href="#compatibility">Compatibility</a></li>
+                <li><a href="#request_object">Request Object</a>
+                  <ol>
+                    <li><a href="#notification">Notification</a></li>
+                    <li><a href="#parameter_structures">Parameter Structures</a></li>
+                  </ol>
+                </li>
+                <li><a href="#response_object">Response Object</a>
+                  <ol>
+                    <li><a href="#error_object">Error Object</a></li>
+                  </ol>
+                </li>
+                <li><a href="#batch">Batch</a></li>
+                <li><a href="#examples">Examples</a></li>
+                <li><a href="#extensions">Extensions</a></li>
+              </ol>
+            </div>
+
+            <div>
+              <h2 id="overview">1 Overview</h2>
+              <p>JSON-RPC is a stateless, light-weight remote procedure call (RPC) protocol. Primarily this specification defines several data structures and the rules around their processing. It is transport agnostic in that the concepts can be used within the same process, over sockets, over http, or in many various message passing environments. It uses <a href="http://www.json.org">JSON</a> (<a href="http://www.ietf.org/rfc/rfc4627.txt">RFC 4627</a>) as data format.</p>
+              <p>It is designed to be simple!</p>
+            </div>
+
+            <div>
+              <h2 id="conventions">2 Conventions</h2>
+              <p>The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in <a href="http://www.ietf.org/rfc/rfc2119.txt">RFC 2119</a>.</p>
+              <p>Since JSON-RPC utilizes JSON, it has the same type system (see <a href="http://www.json.org">http://www.json.org</a> or <a href="http://www.ietf.org/rfc/rfc4627.txt">RFC 4627</a>). JSON can represent four primitive types (Strings, Numbers, Booleans, and Null) and two structured types (Objects and Arrays). The term "Primitive" in this specification references any of those four primitive JSON types. The term "Structured" references either of the structured JSON types. Whenever this document refers to any JSON type, the first letter is always capitalized: Object, Array, String, Number, Boolean, Null. True and False are also capitalized.</p>
+              <p>All member names exchanged between the Client and the Server that are considered for matching of any kind should be considered to be case-sensitive. The terms function, method, and procedure can be assumed to be interchangeable.</p>
+              <p>The Client is defined as the origin of Request objects and the handler of Response objects. <br>
+              The Server is defined as the origin of Response objects and the handler of Request objects. <br>
+              <br>
+              One implementation of this specification could easily fill both of those roles, even at the same time, to other different clients or the same client. This specification does not address that layer of complexity.</p>
+            </div>
+
+            <div>
+              <h2 id="compatibility">3 Compatibility</h2>
+              <p>JSON-RPC 2.0 Request objects and Response objects may not work with existing JSON-RPC 1.0 clients or servers. However, it is&nbsp;easy to distinguish between the two versions as 2.0 always has a member named "jsonrpc" with a String value of "2.0" whereas 1.0 does not. Most 2.0 implementations should consider trying to handle 1.0 objects, even if not the peer-to-peer and class hinting aspects of 1.0.</p>
+            </div>
+
+            <div>
+              <h2 id="request_object">4 Request object</h2>
+              <p>A rpc call is represented by sending a Request object to a Server. The Request object has the following members:</p>
+              <dl>
+                <dt>jsonrpc</dt>
+                <dd>A String specifying the version of the JSON-RPC protocol. MUST be exactly "2.0".</dd>
+              </dl>
+              <dl>
+                <dt>method</dt>
+                <dd>A String containing the name of the method to be invoked. Method names that begin with the word rpc followed by a period character (U+002E or ASCII 46) are reserved for rpc-internal methods and extensions and MUST NOT be used for anything else.</dd>
+              </dl>
+              <dl>
+                <dt>params</dt>
+                <dd>A Structured value that holds the parameter values to be used during the invocation of the method. This member MAY be omitted.</dd>
+              </dl>
+              <dl>
+                <dt>id</dt>
+                <dd>An identifier established by the Client that MUST contain a String, Number, or NULL value if included. If it is not included it is assumed to be a notification. The value SHOULD normally not be Null <a href="#id1">[1]</a> and Numbers SHOULD NOT contain fractional parts <a href="#id2">[2]</a></dd>
+              </dl>
+              <p>The Server MUST reply with the same value in the Response object if included. This member is used to correlate the context between the two objects.</p>
+              <p><a name="id1" style="padding-top: 40px">[1]</a> The use of Null as a value for the id member in a Request object is discouraged, because this specification uses a value of Null for Responses with an unknown id. Also, because JSON-RPC 1.0 uses an id value of Null for Notifications this could cause confusion in handling.</p>
+              <p><a name="id2" style="padding-top: 40px">[2]</a> Fractional parts may be problematic, since many decimal fractions cannot be represented exactly as binary fractions.</p>
+            </div>
+
+            <div>
+              <h3 id="notification">4.1 Notification</h3>
+              <p>A Notification is a Request object without an "id" member. A Request object that is a Notification signifies the Client's lack of interest in the corresponding Response object, and as such no Response object needs to be returned to the client. The Server MUST NOT reply to a Notification, including those that are within a batch request.</p>
+              <p>Notifications are not confirmable by definition, since they do not have a Response object to be returned. As such, the Client would not be aware of any errors (like e.g. "Invalid params","Internal error").</p>
+            </div>
+
+            <div>
+              <h3 id="parameter_structures">4.2 Parameter Structures</h3>
+              <p>If present, parameters for the rpc call MUST be provided as a Structured value. Either by-position through an Array or by-name through an Object.</p>
+              <ul>
+                <li>by-position: params MUST be an Array, containing the values in the Server expected order.</li>
+                <li>by-name: params MUST be an Object, with member names that match the Server expected parameter names. The absence of expected names MAY result in an error being generated. The names MUST match exactly, including case, to the method's expected parameters.</li>
+              </ul>
+            </div>
+
+            <div>
+              <h2 id="response_object">5 Response object</h2>
+              <p>When a rpc call is made, the Server MUST reply with a Response, except for in the case of Notifications. The Response is expressed as a single JSON Object, with the following members:</p>
+              <dl>
+                <dt>jsonrpc</dt>
+                <dd>A String specifying the version of the JSON-RPC protocol. MUST be exactly "2.0".</dd>
+              </dl>
+              <dl>
+                <dt>result</dt>
+                <dd>This member is REQUIRED on success.<br>
+              This member MUST NOT exist if there was an error invoking the method.<br>
+              The value of this member is determined by the method invoked on the Server.</dd>
+              </dl>
+              <dl>
+                <dt>error</dt>
+                <dd>This member is REQUIRED on error.<br>
+              This member MUST NOT exist if there was no error triggered during invocation.<br>
+               The value for this member MUST be an Object as defined in section 5.1.</dd>
+              </dl>
+              <dl>
+                <dt>id</dt>
+                <dd>This member is REQUIRED.<br>
+              It MUST be the same as the value of the id member in the Request Object.<br>
+               If there was an error in detecting the id in the Request object (e.g. Parse error/Invalid Request), it MUST be Null.</dd>
+              </dl>
+              <p>Either the result member or error member MUST be included, but both members MUST NOT be included.</p>
+            </div>
+
+            <div>
+              <h3 id="error_object">5.1 Error object</h3>
+              <p>When a rpc call encounters an error, the Response Object MUST contain the error member with a value that is a Object with the following members:</p>
+
+              <dl>
+                <dt>code</dt>
+                <dd>A Number that indicates the error type that occurred.<br>
+              This MUST be an integer.</dd>
+                <dt>message</dt>
+                <dd>A String providing a short description of the error.<br>
+              The message SHOULD be limited to a concise single sentence.</dd>
+                <dt>data</dt>
+                <dd>A Primitive or Structured value that contains additional information about the error.<br>
+              This may be omitted.<br>
+              The value of this member is defined by the Server (e.g. detailed error information, nested errors etc.).</dd>
+              </dl>
+
+              <p>The error codes from and including -32768 to -32000 are reserved for pre-defined errors. Any code within this range, but not defined explicitly below is reserved for future use. The error codes are nearly the same as those suggested for XML-RPC at the following url: <a href="http://xmlrpc-epi.sourceforge.net/specs/rfc.fault_codes.php">http://xmlrpc-epi.sourceforge.net/specs/rfc.fault_codes.php</a></p>
+
+              <table class="table table-condensed">
+                <thead>
+                  <tr>
+                    <th>code</th>
+                   <th>message</th>
+                   <th>meaning</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>-32700</td>
+                    <td>Parse error</td>
+                    <td>Invalid JSON was received by the server.<br>An error occurred on the server while parsing the JSON text.</td>
+                  </tr>
+                  <tr>
+                    <td>-32600</td>
+                    <td>Invalid Request</td>
+                    <td>The JSON sent is not a valid Request object.</td>
+                  </tr>
+                  <tr>
+                    <td>-32601</td>
+                    <td>Method not found</td>
+                    <td>The method does not exist / is not available.</td>
+                  </tr>
+                  <tr>
+                    <td>-32602</td>
+                    <td>Invalid params</td>
+                    <td>Invalid method parameter(s).</td>
+                  </tr>
+                  <tr>
+                    <td>-32603</td>
+                    <td>Internal error</td>
+                    <td>Internal JSON-RPC error.</td>
+                  </tr>
+                  <tr>
+                    <td>-32000 to -32099</td>
+                    <td>Server error</td>
+                    <td>Reserved for implementation-defined server-errors.</td>
+                  </tr>
+                </tbody>
+              </table>
+              <p>The remainder of the space is available for application defined errors.</p>
+            </div>
+
+            <div>
+              <h2 id="batch">6 Batch</h2>
+              <p>To send several Request objects at the same time, the Client MAY send an Array filled with Request objects.</p>
+              <p>The Server should respond with an Array containing the corresponding Response objects, after all of the batch Request objects have been processed. A Response object SHOULD exist for each Request object, except that there SHOULD NOT be any Response objects for notifications.&nbsp;The Server MAY process a batch rpc call as a set of concurrent tasks, processing them in any order and with any width of parallelism.</p>
+              <p>The Response objects being returned from a batch call MAY be returned in any order within the Array. The Client SHOULD match contexts between the set of Request objects and the resulting set of Response objects based on the id member within each Object.</p>
+              <p>If the batch rpc call itself fails to be recognized as an&nbsp;valid JSON or as an&nbsp;Array with at least one value, the response from the Server MUST be a single Response object. If there are no Response objects contained within the Response array as it is to be sent to the client, the server MUST NOT return an empty Array and should return nothing at all.</p>
+            </div>
+
+            <div>
+              <h2 id="examples">7 Examples</h2>
+              <div>
+                <p>Syntax:</p>
+                <pre>--&gt; data sent to Server<br>&lt;-- data sent to Client</pre>
+              </div>
+             
+              <div>
+               <p>rpc call with positional parameters:</p>
+               <pre>--&gt; {"jsonrpc": "2.0", "method": "subtract", "params": [42, 23], "id": 1}<br>&lt;-- {"jsonrpc": "2.0", "result": 19, "id": 1}<br><br>--&gt; {"jsonrpc": "2.0", "method": "subtract", "params": [23, 42], "id": 2}
+&lt;-- {"jsonrpc": "2.0", "result": -19, "id": 2}</pre>
+              </div>
+             
+              <div>
+                <p>rpc call with named parameters:</p>
+                <pre>--&gt; {"jsonrpc": "2.0", "method": "subtract", "params": {"subtrahend": 23, "minuend": 42}, "id": 3}
+&lt;-- {"jsonrpc": "2.0", "result": 19, "id": 3}
+
+--&gt; {"jsonrpc": "2.0", "method": "subtract", "params": {"minuend": 42, "subtrahend": 23}, "id": 4}
+&lt;-- {"jsonrpc": "2.0", "result": 19, "id": 4}</pre>
+              </div>
+             
+              <div>
+                <p>a Notification:</p>
+                <pre>--&gt; {"jsonrpc": "2.0", "method": "update", "params": [1,2,3,4,5]}<br>--&gt; {"jsonrpc": "2.0", "method": "foobar"}</pre>
+              </div>
+             
+              <div>
+                <p>rpc call of non-existent method:</p>
+                <pre>--&gt; {"jsonrpc": "2.0", "method": "foobar", "id": "1"}<br>&lt;-- {"jsonrpc": "2.0", "error": {"code": -32601, "message": "Method not found"}, "id": "1"}</pre>
+              </div>
+             
+              <div>
+                <p>rpc call with invalid JSON:</p>
+                <pre>--&gt; {"jsonrpc": "2.0", "method": "foobar, "params": "bar", "baz]<br>&lt;-- {"jsonrpc": "2.0", "error": {"code": -32700, "message": "Parse error"}, "id": null}</pre>
+              </div>
+             
+              <div>
+                <p>rpc call with invalid Request object:</p>
+                <pre>--&gt; {"jsonrpc": "2.0", "method": 1, "params": "bar"}<br>&lt;-- {"jsonrpc": "2.0", "error": {"code": -32600, "message": "Invalid Request"}, "id": null}</pre>
+              </div>
+
+              <div>
+                <p>rpc call Batch, invalid JSON:</p>
+                <pre>--&gt; [
+  {"jsonrpc": "2.0", "method": "sum", "params": [1,2,4], "id": "1"},
+  {"jsonrpc": "2.0", "method"
+]
+&lt;-- {"jsonrpc": "2.0", "error": {"code": -32700, "message": "Parse error"}, "id": null}</pre>
+              </div>
+              
+              <div>
+                rpc call with an empty Array:<pre>--&gt; []
+&lt;--&nbsp;{"jsonrpc": "2.0", "error": {"code": -32600, "message": "Invalid Request"}, "id": null}</pre>
+              </div>
+
+              <div>rpc call with an invalid Batch (but not empty):<pre>--&gt; [1]<br>&lt;-- [
+  {"jsonrpc": "2.0", "error": {"code": -32600, "message": "Invalid Request"}, "id": null}
+]</pre>
+              </div>
+              
+              <div>
+                <p>rpc call with invalid Batch:</p>
+                <pre>--&gt; [1,2,3]<br>&lt;-- [
+  {"jsonrpc": "2.0", "error": {"code": -32600, "message": "Invalid Request"}, "id": null},
+  {"jsonrpc": "2.0", "error": {"code": -32600, "message": "Invalid Request"}, "id": null},
+  {"jsonrpc": "2.0", "error": {"code": -32600, "message": "Invalid Request"}, "id": null}
+]</pre>
+              </div>
+              
+              <div>
+                <p>rpc call Batch:</p>
+                <pre>--&gt; [<br>        {"jsonrpc": "2.0", "method": "sum", "params": [1,2,4], "id": "1"},<br>        {"jsonrpc": "2.0", "method": "notify_hello", "params": [7]},<br>        {"jsonrpc": "2.0", "method": "subtract", "params": [42,23], "id": "2"},<br>        {"foo": "boo"},<br>        {"jsonrpc": "2.0", "method": "foo.get", "params": {"name": "myself"}, "id": "5"},<br>        {"jsonrpc": "2.0", "method": "get_data", "id": "9"} <br>    ]<br>&lt;-- [<br>        {"jsonrpc": "2.0", "result": 7, "id": "1"},<br>        {"jsonrpc": "2.0", "result": 19, "id": "2"},<br>        {"jsonrpc": "2.0", "error": {"code": -32600, "message": "Invalid Request"}, "id": null},<br>        {"jsonrpc": "2.0", "error": {"code": -32601, "message": "Method not found"}, "id": "5"},<br>        {"jsonrpc": "2.0", "result": ["hello", 5], "id": "9"}<br>    ]</pre>
+              </div>
+              
+              <div>
+                <p>rpc call Batch (all notifications):</p>
+                <pre>--&gt; [<br>        {"jsonrpc": "2.0", "method": "notify_sum", "params": [1,2,4]},<br>        {"jsonrpc": "2.0", "method": "notify_hello", "params": [7]}<br>    ]<br>&lt;-- //Nothing is returned for all notification batches</pre>
+              </div>
+            </div>
+            <div>
+              <h2 id="extensions">8 Extensions</h2>
+              <p>Method names that begin with rpc. are reserved for system extensions, and MUST NOT be used for anything else. Each system extension is defined in a related specification. All system extensions are OPTIONAL.</p>
+              <hr>
+              <p>Copyright (C) 2007-2010 by the JSON-RPC Working Group</p>
+              <p>This document and translations of it may be used to implement JSON-RPC, it may be copied and furnished to others, and derivative works that comment on or otherwise explain it or assist in its implementation may be prepared, copied, published and distributed, in whole or in part, without restriction of any kind, provided that the above copyright notice and this paragraph are included on all such copies and derivative works. However, this document itself may not bemodified in any way.</p>
+              <p>The limited permissions granted above are perpetual and will not be revoked.</p>
+              <p>This document and the information contained herein is provided "AS IS" and ALL WARRANTIES, EXPRESS OR IMPLIED are DISCLAIMED, INCLUDING BUT NOT LIMITED TO ANY WARRANTY THAT THE USE OF THE INFORMATION HEREIN WILL NOT INFRINGE ANY RIGHTS OR ANY IMPLIED WARRANTIES OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.</p>
+            </div>
+          </div><!--/span-->
+        </div><!--/row-->
+        <hr>
+        <footer>
+          <div class="footer">Site by <a href="http://www.linkedin.com/in/matthewpetercharlesmorley">Matt Morley</a> of <a href="http://www.mpcm.com">MPCM Technologies LLC</a>, a manager of the <a href="http://groups.google.com/group/json-rpc">JSON-RPC google group</a>.</div>
+        </footer>
+      </div><!--/.fluid-container-->
+</script>
+    </body>
+  </html>

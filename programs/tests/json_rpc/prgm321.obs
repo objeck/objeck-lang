@@ -49,36 +49,42 @@ bundle JsonRpc {
 			while(@server->Listen(16)) {
 				client := @server->Accept();
 
+				# TODO: map to response codes
 				response_str := client->ReadLine();
 				if(response_str <> Nil) {
 					response_json := JsonParser->TextToElement(response_str);
 					if(response_json <> Nil) {
 						method_json := response_json->Get("method");
 						if(method_json <> Nil) {
-"--- 0 ---"->PrintLine();							
 							 method_str := method_json->GetString();
 							 func_ref := @funcs->Find(method_str);
 							 if(func_ref <> Nil) {
 							 	func := func_ref->Get();
 							 	result_json := func(response_json->Get("params"));
+								client->WriteString(result_json->ToString() + "\r\n");
+								client->Close();
 							 }
 							 else {
 								">>> Error message goes here! <<<"->ErrorLine();
+								client->Close();
 								Runtime->Exit(1); 	
 							 };
 						}
 						else {
 							">>> Error message goes here! <<<"->ErrorLine();
+							client->Close();
 							Runtime->Exit(1);
 						};
 					}
 					else {
 						">>> Error message goes here! <<<"->ErrorLine();
+						client->Close();
 						Runtime->Exit(1);
 					};
 				}
 				else {
 					">>> Error message goes here! <<<"->ErrorLine();
+					client->Close();
 					Runtime->Exit(1);
 				};
 			}
@@ -139,14 +145,17 @@ bundle JsonRpc {
 				buffer += str_params;
 				buffer += ", \"id\": ";
 				buffer += @id;
-				buffer += "}";
+				buffer += "}\r\n";
 				@server->WriteString(buffer);
 
 				if(@id > 4096) {
 					@id := 1;
 				};
 
-				@server->Close();
+response_str := @server->ReadLine();
+response_str->PrintLine();				
+
+				
 			};
 
 			return Nil;
