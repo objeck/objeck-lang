@@ -1,64 +1,90 @@
 use Data.JSON;
 use Collection;
+use System.IO.Net;
 
 bundle JsonRpc { 
-	class Server {
-		@funcs : Map<String, Func2Ref<JsonElement, JsonElement>>;
-
-		New(funcs : Map<String, Func2Ref<JsonElement, JsonElement>>) {
-			@funcs := funcs;			
-		}
-
+	class Service {
 		function : Main(args : String[]) ~ Nil {
-			# initialize server
-			funcs := Map->New()<String, Func2Ref<JsonElement, JsonElement>>;
+			if(args->Size() = 1) {
+				if(args[0]->Equals("server")) {
+					# initialize server
+					funcs := Map->New()<String, Func2Ref<JsonElement, JsonElement>>;
 
-			func_ref := Func2Ref->New(ServerImpl->Bear(JsonElement) ~ JsonElement)<JsonElement, JsonElement>;
-			funcs->Insert("bear", func_ref);
+					func_ref := Func2Ref->New(ServerFuncs->Bear(JsonElement) ~ JsonElement)<JsonElement, JsonElement>;
+					funcs->Insert("bear", func_ref);
 
-			func_ref := Func2Ref->New(ServerImpl->Rabbit(JsonElement) ~ JsonElement)<JsonElement, JsonElement>;
-			funcs->Insert("rabbit", func_ref);
+					func_ref := Func2Ref->New(ServerFuncs->Rabbit(JsonElement) ~ JsonElement)<JsonElement, JsonElement>;
+					funcs->Insert("rabbit", func_ref);
 
-			func_ref := Func2Ref->New(ServerImpl->Squirrel(JsonElement) ~ JsonElement)<JsonElement, JsonElement>;
-			funcs->Insert("squirrel", Nil);
+					func_ref := Func2Ref->New(ServerFuncs->Squirrel(JsonElement) ~ JsonElement)<JsonElement, JsonElement>;
+					funcs->Insert("squirrel", Nil);
 
-			# decode client call
-			server := Server->New(funcs);
-			response := server->Unmarshal("rabbit", "[3,2,1]");
-			if(response <> Nil & response->IsOk()) {
-				response->ToString()->PrintLine();
+					# create server
+					server := Server->New(funcs, 7231);
+					server->Process();
+				}
+				else if(args[0]->Equals("client")) {
+
+				}
+				else {
+					">>> Usage <<<"->ErrorLine();
+				}			
+			}
+			else {
+				">>> Usage <<<"->ErrorLine();
 			};
 		}
+	}
 
-		method : Unmarshal(func_name : String,  str_params: String) ~ Result {
+	class Server {
+		@funcs : Map<String, Func2Ref<JsonElement, JsonElement>>;
+		@port : Int;
+
+		New(funcs : Map<String, Func2Ref<JsonElement, JsonElement>>, port : Int) {
+			@funcs := funcs;
+			@port := port;
+
+			@server := TCPSocketServer->New(@port);
+			while(@server->Listen(16)) {
+				client := @server->Accept();
+				
+				line := client->ReadLine();
+				"Received: '{$line}'..."->PrintLine();
+			}
+		}
+
+		method : public : Process() ~ Nil {
+		}
+
+		method : Unmarshal(func_name : String,  str_params: String) ~ RpcResult {
 			params := JsonParser->TextToElement(str_params);
 			if(params = Nil) {
 				# parse error
-				return Result->New(-32700, "Parse error", Nil);
+				return RpcResult->New(-32700, "Parse error", Nil);
 			};
 
 			return Unmarshal(func_name, params)
 		}
 
-		method : Unmarshal(func_name : String,  json_params: JsonElement) ~ Result {
+		method : Unmarshal(func_name : String,  json_params: JsonElement) ~ RpcResult {
 			if(func_name = Nil) {
 				# method not found
-				return Result->New(-32601, "Method not found", Nil);
+				return RpcResult->New(-32601, "Method not found", Nil);
 			};
 
 			if(json_params = Nil) {
 				# method not found
-				return Result->New(-32602, "Invalid params", Nil);
+				return RpcResult->New(-32602, "Invalid params", Nil);
 			};
 
 			func_ref := @funcs->Find(func_name)<JsonElement, JsonElement>;
 			if(func_ref = Nil) {
 				# method not found
-				return Result->New(-32601, "Method not found", Nil);
+				return RpcResult->New(-32601, "Method not found", Nil);
 			};
 
 			func := func_ref->Get();
-			return Result->New(0, func(json_params));
+			return RpcResult->New(0, func(json_params));
 		}
 	}
 
@@ -69,12 +95,12 @@ bundle JsonRpc {
 			@url := url;
 		}
 
-		method : Call(func_name : String,  str_params: String) ~ Result {
+		method : Call(func_name : String,  str_params: String) ~ RpcResult {
 			return Nil;
 		}
 	}
 
-	class Result {
+	class RpcResult {
 		@code : Int;
 		@err_msg : String;
 		@result : JsonElement;
@@ -123,7 +149,7 @@ bundle JsonRpc {
 	}
 }
 
-class ServerImpl {
+class ServerFuncs {
 	function : Bear(params: JsonElement) ~ JsonElement {
 		"bear"->PrintLine();
 		return Nil;
