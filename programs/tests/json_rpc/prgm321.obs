@@ -25,7 +25,14 @@ bundle JsonRpc {
 				}
 				else if(args[0]->Equals("client")) {
 					client := Client->New("localhost", 7231);
-					client->Call("rabbit", "[13,17,33]");
+					response_json := client->Call("rabbit", JsonParser->TextToElement("[13,17,33]"));
+					if(client <> Nil) {
+						response_json->ToString()->PrintLine();
+					}
+					else {
+						# TODO: show error
+						">>> Error <<<"->ErrorLine();
+					};
 				}
 				else {
 					">>> Usage <<<"->ErrorLine();
@@ -56,14 +63,14 @@ bundle JsonRpc {
 					if(response_json <> Nil) {
 						method_json := response_json->Get("method");
 						if(method_json <> Nil) {
-							 method_str := method_json->GetString();
-							 func_ref := @funcs->Find(method_str);
-							 if(func_ref <> Nil) {
-							 	func := func_ref->Get();
+							method_str := method_json->GetString();
+							func_ref := @funcs->Find(method_str);
+							if(func_ref <> Nil) {
+								func := func_ref->Get();
 							 	
 							 	# TODO: {"jsonrpc": "2.0", "result": -19, "id": 2}
 							 	# TODO: {"jsonrpc": "2.0", "error": {"code": -32700, "message": "Parse error"}, "id": null}
-							 	result_params_json := func(response_json->Get("params"));
+								result_params_json := func(response_json->Get("params"));
 							 	result_id_json := response_json->Get("id");
 							 	if(result_params_json = Nil | result_id_json = Nil) {
 									client->WriteString("null\r\n");
@@ -78,31 +85,28 @@ bundle JsonRpc {
 									client->WriteString(buffer);
 								};
 
-								client->Close();
 							 }
 							 else {
-								">>> Error JSON message goes here! <<<"->ErrorLine();
-								client->Close();
-								Runtime->Exit(1); 	
+								err_msg := "{\"jsonrpc\": \"2.0\", \"error\": {\"code\": -32601, \"message\": \"Method not found\"}, \"id\": \"1\"}";
+								client->WriteString(err_msg);
 							 };
 						}
 						else {
-							">>> Error JSON message goes here! <<<"->ErrorLine();
-							client->Close();
-							Runtime->Exit(1);
+							err_msg := "{\"jsonrpc\": \"2.0\", \"error\": {\"code\": -32600, \"message\": \"Invalid Request\"}, \"id\": \"1\"}";
+							client->WriteString(err_msg);
 						};
 					}
 					else {
-						">>> Error JSON message goes here! <<<"->ErrorLine();
-						client->Close();
-						Runtime->Exit(1);
+						err_msg := "{\"jsonrpc\": \"2.0\", \"error\": {\"code\": -32700, \"message\": \"Parse error\"}, \"id\": \"1\"}";
+						client->WriteString(err_msg);
 					};
 				}
 				else {
-					">>> Error JSON message goes here! <<<"->ErrorLine();
-					client->Close();
-					Runtime->Exit(1);
+					err_msg := "{\"jsonrpc\": \"2.0\", \"error\": {\"code\": -32600, \"message\": \"Invalid Request\"}, \"id\": \"1\"}";
+					client->WriteString(err_msg);
 				};
+
+				client->Close();
 			}
 		}
 
@@ -113,6 +117,7 @@ bundle JsonRpc {
 	class Client {
 		@address : String;
 		@port : Int;
+		@last_error : Pair<IntRef, String>;
 		@id : static : Int;
 
 		New(address : String, port : Int) {
@@ -120,15 +125,15 @@ bundle JsonRpc {
 			@port := port;
 			@id := 1;
 		}
-		
+
 		# TODO: str_params and return as JsonElement
-		method : public : Call(func_name : String,  str_params: String) ~ String {
+		method : public : Call(func_name : String,  func_params: JsonElement) ~ JsonElement {
 			@server := TCPSocket->New(@address, @port);
 			if(@server->IsOpen()) {
 				buffer := "{\"jsonrpc\": \"2.0\", \"method\": \"";
 				buffer += func_name;
 				buffer += "\", \"params\": ";
-				buffer += str_params;
+				buffer += func_params->ToString();
 				buffer += ", \"id\": ";
 				buffer += @id;
 				buffer += "}\r\n";
@@ -139,12 +144,38 @@ bundle JsonRpc {
 				};
 
 				response_str := @server->ReadLine();
+				if(response_str <> Nil) {
+					response_json := JsonParser->TextToElement(response_str);
+					if(response_json <> Nil) {
+						result_json := response_json->Get("result");
+						if(result_json <> Nil) {
+							return result_json;
+						};
 
-				# TODO: look for "result" or "error" element
-response_str->PrintLine();			
+						error_json := response_json->Get("error");
+						if(error_json <> Nil) {
+							err_id := error_json->Get("code")->GetInt();
+							err_msg := error_json->Get("message")->GetString();
+							@last_error := Pair->New(err_id, err_msg)<IntRef, String>;
+						};
+					}
+					else {
+						@last_error := Pair->New(IntRef->New(-32700), "Parse error")<IntRef, String>;
+						return Nil;
+					};
+				}
+				else {
+					@last_error := Pair->New(IntRef->New(-32600), "Invalid Request")<IntRef, String>;
+					return Nil;
+				};
 			};
 
+			@last_error := Pair->New(IntRef->New(-32000), "Server error")<IntRef, String>;
 			return Nil;
+		}
+
+		method : public : GetLastError() ~ Pair<IntRef, String> {
+			return @last_error;
 		}
 	}
 }
