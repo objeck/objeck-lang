@@ -25,7 +25,7 @@ bundle JsonRpc {
 				}
 				else if(args[0]->Equals("client")) {
 					client := Client->New("localhost", 7231);
-					client->Call("primes", "[13,17,33]");
+					client->Call("rabbit", "[13,17,33]");
 				}
 				else {
 					">>> Usage <<<"->ErrorLine();
@@ -53,10 +53,24 @@ bundle JsonRpc {
 				if(response_str <> Nil) {
 					response_json := JsonParser->TextToElement(response_str);
 					if(response_json <> Nil) {
-						method_str := response_json->Get("method")->GetString();
-						params_str := response_json->Get("params");
-
-						"method='{$method_str}', params='{$params_str}'"->PrintLine();
+						method_json := response_json->Get("method");
+						if(method_json <> Nil) {
+"--- 0 ---"->PrintLine();							
+							 method_str := method_json->GetString();
+							 func_ref := @funcs->Find(method_str);
+							 if(func_ref <> Nil) {
+							 	func := func_ref->Get();
+							 	result_json := func(response_json->Get("params"));
+							 }
+							 else {
+								">>> Error message goes here! <<<"->ErrorLine();
+								Runtime->Exit(1); 	
+							 };
+						}
+						else {
+							">>> Error message goes here! <<<"->ErrorLine();
+							Runtime->Exit(1);
+						};
 					}
 					else {
 						">>> Error message goes here! <<<"->ErrorLine();
