@@ -7,8 +7,8 @@ bundle JsonRpc {
 		function : Main(args : String[]) ~ Nil {
 			if(args->Size() = 1) {
 				if(args[0]->Equals("server")) {
-					# initialize server
-					funcs := Map->New()<String, Func2Ref<JsonElement, JsonElement>>;
+					# create server
+					funcs := Hash->New()<String, Func2Ref<JsonElement, JsonElement>>;
 
 					func_ref := Func2Ref->New(ServerFuncs->Bear(JsonElement) ~ JsonElement)<JsonElement, JsonElement>;
 					funcs->Insert("bear", func_ref);
@@ -19,36 +19,35 @@ bundle JsonRpc {
 					func_ref := Func2Ref->New(ServerFuncs->Squirrel(JsonElement) ~ JsonElement)<JsonElement, JsonElement>;
 					funcs->Insert("squirrel", Nil);
 
-					# create server
+					# start server
 					server := Server->New(funcs, 7231);
 					server->Process();
 				}
 				else if(args[0]->Equals("client")) {
+					# create client
 					client := Client->New("localhost", 7231);
+
+					# call server
 					response_json := client->Call("rabbit", JsonParser->TextToElement("[13,17,33]"));
 					if(client <> Nil) {
 						response_json->ToString()->PrintLine();
-					}
-					else {
-						# TODO: show error
-						">>> Error <<<"->ErrorLine();
 					};
 				}
 				else {
-					">>> Usage <<<"->ErrorLine();
+					">>> Usage params [client, server] <<<"->ErrorLine();
 				}			
 			}
 			else {
-				">>> Usage <<<"->ErrorLine();
+				">>> Usage params [client, server] <<<"->ErrorLine();
 			};
 		}
 	}
 
 	class Server {
-		@funcs : Map<String, Func2Ref<JsonElement, JsonElement>>;
+		@funcs : Hash<String, Func2Ref<JsonElement, JsonElement>>;
 		@port : Int;
 
-		New(funcs : Map<String, Func2Ref<JsonElement, JsonElement>>, port : Int) {
+		New(funcs : Hash<String, Func2Ref<JsonElement, JsonElement>>, port : Int) {
 			@funcs := funcs;
 			@port := port;
 
