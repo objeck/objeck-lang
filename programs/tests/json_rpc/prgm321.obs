@@ -63,12 +63,19 @@ bundle JsonRpc {
 							 	
 							 	# TODO: {"jsonrpc": "2.0", "result": -19, "id": 2}
 							 	# TODO: {"jsonrpc": "2.0", "error": {"code": -32700, "message": "Parse error"}, "id": null}
-							 	result_json := func(response_json->Get("params"));
-							 	if(result_json = Nil) {
+							 	result_params_json := func(response_json->Get("params"));
+							 	result_id_json := response_json->Get("id");
+							 	if(result_params_json = Nil | result_id_json = Nil) {
 									client->WriteString("null\r\n");
 							 	}
 							 	else {
-									client->WriteString(result_json->ToString() + "\r\n");
+							 		buffer := "{\"jsonrpc\": \"2.0\", \"result\": ";
+							 		buffer += result_params_json->ToString()
+							 		buffer += ", \"id\": ";
+							 		buffer += result_id_json->GetInt() + 1;
+							 		buffer += "}\r\n";
+
+									client->WriteString(buffer);
 								};
 
 								client->Close();
@@ -113,7 +120,8 @@ bundle JsonRpc {
 			@port := port;
 			@id := 1;
 		}
-
+		
+		# TODO: str_params and return as JsonElement
 		method : public : Call(func_name : String,  str_params: String) ~ String {
 			@server := TCPSocket->New(@address, @port);
 			if(@server->IsOpen()) {
@@ -149,7 +157,7 @@ class ServerFuncs {
 
 	function : Rabbit(params: JsonElement) ~ JsonElement {
 		params->ToString()->PrintLine();
-		return Nil; # JsonParser->TextToElement("[6, 5, 4]");
+		return JsonParser->TextToElement("[6, 5, 4]");
 	}
 
 	function : Squirrel(params: JsonElement) ~ JsonElement {
