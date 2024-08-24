@@ -3,7 +3,7 @@ use Collection;
 use System.IO.Net;
 
 bundle JsonRpc { 
-	class Service {
+	class Test {
 		function : Main(args : String[]) ~ Nil {
 			if(args->Size() = 1) {
 				if(args[0]->Equals("server")) {
@@ -60,30 +60,39 @@ bundle JsonRpc {
 							 func_ref := @funcs->Find(method_str);
 							 if(func_ref <> Nil) {
 							 	func := func_ref->Get();
+							 	
+							 	# TODO: {"jsonrpc": "2.0", "result": -19, "id": 2}
+							 	# TODO: {"jsonrpc": "2.0", "error": {"code": -32700, "message": "Parse error"}, "id": null}
 							 	result_json := func(response_json->Get("params"));
-								client->WriteString(result_json->ToString() + "\r\n");
+							 	if(result_json = Nil) {
+									client->WriteString("null\r\n");
+							 	}
+							 	else {
+									client->WriteString(result_json->ToString() + "\r\n");
+								};
+
 								client->Close();
 							 }
 							 else {
-								">>> Error message goes here! <<<"->ErrorLine();
+								">>> Error JSON message goes here! <<<"->ErrorLine();
 								client->Close();
 								Runtime->Exit(1); 	
 							 };
 						}
 						else {
-							">>> Error message goes here! <<<"->ErrorLine();
+							">>> Error JSON message goes here! <<<"->ErrorLine();
 							client->Close();
 							Runtime->Exit(1);
 						};
 					}
 					else {
-						">>> Error message goes here! <<<"->ErrorLine();
+						">>> Error JSON message goes here! <<<"->ErrorLine();
 						client->Close();
 						Runtime->Exit(1);
 					};
 				}
 				else {
-					">>> Error message goes here! <<<"->ErrorLine();
+					">>> Error JSON message goes here! <<<"->ErrorLine();
 					client->Close();
 					Runtime->Exit(1);
 				};
@@ -91,37 +100,6 @@ bundle JsonRpc {
 		}
 
 		method : public : Process() ~ Nil {
-		}
-
-		method : Unmarshal(func_name : String,  str_params: String) ~ RpcResult {
-			params := JsonParser->TextToElement(str_params);
-			if(params = Nil) {
-				# parse error
-				return RpcResult->New(-32700, "Parse error", Nil);
-			};
-
-			return Unmarshal(func_name, params)
-		}
-
-		method : Unmarshal(func_name : String,  json_params: JsonElement) ~ RpcResult {
-			if(func_name = Nil) {
-				# method not found
-				return RpcResult->New(-32601, "Method not found", Nil);
-			};
-
-			if(json_params = Nil) {
-				# method not found
-				return RpcResult->New(-32602, "Invalid params", Nil);
-			};
-
-			func_ref := @funcs->Find(func_name)<JsonElement, JsonElement>;
-			if(func_ref = Nil) {
-				# method not found
-				return RpcResult->New(-32601, "Method not found", Nil);
-			};
-
-			func := func_ref->Get();
-			return RpcResult->New(0, func(json_params));
 		}
 	}
 
@@ -136,7 +114,7 @@ bundle JsonRpc {
 			@id := 1;
 		}
 
-		method : public : Call(func_name : String,  str_params: String) ~ RpcResult {
+		method : public : Call(func_name : String,  str_params: String) ~ String {
 			@server := TCPSocket->New(@address, @port);
 			if(@server->IsOpen()) {
 				buffer := "{\"jsonrpc\": \"2.0\", \"method\": \"";
@@ -152,61 +130,13 @@ bundle JsonRpc {
 					@id := 1;
 				};
 
-response_str := @server->ReadLine();
-response_str->PrintLine();				
+				response_str := @server->ReadLine();
 
-				
+				# TODO: look for "result" or "error" element
+response_str->PrintLine();			
 			};
 
 			return Nil;
-		}
-	}
-
-	class RpcResult {
-		@code : Int;
-		@err_msg : String;
-		@result : JsonElement;
-
-		New(code : Int, result : JsonElement) {
-			@code := code;
-			@result := result;
-		}
-
-		New(code : Int, err_msg : String, result : JsonElement) {
-			@code := code;
-			@err_msg := err_msg;
-			@result := result;
-		}
-
-		method : public : GetCode() ~ Int {
-			return @code;
-		}
-
-		method : public : GetErrorMessage() ~ String {
-			return @err_msg;
-		}
-
-		method : public : SetErrorMessage(err_msg : String) ~ Nil {
-			@err_msg := err_msg;
-		}
-
-		method : public : IsOk() ~ Bool {
-			return @code = 0 & @err_msg = Nil;
-		}
-
-		method : public : GetResult() ~ JsonElement {
-			return @result;
-		}
-
-		method : public : ToString() ~ String {
-			buffer := "";
-
-			buffer += "code=";
-			buffer += @code;
-			buffer += ", result=";
-			buffer += @result->ToString();
-
-			return buffer;
 		}
 	}
 }
@@ -219,7 +149,7 @@ class ServerFuncs {
 
 	function : Rabbit(params: JsonElement) ~ JsonElement {
 		params->ToString()->PrintLine();
-		return JsonParser->TextToElement("[6, 5, 4]");
+		return Nil; # JsonParser->TextToElement("[6, 5, 4]");
 	}
 
 	function : Squirrel(params: JsonElement) ~ JsonElement {
