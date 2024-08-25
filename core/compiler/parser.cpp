@@ -4774,8 +4774,7 @@ void Parser::ParseAnonymousClass(MethodCall* method_call, int depth)
     return;
   }
 
-  const std::wstring cls_name = method_call->GetVariableName() + L".#Anonymous." +
-    ToString(anonymous_class_id++) + L'#';
+  const std::wstring cls_name = method_call->GetVariableName() + L".#Anonymous." + RandomString(8) + L'#';
 
   std::vector<std::wstring> interface_names;
   if(Match(TOKEN_IMPLEMENTS_ID)) {

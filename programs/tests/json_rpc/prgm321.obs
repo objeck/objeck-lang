@@ -52,60 +52,67 @@ bundle JsonRpc {
 			@port := port;
 
 			@server := TCPSocketServer->New(@port);
-			while(@server->Listen(16)) {
+			while(@server->Listen(8)) {
 				client := @server->Accept();
 
-				# TODO: map to response codes
-				response_str := client->ReadLine();
-				if(response_str <> Nil) {
-					response_json := JsonParser->TextToElement(response_str);
-					if(response_json <> Nil) {
-						method_json := response_json->Get("method");
-						if(method_json <> Nil) {
-							method_str := method_json->GetString();
-							func_ref := @funcs->Find(method_str);
-							if(func_ref <> Nil) {
-								func := func_ref->Get();
-							 	
-							 	# TODO: {"jsonrpc": "2.0", "result": -19, "id": 2}
-							 	# TODO: {"jsonrpc": "2.0", "error": {"code": -32700, "message": "Parse error"}, "id": null}
-								result_params_json := func(response_json->Get("params"));
-							 	result_id_json := response_json->Get("id");
-							 	if(result_params_json = Nil | result_id_json = Nil) {
-									client->WriteString("null\r\n");
-							 	}
-							 	else {
-							 		buffer := "{\"jsonrpc\": \"2.0\", \"result\": ";
-							 		buffer += result_params_json->ToString()
-							 		buffer += ", \"id\": ";
-							 		buffer += result_id_json->GetInt() + 1;
-							 		buffer += "}\r\n";
 
-									client->WriteString(buffer);
+				thread := System.Concurrency.Thread->New() {
+					New() {
+						Parent()
+					}
+
+					method : public : Run(arg : System.Base) ~ Nil {
+
+						response_str := client->ReadLine();
+						if(response_str <> Nil) {
+							response_json := JsonParser->TextToElement(response_str);
+							if(response_json <> Nil) {
+								method_json := response_json->Get("method");
+								if(method_json <> Nil) {
+									method_str := method_json->GetString();
+									func_ref := @funcs->Find(method_str);
+									if(func_ref <> Nil) {
+										func := func_ref->Get();
+									 	
+										result_params_json := func(response_json->Get("params"));
+									 	result_id_json := response_json->Get("id");
+									 	if(result_params_json = Nil | result_id_json = Nil) {
+											client->WriteString("null\r\n");
+									 	}
+									 	else {
+									 		buffer := "{\"jsonrpc\": \"2.0\", \"result\": ";
+									 		buffer += result_params_json->ToString()
+									 		buffer += ", \"id\": ";
+									 		buffer += result_id_json->GetInt() + 1;
+									 		buffer += "}\r\n";
+
+											client->WriteString(buffer);
+										};
+
+									 }
+									 else {
+										err_msg := "{\"jsonrpc\": \"2.0\", \"error\": {\"code\": -32601, \"message\": \"Method not found\"}, \"id\": null}";
+										client->WriteString(err_msg);
+									 };
+								}
+								else {
+									err_msg := "{\"jsonrpc\": \"2.0\", \"error\": {\"code\": -32600, \"message\": \"Invalid Request\"}, \"id\": null}";
+									client->WriteString(err_msg);
 								};
-
-							 }
-							 else {
-								err_msg := "{\"jsonrpc\": \"2.0\", \"error\": {\"code\": -32601, \"message\": \"Method not found\"}, \"id\": \"1\"}";
+							}
+							else {
+								err_msg := "{\"jsonrpc\": \"2.0\", \"error\": {\"code\": -32700, \"message\": \"Parse error\"}, \"id\": null}";
 								client->WriteString(err_msg);
-							 };
+							};
 						}
 						else {
-							err_msg := "{\"jsonrpc\": \"2.0\", \"error\": {\"code\": -32600, \"message\": \"Invalid Request\"}, \"id\": \"1\"}";
+							err_msg := "{\"jsonrpc\": \"2.0\", \"error\": {\"code\": -32600, \"message\": \"Invalid Request\"}, \"id\": null}";
 							client->WriteString(err_msg);
 						};
-					}
-					else {
-						err_msg := "{\"jsonrpc\": \"2.0\", \"error\": {\"code\": -32700, \"message\": \"Parse error\"}, \"id\": \"1\"}";
-						client->WriteString(err_msg);
-					};
-				}
-				else {
-					err_msg := "{\"jsonrpc\": \"2.0\", \"error\": {\"code\": -32600, \"message\": \"Invalid Request\"}, \"id\": \"1\"}";
-					client->WriteString(err_msg);
-				};
 
-				client->Close();
+						client->Close();
+					}
+				};
 			}
 		}
 
@@ -125,7 +132,6 @@ bundle JsonRpc {
 			@id := 1;
 		}
 
-		# TODO: str_params and return as JsonElement
 		method : public : Call(func_name : String,  func_params: JsonElement) ~ JsonElement {
 			@server := TCPSocket->New(@address, @port);
 			if(@server->IsOpen()) {

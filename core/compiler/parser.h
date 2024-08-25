@@ -33,6 +33,7 @@
 #define __PARSER_H__
 
 #include "scanner.h"
+#include <random>
 
 using namespace frontend;
 
@@ -94,7 +95,6 @@ class Parser {
   std::map<int, std::wstring> errors;
   std::wstring src_path;
   std::vector<std::pair<std::wstring, std::wstring> > programs;
-  unsigned int anonymous_class_id;
   bool expand_generic_def;
 
 #if defined(_DIAG_LIB) || defined(_MODULE)
@@ -147,6 +147,20 @@ class Parser {
     std::wostringstream str;
     str << v;
     return str.str();
+  }
+
+  std::wstring RandomString(size_t len)
+  {
+    std::random_device gen;
+    const wchar_t* values = L"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+    
+    std::wstring output;
+    for(size_t i = 0; i < len; ++i) {
+      const size_t index = gen() % wcslen(values);
+      output += values[index];
+    }
+
+    return output;
   }
 
   std::wstring ParseBundleName();
@@ -219,7 +233,6 @@ class Parser {
     LoadErrorCodes();
     current_class = nullptr;
     current_method = prev_method = nullptr;
-    anonymous_class_id = 0;
     expand_generic_def = false;
   }
 
