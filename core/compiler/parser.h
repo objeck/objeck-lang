@@ -149,19 +149,7 @@ class Parser {
     return str.str();
   }
 
-  std::wstring RandomString(size_t len)
-  {
-    std::random_device gen;
-    const wchar_t* values = L"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-    
-    std::wstring output;
-    for(size_t i = 0; i < len; ++i) {
-      const size_t index = gen() % wcslen(values);
-      output += values[index];
-    }
-
-    return output;
-  }
+  static std::wstring RandomString(size_t len);
 
   std::wstring ParseBundleName();
 
