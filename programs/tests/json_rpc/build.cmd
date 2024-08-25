@@ -1,3 +1,5 @@
+@echo off
+
 taskkill /f /t /im "obr.exe"
 obc -src prgm321 -lib net,json
 
