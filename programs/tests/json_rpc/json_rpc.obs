@@ -55,14 +55,16 @@ bundle JsonRpc {
 			while(@server->Listen(8)) {
 				client := @server->Accept();
 
-
 				thread := System.Concurrency.Thread->New() {
 					New() {
 						Parent()
 					}
 
 					method : public : Run(arg : System.Base) ~ Nil {
-
+						client_funs := arg->As(Collection.Tuple.Pair<TCPSocket, Hash<String, Func2Ref<JsonElement, JsonElement>>>);
+						client := client_funs->GetFirst();
+						funcs := client_funs->GetSecond();
+						
 						response_str := client->ReadLine();
 						if(response_str <> Nil) {
 							response_json := JsonParser->TextToElement(response_str);
@@ -70,7 +72,7 @@ bundle JsonRpc {
 								method_json := response_json->Get("method");
 								if(method_json <> Nil) {
 									method_str := method_json->GetString();
-									func_ref := @funcs->Find(method_str);
+									func_ref := funcs->Find(method_str);
 									if(func_ref <> Nil) {
 										func := func_ref->Get();
 									 	
@@ -113,6 +115,9 @@ bundle JsonRpc {
 						client->Close();
 					}
 				};
+
+				params := Collection.Tuple.Pair->New(client, @funcs)<TCPSocket, Hash<String, Func2Ref<JsonElement, JsonElement>>>;
+				thread->Execute(params);
 			}
 		}
 
@@ -123,7 +128,7 @@ bundle JsonRpc {
 	class Client {
 		@address : String;
 		@port : Int;
-		@last_error : Pair<IntRef, String>;
+		@last_error : Collection.Tuple.Pair<IntRef, String>;
 		@id : static : Int;
 
 		New(address : String, port : Int) {
@@ -161,25 +166,25 @@ bundle JsonRpc {
 						if(error_json <> Nil) {
 							err_id := error_json->Get("code")->GetInt();
 							err_msg := error_json->Get("message")->GetString();
-							@last_error := Pair->New(err_id, err_msg)<IntRef, String>;
+							@last_error := Collection.Tuple.Pair->New(err_id, err_msg)<IntRef, String>;
 						};
 					}
 					else {
-						@last_error := Pair->New(IntRef->New(-32700), "Parse error")<IntRef, String>;
+						@last_error := Collection.Tuple.Pair->New(IntRef->New(-32700), "Parse error")<IntRef, String>;
 						return Nil;
 					};
 				}
 				else {
-					@last_error := Pair->New(IntRef->New(-32600), "Invalid Request")<IntRef, String>;
+					@last_error := Collection.Tuple.Pair->New(IntRef->New(-32600), "Invalid Request")<IntRef, String>;
 					return Nil;
 				};
 			};
 
-			@last_error := Pair->New(IntRef->New(-32000), "Server error")<IntRef, String>;
+			@last_error := Collection.Tuple.Pair->New(IntRef->New(-32000), "Server error")<IntRef, String>;
 			return Nil;
 		}
 
-		method : public : GetLastError() ~ Pair<IntRef, String> {
+		method : public : GetLastError() ~ Collection.Tuple.Pair<IntRef, String> {
 			return @last_error;
 		}
 	}
