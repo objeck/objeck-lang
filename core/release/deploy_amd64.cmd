@@ -88,10 +88,9 @@ mkdir deploy64\doc\syntax
 xcopy /e ..\..\docs\syntax\* deploy64\doc\syntax
 
 REM update and process readme
-REM pushd ..\..\programs\deploy\util\readme
-REM call build.cmd readme_builder readme.json
-REM popd && 
-copy ..\..\docs\readme.html deploy64
+pushd ..\..\programs\deploy\util\readme
+call build.cmd readme_builder readme.json
+popd && copy ..\..\docs\readme.html deploy64
 
 copy ..\..\docs\doc\readme.css deploy64\doc
 copy ..\..\LICENSE deploy64

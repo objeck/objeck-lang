@@ -3,7 +3,7 @@
 		"string": "@VERSION@",
 		"year": @YEAR@
 	},
-	"title": "Support for strings in select statement, Improved runtime performance, bug fixes",
+	"title": "JSON RPC support, bug fixes",
 	"files": {
 		"html_template": "readme.in.html",
 		"html_out": "readme.html",
@@ -11,6 +11,13 @@
 		"openai_token": "openai_api_key.dat"
 	},
 	"features": [
+		{
+			"version": "v2024.9.0",
+			"items": [
+				"Added JSON RPC library support",
+				"Fixed bug #501"
+			]
+		},
 		{
 			"version": "v2024.8.1",
 			"items": [
@@ -25,14 +32,6 @@
 			"items": [
 				"More build and deployment automation",
 				"Bug fixes: #500",
-			]
-		},
-		{
-			"version": "v2024.7.1",
-			"items": [
-				"ML model tuning support",
-				"Added Perplexity API inference support",
-				"Turned off OpenAI JSON debugging"
 			]
 		}
 	]
