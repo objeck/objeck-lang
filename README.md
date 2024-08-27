@@ -14,9 +14,9 @@
 
 ## Releases
 
-* v2024.8.x
-  * Orchestrated inference across OpenAI, Gemini, Llama, Mistral and Perplexity
-  * Cross-platform training tools
+* v2024.8.1
+  * JSON-RPC support
+  * Bug fixes
 
 * v2024.8.0 **(current)**
   * Compiler updates (done)
