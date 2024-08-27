@@ -1,193 +1,45 @@
 use Data.JSON;
+use Data.JSON.RPC;
 use Collection;
 use System.IO.Net;
 
-bundle JsonRpc { 
-	class Test {
-		function : Main(args : String[]) ~ Nil {
-			if(args->Size() = 1) {
-				if(args[0]->Equals("server")) {
-					# create server
-					funcs := Hash->New()<String, Func2Ref<JsonElement, JsonElement>>;
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() = 1) {
+			if(args[0]->Equals("server")) {
+				# create server
+				funcs := Hash->New()<String, Func2Ref<JsonElement, JsonElement>>;
 
-					func_ref := Func2Ref->New(ServerFuncs->Bear(JsonElement) ~ JsonElement)<JsonElement, JsonElement>;
-					funcs->Insert("bear", func_ref);
+				func_ref := Func2Ref->New(ServerFuncs->Bear(JsonElement) ~ JsonElement)<JsonElement, JsonElement>;
+				funcs->Insert("bear", func_ref);
 
-					func_ref := Func2Ref->New(ServerFuncs->Rabbit(JsonElement) ~ JsonElement)<JsonElement, JsonElement>;
-					funcs->Insert("rabbit", func_ref);
+				func_ref := Func2Ref->New(ServerFuncs->Rabbit(JsonElement) ~ JsonElement)<JsonElement, JsonElement>;
+				funcs->Insert("rabbit", func_ref);
 
-					func_ref := Func2Ref->New(ServerFuncs->Squirrel(JsonElement) ~ JsonElement)<JsonElement, JsonElement>;
-					funcs->Insert("squirrel", Nil);
+				func_ref := Func2Ref->New(ServerFuncs->Squirrel(JsonElement) ~ JsonElement)<JsonElement, JsonElement>;
+				funcs->Insert("squirrel", Nil);
 
-					# start server
-					server := Server->New(funcs, 7231);
-					server->Process();
-				}
-				else if(args[0]->Equals("client")) {
-					# create client
-					client := Client->New("localhost", 7231);
+				# start server
+				server := Server->New(funcs, 7231);
+				server->Process();
+			}
+			else if(args[0]->Equals("client")) {
+				# create client
+				client := Client->New("localhost", 7231);
 
-					# call server
-					response_json := client->Call("rabbit", JsonParser->TextToElement("[13,17,33]"));
-					if(client <> Nil) {
-						response_json->ToString()->PrintLine();
-					};
-				}
-				else {
-					">>> Usage params [client, server] <<<"->ErrorLine();
-				}			
+				# call server
+				response_json := client->Call("rabbit", JsonParser->TextToElement("[13,17,33]"));
+				if(client <> Nil) {
+					response_json->ToString()->PrintLine();
+				};
 			}
 			else {
 				">>> Usage params [client, server] <<<"->ErrorLine();
-			};
+			}			
 		}
-	}
-
-	class Server {
-		@server : TCPSocketServer;
-		@port : Int;
-		@funcs : Hash<String, Func2Ref<JsonElement, JsonElement>>;
-
-		New(funcs : Hash<String, Func2Ref<JsonElement, JsonElement>>, port : Int) {
-			@funcs := funcs;
-			@port := port;
-
-			@server := TCPSocketServer->New(@port);
-		}
-
-		method : public : Process() ~ Nil {
-			while(@server->Listen(8)) {
-				client := @server->Accept();
-
-				thread := System.Concurrency.Thread->New() {
-					New() {
-						Parent()
-					}
-
-					method : public : Run(arg : System.Base) ~ Nil {
-						client_funs := arg->As(Collection.Tuple.Pair<TCPSocket, Hash<String, Func2Ref<JsonElement, JsonElement>>>);
-						client := client_funs->GetFirst();
-						funcs := client_funs->GetSecond();
-						
-						response_str := client->ReadLine();
-						if(response_str <> Nil) {
-							response_json := JsonParser->TextToElement(response_str);
-							if(response_json <> Nil) {
-								method_json := response_json->Get("method");
-								if(method_json <> Nil) {
-									method_str := method_json->GetString();
-									func_ref := funcs->Find(method_str);
-									if(func_ref <> Nil) {
-										func := func_ref->Get();
-									 	
-										result_params_json := func(response_json->Get("params"));
-									 	result_id_json := response_json->Get("id");
-									 	if(result_params_json = Nil | result_id_json = Nil) {
-											client->WriteString("null\r\n");
-									 	}
-									 	else {
-									 		buffer := "{\"jsonrpc\": \"2.0\", \"result\": ";
-									 		buffer += result_params_json->ToString()
-									 		buffer += ", \"id\": ";
-									 		buffer += result_id_json->GetInt() + 1;
-									 		buffer += "}\r\n";
-
-											client->WriteString(buffer);
-										};
-
-									 }
-									 else {
-										err_msg := "{\"jsonrpc\": \"2.0\", \"error\": {\"code\": -32601, \"message\": \"Method not found\"}, \"id\": null}";
-										client->WriteString(err_msg);
-									 };
-								}
-								else {
-									err_msg := "{\"jsonrpc\": \"2.0\", \"error\": {\"code\": -32600, \"message\": \"Invalid Request\"}, \"id\": null}";
-									client->WriteString(err_msg);
-								};
-							}
-							else {
-								err_msg := "{\"jsonrpc\": \"2.0\", \"error\": {\"code\": -32700, \"message\": \"Parse error\"}, \"id\": null}";
-								client->WriteString(err_msg);
-							};
-						}
-						else {
-							err_msg := "{\"jsonrpc\": \"2.0\", \"error\": {\"code\": -32600, \"message\": \"Invalid Request\"}, \"id\": null}";
-							client->WriteString(err_msg);
-						};
-
-						client->Close();
-					}
-				};
-
-				params := Collection.Tuple.Pair->New(client, @funcs)<TCPSocket, Hash<String, Func2Ref<JsonElement, JsonElement>>>;
-				thread->Execute(params);
-			}
-		}
-	}
-
-	class Client {
-		@address : String;
-		@port : Int;
-		@last_error : Collection.Tuple.Pair<IntRef, String>;
-		@id : static : Int;
-
-		New(address : String, port : Int) {
-			@address := address;
-			@port := port;
-			@id := 1;
-		}
-
-		method : public : Call(func_name : String,  func_params: JsonElement) ~ JsonElement {
-			@server := TCPSocket->New(@address, @port);
-			if(@server->IsOpen()) {
-				buffer := "{\"jsonrpc\": \"2.0\", \"method\": \"";
-				buffer += func_name;
-				buffer += "\", \"params\": ";
-				buffer += func_params->ToString();
-				buffer += ", \"id\": ";
-				buffer += @id;
-				buffer += "}\r\n";
-				@server->WriteString(buffer);
-
-				if(@id > 512) {
-					@id := 1;
-				};
-
-				response_str := @server->ReadLine();
-				if(response_str <> Nil) {
-					response_json := JsonParser->TextToElement(response_str);
-					if(response_json <> Nil) {
-						result_json := response_json->Get("result");
-						if(result_json <> Nil) {
-							return result_json;
-						};
-
-						error_json := response_json->Get("error");
-						if(error_json <> Nil) {
-							err_id := error_json->Get("code")->GetInt();
-							err_msg := error_json->Get("message")->GetString();
-							@last_error := Collection.Tuple.Pair->New(err_id, err_msg)<IntRef, String>;
-						};
-					}
-					else {
-						@last_error := Collection.Tuple.Pair->New(IntRef->New(-32700), "Parse error")<IntRef, String>;
-						return Nil;
-					};
-				}
-				else {
-					@last_error := Collection.Tuple.Pair->New(IntRef->New(-32600), "Invalid Request")<IntRef, String>;
-					return Nil;
-				};
-			};
-
-			@last_error := Collection.Tuple.Pair->New(IntRef->New(-32000), "Server error")<IntRef, String>;
-			return Nil;
-		}
-
-		method : public : GetLastError() ~ Collection.Tuple.Pair<IntRef, String> {
-			return @last_error;
-		}
+		else {
+			">>> Usage params [client, server] <<<"->ErrorLine();
+		};
 	}
 }
 
