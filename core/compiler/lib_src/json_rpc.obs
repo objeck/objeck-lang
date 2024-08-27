@@ -9,12 +9,20 @@ use System.IO.Net;
 #~
 JSON RPC support (-lib json_rpc)
 ~#
-bundle Data.JSON.RPC {	
+bundle Data.JSON.RPC {
+	#~
+	JSON RPC server
+	~#
 	class Server {
 		@server : TCPSocketServer;
 		@port : Int;
 		@funcs : Hash<String, Func2Ref<JsonElement, JsonElement>>;
 
+		#~
+		Constructor
+		@param funcs collection of named function calls
+		@param port server port
+		~#
 		New(funcs : Hash<String, Func2Ref<JsonElement, JsonElement>>, port : Int) {
 			@funcs := funcs;
 			@port := port;
@@ -22,6 +30,9 @@ bundle Data.JSON.RPC {
 			@server := TCPSocketServer->New(@port);
 		}
 
+		#~
+		Start the server to accept requests
+		~#
 		method : public : Process() ~ Nil {
 			while(@server->Listen(8)) {
 				client := @server->Accept();
@@ -93,18 +104,32 @@ bundle Data.JSON.RPC {
 		}
 	}
 
+	#~
+	JSON RPC client
+	~#
 	class Client {
 		@address : String;
 		@port : Int;
 		@last_error : Collection.Tuple.Pair<IntRef, String>;
 		@id : static : Int;
 
+		#~
+		Constructor
+		@param address server address
+		@param port server port
+		~#
 		New(address : String, port : Int) {
 			@address := address;
 			@port := port;
 			@id := 1;
 		}
 
+		#~
+		Call remote procedure
+		@param func_name name of function to call
+		@param func_params function call parameters
+		@return JSON response
+		~#
 		method : public : Call(func_name : String,  func_params: JsonElement) ~ JsonElement {
 			@server := TCPSocket->New(@address, @port);
 			if(@server->IsOpen()) {
@@ -152,6 +177,10 @@ bundle Data.JSON.RPC {
 			return Nil;
 		}
 
+		#~
+		Get the last error
+		@return last error
+		~#
 		method : public : GetLastError() ~ Collection.Tuple.Pair<IntRef, String> {
 			return @last_error;
 		}
