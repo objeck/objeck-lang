@@ -2,9 +2,7 @@
 Copyright (c) 2024 Randy Hollines
 ~~#	
 
-use Data.JSON;
-use Collection;
-use System.IO.Net;
+use Data.JSON, Collection, System.IO.Net;
 
 #~
 JSON RPC support (-lib json_rpc)
