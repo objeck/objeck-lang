@@ -1,0 +1,31 @@
+use System.IO.Filesystem;
+
+class Notes {
+   function : Main(args : String[]) ~ Nil {
+      filename := "NOTES.TXT";
+
+      if(args->Size() > 0) {
+         buffer := System.Time.Date->New()->ToString();
+         buffer += "\n\t";
+         each(arg := args) {
+            buffer += arg + " ";
+         }
+         FileWriter->WriteFile(filename, buffer);
+      }
+      else {
+         reader := FileReader->New(filename);
+         if(reader->IsOpen()) {
+            line : String;
+            do {
+               line := reader->ReadLine();
+               if(line <> Nil) {
+                  line->PrintLine();
+               };
+            }
+            while(line <> Nil);
+         };
+
+         reader->Close();
+      }
+   }
+}
