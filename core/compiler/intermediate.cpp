@@ -4242,11 +4242,11 @@ void IntermediateEmitter::EmitConcatToString(SymbolEntry* concat_entry, Method* 
   assert(inst_mthd || inst_lib_mthd);
 #endif
 
-  if(inst_lib_mthd->GetEncodedReturn() != L"o.System.String") {
+  if(inst_lib_mthd && inst_lib_mthd->GetEncodedReturn() != L"o.System.String") {
     // library output
-    if (is_lib) {
+    if(is_lib) {
       // program class
-      if (inst_mthd) {
+      if(inst_mthd) {
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_MTHD_CALL, 0, inst_mthd->GetClass()->GetName(), inst_mthd->GetEncodedName()));
       }
       // library class
@@ -4256,7 +4256,7 @@ void IntermediateEmitter::EmitConcatToString(SymbolEntry* concat_entry, Method* 
     }
     else {
       // program class
-      if (inst_mthd) {
+      if(inst_mthd) {
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MTHD_CALL, inst_mthd->GetClass()->GetId(), inst_mthd->GetId(), 0L));
 
       }
