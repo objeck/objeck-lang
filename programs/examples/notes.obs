@@ -7,8 +7,11 @@ class Notes {
          each(arg in args) {
             buffer += arg + " ";
          };
+         buffer += "\n\n";
 
-         System.IO.Filesystem.FileWriter->WriteFile(filename, buffer);
+         writer := System.IO.Filesystem.FileWriter->New(filename, true);
+         writer->WriteString(buffer);
+         writer->Close();
       }
       else {
          reader := System.IO.Filesystem.FileReader->New(filename);
