@@ -3,8 +3,7 @@ class Notes {
       filename := "NOTES.TXT";
 
       if(args->Size() > 0) {
-         buffer := System.Time.Date->New()->ToString();
-         buffer += "\n\t";
+         buffer := System.Time.Date->New()->ToString() + "\n\t";
          each(arg := args) {
             buffer += arg + " ";
          };
