@@ -5608,9 +5608,55 @@ each(i : cities) {
 			
 			return String->New(temp, false);
 		}
-		
+
 		#~
-		Removes all leading and ending white space
+                Removes all leading white space
+                @return trimmed string
+                ~#
+                method : public : native : TrimFront() ~ String {
+                        if(@pos = 0) {
+                                return "";
+                        };
+
+                        start := 0;
+                        c := @string[start];
+                        while(start < @pos & (c = ' ' | c = '\t' | c = '\r' | c = '\n' | c = 0xa0 | c = 0x1680 |
+                                        c >= 0x2000 & c <= 0x200a | c >= 0x000a & c <= 0x000d | c = 0x202f |
+                                        c = 0x205f | c = 0x3000 | c = 0x0085 | c = 0x2029)) {
+                                start += 1;
+                                c := @string[start];
+                        };
+			
+			return String->New(@string, start, @pos - start + 1);
+		}
+
+		#~
+                Removes all trailing white space
+                @return trimmed string
+                ~#
+                method : public : native : TrimBack() ~ String {
+                        if(@pos = 0) {
+                                return "";
+                        };
+			end := @pos;
+
+                        do {
+				end -= 1;
+                        }
+                        while(end > -1 & (@string[end] = ' ' | @string[end] = '\t' | @string[end] = '\r' | @string[end] = '\n' |
+                                @string[end] = 0xa0 | @string[end] = 0x1680 | @string[end] >= 0x2000 & @string[end] <= 0x200a |
+                                @string[end] >= 0x000a & @string[end] <= 0x000d | @string[end] = 0x202f | @string[end] = 0x205f |
+                                @string[end] = 0x3000 | @string[end] = 0x0085 | @string[end] = 0x2029));
+
+                        if(end < 1) {
+				return "";
+                        };
+
+                        return String->New(@string, 0, end - 1);
+                }
+
+		#~
+		Removes all leading and trailing white space
 		@return trimmed string
 		~#
 		method : public : native : Trim() ~ String {
