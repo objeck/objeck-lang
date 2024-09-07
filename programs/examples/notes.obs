@@ -1,5 +1,3 @@
-use System.IO.Filesystem;
-
 class Notes {
    function : Main(args : String[]) ~ Nil {
       filename := "NOTES.TXT";
@@ -9,11 +7,12 @@ class Notes {
          buffer += "\n\t";
          each(arg := args) {
             buffer += arg + " ";
-         }
-         FileWriter->WriteFile(filename, buffer);
+         };
+
+         System.IO.Filesystem.FileWriter->WriteFile(filename, buffer);
       }
       else {
-         reader := FileReader->New(filename);
+         reader := System.IO.Filesystem.FileReader->New(filename);
          if(reader->IsOpen()) {
             line : String;
             do {
@@ -26,6 +25,6 @@ class Notes {
          };
 
          reader->Close();
-      }
+      };
    }
 }

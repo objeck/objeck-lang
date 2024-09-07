@@ -4241,26 +4241,29 @@ void IntermediateEmitter::EmitConcatToString(SymbolEntry* concat_entry, Method* 
 #ifdef _DEBUG
   assert(inst_mthd || inst_lib_mthd);
 #endif
-  // library output
-  if(is_lib) {
-    // program class
-    if(inst_mthd) {
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_MTHD_CALL, 0, inst_mthd->GetClass()->GetName(), inst_mthd->GetEncodedName()));
-    }
-    // library class
-    else {
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_MTHD_CALL, 0, inst_lib_mthd->GetLibraryClass()->GetName(), inst_lib_mthd->GetName()));
-    }
-  }
-  else {
-    // program class
-    if(inst_mthd) {
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MTHD_CALL, inst_mthd->GetClass()->GetId(), inst_mthd->GetId(), 0L));
 
+  if(inst_lib_mthd->GetEncodedReturn() != L"o.System.String") {
+    // library output
+    if (is_lib) {
+      // program class
+      if (inst_mthd) {
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_MTHD_CALL, 0, inst_mthd->GetClass()->GetName(), inst_mthd->GetEncodedName()));
+      }
+      // library class
+      else {
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_MTHD_CALL, 0, inst_lib_mthd->GetLibraryClass()->GetName(), inst_lib_mthd->GetName()));
+      }
     }
-    // library class
     else {
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MTHD_CALL, inst_lib_mthd->GetLibraryClass()->GetId(), inst_lib_mthd->GetId(), 0L));
+      // program class
+      if (inst_mthd) {
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MTHD_CALL, inst_mthd->GetClass()->GetId(), inst_mthd->GetId(), 0L));
+
+      }
+      // library class
+      else {
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MTHD_CALL, inst_lib_mthd->GetLibraryClass()->GetId(), inst_lib_mthd->GetId(), 0L));
+      }
     }
   }
 
