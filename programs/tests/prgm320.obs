@@ -2,9 +2,5 @@ class Test {
 	function : Main(args : String[]) ~ Nil {
 		a := System.Time.Date->New()->ToString() + "\n\t";
 		a->PrintLine();
-
-		b := "abc";
-		b += 808;
-		b->PrintLine();
 	}
 }
