@@ -1,16 +1,10 @@
 class Test {
-	@foo : Int;
-
 	function : Main(args : String[]) ~ Nil {
-		test := Test->New();
-		test->SetFoo(13);
-	}
+		a := System.Time.Date->New()->ToString() + "\n\t";
+		a->PrintLine();
 
-	New() {
-
-	}
-
-	method : public : SetFoo(foo : Int) ~ Nil {
-		@foo := foo;
+		b := "abc";
+		b += 808;
+		b->PrintLine();
 	}
 }
