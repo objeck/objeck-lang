@@ -5640,7 +5640,6 @@ each(i : cities) {
             };
 
 			end := @pos;
-			c := @string[end];
 			do {
 				end -= 1;
 				c := @string[end];
@@ -5675,10 +5674,9 @@ each(i : cities) {
 			};
 
 			end := @pos;
-			c := @string[end]
 			do {
 				end -= 1;
-				c := @string[end]
+				c := @string[end];
 			}
 			while(end > 0 & (c = ' ' | c = '\t' | c = '\r' | c = '\n' | c = '\v' | c = '\f' | 
 				c = 0xa0 | c = 0x1680 | c >= 0x2000 & c <= 0x200a | c >= 0x000a & c <= 0x000d | 
