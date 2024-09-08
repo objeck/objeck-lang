@@ -463,6 +463,7 @@ namespace backend {
 
     void Debug() {
       if(instructions.size() > 0) {
+        GetLogger() << L"instructions:" << std::endl;
         for(size_t i = 0; i < instructions.size(); ++i) {
           instructions[i]->Debug(i);
         }
