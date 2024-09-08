@@ -3,7 +3,7 @@
 		"string": "@VERSION@",
 		"year": @YEAR@
 	},
-	"title": "JSON RPC support, bug fixes",
+	"title": "JSON RPC support, bug fixes, added additional string trim functions",
 	"files": {
 		"html_template": "readme.in.html",
 		"html_out": "readme.html",
