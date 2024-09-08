@@ -1,26 +1,12 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		start := 0;
-		string := ['\r','\n','\t','h','e','l','l','o','\r','\n','\t','\r','\n'];
-		pos := 9;
+		str := "\r\t\nhello world\r\t\n";
+		str->PrintLine();
 
-		c := string[start];
-		while(start < pos & (c = ' ' | c = '\t' | c = '\r' | c = '\n' | c = 0xa0 | c = 0x1680 | 
-				c >= 0x2000 & c <= 0x200a | c >= 0x000a & c <= 0x000d | c = 0x202f | 
-				c = 0x205f | c = 0x3000 | c = 0x0085 | c = 0x2029)) {
-			start += 1;
-			c := string[start];
-		};
+		back_str := str->TrimFront();
+		"|{$back_str}|"->PrintLine();
 
-		foo := String->New(string, start, pos - start + 1);
-		
-		string->Size()->PrintLine();
-		foo->Size()->PrintLine();
-
-		last := foo->Last()->As(Int);
-		last->PrintLine();
-
-#		foo->PrintLine();
-#		string->PrintLine();
+		front_str := str->TrimBack();
+		"|{$front_str}|"->PrintLine();
 	}
 }
