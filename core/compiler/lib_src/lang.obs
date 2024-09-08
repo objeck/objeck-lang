@@ -5645,7 +5645,7 @@ each(i : cities) {
 				end -= 1;
 				c := @string[end];
 			}
-			while(end > -1 & (c = ' ' | c = '\t' | c = '\r' | c = '\n' | c = '\v' | c = '\f' | 
+			while(end > 0 & (c = ' ' | c = '\t' | c = '\r' | c = '\n' | c = '\v' | c = '\f' | 
 				c = 0xa0 | c = 0x1680 | c >= 0x2000 & c <= 0x200a |	c >= 0x000a & c <= 0x000d | 
 				c = 0x202f | c = 0x205f | c = 0x3000 | c = 0x0085 | c = 0x2029));
 
@@ -5680,7 +5680,7 @@ each(i : cities) {
 				end -= 1;
 				c := @string[end]
 			}
-			while(end > -1 & (c = ' ' | c = '\t' | c = '\r' | c = '\n' | c = '\v' | c = '\f' | 
+			while(end > 0 & (c = ' ' | c = '\t' | c = '\r' | c = '\n' | c = '\v' | c = '\f' | 
 				c = 0xa0 | c = 0x1680 | c >= 0x2000 & c <= 0x200a | c >= 0x000a & c <= 0x000d | 
 				c = 0x202f | c = 0x205f | c = 0x3000 | c = 0x0085 | c = 0x2029));
 
