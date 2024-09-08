@@ -1,6 +1,6 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		str := "\r\t\nhello world\r\t\n";
+		str := "\r\t\nhello world\r\t\n ";
 		str->PrintLine();
 
 		back_str := str->TrimFront();
@@ -8,5 +8,11 @@ class Test {
 
 		front_str := str->TrimBack();
 		"|{$front_str}|"->PrintLine();
+
+		last := str->Last()->As(Int);
+		last->PrintLine();
+
+		'\v'->PrintLine();
+		'\f'->PrintLine();
 	}
 }
