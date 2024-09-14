@@ -1125,12 +1125,49 @@ IntermediateBlock* ItermediateOptimizer::InlineMethod(IntermediateBlock* inputs)
 
 IntermediateBlock* ItermediateOptimizer::JumpToLocation(IntermediateBlock* inputs)
 {
+  // remove redundancy labels
   std::vector<IntermediateInstruction*> input_instrs = inputs->GetInstructions();
-  IntermediateBlock* outputs = new IntermediateBlock;
+  std::vector<IntermediateInstruction*> output_instrs;
 
-  std::unordered_map<int, int> lbl_offsets;
+  // TODO: track last position, to find blocks
+  std::multimap<long, IntermediateInstruction*> lbl_ids;
+
+  size_t labels_start = 0;
+  size_t new_label_id = 0;
+  IntermediateInstruction* new_label_instr = nullptr;
   for(size_t i = 0; i < input_instrs.size(); ++i) {
     IntermediateInstruction* instr = input_instrs[i];
+
+    // start of duplicates
+    if(instr->GetType() == LBL && i + 1 < input_instrs.size() && input_instrs[i + 1]->GetType() == LBL) {
+      new_label_instr = IntermediateFactory::Instance()->MakeInstruction(-1, LBL, -1, -1);
+      output_instrs.push_back(new_label_instr);
+      labels_start = i - 1;
+    }
+    else if(new_label_instr && instr->GetType() != LBL) {
+      // end of duplicates
+      const size_t labels_end = i - 1;
+      new_label_instr->SetOperand(new_label_id++);
+      new_label_instr = nullptr;
+
+      // add instruction
+      output_instrs.push_back(instr);
+    }
+    else if(!new_label_instr) {
+      // add instruction
+      output_instrs.push_back(instr);
+    }
+    else {
+      // remap instruction
+      std::wcout << L"Red Clifford" << std::endl;
+    }
+  }
+  
+  // map labels ids to indexes
+  IntermediateBlock* outputs = new IntermediateBlock;
+  std::unordered_map<int, int> lbl_offsets;
+  for(size_t i = 0; i < output_instrs.size(); ++i) {
+    IntermediateInstruction* instr = output_instrs[i];
     switch(instr->GetType()) {
     case LBL:
       lbl_offsets.insert(std::pair<int, int>(instr->GetOperand(), (int)i + 1));
@@ -1141,8 +1178,8 @@ IntermediateBlock* ItermediateOptimizer::JumpToLocation(IntermediateBlock* input
     }
   }
   
-  for(size_t i = 0; i < input_instrs.size(); ++i) {
-    IntermediateInstruction* instr = input_instrs[i];
+  for(size_t i = 0; i < output_instrs.size(); ++i) {
+    IntermediateInstruction* instr = output_instrs[i];
     switch(instr->GetType()) {
     case JMP: {
       std::unordered_map<int, int>::iterator result = lbl_offsets.find(instr->GetOperand());
