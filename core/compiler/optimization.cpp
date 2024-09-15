@@ -1138,28 +1138,31 @@ IntermediateBlock* ItermediateOptimizer::JumpToLocation(IntermediateBlock* input
   for(size_t i = 0; i < input_instrs.size(); ++i) {
     IntermediateInstruction* instr = input_instrs[i];
 
-    // start of duplicates
-    if(instr->GetType() == LBL && i + 1 < input_instrs.size() && input_instrs[i + 1]->GetType() == LBL) {
+    // start of duplicate labels
+    if(!new_label_instr && instr->GetType() == LBL && i + 1 < input_instrs.size() && input_instrs[i + 1]->GetType() == LBL) {
       new_label_instr = IntermediateFactory::Instance()->MakeInstruction(-1, LBL, -1, -1);
       output_instrs.push_back(new_label_instr);
       labels_start = i - 1;
     }
-    else if(new_label_instr && instr->GetType() != LBL) {
-      // end of duplicates
-      const size_t labels_end = i - 1;
-      new_label_instr->SetOperand(new_label_id++);
-      new_label_instr = nullptr;
+    // duplicate labels
+    else if(new_label_instr) {
+      // duplicate label
+      if(instr->GetType() == LBL) {
+        std::wcout << L"Red Clifford" << std::endl;
+      }
+      // end of duplicate labels
+      else {
+        const size_t labels_end = i - 1;
+        new_label_instr->SetOperand((long)new_label_id++);
+        new_label_instr = nullptr;
 
-      // add instruction
-      output_instrs.push_back(instr);
+        // add instruction
+        output_instrs.push_back(instr);
+      }
     }
+    // normal instruction
     else if(!new_label_instr) {
-      // add instruction
       output_instrs.push_back(instr);
-    }
-    else {
-      // remap instruction
-      std::wcout << L"Red Clifford" << std::endl;
     }
   }
   
