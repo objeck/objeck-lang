@@ -33,6 +33,8 @@
 #define __OPTIMIZE_H__
 
 #include "emit.h"
+
+#include <map>
 #include <deque>
 
 using namespace backend;
@@ -69,7 +71,7 @@ class ItermediateOptimizer {
   bool merge_blocks;
   int cur_line_num;
   bool is_lib;
-  int jump_offset;
+  int jump_inline_offset;
   
   std::vector<IntermediateBlock*> OptimizeMethod(std::vector<IntermediateBlock*> input);
   std::vector<IntermediateBlock*> InlineMethod(std::vector<IntermediateBlock*> inputs);
