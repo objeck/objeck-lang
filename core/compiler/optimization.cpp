@@ -1022,7 +1022,7 @@ IntermediateBlock* ItermediateOptimizer::InlineMethod(IntermediateBlock* inputs)
       break;
     }
   }
-  lbl_jmp_offsets.insert(unconditional_label + 1);
+  lbl_jmp_offsets.insert(++unconditional_label);
 
   for(size_t i = 0; i < input_instrs.size(); ++i) {
     IntermediateInstruction* instr = input_instrs[i];
