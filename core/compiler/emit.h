@@ -214,6 +214,10 @@ namespace backend {
       return operand2;
     }
 
+    long GetOperand3() {
+      return operand3;
+    }
+
     INT64_VALUE GetOperand7() {
       return operand7;
     }
