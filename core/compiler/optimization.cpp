@@ -1132,7 +1132,7 @@ IntermediateBlock* ItermediateOptimizer::JumpToLocation(IntermediateBlock* input
   // track groups of redundant labls
   std::map<long, IntermediateInstruction*> lbl_ids;
 
-  size_t new_label_id = unconditional_label;
+  int new_label_id = unconditional_label;
   IntermediateInstruction* new_label_instr = nullptr;
   for(size_t i = 0; i < input_instrs.size(); ++i) {
     IntermediateInstruction* instr = input_instrs[i];
