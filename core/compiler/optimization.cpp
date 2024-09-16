@@ -62,7 +62,7 @@ ItermediateOptimizer::ItermediateOptimizer(IntermediateProgram* p, int u, std::w
     }
   }
 
-  jump_offset = 0;
+  jump_inline_offset = 0;
 
   // primitive 'Float'
   can_inline.insert(L"System.$Float:Size:f*,");
@@ -612,7 +612,7 @@ bool ItermediateOptimizer::CanInlineMethod(IntermediateMethod* mthd_called, std:
   // don't inline the same method more then once, since you'll have label/jump conflicts
   std::set<IntermediateMethod*>::iterator found = inlined_mthds.find(mthd_called);
   if(found != inlined_mthds.end()) {
-    jump_offset += JUMP_OFF_INC;
+    jump_inline_offset += JUMP_OFF_INC;
   }
 
   // don't inline recursive calls
@@ -1093,12 +1093,12 @@ IntermediateBlock* ItermediateOptimizer::InlineMethod(IntermediateBlock* inputs)
             break;
 
           case JMP:
-            outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, JMP, mthd_called_instr->GetOperand() + jump_offset,
+            outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, JMP, mthd_called_instr->GetOperand() + jump_inline_offset,
                                                                                      mthd_called_instr->GetOperand2()));
             break;
 
           case LBL:
-            outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LBL, mthd_called_instr->GetOperand() + jump_offset, 
+            outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LBL, mthd_called_instr->GetOperand() + jump_inline_offset, 
                                                                                      mthd_called_instr->GetOperand2()));
             break;
 
@@ -1129,11 +1129,10 @@ IntermediateBlock* ItermediateOptimizer::JumpToLocation(IntermediateBlock* input
   std::vector<IntermediateInstruction*> input_instrs = inputs->GetInstructions();
   std::vector<IntermediateInstruction*> output_instrs;
 
-  // TODO: track last position, to find blocks
-  std::multimap<long, IntermediateInstruction*> lbl_ids;
+  // track groups of redundant labls
+  std::map<long, IntermediateInstruction*> lbl_ids;
 
-  size_t labels_start = 0;
-  size_t new_label_id = 0;
+  size_t new_label_id = unconditional_label;
   IntermediateInstruction* new_label_instr = nullptr;
   for(size_t i = 0; i < input_instrs.size(); ++i) {
     IntermediateInstruction* instr = input_instrs[i];
@@ -1141,19 +1140,18 @@ IntermediateBlock* ItermediateOptimizer::JumpToLocation(IntermediateBlock* input
     // start of duplicate labels
     if(!new_label_instr && instr->GetType() == LBL && i + 1 < input_instrs.size() && input_instrs[i + 1]->GetType() == LBL) {
       new_label_instr = IntermediateFactory::Instance()->MakeInstruction(-1, LBL, -1, -1);
+      lbl_ids.insert(std::pair<long, IntermediateInstruction*>(instr->GetOperand(), new_label_instr));
       output_instrs.push_back(new_label_instr);
-      labels_start = i - 1;
     }
     // duplicate labels
     else if(new_label_instr) {
       // duplicate label
       if(instr->GetType() == LBL) {
-        std::wcout << L"Red Clifford" << std::endl;
+         lbl_ids.insert(std::pair<long, IntermediateInstruction*>(instr->GetOperand(), new_label_instr));
       }
       // end of duplicate labels
       else {
-        const size_t labels_end = i - 1;
-        new_label_instr->SetOperand((long)new_label_id++);
+        new_label_instr->SetOperand((long)++new_label_id);
         new_label_instr = nullptr;
 
         // add instruction
@@ -1163,6 +1161,23 @@ IntermediateBlock* ItermediateOptimizer::JumpToLocation(IntermediateBlock* input
     // normal instruction
     else if(!new_label_instr) {
       output_instrs.push_back(instr);
+    }
+  }
+
+  // update jump for redundant labels
+  if(new_label_id != unconditional_label) {
+    unconditional_label = new_label_id;
+    for(size_t i = 0; i < input_instrs.size(); ++i) {
+      IntermediateInstruction* instr = input_instrs[i];
+
+      // update jumps
+      if(instr->GetType() == JMP) {
+        const long jump_id = instr->GetOperand();
+        std::map<long, IntermediateInstruction*>::iterator jump_result = lbl_ids.find(jump_id);
+        if(jump_result != lbl_ids.end()) {
+          instr->SetOperand(jump_result->second->GetOperand());
+        }
+      }
     }
   }
   
