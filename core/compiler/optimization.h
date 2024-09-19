@@ -75,8 +75,9 @@ class ItermediateOptimizer {
   
   std::vector<IntermediateBlock*> OptimizeMethod(std::vector<IntermediateBlock*> input);
   std::vector<IntermediateBlock*> InlineMethod(std::vector<IntermediateBlock*> inputs);
+  std::vector<IntermediateBlock*> CleanLabelsLocation(std::vector<IntermediateBlock*> inputs);
   std::vector<IntermediateBlock*> JumpToLocation(std::vector<IntermediateBlock*> inputs);
-  
+
   // inline setters/getters
   IntermediateBlock* InlineSettersGetters(IntermediateBlock* inputs);
 
@@ -88,6 +89,7 @@ class ItermediateOptimizer {
   IntermediateBlock* InlineMethod(IntermediateBlock* inputs);
 
   // jump to address
+  IntermediateBlock* CleanLabelsLocation(IntermediateBlock* inputs);
   IntermediateBlock* JumpToLocation(IntermediateBlock* inputs);
 
   // dead store
