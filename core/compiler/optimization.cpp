@@ -162,14 +162,27 @@ void ItermediateOptimizer::Optimize()
     }
   }
 
+  klasses = program->GetClasses();
+  for(size_t i = 0; i < klasses.size(); ++i) {
+    std::vector<IntermediateMethod*> methods = klasses[i]->GetMethods();
+    for(size_t j = 0; j < methods.size(); ++j) {
+      current_method = methods[j];
+#ifdef _DEBUG
+      GetLogger() << L"Optimizing labels, pass 3: name='" << current_method->GetName() << "'" << std::endl;
+#endif
+      current_method->SetBlocks(CleanLabelsLocation(current_method->GetBlocks()));
+
+    }
+  }
+
   if(!is_lib) {
-    std::vector<IntermediateClass*> klasses = program->GetClasses();
+    klasses = program->GetClasses();
     for(size_t i = 0; i < klasses.size(); ++i) {
       std::vector<IntermediateMethod*> methods = klasses[i]->GetMethods();
       for(size_t j = 0; j < methods.size(); ++j) {
         current_method = methods[j];
 #ifdef _DEBUG
-        GetLogger() << L"Optimizing jumps, pass 2: name='" << current_method->GetName() << "'" << std::endl;
+        GetLogger() << L"Optimizing jumps, pass 4: name='" << current_method->GetName() << "'" << std::endl;
 #endif
         current_method->SetBlocks(JumpToLocation(current_method->GetBlocks()));
 
@@ -202,10 +215,28 @@ std::vector<IntermediateBlock*> ItermediateOptimizer::InlineMethod(std::vector<I
   }
 }
 
+std::vector<IntermediateBlock*> ItermediateOptimizer::CleanLabelsLocation(std::vector<IntermediateBlock*> inputs)
+{
+#ifdef _DEBUG
+  GetLogger() << L"  Clean up labels..." << std::endl;
+#endif
+  std::vector<IntermediateBlock*> outputs;
+  while(!inputs.empty()) {
+    IntermediateBlock* tmp = inputs.front();
+    outputs.push_back(CleanLabelsLocation(tmp));
+    // delete old block
+    inputs.erase(inputs.begin());
+    delete tmp;
+    tmp = nullptr;
+  }
+
+  return outputs;
+}
+
 std::vector<IntermediateBlock*> ItermediateOptimizer::JumpToLocation(std::vector<IntermediateBlock*> inputs)
 {
 #ifdef _DEBUG
-  GetLogger() << L"  Method inlining..." << std::endl;
+  GetLogger() << L"  Updating jump locations..." << std::endl;
 #endif
   std::vector<IntermediateBlock*> outputs;
   while(!inputs.empty()) {
@@ -1122,16 +1153,15 @@ IntermediateBlock* ItermediateOptimizer::InlineMethod(IntermediateBlock* inputs)
   return outputs;
 }
 
-
-IntermediateBlock* ItermediateOptimizer::JumpToLocation(IntermediateBlock* inputs)
+IntermediateBlock* ItermediateOptimizer::CleanLabelsLocation(IntermediateBlock* inputs)
 {
   // remove redundancy labels
   std::vector<IntermediateInstruction*> input_instrs = inputs->GetInstructions();
-  std::vector<IntermediateInstruction*> output_instrs;
+  IntermediateBlock* outputs = new IntermediateBlock;
 
   // track groups of redundant labls
   std::map<long, IntermediateInstruction*> lbl_ids;
-
+  
   int new_label_id = unconditional_label;
   IntermediateInstruction* new_label_instr = nullptr;
   for(size_t i = 0; i < input_instrs.size(); ++i) {
@@ -1141,13 +1171,13 @@ IntermediateBlock* ItermediateOptimizer::JumpToLocation(IntermediateBlock* input
     if(!new_label_instr && instr->GetType() == LBL && i + 1 < input_instrs.size() && input_instrs[i + 1]->GetType() == LBL) {
       new_label_instr = IntermediateFactory::Instance()->MakeInstruction(-1, LBL, -1, -1);
       lbl_ids.insert(std::pair<long, IntermediateInstruction*>(instr->GetOperand(), new_label_instr));
-      output_instrs.push_back(new_label_instr);
+      outputs->AddInstruction(new_label_instr);
     }
     // duplicate labels
     else if(new_label_instr) {
       // duplicate label
       if(instr->GetType() == LBL) {
-         lbl_ids.insert(std::pair<long, IntermediateInstruction*>(instr->GetOperand(), new_label_instr));
+        lbl_ids.insert(std::pair<long, IntermediateInstruction*>(instr->GetOperand(), new_label_instr));
       }
       // end of duplicate labels
       else {
@@ -1155,12 +1185,12 @@ IntermediateBlock* ItermediateOptimizer::JumpToLocation(IntermediateBlock* input
         new_label_instr = nullptr;
 
         // add instruction
-        output_instrs.push_back(instr);
+        outputs->AddInstruction(instr);
       }
     }
     // normal instruction
     else if(!new_label_instr) {
-      output_instrs.push_back(instr);
+      outputs->AddInstruction(instr);
     }
   }
 
@@ -1181,11 +1211,18 @@ IntermediateBlock* ItermediateOptimizer::JumpToLocation(IntermediateBlock* input
     }
   }
   
+  return outputs;
+}
+
+IntermediateBlock* ItermediateOptimizer::JumpToLocation(IntermediateBlock* inputs)
+{
+  std::vector<IntermediateInstruction*> input_instrs = inputs->GetInstructions();
+
   // map labels ids to indexes
   IntermediateBlock* outputs = new IntermediateBlock;
   std::unordered_map<int, int> lbl_offsets;
-  for(size_t i = 0; i < output_instrs.size(); ++i) {
-    IntermediateInstruction* instr = output_instrs[i];
+  for(size_t i = 0; i < input_instrs.size(); ++i) {
+    IntermediateInstruction* instr = input_instrs[i];
     switch(instr->GetType()) {
     case LBL:
       lbl_offsets.insert(std::pair<int, int>(instr->GetOperand(), (int)i + 1));
@@ -1196,8 +1233,8 @@ IntermediateBlock* ItermediateOptimizer::JumpToLocation(IntermediateBlock* input
     }
   }
   
-  for(size_t i = 0; i < output_instrs.size(); ++i) {
-    IntermediateInstruction* instr = output_instrs[i];
+  for(size_t i = 0; i < input_instrs.size(); ++i) {
+    IntermediateInstruction* instr = input_instrs[i];
     switch(instr->GetType()) {
     case JMP: {
       std::unordered_map<int, int>::iterator result = lbl_offsets.find(instr->GetOperand());
