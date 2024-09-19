@@ -161,17 +161,19 @@ void ItermediateOptimizer::Optimize()
       }
     }
   }
-
-  klasses = program->GetClasses();
-  for(size_t i = 0; i < klasses.size(); ++i) {
-    std::vector<IntermediateMethod*> methods = klasses[i]->GetMethods();
-    for(size_t j = 0; j < methods.size(); ++j) {
-      current_method = methods[j];
+  
+  if(optimization_level > 1) {
+    klasses = program->GetClasses();
+    for(size_t i = 0; i < klasses.size(); ++i) {
+      std::vector<IntermediateMethod*> methods = klasses[i]->GetMethods();
+      for(size_t j = 0; j < methods.size(); ++j) {
+        current_method = methods[j];
 #ifdef _DEBUG
-      GetLogger() << L"Optimizing labels, pass 3: name='" << current_method->GetName() << "'" << std::endl;
+        GetLogger() << L"Optimizing labels, pass 3: name='" << current_method->GetName() << "'" << std::endl;
 #endif
-      current_method->SetBlocks(CleanLabelsLocation(current_method->GetBlocks()));
+        current_method->SetBlocks(CleanLabelsLocation(current_method->GetBlocks()));
 
+      }
     }
   }
 
