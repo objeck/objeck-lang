@@ -9,9 +9,9 @@ class Test {
 
 		while(<>queue->Empty()) {
 			queue->Top()->GetValue()->PrintLine();
-			queue->Pop()->PrintLine();;
+			queue->Pop()->PrintLine();
 		};
-		queue->Pop()->PrintLine();;
+		queue->Pop()->PrintLine();
 	}
 }
 
@@ -76,24 +76,12 @@ class Node {
 		return @value;
 	}
 
-	method : public : SetValue(value : Int) ~ Nil {
-		@value := value;
-	}
-
-	method : public : GetNext() ~ Node {
-		return @next;
-	}
-
 	method : public : SetNext(next : Node) ~ Nil {
 		@next := next;
 	}
 
 	method : public : GetPrev() ~ Node {
 		return @prev;
-	}
-
-	method : public : SetPrev(prev : Node) ~ Nil {
-		@prev := prev;
 	}
 
 	method : public : ToString() ~ String {
