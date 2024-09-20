@@ -1486,7 +1486,7 @@ hash->Has(408)->PrintLine();
 		Converts the stack into an object array
 		@return object array
 		~#
-		method : public : ToArray() ~ H[] {
+		method : native : public : ToArray() ~ H[] {
 			array := H->New[@size];
 			
 			i := 0;
@@ -1520,7 +1520,7 @@ hash->Has(408)->PrintLine();
 		@param n number of items to pop
 		@return popped valued, Nil if stack is empty
 		~#
-		method : public : Pop(n : Int) ~ H {
+		method : native : public : Pop(n : Int) ~ H {
 			value : H;
 
 			if(n > 0) {
