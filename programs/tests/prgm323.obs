@@ -1,0 +1,16 @@
+use Collection
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		stack := Stack->New()<IntRef>;
+
+		stack->Push(3); stack->Push(6);
+		stack->Top()->PrintLine();
+		stack->Pop()->PrintLine();
+		stack->Pop()->PrintLine();
+
+		stack->Pop();
+
+		stack->Size()->PrintLine();
+	}
+}

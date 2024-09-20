@@ -89,7 +89,7 @@ xcopy /e ..\..\docs\syntax\* deploy64\doc\syntax
 
 REM update and process readme
 pushd ..\..\programs\deploy\util\readme
-call build.cmd readme_builder readme.json
+REM call build.cmd readme_builder readme.json
 popd && copy ..\..\docs\readme.html deploy64
 
 copy ..\..\docs\doc\readme.css deploy64\doc
