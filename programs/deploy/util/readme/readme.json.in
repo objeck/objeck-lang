@@ -3,7 +3,7 @@
 		"string": "@VERSION@",
 		"year": @YEAR@
 	},
-	"title": "JSON RPC support, bug fixes, added additional string trim functions",
+	"title": "Introducing the latest Objeck release, featuring updates to improve coding and runtime performance. Key additions include support for JSON-RPC, faster code generation, and enhancements to the 'System.String' and Collection.Stack' classes.",
 	"files": {
 		"html_template": "readme.in.html",
 		"html_out": "readme.html",
@@ -14,8 +14,11 @@
 		{
 			"version": "v2024.9.0",
 			"items": [
-				"Added JSON RPC library support",
-				"Fixed bug #501"
+				"Added library support for JSON-RPC",
+				"Code generation optimized to eliminate redundant labels",
+				"Added trim front and back to the 'System.String'"
+				"Refactored the 'Collections.Stack' class to be list vs. array based",
+				"Fixed bugs #501 and #502"
 			]
 		},
 		{
