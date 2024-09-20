@@ -1542,8 +1542,8 @@ hash->Has(408)->PrintLine();
 			value : H;
 
 			if(@head <> Nil) {
-				@head := @head->GetNext();
 				value := @head->Get();
+				@head := @head->GetNext();
 				@size -= 1;
 			};
 
