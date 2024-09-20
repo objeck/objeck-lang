@@ -1473,13 +1473,13 @@ hash->Has(408)->PrintLine();
 	Growable stack of generics
 	~#
 	class Stack<H> {
-		@values : Vector<H>;
-		
+		@head : ListNode<H>;
+		@size : Int;
+
 		#~
 		Default constructor 
 		~#
 		New() {
-			@values := Vector->New()<H>	;
 		}
 
 		#~
@@ -1487,39 +1487,32 @@ hash->Has(408)->PrintLine();
 		@return object array
 		~#
 		method : public : ToArray() ~ H[] {
-			return @values->ToArray();
-		}
-
-		#~
-		Formats the collection into a string. If an element implements the 'Stringify' 
-		interface, it's 'ToString()' is called.
-		@return string representation
-		~#
-		method : public : ToString() ~ String {
-			return @values->ToString();
+			array := H->New[@size];
+			
+			i := 0;
+			while(@head <> Nil) {
+				array[i] := Pop();
+				i += 1;
+			};
+			
+			return array;
 		}
 
 		#~
 		Pushes a value onto the stack
 		@param value to push
 		~#
-		method : public: Push(value : H) ~ Nil {
-			@values->AddBack(value);
-		}
-		
-		#~
-		Pops a value from the stack
-		@return popped valued, Nil if stack is empty
-		~#
-		method : public : Pop() ~ H {
-			if(@values->Size() > 0) {
-				value : H := @values->Get(@values->Size() - 1);
-				@values->RemoveBack();
-				
-				return value;
+		method : public : Push(value : H) ~ Nil {
+			if(@head = Nil) {
+				@head := ListNode->New(value)<H>;
+			}
+			else {
+				next := ListNode->New(value)<H>;
+				next->SetNext(@head);
+				@head := next;
 			};
-			
-			return Nil;
+
+			@size += 1;
 		}
 
 		#~
@@ -1528,55 +1521,73 @@ hash->Has(408)->PrintLine();
 		@return popped valued, Nil if stack is empty
 		~#
 		method : public : Pop(n : Int) ~ H {
-			value : H := Nil;
+			value : H;
 
 			if(n > 0) {
-				do {
-					value := Pop();
-					n -= 1;
-				}
-				while(value <> Nil & n > -1);
-			}
-			
+				while(@head <> Nil & n < @size) {
+					@head := @head->GetNext();
+					value := @head->Get();
+					@size -= 1;
+				};
+			};
+
 			return value;
 		}
-		
+
+		#~
+		Pops a value from the stack
+		@return popped valued, Nil if stack is empty
+		~#
+		method : public : Pop() ~ H {
+			value : H;
+
+			if(@head <> Nil) {
+				@head := @head->GetNext();
+				value := @head->Get();
+				@size -= 1;
+			};
+
+			return value;
+		}
+
 		#~
 		Check the top of the stack
 		@return value on the top of stack, Nil if stack is empty
 		~#
-		method : public: Top() ~ H {
-			if(@values->Size() > 0) {
-				return @values->Get(@values->Size() - 1);
+		method : public : Top() ~ H {
+			value : H;
+
+			if(@head <> Nil) {
+				value := @head->Get();
 			};
-			
-			return Nil;
+
+			return value;
+		}
+
+		#~
+		Checks to see if the stack is empty
+		@return true if empty, false otherwise
+		~#
+		method : public : IsEmpty() ~ Bool {
+			return @head = Nil;
 		}
 
 		#~
 		Clears the vector
 		~#
 		method : public : Empty() ~ Nil {
-			@values->Empty();
-		}
-		
-		#~
-		Checks to see if the stack is empty
-		@return true if empty, false otherwise
-		~#
-		method : public: IsEmpty() ~ Bool {
-			return @values->Size() = 0;
+			@head := Nil;
 		}
 
 		#~
 		Size of stack
 		@return size of stack
 		~#
-		method : public: Size() ~ Int {
-			return @values->Size();
+		method : public : Size() ~ Int {
+			return @size;
 		}
 	}
-
+	
 	#~
 	Queue of generics
 
