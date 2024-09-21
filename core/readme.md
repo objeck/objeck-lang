@@ -1,6 +1,6 @@
 # Architecture  
 
-![alt text](https://github.com/objeck/objeck-lang/blob/master/docs/images/design.png "Title")
+![alt text](https://github.com/objeck/objeck-lang/blob/master/docs/images/design4.png "Title")
 
 ### Notable Subsystems
 * [Compiler](https://github.com/objeck/objeck-lang/blob/master/core/compiler)
