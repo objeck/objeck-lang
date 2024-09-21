@@ -1,0 +1,64 @@
+use Collection;
+use System.Time;
+
+class Mc {
+ 
+    function: Main(args: String[]) ~ Nil {
+        @I := 100;
+        @J := 100;
+        @K := 10;
+ #       NormlRun(@I, @J, @K);
+        CrashRun(@I, @J, @K);
+    }
+    
+    function: NormlRun(@I: Int, @J: Int, @K: Int) ~ Nil {
+        "NormlRun(): Started."->PrintLine();
+        timer := Timer->New(true);
+        
+        for (k := 0; k < @K; k++) {
+            tm := Timer->New(true);
+            #m := Hash->New()<IntRef, String>; # Also crash when using Hash!
+            m := Map->New()<IntRef, String>;
+            for (i := 0; i < @I; i++) {
+                for (j := 0; j < @J; j++) {
+                    #"test{$i}{$j}"->PrintLine();
+                    m->Insert(i * k, "test{$i}{$j}");
+                }
+                #"i {$i}, k {$k}"->PrintLine();
+            }
+            t := tm->GetElapsedTime();
+            "k#{$k}: {$t}s"->PrintLine();
+        }
+        
+        t := timer->GetElapsedTime();
+        timer->End();
+        "NormlRun(): ok({$t}s)."->PrintLine();
+    }
+    
+    function: native: CrashRun(@I: Int, @J: Int, @K: Int) ~ Nil {
+        "CrashRun(): Started."->PrintLine();
+        timer := Timer->New(true);
+        
+        for (k := 0; k < @K; k++) {
+            tm := Timer->New(true);
+            #m := Hash->New()<IntRef, String>; # Crash when using Hash!
+            m := Map->New()<IntRef, String>;   # Crash when using Map too!
+            for (i := 0; i < @I; i++) {
+                for (j := 0; j < @J; j++) {
+                    #"test{$i}{$j}"->PrintLine();
+                    a := "test{$i}{$j}";
+                    m->Insert(i * k, a);
+                }
+                #"i {$i}, k {$k}"->PrintLine();
+            }
+            t := tm->GetElapsedTime();
+            b := "k#{$k}: {$t}s";
+            b->PrintLine();
+        }
+        
+        t := timer->GetElapsedTime();
+        timer->End();
+        "CrashRun()(): ok({$t}s)"->PrintLine();
+    }
+    
+}
