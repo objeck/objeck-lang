@@ -911,14 +911,13 @@ void* MemoryManager::CheckStack(void* arg)
 {
   CollectionInfo* info = (CollectionInfo*)arg;
 #ifdef _DEBUG_GC
-  std::wcout << L"----- Marking Stack: std::stack: pos=" << info->stack_pos 
+  std::wcout << L"----- Marking Stack: stack: pos=" << info->stack_pos 
 #ifdef _WIN32  
         << L"; thread=" << GetCurrentThread() << L" -----" << std::endl;
 #else
         << L"; thread=" << pthread_self() << L" -----" << std::endl;
 #endif    
 #endif
-
 
   while(info->stack_pos > -1) {
     size_t* check_mem = (size_t*)info->op_stack[info->stack_pos--];
@@ -1092,7 +1091,7 @@ void* MemoryManager::CheckJitRoots(void* arg)
             << L"(" << (size_t)(*mem) << L"), id=";
           if(*mem) {
             StackClass* tmp = (StackClass*)((size_t*)(*mem))[SIZE_OR_CLS];
-            std::wcout << L"'" << tmp->GetName() << L"'" << std::endl;
+           std::wcout << L"'" << tmp->GetName() << L"'" << std::endl;
           }
           else {
             std::wcout << L"Unknown" << std::endl;
