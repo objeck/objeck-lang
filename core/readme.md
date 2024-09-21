@@ -1,6 +1,6 @@
 # Architecture  
 
-[Design](https://lucid.app/lucidchart/298021c0-b0bb-488b-b0cf-c56d7050ae51/edit?invitationId=inv_b0b92f3f-ead8-4ca6-aae3-562e89824834)
+![alt text](https://github.com/objeck/objeck-lang/blob/master/docs/images/design4.png "Title")
 
 ### Notable Subsystems
 * [Compiler](https://github.com/objeck/objeck-lang/blob/master/core/compiler)

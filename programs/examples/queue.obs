@@ -2,97 +2,73 @@ class Test {
 	function : Main(args : String[]) ~ Nil {
 		queue := Queue->New();
 
-		queue->Push(3); queue->Push(6); queue->Push(9); queue->Push(12);
-		queue->Pop(7)->PrintLine();
-
-#~		
+		queue->Push(3); queue->Push(6); queue->Push(9);
 		queue->Pop();
 		queue->Push(12);
 		queue->Push(15);
 
 		while(<>queue->Empty()) {
 			queue->Top()->GetValue()->PrintLine();
-			queue->Pop()->PrintLine();
+			queue->Pop();
 		};
 		queue->Pop()->PrintLine();
-~#	
 	}
 }
 
 class Queue {
-	@head : Node;
-	@size : Int;
+	@head, @tail : Node;
 
 	New() {
 	}
 
 	method : public : Push(value : Int) ~ Nil {
 		if(@head = Nil) {
-			@head := Node->New(value);
+			@head := @tail := Node->New(value);
 		}
 		else {
-			next := Node->New(value);
-			next->SetNext(@head);
-			@head := next;
+			tail := Node->New(@tail, value);
+			@tail->SetNext(tail);
+			@tail := tail;
 		};
-
-		@size += 1;
 	}
 
-	method : public : Pop(n : Int) ~ Int {
-		value := 0;
-
-		if(n > 0) {
-			while(@head <> Nil & n < @size) {
-				@head := @head->GetNext();
-				value := @head->GetValue();
-				@size -= 1;
+	method : public : Pop() ~ Bool {
+		if(@head <> Nil) {
+			if(@head = @tail) {
+				@head := @tail := Nil;
+			}
+			else {
+				prev := @tail->GetPrev();
+				prev->SetNext(Nil);
+				@tail := prev;
 			};
+
+			return true;
 		};
 
-		return value;
+		return false;
 	}
 
-	method : public : Pop() ~ Int {
-		value := 0;
-
-		if(@head <> Nil) {
-			@head := @head->GetNext();
-			value := @head->GetValue();
-			@size -= 1;
-		};
-
-		return value;
+	method : public : Top() ~ Node {
+		return @tail;
 	}
 
-	method : public : Top() ~ Int {
-		value := 0;
-
-		if(@head <> Nil) {
-			value := @head->GetValue();
-		};
-
-		return value;
-	}
-
-	method : public : IsEmpty() ~ Bool {
+	method : public : Empty() ~ Bool {
 		return @head = Nil;
-	}
-
-	method : public : Empty() ~ Nil {
-		@head := Nil;
-	}
-
-	method : public : Size() ~ Int {
-		return @size;
 	}
 }
 
 class Node {
 	@value : Int;
 	@next : Node;
+	@prev : Node;
 
 	New(value : Int) {
+		@value := value;
+	}
+
+	New(prev : Node, value : Int) {
+		@prev := prev;
 		@value := value;
 	}
 
@@ -100,12 +76,12 @@ class Node {
 		return @value;
 	}
 
-	method : public : GetNext() ~ Node {
-		return @next;
-	}
-
 	method : public : SetNext(next : Node) ~ Nil {
 		@next := next;
+	}
+
+	method : public : GetPrev() ~ Node {
+		return @prev;
 	}
 
 	method : public : ToString() ~ String {
