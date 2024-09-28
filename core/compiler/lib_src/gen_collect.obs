@@ -1106,11 +1106,11 @@ hash->Has(408)->PrintLine();
 		@class Hash
 		~#
 		consts Capacity {
-			SMALL := 37,
-			MEDIUM := 331,
-			LARGE := 2609,
-			EX_LARGE := 20483,
-			HUGE := 163841
+			SMALL := 643,
+			MEDIUM := 13417,
+			LARGE := 1326097,
+			EX_LARGE := 13205029,
+			HUGE := 131638957
 		}
 		
 		#~
