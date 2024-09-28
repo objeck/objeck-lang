@@ -1,6 +1,6 @@
 {
 	"version": {
-		"string": "2024.9.0",
+		"string": "2024.10.0",
 		"year": 2024
 	},
 	"title": "Introducing the latest Objeck release, featuring updates to improve coding and runtime performance. Key additions include support for JSON-RPC, faster code generation, and enhancements to the 'System.String' and Collection.Stack' classes.",
