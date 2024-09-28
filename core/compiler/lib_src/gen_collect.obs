@@ -477,12 +477,9 @@ heap->Insert(IntRef->New(8));
 heap->Insert(IntRef->New(6));
 heap->Insert(IntRef->New(2));
 
-do {
-  heap->Pop()->PrintLine();
-}
-while(heap->Size() > 0);
-
-"---"->PrintLine();
+while(<>heap->IsEmpty()) {
+   heap->Pop()->PrintLine();
+};
 ```
 	~#
 	class Heap<H : Compare> {
