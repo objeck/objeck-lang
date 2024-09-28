@@ -519,7 +519,7 @@ heap->Size()->PrintLine();
 			};
 		}
 
-	   #~
+		#~
 		Constructor
 		@param order sort order
 		~#
@@ -575,6 +575,9 @@ heap->Size()->PrintLine();
 		~#
 		method : public : Pop() ~ H {
 			result := Top();
+			if(<>result) {
+				return Nil;
+			};
 
 			Swap(1, @length);
 			@heap[@length] := Nil;
@@ -665,40 +668,40 @@ heap->Size()->PrintLine();
 		}
 
 		method : ShiftDown() ~ Nil {
-				index := 1;
-				if(@min) {
-					while(HasLeftChild((index))) {
-						smaller := GetLeftIndex(index);
-						if(HasRightChild(index) & @heap[GetLeftIndex(index)]->Compare(@heap[GetRightIndex(index)]) > 0) {
-							smaller := GetRightIndex(index);
-						}
+			index := 1;
+			if(@min) {
+				while(HasLeftChild((index))) {
+					smaller := GetLeftIndex(index);
+					if(HasRightChild(index) & @heap[GetLeftIndex(index)]->Compare(@heap[GetRightIndex(index)]) > 0) {
+						smaller := GetRightIndex(index);
+					}
 
-						if(@heap[index]->Compare(@heap[smaller]) > 0) {
-							Swap(index, smaller);
-						}
-						else {
-							break;
-						};
-						index := smaller;
-					}               
-				}
-				else {
-					while(HasLeftChild((index))) {
-						larger := GetLeftIndex(index);
-						if(HasRightChild(index) & @heap[GetLeftIndex(index)]->Compare(@heap[GetRightIndex(index)]) < 0) {
-							larger := GetRightIndex(index);
-						}
+					if(@heap[index]->Compare(@heap[smaller]) > 0) {
+						Swap(index, smaller);
+					}
+					else {
+						break;
+					};
+					index := smaller;
+				}               
+			}
+			else {
+				while(HasLeftChild((index))) {
+					larger := GetLeftIndex(index);
+					if(HasRightChild(index) & @heap[GetLeftIndex(index)]->Compare(@heap[GetRightIndex(index)]) < 0) {
+						larger := GetRightIndex(index);
+					}
 
-						if(@heap[index]->Compare(@heap[larger]) < 0) {
-							Swap(index, larger);
-						}
-						else { 
-							break;
-						};
-						index := larger;
-	            }               
-	        }
-	    }
+					if(@heap[index]->Compare(@heap[larger]) < 0) {
+						Swap(index, larger);
+					}
+					else { 
+						break;
+					};
+					index := larger;
+				}               
+			}
+		}
 
 		method : HasParent(i : Int) ~ Bool {
 			return i > 1;
