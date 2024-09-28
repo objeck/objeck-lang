@@ -469,6 +469,7 @@ bundle Collection {
 
 ```
 heap := Collection.Heap->New(Collection.Heap->Order->MIN)<IntRef>;
+        
 heap->Insert(IntRef->New(3));
 heap->Insert(IntRef->New(1));
 heap->Insert(IntRef->New(9));
@@ -476,18 +477,12 @@ heap->Insert(IntRef->New(8));
 heap->Insert(IntRef->New(6));
 heap->Insert(IntRef->New(2));
 
-heap->Pop()->As(IntRef)->PrintLine();
-heap->Pop()->As(IntRef)->PrintLine();
-"---"->PrintLine();
+do {
+  heap->Pop()->PrintLine();
+}
+while(heap->Size() > 0);
 
-values := heap->ToArray();
-each(ref := values) {
-  value := ref->As(IntRef);
-  value->Get()->PrintLine();
-};
 "---"->PrintLine();
-
-heap->Size()->PrintLine();
 ```
 	~#
 	class Heap<H : Compare> {
@@ -519,7 +514,7 @@ heap->Size()->PrintLine();
 			};
 		}
 
-		#~
+	   #~
 		Constructor
 		@param order sort order
 		~#
@@ -575,7 +570,7 @@ heap->Size()->PrintLine();
 		~#
 		method : public : Pop() ~ H {
 			result := Top();
-			if(<>result) {
+			if(result = Nil) {
 				return Nil;
 			};
 
