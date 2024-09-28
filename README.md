@@ -17,11 +17,11 @@
 * v2024.10.0
   * Bug fixes
     
-* v2024.9.0
+* v2024.9.0 **(current)**
   * JSON-RPC support
   * Bug fixes
 
-* v2024.8.0 **(current)**
+* v2024.8.0
   * Compiler updates (done)
     * Dead code checker
     * Improved type inference for generic types
