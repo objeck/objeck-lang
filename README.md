@@ -14,6 +14,9 @@
 
 ## Releases
 
+* v2024.10.0
+  * Bug fixes
+    
 * v2024.9.0
   * JSON-RPC support
   * Bug fixes
@@ -26,9 +29,6 @@
 * v2024.7.1
   * Perplexity API support
   * Bug fixes
-  
-* v2024.7.0
-  * Local ML/AI support for Llama and Mistral
 
 ## Examples
 
