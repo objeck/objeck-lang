@@ -9,7 +9,7 @@ class Mc {
         @K := 10;
 
         NormlRun(@I, @J, @K);
-#        CrashRun(@I, @J, @K);
+        CrashRun(@I, @J, @K);
     }
     
     function: NormlRun(@I: Int, @J: Int, @K: Int) ~ Nil {
@@ -18,8 +18,8 @@ class Mc {
         
         for (k := 0; k < @K; k++) {
             tm := Timer->New(true);
-            m := Hash->New()<IntRef, String>; # Also crash when using Hash!
-            # m := Map->New()<IntRef, String>;
+            # m := Hash->New()<IntRef, String>; # Also crash when using Hash!
+            m := Map->New()<IntRef, String>;
             for (i := 0; i < @I; i++) {
                 for (j := 0; j < @J; j++) {
                     #"test{$i}{$j}"->PrintLine();
@@ -42,8 +42,8 @@ class Mc {
         
         for (k := 0; k < @K; k++) {
             tm := Timer->New(true);
-            #m := Hash->New()<IntRef, String>; # Crash when using Hash!
-            m := Map->New()<IntRef, String>;   # Crash when using Map too!
+            m := Hash->New()<IntRef, String>; # Crash when using Hash!
+            # m := Map->New()<IntRef, String>;   # Crash when using Map too!
             for (i := 0; i < @I; i++) {
                 for (j := 0; j < @J; j++) {
                     #"test{$i}{$j}"->PrintLine();
