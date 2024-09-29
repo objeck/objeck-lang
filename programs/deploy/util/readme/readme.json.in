@@ -3,7 +3,7 @@
 		"string": "@VERSION@",
 		"year": @YEAR@
 	},
-	"title": "Introducing the latest Objeck release, featuring updates to improve coding and runtime performance. Key additions include support for JSON-RPC, faster code generation, and enhancements to the 'System.String' and Collection.Stack' classes.",
+	"title": "Bug fixes and improved performance",
 	"files": {
 		"html_template": "readme.in.html",
 		"html_out": "readme.html",
@@ -11,6 +11,12 @@
 		"openai_token": "openai_api_key.dat"
 	},
 	"features": [
+		{
+			"version": "v2024.10.0",
+			"items": [
+				"Fixed bugs #501 and #503"
+			]
+		},
 		{
 			"version": "v2024.9.0",
 			"items": [
@@ -28,13 +34,6 @@
 				"Bug fixes",
 				"\tFixed REPL start up issues",
 				"\tCode refactoring for performance"
-			]
-		},
-		{
-			"version": "v2024.8.0",
-			"items": [
-				"More build and deployment automation",
-				"Bug fixes: #500",
 			]
 		}
 	]
