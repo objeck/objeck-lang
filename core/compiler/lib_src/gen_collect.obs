@@ -1097,12 +1097,12 @@ hash->Has(408)->PrintLine();
 		@auto_resize : Bool;
 
 		#~
-		Hash table capacity: SMALL ~400, MEDIUM ~8k, LARGE ~800k, EX_LARGE ~8M, HUGE ~80M
+		Hash table capacity. Load factors: SMALL=500, MEDIUM=9.5k, LARGE=900k, EX_LARGE=9M, HUGE=90M
 		@class Hash
 		~#
 		consts Capacity {
-			SMALL := 643,
-			MEDIUM := 13417,
+			SMALL := 653,
+			MEDIUM := 9767,
 			LARGE := 1326097,
 			EX_LARGE := 13205029,
 			HUGE := 131638957
