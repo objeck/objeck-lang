@@ -14,10 +14,10 @@
 
 ## Releases
 
-* v2024.10.0
+* v2024.10.0 **(current)**
   * Bug fix (#503)
     
-* v2024.9.0 **(current)**
+* v2024.9.0
   * JSON-RPC support
   * Bug fixes
 
