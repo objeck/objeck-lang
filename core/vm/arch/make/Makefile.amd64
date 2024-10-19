@@ -1,4 +1,4 @@
-ARGS=-O3 -Wall -D_X64 -Wno-unused-function -std=c++17 -mavx2
+ARGS=-O3 -Wall -D_X64 -Wno-unused-function -std=c++17 -mavx2 -fno-sanitize-recover
 
 AR=ar
 SRC=memory.o
