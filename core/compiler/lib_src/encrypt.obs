@@ -8,7 +8,7 @@ use System.API;
 #~
 Provides encryption and encoding functionality (-lib encrypt)
 ~#
-bundle Encryption {
+bundle Cipher {
 	class Proxy {
 		@lib_proxy : static : DllProxy;
 		

@@ -3,6 +3,8 @@
 # run: obr encrypt_7.obe
 ~#
 
+use Cipher;
+
 class Encryption {
 	function : Main(args : String[]) ~ Nil {
 		input := "Nas is like..."->ToByteArray();

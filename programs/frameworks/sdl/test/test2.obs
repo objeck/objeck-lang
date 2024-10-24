@@ -33,7 +33,7 @@ class Test {
 				};
 
 				if(frame_count % GameConsts->REC_REFRESH = 0) {
-					@step += 15;
+					@step += 25;
 					if(@step >= GameConsts->STEPS) {
 						@step := GameConsts->STEPS;
 					};
@@ -66,13 +66,13 @@ class Test {
 
 		@framework->Clear();
 
-		factor := 0.5 + 1.25->Sqrt();
+		factor := 0.42 + 1.66->Sqrt();
 		x := winWidth / 2.0;
 		y := winHeight / 2.0;
-		maxRad := Float->Pow(iter, factor) / iter;
+		maxRad := Float->Pow(iter->ToFloat(), factor) / iter;
 
 		for(i:=0;i<=@step;i+=1;) {
-			r := Float->Pow(i,factor)/iter;
+			r := Float->Pow(i->ToFloat(),factor)/iter;
 			color := r/maxRad < diskRatio ? @colors[0] : @colors[1];
 			theta := 2*Float->Pi()*factor*i;
 			renderer->CircleColor(x + r*theta->Sin(), y + r*theta->Cos(), 10 * i/(1.0*iter), color);
