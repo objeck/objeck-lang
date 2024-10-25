@@ -122,7 +122,7 @@ Completion->Generate("llava", prompt, file)->PrintLine();
 					return Nil;
 				};
 
-				images_json->Add(Encryption.Encrypt->Base64(file_data));
+				images_json->Add(Cipher.Encrypt->Base64(file_data));
 			};
 
 			query_json := JsonElement->New(JsonElement->JsonType->OBJECT);
@@ -285,7 +285,7 @@ chat->Send("Goodbye?")->PrintLine();
 					return Nil;
 				};
 
-				images_json->Add(Encryption.Encrypt->Base64(file_data));
+				images_json->Add(Cipher.Encrypt->Base64(file_data));
 			};
 
 			query_json := JsonElement->New(JsonElement->JsonType->OBJECT);
