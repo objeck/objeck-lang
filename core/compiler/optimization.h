@@ -29,8 +29,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
 
-#ifndef __OPTIMIZE_H__
-#define __OPTIMIZE_H__
+#pragma once
 
 #include "emit.h"
 
@@ -139,5 +138,3 @@ class ItermediateOptimizer {
     return program;
   }
 };
-
-#endif

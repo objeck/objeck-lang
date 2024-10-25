@@ -30,8 +30,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
 
-#ifndef __INTERMEDIATE_H__
-#define __INTERMEDIATE_H__
+#pragma once
 
 #include "tree.h"
 #include "emit.h"
@@ -329,4 +328,3 @@ public:
 
   void Emit();
 };
-#endif

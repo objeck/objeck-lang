@@ -29,8 +29,7 @@
 * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 
-#ifndef __EMIT_H__
-#define __EMIT_H__
+#pragma once
 
 #include "types.h"
 #include "linker.h"
@@ -1130,5 +1129,3 @@ namespace backend {
 #endif
   };
 }
-
-#endif

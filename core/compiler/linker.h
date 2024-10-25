@@ -29,8 +29,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
 
-#ifndef __LINKER_H__
-#define __LINKER_H__
+#pragma once
 
 #include <stdlib.h>
 #include <string.h>
@@ -1109,5 +1108,3 @@ class Linker {
 
   void Load();
 };
-
-#endif

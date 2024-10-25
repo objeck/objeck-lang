@@ -29,8 +29,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
 
-#ifndef __TYPES_H__
-#define __TYPES_H__
+#pragma once
 
 #include <string>
 #include <vector>
@@ -596,5 +595,3 @@ namespace backend {
     }
   };
 }
-
-#endif

@@ -29,8 +29,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
 
-#ifndef __LOGGER_H__
-#define __LOGGER_H__
+#pragma once
 
 #include <string>
 #include <fstream>
@@ -52,5 +51,3 @@ static void CloseLogger() {
     logger = nullptr;
   }
 }
-
-#endif

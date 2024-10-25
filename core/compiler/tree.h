@@ -29,8 +29,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
 
-#ifndef __TREE_H__
-#define __TREE_H__
+#pragma once
 
 #include <fstream>
 #include <algorithm>
@@ -4039,5 +4038,3 @@ namespace frontend {
     }
   };
 }
-
-#endif

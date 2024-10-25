@@ -27,8 +27,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
 
-#ifndef __SYS_H__
-#define __SYS_H__
+#pragma once
 
 // define windows type
 #if defined(_WIN32)
@@ -824,5 +823,3 @@ static wchar_t* LoadFileBuffer(const std::wstring &filename, size_t& buffer_size
   free(buffer);
   return wbuffer;
 }
-
-#endif

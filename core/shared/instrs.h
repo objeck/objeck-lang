@@ -27,8 +27,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
 
-#ifndef __INSTRS_H__
-#define __INSTRS_H__
+#pragma once
 
 namespace instructions {
   // vm instructions
@@ -201,5 +200,3 @@ namespace instructions {
     LOCL
   };
 }
-
-#endif

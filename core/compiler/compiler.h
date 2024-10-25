@@ -29,8 +29,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
 
-#ifndef __COMPILER_H__
-#define __COMPILER_H__
+#pragma once
 
 #define DLL_EXPORT
 
@@ -52,6 +51,3 @@ extern "C"
 {
   int Compile(const std::wstring& src, const std::wstring& opt, const std::wstring& dest, const std::wstring& run_string, const std::wstring& sys_lib_path, const std::wstring& target, bool alt_syntax, bool is_debug);
 }
-
-
-#endif
