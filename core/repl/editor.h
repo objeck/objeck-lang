@@ -29,15 +29,14 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
 
-#ifndef __EDITOR_H__
-#define __EDITOR_H__
+#pragma once
 
 #include "repl.h"
 #include "../module/lang.h"
 
 #define DEFAULT_FILE_NAME L"repl://buffer.obs"
 
-#define USES_STRING L"csv.obl,encrypt.obl,gen_collect.obl,json.obl,misc.obl,net.obl,query.obl,regex.obl,xml.obl"
+#define USES_STRING L"csv.obl,cipher.obl,gen_collect.obl,json.obl,misc.obl,net.obl,query.obl,regex.obl,xml.obl"
 
 class CodeFormatter;
 
@@ -197,5 +196,3 @@ public:
     return false;
   }
 };
-
-#endif

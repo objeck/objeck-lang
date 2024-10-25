@@ -29,8 +29,7 @@
 * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 
-#ifndef __VM_H__
-#define __VM_H__
+#pragma once
 
 #ifdef _WIN32
 #include <io.h>
@@ -53,5 +52,3 @@ extern "C"
 static wchar_t** ProcessCommandLine(int &argc, const char* argv[]);
 static void CleanUpCommandLine(const int argc, wchar_t** wide_args);
 void SetEnv();
-
-#endif

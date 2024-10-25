@@ -29,8 +29,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
 
-#ifndef __ODBC_H__
-#define __ODBC_H__
+#pragma once
 
 #ifdef _WIN32
 #include <windows.h>
@@ -71,5 +70,3 @@ extern "C" {
     }
   }
 }
-
-#endif

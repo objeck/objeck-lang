@@ -234,7 +234,7 @@ typedef struct private_key_st {
     ASN1_OCTET_STRING *enc_pkey; /* encrypted pub key */
     /* When decrypted, the following will not be NULL */
     EVP_PKEY *dec_pkey;
-    /* used to encrypt and decrypt */
+    /* used to cipher and decrypt */
     int key_length;
     char *key_data;
     int key_free;               /* true if we should auto free key_data */

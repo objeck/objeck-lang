@@ -29,8 +29,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
 
-#ifndef __JIT_COMMON__
-#define __JIT_COMMON__
+#pragma once
 
 #ifdef _WIN32
 #include "../win32/win32.h"
@@ -62,5 +61,3 @@ public:
   inline static FLOAT_VALUE PopFloat(size_t* op_stack, long* stack_pos);
   inline static void PushFloat(const FLOAT_VALUE v, size_t* op_stack, long* stack_pos);
 };
-
-#endif

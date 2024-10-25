@@ -29,8 +29,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
 
-#ifndef __PARSER_H__
-#define __PARSER_H__
+#pragma once
 
 #include "scanner.h"
 #include "tree.h"
@@ -109,5 +108,3 @@ class Parser {
   
   Command* Parse(const std::wstring &line);
 };
-
-#endif

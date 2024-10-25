@@ -2,12 +2,12 @@ class VigenereCipher {
 	function : Main(args : String[]) ~ Nil {
 		key := "VIGENERECIPHER";
 		ori := "Beware the Jabberwock, my son! The jaws that bite, the claws that catch!";
-		enc := encrypt(ori, key);
-		IO.Console->Print("encrypt: ")->PrintLine(enc);
+		enc := cipher(ori, key);
+		IO.Console->Print("cipher: ")->PrintLine(enc);
 		IO.Console->Print("decrypt: ")->PrintLine(decrypt(enc, key));
 	}
 
-	function : native : encrypt(text : String, key : String) ~ String {
+	function : native : cipher(text : String, key : String) ~ String {
 		res := "";
 		text := text->ToUpper();
 		j := 0;

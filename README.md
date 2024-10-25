@@ -196,7 +196,7 @@ class Embaddings {
 * Data access
   * [Relational SQL](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/odbc.obs)
   * [In-memory](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/query.obs)
-* [Encryption](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/encrypt.obs)
+* [Encryption](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/cipher.obs)
 * [Regular expressions](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/regex.obs)
 * [2D gaming](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/sdl_game.obs)
 

@@ -29,8 +29,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
 
-#ifndef __WINDOWS_H__
-#define __WINDOWS_H__
+#pragma once
 
 #define BUFSIZE 256
 
@@ -741,5 +740,3 @@ class System {
     return VerifyVersionInfoW(&osvi, VER_MAJORVERSION | VER_MINORVERSION | VER_BUILDNUMBER, dwlConditionMask) != FALSE;
   }
 };
-
-#endif

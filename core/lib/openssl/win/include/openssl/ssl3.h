@@ -281,7 +281,7 @@ extern "C" {
 
 # define TLS1_FLAGS_SKIP_CERT_VERIFY             0x0010
 
-/* Set if we encrypt then mac instead of usual mac then encrypt */
+/* Set if we cipher then mac instead of usual mac then cipher */
 # define TLS1_FLAGS_ENCRYPT_THEN_MAC_READ        0x0100
 # define TLS1_FLAGS_ENCRYPT_THEN_MAC             TLS1_FLAGS_ENCRYPT_THEN_MAC_READ
 

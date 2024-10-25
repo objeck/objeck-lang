@@ -29,8 +29,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __JIT_COMPILER__
-#define __JIT_COMPILER__
+#pragma once
 
 #include "../jit_common.h"
 
@@ -787,4 +786,3 @@ namespace Runtime {
                  StackFrame** call_stack, long* call_stack_pos, StackFrame* frame);
   };
 }
-#endif

@@ -1,5 +1,5 @@
 #~
-# compile: obc -src gemini_22.obs -lib net,json,misc,gemini,encrypt
+# compile: obc -src gemini_22.obs -lib net,json,misc,gemini,cipher
 # run: obr gemini_22.obe media\thirteen.png
 ~#
 

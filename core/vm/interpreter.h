@@ -29,8 +29,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
 
-#ifndef __STACK_INTPR_H__
-#define __STACK_INTPR_H__
+#pragma once
 
 #include "common.h"
 #include <random>
@@ -534,4 +533,3 @@ namespace Runtime {
     void Execute(size_t* op_stack, long* stack_pos, long i, StackMethod* method, size_t* instance, bool jit_called);
   };
 }
-#endif

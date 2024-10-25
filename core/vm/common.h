@@ -29,8 +29,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
 
-#ifndef __COMMON_H__
-#define __COMMON_H__
+#pragma once
 
 #include <algorithm>
 #include <iostream>
@@ -1964,5 +1963,3 @@ void APITools_MethodCallId(size_t* op_stack, long *stack_pos, size_t* instance,
  * SSL password callback
  ********************************/
 int pem_passwd_cb(char* buffer, int size, int rw_flag, void* passwd);
-
-#endif
