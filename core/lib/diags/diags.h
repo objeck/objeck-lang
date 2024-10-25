@@ -29,8 +29,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
 
-#ifndef __TYPE_H__
-#define __TYPE_H__
+#pragma once
 
 #ifdef _WIN32
 #include <windows.h>
@@ -78,5 +77,3 @@ size_t* GetExpressionsCalls(VMContext& context, frontend::ParsedProgram* program
 std::vector<frontend::Expression*> FetchRenamedExpressions(frontend::Class* klass, class ContextAnalyzer &analyzer, const int line_num, const int line_pos);
 std::vector<frontend::Expression*> FetchRenamedExpressions(frontend::Method* method, class ContextAnalyzer& analyzer, const int line_num, const int line_pos, bool &is_var);
 inline size_t HasUserUses(frontend::ParsedProgram* program);
-
-#endif

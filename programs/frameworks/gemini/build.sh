@@ -10,9 +10,9 @@ fi
 
 rm -f *.obe
 
-obc -src ../../../core/compiler/lib_src/gemini.obs -lib misc,json,net,encrypt -tar lib -opt s3 -dest ../../../core/release/deploy/lib/gemini.obl
+obc -src ../../../core/compiler/lib_src/gemini.obs -lib misc,json,net,cipher -tar lib -opt s3 -dest ../../../core/release/deploy/lib/gemini.obl
 
 if [ ! -z "$1" ]; then
-	obc -src $1 -lib net,json,encrypt,misc,gemini -dest $1
+	obc -src $1 -lib net,json,cipher,misc,gemini -dest $1
 	obr $1 $2 $3 $4 $5
 fi

@@ -29,8 +29,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
 
-#ifndef __LOADER_H__
-#define __LOADER_H__
+#pragma once
 
 #include "common.h"
 #include <string.h>
@@ -325,5 +324,3 @@ public:
   
   void Load();
 };
-
-#endif

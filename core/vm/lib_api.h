@@ -29,8 +29,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
 
-#ifndef __LIB_API_H__
-#define __LIB_API_H__
+#pragma once
 
 #include "common.h"
 
@@ -660,5 +659,3 @@ void APITools_CallMethod(VMContext &context, size_t * instance, const int cls_id
   assert(*context.stack_pos == 0);
 #endif
 }
-
-#endif

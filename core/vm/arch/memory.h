@@ -29,8 +29,8 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
 
-#ifndef __MEM_MGR_H__
-#define __MEM_MGR_H__
+#pragma once
+
 
 #include "../common.h"
 
@@ -257,5 +257,3 @@ class MemoryManager {
   }
 #endif
 };
-
-#endif

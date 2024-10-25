@@ -10,7 +10,7 @@ fi
 
 rm -f *.obe
 
-# obc -src ../../../core/compiler/lib_src/openai.obs -lib misc,json,net,encrypt -tar lib -opt s3 -dest ../../../core/release/deploy/lib/opeani.obl
+# obc -src ../../../core/compiler/lib_src/openai.obs -lib misc,json,net,cipher -tar lib -opt s3 -dest ../../../core/release/deploy/lib/opeani.obl
 
 if [ ! -z "$1" ]; then
 	obc -src $1 -lib net,json,misc,openai -dest $1
