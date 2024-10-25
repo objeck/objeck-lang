@@ -29,8 +29,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
 
-#ifndef __SCANNER_H__
-#define __SCANNER_H__
+#pragma once
 
 #include "tree.h"
 #ifdef _WIN32
@@ -598,5 +597,3 @@ class Scanner {
     return filename;
   }
 };
-
-#endif

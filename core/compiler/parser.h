@@ -29,8 +29,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
 
-#ifndef __PARSER_H__
-#define __PARSER_H__
+#pragma once
 
 #include "scanner.h"
 #include <random>
@@ -247,5 +246,3 @@ class Parser {
   std::vector<std::wstring> GetErrors();
 #endif
 };
-
-#endif

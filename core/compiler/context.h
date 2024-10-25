@@ -29,8 +29,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
 
-#ifndef __CONTEXT_H__
-#define __CONTEXT_H__
+#pragma once
 
 #include "linker.h"
 #include "types.h"
@@ -658,5 +657,3 @@ class ContextAnalyzer {
   // end: diagnostics operations
   //
 };
-
-#endif

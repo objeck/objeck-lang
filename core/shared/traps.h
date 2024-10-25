@@ -29,8 +29,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
 
-#ifndef __TRAPS_H__
-#define __TRAPS_H__
+#pragma once
 
 namespace instructions {
   // system directive codes
@@ -234,5 +233,3 @@ namespace instructions {
     EXIT
   };
 }
-
-#endif
