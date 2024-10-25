@@ -49,7 +49,7 @@ extern "C" {
 # define SSL_MAX_KEY_ARG_LENGTH                  8
 # define SSL_MAX_MASTER_KEY_LENGTH               48
 
-/* The maximum number of encrypt/decrypt pipelines we can support */
+/* The maximum number of cipher/decrypt pipelines we can support */
 # define SSL_MAX_PIPELINES  32
 
 /* text strings for the ciphers */
@@ -343,7 +343,7 @@ typedef int (*SSL_verify_cb)(int preverify_ok, X509_STORE_CTX *x509_ctx);
 # define SSL_OP_NO_COMPRESSION                           0x00020000U
 /* Permit unsafe legacy renegotiation */
 # define SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION        0x00040000U
-/* Disable encrypt-then-mac */
+/* Disable cipher-then-mac */
 # define SSL_OP_NO_ENCRYPT_THEN_MAC                      0x00080000U
 
 /*

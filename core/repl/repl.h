@@ -29,8 +29,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
 
-#ifndef __REPL_H__
-#define __REPL_H__
+#pragma once
 
 #include "editor.h"
 #include "../module/lang.h"
@@ -61,5 +60,3 @@ static bool HasArgument(std::map<const std::wstring, std::wstring> arguments, co
 
 static void Usage();
 void SetEnv();
-
-#endif

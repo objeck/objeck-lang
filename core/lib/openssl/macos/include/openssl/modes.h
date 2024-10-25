@@ -180,10 +180,10 @@ typedef void (*ocb128_f) (const unsigned char *in, unsigned char *out,
                           unsigned char checksum[16]);
 
 OCB128_CONTEXT *CRYPTO_ocb128_new(void *keyenc, void *keydec,
-                                  block128_f encrypt, block128_f decrypt,
+                                  block128_f cipher, block128_f decrypt,
                                   ocb128_f stream);
 int CRYPTO_ocb128_init(OCB128_CONTEXT *ctx, void *keyenc, void *keydec,
-                       block128_f encrypt, block128_f decrypt,
+                       block128_f cipher, block128_f decrypt,
                        ocb128_f stream);
 int CRYPTO_ocb128_copy_ctx(OCB128_CONTEXT *dest, OCB128_CONTEXT *src,
                            void *keyenc, void *keydec);

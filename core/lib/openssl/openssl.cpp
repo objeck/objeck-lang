@@ -328,7 +328,7 @@ extern "C" {
     // TODO: add salt
     unsigned char* salt = nullptr;
     
-    // encrypt
+    // cipher
     unsigned char iv[32];
     unsigned char key_out[32];
     if(EVP_BytesToKey(EVP_aes_256_cbc(), EVP_sha512(), salt, key, key_size, 8, key_out, iv) != 32) {

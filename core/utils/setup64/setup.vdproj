@@ -5117,8 +5117,8 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_58B33B87596C49C6B8D60A7906BB95F8"
             {
-            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win64\\doc\\api\\encryption-encrypt.html"
-            "TargetName" = "8:encryption-encrypt.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win64\\doc\\api\\encryption-cipher.html"
+            "TargetName" = "8:encryption-cipher.html"
             "Tag" = "8:"
             "Folder" = "8:_D5B7237B680C4BD59E9ED78EDB98FF60"
             "Condition" = "8:"
@@ -6277,8 +6277,8 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_7B0CB04AA9474E7B931A23727C00C8C2"
             {
-            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win64\\lib\\encrypt.obl"
-            "TargetName" = "8:encrypt.obl"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win64\\lib\\cipher.obl"
+            "TargetName" = "8:cipher.obl"
             "Tag" = "8:"
             "Folder" = "8:_4A94D2A86AD84AC88F38245E4786F38B"
             "Condition" = "8:"

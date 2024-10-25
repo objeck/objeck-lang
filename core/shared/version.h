@@ -29,8 +29,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
 
-#ifndef __VER_H__
-#define __VER_H__
+#pragma once
 
 #include "instrs.h"
 #include "traps.h"
@@ -40,5 +39,3 @@
 
 #define VER_NUM 2024101
 #define VERSION_STRING L"2024.10.1"
-
-#endif
