@@ -357,7 +357,7 @@ each(candidate in candidates) {
 					else if(part_json->Has("inlineData")) {
 						inline_mime_type := part_json->FindElements("inlineData/mimeType")->GetString();
 						inline_data := part_json->FindElements("inlineData/data")->GetString();
-						part := BinaryPart->New(Encryption.Decrypt->Base64(inline_data), inline_mime_type);
+						part := BinaryPart->New(Cipher.Decrypt->Base64(inline_data), inline_mime_type);
 					}
 					# inline part
 					else if(part_json->Has("functionCall")) {
@@ -754,7 +754,7 @@ each(candidate in candidates) {
 		@return encoding binary string
 		~#
 		method : public : GetBase64Data() ~ String {
-			return Encryption.Encrypt->Base64(@data);
+			return Cipher.Encrypt->Base64(@data);
 		}
 
 		#~
@@ -1081,7 +1081,7 @@ session->ToString()->PrintLine();
 					if(part_json->Has("inlineData")) {
 						inline_mime_type := part_json->FindElements("inlineData/mimeType")->GetString();
 						inline_data := part_json->FindElements("inlineData/data")->GetString();
-						part := BinaryPart->New(Encryption.Decrypt->Base64(inline_data), inline_mime_type);
+						part := BinaryPart->New(Cipher.Decrypt->Base64(inline_data), inline_mime_type);
 					};
 
 					parts->AddBack(part);
