@@ -1249,6 +1249,36 @@ bundle Game.Framework {
 		}
 
 		#~
+		Determines if position intersect point
+		@param x 'x' start position
+		@param y 'y' start position
+		@return true of intersection, false otherwise
+		~#
+		method : public : IntersectsPoint(x : Int, y : Int) ~ Bool {
+			if(x >= GetLeft() & x <= GetRight() & y >= GetTop() & y <= GetBottom()) {
+				return true;
+			};
+
+			return false;
+		}
+
+		#~
+		Determines if position intersect point
+		@param point position
+		@return true of intersection, false otherwise
+		~#
+		method : public : IntersectsPoint(p : Point) ~ Bool {
+			x := p->GetX();
+			y := p->GetY();
+
+			if(x >= GetLeft() & x <= GetRight() & y >= GetTop() & y <= GetBottom()) {
+				return true;
+			};
+
+			return false;
+		}
+
+		#~
 		Determines if position a point
 		@param p point
 		@return true of intersection, false otherwise
