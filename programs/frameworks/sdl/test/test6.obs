@@ -3,9 +3,11 @@ use Game.Framework;
 
 class Test {
 	@framework : GameFramework;
-	@color_white, @color_black, @color_blue, @color_red : Color;
+	@color_white, @color_black, @color_blue, @color_green, @color_red : Color;
 	@half_hor_max, @vert_max : Int;
 	@hor_block_lens : Int[];
+	@mouse_x : IntRef;
+	@mouse_y : IntRef;
 
 	function : Main(args : String[]) ~ Nil {
 		Test->New()->Run();
@@ -13,6 +15,9 @@ class Test {
 	
 	New() {
 		@framework := GameFramework->New(GameConsts->SCREEN_WIDTH, GameConsts->SCREEN_HEIGHT, "War!");
+
+		@mouse_x := IntRef->New();
+		@mouse_y := IntRef->New();
 		
 		@color_black := Color->New(0, 0, 0);
 		@framework->SetClearColor(@color_black);
@@ -20,6 +25,7 @@ class Test {
 		@color_white := Color->New(255,255,242);
 		@color_blue := Color->New(14, 248, 248);
 		@color_red := Color->New(191,0,0);
+		@color_green := Color->New(63,90,54);
 
 		@half_hor_max := 20;
 		@vert_max := 12;
@@ -28,11 +34,11 @@ class Test {
 		each(i : @half_hor_max) {
 			hor += 0.75;
 			vert_len := Int->Random(hor + 1, hor + 4);
-			
+
 			each(j : vert_len) {
 				block_rect := @framework->AddRectangle(20, 20);
 				block_rect->SetColor(@color_blue);
-				block_rect->SetPostion(Position->New(20, 20));
+				block_rect->SetPostion(Position->New(j * 20, i * 20, 20, 20));
 			};
 		};
 	}
@@ -49,7 +55,34 @@ class Test {
 				while(e->Poll() <> 0) {
 					if(e->GetType() = EventType->SDL_QUIT) {
 						quit := true;
-					};
+					}
+					# mouse
+					else if(e->GetMButton() <> Nil & e->GetMButton()->GetButton() = MouseButtonValue->SDL_BUTTON_LEFT) {
+						Cursor->GetMouseState(@mouse_x, @mouse_y);
+
+						left_shapes := @framework->GetShapes();
+						each(shape in left_shapes) {
+							block := shape->As(Rectangle);
+							
+							block_top := block->GetTop();
+							block_bottom := block->GetBottom();
+							block_left := block->GetLeft();
+							block_right := block->GetRight();
+block_left->PrintLine();
+block_right->PrintLine();
+@mouse_x->PrintLine();	
+@mouse_y->PrintLine();	
+"---"->PrintLine();
+
+							if(@mouse_x >= block_left & @mouse_x <= block_right) {
+								block->SetFill(true);
+								block->SetColor(@color_green);
+							}
+						};
+
+
+				#		"Left button: {$@mouse_x}, {$@mouse_y}..."->PrintLine();
+					};  	
 				};
 
 				@framework->FrameStart();
@@ -75,21 +108,16 @@ class Test {
 	method : Render(frame_count : Int) ~ Nil {
 		@framework->Clear();
 
-		block_rect := @framework->AddRectangle(20, 20);
-		block_rect->SetColor(@color_blue);
-
-		each(i : @half_hor_max) {
-			if(i > 2) {
-				vert_max := @hor_block_lens[i];
-				each(j : vert_max) {
-					block_rect->Render(Position->New(j * 20, i * 20));
-				};
-			};
+		left_shapes := @framework->GetShapes();
+		each(shape in left_shapes) {
+			block := shape->As(Rectangle);
+			block->Render();
 		};
 
 		@framework->GetRenderer()->LineColor(GameConsts->SCREEN_WIDTH / 2, 25, 
 			GameConsts->SCREEN_WIDTH / 2, GameConsts->SCREEN_HEIGHT - 25,
-			@color_red);				
+			@color_red);
+						
 		@framework->Show();
 	}
 }
