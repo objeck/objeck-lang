@@ -4701,36 +4701,6 @@ bundle Game.SDL2 {
 			value := array_args[0]->As(IntRef);
 			return value->Get() = 0 ? false : true;
 		}
-
-		#~
-		Point hit
-		@param x x-coordinate 
-		@param y y-coordinate
-		~#
-		method : public : PointIntersection(x : Int, y : Int, rect : Rect) ~ Bool {				
-			block_top := rect->GetY();
-			block_bottom := block_top + rect->GetH();
-			block_left := rect->GetX();
-			block_right := rect->GetW();
-			
-			return x >= block_left & x <= block_right & y >= block_top & y <= block_bottom;
-		}
-
-		#~
-		Point hit
-		@param p point coordinate
-		~#
-		method : public : PointIntersection(p : Point, rect : Rect) ~ Bool {				
-			block_top := rect->GetY();
-			block_bottom := block_top + rect->GetH();
-			block_left := rect->GetX();
-			block_right := rect->GetW();
-
-			x := p->GetX();
-			y := p->GetY();
-			
-			return x >= block_left & x <= block_right & y >= block_top & y <= block_bottom;
-		}
 		
 		#~
 		Calculate the intersection of two rectangles
