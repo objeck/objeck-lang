@@ -6462,10 +6462,10 @@ bundle Game.SDL2 {
 
 		#~
 		Draw rectangle with blending
-		@param x1 X coordinate of the first point (i.e. top right) of the rectangle.
-		@param y1 Y coordinate of the first point (i.e. top right) of the rectangle.
-		@param x2 X coordinate of the second point (i.e. bottom left) of the rectangle.
-		@param y2 Y coordinate of the second point (i.e. bottom left) of the rectangle.
+		@param x1 X coordinate of the first point (i.e. from left) of the rectangle.
+		@param y1 Y coordinate of the first point (i.e. from top) of the rectangle.
+		@param x2 X coordinate of the second point (i.e. from left) of the rectangle.
+		@param y2 Y coordinate of the second point (i.e. from top) of the rectangle.
 		@param color color value
 		@return 0 on success, -1 on failure
 		~#
