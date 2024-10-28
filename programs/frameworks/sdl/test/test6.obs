@@ -4,7 +4,7 @@ use Game.Framework;
 class Test {
 	@framework : GameFramework;
 	@color_white, @color_black, @color_blue, @color_red : Color;
-	@half_hor_len, @vert_len : Int;
+	@half_hor_max, @vert_max : Int;
 	@hor_block_lens : Int[];
 
 	function : Main(args : String[]) ~ Nil {
@@ -21,14 +21,19 @@ class Test {
 		@color_blue := Color->New(14, 248, 248);
 		@color_red := Color->New(191,0,0);
 
-		@half_hor_len := 20;
-		@vert_len := 12;
+		@half_hor_max := 20;
+		@vert_max := 12;
 
 		hor := 0.0;
-		@hor_block_lens := Int->New[@half_hor_len];
-		each(i : @hor_block_lens) {
+		each(i : @half_hor_max) {
 			hor += 0.75;
-			@hor_block_lens[i] := Int->Random(hor + 1, hor + 4);
+			vert_len := Int->Random(hor + 1, hor + 4);
+			
+			each(j : vert_len) {
+				block_rect := @framework->AddRectangle(20, 20);
+				block_rect->SetColor(@color_blue);
+				block_rect->SetPostion(Position->New(20, 20));
+			};
 		};
 	}
 	
@@ -73,11 +78,12 @@ class Test {
 		block_rect := @framework->AddRectangle(20, 20);
 		block_rect->SetColor(@color_blue);
 
-		each(i : @half_hor_len) {
-			vert_len := @hor_block_lens[i];
-			each(j : vert_len) {
-				block_rect->SetPostion(Position->New(j * 20, i * 20, 20, 20));
-				block_rect->Render();
+		each(i : @half_hor_max) {
+			if(i > 2) {
+				vert_max := @hor_block_lens[i];
+				each(j : vert_max) {
+					block_rect->Render(Position->New(j * 20, i * 20));
+				};
 			};
 		};
 
