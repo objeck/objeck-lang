@@ -2137,6 +2137,13 @@ bundle Game.Framework {
 		}
 
 		#~
+		Gets all shapes
+		~#
+		method : public : GetShapes() ~ Nil {
+			return @shapes;
+		}
+
+		#~
 		Removes all shapes
 		~#
 		method : public : FreeShapes() ~ Nil {
