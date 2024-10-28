@@ -64,7 +64,12 @@ class Test {
 						each(shape in left_shapes) {
 							block := shape->As(Rectangle);
 							
-							if(block->GetPosition()->GetRect()->PointIntersection(@mouse_x->Get(), @mouse_y->Get(), block->GetPosition()->GetRect())) {
+							block_top := block->GetTop();
+							block_bottom := block->GetBottom();
+							block_left := block->GetLeft();
+							block_right := block->GetRight();
+
+							if(@mouse_x >= block_left & @mouse_x <= block_right & @mouse_y >= block_top & @mouse_y <= block_bottom) {
 								block->SetFill(true);
 								block->SetColor(@color_green);
 							}
