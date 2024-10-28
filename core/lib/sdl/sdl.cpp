@@ -2772,7 +2772,7 @@ extern "C" {
 #endif
   void sdl_cursor_get_mouse_state(VMContext& context) {
     int x, y;
-    APITools_SetIntValue(context, 0, SDL_GetGlobalMouseState(&x, &y));
+    APITools_SetIntValue(context, 0, SDL_GetMouseState(&x, &y));
     APITools_SetIntValue(context, 1, x);
     APITools_SetIntValue(context, 2, y);
   }
