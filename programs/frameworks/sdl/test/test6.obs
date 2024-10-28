@@ -68,13 +68,9 @@ class Test {
 							block_bottom := block->GetBottom();
 							block_left := block->GetLeft();
 							block_right := block->GetRight();
-block_left->PrintLine();
-block_right->PrintLine();
-@mouse_x->PrintLine();	
-@mouse_y->PrintLine();	
-"---"->PrintLine();
-
-							if(@mouse_x >= block_left & @mouse_x <= block_right) {
+							
+							if(@mouse_x >= block_left & @mouse_x <= block_right & 
+									@mouse_y >= block_top & @mouse_y <= block_bottom) {
 								block->SetFill(true);
 								block->SetColor(@color_green);
 							}
