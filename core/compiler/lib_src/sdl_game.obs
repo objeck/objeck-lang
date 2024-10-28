@@ -2139,7 +2139,7 @@ bundle Game.Framework {
 		#~
 		Gets all shapes
 		~#
-		method : public : GetShapes() ~ Nil {
+		method : public : GetShapes() ~ Vector<Shape> {
 			return @shapes;
 		}
 
