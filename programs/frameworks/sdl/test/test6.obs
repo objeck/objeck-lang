@@ -80,7 +80,49 @@ class War {
 									rock_sprite->SetFill(true);
 									rock_sprite->SetColor(@color_green);
 
-									GetSoundings(i, j)->ToString()->PrintLine();
+									soundings :=GetSoundings(i, j);
+									each(k : soundings) {
+										select(k) {
+											label 0 {
+												"Up"->Print();
+											}
+
+											label 1 {
+												"Down"->Print();
+											}
+
+											label 2 {
+												"Left"->Print();
+											}
+
+											label 3 {
+												"Right"->Print();
+											}
+
+											label 4 {
+												"Right/Down"->Print();
+											}
+
+											label 5 {
+												"Right/Up"->Print();
+											}
+
+											label 6 {
+												"Left/Down"->Print();
+											}
+
+											label 7 {
+												"Left/Up"->Print();
+											}
+										};
+
+										if(soundings[k]) {
+											" [X]"->PrintLine()
+										}
+										else {
+											" [ ]"->PrintLine();
+										};
+									};
 								};
 							};
 						};
@@ -117,40 +159,31 @@ class War {
 
 "#: rock: {$x},{$y}"->PrintLine();
 
-				# TODO: check state									
-
-				# up = 0
-				if(y - 1 > -1) {
-					soundings[0] := true;
-				};
-
-				# down = 1
-				if(y + 1 < rocks->Size()) {
-					soundings[1] := true;
-				};
-
-				# left = 2
+				# up
 				if(x - 1 > -1) {
-					soundings[2] := true;
+					alt_x := x - 1;
+					alt_rocks := @mountain->Get(alt_x)->GetRocks();
+					soundings[0] := y < alt_rocks->Size();
 				};
 
-				# right = 3
-				if(x + 1 < rocks->Size()) {
-					soundings[3] := true;
+				# down
+				if(x + 1 < @mountain->Size()) {
+					alt_x := x + 1;
+					alt_rocks := @mountain->Get(alt_x)->GetRocks();
+					soundings[1] := y < alt_rocks->Size();
 				};
 
+				# left
 
-				# ---
-				
-				# right/bottom = 4
-				if(x + 1 < rocks->Size() & y + 1 < rocks->Size()) {
-					soundings[4] := true;
-				};
+				# right 
 
-				# right/top = 5
-				if(x + 1 < rocks->Size() & y - 1 > -1) {
-					soundings[5] := true;
-				};
+				# right/down
+
+				# right/up
+
+				# left/down
+
+				# left/up
 			};
 		};
 
