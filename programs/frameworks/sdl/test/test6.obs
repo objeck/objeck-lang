@@ -4,8 +4,7 @@ use Game.Framework;
 class Test {
 	@framework : GameFramework;
 	@color_white, @color_black, @color_blue, @color_green, @color_red : Color;
-	@half_hor_max, @vert_max : Int;
-	@hor_block_lens : Int[];
+	@mountain : Collection.Vector<Rocks>;
 	@mouse_x : IntRef;
 	@mouse_y : IntRef;
 
@@ -27,12 +26,11 @@ class Test {
 		@color_red := Color->New(191,0,0);
 		@color_green := Color->New(63,90,54);
 
-		@half_hor_max := 20;
-		@vert_max := 12;
+		half_hor_max := 20;
 
-		boxes := Collection.Vector->New()<BlocksRef>;
+		@mountain := Collection.Vector->New()<Rocks>;
 		hor := 0.0;
-		each(i : @half_hor_max) {
+		each(i : half_hor_max) {
 			hor += 0.75;
 			vert_len := Int->Random(hor + 1, hor + 4);
 			vert_boxes := Rectangle->New[vert_len];
@@ -44,10 +42,8 @@ class Test {
 				vert_boxes[j] := block_rect;
 			};
 
-			boxes->AddBack(BlocksRef->New(vert_boxes));
+			@mountain->AddBack(Rocks->New(vert_boxes));
 		};
-
-boxes->Size()->PrintLine();
 	}
 	
 	method : Run() ~ Nil {
@@ -67,16 +63,18 @@ boxes->Size()->PrintLine();
 					else if(e->GetMButton() <> Nil & e->GetMButton()->GetButton() = MouseButtonValue->SDL_BUTTON_LEFT) {
 						Cursor->GetMouseState(@mouse_x, @mouse_y);
 
-						left_shapes := @framework->GetShapes();
-						each(shape in left_shapes) {
-							if(shape->GetPosition()->IntersectsPoint(@mouse_x->Get(), @mouse_y->Get())) {
-								block := shape->As(Rectangle);
-								block->SetFill(true);
-								block->SetColor(@color_green);
-							}
+						each(i : @mountain) {
+							level := @mountain->Get(i);
+							rocks := level->GetRocks();
+							each(j : rocks) {
+								rock := rocks[j];
+								if(rock->GetPosition()->IntersectsPoint(@mouse_x->Get(), @mouse_y->Get())) {
+									rock->SetFill(true);
+									rock->SetColor(@color_green);
+"rock: {$i},{$j}"->PrintLine();									
+								};
+							};
 						};
-
-#						"Left button: {$@mouse_x}, {$@mouse_y}..."->PrintLine();
 					};  	
 				};
 
@@ -109,15 +107,18 @@ boxes->Size()->PrintLine();
 			block->Render();
 		};
 
-		@framework->GetRenderer()->LineColor(GameConsts->SCREEN_WIDTH / 2, 25, 
-			GameConsts->SCREEN_WIDTH / 2, GameConsts->SCREEN_HEIGHT - 25,
-			@color_red);
+		each(level in @mountain) {
+			rocks := level->GetRocks();
+			each(rock in rocks) {
+				rock->Render();
+			};
+		};
 						
 		@framework->Show();
 	}
 }
 
-class BlockRef {
+class Rock {
 	@rect : Rectangle;
 
 	New(rect : Rectangle) {
@@ -129,14 +130,14 @@ class BlockRef {
 	}
 }
 
-class BlocksRef {
+class Rocks {
 	@rects : Rectangle[];
 
 	New(rects : Rectangle[]) {
 		@rects := rects;
 	}
 
-	method : public : GetRectangles() ~ Rectangle[] {
+	method : public : GetRocks() ~ Rectangle[] {
 		return @rects;
 	}
 }
