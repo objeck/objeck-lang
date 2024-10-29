@@ -30,17 +30,24 @@ class Test {
 		@half_hor_max := 20;
 		@vert_max := 12;
 
+		boxes := Collection.Vector->New()<BlocksRef>;
 		hor := 0.0;
 		each(i : @half_hor_max) {
 			hor += 0.75;
 			vert_len := Int->Random(hor + 1, hor + 4);
+			vert_boxes := Rectangle->New[vert_len];
 
 			each(j : vert_len) {
 				block_rect := @framework->AddRectangle(20, 20);
 				block_rect->SetColor(@color_blue);
 				block_rect->SetPostion(Position->New(j * 20, i * 20, 20, 20));
+				vert_boxes[j] := block_rect;
 			};
+
+			boxes->AddBack(BlocksRef->New(vert_boxes));
 		};
+
+boxes->Size()->PrintLine();
 	}
 	
 	method : Run() ~ Nil {
@@ -62,16 +69,14 @@ class Test {
 
 						left_shapes := @framework->GetShapes();
 						each(shape in left_shapes) {
-							block := shape->As(Rectangle);
-							
-							if(block->GetPosition()->IntersectsPoint(@mouse_x->Get(), @mouse_y->Get())) {
+							if(shape->GetPosition()->IntersectsPoint(@mouse_x->Get(), @mouse_y->Get())) {
+								block := shape->As(Rectangle);
 								block->SetFill(true);
 								block->SetColor(@color_green);
 							}
 						};
 
-
-				#		"Left button: {$@mouse_x}, {$@mouse_y}..."->PrintLine();
+#						"Left button: {$@mouse_x}, {$@mouse_y}..."->PrintLine();
 					};  	
 				};
 
@@ -109,6 +114,30 @@ class Test {
 			@color_red);
 						
 		@framework->Show();
+	}
+}
+
+class BlockRef {
+	@rect : Rectangle;
+
+	New(rect : Rectangle) {
+		@rect := rect;
+	}
+
+	method : public : GetRectangle() ~ Rectangle {
+		return @rect;
+	}
+}
+
+class BlocksRef {
+	@rects : Rectangle[];
+
+	New(rects : Rectangle[]) {
+		@rects := rects;
+	}
+
+	method : public : GetRectangles() ~ Rectangle[] {
+		return @rects;
 	}
 }
 
