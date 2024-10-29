@@ -7814,6 +7814,22 @@ bundle Game.SDL2 {
 		}
 
 		#~
+		Retrieve the current state of the mouse
+		@param p x and y coordinates of the mouse cursor position relative to the focus window
+		@return current button state as a bitmask
+		~#
+		function : GetMouseState(p : Point) ~ Int {
+	        array_args := Base->New[2];
+	        array_args[0] := IntRef->New();
+	        array_args[1] := p;
+
+	        Proxy->GetDllProxy()->CallFunction("sdl_cursor_get_mouse_state_pt", array_args);
+
+	        value := array_args[0]->As(IntRef);
+	        return value->Get();
+		}
+
+		#~
 		Retrieve the current global state of the mouse
 		@param x coordinate of the mouse cursor position relative to the focus window
 		@param y coordinate of the mouse cursor position relative to the focus window
