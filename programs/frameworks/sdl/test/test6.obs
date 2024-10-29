@@ -110,7 +110,9 @@ class Test {
 		each(level in @mountain) {
 			rocks := level->GetRocks();
 			each(rock in rocks) {
-				rock->Render();
+				if(rock <> Nil) {
+					rock->Render();
+				};
 			};
 		};
 						
