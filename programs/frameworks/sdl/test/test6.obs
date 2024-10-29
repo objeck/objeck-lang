@@ -8,13 +8,6 @@ class War {
 	@mouse_x : IntRef;
 	@mouse_y : IntRef;
 
-	enum Side {
-		LEFT,
-		RIGHT,
-		UP,
-		DOWN
-	}
-
 	function : Main(args : String[]) ~ Nil {
 		War->New()->Run();
 	}
@@ -68,17 +61,26 @@ class War {
 					}
 					# mouse
 					else if(e->GetMButton() <> Nil & e->GetMButton()->GetButton() = MouseButtonValue->SDL_BUTTON_LEFT) {
-						Cursor->GetMouseState(@mouse_x, @mouse_y);
+#						Cursor->GetMouseState(@mouse_x, @mouse_y);
+
+						point := Point->New();
+						Cursor->GetMouseState(point);
+
+						mouse_x := point->GetX();
+						mouse_y := point->GetY();
+"mouse_pos: {$mouse_x}, {$mouse_y}"->PrintLine();
+
 
 						each(i : @mountain) {
 							rocks := @mountain->Get(i)->GetRocks();
 							each(j : rocks) {
 								rock_sprite := rocks[j]->GetSprite();
 								
-								if(rock_sprite->GetPosition()->IntersectsPoint(@mouse_x->Get(), @mouse_y->Get())) {
+								if(rock_sprite->GetPosition()->IntersectsPoint(mouse_x, mouse_y)) {
 									rock_sprite->SetFill(true);
 									rock_sprite->SetColor(@color_green);
-"rock: {$i},{$j}"->PrintLine();									
+
+									GetSoundings(i, j)->ToString()->PrintLine();
 								};
 							};
 						};
@@ -105,7 +107,54 @@ class War {
 		};
 	}
 
-	method : GetSide(side : War->Side) ~ Nil {
+	method : GetSoundings(x : Int, y : Int) ~ Bool[] {
+		soundings : Bool[];
+
+		if(x < @mountain->Size()) {
+			rocks := @mountain->Get(x)->GetRocks();
+			if(y < rocks->Size()) {
+				soundings := Bool->New[8];
+
+"#: rock: {$x},{$y}"->PrintLine();
+
+				# TODO: check state									
+
+				# up = 0
+				if(y - 1 > -1) {
+					soundings[0] := true;
+				};
+
+				# down = 1
+				if(y + 1 < rocks->Size()) {
+					soundings[1] := true;
+				};
+
+				# left = 2
+				if(x - 1 > -1) {
+					soundings[2] := true;
+				};
+
+				# right = 3
+				if(x + 1 < rocks->Size()) {
+					soundings[3] := true;
+				};
+
+
+				# ---
+				
+				# right/bottom = 4
+				if(x + 1 < rocks->Size() & y + 1 < rocks->Size()) {
+					soundings[4] := true;
+				};
+
+				# right/top = 5
+				if(x + 1 < rocks->Size() & y - 1 > -1) {
+					soundings[5] := true;
+				};
+			};
+		};
+
+		return soundings;
 	}
 
 	method : Render(frame_count : Int) ~ Nil {
