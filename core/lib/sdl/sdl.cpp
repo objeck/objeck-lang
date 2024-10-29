@@ -2780,6 +2780,19 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
+  void sdl_cursor_get_mouse_state_pt(VMContext& context) {
+    size_t* pt_obj = APITools_GetObjectValue(context, 1);
+
+    int x, y;
+    APITools_SetIntValue(context, 0, SDL_GetMouseState(&x, &y));
+    
+    pt_obj[0] = x;
+    pt_obj[1] = y;
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
   void sdl_cursor_warp_mouse_global(VMContext& context) {
     const int x = (int)APITools_GetIntValue(context, 1);
     const int y = (int)APITools_GetIntValue(context, 2);
