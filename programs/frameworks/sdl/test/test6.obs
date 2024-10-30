@@ -117,12 +117,14 @@ class War {
 										};
 
 										if(soundings[k]) {
-											" [X]"->PrintLine()
+											" [X], "->Print()
 										}
 										else {
-											" [ ]"->PrintLine();
+											" [], "->Print();
 										};
 									};
+
+									""->PrintLine();
 								};
 							};
 						};
@@ -174,16 +176,29 @@ class War {
 				};
 
 				# left
+				if(y - 1 > -1) {
+					soundings[2] := y - 1 > -1;
+				};
 
 				# right 
+				if(y - 1 > -1) {
+					alt_rocks := @mountain->Get(x)->GetRocks();
+					soundings[3] := y + 1 < alt_rocks->Size();
+				};
 
-				# right/down
+				# down/right
+				
+				# down/left
+				if(x + 1 < @mountain->Size() & y - 1 > -1) {
+					
+					alt_x := x + 1;
+					alt_rocks := @mountain->Get(alt_x)->GetRocks();
+					soundings[6] := y < alt_rocks->Size() & y - 1 > -1;
+				};
 
-				# right/up
+				# up/right
 
-				# left/down
-
-				# left/up
+				# up/left
 			};
 		};
 
