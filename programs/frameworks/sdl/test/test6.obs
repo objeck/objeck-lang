@@ -7,7 +7,7 @@ class War {
 	@mountain : Collection.Vector<Rocks>;
 	@mouse_x : IntRef;
 	@mouse_y : IntRef;
-	@debug : Bool;
+	@is_debug : Bool;
 
 	function : Main(args : String[]) ~ Nil {
 		War->New()->Run();
@@ -15,7 +15,7 @@ class War {
 	
 	New() {
 		@framework := GameFramework->New(GameConsts->SCREEN_WIDTH, GameConsts->SCREEN_HEIGHT, "War!");
-		@debug := true;
+		@is_debug := true;
 
 		@mouse_x := IntRef->New();
 		@mouse_y := IntRef->New();
@@ -77,15 +77,13 @@ class War {
 								if(rock->GetPosition()->IntersectsPoint(mouse_x, mouse_y)) {
 									rocks[j]->ReduceStrength(Rock->Strength->MAX);
 
-									# GetRock(i, j)->ToString()->PrintLine();
-
 									soundings := GetSoundings(i , j);
-									if(@debug) {
+									if(@is_debug) {
 										buffer := "\t";
 										each(k : soundings) {
 											sounding := soundings[k];
 
-											if(@debug) {
+											if(@is_debug) {
 												select(k) {
 													label 0 {
 														buffer += "Up["
@@ -127,15 +125,15 @@ class War {
 
 											if(sounding <> Nil) {
 												buffer += sounding->GetId();
-												sounding->ReduceStrength(7);
+												sounding->ReduceStrength(Int->Random(Rock->Strength->MAX * 0.25, Rock->Strength->MAX));
 											};
 
-											if(@debug) {
+											if(@is_debug) {
 												buffer += "], ";
 											};
 										};
 
-										if(@debug) {
+										if(@is_debug) {
 											buffer->PrintLine();
 										};
 									};
@@ -209,16 +207,12 @@ class War {
 	method : Render(frame_count : Int) ~ Nil {
 		@framework->Clear();
 
-		left_shapes := @framework->GetShapes();
-		each(shape in left_shapes) {
-			block := shape->As(Rectangle);
-			block->Render();
-		};
-
 		each(level in @mountain) {
 			rocks := level->GetRocks();
 			each(rock in rocks) {
-				rock->GetSprite()->Render();
+				if(rock->IsDestroyed()) {
+					rock->GetSprite()->Render();
+				};
 			};
 		};
 						
@@ -249,18 +243,17 @@ class Rock {
 		return @id;
 	}
 
+	method : public : IsDestroyed() ~ Bool {
+		return ReduceStrength(0);
+	}
+
 	method : public : ReduceStrength(change : Int) ~ Bool {
 		if(@strength > 0) {
 			@strength -= change;
+			return true;
 		};
 
-		if(@strength <= 0) {
-			color_green := Color->New(191,0,0); # red
-			@sprite->SetColor(color_green);
-			return false;
-		};
-
-		return true;
+		return false;
 	}
 
 	method : public : ToString() ~ String {
