@@ -75,66 +75,69 @@ class War {
 								rock := rocks[j]->GetSprite();
 								
 								if(rock->GetPosition()->IntersectsPoint(mouse_x, mouse_y)) {
-									rock->SetFill(true);
-									rock->SetColor(@color_green);
-									rocks[j]->ReduceStrength(100);
+									rocks[j]->ReduceStrength(Rock->Strength->MAX);
 
-									GetRock(i, j)->ToString()->PrintLine();
-
+									# GetRock(i, j)->ToString()->PrintLine();
 
 									soundings := GetSoundings(i , j);
 									if(@debug) {
 										buffer := "\t";
 										each(k : soundings) {
 											sounding := soundings[k];
-#~
-											select(k) {
-												label 0 {
-													buffer += "Up["
-												}
 
-												label 1 {
-													buffer += "Up/Right["
-												}
+											if(@debug) {
+												select(k) {
+													label 0 {
+														buffer += "Up["
+													}
 
-												label 2 {
-													buffer += "Right["
-												}
+													label 1 {
+														buffer += "Up/Right["
+													}
 
-												label 3 {
-													buffer += "Down/Right["
-												}
+													label 2 {
+														buffer += "Right["
+													}
 
-												# down/left
-												label 4 {
-													buffer += "Down["
-												}
+													label 3 {
+														buffer += "Down/Right["
+													}
 
-												# down/right
-												label 5 {
-													buffer += "Down/Left["
-												}
+													# down/left
+													label 4 {
+														buffer += "Down["
+													}
 
-												# up/left
-												label 6 {
-													buffer += "Left["
-												}
-												
-												# up/right
-												label 7 {
-													buffer += "Up/Left["
-												}
+													# down/right
+													label 5 {
+														buffer += "Down/Left["
+													}
+
+													# up/left
+													label 6 {
+														buffer += "Left["
+													}
+													
+													# up/right
+													label 7 {
+														buffer += "Up/Left["
+													}
+												};
 											};
-~#
+
 											if(sounding <> Nil) {
 												buffer += sounding->GetId();
 												sounding->ReduceStrength(7);
 											};
 
-#											buffer += "], ";
+											if(@debug) {
+												buffer += "], ";
+											};
 										};
 
-#										buffer->PrintLine();
+										if(@debug) {
+											buffer->PrintLine();
+										};
 									};
 								};
 							};
@@ -228,9 +231,13 @@ class Rock {
 	@strength : Int;
 	@sprite : Rectangle;
 
+	consts Strength {
+		MAX := 15
+	}
+
 	New(id : Int, sprite : Rectangle) {
 		@id := id;
-		@strength := 15;
+		@strength := Rock->Strength->MAX;
 		@sprite := sprite;
 	}
 
@@ -247,7 +254,7 @@ class Rock {
 			@strength -= change;
 		};
 
-		if(@strength < 0) {
+		if(@strength <= 0) {
 			color_green := Color->New(191,0,0); # red
 			@sprite->SetColor(color_green);
 			return false;
