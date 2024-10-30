@@ -1,7 +1,7 @@
 use Game.SDL2;
 use Game.Framework;
 
-class Test {
+class War {
 	@framework : GameFramework;
 	@color_white, @color_black, @color_blue, @color_green, @color_red : Color;
 	@mountain : Collection.Vector<Rocks>;
@@ -9,7 +9,7 @@ class Test {
 	@mouse_y : IntRef;
 
 	function : Main(args : String[]) ~ Nil {
-		Test->New()->Run();
+		War->New()->Run();
 	}
 	
 	New() {
@@ -29,20 +29,20 @@ class Test {
 		half_hor_max := 20;
 
 		@mountain := Collection.Vector->New()<Rocks>;
-		hor := 0.0;
+		hort_rock_pos := 0.0;
 		each(i : half_hor_max) {
-			hor += 0.75;
-			vert_len := Int->Random(hor + 1, hor + 4);
-			vert_boxes := Rectangle->New[vert_len];
+			hort_rock_pos += 0.75;
+			hort_rock_len := Int->Random(hort_rock_pos + 1, hort_rock_pos + 4);
+			rocks := Rock->New[hort_rock_len];
 
-			each(j : vert_len) {
-				block_rect := @framework->AddRectangle(20, 20);
-				block_rect->SetColor(@color_blue);
-				block_rect->SetPostion(Position->New(j * 20, i * 20, 20, 20));
-				vert_boxes[j] := block_rect;
+			each(j : hort_rock_len) {
+				rock_sprite := @framework->AddRectangle(20, 20);
+				rock_sprite->SetColor(@color_blue);
+				rock_sprite->SetPostion(Position->New(j * 20, i * 20, 20, 20));
+				rocks[j] := Rock->New(rock_sprite);
 			};
 
-			@mountain->AddBack(Rocks->New(vert_boxes));
+			@mountain->AddBack(Rocks->New(rocks));
 		};
 	}
 	
@@ -61,17 +61,70 @@ class Test {
 					}
 					# mouse
 					else if(e->GetMButton() <> Nil & e->GetMButton()->GetButton() = MouseButtonValue->SDL_BUTTON_LEFT) {
-						Cursor->GetMouseState(@mouse_x, @mouse_y);
+#						Cursor->GetMouseState(@mouse_x, @mouse_y);
+
+						point := Point->New();
+						Cursor->GetMouseState(point);
+
+						mouse_x := point->GetX();
+						mouse_y := point->GetY();
+"mouse_pos: {$mouse_x}, {$mouse_y}"->PrintLine();
+
 
 						each(i : @mountain) {
-							level := @mountain->Get(i);
-							rocks := level->GetRocks();
+							rocks := @mountain->Get(i)->GetRocks();
 							each(j : rocks) {
-								rock := rocks[j];
-								if(rock->GetPosition()->IntersectsPoint(@mouse_x->Get(), @mouse_y->Get())) {
-									rock->SetFill(true);
-									rock->SetColor(@color_green);
-"rock: {$i},{$j}"->PrintLine();									
+								rock_sprite := rocks[j]->GetSprite();
+								
+								if(rock_sprite->GetPosition()->IntersectsPoint(mouse_x, mouse_y)) {
+									rock_sprite->SetFill(true);
+									rock_sprite->SetColor(@color_green);
+
+									soundings :=GetSoundings(i, j);
+									each(k : soundings) {
+										select(k) {
+											label 0 {
+												"Up"->Print();
+											}
+
+											label 1 {
+												"Down"->Print();
+											}
+
+											label 2 {
+												"Left"->Print();
+											}
+
+											label 3 {
+												"Right"->Print();
+											}
+
+											label 4 {
+												"Right/Down"->Print();
+											}
+
+											label 5 {
+												"Right/Up"->Print();
+											}
+
+											label 6 {
+												"Left/Down"->Print();
+											}
+
+											label 7 {
+												"Left/Up"->Print();
+											}
+										};
+
+										if(soundings[k]) {
+											" [X], "->Print()
+										}
+										else {
+											" [], "->Print();
+										};
+									};
+
+									""->PrintLine();
 								};
 							};
 						};
@@ -98,6 +151,60 @@ class Test {
 		};
 	}
 
+	method : GetSoundings(x : Int, y : Int) ~ Bool[] {
+		soundings : Bool[];
+
+		if(x < @mountain->Size()) {
+			rocks := @mountain->Get(x)->GetRocks();
+			if(y < rocks->Size()) {
+				soundings := Bool->New[8];
+
+"#: rock: {$x},{$y}"->PrintLine();
+
+				# up
+				if(x - 1 > -1) {
+					alt_x := x - 1;
+					alt_rocks := @mountain->Get(alt_x)->GetRocks();
+					soundings[0] := y < alt_rocks->Size();
+				};
+
+				# down
+				if(x + 1 < @mountain->Size()) {
+					alt_x := x + 1;
+					alt_rocks := @mountain->Get(alt_x)->GetRocks();
+					soundings[1] := y < alt_rocks->Size();
+				};
+
+				# left
+				if(y - 1 > -1) {
+					soundings[2] := y - 1 > -1;
+				};
+
+				# right 
+				if(y - 1 > -1) {
+					alt_rocks := @mountain->Get(x)->GetRocks();
+					soundings[3] := y + 1 < alt_rocks->Size();
+				};
+
+				# down/right
+				
+				# down/left
+				if(x + 1 < @mountain->Size() & y - 1 > -1) {
+					
+					alt_x := x + 1;
+					alt_rocks := @mountain->Get(alt_x)->GetRocks();
+					soundings[6] := y < alt_rocks->Size() & y - 1 > -1;
+				};
+
+				# up/right
+
+				# up/left
+			};
+		};
+
+		return soundings;
+	}
+
 	method : Render(frame_count : Int) ~ Nil {
 		@framework->Clear();
 
@@ -110,9 +217,7 @@ class Test {
 		each(level in @mountain) {
 			rocks := level->GetRocks();
 			each(rock in rocks) {
-				if(rock <> Nil) {
-					rock->Render();
-				};
+				rock->GetSprite()->Render();
 			};
 		};
 						
@@ -121,25 +226,25 @@ class Test {
 }
 
 class Rock {
-	@rect : Rectangle;
+	@sprite : Rectangle;
 
-	New(rect : Rectangle) {
-		@rect := rect;
+	New(sprite : Rectangle) {
+		@sprite := sprite;
 	}
 
-	method : public : GetRectangle() ~ Rectangle {
-		return @rect;
+	method : public : GetSprite() ~ Rectangle {
+		return @sprite;
 	}
 }
 
 class Rocks {
-	@rects : Rectangle[];
+	@rects : Rock[];
 
-	New(rects : Rectangle[]) {
+	New(rects : Rock[]) {
 		@rects := rects;
 	}
 
-	method : public : GetRocks() ~ Rectangle[] {
+	method : public : GetRocks() ~ Rock[] {
 		return @rects;
 	}
 }
