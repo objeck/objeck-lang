@@ -68,7 +68,6 @@ class War {
 						mouse_y := point->GetY();
 "mouse_pos: {$mouse_x}, {$mouse_y}"->PrintLine();
 
-
 						each(i : @mountain) {
 							rocks := @mountain->Get(i)->GetRocks();
 							each(j : rocks) {
@@ -78,7 +77,7 @@ class War {
 									rock_sprite->SetFill(true);
 									rock_sprite->SetColor(@color_green);
 
-									soundings :=GetSoundings(i, j);
+									soundings := GetSoundings(i, j);
 									each(k : soundings) {
 										select(k) {
 											label 0 {
@@ -164,51 +163,43 @@ class War {
 					alt_rocks := @mountain->Get(x - 1)->GetRocks();
 					soundings[0] := y < alt_rocks->Size();
 				};
-# "--- 0 ---"->PrintLine();
 
 				# down
 				if(x + 1 < @mountain->Size()) {
 					alt_rocks := @mountain->Get(x + 1)->GetRocks();
 					soundings[1] := y < alt_rocks->Size();
 				};
-# "--- 1 ---"->PrintLine();
 
 				# left
 				soundings[2] := y - 1 > -1;
-# "--- 2 ---"->PrintLine();
 
 				# right 
 				alt_rocks := @mountain->Get(x)->GetRocks();
 				soundings[3] := y + 1 < alt_rocks->Size();
-# "--- 3 ---"->PrintLine();
 
 				# down/right
 				if(x + 1 < @mountain->Size()) {
 					alt_rocks := @mountain->Get(x + 1)->GetRocks();
 					soundings[4] := y + 1 < alt_rocks->Size();
 				};
-# "--- 4 ---"->PrintLine();
 
 				# down/left
 				if(x + 1 < @mountain->Size() & y - 1 > -1) {				
 					alt_rocks := @mountain->Get(x + 1)->GetRocks();
-					soundings[5] := y < alt_rocks->Size() & y - 1 > -1;
+					soundings[5] := y - 1 < alt_rocks->Size();
 				};
-# "--- 5 ---"->PrintLine();
 
 				# up/right
 				if(x - 1 > -1) {
 					alt_rocks := @mountain->Get(x - 1)->GetRocks();
 					soundings[6] := y + 1 < alt_rocks->Size();
 				};
-# "--- 6 ---"->PrintLine();
 
 				# up/left
 				if(x - 1 > -1 & y - 1 > -1) {				
 					alt_rocks := @mountain->Get(x - 1)->GetRocks();
-					soundings[7] := y < alt_rocks->Size() & y - 1 > -1;
+					soundings[7] := y - 1 < alt_rocks->Size();
 				};
-# "--- 7 ---"->PrintLine();
 			};
 		};
 
