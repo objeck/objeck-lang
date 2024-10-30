@@ -72,11 +72,12 @@ class War {
 						each(i : @mountain) {
 							rocks := @mountain->Get(i)->GetRocks();
 							each(j : rocks) {
-								rock_sprite := rocks[j]->GetSprite();
+								rock := rocks[j]->GetSprite();
 								
-								if(rock_sprite->GetPosition()->IntersectsPoint(mouse_x, mouse_y)) {
-									rock_sprite->SetFill(true);
-									rock_sprite->SetColor(@color_green);
+								if(rock->GetPosition()->IntersectsPoint(mouse_x, mouse_y)) {
+									rock->SetFill(true);
+									rock->SetColor(@color_green);
+									rocks[j]->ReduceStrength(100);
 
 									GetRock(i, j)->ToString()->PrintLine();
 
@@ -86,7 +87,7 @@ class War {
 										buffer := "\t";
 										each(k : soundings) {
 											sounding := soundings[k];
-
+#~
 											select(k) {
 												label 0 {
 													buffer += "Up["
@@ -124,15 +125,16 @@ class War {
 													buffer += "Up/Left["
 												}
 											};
-
+~#
 											if(sounding <> Nil) {
 												buffer += sounding->GetId();
+												sounding->ReduceStrength(7);
 											};
 
-											buffer += "], ";
+#											buffer += "], ";
 										};
 
-										buffer->PrintLine();
+#										buffer->PrintLine();
 									};
 								};
 							};
@@ -223,10 +225,12 @@ class War {
 
 class Rock {
 	@id : Int;
+	@strength : Int;
 	@sprite : Rectangle;
 
 	New(id : Int, sprite : Rectangle) {
 		@id := id;
+		@strength := 15;
 		@sprite := sprite;
 	}
 
@@ -236,6 +240,20 @@ class Rock {
 
 	method : public : GetId() ~ Int {
 		return @id;
+	}
+
+	method : public : ReduceStrength(change : Int) ~ Bool {
+		if(@strength > 0) {
+			@strength -= change;
+		};
+
+		if(@strength < 0) {
+			color_green := Color->New(191,0,0); # red
+			@sprite->SetColor(color_green);
+			return false;
+		};
+
+		return true;
 	}
 
 	method : public : ToString() ~ String {
