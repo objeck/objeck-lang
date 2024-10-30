@@ -61,8 +61,6 @@ class War {
 					}
 					# mouse
 					else if(e->GetMButton() <> Nil & e->GetMButton()->GetButton() = MouseButtonValue->SDL_BUTTON_LEFT) {
-#						Cursor->GetMouseState(@mouse_x, @mouse_y);
-
 						point := Point->New();
 						Cursor->GetMouseState(point);
 
@@ -100,27 +98,27 @@ class War {
 											}
 
 											label 4 {
-												"Right/Down"->Print();
+												"Down/Right"->Print();
 											}
 
 											label 5 {
-												"Right/Up"->Print();
+												"Down/Left"->Print();
 											}
 
 											label 6 {
-												"Left/Down"->Print();
+												"Up/Right"->Print();
 											}
 
 											label 7 {
-												"Left/Up"->Print();
+												"Up/Left"->Print();
 											}
 										};
 
 										if(soundings[k]) {
-											" [X], "->Print()
+											"[X], "->Print()
 										}
 										else {
-											" [], "->Print();
+											"[], "->Print();
 										};
 									};
 
@@ -159,46 +157,58 @@ class War {
 			if(y < rocks->Size()) {
 				soundings := Bool->New[8];
 
-"#: rock: {$x},{$y}"->PrintLine();
+# "#: rock: {$x},{$y}"->PrintLine();
 
 				# up
 				if(x - 1 > -1) {
-					alt_x := x - 1;
-					alt_rocks := @mountain->Get(alt_x)->GetRocks();
+					alt_rocks := @mountain->Get(x - 1)->GetRocks();
 					soundings[0] := y < alt_rocks->Size();
 				};
+# "--- 0 ---"->PrintLine();
 
 				# down
 				if(x + 1 < @mountain->Size()) {
-					alt_x := x + 1;
-					alt_rocks := @mountain->Get(alt_x)->GetRocks();
+					alt_rocks := @mountain->Get(x + 1)->GetRocks();
 					soundings[1] := y < alt_rocks->Size();
 				};
+# "--- 1 ---"->PrintLine();
 
 				# left
-				if(y - 1 > -1) {
-					soundings[2] := y - 1 > -1;
-				};
+				soundings[2] := y - 1 > -1;
+# "--- 2 ---"->PrintLine();
 
 				# right 
-				if(y - 1 > -1) {
-					alt_rocks := @mountain->Get(x)->GetRocks();
-					soundings[3] := y + 1 < alt_rocks->Size();
-				};
+				alt_rocks := @mountain->Get(x)->GetRocks();
+				soundings[3] := y + 1 < alt_rocks->Size();
+# "--- 3 ---"->PrintLine();
 
 				# down/right
-				
-				# down/left
-				if(x + 1 < @mountain->Size() & y - 1 > -1) {
-					
-					alt_x := x + 1;
-					alt_rocks := @mountain->Get(alt_x)->GetRocks();
-					soundings[6] := y < alt_rocks->Size() & y - 1 > -1;
+				if(x + 1 < @mountain->Size()) {
+					alt_rocks := @mountain->Get(x + 1)->GetRocks();
+					soundings[4] := y + 1 < alt_rocks->Size();
 				};
+# "--- 4 ---"->PrintLine();
+
+				# down/left
+				if(x + 1 < @mountain->Size() & y - 1 > -1) {				
+					alt_rocks := @mountain->Get(x + 1)->GetRocks();
+					soundings[5] := y < alt_rocks->Size() & y - 1 > -1;
+				};
+# "--- 5 ---"->PrintLine();
 
 				# up/right
+				if(x - 1 > -1) {
+					alt_rocks := @mountain->Get(x - 1)->GetRocks();
+					soundings[6] := y + 1 < alt_rocks->Size();
+				};
+# "--- 6 ---"->PrintLine();
 
 				# up/left
+				if(x - 1 > -1 & y - 1 > -1) {				
+					alt_rocks := @mountain->Get(x - 1)->GetRocks();
+					soundings[7] := y < alt_rocks->Size() & y - 1 > -1;
+				};
+# "--- 7 ---"->PrintLine();
 			};
 		};
 
