@@ -7,6 +7,7 @@ class War {
 	@mountain : Collection.Vector<Rocks>;
 	@mouse_x : IntRef;
 	@mouse_y : IntRef;
+	@debug : Bool;
 
 	function : Main(args : String[]) ~ Nil {
 		War->New()->Run();
@@ -14,6 +15,7 @@ class War {
 	
 	New() {
 		@framework := GameFramework->New(GameConsts->SCREEN_WIDTH, GameConsts->SCREEN_HEIGHT, "War!");
+		@debug := true;
 
 		@mouse_x := IntRef->New();
 		@mouse_y := IntRef->New();
@@ -26,10 +28,10 @@ class War {
 		@color_red := Color->New(191,0,0);
 		@color_green := Color->New(63,90,54);
 
+		id := 0;
 		half_hor_max := 20;
-
-		@mountain := Collection.Vector->New()<Rocks>;
 		hort_rock_pos := 0.0;
+		@mountain := Collection.Vector->New()<Rocks>;
 		each(i : half_hor_max) {
 			hort_rock_pos += 0.75;
 			hort_rock_len := Int->Random(hort_rock_pos + 1, hort_rock_pos + 4);
@@ -39,7 +41,7 @@ class War {
 				rock_sprite := @framework->AddRectangle(20, 20);
 				rock_sprite->SetColor(@color_blue);
 				rock_sprite->SetPostion(Position->New(j * 20, i * 20, 20, 20));
-				rocks[j] := Rock->New(rock_sprite);
+				rocks[j] := Rock->New(id++, rock_sprite);
 			};
 
 			@mountain->AddBack(Rocks->New(rocks));
@@ -66,7 +68,6 @@ class War {
 
 						mouse_x := point->GetX();
 						mouse_y := point->GetY();
-"mouse_pos: {$mouse_x}, {$mouse_y}"->PrintLine();
 
 						each(i : @mountain) {
 							rocks := @mountain->Get(i)->GetRocks();
@@ -77,66 +78,77 @@ class War {
 									rock_sprite->SetFill(true);
 									rock_sprite->SetColor(@color_green);
 
-									soundings := GetSoundings(i, j);
-									each(k : soundings) {
-										select(k) {
-											label 0 {
-												"Up"->Print();
-											}
+									GetRock(i, j)->ToString()->PrintLine();
 
-											label 1 {
-												"Down"->Print();
-											}
 
-											label 2 {
-												"Left"->Print();
-											}
+									soundings := GetSoundings(i , j);
+									if(@debug) {
+										buffer := "\t";
+										each(k : soundings) {
+											sounding := soundings[k];
 
-											label 3 {
-												"Right"->Print();
-											}
+											select(k) {
+												label 0 {
+													buffer += "Up["
+												}
 
-											label 4 {
-												"Down/Right"->Print();
-											}
+												label 1 {
+													buffer += "Up/Right["
+												}
 
-											label 5 {
-												"Down/Left"->Print();
-											}
+												label 2 {
+													buffer += "Right["
+												}
 
-											label 6 {
-												"Up/Right"->Print();
-											}
+												label 3 {
+													buffer += "Down/Right["
+												}
 
-											label 7 {
-												"Up/Left"->Print();
-											}
+												# down/left
+												label 4 {
+													buffer += "Down["
+												}
+
+												# down/right
+												label 5 {
+													buffer += "Down/Left["
+												}
+
+												# up/left
+												label 6 {
+													buffer += "Left["
+												}
+												
+												# up/right
+												label 7 {
+													buffer += "Up/Left["
+												}
+											};
+
+											if(sounding <> Nil) {
+												buffer += sounding->GetId();
+											};
+
+											buffer += "], ";
 										};
 
-										if(soundings[k]) {
-											"[X], "->Print()
-										}
-										else {
-											"[], "->Print();
-										};
+										buffer->PrintLine();
 									};
-
-									""->PrintLine();
 								};
 							};
-						};
-					};  	
-				};
+						};  	
+					};
 
-				@framework->FrameStart();
-				Render(frame_count);
-				@framework->FrameEnd();
+					@framework->FrameStart();
+					Render(frame_count);
+					@framework->FrameEnd();
 
-				frame_count += 1;
-				if(frame_count >= @framework->GetFps()) {
-					frame_count := 0;
+					frame_count += 1;
+					if(frame_count >= @framework->GetFps()) {
+						frame_count := 0;
+					};
 				};
-			};
+			};		
 		}
 		else {
 			"--- Error Initializing Environment ---"->ErrorLine();
@@ -148,62 +160,45 @@ class War {
 		};
 	}
 
-	method : GetSoundings(x : Int, y : Int) ~ Bool[] {
-		soundings : Bool[];
+	method : GetSoundings(x : Int, y : Int) ~ Rock[] {
+		soundings := Rock->New[8];
 
-		if(x < @mountain->Size()) {
+		# up
+		soundings[0] := GetRock(x - 1, y);
+
+		# up/right
+		soundings[5] := GetRock(x + 1, y - 1);
+
+		# right
+		soundings[2] := GetRock(x, y + 1);
+
+		# down/right
+		soundings[3] := GetRock(x + 1, y + 1);
+
+		# down
+		soundings[4] := GetRock(x + 1, y);
+
+		# down/left
+		soundings[1] := GetRock(x - 1, y + 1);
+
+		# left
+		soundings[6] := GetRock(x, y - 1);
+
+		# up/left
+		soundings[7] := GetRock(x - 1, y - 1);
+
+		return soundings;
+	}
+
+	method : GetRock(x : Int, y : Int) ~ Rock {
+		if(x > -1 & x < @mountain->Size()) {
 			rocks := @mountain->Get(x)->GetRocks();
-			if(y < rocks->Size()) {
-				soundings := Bool->New[8];
-
-# "#: rock: {$x},{$y}"->PrintLine();
-
-				# up
-				if(x - 1 > -1) {
-					alt_rocks := @mountain->Get(x - 1)->GetRocks();
-					soundings[0] := y < alt_rocks->Size();
-				};
-
-				# down
-				if(x + 1 < @mountain->Size()) {
-					alt_rocks := @mountain->Get(x + 1)->GetRocks();
-					soundings[1] := y < alt_rocks->Size();
-				};
-
-				# left
-				soundings[2] := y - 1 > -1;
-
-				# right 
-				alt_rocks := @mountain->Get(x)->GetRocks();
-				soundings[3] := y + 1 < alt_rocks->Size();
-
-				# down/right
-				if(x + 1 < @mountain->Size()) {
-					alt_rocks := @mountain->Get(x + 1)->GetRocks();
-					soundings[4] := y + 1 < alt_rocks->Size();
-				};
-
-				# down/left
-				if(x + 1 < @mountain->Size() & y - 1 > -1) {				
-					alt_rocks := @mountain->Get(x + 1)->GetRocks();
-					soundings[5] := y - 1 < alt_rocks->Size();
-				};
-
-				# up/right
-				if(x - 1 > -1) {
-					alt_rocks := @mountain->Get(x - 1)->GetRocks();
-					soundings[6] := y + 1 < alt_rocks->Size();
-				};
-
-				# up/left
-				if(x - 1 > -1 & y - 1 > -1) {				
-					alt_rocks := @mountain->Get(x - 1)->GetRocks();
-					soundings[7] := y - 1 < alt_rocks->Size();
-				};
+			if(y > -1 & y < rocks->Size()) {
+				return rocks[y];
 			};
 		};
 
-		return soundings;
+		return Nil;
 	}
 
 	method : Render(frame_count : Int) ~ Nil {
@@ -227,26 +222,48 @@ class War {
 }
 
 class Rock {
+	@id : Int;
 	@sprite : Rectangle;
 
-	New(sprite : Rectangle) {
+	New(id : Int, sprite : Rectangle) {
+		@id := id;
 		@sprite := sprite;
 	}
 
 	method : public : GetSprite() ~ Rectangle {
 		return @sprite;
 	}
+
+	method : public : GetId() ~ Int {
+		return @id;
+	}
+
+	method : public : ToString() ~ String {
+		return "Rock: id={$@id}";
+	}
 }
 
 class Rocks {
-	@rects : Rock[];
+	@rocks : Rock[];
 
-	New(rects : Rock[]) {
-		@rects := rects;
+	New(rocks : Rock[]) {
+		@rocks := rocks;
 	}
 
 	method : public : GetRocks() ~ Rock[] {
-		return @rects;
+		return @rocks;
+	}
+
+	method : public : ToString() ~ String {
+		buffer := "[Rocks: ";
+
+		each(rock in @rocks) {
+			buffer += rock->ToString();
+			buffer += '\n';
+		};
+		buffer += ']';
+
+		return buffer;
 	}
 }
 
