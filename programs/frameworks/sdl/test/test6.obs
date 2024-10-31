@@ -172,7 +172,7 @@ class War {
 		if(frame_count % 7 = 0) {
 			if(<>@down & @bomb->GetCenterY() < 100) {
 				@down := true;
-				@down_timer := 8;
+				@down_timer := 17;
 			};
 
 			if(@down_timer <> 0) {
@@ -187,12 +187,12 @@ class War {
 					@bomb->AddY(2);
 				}
 				else {
-					@bomb->AddY(4);
+					@bomb->AddY(5);
 				};
 			}
 			else {
 				if(@bomb->GetCenterY() > 100) {
-					@bomb->AddY(-4);
+					@bomb->AddY(-5);
 				}
 				if(@bomb->GetCenterY() > 200) {
 					@bomb->AddY(-2);
