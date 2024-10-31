@@ -45,8 +45,8 @@ class War {
 			@mountain->AddBack(Rocks->New(rocks));
 		};
 
-		@missle := @framework->AddRectangle(7, 7)
-		@missle->SetPostion(Position->New(GameConsts->SCREEN_WIDTH * 0.75, GameConsts->SCREEN_HEIGHT - 7, 7, 7));
+		@missle := @framework->AddRectangle(16, 6)
+		@missle->SetPostion(Position->New(GameConsts->SCREEN_WIDTH * 0.75, GameConsts->SCREEN_HEIGHT - 7, 16, 6));
 		@missle->SetColor(@color_gray);
 		@missle->SetFill(true);
 	}
