@@ -23,10 +23,7 @@ class War {
 		@color_black := Color->New(0, 0, 0);
 		@framework->SetClearColor(@color_black);
 
-		@color_white := Color->New(255,255,242);
 		@color_blue := Color->New(14, 248, 248);
-		@color_red := Color->New(191,0,0);
-		@color_green := Color->New(63,90,54);
 
 		id := 0;
 		half_hor_max := 20;
@@ -72,10 +69,10 @@ class War {
 						each(i : @mountain) {
 							rocks := @mountain->Get(i)->GetRocks();
 							each(j : rocks) {
-								rock := rocks[j]->GetSprite();
+								rock := rocks[j];
 								
-								if(rock->GetPosition()->IntersectsPoint(mouse_x, mouse_y)) {
-									rocks[j]->ReduceStrength(Rock->Strength->MAX);
+								if(<>rock->IsDestroyed() & rock->GetSprite()->GetPosition()->IntersectsPoint(mouse_x, mouse_y)) {
+									rock->ReduceStrength(Rock->Strength->MAX);
 
 									soundings := GetSoundings(i , j);
 									if(@is_debug) {
@@ -210,8 +207,8 @@ class War {
 		each(level in @mountain) {
 			rocks := level->GetRocks();
 			each(rock in rocks) {
-				if(rock->IsDestroyed()) {
-					rock->GetSprite()->Render();
+				if(<>rock->IsDestroyed()) {
+					rock->Render(frame_count);
 				};
 			};
 		};
@@ -244,16 +241,21 @@ class Rock {
 	}
 
 	method : public : IsDestroyed() ~ Bool {
-		return ReduceStrength(0);
+		return @strength <= 0;
 	}
 
-	method : public : ReduceStrength(change : Int) ~ Bool {
+	method : public : ReduceStrength(change : Int) ~ Nil {
 		if(@strength > 0) {
 			@strength -= change;
-			return true;
+		};
+	}
+
+	method : public : Render(frame_count : Int) ~ Nil {
+		if(@strength < Rock->Strength->MAX / 2) {
+			@sprite->SetColor(Color->New(166, 44, 43));
 		};
 
-		return false;
+		@sprite->Render();
 	}
 
 	method : public : ToString() ~ String {
