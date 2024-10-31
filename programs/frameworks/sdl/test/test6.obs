@@ -3,11 +3,12 @@ use Game.Framework;
 
 class War {
 	@framework : GameFramework;
-	@color_white, @color_black, @color_blue, @color_green, @color_red : Color;
+	@color_black, @color_gray : Color;
 	@mountain : Collection.Vector<Rocks>;
-	@mouse_x : IntRef;
-	@mouse_y : IntRef;
 	@is_debug : Bool;
+
+	@bomb : Rectangle;
+	@down : Bool;
 
 	function : Main(args : String[]) ~ Nil {
 		War->New()->Run();
@@ -17,10 +18,9 @@ class War {
 		@framework := GameFramework->New(GameConsts->SCREEN_WIDTH, GameConsts->SCREEN_HEIGHT, "War!");
 		@is_debug := true;
 
-		@mouse_x := IntRef->New();
-		@mouse_y := IntRef->New();
-		
 		@color_black := Color->New(0, 0, 0);
+		@color_gray := Color->New(113, 121, 126);
+
 		@framework->SetClearColor(@color_black);
 
 		@color_blue := Color->New(14, 248, 248);
@@ -43,6 +43,11 @@ class War {
 
 			@mountain->AddBack(Rocks->New(rocks));
 		};
+
+		@bomb := @framework->AddRectangle(7, 7)
+		@bomb->SetPostion(Position->New(GameConsts->SCREEN_WIDTH * 0.75, GameConsts->SCREEN_HEIGHT - 7, 7, 7));
+		@bomb->SetColor(@color_gray);
+		@bomb->SetFill(true);
 	}
 	
 	method : Run() ~ Nil {
@@ -55,10 +60,11 @@ class War {
 			while(<>quit) {
 				# process input
 				while(e->Poll() <> 0) {
+					# quit event
 					if(e->GetType() = EventType->SDL_QUIT) {
 						quit := true;
 					}
-					# mouse
+					# left mouse button event
 					else if(e->GetMButton() <> Nil & e->GetMButton()->GetButton() = MouseButtonValue->SDL_BUTTON_LEFT) {
 						point := Point->New();
 						Cursor->GetMouseState(point);
@@ -73,80 +79,29 @@ class War {
 								
 								if(<>rock->IsDestroyed() & rock->GetSprite()->GetPosition()->IntersectsPoint(mouse_x, mouse_y)) {
 									rock->ReduceStrength(Rock->Strength->MAX);
-
 									soundings := GetSoundings(i , j);
-									if(@is_debug) {
-										buffer := "\t";
-										each(k : soundings) {
-											sounding := soundings[k];
+									each(k : soundings) {
+										sounding := soundings[k];
 
-											if(@is_debug) {
-												select(k) {
-													label 0 {
-														buffer += "Up["
-													}
-
-													label 1 {
-														buffer += "Up/Right["
-													}
-
-													label 2 {
-														buffer += "Right["
-													}
-
-													label 3 {
-														buffer += "Down/Right["
-													}
-
-													# down/left
-													label 4 {
-														buffer += "Down["
-													}
-
-													# down/right
-													label 5 {
-														buffer += "Down/Left["
-													}
-
-													# up/left
-													label 6 {
-														buffer += "Left["
-													}
-													
-													# up/right
-													label 7 {
-														buffer += "Up/Left["
-													}
-												};
-											};
-
-											if(sounding <> Nil) {
-												buffer += sounding->GetId();
-												sounding->ReduceStrength(Int->Random(Rock->Strength->MAX * 0.25, Rock->Strength->MAX));
-											};
-
-											if(@is_debug) {
-												buffer += "], ";
-											};
-										};
-
-										if(@is_debug) {
-											buffer->PrintLine();
+										if(sounding <> Nil) {
+											sounding->ReduceStrength(Int->Random(Rock->Strength->MAX * 0.25, Rock->Strength->MAX));
 										};
 									};
 								};
 							};
 						};  	
 					};
+				};
 
-					@framework->FrameStart();
-					Render(frame_count);
-					@framework->FrameEnd();
+				# render
+				@framework->FrameStart();
+				Render(frame_count);
+				@framework->FrameEnd();
 
-					frame_count += 1;
-					if(frame_count >= @framework->GetFps()) {
-						frame_count := 0;
-					};
+				# update frame count
+				frame_count += 1;
+				if(frame_count >= @framework->GetFps()) {
+					frame_count := 0;
 				};
 			};		
 		}
@@ -211,6 +166,22 @@ class War {
 					rock->Render(frame_count);
 				};
 			};
+		};
+		
+		if(frame_count % 7 = 0) {
+			if(<>@down & @bomb->GetCenterY() < 100) {
+				@down := true;
+			};
+
+			if(@down) {
+				@bomb->AddY(3);
+			}
+			else {
+				@bomb->AddY(-3);
+			};
+
+			@bomb->AddX(-2);		
+			@bomb->Render();
 		};
 						
 		@framework->Show();
