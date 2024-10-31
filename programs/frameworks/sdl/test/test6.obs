@@ -7,7 +7,7 @@ class War {
 	@mountain : Collection.Vector<Rocks>;
 	@is_debug : Bool;
 
-	@bomb : Rectangle;
+	@missle : Rectangle;
 	@down : Bool;
 	@down_timer : Int;
 
@@ -45,10 +45,10 @@ class War {
 			@mountain->AddBack(Rocks->New(rocks));
 		};
 
-		@bomb := @framework->AddRectangle(7, 7)
-		@bomb->SetPostion(Position->New(GameConsts->SCREEN_WIDTH * 0.75, GameConsts->SCREEN_HEIGHT - 7, 7, 7));
-		@bomb->SetColor(@color_gray);
-		@bomb->SetFill(true);
+		@missle := @framework->AddRectangle(7, 7)
+		@missle->SetPostion(Position->New(GameConsts->SCREEN_WIDTH * 0.75, GameConsts->SCREEN_HEIGHT - 7, 7, 7));
+		@missle->SetColor(@color_gray);
+		@missle->SetFill(true);
 	}
 	
 	method : Run() ~ Nil {
@@ -170,40 +170,40 @@ class War {
 		};
 		
 		if(frame_count % 7 = 0) {
-			if(<>@down & @bomb->GetCenterY() < 100) {
+			if(<>@down & @missle->GetCenterY() < 100) {
 				@down := true;
 				@down_timer := 17;
 			};
 
 			if(@down_timer <> 0) {
 				@down_timer -= 1;
-				@bomb->AddY(1);
+				@missle->AddY(1);
 			}
 			else if(@down) {
-				if(@bomb->GetCenterY() < 100) {
-					@bomb->AddY(1);
+				if(@missle->GetCenterY() < 100) {
+					@missle->AddY(1);
 				}
-				else if(@bomb->GetCenterY() < 200) {
-					@bomb->AddY(2);
+				else if(@missle->GetCenterY() < 200) {
+					@missle->AddY(2);
 				}
 				else {
-					@bomb->AddY(5);
+					@missle->AddY(5);
 				};
 			}
 			else {
-				if(@bomb->GetCenterY() > 100) {
-					@bomb->AddY(-5);
+				if(@missle->GetCenterY() > 100) {
+					@missle->AddY(-5);
 				}
-				if(@bomb->GetCenterY() > 200) {
-					@bomb->AddY(-2);
+				if(@missle->GetCenterY() > 200) {
+					@missle->AddY(-2);
 				}
 				else {
-					@bomb->AddY(-1);
+					@missle->AddY(-1);
 				};
 			};
 
-			@bomb->AddX(-4);		
-			@bomb->Render();
+			@missle->AddX(-4);		
+			@missle->Render();
 		};
 						
 		@framework->Show();
