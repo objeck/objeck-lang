@@ -163,7 +163,7 @@ class War {
 		};
 		
 		@missle->Render(frame_count);
-		
+
 		@framework->Show();
 	}
 }
@@ -272,7 +272,7 @@ class Missle {
 	method : public : Render(frame_count : Int) ~ Nil {
 		@missle_x -= @missle_speed;
 		@missle_y += @missle_trajectory;
-		@sprite->SetCenter(@missle_x, Float->Sin(@missle_y) * 220 + GameConsts->SCREEN_HEIGHT);
+		@sprite->SetCenter(@missle_x, Float->Sin(@missle_y) * 225.0 + GameConsts->SCREEN_HEIGHT);
 
 		@sprite->SetColor(@color_gray);
 		@sprite->SetFill(true);
