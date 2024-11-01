@@ -3,13 +3,10 @@ use Game.Framework;
 
 class War {
 	@framework : GameFramework;
-	@color_black, @color_gray : Color;
+	@missle : Missle;
+	@color_black : Color;
 	@mountain : Collection.Vector<Rocks>;
 	@is_debug : Bool;
-
-	@missle : Rectangle;
-	@down : Bool;
-	@down_timer : Int;
 
 	function : Main(args : String[]) ~ Nil {
 		War->New()->Run();
@@ -20,7 +17,6 @@ class War {
 		@is_debug := true;
 
 		@color_black := Color->New(0, 0, 0);
-		@color_gray := Color->New(113, 121, 126);
 
 		@framework->SetClearColor(@color_black);
 
@@ -45,10 +41,7 @@ class War {
 			@mountain->AddBack(Rocks->New(rocks));
 		};
 
-		@missle := @framework->AddRectangle(16, 6)
-		@missle->SetPostion(Position->New(GameConsts->SCREEN_WIDTH * 0.75, GameConsts->SCREEN_HEIGHT - 7, 16, 6));
-		@missle->SetColor(@color_gray);
-		@missle->SetFill(true);
+		@missle := Missle->New(0.0125, 2.25, @framework->AddRectangle(6, 6));
 	}
 	
 	method : Run() ~ Nil {
@@ -169,90 +162,9 @@ class War {
 			};
 		};
 		
-		if(frame_count % 7 = 0) {
-			if(<>@down & @missle->GetCenterY() < 100) {
-				@down := true;
-				@down_timer := 17;
-			};
-
-			if(@down_timer <> 0) {
-				@down_timer -= 1;
-				@missle->AddY(1);
-			}
-			else if(@down) {
-				if(@missle->GetCenterY() < 100) {
-					@missle->AddY(1);
-				}
-				else if(@missle->GetCenterY() < 200) {
-					@missle->AddY(2);
-				}
-				else {
-					@missle->AddY(5);
-				};
-			}
-			else {
-				if(@missle->GetCenterY() > 100) {
-					@missle->AddY(-5);
-				}
-				if(@missle->GetCenterY() > 200) {
-					@missle->AddY(-2);
-				}
-				else {
-					@missle->AddY(-1);
-				};
-			};
-
-			@missle->AddX(-4);		
-			@missle->Render();
-		};
-						
+		@missle->Render(frame_count);
+		
 		@framework->Show();
-	}
-}
-
-class Rock {
-	@id : Int;
-	@strength : Int;
-	@sprite : Rectangle;
-
-	consts Strength {
-		MAX := 15
-	}
-
-	New(id : Int, sprite : Rectangle) {
-		@id := id;
-		@strength := Rock->Strength->MAX;
-		@sprite := sprite;
-	}
-
-	method : public : GetSprite() ~ Rectangle {
-		return @sprite;
-	}
-
-	method : public : GetId() ~ Int {
-		return @id;
-	}
-
-	method : public : IsDestroyed() ~ Bool {
-		return @strength <= 0;
-	}
-
-	method : public : ReduceStrength(change : Int) ~ Nil {
-		if(@strength > 0) {
-			@strength -= change;
-		};
-	}
-
-	method : public : Render(frame_count : Int) ~ Nil {
-		if(@strength < Rock->Strength->MAX / 2) {
-			@sprite->SetColor(Color->New(166, 44, 43));
-		};
-
-		@sprite->Render();
-	}
-
-	method : public : ToString() ~ String {
-		return "Rock: id={$@id}";
 	}
 }
 
@@ -277,6 +189,94 @@ class Rocks {
 		buffer += ']';
 
 		return buffer;
+	}
+}
+
+class Rock {
+	@id : Int;
+	@strength : Int;
+	@sprite : Rectangle;
+	@green_color : Color;
+
+	consts Strength {
+		MAX := 15
+	}
+
+	New(id : Int, sprite : Rectangle) {
+		@id := id;
+		@strength := Rock->Strength->MAX;
+		@sprite := sprite;
+		@green_color := Color->New(166, 44, 43);
+	}
+
+	method : public : GetSprite() ~ Rectangle {
+		return @sprite;
+	}
+
+	method : public : GetId() ~ Int {
+		return @id;
+	}
+
+	method : public : IsDestroyed() ~ Bool {
+		return @strength <= 0;
+	}
+
+	method : public : ReduceStrength(change : Int) ~ Nil {
+		if(@strength > 0) {
+			@strength -= change;
+		};
+	}
+
+	method : public : Render(frame_count : Int) ~ Nil {
+		if(@strength < Rock->Strength->MAX / 2) {
+			@sprite->SetColor(@green_color);
+		};
+
+		@sprite->Render();
+	}
+
+	method : public : ToString() ~ String {
+		return "Rock: id={$@id}";
+	}
+}
+
+class Missle {
+	@sprite : Rectangle;
+	@color_gray : Color;
+	@missle_x, @missle_y : Float;
+	@missle_trajectory, @missle_speed : Float;
+
+	consts Strength {
+		MAX := 15
+	}
+
+	New(missle_trajectory : Float, missle_speed : Float, sprite : Rectangle) {
+		@missle_trajectory := missle_trajectory;
+		@missle_speed := missle_speed;
+
+		@missle_x := GameConsts->SCREEN_WIDTH * 0.75;
+		@missle_y := GameConsts->SCREEN_HEIGHT - 7.0;
+
+		@sprite := sprite;
+		@color_gray := Color->New(113, 121, 126);
+	}
+
+	method : public : GetSprite() ~ Rectangle {
+		return @sprite;
+	}
+
+	method : public : IsDestroyed() ~ Bool {
+		return false;
+	}
+
+	method : public : Render(frame_count : Int) ~ Nil {
+		@missle_x -= @missle_speed;
+		@missle_y += @missle_trajectory;
+		@sprite->SetCenter(@missle_x, Float->Sin(@missle_y) * 220 + GameConsts->SCREEN_HEIGHT);
+
+		@sprite->SetColor(@color_gray);
+		@sprite->SetFill(true);
+		@sprite->Render();
 	}
 }
 
