@@ -5985,7 +5985,7 @@ Expression* ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expressio
 
       case CLASS_TYPE:
         if(!HasProgramOrLibraryEnum(right->GetName())) {
-          Expression* unboxed_expresion = UnboxingExpression(right, eyyxpression, true, depth);
+          Expression* unboxed_expresion = UnboxingExpression(right, expression, true, depth);
           if(unboxed_expresion) {
             return unboxed_expresion;
           }
