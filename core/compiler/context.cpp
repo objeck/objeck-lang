@@ -5984,9 +5984,8 @@ Expression* ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expressio
         break;
 
       case CLASS_TYPE:
-/*
         if(!HasProgramOrLibraryEnum(right->GetName())) {
-          Expression* unboxed_expresion = UnboxingExpression(right, expression, true, depth);
+          Expression* unboxed_expresion = UnboxingExpression(right, eyyxpression, true, depth);
           if(unboxed_expresion) {
             return unboxed_expresion;
           }
@@ -5995,7 +5994,6 @@ Expression* ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expressio
                          FormatTypeString(right->GetName()));
          }
         }
-*/
         break;
 
       case BOOLEAN_TYPE:
