@@ -41,7 +41,7 @@ class War {
 			@mountain->AddBack(Rocks->New(rocks));
 		};
 
-		@missle := Missle->New(0.0125, 2.25, @framework->AddRectangle(6, 6));
+		@missle := Missle->New(@framework->AddRectangle(8, 8));
 	}
 	
 	method : Run() ~ Nil {
@@ -244,18 +244,15 @@ class Missle {
 	@sprite : Rectangle;
 	@color_gray : Color;
 	@missle_x, @missle_y : Float;
-	@missle_trajectory, @missle_speed : Float;
-
+	
 	consts Strength {
 		MAX := 15
 	}
 
-	New(missle_trajectory : Float, missle_speed : Float, sprite : Rectangle) {
-		@missle_trajectory := missle_trajectory;
-		@missle_speed := missle_speed;
-
-		@missle_x := GameConsts->SCREEN_WIDTH * 0.75;
-		@missle_y := GameConsts->SCREEN_HEIGHT - 7.0;
+	New(sprite : Rectangle) {
+		@missle_x := GameConsts->SCREEN_WIDTH->As(Float);
+		@missle_y := GameConsts->SCREEN_HEIGHT->As(Float); # TODO: 
+"# {$@missle_x}, {$@missle_y}"->PrintLine();
 
 		@sprite := sprite;
 		@color_gray := Color->New(113, 121, 126);
@@ -270,13 +267,19 @@ class Missle {
 	}
 
 	method : public : Render(frame_count : Int) ~ Nil {
-		@missle_x -= @missle_speed;
-		@missle_y += @missle_trajectory;
-		@sprite->SetCenter(@missle_x, Float->Sin(@missle_y) * 225.0 + GameConsts->SCREEN_HEIGHT);
-
-		@sprite->SetColor(@color_gray);
+		x := Float->Sin(@missle_x) * 1000.0;
+		y := @missle_y;
+	
+"=> {$y}, {$x}"->PrintLine();
+		
+		# render
+		@sprite->SetCenter(x, y);
 		@sprite->SetFill(true);
+		@sprite->SetColor(Color->New(255, 0, 0));
 		@sprite->Render();
+		
+		@missle_x -= 0.725;
+		@missle_y -= 0.725;
 	}
 }
 
