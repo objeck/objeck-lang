@@ -5984,6 +5984,7 @@ Expression* ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expressio
         break;
 
       case CLASS_TYPE:
+/*
         if(!HasProgramOrLibraryEnum(right->GetName())) {
           Expression* unboxed_expresion = UnboxingExpression(right, expression, true, depth);
           if(unboxed_expresion) {
@@ -5992,8 +5993,9 @@ Expression* ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expressio
           else {
             ProcessError(expression, L"Invalid cast with classes: System.Char and " +  
                          FormatTypeString(right->GetName()));
-          }
+         }
         }
+*/
         break;
 
       case BOOLEAN_TYPE:

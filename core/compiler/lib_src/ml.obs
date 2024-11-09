@@ -2172,10 +2172,10 @@ else {
 				find := results->Find(term);
 				if(find <> Nil) {
 					if(result = 0.0) {
-						result := find;
+						result := find->Get();
 					}
 					else {
-						result *= find;
+						result *= find->Get();
 					};
 				};
 			};
