@@ -6088,15 +6088,12 @@ Expression* ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expressio
         break;
 
       case CLASS_TYPE:
-        if(!HasProgramOrLibraryEnum(right->GetName())) {
-          Expression* unboxed_expresion = UnboxingExpression(right, expression, true, depth);
-          if(unboxed_expresion) {
-            return unboxed_expresion;
-          }
-          else {
-            ProcessError(expression, L"Invalid cast with classes: System.Float and " +
-                         FormatTypeString(FormatTypeString(right->GetName())));
-          }
+        if(HasProgramOrLibraryEnum(right->GetName())) {
+          expression->SetCastType(left, false);
+        }
+        else {
+          ProcessError(expression, L"Invalid cast with classes: System.Float and " +
+                       FormatTypeString(FormatTypeString(right->GetName())));
         }
         break;
 

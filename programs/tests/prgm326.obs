@@ -1,0 +1,12 @@
+class Foo { 
+    consts Bar {
+        A := 101, B := 301
+    }
+
+    function: Main(args: String[]) ~ Nil {
+       a : Float := Foo->Bar->A;
+       b : Float := Foo->Bar->B;
+
+       "{$a}, {$b}"->PrintLine();
+    }
+}
