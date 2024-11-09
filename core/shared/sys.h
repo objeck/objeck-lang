@@ -47,6 +47,7 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <stdint.h>
 
 #include "logger.h"
 
