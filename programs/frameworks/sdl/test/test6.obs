@@ -242,7 +242,7 @@ class Rock {
 
 class Missle {
 	@sprite : Rectangle;
-	@color_gray : Color;
+	@color_red : Color;
 	@missle_x, @missle_y : Float;
 	
 	consts Strength {
@@ -251,11 +251,11 @@ class Missle {
 
 	New(sprite : Rectangle) {
 		@missle_x := GameConsts->SCREEN_WIDTH->As(Float);
-		@missle_y := GameConsts->SCREEN_HEIGHT->As(Float); # TODO: 
+		@missle_y := GameConsts->SCREEN_HEIGHT->As(Float);
 "# {$@missle_x}, {$@missle_y}"->PrintLine();
 
 		@sprite := sprite;
-		@color_gray := Color->New(113, 121, 126);
+		@color_red := Color->New(192,70,87);
 	}
 
 	method : public : GetSprite() ~ Rectangle {
@@ -267,19 +267,19 @@ class Missle {
 	}
 
 	method : public : Render(frame_count : Int) ~ Nil {
-		x := Float->Sin(@missle_x) * 1000.0;
-		y := @missle_y;
-	
-"=> {$y}, {$x}"->PrintLine();
+		x := @missle_x;
+		y := -1 * Float->Sin(@missle_y) * GameConsts->SCREEN_HEIGHT->As(Float) * 0.5 + GameConsts->SCREEN_HEIGHT->As(Float);
+		
+"=> x={$x}, y={$y}"->PrintLine();
 		
 		# render
 		@sprite->SetCenter(x, y);
 		@sprite->SetFill(true);
-		@sprite->SetColor(Color->New(255, 0, 0));
+		@sprite->SetColor(@color_red);
 		@sprite->Render();
 		
-		@missle_x -= 0.725;
-		@missle_y -= 0.725;
+		@missle_x -= 2.95;
+		@missle_y -= 0.0175;
 	}
 }
 
