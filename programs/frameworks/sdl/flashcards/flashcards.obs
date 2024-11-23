@@ -347,7 +347,7 @@ class Flashcards {
 		
 		@bottom_string := "-\t";
 		@bottom_string += @bottom_number->ToString();
-		@answer_string := "\t";
+		@answer_string := "";
 	}
 
 	method : Render() ~ Nil {
@@ -371,7 +371,6 @@ class Flashcards {
 				correct += 1;
 			};
 		};
-		wrong := @max_points - correct;
 		correct_precent := ((correct->As(Float) / @max_points->As(Float)) * 100.0)->As(Int);
 		
 		if(correct_precent >= 90) {			
@@ -396,7 +395,6 @@ class Flashcards {
 		renderer->FillRect(@card_rect);
 
 		# draw problem text
-		x := @card_rect->GetX();
 		y := @card_rect->GetY();
 		
 		DrawText(@top_string, y + 20, @top_sprite);
