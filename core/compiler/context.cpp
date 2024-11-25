@@ -7056,7 +7056,7 @@ bool ContextAnalyzer::IsEnumExpression(Expression* expression)
 bool ContextAnalyzer::IsStringExpression(Expression* expression) 
 {
   Type* eval_type = expression->GetEvalType();
-  if(eval_type->GetType() == CLASS_TYPE && eval_type->GetName() == L"System.String") {
+  if(eval_type && eval_type->GetType() == CLASS_TYPE && eval_type->GetName() == L"System.String") {
     return true;
   }
 
