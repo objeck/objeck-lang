@@ -2979,9 +2979,15 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
       NextToken();
       break;
 
-    case SOCK_UDP_CLOSE:
+    case SOCK_UDP_CLOSE_CREATE:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                               instructions::SOCK_UDP_CLOSE);
+                                                               instructions::SOCK_UDP_CLOSE_CREATE);
+      NextToken();
+      break;
+
+    case SOCK_UDP_CLOSE_BIND:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::SOCK_UDP_CLOSE_BIND);
       NextToken();
       break;
 
