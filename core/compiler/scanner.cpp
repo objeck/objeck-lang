@@ -337,6 +337,11 @@ void Scanner::LoadKeywords()
   ident_map[L"SOCK_TCP_CONNECT"] = SOCK_TCP_CONNECT;
   ident_map[L"SOCK_TCP_IS_CONNECTED"] = SOCK_TCP_IS_CONNECTED;
   ident_map[L"SOCK_TCP_BIND"] = SOCK_TCP_BIND;
+  ident_map[L"SOCK_UDP_BIND" = SOCK_UDP_BIND;
+  ident_map[L"SOCK_UDP_LISTEN" = SOCK_UDP_LISTEN;
+  ident_map[L"SOCK_UDP_ACCEPT" = SOCK_UDP_ACCEPT;
+  ident_map[L"SOCK_UDP_CLOSE" = SOCK_UDP_CLOSE;
+  ident_map[L"SOCK_UDP_ERROR" = SOCK_UDP_ERROR;
   ident_map[L"SOCK_TCP_SSL_LISTEN"] = SOCK_TCP_SSL_LISTEN;
   ident_map[L"SOCK_TCP_SSL_ACCEPT"] = SOCK_TCP_SSL_ACCEPT;
 	ident_map[L"SOCK_TCP_SSL_ERROR"] = SOCK_TCP_SSL_ERROR;
@@ -631,6 +636,11 @@ void Scanner::CheckIdentifier(int index)
     case TIMER_ELAPSED:
     case SOCK_TCP_CONNECT:
     case SOCK_TCP_BIND:
+    case SOCK_UDP_BIND:
+    case SOCK_UDP_LISTEN:
+    case SOCK_UDP_ACCEPT:
+    case SOCK_UDP_CLOSE:
+    case SOCK_UDP_ERROR:
     case SOCK_TCP_SSL_LISTEN:
     case SOCK_TCP_SSL_ACCEPT:
     case SOCK_TCP_SSL_SRV_CERT:
