@@ -338,14 +338,10 @@ void Scanner::LoadKeywords()
   ident_map[L"SOCK_TCP_IS_CONNECTED"] = SOCK_TCP_IS_CONNECTED;
   ident_map[L"SOCK_TCP_BIND"] = SOCK_TCP_BIND;
   ident_map[L"SOCK_UDP_BIND" = SOCK_UDP_BIND;
-  ident_map[L"SOCK_UDP_LISTEN" = SOCK_UDP_LISTEN;
   
 
-ident_map[L"SOCK_UDP_CONNECT"] = SOCK_UDP_CONNECT;
+ident_map[L"SOCK_UDP_CREATE"] = SOCK_UDP_CREATE;
 ident_map[L"SOCK_UDP_BIND"] = SOCK_UDP_BIND;
-ident_map[L"SOCK_UDP_LISTEN"] = SOCK_UDP_LISTEN;
-ident_map[L"SOCK_UDP_ACCEPT"] = SOCK_UDP_ACCEPT;
-ident_map[L"SOCK_UDP_IS_CONNECTED"] = SOCK_UDP_IS_CONNECTED;
 ident_map[L"SOCK_UDP_CLOSE"] = SOCK_UDP_CLOSE;
 ident_map[L"SOCK_UDP_IN_BYTE"] = SOCK_UDP_IN_BYTE;
 ident_map[L"SOCK_UDP_IN_BYTE_ARY"] = SOCK_UDP_IN_BYTE_ARY;
@@ -355,8 +351,6 @@ ident_map[L"SOCK_UDP_OUT_BYTE_ARY"] = SOCK_UDP_OUT_BYTE_ARY;
 ident_map[L"SOCK_UDP_OUT_CHAR_ARY"] = SOCK_UDP_OUT_CHAR_ARY;
 ident_map[L"SOCK_UDP_IN_STRING"] = SOCK_UDP_IN_STRING;
 ident_map[L"SOCK_UDP_OUT_STRING"] = SOCK_UDP_OUT_STRING;
-ident_map[L"SOCK_UDP_HOST_NAME"] = SOCK_UDP_HOST_NAME;
-ident_map[L"SOCK_UDP_RESOLVE_NAME"] = SOCK_UDP_RESOLVE_NAME;
 ident_map[L"SOCK_UDP_ERROR"] = SOCK_UDP_ERROR;
 
 
@@ -657,11 +651,8 @@ void Scanner::CheckIdentifier(int index)
     case SOCK_TCP_BIND:
     
 
-    case SOCK_UDP_CONNECT:
+    case SOCK_UDP_CREATE:
     case SOCK_UDP_BIND:
-    case SOCK_UDP_LISTEN:
-    case SOCK_UDP_ACCEPT:
-    case SOCK_UDP_IS_CONNECTED:
     case SOCK_UDP_CLOSE:
     case SOCK_UDP_IN_BYTE:
     case SOCK_UDP_IN_BYTE_ARY:
@@ -671,8 +662,6 @@ void Scanner::CheckIdentifier(int index)
     case SOCK_UDP_OUT_CHAR_ARY:
     case SOCK_UDP_IN_STRING:
     case SOCK_UDP_OUT_STRING:
-    case SOCK_UDP_HOST_NAME:
-    case SOCK_UDP_RESOLVE_NAME:
     case SOCK_UDP_ERROR:
 
 
