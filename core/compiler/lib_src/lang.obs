@@ -10324,10 +10324,6 @@ bundle System.IO.Net {
 		@return character string
 		~#
 		method : public : ReadLine() ~ System.String {
-			if(<>IsOpen()) {
-				return Nil;
-			};
-
 			buffer : Char[] := Char->New[8192];
 			ReadString(buffer);
 			return System.String->New(buffer);
