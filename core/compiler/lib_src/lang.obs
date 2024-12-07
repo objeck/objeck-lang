@@ -10155,9 +10155,10 @@ bundle System.IO.Net {
 	UDP/IP Server socket
 	~#
 	class UDPSocketServer {
-		@handle : Int;
 		@port : Int;
-
+		@server : Int;
+		@client : Int;
+		
 		#~
 		Default constructor
 		@param port server port

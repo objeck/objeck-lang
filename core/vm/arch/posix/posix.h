@@ -454,6 +454,16 @@ public:
 };
 
 /****************************
+ * UDP socket support class
+ ****************************/
+class UDPSocket {
+public:
+  static bool Bind(int port) {
+    return false;
+  }
+};
+
+/****************************
  * IP socket support class
  ****************************/
 class IPSecureSocket {

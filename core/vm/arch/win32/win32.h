@@ -495,6 +495,30 @@ class IPSocket {
 };
 
 /****************************
+ * UDP socket support class
+ ****************************/
+class UDPSocket {
+public:
+  static bool Bind(int port, struct sockaddr_in &servaddr, struct sockaddr_in &cliaddr) {
+    SOCKET sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    if(sock != INVALID_SOCKET) {
+      memset(&sock, 0, sizeof(servaddr));
+      memset(&sock, 0, sizeof(cliaddr));
+
+      servaddr.sin_family = AF_INET;
+      servaddr.sin_addr.s_addr = INADDR_ANY;
+      servaddr.sin_port = htons(port);
+
+      if(bind(sock, (const struct sockaddr*)&servaddr, sizeof(servaddr)) < 0) {
+        perror("bind failed");
+        exit(EXIT_FAILURE);
+      }
+
+    }
+  }
+};
+
+/****************************
  * IP socket support class
  ****************************/
 class IPSecureSocket {
