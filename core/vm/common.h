@@ -1714,6 +1714,17 @@ class TrapProcessor {
   static bool SockTcpSslListen(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame);
   static bool SockTcpSslAccept(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame);
   static bool SockTcpSslCloseSrv(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame);
+  static bool SockUdpCreate(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame);
+  static bool SockUdpBind(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame);
+  static bool SockUdpClose(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame);
+  static bool SockUdpInByte(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame);
+  static bool SockUdpInByteAry(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame);
+  static bool SockUdpInCharAry(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame);
+  static bool SockUdpOutByte(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame);
+  static bool SockUdpOutByteAry(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame);
+  static bool SockUdpOutCharAry(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame);
+  static bool SockUdpOutString(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame);
+  static bool SockUdpError(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame);
   static bool SerlChar(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
   static bool SerlInt(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
   static bool SerlFloat(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
