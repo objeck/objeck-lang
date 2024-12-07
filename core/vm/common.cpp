@@ -2104,16 +2104,11 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
   case SET_SYS_PROP:
     return SetSysProp(program, inst, op_stack, stack_pos, frame);
 
-
-
-
   case GET_SYS_ENV:
     return GetSysEnv(program, inst, op_stack, stack_pos, frame);
 
   case SET_SYS_ENV:
     return SetSysEnv(program, inst, op_stack, stack_pos, frame);
-
-
 
   case SOCK_TCP_RESOLVE_NAME:
     return SockTcpResolveName(program, inst, op_stack, stack_pos, frame);
@@ -2177,6 +2172,48 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
 
   case SOCK_TCP_SSL_ERROR:
     return SockTcpSslError(program, inst, op_stack, stack_pos, frame);
+
+
+
+
+
+    case SOCK_UDP_CREATE:
+      return SockUdpCreate(program, inst, op_stack, stack_pos, frame);
+
+    case SOCK_UDP_BIND:
+      return SockUdpBind(program, inst, op_stack, stack_pos, frame);
+
+    case SOCK_UDP_CLOSE:
+      return SockUdpClose(program, inst, op_stack, stack_pos, frame);
+
+    case SOCK_UDP_IN_BYTE:
+      return SockUdpInByte(program, inst, op_stack, stack_pos, frame);
+
+    case SOCK_UDP_IN_BYTE_ARY:
+      return SockUdpInByteAry(program, inst, op_stack, stack_pos, frame);
+
+    case SOCK_UDP_IN_CHAR_ARY:
+      return SockUdpInCharAry(program, inst, op_stack, stack_pos, frame);
+
+    case SOCK_UDP_OUT_BYTE:
+      return SockUdpOutByte(program, inst, op_stack, stack_pos, frame);
+
+    case SOCK_UDP_OUT_BYTE_ARY:
+      return SockUdpOutByteAry(program, inst, op_stack, stack_pos, frame);
+
+    case SOCK_UDP_IN_STRING:
+      return SockUdpOutCharAry(program, inst, op_stack, stack_pos, frame);
+
+    case SOCK_UDP_OUT_STRING:
+      return SockUdpOutString(program, inst, op_stack, stack_pos, frame);
+
+    case SOCK_UDP_ERROR:
+      return SockUdpError(program, inst, op_stack, stack_pos, frame);
+
+
+
+
+
 
   case SERL_CHAR:
     return SerlChar(program, inst, op_stack, stack_pos, frame);
@@ -4315,6 +4352,50 @@ bool TrapProcessor::SockTcpSslCloseSrv(StackProgram* program, size_t* inst, size
   }
 
   return true;
+}
+
+bool TrapProcessor::SockUdpCreate(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) {
+  return false;
+}
+
+bool TrapProcessor::SockUdpBind(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) {
+  return false;
+}
+
+bool TrapProcessor::SockUdpClose(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) {
+  return false;
+}
+
+bool TrapProcessor::SockUdpInByte(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) {
+  return false;
+}
+
+bool TrapProcessor::SockUdpInByteAry(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) {
+  return false;
+}
+
+bool TrapProcessor::SockUdpInCharAry(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) {
+  return false;
+}
+
+bool TrapProcessor::SockUdpOutByte(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) {
+  return false;
+}
+
+bool TrapProcessor::SockUdpOutByteAry(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) {
+  return false;
+}
+
+bool TrapProcessor::SockUdpOutCharAry(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) {
+  return false;
+}
+
+bool TrapProcessor::SockUdpOutString(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) {
+  return false;
+}
+
+bool TrapProcessor::SockUdpError(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) {
+  return false;
 }
 
 bool TrapProcessor::SerlChar(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
