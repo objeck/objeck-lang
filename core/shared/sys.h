@@ -811,7 +811,7 @@ static wchar_t* LoadFileBuffer(const std::wstring &filename, size_t& buffer_size
     free(buffer);
     return nullptr;;
   }
-  wchar_t* wbuffer = new wchar_t[wsize + 1];
+  wchar_t* wbuffer = new wchar_t[wsize + 2];
   size_t check = mbstowcs(wbuffer, buffer, buffer_size);
   if(check == (size_t)-1) {
     free(buffer);
