@@ -141,13 +141,13 @@ static bool BytesToUnicode(const std::string &in, std::wstring &out) {
   buffer = nullptr;  
 #else
   // allocate space
-  const size_t size = mbstowcs(nullptr, in.c_str(), in.size());
+  size_t size = mbstowcs(nullptr, in.c_str(), in.size());
   if(size == (size_t)-1) {
     return false;
   }
 
-  if(wsize < buffer_size) {
-    wsize = buffer_size;
+  if(size < in.size()) {
+    size = in.size();
   }
   wchar_t* buffer = new wchar_t[size + 1];
   // convert
