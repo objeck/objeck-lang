@@ -10155,9 +10155,8 @@ bundle System.IO.Net {
 	UDP/IP Server socket
 	~#
 	class UDPSocketServer {
+		@handle : Int;
 		@port : Int;
-		@server : Int;
-		@client : Int;
 
 		#~
 		Default constructor
@@ -10176,6 +10175,36 @@ bundle System.IO.Net {
 		method : public : Bind() ~ Bool {
 			SOCK_UDP_BIND;
 		}
+
+
+
+
+
+
+
+
+		#~
+		Writes a byte
+		@param b byte to write
+		@return true if byte was written, false otherwise
+		~#
+		method : public : WriteByte(b : Int) ~ Bool {
+			SOCK_UDP_OUT_BYTE;
+		}
+
+		#~
+		Reads a byte
+		@return byte read
+		~#
+		method : public : ReadByte() ~ Byte {
+			SOCK_UDP_IN_BYTE;
+		}
+
+
+
+
+
+
 	
 		#~
 		Closes the server socket
@@ -10210,6 +10239,7 @@ bundle System.IO.Net {
 			Parent();
 			@address := address;
 			@port := port;
+			SOCK_UDP_CREATE;
 		}
 
 		#~
