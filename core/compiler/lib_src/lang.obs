@@ -10165,7 +10165,6 @@ bundle System.IO.Net {
 		New(port : Int) {
 		  Parent();
 		  @port := port;
-		  SOCK_UDP_BIND;
 		}
 	
 		#~
@@ -10173,16 +10172,8 @@ bundle System.IO.Net {
 		@param backlog maximum length to queue pending connections
 		@return true if client successfully connects, false otherwise
 		~#
-		method : public : Listen(backlog : Int) ~ Bool {
-			SOCK_UDP_LISTEN;
-		}
-	
-		#~
-		Accepts a client connection
-		@return client socket interface
-		~#
-		method : public : Accept() ~ UDPSocket {
-			SOCK_UDP_ACCEPT;
+		method : public : Bind() ~ Bool {
+			SOCK_UDP_BIND;
 		}
 	
 		#~
