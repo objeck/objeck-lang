@@ -10181,7 +10181,7 @@ bundle System.IO.Net {
 		Closes the server socket
 		~#
 		method : public : Close() ~ Nil {
-			SOCK_UDP_CLOSE;
+			SOCK_UDP_CLOSE_BIND;
 		}
 
 		#~

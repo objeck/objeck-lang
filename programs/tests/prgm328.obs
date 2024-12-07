@@ -2,7 +2,7 @@ use System.IO.Net, Collection;
 
 class Udp {
 	function : Main(args : String[]) ~ Nil {
-		server := UDPSocketServer->New(4013);
+		server := UDPSocketServer->New(6017);
 		server->Bind();
 #~		
 		if(args->Size() = 1) {

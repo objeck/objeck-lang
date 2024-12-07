@@ -499,19 +499,14 @@ class IPSocket {
  ****************************/
 class UDPSocket {
 public:
-  static bool Bind(int port, struct sockaddr_in* servaddr, struct sockaddr_in* cliaddr) {
-    SOCKET sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+  static bool Bind(int port, struct sockaddr_in* serv_addr) {
+    SOCKET sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if(sock != INVALID_SOCKET) {
-      memset(&sock, 0, sizeof(servaddr));
-      memset(&sock, 0, sizeof(cliaddr));
+      serv_addr->sin_family = AF_INET;
+      serv_addr->sin_addr.s_addr = INADDR_ANY;
+      serv_addr->sin_port = htons(port);
 
-      servaddr->sin_family = AF_INET;
-      servaddr->sin_addr.s_addr = INADDR_ANY;
-      servaddr->sin_port = htons(port);
-
-      const long foo = bind(sock, (const struct sockaddr*)servaddr, sizeof(servaddr));
-
-      return foo > -1;
+      return bind(sock, (SOCKADDR*)serv_addr, sizeof(sockaddr_in)) > -1;
     }
 
     return false;

@@ -185,7 +185,8 @@ namespace instructions {
     // UDP socket i/o
     SOCK_UDP_CREATE,
     SOCK_UDP_BIND,
-    SOCK_UDP_CLOSE,
+    SOCK_UDP_CLOSE_CREATE,
+    SOCK_UDP_CLOSE_BIND,
     SOCK_UDP_IN_BYTE,
     SOCK_UDP_IN_BYTE_ARY,
     SOCK_UDP_IN_CHAR_ARY,

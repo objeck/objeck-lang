@@ -2173,18 +2173,17 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
   case SOCK_TCP_SSL_ERROR:
     return SockTcpSslError(program, inst, op_stack, stack_pos, frame);
 
-
-
-
-
     case SOCK_UDP_CREATE:
       return SockUdpCreate(program, inst, op_stack, stack_pos, frame);
 
     case SOCK_UDP_BIND:
       return SockUdpBind(program, inst, op_stack, stack_pos, frame);
 
-    case SOCK_UDP_CLOSE:
-      return SockUdpClose(program, inst, op_stack, stack_pos, frame);
+    case SOCK_UDP_CLOSE_CREATE:
+      return SockUdpCloseCreate(program, inst, op_stack, stack_pos, frame);
+
+    case SOCK_UDP_CLOSE_BIND:
+      return SockUdpCloseBind(program, inst, op_stack, stack_pos, frame);
 
     case SOCK_UDP_IN_BYTE:
       return SockUdpInByte(program, inst, op_stack, stack_pos, frame);
@@ -4362,22 +4361,33 @@ bool TrapProcessor::SockUdpBind(StackProgram* program, size_t* inst, size_t*& op
   if(inst) {
     const long port = (long)inst[0];
 
-    struct sockaddr_in* servaddr = new struct sockaddr_in;
-    struct sockaddr_in* cliaddr = new struct sockaddr_in;
-    if(UDPSocket::Bind(port, servaddr, cliaddr)) {
+    struct sockaddr_in* serv_addr = new struct sockaddr_in;
+    memset(serv_addr, 0, sizeof(struct sockaddr_in));
+    
+    if(UDPSocket::Bind(port, serv_addr)) {
+      struct sockaddr_in* cli_addr = new struct sockaddr_in;
+      memset(cli_addr, 0, sizeof(struct sockaddr_in));
+
+      // clean up
+      inst[1] = (size_t)serv_addr;
+      inst[2] = (size_t)cli_addr;
 
       return true;
     }
-
-    // clean up if failure
-    delete servaddr;
-    delete cliaddr;
+    
+    // error clean up
+    delete serv_addr;
+    serv_addr = nullptr;
   }
 
   return true;
 }
 
-bool TrapProcessor::SockUdpClose(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) {
+bool TrapProcessor::SockUdpCloseCreate(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) {
+  return false;
+}
+
+bool TrapProcessor::SockUdpCloseBind(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) {
   return false;
 }
 
