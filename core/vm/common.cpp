@@ -4400,7 +4400,16 @@ bool TrapProcessor::SockUdpCloseBind(StackProgram* program, size_t* inst, size_t
 }
 
 bool TrapProcessor::SockUdpInByte(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) {
-  return false;
+  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+  if(instance && (long)instance[0] > -1) {
+    SOCKET sock = (SOCKET)instance[0];
+    PushInt(UDPSocket::ReadByte(sock), op_stack, stack_pos);
+  }
+  else {
+    PushInt(0, op_stack, stack_pos);
+  }
+
+  return true;
 }
 
 bool TrapProcessor::SockUdpInByteAry(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) {
