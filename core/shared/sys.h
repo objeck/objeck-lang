@@ -145,8 +145,11 @@ static bool BytesToUnicode(const std::string &in, std::wstring &out) {
   if(size == (size_t)-1) {
     return false;
   }
-  wchar_t* buffer = new wchar_t[size + 2];
 
+  if(wsize < buffer_size) {
+    wsize = buffer_size;
+  }
+  wchar_t* buffer = new wchar_t[size + 1];
   // convert
   size_t check = mbstowcs(buffer, in.c_str(), in.size());
   if(check == (size_t)-1) {
@@ -811,7 +814,12 @@ static wchar_t* LoadFileBuffer(const std::wstring &filename, size_t& buffer_size
     free(buffer);
     return nullptr;;
   }
-  wchar_t* wbuffer = new wchar_t[wsize + 2];
+  
+  if(wsize < buffer_size) {
+    wsize = buffer_size;
+  }
+  wchar_t* wbuffer = new wchar_t[wsize + 1];
+
   size_t check = mbstowcs(wbuffer, buffer, buffer_size);
   if(check == (size_t)-1) {
     free(buffer);
