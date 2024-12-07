@@ -1,0 +1,24 @@
+use System.IO.Net, Collection;
+
+class Udp {
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() = 1) {
+			target := args[0];
+
+			if(target->Equals("client")) {
+				DoClient();
+			}
+			else if(target->Equals("server")) {
+				DoServer();
+			}
+		}
+	}
+
+	function : DoClient() ~ Nil {
+		
+	}
+
+	function : DoServer() ~ Nil {
+		
+	}
+}
