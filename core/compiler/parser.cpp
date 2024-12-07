@@ -2967,33 +2967,15 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
 
 
 
-    case SOCK_UDP_CONNECT:
+    case SOCK_UDP_CREATE:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                               instructions::SOCK_UDP_CONNECT);
+                                                               instructions::SOCK_UDP_CREATE);
       NextToken();
       break;
 
     case SOCK_UDP_BIND:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::SOCK_UDP_BIND);
-      NextToken();
-      break;
-
-    case SOCK_UDP_LISTEN:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                               instructions::SOCK_UDP_LISTEN);
-      NextToken();
-      break;
-
-    case SOCK_UDP_ACCEPT:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                               instructions::SOCK_UDP_ACCEPT);
-      NextToken();
-      break;
-
-    case SOCK_UDP_IS_CONNECTED:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                               instructions::SOCK_UDP_IS_CONNECTED);
       NextToken();
       break;
 
@@ -3048,18 +3030,6 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
     case SOCK_UDP_OUT_STRING:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::SOCK_UDP_OUT_STRING);
-      NextToken();
-      break;
-
-    case SOCK_UDP_HOST_NAME:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                               instructions::SOCK_UDP_HOST_NAME);
-      NextToken();
-      break;
-
-    case SOCK_UDP_RESOLVE_NAME:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                               instructions::SOCK_UDP_RESOLVE_NAME);
       NextToken();
       break;
 
