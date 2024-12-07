@@ -511,6 +511,14 @@ public:
 
     return false;
   }
+
+  static int WriteByte(char value, SOCKET sock) {
+    struct sockaddr_in addr_in;
+    memset(&addr_in, 0, sizeof(addr_in));
+
+    const size_t addr_in_size = sizeof(addr_in);
+    return sendto(sock, &value, 1, 0, (SOCKADDR*)&addr_in, addr_in_size);
+  }
 };
 
 /****************************

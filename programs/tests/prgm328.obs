@@ -4,6 +4,7 @@ class Udp {
 	function : Main(args : String[]) ~ Nil {
 		server := UDPSocketServer->New(6017);
 		server->Bind();
+		server->WriteByte(101);
 		server->Close();
 #~		
 		if(args->Size() = 1) {

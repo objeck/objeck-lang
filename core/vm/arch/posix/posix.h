@@ -458,8 +458,25 @@ public:
  ****************************/
 class UDPSocket {
 public:
-  static bool Bind(int port) {
+  static bool Bind(int port, struct sockaddr_in* serv_addr) {
+    SOCKET sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    if(sock != INVALID_SOCKET) {
+      serv_addr->sin_family = AF_INET;
+      serv_addr->sin_addr.s_addr = INADDR_ANY;
+      serv_addr->sin_port = htons(port);
+
+      return bind(sock, (SOCKADDR*)serv_addr, sizeof(sockaddr_in)) > -1;
+    }
+
     return false;
+  }
+
+  static int WriteByte(char value, SOCKET sock) {
+    struct sockaddr_in addr_in;
+    memset(&addr_in, 0, sizeof(addr_in));
+
+    const size_t addr_in_size = sizeof(addr_in);
+    return sendto(sock, &value, 1, 0, (SOCKADDR*)&addr_in, addr_in_size);
   }
 };
 
