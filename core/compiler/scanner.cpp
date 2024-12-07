@@ -337,7 +337,6 @@ void Scanner::LoadKeywords()
   ident_map[L"SOCK_TCP_CONNECT"] = SOCK_TCP_CONNECT;
   ident_map[L"SOCK_TCP_IS_CONNECTED"] = SOCK_TCP_IS_CONNECTED;
   ident_map[L"SOCK_TCP_BIND"] = SOCK_TCP_BIND;
-  ident_map[L"SOCK_UDP_BIND" = SOCK_UDP_BIND;
   
 
 ident_map[L"SOCK_UDP_CREATE"] = SOCK_UDP_CREATE;
