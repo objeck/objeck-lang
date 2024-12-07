@@ -183,11 +183,8 @@ namespace instructions {
     SOCK_TCP_RESOLVE_NAME,
     SOCK_TCP_ERROR,
     // UDP socket i/o
-    SOCK_UDP_CONNECT,
+    SOCK_UDP_CREATE,
     SOCK_UDP_BIND,
-    SOCK_UDP_LISTEN,
-    SOCK_UDP_ACCEPT,
-    SOCK_UDP_IS_CONNECTED,
     SOCK_UDP_CLOSE,
     SOCK_UDP_IN_BYTE,
     SOCK_UDP_IN_BYTE_ARY,
@@ -197,8 +194,6 @@ namespace instructions {
     SOCK_UDP_OUT_CHAR_ARY,
     SOCK_UDP_IN_STRING,
     SOCK_UDP_OUT_STRING,
-    SOCK_UDP_HOST_NAME,
-    SOCK_UDP_RESOLVE_NAME,
     SOCK_UDP_ERROR,
     // ssl socket
     SOCK_TCP_SSL_CONNECT,
