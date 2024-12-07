@@ -4360,12 +4360,18 @@ bool TrapProcessor::SockUdpCreate(StackProgram* program, size_t* inst, size_t*& 
 
 bool TrapProcessor::SockUdpBind(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) {
   if(inst) {
-    const int port = inst[0];
+    const long port = (long)inst[0];
 
-    struct sockaddr_in servaddr, cliaddr;
+    struct sockaddr_in* servaddr = new struct sockaddr_in;
+    struct sockaddr_in* cliaddr = new struct sockaddr_in;
     if(UDPSocket::Bind(port, servaddr, cliaddr)) {
 
+      return true;
     }
+
+    // clean up if failure
+    delete servaddr;
+    delete cliaddr;
   }
 
   return true;
