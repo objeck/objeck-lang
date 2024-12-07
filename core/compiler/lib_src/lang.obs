@@ -10210,7 +10210,6 @@ bundle System.IO.Net {
 			Parent();
 			@address := address;
 			@port := port;
-			SOCK_UDP_CONNECT;
 		}
 
 		#~
