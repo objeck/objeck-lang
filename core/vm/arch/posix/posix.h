@@ -460,12 +460,12 @@ class UDPSocket {
 public:
   static bool Bind(int port, struct sockaddr_in* serv_addr) {
     SOCKET sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-    if(sock != INVALID_SOCKET) {
+    if(sock != 0) {
       serv_addr->sin_family = AF_INET;
       serv_addr->sin_addr.s_addr = INADDR_ANY;
       serv_addr->sin_port = htons(port);
 
-      return bind(sock, (SOCKADDR*)serv_addr, sizeof(sockaddr_in)) > -1;
+      return bind(sock, (const struct sockaddr*)serv_addr, sizeof(sockaddr_in)) > -1;
     }
 
     return false;
@@ -476,7 +476,7 @@ public:
     memset(&addr_in, 0, sizeof(addr_in));
 
     const size_t addr_in_size = sizeof(addr_in);
-    return sendto(sock, &value, 1, 0, (SOCKADDR*)&addr_in, addr_in_size);
+    return sendto(sock, &value, 1, 0, (const struct sockaddr*)&addr_in, addr_in_size);
   }
 };
 
