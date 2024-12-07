@@ -2,6 +2,9 @@ use System.IO.Net, Collection;
 
 class Udp {
 	function : Main(args : String[]) ~ Nil {
+		server := UDPSocketServer->New(4013);
+		server->Bind();
+#~		
 		if(args->Size() = 1) {
 			target := args[0];
 
@@ -12,6 +15,7 @@ class Udp {
 				DoServer();
 			}
 		}
+~#		
 	}
 
 	function : DoClient() ~ Nil {
