@@ -311,11 +311,17 @@ enum ScannerTokenType {
   SOCK_TCP_CONNECT,
   SOCK_TCP_IS_CONNECTED,
   SOCK_TCP_CLOSE,
-  // socket server operations
+  // TCP socket server operations
   SOCK_TCP_BIND,
   SOCK_TCP_LISTEN,
   SOCK_TCP_ACCEPT,
   SOCK_TCP_ERROR,
+  // UDP socket server operations
+  SOCK_UDP_BIND,
+  SOCK_UDP_LISTEN,
+  SOCK_UDP_ACCEPT,
+  SOCK_UDP_CLOSE,
+  SOCK_UDP_ERROR,
 	// secure socket server operations
 	SOCK_TCP_SSL_LISTEN,
 	SOCK_TCP_SSL_ACCEPT,

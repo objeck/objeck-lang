@@ -2190,6 +2190,51 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, instructions::SOCK_TCP_BIND));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 3L));
     break;
+
+
+
+
+
+
+
+  case instructions::SOCK_UDP_BIND:
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INST_MEM));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, instructions::SOCK_UDP_BIND));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 3L));
+    break;
+
+  case instructions::SOCK_UDP_LISTEN:
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INST_MEM));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, instructions::SOCK_UDP_LISTEN));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 3L));
+    break;
+
+  case instructions::SOCK_UDP_ACCEPT:
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INST_MEM));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, instructions::SOCK_UDP_ACCEPT));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 3L));
+    break;
+
+  case instructions::SOCK_UDP_CLOSE:
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INST_MEM));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, instructions::SOCK_UDP_CLOSE));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 3L));
+    break;
+
+  case instructions::SOCK_UDP_ERROR:
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INST_MEM));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, instructions::SOCK_UDP_ERROR));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 3L));
+    break;
+
+
+
+
     
   case instructions::SOCK_TCP_LISTEN:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INST_MEM));
