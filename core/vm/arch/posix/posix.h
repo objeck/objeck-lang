@@ -471,6 +471,20 @@ public:
     return false;
   }
 
+  static char ReadByte(SOCKET sock) {
+    char value;
+
+    struct sockaddr_in addr_in;
+    memset(&addr_in, 0, sizeof(addr_in));
+
+    int addr_in_size;
+    if(recvfrom(sock, &value, 1, MSG_WAITALL, (struct sockaddr*)&addr_in, &addr_in_size);
+      return value;
+    }
+
+    return '\0';
+  }
+
   static int WriteByte(char value, SOCKET sock) {
     struct sockaddr_in addr_in;
     memset(&addr_in, 0, sizeof(addr_in));

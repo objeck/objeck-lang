@@ -512,11 +512,25 @@ public:
     return false;
   }
 
+  static char ReadByte(SOCKET sock) {
+    char value;
+    
+    struct sockaddr_in addr_in;
+    memset(&addr_in, 0, sizeof(addr_in));
+
+    int addr_in_size = sizeof(addr_in);
+    if(recvfrom(sock, &value, 1, 0 /* no flags*/, (SOCKADDR*)&addr_in, &addr_in_size)) {
+      return value;
+    }
+
+    return '\0';
+  }
+
   static int WriteByte(char value, SOCKET sock) {
     struct sockaddr_in addr_in;
     memset(&addr_in, 0, sizeof(addr_in));
 
-    const size_t addr_in_size = sizeof(addr_in);
+    const int addr_in_size = sizeof(addr_in);
     return sendto(sock, &value, 1, 0, (SOCKADDR*)&addr_in, addr_in_size);
   }
 };
