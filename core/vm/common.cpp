@@ -4388,7 +4388,21 @@ bool TrapProcessor::SockUdpCloseCreate(StackProgram* program, size_t* inst, size
 }
 
 bool TrapProcessor::SockUdpCloseBind(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) {
-  return false;
+  if(inst) {
+    struct sockaddr_in* serv_addr = (struct sockaddr_in*)inst[1];
+    if(serv_addr) {
+      delete serv_addr;
+      serv_addr = nullptr;
+    }
+
+    struct sockaddr_in* cli_addr = (struct sockaddr_in*)inst[2];
+    if(cli_addr) {
+      delete cli_addr;
+      cli_addr = nullptr;
+    }
+  }
+
+  return true;
 }
 
 bool TrapProcessor::SockUdpInByte(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) {
