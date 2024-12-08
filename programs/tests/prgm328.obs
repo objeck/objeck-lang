@@ -16,27 +16,32 @@ class Udp {
 	}
 
 	function : DoServer(port : Int) ~ Nil {
-		buffer := Byte->New[4];
+		buffer := Char->New[4];
 
 		server := UDPSocketServer->New(port);
 		server->Bind();
 		server->ReadBuffer(0, buffer->Size(), buffer);
 		
-		value := buffer[0]->As(Char);
+		value := buffer[0];
 		value->PrintLine();
 
-		value := buffer[2]->As(Char);
+		value := buffer[2];
 		value->PrintLine();
-		
+
+		buffer->PrintLine();
+
+
 		server->Close();
 	}
 
 	function : DoClient(port : Int) ~ Nil {
-		buffer := Byte->New[4];
+		buffer := Char->New[4];
 		buffer[0] := 't';
 		buffer[1] := 'l';
 		buffer[2] := 'r';
 		buffer[3] := '\0';
+
+		buffer->PrintLine();
 
 		client := UDPSocket->New("127.0.0.1", port);
 		client->WriteBuffer(buffer);
