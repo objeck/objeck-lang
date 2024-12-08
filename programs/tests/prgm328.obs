@@ -15,7 +15,7 @@ class Udp {
 	}
 
 	function : DoClient() ~ Nil {
-		client := UDPSocket->New("localhost", 6017);
+		client := UDPSocket->New("127.0.0.1", 6017);
 		client->WriteByte(101);
 		client->Close();
 	}
