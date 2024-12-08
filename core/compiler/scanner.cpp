@@ -339,8 +339,7 @@ void Scanner::LoadKeywords()
   ident_map[L"SOCK_TCP_BIND"] = SOCK_TCP_BIND;
   ident_map[L"SOCK_UDP_CREATE"] = SOCK_UDP_CREATE;
   ident_map[L"SOCK_UDP_BIND"] = SOCK_UDP_BIND;
-  ident_map[L"SOCK_UDP_CLOSE_CREATE"] = SOCK_UDP_CLOSE_CREATE;
-  ident_map[L"SOCK_UDP_CLOSE_BIND"] = SOCK_UDP_CLOSE_BIND;
+  ident_map[L"SOCK_UDP_CLOSE"] = SOCK_UDP_CLOSE;
   ident_map[L"SOCK_UDP_IN_BYTE"] = SOCK_UDP_IN_BYTE;
   ident_map[L"SOCK_UDP_IN_BYTE_ARY"] = SOCK_UDP_IN_BYTE_ARY;
   ident_map[L"SOCK_UDP_IN_CHAR_ARY"] = SOCK_UDP_IN_CHAR_ARY;
@@ -646,8 +645,7 @@ void Scanner::CheckIdentifier(int index)
     case SOCK_TCP_BIND:
     case SOCK_UDP_CREATE:
     case SOCK_UDP_BIND:
-    case SOCK_UDP_CLOSE_CREATE:
-    case SOCK_UDP_CLOSE_BIND:
+    case SOCK_UDP_CLOSE:
     case SOCK_UDP_IN_BYTE:
     case SOCK_UDP_IN_BYTE_ARY:
     case SOCK_UDP_IN_CHAR_ARY:

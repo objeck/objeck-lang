@@ -2179,11 +2179,8 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
     case SOCK_UDP_BIND:
       return SockUdpBind(program, inst, op_stack, stack_pos, frame);
 
-    case SOCK_UDP_CLOSE_CREATE:
-      return SockUdpCloseCreate(program, inst, op_stack, stack_pos, frame);
-
-    case SOCK_UDP_CLOSE_BIND:
-      return SockUdpCloseBind(program, inst, op_stack, stack_pos, frame);
+    case SOCK_UDP_CLOSE:
+      return SockUdpClose(program, inst, op_stack, stack_pos, frame);
 
     case SOCK_UDP_IN_BYTE:
       return SockUdpInByte(program, inst, op_stack, stack_pos, frame);
@@ -4382,11 +4379,7 @@ bool TrapProcessor::SockUdpBind(StackProgram* program, size_t* inst, size_t*& op
   return true;
 }
 
-bool TrapProcessor::SockUdpCloseCreate(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) {
-  return true;
-}
-
-bool TrapProcessor::SockUdpCloseBind(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) {
+bool TrapProcessor::SockUdpClose(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) {
   if(inst) {
 #ifdef _WIN32
     SOCKET sock = inst[0];
@@ -4411,9 +4404,12 @@ bool TrapProcessor::SockUdpInByte(StackProgram* program, size_t* inst, size_t*& 
 
     char value;
     int addr_in_size = sizeof(SOCKADDR_IN);
-    int ByteReceived = recvfrom(sock, &value, 1, 0, (SOCKADDR*)addr_in, &addr_in_size);
-
-
+    if(recvfrom(sock, &value, 1, 0, (SOCKADDR*)addr_in, &addr_in_size) != SOCKET_ERROR) {
+      PushInt(value, op_stack, stack_pos);
+    }
+    else {
+      PushInt(0, op_stack, stack_pos);
+    }
   }
   else {
     PushInt(0, op_stack, stack_pos);
@@ -4431,11 +4427,20 @@ bool TrapProcessor::SockUdpInCharAry(StackProgram* program, size_t* inst, size_t
 }
 
 bool TrapProcessor::SockUdpOutByte(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) {
-  INT64_VALUE value = (INT64_VALUE)PopInt(op_stack, stack_pos);
+  char value = (char)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(instance && instance[0]) {
-    struct sockaddr_in* sock_addr = (struct sockaddr_in*)inst[0];
-    PushInt(UDPSocket::WriteByte((char)value, sock_addr) > -1, op_stack, stack_pos);
+    SOCKET sock = inst[0];
+    SOCKADDR_IN* addr_in = (SOCKADDR_IN*)inst[1];
+
+    const int addr_in_size = sizeof(SOCKADDR_IN);
+    const int sent = sendto(sock, &value, 1, 0, (SOCKADDR*)addr_in, addr_in_size);
+    if(sent != SOCKET_ERROR) {
+      PushInt(sent > -1, op_stack, stack_pos);
+    }
+    else {
+      PushInt(0, op_stack, stack_pos);
+    }
   }
   else {
     PushInt(0, op_stack, stack_pos);

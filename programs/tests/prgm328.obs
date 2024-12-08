@@ -15,14 +15,14 @@ class Udp {
 	}
 
 	function : DoServer() ~ Nil {
-		server := UDPSocketServer->New(6021);
+		server := UDPSocketServer->New(8888);
 		server->Bind();
 		server->ReadByte()->PrintLine();
 		server->Close();
 	}
 
 	function : DoClient() ~ Nil {
-		client := UDPSocket->New("127.0.0.1", 6021);
+		client := UDPSocket->New("127.0.0.1", 8888);
 		client->WriteByte(101);
 		client->Close();
 	}

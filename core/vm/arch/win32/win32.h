@@ -507,7 +507,7 @@ public:
       addr_in->sin_port = htons(port);
       addr_in->sin_addr.s_addr = htonl(INADDR_ANY);
 
-      if(bind(sock, (SOCKADDR*)&addr_in, sizeof(addr_in)) == SOCKET_ERROR) {
+      if(bind(sock, (SOCKADDR*)addr_in, sizeof(SOCKADDR_IN)) == SOCKET_ERROR) {
         closesocket(sock);
         sock = INVALID_SOCKET;
 

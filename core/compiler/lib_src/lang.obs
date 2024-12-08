@@ -10030,7 +10030,8 @@ bundle System.IO.Net {
 	UDP/IP socket
 	~#
 	class UDPSocket implements System.IO.InputStream, System.IO.OutputStream {
-		@handle : Int;
+		@sock : Int;
+		@addr : Int;
 		@address : System.String;
 		@port : Int;
 		
