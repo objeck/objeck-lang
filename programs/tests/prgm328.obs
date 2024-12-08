@@ -14,16 +14,16 @@ class Udp {
 		}
 	}
 
-	function : DoClient() ~ Nil {
-		client := UDPSocket->New("127.0.0.1", 6017);
-		client->WriteByte(101);
-		client->Close();
-	}
-
 	function : DoServer() ~ Nil {
-		server := UDPSocketServer->New(6017);
+		server := UDPSocketServer->New(6021);
 		server->Bind();
 		server->ReadByte()->PrintLine();
 		server->Close();
+	}
+
+	function : DoClient() ~ Nil {
+		client := UDPSocket->New("127.0.0.1", 6021);
+		client->WriteByte(101);
+		client->Close();
 	}
 }
