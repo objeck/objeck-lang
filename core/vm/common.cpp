@@ -4396,16 +4396,16 @@ bool TrapProcessor::SockUdpBind(StackProgram* program, size_t* inst, size_t*& op
 
 bool TrapProcessor::SockUdpClose(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) {
   if(inst) {
-#ifdef _WIN32
     SOCKET sock = inst[0];
+#ifdef _WIN32
     closesocket(sock);
+#else
+    close(sock);
+#endif
 
     SOCKADDR_IN* addr_in = (SOCKADDR_IN*)inst[1];
     delete addr_in;
     addr_in = nullptr;
-#else
-      
-#endif
   }
 
   return true;
