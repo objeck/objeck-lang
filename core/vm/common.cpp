@@ -4362,8 +4362,16 @@ bool TrapProcessor::SockUdpCreate(StackProgram* program, size_t* inst, size_t*& 
     array = (size_t*)array[0];
     const std::wstring waddr = (wchar_t*)(array + 3);
     const std::string addr = UnicodeToBytes(waddr);
-
     
+    struct sockaddr_in ip_addr;
+    if(inet_pton(AF_INET, addr.c_str(), &ip_addr.sin_addr) == 1) {
+      struct sockaddr_in* serv_addr = new struct sockaddr_in;
+      serv_addr->sin_family = AF_INET;
+      serv_addr->sin_port = htons(port);
+      serv_addr->sin_addr = ip_addr.sin_addr;
+
+      inst[0] = (size_t)serv_addr;
+    }
   }
 
   return true;
@@ -4371,26 +4379,23 @@ bool TrapProcessor::SockUdpCreate(StackProgram* program, size_t* inst, size_t*& 
 
 bool TrapProcessor::SockUdpBind(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) {
   if(inst) {
-    const long port = (long)inst[2];
-
-    struct sockaddr_in* serv_addr = new struct sockaddr_in;
-    memset(serv_addr, 0, sizeof(struct sockaddr_in));
-    
-    if(UDPSocket::Bind(port, serv_addr)) {
-      inst[1] = (size_t)serv_addr;
-      return true;
-    }
-    
-    // error clean up
-    delete serv_addr;
-    serv_addr = nullptr;
+    const long port = (long)inst[1];
+    inst[0] = (size_t)UDPSocket::Bind(port);
   }
 
   return true;
 }
 
 bool TrapProcessor::SockUdpCloseCreate(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) {
-  return false;
+  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+  if(instance && instance[0]) {
+    struct sockaddr_in* sock_addr = (struct sockaddr_in*)inst[0];
+
+    delete sock_addr;
+    sock_addr = nullptr;
+  }
+
+  return true;
 }
 
 bool TrapProcessor::SockUdpCloseBind(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) {
@@ -4437,8 +4442,7 @@ bool TrapProcessor::SockUdpOutByte(StackProgram* program, size_t* inst, size_t*&
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(instance && instance[0]) {
     struct sockaddr_in* sock_addr = (struct sockaddr_in*)inst[0];
-    UDPSocket::WriteByte((char)value, sock_addr);
-    PushInt(1, op_stack, stack_pos);
+    PushInt(UDPSocket::WriteByte((char)value, sock_addr) > -1, op_stack, stack_pos);
   }
   else {
     PushInt(0, op_stack, stack_pos);

@@ -499,17 +499,22 @@ class IPSocket {
  ****************************/
 class UDPSocket {
 public:
-  static bool Bind(int port, struct sockaddr_in* serv_addr) {
-    SOCKET sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_TCP);
+  static struct sockaddr_in* Bind(int port) {
+    SOCKET sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     if(sock != INVALID_SOCKET) {
+      struct sockaddr_in* serv_addr = new struct sockaddr_in;
+      memset(serv_addr, 0, sizeof(struct sockaddr_in));
+
       serv_addr->sin_family = AF_INET;
       serv_addr->sin_addr.s_addr = INADDR_ANY;
       serv_addr->sin_port = htons(port);
 
-      return bind(sock, (SOCKADDR*)serv_addr, sizeof(sockaddr_in)) > -1;
+      if(bind(sock, (SOCKADDR*)serv_addr, sizeof(sockaddr_in) != SOCKET_ERROR)) {
+        return serv_addr;
+      }
     }
 
-    return false;
+    return nullptr;
   }
 
   static char ReadByte(struct sockaddr_in* addr_in) {
@@ -518,7 +523,7 @@ public:
     SOCKET sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     if(sock != INVALID_SOCKET) {
       int addr_in_size = sizeof(struct sockaddr_in);
-      if(recvfrom(sock, &value, 1, 0 /* no flags*/, (SOCKADDR*)&addr_in, &addr_in_size)) {
+      if(recvfrom(sock, &value, 1, 0, (SOCKADDR*)&addr_in, &addr_in_size)) {
         return value;
       }
     }
@@ -529,8 +534,11 @@ public:
   static int WriteByte(char value, struct sockaddr_in* addr_in) {
     SOCKET sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     if(sock != INVALID_SOCKET) {
-      const int addr_in_size = sizeof(addr_in);
-      return sendto(sock, &value, 1, 0, (SOCKADDR*)&addr_in, addr_in_size);
+      const int addr_in_size = sizeof(struct sockaddr_in);
+
+      const int foo = sendto(sock, &value, 1, 0, (SOCKADDR*)&addr_in, addr_in_size);
+
+      return foo;
     }
   }
 };
