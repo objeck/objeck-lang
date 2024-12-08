@@ -10326,6 +10326,7 @@ bundle System.IO.Net {
 		#~
 		Default constructor
 		@param port server port
+		@param bind bind to port on creation, default is true
 		~#
 		New(port : Int, bind : Bool := true) {
 		  Parent();
