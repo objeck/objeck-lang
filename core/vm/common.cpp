@@ -4353,13 +4353,17 @@ bool TrapProcessor::SockUdpCreate(StackProgram* program, size_t* inst, size_t*& 
     const std::string addr_str = UnicodeToBytes(waddr);
     
     SOCKET sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-    if(sock != INVALID_SOCKET) {
+    if(sock < 0) {
       struct sockaddr_in bin_addr;
       if(inet_pton(AF_INET, addr_str.c_str(), &(bin_addr.sin_addr)) != 1) {
+#ifdef _WIN32      
         closesocket(sock);
+#else
+	close(sock);
+#endif	        
       }
       else {
-        SOCKADDR_IN* addr_in = new SOCKADDR_IN;
+        struct sockaddr_in* addr_in = new struct sockaddr_in;
         addr_in->sin_family = AF_INET;
         addr_in->sin_port = htons(port);
         addr_in->sin_addr = bin_addr.sin_addr;
@@ -4376,7 +4380,7 @@ bool TrapProcessor::SockUdpCreate(StackProgram* program, size_t* inst, size_t*& 
 bool TrapProcessor::SockUdpBind(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) {
   if(inst) {
     const long port = (long)inst[2];
-    SOCKET sock; SOCKADDR_IN* addr;
+    SOCKET sock; struct sockaddr_in* addr;
     if(UDPSocket::Bind(port, sock, addr)) {
       inst[0] = sock;
       inst[1] = (size_t)addr;
@@ -4389,7 +4393,7 @@ bool TrapProcessor::SockUdpBind(StackProgram* program, size_t* inst, size_t*& op
 bool TrapProcessor::SockUdpClose(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) {
   if(inst) {
     SOCKET sock = inst[0];
-    SOCKADDR_IN* addr_in = (SOCKADDR_IN*)inst[1];
+    struct sockaddr_in* addr_in = (struct sockaddr_in*)inst[1];
     UDPSocket::Close(sock, addr_in);
   }
 
@@ -4400,11 +4404,11 @@ bool TrapProcessor::SockUdpInByte(StackProgram* program, size_t* inst, size_t*& 
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(instance && instance[0]) {
     SOCKET sock = inst[0];
-    SOCKADDR_IN* addr_in = (SOCKADDR_IN*)inst[1];
+    struct sockaddr_in* addr_in = (struct sockaddr_in*)inst[1];
 
     char value;
-    int addr_in_size = sizeof(SOCKADDR_IN);
-    if(recvfrom(sock, &value, 1, 0, (SOCKADDR*)addr_in, &addr_in_size) != SOCKET_ERROR) {
+    socklen_t addr_in_size = sizeof(struct sockaddr_in);
+    if(recvfrom(sock, &value, 1, 0, (struct sockaddr*)addr_in, &addr_in_size) < 0) {
       PushInt(value, op_stack, stack_pos);
     }
     else {
@@ -4426,12 +4430,12 @@ bool TrapProcessor::SockUdpInByteAry(StackProgram* program, size_t* inst, size_t
 
   if(array && instance && (FILE*)instance[0] && offset > -1 && offset + num <= (long)array[0]) {
     SOCKET sock = inst[0];
-    SOCKADDR_IN* addr_in = (SOCKADDR_IN*)inst[1];
+    struct sockaddr_in* addr_in = (struct sockaddr_in*)inst[1];
     char* buffer = (char*)(array + 3);
 
-    int addr_in_size = sizeof(SOCKADDR_IN);
-    const int read = recvfrom(sock, buffer, num, 0, (SOCKADDR*)addr_in, &addr_in_size);
-    if(read != SOCKET_ERROR) {
+    socklen_t addr_in_size = sizeof(struct sockaddr_in);
+    const int read = recvfrom(sock, buffer, num, 0, (struct sockaddr*)addr_in, &addr_in_size);
+    if(read < 0) {
       PushInt(read, op_stack, stack_pos);
     }
     else {
@@ -4457,11 +4461,11 @@ bool TrapProcessor::SockUdpOutByte(StackProgram* program, size_t* inst, size_t*&
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(instance && instance[0]) {
     SOCKET sock = inst[0];
-    SOCKADDR_IN* addr_in = (SOCKADDR_IN*)inst[1];
+    struct sockaddr_in* addr_in = (struct sockaddr_in*)inst[1];
 
-    const int addr_in_size = sizeof(SOCKADDR_IN);
-    const int sent = sendto(sock, &value, 1, 0, (SOCKADDR*)addr_in, addr_in_size);
-    if(sent != SOCKET_ERROR) {
+    const int addr_in_size = sizeof(struct sockaddr_in);
+    const int sent = sendto(sock, &value, 1, 0, (struct sockaddr*)addr_in, addr_in_size);
+    if(sent < 0) {
       PushInt(sent > -1, op_stack, stack_pos);
     }
     else {
@@ -4484,12 +4488,12 @@ bool TrapProcessor::SockUdpOutByteAry(StackProgram* program, size_t* inst, size_
   if(instance && instance[0] && offset > -1 && offset + num <= (long)array[0]) {
 
     SOCKET sock = inst[0];
-    SOCKADDR_IN* addr_in = (SOCKADDR_IN*)inst[1];
+    struct sockaddr_in* addr_in = (struct sockaddr_in*)inst[1];
     const char* buffer = (char*)(array + 3);
 
-    const int addr_in_size = sizeof(SOCKADDR_IN);
-    const int sent = sendto(sock, buffer, num, 0, (SOCKADDR*)addr_in, addr_in_size);
-    if(sent != SOCKET_ERROR) {
+    const int addr_in_size = sizeof(struct sockaddr_in);
+    const int sent = sendto(sock, buffer, num, 0, (struct sockaddr*)addr_in, addr_in_size);
+    if(sent < 0) {
       PushInt(sent > -1, op_stack, stack_pos);
     }
     else {
