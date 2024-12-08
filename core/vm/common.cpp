@@ -4358,9 +4358,24 @@ bool TrapProcessor::SockUdpCreate(StackProgram* program, size_t* inst, size_t*& 
   if(array && instance) {
     array = (size_t*)array[0];
     const std::wstring waddr = (wchar_t*)(array + 3);
-    const std::string addr = UnicodeToBytes(waddr);
+    const std::string addr_str = UnicodeToBytes(waddr);
     
-    
+    SOCKET sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    if(sock != INVALID_SOCKET) {
+      struct sockaddr_in bin_addr;
+      if(inet_pton(AF_INET, addr_str.c_str(), &(bin_addr.sin_addr)) != 1) {
+        closesocket(sock);
+      }
+      else {
+        SOCKADDR_IN* addr_in = new SOCKADDR_IN;
+        addr_in->sin_family = AF_INET;
+        addr_in->sin_port = htons(port);
+        addr_in->sin_addr = bin_addr.sin_addr;
+
+        inst[0] = sock;
+        inst[1] = (size_t)addr_in;
+      }
+    }
   }
 
   return true;
