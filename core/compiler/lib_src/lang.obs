@@ -9828,7 +9828,7 @@ bundle System.IO.Net {
 		@return last error message, or Nil of no error
 		~#
 		function : GetLastError() ~ String {
-			UDP;
+			SOCK_IP_ERROR;
 		}
 	}
 	
@@ -10186,7 +10186,7 @@ bundle System.IO.Net {
 		@return last error message, or Nil of no error
 		~#
 		function : GetLastError() ~ String {
-			SOCK_UDP_ERROR;
+			SOCK_IP_ERROR;
 		}
 	}
 	
@@ -10327,7 +10327,7 @@ bundle System.IO.Net {
 		Default constructor
 		@param port server port
 		~#
-		New(port : Int, bind : Bool = true) {
+		New(port : Int, bind : Bool := true) {
 		  Parent();
 		  @port := port;
 
@@ -10351,7 +10351,7 @@ bundle System.IO.Net {
 		@return true if successfully bound, false otherwise
 		~#
 		method : public : IsBound() ~ Bool {
-			return @sock > -1 & @addr != 0;
+			return @sock > -1 & @addr <> 0;
 		}
 		
 
