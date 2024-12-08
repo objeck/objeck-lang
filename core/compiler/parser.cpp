@@ -3033,12 +3033,6 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
       NextToken();
       break;
 
-    case SOCK_UDP_ERROR:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                               instructions::SOCK_UDP_ERROR);
-      NextToken();
-      break;
-
 
 
 
@@ -3077,8 +3071,8 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
       NextToken();
       break;
 
-    case SOCK_TCP_ERROR:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), instructions::SOCK_TCP_ERROR);
+    case SOCK_IP_ERROR:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), instructions::SOCK_IP_ERROR);
       NextToken();
       break;
 

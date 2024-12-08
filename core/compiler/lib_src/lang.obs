@@ -9828,7 +9828,7 @@ bundle System.IO.Net {
 		@return last error message, or Nil of no error
 		~#
 		function : GetLastError() ~ String {
-			SOCK_TCP_ERROR;
+			UDP;
 		}
 	}
 	
@@ -10236,7 +10236,7 @@ bundle System.IO.Net {
 		@return last error message, or Nil of no error
 		~#
 		function : GetLastError() ~ String {
-			SOCK_TCP_ERROR;
+			SOCK_IP_ERROR;
 		}
 	}
 
@@ -10327,20 +10327,33 @@ bundle System.IO.Net {
 		Default constructor
 		@param port server port
 		~#
-		New(port : Int) {
+		New(port : Int, bind : Bool = true) {
 		  Parent();
 		  @port := port;
+
+		  if(bind) {
+		  	Bind();
+		  };
 		}
 	
 		#~
-		Listens for incoming client connections
-		@param backlog maximum length to queue pending connections
-		@return true if client successfully connects, false otherwise
+		Binds the UDP server socket
+		@return true if successfully bound, false otherwise
 		~#
 		method : public : Bind() ~ Bool {
-			SOCK_UDP_BIND;
+			if(<>IsBound()) {
+				SOCK_UDP_BIND;
+			};
 		}
 
+		#~
+		Checks if the UDP server socket is bound
+		@return true if successfully bound, false otherwise
+		~#
+		method : public : IsBound() ~ Bool {
+			return @sock > -1 & @addr != 0;
+		}
+		
 
 
 
@@ -10383,7 +10396,7 @@ bundle System.IO.Net {
 		@return last error message, or Nil of no error
 		~#
 		function : GetLastError() ~ String {
-			SOCK_UDP_ERROR;
+			SOCK_IP_ERROR;
 		}
 	}
 }

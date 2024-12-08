@@ -315,7 +315,7 @@ enum ScannerTokenType {
   SOCK_TCP_BIND,
   SOCK_TCP_LISTEN,
   SOCK_TCP_ACCEPT,
-  SOCK_TCP_ERROR,
+  SOCK_IP_ERROR,
   // UDP socket server operations
   SOCK_UDP_CREATE,
   SOCK_UDP_BIND,
@@ -328,7 +328,6 @@ enum ScannerTokenType {
   SOCK_UDP_OUT_CHAR_ARY,
   SOCK_UDP_IN_STRING,
   SOCK_UDP_OUT_STRING,
-  SOCK_UDP_ERROR,
 	// secure socket server operations
 	SOCK_TCP_SSL_LISTEN,
 	SOCK_TCP_SSL_ACCEPT,
