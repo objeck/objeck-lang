@@ -499,54 +499,36 @@ class IPSocket {
  ****************************/
 class UDPSocket {
 public:
-  static struct sockaddr_in* Bind(int port) {
-    SOCKET sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+  static bool Bind(int port, SOCKET &sock, SOCKADDR_IN* & addr_in) {
+    sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     if(sock != INVALID_SOCKET) {
-      struct sockaddr_in* serv_addr = new struct sockaddr_in;
-      memset(serv_addr, 0, sizeof(struct sockaddr_in));
+      addr_in = new SOCKADDR_IN;
+      addr_in->sin_family = AF_INET;
+      addr_in->sin_port = htons(port);
+      addr_in->sin_addr.s_addr = htonl(INADDR_ANY);
 
-      serv_addr->sin_family = AF_INET;
-      serv_addr->sin_addr.s_addr = INADDR_ANY;
-      serv_addr->sin_port = htons(port);
+      if(bind(sock, (SOCKADDR*)&addr_in, sizeof(addr_in)) == SOCKET_ERROR) {
+        closesocket(sock);
+        sock = INVALID_SOCKET;
 
-      if(bind(sock, (SOCKADDR*)serv_addr, sizeof(sockaddr_in) != SOCKET_ERROR)) {
-        return serv_addr;
+        delete addr_in;
+        addr_in = nullptr;
+
+        return false;
       }
+
+      return true;
     }
 
-    return nullptr;
+    return false;
   }
 
   static char ReadByte(struct sockaddr_in* addr_in) {
-    char value[512];
-
-
-    
-    SOCKET sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-    if(sock != INVALID_SOCKET) {
-      // int addr_in_size = sizeof(struct sockaddr_in);
-
-      struct sockaddr_in cli_addr;
-      int cli_addr_size = sizeof(struct sockaddr_in);
-      memset(&cli_addr, 0, cli_addr_size);
-
-      if(recvfrom(sock, value, 511, 0, (SOCKADDR*)&cli_addr, &cli_addr_size) != SOCKET_ERROR) {
-        return 101;
-      }
-    }
-
-    return '\0';
+    return 0;
   }
 
   static int WriteByte(char value, struct sockaddr_in* addr_in) {
-    SOCKET sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-    if(sock != INVALID_SOCKET) {
-      const int addr_in_size = sizeof(struct sockaddr_in);
-
-      const int foo = sendto(sock, &value, 1, 0, (SOCKADDR*)&addr_in, addr_in_size);
-
-      return foo;
-    }
+    return 0;
   }
 };
 
