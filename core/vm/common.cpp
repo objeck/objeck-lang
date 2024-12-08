@@ -4363,15 +4363,7 @@ bool TrapProcessor::SockUdpCreate(StackProgram* program, size_t* inst, size_t*& 
     const std::wstring waddr = (wchar_t*)(array + 3);
     const std::string addr = UnicodeToBytes(waddr);
     
-    struct sockaddr_in ip_addr;
-    if(inet_pton(AF_INET, addr.c_str(), &ip_addr.sin_addr) == 1) {
-      struct sockaddr_in* serv_addr = new struct sockaddr_in;
-      serv_addr->sin_family = AF_INET;
-      serv_addr->sin_port = htons(port);
-      serv_addr->sin_addr = ip_addr.sin_addr;
-
-      inst[0] = (size_t)serv_addr;
-    }
+    
   }
 
   return true;
@@ -4379,32 +4371,33 @@ bool TrapProcessor::SockUdpCreate(StackProgram* program, size_t* inst, size_t*& 
 
 bool TrapProcessor::SockUdpBind(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) {
   if(inst) {
-    const long port = (long)inst[1];
-    inst[0] = (size_t)UDPSocket::Bind(port);
+    const long port = (long)inst[2];
+    SOCKET sock; SOCKADDR_IN* addr;
+    if(UDPSocket::Bind(port, sock, addr)) {
+      inst[0] = sock;
+      inst[1] = (size_t)addr;
+    }
   }
 
   return true;
 }
 
 bool TrapProcessor::SockUdpCloseCreate(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) {
-  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  if(instance && instance[0]) {
-    struct sockaddr_in* sock_addr = (struct sockaddr_in*)inst[0];
-
-    delete sock_addr;
-    sock_addr = nullptr;
-  }
-
   return true;
 }
 
 bool TrapProcessor::SockUdpCloseBind(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) {
   if(inst) {
-    struct sockaddr_in* sock_addr = (struct sockaddr_in*)inst[0];
-    if(sock_addr) {
-      delete sock_addr;
-      sock_addr = nullptr;
-    }
+#ifdef _WIN32
+    SOCKET sock = inst[0];
+    closesocket(sock);
+
+    SOCKADDR_IN* addr_in = (SOCKADDR_IN*)inst[1];
+    delete addr_in;
+    addr_in = nullptr;
+#else
+      
+#endif
   }
 
   return true;
@@ -4413,8 +4406,14 @@ bool TrapProcessor::SockUdpCloseBind(StackProgram* program, size_t* inst, size_t
 bool TrapProcessor::SockUdpInByte(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) {
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(instance && instance[0]) {
-    struct sockaddr_in* sock_addr = (struct sockaddr_in*)inst[0];
-    PushInt(UDPSocket::ReadByte(sock_addr), op_stack, stack_pos);
+    SOCKET sock = inst[0];
+    SOCKADDR_IN* addr_in = (SOCKADDR_IN*)inst[1];
+
+    char value;
+    int addr_in_size = sizeof(SOCKADDR_IN);
+    int ByteReceived = recvfrom(sock, &value, 1, 0, (SOCKADDR*)addr_in, &addr_in_size);
+
+
   }
   else {
     PushInt(0, op_stack, stack_pos);
