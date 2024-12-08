@@ -2137,7 +2137,7 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
   case SOCK_TCP_IN_STRING:
     return SockTcpInString(program, inst, op_stack, stack_pos, frame);
 
-  case SOCK_TCP_ERROR:
+  case SOCK_IP_ERROR:
     return SockTcpError(program, inst, op_stack, stack_pos, frame);
       
   case SOCK_TCP_SSL_CONNECT:
@@ -2202,9 +2202,6 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
 
     case SOCK_UDP_OUT_STRING:
       return SockUdpOutString(program, inst, op_stack, stack_pos, frame);
-
-    case SOCK_UDP_ERROR:
-      return SockUdpError(program, inst, op_stack, stack_pos, frame);
 
 
 
