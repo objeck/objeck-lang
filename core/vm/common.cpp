@@ -4354,7 +4354,29 @@ bool TrapProcessor::SockTcpSslCloseSrv(StackProgram* program, size_t* inst, size
 }
 
 bool TrapProcessor::SockUdpCreate(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) {
-  return false;
+  const long port = (long)PopInt(op_stack, stack_pos);
+  size_t* array = (size_t*)PopInt(op_stack, stack_pos);
+  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+  
+  if(array && instance) {
+    array = (size_t*)array[0];
+    const std::wstring waddr = (wchar_t*)(array + 3);
+    const std::string addr = UnicodeToBytes(waddr);
+
+    struct sockaddr_in* cli_addr = new struct sockaddr_in;
+    int cli_addr_size = (int)sizeof(struct sockaddr_in);
+
+    struct in_addr bin_addr;
+    const int status = inet_pton(AF_INET, addr.c_str(), &bin_addr);
+    if(status == 1) {
+      cli_addr->sin_family = AF_INET;
+      cli_addr->sin_port = htons(port);
+      cli_addr->sin_addr = bin_addr;
+      inst[0] = (size_t)cli_addr;
+    }
+  }
+
+  return true;
 }
 
 bool TrapProcessor::SockUdpBind(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) {
@@ -4423,8 +4445,11 @@ bool TrapProcessor::SockUdpInCharAry(StackProgram* program, size_t* inst, size_t
 bool TrapProcessor::SockUdpOutByte(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) {
   INT64_VALUE value = (INT64_VALUE)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  if(instance && (long)instance[0] > -1) {
+  if(instance && instance[0]) {
     SOCKET sock = (SOCKET)instance[0];
+
+    struct sockaddr_in* addr_in = 
+
     UDPSocket::WriteByte((char)value, sock);
     PushInt(1, op_stack, stack_pos);
   }
