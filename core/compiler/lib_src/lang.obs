@@ -10318,7 +10318,8 @@ bundle System.IO.Net {
 	UDP/IP Server socket
 	~#
 	class UDPSocketServer {
-		@handle : Int;
+		@sock : Int;
+		@addr : Int;
 		@port : Int;
 
 		#~
