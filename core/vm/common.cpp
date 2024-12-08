@@ -4353,7 +4353,11 @@ bool TrapProcessor::SockUdpCreate(StackProgram* program, size_t* inst, size_t*& 
     const std::string addr_str = UnicodeToBytes(waddr);
     
     SOCKET sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-    if(sock < 0) {
+#ifdef _WIN32      
+    if(sock != INVALID_SOCKET) {
+#else
+    if(sock > -1) {
+#endif
       struct sockaddr_in bin_addr;
       if(inet_pton(AF_INET, addr_str.c_str(), &(bin_addr.sin_addr)) != 1) {
 #ifdef _WIN32      
@@ -4428,7 +4432,7 @@ bool TrapProcessor::SockUdpInByteAry(StackProgram* program, size_t* inst, size_t
   const INT64_VALUE offset = (INT64_VALUE)PopInt(op_stack, stack_pos);
   const size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
-  if(array && instance && (FILE*)instance[0] && offset > -1 && offset + num <= (long)array[0]) {
+  if(array && instance && instance[0] && offset > -1 && offset + num <= (long)array[0]) {
     SOCKET sock = inst[0];
     struct sockaddr_in* addr_in = (struct sockaddr_in*)inst[1];
     char* buffer = (char*)(array + 3);
@@ -4441,9 +4445,6 @@ bool TrapProcessor::SockUdpInByteAry(StackProgram* program, size_t* inst, size_t
     else {
       PushInt(0, op_stack, stack_pos);
     }
-
-    //     PushInt(Pipe::ReadByteArray(buffer, offset, num, pipe), op_stack, stack_pos);
-
   }
   else {
     PushInt(-1, op_stack, stack_pos);
