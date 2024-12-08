@@ -4,25 +4,26 @@ class Udp {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
 			target := args[0];
+			port := 8888;
 
 			if(target->Equals("client")) {
-				DoClient();
+				DoClient(port);
 			}
 			else if(target->Equals("server")) {
-				DoServer();
+				DoServer(port);
 			}
 		}
 	}
 
-	function : DoServer() ~ Nil {
-		server := UDPSocketServer->New(8888);
+	function : DoServer(port : Int) ~ Nil {
+		server := UDPSocketServer->New(port);
 		server->Bind();
 		server->ReadByte()->PrintLine();
 		server->Close();
 	}
 
-	function : DoClient() ~ Nil {
-		client := UDPSocket->New("127.0.0.1", 8888);
+	function : DoClient(port : Int) ~ Nil {
+		client := UDPSocket->New("127.0.0.1", port);
 		client->WriteByte(101);
 		client->Close();
 	}
