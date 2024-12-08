@@ -523,12 +523,11 @@ public:
     return false;
   }
 
-  static char ReadByte(struct sockaddr_in* addr_in) {
-    return 0;
-  }
+  static void Close(SOCKET sock, SOCKADDR_IN* addr_in) {
+    closesocket(sock);
 
-  static int WriteByte(char value, struct sockaddr_in* addr_in) {
-    return 0;
+    delete addr_in;
+    addr_in = nullptr;
   }
 };
 
