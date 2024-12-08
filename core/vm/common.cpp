@@ -4400,16 +4400,10 @@ bool TrapProcessor::SockUdpCloseCreate(StackProgram* program, size_t* inst, size
 
 bool TrapProcessor::SockUdpCloseBind(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) {
   if(inst) {
-    struct sockaddr_in* serv_addr = (struct sockaddr_in*)inst[1];
-    if(serv_addr) {
-      delete serv_addr;
-      serv_addr = nullptr;
-    }
-
-    struct sockaddr_in* cli_addr = (struct sockaddr_in*)inst[2];
-    if(cli_addr) {
-      delete cli_addr;
-      cli_addr = nullptr;
+    struct sockaddr_in* sock_addr = (struct sockaddr_in*)inst[0];
+    if(sock_addr) {
+      delete sock_addr;
+      sock_addr = nullptr;
     }
   }
 
