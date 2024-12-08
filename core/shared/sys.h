@@ -817,8 +817,8 @@ static wchar_t* LoadFileBuffer(const std::wstring &filename, size_t& buffer_size
     return nullptr;;
   }
 
-  if(size < in.size()) {
-    size = in.size();
+  if(wsize < in.size()) {
+    wsize = in.size();
   }
 
   wchar_t* wbuffer = new wchar_t[wsize + 1];
