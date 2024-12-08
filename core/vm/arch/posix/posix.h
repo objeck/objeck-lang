@@ -458,39 +458,35 @@ public:
  ****************************/
 class UDPSocket {
 public:
-  static bool Bind(int port, struct sockaddr_in* serv_addr) {
-    SOCKET sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-    if(sock != 0) {
-      serv_addr->sin_family = AF_INET;
-      serv_addr->sin_addr.s_addr = INADDR_ANY;
-      serv_addr->sin_port = htons(port);
+  static bool Bind(int port, SOCKET& sock, SOCKADDR_IN*& addr_in) {
+    sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    if(sock != INVALID_SOCKET) {
+      addr_in = new SOCKADDR_IN;
+      addr_in->sin_family = AF_INET;
+      addr_in->sin_port = htons(port);
+      addr_in->sin_addr.s_addr = htonl(INADDR_ANY);
 
-      return bind(sock, (const struct sockaddr*)serv_addr, sizeof(sockaddr_in)) > -1;
+      if(bind(sock, (SOCKADDR*)addr_in, sizeof(SOCKADDR_IN)) == SOCKET_ERROR) {
+        closesocket(sock);
+        sock = INVALID_SOCKET;
+
+        delete addr_in;
+        addr_in = nullptr;
+
+        return false;
+      }
+
+      return true;
     }
 
     return false;
   }
 
-  static char ReadByte(SOCKET sock) {
-    char value;
+  static void Close(SOCKET sock, SOCKADDR_IN* addr_in) {
+    close(sock);
 
-    struct sockaddr_in addr_in;
-    memset(&addr_in, 0, sizeof(addr_in));
-
-    socklen_t addr_in_size;
-    if(recvfrom(sock, &value, 1, MSG_WAITALL, (struct sockaddr*)&addr_in, &addr_in_size)) {
-      return value;
-    }
-
-    return '\0';
-  }
-
-  static int WriteByte(char value, SOCKET sock) {
-    struct sockaddr_in addr_in;
-    memset(&addr_in, 0, sizeof(addr_in));
-
-    const size_t addr_in_size = sizeof(addr_in);
-    return sendto(sock, &value, 1, 0, (const struct sockaddr*)&addr_in, addr_in_size);
+    delete addr_in;
+    addr_in = nullptr;
   }
 };
 
