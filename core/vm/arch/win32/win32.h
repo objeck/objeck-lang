@@ -518,13 +518,20 @@ public:
   }
 
   static char ReadByte(struct sockaddr_in* addr_in) {
-    char value;
+    char value[512];
+
+
     
     SOCKET sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     if(sock != INVALID_SOCKET) {
-      int addr_in_size = sizeof(struct sockaddr_in);
-      if(recvfrom(sock, &value, 1, 0, (SOCKADDR*)&addr_in, &addr_in_size)) {
-        return value;
+      // int addr_in_size = sizeof(struct sockaddr_in);
+
+      struct sockaddr_in cli_addr;
+      int cli_addr_size = sizeof(struct sockaddr_in);
+      memset(&cli_addr, 0, cli_addr_size);
+
+      if(recvfrom(sock, value, 511, 0, (SOCKADDR*)&cli_addr, &cli_addr_size) != SOCKET_ERROR) {
+        return 101;
       }
     }
 
