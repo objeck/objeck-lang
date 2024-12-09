@@ -164,7 +164,7 @@ namespace instructions {
     SYM_LINK_EXISTS,
     // hard link operations
     HARD_LINK_CREATE,
-    // socket i/o
+    // TCP socket i/o
     SOCK_TCP_CONNECT,
     SOCK_TCP_BIND,
     SOCK_TCP_LISTEN,
@@ -181,7 +181,19 @@ namespace instructions {
     SOCK_TCP_OUT_STRING,
     SOCK_TCP_HOST_NAME,
     SOCK_TCP_RESOLVE_NAME,
-    SOCK_TCP_ERROR,
+    SOCK_IP_ERROR,
+    // UDP socket i/o
+    SOCK_UDP_CREATE,
+    SOCK_UDP_BIND,
+    SOCK_UDP_CLOSE,
+    SOCK_UDP_IN_BYTE,
+    SOCK_UDP_IN_BYTE_ARY,
+    SOCK_UDP_IN_CHAR_ARY,
+    SOCK_UDP_OUT_BYTE,
+    SOCK_UDP_OUT_BYTE_ARY,
+    SOCK_UDP_OUT_CHAR_ARY,
+    SOCK_UDP_IN_STRING,
+    SOCK_UDP_OUT_STRING,
     // ssl socket
     SOCK_TCP_SSL_CONNECT,
     SOCK_TCP_SSL_CLOSE,

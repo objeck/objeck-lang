@@ -495,6 +495,43 @@ class IPSocket {
 };
 
 /****************************
+ * UDP socket support class
+ ****************************/
+class UDPSocket {
+public:
+  static bool Bind(int port, SOCKET &sock, SOCKADDR_IN* & addr_in) {
+    sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    if(sock != INVALID_SOCKET) {
+      addr_in = new SOCKADDR_IN;
+      addr_in->sin_family = AF_INET;
+      addr_in->sin_port = htons(port);
+      addr_in->sin_addr.s_addr = htonl(INADDR_ANY);
+
+      if(bind(sock, (SOCKADDR*)addr_in, sizeof(SOCKADDR_IN)) == SOCKET_ERROR) {
+        closesocket(sock);
+        sock = INVALID_SOCKET;
+
+        delete addr_in;
+        addr_in = nullptr;
+
+        return false;
+      }
+
+      return true;
+    }
+
+    return false;
+  }
+
+  static void Close(SOCKET sock, SOCKADDR_IN* addr_in) {
+    closesocket(sock);
+
+    delete addr_in;
+    addr_in = nullptr;
+  }
+};
+
+/****************************
  * IP socket support class
  ****************************/
 class IPSecureSocket {

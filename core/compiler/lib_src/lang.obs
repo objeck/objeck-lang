@@ -9828,7 +9828,7 @@ bundle System.IO.Net {
 		@return last error message, or Nil of no error
 		~#
 		function : GetLastError() ~ String {
-			SOCK_TCP_ERROR;
+			SOCK_IP_ERROR;
 		}
 	}
 	
@@ -10025,6 +10025,170 @@ bundle System.IO.Net {
 			SOCK_TCP_SSL_CLOSE;
 		}
 	}
+
+	#~
+	UDP/IP socket
+	~#
+	class UDPSocket implements System.IO.InputStream, System.IO.OutputStream {
+		@sock : Int;
+		@addr : Int;
+		@address : System.String;
+		@port : Int;
+		
+		#~
+		Default constructor
+		@param address network address
+		@param port network port
+		~#
+		New(address : System.String, port : Int) {
+			Parent();
+			@address := address;
+			@port := port;
+			SOCK_UDP_CREATE;
+		}
+
+		#~
+		Returns the connected network address
+		@return return network address
+		~#
+		method : public : GetAddress() ~ String {
+			return @address;
+		}
+		
+		#~
+		Returns the connected network port
+		@return return network port
+		~#
+		method : public : GetPort() ~ Int {
+			return @port;
+		}
+
+		#~
+		Writes a byte
+		@param b byte to write
+		@return true if byte was written, false otherwise
+		~#
+		method : public : WriteByte(b : Int) ~ Bool {
+			SOCK_UDP_OUT_BYTE;
+		}
+		
+		#~
+		Writes bytes from a byte buffer
+		@param buffer input buffer
+		@return number of values written
+		~#
+		method : public : WriteBuffer(buffer : Byte[]) ~ Int {
+			return WriteBuffer(0, buffer->Size(), buffer);
+		}
+
+		#~
+		Writes bytes from a byte buffer
+		@param offset destination buffer offset
+		@param num number of values to write
+		@param buffer input buffer
+		@return number of values written
+		~#
+		method : public : WriteBuffer(offset : Int, num : Int, buffer : Byte[]) ~ Int {
+			SOCK_UDP_OUT_BYTE_ARY;
+		}
+
+		#~
+		Writes characters from a byte buffer
+		@param buffer input buffer
+		@return number of values written
+		~#
+		method : public : WriteBuffer(buffer : Char[]) ~ Int {
+			return WriteBuffer(0, buffer->Size(), buffer);
+		}
+		
+		#~
+		Writes characters from a character buffer
+		@param offset destination buffer offset
+		@param num number of values to write
+		@param buffer input buffer
+		@return number of values written
+		~#
+		method : public : WriteBuffer(offset : Int, num : Int, buffer : Char[]) ~ Int {
+			SOCK_UDP_OUT_CHAR_ARY;
+		}
+		
+		#~
+		Reads a byte
+		@return byte read
+		~#
+		method : public : ReadByte() ~ Byte {
+			SOCK_UDP_IN_BYTE;
+		}
+		
+		#~
+		Reads bytes into a byte buffer
+		@param offset destination buffer offset
+		@param num number of values to read
+		@param buffer input buffer
+		@return number of values read
+		~#
+		method : public : ReadBuffer(offset : Int, num : Int, buffer : Byte[]) ~ Int {
+			SOCK_UDP_IN_BYTE_ARY;
+		}
+		
+		#~
+		Reads bytes into a character buffer
+		@param offset destination buffer offset
+		@param num number of values to read
+		@param buffer input buffer
+		@return number of values read
+		~#
+		method : public : ReadBuffer(offset : Int, num : Int, buffer : Char[]) ~ Int {
+			SOCK_UDP_IN_CHAR_ARY;
+		}
+		
+		#~
+		Writes a character string
+		@param str string to be written
+		~#
+		method : public : WriteString(str : System.String) ~ Nil {
+			WriteString(str->ToCharArray());
+		}
+
+		method : WriteString(buffer : Char[]) ~ Nil {
+			SOCK_UDP_OUT_STRING;
+		}
+		
+		#~
+		Reads a string until a newline or character return is detected 
+		@return character string
+		~#
+		method : public : ReadLine() ~ System.String {
+			buffer : Char[] := Char->New[8192];
+			ReadString(buffer);
+			return System.String->New(buffer);
+		}
+
+		method : ReadString(buffer : Char[]) ~ Nil {
+			SOCK_UDP_IN_STRING;
+		}
+	
+		#~
+		Flushes the output buffer. This is a no-opt given
+		this socket is not backed by an output buffer.
+		~#
+		method : public : Flush() ~ Nil {}
+		
+		#~
+		Closes the socket
+		~#
+		method : public : Close() ~ Nil {
+			SOCK_UDP_CLOSE;
+		}
+
+		#~
+		Get the last error
+		@return last error message, or Nil of no error
+		~#
+		function : GetLastError() ~ String {
+			SOCK_IP_ERROR;
+		}
+	}
 	
 	#~
 	TCP/IP Server socket
@@ -10072,7 +10236,7 @@ bundle System.IO.Net {
 		@return last error message, or Nil of no error
 		~#
 		function : GetLastError() ~ String {
-			SOCK_TCP_ERROR;
+			SOCK_IP_ERROR;
 		}
 	}
 
@@ -10148,6 +10312,173 @@ bundle System.IO.Net {
 		~#
 		method : public : Close() ~ Nil {
 			SOCK_TCP_SSL_SRV_CLOSE;
+		}
+	}
+
+	#~
+	UDP/IP Server socket
+	~#
+	class UDPSocketServer {
+		@sock : Int;
+		@addr : Int;
+		@port : Int;
+
+		#~
+		Default constructor
+		@param port server port
+		@param bind bind to port on creation, default is true
+		~#
+		New(port : Int, bind : Bool := true) {
+		  Parent();
+		  @port := port;
+
+		  if(bind) {
+		  	Bind();
+		  };
+		}
+	
+		#~
+		Binds the UDP server socket
+		@return true if successfully bound, false otherwise
+		~#
+		method : public : Bind() ~ Bool {
+			if(<>IsBound()) {
+				SOCK_UDP_BIND;
+			};
+		}
+
+		#~
+		Checks if the UDP server socket is bound
+		@return true if successfully bound, false otherwise
+		~#
+		method : public : IsBound() ~ Bool {
+			return @sock > -1 & @addr <> 0;
+		}
+		
+		#~
+		Writes a byte
+		@param b byte to write
+		@return true if byte was written, false otherwise
+		~#
+		method : public : WriteByte(b : Int) ~ Bool {
+			SOCK_UDP_OUT_BYTE;
+		}
+		
+		#~
+		Writes bytes from a byte buffer
+		@param buffer input buffer
+		@return number of values written
+		~#
+		method : public : WriteBuffer(buffer : Byte[]) ~ Int {
+			return WriteBuffer(0, buffer->Size(), buffer);
+		}
+
+		#~
+		Writes bytes from a byte buffer
+		@param offset destination buffer offset
+		@param num number of values to write
+		@param buffer input buffer
+		@return number of values written
+		~#
+		method : public : WriteBuffer(offset : Int, num : Int, buffer : Byte[]) ~ Int {
+			SOCK_UDP_OUT_BYTE_ARY;
+		}
+
+		#~
+		Writes characters from a byte buffer
+		@param buffer input buffer
+		@return number of values written
+		~#
+		method : public : WriteBuffer(buffer : Char[]) ~ Int {
+			return WriteBuffer(0, buffer->Size(), buffer);
+		}
+		
+		#~
+		Writes characters from a character buffer
+		@param offset destination buffer offset
+		@param num number of values to write
+		@param buffer input buffer
+		@return number of values written
+		~#
+		method : public : WriteBuffer(offset : Int, num : Int, buffer : Char[]) ~ Int {
+			SOCK_UDP_OUT_CHAR_ARY;
+		}
+		
+		#~
+		Reads a byte
+		@return byte read
+		~#
+		method : public : ReadByte() ~ Byte {
+			SOCK_UDP_IN_BYTE;
+		}
+		
+		#~
+		Reads bytes into a byte buffer
+		@param offset destination buffer offset
+		@param num number of values to read
+		@param buffer input buffer
+		@return number of values read
+		~#
+		method : public : ReadBuffer(offset : Int, num : Int, buffer : Byte[]) ~ Int {
+			SOCK_UDP_IN_BYTE_ARY;
+		}
+		
+		#~
+		Reads bytes into a character buffer
+		@param offset destination buffer offset
+		@param num number of values to read
+		@param buffer input buffer
+		@return number of values read
+		~#
+		method : public : ReadBuffer(offset : Int, num : Int, buffer : Char[]) ~ Int {
+			SOCK_UDP_IN_CHAR_ARY;
+		}
+		
+		#~
+		Writes a character string
+		@param str string to be written
+		~#
+		method : public : WriteString(str : System.String) ~ Nil {
+			WriteString(str->ToCharArray());
+		}
+
+		method : WriteString(buffer : Char[]) ~ Nil {
+			SOCK_UDP_OUT_STRING;
+		}
+		
+		#~
+		Reads a string until a newline or character return is detected 
+		@return character string
+		~#
+		method : public : ReadLine() ~ System.String {
+			buffer : Char[] := Char->New[8192];
+			ReadString(buffer);
+			return System.String->New(buffer);
+		}
+
+		method : ReadString(buffer : Char[]) ~ Nil {
+			SOCK_UDP_IN_STRING;
+		}
+	
+		#~
+		Flushes the output buffer. This is a no-opt given
+		this socket is not backed by an output buffer.
+		~#
+		method : public : Flush() ~ Nil {}
+		
+		#~
+		Closes the server socket
+		~#
+		method : public : Close() ~ Nil {
+			SOCK_UDP_CLOSE;
+		}
+
+		#~
+		Get the last error
+		@return last error message, or Nil of no error
+		~#
+		function : GetLastError() ~ String {
+			SOCK_IP_ERROR;
 		}
 	}
 }

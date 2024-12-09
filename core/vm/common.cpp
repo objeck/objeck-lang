@@ -2104,16 +2104,11 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
   case SET_SYS_PROP:
     return SetSysProp(program, inst, op_stack, stack_pos, frame);
 
-
-
-
   case GET_SYS_ENV:
     return GetSysEnv(program, inst, op_stack, stack_pos, frame);
 
   case SET_SYS_ENV:
     return SetSysEnv(program, inst, op_stack, stack_pos, frame);
-
-
 
   case SOCK_TCP_RESOLVE_NAME:
     return SockTcpResolveName(program, inst, op_stack, stack_pos, frame);
@@ -2142,7 +2137,7 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
   case SOCK_TCP_IN_STRING:
     return SockTcpInString(program, inst, op_stack, stack_pos, frame);
 
-  case SOCK_TCP_ERROR:
+  case SOCK_IP_ERROR:
     return SockTcpError(program, inst, op_stack, stack_pos, frame);
       
   case SOCK_TCP_SSL_CONNECT:
@@ -2177,6 +2172,39 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
 
   case SOCK_TCP_SSL_ERROR:
     return SockTcpSslError(program, inst, op_stack, stack_pos, frame);
+
+    case SOCK_UDP_CREATE:
+      return SockUdpCreate(program, inst, op_stack, stack_pos, frame);
+
+    case SOCK_UDP_BIND:
+      return SockUdpBind(program, inst, op_stack, stack_pos, frame);
+
+    case SOCK_UDP_CLOSE:
+      return SockUdpClose(program, inst, op_stack, stack_pos, frame);
+
+    case SOCK_UDP_IN_BYTE:
+      return SockUdpInByte(program, inst, op_stack, stack_pos, frame);
+
+    case SOCK_UDP_IN_BYTE_ARY:
+      return SockUdpInByteAry(program, inst, op_stack, stack_pos, frame);
+
+    case SOCK_UDP_IN_CHAR_ARY:
+      return SockUdpInCharAry(program, inst, op_stack, stack_pos, frame);
+
+    case SOCK_UDP_OUT_CHAR_ARY:
+      return SockUdpOutCharAry(program, inst, op_stack, stack_pos, frame);
+
+    case SOCK_UDP_OUT_BYTE:
+      return SockUdpOutByte(program, inst, op_stack, stack_pos, frame);
+
+    case SOCK_UDP_OUT_BYTE_ARY:
+      return SockUdpOutByteAry(program, inst, op_stack, stack_pos, frame);
+
+    case SOCK_UDP_IN_STRING:
+      return SockUdpInString(program, inst, op_stack, stack_pos, frame);
+
+    case SOCK_UDP_OUT_STRING:
+      return SockUdpOutString(program, inst, op_stack, stack_pos, frame);
 
   case SERL_CHAR:
     return SerlChar(program, inst, op_stack, stack_pos, frame);
@@ -3388,7 +3416,7 @@ bool TrapProcessor::SysCmdOut(StackProgram* program, size_t* inst, size_t*& op_s
   if(str_array) {
     const std::string cmd = UnicodeToBytes((wchar_t*)(str_array + 3));
 
-    int status;
+    int status = 0;
     std::vector<std::string> output_lines = System::CommandOutput(cmd.c_str(), status);
     
     // create 'System.String' object array
@@ -3913,10 +3941,8 @@ bool TrapProcessor::SockTcpOutString(StackProgram* program, size_t* inst, size_t
     std::wcout << L"# socket write std::string: instance=" << instance << L"(" << (size_t)instance << L")"
       << L"; array=" << array << L"(" << (size_t)array << L")" << std::endl;
 #endif        
-    if((long)sock > -1) {
-      const std::string data = UnicodeToBytes((wchar_t*)(array + 3));
-      IPSocket::WriteBytes(data.c_str(), (int)data.size(), sock);
-    }
+    const std::string data = UnicodeToBytes((wchar_t*)(array + 3));
+    IPSocket::WriteBytes(data.c_str(), (int)data.size(), sock);
   }
 
   return true;
@@ -4315,6 +4341,295 @@ bool TrapProcessor::SockTcpSslCloseSrv(StackProgram* program, size_t* inst, size
   }
 
   return true;
+}
+
+bool TrapProcessor::SockUdpCreate(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) {
+  const long port = (long)PopInt(op_stack, stack_pos);
+  size_t* array = (size_t*)PopInt(op_stack, stack_pos);
+  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+  
+  if(array && instance) {
+    array = (size_t*)array[0];
+    const std::wstring waddr = (wchar_t*)(array + 3);
+    const std::string addr_str = UnicodeToBytes(waddr);
+    
+    SOCKET sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+#ifdef _WIN32      
+    if(sock != INVALID_SOCKET) {
+#else
+    if(sock > -1) {
+#endif
+      struct sockaddr_in bin_addr;
+      if(inet_pton(AF_INET, addr_str.c_str(), &(bin_addr.sin_addr)) != 1) {
+#ifdef _WIN32      
+        closesocket(sock);
+#else
+	close(sock);
+#endif	        
+      }
+      else {
+        struct sockaddr_in* addr_in = new struct sockaddr_in;
+        addr_in->sin_family = AF_INET;
+        addr_in->sin_port = htons(port);
+        addr_in->sin_addr = bin_addr.sin_addr;
+
+        inst[0] = sock;
+        inst[1] = (size_t)addr_in;
+      }
+    }
+  }
+
+  return true;
+}
+
+bool TrapProcessor::SockUdpBind(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) {
+  if(inst) {
+    const long port = (long)inst[2];
+    SOCKET sock; struct sockaddr_in* addr;
+    if(UDPSocket::Bind(port, sock, addr)) {
+      inst[0] = sock;
+      inst[1] = (size_t)addr;
+    }
+  }
+
+  return true;
+}
+
+bool TrapProcessor::SockUdpClose(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) {
+  if(inst) {
+    SOCKET sock = inst[0];
+    struct sockaddr_in* addr_in = (struct sockaddr_in*)inst[1];
+    UDPSocket::Close(sock, addr_in);
+  }
+
+  return true;
+}
+
+bool TrapProcessor::SockUdpInByte(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) {
+  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+  if(instance && instance[0]) {
+    SOCKET sock = inst[0];
+    struct sockaddr_in* addr_in = (struct sockaddr_in*)inst[1];
+
+    char value;
+    socklen_t addr_in_size = sizeof(struct sockaddr_in);
+    if(recvfrom(sock, &value, 1, 0, (struct sockaddr*)addr_in, &addr_in_size) < 0) {
+      PushInt(value, op_stack, stack_pos);
+    }
+    else {
+      PushInt(0, op_stack, stack_pos);
+    }
+  }
+  else {
+    PushInt(0, op_stack, stack_pos);
+  }
+
+  return true;
+}
+
+bool TrapProcessor::SockUdpInByteAry(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) {
+  const size_t* array = (size_t*)PopInt(op_stack, stack_pos);
+  const INT64_VALUE num = (INT64_VALUE)PopInt(op_stack, stack_pos);
+  const INT64_VALUE offset = (INT64_VALUE)PopInt(op_stack, stack_pos);
+  const size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+
+  if(array && instance && instance[0] && offset > -1 && offset + num <= (long)array[0]) {
+    SOCKET sock = inst[0];
+    struct sockaddr_in* addr_in = (struct sockaddr_in*)inst[1];
+    char* buffer = (char*)(array + 3);
+
+    socklen_t addr_in_size = sizeof(struct sockaddr_in);
+    const int read = recvfrom(sock, buffer, num, 0, (struct sockaddr*)addr_in, &addr_in_size);
+    if(read < 0) {
+      PushInt(read, op_stack, stack_pos);
+    }
+    else {
+      PushInt(0, op_stack, stack_pos);
+    }
+  }
+  else {
+    PushInt(-1, op_stack, stack_pos);
+  }
+
+  return true;
+}
+
+bool TrapProcessor::SockUdpInCharAry(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) {
+  size_t* array = (size_t*)PopInt(op_stack, stack_pos);
+  const long num = (long)PopInt(op_stack, stack_pos);
+  const INT64_VALUE offset = (INT64_VALUE)PopInt(op_stack, stack_pos);
+  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+
+  if(array && instance && (long)instance[0] > -1 && offset > -1 && offset + num <= (long)array[0]) {
+    SOCKET sock = inst[0];
+    struct sockaddr_in* addr_in = (struct sockaddr_in*)inst[1];
+
+    wchar_t* buffer = (wchar_t*)(array + 3);
+    char* byte_buffer = new char[num * 2 + 1];
+
+    socklen_t addr_in_size = sizeof(struct sockaddr_in);
+    const int read = recvfrom(sock, byte_buffer, num, 0, (struct sockaddr*)addr_in, &addr_in_size);
+    byte_buffer[read] = '\0';
+    std::wstring in(BytesToUnicode(byte_buffer));
+
+    // copy and remove file BOM UTF (8, 16, 32)
+    if(in.size() > 0 && (in[0] == (wchar_t)0xFEFF || in[0] == (wchar_t)0xFFFE || in[0] == (wchar_t)0xFFFE0000 || in[0] == (wchar_t)0xEFBBBF)) {
+      in.erase(in.begin(), in.begin() + 1);
+    }
+
+    // copy
+#ifdef _WIN32
+    wcsncpy_s(buffer, array[0] + 1, in.c_str(), in.size());
+#else
+    wcsncpy(buffer, in.c_str(), in.size());
+#endif
+
+    // clean up
+    delete[] byte_buffer;
+    byte_buffer = nullptr;
+
+    PushInt(read, op_stack, stack_pos);
+  }
+  else {
+    PushInt(-1, op_stack, stack_pos);
+  }
+
+  return true;
+}
+
+bool TrapProcessor::SockUdpOutCharAry(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) {
+  size_t* array = (size_t*)PopInt(op_stack, stack_pos);
+  const INT64_VALUE num = (INT64_VALUE)PopInt(op_stack, stack_pos);
+  const INT64_VALUE offset = (INT64_VALUE)PopInt(op_stack, stack_pos);
+  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+
+  if(array && instance && (long)instance[0] > -1 && offset > -1 && offset + num <= (long)array[0]) {
+    SOCKET sock = inst[0];
+    struct sockaddr_in* addr_in = (struct sockaddr_in*)inst[1];
+    socklen_t addr_in_size = sizeof(struct sockaddr_in);
+
+    const wchar_t* buffer = (wchar_t*)(array + 3);
+    std::string buffer_out = UnicodeToBytes(buffer);
+    
+    const int sent = sendto(sock, buffer_out.c_str(), buffer_out.size(), 0, (struct sockaddr*)addr_in, addr_in_size);
+    PushInt(sent, op_stack, stack_pos);
+  }
+  else {
+    PushInt(-1, op_stack, stack_pos);
+  }
+
+  return true;
+}
+
+bool TrapProcessor::SockUdpOutByte(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) {
+  char value = (char)PopInt(op_stack, stack_pos);
+  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+  if(instance && instance[0]) {
+    SOCKET sock = inst[0];
+    struct sockaddr_in* addr_in = (struct sockaddr_in*)inst[1];
+
+    const socklen_t addr_in_size = sizeof(struct sockaddr_in);
+    const int sent = sendto(sock, &value, 1, 0, (struct sockaddr*)addr_in, addr_in_size);
+    if(sent < 0) {
+      PushInt(sent > -1, op_stack, stack_pos);
+    }
+    else {
+      PushInt(0, op_stack, stack_pos);
+    }
+  }
+  else {
+    PushInt(0, op_stack, stack_pos);
+  }
+
+  return true;
+}
+
+bool TrapProcessor::SockUdpOutByteAry(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) {
+  const size_t* array = (size_t*)PopInt(op_stack, stack_pos);
+  const INT64_VALUE num = (INT64_VALUE)PopInt(op_stack, stack_pos);
+  const INT64_VALUE offset = (INT64_VALUE)PopInt(op_stack, stack_pos);
+  const size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+
+  if(instance && instance[0] && offset > -1 && offset + num <= (long)array[0]) {
+
+    SOCKET sock = inst[0];
+    struct sockaddr_in* addr_in = (struct sockaddr_in*)inst[1];
+    const char* buffer = (char*)(array + 3);
+
+    const socklen_t addr_in_size = sizeof(struct sockaddr_in);
+    const int sent = sendto(sock, buffer, num, 0, (struct sockaddr*)addr_in, addr_in_size);
+    if(sent < 0) {
+      PushInt(sent, op_stack, stack_pos);
+    }
+    else {
+      PushInt(0, op_stack, stack_pos);
+    }
+  }
+  else {
+    PushInt(-1, op_stack, stack_pos);
+  }
+
+  return true;
+}
+
+bool TrapProcessor::SockUdpInString(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) {
+  size_t* array = (size_t*)PopInt(op_stack, stack_pos);
+  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+  if(array && instance && (long)instance[0] > -1) {
+    char buffer[MID_BUFFER_MAX] = {0};
+    
+    SOCKET sock = inst[0];
+
+    struct sockaddr_in* addr_in = (struct sockaddr_in*)inst[1];
+    socklen_t addr_in_size = sizeof(struct sockaddr_in);
+
+    if((long)sock > -1) {
+      int read = recvfrom(sock, buffer, MID_BUFFER_MAX - 1, 0, (struct sockaddr*)addr_in, &addr_in_size);
+      buffer[read] = '\0';
+
+      // copy content
+      std::wstring in = BytesToUnicode(buffer);
+      while(!in.empty() && (in.back() == L'\r' || in.back() == L'\n')) {
+        in.pop_back();
+      }
+      wchar_t* out = (wchar_t*)(array + 3);
+#ifdef _WIN32
+      wcsncpy_s(out, array[0] + 1, in.c_str(), in.size());
+#else
+      wcsncpy(out, in.c_str(), in.size());
+#endif
+    }
+  }
+
+  return true;
+}
+
+bool TrapProcessor::SockUdpOutString(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) {
+  size_t* array = (size_t*)PopInt(op_stack, stack_pos);
+  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+  if(array && instance && (long)instance[0] > -1) {
+    SOCKET sock = (SOCKET)instance[0];
+    struct sockaddr_in* addr_in = (struct sockaddr_in*)inst[1];
+
+#ifdef _DEBUG
+    std::wcout << L"# udp write std::string: instance=" << instance << L"(" << (size_t)instance << L")" << L"; array=" << array << L"(" << (size_t)array << L")" << std::endl;
+#endif        
+    const std::string data = UnicodeToBytes((wchar_t*)(array + 3));
+    const socklen_t addr_in_size = sizeof(struct sockaddr_in);
+    const int sent = sendto(sock, data.c_str(), data.size(), 0, (struct sockaddr*)addr_in, addr_in_size);
+    if(sent < 0) {
+      PushInt(sent, op_stack, stack_pos);
+    }
+    else {
+      PushInt(0, op_stack, stack_pos);
+    }
+  }
+
+  return true;
+}
+
+bool TrapProcessor::SockUdpError(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) {
+  return false;
 }
 
 bool TrapProcessor::SerlChar(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
@@ -5170,7 +5485,7 @@ bool TrapProcessor::PipeOutByteAry(StackProgram* program, size_t* inst, size_t*&
 #else
     int pipe = (int)instance[0];
 #endif
-    char* buffer = (char*)(array + 3);
+    const char* buffer = (char*)(array + 3);
     PushInt(Pipe::WriteByteArray(buffer, offset, num, pipe), op_stack, stack_pos);
   }
   else {
@@ -5386,10 +5701,9 @@ bool TrapProcessor::SockTcpOutCharAry(StackProgram* program, size_t* inst, size_
   if(array && instance && (long)instance[0] > -1 && offset > -1 && offset + num <= (long)array[0]) {
     SOCKET sock = (SOCKET)instance[0];
     const wchar_t* buffer = (wchar_t*)(array + 3);
-    // copy sub buffer
-    const std::wstring sub_buffer(buffer + offset, num);
+    
     // convert to bytes and write out
-    std::string buffer_out = UnicodeToBytes(sub_buffer);
+    std::string buffer_out = UnicodeToBytes(buffer);
     PushInt(IPSocket::WriteBytes(buffer_out.c_str(), (int)buffer_out.size(), sock), op_stack, stack_pos);
   }
   else {
