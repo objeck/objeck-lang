@@ -2957,6 +2957,85 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
       NextToken();
       break;
 
+
+
+
+
+
+
+
+
+
+
+    case SOCK_UDP_CREATE:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::SOCK_UDP_CREATE);
+      NextToken();
+      break;
+
+    case SOCK_UDP_BIND:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::SOCK_UDP_BIND);
+      NextToken();
+      break;
+
+    case SOCK_UDP_CLOSE:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::SOCK_UDP_CLOSE);
+      NextToken();
+      break;
+
+    case SOCK_UDP_IN_BYTE:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::SOCK_UDP_IN_BYTE);
+      NextToken();
+      break;
+
+    case SOCK_UDP_IN_BYTE_ARY:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::SOCK_UDP_IN_BYTE_ARY);
+      NextToken();
+      break;
+
+    case SOCK_UDP_IN_CHAR_ARY:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::SOCK_UDP_IN_CHAR_ARY);
+      NextToken();
+      break;
+
+    case SOCK_UDP_OUT_BYTE:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::SOCK_UDP_OUT_BYTE);
+      NextToken();
+      break;
+
+    case SOCK_UDP_OUT_BYTE_ARY:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::SOCK_UDP_OUT_BYTE_ARY);
+      NextToken();
+      break;
+
+    case SOCK_UDP_OUT_CHAR_ARY:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::SOCK_UDP_OUT_CHAR_ARY);
+      NextToken();
+      break;
+
+    case SOCK_UDP_IN_STRING:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::SOCK_UDP_IN_STRING);
+      NextToken();
+      break;
+
+    case SOCK_UDP_OUT_STRING:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::SOCK_UDP_OUT_STRING);
+      NextToken();
+      break;
+
+
+
+
     case SOCK_TCP_LISTEN:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::SOCK_TCP_LISTEN);
@@ -2992,8 +3071,8 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
       NextToken();
       break;
 
-    case SOCK_TCP_ERROR:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), instructions::SOCK_TCP_ERROR);
+    case SOCK_IP_ERROR:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), instructions::SOCK_IP_ERROR);
       NextToken();
       break;
 
