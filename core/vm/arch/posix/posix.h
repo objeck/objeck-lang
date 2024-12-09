@@ -460,7 +460,7 @@ class UDPSocket {
 public:
   static bool Bind(int port, SOCKET& sock, struct sockaddr_in*& addr_in) {
     sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-    if(sock < 0) {
+    if(sock > -1) {
       addr_in = new struct sockaddr_in;
       addr_in->sin_family = AF_INET;
       addr_in->sin_port = htons(port);
