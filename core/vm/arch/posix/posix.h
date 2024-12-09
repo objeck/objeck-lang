@@ -454,6 +454,43 @@ public:
 };
 
 /****************************
+ * UDP socket support class
+ ****************************/
+class UDPSocket {
+public:
+  static bool Bind(int port, SOCKET& sock, struct sockaddr_in*& addr_in) {
+    sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    if(sock > -1) {
+      addr_in = new struct sockaddr_in;
+      addr_in->sin_family = AF_INET;
+      addr_in->sin_port = htons(port);
+      addr_in->sin_addr.s_addr = htonl(INADDR_ANY);
+
+      if(bind(sock, (struct sockaddr*)addr_in, sizeof(struct sockaddr_in)) < 0) {
+        close(sock);
+        sock = -1;
+
+        delete addr_in;
+        addr_in = nullptr;
+
+        return false;
+      }
+
+      return true;
+    }
+
+    return false;
+  }
+
+  static void Close(SOCKET sock, struct sockaddr_in* addr_in) {
+    close(sock);
+
+    delete addr_in;
+    addr_in = nullptr;
+  }
+};
+
+/****************************
  * IP socket support class
  ****************************/
 class IPSecureSocket {
