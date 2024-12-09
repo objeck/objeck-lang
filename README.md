@@ -14,6 +14,9 @@
 
 ## Releases
 
+* v2024.12.0
+  * UDP socket support
+
 * v2024.10.0 **(current)**
   * Bug fix (#503)
     
@@ -25,10 +28,6 @@
   * Compiler updates (done)
     * Dead code checker
     * Improved type inference for generic types
-  
-* v2024.7.1
-  * Perplexity API support
-  * Bug fixes
 
 ## Examples
 
