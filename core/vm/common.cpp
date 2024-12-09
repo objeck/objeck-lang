@@ -4506,7 +4506,7 @@ bool TrapProcessor::SockUdpOutCharAry(StackProgram* program, size_t* inst, size_
   if(array && instance && (long)instance[0] > -1 && offset > -1 && offset + num <= (long)array[0]) {
     SOCKET sock = inst[0];
     struct sockaddr_in* addr_in = (struct sockaddr_in*)inst[1];
-    int addr_in_size = sizeof(struct sockaddr_in);
+    socklen_t addr_in_size = sizeof(struct sockaddr_in);
 
     const wchar_t* buffer = (wchar_t*)(array + 3);
     std::string buffer_out = UnicodeToBytes(buffer);
@@ -4528,7 +4528,7 @@ bool TrapProcessor::SockUdpOutByte(StackProgram* program, size_t* inst, size_t*&
     SOCKET sock = inst[0];
     struct sockaddr_in* addr_in = (struct sockaddr_in*)inst[1];
 
-    const int addr_in_size = sizeof(struct sockaddr_in);
+    const socklen_t addr_in_size = sizeof(struct sockaddr_in);
     const int sent = sendto(sock, &value, 1, 0, (struct sockaddr*)addr_in, addr_in_size);
     if(sent < 0) {
       PushInt(sent > -1, op_stack, stack_pos);
@@ -4556,7 +4556,7 @@ bool TrapProcessor::SockUdpOutByteAry(StackProgram* program, size_t* inst, size_
     struct sockaddr_in* addr_in = (struct sockaddr_in*)inst[1];
     const char* buffer = (char*)(array + 3);
 
-    const int addr_in_size = sizeof(struct sockaddr_in);
+    const socklen_t addr_in_size = sizeof(struct sockaddr_in);
     const int sent = sendto(sock, buffer, num, 0, (struct sockaddr*)addr_in, addr_in_size);
     if(sent < 0) {
       PushInt(sent, op_stack, stack_pos);
@@ -4581,7 +4581,7 @@ bool TrapProcessor::SockUdpInString(StackProgram* program, size_t* inst, size_t*
     SOCKET sock = inst[0];
 
     struct sockaddr_in* addr_in = (struct sockaddr_in*)inst[1];
-    int addr_in_size = sizeof(struct sockaddr_in);
+    socklen_t addr_in_size = sizeof(struct sockaddr_in);
 
     if((long)sock > -1) {
       int read = recvfrom(sock, buffer, MID_BUFFER_MAX - 1, 0, (struct sockaddr*)addr_in, &addr_in_size);
@@ -4615,7 +4615,7 @@ bool TrapProcessor::SockUdpOutString(StackProgram* program, size_t* inst, size_t
     std::wcout << L"# udp write std::string: instance=" << instance << L"(" << (size_t)instance << L")" << L"; array=" << array << L"(" << (size_t)array << L")" << std::endl;
 #endif        
     const std::string data = UnicodeToBytes((wchar_t*)(array + 3));
-    const int addr_in_size = sizeof(struct sockaddr_in);
+    const socklen_t addr_in_size = sizeof(struct sockaddr_in);
     const int sent = sendto(sock, data.c_str(), data.size(), 0, (struct sockaddr*)addr_in, addr_in_size);
     if(sent < 0) {
       PushInt(sent, op_stack, stack_pos);
