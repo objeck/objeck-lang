@@ -16,6 +16,8 @@
 
 * v2024.12.0
   * UDP socket support
+  * SDL2 updates
+  * Bug fixes
 
 * v2024.10.0 **(current)**
   * Bug fix (#503)
