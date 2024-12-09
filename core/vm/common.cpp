@@ -4344,7 +4344,7 @@ bool TrapProcessor::SockTcpSslCloseSrv(StackProgram* program, size_t* inst, size
 }
 
 bool TrapProcessor::SockUdpCreate(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) {
-  const long port = (long)PopInt(op_stack, stack_pos);
+  const u_short port = (u_short)PopInt(op_stack, stack_pos);
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   
@@ -4429,7 +4429,7 @@ bool TrapProcessor::SockUdpInByte(StackProgram* program, size_t* inst, size_t*& 
 
 bool TrapProcessor::SockUdpInByteAry(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) {
   const size_t* array = (size_t*)PopInt(op_stack, stack_pos);
-  const INT64_VALUE num = (INT64_VALUE)PopInt(op_stack, stack_pos);
+  const int num = (int)PopInt(op_stack, stack_pos);
   const INT64_VALUE offset = (INT64_VALUE)PopInt(op_stack, stack_pos);
   const size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
@@ -4511,7 +4511,7 @@ bool TrapProcessor::SockUdpOutCharAry(StackProgram* program, size_t* inst, size_
     const wchar_t* buffer = (wchar_t*)(array + 3);
     std::string buffer_out = UnicodeToBytes(buffer);
     
-    const int sent = sendto(sock, buffer_out.c_str(), buffer_out.size(), 0, (struct sockaddr*)addr_in, addr_in_size);
+    const int sent = sendto(sock, buffer_out.c_str(), (int)buffer_out.size(), 0, (struct sockaddr*)addr_in, addr_in_size);
     PushInt(sent, op_stack, stack_pos);
   }
   else {
@@ -4546,7 +4546,7 @@ bool TrapProcessor::SockUdpOutByte(StackProgram* program, size_t* inst, size_t*&
 
 bool TrapProcessor::SockUdpOutByteAry(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) {
   const size_t* array = (size_t*)PopInt(op_stack, stack_pos);
-  const INT64_VALUE num = (INT64_VALUE)PopInt(op_stack, stack_pos);
+  const int num = (int)PopInt(op_stack, stack_pos);
   const INT64_VALUE offset = (INT64_VALUE)PopInt(op_stack, stack_pos);
   const size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
@@ -4616,7 +4616,7 @@ bool TrapProcessor::SockUdpOutString(StackProgram* program, size_t* inst, size_t
 #endif        
     const std::string data = UnicodeToBytes((wchar_t*)(array + 3));
     const socklen_t addr_in_size = sizeof(struct sockaddr_in);
-    const int sent = sendto(sock, data.c_str(), data.size(), 0, (struct sockaddr*)addr_in, addr_in_size);
+    const int sent = sendto(sock, data.c_str(), (int)data.size(), 0, (struct sockaddr*)addr_in, addr_in_size);
     if(sent < 0) {
       PushInt(sent, op_stack, stack_pos);
     }
