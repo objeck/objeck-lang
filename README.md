@@ -17,7 +17,7 @@
 * v2024.12.0
   * ~~UDP socket support~~ (done)
   * ~~SDL2 updates~~ (done)
-  * ~~Bug fixes~~ (done, but need to run regression)
+  * ~~Bug fixes~~ (done)
 
 * v2024.10.0 **(current)**
   * Bug fix (#503)
