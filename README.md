@@ -14,10 +14,15 @@
 
 ## Releases
 
+* v2025.1.0
+    * Windows on Arm support
+      * Enable compiler, virtual machine, debugger and REPL shell
+      * Port ARM64 JIT (from macOS/Linux)
+
 * v2024.12.0
-  * ~~UDP socket support~~ (done)
-  * ~~SDL2 updates~~ (done)
-  * ~~Bug fixes~~ (done)
+  * UDP socket support (done)
+  * SDL2 updates (done)
+  * Bug fixes (done)
 
 * v2024.10.0 **(current)**
   * Bug fix (#503)
@@ -25,11 +30,6 @@
 * v2024.9.0
   * JSON-RPC support
   * Bug fixes
-
-* v2024.8.0
-  * Compiler updates (done)
-    * Dead code checker
-    * Improved type inference for generic types
 
 ## Examples
 
