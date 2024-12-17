@@ -20,9 +20,9 @@
       * Port ARM64 JIT (from macOS/Linux)
 
 * v2024.12.0
-  * ~~UDP socket support~~ (done)
-  * ~~SDL2 updates~~ (done)
-  * ~~Bug fixes~~ (done)
+  * UDP socket support (done)
+  * SDL2 updates (done)
+  * Bug fixes (done)
 
 * v2024.10.0 **(current)**
   * Bug fix (#503)
