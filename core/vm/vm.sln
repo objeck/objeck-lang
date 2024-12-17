@@ -9,16 +9,26 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "diag", "..\lib\diags\vs\dia
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|ARM64 = Debug|ARM64
 		Debug|x64 = Debug|x64
+		Release|ARM64 = Release|ARM64
 		Release|x64 = Release|x64
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{321339EE-4392-4BFE-9B15-A852CD25714D}.Debug|ARM64.ActiveCfg = Debug|ARM64
+		{321339EE-4392-4BFE-9B15-A852CD25714D}.Debug|ARM64.Build.0 = Debug|ARM64
 		{321339EE-4392-4BFE-9B15-A852CD25714D}.Debug|x64.ActiveCfg = Debug|x64
 		{321339EE-4392-4BFE-9B15-A852CD25714D}.Debug|x64.Build.0 = Debug|x64
+		{321339EE-4392-4BFE-9B15-A852CD25714D}.Release|ARM64.ActiveCfg = Release|ARM64
+		{321339EE-4392-4BFE-9B15-A852CD25714D}.Release|ARM64.Build.0 = Release|ARM64
 		{321339EE-4392-4BFE-9B15-A852CD25714D}.Release|x64.ActiveCfg = Release|x64
 		{321339EE-4392-4BFE-9B15-A852CD25714D}.Release|x64.Build.0 = Release|x64
+		{02A51378-6430-4B82-B596-ABA250DCA15B}.Debug|ARM64.ActiveCfg = Debug|ARM64
+		{02A51378-6430-4B82-B596-ABA250DCA15B}.Debug|ARM64.Build.0 = Debug|ARM64
 		{02A51378-6430-4B82-B596-ABA250DCA15B}.Debug|x64.ActiveCfg = Debug|x64
 		{02A51378-6430-4B82-B596-ABA250DCA15B}.Debug|x64.Build.0 = Debug|x64
+		{02A51378-6430-4B82-B596-ABA250DCA15B}.Release|ARM64.ActiveCfg = Release|ARM64
+		{02A51378-6430-4B82-B596-ABA250DCA15B}.Release|ARM64.Build.0 = Release|ARM64
 		{02A51378-6430-4B82-B596-ABA250DCA15B}.Release|x64.ActiveCfg = Release|x64
 		{02A51378-6430-4B82-B596-ABA250DCA15B}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
