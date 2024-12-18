@@ -35,7 +35,7 @@
 #ifndef _NO_JIT
 #if defined(_M_ARM64)
 #include "arch/jit/arm64/jit_arm_a64.h"
-#elif defined(_WIN64) || defined(_X64) && !
+#elif defined(_WIN64) || defined(_X64)
 #include "arch/jit/amd64/jit_amd_lp64.h"
 #else
 #include "arch/jit/arm64/jit_arm_a64.h"
