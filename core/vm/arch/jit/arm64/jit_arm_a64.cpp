@@ -4580,7 +4580,9 @@ uint32_t* PageHolder::AddCode(uint32_t* code, int32_t size) {
 #endif
   
   memcpy(temp, code, byte_size);
-#ifdef _OSX
+#if defined(_M_ARM64)
+
+#elif define(_OSX)
   __clear_cache(temp, temp + byte_size);
 #else
   __builtin___clear_cache(temp, temp + byte_size);
@@ -4592,5 +4594,6 @@ uint32_t* PageHolder::AddCode(uint32_t* code, int32_t size) {
   
   index += size;
   available -= byte_size;
+
   return temp;
 }

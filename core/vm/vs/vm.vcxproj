@@ -224,7 +224,7 @@
   <ItemGroup>
     <ClCompile Include="..\..\shared\sys.cpp" />
     <ClCompile Include="..\arch\jit\amd64\jit_amd_lp64.cpp" Condition="'$(Platform)'=='x64'" />
-    <ClCompile Include="..\arch\jit\amd64\jit_amd_lp64.cpp" Condition="'$(Platform)'=='ARM64'" />
+    <ClCompile Include="..\arch\jit\arm64\jit_arm_a64.cpp" Condition="'$(Platform)'=='ARM64'" />
     <ClCompile Include="..\arch\jit\jit_common.cpp" />
     <ClCompile Include="..\arch\memory.cpp" />
     <ClCompile Include="..\arch\win32\win32.cpp" />
@@ -239,7 +239,7 @@
     <ClInclude Include="..\..\shared\sys.h" />
     <ClInclude Include="..\..\shared\traps.h" />
     <ClInclude Include="..\arch\jit\amd64\jit_amd_lp64.h" Condition="'$(Platform)'=='x64'" />
-    <ClInclude Include="..\arch\jit\amd64\jit_amd_lp64.h" Condition="'$(Platform)'=='ARM64'" />
+    <ClInclude Include="..\arch\jit\arm64\jit_arm_a64.h" Condition="'$(Platform)'=='ARM64'" />
     <ClInclude Include="..\arch\jit\jit_common.h" />
     <ClInclude Include="..\arch\memory.h" />
     <ClInclude Include="..\arch\win32\win32.h" />
