@@ -232,7 +232,7 @@ class StackInstr
  * JIT compile code
  ********************************/
 class NativeCode {
-#ifdef _ARM64
+#if defined(_ARM64) || defined(_M_ARM64)
   uint32_t* code;
   long* ints;
 #else
@@ -243,8 +243,8 @@ class NativeCode {
   FLOAT_VALUE* floats;
   
  public:
-#ifdef _ARM64
-  NativeCode(uint32_t* c, long s, long* i, FLOAT_VALUE* f) {
+#if defined(_ARM64) || defined(_M_ARM64)
+   NativeCode(uint32_t* c, long s, long* i, FLOAT_VALUE* f) {
     code = c;
     size = s;
     ints = i;
@@ -272,7 +272,7 @@ class NativeCode {
     floats = nullptr;
   }
 
-#ifdef _ARM64
+#if defined(_ARM64) || defined(_M_ARM64)
   inline uint32_t* GetCode() const {
     return code;
   }

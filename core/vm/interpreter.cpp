@@ -33,7 +33,9 @@
 #include "lib_api.h"
 
 #ifndef _NO_JIT
-#if defined(_WIN64) || defined(_X64)
+#if defined(_M_ARM64)
+#include "arch/jit/arm64/jit_arm_a64.h"
+#elif defined(_WIN64) || defined(_X64) && !
 #include "arch/jit/amd64/jit_amd_lp64.h"
 #else
 #include "arch/jit/arm64/jit_arm_a64.h"
@@ -94,7 +96,9 @@ void StackInterpreter::Initialize(StackProgram* p, size_t m)
 #endif
 
 #ifndef _NO_JIT
-#if defined(_WIN64) || defined(_X64)
+#if defined(_M_ARM64)
+  JitArm64::Initialize(program);
+#elif defined(_WIN64) || defined(_X64)
   JitAmd64::Initialize(program);
 #else
   JitArm64::Initialize(program);
@@ -2402,8 +2406,10 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, size_t* instanc
   ProcessInterpretedMethodCall(called, instance, instrs, ip);
 #else
   // compile, if needed
-  if(!called->GetNativeCode()) {    
-#if defined(_WIN64) || defined(_X64)
+  if(!called->GetNativeCode()) {   
+#if defined(_M_ARM64)
+    JitArm64 jit_compiler;
+#elif defined(_WIN64) || defined(_X64)
     JitAmd64 jit_compiler;
 #else
     JitArm64 jit_compiler;
