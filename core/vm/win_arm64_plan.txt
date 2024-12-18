@@ -1,1 +1,2 @@
-Turn on buffer execution support for jit compiler: Yes (/NXCOMPAT)
+Turn on buffer execution support for jit compiler: Yes (/NXCOMPAT) - done
+For JIT, _M_ARM64
