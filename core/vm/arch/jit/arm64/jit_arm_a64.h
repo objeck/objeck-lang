@@ -272,9 +272,12 @@ namespace Runtime {
       int factor = byte_size / PAGE_SIZE + 1;
       const uint32_t alloc_size = PAGE_SIZE * factor;
       
-
 #if defined(_M_ARM64)
-
+      buffer = (uint32_t*)VirtualAlloc(nullptr, PAGE_SIZE, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
+      if(!buffer) {
+        std::wcerr << L"unable virtualalloc!" << std::endl;
+        exit(1);
+      }
 #elif defined(_OSX)
       buffer = (uint32_t*)mmap(nullptr, alloc_size, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_ANONYMOUS | MAP_JIT, 0, 0);      
       if(buffer == MAP_FAILED) {

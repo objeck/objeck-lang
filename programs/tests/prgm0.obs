@@ -1,15 +1,10 @@
 class Test {
-	function : Main(args : String[]) ~ Nil {
-		"Welcome"->PrintLine();
-    Bar();
-    Foo();
-	}
-
-  function : Foo() ~ Nil {
-    "Hello World!"->PrintLine();
+  function : Main(args : String[]) ~ Nil {
+#    "Welcome"->PrintLine();
+    Add(9)->PrintLine();
   }
-  
-  function : Bar() ~ Nil {
-    "Foo Bar"->Size()->PrintLine();
+
+  function : native : Add(a : Int) ~ Int {
+    return a + 4;
   }
 }
