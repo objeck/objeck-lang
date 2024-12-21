@@ -17,7 +17,7 @@ class Test {
 		map->Insert(5, "Five");
 		map->Insert(7, "Seven");
 		map->Insert(9, "Nine");
-		map->Each(\^(k, v) => "{$k}"->PrintLine());
+		map->Each(\^(k, v) => "{$k}: {$v}"->PrintLine());
 			
 		# ===
 #~
