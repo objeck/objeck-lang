@@ -4314,7 +4314,7 @@ void IntermediateEmitter::EmitAppendCharacterStringSegment(CharacterStringSegmen
       // process object instance
       else {
         // call object's 'ToString' method
-        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, char_str, cur_line_num, LOAD_INT_VAR, var_entry->GetId(), mem_context));
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, char_str, cur_line_num, LOAD_INT_VAR, var_entry->GetId() + 1, mem_context));
         Method* inst_mthd = segment->GetMethod();
         LibraryMethod* inst_lib_mthd = segment->GetLibraryMethod();
         EmitConcatToString(concat_entry, inst_mthd, inst_lib_mthd);
