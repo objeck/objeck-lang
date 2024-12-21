@@ -5832,7 +5832,7 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index, Int
           GetLogger() << L"\t" << index << L": FUNC_PARM: name=" << entry->GetName() << std::endl;
 #endif
           declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), FUNC_PARM));
-          entry->SetId(index);
+          entry->SetId(index++);
           index += 2;
           var_space += 2;
           break;
