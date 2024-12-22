@@ -5,7 +5,11 @@ class Test {
 
   function : native : Add(a : Int) ~ Int {
     b := [4, 3, 2, 1];
-    b->Size()->PrintLine();
+
+    each(i : 3) {
+      b->Size()->PrintLine();
+    };
+    
     return b[2] * a + b[0];
   }
 }
