@@ -9,7 +9,6 @@ class Test {
 		strings->Each(\^(s) => s->PrintLine());
 
 		# ===
-
 		map := Collection.Map->New()<IntRef, String>;
 		map->Insert(1, "One");
 		map->Insert(3, "Three");
@@ -19,7 +18,6 @@ class Test {
 		map->Each(\^(k, v) => "{$k}: {$v}"->PrintLine());
 			
 		# ===
-
 		nums := [1.2, 3.4, 5.6, 7.8];
 		each(i : nums) {
 			num := nums[i];
