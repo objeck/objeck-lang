@@ -5,6 +5,7 @@ class Test {
   }
 
   function : native : Add(a : Float) ~ Float {
+    a->PrintLine();
     return a * 2.25;
   }
 }

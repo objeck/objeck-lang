@@ -333,7 +333,7 @@ namespace Runtime {
     vector<RegisterHolder*> aval_fregs;
     list<RegisterHolder*> used_fregs;
     unordered_map<long, StackInstr*> jump_table;
-    multimap<int64_t, int64_t> const_int_pool;
+    multimap<size_t, size_t> const_int_pool;
     vector<long> deref_offsets;          // -1
     vector<long> bounds_less_offsets;    // -2
     vector<long> bounds_greater_offsets; // -3

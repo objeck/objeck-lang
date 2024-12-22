@@ -2216,7 +2216,7 @@ void JitArm64::move_imm_reg(long imm, Register reg) {
     // save code index
     move_mem_reg(INT_CONSTS, SP, X9);
     move_mem_reg(0, X9, reg);
-    const_int_pool.insert(pair<int64_t, int64_t>(imm, code_index - 1));
+    const_int_pool.insert(pair<size_t, size_t>(imm, code_index - 1));
   }
 }
 
@@ -4430,8 +4430,8 @@ bool JitArm64::Compile(StackMethod* cm)
     
     // update consts pools
     int ints_index = 0;
-    unordered_map<int64_t, int64_t> int_pool_cache;
-    multimap<int64_t, int64_t>::iterator int_pool_iter = const_int_pool.begin();
+    unordered_map<size_t, size_t> int_pool_cache;
+    multimap<size_t, size_t>::iterator int_pool_iter = const_int_pool.begin();
     for(; int_pool_iter != const_int_pool.end(); ++int_pool_iter) {
       const int64_t const_value = int_pool_iter->first;
       const int64_t src_offset = int_pool_iter->second;
@@ -4454,13 +4454,13 @@ bool JitArm64::Compile(StackMethod* cm)
       assert(ints_index < MAX_INTS);
 #endif
       
-      unordered_map<int64_t, int64_t>::iterator int_pool_found = int_pool_cache.find(const_value);
+      unordered_map<size_t, size_t>::iterator int_pool_found = int_pool_cache.find(const_value);
       if(int_pool_found != int_pool_cache.end()) {
         code[src_offset] |= int_pool_found->second << 10;
       }
       else {
         code[src_offset] |= ints_index << 10;
-        int_pool_cache.insert(pair<int64_t, int64_t>(const_value, ints_index));
+        int_pool_cache.insert(pair<size_t, size_t>(const_value, ints_index));
         ints[ints_index++] = const_value;
       }
     }
