@@ -4591,9 +4591,9 @@ uint32_t* PageHolder::AddCode(uint32_t* code, int32_t size) {
   
   memcpy(temp, code, byte_size);
 
-#if define(_OSX)
+#if defined(_OSX)
   __clear_cache(temp, temp + byte_size);
-#elif define(_M_ARM64) == false
+#elif defined(_M_ARM64) == false
   __builtin___clear_cache(temp, temp + byte_size);
 #endif
   
