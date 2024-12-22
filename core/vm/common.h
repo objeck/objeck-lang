@@ -234,7 +234,7 @@ class StackInstr
 class NativeCode {
 #if defined(_ARM64) || defined(_M_ARM64)
   uint32_t* code;
-  long* ints;
+  int64_t* ints;
 #else
   unsigned char* code;
 #endif
@@ -244,7 +244,7 @@ class NativeCode {
   
  public:
 #if defined(_ARM64) || defined(_M_ARM64)
-   NativeCode(uint32_t* c, long s, long* i, FLOAT_VALUE* f) {
+   NativeCode(uint32_t* c, long s, int64_t* i, FLOAT_VALUE* f) {
     code = c;
     size = s;
     ints = i;
@@ -277,7 +277,7 @@ class NativeCode {
     return code;
   }
   
-  inline long* GetInts() const {
+  inline int64_t* GetInts() const {
     return ints;
   }
 #else

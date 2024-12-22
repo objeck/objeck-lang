@@ -333,7 +333,7 @@ namespace Runtime {
     vector<RegisterHolder*> aval_fregs;
     list<RegisterHolder*> used_fregs;
     unordered_map<long, StackInstr*> jump_table;
-    multimap<long, long> const_int_pool;
+    multimap<int64_t, int64_t> const_int_pool;
     vector<long> deref_offsets;          // -1
     vector<long> bounds_less_offsets;    // -2
     vector<long> bounds_greater_offsets; // -3
@@ -345,7 +345,7 @@ namespace Runtime {
     uint32_t* code;
     long code_index;
     long epilog_index;
-    long* ints;
+    int64_t* ints;
     double* float_consts;
     long floats_index;
     long instr_index;
@@ -587,7 +587,11 @@ namespace Runtime {
     void move_mem_reg(long offset, Register src, Register dest);
     void move_imm_memf(RegInstr* instr, long offset, Register dest);
     void move_imm_mem(long imm, long offset, Register dest);
+#ifdef _WIN64
+    void move_imm_reg(int64_t imm, Register reg);
+#else
     void move_imm_reg(long imm, Register reg);
+#endif
     void move_imm_reg32(int32_t imm, Register reg);
     void move_imm_freg(RegInstr* instr, Register reg);
     void move_mem_freg(long offset, Register src, Register dest);
@@ -779,7 +783,7 @@ namespace Runtime {
    */
   typedef long (*jit_fun_ptr)(long cls_id, long mthd_id, size_t* cls_mem, size_t *inst,
                               size_t *op_stack, long *stack_pos, StackFrame **call_stack,
-                              long *call_stack_pos, size_t **jit_mem, long *offset, long *ints);
+                              long *call_stack_pos, size_t **jit_mem, long *offset, int64_t*ints);
   
   
   /**
