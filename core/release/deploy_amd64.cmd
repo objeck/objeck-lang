@@ -1,4 +1,7 @@
 REM clean up
+
+if [%1]==[] goto usage
+
 rmdir /s /q deploy64
 mkdir deploy64
 mkdir deploy64\app
@@ -13,7 +16,10 @@ REM update version information
 powershell.exe -executionpolicy remotesigned -file  update_version.ps1
 
 REM build binaries
-devenv objeck.sln /rebuild "Release|x64"
+
+IF %1==1 "AMD64" (devenv objeck.sln /rebuild "Release|x64")
+IF %1==1 "ARM64" (devenv objeck.sln /rebuild "Release|ARM64")
+
 mkdir deploy64\bin
 copy ..\compiler\Release\win64\*.exe deploy64\bin
 mt.exe -manifest ..\vm\vs\manifest.xml -outputresource:..\vm\Release\win64\obr.exe;1
@@ -118,3 +124,6 @@ if [%1] NEQ [deploy] goto end
 	%ZIP_BIN%\7z.exe a -r -tzip "%USERPROFILE%\Desktop\Release64\objeck-windows-x64_0.0.0.zip" "%USERPROFILE%\Desktop\Release64\objeck-lang"
 	move "%USERPROFILE%\Desktop\objeck-windows-x64_0.0.0.msi" "%USERPROFILE%\Desktop\Release64"
 :end
+
+:usage
+echo AMD64 or ARM64
