@@ -2184,7 +2184,12 @@ void JitArm64::move_mem32_reg(long offset, Register src, Register dest) {
   AddMachineCode(op_code);
 }
 
+// TODO: 64-bits all around?
+#ifdef _WIN64
+void JitArm64::move_imm_reg(int64_t imm, Register reg) {
+#else
 void JitArm64::move_imm_reg(long imm, Register reg) {
+#endif
   if(imm >= -4096 && imm < 0) {
 #ifdef _DEBUG_JIT_JIT
     std::wcout << L"  " << (++instr_count) << L": [mvn " << GetRegisterName(reg) << L", #" << imm << L"]" << std::endl;
@@ -2211,7 +2216,7 @@ void JitArm64::move_imm_reg(long imm, Register reg) {
     // save code index
     move_mem_reg(INT_CONSTS, SP, X9);
     move_mem_reg(0, X9, reg);
-    const_int_pool.insert(pair<long, long>(imm, code_index - 1));
+    const_int_pool.insert(pair<int64_t, int64_t>(imm, code_index - 1));
   }
 }
 
@@ -4293,7 +4298,7 @@ bool JitArm64::Compile(StackMethod* cm)
     code = (uint32_t*)malloc(BUFFER_SIZE);
     code_buf_max = BUFFER_SIZE;
     
-    ints = new long[MAX_INTS];
+    ints = new int64_t[MAX_INTS];
     float_consts = new double[MAX_DBLS];
     
     local_space = floats_index = instr_index = code_index = instr_count = 0;
@@ -4425,11 +4430,11 @@ bool JitArm64::Compile(StackMethod* cm)
     
     // update consts pools
     int ints_index = 0;
-    unordered_map<long, long> int_pool_cache;
-    multimap<long, long>::iterator int_pool_iter = const_int_pool.begin();
+    unordered_map<int64_t, int64_t> int_pool_cache;
+    multimap<int64_t, int64_t>::iterator int_pool_iter = const_int_pool.begin();
     for(; int_pool_iter != const_int_pool.end(); ++int_pool_iter) {
-      const long const_value = int_pool_iter->first;
-      const long src_offset = int_pool_iter->second;
+      const int64_t const_value = int_pool_iter->first;
+      const int64_t src_offset = int_pool_iter->second;
       
       // 12-bit max for ldr offset
       if(ints_index >= MAX_INTS) {
@@ -4449,13 +4454,13 @@ bool JitArm64::Compile(StackMethod* cm)
       assert(ints_index < MAX_INTS);
 #endif
       
-      unordered_map<long, long>::iterator int_pool_found = int_pool_cache.find(const_value);
+      unordered_map<int64_t, int64_t>::iterator int_pool_found = int_pool_cache.find(const_value);
       if(int_pool_found != int_pool_cache.end()) {
         code[src_offset] |= int_pool_found->second << 10;
       }
       else {
         code[src_offset] |= ints_index << 10;
-        int_pool_cache.insert(pair<long, long>(const_value, ints_index));
+        int_pool_cache.insert(pair<int64_t, int64_t>(const_value, ints_index));
         ints[ints_index++] = const_value;
       }
     }
@@ -4496,7 +4501,7 @@ long JitRuntime::Execute(StackMethod* method, size_t* inst, size_t* op_stack, lo
   const int32_t cls_id = method->GetClass()->GetId();
   const int32_t mthd_id = method->GetId();
   NativeCode* native_code = method->GetNativeCode();
-  long* int_consts = native_code->GetInts();
+  int64_t* int_consts = native_code->GetInts();
 
 #ifdef _DEBUG_JIT_JIT
   size_t code_size = native_code->GetSize();
