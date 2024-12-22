@@ -17,8 +17,13 @@ powershell.exe -executionpolicy remotesigned -file  update_version.ps1
 
 REM build binaries
 
-IF %1==1 "AMD64" (devenv objeck.sln /rebuild "Release|x64")
-IF %1==1 "ARM64" (devenv objeck.sln /rebuild "Release|ARM64")
+if [%1] == [arm64] (
+	devenv objeck.sln /rebuild "Release|ARM64"
+)
+
+if [%1] == [amd64] (
+	devenv objeck.sln /rebuild "Release|x64"
+)
 
 mkdir deploy64\bin
 copy ..\compiler\Release\win64\*.exe deploy64\bin
@@ -102,8 +107,11 @@ copy ..\..\docs\doc\readme.css deploy64\doc
 copy ..\..\LICENSE deploy64
 call code_doc64.cmd
 
+:usage
+echo Windows targets are AMD64 or ARM64
+
 REM finished
-if [%1] NEQ [deploy] goto end
+if [%2] NEQ [deploy] goto end
 	set ZIP_BIN="\Program Files\7-Zip"
 	rmdir /q /s deploy64\examples\doc
 	rmdir /q /s "%USERPROFILE%\Desktop\objeck-lang-win64"
@@ -115,7 +123,7 @@ if [%1] NEQ [deploy] goto end
 	copy ..\..\docs\eula.rtf "%USERPROFILE%\Desktop\objeck-lang-win64\doc"
 	copy /y ..\utils\setup64 .
 	devenv setup.sln /rebuild "Release"
-	signtool sign /fd sha256 /f "%USERPROFILE%\Dropbox\Personal\signing keys\2022\code\randy_hollines.p12" /p %2 /d "Objeck: Windows Toolchain" /t http://timestamp.sectigo.com Release64\setup.msi
+	signtool sign /fd sha256 /f "%USERPROFILE%\Dropbox\Personal\signing keys\2022\code\randy_hollines.p12" /p %3 /d "Objeck: Windows Toolchain" /t http://timestamp.sectigo.com Release64\setup.msi
 	copy Release64\setup.msi "%USERPROFILE%\Desktop\objeck-windows-x64_0.0.0.msi"
 	
 	rmdir /s /q "%USERPROFILE%\Desktop\Release64"
@@ -124,6 +132,3 @@ if [%1] NEQ [deploy] goto end
 	%ZIP_BIN%\7z.exe a -r -tzip "%USERPROFILE%\Desktop\Release64\objeck-windows-x64_0.0.0.zip" "%USERPROFILE%\Desktop\Release64\objeck-lang"
 	move "%USERPROFILE%\Desktop\objeck-windows-x64_0.0.0.msi" "%USERPROFILE%\Desktop\Release64"
 :end
-
-:usage
-echo AMD64 or ARM64
