@@ -4164,8 +4164,13 @@ RegisterHolder* JitArm64::ArrayIndex(StackInstr* instr, MemoryType type)
     break;
 
   case CHAR_ARY_TYPE:
+#ifdef _WIN64
+    shl_imm_reg(1, index_holder->GetRegister());
+    shl_imm_reg(1, bounds_holder->GetRegister());
+#else
     shl_imm_reg(2, index_holder->GetRegister());
     shl_imm_reg(2, bounds_holder->GetRegister());
+#endif
     break;
     
   case INT_TYPE:

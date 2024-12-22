@@ -1,11 +1,10 @@
 class Test {
   function : Main(args : String[]) ~ Nil {
-#    "Welcome"->PrintLine();
-    Add(9.13)->PrintLine();
+    Add()->PrintLine();
   }
 
-  function : native : Add(a : Float) ~ Float {
-    a->PrintLine();
-    return a * 2.25;
+  function : native : Add() ~ Int {
+    a := [4, 3, 2, 1];
+    return a[2];
   }
 }
