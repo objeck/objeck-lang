@@ -156,7 +156,7 @@ namespace Runtime {
    */
   class RegInstr {
     RegType type;
-    long operand;
+    size_t operand;
     RegisterHolder* holder;
     StackInstr* instr;
 
@@ -174,12 +174,12 @@ namespace Runtime {
 
     RegInstr(double* da) {
       type = IMM_FLOAT;
-      operand = (long)da;
+      operand = (size_t)da;
       holder = nullptr;
       instr = nullptr;
     }
 
-    RegInstr(RegType t, long o) {
+    RegInstr(RegType t, size_t o) {
       type = t;
       operand = o;
     }
@@ -252,7 +252,7 @@ namespace Runtime {
       return type;
     }
 
-    long GetOperand() {
+    size_t GetOperand() {
       return operand;
     }
   };
