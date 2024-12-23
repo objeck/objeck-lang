@@ -27,6 +27,12 @@
     <ClCompile Include="..\..\shared\sys.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\vm\arch\jit\arm64\jit_arm_a64.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\vm\arch\jit\arm64\jit_arm_a64.h">
+      <Filter>Header Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\editor.h">
