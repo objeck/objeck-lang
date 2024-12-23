@@ -1,6 +1,9 @@
 REM clean up
 
-if [%1]==[] goto usage
+if [%1]==[] (
+	echo Windows targets are: 'amd64' and 'arm64'
+	goto end
+)
 
 rmdir /s /q deploy64
 mkdir deploy64
@@ -106,9 +109,6 @@ popd && copy ..\..\docs\readme.html deploy64
 copy ..\..\docs\doc\readme.css deploy64\doc
 copy ..\..\LICENSE deploy64
 call code_doc64.cmd
-
-:usage
-echo Windows targets are AMD64 or ARM64
 
 REM finished
 if [%2] NEQ [deploy] goto end
