@@ -12,16 +12,26 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "module", "..\module\vs\modu
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|ARM64 = Debug|ARM64
 		Debug|x64 = Debug|x64
+		Release|ARM64 = Release|ARM64
 		Release|x64 = Release|x64
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{FEE70993-25C4-4AC1-93A8-CB8B86FA489F}.Debug|ARM64.ActiveCfg = Debug|ARM64
+		{FEE70993-25C4-4AC1-93A8-CB8B86FA489F}.Debug|ARM64.Build.0 = Debug|ARM64
 		{FEE70993-25C4-4AC1-93A8-CB8B86FA489F}.Debug|x64.ActiveCfg = Debug|x64
 		{FEE70993-25C4-4AC1-93A8-CB8B86FA489F}.Debug|x64.Build.0 = Debug|x64
+		{FEE70993-25C4-4AC1-93A8-CB8B86FA489F}.Release|ARM64.ActiveCfg = Release|ARM64
+		{FEE70993-25C4-4AC1-93A8-CB8B86FA489F}.Release|ARM64.Build.0 = Release|ARM64
 		{FEE70993-25C4-4AC1-93A8-CB8B86FA489F}.Release|x64.ActiveCfg = Release|x64
 		{FEE70993-25C4-4AC1-93A8-CB8B86FA489F}.Release|x64.Build.0 = Release|x64
+		{9D9657FA-C012-4DB3-8DE8-F5092F1210EC}.Debug|ARM64.ActiveCfg = Debug|ARM64
+		{9D9657FA-C012-4DB3-8DE8-F5092F1210EC}.Debug|ARM64.Build.0 = Debug|ARM64
 		{9D9657FA-C012-4DB3-8DE8-F5092F1210EC}.Debug|x64.ActiveCfg = Debug|x64
 		{9D9657FA-C012-4DB3-8DE8-F5092F1210EC}.Debug|x64.Build.0 = Debug|x64
+		{9D9657FA-C012-4DB3-8DE8-F5092F1210EC}.Release|ARM64.ActiveCfg = Release|ARM64
+		{9D9657FA-C012-4DB3-8DE8-F5092F1210EC}.Release|ARM64.Build.0 = Release|ARM64
 		{9D9657FA-C012-4DB3-8DE8-F5092F1210EC}.Release|x64.ActiveCfg = Release|x64
 		{9D9657FA-C012-4DB3-8DE8-F5092F1210EC}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
