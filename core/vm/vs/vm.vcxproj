@@ -215,7 +215,7 @@
       <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
     </Link>
     <PostBuildEvent>
-      <Command>mt.exe -manifest $(SolutionDir)$(Platform)\..\..\vm\vs\manifest.xml -outputresource:..\arm64\$(Configuration)\obr.exe;1</Command>
+      <Command>mt.exe -manifest $(SolutionDir)$(Platform)\..\..\vm\vs\manifest.xml -outputresource:$(SolutionDir)$(Platform)\$(Configuration)\obr.exe;1</Command>
     </PostBuildEvent>
     <PostBuildEvent>
       <Message>Add manifest</Message>
