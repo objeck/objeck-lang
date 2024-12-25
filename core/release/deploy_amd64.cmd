@@ -5,6 +5,8 @@ if [%1]==[] (
 	goto end
 )
 
+set ZIP_BIN="\Program Files\7-Zip"
+
 rmdir /s /q deploy64
 mkdir deploy64
 mkdir deploy64\app
@@ -35,12 +37,12 @@ if [%1] == [arm64] (
 )
 
 if [%1] == [x64] (
-	copy ..\compiler\release\win64\*.exe deploy64\bin
-	copy ..\vm\release\win64\*.exe deploy64\bin
-	copy ..\debugger\release\win64\*.exe deploy64\bin
-	copy ..\repl\release\win64\*.exe deploy64\bin
-	mt.exe -manifest ..\vm\vs\manifest.xml -outputresource:..\vm\release\win64\obr.exe;1
-	mt.exe -manifest ..\vm\vs\manifest.xml -outputresource:..\repl\release\win64\obi.exe;1
+	copy ..\compiler\release\ARM64\Release\*.exe deploy64\bin
+	mt.exe -manifest ..\vm\vs\manifest.xml -outputresource:..\vm\release\ARM64\Release\obr.exe;1
+	copy ..\vm\release\ARM64\Release\*.exe deploy64\bin
+	copy ..\debugger\release\ARM64\Release\*.exe deploy64\bin
+	copy ..\repl\release\ARM64\Release\*.exe deploy64\bin
+	mt.exe -manifest ..\vm\vs\manifest.xml -outputresource:..\repl\release\ARM64\Release\obi.exe;1
 )
 
 REM native launcher
@@ -146,16 +148,15 @@ copy ..\..\LICENSE deploy64
 
 REM copy docs
 if [%1] == [x64] (
-	set ZIP_BIN="\Program Files\7-Zip"
+	call code_doc64.cmd
 )
 
-if [%1] == [x64] (
+if [%1] == [arm64] (
 	%ZIP_BIN%\7z.exe x ..\..\docs\api.zip -odeploy64\doc
 )
 
 REM finished
 if [%2] NEQ [deploy] goto end
-	
 	rmdir /q /s deploy64\examples\doc
 	rmdir /q /s "%USERPROFILE%\Desktop\objeck-lang-win64"
 	mkdir "%USERPROFILE%\Desktop\objeck-lang-win64"
@@ -174,5 +175,4 @@ if [%2] NEQ [deploy] goto end
 	move "%USERPROFILE%\Desktop\objeck-lang-win64" "%USERPROFILE%\Desktop\Release64\objeck-lang"
 	%ZIP_BIN%\7z.exe a -r -tzip "%USERPROFILE%\Desktop\Release64\objeck-windows-x64_0.0.0.zip" "%USERPROFILE%\Desktop\Release64\objeck-lang"
 	move "%USERPROFILE%\Desktop\objeck-windows-x64_0.0.0.msi" "%USERPROFILE%\Desktop\Release64"
-
 :end
