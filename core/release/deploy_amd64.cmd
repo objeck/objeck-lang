@@ -18,8 +18,7 @@ copy ..\lib\*.obl deploy64\lib
 REM update version information
 powershell.exe -executionpolicy remotesigned -file  update_version.ps1
 
-REM build binaries
-
+REM compiler, runtime and debugger
 if [%1] == [arm64] (
 	devenv objeck.sln /rebuild "Release|ARM64"
 )
@@ -29,20 +28,39 @@ if [%1] == [x64] (
 )
 
 mkdir deploy64\bin
-copy ..\compiler\Release\win64\*.exe deploy64\bin
-mt.exe -manifest ..\vm\vs\manifest.xml -outputresource:..\vm\Release\win64\obr.exe;1
-copy ..\vm\Release\win64\*.exe deploy64\bin
-copy ..\debugger\Release\win64\*.exe deploy64\bin
-copy ..\repl\Release\win64\*.exe deploy64\bin
-mt.exe -manifest ..\vm\vs\manifest.xml -outputresource:..\repl\Release\win64\obi.exe;1
+if [%1] == [arm64] (
+	copy ARM64\Release\*.exe deploy64\bin
+	mt.exe -manifest ..\vm\vs\manifest.xml -outputresource:deploy64\bin\obr.exe;1
+	mt.exe -manifest ..\vm\vs\manifest.xml -outputresource:deploy64\bin\obi.exe;1
+)
+
+if [%1] == [x64] (
+	copy ..\compiler\release\ARM64\Release\*.exe deploy64\bin
+	mt.exe -manifest ..\vm\vs\manifest.xml -outputresource:..\vm\release\ARM64\Release\obr.exe;1
+	copy ..\vm\release\ARM64\Release\*.exe deploy64\bin
+	copy ..\debugger\release\ARM64\Release\*.exe deploy64\bin
+	copy ..\repl\release\ARM64\Release\*.exe deploy64\bin
+	mt.exe -manifest ..\vm\vs\manifest.xml -outputresource:..\repl\release\ARM64\Release\obi.exe;1
+)
 
 REM native launcher
-cd ..\utils\launcher
-devenv native_launcher.sln /rebuild "Release|x64"
-copy x64\Release\obn.exe ..\..\release\deploy64\lib\native\misc
-copy x64\Release\obb.exe ..\..\release\deploy64\bin
-copy ..\..\vm\misc\config.prop ..\..\release\deploy64\lib\native\misc
-cd ..\..\release
+if [%1] == [arm64] (
+	cd ..\utils\launcher
+	devenv native_launcher.sln /rebuild "Release|ARM64"
+	copy ARM64\Release\obn.exe ..\..\release\deploy64\lib\native\misc
+	copy ARM64\Release\obb.exe ..\..\release\deploy64\bin
+	copy ..\..\vm\misc\config.prop ..\..\release\deploy64\lib\native\misc
+	cd ..\..\release
+)
+
+if [%1] == [x64] (
+	cd ..\utils\launcher
+	devenv native_launcher.sln /rebuild "Release|x64"
+	copy x64\Release\obn.exe ..\..\release\deploy64\lib\native\misc
+	copy x64\Release\obb.exe ..\..\release\deploy64\bin
+	copy ..\..\vm\misc\config.prop ..\..\release\deploy64\lib\native\misc
+	cd ..\..\release
+)
 
 REM libraries
 del /q deploy64\bin\a.*
@@ -50,41 +68,58 @@ copy ..\vm\misc\*.pem deploy64\lib
 
 REM openssl support
 cd ..\lib\openssl
-devenv openssl.sln /rebuild "Release|x64"
-copy Release\win64\*.dll ..\..\release\deploy64\lib\native
-cd ..\..\release
 
-REM matrix support
-cd ..\lib\matrix
-devenv matrix.sln /rebuild "Release|x64"
-copy Release\x64\*.dll ..\..\release\deploy64\lib\native
-cd ..\..\release
+if [%1] == [arm64] (
+	devenv openssl.sln /rebuild "Release|ARM64"
+	copy ARM64\Release\*.dll ..\..\release\deploy64\lib\native
+)
 
-REM odbc support
-cd ..\lib\odbc
-devenv odbc.sln /rebuild "Release|x64"
-copy Release\win64\*.dll ..\..\release\deploy64\lib\native
-cd ..\..\release
-
-REM sdl
-cd ..\lib\sdl
-devenv sdl\sdl.sln /rebuild "Release|x64"
-copy sdl\Release\x64\*.dll ..\..\release\deploy64\lib\native
-copy lib\fonts\*.ttf ..\..\release\deploy64\lib\sdl\fonts
-copy lib\x64\*.dll ..\..\release\deploy64\lib\sdl
-cd ..\..\release
-
-REM diags
-cd ..\lib\diags
-devenv diag.sln /rebuild "Release|x64"
-copy vs\Release\x64\*.dll ..\..\release\deploy64\lib\native
+if [%1] == [x64] (
+	devenv openssl.sln /rebuild "Release|x64"
+	copy Release\win64\*.dll ..\..\release\deploy64\lib\native
+)
 cd ..\..\release
 
 REM app
 cd ..\utils\WindowsApp
-devenv AppLauncher.sln /rebuild "Release|x64"
-copy x64\Release\*.exe ..\..\release\deploy64\app
+if [%1] == [arm64] (
+	devenv AppLauncher.sln /rebuild "Release|ARM64"
+	copy ARM64\Release\*.exe ..\..\release\deploy64\app
+)
+
+if [%1] == [x64] (
+	devenv AppLauncher.sln /rebuild "Release|x64"
+	copy x64\Release\*.exe ..\..\release\deploy64\app
+)
 cd ..\..\release
+
+if [%1] == [x64] (
+	REM matrix support
+	cd ..\lib\matrix
+	devenv matrix.sln /rebuild "Release|x64"
+	copy Release\x64\*.dll ..\..\release\deploy64\lib\native
+	cd ..\..\release
+
+	REM odbc support
+	cd ..\lib\odbc
+	devenv odbc.sln /rebuild "Release|x64"
+	copy Release\win64\*.dll ..\..\release\deploy64\lib\native
+	cd ..\..\release
+
+	REM sdl
+	cd ..\lib\sdl
+	devenv sdl\sdl.sln /rebuild "Release|x64"
+	copy sdl\Release\x64\*.dll ..\..\release\deploy64\lib\native
+	copy lib\fonts\*.ttf ..\..\release\deploy64\lib\sdl\fonts
+	copy lib\x64\*.dll ..\..\release\deploy64\lib\sdl
+	cd ..\..\release
+
+	REM diags
+	cd ..\lib\diags
+	devenv diag.sln /rebuild "Release|x64"
+	copy vs\Release\x64\*.dll ..\..\release\deploy64\lib\native
+	cd ..\..\release
+)
 
 REM copy examples
 mkdir deploy64\examples\
