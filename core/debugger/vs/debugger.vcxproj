@@ -167,7 +167,7 @@
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <WholeProgramOptimization>true</WholeProgramOptimization>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalOptions>/arch:AVX2 /U "_DEBUG" %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>/U "_DEBUG" %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
