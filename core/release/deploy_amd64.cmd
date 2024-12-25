@@ -1,7 +1,9 @@
 REM clean up
 
+@echo off
+
 if [%1]==[] (
-	echo Windows targets are: 'amd64' and 'arm64'
+	echo Windows targets are: 'x64' and 'arm64'
 	goto end
 )
 
@@ -24,7 +26,7 @@ if [%1] == [arm64] (
 	devenv objeck.sln /rebuild "Release|ARM64"
 )
 
-if [%1] == [amd64] (
+if [%1] == [x64] (
 	devenv objeck.sln /rebuild "Release|x64"
 )
 
