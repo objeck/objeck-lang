@@ -82,7 +82,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <IncludePath>..\..\lib\zlib\win;..\..\lib\openssl\win\include;$(IncludePath)</IncludePath>
-    <LibraryPath>module\x64\Release\objeck.lib;..\..\lib\zlib\win\x64\Release;..\..\lib\openssl\win\x64;$(LibraryPath)</LibraryPath>
+    <LibraryPath>..\..\release\x64\Release;..\..\lib\zlib\win\x64\Release;..\..\lib\openssl\win\x64;$(LibraryPath)</LibraryPath>
     <TargetName>objeck</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">

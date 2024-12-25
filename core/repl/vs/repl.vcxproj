@@ -171,6 +171,8 @@
     <ClCompile Include="..\..\shared\sys.cpp" />
     <ClCompile Include="..\editor.cpp" />
     <ClCompile Include="..\repl.cpp" />
+    <ClCompile Include="..\..\vm\arch\jit\jit_common.cpp" />
+    <ClCompile Include="..\..\vm\arch\jit\amd64\jit_amd_lp64.cpp" Condition="'$(Platform)'=='x64'" />
     <ClCompile Include="..\..\vm\arch\jit\arm64\jit_arm_a64.cpp" Condition="'$(Platform)'=='ARM64'" />
   </ItemGroup>
   <ItemGroup>
@@ -179,6 +181,7 @@
     <ClInclude Include="..\editor.h" />
     <ClInclude Include="..\repl.h" />
     <ClInclude Include="resource.h" />
+    <ClCompile Include="..\..\vm\arch\jit\amd64\jit_amd_lp64.h" Condition="'$(Platform)'=='x64'" />
     <ClCompile Include="..\..\vm\arch\jit\arm64\jit_arm_a64.h" Condition="'$(Platform)'=='ARM64'" />
   </ItemGroup>
   <ItemGroup>
