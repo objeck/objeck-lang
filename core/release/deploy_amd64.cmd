@@ -38,10 +38,10 @@ if [%1] == [arm64] (
 
 if [%1] == [x64] (
 	copy ..\compiler\release\win64\*.exe deploy64\bin
-	mt.exe -manifest ..\vm\vs\manifest.xml -outputresource:..\vm\release\win64\obr.exe;1	
+	mt.exe -manifest ..\vm\vs\manifest.xml -outputresource:deploy64\bin\obr.exe;1	
 
 	copy ..\repl\release\win64\*.exe deploy64\bin
-	mt.exe -manifest ..\vm\vs\manifest.xml -outputresource:..\repl\release\win64\obi.exe;1
+	mt.exe -manifest ..\vm\vs\manifest.xml -outputresource:deploy64\bin\obi.exe;1
 
 	copy ..\vm\release\win64\*.exe deploy64\bin
 	copy ..\debugger\release\win64\*.exe deploy64\bin
