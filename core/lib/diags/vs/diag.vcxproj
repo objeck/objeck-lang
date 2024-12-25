@@ -118,7 +118,7 @@
     <LibraryPath>..\..\zlib\win\x64;..\..\openssl\win\x64;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">
-    <LibraryPath>..\..\zlib\win\x64;..\..\openssl\win\x64;$(LibraryPath)</LibraryPath>
+    <LibraryPath>..\..\zlib\win\arm64;..\..\openssl\win\armd64;$(LibraryPath)</LibraryPath>
     <LinkIncremental>false</LinkIncremental>
     <IncludePath>..\..\openssl\win\include;..\..\zlib\win;$(IncludePath);$(VC_IncludePath);$(WindowsSDK_IncludePath)</IncludePath>
     <TargetName>libobjk_diags</TargetName>
