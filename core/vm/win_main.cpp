@@ -160,7 +160,7 @@ int main(const int argc, const char* argv[])
 
     usage += L"Options:\n";
     usage += L"\t--OBJECK_STDIO:\t[prepend] if set, STDIO output is binary\n";
-    usage += L"\t--GC_THRESHOLD:\t[prepend] inital garbage collection threshold <number>(k|m|g)\n";
+    usage += L"\t--GC_THRESHOLD:\t[prepend] inital garbage collection memory threshold <number>(kb|mb|gb)\n";
 
     usage += L"\nExamples:\n\t\"obr hello.obe\"\n\t\"obr --GC_THRESHOLD=2m hello.obe\"\n \nVersion: ";
 
