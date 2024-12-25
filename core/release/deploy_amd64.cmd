@@ -143,11 +143,19 @@ popd && copy ..\..\docs\readme.html deploy64
 
 copy ..\..\docs\doc\readme.css deploy64\doc
 copy ..\..\LICENSE deploy64
-call code_doc64.cmd
+
+REM copy docs
+if [%1] == [x64] (
+	set ZIP_BIN="\Program Files\7-Zip"
+)
+
+if [%1] == [x64] (
+	%ZIP_BIN%\7z.exe x ..\..\docs\api.zip -odeploy64\doc
+)
 
 REM finished
 if [%2] NEQ [deploy] goto end
-	set ZIP_BIN="\Program Files\7-Zip"
+	
 	rmdir /q /s deploy64\examples\doc
 	rmdir /q /s "%USERPROFILE%\Desktop\objeck-lang-win64"
 	mkdir "%USERPROFILE%\Desktop\objeck-lang-win64"
