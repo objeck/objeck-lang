@@ -1,0 +1,17 @@
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		Test("C:/Users/objec/Documents/Temp/test2.py")->PrintLine();
+	}
+
+	function : native : Test(path : String) ~ Int {
+"--- 0 ---"->PrintLine();		
+		input := System.IO.Filesystem.FileReader->ReadFile(path)
+"--- 1 ---"->PrintLine();
+		input->PrintLine();
+"--- 2 ---"->PrintLine();
+
+		"Hello World"->PrintLine()
+
+		return -1;
+	}
+}
