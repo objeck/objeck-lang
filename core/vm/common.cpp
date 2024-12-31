@@ -2604,7 +2604,7 @@ bool TrapProcessor::ConvertUnicodeToBytes(StackProgram* program, size_t* inst, s
   size_t* byte_array = MemoryManager::AllocateArray(byte_array_size + 1 + ((byte_array_dim + 2) * sizeof(size_t)),
                                                     BYTE_ARY_TYPE, op_stack, *stack_pos, false);
   byte_array[0] = byte_array_size + 1;
-  byte_array[1] = byte_array_dim;
+  byte_array[1] = byte_array_dim;                                                                                                                                                       
   byte_array[2] = byte_array_size;
 
   // copy bytes
