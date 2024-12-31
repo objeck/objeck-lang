@@ -273,7 +273,7 @@ namespace Runtime {
       const uint32_t alloc_size = PAGE_SIZE * factor;
       
 #if defined(_M_ARM64)
-      buffer = (uint32_t*)VirtualAlloc(nullptr, PAGE_SIZE, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
+      buffer = (uint32_t*)VirtualAlloc(nullptr, alloc_size, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
       if(!buffer) {
         std::wcerr << L"unable virtualalloc!" << std::endl;
         exit(1);
