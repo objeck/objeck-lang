@@ -1,8 +1,11 @@
 use Collection;
+use Web.HTTP;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		Test("C:/Users/objec/Documents/Temp/test2.py")->PrintLine();
+#		Test("C:/Users/objec/Documents/Temp/test2.py")->PrintLine();
+	HttpsClient->QuickGet(Web.HTTP.Url->New("https:///www.google.com"))->GetContent()->ToString()->PrintLine();
+
 	}
 
 #	function : Test(path : String) ~ Int {
@@ -13,15 +16,17 @@ class Test {
 		input->PrintLine();
 "--- 2 ---"->PrintLine();
 
-#		"Hello World"->PrintLine();
+	"Hello World"
+->PrintLine();
 
 		v := Vector->New()<String>;
 		v->AddBack("aa")
-#~	
 		v->AddBack("bbb")
 		v->AddBack("ccccc")
-~#
 		v->Size()->PrintLine();
+
+#	HttpsClient->QuickGet(Web.HTTP.Url->New("https:///www.nasa.gov"))->GetContent()->ToString()->PrintLine();
+
 	
 		return -1;
 	}
