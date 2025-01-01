@@ -1,0 +1,3 @@
+rem build libs
+obc -src c:/users/objec/documents/code/objeck-lang/core/compiler/lib_src/net_common.obs,c:/users/objec/documents/code/objeck-lang/core/compiler/lib_src/net.obs,c:/users/objec/documents/code/objeck-lang/core/compiler/lib_src/net_secure.obs -tar lib -lib json,gen_collect -opt s3 -dest c:/users/objec/documents/code/objeck-lang/core/release/deploy64/lib/net.obl
+obc -src %1.obs -lib collect,json,net -dest %1.obe

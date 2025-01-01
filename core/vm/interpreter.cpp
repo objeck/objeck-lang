@@ -1369,7 +1369,7 @@ void StackInterpreter::EqlInt(size_t* &op_stack, long* &stack_pos)
   op_stack[(*stack_pos) - 2] = left == right;
   (*stack_pos)--;
 }
-
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               
 void StackInterpreter::NeqlInt(size_t* &op_stack, long* &stack_pos)
 {
 #ifdef _DEBUG
