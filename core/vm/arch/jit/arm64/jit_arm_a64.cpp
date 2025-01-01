@@ -1114,7 +1114,11 @@ void JitArm64::ProcessLoadCharElement(StackInstr* instr) {
   RegisterHolder* holder = GetRegister();
   RegisterHolder* elem_holder = ArrayIndex(instr, CHAR_ARY_TYPE);
   xor_reg_reg(holder->GetRegister(), holder->GetRegister());
+#ifdef _M_ARM64
+  move_mem16_reg(0, elem_holder->GetRegister(), holder->GetRegister());
+#else
   move_mem32_reg(0, elem_holder->GetRegister(), holder->GetRegister());
+#endif
   ReleaseRegister(elem_holder);
   working_stack.push_front(new RegInstr(holder));
 }
@@ -1182,14 +1186,22 @@ void JitArm64::ProcessStoreCharElement(StackInstr* instr) {
   case MEM_INT: {
     RegisterHolder* holder = GetRegister(false);
     move_mem_reg(left->GetOperand(), SP, holder->GetRegister());
+#ifdef _M_ARM64
+    move_reg_mem16(holder->GetRegister(), 0, elem_holder->GetRegister());
+#else
     move_reg_mem32(holder->GetRegister(), 0, elem_holder->GetRegister());
+#endif
     ReleaseRegister(holder);
   }
     break;
 
   case REG_INT: {
     RegisterHolder* holder = left->GetRegister();
+#ifdef _M_ARM64
+    move_reg_mem16(holder->GetRegister(), 0, elem_holder->GetRegister());
+#else
     move_reg_mem32(holder->GetRegister(), 0, elem_holder->GetRegister());
+#endif
     ReleaseRegister(holder);
   }
     break;
@@ -2143,6 +2155,27 @@ void JitArm64::move_reg_mem32(Register src, long offset, Register dest) {
   // encode
   AddMachineCode(op_code);
 }
+
+void JitArm64::move_reg_mem16(Register src, long offset, Register dest) {
+#ifdef _DEBUG_JIT_JIT
+  std::wcout << L"  " << (++instr_count) << L": [str.w " << GetRegisterName(src) << L", (" << GetRegisterName(dest) << L", #" << offset << L")]" << std::endl;
+  assert(offset > -1);
+#endif
+
+  uint32_t op_code = 0x59000000;
+  uint32_t op_dest = dest << 5;
+  op_code |= op_dest;
+
+  uint32_t op_src = src;
+  op_code |= op_src;
+
+  uint32_t op_offset = abs(offset);
+  op_code |= op_offset / sizeof(size_t) << 10;
+
+  // encode
+  AddMachineCode(op_code);
+}
+
 
 void JitArm64::move_mem_reg(long offset, Register src, Register dest) {
 #ifdef _DEBUG_JIT_JIT
@@ -3444,25 +3477,47 @@ void JitArm64::move_reg_mem8(Register src, long offset, Register dest) {
   AddMachineCode(op_code);
 }
 
-void JitArm64::move_mem8_reg(long offset, Register src, Register dest) {
+void JitArm64::move_mem16_reg(long offset, Register src, Register dest) {
 #ifdef _DEBUG_JIT_JIT
   std::wcout << L"  " << (++instr_count) << L": [ldrb " << GetRegisterName(dest)
-        << L", (" << GetRegisterName(src) << L", #" << offset << L")]" << std::endl;
+    << L", (" << GetRegisterName(src) << L", #" << offset << L")]" << std::endl;
   assert(offset > -1);
 #endif
 
-uint32_t op_code = 0x39400000;
-uint32_t op_src = src << 5;
-op_code |= op_src;
+  uint32_t op_code = 0x39400000;
+  uint32_t op_src = src << 5;
+  op_code |= op_src;
 
-uint32_t op_dest = dest;
-op_code |= op_dest;
+  uint32_t op_dest = dest;
+  op_code |= op_dest;
 
-uint32_t op_offset = abs(offset) / sizeof(size_t);
-op_code |= op_offset << 10;
+  uint32_t op_offset = abs(offset) / sizeof(size_t);
+  op_code |= op_offset << 10;
 
-// encode
-AddMachineCode(op_code);
+  // encode
+  AddMachineCode(op_code);
+}
+
+
+void JitArm64::move_mem8_reg(long offset, Register src, Register dest) {
+  #ifdef _DEBUG_JIT_JIT
+    std::wcout << L"  " << (++instr_count) << L": [ldrb " << GetRegisterName(dest)
+          << L", (" << GetRegisterName(src) << L", #" << offset << L")]" << std::endl;
+    assert(offset > -1);
+  #endif
+
+  uint32_t op_code = 0x39400000;
+  uint32_t op_src = src << 5;
+  op_code |= op_src;
+
+  uint32_t op_dest = dest;
+  op_code |= op_dest;
+
+  uint32_t op_offset = abs(offset) / sizeof(size_t);
+  op_code |= op_offset << 10;
+
+  // encode
+  AddMachineCode(op_code);
 }
 
 //

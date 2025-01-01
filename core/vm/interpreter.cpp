@@ -2606,7 +2606,8 @@ void StackInterpreter::ProcessLoadCharArrayElement(StackInstr* instr, size_t* &o
   }
 #endif
   array += instr->GetOperand();
-  PushInt(((wchar_t*)array)[index], op_stack, stack_pos);
+  const wchar_t* char_array = (wchar_t*)array;
+  PushInt(char_array[index], op_stack, stack_pos);
 }
 
 /********************************
