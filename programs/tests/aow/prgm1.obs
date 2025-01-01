@@ -1,10 +1,21 @@
 use Collection;
-use Web.HTTP;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
 #		Test("C:/Users/objec/Documents/Temp/test2.py")->PrintLine();
-	HttpsClient->QuickGet(Web.HTTP.Url->New("https:///www.google.com"))->GetContent()->ToString()->PrintLine();
+			foo := "abc";
+			(foo->Get(0) = 'a')->PrintLine();
+#~			
+			('a' = 'a')->PrintLine();
+			each(c in foo) {
+				c->PrintLine();
+				(c = 'a')->PrintLine();
+			}
+~#			
+#			bar := foo->Find('g');
+#			bar->PrintLine();
+
+#	HttpsClient->QuickGet(url)->GetCode()->PrintLine();
 
 	}
 
