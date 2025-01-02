@@ -1,7 +1,7 @@
 /***************************************************************************
  * VM stack machine.
  *
- * Copyright (c) 2024, Randy Hollines
+ * Copyright (c) 2025, Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -1369,7 +1369,7 @@ void StackInterpreter::EqlInt(size_t* &op_stack, long* &stack_pos)
   op_stack[(*stack_pos) - 2] = left == right;
   (*stack_pos)--;
 }
-
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               
 void StackInterpreter::NeqlInt(size_t* &op_stack, long* &stack_pos)
 {
 #ifdef _DEBUG
@@ -2606,7 +2606,8 @@ void StackInterpreter::ProcessLoadCharArrayElement(StackInstr* instr, size_t* &o
   }
 #endif
   array += instr->GetOperand();
-  PushInt(((wchar_t*)array)[index], op_stack, stack_pos);
+  const wchar_t* char_array = (wchar_t*)array;
+  PushInt(char_array[index], op_stack, stack_pos);
 }
 
 /********************************

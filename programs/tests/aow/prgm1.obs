@@ -1,0 +1,49 @@
+use Collection;
+use Web.HTTP;
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		a := "abcdefg";
+		a->StartsWith("ab")->PrintLine();
+
+		b := a->SubString(2);
+		b->PrintLine();
+#~
+#		Test("C:/Users/objec/Documents/Temp/test2.py")->PrintLine();
+			url := Web.HTTP.Url->New("https:///www.google.com");
+			url->GetScheme()->PrintLine();
+
+			if(url->GetScheme()->Equals("https")) {
+				"ok"->PrintLine();
+			}
+			else {
+				"bad"->PrintLine();
+			};
+~#
+#	HttpsClient->QuickGet(url)->GetCode()->PrintLine();
+
+	}
+
+#	function : Test(path : String) ~ Int {
+	function : native : Test(path : String) ~ Int {
+"--- 0 ---"->PrintLine();		
+		input := System.IO.Filesystem.FileReader->ReadFile(path)
+"--- 1 ---"->PrintLine();
+		input->PrintLine();
+"--- 2 ---"->PrintLine();
+
+	"Hello World"
+->PrintLine();
+
+		v := Vector->New()<String>;
+		v->AddBack("aa")
+		v->AddBack("bbb")
+		v->AddBack("ccccc")
+		v->Size()->PrintLine();
+
+#	HttpsClient->QuickGet(Web.HTTP.Url->New("https:///www.nasa.gov"))->GetContent()->ToString()->PrintLine();
+
+	
+		return -1;
+	}
+}

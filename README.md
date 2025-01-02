@@ -16,8 +16,9 @@
 
 * v2025.1.0
     * Windows on Arm support
-      * Enable compiler, virtual machine, debugger and REPL shell
+      * Enable compiler, virtual machine, debugger, and REPL shell
       * Port ARM64 JIT (from macOS/Linux)
+      * Port supporting libraries
 
 * v2024.12.0
   * UDP socket support (done)
@@ -26,10 +27,6 @@
 
 * v2024.10.0 **(current)**
   * Bug fix (#503)
-    
-* v2024.9.0
-  * JSON-RPC support
-  * Bug fixes
 
 ## Examples
 

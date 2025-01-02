@@ -1,0 +1,19 @@
+use Collection;
+use Web.HTTP;
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		u := Web.HTTP.Url->New("https://www.google.com");
+		html := HttpsClient->QuickGet(u)->GetContent()->ToString();
+		html->PrintLine();
+	}
+
+	function : native : Test() ~ Nil {
+		m := Collection.Map->New()<String, IntRef>;
+		m->Insert("a", 1);
+		m->Insert("b", 2);
+		m->Insert("c", 3);
+		m->Size()->PrintLine();
+		m->Find("b")->PrintLine();
+	}
+}
