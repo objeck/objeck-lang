@@ -166,7 +166,9 @@ int main(const int argc, const char* argv[])
 
     usage += VERSION_STRING;
     
-#if defined(_WIN64) && defined(_WIN32)
+#if defined(_WIN64) && defined(_WIN32) && defined(_M_ARM64)
+    usage += L" (arm64 Windows)";
+#elif defined(_WIN64) && defined(_WIN32)
     usage += L" (x86_64 Windows)";
 #elif _WIN32
     usage += L" (x86 Windows)";

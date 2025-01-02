@@ -102,7 +102,10 @@ int OptionsCompile(std::map<const std::wstring, std::wstring>& arguments, std::l
   // check for optimize flag
   std::map<const std::wstring, std::wstring>::iterator result = arguments.find(L"ver");
   if(result != arguments.end()) {
-#if defined(_WIN64) && defined(_WIN32)
+
+#if defined(_WIN64) && defined(_WIN32) && defined(_M_ARM64)
+    std::wcout << VERSION_STRING << L" Objeck (arm64 Windows)" << std::endl;
+#elif defined(_WIN64) && defined(_WIN32)
     std::wcout << VERSION_STRING << L" Objeck (Windows x86_64)" << std::endl;
 #elif _WIN32
     std::wcout << VERSION_STRING << L" Objeck (Windows x86)" << std::endl;
