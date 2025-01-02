@@ -14,13 +14,14 @@
 
 ## Releases
 
-* v2025.1.0
-    * Windows on Arm support
-      * Enable compiler, virtual machine, debugger, and REPL shell
-      * Port ARM64 JIT (from macOS/Linux)
-      * Port supporting libraries
+* v2025.1.1
+  * Enable WSL arm64 support (done)
 
-* v2024.12.0
+* v2025.1.0
+  * Windows on arm64 support (in-progress)
+    * Enable compiler, virtual machine, debugger, and REPL shell
+    * Port ARM64 JIT (from macOS/Linux)
+    * Port supporting libraries
   * UDP socket support (done)
   * SDL2 updates (done)
   * Bug fixes (done)
