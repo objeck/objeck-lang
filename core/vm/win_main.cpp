@@ -1,7 +1,7 @@
 /***************************************************************************
  * Starting point for the VM in Windows
  *
- * Copyright (c) 2024, Randy Hollines
+ * Copyright (c) 2025, Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -160,13 +160,15 @@ int main(const int argc, const char* argv[])
 
     usage += L"Options:\n";
     usage += L"\t--OBJECK_STDIO:\t[prepend] if set, STDIO output is binary\n";
-    usage += L"\t--GC_THRESHOLD:\t[prepend] inital garbage collection threshold <number>(k|m|g)\n";
+    usage += L"\t--GC_THRESHOLD:\t[prepend] inital garbage collection memory threshold <number>(kb|mb|gb)\n";
 
     usage += L"\nExamples:\n\t\"obr hello.obe\"\n\t\"obr --GC_THRESHOLD=2m hello.obe\"\n \nVersion: ";
 
     usage += VERSION_STRING;
     
-#if defined(_WIN64) && defined(_WIN32)
+#if defined(_WIN64) && defined(_WIN32) && defined(_M_ARM64)
+    usage += L" (arm64 Windows)";
+#elif defined(_WIN64) && defined(_WIN32)
     usage += L" (x86_64 Windows)";
 #elif _WIN32
     usage += L" (x86 Windows)";

@@ -2,7 +2,7 @@
  * Translates a parse tree into an intermediate format.  This format
  * is used for optimizations and target output.
  *
- * Copyright (c) 2024, Randy Hollines
+ * Copyright (c) 2025, Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -2275,13 +2275,6 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 3L));
     break;
 
-
-
-
-
-
-
-    
   case instructions::SOCK_TCP_LISTEN:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INST_MEM));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, LOAD_INT_VAR, 0, LOCL));

@@ -156,7 +156,7 @@ namespace Runtime {
    */
   class RegInstr {
     RegType type;
-    long operand;
+    size_t operand;
     RegisterHolder* holder;
     StackInstr* instr;
 
@@ -174,12 +174,12 @@ namespace Runtime {
 
     RegInstr(double* da) {
       type = IMM_FLOAT;
-      operand = (long)da;
+      operand = (size_t)da;
       holder = nullptr;
       instr = nullptr;
     }
 
-    RegInstr(RegType t, long o) {
+    RegInstr(RegType t, size_t o) {
       type = t;
       operand = o;
     }
@@ -252,7 +252,7 @@ namespace Runtime {
       return type;
     }
 
-    long GetOperand() {
+    size_t GetOperand() {
       return operand;
     }
   };
@@ -273,7 +273,7 @@ namespace Runtime {
       const uint32_t alloc_size = PAGE_SIZE * factor;
       
 #if defined(_M_ARM64)
-      buffer = (uint32_t*)VirtualAlloc(nullptr, PAGE_SIZE, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
+      buffer = (uint32_t*)VirtualAlloc(nullptr, alloc_size, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
       if(!buffer) {
         std::wcerr << L"unable virtualalloc!" << std::endl;
         exit(1);
@@ -333,7 +333,7 @@ namespace Runtime {
     vector<RegisterHolder*> aval_fregs;
     list<RegisterHolder*> used_fregs;
     unordered_map<long, StackInstr*> jump_table;
-    multimap<int64_t, int64_t> const_int_pool;
+    multimap<size_t, size_t> const_int_pool;
     vector<long> deref_offsets;          // -1
     vector<long> bounds_less_offsets;    // -2
     vector<long> bounds_greater_offsets; // -3
@@ -576,11 +576,17 @@ namespace Runtime {
 
     // move instructions
     void move_sp_reg(Register dest);
+
     void move_reg_mem8(Register src, long offset, Register dest);
-    void move_reg_mem32(Register src, long offset, Register dest);
     void move_mem8_reg(long offset, Register src, Register dest);
-    void move_mem32_reg(long offset, Register src, Register dest);
     void move_imm_mem8(int8_t imm, long offset, Register dest);
+
+    void move_reg_mem32(Register src, long offset, Register dest);
+    void move_mem32_reg(long offset, Register src, Register dest);
+
+    void move_mem16_reg(long offset, Register src, Register dest);
+    void move_reg_mem16(Register src, long offset, Register dest);
+
     void move_imm_mem32(int32_t imm, long offset, Register dest);
     void move_reg_reg(Register src, Register dest);
     void move_reg_mem(Register src, long offset, Register dest);
