@@ -81,9 +81,6 @@
     <ClInclude Include="..\..\vm\arch\jit\jit_common.h">
       <Filter>Header Files\VM</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\vm\arch\jit\amd64\jit_amd_lp64.h">
-      <Filter>Header Files\VM</Filter>
-    </ClInclude>
     <ClInclude Include="..\lang.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -140,14 +137,17 @@
     <ClCompile Include="..\..\vm\arch\jit\jit_common.cpp">
       <Filter>Source Files\VM</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\vm\arch\jit\amd64\jit_amd_lp64.cpp">
-      <Filter>Source Files\VM</Filter>
-    </ClCompile>
     <ClCompile Include="..\lang.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\shared\sys.cpp">
       <Filter>Header Files\VM</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\vm\arch\jit\amd64\jit_amd_lp64.h">
+      <Filter>Header Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\vm\arch\jit\amd64\jit_amd_lp64.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

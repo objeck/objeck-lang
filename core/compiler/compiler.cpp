@@ -1,7 +1,7 @@
 /***************************************************************************
  * Starting point of the language compiler
  *
- * Copyright (c) 2023, Randy Hollines
+ * Copyright (c) 2025, Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -102,7 +102,10 @@ int OptionsCompile(std::map<const std::wstring, std::wstring>& arguments, std::l
   // check for optimize flag
   std::map<const std::wstring, std::wstring>::iterator result = arguments.find(L"ver");
   if(result != arguments.end()) {
-#if defined(_WIN64) && defined(_WIN32)
+
+#if defined(_WIN64) && defined(_WIN32) && defined(_M_ARM64)
+    std::wcout << VERSION_STRING << L" Objeck (arm64 Windows)" << std::endl;
+#elif defined(_WIN64) && defined(_WIN32)
     std::wcout << VERSION_STRING << L" Objeck (Windows x86_64)" << std::endl;
 #elif _WIN32
     std::wcout << VERSION_STRING << L" Objeck (Windows x86)" << std::endl;
@@ -120,7 +123,7 @@ int OptionsCompile(std::map<const std::wstring, std::wstring>& arguments, std::l
     std::wcout << VERSION_STRING << L" Objeck (Linux x86)" << std::endl;
 #endif 
     std::wcout << L"---" << std::endl;
-    std::wcout << L"Copyright (c) 2023, Randy Hollines" << std::endl;
+    std::wcout << L"Copyright (c) 2025, Randy Hollines" << std::endl;
     std::wcout << L"This is free software; see the source for copying conditions.There is NO" << std::endl;
     std::wcout << L"warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE." << std::endl;
     argument_options.remove(L"ver");

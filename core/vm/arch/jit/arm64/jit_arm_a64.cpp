@@ -1114,7 +1114,11 @@ void JitArm64::ProcessLoadCharElement(StackInstr* instr) {
   RegisterHolder* holder = GetRegister();
   RegisterHolder* elem_holder = ArrayIndex(instr, CHAR_ARY_TYPE);
   xor_reg_reg(holder->GetRegister(), holder->GetRegister());
+#ifdef _M_ARM64
+  move_mem16_reg(0, elem_holder->GetRegister(), holder->GetRegister());
+#else
   move_mem32_reg(0, elem_holder->GetRegister(), holder->GetRegister());
+#endif
   ReleaseRegister(elem_holder);
   working_stack.push_front(new RegInstr(holder));
 }
@@ -1182,14 +1186,22 @@ void JitArm64::ProcessStoreCharElement(StackInstr* instr) {
   case MEM_INT: {
     RegisterHolder* holder = GetRegister(false);
     move_mem_reg(left->GetOperand(), SP, holder->GetRegister());
+#ifdef _M_ARM64
+    move_reg_mem16(holder->GetRegister(), 0, elem_holder->GetRegister());
+#else
     move_reg_mem32(holder->GetRegister(), 0, elem_holder->GetRegister());
+#endif
     ReleaseRegister(holder);
   }
     break;
 
   case REG_INT: {
     RegisterHolder* holder = left->GetRegister();
+#ifdef _M_ARM64
+    move_reg_mem16(holder->GetRegister(), 0, elem_holder->GetRegister());
+#else
     move_reg_mem32(holder->GetRegister(), 0, elem_holder->GetRegister());
+#endif
     ReleaseRegister(holder);
   }
     break;
@@ -2144,6 +2156,27 @@ void JitArm64::move_reg_mem32(Register src, long offset, Register dest) {
   AddMachineCode(op_code);
 }
 
+void JitArm64::move_reg_mem16(Register src, long offset, Register dest) {
+#ifdef _DEBUG_JIT_JIT
+  std::wcout << L"  " << (++instr_count) << L": [str.w " << GetRegisterName(src) << L", (" << GetRegisterName(dest) << L", #" << offset << L")]" << std::endl;
+  assert(offset > -1);
+#endif
+
+  uint32_t op_code = 0x59000000;
+  uint32_t op_dest = dest << 5;
+  op_code |= op_dest;
+
+  uint32_t op_src = src;
+  op_code |= op_src;
+
+  uint32_t op_offset = abs(offset);
+  op_code |= op_offset / sizeof(size_t) << 10;
+
+  // encode
+  AddMachineCode(op_code);
+}
+
+
 void JitArm64::move_mem_reg(long offset, Register src, Register dest) {
 #ifdef _DEBUG_JIT_JIT
     std::wcout << L"  " << (++instr_count) << L": [ldr " << GetRegisterName(dest) << L", (" << GetRegisterName(src) << L", #" << offset << L")]" << std::endl;
@@ -2216,7 +2249,7 @@ void JitArm64::move_imm_reg(long imm, Register reg) {
     // save code index
     move_mem_reg(INT_CONSTS, SP, X9);
     move_mem_reg(0, X9, reg);
-    const_int_pool.insert(pair<int64_t, int64_t>(imm, code_index - 1));
+    const_int_pool.insert(pair<size_t, size_t>(imm, code_index - 1));
   }
 }
 
@@ -3444,25 +3477,47 @@ void JitArm64::move_reg_mem8(Register src, long offset, Register dest) {
   AddMachineCode(op_code);
 }
 
-void JitArm64::move_mem8_reg(long offset, Register src, Register dest) {
+void JitArm64::move_mem16_reg(long offset, Register src, Register dest) {
 #ifdef _DEBUG_JIT_JIT
   std::wcout << L"  " << (++instr_count) << L": [ldrb " << GetRegisterName(dest)
-        << L", (" << GetRegisterName(src) << L", #" << offset << L")]" << std::endl;
+    << L", (" << GetRegisterName(src) << L", #" << offset << L")]" << std::endl;
   assert(offset > -1);
 #endif
 
-uint32_t op_code = 0x39400000;
-uint32_t op_src = src << 5;
-op_code |= op_src;
+  uint32_t op_code = 0x39400000;
+  uint32_t op_src = src << 5;
+  op_code |= op_src;
 
-uint32_t op_dest = dest;
-op_code |= op_dest;
+  uint32_t op_dest = dest;
+  op_code |= op_dest;
 
-uint32_t op_offset = abs(offset) / sizeof(size_t);
-op_code |= op_offset << 10;
+  uint32_t op_offset = abs(offset) / sizeof(size_t);
+  op_code |= op_offset << 10;
 
-// encode
-AddMachineCode(op_code);
+  // encode
+  AddMachineCode(op_code);
+}
+
+
+void JitArm64::move_mem8_reg(long offset, Register src, Register dest) {
+  #ifdef _DEBUG_JIT_JIT
+    std::wcout << L"  " << (++instr_count) << L": [ldrb " << GetRegisterName(dest)
+          << L", (" << GetRegisterName(src) << L", #" << offset << L")]" << std::endl;
+    assert(offset > -1);
+  #endif
+
+  uint32_t op_code = 0x39400000;
+  uint32_t op_src = src << 5;
+  op_code |= op_src;
+
+  uint32_t op_dest = dest;
+  op_code |= op_dest;
+
+  uint32_t op_offset = abs(offset) / sizeof(size_t);
+  op_code |= op_offset << 10;
+
+  // encode
+  AddMachineCode(op_code);
 }
 
 //
@@ -4164,8 +4219,13 @@ RegisterHolder* JitArm64::ArrayIndex(StackInstr* instr, MemoryType type)
     break;
 
   case CHAR_ARY_TYPE:
+#ifdef _WIN64
+    shl_imm_reg(1, index_holder->GetRegister());
+    shl_imm_reg(1, bounds_holder->GetRegister());
+#else
     shl_imm_reg(2, index_holder->GetRegister());
     shl_imm_reg(2, bounds_holder->GetRegister());
+#endif
     break;
     
   case INT_TYPE:
@@ -4430,8 +4490,8 @@ bool JitArm64::Compile(StackMethod* cm)
     
     // update consts pools
     int ints_index = 0;
-    unordered_map<int64_t, int64_t> int_pool_cache;
-    multimap<int64_t, int64_t>::iterator int_pool_iter = const_int_pool.begin();
+    unordered_map<size_t, size_t> int_pool_cache;
+    multimap<size_t, size_t>::iterator int_pool_iter = const_int_pool.begin();
     for(; int_pool_iter != const_int_pool.end(); ++int_pool_iter) {
       const int64_t const_value = int_pool_iter->first;
       const int64_t src_offset = int_pool_iter->second;
@@ -4454,13 +4514,13 @@ bool JitArm64::Compile(StackMethod* cm)
       assert(ints_index < MAX_INTS);
 #endif
       
-      unordered_map<int64_t, int64_t>::iterator int_pool_found = int_pool_cache.find(const_value);
+      unordered_map<size_t, size_t>::iterator int_pool_found = int_pool_cache.find(const_value);
       if(int_pool_found != int_pool_cache.end()) {
         code[src_offset] |= int_pool_found->second << 10;
       }
       else {
         code[src_offset] |= ints_index << 10;
-        int_pool_cache.insert(pair<int64_t, int64_t>(const_value, ints_index));
+        int_pool_cache.insert(pair<size_t, size_t>(const_value, ints_index));
         ints[ints_index++] = const_value;
       }
     }
@@ -4586,9 +4646,9 @@ uint32_t* PageHolder::AddCode(uint32_t* code, int32_t size) {
   
   memcpy(temp, code, byte_size);
 
-#if define(_OSX)
+#if defined(_OSX)
   __clear_cache(temp, temp + byte_size);
-#elif define(_M_ARM64) == false
+#elif defined(_M_ARM64) == false
   __builtin___clear_cache(temp, temp + byte_size);
 #endif
   

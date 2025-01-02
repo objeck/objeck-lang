@@ -1,7 +1,7 @@
 /***************************************************************************
  * Objeck API routines for C++ shared library extensions
  *
- * Copyright (c) 2023, Randy Hollines
+ * Copyright (c) 2025, Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
