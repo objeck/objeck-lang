@@ -105,6 +105,7 @@ if [%1] == [x64] (
 )
 cd ..\..\release
 
+REM TODO: migrate to arm64
 if [%1] == [x64] (
 	REM matrix support
 	cd ..\lib\matrix
@@ -118,18 +119,18 @@ if [%1] == [x64] (
 	copy Release\win64\*.dll ..\..\release\%TARGET%\lib\native
 	cd ..\..\release
 
+	REM diags
+	cd ..\lib\diags
+	devenv diag.sln /rebuild "Release|x64"
+	copy vs\Release\x64\*.dll ..\..\release\%TARGET%\lib\native
+	cd ..\..\release
+	
 	REM sdl
 	cd ..\lib\sdl
 	devenv sdl\sdl.sln /rebuild "Release|x64"
 	copy sdl\Release\x64\*.dll ..\..\release\%TARGET%\lib\native
 	copy lib\fonts\*.ttf ..\..\release\%TARGET%\lib\sdl\fonts
 	copy lib\x64\*.dll ..\..\release\%TARGET%\lib\sdl
-	cd ..\..\release
-
-	REM diags
-	cd ..\lib\diags
-	devenv diag.sln /rebuild "Release|x64"
-	copy vs\Release\x64\*.dll ..\..\release\%TARGET%\lib\native
 	cd ..\..\release
 )
 
