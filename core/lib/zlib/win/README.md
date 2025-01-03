@@ -2,8 +2,4 @@
 
 zlib Windows build with Visual Studio.
 
-This version is zlib-1.3.1.
-
-To build, simply open the required solution file, and
-you know how to use Visual Studio, right?
-(or perhaps this is the wrong place for you.)
+This version is zlib-1.3.1 and is built for x64 and arm64 Windows targets.
