@@ -14,9 +14,9 @@
 
 ## Releases
 
-* v2025.1.1 (rolling 2024.12.0 and v2025.1.0 for the next release)
+* v2025.1.1 (rolling up, 2024.12.0 and v2025.1.0 for the next release)
   * Enable WSL arm64 support (done)
-  * Refactoring build an test scripts
+  * Refactoring build and test scripts
 
 * v2025.1.0
   * Windows on arm64 support
