@@ -1,6 +1,19 @@
+if [%1]==[] (
+	echo Windows targets are: 'x64' and 'arm64'
+	goto end
+)
+
 set ZIP_BIN="\Program Files\7-Zip"
 
-cd deploy64\bin
+if [%1] == [arm64] (
+	set TARGET="deploy-arm64"
+)
+
+if [%1] == [x64] (
+	set TARGET="deploy-x64"
+)
+
+cd %TARGET%\\bin
 rmdir /s /q ..\html 
 mkdir ..\html
 obc -src ..\..\..\lib\code_doc\doc_html.obs,..\..\..\lib\code_doc\doc_parser.obs -lib xml -dest ..\..\code_doc.obe
