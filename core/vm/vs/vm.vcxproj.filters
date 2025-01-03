@@ -28,7 +28,7 @@
     <ClCompile Include="..\..\shared\sys.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\arch\jit\amd64\jit_amd_lp64.cpp" />
+    <ClCompile Include="..\arch\jit\arm64\jit_arm_a64.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\common.h">
@@ -67,7 +67,7 @@
     <ClInclude Include="..\..\shared\traps.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\arch\jit\amd64\jit_amd_lp64.h" />
+    <ClInclude Include="..\arch\jit\arm64\jit_arm_a64.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Header Files">
