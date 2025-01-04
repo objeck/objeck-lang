@@ -39,7 +39,7 @@
   * SDL2 updates (done)
   * Bug fixes (done)
 
-* v2024.10.0 **(current)**
+* <ins>v2024.10.0 (current)<ins>
   * Bug fix (#503)
 
 ## Examples
