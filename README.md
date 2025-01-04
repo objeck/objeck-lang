@@ -18,7 +18,7 @@
   * Enable WSL arm64 support (done)
   * Windows bi-directional cross-compilation for x64 and amd64 targets (done)
   * Upgrading Windows OpenSSL libraries to 3.4.x (done)
-  * Refactoring build and test scripts
+  * Refactoring build and test scripts (done)
 
 * v2025.1.0
   * Windows on arm64 support
