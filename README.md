@@ -15,26 +15,26 @@
 ## Releases
 
 * v2025.1.1 (release planned for late January or early February of 2025) 🔥
-  * Tooling
+  * Tooling 🛠️
     * Enable WSL arm64 support (done)
     * Windows bi-directional cross-compilation for x64 and amd64 targets (done)
     * Refactoring build and test scripts (done)
-  * Infrastructure upgrades and performance testing
+  * Infrastructure upgrades and performance testing 🧮
     * Upgrading Windows OpenSSL libraries to 3.4.x (done)
     * Qualcomm NPU ML/AI performance testing for Llama and Mistra
 
 * v2025.1.0
-  * Basic port to Windows on arm64 (done)
+  * Basic port to Windows on arm64 (done) 🚢
     * Enable compiler virtual machine, debugger, and REPL shell (done)
     * Port arm64 JIT from macOS/Linux (done)
-  * Port supporting libraries
+  * Port supporting libraries 📚
     * OpenSSL and encryption (done)
     * ODBC database access
     * 2D matrix algebra via Eigen
     * Language server protocol support
     * SDL2 support
 
-* v2024.12.0
+* v2024.12.0 🔌
   * UDP socket support (done)
   * SDL2 updates (done)
   * Bug fixes (done)
