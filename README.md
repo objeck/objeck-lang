@@ -19,7 +19,7 @@
   * Windows bi-directional cross-compilation for x64 and amd64 targets (done)
   * Upgrading Windows OpenSSL libraries to 3.4.x (done)
   * Refactoring build and test scripts (done)
-  * Qualcomm NPU performance testing for Llama and Mistral LLMs
+  * Qualcomm NPU performance testing for local Llama and Mistral model execution
 
 * v2025.1.0
   * Basic functionality for Windows on arm64 (done)
