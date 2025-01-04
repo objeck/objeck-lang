@@ -14,7 +14,7 @@
 
 ## Releases
 
-* v2025.1.1 (release planned for late January or early February of 2025)
+* v2025.1.1 (release planned for late January or early February of 2025) 🔥
   * Tooling
     * Enable WSL arm64 support (done)
     * Windows bi-directional cross-compilation for x64 and amd64 targets (done)
