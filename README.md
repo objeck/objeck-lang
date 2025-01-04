@@ -22,15 +22,15 @@
   * Qualcomm NPU performance testing for Llama and Mistral
 
 * v2025.1.0
-  * Basic functionality for Windows on arm64 (done)
+  * Basic port to Windows on arm64 (done)
     * Enable compiler virtual machine, debugger, and REPL shell (done)
     * Port arm64 JIT from macOS/Linux (done)
-    * Port core supporting libraries
-      * OpenSSL and encryption (done)
-      * ODBC database access
-      * 2D matrix algebra via Eigen
-      * Language server protocol support
-      * SDL2 support
+  * Port supporting libraries
+    * OpenSSL and encryption (done)
+    * ODBC database access
+    * 2D matrix algebra via Eigen
+    * Language server protocol support
+    * SDL2 support
 
 * v2024.12.0
   * UDP socket support (done)
