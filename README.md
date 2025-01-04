@@ -15,11 +15,13 @@
 ## Releases
 
 * v2025.1.1 (rolling up, 2024.12.0 and v2025.1.0 for the next release)
-  * Enable WSL arm64 support (done)
-  * Windows bi-directional cross-compilation for x64 and amd64 targets (done)
-  * Upgrading Windows OpenSSL libraries to 3.4.x (done)
-  * Refactoring build and test scripts (done)
-  * Qualcomm NPU performance testing for Llama and Mistral
+  * Tooling
+    * Enable WSL arm64 support (done)
+    * Windows bi-directional cross-compilation for x64 and amd64 targets (done)
+    * Refactoring build and test scripts (done)
+  * Infrastructure upgrades and performance testing
+    * Upgrading Windows OpenSSL libraries to 3.4.x (done)
+    * Qualcomm NPU ML/AI performance testing for Llama and Mistra
 
 * v2025.1.0
   * Basic port to Windows on arm64 (done)
