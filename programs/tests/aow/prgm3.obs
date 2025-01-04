@@ -6,6 +6,8 @@ class Test {
 		u := Web.HTTP.Url->New("https://www.google.com");
 		html := HttpsClient->QuickGet(u)->GetContent()->ToString();
 		html->PrintLine();
+
+		Test();
 	}
 
 	function : native : Test() ~ Nil {
