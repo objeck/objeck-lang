@@ -19,12 +19,13 @@
   * Windows bi-directional cross-compilation for x64 and amd64 targets (done)
   * Upgrading Windows OpenSSL libraries to 3.4.x (done)
   * Refactoring build and test scripts (done)
+    Qualcomm NPU peformance testing for Llama and Mistral LLMs
 
 * v2025.1.0
-  * Windows on arm64 support
+  * Basic functionality for Windows on arm64 (done)
     * Enable compiler virtual machine, debugger, and REPL shell
     * Port arm64 JIT (from macOS/Linux)
-    * Port supporting libraries
+    * Port core supporting libraries like OpenSSL
 
 * v2024.12.0
   * UDP socket support (done)
