@@ -17,6 +17,7 @@
 * v2025.1.1 (rolling up, 2024.12.0 and v2025.1.0 for the next release)
   * Enable WSL arm64 support (done)
   * Windows bi-directional cross-compilation for x64 and amd64 targets (done)
+  * Upgrading Windows OpenSSL libraries to 3.4.x (done)
   * Refactoring build and test scripts
 
 * v2025.1.0
