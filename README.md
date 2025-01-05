@@ -16,8 +16,8 @@
 
 * v2025.1.x
     * Windows on arm64 support for SDL2 🎮
-    
-* <ins>v2025.1.1 (release in January 2025)<ins>🔥🚀
+
+* <ins>v2025.1.1 (release in January 2025)</ins>🔥🚀
   * Tooling 🛠️
     * Enable WSL arm64 support (done)
     * Windows bi-directional cross-compilation for x64 and amd64 targets (done)
@@ -43,7 +43,7 @@
   * SDL2 updates (done) 🎮
   * Bug fixes (done)
 
-* <ins>v2024.10.0 (current)<ins>
+* <ins>v2024.10.0 (current)</ins>
   * Bug fix (#503)
 
 ## Examples
