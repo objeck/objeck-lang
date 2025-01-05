@@ -14,9 +14,9 @@
 
 ## Releases
 
-* v2025.1.x
-    * Windows on arm64 support for SDL2 🎮
-
+* v2025.1.x 🎮
+    * Windows on arm64 support for SDL2
+    
 * <ins>v2025.1.1 (release in mid-January 2025)</ins>🔥
   * Testing  🧪
     * Functional testing for stability and compatibility
