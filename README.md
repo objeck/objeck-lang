@@ -33,7 +33,7 @@
   * Basic port to Windows on arm64 (done) 🚢
     * Enable compiler virtual machine, debugger, and REPL shell (done)
     * Port arm64 JIT from macOS/Linux (done)
-    * Test and debug garbage collection issues (done, more testing tricky with JIT complication)
+    * Test and debug garbage collection issues
   * Port supporting libraries to Windows on arm64 📚
     * OpenSSL and encryption (done)
     * ODBC database access (done)
