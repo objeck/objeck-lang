@@ -5,6 +5,11 @@ if [%1]==[] (
 	goto end
 )
 
+IF "%VCINSTALLDIR%"=="" (
+	echo Could not Visual Studio build environment
+	goto end
+)
+
 set ZIP_BIN="\Program Files\7-Zip"
 
 if [%1] == [arm64] (
