@@ -17,7 +17,7 @@
 * v2025.1.x
     * Windows on arm64 support for SDL2 🎮
 
-* <ins>v2025.1.1 (release in January 2025)</ins>🔥🚀
+* <ins>v2025.1.1 (release in mid-January 2025)</ins>🔥
   * Testing  🧪
     * Functional testing for stability and compatibility
     * AI/ML performance testing for Llama and Mistra 🧮
@@ -28,11 +28,11 @@
   * Infrastructure upgrades 🪛
     * Upgrading Windows OpenSSL libraries to 3.4.x (done)
     
-* v2025.1.0 (general Windows on arm64 port)
+* v2025.1.0 (basic Windows on arm64 port)
   * Basic port to Windows on arm64 (done) 🚢
     * Enable compiler virtual machine, debugger, and REPL shell (done)
     * Port arm64 JIT from macOS/Linux (done)
-    * Test and debug garbage collection issues (done, more testing trickly with JIT complication)
+    * Test and debug garbage collection issues (done, more testing tricky with JIT complication)
   * Port supporting libraries to Windows on arm64 📚
     * OpenSSL and encryption (done)
     * ODBC database access (done)
