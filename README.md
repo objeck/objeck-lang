@@ -20,7 +20,7 @@
 * <ins>v2025.1.1 (release in mid-January 2025)</ins>🔥
   * Testing  🧪
     * Functional testing for stability and compatibility
-    * Fix Coverity static code analysis findings 🔍 (done)
+    * Fix Coverity and CodeQL static analysis findings 🔍 (done)
     * AI/ML performance testing for Llama and Mistra 🧮
   * Tooling 🛠️
     * Enable WSL arm64 support (done)
