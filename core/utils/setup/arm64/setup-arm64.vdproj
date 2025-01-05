@@ -279,12 +279,6 @@
         }
         "Entry"
         {
-        "MsmKey" = "8:_1BEF39DE87B14DB0A7E8DA8E0C34918B"
-        "OwnerKey" = "8:_UNDEFINED"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
         "MsmKey" = "8:_1C8FB38C896545A28F40FCF6232EE0D7"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -465,12 +459,6 @@
         }
         "Entry"
         {
-        "MsmKey" = "8:_2DD755BEE45F4EADB478D7F552CC7536"
-        "OwnerKey" = "8:_UNDEFINED"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
         "MsmKey" = "8:_2E60E34906C140DC888A1657F5088B1B"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -615,12 +603,6 @@
         }
         "Entry"
         {
-        "MsmKey" = "8:_3BD796F4019C47F29A5E4786456501F6"
-        "OwnerKey" = "8:_UNDEFINED"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
         "MsmKey" = "8:_3C7829C88F47474DA0168F6FD075C2AC"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -664,12 +646,6 @@
         "Entry"
         {
         "MsmKey" = "8:_40AD09502E444030994CE5E2CB5DF372"
-        "OwnerKey" = "8:_UNDEFINED"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
-        "MsmKey" = "8:_41287B22BA5C43B68EA5E3FBF8AB1E88"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -843,12 +819,6 @@
         }
         "Entry"
         {
-        "MsmKey" = "8:_4B0DB527B6A7413C828BE6FB8BA677B3"
-        "OwnerKey" = "8:_UNDEFINED"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
         "MsmKey" = "8:_4B298D94412A45AC8F52BDB0A233DB74"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -874,12 +844,6 @@
         "Entry"
         {
         "MsmKey" = "8:_4DF81C5D430F4D91AAC8483655E03D37"
-        "OwnerKey" = "8:_UNDEFINED"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
-        "MsmKey" = "8:_4E2DE459E0DE4C34A99F660183272ADE"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -1269,12 +1233,6 @@
         }
         "Entry"
         {
-        "MsmKey" = "8:_76FB1C792EFB407FA70F472E1D40AFFE"
-        "OwnerKey" = "8:_UNDEFINED"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
         "MsmKey" = "8:_77336C516B06447CB104679DF993D506"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -1575,12 +1533,6 @@
         }
         "Entry"
         {
-        "MsmKey" = "8:_980C07FD26F044C5B657BCF5AED4D2B7"
-        "OwnerKey" = "8:_UNDEFINED"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
         "MsmKey" = "8:_987285E25EC44B47A5A0678FB2CAB0EF"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -1630,12 +1582,6 @@
         "Entry"
         {
         "MsmKey" = "8:_9E00B94B78EF4834B2DC9EFC93CCD945"
-        "OwnerKey" = "8:_UNDEFINED"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
-        "MsmKey" = "8:_9E1DF77A620C4CBF839FBF244909546F"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -1804,12 +1750,6 @@
         "Entry"
         {
         "MsmKey" = "8:_B518BD3989CE46E5BF6A1CB740C290AC"
-        "OwnerKey" = "8:_UNDEFINED"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
-        "MsmKey" = "8:_B53A3B6EBA874CCE8DCA205D03492C56"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -2217,12 +2157,6 @@
         }
         "Entry"
         {
-        "MsmKey" = "8:_DE4641438B9849979ED39C6900461748"
-        "OwnerKey" = "8:_UNDEFINED"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
         "MsmKey" = "8:_DE49C8106F504D0F93F0181E7C70AF51"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -2301,12 +2235,6 @@
         }
         "Entry"
         {
-        "MsmKey" = "8:_E40A00B6FC2F45A58836759E467D311B"
-        "OwnerKey" = "8:_UNDEFINED"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
         "MsmKey" = "8:_E46B81DF62C64CE9A75F60E0FD085B9C"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -2355,19 +2283,7 @@
         }
         "Entry"
         {
-        "MsmKey" = "8:_E8D9CE7D4CE3406EAD96275887FC03A6"
-        "OwnerKey" = "8:_UNDEFINED"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
         "MsmKey" = "8:_E91AEAE926874E96933DC279F3402A76"
-        "OwnerKey" = "8:_UNDEFINED"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
-        "MsmKey" = "8:_EABAC57AA16641C095096D23E1685337"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -3543,26 +3459,6 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_1BEF39DE87B14DB0A7E8DA8E0C34918B"
-            {
-            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-arm64\\lib\\sdl\\fonts\\lazy.ttf"
-            "TargetName" = "8:lazy.ttf"
-            "Tag" = "8:"
-            "Folder" = "8:_77368B06346D4A0683012C3DA7102EEB"
-            "Condition" = "8:"
-            "Transitive" = "11:FALSE"
-            "Vital" = "11:TRUE"
-            "ReadOnly" = "11:FALSE"
-            "Hidden" = "11:FALSE"
-            "System" = "11:FALSE"
-            "Permanent" = "11:FALSE"
-            "SharedLegacy" = "11:FALSE"
-            "PackageAs" = "3:1"
-            "Register" = "3:1"
-            "Exclude" = "11:FALSE"
-            "IsDependency" = "11:FALSE"
-            "IsolateTo" = "8:"
-            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_1C8FB38C896545A28F40FCF6232EE0D7"
             {
             "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-arm64\\doc\\api\\system-floatarrayref.html"
@@ -4163,26 +4059,6 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_2DD755BEE45F4EADB478D7F552CC7536"
-            {
-            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-arm64\\lib\\sdl\\SDL2_image.dll"
-            "TargetName" = "8:SDL2_image.dll"
-            "Tag" = "8:"
-            "Folder" = "8:_CEA698DE8DC84CB38DFF56BB803493A0"
-            "Condition" = "8:"
-            "Transitive" = "11:FALSE"
-            "Vital" = "11:TRUE"
-            "ReadOnly" = "11:FALSE"
-            "Hidden" = "11:FALSE"
-            "System" = "11:FALSE"
-            "Permanent" = "11:FALSE"
-            "SharedLegacy" = "11:FALSE"
-            "PackageAs" = "3:1"
-            "Register" = "3:1"
-            "Exclude" = "11:FALSE"
-            "IsDependency" = "11:FALSE"
-            "IsolateTo" = "8:"
-            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_2E60E34906C140DC888A1657F5088B1B"
             {
             "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-arm64\\doc\\api\\game.sdl2-hintpriority.html"
@@ -4663,26 +4539,6 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_3BD796F4019C47F29A5E4786456501F6"
-            {
-            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-arm64\\lib\\sdl\\libogg-0.dll"
-            "TargetName" = "8:libogg-0.dll"
-            "Tag" = "8:"
-            "Folder" = "8:_CEA698DE8DC84CB38DFF56BB803493A0"
-            "Condition" = "8:"
-            "Transitive" = "11:FALSE"
-            "Vital" = "11:TRUE"
-            "ReadOnly" = "11:FALSE"
-            "Hidden" = "11:FALSE"
-            "System" = "11:FALSE"
-            "Permanent" = "11:FALSE"
-            "SharedLegacy" = "11:FALSE"
-            "PackageAs" = "3:1"
-            "Register" = "3:1"
-            "Exclude" = "11:FALSE"
-            "IsDependency" = "11:FALSE"
-            "IsolateTo" = "8:"
-            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_3C7829C88F47474DA0168F6FD075C2AC"
             {
             "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-arm64\\doc\\api\\collection-pair_f-compare_s_.html"
@@ -4829,26 +4685,6 @@
             "TargetName" = "8:odbc_select_11.obs"
             "Tag" = "8:"
             "Folder" = "8:_43EBF7A1E8F24941BB3191D2071CC550"
-            "Condition" = "8:"
-            "Transitive" = "11:FALSE"
-            "Vital" = "11:TRUE"
-            "ReadOnly" = "11:FALSE"
-            "Hidden" = "11:FALSE"
-            "System" = "11:FALSE"
-            "Permanent" = "11:FALSE"
-            "SharedLegacy" = "11:FALSE"
-            "PackageAs" = "3:1"
-            "Register" = "3:1"
-            "Exclude" = "11:FALSE"
-            "IsDependency" = "11:FALSE"
-            "IsolateTo" = "8:"
-            }
-            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_41287B22BA5C43B68EA5E3FBF8AB1E88"
-            {
-            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-arm64\\lib\\sdl\\fonts\\hella.ttf"
-            "TargetName" = "8:hella.ttf"
-            "Tag" = "8:"
-            "Folder" = "8:_77368B06346D4A0683012C3DA7102EEB"
             "Condition" = "8:"
             "Transitive" = "11:FALSE"
             "Vital" = "11:TRUE"
@@ -5423,26 +5259,6 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_4B0DB527B6A7413C828BE6FB8BA677B3"
-            {
-            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-arm64\\lib\\sdl\\SDL2.dll"
-            "TargetName" = "8:SDL2.dll"
-            "Tag" = "8:"
-            "Folder" = "8:_CEA698DE8DC84CB38DFF56BB803493A0"
-            "Condition" = "8:"
-            "Transitive" = "11:FALSE"
-            "Vital" = "11:TRUE"
-            "ReadOnly" = "11:FALSE"
-            "Hidden" = "11:FALSE"
-            "System" = "11:FALSE"
-            "Permanent" = "11:FALSE"
-            "SharedLegacy" = "11:FALSE"
-            "PackageAs" = "3:1"
-            "Register" = "3:1"
-            "Exclude" = "11:FALSE"
-            "IsDependency" = "11:FALSE"
-            "IsolateTo" = "8:"
-            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_4B298D94412A45AC8F52BDB0A233DB74"
             {
             "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-arm64\\examples\\tic_tac_toe_16.obs"
@@ -5529,26 +5345,6 @@
             "TargetName" = "8:obb.exe"
             "Tag" = "8:"
             "Folder" = "8:_29447E00596D4B118DB5294020D5AF50"
-            "Condition" = "8:"
-            "Transitive" = "11:FALSE"
-            "Vital" = "11:TRUE"
-            "ReadOnly" = "11:FALSE"
-            "Hidden" = "11:FALSE"
-            "System" = "11:FALSE"
-            "Permanent" = "11:FALSE"
-            "SharedLegacy" = "11:FALSE"
-            "PackageAs" = "3:1"
-            "Register" = "3:1"
-            "Exclude" = "11:FALSE"
-            "IsDependency" = "11:FALSE"
-            "IsolateTo" = "8:"
-            }
-            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_4E2DE459E0DE4C34A99F660183272ADE"
-            {
-            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-arm64\\lib\\sdl\\SDL2_ttf.dll"
-            "TargetName" = "8:SDL2_ttf.dll"
-            "Tag" = "8:"
-            "Folder" = "8:_CEA698DE8DC84CB38DFF56BB803493A0"
             "Condition" = "8:"
             "Transitive" = "11:FALSE"
             "Vital" = "11:TRUE"
@@ -6843,26 +6639,6 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_76FB1C792EFB407FA70F472E1D40AFFE"
-            {
-            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-arm64\\lib\\sdl\\libtiff-5.dll"
-            "TargetName" = "8:libtiff-5.dll"
-            "Tag" = "8:"
-            "Folder" = "8:_CEA698DE8DC84CB38DFF56BB803493A0"
-            "Condition" = "8:"
-            "Transitive" = "11:FALSE"
-            "Vital" = "11:TRUE"
-            "ReadOnly" = "11:FALSE"
-            "Hidden" = "11:FALSE"
-            "System" = "11:FALSE"
-            "Permanent" = "11:FALSE"
-            "SharedLegacy" = "11:FALSE"
-            "PackageAs" = "3:1"
-            "Register" = "3:1"
-            "Exclude" = "11:FALSE"
-            "IsDependency" = "11:FALSE"
-            "IsolateTo" = "8:"
-            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_77336C516B06447CB104679DF993D506"
             {
             "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-arm64\\doc\\api\\game.sdl2-point.html"
@@ -7863,26 +7639,6 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_980C07FD26F044C5B657BCF5AED4D2B7"
-            {
-            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-arm64\\lib\\sdl\\libopus-0.dll"
-            "TargetName" = "8:libopus-0.dll"
-            "Tag" = "8:"
-            "Folder" = "8:_CEA698DE8DC84CB38DFF56BB803493A0"
-            "Condition" = "8:"
-            "Transitive" = "11:FALSE"
-            "Vital" = "11:TRUE"
-            "ReadOnly" = "11:FALSE"
-            "Hidden" = "11:FALSE"
-            "System" = "11:FALSE"
-            "Permanent" = "11:FALSE"
-            "SharedLegacy" = "11:FALSE"
-            "PackageAs" = "3:1"
-            "Register" = "3:1"
-            "Exclude" = "11:FALSE"
-            "IsDependency" = "11:FALSE"
-            "IsolateTo" = "8:"
-            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_987285E25EC44B47A5A0678FB2CAB0EF"
             {
             "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-arm64\\examples\\media\\ring.png"
@@ -8049,26 +7805,6 @@
             "TargetName" = "8:web.http.server-multipartdecoder.html"
             "Tag" = "8:"
             "Folder" = "8:_81257430DCE040CC878CC8E797FC6233"
-            "Condition" = "8:"
-            "Transitive" = "11:FALSE"
-            "Vital" = "11:TRUE"
-            "ReadOnly" = "11:FALSE"
-            "Hidden" = "11:FALSE"
-            "System" = "11:FALSE"
-            "Permanent" = "11:FALSE"
-            "SharedLegacy" = "11:FALSE"
-            "PackageAs" = "3:1"
-            "Register" = "3:1"
-            "Exclude" = "11:FALSE"
-            "IsDependency" = "11:FALSE"
-            "IsolateTo" = "8:"
-            }
-            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_9E1DF77A620C4CBF839FBF244909546F"
-            {
-            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-arm64\\lib\\sdl\\libopusfile-0.dll"
-            "TargetName" = "8:libopusfile-0.dll"
-            "Tag" = "8:"
-            "Folder" = "8:_CEA698DE8DC84CB38DFF56BB803493A0"
             "Condition" = "8:"
             "Transitive" = "11:FALSE"
             "Vital" = "11:TRUE"
@@ -8629,26 +8365,6 @@
             "TargetName" = "8:json_stream.obl"
             "Tag" = "8:"
             "Folder" = "8:_1B9A1D875916421996AAC40EBE5D89C6"
-            "Condition" = "8:"
-            "Transitive" = "11:FALSE"
-            "Vital" = "11:TRUE"
-            "ReadOnly" = "11:FALSE"
-            "Hidden" = "11:FALSE"
-            "System" = "11:FALSE"
-            "Permanent" = "11:FALSE"
-            "SharedLegacy" = "11:FALSE"
-            "PackageAs" = "3:1"
-            "Register" = "3:1"
-            "Exclude" = "11:FALSE"
-            "IsDependency" = "11:FALSE"
-            "IsolateTo" = "8:"
-            }
-            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_B53A3B6EBA874CCE8DCA205D03492C56"
-            {
-            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-arm64\\lib\\sdl\\fonts\\curses.ttf"
-            "TargetName" = "8:curses.ttf"
-            "Tag" = "8:"
-            "Folder" = "8:_77368B06346D4A0683012C3DA7102EEB"
             "Condition" = "8:"
             "Transitive" = "11:FALSE"
             "Vital" = "11:TRUE"
@@ -10003,26 +9719,6 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_DE4641438B9849979ED39C6900461748"
-            {
-            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-arm64\\lib\\native\\libobjk_sdl.dll"
-            "TargetName" = "8:libobjk_sdl.dll"
-            "Tag" = "8:"
-            "Folder" = "8:_C6BA2271219B483D8CED3F182A753C2B"
-            "Condition" = "8:"
-            "Transitive" = "11:FALSE"
-            "Vital" = "11:TRUE"
-            "ReadOnly" = "11:FALSE"
-            "Hidden" = "11:FALSE"
-            "System" = "11:FALSE"
-            "Permanent" = "11:FALSE"
-            "SharedLegacy" = "11:FALSE"
-            "PackageAs" = "3:1"
-            "Register" = "3:1"
-            "Exclude" = "11:FALSE"
-            "IsDependency" = "11:FALSE"
-            "IsolateTo" = "8:"
-            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_DE49C8106F504D0F93F0181E7C70AF51"
             {
             "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-arm64\\doc\\api\\data.json.rpc-client.html"
@@ -10263,26 +9959,6 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_E40A00B6FC2F45A58836759E467D311B"
-            {
-            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-arm64\\lib\\sdl\\libmodplug-1.dll"
-            "TargetName" = "8:libmodplug-1.dll"
-            "Tag" = "8:"
-            "Folder" = "8:_CEA698DE8DC84CB38DFF56BB803493A0"
-            "Condition" = "8:"
-            "Transitive" = "11:FALSE"
-            "Vital" = "11:TRUE"
-            "ReadOnly" = "11:FALSE"
-            "Hidden" = "11:FALSE"
-            "System" = "11:FALSE"
-            "Permanent" = "11:FALSE"
-            "SharedLegacy" = "11:FALSE"
-            "PackageAs" = "3:1"
-            "Register" = "3:1"
-            "Exclude" = "11:FALSE"
-            "IsDependency" = "11:FALSE"
-            "IsolateTo" = "8:"
-            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_E46B81DF62C64CE9A75F60E0FD085B9C"
             {
             "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-arm64\\doc\\api\\collection-heap_h-compare_.html"
@@ -10443,52 +10119,12 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_E8D9CE7D4CE3406EAD96275887FC03A6"
-            {
-            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-arm64\\lib\\sdl\\SDL2_mixer.dll"
-            "TargetName" = "8:SDL2_mixer.dll"
-            "Tag" = "8:"
-            "Folder" = "8:_CEA698DE8DC84CB38DFF56BB803493A0"
-            "Condition" = "8:"
-            "Transitive" = "11:FALSE"
-            "Vital" = "11:TRUE"
-            "ReadOnly" = "11:FALSE"
-            "Hidden" = "11:FALSE"
-            "System" = "11:FALSE"
-            "Permanent" = "11:FALSE"
-            "SharedLegacy" = "11:FALSE"
-            "PackageAs" = "3:1"
-            "Register" = "3:1"
-            "Exclude" = "11:FALSE"
-            "IsDependency" = "11:FALSE"
-            "IsolateTo" = "8:"
-            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_E91AEAE926874E96933DC279F3402A76"
             {
             "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-arm64\\doc\\api\\api.openai-image.html"
             "TargetName" = "8:api.openai-image.html"
             "Tag" = "8:"
             "Folder" = "8:_81257430DCE040CC878CC8E797FC6233"
-            "Condition" = "8:"
-            "Transitive" = "11:FALSE"
-            "Vital" = "11:TRUE"
-            "ReadOnly" = "11:FALSE"
-            "Hidden" = "11:FALSE"
-            "System" = "11:FALSE"
-            "Permanent" = "11:FALSE"
-            "SharedLegacy" = "11:FALSE"
-            "PackageAs" = "3:1"
-            "Register" = "3:1"
-            "Exclude" = "11:FALSE"
-            "IsDependency" = "11:FALSE"
-            "IsolateTo" = "8:"
-            }
-            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_EABAC57AA16641C095096D23E1685337"
-            {
-            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-arm64\\lib\\sdl\\libwebp-7.dll"
-            "TargetName" = "8:libwebp-7.dll"
-            "Tag" = "8:"
-            "Folder" = "8:_CEA698DE8DC84CB38DFF56BB803493A0"
             "Condition" = "8:"
             "Transitive" = "11:FALSE"
             "Vital" = "11:TRUE"
@@ -11261,28 +10897,6 @@
                                     }
                                 }
                             }
-                            "{9EF0B969-E518-4E46-987F-47570745A589}:_CEA698DE8DC84CB38DFF56BB803493A0"
-                            {
-                            "Name" = "8:sdl"
-                            "AlwaysCreate" = "11:FALSE"
-                            "Condition" = "8:"
-                            "Transitive" = "11:FALSE"
-                            "Property" = "8:_9E83D73767334DF88CFBA2C4CB1E1991"
-                                "Folders"
-                                {
-                                    "{9EF0B969-E518-4E46-987F-47570745A589}:_77368B06346D4A0683012C3DA7102EEB"
-                                    {
-                                    "Name" = "8:fonts"
-                                    "AlwaysCreate" = "11:FALSE"
-                                    "Condition" = "8:"
-                                    "Transitive" = "11:FALSE"
-                                    "Property" = "8:_B7B7D26834AE4EBD89F23579891D97AB"
-                                        "Folders"
-                                        {
-                                        }
-                                    }
-                                }
-                            }
                         }
                     }
                     "{9EF0B969-E518-4E46-987F-47570745A589}:_29447E00596D4B118DB5294020D5AF50"
@@ -11579,7 +11193,7 @@
         "Name" = "8:Microsoft Visual Studio"
         "ProductName" = "8:Objeck"
         "ProductCode" = "8:{376596DB-7006-46D6-9E5F-503496B95735}"
-        "PackageCode" = "8:{5DCE6035-BF25-4E9C-B94D-34BF48C0150D}"
+        "PackageCode" = "8:{FA4CD2AA-CBB1-4181-B8FC-3A2C2D260936}"
         "UpgradeCode" = "8:{FAD125F6-CB1B-46F7-91EB-429682D927CB}"
         "AspNetVersion" = "8:"
         "RestartWWWService" = "11:FALSE"
