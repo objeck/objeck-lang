@@ -21,6 +21,7 @@
     * Refactoring build and test scripts (done)
   * Infrastructure upgrades and performance testing 🧪
     * Upgrading Windows OpenSSL libraries to 3.4.x (done)
+    * Hyper-V testing on arm64 hardware
     * Qualcomm NPU ML/AI performance testing for Llama and Mistra 🧮
 
 * v2025.1.0 (general Windows on arm64 port)
