@@ -174,10 +174,10 @@ xcopy /e ..\..\docs\syntax\* %TARGET%\doc\syntax
 REM update and process readme
 pushd ..\..\programs\deploy\util\readme
 REM call build.cmd readme_builder readme.json
-popd && copy ..\..\docs\readme.html deploy64
+popd && copy ..\..\docs\readme.html %TARGET%
 
 copy ..\..\docs\doc\readme.css %TARGET%\doc
-copy ..\..\LICENSE deploy64
+copy ..\..\LICENSE %TARGET%
 
 REM copy docs
 if [%1] == [arm64] (
@@ -192,22 +192,38 @@ if [%1] == [x64] (
 
 REM finished
 if [%2] NEQ [deploy] goto end
+	if [%1] == [arm64] (
+		set INSTALL_TARGET=objeck-lang-arm64
+	)
+
+	if [%1] == [x64] (
+		set INSTALL_TARGET=objeck-lang-x64
+	)
+
 	rmdir /q /s %TARGET%\examples\doc
-	rmdir /q /s "%USERPROFILE%\Desktop\objeck-lang-win64"
-	mkdir "%USERPROFILE%\Desktop\objeck-lang-win64"
-	xcopy /e deploy64 "%USERPROFILE%\Desktop\objeck-lang-win64"
-	mkdir "%USERPROFILE%\Desktop\objeck-lang-win64\doc\icons"
-	copy ..\..\docs\images\setup_icons\*.ico "%USERPROFILE%\Desktop\objeck-lang-win64\doc\icons"
-	copy ..\..\docs\images\setup_icons\*.jpg "%USERPROFILE%\Desktop\objeck-lang-win64\doc\icons"
-	copy ..\..\docs\eula.rtf "%USERPROFILE%\Desktop\objeck-lang-win64\doc"
-	copy /y ..\utils\setup64 .
+	rmdir /q /s "%USERPROFILE%\Desktop\%INSTALL_TARGET%"
+	mkdir "%USERPROFILE%\Desktop\%INSTALL_TARGET%"
+	xcopy /e %TARGET% "%USERPROFILE%\Desktop\%INSTALL_TARGET%"
+	mkdir "%USERPROFILE%\Desktop\%INSTALL_TARGET%\doc\icons"
+	copy ..\..\docs\images\setup_icons\*.ico "%USERPROFILE%\Desktop\%INSTALL_TARGET%\doc\icons"
+	copy ..\..\docs\images\setup_icons\*.jpg "%USERPROFILE%\Desktop\%INSTALL_TARGET%\doc\icons"
+	copy ..\..\docs\eula.rtf "%USERPROFILE%\Desktop\%INSTALL_TARGET%\doc"
+	
+	if [%1] == [arm64] (
+		copy /y ..\utils\setup\x64 .
+	)
+
+	if [%1] == [x64] (	
+		copy /y ..\utils\setup\arm64 .
+	)
+	
 	devenv setup.sln /rebuild "Release"
 	signtool sign /fd sha256 /f "%USERPROFILE%\Dropbox\Personal\signing keys\2022\code\randy_hollines.p12" /p %3 /d "Objeck: Windows Toolchain" /t http://timestamp.sectigo.com Release64\setup.msi
 	copy Release64\setup.msi "%USERPROFILE%\Desktop\objeck-windows-x64_0.0.0.msi"
 	
 	rmdir /s /q "%USERPROFILE%\Desktop\Release64"
 	mkdir "%USERPROFILE%\Desktop\Release64"
-	move "%USERPROFILE%\Desktop\objeck-lang-win64" "%USERPROFILE%\Desktop\Release64\objeck-lang"
-	%ZIP_BIN%\7z.exe a -r -tzip "%USERPROFILE%\Desktop\Release64\objeck-windows-x64_0.0.0.zip" "%USERPROFILE%\Desktop\Release64\objeck-lang"
+	move "%USERPROFILE%\Desktop\%INSTALL_TARGET%" "%USERPROFILE%\Desktop\Release64\%INSTALL_TARGET%"
+	%ZIP_BIN%\7z.exe a -r -tzip "%USERPROFILE%\Desktop\Release64\objeck-windows-x64_0.0.0.zip" "%USERPROFILE%\Desktop\Release64\%INSTALL_TARGET%"
 	move "%USERPROFILE%\Desktop\objeck-windows-x64_0.0.0.msi" "%USERPROFILE%\Desktop\Release64"
 :end
