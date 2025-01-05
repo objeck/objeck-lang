@@ -15,6 +15,8 @@ if [%1] == [x64] (
 	set TARGET="deploy-x64"
 )
 
+goto installer
+
 rmdir /s /q %TARGET%
 mkdir %TARGET%
 mkdir %TARGET%\app
@@ -190,6 +192,8 @@ if [%1] == [x64] (
 	rmdir /s /q x64
 )
 
+:installer
+
 REM finished
 if [%2] NEQ [deploy] goto end
 	if [%1] == [arm64] (
@@ -213,13 +217,12 @@ if [%2] NEQ [deploy] goto end
 		copy /y ..\utils\setup\x64 .
 	)
 
-	if [%1] == [x64] (	
-		copy /y ..\utils\setup\arm64 .
+	if [%1] == [x64] (
+		copy /y ..\utils\setup\x64 .
+		devenv setup-x64.sln /rebuild "Release"
+		signtool sign /fd sha256 /f "%USERPROFILE%\Dropbox\Personal\signing keys\2022\code\randy_hollines.p12" /p %3 /d "Objeck: Windows Toolchain" /t http://timestamp.sectigo.com Release64\setup.msi
+		copy Release64\setup.msi "%USERPROFILE%\Desktop\objeck-windows-x64_0.0.0.msi"
 	)
-	
-	devenv setup.sln /rebuild "Release"
-	signtool sign /fd sha256 /f "%USERPROFILE%\Dropbox\Personal\signing keys\2022\code\randy_hollines.p12" /p %3 /d "Objeck: Windows Toolchain" /t http://timestamp.sectigo.com Release64\setup.msi
-	copy Release64\setup.msi "%USERPROFILE%\Desktop\objeck-windows-x64_0.0.0.msi"
 	
 	rmdir /s /q "%USERPROFILE%\Desktop\Release64"
 	mkdir "%USERPROFILE%\Desktop\Release64"
