@@ -25,13 +25,22 @@ Objeck can be built for various targets. The language is implemented in C++ and 
 *  Build output with binaries and documentation will be located in <code>objeck-lang/core/release/deploy</code>
 *  Reference <code>objeck-lang/core/release/deploy/readme.html</code> to set additional paths and find examples
 
+### Windows (ARM64, Visual Studio)
+*  Install MSVS build tools for arm64 ![Alt text](../docs/images/woa_installer.png)
+*  Unzip the OpenSSL Windows libraries in <code>objeck-lang/core/lib/openssl/win/arm64</code>
+*  Using Visual Studio 2022 or later open <code>objeck-lang/core/release/objeck.sln</code>
+*  Ensure the core build completes successfully (in Release mode)
+*  To build everything, open a Visual Studio arm64 command prompt and go to <code>objeck-lang/core/release</code> directory and run <code>deploy_windows.cmd arm64</code>
+*  Build output with binaries and documentation will be located in <code>objeck-lang/core/release/deploy-arm64</code>
+*  Reference <code>objeck-lang/core/release/deploy-arm64/readme.html</code> to learn how to set the environment variables and find code examples
+
 ### Windows (x64, Visual Studio)
 *  Unzip the OpenSSL Windows libraries in <code>objeck-lang/core/lib/openssl/win/x64</code>
 *  Using Visual Studio 2022 or later open <code>objeck-lang/core/release/objeck.sln</code>
 *  Ensure the core build completes successfully (in Release mode)
-*  To build everything, open a Visual Studio x64 command prompt and go to <code>objeck-lang/core/release</code> directory and run <code>deploy_amd64.cmd</code>
-*  Build output with binaries and documentation will be located in <code>objeck-lang/core/release/deploy64</code>
-*  Reference <code>objeck-lang/core/release/deploy64/readme.html</code> to learn how to set the environment variables and find code examples
+*  To build everything, open a Visual Studio x64 command prompt and go to <code>objeck-lang/core/release</code> directory and run <code>deploy_windows.cmd x64</code>
+*  Build output with binaries and documentation will be located in <code>objeck-lang/core/release/deploy-x64</code>
+*  Reference <code>objeck-lang/core/release/deploy-x64/readme.html</code> to learn how to set the environment variables and find code examples
 
 ### Windows (x64, MSYS2)
 * Under the UCRT64 (Unicode shell support)
