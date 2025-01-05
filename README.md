@@ -14,6 +14,9 @@
 
 ## Releases
 
+* v2025.1.x
+    * Windows on arm64 support for SDL2 🎮
+
 * v2025.1.1 (release in January 2025) 🔥🚀
   * Tooling 🛠️
     * Enable WSL arm64 support (done)
@@ -34,7 +37,6 @@
     * ODBC database access (done)
     * Language server protocol support (done)
     * 2D matrix algebra via Eigen (done)
-    * SDL2 support
 
 * v2024.12.0
   * UDP socket support (done) 🔌
