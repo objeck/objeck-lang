@@ -1,4 +1,5 @@
-REM build targets
+REM build all windows targets
+
 call deploy_windows.cmd x64 %1 %2
 call deploy_windows.cmd arm64 %1 %2
 
