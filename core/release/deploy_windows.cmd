@@ -223,8 +223,8 @@ if [%2] NEQ [deploy] goto end
 		rmdir /s /q "%USERPROFILE%\Desktop\release-arm64"
 		mkdir "%USERPROFILE%\Desktop\release-arm64"
 		move "%USERPROFILE%\Desktop\%INSTALL_TARGET%" "%USERPROFILE%\Desktop\release-arm64\%INSTALL_TARGET%"
-		%ZIP_BIN%\7z.exe a -r -tzip "%USERPROFILE%\Desktop\release-arm64\objeck-windows-x64_0.0.0.zip" "%USERPROFILE%\Desktop\release-arm64\%INSTALL_TARGET%"
-		move "%USERPROFILE%\Desktop\objeck-windows-x64_0.0.0.msi" "%USERPROFILE%\Desktop\release-arm64"
+		%ZIP_BIN%\7z.exe a -r -tzip "%USERPROFILE%\Desktop\release-arm64\objeck-windows-arm64_0.0.0.zip" "%USERPROFILE%\Desktop\release-arm64\%INSTALL_TARGET%"
+		move "%USERPROFILE%\Desktop\objeck-windows-arm64_0.0.0.msi" "%USERPROFILE%\Desktop\release-arm64"
 	)
 
 	if [%1] == [x64] (
