@@ -1,4 +1,4 @@
-<h1 align="center">Object-Oriented and Functional with AI/ML Features</h1>
+<h1 align="center">Modern, Lightweight, Object-Oriented, and AI-Enabled</h1>
 
 <p align="center">
   <a href="https://www.objeck.org"><img src="docs/images/gear_wheel_256.png" width="256" alt="An Objeck"/></a>
