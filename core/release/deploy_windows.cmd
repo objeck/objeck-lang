@@ -130,18 +130,23 @@ if [%1] == [x64] (
 	devenv odbc.sln /rebuild "Release|x64"
 	copy Release\win64\*.dll ..\..\release\%TARGET%\lib\native
 )
+cd ..\..\release
 
+REM matrix support
+cd ..\lib\matrix	
+if [%1] == [arm64] (
+	devenv matrix.sln /rebuild "Release|ARM64"
+	copy Release\ARM64\*.dll ..\..\release\%TARGET%\lib\native
+)
 
+if [%1] == [x64] (
+	devenv matrix.sln /rebuild "Release|x64"
+	copy Release\x64\*.dll ..\..\release\%TARGET%\lib\native
+)
 cd ..\..\release
 
 REM TODO: migrate to arm64
 if [%1] == [x64] (
-	REM matrix support
-	cd ..\lib\matrix
-	devenv matrix.sln /rebuild "Release|x64"
-	copy Release\x64\*.dll ..\..\release\%TARGET%\lib\native
-	cd ..\..\release
-
 	REM sdl
 	cd ..\lib\sdl
 	devenv sdl\sdl.sln /rebuild "Release|x64"
