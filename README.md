@@ -1,4 +1,4 @@
-<h1 align="center">Cross-Platform, Object-Oriented, Functional</h1>
+<h2 align="center">A Cross-Platform, Object-Oriented, and Functional Language with AI/ML Features</h2>
 
 <p align="center">
   <a href="https://www.objeck.org"><img src="docs/images/gear_wheel_256.png" width="256" alt="An Objeck"/></a>
