@@ -30,9 +30,9 @@
     * Test and debug garbage collection issues (done, more testing trickly with JIT complication)
   * Port supporting libraries 📚
     * OpenSSL and encryption (done)
-    * ODBC database access
+    * ODBC database access (done)
+    * Language server protocol support (done)
     * 2D matrix algebra via Eigen
-    * Language server protocol support
     * SDL2 support
 
 * v2024.12.0 🔌
