@@ -16,8 +16,12 @@
 
 * v2025.1.x 🎮
     * Windows on arm64 support for SDL2
+      * Build and port SDL2 core
+      * Build and port image library
+      * Build and port mixer library
+      * Build and port TIFF library
     
-* <ins>v2025.1.1 (release in mid-January 2025)</ins>🔥
+* <ins>v2025.1.1 (release in early-January 2025)</ins>🔥
   * Testing  🧪
     * Functional testing for stability and compatibility
     * Fix Coverity and CodeQL static analysis findings 🔍 (done)
