@@ -18,9 +18,9 @@
     * Windows on arm64 support for SDL2 🎮
 
 * <ins>v2025.1.1 (release in January 2025)</ins>🔥🚀
-  * Testing  🧪
-    * Functional testing for stability and compatibility 🧮
-    * AI/ML performance testing for Llama and Mistra 🧮
+  * Testing  🧪🧮
+    * Functional testing for stability and compatibility
+    * AI/ML performance testing for Llama and Mistra 
   * Tooling 🛠️
     * Enable WSL arm64 support (done)
     * Windows bi-directional cross-compilation for x64 and amd64 targets (done)
