@@ -27,7 +27,7 @@
     * Windows bi-directional cross-compilation for x64 and amd64 targets (done)
     * Refactoring build and test scripts (done)
   * Infrastructure upgrades 🪛
-    * Upgrading Windows OpenSSL libraries to 3.4.x (done)
+    * Upgrade Windows OpenSSL libraries to 3.4.x (done)
     
 * v2025.1.0 (basic Windows on arm64 port)
   * Basic port to Windows on arm64 (done) 🚢
