@@ -26,7 +26,7 @@ Objeck can be built for various targets. The language is implemented in C++ and 
 *  Reference <code>objeck-lang/core/release/deploy/readme.html</code> to set additional paths and find examples
 
 ### Windows (ARM64, Visual Studio)
-*  Install MSVS build tools for arm64 ![Alt text](../docs/images/woa_installer.png)
+*  Install MSVS build tools for arm64 via the Visual Studio Installer. Go to 'Modify', 'Individual Components', and search 'arm64' ![Alt text](../docs/images/woa_installer.png)
 *  Unzip the OpenSSL Windows libraries in <code>objeck-lang/core/lib/openssl/win/arm64</code>
 *  Using Visual Studio 2022 or later open <code>objeck-lang/core/release/objeck.sln</code>
 *  Ensure the core build completes successfully (in Release mode)
