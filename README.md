@@ -28,7 +28,7 @@
     * Enable compiler virtual machine, debugger, and REPL shell (done)
     * Port arm64 JIT from macOS/Linux (done)
     * Test and debug garbage collection issues (done, more testing trickly with JIT complication)
-  * Port supporting libraries 📚
+  * Port supporting libraries for Windows on arm64 📚
     * OpenSSL and encryption (done)
     * ODBC database access (done)
     * Language server protocol support (done)
