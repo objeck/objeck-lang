@@ -14,7 +14,7 @@
 
 ## Releases
 
-* v2025.1.x 🎮
+* v2025.1.2 🎮
     * Windows on arm64 support for [SDL2](https://github.com/mmozeiko/build-sdl2/releases/tag/2025-01-05)
       * SDL2 core
       * Image library
