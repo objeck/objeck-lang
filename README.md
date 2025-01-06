@@ -1,4 +1,4 @@
-<h1 align="center">Cross-Platform, Object-Oriented, and Functional</h1>
+<h1 align="center">Lightweight, Object-Oriented, Functional + AI-Enabled</h1>
 
 <p align="center">
   <a href="https://www.objeck.org"><img src="docs/images/gear_wheel_256.png" width="256" alt="An Objeck"/></a>
@@ -14,10 +14,15 @@
 
 ## Releases
 
-* v2025.1.x 🎮
-    * Windows on arm64 support for SDL2
+* v2025.1.2 🎮
+    * Windows on arm64 support for [SDL2](https://github.com/mmozeiko/build-sdl2/releases/tag/2025-01-05)
+      * SDL2 core
+      * Image library
+      * Mixer library
+      * TIFF library
+    * Explore adding newer OpenAI and Gemini features
     
-* <ins>v2025.1.1 (release in mid-January 2025)</ins>🔥
+* <ins>v2025.1.1 (release in early-January 2025)</ins>🔥
   * Testing  🧪
     * Functional testing for stability and compatibility
     * Fix Coverity and CodeQL static analysis findings 🔍 (done)
@@ -27,13 +32,13 @@
     * Windows bi-directional cross-compilation for x64 and amd64 targets (done)
     * Refactoring build and test scripts (done)
   * Infrastructure upgrades 🪛
-    * Upgrading Windows OpenSSL libraries to 3.4.x (done)
+    * Upgrade Windows OpenSSL libraries to 3.4.x (done)
     
 * v2025.1.0 (basic Windows on arm64 port)
   * Basic port to Windows on arm64 (done) 🚢
     * Enable compiler virtual machine, debugger, and REPL shell (done)
     * Port arm64 JIT from macOS/Linux (done)
-    * Test and debug garbage collection issues (done, more testing tricky with JIT complication)
+    * Test and debug garbage collection issues
   * Port supporting libraries to Windows on arm64 📚
     * OpenSSL and encryption (done)
     * ODBC database access (done)
