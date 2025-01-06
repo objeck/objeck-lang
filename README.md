@@ -15,11 +15,11 @@
 ## Releases
 
 * v2025.1.x 🎮
-    * Windows on arm64 support for SDL2
-      * Build and port SDL2 core
-      * Build and port image library
-      * Build and port mixer library
-      * Build and port TIFF library
+    * Windows on arm64 support for [SDL2](https://github.com/mmozeiko/build-sdl2/releases/tag/2025-01-05)
+      * SDL2 core
+      * Image library
+      * Mixer library
+      * TIFF library
     * Explore adding newer OpenAI and Gemini features
     
 * <ins>v2025.1.1 (release in early-January 2025)</ins>🔥
