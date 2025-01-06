@@ -20,7 +20,7 @@
       * Build and port image library
       * Build and port mixer library
       * Build and port TIFF library
-    * Explore adding more OpenAI and Gemini features
+    * Explore adding newer OpenAI and Gemini features
     
 * <ins>v2025.1.1 (release in early-January 2025)</ins>🔥
   * Testing  🧪
