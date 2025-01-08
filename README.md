@@ -1,7 +1,7 @@
-<h1 align="center">Versatile, Scalable and Efficient</h1>
+<h1 align="center">Object-Oriented, Functional & AI-Enabled</h1>
 
 <p align="center">
-  <a href="https://www.objeck.org"><img src="docs/images/gear_wheel_256.png""  width="256" alt="An Objeck"/></a>
+  <a href="https://www.objeck.org"><img src="docs/images/gear_wheel_256.png" width="256" alt="An Objeck"/></a>
 </p>
 
 <hr/>
@@ -14,18 +14,43 @@
 
 ## Releases
 
-* v2025.1.0
-    * Windows on Arm support
-      * Enable compiler, virtual machine, debugger, and REPL shell
-      * Port ARM64 JIT (from macOS/Linux)
-      * Port supporting libraries
+* v2025.1.2 🎮
+    * Windows on arm64 support for [SDL2](https://github.com/mmozeiko/build-sdl2/releases/tag/2025-01-05)
+      * SDL2 core
+      * Image library
+      * Mixer library
+      * TIFF library
+    * Explore adding newer OpenAI and Gemini features
+    
+* <ins>v2025.1.1 (release in early-January 2025)</ins>🔥
+  * Testing  🧪
+    * Functional testing for stability and compatibility
+    * Fix Coverity and CodeQL static analysis findings 🔍 (done)
+    * AI/ML performance testing for Llama and Mistra 🧮
+  * Tooling 🛠️
+    * Enable WSL arm64 support (done)
+    * Windows bi-directional cross-compilation for x64 and amd64 targets (done)
+    * Refactoring build and test scripts (done)
+  * Infrastructure upgrades 🪛
+    * Upgrade Windows OpenSSL libraries to 3.4.x (done)
+    
+* v2025.1.0 (basic Windows on arm64 port)
+  * Basic port to Windows on arm64 (done) 🚢
+    * Enable compiler virtual machine, debugger, and REPL shell (done)
+    * Port arm64 JIT from macOS/Linux (done)
+    * Test and debug garbage collection issues
+  * Port supporting libraries to Windows on arm64 📚
+    * OpenSSL and encryption (done)
+    * ODBC database access (done)
+    * Language server protocol support (done)
+    * 2D matrix algebra via Eigen (done)
 
 * v2024.12.0
-  * UDP socket support (done)
-  * SDL2 updates (done)
+  * UDP socket support (done) 🔌
+  * SDL2 updates (done) 🎮
   * Bug fixes (done)
 
-* v2024.10.0 **(current)**
+* <ins>v2024.10.0 (current)</ins>
   * Bug fix (#503)
 
 ## Examples

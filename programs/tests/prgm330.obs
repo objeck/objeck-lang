@@ -1,0 +1,7 @@
+use Collection;
+
+class Test2 {
+	function : Foo() ~ Vector[]<IntRef> {
+		return Nil;
+	}
+}

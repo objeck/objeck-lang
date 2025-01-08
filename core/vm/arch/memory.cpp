@@ -1131,14 +1131,11 @@ void* MemoryManager::CheckJitRoots(void* arg)
 
       // NOTE: this marks temporary variables that are stored in JIT memory
       // during some method calls. There are 6 integer temp addresses
-#ifdef _ARM32
-      // for ARM32, skip the link register
-      for(int i = 1; i <= 6; ++i) {
-#elif _ARM64
+#ifdef _ARM64
       mem = start;
-      for(int i = 0; i > -16; --i) {
+      for(int i = 0; i > -JIT_TMP_LOOK_BACK; --i) {
 #else
-      for(int i = 0; i < 16; ++i) {
+      for(int i = 0; i < JIT_TMP_LOOK_BACK; ++i) {
 #endif
         size_t* check_mem = (size_t*)mem[i];
 #ifndef _GC_SERIAL

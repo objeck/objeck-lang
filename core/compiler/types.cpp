@@ -250,6 +250,7 @@ frontend::Type* TypeParser::ParseType(const std::wstring& type_name)
   // set generics
   if(index < type_name.size() && type_name[index] == L'<') {
     type->SetGenerics(ParseGenerics(index, type_name));
+    index++;
   }
 
   // set dimension

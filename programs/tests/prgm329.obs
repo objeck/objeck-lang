@@ -1,0 +1,13 @@
+use Collection;
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+#		foo := Test->Foo();
+		foo := Test2->Foo();
+		bar := foo[0];
+	}
+
+	function : Foo() ~ Vector[]<IntRef> {
+		return Nil;
+	}
+}
