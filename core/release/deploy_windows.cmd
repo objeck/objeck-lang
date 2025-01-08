@@ -5,6 +5,11 @@ if [%1]==[] (
 	goto end
 )
 
+IF "%VCINSTALLDIR%"=="" (
+	echo Could not Visual Studio build environment
+	goto end
+)
+
 set ZIP_BIN="\Program Files\7-Zip"
 
 if [%1] == [arm64] (
@@ -206,37 +211,37 @@ if [%2] NEQ [deploy] goto end
 	)
 
 	rmdir /q /s %TARGET%\examples\doc
-	rmdir /q /s "%USERPROFILE%\Desktop\%INSTALL_TARGET%"
-	mkdir "%USERPROFILE%\Desktop\%INSTALL_TARGET%"
-	xcopy /e %TARGET% "%USERPROFILE%\Desktop\%INSTALL_TARGET%"
-	mkdir "%USERPROFILE%\Desktop\%INSTALL_TARGET%\doc\icons"
-	copy ..\..\docs\images\setup_icons\*.ico "%USERPROFILE%\Desktop\%INSTALL_TARGET%\doc\icons"
-	copy ..\..\docs\images\setup_icons\*.jpg "%USERPROFILE%\Desktop\%INSTALL_TARGET%\doc\icons"
-	copy ..\..\docs\eula.rtf "%USERPROFILE%\Desktop\%INSTALL_TARGET%\doc"
+	rmdir /q /s "%USERPROFILE%\Documents\Objeck-Build\%INSTALL_TARGET%"
+	mkdir "%USERPROFILE%\Documents\Objeck-Build\%INSTALL_TARGET%"
+	xcopy /e %TARGET% "%USERPROFILE%\Documents\Objeck-Build\%INSTALL_TARGET%"
+	mkdir "%USERPROFILE%\Documents\Objeck-Build\%INSTALL_TARGET%\doc\icons"
+	copy ..\..\docs\images\setup_icons\*.ico "%USERPROFILE%\Documents\Objeck-Build\%INSTALL_TARGET%\doc\icons"
+	copy ..\..\docs\images\setup_icons\*.jpg "%USERPROFILE%\Documents\Objeck-Build\%INSTALL_TARGET%\doc\icons"
+	copy ..\..\docs\eula.rtf "%USERPROFILE%\Documents\Objeck-Build\%INSTALL_TARGET%\doc"
 	
 	if [%1] == [arm64] (
 		copy /y ..\utils\setup\arm64 .
 		devenv setup-arm64.sln /rebuild "Release"
 		signtool sign /fd sha256 /f "%USERPROFILE%\Dropbox\Personal\signing keys\2022\code\randy_hollines.p12" /p %3 /d "Objeck: Windows Toolchain" /t http://timestamp.sectigo.com release-arm64\setup.msi
-		copy release-arm64\setup.msi "%USERPROFILE%\Desktop\objeck-windows-arm64_0.0.0.msi"
+		copy release-arm64\setup.msi "%USERPROFILE%\Documents\Objeck-Build\objeck-windows-arm64_0.0.0.msi"
 
-		rmdir /s /q "%USERPROFILE%\Desktop\release-arm64"
-		mkdir "%USERPROFILE%\Desktop\release-arm64"
-		move "%USERPROFILE%\Desktop\%INSTALL_TARGET%" "%USERPROFILE%\Desktop\release-arm64\%INSTALL_TARGET%"
-		%ZIP_BIN%\7z.exe a -r -tzip "%USERPROFILE%\Desktop\release-arm64\objeck-windows-arm64_0.0.0.zip" "%USERPROFILE%\Desktop\release-arm64\%INSTALL_TARGET%"
-		move "%USERPROFILE%\Desktop\objeck-windows-arm64_0.0.0.msi" "%USERPROFILE%\Desktop\release-arm64"
+		rmdir /s /q "%USERPROFILE%\Documents\Objeck-Build\release-arm64"
+		mkdir "%USERPROFILE%\Documents\Objeck-Build\release-arm64"
+		move "%USERPROFILE%\Documents\Objeck-Build\%INSTALL_TARGET%" "%USERPROFILE%\Documents\Objeck-Build\release-arm64\%INSTALL_TARGET%"
+		%ZIP_BIN%\7z.exe a -r -tzip "%USERPROFILE%\Documents\Objeck-Build\release-arm64\objeck-windows-arm64_0.0.0.zip" "%USERPROFILE%\Documents\Objeck-Build\release-arm64\%INSTALL_TARGET%"
+		move "%USERPROFILE%\Documents\Objeck-Build\objeck-windows-arm64_0.0.0.msi" "%USERPROFILE%\Documents\Objeck-Build\release-arm64"
 	)
 
 	if [%1] == [x64] (
 		copy /y ..\utils\setup\x64 .
 		devenv setup-x64.sln /rebuild "Release"
 		signtool sign /fd sha256 /f "%USERPROFILE%\Dropbox\Personal\signing keys\2022\code\randy_hollines.p12" /p %3 /d "Objeck: Windows Toolchain" /t http://timestamp.sectigo.com release-x64\setup.msi
-		copy release-x64\setup.msi "%USERPROFILE%\Desktop\objeck-windows-x64_0.0.0.msi"
+		copy release-x64\setup.msi "%USERPROFILE%\Documents\Objeck-Build\objeck-windows-x64_0.0.0.msi"
 
-		rmdir /s /q "%USERPROFILE%\Desktop\release-x64"
-		mkdir "%USERPROFILE%\Desktop\release-x64"
-		move "%USERPROFILE%\Desktop\%INSTALL_TARGET%" "%USERPROFILE%\Desktop\release-x64\%INSTALL_TARGET%"
-		%ZIP_BIN%\7z.exe a -r -tzip "%USERPROFILE%\Desktop\release-x64\objeck-windows-x64_0.0.0.zip" "%USERPROFILE%\Desktop\release-x64\%INSTALL_TARGET%"
-		move "%USERPROFILE%\Desktop\objeck-windows-x64_0.0.0.msi" "%USERPROFILE%\Desktop\release-x64"
+		rmdir /s /q "%USERPROFILE%\Documents\Objeck-Build\release-x64"
+		mkdir "%USERPROFILE%\Documents\Objeck-Build\release-x64"
+		move "%USERPROFILE%\Documents\Objeck-Build\%INSTALL_TARGET%" "%USERPROFILE%\Documents\Objeck-Build\release-x64\%INSTALL_TARGET%"
+		%ZIP_BIN%\7z.exe a -r -tzip "%USERPROFILE%\Documents\Objeck-Build\release-x64\objeck-windows-x64_0.0.0.zip" "%USERPROFILE%\Documents\Objeck-Build\release-x64\%INSTALL_TARGET%"
+		move "%USERPROFILE%\Documents\Objeck-Build\objeck-windows-x64_0.0.0.msi" "%USERPROFILE%\Documents\Objeck-Build\release-x64"
 	)
 :end

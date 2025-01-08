@@ -2,7 +2,7 @@
 
 set OBJECK_ROOT=C:\Users\objec\Documents\Code\objeck-lang
 SET OBJECK_LIB_SRC=%OBJECK_ROOT%\core\compiler\lib_src
-SET OBJECK_LIB_DST=%OBJECK_ROOT%\core\release\deploy64\lib
+SET OBJECK_LIB_DST=%OBJECK_ROOT%\core\release\deploy-arm64\lib
 
 REM obc -src %OBJECK_LIB_SRC%\json.obs -lib gen_collect -tar lib -opt s3 -dest %OBJECK_LIB_DST%\json.obl
 obc -src %OBJECK_LIB_SRC%\net_common.obs,%OBJECK_LIB_SRC%\net.obs,%OBJECK_LIB_SRC%\net_secure.obs -lib json -tar lib -dest %OBJECK_LIB_DST%\net.obl
