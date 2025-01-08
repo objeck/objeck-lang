@@ -4584,20 +4584,22 @@ bool TrapProcessor::SockUdpInString(StackProgram* program, size_t* inst, size_t*
     socklen_t addr_in_size = sizeof(struct sockaddr_in);
 
     if((long)sock > -1) {
-      int read = recvfrom(sock, buffer, MID_BUFFER_MAX - 1, 0, (struct sockaddr*)addr_in, &addr_in_size);
-      buffer[read] = '\0';
+      const int read = recvfrom(sock, buffer, MID_BUFFER_MAX - 1, 0, (struct sockaddr*)addr_in, &addr_in_size);
+      if(read > -1) {
+        buffer[read] = '\0';
 
-      // copy content
-      std::wstring in = BytesToUnicode(buffer);
-      while(!in.empty() && (in.back() == L'\r' || in.back() == L'\n')) {
-        in.pop_back();
-      }
-      wchar_t* out = (wchar_t*)(array + 3);
+        // copy content
+        std::wstring in = BytesToUnicode(buffer);
+        while(!in.empty() && (in.back() == L'\r' || in.back() == L'\n')) {
+          in.pop_back();
+        }
+        wchar_t* out = (wchar_t*)(array + 3);
 #ifdef _WIN32
-      wcsncpy_s(out, array[0] + 1, in.c_str(), in.size());
+        wcsncpy_s(out, array[0] + 1, in.c_str(), in.size());
 #else
-      wcsncpy(out, in.c_str(), in.size());
+        wcsncpy(out, in.c_str(), in.size());
 #endif
+      }
     }
   }
 

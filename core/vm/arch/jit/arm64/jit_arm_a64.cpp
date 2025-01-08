@@ -154,7 +154,7 @@ void JitArm64::RegisterRoot() {
 
   // set JIT offset value
   move_mem_reg(JIT_OFFSET, SP, mem_holder->GetRegister());
-  move_imm_mem(offset, 0, mem_holder->GetRegister());
+  move_imm_mem((long)offset, 0, mem_holder->GetRegister());
 
   // clean up
   ReleaseRegister(mem_holder);
@@ -171,7 +171,7 @@ void JitArm64::RegisterRoot() {
   
   // set end
   move_sp_reg(end_reg->GetRegister());
-  add_imm_reg(TMP_X0 + offset, end_reg->GetRegister());
+  add_imm_reg((long)(TMP_X0 + offset), end_reg->GetRegister());
   
   // compare
   cmp_reg_reg(start_reg->GetRegister(), end_reg->GetRegister());
@@ -976,7 +976,7 @@ void JitArm64::ProcessLoad(StackInstr* instr) {
     }
     else {
       holder = GetRegister();
-      move_mem_reg(left->GetOperand(), SP, holder->GetRegister());
+      move_mem_reg((long)left->GetOperand(), SP, holder->GetRegister());
     }
     CheckNilDereference(holder->GetRegister());
     
@@ -1040,7 +1040,7 @@ void JitArm64::ProcessJump(StackInstr* instr) {
 
       case MEM_INT: {
         RegisterHolder* holder = GetRegister();
-        move_mem_reg(left->GetOperand(), SP, holder->GetRegister());
+        move_mem_reg((long)left->GetOperand(), SP, holder->GetRegister());
         cmp_imm_reg(instr->GetOperand2(), holder->GetRegister());
         ReleaseRegister(holder);
       }
@@ -1144,13 +1144,13 @@ void JitArm64::ProcessStoreByteElement(StackInstr* instr) {
   
   switch(left->GetType()) {
   case IMM_INT:
-    move_imm_mem8(left->GetOperand(), 0, elem_holder->GetRegister());
+    move_imm_mem8((int8_t)left->GetOperand(), 0, elem_holder->GetRegister());
     ReleaseRegister(elem_holder);
     break;
 
   case MEM_INT: {
     RegisterHolder* holder = GetRegister(false);
-    move_mem_reg(left->GetOperand(), SP, holder->GetRegister());
+    move_mem_reg((long)left->GetOperand(), SP, holder->GetRegister());
     move_reg_mem8(holder->GetRegister(), 0, elem_holder->GetRegister());
     ReleaseRegister(holder);
     ReleaseRegister(elem_holder);
@@ -1180,12 +1180,12 @@ void JitArm64::ProcessStoreCharElement(StackInstr* instr) {
   
   switch(left->GetType()) {
   case IMM_INT:
-    move_imm_mem32(left->GetOperand(), 0, elem_holder->GetRegister());
+    move_imm_mem32(int32_t(left->GetOperand()), 0, elem_holder->GetRegister());
     break;
 
   case MEM_INT: {
     RegisterHolder* holder = GetRegister(false);
-    move_mem_reg(left->GetOperand(), SP, holder->GetRegister());
+    move_mem_reg((long)left->GetOperand(), SP, holder->GetRegister());
 #ifdef _M_ARM64
     move_reg_mem16(holder->GetRegister(), 0, elem_holder->GetRegister());
 #else
@@ -1223,12 +1223,12 @@ void JitArm64::ProcessStoreIntElement(StackInstr* instr) {
   
   switch(left->GetType()) {
   case IMM_INT:
-    move_imm_mem(left->GetOperand(), 0, elem_holder->GetRegister());
+    move_imm_mem((long)left->GetOperand(), 0, elem_holder->GetRegister());
     break;
 
   case MEM_INT: {
     RegisterHolder* holder = GetRegister();
-    move_mem_reg(left->GetOperand(), SP, holder->GetRegister());
+    move_mem_reg((long)left->GetOperand(), SP, holder->GetRegister());
     move_reg_mem(holder->GetRegister(), 0, elem_holder->GetRegister());
     ReleaseRegister(holder);
   }
@@ -1263,7 +1263,7 @@ void JitArm64::ProcessStoreFloatElement(StackInstr* instr) {
   case MEM_FLOAT:
   case MEM_INT: {
     RegisterHolder* holder = GetFpRegister();
-    move_mem_freg(left->GetOperand(), SP, holder->GetRegister());
+    move_mem_freg((long)left->GetOperand(), SP, holder->GetRegister());
     move_freg_mem(holder->GetRegister(), 0, elem_holder->GetRegister());
     ReleaseFpRegister(holder);
   }
@@ -1297,7 +1297,7 @@ void JitArm64::ProcessFloatToInt(StackInstr* instr) {
     
   case MEM_FLOAT:
   case MEM_INT:
-    vcvt_mem_reg(left->GetOperand(), SP, holder->GetRegister());
+    vcvt_mem_reg((long)left->GetOperand(), SP, holder->GetRegister());
     break;
 
   case REG_FLOAT:
@@ -1325,7 +1325,7 @@ void JitArm64::ProcessIntToFloat(StackInstr* instr) {
     break;
     
   case MEM_INT:
-    vcvt_mem_freg(left->GetOperand(),
+    vcvt_mem_freg((long)left->GetOperand(),
      SP, holder->GetRegister());
     break;
 
@@ -1362,7 +1362,7 @@ void JitArm64::ProcessStore(StackInstr* instr) {
     }
     else {
       addr_holder = GetRegister();
-      move_mem_reg(left->GetOperand(), SP, addr_holder->GetRegister());
+      move_mem_reg((long)left->GetOperand(), SP, addr_holder->GetRegister());
     }
     dest = addr_holder->GetRegister();
     CheckNilDereference(dest);
@@ -1377,36 +1377,36 @@ void JitArm64::ProcessStore(StackInstr* instr) {
   switch(left->GetType()) {
   case IMM_INT:
     if(instr->GetType() == STOR_FUNC_VAR) {
-      move_imm_mem(left->GetOperand(), instr->GetOperand3(), dest);
+      move_imm_mem((long)left->GetOperand(), instr->GetOperand3(), dest);
       
       RegInstr* left2 = working_stack.front();
       working_stack.pop_front();
-      move_imm_mem(left2->GetOperand(), instr->GetOperand3() + sizeof(size_t), dest);
+      move_imm_mem((long)left2->GetOperand(), instr->GetOperand3() + sizeof(size_t), dest);
 
       delete left2;
       left2 = nullptr;
     }
     else {
-      move_imm_mem(left->GetOperand(), instr->GetOperand3(), dest);
+      move_imm_mem((long)left->GetOperand(), instr->GetOperand3(), dest);
     }
     break;
 
   case MEM_INT: {
     RegisterHolder* holder = GetRegister();
     if(instr->GetType() == STOR_FUNC_VAR) {
-      move_mem_reg(left->GetOperand(), SP, holder->GetRegister());
+      move_mem_reg((long)left->GetOperand(), SP, holder->GetRegister());
       move_reg_mem(holder->GetRegister(), instr->GetOperand3(), dest);
 
       RegInstr* left2 = working_stack.front();
       working_stack.pop_front();
-      move_mem_reg(left2->GetOperand(), SP, holder->GetRegister());
+      move_mem_reg((long)left2->GetOperand(), SP, holder->GetRegister());
       move_reg_mem(holder->GetRegister(), instr->GetOperand3() + sizeof(size_t), dest);
 
       delete left2;
       left2 = nullptr;
     }
     else {
-      move_mem_reg(left->GetOperand(), SP, holder->GetRegister());
+      move_mem_reg((long)left->GetOperand(), SP, holder->GetRegister());
       move_reg_mem(holder->GetRegister(), instr->GetOperand3(), dest);
     }
     ReleaseRegister(holder);
@@ -1440,7 +1440,7 @@ void JitArm64::ProcessStore(StackInstr* instr) {
     
   case MEM_FLOAT: {
     RegisterHolder* holder = GetFpRegister();
-    move_mem_freg(left->GetOperand(), SP, holder->GetRegister());
+    move_mem_freg((long)left->GetOperand(), SP, holder->GetRegister());
     move_freg_mem(holder->GetRegister(), instr->GetOperand3(), dest);
     ReleaseFpRegister(holder);
   }
@@ -1474,7 +1474,7 @@ void JitArm64::ProcessCopy(StackInstr* instr) {
     working_stack.pop_front();
 
     RegisterHolder* holder = GetRegister();
-    move_mem_reg(left->GetOperand(), SP, holder->GetRegister());
+    move_mem_reg((long)left->GetOperand(), SP, holder->GetRegister());
     CheckNilDereference(holder->GetRegister());
     dest = holder->GetRegister();
     ReleaseRegister(holder);
@@ -1500,7 +1500,7 @@ void JitArm64::ProcessCopy(StackInstr* instr) {
 
   case MEM_INT: {
     RegisterHolder* holder = GetRegister();
-    move_mem_reg(left->GetOperand(), SP, holder->GetRegister());
+    move_mem_reg((long)left->GetOperand(), SP, holder->GetRegister());
     move_reg_mem(holder->GetRegister(), instr->GetOperand3(), dest);
     // save register
     working_stack.pop_front();
@@ -1532,7 +1532,7 @@ void JitArm64::ProcessCopy(StackInstr* instr) {
 
   case MEM_FLOAT: {
     RegisterHolder* holder = GetFpRegister();
-    move_mem_freg(left->GetOperand(), SP, holder->GetRegister());
+    move_mem_freg((long)left->GetOperand(), SP, holder->GetRegister());
     move_freg_mem(holder->GetRegister(), instr->GetOperand3(), dest);
     // save register
     working_stack.pop_front();
@@ -1557,7 +1557,7 @@ void JitArm64::ProcessStackCallback(long instr_id, StackInstr* instr, long &inst
     non_params = 0;
   }
   else {
-    non_params = working_stack.size() - params;
+    non_params = (int32_t)working_stack.size() - params;
   }
   
 #ifdef _DEBUG_JIT_JIT
@@ -1662,7 +1662,7 @@ void JitArm64::ProcessReturn(long params) {
       non_params = 0;
     }
     else {
-      non_params = working_stack.size() - params;
+      non_params = (int32_t)(working_stack.size() - params);
     }
 #ifdef _DEBUG_JIT_JIT
     std::wcout << L"Return: params=" << params << L", non-params=" << non_params << endl;
@@ -1679,14 +1679,14 @@ void JitArm64::ProcessReturn(long params) {
         move_mem_reg(OP_STACK_POS, SP, stack_pos_holder->GetRegister());
         switch(left->GetType()) {
         case IMM_INT:
-          move_imm_mem(left->GetOperand(), 0, op_stack_holder->GetRegister());
+          move_imm_mem((long)left->GetOperand(), 0, op_stack_holder->GetRegister());
           inc_mem(0, stack_pos_holder->GetRegister());
           add_imm_reg(sizeof(size_t), op_stack_holder->GetRegister());
           break;
   
         case MEM_INT: {
             RegisterHolder* temp_holder = GetRegister();
-            move_mem_reg(left->GetOperand(), SP, temp_holder->GetRegister());
+            move_mem_reg((long)left->GetOperand(), SP, temp_holder->GetRegister());
             move_reg_mem(temp_holder->GetRegister(), 0, op_stack_holder->GetRegister());
             inc_mem(0, stack_pos_holder->GetRegister());
             add_imm_reg(sizeof(size_t), op_stack_holder->GetRegister());
@@ -1708,7 +1708,7 @@ void JitArm64::ProcessReturn(long params) {
   
         case MEM_FLOAT: {
             RegisterHolder* temp_holder = GetFpRegister();
-            move_mem_freg(left->GetOperand(), SP, temp_holder->GetRegister());
+            move_mem_freg((long)left->GetOperand(), SP, temp_holder->GetRegister());
             move_freg_mem(temp_holder->GetRegister(), 0, op_stack_holder->GetRegister());
             inc_mem(0, stack_pos_holder->GetRegister());
             add_imm_reg(sizeof(double), op_stack_holder->GetRegister());
@@ -1729,7 +1729,7 @@ void JitArm64::ProcessReturn(long params) {
     
     // clean up working stack
     if(params < 0) {
-      params = working_stack.size();
+      params = (long)working_stack.size();
     }
     for(int32_t i = 0; i < params; ++i) {
       RegInstr* left = working_stack.front();
@@ -1829,7 +1829,7 @@ void JitArm64::ProcessIntCalculation(StackInstr* instruction) {
   case IMM_INT:
     switch(right->GetType()) {
     case IMM_INT:
-      working_stack.push_front(ProcessIntFold(left->GetOperand(), right->GetOperand(), instruction->GetType()));
+      working_stack.push_front(ProcessIntFold((long)left->GetOperand(), (long)right->GetOperand(), instruction->GetType()));
       break;
       
     case REG_INT: {
@@ -1846,7 +1846,7 @@ void JitArm64::ProcessIntCalculation(StackInstr* instruction) {
 
     case MEM_INT: {
       RegisterHolder* holder = GetRegister();
-      move_mem_reg(right->GetOperand(), SP, holder->GetRegister());
+      move_mem_reg((long)right->GetOperand(), SP, holder->GetRegister());
 
       RegisterHolder* imm_holder = GetRegister();
       move_imm_reg(left->GetOperand(), imm_holder->GetRegister());
@@ -1868,8 +1868,7 @@ void JitArm64::ProcessIntCalculation(StackInstr* instruction) {
     switch(right->GetType()) {
     case IMM_INT: {
       RegisterHolder* holder = left->GetRegister();
-      math_imm_reg(right->GetOperand(), holder->GetRegister(),
-                   instruction->GetType());
+      math_imm_reg((long)right->GetOperand(), holder->GetRegister(), instruction->GetType());
       working_stack.push_front(new RegInstr(holder));
     }
       break;
@@ -1883,7 +1882,7 @@ void JitArm64::ProcessIntCalculation(StackInstr* instruction) {
     case MEM_INT: {
       RegisterHolder* lhs = left->GetRegister();
       RegisterHolder* rhs = GetRegister();
-      move_mem_reg(right->GetOperand(), SP, rhs->GetRegister());
+      move_mem_reg((long)right->GetOperand(), SP, rhs->GetRegister());
       math_reg_reg(rhs->GetRegister(), lhs->GetRegister(), instruction->GetType());
       ReleaseRegister(rhs);
       working_stack.push_front(new RegInstr(lhs));
@@ -1900,15 +1899,15 @@ void JitArm64::ProcessIntCalculation(StackInstr* instruction) {
     switch(right->GetType()) {
     case IMM_INT: {
       RegisterHolder* holder = GetRegister();
-      move_mem_reg(left->GetOperand(), SP, holder->GetRegister());
-      math_imm_reg(right->GetOperand(), holder->GetRegister(), instruction->GetType());
+      move_mem_reg((long)left->GetOperand(), SP, holder->GetRegister());
+      math_imm_reg((long)right->GetOperand(), holder->GetRegister(), instruction->GetType());
       working_stack.push_front(new RegInstr(holder));
     }
       break;
     case REG_INT: {
       RegisterHolder* lhs = right->GetRegister();
       RegisterHolder* rhs = GetRegister();
-      move_mem_reg(left->GetOperand(), SP, rhs->GetRegister());
+      move_mem_reg((long)left->GetOperand(), SP, rhs->GetRegister());
       math_reg_reg(lhs->GetRegister(), rhs->GetRegister(), instruction->GetType());
       ReleaseRegister(lhs);
       working_stack.push_front(new RegInstr(rhs));
@@ -1916,8 +1915,8 @@ void JitArm64::ProcessIntCalculation(StackInstr* instruction) {
       break;
     case MEM_INT: {
       RegisterHolder* holder = GetRegister();
-      move_mem_reg(left->GetOperand(), SP, holder->GetRegister());
-      math_mem_reg(right->GetOperand(), holder->GetRegister(), instruction->GetType());
+      move_mem_reg((long)left->GetOperand(), SP, holder->GetRegister());
+      math_mem_reg((long)right->GetOperand(), holder->GetRegister(), instruction->GetType());
       working_stack.push_front(new RegInstr(holder));
     }
       break;
@@ -1976,7 +1975,7 @@ void JitArm64::ProcessIntCalculation(StackInstr* instruction) {
     case MEM_FLOAT:
     case MEM_INT: {
       RegisterHolder* holder = GetFpRegister();
-      move_mem_freg(right->GetOperand(), SP, holder->GetRegister());
+      move_mem_freg((long)right->GetOperand(), SP, holder->GetRegister());
 
       RegisterHolder* imm_holder = GetFpRegister();
       move_imm_freg(left, imm_holder->GetRegister());
@@ -2018,7 +2017,7 @@ void JitArm64::ProcessIntCalculation(StackInstr* instruction) {
     case MEM_FLOAT:
     case MEM_INT: {
       RegisterHolder* holder = left->GetRegister();
-      math_mem_freg(right->GetOperand(), holder, instruction->GetType());
+      math_mem_freg((long)right->GetOperand(), holder, instruction->GetType());
       working_stack.push_front(new RegInstr(holder));
     }
       break;
@@ -2033,7 +2032,7 @@ void JitArm64::ProcessIntCalculation(StackInstr* instruction) {
     switch(right->GetType()) {
     case IMM_FLOAT: {
       RegisterHolder* holder = GetFpRegister();
-      move_mem_freg(left->GetOperand(), SP, holder->GetRegister());
+      move_mem_freg((long)left->GetOperand(), SP, holder->GetRegister());
       
       RegisterHolder* imm_holder = GetFpRegister();
       move_imm_freg(right, imm_holder->GetRegister());
@@ -2046,7 +2045,7 @@ void JitArm64::ProcessIntCalculation(StackInstr* instruction) {
     case REG_FLOAT: {
       RegisterHolder* holder = right->GetRegister();
       RegisterHolder* right_holder = GetFpRegister();
-      move_mem_freg(left->GetOperand(), SP, right_holder->GetRegister());
+      move_mem_freg((long)left->GetOperand(), SP, right_holder->GetRegister());
       math_freg_freg(holder->GetRegister(), right_holder, instruction->GetType());
       ReleaseFpRegister(holder);
       working_stack.push_front(new RegInstr(right_holder));
@@ -2056,10 +2055,10 @@ void JitArm64::ProcessIntCalculation(StackInstr* instruction) {
     case MEM_FLOAT:
     case MEM_INT: {
       RegisterHolder* left_holder = GetFpRegister();
-      move_mem_freg(left->GetOperand(), SP, left_holder->GetRegister());
+      move_mem_freg((long)left->GetOperand(), SP, left_holder->GetRegister());
 
       RegisterHolder* right_holder = GetFpRegister();
-      move_mem_freg(right->GetOperand(), SP, right_holder->GetRegister());
+      move_mem_freg((long)right->GetOperand(), SP, right_holder->GetRegister());
       math_freg_freg(right_holder->GetRegister(), left_holder, instruction->GetType());
       ReleaseFpRegister(right_holder);
       working_stack.push_front(new RegInstr(left_holder));
@@ -2500,7 +2499,7 @@ void JitArm64::shl_imm_reg(long value, Register dest) {
   imm_bits = abs(value);
   imm_bits.flip();
   
-  const uint8_t imms = imm_bits.to_ulong();
+  const uint8_t imms = (uint8_t)imm_bits.to_ulong();
   op_code |= imms << 10;
   
   const uint8_t immr = imms + 1;
@@ -3750,7 +3749,7 @@ void JitArm64::ProcessFloatOperation(StackInstr* instruction)
   }
   
   // load D0
-  move_mem_freg(left->GetOperand(), SP, D0);
+  move_mem_freg((long)left->GetOperand(), SP, D0);
   
   // choose function
   double(*func_ptr)(double);
@@ -3869,7 +3868,7 @@ void JitArm64::ProcessFloatRound(StackInstr* instruction, const wchar_t mode)
   }
   
   // load D0
-  move_mem_freg(left->GetOperand(), SP, D0);
+  move_mem_freg((long)left->GetOperand(), SP, D0);
   
   if(mode == L'f') {
     floor_freg_freg(D0 , D0);
@@ -3908,7 +3907,7 @@ void JitArm64::ProcessFloatSquareRoot(StackInstr* instruction)
   }
   
   // load D0
-  move_mem_freg(left->GetOperand(), SP, D0);
+  move_mem_freg((long)left->GetOperand(), SP, D0);
   sqrt_freg_freg(D0 , D0);
   
   // get return and restore D0, if needed
@@ -3943,8 +3942,8 @@ void JitArm64::ProcessFloatOperation2(StackInstr* instruction)
   move_freg_mem(D1, TMP_D1, SP);
    
   // load D0
-  move_mem_freg(right->GetOperand(), SP, D0);
-  move_mem_freg(left->GetOperand(), SP, D1);
+  move_mem_freg((long)right->GetOperand(), SP, D0);
+  move_mem_freg((long)left->GetOperand(), SP, D1);
   
   // choose function
   double(*func_ptr)(double, double);
@@ -4131,7 +4130,7 @@ RegisterHolder* JitArm64::ArrayIndex(StackInstr* instr, MemoryType type)
 
   case MEM_INT:
     array_holder = GetRegister();
-    move_mem_reg(holder->GetOperand(), SP, array_holder->GetRegister());
+    move_mem_reg((long)holder->GetOperand(), SP, array_holder->GetRegister());
     break;
 
   default:
@@ -4170,7 +4169,7 @@ RegisterHolder* JitArm64::ArrayIndex(StackInstr* instr, MemoryType type)
 
   case MEM_INT:
     index_holder = GetRegister();
-    move_mem_reg(holder->GetOperand(), SP, index_holder->GetRegister());
+    move_mem_reg((long)holder->GetOperand(), SP, index_holder->GetRegister());
     break;
 
   default:
@@ -4190,7 +4189,7 @@ RegisterHolder* JitArm64::ArrayIndex(StackInstr* instr, MemoryType type)
     working_stack.pop_front();
     switch(holder->GetType()) {
     case IMM_INT:
-      add_imm_reg(holder->GetOperand(), index_holder->GetRegister());
+      add_imm_reg((long)holder->GetOperand(), index_holder->GetRegister());
       break;
 
     case REG_INT:
@@ -4199,7 +4198,7 @@ RegisterHolder* JitArm64::ArrayIndex(StackInstr* instr, MemoryType type)
       break;
 
     case MEM_INT:
-      add_mem_reg(holder->GetOperand(), SP, index_holder->GetRegister());
+      add_mem_reg((long)holder->GetOperand(), SP, index_holder->GetRegister());
       break;
 
     default:

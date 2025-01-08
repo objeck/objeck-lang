@@ -50,6 +50,8 @@
 #define SIZE_OR_CLS -2
 #define TYPE -3
 
+#define JIT_TMP_LOOK_BACK 16
+
 struct StackOperMemory {
   size_t* op_stack;
   long* stack_pos;
