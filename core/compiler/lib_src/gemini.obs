@@ -61,7 +61,7 @@ bundle API.Google.Gemini {
 ```
 content := Content->New("user")->AddPart(TextPart->New("What number is this image showing?"))
   ->AddPart(BinaryPart->New(FileReader->ReadBinaryFile("thirdteen.png"), "image/png"));
-candidates := Model->GenerateContent("models/gemini-pro-vision", content, EndPoint->GetApiKey());
+candidates := Model->GenerateContent("models/gemini-1.5-flash", content, EndPoint->GetApiKey());
 each(candidate in candidates) {
   candidate->ToString()->PrintLine();
 };
@@ -295,6 +295,7 @@ each(candidate in candidates) {
 					safety_setting_obj_json->Insert("threshold", safety_setting->GetSecond());
 					safety_setting_array_json->Add(safety_setting_obj_json);
 				};
+				
 				contents_obj_json->Insert("safetySettings", safety_setting_array_json);
 			};
 
@@ -315,7 +316,7 @@ each(candidate in candidates) {
 				response := PostRequest(contents_obj_json, url);
 				if(response <> Nil) {
 					# response->ToString()->PrintLine();
-					#"---"->PrintLine();
+					# "---"->PrintLine();
 
 					return BuildContentResponse(contents_obj_json, content_array_json, response, funcs, url, false);
 				};
@@ -335,7 +336,6 @@ each(candidate in candidates) {
 				content_json := candidate_json->Get("content");
 				role := content_json->Get("role")->GetString();
 				finish_reason := candidate_json->Get("finishReason")->GetString();
-				index := candidate_json->Get("index")->GetInt();
 
 				# parts
 				parts := Vector->New()<Part>;
@@ -424,15 +424,18 @@ each(candidate in candidates) {
 				# safety ratings
 				safety_ratings := Vector->New()<Collection.Tuple.Pair<String, String>>;
 				safety_ratings_json := candidate_json->Get("safetyRatings");
-				each(safety_rating_json in safety_ratings_json) {
-					safety_category := safety_rating_json->Get("category")->GetString();
-					safety_probability := safety_rating_json->Get("probability")->GetString();
-					safety_rating := Collection.Tuple.Pair->New(safety_category, safety_probability)<String, String>;
+				
+				if(safety_ratings_json <> Nil) {
+					each(safety_rating_json in safety_ratings_json) {
+						safety_category := safety_rating_json->Get("category")->GetString();
+						safety_probability := safety_rating_json->Get("probability")->GetString();
+						safety_rating := Collection.Tuple.Pair->New(safety_category, safety_probability)<String, String>;
 
-					safety_ratings->AddBack(safety_rating);
+						safety_ratings->AddBack(safety_rating);
+					};
 				};
 
-				candidates->AddBack(Candidate->New(index, role, finish_reason, parts, safety_ratings));
+				candidates->AddBack(Candidate->New(role, finish_reason, parts, safety_ratings));
 			};
 
 			return candidates;
@@ -897,26 +900,16 @@ each(candidate in candidates) {
 	Candidate prompt response
 	~#
 	class Candidate from Content implements Stringify {
-		@index : Int;
 		@finish_reason : String;
 		@safety_ratings : Vector<Collection.Tuple.Pair<String,String>>;
 		
-		New(index : Int, role : String, finish_reason : String, parts : Vector<Part>, safety_ratings : Vector<Collection.Tuple.Pair<String,String>>) {
+		New(role : String, finish_reason : String, parts : Vector<Part>, safety_ratings : Vector<Collection.Tuple.Pair<String,String>>) {
 			Parent(parts, role);
 
-			@index := index;
 			@role := role;
 			@finish_reason := finish_reason;
 			@parts := parts;
 			@safety_ratings := safety_ratings;
-		}
-
-		#~
-		Get index
-		@return index
-		~#
-		method : public : GetIndex() ~ Int {
-			return @index;
 		}
 
 		#~
@@ -941,9 +934,6 @@ each(candidate in candidates) {
 		~#
 		method : public : ToString() ~ String {
 			buffer := "";
-
-			buffer->Append("index='");
-			buffer->Append(@index);
 
 			buffer->Append("', role='");
 			buffer->Append(@role);
@@ -1687,6 +1677,7 @@ bundle API.Google.Gemini.Tuning {
 					safety_setting_obj_json->Insert("threshold", safety_setting->GetSecond());
 					safety_setting_array_json->Add(safety_setting_obj_json);
 				};
+
 				contents_obj_json->Insert("safetySettings", safety_setting_array_json);
 			};
 

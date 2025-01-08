@@ -396,7 +396,28 @@ BOOL InitEnvironment()
   std::wstring pathText;
   pathText = L"@echo off\r\n@echo =========================================\r\n@echo Objeck Command Prompt (v";
   pathText += VERSION_STRING;
-  pathText += L")\r\n@echo Copyright(c) 2024, Randy Hollines\r\n@echo =========================================";
+
+#if defined(_WIN64) && defined(_WIN32) && defined(_M_ARM64)
+  pathText += L", arm64 Windows)";
+#elif defined(_WIN64) && defined(_WIN32)
+  pathText += L", x86_64 Windows)";
+#elif _WIN32
+  pathText += L", x86 Windows)";
+#elif _OSX
+#ifdef _ARM64
+  pathText += L", arm64 macOS)";
+#else
+  pathText += L", x86_64 macOS)";
+#endif
+#elif _X64
+  pathText += L", x86_64 Linux)";
+#elif _ARM32
+  pathText += L", ARMv7 Linux)";
+#else
+  pathText += L", x86 Linux)";
+#endif
+
+  pathText += L"\r\n@echo Copyright(c) 2025, Randy Hollines\r\n@echo =========================================";
   WriteLineToFile(cmdFile, pathText);
 
   pathText = L"set PATH=%PATH%;" + applicationPath + L"\\..\\bin;" + applicationPath + L"\\..\\lib\\sdl";
