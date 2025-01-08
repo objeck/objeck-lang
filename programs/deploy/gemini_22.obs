@@ -12,7 +12,7 @@ class IdentifyImage {
         ->AddPart(BinaryPart->New(FileReader->ReadBinaryFile(args[0]), "image/png"))
         ->AddPart(TextPart->New("Format output as JSON"));
 
-      candidates := Model->GenerateContent("models/gemini-pro-vision", content, EndPoint->GetApiKey());
+      candidates := Model->GenerateContent("models/gemini-1.5-flash", content, EndPoint->GetApiKey());
       if(candidates->Size() > 0) {
         candidates->First()->GetAllText()->Trim()->PrintLine();
       };
