@@ -61,7 +61,7 @@ bundle API.Google.Gemini {
 ```
 content := Content->New("user")->AddPart(TextPart->New("What number is this image showing?"))
   ->AddPart(BinaryPart->New(FileReader->ReadBinaryFile("thirdteen.png"), "image/png"));
-candidates := Model->GenerateContent("models/gemini-pro-vision", content, EndPoint->GetApiKey());
+candidates := Model->GenerateContent("models/gemini-1.5-flash", content, EndPoint->GetApiKey());
 each(candidate in candidates) {
   candidate->ToString()->PrintLine();
 };
