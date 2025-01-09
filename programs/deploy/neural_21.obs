@@ -13,7 +13,7 @@ class Test {
 		if(args->Size() = 1) {
 			network := NeuralNetwork->Load(model_file);
 			"Loaded model"->PrintLine();
-
+			
 			"Testing model..."->PrintLine();
 			tests := inputs_targets[2];
 			answers := inputs_targets[3];
@@ -21,7 +21,7 @@ class Test {
 			failures := 0;
 			each(i : answers) {
 				answer := answers->Get(i)->ToBool();
-				predict := network->Query(MatrixRef->New(tests->Get(i)->Get()));
+				predict := network->Query(FloatMatrixRef->New(tests->Get(i)->Get()));
 				if(predict <> answer) {
 					failures += 1;
 				};
