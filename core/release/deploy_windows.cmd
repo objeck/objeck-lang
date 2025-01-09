@@ -154,6 +154,16 @@ if [%1] == [x64] (
 cd ..\..\release
 
 REM TODO: migrate to arm64
+if [%1] == [arm64] (
+	REM sdl
+	cd ..\lib\sdl
+	devenv sdl\sdl.sln /rebuild "Release|ARM64"
+	copy sdl\Release\arm64\*.dll ..\..\release\%TARGET%\lib\native
+	copy lib\fonts\*.ttf ..\..\release\%TARGET%\lib\sdl\fonts
+	copy lib\arm64\*.dll ..\..\release\%TARGET%\lib\sdl
+	cd ..\..\release
+)
+
 if [%1] == [x64] (
 	REM sdl
 	cd ..\lib\sdl
