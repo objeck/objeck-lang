@@ -1,6 +1,6 @@
 /*
   SDL_ttf:  A companion library to SDL for working with TrueType (tm) fonts
-  Copyright (C) 2001-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 2001-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -48,8 +48,8 @@ extern "C" {
  * Printable format: "%d.%d.%d", MAJOR, MINOR, PATCHLEVEL
  */
 #define SDL_TTF_MAJOR_VERSION   2
-#define SDL_TTF_MINOR_VERSION   20
-#define SDL_TTF_PATCHLEVEL      1
+#define SDL_TTF_MINOR_VERSION   25
+#define SDL_TTF_PATCHLEVEL      0
 
 /**
  * This macro can be used to fill a version structure with the compile-time
@@ -71,21 +71,20 @@ extern "C" {
 #define TTF_VERSION(X)      SDL_TTF_VERSION(X)
 
 #if SDL_TTF_MAJOR_VERSION < 3 && SDL_MAJOR_VERSION < 3
+
 /**
- *  This is the version number macro for the current SDL_ttf version.
+ * This is the version number macro for the current SDL_ttf version.
  *
- *  In versions higher than 2.9.0, the minor version overflows into
- *  the thousands digit: for example, 2.23.0 is encoded as 4300.
- *  This macro will not be available in SDL 3.x or SDL_ttf 3.x.
- *
- *  \deprecated, use SDL_TTF_VERSION_ATLEAST or SDL_TTF_VERSION instead.
+ * In versions higher than 2.9.0, the minor version overflows into the
+ * thousands digit: for example, 2.23.0 is encoded as 4300. This macro will
+ * not be available in SDL 3.x or SDL_ttf 3.x.
  */
 #define SDL_TTF_COMPILEDVERSION \
     SDL_VERSIONNUM(SDL_TTF_MAJOR_VERSION, SDL_TTF_MINOR_VERSION, SDL_TTF_PATCHLEVEL)
 #endif /* SDL_TTF_MAJOR_VERSION < 3 && SDL_MAJOR_VERSION < 3 */
 
 /**
- *  This macro will evaluate to true if compiled with SDL_ttf at least X.Y.Z.
+ * This macro will evaluate to true if compiled with SDL_ttf at least X.Y.Z.
  */
 #define SDL_TTF_VERSION_ATLEAST(X, Y, Z) \
     ((SDL_TTF_MAJOR_VERSION >= X) && \
@@ -152,16 +151,18 @@ extern DECLSPEC void SDLCALL TTF_GetHarfBuzzVersion(int *major, int *minor, int 
  * A UNICODE BOM character in a string will override this setting for the
  * remainder of that string.
  *
- * \param swapped boolean to indicate whether text is byteswapped
+ * \param swapped boolean to indicate whether text is byteswapped.
  *
  * \since This function is available since SDL_ttf 2.0.12.
  */
 extern DECLSPEC void SDLCALL TTF_ByteSwappedUNICODE(SDL_bool swapped);
 
 /**
- * The internal structure containing font information. Opaque data!
+ * The internal structure containing font information.
+ *
+ * Opaque data!
  */
-typedef struct _TTF_Font TTF_Font;
+typedef struct TTF_Font TTF_Font;
 
 /**
  * Initialize SDL_ttf.
@@ -182,6 +183,7 @@ typedef struct _TTF_Font TTF_Font;
  * \since This function is available since SDL_ttf 2.0.12.
  *
  * \sa TTF_Quit
+ * \sa TTF_WasInit
  */
 extern DECLSPEC int SDLCALL TTF_Init(void);
 
@@ -235,15 +237,15 @@ extern DECLSPEC TTF_Font * SDLCALL TTF_OpenFontIndex(const char *file, int ptsiz
  * size becomes the index of choosing which size. If the value is too high,
  * the last indexed size will be the default.
  *
- * If `freesrc` is non-zero, the RWops will be closed before returning,
- * whether this function succeeds or not. SDL_ttf reads everything it needs
- * from the RWops during this call in any case.
+ * If `freesrc` is non-zero, the RWops will be automatically closed once the
+ * font is closed. Otherwise you should close the RWops yourself after closing
+ * the font.
  *
  * When done with the returned TTF_Font, use TTF_CloseFont() to dispose of it.
  *
  * \param src an SDL_RWops to provide a font file's data.
- * \param freesrc non-zero to close the RWops before returning, zero to leave
- *                it open.
+ * \param freesrc non-zero to close the RWops when the font is closed, zero to
+ *                leave it open.
  * \param ptsize point size to use for the newly-opened font.
  * \returns a valid TTF_Font, or NULL on error.
  *
@@ -260,9 +262,9 @@ extern DECLSPEC TTF_Font * SDLCALL TTF_OpenFontRW(SDL_RWops *src, int freesrc, i
  * size becomes the index of choosing which size. If the value is too high,
  * the last indexed size will be the default.
  *
- * If `freesrc` is non-zero, the RWops will be closed before returning,
- * whether this function succeeds or not. SDL_ttf reads everything it needs
- * from the RWops during this call in any case.
+ * If `freesrc` is non-zero, the RWops will be automatically closed once the
+ * font is closed. Otherwise you should close the RWops yourself after closing
+ * the font.
  *
  * Some fonts have multiple "faces" included. The index specifies which face
  * to use from the font file. Font files with only one face should specify
@@ -271,8 +273,8 @@ extern DECLSPEC TTF_Font * SDLCALL TTF_OpenFontRW(SDL_RWops *src, int freesrc, i
  * When done with the returned TTF_Font, use TTF_CloseFont() to dispose of it.
  *
  * \param src an SDL_RWops to provide a font file's data.
- * \param freesrc non-zero to close the RWops before returning, zero to leave
- *                it open.
+ * \param freesrc non-zero to close the RWops when the font is closed, zero to
+ *                leave it open.
  * \param ptsize point size to use for the newly-opened font.
  * \param index index of the face in the font file.
  * \returns a valid TTF_Font, or NULL on error.
@@ -343,15 +345,15 @@ extern DECLSPEC TTF_Font * SDLCALL TTF_OpenFontIndexDPI(const char *file, int pt
  * size becomes the index of choosing which size. If the value is too high,
  * the last indexed size will be the default.
  *
- * If `freesrc` is non-zero, the RWops will be closed before returning,
- * whether this function succeeds or not. SDL_ttf reads everything it needs
- * from the RWops during this call in any case.
+ * If `freesrc` is non-zero, the RWops will be automatically closed once the
+ * font is closed. Otherwise you should close the RWops yourself after closing
+ * the font.
  *
  * When done with the returned TTF_Font, use TTF_CloseFont() to dispose of it.
  *
  * \param src an SDL_RWops to provide a font file's data.
- * \param freesrc non-zero to close the RWops before returning, zero to leave
- *                it open.
+ * \param freesrc non-zero to close the RWops when the font is closed, zero to
+ *                leave it open.
  * \param ptsize point size to use for the newly-opened font.
  * \param hdpi the target horizontal DPI.
  * \param vdpi the target vertical DPI.
@@ -372,9 +374,9 @@ extern DECLSPEC TTF_Font * SDLCALL TTF_OpenFontDPIRW(SDL_RWops *src, int freesrc
  * size becomes the index of choosing which size. If the value is too high,
  * the last indexed size will be the default.
  *
- * If `freesrc` is non-zero, the RWops will be closed before returning,
- * whether this function succeeds or not. SDL_ttf reads everything it needs
- * from the RWops during this call in any case.
+ * If `freesrc` is non-zero, the RWops will be automatically closed once the
+ * font is closed. Otherwise you should close the RWops yourself after closing
+ * the font.
  *
  * Some fonts have multiple "faces" included. The index specifies which face
  * to use from the font file. Font files with only one face should specify
@@ -383,8 +385,8 @@ extern DECLSPEC TTF_Font * SDLCALL TTF_OpenFontDPIRW(SDL_RWops *src, int freesrc
  * When done with the returned TTF_Font, use TTF_CloseFont() to dispose of it.
  *
  * \param src an SDL_RWops to provide a font file's data.
- * \param freesrc non-zero to close the RWops before returning, zero to leave
- *                it open.
+ * \param freesrc non-zero to close the RWops when the font is closed, zero to
+ *                leave it open.
  * \param ptsize point size to use for the newly-opened font.
  * \param index index of the face in the font file.
  * \param hdpi the target horizontal DPI.
@@ -404,7 +406,7 @@ extern DECLSPEC TTF_Font * SDLCALL TTF_OpenFontIndexDPIRW(SDL_RWops *src, int fr
  *
  * \param font the font to resize.
  * \param ptsize the new point size.
- * \returns 0 if successful, -1 on error
+ * \returns 0 if successful, -1 on error.
  *
  * \since This function is available since SDL_ttf 2.0.18.
  */
@@ -632,14 +634,24 @@ extern DECLSPEC int SDLCALL TTF_FontAscent(const TTF_Font *font);
 extern DECLSPEC int SDLCALL TTF_FontDescent(const TTF_Font *font);
 
 /**
- * Query the recommended spacing between lines of text for a font.
+ * Query the spacing between lines of text for a font.
  *
  * \param font the font to query.
- * \returns the font's recommended spacing.
+ * \returns the font's line spacing.
  *
  * \since This function is available since SDL_ttf 2.0.12.
  */
 extern DECLSPEC int SDLCALL TTF_FontLineSkip(const TTF_Font *font);
+
+/**
+ * Set the spacing between lines of text for a font.
+ *
+ * \param font the font to modify.
+ * \param lineskip the new line spacing for the font.
+ *
+ * \since This function is available since SDL_ttf 2.22.0.
+ */
+extern DECLSPEC void SDLCALL TTF_SetFontLineSkip(TTF_Font *font, int lineskip);
 
 /**
  * Query whether or not kerning is allowed for a font.
@@ -845,7 +857,7 @@ extern DECLSPEC int SDLCALL TTF_SizeText(TTF_Font *font, const char *text, int *
  * This does not need to render the string to do this calculation.
  *
  * \param font the font to query.
- * \param text text to calculate, in Latin1 encoding.
+ * \param text text to calculate, in UTF-8 encoding.
  * \param w will be filled with width, in pixels, on return.
  * \param h will be filled with height, in pixels, on return.
  * \returns 0 if successful, -1 on error.
@@ -897,9 +909,9 @@ extern DECLSPEC int SDLCALL TTF_SizeUNICODE(TTF_Font *font, const Uint16 *text, 
  * \param font the font to query.
  * \param text text to calculate, in Latin1 encoding.
  * \param measure_width maximum width, in pixels, available for the string.
+ * \param extent on return, filled with latest calculated width.
  * \param count on return, filled with number of characters that can be
  *              rendered.
- * \param extent on return, filled with latest calculated width.
  * \returns 0 if successful, -1 on error.
  *
  * \since This function is available since SDL_ttf 2.0.18.
@@ -921,9 +933,9 @@ extern DECLSPEC int SDLCALL TTF_MeasureText(TTF_Font *font, const char *text, in
  * \param font the font to query.
  * \param text text to calculate, in UTF-8 encoding.
  * \param measure_width maximum width, in pixels, available for the string.
+ * \param extent on return, filled with latest calculated width.
  * \param count on return, filled with number of characters that can be
  *              rendered.
- * \param extent on return, filled with latest calculated width.
  * \returns 0 if successful, -1 on error.
  *
  * \since This function is available since SDL_ttf 2.0.18.
@@ -950,9 +962,9 @@ extern DECLSPEC int SDLCALL TTF_MeasureUTF8(TTF_Font *font, const char *text, in
  * \param font the font to query.
  * \param text text to calculate, in UCS-2 encoding.
  * \param measure_width maximum width, in pixels, available for the string.
+ * \param extent on return, filled with latest calculated width.
  * \param count on return, filled with number of characters that can be
  *              rendered.
- * \param extent on return, filled with latest calculated width.
  * \returns 0 if successful, -1 on error.
  *
  * \since This function is available since SDL_ttf 2.0.18.
@@ -1250,6 +1262,7 @@ extern DECLSPEC SDL_Surface * SDLCALL TTF_RenderGlyph32_Solid(TTF_Font *font,
  * \param font the font to render with.
  * \param text text to render, in Latin1 encoding.
  * \param fg the foreground color for the text.
+ * \param bg the background color for the text.
  * \returns a new 8-bit, palettized surface, or NULL if there was an error.
  *
  * \since This function is available since SDL_ttf 2.0.12.
@@ -1281,6 +1294,7 @@ extern DECLSPEC SDL_Surface * SDLCALL TTF_RenderText_Shaded(TTF_Font *font,
  * \param font the font to render with.
  * \param text text to render, in UTF-8 encoding.
  * \param fg the foreground color for the text.
+ * \param bg the background color for the text.
  * \returns a new 8-bit, palettized surface, or NULL if there was an error.
  *
  * \since This function is available since SDL_ttf 2.0.12.
@@ -1349,6 +1363,7 @@ extern DECLSPEC SDL_Surface * SDLCALL TTF_RenderUNICODE_Shaded(TTF_Font *font,
  * \param font the font to render with.
  * \param text text to render, in Latin1 encoding.
  * \param fg the foreground color for the text.
+ * \param bg the background color for the text.
  * \returns a new 8-bit, palettized surface, or NULL if there was an error.
  *
  * \since This function is available since SDL_ttf 2.0.18.
@@ -1449,6 +1464,7 @@ extern DECLSPEC SDL_Surface * SDLCALL TTF_RenderUNICODE_Shaded_Wrapped(TTF_Font 
  * \param font the font to render with.
  * \param ch the character to render.
  * \param fg the foreground color for the text.
+ * \param bg the background color for the text.
  * \returns a new 8-bit, palettized surface, or NULL if there was an error.
  *
  * \since This function is available since SDL_ttf 2.0.12.
@@ -1612,6 +1628,9 @@ extern DECLSPEC SDL_Surface * SDLCALL TTF_RenderUNICODE_Blended(TTF_Font *font,
  * \param font the font to render with.
  * \param text text to render, in Latin1 encoding.
  * \param fg the foreground color for the text.
+ * \param wrapLength the text is wrapped to multiple lines on line endings and
+ *                   on word boundaries if it extends beyond this value in
+ *                   pixels.
  * \returns a new 32-bit, ARGB surface, or NULL if there was an error.
  *
  * \since This function is available since SDL_ttf 2.0.18.
@@ -1640,6 +1659,9 @@ extern DECLSPEC SDL_Surface * SDLCALL TTF_RenderText_Blended_Wrapped(TTF_Font *f
  * \param font the font to render with.
  * \param text text to render, in UTF-8 encoding.
  * \param fg the foreground color for the text.
+ * \param wrapLength the text is wrapped to multiple lines on line endings and
+ *                   on word boundaries if it extends beyond this value in
+ *                   pixels.
  * \returns a new 32-bit, ARGB surface, or NULL if there was an error.
  *
  * \since This function is available since SDL_ttf 2.0.18.
@@ -1675,6 +1697,9 @@ extern DECLSPEC SDL_Surface * SDLCALL TTF_RenderUTF8_Blended_Wrapped(TTF_Font *f
  * \param font the font to render with.
  * \param text text to render, in UCS-2 encoding.
  * \param fg the foreground color for the text.
+ * \param wrapLength the text is wrapped to multiple lines on line endings and
+ *                   on word boundaries if it extends beyond this value in
+ *                   pixels.
  * \returns a new 32-bit, ARGB surface, or NULL if there was an error.
  *
  * \since This function is available since SDL_ttf 2.0.18.
@@ -2032,7 +2057,8 @@ extern DECLSPEC SDL_Surface * SDLCALL TTF_RenderGlyph32_LCD(TTF_Font *font,
  * Dispose of a previously-created font.
  *
  * Call this when done with a font. This function will free any resources
- * associated with it.
+ * associated with it. It is safe to call this function on NULL, for example
+ * on the result of a failed call to TTF_OpenFont().
  *
  * The font is not valid after being passed to this function. String pointers
  * from functions that return information on this font, such as
@@ -2043,6 +2069,7 @@ extern DECLSPEC SDL_Surface * SDLCALL TTF_RenderGlyph32_LCD(TTF_Font *font,
  *
  * \since This function is available since SDL_ttf 2.0.12.
  *
+ * \sa TTF_OpenFont
  * \sa TTF_OpenFontIndexDPIRW
  * \sa TTF_OpenFontRW
  * \sa TTF_OpenFontDPI
@@ -2208,7 +2235,7 @@ extern DECLSPEC SDL_bool TTF_GetFontSDF(const TTF_Font *font);
  *
  * \sa TTF_SetFontDirection
  */
-typedef enum
+typedef enum TTF_Direction
 {
   TTF_DIRECTION_LTR = 0,    /* Left to Right */
   TTF_DIRECTION_RTL,        /* Right to Left */
