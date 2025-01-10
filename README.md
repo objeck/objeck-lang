@@ -16,8 +16,9 @@
 
 * v2025.1.2 
     * Explore adding newer OpenAI and Gemini features 🤖
+    * Improve SDL2 support for Windows on arm64🎮
     
-* <ins>v2025.1.1 (release before 1/10/2025)</ins>🔥
+* <ins>v2025.1.1 (current)</ins>🔥
   * Testing  🧪
     * Functional testing for stability and compatibility
     * Fix Coverity and CodeQL static analysis findings 🔍 (done)
@@ -49,9 +50,6 @@
   * UDP socket support (done) 🔌
   * SDL2 updates (done) 🎮
   * Bug fixes (done)
-
-* <ins>v2024.10.0 (current)</ins>
-  * Bug fix (#503)
 
 ## Examples
 
