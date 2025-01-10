@@ -15,6 +15,7 @@
 ## Releases
 
 * v2025.1.2 
+    * AI/ML performance testing for Llama and Mistra 🧮
     * Explore adding newer OpenAI and Gemini features 🤖
     * Improve SDL2 support for Windows on arm64🎮
     
@@ -22,7 +23,6 @@
   * Testing  🧪
     * Functional testing for stability and compatibility
     * Fix Coverity and CodeQL static analysis findings 🔍 (done)
-    * AI/ML performance testing for Llama and Mistra 🧮
   * Tooling 🛠️
     * Enable WSL arm64 support (done)
     * Windows bi-directional cross-compilation for x64 and amd64 targets (done)
