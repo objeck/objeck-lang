@@ -4647,7 +4647,9 @@ uint32_t* PageHolder::AddCode(uint32_t* code, int32_t size) {
 
 #if defined(_OSX)
   __clear_cache(temp, temp + byte_size);
-#elif defined(_M_ARM64) == false
+#elif defined(_M_ARM64)
+  FlushInstructionCache(GetCurrentProcess(), temp, byte_size);
+#else
   __builtin___clear_cache(temp, temp + byte_size);
 #endif
   
