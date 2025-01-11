@@ -4648,7 +4648,10 @@ uint32_t* PageHolder::AddCode(uint32_t* code, int32_t size) {
 #if defined(_OSX)
   __clear_cache(temp, temp + byte_size);
 #elif defined(_M_ARM64)
-  FlushInstructionCache(GetCurrentProcess(), temp, byte_size);
+  if(!FlushInstructionCache(GetCurrentProcess(), temp, byte_size)) {
+    wcerr << L"Unable to flush instruction cache!" << std::endl;
+    exit(1);
+  }
 #else
   __builtin___clear_cache(temp, temp + byte_size);
 #endif
