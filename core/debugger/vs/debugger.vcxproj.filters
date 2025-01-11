@@ -32,8 +32,8 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\shared\sys.cpp" />
-    <ClCompile Include="..\..\vm\arch\jit\amd64\jit_amd_lp64.h" />
-    <ClCompile Include="..\..\vm\arch\jit\amd64\jit_amd_lp64.cpp" />
+    <ClCompile Include="..\..\vm\arch\jit\arm64\jit_arm_a64.h" />
+    <ClCompile Include="..\..\vm\arch\jit\arm64\jit_arm_a64.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\vm\common.h">

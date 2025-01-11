@@ -76,8 +76,8 @@
     <TargetName>obi</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">
-    <IncludePath>..\..\lib\zlib\win;..\..\lib\openssl\win\arm64\;$(LibraryPath)</IncludePath>
-    <LibraryPath>..\..\Debug\ARM64\Debug;..\..\repl\arm64\Debug\;..\..\lib\zlib\win\arm64;..\..\lib\openssl\win\arm64\;$(LibraryPath)</LibraryPath>
+    <IncludePath>..\..\lib\zlib\win\;..\..\lib\openssl\win\include\;$(LibraryPath)</IncludePath>
+    <LibraryPath>..\..\release\ARM64\Release;..\..\repl\arm64\Debug\;..\..\lib\zlib\win\arm64;..\..\lib\openssl\win\arm64\;$(LibraryPath)</LibraryPath>
     <TargetName>obi</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -114,17 +114,17 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
-      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
+      <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <FunctionLevelLinking>true</FunctionLevelLinking>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>objeck.lib;msvcrt.lib;msvcmrt.lib;libz-static.lib;libcrypto-1_1-static.lib;libssl-1_1-static.lib;crypt32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>objeck.lib;libz-static.lib;libcrypto-static.lib;libssl-static.lib;crypt32.lib;msvcrt.lib;msvcmrt.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
