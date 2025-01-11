@@ -4134,7 +4134,7 @@ RegisterHolder* JitArm64::ArrayIndex(StackInstr* instr, MemoryType type)
     break;
 
   default:
-    wcerr << L"internal error" << std::endl;
+    wcerr << L">>> Internal error! <<<" << std::endl;
     exit(1);
     break;
   }
@@ -4173,7 +4173,7 @@ RegisterHolder* JitArm64::ArrayIndex(StackInstr* instr, MemoryType type)
     break;
 
   default:
-    wcerr << L"internal error" << std::endl;
+    wcerr << L">>> Internal error! <<<" << std::endl;
     exit(1);
     break;
   }
@@ -4202,7 +4202,7 @@ RegisterHolder* JitArm64::ArrayIndex(StackInstr* instr, MemoryType type)
       break;
 
     default:
-      wcerr << L"internal error" << std::endl;
+      wcerr << L">>> Internal error! <<<" << std::endl;
       exit(1);
       break;
     }
@@ -4649,7 +4649,7 @@ uint32_t* PageHolder::AddCode(uint32_t* code, int32_t size) {
   __clear_cache(temp, temp + byte_size);
 #elif defined(_M_ARM64)
   if(!FlushInstructionCache(GetCurrentProcess(), temp, byte_size)) {
-    wcerr << L"Unable to flush instruction cache!" << std::endl;
+    wcerr << L">>> Unable to flush instruction cache! <<<" << std::endl;
     exit(1);
   }
 #else
