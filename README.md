@@ -17,6 +17,7 @@
 * v2025.1.2 
     * AI/ML performance testing for Llama and Mistra 🧮
     * Explore adding newer OpenAI and Gemini features 🤖
+      * Add OpenAI Vision support
     * Improve SDL2 support for Windows on arm64🎮
     
 * <ins>v2025.1.1 (current)</ins>🔥
