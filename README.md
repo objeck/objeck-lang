@@ -19,6 +19,7 @@
       * Snapdragon CPU support (done)
       * Adreno GPU and Hexagon NPU hardware support, deferred until Qualcomm and Ollama transition [hardware support](https://www.qualcomm.com/developer/blog/2024/10/ollama-simplifies-inference-open-sources-models-snapdragon-x-series-devices)
     * Explore adding newer OpenAI and Gemini features 🤖
+      * OpenAI Vision support
     * Improve SDL2 support for Windows on arm64🎮 (done)
     
 * <ins>v2025.1.1 (current)</ins>🔥
