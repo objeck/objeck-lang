@@ -29,7 +29,7 @@ class OpenAICompletion {
 		if(completion <> Nil) {
 			choice := completion->GetFirstChoice();
 			if(choice = Nil) {
-				">>> Error: Unable to complete query <<"->ErrorLine();
+				">>> Error: Unable to complete query <<<"->ErrorLine();
 				Runtime->Exit(1);
 			};
 
