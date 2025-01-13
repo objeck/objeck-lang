@@ -415,6 +415,22 @@ class ContextAnalyzer {
 
     return std::vector<Type*>();
   }
+
+  // get expanded generic type name
+  void AppendGenericNames(std::wstring &type_name, std::vector<Type*> &type_generics) {
+    type_name += L'|';
+    for(Type* type_generic : type_generics) {
+      // get fully qualified name
+      ResolveClassEnumType(type_generic);
+
+      if(type_generic->HasGenerics()) {
+        std::vector<Type*> type_generics_generics = type_generic->GetGenerics();
+        AppendGenericNames(type_name, type_generics_generics);
+      }
+      type_name += type_generic->GetName() + L'|';
+    }
+    type_name.pop_back();
+  }
   
   // helper function for program enum searches
   inline bool HasProgramOrLibraryEnum(const std::wstring &n) {

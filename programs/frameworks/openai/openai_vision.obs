@@ -1,0 +1,53 @@
+use API.OpenAI, API.OpenAI.Chat, Collection;
+
+class OpenAICompletion {
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() <> 1) {
+			">>> Error: Token file required <<"->ErrorLine();
+			Runtime->Exit(1);
+		};
+
+		token := GetApiKey(args[0]);
+		if(token = Nil) {
+			">>> Unable to API key <<"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		model := "gpt-4o";
+
+		image_query := ImageQuery->New("What is in this image?", Web.HTTP.Url->New("https://images.unsplash.com/photo-1526064677849-0c862d7fd5a4?q=80&w=1588&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"));
+
+		message := Pair->New("user", image_query)<String, ImageQuery>;
+		completion := Completion->Complete(model, message, token);
+		if(completion <> Nil) {
+			choice := completion->GetFirstChoice();
+			if(choice = Nil) {
+				">>> Error: Unable to complete query <<<"->ErrorLine();
+				Runtime->Exit(1);
+			};
+
+			response := choice->GetMessage()<String, String>;
+			if(response = Nil) {
+				">>> Error: Unable to read response <<"->ErrorLine();
+				Runtime->Exit(1);
+			};
+
+			response->GetSecond()->PrintLine();
+		};
+	}
+
+	function : GetApiKey(filename : String) ~ String {
+		token := System.IO.Filesystem.FileReader->ReadFile(filename);
+		if(token <> Nil) {
+			token := token->Trim();
+			if(<>token->StartsWith("sk-") & <>token->StartsWith("pplx-")) {
+				">>> Unable to read token from file: '{$filename}' <<"->PrintLine();
+				Runtime->Exit(1);
+			};
+
+			return token;
+		};
+
+		return Nil;
+	}
+}
