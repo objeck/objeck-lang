@@ -14,11 +14,15 @@
 
 ## Releases
 
+* v2025.x.x 
+    * Performance testing for Llama and Mistra Hexagon NPU execution
+
 * v2025.1.2 
-    * AI/ML performance testing for Llama and Mistra 🧮
+    * Performance testing for Llama and Mistra CPU execution 🧮 (done)
     * Explore adding newer OpenAI and Gemini features 🤖
-      * Add OpenAI Vision support
-    * Improve SDL2 support for Windows on arm64🎮
+      * Add OpenAI Vision support (done)
+      * Add OpenAI speech-to-text
+    * Improve SDL2 stability for Windows on arm64🎮 (done)
     
 * <ins>v2025.1.1 (current)</ins>🔥
   * Testing  🧪
