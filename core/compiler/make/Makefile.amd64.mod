@@ -1,4 +1,4 @@
-ARGS=-O3 -Wall -D_MODULE -std=c++17 -mavx2 -Wno-unused-function
+ARGS=-O3 -Wall -D_MODULE -std=c++17 -mavx2 -Wno-unused-function -Wno-sequence-point
 SRC=types.o tree.o scanner.o parser.o linker.o context.o intermediate.o optimization.o emit.o compiler.o 
 OBJ_LIBS=sys.a
 LOGGER_PATH=../shared
