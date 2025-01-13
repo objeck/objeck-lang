@@ -1,8 +1,6 @@
 use API.OpenAI, API.OpenAI.Chat, Collection;
 
 class OpenAICompletion {
-	@is_pplx : static : Bool;
-
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() <> 1) {
 			">>> Error: Token file required <<"->ErrorLine();
@@ -15,16 +13,11 @@ class OpenAICompletion {
 			Runtime->Exit(1);
 		};
 
-		model : String;
-		if(@is_pplx) {
-			Completion->SetBaseUrl("https://api.perplexity.ai");
-			model := "llama-3-sonar-small-32k-online";
-		}
-		else {
-			model := "gpt-4o";
-		}
+		model := "gpt-4o";
 
-		message := Pair->New("user", "What is the longest road in Denver?")<String, String>;
+		image_query := ImageQuery->New("What is in this image?", Web.HTTP.Url->New("https://images.unsplash.com/photo-1526064677849-0c862d7fd5a4?q=80&w=1588&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"));
+
+		message := Pair->New("user", image_query)<String, ImageQuery>;
 		completion := Completion->Complete(model, message, token);
 		if(completion <> Nil) {
 			choice := completion->GetFirstChoice();
@@ -33,13 +26,13 @@ class OpenAICompletion {
 				Runtime->Exit(1);
 			};
 
-			message := choice->GetMessage()<String, String>;
-			if(message = Nil) {
+			response := choice->GetMessage()<String, String>;
+			if(response = Nil) {
 				">>> Error: Unable to read response <<"->ErrorLine();
 				Runtime->Exit(1);
 			};
 
-			message->GetSecond()->PrintLine();
+			response->GetSecond()->PrintLine();
 		};
 	}
 
@@ -50,10 +43,6 @@ class OpenAICompletion {
 			if(<>token->StartsWith("sk-") & <>token->StartsWith("pplx-")) {
 				">>> Unable to read token from file: '{$filename}' <<"->PrintLine();
 				Runtime->Exit(1);
-			};
-
-			if(token->StartsWith("pplx-"))  {
-				@is_pplx := true;
 			};
 
 			return token;

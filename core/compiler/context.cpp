@@ -3092,7 +3092,8 @@ Method* ContextAnalyzer::ResolveMethodCall(Class* klass, MethodCall* method_call
   std::vector<MethodCallSelection*> matches;
   for(size_t i = 0; i < candidates.size(); ++i) {
     // match parameter sizes
-    std::vector<Declaration*> method_parms = candidates[i]->GetDeclarations()->GetDeclarations();
+    Method* candidate = candidates[i];
+    std::vector<Declaration*> method_parms = candidate->GetDeclarations()->GetDeclarations();
 
     if(expr_params.size() == method_parms.size()) {
       // box and unbox parameters
@@ -3120,7 +3121,7 @@ Method* ContextAnalyzer::ResolveMethodCall(Class* klass, MethodCall* method_call
       assert(boxed_resolved_params.size() == expr_params.size());
 #endif
 
-      MethodCallSelection* match = new MethodCallSelection(candidates[i], boxed_resolved_params);
+      MethodCallSelection* match = new MethodCallSelection(candidate, boxed_resolved_params);
       for(size_t j = 0; j < boxed_resolved_params.size(); ++j) {
         Type* method_type = ResolveGenericType(method_parms[j]->GetEntry()->GetType(), method_call, klass, nullptr, false);
         // add parameter match
@@ -3469,7 +3470,8 @@ LibraryMethod* ContextAnalyzer::ResolveMethodCall(LibraryClass* klass, MethodCal
   std::vector<LibraryMethodCallSelection*> matches;
   for(size_t i = 0; i < candidates.size(); ++i) {
     // match parameter sizes
-    std::vector<Type*> method_parms = candidates[i]->GetDeclarationTypes();
+    LibraryMethod* candidate = candidates[i];
+    std::vector<Type*> method_parms = candidate->GetDeclarationTypes();
     if(expr_params.size() == method_parms.size()) {
       // box and unbox parameters
       std::vector<Expression*> boxed_resolved_params;
@@ -3495,7 +3497,7 @@ LibraryMethod* ContextAnalyzer::ResolveMethodCall(LibraryClass* klass, MethodCal
       assert(boxed_resolved_params.size() == expr_params.size());
 #endif
 
-      LibraryMethodCallSelection* match = new LibraryMethodCallSelection(candidates[i], boxed_resolved_params);
+      LibraryMethodCallSelection* match = new LibraryMethodCallSelection(candidate, boxed_resolved_params);
       for(size_t j = 0; j < boxed_resolved_params.size(); ++j) {
         Type* method_type = ResolveGenericType(method_parms[j], method_call, nullptr, klass, false);
         const int compare = MatchCallingParameter(boxed_resolved_params[j], method_type, nullptr, klass, depth);
@@ -6711,8 +6713,23 @@ bool ContextAnalyzer::CheckGenericEqualTypes(Type* left, Type* right, Expression
           }
         }
 
-        const std::wstring left_type_name = left_generic_type->GetName();
-        const std::wstring right_type_name = right_generic_type->GetName();
+        // const std::wstring left_type_name = left_generic_type->GetName();
+        // const std::wstring right_type_name = right_generic_type->GetName();
+
+        std::wstring left_type_name = L'<' + left_generic_type->GetName();
+        if(left_generic_type->HasGenerics()) {
+          std::vector<Type*> left_generics = left_generic_type->GetGenerics();
+          AppendGenericNames(left_type_name, left_generics);
+        }
+        left_type_name += L'>';
+
+        std::wstring right_type_name = L'<' + right_generic_type->GetName();
+        if(right_generic_type->HasGenerics()) {
+          std::vector<Type*> right_generics = right_generic_type->GetGenerics();
+          AppendGenericNames(right_type_name, right_generics);
+        }
+        right_type_name += L'>';
+
         if(left_generic_type->IsResolved() && left_type_name != right_type_name) {
           if(check_only) {
             return false;

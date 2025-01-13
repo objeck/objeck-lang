@@ -15,12 +15,10 @@
 ## Releases
 
 * v2025.1.2 
-    * AI/ML performance enablement for Llama and Mistra 🧮
-      * Snapdragon CPU support (done)
-      * Adreno GPU and Hexagon NPU hardware support, deferred until Qualcomm and Ollama transition [hardware support](https://www.qualcomm.com/developer/blog/2024/10/ollama-simplifies-inference-open-sources-models-snapdragon-x-series-devices)
+    * AI/ML performance testing for Llama and Mistra 🧮
     * Explore adding newer OpenAI and Gemini features 🤖
-      * OpenAI Vision support
-    * Improve SDL2 support for Windows on arm64🎮 (done)
+      * Add OpenAI Vision support
+    * Improve SDL2 support for Windows on arm64🎮
     
 * <ins>v2025.1.1 (current)</ins>🔥
   * Testing  🧪
