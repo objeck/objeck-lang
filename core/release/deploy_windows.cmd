@@ -1,6 +1,6 @@
 REM clean up
 
-if [%1]==[] (
+if not [%1]==[x64] if not [%1]==[arm64] (
 	echo Windows targets are: 'x64' and 'arm64'
 	goto end
 )

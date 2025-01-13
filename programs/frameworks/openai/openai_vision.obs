@@ -15,7 +15,34 @@ class OpenAICompletion {
 
 		model := "gpt-4o";
 
+		# query with image url
 		image_query := ImageQuery->New("What is in this image?", Web.HTTP.Url->New("https://images.unsplash.com/photo-1526064677849-0c862d7fd5a4?q=80&w=1588&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"));
+		image_query->ToString()->PrintLine();
+
+		message := Pair->New("user", image_query)<String, ImageQuery>;
+		completion := Completion->Complete(model, message, token);
+		if(completion <> Nil) {
+			choice := completion->GetFirstChoice();
+			if(choice = Nil) {
+				">>> Error: Unable to complete query <<<"->ErrorLine();
+				Runtime->Exit(1);
+			};
+
+			response := choice->GetMessage()<String, String>;
+			if(response = Nil) {
+				">>> Error: Unable to read response <<"->ErrorLine();
+				Runtime->Exit(1);
+			};
+
+			response->GetSecond()->PrintLine();
+		};
+
+		"---"->PrintLine();
+
+		# query with binary image
+		binary_image := System.IO.Filesystem.FileReader->ReadBinaryFile("../../deploy/media/thirteen.png")
+		image_query := ImageQuery->New("What is in this image?", binary_image, ImageQuery->MimeType->PNG);
+		image_query->ToString()->PrintLine();
 
 		message := Pair->New("user", image_query)<String, ImageQuery>;
 		completion := Completion->Complete(model, message, token);
