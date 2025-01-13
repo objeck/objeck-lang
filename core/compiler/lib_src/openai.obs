@@ -187,7 +187,7 @@ Support for OpenAI chat APIs (-lib openai)
 ~#
 bundle API.OpenAI.Chat {
 	#~
-	Model response for a given chat conversation
+	Model response for a given text or image query
 	~#
 	class Completion from EndPoint {
 		@id : String;
@@ -297,7 +297,7 @@ bundle API.OpenAI.Chat {
 		}
 
 		#~
-		Model response for the given chat conversation
+		Model response for the given query
 		@param message completion message and image query.
 		@param model ID of the model to use
 		@param token API token
@@ -311,7 +311,7 @@ bundle API.OpenAI.Chat {
 		}
 
 		#~
-		Model response for the given chat conversation
+		Model response for the given query
 		@param model ID of the model to use
 		@param message completion message and image query
 		@param max_tokens maximum number of completion tokens returned by the API
@@ -328,7 +328,7 @@ bundle API.OpenAI.Chat {
 		}
 
 		#~
-		Model response for the given chat conversation
+		Model response for the given query
 		@param messages list of messages comprising the conversation
 		@param model ID of the model to use
 		@param token API token
@@ -339,7 +339,7 @@ bundle API.OpenAI.Chat {
 		}
 
 		#~
-		Model response for the given chat conversation
+		Model response for the given query
 		@param model ID of the model to use
 		@param messages list of messages comprising the conversation
 		@param max_tokens maximum number of completion tokens returned by the API
@@ -349,7 +349,6 @@ bundle API.OpenAI.Chat {
 		@return completion response
 		~#
 		function : Complete(model : String, messages : Vector<Pair<String, String>>, max_tokens : Int, temperature : Float, top_p : Float, token : String) ~ Completion {
-"--- (-2) ---"->PrintLine();						
 			completion_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 			completion_json->Insert("model", model);
 
@@ -426,14 +425,13 @@ bundle API.OpenAI.Chat {
 		#
 
 		#~
-		Model response for the given chat conversation
+		Model response for the given image and query
 		@param message completion message and image query.
 		@param model ID of the model to use
 		@param token API token
 		@return completion response
 		~#
 		function : Complete(model : String, message : Pair<String, ImageQuery>, token : String) ~ Completion {
-"--- (-1) ---"->PrintLine();			
 			messages := Vector->New()<Pair<String, ImageQuery>>;
 			messages->AddBack(message);
 
@@ -441,7 +439,7 @@ bundle API.OpenAI.Chat {
 		}
 
 		#~
-		Model response for the given chat conversation
+		Model response for the given image and query
 		@param model ID of the model to use
 		@param message completion message and image query
 		@param max_tokens maximum number of completion tokens returned by the API
@@ -458,7 +456,7 @@ bundle API.OpenAI.Chat {
 		}
 
 		#~
-		Model response for the given chat conversation
+		Model response for the given image and query
 		@param messages list of messages comprising the conversation
 		@param model ID of the model to use
 		@param token API token
@@ -469,7 +467,7 @@ bundle API.OpenAI.Chat {
 		}
 
 		#~
-		Model response for the given chat conversation
+		Model response for the given image and query
 		@param model ID of the model to use
 		@param messages list of messages comprising the conversation
 		@param max_tokens maximum number of completion tokens returned by the API
@@ -479,7 +477,6 @@ bundle API.OpenAI.Chat {
 		@return completion response
 		~#
 		function : Complete(model : String, messages : Vector<Pair<String, ImageQuery>>, max_tokens : Int, temperature : Float, top_p : Float, token : String) ~ Completion {
-"--- 0 ---"->PrintLine();
 			completion_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 			completion_json->Insert("model", model);
 
@@ -495,11 +492,8 @@ bundle API.OpenAI.Chat {
 				completion_json->Insert("top_p", top_p);
 			};
 
-"--- 1 ---"->PrintLine();
-
 			messages_json := JsonElement->New(JsonElement->JsonType->ARRAY);
 			each(message in messages) {
-"---2 ---"->PrintLine();				
 				message_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 				message_json->Insert("role", message->GetFirst());
 				
@@ -525,7 +519,7 @@ bundle API.OpenAI.Chat {
 				# image query
 				image_url_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 				if(image_query->GetImage() = Nil) {
-					image_url_json->Insert("url", image_query->GetImageUrl());
+					image_url_json->Insert("url", image_query->GetImageUrl()->GetUrl());
 				}
 				else {
 					base64_image_str := "data:image/jpeg;base64,";
@@ -547,7 +541,7 @@ bundle API.OpenAI.Chat {
 			if(IsDebug()) {
 				data->ToString()->PrintLine();
 			};
-#~
+
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
 			headers->Insert("OpenAI-Beta", "assistants=v2");
@@ -572,7 +566,7 @@ bundle API.OpenAI.Chat {
 
 				return Completion->New(chat_json);
 			};
-~#
+
 			return Nil;
 		}
 
@@ -585,9 +579,22 @@ bundle API.OpenAI.Chat {
 	Image query
 	~#
 	class ImageQuery {
+		#~
+		Binary image MIME type
+		~#
+		enum MimeType {
+			 PNG,
+			 JPEG,
+			 WEBP,
+			 GIF
+		}
+
 		@query : String;
-		@image : Byte[];
+		
 		@image_url : Url;
+
+		@image : Byte[];
+		@mime_type : ImageQuery->MimeType;
 
 		#~
 		Constructor 
@@ -604,9 +611,10 @@ bundle API.OpenAI.Chat {
 		@param query text query
 		@param image binary image
 		~#
-		New(query : String, image : Byte[]) {
+		New(query : String, image : Byte[], mime_type : ImageQuery->MimeType) {
 			@query := query;
 			@image := image;
+			@mime_type := mime_type;
 		}
 
 		#~
@@ -621,16 +629,42 @@ bundle API.OpenAI.Chat {
 		Get the image URL
 		@return image URL
 		~#
-		method : public : GetImageUrl() ~ String {
-			return @query;
+		method : public : GetImageUrl() ~ Url {
+			return @image_url;
 		}
 
 		#~
 		Get the image URL
-		@return image URL
+		@return image bytes
 		~#
 		method : public : GetImage() ~ Byte[] {
 			return @image;
+		}
+
+		#~
+		Get the image mime type
+		@return image mime type
+		~#
+		method : public : GetMimeType() ~ String {
+			select(@mime_type) {
+				label MimeType->PNG {
+					return "image/png";
+				}
+
+				label MimeType->JPEG {
+					return "image/jpeg";
+				}
+
+				label MimeType->WEBP {
+					return "image/webp";
+				}
+
+				label MimeType->GIF {
+					return "image/gif";
+				}
+			};
+
+			return "application/octet-stream";
 		}
 
 		#~
@@ -638,7 +672,22 @@ bundle API.OpenAI.Chat {
 		@return string representation
 		~#
 		method : public : ToString() ~ String {
-			return "";
+			buffer := "[query='{$@query}'";
+
+			
+			if(@image_url <> Nil) {
+				image_url_str := @image_url->GetUrl();
+				buffer += ", image_url='{$image_url_str}";
+			}
+			else {
+				buffer += ", image_size=";
+				buffer += @image->Size();
+				buffer += " bytes, mime_type='";
+				buffer += GetMimeType();
+			};
+			buffer += "']";
+
+			return buffer;
 		}
 	}
 
@@ -4089,7 +4138,7 @@ session->Close();
 		@api_key : static : String;
 
 		function : IsDebug() ~ Bool {
-			return true;
+			return false;
 		}
 
 		#~
