@@ -587,7 +587,7 @@ bundle Web.HTTP {
 				results->Insert(downloader->GetUrl(), ByteArrayRef->New(downloader->GetContent()));
 			};
 
-			return results->GetKeyValues();
+			return results->GetKeyValues()<Pair<Url, ByteArrayRef>>;
 		}
 	}
 
