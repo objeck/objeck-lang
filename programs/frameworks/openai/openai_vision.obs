@@ -1,6 +1,6 @@
 use API.OpenAI, API.OpenAI.Chat, Collection;
 
-class OpenAICompletion {
+class Vision {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() <> 1) {
 			">>> Error: Token file required <<"->ErrorLine();
