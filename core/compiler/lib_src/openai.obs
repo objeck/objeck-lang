@@ -349,6 +349,7 @@ bundle API.OpenAI.Chat {
 		@return completion response
 		~#
 		function : Complete(model : String, messages : Vector<Pair<String, String>>, max_tokens : Int, temperature : Float, top_p : Float, token : String) ~ Completion {
+"--- (-2) ---"->PrintLine();						
 			completion_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 			completion_json->Insert("model", model);
 
@@ -432,6 +433,7 @@ bundle API.OpenAI.Chat {
 		@return completion response
 		~#
 		function : Complete(model : String, message : Pair<String, ImageQuery>, token : String) ~ Completion {
+"--- (-1) ---"->PrintLine();			
 			messages := Vector->New()<Pair<String, ImageQuery>>;
 			messages->AddBack(message);
 
@@ -477,6 +479,7 @@ bundle API.OpenAI.Chat {
 		@return completion response
 		~#
 		function : Complete(model : String, messages : Vector<Pair<String, ImageQuery>>, max_tokens : Int, temperature : Float, top_p : Float, token : String) ~ Completion {
+"--- 0 ---"->PrintLine();
 			completion_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 			completion_json->Insert("model", model);
 
@@ -492,8 +495,11 @@ bundle API.OpenAI.Chat {
 				completion_json->Insert("top_p", top_p);
 			};
 
+"--- 1 ---"->PrintLine();
+
 			messages_json := JsonElement->New(JsonElement->JsonType->ARRAY);
 			each(message in messages) {
+"---2 ---"->PrintLine();				
 				message_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 				message_json->Insert("role", message->GetFirst());
 				
@@ -541,7 +547,7 @@ bundle API.OpenAI.Chat {
 			if(IsDebug()) {
 				data->ToString()->PrintLine();
 			};
-
+#~
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
 			headers->Insert("OpenAI-Beta", "assistants=v2");
@@ -566,7 +572,7 @@ bundle API.OpenAI.Chat {
 
 				return Completion->New(chat_json);
 			};
-
+~#
 			return Nil;
 		}
 
