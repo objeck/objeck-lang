@@ -1,0 +1,6 @@
+use Collection;
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+	}
+}
