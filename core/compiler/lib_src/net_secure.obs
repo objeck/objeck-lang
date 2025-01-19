@@ -861,79 +861,11 @@ IO.Console->Print("Get: |")->Print(oper)->PrintLine("|");
 						nonce_hash := @response_headers->Find("sec-websocket-accept");
 						# TODO: validate hash response '258EAFA5-E914-47DA-95CA-C5AB0DC85B11' base64 encoded
 						if(nonce_hash <> Nil) {
-							message := "Let's keep it Objeckive";
-							message_size := message->Size();
-
-							# TODO: code clean up
-							frame_offset := 6
-							
-							# make test frame
-							header := Byte->New[2];
-							frame := Byte->New[frame_offset + message_size];
-							
-							# finish and opcode
-							frame[0] :=  0x81; 
-
-							# mask and payload length
-							mask_payload_length := 0x80; # set mask bit
-							mask_payload_length += message_size; # payload size
-							frame[1] := mask_payload_length;
-
-							header[0] := frame[0];
-							header[1] := frame[1];
-System.IO.Console->Print("finish+opcode: ")->PrintLine(header->ToHexString());
-
-							# key mask
-							frame[2] := 0x88;
-							frame[3] := 0x23;
-							frame[4] := 0x5d;
-							frame[5] := 0xcd;
-								
-							mask := Byte->New[4];
-							mask[0] := frame[2];
-							mask[1] := frame[3];
-							mask[2] := frame[4];
-							mask[3] := frame[5];
-System.IO.Console->Print("mask: ")->PrintLine(mask->ToHexString());
-
-							j := 0;
-							each(i : message) {
-								frame[frame_offset + i] := message->Get(i) xor mask[j % 4];
-								j += 1;
-							};
-
-#~
-							# payload encoded with 4-byte mask (above)
-							frame[6] := 0xe7;
-							frame[7] := 0x55;
-							frame[8] := 0x38;
-							frame[9] := 0xbf;
-							frame[10] := 0xb1;
-							frame[11] := 0x13;
-							frame[12] := 0x6d;
-							frame[13] := 0xfd;
-
-							# --- START: debug ---
-							# decrypt payload
-							payload := "";
-							j := 0;
-							for(i := 6; i < frame->Size(); i += 1;) {
-								mask_value := frame[i];
-								mask_bit := mask[j % 4];
-
-								payload += (mask_value xor mask_bit)->As(Char);
-
-								# mask index
-								j += 1;
-							};
-System.IO.Console->Print("decrypted payload: ")->PrintLine(payload);
-~#
-
+							SendWsText("We're keeping it Objective!", socket);
 
 							# --- END: debug ---
 
-							socket->WriteBuffer(frame);
-
+							header := Byte->New[2];
 "--- Response: frame=0 ---"->PrintLine();
 							# read header
 							each(i : 2) {
@@ -976,6 +908,53 @@ System.IO.Console->Print("decrypted payload: ")->PrintLine(payload);
 
 			content_type := GetContentType();
 			return Web.HTTP.Response->New(content->ToByteArray(), status_code, content_type);
+		}
+
+		method : SendWsText(message : String, socket : TCPSecureSocket) ~ Bool {
+			message_size := message->Size();
+
+			# TODO: code clean up
+			frame_offset := 6
+			
+			# make test frame
+			header := Byte->New[2];
+			frame := Byte->New[frame_offset + message_size];
+			
+			# finish and opcode
+			frame[0] :=  0x81; 
+
+			# mask and payload length
+			mask_payload_length := 0x80; # set mask bit
+			mask_payload_length += message_size; # payload size
+			frame[1] := mask_payload_length;
+
+			header[0] := frame[0];
+			header[1] := frame[1];
+System.IO.Console->Print("finish+opcode: ")->PrintLine(header->ToHexString());
+
+			# key mask
+			frame[2] := 0x88;
+			frame[3] := 0x23;
+			frame[4] := 0x5d;
+			frame[5] := 0xcd;
+				
+			mask := Byte->New[4];
+			mask[0] := frame[2];
+			mask[1] := frame[3];
+			mask[2] := frame[4];
+			mask[3] := frame[5];
+System.IO.Console->Print("mask: ")->PrintLine(mask->ToHexString());
+
+			j := 0;
+			each(i : message) {
+				frame[frame_offset + i] := message->Get(i) xor mask[j % 4];
+				j += 1;
+			};
+
+			socket->WriteBuffer(frame);
+
+
+			return false;
 		}
 	}
 }
