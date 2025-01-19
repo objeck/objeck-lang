@@ -865,7 +865,49 @@ status_line->PrintLine();
 						nonce_hash := @response_headers->Find("sec-websocket-accept");
 						# TODO: validate hash response '258EAFA5-E914-47DA-95CA-C5AB0DC85B11' base64 encoded
 						if(nonce_hash <> Nil) {
-nonce_hash->PrintLine();							
+							# make test frame
+							frame := Byte->New[14];
+							frame[0] := 129;
+							frame[1] := 136;
+							frame[2] := 136;
+							frame[3] := 35;
+							frame[4] := 93;
+							frame[5] := 205;
+							frame[6] := 231;
+							frame[7] := 85;
+							frame[8] := 56;
+							frame[9] := 191;
+							frame[10] := 177;
+							frame[11] := 19;
+							frame[12] := 109;
+							frame[13] := 253;
+							socket->WriteBuffer(frame);
+							
+							# read header
+							header := Byte->New[2]
+							each(i : 2) {
+								header[i] := socket->ReadByte();
+							};
+							header->ToHexString()->PrintLine();
+
+							each(i : header[1]) {
+								char := socket->ReadByte()->As(Char);
+								"{$i}='{$char}', "->PrintLine();
+							};
+							'\n'->PrintLine();
+
+
+							# read header
+							each(i : 2) {
+								header[i] := socket->ReadByte();
+							};
+							header->ToHexString()->PrintLine();
+
+							each(i : header[1]) {
+								char := socket->ReadByte()->As(Char);
+								"{$i}='{$char}', "->PrintLine();
+							};
+							'\n'->PrintLine();
 						}
 
 					};
