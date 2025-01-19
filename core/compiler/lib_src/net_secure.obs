@@ -837,7 +837,7 @@ IO.Console->Print("Get: |")->Print(oper)->PrintLine("|");
 						status_line := status_line->SubString("HTTP/1."->Size() + 2, status_line->Size() - "HTTP/1."->Size() - 2);
 					};
 
-					if(status_line->Equals("101 Switching Protocols")) {
+					if(status_line->StartsWith("101 Switching")) {
 						# get request headers
 						do {
 							line := socket->ReadLine();
@@ -861,17 +861,22 @@ IO.Console->Print("Get: |")->Print(oper)->PrintLine("|");
 						nonce_hash := @response_headers->Find("sec-websocket-accept");
 						# TODO: validate hash response '258EAFA5-E914-47DA-95CA-C5AB0DC85B11' base64 encoded
 						if(nonce_hash <> Nil) {
-							header := Byte->New[2];
+							message := "Let's keep it Objeckive";
+							message_size := message->Size();
 
+							# TODO: code clean up
+							frame_offset := 6
+							
 							# make test frame
-							frame := Byte->New[14];
+							header := Byte->New[2];
+							frame := Byte->New[frame_offset + message_size];
 							
 							# finish and opcode
 							frame[0] :=  0x81; 
 
 							# mask and payload length
 							mask_payload_length := 0x80; # set mask bit
-							mask_payload_length += 8;
+							mask_payload_length += message_size; # payload size
 							frame[1] := mask_payload_length;
 
 							header[0] := frame[0];
@@ -891,6 +896,13 @@ System.IO.Console->Print("finish+opcode: ")->PrintLine(header->ToHexString());
 							mask[3] := frame[5];
 System.IO.Console->Print("mask: ")->PrintLine(mask->ToHexString());
 
+							j := 0;
+							each(i : message) {
+								frame[frame_offset + i] := message->Get(i) xor mask[j % 4];
+								j += 1;
+							};
+
+#~
 							# payload encoded with 4-byte mask (above)
 							frame[6] := 0xe7;
 							frame[7] := 0x55;
@@ -915,6 +927,8 @@ System.IO.Console->Print("mask: ")->PrintLine(mask->ToHexString());
 								j += 1;
 							};
 System.IO.Console->Print("decrypted payload: ")->PrintLine(payload);
+~#
+
 
 							# --- END: debug ---
 
