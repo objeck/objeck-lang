@@ -965,14 +965,19 @@ if(html <> Nil) {
 					@header[i] := @socket->ReadByte();
 				};
 
-				buffer := "";
-				each(i :@header[1]) {
-					char := @socket->ReadByte()->As(Char);
-					# "{$i}='{$char}'"->PrintLine();
-					buffer += char;
-				};
+				if(@header[0] = -127) {
+					buffer := "";
+					each(i :@header[1]) {
+						char := @socket->ReadByte()->As(Char);
+						# "{$i}='{$char}'"->PrintLine();
+						buffer += char;
+					};
 
-				return buffer;
+					return buffer;
+				}
+				else if(@header[0] = -119) {
+					@socket->Close();
+				};
 			};
 
 			return Nil;
