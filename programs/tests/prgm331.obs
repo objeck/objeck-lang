@@ -2,8 +2,15 @@ use Collection, Web.HTTP;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-"--- Start ---"->PrintLine();		
-		HttpsClient->QuickGet(Url->New("wss://echo.websocket.org"));
+"--- Start ---"->PrintLine();
+		client := HttpsClient->New();
+		if(client->OpenTextSocket(Url->New("wss://echo.websocket.org"))) {
+"--- Opened ---"->PrintLine();
+			client->WriteTextSocket("Gettin' Objective!");
+			client->ReadTextSocket()->PrintLine();
+			client->ReadTextSocket()->PrintLine();
+			client->CloseSocket();
+		};
 "--- End   ---"->PrintLine();		
 	}
 }
