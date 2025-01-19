@@ -27,12 +27,17 @@ if(html <> Nil) {
 			PUT
 		}
 
+		# https client support
 		@request_headers : Hash<String, String>;
 		@response_headers : Hash<String, String>;
 		@cookies_enabled : Bool;
 		@cookies : Vector<Cookie>;
 		@cert_issuer : String;
 		@cert_subject : String;
+
+		# web socket support
+		@socket : TCPSecureSocket;
+		@header : Byte[];
 		
 		#~
 		Default constructor
@@ -802,7 +807,7 @@ if(html <> Nil) {
 				if(port < 0) {
 					port := 443;
 				};
-"### address='{$address}', port={$port}, location='{$location}'"->PrintLine();
+				# "### address='{$address}', port={$port}, location='{$location}'"->PrintLine();
 
 				socket := TCPSecureSocket->New(address, port);
 				if(socket->IsOpen()) {
@@ -828,7 +833,7 @@ if(html <> Nil) {
 					oper->Append(key);
 					oper->Append("\r\n\r\n");		
 					
-IO.Console->Print("Get: |")->Print(oper)->PrintLine("|");
+					# IO.Console->Print("Get: |")->Print(oper)->PrintLine("|");
 					
 					socket->WriteString(oper);
 					
@@ -861,41 +866,10 @@ IO.Console->Print("Get: |")->Print(oper)->PrintLine("|");
 						nonce_hash := @response_headers->Find("sec-websocket-accept");
 						# TODO: validate hash response '258EAFA5-E914-47DA-95CA-C5AB0DC85B11' base64 encoded
 						if(nonce_hash <> Nil) {
-							SendWsText("We're keeping it Objective!", socket);
-
-							# --- END: debug ---
-
-							header := Byte->New[2];
-"--- Response: frame=0 ---"->PrintLine();
-							# read header
-							each(i : 2) {
-								header[i] := socket->ReadByte();
-							};
-							header->ToHexString()->PrintLine();
-
-							each(i : header[1]) {
-								char := socket->ReadByte()->As(Char);
-								"{$i}='{$char}'"->PrintLine();
-							};
-
-"--- Response: frame=1 ---"->PrintLine();
-							# read header
-							each(i : 2) {
-								header[i] := socket->ReadByte();
-							};
-							header->ToHexString()->PrintLine();
-
-							each(i : header[1]) {
-								char := socket->ReadByte()->As(Char);
-								"{$i}='{$char}'"->PrintLine();
-							};
+							@socket := socket;
+							@header := Byte->New[2];
 						}
-
 					};
-"---"->PrintLine();
-						
-
-					socket->Close();
 				}
 				else {
 					return Nil;
@@ -910,51 +884,96 @@ IO.Console->Print("Get: |")->Print(oper)->PrintLine("|");
 			return Web.HTTP.Response->New(content->ToByteArray(), status_code, content_type);
 		}
 
-		method : SendWsText(message : String, socket : TCPSecureSocket) ~ Bool {
-			message_size := message->Size();
+		# 
+		# Web socket support
+		#
 
-			# TODO: code clean up
-			frame_offset := 6
-			
-			# make test frame
-			header := Byte->New[2];
-			frame := Byte->New[frame_offset + message_size];
-			
-			# finish and opcode
-			frame[0] :=  0x81; 
+		#~
+		Performs a HTTPS GET
+		@param url URL
+		@param content_type content type
+		@return string read
+		~#
+		method : public : OpenTextSocket(url : Web.HTTP.Url) ~ Bool {
+			PullOperation(url, Nil, HttpsClient->Task->GET);
+			return @socket <> Nil;
+		}
 
-			# mask and payload length
-			mask_payload_length := 0x80; # set mask bit
-			mask_payload_length += message_size; # payload size
-			frame[1] := mask_payload_length;
+		method : public : WriteTextSocket(message : String) ~ Bool {
+			if(@socket <> Nil) {
+				message_size := message->Size();
 
-			header[0] := frame[0];
-			header[1] := frame[1];
-System.IO.Console->Print("finish+opcode: ")->PrintLine(header->ToHexString());
-
-			# key mask
-			frame[2] := 0x88;
-			frame[3] := 0x23;
-			frame[4] := 0x5d;
-			frame[5] := 0xcd;
+				# TODO: code clean up
+				frame_offset := 6
 				
-			mask := Byte->New[4];
-			mask[0] := frame[2];
-			mask[1] := frame[3];
-			mask[2] := frame[4];
-			mask[3] := frame[5];
-System.IO.Console->Print("mask: ")->PrintLine(mask->ToHexString());
+				# make test frame
+				frame := Byte->New[frame_offset + message_size];
+				
+				# finish and opcode
+				frame[0] :=  0x81; 
 
-			j := 0;
-			each(i : message) {
-				frame[frame_offset + i] := message->Get(i) xor mask[j % 4];
-				j += 1;
+				# mask and payload length
+				mask_payload_length := 0x80; # set mask bit
+				mask_payload_length += message_size; # payload size
+				frame[1] := mask_payload_length;
+
+				#~
+				@header[0] := frame[0];
+				@header[1] := frame[1];
+				System.IO.Console->Print("finish+opcode: ")->PrintLine(@header->ToHexString());
+				~#
+
+				# key mask
+				frame[2] := 0x88;
+				frame[3] := 0x23;
+				frame[4] := 0x5d;
+				frame[5] := 0xcd;
+					
+				#~
+				mask := Byte->New[4];
+				mask[0] := frame[2];
+				mask[1] := frame[3];
+				mask[2] := frame[4];
+				mask[3] := frame[5];
+				System.IO.Console->Print("mask: ")->PrintLine(mask->ToHexString());
+				~#
+
+				j := 0;
+				each(i : message) {
+					frame[frame_offset + i] := message->Get(i) xor frame[j % 4 + 2];
+					j += 1;
+				};
+
+				return @socket->WriteBuffer(frame) > 0;
 			};
 
-			socket->WriteBuffer(frame);
-
-
 			return false;
+		}
+
+		method : public : ReadTextSocket() ~ String {
+			if(@socket <> Nil) {
+				# read header
+				each(i : 2) {
+					@header[i] := @socket->ReadByte();
+				};
+
+				buffer := "";
+				each(i :@header[1]) {
+					char := @socket->ReadByte()->As(Char);
+					# "{$i}='{$char}'"->PrintLine();
+					buffer += char;
+				};
+
+				return buffer;
+			};
+
+			return Nil;
+		}
+
+		method : public : CloseSocket() ~ Nil {
+			if(@socket <> Nil) {
+				@socket->Close();
+			};
 		}
 	}
 }
