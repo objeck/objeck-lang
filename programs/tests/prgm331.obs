@@ -1,6 +1,9 @@
-use Collection;
+use Collection, Web.HTTP;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
+"--- 0 ---"->PrintLine();		
+		HttpsClient->QuickGet(Url->New("wss://abc.org"));
+"--- 9 ---"->PrintLine();		
 	}
 }
