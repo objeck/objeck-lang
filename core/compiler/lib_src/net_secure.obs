@@ -834,14 +834,10 @@ IO.Console->Print("Get: |")->Print(oper)->PrintLine("|");
 					
 					status_line := socket->ReadLine();
 					if(status_line->StartsWith("HTTP/1.")) {
-						status_line := status_line->SubString("HTTP/1."->Size() + 2, 
-							status_line->Size() - "HTTP/1."->Size() - 2);
-						index := status_line->Find(' ');
-						status_code := status_line->SubString(index)->ToInt();
+						status_line := status_line->SubString("HTTP/1."->Size() + 2, status_line->Size() - "HTTP/1."->Size() - 2);
 					};
-status_line->PrintLine();
 
-					if(status_code = 101) {
+					if(status_line->Equals("101 Switching Protocols")) {
 						# get request headers
 						do {
 							line := socket->ReadLine();
@@ -876,8 +872,11 @@ status_line->PrintLine();
 							# mask and payload length
 							mask_payload_length := 0x80; # set mask bit
 							mask_payload_length += 8;
-							frame[1] := mask_payload_length;							
-frame->ToHexString()->PrintLine();
+							frame[1] := mask_payload_length;
+
+							header[0] := frame[0];
+							header[1] := frame[1];
+System.IO.Console->Print("finish+opcode: ")->PrintLine(header->ToHexString());
 
 							# key mask
 							frame[2] := 0x88;
@@ -890,7 +889,7 @@ frame->ToHexString()->PrintLine();
 							mask[1] := frame[3];
 							mask[2] := frame[4];
 							mask[3] := frame[5];
-mask->ToHexString()->PrintLine();
+System.IO.Console->Print("mask: ")->PrintLine(mask->ToHexString());
 
 							# payload encoded with 4-byte mask (above)
 							frame[6] := 0xe7;
@@ -902,7 +901,7 @@ mask->ToHexString()->PrintLine();
 							frame[12] := 0x6d;
 							frame[13] := 0xfd;
 
-							# --- debug ---
+							# --- START: debug ---
 							# decrypt payload
 							payload := "";
 							j := 0;
@@ -915,11 +914,13 @@ mask->ToHexString()->PrintLine();
 								# mask index
 								j += 1;
 							};
-							payload->PrintLine();
-							# --- debug ---
+System.IO.Console->Print("decrypted payload: ")->PrintLine(payload);
+
+							# --- END: debug ---
 
 							socket->WriteBuffer(frame);
-							
+
+"--- Response: frame=0 ---"->PrintLine();
 							# read header
 							each(i : 2) {
 								header[i] := socket->ReadByte();
@@ -928,11 +929,10 @@ mask->ToHexString()->PrintLine();
 
 							each(i : header[1]) {
 								char := socket->ReadByte()->As(Char);
-								"{$i}='{$char}', "->PrintLine();
+								"{$i}='{$char}'"->PrintLine();
 							};
-							'\n'->PrintLine();
 
-
+"--- Response: frame=1 ---"->PrintLine();
 							# read header
 							each(i : 2) {
 								header[i] := socket->ReadByte();
@@ -941,9 +941,8 @@ mask->ToHexString()->PrintLine();
 
 							each(i : header[1]) {
 								char := socket->ReadByte()->As(Char);
-								"{$i}='{$char}', "->PrintLine();
+								"{$i}='{$char}'"->PrintLine();
 							};
-							'\n'->PrintLine();
 						}
 
 					};
