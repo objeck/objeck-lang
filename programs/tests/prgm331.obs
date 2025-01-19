@@ -3,7 +3,7 @@ use Collection, Web.HTTP;
 class Test {
 	function : Main(args : String[]) ~ Nil {
 "--- 0 ---"->PrintLine();		
-		HttpsClient->QuickGet(Url->New("wss://abc.org"));
+		HttpsClient->QuickGet(Url->New("wss://demo.piesocket.com/v3/channel_123?api_key=VCXCEuvhGcBDP7XhiJJUDvR1e1D3eiVjgZ9VRiaV&notify_self"));
 "--- 9 ---"->PrintLine();		
 	}
 }
