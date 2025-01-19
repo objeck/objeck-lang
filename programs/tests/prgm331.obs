@@ -2,8 +2,8 @@ use Collection, Web.HTTP;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-"--- 0 ---"->PrintLine();		
+"--- Start ---"->PrintLine();		
 		HttpsClient->QuickGet(Url->New("wss://echo.websocket.org"));
-"--- 9 ---"->PrintLine();		
+"--- End   ---"->PrintLine();		
 	}
 }
