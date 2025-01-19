@@ -860,12 +860,14 @@ status_line->PrintLine();
 								};
 							};
 						}
-						while(line->Size() > 0);						
-IO.Console->Print("headers: size=")->PrintLine(@response_headers->Size());
-IO.Console->Print("cookies: size=")->PrintLine(@cookies->Size());
-
+						while(line->Size() > 0);
+						
 						nonce_hash := @response_headers->Find("sec-websocket-accept");
-nonce_hash->PrintLine();
+						# TODO: validate hash response '258EAFA5-E914-47DA-95CA-C5AB0DC85B11' base64 encoded
+						if(nonce_hash <> Nil) {
+nonce_hash->PrintLine();							
+						}
+
 					};
 "---"->PrintLine();
 						
