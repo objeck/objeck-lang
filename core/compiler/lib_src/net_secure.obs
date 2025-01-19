@@ -777,6 +777,100 @@ if(html <> Nil) {
 				else {
 					return Nil;
 				};
+			}
+			else if(url->GetScheme()->Equals("wss")) {
+				address := url->GetHost();
+				
+				location := url->GetPath();
+				if(location = Nil) {
+					location := "/";
+				};
+
+				query := url->GetQuery();
+				if(query <> Nil) {
+					location += '?';
+					location += query;
+				};
+
+				frag := url->GetFragment();
+				if(frag <> Nil) {
+					location += '#';
+					location += frag;
+				};
+
+				port := url->GetPort();
+				if(port < 0) {
+					port := 443;
+				};
+"### address='{$address}', port={$port}, location='{$location}'"->PrintLine();
+
+				socket := TCPSecureSocket->New(address, port);
+				if(socket->IsOpen()) {
+					@response_headers->Empty();
+
+					oper := "GET ";
+					
+					oper->Append(location);
+					oper->Append(" HTTP/1.1\r\nHost: ");
+					oper->Append(address);
+					oper->Append(':');
+					oper->Append(port);
+					oper->Append("\r\n");
+
+					oper->Append("Connection: Upgrade\r\nUpgrade: websocket\r\nSec-WebSocket-Version: 13\r\nSec-WebSocket-Key: ");
+
+					nonce := Byte->New[16];
+					each(i in nonce) {
+a := Int->Random(255);
+a->PrintLine();
+						nonce[i] := a;
+					};
+					key := Cipher.Encrypt->Base64(nonce);
+key->PrintLine();
+# zy6Dy9mSAIM7GJZNf9rI1A==
+
+					request_keys := @request_headers->GetKeys()<String>;
+					each(i : request_keys) {		
+						request_key := request_keys->Get(i);
+						request_value := @request_headers->Find(request_key);					
+						oper->Append(request_key);
+						oper->Append(": ");
+						oper->Append(request_value);
+						oper->Append("\r\n");
+					};
+					
+					if(@cookies_enabled & @cookies->Size() > 0) {
+						oper->Append("Cookie: ");
+						each(i : @cookies) {
+							oper->Append(@cookies->Get(i)->ToShortString());
+							if(i + 1 < @cookies->Size()) {
+								oper->Append("; ");
+							};
+						};
+						oper->Append("\r\n");
+					};					
+					oper->Append("\r\n");		
+					
+					# IO.Console->Print("Get: |")->Print(oper)->PrintLine("|");
+					
+					socket->WriteString(oper);
+					
+					status_line := socket->ReadLine();
+					# status_line->PrintLine();
+
+					if(status_line->StartsWith("HTTP/1.")) {
+						status_line := status_line->SubString("HTTP/1."->Size() + 2, 
+							status_line->Size() - "HTTP/1."->Size() - 2);
+						index := status_line->Find(' ');
+						status_code := status_line->SubString(index)->ToInt();
+					};
+					# status_code->PrintLine();
+
+					socket->Close();
+				}
+				else {
+					return Nil;
+				};
 			};	
 			
 			if(content = Nil) {
