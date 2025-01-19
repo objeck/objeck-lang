@@ -26,6 +26,25 @@ bundle Cipher {
 	~#
 	class Hash {
 		#~
+		Hash input using SHA-1
+		@param stream_in bytes to hashed
+		@return hashed bytes
+		~#
+		function : SHA1(stream_in : Byte[]) ~ Byte[] {
+			if(stream_in <> Nil) {
+				array_args := Base->New[2];
+				array_args[0] := ByteArrayRef->New(Nil->As(Byte[]));
+				array_args[1] := ByteArrayRef->New(stream_in);				
+				Proxy->GetDllProxy()->CallFunction("openssl_hash_sha1", array_args);
+				
+				holder := array_args[0]->As(ByteArrayRef);
+				return holder->Get();
+			};
+			
+			return Nil;
+		}
+		
+		#~
 		Hash input using SHA-256
 		@param stream_in bytes to hashed
 		@return hashed bytes

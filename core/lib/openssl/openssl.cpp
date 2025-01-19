@@ -55,6 +55,64 @@ extern "C" {
   }
   
   //
+  // SHA-1 hash
+  //
+  #ifdef _WIN32
+    __declspec(dllexport)
+  #endif
+    void openssl_hash_sha1(VMContext& context) {
+      // get parameters
+      size_t* input_array = (size_t*)APITools_GetArray(context, 1)[0];
+      const long input_size = ((long)APITools_GetArraySize(input_array));
+      const unsigned char* input = (unsigned char*)APITools_GetArray(input_array);
+      size_t* output_holder = APITools_GetArray(context, 0);
+
+      EVP_MD_CTX* ctx = EVP_MD_CTX_new();
+      if(!ctx) {
+        output_holder[0] = 0;
+        return;
+      }
+
+      if(!EVP_DigestInit_ex(ctx, EVP_sha1(), nullptr)) {
+        EVP_MD_CTX_free(ctx);
+        output_holder[0] = 0;
+        return;
+      }
+
+      if(!EVP_DigestUpdate(ctx, input, input_size)) {
+        EVP_MD_CTX_free(ctx);
+        output_holder[0] = 0;
+        return;
+      }
+
+      unsigned char output[EVP_MAX_MD_SIZE];
+      memset(output, 0, EVP_MAX_MD_SIZE);
+
+      unsigned int hash_len = 0;
+      if(!EVP_DigestFinal_ex(ctx, output, &hash_len)) {
+        EVP_MD_CTX_free(ctx);
+        output_holder[0] = 0;
+        return;
+      }
+
+      if(hash_len != SHA_DIGEST_LENGTH) {
+        EVP_MD_CTX_free(ctx);
+        output_holder[0] = 0;
+        return;
+      }
+
+      // copy output
+      size_t* output_byte_array = APITools_MakeByteArray(context, SHA_DIGEST_LENGTH);
+      unsigned char* output_byte_array_buffer = (unsigned char*)(output_byte_array + 3);
+      for(int i = 0; i < SHA_DIGEST_LENGTH; i++) {
+        output_byte_array_buffer[i] = output[i];
+      }
+
+      EVP_MD_CTX_free(ctx);
+      output_holder[0] = (size_t)output_byte_array;
+    }
+  
+  //
   // SHA-256 hash
   //
 #ifdef _WIN32
