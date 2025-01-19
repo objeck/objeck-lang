@@ -889,9 +889,8 @@ if(html <> Nil) {
 		#
 
 		#~
-		Performs a HTTPS GET
+		Opens a web socket text connection
 		@param url URL
-		@param content_type content type
 		@return string read
 		~#
 		method : public : OpenTextSocket(url : Web.HTTP.Url) ~ Bool {
@@ -899,6 +898,11 @@ if(html <> Nil) {
 			return @socket <> Nil;
 		}
 
+		#~
+		Writes text to the web socket
+		@param message message
+		@return true if successful, false otherwise
+		~#
 		method : public : WriteTextSocket(message : String) ~ Bool {
 			if(@socket <> Nil) {
 				message_size := message->Size();
@@ -950,6 +954,10 @@ if(html <> Nil) {
 			return false;
 		}
 
+		#~
+		Reads text from the web socket
+		@return text read, Nil otherwise
+		~#
 		method : public : ReadTextSocket() ~ String {
 			if(@socket <> Nil) {
 				# read header
@@ -970,6 +978,9 @@ if(html <> Nil) {
 			return Nil;
 		}
 
+		#~
+		Closes the web socket connection
+		~#
 		method : public : CloseSocket() ~ Nil {
 			if(@socket <> Nil) {
 				@socket->Close();
