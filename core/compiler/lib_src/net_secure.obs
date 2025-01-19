@@ -820,51 +820,32 @@ if(html <> Nil) {
 					oper->Append("Connection: Upgrade\r\nUpgrade: websocket\r\nSec-WebSocket-Version: 13\r\nSec-WebSocket-Key: ");
 
 					nonce := Byte->New[16];
-					each(i in nonce) {
-a := Int->Random(255);
-a->PrintLine();
-						nonce[i] := a;
+					each(i : nonce) {
+						nonce[i] := Int->Random(255);
 					};
 					key := Cipher.Encrypt->Base64(nonce);
-key->PrintLine();
-# zy6Dy9mSAIM7GJZNf9rI1A==
 
-					request_keys := @request_headers->GetKeys()<String>;
-					each(i : request_keys) {		
-						request_key := request_keys->Get(i);
-						request_value := @request_headers->Find(request_key);					
-						oper->Append(request_key);
-						oper->Append(": ");
-						oper->Append(request_value);
-						oper->Append("\r\n");
-					};
+					oper->Append(key);
+					oper->Append("\r\n\r\n");		
 					
-					if(@cookies_enabled & @cookies->Size() > 0) {
-						oper->Append("Cookie: ");
-						each(i : @cookies) {
-							oper->Append(@cookies->Get(i)->ToShortString());
-							if(i + 1 < @cookies->Size()) {
-								oper->Append("; ");
-							};
-						};
-						oper->Append("\r\n");
-					};					
-					oper->Append("\r\n");		
-					
-					# IO.Console->Print("Get: |")->Print(oper)->PrintLine("|");
+IO.Console->Print("Get: |")->Print(oper)->PrintLine("|");
 					
 					socket->WriteString(oper);
 					
 					status_line := socket->ReadLine();
-					# status_line->PrintLine();
-
 					if(status_line->StartsWith("HTTP/1.")) {
 						status_line := status_line->SubString("HTTP/1."->Size() + 2, 
 							status_line->Size() - "HTTP/1."->Size() - 2);
 						index := status_line->Find(' ');
 						status_code := status_line->SubString(index)->ToInt();
 					};
-					# status_code->PrintLine();
+status_line->PrintLine();
+
+					if(status_code = 101) {
+						
+					};
+"---"
+						
 
 					socket->Close();
 				}
