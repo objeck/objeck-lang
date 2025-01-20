@@ -943,8 +943,8 @@ if(html <> Nil) {
 				~#
 
 				# encode payload
-				j := 0;
-				each(i : message) {
+				i := 0; j := 0;
+				for(; i < message->Size(); i += 1;) {
 					frame[frame_offset + i] := message->Get(i) xor frame[j % 4 + 2];
 					j += 1;
 				};
@@ -966,7 +966,7 @@ if(html <> Nil) {
 					@header[i] := @socket->ReadByte();
 				};
 				opcode := (@header[0] and 0xff)->As(Byte);
-				
+
 				if(opcode = 0x81) {
 					buffer := "";
 					each(i :@header[1]) {
