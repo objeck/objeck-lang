@@ -904,17 +904,17 @@ if(html <> Nil) {
 		@return true if successful, false otherwise
 		~#
 		method : public : WriteTextSocket(message : String) ~ Bool {
-			if(@socket <> Nil) {
+			# TODO: 7-bit payload size
+			if(@socket <> Nil & message->Size() < 128) {
 				message_size := message->Size();
 
-				# TODO: code clean up
 				frame_offset := 6
 				
 				# make test frame
 				frame := Byte->New[frame_offset + message_size];
 				
-				# finish and opcode
-				frame[0] :=  0x81; 
+				# set text (utf-8) opcode
+				frame[0] :=  0x81;
 
 				# mask and payload length
 				mask_payload_length := 0x80; # set mask bit
@@ -942,6 +942,7 @@ if(html <> Nil) {
 				System.IO.Console->Print("mask: ")->PrintLine(mask->ToHexString());
 				~#
 
+				# encode payload
 				j := 0;
 				each(i : message) {
 					frame[frame_offset + i] := message->Get(i) xor frame[j % 4 + 2];
@@ -964,8 +965,9 @@ if(html <> Nil) {
 				each(i : 2) {
 					@header[i] := @socket->ReadByte();
 				};
-
-				if(@header[0] = -127) {
+				opcode := (@header[0] and 0xff)->As(Byte);
+				
+				if(opcode = 0x81) {
 					buffer := "";
 					each(i :@header[1]) {
 						char := @socket->ReadByte()->As(Char);
@@ -975,7 +977,7 @@ if(html <> Nil) {
 
 					return buffer;
 				}
-				else if(@header[0] = -119) {
+				else if(opcode = 0x88) {
 					@socket->Close();
 				};
 			};
