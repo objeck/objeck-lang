@@ -10,13 +10,9 @@ class Test {
 "--- Opened ---"->PrintLine();
 			client->ReadTextSocket()->PrintLine();
 
-#			client->WriteTextSocket("Gettin' Objective!");
-#			client->ReadTextSocket()->PrintLine();
-
-			client->WriteTextSocket(text);
+			client->WriteTextSocket("Gettin' Objective!");
 			client->ReadTextSocket()->PrintLine();
-			client->ReadTextSocket()->PrintLine();
-
+			
 			client->CloseSocket();
 		}
 		else {
