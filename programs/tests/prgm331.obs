@@ -7,6 +7,12 @@ class Test {
 
 		text_size->PrintLine();
 		"---"->PrintLine();
+
+		(text_size and 0xf000 >> 6)->PrintLine();
+		(text_size and 0x0f00 >> 4)->PrintLine();
+
+		(text_size and 0x00f0 >> 2)->PrintLine();
+		(text_size and 0x000f)->PrintLine();
 #~
 "--- Start ---"->PrintLine();
 		client := HttpsClient->New();
