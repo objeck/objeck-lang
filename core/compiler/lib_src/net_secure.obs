@@ -1020,14 +1020,18 @@ System.IO.Console->Print("read - opcode+length: ")->PrintLine(@header->ToHexStri
 						};
 System.IO.Console->Print("read - length-ext-bytes: ")->PrintLine(@header->ToHexString());
 
-						payload_length := @header[0] * 0x100 + @header[1];	
+hi_byte := (@header[0] and 0xff)->As(Byte);
+low_byte := (@header[1] and 0xff)->As(Byte);
+System.IO.Console->Print("read - hi_byte=")->Print(hi_byte)->Print(", low_byte=")->PrintLine(low_byte);
+
+						payload_length := low_byte + hi_byte << 4;
 					};
 
 System.IO.Console->Print("read - length: ")->PrintLine(payload_length);
 
 					each(i : payload_length) {
 						char := @socket->ReadByte()->As(Char);
-"{$i}=?"->PrintLine();
+# "{$i}=?"->PrintLine();
 						buffer += char;
 					};
 
