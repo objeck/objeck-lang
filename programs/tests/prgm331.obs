@@ -6,10 +6,18 @@ class Test {
 		client := HttpsClient->New();
 		if(client->OpenTextSocket(Url->New("wss://echo.websocket.org"))) {
 "--- Opened ---"->PrintLine();
+			client->ReadTextSocket()->PrintLine();
+
 			client->WriteTextSocket("Gettin' Objective!");
 			client->ReadTextSocket()->PrintLine();
+
+			client->WriteTextSocket("Mack Miller...");
 			client->ReadTextSocket()->PrintLine();
+
 			client->CloseSocket();
+		}
+		else {
+"--- Closed ---"->PrintLine();
 		};
 "--- End   ---"->PrintLine();		
 	}
