@@ -1,17 +1,20 @@
-use Collection, Web.HTTP;
+use Collection, Web.HTTP, System.IO.Filesystem;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
+		text := FileReader->ReadFile("lorem.txt");
+
 "--- Start ---"->PrintLine();
 		client := HttpsClient->New();
 		if(client->OpenTextSocket(Url->New("wss://echo.websocket.org"))) {
 "--- Opened ---"->PrintLine();
 			client->ReadTextSocket()->PrintLine();
 
-			client->WriteTextSocket("Gettin' Objective!");
-			client->ReadTextSocket()->PrintLine();
+#			client->WriteTextSocket("Gettin' Objective!");
+#			client->ReadTextSocket()->PrintLine();
 
-			client->WriteTextSocket("Mack Miller...");
+			client->WriteTextSocket(text);
+			client->ReadTextSocket()->PrintLine();
 			client->ReadTextSocket()->PrintLine();
 
 			client->CloseSocket();
