@@ -906,20 +906,21 @@ if(html <> Nil) {
 		method : public : WriteTextSocket(message : String) ~ Bool {
 			# TODO: 7-bit payload size
 			if(@socket <> Nil & message->Size() < 65536) {
-				message_size := message->Size();
+				payload := message->ToByteArray();
+				payload_size := message->Size();
 
 				frame_offset : Int;
 				
 				# create frame
 				frame : Byte[];
 
-				if(message_size < 126) {
+				if(payload_size < 126) {
 					frame_offset := 6;
-					frame := Byte->New[frame_offset + message_size];
+					frame := Byte->New[frame_offset + payload_size];
 				}
 				else {
 					frame_offset := 8;
-					frame := Byte->New[frame_offset + message_size + 2];
+					frame := Byte->New[frame_offset + payload_size + 2];
 				};
 				
 				# set utf-8 opcode
@@ -927,8 +928,8 @@ if(html <> Nil) {
 
 				# set payload length and bit mask
 				mask_payload_length := 0x80; # set mask bit
-				if(message_size < 126) {
-					mask_payload_length += message_size; # payload size
+				if(payload_size < 126) {
+					mask_payload_length += payload_size; # payload size
 					frame[1] := mask_payload_length;
 
 					#~
@@ -957,8 +958,8 @@ if(html <> Nil) {
 					mask_payload_length += 126; # payload size
 					frame[1] := mask_payload_length;
 
-					frame[2] := (message_size >> 8) and 0xff;
-					frame[3] := message_size and 0xff;
+					frame[2] := (payload_size >> 8) and 0xff;
+					frame[3] := payload_size and 0xff;
 
 opcodes := Byte->New[4];
 opcodes[0] := frame[0];
@@ -985,8 +986,8 @@ System.IO.Console->Print("write - opcode+length-ext: ")->PrintLine(opcodes->ToHe
 
 				# encode payload
 				i := 0; j := 0;
-				for(; i < message->Size(); i += 1;) {
-					frame[frame_offset + i] := message->Get(i) xor frame[j % 4 + 2];
+				for(; i < payload->Size(); i += 1;) {
+					frame[frame_offset + i] := payload[i] xor frame[j % 4 + 2];
 					j += 1;
 				};
 
@@ -1011,8 +1012,6 @@ System.IO.Console->Print("write - opcode+length-ext: ")->PrintLine(opcodes->ToHe
 System.IO.Console->Print("read - opcode+length: ")->PrintLine(@header->ToHexString());
 
 				if(opcode = 0x81 | opcode = 0x88) {
-					buffer := "";
-					
 					payload_length : Int := @header[1];
 					if(payload_length = 126) {
 						each(i : 2) {
@@ -1020,27 +1019,27 @@ System.IO.Console->Print("read - opcode+length: ")->PrintLine(@header->ToHexStri
 						};
 System.IO.Console->Print("read - length-ext-bytes: ")->PrintLine(@header->ToHexString());
 
-hi_byte := (@header[0] and 0xff)->As(Byte);
-low_byte := (@header[1] and 0xff)->As(Byte);
-System.IO.Console->Print("read - hi_byte=")->Print(hi_byte)->Print(", low_byte=")->PrintLine(low_byte);
-
-						payload_length := low_byte + hi_byte << 4;
+						payload_length := (@header[0] and 0xff) << 8 + @header[1] and 0xff;
 					};
 
+					buffer := Byte->New[payload_length];
 System.IO.Console->Print("read - length: ")->PrintLine(payload_length);
 
 					each(i : payload_length) {
-						char := @socket->ReadByte()->As(Char);
-# "{$i}=?"->PrintLine();
-						buffer += char;
+						byte := @socket->ReadByte();
+
+foo := byte->As(Int);
+"{$i}={$foo}"->PrintLine();
+
+						buffer[i] := byte;
 					};
 
 					if(opcode = 0x88) {
 						@socket->Close();
 					};
-System.IO.Console->Print("read - buffer: ")->PrintLine(buffer->SubString(10, buffer->Size() - 10));
+System.IO.Console->Print("read - buffer: ")->PrintLine(String->New(buffer));
 
-					return buffer;
+					return String->New(buffer);
 				};
 			};
 
