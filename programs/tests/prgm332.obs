@@ -1,18 +1,16 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		value := 48893;
-
-		# 10 0010 0001
-
+		value := Int->Random(65535);
+		"value={$value}\n---"->PrintLine();
+		
 		bytes := Byte->New[2];
 		bytes[0] := (value >> 8) and 0xff;
 		bytes[1] := value and 0xff;
-		System.IO.Console->Print("encoded: ")->PrintLine(bytes->ToHexString());
+		System.IO.Console->Print("encoded: ")->Print(bytes->ToHexString())->PrintLine("\n---");
 	
 		value := 0;
-		value += (bytes[0] and 0xff) << 8;
-		value += bytes[1] and 0xff;
-		
-		value->PrintLine();
+		value += (bytes[0] and 0xff) << 8 + bytes[1] and 0xff;
+
+		"decoded={$value}\n---"->PrintLine();
 	}
 }
