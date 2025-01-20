@@ -905,7 +905,7 @@ if(html <> Nil) {
 		~#
 		method : public : WriteTextSocket(message : String) ~ Bool {
 			# TODO: 7-bit payload size
-			if(@socket <> Nil & message->Size() < 126) {
+			if(@socket <> Nil & message->Size() < 65536) {
 				message_size := message->Size();
 
 				frame_offset := 6
