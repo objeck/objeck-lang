@@ -7,25 +7,21 @@ class Test {
 
 		text_size->PrintLine();
 		"---"->PrintLine();
-
+#~
 		(text_size and 0xff)->PrintLine();
 		((text_size >> 8) and 0xff)->PrintLine();
-#~
-"--- Start ---"->PrintLine();
+~#
+
 		client := HttpsClient->New();
 		if(client->OpenTextSocket(Url->New("wss://echo.websocket.org"))) {
-"--- Opened ---"->PrintLine();
 			client->ReadTextSocket()->PrintLine();
 
-			client->WriteTextSocket("Gettin' Objective!");
+			client->WriteTextSocket(text);
 			client->ReadTextSocket()->PrintLine();
 			
 			client->CloseSocket();
 		}
 		else {
-"--- Closed ---"->PrintLine();
 		};
-"--- End   ---"->PrintLine();
-~#		
 	}
 }

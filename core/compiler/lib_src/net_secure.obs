@@ -908,39 +908,80 @@ if(html <> Nil) {
 			if(@socket <> Nil & message->Size() < 65536) {
 				message_size := message->Size();
 
-				frame_offset := 6
+				frame_offset : Int;
 				
-				# make test frame
-				frame := Byte->New[frame_offset + message_size];
+				# create frame
+				frame : Byte[];
+
+				if(message_size < 126) {
+					frame_offset := 6;
+					frame := Byte->New[frame_offset + message_size];
+				}
+				else {
+					frame_offset := 8;
+					frame := Byte->New[frame_offset + message_size + 2];
+				};
 				
-				# set text (utf-8) opcode
+				# set utf-8 opcode
 				frame[0] :=  0x81;
 
-				# mask and payload length
+				# set payload length and bit mask
 				mask_payload_length := 0x80; # set mask bit
-				mask_payload_length += message_size; # payload size
-				frame[1] := mask_payload_length;
+				if(message_size < 126) {
+					mask_payload_length += message_size; # payload size
+					frame[1] := mask_payload_length;
 
-				#~
-				@header[0] := frame[0];
-				@header[1] := frame[1];
-				System.IO.Console->Print("finish+opcode: ")->PrintLine(@header->ToHexString());
-				~#
+					#~
+					opcodes := Byte->New[2];
+					opcodes[0] := frame[0];
+					opcodes[1] := frame[1];
+					System.IO.Console->Print("opcode+length: ")->PrintLine(opcodes->ToHexString());
+					~#
 
-				# key mask
-				frame[2] := Int->Random(255);
-				frame[3] := Int->Random(255);
-				frame[4] := Int->Random(255);
-				frame[5] := Int->Random(255);
-					
-				#~
-				mask := Byte->New[4];
-				mask[0] := frame[2];
-				mask[1] := frame[3];
-				mask[2] := frame[4];
-				mask[3] := frame[5];
-				System.IO.Console->Print("mask: ")->PrintLine(mask->ToHexString());
-				~#
+					# key mask
+					frame[2] := Int->Random(255);
+					frame[3] := Int->Random(255);
+					frame[4] := Int->Random(255);
+					frame[5] := Int->Random(255);
+
+					#~
+					mask := Byte->New[4];
+					mask[0] := frame[2];
+					mask[1] := frame[3];
+					mask[2] := frame[4];
+					mask[3] := frame[5];
+					System.IO.Console->Print("mask: ")->PrintLine(mask->ToHexString());
+					~#
+				}
+				else {
+					mask_payload_length += 126; # payload size
+					frame[1] := mask_payload_length;
+
+					frame[2] := (message_size >> 8) and 0xff;
+					frame[3] := message_size and 0xff;
+
+opcodes := Byte->New[4];
+opcodes[0] := frame[0];
+opcodes[1] := frame[1];
+opcodes[2] := frame[2];
+opcodes[3] := frame[3];
+System.IO.Console->Print("write - opcode+length-ext: ")->PrintLine(opcodes->ToHexString());
+
+					# key mask
+					frame[4] := Int->Random(255);
+					frame[5] := Int->Random(255);
+					frame[6] := Int->Random(255);
+					frame[7] := Int->Random(255);
+
+					#~
+					mask := Byte->New[4];
+					mask[0] := frame[4];
+					mask[1] := frame[5];
+					mask[2] := frame[6];
+					mask[3] := frame[7];
+					System.IO.Console->Print("mask: ")->PrintLine(mask->ToHexString());
+					~#
+				};
 
 				# encode payload
 				i := 0; j := 0;
@@ -967,18 +1008,35 @@ if(html <> Nil) {
 				};
 				opcode := (@header[0] and 0xff)->As(Byte);
 
-				if(opcode = 0x81) {
+System.IO.Console->Print("read - opcode+length: ")->PrintLine(@header->ToHexString());
+
+				if(opcode = 0x81 | opcode = 0x88) {
 					buffer := "";
-					each(i :@header[1]) {
+					
+					payload_length : Int := @header[1];
+					if(payload_length = 126) {
+						each(i : 2) {
+							@header[i] := @socket->ReadByte();
+						};
+System.IO.Console->Print("read - length-ext-bytes: ")->PrintLine(@header->ToHexString());
+
+						payload_length := @header[0] * 0x100 + @header[1];	
+					};
+
+System.IO.Console->Print("read - length: ")->PrintLine(payload_length);
+
+					each(i : payload_length) {
 						char := @socket->ReadByte()->As(Char);
-						# "{$i}='{$char}'"->PrintLine();
+"{$i}=?"->PrintLine();
 						buffer += char;
 					};
 
+					if(opcode = 0x88) {
+						@socket->Close();
+					};
+System.IO.Console->Print("read - buffer: ")->PrintLine(buffer->SubString(10, buffer->Size() - 10));
+
 					return buffer;
-				}
-				else if(opcode = 0x88) {
-					@socket->Close();
 				};
 			};
 
