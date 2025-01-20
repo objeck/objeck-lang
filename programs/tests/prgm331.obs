@@ -16,6 +16,7 @@ class Test {
 		if(client->OpenTextSocket(Url->New("wss://echo.websocket.org"))) {
 			client->ReadTextSocket()->PrintLine();
 
+#			client->WriteTextSocket("Hello World!");
 			client->WriteTextSocket(text);
 			client->ReadTextSocket()->PrintLine();
 			
