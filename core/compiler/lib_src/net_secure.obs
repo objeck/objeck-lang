@@ -904,7 +904,6 @@ if(html <> Nil) {
 		@return true if successful, false otherwise
 		~#
 		method : public : WriteTextSocket(message : String) ~ Bool {
-			# TODO: 7-bit payload size
 			if(@socket <> Nil & message->Size() < 65536) {
 				payload := message->ToByteArray();
 				payload_size := message->Size();
@@ -961,12 +960,14 @@ if(html <> Nil) {
 					frame[2] := (payload_size >> 8) and 0xff;
 					frame[3] := payload_size and 0xff;
 
-opcodes := Byte->New[4];
-opcodes[0] := frame[0];
-opcodes[1] := frame[1];
-opcodes[2] := frame[2];
-opcodes[3] := frame[3];
-System.IO.Console->Print("write - opcode+length-ext: ")->PrintLine(opcodes->ToHexString());
+					#~
+					opcodes := Byte->New[4];
+					opcodes[0] := frame[0];
+					opcodes[1] := frame[1];
+					opcodes[2] := frame[2];
+					opcodes[3] := frame[3];
+					System.IO.Console->Print("write - opcode+length-ext: ")->PrintLine(opcodes->ToHexString());
+					~#
 
 					# key mask
 					frame[4] := Int->Random(255);
@@ -985,9 +986,9 @@ System.IO.Console->Print("write - opcode+length-ext: ")->PrintLine(opcodes->ToHe
 				};
 
 				# encode payload
-				i := 0; j := 0;
-				for(; i < payload->Size(); i += 1;) {
-					frame[frame_offset + i] := payload[i] xor frame[j % 4 + 2];
+				j := 0;
+				each(i : payload) {
+					frame[frame_offset + i] := payload[i] xor frame[j % 4 + frame_offset - 4];
 					j += 1;
 				};
 
@@ -1009,7 +1010,7 @@ System.IO.Console->Print("write - opcode+length-ext: ")->PrintLine(opcodes->ToHe
 				};
 				opcode := (@header[0] and 0xff)->As(Byte);
 
-System.IO.Console->Print("read - opcode+length: ")->PrintLine(@header->ToHexString());
+				# System.IO.Console->Print("read - opt+len: ")->PrintLine(@header->ToHexString());
 
 				if(opcode = 0x81 | opcode = 0x88) {
 					payload_length : Int := @header[1];
@@ -1017,29 +1018,25 @@ System.IO.Console->Print("read - opcode+length: ")->PrintLine(@header->ToHexStri
 						each(i : 2) {
 							@header[i] := @socket->ReadByte();
 						};
-System.IO.Console->Print("read - length-ext-bytes: ")->PrintLine(@header->ToHexString());
+						# System.IO.Console->Print("read - length-ext: ")->PrintLine(@header->ToHexString());
 
 						payload_length := (@header[0] and 0xff) << 8 + @header[1] and 0xff;
 					};
+					# System.IO.Console->Print("read - length: ")->PrintLine(payload_length);
 
-					buffer := Byte->New[payload_length];
-System.IO.Console->Print("read - length: ")->PrintLine(payload_length);
+					if(payload_length < 65536) {
+						buffer := Byte->New[payload_length];
+						each(i : payload_length) {
+							buffer[i] := @socket->ReadByte();
+						};
 
-					each(i : payload_length) {
-						byte := @socket->ReadByte();
+						if(opcode = 0x88) {
+							@socket->Close();
+						};
+						# System.IO.Console->Print("read - buffer: ")->PrintLine(String->New(buffer));
 
-foo := byte->As(Int);
-"{$i}={$foo}"->PrintLine();
-
-						buffer[i] := byte;
+						return String->New(buffer);
 					};
-
-					if(opcode = 0x88) {
-						@socket->Close();
-					};
-System.IO.Console->Print("read - buffer: ")->PrintLine(String->New(buffer));
-
-					return String->New(buffer);
 				};
 			};
 
@@ -1050,7 +1047,18 @@ System.IO.Console->Print("read - buffer: ")->PrintLine(String->New(buffer));
 		Closes the web socket connection
 		~#
 		method : public : CloseSocket() ~ Nil {
+			CloseSocket(1000);
+		}
+
+		#~
+		Closes the web socket connection
+		@param reason reason to close socket
+		~#
+		method : public : CloseSocket(reason : Int) ~ Nil {
 			if(@socket <> Nil) {
+				@socket->WriteByte(0x88);
+				@socket->WriteByte(reason);
+
 				@socket->Close();
 			};
 		}
