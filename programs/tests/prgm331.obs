@@ -8,18 +8,17 @@ class Test {
 		text_size->PrintLine();
 		"text-size={$text_size}"->PrintLine();
 
-		client := HttpsClient->New();
-		if(client->OpenTextSocket(Url->New("wss://echo.websocket.org"))) {
+		client := SecureWebSocket->New(Url->New("wss://echo.websocket.org"));
+		if(client->Connect()) {
 			client->ReadTextSocket()->PrintLine();
 
 #			client->WriteTextSocket("Hello World!");
-#			client->WriteTextSocket(text);
-#			client->ReadTextSocket()->PrintLine();
-			client->PingSocket()->PrintLine();
+			client->WriteTextSocket(text);
+			client->ReadTextSocket()->PrintLine();
+
+#			client->PingSocket()->PrintLine();
 
 			client->CloseSocket();
 		}
-		else {
-		};
 	}
 }
