@@ -6,11 +6,7 @@ class Test {
 		text_size := text->Size();
 
 		text_size->PrintLine();
-		"---"->PrintLine();
-#~
-		(text_size and 0xff)->PrintLine();
-		((text_size >> 8) and 0xff)->PrintLine();
-~#
+		"text-size={$text_size}"->PrintLine();
 
 		client := HttpsClient->New();
 		if(client->OpenTextSocket(Url->New("wss://echo.websocket.org"))) {
