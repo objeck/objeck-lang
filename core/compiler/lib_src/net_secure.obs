@@ -34,10 +34,6 @@ if(html <> Nil) {
 		@cookies : Vector<Cookie>;
 		@cert_issuer : String;
 		@cert_subject : String;
-
-		# web socket support
-		@socket : TCPSecureSocket;
-		@header : Byte[];
 		
 		#~
 		Default constructor
@@ -783,27 +779,111 @@ if(html <> Nil) {
 					return Nil;
 				};
 			}
-			else if(url->GetScheme()->Equals("wss")) {
-				address := url->GetHost();
+			
+			if(content = Nil) {
+				return Web.HTTP.Response->New(status_code);
+			};
+
+			content_type := GetContentType();
+			return Web.HTTP.Response->New(content->ToByteArray(), status_code, content_type);
+		}
+	}
+
+	#~
+	Secure web socket client
+
+	```
+client := SecureWebSocket->New(Url->New("wss://echo.websocket.org"));
+if(client->Connect()) {
+  client->ReadTextSocket()->PrintLine();
+  
+  client->WriteTextSocket("Hello World!");
+  client->ReadTextSocket()->PrintLine();
+  
+  client->CloseSocket();
+};
+	```
+	~#
+	class SecureWebSocket {
+		#~
+		Socket mode, either text or binary
+		~#
+		enum Mode {
+			BINARY,
+			TEXT
+		}
+		
+		# web socket support
+		@socket : TCPSecureSocket;
+		@header : Byte[];
+		@url : Web.HTTP.Url;
+
+		# https client support
+		@request_headers : Hash<String, String>;
+		@response_headers : Hash<String, String>;
+		@cookies_enabled : Bool;
+		@cookies : Vector<Cookie>;
+		@cert_issuer : String;
+		@cert_subject : String;
+
+		#~
+		Constructor
+		@param url URL
+		@param cookies_enabled true if cookies are enabled, false otherwise		
+		~#
+		New(url : Web.HTTP.Url, cookies_enabled : Bool) {
+			@url := url;
+
+			@request_headers := Hash->New()<String, String>;
+			@request_headers->Insert("Cache-Control"->ToLower(), "max-age=0");
+			@request_headers->Insert("User-Agent"->ToLower(), "Objeck/1.0");
+			
+			@response_headers := Hash->New()<String, String>;
+
+			@cookies_enabled := cookies_enabled;
+			@cookies := Vector->New()<Cookie>;
+		}
+
+		#~
+		Constructor
+		@param url URL
+		~#
+		New(url : Web.HTTP.Url) {
+			@url := url;
+
+			@request_headers := Hash->New()<String, String>;
+			@request_headers->Insert("Cache-Control"->ToLower(), "max-age=0");
+			@request_headers->Insert("User-Agent"->ToLower(), "Objeck/1.0");
+			
+			@response_headers := Hash->New()<String, String>;
+		}
+
+		#~
+		Opens a connection to a web socket
+		@return true if connected, false otherwise
+		~#
+		method : public : Connect() ~ Bool {
+			if(@url->GetScheme()->Equals("wss")) {
+				address := @url->GetHost();
 				
-				location := url->GetPath();
+				location := @url->GetPath();
 				if(location = Nil) {
 					location := "/";
 				};
 
-				query := url->GetQuery();
+				query := @url->GetQuery();
 				if(query <> Nil) {
 					location += '?';
 					location += query;
 				};
 
-				frag := url->GetFragment();
+				frag := @url->GetFragment();
 				if(frag <> Nil) {
 					location += '#';
 					location += frag;
 				};
 
-				port := url->GetPort();
+				port := @url->GetPort();
 				if(port < 0) {
 					port := 443;
 				};
@@ -868,34 +948,13 @@ if(html <> Nil) {
 						if(nonce_hash <> Nil) {
 							@socket := socket;
 							@header := Byte->New[2];
+							return true;
 						}
 					};
 				}
-				else {
-					return Nil;
-				};
 			};	
-			
-			if(content = Nil) {
-				return Web.HTTP.Response->New(status_code);
-			};
 
-			content_type := GetContentType();
-			return Web.HTTP.Response->New(content->ToByteArray(), status_code, content_type);
-		}
-
-		# 
-		# Web socket support
-		#
-
-		#~
-		Opens a web socket text connection
-		@param url URL
-		@return string read
-		~#
-		method : public : OpenTextSocket(url : Web.HTTP.Url) ~ Bool {
-			PullOperation(url, Nil, HttpsClient->Task->GET);
-			return @socket <> Nil;
+			return false;
 		}
 
 		#~
@@ -1095,6 +1154,38 @@ if(html <> Nil) {
 
 				@socket->Close();
 			};
+		}
+
+		#~
+		Gets the socket's X.509 certificate issurer name
+		@return certificate issurer name
+		~#
+		method : public : GetIssuer() ~ String {
+			return @cert_issuer;
+		}
+
+		#~
+		Gets the socket's X.509 certificate subject name
+		@return certificate subject name
+		~#
+		method : public : GetSubject() ~ String {
+			return @cert_subject;
+		}
+
+		#~
+		Sets cookie support
+		@param cookies_enabled true if cookies are enabled, false otherwise
+		~#
+		method : public : EnableCookies(cookies_enabled : Bool) ~ Nil {
+			@cookies_enabled := cookies_enabled;
+		}	
+		
+		#~
+		Gets the cookies
+		@return vector of cookies
+		~#
+		method : public : GetCookies() ~ Vector<Cookie> {
+			return @cookies;
 		}
 	}
 }
