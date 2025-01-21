@@ -1009,10 +1009,9 @@ if(html <> Nil) {
 					@header[i] := @socket->ReadByte();
 				};
 				opcode := (@header[0] and 0xff)->As(Byte);
-
 				# System.IO.Console->Print("read - opt+len: ")->PrintLine(@header->ToHexString());
 
-				if(opcode = 0x81 | opcode = 0x88) {
+				if(opcode = 0x80 | opcode = 0x81 | opcode = 0x88) {
 					payload_length : Int := @header[1];
 					if(payload_length = 126) {
 						each(i : 2) {
@@ -1024,6 +1023,7 @@ if(html <> Nil) {
 					};
 					# System.IO.Console->Print("read - length: ")->PrintLine(payload_length);
 
+					# read payload
 					if(payload_length < 65536) {
 						buffer := Byte->New[payload_length];
 						each(i : payload_length) {
@@ -1041,6 +1041,40 @@ if(html <> Nil) {
 			};
 
 			return Nil;
+		}
+
+		#~
+		Pings the websocket server
+		@return true if pinged, false otherwise
+		~#
+		method : public : PingSocket() ~ Bool {
+			if(@socket <> Nil) {
+				# ping opcode
+				@socket->WriteByte(0x89);
+				@socket->WriteByte(0x80);
+
+				# payload size
+				@socket->WriteByte(0x0);
+				@socket->WriteByte(0x0);
+
+				# masking bytes
+				@socket->WriteByte(0x0);
+				@socket->WriteByte(0x0);
+				@socket->WriteByte(0x0);
+
+				# read header
+				each(i : 2) {
+					@header[i] := @socket->ReadByte();
+				};
+				opcode := (@header[0] and 0xff)->As(Byte);
+				# System.IO.Console->Print("read - opt+len: ")->PrintLine(@header->ToHexString());
+
+				if(opcode = 0x8a) {
+					return true;
+				};
+			};
+
+			return false;
 		}
 
 		#~

@@ -13,11 +13,11 @@ IF "%VCINSTALLDIR%"=="" (
 set ZIP_BIN="\Program Files\7-Zip"
 
 if [%1] == [arm64] (
-	set TARGET="deploy-arm64"
+	set TARGET=deploy-arm64
 )
 
 if [%1] == [x64] (
-	set TARGET="deploy-x64"
+	set TARGET=deploy-x64
 )
 
 REM debug installer
