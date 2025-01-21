@@ -95,8 +95,8 @@ int main(const int argc, const char* argv[])
     std::locale lollocale(locale);
     setlocale(LC_ALL, locale);
     wcout.imbue(lollocale);
-    setlocale(LC_ALL, "en_US.utf8");
-#else    
+    setlocale(LC_ALL, "en_US.UTF-8");
+#else
     setlocale(LC_ALL, "en_US.utf8"); 
 #endif
     
