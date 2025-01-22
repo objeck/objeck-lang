@@ -1,9 +1,24 @@
-use Collection, Web.HTTP;
+use Collection, Web.HTTP, System.IO.Filesystem;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-"--- 0 ---"->PrintLine();		
-		HttpsClient->QuickGet(Url->New("wss://echo.websocket.org"));
-"--- 9 ---"->PrintLine();		
+		text := FileReader->ReadFile("lorem.txt");
+		text_size := text->Size();
+
+		text_size->PrintLine();
+		"text-size={$text_size}"->PrintLine();
+
+		client := SecureWebSocket->New(Url->New("wss://echo.websocket.org"));
+		if(client->Connect()) {
+			client->ReadTextSocket()->PrintLine();
+
+#			client->WriteTextSocket("Hello World!");
+			client->WriteTextSocket(text);
+			client->ReadTextSocket()->PrintLine();
+
+#			client->PingSocket()->PrintLine();
+
+			client->CloseSocket();
+		}
 	}
 }

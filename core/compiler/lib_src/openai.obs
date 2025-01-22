@@ -610,6 +610,7 @@ bundle API.OpenAI.Chat {
 		Constructor 
 		@param query text query
 		@param image binary image
+		@param mime_type imag MIME type
 		~#
 		New(query : String, image : Byte[], mime_type : ImageQuery->MimeType) {
 			@query := query;

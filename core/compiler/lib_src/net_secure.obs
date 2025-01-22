@@ -27,6 +27,7 @@ if(html <> Nil) {
 			PUT
 		}
 
+		# https client support
 		@request_headers : Hash<String, String>;
 		@response_headers : Hash<String, String>;
 		@cookies_enabled : Bool;
@@ -131,8 +132,8 @@ if(html <> Nil) {
 		}
 
 		#~
-		Gets the socket's X.509 certificate issurer name
-		@return certificate issurer name
+		Gets the socket's X.509 certificate issuer name
+		@return certificate issuer name
 		~#
 		method : public : GetIssuer() ~ String {
 			return @cert_issuer;
@@ -778,31 +779,115 @@ if(html <> Nil) {
 					return Nil;
 				};
 			}
-			else if(url->GetScheme()->Equals("wss")) {
-				address := url->GetHost();
+			
+			if(content = Nil) {
+				return Web.HTTP.Response->New(status_code);
+			};
+
+			content_type := GetContentType();
+			return Web.HTTP.Response->New(content->ToByteArray(), status_code, content_type);
+		}
+	}
+
+	#~
+	Secure web socket client
+
+	```
+client := SecureWebSocket->New(Url->New("wss://echo.websocket.org"));
+if(client->Connect()) {
+  client->ReadTextSocket()->PrintLine();
+  
+  client->WriteTextSocket("Hello World!");
+  client->ReadTextSocket()->PrintLine();
+  
+  client->CloseSocket();
+};
+	```
+	~#
+	class SecureWebSocket {
+		#~
+		Socket mode, either text or binary
+		~#
+		enum Mode {
+			BINARY,
+			TEXT
+		}
+		
+		# web socket support
+		@socket : TCPSecureSocket;
+		@header : Byte[];
+		@url : Web.HTTP.Url;
+
+		# https client support
+		@request_headers : Hash<String, String>;
+		@response_headers : Hash<String, String>;
+		@cookies_enabled : Bool;
+		@cookies : Vector<Cookie>;
+		@cert_issuer : String;
+		@cert_subject : String;
+
+		#~
+		Constructor
+		@param url URL
+		@param cookies_enabled true if cookies are enabled, false otherwise		
+		~#
+		New(url : Web.HTTP.Url, cookies_enabled : Bool) {
+			@url := url;
+
+			@request_headers := Hash->New()<String, String>;
+			@request_headers->Insert("Cache-Control"->ToLower(), "max-age=0");
+			@request_headers->Insert("User-Agent"->ToLower(), "Objeck/1.0");
+			
+			@response_headers := Hash->New()<String, String>;
+
+			@cookies_enabled := cookies_enabled;
+			@cookies := Vector->New()<Cookie>;
+		}
+
+		#~
+		Constructor
+		@param url URL
+		~#
+		New(url : Web.HTTP.Url) {
+			@url := url;
+
+			@request_headers := Hash->New()<String, String>;
+			@request_headers->Insert("Cache-Control"->ToLower(), "max-age=0");
+			@request_headers->Insert("User-Agent"->ToLower(), "Objeck/1.0");
+			
+			@response_headers := Hash->New()<String, String>;
+		}
+
+		#~
+		Opens a connection to a web socket
+		@return true if connected, false otherwise
+		~#
+		method : public : Connect() ~ Bool {
+			if(@url->GetScheme()->Equals("wss")) {
+				address := @url->GetHost();
 				
-				location := url->GetPath();
+				location := @url->GetPath();
 				if(location = Nil) {
 					location := "/";
 				};
 
-				query := url->GetQuery();
+				query := @url->GetQuery();
 				if(query <> Nil) {
 					location += '?';
 					location += query;
 				};
 
-				frag := url->GetFragment();
+				frag := @url->GetFragment();
 				if(frag <> Nil) {
 					location += '#';
 					location += frag;
 				};
 
-				port := url->GetPort();
+				port := @url->GetPort();
 				if(port < 0) {
 					port := 443;
 				};
-"### address='{$address}', port={$port}, location='{$location}'"->PrintLine();
+				# "### address='{$address}', port={$port}, location='{$location}'"->PrintLine();
 
 				socket := TCPSecureSocket->New(address, port);
 				if(socket->IsOpen()) {
@@ -828,20 +913,16 @@ if(html <> Nil) {
 					oper->Append(key);
 					oper->Append("\r\n\r\n");		
 					
-IO.Console->Print("Get: |")->Print(oper)->PrintLine("|");
+					# IO.Console->Print("Get: |")->Print(oper)->PrintLine("|");
 					
 					socket->WriteString(oper);
 					
 					status_line := socket->ReadLine();
 					if(status_line->StartsWith("HTTP/1.")) {
-						status_line := status_line->SubString("HTTP/1."->Size() + 2, 
-							status_line->Size() - "HTTP/1."->Size() - 2);
-						index := status_line->Find(' ');
-						status_code := status_line->SubString(index)->ToInt();
+						status_line := status_line->SubString("HTTP/1."->Size() + 2, status_line->Size() - "HTTP/1."->Size() - 2);
 					};
-status_line->PrintLine();
 
-					if(status_code = 101) {
+					if(status_line->StartsWith("101 Switching")) {
 						# get request headers
 						do {
 							line := socket->ReadLine();
@@ -860,29 +941,256 @@ status_line->PrintLine();
 								};
 							};
 						}
-						while(line->Size() > 0);						
-IO.Console->Print("headers: size=")->PrintLine(@response_headers->Size());
-IO.Console->Print("cookies: size=")->PrintLine(@cookies->Size());
-
-						nonce_hash := @response_headers->Find("sec-websocket-accept");
-nonce_hash->PrintLine();
-					};
-"---"->PrintLine();
+						while(line->Size() > 0);
 						
+						nonce_hash := @response_headers->Find("sec-websocket-accept");
+						# TODO: validate hash response '258EAFA5-E914-47DA-95CA-C5AB0DC85B11' base64 encoded
+						if(nonce_hash <> Nil) {
+							@socket := socket;
+							@header := Byte->New[2];
+							return true;
+						}
+					};
+				}
+			};	
 
-					socket->Close();
+			return false;
+		}
+
+		#~
+		Writes text to the web socket
+		@param message message
+		@return true if successful, false otherwise
+		~#
+		method : public : WriteTextSocket(message : String) ~ Bool {
+			if(@socket <> Nil & message->Size() < 65536) {
+				payload := message->ToByteArray();
+				payload_size := message->Size();
+
+				frame_offset : Int;
+				
+				# create frame
+				frame : Byte[];
+
+				if(payload_size < 126) {
+					frame_offset := 6;
+					frame := Byte->New[frame_offset + payload_size];
 				}
 				else {
-					return Nil;
+					frame_offset := 8;
+					frame := Byte->New[frame_offset + payload_size + 2];
 				};
-			};	
-			
-			if(content = Nil) {
-				return Web.HTTP.Response->New(status_code);
+				
+				# set utf-8 opcode
+				frame[0] :=  0x81;
+
+				# set payload length and bit mask
+				mask_payload_length := 0x80; # set mask bit
+				if(payload_size < 126) {
+					mask_payload_length += payload_size; # payload size
+					frame[1] := mask_payload_length;
+
+					#~
+					opcodes := Byte->New[2];
+					opcodes[0] := frame[0];
+					opcodes[1] := frame[1];
+					System.IO.Console->Print("opcode+length: ")->PrintLine(opcodes->ToHexString());
+					~#
+
+					# key mask
+					frame[2] := Int->Random(255);
+					frame[3] := Int->Random(255);
+					frame[4] := Int->Random(255);
+					frame[5] := Int->Random(255);
+
+					#~
+					mask := Byte->New[4];
+					mask[0] := frame[2];
+					mask[1] := frame[3];
+					mask[2] := frame[4];
+					mask[3] := frame[5];
+					System.IO.Console->Print("mask: ")->PrintLine(mask->ToHexString());
+					~#
+				}
+				else {
+					mask_payload_length += 126; # payload size
+					frame[1] := mask_payload_length;
+
+					frame[2] := (payload_size >> 8) and 0xff;
+					frame[3] := payload_size and 0xff;
+
+					#~
+					opcodes := Byte->New[4];
+					opcodes[0] := frame[0];
+					opcodes[1] := frame[1];
+					opcodes[2] := frame[2];
+					opcodes[3] := frame[3];
+					System.IO.Console->Print("write - opcode+length-ext: ")->PrintLine(opcodes->ToHexString());
+					~#
+
+					# key mask
+					frame[4] := Int->Random(255);
+					frame[5] := Int->Random(255);
+					frame[6] := Int->Random(255);
+					frame[7] := Int->Random(255);
+
+					#~
+					mask := Byte->New[4];
+					mask[0] := frame[4];
+					mask[1] := frame[5];
+					mask[2] := frame[6];
+					mask[3] := frame[7];
+					System.IO.Console->Print("mask: ")->PrintLine(mask->ToHexString());
+					~#
+				};
+
+				# encode payload
+				j := 0;
+				each(i : payload) {
+					frame[frame_offset + i] := payload[i] xor frame[j % 4 + frame_offset - 4];
+					j += 1;
+				};
+
+				return @socket->WriteBuffer(frame) > 0;
 			};
 
-			content_type := GetContentType();
-			return Web.HTTP.Response->New(content->ToByteArray(), status_code, content_type);
+			return false;
+		}
+
+		#~
+		Reads text from the web socket
+		@return text read, Nil otherwise
+		~#
+		method : public : ReadTextSocket() ~ String {
+			if(@socket <> Nil) {
+				# read header
+				each(i : 2) {
+					@header[i] := @socket->ReadByte();
+				};
+				opcode := (@header[0] and 0xff)->As(Byte);
+				# System.IO.Console->Print("read - opt+len: ")->PrintLine(@header->ToHexString());
+
+				if(opcode = 0x80 | opcode = 0x81 | opcode = 0x88) {
+					payload_length : Int := @header[1];
+					if(payload_length = 126) {
+						each(i : 2) {
+							@header[i] := @socket->ReadByte();
+						};
+						# System.IO.Console->Print("read - length-ext: ")->PrintLine(@header->ToHexString());
+
+						payload_length := (@header[0] and 0xff) << 8 + @header[1] and 0xff;
+					};
+					# System.IO.Console->Print("read - length: ")->PrintLine(payload_length);
+
+					# read payload
+					if(payload_length < 65536) {
+						buffer := Byte->New[payload_length];
+						each(i : payload_length) {
+							buffer[i] := @socket->ReadByte();
+						};
+
+						if(opcode = 0x88) {
+							@socket->Close();
+						};
+						# System.IO.Console->Print("read - buffer: ")->PrintLine(String->New(buffer));
+
+						return String->New(buffer);
+					};
+				};
+			};
+
+			return Nil;
+		}
+
+		#~
+		Pings the websocket server
+		@return true if pinged, false otherwise
+		~#
+		method : public : PingSocket() ~ Bool {
+			if(@socket <> Nil) {
+				# ping opcode
+				@socket->WriteByte(0x89);
+				@socket->WriteByte(0x80);
+
+				# payload size
+				@socket->WriteByte(0x0);
+				@socket->WriteByte(0x0);
+
+				# masking bytes
+				@socket->WriteByte(0x0);
+				@socket->WriteByte(0x0);
+				@socket->WriteByte(0x0);
+
+				# read header
+				each(i : 2) {
+					@header[i] := @socket->ReadByte();
+				};
+				opcode := (@header[0] and 0xff)->As(Byte);
+				# System.IO.Console->Print("read - opt+len: ")->PrintLine(@header->ToHexString());
+
+				if(opcode = 0x8a) {
+					return true;
+				};
+			};
+
+			return false;
+		}
+
+		#~
+		Closes the web socket connection
+		~#
+		method : public : CloseSocket() ~ Nil {
+			CloseSocket(1000);
+		}
+
+		#~
+		Closes the web socket connection
+		@param reason reason to close socket
+		~#
+		method : public : CloseSocket(reason : Int) ~ Nil {
+			if(@socket <> Nil) {
+				@socket->WriteByte(0x88);
+
+				hi_byte := (reason >> 8) and 0xff;
+				@socket->WriteByte(hi_byte);
+
+				low_byte := reason and 0xff;
+				@socket->WriteByte(low_byte);
+				
+				@socket->Close();
+			};
+		}
+
+		#~
+		Gets the socket's X.509 certificate issuer name
+		@return certificate issuer name
+		~#
+		method : public : GetIssuer() ~ String {
+			return @cert_issuer;
+		}
+
+		#~
+		Gets the socket's X.509 certificate subject name
+		@return certificate subject name
+		~#
+		method : public : GetSubject() ~ String {
+			return @cert_subject;
+		}
+
+		#~
+		Sets cookie support
+		@param cookies_enabled true if cookies are enabled, false otherwise
+		~#
+		method : public : EnableCookies(cookies_enabled : Bool) ~ Nil {
+			@cookies_enabled := cookies_enabled;
+		}	
+		
+		#~
+		Gets the cookies
+		@return vector of cookies
+		~#
+		method : public : GetCookies() ~ Vector<Cookie> {
+			return @cookies;
 		}
 	}
 }
