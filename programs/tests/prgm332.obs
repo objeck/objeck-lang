@@ -1,0 +1,16 @@
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		value := 1000;
+		"value={$value}\n---"->PrintLine();
+		
+		bytes := Byte->New[2];
+		bytes[0] := (value >> 8) and 0xff;
+		bytes[1] := value and 0xff;
+		System.IO.Console->Print("encoded: ")->Print(bytes->ToHexString())->PrintLine("\n---");
+	
+		value := 0;
+		value += (bytes[0] and 0xff) << 8 + bytes[1] and 0xff;
+
+		"decoded={$value}\n---"->PrintLine();
+	}
+}
