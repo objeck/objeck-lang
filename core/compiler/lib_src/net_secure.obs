@@ -132,8 +132,8 @@ if(html <> Nil) {
 		}
 
 		#~
-		Gets the socket's X.509 certificate issurer name
-		@return certificate issurer name
+		Gets the socket's X.509 certificate issuer name
+		@return certificate issuer name
 		~#
 		method : public : GetIssuer() ~ String {
 			return @cert_issuer;
@@ -1150,15 +1150,20 @@ if(client->Connect()) {
 		method : public : CloseSocket(reason : Int) ~ Nil {
 			if(@socket <> Nil) {
 				@socket->WriteByte(0x88);
-				@socket->WriteByte(reason);
 
+				hi_byte := (reason >> 8) and 0xff;
+				@socket->WriteByte(hi_byte);
+
+				low_byte := reason and 0xff;
+				@socket->WriteByte(low_byte);
+				
 				@socket->Close();
 			};
 		}
 
 		#~
-		Gets the socket's X.509 certificate issurer name
-		@return certificate issurer name
+		Gets the socket's X.509 certificate issuer name
+		@return certificate issuer name
 		~#
 		method : public : GetIssuer() ~ String {
 			return @cert_issuer;

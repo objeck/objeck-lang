@@ -1,6 +1,6 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		value := Int->Random(65535);
+		value := 1000;
 		"value={$value}\n---"->PrintLine();
 		
 		bytes := Byte->New[2];
