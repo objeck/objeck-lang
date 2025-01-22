@@ -15,10 +15,10 @@ make -f make/Makefile.amd64
 ./obc -src lib_src/regex.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/regex.obl
 ./obc -src lib_src/csv.obs -tar lib -lib gen_collect -opt s3 -dest ../lib/csv.obl
 ./obc -src lib_src/ml.obs -lib gen_collect,csv -tar lib -opt s3 -dest ../lib/ml.obl
-./obc -src lib_src/net_common.obs,lib_src/net.obs,lib_src/net_secure.obs -tar lib -lib json,gen_collect -opt s3 -dest ../lib/net.obl
+./obc -src lib_src/net_common.obs,lib_src/net.obs,lib_src/net_secure.obs -tar lib -lib json,gen_collect,cipher -opt s3 -dest ../lib/net.obl
 ./obc -src lib_src/json_rpc.obs -tar lib -lib json,net -opt s3 -dest ../lib/json_rpc.obl
 ./obc -src lib_src/misc.obs -lib gen_collect,net,json -tar lib -opt s3 -dest ../lib/misc.obl
-./obc -src lib_src/rss.obs -tar lib -lib xml,gen_collect,net -opt s3 -dest ../lib/rss.obl
+./obc -src lib_src/rss.obs -tar lib -lib xml,gen_collect,net,cipher -opt s3 -dest ../lib/rss.obl
 ./obc -src lib_src/query.obs -tar lib -lib net,regex,csv,xml,json,misc -opt s3 -dest ../lib/query.obl
 ./obc -src lib_src/cipher.obs -tar lib -opt s3 -dest ../lib/cipher.obl
 ./obc -src lib_src/odbc.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/odbc.obl
