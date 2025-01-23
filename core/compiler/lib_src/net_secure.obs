@@ -826,6 +826,8 @@ if(client->Connect()) {
 		@cert_issuer : String;
 		@cert_subject : String;
 
+		@is_debug : Bool;
+
 		#~
 		Constructor
 		@param url URL
@@ -990,12 +992,12 @@ if(client->Connect()) {
 					mask_payload_length += payload_size; # payload size
 					frame[1] := mask_payload_length;
 
-					#~
-					opcodes := Byte->New[2];
-					opcodes[0] := frame[0];
-					opcodes[1] := frame[1];
-					System.IO.Console->Print("opcode+length: ")->PrintLine(opcodes->ToHexString());
-					~#
+					if(@is_debug){
+						opcodes := Byte->New[2];
+						opcodes[0] := frame[0];
+						opcodes[1] := frame[1];
+						System.IO.Console->Print("opcode+length: ")->PrintLine(opcodes->ToHexString());
+					};
 
 					# key mask
 					frame[2] := Int->Random(255);
@@ -1003,14 +1005,14 @@ if(client->Connect()) {
 					frame[4] := Int->Random(255);
 					frame[5] := Int->Random(255);
 
-					#~
-					mask := Byte->New[4];
-					mask[0] := frame[2];
-					mask[1] := frame[3];
-					mask[2] := frame[4];
-					mask[3] := frame[5];
-					System.IO.Console->Print("mask: ")->PrintLine(mask->ToHexString());
-					~#
+					if(@is_debug){
+						mask := Byte->New[4];
+						mask[0] := frame[2];
+						mask[1] := frame[3];
+						mask[2] := frame[4];
+						mask[3] := frame[5];
+						System.IO.Console->Print("mask: ")->PrintLine(mask->ToHexString());
+					};
 				}
 				else {
 					mask_payload_length += 126; # payload size
@@ -1019,14 +1021,13 @@ if(client->Connect()) {
 					frame[2] := (payload_size >> 8) and 0xff;
 					frame[3] := payload_size and 0xff;
 
-					#~
-					opcodes := Byte->New[4];
-					opcodes[0] := frame[0];
-					opcodes[1] := frame[1];
-					opcodes[2] := frame[2];
-					opcodes[3] := frame[3];
-					System.IO.Console->Print("write - opcode+length-ext: ")->PrintLine(opcodes->ToHexString());
-					~#
+					if(@is_debug){
+						opcodes := Byte->New[3];
+						opcodes[0] := frame[0];
+						opcodes[1] := frame[1];
+						opcodes[2] := frame[2];
+						System.IO.Console->Print("write - opcode+length-ext: ")->PrintLine(opcodes->ToHexString());
+					};
 
 					# key mask
 					frame[4] := Int->Random(255);
@@ -1034,14 +1035,14 @@ if(client->Connect()) {
 					frame[6] := Int->Random(255);
 					frame[7] := Int->Random(255);
 
-					#~
-					mask := Byte->New[4];
-					mask[0] := frame[4];
-					mask[1] := frame[5];
-					mask[2] := frame[6];
-					mask[3] := frame[7];
-					System.IO.Console->Print("mask: ")->PrintLine(mask->ToHexString());
-					~#
+					if(@is_debug){
+						mask := Byte->New[4];
+						mask[0] := frame[4];
+						mask[1] := frame[5];
+						mask[2] := frame[6];
+						mask[3] := frame[7];
+						System.IO.Console->Print("mask: ")->PrintLine(mask->ToHexString());
+					};
 				};
 
 				# encode payload
@@ -1151,11 +1152,8 @@ if(client->Connect()) {
 			if(@socket <> Nil) {
 				@socket->WriteByte(0x88);
 
-				hi_byte := (reason >> 8) and 0xff;
-				@socket->WriteByte(hi_byte);
-
-				low_byte := reason and 0xff;
-				@socket->WriteByte(low_byte);
+				@socket->WriteByte((reason >> 8) and 0xff);
+				@socket->WriteByte(reason and 0xff);
 				
 				@socket->Close();
 			};
