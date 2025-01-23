@@ -18,8 +18,8 @@
     * Support for the Open AI's Realtime API
     * Performance testing for Llama and Mistra Hexagon NPU execution
 
-* v2025.1.2 
-    * Add websocket support
+* v2025.1.2 - release enqueue
+    * Add WebSocket support (done)
     * Performance testing for Llama and Mistra CPU execution 🧮 (done)
     * Explore adding newer OpenAI and Gemini features 🤖
       * Add OpenAI Vision support (done)
