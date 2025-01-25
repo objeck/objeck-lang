@@ -405,25 +405,7 @@ bundle API.OpenAI.Chat {
 
 			return Nil;
 		}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-		#
-		# TODO: start image support
-		#
-
+		
 		#~
 		Model response for the given image and query
 		@param message completion message and image query.
