@@ -903,7 +903,17 @@ if(client->Connect()) {
 					oper->Append(':');
 					oper->Append(port);
 					oper->Append("\r\n");
-
+					
+					request_keys := @request_headers->GetKeys()<String>;
+					each(i : request_keys) {		
+						request_key := request_keys->Get(i);
+						request_value := @request_headers->Find(request_key);					
+						oper->Append(request_key);
+						oper->Append(": ");
+						oper->Append(request_value);
+						oper->Append("\r\n");
+					};
+					
 					oper->Append("Connection: Upgrade\r\nUpgrade: websocket\r\nSec-WebSocket-Version: 13\r\nSec-WebSocket-Key: ");
 
 					nonce := Byte->New[16];
@@ -1189,6 +1199,23 @@ if(client->Connect()) {
 		~#
 		method : public : GetCookies() ~ Vector<Cookie> {
 			return @cookies;
+		}
+
+		#~
+		Adds a HTTPS request header
+		@param name header name
+		@param value header value
+		~#
+		method : public : AddHeader(name : String, value : String) ~  Nil {
+			@request_headers->Insert(name->ToLower(), value);
+		}
+
+		#~
+		Removes a HTTPS request header
+		@param name header name
+		~#
+		method : public : RemoveHeader(name : String) ~  Nil {
+			@request_headers->Remove(name->ToLower());
 		}
 	}
 }
