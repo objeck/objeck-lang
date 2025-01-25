@@ -913,7 +913,7 @@ if(client->Connect()) {
 						oper->Append(request_value);
 						oper->Append("\r\n");
 					};
-					
+
 					oper->Append("Connection: Upgrade\r\nUpgrade: websocket\r\nSec-WebSocket-Version: 13\r\nSec-WebSocket-Key: ");
 
 					nonce := Byte->New[16];
@@ -970,14 +970,27 @@ if(client->Connect()) {
 		}
 
 		#~
+		Writes binary output to the web socket
+		@param data binary payload
+		@return true if successful, false otherwise
+		~#
+		method : public : WriteBinarytSocket(data : Byte[]) ~ Bool {
+			return  WriteSocket(data, true);
+		}
+
+		#~
 		Writes text to the web socket
 		@param message message
 		@return true if successful, false otherwise
 		~#
 		method : public : WriteTextSocket(message : String) ~ Bool {
-			if(@socket <> Nil & message->Size() < 65536) {
-				payload := message->ToByteArray();
-				payload_size := message->Size();
+			data := message->ToByteArray();
+			return  WriteSocket(data, false);
+		}
+
+		method : WriteSocket(data : Byte[], is_binary : Bool) ~ Bool {
+			if(@socket <> Nil & data <> Nil & data->Size() < 65536) {	
+				payload_size := data->Size();
 
 				frame_offset : Int;
 				
@@ -994,7 +1007,12 @@ if(client->Connect()) {
 				};
 				
 				# set utf-8 opcode
-				frame[0] :=  0x81;
+				if(is_binary) {
+					frame[0] :=  0x80;
+				}
+				else {
+					frame[0] :=  0x81;
+				};
 
 				# set payload length and bit mask
 				mask_payload_length := 0x80; # set mask bit
@@ -1057,8 +1075,8 @@ if(client->Connect()) {
 
 				# encode payload
 				j := 0;
-				each(i : payload) {
-					frame[frame_offset + i] := payload[i] xor frame[j % 4 + frame_offset - 4];
+				each(i : data) {
+					frame[frame_offset + i] := data[i] xor frame[j % 4 + frame_offset - 4];
 					j += 1;
 				};
 
@@ -1069,10 +1087,27 @@ if(client->Connect()) {
 		}
 
 		#~
+		Reads binary input from the web socket
+		@return binary input read, Nil otherwise
+		~#
+		method : public : ReadBinarySocket() ~ Byte[] {
+			return ReadSocket();
+		}
+
+		#~
 		Reads text from the web socket
 		@return text read, Nil otherwise
 		~#
 		method : public : ReadTextSocket() ~ String {
+			data := ReadSocket();
+			if(data <> Nil) {
+				return String->New(data);
+			};
+
+			return Nil;
+		}
+
+		method : ReadSocket() ~ Byte[] {
 			if(@socket <> Nil) {
 				# read header
 				each(i : 2) {
@@ -1105,7 +1140,7 @@ if(client->Connect()) {
 						};
 						# System.IO.Console->Print("read - buffer: ")->PrintLine(String->New(buffer));
 
-						return String->New(buffer);
+						return buffer;
 					};
 				};
 			};
