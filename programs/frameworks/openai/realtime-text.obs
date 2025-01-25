@@ -1,0 +1,24 @@
+use Collection, Web.HTTP, System.IO.Filesystem;
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() = 1) {
+			token := args[0];
+
+			client := SecureWebSocket->New(Url->New("wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-12-17"));
+			client->AddHeader("Authorization", "Bearer {$token}");
+			client->AddHeader("OpenAI-Beta", "realtime=v1");
+
+			if(client->Connect()) {
+				"Connected..."->PrintLine();
+
+				message := "{\"type\": \"response.create\", \"response\": { \"modalities\": [\"text\"], \"instructions\": \"Please assist the user.\" }\"";
+				client->WriteTextSocket(message);
+
+				client->ReadTextSocket()->PrintLine();
+
+				client->CloseSocket();
+			};
+		};
+	}
+}
