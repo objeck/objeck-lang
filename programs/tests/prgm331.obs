@@ -12,7 +12,9 @@ class Test {
 		if(client->Connect()) {
 			client->ReadTextSocket()->PrintLine();
 
-#			client->WriteTextSocket("Hello World!");
+			client->WriteTextSocket("Hello World!");
+			client->ReadTextSocket()->PrintLine();
+
 			client->WriteTextSocket(text);
 			client->ReadTextSocket()->PrintLine();
 

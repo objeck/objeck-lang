@@ -844,6 +844,8 @@ if(client->Connect()) {
 
 			@cookies_enabled := cookies_enabled;
 			@cookies := Vector->New()<Cookie>;
+
+			@is_debug := true;
 		}
 
 		#~
@@ -858,6 +860,8 @@ if(client->Connect()) {
 			@request_headers->Insert("User-Agent"->ToLower(), "Objeck/1.0");
 			
 			@response_headers := Hash->New()<String, String>;
+
+			@is_debug := true;
 		}
 
 		#~
@@ -1114,7 +1118,7 @@ if(client->Connect()) {
 					@header[i] := @socket->ReadByte();
 				};
 				opcode := (@header[0] and 0xff)->As(Byte);
-				# System.IO.Console->Print("read - opt+len: ")->PrintLine(@header->ToHexString());
+System.IO.Console->Print("read - opt+len: ")->PrintLine(@header->ToHexString());
 
 				if(opcode = 0x80 | opcode = 0x81 | opcode = 0x88) {
 					payload_length : Int := @header[1];
@@ -1122,11 +1126,11 @@ if(client->Connect()) {
 						each(i : 2) {
 							@header[i] := @socket->ReadByte();
 						};
-						# System.IO.Console->Print("read - length-ext: ")->PrintLine(@header->ToHexString());
+System.IO.Console->Print("read - length-ext: ")->PrintLine(@header->ToHexString());
 
 						payload_length := (@header[0] and 0xff) << 8 + @header[1] and 0xff;
 					};
-					# System.IO.Console->Print("read - length: ")->PrintLine(payload_length);
+System.IO.Console->Print("read - length: ")->PrintLine(payload_length);
 
 					# read payload
 					if(payload_length < 65536) {
@@ -1136,9 +1140,11 @@ if(client->Connect()) {
 						};
 
 						if(opcode = 0x88) {
+							code : Int := (buffer[0] and 0xff) << 8 + buffer[1] and 0xff;
+code->PrintLine();							
 							@socket->Close();
 						};
-						# System.IO.Console->Print("read - buffer: ")->PrintLine(String->New(buffer));
+System.IO.Console->Print("read - buffer: ")->PrintLine(String->New(buffer));
 
 						return buffer;
 					};
