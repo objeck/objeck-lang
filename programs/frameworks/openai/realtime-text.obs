@@ -11,11 +11,26 @@ class Test {
 
 			if(client->Connect()) {
 				"Connected..."->PrintLine();
-
-				message := "{\"type\": \"response.create\", \"response\": { \"modalities\": [\"text\"], \"instructions\": \"Please assist the user.\" }\"";
-				client->WriteTextSocket(message);
-
 				client->ReadTextSocket()->PrintLine();
+
+				message := "{
+					\"type\": \"conversation.item.create\",
+					\"item\": {
+						\"type\": \"message\",
+						\"role\": \"user\",
+						\"content\": [
+							{				
+								\"type\": \"input_text\",
+								\"text\": \"What Prince album sold the most copies?\"
+							}
+						]
+					}
+				}";
+"message=\"{$message}\""->PrintLine();
+
+				client->WriteTextSocket(message);
+				
+				client->ReadTextSocket()->ToString()->PrintLine();
 
 				client->CloseSocket();
 			};
