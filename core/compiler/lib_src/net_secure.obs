@@ -846,7 +846,7 @@ if(client->Connect()) {
 			@cookies_enabled := cookies_enabled;
 			@cookies := Vector->New()<Cookie>;
 
-			@is_debug := true;
+			# @is_debug := true;
 		}
 
 		#~
@@ -862,7 +862,7 @@ if(client->Connect()) {
 			
 			@response_headers := Hash->New()<String, String>;
 
-			@is_debug := true;
+			# @is_debug := true;
 		}
 
 		#~
@@ -1008,7 +1008,7 @@ if(client->Connect()) {
 				}
 				else {
 					frame_offset := 8;
-					frame := Byte->New[frame_offset + payload_size + 2];
+					frame := Byte->New[frame_offset + payload_size];
 				};
 				
 				# set utf-8 opcode
@@ -1044,7 +1044,7 @@ if(client->Connect()) {
 						mask[1] := frame[3];
 						mask[2] := frame[4];
 						mask[3] := frame[5];
-						System.IO.Console->Print("mask: ")->PrintLine(mask->ToHexString());
+						System.IO.Console->Print("mask - ")->PrintLine(mask->ToHexString());
 					};
 				}
 				else {
@@ -1074,7 +1074,7 @@ if(client->Connect()) {
 						mask[1] := frame[5];
 						mask[2] := frame[6];
 						mask[3] := frame[7];
-						System.IO.Console->Print("mask: ")->PrintLine(mask->ToHexString());
+						System.IO.Console->Print("mask - ")->PrintLine(mask->ToHexString());
 					};
 				};
 
@@ -1088,7 +1088,7 @@ if(client->Connect()) {
 				if(@is_debug){
 					buffer := ByteBuffer->New();
 
-					"frame = "->Print();
+					"frame - "->Print();
 					each(f in frame) {
 						buffer->Append(f)
 					};
@@ -1135,6 +1135,32 @@ if(client->Connect()) {
 					System.IO.Console->Print("read - opt+len: ")->PrintLine(@header->ToHexString());
 				};
 
+				# ping
+				if(opcode = 0x89) {
+					payload_length : Int := @header[1];
+					buffer := Byte->New[payload_length];
+					each(i : payload_length) {
+						buffer[i] := @socket->ReadByte();
+					};
+
+					if(@is_debug){
+						System.IO.Console->Print("ping - payload: ")->PrintLine(buffer->ToHexString());
+					};
+
+					@socket->WriteByte(0x8a);
+					@socket->WriteBuffer(buffer);
+
+					# read header
+					each(i : 2) {
+						@header[i] := @socket->ReadByte();
+					};
+					opcode := (@header[0] and 0xff)->As(Byte);
+
+					if(@is_debug){
+						System.IO.Console->Print("read - opt+len: ")->PrintLine(@header->ToHexString());
+					};
+				};
+
 				if(opcode = 0x80 | opcode = 0x81 | opcode = 0x88) {
 					payload_length : Int := @header[1];
 					if(payload_length = 126) {
@@ -1168,12 +1194,12 @@ if(client->Connect()) {
 						};
 
 						if(@is_debug){
-							System.IO.Console->Print("read - buffer: ")->PrintLine(String->New(buffer));
+							System.IO.Console->Print("read - buffer: '")->Print(String->New(buffer))->PrintLine('\'');
 						};
 
 						return buffer;
 					};
-				};
+				}
 			};
 
 			return Nil;
@@ -1204,6 +1230,16 @@ if(client->Connect()) {
 				};
 				opcode := (@header[0] and 0xff)->As(Byte);
 				# System.IO.Console->Print("read - opt+len: ")->PrintLine(@header->ToHexString());
+
+				payload_length : Int := @header[1];
+				buffer := Byte->New[payload_length];
+				each(i : payload_length) {
+					buffer[i] := @socket->ReadByte();
+				};
+
+				if(@is_debug){
+					System.IO.Console->Print("pong - payload: ")->PrintLine(buffer->ToHexString());
+				};
 
 				if(opcode = 0x8a) {
 					return true;

@@ -1,11 +1,11 @@
-use Collection, Web.HTTP, System.IO.Filesystem;
+use Collection, Web.HTTP, System.IO.Filesystem, Data.JSON;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
 			token := args[0];
 
-			client := SecureWebSocket->New(Url->New("wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-12-17"));
+			client := SecureWebSocket->New(Url->New( "wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-12-17" ));
 			client->AddHeader("Authorization", "Bearer {$token}");
 			client->AddHeader("OpenAI-Beta", "realtime=v1");
 
@@ -29,6 +29,7 @@ class Test {
 				"send_msg=\"{$send_msg}\""->PrintLine();
 				client->WriteTextSocket(send_msg);
 				
+				
 				recv_msg := client->ReadTextSocket();
 				if(recv_msg <> Nil) {
 					"recv_msg=\"{$recv_msg}\""->PrintLine();
@@ -37,7 +38,49 @@ class Test {
 					status_code := client->GetLastStatus();
 					"closed: code={$status_code}"->PrintLine();
 				};
+
 				
+				send_msg := "{
+					\"type\": \"response.create\",
+					\"response\": {
+						\"modalities\": [\"text\"],
+						\"tool_choice\": \"auto\"
+					}
+				}";
+				"send_msg=\"{$send_msg}\""->PrintLine();
+				client->WriteTextSocket(send_msg);
+
+
+				response_text := "";
+				
+				is_done := false;
+				while(<>is_done) {
+					recv_msg := client->ReadTextSocket();
+					if(recv_msg <> Nil) {
+						response_json := JsonParser->TextToElement(recv_msg);
+						if(response_json = Nil) {
+							"### Error: Unable to parse response ###"->ErrorLine();
+						};
+
+						type_str := response_json->Get("type")->GetString();
+						if(type_str->Equals("response.text.delta")) {
+							response_text += response_json->Get("delta")->GetString();
+						}
+						else if(type_str->Equals("response.done")) {
+							is_done := true;
+						}
+						else if(type_str->Equals("response.cancelled")) {
+							response_text := "";
+						};
+					}
+					else {
+						response_text := "";
+						is_done := true;
+					};
+				};
+
+				"response: text='{$response_text}'"->PrintLine();
+
 				client->CloseSocket();
 			};
 		};
