@@ -27,7 +27,7 @@ jobs:
 
     - name: build-toolchain
       working-directory: ./core/release
-      run: ./deploy_posix.sh 64
+      run: ./deploy_posix.sh x64
 
     - name: compile-tests
       working-directory: ./core/release/deploy/bin
