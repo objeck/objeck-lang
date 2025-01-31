@@ -4281,7 +4281,7 @@ bundle System {
 		@return string representation of the byte buffer
 		~#
 		method : public : ToString() ~ String {
-			return @buffer->ToString();
+			return @buffer->ToHexString()->ToString();
 		}
 	}
 
