@@ -1085,6 +1085,17 @@ if(client->Connect()) {
 					j += 1;
 				};
 
+				if(@is_debug){
+					buffer := ByteBuffer->New();
+
+					"frame = "->Print();
+					each(f in frame) {
+						buffer->Append(f)
+					};
+
+					buffer->ToByteArray()->ToHexString()->PrintLine();
+				};
+
 				return @socket->WriteBuffer(frame) > 0;
 			};
 
@@ -1152,7 +1163,7 @@ if(client->Connect()) {
 						if(opcode = 0x88) {
 							@status_code := ((buffer[0] and 0xff) << 8 + buffer[1] and 0xff)->As(Int);
 							@socket->Close();
-							
+
 							return Nil;
 						};
 
