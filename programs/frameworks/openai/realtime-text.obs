@@ -13,7 +13,7 @@ class Test {
 				"Connected..."->PrintLine();
 				client->ReadTextSocket()->PrintLine();
 
-				message := "{
+				send_msg := "{
 					\"type\": \"conversation.item.create\",
 					\"item\": {
 						\"type\": \"message\",
@@ -26,12 +26,18 @@ class Test {
 						]
 					}
 				}";
-"message=\"{$message}\""->PrintLine();
-
-				client->WriteTextSocket(message);
+				"send_msg=\"{$send_msg}\""->PrintLine();
+				client->WriteTextSocket(send_msg);
 				
-				client->ReadTextSocket()->ToString()->PrintLine();
-
+				recv_msg := client->ReadTextSocket();
+				if(recv_msg <> Nil) {
+					"recv_msg=\"{$recv_msg}\""->PrintLine();
+				}
+				else {
+					status_code := client->GetLastStatus();
+					"closed: code={$status_code}"->PrintLine();
+				};
+				
 				client->CloseSocket();
 			};
 		};
