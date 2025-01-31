@@ -16,8 +16,8 @@ class Test {
 				audio_base64_str_size := audio_base64_str->Size();
 
 audio_base64_str->PrintLine();
-
 "audio_base64_str: size={$audio_base64_str_size}"->PrintLine();	
+
 				audio_bytes := Cipher.Decrypt->Base64(audio_base64_str);
 				FileWriter->WriteFile("test.txt", audio_base64_str);
 				FileWriter->WriteFile("test.wav", audio_bytes);
