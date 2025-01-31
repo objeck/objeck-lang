@@ -84,7 +84,7 @@ jobs:
     - if: matrix.build-mode == 'manual'
       name: Build C and C++ code
       run: |
-        sudo apt-get install build-essential git libssl-dev unixodbc-dev libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev libsdl2-mixer-dev libreadline-dev unzip libeigen3-dev
+        sudo apt-get update; sudo apt-get upgrade; sudo apt-get install build-essential git libssl-dev unixodbc-dev libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev libsdl2-mixer-dev libreadline-dev unzip libeigen3-dev
         cd core/release; ./deploy_posix.sh x64
 
     - name: Perform CodeQL Analysis
