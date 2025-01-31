@@ -817,6 +817,7 @@ if(client->Connect()) {
 		@socket : TCPSecureSocket;
 		@header : Byte[];
 		@url : Web.HTTP.Url;
+		@status_code : Int;
 
 		# https client support
 		@request_headers : Hash<String, String>;
@@ -1118,7 +1119,10 @@ if(client->Connect()) {
 					@header[i] := @socket->ReadByte();
 				};
 				opcode := (@header[0] and 0xff)->As(Byte);
-System.IO.Console->Print("read - opt+len: ")->PrintLine(@header->ToHexString());
+
+				if(@is_debug){
+					System.IO.Console->Print("read - opt+len: ")->PrintLine(@header->ToHexString());
+				};
 
 				if(opcode = 0x80 | opcode = 0x81 | opcode = 0x88) {
 					payload_length : Int := @header[1];
@@ -1126,11 +1130,17 @@ System.IO.Console->Print("read - opt+len: ")->PrintLine(@header->ToHexString());
 						each(i : 2) {
 							@header[i] := @socket->ReadByte();
 						};
-System.IO.Console->Print("read - length-ext: ")->PrintLine(@header->ToHexString());
+
+						if(@is_debug){
+							System.IO.Console->Print("read - length-ext: ")->PrintLine(@header->ToHexString());
+						};
 
 						payload_length := (@header[0] and 0xff) << 8 + @header[1] and 0xff;
 					};
-System.IO.Console->Print("read - length: ")->PrintLine(payload_length);
+
+					if(@is_debug){
+						System.IO.Console->Print("read - length: ")->PrintLine(payload_length);
+					};
 
 					# read payload
 					if(payload_length < 65536) {
@@ -1140,11 +1150,15 @@ System.IO.Console->Print("read - length: ")->PrintLine(payload_length);
 						};
 
 						if(opcode = 0x88) {
-							code : Int := (buffer[0] and 0xff) << 8 + buffer[1] and 0xff;
-code->PrintLine();							
+							@status_code := ((buffer[0] and 0xff) << 8 + buffer[1] and 0xff)->As(Int);
 							@socket->Close();
+							
+							return Nil;
 						};
-System.IO.Console->Print("read - buffer: ")->PrintLine(String->New(buffer));
+
+						if(@is_debug){
+							System.IO.Console->Print("read - buffer: ")->PrintLine(String->New(buffer));
+						};
 
 						return buffer;
 					};
@@ -1208,6 +1222,14 @@ System.IO.Console->Print("read - buffer: ")->PrintLine(String->New(buffer));
 				
 				@socket->Close();
 			};
+		}
+
+		#~
+		Gets the last status code 
+		@return last status code 
+		~#
+		method : public : GetLastStatus() ~ Int {
+			return @status_code;
 		}
 
 		#~
