@@ -4,110 +4,194 @@ class Test {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
 			token := FileReader->ReadFile(args[0]);
+			client := Connect(Url->New( "wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-12-17"), token);
+			
+			if(<>SendQuery("What is the tallest mountain in Colorado?", client)) {
+				">>> Error sending query <<<"->PrintLine();
+				return;
+			};
+			response := ReceiveResponse(client);
+			if(response->GetSecond() <> Nil) {
+				audio_base64_str := response->GetSecond();
+				audio_base64_str_size := audio_base64_str->Size();
 
-			client := SecureWebSocket->New(Url->New( "wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-12-17" ));
-			client->AddHeader("Authorization", "Bearer {$token}");
-			client->AddHeader("OpenAI-Beta", "realtime=v1");
+audio_base64_str->PrintLine();
 
-			if(client->Connect()) {
-				"Connected..."->PrintLine();
+"audio_base64_str: size={$audio_base64_str_size}"->PrintLine();	
+				audio_bytes := Cipher.Decrypt->Base64(audio_base64_str);
+				FileWriter->WriteFile("test.txt", audio_base64_str);
+				FileWriter->WriteFile("test.wav", audio_bytes);
+			};
+			
+			client->CloseSocket();
+		};
+	}
 
-				recv_msg := client->ReadTextSocket();
-				if(recv_msg = Nil) {
-					return;
-				};
+	function : Connect(url : Url, token : String) ~ SecureWebSocket {
+		client := SecureWebSocket->New(url);
+		client->AddHeader("Authorization", "Bearer {$token}");
+		client->AddHeader("OpenAI-Beta", "realtime=v1");
 
-				response_json := JsonParser->TextToElement(recv_msg);
-				if(response_json = Nil) {
-					status_code := client->GetLastStatus();
-					">>> closed: code={$status_code} <<<"->PrintLine();
-					return;
-				};
+		if(client->Connect()) {
+			"Connected..."->PrintLine();
 
-				type_str := response_json->Get("type")->GetString();
-				if(<>type_str->Equals("session.created")) {
-					status_code := client->GetLastStatus();
-					">>> closed: code={$status_code} <<<"->PrintLine();
-					return;
-				};
+			recv_msg := client->ReadTextSocket();
+			if(recv_msg = Nil) {
+				return Nil;
+			};
 
-				send_msg := "{
-					\"type\": \"conversation.item.create\",
-					\"item\": {
-						\"type\": \"message\",
-						\"role\": \"user\",
-						\"content\": [
-							{				
-								\"type\": \"input_text\",
-								\"text\": \"What Prince album sold the most copies?\"
-							}
-						]
+			response_json := JsonParser->TextToElement(recv_msg);
+			if(response_json = Nil) {
+				status_code := client->GetLastStatus();
+				">>> closed: code={$status_code} <<<"->PrintLine();
+
+				return Nil;
+			};
+
+			type_str := response_json->Get("type")->GetString();
+			if(<>type_str->Equals("session.created")) {
+				status_code := client->GetLastStatus();
+				">>> closed: code={$status_code} <<<"->PrintLine();
+
+				return Nil;
+			};
+
+			return client;
+		};
+
+		return Nil;
+	}
+
+	function : SendQuery(query : String, client : SecureWebSocket) ~ Bool {
+		send_msg := "{
+			\"type\": \"conversation.item.create\",
+			\"item\": {
+				\"type\": \"message\",
+				\"role\": \"user\",
+				\"content\": [
+					{				
+						\"type\": \"input_text\",
+						\"text\": \"{$query}\"
 					}
-				}";
-# "send_msg=\"{$send_msg}\""->PrintLine();
-				client->WriteTextSocket(send_msg);
-							
-				recv_msg := client->ReadTextSocket();
-				if(recv_msg = Nil) {
-					status_code := client->GetLastStatus();
-					">>> closed: code={$status_code} <<<"->PrintLine();
-					return;
-				};
+				]
+			}
+		}";
+		# "send_msg=\"{$send_msg}\""->PrintLine();
+		client->WriteTextSocket(send_msg);
+					
+		recv_msg := client->ReadTextSocket();
+		if(recv_msg = Nil) {
+			status_code := client->GetLastStatus();
+			">>> closed: code={$status_code} <<<"->PrintLine();
+			return false;
+		};
 
-				response_json := JsonParser->TextToElement(recv_msg);
-				if(response_json = Nil) {
-					"### Error: Unable to parse response ###"->ErrorLine();
-				};
+		response_json := JsonParser->TextToElement(recv_msg);
+		if(response_json = Nil) {
+			"### Error: Unable to parse response ###"->ErrorLine();
+		};
 
-				type_str := response_json->Get("type")->GetString();
-				if(<>type_str->Equals("conversation.item.created")) {
-					">>> Error: {$type_str} <<<"->ErrorLine();
-					return;
-				};
+		type_str := response_json->Get("type")->GetString();
+		if(<>type_str->Equals("conversation.item.created")) {
+			">>> Error: {$type_str} <<<"->ErrorLine();
+			return false;
+		};
 
-				send_msg := "{
-					\"type\": \"response.create\",
-					\"response\": {
-						\"modalities\": [\"text\"],
-						\"tool_choice\": \"auto\"
-					}
-				}";
-# "send_msg=\"{$send_msg}\""->PrintLine();
-				client->WriteTextSocket(send_msg);
+		status := response_json->Get("item")->Get("status")->GetString();
+		if(<>status->Equals("completed")) {
+			"### Error: Unexpected: status={$status} ###"->ErrorLine();
+			return false;
+		};
 
+		send_msg := "{
+			\"type\": \"response.create\",			
+			\"response\": {
+				\"voice\": \"sage\",
+				\"output_audio_format\": \"pcm16\",
+				\"modalities\": [\"text\", \"audio\"],
+				\"tool_choice\": \"auto\"
+			}
+		}";
+		# "send_msg=\"{$send_msg}\""->PrintLine();
+		client->WriteTextSocket(send_msg);
 
+		recv_msg := client->ReadTextSocket();
+		if(recv_msg = Nil) {
+			status_code := client->GetLastStatus();
+			">>> closed: code={$status_code} <<<"->PrintLine();
+			return false;
+		};
+
+		response_json := JsonParser->TextToElement(recv_msg);
+		if(response_json = Nil) {
+			"### Error: Unable to parse response ###"->ErrorLine();
+		};
+
+		type_str := response_json->Get("type")->GetString();
+		if(<>type_str->Equals("response.created")) {
+			">>> Error: {$type_str} <<<"->ErrorLine();
+			return false;
+		};
+
+		return true;
+	}
+
+	function : ReceiveResponse(client : SecureWebSocket) ~ Pair<String, String> {
+		response_text := "";
+		response_audio := "";
+			
+		is_done := false;
+		while(<>is_done) {
+			recv_msg := client->ReadTextSocket();
+			if(recv_msg = Nil) {
+				return Nil;
+			};
+
+			response_json := JsonParser->TextToElement(recv_msg);
+			if(response_json = Nil) {
+				"### Error: Unable to parse response ###"->ErrorLine();
+				return Nil;
+			};
+
+			type_str := response_json->Get("type")->GetString();
+			if(type_str->Equals("response.text.delta") | type_str->Equals("response.audio_transcript.delta")) {
+				response_text += response_json->Get("delta")->GetString();
+			}
+			else if(type_str->Equals("response.audio.delta")) {
+				response_audio += response_json->Get("delta")->GetString();
+			}
+			else if(type_str->Equals("response.done")) {
+				is_done := true;
+			}
+			else if(type_str->Equals("response.cancelled")) {
 				response_text := "";
-				
-				is_done := false;
-				while(<>is_done) {
-					recv_msg := client->ReadTextSocket();
-					if(recv_msg <> Nil) {
-						response_json := JsonParser->TextToElement(recv_msg);
-						if(response_json = Nil) {
-							"### Error: Unable to parse response ###"->ErrorLine();
-						};
-
-						type_str := response_json->Get("type")->GetString();
-						if(type_str->Equals("response.text.delta")) {
-							response_text += response_json->Get("delta")->GetString();
-						}
-						else if(type_str->Equals("response.done")) {
-							is_done := true;
-						}
-						else if(type_str->Equals("response.cancelled")) {
-							response_text := "";
-						};
-					}
-					else {
-						response_text := "";
-						is_done := true;
-					};
+			}
+			else if(type_str->Equals("conversation.item.created")) {
+				status := response_json->Get("item")->Get("status")->GetString();
+				if(<>status->Equals("in_progress")) {
+					"### Error: Unexpected: status={$status} ###"->ErrorLine();
+					return Nil;
 				};
+			}
+			else if(type_str->Equals("rate_limits.updated")) {
+				rate_limits := response_json->Get("rate_limits");
+				if(rate_limits->Size() <> 2) {
+					"### Error invalid rate limits ###"->ErrorLine();
+					return Nil;
+				};
+			}
+			else if(<>type_str->EndsWith(".added") & <>type_str->EndsWith(".done")) {
+				# "type='{$type_str}'"->PrintLine();
+				# recv_msg->PrintLine();
 
-				"response: text='{$response_text}'"->PrintLine();
-
-				client->CloseSocket();
+				"### Error unexpected type: {$type_str} ###"->ErrorLine();
+				return Nil;
 			};
 		};
+
+		# "response: audio='{$response_audio}'"->PrintLine();
+		# "response: text='{$response_text}'"->PrintLine();
+
+		return Pair->New(response_text, response_audio)<String, String>;
 	}
 }

@@ -25,7 +25,7 @@ bundle API.OpenAI.Audio {
 		}
 
 		#~
-		Transcribes audio into into the input language.
+		Transcribes audio into the input language.
 		@param name transcription name
 		@param content byte stream to translate
 		@param model ID of the model to use
