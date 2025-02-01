@@ -1,6 +1,6 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		value := 65535;
+		value := 28413;
 		# value := 65536;
 
 		"value={$value}\n---"->PrintLine();
@@ -8,15 +8,15 @@ class Test {
 		bytes := EncodeInt(value, 2);
 		System.IO.Console->Print("encoded: ")->Print(bytes->ToHexString())->PrintLine("\n---");
 	
-		value := DecodeInt(bytes);
+		value := DecodeInt(0, 2, bytes);
 		"decoded={$value}\n---"->PrintLine();
 	}
 
-	function : native : EncodeInt(value : Int, size : Int) ~ Byte[] {
-		bytes := Byte->New[size];
+	function : native : EncodeInt(value : Int, num_bytes : Int) ~ Byte[] {
+		bytes := Byte->New[num_bytes];
 
-		shift := (size - 1) * 8;
-		each(i : size) {
+		shift := (num_bytes - 1) * 8;
+		each(i : num_bytes) {
 			bytes[i] := (value >> shift) and 0xff;
 			shift -= 8;
 		};
@@ -24,11 +24,11 @@ class Test {
 		return bytes;		
 	}
 
-	function : native : DecodeInt(bytes : Byte[]) ~ Int {
+	function : native : DecodeInt(offset : Int, num_bytes : Int, bytes : Byte[]) ~ Int {
 		value := 0;
 		
-		shift := (bytes->Size() - 1) * 8;
-		each(i : bytes) {
+		shift := (num_bytes - 1) * 8;
+		each(i : num_bytes) {
 			value += bytes[i] and 0xff << shift;
 			shift -= 8;
 		};
