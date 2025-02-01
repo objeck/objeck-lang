@@ -1,23 +1,36 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		value := 2147483800;
+		value := 704550764748113;
 		"value={$value}\n---"->PrintLine();
 		
-		bytes := Byte->New[8];
-		
-		bytes[0] := (value >> 56) and 0xff;
-		bytes[1] := (value >> 48) and 0xff;
-		bytes[2] := (value >> 40) and 0xff;
-		bytes[3] := (value >> 32) and 0xff;
-		bytes[4] := (value >> 24) and 0xff;
-		bytes[5] := (value >> 16) and 0xff;
-		bytes[6] := (value >> 8) and 0xff;
-		bytes[7] := value and 0xff;
+		bytes := EncodeInt(value, 8);
 		System.IO.Console->Print("encoded: ")->Print(bytes->ToHexString())->PrintLine("\n---");
 	
-		value := 0;
-		value += (bytes[0] and 0xff) << 8 + bytes[1] and 0xff;
-
+		value := DecodeInt(bytes);
 		"decoded={$value}\n---"->PrintLine();
+	}
+
+	function : native : EncodeInt(value : Int, size : Int) ~ Byte[] {
+		bytes := Byte->New[size];
+
+		shift := (size - 1) * 8;
+		each(i : size) {
+			bytes[i] := (value >> shift) and 0xff;
+			shift -= 8;
+		};
+
+		return bytes;		
+	}
+
+	function : native : DecodeInt(bytes : Byte[]) ~ Int {
+		value := 0;
+		
+		shift := (bytes->Size() - 1) * 8
+		each(i : bytes) {
+			value += bytes[i] and 0xff << shift;
+			shift -= 8;
+		};
+
+		return value;
 	}
 }
