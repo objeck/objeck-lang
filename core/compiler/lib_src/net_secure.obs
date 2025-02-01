@@ -994,8 +994,8 @@ if(client->Connect()) {
 		}
 
 		method : WriteSocket(data : Byte[], is_binary : Bool) ~ Bool {
-			# unsigned 7-bytes, for 64-bit value
-			if(@socket <> Nil & data <> Nil & data->Size() < 72057594037927936) {
+			# unsigned 7-bytes, 2^57, 64-bit signed
+			if(@socket <> Nil & data <> Nil & data->Size() < 144115188075855872) {
 				payload_size := data->Size();
 
 				frame_offset : Int;
@@ -1230,8 +1230,8 @@ if(client->Connect()) {
 						System.IO.Console->Print("read - length: ")->PrintLine(payload_length);
 					};
 
-					# unsigned 7-bytes, for 64-bit value
-					if(payload_length < 72057594037927936) {
+					# unsigned 7-bytes, 2^57, 64-bit signed
+					if(payload_length < 144115188075855872) {
 						# read payload
 						buffer := Byte->New[payload_length];
 						each(i : payload_length) {
