@@ -1055,7 +1055,7 @@ if(client->Connect()) {
 		@param data binary payload
 		@return true if successful, false otherwise
 		~#
-		method : public : WriteBinarytSocket(data : Byte[]) ~ Bool {
+		method : public : WriteSocket(data : Byte[]) ~ Bool {
 			return  WriteSocket(data, true);
 		}
 
@@ -1064,7 +1064,7 @@ if(client->Connect()) {
 		@param message message
 		@return true if successful, false otherwise
 		~#
-		method : public : WriteTextSocket(message : String) ~ Bool {
+		method : public : WriteSocket(message : String) ~ Bool {
 			data := message->ToByteArray();
 			return  WriteSocket(data, false);
 		}
