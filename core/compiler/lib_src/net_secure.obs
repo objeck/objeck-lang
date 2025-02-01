@@ -862,7 +862,7 @@ if(client->Connect()) {
 			
 			@response_headers := Hash->New()<String, String>;
 
-			@is_debug := true;
+			# @is_debug := true;
 		}
 
 		#~
