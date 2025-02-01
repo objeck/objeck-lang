@@ -25,7 +25,7 @@ class Test {
 	function : native : DecodeInt(bytes : Byte[]) ~ Int {
 		value := 0;
 		
-		shift := (bytes->Size() - 1) * 8
+		shift := (bytes->Size() - 1) * 8;
 		each(i : bytes) {
 			value += bytes[i] and 0xff << shift;
 			shift -= 8;
