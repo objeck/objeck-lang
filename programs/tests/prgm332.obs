@@ -1,14 +1,14 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		value := 56391;
-		bytes := Byte->New[8];
+		value := 65535;
+		bytes := Byte->New[2];
 
 		"value={$value}\n---"->PrintLine();
 		
-		EncodeInt(value, bytes, 2, 2);
+		EncodeInt(value, bytes, 0, 2);
 		System.IO.Console->Print("encoded: ")->Print(bytes->ToHexString())->PrintLine("\n---");
 		
-		value := DecodeInt(bytes, 2, 2);
+		value := DecodeInt(bytes, 0, 2);
 		"decoded={$value}\n---"->PrintLine();
 	}
 

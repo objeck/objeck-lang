@@ -862,7 +862,7 @@ if(client->Connect()) {
 			
 			@response_headers := Hash->New()<String, String>;
 
-			# @is_debug := true;
+			@is_debug := true;
 		}
 
 		#~
@@ -994,7 +994,8 @@ if(client->Connect()) {
 		}
 
 		method : WriteSocket(data : Byte[], is_binary : Bool) ~ Bool {
-			if(@socket <> Nil & data <> Nil & data->Size() < 65536) {	
+			# unsigned 7-bytes, for 64-bit value
+			if(@socket <> Nil & data <> Nil & data->Size() < 72057594037927936) {
 				payload_size := data->Size();
 
 				frame_offset : Int;
@@ -1004,12 +1005,14 @@ if(client->Connect()) {
 
 				if(payload_size < 126) {
 					frame_offset := 6;
-					frame := Byte->New[frame_offset + payload_size];
+				}
+				else if(payload_size < 65536) {
+					frame_offset := 8;
 				}
 				else {
-					frame_offset := 8;
-					frame := Byte->New[frame_offset + payload_size];
+					frame_offset := 14;
 				};
+				frame := Byte->New[frame_offset + payload_size];	
 				
 				# set utf-8 opcode
 				if(is_binary) {
@@ -1047,7 +1050,7 @@ if(client->Connect()) {
 						System.IO.Console->Print("mask - ")->PrintLine(mask->ToHexString());
 					};
 				}
-				else {
+				else if(payload_size < 65536) {
 					mask_payload_length += 126; # payload size
 					
 					frame[1] := mask_payload_length;
@@ -1073,6 +1076,42 @@ if(client->Connect()) {
 						mask[1] := frame[5];
 						mask[2] := frame[6];
 						mask[3] := frame[7];
+						System.IO.Console->Print("mask - ")->PrintLine(mask->ToHexString());
+					};
+				}
+				else {
+					mask_payload_length += 127; # payload size
+
+					frame[1] := mask_payload_length;
+					EncodeInt(payload_size, frame, 2, 8);
+
+					if(@is_debug){
+						opcodes := Byte->New[9];
+						opcodes[0] := frame[0];
+						opcodes[1] := frame[1];
+						opcodes[2] := frame[2];
+						opcodes[3] := frame[3];
+						opcodes[4] := frame[4];
+						opcodes[5] := frame[5];
+						opcodes[6] := frame[6];
+						opcodes[7] := frame[7];
+						opcodes[8] := frame[8];	
+
+						System.IO.Console->Print("write - opcode+length-ext: ")->PrintLine(opcodes->ToHexString());
+					};
+
+					# key mask
+					frame[10] := Int->Random(255);
+					frame[11] := Int->Random(255);
+					frame[12] := Int->Random(255);
+					frame[13] := Int->Random(255);
+
+					if(@is_debug){
+						mask := Byte->New[4];
+						mask[0] := frame[10];
+						mask[1] := frame[11];
+						mask[2] := frame[12];
+						mask[3] := frame[13];
 						System.IO.Console->Print("mask - ")->PrintLine(mask->ToHexString());
 					};
 				};
@@ -1172,14 +1211,28 @@ if(client->Connect()) {
 						};
 
 						payload_length := DecodeInt(@header, 0, 2);
+					}
+					else if(payload_length = 127) {
+						buffer := Byte->New[8];
+
+						each(i : 8) {
+							buffer[i] := @socket->ReadByte();
+						};
+
+						if(@is_debug){
+							System.IO.Console->Print("read - length-ext: ")->PrintLine(buffer->ToHexString());
+						};
+
+						payload_length := DecodeInt(buffer, 0, 8);
 					};
 
 					if(@is_debug){
 						System.IO.Console->Print("read - length: ")->PrintLine(payload_length);
 					};
 
-					# read payload
-					if(payload_length < 65536) {
+					# unsigned 7-bytes, for 64-bit value
+					if(payload_length < 72057594037927936) {
+						# read payload
 						buffer := Byte->New[payload_length];
 						each(i : payload_length) {
 							buffer[i] := @socket->ReadByte();
@@ -1198,7 +1251,7 @@ if(client->Connect()) {
 
 						return buffer;
 					};
-				}
+				};
 			};
 
 			return Nil;
