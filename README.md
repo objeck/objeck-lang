@@ -19,7 +19,7 @@
     * Performance testing for Llama and Mistra Hexagon NPU execution
 
 * v2025.1.2 (release by 2/3/20225) 📅
-    * Add WebSocket support (debugging + testing)
+    * Add WebSocket support (done)
     * Performance testing for Llama and Mistra CPU execution 🧮 (done)
     * Explore adding newer OpenAI and Gemini features 🤖
       * Add OpenAI Vision support (done)
