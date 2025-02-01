@@ -795,10 +795,10 @@ if(html <> Nil) {
 	```
 client := SecureWebSocket->New(Url->New("wss://echo.websocket.org"));
 if(client->Connect()) {
-  client->ReadTextSocket()->PrintLine();
+  client->ReadSocketText()->PrintLine();
   
   client->WriteTextSocket("Hello World!");
-  client->ReadTextSocket()->PrintLine();
+  client->ReadSocketText()->PrintLine();
   
   client->CloseSocket();
 };
@@ -979,7 +979,7 @@ if(client->Connect()) {
 		@param data binary payload
 		@return true if successful, false otherwise
 		~#
-		method : public : WriteBinarytSocket(data : Byte[]) ~ Bool {
+		method : public : WriteSocket(data : Byte[]) ~ Bool {
 			return  WriteSocket(data, true);
 		}
 
@@ -988,7 +988,7 @@ if(client->Connect()) {
 		@param message message
 		@return true if successful, false otherwise
 		~#
-		method : public : WriteTextSocket(message : String) ~ Bool {
+		method : public : WriteSocket(message : String) ~ Bool {
 			data := message->ToByteArray();
 			return  WriteSocket(data, false);
 		}
@@ -1144,7 +1144,7 @@ if(client->Connect()) {
 		Reads binary input from the web socket
 		@return binary input read, Nil otherwise
 		~#
-		method : public : ReadBinarySocket() ~ Byte[] {
+		method : public : ReadSocketBinary() ~ Byte[] {
 			return ReadSocket();
 		}
 
@@ -1152,7 +1152,7 @@ if(client->Connect()) {
 		Reads text from the web socket
 		@return text read, Nil otherwise
 		~#
-		method : public : ReadTextSocket() ~ String {
+		method : public : ReadSocketText() ~ String {
 			data := ReadSocket();
 			if(data <> Nil) {
 				return String->New(data);
