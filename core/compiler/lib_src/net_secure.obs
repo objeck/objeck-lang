@@ -1049,10 +1049,9 @@ if(client->Connect()) {
 				}
 				else {
 					mask_payload_length += 126; # payload size
+					
 					frame[1] := mask_payload_length;
-
-					frame[2] := (payload_size >> 8) and 0xff;
-					frame[3] := payload_size and 0xff;
+					EncodeInt(payload_size, frame, 2, 2);
 
 					if(@is_debug){
 						opcodes := Byte->New[3];
@@ -1169,10 +1168,10 @@ if(client->Connect()) {
 						};
 
 						if(@is_debug){
-							System.IO.Console->Print("read - length-ext2: ")->PrintLine(@header->ToHexString());
+							System.IO.Console->Print("read - length-ext: ")->PrintLine(@header->ToHexString());
 						};
 
-						payload_length := (@header[0] and 0xff) << 8 + @header[1] and 0xff;
+						payload_length := DecodeInt(@header, 0, 2);
 					};
 
 					if(@is_debug){
@@ -1187,7 +1186,7 @@ if(client->Connect()) {
 						};
 
 						if(opcode = 0x88) {
-							@status_code := ((buffer[0] and 0xff) << 8 + buffer[1] and 0xff)->As(Int);
+							@status_code :=  DecodeInt(@header, 0, 2);
 							@socket->Close();
 
 							return Nil;
@@ -1203,6 +1202,30 @@ if(client->Connect()) {
 			};
 
 			return Nil;
+		}
+
+		method : native : EncodeInt(value : Int, bytes : Byte[], offset : Int, num_bytes : Int) ~ Nil {
+			shift := (num_bytes - 1) << 3;
+			end := offset + num_bytes;
+
+			for(i := offset; i < end; i += 1;) {
+				bytes[i] := (value >> shift) and 0xff;
+				shift -= 8;
+			};
+		}
+
+		method : native : DecodeInt(bytes : Byte[], offset : Int, num_bytes : Int) ~ Int {
+			value : Int;
+			
+			shift := (num_bytes - 1) << 3;
+			end := offset + num_bytes;
+
+			for(i := offset; i < end; i += 1;) {
+				value += bytes[i] and 0xff << shift;
+				shift -= 8;
+			};
+
+			return value;
 		}
 
 		#~

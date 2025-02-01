@@ -1,34 +1,34 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
 		value := 56391;
-		# value := 65536;
+		bytes := Byte->New[8];
 
 		"value={$value}\n---"->PrintLine();
 		
-		bytes := EncodeInt(value, 2);
+		EncodeInt(value, bytes, 2, 2);
 		System.IO.Console->Print("encoded: ")->Print(bytes->ToHexString())->PrintLine("\n---");
-	
-		value := DecodeInt(0, 2, bytes);
+		
+		value := DecodeInt(bytes, 2, 2);
 		"decoded={$value}\n---"->PrintLine();
 	}
 
-	function : native : EncodeInt(value : Int, num_bytes : Int) ~ Byte[] {
-		bytes := Byte->New[num_bytes];
-
+	function : native : EncodeInt(value : Int, bytes : Byte[], offset : Int, num_bytes : Int) ~ Nil {
 		shift := (num_bytes - 1) << 3;
-		each(i : num_bytes) {
+		end := offset + num_bytes;
+
+		for(i := offset; i < end; i += 1;) {
 			bytes[i] := (value >> shift) and 0xff;
 			shift -= 8;
 		};
-
-		return bytes;		
 	}
 
-	function : native : DecodeInt(offset : Int, num_bytes : Int, bytes : Byte[]) ~ Int {
+	function : native : DecodeInt(bytes : Byte[], offset : Int, num_bytes : Int) ~ Int {
 		value : Int;
 		
 		shift := (num_bytes - 1) << 3;
-		each(i : num_bytes) {
+		end := offset + num_bytes;
+
+		for(i := offset; i < end; i += 1;) {
 			value += bytes[i] and 0xff << shift;
 			shift -= 8;
 		};
