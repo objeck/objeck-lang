@@ -871,10 +871,10 @@ if(html <> Nil) {
 	```
 client := WebSocket->New(Url->New("ws://echo.websocket.org"));
 if(client->Connect()) {
-  client->ReadTextSocket()->PrintLine();
+  client->ReadSocketText()->PrintLine();
   
   client->WriteTextSocket("Hello World!");
-  client->ReadTextSocket()->PrintLine();
+  client->ReadSocketText()->PrintLine();
   
   client->CloseSocket();
 };
@@ -1220,7 +1220,7 @@ if(client->Connect()) {
 		Reads binary input from the web socket
 		@return binary input read, Nil otherwise
 		~#
-		method : public : ReadBinarySocket() ~ Byte[] {
+		method : public : ReadSocketBinary() ~ Byte[] {
 			return ReadSocket();
 		}
 
@@ -1228,7 +1228,7 @@ if(client->Connect()) {
 		Reads text from the web socket
 		@return text read, Nil otherwise
 		~#
-		method : public : ReadTextSocket() ~ String {
+		method : public : ReadSocketText() ~ String {
 			data := ReadSocket();
 			if(data <> Nil) {
 				return String->New(data);

@@ -10,13 +10,13 @@ class Test {
 
 		client := SecureWebSocket->New(Url->New("wss://echo.websocket.org"));
 		if(client->Connect()) {
-			client->ReadTextSocket()->PrintLine();
+			client->ReadSocketText()->PrintLine();
 
 #			client->WriteTextSocket("Hello World!");
-#			client->ReadTextSocket()->PrintLine();
+#			client->ReadSocketText()->PrintLine();
 
-			client->WriteTextSocket(text);
-			client->ReadTextSocket()->PrintLine();
+			client->WriteSocket(text);
+			client->ReadSocketText()->PrintLine();
 
 #			client->PingSocket()->PrintLine();
 

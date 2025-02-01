@@ -33,7 +33,7 @@ class Test {
 		if(client->Connect()) {
 			"Connected..."->PrintLine();
 
-			recv_msg := client->ReadTextSocket();
+			recv_msg := client->ReadSocketText();
 			if(recv_msg = Nil) {
 				return Nil;
 			};
@@ -75,9 +75,9 @@ class Test {
 			}
 		}";
 		# "send_msg=\"{$send_msg}\""->PrintLine();
-		client->WriteTextSocket(send_msg);
+		client->WriteSocket(send_msg);
 					
-		recv_msg := client->ReadTextSocket();
+		recv_msg := client->ReadSocketText();
 		if(recv_msg = Nil) {
 			status_code := client->GetLastStatus();
 			">>> closed: code={$status_code} <<<"->PrintLine();
@@ -111,9 +111,9 @@ class Test {
 			}
 		}";
 		# "send_msg=\"{$send_msg}\""->PrintLine();
-		client->WriteTextSocket(send_msg);
+		client->WriteSocket(send_msg);
 
-		recv_msg := client->ReadTextSocket();
+		recv_msg := client->ReadSocketText();
 		if(recv_msg = Nil) {
 			status_code := client->GetLastStatus();
 			">>> closed: code={$status_code} <<<"->PrintLine();
@@ -140,7 +140,7 @@ class Test {
 			
 		is_done := false;
 		while(<>is_done) {
-			recv_msg := client->ReadTextSocket();
+			recv_msg := client->ReadSocketText();
 			if(recv_msg = Nil) {
 				return Nil;
 			};
