@@ -528,7 +528,7 @@ if(html <> Nil) {
 
 				port := url->GetPort();
 				if(port < 0) {
-					port := 443;
+					port := 80;
 				};
 				# "### address='{$address}', port={$port}, location='{$location}'"->PrintLine();
 				
@@ -711,7 +711,7 @@ if(html <> Nil) {
 
 				port := url->GetPort();
 				if(port < 0) {
-					port := 443;
+					port := 80;
 				};
 				# "### address='{$address}', port={$port}, location='{$location}'"->PrintLine();
 
@@ -862,6 +862,622 @@ if(html <> Nil) {
 
 			content_type := GetContentType();
 			return Web.HTTP.Response->New(content->ToByteArray(), status_code, content_type);
+		}
+	}
+
+	#~
+	Web socket client
+	
+	```
+client := WebSocket->New(Url->New("wss://echo.websocket.org"));
+if(client->Connect()) {
+  client->ReadTextSocket()->PrintLine();
+  
+  client->WriteTextSocket("Hello World!");
+  client->ReadTextSocket()->PrintLine();
+  
+  client->CloseSocket();
+};
+	```
+	~#
+	class WebSocket {
+		#~
+		Socket mode, either text or binary
+		~#
+		enum Mode {
+			BINARY,
+			TEXT
+		}
+		
+		# web socket support
+		@socket : TCPSocket;
+		@header : Byte[];
+		@url : Web.HTTP.Url;
+		@status_code : Int;
+
+		# https client support
+		@request_headers : Hash<String, String>;
+		@response_headers : Hash<String, String>;
+		@cookies_enabled : Bool;
+		@cookies : Vector<Cookie>;
+		@cert_issuer : String;
+		@cert_subject : String;
+
+		@is_debug : Bool;
+
+		#~
+		Constructor
+		@param url URL
+		@param cookies_enabled true if cookies are enabled, false otherwise		
+		~#
+		New(url : Web.HTTP.Url, cookies_enabled : Bool) {
+			@url := url;
+
+			@request_headers := Hash->New()<String, String>;
+			@request_headers->Insert("Cache-Control"->ToLower(), "max-age=0");
+			@request_headers->Insert("User-Agent"->ToLower(), "Objeck/1.0");
+			
+			@response_headers := Hash->New()<String, String>;
+
+			@cookies_enabled := cookies_enabled;
+			@cookies := Vector->New()<Cookie>;
+
+			# @is_debug := true;
+		}
+
+		#~
+		Constructor
+		@param url URL
+		~#
+		New(url : Web.HTTP.Url) {
+			@url := url;
+
+			@request_headers := Hash->New()<String, String>;
+			@request_headers->Insert("Cache-Control"->ToLower(), "max-age=0");
+			@request_headers->Insert("User-Agent"->ToLower(), "Objeck/1.0");
+			
+			@response_headers := Hash->New()<String, String>;
+
+			# @is_debug := true;
+		}
+
+		#~
+		Opens a connection to a web socket
+		@return true if connected, false otherwise
+		~#
+		method : public : Connect() ~ Bool {
+			if(@url->GetScheme()->Equals("wss")) {
+				address := @url->GetHost();
+				
+				location := @url->GetPath();
+				if(location = Nil) {
+					location := "/";
+				};
+
+				query := @url->GetQuery();
+				if(query <> Nil) {
+					location += '?';
+					location += query;
+				};
+
+				frag := @url->GetFragment();
+				if(frag <> Nil) {
+					location += '#';
+					location += frag;
+				};
+
+				port := @url->GetPort();
+				if(port < 0) {
+					port := 80;
+				};
+				# "### address='{$address}', port={$port}, location='{$location}'"->PrintLine();
+
+				socket := TCPSocket->New(address, port);
+				if(socket->IsOpen()) {
+					@response_headers->Empty();
+
+					oper := "GET ";
+					
+					oper->Append(location);
+					oper->Append(" HTTP/1.1\r\nHost: ");
+					oper->Append(address);
+					oper->Append(':');
+					oper->Append(port);
+					oper->Append("\r\n");
+					
+					request_keys := @request_headers->GetKeys()<String>;
+					each(i : request_keys) {		
+						request_key := request_keys->Get(i);
+						request_value := @request_headers->Find(request_key);					
+						oper->Append(request_key);
+						oper->Append(": ");
+						oper->Append(request_value);
+						oper->Append("\r\n");
+					};
+
+					oper->Append("Connection: Upgrade\r\nUpgrade: websocket\r\nSec-WebSocket-Version: 13\r\nSec-WebSocket-Key: ");
+
+					nonce := Byte->New[16];
+					each(i : nonce) {
+						nonce[i] := Int->Random(255);
+					};
+					key := Cipher.Encrypt->Base64(nonce);
+
+					oper->Append(key);
+					oper->Append("\r\n\r\n");		
+					
+					# IO.Console->Print("Get: |")->Print(oper)->PrintLine("|");
+					
+					socket->WriteString(oper);
+					
+					status_line := socket->ReadLine();
+					if(status_line->StartsWith("HTTP/1.")) {
+						status_line := status_line->SubString("HTTP/1."->Size() + 2, status_line->Size() - "HTTP/1."->Size() - 2);
+					};
+
+					if(status_line->StartsWith("101 Switching")) {
+						# get request headers
+						do {
+							line := socket->ReadLine();
+							if(line->Size() > 0) {
+								index := line->Find(':');
+								name := line->SubString(index);
+								value := line->SubString(index + 1, line->Size() - index - 1)->Trim();
+								
+								# IO.Console->Print("|")->Print(name)->Print("|, |")->Print(value)->PrintLine("|");
+								if(@cookies_enabled & name->Equals("Set-Cookie")) {
+									@cookies->AddBack(Cookie->New(value));
+									# IO.Console->Print("cookie=")->PrintLine(value);
+								}
+								else {
+									@response_headers->Insert(name->ToLower(), value);
+								};
+							};
+						}
+						while(line->Size() > 0);
+						
+						nonce_hash := @response_headers->Find("sec-websocket-accept");
+						# TODO: validate hash response '258EAFA5-E914-47DA-95CA-C5AB0DC85B11' base64 encoded
+						if(nonce_hash <> Nil) {
+							@socket := socket;
+							@header := Byte->New[2];
+							return true;
+						}
+					};
+				}
+			};	
+
+			return false;
+		}
+
+		#~
+		Writes binary output to the web socket
+		@param data binary payload
+		@return true if successful, false otherwise
+		~#
+		method : public : WriteBinarytSocket(data : Byte[]) ~ Bool {
+			return  WriteSocket(data, true);
+		}
+
+		#~
+		Writes text to the web socket
+		@param message message
+		@return true if successful, false otherwise
+		~#
+		method : public : WriteTextSocket(message : String) ~ Bool {
+			data := message->ToByteArray();
+			return  WriteSocket(data, false);
+		}
+
+		method : WriteSocket(data : Byte[], is_binary : Bool) ~ Bool {
+			# unsigned 7-bytes, 2^57, 64-bit signed
+			if(@socket <> Nil & data <> Nil & data->Size() < 144115188075855872) {
+				payload_size := data->Size();
+
+				frame_offset : Int;
+				
+				# create frame
+				frame : Byte[];
+
+				if(payload_size < 126) {
+					frame_offset := 6;
+				}
+				else if(payload_size < 65536) {
+					frame_offset := 8;
+				}
+				else {
+					frame_offset := 14;
+				};
+				frame := Byte->New[frame_offset + payload_size];	
+				
+				# set utf-8 opcode
+				if(is_binary) {
+					frame[0] :=  0x80;
+				}
+				else {
+					frame[0] :=  0x81;
+				};
+
+				# set payload length and bit mask
+				mask_payload_length := 0x80; # set mask bit
+				if(payload_size < 126) {
+					mask_payload_length += payload_size; # payload size
+					frame[1] := mask_payload_length;
+
+					if(@is_debug){
+						opcodes := Byte->New[2];
+						opcodes[0] := frame[0];
+						opcodes[1] := frame[1];
+						System.IO.Console->Print("opcode+length: ")->PrintLine(opcodes->ToHexString());
+					};
+
+					# key mask
+					frame[2] := Int->Random(255);
+					frame[3] := Int->Random(255);
+					frame[4] := Int->Random(255);
+					frame[5] := Int->Random(255);
+
+					if(@is_debug){
+						mask := Byte->New[4];
+						mask[0] := frame[2];
+						mask[1] := frame[3];
+						mask[2] := frame[4];
+						mask[3] := frame[5];
+						System.IO.Console->Print("mask - ")->PrintLine(mask->ToHexString());
+					};
+				}
+				else if(payload_size < 65536) {
+					mask_payload_length += 126; # payload size
+					
+					frame[1] := mask_payload_length;
+					EncodeInt(payload_size, frame, 2, 2);
+
+					if(@is_debug){
+						opcodes := Byte->New[3];
+						opcodes[0] := frame[0];
+						opcodes[1] := frame[1];
+						opcodes[2] := frame[2];
+						System.IO.Console->Print("write - opcode+length-ext: ")->PrintLine(opcodes->ToHexString());
+					};
+
+					# key mask
+					frame[4] := Int->Random(255);
+					frame[5] := Int->Random(255);
+					frame[6] := Int->Random(255);
+					frame[7] := Int->Random(255);
+
+					if(@is_debug){
+						mask := Byte->New[4];
+						mask[0] := frame[4];
+						mask[1] := frame[5];
+						mask[2] := frame[6];
+						mask[3] := frame[7];
+						System.IO.Console->Print("mask - ")->PrintLine(mask->ToHexString());
+					};
+				}
+				else {
+					mask_payload_length += 127; # payload size
+
+					frame[1] := mask_payload_length;
+					EncodeInt(payload_size, frame, 2, 8);
+
+					if(@is_debug){
+						opcodes := Byte->New[9];
+						opcodes[0] := frame[0];
+						opcodes[1] := frame[1];
+						opcodes[2] := frame[2];
+						opcodes[3] := frame[3];
+						opcodes[4] := frame[4];
+						opcodes[5] := frame[5];
+						opcodes[6] := frame[6];
+						opcodes[7] := frame[7];
+						opcodes[8] := frame[8];	
+
+						System.IO.Console->Print("write - opcode+length-ext: ")->PrintLine(opcodes->ToHexString());
+					};
+
+					# key mask
+					frame[10] := Int->Random(255);
+					frame[11] := Int->Random(255);
+					frame[12] := Int->Random(255);
+					frame[13] := Int->Random(255);
+
+					if(@is_debug){
+						mask := Byte->New[4];
+						mask[0] := frame[10];
+						mask[1] := frame[11];
+						mask[2] := frame[12];
+						mask[3] := frame[13];
+						System.IO.Console->Print("mask - ")->PrintLine(mask->ToHexString());
+					};
+				};
+
+				# encode payload
+				j := 0;
+				each(i : data) {
+					frame[frame_offset + i] := data[i] xor frame[j % 4 + frame_offset - 4];
+					j += 1;
+				};
+
+				if(@is_debug){
+					buffer := ByteBuffer->New();
+
+					"frame - "->Print();
+					each(f in frame) {
+						buffer->Append(f)
+					};
+
+					buffer->ToByteArray()->ToHexString()->PrintLine();
+				};
+
+				return @socket->WriteBuffer(frame) > 0;
+			};
+
+			return false;
+		}
+
+		#~
+		Reads binary input from the web socket
+		@return binary input read, Nil otherwise
+		~#
+		method : public : ReadBinarySocket() ~ Byte[] {
+			return ReadSocket();
+		}
+
+		#~
+		Reads text from the web socket
+		@return text read, Nil otherwise
+		~#
+		method : public : ReadTextSocket() ~ String {
+			data := ReadSocket();
+			if(data <> Nil) {
+				return String->New(data);
+			};
+
+			return Nil;
+		}
+
+		method : ReadSocket() ~ Byte[] {
+			if(@socket <> Nil) {
+				# read header
+				each(i : 2) {
+					@header[i] := @socket->ReadByte();
+				};
+				opcode := (@header[0] and 0xff)->As(Byte);
+
+				if(@is_debug){
+					System.IO.Console->Print("read - opt+len: ")->PrintLine(@header->ToHexString());
+				};
+
+				# ping
+				if(opcode = 0x89) {
+					payload_length : Int := @header[1];
+					buffer := Byte->New[payload_length];
+					each(i : payload_length) {
+						buffer[i] := @socket->ReadByte();
+					};
+
+					if(@is_debug){
+						System.IO.Console->Print("ping - payload: ")->PrintLine(buffer->ToHexString());
+					};
+
+					@socket->WriteByte(0x8a);
+					@socket->WriteBuffer(buffer);
+
+					# read header
+					each(i : 2) {
+						@header[i] := @socket->ReadByte();
+					};
+					opcode := (@header[0] and 0xff)->As(Byte);
+
+					if(@is_debug){
+						System.IO.Console->Print("read - opt+len: ")->PrintLine(@header->ToHexString());
+					};
+				};
+
+				if(opcode = 0x80 | opcode = 0x81 | opcode = 0x88) {
+					payload_length : Int := @header[1];
+					if(payload_length = 126) {
+						each(i : 2) {
+							@header[i] := @socket->ReadByte();
+						};
+
+						if(@is_debug){
+							System.IO.Console->Print("read - length-ext: ")->PrintLine(@header->ToHexString());
+						};
+
+						payload_length := DecodeInt(@header, 0, 2);
+					}
+					else if(payload_length = 127) {
+						buffer := Byte->New[8];
+
+						each(i : 8) {
+							buffer[i] := @socket->ReadByte();
+						};
+
+						if(@is_debug){
+							System.IO.Console->Print("read - length-ext: ")->PrintLine(buffer->ToHexString());
+						};
+
+						payload_length := DecodeInt(buffer, 0, 8);
+					};
+
+					if(@is_debug){
+						System.IO.Console->Print("read - length: ")->PrintLine(payload_length);
+					};
+
+					# unsigned 7-bytes, 2^57, 64-bit signed
+					if(payload_length < 144115188075855872) {
+						# read payload
+						buffer := Byte->New[payload_length];
+						each(i : payload_length) {
+							buffer[i] := @socket->ReadByte();
+						};
+
+						if(opcode = 0x88) {
+							@status_code :=  DecodeInt(@header, 0, 2);
+							@socket->Close();
+
+							return Nil;
+						};
+
+						if(@is_debug){
+							System.IO.Console->Print("read - buffer: '")->Print(String->New(buffer))->PrintLine('\'');
+						};
+
+						return buffer;
+					};
+				};
+			};
+
+			return Nil;
+		}
+
+		method : native : EncodeInt(value : Int, bytes : Byte[], offset : Int, num_bytes : Int) ~ Nil {
+			shift := (num_bytes - 1) << 3;
+			end := offset + num_bytes;
+
+			for(i := offset; i < end; i += 1;) {
+				bytes[i] := (value >> shift) and 0xff;
+				shift -= 8;
+			};
+		}
+
+		method : native : DecodeInt(bytes : Byte[], offset : Int, num_bytes : Int) ~ Int {
+			value : Int;
+			
+			shift := (num_bytes - 1) << 3;
+			end := offset + num_bytes;
+
+			for(i := offset; i < end; i += 1;) {
+				value += bytes[i] and 0xff << shift;
+				shift -= 8;
+			};
+
+			return value;
+		}
+
+		#~
+		Pings the websocket server
+		@return true if pinged, false otherwise
+		~#
+		method : public : PingSocket() ~ Bool {
+			if(@socket <> Nil) {
+				# ping opcode
+				@socket->WriteByte(0x89);
+				@socket->WriteByte(0x80);
+
+				# payload size
+				@socket->WriteByte(0x0);
+				@socket->WriteByte(0x0);
+
+				# masking bytes
+				@socket->WriteByte(0x0);
+				@socket->WriteByte(0x0);
+				@socket->WriteByte(0x0);
+
+				# read header
+				each(i : 2) {
+					@header[i] := @socket->ReadByte();
+				};
+				opcode := (@header[0] and 0xff)->As(Byte);
+				# System.IO.Console->Print("read - opt+len: ")->PrintLine(@header->ToHexString());
+
+				payload_length : Int := @header[1];
+				buffer := Byte->New[payload_length];
+				each(i : payload_length) {
+					buffer[i] := @socket->ReadByte();
+				};
+
+				if(@is_debug){
+					System.IO.Console->Print("pong - payload: ")->PrintLine(buffer->ToHexString());
+				};
+
+				if(opcode = 0x8a) {
+					return true;
+				};
+			};
+
+			return false;
+		}
+
+		#~
+		Closes the web socket connection
+		~#
+		method : public : CloseSocket() ~ Nil {
+			CloseSocket(1000);
+		}
+
+		#~
+		Closes the web socket connection
+		@param reason reason to close socket
+		~#
+		method : public : CloseSocket(reason : Int) ~ Nil {
+			if(@socket <> Nil) {
+				@socket->WriteByte(0x88);
+
+				@socket->WriteByte((reason >> 8) and 0xff);
+				@socket->WriteByte(reason and 0xff);
+				
+				@socket->Close();
+			};
+		}
+
+		#~
+		Gets the last status code 
+		@return last status code 
+		~#
+		method : public : GetLastStatus() ~ Int {
+			return @status_code;
+		}
+
+		#~
+		Gets the socket's X.509 certificate issuer name
+		@return certificate issuer name
+		~#
+		method : public : GetIssuer() ~ String {
+			return @cert_issuer;
+		}
+
+		#~
+		Gets the socket's X.509 certificate subject name
+		@return certificate subject name
+		~#
+		method : public : GetSubject() ~ String {
+			return @cert_subject;
+		}
+
+		#~
+		Sets cookie support
+		@param cookies_enabled true if cookies are enabled, false otherwise
+		~#
+		method : public : EnableCookies(cookies_enabled : Bool) ~ Nil {
+			@cookies_enabled := cookies_enabled;
+		}	
+		
+		#~
+		Gets the cookies
+		@return vector of cookies
+		~#
+		method : public : GetCookies() ~ Vector<Cookie> {
+			return @cookies;
+		}
+
+		#~
+		Adds a HTTPS request header
+		@param name header name
+		@param value header value
+		~#
+		method : public : AddHeader(name : String, value : String) ~  Nil {
+			@request_headers->Insert(name->ToLower(), value);
+		}
+
+		#~
+		Removes a HTTPS request header
+		@param name header name
+		~#
+		method : public : RemoveHeader(name : String) ~  Nil {
+			@request_headers->Remove(name->ToLower());
 		}
 	}
 }
