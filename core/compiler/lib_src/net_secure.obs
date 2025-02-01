@@ -980,7 +980,7 @@ if(client->Connect()) {
 		@return true if successful, false otherwise
 		~#
 		method : public : WriteSocket(data : Byte[]) ~ Bool {
-			return  WriteSocket(data, true);
+			return  WriteFrame(data, true);
 		}
 
 		#~
@@ -990,10 +990,127 @@ if(client->Connect()) {
 		~#
 		method : public : WriteSocket(message : String) ~ Bool {
 			data := message->ToByteArray();
-			return  WriteSocket(data, false);
+			return  WriteFrame(data, false);
 		}
 
-		method : WriteSocket(data : Byte[], is_binary : Bool) ~ Bool {
+		#~
+		Reads binary input from the web socket
+		@return binary input read, Nil otherwise
+		~#
+		method : public : ReadSocketBinary() ~ Byte[] {
+			return ReadFrame();
+		}
+
+		#~
+		Reads text from the web socket
+		@return text read, Nil otherwise
+		~#
+		method : public : ReadSocketText() ~ String {
+			data := ReadFrame();
+			if(data <> Nil) {
+				return String->New(data);
+			};
+
+			return Nil;
+		}
+
+		method : ReadFrame() ~ Byte[] {
+			if(@socket <> Nil) {
+				# read header
+				each(i : 2) {
+					@header[i] := @socket->ReadByte();
+				};
+				opcode := (@header[0] and 0xff)->As(Byte);
+
+				if(@is_debug){
+					System.IO.Console->Print("read - opt+len: ")->PrintLine(@header->ToHexString());
+				};
+
+				# ping
+				if(opcode = 0x89) {
+					payload_length : Int := @header[1];
+					buffer := Byte->New[payload_length];
+					each(i : payload_length) {
+						buffer[i] := @socket->ReadByte();
+					};
+
+					if(@is_debug){
+						System.IO.Console->Print("ping - payload: ")->PrintLine(buffer->ToHexString());
+					};
+
+					@socket->WriteByte(0x8a);
+					@socket->WriteBuffer(buffer);
+
+					# read header
+					each(i : 2) {
+						@header[i] := @socket->ReadByte();
+					};
+					opcode := (@header[0] and 0xff)->As(Byte);
+
+					if(@is_debug){
+						System.IO.Console->Print("read - opt+len: ")->PrintLine(@header->ToHexString());
+					};
+				};
+
+				if(opcode = 0x80 | opcode = 0x81 | opcode = 0x88) {
+					payload_length : Int := @header[1];
+					if(payload_length = 126) {
+						each(i : 2) {
+							@header[i] := @socket->ReadByte();
+						};
+
+						if(@is_debug){
+							System.IO.Console->Print("read - length-ext: ")->PrintLine(@header->ToHexString());
+						};
+
+						payload_length := DecodeInt(@header, 0, 2);
+					}
+					else if(payload_length = 127) {
+						buffer := Byte->New[8];
+
+						each(i : 8) {
+							buffer[i] := @socket->ReadByte();
+						};
+
+						if(@is_debug){
+							System.IO.Console->Print("read - length-ext: ")->PrintLine(buffer->ToHexString());
+						};
+
+						payload_length := DecodeInt(buffer, 0, 8);
+					};
+
+					if(@is_debug){
+						System.IO.Console->Print("read - length: ")->PrintLine(payload_length);
+					};
+
+					# unsigned 7-bytes, 2^57, 64-bit signed
+					if(payload_length < 144115188075855872) {
+						# read payload
+						buffer := Byte->New[payload_length];
+						each(i : payload_length) {
+							buffer[i] := @socket->ReadByte();
+						};
+
+						if(opcode = 0x88) {
+							@status_code :=  DecodeInt(@header, 0, 2);
+							@socket->Close();
+
+							return Nil;
+						};
+
+						if(@is_debug){
+							System.IO.Console->Print("read - buffer: '")->Print(String->New(buffer))->PrintLine('\'');
+						};
+
+						return buffer;
+					};
+				};
+			};
+
+			return Nil;
+		}
+
+		method : WriteFrame(data : Byte[], is_binary : Bool) ~ Bool {
 			# unsigned 7-bytes, 2^57, 64-bit signed
 			if(@socket <> Nil & data <> Nil & data->Size() < 144115188075855872) {
 				payload_size := data->Size();
@@ -1138,123 +1255,6 @@ if(client->Connect()) {
 			};
 
 			return false;
-		}
-
-		#~
-		Reads binary input from the web socket
-		@return binary input read, Nil otherwise
-		~#
-		method : public : ReadSocketBinary() ~ Byte[] {
-			return ReadSocket();
-		}
-
-		#~
-		Reads text from the web socket
-		@return text read, Nil otherwise
-		~#
-		method : public : ReadSocketText() ~ String {
-			data := ReadSocket();
-			if(data <> Nil) {
-				return String->New(data);
-			};
-
-			return Nil;
-		}
-
-		method : ReadSocket() ~ Byte[] {
-			if(@socket <> Nil) {
-				# read header
-				each(i : 2) {
-					@header[i] := @socket->ReadByte();
-				};
-				opcode := (@header[0] and 0xff)->As(Byte);
-
-				if(@is_debug){
-					System.IO.Console->Print("read - opt+len: ")->PrintLine(@header->ToHexString());
-				};
-
-				# ping
-				if(opcode = 0x89) {
-					payload_length : Int := @header[1];
-					buffer := Byte->New[payload_length];
-					each(i : payload_length) {
-						buffer[i] := @socket->ReadByte();
-					};
-
-					if(@is_debug){
-						System.IO.Console->Print("ping - payload: ")->PrintLine(buffer->ToHexString());
-					};
-
-					@socket->WriteByte(0x8a);
-					@socket->WriteBuffer(buffer);
-
-					# read header
-					each(i : 2) {
-						@header[i] := @socket->ReadByte();
-					};
-					opcode := (@header[0] and 0xff)->As(Byte);
-
-					if(@is_debug){
-						System.IO.Console->Print("read - opt+len: ")->PrintLine(@header->ToHexString());
-					};
-				};
-
-				if(opcode = 0x80 | opcode = 0x81 | opcode = 0x88) {
-					payload_length : Int := @header[1];
-					if(payload_length = 126) {
-						each(i : 2) {
-							@header[i] := @socket->ReadByte();
-						};
-
-						if(@is_debug){
-							System.IO.Console->Print("read - length-ext: ")->PrintLine(@header->ToHexString());
-						};
-
-						payload_length := DecodeInt(@header, 0, 2);
-					}
-					else if(payload_length = 127) {
-						buffer := Byte->New[8];
-
-						each(i : 8) {
-							buffer[i] := @socket->ReadByte();
-						};
-
-						if(@is_debug){
-							System.IO.Console->Print("read - length-ext: ")->PrintLine(buffer->ToHexString());
-						};
-
-						payload_length := DecodeInt(buffer, 0, 8);
-					};
-
-					if(@is_debug){
-						System.IO.Console->Print("read - length: ")->PrintLine(payload_length);
-					};
-
-					# unsigned 7-bytes, 2^57, 64-bit signed
-					if(payload_length < 144115188075855872) {
-						# read payload
-						buffer := Byte->New[payload_length];
-						each(i : payload_length) {
-							buffer[i] := @socket->ReadByte();
-						};
-
-						if(opcode = 0x88) {
-							@status_code :=  DecodeInt(@header, 0, 2);
-							@socket->Close();
-
-							return Nil;
-						};
-
-						if(@is_debug){
-							System.IO.Console->Print("read - buffer: '")->Print(String->New(buffer))->PrintLine('\'');
-						};
-
-						return buffer;
-					};
-				};
-			};
-
-			return Nil;
 		}
 
 		method : native : EncodeInt(value : Int, bytes : Byte[], offset : Int, num_bytes : Int) ~ Nil {
