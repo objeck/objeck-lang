@@ -10,6 +10,9 @@ class Test {
 	
 		value := DecodeInt(0, 2, bytes);
 		"decoded={$value}\n---"->PrintLine();
+
+		i := 3;
+		(i * 8)->PrintLine();
 	}
 
 	function : native : EncodeInt(value : Int, num_bytes : Int) ~ Byte[] {
