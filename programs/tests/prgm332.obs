@@ -28,7 +28,7 @@ class Test {
 	}
 
 	function : native : DecodeInt(offset : Int, num_bytes : Int, bytes : Byte[]) ~ Int {
-		value := 0;
+		value : Int;
 		
 		shift := (num_bytes - 1) << 3;
 		each(i : num_bytes) {
