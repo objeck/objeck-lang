@@ -869,7 +869,7 @@ if(html <> Nil) {
 	Web socket client
 	
 	```
-client := WebSocket->New(Url->New("wss://echo.websocket.org"));
+client := WebSocket->New(Url->New("ws://echo.websocket.org"));
 if(client->Connect()) {
   client->ReadTextSocket()->PrintLine();
   
@@ -946,7 +946,7 @@ if(client->Connect()) {
 		@return true if connected, false otherwise
 		~#
 		method : public : Connect() ~ Bool {
-			if(@url->GetScheme()->Equals("wss")) {
+			if(@url->GetScheme()->Equals("ws")) {
 				address := @url->GetHost();
 				
 				location := @url->GetPath();
