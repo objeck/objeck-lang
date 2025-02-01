@@ -6,7 +6,7 @@ class Test {
 			token := FileReader->ReadFile(args[0]);
 			client := Connect(Url->New( "wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-12-17"), token);
 			
-			if(<>SendQuery("What is the tallest mountain in Colorado?", client)) {
+			if(<>SendQuery("What is the longest street in Colorado?", client)) {
 				">>> Error sending query <<<"->PrintLine();
 				return;
 			};
@@ -14,13 +14,11 @@ class Test {
 			if(response->GetSecond() <> Nil) {
 				audio_base64_str := response->GetSecond();
 				audio_base64_str_size := audio_base64_str->Size();
-
-audio_base64_str->PrintLine();
 "audio_base64_str: size={$audio_base64_str_size}"->PrintLine();	
 
 				audio_bytes := Cipher.Decrypt->Base64(audio_base64_str);
 				FileWriter->WriteFile("test.txt", audio_base64_str);
-				FileWriter->WriteFile("test.wav", audio_bytes);
+				FileWriter->WriteFile("test.dat", audio_bytes);
 			};
 			
 			client->CloseSocket();
@@ -181,8 +179,8 @@ audio_base64_str->PrintLine();
 				};
 			}
 			else if(<>type_str->EndsWith(".added") & <>type_str->EndsWith(".done")) {
-				# "type='{$type_str}'"->PrintLine();
-				# recv_msg->PrintLine();
+#				"type='{$type_str}'"->PrintLine();
+#				recv_msg->PrintLine();
 
 				"### Error unexpected type: {$type_str} ###"->ErrorLine();
 				return Nil;

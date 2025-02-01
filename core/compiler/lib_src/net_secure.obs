@@ -1169,11 +1169,27 @@ if(client->Connect()) {
 						};
 
 						if(@is_debug){
-							System.IO.Console->Print("read - length-ext: ")->PrintLine(@header->ToHexString());
+							System.IO.Console->Print("read - length-ext2: ")->PrintLine(@header->ToHexString());
 						};
 
 						payload_length := (@header[0] and 0xff) << 8 + @header[1] and 0xff;
-					};
+					}
+					else if(payload_length = 127) {
+						buffer := Byte->New[8];
+
+						each(i : 8) {
+							buffer[i] := @socket->ReadByte();
+						};
+
+						if(@is_debug){
+							System.IO.Console->Print("read - length-ext8: ")->PrintLine(buffer->ToHexString());
+						};
+
+						payload_length := ((buffer[0] and 0xff) << 56 + (buffer[0] and 0xff) << 48 + 
+							(buffer[0] and 0xff) << 40 + (buffer[0] and 0xff) << 32 + 
+							(buffer[0] and 0xff) << 24 + (buffer[0] and 0xff) << 16 + 
+							(buffer[0] and 0xff) << 8 + buffer[1] and 0xff)->Abs();
+					}
 
 					if(@is_debug){
 						System.IO.Console->Print("read - length: ")->PrintLine(payload_length);
