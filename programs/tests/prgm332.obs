@@ -1,9 +1,11 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		value := 704550764748113;
+		value := 65535;
+		# value := 65536;
+
 		"value={$value}\n---"->PrintLine();
 		
-		bytes := EncodeInt(value, 8);
+		bytes := EncodeInt(value, 2);
 		System.IO.Console->Print("encoded: ")->Print(bytes->ToHexString())->PrintLine("\n---");
 	
 		value := DecodeInt(bytes);
