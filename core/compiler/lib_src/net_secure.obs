@@ -846,7 +846,7 @@ if(client->Connect()) {
 			@cookies_enabled := cookies_enabled;
 			@cookies := Vector->New()<Cookie>;
 
-			# @is_debug := true;
+			@is_debug := true;
 		}
 
 		#~
@@ -862,7 +862,7 @@ if(client->Connect()) {
 			
 			@response_headers := Hash->New()<String, String>;
 
-			# @is_debug := true;
+			@is_debug := true;
 		}
 
 		#~
@@ -979,8 +979,8 @@ if(client->Connect()) {
 		@param data binary payload
 		@return true if successful, false otherwise
 		~#
-		method : public : WriteSocket(data : Byte[]) ~ Bool {
-			return  WriteFrame(data, true);
+		method : public : WriteSocket(data : Byte[], fragment : Bool := false) ~ Bool {
+			return  WriteFrame(data, 0, data->Size(), 2, fragment);
 		}
 
 		#~
@@ -988,9 +988,9 @@ if(client->Connect()) {
 		@param message message
 		@return true if successful, false otherwise
 		~#
-		method : public : WriteSocket(message : String) ~ Bool {
+		method : public : WriteSocket(message : String, fragment : Bool := false) ~ Bool {
 			data := message->ToByteArray();
-			return  WriteFrame(data, false);
+			return  WriteFrame(data, 0, message->Size(), 1, fragment);
 		}
 
 		#~
@@ -1052,7 +1052,7 @@ if(client->Connect()) {
 					};
 				};
 
-				if(opcode = 0x80 | opcode = 0x81 | opcode = 0x88) {
+				if(opcode = 0x81 | opcode = 0x82 | opcode = 0x88) {
 					payload_length : Int := @header[1];
 					if(payload_length = 126) {
 						each(i : 2) {
@@ -1083,8 +1083,8 @@ if(client->Connect()) {
 						System.IO.Console->Print("read - length: ")->PrintLine(payload_length);
 					};
 
-					# unsigned 7-bytes, 2^57, 64-bit signed
-					if(payload_length < 144115188075855872) {
+					# cap max at 4GB
+					if(payload_length < 4294967296) {
 						# read payload
 						buffer := Byte->New[payload_length];
 						each(i : payload_length) {
@@ -1110,39 +1110,32 @@ if(client->Connect()) {
 			return Nil;
 		}
 
-		method : WriteFrame(data : Byte[], is_binary : Bool) ~ Bool {
-			# unsigned 7-bytes, 2^57, 64-bit signed
-			if(@socket <> Nil & data <> Nil & data->Size() < 144115188075855872) {
-				payload_size := data->Size();
-
+		method : WriteFrame(data : Byte[], offset : Int, length : Int, mode : Int, fragment : Bool) ~ Bool {
+			# cap max at 4GB
+			if(@socket <> Nil & data <> Nil & length < 4294967296) { # TODO: bounds check
 				frame_offset : Int;
 				
 				# create frame
 				frame : Byte[];
 
-				if(payload_size < 126) {
+				if(length < 126 & <>fragment) {
 					frame_offset := 6;
 				}
-				else if(payload_size < 65536) {
+				else if(length < 65536) {
 					frame_offset := 8;
 				}
-				else {
+				else if(<>fragment) {
 					frame_offset := 14;
 				};
-				frame := Byte->New[frame_offset + payload_size];	
+				frame := Byte->New[frame_offset + length];	
 				
 				# set utf-8 opcode
-				if(is_binary) {
-					frame[0] :=  0x80;
-				}
-				else {
-					frame[0] :=  0x81;
-				};
+				frame[0] := 0x80 + (fragment ? 0 : mode);
 
 				# set payload length and bit mask
 				mask_payload_length := 0x80; # set mask bit
-				if(payload_size < 126) {
-					mask_payload_length += payload_size; # payload size
+				if(length < 126) {
+					mask_payload_length += length; # payload size
 					frame[1] := mask_payload_length;
 
 					if(@is_debug){
@@ -1167,11 +1160,11 @@ if(client->Connect()) {
 						System.IO.Console->Print("mask - ")->PrintLine(mask->ToHexString());
 					};
 				}
-				else if(payload_size < 65536) {
+				else if(length < 65536) {
 					mask_payload_length += 126; # payload size
 					
 					frame[1] := mask_payload_length;
-					EncodeInt(payload_size, frame, 2, 2);
+					EncodeInt(length, frame, 2, 2);
 
 					if(@is_debug){
 						opcodes := Byte->New[3];
@@ -1200,7 +1193,7 @@ if(client->Connect()) {
 					mask_payload_length += 127; # payload size
 
 					frame[1] := mask_payload_length;
-					EncodeInt(payload_size, frame, 2, 8);
+					EncodeInt(length, frame, 2, 8);
 
 					if(@is_debug){
 						opcodes := Byte->New[9];
@@ -1235,7 +1228,9 @@ if(client->Connect()) {
 
 				# encode payload
 				j := 0;
-				each(i : data) {
+
+				for(i := offset; i < data->Size(); i += 1;) {
+#				each(i : data) {
 					frame[frame_offset + i] := data[i] xor frame[j % 4 + frame_offset - 4];
 					j += 1;
 				};
