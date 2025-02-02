@@ -2,34 +2,26 @@ use Collection, Web.HTTP, System.IO.Filesystem;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		text := FileReader->ReadFile("lorem-2.txt");
+		text := "Hello World!"; # FileReader->ReadFile("lorem-2.txt");
 		text_size := text->Size();
 		"text-size={$text_size}\n---"->PrintLine();
 
-		chunk_size := 16384;
-		i : Int;
-		for(i := 0; i + chunk_size < text_size; i += chunk_size) {
-			"off={$i}, len={$chunk_size}"->PrintLine();	
-		};
-
-		rest := text_size - i;
-		"off={$i}, len={$rest}"->PrintLine();
-
-#~
 		client := SecureWebSocket->New(Url->New("wss://echo.websocket.org"));
 		if(client->Connect()) {
-			client->ReadSocketText()->PrintLine();
+			read := client->ReadSocketText();
+			"=> {$read}"->PrintLine();
 
-			client->WriteSocket("Hello World!");
-			client->ReadSocketText()->PrintLine();
+			client->WriteSocket(text, true);
+			
+			read := client->ReadSocketText()
+			"=> {$read}"->PrintLine();
 
-			client->WriteSocket(text);
-			client->ReadSocketText()->PrintLine();
+#			client->WriteSocket(text, true);
+#			client->ReadSocketText()->PrintLine();
 
 #			client->PingSocket()->PrintLine();
 
 			client->CloseSocket();
 		};
-~#		
 	}
 }
