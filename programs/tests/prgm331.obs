@@ -2,12 +2,21 @@ use Collection, Web.HTTP, System.IO.Filesystem;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		text := FileReader->ReadFile("lorem.txt");
+		text := FileReader->ReadFile("lorem-2.txt");
 		text_size := text->Size();
 
 		text_size->PrintLine();
 		"text-size={$text_size}"->PrintLine();
 
+		length : Int;
+		
+		offset := 0;
+		while(offset < text_size) {
+"--- 0 ---"->PrintLine();
+			offset += 65536;
+		};
+
+#~
 		client := SecureWebSocket->New(Url->New("wss://echo.websocket.org"));
 		if(client->Connect()) {
 			client->ReadSocketText()->PrintLine();
@@ -22,5 +31,6 @@ class Test {
 
 			client->CloseSocket();
 		};
+~#		
 	}
 }
