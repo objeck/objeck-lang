@@ -4,17 +4,16 @@ class Test {
 	function : Main(args : String[]) ~ Nil {
 		text := FileReader->ReadFile("lorem-2.txt");
 		text_size := text->Size();
+		"text-size={$text_size}\n---"->PrintLine();
 
-		text_size->PrintLine();
-		"text-size={$text_size}"->PrintLine();
-
-		length : Int;
-		
-		offset := 0;
-		while(offset < text_size) {
-"--- 0 ---"->PrintLine();
-			offset += 65536;
+		chunk_size := 16384;
+		i : Int;
+		for(i := 0; i + chunk_size < text_size; i += chunk_size) {
+			"off={$i}, len={$chunk_size}"->PrintLine();	
 		};
+
+		rest := text_size - i;
+		"off={$i}, len={$rest}"->PrintLine();
 
 #~
 		client := SecureWebSocket->New(Url->New("wss://echo.websocket.org"));
