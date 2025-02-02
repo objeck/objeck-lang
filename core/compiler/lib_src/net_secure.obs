@@ -990,7 +990,42 @@ if(client->Connect()) {
 		~#
 		method : public : WriteSocket(message : String, fragment : Bool := false) ~ Bool {
 			data := message->ToByteArray();
-			return  WriteFrame(data, 0, message->Size(), 1, fragment);
+
+			if(fragment) {
+				chunk_size := 5;
+
+				i : Int;
+				data_size := data->Size();
+				for(i := 0; chunk_size + i  < data_size; i += chunk_size) {
+					if(@is_debug) {
+						"write - off={$i}, len={$chunk_size}"->PrintLine();
+					};
+
+					# finish frame
+					if(data_size - i = 0) {
+						WriteFrame(data, i, chunk_size, 0, false);
+					}
+					# fragment frame
+					else {
+						WriteFrame(data, i, chunk_size, 1, true);
+					};
+				};	
+
+				# finish frame
+				if(data_size - i <> 0) {
+					rest := data_size - i;					
+					if(@is_debug) {
+						"write - off={$i}, len={$rest}"->PrintLine();
+					};
+					
+					WriteFrame(data, i, rest, 0, false);
+				};
+		
+				return true;
+			}
+			else {
+				return WriteFrame(data, 0, message->Size(), 1, fragment);
+			};
 		}
 
 		#~
@@ -1093,13 +1128,14 @@ if(client->Connect()) {
 
 						if(opcode = 0x88) {
 							@status_code :=  DecodeInt(@header, 0, 2);
+buffer->ToString()->Trim()->PrintLine();							
 							@socket->Close();
 
 							return Nil;
 						};
 
 						if(@is_debug){
-							System.IO.Console->Print("read - buffer: '")->Print(String->New(buffer))->PrintLine('\'');
+							System.IO.Console->Print("read - buffer: '")->Print(String->New(buffer))->PrintLine("'\n===");
 						};
 
 						return buffer;
@@ -1118,19 +1154,24 @@ if(client->Connect()) {
 				# create frame
 				frame : Byte[];
 
-				if(length < 126 & <>fragment) {
+				if(length < 126) {
 					frame_offset := 6;
 				}
 				else if(length < 65536) {
 					frame_offset := 8;
 				}
-				else if(<>fragment) {
+				else {
 					frame_offset := 14;
 				};
 				frame := Byte->New[frame_offset + length];	
 				
 				# set utf-8 opcode
-				frame[0] := 0x80 + (fragment ? 0 : mode);
+				if(fragment) {
+					frame[0] := 0x0 + mode;
+				}
+				else {
+					frame[0] := 0x80 + mode;
+				};
 
 				# set payload length and bit mask
 				mask_payload_length := 0x80; # set mask bit
@@ -1142,7 +1183,7 @@ if(client->Connect()) {
 						opcodes := Byte->New[2];
 						opcodes[0] := frame[0];
 						opcodes[1] := frame[1];
-						System.IO.Console->Print("opcode+length: ")->PrintLine(opcodes->ToHexString());
+						System.IO.Console->Print("write - opcode+length: ")->PrintLine(opcodes->ToHexString());
 					};
 
 					# key mask
@@ -1157,7 +1198,7 @@ if(client->Connect()) {
 						mask[1] := frame[3];
 						mask[2] := frame[4];
 						mask[3] := frame[5];
-						System.IO.Console->Print("mask - ")->PrintLine(mask->ToHexString());
+						System.IO.Console->Print("write - mask: ")->PrintLine(mask->ToHexString());
 					};
 				}
 				else if(length < 65536) {
@@ -1171,7 +1212,7 @@ if(client->Connect()) {
 						opcodes[0] := frame[0];
 						opcodes[1] := frame[1];
 						opcodes[2] := frame[2];
-						System.IO.Console->Print("write - opcode+length-ext: ")->PrintLine(opcodes->ToHexString());
+						System.IO.Console->Print("write - opcode+length-ext-2: ")->PrintLine(opcodes->ToHexString());
 					};
 
 					# key mask
@@ -1186,7 +1227,7 @@ if(client->Connect()) {
 						mask[1] := frame[5];
 						mask[2] := frame[6];
 						mask[3] := frame[7];
-						System.IO.Console->Print("mask - ")->PrintLine(mask->ToHexString());
+						System.IO.Console->Print("write - mask: ")->PrintLine(mask->ToHexString());
 					};
 				}
 				else {
@@ -1207,7 +1248,7 @@ if(client->Connect()) {
 						opcodes[7] := frame[7];
 						opcodes[8] := frame[8];	
 
-						System.IO.Console->Print("write - opcode+length-ext: ")->PrintLine(opcodes->ToHexString());
+						System.IO.Console->Print("write - opcode+length-ext-8: ")->PrintLine(opcodes->ToHexString());
 					};
 
 					# key mask
@@ -1222,15 +1263,13 @@ if(client->Connect()) {
 						mask[1] := frame[11];
 						mask[2] := frame[12];
 						mask[3] := frame[13];
-						System.IO.Console->Print("mask - ")->PrintLine(mask->ToHexString());
+						System.IO.Console->Print("write - mask: ")->PrintLine(mask->ToHexString());
 					};
 				};
 
 				# encode payload
 				j := 0;
-
-				for(i := offset; i < data->Size(); i += 1;) {
-#				each(i : data) {
+				for(i := 0; i < length; i += 1;) {
 					frame[frame_offset + i] := data[i] xor frame[j % 4 + frame_offset - 4];
 					j += 1;
 				};
@@ -1238,10 +1277,11 @@ if(client->Connect()) {
 				if(@is_debug){
 					buffer := ByteBuffer->New();
 
-					"frame - "->Print();
+					"write - frame: "->Print();
 					each(f in frame) {
 						buffer->Append(f)
 					};
+					"\n==="->PrintLine();
 
 					buffer->ToByteArray()->ToHexString()->PrintLine();
 				};
