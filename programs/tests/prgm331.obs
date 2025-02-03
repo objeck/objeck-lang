@@ -2,7 +2,7 @@ use Collection, Web.HTTP, System.IO.Filesystem;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {		
-		text := "Hello World!012Hello World!987"; # FileReader->ReadFile("lorem-2.txt");
+		text := FileReader->ReadFile("lorem-2.txt");
 		text_size := text->Size();
 		"text-size={$text_size}\n---"->PrintLine();
 
