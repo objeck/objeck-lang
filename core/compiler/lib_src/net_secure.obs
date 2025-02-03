@@ -996,19 +996,17 @@ if(client->Connect()) {
 
 				i : Int;
 				data_size := data->Size();
-				for(i := 0; chunk_size + i  < data_size; i += chunk_size) {
+				for(i := 0; i + chunk_size < data_size; i += chunk_size) {
 					if(@is_debug) {
 						"write - off={$i}, len={$chunk_size}"->PrintLine();
 					};
 
-					# finish frame
-					if(data_size - i = 0) {
+					if(i = 0) {
+						WriteFrame(data, i, chunk_size, 1, true);
+					}
+					else {
 						WriteFrame(data, i, chunk_size, 0, false);
 					}
-					# fragment frame
-					else {
-						WriteFrame(data, i, chunk_size, 1, true);
-					};
 				};	
 
 				# finish frame
@@ -1018,10 +1016,10 @@ if(client->Connect()) {
 						"write - off={$i}, len={$rest}"->PrintLine();
 					};
 					
-					WriteFrame(data, i, rest, 0, false);
+					WriteFrame(data, i, rest, 1, false);
 				};
-		
-				return true;
+
+				return false;
 			}
 			else {
 				return WriteFrame(data, 0, message->Size(), 1, fragment);
@@ -1128,7 +1126,7 @@ if(client->Connect()) {
 
 						if(opcode = 0x88) {
 							@status_code :=  DecodeInt(@header, 0, 2);
-buffer->ToString()->Trim()->PrintLine();							
+buffer->ToString()->PrintLine();							
 							@socket->Close();
 
 							return Nil;
@@ -1270,7 +1268,8 @@ buffer->ToString()->Trim()->PrintLine();
 				# encode payload
 				j := 0;
 				for(i := 0; i < length; i += 1;) {
-					frame[frame_offset + i] := data[i] xor frame[j % 4 + frame_offset - 4];
+(offset + i)->PrintLine();					
+					frame[frame_offset + i] := data[i + offset] xor frame[j % 4 + frame_offset - 4];
 					j += 1;
 				};
 
@@ -1281,9 +1280,9 @@ buffer->ToString()->Trim()->PrintLine();
 					each(f in frame) {
 						buffer->Append(f)
 					};
-					"\n==="->PrintLine();
 
 					buffer->ToByteArray()->ToHexString()->PrintLine();
+					"\n==="->PrintLine();
 				};
 
 				return @socket->WriteBuffer(frame) > 0;
