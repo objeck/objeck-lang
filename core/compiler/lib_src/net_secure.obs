@@ -1005,21 +1005,18 @@ if(client->Connect()) {
 						WriteFrame(data, i, chunk_size, 1, true);
 					}
 					else {
-						WriteFrame(data, i, chunk_size, 0, false);
+						WriteFrame(data, i, chunk_size, 0, true);
 					}
 				};	
 
 				# finish frame
-				if(data_size - i <> 0) {
-					rest := data_size - i;					
-					if(@is_debug) {
-						"write - off={$i}, len={$rest}"->PrintLine();
-					};
-					
-					WriteFrame(data, i, rest, 1, false);
-				};
+				rest := data_size - i;					
+				if(@is_debug) {
+					"write - off={$i}, len={$rest}"->PrintLine();
+				};					
+				WriteFrame(data, i, rest, 0, false);
 
-				return false;
+				return true;
 			}
 			else {
 				return WriteFrame(data, 0, message->Size(), 1, fragment);
@@ -1081,7 +1078,7 @@ if(client->Connect()) {
 					opcode := (@header[0] and 0xff)->As(Byte);
 
 					if(@is_debug){
-						System.IO.Console->Print("read - opt+len: ")->PrintLine(@header->ToHexString());
+						System.IO.Console->Print("read - opcode+length: ")->PrintLine(@header->ToHexString());
 					};
 				};
 
@@ -1093,7 +1090,7 @@ if(client->Connect()) {
 						};
 
 						if(@is_debug){
-							System.IO.Console->Print("read - length-ext: ")->PrintLine(@header->ToHexString());
+							System.IO.Console->Print("read - length-ext-2: ")->PrintLine(@header->ToHexString());
 						};
 
 						payload_length := DecodeInt(@header, 0, 2);
@@ -1106,7 +1103,7 @@ if(client->Connect()) {
 						};
 
 						if(@is_debug){
-							System.IO.Console->Print("read - length-ext: ")->PrintLine(buffer->ToHexString());
+							System.IO.Console->Print("read - length-ext-8: ")->PrintLine(buffer->ToHexString());
 						};
 
 						payload_length := DecodeInt(buffer, 0, 8);
@@ -1126,7 +1123,8 @@ if(client->Connect()) {
 
 						if(opcode = 0x88) {
 							@status_code :=  DecodeInt(@header, 0, 2);
-buffer->ToString()->PrintLine();							
+							err_msg := String->New(buffer, 2, buffer->Size() - 2);
+							">>> Error: id={$@status_code}, message='{$err_msg}' <<<"->PrintLine();
 							@socket->Close();
 
 							return Nil;
@@ -1268,7 +1266,6 @@ buffer->ToString()->PrintLine();
 				# encode payload
 				j := 0;
 				for(i := 0; i < length; i += 1;) {
-(offset + i)->PrintLine();					
 					frame[frame_offset + i] := data[i + offset] xor frame[j % 4 + frame_offset - 4];
 					j += 1;
 				};
