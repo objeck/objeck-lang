@@ -980,7 +980,39 @@ if(client->Connect()) {
 		@return true if successful, false otherwise
 		~#
 		method : public : WriteSocket(data : Byte[], fragment : Bool := false) ~ Bool {
-			return  WriteFrame(data, 0, data->Size(), 2, fragment);
+			if(fragment) {
+				# 8k chunks
+				chunk_size := 8192;
+
+				i : Int;
+				data_size := data->Size();
+				for(i := 0; i + chunk_size < data_size; i += chunk_size) {
+					if(@is_debug) {
+						"write - off={$i}, len={$chunk_size}"->PrintLine();
+					};
+
+					if(i = 0) {
+						if(<>WriteFrame(data, i, chunk_size, 0, true)) {
+							return false;
+						};
+					}
+					else {
+						if(<>WriteFrame(data, i, chunk_size, 0, true)) {
+							return false;
+						};
+					}
+				};	
+
+				# finish frame
+				rest := data_size - i;					
+				if(@is_debug) {
+					"write - off={$i}, len={$rest}"->PrintLine();
+				};					
+				
+				return WriteFrame(data, i, rest, 0, false);
+			};
+			
+			return WriteFrame(data, 0, data->Size(), 0, fragment);
 		}
 
 		#~
