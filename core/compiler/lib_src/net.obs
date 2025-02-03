@@ -1068,7 +1068,8 @@ if(client->Connect()) {
 			data := message->ToByteArray();
 
 			if(fragment) {
-				chunk_size := 4096;
+				# 8k chunks
+				chunk_size := 8192;
 
 				i : Int;
 				data_size := data->Size();
@@ -1078,10 +1079,14 @@ if(client->Connect()) {
 					};
 
 					if(i = 0) {
-						WriteFrame(data, i, chunk_size, 1, true);
+						if(<>WriteFrame(data, i, chunk_size, 1, true)) {
+							return false;
+						};
 					}
 					else {
-						WriteFrame(data, i, chunk_size, 0, true);
+						if(<>WriteFrame(data, i, chunk_size, 0, true)) {
+							return false;
+						};
 					}
 				};	
 
@@ -1090,15 +1095,14 @@ if(client->Connect()) {
 				if(@is_debug) {
 					"write - off={$i}, len={$rest}"->PrintLine();
 				};					
-				WriteFrame(data, i, rest, 0, false);
-
-				return true;
+				
+				return WriteFrame(data, i, rest, 0, false);
 			}
 			else {
 				return WriteFrame(data, 0, message->Size(), 1, fragment);
 			};
 		}
-		
+
 		method : WriteFrame(data : Byte[], offset : Int, length : Int, mode : Int, fragment : Bool) ~ Bool {
 			# cap max at 4GB
 			if(@socket <> Nil & data <> Nil & length < 4294967296) { # TODO: bounds check
@@ -1244,7 +1248,7 @@ if(client->Connect()) {
 
 			return false;
 		}
-		
+
 		#~
 		Reads binary input from the web socket
 		@return binary input read, Nil otherwise
