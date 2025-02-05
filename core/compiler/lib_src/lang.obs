@@ -430,6 +430,13 @@ bundle System {
 			LOAD_ARY_SIZE;
 		}
 
+		function : Copy(b : Byte[]) ~ Byte[] {
+			s := b->Size();
+			o := Byte->New[s];
+			Runtime->Copy(o, 0, b, 0, s);	
+			return o;
+		}
+		
 		#~
 		Set all array elements to zero
 		@param b byte array
@@ -1073,6 +1080,13 @@ bundle System {
 			LOAD_ARY_SIZE;
 		}
 
+		function : Copy(c : Byte[]) ~ Byte[] {
+			s := c->Size();
+			o := Byte->New[s];
+			Runtime->Copy(o, 0, c, 0, s);	
+			return o;
+		}
+
 		#~
 		Set all array elements to zero
 		@param c array
@@ -1644,6 +1658,13 @@ bundle System {
 			LOAD_ARY_SIZE;
 		}
 
+		function : Copy(i : Int[]) ~ Int[] {
+			s := i->Size();
+			o := Int->New[s];
+			Runtime->Copy(o, 0, i, 0, s);	
+			return o;
+		}
+
 		#~
 		Set all array elements to zero
 		@param a array
@@ -1691,7 +1712,7 @@ bundle System {
 		function : native : ToHexString(v : Int[]) ~ String {
 			out := "]";
 
-			if(b->Size() > 0) {
+			if(v->Size() > 0) {
 				each(i : v) {
 					buffer := Char->New[32];
 					n := v[i]->As(Int);
@@ -2481,6 +2502,13 @@ bundle System {
 			LOAD_ARY_SIZE;
 		}
 
+		function : Copy(f : Float[]) ~ Float[] {
+			s := f->Size();
+			o := Float->New[s];
+			Runtime->Copy(o, 0, f, 0, s);	
+			return o;
+		}
+
 		#~
 		Set all array elements to zero
 		@param f array
@@ -2780,6 +2808,13 @@ bundle System {
 
 		function : Size(array : System.Base[]) ~ Int {
 			LOAD_ARY_SIZE;
+		}
+
+		function : Copy(v : System.Base[]) ~ System.Base[] {
+			s := v->Size();
+			o := System.Base->New[s];
+			Runtime->Copy(o, 0, v, 0, s);	
+			return o;
 		}
 
 		function : Size(array : System.Base[,]) ~ Int[] {

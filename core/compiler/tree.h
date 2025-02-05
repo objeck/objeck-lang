@@ -2887,6 +2887,10 @@ namespace frontend {
       return call_type;
     }
 
+    void SetCallType(MethodCallType t) {
+      call_type = t;
+    }
+    
     Type* GetArrayType() {
       return array_type;
     }
