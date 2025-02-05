@@ -430,6 +430,13 @@ bundle System {
 			LOAD_ARY_SIZE;
 		}
 
+		function : Copy(b : Byte[]) ~ Byte[] {
+			s := b->Size();
+			o := Byte->New[s];
+			Runtime->Copy(o, 0, b, 0, s);	
+			return o;
+		}
+		
 		#~
 		Set all array elements to zero
 		@param b byte array
@@ -1691,7 +1698,7 @@ bundle System {
 		function : native : ToHexString(v : Int[]) ~ String {
 			out := "]";
 
-			if(b->Size() > 0) {
+			if(v->Size() > 0) {
 				each(i : v) {
 					buffer := Char->New[32];
 					n := v[i]->As(Int);
