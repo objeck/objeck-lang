@@ -2637,6 +2637,12 @@ void ContextAnalyzer::AnalyzeNewArrayCall(MethodCall* method_call, const int dep
         }
         break;
 
+      case FLOAT_TYPE:
+        if(expression->GetExpressionType() == VAR_EXPR && !static_cast<Variable*>(expression)->GetIndices() && type->GetDimension() != 1) {
+          ProcessError(expression, L"Array index type must be an Int, Char, Byte or enum scalar");
+        }
+        break;
+
       case CLASS_TYPE:
         if(!IsEnumExpression(expression)) {
           ProcessError(expression, L"Array index type must be an Int, Char, Byte or enum");

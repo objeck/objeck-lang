@@ -5302,14 +5302,15 @@ void IntermediateEmitter::EmitMethodCallParameters(MethodCall* method_call)
   // new array
   if(method_call->GetCallType() == NEW_ARRAY_CALL) {
     std::vector<Expression*> expressions = method_call->GetCallingParameters()->GetExpressions();
+    LibraryClass* lib_klass = nullptr; LibraryMethod* lib_method = nullptr;
 
     // array copy
     if(expressions.size() == 1 && expressions[0]->GetExpressionType() == VAR_EXPR && 
        !static_cast<Variable*>(expressions[0])->GetIndices() && expressions[0]->GetEvalType() && 
        expressions[0]->GetEvalType()->GetDimension() == 1) {
-      Expression* expression = expressions[0];
-
-      switch(expression->GetEvalType()->GetType()) {
+      
+      Variable* variable = static_cast<Variable*>(expressions[0]);
+      switch(variable->GetEvalType()->GetType()) {
       case frontend::BYTE_TYPE:
         break;
 
@@ -5317,10 +5318,39 @@ void IntermediateEmitter::EmitMethodCallParameters(MethodCall* method_call)
         break;
 
       case frontend::INT_TYPE:
+        lib_klass = parsed_program->GetLinker()->SearchClassLibraries(L"System.$Int", parsed_program->GetLibUses());
+        if(lib_klass) {
+          lib_method = lib_klass->GetMethod(L"System.$Int:Copy:i*,");
+        }
+        break;
+
+      case frontend::FLOAT_TYPE:
         break;
 
       default:
         break;
+      }
+      
+      // copy array
+      if(lib_method) {
+        SymbolEntry* entry = variable->GetEntry();
+        MemoryContext mem_context;
+        if(entry->IsLocal()) {
+          mem_context = LOCL;
+        }
+        else if(entry->IsStatic()) {
+          mem_context = CLS;
+        }
+        else {
+          mem_context = INST;
+        }
+
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_INT_VAR, entry->GetId(), mem_context));
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, cur_line_num, LOAD_INST_MEM));
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, MTHD_CALL, lib_klass->GetId(), lib_method->GetId(), lib_method->IsNative()));
+        
+        // set copy
+        method_call->SetCallType(NEW_COPY_ARRAY_CALL);
       }
     }
     else {
