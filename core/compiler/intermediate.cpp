@@ -5305,12 +5305,10 @@ void IntermediateEmitter::EmitMethodCallParameters(MethodCall* method_call)
     LibraryClass* lib_klass = nullptr; LibraryMethod* lib_method = nullptr;
 
     // array copy
-    if(expressions.size() == 1 && expressions[0]->GetExpressionType() == VAR_EXPR && 
-       !static_cast<Variable*>(expressions[0])->GetIndices() && expressions[0]->GetEvalType() && 
-       expressions[0]->GetEvalType()->GetDimension() == 1) {
-      
-      Variable* variable = static_cast<Variable*>(expressions[0]);
-      switch(variable->GetEvalType()->GetType()) {
+    if(expressions.size() == 1 && (expressions[0]->GetExpressionType() == VAR_EXPR || expressions[0]->GetExpressionType() == STAT_ARY_EXPR) &&
+       !static_cast<Variable*>(expressions[0])->GetIndices() && expressions[0]->GetEvalType() && expressions[0]->GetEvalType()->GetDimension() == 1) {      
+      Expression* expression = expressions[0];
+      switch(expression->GetEvalType()->GetType()) {
       case frontend::BYTE_TYPE:
         break;
 
@@ -5333,23 +5331,32 @@ void IntermediateEmitter::EmitMethodCallParameters(MethodCall* method_call)
       
       // copy array
       if(lib_method) {
-        SymbolEntry* entry = variable->GetEntry();
-        MemoryContext mem_context;
-        if(entry->IsLocal()) {
-          mem_context = LOCL;
+        // variable
+        if(expression->GetExpressionType() == VAR_EXPR) {
+          Variable* variable = static_cast<Variable*>(expression);
+          SymbolEntry* entry = variable->GetEntry();
+          MemoryContext mem_context;
+          if(entry->IsLocal()) {
+            mem_context = LOCL;
+          }
+          else if(entry->IsStatic()) {
+            mem_context = CLS;
+          }
+          else {
+            mem_context = INST;
+          }
+
+          imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_INT_VAR, entry->GetId(), mem_context));
         }
-        else if(entry->IsStatic()) {
-          mem_context = CLS;
-        }
+        // static array
         else {
-          mem_context = INST;
+          EmitExpression(expression);
         }
 
-        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_INT_VAR, entry->GetId(), mem_context));
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, cur_line_num, LOAD_INST_MEM));
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, MTHD_CALL, lib_klass->GetId(), lib_method->GetId(), lib_method->IsNative()));
         
-        // set copy
+        // set copy call
         method_call->SetCallType(NEW_COPY_ARRAY_CALL);
       }
     }
