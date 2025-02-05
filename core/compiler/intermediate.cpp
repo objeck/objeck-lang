@@ -5302,10 +5302,35 @@ void IntermediateEmitter::EmitMethodCallParameters(MethodCall* method_call)
   // new array
   if(method_call->GetCallType() == NEW_ARRAY_CALL) {
     std::vector<Expression*> expressions = method_call->GetCallingParameters()->GetExpressions();
-    for(size_t i = 0; i < expressions.size(); ++i) {
-      EmitExpression(expressions[i]);
-      EmitClassCast(expressions[i]);
+
+    // array copy
+    if(expressions.size() == 1 && expressions[0]->GetExpressionType() == VAR_EXPR && 
+       !static_cast<Variable*>(expressions[0])->GetIndices() && expressions[0]->GetEvalType() && 
+       expressions[0]->GetEvalType()->GetDimension() == 1) {
+      Expression* expression = expressions[0];
+
+      switch(expression->GetEvalType()->GetType()) {
+      case frontend::BYTE_TYPE:
+        break;
+
+      case frontend::CHAR_TYPE:
+        break;
+
+      case frontend::INT_TYPE:
+        break;
+
+      default:
+        break;
+      }
     }
+    else {
+      for(size_t i = 0; i < expressions.size(); ++i) {
+        Expression* expression = expressions[i];
+        EmitExpression(expression);
+        EmitClassCast(expression);
+      }
+    }
+
     is_new_inst = false;
   }
   // enum call
