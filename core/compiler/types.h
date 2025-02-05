@@ -120,6 +120,7 @@ namespace frontend {
     ENUM_CALL = -6000,
     NEW_INST_CALL,
     NEW_ARRAY_CALL,
+    NEW_COPY_ARRAY_CALL,
     METHOD_CALL,
     PARENT_CALL
   };
