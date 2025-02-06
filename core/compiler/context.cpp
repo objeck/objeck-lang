@@ -2622,30 +2622,37 @@ void ContextAnalyzer::AnalyzeNewArrayCall(MethodCall* method_call, const int dep
   if(expressions.size() == 0) {
     ProcessError(static_cast<Expression*>(method_call), L"Empty array index");
   }
-  // validate array parameters
-  for(size_t i = 0; i < expressions.size(); ++i) {
-    Expression* expression = expressions[i];
-    AnalyzeExpression(expression, depth + 1);
-    Type* type = GetExpressionType(expression, depth + 1);
-    if(type) {
-      switch(type->GetType()) {
-      case BYTE_TYPE:
-      case CHAR_TYPE:
-      case INT_TYPE:
-        break;
+  // TODO: check for dimension size of 1, looking at type
+  else if(expressions.size() == 1 && expressions[0]->GetExpressionType() == VAR_EXPR) {
 
-      case CLASS_TYPE:
-        if(!IsEnumExpression(expression)) {
+  }
+  else {
+    // validate array parameters
+    for(size_t i = 0; i < expressions.size(); ++i) {
+      Expression* expression = expressions[i];
+      AnalyzeExpression(expression, depth + 1);
+      Type* type = GetExpressionType(expression, depth + 1);
+      if(type) {
+        switch(type->GetType()) {
+        case BYTE_TYPE:
+        case CHAR_TYPE:
+        case INT_TYPE:
+          break;
+
+        case CLASS_TYPE:
+          if(!IsEnumExpression(expression)) {
+            ProcessError(expression, L"Array index type must be an Integer, Char, Byte or Enum");
+          }
+          break;
+
+        default:
           ProcessError(expression, L"Array index type must be an Integer, Char, Byte or Enum");
+          break;
         }
-        break;
-
-      default:
-        ProcessError(expression, L"Array index type must be an Integer, Char, Byte or Enum");
-        break;
       }
     }
   }
+
   // generic array type
   if(method_call->HasConcreteTypes() && method_call->GetEvalType()) {
     Class* generic_klass = nullptr; LibraryClass* generic_lib_klass = nullptr;
