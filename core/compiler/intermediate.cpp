@@ -309,7 +309,7 @@ void IntermediateEmitter::EmitStrings()
       std::vector<ByteStringInstruction*> byte_str_insts = library->GetByteStringInstructions();
       for(size_t i = 0; i < byte_str_insts.size(); ++i) {
         // check for duplicates
-        byte found = false;
+        bool found = false;
 
         // byteean string processing
         for(size_t j = 0; !found && j < lib_byte_string_values.size(); ++j) {
