@@ -299,11 +299,29 @@ void IntermediateEmitter::EmitStrings()
     std::vector<std::wstring> lib_char_string_values;
     std::vector<IntStringHolder*> lib_int_string_values;
     std::vector<BoolStringHolder*> lib_bool_string_values;
+    std::vector<ByteStringHolder*> lib_byte_string_values;
     std::vector<FloatStringHolder*> lib_float_string_values;
 
     for(size_t i = 0; i < libraries.size(); ++i) {
       Library* library = libraries[i];
 
+      // byte string processing
+      std::vector<ByteStringInstruction*> byte_str_insts = library->GetByteStringInstructions();
+      for(size_t i = 0; i < byte_str_insts.size(); ++i) {
+        // check for duplicates
+        byte found = false;
+
+        // byteean string processing
+        for(size_t j = 0; !found && j < lib_byte_string_values.size(); ++j) {
+          if(ByteStringHolderEqual(byte_str_insts[i]->value, lib_byte_string_values[j])) {
+            found = true;
+          }
+        }
+        // add string
+        if(!found) {
+          lib_byte_string_values.push_back(byte_str_insts[i]->value);
+        }
+      }
       // bool string processing
       std::vector<BoolStringInstruction*> bool_str_insts = library->GetBoolStringInstructions();
       for(size_t i = 0; i < bool_str_insts.size(); ++i) {
@@ -4037,6 +4055,13 @@ void IntermediateEmitter::EmitStaticArray(StaticArray* array) {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, array, cur_line_num, NEW_BYTE_ARY, (long)array->GetDimension()));
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(current_statement, array, cur_line_num, array->GetId()));
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(current_statement, array, cur_line_num, instructions::CPY_BOOL_STR_ARY));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, array, cur_line_num, TRAP_RTRN, 3L));
+      break;
+
+    case frontend::BYTE_TYPE:
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, array, cur_line_num, NEW_BYTE_ARY, (long)array->GetDimension()));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(current_statement, array, cur_line_num, array->GetId()));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(current_statement, array, cur_line_num, instructions::CPY_BYTE_STR_ARY));
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, array, cur_line_num, TRAP_RTRN, 3L));
       break;
 

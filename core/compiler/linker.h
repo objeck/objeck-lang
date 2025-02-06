@@ -699,6 +699,11 @@ struct CharStringInstruction {
   std::vector<LibraryInstr*> instrs;
 };
 
+struct ByteStringInstruction {
+  frontend::ByteStringHolder* value;
+  std::vector<LibraryInstr*> instrs;
+};
+
 struct BoolStringInstruction {
   frontend::BoolStringHolder* value;
   std::vector<LibraryInstr*> instrs;
@@ -729,6 +734,7 @@ class Library {
   std::map<const std::wstring, const std::wstring> hierarchies;
   std::vector<CharStringInstruction*> char_strings;
   std::vector<BoolStringInstruction*> bool_strings;
+  std::vector<ByteStringInstruction*> byte_strings;
   std::vector<IntStringInstruction*> int_strings;
   std::vector<FloatStringInstruction*> float_strings;
   std::vector<std::wstring> bundle_names;
@@ -916,6 +922,14 @@ class Library {
       tmp = nullptr;
     }
 
+    while(!byte_strings.empty()) {
+      ByteStringInstruction* tmp = byte_strings.front();
+      byte_strings.erase(byte_strings.begin());
+      // delete
+      delete tmp;
+      tmp = nullptr;
+    }
+
     while(!float_strings.empty()) {
       FloatStringInstruction* tmp = float_strings.front();
       float_strings.erase(float_strings.begin());
@@ -984,6 +998,10 @@ class Library {
 
   std::vector<BoolStringInstruction*> GetBoolStringInstructions() {
     return bool_strings;
+  }
+
+  std::vector<ByteStringInstruction*> GetByteStringInstructions() {
+    return byte_strings;
   }
 
   std::vector<IntStringInstruction*> GetIntStringInstructions() {
