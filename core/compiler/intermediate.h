@@ -173,6 +173,20 @@ class IntermediateEmitter {
     return true;
   }
 
+  inline bool ByteStringHolderEqual(ByteStringHolder* lhs, ByteStringHolder* rhs) {
+    if(lhs->length != rhs->length) {
+      return false;
+    }
+
+    for(int i = 0; i < lhs->length; ++i) {
+      if(lhs->value[i] != rhs->value[i]) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
   inline bool FloatStringHolderEqual(FloatStringHolder* lhs, FloatStringHolder* rhs) {
     if(lhs->length != rhs->length) {
       return false;
