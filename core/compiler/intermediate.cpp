@@ -312,7 +312,7 @@ void IntermediateEmitter::EmitStrings()
         // check for duplicates
         bool found = false;
 
-        // byteean string processing
+        // byte string processing
         for(size_t j = 0; !found && j < lib_byte_string_values.size(); ++j) {
           if(ByteStringHolderEqual(byte_str_insts[i]->value, lib_byte_string_values[j])) {
             found = true;
