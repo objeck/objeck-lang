@@ -1228,6 +1228,10 @@ class StackProgram {
     return bool_strings;
   }
 
+  char** GetByteStrings() const {
+    return byte_strings;
+  }
+
   wchar_t** GetCharStrings() const {
     return char_strings;
   }
