@@ -2721,9 +2721,8 @@ bool TrapProcessor::CpyBoolStrAry(StackProgram* program, size_t* inst, size_t*& 
 
 bool TrapProcessor::CpyByteStrAry(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
 {
-/*
   INT64_VALUE index = (INT64_VALUE)PopInt(op_stack, stack_pos);
-  bool* value_str = program->GetBoolStrings()[index];
+  char* value_str = program->GetByteStrings()[index];
   // copy array
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(!array) {
@@ -2732,7 +2731,7 @@ bool TrapProcessor::CpyByteStrAry(StackProgram* program, size_t* inst, size_t*& 
   }
   const long size = (long)array[0];
   const long dim = (long)array[1];
-  bool* str = (bool*)(array + dim + 2);
+  char* str = (char*)(array + dim + 2);
   for(long i = 0; i < size; i++) {
     str[i] = value_str[i];
   }
@@ -2741,7 +2740,6 @@ bool TrapProcessor::CpyByteStrAry(StackProgram* program, size_t* inst, size_t*& 
   std::wcout << L"stack oper: CPY_Bool_STR_ARY" << std::endl;
 #endif
   PushInt((size_t)array, op_stack, stack_pos);
-*/
 
   return true;
 }
