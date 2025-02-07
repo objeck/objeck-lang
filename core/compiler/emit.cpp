@@ -172,7 +172,7 @@ void IntermediateProgram::Write(bool emit_lib, bool is_debug, OutputStream& out_
     frontend::ByteStringHolder* holder = byte_strings[i];
     WriteInt(holder->length, out_stream);
     for(int j = 0; j < holder->length; ++j) {
-      WriteByte(holder->value[j] ? 1 : 0, out_stream);
+      WriteByte(holder->value[j], out_stream);
     }
   }
 
