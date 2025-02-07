@@ -149,7 +149,7 @@ void Loader::Load()
     std::wcout << L"Loaded static byte string[" << i << L"]: '";
 #endif
     for(int j = 0; j < byte_string_length; j++) {
-      byte_string[j] = ReadByte() ? true : false;
+      byte_string[j] = ReadByte();
 #ifdef _DEBUG
       std::wcout << byte_string[j] << L",";
 #endif
