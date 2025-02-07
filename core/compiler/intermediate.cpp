@@ -289,6 +289,7 @@ void IntermediateEmitter::EmitStrings()
   std::vector<std::wstring> char_string_values = parsed_program->GetCharStrings();
   std::vector<IntStringHolder*> int_string_values = parsed_program->GetIntStrings();
   std::vector<BoolStringHolder*> bool_string_values = parsed_program->GetBoolStrings();
+  std::vector<ByteStringHolder*> byte_string_values = parsed_program->GetByteStrings();
   std::vector<FloatStringHolder*> float_string_values = parsed_program->GetFloatStrings();
   
   Linker* linker = parsed_program->GetLinker();
@@ -487,6 +488,7 @@ void IntermediateEmitter::EmitStrings()
   // set static strings
   imm_program->SetCharStrings(char_string_values);
   imm_program->SetBoolStrings(bool_string_values);
+  imm_program->SetByteStrings(byte_string_values);
   imm_program->SetIntStrings(int_string_values);
   imm_program->SetFloatStrings(float_string_values);
 }
