@@ -923,6 +923,9 @@ class StackProgram {
   bool** bool_strings;
   int num_bool_strings;
 
+  char** byte_strings;
+  int num_byte_strings;
+
   INT64_VALUE** int_strings;
   int num_int_strings;
 
@@ -1188,8 +1191,6 @@ class StackProgram {
      return command_output_cls_id;
    }
 
-
-
   void SetFloatStrings(FLOAT_VALUE** s, int n) {
     float_strings = s;
     num_float_strings = n;
@@ -1200,6 +1201,11 @@ class StackProgram {
     num_bool_strings = n;
   }
 
+  void SetByteStrings(char** s, int n) {
+    byte_strings = s;
+    num_byte_strings = n;
+  }
+  
   void SetIntStrings(INT64_VALUE** s, int n) {
     int_strings = s;
     num_int_strings = n;
