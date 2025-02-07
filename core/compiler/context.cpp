@@ -1878,6 +1878,19 @@ void ContextAnalyzer::AnalyzeStaticArray(StaticArray* array, const int depth)
   }
     break;
 
+  case BYTE_TYPE: {
+    int id = program->GetByteStringId(all_elements);
+    if(id > -1) {
+      array->SetId(id);
+    }
+    else {
+      array->SetId(byte_str_index);
+      program->AddByteString(all_elements, byte_str_index);
+      byte_str_index++;
+    }
+  }
+    break;
+
   case CHAR_TYPE: {
     // copy string elements
     std::wstring char_str;
