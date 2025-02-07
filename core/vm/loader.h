@@ -40,6 +40,7 @@ class Loader {
   std::vector<std::wstring> arguments;
   int num_float_strings;
   int num_bool_strings;
+  int num_byte_strings;
   int num_int_strings;
   int num_char_strings;
   StackMethod* init_method;
