@@ -249,8 +249,7 @@ void IntermediateEmitter::Translate()
 
   Class* start_class = parsed_program->GetStartClass();
   Method* start_method = parsed_program->GetStartMethod();
-  imm_program->SetStartIds((start_class ? start_class->GetId() : -1),
-                           (start_method ? start_method->GetId() : -1));
+  imm_program->SetStartIds((start_class ? start_class->GetId() : -1), (start_method ? start_method->GetId() : -1));
   
 #ifdef _DEBUG
   assert(break_labels.empty());
