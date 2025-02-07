@@ -2636,8 +2636,12 @@ void ContextAnalyzer::AnalyzeNewArrayCall(MethodCall* method_call, const int dep
     ProcessError(static_cast<Expression*>(method_call), L"Empty array index");
   }
   // TODO: check for dimension size of 1, looking at type
-  else if(expressions.size() == 1 && expressions[0]->GetExpressionType() == VAR_EXPR) {
-
+  else if(expressions.size() == 1 && expressions[0]->GetExpressionType() == VAR_EXPR && 
+          expressions[0]->GetEvalType() && expressions[0]->GetEvalType()->GetDimension() ) {
+#ifdef _DEBUG
+    std::wstring msg = L"*** Add validation ***";
+    Debug(msg, (static_cast<Expression*>(method_call))->GetLineNumber(), depth);
+#endif
   }
   else {
     // validate array parameters
@@ -6323,8 +6327,7 @@ Expression* ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expressio
       ProcessError(expression, L"Dimension size mismatch");
     }
 
-    if(left->GetType() != right->GetType() &&
-       right->GetType() != NIL_TYPE) {
+    if(left->GetType() != right->GetType() && left->GetType() != BYTE_TYPE && right->GetType() != INT_TYPE && right->GetType() != NIL_TYPE) {
       ProcessError(expression, L"Invalid array cast");
     }
 
