@@ -3673,6 +3673,12 @@ namespace frontend {
     }
   };
 
+  struct byte_string_comp {
+    bool operator() (ByteStringHolder* lhs, ByteStringHolder* rhs) const {
+      return std::tie(lhs->length, lhs->value) < std::tie(rhs->length, rhs->value);
+    }
+  };
+
   struct float_string_comp {
     bool operator() (FloatStringHolder* lhs, FloatStringHolder* rhs) const {
       return std::tie(lhs->length, lhs->value) < std::tie(rhs->length, rhs->value);
@@ -3697,6 +3703,9 @@ namespace frontend {
 
     std::map<BoolStringHolder*, int, bool_string_comp> bool_string_ids;
     std::vector<BoolStringHolder*> bool_strings;
+
+    std::map<ByteStringHolder*, int, byte_string_comp> byte_string_ids;
+    std::vector<ByteStringHolder*> byte_strings;
 
     std::map<std::wstring, int> char_string_ids;
     std::vector<std::wstring> char_strings;
@@ -3902,13 +3911,13 @@ namespace frontend {
     }
 
     int GetBoolStringId(std::vector<Expression*>& Bool_elements) {
-      bool* Bool_array = new bool[Bool_elements.size()];
+      bool* bool_array = new bool[Bool_elements.size()];
       for(size_t i = 0; i < Bool_elements.size(); ++i) {
-        Bool_array[i] = static_cast<BooleanLiteral*>(Bool_elements[i])->GetValue();
+        bool_array[i] = static_cast<BooleanLiteral*>(Bool_elements[i])->GetValue();
       }
 
       BoolStringHolder* holder = new BoolStringHolder;
-      holder->value = Bool_array;
+      holder->value = bool_array;
       holder->length = (int)Bool_elements.size();
 
       std::map<BoolStringHolder*, int, bool_string_comp>::iterator result = bool_string_ids.find(holder);
@@ -3932,6 +3941,70 @@ namespace frontend {
     std::vector<BoolStringHolder*> GetBoolStrings() {
       return bool_strings;
     }
+
+
+
+
+
+
+
+
+
+
+    void AddByteString(std::vector<Expression*>& byte_elements, int id) {
+      char* byte_array = new char[byte_elements.size()];
+      for(size_t i = 0; i < byte_elements.size(); ++i) {
+        byte_array[i] = (char)static_cast<IntegerLiteral*>(byte_elements[i])->GetValue();
+      }
+
+      ByteStringHolder* holder = new ByteStringHolder;
+      holder->value = byte_array;
+      holder->length = (int)byte_elements.size();
+
+      byte_string_ids.insert(std::pair<ByteStringHolder*, int>(holder, id));
+      byte_strings.push_back(holder);
+    }
+
+    int GetByteStringId(std::vector<Expression*>& byte_elements) {
+      char* byte_array = new char[byte_elements.size()];
+      for(size_t i = 0; i < byte_elements.size(); ++i) {
+        byte_array[i] = (char)static_cast<IntegerLiteral*>(byte_elements[i])->GetValue();
+      }
+
+      ByteStringHolder* holder = new ByteStringHolder;
+      holder->value = byte_array;
+      holder->length = (int)byte_elements.size();
+
+      std::map<ByteStringHolder*, int, byte_string_comp>::iterator result = byte_string_ids.find(holder);
+      if(result != byte_string_ids.end()) {
+        delete[] holder->value;
+        holder->value = nullptr;
+        delete holder;
+        holder = nullptr;
+
+        return result->second;
+      }
+
+      delete[] holder->value;
+      holder->value = nullptr;
+      delete holder;
+      holder = nullptr;
+
+      return -1;
+    }
+
+    std::vector<ByteStringHolder*> GetByteStrings() {
+      return byte_strings;
+    }
+
+
+
+
+
+
+
+
+
 
     int GetFloatStringId(std::vector<Expression*> &float_elements) {
       FLOAT_VALUE* float_array = new FLOAT_VALUE[float_elements.size()];
