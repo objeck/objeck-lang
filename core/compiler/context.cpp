@@ -2643,6 +2643,7 @@ void ContextAnalyzer::AnalyzeNewArrayCall(MethodCall* method_call, const int dep
   if(expressions.size() == 0) {
     ProcessError(static_cast<Expression*>(method_call), L"Empty array index");
   }
+  
   // TODO: check for dimension size of 1, looking at type
   else if(expressions.size() == 1 && expressions[0]->GetExpressionType() == VAR_EXPR && 
           expressions[0]->GetEvalType() && expressions[0]->GetEvalType()->GetDimension() ) {
