@@ -5,9 +5,9 @@ class Test {
 #		a := [1.1, 2.2, 3.3];
 #		b := a->Copy();
 		
-		b := a->Copy();
-		
-		b[1]->PrintLine();
+		b : Byte[] := a->Copy();
+
+		b[2]->PrintLine();
 		b->Size()->PrintLine();
 	}
 }

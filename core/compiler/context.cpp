@@ -1829,7 +1829,15 @@ void ContextAnalyzer::AnalyzeStaticArray(StaticArray* array, const int depth)
     return;
   }
 
-  Type* type = TypeFactory::Instance()->MakeType(array->GetType());
+  Type* type;
+  if(array->GetCastType()) {
+    type = TypeFactory::Instance()->MakeType(array->GetCastType());
+    array->SetEvalType(array->GetCastType(), false);
+  }
+  else {
+    type = TypeFactory::Instance()->MakeType(array->GetType());
+  }
+
   type->SetDimension(array->GetDimension());
   if(type->GetType() == CLASS_TYPE) {
     type->SetName(L"System.String");
