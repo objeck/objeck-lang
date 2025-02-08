@@ -1834,7 +1834,7 @@ void ContextAnalyzer::AnalyzeStaticArray(StaticArray* array, const int depth)
     left_type = TypeFactory::Instance()->MakeType(array->GetCastType());
     EntryType right_type = array->GetType();
 
-    if(left_type->GetType() == FLOAT_TYPE && right_type != FLOAT_TYPE) {
+    if((left_type->GetType() == FLOAT_TYPE && right_type != FLOAT_TYPE) || (left_type->GetType() == INT_TYPE && right_type != INT_TYPE)) {
       ProcessError(array, L"Invalid array cast");
     }
 
