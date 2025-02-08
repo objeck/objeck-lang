@@ -2826,9 +2826,9 @@ bool TrapProcessor::StdOutByte(StackProgram* program, size_t* inst, size_t* &op_
 #endif
 
 #ifdef _MODULE_STDIO
-  program->output_buffer << (void*)((unsigned char)PopInt(op_stack, stack_pos));
+  program->output_buffer << std::hex << L"0x" << ((unsigned char)PopInt(op_stack, stack_pos));
 #else
-  std::wcout << (void*)((unsigned char)PopInt(op_stack, stack_pos));
+  std::wcout << std::hex << L"0x" << ((unsigned char)PopInt(op_stack, stack_pos));
 #endif
 
   return true;
