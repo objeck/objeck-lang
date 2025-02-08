@@ -1054,7 +1054,7 @@ if(client->Connect()) {
 						"2: write - off={$i}, len={$rest}"->PrintLine();
 					};
 					
-					WriteFrame(data, i, rest, 1, false);
+					WriteFrame(data, i, rest, 0, false);
 				};
 		
 				return true;
@@ -1422,12 +1422,12 @@ if(client->Connect()) {
 		Gets the last status code 
 		@return last status code 
 		~#
-		method : public : GetStatus() ~ Int {
+		method : public : GetStatusCode() ~ Int {
 			return @status_code;
 		}
 
 		#~
-		Gets the last status message 
+		Gets the last status message
 		@return last status message 
 		~#
 		method : public : GetStatusMessage() ~ String {
