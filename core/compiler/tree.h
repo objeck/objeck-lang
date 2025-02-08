@@ -687,8 +687,13 @@ namespace frontend {
         return BOOLEAN_TYPE;
 
       case INT_LIT_EXPR: {
-        if(GetEvalType() && GetEvalType()->GetType() == BYTE_TYPE) {
-          return BYTE_TYPE;
+        if(GetEvalType()) {
+          if(GetEvalType()->GetType() == BYTE_TYPE) {
+            return BYTE_TYPE;
+          }
+          else if(GetEvalType()->GetType() == CHAR_TYPE) {
+            return CHAR_TYPE;
+          }
         }
 
         return INT_TYPE;

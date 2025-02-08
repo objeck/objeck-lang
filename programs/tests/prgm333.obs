@@ -5,10 +5,10 @@ class Test {
 #		a := [1.1, 2.2, 3.3];
 #		b := a->Copy();
 		
-		b : Char[] := a->Copy();
-#		b := Char->New[a];
+#		b : Char[] := a->Copy();
+		b := Float->New[a];
 
-		b[1]->PrintLine();
+		b[0]->PrintLine();
 		b->Size()->PrintLine();
 	}
 }
