@@ -5421,7 +5421,7 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
   if(method_call->GetCallType() == NEW_ARRAY_CALL) {
     std::vector<Expression*> expressions = method_call->GetCallingParameters()->GetExpressions();
     // array copy constructor
-    if(expressions.size() == 1 && expressions[0]->GetExpressionType() == VAR_EXPR &&
+    if(expressions.size() == 1 && (expressions[0]->GetExpressionType() == VAR_EXPR || expressions[0]->GetExpressionType() == STAT_ARY_EXPR) &&
        expressions[0]->GetEvalType() && expressions[0]->GetEvalType()->GetDimension()) {
 
       Type* type = method_call->GetArrayType();

@@ -1004,7 +1004,7 @@ void StackInterpreter::Int2Str(size_t* &op_stack, long* &stack_pos)
         break;
 
       case 16:
-        formatter << std::hex;
+        formatter << std::hex << L"0x";
         break;
       }
 
