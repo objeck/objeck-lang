@@ -2652,7 +2652,8 @@ void ContextAnalyzer::AnalyzeNewArrayCall(MethodCall* method_call, const int dep
   
   // TODO: check for dimension size of 1, looking at type
   else if(expressions.size() == 1 && expressions[0]->GetExpressionType() == VAR_EXPR && 
-          expressions[0]->GetEvalType() && expressions[0]->GetEvalType()->GetDimension() ) {
+          expressions[0]->GetEvalType() && expressions[0]->GetEvalType()->GetDimension() && 
+          method_call->GetEvalType()) {
     Type* left_type = expressions[0]->GetEvalType();
     Type* right_type = method_call->GetEvalType();
 
