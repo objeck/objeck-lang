@@ -2651,11 +2651,7 @@ void ContextAnalyzer::AnalyzeNewArrayCall(MethodCall* method_call, const int dep
   }
   
   // TODO: check for dimension size of 1, looking at type
-  else if(method_call->GetEvalType() && expressions.size() == 1 && (expressions[0]->GetExpressionType() == VAR_EXPR || expressions[0]->GetExpressionType() == STAT_ARY_EXPR) && expressions[0]->GetEvalType()) {
-    if(expressions[0]->GetEvalType()->GetDimension() != 1) {
-      ProcessError(static_cast<Expression*>(method_call), L"Invalid array cast dimension");
-    }
-
+  else if(method_call->GetEvalType() && expressions.size() == 1 && (expressions[0]->GetExpressionType() == VAR_EXPR || expressions[0]->GetExpressionType() == STAT_ARY_EXPR) && expressions[0]->GetEvalType() && expressions[0]->GetEvalType()->GetDimension() == 1) {
     Type* left_type = expressions[0]->GetEvalType();
     Type* right_type = method_call->GetEvalType();
 
