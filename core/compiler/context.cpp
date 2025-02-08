@@ -1829,20 +1829,26 @@ void ContextAnalyzer::AnalyzeStaticArray(StaticArray* array, const int depth)
     return;
   }
 
-  Type* type;
+  Type* left_type;
   if(array->GetCastType()) {
-    type = TypeFactory::Instance()->MakeType(array->GetCastType());
-    array->SetEvalType(array->GetCastType(), false);
+    left_type = TypeFactory::Instance()->MakeType(array->GetCastType());
+    EntryType right_type = array->GetType();
+
+    if(left_type->GetType() == FLOAT_TYPE && right_type != FLOAT_TYPE) {
+      ProcessError(array, L"Invalid array cast");
+    }
+
+    array->SetEvalType(left_type, false);
   }
   else {
-    type = TypeFactory::Instance()->MakeType(array->GetType());
+    left_type = TypeFactory::Instance()->MakeType(array->GetType());
   }
 
-  type->SetDimension(array->GetDimension());
-  if(type->GetType() == CLASS_TYPE) {
-    type->SetName(L"System.String");
+  left_type->SetDimension(array->GetDimension());
+  if(left_type->GetType() == CLASS_TYPE) {
+    left_type->SetName(L"System.String");
   }
-  array->SetEvalType(type, false);
+  array->SetEvalType(left_type, false);
 
   // ensure that element sizes match dimensions
   std::vector<Expression*> all_elements = array->GetAllElements()->GetExpressions();
@@ -2647,10 +2653,12 @@ void ContextAnalyzer::AnalyzeNewArrayCall(MethodCall* method_call, const int dep
   // TODO: check for dimension size of 1, looking at type
   else if(expressions.size() == 1 && expressions[0]->GetExpressionType() == VAR_EXPR && 
           expressions[0]->GetEvalType() && expressions[0]->GetEvalType()->GetDimension() ) {
-#ifdef _DEBUG
-    std::wstring msg = L"*** Add validation ***";
-    Debug(msg, (static_cast<Expression*>(method_call))->GetLineNumber(), depth);
-#endif
+    Type* left_type = expressions[0]->GetEvalType();
+    Type* right_type = method_call->GetEvalType();
+
+    if(left_type->GetType() != right_type->GetType()) {
+      ProcessError(static_cast<Expression*>(method_call), L"Invalid array parameter type");
+    }
   }
   else {
     // validate array parameters
@@ -6336,7 +6344,7 @@ Expression* ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expressio
       ProcessError(expression, L"Dimension size mismatch");
     }
 
-    if(left->GetType() != right->GetType() && left->GetType() != BYTE_TYPE && right->GetType() != INT_TYPE && right->GetType() != NIL_TYPE) {
+    if(left->GetType() != right->GetType() && right->GetType() != NIL_TYPE) {
       ProcessError(expression, L"Invalid array cast");
     }
 
