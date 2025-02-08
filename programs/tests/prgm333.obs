@@ -1,14 +1,14 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		a := [1, 2, 3]->As(Int[]);
+		a := [65, 66, 67]->As(Char[]);
 
 #		a := [1.1, 2.2, 3.3];
 #		b := a->Copy();
 		
-#		b : Byte[] := a->Copy();
-		b := Int->New[a];
+		b : Char[] := a->Copy();
+#		b := Char->New[a];
 
-		b[2]->PrintLine();
+		b[1]->PrintLine();
 		b->Size()->PrintLine();
 	}
 }
