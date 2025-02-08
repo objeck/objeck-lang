@@ -6,9 +6,9 @@ class Test {
 #		b := a->Copy();
 		
 #		b : Float[] := a->Copy();
-		b := Float->New[a];
+		b := Int->New[a];
 
-		b[0]->PrintLine();
+		b[1]->PrintLine();
 		b->Size()->PrintLine();
 	}
 }
