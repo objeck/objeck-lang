@@ -817,7 +817,9 @@ if(client->Connect()) {
 		@socket : TCPSecureSocket;
 		@header : Byte[];
 		@url : Web.HTTP.Url;
+
 		@status_code : Int;
+		@status_msg : String;
 
 		# https client support
 		@request_headers : Hash<String, String>;
@@ -990,7 +992,7 @@ if(client->Connect()) {
 				if(@is_debug) {
 					"0: write - off={$i}, len={$chunk_size}"->PrintLine();
 				};
-				WriteFrame(data, i, chunk_size, 1, true);
+				WriteFrame(data, i, chunk_size, 0, true);
 
 				for(i := chunk_size; chunk_size + i  < data_size; i += chunk_size) {
 					if(@is_debug) {
@@ -1052,7 +1054,7 @@ if(client->Connect()) {
 						"2: write - off={$i}, len={$rest}"->PrintLine();
 					};
 					
-					WriteFrame(data, i, rest, 0, false);
+					WriteFrame(data, i, rest, 1, false);
 				};
 		
 				return true;
@@ -1161,8 +1163,8 @@ if(client->Connect()) {
 						};
 
 						if(opcode = 0x88) {
-							@status_code :=  DecodeInt(@header, 0, 2);
-buffer->ToString()->Trim()->PrintLine();							
+							@status_code := DecodeInt(@header, 0, 2);
+							@status_msg := String->New(buffer, 2, buffer->Size() - 2);
 							@socket->Close();
 
 							return Nil;
@@ -1420,8 +1422,16 @@ buffer->ToString()->Trim()->PrintLine();
 		Gets the last status code 
 		@return last status code 
 		~#
-		method : public : GetLastStatus() ~ Int {
+		method : public : GetStatus() ~ Int {
 			return @status_code;
+		}
+
+		#~
+		Gets the last status message 
+		@return last status message 
+		~#
+		method : public : GetStatusMessage() ~ String {
+			return @status_msg;
 		}
 
 		#~
