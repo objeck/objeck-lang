@@ -867,7 +867,6 @@ if(html <> Nil) {
 
 	#~
 	Web socket client
-	
 	```
 client := WebSocket->New(Url->New("ws://echo.websocket.org"));
 if(client->Connect()) {
@@ -893,7 +892,9 @@ if(client->Connect()) {
 		@socket : TCPSocket;
 		@header : Byte[];
 		@url : Web.HTTP.Url;
+
 		@status_code : Int;
+		@status_msg : String;
 
 		# https client support
 		@request_headers : Hash<String, String>;
@@ -968,7 +969,7 @@ if(client->Connect()) {
 
 				port := @url->GetPort();
 				if(port < 0) {
-					port := 80;
+					port := 443;
 				};
 				# "### address='{$address}', port={$port}, location='{$location}'"->PrintLine();
 
@@ -1053,167 +1054,89 @@ if(client->Connect()) {
 		#~
 		Writes binary output to the web socket
 		@param data binary payload
+		@param fragment true if fragmented, false otherwise
 		@return true if successful, false otherwise
 		~#
-		method : public : WriteSocket(data : Byte[]) ~ Bool {
-			return  WriteSocket(data, true);
+		method : public : WriteSocket(data : Byte[], fragment : Bool := false) ~ Bool {
+			chunk_size := 4096;
+			data_size := data->Size();
+						
+			if(fragment & data_size > chunk_size) {
+				i := 0;
+
+				if(@is_debug) {
+					"0: write - off={$i}, len={$chunk_size}"->PrintLine();
+				};
+				WriteFrame(data, i, chunk_size, 0, true);
+
+				for(i := chunk_size; chunk_size + i  < data_size; i += chunk_size) {
+					if(@is_debug) {
+						"1: write - off={$i}, len={$chunk_size}"->PrintLine();
+					};
+
+					WriteFrame(data, i, chunk_size, 0, true);
+				};	
+
+				# finish frame
+				if(data_size - i <> 0) {
+					rest := data_size - i;					
+					if(@is_debug) {
+						"2: write - off={$i}, len={$rest}"->PrintLine();
+					};
+					
+					WriteFrame(data, i, rest, 0, false);
+				};
+		
+				return true;
+			}
+			else {
+				return WriteFrame(data, 0, data->Size(), 1, false);
+			};
 		}
 
 		#~
 		Writes text to the web socket
 		@param message message
+		@param fragment true if fragmented, false otherwise
 		@return true if successful, false otherwise
 		~#
-		method : public : WriteSocket(message : String) ~ Bool {
+		method : public : WriteSocket(message : String, fragment : Bool := false) ~ Bool {
+			chunk_size := 4096;
+
 			data := message->ToByteArray();
-			return  WriteSocket(data, false);
-		}
+			data_size := data->Size();
+			
+			if(fragment & data_size > chunk_size) {
+				i := 0;
 
-		method : WriteSocket(data : Byte[], is_binary : Bool) ~ Bool {
-			# unsigned 7-bytes, 2^57, 64-bit signed
-			if(@socket <> Nil & data <> Nil & data->Size() < 144115188075855872) {
-				payload_size := data->Size();
-
-				frame_offset : Int;
-				
-				# create frame
-				frame : Byte[];
-
-				if(payload_size < 126) {
-					frame_offset := 6;
-				}
-				else if(payload_size < 65536) {
-					frame_offset := 8;
-				}
-				else {
-					frame_offset := 14;
+				if(@is_debug) {
+					"0: write - off={$i}, len={$chunk_size}"->PrintLine();
 				};
-				frame := Byte->New[frame_offset + payload_size];	
-				
-				# set utf-8 opcode
-				if(is_binary) {
-					frame[0] :=  0x80;
-				}
-				else {
-					frame[0] :=  0x81;
-				};
+				WriteFrame(data, i, chunk_size, 1, true);
 
-				# set payload length and bit mask
-				mask_payload_length := 0x80; # set mask bit
-				if(payload_size < 126) {
-					mask_payload_length += payload_size; # payload size
-					frame[1] := mask_payload_length;
-
-					if(@is_debug){
-						opcodes := Byte->New[2];
-						opcodes[0] := frame[0];
-						opcodes[1] := frame[1];
-						System.IO.Console->Print("opcode+length: ")->PrintLine(opcodes->ToHexString());
+				for(i := chunk_size; chunk_size + i  < data_size; i += chunk_size) {
+					if(@is_debug) {
+						"1: write - off={$i}, len={$chunk_size}"->PrintLine();
 					};
 
-					# key mask
-					frame[2] := Int->Random(255);
-					frame[3] := Int->Random(255);
-					frame[4] := Int->Random(255);
-					frame[5] := Int->Random(255);
+					WriteFrame(data, i, chunk_size, 0, true);
+				};	
 
-					if(@is_debug){
-						mask := Byte->New[4];
-						mask[0] := frame[2];
-						mask[1] := frame[3];
-						mask[2] := frame[4];
-						mask[3] := frame[5];
-						System.IO.Console->Print("mask - ")->PrintLine(mask->ToHexString());
+				# finish frame
+				if(data_size - i <> 0) {
+					rest := data_size - i;					
+					if(@is_debug) {
+						"2: write - off={$i}, len={$rest}"->PrintLine();
 					};
-				}
-				else if(payload_size < 65536) {
-					mask_payload_length += 126; # payload size
 					
-					frame[1] := mask_payload_length;
-					EncodeInt(payload_size, frame, 2, 2);
-
-					if(@is_debug){
-						opcodes := Byte->New[3];
-						opcodes[0] := frame[0];
-						opcodes[1] := frame[1];
-						opcodes[2] := frame[2];
-						System.IO.Console->Print("write - opcode+length-ext: ")->PrintLine(opcodes->ToHexString());
-					};
-
-					# key mask
-					frame[4] := Int->Random(255);
-					frame[5] := Int->Random(255);
-					frame[6] := Int->Random(255);
-					frame[7] := Int->Random(255);
-
-					if(@is_debug){
-						mask := Byte->New[4];
-						mask[0] := frame[4];
-						mask[1] := frame[5];
-						mask[2] := frame[6];
-						mask[3] := frame[7];
-						System.IO.Console->Print("mask - ")->PrintLine(mask->ToHexString());
-					};
-				}
-				else {
-					mask_payload_length += 127; # payload size
-
-					frame[1] := mask_payload_length;
-					EncodeInt(payload_size, frame, 2, 8);
-
-					if(@is_debug){
-						opcodes := Byte->New[9];
-						opcodes[0] := frame[0];
-						opcodes[1] := frame[1];
-						opcodes[2] := frame[2];
-						opcodes[3] := frame[3];
-						opcodes[4] := frame[4];
-						opcodes[5] := frame[5];
-						opcodes[6] := frame[6];
-						opcodes[7] := frame[7];
-						opcodes[8] := frame[8];	
-
-						System.IO.Console->Print("write - opcode+length-ext: ")->PrintLine(opcodes->ToHexString());
-					};
-
-					# key mask
-					frame[10] := Int->Random(255);
-					frame[11] := Int->Random(255);
-					frame[12] := Int->Random(255);
-					frame[13] := Int->Random(255);
-
-					if(@is_debug){
-						mask := Byte->New[4];
-						mask[0] := frame[10];
-						mask[1] := frame[11];
-						mask[2] := frame[12];
-						mask[3] := frame[13];
-						System.IO.Console->Print("mask - ")->PrintLine(mask->ToHexString());
-					};
+					WriteFrame(data, i, rest, 0, false);
 				};
-
-				# encode payload
-				j := 0;
-				each(i : data) {
-					frame[frame_offset + i] := data[i] xor frame[j % 4 + frame_offset - 4];
-					j += 1;
-				};
-
-				if(@is_debug){
-					buffer := ByteBuffer->New();
-
-					"frame - "->Print();
-					each(f in frame) {
-						buffer->Append(f)
-					};
-
-					buffer->ToByteArray()->ToHexString()->PrintLine();
-				};
-
-				return @socket->WriteBuffer(frame) > 0;
+		
+				return true;
+			}
+			else {
+				return WriteFrame(data, 0, message->Size(), 1, false);
 			};
-
-			return false;
 		}
 
 		#~
@@ -1221,7 +1144,7 @@ if(client->Connect()) {
 		@return binary input read, Nil otherwise
 		~#
 		method : public : ReadSocketBinary() ~ Byte[] {
-			return ReadSocket();
+			return ReadFrame();
 		}
 
 		#~
@@ -1229,7 +1152,7 @@ if(client->Connect()) {
 		@return text read, Nil otherwise
 		~#
 		method : public : ReadSocketText() ~ String {
-			data := ReadSocket();
+			data := ReadFrame();
 			if(data <> Nil) {
 				return String->New(data);
 			};
@@ -1237,7 +1160,7 @@ if(client->Connect()) {
 			return Nil;
 		}
 
-		method : ReadSocket() ~ Byte[] {
+		method : ReadFrame() ~ Byte[] {
 			if(@socket <> Nil) {
 				# read header
 				each(i : 2) {
@@ -1275,7 +1198,7 @@ if(client->Connect()) {
 					};
 				};
 
-				if(opcode = 0x80 | opcode = 0x81 | opcode = 0x88) {
+				if(opcode = 0x81 | opcode = 0x82 | opcode = 0x88) {
 					payload_length : Int := @header[1];
 					if(payload_length = 126) {
 						each(i : 2) {
@@ -1306,8 +1229,8 @@ if(client->Connect()) {
 						System.IO.Console->Print("read - length: ")->PrintLine(payload_length);
 					};
 
-					# unsigned 7-bytes, 2^57, 64-bit signed
-					if(payload_length < 144115188075855872) {
+					# cap max at 4GB
+					if(payload_length < 4294967296) {
 						# read payload
 						buffer := Byte->New[payload_length];
 						each(i : payload_length) {
@@ -1315,14 +1238,15 @@ if(client->Connect()) {
 						};
 
 						if(opcode = 0x88) {
-							@status_code :=  DecodeInt(@header, 0, 2);
+							@status_code := DecodeInt(@header, 0, 2);
+							@status_msg := String->New(buffer, 2, buffer->Size() - 2);
 							@socket->Close();
 
 							return Nil;
 						};
 
 						if(@is_debug){
-							System.IO.Console->Print("read - buffer: '")->Print(String->New(buffer))->PrintLine('\'');
+							System.IO.Console->Print("read - buffer: '")->Print(String->New(buffer))->PrintLine("'\n===");
 						};
 
 						return buffer;
@@ -1331,6 +1255,152 @@ if(client->Connect()) {
 			};
 
 			return Nil;
+		}
+
+		method : WriteFrame(data : Byte[], offset : Int, length : Int, mode : Int, fragment : Bool) ~ Bool {
+			# cap max at 4GB
+			if(@socket <> Nil & data <> Nil & length < 4294967296) { # TODO: bounds check
+				frame_offset : Int;
+				
+				# create frame
+				frame : Byte[];
+
+				if(length < 126) {
+					frame_offset := 6;
+				}
+				else if(length < 65536) {
+					frame_offset := 8;
+				}
+				else {
+					frame_offset := 14;
+				};
+				frame := Byte->New[frame_offset + length];	
+				
+				# set utf-8 opcode
+				if(fragment) {
+					frame[0] := 0x0 + mode;
+				}
+				else {
+					frame[0] := 0x80 + mode;
+				};
+
+				# set payload length and bit mask
+				mask_payload_length := 0x80; # set mask bit
+				if(length < 126) {
+					mask_payload_length += length; # payload size
+					frame[1] := mask_payload_length;
+
+					if(@is_debug){
+						opcodes := Byte->New[2];
+						opcodes[0] := frame[0];
+						opcodes[1] := frame[1];
+						System.IO.Console->Print("write - opcode+length: ")->PrintLine(opcodes->ToHexString());
+					};
+
+					# key mask
+					frame[2] := Int->Random(255);
+					frame[3] := Int->Random(255);
+					frame[4] := Int->Random(255);
+					frame[5] := Int->Random(255);
+
+					if(@is_debug){
+						mask := Byte->New[4];
+						mask[0] := frame[2];
+						mask[1] := frame[3];
+						mask[2] := frame[4];
+						mask[3] := frame[5];
+						System.IO.Console->Print("write - mask: ")->PrintLine(mask->ToHexString());
+					};
+				}
+				else if(length < 65536) {
+					mask_payload_length += 126; # payload size
+					
+					frame[1] := mask_payload_length;
+					EncodeInt(length, frame, 2, 2);
+
+					if(@is_debug){
+						opcodes := Byte->New[3];
+						opcodes[0] := frame[0];
+						opcodes[1] := frame[1];
+						opcodes[2] := frame[2];
+						System.IO.Console->Print("write - opcode+length-ext-2: ")->PrintLine(opcodes->ToHexString());
+					};
+
+					# key mask
+					frame[4] := Int->Random(255);
+					frame[5] := Int->Random(255);
+					frame[6] := Int->Random(255);
+					frame[7] := Int->Random(255);
+
+					if(@is_debug){
+						mask := Byte->New[4];
+						mask[0] := frame[4];
+						mask[1] := frame[5];
+						mask[2] := frame[6];
+						mask[3] := frame[7];
+						System.IO.Console->Print("write - mask: ")->PrintLine(mask->ToHexString());
+					};
+				}
+				else {
+					mask_payload_length += 127; # payload size
+
+					frame[1] := mask_payload_length;
+					EncodeInt(length, frame, 2, 8);
+
+					if(@is_debug){
+						opcodes := Byte->New[9];
+						opcodes[0] := frame[0];
+						opcodes[1] := frame[1];
+						opcodes[2] := frame[2];
+						opcodes[3] := frame[3];
+						opcodes[4] := frame[4];
+						opcodes[5] := frame[5];
+						opcodes[6] := frame[6];
+						opcodes[7] := frame[7];
+						opcodes[8] := frame[8];	
+
+						System.IO.Console->Print("write - opcode+length-ext-8: ")->PrintLine(opcodes->ToHexString());
+					};
+
+					# key mask
+					frame[10] := Int->Random(255);
+					frame[11] := Int->Random(255);
+					frame[12] := Int->Random(255);
+					frame[13] := Int->Random(255);
+
+					if(@is_debug){
+						mask := Byte->New[4];
+						mask[0] := frame[10];
+						mask[1] := frame[11];
+						mask[2] := frame[12];
+						mask[3] := frame[13];
+						System.IO.Console->Print("write - mask: ")->PrintLine(mask->ToHexString());
+					};
+				};
+
+				# encode payload
+				j := 0;
+				for(i := 0; i < length; i += 1;) {
+					frame[frame_offset + i] := data[i + offset] xor frame[j % 4 + frame_offset - 4];
+					j += 1;
+				};
+
+				if(@is_debug){
+					buffer := ByteBuffer->New();
+
+					"write - frame: "->Print();
+					each(f in frame) {
+						buffer->Append(f)
+					};
+					"\n==="->PrintLine();
+
+					buffer->ToByteArray()->ToHexString()->PrintLine();
+				};
+
+				return @socket->WriteBuffer(frame) > 0;
+			};
+
+			return false;
 		}
 
 		method : native : EncodeInt(value : Int, bytes : Byte[], offset : Int, num_bytes : Int) ~ Nil {
@@ -1427,8 +1497,16 @@ if(client->Connect()) {
 		Gets the last status code 
 		@return last status code 
 		~#
-		method : public : GetLastStatus() ~ Int {
+		method : public : GetStatusCode() ~ Int {
 			return @status_code;
+		}
+
+		#~
+		Gets the last status message
+		@return last status message 
+		~#
+		method : public : GetStatusMessage() ~ String {
+			return @status_msg;
 		}
 
 		#~
