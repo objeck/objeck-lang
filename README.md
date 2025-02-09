@@ -14,7 +14,7 @@
 
 ## Releases
 
-* v2025.x.x 
+* v2025.2.x 
     * Support for the Open AI's Realtime API
     * Performance testing for Llama and Mistra Hexagon NPU execution
     * Add OpenAI Vision support
