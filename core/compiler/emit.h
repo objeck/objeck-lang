@@ -916,6 +916,7 @@ namespace backend {
     std::map<int, IntermediateClass*> class_map;
     std::vector<std::wstring> char_strings;
     std::vector<frontend::BoolStringHolder*> bool_strings;
+    std::vector<frontend::ByteStringHolder*> byte_strings;
     std::vector<frontend::IntStringHolder*> int_strings;
     std::vector<frontend::FloatStringHolder*> float_strings;
     std::vector<std::wstring> bundle_names;
@@ -974,6 +975,15 @@ namespace backend {
         tmp = nullptr;
       }
 
+      while(!byte_strings.empty()) {
+        frontend::ByteStringHolder* tmp = byte_strings.back();
+        delete[] tmp->value;
+        tmp->value = nullptr;
+        byte_strings.pop_back();
+        delete tmp;
+        tmp = nullptr;
+      }
+
       while(!float_strings.empty()) {
         frontend::FloatStringHolder* tmp = float_strings.back();
         delete[] tmp->value;
@@ -1024,6 +1034,10 @@ namespace backend {
 
     void SetBoolStrings(std::vector<frontend::BoolStringHolder*> s) {
       bool_strings = std::move(s);
+    }
+
+    void SetByteStrings(std::vector<frontend::ByteStringHolder*> s) {
+      byte_strings = std::move(s);
     }
 
     void SetFloatStrings(std::vector<frontend::FloatStringHolder*> s) {

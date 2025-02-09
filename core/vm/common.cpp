@@ -1951,6 +1951,9 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
   case CPY_BOOL_STR_ARY:
     return CpyBoolStrAry(program, inst, op_stack, stack_pos, frame);
 
+  case CPY_BYTE_STR_ARY:
+    return CpyByteStrAry(program, inst, op_stack, stack_pos, frame);
+
   case CPY_FLOAT_STR_ARY:
     return CpyFloatStrAry(program, inst, op_stack, stack_pos, frame);
 
@@ -2716,6 +2719,32 @@ bool TrapProcessor::CpyBoolStrAry(StackProgram* program, size_t* inst, size_t*& 
   return true;
 }
 
+bool TrapProcessor::CpyByteStrAry(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
+{
+  INT64_VALUE index = (INT64_VALUE)PopInt(op_stack, stack_pos);
+  char* value_str = program->GetByteStrings()[index];
+  // copy array
+  size_t* array = (size_t*)PopInt(op_stack, stack_pos);
+  if(!array) {
+    std::wcerr << L">>> Attempting to dereference a 'Nil' memory element <<<" << std::endl;
+    return false;
+  }
+  const long size = (long)array[0];
+  const long dim = (long)array[1];
+  char* str = (char*)(array + dim + 2);
+  for(long i = 0; i < size; i++) {
+    str[i] = value_str[i];
+  }
+
+#ifdef _DEBUG
+  std::wcout << L"stack oper: CPY_Bool_STR_ARY" << std::endl;
+#endif
+  PushInt((size_t)array, op_stack, stack_pos);
+
+  return true;
+}
+
+
 bool TrapProcessor::CpyIntStrAry(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   INT64_VALUE index = (INT64_VALUE)PopInt(op_stack, stack_pos);
@@ -2797,9 +2826,9 @@ bool TrapProcessor::StdOutByte(StackProgram* program, size_t* inst, size_t* &op_
 #endif
 
 #ifdef _MODULE_STDIO
-  program->output_buffer << (void*)((unsigned char)PopInt(op_stack, stack_pos));
+  program->output_buffer << std::hex << L"0x" << ((unsigned char)PopInt(op_stack, stack_pos));
 #else
-  std::wcout << (void*)((unsigned char)PopInt(op_stack, stack_pos));
+  std::wcout << std::hex << L"0x" << ((unsigned char)PopInt(op_stack, stack_pos));
 #endif
 
   return true;

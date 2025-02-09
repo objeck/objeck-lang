@@ -95,7 +95,7 @@ void Loader::Load()
     FLOAT_VALUE* float_string = new FLOAT_VALUE[float_string_length];
     // copy string    
 #ifdef _DEBUG
-    std::wcout << L"Loaded static float std::string[" << i << L"]: '";
+    std::wcout << L"Loaded static float string[" << i << L"]: '";
 #endif
     for(int j = 0; j < float_string_length; j++) {
       float_string[j] = ReadDouble();
@@ -120,7 +120,7 @@ void Loader::Load()
     bool* bool_string = new bool[bool_string_length];
     // copy string    
 #ifdef _DEBUG
-    std::wcout << L"Loaded static bool std::string[" << i << L"]: '";
+    std::wcout << L"Loaded static bool string[" << i << L"]: '";
 #endif
     for(int j = 0; j < bool_string_length; j++) {
       bool_string[j] = ReadByte() ? true : false;
@@ -135,6 +135,32 @@ void Loader::Load()
   }
   program->SetBoolStrings(bool_strings, num_bool_strings);
 
+
+  //
+  // read byte strings
+  //
+  num_byte_strings = ReadInt();
+  char** byte_strings = new char*[num_byte_strings];
+  for(i = 0; i < num_byte_strings; ++i) {
+    const int byte_string_length = ReadInt();
+    char* byte_string = new char[byte_string_length];
+    // copy string    
+#ifdef _DEBUG
+    std::wcout << L"Loaded static byte string[" << i << L"]: '";
+#endif
+    for(int j = 0; j < byte_string_length; j++) {
+      byte_string[j] = ReadByte();
+#ifdef _DEBUG
+      std::wcout << byte_string[j] << L",";
+#endif
+    }
+#ifdef _DEBUG
+    std::wcout << L"'" << std::endl;
+#endif
+    byte_strings[i] = byte_string;
+  }
+  program->SetByteStrings(byte_strings, num_byte_strings);
+
   //
   // read int strings
   //
@@ -145,7 +171,7 @@ void Loader::Load()
     INT64_VALUE* int_string = new INT64_VALUE[int_string_length];
     // copy string    
 #ifdef _DEBUG
-    std::wcout << L"Loaded static int std::string[" << i << L"]: '";
+    std::wcout << L"Loaded static int string[" << i << L"]: '";
 #endif
     for(int j = 0; j < int_string_length; ++j) {
       int_string[j] = ReadInt64();
@@ -176,7 +202,7 @@ void Loader::Load()
 #endif
 
 #ifdef _DEBUG
-    std::wcout << L"Loaded static character std::string[" << i << L"]: '" << char_string << L"'" << std::endl;
+    std::wcout << L"Loaded static character string[" << i << L"]: '" << char_string << L"'" << std::endl;
 #endif
     char_strings[i] = char_string;
   }

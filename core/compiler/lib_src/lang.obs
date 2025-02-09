@@ -1080,9 +1080,9 @@ bundle System {
 			LOAD_ARY_SIZE;
 		}
 
-		function : Copy(c : Byte[]) ~ Byte[] {
+		function : Copy(c : Char[]) ~ Char[] {
 			s := c->Size();
-			o := Byte->New[s];
+			o := Char->New[s];
 			Runtime->Copy(o, 0, c, 0, s);	
 			return o;
 		}
