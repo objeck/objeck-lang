@@ -867,6 +867,7 @@ if(html <> Nil) {
 
 	#~
 	Web socket client
+
 	```
 client := WebSocket->New(Url->New("ws://echo.websocket.org"));
 if(client->Connect()) {
