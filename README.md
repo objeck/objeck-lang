@@ -19,11 +19,11 @@
     * Performance testing for Llama and Mistra Hexagon NPU execution
     * Add OpenAI Vision support
 
-* <ins>v2025.1.2</ins>🔥 📅
+* <ins>v2025.1.2</ins>
     * Add WebSocket support (done)
     * Performance testing for Llama and Mistra CPU execution 🧮 (done)
-    * Improve SDL2 stability for Windows on arm64🎮 (done)
-    * Bug fixes #509 and #510
+    * Improve SDL2 stability for Windows on arm64 🎮 (done)
+    * Bug fixes #509 and #510 🐛
     
 * v2025.1.1
   * Testing  🧪
