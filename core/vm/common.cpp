@@ -2825,11 +2825,13 @@ bool TrapProcessor::StdOutByte(StackProgram* program, size_t* inst, size_t* &op_
   std::wcout << L"  STD_OUT_BYTE" << std::endl;
 #endif
 
+  std::ios_base::fmtflags flags(std::wcout.flags());
 #ifdef _MODULE_STDIO
   program->output_buffer << std::hex << L"0x" << ((unsigned char)PopInt(op_stack, stack_pos));
 #else
   std::wcout << std::hex << L"0x" << ((unsigned char)PopInt(op_stack, stack_pos));
 #endif
+  std::wcout.flags(flags);
 
   return true;
 }
