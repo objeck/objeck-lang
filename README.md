@@ -20,37 +20,37 @@
     * Add OpenAI Vision support
 
 * <ins>v2025.1.2</ins>
-    * Add WebSocket support (done)
-    * Performance testing for Llama and Mistra CPU execution 🧮 (done)
-    * Improve SDL2 stability for Windows on arm64 🎮 (done)
+    * Add WebSocket support🔌
+    * Performance testing for Llama and Mistra CPU execution 🧮 
+    * Improve SDL2 stability for Windows on arm64 🎮 
     * Bug fixes #509 and #510 🐛
     
 * v2025.1.1
   * Testing  🧪
     * Functional testing for stability and compatibility
-    * Fix Coverity and CodeQL static analysis findings 🔍 (done)
+    * Fix Coverity and CodeQL static analysis findings 🔍 
   * Tooling 🛠️
-    * Enable WSL arm64 support (done)
-    * Windows bi-directional cross-compilation for x64 and amd64 targets (done)
-    * Refactoring build and test scripts (done)
+    * Enable WSL arm64 support 
+    * Windows bi-directional cross-compilation for x64 and amd64 targets 
+    * Refactoring build and test scripts 
   * Infrastructure upgrades 🪛
-    * Upgrade Windows OpenSSL libraries to 3.4.x (done)
-  * Windows on arm64 support (done) 🎮
+    * Upgrade Windows OpenSSL libraries to 3.4.x 
+  * Windows on arm64 support  🎮
       * SDL2 core
       * Image library
       * Mixer library
       * TIFF library
     
 * v2025.1.0 (basic Windows on arm64 port)
-  * Basic port to Windows on arm64 (done) 🚢
-    * Enable compiler virtual machine, debugger, and REPL shell (done)
-    * Port arm64 JIT from macOS/Linux (done)
+  * Basic port to Windows on arm64  🚢
+    * Enable compiler virtual machine, debugger, and REPL shell 
+    * Port arm64 JIT from macOS/Linux 
     * Test and debug garbage collection issues
   * Port supporting libraries to Windows on arm64 📚
-    * OpenSSL and encryption (done)
-    * ODBC database access (done)
-    * Language server protocol support (done)
-    * 2D matrix algebra via Eigen (done)
+    * OpenSSL and encryption 
+    * ODBC database access 
+    * Language server protocol support 
+    * 2D matrix algebra via Eigen 
 
 
 ## Examples
