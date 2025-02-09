@@ -840,7 +840,7 @@ if(client->Connect()) {
 			@cookies_enabled := cookies_enabled;
 			@cookies := Vector->New()<Cookie>;
 
-			# @is_debug := true;
+@is_debug := true;
 		}
 
 		#~
@@ -856,7 +856,7 @@ if(client->Connect()) {
 			
 			@response_headers := Hash->New()<String, String>;
 
-			# @is_debug := true;
+@is_debug := true;
 		}
 
 		#~
@@ -1018,7 +1018,7 @@ if(client->Connect()) {
 		@return true if successful, false otherwise
 		~#
 		method : public : WriteSocket(message : String, fragment : Bool := false) ~ Bool {
-			chunk_size := 4096;
+			chunk_size := 5;
 
 			data := message->ToByteArray();
 			data_size := data->Size();
@@ -1163,7 +1163,7 @@ if(client->Connect()) {
 						};
 
 						if(@is_debug){
-							System.IO.Console->Print("read - buffer: '")->Print(String->New(buffer))->PrintLine("'\n===");
+							System.IO.Console->Print("read - buffer: '")->Print(buffer->ToHexString())->PrintLine("'\n===");
 						};
 
 						return buffer;
@@ -1305,13 +1305,13 @@ if(client->Connect()) {
 				if(@is_debug){
 					buffer := ByteBuffer->New();
 
-					"write - frame: "->Print();
 					each(f in frame) {
 						buffer->Append(f)
 					};
-					"\n==="->PrintLine();
-
+					
+					"write - frame: "->Print();
 					buffer->ToByteArray()->ToHexString()->PrintLine();
+					"\n==="->PrintLine();
 				};
 
 				return @socket->WriteBuffer(frame) > 0;
