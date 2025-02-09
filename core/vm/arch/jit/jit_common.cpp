@@ -229,7 +229,7 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
           break;
 
         case 16:
-          formatter << std::hex;
+          formatter << std::hex << L"0x";
           break;
         }
 

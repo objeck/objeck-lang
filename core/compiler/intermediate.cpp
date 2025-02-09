@@ -249,8 +249,7 @@ void IntermediateEmitter::Translate()
 
   Class* start_class = parsed_program->GetStartClass();
   Method* start_method = parsed_program->GetStartMethod();
-  imm_program->SetStartIds((start_class ? start_class->GetId() : -1),
-                           (start_method ? start_method->GetId() : -1));
+  imm_program->SetStartIds((start_class ? start_class->GetId() : -1), (start_method ? start_method->GetId() : -1));
   
 #ifdef _DEBUG
   assert(break_labels.empty());
@@ -289,6 +288,7 @@ void IntermediateEmitter::EmitStrings()
   std::vector<std::wstring> char_string_values = parsed_program->GetCharStrings();
   std::vector<IntStringHolder*> int_string_values = parsed_program->GetIntStrings();
   std::vector<BoolStringHolder*> bool_string_values = parsed_program->GetBoolStrings();
+  std::vector<ByteStringHolder*> byte_string_values = parsed_program->GetByteStrings();
   std::vector<FloatStringHolder*> float_string_values = parsed_program->GetFloatStrings();
   
   Linker* linker = parsed_program->GetLinker();
@@ -299,11 +299,29 @@ void IntermediateEmitter::EmitStrings()
     std::vector<std::wstring> lib_char_string_values;
     std::vector<IntStringHolder*> lib_int_string_values;
     std::vector<BoolStringHolder*> lib_bool_string_values;
+    std::vector<ByteStringHolder*> lib_byte_string_values;
     std::vector<FloatStringHolder*> lib_float_string_values;
 
     for(size_t i = 0; i < libraries.size(); ++i) {
       Library* library = libraries[i];
 
+      // byte string processing
+      std::vector<ByteStringInstruction*> byte_str_insts = library->GetByteStringInstructions();
+      for(size_t i = 0; i < byte_str_insts.size(); ++i) {
+        // check for duplicates
+        bool found = false;
+
+        // byte string processing
+        for(size_t j = 0; !found && j < lib_byte_string_values.size(); ++j) {
+          if(ByteStringHolderEqual(byte_str_insts[i]->value, lib_byte_string_values[j])) {
+            found = true;
+          }
+        }
+        // add string
+        if(!found) {
+          lib_byte_string_values.push_back(byte_str_insts[i]->value);
+        }
+      }
       // bool string processing
       std::vector<BoolStringInstruction*> bool_str_insts = library->GetBoolStringInstructions();
       for(size_t i = 0; i < bool_str_insts.size(); ++i) {
@@ -469,6 +487,7 @@ void IntermediateEmitter::EmitStrings()
   // set static strings
   imm_program->SetCharStrings(char_string_values);
   imm_program->SetBoolStrings(bool_string_values);
+  imm_program->SetByteStrings(byte_string_values);
   imm_program->SetIntStrings(int_string_values);
   imm_program->SetFloatStrings(float_string_values);
 }
@@ -4040,6 +4059,13 @@ void IntermediateEmitter::EmitStaticArray(StaticArray* array) {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, array, cur_line_num, TRAP_RTRN, 3L));
       break;
 
+    case frontend::BYTE_TYPE:
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, array, cur_line_num, NEW_BYTE_ARY, (long)array->GetDimension()));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(current_statement, array, cur_line_num, array->GetId()));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(current_statement, array, cur_line_num, instructions::CPY_BYTE_STR_ARY));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, array, cur_line_num, TRAP_RTRN, 3L));
+      break;
+
     case frontend::FLOAT_TYPE:
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, array, cur_line_num, NEW_FLOAT_ARY, (long)array->GetDimension()));
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(current_statement, array, cur_line_num, array->GetId()));
@@ -5302,70 +5328,10 @@ void IntermediateEmitter::EmitMethodCallParameters(MethodCall* method_call)
   // new array
   if(method_call->GetCallType() == NEW_ARRAY_CALL) {
     std::vector<Expression*> expressions = method_call->GetCallingParameters()->GetExpressions();
-    LibraryClass* lib_klass = nullptr; LibraryMethod* lib_method = nullptr;
-
-    // array copy
-    if(expressions.size() == 1 && (expressions[0]->GetExpressionType() == VAR_EXPR || expressions[0]->GetExpressionType() == STAT_ARY_EXPR) &&
-       !static_cast<Variable*>(expressions[0])->GetIndices() && expressions[0]->GetEvalType() && expressions[0]->GetEvalType()->GetDimension() == 1) {      
-      Expression* expression = expressions[0];
-      switch(expression->GetEvalType()->GetType()) {
-      case frontend::BYTE_TYPE:
-        break;
-
-      case frontend::CHAR_TYPE:
-        break;
-
-      case frontend::INT_TYPE:
-        lib_klass = parsed_program->GetLinker()->SearchClassLibraries(L"System.$Int", parsed_program->GetLibUses());
-        if(lib_klass) {
-          lib_method = lib_klass->GetMethod(L"System.$Int:Copy:i*,");
-        }
-        break;
-
-      case frontend::FLOAT_TYPE:
-        break;
-
-      default:
-        break;
-      }
-      
-      // copy array
-      if(lib_method) {
-        // variable
-        if(expression->GetExpressionType() == VAR_EXPR) {
-          Variable* variable = static_cast<Variable*>(expression);
-          SymbolEntry* entry = variable->GetEntry();
-          MemoryContext mem_context;
-          if(entry->IsLocal()) {
-            mem_context = LOCL;
-          }
-          else if(entry->IsStatic()) {
-            mem_context = CLS;
-          }
-          else {
-            mem_context = INST;
-          }
-
-          imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_INT_VAR, entry->GetId(), mem_context));
-        }
-        // static array
-        else {
-          EmitExpression(expression);
-        }
-
-        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, cur_line_num, LOAD_INST_MEM));
-        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, MTHD_CALL, lib_klass->GetId(), lib_method->GetId(), lib_method->IsNative()));
-        
-        // set copy call
-        method_call->SetCallType(NEW_COPY_ARRAY_CALL);
-      }
-    }
-    else {
-      for(size_t i = 0; i < expressions.size(); ++i) {
-        Expression* expression = expressions[i];
-        EmitExpression(expression);
-        EmitClassCast(expression);
-      }
+    
+    for(size_t i = 0; i < expressions.size(); ++i) {
+      EmitExpression(expressions[i]);
+      EmitClassCast(expressions[i]);
     }
 
     is_new_inst = false;
@@ -5454,27 +5420,88 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
   // new array
   if(method_call->GetCallType() == NEW_ARRAY_CALL) {
     std::vector<Expression*> expressions = method_call->GetCallingParameters()->GetExpressions();
-    switch(method_call->GetArrayType()->GetType()) {
-    case frontend::BYTE_TYPE:
-    case frontend::BOOLEAN_TYPE:
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, NEW_BYTE_ARY, (long)expressions.size()));
-      break;
-      
-    case frontend::CHAR_TYPE:
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, NEW_CHAR_ARY, (long)expressions.size()));
-      break;
-      
-    case frontend::CLASS_TYPE:
-    case frontend::INT_TYPE:
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, NEW_INT_ARY, (long)expressions.size()));
-      break;
+    // array copy constructor
+    if(expressions.size() == 1 && (expressions[0]->GetExpressionType() == VAR_EXPR || expressions[0]->GetExpressionType() == STAT_ARY_EXPR) &&
+       expressions[0]->GetEvalType() && expressions[0]->GetEvalType()->GetDimension()) {
 
-    case frontend::FLOAT_TYPE:
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, NEW_FLOAT_ARY,  (long)expressions.size()));
-      break;
+      Type* type = method_call->GetArrayType();
+      switch(type->GetType()) {
+      case BYTE_TYPE: {
+        LibraryClass* lib_class = parsed_program->GetLinker()->SearchClassLibraries(L"System.$Byte", parsed_program->GetLibUses());
+        if(lib_class) {
+          LibraryMethod* lib_mthd = lib_class->GetMethod(L"System.$Byte:Copy:b*,");
+          if(lib_mthd) {
+            imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_INST_MEM));
+            imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, MTHD_CALL, lib_class->GetId(), lib_mthd->GetId(), lib_mthd->IsNative()));
+          }
+        }
+      }
+        break;
 
-    default:
-      break;
+      case frontend::CHAR_TYPE: {
+        LibraryClass* lib_class = parsed_program->GetLinker()->SearchClassLibraries(L"System.$Char", parsed_program->GetLibUses());
+        if(lib_class) {
+          LibraryMethod* lib_mthd = lib_class->GetMethod(L"System.$Char:Copy:c*,");
+          if(lib_mthd) {
+            imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_INST_MEM));
+            imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, MTHD_CALL, lib_class->GetId(), lib_mthd->GetId(), lib_mthd->IsNative()));
+          }
+        }
+      }
+        break;
+
+      case frontend::INT_TYPE: {
+        LibraryClass* lib_class = parsed_program->GetLinker()->SearchClassLibraries(L"System.$Int", parsed_program->GetLibUses());
+        if(lib_class) {
+          LibraryMethod* lib_mthd = lib_class->GetMethod(L"System.$Int:Copy:i*,");
+          if(lib_mthd) {
+            imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_INST_MEM));
+            imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, MTHD_CALL, lib_class->GetId(), lib_mthd->GetId(), lib_mthd->IsNative()));
+          }
+        }
+      }
+        break;
+
+      case frontend::FLOAT_TYPE: {
+        LibraryClass* lib_class = parsed_program->GetLinker()->SearchClassLibraries(L"System.$Float", parsed_program->GetLibUses());
+        if(lib_class) {
+          LibraryMethod* lib_mthd = lib_class->GetMethod(L"System.$Float:Copy:f*,");
+          if(lib_mthd) {
+            imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_INST_MEM));
+            imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, MTHD_CALL, lib_class->GetId(), lib_mthd->GetId(), lib_mthd->IsNative()));
+          }
+        }
+      }
+        break;
+
+      default:
+        break;
+      }
+    }
+    // new array instance
+    else {
+      switch(method_call->GetArrayType()->GetType()) {
+      case frontend::BYTE_TYPE:
+      case frontend::BOOLEAN_TYPE:
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, NEW_BYTE_ARY, (long)expressions.size()));
+        break;
+
+      case frontend::CHAR_TYPE:
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, NEW_CHAR_ARY, (long)expressions.size()));
+        break;
+
+      case frontend::CLASS_TYPE:
+      case frontend::INT_TYPE:
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, NEW_INT_ARY, (long)expressions.size()));
+        break;
+
+      case frontend::FLOAT_TYPE:
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, NEW_FLOAT_ARY, (long)expressions.size()));
+        break;
+
+      default:
+        break;
+      }
     }
   } 
   else {
