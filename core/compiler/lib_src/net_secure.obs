@@ -805,14 +805,6 @@ if(client->Connect()) {
 	```
 	~#
 	class SecureWebSocket {
-		#~
-		Socket mode, either text or binary
-		~#
-		enum Mode {
-			BINARY,
-			TEXT
-		}
-		
 		# web socket support
 		@socket : TCPSecureSocket;
 		@header : Byte[];

@@ -881,14 +881,6 @@ if(client->Connect()) {
 	```
 	~#
 	class WebSocket {
-		#~
-		Socket mode, either text or binary
-		~#
-		enum Mode {
-			BINARY,
-			TEXT
-		}
-		
 		# web socket support
 		@socket : TCPSocket;
 		@header : Byte[];
