@@ -676,6 +676,26 @@ void Library::LoadFile(const std::wstring &file_name)
       str_instr->value = holder;
       bool_strings.push_back(str_instr);
     }
+    // read byte strings
+    const int num_byte_strings = ReadInt();
+    for(int i = 0; i < num_byte_strings; ++i) {
+      frontend::ByteStringHolder* holder = new frontend::ByteStringHolder;
+      holder->length = ReadInt();
+      holder->value = new char[holder->length];
+      for(int j = 0; j < holder->length; ++j) {
+        holder->value[j] = ReadByte();
+      }
+#ifdef _DEBUG
+      GetLogger() << L"byte string id=" << i << L"; value=";
+      for(int j = 0; j < holder->length; ++j) {
+        GetLogger() << holder->value[j] << L",";
+      }
+      GetLogger() << std::endl;
+#endif
+      ByteStringInstruction* str_instr = new ByteStringInstruction;
+      str_instr->value = holder;
+      byte_strings.push_back(str_instr);
+    }
     // read int strings
     const int num_int_strings = ReadInt();
     for(int i = 0; i < num_int_strings; ++i) {
@@ -1224,6 +1244,11 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
       else if(id == instructions::CPY_BOOL_STR_ARY) {
         LibraryInstr* cpy_instr = instrs[instrs.size() - 2];
         BoolStringInstruction* str_instr = bool_strings[cpy_instr->GetOperand7()];
+        str_instr->instrs.push_back(cpy_instr);
+      }
+      else if(id == instructions::CPY_BYTE_STR_ARY) {
+        LibraryInstr* cpy_instr = instrs[instrs.size() - 2];
+        ByteStringInstruction* str_instr = byte_strings[cpy_instr->GetOperand7()];
         str_instr->instrs.push_back(cpy_instr);
       }
       else if(id == instructions::CPY_FLOAT_STR_ARY) {

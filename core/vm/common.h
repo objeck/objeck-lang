@@ -923,6 +923,9 @@ class StackProgram {
   bool** bool_strings;
   int num_bool_strings;
 
+  char** byte_strings;
+  int num_byte_strings;
+
   INT64_VALUE** int_strings;
   int num_int_strings;
 
@@ -1188,8 +1191,6 @@ class StackProgram {
      return command_output_cls_id;
    }
 
-
-
   void SetFloatStrings(FLOAT_VALUE** s, int n) {
     float_strings = s;
     num_float_strings = n;
@@ -1200,6 +1201,11 @@ class StackProgram {
     num_bool_strings = n;
   }
 
+  void SetByteStrings(char** s, int n) {
+    byte_strings = s;
+    num_byte_strings = n;
+  }
+  
   void SetIntStrings(INT64_VALUE** s, int n) {
     int_strings = s;
     num_int_strings = n;
@@ -1220,6 +1226,10 @@ class StackProgram {
 
   bool** GetBoolStrings() const {
     return bool_strings;
+  }
+
+  char** GetByteStrings() const {
+    return byte_strings;
   }
 
   wchar_t** GetCharStrings() const {
@@ -1640,6 +1650,7 @@ class TrapProcessor {
   static bool CpyCharStrArys(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
   static bool CpyIntStrAry(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
   static bool CpyBoolStrAry(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame);
+  static bool CpyByteStrAry(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame);
   static bool CpyFloatStrAry(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
   static bool StdFlush(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
   static bool StdOutBool(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);

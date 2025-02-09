@@ -448,6 +448,11 @@ namespace frontend {
     int length;
   };
 
+  struct ByteStringHolder {
+    char* value;
+    int length;
+  };
+
   struct BoolStringHolder {
     bool* value;
     int length;

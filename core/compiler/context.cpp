@@ -1829,12 +1829,26 @@ void ContextAnalyzer::AnalyzeStaticArray(StaticArray* array, const int depth)
     return;
   }
 
-  Type* type = TypeFactory::Instance()->MakeType(array->GetType());
-  type->SetDimension(array->GetDimension());
-  if(type->GetType() == CLASS_TYPE) {
-    type->SetName(L"System.String");
+  Type* left_type;
+  if(array->GetCastType()) {
+    left_type = TypeFactory::Instance()->MakeType(array->GetCastType());
+    EntryType right_type = array->GetType();
+
+    if((left_type->GetType() == FLOAT_TYPE && right_type != FLOAT_TYPE) || (left_type->GetType() == INT_TYPE && right_type != INT_TYPE)) {
+      ProcessError(array, L"Invalid array cast");
+    }
+
+    array->SetEvalType(left_type, false);
   }
-  array->SetEvalType(type, false);
+  else {
+    left_type = TypeFactory::Instance()->MakeType(array->GetType());
+  }
+
+  left_type->SetDimension(array->GetDimension());
+  if(left_type->GetType() == CLASS_TYPE) {
+    left_type->SetName(L"System.String");
+  }
+  array->SetEvalType(left_type, false);
 
   // ensure that element sizes match dimensions
   std::vector<Expression*> all_elements = array->GetAllElements()->GetExpressions();
@@ -1874,6 +1888,19 @@ void ContextAnalyzer::AnalyzeStaticArray(StaticArray* array, const int depth)
       array->SetId(bool_str_index);
       program->AddBoolString(all_elements, bool_str_index);
       bool_str_index++;
+    }
+  }
+    break;
+
+  case BYTE_TYPE: {
+    int id = program->GetByteStringId(all_elements);
+    if(id > -1) {
+      array->SetId(id);
+    }
+    else {
+      array->SetId(byte_str_index);
+      program->AddByteString(all_elements, byte_str_index);
+      byte_str_index++;
     }
   }
     break;
@@ -2622,39 +2649,43 @@ void ContextAnalyzer::AnalyzeNewArrayCall(MethodCall* method_call, const int dep
   if(expressions.size() == 0) {
     ProcessError(static_cast<Expression*>(method_call), L"Empty array index");
   }
-  // validate array parameters
-  for(size_t i = 0; i < expressions.size(); ++i) {
-    Expression* expression = expressions[i];
-    AnalyzeExpression(expression, depth + 1);
-    Type* type = GetExpressionType(expression, depth + 1);
-    if(type) {
-      switch(type->GetType()) {
-      case BYTE_TYPE:
-      case CHAR_TYPE:
-      case INT_TYPE:
-        if(expression->GetExpressionType() == VAR_EXPR && !static_cast<Variable*>(expression)->GetIndices() && type->GetDimension() > 1) {
-          ProcessError(expression, L"Array index type must be an Int, Char, Byte or enum scalar");
-        }
-        break;
+  
+  // TODO: check for dimension size of 1, looking at type
+  else if(method_call->GetEvalType() && expressions.size() == 1 && (expressions[0]->GetExpressionType() == VAR_EXPR || expressions[0]->GetExpressionType() == STAT_ARY_EXPR) && expressions[0]->GetEvalType() && expressions[0]->GetEvalType()->GetDimension() == 1) {
+    Type* left_type = expressions[0]->GetEvalType();
+    Type* right_type = method_call->GetEvalType();
 
-      case FLOAT_TYPE:
-        if(expression->GetExpressionType() == VAR_EXPR && !static_cast<Variable*>(expression)->GetIndices() && type->GetDimension() != 1) {
-          ProcessError(expression, L"Array index type must be an Int, Char, Byte or enum scalar");
-        }
-        break;
+    if(left_type->GetType() != right_type->GetType()) {
+      ProcessError(static_cast<Expression*>(method_call), L"Invalid array parameter type");
+    }
+  }
+  else {
+    // validate array parameters
+    for(size_t i = 0; i < expressions.size(); ++i) {
+      Expression* expression = expressions[i];
+      AnalyzeExpression(expression, depth + 1);
+      Type* type = GetExpressionType(expression, depth + 1);
+      if(type) {
+        switch(type->GetType()) {
+        case BYTE_TYPE:
+        case CHAR_TYPE:
+        case INT_TYPE:
+          break;
 
-      case CLASS_TYPE:
-        if(!IsEnumExpression(expression)) {
-          ProcessError(expression, L"Array index type must be an Int, Char, Byte or enum");
-        }
-        break;
+        case CLASS_TYPE:
+          if(!IsEnumExpression(expression)) {
+            ProcessError(expression, L"Array index type must be an Integer, Char, Byte or Enum");
+          }
+          break;
 
-      default:
-        ProcessError(expression, L"Array index type must be an Int, Char, Byte or enum");
-        break;
+        default:
+          ProcessError(expression, L"Array index type must be an Integer, Char, Byte or Enum");
+          break;
+        }
       }
     }
   }
+
   // generic array type
   if(method_call->HasConcreteTypes() && method_call->GetEvalType()) {
     Class* generic_klass = nullptr; LibraryClass* generic_lib_klass = nullptr;
@@ -6312,8 +6343,7 @@ Expression* ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expressio
       ProcessError(expression, L"Dimension size mismatch");
     }
 
-    if(left->GetType() != right->GetType() &&
-       right->GetType() != NIL_TYPE) {
+    if(left->GetType() != right->GetType() && right->GetType() != NIL_TYPE) {
       ProcessError(expression, L"Invalid array cast");
     }
 
