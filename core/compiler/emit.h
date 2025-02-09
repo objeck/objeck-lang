@@ -1024,23 +1024,23 @@ namespace backend {
       return classes;
     }
 
-    void SetCharStrings(std::vector<std::wstring> s) {
+    void SetCharStrings(std::vector<std::wstring> &s) {
       char_strings = std::move(s);
     }
 
-    void SetIntStrings(std::vector<frontend::IntStringHolder*> s) {
+    void SetIntStrings(std::vector<frontend::IntStringHolder*> &s) {
       int_strings = std::move(s);
     }
 
-    void SetBoolStrings(std::vector<frontend::BoolStringHolder*> s) {
+    void SetBoolStrings(std::vector<frontend::BoolStringHolder*> &s) {
       bool_strings = std::move(s);
     }
 
-    void SetByteStrings(std::vector<frontend::ByteStringHolder*> s) {
+    void SetByteStrings(std::vector<frontend::ByteStringHolder*> &s) {
       byte_strings = std::move(s);
     }
 
-    void SetFloatStrings(std::vector<frontend::FloatStringHolder*> s) {
+    void SetFloatStrings(std::vector<frontend::FloatStringHolder*> &s) {
       float_strings = std::move(s);
     }
 
