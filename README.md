@@ -17,15 +17,15 @@
 * v2025.x.x 
     * Support for the Open AI's Realtime API
     * Performance testing for Llama and Mistra Hexagon NPU execution
+    * Add OpenAI Vision support
 
-* v2025.1.2 (release by 2/3/20225) 📅
+* <ins>v2025.1.2</ins>🔥 📅
     * Add WebSocket support (done)
     * Performance testing for Llama and Mistra CPU execution 🧮 (done)
-    * Explore adding newer OpenAI and Gemini features 🤖
-      * Add OpenAI Vision support (done)
     * Improve SDL2 stability for Windows on arm64🎮 (done)
+    * Bug fixes #509 and #510
     
-* <ins>v2025.1.1 (current)</ins>🔥
+* v2025.1.1
   * Testing  🧪
     * Functional testing for stability and compatibility
     * Fix Coverity and CodeQL static analysis findings 🔍 (done)
@@ -52,10 +52,6 @@
     * Language server protocol support (done)
     * 2D matrix algebra via Eigen (done)
 
-* v2024.12.0
-  * UDP socket support (done) 🔌
-  * SDL2 updates (done) 🎮
-  * Bug fixes (done)
 
 ## Examples
 
