@@ -3,6 +3,8 @@ class Test {
 		a := Foo->Bar(); 
 #		a : Int[];
 		b := a[0]->As(Byte);
-		b->ToHexString()->PrintLine();
+		c := b and 0xff
+		c->PrintLine();
+		c->PrintLine();
 	}
 }
