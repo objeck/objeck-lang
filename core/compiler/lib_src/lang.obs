@@ -74,8 +74,6 @@ bundle System {
 			};
 		}
 
-		#~
-		Prints an error boolean value
 		function : PrintLine(bb : Bool[]) ~ Nil {
 			s := bb->Size();
 
