@@ -1,7 +1,7 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		b := Foo->Fie(); 
+		b := Foo->Bar(); 
 #		b := Fie(); 
-		b->PrintLine();
+		b->ToHexString()->PrintLine();
 	}
 }
