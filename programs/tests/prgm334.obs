@@ -2,6 +2,6 @@ class Test {
 	function : Main(args : String[]) ~ Nil {
 		b := Foo->Fie(); 
 #		b := Fie(); 
-		(b[3] = b[0])->PrintLine();
+		b->PrintLine();
 	}
 }
