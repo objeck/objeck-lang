@@ -61,6 +61,34 @@ bundle System {
 			'\n'->Print();
 		}
 
+		function : Print(bb : Bool[]) ~ Int {
+			s := bb->Size();
+
+			each(i : s) {
+				b := bb[i];
+
+				b->Print();
+				if(i + 1 < s) {
+					','->Print();
+				}
+			};
+		}
+
+		function : PrintLine(bb : Bool[]) ~ Int {
+			s := bb->Size();
+
+			each(i : s) {
+				b := bb[i];
+
+				b->Print();
+				if(i + 1 < s) {
+					','->Print();
+				}
+			};
+
+			''->PrintLine();
+		}
+
 		#~
 		Prints an error boolean value
 		@ignore-params
@@ -353,6 +381,34 @@ bundle System {
 			return v->As(Char);
 		}
 
+		function : PrintLine(bb : Byte[]) ~ Int {
+			s := bb->Size();
+
+			each(i : s) {
+				b := bb[i];
+
+				b->Print();
+				if(i + 1 < s) {
+					','->Print();
+				}
+			};
+
+			''->PrintLine();
+		}
+
+		function : Print(bb : Byte[]) ~ Int {
+			s := bb->Size();
+
+			each(i : s) {
+				b := bb[i];
+
+				b->Print();
+				if(i + 1 < s) {
+					','->Print();
+				}
+			};
+		}
+
 		#~
 		Returns the Int value
 		@ignore-params
@@ -408,7 +464,7 @@ bundle System {
 			STD_OUT_BYTE;
 			'\n'->Print();
 		}
-		
+
 		#~
 		Prints error value
 		@ignore-params
