@@ -2574,7 +2574,7 @@ void StackInterpreter::ProcessLoadByteArrayElement(StackInstr* instr, size_t* &o
   }
 #endif
   array += instr->GetOperand();
-  PushInt(((char*)array)[index], op_stack, stack_pos);
+  PushInt(((unsigned char*)array)[index], op_stack, stack_pos);
 }
 
 /********************************
@@ -2639,7 +2639,7 @@ void StackInterpreter::ProcessStoreByteArrayElement(StackInstr* instr, size_t* &
   }
 #endif
   array += instr->GetOperand();
-  ((char*)array)[index] = (char)PopInt(op_stack, stack_pos);
+  ((unsigned char*)array)[index] = (char)PopInt(op_stack, stack_pos);
 }
 
 /********************************
