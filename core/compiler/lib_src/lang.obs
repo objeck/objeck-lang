@@ -61,6 +61,36 @@ bundle System {
 			'\n'->Print();
 		}
 
+		function : Print(bb : Bool[]) ~ Nil {
+			s := bb->Size();
+
+			each(i : s) {
+				b := bb[i];
+
+				b->Print();
+				if(i + 1 < s) {
+					','->Print();
+				};
+			};
+		}
+
+		#~
+		Prints an error boolean value
+		function : PrintLine(bb : Bool[]) ~ Nil {
+			s := bb->Size();
+
+			each(i : s) {
+				b := bb[i];
+
+				b->Print();
+				if(i + 1 < s) {
+					','->Print();
+				};
+			};
+
+			""->Print();
+		}
+
 		#~
 		Prints an error boolean value
 		@ignore-params
