@@ -61,34 +61,6 @@ bundle System {
 			'\n'->Print();
 		}
 
-		function : Print(bb : Bool[]) ~ Int {
-			s := bb->Size();
-
-			each(i : s) {
-				b := bb[i];
-
-				b->Print();
-				if(i + 1 < s) {
-					','->Print();
-				}
-			};
-		}
-
-		function : PrintLine(bb : Bool[]) ~ Int {
-			s := bb->Size();
-
-			each(i : s) {
-				b := bb[i];
-
-				b->Print();
-				if(i + 1 < s) {
-					','->Print();
-				}
-			};
-
-			''->PrintLine();
-		}
-
 		#~
 		Prints an error boolean value
 		@ignore-params
@@ -379,34 +351,6 @@ bundle System {
 		~#
 		function : ToChar(v : Byte) ~ Char {
 			return v->As(Char);
-		}
-
-		function : PrintLine(bb : Byte[]) ~ Int {
-			s := bb->Size();
-
-			each(i : s) {
-				b := bb[i];
-
-				b->Print();
-				if(i + 1 < s) {
-					','->Print();
-				}
-			};
-
-			''->PrintLine();
-		}
-
-		function : Print(bb : Byte[]) ~ Int {
-			s := bb->Size();
-
-			each(i : s) {
-				b := bb[i];
-
-				b->Print();
-				if(i + 1 < s) {
-					','->Print();
-				}
-			};
 		}
 
 		#~
@@ -1071,23 +1015,6 @@ bundle System {
 
 		function : ToString(c : Char[]) ~ String {
 			return String->New(c);
-		}
-
-		function : ToString(bb : Byte[]) ~ String {
-			buffer := "[";
-
-			s := bb->Size();
-	
-			each(i : bb) {
-				b := bb[i];
-				
-				buffer->Append(b);
-				if(i + 1 < s) {
-					buffer->Append(',');
-				};
-			};
-
-			return buffer;
 		}
 
 		#~
