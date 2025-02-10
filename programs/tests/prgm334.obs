@@ -1,7 +1,8 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		b := Foo->Bar(); 
-#		b := Fie(); 
+		a := Foo->Bar(); 
+#		a : Int[];
+		b := a[0]->As(Byte);
 		b->ToHexString()->PrintLine();
 	}
 }
