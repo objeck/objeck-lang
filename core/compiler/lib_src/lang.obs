@@ -408,23 +408,7 @@ bundle System {
 			STD_OUT_BYTE;
 			'\n'->Print();
 		}
-
-		#~
-		Prints a boolean array with a newline
-		@ignore-params
-		~#
-		function : PrintLine(bb : Bool[]) ~ Nil {
-			String->New(bb)->PrintLine();
-		}
-
-		#~
-		Prints a boolean array with a newline
-		@ignore-params
-		~#
-		function : Print(bb : Bool[]) ~ Nil {
-			String->New(bb)->Print();
-		}
-
+		
 		#~
 		Prints error value
 		@ignore-params
