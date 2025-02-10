@@ -410,6 +410,22 @@ bundle System {
 		}
 
 		#~
+		Prints a boolean array with a newline
+		@ignore-params
+		~#
+		function : PrintLine(bb : Bool[]) ~ Nil {
+			String->New(bb)->PrintLine();
+		}
+
+		#~
+		Prints a boolean array with a newline
+		@ignore-params
+		~#
+		function : Print(bb : Bool[]) ~ Nil {
+			String->New(bb)->Print();
+		}
+
+		#~
 		Prints error value
 		@ignore-params
 		~#
@@ -1015,6 +1031,23 @@ bundle System {
 
 		function : ToString(c : Char[]) ~ String {
 			return String->New(c);
+		}
+
+		function : ToString(bb : Byte[]) ~ String {
+			buffer := "[";
+
+			s := bb->Size();
+	
+			each(i : bb) {
+				b := bb[i];
+				
+				buffer->Append(b);
+				if(i + 1 < s) {
+					buffer->Append(',');
+				};
+			};
+
+			return buffer;
 		}
 
 		#~
