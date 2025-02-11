@@ -1114,7 +1114,7 @@ if(client->Connect()) {
 						System.IO.Console->Print("read - opt+len: ")->PrintLine(@header->ToHexString());
 					};
 				};
-
+				
 				if(opcode = 0x81 | opcode = 0x82 | opcode = 0x88) {
 					payload_length : Int := @header[1];
 					if(payload_length = 126) {
