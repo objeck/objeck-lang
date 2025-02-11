@@ -386,7 +386,41 @@ void IntermediateEmitter::EmitStrings()
       }
     }
 
+    //
     // merge in library strings
+    //
+
+    // bool string processing
+    for(size_t i = 0; i < lib_bool_string_values.size(); ++i) {
+      // check for duplicates
+      bool found = false;
+      for(size_t j = 0; !found && j < bool_string_values.size(); ++j) {
+        if(lib_bool_string_values[i] == bool_string_values[j]) {
+          found = true;
+        }
+      }
+      // add string
+      if(!found) {
+        bool_string_values.push_back(lib_bool_string_values[i]);
+      }
+    }
+    
+    // byte string processing
+    for(size_t i = 0; i < lib_byte_string_values.size(); ++i) {
+      // check for duplicates
+      bool found = false;
+      for(size_t j = 0; !found && j < byte_string_values.size(); ++j) {
+        if(lib_byte_string_values[i] == byte_string_values[j]) {
+          found = true;
+        }
+      }
+      // add string
+      if(!found) {
+        byte_string_values.push_back(lib_byte_string_values[i]);
+      }
+    }
+    
+    // char string processing
     for(size_t i = 0; i < lib_char_string_values.size(); ++i) {
       // check for duplicates
       bool found = false;
@@ -400,6 +434,8 @@ void IntermediateEmitter::EmitStrings()
         char_string_values.push_back(lib_char_string_values[i]);
       }
     }
+
+    // int string processing
     for(size_t i = 0; i < lib_int_string_values.size(); ++i) {
       // check for duplicates
       bool found = false;
@@ -413,6 +449,8 @@ void IntermediateEmitter::EmitStrings()
         int_string_values.push_back(lib_int_string_values[i]);
       }
     }
+
+    // float string processing
     for(size_t i = 0; i < lib_float_string_values.size(); ++i) {
       // check for duplicates
       bool found = false;

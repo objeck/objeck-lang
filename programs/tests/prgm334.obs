@@ -1,13 +1,10 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		bytes := [0x81,0x18,0x48,0x65,0x6c,0x6c,0x6f,0x20,0x57,0x6f,0x72,0x6c,0x64,0x2c,0x20,0x77,0x65,0x20,0x69,0x6e,0x20,0x68,0x65,0x72,0x65,0x21]->As(Byte[]);
-		
-		bytes->Size()->PrintLine();
-		bytes->ToHexString()->PrintLine();
-		bytes[10]->PrintLine();
-#~
-		b := Byte->New[[161,172,183]->As(Byte[])];
-		b->ToHexString()->PrintLine();
-~#		
+		a := Foo->Bar(); 
+#		a : Int[];
+		b := a[0]->As(Byte);
+		c := b and 0xff
+		c->PrintLine();
+		c->PrintLine();
 	}
 }
