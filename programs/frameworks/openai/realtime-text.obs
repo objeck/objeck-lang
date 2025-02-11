@@ -15,9 +15,11 @@ class Test {
 				audio_base64_str := response->GetSecond();
 				audio_base64_str_size := audio_base64_str->Size();
 "audio_base64_str: size={$audio_base64_str_size}"->PrintLine();	
-
-				audio_bytes := Cipher.Decrypt->Base64(audio_base64_str);
 				FileWriter->WriteFile("test.txt", audio_base64_str);
+				
+				audio_bytes := Cipher.Decrypt->Base64(audio_base64_str);
+				audio_bytes_size := audio_bytes->Size();
+"audio_bytes: size={$audio_bytes_size}"->PrintLine();	
 				FileWriter->WriteFile("test.dat", audio_bytes);
 			};
 			
@@ -40,7 +42,7 @@ class Test {
 
 			response_json := JsonParser->TextToElement(recv_msg);
 			if(response_json = Nil) {
-				status_code := client->GetLastStatus();
+				status_code := client->GetStatusMessage();
 				">>> closed: code={$status_code} <<<"->PrintLine();
 
 				return Nil;
@@ -48,7 +50,7 @@ class Test {
 
 			type_str := response_json->Get("type")->GetString();
 			if(<>type_str->Equals("session.created")) {
-				status_code := client->GetLastStatus();
+				status_code := client->GetStatusMessage();
 				">>> closed: code={$status_code} <<<"->PrintLine();
 
 				return Nil;
@@ -67,7 +69,7 @@ class Test {
 				\"type\": \"message\",
 				\"role\": \"user\",
 				\"content\": [
-					{				
+					{
 						\"type\": \"input_text\",
 						\"text\": \"{$query}\"
 					}
@@ -79,7 +81,7 @@ class Test {
 					
 		recv_msg := client->ReadSocketText();
 		if(recv_msg = Nil) {
-			status_code := client->GetLastStatus();
+			status_code := client->GetStatusMessage();
 			">>> closed: code={$status_code} <<<"->PrintLine();
 			return false;
 		};
@@ -102,7 +104,7 @@ class Test {
 		};
 
 		send_msg := "{
-			\"type\": \"response.create\",			
+			\"type\": \"response.create\",
 			\"response\": {
 				\"voice\": \"sage\",
 				\"output_audio_format\": \"pcm16\",
@@ -115,7 +117,7 @@ class Test {
 
 		recv_msg := client->ReadSocketText();
 		if(recv_msg = Nil) {
-			status_code := client->GetLastStatus();
+			status_code := client->GetStatusMessage();
 			">>> closed: code={$status_code} <<<"->PrintLine();
 			return false;
 		};
@@ -186,9 +188,6 @@ class Test {
 				return Nil;
 			};
 		};
-
-		# "response: audio='{$response_audio}'"->PrintLine();
-		# "response: text='{$response_text}'"->PrintLine();
 
 		return Pair->New(response_text, response_audio)<String, String>;
 	}
