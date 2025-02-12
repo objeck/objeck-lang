@@ -1,0 +1,89 @@
+use Collection;
+
+class Test {
+	@stream : Char[];
+	@stream_position : Int;
+	@cur_char : Char;
+
+	@level : Int;
+
+	New(input : String) {
+		@stream := input->ToCharArray();
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		stream := System.IO.Filesystem.FileReader->ReadFile(args[0]);
+		Test->New(stream)->Go();
+	}
+
+	method : public : Go() ~ Nil {
+		NextChar();
+		label_buffer : String;
+		num_buffer : String;
+
+		while(@cur_char <> '\0') {
+			Whitespace();
+			
+			if(@cur_char = '{' | @cur_char = '[') {
+				@level += 1;
+			}
+			else if(@cur_char = '}' | @cur_char = ']') {
+				@level -= 1;
+			};
+
+			if(@cur_char = '"') {
+				if(label_buffer = Nil) {
+					label_buffer := String->New();
+				}
+				else {
+"label => |{$label_buffer}|"->PrintLine();					
+					label_buffer := Nil;
+				};
+			}
+			else if(@cur_char->IsDigit()) {
+				if(label_buffer = Nil) {
+					if(num_buffer = Nil) {
+						num_buffer := String->New();
+					}
+					num_buffer->Append(@cur_char);
+				}
+				else {
+					label_buffer->Append(@cur_char);
+				};
+			}
+			else if(@cur_char->IsChar()) {
+				label_buffer->Append(@cur_char);
+			}
+			else if(@cur_char = ':' & label_buffer = Nil) {
+"\tis_elem"->PrintLine();
+			}
+			else {
+				if(num_buffer <> Nil) {
+"number => |{$num_buffer}|"->PrintLine();					
+					num_buffer := Nil;						
+				};
+			};
+			
+			# advance
+			# @level->PrintLine();
+			NextChar();
+		};
+	}
+
+	method : native : Whitespace() ~ Nil {
+		while(@cur_char = ' ' | @cur_char = '\t' | @cur_char = '\r' | @cur_char = '\n') {
+			NextChar();
+		};
+	}
+
+	method : native : NextChar() ~ Nil {
+		if(@stream_position < @stream->Size()) {
+			@cur_char := @stream[@stream_position];
+		}
+		else {
+			@cur_char := '\0';
+		};
+
+		@stream_position += 1;
+	}
+}
