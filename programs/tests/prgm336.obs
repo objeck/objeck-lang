@@ -19,23 +19,49 @@ class Test {
 	method : public : Go() ~ Nil {
 		NextChar();
 		label_buffer : String;
-		num_buffer : String;
+		num_buffer : String;		
 
 		while(@cur_char <> '\0') {
 			Whitespace();
 			
-			if(@cur_char = '{' | @cur_char = '[') {
+			
+
+			if(@cur_char = '{' ) {
+each(i : @level) {
+	'\t'->Print();
+};
+"+ object start"->PrintLine();					
 				@level += 1;
 			}
-			else if(@cur_char = '}' | @cur_char = ']') {
+			else if(@cur_char = '[') {
+each(i : @level) {
+	'\t'->Print();
+};
+"+ array start"->PrintLine();
+				@level += 1;
+			}
+			else if(@cur_char = '}' ) {
+each(i : @level) {
+	'\t'->Print();
+};
+"- object end"->PrintLine();					
 				@level -= 1;
-			};
-
-			if(@cur_char = '"') {
+			}
+			else if(@cur_char = ']') {
+each(i : @level) {
+	'\t'->Print();
+};
+"- array end"->PrintLine();
+				@level -= 1;
+			}
+			else if(@cur_char = '"') {
 				if(label_buffer = Nil) {
 					label_buffer := String->New();
 				}
 				else {
+each(i : @level) {
+	'\t'->Print();
+};
 "label => |{$label_buffer}|"->PrintLine();					
 					label_buffer := Nil;
 				};
@@ -55,10 +81,16 @@ class Test {
 				label_buffer->Append(@cur_char);
 			}
 			else if(@cur_char = ':' & label_buffer = Nil) {
-"\tis_elem"->PrintLine();
+each(i : @level) {
+	'\t'->Print();
+};
+"\t* is_elem"->PrintLine();
 			}
 			else {
 				if(num_buffer <> Nil) {
+each(i : @level) {
+	'\t'->Print();
+};
 "number => |{$num_buffer}|"->PrintLine();					
 					num_buffer := Nil;						
 				};
