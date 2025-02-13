@@ -1,6 +1,9 @@
 use Collection;
+use System.IO.Filesystem;
 
 class StreamParser {
+	@input : InputStream;
+
 	@stream : Char[];
 	@stream_position : Int;
 	@cur_char : Char;
@@ -25,14 +28,24 @@ class StreamParser {
 		FALSE
 	}
 
-	New(input : String) {
-		@stream := input->ToCharArray();
-		NextChar();
+	New(input : InputStream) {
+		@input := input;
+
+		stream_str := @input->ReadLine();
+		if(stream_str <> Nil) {
+			@stream := stream_str->ToCharArray();
+			@stream_position := 0;
+
+			@cur_char := @stream[@stream_position];
+		}
+		else {
+			@cur_char := '\0';
+		};
 	}
 
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
-			stream := System.IO.Filesystem.FileReader->ReadFile(args[0]);
+			stream := FileReader->New(args[0]);
 			
 			parser := StreamParser->New(stream);
 			while(parser->More()) {
@@ -167,7 +180,7 @@ class StreamParser {
 					};	
 				};	
 			}
-			else if(@cur_char->IsChar()) {
+			else if(@cur_char->IsChar() | @cur_char = '|') {
 				string_buffer->Append(@cur_char);
 			}
 			else {
@@ -283,7 +296,7 @@ class StreamParser {
 	}
 
 	method : public : InLevel(level : Int) ~ Bool {
-		return @level = level & @type <> StreamParser->Type->OBJECT_START;
+		return @level = level & @type <> StreamParser->Type->OBJECT_END & @type <> StreamParser->Type->ARRAY_END;
 	}
 
 	method : public : Next() ~ Nil {
@@ -316,7 +329,16 @@ class StreamParser {
 			@cur_char := @stream[@stream_position];
 		}
 		else {
-			@cur_char := '\0';
+			stream_str := @input->ReadLine();
+			if(stream_str <> Nil) {
+				@stream := stream_str->ToCharArray();
+				@stream_position := 0;
+
+				@cur_char := @stream[@stream_position];
+			}
+			else {
+				@cur_char := '\0';
+			};
 		};
 
 		@stream_position += 1;

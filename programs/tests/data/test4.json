@@ -1,31 +1,27 @@
 { 
     "aa|aa": [58, 41, 19, 48, 55],
-    "aa|ab": [[7, 13], "two", "three", {"five": 5, "six": 6}, "five"],
+    "aa|ab": [[7, 13], "two", "three", {"five": 5, "six": 6}, "flavor"],
     "aa|ac": [1, 2, 3, 4, 5],
     "aa|ad": [1, 2, 3, 4, 5],
-    "aa|ae": [[7, 13], "two", "three", {"five": 5, "six": 6}, "five"],
-
+    "aa|ae": [[7, 13], "two", "three", {"five": 5, "six": 6}, "flavor"],
     "ab|aa": [58, 41, 19, 48, 55],
-    "ab|ab": [[7, 13], "two", "three", {"five": 5, "six": 6}, "five"],
+    "ab|ab": [[7, 13], "two", "three", {"five": 5, "six": 6}, "flavor"],
     "ab|ac": [1, 2, 3, 4, 5],
     "ab|ad": [1, 2, 3, 4, 5],
-    "ab|ae": [[7, 13], "two", "three", {"five": 5, "six": 6}, "five"],
-    
+    "ab|ae": [[7, 13], "two", "three", {"five": 5, "six": 6}, "flavor"],    
     "ac|aa": [58, 41, 19, 48, 55],
-    "ac|ab": [[7, 13], "two", "three", {"five": 5, "six": 6}, "five"],
+    "ac|ab": [[7, 13], "two", "three", {"five": 5, "six": 6}, "flavor"],
     "ac|ac": [1, 2, 3, 4, 5],
     "ac|ad": [1, 2, 3, 4, 5],
-    "ac|ae": [[7, 13], "two", "three", {"five": 5, "six": 6}, "five"],
-
+    "ac|ae": [[7, 13], "two", "three", {"five": 5, "six": 6}, "flavor"],
     "ad|aa": [58, 41, 19, 48, 55],
-    "ad|ab": [[7, 13], "two", "** WINNER **", {"five": 5, "six": 6}, "five"],
+    "ad|ab": [[7, 13], "two", "** WINNER **", {"five": 5, "six": 6}, "flavor"],
     "ad|ac": [1, 2, 3, 4, 5],
     "ad|ad": [1, 2, 3, 4, 5],
-    "ad|ae": [[7, 13], "two", "three", {"five": 5, "six": 6}, "five"],
-    
+    "ad|ae": [[7, 13], "two", "three", {"five": 5, "six": 6}, "flavor"],
     "ae|aa": [58, 41, 19, 48, 55],
-    "ae|ab": [[7, 13], "two", "three", {"five": 5, "six": 6}, "five"],
+    "ae|ab": [[7, 13], "two", "three", {"five": 5, "six": 6}, "flavor"],
     "ae|ac": [1, 2, 3, 4, 5],
     "ae|ad": [1, 2, 3, 4, 5],
-    "ae|ae": [[7, 13], "two", "three", {"five": 5, "six": 6}, "five"]
+    "ae|end": [[7, 13], "two", "three", {"five": 5, "six": 6}, "flavor"]
 }

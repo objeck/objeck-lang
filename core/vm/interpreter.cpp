@@ -2350,7 +2350,8 @@ void StackInterpreter::ProcessMethodCall(StackInstr* instr, StackInstr** &instrs
     // lookup binding
     StackClass* concrete_class = MemoryManager::GetClass((size_t*)instance);
     if(!concrete_class) {
-      std::wcerr << L">>> Unable to resolve virtual method call <<<" << std::endl;
+      std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
+      StackErrorUnwind();
 #ifdef _NO_HALT
       halt = true;
       return;
