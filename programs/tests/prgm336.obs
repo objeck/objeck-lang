@@ -6,6 +6,7 @@ class Test {
 	@cur_char : Char;
 
 	@level : Int;
+	@skip_next : Bool;
 
 	New(input : String) {
 		@stream := input->ToCharArray();
@@ -18,88 +19,113 @@ class Test {
 
 	method : public : Go() ~ Nil {
 		NextChar();
-		label_buffer : String;
+		string_buffer : String;
 		num_buffer : String;		
 
 		while(@cur_char <> '\0') {
 			Whitespace();
-			
-			
 
 			if(@cur_char = '{' ) {
-each(i : @level) {
-	'\t'->Print();
-};
-"+ object start"->PrintLine();					
+Show("+ object start");
 				@level += 1;
 			}
 			else if(@cur_char = '[') {
-each(i : @level) {
-	'\t'->Print();
-};
-"+ array start"->PrintLine();
+Show("+ array start");
 				@level += 1;
 			}
 			else if(@cur_char = '}' ) {
-each(i : @level) {
-	'\t'->Print();
-};
-"- object end"->PrintLine();					
 				@level -= 1;
+Show("- object end");
 			}
 			else if(@cur_char = ']') {
-each(i : @level) {
-	'\t'->Print();
-};
-"- array end"->PrintLine();
 				@level -= 1;
+Show("- array end");
 			}
 			else if(@cur_char = '"') {
-				if(label_buffer = Nil) {
-					label_buffer := String->New();
+				if(string_buffer = Nil) {
+					string_buffer := String->New();
 				}
 				else {
-each(i : @level) {
-	'\t'->Print();
-};
-"label => |{$label_buffer}|"->PrintLine();					
-					label_buffer := Nil;
+	
+					NextChar();
+					@skip_next := true;
+					Whitespace();
+
+					if(@cur_char = ':') {
+Show("label: |{$string_buffer}|");
+					}
+					else {
+Show("string: |{$string_buffer}|");
+					};
+
+					string_buffer := Nil;
 				};
 			}
-			else if(@cur_char->IsDigit()) {
-				if(label_buffer = Nil) {
+			else if(@cur_char->IsDigit() | (num_buffer <> Nil & @cur_char = '.')) {
+				if(string_buffer = Nil) {
 					if(num_buffer = Nil) {
 						num_buffer := String->New();
 					}
 					num_buffer->Append(@cur_char);
 				}
 				else {
-					label_buffer->Append(@cur_char);
+					string_buffer->Append(@cur_char);
 				};
 			}
-			else if(@cur_char->IsChar()) {
-				label_buffer->Append(@cur_char);
+			else if(string_buffer = Nil & num_buffer = Nil) {
+				if(@cur_char = 'n') {
+					if(<>Match("null")) {
+						SetError("expected 'null'")
+					}
+					else {						
+Show("null");
+					};
+				}
+				else if(@cur_char = 't') {
+					if(<>Match("true")) {
+						SetError("expected 'true'")
+					}
+					else {						
+Show("true");
+					};
+				}
+				else if(@cur_char = 'f') {
+					if(<>Match("false")) {
+						SetError("expected 'false'")
+					}
+					else {						
+Show("false");
+					};
+				}
+				else {
+					if(@cur_char <> ',' & @cur_char <> ':') {
+						SetError("expected : [':' or ',' or '\"']")
+					};	
+				};	
 			}
-			else if(@cur_char = ':' & label_buffer = Nil) {
-each(i : @level) {
-	'\t'->Print();
-};
-"\t* is_elem"->PrintLine();
+			else if(@cur_char->IsChar()) {
+				string_buffer->Append(@cur_char);
 			}
 			else {
 				if(num_buffer <> Nil) {
-each(i : @level) {
-	'\t'->Print();
-};
-"number => |{$num_buffer}|"->PrintLine();					
+Show("number: |{$num_buffer}|");
 					num_buffer := Nil;						
 				};
 			};
 			
-			# advance
-			# @level->PrintLine();
-			NextChar();
+			if(@skip_next) {
+				@skip_next := false;
+			}
+			else {
+				NextChar();
+			};
 		};
+	}
+
+	method : SetError(message : String) ~ Nil {
+		">>> {$message} <<<"->PrintLine();
+		@cur_char := '\0';
+		@skip_next := true;
 	}
 
 	method : native : Whitespace() ~ Nil {
@@ -117,5 +143,23 @@ each(i : @level) {
 		};
 
 		@stream_position += 1;
+	}
+
+	method : native : Match(string : String) ~ Bool {
+		each(c in string) {
+			if(c <> @cur_char) {
+				return false;
+			};
+			NextChar();
+		};
+
+		return true;
+	}
+	
+	method : Show(message : String) ~ Nil {
+		each(i : @level) {
+			'\t'->Print();
+		};
+		message->PrintLine();
 	}
 }

@@ -4,15 +4,15 @@
     },
     "2": "deuce",
     "3": {
-        "aa": 7, "ab": true, "ac": 12, "ad": 17, "ae": [1,2,3], "af": "seventeen"}
+        "ab": 8, "ab": true, "ac": 12, "ad": 17, "ae": [1,2,3], "af": "seventeen"}
     },
     "4": "six",
     "5": {
-        "za": 7, "zb": true, "zc": 12, "ad": 17, "ze": [1,2,3], "zf": "eight"}
+        "za": 9, "zb": true, "zc": 12, "ad": 17, "ze": [1,2,3], "zf": "eight"}
     },
     "6": "deuce",
     "7": {
-        "aa": 7, "ab": true, "ac": 12, "ad": 17, "ae": [1,2,3], "af": "seventeen"}
+        "ca": 10, "ab": true, "ac": 12, "ad": 17, "ae": [1,2,3], "af": "seventeen"}
     },
     "8": "deuce"
 }
