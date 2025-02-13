@@ -24,7 +24,7 @@ class StreamParser {
 		TRUE,
 		FALSE
 	}
-	
+
 	New(input : String) {
 		@stream := input->ToCharArray();
 		NextChar();
@@ -38,8 +38,9 @@ class StreamParser {
 			while(parser->More()) {
 				type_name := parser->GetTypeName();
 				type_value := parser->GetTypeValue();
+				level := parser->GetLevel();
 
-				"{$type_name} => '{$type_value}'"->PrintLine();
+				"{$level}: {$type_name} => '{$type_value}'"->PrintLine();
 				"---"->PrintLine();
 
 				parser->Next();
@@ -54,7 +55,7 @@ class StreamParser {
 		string_buffer : String;
 		num_buffer : String;		
 
-		while(@cur_char <> '\0' & <>@is_delim) {
+		while(@cur_char <> '\0' & <>@is_delim & @level > -1) {
 			Whitespace();
 
 			if(@cur_char = '{' ) {
@@ -254,6 +255,10 @@ class StreamParser {
 		};
 
 		return "";
+	}
+
+	method : public : GetLevel() ~ Int {
+		return @level;
 	}
 
 	method : public : Next() ~ Nil {
