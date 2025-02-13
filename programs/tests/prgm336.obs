@@ -40,9 +40,9 @@ class StreamParser {
 				type_value := parser->GetTypeValue();
 				level := parser->GetLevel();
 
-				"{$level}: {$type_name} => '{$type_value}'"->PrintLine();
-				"---"->PrintLine();
-
+					"{$level}: {$type_name} => '{$type_value}'"->PrintLine();
+					"---"->PrintLine();
+				
 				parser->Next();
 			};
 		}
@@ -69,21 +69,40 @@ class StreamParser {
 				@is_delim := true;				
 			}
 			else if(@cur_char = '}' ) {
-				@level -= 1;
-				@type := StreamParser->Type->OBJECT_END;
-				@is_delim := true;
+				if(num_buffer <> Nil) {
+					@type := StreamParser->Type->NUMBER;
+					@value := String->New(num_buffer);
+					num_buffer := Nil;
+					@is_delim := true;		
+
+					@skip_next := true;
+				}
+				else {
+					@level -= 1;
+					@type := StreamParser->Type->OBJECT_END;
+					@is_delim := true;
+				};
 			}
 			else if(@cur_char = ']') {
-				@level -= 1;
-				@type := StreamParser->Type->ARRAY_END;
-				@is_delim := true;
-			}
+				if(num_buffer <> Nil) {
+					@type := StreamParser->Type->NUMBER;
+					@value := String->New(num_buffer);
+					num_buffer := Nil;
+					@is_delim := true;		
+
+					@skip_next := true;
+				}
+				else {
+					@level -= 1;
+					@type := StreamParser->Type->ARRAY_END;
+					@is_delim := true;
+				};
+			}	
 			else if(@cur_char = '"') {
 				if(string_buffer = Nil) {
 					string_buffer := String->New();
 				}
 				else {
-	
 					NextChar();
 					@skip_next := true;
 					Whitespace();
@@ -259,6 +278,10 @@ class StreamParser {
 
 	method : public : GetLevel() ~ Int {
 		return @level;
+	}
+
+	method : public : InLevel(level : Int) ~ Bool {
+		return @level = level & @type <> StreamParser->Type->OBJECT_START;
 	}
 
 	method : public : Next() ~ Nil {
