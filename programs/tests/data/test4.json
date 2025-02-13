@@ -23,5 +23,5 @@
     "ae|ab": [[7, 13], "two", "three", {"five": 5, "six": 6}, "flavor"],
     "ae|ac": [1, 2, 3, 4, 5],
     "ae|ad": [1, 2, 3, 4, 5],
-    "ae|end": [[7, 13], "two", "three", {"five": 5, "six": 6}, "flavor"]
+    "a''e|e'nd": [[7, 13], "two", "three", {"five": 5, "six": 6}, "flavor"]
 }

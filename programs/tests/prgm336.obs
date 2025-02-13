@@ -116,9 +116,14 @@ class StreamParser {
 			else if(@cur_char = '"') {
 				if(string_buffer = Nil) {
 					string_buffer := String->New();
-				}
-				else {
+
 					NextChar();
+					while(@cur_char <> '"') {
+						string_buffer->Append(@cur_char);
+						NextChar();
+					};
+					NextChar();
+					
 					@skip_next := true;
 					Whitespace();
 
@@ -179,9 +184,6 @@ class StreamParser {
 						SetError("expected : [':' or ',' or '\"']")
 					};	
 				};	
-			}
-			else if(@cur_char->IsChar() | @cur_char = '|') {
-				string_buffer->Append(@cur_char);
 			}
 			else {
 				if(num_buffer <> Nil) {
