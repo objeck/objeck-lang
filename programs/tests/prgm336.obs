@@ -40,9 +40,11 @@ class StreamParser {
 				type_value := parser->GetTypeValue();
 				level := parser->GetLevel();
 
+				if(level = 2 & parser->GetType() <> StreamParser->Type->OBJECT_START) {
 					"{$level}: {$type_name} => '{$type_value}'"->PrintLine();
 					"---"->PrintLine();
-				
+				};
+
 				parser->Next();
 			};
 		}
