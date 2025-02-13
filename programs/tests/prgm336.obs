@@ -1,6 +1,6 @@
 use Collection;
 
-class Test {
+class StreamParser {
 	@stream : Char[];
 	@stream_position : Int;
 	@cur_char : Char;
@@ -8,38 +8,74 @@ class Test {
 	@level : Int;
 	@skip_next : Bool;
 
+	@is_delim : Bool;
+	@type : StreamParser->Type;
+	@value : String;
+
+	enum Type {
+		OBJECT_START,
+		OBJECT_END,
+		ARRAY_START,
+		ARRAY_END,
+		LABEL,
+		STRING,
+		NUMBER,
+		NULL,
+		TRUE,
+		FALSE
+	}
+	
 	New(input : String) {
 		@stream := input->ToCharArray();
+		NextChar();
 	}
 
 	function : Main(args : String[]) ~ Nil {
-		stream := System.IO.Filesystem.FileReader->ReadFile(args[0]);
-		Test->New(stream)->Go();
+		if(args->Size() = 1) {
+			stream := System.IO.Filesystem.FileReader->ReadFile(args[0]);
+			
+			parser := StreamParser->New(stream);
+			while(parser->More()) {
+				type_name := parser->GetTypeName();
+				type_value := parser->GetTypeValue();
+
+				"{$type_name} => '{$type_value}'"->PrintLine();
+				"---"->PrintLine();
+
+				parser->Next();
+			};
+		}
+		else {
+			">>> usage: filename <<<"->ErrorLine();
+		};
 	}
 
-	method : public : Go() ~ Nil {
-		NextChar();
+	method : Get() ~ Nil {
 		string_buffer : String;
 		num_buffer : String;		
 
-		while(@cur_char <> '\0') {
+		while(@cur_char <> '\0' & <>@is_delim) {
 			Whitespace();
 
 			if(@cur_char = '{' ) {
-Show("+ object start");
+				@type := StreamParser->Type->OBJECT_START;
 				@level += 1;
+				@is_delim := true;
 			}
 			else if(@cur_char = '[') {
-Show("+ array start");
+				@type := StreamParser->Type->ARRAY_START;
 				@level += 1;
+				@is_delim := true;				
 			}
 			else if(@cur_char = '}' ) {
 				@level -= 1;
-Show("- object end");
+				@type := StreamParser->Type->OBJECT_END;
+				@is_delim := true;
 			}
 			else if(@cur_char = ']') {
 				@level -= 1;
-Show("- array end");
+				@type := StreamParser->Type->ARRAY_END;
+				@is_delim := true;
 			}
 			else if(@cur_char = '"') {
 				if(string_buffer = Nil) {
@@ -52,11 +88,14 @@ Show("- array end");
 					Whitespace();
 
 					if(@cur_char = ':') {
-Show("label: |{$string_buffer}|");
+						@type := StreamParser->Type->LABEL;
+						@is_delim := true;
 					}
 					else {
-Show("string: |{$string_buffer}|");
+						@type := StreamParser->Type->STRING;
+						@is_delim := true;
 					};
+					@value := String->New(string_buffer);
 
 					string_buffer := Nil;
 				};
@@ -78,7 +117,8 @@ Show("string: |{$string_buffer}|");
 						SetError("expected 'null'")
 					}
 					else {						
-Show("null");
+						@type := StreamParser->Type->NULL;
+						@is_delim := true;
 					};
 				}
 				else if(@cur_char = 't') {
@@ -86,7 +126,8 @@ Show("null");
 						SetError("expected 'true'")
 					}
 					else {						
-Show("true");
+						@type := StreamParser->Type->TRUE;
+						@is_delim := true;
 					};
 				}
 				else if(@cur_char = 'f') {
@@ -94,7 +135,8 @@ Show("true");
 						SetError("expected 'false'")
 					}
 					else {						
-Show("false");
+						@type := StreamParser->Type->FALSE;
+						@is_delim := true;
 					};
 				}
 				else {
@@ -108,8 +150,10 @@ Show("false");
 			}
 			else {
 				if(num_buffer <> Nil) {
-Show("number: |{$num_buffer}|");
-					num_buffer := Nil;						
+					@type := StreamParser->Type->NUMBER;
+					@value := String->New(num_buffer);
+					num_buffer := Nil;
+					@is_delim := true;				
 				};
 			};
 			
@@ -120,6 +164,109 @@ Show("number: |{$num_buffer}|");
 				NextChar();
 			};
 		};
+	}
+
+	method : public : GetType() ~ StreamParser->Type {
+		return @type;
+	}
+
+	method : public : GetTypeName() ~ String {
+		select(@type) {
+			label StreamParser->Type->OBJECT_START {
+				return "(+) object-start";
+			}
+
+			label StreamParser->Type->OBJECT_END {
+				return "(-) object-end";
+			}
+			
+			label StreamParser->Type->ARRAY_START {
+				return "(+) array-start";
+			}
+
+			label StreamParser->Type->ARRAY_END {
+				return "(+) array-end";
+			}
+
+			label StreamParser->Type->LABEL {
+				return "label";
+			}
+
+			label StreamParser->Type->STRING {
+				return "string";
+			}
+
+			label StreamParser->Type->NUMBER {
+				return "number";
+			}
+
+			label StreamParser->Type->NULL {
+				return "null";
+			}
+
+			label StreamParser->Type->TRUE {
+				return "true";
+			}
+
+			label StreamParser->Type->FALSE {
+				return "false";
+			}
+		};
+
+		return ">>> unknown <<<";
+	}
+
+	method : public : GetTypeValue() ~ String {
+		select(@type) {
+			label StreamParser->Type->OBJECT_START {
+				return "{";
+			}
+
+			label StreamParser->Type->OBJECT_END {
+				return "}";
+			}
+			
+			label StreamParser->Type->ARRAY_START {
+				return "[";
+			}
+
+			label StreamParser->Type->ARRAY_END {
+				return "]";
+			}
+
+			label StreamParser->Type->LABEL
+			label StreamParser->Type->STRING
+			label StreamParser->Type->NUMBER {
+				return @value;
+			}
+ 
+			label StreamParser->Type->NULL {
+				return "null";
+			}
+
+			label StreamParser->Type->TRUE {
+				return "true";
+			}
+
+			label StreamParser->Type->FALSE {
+				return "false";
+			}
+		};
+
+		return "";
+	}
+
+	method : public : Next() ~ Nil {
+		@is_delim := false;
+	}
+
+	method : public : More() ~ Bool {
+		if(@cur_char = '\0') {
+			return false;
+		};
+
+		Get();
+		return true;
 	}
 
 	method : SetError(message : String) ~ Nil {
@@ -154,12 +301,5 @@ Show("number: |{$num_buffer}|");
 		};
 
 		return true;
-	}
-	
-	method : Show(message : String) ~ Nil {
-		each(i : @level) {
-			'\t'->Print();
-		};
-		message->PrintLine();
 	}
 }
