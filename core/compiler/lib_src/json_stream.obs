@@ -418,7 +418,8 @@ stream->Close();
 
 			@is_delim := false;
 			Transition();
-			return @cur_char <> '\0';
+			
+			return @cur_char <> ',' & @cur_char <> '\0';
 		}
 
 		method : SetError(message : String) ~ Nil {
