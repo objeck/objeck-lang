@@ -74,7 +74,7 @@ while(parser->More()) {
 			};
 		}
 
-		method : Get() ~ Nil {
+		method : native : Get() ~ Nil {
 			string_buffer : String;
 			num_buffer : String;		
 
