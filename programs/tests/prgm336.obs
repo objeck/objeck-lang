@@ -3,17 +3,19 @@ use Collection, System.IO.Filesystem, Data.JSON.Stream;
 class Test {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
-			parser := StreamParser->New(FileReader->New(args[0]));
-			while(parser->More()) {
-				type_name := parser->GetTypeName();
-				type_value := parser->GetTypeValue();
-				level := parser->GetLevel();
+			stream := FileReader->New(args[0]);
+			parser := StreamParser->New(stream);
 
-				"{$level}: {$type_name} => '{$type_value}'"->PrintLine();
-				"---"->PrintLine();
-
-				parser->Next();
+			done := false;
+			while(parser->Next() & <>done) {
+				if(parser->GetLevel() = 4 & parser->GetTypeValue()->Equals("Name")) {
+					parser->Next();
+					parser->GetTypeValue()->PrintLine();
+					done := true;
+				};
 			};
+
+			stream->Close();
 		}
 		else {
 			">>> usage: filename <<<"->ErrorLine();
