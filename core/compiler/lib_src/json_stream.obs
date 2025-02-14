@@ -196,7 +196,7 @@ stream->Close();
 						string_buffer := String->New();
 
 						NextChar();
-						while(@cur_char <> '"') {
+						while(@cur_char <> '\0' & @cur_char <> '"') {
 							string_buffer->Append(@cur_char);
 							NextChar();
 
