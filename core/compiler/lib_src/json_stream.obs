@@ -329,6 +329,7 @@ while(parser->More()) {
 
 		#~
 		Checks the current parse level
+		@param level parse level
 		@return current parse level
 		~#
 		method : public : InLevel(level : Int) ~ Bool {
