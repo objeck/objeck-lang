@@ -1,6 +1,6 @@
 #~
 Objeck system classes.
-Copyright (c) 2008-2024 Randy Hollines
+Copyright (c) 2008-2025 Randy Hollines
 note: compile compiler with -D_SYSTEM flag (on Linux)
 
 >> While it may be fun, best not edit this file. Visual reference: (https://www.youtube.com/watch?v=snTaSJk0n_Y&t=16s) <<<

@@ -427,7 +427,7 @@ stream->Close();
 			@skip_next := true;
 		}
 
-		method : native : Whitespace() ~ Nil {
+		method : Whitespace() ~ Nil {
 			while(@cur_char = ' ' | @cur_char = '\t' | @cur_char = '\r' | @cur_char = '\n') {
 				NextChar();
 			};
