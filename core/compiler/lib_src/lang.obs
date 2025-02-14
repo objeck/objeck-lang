@@ -6038,7 +6038,7 @@ each(i : cities) {
 		@param rhs string to compare
 		@return true if equal, false otherwise
 		~#
-		method : public : Equals(rhs : String) ~ Bool {
+		method : public : native : Equals(rhs : String) ~ Bool {
 			if(@pos <> rhs->Size()) {
 				return false;
 			};
@@ -6047,15 +6047,15 @@ each(i : cities) {
 			end := @pos - 1;
 
 			while(start <= end) {
-				a := @string[start];
-				b := rhs->Get(start);
-				if(a <> b) {
+				l := @string[start];
+				r := rhs->Get(start);
+				if(l <> r) {
 					return false;
 				}
 
-				a := @string[end];
-				b := rhs->Get(end);
-				if(a <> b) {
+				l := @string[end];
+				r := rhs->Get(end);
+				if(l <> r) {
 					return false;
 				}
 
@@ -6086,7 +6086,7 @@ each(i : cities) {
 		@param rhs string to compare
 		@return true if equal, false otherwise
 		~#
-		method : public : EqualsIgnoreCase(rhs : String) ~ Bool {
+		method : public : native : EqualsIgnoreCase(rhs : String) ~ Bool {
 			if(@pos <> rhs->Size()) {
 				return false;
 			};
@@ -6095,15 +6095,15 @@ each(i : cities) {
 			end := @pos - 1;
 
 			while(start <= end) {
-				a := @string[start]->ToLower();
-				b := rhs->Get(start)->ToLower();
-				if(a <> b) {
+				l := @string[start]->ToLower();
+				r := rhs->Get(start)->ToLower();
+				if(l <> r) {
 					return false;
 				}
 
-				a := @string[end]->ToLower();
-				b := rhs->Get(end)->ToLower();
-				if(a <> b) {
+				l := @string[end]->ToLower();
+				r := rhs->Get(end)->ToLower();
+				if(l <> r) {
 					return false;
 				}
 
