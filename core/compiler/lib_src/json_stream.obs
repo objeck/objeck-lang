@@ -402,7 +402,7 @@ stream->Close();
 		@param level parse level
 		@return current parse level
 		~#
-		method : public : InLevel(level : Int) ~ Bool {
+		method : public : AtLevel(level : Int) ~ Bool {
 			return @level = level & @type <> StreamParser->Type->OBJECT_END & @type <> StreamParser->Type->ARRAY_END;
 		}
 
