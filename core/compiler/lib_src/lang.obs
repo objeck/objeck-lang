@@ -6039,7 +6039,31 @@ each(i : cities) {
 		@return true if equal, false otherwise
 		~#
 		method : public : Equals(rhs : String) ~ Bool {
-			return Compare(rhs->As(System.Compare)) = 0;
+			if(@pos <> rhs->Size()) {
+				return false;
+			};
+
+			start := 0;
+			end := @pos - 1;
+
+			while(start <= end) {
+				a := @string[start];
+				b := rhs->Get(start);
+				if(a <> b) {
+					return false;
+				}
+
+				a := @string[end];
+				b := rhs->Get(end);
+				if(a <> b) {
+					return false;
+				}
+
+				start += 1;
+				end -= 1;
+			};
+
+			return true;
 		}
 
 		#~
@@ -6063,16 +6087,28 @@ each(i : cities) {
 		@return true if equal, false otherwise
 		~#
 		method : public : EqualsIgnoreCase(rhs : String) ~ Bool {
-			if(rhs->Size() <> @pos) {
+			if(@pos <> rhs->Size()) {
 				return false;
 			};
+			
+			start := 0;
+			end := @pos - 1;
 
-			each(i : @pos) {
-				l := @string[i]->ToLower();
-				r := rhs->Get(i)->ToLower();
-				if(l <> r) {
+			while(start <= end) {
+				a := @string[start]->ToLower();
+				b := rhs->Get(start)->ToLower();
+				if(a <> b) {
 					return false;
-				};
+				}
+
+				a := @string[end]->ToLower();
+				b := rhs->Get(end)->ToLower();
+				if(a <> b) {
+					return false;
+				}
+
+				start += 1;
+				end -= 1;
 			};
 
 			return true;
@@ -6099,18 +6135,6 @@ each(i : cities) {
 		~#
 		method : public : HashID() ~ Int {
 			STRING_HASH_ID;
-#~		
-		method : public : native : HashID() ~ Int {
-
-			# djb2 hash			
-			hash := 5381;
-			
-			each(i : @pos) {
-				hash := ((hash << 5) + hash) + @string[i];				
-			};
-			
-			return hash;
-~#			
 		}
 
 		#~
