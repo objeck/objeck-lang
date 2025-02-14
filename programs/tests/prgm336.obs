@@ -121,6 +121,12 @@ class StreamParser {
 					while(@cur_char <> '"') {
 						string_buffer->Append(@cur_char);
 						NextChar();
+
+						if(@cur_char = '\\') {
+							NextChar();
+							string_buffer->Append(@cur_char);
+							NextChar();
+						};
 					};
 					NextChar();
 					
