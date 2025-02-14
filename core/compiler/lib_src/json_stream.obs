@@ -85,7 +85,7 @@ stream->Close();
 
 		#~
 		Find element by name
-		@param element by name
+		@param name element by name
 		@return true if found, false otherwise
 		~#
 		method : public : FindElement(name : String) ~ Bool {
@@ -100,7 +100,7 @@ stream->Close();
 
 		#~
 		Find element by name
-		@param element by name
+		@param name element by name
 		@param level element level
 		@return true if found, false otherwise
 		~#
@@ -116,7 +116,7 @@ stream->Close();
 
 		#~
 		Find element by type
-		@param element by type
+		@param type element by type
 		@return true if found, false otherwise
 		~#
 		method : public : FindElement(type : StreamParser->Type) ~ Bool {
@@ -131,7 +131,8 @@ stream->Close();
 
 		#~
 		Find element by type
-		@param element by type
+		@param type element by type
+		@param level element level
 		@return true if found, false otherwise
 		~#
 		method : public : FindElement(type : StreamParser->Type, level : Int) ~ Bool {
