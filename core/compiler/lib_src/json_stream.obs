@@ -1,6 +1,6 @@
 #~~
 Stream JSON parser
-Copyright (c) 2024
+Copyright (c) 2025
 Music: Yo-Yo Ma, Beethoven for Three
 ~~#
 
@@ -12,17 +12,19 @@ bundle Data.JSON.Stream {
 	Event driven stream JSON parser
 
 	```
-parser := StreamParser->New(FileReader->New(args[0]));
-while(parser->More()) {
-  type_name := parser->GetTypeName();
-  type_value := parser->GetTypeValue();
-  level := parser->GetLevel();
+stream := FileReader->New(args[0]);
+parser := StreamParser->New(stream);
 
-  "{$level}: {$type_name} => '{$type_value}'"->PrintLine();
-  "---"->PrintLine();
-
-  parser->Next();
+done := false;
+while(parser->Next() & <>done) {
+  if(parser->GetLevel() = 4 & parser->GetTypeValue()->Equals("Name")) {
+    parser->Next();
+    parser->GetTypeValue()->PrintLine();
+    done := true;
+  };
 };
+
+stream->Close();
 	```
 	~#
 	class StreamParser {
@@ -66,8 +68,9 @@ while(parser->More()) {
 			if(stream_str <> Nil) {
 				@stream := stream_str->ToCharArray();
 				@stream_position := 0;
-
-				@cur_char := @stream[@stream_position];
+				if(@stream->Size() > 0) {
+					@cur_char := @stream[@stream_position];
+				};
 			}
 			else {
 				@cur_char := '\0';
@@ -154,7 +157,7 @@ while(parser->More()) {
 						string_buffer := Nil;
 					};
 				}
-				else if(@cur_char->IsDigit() | (num_buffer <> Nil & @cur_char = '.')) {
+				else if(@cur_char->IsDigit() | @cur_char = '-' | @cur_char = '.') {
 					if(string_buffer = Nil) {
 						if(num_buffer = Nil) {
 							num_buffer := String->New();
@@ -194,6 +197,7 @@ while(parser->More()) {
 						};
 					}
 					else {
+# @cur_char->PrintLine();						
 						if(@cur_char <> ',' & @cur_char <> ':') {
 							SetError("expected : [':' or ',' or '\"']")
 						};	
@@ -337,18 +341,12 @@ while(parser->More()) {
 		}
 
 		#~
-		Advances the the next JSON token if one exists
-		@return current parse level
-		~#
-		method : public : Next() ~ Nil {
-			@is_delim := false;
-		}
-
-		#~
 		Checks for the next JSON token
 		@return true if next token exists, false otherwise
 		~#
-		method : public : More() ~ Bool {
+		method : public : Next() ~ Bool {
+			@is_delim := false;
+
 			if(@cur_char = '\0') {
 				return false;
 			};
@@ -378,8 +376,9 @@ while(parser->More()) {
 				if(stream_str <> Nil) {
 					@stream := stream_str->ToCharArray();
 					@stream_position := 0;
-
-					@cur_char := @stream[@stream_position];
+					if(@stream->Size() > 0) {
+						@cur_char := @stream[@stream_position];
+					};
 				}
 				else {
 					@cur_char := '\0';
