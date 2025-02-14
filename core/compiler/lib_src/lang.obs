@@ -768,7 +768,7 @@ bundle System {
 		@ignore-params
 		@return lower-case representation
 		~#
-		function : native : ToLower(c : Char) ~ Char {
+		function : ToLower(c : Char) ~ Char {
 			if(c >= 'A' & c <= 'Z') {
 				return c + 32;
 			};
