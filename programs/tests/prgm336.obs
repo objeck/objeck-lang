@@ -45,18 +45,14 @@ class StreamParser {
 
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
-			stream := FileReader->New(args[0]);
-			
-			parser := StreamParser->New(stream);
+			parser := StreamParser->New(FileReader->New(args[0]));
 			while(parser->More()) {
 				type_name := parser->GetTypeName();
 				type_value := parser->GetTypeValue();
 				level := parser->GetLevel();
 
-				if(level = 2 & parser->GetType() <> StreamParser->Type->OBJECT_START) {
-					"{$level}: {$type_name} => '{$type_value}'"->PrintLine();
-					"---"->PrintLine();
-				};
+				"{$level}: {$type_name} => '{$type_value}'"->PrintLine();
+				"---"->PrintLine();
 
 				parser->Next();
 			};
