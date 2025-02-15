@@ -4,7 +4,7 @@ call deploy_windows.cmd x64 deploy %1
 call deploy_windows.cmd arm64 deploy %1
 
 REM build LSP
-if [%1] NEQ [deploy] goto end
+if [%2] NEQ [deploy] goto end
 	setlocal
 	rmdir /q /s "%USERPROFILE%\Documents\Objeck-Build\objeck-lsp"
 	mkdir "%USERPROFILE%\Documents\Objeck-Build\objeck-lsp"
