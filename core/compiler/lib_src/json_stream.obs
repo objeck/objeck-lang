@@ -37,7 +37,8 @@ stream->Close();
 		@input : InputStream;
 
 		@stream : Char[];
-		@stream_position : Int;
+		@stream_offset : Int;
+		@stream_line : Int;
 		@cur_char : Char;
 
 		@level : Int;
@@ -46,6 +47,8 @@ stream->Close();
 		@is_delim : Bool;
 		@type : StreamParser->Type;
 		@value : String;
+
+		@is_debug : Bool;
 
 		#~
 		Stream JSON type
@@ -70,12 +73,15 @@ stream->Close();
 		New(input : InputStream) {
 			@input := input;
 
+			# @is_debug := true;
+
 			stream_str := @input->ReadLine();
 			if(stream_str <> Nil) {
+				@stream_line += 1;
 				@stream := stream_str->ToCharArray();
-				@stream_position := 0;
+				@stream_offset := 0;
 				if(@stream->Size() > 0) {
-					@cur_char := @stream[@stream_position];
+					@cur_char := @stream[@stream_offset];
 				};
 			}
 			else {
@@ -149,7 +155,11 @@ stream->Close();
 			string_buffer : String;
 			num_buffer : String;		
 
-			while(@cur_char <> '\0' & <>@is_delim & @level > -1) {
+			if(@level < 0) {
+				SetError("invalid json");
+			};
+
+			while(@cur_char <> '\0' & <>@is_delim) {
 				Whitespace();
 
 				if(@cur_char = '{' ) {
@@ -418,12 +428,19 @@ stream->Close();
 
 			@is_delim := false;
 			Transition();
-			
-			return @cur_char <> ',' & @cur_char <> '\0';
+
+			if(@is_debug) {
+				"stream_line={$@stream_line}, stream_offset={$@stream_offset}, cur_char='{$@cur_char}'"->PrintLine();
+				debug_str := @stream->ToString()->Trim();
+				"[{$debug_str}]"->PrintLine();
+				"---"->PrintLine();
+			};
+
+			return @cur_char <> '\0';
 		}
 
 		method : SetError(message : String) ~ Nil {
-			">>> {$message} <<<"->PrintLine();
+			">>> ({$@stream_line},{$@stream_offset}) {$message} <<<"->PrintLine();
 			@cur_char := '\0';
 			@skip_next := true;
 		}
@@ -435,16 +452,17 @@ stream->Close();
 		}
 
 		method : native : NextChar() ~ Nil {
-			if(@stream_position < @stream->Size()) {
-				@cur_char := @stream[@stream_position];
+			if(@stream_offset < @stream->Size()) {
+				@cur_char := @stream[@stream_offset];
 			}
 			else {
 				stream_str := @input->ReadLine();
 				if(stream_str <> Nil) {
+					@stream_line += 1;
 					@stream := stream_str->ToCharArray();
-					@stream_position := 0;
+					@stream_offset := 0;
 					if(@stream->Size() > 0) {
-						@cur_char := @stream[@stream_position];
+						@cur_char := @stream[@stream_offset];
 					};
 				}
 				else {
@@ -452,7 +470,7 @@ stream->Close();
 				};
 			};
 
-			@stream_position += 1;
+			@stream_offset += 1;
 		}
 
 		method : native : Match(string : String) ~ Bool {
