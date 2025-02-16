@@ -3,7 +3,8 @@ use Collection, System.IO.Filesystem, Data.JSON.Stream;
 class Test {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
-			stream := FileReader->New(args[0]);
+			filename := args[0];
+			stream := FileReader->New(filename);
 			if(stream->IsOpen()) {
 				parser := StreamParser->New(stream);
 
@@ -19,9 +20,11 @@ class Test {
 				while(<>found & parser->Next());
 
 				parser->GetTypeValue()->PrintLine();
-			};
-			
-			stream->Close();
+				stream->Close();
+			}
+			else {
+				">>> unable to open file: {$filename} <<<"->ErrorLine();
+			};	
 		}
 		else {
 			">>> usage: filename <<<"->ErrorLine();
