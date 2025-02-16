@@ -16,10 +16,13 @@
 
 * v2025.2.x 
     * Support for the Open AI's Realtime API
-    * Performance testing for Llama and Mistra Hexagon NPU execution
-    * Add OpenAI Vision support
+    * Hexagon NPU support for Llama and Mistra
 
-* <ins>v2025.2.0</ins>
+* <ins>v2025.2.1</ins>
+    * Improved support for JSON stream parsing ⭐
+    * Faster 'String' compare 🚄
+
+* v2025.2.0
     * Add WebSocket support🔌
     * Performance testing for Llama and Mistra CPU execution 🧮 
     * Improve SDL2 stability for Windows on arm64 🎮 
@@ -40,18 +43,6 @@
       * Image library
       * Mixer library
       * TIFF library
-    
-* v2025.1.0 (basic Windows on arm64 port)
-  * Basic port to Windows on arm64  🚢
-    * Enable compiler virtual machine, debugger, and REPL shell 
-    * Port arm64 JIT from macOS/Linux 
-    * Test and debug garbage collection issues
-  * Port supporting libraries to Windows on arm64 📚
-    * OpenSSL and encryption 
-    * ODBC database access 
-    * Language server protocol support 
-    * 2D matrix algebra via Eigen 
-
 
 ## Examples
 
