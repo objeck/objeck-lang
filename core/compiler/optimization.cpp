@@ -1107,18 +1107,11 @@ IntermediateBlock* ItermediateOptimizer::InlineMethod(IntermediateBlock* inputs)
           case LOAD_FLOAT_VAR:
           case STOR_FLOAT_VAR:
           case COPY_FLOAT_VAR:
-            if(mthd_called_instr->GetOperand2() == LOCL) {
-              outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, mthd_called_instr->GetType(),
-                mthd_called_instr->GetOperand() + local_instr_offset, LOCL));
-            }
-            else if(mthd_called_instr->GetOperand2() == INST) {
-              outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, mthd_called_instr->GetType(),
-                mthd_called_instr->GetOperand(), INST));
-            }
-            else {
-              outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, mthd_called_instr->GetType(),
-                mthd_called_instr->GetOperand(), CLS));
-            }
+#ifdef _DEBUG
+            assert(mthd_called_instr->GetOperand2() == LOCL);
+#endif
+            outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, mthd_called_instr->GetType(),
+                                    mthd_called_instr->GetOperand() + local_instr_offset, mthd_called_instr->GetOperand2()));
             break;
 
           case LOAD_INST_MEM:
