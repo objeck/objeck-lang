@@ -7864,7 +7864,9 @@ bundle System.IO {
 
 			if(@handle <> 0) {
 				return Pipe->New(name);
-			}
+			};
+
+			return Nil;
 		}
 
 		#~
@@ -7876,7 +7878,9 @@ bundle System.IO {
 
 			if(@handle <> 0) {
 				return Pipe->New(name);
-			}
+			};
+
+			return Nil;
 		}
 
 		#~
