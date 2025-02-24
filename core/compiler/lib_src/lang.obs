@@ -7867,6 +7867,12 @@ bundle System.IO {
 			Parent();
 
 			@name := name;
+			if(mode = Pipe->CREATE) {
+				PIPE_CREATE;
+			}
+			else {
+				PIPE_OPEN;
+			};
 			@mode := mode;
 		}
 

@@ -3,7 +3,7 @@ use System.IO;
 class Test {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
-			p := Pipe->Create("foo-bar");
+			p := Pipe->New("foo-bar", Pipe->Mode->CREATE);
 			p->WriteByte(101);
 			p->Close();
 		};
