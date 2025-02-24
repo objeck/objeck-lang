@@ -14,9 +14,13 @@
 
 ## Releases
 
-* v2025.2.x 
+* v2025.3.x 
     * Support for the Open AI's Realtime API
     * Hexagon NPU support for Llama and Mistra
+
+* v2025.2.2
+    * Bug fixes
+    * Documentation 
 
 * <ins>v2025.2.1</ins>
     * Improved support for JSON stream parsing ⭐
