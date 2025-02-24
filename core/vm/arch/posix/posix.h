@@ -204,8 +204,10 @@ class File {
  ****************************/
 class Pipe {
 public:
-  static bool Create(const char* name, int& server_pipe) {
-    server_pipe = socket(AF_UNIX, SOCK_STREAM, 0);
+  static bool Create(const char* name, int& client_pipe) {
+    client_pipe = 0;
+
+    int server_pipe = socket(AF_UNIX, SOCK_STREAM, 0);
     if(server_pipe < 0) {
       return false;
     }
@@ -222,10 +224,6 @@ public:
       return false;
     }
 
-    return true;
-  }
-  
-  static bool OpenServer(int server_pipe, int &client_pipe) {
     if(listen(server_pipe, 4) < 0){ 
       return false;
     }
@@ -243,7 +241,7 @@ public:
     return true;
   }
   
-  static bool OpenClient(const char* name, int& client_pipe) {
+  static bool Open(const char* name, int& client_pipe) {
     client_pipe = socket(AF_UNIX, SOCK_STREAM, 0);
     if(client_pipe < 0) {
       return false;
