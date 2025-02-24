@@ -7862,6 +7862,7 @@ bundle System.IO {
 		#~
 		Creates a new pipe or attaches to an existing one
 		@param name pipe path and name. For POSIX the base directory is <pre>/tmp/</pre> for Windows <pre>\\.\pipe\</pre>
+		@param mode create or open pipe
 		~#
 		New(name : String, mode : Mode) {
 			Parent();
