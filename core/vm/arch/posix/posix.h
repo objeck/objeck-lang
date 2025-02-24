@@ -211,6 +211,7 @@ public:
     if(server_pipe < 0) {
       client_pipe = 0;
       close(server_pipe);
+      return true;
     }
 
     unlink(name);
@@ -224,11 +225,13 @@ public:
     if(bind(server_pipe, (struct sockaddr*) &server_addr, len) < 0) {
       client_pipe = 0;
       close(server_pipe);
+      return true;
     }
 
     if(listen(server_pipe, 4) < 0){ 
       client_pipe = 0;
       close(server_pipe);
+      return true;
     }
     
     struct sockaddr_un client_addr;
@@ -239,6 +242,7 @@ public:
     if(client_pipe < 0) {
       client_pipe = 0;
       close(server_pipe);
+      return true;
     }
     close(server_pipe);
     
