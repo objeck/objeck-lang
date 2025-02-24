@@ -293,35 +293,51 @@ class File {
 class Pipe {
 public:
   static bool Create(const char* name, HANDLE& pipe) {
-    pipe = CreateNamedPipe(name, PIPE_ACCESS_DUPLEX, PIPE_TYPE_BYTE |
-                           PIPE_READMODE_BYTE | PIPE_WAIT, PIPE_UNLIMITED_INSTANCES, 
-                           1 * 512 * 1024, // output buffer size
-                           4 * 512 * 1024, // input buffer size
+    pipe = CreateNamedPipe(name, 
+                           PIPE_ACCESS_DUPLEX, 
+                           PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT, 
+                           PIPE_UNLIMITED_INSTANCES,
+                           4096, // output buffer size
+                           4096, // input buffer size
                            0, nullptr);
     if(pipe == INVALID_HANDLE_VALUE) {
       return false;
     }
 
-    return true;
-  }
-  
-  static bool OpenClient(const char* name, HANDLE& pipe) {
-    pipe = CreateFile(name, GENERIC_READ | GENERIC_WRITE, 0, nullptr, OPEN_EXISTING, 0, nullptr);
-    if(pipe == INVALID_HANDLE_VALUE) {
-      return false;
-    }
-
-    return true;
-  }
-
-  static bool OpenServer(HANDLE pipe) {
-    if(ConnectNamedPipe(pipe, nullptr)) {
+    if(ConnectNamedPipe(pipe, NULL) ? TRUE : (GetLastError() == ERROR_PIPE_CONNECTED)) {
       return true;
     }
-
-    return false;
+    else {
+      CloseHandle(pipe);
+      return false;
+    }
   }
   
+  static bool Open(const char* name, HANDLE& pipe) {
+    while(true) {
+      pipe = CreateFile(
+        name,
+        GENERIC_READ | GENERIC_WRITE,
+        0,
+        nullptr,
+        OPEN_EXISTING,
+        0,
+        nullptr);
+
+      if(pipe != INVALID_HANDLE_VALUE) {
+        break;
+      }
+
+      // 15 second wait
+      if(GetLastError() != ERROR_PIPE_BUSY || !WaitNamedPipe(name, 15000)) {
+        pipe = 0;
+        break;
+      }
+    }
+
+    return true;
+  }
+
   static bool Close(HANDLE pipe) {
     if(CloseHandle(pipe)) {
       return false;
@@ -361,7 +377,7 @@ public:
   static bool WriteByte(char value, HANDLE pipe) {
     DWORD written;
     if(WriteFile(pipe, &value, 1, &written, nullptr)) {
-      return true;
+      return written == 1;
     }
 
     return false;
