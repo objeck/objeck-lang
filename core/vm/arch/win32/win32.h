@@ -305,7 +305,7 @@ public:
       return false;
     }
 
-    if(ConnectNamedPipe(pipe, NULL) ? TRUE : (GetLastError() == ERROR_PIPE_CONNECTED)) {
+    if(ConnectNamedPipe(pipe, nullptr) ? TRUE : (GetLastError() == ERROR_PIPE_CONNECTED)) {
       return true;
     }
     else {
