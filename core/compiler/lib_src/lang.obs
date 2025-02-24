@@ -7848,7 +7848,7 @@ bundle System.IO {
 	~#
 	class Pipe implements InputStream, OutputStream {
 		@handle : Int;
-		@mode : Int;
+		@mode : Pipe->Mode;
 		@name : String;
 
 		#~
@@ -7864,11 +7864,11 @@ bundle System.IO {
 		@param name pipe path and name. For POSIX the base directory is <pre>/tmp/</pre> for Windows <pre>\\.\pipe\</pre>
 		@param mode create or open pipe
 		~#
-		New(name : String, mode : Mode) {
+		New(name : String, mode : Pipe->Mode) {
 			Parent();
 
 			@name := name;
-			if(mode = Pipe->CREATE) {
+			if(mode = Pipe->Mode->CREATE) {
 				PIPE_CREATE;
 			}
 			else {
