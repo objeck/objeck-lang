@@ -7849,6 +7849,11 @@ bundle System.IO {
 	class Pipe implements InputStream, OutputStream {
 		@handle : Int;
 		@name : String;
+
+		New : private (name : String) {
+			Parent();
+			@name := name;
+		}
 		
 		#~
 		Create a new pipe 
@@ -7856,18 +7861,24 @@ bundle System.IO {
 		~#
 		function : Create(name : String) ~ Pipe {
 			Parent();
-			@name := name;
 			PIPE_CREATE;
+
+			if(@handle <> 0) {
+				return Pipe->New(name);
+			}
 		}
-		
+
 		#~
 		Connect to an existing pipe 
 		@param name pipe path and name. For POSIX the base directory is <pre>/tmp/</pre> for Windows <pre>\\.\pipe\</pre>
 		~#
 		function : Open(name : String) ~ Pipe {
 			Parent();
-			@name := name;
 			PIPE_OPEN;
+
+			if(@handle <> 0) {
+				return Pipe->New(name);
+			}
 		}
 
 		#~
