@@ -2794,12 +2794,6 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
       NextToken();
       break;
 
-    case PIPE_CONNECT:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                               instructions::PIPE_CONNECT);
-      NextToken();
-      break;
-
     case PIPE_IN_BYTE:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::PIPE_IN_BYTE);
