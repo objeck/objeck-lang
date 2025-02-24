@@ -5336,22 +5336,12 @@ bool TrapProcessor::PipeClose(StackProgram* program, size_t* inst, size_t*& op_s
 {
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(instance && instance[0]) {
-    // server pipe
-    if((int)instance[1] == -3 /* Mode->CREATE */) {
 #ifdef _WIN32
-      const HANDLE pipe = (HANDLE)instance[0];
+    const HANDLE pipe = (HANDLE)instance[0];
 #else
-      const int pipe = (int)instance[0];
+    const int pipe = (int)instance[0];
 #endif
-      Pipe::Close(pipe);
-    }
-    // client pipe
-    else {
-#ifdef _WIN32
-      const HANDLE pipe = (HANDLE)instance[0];
-#else
-      const int pipe = (int)instance[0];
-#endif
+    if(pipe != 0) {
       Pipe::Close(pipe);
     }
   }
