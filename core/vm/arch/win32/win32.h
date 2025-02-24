@@ -299,7 +299,8 @@ public:
                            PIPE_UNLIMITED_INSTANCES,
                            4096, // output buffer size
                            4096, // input buffer size
-                           0, nullptr);
+                           0, 
+                           nullptr);
     if(pipe == INVALID_HANDLE_VALUE) {
       return false;
     }

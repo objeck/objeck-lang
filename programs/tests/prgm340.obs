@@ -2,9 +2,9 @@ use System.IO;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		p := Pipe->New("mynamedpipe", Pipe->Mode->CREATE);
+		p := Pipe->New("mynamedpipe", Pipe->Mode->OPEN);
 		if(p->IsOpen()) {
-			p->ReadLine()->PrintLine();
+			p->WriteString("Hello World!\r\n");
 			p->Close();
 		};
 	}
