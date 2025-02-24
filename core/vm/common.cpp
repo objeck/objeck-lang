@@ -5282,11 +5282,10 @@ bool TrapProcessor::FileRewind(StackProgram* program, size_t* inst, size_t* &op_
 // pipe operations
 bool TrapProcessor::PipeCreate(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) 
 {
-  const int mode = (int)PopInt(op_stack, stack_pos);
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
-  if(instance && array && mode == -3 /* Mode->CREATE */) {
+  if(instance && array) {
     const wchar_t* name = (wchar_t*)(((size_t*)array[0]) + 3);
 
 #ifdef _WIN32
