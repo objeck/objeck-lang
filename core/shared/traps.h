@@ -139,7 +139,6 @@ namespace instructions {
     // pipe i/o
     PIPE_OPEN,
     PIPE_CREATE,
-    PIPE_CONNECT,
     PIPE_IN_BYTE,
     PIPE_OUT_BYTE,
     PIPE_IN_BYTE_ARY,

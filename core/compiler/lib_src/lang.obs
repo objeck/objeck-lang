@@ -7848,7 +7848,6 @@ bundle System.IO {
 	~#
 	class Pipe implements InputStream, OutputStream {
 		@handle : Int;
-		@mode : Pipe->Mode;
 		@name : String;
 		
 		#~
@@ -7861,21 +7860,23 @@ bundle System.IO {
 		}
 
 		#~
-		Create a new pipe for either a client or server
-		@param name pipe path and name. <p>For POSIX the base direcotry is <pre>/tmp/</pre> for Windows <pre>\\.\pipe\</pre></p>
-		@param mode <pre>Mode->OPEN</pre> for existing pipe or <pre>Mode->CREATE</pre> to create a new pipe
+		Create a new pipe 
+		@param name pipe path and name. For POSIX the base directory is <pre>/tmp/</pre> for Windows <pre>\\.\pipe\</pre>
 		~#
-		New(name : String, mode : Pipe->Mode) {
+		Create(name : String) {
 			Parent();
 			@name := name;
-			@mode := mode;
+			PIPE_CREATE;
+		}
 
-			if(mode = Pipe->Mode->CREATE) {
-				PIPE_CREATE;
-			}
-			else {
-				PIPE_OPEN;
-			};
+		#~
+		Connect to an existing pipe 
+		@param name pipe path and name. For POSIX the base directory is <pre>/tmp/</pre> for Windows <pre>\\.\pipe\</pre>
+		~#
+		function : Create(name : String) ~ Pipe {
+			Parent();
+			@name := name;
+			PIPE_OPEN;
 		}
 
 		#~
@@ -7892,14 +7893,6 @@ bundle System.IO {
 		~#
 		method : public : IsOpen() ~ Bool {
 			return @handle = 0 ? false : true;
-		}
-
-		#~
-		Wait for client connection
-		@return true when connected
-		~#
-		method : public : Connect() ~ Bool {
-			PIPE_CONNECT;
 		}
 
 		#~

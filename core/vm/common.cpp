@@ -2317,9 +2317,6 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
   case PIPE_CREATE:
     return PipeCreate(program, inst, op_stack, stack_pos, frame);
 
-  case PIPE_CONNECT:
-    return PipeConnect(program, inst, op_stack, stack_pos, frame);
-
   case PIPE_IN_BYTE:
     return PipeInByte(program, inst, op_stack, stack_pos, frame);
 
@@ -5303,37 +5300,6 @@ bool TrapProcessor::PipeCreate(StackProgram* program, size_t* inst, size_t*& op_
     if(Pipe::Create(filename.c_str(), pipe)) {
       instance[0] = (size_t)pipe;
     }
-  }
-  
-  return true;
-}
-
-bool TrapProcessor::PipeConnect(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) 
-{
-  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  if(instance && instance[0] && (int)instance[1] == -3 /* Mode->CREATE */) {
-#ifdef _WIN32
-    const HANDLE pipe = (HANDLE)instance[0];
-    if(Pipe::OpenServer(pipe)) {
-      PushInt(1, op_stack, stack_pos);
-    }
-    else {
-      PushInt(0, op_stack, stack_pos);
-    }
-#else
-    int client_pipe;
-    const int server_pipe = (int)instance[0];
-    if(Pipe::OpenServer(server_pipe, client_pipe)) {
-      instance[0] = client_pipe;
-      PushInt(1, op_stack, stack_pos);
-    }
-    else {
-      PushInt(0, op_stack, stack_pos);
-    }
-#endif
-  }
-  else {
-    PushInt(0, op_stack, stack_pos);
   }
   
   return true;

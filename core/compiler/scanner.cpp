@@ -271,7 +271,6 @@ void Scanner::LoadKeywords()
   ident_map[L"FILE_COPY"] = FILE_COPY;
   ident_map[L"PIPE_OPEN"] = PIPE_OPEN;
   ident_map[L"PIPE_CREATE"] = PIPE_CREATE;
-  ident_map[L"PIPE_CONNECT"] = PIPE_CONNECT;
   ident_map[L"PIPE_IN_BYTE"] = PIPE_IN_BYTE;
   ident_map[L"PIPE_OUT_BYTE"] = PIPE_OUT_BYTE;
   ident_map[L"PIPE_IN_BYTE_ARY"] = PIPE_IN_BYTE_ARY;
@@ -577,7 +576,6 @@ void Scanner::CheckIdentifier(int index)
     case FILE_COPY:
     case PIPE_OPEN:
     case PIPE_CREATE:
-    case PIPE_CONNECT:
     case PIPE_IN_BYTE:
     case PIPE_OUT_BYTE:
     case PIPE_IN_BYTE_ARY:
