@@ -4,6 +4,8 @@ OBJ_LIBS=sys.a
 LOGGER_PATH=../shared
 EXE=sys_obc
 
+%.o : %.mod
+
 $(EXE): $(SRC) $(OBJ_LIBS)
 	$(CXX) -m64 -o $(EXE) $(SRC) $(OBJ_LIBS) -lz
 
