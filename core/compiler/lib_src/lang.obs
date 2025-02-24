@@ -7860,7 +7860,6 @@ bundle System.IO {
 		@param name pipe path and name. For POSIX the base directory is <pre>/tmp/</pre> for Windows <pre>\\.\pipe\</pre>
 		~#
 		function : Create(name : String) ~ Pipe {
-			Parent();
 			PIPE_CREATE;
 
 			if(@handle <> 0) {
@@ -7873,7 +7872,6 @@ bundle System.IO {
 		@param name pipe path and name. For POSIX the base directory is <pre>/tmp/</pre> for Windows <pre>\\.\pipe\</pre>
 		~#
 		function : Open(name : String) ~ Pipe {
-			Parent();
 			PIPE_OPEN;
 
 			if(@handle <> 0) {
