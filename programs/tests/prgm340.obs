@@ -2,10 +2,15 @@ use System.IO;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		p := Pipe->New("mynamedpipe", Pipe->Mode->OPEN);
-		if(p->IsOpen()) {
-			p->WriteString("Hello World!\r\n");
-			p->Close();
-		};
+		msg : String;
+		do {
+			p := Pipe->New("mynamedpipe", Pipe->Mode->OPEN);
+			if(p->IsOpen()) {
+				msg := System.IO.Console->ReadLine();
+				p->WriteString(msg);
+				p->Close();
+			};
+		}
+		while(<>msg->Equals("quit"));
 	}
 }
