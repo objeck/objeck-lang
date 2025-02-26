@@ -386,25 +386,16 @@ public:
 
   static std::string ReadString(HANDLE pipe) {
     std::string line;
-
     DWORD read;
-    bool done = false;
     char buffer[MID_BUFFER_MAX];
-    do {
-      if(ReadFile(pipe, buffer, MID_BUFFER_MAX - 1, &read, nullptr)) {
-        buffer[read] = '\0';
-        line.append(buffer);
-        done = true;
-      }
-      else if(GetLastError() == ERROR_MORE_DATA) {
-        buffer[read] = '\0';
-        line.append(buffer);
-      }
-      else {
-        return "";
-      }
-    } 
-    while(!done);
+
+    if(ReadFile(pipe, buffer, MID_BUFFER_MAX - 1, &read, nullptr)) {
+      buffer[read] = '\0';
+      line.append(buffer);
+    }
+    else {
+      return "";
+    }
 
     return line;
   }

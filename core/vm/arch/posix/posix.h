@@ -295,23 +295,15 @@ public:
   
   static std::string ReadString(int pipe) {
     std::string output;
-
-    bool done = false;
     char buffer[MID_BUFFER_MAX];
-    do {
-      const int count = recv(pipe, buffer, MID_BUFFER_MAX - 1, 0);
-      if(count < 0) {
-        return "";
-      }
-
-      if(count < MID_BUFFER_MAX - 1) {
-        done = true;
-      }
-
-      buffer[count] = '\0';
-      output.append(buffer);
-    } while(!done);
-
+   
+    const int count = recv(pipe, buffer, MID_BUFFER_MAX - 1, 0);
+    if(count < 0) {
+      return "";
+    }
+    buffer[count] = '\0';
+    output.append(buffer);
+    
     return output;
   }
   
