@@ -5512,6 +5512,7 @@ bool TrapProcessor::PipeInString(StackProgram* program, size_t* inst, size_t*& o
 {
   const size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   const size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+
   if(array && instance && instance[0]) {
 #ifdef _WIN32
     HANDLE pipe = (HANDLE)instance[0];
@@ -5522,12 +5523,11 @@ bool TrapProcessor::PipeInString(StackProgram* program, size_t* inst, size_t*& o
 #endif
     
     if(!buffer.empty()) {
-      // copy and remove file BOM UTF (8, 16, 32)
+      // copy content
       std::wstring in = BytesToUnicode(buffer);
-      if(in.size() > 0 && (in[0] == (wchar_t)0xFEFF || in[0] == (wchar_t)0xFFFE || in[0] == (wchar_t)0xFFFE0000 || in[0] == (wchar_t)0xEFBBBF)) {
-        in.erase(in.begin(), in.begin() + 1);
+      while(!in.empty() && (in.back() == L'\r' || in.back() == L'\n')) {
+        in.pop_back();
       }
-      
       wchar_t* out = (wchar_t*)(array + 3);
 #ifdef _WIN32
       wcsncpy_s(out, array[0] + 1, in.c_str(), in.size());

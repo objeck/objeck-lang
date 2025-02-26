@@ -3413,7 +3413,7 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, b
     // cannot create an instance of a virtual class
     if((method->GetMethodType() == NEW_PUBLIC_METHOD || method->GetMethodType() == NEW_PRIVATE_METHOD) &&
        klass->IsVirtual() && current_class->GetParent() != klass) {
-      ProcessError(static_cast<Expression*>(method_call), L"Cannot create an instance of a virtual class or interface");
+      ProcessError(static_cast<Expression*>(method_call), L"Cannot create an instance of a virtual class or interface, check the constructor");
     }
     
     // associate method
@@ -3702,7 +3702,7 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
     // cannot create an instance of a virtual class
     if((lib_method->GetMethodType() == NEW_PUBLIC_METHOD ||
        lib_method->GetMethodType() == NEW_PRIVATE_METHOD) && is_virtual) {
-      ProcessError(static_cast<Expression*>(method_call), L"Cannot create an instance of a virtual class or interface");
+      ProcessError(static_cast<Expression*>(method_call), L"Cannot create an instance of a virtual class or interface, check the constructor");
     }
 
     // associate method
