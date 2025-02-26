@@ -411,7 +411,7 @@ public:
 
   static bool WriteString(const std::string& line, HANDLE pipe) {
     DWORD written;
-    const DWORD len = (DWORD)line.size() + 1;
+    const DWORD len = (DWORD)line.size();
     if(WriteFile(pipe, line.c_str(), len, &written, nullptr)) {
       return written == len;
     }
