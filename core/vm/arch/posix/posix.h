@@ -316,7 +316,7 @@ public:
   }
   
   static bool WriteString(const std::string& line, int pipe) {
-    const size_t num = line.size() + 1;
+    const size_t num = line.size();
     return send(pipe, line.c_str(), num, 0) == (int)num;
   }
 };
