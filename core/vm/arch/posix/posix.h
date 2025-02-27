@@ -209,9 +209,8 @@ public:
 
     int server_pipe = socket(AF_UNIX, SOCK_STREAM, 0);
     if(server_pipe < 0) {
-      client_pipe = 0;
       close(server_pipe);
-      return true;
+      return false;
     }
 
     unlink(name);
@@ -223,15 +222,13 @@ public:
     
     const int len = sizeof(server_addr);
     if(bind(server_pipe, (struct sockaddr*) &server_addr, len) < 0) {
-      client_pipe = 0;
       close(server_pipe);
-      return true;
+      return false;
     }
 
     if(listen(server_pipe, 4) < 0){ 
-      client_pipe = 0;
       close(server_pipe);
-      return true;
+      return false;
     }
     
     struct sockaddr_un client_addr;
@@ -242,7 +239,7 @@ public:
     if(client_pipe < 0) {
       client_pipe = 0;
       close(server_pipe);
-      return true;
+      return false;
     }
     close(server_pipe);
     
@@ -262,6 +259,7 @@ public:
     
     const int len = sizeof(client_addr);
     if(connect(client_pipe, (struct sockaddr*)&client_addr, len) < 0) {
+		close(client_pipe);
       return false;
     }
     
