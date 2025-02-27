@@ -63,7 +63,6 @@ union PropValue {
 
 class ItermediateOptimizer {
   IntermediateProgram* program;
-  std::set<std::wstring> can_inline;
   int optimization_level;
   int unconditional_label;
   IntermediateMethod* current_method;
