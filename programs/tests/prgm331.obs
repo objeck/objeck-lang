@@ -5,7 +5,7 @@ class Test {
 		text := "Hello World, we in here!"; # FileReader->ReadFile("lorem-2.txt");
 		text_size := text->Size();
 		"text-size={$text_size}\n---"->PrintLine();
-
+		
 		client := SecureWebSocket->New(Url->New("wss://echo.websocket.org"));
 		if(client->Connect()) {
 			read := client->ReadSocketText();
