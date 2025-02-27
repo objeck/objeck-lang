@@ -209,7 +209,6 @@ public:
 
     int server_pipe = socket(AF_UNIX, SOCK_STREAM, 0);
     if(server_pipe < 0) {
-      close(server_pipe);
       return false;
     }
 
