@@ -331,8 +331,9 @@ public:
 
       // 15 second wait
       if(GetLastError() != ERROR_PIPE_BUSY || !WaitNamedPipe(name, 15000)) {
+        CloseHandle(pipe);
         pipe = 0;
-        break;
+        return false;
       }
     }
 
