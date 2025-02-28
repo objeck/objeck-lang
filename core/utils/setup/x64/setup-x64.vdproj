@@ -2049,6 +2049,12 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_C5B1029B0D8D4DC78E21D6DFFCE70B3C"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_C6670D98BE824021B534D1F06F2B3CB6"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -2194,6 +2200,12 @@
         "Entry"
         {
         "MsmKey" = "8:_D1AA3DA55D3640E19B56663388C98677"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_D1DA186808B941FBA9BCB307AFD8542F"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -9468,6 +9480,26 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_C5B1029B0D8D4DC78E21D6DFFCE70B3C"
+            {
+            "SourcePath" = "8:..\\..\\..\\..\\Objeck-Build\\release-x64\\objeck-lang-x64\\bin\\vcruntime140_1.dll"
+            "TargetName" = "8:vcruntime140_1.dll"
+            "Tag" = "8:"
+            "Folder" = "8:_E6C28908273B48D798D53C28D8D21BFF"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_C6670D98BE824021B534D1F06F2B3CB6"
             {
             "SourcePath" = "8:..\\..\\..\\..\\Objeck-Build\\release-x64\\objeck-lang-x64\\lib\\xml.obl"
@@ -9954,6 +9986,26 @@
             "TargetName" = "8:collection-comparevector_h-compare_.html"
             "Tag" = "8:"
             "Folder" = "8:_6215DCD355AE4751A75E2AF410AB14C9"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_D1DA186808B941FBA9BCB307AFD8542F"
+            {
+            "SourcePath" = "8:..\\..\\..\\..\\Objeck-Build\\release-x64\\objeck-lang-x64\\bin\\vcruntime140.dll"
+            "TargetName" = "8:vcruntime140.dll"
+            "Tag" = "8:"
+            "Folder" = "8:_E6C28908273B48D798D53C28D8D21BFF"
             "Condition" = "8:"
             "Transitive" = "11:FALSE"
             "Vital" = "11:TRUE"
@@ -11704,7 +11756,7 @@
         "Name" = "8:Microsoft Visual Studio"
         "ProductName" = "8:Objeck"
         "ProductCode" = "8:{EF8BE4E7-7BE8-41E0-872C-796F388113CC}"
-        "PackageCode" = "8:{C0793398-CA34-49EA-850B-83D24F44A5E7}"
+        "PackageCode" = "8:{970CE047-ACB3-47A6-88F0-04BDB54EE665}"
         "UpgradeCode" = "8:{FAD125F6-CB1B-46F7-91EB-429682D927CB}"
         "AspNetVersion" = "8:"
         "RestartWWWService" = "11:FALSE"
