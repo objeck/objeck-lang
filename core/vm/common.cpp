@@ -5327,6 +5327,9 @@ bool TrapProcessor::PipeOpen(StackProgram* program, size_t* inst, size_t*& op_st
     if(Pipe::Open(filename.c_str(), pipe)) {
       instance[0] = (size_t)pipe;
     }
+    else {
+      instance[0] = 0;
+    }
   }
 
   return true;

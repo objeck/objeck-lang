@@ -284,6 +284,7 @@ class SnippetParser {
 		
 			@buffer := FileReader->ReadFile(file);
 			if(@buffer = Nil) {
+				"Unable to read: '{$file}' ---"->PrintLine();
 				return false;
 			};	
 			@buffer_index := 0;	
