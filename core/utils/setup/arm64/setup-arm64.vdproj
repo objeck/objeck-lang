@@ -285,6 +285,12 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_1642A23525054B67B6F9BCDC5DDA1E03"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_16E811C68C5948B2BCD5240CECD97D17"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -2565,6 +2571,12 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_FCE2E3AF24D74DBFA5F93BDB58892269"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_FD694F6510A14086826A78A349F1F2AD"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -3556,6 +3568,26 @@
             "TargetName" = "8:api.openai.chat-imagequery.html"
             "Tag" = "8:"
             "Folder" = "8:_56DA08123B474052A898F47492F4E319"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_1642A23525054B67B6F9BCDC5DDA1E03"
+            {
+            "SourcePath" = "8:..\\..\\..\\..\\Objeck-Build\\release-arm64\\objeck-lang-arm64\\bin\\vcruntime140_1.dll"
+            "TargetName" = "8:vcruntime140_1.dll"
+            "Tag" = "8:"
+            "Folder" = "8:_A9909F3ABC244363A4F2A197EA1D6551"
             "Condition" = "8:"
             "Transitive" = "11:FALSE"
             "Vital" = "11:TRUE"
@@ -11150,6 +11182,26 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_FCE2E3AF24D74DBFA5F93BDB58892269"
+            {
+            "SourcePath" = "8:..\\..\\..\\..\\Objeck-Build\\release-arm64\\objeck-lang-arm64\\bin\\vcruntime140.dll"
+            "TargetName" = "8:vcruntime140.dll"
+            "Tag" = "8:"
+            "Folder" = "8:_A9909F3ABC244363A4F2A197EA1D6551"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_FD694F6510A14086826A78A349F1F2AD"
             {
             "SourcePath" = "8:..\\..\\..\\..\\Objeck-Build\\release-arm64\\objeck-lang-arm64\\bin\\obb.exe"
@@ -11626,7 +11678,7 @@
         "Name" = "8:Microsoft Visual Studio"
         "ProductName" = "8:Objeck"
         "ProductCode" = "8:{4A50BDFA-9766-41AB-8182-C1990C0259A8}"
-        "PackageCode" = "8:{9807C2C1-930A-4487-B961-E2D37B8DB9E0}"
+        "PackageCode" = "8:{90B6DD29-37EB-4BA8-8015-18902BACE2B7}"
         "UpgradeCode" = "8:{FAD125F6-CB1B-46F7-91EB-429682D927CB}"
         "AspNetVersion" = "8:"
         "RestartWWWService" = "11:FALSE"

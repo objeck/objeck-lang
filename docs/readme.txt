@@ -6,7 +6,7 @@ v2025.2.2
 ---
 Improved named pipe support 🔌
 Updates to the LSP client/server ⌨️
-Windows installers updated 🏗️
+Fixed Windows installer issues with missing DLLs 🏗️
 Error handling bug fixes
 
 v2025.2.1
