@@ -1,21 +1,21 @@
-Websocket support, improved stability, and bug fixes
+v2025.2.2 (February 28, 2025)
+===
+LSP pipe support, improvements to named pipes and error handling bug fixes
+
+v2025.2.2
+---
+Improved named pipe support 🔌
+Updates to the LSP client/server ⌨️
+Windows installers updated 🏗️
+Error handling bug fixes
 
 v2025.2.1
-• Improved support for JSON stream parsing ⭐
-• Faster 'String' compare 🚄
+---
+Improved support for JSON stream parsing ⭐
+Faster 'String' compare 🚄
 
 v2025.2.0
-• Add WebSocket support (done)
-• Performance testing for Llama and Mistra CPU execution 🧮 (done)
-• Improve SDL2 stability for Windows on arm64 🎮 (done)
-• Bug fixes #509 and #510 🐛
-
-v2025.1.1
-• Support for Windows on arm64🦾
-• Windows OpenSSL libraries upgraded to 3.4.0🔒
-• UDP socket support🛜
-• Fixes bugs🪲
-	○ Resolved a compiler bug with linking functions in libraries that returned an array of generic objects
-	○ Fixed SDL2 call to 'GetGlobalMouseState(..)'
-	○ Settled a Gemini issue that expected 'safetySettings' to always be returned in calls to 'GetContent(..)'
-• Fixed broken code examples🩹
+---
+Support for websockets 🛜
+Added support for static binary arrays #509 and #510 ⌨️
+Improved stability for Windows on arm64, specifically for SDL2🦾
