@@ -63,7 +63,6 @@ union PropValue {
 
 class ItermediateOptimizer {
   IntermediateProgram* program;
-  std::set<std::wstring> can_inline;
   int optimization_level;
   int unconditional_label;
   IntermediateMethod* current_method;
@@ -125,6 +124,11 @@ class ItermediateOptimizer {
   bool CanInlineMethod(IntermediateMethod* mthd_called, std::set<IntermediateMethod*> &inlined_mthds, std::set<int> &lbl_jmp_offsets);
   
   int CanInlineSetterGetter(IntermediateMethod* mthd_called);
+
+  bool StartsWith(std::wstring const& str, std::wstring const& start)
+  {
+    return str.rfind(start, 0) == 0;
+  }
   
  public:
    ItermediateOptimizer(IntermediateProgram* p, int u, std::wstring o, bool l, bool d);
