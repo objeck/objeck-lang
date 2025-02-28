@@ -9,15 +9,22 @@
         <title>Latest Objeck Release Notes</title>
     </head>
     
-    <p>JSON stream parsing</p>
-
     <body>
         <h1>Objeck</h1>
-        <p>v2025.2.1 (February 16, 2025)</p>
-        
+        <p>v2025.2.2 (February 28, 2025)</p>
+    
         <hr>
 
-        <p><u>v2025.2.1</u></p>
+        <p>Improved support for named pipes</p>
+
+        <p><u>v2025.2.2</u></p>
+        <ul>
+            <li>Improved named pipe support 🔌</li> 
+            <li>Updates to the <a href="https://github.com/objeck/objeck-lsp" target="_blank">LSP</a> client/server ⌨️</li> 
+            <li>Bug fixes</li> 
+        </ul>
+
+        <p>v2025.2.1</p>
         <ul>
             <li>Improved support for JSON stream parsing ⭐</li> 
             <li>Faster 'String' compare 🚄</li> 
@@ -28,20 +35,6 @@
             <li>Support for websockets 🛜</li>
             <li>Added support for static binary arrays #509 and #510 ⌨️</li>
             <li>Improved stability for Windows on arm64, specifically for SDL2🦾</li>
-        </ul>
-
-        <p>v2025.1.1</p>
-        <ul>
-            <li>Support for Windows on arm64🦾</li>
-            <li>Windows OpenSSL libraries upgraded to 3.4.0🔒</li>
-            <li>UDP socket support🛜</li>
-            <li>Fixes bugs🪲</li>
-                <ul>
-                    <li>Resolved a compiler bug with linking functions in libraries that returned an array of generic objects</li>
-                    <li>Fixed SDL2 call to 'GetGlobalMouseState(..)'</li>
-                    <li>Settled a Gemini issue that expected 'safetySettings' to always be returned in calls to 'GetContent(..)'</li>
-                </ul>
-            <li>Fixed broken code examples🩹</li>
         </ul>
 
         <p>
