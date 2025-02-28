@@ -50,6 +50,9 @@ if [%1] == [arm64] (
 	copy ARM64\Release\*.exe %TARGET%\bin
 	mt.exe -manifest ..\vm\vs\manifest.xml -outputresource:%TARGET%\bin\obr.exe;1
 	mt.exe -manifest ..\vm\vs\manifest.xml -outputresource:%TARGET%\bin\obi.exe;1
+
+	copy "%VCToolsRedistDir%\arm64\Microsoft.VC143.CRT\vcruntime140.dll" %TARGET%\bin
+	copy "%VCToolsRedistDir%\arm64\Microsoft.VC143.CRT\vcruntime140_1.dll" %TARGET%\bin
 )
 
 if [%1] == [x64] (
@@ -61,6 +64,9 @@ if [%1] == [x64] (
 
 	copy ..\vm\release\win64\*.exe %TARGET%\bin
 	copy ..\debugger\release\win64\*.exe %TARGET%\bin
+
+	copy "%VCToolsRedistDir%\x64\Microsoft.VC143.CRT\vcruntime140.dll" %TARGET%\bin
+	copy "%VCToolsRedistDir%\x64\Microsoft.VC143.CRT\vcruntime140_1.dll" %TARGET%\bin
 )
 
 REM native launcher
@@ -230,27 +236,34 @@ if [%2] NEQ [deploy] goto end
 	copy ..\..\docs\eula.rtf "%USERPROFILE%\Documents\Objeck-Build\%INSTALL_TARGET%\doc"
 	
 	if [%1] == [arm64] (
-		copy /y ..\utils\setup\arm64 .
-		devenv setup-arm64.sln /rebuild "Release"
+		
+REMgoto end
+
 		signtool sign /fd sha256 /f "%USERPROFILE%\Dropbox\Personal\signing keys\2022\code\randy_hollines.p12" /p %3 /d "Objeck: Windows Toolchain" /t http://timestamp.sectigo.com release-arm64\setup.msi
 		copy release-arm64\setup.msi "%USERPROFILE%\Documents\Objeck-Build\objeck-windows-arm64_0.0.0.msi"
 
 		rmdir /s /q "%USERPROFILE%\Documents\Objeck-Build\release-arm64"
 		mkdir "%USERPROFILE%\Documents\Objeck-Build\release-arm64"
 		move "%USERPROFILE%\Documents\Objeck-Build\%INSTALL_TARGET%" "%USERPROFILE%\Documents\Objeck-Build\release-arm64\%INSTALL_TARGET%"
+			
+		copy /y ..\utils\setup\arm64 .
+		devenv setup-arm64.sln /rebuild "Release"
+
 		%ZIP_BIN%\7z.exe a -r -tzip "%USERPROFILE%\Documents\Objeck-Build\release-arm64\objeck-windows-arm64_0.0.0.zip" "%USERPROFILE%\Documents\Objeck-Build\release-arm64\%INSTALL_TARGET%"
 		move "%USERPROFILE%\Documents\Objeck-Build\objeck-windows-arm64_0.0.0.msi" "%USERPROFILE%\Documents\Objeck-Build\release-arm64"
 	)
 
 	if [%1] == [x64] (
-		copy /y ..\utils\setup\x64 .
-		devenv setup-x64.sln /rebuild "Release"
 		signtool sign /fd sha256 /f "%USERPROFILE%\Dropbox\Personal\signing keys\2022\code\randy_hollines.p12" /p %3 /d "Objeck: Windows Toolchain" /t http://timestamp.sectigo.com release-x64\setup.msi
 		copy release-x64\setup.msi "%USERPROFILE%\Documents\Objeck-Build\objeck-windows-x64_0.0.0.msi"
 
 		rmdir /s /q "%USERPROFILE%\Documents\Objeck-Build\release-x64"
 		mkdir "%USERPROFILE%\Documents\Objeck-Build\release-x64"
 		move "%USERPROFILE%\Documents\Objeck-Build\%INSTALL_TARGET%" "%USERPROFILE%\Documents\Objeck-Build\release-x64\%INSTALL_TARGET%"
+		
+		copy /y ..\utils\setup\x64 .
+		devenv setup-x64.sln /rebuild "Release"
+		
 		%ZIP_BIN%\7z.exe a -r -tzip "%USERPROFILE%\Documents\Objeck-Build\release-x64\objeck-windows-x64_0.0.0.zip" "%USERPROFILE%\Documents\Objeck-Build\release-x64\%INSTALL_TARGET%"
 		move "%USERPROFILE%\Documents\Objeck-Build\objeck-windows-x64_0.0.0.msi" "%USERPROFILE%\Documents\Objeck-Build\release-x64"
 	)
