@@ -457,16 +457,6 @@ class IPSocket {
     return status;
   }
 
-  static char ReadByte(SOCKET sock) {
-    char value;
-    int status = recv(sock, &value, 1, 0);
-    if(status == SOCKET_ERROR) {
-      return '\0';
-    }
-    
-    return value;
-  }
-
   static char ReadByte(SOCKET sock, int &status) {
     char value;
     status = recv(sock, &value, 1, 0);
