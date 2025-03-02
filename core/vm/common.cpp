@@ -5361,7 +5361,13 @@ bool TrapProcessor::PipeInByte(StackProgram* program, size_t* inst, size_t*& op_
     PushInt(Pipe::ReadByte(pipe), op_stack, stack_pos);
 #else
     int pipe = (int)instance[0];
-    PushInt(Pipe::ReadByte(pipe), op_stack, stack_pos);
+    char value = '\0';
+    if(Pipe::ReadByte(value, pipe)) {
+      PushInt(value, op_stack, stack_pos);
+    }
+    else {
+      PushInt(0, op_stack, stack_pos);
+    }
 #endif
   }
   else {

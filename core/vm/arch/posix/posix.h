@@ -269,13 +269,12 @@ public:
     close(pipe);
   }
   
-  static char ReadByte(int pipe) {
-    char value;
-    if(recv(pipe, &value, 1, 0)) {
-      return '\0';
+  static bool ReadByte(char &value, int pipe) {
+    if(recv(pipe, &value, 1, 0) != 1) {
+        return false;
     }
     
-    return value;
+    return true;
   }
 
   static size_t ReadByteArray(char* buffer, size_t offset, size_t num, int pipe) {
@@ -291,22 +290,36 @@ public:
   }
   
   static std::string ReadString(int pipe) {
-    std::string output;
-    char buffer[MID_BUFFER_MAX];
-   
-    const int count = recv(pipe, buffer, MID_BUFFER_MAX - 1, 0);
-    if(count < 0) {
-      return "";
-    }
-    buffer[count] = '\0';
-    output.append(buffer);
-    
-    return output;
+      char buffer[MID_BUFFER_MAX];
+      size_t buffer_index = 0;
+      
+      char value;
+      bool done = false;
+      do {
+          if(recv(pipe, &value, 1 , 0) != 1) {
+              done = true;
+          }
+          else {
+              if(value != '\0' && value != '\r' && value != '\n') {
+                  buffer[buffer_index++] = value;
+              }
+              else {
+                  done = true;
+              }
+          }
+      }
+      while(!done && buffer_index < MID_BUFFER_MAX - 1);
+      buffer[buffer_index] = '\0';
+      
+      if(value == '\r') {
+          recv(pipe, &value, 1 , 0);
+      }
+      
+      return buffer;
   }
   
   static bool WriteString(const std::string& line, int pipe) {
-    const size_t num = line.size();
-    return send(pipe, line.c_str(), num, 0) == (int)num;
+    return send(pipe, line.c_str(), num, 0) == (int)line.size();
   }
 };
 
