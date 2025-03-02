@@ -397,7 +397,7 @@ public:
       if(ReadFile(pipe, &value, 1, &read, nullptr)) {
         done = true;
       }
-      else {
+      else if(read == 1) {
         if(value != '\0' && value != '\r' && value != '\n') {
           buffer[buffer_index++] = value;
         }
@@ -405,7 +405,10 @@ public:
           done = true;
         }
       }
-    } 
+      else {
+        done = true;
+      }
+    }
     while(!done && buffer_index < MID_BUFFER_MAX - 1);    
     buffer[buffer_index] = '\0';
 
