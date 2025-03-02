@@ -290,37 +290,37 @@ public:
   }
   
   static std::string ReadString(int pipe) {
-      char buffer[MID_BUFFER_MAX];
-      size_t buffer_index = 0;
-      
-      char value;
-      bool done = false;
-      do {
-          if(recv(pipe, &value, 1 , 0) != 1) {
-              done = true;
-          }
-          else {
-              if(value != '\0' && value != '\r' && value != '\n') {
-                  buffer[buffer_index++] = value;
-              }
-              else {
-                  done = true;
-              }
-          }
+    char buffer[MID_BUFFER_MAX];
+    size_t buffer_index = 0;
+
+    char value;
+    bool done = false;
+    do {
+      if(recv(pipe, &value, 1, 0) != 1) {
+        done = true;
       }
-      while(!done && buffer_index < MID_BUFFER_MAX - 1);
-      buffer[buffer_index] = '\0';
-      
-      if(value == '\r') {
-          recv(pipe, &value, 1 , 0);
+      else {
+        if(value != '\0' && value != '\r' && value != '\n') {
+          buffer[buffer_index++] = value;
+        }
+        else {
+          done = true;
+        }
       }
-      
-      return buffer;
+    } 
+    while(!done && buffer_index < MID_BUFFER_MAX - 1);
+    buffer[buffer_index] = '\0';
+
+    if(value == '\r') {
+      recv(pipe, &value, 1, 0);
+    }
+
+    return buffer;
   }
-  
+
   static bool WriteString(const std::string& line, int pipe) {
-      const size_t num = line.size();
-      return send(pipe, line.c_str(), num, 0) == (int)num;
+    const size_t num = line.size();
+    return send(pipe, line.c_str(), num, 0) == (int)num;
   }
 };
 
