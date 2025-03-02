@@ -348,14 +348,14 @@ public:
     return true;
   }
   
-  static char ReadByte(HANDLE pipe) {
-    char buffer;
+  static bool ReadByte(char &value, HANDLE pipe) {
     DWORD read;
-    if(ReadFile(pipe, &buffer, 1, &read, nullptr)) {
-      return buffer;
+
+    if(ReadFile(pipe, &value, 1, &read, nullptr)) {
+      return read == 1;
     }
 
-    return 0;
+    return false;
   }
 
   static size_t ReadByteArray(char* buffer, size_t offset, size_t num, HANDLE pipe) {
@@ -386,19 +386,34 @@ public:
   }
 
   static std::string ReadString(HANDLE pipe) {
-    std::string line;
-    DWORD read;
     char buffer[MID_BUFFER_MAX];
+    size_t buffer_index = 0;
 
-    if(ReadFile(pipe, buffer, MID_BUFFER_MAX - 1, &read, nullptr)) {
-      buffer[read] = '\0';
-      line.append(buffer);
-    }
-    else {
-      return "";
+    char value;
+    bool done = false;
+    DWORD read;
+
+    do {
+      if(ReadFile(pipe, &value, 1, &read, nullptr)) {
+        done = true;
+      }
+      else {
+        if(value != '\0' && value != '\r' && value != '\n') {
+          buffer[buffer_index++] = value;
+        }
+        else {
+          done = true;
+        }
+      }
+    } 
+    while(!done && buffer_index < MID_BUFFER_MAX - 1);    
+    buffer[buffer_index] = '\0';
+
+    if(value == '\r') {
+      ReadFile(pipe, &value, 1, &read, nullptr);
     }
 
-    return line;
+    return buffer;
   }
 
   static bool WriteString(const std::string& line, HANDLE pipe) {

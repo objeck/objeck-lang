@@ -2,8 +2,6 @@ use System.IO;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		Runtime->GetPlatform()->PrintLine();
-#~
 		do {
 			msg : String;
 			p := Pipe->New("mynamedpipe", Pipe->Mode->CREATE);
@@ -14,6 +12,5 @@ class Test {
 			};
 		}
 		while(<>msg->Equals("quit"));
-~#
 	}
 }
