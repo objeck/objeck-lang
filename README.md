@@ -33,22 +33,6 @@
     * Performance testing for Llama and Mistra CPU execution 🧮 
     * Improve SDL2 stability for Windows on arm64 🎮 
     * Bug fixes #509 and #510 🐛
-    
-* v2025.1.1
-  * Testing  🧪
-    * Functional testing for stability and compatibility
-    * Fix Coverity and CodeQL static analysis findings 🔍 
-  * Tooling 🛠️
-    * Enable WSL arm64 support 
-    * Windows bi-directional cross-compilation for x64 and amd64 targets 
-    * Refactoring build and test scripts 
-  * Infrastructure upgrades 🪛
-    * Upgrade Windows OpenSSL libraries to 3.4.x 
-  * Windows on arm64 support  🎮
-      * SDL2 core
-      * Image library
-      * Mixer library
-      * TIFF library
 
 ## Examples
 
