@@ -299,13 +299,11 @@ public:
       if(recv(pipe, &value, 1, 0) != 1) {
         done = true;
       }
+      else if(value != '\0' && value != '\r' && value != '\n') {
+        buffer[buffer_index++] = value;
+      }
       else {
-        if(value != '\0' && value != '\r' && value != '\n') {
-          buffer[buffer_index++] = value;
-        }
-        else {
-          done = true;
-        }
+        done = true;
       }
     } 
     while(!done && buffer_index < MID_BUFFER_MAX - 1);
