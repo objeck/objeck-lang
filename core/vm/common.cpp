@@ -4032,17 +4032,19 @@ bool TrapProcessor::SockTcpSslConnect(StackProgram* program, size_t* inst, size_
     IPSecureSocket::Close((SSL_CTX*)instance[0], (BIO*)instance[1], (X509*)instance[2]);
 
     SSL_CTX* ctx; BIO* bio; X509* cert;
-    bool is_open = IPSecureSocket::Open(addr.c_str(), port, ctx, bio, cert);
-    instance[0] = (size_t)ctx;
-    instance[1] = (size_t)bio;
-    instance[2] = (size_t)cert;
-    instance[3] = is_open;
-
+    const bool is_open = IPSecureSocket::Open(addr.c_str(), port, ctx, bio, cert);
+    if(is_open) {
+      instance[0] = (size_t)ctx;
+      instance[1] = (size_t)bio;
+      instance[2] = (size_t)cert;
+      instance[3] = is_open;
+      
 #ifdef _DEBUG
-    std::wcout << L"# socket connect: addr='" << BytesToUnicode(addr) << L"'; instance="
-	       << instance << L"(" << (size_t)instance << L")" << L"; addr=" << ctx << L"|" << bio << L"("
-	       << (size_t)ctx << L"|" << (size_t)bio << L") #" << std::endl;
+      std::wcout << L"# socket connect: addr='" << BytesToUnicode(addr) << L"'; instance="
+      << instance << L"(" << (size_t)instance << L")" << L"; addr=" << ctx << L"|" << bio << L"("
+      << (size_t)ctx << L"|" << (size_t)bio << L") #" << std::endl;
 #endif
+    }
   }
   
   return true;
