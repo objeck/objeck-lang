@@ -18,11 +18,13 @@
     * Support for the Open AI's Realtime API
     * Hexagon NPU support for Llama and Mistra
 
-* v2025.2.2 (in test)
-    * Improved named pipe support (see LSP [updates](https://github.com/objeck/objeck-lsp))
-    * Bug fixes
+* <ins>v2025.2.2</ins>
+    * Improved named pipe support 🔌
+    * Updates to the LSP client/server ⌨️
+    * Fixed Windows installer issues with missing DLLs 🏗️
+    * Error handling bug fixes
     
-* <ins>v2025.2.1</ins>
+* v2025.2.1
     * Improved support for JSON stream parsing ⭐
     * Faster 'String' compare 🚄
 
