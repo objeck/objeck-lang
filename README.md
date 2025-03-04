@@ -37,7 +37,17 @@
 ## Examples
 
 ```ruby
-# simple openai and perplexity inference 
+class Hello {
+  function : Main(args : String[]) ~ Nil {
+    "Hello World" → PrintLine();
+    "Καλημέρα κόσμε" → PrintLine();
+    "こんにちは 世界" → PrintLine();
+  }
+}
+```
+
+```ruby
+# openai and perplexity inference 
 use API.OpenAI, API.OpenAI.Chat, Collection;
 
 class OpenAICompletion {
@@ -105,23 +115,6 @@ class OpenAICompletion {
 ```
 
 ```ruby
-# create an image from a prompt
-use API.OpenAI, API.OpenAI.FineTuning, System.IO.Filesystem, Data.JSON;
-
-class CreateImage {
-  function : Main(args : String[]) ~ Nil {
-    image := Image->Create("Create an image of two old steel gears with a transparent background", token);
-    if(image <> Nil) {
-      urls := image->GetUrls();
-      each(url in urls) {
-        url->ToString()->PrintLine();
-      };
-    };
-  }
- }
-```
-
-```ruby
 # image identification 
 use API.Google.Gemini, System.IO.Filesystem;
 
@@ -135,26 +128,6 @@ class IdentifyImage {
     if(candidates->Size() > 0) {
       candidates->First()->GetAllText()->Trim()->PrintLine();
     };
-  }
-}
-```
-
-```ruby
-# tune ML model
-use Collection, API.OpenAI, System.IO.Filesystem, Data.JSON, Data.CSV;
-
-class TuneAssist {
-  function : Main(args : String[]) ~ Nil {
-    if(args->Size() = 1) {
-      filename := args[1];
-      file := API.OpenAI.File->LoadOrCreate(filename, "fine-tune", token);
-
-      name := file->GetFilename();
-      id := file->GetId();
-      "file='{$name}', id='{$id}'"->PrintLine();
-      tuning_job := Tuner->Create("gpt-3.5-turbo", id, token);
-      tuning_job->ToString()->PrintLine();
-    }
   }
 }
 ```
