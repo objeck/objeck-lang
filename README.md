@@ -37,6 +37,7 @@
 ## Examples
 
 ```ruby
+# hello world
 class Hello {
   function : Main(args : String[]) ~ Nil {
     "Hello World" → PrintLine();
