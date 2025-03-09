@@ -593,7 +593,7 @@ bool ItermediateOptimizer::CanInlineMethod(IntermediateMethod* mthd_called, std:
 
   // don't inline method calls for primitive objects
   const std::wstring cls_name_str = mthd_called->GetClass()->GetName();
-  if(StartsWith(cls_name_str, L"System.Base:") || cls_name_str.find(L'$') != std::wstring::npos) {
+  if(StartsWith(cls_name_str, L"System.Base:") /* || cls_name_str.find(L'$') != std::wstring::npos */) {
     return false;
   }
 
