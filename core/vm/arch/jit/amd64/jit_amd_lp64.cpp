@@ -850,6 +850,14 @@ void JitAmd64::ProcessInstructions() {
       ProcessStackCallback(S2F, instr, instr_index, 2);
       ProcessReturnParameters(FLOAT_TYPE);
       break;
+
+    case RAND_FLOAT:
+#ifdef _DEBUG_JIT
+      std::wcout << L"RAND_FLOAT: regs=" << aval_regs.size() << L"," << aux_regs.size() << std::endl;
+#endif
+      ProcessStackCallback(RAND_FLOAT, instr, instr_index, 2);
+      ProcessReturnParameters(FLOAT_TYPE);
+      break;
       
     case OBJ_TYPE_OF: {
 #ifdef _DEBUG_JIT
