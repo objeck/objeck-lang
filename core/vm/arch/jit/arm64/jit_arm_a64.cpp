@@ -829,7 +829,7 @@ void JitArm64::ProcessInstructions() {
 #ifdef _DEBUG_JIT
       std::wcout << L"RAND_FLOAT: regs=" << aval_regs.size() << L"," << aux_regs.size() << std::endl;
 #endif
-      ProcessStackCallback(RAND_FLOAT, instr, instr_index, 2);
+      ProcessStackCallback(RAND_FLOAT, instr, instr_index, 1);
       ProcessReturnParameters(FLOAT_TYPE);
       break;
       
