@@ -57,7 +57,6 @@
 
 using namespace Runtime;
 
-std::random_device StackInterpreter::gen;
 StackProgram* StackInterpreter::program;
 std::stack<StackFrame*> StackInterpreter::cached_frames;
 std::set<StackInterpreter*> StackInterpreter::intpr_threads;
