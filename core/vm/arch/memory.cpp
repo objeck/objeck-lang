@@ -72,6 +72,9 @@ pthread_mutex_t MemoryManager::marked_sweep_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t MemoryManager::free_memory_cache_lock = PTHREAD_MUTEX_INITIALIZER;
 #endif
 
+std::mt19937 MemoryManager::gen;
+std::random_device MemoryManager::rd;
+
 void MemoryManager::Initialize(StackProgram* p, size_t m)
 {
   prgm = p;
@@ -100,6 +103,8 @@ void MemoryManager::Initialize(StackProgram* p, size_t m)
   InitializeCriticalSection(&free_memory_cache_lock);
 #endif
 
+  std::mt19937 gen(rd());
+  
   initialized = true;
 }
 
