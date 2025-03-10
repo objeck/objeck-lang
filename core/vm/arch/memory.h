@@ -33,6 +33,7 @@
 
 
 #include "../common.h"
+#include <random>
 
 // basic VM tuning parameters
 
@@ -141,6 +142,8 @@ class MemoryManager {
   static void* CollectMemory(void* arg);
 #endif
 
+  static std::random_device gen;
+    
   static inline StackClass* GetClassMapping(size_t* mem) {
     if(!mem) {
       return nullptr;
@@ -173,6 +176,8 @@ class MemoryManager {
  public:
   static void Initialize(StackProgram* p, size_t m);
 
+  static FLOAT_VALUE GetRandomValue();
+  
   static void Clear() {
 #ifdef _MEM_LOGGING
     mem_logger.close();

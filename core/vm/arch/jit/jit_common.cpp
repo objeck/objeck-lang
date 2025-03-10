@@ -32,7 +32,6 @@
 #include "jit_common.h"
 
 StackProgram* JitCompiler::program;
-std::random_device JitCompiler::gen;
 
 void JitCompiler::Initialize(StackProgram* p)
 {
@@ -47,10 +46,6 @@ JitCompiler::JitCompiler()
 JitCompiler::~JitCompiler()
 {
 
-}
-
-inline FLOAT_VALUE JitCompiler::GetRandomValue() {
-  return (FLOAT_VALUE)gen() / (FLOAT_VALUE)gen.max();
 }
 
 /**
@@ -91,7 +86,7 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
     break;
 
   case RAND_FLOAT:
-    PushFloat(GetRandomValue(), op_stack, stack_pos);
+    PushFloat(MemoryManager::GetRandomValue(), op_stack, stack_pos);
     break;
 
   case NEW_BYTE_ARY: {
