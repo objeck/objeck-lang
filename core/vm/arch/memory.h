@@ -33,6 +33,7 @@
 
 
 #include "../common.h"
+#include <random>
 
 // basic VM tuning parameters
 
@@ -141,6 +142,9 @@ class MemoryManager {
   static void* CollectMemory(void* arg);
 #endif
 
+  static std::random_device rd;
+  static std::mt19937 gen;
+
   static inline StackClass* GetClassMapping(size_t* mem) {
     if(!mem) {
       return nullptr;
@@ -224,6 +228,10 @@ class MemoryManager {
   static size_t* AllocateObject(const long obj_id, size_t* op_stack, long stack_pos, bool collect = true);
   static size_t* AllocateArray(const size_t size, const MemoryType type, size_t* op_stack, long stack_pos, bool collect = true);
   
+  static inline FLOAT_VALUE GetRandomValue() {
+    std::uniform_real_distribution<> dis(1.0, 2.0);
+    return dis(gen);
+  }
   // object verification
   static size_t* ValidObjectCast(size_t* mem, long to_id, long* cls_hierarchy, long** cls_interfaces);
   

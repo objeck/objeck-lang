@@ -468,7 +468,7 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
       break;
 
     case RAND_FLOAT:
-      PushFloat(JitCompiler::GetRandomValue(), op_stack, stack_pos);
+      PushFloat(MemoryManager::GetRandomValue(), op_stack, stack_pos);
       break;
 
     case ACOSH_FLOAT:
