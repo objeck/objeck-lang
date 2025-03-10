@@ -255,10 +255,6 @@ namespace Runtime {
     // creates a string object instance
     // 
     size_t* CreateStringObject(const std::wstring &value_str, size_t* &op_stack, long* &stack_pos);
-
-    inline FLOAT_VALUE GetRandomValue() {
-      return (FLOAT_VALUE)gen() / (FLOAT_VALUE)gen.max();
-    }
     
     void inline StorLoclIntVar(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
     void inline StorClsInstIntVar(StackInstr* instr, size_t* &op_stack, long* &stack_pos);

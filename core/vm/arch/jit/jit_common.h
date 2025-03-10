@@ -40,8 +40,11 @@
 #endif
 #include "../../common.h"
 #include "../../interpreter.h"
+#include <random>
 
 class JitCompiler {
+  static std::random_device gen;
+
 protected:
   static StackProgram* program;
 
@@ -60,4 +63,5 @@ public:
   inline static void PushInt(size_t* op_stack, long* stack_pos, size_t value);
   inline static FLOAT_VALUE PopFloat(size_t* op_stack, long* stack_pos);
   inline static void PushFloat(const FLOAT_VALUE v, size_t* op_stack, long* stack_pos);
+  inline static FLOAT_VALUE GetRandomValue();
 };
