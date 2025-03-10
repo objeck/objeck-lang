@@ -73,7 +73,6 @@ namespace Runtime {
     static StackProgram* program;
     static std::set<StackInterpreter*> intpr_threads;
     static std::stack<StackFrame*> cached_frames;
-    static std::random_device gen;
 
 #ifdef _WIN32
     static bool is_stdio_binary;
