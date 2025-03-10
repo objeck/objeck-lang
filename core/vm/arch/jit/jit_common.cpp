@@ -32,8 +32,10 @@
 #include "jit_common.h"
 
 StackProgram* JitCompiler::program;
+std::random_device JitCompiler::gen;
 
-void JitCompiler::Initialize(StackProgram* p) {
+void JitCompiler::Initialize(StackProgram* p)
+{
   program = p;
 }
 
@@ -45,6 +47,10 @@ JitCompiler::JitCompiler()
 JitCompiler::~JitCompiler()
 {
 
+}
+
+inline FLOAT_VALUE JitCompiler::GetRandomValue() {
+  return (FLOAT_VALUE)gen() / (FLOAT_VALUE)gen.max();
 }
 
 /**
@@ -64,7 +70,6 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
   switch(instr_id) {
   case MTHD_CALL:
   case DYN_MTHD_CALL: {
-
 #ifdef _DEBUG_JIT
     StackMethod* called = program->GetClass(instr->GetOperand())->GetMethod(instr->GetOperand2());
     std::wcout << L"jit oper: MTHD_CALL: mthd=" << called->GetName() << std::endl;
@@ -83,6 +88,10 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
     }
     PushInt(op_stack, stack_pos, array[2]);
   }
+    break;
+
+  case RAND_FLOAT:
+    PushFloat(GetRandomValue(), op_stack, stack_pos);
     break;
 
   case NEW_BYTE_ARY: {
