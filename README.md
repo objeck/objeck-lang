@@ -18,6 +18,9 @@
     * Support for the Open AI's Realtime API
     * Hexagon NPU support for Llama and Mistra
 
+* v2025.3.0 
+    * Improved runtime performance
+
 * <ins>v2025.2.2</ins>
     * Improved named pipe support 🔌
     * Updates to the LSP client/server ⌨️
