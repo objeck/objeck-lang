@@ -5,7 +5,7 @@ class OpenAIQueary {
 		token := GetApiKey("openai_api_key.dat");
 
 		if(token = Nil | args->Size() < 1) {
-			">>> Please provide a directive <<"->PrintLine();
+			">>> Please provide a directive <<<"->PrintLine();
 			Runtime->Exit(1);
 		};
 
@@ -29,18 +29,41 @@ class OpenAIQueary {
 			id := args[1];
 			status := Assistant->Delete(id, token);
 			"Deleted assistant: id='{$id}', status={$status}"->PrintLine();
-			Runtime->Exit(0);
+
+			return;
 		}
-		# load assistant
-		else {
-			id := param;
-			assistant := Assistant->Load(param, token);
+		# list assistant
+		else if(args->Size() = 2) {
+			id := args[1];
+			assistant := Assistant->Load(id, token);
 			if(assistant = Nil) {
 				">>> Unable load assistant <<"->PrintLine();
 				Runtime->Exit(1);
 			};
 
 			"Loaded assistant: id={$id}"->PrintLine();
+		}
+		# clear assistant
+		else if(param->Equals("clear")) {
+			assists := Assistant->ListAssistants(token);
+			each(assist in assists) {
+				id := assist->GetId();
+				status := Assistant->Delete(id, token);
+				"Removed assistant: id='{$id}', status={$status}"->PrintLine();
+			};
+
+			return;
+		}
+		# load assistant
+		else {
+			assists := Assistant->ListAssistants(token);
+			each(assist in assists) {
+				id := assist->GetId();
+				name := assist->GetName();
+				"Assistant: id={$id}, name={$name}"->PrintLine();
+			};
+
+			return;
 		};
 
 		# create thread
