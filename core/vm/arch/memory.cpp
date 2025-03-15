@@ -72,8 +72,6 @@ pthread_mutex_t MemoryManager::marked_sweep_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t MemoryManager::free_memory_cache_lock = PTHREAD_MUTEX_INITIALIZER;
 #endif
 
-std::random_device MemoryManager::gen;
-
 void MemoryManager::Initialize(StackProgram* p, size_t m)
 {
   prgm = p;
@@ -102,14 +100,14 @@ void MemoryManager::Initialize(StackProgram* p, size_t m)
   InitializeCriticalSection(&free_memory_cache_lock);
 #endif
 
-  std::random_device rd;
-  std::mt19937 gen(rd());
-
   initialized = true;
 }
 
 FLOAT_VALUE MemoryManager::GetRandomValue() {
-  std::uniform_real_distribution<> dis(0.0, 1.0);
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  std::uniform_real_distribution<FLOAT_VALUE> dis(0.0, 1.0);
+
   return dis(gen);
 }
 

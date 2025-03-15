@@ -141,8 +141,6 @@ class MemoryManager {
   static void CollectAllMemory(size_t* op_stack, long stack_pos);
   static void* CollectMemory(void* arg);
 #endif
-
-  static std::random_device gen;
     
   static inline StackClass* GetClassMapping(size_t* mem) {
     if(!mem) {
