@@ -9173,7 +9173,21 @@ bool ContextAnalyzer::LocateExpression(Method* method, const int line_num, const
   // local entries
   std::vector<SymbolEntry*> local_entries = symbol_table->GetEntries(method->GetParsedName());
   for(size_t i = 0; i < local_entries.size(); ++i) {
-    const std::vector<Variable*> variables = local_entries[i]->GetVariables();
+    SymbolEntry* local_entry = local_entries[i];
+    
+    // add declaration
+    const std::wstring full_entry_name = local_entry->GetName();
+    const size_t full_entry_index = full_entry_name.find_last_of(L':');
+    if(full_entry_index != std::wstring::npos) {
+      const std::wstring entry_name = full_entry_name.substr(full_entry_index + 1, full_entry_name.size() - full_entry_index + 1);
+      Variable* variable = TreeFactory::Instance()->MakeVariable(local_entry->GetFileName(), local_entry->GetLineNumber(),
+                                                                 local_entry->GetLinePosition(), entry_name);
+      variable->SetEntry(local_entry);
+      all_expressions.push_back(variable);
+    }
+
+    // add variable references
+    const std::vector<Variable*> variables = local_entry->GetVariables();
     for(size_t j = 0; j < variables.size(); ++j) {
       all_expressions.push_back(variables[j]);
     }
