@@ -9163,7 +9163,6 @@ void ContextAnalyzer::GetMethodCallExpressions(const int line_num, const int lin
   }
 }
 
-
 bool ContextAnalyzer::LocateExpression(Method* method, const int line_num, const int line_pos, Expression*& found_expression, 
                                        std::wstring& found_name, bool &is_alt, std::vector<Expression*>& all_expressions)
 {
