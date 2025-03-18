@@ -2704,7 +2704,7 @@ namespace frontend {
     }
 
 #ifdef _DIAG_LIB
-    void SetExpressions(std::vector<Expression*> e) {
+    void SetExpressions(std::vector<Expression*> &e) {
       diagnostic_expressions = e;
     }
 

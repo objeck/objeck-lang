@@ -1,17 +1,34 @@
 use API.Google.Gemini;
+use Data.JSON;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		if(args->Size() = 1) {
-			token := EndPoint->GetApiKey();
-			query := args[0];
-			
-			content := Content->New("user")->AddPart(TextPart->New(query));
-			candidates := Model->GenerateContent("models/gemini-1.5-pro", content, token);
+		token := EndPoint->GetApiKey();
+		query := args[0];
+		
+		content := Content->New("user")->AddPart(TextPart->New(query));
+		candidates := Model->GenerateContent("models/gemini-1.5-pro", content, token);
 
-			if(candidates->Size() > 0) {
-				candidates->First()->GetAllText()->Trim()->PrintLine();
+		if(candidates->Size() > 0) {
+			json := ParseDoc(candidates->First()->GetAllText());
+			each(elem in json) {
+				elem->Get("desc")->GetString()->PrintLine();
+				elem->Get("length")->GetString()->PrintLine();
+				"---"->PrintLine();
 			};
 		};
+	}
+
+	function : ParseDoc(doc : String) ~ JsonElement {
+		start := doc->Find("```json\\n");
+		start += "```json\\n"->Size();
+		
+		end := doc->Find(start, "```");
+		text := doc->SubString(start, end - start);
+
+		text := text->ReplaceAll("\\n", "\n")->ReplaceAll("\\," ",")->ReplaceAll("\\\"", "\"")->ReplaceAll("\\'", "'")->Trim();
+
+text->PrintLine();		
+		return JsonParser->TextToElement(text);
 	}
 }
