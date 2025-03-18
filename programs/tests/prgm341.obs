@@ -2,18 +2,11 @@ use System.IO;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		Runtime->GetPlatform()->PrintLine();
-#~
-		do {
-			msg : String;
-			p := Pipe->New("mynamedpipe", Pipe->Mode->CREATE);
-			if(p->IsOpen()) {
-				msg := p->ReadLine();
-				"|{$msg}|"->PrintLine();
-				p->Close();
-			};
-		}
-		while(<>msg->Equals("quit"));
-~#
+		z : Int;
+
+		a := 10;
+		while(a > 0) {
+			a->PrintLine();
+		};
 	}
 }
