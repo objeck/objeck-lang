@@ -55,7 +55,7 @@ namespace Runtime {
   
 #define FRAME_CACHE_SIZE 1024
 #define CALL_STACK_SIZE 256
-#define OP_STACK_SIZE 64
+#define OP_STACK_SIZE 768
 
   // holds the calling context for async
   // method calls
@@ -248,7 +248,7 @@ namespace Runtime {
     //
     // calculates an array offset
     //
-    int64_t ArrayIndex(StackInstr* instr, size_t* array, const int64_t size, size_t* &op_stack, long* &stack_pos);
+    INT64_VALUE ArrayIndex(StackInstr* instr, size_t* array, const int64_t size, size_t* &op_stack, long* &stack_pos);
         
     //
     // creates a string object instance
