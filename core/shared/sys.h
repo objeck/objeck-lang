@@ -47,12 +47,11 @@
 #include <string>
 #include <vector>
 #include <map>
-#include <stdint.h>
 
 #include "logger.h"
 
 // memory size for local stack frames
-#define LOCAL_SIZE 1024
+#define LOCAL_SIZE 768
 #define INT_VALUE int32_t
 #define INT64_VALUE int64_t
 #define FLOAT_VALUE double
@@ -335,9 +334,12 @@ public:
     size = out_buffer.size();
 
     char* buffer = (char*)malloc(size);
-    memcpy(buffer, out_buffer.data(), size);
+    if(buffer) {
+      memcpy(buffer, out_buffer.data(), size);
+      return buffer;
+    }
 
-    return buffer;
+    return nullptr;
   }
 
   inline void WriteString(const std::wstring &in) {
@@ -507,7 +509,11 @@ public:
     if(buffer_max > COMPRESS_BUFFER_LIMIT) {
       buffer_max = COMPRESS_BUFFER_LIMIT;
     }
+        
     char* buffer = (char*)calloc(buffer_max, sizeof(char));
+    if(!buffer) {
+      return nullptr;
+    }
 
     if(inflateInit2(&stream, MAX_WBITS | 16) != Z_OK) {
       free(buffer);
@@ -519,6 +525,12 @@ public:
     do {
       if(stream.total_out >= buffer_max) {
         char* temp = (char*)calloc(sizeof(char), static_cast<size_t>(buffer_max) << 1);
+        if(!temp) {
+          free(buffer);
+          buffer = nullptr;
+          return nullptr;
+        }
+        
         memcpy(temp, buffer, buffer_max);
         buffer_max <<= 1;
 
@@ -604,7 +616,11 @@ public:
     if(buffer_max > COMPRESS_BUFFER_LIMIT) {
       buffer_max = COMPRESS_BUFFER_LIMIT;
     }
+
     char* buffer = (char*)calloc(buffer_max, sizeof(char));
+    if(!buffer) {
+      return nullptr;
+    }
 
     if(inflateInit2(&stream, -MAX_WBITS) != Z_OK) {
       free(buffer);
@@ -616,6 +632,12 @@ public:
     do {
       if(stream.total_out >= buffer_max) {
         char* temp = (char*)calloc(sizeof(char), static_cast<size_t>(buffer_max) << 1);
+        if(!temp) {
+          free(buffer);
+          buffer = nullptr;
+          return nullptr;
+        }
+
         memcpy(temp, buffer, buffer_max);
         buffer_max <<= 1;
 
@@ -789,8 +811,12 @@ static wchar_t* LoadFileBuffer(const std::wstring &filename, size_t& buffer_size
     buffer_size = (size_t)in.tellg();
     in.seekg(0, std::ios::beg);
     buffer = (char*)calloc(buffer_size + 1, sizeof(char));
+    if(!buffer) {
+      in.close();
+      return nullptr;
+    }
+  
     in.read(buffer, buffer_size);
-    // close file
     in.close();
   }
   else {

@@ -3123,7 +3123,7 @@ INT64_VALUE Runtime::StackInterpreter::ArrayIndex(StackInstr* instr, size_t* arr
   INT64_VALUE index = (INT64_VALUE)PopInt(op_stack, stack_pos);
   const long dim = instr->GetOperand();
 
-  for(long i = 1; i < dim; i++) {
+  for(long i = 1; i < dim; ++i) {
     index *= (long)array[i];
     index += (INT64_VALUE)PopInt(op_stack, stack_pos);
   }
