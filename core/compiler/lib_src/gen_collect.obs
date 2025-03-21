@@ -1249,8 +1249,32 @@ hash->Has(408)->PrintLine();
 		Gets the hash table capacity
 		@return hash table capacity
 		~#
-		method : public : Capacity() ~ Hash->Capacity {
+		method : public : GetCapacity() ~ Hash->Capacity {
 			return @capacity;
+		}
+
+		#~
+		Sets hash table capacity
+		@param capacity hash table capacity
+		~#
+		method : public : SetCapacity(capacity : Hash->Capacity) ~ Nil {
+			@capacity := capacity;
+		}
+
+		#~
+		Gets auto-resize setting
+		@return true if auto-resize is set, false otherwise
+		~#
+		method : public : IsAutoResize() ~ Bool {
+			return @auto_resize;
+		}
+
+		#~
+		Set auto-resize setting
+		@param auto_resize true if auto-resize is enable, false otherwise
+		~#
+		method : public : SetAutoResize(auto_resize : Bool) ~ Nil {
+			@auto_resize = auto_resize;
 		}
 
 		#~
