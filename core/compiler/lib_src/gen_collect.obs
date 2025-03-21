@@ -1110,19 +1110,21 @@ hash->Has(408)->PrintLine();
 		
 		#~
 		Default constructor 
+		@param auto_resize if true, automatically resized the hash table
 		~#
-		New() {
+		New(auto_resize : Bool := true) {
 			@capacity := Capacity->SMALL;
 			@buckets := CompareList->New[@capacity]<K>;
-			@auto_resize := true;
+			@auto_resize := auto_resize;
 			@size := 0;
 		}
 		
 		#~
 		Default constructor 
 		@param capacity capacity of hash table
+		@param auto_resize if true, automatically resized the hash table
 		~#
-		New(capacity : Hash->Capacity) {
+		New(capacity : Hash->Capacity, auto_resize : Bool := true) {
 			@capacity := capacity;
 			@buckets := CompareList->New[@capacity]<K>;
 			@auto_resize := true;
