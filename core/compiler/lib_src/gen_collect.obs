@@ -1182,6 +1182,7 @@ hash->Has(408)->PrintLine();
 		@param value value
 		~#
 		method : public : Insert(key : K, value : V) ~ Nil {
+"--- 0 ---"->PrintLine();
 			if(key = Nil) {
 				return;
 			};
