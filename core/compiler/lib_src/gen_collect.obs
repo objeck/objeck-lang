@@ -6,7 +6,7 @@
 # - H.W. Lang - merge sort implementation based on his work
 # - Arne Andersson - map classes use a red-black tree variant he created
 # - Snark Bait - heap implementation based on his work
-~~#
+~#
 
 #~
 Immutable tuple classes (-lib gen_collect)
@@ -1211,13 +1211,8 @@ hash->Has(408)->PrintLine();
 			if(list = Nil) {
 				list := CompareList->New()<K>;
 				@buckets[hash] := list;
-			}
-			else {
-s := key->As(String);
-s->PrintLine();
-x := list->Size();
-"--- list: {$s}, {$x} ---"->PrintLine();
 			};
+
 			list->AddBack(HashPair->New(key->As(Compare), value)<V>);
 			@size += 1;
 		}
@@ -1240,15 +1235,9 @@ x := list->Size();
 					list->Next();
 				};
 
-s := key->As(String);
-s->PrintLine();
-"--- no-in-list: {$s} ---"->PrintLine();
 				return Nil;
 			};
 
-s := key->As(String);
-s->PrintLine();
-"--- no-list: {$s} ---"->PrintLine();
 			return Nil;
 		}
 
@@ -1271,8 +1260,8 @@ s->PrintLine();
 
 			temp_buckets := CompareList->New[@capacity]<K>;
 			for(i := 0; i < @buckets->Size(); i += 1;) {
-				if(@buckets[i] <> Nil) {
-					list := @buckets[i];
+				list := @buckets[i];
+				if(list <> Nil) {
 					list->Rewind();
 					while(list->More()) {
 						# get key/value
@@ -1280,12 +1269,14 @@ s->PrintLine();
 						
 						# insert key/value
 						hash := (pair->GetKey()->HashID() % temp_buckets->Size())->Abs();
-						list := temp_buckets[hash];
-						if(list = Nil) {
-							list := CompareList->New()<K>;
-							temp_buckets[hash] := list;
+
+						temp_list := temp_buckets[hash];
+						if(temp_list = Nil) {
+							temp_list := CompareList->New()<K>;
+							temp_buckets[hash] := temp_list;
 						};
-						list->AddBack(pair);
+						temp_list->AddBack(pair);
+
 						list->Next();
 					};
 				};

@@ -3,14 +3,13 @@ use Collection;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		words := ["nose", "live", "invincible", "gifted", "known", "shame", "annoying", "direction", "wicked", "throne", "secretive", "noxious", "able", "camp", "cream", "drawer", "visit", "ocean", "auspicious", "kill", "tin", "rely", "sock", "agreeable", "cannon", "earthy", "outrageous", "actually", "threatening", "tired", "used", "young", "stale", "cub", "tangible", "outstanding", "card", "representative", "regret", "hat", "harsh", "abounding", "exultant", "huge", "club", "offer", "best", "wobble", "relation", "territory", "male", "shiny", "part", "pigs", "account", "cultured", "brush", "truculent", "mouth", "picture", "alluring", "clean", "guttural", "scarce", "handsomely", "sassy", "woebegone", "permit", "well-made", "defeated", "quickest", "house", "enjoy", "oven", "determined", "wiggly", "thick", "vest", "mountain", "lamp", "arrogant", "whimsical", "expert", "entertain", "song", "fang", "thinkable", "gorgeous", "damage", "holistic", "recondite", "hideous", "welcome", "milky", "automatic", "bleach", "selection", "thoughtless", "record", "wet", "undesirable", "pack", "desire", "tick", "excite", "switch", "kiss", "surround", "trick", "needless", "yak", "protest", "crowd", "gaudy", "wing", "lumber", "instruct", "didactic", "doubtful", "mother", "concern", "zip", "geese", "carve", "range", "receptive", "zipper", "basin"];
-
-		timer := System.Time.Timer->New();
+		words := ["nose", "live", "invincible", "gifted", "known", "shame", "annoying", "direction", "wicked", "throne", "secretive", "noxious", "able", "camp", "cream", "drawer", "visit", "ocean", "auspicious", "kill", "tin", "rely", "sock", "agreeable", "cannon", "earthy", "outrageous", "basin", "actually", "threatening", "tired", "used", "young", "stale", "cub", "tangible", "outstanding", "card", "representative", "regret", "hat", "harsh", "abounding", "exultant", "huge", "club", "offer", "best", "wobble", "relation", "territory", "male", "shiny", "part", "pigs", "account", "cultured", "brush", "truculent", "mouth", "picture", "alluring", "clean", "guttural", "scarce", "handsomely", "sassy", "woebegone", "permit", "well-made", "defeated", "quickest", "house", "enjoy", "oven", "determined", "wiggly", "thick", "vest", "mountain", "lamp", "arrogant", "whimsical", "expert", "entertain", "song", "fang", "thinkable", "gorgeous", "damage", "holistic", "recondite", "hideous", "welcome", "milky", "automatic", "bleach", "selection", "thoughtless", "record", "wet", "undesirable", "pack", "desire", "tick", "excite", "switch", "kiss", "surround", "trick", "needless", "yak", "protest", "crowd", "gaudy", "wing", "lumber", "instruct", "didactic", "doubtful", "mother", "concern", "zip", "geese", "carve", "range", "receptive", "zipper"];
+		
 		iters := 100;
+		timer := System.Time.Timer->New();
 
-#~
-		check := 0;
 		timer->Start();		
+		check := 0;
 		each(i : iters) {
 			check += DoSelect(words);
 		};
@@ -20,10 +19,7 @@ class Test {
 		set_time := timer->GetElapsedTime()->As(Float);
 		"select_time={$set_time}"->PrintLine();
 
-		"---"->PrintLine();
-
 		check := 0;
-		timer->Start();		
 		each(i : iters) {
 			check += DoCompare(words);
 		};
@@ -32,12 +28,10 @@ class Test {
 		Runtime->Assert(words->Size() * iters = check);
 		compare_time := timer->GetElapsedTime()->As(Float);
 		"compare_time={$compare_time}"->PrintLine();
-		
-
 		"---"->PrintLine();
 
-		check := 0;
 		timer->Start();	
+		check := 0;
 
 		set := Set->New()<String>;
 		each(word in words) {
@@ -54,12 +48,11 @@ class Test {
 		"set_time={$compare_time}"->PrintLine();
 
 		"---"->PrintLine();
-~#
 
 		check := 0;
 		timer->Start();	
 
-		set_hash := Hash->New(Hash->Capacity->SMALL  )<String, IntRef>;
+		set_hash := Hash->New()<String, IntRef>;
 		each(word in words) {
 			set_hash->Insert(word, 1);
 		};
@@ -69,7 +62,6 @@ class Test {
 		};
 		timer->End();
 
-# check->PrintLine();
 		Runtime->Assert(words->Size() * iters = check);
 		compare_time := timer->GetElapsedTime()->As(Float);
 		"set_hash_time={$compare_time}"->PrintLine();
