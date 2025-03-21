@@ -28,7 +28,6 @@ class Test {
 		Runtime->Assert(words->Size() * iters = check);
 		compare_time := timer->GetElapsedTime()->As(Float);
 		"compare_time={$compare_time}"->PrintLine();
-		"---"->PrintLine();
 
 		timer->Start();	
 		check := 0;
@@ -46,8 +45,6 @@ class Test {
 		Runtime->Assert(words->Size() * iters = check);
 		compare_time := timer->GetElapsedTime()->As(Float);
 		"set_time={$compare_time}"->PrintLine();
-
-		"---"->PrintLine();
 
 		check := 0;
 		timer->Start();	
