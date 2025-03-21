@@ -17,34 +17,7 @@ class Test {
 
 		Runtime->Assert(words->Size() * iters = check);
 		set_time := timer->GetElapsedTime()->As(Float);
-		"select_time={$set_time}"->PrintLine();
-
-		check := 0;
-		each(i : iters) {
-			check += DoCompare(words);
-		};
-		timer->End();
-
-		Runtime->Assert(words->Size() * iters = check);
-		compare_time := timer->GetElapsedTime()->As(Float);
-		"compare_time={$compare_time}"->PrintLine();
-
-		timer->Start();	
-		check := 0;
-
-		set := Set->New()<String>;
-		each(word in words) {
-			set->Insert(word);
-		};
-
-		each(i : iters) {
-			check += DoSet(set, words);
-		};
-		timer->End();
-
-		Runtime->Assert(words->Size() * iters = check);
-		compare_time := timer->GetElapsedTime()->As(Float);
-		"set_time={$compare_time}"->PrintLine();
+		"selt\t={$set_time}"->PrintLine();
 
 		check := 0;
 		timer->Start();	
@@ -61,7 +34,35 @@ class Test {
 
 		Runtime->Assert(words->Size() * iters = check);
 		compare_time := timer->GetElapsedTime()->As(Float);
-		"set_hash_time={$compare_time}"->PrintLine();
+		"hsht\t={$compare_time}"->PrintLine();
+
+		check := 0;
+		timer->Start();	
+
+		set := Set->New()<String>;
+		each(word in words) {
+			set->Insert(word);
+		};
+
+		each(i : iters) {
+			check += DoSet(set, words);
+		};
+		timer->End();
+
+		Runtime->Assert(words->Size() * iters = check);
+		compare_time := timer->GetElapsedTime()->As(Float);
+		"mapt\t={$compare_time}"->PrintLine();
+
+		check := 0;
+		timer->Start();	
+		each(i : iters) {
+			check += DoCompare(words);
+		};
+		timer->End();
+
+		Runtime->Assert(words->Size() * iters = check);
+		compare_time := timer->GetElapsedTime()->As(Float);
+		"cmpt\t={$compare_time}"->PrintLine();
 	}
 
 	function : DoCompare(words : String[]) ~ Int {
