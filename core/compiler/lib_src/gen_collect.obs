@@ -1097,7 +1097,7 @@ hash->Has(408)->PrintLine();
 		@auto_resize : Bool;
 
 		#~
-		Hash table capacity. Load factors: SMALL=500, MEDIUM=9.5k, LARGE=900k, EX_LARGE=9M, HUGE=90M
+		Hash table capacity. Load factors: SMALL=500, MEDIUM=9k, LARGE=900k, EX_LARGE=9M, HUGE=90M
 		@class Hash
 		~#
 		consts Capacity {
@@ -1113,9 +1113,10 @@ hash->Has(408)->PrintLine();
 		@param auto_resize if true, automatically resized the hash table
 		~#
 		New(auto_resize : Bool := true) {
+			@auto_resize := auto_resize;
+
 			@capacity := Capacity->SMALL;
 			@buckets := CompareList->New[@capacity]<K>;
-			@auto_resize := auto_resize;
 			@size := 0;
 		}
 		
@@ -1126,8 +1127,9 @@ hash->Has(408)->PrintLine();
 		~#
 		New(capacity : Hash->Capacity, auto_resize : Bool := true) {
 			@capacity := capacity;
+			@auto_resize := auto_resize;
+			
 			@buckets := CompareList->New[@capacity]<K>;
-			@auto_resize := true;
 			@size := 0;
 		}
 
