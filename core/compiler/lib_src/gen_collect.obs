@@ -1182,7 +1182,6 @@ hash->Has(408)->PrintLine();
 		@param value value
 		~#
 		method : public : Insert(key : K, value : V) ~ Nil {
-"--- 0 ---"->PrintLine();
 			if(key = Nil) {
 				return;
 			};
@@ -1212,6 +1211,12 @@ hash->Has(408)->PrintLine();
 			if(list = Nil) {
 				list := CompareList->New()<K>;
 				@buckets[hash] := list;
+			}
+			else {
+s := key->As(String);
+s->PrintLine();
+x := list->Size();
+"--- list: {$s}, {$x} ---"->PrintLine();
 			};
 			list->AddBack(HashPair->New(key->As(Compare), value)<V>);
 			@size += 1;
@@ -1235,9 +1240,15 @@ hash->Has(408)->PrintLine();
 					list->Next();
 				};
 
+s := key->As(String);
+s->PrintLine();
+"--- no-in-list: {$s} ---"->PrintLine();
 				return Nil;
 			};
 
+s := key->As(String);
+s->PrintLine();
+"--- no-list: {$s} ---"->PrintLine();
 			return Nil;
 		}
 
