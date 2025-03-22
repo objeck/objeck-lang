@@ -34,12 +34,6 @@
     * Improved support for JSON stream parsing ⭐
     * Faster 'String' compare 🚄
 
-* v2025.2.0
-    * Add WebSocket support🔌
-    * Performance testing for Llama and Mistra CPU execution 🧮 
-    * Improve SDL2 stability for Windows on arm64 🎮 
-    * Bug fixes #509 and #510 🐛
-
 ## Examples
 
 ```ruby
