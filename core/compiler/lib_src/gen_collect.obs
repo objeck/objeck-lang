@@ -1274,7 +1274,7 @@ hash->Has(408)->PrintLine();
 		@param auto_resize true if auto-resize is enable, false otherwise
 		~#
 		method : public : SetAutoResize(auto_resize : Bool) ~ Nil {
-			@auto_resize = auto_resize;
+			@auto_resize := auto_resize;
 		}
 
 		#~
