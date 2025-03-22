@@ -18,8 +18,11 @@
     * Support for the Open AI's Realtime API
     * Hexagon NPU support for Llama and Mistra
 
-* v2025.3.0 
-    * Improved runtime performance
+* v2025.3.0 (in test)
+    * Updated VS Code LSP support for macOS and Linux ✍🏽
+    * Collection bug fixes 🫙
+    * LSP bug fixes ⌨️
+    * More aggressive method inlining 🏎️
 
 * <ins>v2025.2.2</ins>
     * Improved named pipe support 🔌
@@ -30,12 +33,6 @@
 * v2025.2.1
     * Improved support for JSON stream parsing ⭐
     * Faster 'String' compare 🚄
-
-* v2025.2.0
-    * Add WebSocket support🔌
-    * Performance testing for Llama and Mistra CPU execution 🧮 
-    * Improve SDL2 stability for Windows on arm64 🎮 
-    * Bug fixes #509 and #510 🐛
 
 ## Examples
 
