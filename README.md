@@ -14,17 +14,17 @@
 
 ## Releases
 
-* v2025.3.x 
+* v2025.4.x 
     * Support for the Open AI's Realtime API
     * Hexagon NPU support for Llama and Mistra
 
-* v2025.3.0 (in test)
+* <ins>v2025.3.0</ins>
     * Updated VS Code LSP support for macOS and Linux ✍🏽
     * Collection bug fixes 🫙
     * LSP bug fixes ⌨️
     * More aggressive method inlining 🏎️
 
-* <ins>v2025.2.2</ins>
+* v2025.2.2
     * Improved named pipe support 🔌
     * Updates to the LSP client/server ⌨️
     * Fixed Windows installer issues with missing DLLs 🏗️
