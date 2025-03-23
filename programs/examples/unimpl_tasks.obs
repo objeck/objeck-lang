@@ -1,0 +1,96 @@
+use Web.HTTP, Collection, Data.JSON;
+
+
+class UnimplTasks {
+	function : Main(args : String[]) ~ Nil {
+		all_tasks := GetAllTasks();
+		lang_tasks := GetTasksByLang("Objeck");
+		
+		unimpl_tasks := Vector->New()<JsonElement>;
+		each(all_task in all_tasks) {
+			all_task_str := all_task->GetString();
+
+			found := false;
+			for(i := 0; <>found & i < lang_tasks->Size(); i += 1;) {
+				lang_task := lang_tasks->Get(i);
+				lang_task_str := lang_task->GetString();
+				found := all_task_str->Equals(lang_task_str);
+			};
+
+			if(<>found) {
+				unimpl_tasks->AddBack(all_task);
+			}
+		};
+
+		"description,url"->PrintLine();
+		task_base_url_str := "https://rosettacode.org/wiki/";
+		each(unimpl_task in unimpl_tasks) {
+			task_desc := unimpl_task->GetString();
+			task_str := task_desc->ReplaceAll(' ', '_');
+
+			task_str := task_str->ReplaceAll(",", "%2C");	
+			task_desc := task_desc->ReplaceAll(",", "-");
+	
+			task_url_str := task_base_url_str + task_str;
+			
+			"{$task_desc},{$task_url_str}"->PrintLine();
+		};
+
+		diff := lang_tasks->Size()->ToFloat() / all_tasks->Size()->ToFloat();
+		(diff * 100.0)->ErrorLine();
+	}
+
+	function : GetTasksByLang(lang : String) ~ Vector<JsonElement> {
+		tasks := Vector->New()<JsonElement>;
+		base_url_str := "https://rosettacode.org/w/api.php?action=query&cmlimit=500&cmtitle=Category:{$lang}&format=json&list=categorymembers";
+
+		next_url_str := AddTasks(base_url_str, tasks);
+		do {			
+			if(next_url_str <> Nil) {
+				next_url_str := base_url_str + "&cmcontinue=" + next_url_str;
+				next_url_str := AddTasks(next_url_str, tasks);
+			};
+		}
+		while(next_url_str <> Nil);
+
+		return tasks;
+	}
+
+	function : GetAllTasks() ~ Vector<JsonElement> {
+		tasks := Vector->New()<JsonElement>;
+		base_url_str := "https://rosettacode.org/w/api.php?action=query&cmlimit=500&cmtitle=Category:Programming_Tasks&format=json&list=categorymembers";
+
+		next_url_str := AddTasks(base_url_str, tasks);
+		do {			
+			if(next_url_str <> Nil) {
+				next_url_str := base_url_str + "&cmcontinue=" + next_url_str;
+				next_url_str := AddTasks(next_url_str, tasks);
+			};
+		}
+		while(next_url_str <> Nil);
+
+		return tasks;
+	}
+
+	function : AddTasks(query_url : String, tasks : Vector<JsonElement>) ~ String {
+		response := HttpsClient->QuickGet(Url->New(query_url), "application/json");
+
+		if(response <> Nil) {
+# response->GetContent()->ToString()->PrintLine();			
+			response_json := JsonParser->TextToElement(response->GetContent()->ToString());
+			if(response_json <> Nil) {
+				members_json := response_json->Get("query")->Get("categorymembers");
+				each(member_json in members_json) {
+					tasks->AddBack(member_json->Get("title"));
+				}
+
+				next_url_json := response_json->Get("continue");
+				if(next_url_json <> Nil) {
+					return next_url_json->Get("cmcontinue")->GetString();
+				};
+			};
+		};
+
+		return Nil;
+	}
+}
