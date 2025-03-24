@@ -15,7 +15,7 @@ class MadLibs {
 		each(result in results) {
 			temp_word := input->SubString(result->GetStart(), result->GetLength());
 			if(<>replace_sets->Has(temp_word)) {
-				"What word would you like to use to replace '{$temp_word}'?"->PrintLine();
+				"What word would you like to use to replace '{$temp_word}'? "->Print();
 				replace_word := System.IO.Console->ReadLine();
 				replace_sets->Insert(temp_word, replace_word)<String, String>;
 			};
@@ -28,7 +28,7 @@ class MadLibs {
 
 			input := input->ReplaceAll(temp_word, replace_word);
 		}
-
-		input->PrintLine();
+		
+		"---\n{$input}"->PrintLine();
 	}
 }
