@@ -1,6 +1,5 @@
 use Web.HTTP, Collection, Data.JSON, System.IO.Filesystem;
 
-
 class UnimplTasks {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() <> 1) {
@@ -43,9 +42,6 @@ class UnimplTasks {
 	
 			task_url_str := task_base_url_str + task_str;
 
-#			response := HttpsClient->QuickGet(Url->New(task_url_str));
-#			response->GetContent()->PrintLine();
-   			
 			file_out->WriteString("{$task_desc},{$task_url_str}\r\n");
 		};
 		file_out->Close();
