@@ -28,16 +28,18 @@ class UnimplTasks {
 		};
 
 		file_out := FileWriter->New(file_out_name);
-		file_out->WriteString("description,url\r\n");
+		file_out->WriteString("description,url,tasks\r\n");
 		task_base_url_str := "https://rosettacode.org/wiki/";
 		each(unimpl_task in unimpl_tasks) {
 			task_desc := unimpl_task->GetString()->ReplaceAll(",", "-")->ReplaceAll("\\\"", "\"");
 			task_str := task_desc->ReplaceAll(' ', '_')->ReplaceAll(",", "%2C")->ReplaceAll("\\\"", "\"");
-
 			task_url_str := task_base_url_str + task_str;
-			file_out->WriteString("{$task_desc},{$task_url_str}\r\n");
+			task_count := GetCount(task_url_str);
+			file_out->WriteString("{$task_desc},{$task_url_str},{$task_count}\r\n");
+			'.'->Print();
 		};
 		file_out->Close();
+		'\n'->Print();
 		
 		lang_tasks_size := lang_tasks->Size();
 		all_tasks_size := all_tasks->Size();
@@ -96,5 +98,17 @@ class UnimplTasks {
 		};
 
 		return Nil;
+	}
+
+	function : GetCount(url_str : String) ~ Int {
+		response := HttpsClient->QuickGet(Url->New(url_str));
+		if(response = Nil | response->GetContent() = Nil) {
+			return -1;
+		}
+		
+		content := response->GetContent()->ToString();
+		found := Query.RegEx.RegEx->New("<li id=\"toc-")->Find(content)<Result>;
+		
+		return found->Size();;
 	}
 }
