@@ -1277,6 +1277,20 @@ bool ContextAnalyzer::AnalyzeReturnPaths(StatementList* statement_list, const in
     case RETURN_STMT:
       return true;
 
+    case EMPTY_STMT: {
+      std::vector<Statement*>::reverse_iterator rev_iter = statements.rbegin();
+      while(rev_iter != statements.rend() && (*rev_iter)->GetStatementType() == EMPTY_STMT) {
+        ++rev_iter;
+      } 
+
+      if(rev_iter == statements.rend()) {
+        return false;
+      }
+
+      return (*rev_iter)->GetStatementType() == RETURN_STMT;
+    }
+      break;
+
     default:
       if(!current_method->IsAlt()) {
         ProcessError(current_method, L"All method/function paths must return a value");
