@@ -43,8 +43,8 @@
 
 #define MEM_START_MAX 4096 * 256
 
-#define UNCOLLECTED_COUNT 7
-#define COLLECTED_COUNT 23
+#define UNCOLLECTED_COUNT 3
+#define COLLECTED_COUNT 8
 
 #define EXTRA_BUF_SIZE 3
 #define MARKED_FLAG -1
@@ -52,6 +52,8 @@
 #define TYPE -3
 
 #define JIT_TMP_LOOK_BACK 16
+
+#define ALIGN_POOL_MAX (1 << 22)
 
 struct StackOperMemory {
   size_t* op_stack;
