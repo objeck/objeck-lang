@@ -730,9 +730,7 @@ void* MemoryManager::CollectMemory(void* arg)
 #endif
   std::set<size_t*> live_memory;
 
-  // for(size_t i = 0; i < allocated_memory.size(); ++i) {
-  for (std::set<size_t*>::iterator iter = allocated_memory.begin(); iter != allocated_memory.end(); ++iter) {
-    // size_t* mem = allocated_memory[i];
+  for(std::set<size_t*>::iterator iter = allocated_memory.begin(); iter != allocated_memory.end(); ++iter) {
     size_t* mem = *iter;
 
     // check dynamic memory
