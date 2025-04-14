@@ -734,14 +734,8 @@ void* MemoryManager::CollectMemory(void* arg)
     size_t* mem = *iter;
 
     // check dynamic memory
-    bool found = false;
     if(mem[MARKED_FLAG]) {
       mem[MARKED_FLAG] = 0L;
-      found = true;
-    }
-
-    // live
-    if(found) {
       live_memory.insert(mem);
     }
     // will be collected
