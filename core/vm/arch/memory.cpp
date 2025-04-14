@@ -1475,8 +1475,8 @@ void MemoryManager::CheckObject(size_t* mem, bool is_obj, long depth)
       // primitive or object array
       if(MarkValidMemory(mem)) {
         // ensure we're only checking int and obj arrays
-        if(std::binary_search(allocated_memory.begin(), allocated_memory.end(), mem) && 
-          (mem[TYPE] == NIL_TYPE || mem[TYPE] == INT_TYPE)) {
+        const bool found = allocated_memory.find(mem) != allocated_memory.end();
+        if(found && (mem[TYPE] == NIL_TYPE || mem[TYPE] == INT_TYPE)) {
             size_t* array = mem;
             const size_t size = array[0];
             const size_t dim = array[1];
