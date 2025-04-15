@@ -152,8 +152,8 @@ class MemoryManager {
 #ifndef _GC_SERIAL
     MUTEX_LOCK(&allocated_lock);
 #endif
-    std::set<size_t*>::iterator found = allocated_memory.find(mem);
-    if(found != allocated_memory.end() && mem[TYPE] == instructions::MemoryType::NIL_TYPE) {
+    const bool found = allocated_memory.find(mem) != allocated_memory.end();
+    if(found && mem[TYPE] == instructions::MemoryType::NIL_TYPE) {
 #ifndef _GC_SERIAL
       MUTEX_UNLOCK(&allocated_lock);
 #endif
