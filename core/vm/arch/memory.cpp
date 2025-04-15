@@ -1436,7 +1436,8 @@ void MemoryManager::CheckMemory(size_t* mem, StackDclr** dclrs, const long dcls_
 
 void MemoryManager::CheckObject(size_t* mem, bool is_obj, long depth)
 {
-  if(allocated_memory.find(mem) != allocated_memory.end()) {
+  const bool found = allocated_memory.find(mem) != allocated_memory.end();
+  if(found) {
     StackClass* cls;
     if(is_obj) {
       cls = GetClass(mem);
