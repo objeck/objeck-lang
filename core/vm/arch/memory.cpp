@@ -37,6 +37,7 @@ StackProgram* MemoryManager::prgm;
 std::unordered_set<StackFrame**> MemoryManager::pda_frames;
 std::unordered_set<StackFrameMonitor*> MemoryManager::pda_monitors;
 std::vector<StackFrame*> MemoryManager::jit_frames;
+std::list<size_t*> MemoryManager::young_memory;
 std::set<size_t*> MemoryManager::allocated_memory;
 
 std::unordered_map<size_t, std::list<size_t*>*> MemoryManager::free_memory_cache;
@@ -260,6 +261,7 @@ size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, long 
     MUTEX_LOCK(&allocated_lock);
  #endif
     allocation_size += size;
+    young_memory.push_back(mem);
     allocated_memory.insert(mem);
  #ifndef _GC_SERIAL
     MUTEX_UNLOCK(&allocated_lock);
@@ -325,6 +327,7 @@ size_t* MemoryManager::AllocateArray(const size_t size, const MemoryType type, s
   MUTEX_LOCK(&allocated_lock);
 #endif
   allocation_size += calc_size;
+  young_memory.push_back(mem);
   allocated_memory.insert(mem);
 #ifndef _GC_SERIAL
   MUTEX_UNLOCK(&allocated_lock);
@@ -730,8 +733,13 @@ void* MemoryManager::CollectMemory(void* arg)
 #endif
   std::set<size_t*> live_memory;
 
-  for(std::set<size_t*>::iterator iter = allocated_memory.begin(); iter != allocated_memory.end(); ++iter) {
+  // run young collection
+  const size_t young_start = allocation_size;
+
+  for(std::list<size_t*>::iterator iter = young_memory.begin(); iter != young_memory.end(); ++iter) {
     size_t* mem = *iter;
+
+    allocated_memory.erase(mem);
 
     // check dynamic memory
     if(mem[MARKED_FLAG]) {
@@ -753,7 +761,7 @@ void* MemoryManager::CollectMemory(void* arg)
         else {
           mem_size = mem[SIZE_OR_CLS];
         }
-      } 
+      }
       else {
         mem_size = mem[SIZE_OR_CLS];
       }
@@ -770,16 +778,74 @@ void* MemoryManager::CollectMemory(void* arg)
       AddFreeMemory(tmp - 1);
 #ifdef _DEBUG_GC
       std::wcout << L"# freeing memory: addr=" << mem << L"(" << (size_t)mem
-            << L"), size=" << mem_size << L" byte(s) #" << std::endl;
+        << L"), size=" << mem_size << L" byte(s) #" << std::endl;
 #endif
+    }
+  }
+  young_memory.clear();
+
+  const size_t young_collected = young_start - allocation_size;
+  const double young_collect_ratio = (double)young_collected / (double)mem_max_size;
+
+#ifdef _DEBUG_GC
+  std::wcout << L"==========================================" << std::endl;
+  std::wcout << L"Young collection: byte(s)=" << young_collected << L"(" << young_collect_ratio << L")%" << std::endl;
+  std::wcout << L"==========================================" << std::endl;
+#endif
+
+  // run full collection
+  if(young_collect_ratio < YOUNG_COLLECT_MIN) {
+    for(std::set<size_t*>::iterator iter = allocated_memory.begin(); iter != allocated_memory.end(); ++iter) {
+      size_t* mem = *iter;
+
+      // check dynamic memory
+      if(mem[MARKED_FLAG]) {
+        mem[MARKED_FLAG] = 0L;
+        live_memory.insert(mem);
+      }
+      // will be collected
+      else {
+        // object or array  
+        size_t mem_size;
+        if(mem[TYPE] == NIL_TYPE) {
+          StackClass* cls = (StackClass*)mem[SIZE_OR_CLS];
+#ifdef _DEBUG_GC
+          assert(cls);
+#endif
+          if(cls) {
+            mem_size = cls->GetInstanceMemorySize();
+          }
+          else {
+            mem_size = mem[SIZE_OR_CLS];
+          }
+        }
+        else {
+          mem_size = mem[SIZE_OR_CLS];
+        }
+
+        // account for deallocated memory
+        allocation_size -= mem_size;
+
+#ifdef _MEM_LOGGING
+        mem_logger << mem_cycle << L", dealloc," << (mem[SIZE_OR_CLS] ? "obj," : "array,") << mem << L"," << mem_size << std::endl;
+#endif
+
+        // cache or free memory
+        size_t* tmp = mem - EXTRA_BUF_SIZE;
+        AddFreeMemory(tmp - 1);
+#ifdef _DEBUG_GC
+        std::wcout << L"# freeing memory: addr=" << mem << L"(" << (size_t)mem
+          << L"), size=" << mem_size << L" byte(s) #" << std::endl;
+#endif
+      }
     }
   }
 
 #ifndef _GC_SERIAL
-  MUTEX_UNLOCK(&marked_lock);
-#endif  
-
-  // did not collect memory; adjust constraints
+    MUTEX_UNLOCK(&marked_lock);
+#endif 
+  
+    // did not collect memory; adjust constraints
   if(live_memory.size() >= allocated_memory.size() - 1) {
     if(uncollected_count < UNCOLLECTED_COUNT) {
       uncollected_count++;

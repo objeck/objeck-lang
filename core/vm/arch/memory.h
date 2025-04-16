@@ -45,6 +45,7 @@
 
 #define UNCOLLECTED_COUNT 3
 #define COLLECTED_COUNT 8
+#define YOUNG_COLLECT_MIN 0.25
 
 #define EXTRA_BUF_SIZE 3
 #define MARKED_FLAG -1
@@ -86,7 +87,10 @@ class MemoryManager {
   static std::unordered_set<StackFrameMonitor*> pda_monitors; // deleted elsewhere
   static std::unordered_set<StackFrame**> pda_frames;
   static std::vector<StackFrame*> jit_frames; // deleted elsewhere
+  
+  static std::list<size_t*> young_memory;
   static std::set<size_t*> allocated_memory;
+  
   static std::unordered_map<size_t, std::list<size_t*>*> free_memory_cache;
   static size_t free_memory_cache_size;
   
