@@ -736,6 +736,24 @@ void* MemoryManager::CollectMemory(void* arg)
   // run young collection
   const size_t young_start = allocation_size;
 
+  if(true) {
+    young_memory.sort();
+    auto young_mem_start = allocated_memory.find(*young_memory.begin());
+    auto young_mem_end = allocated_memory.find(*(--young_memory.end()));
+    
+    if(young_mem_start != allocated_memory.end() && young_mem_end != allocated_memory.end()) {
+      young_mem_end++;
+
+      for(auto iter = young_mem_start; iter != young_mem_end; ++iter) {
+        auto found_range = allocated_memory.find(*iter);
+        if(found_range == allocated_memory.end()) {
+          bool found_search = allocated_memory.erase(*iter);
+          std::wcout << L"Unable to find in range: addr=" << *iter << L", search=" << found_search << std::endl;
+        }
+      }
+    }
+  }
+
   for(std::list<size_t*>::iterator iter = young_memory.begin(); iter != young_memory.end(); ++iter) {
     size_t* mem = *iter;
 
