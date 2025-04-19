@@ -37,7 +37,9 @@ StackProgram* MemoryManager::prgm;
 std::unordered_set<StackFrame**> MemoryManager::pda_frames;
 std::unordered_set<StackFrameMonitor*> MemoryManager::pda_monitors;
 std::vector<StackFrame*> MemoryManager::jit_frames;
+
 std::set<size_t*> MemoryManager::allocated_memory;
+std::list<size_t*> MemoryManager::young_memory;
 
 std::unordered_map<size_t, std::list<size_t*>*> MemoryManager::free_memory_cache;
 size_t MemoryManager::free_memory_cache_size;
@@ -261,6 +263,7 @@ size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, long 
  #endif
     allocation_size += size;
     allocated_memory.insert(mem);
+    young_memory.push_back(mem);
  #ifndef _GC_SERIAL
     MUTEX_UNLOCK(&allocated_lock);
  #endif
@@ -326,6 +329,7 @@ size_t* MemoryManager::AllocateArray(const size_t size, const MemoryType type, s
 #endif
   allocation_size += calc_size;
   allocated_memory.insert(mem);
+  young_memory.push_back(mem);
 #ifndef _GC_SERIAL
   MUTEX_UNLOCK(&allocated_lock);
 #endif
@@ -710,25 +714,73 @@ void* MemoryManager::CollectMemory(void* arg)
   
   // sweep memory
 #ifdef _DEBUG_GC
-  std::wcout << L"## Sweeping memory ##" << std::endl;
+  std::wcout << L"-----------------------------------------" << std::endl;
+  std::wcout << L"Sweeping..." << std::endl;
+  std::wcout << L"-----------------------------------------" << std::endl;
+  std::wcout << L"## Sweeping young memory ##" << std::endl;
+#endif
+
+#ifndef _GC_SERIAL
+  MUTEX_LOCK(&allocated_lock);
+#endif
+  std::set<size_t*> live_memory;
+  for(std::list<size_t*>::iterator iter = young_memory.begin(); iter != young_memory.end(); ++iter) {
+    size_t* mem = *iter;
+    
+    // check dynamic memory
+    if(mem[MARKED_FLAG]) {
+      mem[MARKED_FLAG] = 0L;
+      live_memory.insert(mem);
+    }
+    // will be collected
+    else {
+      // object or array  
+      size_t mem_size;
+      if(mem[TYPE] == NIL_TYPE) {
+        StackClass* cls = (StackClass*)mem[SIZE_OR_CLS];
+#ifdef _DEBUG_GC
+        assert(cls);
+#endif
+        if(cls) {
+          mem_size = cls->GetInstanceMemorySize();
+        }
+        else {
+          mem_size = mem[SIZE_OR_CLS];
+        }
+      }
+      else {
+        mem_size = mem[SIZE_OR_CLS];
+      }
+
+      // account for deallocated memory
+      allocation_size -= mem_size;
+
+#ifdef _MEM_LOGGING
+      mem_logger << mem_cycle << L", dealloc," << (mem[SIZE_OR_CLS] ? "obj," : "array,") << mem << L"," << mem_size << std::endl;
+#endif
+
+      // cache or free memory
+      size_t* tmp = mem - EXTRA_BUF_SIZE;
+      AddFreeMemory(tmp - 1);
+#ifdef _DEBUG_GC
+      std::wcout << L"# freeing memory: addr=" << mem << L"(" << (size_t)mem
+        << L"), size=" << mem_size << L" byte(s) #" << std::endl;
+#endif
+    }
+  }
+
+#ifdef _DEBUG_GC
+  std::wcout << L"## Sweeping all memory ##" << std::endl;
 #endif
 
   // sort and search
 #ifndef _GC_SERIAL
-  MUTEX_LOCK(&allocated_lock);
   MUTEX_LOCK(&marked_lock);
 #endif
-
-#ifdef _DEBUG_GC
-  std::wcout << L"-----------------------------------------" << std::endl;
-  std::wcout << L"Sweeping..." << std::endl;
-  std::wcout << L"-----------------------------------------" << std::endl;
-#endif
-
-#ifndef _GC_SERIAL
-
-#endif
-  std::set<size_t*> live_memory;
+  for(std::list<size_t*>::iterator iter = young_memory.begin(); iter != young_memory.end(); ++iter) {
+    allocated_memory.erase(*iter);
+  }
+  young_memory.clear();
 
   for(std::set<size_t*>::iterator iter = allocated_memory.begin(); iter != allocated_memory.end(); ++iter) {
     size_t* mem = *iter;
