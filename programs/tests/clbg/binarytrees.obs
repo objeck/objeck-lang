@@ -16,7 +16,7 @@ class BinaryTrees {
 	
 	function : native : Run(n : Int) ~ Nil {
 		minDepth := 4;
-					
+		
 		maxDepth := (minDepth + 2 > n) ? minDepth + 2 : n;
 		stretchDepth := maxDepth + 1;
 	

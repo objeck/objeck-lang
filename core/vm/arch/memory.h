@@ -153,15 +153,12 @@ class MemoryManager {
     MUTEX_LOCK(&allocated_lock);
 #endif
     const bool found = allocated_memory.find(mem) != allocated_memory.end();
-    if(found && mem[TYPE] == instructions::MemoryType::NIL_TYPE) {
-#ifndef _GC_SERIAL
-      MUTEX_UNLOCK(&allocated_lock);
-#endif
-      return (StackClass*)mem[SIZE_OR_CLS];
-    }
 #ifndef _GC_SERIAL
     MUTEX_UNLOCK(&allocated_lock);
 #endif
+    if(found && mem[TYPE] == instructions::MemoryType::NIL_TYPE) {
+      return (StackClass*)mem[SIZE_OR_CLS];
+    }
     
     return nullptr;
   }
