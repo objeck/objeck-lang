@@ -1464,15 +1464,21 @@ void MemoryManager::CheckObject(size_t* mem, bool is_obj, long depth)
       // primitive or object array
       if(MarkValidMemory(mem)) {
         // ensure we're only checking int and obj arrays
+#ifndef _GC_SERIAL
+        MUTEX_LOCK(&allocated_lock);
+#endif
         const bool found = allocated_memory.find(mem) != allocated_memory.end();
+#ifndef _GC_SERIAL
+        MUTEX_UNLOCK(&allocated_lock);
+#endif
         if(found && (mem[TYPE] == NIL_TYPE || mem[TYPE] == INT_TYPE)) {
-            size_t* array = mem;
-            const size_t size = array[0];
-            const size_t dim = array[1];
-            size_t* objects = (size_t*)(array + 2 + dim);
-            for(size_t i = 0; i < size; ++i) {
-              CheckObject((size_t*)objects[i], false, 2);
-            }
+          size_t* array = mem;
+          const size_t size = array[0];
+          const size_t dim = array[1];
+          size_t* objects = (size_t*)(array + 2 + dim);
+          for(size_t i = 0; i < size; ++i) {
+            CheckObject((size_t*)objects[i], false, 2);
+          }
         }
       }
     }
