@@ -871,16 +871,7 @@ void* MemoryManager::CheckStack(void* arg)
 
   while(info->stack_pos > -1) {
     size_t* check_mem = (size_t*)info->op_stack[info->stack_pos--];
-#ifndef _GC_SERIAL
-    MUTEX_LOCK(&allocated_lock);
-#endif
-    const bool found = allocated_memory.find(check_mem) != allocated_memory.end();
-#ifndef _GC_SERIAL
-    MUTEX_UNLOCK(&allocated_lock);
-#endif
-    if(found) {
-      CheckObject(check_mem, false, 1);
-    }
+    CheckObject(check_mem, false, 1);
   }
 
 #ifndef _WIN32
@@ -1088,16 +1079,7 @@ void* MemoryManager::CheckJitRoots(void* arg)
       for(int i = 0; i < JIT_TMP_LOOK_BACK; ++i) {
 #endif
         size_t* check_mem = (size_t*)mem[i];
-#ifndef _GC_SERIAL
-        MUTEX_LOCK(&allocated_lock);
-#endif 
-        const bool found = allocated_memory.find(check_mem) != allocated_memory.end();
-#ifndef _GC_SERIAL
-        MUTEX_UNLOCK(&allocated_lock);
-#endif
-        if(found) {
-          CheckObject(check_mem, false, 1);
-        }
+        CheckObject(check_mem, false, 1);
       }
     }
 #ifdef _DEBUG_GC
@@ -1436,7 +1418,13 @@ void MemoryManager::CheckMemory(size_t* mem, StackDclr** dclrs, const long dcls_
 
 void MemoryManager::CheckObject(size_t* mem, bool is_obj, long depth)
 {
+#ifndef _GC_SERIAL
+  MUTEX_LOCK(&allocated_lock);
+#endif
   const bool found = allocated_memory.find(mem) != allocated_memory.end();
+#ifndef _GC_SERIAL
+  MUTEX_UNLOCK(&allocated_lock);
+#endif
   if(found) {
     StackClass* cls;
     if(is_obj) {
