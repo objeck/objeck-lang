@@ -135,29 +135,6 @@ inline bool MemoryManager::MarkMemory(size_t* mem)
   return false;
 }
 
-// if return true, trace memory otherwise do not
-inline bool MemoryManager::MarkValidMemory(size_t* mem)
-{
-  if(mem) {
-    // check if memory has been marked
-    if(mem[MARKED_FLAG]) {
-      return false;
-    }
-
-    // mark & add to list
-#ifndef _GC_SERIAL
-    MUTEX_LOCK(&marked_lock);
-#endif
-    mem[MARKED_FLAG] = 1L;
-#ifndef _GC_SERIAL
-    MUTEX_UNLOCK(&marked_lock);
-#endif
-    return true;
-  }
-
-  return false;
-}
-
 void MemoryManager::AddPdaMethodRoot(StackFrame** frame)
 {
   if(!initialized) {
@@ -1052,7 +1029,7 @@ void* MemoryManager::CheckJitRoots(void* arg)
             << L" byte(s)" << std::endl;
 #endif
           // mark data
-          if(MarkValidMemory((size_t*)(*mem))) {
+          if(MarkMemory((size_t*)(*mem))) {
             size_t* array = (size_t*)(*mem);
             const size_t size = array[0];
             const size_t dim = array[1];
@@ -1397,7 +1374,7 @@ void MemoryManager::CheckMemory(size_t* mem, StackDclr** dclrs, const long dcls_
             << L" byte(s)" << std::endl;
 #endif
       // mark data
-      if(MarkValidMemory((size_t*)(*mem))) {
+      if(MarkMemory((size_t*)(*mem))) {
         size_t* array = (size_t*)(*mem);
         const size_t size = array[0];
         const size_t dim = array[1];
@@ -1462,7 +1439,7 @@ void MemoryManager::CheckObject(size_t* mem, bool is_obj, long depth)
       }
 #endif
       // primitive or object array
-      if(MarkValidMemory(mem)) {
+      if(MarkMemory(mem)) {
         // ensure we're only checking int and obj arrays
 #ifndef _GC_SERIAL
         MUTEX_LOCK(&allocated_lock);
