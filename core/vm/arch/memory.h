@@ -116,7 +116,6 @@ class MemoryManager {
 
   // if return true, trace memory otherwise do not
   static inline bool MarkMemory(size_t* mem);
-  static inline bool MarkValidMemory(size_t* mem);
 
 #ifdef _MEM_LOGGING
   static ofstream mem_logger;
