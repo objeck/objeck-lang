@@ -439,18 +439,68 @@ size_t* MemoryManager::GetFreeMemory(size_t size) {
 }
 
 size_t MemoryManager::AlignMemorySize(size_t size) {
-  --size;
+  if(size > 0 && size <= 8) {
+    return 8;
+  }
+  else if(size > 8 && size <= 16) {
+    return 16;
+  }
+  else if(size > 16 && size <= 32) {
+    return 32;
+  }
+  else if(size > 32 && size <= 64) {
+    return 64;
+  }
+  else if(size > 64 && size <= 128) {
+    return 128;
+  }
+  else if(size > 128 && size <= 256) {
+    return 256;
+  }
+  else if(size > 256 && size <= 512) {
+    return 512;
+  }
+  else if(size > 512 && size <= 1024) {
+    return 1024;
+  }
+  else if(size > 1024 && size <= 2048) {
+    return 2048;
+  }
+  else if(size > 2048 && size <= 4096) {
+    return 4096;
+  }
+  else if(size > 4096 && size <= 8192) {
+    return 8192;
+  }
+  else if(size > 8192 && size <= 16384) {
+    return 16384;
+  }
+  else if(size > 16384 && size <= 32768) {
+    return 32768;
+  }
+  else if(size > 32768 && size <= 65536) {
+    return 65536;
+  }
+  else if(size > 65536 && size <= 131072) {
+    return 131072;
+  }
+  else if(size > 131072 && size <= 262144) {
+    return 262144;
+  }
+  else if(size > 262144 && size <= 524288) {
+    return 524288;
+  }
+  else if(size > 524288 && size <= 1048576) {
+    return 1048576;
+  }
+  else if(size > 1048576 && size <= 2097152) {
+    return 2097152;
+  }
+  else if(size > 2097152 && size <= 4194304) {
+    return 4194304;
+  }
 
-  size |= size >> 1;
-  size |= size >> 2;
-  size |= size >> 4;
-  size |= size >> 8;
-  size |= size >> 16;
-  size |= size >> 32;
-
-  ++size;
-
-  return size > ALIGN_POOL_MAX ? 0 : size;
+  return 0;
 }
 
 void MemoryManager::ClearFreeMemory(bool all) {
@@ -730,12 +780,20 @@ void* MemoryManager::CollectMemory(void* arg)
 #endif
   std::set<size_t*> live_memory;
 
-  for(std::set<size_t*>::iterator iter = allocated_memory.begin(); iter != allocated_memory.end(); ++iter) {
+  // for(size_t i = 0; i < allocated_memory.size(); ++i) {
+  for (std::set<size_t*>::iterator iter = allocated_memory.begin(); iter != allocated_memory.end(); ++iter) {
+    // size_t* mem = allocated_memory[i];
     size_t* mem = *iter;
 
     // check dynamic memory
+    bool found = false;
     if(mem[MARKED_FLAG]) {
       mem[MARKED_FLAG] = 0L;
+      found = true;
+    }
+
+    // live
+    if(found) {
       live_memory.insert(mem);
     }
     // will be collected
@@ -871,7 +929,16 @@ void* MemoryManager::CheckStack(void* arg)
 
   while(info->stack_pos > -1) {
     size_t* check_mem = (size_t*)info->op_stack[info->stack_pos--];
-    CheckObject(check_mem, false, 1);
+#ifndef _GC_SERIAL
+    MUTEX_LOCK(&allocated_lock);
+#endif
+    const bool found = allocated_memory.find(check_mem) != allocated_memory.end();
+#ifndef _GC_SERIAL
+    MUTEX_UNLOCK(&allocated_lock);
+#endif
+    if(found) {
+      CheckObject(check_mem, false, 1);
+    }
   }
 
 #ifndef _WIN32
@@ -1079,7 +1146,16 @@ void* MemoryManager::CheckJitRoots(void* arg)
       for(int i = 0; i < JIT_TMP_LOOK_BACK; ++i) {
 #endif
         size_t* check_mem = (size_t*)mem[i];
-        CheckObject(check_mem, false, 1);
+#ifndef _GC_SERIAL
+        MUTEX_LOCK(&allocated_lock);
+#endif 
+        const bool found = allocated_memory.find(check_mem) != allocated_memory.end();
+#ifndef _GC_SERIAL
+        MUTEX_UNLOCK(&allocated_lock);
+#endif
+        if(found) {
+          CheckObject(check_mem, false, 1);
+        }
       }
     }
 #ifdef _DEBUG_GC
@@ -1418,14 +1494,7 @@ void MemoryManager::CheckMemory(size_t* mem, StackDclr** dclrs, const long dcls_
 
 void MemoryManager::CheckObject(size_t* mem, bool is_obj, long depth)
 {
-#ifndef _GC_SERIAL
-  MUTEX_LOCK(&allocated_lock);
-#endif
-  const bool found = allocated_memory.find(mem) != allocated_memory.end();
-#ifndef _GC_SERIAL
-  MUTEX_UNLOCK(&allocated_lock);
-#endif
-  if(found) {
+  if(allocated_memory.find(mem) != allocated_memory.end()) {
     StackClass* cls;
     if(is_obj) {
       cls = GetClass(mem);
@@ -1464,21 +1533,15 @@ void MemoryManager::CheckObject(size_t* mem, bool is_obj, long depth)
       // primitive or object array
       if(MarkValidMemory(mem)) {
         // ensure we're only checking int and obj arrays
-#ifndef _GC_SERIAL
-        MUTEX_LOCK(&allocated_lock);
-#endif
-        const bool found = allocated_memory.find(mem) != allocated_memory.end();
-#ifndef _GC_SERIAL
-        MUTEX_UNLOCK(&allocated_lock);
-#endif
-        if(found && (mem[TYPE] == NIL_TYPE || mem[TYPE] == INT_TYPE)) {
-          size_t* array = mem;
-          const size_t size = array[0];
-          const size_t dim = array[1];
-          size_t* objects = (size_t*)(array + 2 + dim);
-          for(size_t i = 0; i < size; ++i) {
-            CheckObject((size_t*)objects[i], false, 2);
-          }
+        if(std::binary_search(allocated_memory.begin(), allocated_memory.end(), mem) && 
+          (mem[TYPE] == NIL_TYPE || mem[TYPE] == INT_TYPE)) {
+            size_t* array = mem;
+            const size_t size = array[0];
+            const size_t dim = array[1];
+            size_t* objects = (size_t*)(array + 2 + dim);
+            for(size_t i = 0; i < size; ++i) {
+              CheckObject((size_t*)objects[i], false, 2);
+            }
         }
       }
     }
