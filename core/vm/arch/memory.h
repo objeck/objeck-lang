@@ -85,7 +85,7 @@ class MemoryManager {
   static std::unordered_set<StackFrame**> pda_frames;
   static std::vector<StackFrame*> jit_frames; // deleted elsewhere
   static std::set<size_t*> allocated_memory;
-  static std::unordered_map<size_t, std::list<size_t*>*> free_memory_cache;
+  static std::unordered_map<size_t, std::stack<size_t*>*> free_memory_cache;
   static size_t free_memory_cache_size;
   
 #ifdef _WIN32
@@ -114,7 +114,6 @@ class MemoryManager {
 
   // if return true, trace memory otherwise do not
   static inline bool MarkMemory(size_t* mem);
-  static inline bool MarkValidMemory(size_t* mem);
 
 #ifdef _MEM_LOGGING
   static ofstream mem_logger;
