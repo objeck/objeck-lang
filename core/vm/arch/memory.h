@@ -43,8 +43,8 @@
 
 #define MEM_START_MAX 4096 * 256
 
-#define UNCOLLECTED_COUNT 3
-#define COLLECTED_COUNT 8
+#define UNCOLLECTED_COUNT 7
+#define COLLECTED_COUNT 23
 
 #define EXTRA_BUF_SIZE 3
 #define MARKED_FLAG -1
@@ -52,8 +52,6 @@
 #define TYPE -3
 
 #define JIT_TMP_LOOK_BACK 16
-
-#define ALIGN_POOL_MAX (1 << 22)
 
 struct StackOperMemory {
   size_t* op_stack;
@@ -152,13 +150,16 @@ class MemoryManager {
 #ifndef _GC_SERIAL
     MUTEX_LOCK(&allocated_lock);
 #endif
-    const bool found = allocated_memory.find(mem) != allocated_memory.end();
+    std::set<size_t*>::iterator found = allocated_memory.find(mem);
+    if(found != allocated_memory.end() && mem[TYPE] == instructions::MemoryType::NIL_TYPE) {
+#ifndef _GC_SERIAL
+      MUTEX_UNLOCK(&allocated_lock);
+#endif
+      return (StackClass*)mem[SIZE_OR_CLS];
+    }
 #ifndef _GC_SERIAL
     MUTEX_UNLOCK(&allocated_lock);
 #endif
-    if(found && mem[TYPE] == instructions::MemoryType::NIL_TYPE) {
-      return (StackClass*)mem[SIZE_OR_CLS];
-    }
     
     return nullptr;
   }
