@@ -1,15 +1,15 @@
 class Test {
   function : Main(args : String[]) ~ Nil {
-    a := Int->New[3];
-    a[0] := 11;
-    a[1] := 6;
-    a[2] := 9;
+    x := Int->New[3];
+    x[0] := 11;
+    x[1] := 6;
+    x[2] := 9;
 
     g := Float->New[2];
     g[0] := 1.75;
-    g[1] := 55.3;    
+    g[1] := 55.3;
 
-    Add(a, g, 3)->PrintLine();
+    Add(x, g, 3)->PrintLine();
   }
 
   function : native : Add(a : Int[], g : Float[], b : Int) ~ Int {
