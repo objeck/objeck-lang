@@ -94,8 +94,14 @@ int main(int argc, char* argv[])
     std::map<const std::wstring, std::wstring> arguments = ParseCommnadLine(argc, argv, cmd_line);
 
     // single command line optional is the source file
-    if(argc == 2 && arguments.empty()) {
-      arguments[L"src"] = cmd_line.erase(0, 1);
+    if(argc > 1 && arguments.find(L"src") == arguments.end()) {
+      const size_t space_delim_index = cmd_line.find(L' ', 1);
+      if(space_delim_index > 0 && space_delim_index != std::wstring::npos) {
+        arguments[L"src"] = cmd_line.erase(0, 1).substr(0, space_delim_index - 1);
+      }
+      else {
+        arguments[L"src"] = cmd_line.erase(0, 1);
+      }
     }
     
     std::list<std::wstring> argument_optionals;
@@ -107,7 +113,7 @@ int main(int argc, char* argv[])
     OpenLogger("debug.log");
 #endif
 
-    // compile source with optionals
+    // compile source with options
     status = OptionsCompile(arguments, argument_optionals, usage);
 
 #ifdef _DEBUG
