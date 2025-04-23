@@ -606,7 +606,15 @@ char* Library::LoadFileBuffer(std::wstring filename, size_t& buffer_size)
     return out;
   }
   else {
-    std::wcerr << L"Unable to open file: '" << filename << L"'" << std::endl;
+    if(frontend::EndsWith(filename, L".obl")) {
+      std::wcerr << L"Unable to read library: '" << filename << L"'" << std::endl;
+    }
+    else if(frontend::EndsWith(filename, L".obl")) {
+      std::wcerr << L"Unable to read source: '" << filename << L"'" << std::endl;
+    }
+    else {
+      std::wcerr << L"Unable to open file: '" << filename << L"'" << std::endl;
+    }
   }
 
   return nullptr;
