@@ -223,7 +223,8 @@ bundle Web.HTTP {
 						@query := part->SubString(query_index, part->Size() - query_index);
 						@host := part->SubString(query_index - 1);
 					}
-					else {
+					
+					if(@host = Nil) {
 						@host := part;
 					};
 					
