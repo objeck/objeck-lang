@@ -216,18 +216,17 @@ bundle Web.HTTP {
 						port_str := part->SubString(port_index, part->Size() - port_index);
 						@port := port_str->ToInt();
 					}
+					
+					query_index := part->Find('?');
+					if(query_index > -1) {
+						query_index += 1;
+						@query := part->SubString(query_index, part->Size() - query_index);
+						@host := part->SubString(query_index - 1);
+					}
 					else {
-						query_index := part->Find('?');
-						if(query_index > -1) {
-							query_index += 1;
-							@query := part->SubString(query_index, part->Size() - query_index);
-							@host := part->SubString(query_index - 1);
-						}
-						else {
-							@host := part;
-						};
+						@host := part;
 					};
-
+					
 					if(@host->EndsWith('/')) {
 						@path := "/";
 					};
