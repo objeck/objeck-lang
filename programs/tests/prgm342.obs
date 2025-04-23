@@ -6,8 +6,7 @@ class Test {
 		u := Web.HTTP.Url->New("https://www.sun.com/a#foo#bar");
 		u->ToString()->PrintLine();
 
-		u := Web.HTTP.Url->New("https://www.sun.com/#foo");
+		u := Web.HTTP.Url->New("https://a.com?a=b");
 		u->ToString()->PrintLine();
 	}
 }
-
