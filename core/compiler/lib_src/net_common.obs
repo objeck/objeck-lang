@@ -217,7 +217,15 @@ bundle Web.HTTP {
 						@port := port_str->ToInt();
 					}
 					else {
-						@host := part;
+						query_index := part->Find('?');
+						if(query_index > -1) {
+							query_index += 1;
+							@query := part->SubString(query_index, part->Size() - query_index);
+							@host := part->SubString(query_index - 1);
+						}
+						else {
+							@host := part;
+						};
 					};
 
 					if(@host->EndsWith('/')) {
