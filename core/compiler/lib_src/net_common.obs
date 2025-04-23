@@ -186,7 +186,10 @@ bundle Web.HTTP {
 				}
 				else {
 					each(i : parts) {
-						ParsePart(parts[i], i, i = parts->Size() - 1);
+						part := parts[i];
+						if(part <> Nil) {
+							ParsePart(part, i, i = parts->Size() - 1);
+						};
 					};
 				};
 			}
@@ -198,7 +201,7 @@ bundle Web.HTTP {
 		}
 
 		method : ParsePart(part : String, index : Int, last : Bool) ~ Nil {
-			# "\t-- part='{$part}' --"->PrintLine();
+			# "\t-- part='{$part}', {$index}, {$last} --"->PrintLine();
 
 			# host and port
 			if(index = 0) {
@@ -233,10 +236,12 @@ bundle Web.HTTP {
 				if(last) {
 					sub_part : String;
 					frag_index := part->Find('#');
-					if(frag_index > -1) {
+					if(frag_index = 0) {
+						sub_part := "";
+						@frag := part->SubString(1, part->Size() - 1);
+					}
+					else if(frag_index > -1) {
 						sub_part := part->SubString(frag_index);
-						# "\t-- sub_part='{$sub_part}' --"->PrintLine();							
-
 						frag_index += 1;
 						@frag := part->SubString(frag_index, part->Size() - frag_index);
 					}
