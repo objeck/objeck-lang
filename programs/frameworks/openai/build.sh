@@ -10,7 +10,11 @@ fi
 
 rm -f *.obe
 
-obc -src ../../../core/compiler/lib_src/openai.obs -lib misc,json,net,cipher -tar lib -opt s3 -dest ../../../core/release/deploy/lib/opeani.obl
+obc -src ../../../core/compiler/lib_src/net_common.obs,../../../core/compiler/lib_src/net.obs,../../../core/compiler/lib_src/net_secure.obs -lib cipher -tar lib -opt s3 -dest ../../../core/release/deploy/lib/net.obl
+
+obc -src ../../../core/compiler/lib_src/net_server.obs -lib json,net,cipher -tar lib -opt s3 -dest ../../../core/release/deploy/lib/net_server.obl
+
+obc -src ../../../core/compiler/lib_src/openai.obs -lib misc,json,net,net_server,cipher -tar lib -opt s3 -dest ../../../core/release/deploy/lib/opeani.obl
 
 if [ ! -z "$1" ]; then
 	obc -src $1 -lib net,json,misc,openai -dest $1
