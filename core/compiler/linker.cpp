@@ -402,6 +402,8 @@ void Linker::Load()
         if(file_name[0] == L'@') {
           std::wstring file_path;
 
+          // TODO: look for ini file
+
           // standard libraries
           if(file_name == L"@std") {
             std::wstring derived_libs[] = { L"gen_collect.obl", L"cipher.obl", L"json.obl" };
@@ -427,6 +429,7 @@ void Linker::Load()
               paths.push_back(file_path);
             }
           }
+          // net libraries
           else if(file_name == L"@game") {
             std::wstring derived_libs[] = { L"sdl_game.obl", L"sdl2.obl" };
 
@@ -439,7 +442,7 @@ void Linker::Load()
               paths.push_back(file_path);
             }
           }
-          // ML libraries
+          // ml libraries
           else if(file_name == L"@ml") {
             std::wstring derived_libs[] = { L"misc.obl", L"openai.obl", L"gemini.obl"};
 
