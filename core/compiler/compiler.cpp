@@ -188,7 +188,7 @@ int OptionsCompile(std::map<const std::wstring, std::wstring>& arguments, std::l
   result = arguments.find(L"tar");
   if(result != arguments.end()) {
     target = result->second;
-    if(target != L"lib" && target != L"web" && target != L"exe") {
+    if(target != L"lib" && target != L"exe") {
       std::wcerr << usage << std::endl;
       return COMMAND_ERROR;
     }
