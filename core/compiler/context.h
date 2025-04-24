@@ -629,7 +629,7 @@ class ContextAnalyzer {
     linker = nullptr;
   }
   
-  bool Analyze();
+  bool Analyze(bool is_lib);
 
 #ifdef _MODULE
   std::vector<std::wstring> GetErrors();
