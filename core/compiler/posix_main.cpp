@@ -92,9 +92,10 @@ int main(int argc, char* argv[])
     // parse command line
     std::wstring cmd_line;    
     std::map<const std::wstring, std::wstring> arguments = ParseCommnadLine(argc, argv, cmd_line);
-
+    
     // add standard library is 'lib' is not provided
-    if(arguments.find(L"lib") == arguments.end()) {
+    std::map<std::wstring, std::wstring>::iterator tar_flag = arguments.find(L"tar");
+    if(tar_flag != arguments.end() && tar_flag->second != L"lib") {
       arguments[L"lib"] = L"@std";
     }
 
