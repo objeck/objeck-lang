@@ -489,7 +489,7 @@ void Linker::Load(bool is_lib)
     if(!file_name.empty()) {
       std::wstring file_path = path + file_name;
       
-      if(file_name[0] == L'@') {
+      if(!is_lib && file_name[0] == L'@') {
         // standard libraries
         if(file_name == L"@std") {
           std::wstring derived_libs[] = { L"cipher.obl", L"json.obl" };
