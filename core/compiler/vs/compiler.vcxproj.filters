@@ -53,9 +53,6 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\compiler.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\context.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -100,6 +97,9 @@
     </ClInclude>
     <ClInclude Include="..\..\shared\logger.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\compiler.h">
+      <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

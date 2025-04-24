@@ -93,6 +93,11 @@ int main(int argc, char* argv[])
     std::wstring cmd_line;    
     std::map<const std::wstring, std::wstring> arguments = ParseCommnadLine(argc, argv, cmd_line);
 
+    // add standard library is 'lib' is not provided
+    if(arguments.find(L"lib") == arguments.end()) {
+      arguments[L"lib"] = L"@std";
+    }
+
     // single command line optional is the source file
     if(argc > 1 && arguments.find(L"src") == arguments.end()) {
       const size_t space_delim_index = cmd_line.find(L' ', 1);
