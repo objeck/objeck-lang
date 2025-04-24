@@ -390,6 +390,8 @@ void Linker::Load(bool is_lib)
   // set library path
   std::wstring path = GetLibraryPath();
 
+  // TODO: read alias file
+
   // parses library path
   if(master_path.size() > 0) {
     size_t offset = 0;
