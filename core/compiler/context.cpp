@@ -160,7 +160,7 @@ std::vector<std::wstring> ContextAnalyzer::GetErrors()
 /****************************
  * Starts the analysis process
  ****************************/
-bool ContextAnalyzer::Analyze()
+bool ContextAnalyzer::Analyze(bool is_lib)
 {
 #ifdef _DEBUG
   GetLogger() << L"\n--------- Contextual Analysis ---------" << std::endl;
@@ -169,7 +169,7 @@ bool ContextAnalyzer::Analyze()
 
 #ifndef _SYSTEM
   // process libraries classes
-  linker->Load();
+  linker->Load(is_lib);
 #endif
 
   // check uses

@@ -32,6 +32,7 @@
 #ifdef _WIN32
 #include <io.h>
 #include <fcntl.h>
+#include <fcntl.h>
 #else
 #include <dirent.h>
 #endif
@@ -55,7 +56,7 @@ int Compile(const std::wstring& src_files, const std::wstring& opt, const std::w
     // analyze parse tree
     ParsedProgram* program = parser.GetProgram();
     ContextAnalyzer analyzer(program, sys_lib_path, is_lib);
-    if(analyzer.Analyze()) {
+    if(analyzer.Analyze(is_lib)) {
       // emit intermediate code
       IntermediateEmitter intermediate(program, is_lib, is_debug);
       intermediate.Translate();
