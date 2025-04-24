@@ -1124,5 +1124,5 @@ class Linker {
   // finds the first enum match; note multiple matches may exist
   LibraryEnum* SearchEnumLibraries(const std::wstring& name, std::vector<std::wstring> uses);
 
-  void Load();
+  void Load(bool is_lib);
 };

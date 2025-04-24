@@ -381,7 +381,7 @@ LibraryEnum* Linker::SearchEnumLibraries(const std::wstring& name, std::vector<s
   return nullptr;
 }
 
-void Linker::Load()
+void Linker::Load(bool is_lib)
 {
 #ifdef _DEBUG
   GetLogger() << L"--------- Linking Libraries ---------" << std::endl;
@@ -399,7 +399,7 @@ void Linker::Load()
       std::wstring file_name = master_path.substr(offset, index - offset);
       if(!file_name.empty()) {
         // check for alias 
-        if(file_name[0] == L'@') {
+        if(!is_lib && file_name[0] == L'@') {
           std::wstring file_path;
 
           // TODO: look for ini file
