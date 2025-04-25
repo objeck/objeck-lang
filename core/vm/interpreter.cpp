@@ -193,10 +193,7 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
       break;
 
     case LOAD_INT_LIT:
-#ifdef _DEBUG
-      std::wcout << L"stack oper: LOAD_INT_LIT; call_pos=" << (*call_stack_pos) << std::endl;
-#endif
-      PushInt(instr->GetInt64Operand(), op_stack, stack_pos);
+      LoadIntLit(instr, op_stack, stack_pos);
       break;
 
     case SHL_INT:
@@ -710,10 +707,7 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
       break;
 
     case LOAD_INST_MEM:
-#ifdef _DEBUG
-      std::wcout << L"stack oper: LOAD_INST_MEM; call_pos=" << (*call_stack_pos) << std::endl;
-#endif
-      PushInt((*frame)->mem[0], op_stack, stack_pos);
+      LoadInstVar(instr, op_stack, stack_pos);
       break;
 
       // shared library support
@@ -1101,6 +1095,22 @@ void StackInterpreter::ShrInt(size_t* &op_stack, long* &stack_pos)
   const INT64_VALUE right = (INT64_VALUE)op_stack[(*stack_pos) - 2];
   op_stack[(*stack_pos) - 2] = left >> right;
   (*stack_pos)--;
+}
+
+void StackInterpreter::LoadIntLit(StackInstr* instr, size_t*& op_stack, long*& stack_pos)
+{
+#ifdef _DEBUG
+  std::wcout << L"stack oper: LOAD_INT_LIT; call_pos=" << (*call_stack_pos) << std::endl;
+#endif
+  PushInt(instr->GetInt64Operand(), op_stack, stack_pos);
+}
+
+void StackInterpreter::LoadInstVar(StackInstr* instr, size_t*& op_stack, long*& stack_pos) 
+{
+#ifdef _DEBUG
+  std::wcout << L"stack oper: LOAD_INST_MEM; call_pos=" << (*call_stack_pos) << std::endl;
+#endif
+  PushInt((*frame)->mem[0], op_stack, stack_pos);
 }
 
 void StackInterpreter::LoadLoclIntVar(StackInstr* instr, size_t* &op_stack, long* &stack_pos)
@@ -2329,9 +2339,6 @@ void StackInterpreter::ProcessDynamicMethodCall(StackInstr* instr, StackInstr** 
 #endif
 }
 
-/********************************
- * Processes a synchronous method call.
- ********************************/
 void StackInterpreter::ProcessMethodCall(StackInstr* instr, StackInstr** &instrs, long &ip, size_t* &op_stack, long* &stack_pos)
 {
   // save current method
