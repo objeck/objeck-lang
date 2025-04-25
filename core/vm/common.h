@@ -144,21 +144,21 @@ class StackInstr
   long operand3;
   long native_offset;
   int line_num;
-  InstrFunPtr instr_fun_ptr;
+  InstrFunPtr instr_ptr;
 
  public:
   StackInstr(int l, INT64_VALUE v) {
     line_num = l;
     type = LOAD_INT_LIT;
     alt_operand.int64_operand = v;
-    instr_fun_ptr = nullptr;
+    instr_ptr = nullptr;
   }
 
   StackInstr(int l, InstructionType t) {
     line_num = l;
     type = t;
     operand = operand3 = native_offset = 0;
-    instr_fun_ptr = nullptr;
+    instr_ptr = nullptr;
   }
 
   StackInstr(int l, InstructionType t, long o) {
@@ -166,7 +166,7 @@ class StackInstr
     type = t;
     operand = o;
     operand3 = native_offset = 0;
-    instr_fun_ptr = nullptr;
+    instr_ptr = nullptr;
   }
 
   StackInstr(int l, InstructionType t, FLOAT_VALUE fo) {
@@ -174,7 +174,7 @@ class StackInstr
     type = t;
     alt_operand.float_operand = fo;
     operand = operand3 = native_offset = 0;
-    instr_fun_ptr = nullptr;
+    instr_ptr = nullptr;
   }
 
   StackInstr(int l, InstructionType t, long o, long o2) {
@@ -183,7 +183,7 @@ class StackInstr
     operand = o;
     alt_operand.operand2 = o2;
     operand3 = native_offset = 0;
-    instr_fun_ptr = nullptr;
+    instr_ptr = nullptr;
   }
 
   StackInstr(int l, InstructionType t, long o, long o2, long o3) {
@@ -193,18 +193,18 @@ class StackInstr
     alt_operand.operand2 = o2;
     operand3 = o3;
     native_offset = 0;
-    instr_fun_ptr = nullptr;
+    instr_ptr = nullptr;
   }
 
   ~StackInstr() {
   }  
 
   InstrFunPtr GetInstrPtr() {
-    return instr_fun_ptr;
+    return instr_ptr;
   }
 
   void SetInstrPtr(InstrFunPtr p) {
-    instr_fun_ptr = p;
+    instr_ptr = p;
   }
 
   inline InstructionType GetType() const {
