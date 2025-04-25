@@ -629,6 +629,9 @@ class ContextAnalyzer {
     linker = nullptr;
   }
   
+  bool Analyze() {
+    return Analyze(false);
+  }
   bool Analyze(bool is_lib);
 
 #ifdef _MODULE
