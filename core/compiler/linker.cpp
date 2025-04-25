@@ -407,8 +407,11 @@ void Linker::Load(bool is_lib)
             if(lib_section_aliases != lib_aliases.end()) {
               auto lib_name_value = lib_section_aliases->second;
               for(const auto& derived_lib : lib_name_value) {
-                const std::wstring file_path = lib_path + derived_lib.first;
-                
+                std::wstring file_path = lib_path + derived_lib.first;
+                if(!frontend::EndsWith(file_path, L".obl")) {
+                  file_path += L".obl";
+                }
+
                 Library* library = new Library(file_path);
                 library->Load();
                 libraries.insert(std::pair<std::wstring, Library*>(file_path, library));
@@ -460,7 +463,10 @@ void Linker::Load(bool is_lib)
           if(lib_section_aliases != lib_aliases.end()) {
             auto lib_name_value = lib_section_aliases->second;
             for(const auto& derived_lib : lib_name_value) {
-              const std::wstring file_path = lib_path + derived_lib.first;
+              std::wstring file_path = lib_path + derived_lib.first;
+              if(!frontend::EndsWith(file_path, L".obl")) {
+                file_path += L".obl";
+              }
 
               Library* library = new Library(file_path);
               library->Load();
