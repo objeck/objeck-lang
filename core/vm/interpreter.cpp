@@ -158,7 +158,7 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
     
     switch(instr->GetType()) {
     case STOR_LOCL_INT_VAR:
-      StorLoclIntVar(instr, op_stack, stack_pos);
+      StorLoclIntVar(instr, frame, op_stack, stack_pos);
       break;
       
     case STOR_CLS_INST_INT_VAR:
@@ -192,8 +192,15 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
       PushInt(instr->GetOperand(), op_stack, stack_pos);
       break;
 
-    case LOAD_INT_LIT:
-      LoadIntLit(instr, op_stack, stack_pos);
+    case LOAD_INT_LIT: {
+      InstrFunPtr func = instr->GetInstrPtr();
+      if(func) {
+        func(instr, frame, op_stack, stack_pos);
+      }
+      else {
+        LoadIntLit(instr, frame, op_stack, stack_pos);
+      }
+    }
       break;
 
     case SHL_INT:
@@ -756,7 +763,7 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
 #endif
 }
 
-void StackInterpreter::StorLoclIntVar(StackInstr* instr, size_t* &op_stack, long* &stack_pos)
+void StackInterpreter::StorLoclIntVar(StackInstr* instr, StackFrame** frame, size_t* &op_stack, long* &stack_pos)
 {
 #ifdef _DEBUG
   std::wcout << L"stack oper: STOR_LOCL_INT_VAR; index=" << instr->GetOperand() << std::endl;
@@ -1097,7 +1104,7 @@ void StackInterpreter::ShrInt(size_t* &op_stack, long* &stack_pos)
   (*stack_pos)--;
 }
 
-void StackInterpreter::LoadIntLit(StackInstr* instr, size_t*& op_stack, long*& stack_pos)
+void StackInterpreter::LoadIntLit(StackInstr* instr, StackFrame** frame, size_t*& op_stack, long*& stack_pos)
 {
 #ifdef _DEBUG
   std::wcout << L"stack oper: LOAD_INT_LIT; call_pos=" << (*call_stack_pos) << std::endl;

@@ -406,6 +406,23 @@ MUTEX_UNLOCK(&free_memory_cache_lock);
 }
 
 size_t MemoryManager::AlignMemorySize(size_t size) {
+/*
+  #define ALIGN_POOL_MAX (1 << 22)
+
+  --size;
+
+  size |= size >> 1;
+  size |= size >> 2;
+  size |= size >> 4;
+  size |= size >> 8;
+  size |= size >> 16;
+  size |= size >> 32;
+
+  ++size;
+
+  return size > ALIGN_POOL_MAX ? 0 : size;
+*/
+
   if(size > 0 && size <= 8) {
     return 8;
   }

@@ -109,6 +109,7 @@ enum {
 
 class StackClass;
 class StackInstr;
+struct StackFrame;
 
 inline const std::wstring IntToString(int v)
 {
@@ -129,7 +130,7 @@ struct StackDclr
 /********************************
  * StackInstr class
  ********************************/
-typedef void (*InstrFunPtr)(StackInstr*, size_t*&, long*&);
+typedef void (*InstrFunPtr)(StackInstr*, StackFrame** frame, size_t*&, long*&);
 
 class StackInstr 
 {
@@ -200,6 +201,10 @@ class StackInstr
 
   InstrFunPtr GetInstrPtr() {
     return instr_fun_ptr;
+  }
+
+  void SetInstrPtr(InstrFunPtr p) {
+    instr_fun_ptr = p;
   }
 
   inline InstructionType GetType() const {

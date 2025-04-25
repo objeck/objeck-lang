@@ -155,7 +155,7 @@ namespace Runtime {
     // pops an integer from the calculation stack. this code
     // in normally inlined and there's a macro version available.
     //
-    inline size_t PopInt(size_t* op_stack, long* stack_pos) {
+    inline static size_t PopInt(size_t* op_stack, long* stack_pos) {
 #ifdef _DEBUG
       size_t v = op_stack[--(*stack_pos)];
       std::wcout << L"  [pop_i: stack_pos=" << (*stack_pos) << L"; value=" << v << L"("
@@ -170,7 +170,7 @@ namespace Runtime {
     // pushes an integer onto the calculation stack.  this code
     // in normally inlined and there's a macro version available.
     //
-    inline void PushInt(const size_t v, size_t* op_stack, long* stack_pos) {
+    inline static void PushInt(const size_t v, size_t* op_stack, long* stack_pos) {
 #ifdef _DEBUG
       std::wcout << L"  [push_i: stack_pos=" << (*stack_pos) << L"; value=" << v << L"("
             << (size_t*)v << L")]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << std::endl;
@@ -255,15 +255,15 @@ namespace Runtime {
     // 
     size_t* CreateStringObject(const std::wstring &value_str, size_t* &op_stack, long* &stack_pos);
     
-    void inline StorLoclIntVar(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
     void inline StorClsInstIntVar(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
     void inline CopyLoclIntVar(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
     void inline CopyClsInstIntVar(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
     
+
+    void static StorLoclIntVar(StackInstr* instr, StackFrame** frame, size_t*& op_stack, long*& stack_pos);
     void inline LoadInstVar(StackInstr* instr, size_t*& op_stack, long*& stack_pos);
     void inline LoadLoclIntVar(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
     void inline LoadClsInstIntVar(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
-    void inline LoadIntLit(StackInstr* instr, size_t*& op_stack, long*& stack_pos);
 
 
     void inline Str2Int(size_t* &op_stack, long* &stack_pos);
@@ -349,6 +349,11 @@ namespace Runtime {
     inline void SharedLibraryCall(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
     
   public:
+    //
+    // TODO: thread POC
+    //
+    void static LoadIntLit(StackInstr* instr, StackFrame** frame, size_t*& op_stack, long*& stack_pos);
+
 
 		// initialize the runtime system
     static void Initialize(StackProgram* p, size_t m);

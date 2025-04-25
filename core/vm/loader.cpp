@@ -30,6 +30,7 @@
  ***************************************************************************/
 
 #include "loader.h"
+#include "interpreter.h"
 #include "common.h"
 #include "../shared/version.h"
 
@@ -545,6 +546,7 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
 
     case LOAD_INT_LIT:
       mthd_instrs[i] = new StackInstr(line_num, ReadInt64());
+      mthd_instrs[i]->SetInstrPtr(Runtime::StackInterpreter::LoadIntLit);
       break;
 
     case LOAD_CHAR_LIT:
