@@ -657,12 +657,26 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
       ProcessNewCharArray(instr, op_stack, stack_pos);
       break;
       
-    case NEW_INT_ARY:
-      ProcessNewArray(instr, op_stack, stack_pos);
+    case NEW_INT_ARY: {
+      InstrFunPtr instr_ptr = instr->GetInstrPtr();
+      if(instr_ptr) {
+        instr_ptr(instr, frame, op_stack, stack_pos);
+      }
+      else {
+        ProcessNewIntArray(instr, frame, op_stack, stack_pos);
+      }
+    }
       break;
 
-    case NEW_FLOAT_ARY:
-      ProcessNewArray(instr, op_stack, stack_pos, true);
+    case NEW_FLOAT_ARY: {
+      InstrFunPtr instr_ptr = instr->GetInstrPtr();
+      if(instr_ptr) {
+        instr_ptr(instr, frame, op_stack, stack_pos);
+      }
+      else {
+        ProcessNewIntArray(instr, frame, op_stack, stack_pos);
+      }
+    }
       break;
 
     case NEW_OBJ_INST:
@@ -2062,7 +2076,7 @@ void StackInterpreter::ProcessNewFunctionInstance(StackInstr* instr, size_t*& op
 /********************************
  * Processes a new array instance request.
  ********************************/
-void StackInterpreter::ProcessNewArray(StackInstr* instr, size_t* &op_stack, long* &stack_pos, bool is_float)
+void StackInterpreter::ProcessNewIntArray(StackInstr* instr, StackFrame** frame, size_t*& op_stack, long*& stack_pos)
 {
 #ifdef _DEBUG
   std::wcout << L"stack oper: NEW_INT_ARY/NEW_FLOAT_ARY; call_pos=" << (*call_stack_pos) << std::endl;
@@ -2078,9 +2092,34 @@ void StackInterpreter::ProcessNewArray(StackInstr* instr, size_t* &op_stack, lon
     indices[dim++] = value;
   }
 
-  size_t* mem = is_float ? 
-    (size_t*)MemoryManager::AllocateArray(static_cast<long>(size) + dim + 2, FLOAT_TYPE, op_stack, *stack_pos) :
-    (size_t*)MemoryManager::AllocateArray(static_cast<long>(size) + dim + 2, INT_TYPE, op_stack, *stack_pos);
+  size_t* mem = (size_t*)MemoryManager::AllocateArray(static_cast<long>(size) + dim + 2, INT_TYPE, op_stack, *stack_pos);
+  mem[0] = size;
+  mem[1] = dim;
+
+  memcpy(mem + 2, indices, dim * sizeof(size_t));
+  PushInt((size_t)mem, op_stack, stack_pos);
+}
+
+/********************************
+ * Processes a new array instance request.
+ ********************************/
+void StackInterpreter::ProcessNewFloatArray(StackInstr* instr, StackFrame** frame, size_t*& op_stack, long*& stack_pos)
+{
+#ifdef _DEBUG
+  std::wcout << L"stack oper: NEW_INT_ARY/NEW_FLOAT_ARY; call_pos=" << (*call_stack_pos) << std::endl;
+#endif
+  size_t indices[8]{};
+  const size_t value = PopInt(op_stack, stack_pos);
+  size_t size = value;
+  indices[0] = value;
+  long dim = 1;
+  for(long i = 1; i < instr->GetOperand(); i++) {
+    const size_t value = PopInt(op_stack, stack_pos);
+    size *= value;
+    indices[dim++] = value;
+  }
+
+  size_t* mem = (size_t*)MemoryManager::AllocateArray(static_cast<long>(size) + dim + 2, FLOAT_TYPE, op_stack, *stack_pos);
   mem[0] = size;
   mem[1] = dim;
 

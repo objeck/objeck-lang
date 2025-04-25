@@ -571,10 +571,12 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
 
     case NEW_FLOAT_ARY:
       mthd_instrs[i] = new StackInstr(line_num, NEW_FLOAT_ARY, ReadInt());
+      mthd_instrs[i]->SetInstrPtr(Runtime::StackInterpreter::ProcessNewFloatArray);
       break;
 
     case NEW_INT_ARY:
       mthd_instrs[i] = new StackInstr(line_num, NEW_INT_ARY, ReadInt());
+      mthd_instrs[i]->SetInstrPtr(Runtime::StackInterpreter::ProcessNewIntArray);
       break;
 
     case NEW_BYTE_ARY:
