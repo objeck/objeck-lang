@@ -260,7 +260,6 @@ namespace Runtime {
     void inline CopyClsInstIntVar(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
     
 
-    void static StorLoclIntVar(StackInstr* instr, StackFrame** frame, size_t*& op_stack, long*& stack_pos);
     void inline LoadInstVar(StackInstr* instr, size_t*& op_stack, long*& stack_pos);
     void inline LoadLoclIntVar(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
     void inline LoadClsInstIntVar(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
@@ -350,10 +349,10 @@ namespace Runtime {
     
   public:
     //
-    // TODO: thread POC
+    // TODO: thread POC (use friend)
     //
     void static LoadIntLit(StackInstr* instr, StackFrame** frame, size_t*& op_stack, long*& stack_pos);
-
+    void static StorLoclIntVar(StackInstr* instr, StackFrame** frame, size_t*& op_stack, long*& stack_pos);
 
 		// initialize the runtime system
     static void Initialize(StackProgram* p, size_t m);
