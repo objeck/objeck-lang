@@ -483,8 +483,6 @@ void Linker::Load(bool is_lib)
           std::wcerr << L"Unknown library alias: '" << file_ref << L"'.\n\tCheck the alias name and ensure the 'OBJECK_LIB_PATH' environment variable refers to the library directory." << std::endl;
           exit(1);
         }
-
-
       }
       else {
         if(!frontend::EndsWith(file_path, L".obl")) {
