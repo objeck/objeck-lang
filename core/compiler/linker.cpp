@@ -389,7 +389,8 @@ void Linker::Load(bool is_lib)
 
   // set library path
   const std::wstring lib_path = GetLibraryPath();
-  std::map<std::wstring, std::vector<std::pair<std::wstring, std::wstring>>> lib_aliases = ParseIni(lib_path + L"configobjk.ini");;
+  const std::wstring config_file_path = lib_path + L"configobjk.ini";;
+  std::map<std::wstring, std::vector<std::pair<std::wstring, std::wstring>>> lib_aliases = ParseIni(config_file_path);
   
   // parses library path
   if(master_path.size() > 0) {
@@ -499,7 +500,7 @@ void Linker::Load(bool is_lib)
 std::map<std::wstring, std::vector<std::pair<std::wstring, std::wstring>>> Linker::ParseIni(const std::wstring& filename) {
   std::map<std::wstring, std::vector<std::pair<std::wstring, std::wstring>>> values;
 
-  std::wifstream file_reader(filename);
+  std::wifstream file_reader(UnicodeToBytes(filename));
   if(file_reader.good()) {
     std::wstring section_title;
     std::vector <std::pair<std::wstring, std::wstring>> section_names_values;
