@@ -157,8 +157,15 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
 #endif
     
     switch(instr->GetType()) {
-    case STOR_LOCL_INT_VAR:
-      StorLoclIntVar(instr, frame, op_stack, stack_pos);
+    case STOR_LOCL_INT_VAR: {
+      InstrFunPtr func = instr->GetInstrPtr();
+      if(func) {
+        func(instr, frame, op_stack, stack_pos);
+      }
+      else {
+        StorLoclIntVar(instr, frame, op_stack, stack_pos);
+      }
+    }
       break;
       
     case STOR_CLS_INST_INT_VAR:
