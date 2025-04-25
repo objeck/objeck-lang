@@ -316,7 +316,6 @@ namespace Runtime {
     void inline CriticalStart(size_t* &op_stack, long* &stack_pos);
     void inline CriticalEnd(size_t* &op_stack, long* &stack_pos);
 
-    inline void ProcessNewArray(StackInstr* instr, size_t* &op_stack, long* &stack_pos, bool is_float = false);
     inline void ProcessNewByteArray(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
     inline void ProcessNewCharArray(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
     inline void ProcessNewObjectInstance(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
@@ -348,11 +347,18 @@ namespace Runtime {
     inline void SharedLibraryCall(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
     
   public:
+    
+    
     //
     // TODO: thread POC (use friend)
     //
     void static LoadIntLit(StackInstr* instr, StackFrame** frame, size_t*& op_stack, long*& stack_pos);
     void static StorLoclIntVar(StackInstr* instr, StackFrame** frame, size_t*& op_stack, long*& stack_pos);
+    void static ProcessNewIntArray(StackInstr* instr, StackFrame** frame, size_t*& op_stack, long*& stack_pos);
+    void static ProcessNewFloatArray(StackInstr* instr, StackFrame** frame, size_t*& op_stack, long*& stack_pos);
+    //
+    //
+    //
 
 		// initialize the runtime system
     static void Initialize(StackProgram* p, size_t m);
