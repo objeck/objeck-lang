@@ -158,9 +158,9 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
     
     switch(instr->GetType()) {
     case STOR_LOCL_INT_VAR: {
-      InstrFunPtr func = instr->GetInstrPtr();
-      if(func) {
-        func(instr, frame, op_stack, stack_pos);
+      InstrFunPtr instr_ptr = instr->GetInstrPtr();
+      if(instr_ptr) {
+        instr_ptr(instr, frame, op_stack, stack_pos);
       }
       else {
         StorLoclIntVar(instr, frame, op_stack, stack_pos);
@@ -200,9 +200,9 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
       break;
 
     case LOAD_INT_LIT: {
-      InstrFunPtr func = instr->GetInstrPtr();
-      if(func) {
-        func(instr, frame, op_stack, stack_pos);
+      InstrFunPtr instr_ptr = instr->GetInstrPtr();
+      if(instr_ptr) {
+        instr_ptr(instr, frame, op_stack, stack_pos);
       }
       else {
         LoadIntLit(instr, frame, op_stack, stack_pos);
