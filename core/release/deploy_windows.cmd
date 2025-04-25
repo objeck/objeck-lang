@@ -32,6 +32,7 @@ mkdir %TARGET%\lib\sdl\fonts
 mkdir %TARGET%\lib\native
 mkdir %TARGET%\lib\native\misc
 copy ..\lib\*.obl %TARGET%\lib
+copy ..\lib\*.ini %TARGET%\lib
 
 REM update version information
 powershell.exe -executionpolicy remotesigned -file  update_version.ps1

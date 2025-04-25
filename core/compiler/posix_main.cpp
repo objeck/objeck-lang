@@ -91,27 +91,33 @@ int main(int argc, char* argv[])
   if(argc > 0) {
     // parse command line
     std::wstring cmd_line;    
-    std::map<const std::wstring, std::wstring> arguments = ParseCommnadLine(argc, argv, cmd_line);
+    std::map<const std::wstring, std::wstring> cmd_options = ParseCommnadLine(argc, argv, cmd_line);
     
     // add standard library is 'lib' is not provided
-    std::map<std::wstring, std::wstring>::iterator tar_flag = arguments.find(L"tar");
-    if(tar_flag != arguments.end() && tar_flag->second != L"lib") {
-      arguments[L"lib"] = L"@std";
-    }
-
-    // single command line optional is the source file
-    if(argc > 1 && arguments.find(L"src") == arguments.end()) {
-      const size_t space_delim_index = cmd_line.find(L' ', 1);
-      if(space_delim_index > 0 && space_delim_index != std::wstring::npos) {
-        arguments[L"src"] = cmd_line.erase(0, 1).substr(0, space_delim_index - 1);
+    const std::map<std::wstring, std::wstring>::iterator tar_flag = cmd_options.find(L"tar");
+    if(tar_flag == cmd_options.end() || tar_flag->second != L"lib") {
+      std::map<std::wstring, std::wstring>::iterator tar_flag = cmd_options.find(L"lib");
+      if(tar_flag != cmd_options.end() && tar_flag->second.find(L"@std") == std::wstring::npos) {
+        cmd_options[L"lib"] = L"@std";
       }
       else {
-        arguments[L"src"] = cmd_line.erase(0, 1);
+        cmd_options[L"lib"] = L"@std";
+      }
+    }
+    
+    // look for source file a first parameter
+    if(argc > 1 && cmd_options.find(L"src") == cmd_options.end()) {
+      const size_t space_delim_index = cmd_line.find(L' ', 1);
+      if(space_delim_index > 0 && space_delim_index != std::wstring::npos) {
+        cmd_options[L"src"] = cmd_line.erase(0, 1).substr(0, space_delim_index - 1);
+      }
+      else {
+        cmd_options[L"src"] = cmd_line.erase(0, 1);
       }
     }
     
     std::list<std::wstring> argument_optionals;
-    for(std::map<const std::wstring, std::wstring>::iterator intr = arguments.begin(); intr != arguments.end(); ++intr) {
+    for(std::map<const std::wstring, std::wstring>::iterator intr = cmd_options.begin(); intr != cmd_options.end(); ++intr) {
       argument_optionals.push_back(intr->first);
     }
     
@@ -120,7 +126,7 @@ int main(int argc, char* argv[])
 #endif
 
     // compile source with options
-    status = OptionsCompile(arguments, argument_optionals, usage);
+    status = OptionsCompile(cmd_options, argument_optionals, usage);
 
 #ifdef _DEBUG
     CloseLogger();

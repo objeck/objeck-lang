@@ -388,82 +388,44 @@ void Linker::Load(bool is_lib)
 #endif
 
   // set library path
-  std::wstring path = GetLibraryPath();
-
-  // TODO: read alias file
-
+  const std::wstring lib_path = GetLibraryPath();
+  std::map<std::wstring, std::vector<std::pair<std::wstring, std::wstring>>> lib_aliases = ParseIni(lib_path + L"configobjk.ini");;
+  
   // parses library path
   if(master_path.size() > 0) {
     size_t offset = 0;
     size_t index = master_path.find(',');
     while(index != std::wstring::npos) {
       // load library
-      std::wstring file_name = master_path.substr(offset, index - offset);
-      if(!file_name.empty()) {
+      std::wstring file_ref = master_path.substr(offset, index - offset);
+      if(!file_ref.empty()) {
         // check for alias 
-        if(!is_lib && file_name[0] == L'@') {
-          std::wstring file_path;
-
-          // TODO: look for ini file
-
-          // standard libraries
-          if(file_name == L"@std") {
-            std::wstring derived_libs[] = { L"gen_collect.obl", L"cipher.obl", L"json.obl" };
-
-            for(const auto& derived_lib : derived_libs) {
-              file_path = path + derived_lib;
-
-              Library* library = new Library(file_path);
-              library->Load();
-              libraries.insert(std::pair<std::wstring, Library*>(file_path, library));
-              paths.push_back(file_path);
+        if(!is_lib && file_ref[0] == L'@') {
+          if(!lib_aliases.empty()) {
+            auto lib_section_aliases = lib_aliases.find(file_ref);
+            if(lib_section_aliases != lib_aliases.end()) {
+              auto lib_name_value = lib_section_aliases->second;
+              for(const auto& derived_lib : lib_name_value) {
+                const std::wstring file_path = lib_path + derived_lib.first;
+                
+                Library* library = new Library(file_path);
+                library->Load();
+                libraries.insert(std::pair<std::wstring, Library*>(file_path, library));
+                paths.push_back(file_path);
+              }
             }
-          }
-          else if(file_name == L"@net") {
-            std::wstring derived_libs[] = { L"net.obl", L"net_server.obl" };
-
-            for(const auto& derived_lib : derived_libs) {
-              file_path = path + derived_lib;
-
-              Library* library = new Library(file_path);
-              library->Load();
-              libraries.insert(std::pair<std::wstring, Library*>(file_path, library));
-              paths.push_back(file_path);
-            }
-          }
-          // net libraries
-          else if(file_name == L"@game") {
-            std::wstring derived_libs[] = { L"sdl_game.obl", L"sdl2.obl" };
-
-            for(const auto& derived_lib : derived_libs) {
-              file_path = path + derived_lib;
-
-              Library* library = new Library(file_path);
-              library->Load();
-              libraries.insert(std::pair<std::wstring, Library*>(file_path, library));
-              paths.push_back(file_path);
-            }
-          }
-          // ml libraries
-          else if(file_name == L"@ml") {
-            std::wstring derived_libs[] = { L"misc.obl", L"openai.obl", L"gemini.obl"};
-
-            for(const auto& derived_lib : derived_libs) {
-              file_path = path + derived_lib;
-
-              Library* library = new Library(file_path);
-              library->Load();
-              libraries.insert(std::pair<std::wstring, Library*>(file_path, library));
-              paths.push_back(file_path);
+            else {
+              std::wcerr << L"Unknown library alias: '" << file_ref << L"'.\n\tCheck the alias name and ensure the 'OBJECK_LIB_PATH' environment variable refers to the library directory." << std::endl;
+              exit(1);
             }
           }
           else {
-            std::wcerr << L"Unknown library alias: '" << file_name << L"'.\n\tCheck the alias name and ensure the 'OBJECK_LIB_PATH' environment variable refers to the library directory." << std::endl;
+            std::wcerr << L"Unknown library alias: '" << file_ref << L"'.\n\tCheck the alias name and ensure the 'OBJECK_LIB_PATH' environment variable refers to the library directory." << std::endl;
             exit(1);
           }
         }
         else {
-          std::wstring file_path = path + file_name;
+          std::wstring file_path = lib_path + file_ref;
           if(!frontend::EndsWith(file_path, L".obl")) {
             file_path += L".obl";
           }
@@ -475,7 +437,6 @@ void Linker::Load(bool is_lib)
           if(found == paths.end()) {
             paths.push_back(file_path);
           }
-          
         }
 
         // update
@@ -487,62 +448,18 @@ void Linker::Load(bool is_lib)
       }
     }
     // insert library
-    const std::wstring file_name = master_path.substr(offset, master_path.size());
-    if(!file_name.empty()) {
-      std::wstring file_path = path + file_name;
+    const std::wstring file_ref = master_path.substr(offset, master_path.size());
+    if(!file_ref.empty()) {
+      std::wstring file_path = lib_path + file_ref;
       
-      const bool is_alias = file_name[0] == L'@';
+      const bool is_alias = file_ref[0] == L'@';
       if(is_alias) {
-        if(is_lib) {
-          std::wcerr << L"Library aliases can not be used when compiling libraries." << std::endl;
-          exit(1);
-        }
-        else {
-          // standard libraries
-          if(file_name == L"@std") {
-            std::wstring derived_libs[] = { L"cipher.obl", L"json.obl" };
-
-            for(const auto& derived_lib : derived_libs) {
-              file_path = path + derived_lib;
-
-              Library* library = new Library(file_path);
-              library->Load();
-              libraries.insert(std::pair<std::wstring, Library*>(file_path, library));
-              paths.push_back(file_path);
-            }
-          }
-          // network libraries
-          else if(file_name == L"@net") {
-            std::wstring derived_libs[] = { L"net.obl", L"net_server.obl" };
-
-            for(const auto& derived_lib : derived_libs) {
-              file_path = path + derived_lib;
-
-              Library* library = new Library(file_path);
-              library->Load();
-              libraries.insert(std::pair<std::wstring, Library*>(file_path, library));
-              paths.push_back(file_path);
-            }
-          }
-          // game libraries
-          else if(file_name == L"@game") {
-            std::wstring derived_libs[] = { L"sdl_game.obl", L"sdl2.obl" };
-
-            for(const auto& derived_lib : derived_libs) {
-              file_path = path + derived_lib;
-
-              Library* library = new Library(file_path);
-              library->Load();
-              libraries.insert(std::pair<std::wstring, Library*>(file_path, library));
-              paths.push_back(file_path);
-            }
-          }
-          // ai libraries
-          else if(file_name == L"@ai") {
-            std::wstring derived_libs[] = { L"ml.obl", L"openai.obl", L"gemini.obl" };
-
-            for(const auto& derived_lib : derived_libs) {
-              file_path = path + derived_lib;
+        if(!lib_aliases.empty()) {
+          auto lib_section_aliases = lib_aliases.find(file_ref);
+          if(lib_section_aliases != lib_aliases.end()) {
+            auto lib_name_value = lib_section_aliases->second;
+            for(const auto& derived_lib : lib_name_value) {
+              const std::wstring file_path = lib_path + derived_lib.first;
 
               Library* library = new Library(file_path);
               library->Load();
@@ -551,10 +468,16 @@ void Linker::Load(bool is_lib)
             }
           }
           else {
-            std::wcerr << L"Unknown library alias: '" << file_name << L"'.\n\tCheck the alias name and ensure the 'OBJECK_LIB_PATH' environment variable refers to the library directory." << std::endl;
+            std::wcerr << L"Unknown library alias: '" << file_ref << L"'.\n\tCheck the alias name and ensure the 'OBJECK_LIB_PATH' environment variable refers to the library directory." << std::endl;
             exit(1);
           }
         }
+        else {
+          std::wcerr << L"Unknown library alias: '" << file_ref << L"'.\n\tCheck the alias name and ensure the 'OBJECK_LIB_PATH' environment variable refers to the library directory." << std::endl;
+          exit(1);
+        }
+
+
       }
       else {
         if(!frontend::EndsWith(file_path, L".obl")) {
@@ -572,6 +495,90 @@ void Linker::Load(bool is_lib)
     }
   }
 }
+
+std::map<std::wstring, std::vector<std::pair<std::wstring, std::wstring>>> Linker::ParseIni(const std::wstring& filename) {
+  std::map<std::wstring, std::vector<std::pair<std::wstring, std::wstring>>> values;
+
+  std::wifstream file_reader(filename);
+  if(file_reader.good()) {
+    std::wstring section_title;
+    std::vector <std::pair<std::wstring, std::wstring>> section_names_values;
+
+    std::wstring line;
+    while(std::getline(file_reader, line)) {
+      if(!line.empty()) {
+        if(line.front() == L'[' && line.back() == L']') {
+          if(!section_names_values.empty()) {
+            values[section_title] = section_names_values;
+            section_names_values.clear();
+          }
+
+          section_title = line.substr(1, line.size() - 2);
+          section_title = TrimNameValue(section_title);
+        }
+        else {
+          const size_t index = line.find(L'=');
+          if(index != std::wstring::npos) {
+            std::wstring name = line.substr(0, index);
+            name = TrimNameValue(name);
+
+            std::wstring value = line.substr(index + 1, line.size() - index - 1);
+            value = TrimNameValue(value);
+
+            std::pair<std::wstring, std::wstring> name_value(name, value);
+            section_names_values.push_back(name_value);
+          }
+          else {
+            std::wstring name = TrimNameValue(line);
+            name = TrimNameValue(name);
+
+            std::pair<std::wstring, std::wstring> name_value(name, std::wstring());
+            section_names_values.push_back(name_value);
+          }
+        }
+      }
+    }
+
+    if(!section_names_values.empty()) {
+      values[section_title] = section_names_values;
+    }
+  }
+  file_reader.close();
+
+  return values;
+}
+
+const std::wstring Linker::TrimNameValue(const std::wstring& name_value) {
+  std::wstring timed_name_value;
+
+  if(!name_value.empty()) {
+    bool done = false;
+
+    size_t index = 0;
+    do {
+      const wchar_t name_value_char = name_value.at(index++);
+      if(!std::isspace(name_value_char)) {
+        done = true;
+      }
+    } while(!done);
+    size_t name_value_start = index - 1;
+
+    done = false;
+    index = name_value.size();
+    do {
+      const wchar_t name_value_char = name_value.at(--index);
+      if(!std::isspace(name_value_char)) {
+        ++index;
+        done = true;
+      }
+    } while(!done);
+
+    return name_value.substr(name_value_start, index - name_value_start);
+  }
+
+  return L"";
+}
+
 
 /****************************
  * LibraryClass class
