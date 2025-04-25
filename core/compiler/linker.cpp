@@ -507,7 +507,9 @@ std::map<std::wstring, std::vector<std::pair<std::wstring, std::wstring>>> Linke
 
     std::wstring line;
     while(std::getline(file_reader, line)) {
-      if(!line.empty()) {
+      line = TrimNameValue(line);
+      
+      if(!line.empty() && line[0] != '#') {
         if(line.front() == L'[' && line.back() == L']') {
           if(!section_names_values.empty()) {
             values[section_title] = section_names_values;
