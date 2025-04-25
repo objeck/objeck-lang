@@ -1046,7 +1046,11 @@ class Linker {
     return str.str();
   }
   
- public:
+  // parse ini file
+  std::map<std::wstring, std::vector<std::pair<std::wstring, std::wstring>>> ParseIni(const std::wstring& filename);
+  const std::wstring TrimNameValue(const std::wstring& name_value);
+
+public:
   Linker(const std::wstring &p) {
     master_path = p;
   }

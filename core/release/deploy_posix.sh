@@ -26,6 +26,7 @@ fi
 make clean; make -j3 OBJECK_LIB_PATH=///".///"
 cp obc ../release/deploy/bin
 cp ../lib/*.obl ../release/deploy/lib
+cp ../lib/*.ini ../release/deploy/lib
 cp ../vm/misc/*.pem ../release/deploy/lib
 
 # build VM
