@@ -92,19 +92,7 @@ int main(int argc, char* argv[])
     // parse command line
     std::wstring cmd_line;    
     std::map<const std::wstring, std::wstring> cmd_options = ParseCommnadLine(argc, argv, cmd_line);
-    
-    // add standard library is 'lib' is not provided
-    const std::map<std::wstring, std::wstring>::iterator tar_flag = cmd_options.find(L"tar");
-    if(tar_flag == cmd_options.end() || tar_flag->second != L"lib") {
-      std::map<std::wstring, std::wstring>::iterator tar_flag = cmd_options.find(L"lib");
-      if(tar_flag != cmd_options.end() && tar_flag->second.find(L"@std") == std::wstring::npos) {
-        cmd_options[L"lib"] = L"@std";
-      }
-      else {
-        cmd_options[L"lib"] = L"@std";
-      }
-    }
-    
+
     // look for source file a first parameter
     if(argc > 1 && cmd_options.find(L"src") == cmd_options.end()) {
       const size_t space_delim_index = cmd_line.find(L' ', 1);
