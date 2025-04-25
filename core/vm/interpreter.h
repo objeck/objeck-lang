@@ -259,8 +259,12 @@ namespace Runtime {
     void inline StorClsInstIntVar(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
     void inline CopyLoclIntVar(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
     void inline CopyClsInstIntVar(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
+    
+    void inline LoadInstVar(StackInstr* instr, size_t*& op_stack, long*& stack_pos);
     void inline LoadLoclIntVar(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
     void inline LoadClsInstIntVar(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
+    void inline LoadIntLit(StackInstr* instr, size_t*& op_stack, long*& stack_pos);
+
 
     void inline Str2Int(size_t* &op_stack, long* &stack_pos);
     void inline Str2Float(size_t* &op_stack, long* &stack_pos);
@@ -320,7 +324,7 @@ namespace Runtime {
     inline void ProcessNewFunctionInstance(StackInstr* instr, size_t*& op_stack, long*& stack_pos);
     inline void ProcessReturn(StackInstr** &instrs, long &ip);
 
-    inline void ProcessMethodCall(StackInstr* instr, StackInstr** &instrs, long &ip, size_t* &op_stack, long* &stack_pos);
+    inline void ProcessMethodCall(StackInstr* instr, StackInstr**& instrs, long& ip, size_t*& op_stack, long*& stack_pos);
     inline void ProcessDynamicMethodCall(StackInstr* instr, StackInstr** &instrs, long &ip, size_t* &op_stack, long* &stack_pos);
     inline void ProcessJitMethodCall(StackMethod* called, size_t* instance, StackInstr** &instrs, long &ip, size_t* &op_stack, long* &stack_pos);
     inline void ProcessAsyncMethodCall(StackMethod* called, size_t* param);
@@ -345,6 +349,7 @@ namespace Runtime {
     inline void SharedLibraryCall(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
     
   public:
+
 		// initialize the runtime system
     static void Initialize(StackProgram* p, size_t m);
 
