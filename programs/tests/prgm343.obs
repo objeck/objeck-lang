@@ -1,0 +1,7 @@
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		a := 7;
+		b := 6;
+		(b + a)->PrintLine();		
+	}
+}
