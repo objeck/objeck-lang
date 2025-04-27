@@ -130,7 +130,7 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
   (*stack_frame) = GetStackFrame(method, instance);
   
 #ifdef _DEBUG
-  std::wcout << L"creating frame=" << (*frame) << std::endl;
+  std::wcout << L"creating frame=" << (*stack_frame) << std::endl;
 #endif
   (*stack_frame)->jit_called = jit_called;
   StackInstr** instrs = (*stack_frame)->method->GetInstructions();
@@ -142,8 +142,8 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
 
 #ifdef _DEBUG
   std::wcout << L"\n---------- Executing Interpreted Code: id=" 
-        << (((*frame)->method->GetClass()) ? (*frame)->method->GetClass()->GetId() : -1) << L","
-        << (*frame)->method->GetId() << L"; method_name='" << (*frame)->method->GetName() 
+        << (((*stack_frame)->method->GetClass()) ? (*stack_frame)->method->GetClass()->GetId() : -1) << L","
+        << (*stack_frame)->method->GetId() << L"; method_name='" << (*stack_frame)->method->GetName() 
         << L"' ---------\n" << std::endl;
 #endif
 
@@ -2129,7 +2129,7 @@ void StackInterpreter::ProcessReturn(StackInstr** &instrs, long &ip)
 
   // unregister old frame
 #ifdef _DEBUG
-  std::wcout << L"removing frame=" << (*frame) << std::endl;
+  std::wcout << L"removing frame=" << (*stack_frame) << std::endl;
 #endif
   
   ReleaseStackFrame(*stack_frame);
@@ -2474,7 +2474,7 @@ void StackInterpreter::ProcessInterpretedMethodCall(StackMethod* called, size_t*
   instrs = (*stack_frame)->method->GetInstructions();
   ip = 0;
 #ifdef _DEBUG
-  std::wcout << L"creating frame=" << (*frame) << std::endl;
+  std::wcout << L"creating frame=" << (*stack_frame) << std::endl;
 #endif
 }
 
