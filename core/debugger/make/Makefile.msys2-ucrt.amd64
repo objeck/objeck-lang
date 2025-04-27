@@ -1,4 +1,4 @@
-ARGS=-O3 -Wall -std=c++17 -mavx2 -Wno-strict-overflow -pthread -D_X64 -D_MSYS2 -D_OBJECK_NATIVE_LIB_PATH -D_DEBUGGER -Wno-dangling-pointer -Wno-unknown-pragmas -Wno-unused-function -Wno-unused-variable -Wno-int-to-pointer-cast -Wno-unknown-pragmas
+ARGS=-O3 -Wall -std=c++20 -mavx2 -Wno-strict-overflow -pthread -D_X64 -D_MSYS2 -D_OBJECK_NATIVE_LIB_PATH -D_DEBUGGER -Wno-dangling-pointer -Wno-unknown-pragmas -Wno-unused-function -Wno-unused-variable -Wno-int-to-pointer-cast -Wno-unknown-pragmas
 
 SRC=tree.o scanner.o parser.o debugger.o
 OBJ_LIBS=../vm/vm.a ../vm/jit_amd_lp64.a ../vm/memory.a ../vm/win32.a ../vm/sys.a objeck.res
