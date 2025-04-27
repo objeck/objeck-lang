@@ -159,7 +159,7 @@ namespace Runtime {
 #ifdef _DEBUG
       size_t v = op_stack[--(*stack_pos)];
       std::wcout << L"  [pop_i: stack_pos=" << (*stack_pos) << L"; value=" << v << L"("
-            << (size_t*)v << L")]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << std::endl;
+            << (size_t*)v << L")]; frame=" << (*stack_frame) << L"; call_pos=" << (*call_stack_pos) << std::endl;
       return v;
 #else
       return op_stack[--(*stack_pos)];
@@ -173,7 +173,7 @@ namespace Runtime {
     inline void PushInt(const size_t v, size_t* op_stack, long* stack_pos) {
 #ifdef _DEBUG
       std::wcout << L"  [push_i: stack_pos=" << (*stack_pos) << L"; value=" << v << L"("
-            << (size_t*)v << L")]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << std::endl;
+            << (size_t*)v << L")]; frame=" << (*stack_frame) << L"; call_pos=" << (*call_stack_pos) << std::endl;
 #endif
       op_stack[(*stack_pos)++] = v;
     }
@@ -184,7 +184,7 @@ namespace Runtime {
     inline void PushFloat(const FLOAT_VALUE v, size_t* op_stack, long* stack_pos) {
 #ifdef _DEBUG
       std::wcout << L"  [push_f: stack_pos=" << (*stack_pos) << L"; value=" << v
-            << L"]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << std::endl;
+            << L"]; frame=" << (*stack_frame) << L"; call_pos=" << (*call_stack_pos) << std::endl;
 #endif
       *((FLOAT_VALUE*)(&op_stack[(*stack_pos)])) = v;
       (*stack_pos)++;
@@ -208,7 +208,7 @@ namespace Runtime {
 #ifdef _DEBUG
       FLOAT_VALUE v = *((FLOAT_VALUE*)(&op_stack[(*stack_pos)]));
       std::wcout << L"  [pop_f: stack_pos=" << (*stack_pos) << L"; value=" << v
-            << L"]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << std::endl;
+            << L"]; frame=" << (*stack_frame) << L"; call_pos=" << (*call_stack_pos) << std::endl;
       return v;
 #endif
 
@@ -222,7 +222,7 @@ namespace Runtime {
 #ifdef _DEBUG
       size_t v = op_stack[(*stack_pos) - 1];
       std::wcout << L"  [top_i: stack_pos=" << (*stack_pos) << L"; value=" << v << L"(" << (void*)v
-            << L")]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << std::endl;
+            << L")]; frame=" << (*stack_frame) << L"; call_pos=" << (*call_stack_pos) << std::endl;
       return v;
 #else
       return op_stack[(*stack_pos) - 1];
@@ -238,7 +238,7 @@ namespace Runtime {
 #ifdef _DEBUG
       FLOAT_VALUE v = *((FLOAT_VALUE*)(&op_stack[index]));
       std::wcout << L"  [top_f: stack_pos=" << (*stack_pos) << L"; value=" << v
-            << L"]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << std::endl;
+            << L"]; frame=" << (*stack_frame) << L"; call_pos=" << (*call_stack_pos) << std::endl;
       return v;
 #endif
       
