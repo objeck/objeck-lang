@@ -415,7 +415,7 @@ void Linker::Load(bool is_lib)
                 Library* library = new Library(file_path);
                 library->Load();
                 libraries.insert(std::pair<std::wstring, Library*>(file_path, library));
-                paths.push_back(file_path);
+                paths.push_back(std::move(file_path));
               }
             }
             else {
@@ -534,14 +534,14 @@ std::map<std::wstring, std::vector<std::pair<std::wstring, std::wstring>>> Linke
             name = TrimNameValue(name);
 
             std::pair<std::wstring, std::wstring> name_value(name, std::wstring());
-            section_names_values.push_back(name_value);
+            section_names_values.push_back(std::move(name_value));
           }
         }
       }
     }
 
     if(!section_names_values.empty()) {
-      values[section_title] = section_names_values;
+      values[section_title] = std::move(section_names_values);
     }
   }
   file_reader.close();
