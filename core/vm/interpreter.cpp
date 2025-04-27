@@ -152,7 +152,7 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
     StackInstr* instr = instrs[ip++];
     
 #ifdef _DEBUGGER
-    debugger->ProcessInstruction(instr, ip, call_stack, (*call_stack_pos), (*frame));
+    debugger->ProcessInstruction(instr, ip, call_stack, (*call_stack_pos), (*stack_frame));
 #endif
     
     switch(instr->GetType()) {
@@ -3079,13 +3079,13 @@ void Runtime::StackInterpreter::StackErrorUnwind()
   long pos = (*call_stack_pos);
 #ifdef _NO_HALT
   std::wcerr << L"Unwinding local stack (" << this << L"):" << std::endl;
-  StackMethod* method = (*frame)->method;
-  if((*frame)->ip > 0 && pos > -1 &&
-     method->GetInstruction((*frame)->ip)->GetLineNumber() > 0) {
+  StackMethod* method = (*stack_frame)->method;
+  if((*stack_frame)->ip > 0 && pos > -1 &&
+     method->GetInstruction((*stack_frame)->ip)->GetLineNumber() > 0) {
     std::wcerr << L"  method: pos=" << pos << L", file="
-          << (*frame)->method->GetClass()->GetFileName() << L", name='"
-          << MethodFormatter::Format((*frame)->method->GetName()) << L"', line="
-          << method->GetInstruction((*frame)->ip)->GetLineNumber() << std::endl;
+          << (*stack_frame)->method->GetClass()->GetFileName() << L", name='"
+          << MethodFormatter::Format((*stack_frame)->method->GetName()) << L"', line="
+          << method->GetInstruction((*stack_frame)->ip)->GetLineNumber() << std::endl;
   }
   if(pos != 0) {
     while(--pos) {
