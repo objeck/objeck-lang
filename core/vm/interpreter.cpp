@@ -124,16 +124,16 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
 #endif
 
   // initial setup
-  if(monitor) {
+  if(stack_frame_monitor) {
     (*call_stack_pos) = 0;
   }
-  (*frame) = GetStackFrame(method, instance);
+  (*stack_frame) = GetStackFrame(method, instance);
   
 #ifdef _DEBUG
   std::wcout << L"creating frame=" << (*frame) << std::endl;
 #endif
-  (*frame)->jit_called = jit_called;
-  StackInstr** instrs = (*frame)->method->GetInstructions();
+  (*stack_frame)->jit_called = jit_called;
+  StackInstr** instrs = (*stack_frame)->method->GetInstructions();
   long ip = i;
 
 #ifdef _TIMING
@@ -148,7 +148,6 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
 #endif
 
   // execute
-  halt = false;
   do {
     StackInstr* instr = instrs[ip++];
     
@@ -494,8 +493,6 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
       PushFloat(tanh(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
       break;
 
-
-
     case ATAN2_FLOAT:
       left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
       right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 1]));
@@ -571,9 +568,9 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
     case RTRN:
       ProcessReturn(instrs, ip);
       // return directly back to JIT code
-      if((*frame) && (*frame)->jit_called) {
-        (*frame)->jit_called = false;
-        ReleaseStackFrame(*frame);
+      if((*stack_frame) && (*stack_frame)->jit_called) {
+        (*stack_frame)->jit_called = false;
+        ReleaseStackFrame(*stack_frame);
         return;
       }
       break;
@@ -581,9 +578,9 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
     case DYN_MTHD_CALL:
       ProcessDynamicMethodCall(instr, instrs, ip, op_stack, stack_pos);
       // return directly back to JIT code
-      if((*frame)->jit_called) {
-        (*frame)->jit_called = false;
-        ReleaseStackFrame(*frame);
+      if((*stack_frame)->jit_called) {
+        (*stack_frame)->jit_called = false;
+        ReleaseStackFrame(*stack_frame);
         return;
       }
       break;
@@ -591,9 +588,9 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
     case MTHD_CALL:
       ProcessMethodCall(instr, instrs, ip, op_stack, stack_pos);
       // return directly back to JIT code
-      if((*frame)->jit_called) {
-        (*frame)->jit_called = false;
-        ReleaseStackFrame(*frame);
+      if((*stack_frame)->jit_called) {
+        (*stack_frame)->jit_called = false;
+        ReleaseStackFrame(*stack_frame);
         return;
       }
       break;
@@ -706,14 +703,14 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
 #ifdef _DEBUG
       std::wcout << L"stack oper: LOAD_CLS_MEM; call_pos=" << (*call_stack_pos) << std::endl;
 #endif
-      PushInt((size_t)(*frame)->method->GetClass()->GetClassMemory(), op_stack, stack_pos);
+      PushInt((size_t)(*stack_frame)->method->GetClass()->GetClassMemory(), op_stack, stack_pos);
       break;
 
     case LOAD_INST_MEM:
 #ifdef _DEBUG
       std::wcout << L"stack oper: LOAD_INST_MEM; call_pos=" << (*call_stack_pos) << std::endl;
 #endif
-      PushInt((*frame)->mem[0], op_stack, stack_pos);
+      PushInt((*stack_frame)->mem[0], op_stack, stack_pos);
       break;
 
       // shared library support
@@ -734,7 +731,7 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
 #ifdef _DEBUG
       std::wcout << L"stack oper: TRAP; call_pos=" << (*call_stack_pos) << std::endl;
 #endif
-      if(!TrapProcessor::ProcessTrap(program, (size_t*)(*frame)->mem[0], op_stack, stack_pos, (*frame))) {
+      if(!TrapProcessor::ProcessTrap(program, (size_t*)(*stack_frame)->mem[0], op_stack, stack_pos, (*stack_frame))) {
         StackErrorUnwind();
 #ifdef _NO_HALT
         halt = true;
@@ -767,7 +764,7 @@ void StackInterpreter::StorLoclIntVar(StackInstr* instr, size_t* &op_stack, long
 #ifdef _DEBUG
   std::wcout << L"stack oper: STOR_LOCL_INT_VAR; index=" << instr->GetOperand() << std::endl;
 #endif
-  size_t* mem = (*frame)->mem;
+  size_t* mem = (*stack_frame)->mem;
   mem[instr->GetOperand() + 1] = PopInt(op_stack, stack_pos);
 }
 
@@ -798,7 +795,7 @@ void StackInterpreter::CopyLoclIntVar(StackInstr* instr, size_t* &op_stack, long
 #ifdef _DEBUG
   std::wcout << L"stack oper: COPY_LOCL_INT_VAR; index=" << instr->GetOperand() << std::endl;
 #endif
-  size_t* mem = (*frame)->mem;
+  size_t* mem = (*stack_frame)->mem;
   mem[instr->GetOperand() + 1] = TopInt(op_stack, stack_pos);
 }
 
@@ -1108,7 +1105,7 @@ void StackInterpreter::LoadLoclIntVar(StackInstr* instr, size_t* &op_stack, long
 #ifdef _DEBUG
   std::wcout << L"stack oper: LOAD_LOCL_INT_VAR; index=" << instr->GetOperand() << std::endl;
 #endif
-  size_t* mem = (*frame)->mem;
+  size_t* mem = (*stack_frame)->mem;
   PushInt(mem[instr->GetOperand() + 1], op_stack, stack_pos);
 }
 
@@ -1704,8 +1701,8 @@ void StackInterpreter::ObjInstCast(StackInstr* instr, size_t* &op_stack, long* &
 
 void StackInterpreter::AsyncMthdCall(size_t* &op_stack, long* &stack_pos)
 {
-  size_t* instance = (size_t*)(*frame)->mem[0];
-  size_t* param = (size_t*)(*frame)->mem[1];
+  size_t* instance = (size_t*)(*stack_frame)->mem[0];
+  size_t* param = (size_t*)(*stack_frame)->mem[1];
 
   StackClass* impl_class = MemoryManager::GetClass(instance);
   if(!impl_class) {
@@ -1745,7 +1742,7 @@ void StackInterpreter::ThreadJoin(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   std::wcout << L"stack oper: THREAD_JOIN; call_pos=" << (*call_stack_pos) << std::endl;
 #endif
-  size_t* instance = (size_t*)(*frame)->mem[0];
+  size_t* instance = (size_t*)(*stack_frame)->mem[0];
   if(!instance) {
     std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
     StackErrorUnwind();
@@ -1786,7 +1783,7 @@ void StackInterpreter::ThreadMutex(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   std::wcout << L"stack oper: THREAD_MUTEX; call_pos=" << (*call_stack_pos) << std::endl;
 #endif
-  size_t* instance = (size_t*)(*frame)->mem[0];
+  size_t* instance = (size_t*)(*stack_frame)->mem[0];
   if(!instance) {
     std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
     StackErrorUnwind();
@@ -1860,7 +1857,7 @@ void StackInterpreter::ProcessLoadFunctionVar(StackInstr* instr, size_t* &op_sta
         << L"; local=" << ((instr->GetOperand2() == LOCL) ? L"true" : L"false") << std::endl;
 #endif
   if(instr->GetOperand2() == LOCL) {
-    size_t* mem = (*frame)->mem;
+    size_t* mem = (*stack_frame)->mem;
     PushInt(mem[instr->GetOperand() + 2], op_stack, stack_pos);
     PushInt(mem[instr->GetOperand() + 1], op_stack, stack_pos);
   } 
@@ -1892,7 +1889,7 @@ void StackInterpreter::ProcessLoadFloat(StackInstr* instr, size_t* &op_stack, lo
 #endif
   FLOAT_VALUE value;
   if(instr->GetOperand2() == LOCL) {
-    size_t* mem = (*frame)->mem;
+    size_t* mem = (*stack_frame)->mem;
     value = *((FLOAT_VALUE*)(&mem[instr->GetOperand() + 1]));
 
   } else {
@@ -1922,7 +1919,7 @@ void StackInterpreter::ProcessStoreFunctionVar(StackInstr* instr, size_t* &op_st
         << L"; local=" << ((instr->GetOperand2() == LOCL) ? L"true" : L"false") << std::endl;
 #endif
   if(instr->GetOperand2() == LOCL) {
-    size_t* mem = (*frame)->mem;
+    size_t* mem = (*stack_frame)->mem;
     mem[instr->GetOperand() + 1] = PopInt(op_stack, stack_pos);
     mem[instr->GetOperand() + 2] = PopInt(op_stack, stack_pos);
   } 
@@ -1955,7 +1952,7 @@ void StackInterpreter::ProcessStoreFloat(StackInstr* instr, size_t* &op_stack, l
 #endif
   if(instr->GetOperand2() == LOCL) {
     const FLOAT_VALUE value = PopFloat(op_stack, stack_pos);
-    size_t* mem = (*frame)->mem;
+    size_t* mem = (*stack_frame)->mem;
     *((FLOAT_VALUE*)(&mem[instr->GetOperand() + 1])) = value;
   } 
   else {
@@ -1987,7 +1984,7 @@ void StackInterpreter::ProcessCopyFloat(StackInstr* instr, size_t* &op_stack, lo
 #endif
   if(instr->GetOperand2() == LOCL) {
     FLOAT_VALUE value = TopFloat(op_stack, stack_pos);
-    size_t* mem = (*frame)->mem;
+    size_t* mem = (*stack_frame)->mem;
     *((FLOAT_VALUE*)(&mem[instr->GetOperand() + 1])) = value;
   } else {
     size_t* cls_inst_mem = (size_t*)PopInt(op_stack, stack_pos);
@@ -2135,16 +2132,16 @@ void StackInterpreter::ProcessReturn(StackInstr** &instrs, long &ip)
   std::wcout << L"removing frame=" << (*frame) << std::endl;
 #endif
   
-  ReleaseStackFrame(*frame);
+  ReleaseStackFrame(*stack_frame);
   
   // restore previous frame
   if(!StackEmpty()) {
-    (*frame) = PopFrame();
-    instrs = (*frame)->method->GetInstructions();
-    ip = (*frame)->ip;
+    (*stack_frame) = PopFrame();
+    instrs = (*stack_frame)->method->GetInstructions();
+    ip = (*stack_frame)->ip;
   } 
   else {
-    (*frame) = nullptr;
+    (*stack_frame) = nullptr;
     halt = true;
   }
 }
@@ -2154,7 +2151,7 @@ void StackInterpreter::ProcessReturn(StackInstr** &instrs, long &ip)
  ********************************/
 void StackInterpreter::ProcessAsyncMethodCall(StackMethod* called, size_t* param)
 {
-  size_t* instance = (size_t*)(*frame)->mem[0];
+  size_t* instance = (size_t*)(*stack_frame)->mem[0];
   ThreadHolder* holder = new ThreadHolder;
   holder->called = called;
   holder->param = param;
@@ -2289,8 +2286,8 @@ void* StackInterpreter::AsyncMethodCall(void* arg)
 void StackInterpreter::ProcessDynamicMethodCall(StackInstr* instr, StackInstr** &instrs, long &ip, size_t* &op_stack, long* &stack_pos)
 {
   // save current method
-  (*frame)->ip = ip;
-  PushFrame((*frame));
+  (*stack_frame)->ip = ip;
+  PushFrame((*stack_frame));
 
   // make call
   const size_t mthd_cls_id = PopInt(op_stack, stack_pos);
@@ -2320,8 +2317,8 @@ void StackInterpreter::ProcessDynamicMethodCall(StackInstr* instr, StackInstr** 
   }
   // execute interpreter
   else {
-    (*frame) = GetStackFrame(called, instance);    
-    instrs = (*frame)->method->GetInstructions();
+    (*stack_frame) = GetStackFrame(called, instance);    
+    instrs = (*stack_frame)->method->GetInstructions();
     ip = 0;
   }
 #else
@@ -2335,8 +2332,8 @@ void StackInterpreter::ProcessDynamicMethodCall(StackInstr* instr, StackInstr** 
 void StackInterpreter::ProcessMethodCall(StackInstr* instr, StackInstr** &instrs, long &ip, size_t* &op_stack, long* &stack_pos)
 {
   // save current method
-  (*frame)->ip = ip;
-  PushFrame((*frame));
+  (*stack_frame)->ip = ip;
+  PushFrame((*stack_frame));
 
   // pop instance
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
@@ -2425,9 +2422,9 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, size_t* instanc
   }
   
   // execute
-  (*frame) = GetStackFrame(called, instance);
+  (*stack_frame) = GetStackFrame(called, instance);
   JitRuntime jit_executor;
-  const long status = jit_executor.Execute(called, instance, op_stack, stack_pos, call_stack, call_stack_pos, *frame);
+  const long status = jit_executor.Execute(called, instance, op_stack, stack_pos, call_stack, call_stack_pos, *stack_frame);
   if(status < 0) {
     switch(status) {
     case -1:
@@ -2456,10 +2453,10 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, size_t* instanc
   }
 
   // restore previous state
-  ReleaseStackFrame(*frame);
-  (*frame) = PopFrame();
-  instrs = (*frame)->method->GetInstructions();
-  ip = (*frame)->ip;
+  ReleaseStackFrame(*stack_frame);
+  (*stack_frame) = PopFrame();
+  instrs = (*stack_frame)->method->GetInstructions();
+  ip = (*stack_frame)->ip;
 #endif
 }
 
@@ -2473,8 +2470,8 @@ void StackInterpreter::ProcessInterpretedMethodCall(StackMethod* called, size_t*
   std::wcout << L"=== MTHD_CALL: id=" << called->GetClass()->GetId() << L","
         << called->GetId() << L"; name='" << called->GetName() << L"' ===" << std::endl;
 #endif  
-  (*frame) = GetStackFrame(called, instance);
-  instrs = (*frame)->method->GetInstructions();
+  (*stack_frame) = GetStackFrame(called, instance);
+  instrs = (*stack_frame)->method->GetInstructions();
   ip = 0;
 #ifdef _DEBUG
   std::wcout << L"creating frame=" << (*frame) << std::endl;
@@ -2749,7 +2746,7 @@ void StackInterpreter::SharedLibraryLoad(StackInstr* instr)
 #ifdef _DEBUG
   std::wcout << L"stack oper: shared LIBRARY_LOAD; call_pos=" << (*call_stack_pos) << std::endl;
 #endif
-  size_t* instance = (size_t*)(*frame)->mem[0];
+  size_t* instance = (size_t*)(*stack_frame)->mem[0];
   if(!instance) {
     std::wcerr << L">>> Unable to load shared library! <<<" << std::endl;
 #ifdef _NO_HALT
@@ -2898,7 +2895,7 @@ void StackInterpreter::SharedLibraryUnload(StackInstr* instr)
 #ifdef _DEBUG
   std::wcout << L"stack oper: shared library_UNLOAD; call_pos=" << (*call_stack_pos) << std::endl;
 #endif
-  size_t* instance = (size_t*)(*frame)->mem[0];
+  size_t* instance = (size_t*)(*stack_frame)->mem[0];
   // unload shared library
 #ifdef _WIN32
   HINSTANCE dll_handle = (HINSTANCE)instance[1];
@@ -2943,8 +2940,8 @@ void StackInterpreter::SharedLibraryUnload(StackInstr* instr)
 typedef void (*lib_func_def) (VMContext& callbacks);
 void StackInterpreter::SharedLibraryCall(StackInstr* instr, size_t* &op_stack, long* &stack_pos)
 {
-  size_t* instance = (size_t*)(*frame)->mem[0];
-  size_t* str_obj = (size_t*)(*frame)->mem[1];
+  size_t* instance = (size_t*)(*stack_frame)->mem[0];
+  size_t* str_obj = (size_t*)(*stack_frame)->mem[1];
   size_t* array = (size_t*)str_obj[0];
   if(!array) {
     std::wcerr << L">>> Runtime error calling function <<<" << std::endl;
@@ -2956,7 +2953,7 @@ void StackInterpreter::SharedLibraryCall(StackInstr* instr, size_t* &op_stack, l
   }
 
   const std::wstring wstr((wchar_t*)(array + 3));
-  size_t* args = (size_t*)(*frame)->mem[2];
+  size_t* args = (size_t*)(*stack_frame)->mem[2];
   lib_func_def ext_func;
 
 #ifdef _DEBUG
@@ -3106,7 +3103,7 @@ void Runtime::StackInterpreter::StackErrorUnwind()
 #else
   std::wcerr << L"Unwinding local stack (" << this << L"):" << std::endl;
   std::wcerr << L"  method: pos=" << pos << L", name='"
-        << MethodFormatter::Format((*frame)->method->GetName()) << L"'" << std::endl;
+        << MethodFormatter::Format((*stack_frame)->method->GetName()) << L"'" << std::endl;
   if(pos != 0) {
     while(--pos && pos > -1) {
       std::wcerr << L"  method: pos=" << pos << L", name='"

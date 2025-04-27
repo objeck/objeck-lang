@@ -90,8 +90,8 @@ namespace Runtime {
     StackFrame** call_stack;
     long* call_stack_pos;
     
-    StackFrame** frame;
-    StackFrameMonitor* monitor;
+    StackFrame** stack_frame;
+    StackFrameMonitor* stack_frame_monitor;
 
     // halt
     bool halt;
@@ -438,10 +438,11 @@ namespace Runtime {
       // setup frame
       call_stack = c;
       call_stack_pos = cp;
-      frame = new StackFrame*;
-      monitor = nullptr;
-      
-      MemoryManager::AddPdaMethodRoot(frame);
+      stack_frame_monitor = nullptr;
+      stack_frame = new StackFrame*;
+      halt = false;
+
+      MemoryManager::AddPdaMethodRoot(stack_frame);
     }
 
     StackInterpreter() {
@@ -449,14 +450,15 @@ namespace Runtime {
       call_stack = new StackFrame*[CALL_STACK_SIZE];
       call_stack_pos = new long;
       *call_stack_pos = -1;
-      frame = new StackFrame*;
+      stack_frame = new StackFrame*;
+      halt = false;
 
       // register monitor
-      monitor = new StackFrameMonitor;
-      monitor->call_stack = call_stack;
-      monitor->call_stack_pos = call_stack_pos;
-      monitor->cur_frame = frame;
-      MemoryManager::AddPdaMethodRoot(monitor);
+      stack_frame_monitor = new StackFrameMonitor;
+      stack_frame_monitor->call_stack = call_stack;
+      stack_frame_monitor->call_stack_pos = call_stack_pos;
+      stack_frame_monitor->cur_frame = stack_frame;
+      MemoryManager::AddPdaMethodRoot(stack_frame_monitor);
     }
   
     StackInterpreter(StackProgram* p, size_t m) {
@@ -466,14 +468,15 @@ namespace Runtime {
       call_stack = new StackFrame*[CALL_STACK_SIZE];
       call_stack_pos = new long;
       *call_stack_pos = -1;
-      frame = new StackFrame*;
+      stack_frame = new StackFrame*;
+      halt = false;
 
       // register monitor
-      monitor = new StackFrameMonitor;
-      monitor->call_stack = call_stack;
-      monitor->call_stack_pos = call_stack_pos;
-      monitor->cur_frame = frame;      
-      MemoryManager::AddPdaMethodRoot(monitor);
+      stack_frame_monitor = new StackFrameMonitor;
+      stack_frame_monitor->call_stack = call_stack;
+      stack_frame_monitor->call_stack_pos = call_stack_pos;
+      stack_frame_monitor->cur_frame = stack_frame;      
+      MemoryManager::AddPdaMethodRoot(stack_frame_monitor);
     }
 
 #ifdef _MODULE
@@ -493,6 +496,7 @@ namespace Runtime {
       call_stack_pos = new long;
       *call_stack_pos = -1;
       frame = new StackFrame*;
+      halt = false;
 
       // register monitor
       monitor = new StackFrameMonitor;
@@ -504,8 +508,8 @@ namespace Runtime {
 #endif
     
     ~StackInterpreter() {
-      if(monitor) {
-        MemoryManager::RemovePdaMethodRoot(monitor);
+      if(stack_frame_monitor) {
+        MemoryManager::RemovePdaMethodRoot(stack_frame_monitor);
 
         delete[] call_stack;
         call_stack = nullptr;
@@ -513,15 +517,15 @@ namespace Runtime {
         delete call_stack_pos;
         call_stack_pos = nullptr;
 
-        delete monitor;
-        monitor = nullptr;
+        delete stack_frame_monitor;
+        stack_frame_monitor = nullptr;
       }
       else {
-        MemoryManager::RemovePdaMethodRoot(frame);
+        MemoryManager::RemovePdaMethodRoot(stack_frame);
       }
 
-      delete frame;
-      frame = nullptr;
+      delete stack_frame;
+      stack_frame = nullptr;
     }
 
     // execute method
