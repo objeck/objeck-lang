@@ -1,4 +1,4 @@
-ARGS=-O3 -Wall -Wall -std=c++17 -D_ARM64 -D_OBJECK_NATIVE_LIB_PATH -D_DEBUGGER -Wno-int-to-pointer-cast -Wno-unused-function -Wno-unused-variable -Wno-strict-overflow
+ARGS=-O3 -Wall -Wall -std=c++20 -D_ARM64 -D_OBJECK_NATIVE_LIB_PATH -D_DEBUGGER -Wno-int-to-pointer-cast -Wno-unused-function -Wno-unused-variable -Wno-strict-overflow
 
 SRC=tree.o scanner.o parser.o debugger.o
 OBJ_LIBS=../vm/vm.a ../vm/jit_arm_a64.a ../vm/memory.a
