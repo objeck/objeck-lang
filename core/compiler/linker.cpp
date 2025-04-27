@@ -457,26 +457,20 @@ void Linker::Load(bool is_lib)
       std::wstring file_path = lib_path + file_ref;
       
       const bool is_alias = file_ref[0] == L'@';
-      if(is_alias) {
-        if(!lib_aliases.empty()) {
-          auto lib_section_aliases = lib_aliases.find(file_ref);
-          if(lib_section_aliases != lib_aliases.end()) {
-            auto lib_name_value = lib_section_aliases->second;
-            for(const auto& derived_lib : lib_name_value) {
-              std::wstring file_path = lib_path + derived_lib.first;
-              if(!frontend::EndsWith(file_path, L".obl")) {
-                file_path += L".obl";
-              }
-
-              Library* library = new Library(file_path);
-              library->Load();
-              libraries.insert(std::pair<std::wstring, Library*>(file_path, library));
-              paths.push_back(file_path);
+      if(is_alias && !lib_aliases.empty()) {
+        auto lib_section_aliases = lib_aliases.find(file_ref);
+        if(lib_section_aliases != lib_aliases.end()) {
+          auto lib_name_value = lib_section_aliases->second;
+          for(const auto& derived_lib : lib_name_value) {
+            std::wstring file_path = lib_path + derived_lib.first;
+            if(!frontend::EndsWith(file_path, L".obl")) {
+              file_path += L".obl";
             }
-          }
-          else {
-            std::wcerr << L"Unknown library alias: '" << file_ref << L"'.\n\tCheck the alias name and ensure the 'OBJECK_LIB_PATH' environment variable refers to the library directory." << std::endl;
-            exit(1);
+
+            Library* library = new Library(file_path);
+            library->Load();
+            libraries.insert(std::pair<std::wstring, Library*>(file_path, library));
+            paths.push_back(file_path);
           }
         }
         else {

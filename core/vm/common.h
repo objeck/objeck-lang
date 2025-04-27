@@ -160,25 +160,25 @@ class StackInstr
     operand3 = native_offset = 0;
   }
 
-  StackInstr(int l, InstructionType t, FLOAT_VALUE fo) {
+  StackInstr(int l, InstructionType t, FLOAT_VALUE f) {
     line_num = l;
     type = t;
-    alt_operand.float_operand = fo;
+    alt_operand.float_operand = f;
     operand = operand3 = native_offset = 0;
   }
 
-  StackInstr(int l, InstructionType t, long o, long o2) {
+  StackInstr(int l, InstructionType t, long o1, long o2) {
     line_num = l;
     type = t;
-    operand = o;
+    operand = o1;
     alt_operand.operand2 = o2;
     operand3 = native_offset = 0;
   }
 
-  StackInstr(int l, InstructionType t, long o, long o2, long o3) {
+  StackInstr(int l, InstructionType t, long o1, long o2, long o3) {
     line_num = l;
     type = t;
-    operand = o;
+    operand = o1;
     alt_operand.operand2 = o2;
     operand3 = o3;
     native_offset = 0;

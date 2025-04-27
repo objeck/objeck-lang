@@ -167,7 +167,7 @@
       <EnablePREfast>false</EnablePREfast>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
-      <OmitFramePointers>false</OmitFramePointers>
+      <OmitFramePointers>true</OmitFramePointers>
       <WholeProgramOptimization>true</WholeProgramOptimization>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <AdditionalOptions>/U "_DEBUG" /arch:AVX2 %(AdditionalOptions)</AdditionalOptions>
