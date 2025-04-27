@@ -106,7 +106,7 @@
       <PreprocessorDefinitions>_NO_HALT;_NO_JIT;_DEBUGGER;_DEBUGGER;WIN32;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <AdditionalOptions>/arch:AVX2 /U "_DEBUG" %(AdditionalOptions)</AdditionalOptions>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -143,7 +143,7 @@
       <ObjectFileName>$(IntDir)</ObjectFileName>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <WholeProgramOptimization>true</WholeProgramOptimization>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>stdcpp20</LanguageStandard>
       <AdditionalOptions>/arch:AVX2 /U "_DEBUG" %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
@@ -153,6 +153,8 @@
       <AdditionalDependencies>msvcrt.lib;msvcmrt.lib;libz-static.lib;libcrypto-static.lib;libssl-static.lib;crypt32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalOptions>/ignore:4099 /ignore:4286  /ignore:4042 %(AdditionalOptions)</AdditionalOptions>
       <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
+      <IgnoreSpecificDefaultLibraries>
+      </IgnoreSpecificDefaultLibraries>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">
@@ -182,6 +184,7 @@
     <ClCompile Include="..\..\shared\sys.cpp" />
     <ClCompile Include="..\..\vm\arch\jit\arm64\jit_arm_a64.h" Condition="'$(Platform)'=='ARM64'" />
     <ClCompile Include="..\..\vm\arch\jit\amd64\jit_amd_lp64.h" Condition="'$(Platform)'=='x64'" />
+    <ClInclude Include="..\..\vm\arch\jit\jit_common.h" />
     <ClInclude Include="..\..\vm\arch\memory.h" />
     <ClInclude Include="..\..\vm\arch\win32\win32.h" />
     <ClInclude Include="..\..\vm\common.h" />
@@ -198,6 +201,7 @@
   <ItemGroup>
     <ClCompile Include="..\..\vm\arch\jit\arm64\jit_arm_a64.cpp" Condition="'$(Platform)'=='ARM64'" />
     <ClCompile Include="..\..\vm\arch\jit\amd64\jit_amd_lp64.cpp" Condition="'$(Platform)'=='x64'" />
+    <ClCompile Include="..\..\vm\arch\jit\jit_common.cpp" />
     <ClCompile Include="..\..\vm\arch\memory.cpp" />
     <ClCompile Include="..\..\vm\arch\win32\win32.cpp" />
     <ClCompile Include="..\..\vm\common.cpp" />

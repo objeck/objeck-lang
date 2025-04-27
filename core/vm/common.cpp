@@ -6416,7 +6416,7 @@ bool TrapProcessor::DirGetCur(StackProgram* program, size_t* inst, size_t*& op_s
     PushInt(0, op_stack, stack_pos);
   }
   else {
-    const std::wstring dir_cur_str = BytesToUnicode(dir_cur_path.u8string());
+    const std::wstring dir_cur_str = BytesToUnicode(dir_cur_path.string());
     const size_t* dir_cur_obj = CreateStringObject(dir_cur_str, program, op_stack, stack_pos);
     PushInt((size_t)dir_cur_obj, op_stack, stack_pos);
   }
@@ -6604,7 +6604,7 @@ bool TrapProcessor::SymLinkLoc(StackProgram* program, size_t* inst, size_t*& op_
       PushInt(0, op_stack, stack_pos);
     }
     else {
-      PushInt((size_t)CreateStringObject(BytesToUnicode(target_path.u8string()), program, op_stack, stack_pos), op_stack, stack_pos);
+      PushInt((size_t)CreateStringObject(BytesToUnicode(target_path.string()), program, op_stack, stack_pos), op_stack, stack_pos);
     }
   }
   else {
