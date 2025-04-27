@@ -1,4 +1,4 @@
-ARGS=-O3 -D_ARM64 -Wall -Wno-unused-function -std=c++17 -Wno-deprecated-declarations
+ARGS=-O3 -D_ARM64 -Wall -Wno-unused-function -std=c++20 -Wno-deprecated-declarations
 
 AR=ar
 COMMON_LIBS=jit_common.a

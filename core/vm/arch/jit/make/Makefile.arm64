@@ -1,4 +1,4 @@
-ARGS=-O3 -Wall -Wno-unused-function -std=c++17 -Wno-unused-variable
+ARGS=-O3 -Wall -Wno-unused-function -std=c++20 -Wno-unused-variable
 
 AR=ar
 SRC=jit_common.o
