@@ -450,14 +450,15 @@ namespace Runtime {
       call_stack = new StackFrame*[CALL_STACK_SIZE];
       call_stack_pos = new long;
       *call_stack_pos = -1;
-      stack_frame = new StackFrame*;
       halt = false;
 
       // register monitor
-      stack_frame_monitor = new StackFrameMonitor;
+      stack_frame = new StackFrame*;
       stack_frame_monitor->call_stack = call_stack;
       stack_frame_monitor->call_stack_pos = call_stack_pos;
+            
       stack_frame_monitor->cur_frame = stack_frame;
+      stack_frame_monitor = new StackFrameMonitor;
       MemoryManager::AddPdaMethodRoot(stack_frame_monitor);
     }
   
