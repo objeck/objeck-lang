@@ -53,6 +53,8 @@
 
 #define JIT_TMP_LOOK_BACK 16
 
+#define ALIGN_POOL_MAX (1 << 22)
+
 struct StackOperMemory {
   size_t* op_stack;
   long* stack_pos;
