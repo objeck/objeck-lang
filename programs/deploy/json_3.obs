@@ -13,6 +13,7 @@ class JsonWeb {
 
 		response := HttpsClient->QuickGet(url);
 		if(response <> Nil) {
+response->GetContent()->PrintLine();
 			parser := JsonParser->New(response->GetContent());
 			if(parser->Parse()) {
 				root := parser->GetRoot();
