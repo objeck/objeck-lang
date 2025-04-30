@@ -792,9 +792,7 @@ void* MemoryManager::CollectMemory(void* arg)
 
       // cache or free memory
       size_t* tmp = mem - EXTRA_BUF_SIZE;
-      if((size_t)tmp % 2 != 0) {
         AddFreeMemory(tmp - 1);
-      }
 #ifdef _DEBUG_GC
       std::wcout << L"# freeing memory: addr=" << mem << L"(" << (size_t)mem
             << L"), size=" << mem_size << L" byte(s) #" << std::endl;
