@@ -1,25 +1,23 @@
-use System.IO.Filesystem, Web.HTTP.Server, API.OpenAI.Chat;
+use System.IO.Filesystem, API.OpenAI.Chat;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		query := Collection.Pair->New("user", "")<String, String>;
+		if(args->Size() <> 1) {
+			">>> Missing OpenAI license file. <<<"->ErrorLine();
+			return;
+		};
+
+		query := Collection.Pair->New("user", "What is the longest street in Colorado?")<String, String>;
 		
 		model := "gpt-4o-mini";
-		token := GetApiKey("");
+		token := GetApiKey(args[0]);
 
-		completion := Completion->Complete(model, query, token);
+		completion := Response->Respond(model, query, token);
+#		completion := Response->Respond(Nil, Nil, Nil);
 		if(completion = Nil) {
-			Completion->GetLastError()->ErrorLine();
+			Response->GetLastError()->ErrorLine();
 			return;
 		};
-
-		first_choice := completion->GetFirstChoice();
-		if(first_choice = Nil) {
-			return;
-		};
-
-		message_choice := first_choice->GetMessage()<String, String>;
-		message_choice->GetSecond()->PrintLine();
 	}
 
 	function : GetApiKey(filename : String) ~ String {
