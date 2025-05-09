@@ -14,7 +14,8 @@ class HttpsTest {
 				"--- Unable to fetch URL ---"->ErrorLine();
 			}
 			else {
-				html->Size()->PrintLine();
+#				html->Size()->PrintLine();
+				html->PrintLine();
 			};
 		};
 	}

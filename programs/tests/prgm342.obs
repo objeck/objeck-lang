@@ -1,6 +1,9 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		u := Web.HTTP.Url->New("file:///Users/randyhollines/Documents/Code/objeck-lang/docs/syntax/howto.html");
+		u := Web.HTTP.Url->New("file:///c:/WINDOWS/clock.avi");
+		u->ToString()->PrintLine();
+
+		u := Web.HTTP.Url->New("file:///C:Users/randyhollines/Documents/Code/objeck-lang/docs/syntax/howto.html");
 		u->ToString()->PrintLine();
 
 		u := Web.HTTP.Url->New("https://www.sun.com/a#foo#bar");
