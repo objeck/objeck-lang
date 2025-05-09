@@ -22,13 +22,8 @@ set OBJK_BASE=\Users\objec\Documents\Code\objeck-lang
 set PATH=%PATH%;%OBJK_BASE%\core\release\%TARGET%\bin
 set OBJECK_LIB_PATH=%OBJK_BASE%\core\release\%TARGET%\lib
 
-rem obc -src %OBJK_BASE%\core\compiler\lib_src\cipher.obs -tar lib -dest %OBJK_BASE%\core\release\%TARGET%\lib\cipher.obl
-
-
-obc -src %OBJK_BASE%\core\compiler\lib_src\net_server.obs -tar lib -lib net,json,gen_collect,cipher -opt s3 -dest %OBJK_BASE%\core\release\%TARGET%\lib\net_server.obl
-REM obc -src %OBJK_BASE%\core\compiler\lib_src\net.obs,%OBJK_BASE%\core\compiler\lib_src\net_common.obs,%OBJK_BASE%\core\compiler\lib_src\net_secure.obs -tar lib -lib json,cipher -dest %OBJK_BASE%\core\release\%TARGET%\lib\net.obl
 obc -src %OBJK_BASE%\core\compiler\lib_src\net.obs,%OBJK_BASE%\core\compiler\lib_src\net_common.obs,%OBJK_BASE%\core\compiler\lib_src\net_secure.obs -tar lib -lib json,cipher -dest %OBJK_BASE%\core\release\%TARGET%\lib\net.obl
-rem obc -src %OBJK_BASE%\core\compiler\lib_src\json_stream.obs -tar lib -dest %OBJK_BASE%\core\release\%TARGET%\lib\json_stream.obl
+obc -src %OBJK_BASE%\core\compiler\lib_src\openai.obs -lib json,net,net_server,cipher,misc -tar lib -opt s3 -dest %OBJK_BASE%\core\release\%TARGET%\lib\openai.obl
 
 if [%2] == [] goto end
 	obc -src %2 -lib @std,net_server

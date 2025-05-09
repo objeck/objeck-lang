@@ -189,6 +189,359 @@ bundle API.OpenAI.Chat {
 	#~
 	Model response for a given text or image query
 	~#
+	class Response from EndPoint {
+		@id : String;
+		@object : String;
+		@created_at : Int;
+		@model : String;
+		@choices : Vector<API.OpenAI.Chat.Choice>;
+
+		New(chat_json : JsonElement) {
+			Parent();
+
+			@id := chat_json->Get("id")->GetString();
+			@object := chat_json->Get("object")->GetString();
+			@created_at := chat_json->Get("created")->GetInt();
+			@model := chat_json->Get("model")->GetString();
+
+			@choices := Vector->New()<API.OpenAI.Chat.Choice>;
+			choices_json := chat_json->Get("choices");
+			each(choice_json in choices_json) {
+				@choices->AddBack(Choice->New(choice_json));
+			};
+		}
+
+		#~
+		Get object instance API ID
+		@return instance ID
+		~#
+		method : public : GetId() ~ String {
+			return @id;
+		}
+
+		#~
+		Get the object type
+		@return object type
+		~#
+		method : public : GetObject() ~ String {
+			return @object;
+		}
+
+		#~
+		Unix timestamp (in seconds) of when the object instance was created
+		@return time with the object instance was created
+		~#
+		method : public : GetCreatedAt() ~ Int {
+			return @created_at;
+		}
+
+		#~
+		ID of the model to use
+		@return ID of the model to use
+		~#
+		method : public : GetModel() ~ String {
+			return @model;
+		}
+
+		
+		#~
+		String representation of the object
+		@return string representation
+		~#
+		method : public : ToString() ~ String {			
+			buffer := "[id='";
+			buffer += @id;
+
+			buffer += "', object='"
+			buffer += @object;
+
+			buffer += "', model='"
+			buffer += @model;
+
+			buffer += "', created_at="
+			buffer += @created_at;
+
+			buffer += "\nchoices: ["
+			for(i := 0; i < @choices->Size(); i +=1 ;) {
+				buffer += i;
+				buffer += ": ";
+				
+				buffer += @choices->Get(i)->ToString();
+				
+				if(i + 1 < @choices->Size()) {
+					buffer += ',';
+				};
+			};
+			buffer += ']';
+
+			return buffer;
+		}
+
+		#~
+		Model response for the given query
+		@param message completion message and image query.
+		@param model ID of the model to use
+		@param token API token
+		@return completion response
+		~#
+		function : Respond(model : String, message : Pair<String, String>, token : String) ~ Completion {
+			messages := Vector->New()<Pair<String, String>>;
+			messages->AddBack(message);
+
+			return Respond(model, messages, -1, -1.0, -1.0, token);
+		}
+
+		#~
+		Model response for the given query
+		@param model ID of the model to use
+		@param message completion message and image query
+		@param max_tokens maximum number of completion tokens returned by the API
+		@param temperature amount of randomness in the response, valued between 0 inclusive and 2 exclusive
+		@param top_p nucleus sampling threshold, valued between 0 and 1 inclusive
+		@param token API token
+		@return completion response
+		~#
+		function : Respond(model : String, message : Pair<String, String>, max_tokens : Int, temperature : Float, top_p : Float, token : String) ~ Completion {
+			messages := Vector->New()<Pair<String, String>>;
+			messages->AddBack(message);
+
+			return Respond(model, messages, max_tokens, temperature, top_p, token);
+		}
+
+		#~
+		Model response for the given query
+		@param messages list of messages comprising the conversation
+		@param model ID of the model to use
+		@param token API token
+		@return completion response
+		~#
+		function : Respond(model : String, messages : Vector<Pair<String, String>>, token : String) ~ Completion {
+			return Respond(model, messages, -1, -1.0, -1.0, token);
+		}
+
+		#~
+		Model response for the given query
+		@param model ID of the model to use
+		@param messages list of messages comprising the conversation
+		@param max_tokens maximum number of completion tokens returned by the API
+		@param temperature amount of randomness in the response, valued between 0 inclusive and 2 exclusive
+		@param top_p nucleus sampling threshold, valued between 0 and 1 inclusive
+		@param token API token
+		@return completion response
+		~#
+		function : Respond(model : String, messages : Vector<Pair<String, String>>, max_tokens : Int, temperature : Float, top_p : Float, token : String) ~ Completion {
+			completion_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			completion_json->Insert("model", model);
+
+			if(max_tokens > -1) {
+				completion_json->Insert("max_tokens", max_tokens);
+			};
+
+			if(temperature >= 0.0) {
+				completion_json->Insert("temperature", temperature);
+			};
+
+			if(top_p >= 0.0) {
+				completion_json->Insert("top_p", top_p);
+			};
+
+			messages_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+			each(message in messages) {
+				message_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+				message_json->Insert("role", message->GetFirst());
+				message_json->Insert("content", message->GetSecond());
+				messages_json->Add(message_json);
+			};
+			completion_json->Insert("messages", messages_json);
+
+			data := completion_json->ToString()->ToByteArray();
+			if(IsDebug()) {
+				data->ToString()->PrintLine();
+			};
+
+#~
+			headers := Map->New()<String, String>;
+			headers->Insert("Authorization", "Bearer {$token}");
+			headers->Insert("OpenAI-Beta", "assistants=v2");
+			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/chat/completions"), data, "application/json", headers);
+			if(response <> Nil) {
+				if(IsDebug()) {
+					"--- Called: name='/chat/completions' ---"->PrintLine();
+					response->GetContent()->ToString()->PrintLine();				
+				};
+
+				chat_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				if(chat_json = Nil) {
+					"### Error: Unable to parse response ###"->ErrorLine();
+					return Nil;
+				};
+				
+				error_str := chat_json->FindElements("error/message");
+				if(error_str <> Nil) {
+					SetLastError(error_str->GetString());
+					return Nil;
+				};
+
+				return Completion->New(chat_json);
+			};
+~#
+			return Nil;
+		}
+		
+		#~
+		Model response for the given image and query
+		@param message completion message and image query.
+		@param model ID of the model to use
+		@param token API token
+		@return completion response
+		~#
+		function : Respond(model : String, message : Pair<String, ImageQuery>, token : String) ~ Completion {
+			messages := Vector->New()<Pair<String, ImageQuery>>;
+			messages->AddBack(message);
+
+			return Respond(model, messages, -1, -1.0, -1.0, token);
+		}
+
+		#~
+		Model response for the given image and query
+		@param model ID of the model to use
+		@param message completion message and image query
+		@param max_tokens maximum number of completion tokens returned by the API
+		@param temperature amount of randomness in the response, valued between 0 inclusive and 2 exclusive
+		@param top_p nucleus sampling threshold, valued between 0 and 1 inclusive
+		@param token API token
+		@return completion response
+		~#
+		function : Respond(model : String, message : Pair<String, ImageQuery>, max_tokens : Int, temperature : Float, top_p : Float, token : String) ~ Completion {
+			messages := Vector->New()<Pair<String, ImageQuery>>;
+			messages->AddBack(message);
+
+			return Respond(model, messages, max_tokens, temperature, top_p, token);
+		}
+
+		#~
+		Model response for the given image and query
+		@param messages list of messages comprising the conversation
+		@param model ID of the model to use
+		@param token API token
+		@return completion response
+		~#
+		function : Respond(model : String, messages : Vector<Pair<String, ImageQuery>>, token : String) ~ Completion {
+			return Respond(model, messages, -1, -1.0, -1.0, token);
+		}
+
+		#~
+		Model response for the given image and query
+		@param model ID of the model to use
+		@param messages list of messages comprising the conversation
+		@param max_tokens maximum number of completion tokens returned by the API
+		@param temperature amount of randomness in the response, valued between 0 inclusive and 2 exclusive
+		@param top_p nucleus sampling threshold, valued between 0 and 1 inclusive
+		@param token API token
+		@return completion response
+		~#
+		function : Respond(model : String, messages : Vector<Pair<String, ImageQuery>>, max_tokens : Int, temperature : Float, top_p : Float, token : String) ~ Completion {
+			completion_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			completion_json->Insert("model", model);
+
+			if(max_tokens > -1) {
+				completion_json->Insert("max_tokens", max_tokens);
+			};
+
+			if(temperature >= 0.0) {
+				completion_json->Insert("temperature", temperature);
+			};
+
+			if(top_p >= 0.0) {
+				completion_json->Insert("top_p", top_p);
+			};
+
+			messages_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+			each(message in messages) {
+				message_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+				message_json->Insert("role", message->GetFirst());
+				
+				image_query := message->GetSecond();
+
+				if(image_query->GetQuery() = Nil) {
+					return Nil;
+				};
+
+				if(image_query->GetImageUrl() = Nil & image_query->GetImage() = Nil) {
+					return Nil;
+				};
+
+				# content array
+				content_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+
+				# text query
+				text_query_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+				text_query_json->Insert("type", "text");
+				text_query_json->Insert("text", image_query->GetQuery());
+				content_json->Add(text_query_json);
+
+				# image query
+				image_url_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+				if(image_query->GetImage() = Nil) {
+					image_url_json->Insert("url", image_query->GetImageUrl()->GetUrl());
+				}
+				else {
+					base64_image_str := "data:image/jpeg;base64,";
+					base64_image_str += Cipher.Encrypt->Base64(image_query->GetImage());
+					image_url_json->Insert("url", base64_image_str);
+				};
+
+				image_query_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+				image_query_json->Insert("type", "image_url");
+				image_query_json->Insert("image_url", image_url_json);
+				content_json->Add(image_query_json);
+
+				message_json->Insert("content", content_json);
+				messages_json->Add(message_json);
+			};
+			completion_json->Insert("messages", messages_json);
+
+			data := completion_json->ToString()->ToByteArray();
+			if(IsDebug()) {
+				data->ToString()->PrintLine();
+			};
+
+			headers := Map->New()<String, String>;
+			headers->Insert("Authorization", "Bearer {$token}");
+			headers->Insert("OpenAI-Beta", "assistants=v2");
+			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/chat/completions"), data, "application/json", headers);
+			if(response <> Nil) {
+				if(IsDebug()) {
+					"--- Called: name='/chat/completions' ---"->PrintLine();
+					response->GetContent()->ToString()->PrintLine();				
+				};
+
+				chat_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				if(chat_json = Nil) {
+					"### Error: Unable to parse response ###"->ErrorLine();
+					return Nil;
+				};
+				
+				error_str := chat_json->FindElements("error/message");
+				if(error_str <> Nil) {
+					SetLastError(error_str->GetString());
+					return Nil;
+				};
+
+				return Completion->New(chat_json);
+			};
+
+			return Nil;
+		}
+
+		#
+		# TODO: end image support
+		#
+	}
+
+	#~
+	Model response for a given text or image query
+	~#
 	class Completion from EndPoint {
 		@id : String;
 		@object : String;
@@ -245,7 +598,7 @@ bundle API.OpenAI.Chat {
 
 		#~
 		List of chat completion choices
-		@return compleCalled: name='/chat/completionstion choices
+		@return completion choices
 		~#
 		method : public : GetChoices() ~ Vector<API.OpenAI.Chat.Choice> {
 			return @choices;
@@ -4121,7 +4474,7 @@ session->Close();
 		@api_key : static : String;
 
 		function : IsDebug() ~ Bool {
-			return false;
+			return true;
 		}
 
 		#~
