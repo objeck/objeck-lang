@@ -1,0 +1,39 @@
+use System.IO.Filesystem, Web.HTTP.Server, API.OpenAI.Chat;
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		query := Collection.Pair->New("user", "")<String, String>;
+		
+		model := "gpt-4o-mini";
+		token := GetApiKey("");
+
+		completion := Completion->Complete(model, query, token);
+		if(completion = Nil) {
+			Completion->GetLastError()->ErrorLine();
+			return;
+		};
+
+		first_choice := completion->GetFirstChoice();
+		if(first_choice = Nil) {
+			return;
+		};
+
+		message_choice := first_choice->GetMessage()<String, String>;
+		message_choice->GetSecond()->PrintLine();
+	}
+
+	function : GetApiKey(filename : String) ~ String {
+		token := System.IO.Filesystem.FileReader->ReadFile(filename);
+		if(token <> Nil) {
+			token := token->Trim();
+			if(<>token->StartsWith("sk-") & <>token->StartsWith("pplx-")) {
+				">>> Unable to read token from file: '{$filename}' <<"->PrintLine();
+				Runtime->Exit(1);
+			};
+
+			return token;
+		};
+
+		return Nil;
+	}
+}
