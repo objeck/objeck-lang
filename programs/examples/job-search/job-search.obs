@@ -4,18 +4,21 @@ class Test {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
 			block := GetBlock(FileReader->ReadFile(args[0]));
-			output := ParseBlock(block);
-			FileWriter->WriteFile("out-2.html", output);
+#			output := ParseBlock(block);
+#			FileWriter->WriteFile("out-2.html", output);
 		};
 	}
 
 	function : GetBlock(input : String) ~ Char[] {
-		start_pos := input->Find("<html");
+		start_pos := input->Find("<html>");
 		end_pos := input->Find("</html>")
-
-		if(start_pos < end_pos) {
-			return input->SubString(start_pos, end_pos - start_pos + "</html>"->Size())->ToCharArray();
-		}
+start_pos->PrintLine();
+end_pos->PrintLine();
+#		if(start_pos < end_pos) {
+			foo := input->SubString(start_pos, end_pos - start_pos + "</html>"->Size());
+foo->PrintLine();
+			return foo->ToCharArray();
+#		}
 
 		return Nil;
 	}

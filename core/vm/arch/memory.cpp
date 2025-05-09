@@ -228,6 +228,16 @@ size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, long 
     const size_t alloc_size = size * 2 + sizeof(size_t) * EXTRA_BUF_SIZE;
     
     mem = GetMemory(alloc_size);
+    if(!mem) {
+      std::wcerr << L">>> Unable to allocate memory of size: " << alloc_size << L", consider checking the code. <<<" << std::endl;
+#ifdef _NO_HALT
+      halt = true;
+      return;
+#else
+      exit(1);
+#endif
+    }
+
     mem[EXTRA_BUF_SIZE + TYPE] = NIL_TYPE;
     mem[EXTRA_BUF_SIZE + SIZE_OR_CLS] = (size_t)cls;
     mem += EXTRA_BUF_SIZE;
@@ -294,6 +304,16 @@ size_t* MemoryManager::AllocateArray(const size_t size, const MemoryType type, s
   const size_t alloc_size = calc_size + sizeof(size_t) * EXTRA_BUF_SIZE;
 
   mem = GetMemory(alloc_size);
+  if(!mem) {
+    std::wcerr << L">>> Unable to allocate memory of size: " << alloc_size << L", consider checking the code. <<<" << std::endl;
+#ifdef _NO_HALT
+    halt = true;
+    return;
+#else
+    exit(1);
+#endif
+  }
+
   mem[EXTRA_BUF_SIZE + TYPE] = type;
   mem[EXTRA_BUF_SIZE + SIZE_OR_CLS] = calc_size;
   mem += EXTRA_BUF_SIZE;
@@ -328,6 +348,10 @@ size_t* MemoryManager::GetMemory(size_t size) {
 
   size_t alloc_size = size + sizeof(size_t);
   size_t* raw_mem = (size_t*)calloc(alloc_size, sizeof(char));
+  if(!raw_mem) {
+    return nullptr;
+  }
+
 #ifdef _DEBUG_GC
   std::wcout << L"*** Raw allocation: address=" << raw_mem << L" ***" << std::endl;
 #endif
