@@ -1,62 +1,75 @@
-use Collection, System.IO.Filesystem;
+use System.IO.Filesystem, Web.HTTP.Server;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
-			reader := FileReader->New(args[0]);
-			
-			found := 0;
-			boundry := GetBoundry(reader);
-			if(boundry <> Nil) {
-				mime_html := "";
-				boundry := "--" + boundry;
-
-				line := reader->ReadLine();
-				while(line <> Nil & found < 2) {
-# line->PrintLine();					
-					if(line->Equals(boundry)) {
-						found += 1;
-					};
-
-					if(found = 1) {
-						if(line->EndsWith("=20") | line->EndsWith("=09")) {
-# line->PrintLine();
-							line := line->SubString(0, line->Size() - 3);
-							mime_html += line + ' ';
-						}
-						else {
-							mime_html += line->ReplaceAll("=3D", "=");
-						};
-					}
-					
-					# update
-					line := reader->ReadLine();
-				};
-				
-				html_index := mime_html->Find("<!DOCTYPE html>");
-				if(html_index > 0) {
-					html := mime_html->SubString(html_index, mime_html->Size() - html_index);
-
-					"Wrote file: foo.html"->PrintLine();
-					FileWriter->WriteFile("foo.html", html);
-				};		
-			};
+			block := GetBlock(FileReader->ReadFile(args[0]));
+			ParseBlock(block)->PrintLine();
 		};
 	}
 
-	function : GetBoundry(reader : FileReader) ~ String {
-		line := reader->ReadLine();
-		while(line <> Nil & <>line->IsEmpty()) {
-			line := line->Trim();
-			if(line->StartsWith("boundary=\"")) {
-				boundry_offset := "boundary=\""->Size();
-				return line->SubString(boundry_offset, line->Size() - boundry_offset - 1);
-			}
-			else {
-				line := reader->ReadLine();
+	function : GetBlock(input : String) ~ Char[] {
+		start_pos := input->Find("<html");
+		end_pos := input->Find("</html>")
+
+		if(start_pos < end_pos) {
+			return input->SubString(start_pos, end_pos - start_pos + "</html>"->Size())->ToCharArray();
+		}
+
+		return Nil;
+	}
+
+	function : ParseBlock(input : Char[]) ~ String {
+		buffer := "";
+		
+		if(input <> Nil) {
+			i := 0;
+			char, next_char : Char;
+			while(i < input->Size()) {
+				char := input[i++];
+				if(i < input->Size()) {
+					next_char := input[i];
+				}
+				else {
+					next_char := '\0';
+				}
+
+				# check
+				if(char = '=' & (next_char->IsDigit() | (next_char >= 'A' & next_char <= 'F') | next_char = '\r')) {
+					if(next_char = '\r') {				
+						i += 2;
+					}
+					else {
+						num_buf := "0x";
+						while(next_char->IsDigit() | (next_char >= 'A' & next_char <= 'F')) {
+							num_buf += next_char;
+							next_char := input[++i];
+						};
+
+						num := num_buf->ToInt();
+						if(num >= 0x20 & num <= 0x7f) {
+							buffer += num->As(Char);
+						};
+
+						if(num = 0xc2 & next_char = '=' & i + 2 < input->Size()) {
+							num_buf := "0x";
+							num_buf += input[i + 1];
+							num_buf += input[i + 2];
+							num := num_buf->ToInt();
+
+							if(num > 0) {
+								buffer += num->As(Char);
+							};
+							i += 3;
+						};
+					};
+				}
+				else {
+					buffer += char;
+				}
 			};
 		};
 
-		return Nil;
+		return buffer;
 	}
 }
