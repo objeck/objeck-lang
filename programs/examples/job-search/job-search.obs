@@ -1,0 +1,62 @@
+use Collection, System.IO.Filesystem;
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() = 1) {
+			reader := FileReader->New(args[0]);
+			
+			found := 0;
+			boundry := GetBoundry(reader);
+			if(boundry <> Nil) {
+				mime_html := "";
+				boundry := "--" + boundry;
+
+				line := reader->ReadLine();
+				while(line <> Nil & found < 2) {
+# line->PrintLine();					
+					if(line->Equals(boundry)) {
+						found += 1;
+					};
+
+					if(found = 1) {
+						if(line->EndsWith("=20") | line->EndsWith("=09")) {
+# line->PrintLine();
+							line := line->SubString(0, line->Size() - 3);
+							mime_html += line + ' ';
+						}
+						else {
+							mime_html += line->ReplaceAll("=3D", "=");
+						};
+					}
+					
+					# update
+					line := reader->ReadLine();
+				};
+				
+				html_index := mime_html->Find("<!DOCTYPE html>");
+				if(html_index > 0) {
+					html := mime_html->SubString(html_index, mime_html->Size() - html_index);
+
+					"Wrote file: foo.html"->PrintLine();
+					FileWriter->WriteFile("foo.html", html);
+				};		
+			};
+		};
+	}
+
+	function : GetBoundry(reader : FileReader) ~ String {
+		line := reader->ReadLine();
+		while(line <> Nil & <>line->IsEmpty()) {
+			line := line->Trim();
+			if(line->StartsWith("boundary=\"")) {
+				boundry_offset := "boundary=\""->Size();
+				return line->SubString(boundry_offset, line->Size() - boundry_offset - 1);
+			}
+			else {
+				line := reader->ReadLine();
+			};
+		};
+
+		return Nil;
+	}
+}
