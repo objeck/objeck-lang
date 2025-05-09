@@ -201,14 +201,17 @@ bundle API.OpenAI.Chat {
 
 			@id := chat_json->Get("id")->GetString();
 			@object := chat_json->Get("object")->GetString();
-			@created_at := chat_json->Get("created")->GetInt();
+			@created_at := chat_json->Get("created_at")->GetInt();
 			@model := chat_json->Get("model")->GetString();
 
+			# TODO: rename choices
+#~
 			@choices := Vector->New()<API.OpenAI.Chat.Choice>;
 			choices_json := chat_json->Get("choices");
 			each(choice_json in choices_json) {
 				@choices->AddBack(Choice->New(choice_json));
 			};
+#~			
 		}
 
 		#~
@@ -284,7 +287,7 @@ bundle API.OpenAI.Chat {
 		@param token API token
 		@return completion response
 		~#
-		function : Respond(model : String, message : Pair<String, String>, token : String) ~ Completion {
+		function : Respond(model : String, message : Pair<String, String>, token : String) ~ Response {
 			messages := Vector->New()<Pair<String, String>>;
 			messages->AddBack(message);
 
@@ -301,7 +304,7 @@ bundle API.OpenAI.Chat {
 		@param token API token
 		@return completion response
 		~#
-		function : Respond(model : String, message : Pair<String, String>, max_tokens : Int, temperature : Float, top_p : Float, token : String) ~ Completion {
+		function : Respond(model : String, message : Pair<String, String>, max_tokens : Int, temperature : Float, top_p : Float, token : String) ~ Response {
 			messages := Vector->New()<Pair<String, String>>;
 			messages->AddBack(message);
 
@@ -315,7 +318,7 @@ bundle API.OpenAI.Chat {
 		@param token API token
 		@return completion response
 		~#
-		function : Respond(model : String, messages : Vector<Pair<String, String>>, token : String) ~ Completion {
+		function : Respond(model : String, messages : Vector<Pair<String, String>>, token : String) ~ Response {
 			return Respond(model, messages, -1, -1.0, -1.0, token);
 		}
 
@@ -329,7 +332,7 @@ bundle API.OpenAI.Chat {
 		@param token API token
 		@return completion response
 		~#
-		function : Respond(model : String, messages : Vector<Pair<String, String>>, max_tokens : Int, temperature : Float, top_p : Float, token : String) ~ Completion {
+		function : Respond(model : String, messages : Vector<Pair<String, String>>, max_tokens : Int, temperature : Float, top_p : Float, token : String) ~ Response {
 			completion_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 			completion_json->Insert("model", model);
 
@@ -352,21 +355,20 @@ bundle API.OpenAI.Chat {
 				message_json->Insert("content", message->GetSecond());
 				messages_json->Add(message_json);
 			};
-			completion_json->Insert("messages", messages_json);
+			completion_json->Insert("input", messages_json);
 
-			data := completion_json->ToString()->ToByteArray();
+			data := completion_json->ToFormattedString()->ToByteArray();
 			if(IsDebug()) {
 				data->ToString()->PrintLine();
 			};
 
-#~
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
 			headers->Insert("OpenAI-Beta", "assistants=v2");
-			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/chat/completions"), data, "application/json", headers);
+			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/responses"), data, "application/json", headers);
 			if(response <> Nil) {
 				if(IsDebug()) {
-					"--- Called: name='/chat/completions' ---"->PrintLine();
+					"--- Called: name='/chat/responses' ---"->PrintLine();
 					response->GetContent()->ToString()->PrintLine();				
 				};
 
@@ -382,9 +384,9 @@ bundle API.OpenAI.Chat {
 					return Nil;
 				};
 
-				return Completion->New(chat_json);
+				return Response->New(chat_json);
 			};
-~#
+
 			return Nil;
 		}
 		
@@ -395,7 +397,7 @@ bundle API.OpenAI.Chat {
 		@param token API token
 		@return completion response
 		~#
-		function : Respond(model : String, message : Pair<String, ImageQuery>, token : String) ~ Completion {
+		function : Respond(model : String, message : Pair<String, ImageQuery>, token : String) ~ Response {
 			messages := Vector->New()<Pair<String, ImageQuery>>;
 			messages->AddBack(message);
 
@@ -412,7 +414,7 @@ bundle API.OpenAI.Chat {
 		@param token API token
 		@return completion response
 		~#
-		function : Respond(model : String, message : Pair<String, ImageQuery>, max_tokens : Int, temperature : Float, top_p : Float, token : String) ~ Completion {
+		function : Respond(model : String, message : Pair<String, ImageQuery>, max_tokens : Int, temperature : Float, top_p : Float, token : String) ~ Response {
 			messages := Vector->New()<Pair<String, ImageQuery>>;
 			messages->AddBack(message);
 
@@ -426,7 +428,7 @@ bundle API.OpenAI.Chat {
 		@param token API token
 		@return completion response
 		~#
-		function : Respond(model : String, messages : Vector<Pair<String, ImageQuery>>, token : String) ~ Completion {
+		function : Respond(model : String, messages : Vector<Pair<String, ImageQuery>>, token : String) ~ Response {
 			return Respond(model, messages, -1, -1.0, -1.0, token);
 		}
 
@@ -440,7 +442,7 @@ bundle API.OpenAI.Chat {
 		@param token API token
 		@return completion response
 		~#
-		function : Respond(model : String, messages : Vector<Pair<String, ImageQuery>>, max_tokens : Int, temperature : Float, top_p : Float, token : String) ~ Completion {
+		function : Respond(model : String, messages : Vector<Pair<String, ImageQuery>>, max_tokens : Int, temperature : Float, top_p : Float, token : String) ~ Response {
 			completion_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 			completion_json->Insert("model", model);
 
@@ -512,7 +514,7 @@ bundle API.OpenAI.Chat {
 			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/chat/completions"), data, "application/json", headers);
 			if(response <> Nil) {
 				if(IsDebug()) {
-					"--- Called: name='/chat/completions' ---"->PrintLine();
+					"--- Called: name='/chat/responses' ---"->PrintLine();
 					response->GetContent()->ToString()->PrintLine();				
 				};
 
@@ -528,7 +530,7 @@ bundle API.OpenAI.Chat {
 					return Nil;
 				};
 
-				return Completion->New(chat_json);
+				return Response->New(chat_json);
 			};
 
 			return Nil;
@@ -4512,6 +4514,10 @@ session->Close();
 		@return last error
 		~#
 		function : GetLastError() ~ String {
+			if(@last_message = Nil) {
+				return "<none>";
+			}
+
 			return @last_message;
 		}
 

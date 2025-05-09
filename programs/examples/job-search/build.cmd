@@ -26,7 +26,7 @@ obc -src %OBJK_BASE%\core\compiler\lib_src\net.obs,%OBJK_BASE%\core\compiler\lib
 obc -src %OBJK_BASE%\core\compiler\lib_src\openai.obs -lib json,net,net_server,cipher,misc -tar lib -opt s3 -dest %OBJK_BASE%\core\release\%TARGET%\lib\openai.obl
 
 if [%2] == [] goto end
-	obc -src %2 -lib @std,net_server
+	obc -src %2 -lib @std,openai,misc,net_server
 	obr %2 %3 %4
 :end
 
