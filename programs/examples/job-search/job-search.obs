@@ -4,7 +4,8 @@ class Test {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
 			block := GetBlock(FileReader->ReadFile(args[0]));
-			ParseBlock(block)->PrintLine();
+			output := ParseBlock(block);
+			FileWriter->WriteFile("out-2.html", output);
 		};
 	}
 
@@ -35,9 +36,12 @@ class Test {
 				}
 
 				# check
-				if(char = '=' & (next_char->IsDigit() | (next_char >= 'A' & next_char <= 'F') | next_char = '\r')) {
-					if(next_char = '\r') {				
+				if(char = '=' & (next_char->IsDigit() | next_char = '\r' | next_char = '\n' | (next_char >= 'A' & next_char <= 'F'))) {
+					if(next_char = '\r') {
 						i += 2;
+					}
+					else if(next_char = '\n') {
+						i += 1;
 					}
 					else {
 						num_buf := "0x";
