@@ -20,7 +20,7 @@ class Test {
 		scheme_params->Insert(ParameterType->New("city", ParameterType->Type->STRING, "city located"));
 
 		required := ["name", "length", "state", "city"];
-		scheme := ParameterType->New("street", scheme_params, required, "longest street");
+		scheme := ParameterType->New("longest-co-street", scheme_params, required, "longest street");
 		scheme->SetAdditionalProps(true);
 
 		response := Response->Respond(model, query, scheme, token);
