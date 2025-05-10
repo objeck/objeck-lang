@@ -183,35 +183,32 @@ bundle API.OpenAI.Audio {
 }
 
 #~
-Support for OpenAI chat APIs (-lib openai)
+Support for OpenAI responses APIs (-lib openai)
 ~#
-bundle API.OpenAI.Chat {
+bundle API.OpenAI.Responses {
 	#~
-	Model response for a given text or image query
+	Model response for a given text and files
 	~#
 	class Response from EndPoint {
 		@id : String;
 		@object : String;
 		@created_at : Int;
 		@model : String;
-		@choices : Vector<API.OpenAI.Chat.Choice>;
+		@outputs : Vector<Output>;
 
-		New(chat_json : JsonElement) {
+		New(json_elem : JsonElement) {
 			Parent();
 
-			@id := chat_json->Get("id")->GetString();
-			@object := chat_json->Get("object")->GetString();
-			@created_at := chat_json->Get("created_at")->GetInt();
-			@model := chat_json->Get("model")->GetString();
+			@id := json_elem->Get("id")->GetString();
+			@object := json_elem->Get("object")->GetString();
+			@created_at := json_elem->Get("created_at")->GetInt();
+			@model := json_elem->Get("model")->GetString();
 
-			# TODO: rename choices
-#~
-			@choices := Vector->New()<API.OpenAI.Chat.Choice>;
-			choices_json := chat_json->Get("choices");
-			each(choice_json in choices_json) {
-				@choices->AddBack(Choice->New(choice_json));
+			@outputs := Vector->New()<Output>;
+			outputs_json := json_elem->Get("output");
+			each(output_json in outputs_json) {
+				@outputs->AddBack(Output->New(output_json));
 			};
-#~			
 		}
 
 		#~
@@ -246,13 +243,12 @@ bundle API.OpenAI.Chat {
 			return @model;
 		}
 
-		
 		#~
 		String representation of the object
 		@return string representation
 		~#
 		method : public : ToString() ~ String {			
-			buffer := "[id='";
+			buffer := "Response: [id='";
 			buffer += @id;
 
 			buffer += "', object='"
@@ -264,18 +260,10 @@ bundle API.OpenAI.Chat {
 			buffer += "', created_at="
 			buffer += @created_at;
 
-			buffer += "\nchoices: ["
-			for(i := 0; i < @choices->Size(); i +=1 ;) {
-				buffer += i;
-				buffer += ": ";
-				
-				buffer += @choices->Get(i)->ToString();
-				
-				if(i + 1 < @choices->Size()) {
-					buffer += ',';
-				};
+			each(output in @outputs) {
+				buffer += ",\n\t";
+				buffer += output->ToString();
 			};
-			buffer += ']';
 
 			return buffer;
 		}
@@ -284,6 +272,7 @@ bundle API.OpenAI.Chat {
 		Model response for the given query
 		@param message completion message and image query.
 		@param model ID of the model to use
+		@param schema output schema
 		@param token API token
 		@return completion response
 		~#
@@ -291,7 +280,22 @@ bundle API.OpenAI.Chat {
 			messages := Vector->New()<Pair<String, String>>;
 			messages->AddBack(message);
 
-			return Respond(model, messages, -1, -1.0, -1.0, token);
+			return Respond(model, messages, -1, -1.0, -1.0, Nil, token);
+		}
+
+		#~
+		Model response for the given query
+		@param message completion message and image query.
+		@param model ID of the model to use
+		@param schema output schema
+		@param token API token
+		@return completion response
+		~#
+		function : Respond(model : String, message : Pair<String, String>, schema : ParameterType, token : String) ~ Response {
+			messages := Vector->New()<Pair<String, String>>;
+			messages->AddBack(message);
+
+			return Respond(model, messages, -1, -1.0, -1.0, schema, token);
 		}
 
 		#~
@@ -308,18 +312,37 @@ bundle API.OpenAI.Chat {
 			messages := Vector->New()<Pair<String, String>>;
 			messages->AddBack(message);
 
-			return Respond(model, messages, max_tokens, temperature, top_p, token);
+			return Respond(model, messages, max_tokens, temperature, top_p, Nil, token);
+		}
+
+		#~
+		Model response for the given query
+		@param model ID of the model to use
+		@param message completion message and image query
+		@param max_tokens maximum number of completion tokens returned by the API
+		@param temperature amount of randomness in the response, valued between 0 inclusive and 2 exclusive
+		@param top_p nucleus sampling threshold, valued between 0 and 1 inclusive
+		@param schema output schema
+		@param token API token
+		@return completion response
+		~#
+		function : Respond(model : String, message : Pair<String, String>, max_tokens : Int, temperature : Float, top_p : Float, schema : ParameterType, token : String) ~ Response {
+			messages := Vector->New()<Pair<String, String>>;
+			messages->AddBack(message);
+
+			return Respond(model, messages, max_tokens, temperature, top_p, schema, token);
 		}
 
 		#~
 		Model response for the given query
 		@param messages list of messages comprising the conversation
 		@param model ID of the model to use
+		@param schema output schema
 		@param token API token
 		@return completion response
 		~#
-		function : Respond(model : String, messages : Vector<Pair<String, String>>, token : String) ~ Response {
-			return Respond(model, messages, -1, -1.0, -1.0, token);
+		function : Respond(model : String, messages : Vector<Pair<String, String>>, schema : ParameterType, token : String) ~ Response {
+			return Respond(model, messages, -1, -1.0, -1.0, schema, token);
 		}
 
 		#~
@@ -329,10 +352,11 @@ bundle API.OpenAI.Chat {
 		@param max_tokens maximum number of completion tokens returned by the API
 		@param temperature amount of randomness in the response, valued between 0 inclusive and 2 exclusive
 		@param top_p nucleus sampling threshold, valued between 0 and 1 inclusive
+		@param schema output schema
 		@param token API token
 		@return completion response
 		~#
-		function : Respond(model : String, messages : Vector<Pair<String, String>>, max_tokens : Int, temperature : Float, top_p : Float, token : String) ~ Response {
+		function : Respond(model : String, messages : Vector<Pair<String, String>>, max_tokens : Int, temperature : Float, top_p : Float, schema : ParameterType, token : String) ~ Response {
 			completion_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 			completion_json->Insert("model", model);
 
@@ -356,6 +380,20 @@ bundle API.OpenAI.Chat {
 				messages_json->Add(message_json);
 			};
 			completion_json->Insert("input", messages_json);
+
+			if(schema <> Nil) {
+				format_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+				format_json->Insert("type", "json_schema");
+				format_json->Insert("strict", true);
+				format_json->Insert("name", schema->GetName());
+				format_json->Insert("schema", schema->ToJson());
+				
+
+				text_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+				text_json->Insert("format", format_json);
+
+				completion_json->Insert("text", text_json);
+			};
 
 			data := completion_json->ToFormattedString()->ToByteArray();
 			if(IsDebug()) {
@@ -389,6 +427,10 @@ bundle API.OpenAI.Chat {
 
 			return Nil;
 		}
+
+		#
+		# TODO: file support, refactor below
+		#
 		
 		#~
 		Model response for the given image and query
@@ -541,6 +583,124 @@ bundle API.OpenAI.Chat {
 		#
 	}
 
+	#~
+	Response output
+	~#
+	class Output from EndPoint {
+		@id : String;
+		@type : String;
+		@status : String;
+		@role : String;
+		@contents : Vector<Content>;
+
+		New(json_elem : JsonElement) {
+			Parent();
+			
+			@id := json_elem->Get("id")->GetString();
+			@type := json_elem->Get("type")->GetString();
+			@status := json_elem->Get("status")->GetString();
+			@role := json_elem->Get("role")->GetString();
+
+			@contents := Vector->New()<Content>;
+			contents_json := json_elem->Get("content");
+			each(content_json in contents_json) {
+				@contents->AddBack(Content->New(content_json));
+			};
+		}
+
+		#~
+		Get index
+		@return index
+		~#
+		method : public : GetId() ~ String {
+			return @id;
+		}
+
+		#~
+		Get type
+		@return type
+		~#
+		method : public : GetType() ~ String {
+			return @type;
+		}
+
+		#~
+		Get finish reason
+		@return finish reason
+		~#
+		method : public : GetStatus() ~ String {
+			return @status;
+		}
+
+		#~
+		Get content
+		@return content
+		~#
+		method : public : GetContent() ~ Vector<Content> {
+			return @contents;
+		}
+
+		#~
+		String representation of the object
+		@return string representation
+		~#
+		method : public : ToString() ~ String {
+			buffer := "Output: [id='{$@id}', type='{$@type}', status='{$@status}', role='{$@role}',";
+			
+			each(content in @contents) {
+				buffer += "\n\t\t";
+				buffer += content->ToString();
+			};
+
+			return buffer;
+		}
+	}
+
+	#~
+	Response content 
+	~#
+	class Content from EndPoint {
+		@type : String;
+		@text : String;
+		# TODO: @annotations : Vector<Annotation>;
+		
+		New(json_elem : JsonElement) {
+			Parent();
+			
+			@type := json_elem->Get("type")->GetString();
+			@text := json_elem->Get("text")->GetString();
+		}
+
+		#~
+		Get type
+		@return type
+		~#
+		method : public : GetType() ~ String {
+			return @type;
+		}
+
+		#~
+		Get text
+		@return text
+		~#
+		method : public : GetText() ~ String {
+			return @text;
+		}
+
+		#~
+		String representation of the object
+		@return string representation
+		~#
+		method : public : ToString() ~ String {
+			return "Content: [type='{$@type}', text='{$@text}'"; 
+		}
+	}
+}
+
+#~
+Support for legacy OpenAI chat APIs (-lib openai)
+~#
+bundle API.OpenAI.Chat {
 	#~
 	Model response for a given text or image query
 	~#
