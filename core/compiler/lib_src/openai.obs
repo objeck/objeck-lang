@@ -505,11 +505,10 @@ bundle API.OpenAI.Responses {
 			};
 
 			messages_json := JsonElement->New(JsonElement->JsonType->ARRAY);
-			each(message in messages) {
-#~				
+			each(message in messages) {			
 				message_json := JsonElement->New(JsonElement->JsonType->OBJECT);
-				message_json->Insert("role", message->GetFirst());
-				
+				message_json->Insert("role", message->Role());
+#~				
 				file_query := message->GetSecond();
 
 				if(file_query->GetQuery() = Nil) {
@@ -536,8 +535,8 @@ bundle API.OpenAI.Responses {
 				content_json->Add(file_query_json);
 
 				message_json->Insert("content", content_json);
-				messages_json->Add(message_json);
 ~#				
+				messages_json->Add(message_json);				
 			};
 			completion_json->Insert("input", messages_json);
 
@@ -703,8 +702,20 @@ bundle API.OpenAI.Responses {
 	File query
 	~#
 	class FileQuery {
+		@role : String;
 		@query : String;
 		@file : API.OpenAI.File;
+
+		#~
+		Constructor 
+		@param query text query
+		@param file upload file
+		~#
+		New(query : String, file : API.OpenAI.File, role : String) {
+			@query := query;
+			@file := file;
+			@role := role;
+		}
 
 		#~
 		Constructor 
@@ -714,6 +725,7 @@ bundle API.OpenAI.Responses {
 		New(query : String, file : API.OpenAI.File) {
 			@query := query;
 			@file := file;
+			@role := "user";
 		}
 
 		#~
@@ -730,6 +742,14 @@ bundle API.OpenAI.Responses {
 		~#
 		method : public : GetFile() ~ API.OpenAI.File {
 			return @file;
+		}
+
+		#~
+		Get role
+		@return role
+		~#
+		method : public : GetRole() ~ String {
+			return @role;
 		}
 
 		#~
