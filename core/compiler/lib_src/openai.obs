@@ -198,6 +198,7 @@ bundle API.OpenAI.Responses {
 
 		New(json_elem : JsonElement) {
 			Parent();
+"--- 0 ---"->PrintLine();
 
 			@id := json_elem->Get("id")->GetString();
 			@object := json_elem->Get("object")->GetString();
@@ -435,7 +436,7 @@ bundle API.OpenAI.Responses {
 			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/responses"), data, "application/json", headers);
 			if(response <> Nil) {
 				if(IsDebug()) {
-					"--- Called: name='/chat/responses' ---"->PrintLine();
+					"--- Called: name='/responses' ---"->PrintLine();
 					response->GetContent()->ToString()->PrintLine();				
 				};
 
@@ -465,7 +466,7 @@ bundle API.OpenAI.Responses {
 		@param token API token
 		@return completion response
 		~#
-		function : Respond(model : String, message : FileQuery, schema : ParameterType, token : String) ~ Response {
+		function : Respond(model : String, message : API.OpenAI.FileQuery, schema : ParameterType, token : String) ~ Response {
 			messages := Vector->New()<FileQuery>;
 			messages->AddBack(message);
 
@@ -479,7 +480,7 @@ bundle API.OpenAI.Responses {
 		@param token API token
 		@return completion response
 		~#
-		function : Respond(model : String, message : FileQuery, token : String) ~ Response {
+		function : Respond(model : String, message : API.OpenAI.FileQuery, token : String) ~ Response {
 			messages := Vector->New()<FileQuery>;
 			messages->AddBack(message);
 
@@ -497,7 +498,7 @@ bundle API.OpenAI.Responses {
 		@param token API token
 		@return completion response
 		~#
-		function : Respond(model : String, message : FileQuery, max_tokens : Int, temperature : Float, top_p : Float, schema : ParameterType, token : String) ~ Response {
+		function : Respond(model : String, message : API.OpenAI.FileQuery, max_tokens : Int, temperature : Float, top_p : Float, schema : ParameterType, token : String) ~ Response {
 			messages := Vector->New()<FileQuery>;
 			messages->AddBack(message);
 
@@ -514,7 +515,7 @@ bundle API.OpenAI.Responses {
 		@param token API token
 		@return completion response
 		~#
-		function : Respond(model : String, message : FileQuery, max_tokens : Int, temperature : Float, top_p : Float, token : String) ~ Response {
+		function : Respond(model : String, message : API.OpenAI.FileQuery, max_tokens : Int, temperature : Float, top_p : Float, token : String) ~ Response {
 			messages := Vector->New()<FileQuery>;
 			messages->AddBack(message);
 
@@ -612,7 +613,7 @@ bundle API.OpenAI.Responses {
 			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/responses"), data, "application/json", headers);
 			if(response <> Nil) {
 				if(IsDebug()) {
-					"--- Called: name='/chat/responses' ---"->PrintLine();
+					"--- Called: name='/responses' ---"->PrintLine();
 					response->GetContent()->ToString()->PrintLine();				
 				};
 
@@ -633,16 +634,7 @@ bundle API.OpenAI.Responses {
 
 			return Nil;
 		}
-
-
-
-
-
-
-
-
-
-
+		
 		#~
 		Model response for the given image and query
 		@param message completion message and image query.
@@ -651,8 +643,8 @@ bundle API.OpenAI.Responses {
 		@param schema output schema
 		@return completion response
 		~#
-		function : Respond(model : String, message : Pair<String, ImageQuery>, schema : ParameterType, token : String) ~ Response {
-			messages := Vector->New()<Pair<String, ImageQuery>>;
+		function : Respond(model : String, message : Pair<String, API.OpenAI.ImageQuery>, schema : ParameterType, token : String) ~ Response {
+			messages := Vector->New()<Pair<String, API.OpenAI.ImageQuery>>;
 			messages->AddBack(message);
 
 			return Respond(model, messages, -1, -1.0, -1.0, schema, token);
@@ -665,8 +657,8 @@ bundle API.OpenAI.Responses {
 		@param token API token
 		@return completion response
 		~#
-		function : Respond(model : String, message : Pair<String, ImageQuery>, token : String) ~ Response {
-			messages := Vector->New()<Pair<String, ImageQuery>>;
+		function : Respond(model : String, message : Pair<String, API.OpenAI.ImageQuery>, token : String) ~ Response {
+			messages := Vector->New()<Pair<String, API.OpenAI.ImageQuery>>;
 			messages->AddBack(message);
 
 			return Respond(model, messages, -1, -1.0, -1.0, Nil, token);
@@ -683,8 +675,8 @@ bundle API.OpenAI.Responses {
 		@param token API token
 		@return completion response
 		~#
-		function : Respond(model : String, message : Pair<String, ImageQuery>, max_tokens : Int, temperature : Float, top_p : Float, schema : ParameterType, token : String) ~ Response {
-			messages := Vector->New()<Pair<String, ImageQuery>>;
+		function : Respond(model : String, message : Pair<String, API.OpenAI.ImageQuery>, max_tokens : Int, temperature : Float, top_p : Float, schema : ParameterType, token : String) ~ Response {
+			messages := Vector->New()<Pair<String, API.OpenAI.ImageQuery>>;
 			messages->AddBack(message);
 
 			return Respond(model, messages, max_tokens, temperature, top_p, schema, token);
@@ -701,8 +693,8 @@ bundle API.OpenAI.Responses {
 		@param token API token
 		@return completion response
 		~#
-		function : Respond(model : String, message : Pair<String, ImageQuery>, max_tokens : Int, temperature : Float, top_p : Float, token : String) ~ Response {
-			messages := Vector->New()<Pair<String, ImageQuery>>;
+		function : Respond(model : String, message : Pair<String, API.OpenAI.ImageQuery>, max_tokens : Int, temperature : Float, top_p : Float, token : String) ~ Response {
+			messages := Vector->New()<Pair<String, API.OpenAI.ImageQuery>>;
 			messages->AddBack(message);
 
 			return Respond(model, messages, max_tokens, temperature, top_p, Nil, token);
@@ -716,7 +708,7 @@ bundle API.OpenAI.Responses {
 		@param schema output schema
 		@return completion response
 		~#
-		function : Respond(model : String, messages : Vector<Pair<String, ImageQuery>>, schema : ParameterType, token : String) ~ Response {
+		function : Respond(model : String, messages : Vector<Pair<String, API.OpenAI.ImageQuery>>, schema : ParameterType, token : String) ~ Response {
 			return Respond(model, messages, -1, -1.0, -1.0, schema, token);
 		}
 
@@ -731,7 +723,7 @@ bundle API.OpenAI.Responses {
 		@param schema output schema
 		@return completion response
 		~#
-		function : Respond(model : String, messages : Vector<Pair<String, ImageQuery>>, max_tokens : Int, temperature : Float, top_p : Float, schema : ParameterType, token : String) ~ Response {
+		function : Respond(model : String, messages : Vector<Pair<String, API.OpenAI.ImageQuery>>, max_tokens : Int, temperature : Float, top_p : Float, schema : ParameterType, token : String) ~ Response {
 			completion_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 			completion_json->Insert("model", model);
 
@@ -767,30 +759,29 @@ bundle API.OpenAI.Responses {
 
 				# text query
 				text_query_json := JsonElement->New(JsonElement->JsonType->OBJECT);
-				text_query_json->Insert("type", "text");
+				text_query_json->Insert("type", "input_text");
 				text_query_json->Insert("text", image_query->GetQuery());
 				content_json->Add(text_query_json);
 
 				# image query
-				image_url_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+				image_query_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+
 				if(image_query->GetImage() = Nil) {
-					image_url_json->Insert("url", image_query->GetImageUrl()->GetUrl());
+					image_query_json->Insert("image_url", image_query->GetImageUrl()->GetUrl());
 				}
 				else {
 					base64_image_str := "data:image/jpeg;base64,";
 					base64_image_str += Cipher.Encrypt->Base64(image_query->GetImage());
-					image_url_json->Insert("url", base64_image_str);
+					image_query_json->Insert("image_url", base64_image_str);
 				};
 
-				image_query_json := JsonElement->New(JsonElement->JsonType->OBJECT);
-				image_query_json->Insert("type", "image_url");
-				image_query_json->Insert("image_url", image_url_json);
+				image_query_json->Insert("type", "input_image");
 				content_json->Add(image_query_json);
 
 				message_json->Insert("content", content_json);
 				messages_json->Add(message_json);
 			};
-			completion_json->Insert("messages", messages_json);
+			completion_json->Insert("input", messages_json);
 
 			data := completion_json->ToString()->ToByteArray();
 			if(IsDebug()) {
@@ -800,10 +791,10 @@ bundle API.OpenAI.Responses {
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
 			headers->Insert("OpenAI-Beta", "assistants=v2");
-			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/chat/completions"), data, "application/json", headers);
+			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/responses"), data, "application/json", headers);
 			if(response <> Nil) {
 				if(IsDebug()) {
-					"--- Called: name='/chat/completions' ---"->PrintLine();
+					"--- Called: name='/responses' ---"->PrintLine();
 					response->GetContent()->ToString()->PrintLine();				
 				};
 
@@ -824,15 +815,6 @@ bundle API.OpenAI.Responses {
 
 			return Nil;
 		}
-
-
-
-
-
-
-
-
-
 	}
 
 	#~
@@ -1192,8 +1174,8 @@ bundle API.OpenAI.Chat {
 		@param token API token
 		@return completion response
 		~#
-		function : Complete(model : String, message : Pair<String, ImageQuery>, token : String) ~ Completion {
-			messages := Vector->New()<Pair<String, ImageQuery>>;
+		function : Complete(model : String, message : Pair<String, API.OpenAI.ImageQuery>, token : String) ~ Completion {
+			messages := Vector->New()<Pair<String, API.OpenAI.ImageQuery>>;
 			messages->AddBack(message);
 
 			return Complete(model, messages, -1, -1.0, -1.0, token);
@@ -1209,8 +1191,8 @@ bundle API.OpenAI.Chat {
 		@param token API token
 		@return completion response
 		~#
-		function : Complete(model : String, message : Pair<String, ImageQuery>, max_tokens : Int, temperature : Float, top_p : Float, token : String) ~ Completion {
-			messages := Vector->New()<Pair<String, ImageQuery>>;
+		function : Complete(model : String, message : Pair<String, API.OpenAI.ImageQuery>, max_tokens : Int, temperature : Float, top_p : Float, token : String) ~ Completion {
+			messages := Vector->New()<Pair<String, API.OpenAI.ImageQuery>>;
 			messages->AddBack(message);
 
 			return Complete(model, messages, max_tokens, temperature, top_p, token);
@@ -1223,7 +1205,7 @@ bundle API.OpenAI.Chat {
 		@param token API token
 		@return completion response
 		~#
-		function : Complete(model : String, messages : Vector<Pair<String, ImageQuery>>, token : String) ~ Completion {
+		function : Complete(model : String, messages : Vector<Pair<String, API.OpenAI.ImageQuery>>, token : String) ~ Completion {
 			return Complete(model, messages, -1, -1.0, -1.0, token);
 		}
 
@@ -1237,7 +1219,7 @@ bundle API.OpenAI.Chat {
 		@param token API token
 		@return completion response
 		~#
-		function : Complete(model : String, messages : Vector<Pair<String, ImageQuery>>, max_tokens : Int, temperature : Float, top_p : Float, token : String) ~ Completion {
+		function : Complete(model : String, messages : Vector<Pair<String, API.OpenAI.ImageQuery>>, max_tokens : Int, temperature : Float, top_p : Float, token : String) ~ Completion {
 			completion_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 			completion_json->Insert("model", model);
 
@@ -2100,8 +2082,6 @@ bundle API.OpenAI.Tuning {
 Support for OpenAIs models and assistant and general APIs (-lib openai)
 ~#
 bundle API.OpenAI {
-
-
 	#~
 	File query
 	~#
@@ -2114,6 +2094,7 @@ bundle API.OpenAI {
 		Constructor 
 		@param query text query
 		@param file upload file
+		@param role user role
 		~#
 		New(query : String, file : API.OpenAI.File, role : String) {
 			@query := query;

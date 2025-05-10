@@ -1931,7 +1931,7 @@ bundle Data.JSON.Scheme {
 
 		#~
 		Set the function description
-		@return desc function description
+		@param desc sets function description
 		~#
 		method : public : SetDesc(desc : String) ~ Nil {
 			@desc := desc;

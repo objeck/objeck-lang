@@ -8,6 +8,9 @@ class Test {
 		};
 		token := GetApiKey(args[0]);
 
+#~
+		Test1(token);
+
 		pdf_file : API.OpenAI.File;
 		files := API.OpenAI.File->ListFiles(token);
 		for(i := 0; pdf_file = Nil & i < files->Size(); i += 1;) {
@@ -21,6 +24,8 @@ class Test {
 		if(pdf_file <> Nil) {
 			Test2(pdf_file, token);
 		};
+~#
+		Test3(token);
 	}
 	
 	function : Test1(token : String) ~ Nil {
@@ -47,7 +52,7 @@ class Test {
 	}
 
 	function : Test2(file : API.OpenAI.File, token : String) ~ Nil {
-		file_query := FileQuery->New("This is a job position from LinkedIn, can you tell me about the title, salary, state and city for this opportunity?", file, "user");
+		file_query := API.OpenAI.FileQuery->New("This is a job position from LinkedIn, can you tell me about the title, salary, state and city for this opportunity?", file, "user");
 		model := "gpt-4o-mini";
 
 		# TODO: 
@@ -62,6 +67,38 @@ class Test {
 		scheme->SetAdditionalProps(true);
 
 		response := Response->Respond(model, file_query, scheme, token);
+		if(response = Nil) {
+			Response->GetLastError()->ErrorLine();
+			return;
+		};
+
+		Data.JSON.JsonElement->Decode(response->GetText())->PrintLine();
+	}
+
+	function : Test3(token : String) ~ Nil {
+		bytes := System.IO.Filesystem.FileReader->ReadBinaryFile("../gemini/thirteen.png");
+		bytes->Size()->PrintLine();
+
+		image := API.OpenAI.ImageQuery->New("What number is this?", bytes, API.OpenAI.ImageQuery->MimeType->PNG);
+		file_query := Collection.Pair->New("user", image)<String, API.OpenAI.ImageQuery>;
+		model := "gpt-4o-mini";
+
+#~
+		# TODO: 
+		scheme_params := Set->New()<ParameterType>;
+		scheme_params->Insert(ParameterType->New("title", ParameterType->Type->STRING, "title for the position"));
+		scheme_params->Insert(ParameterType->New("salary", ParameterType->Type->STRING, "salary range for position"));
+		scheme_params->Insert(ParameterType->New("experience", ParameterType->Type->STRING, "years of experience required"));
+		scheme_params->Insert(ParameterType->New("city", ParameterType->Type->STRING, "city where the job is located"));
+
+		required := ["title", "salary", "experience", "city"];
+		scheme := ParameterType->New("job-post", scheme_params, required, "jot-post");
+		scheme->SetAdditionalProps(true);
+
+		response := Response->Respond(model, file_query, scheme, token);
+~#
+
+		response := Response->Respond(model, file_query, token);
 		if(response = Nil) {
 			Response->GetLastError()->ErrorLine();
 			return;
