@@ -1930,6 +1930,14 @@ bundle Data.JSON.Scheme {
 		}
 
 		#~
+		Set the function description
+		@return desc function description
+		~#
+		method : public : SetDesc(desc : String) ~ Nil {
+			@desc := desc;
+		}
+
+		#~
 		Get parameter type
 		@return parameter type
 		~#
@@ -1938,11 +1946,27 @@ bundle Data.JSON.Scheme {
 		}
 
 		#~
+		Set parameter type
+		@param type parameter type
+		~#
+		method : public : SetType(type : ParameterType->Type) ~ Nil {
+			@type := type;
+		}
+
+		#~
 		Get parameter properties object descriptions
 		@return properties object descriptions
 		~#
 		method : public : GetProps() ~ Set<ParameterType> {
 			return @props;
+		}
+
+		#~
+		Set properties
+		@param props properties
+		~#
+		method : public : SetProps(props : Set<ParameterType>) ~ Nil {
+			@props := props;
 		}
 
 		#~
