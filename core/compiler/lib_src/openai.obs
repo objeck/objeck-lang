@@ -198,8 +198,7 @@ bundle API.OpenAI.Responses {
 
 		New(json_elem : JsonElement) {
 			Parent();
-"--- 0 ---"->PrintLine();
-
+			
 			@id := json_elem->Get("id")->GetString();
 			@object := json_elem->Get("object")->GetString();
 			@created_at := json_elem->Get("created_at")->GetInt();

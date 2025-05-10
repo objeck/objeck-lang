@@ -52,7 +52,7 @@ class Test {
 			return;
 		}
 
-		file_query := API.OpenAI.FileQuery->New("This is a job position from LinkedIn, can you tell me about the title, salary, state and city for this opportunity?", file, "user");
+		file_query := API.OpenAI.FileQuery->New("This is a job position from LinkedIn, can you tell me about the title, salary, state and city for this opportunity?", pdf_file, "user");
 		model := "gpt-4o-mini";
 
 		# TODO: 
