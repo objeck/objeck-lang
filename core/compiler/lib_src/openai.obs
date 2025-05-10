@@ -244,6 +244,31 @@ bundle API.OpenAI.Responses {
 		}
 
 		#~
+		Get response text
+		@return response text
+		~#
+		method : public : GetText() ~ String {
+			if(@outputs->Size() = 1) {
+				output := @outputs->Get(0);
+				contents := output->GetContents();
+				if(contents->Size() = 1) {
+					content := contents->Get(0);
+					return content->GetText();
+				}
+			};
+
+			return Nil;
+		}
+
+		#~
+		Get response outputs
+		@return response outputs
+		~#
+		method : public : GetOutputs() ~ Vector<Output> {
+			return @outputs;
+		}
+
+		#~
 		String representation of the object
 		@return string representation
 		~#
@@ -432,10 +457,21 @@ bundle API.OpenAI.Responses {
 			return Nil;
 		}
 
-		#
-		# TODO: file support, refactor below
-		#
-		
+		#~
+		Model response for the given file and query
+		@param message completion message and file query.
+		@param model ID of the model to use
+		@param schema output schema
+		@param token API token
+		@return completion response
+		~#
+		function : Respond(model : String, message : FileQuery, schema : ParameterType, token : String) ~ Response {
+			messages := Vector->New()<FileQuery>;
+			messages->AddBack(message);
+
+			return Respond(model, messages, -1, -1.0, -1.0, schema, token);
+		}
+
 		#~
 		Model response for the given file and query
 		@param message completion message and file query.
@@ -447,7 +483,25 @@ bundle API.OpenAI.Responses {
 			messages := Vector->New()<FileQuery>;
 			messages->AddBack(message);
 
-			return Respond(model, messages, -1, -1.0, -1.0, token);
+			return Respond(model, messages, -1, -1.0, -1.0, Nil, token);
+		}
+
+		#~
+		Model response for the given file and query
+		@param model ID of the model to use
+		@param message completion message and file query
+		@param max_tokens maximum number of completion tokens returned by the API
+		@param temperature amount of randomness in the response, valued between 0 inclusive and 2 exclusive
+		@param top_p nucleus sampling threshold, valued between 0 and 1 inclusive
+		@param schema output schema
+		@param token API token
+		@return completion response
+		~#
+		function : Respond(model : String, message : FileQuery, max_tokens : Int, temperature : Float, top_p : Float, schema : ParameterType, token : String) ~ Response {
+			messages := Vector->New()<FileQuery>;
+			messages->AddBack(message);
+
+			return Respond(model, messages, max_tokens, temperature, top_p, schema, token);
 		}
 
 		#~
@@ -464,18 +518,19 @@ bundle API.OpenAI.Responses {
 			messages := Vector->New()<FileQuery>;
 			messages->AddBack(message);
 
-			return Respond(model, messages, max_tokens, temperature, top_p, token);
+			return Respond(model, messages, max_tokens, temperature, top_p, Nil, token);
 		}
 
 		#~
 		Model response for the given file and query
 		@param messages list of messages comprising the conversation
 		@param model ID of the model to use
+		@param schema output schema
 		@param token API token
 		@return completion response
 		~#
-		function : Respond(model : String, messages : Vector<FileQuery>, token : String) ~ Response {
-			return Respond(model, messages, -1, -1.0, -1.0, token);
+		function : Respond(model : String, messages : Vector<FileQuery>, schema : ParameterType, token : String) ~ Response {
+			return Respond(model, messages, -1, -1.0, -1.0, schema, token);
 		}
 
 		#~
@@ -485,10 +540,11 @@ bundle API.OpenAI.Responses {
 		@param max_tokens maximum number of completion tokens returned by the API
 		@param temperature amount of randomness in the response, valued between 0 inclusive and 2 exclusive
 		@param top_p nucleus sampling threshold, valued between 0 and 1 inclusive
+		@param schema output schema
 		@param token API token
 		@return completion response
 		~#
-		function : Respond(model : String, messages : Vector<FileQuery>, max_tokens : Int, temperature : Float, top_p : Float, token : String) ~ Response {
+		function : Respond(model : String, messages : Vector<FileQuery>, max_tokens : Int, temperature : Float, top_p : Float, schema : ParameterType, token : String) ~ Response {
 			completion_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 			completion_json->Insert("model", model);
 
@@ -530,6 +586,20 @@ bundle API.OpenAI.Responses {
 				messages_json->Add(message_json);
 			};
 			completion_json->Insert("input", messages_json);
+
+			if(schema <> Nil) {
+				format_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+				format_json->Insert("type", "json_schema");
+				format_json->Insert("strict", true);
+				format_json->Insert("name", schema->GetName());
+				format_json->Insert("schema", schema->ToJson());
+				
+
+				text_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+				text_json->Insert("format", format_json);
+
+				completion_json->Insert("text", text_json);
+			};
 
 			data := completion_json->ToString()->ToByteArray();
 			if(IsDebug()) {
@@ -684,8 +754,9 @@ bundle API.OpenAI.Responses {
 		@return string representation
 		~#
 		method : public : ToString() ~ String {
-			text_len :=@text->Size();
-			return "Content: [type='{$@type}', text_len={$text_len}]"; 
+			text_len := @text->Size();
+			short_text := @text->SubString(64);
+			return "Content: [type='{$@type}', short_text='{$short_text}', text_len={$text_len}]"; 
 		}
 	}
 
@@ -3213,7 +3284,7 @@ session->Close();
 					error_str := file_json->FindElements("error/message")->GetString();
 					SetLastError(error_str);
 					return Nil;
-				}
+				};
 
 				return API.OpenAI.File->New(file_json, token);
 			};
