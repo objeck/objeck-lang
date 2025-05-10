@@ -506,38 +506,28 @@ bundle API.OpenAI.Responses {
 
 			messages_json := JsonElement->New(JsonElement->JsonType->ARRAY);
 			each(message in messages) {
-#~				
 				message_json := JsonElement->New(JsonElement->JsonType->OBJECT);
-				message_json->Insert("role", message->GetFirst());
-				
-				file_query := message->GetSecond();
+				message_json->Insert("role", message->GetRole());
 
-				if(file_query->GetQuery() = Nil) {
-					return Nil;
-				};
-
-				if(file_query->GetFile() = Nil) {
-					return Nil;
-				};
-
-				# content array
+				# insert file and text
 				content_json := JsonElement->New(JsonElement->JsonType->ARRAY);
 
-				# text query
-				text_query_json := JsonElement->New(JsonElement->JsonType->OBJECT);
-				text_query_json->Insert("type", "input_text");
-				text_query_json->Insert("text", file_query->GetQuery());
-				content_json->Add(text_query_json);
+				file_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+				file_json->Insert("type", "input_file");
+				file_json->Insert("file_id", message->GetFile()->GetId());
+				content_json->Add(file_json);
 
-				# file query
-				file_query_json := JsonElement->New(JsonElement->JsonType->OBJECT);
-				file_query_json->Insert("type", "input_file");
-				file_query_json->Insert("file_id", file_query->GetFile()->GetId());
-				content_json->Add(file_query_json);
+				text_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+				text_json->Insert("type", "input_text");
+				text_json->Insert("text", message->GetQuery());
+				content_json->Add(text_json);
 
 				message_json->Insert("content", content_json);
+
+				#message_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+				#message_json->Insert("role", message->GetRole());
+			
 				messages_json->Add(message_json);
-~#				
 			};
 			completion_json->Insert("input", messages_json);
 
@@ -549,7 +539,7 @@ bundle API.OpenAI.Responses {
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
 			headers->Insert("OpenAI-Beta", "assistants=v2");
-			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/chat/completions"), data, "application/json", headers);
+			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/responses"), data, "application/json", headers);
 			if(response <> Nil) {
 				if(IsDebug()) {
 					"--- Called: name='/chat/responses' ---"->PrintLine();
@@ -703,6 +693,7 @@ bundle API.OpenAI.Responses {
 	File query
 	~#
 	class FileQuery {
+		@role : String;
 		@query : String;
 		@file : API.OpenAI.File;
 
@@ -711,9 +702,10 @@ bundle API.OpenAI.Responses {
 		@param query text query
 		@param file upload file
 		~#
-		New(query : String, file : API.OpenAI.File) {
+		New(query : String, file : API.OpenAI.File, role : String) {
 			@query := query;
 			@file := file;
+			@role := role;
 		}
 
 		#~
@@ -722,6 +714,14 @@ bundle API.OpenAI.Responses {
 		~#
 		method : public : GetQuery() ~ String {
 			return @query;
+		}
+
+		#~
+		Get the role
+		@return role
+		~#
+		method : public : GetRole() ~ String {
+			return @role;
 		}
 
 		#~

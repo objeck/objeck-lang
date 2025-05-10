@@ -45,7 +45,7 @@ class Test {
 	}
 
 	function : Test2(token : String, file : File) ~ Nil {
-		file_query := FileQuery->New("how many objects are in this json file?", file);
+		file_query := FileQuery->New("how many objects are in this json file?", file, "user");
 		model := "gpt-4o-mini";
 		
 #~
