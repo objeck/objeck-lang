@@ -8,23 +8,8 @@ class Test {
 		};
 		token := GetApiKey(args[0]);
 
-#~
 		Test1(token);
-
-		pdf_file : API.OpenAI.File;
-		files := API.OpenAI.File->ListFiles(token);
-		for(i := 0; pdf_file = Nil & i < files->Size(); i += 1;) {
-			file := files->Get(i);
-			name := file->GetFilename();
-			if(name->EndsWith(".pdf")) {
-				pdf_file := file;
-			};
-		};
-
-		if(pdf_file <> Nil) {
-			Test2(pdf_file, token);
-		};
-~#
+		Test2(token);
 		Test3(token);
 	}
 	
@@ -51,7 +36,22 @@ class Test {
 		response->ToString()->PrintLine();
 	}
 
-	function : Test2(file : API.OpenAI.File, token : String) ~ Nil {
+	function : Test2(token : String) ~ Nil {
+		pdf_file : API.OpenAI.File;
+		all_files := API.OpenAI.File->ListFiles(token);
+		for(i := 0; pdf_file = Nil & i < all_files->Size(); i += 1;) {
+			file := all_files->Get(i);
+			name := file->GetFilename();
+			if(name->EndsWith(".pdf")) {
+				pdf_file := file;
+			};
+		};
+
+		if(pdf_file = Nil) {
+			">>> Unable to file a pdf file <<<"->ErrorLine();
+			return;
+		}
+
 		file_query := API.OpenAI.FileQuery->New("This is a job position from LinkedIn, can you tell me about the title, salary, state and city for this opportunity?", file, "user");
 		model := "gpt-4o-mini";
 
