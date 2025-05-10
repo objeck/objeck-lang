@@ -1819,6 +1819,7 @@ bundle Data.JSON.Scheme {
 		@props : Set<ParameterType>;
 		@req_params : String[];
 		@is_array : Bool;
+		@is_add_props : Bool;
 
 		#~
 		JSON function parameter type 
@@ -1904,6 +1905,14 @@ bundle Data.JSON.Scheme {
 			return @is_array;
 		}
 
+		method : public : SetAdditionalProps(is_add_props : Bool) ~ Nil {
+			@is_add_props := is_add_props;
+		}
+
+		method : public : IsAdditionalProps() ~ Bool {
+			return @is_add_props;
+		}
+
 		#~
 		Get the function name
 		@return function name
@@ -1960,8 +1969,20 @@ bundle Data.JSON.Scheme {
 		method : public : ToJson() ~ JsonElement {
 			param_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 
+			if(@is_add_props) {
+				param_obj_json->Insert("additionalProperties", false);
+			};
+
 			if(@is_array) {
 				items_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+
+				if(@desc <> Nil) {
+					items_obj_json->Insert("description", @desc);
+				};
+
+				if(@name <> Nil) {
+					items_obj_json->Insert("name", @name);
+				};
 
 				if(@desc <> Nil) {
 					items_obj_json->Insert("description", @desc);
@@ -1997,6 +2018,14 @@ bundle Data.JSON.Scheme {
 				param_obj_json->Insert("type", "array");
 			}
 			else {
+				if(@desc <> Nil) {
+					param_obj_json->Insert("description", @desc);
+				};
+
+				if(@name <> Nil) {
+					param_obj_json->Insert("name", @name);
+				};
+
 				if(@desc <> Nil) {
 					param_obj_json->Insert("description", @desc);
 				};
