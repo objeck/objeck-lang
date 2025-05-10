@@ -1,4 +1,4 @@
-use API.OpenAI.Responses, Data.JSON.Scheme, Collection;
+use API.OpenAI, API.OpenAI.Responses, Data.JSON.Scheme, Collection;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
@@ -6,12 +6,25 @@ class Test {
 			">>> Missing OpenAI license file. <<<"->ErrorLine();
 			return;
 		};
-
-		query := Collection.Pair->New("user", "What is the longest street in Colorado?")<String, String>;
-		
-		model := "gpt-4o-mini";
 		token := GetApiKey(args[0]);
 
+		files := API.OpenAI.File->ListFiles(token);
+		each(file in files) {
+			id := file->GetId();
+			name := file->GetFilename();
+			"name='{$name}', id='{$id}'"->PrintLine();
+		};
+
+#		Test1(token);
+		if(files->Size() > 0) {
+			Test2(token, files->Get(0));
+		};
+	}
+	
+	function : Test1(token : String) ~ Nil {
+		query := Collection.Pair->New("user", "What is the longest street in Colorado?")<String, String>;
+		model := "gpt-4o-mini";
+		
 		# TODO: 
 		scheme_params := Set->New()<ParameterType>;
 		scheme_params->Insert(ParameterType->New("name", ParameterType->Type->STRING, "name of the street"));
@@ -24,6 +37,33 @@ class Test {
 		scheme->SetAdditionalProps(true);
 
 		response := Response->Respond(model, query, scheme, token);
+		if(response = Nil) {
+			Response->GetLastError()->ErrorLine();
+			return;
+		};
+		response->ToString()->PrintLine();
+	}
+
+	function : Test2(token : String, file : File) ~ Nil {
+		file_query := FileQuery->New("how many objects are in this json file?", file);
+		model := "gpt-4o-mini";
+		
+#~
+		# TODO: 
+		scheme_params := Set->New()<ParameterType>;
+		scheme_params->Insert(ParameterType->New("name", ParameterType->Type->STRING, "name of the street"));
+		scheme_params->Insert(ParameterType->New("length", ParameterType->Type->STRING, "length of the street"));
+		scheme_params->Insert(ParameterType->New("state", ParameterType->Type->STRING, "state the street is located"));
+		scheme_params->Insert(ParameterType->New("city", ParameterType->Type->STRING, "city located"));
+
+		required := ["name", "length", "state", "city"];
+		scheme := ParameterType->New("longest-co-street", scheme_params, required, "longest street");
+		scheme->SetAdditionalProps(true);
+
+		response := Response->Respond(model, query, scheme, token);
+~#
+
+		response := Response->Respond(model, file_query, token);
 		if(response = Nil) {
 			Response->GetLastError()->ErrorLine();
 			return;
