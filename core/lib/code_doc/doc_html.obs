@@ -137,7 +137,7 @@ class HtmlMaker {
 		out->Close();
 
 		html := String->New(class_header);
-		html += "<table class='doc-table'><tr><th>Bundle</th><th>Description</th></tr>";
+		html += "<table><tr><th>Bundle</th><th>Description</th></tr>";
 		bundle_keys := bundles->GetKeys()<String>;
 		each(i : bundle_keys) {
 			bundle_block := bundles->Find(bundle_keys->Get(i));
@@ -334,9 +334,10 @@ class HtmlMaker {
 		##  code examples
 		code := class_block->GetCode();
 		if(code <> Nil) {
-			html += "<br/><p>Code example:<pre><code class=\"language-clike\">";
-			html += code;
-			html += "</code></pre></p>";
+			html += "<br/><p>Code example:<div><pre><code class=\"language-clike\" style=\"font-size: 14px; width: 85%;
+  border: 0.25px solid grey; padding: 7.5px\">";
+  			html += code;
+			html += "</code></pre></div></p>";
 		};
 		
 		##  detailed operations
@@ -686,7 +687,7 @@ class HtmlMaker {
 				sec_f := "";
 				if(params->Size() > 0) {
 					sec_f := "<div style='padding: 5px 10px; font-size: 13px'>Parameters</div>";
-					sec_f += "<table class='doc-table'><tr><th>Name</th><th>Type</th><th>";
+					sec_f += "<table><tr><th>Name</th><th>Type</th><th>";
 					sec_f += "Description</th></tr>";
 			
 					each(l : params) {
@@ -716,7 +717,7 @@ class HtmlMaker {
 				
 				if(func->GetReturnTag() <> Nil) {
 					sec_g += "<div style='padding: 5px 10px; font-size: 13px'>Return</div>";
-					sec_g += "<table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr>";
+					sec_g += "<table><tr><th>Type</th><th>Description</th></tr><tr>";
 					sec_g += "<td>@return_type</td><td>@return_desc</td></tr></table>";
 					if(func->GetReturnType() <> Nil) {
 						sec_g := sec_g->ReplaceAll("@return_type", GetTypeLink(func->GetReturnType()->GetTypeName()));
