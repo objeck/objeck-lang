@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Objeck Documentation</title>
+  <style>
+    :root {
+      --primary-bg: #ffffff;
+      --sidebar-bg: #f8f9fa;
+      --border-color: #ddd;
+      --text-color: #333;
+      --accent: #3b82f6;
+      --shadow: rgba(0, 0, 0, 0.05);
+      --cell-bg: #f9fafb;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Roboto, sans-serif;
+      color: var(--text-color);
+      background-color: var(--primary-bg);
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      background-color: #4a5568; /* Lighter than original dark */
+      color: white;
+      padding: 1rem 2rem;
+      box-shadow: 0 2px 4px var(--shadow);
+      z-index: 1000;
+    }
+
+    .version {
+      font-size: 0.85rem;
+      color: #e0e0e0;
+    }
+
+    .container {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+      margin-top: 80px; /* offset for fixed header */
+    }
+
+    nav {
+      width: 250px;
+      background-color: var(--sidebar-bg);
+      padding: 1rem;
+      overflow-y: auto;
+      border-right: 1px solid var(--border-color);
+    }
+
+    nav strong {
+      display: block;
+      margin-top: 1rem;
+      font-size: 1rem;
+      color: #111;
+    }
+
+    nav ul {
+      padding-left: 1rem;
+      margin: 0;
+    }
+
+    nav li {
+      margin: 0.5rem 0;
+    }
+
+    nav a {
+      text-decoration: none;
+      color: var(--accent);
+      font-size: 0.95rem;
+    }
+
+    nav a:hover {
+      text-decoration: underline;
+    }
+
+    main {
+      flex: 1;
+      padding: 2rem;
+      overflow-y: auto;
+      background-color: #f5f7fa;
+    }
+
+    .card {
+      background-color: var(--primary-bg);
+      border-radius: 12px;
+      box-shadow: 0 4px 8px var(--shadow);
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    h1, h2, h3, h4 {
+      margin-top: 0;
+    }
+
+    .subtitle {
+      margin-top: -0.5rem;
+      margin-bottom: 1rem;
+      color: #666;
+      font-size: 0.95rem;
+    }
+
+    pre {
+      background-color: #f0f4f8;
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-family: Consolas, monospace;
+      font-size: 0.9rem;
+      margin-top: 0.5rem;
+      margin-bottom: 1rem;
+    }
+
+    a {
+      color: var(--accent);
+    }
+
+    /* Rounded, light modern table style */
+    table {
+      border-collapse: separate;
+      border-spacing: 0;
+      width: 100%;
+      margin-top: 1rem;
+      font-size: 0.95rem;
+    }
+
+    th, td {
+      padding: 0.75rem 1rem;
+      text-align: left;
+      border: 1px solid #e0e0e0;
+    }
+
+    th {
+      background-color: #e2e8f0;
+      font-weight: 600;
+      color: #444;
+    }
+
+    td {
+      background-color: var(--cell-bg);
+      color: #333;
+    }
+
+    thead tr:first-child th:first-child {
+      border-top-left-radius: 8px;
+    }
+
+    thead tr:first-child th:last-child {
+      border-top-right-radius: 8px;
+    }
+
+    tbody tr:last-child td:first-child {
+      border-bottom-left-radius: 8px;
+    }
+
+    tbody tr:last-child td:last-child {
+      border-bottom-right-radius: 8px;
+    }
+
+    tr:hover td {
+      background-color: #f0f4f8;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Objeck</h1>
+    <div class="version">a programming language — v2025.5.0</div>
+  </header>
+
+  <div class="container">
+    <nav>
+      <strong>API.Google.Gemini</strong>
+      <ul>
+        <li><a href="#">BinaryPart</a></li>
+        <li><a href="#">Candidate</a></li>
+        <li><a href="#">Chat</a></li>
+        <li><a href="#">EndPoint</a></li>
+      </ul>
+      <strong>API.Ollama</strong>
+      <ul>
+        <li><a href="#">Chat</a></li>
+        <li><a href="#">Completion</a></li>
+      </ul>
+    </nav>
+
+    <main>
+      
+      <h2>All Bundles</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Bundle</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><a href="#">API.Google.Gemini</a></td>
+            <td>Google Gemini ML client APIs (-lib gemini)</td>
+          </tr>
+          <tr>
+            <td><a href="#">API.Ollama</a></td>
+            <td>Ollama client APIs (-lib ollama)</td>
+          </tr>
+        </tbody>
+      </table>
+
+
+      
+    </main>
+  </div>
+</body>
+</html>
