@@ -769,7 +769,8 @@ bundle API.OpenAI.Responses {
 					image_query_json->Insert("image_url", image_query->GetImageUrl()->GetUrl());
 				}
 				else {
-					base64_image_str := "data:image/jpeg;base64,";
+					image_type_str := image_query->GetMimeType();
+					base64_image_str := "data:{$image_type_str};base64,";
 					base64_image_str += Cipher.Encrypt->Base64(image_query->GetImage());
 					image_query_json->Insert("image_url", base64_image_str);
 				};
