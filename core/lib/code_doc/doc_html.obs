@@ -247,7 +247,33 @@ class HtmlMaker {
 	~#
 	method : CreateClassHtml(class_block : ClassSnippet, header : String) ~ Nil {
 		##  class description
-		html := String->New(header);		
+		html := String->New(header);
+
+
+		html += "<header>";
+		html += "<h1>Objeck</h1>";
+		html += "<div class=\"version\">a programming language — v2025.5.0</div>";
+		html += "</header>";
+		html += "<div class=\"container\">";
+
+		html += "<nav>";
+		html += "<strong>API.Google.Gemini</strong>";
+		html += "<ul>";
+		html += "<li><a href=\"#\">BinaryPart</a></li>";
+		html += "<li><a href=\"#\">Candidate</a></li>";
+		html += "<li><a href=\"#\">Chat</a></li>";
+		html += "<li><a href=\"#\">EndPoint</a></li>";
+		html += "</ul>";
+		html += "<strong>API.Ollama</strong>";
+		html += "<ul>";
+		html += "<li><a href=\"#\">Chat</a></li>";
+		html += "<li><a href=\"#\">Completion</a></li>";
+		html += "</ul>";
+		html += "</nav>";
+
+		html += "<main>";
+
+
 		html += "<a href='index.html' target='_parent'>All Bundles</a><hr/>";
 		
 		sec_b : String;
@@ -348,7 +374,7 @@ class HtmlMaker {
 				FormatFunctions(class_block->GetShortName(), short_name, class_block->GetFunctions(short_name), html);
 			};
 		};
-		html += "</body><script src=\"resources/prism.js\"></script></html>";
+		html += "</main></body><script src=\"resources/prism.js\"></script></html>";
 	
 		file_name := "../html/";
 		file_name += class_block->GetBundleName()->ToLower();
