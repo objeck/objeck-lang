@@ -10,7 +10,7 @@ class HtmlMaker {
 	@parser : SnippetParser;
 	@css_path : String;
 	@version : String;
-	@bundle_block : BundleSnippet;
+	bundle_snippit : BundleSnippet;
 	
 	#~
 	DOC ME
@@ -38,6 +38,8 @@ class HtmlMaker {
 			"--- Unable to parse source file ---"->ErrorLine();
 			return false;
 		};
+
+		# fiiles -> bundles -> (uses)
 		
 		template_path := String->New(@css_path);
 		template_path += '/';
@@ -55,12 +57,25 @@ template_html->PrintLine();
 		bundles := @parser->GetBundles();
 		nav_html := CreateNav(bundles);
 
+"--- 0 ---"->PrintLine();
+
 		bundle_keys := bundles->GetKeys()<String>;
 		each(i : bundle_keys) {
-			@bundle_block := bundles->Find(bundle_keys->Get(i));
+			bundle_snippit := bundles->Find(bundle_keys->Get(i));
+			bundle_snippit->GetName()->PrintLine();
+
+			bundle_uses := bundle_snippit->GetUses();
+			each(bundle_use in bundle_uses) {
+				bundle_use->PrintLine();
+			};
+		};
+"--- 1 ---"->PrintLine();		
+
+		each(i : bundle_keys) {
+			ubundle_snippit := bundles->Find(bundle_keys->Get(i));
 			
 			##  classes
-			classes := @bundle_block->GetClasses();
+			classes := bundle_snippit->GetClasses();
 			class_keys := classes->GetKeys()<String>;
 			each(j : class_keys) {
 				class_block := classes->Find(class_keys->Get(j));
@@ -70,7 +85,7 @@ template_html->PrintLine();
 			};
 			
 			##  enums
-			enums := @bundle_block->GetEnums();
+			enums := bundle_snippit->GetEnums();
 			enum_keys := enums->GetKeys()<String>;
 			each(j : enum_keys) {
 				##  enum
