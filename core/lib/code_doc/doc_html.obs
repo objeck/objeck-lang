@@ -62,17 +62,25 @@ template_html->PrintLine();
 		bundle_keys := bundles->GetKeys()<String>;
 		each(i : bundle_keys) {
 			bundle_snippit := bundles->Find(bundle_keys->Get(i));
-			bundle_snippit->GetName()->PrintLine();
+			bundle_name := bundle_snippit->GetName();
+			file_name := bundle_snippit->GetFileName();
+
+bundle_snippit->GetInstanceID()->PrintLine();
+
+"bundle name: {$bundle_name}"->PrintLine();
+if(file_name <> Nil) {
+"file name: {$file_name}"->PrintLine();
+};
 
 			bundle_uses := bundle_snippit->GetUses();
 			each(bundle_use in bundle_uses) {
-				bundle_use->PrintLine();
+"bundle use: {$bundle_use}"->PrintLine();
 			};
 		};
 "--- 1 ---"->PrintLine();		
 
 		each(i : bundle_keys) {
-			ubundle_snippit := bundles->Find(bundle_keys->Get(i));
+			bundle_snippit := bundles->Find(bundle_keys->Get(i));
 			
 			##  classes
 			classes := bundle_snippit->GetClasses();

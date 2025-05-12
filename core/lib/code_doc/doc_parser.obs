@@ -296,6 +296,10 @@ class SnippetParser {
 			start := 0;
 			bundle_block := BundleSnippet->New(@uses);
 			bundle_block->SetName("Default");
+			bundle_block->SetFileName(file);
+"Setting: {$file}"->PrintLine();
+bundle_block->GetInstanceID()->PrintLine();
+
 			SetBundle(bundle_block);
 
 			block := "";
@@ -343,6 +347,7 @@ class SnippetParser {
 						if(@bundle_name->Size() > 0) {
 							bundle_block := BundleSnippet->New(@uses);
 							bundle_block->SetName(@bundle_name);
+							bundle_block->SetFileName(file);
 							SetBundle(bundle_block);
 						};
 					};
@@ -537,6 +542,7 @@ class Snippet {
 
 class BundleSnippet from Snippet {
 	@name : String;
+	@file : String;
 	@desc : String;
 	@classes : Map<String, ClassSnippet>;
 	@enums : Map<String, EnumConstSnippet>;
@@ -576,7 +582,15 @@ class BundleSnippet from Snippet {
 	method : public : SetName(name : String) ~ Nil {
 		@name := name;
 	}
-	
+
+	method : public : SetFileName(file : String) ~ Nil {
+		@file := file;
+	}
+
+	method : public : GetFileName() ~ String {
+		return @file;
+	}
+
 	method: public : AddClass(class_block : ClassSnippet) ~ Nil {
 		@classes->Insert(class_block->GetShortName(), class_block);
 	}
