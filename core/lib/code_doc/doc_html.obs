@@ -116,32 +116,68 @@ template_html->PrintLine();
 				func_sig := func->GetSignature();
 
 				main_html += "<div class='grey-block'><h3>";
+      			
       			main_html += func_name;
       			main_html += "</h3><a id='response-getcreatedat'></a><p>";
       			main_html += func_desc;
+      			
       			main_html += "</p><code>"
       			main_html += func_sig;
-      			main_html += "</code><p>Return<table><tr><th>Name</th><th>Type</th><th>Description</th></tr>";
+      			main_html += "</code>";
 
-				param_tags := func->GetParamTags();
-				params := func->GetParams();
 
-				each(param in params) {
-					param_tag := param_tags->Find(param->GetName())->As(SnippetTag);
-					if(param_tag <> Nil & <>param_tag->IsIgnore()) {	      				
-	      				param_name := param_tag->GetName();
-	      				param_type_name := param->GetTypeName();
-	      				param_type_desc := param_tag->GetDesc();
+      			# write parameters
 
-		      			main_html += "<td><a href='system-int.html' target='main'>{$param_name}</a></td>";
-		      			main_html += "<td><a href='system-int.html' target='main'>{$param_type_name}</a></td>";
-		      			main_html += "<td>{$param_type_desc}</td>";
-		      		};
+      			param_tags := func->GetParamTags();
+				param_names := func->GetParams();
 
-		      		main_html += "</tr>";
-		      	}
+				if(<>param_names->IsEmpty()) {
+	      			main_html += "<p>Parameters<table><tr><th>Name</th><th>Type</th><th>Description</th></tr>";
 
-      			main_html += "</table></p><br/></div>";
+					each(param in param_names) {
+						param_tag := param_tags->Find(param->GetName())->As(SnippetTag);
+						if(param_tag <> Nil & <>param_tag->IsIgnore()) {	      				
+		      				param_name := param_tag->GetName();
+		      				param_type_name := param->GetTypeName();
+		      				param_type_desc := param_tag->GetDesc();
+
+			      			main_html += "<td><a href='system-int.html' target='main'>";
+			      			main_html += param_name;
+			      			main_html += "</a></td>";
+			      			
+			      			main_html += "<td><a href='system-int.html' target='main'>";
+			      			main_html += param_type_name;
+			      			main_html += "</a></td>";
+			      			
+			      			main_html += "<td>";
+			      			main_html += param_type_desc;
+			      			main_html += "</td>";
+			      		};
+
+			      		main_html += "</tr>";
+			      	};
+
+	      			main_html += "</table></p>";
+	      		};
+
+	      		if(func->GetReturnTag() <> Nil) {
+	      			main_html += "<p>Return<table><tr><th>Type</th><th>Description</th></tr>";
+
+	      			rtrn_type_name := func->GetReturnType()->GetTypeName();
+      				rtrn_desc := func->GetReturnTag()->GetDesc();
+
+	      			main_html += "<td><a href='system-int.html' target='main'>";
+	      			main_html += rtrn_type_name;
+	      			main_html += "</a></td>";
+
+	      			main_html += "<td>";
+	      			main_html += rtrn_desc;
+	      			main_html += "</td>";
+
+	      			main_html += "</table></p>";
+	      		};
+
+	      		main_html += "</p><br/></div>";
 			}
 		};
 
