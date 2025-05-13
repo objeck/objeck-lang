@@ -246,6 +246,7 @@ class HtmlMaker {
 						link_name := GetClassLink(class_block);
 link_name->PrintLine();
 
+
 						sec_b->Append(link_name->ToLower());
 						sec_b += "' target='main'>";
 						if(class_block->IsInterface()) {
