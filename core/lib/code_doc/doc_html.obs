@@ -118,7 +118,7 @@ class HtmlMaker {
 				main_html += "<div class='grey-block'><h3>";
       			
       			main_html += func_name;
-      			main_html += "</h3><a id='response-getcreatedat'></a><p>";
+      			main_html += "</h3></a><p>";
       			main_html += func_desc;
       			
       			main_html += "</p><code>"
