@@ -21,11 +21,18 @@ class SnippetParser {
 	@bundle_block : BundleSnippet;
 	@in_comment : Bool;
 	@in_lit : Bool;
+	@file_uses : MultiMap<String, BundleSnippet>;
 	
 	New(files : String[]) {
 		@files := files;	
 		@bundles := Map->New()<String, BundleSnippet>;
+		@file_uses := MultiMap->New()<String, BundleSnippet>;
 		@level := 0;
+	}
+
+	method : public : GetFileUses(file_name : String) ~ Vector<String> {
+		# map file_uses filename to bundles to bundle uses
+		return Nil;
 	}
 	
 	method : public : GetBundles() ~ Map<String, BundleSnippet> {
@@ -150,7 +157,7 @@ class SnippetParser {
 		block := "";		
 	}
 	
-	method : public : native : ParseBundle(block : String) ~ Nil {
+	method : public : native : ParseBundle(block : String, file : String) ~ Nil {
 		block->Append(" bundle ");
 		while(@cur_char <> '\0' & @cur_char <> '{' & @cur_char <> ';') {
 			block->Append(@cur_char);
@@ -160,6 +167,8 @@ class SnippetParser {
 		
 		bundle_block := BundleSnippet->New(block, @uses);
 		if(bundle_block->IsParsed()) {
+			bundle_block->SetFileName(file);
+			@file_uses->Insert(file, bundle_block);
 			SetBundle(bundle_block);
 		}
 		else {
@@ -297,9 +306,7 @@ class SnippetParser {
 			bundle_block := BundleSnippet->New(@uses);
 			bundle_block->SetName("Default");
 			bundle_block->SetFileName(file);
-"Setting: {$file}"->PrintLine();
-bundle_block->GetInstanceID()->PrintLine();
-
+			@file_uses->Insert(file, bundle_block);
 			SetBundle(bundle_block);
 
 			block := "";
@@ -310,7 +317,7 @@ bundle_block->GetInstanceID()->PrintLine();
 				if(state = 2) {
 					ident := ParseIdent();
 					if(ident->Equals("bundle")) {
-						ParseBundle(block);				
+						ParseBundle(block, file);				
 					}
 					else if(ident->Equals("use")) {
 						ParseUse(block);				
@@ -348,6 +355,7 @@ bundle_block->GetInstanceID()->PrintLine();
 							bundle_block := BundleSnippet->New(@uses);
 							bundle_block->SetName(@bundle_name);
 							bundle_block->SetFileName(file);
+							@file_uses->Insert(file, bundle_block);							
 							SetBundle(bundle_block);
 						};
 					};
