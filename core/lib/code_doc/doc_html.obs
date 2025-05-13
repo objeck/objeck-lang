@@ -49,33 +49,15 @@ class HtmlMaker {
 			"--- Unable load header CSS template ---"->ErrorLine();
 			return false;
 		};
-template_html->PrintLine();		
-
-
-		
+			
 		## bundles
 		bundles := @parser->GetBundles();
 		nav_html := CreateNav(bundles);
 
-"--- 0 ---"->PrintLine();
-
 		bundle_keys := bundles->GetKeys()<String>;
 		each(i : bundle_keys) {
 			bundle_snippit := bundles->Find(bundle_keys->Get(i));
-			bundle_name := bundle_snippit->GetName();
-			file_name := bundle_snippit->GetFileName();
-"bundle name: {$bundle_name}"->PrintLine();
-"\tfile name: {$file_name}"->PrintLine();
-
-			bundle_uses := bundle_snippit->GetUses();
-			each(bundle_use in bundle_uses) {
-"\tuses: {$bundle_use}"->PrintLine();
-			};
-		};
-"--- 1 ---"->PrintLine();		
-
-		each(i : bundle_keys) {
-			bundle_snippit := bundles->Find(bundle_keys->Get(i));
+			bundle_filename := bundle_snippit->GetFileName();
 			
 			##  classes
 			classes := bundle_snippit->GetClasses();
@@ -83,7 +65,7 @@ template_html->PrintLine();
 			each(j : class_keys) {
 				class_block := classes->Find(class_keys->Get(j));
 				if(class_block <> Nil) {
-					CreateClassHtml(class_block, nav_html, template_html);
+					CreateClassHtml(class_block, bundle_filename, nav_html, template_html);
 				};
 			};
 			
@@ -94,7 +76,7 @@ template_html->PrintLine();
 				##  enum
 				enum_block := enums->Find(enum_keys->Get(j));
 				if(enum_block <> Nil) {
-					CreateEnumHtml(enum_block, nav_html, template_html);
+					CreateEnumHtml(enum_block, bundle_filename, nav_html, template_html);
 				};
 			};			
 		};
@@ -105,7 +87,9 @@ template_html->PrintLine();
 	#~
 	DOC ME
 	~#
-	method : CreateClassHtml(class_block : ClassSnippet, nav_html : String, template_html : String) ~ Nil {
+	method : CreateClassHtml(class_block : ClassSnippet, filename : String, nav_html : String, template_html : String) ~ Nil {
+filename->PrintLine();
+
 		# set nav
 		html := template_html->ReplaceAll("@nav", nav_html);
 
@@ -135,6 +119,8 @@ template_html->PrintLine();
 
 				main_html += "<div class='grey-block'><h3>";
       			
+
+
       			main_html += func_name;
       			main_html += "</h3><a id='response-getcreatedat'></a><p>";
       			main_html += func_desc;
@@ -216,7 +202,9 @@ template_html->PrintLine();
 	#~
 	DOC ME
 	~#
-	method : CreateEnumHtml(enum_block : EnumConstSnippet, nav_html : String, template_html : String) ~ Nil {
+	method : CreateEnumHtml(enum_block : EnumConstSnippet, filename : String, nav_html : String, template_html : String) ~ Nil {
+filename->PrintLine();
+
 		html := template_html->ReplaceAll("@nav", nav_html);
 		html := html->ReplaceAll("@main", "");
 	

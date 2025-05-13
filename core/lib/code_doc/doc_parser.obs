@@ -32,8 +32,9 @@ class SnippetParser {
 
 	method : public : GetFileUses(file_name : String) ~ Vector<String> {
 		# map file_uses filename to bundles to bundle uses
+		file_uses := Vector->New()<String>;
 		
-		return Nil;
+		return file_uses;
 	}
 	
 	method : public : GetBundles() ~ Map<String, BundleSnippet> {
