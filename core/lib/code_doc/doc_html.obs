@@ -101,9 +101,13 @@ class HtmlMaker {
 		main_html += "<ul>";
 		func_names := class_block->GetFunctionNames();
 		each(func_name in func_names) {
-			main_html += "<li>";
+			func_link := class_block->GetShortName()->ToLower() + '-' + func_name->ToLower();
+			
+			main_html += "<li><a href='#"
+			main_html += func_link;
+			main_html += "'>";
 			main_html += func_name;
-			main_html += "</li>";
+			main_html += "</a></li>";
 		};
 		main_html += "</ul>";
 
@@ -115,10 +119,14 @@ class HtmlMaker {
 				func_desc := func->GetDesc();
 				func_sig := func->GetSignature();
 
-				main_html += "<div class='grey-block'><h3>";
+				func_link := class_block->GetShortName()->ToLower() + '-' + func_name->ToLower();
+
+				main_html += "<div class='grey-block'><a id='";
+				main_html += func_link;
+				main_html += "'></a><h3>";
       			
       			main_html += func_name;
-      			main_html += "</h3></a><p>";
+      			main_html += "</h3><p>";
       			main_html += func_desc;
       			
       			main_html += "</p><code>"
@@ -185,7 +193,7 @@ class HtmlMaker {
 		html := html->ReplaceAll("@main", main_html);
 
 		filename := GetClassLink(class_block, "../html/");
-"=> {$filename}"->PrintLine();
+# "=> {$filename}"->PrintLine();
 
 		out := FileWriter->New(filename);
 		out->WriteString(html);
@@ -200,7 +208,7 @@ class HtmlMaker {
 		html := html->ReplaceAll("@main", "");
 	
 		filename := GetEnumLink(enum_block, "../html/");
-"=> {$filename}"->PrintLine();
+# "=> {$filename}"->PrintLine();
 
 		out := FileWriter->New(filename);
 		out->WriteString(html);
@@ -238,9 +246,6 @@ class HtmlMaker {
 						sec_b += "<li><a href='";
 
 						link_name := GetClassLink(class_block);
-link_name->PrintLine();
-
-
 						sec_b->Append(link_name);
 						sec_b += "' target='main'>";
 						if(class_block->IsInterface()) {
@@ -263,9 +268,7 @@ link_name->PrintLine();
 					if(enum_block <> Nil) {
 						sec_b += "<li><a href='";
 												
-						link_name := GetEnumLink(enum_block);
-link_name->PrintLine();
-						
+						link_name := GetEnumLink(enum_block);						
 						sec_b->Append(link_name);
 						sec_b += "' target='main'>";
 						sec_b->Append(enum_block->GetName());
