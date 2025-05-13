@@ -49,7 +49,7 @@ class HtmlMaker {
 			"--- Unable load header CSS template ---"->ErrorLine();
 			return false;
 		};
-			
+				
 		## bundles
 		bundles := @parser->GetBundles();
 		nav_html := CreateNav(bundles);
@@ -57,26 +57,28 @@ class HtmlMaker {
 		bundle_keys := bundles->GetKeys()<String>;
 		each(i : bundle_keys) {
 			bundle_snippit := bundles->Find(bundle_keys->Get(i));
-			bundle_filename := bundle_snippit->GetFileName();
-			
-			##  classes
+
+			# get file uses
+			file_uses := @parser->GetFileUses(bundle_snippit->GetFileName())->GetKeys()<String>;
+
+			# process classes
 			classes := bundle_snippit->GetClasses();
 			class_keys := classes->GetKeys()<String>;
 			each(j : class_keys) {
 				class_block := classes->Find(class_keys->Get(j));
 				if(class_block <> Nil) {
-					CreateClassHtml(class_block, bundle_filename, nav_html, template_html);
+					CreateClassHtml(class_block, file_uses, nav_html, template_html);
 				};
 			};
 			
-			##  enums
+			# process enums
 			enums := bundle_snippit->GetEnums();
 			enum_keys := enums->GetKeys()<String>;
 			each(j : enum_keys) {
 				##  enum
 				enum_block := enums->Find(enum_keys->Get(j));
 				if(enum_block <> Nil) {
-					CreateEnumHtml(enum_block, bundle_filename, nav_html, template_html);
+					CreateEnumHtml(enum_block, file_uses, nav_html, template_html);
 				};
 			};			
 		};
@@ -87,9 +89,7 @@ class HtmlMaker {
 	#~
 	DOC ME
 	~#
-	method : CreateClassHtml(class_block : ClassSnippet, filename : String, nav_html : String, template_html : String) ~ Nil {
-filename->PrintLine();
-
+	method : CreateClassHtml(class_block : ClassSnippet, file_uses : Vector<String>, nav_html : String, template_html : String) ~ Nil {
 		# set nav
 		html := template_html->ReplaceAll("@nav", nav_html);
 
@@ -107,8 +107,6 @@ filename->PrintLine();
 		};
 		main_html += "</ul>";
 
-		
-
       	func_names := class_block->GetFunctionNames();
 		each(func_name in func_names) {
 			funcs := class_block->GetFunctions(func_name);
@@ -119,8 +117,6 @@ filename->PrintLine();
 
 				main_html += "<div class='grey-block'><h3>";
       			
-
-
       			main_html += func_name;
       			main_html += "</h3><a id='response-getcreatedat'></a><p>";
       			main_html += func_desc;
@@ -188,13 +184,13 @@ filename->PrintLine();
 		# write file	
 		html := html->ReplaceAll("@main", main_html);
 
-		file_name := "../html/";
-		file_name += class_block->GetBundleName()->ToLower();
-		file_name += '-';
-		file_name += class_block->GetFileName()->ToLower()->ReplaceAll("&gt;", "$");;
-		file_name += ".html";
+		filename := "../html/";
+		filename += class_block->GetBundleName()->ToLower();
+		filename += '-';
+		filename += class_block->GetFileName()->ToLower()->ReplaceAll("&gt;", "$");;
+		filename += ".html";
 		
-		out := FileWriter->New(file_name);
+		out := FileWriter->New(filename);
 		out->WriteString(html);
 		out->Close();
 	}
@@ -202,19 +198,17 @@ filename->PrintLine();
 	#~
 	DOC ME
 	~#
-	method : CreateEnumHtml(enum_block : EnumConstSnippet, filename : String, nav_html : String, template_html : String) ~ Nil {
-filename->PrintLine();
-
+	method : CreateEnumHtml(enum_block : EnumConstSnippet, file_uses : Vector<String>, nav_html : String, template_html : String) ~ Nil {
 		html := template_html->ReplaceAll("@nav", nav_html);
 		html := html->ReplaceAll("@main", "");
 	
-		file_name := "../html/";
-		file_name += enum_block->GetBundleName()->ToLower();
-		file_name += '-';
-		file_name += enum_block->GetName()->ToLower()->ReplaceAll("&gt;", "$");;
-		file_name += ".html";
+		filename := "../html/";
+		filename += enum_block->GetBundleName()->ToLower();
+		filename += '-';
+		filename += enum_block->GetName()->ToLower()->ReplaceAll("&gt;", "$");;
+		filename += ".html";
 		
-		out := FileWriter->New(file_name);
+		out := FileWriter->New(filename);
 		out->WriteString(html);
 		out->Close();
 	}
@@ -231,11 +225,15 @@ filename->PrintLine();
 			bundle_block := bundles->Find(bundle_keys->Get(i));
 			##  class description
 			if(bundle_block->IsParsed()) {
-				sec_a := "<a id='@short_link'></a><strong>@bundle_name</strong>";
-				sec_a := sec_a->ReplaceAll("@bundle_name", bundle_block->GetName());
-				sec_a := sec_a->ReplaceAll("@short_link", bundle_block->GetName()->ToLower());
+				block_name := bundle_block->GetName();
+
+				sec_a := "<a id='";
+				sec_a += block_name->ToLower();
+				sec_a += "'></a><strong>";
+				sec_a += block_name;
+				sec_a += "</strong>";
 				html += sec_a;
-				
+
 				sec_b := "<ul>";
 				classes := bundle_block->GetClasses();
 				class_keys := classes->GetKeys()<String>;			
@@ -244,12 +242,9 @@ filename->PrintLine();
 					class_block := classes->Find(class_keys->Get(j));
 					if(class_block->IsParsed()) {
 						sec_b += "<li><a href='";
-						
-						file_name := class_block->GetBundleName()->ToLower();
-						file_name += '-';
-						file_name += class_block->GetFileName()->ToLower();
-						link_name := String->New(file_name)->ReplaceAll("&gt;", "$");;
-						link_name += ".html";
+
+						link_name := GetClassLink(class_block);
+link_name->PrintLine();
 
 						sec_b->Append(link_name->ToLower());
 						sec_b += "' target='main'>";
@@ -272,13 +267,10 @@ filename->PrintLine();
 					enum_block := enums->Find(enum_keys->Get(j));
 					if(enum_block <> Nil) {
 						sec_b += "<li><a href='";
+												
+						link_name := GetEnumLink(enum_block);
+link_name->PrintLine();
 						
-						file_name := enum_block->GetBundleName()->ToLower();
-						file_name += '-';
-						file_name += enum_block->GetName()->ToLower();
-						link_name := String->New(file_name)->ReplaceAll("&gt;", "$");
-						link_name += ".html";
-
 						sec_b->Append(link_name->ToLower());
 						sec_b += "' target='main'>";
 						sec_b->Append(enum_block->GetName());
@@ -295,5 +287,27 @@ filename->PrintLine();
 
 		html += "</nav>";
 		return html;		
+	}
+
+	method : GetClassLink(class_block : ClassSnippet) ~ String {
+		filename := class_block->GetBundleName()->ToLower();
+		filename += '-';
+		filename += class_block->GetFileName()->ToLower();
+
+		link_name := String->New(filename)->ReplaceAll("&gt;", "$");;
+		link_name += ".html";
+
+		return link_name;
+	}
+
+	method : GetEnumLink(enum_block : EnumConstSnippet) ~ String {
+		filename := enum_block->GetBundleName()->ToLower();
+		filename += '-';
+		filename += enum_block->GetName()->ToLower();
+
+		link_name := String->New(filename)->ReplaceAll("&gt;", "$");
+		link_name += ".html";
+
+		return link_name;
 	}
 }
