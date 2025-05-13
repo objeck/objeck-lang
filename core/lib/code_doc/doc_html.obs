@@ -184,12 +184,9 @@ class HtmlMaker {
 		# write file	
 		html := html->ReplaceAll("@main", main_html);
 
-		filename := "../html/";
-		filename += class_block->GetBundleName()->ToLower();
-		filename += '-';
-		filename += class_block->GetFileName()->ToLower()->ReplaceAll("&gt;", "$");;
-		filename += ".html";
-		
+		filename := GetClassLink(class_block, "../html/");
+"=> {$filename}"->PrintLine();
+
 		out := FileWriter->New(filename);
 		out->WriteString(html);
 		out->Close();
@@ -202,12 +199,9 @@ class HtmlMaker {
 		html := template_html->ReplaceAll("@nav", nav_html);
 		html := html->ReplaceAll("@main", "");
 	
-		filename := "../html/";
-		filename += enum_block->GetBundleName()->ToLower();
-		filename += '-';
-		filename += enum_block->GetName()->ToLower()->ReplaceAll("&gt;", "$");;
-		filename += ".html";
-		
+		filename := GetEnumLink(enum_block, "../html/");
+"=> {$filename}"->PrintLine();
+
 		out := FileWriter->New(filename);
 		out->WriteString(html);
 		out->Close();
@@ -247,7 +241,7 @@ class HtmlMaker {
 link_name->PrintLine();
 
 
-						sec_b->Append(link_name->ToLower());
+						sec_b->Append(link_name);
 						sec_b += "' target='main'>";
 						if(class_block->IsInterface()) {
 							sec_b->Append("<i>");
@@ -272,7 +266,7 @@ link_name->PrintLine();
 						link_name := GetEnumLink(enum_block);
 link_name->PrintLine();
 						
-						sec_b->Append(link_name->ToLower());
+						sec_b->Append(link_name);
 						sec_b += "' target='main'>";
 						sec_b->Append(enum_block->GetName());
 						sec_b->Append(" (#)");
@@ -290,8 +284,14 @@ link_name->PrintLine();
 		return html;		
 	}
 
-	method : GetClassLink(class_block : ClassSnippet) ~ String {
-		filename := class_block->GetBundleName()->ToLower();
+	method : GetClassLink(class_block : ClassSnippet, prefix : String := Nil) ~ String {
+		filename := "";
+
+		if(prefix <> Nil) {
+			filename := prefix;
+		}
+		filename += class_block->GetBundleName()->ToLower();
+
 		filename += '-';
 		filename += class_block->GetFileName()->ToLower();
 
@@ -301,8 +301,14 @@ link_name->PrintLine();
 		return link_name;
 	}
 
-	method : GetEnumLink(enum_block : EnumConstSnippet) ~ String {
-		filename := enum_block->GetBundleName()->ToLower();
+	method : GetEnumLink(enum_block : EnumConstSnippet, prefix : String := Nil) ~ String {
+		filename := "";
+
+		if(prefix <> Nil) {
+			filename := prefix;
+		}
+		filename += enum_block->GetBundleName()->ToLower();
+
 		filename += '-';
 		filename += enum_block->GetName()->ToLower();
 
