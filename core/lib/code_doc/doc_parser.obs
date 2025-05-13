@@ -30,10 +30,25 @@ class SnippetParser {
 		@level := 0;
 	}
 
-	method : public : GetFileUses(file_name : String) ~ Vector<String> {
-		# map file_uses filename to bundles to bundle uses
-		
-		return Nil;
+	method : public : GetFileUses(filename : String) ~ Set<String> {
+		file_uses := Set->New()<String>;
+
+		file_uses->Insert("Collection");
+		file_uses->Insert("System");
+
+		file_bundles := @file_uses->Find(filename)<BundleSnippet>;
+		if(file_bundles <> Nil) {
+			each(file_bundle in file_bundles) {
+				file_uses->Insert(file_bundle->GetName());
+
+				bundle_uses := file_bundle->GetUses();
+				each(bundle_use in bundle_uses) {
+					file_uses->Insert(bundle_use);
+				};
+			}
+		};
+
+		return file_uses;
 	}
 	
 	method : public : GetBundles() ~ Map<String, BundleSnippet> {
@@ -782,7 +797,7 @@ class EnumConstSnippet from Snippet {
 class ClassSnippet from Snippet {
 	@name : String;
 	@short_name : String;
-	@file_name : String;
+	@filename : String;
 	@html_name : String;
 	@block_name : String;
 	@from_class : String;
@@ -822,14 +837,14 @@ class ClassSnippet from Snippet {
 	}
 
 	method : public : GetFileName() ~ String {
-		if(@file_name = Nil) {
-			@file_name := @name->ReplaceAll("&lt;", "_");
-			@file_name := @file_name->ReplaceAll("&gt;", "_");
-			@file_name := @file_name->ReplaceAll(":", "-");
-			@file_name := @file_name->ReplaceAll(",", "_");
+		if(@filename = Nil) {
+			@filename := @name->ReplaceAll("&lt;", "_");
+			@filename := @filename->ReplaceAll("&gt;", "_");
+			@filename := @filename->ReplaceAll(":", "-");
+			@filename := @filename->ReplaceAll(",", "_");
 		};
 
-		return @file_name;
+		return @filename;
 	}
 
 	method : public : GetName() ~ String {
