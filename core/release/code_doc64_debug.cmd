@@ -19,7 +19,7 @@ mkdir ..\html
 obc -src ..\..\..\lib\code_doc\doc_html.obs,..\..\..\lib\code_doc\doc_parser.obs -lib xml -dest ..\..\code_doc.obe
 
 if [%2] NEQ [deploy] goto end
-	obr ..\..\code_doc.obe ..\..\..\lib\code_doc\templates 2025.5.0 ..\..\..\compiler\lib_src\lang.obs ..\..\..\compiler\lib_src\regex.obs
+	obr ..\..\code_doc.obe ..\..\..\lib\code_doc\templates 2025.5.0 ..\..\..\compiler\lib_src\lang.obs ..\..\..\compiler\lib_src\regex.obs ..\..\..\compiler\lib_src\gen_collect.obs
 	rmdir /s /q ..\doc\api
 	mkdir ..\doc\api
 	copy .\..\..\..\lib\code_doc\mockups\style.css ..\doc\api

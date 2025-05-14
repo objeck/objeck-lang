@@ -202,6 +202,26 @@ class HtmlMaker {
 	}
 
 	method : GetTypeLink(name : String) ~ String {
+		decoded_name := name->ReplaceAll("&lt;", "<");
+		decoded_name := decoded_name->ReplaceAll("&gt;", ">");
+
+		class_index := decoded_name->Find('.');
+		if(class_index > -1) {
+			first := decoded_name->SubString(class_index);
+			class_index += 1;
+			second := decoded_name->SubString(class_index, decoded_name->Size() - class_index);
+"-- class: b='{$first}', c='{$second}' --"->PrintLine();
+		}
+		else {
+			enum_index := class_index := decoded_name->Find("->");
+			if(enum_index > -1) {
+				first := decoded_name->SubString(enum_index);
+				enum_index += 2;
+				second := decoded_name->SubString(enum_index, decoded_name->Size() - enum_index);
+"-- enum: e='{$first}', i='{$second}' --"->PrintLine();
+			}
+		}
+"name={$decoded_name}\n---"->PrintLine();
 		return "#";
 	}
 	
