@@ -149,9 +149,9 @@ class HtmlMaker {
 		      				param_type_name := param->GetTypeName();
 		      				param_type_desc := param_tag->GetDesc();
 
-			      			main_html += "<td><a href='system-int.html' target='main'>";
+			      			main_html += "<td>";
 			      			main_html += param_name;
-			      			main_html += "</a></td>";
+			      			main_html += "</td>";
 			      			
 			      			main_html += "<td><a href='system-int.html' target='main'>";
 			      			main_html += param_type_name;
