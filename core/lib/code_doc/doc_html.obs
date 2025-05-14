@@ -153,7 +153,8 @@ class HtmlMaker {
 			      			main_html += param_name;
 			      			main_html += "</td>";
 			      			
-			      			main_html += "<td><a href='system-int.html' target='main'>";
+			      			type_link := GetTypeLink(param_type_name);
+			      			main_html += "<td><a href='{$type_link}' target='main'>";
 			      			main_html += param_type_name;
 			      			main_html += "</a></td>";
 			      			
@@ -198,6 +199,10 @@ class HtmlMaker {
 		out := FileWriter->New(filename);
 		out->WriteString(html);
 		out->Close();
+	}
+
+	method : GetTypeLink(name : String) ~ String {
+		return "#";
 	}
 	
 	#~
