@@ -10,7 +10,7 @@ class HtmlMaker {
 	@parser : SnippetParser;
 	@css_path : String;
 	@version : String;
-	bundle_snippit : BundleSnippet;
+	@bundle_snippit : BundleSnippet;
 	
 	#~
 	DOC ME
@@ -56,13 +56,13 @@ class HtmlMaker {
 
 		bundle_keys := bundles->GetKeys()<String>;
 		each(i : bundle_keys) {
-			bundle_snippit := bundles->Find(bundle_keys->Get(i));
+			@bundle_snippit := bundles->Find(bundle_keys->Get(i));
 
 			# get file uses
-			file_uses := @parser->GetFileUses(bundle_snippit->GetFileName())->GetKeys()<String>;
+			file_uses := @parser->GetFileUses(@bundle_snippit->GetFileName())->GetKeys()<String>;
 
 			# process classes
-			classes := bundle_snippit->GetClasses();
+			classes := @bundle_snippit->GetClasses();
 			class_keys := classes->GetKeys()<String>;
 			each(j : class_keys) {
 				class_block := classes->Find(class_keys->Get(j));
@@ -72,7 +72,7 @@ class HtmlMaker {
 			};
 			
 			# process enums
-			enums := bundle_snippit->GetEnums();
+			enums := @bundle_snippit->GetEnums();
 			enum_keys := enums->GetKeys()<String>;
 			each(j : enum_keys) {
 				##  enum
@@ -153,7 +153,7 @@ class HtmlMaker {
 			      			main_html += param_name;
 			      			main_html += "</td>";
 			      			
-			      			type_link := GetTypeLink(param_type_name);
+			      			type_link := GetTypeLink(param_type_name, file_uses);
 			      			main_html += "<td><a href='{$type_link}' target='main'>";
 			      			main_html += param_type_name;
 			      			main_html += "</a></td>";
@@ -201,16 +201,12 @@ class HtmlMaker {
 		out->Close();
 	}
 
-	method : GetTypeLink(name : String) ~ String {
+	method : GetTypeLink(name : String, file_uses : Vector<String>) ~ String {
 		decoded_name := name->ReplaceAll("&lt;", "<");
 		decoded_name := decoded_name->ReplaceAll("&gt;", ">");
-
-		bundle_str : String;
-		class_enum_str : String;
-		enum_value_str : String;
-
 "type-name: '{$decoded_name}'"->PrintLine();
-
+		
+		bundle_str : String; class_enum_str : String; enum_value_str : String;
 		class_index := decoded_name->Find('.');
 		if(class_index > -1) {
 			bundle_str := decoded_name->SubString(class_index);
@@ -237,13 +233,21 @@ class HtmlMaker {
 			class_enum_str := temp_str;
 		};
 
-# TODO: support function parameter types
+# TODO: support for function parameter types
 
 		if(bundle_str <> Nil & class_enum_str <> Nil) {
-"bundle_str='{$bundle_str}', class_enum_str='{$class_enum_str}', array_dim={$array_dim}\n---"->PrintLine();
+			bundles := @parser->GetBundles();
+
+			if(bundles->Has(bundle_str)) {
+"bundle_str='{$bundle_str}', class_enum_str='{$class_enum_str}', array_dim={$array_dim}\n(use bundle, lookup class)\n---"->PrintLine();
+			}				
+			else {
+"### Unable to find bundle: {$bundle_str} ###"->PrintLine();
+			};
 		}
 		else if(class_enum_str <> Nil) {
-"class_enum_str='{$class_enum_str}', array_dim={$array_dim}\n---"->PrintLine();
+
+"class_enum_str='{$class_enum_str}', array_dim={$array_dim}\n(apply bundle uses, lookup class)\n---"->PrintLine();
 		};
 
 		if(enum_value_str <> Nil) {
