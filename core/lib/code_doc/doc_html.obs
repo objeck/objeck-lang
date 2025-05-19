@@ -237,6 +237,8 @@ class HtmlMaker {
 			class_enum_str := temp_str;
 		};
 
+# TODO: support function parameter types
+
 		if(bundle_str <> Nil & class_enum_str <> Nil) {
 "bundle_str='{$bundle_str}', class_enum_str='{$class_enum_str}', array_dim={$array_dim}\n---"->PrintLine();
 		}
