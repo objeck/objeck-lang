@@ -205,23 +205,49 @@ class HtmlMaker {
 		decoded_name := name->ReplaceAll("&lt;", "<");
 		decoded_name := decoded_name->ReplaceAll("&gt;", ">");
 
+		bundle_str : String;
+		class_enum_str : String;
+		enum_value_str : String;
+
+"type-name: '{$decoded_name}'"->PrintLine();
+
 		class_index := decoded_name->Find('.');
 		if(class_index > -1) {
-			first := decoded_name->SubString(class_index);
+			bundle_str := decoded_name->SubString(class_index);
 			class_index += 1;
-			second := decoded_name->SubString(class_index, decoded_name->Size() - class_index);
-"-- class: b='{$first}', c='{$second}' --"->PrintLine();
+			class_enum_str := decoded_name->SubString(class_index, decoded_name->Size() - class_index);
 		}
 		else {
 			enum_index := class_index := decoded_name->Find("->");
 			if(enum_index > -1) {
-				first := decoded_name->SubString(enum_index);
+				class_enum_str := decoded_name->SubString(enum_index);
 				enum_index += 2;
-				second := decoded_name->SubString(enum_index, decoded_name->Size() - enum_index);
-"-- enum: e='{$first}', i='{$second}' --"->PrintLine();
+				enum_value_str := decoded_name->SubString(enum_index, decoded_name->Size() - enum_index);
 			}
+			else {
+				class_enum_str :=decoded_name;
+			};
+		};
+
+		array_dim := 0;
+		if(class_enum_str <> Nil & class_enum_str->Has('[')) {
+			array_index := class_enum_str->Find('[');
+			temp_str := class_enum_str->SubString(array_index);
+			array_dim := class_enum_str->SubString(array_index, class_enum_str->Size() - array_index)->Count('[');
+			class_enum_str := temp_str;
+		};
+
+		if(bundle_str <> Nil & class_enum_str <> Nil) {
+"bundle_str='{$bundle_str}', class_enum_str='{$class_enum_str}', array_dim={$array_dim}\n---"->PrintLine();
 		}
-"name={$decoded_name}\n---"->PrintLine();
+		else if(class_enum_str <> Nil) {
+"class_enum_str='{$class_enum_str}', array_dim={$array_dim}\n---"->PrintLine();
+		};
+
+		if(enum_value_str <> Nil) {
+"enum_value_str='{$enum_value_str}', array_dim={$array_dim}\n---"->PrintLine();
+		};
+
 		return "#";
 	}
 	
