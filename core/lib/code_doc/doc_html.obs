@@ -204,8 +204,9 @@ class HtmlMaker {
 	method : GetTypeLink(name : String, file_uses : Vector<String>) ~ String {
 		decoded_name := name->ReplaceAll("&lt;", "<");
 		decoded_name := decoded_name->ReplaceAll("&gt;", ">");
-"type-name: '{$decoded_name}'"->PrintLine();
+# "type-name: '{$decoded_name}'"->PrintLine();
 		
+		# top level parsing
 		bundle_str : String; class_enum_str : String; enum_value_str : String;
 		class_index := decoded_name->Find('.');
 		if(class_index > -1) {
@@ -234,27 +235,85 @@ class HtmlMaker {
 		};
 
 # TODO: support for function parameter types
+# TODO: support for generics
 
+		# bundle and class name
 		if(bundle_str <> Nil & class_enum_str <> Nil) {
 			bundles := @parser->GetBundles();
 
-			if(bundles->Has(bundle_str)) {
-"bundle_str='{$bundle_str}', class_enum_str='{$class_enum_str}', array_dim={$array_dim}\n(use bundle, lookup class)\n---"->PrintLine();
+			bundle_block := bundles->Find(bundle_str);
+			if(bundle_block <> Nil) {
+				classes := bundle_block->GetClasses();
+
+				generic_index := class_enum_str->Find('<');
+				if(generic_index > -1) {
+					generics_str := class_enum_str->SubString(generic_index, class_enum_str->Size() - generic_index)
+# "generics_str='{$generics_str}'"->PrintLine();
+				}
+				else {
+					class_block := classes->Find(class_enum_str);
+					if(class_block <> Nil) {
+						class_link := "<a href='"
+						class_link += GetClassLink(class_block);
+						class_link += "'>";
+						class_link += class_enum_str;
+						class_link += "</a>";
+# "class_link='{$class_link}', array_dim={$array_dim}"->PrintLine();
+						
+						return class_link;
+					}
+					else {
+# "### Unable to find class: {$class_enum_str} ###"->PrintLine();
+						return name;
+					};
+				};
 			}				
 			else {
-"### Unable to find bundle: {$bundle_str} ###"->PrintLine();
+# "### Unable to find bundle: {$bundle_str} ###"->PrintLine();
+				return name;
 			};
 		}
 		else if(class_enum_str <> Nil) {
-
-"class_enum_str='{$class_enum_str}', array_dim={$array_dim}\n(apply bundle uses, lookup class)\n---"->PrintLine();
+			generic_index := class_enum_str->Find('<');
+			if(generic_index > -1) {
+				generic_index += 1;
+				generics_str := class_enum_str->SubString(generic_index, class_enum_str->Size() - generic_index - 1)
+"generics_str='{$generics_str}'"->PrintLine();
+			}
+			else {
+				bundles := @parser->GetBundles();
+				bundle_keys := bundles->GetKeys()<String>;
+"look_for='{$class_enum_str}'"->PrintLine();
+				each(bundle_key in bundle_keys) {
+					bundle_snippit := bundles->Find(bundle_key);
+					classes := bundle_snippit->GetClasses();
+					class_keys := classes->GetKeys()<String>;
+					each(class_key in class_keys) {
+						class_block := classes->Find(class_enum_str);
+						if(class_block <> Nil) {
+							class_link := "<a href='"
+							class_link += GetClassLink(class_block);
+							class_link += "'>";
+							class_link += class_enum_str;
+							class_link += "</a>";
+"class_link='{$class_link}', array_dim={$array_dim}"->PrintLine();
+						
+							return class_link;
+						}
+						else {
+							return name;
+						};
+					};
+				};
+			};
+# "class_enum_str='{$class_enum_str}', array_dim={$array_dim}\n(apply bundle uses, lookup class)\n---"->PrintLine();
 		};
 
 		if(enum_value_str <> Nil) {
-"enum_value_str='{$enum_value_str}', array_dim={$array_dim}\n---"->PrintLine();
+# "enum_value_str='{$enum_value_str}', array_dim={$array_dim}\n---"->PrintLine();
 		};
 
-		return "#";
+		return name;
 	}
 	
 	#~
@@ -278,65 +337,61 @@ class HtmlMaker {
 	method : CreateNav(bundles : Map<String, BundleSnippet>) ~ String {
 		html := "<nav>";
 
-		##  bundles
+		# process bundles
 		bundle_keys := bundles->GetKeys()<String>;
 		each(i : bundle_keys) {
 			bundle_block := bundles->Find(bundle_keys->Get(i));
-			##  class description
 			if(bundle_block->IsParsed()) {
 				block_name := bundle_block->GetName();
+				html += "<a id='";
+				html += block_name->ToLower();
+				html += "'></a><strong>";
+				html += block_name;
+				html += "</strong>";
+				html += "<ul>";
 
-				sec_a := "<a id='";
-				sec_a += block_name->ToLower();
-				sec_a += "'></a><strong>";
-				sec_a += block_name;
-				sec_a += "</strong>";
-				html += sec_a;
-
-				sec_b := "<ul>";
+				# process classes
 				classes := bundle_block->GetClasses();
 				class_keys := classes->GetKeys()<String>;			
 				each(j : class_keys) {
-					##  class
 					class_block := classes->Find(class_keys->Get(j));
 					if(class_block->IsParsed()) {
-						sec_b += "<li><a href='";
-
+						html += "<li><a href='";
 						link_name := GetClassLink(class_block);
-						sec_b->Append(link_name);
-						sec_b += "' target='main'>";
+
+						html->Append(link_name);
+						html += "' target='main'>";
 						if(class_block->IsInterface()) {
-							sec_b->Append("<i>");
-							sec_b->Append(class_block->GetName());
-							sec_b->Append("</i>");
+							html->Append("<i>");
+							html->Append(class_block->GetName());
+							html->Append("</i>");
 						}
 						else {
-							sec_b->Append(class_block->GetName());
+							html->Append(class_block->GetName());
 						};
-						sec_b += "</a></li>";
+						html += "</a></li>";
 					};
 				};
 				
+				# process enums
 				enums := bundle_block->GetEnums();
 				enum_keys := enums->GetKeys()<String>;
 				each(j : enum_keys) {
-					##  enum
 					enum_block := enums->Find(enum_keys->Get(j));
 					if(enum_block <> Nil) {
-						sec_b += "<li><a href='";
-												
-						link_name := GetEnumLink(enum_block);						
-						sec_b->Append(link_name);
-						sec_b += "' target='main'>";
-						sec_b->Append(enum_block->GetName());
-						sec_b->Append(" (#)");
-						sec_b += "</a></li>";
+						html += "<li><a href='";
+						link_name := GetEnumLink(enum_block);
+
+						html->Append(link_name);
+						html += "' target='main'>";
+						html->Append(enum_block->GetName());
+						html->Append(" (#)");
+						html += "</a></li>";
 						
 					};
 				};
 				
-				sec_b += "</ul>";			
-				html += sec_b;
+				html += "</ul>";			
 			};
 		};
 
