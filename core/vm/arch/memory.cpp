@@ -230,12 +230,7 @@ size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, long 
     mem = GetMemory(alloc_size);
     if(!mem) {
       std::wcerr << L">>> Unable to allocate memory of size: " << alloc_size << L", consider checking the code. <<<" << std::endl;
-#ifdef _NO_HALT
-      halt = true;
-      return;
-#else
       exit(1);
-#endif
     }
 
     mem[EXTRA_BUF_SIZE + TYPE] = NIL_TYPE;
@@ -306,12 +301,7 @@ size_t* MemoryManager::AllocateArray(const size_t size, const MemoryType type, s
   mem = GetMemory(alloc_size);
   if(!mem) {
     std::wcerr << L">>> Unable to allocate memory of size: " << alloc_size << L", consider checking the code. <<<" << std::endl;
-#ifdef _NO_HALT
-    halt = true;
-    return;
-#else
     exit(1);
-#endif
   }
 
   mem[EXTRA_BUF_SIZE + TYPE] = type;
