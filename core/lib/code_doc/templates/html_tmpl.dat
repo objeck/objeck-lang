@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Objeck Documentation</title>
+  <link rel="stylesheet" href="style.css" />
+  <body>
+  <header>
+    <h1>Objeck</h1>
+    <div class="version">a programming language — v2025.5.0</div>
+  </header>
+
+  <div class="container">
+    
+    <nav>
+      @nav
+    </nav>
+
+    <main>
+      <a href="#">All Bundles</a><hr/>
+      @main
+    </main>
+
+  </div>
+</body>
+</html>
