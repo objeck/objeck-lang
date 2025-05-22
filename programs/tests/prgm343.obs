@@ -22,18 +22,82 @@ class Test {
 
 		"=> {$section}"->PrintLine();
 
+		type : String;
+
 		each(c in section) {
 			if(c->IsChar() | c->IsDigit()) {
 				buffer += c;
 			}
-			else if(<>buffer->IsEmpty()) {
-				buffer->PrintLine();
-				buffer := "";
+			else {
+				select(c) {
+					label '<': {
+						if(<>buffer->IsEmpty()) {
+							buffer->PrintLine();
+							buffer := "";
+						};
+
+						type := "generic";
+					}
+
+					label '[': {
+						if(<>buffer->IsEmpty()) {
+							buffer->PrintLine();
+							buffer := "";
+						};
+					}
+
+					label '(': {
+						if(<>buffer->IsEmpty()) {
+							buffer->PrintLine();
+							buffer := "";
+						};
+
+						type := "func";
+					}
+
+					label ',': {
+						if(<>buffer->IsEmpty()) {
+							"{$type}={$buffer}"->PrintLine();
+							buffer := "";
+						};
+					}
+
+					label '~': {
+						type := "return";
+					}
+
+					label '>': {
+						if(<>buffer->IsEmpty()) {
+							"{$type}={$buffer}"->PrintLine();
+							buffer := "";
+						};
+					}
+							
+					label ']': {
+						if(<>buffer->IsEmpty()) {
+							"{$type}={$buffer}"->PrintLine();
+							buffer := "";
+						};
+					}
+
+					label ')': {
+						if(<>buffer->IsEmpty()) {
+							"{$type}={$buffer}"->PrintLine();
+							buffer := "";
+						};
+					}
+				};
 			};
 		};
 
 		if(<>buffer->IsEmpty()) {
-			buffer->PrintLine();
+			if(type <> Nil) {
+				"{$type}={$buffer}"->PrintLine();
+			}
+			else {
+				"class/enum={$buffer}"->PrintLine();
+			}
+			buffer := "";
 		};
 
 		"---"->PrintLine();
