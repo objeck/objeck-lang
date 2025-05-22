@@ -59,7 +59,7 @@ class HtmlMaker {
 			@bundle_snippit := bundles->Find(bundle_keys->Get(i));
 
 			# get file uses
-			file_uses := @parser->GetFileUses(@bundle_snippit->GetFileName())->GetKeys()<String>;
+			file_uses := @parser->GetFileUses(@bundle_snippit->GetFileName())<String>;
 
 			# process classes
 			classes := @bundle_snippit->GetClasses();
@@ -89,7 +89,7 @@ class HtmlMaker {
 	#~
 	DOC ME
 	~#
-	method : CreateClassHtml(class_block : ClassSnippet, file_uses : Vector<String>, nav_html : String, template_html : String) ~ Nil {
+	method : CreateClassHtml(class_block : ClassSnippet, file_uses : Set<String>, nav_html : String, template_html : String) ~ Nil {
 		# set nav
 		html := template_html->ReplaceAll("@nav", nav_html);
 
@@ -201,7 +201,7 @@ class HtmlMaker {
 		out->Close();
 	}
 
-	method : GetTypeLink(name : String, file_uses : Vector<String>) ~ String {
+	method : GetTypeLink(name : String, file_uses : Set<String>) ~ String {
 		decoded_name := name->ReplaceAll("&lt;", "<");
 		decoded_name := decoded_name->ReplaceAll("&gt;", ">");
 # "type-name: '{$decoded_name}'"->PrintLine();
@@ -235,7 +235,6 @@ class HtmlMaker {
 		};
 
 # TODO: support for function parameter types
-# TODO: support for generics
 
 		# bundle and class name
 		if(bundle_str <> Nil & class_enum_str <> Nil) {
@@ -248,7 +247,7 @@ class HtmlMaker {
 				generic_index := class_enum_str->Find('<');
 				if(generic_index > -1) {
 					generics_str := class_enum_str->SubString(generic_index, class_enum_str->Size() - generic_index)
-# "generics_str='{$generics_str}'"->PrintLine();
+"generics_str='{$generics_str}'"->PrintLine();
 				}
 				else {
 					class_block := classes->Find(class_enum_str);
@@ -258,19 +257,11 @@ class HtmlMaker {
 						class_link += "'>";
 						class_link += class_enum_str;
 						class_link += "</a>";
-# "class_link='{$class_link}', array_dim={$array_dim}"->PrintLine();
-						
+
+"class_link=\"{$class_link}\""->PrintLine();
 						return class_link;
-					}
-					else {
-# "### Unable to find class: {$class_enum_str} ###"->PrintLine();
-						return name;
-					};
+					};					
 				};
-			}				
-			else {
-# "### Unable to find bundle: {$bundle_str} ###"->PrintLine();
-				return name;
 			};
 		}
 		else if(class_enum_str <> Nil) {
@@ -282,44 +273,45 @@ class HtmlMaker {
 			}
 			else {
 				bundles := @parser->GetBundles();
+				
 				bundle_keys := bundles->GetKeys()<String>;
-"look_for='{$class_enum_str}'"->PrintLine();
 				each(bundle_key in bundle_keys) {
+					# look at bundles that are in our scope
 					bundle_snippit := bundles->Find(bundle_key);
-					classes := bundle_snippit->GetClasses();
-					class_keys := classes->GetKeys()<String>;
-					each(class_key in class_keys) {
-						class_block := classes->Find(class_enum_str);
-						if(class_block <> Nil) {
-							class_link := "<a href='"
-							class_link += GetClassLink(class_block);
-							class_link += "'>";
-							class_link += class_enum_str;
-							class_link += "</a>";
-"class_link='{$class_link}', array_dim={$array_dim}"->PrintLine();
-						
-							return class_link;
-						}
-						else {
-							return name;
+					if(file_uses->Has(bundle_key)) {
+						classes := bundle_snippit->GetClasses();
+						class_keys := classes->GetKeys()<String>;
+						each(class_key in class_keys) {
+							# find class within the bundle scope
+							class_block := classes->Find(class_enum_str);
+							if(class_block <> Nil) {
+								class_link := "<a href='"
+								class_link += GetClassLink(class_block);
+								class_link += "'>";
+								class_link += class_enum_str;
+								class_link += "</a>";
+
+"class_link=\"{$class_link}\""->PrintLine();							
+								return class_link;
+							};
 						};
 					};
 				};
 			};
-# "class_enum_str='{$class_enum_str}', array_dim={$array_dim}\n(apply bundle uses, lookup class)\n---"->PrintLine();
 		};
 
 		if(enum_value_str <> Nil) {
 # "enum_value_str='{$enum_value_str}', array_dim={$array_dim}\n---"->PrintLine();
 		};
 
+"other=\"{$name}\""->PrintLine();
 		return name;
 	}
 	
 	#~
 	DOC ME
 	~#
-	method : CreateEnumHtml(enum_block : EnumConstSnippet, file_uses : Vector<String>, nav_html : String, template_html : String) ~ Nil {
+	method : CreateEnumHtml(enum_block : EnumConstSnippet, file_uses : Set<String>, nav_html : String, template_html : String) ~ Nil {
 		html := template_html->ReplaceAll("@nav", nav_html);
 		html := html->ReplaceAll("@main", "");
 	
