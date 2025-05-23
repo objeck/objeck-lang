@@ -155,10 +155,9 @@ class HtmlMaker {
 			      			main_html += param_name;
 			      			main_html += "</td>";
 			      			
-			      			type_link := GetTypeLink(param_type_name, file_uses);
-			      			main_html += "<td><a href='{$type_link}' target='main'>";
-			      			main_html += param_type_name;
-			      			main_html += "</a></td>";
+			      			main_html += "<td>";
+			      			main_html += GetTypeLink(param_type_name, file_uses);
+			      			main_html += "</td>";
 			      			
 			      			main_html += "<td>";
 			      			main_html += param_type_desc;
@@ -537,14 +536,9 @@ class HtmlMaker {
 				each(j : enum_keys) {
 					enum_block := enums->Find(enum_keys->Get(j));
 					if(enum_block <> Nil) {
-						html += "<li><a href='";
-						link_name := GetEnumLink(enum_block);
-
-						html->Append(link_name);
-						html += "' target='main'>";
+						html += "<li>";
 						html->Append(enum_block->GetName());
-						html->Append(" (#)");
-						html += "</a></li>";
+						html += "</li>";
 						
 					};
 				};
