@@ -194,7 +194,32 @@ class HtmlMaker {
 		html := html->ReplaceAll("@main", main_html);
 
 		filename := GetClassLink(class_block, "../html/");
-# "=> {$filename}"->PrintLine();
+		# "=> {$filename}"->PrintLine();
+
+		out := FileWriter->New(filename);
+		out->WriteString(html);
+		out->Close();
+	}
+
+	#~
+	DOC ME
+	~#
+	method : CreateEnumHtml(enum_block : EnumConstSnippet, file_uses : Set<String>, nav_html : String, template_html : String) ~ Nil {
+		# set nav
+		html := template_html->ReplaceAll("@nav", nav_html);
+		
+		# CODE GOES HERE
+		# set main
+		main_html := "<h2>";
+		main_html += enum_block->GetName();
+		main_html += "</h2>";
+
+
+		# write file	
+		html := html->ReplaceAll("@main", main_html);
+
+		filename := GetEnumLink(enum_block, "../html/");
+		# "=> {$filename}"->PrintLine();
 
 		out := FileWriter->New(filename);
 		out->WriteString(html);
@@ -284,8 +309,9 @@ class HtmlMaker {
 				enum_link := String->New(enum_value_str);
 			};
 			
-			foo := class_link + "-&gt;" + enum_link;
-"###: '{$class_link}', '{$enum_link}' -> {$foo} ###"->PrintLine();
+			enum_link_str := class_link + "-&gt;" + enum_link;
+"enum_link=\"{$enum_link_str}\""->PrintLine();
+			return enum_link_str;
 		}
 		#
 		# class/enum
@@ -325,7 +351,7 @@ class HtmlMaker {
 				classes := bundle_snippit->GetClasses();
 				class_keys := classes->GetKeys()<String>;
 				each(class_key in class_keys) {
-# "class-check='{$class_enum_str}', key='{$class_key}'"->PrintLine();
+					# "class-check='{$class_enum_str}', key='{$class_key}'"->PrintLine();
 					
 					# find class within the bundle scope
 					class_block := classes->Find(class_enum_str);
@@ -360,7 +386,7 @@ class HtmlMaker {
 						enum_link += class_enum_str;
 						enum_link += "</a>";
 
-"enum_link=\"{$enum_link}\""->PrintLine();							
+						# "enum_link=\"{$enum_link}\""->PrintLine();							
 						return enum_link;
 					};
 				};
@@ -452,21 +478,6 @@ class HtmlMaker {
 
 		# "class_link=\"{$class_link}\""->PrintLine();		
 		return class_link;
-	}
-
-	#~
-	DOC ME
-	~#
-	method : CreateEnumHtml(enum_block : EnumConstSnippet, file_uses : Set<String>, nav_html : String, template_html : String) ~ Nil {
-		html := template_html->ReplaceAll("@nav", nav_html);
-		html := html->ReplaceAll("@main", "");
-	
-		filename := GetEnumLink(enum_block, "../html/");
-		# "=> {$filename}"->PrintLine();
-
-		out := FileWriter->New(filename);
-		out->WriteString(html);
-		out->Close();
 	}
 
 	#~
