@@ -96,7 +96,9 @@ class HtmlMaker {
 		# set main
 		main_html := "<h2>";
 		main_html += class_block->GetShortName();
-		main_html += "</h2>";
+		main_html += "</h2><p>";
+		main_html += class_block->GetDesc();
+		main_html += "</p><h3>Operations</h3>";
 
 		main_html += "<ul>";
 		func_names := class_block->GetFunctionNames();
