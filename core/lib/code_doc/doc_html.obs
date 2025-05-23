@@ -301,7 +301,11 @@ class HtmlMaker {
 # "enum_value_str='{$enum_value_str}', array_dim={$array_dim}\n---"->PrintLine();
 		};
 
-		return GetComplexTypeLink(decoded_name, file_uses);
+		if(decoded_name->Has('<') | decoded_name->Has('[') | decoded_name->Has('~') | decoded_name->Has(',')) {
+			return GetComplexTypeLink(decoded_name, file_uses);
+		};
+
+		return name;
 	}
 
 	method : GetComplexTypeLink(decoded_name : String, file_uses : Set<String>) ~ String {
@@ -319,16 +323,16 @@ class HtmlMaker {
 					label '<': {
 						if(<>temp->IsEmpty()) {
 							"'{$temp}'"->PrintLine();
-							link += temp;
+							link += GetTypeLink(temp, file_uses);
 							temp := "";
 						};
-						link += '<';
+						link += "&lt;";
 					}
 
 					label '[': {
 						if(<>temp->IsEmpty()) {
 							"'{$temp}'"->PrintLine();
-							link += temp;
+							link += GetTypeLink(temp, file_uses);
 							link += '[';
 							temp := "";
 						};
@@ -337,7 +341,7 @@ class HtmlMaker {
 					label '(': {
 						if(<>temp->IsEmpty()) {
 							"'{$temp}'"->PrintLine();
-							link += temp;
+							link += GetTypeLink(temp, file_uses);
 							temp := "";
 						};
 						link += '(';
@@ -346,7 +350,7 @@ class HtmlMaker {
 					label ',': {
 						if(<>temp->IsEmpty()) {
 							"'{$temp}'"->PrintLine();
-							link += temp;
+							link += GetTypeLink(temp, file_uses);
 							temp := "";
 						};
 						link += ',';
@@ -359,16 +363,16 @@ class HtmlMaker {
 					label '>': {
 						if(<>temp->IsEmpty()) {
 							"'{$temp}'"->PrintLine();
-							link += temp;
+							link += GetTypeLink(temp, file_uses);
 							temp := "";
 						};
-						link += '>';
+						link += "&gt;";
 					}
 							
 					label ']': {
 						if(<>temp->IsEmpty()) {
 							"'{$temp}'"->PrintLine();
-							link += temp;
+							link += GetTypeLink(temp, file_uses);
 							temp := "";
 						};
 						link += ']';
@@ -377,7 +381,7 @@ class HtmlMaker {
 					label ')': {
 						if(<>temp->IsEmpty()) {
 							"'{$temp}'"->PrintLine();
-							link += temp;
+							link += GetTypeLink(temp, file_uses);
 							temp := "";
 						};
 						link += ')';
@@ -388,7 +392,7 @@ class HtmlMaker {
 
 		if(<>temp->IsEmpty()) {
 			"'{$temp}'"->PrintLine();
-			link += temp;
+			link += GetTypeLink(temp, file_uses);
 			temp := "";
 		};
 
