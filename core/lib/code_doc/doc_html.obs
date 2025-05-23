@@ -344,9 +344,7 @@ class HtmlMaker {
 				# check enums
 				enums := bundle_snippit->GetEnums();
 				enum_keys := enums->GetKeys()<String>;
-				each(enum_key in enum_keys) {
-# "enum-check='{$class_enum_str}', key='{$enum_key}'"->PrintLine();							
-					
+				each(enum_key in enum_keys) {					
 					# find enum within the bundle scope
 					enum_block := enums->Find(class_enum_str);
 					if(enum_block <> Nil) {
@@ -362,7 +360,7 @@ class HtmlMaker {
 						enum_link += class_enum_str;
 						enum_link += "</a>";
 
-						# "enum_link=\"{$enum_link}\""->PrintLine();							
+"enum_link=\"{$enum_link}\""->PrintLine();							
 						return enum_link;
 					};
 				};
