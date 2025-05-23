@@ -7853,6 +7853,7 @@ bundle System.IO {
 
 		#~
 		Pipe mode
+		@class Pipe
 		~#
 		enum Mode := -4 {
 			CREATE,
