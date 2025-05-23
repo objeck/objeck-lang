@@ -222,7 +222,7 @@ class HtmlMaker {
 				enum_value_str := decoded_name->SubString(enum_index, decoded_name->Size() - enum_index);
 			}
 			else {
-				class_enum_str :=decoded_name;
+				class_enum_str := decoded_name;
 			};
 		};
 
@@ -233,8 +233,6 @@ class HtmlMaker {
 			array_dim := class_enum_str->SubString(array_index, class_enum_str->Size() - array_index)->Count('[');
 			class_enum_str := temp_str;
 		};
-
-# TODO: support for function parameter types
 
 		# bundle and class name
 		if(bundle_str <> Nil & class_enum_str <> Nil) {
@@ -257,7 +255,7 @@ class HtmlMaker {
 						class_link += class_enum_str;
 						class_link += "</a>";
 
-# "class_link=\"{$class_link}\""->PrintLine();
+"class_link=\"{$class_link}\""->PrintLine();
 						return class_link;
 					};					
 				};
@@ -288,7 +286,7 @@ class HtmlMaker {
 								class_link += class_enum_str;
 								class_link += "</a>";
 
-# "class_link=\"{$class_link}\""->PrintLine();							
+"class_link=\"{$class_link}\""->PrintLine();							
 								return class_link;
 							};
 						};
@@ -305,14 +303,15 @@ class HtmlMaker {
 			return GetComplexTypeLink(decoded_name, file_uses);
 		};
 
+"class_link=\"{$name}\""->PrintLine();
 		return name;
 	}
 
 	method : GetComplexTypeLink(decoded_name : String, file_uses : Set<String>) ~ String {
-		link := ""; 
+		class_link := ""; 
 		temp := "";
 
-		"=> {$decoded_name}"->PrintLine();
+# "=> {$decoded_name}"->PrintLine();
 
 		each(c in decoded_name) {
 			if(c->IsChar() | c->IsDigit()) {
@@ -322,83 +321,82 @@ class HtmlMaker {
 				select(c) {
 					label '<': {
 						if(<>temp->IsEmpty()) {
-							"'{$temp}'"->PrintLine();
-							link += GetTypeLink(temp, file_uses);
+# "'{$temp}'"->PrintLine();
+							class_link += GetTypeLink(temp, file_uses);
 							temp := "";
 						};
-						link += "&lt;";
+						class_link += "&lt;";
 					}
 
 					label '[': {
 						if(<>temp->IsEmpty()) {
-							"'{$temp}'"->PrintLine();
-							link += GetTypeLink(temp, file_uses);
-							link += '[';
+# "'{$temp}'"->PrintLine();
+							class_link += GetTypeLink(temp, file_uses);
+							class_link += '[';
 							temp := "";
 						};
 					}
 
 					label '(': {
 						if(<>temp->IsEmpty()) {
-							"'{$temp}'"->PrintLine();
-							link += GetTypeLink(temp, file_uses);
+# "'{$temp}'"->PrintLine();
+							class_link += GetTypeLink(temp, file_uses);
 							temp := "";
 						};
-						link += '(';
+						class_link += '(';
 					}
 
 					label ',': {
 						if(<>temp->IsEmpty()) {
-							"'{$temp}'"->PrintLine();
-							link += GetTypeLink(temp, file_uses);
+# "'{$temp}'"->PrintLine();
+							class_link += GetTypeLink(temp, file_uses);
 							temp := "";
 						};
-						link += ',';
+						class_link += ',';
 					}
 
 					label '~': {
-						link += '~';
+						class_link += '~';
 					}
 
 					label '>': {
 						if(<>temp->IsEmpty()) {
-							"'{$temp}'"->PrintLine();
-							link += GetTypeLink(temp, file_uses);
+# "'{$temp}'"->PrintLine();
+							class_link += GetTypeLink(temp, file_uses);
 							temp := "";
 						};
-						link += "&gt;";
+						class_link += "&gt;";
 					}
 							
 					label ']': {
 						if(<>temp->IsEmpty()) {
-							"'{$temp}'"->PrintLine();
-							link += GetTypeLink(temp, file_uses);
+# "'{$temp}'"->PrintLine();
+							class_link += GetTypeLink(temp, file_uses);
 							temp := "";
 						};
-						link += ']';
+						class_link += ']';
 					}
 
 					label ')': {
 						if(<>temp->IsEmpty()) {
-							"'{$temp}'"->PrintLine();
-							link += GetTypeLink(temp, file_uses);
+# "'{$temp}'"->PrintLine();
+							class_link += GetTypeLink(temp, file_uses);
 							temp := "";
 						};
-						link += ')';
+						class_link += ')';
 					}
 				};
 			};
 		};
 
 		if(<>temp->IsEmpty()) {
-			"'{$temp}'"->PrintLine();
-			link += GetTypeLink(temp, file_uses);
+# "'{$temp}'"->PrintLine();
+			class_link += GetTypeLink(temp, file_uses);
 			temp := "";
 		};
 
-"-> {$link}\n---"->PrintLine();
-
-		return "#";
+"class_link=\"{$class_link}\""->PrintLine();		
+		return class_link;
 	}
 
 	#~
