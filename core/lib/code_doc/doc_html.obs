@@ -210,12 +210,19 @@ class HtmlMaker {
 		# set nav
 		html := template_html->ReplaceAll("@nav", nav_html);
 		
-		# CODE GOES HERE
 		# set main
 		main_html := "<h2>";
 		main_html += enum_block->GetName();
-		main_html += "</h2>";
+		main_html += "</h2><p>";
+		main_html += enum_block->GetDesc();
+		main_html += "</p><h3>Items</h3><ul>";
 
+		enum_items := enum_block->GetItems();
+		each(enum_item in enum_items) {
+			main_html += "<li>";
+			main_html += enum_item;
+			main_html += "</li>";
+		};
 
 		# write file	
 		html := html->ReplaceAll("@main", main_html);
