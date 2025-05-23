@@ -176,9 +176,9 @@ class HtmlMaker {
 	      			rtrn_type_name := func->GetReturnType()->GetTypeName();
       				rtrn_desc := func->GetReturnTag()->GetDesc();
 
-	      			main_html += "<td><a href='system-int.html' target='main'>";
-	      			main_html += rtrn_type_name;
-	      			main_html += "</a></td>";
+	      			main_html += "<td>";
+	      			main_html += GetTypeLink(rtrn_type_name, file_uses); ;
+	      			main_html += "</td>";
 
 	      			main_html += "<td>";
 	      			main_html += rtrn_desc;
