@@ -246,8 +246,7 @@ class HtmlMaker {
 
 				generic_index := class_enum_str->Find('<');
 				if(generic_index > -1) {
-					generics_str := class_enum_str->SubString(generic_index, class_enum_str->Size() - generic_index)
-"generics_str='{$generics_str}'"->PrintLine();
+					return GetComplexTypeLink(decoded_name, file_uses);
 				}
 				else {
 					class_block := classes->Find(class_enum_str);
@@ -258,7 +257,7 @@ class HtmlMaker {
 						class_link += class_enum_str;
 						class_link += "</a>";
 
-"class_link=\"{$class_link}\""->PrintLine();
+# "class_link=\"{$class_link}\""->PrintLine();
 						return class_link;
 					};					
 				};
@@ -267,9 +266,7 @@ class HtmlMaker {
 		else if(class_enum_str <> Nil) {
 			generic_index := class_enum_str->Find('<');
 			if(generic_index > -1) {
-				generic_index += 1;
-				generics_str := class_enum_str->SubString(generic_index, class_enum_str->Size() - generic_index - 1)
-"generics_str='{$generics_str}'"->PrintLine();
+				return GetComplexTypeLink(decoded_name, file_uses);
 			}
 			else {
 				bundles := @parser->GetBundles();
@@ -291,7 +288,7 @@ class HtmlMaker {
 								class_link += class_enum_str;
 								class_link += "</a>";
 
-"class_link=\"{$class_link}\""->PrintLine();							
+# "class_link=\"{$class_link}\""->PrintLine();							
 								return class_link;
 							};
 						};
@@ -304,10 +301,102 @@ class HtmlMaker {
 # "enum_value_str='{$enum_value_str}', array_dim={$array_dim}\n---"->PrintLine();
 		};
 
-"other=\"{$name}\""->PrintLine();
-		return name;
+		return GetComplexTypeLink(decoded_name, file_uses);
 	}
-	
+
+	method : GetComplexTypeLink(decoded_name : String, file_uses : Set<String>) ~ String {
+		link := ""; 
+		temp := "";
+
+		"=> {$decoded_name}"->PrintLine();
+
+		each(c in decoded_name) {
+			if(c->IsChar() | c->IsDigit()) {
+				temp += c;
+			}
+			else {
+				select(c) {
+					label '<': {
+						if(<>temp->IsEmpty()) {
+							"'{$temp}'"->PrintLine();
+							link += temp;
+							temp := "";
+						};
+						link += '<';
+					}
+
+					label '[': {
+						if(<>temp->IsEmpty()) {
+							"'{$temp}'"->PrintLine();
+							link += temp;
+							link += '[';
+							temp := "";
+						};
+					}
+
+					label '(': {
+						if(<>temp->IsEmpty()) {
+							"'{$temp}'"->PrintLine();
+							link += temp;
+							temp := "";
+						};
+						link += '(';
+					}
+
+					label ',': {
+						if(<>temp->IsEmpty()) {
+							"'{$temp}'"->PrintLine();
+							link += temp;
+							temp := "";
+						};
+						link += ',';
+					}
+
+					label '~': {
+						link += '~';
+					}
+
+					label '>': {
+						if(<>temp->IsEmpty()) {
+							"'{$temp}'"->PrintLine();
+							link += temp;
+							temp := "";
+						};
+						link += '>';
+					}
+							
+					label ']': {
+						if(<>temp->IsEmpty()) {
+							"'{$temp}'"->PrintLine();
+							link += temp;
+							temp := "";
+						};
+						link += ']';
+					}
+
+					label ')': {
+						if(<>temp->IsEmpty()) {
+							"'{$temp}'"->PrintLine();
+							link += temp;
+							temp := "";
+						};
+						link += ')';
+					}
+				};
+			};
+		};
+
+		if(<>temp->IsEmpty()) {
+			"'{$temp}'"->PrintLine();
+			link += temp;
+			temp := "";
+		};
+
+"-> {$link}\n---"->PrintLine();
+
+		return "#";
+	}
+
 	#~
 	DOC ME
 	~#
