@@ -202,12 +202,14 @@ class HtmlMaker {
 	}
 
 	method : GetTypeLink(name : String, file_uses : Set<String>) ~ String {
-		decoded_name := name->ReplaceAll("&lt;", "<");
-		decoded_name := decoded_name->ReplaceAll("&gt;", ">");
-# "type-name: '{$decoded_name}'"->PrintLine();
+		decoded_name := name->ReplaceAll("&lt;", "<")->ReplaceAll("&gt;", ">");
+		# "type-name: '{$decoded_name}'"->PrintLine();
 		
-		# top level parsing
-		bundle_str : String; class_enum_str : String; enum_value_str : String;
+		bundle_str : String; 
+		class_enum_str : String; 
+		enum_value_str : String;
+
+		# parse bundle and class/enum
 		class_index := decoded_name->Find('.');
 		if(class_index > -1) {
 			bundle_str := decoded_name->SubString(class_index);
@@ -215,6 +217,7 @@ class HtmlMaker {
 			class_enum_str := decoded_name->SubString(class_index, decoded_name->Size() - class_index);
 		}
 		else {
+			# parse class with enum
 			enum_index := class_index := decoded_name->Find("->");
 			if(enum_index > -1) {
 				class_enum_str := decoded_name->SubString(enum_index);
@@ -234,8 +237,10 @@ class HtmlMaker {
 			class_enum_str := temp_str;
 		};
 
-		# bundle and class name
-		if(bundle_str <> Nil & class_enum_str <> Nil) {
+		#
+		# bundle and class/enum
+		#
+		if(bundle_str <> Nil & class_enum_str <> Nil & enum_value_str = Nil) {
 			bundles := @parser->GetBundles();
 
 			bundle_block := bundles->Find(bundle_str);
@@ -255,12 +260,21 @@ class HtmlMaker {
 						class_link += class_enum_str;
 						class_link += "</a>";
 
-"class_link=\"{$class_link}\""->PrintLine();
+						# "class_link=\"{$class_link}\""->PrintLine();
 						return class_link;
 					};					
 				};
 			};
 		}
+		#
+		# class with enum
+		#
+		else if(class_enum_str <> Nil & enum_value_str <> Nil) {
+"####: '{$class_enum_str}', '{$enum_value_str}' ###"->PrintLine();
+		}
+		#
+		# class/enum
+		#
 		else if(class_enum_str <> Nil) {
 			generic_index := class_enum_str->Find('<');
 			if(generic_index > -1) {
@@ -286,7 +300,7 @@ class HtmlMaker {
 								class_link += class_enum_str;
 								class_link += "</a>";
 
-"class_link=\"{$class_link}\""->PrintLine();							
+								# "class_link=\"{$class_link}\""->PrintLine();							
 								return class_link;
 							};
 						};
@@ -295,15 +309,11 @@ class HtmlMaker {
 			};
 		};
 
-		if(enum_value_str <> Nil) {
-# "enum_value_str='{$enum_value_str}', array_dim={$array_dim}\n---"->PrintLine();
-		};
-
 		if(decoded_name->Has('<') | decoded_name->Has('[') | decoded_name->Has('~') | decoded_name->Has(',')) {
 			return GetComplexTypeLink(decoded_name, file_uses);
 		};
 
-"class_link=\"{$name}\""->PrintLine();
+		# "class_link=\"{$name}\""->PrintLine();
 		return name;
 	}
 
@@ -311,7 +321,7 @@ class HtmlMaker {
 		class_link := ""; 
 		temp := "";
 
-# "=> {$decoded_name}"->PrintLine();
+		# "=> {$decoded_name}"->PrintLine();
 
 		each(c in decoded_name) {
 			if(c->IsChar() | c->IsDigit()) {
@@ -321,7 +331,6 @@ class HtmlMaker {
 				select(c) {
 					label '<': {
 						if(<>temp->IsEmpty()) {
-# "'{$temp}'"->PrintLine();
 							class_link += GetTypeLink(temp, file_uses);
 							temp := "";
 						};
@@ -330,7 +339,6 @@ class HtmlMaker {
 
 					label '[': {
 						if(<>temp->IsEmpty()) {
-# "'{$temp}'"->PrintLine();
 							class_link += GetTypeLink(temp, file_uses);
 							class_link += '[';
 							temp := "";
@@ -339,7 +347,6 @@ class HtmlMaker {
 
 					label '(': {
 						if(<>temp->IsEmpty()) {
-# "'{$temp}'"->PrintLine();
 							class_link += GetTypeLink(temp, file_uses);
 							temp := "";
 						};
@@ -348,7 +355,6 @@ class HtmlMaker {
 
 					label ',': {
 						if(<>temp->IsEmpty()) {
-# "'{$temp}'"->PrintLine();
 							class_link += GetTypeLink(temp, file_uses);
 							temp := "";
 						};
@@ -361,7 +367,6 @@ class HtmlMaker {
 
 					label '>': {
 						if(<>temp->IsEmpty()) {
-# "'{$temp}'"->PrintLine();
 							class_link += GetTypeLink(temp, file_uses);
 							temp := "";
 						};
@@ -370,7 +375,6 @@ class HtmlMaker {
 							
 					label ']': {
 						if(<>temp->IsEmpty()) {
-# "'{$temp}'"->PrintLine();
 							class_link += GetTypeLink(temp, file_uses);
 							temp := "";
 						};
@@ -379,7 +383,6 @@ class HtmlMaker {
 
 					label ')': {
 						if(<>temp->IsEmpty()) {
-# "'{$temp}'"->PrintLine();
 							class_link += GetTypeLink(temp, file_uses);
 							temp := "";
 						};
@@ -390,12 +393,11 @@ class HtmlMaker {
 		};
 
 		if(<>temp->IsEmpty()) {
-# "'{$temp}'"->PrintLine();
 			class_link += GetTypeLink(temp, file_uses);
 			temp := "";
 		};
 
-"class_link=\"{$class_link}\""->PrintLine();		
+		# "class_link=\"{$class_link}\""->PrintLine();		
 		return class_link;
 	}
 
@@ -407,7 +409,7 @@ class HtmlMaker {
 		html := html->ReplaceAll("@main", "");
 	
 		filename := GetEnumLink(enum_block, "../html/");
-# "=> {$filename}"->PrintLine();
+		# "=> {$filename}"->PrintLine();
 
 		out := FileWriter->New(filename);
 		out->WriteString(html);
