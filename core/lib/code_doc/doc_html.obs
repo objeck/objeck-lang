@@ -274,7 +274,18 @@ class HtmlMaker {
 			class_enum_key += "-&gt;";
 			class_enum_key += enum_value_str;
 
-"###: '{$class_enum_str}', '{$enum_value_str}', '{$class_enum_key}' ###"->PrintLine();
+			class_link := GetClassEnumLink(class_enum_str, file_uses);
+			if(class_link = Nil) {
+				class_link := String->New(class_enum_str);
+			};
+
+			enum_link := GetClassEnumLink(class_enum_key, file_uses);
+			if(enum_link = Nil) {
+				enum_link := String->New(enum_value_str);
+			};
+			
+			foo := class_link + "-&gt;" + enum_link;
+"###: '{$class_link}', '{$enum_link}' -> {$foo} ###"->PrintLine();
 		}
 		#
 		# class/enum
@@ -285,53 +296,12 @@ class HtmlMaker {
 				return GetComplexTypeLink(decoded_name, file_uses);
 			}
 			else {
-				# look through bundles
-				bundles := @parser->GetBundles();
-				
-				bundle_keys := bundles->GetKeys()<String>;
-				each(bundle_key in bundle_keys) {
-					# look at bundles that are in our scope
-					bundle_snippit := bundles->Find(bundle_key);
-					if(file_uses->Has(bundle_key)) {
-						# check classes
-						classes := bundle_snippit->GetClasses();
-						class_keys := classes->GetKeys()<String>;
-						each(class_key in class_keys) {
-# "class-check='{$class_enum_str}', key='{$class_key}'"->PrintLine();
-							# find class within the bundle scope
-							class_block := classes->Find(class_enum_str);
-							if(class_block <> Nil) {
-								class_link := "<a href='"
-								class_link += GetClassLink(class_block);
-								class_link += "'>";
-								class_link += class_enum_str;
-								class_link += "</a>";
-
-								# "class_link=\"{$class_link}\""->PrintLine();							
-								return class_link;
-							};
-						};
-
-						# check enums
-						enums := bundle_snippit->GetEnums();
-						enum_keys := enums->GetKeys()<String>;
-						each(enum_key in enum_keys) {
-"enum-check='{$class_enum_str}', key='{$enum_key}'"->PrintLine();							
-							# find enum within the bundle scope
-							enum_block := enums->Find(class_enum_str);
-							if(enum_block <> Nil) {
-								enum_link := "<a href='"
-								enum_link += GetEnumLink(enum_block);
-								enum_link += "'>";
-								enum_link += class_enum_str;
-								enum_link += "</a>";
-
-								# "enum_link=\"{$enum_link}\""->PrintLine();							
-								return enum_link;
-							};
-						};
-					};
+				class_enum_link := GetClassEnumLink(class_enum_str, file_uses);
+				if(class_enum_link <> Nil) {
+					return class_enum_link;
 				};
+
+				return name;
 			};
 		};
 
@@ -341,6 +311,65 @@ class HtmlMaker {
 
 		# "class_link=\"{$name}\""->PrintLine();
 		return name;
+	}
+
+	method : GetClassEnumLink(class_enum_str : String, file_uses : Set<String>) ~ String {
+		bundles := @parser->GetBundles();
+		
+		bundle_keys := bundles->GetKeys()<String>;
+		each(bundle_key in bundle_keys) {
+			# look at bundles that are in our scope
+			bundle_snippit := bundles->Find(bundle_key);
+			if(file_uses->Has(bundle_key)) {
+				# check classes
+				classes := bundle_snippit->GetClasses();
+				class_keys := classes->GetKeys()<String>;
+				each(class_key in class_keys) {
+# "class-check='{$class_enum_str}', key='{$class_key}'"->PrintLine();
+					
+					# find class within the bundle scope
+					class_block := classes->Find(class_enum_str);
+					if(class_block <> Nil) {
+						class_link := "<a href='"
+						class_link += GetClassLink(class_block);
+						class_link += "'>";
+						class_link += class_enum_str;
+						class_link += "</a>";
+
+						# "class_link=\"{$class_link}\""->PrintLine();							
+						return class_link;
+					};
+				};
+
+				# check enums
+				enums := bundle_snippit->GetEnums();
+				enum_keys := enums->GetKeys()<String>;
+				each(enum_key in enum_keys) {
+# "enum-check='{$class_enum_str}', key='{$enum_key}'"->PrintLine();							
+					
+					# find enum within the bundle scope
+					enum_block := enums->Find(class_enum_str);
+					if(enum_block <> Nil) {
+						class_enum_offset := class_enum_str->Find(';');
+						if(class_enum_offset > -1) {
+							class_enum_offset += 1;
+							class_enum_str := class_enum_str->SubString(class_enum_offset, class_enum_str->Size() - class_enum_offset);
+						};
+
+						enum_link := "<a href='"
+						enum_link += GetEnumLink(enum_block);
+						enum_link += "'>";
+						enum_link += class_enum_str;
+						enum_link += "</a>";
+
+						# "enum_link=\"{$enum_link}\""->PrintLine();							
+						return enum_link;
+					};
+				};
+			};
+		};
+
+		return Nil;
 	}
 
 	method : GetComplexTypeLink(decoded_name : String, file_uses : Set<String>) ~ String {
