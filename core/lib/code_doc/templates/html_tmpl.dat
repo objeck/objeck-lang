@@ -12,11 +12,13 @@
   </header>
 
   <div class="container">
+    
     @nav
 
     <main>
       
       <a href="#">All Bundles</a><hr/>
+
       @main
       
     </main>
