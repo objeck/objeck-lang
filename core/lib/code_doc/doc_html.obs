@@ -110,20 +110,27 @@ class HtmlMaker {
 		main_html += class_block->GetShortName();
 		main_html += "</h2><p>";
 		main_html += class_block->GetDesc();
-		main_html += "</p><h3>Operations</h3>";
+		main_html += "</p>"
 
-		main_html += "<ul>";
 		func_names := class_block->GetFunctionNames();
-		each(func_name in func_names) {
-			func_link := class_block->GetShortName()->ToLower() + '-' + func_name->ToLower();
-			
-			main_html += "<li><a href='#"
-			main_html += func_link;
-			main_html += "'>";
-			main_html += func_name;
-			main_html += "</a></li>";
+		if(<>func_names->IsEmpty()) {
+			main_html += "<h3>Operations</h3>";
+
+			main_html += "<ul>";
+			each(func_name in func_names) {
+				func_link := class_block->GetShortName()->ToLower() + '-' + func_name->ToLower();
+				
+				main_html += "<li><a href='#"
+				main_html += func_link;
+				main_html += "'>";
+				main_html += func_name;
+				main_html += "</a></li>";
+			};
+			main_html += "</ul>";
+		}
+		else {
+			main_html += "<h4>No Defined Operations</h4>";
 		};
-		main_html += "</ul>";
 
       	func_names := class_block->GetFunctionNames();
 		each(func_name in func_names) {
