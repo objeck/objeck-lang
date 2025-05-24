@@ -32,7 +32,7 @@
   <body>
     <header>
       <h1>Objeck</h1>
-      <div class="version">a programming language - v2025.5.0</div>
+      <div class="version">a programming language - @version</div>
     </header>
 
     <div class="container">
@@ -40,7 +40,7 @@
       @nav
 
       <main>
-        <a href="#">All Bundles</a><hr/>
+        <a href="index.html">All Bundles</a><hr/>
         @main
       </main>
     </div>
