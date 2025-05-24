@@ -288,7 +288,10 @@ class HtmlMaker {
 					if(class_block <> Nil) {
 						class_link := "<a href='"
 						class_link += GetClassLink(class_block);
-						class_link += "?scrollTo=collection.tuple'>";
+						
+						link_target := bundle_block->GetName()->ToLower();
+						class_link += "?scrollTo={$link_target}'>";
+						
 						class_link += class_enum_str;
 						class_link += "</a>";
 
@@ -365,7 +368,10 @@ class HtmlMaker {
 					if(class_block <> Nil) {
 						class_link := "<a href='"
 						class_link += GetClassLink(class_block);
-						class_link += "?scrollTo=collection.tuple'>";
+
+						link_target	:= bundle_snippit->GetName()->ToLower();
+						class_link += "?scrollTo={$link_target}'>";
+						
 						class_link += class_enum_str;
 						class_link += "</a>";
 
@@ -389,7 +395,10 @@ class HtmlMaker {
 
 						enum_link := "<a href='"
 						enum_link += GetEnumLink(enum_block);
-						enum_link += "?scrollTo=collection.tuple'>";
+
+						link_target := bundle_snippit->GetName()->ToLower();
+						enum_link += "?scrollTo={$link_target}'>";
+
 						enum_link += class_enum_str;
 						enum_link += "</a>";
 
@@ -492,7 +501,7 @@ class HtmlMaker {
 	~#
 	method : CreateNav(bundles : Map<String, BundleSnippet>) ~ String {
 		html := "<nav id='side-nav'>";
-		
+
 		# process bundles
 		bundle_keys := bundles->GetKeys()<String>;
 		each(i : bundle_keys) {
