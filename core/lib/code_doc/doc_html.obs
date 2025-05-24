@@ -58,9 +58,9 @@ class HtmlMaker {
 
 		bundle_keys := bundles->GetKeys()<String>;
 
-		"Write files: ["->Print();
+		"Writing doc files: ["->Print();
 		each(i : bundle_keys) {
-			'.'->Print();
+			'#'->Print();
 
 			@bundle_snippit := bundles->Find(bundle_keys->Get(i));
 
