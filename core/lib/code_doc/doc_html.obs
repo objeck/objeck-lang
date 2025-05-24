@@ -59,7 +59,9 @@ class HtmlMaker {
 			@bundle_snippit := bundles->Find(bundle_keys->Get(i));
 
 			# get file uses
-			file_uses := @parser->GetFileUses(@bundle_snippit->GetFileName())<String>;
+			filename := @bundle_snippit->GetFileName();
+"filename='{$filename}'"->PrintLine();			
+			file_uses := @parser->GetFileUses(filename)<String>;
 
 			# process classes
 			classes := @bundle_snippit->GetClasses();
@@ -134,8 +136,6 @@ class HtmlMaker {
       			main_html += "</p><code>"
       			main_html += func_sig;
       			main_html += "</code>";
-
-
       			# write parameters
 
       			param_tags := func->GetParamTags();
@@ -170,7 +170,7 @@ class HtmlMaker {
 	      			main_html += "</table></p>";
 	      		};
 
-	      		if(func->GetReturnTag() <> Nil) {
+	      		if(func->GetReturnTag() <> Nil & func->GetReturnType() <> Nil) {
 	      			main_html += "<p>Return<table><tr><th>Type</th><th>Description</th></tr>";
 
 	      			rtrn_type_name := func->GetReturnType()->GetTypeName();
@@ -186,7 +186,6 @@ class HtmlMaker {
 
 	      			main_html += "</table></p>";
 	      		};
-
 	      		main_html += "</p><br/></div>";
 			}
 		};
@@ -535,11 +534,14 @@ class HtmlMaker {
 				enum_keys := enums->GetKeys()<String>;
 				each(j : enum_keys) {
 					enum_block := enums->Find(enum_keys->Get(j));
-					if(enum_block <> Nil) {
-						html += "<li>";
+					if(enum_block->IsParsed()) {
+						html += "<li><a href='";
+						link_name := GetEnumLink(enum_block);
+
+						html->Append(link_name);
+						html += "' target='main'>";
 						html->Append(enum_block->GetName());
-						html += "</li>";
-						
+						html += "</a></li>";
 					};
 				};
 				

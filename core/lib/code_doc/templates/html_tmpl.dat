@@ -1,27 +1,42 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Objeck Documentation</title>
-  <link rel="stylesheet" href="style.css" />
-  <body>
-  <header>
-    <h1>Objeck</h1>
-    <div class="version">a programming language — v2025.5.0</div>
-  </header>
-
-  <div class="container">
+  
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Objeck Documentation</title>
+    <link rel="stylesheet" href="style.css" />
     
-    @nav
+    <script>
+      function scrollToNavSection(id) {
+        const nav = document.getElementById('side-nav');
+        const target = document.getElementById(id);
+        if (nav && target) {
+          const topPos = target.offsetTop;
+          nav.scrollTo({
+            top: topPos,
+            behavior: 'smooth'
+          });
+        }
+      }
+    </script>
+  </head>
 
-    <main>
-      
-      <a href="#">All Bundles</a><hr/>
+  <body>
+    <header>
+      <h1>Objeck</h1>
+      <div class="version">a programming language — v2025.5.0</div>
+    </header>
 
-      @main
-      
-    </main>
-  </div>
-</body>
+    <div class="container">
+    
+      @nav
+
+      <main>
+        <a href="#">All Bundles</a><hr/>
+        @main
+      </main>
+    </div>
+  </body>
+
 </html>
