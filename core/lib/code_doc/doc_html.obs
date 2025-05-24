@@ -543,7 +543,7 @@ class HtmlMaker {
 		# write file	
 		html := html->ReplaceAll("@main", main_html);
 
-		filename := "../html/bundles.html";
+		filename := "../html/index.html";
 		# "=> {$filename}"->PrintLine();
 
 		out := FileWriter->New(filename);
