@@ -4025,11 +4025,7 @@ bundle System {
 			@func := func;
 		}
 	}
-
-	# Unique ID for each class
-	enum ClassID {
-	}
-
+	
 	#~
 	Base class for all objects
 	~#	
@@ -4054,7 +4050,7 @@ bundle System {
 		Returns the unique class ID
 		@return unique class ID
 		~#
-		method : public : GetClassID() ~ ClassID {
+		method : public : GetClassID() ~ Int {
 			LOAD_CLS_INST_ID;
 		}
 
