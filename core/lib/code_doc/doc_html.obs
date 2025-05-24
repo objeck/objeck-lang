@@ -95,7 +95,8 @@ class HtmlMaker {
 	~#
 	method : CreateClassHtml(class_block : ClassSnippet, file_uses : Set<String>, nav_html : String, template_html : String) ~ Nil {
 		# set nav
-		html := template_html->ReplaceAll("@nav", nav_html);
+		html := template_html->ReplaceAll("@version", @version);
+		html := html->ReplaceAll("@nav", nav_html);
 
 		# set main
 		main_html := "<h2>";
@@ -210,7 +211,8 @@ class HtmlMaker {
 	~#
 	method : CreateEnumHtml(enum_block : EnumConstSnippet, file_uses : Set<String>, nav_html : String, template_html : String) ~ Nil {
 		# set nav
-		html := template_html->ReplaceAll("@nav", nav_html);
+		html := template_html->ReplaceAll("@version", @version);
+		html := html->ReplaceAll("@nav", nav_html);
 		
 		# set main
 		main_html := "<h2>";
@@ -506,7 +508,8 @@ class HtmlMaker {
 	~#
 	method : CreateBundles(bundles : Map<String, BundleSnippet>, nav_html : String, template_html : String) ~ Nil {
 		# set nav
-		html := template_html->ReplaceAll("@nav", nav_html);
+		html := template_html->ReplaceAll("@version", @version);
+		html := html->ReplaceAll("@nav", nav_html);
 
 		# set main
 		main_html := "<p>Parameters<table></p><tr><th>Name</th><th>Description</th>";
@@ -523,11 +526,8 @@ class HtmlMaker {
 				block_name := bundle_block->GetName();
 
 				link_target := bundle_block->GetName()->ToLower();
-				link_ref := "?scrollTo={$link_target}";
-
 				main_html += "<td><a href='";
-				main_html += link_ref;
-				main_html += "'</a>";
+				main_html += "?scrollTo={$link_target}'</a>";
 	  			main_html += block_name;
 	  			main_html += "</td>";
 	  			
