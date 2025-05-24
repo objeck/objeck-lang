@@ -18,6 +18,15 @@ body {
   height: 100vh;
 }
 
+#side-nav li {
+  margin-bottom: 2px;  /* reduce spacing between nav items */
+  line-height: 1.1;    /* tighten text line spacing if needed */
+}
+
+#side-nav ul {
+  margin-bottom: 0.5em; /* reduce spacing between section groups */
+}
+
 header {
   position: fixed;
   top: 0;
