@@ -321,7 +321,7 @@ class HtmlMaker {
 			
 			enum_link_str := class_link + "-&gt;" + enum_link;
 			# "enum_link=\"{$enum_link_str}\""->PrintLine();
-			
+
 			return enum_link_str;
 		}
 		#
@@ -523,10 +523,12 @@ class HtmlMaker {
 					class_block := classes->Find(class_keys->Get(j));
 					if(class_block->IsParsed()) {
 						html += "<li><a href='";
-						link_name := GetClassLink(class_block);
 
+						link_name := GetClassLink(class_block);
 						html->Append(link_name);
-						html += "' target='main'>";
+
+						link_target := bundle_block->GetName()->ToLower();
+						html += "?scrollTo={$link_target} target='main'>";
 						if(class_block->IsInterface()) {
 							html->Append("<i>");
 							html->Append(class_block->GetName());
