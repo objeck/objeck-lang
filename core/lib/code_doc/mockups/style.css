@@ -92,7 +92,9 @@ main {
 }
 
 h1 {
+  font-size: 2.15rem;
   margin-top: 0;
+  margin-bottom: 0.2rem; /* reduce space below the heading */
 }
 
 h2 {
