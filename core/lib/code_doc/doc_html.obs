@@ -54,6 +54,8 @@ class HtmlMaker {
 		bundles := @parser->GetBundles();
 		nav_html := CreateNav(bundles);
 
+		CreateBundles(bundles, nav_html, template_html);
+
 		bundle_keys := bundles->GetKeys()<String>;
 		each(i : bundle_keys) {
 			@bundle_snippit := bundles->Find(bundle_keys->Get(i));
@@ -142,9 +144,11 @@ class HtmlMaker {
 				param_names := func->GetParams();
 
 				if(<>param_names->IsEmpty()) {
-	      			main_html += "<p>Parameters<table><tr><th>Name</th><th>Type</th><th>Description</th></tr>";
+	      			main_html += "<p>Parameters</p><table><tr><th>Name</th><th>Type</th><th>Description</th>";
 
 					each(param in param_names) {
+						main_html += "</tr>";
+
 						param_tag := param_tags->Find(param->GetName())->As(SnippetTag);
 						if(param_tag <> Nil & <>param_tag->IsIgnore()) {	      				
 		      				param_name := param_tag->GetName();
@@ -500,6 +504,56 @@ class HtmlMaker {
 	#~
 	DOC ME
 	~#
+	method : CreateBundles(bundles : Map<String, BundleSnippet>, nav_html : String, template_html : String) ~ Nil {
+		# set nav
+		html := template_html->ReplaceAll("@nav", nav_html);
+
+		# set main
+		main_html := "<p>Parameters<table></p><tr><th>Name</th><th>Description</th>";
+
+
+		# process bundles
+		bundle_keys := bundles->GetKeys()<String>;
+		each(i : bundle_keys) {
+			main_html += "<tr>";
+
+			bundle_block := bundles->Find(bundle_keys->Get(i));
+			if(bundle_block->IsParsed()) {
+				link_target := bundle_block->GetName()->ToLower();
+				block_name := bundle_block->GetName();
+
+				link_target := bundle_block->GetName()->ToLower();
+				link_ref := "?scrollTo={$link_target}";
+
+				main_html += "<td><a href='";
+				main_html += link_ref;
+				main_html += "'</a>";
+	  			main_html += block_name;
+	  			main_html += "</td>";
+	  			
+	  			main_html += "<td>";
+	  			main_html += bundle_block->GetDesc();
+			  	main_html += "</td>";
+			};
+
+			main_html += "</tr>";
+		};
+		main_html += "</table>";
+
+		# write file	
+		html := html->ReplaceAll("@main", main_html);
+
+		filename := "../html/bundles.html";
+		# "=> {$filename}"->PrintLine();
+
+		out := FileWriter->New(filename);
+		out->WriteString(html);
+		out->Close();
+	}
+
+	#~
+	DOC ME
+	~#
 	method : CreateNav(bundles : Map<String, BundleSnippet>) ~ String {
 		html := "<nav id='side-nav'>";
 
@@ -528,7 +582,7 @@ class HtmlMaker {
 						html->Append(link_name);
 
 						link_target := bundle_block->GetName()->ToLower();
-						html += "?scrollTo={$link_target}' target='main'>";
+						html += "?scrollTo={$link_target}'>";
 						if(class_block->IsInterface()) {
 							html->Append("<i>");
 							html->Append(class_block->GetName());
