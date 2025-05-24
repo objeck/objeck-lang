@@ -13,15 +13,15 @@
 
   <div class="container">
     
-    <nav>
-      @nav
-    </nav>
+    @nav
 
     <main>
+      
       <a href="#">All Bundles</a><hr/>
-      @main
-    </main>
 
+      @main
+      
+    </main>
   </div>
 </body>
 </html>

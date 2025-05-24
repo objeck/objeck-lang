@@ -1,0 +1,105 @@
+use System.IO.Filesystem;
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() = 1) {
+			file_reader := FileReader->New(args[0]);
+
+			line := file_reader->ReadLine();
+			while(line <> Nil) {
+				if(<>line->IsEmpty()) {
+					ParseSection(line);
+				};
+				line := file_reader->ReadLine();
+			};
+
+			file_reader->Close();
+		};
+	}
+
+	function : ParseSection(section : String) ~ Nil {
+		buffer := "";
+
+		"=> {$section}"->PrintLine();
+
+		type : String;
+
+		each(c in section) {
+			if(c->IsChar() | c->IsDigit()) {
+				buffer += c;
+			}
+			else {
+				select(c) {
+					label '<': {
+						if(<>buffer->IsEmpty()) {
+							buffer->PrintLine();
+							buffer := "";
+						};
+
+						type := "generic";
+					}
+
+					label '[': {
+						if(<>buffer->IsEmpty()) {
+							buffer->PrintLine();
+							buffer := "";
+						};
+					}
+
+					label '(': {
+						if(<>buffer->IsEmpty()) {
+							buffer->PrintLine();
+							buffer := "";
+						};
+
+						type := "func";
+					}
+
+					label ',': {
+						if(<>buffer->IsEmpty()) {
+							"{$type}={$buffer}"->PrintLine();
+							buffer := "";
+						};
+					}
+
+					label '~': {
+						type := "return";
+					}
+
+					label '>': {
+						if(<>buffer->IsEmpty()) {
+							"{$type}={$buffer}"->PrintLine();
+							buffer := "";
+						};
+					}
+							
+					label ']': {
+						if(<>buffer->IsEmpty()) {
+							"{$type}={$buffer}"->PrintLine();
+							buffer := "";
+						};
+					}
+
+					label ')': {
+						if(<>buffer->IsEmpty()) {
+							"{$type}={$buffer}"->PrintLine();
+							buffer := "";
+						};
+					}
+				};
+			};
+		};
+
+		if(<>buffer->IsEmpty()) {
+			if(type <> Nil) {
+				"{$type}={$buffer}"->PrintLine();
+			}
+			else {
+				"class/enum={$buffer}"->PrintLine();
+			}
+			buffer := "";
+		};
+
+		"---"->PrintLine();
+	}
+}

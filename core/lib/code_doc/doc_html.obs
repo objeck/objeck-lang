@@ -59,7 +59,7 @@ class HtmlMaker {
 			@bundle_snippit := bundles->Find(bundle_keys->Get(i));
 
 			# get file uses
-			file_uses := @parser->GetFileUses(@bundle_snippit->GetFileName())->GetKeys()<String>;
+			file_uses := @parser->GetFileUses(@bundle_snippit->GetFileName())<String>;
 
 			# process classes
 			classes := @bundle_snippit->GetClasses();
@@ -89,14 +89,16 @@ class HtmlMaker {
 	#~
 	DOC ME
 	~#
-	method : CreateClassHtml(class_block : ClassSnippet, file_uses : Vector<String>, nav_html : String, template_html : String) ~ Nil {
+	method : CreateClassHtml(class_block : ClassSnippet, file_uses : Set<String>, nav_html : String, template_html : String) ~ Nil {
 		# set nav
 		html := template_html->ReplaceAll("@nav", nav_html);
 
 		# set main
 		main_html := "<h2>";
 		main_html += class_block->GetShortName();
-		main_html += "</h2>";
+		main_html += "</h2><p>";
+		main_html += class_block->GetDesc();
+		main_html += "</p><h3>Operations</h3>";
 
 		main_html += "<ul>";
 		func_names := class_block->GetFunctionNames();
@@ -153,10 +155,9 @@ class HtmlMaker {
 			      			main_html += param_name;
 			      			main_html += "</td>";
 			      			
-			      			type_link := GetTypeLink(param_type_name, file_uses);
-			      			main_html += "<td><a href='{$type_link}' target='main'>";
-			      			main_html += param_type_name;
-			      			main_html += "</a></td>";
+			      			main_html += "<td>";
+			      			main_html += GetTypeLink(param_type_name, file_uses);
+			      			main_html += "</td>";
 			      			
 			      			main_html += "<td>";
 			      			main_html += param_type_desc;
@@ -175,9 +176,9 @@ class HtmlMaker {
 	      			rtrn_type_name := func->GetReturnType()->GetTypeName();
       				rtrn_desc := func->GetReturnTag()->GetDesc();
 
-	      			main_html += "<td><a href='system-int.html' target='main'>";
-	      			main_html += rtrn_type_name;
-	      			main_html += "</a></td>";
+	      			main_html += "<td>";
+	      			main_html += GetTypeLink(rtrn_type_name, file_uses); ;
+	      			main_html += "</td>";
 
 	      			main_html += "<td>";
 	      			main_html += rtrn_desc;
@@ -194,20 +195,54 @@ class HtmlMaker {
 		html := html->ReplaceAll("@main", main_html);
 
 		filename := GetClassLink(class_block, "../html/");
-# "=> {$filename}"->PrintLine();
+		# "=> {$filename}"->PrintLine();
 
 		out := FileWriter->New(filename);
 		out->WriteString(html);
 		out->Close();
 	}
 
-	method : GetTypeLink(name : String, file_uses : Vector<String>) ~ String {
-		decoded_name := name->ReplaceAll("&lt;", "<");
-		decoded_name := decoded_name->ReplaceAll("&gt;", ">");
-# "type-name: '{$decoded_name}'"->PrintLine();
+	#~
+	DOC ME
+	~#
+	method : CreateEnumHtml(enum_block : EnumConstSnippet, file_uses : Set<String>, nav_html : String, template_html : String) ~ Nil {
+		# set nav
+		html := template_html->ReplaceAll("@nav", nav_html);
 		
-		# top level parsing
-		bundle_str : String; class_enum_str : String; enum_value_str : String;
+		# set main
+		main_html := "<h2>";
+		main_html += enum_block->GetName();
+		main_html += "</h2><p>";
+		main_html += enum_block->GetDesc();
+		main_html += "</p><h3>Items</h3><ul>";
+
+		enum_items := enum_block->GetItems();
+		each(enum_item in enum_items) {
+			main_html += "<li>";
+			main_html += enum_item;
+			main_html += "</li>";
+		};
+
+		# write file	
+		html := html->ReplaceAll("@main", main_html);
+
+		filename := GetEnumLink(enum_block, "../html/");
+		# "=> {$filename}"->PrintLine();
+
+		out := FileWriter->New(filename);
+		out->WriteString(html);
+		out->Close();
+	}
+
+	method : GetTypeLink(name : String, file_uses : Set<String>) ~ String {
+		decoded_name := name->ReplaceAll("&lt;", "<")->ReplaceAll("&gt;", ">");
+		# "type-name: '{$decoded_name}'"->PrintLine();
+		
+		bundle_str : String; 
+		class_enum_str : String; 
+		enum_value_str : String;
+
+		# parse bundle and class/enum
 		class_index := decoded_name->Find('.');
 		if(class_index > -1) {
 			bundle_str := decoded_name->SubString(class_index);
@@ -215,6 +250,7 @@ class HtmlMaker {
 			class_enum_str := decoded_name->SubString(class_index, decoded_name->Size() - class_index);
 		}
 		else {
+			# parse class with enum
 			enum_index := class_index := decoded_name->Find("->");
 			if(enum_index > -1) {
 				class_enum_str := decoded_name->SubString(enum_index);
@@ -222,7 +258,7 @@ class HtmlMaker {
 				enum_value_str := decoded_name->SubString(enum_index, decoded_name->Size() - enum_index);
 			}
 			else {
-				class_enum_str :=decoded_name;
+				class_enum_str := decoded_name;
 			};
 		};
 
@@ -234,11 +270,10 @@ class HtmlMaker {
 			class_enum_str := temp_str;
 		};
 
-# TODO: support for function parameter types
-# TODO: support for generics
-
-		# bundle and class name
-		if(bundle_str <> Nil & class_enum_str <> Nil) {
+		#
+		# bundle and class/enum
+		#
+		if(bundle_str <> Nil & class_enum_str <> Nil & enum_value_str = Nil) {
 			bundles := @parser->GetBundles();
 
 			bundle_block := bundles->Find(bundle_str);
@@ -247,8 +282,7 @@ class HtmlMaker {
 
 				generic_index := class_enum_str->Find('<');
 				if(generic_index > -1) {
-					generics_str := class_enum_str->SubString(generic_index, class_enum_str->Size() - generic_index)
-# "generics_str='{$generics_str}'"->PrintLine();
+					return GetComplexTypeLink(decoded_name, file_uses);
 				}
 				else {
 					class_block := classes->Find(class_enum_str);
@@ -258,77 +292,200 @@ class HtmlMaker {
 						class_link += "'>";
 						class_link += class_enum_str;
 						class_link += "</a>";
-# "class_link='{$class_link}', array_dim={$array_dim}"->PrintLine();
-						
+
+						# "class_link=\"{$class_link}\""->PrintLine();
 						return class_link;
-					}
-					else {
-# "### Unable to find class: {$class_enum_str} ###"->PrintLine();
-						return name;
-					};
+					};					
 				};
-			}				
-			else {
-# "### Unable to find bundle: {$bundle_str} ###"->PrintLine();
-				return name;
 			};
 		}
+		#
+		# class with enum
+		#
+		else if(class_enum_str <> Nil & enum_value_str <> Nil) {
+			class_enum_key := class_enum_str->Copy();
+			class_enum_key += "-&gt;";
+			class_enum_key += enum_value_str;
+
+			class_link := GetClassEnumLink(class_enum_str, file_uses);
+			if(class_link = Nil) {
+				class_link := String->New(class_enum_str);
+			};
+
+			enum_link := GetClassEnumLink(class_enum_key, file_uses);
+			if(enum_link = Nil) {
+				enum_link := String->New(enum_value_str);
+			};
+			
+			enum_link_str := class_link + "-&gt;" + enum_link;
+"enum_link=\"{$enum_link_str}\""->PrintLine();
+			return enum_link_str;
+		}
+		#
+		# class/enum
+		#
 		else if(class_enum_str <> Nil) {
 			generic_index := class_enum_str->Find('<');
 			if(generic_index > -1) {
-				generic_index += 1;
-				generics_str := class_enum_str->SubString(generic_index, class_enum_str->Size() - generic_index - 1)
-"generics_str='{$generics_str}'"->PrintLine();
+				return GetComplexTypeLink(decoded_name, file_uses);
 			}
 			else {
-				bundles := @parser->GetBundles();
-				bundle_keys := bundles->GetKeys()<String>;
-"look_for='{$class_enum_str}'"->PrintLine();
-				each(bundle_key in bundle_keys) {
-					bundle_snippit := bundles->Find(bundle_key);
-					classes := bundle_snippit->GetClasses();
-					class_keys := classes->GetKeys()<String>;
-					each(class_key in class_keys) {
-						class_block := classes->Find(class_enum_str);
-						if(class_block <> Nil) {
-							class_link := "<a href='"
-							class_link += GetClassLink(class_block);
-							class_link += "'>";
-							class_link += class_enum_str;
-							class_link += "</a>";
-"class_link='{$class_link}', array_dim={$array_dim}"->PrintLine();
-						
-							return class_link;
-						}
-						else {
-							return name;
+				class_enum_link := GetClassEnumLink(class_enum_str, file_uses);
+				if(class_enum_link <> Nil) {
+					return class_enum_link;
+				};
+
+				return name;
+			};
+		};
+
+		if(decoded_name->Has('<') | decoded_name->Has('[') | decoded_name->Has('~') | decoded_name->Has(',')) {
+			return GetComplexTypeLink(decoded_name, file_uses);
+		};
+
+		# "class_link=\"{$name}\""->PrintLine();
+		return name;
+	}
+
+	method : GetClassEnumLink(class_enum_str : String, file_uses : Set<String>) ~ String {
+		bundles := @parser->GetBundles();
+		
+		bundle_keys := bundles->GetKeys()<String>;
+		each(bundle_key in bundle_keys) {
+			# look at bundles that are in our scope
+			bundle_snippit := bundles->Find(bundle_key);
+			if(file_uses->Has(bundle_key)) {
+				# check classes
+				classes := bundle_snippit->GetClasses();
+				class_keys := classes->GetKeys()<String>;
+				each(class_key in class_keys) {
+					# "class-check='{$class_enum_str}', key='{$class_key}'"->PrintLine();
+					
+					# find class within the bundle scope
+					class_block := classes->Find(class_enum_str);
+					if(class_block <> Nil) {
+						class_link := "<a href='"
+						class_link += GetClassLink(class_block);
+						class_link += "'>";
+						class_link += class_enum_str;
+						class_link += "</a>";
+
+						# "class_link=\"{$class_link}\""->PrintLine();							
+						return class_link;
+					};
+				};
+
+				# check enums
+				enums := bundle_snippit->GetEnums();
+				enum_keys := enums->GetKeys()<String>;
+				each(enum_key in enum_keys) {					
+					# find enum within the bundle scope
+					enum_block := enums->Find(class_enum_str);
+					if(enum_block <> Nil) {
+						class_enum_offset := class_enum_str->Find(';');
+						if(class_enum_offset > -1) {
+							class_enum_offset += 1;
+							class_enum_str := class_enum_str->SubString(class_enum_offset, class_enum_str->Size() - class_enum_offset);
 						};
+
+						enum_link := "<a href='"
+						enum_link += GetEnumLink(enum_block);
+						enum_link += "'>";
+						enum_link += class_enum_str;
+						enum_link += "</a>";
+
+						# "enum_link=\"{$enum_link}\""->PrintLine();							
+						return enum_link;
 					};
 				};
 			};
-# "class_enum_str='{$class_enum_str}', array_dim={$array_dim}\n(apply bundle uses, lookup class)\n---"->PrintLine();
 		};
 
-		if(enum_value_str <> Nil) {
-# "enum_value_str='{$enum_value_str}', array_dim={$array_dim}\n---"->PrintLine();
-		};
-
-		return name;
+		return Nil;
 	}
-	
-	#~
-	DOC ME
-	~#
-	method : CreateEnumHtml(enum_block : EnumConstSnippet, file_uses : Vector<String>, nav_html : String, template_html : String) ~ Nil {
-		html := template_html->ReplaceAll("@nav", nav_html);
-		html := html->ReplaceAll("@main", "");
-	
-		filename := GetEnumLink(enum_block, "../html/");
-# "=> {$filename}"->PrintLine();
 
-		out := FileWriter->New(filename);
-		out->WriteString(html);
-		out->Close();
+	method : GetComplexTypeLink(decoded_name : String, file_uses : Set<String>) ~ String {
+		class_link := ""; 
+		temp := "";
+
+		# "=> {$decoded_name}"->PrintLine();
+
+		each(c in decoded_name) {
+			if(c->IsChar() | c->IsDigit()) {
+				temp += c;
+			}
+			else {
+				select(c) {
+					label '<': {
+						if(<>temp->IsEmpty()) {
+							class_link += GetTypeLink(temp, file_uses);
+							temp := "";
+						};
+						class_link += "&lt;";
+					}
+
+					label '[': {
+						if(<>temp->IsEmpty()) {
+							class_link += GetTypeLink(temp, file_uses);
+							class_link += '[';
+							temp := "";
+						};
+					}
+
+					label '(': {
+						if(<>temp->IsEmpty()) {
+							class_link += GetTypeLink(temp, file_uses);
+							temp := "";
+						};
+						class_link += '(';
+					}
+
+					label ',': {
+						if(<>temp->IsEmpty()) {
+							class_link += GetTypeLink(temp, file_uses);
+							temp := "";
+						};
+						class_link += ',';
+					}
+
+					label '~': {
+						class_link += '~';
+					}
+
+					label '>': {
+						if(<>temp->IsEmpty()) {
+							class_link += GetTypeLink(temp, file_uses);
+							temp := "";
+						};
+						class_link += "&gt;";
+					}
+							
+					label ']': {
+						if(<>temp->IsEmpty()) {
+							class_link += GetTypeLink(temp, file_uses);
+							temp := "";
+						};
+						class_link += ']';
+					}
+
+					label ')': {
+						if(<>temp->IsEmpty()) {
+							class_link += GetTypeLink(temp, file_uses);
+							temp := "";
+						};
+						class_link += ')';
+					}
+				};
+			};
+		};
+
+		if(<>temp->IsEmpty()) {
+			class_link += GetTypeLink(temp, file_uses);
+			temp := "";
+		};
+
+		# "class_link=\"{$class_link}\""->PrintLine();		
+		return class_link;
 	}
 
 	#~
@@ -379,14 +536,9 @@ class HtmlMaker {
 				each(j : enum_keys) {
 					enum_block := enums->Find(enum_keys->Get(j));
 					if(enum_block <> Nil) {
-						html += "<li><a href='";
-						link_name := GetEnumLink(enum_block);
-
-						html->Append(link_name);
-						html += "' target='main'>";
+						html += "<li>";
 						html->Append(enum_block->GetName());
-						html->Append(" (#)");
-						html += "</a></li>";
+						html += "</li>";
 						
 					};
 				};
