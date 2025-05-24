@@ -26,13 +26,10 @@ class SnippetParser {
 	@file_uses_cache : Hash<String, Set<String>>;
 	
 	New(files : String[]) {
-		@files := files;	
-	
+		@files := files;
 		@bundles := Map->New()<String, BundleSnippet>;
 		@file_uses := MultiMap->New()<String, BundleSnippet>;
 		@file_uses_cache := Hash->New()<String, Set<String>>;
-	
-		@level := 0;
 	}
 
 	method : public : GetFileUses(filename : String) ~ Set<String> {

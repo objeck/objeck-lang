@@ -528,7 +528,7 @@ class HtmlMaker {
 						html->Append(link_name);
 
 						link_target := bundle_block->GetName()->ToLower();
-						html += "?scrollTo={$link_target} target='main'>";
+						html += "?scrollTo={$link_target}' target='main'>";
 						if(class_block->IsInterface()) {
 							html->Append("<i>");
 							html->Append(class_block->GetName());
