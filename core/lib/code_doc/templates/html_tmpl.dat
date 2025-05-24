@@ -7,19 +7,21 @@
     <title>Objeck Documentation</title>
     <link rel="stylesheet" href="style.css" />
     
-    <script>
-      function scrollToNavSection(id) {
+    <script>      
+      window.addEventListener('DOMContentLoaded', () => {
+        const params = new URLSearchParams(window.location.search);
+        const targetId = params.get('scrollTo');
         const nav = document.getElementById('side-nav');
-        const target = document.getElementById(id);
+        const target = document.getElementById(targetId);
         if (nav && target) {
-          const topPos = target.offsetTop;
           nav.scrollTo({
-            top: topPos,
+            top: target.offsetTop,
             behavior: 'smooth'
           });
         }
-      }
+      });
     </script>
+    
   </head>
 
   <body>
