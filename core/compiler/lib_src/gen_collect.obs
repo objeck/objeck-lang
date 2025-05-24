@@ -1829,7 +1829,7 @@ queue->Front()->PrintLine();
 
 	    #~
 		Gets the value that's currently pointed to
-		@return value value
+		@return current value
 		~#
 		method : public : Get() ~ H {
 			return @node->Get();

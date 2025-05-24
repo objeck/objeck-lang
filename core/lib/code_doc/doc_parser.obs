@@ -21,31 +21,41 @@ class SnippetParser {
 	@bundle_block : BundleSnippet;
 	@in_comment : Bool;
 	@in_lit : Bool;
+
 	@file_uses : MultiMap<String, BundleSnippet>;
+	@file_uses_cache : Hash<String, Set<String>>;
 	
 	New(files : String[]) {
 		@files := files;	
+	
 		@bundles := Map->New()<String, BundleSnippet>;
 		@file_uses := MultiMap->New()<String, BundleSnippet>;
+		@file_uses_cache := Hash->New()<String, Set<String>>;
+	
 		@level := 0;
 	}
 
 	method : public : GetFileUses(filename : String) ~ Set<String> {
-		file_uses := Set->New()<String>;
+		file_uses := @file_uses_cache->Find(filename)<String>;
+		if(file_uses = Nil) {
+			file_uses := Set->New()<String>;
 
-		file_uses->Insert("Collection");
-		file_uses->Insert("System");
+			file_uses->Insert("Collection");
+			file_uses->Insert("System");
 
-		file_bundles := @file_uses->Find(filename)<BundleSnippet>;
-		if(file_bundles <> Nil) {
-			each(file_bundle in file_bundles) {
-				file_uses->Insert(file_bundle->GetName());
+			file_bundles := @file_uses->Find(filename)<BundleSnippet>;
+			if(file_bundles <> Nil) {
+				each(file_bundle in file_bundles) {
+					file_uses->Insert(file_bundle->GetName());
 
-				bundle_uses := file_bundle->GetUses();
-				each(bundle_use in bundle_uses) {
-					file_uses->Insert(bundle_use);
-				};
-			}
+					bundle_uses := file_bundle->GetUses();
+					each(bundle_use in bundle_uses) {
+						file_uses->Insert(bundle_use);
+					};
+				}
+			};
+
+			@file_uses_cache->Insert(filename, file_uses);
 		};
 
 		return file_uses;
