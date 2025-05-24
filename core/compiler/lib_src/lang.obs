@@ -4025,7 +4025,7 @@ bundle System {
 			@func := func;
 		}
 	}
-	
+
 	#~
 	Base class for all objects
 	~#	
@@ -7266,7 +7266,7 @@ class Counter from System.Concurrency.Thread {
 		
 		#~
 		Returns the thread's name
-		@param thread's name
+		@return thread's name
 		~#
 		method : public : GetName() ~ String {
 			return @name;
@@ -7274,7 +7274,7 @@ class Counter from System.Concurrency.Thread {
 		
 		#~
 		Returns a unique execution ID
-		@param execution ID
+		@return execution ID
 		~#
 		method : public : GetExecuteID() ~ Int {
 			return @id;
