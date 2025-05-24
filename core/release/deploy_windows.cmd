@@ -211,7 +211,7 @@ if [%1] == [arm64] (
 )
 
 if [%1] == [x64] (
-	call code_doc64.cmd x64
+	call code_doc64.cmd x64 deploy
 	rmdir /s /q x64
 )
 
