@@ -57,12 +57,18 @@ class HtmlMaker {
 		CreateBundles(bundles, nav_html, template_html);
 
 		bundle_keys := bundles->GetKeys()<String>;
+
+		"Write files: ["->Print();
 		each(i : bundle_keys) {
+			'.'->Print();
+
 			@bundle_snippit := bundles->Find(bundle_keys->Get(i));
 
 			# get file uses
 			filename := @bundle_snippit->GetFileName();
-"filename='{$filename}'"->PrintLine();			
+			
+			# "filename='{$filename}'"->PrintLine();
+			
 			file_uses := @parser->GetFileUses(filename)<String>;
 
 			# process classes
@@ -86,6 +92,7 @@ class HtmlMaker {
 				};
 			};			
 		};
+		"]\n"->Print();
 		
 		return true;
 	}
