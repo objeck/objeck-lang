@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Objeck Documentation</title>
     <link rel="stylesheet" href="style.css" />
-    
+
     <script>      
       window.addEventListener('DOMContentLoaded', () => {
         const params = new URLSearchParams(window.location.search);
@@ -14,20 +14,25 @@
         const nav = document.getElementById('side-nav');
         const target = document.getElementById(targetId);
         if (nav && target) {
+          
+          const offset = 100;
+          const scrollTop = target.offsetTop - offset;
+
           nav.scrollTo({
-            top: target.offsetTop,
+            top: scrollTop < 0 ? 0 : scrollTop,
             behavior: 'smooth'
           });
+
         }
       });
     </script>
-    
+
   </head>
 
   <body>
     <header>
       <h1>Objeck</h1>
-      <div class="version">a programming language — v2025.5.0</div>
+      <div class="version">a programming language - v2025.5.0</div>
     </header>
 
     <div class="container">
