@@ -320,7 +320,8 @@ class HtmlMaker {
 			};
 			
 			enum_link_str := class_link + "-&gt;" + enum_link;
-"enum_link=\"{$enum_link_str}\""->PrintLine();
+			# "enum_link=\"{$enum_link_str}\""->PrintLine();
+			
 			return enum_link_str;
 		}
 		#
