@@ -288,7 +288,7 @@ class HtmlMaker {
 					if(class_block <> Nil) {
 						class_link := "<a href='"
 						class_link += GetClassLink(class_block);
-						class_link += "'>";
+						class_link += "?scrollTo=collection.tuple'>";
 						class_link += class_enum_str;
 						class_link += "</a>";
 
@@ -365,7 +365,7 @@ class HtmlMaker {
 					if(class_block <> Nil) {
 						class_link := "<a href='"
 						class_link += GetClassLink(class_block);
-						class_link += "'>";
+						class_link += "?scrollTo=collection.tuple'>";
 						class_link += class_enum_str;
 						class_link += "</a>";
 
@@ -389,7 +389,7 @@ class HtmlMaker {
 
 						enum_link := "<a href='"
 						enum_link += GetEnumLink(enum_block);
-						enum_link += "'>";
+						enum_link += "?scrollTo=collection.tuple'>";
 						enum_link += class_enum_str;
 						enum_link += "</a>";
 
@@ -491,8 +491,8 @@ class HtmlMaker {
 	DOC ME
 	~#
 	method : CreateNav(bundles : Map<String, BundleSnippet>) ~ String {
-		html := "<nav>";
-
+		html := "<nav id='side-nav'>";
+		
 		# process bundles
 		bundle_keys := bundles->GetKeys()<String>;
 		each(i : bundle_keys) {
