@@ -24,7 +24,6 @@ REM obr ..\..\code_doc.obe ..\..\..\lib\code_doc\templates 2025.5.0 ..\..\..\com
 	rmdir /s /q ..\doc\api
 	mkdir ..\doc\api
 	copy .\..\..\..\lib\code_doc\mockups\style.css ..\doc\api
-	copy ..\..\..\lib\code_doc\templates\index.html ..\doc\api
 	xcopy /e ..\html\* ..\doc\api
 	mkdir ..\doc\api\resources
 	copy ..\..\..\lib\code_doc\templates\resources\* ..\doc\api\resources
