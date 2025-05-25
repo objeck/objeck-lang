@@ -36,10 +36,11 @@ class SnippetParser {
 		file_uses := @file_uses_cache->Find(filename)<String>;
 		if(file_uses = Nil) {
 			file_uses := Set->New()<String>;
-
-			file_uses->Insert("Collection");
+			
 			file_uses->Insert("System");
-
+			file_uses->Insert("Collection");
+			file_uses->Insert("Data.JSON");
+			
 			file_bundles := @file_uses->Find(filename)<BundleSnippet>;
 			if(file_bundles <> Nil) {
 				each(file_bundle in file_bundles) {
