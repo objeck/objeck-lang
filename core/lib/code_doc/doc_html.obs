@@ -1,6 +1,6 @@
 #~
 Objeck HTML code documentation system
-Copyright (c) 2014, 2019 Randy Hollines
+Copyright (c) 2014, 2019, 2025 Randy Hollines
 ~#
 
 use System.IO.Filesystem;
@@ -13,7 +13,9 @@ class HtmlMaker {
 	@bundle_snippit : BundleSnippet;
 	
 	#~
-	DOC ME
+	Constructor for HtmlMaker
+	@param args command-line arguments [css_path, version]
+	@return instance of HtmlMaker
 	~#
 	New(args : String[]) {
 		@css_path := args[0];
@@ -22,7 +24,9 @@ class HtmlMaker {
 	}
 	
 	#~
-	DOC ME
+	Constructor for HtmlMaker
+	@param args command-line arguments [css_path, version]
+	@return instance of HtmlMaker
 	~#
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() > 2) {
@@ -31,7 +35,9 @@ class HtmlMaker {
 	}
 	
 	#~
-	DOC ME
+	Constructor for HtmlMaker
+	@param args command-line arguments [css_path, version]
+	@return instance of HtmlMaker
 	~#
 	method : Make() ~ Bool {
 		if(<>@parser->Parse()) {
@@ -98,7 +104,11 @@ class HtmlMaker {
 	}
 	
 	#~
-	DOC ME
+	Generates the HTML file for a class
+	@param class_block class metadata
+	@param file_uses set of referenced bundles
+	@param nav_html shared nav markup
+	@param template_html base HTML template
 	~#
 	method : CreateClassHtml(class_block : ClassSnippet, file_uses : Set<String>, nav_html : String, template_html : String) ~ Nil {
 		# set nav
@@ -227,7 +237,11 @@ class HtmlMaker {
 	}
 
 	#~
-	DOC ME
+	Generates the HTML file for an enum
+	@param enum_block enum metadata
+	@param file_uses set of referenced bundles
+	@param nav_html shared nav markup
+	@param template_html base HTML template
 	~#
 	method : CreateEnumHtml(enum_block : EnumConstSnippet, file_uses : Set<String>, nav_html : String, template_html : String) ~ Nil {
 		# set nav
@@ -524,7 +538,10 @@ class HtmlMaker {
 	}
 
 	#~
-	DOC ME
+	Creates documentation for each bundle
+	@param bundles map of bundles
+	@param nav_html navigation block
+	@param template_html HTML template
 	~#
 	method : CreateBundles(bundles : Map<String, BundleSnippet>, nav_html : String, template_html : String) ~ Nil {
 		# set nav
@@ -572,7 +589,9 @@ class HtmlMaker {
 	}
 
 	#~
-	DOC ME
+	Builds the HTML navigation block
+	@param bundles parsed bundle map
+	@return HTML nav as a string
 	~#
 	method : CreateNav(bundles : Map<String, BundleSnippet>) ~ String {
 		html := "<nav id='side-nav'>";
