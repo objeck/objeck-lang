@@ -58,9 +58,9 @@ class HtmlMaker {
 
 		bundle_keys := bundles->GetKeys()<String>;
 
-		"Writing doc files: ["->Print();
+		"Writing API files..."->PrintLine();
 		each(i : bundle_keys) {
-			'#'->Print();
+			System.Utility.Spinner->Next();
 
 			@bundle_snippit := bundles->Find(bundle_keys->Get(i));
 
@@ -92,7 +92,7 @@ class HtmlMaker {
 				};
 			};			
 		};
-		"]\n"->Print();
+		System.Utility.Spinner->Last();
 		
 		return true;
 	}

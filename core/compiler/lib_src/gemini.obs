@@ -2239,15 +2239,15 @@ bundle API.Google.Gemini.Corpus {
 # clean up
 corpuses := Corpus->List();
 each(corpus in corpuses) {
-	documents := Document->List(corpus);
-	each(document in documents) {
-		chunks := Chunk->List(document);
-		each(chunk in chunks) {
-			chunk->Delete()->PrintLine();
-		};
-		document->Delete()->PrintLine();
-	};
-	corpus->Delete()->PrintLine();
+  documents := Document->List(corpus);
+  each(document in documents) {
+    chunks := Chunk->List(document);
+    each(chunk in chunks) {
+      chunk->Delete()->PrintLine();
+    };
+    document->Delete()->PrintLine();
+  };
+  corpus->Delete()->PrintLine();
 };
 
 # corups
