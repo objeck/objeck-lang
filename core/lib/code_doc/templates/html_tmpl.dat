@@ -7,6 +7,9 @@
     <title>Objeck Documentation</title>
     <link rel="stylesheet" href="style.css" />
 
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/mono-blue.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+
     <script>      
       window.addEventListener('DOMContentLoaded', () => {
         const params = new URLSearchParams(window.location.search);
@@ -24,6 +27,10 @@
           });
 
         }
+      });
+
+      document.addEventListener('DOMContentLoaded', () => {
+        hljs.highlightAll();
       });
     </script>
 
