@@ -1,13 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
-  
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Objeck Documentation</title>
     <link rel="stylesheet" href="style.css" />
 
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/mono-blue.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/mono-blue.min.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
 
     <script>      
@@ -33,7 +32,6 @@
         hljs.highlightAll();
       });
     </script>
-
   </head>
 
   <body>
@@ -41,16 +39,12 @@
       <h1>Objeck</h1>
       <div class="version">a programming language - @version</div>
     </header>
-
     <div class="container">
-    
       @nav
-
       <main>
         <a href="index.html">All Bundles</a><hr/>
         @main
       </main>
     </div>
   </body>
-
 </html>
