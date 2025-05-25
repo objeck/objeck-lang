@@ -110,7 +110,13 @@ class HtmlMaker {
 		main_html += class_block->GetShortName();
 		main_html += "</h2><p>";
 		main_html += class_block->GetDesc();
-		main_html += "</p>"
+		main_html += "</p>";
+
+		if(class_block->GetCode() <> Nil) {
+			main_html += "<pre><code class='language-cpp'>";
+			main_html += class_block->GetCode();
+			main_html += "</pre></code>";
+		};
 
 		func_names := class_block->GetFunctionNames();
 		if(<>func_names->IsEmpty()) {
