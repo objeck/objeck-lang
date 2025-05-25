@@ -14,10 +14,9 @@
 
 ## Releases
 
-* v2025.4.x 
-    * Support for the Open AI's Realtime API
-    * Hexagon NPU support for Llama and Mistra
-
+* v2025.6.0
+    * New API documentation system
+    
 * <ins>v2025.3.0</ins>
     * Updated VS Code LSP support for macOS and Linux ✍🏽
     * Collection bug fixes 🫙
