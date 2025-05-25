@@ -15,7 +15,7 @@
 ## Releases
 
 * v2025.6.0
-    * New API documentation system
+    * New [API documentation](https://www.objeck.org/doc/beta_api/index.html) system
     
 * <ins>v2025.3.0</ins>
     * Updated VS Code LSP support for macOS and Linux ✍🏽
