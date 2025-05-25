@@ -135,7 +135,7 @@ class HtmlMaker {
 			main_html += "</ul>";
 		}
 		else {
-			main_html += "<h4>No Defined Operations</h4>";
+			main_html += "<h3>No Defined Operations</h3>";
 		};
 
       	func_names := class_block->GetFunctionNames();
