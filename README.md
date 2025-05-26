@@ -59,7 +59,7 @@ response->ToString()->PrintLine();
 ```
 
 ```ruby
-# gemini generate w/ json schema
+# gemini generate w/ schema
 content := Content->New("user")->AddPart(TextPart->New("What are the top 5 cities average snowfall in the Eastern US by city for the past 5 years?"));
 
 # set schema
