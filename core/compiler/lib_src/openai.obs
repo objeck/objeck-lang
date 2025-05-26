@@ -414,7 +414,10 @@ bundle API.OpenAI.Responses {
 				format_json->Insert("type", "json_schema");
 				format_json->Insert("strict", true);
 				format_json->Insert("name", "json_response");
-				format_json->Insert("schema", schema->ToJson());
+
+				openai_schema := schema->ToJson();
+				openai_schema->Insert("additionalProperties", false);
+				format_json->Insert("schema", openai_schema);
 				
 				text_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 				text_json->Insert("format", format_json);
@@ -590,7 +593,10 @@ bundle API.OpenAI.Responses {
 				format_json->Insert("type", "json_schema");
 				format_json->Insert("strict", true);
 				format_json->Insert("name", "json_response");
-				format_json->Insert("schema", schema->ToJson());
+
+				openai_schema := schema->ToJson();
+				openai_schema->Insert("additionalProperties", false);
+				format_json->Insert("schema", openai_schema);
 
 				text_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 				text_json->Insert("format", format_json);
