@@ -1840,6 +1840,8 @@ bundle Data.JSON.Scheme {
 		~#
 		New(type : ParameterType->Type) {
 			@type := type;
+
+			@props := Map->New()<String, ParameterType>;
 		}
 
 		#~
@@ -1850,6 +1852,8 @@ bundle Data.JSON.Scheme {
 		New(type : ParameterType->Type, desc : String) {
 			@type := type;
 			@desc := desc;
+
+			@props := Map->New()<String, ParameterType>;
 		}
 
 		#~
@@ -2002,6 +2006,26 @@ bundle Data.JSON.Scheme {
 
 					label ParameterType->Type->OBJECT {
 						items_obj_json->Insert("type", "object");
+						prop_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+						
+						prop_values := @props->GetKeyValues()<Pair<String, ParameterType>>;
+						each(prop_value in prop_values) {
+							prop_name := prop_value->GetFirst();
+							prop := prop_value->GetSecond();
+							
+							if(prop_name <> Nil)	{		
+								prop_obj_json->Insert(prop_name, prop->ToJson());
+							};
+						}
+						items_obj_json->Insert("properties", prop_obj_json);
+
+						if(@req_params <> Nil) {
+							req_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+							each(req_param in @req_params) {
+								req_array_json->Add(req_param);
+							};
+							items_obj_json->Insert("required", req_array_json);
+						};
 					}
 
 					other {

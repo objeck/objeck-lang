@@ -4931,7 +4931,7 @@ session->Close();
 		@api_key : static : String;
 
 		function : IsDebug() ~ Bool {
-			return true;
+			return false;
 		}
 
 		#~
