@@ -71,7 +71,7 @@ resp_schema := Pair->New("application/json", schema)<String, ParameterType>;
 
 # make query
 candidates := Model->GenerateContent("models/gemini-2.5-flash-preview-05-20", content, resp_schema, EndPoint->GetApiKey());
-if(candidates <> Nil & candidates->Size() > 0) {
+if(candidates <> Nil & <>candidates->IsEmpty()) {
   Data.JSON.JsonElement->Decode(candidates->First()->GetAllText()->Trim())->PrintLine();
 };
 ```
