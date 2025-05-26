@@ -413,10 +413,9 @@ bundle API.OpenAI.Responses {
 				format_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 				format_json->Insert("type", "json_schema");
 				format_json->Insert("strict", true);
-				format_json->Insert("name", schema->GetName());
+				format_json->Insert("name", "json_response");
 				format_json->Insert("schema", schema->ToJson());
 				
-
 				text_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 				text_json->Insert("format", format_json);
 
@@ -590,9 +589,8 @@ bundle API.OpenAI.Responses {
 				format_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 				format_json->Insert("type", "json_schema");
 				format_json->Insert("strict", true);
-				format_json->Insert("name", schema->GetName());
+				format_json->Insert("name", "json_response");
 				format_json->Insert("schema", schema->ToJson());
-				
 
 				text_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 				text_json->Insert("format", format_json);
@@ -4933,7 +4931,7 @@ session->Close();
 		@api_key : static : String;
 
 		function : IsDebug() ~ Bool {
-			return false;
+			return true;
 		}
 
 		#~
