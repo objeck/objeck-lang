@@ -1,4 +1,4 @@
-<h1 align="center">Reads, Writes, and Executes Code</h1>
+<h1 align="center">Reads, Writes, and Executes</h1>
 
 <p align="center">
   <a href="https://www.objeck.org"><img src="docs/images/gear_wheel_256.png" width="256" alt="An Objeck"/></a>
@@ -59,7 +59,7 @@ response->ToString()->PrintLine();
 ```
 
 ```ruby
-# gemini generate w/ json schema
+# gemini generate w/ schema
 content := Content->New("user")->AddPart(TextPart->New("What are the top 5 cities average snowfall in the Eastern US by city for the past 5 years?"));
 
 # set schema
@@ -71,7 +71,7 @@ resp_schema := Pair->New("application/json", schema)<String, ParameterType>;
 
 # make query
 candidates := Model->GenerateContent("models/gemini-2.5-flash-preview-05-20", content, resp_schema, EndPoint->GetApiKey());
-if(candidates <> Nil & candidates->Size() > 0) {
+if(candidates <> Nil & <>candidates->IsEmpty()) {
   Data.JSON.JsonElement->Decode(candidates->First()->GetAllText()->Trim())->PrintLine();
 };
 ```
