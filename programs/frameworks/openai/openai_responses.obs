@@ -8,14 +8,14 @@ class Test {
 		};
 		token := GetApiKey(args[0]);
 
-#		Test0(token);
+		Test0(token);
 		Test1(token);
-		Test2(token);
+#		Test2(token);
 #		Test3(token);
 	}
 	
 	function : Test0(token : String) ~ Nil {
-		query := Collection.Pair->New("user", "What type of coffee is mostly drank in the US?")<String, String>;
+		query := Collection.Pair->New("user", "What is the most common espresso drink ordered in Columbia?")<String, String>;
 		response := Response->Respond("gpt-4o-mini", query, token);
 		if(response = Nil) {
 			Response->GetLastError()->ErrorLine();
@@ -35,7 +35,6 @@ class Test {
 		schema->AddProp("length", ParameterType->New(ParameterType->Type->NUMBER, "length of the street"));
 		schema->AddProp("state", ParameterType->New(ParameterType->Type->STRING, "state the street is located"));
 		schema->AddProp("city", ParameterType->New(ParameterType->Type->STRING, "city located"))
-		schema->SetNoMoreProps(true);
 
 		response := Response->Respond(model, query, schema, token);
 		if(response = Nil) {
@@ -70,7 +69,6 @@ class Test {
 		schema->AddProp("salary", ParameterType->New(ParameterType->Type->NUMBER, "length of the street"));
 		schema->AddProp("experience", ParameterType->New(ParameterType->Type->STRING, "state the street is located"));
 		schema->AddProp("city", ParameterType->New(ParameterType->Type->STRING, "city located"))
-		schema->SetNoMoreProps(true);
 
 		response := Response->Respond(model, file_query, schema, token);
 		
@@ -100,7 +98,7 @@ class Test {
 
 		required := ["title", "salary", "experience", "city"];
 		scheme := ParameterType->New("job-post", scheme_params, required, "jot-post");
-		scheme->SetNoMoreProps(true);
+		scheme->SetEndProps(true);
 
 		response := Response->Respond(model, file_query, scheme, token);
 ~#

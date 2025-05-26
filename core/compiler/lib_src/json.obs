@@ -1821,8 +1821,7 @@ bundle Data.JSON.Scheme {
 		@props : Map<String, ParameterType>;
 		@req_params : String[];
 		@is_array : Bool;
-		@end_props : Bool;
-
+		
 		#~
 		JSON function parameter type 
 		~#
@@ -1832,6 +1831,42 @@ bundle Data.JSON.Scheme {
 			INTEGER,
 			OBJECT,
 			BOOLEAN
+		}
+
+		#~
+		Constructor
+		@param type parameter type
+		~#
+		New(type : ParameterType->Type, is_array : Bool) {
+			@type := type;
+			@is_array := is_array;
+
+			@props := Map->New()<String, ParameterType>;
+		}
+
+		#~
+		+Constructor
+		@param type parameter type
+		@param desc description 
+		~#
+		New(type : ParameterType->Type, is_array : Bool, desc : String) {
+			@type := type;
+			@is_array := is_array;
+			@desc := desc;
+
+			@props := Map->New()<String, ParameterType>;
+		}
+
+		#~
+		Constructor
+		@param req_params require parameters
+		~#
+		New(req_params : String[], is_array : Bool) {
+			@type := ParameterType->Type->OBJECT;
+			@req_params := req_params;
+			@is_array := is_array;
+
+			@props := Map->New()<String, ParameterType>;
 		}
 
 		#~
@@ -1880,20 +1915,20 @@ bundle Data.JSON.Scheme {
 			@props := Map->New()<String, ParameterType>;
 		}
 
+		#~
+		Set schema to be an array of entities
+		@param is_array if true an array of entities, false other
+		~#
 		method : public : SetArray(is_array : Bool) ~ Nil {
 			@is_array := is_array;
 		}
 
+		#~
+		Returns rather the schema specifies an array of entities
+		@return true the scheme specifies array of entities, false otherwise
+		~#
 		method : public : IsArray() ~ Bool {
 			return @is_array;
-		}
-
-		method : public : SetEndProps(end_props : Bool) ~ Nil {
-			@end_props := end_props;
-		}
-
-		method : public : IsEndProps() ~ Bool {
-			return @end_props;
 		}
 
 		#~
@@ -1975,10 +2010,6 @@ bundle Data.JSON.Scheme {
 		~# 
 		method : public : ToJson() ~ JsonElement {
 			param_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
-
-			if(@end_props) {
-				param_obj_json->Insert("additionalProperties", false);
-			};
 
 			if(@is_array) {
 				items_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
