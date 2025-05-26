@@ -60,14 +60,15 @@ response->ToString()->PrintLine();
 
 ```ruby
 # gemini generate w/ schema
+# set query
 content := Content->New("user")->AddPart(TextPart->New("What are the top 5 cities average snowfall in the Eastern US by city for the past 5 years?"));
 
 # set schema
-schema := ParameterType->New(["year", "name", "inches"], true);
-schema->AddProp("year", ParameterType->New(ParameterType->Type->STRING));
-schema->AddProp("name", ParameterType->New(ParameterType->Type->STRING));
-schema->AddProp("inches", ParameterType->New(ParameterType->Type->INTEGER));      
-resp_schema := Pair->New("application/json", schema)<String, ParameterType>;
+schema_def := ParameterType->New(["year", "name", "inches"], true);
+schema_def->AddProp("year", ParameterType->New(ParameterType->Type->STRING));
+schema_def->AddProp("name", ParameterType->New(ParameterType->Type->STRING));
+schema_def->AddProp("inches", ParameterType->New(ParameterType->Type->INTEGER));      
+resp_schema := Pair->New("application/json", schema_def)<String, ParameterType>;
 
 # make query
 candidates := Model->GenerateContent("models/gemini-2.5-flash-preview-05-20", content, resp_schema, EndPoint->GetApiKey());
