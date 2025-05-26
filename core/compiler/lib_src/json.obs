@@ -1832,8 +1832,55 @@ bundle Data.JSON.Scheme {
 			BOOLEAN
 		}
 
-		New : private(param_type_json : JsonElement) {
-			# TODO: parse and set values
+		#~
+		Constructor
+		@param type parameter type
+		~#
+		New(type : ParameterType->Type) {
+			@type := type;
+		}
+
+		#~
+		Constructor
+		@param type parameter type
+		@param desc description 
+		~#
+		New(type : ParameterType->Type, desc : String) {
+			@type := type;
+			@desc := desc;
+		}
+
+		#~
+		Constructor
+		@param props set of named parameter properties 
+		~#
+		New(props : Set<ParameterType>) {
+			@type := ParameterType->Type->OBJECT;
+			@props := props;
+		}
+
+		#~
+		Constructor
+		@param props set of named parameter properties 
+		@param req_params require parameters
+		~#
+		New(props : Set<ParameterType>, req_params : String[]) {
+			@type := ParameterType->Type->OBJECT;
+			@props := props;
+			@req_params := req_params;
+		}
+
+		#~
+		Constructor
+		@param props set of named parameter properties 
+		@param req_params require parameters
+		@param desc description 
+		~#
+		New(props : Set<ParameterType>, req_params : String[], desc : String) {
+			@type := ParameterType->Type->OBJECT;
+			@props := props;
+			@req_params := req_params;
+			@desc := desc;
 		}
 
 		#~
@@ -2004,10 +2051,6 @@ bundle Data.JSON.Scheme {
 					items_obj_json->Insert("description", @desc);
 				};
 
-				if(@name <> Nil) {
-					items_obj_json->Insert("name", @name);
-				};
-
 				if(@desc <> Nil) {
 					items_obj_json->Insert("description", @desc);
 				};
@@ -2046,10 +2089,6 @@ bundle Data.JSON.Scheme {
 					param_obj_json->Insert("description", @desc);
 				};
 
-				if(@name <> Nil) {
-					param_obj_json->Insert("name", @name);
-				};
-
 				if(@desc <> Nil) {
 					param_obj_json->Insert("description", @desc);
 				};
@@ -2076,8 +2115,11 @@ bundle Data.JSON.Scheme {
 
 						prop_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 						prop_values := @props->GetKeys()<ParameterType>;
-						each(prop_value in prop_values) {				
-							prop_obj_json->Insert(prop_value->GetName(), prop_value->ToJson());
+						each(prop_value in prop_values) {
+							prop_value_name := prop_value->GetName();
+							if(prop_value_name <> Nil)	{		
+								prop_obj_json->Insert(prop_value_name, prop_value->ToJson());
+							};
 						}
 						param_obj_json->Insert("properties", prop_obj_json);
 
