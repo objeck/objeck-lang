@@ -49,7 +49,7 @@ class Hello {
 
 ```ruby
 # openai response
-query := Collection.Pair->New("user", "What type of coffee is mostly drunk in the US?")<String, String>;
+query := Collection.Pair->New("user", "What is the most common espresso drink ordered in Columbia?")<String, String>;
 response := Response->Respond("gpt-4o-mini", query, token);
 if(response = Nil) {
   Response->GetLastError()->ErrorLine();
@@ -59,7 +59,25 @@ response->ToString()->PrintLine();
 ```
 
 ```ruby
-# image identification 
+# gemini generate w/ json schema
+content := Content->New("user")->AddPart(TextPart->New("What are the top 5 cities average snowfall in the Eastern US by city for the past 5 years?"));
+
+# set schema
+schema := ParameterType->New(["year", "name", "inches"], true);
+schema->AddProp("year", ParameterType->New(ParameterType->Type->STRING));
+schema->AddProp("name", ParameterType->New(ParameterType->Type->STRING));
+schema->AddProp("inches", ParameterType->New(ParameterType->Type->INTEGER));      
+resp_schema := Pair->New("application/json", schema)<String, ParameterType>;
+
+# make query
+candidates := Model->GenerateContent("models/gemini-2.5-flash-preview-05-20", content, resp_schema, EndPoint->GetApiKey());
+if(candidates <> Nil & candidates->Size() > 0) {
+  Data.JSON.JsonElement->Decode(candidates->First()->GetAllText()->Trim())->PrintLine();
+};
+```
+
+```ruby
+# openai image identification 
 bytes := System.IO.Filesystem.FileReader->ReadBinaryFile("../gemini/thirteen.png");
 bytes->Size()->PrintLine();
 
@@ -73,24 +91,6 @@ if(response = Nil) {
 };
 
 Data.JSON.JsonElement->Decode(response->GetText())->PrintLine();
-```
-
-```ruby
-# text to speech
-use Web.HTTP, Collection, Data.JSON, API.OpenAI.Audio;
-
-class Embaddings {
-  function : Main(args : String[]) ~ Nil {
-    if(args->Size() = 1) {
-      message := args[1];
-      response := API.OpenAI.Audio.Speech->Speak("tts-1", message, "fable", "mp3", token)<String, ByteArrayRef>;        
-      
-      if(response->GetFirst()->Has("audio")) {
-        System.IO.Filesystem.FileWriter->WriteFile("speech.mp3", response->GetSecond()->Get());
-      };
-    }
-  }
-}
 ```
 
 ## Design <sub><a href='https://github.com/objeck/objeck-lang/tree/master/core'>[1]</a></sub>
