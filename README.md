@@ -1,4 +1,4 @@
-<h1 align="center">Object-Oriented, Functional & AI-Enabled</h1>
+<h1 align="center">Reads, Writes, and Executes Code</h1>
 
 <p align="center">
   <a href="https://www.objeck.org"><img src="docs/images/gear_wheel_256.png" width="256" alt="An Objeck"/></a>
@@ -16,6 +16,7 @@
 
 * v2025.6.0
     * New [API documentation](https://www.objeck.org/doc/beta_api/index.html) system
+    * Added support for OpenAI's Responses API
     
 * <ins>v2025.3.0</ins>
     * Updated VS Code LSP support for macOS and Linux ✍🏽
@@ -47,89 +48,31 @@ class Hello {
 ```
 
 ```ruby
-# openai and perplexity inference 
-use API.OpenAI, API.OpenAI.Chat, Collection;
-
-class OpenAICompletion {
-  @is_pplx : static : Bool;
-
-  function : Main(args : String[]) ~ Nil {
-    if(args->Size() <> 1) {
-      ">>> Error: Token file required <<"->ErrorLine();
-      Runtime->Exit(1);
-    };
-
-    token := GetApiKey(args[0]);
-    if(token = Nil) {
-      ">>> Unable to use API key <<"->PrintLine();
-      Runtime->Exit(1);
-    };
-
-    model : String;
-    if(@is_pplx) {
-      Completion->SetBaseUrl("https://api.perplexity.ai");
-      model := "llama-3-sonar-small-32k-online";
-    }
-    else {
-      model := "gpt-4o";
-    };
-    
-    message := Pair->New("user", "What is the longest road in Denver?")<String, String>;
-    completion := Completion->Complete(model, message, token);
-    if(completion <> Nil) {
-      choice := completion->GetFirstChoice();
-      if(choice = Nil) {
-        ">>> Error: Unable to complete query <<"->ErrorLine();
-        Runtime->Exit(1);
-      };
-
-      message := choice->GetMessage()<String, String>;
-      if(message = Nil) {
-        ">>> Error: Unable to read response <<"->ErrorLine();
-        Runtime->Exit(1);
-      };
-
-      message->GetSecond()->PrintLine();
-    };
-  }
-
-  function : GetApiKey(filename : String) ~ String {
-    token := System.IO.Filesystem.FileReader->ReadFile(filename);
-    if(token <> Nil) {
-      token := token->Trim();
-      if(<>token->StartsWith("sk-") & <>token->StartsWith("pplx-")) {
-        ">>> Unable to read token from file: '{$filename}' <<"->PrintLine();
-        Runtime->Exit(1);
-      };
-
-      if(token->StartsWith("pplx-"))  {
-        @is_pplx := true;
-      };
-
-      return token;
-    };
-
-    return Nil;
-  }
-}
+# openai response
+query := Collection.Pair->New("user", "What type of coffee is mostly drunk in the US?")<String, String>;
+response := Response->Respond("gpt-4o-mini", query, token);
+if(response = Nil) {
+  Response->GetLastError()->ErrorLine();
+  return;
+};
+response->ToString()->PrintLine();
 ```
 
 ```ruby
 # image identification 
-use API.Google.Gemini, System.IO.Filesystem;
+bytes := System.IO.Filesystem.FileReader->ReadBinaryFile("../gemini/thirteen.png");
+bytes->Size()->PrintLine();
 
-class IdentifyImage {
-  function : Main(args : String[]) ~ Nil {
-    content := Content->New("user")->AddPart(TextPart->New("What number is this image showing?"))
-      ->AddPart(BinaryPart->New(FileReader->ReadBinaryFile("thirteen.png"), "image/png"))
-      ->AddPart(TextPart->New("Format output as JSON"));
+image := API.OpenAI.ImageQuery->New("What number is this?", bytes, API.OpenAI.ImageQuery->MimeType->PNG);
+file_query := Collection.Pair->New("user", image)<String, API.OpenAI.ImageQuery>;
 
-    candidates := Model->GenerateContent("models/gemini-pro-vision", content, EndPoint->GetApiKey());
-    if(candidates->Size() > 0) {
-      candidates->First()->GetAllText()->Trim()->PrintLine();
-    };
-  }
-}
+response := Response->Respond("gpt-4o-mini", file_query, token);
+if(response = Nil) {
+  Response->GetLastError()->ErrorLine();
+  return;
+};
+
+Data.JSON.JsonElement->Decode(response->GetText())->PrintLine();
 ```
 
 ```ruby
