@@ -206,7 +206,7 @@ class HtmlMaker {
 	      		};
 
 	      		if(func->GetReturnTag() <> Nil & func->GetReturnType() <> Nil) {
-	      			main_html += "<p>Return<table><tr><th>Type</th><th>Description</th></tr>";
+	      			main_html += "<p><b>Return</b><table><tr><th>Type</th><th>Description</th></tr>";
 
 	      			rtrn_type_name := func->GetReturnType()->GetTypeName();
       				rtrn_desc := func->GetReturnTag()->GetDesc();

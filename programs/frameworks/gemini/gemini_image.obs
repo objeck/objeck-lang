@@ -7,12 +7,11 @@ class IdentifyImage {
 
 
       schema := ParameterType->New(["year", "name", "inches"]);
-      schema->SetArray(true);
       schema->AddProp("year", ParameterType->New(ParameterType->Type->STRING));
       schema->AddProp("name", ParameterType->New(ParameterType->Type->STRING));
       schema->AddProp("inches", ParameterType->New(ParameterType->Type->INTEGER));
-
-
+      schema->SetArray(true);
+      
       resp_schema := Pair->New("application/json", schema)<String, ParameterType>;
       candidates := Model->GenerateContent("models/gemini-2.5-flash-preview-05-20", content, resp_schema, EndPoint->GetApiKey());
       if(candidates <> Nil & candidates->Size() > 0) {
