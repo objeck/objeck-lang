@@ -1821,7 +1821,7 @@ bundle Data.JSON.Scheme {
 		@props : Map<String, ParameterType>;
 		@req_params : String[];
 		@is_array : Bool;
-		@no_more_props : Bool;
+		@end_props : Bool;
 
 		#~
 		JSON function parameter type 
@@ -1888,12 +1888,12 @@ bundle Data.JSON.Scheme {
 			return @is_array;
 		}
 
-		method : public : SetNoMoreProps(no_more_props : Bool) ~ Nil {
-			@no_more_props := no_more_props;
+		method : public : SetEndProps(end_props : Bool) ~ Nil {
+			@end_props := end_props;
 		}
 
-		method : public : IsNoMoreProps() ~ Bool {
-			return @no_more_props;
+		method : public : IsEndProps() ~ Bool {
+			return @end_props;
 		}
 
 		#~
@@ -1976,7 +1976,7 @@ bundle Data.JSON.Scheme {
 		method : public : ToJson() ~ JsonElement {
 			param_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 
-			if(@no_more_props) {
+			if(@end_props) {
 				param_obj_json->Insert("additionalProperties", false);
 			};
 
