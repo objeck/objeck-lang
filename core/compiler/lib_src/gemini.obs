@@ -324,15 +324,15 @@ each(candidate in candidates) {
 				contents_obj_json->Insert("safetySettings", safety_setting_array_json);
 			};
 
-contents_obj_json->ToString()->PrintLine();
-"---"->PrintLine();
+			# contents_obj_json->ToString()->PrintLine();
+			# "---"->PrintLine();
 
 			url := Url->New("https://generativelanguage.googleapis.com/v1beta/{$model_name}:generateContent?key={$key}");
 			if(url->GetQueryParameters()->Has("key")) {			
 				response := PostRequest(contents_obj_json, url);
 				if(response <> Nil) {
-response->ToString()->PrintLine();
-"---"->PrintLine();
+					# response->ToString()->PrintLine();
+					# "---"->PrintLine();
 
 					return BuildContentResponse(contents_obj_json, content_array_json, response, funcs, url, false);
 				};
