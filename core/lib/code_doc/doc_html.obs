@@ -133,15 +133,31 @@ class HtmlMaker {
 			main_html += "<h3>Operations</h3>";
 
 			main_html += "<ul>";
+			
+			# write 'New' methods first
 			each(func_name in func_names) {
 				func_link := class_block->GetShortName()->ToLower() + '-' + func_name->ToLower();
-				
-				main_html += "<li><a href='#"
-				main_html += func_link;
-				main_html += "'>";
-				main_html += func_name;
-				main_html += "</a></li>";
+				if(func_name->StartsWith("New")) {
+					main_html += "<li><a href='#"
+					main_html += func_link;
+					main_html += "'>";
+					main_html += func_name;
+					main_html += "</a></li>";
+				};
 			};
+
+			# ...and the rest of the lot
+			each(func_name in func_names) {
+				func_link := class_block->GetShortName()->ToLower() + '-' + func_name->ToLower();
+				if(<>func_name->StartsWith("New")) {
+					main_html += "<li><a href='#"
+					main_html += func_link;
+					main_html += "'>";
+					main_html += func_name;
+					main_html += "</a></li>";
+				};
+			};
+			
 			main_html += "</ul>";
 		}
 		else {
@@ -175,7 +191,7 @@ class HtmlMaker {
 				param_names := func->GetParams();
 
 				if(<>param_names->IsEmpty()) {
-	      			main_html += "<p>Parameters</p><table><tr><th>Name</th><th>Type</th><th>Description</th></tr>";
+	      			main_html += "<p><b>Parameters</b></p><table><tr><th>Name</th><th>Type</th><th>Description</th></tr>";
 
 					each(param in param_names) {
 						main_html += "<tr>";
