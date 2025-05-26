@@ -1,0 +1,21 @@
+use API.Google.Gemini, System.IO.Filesystem, Data.JSON.Scheme, Collection;
+
+class IdentifyImage {
+  function : Main(args : String[]) ~ Nil {
+    if(args->Size() = 1) {
+      content := Content->New("user")->AddPart(TextPart->New("What is the average snowfall on the Eastern US by city for the past 3 years?"));
+
+      schema_params := Set->New()<ParameterType>;
+      schema_params->Insert(ParameterType->New("year", ParameterType->Type->STRING));
+      schema_params->Insert(ParameterType->New("city", ParameterType->Type->STRING));
+      schema_params->Insert(ParameterType->New("inches", ParameterType->Type->INTEGER));
+      schema := ParameterType->New(schema_params, ["year", "city", "inches"]);
+
+      resp_schema := Pair->New("application/json", schema)<String, ParameterType>;
+      candidates := Model->GenerateContent("models/gemini-2.5-flash-preview-05-20", content, resp_schema, EndPoint->GetApiKey());
+      if(candidates <> Nil & candidates->Size() > 0) {
+        candidates->First()->GetAllText()->Trim()->PrintLine();
+      };
+    };
+  }
+}

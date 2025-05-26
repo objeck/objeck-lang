@@ -298,7 +298,6 @@ bundle API.OpenAI.Responses {
 		Model response for the given query
 		@param message completion message and image query.
 		@param model ID of the model to use
-		@param schema output schema
 		@param token API token
 		@return completion response
 		~#
@@ -4934,7 +4933,7 @@ session->Close();
 		@api_key : static : String;
 
 		function : IsDebug() ~ Bool {
-			return true;
+			return false;
 		}
 
 		#~
