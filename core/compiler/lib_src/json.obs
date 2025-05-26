@@ -1616,7 +1616,7 @@ bundle Data.JSON.Scheme {
 	class FunctionType implements Compare {
 		@name: String;
 		@desc: String;
-		@params : Set<ParameterType>;
+		@params : Map<String, ParameterType>;
 		@req_params : String[];
 
 		New(func_type_json : JsonElement) {
@@ -1625,7 +1625,7 @@ bundle Data.JSON.Scheme {
 			@desc := func_type_json->Get("description")->GetString();
 
 			# get properties by name
-			@params := Set->New()<ParameterType>;
+			@params := Map->New()<String, ParameterType>;
 
 			params_json := func_type_json->FindElements("parameters/properties");
 			param_names := params_json->GetNames();
@@ -1637,22 +1637,22 @@ bundle Data.JSON.Scheme {
 
 				param : ParameterType;
 				if(param_type->Equals("string")) {
-					param := ParameterType->New(param_name, ParameterType->Type->STRING, param_desc);
+					param := ParameterType->New(ParameterType->Type->STRING, param_desc);
 				}
 				else if(param_type->Equals("number")) {
-					param := ParameterType->New(param_name, ParameterType->Type->NUMBER, param_desc);
+					param := ParameterType->New(ParameterType->Type->NUMBER, param_desc);
 				}
 				else if(param_type->Equals("integer")) {
-					param := ParameterType->New(param_name, ParameterType->Type->INTEGER, param_desc);
+					param := ParameterType->New(ParameterType->Type->INTEGER, param_desc);
 				}
 				else if(param_type->Equals("object")) {
-					param := ParameterType->New(param_name, ParameterType->Type->OBJECT, param_desc);
+					param := ParameterType->New(ParameterType->Type->OBJECT, param_desc);
 				}
 				else if(param_type->Equals("boolean")) {
-					param := ParameterType->New(param_name, ParameterType->Type->BOOLEAN, param_desc);
+					param := ParameterType->New(ParameterType->Type->BOOLEAN, param_desc);
 				};
 
-				@params->Insert(param);
+				@params->Insert(param_name, param);
 				
 				# "param_name='{$param_name}', param_type={$param_type}, param_desc='{$param_desc}'"->PrintLine();
 			};
@@ -1672,7 +1672,7 @@ bundle Data.JSON.Scheme {
 		@param params parameters to add to JSON object
 		@param req_params required parameters 
 		~#
-		New(name : String, params : Set<ParameterType>, req_params : String[]) {
+		New(name : String, params : Map<String, ParameterType>, req_params : String[]) {
 			@name := name;
 			@req_params := req_params;
 			@params := params;
@@ -1683,7 +1683,7 @@ bundle Data.JSON.Scheme {
 		@param name function name
 		@param params parameters to add to JSON object
 		~#
-		New(name : String, params : Set<ParameterType>) {
+		New(name : String, params : Map<String, ParameterType>) {
 			@name := name;
 			@params := params;
 		}
@@ -1694,7 +1694,7 @@ bundle Data.JSON.Scheme {
 		@param params parameters to add to JSON object
 		@param desc description 
 		~#
-		New(name : String, params : Set<ParameterType>, desc : String) {
+		New(name : String, params : Map<String, ParameterType>, desc : String) {
 			@name := name;
 			@params := params;
 			@desc := desc;
@@ -1707,7 +1707,7 @@ bundle Data.JSON.Scheme {
 		@param req_params required parameters 
 		@param desc description 
 		~#
-		New(name : String, params : Set<ParameterType>, req_params : String[], desc : String) {
+		New(name : String, params : Map<String, ParameterType>, req_params : String[], desc : String) {
 			@name := name;
 			@req_params := req_params;
 			@params := params;
@@ -1734,7 +1734,7 @@ bundle Data.JSON.Scheme {
 		Get function parameters
 		@return function parameters
 		~#
-		method : public : GetParams() ~ Set<ParameterType> {
+		method : public : GetParams() ~ Map<String, ParameterType> {
 			return @params;
 		}
 
@@ -1775,12 +1775,14 @@ bundle Data.JSON.Scheme {
 			# JSON parameters
 			prop_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 			if(@params <> Nil) {
-				param_values := @params->GetKeys()<ParameterType>;
-				each(param_value in param_values) {
-					param_name := param_value->GetName();
-					param_obj_json := param_value->ToJson();
+				
+				param_values := @params->GetKeyValues()<Pair<String, ParameterType>>;
 
-					prop_obj_json->Insert(param_name, param_obj_json);
+				each(param_value in param_values) {
+					param_name := param_value->GetFirst();
+					param_obj_json := param_value->GetSecond();
+
+					prop_obj_json->Insert(param_name, param_obj_json->ToJson());
 				};
 			};
 
@@ -1816,10 +1818,10 @@ bundle Data.JSON.Scheme {
 		@name : String;
 		@type : ParameterType->Type;
 		@desc : String;
-		@props : Set<ParameterType>;
+		@props : Map<String, ParameterType>;
 		@req_params : String[];
 		@is_array : Bool;
-		@is_add_props : Bool;
+		@no_more_props : Bool;
 
 		#~
 		JSON function parameter type 
@@ -1852,96 +1854,26 @@ bundle Data.JSON.Scheme {
 
 		#~
 		Constructor
-		@param props set of named parameter properties 
-		~#
-		New(props : Set<ParameterType>) {
-			@type := ParameterType->Type->OBJECT;
-			@props := props;
-		}
-
-		#~
-		Constructor
-		@param props set of named parameter properties 
 		@param req_params require parameters
 		~#
-		New(props : Set<ParameterType>, req_params : String[]) {
+		New(req_params : String[]) {
 			@type := ParameterType->Type->OBJECT;
-			@props := props;
 			@req_params := req_params;
+
+			@props := Map->New()<String, ParameterType>;
 		}
 
 		#~
 		Constructor
-		@param props set of named parameter properties 
 		@param req_params require parameters
 		@param desc description 
 		~#
-		New(props : Set<ParameterType>, req_params : String[], desc : String) {
+		New(req_params : String[], desc : String) {
 			@type := ParameterType->Type->OBJECT;
-			@props := props;
 			@req_params := req_params;
 			@desc := desc;
-		}
 
-		#~
-		Constructor
-		@param name function parameter name
-		@param type parameter type
-		~#
-		New(name : String, type : ParameterType->Type) {
-			@name := name;
-			@type := type;
-		}
-
-		#~
-		Constructor
-		@param name function parameter name
-		@param type parameter type
-		@param desc description 
-		~#
-		New(name : String, type : ParameterType->Type, desc : String) {
-			@name := name;
-			@type := type;
-			@desc := desc;
-		}
-
-		#~
-		Constructor
-		@param name function parameter name
-		@param props set of named parameter properties 
-		~#
-		New(name : String, props : Set<ParameterType>) {
-			@name := name;
-			@type := ParameterType->Type->OBJECT;
-			@props := props;
-		}
-
-		#~
-		Constructor
-		@param name function parameter name
-		@param props set of named parameter properties 
-		@param req_params require parameters
-		~#
-		New(name : String, props : Set<ParameterType>, req_params : String[]) {
-			@name := name;
-			@type := ParameterType->Type->OBJECT;
-			@props := props;
-			@req_params := req_params;
-		}
-
-		#~
-		Constructor
-		@param name function parameter name
-		@param props set of named parameter properties 
-		@param req_params require parameters
-		@param desc description 
-		~#
-		New(name : String, props : Set<ParameterType>, req_params : String[], desc : String) {
-			@name := name;
-			@type := ParameterType->Type->OBJECT;
-			@props := props;
-			@req_params := req_params;
-			@desc := desc;
+			@props := Map->New()<String, ParameterType>;
 		}
 
 		method : public : SetArray(is_array : Bool) ~ Nil {
@@ -1952,12 +1884,12 @@ bundle Data.JSON.Scheme {
 			return @is_array;
 		}
 
-		method : public : SetAdditionalProps(is_add_props : Bool) ~ Nil {
-			@is_add_props := is_add_props;
+		method : public : SetNoMoreProps(no_more_props : Bool) ~ Nil {
+			@no_more_props := no_more_props;
 		}
 
-		method : public : IsAdditionalProps() ~ Bool {
-			return @is_add_props;
+		method : public : IsNoMoreProps() ~ Bool {
+			return @no_more_props;
 		}
 
 		#~
@@ -2004,7 +1936,7 @@ bundle Data.JSON.Scheme {
 		Get parameter properties object descriptions
 		@return properties object descriptions
 		~#
-		method : public : GetProps() ~ Set<ParameterType> {
+		method : public : GetProps() ~ Map<String, ParameterType> {
 			return @props;
 		}
 
@@ -2012,8 +1944,8 @@ bundle Data.JSON.Scheme {
 		Set properties
 		@param props properties
 		~#
-		method : public : SetProps(props : Set<ParameterType>) ~ Nil {
-			@props := props;
+		method : public : AddProp(prop_name : String, prop : ParameterType) ~ Nil {
+			@props->Insert(prop_name, prop);
 		}
 
 		#~
@@ -2040,16 +1972,12 @@ bundle Data.JSON.Scheme {
 		method : public : ToJson() ~ JsonElement {
 			param_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 
-			if(@is_add_props) {
+			if(@no_more_props) {
 				param_obj_json->Insert("additionalProperties", false);
 			};
 
 			if(@is_array) {
 				items_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
-
-				if(@desc <> Nil) {
-					items_obj_json->Insert("description", @desc);
-				};
 
 				if(@desc <> Nil) {
 					items_obj_json->Insert("description", @desc);
@@ -2114,11 +2042,14 @@ bundle Data.JSON.Scheme {
 						param_obj_json->Insert("type", "object");
 
 						prop_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
-						prop_values := @props->GetKeys()<ParameterType>;
+						
+						prop_values := @props->GetKeyValues()<Pair<String, ParameterType>>;
 						each(prop_value in prop_values) {
-							prop_value_name := prop_value->GetName();
-							if(prop_value_name <> Nil)	{		
-								prop_obj_json->Insert(prop_value_name, prop_value->ToJson());
+							prop_name := prop_value->GetFirst();
+							prop := prop_value->GetSecond();
+							
+							if(prop_name <> Nil)	{		
+								prop_obj_json->Insert(prop_name, prop->ToJson());
 							};
 						}
 						param_obj_json->Insert("properties", prop_obj_json);

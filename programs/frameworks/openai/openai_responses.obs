@@ -10,7 +10,7 @@ class Test {
 
 #		Test0(token);
 		Test1(token);
-#		Test2(token);
+		Test2(token);
 #		Test3(token);
 	}
 	
@@ -29,17 +29,15 @@ class Test {
 		model := "gpt-4o-mini";
 		
 		# TODO: 
-		scheme_params := Set->New()<ParameterType>;
-		scheme_params->Insert(ParameterType->New("name", ParameterType->Type->STRING, "name of the street"));
-		scheme_params->Insert(ParameterType->New("length", ParameterType->Type->STRING, "length of the street"));
-		scheme_params->Insert(ParameterType->New("state", ParameterType->Type->STRING, "state the street is located"));
-		scheme_params->Insert(ParameterType->New("city", ParameterType->Type->STRING, "city located"));
-
 		required := ["name", "length", "state", "city"];
-		scheme := ParameterType->New("longest-co-street", scheme_params, required, "longest street");
-		scheme->SetAdditionalProps(true);
+		schema := ParameterType->New(required, "longest street");
+		schema->AddProp("name", ParameterType->New(ParameterType->Type->STRING, "name of the street"));
+		schema->AddProp("length", ParameterType->New(ParameterType->Type->NUMBER, "length of the street"));
+		schema->AddProp("state", ParameterType->New(ParameterType->Type->STRING, "state the street is located"));
+		schema->AddProp("city", ParameterType->New(ParameterType->Type->STRING, "city located"))
+		schema->SetNoMoreProps(true);
 
-		response := Response->Respond(model, query, scheme, token);
+		response := Response->Respond(model, query, schema, token);
 		if(response = Nil) {
 			Response->GetLastError()->ErrorLine();
 			return;
@@ -66,18 +64,16 @@ class Test {
 		file_query := API.OpenAI.FileQuery->New("This is a job position from LinkedIn, can you tell me about the title, salary, state and city for this opportunity?", pdf_file, "user");
 		model := "gpt-4o-mini";
 
-		# TODO: 
-		scheme_params := Set->New()<ParameterType>;
-		scheme_params->Insert(ParameterType->New("title", ParameterType->Type->STRING, "title for the position"));
-		scheme_params->Insert(ParameterType->New("salary", ParameterType->Type->STRING, "salary range for position"));
-		scheme_params->Insert(ParameterType->New("experience", ParameterType->Type->STRING, "years of experience required"));
-		scheme_params->Insert(ParameterType->New("city", ParameterType->Type->STRING, "city where the job is located"));
-
 		required := ["title", "salary", "experience", "city"];
-		scheme := ParameterType->New("job-post", scheme_params, required, "jot-post");
-		scheme->SetAdditionalProps(true);
+		schema := ParameterType->New(required, "longest street");
+		schema->AddProp("title", ParameterType->New(ParameterType->Type->STRING, "name of the street"));
+		schema->AddProp("salary", ParameterType->New(ParameterType->Type->NUMBER, "length of the street"));
+		schema->AddProp("experience", ParameterType->New(ParameterType->Type->STRING, "state the street is located"));
+		schema->AddProp("city", ParameterType->New(ParameterType->Type->STRING, "city located"))
+		schema->SetNoMoreProps(true);
 
-		response := Response->Respond(model, file_query, scheme, token);
+		response := Response->Respond(model, file_query, schema, token);
+		
 		if(response = Nil) {
 			Response->GetLastError()->ErrorLine();
 			return;
@@ -104,7 +100,7 @@ class Test {
 
 		required := ["title", "salary", "experience", "city"];
 		scheme := ParameterType->New("job-post", scheme_params, required, "jot-post");
-		scheme->SetAdditionalProps(true);
+		scheme->SetNoMoreProps(true);
 
 		response := Response->Respond(model, file_query, scheme, token);
 ~#
