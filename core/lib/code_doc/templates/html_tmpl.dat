@@ -36,7 +36,7 @@
 
   <body>
     <header>
-      <img src='resources/objeck.png'  style="max-width: 20%; height: auto;" />
+      <img src='resources/objeck.png'  style="max-width: 17%; height: auto;" />
       <div class="version">a programming language - @version</div>
     </header>
     <div class="container">
