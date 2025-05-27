@@ -1,5 +1,5 @@
 #~
-Objeck HTML code documentation system
+` HTML code documentation system
 Copyright (c) 2014, 2019, 2025 Randy Hollines
 ~#
 
@@ -640,6 +640,8 @@ class HtmlMaker {
 				# process classes
 				classes := bundle_block->GetClasses();
 				class_keys := classes->GetKeys()<String>;			
+				link_target := bundle_block->GetName()->ToLower();
+
 				each(j : class_keys) {
 					class_block := classes->Find(class_keys->Get(j));
 					if(class_block->IsParsed()) {
@@ -648,12 +650,10 @@ class HtmlMaker {
 						link_name := GetClassLink(class_block);
 						html->Append(link_name);
 
-						link_target := bundle_block->GetName()->ToLower();
 						html += "?scrollTo={$link_target}'>";
 						if(class_block->IsInterface()) {
-							html->Append("<i>");
 							html->Append(class_block->GetName());
-							html->Append("</i>");
+							html->Append(" [I]");
 						}
 						else {
 							html->Append(class_block->GetName());
@@ -672,9 +672,9 @@ class HtmlMaker {
 						link_name := GetEnumLink(enum_block);
 
 						html->Append(link_name);
-						html += "' target='main'>";
+						html += "?scrollTo={$link_target}'><i>";
 						html->Append(enum_block->GetName());
-						html += "</a></li>";
+						html += " [#]</i></a></li>";
 					};
 				};
 				
