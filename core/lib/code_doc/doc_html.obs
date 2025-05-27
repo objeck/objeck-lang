@@ -218,7 +218,7 @@ class HtmlMaker {
 			      		main_html += "</tr>";
 			      	};
 
-	      			main_html += "</table></p>";
+	      			main_html += "</table>";
 	      		};
 
 	      		if(func->GetReturnTag() <> Nil & func->GetReturnType() <> Nil) {
@@ -227,7 +227,7 @@ class HtmlMaker {
 	      			rtrn_type_name := func->GetReturnType()->GetTypeName();
       				rtrn_desc := func->GetReturnTag()->GetDesc();
 
-	      			main_html += "<td>";
+	      			main_html += "<tr><td>";
 	      			main_html += GetTypeLink(rtrn_type_name, file_uses); ;
 	      			main_html += "</td>";
 
@@ -235,9 +235,9 @@ class HtmlMaker {
 	      			main_html += rtrn_desc;
 	      			main_html += "</td>";
 
-	      			main_html += "</table></p>";
+	      			main_html += "</tr></table>";
 	      		};
-	      		main_html += "</p><br/></div>";
+	      		main_html += "<br /></div>";
 			}
 		};
 
