@@ -1,10 +1,6 @@
-<h1 align="center">Reads, Writes, and Executes</h1>
-
 <p align="center">
-  <a href="https://www.objeck.org"><img src="docs/images/gear_wheel_256.png" width="256" alt="An Objeck"/></a>
+  <img src='https://github.com/objeck/objeck-lang/blob/master/core/lib/code_doc/templates/resources/objeck.png' height="168"/>
 </p>
-
-<hr/>
 
 <p align="center">
   <a href="https://github.com/objeck/objeck-lang/actions/workflows/codeql.yml"><img src="https://github.com/objeck/objeck-lang/actions/workflows/codeql.yml/badge.svg" alt="GitHub CodeQL"></a>
@@ -12,7 +8,7 @@
   <a href="https://scan.coverity.com/projects/objeck"><img src="https://img.shields.io/coverity/scan/10314.svg" alt="Coverity SCA"></a>
 </p>
 
-## Releases
+## Updates
 
 * v2025.6.0
     * New [API documentation](https://www.objeck.org/doc/beta_api/index.html) system
@@ -34,7 +30,7 @@
     * Improved support for JSON stream parsing ⭐
     * Faster 'String' compare 🚄
 
-## Examples
+## Code Examples
 
 ```ruby
 # hello world
@@ -336,8 +332,3 @@ yesterday := System.Time.Date->New();
 yesterday->AddDays(-1);
 yesterday->ToString()->PrintLine();
 ```
-
-## Screenshots
-| <sub>[VS Code](https://github.com/objeck/objeck-lsp)</sub> | <sub>[Debugger](https://github.com/objeck/objeck-lang/tree/master/core/debugger)</sub> | <sub>[Dungeon Crawler](https://github.com/objeck/objeck-dungeon-crawler)</sub> | <sub>[Platformer](https://github.com/objeck/objeck-lang/blob/master/programs/deploy/2d_game_13.obs)</sub> | <sub>[Windows Utility](https://github.com/objeck/objeck-lang/tree/master/core/release/WindowsLauncher)</sub> |
-| :---: | :----: | :---: | :---: | :---: |
-![alt text](docs/images/web/comp.png "Visual Studio Code") | ![alt text](docs/images/web/debug.jpg "Command line debugger") | ![alt text](docs/images/web/crawler.png "Web Crawler") | ![alt text](docs/images/web/2d_game.jpg "Platformer") | ![alt text](docs/images/web/launch.png "Windows Launcher") |
