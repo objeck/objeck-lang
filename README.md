@@ -8,7 +8,7 @@
   <a href="https://scan.coverity.com/projects/objeck"><img src="https://img.shields.io/coverity/scan/10314.svg" alt="Coverity SCA"></a>
 </p>
 
-## Releases
+## Updates
 
 * v2025.6.0
     * New [API documentation](https://www.objeck.org/doc/beta_api/index.html) system
@@ -30,7 +30,7 @@
     * Improved support for JSON stream parsing ⭐
     * Faster 'String' compare 🚄
 
-## Examples
+## Code Examples
 
 ```ruby
 # hello world
