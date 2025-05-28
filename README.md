@@ -1,11 +1,3 @@
-<h1 align="center">Reads, Writes, and Executes</h1>
-
-<p align="center">
-  <a href="https://www.objeck.org"><img src="docs/images/gear_wheel_256.png" width="256" alt="An Objeck"/></a>
-</p>
-
-<hr/>
-
 <p align="center">
   <a href="https://github.com/objeck/objeck-lang/actions/workflows/codeql.yml"><img src="https://github.com/objeck/objeck-lang/actions/workflows/codeql.yml/badge.svg" alt="GitHub CodeQL"></a>
   <a href="https://github.com/objeck/objeck-lang/actions/workflows/c-cpp.yml"><img src="https://github.com/objeck/objeck-lang/actions/workflows/c-cpp.yml/badge.svg" alt="GitHub CI"></a>
