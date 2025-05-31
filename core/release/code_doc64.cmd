@@ -24,8 +24,8 @@ obr ..\..\code_doc.obe ..\..\..\lib\code_doc\templates 2025.6.0 ..\..\..\compile
 	mkdir ..\doc\api
 	copy .\..\..\..\lib\code_doc\templates\style.css ..\doc\api
 	xcopy /e ..\html\* ..\doc\api
-	mkdir ..\doc\api\resources
-	copy ..\..\..\lib\code_doc\templates\resources\* ..\doc\api\resources
+	mkdir ..\doc\api\style
+	copy ..\..\..\lib\code_doc\templates\resources\* ..\doc\api\style
 	rmdir /s /q ..\html
 	cd ..\doc
 	%ZIP_BIN%\7z.exe a -r -tzip api.zip api\*
