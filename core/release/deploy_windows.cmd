@@ -226,7 +226,7 @@ if [%2] NEQ [deploy] goto end
 	if [%1] == [x64] (
 		set INSTALL_TARGET=objeck-lang-x64
 	)
-
+	
 	rmdir /q /s %TARGET%\examples\doc
 	rmdir /q /s "%USERPROFILE%\Documents\Objeck-Build\%INSTALL_TARGET%"
 	mkdir "%USERPROFILE%\Documents\Objeck-Build\%INSTALL_TARGET%"
@@ -237,10 +237,7 @@ if [%2] NEQ [deploy] goto end
 	copy ..\..\docs\eula.rtf "%USERPROFILE%\Documents\Objeck-Build\%INSTALL_TARGET%\doc"
 	
 	if [%1] == [arm64] (
-		
-REMgoto end
-
-		signtool sign /fd sha256 /f "%USERPROFILE%\Dropbox\Personal\signing keys\2022\code\randy_hollines.p12" /p %3 /d "Objeck: Windows Toolchain" /t http://timestamp.sectigo.com release-arm64\setup.msi
+		signtool sign /tr http://timestamp.sectigo.com /td sha256 /fd sha256 /a release-arm64\setup.msi
 		copy release-arm64\setup.msi "%USERPROFILE%\Documents\Objeck-Build\objeck-windows-arm64_0.0.0.msi"
 
 		rmdir /s /q "%USERPROFILE%\Documents\Objeck-Build\release-arm64"
@@ -255,7 +252,7 @@ REMgoto end
 	)
 
 	if [%1] == [x64] (
-		signtool sign /fd sha256 /f "%USERPROFILE%\Dropbox\Personal\signing keys\2022\code\randy_hollines.p12" /p %3 /d "Objeck: Windows Toolchain" /t http://timestamp.sectigo.com release-x64\setup.msi
+		signtool sign /tr http://timestamp.sectigo.com /td sha256 /fd sha256 /a release-x64\setup.msi
 		copy release-x64\setup.msi "%USERPROFILE%\Documents\Objeck-Build\objeck-windows-x64_0.0.0.msi"
 
 		rmdir /s /q "%USERPROFILE%\Documents\Objeck-Build\release-x64"
