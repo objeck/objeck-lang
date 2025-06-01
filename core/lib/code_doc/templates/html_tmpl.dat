@@ -37,7 +37,7 @@
   <body>
     <header>
       <img src='style/objeck-logo.png'  style="max-width: 17%; height: auto;" />
-      <div class="version">a programming language - @version</div>
+      <div class="version">@version</div>
     </header>
     <div class="container">
       @nav
