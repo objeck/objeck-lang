@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-a programming language
+a language for programming
 </p>
 
 <hr/>
@@ -16,11 +16,11 @@ a programming language
 
 ## Updates
 
-* v2025.6.0
+* <ins>v2025.6.0</ins>
     * New [API documentation](https://www.objeck.org/doc/beta_api/index.html) system
     * Added support for OpenAI's <a href='https://platform.openai.com/docs/api-reference/responses'>Responses API</a>
     
-* <ins>v2025.3.0</ins>
+* v2025.3.0
     * Updated VS Code LSP support for macOS and Linux ✍🏽
     * Collection bug fixes 🫙
     * LSP bug fixes ⌨️
