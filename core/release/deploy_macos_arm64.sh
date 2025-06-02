@@ -16,6 +16,7 @@ cd ../compiler
 xcodebuild -project xcode/Compiler.xcodeproj clean build
 cp xcode/build/Release/obc ../release/deploy/bin
 cp ../lib/*.obl ../release/deploy/lib
+cp ../lib/*.ini ../release/deploy/lib
 cp ../vm/misc/*.pem ../release/deploy/lib
 
 # build VM
