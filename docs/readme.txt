@@ -1,6 +1,17 @@
-v2025.2.2 (February 28, 2025)
+v2025.6.0 (June 2, 2025)
 ===
-LSP pipe support, improvements to named pipes and error handling bug fixes
+Extended Open AI support
+
+v2025.6.0
+---
+New API documentation system 
+Added support for OpenAI's Responses API
+
+v2025.3.0
+---
+ Updated VS Code LSP support for macOS and Linux ✍🏽 
+ Collection bug fixes 🫙 
+ LSP bug fixes ⌨️ - More aggressive method inlining 🏎️
 
 v2025.2.2
 ---
@@ -8,14 +19,3 @@ Improved named pipe support 🔌
 Updates to the LSP client/server ⌨️
 Fixed Windows installer issues with missing DLLs 🏗️
 Error handling bug fixes
-
-v2025.2.1
----
-Improved support for JSON stream parsing ⭐
-Faster 'String' compare 🚄
-
-v2025.2.0
----
-Support for websockets 🛜
-Added support for static binary arrays #509 and #510 ⌨️
-Improved stability for Windows on arm64, specifically for SDL2🦾
