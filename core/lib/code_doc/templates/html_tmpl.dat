@@ -36,8 +36,8 @@
 
   <body>
     <header>
-      <a href='https://objeck.org/'><img src='style/objeck-logo.png'  style="max-width: 17%; height: auto;" /></a>
-      <div class="version">@version</div>
+      <a href='index.html'><img src='style/objeck-logo.png'  style="max-width: 17%; height: auto;" /></a>
+      <div class="version">v@version</div>
     </header>
     <div class="container">
       @nav

@@ -54,7 +54,7 @@ header {
 nav {
   width: 250px;
   background-color: var(--sidebar-bg);
-  padding: 1rem;
+  padding: 52px 1rem 1rem;
   overflow-y: auto;
   border-right: 1px solid var(--border-color);
 }
@@ -87,9 +87,10 @@ nav a:hover {
 
 main {
   flex: 1;
-  padding: 2rem;
+  padding: 4rem 2rem 2rem; /* Increased top padding */
   overflow-y: auto;
   background-color: #f5f7fa;
+  scroll-margin-top: 75px;
 }
 
 .card {
