@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-a programming language
+for programming
 </p>
 
 <hr/>
