@@ -12,7 +12,7 @@
 
 * v2025.6.0
     * New [API documentation](https://www.objeck.org/doc/beta_api/index.html) system
-    * Added support for OpenAI's Responses API
+    * Added support for OpenAI's <a href='https://platform.openai.com/docs/api-reference/responses'>Responses API</a>
     
 * <ins>v2025.3.0</ins>
     * Updated VS Code LSP support for macOS and Linux ✍🏽
