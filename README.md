@@ -1,7 +1,12 @@
 <p align="center">
   <img src='https://github.com/objeck/objeck-lang/blob/master/core/lib/code_doc/templates/resources/objeck-logo.png' height="168"/>
-###### a programming language
 </p>
+
+<p align="center">
+a programming language
+</p>
+
+<hr/>
 
 <p align="center">
   <a href="https://github.com/objeck/objeck-lang/actions/workflows/codeql.yml"><img src="https://github.com/objeck/objeck-lang/actions/workflows/codeql.yml/badge.svg" alt="GitHub CodeQL"></a>
