@@ -1,5 +1,6 @@
 <p align="center">
   <img src='https://github.com/objeck/objeck-lang/blob/master/core/lib/code_doc/templates/resources/objeck-logo.png' height="168"/>
+###### a programming language
 </p>
 
 <p align="center">
@@ -26,10 +27,6 @@
     * Fixed Windows installer issues with missing DLLs 🏗️
     * Error handling bug fixes
     
-* v2025.2.1
-    * Improved support for JSON stream parsing ⭐
-    * Faster 'String' compare 🚄
-
 ## Code Examples
 
 ```ruby
