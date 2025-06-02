@@ -1,6 +1,5 @@
 v2025.6.0 (June 2, 2025)
 ===
-Added support for OpenAI's Responses API and updated the documentation system.
 
 v2025.6.0
 ---
