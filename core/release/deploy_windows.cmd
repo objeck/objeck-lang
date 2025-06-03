@@ -196,6 +196,9 @@ mkdir %TARGET%\doc
 mkdir %TARGET%\doc\syntax
 xcopy /e ..\..\docs\syntax\* %TARGET%\doc\syntax
 
+mkdir %TARGET%\style 
+xcopy /e ..\lib\code_doc\templates\resources\* %TARGET%\style 
+
 REM update and process readme
 pushd ..\..\programs\deploy\util\readme
 REM call build.cmd readme_builder readme.json
