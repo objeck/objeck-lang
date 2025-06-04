@@ -19,6 +19,8 @@ a language for programming
 * <ins>v2025.6.2</ins>
     * New [API documentation](https://www.objeck.org/doc/api/index.html) system
     * Added support for OpenAI's <a href='https://platform.openai.com/docs/api-reference/responses'>Responses API</a>
+    * Updated Windows launcher
+    * Improved JSON scheme support
     
 * v2025.3.0
     * Updated VS Code LSP support for macOS and Linux ✍🏽
