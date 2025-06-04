@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-a language for programming
+a way to program hardware
 </p>
 
 <hr/>
