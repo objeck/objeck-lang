@@ -16,8 +16,8 @@ a language for programming
 
 ## Updates
 
-* <ins>v2025.6.0</ins>
-    * New [API documentation](https://www.objeck.org/doc/beta_api/index.html) system
+* <ins>v2025.6.2</ins>
+    * New [API documentation](https://www.objeck.org/doc/api/index.html) system
     * Added support for OpenAI's <a href='https://platform.openai.com/docs/api-reference/responses'>Responses API</a>
     
 * v2025.3.0
