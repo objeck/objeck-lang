@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-a way to program hardware
+a way to program stuff
 </p>
 
 <hr/>
