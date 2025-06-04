@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-a way to program stuff
+it can program things
 </p>
 
 <hr/>
