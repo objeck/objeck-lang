@@ -1,7 +1,7 @@
 v2025.6.1 (June 5, 2025)
 ===
 
-v2025.6.1
+v2025.6.2
 ---
 New API documentation system 
 Added support for OpenAI's Responses API
