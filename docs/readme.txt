@@ -1,10 +1,11 @@
-v2025.6.1 (June 3, 2025)
+v2025.6.1 (June 5, 2025)
 ===
 
 v2025.6.1
 ---
 New API documentation system 
 Added support for OpenAI's Responses API
+Updated Windows launcher
 Improved JSON scheme support
 
 v2025.3.0

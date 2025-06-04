@@ -203,8 +203,8 @@ Image* LoadImageFromResource(HINSTANCE hInstance, UINT resourceID, LPCWSTR resou
 BOOL InitInstance(HINSTANCE hInstance, int nCmdShow) {
   hInst = hInstance;
 
-  const int wndWidth = 440;
-  const int wndHeight = 695;
+  const int wndWidth = 420;
+  const int wndHeight = 645;
   const int buttonHeight = 82;
   const int padding = 35;
 
@@ -232,7 +232,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow) {
   SHSTOCKICONINFO apiIcon = { sizeof(apiIcon) };
   if(!SHGetStockIconInfo(SIID_DOCASSOC, SHGSI_ICON, &apiIcon)) {
     HWND hWndApiButton = CreateWindow(WC_BUTTON, L"API Documentation", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
-                                      10, buttonHeight * 1 + 165, wndWidth - padding, buttonHeight, hWnd, (HMENU)API_BUTTON, hInstance, nullptr);
+                                      10, buttonHeight * 1 + 155, wndWidth - padding, buttonHeight, hWnd, (HMENU)API_BUTTON, hInstance, nullptr);
     ApplyModernStyle(hWndApiButton);
     ApplyButtonIcon(hWndApiButton, apiIcon.hIcon);
   }
@@ -240,7 +240,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow) {
   SHSTOCKICONINFO exIcon = { sizeof(exIcon) };
   if(!SHGetStockIconInfo(SIID_AUTOLIST, SHGSI_ICON, &exIcon)) {
     HWND hWndExamplesButton = CreateWindow(WC_BUTTON, L"Code Examples", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
-                                           10, buttonHeight * 2 + 185, wndWidth - padding, buttonHeight, hWnd, (HMENU)EXAMPLE_BUTTON, hInstance, nullptr);
+                                           10, buttonHeight * 2 + 165, wndWidth - padding, buttonHeight, hWnd, (HMENU)EXAMPLE_BUTTON, hInstance, nullptr);
     ApplyModernStyle(hWndExamplesButton);
     ApplyButtonIcon(hWndExamplesButton, exIcon.hIcon);
   }
@@ -248,7 +248,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow) {
   SHSTOCKICONINFO editIcon = { sizeof(editIcon) };
   if(!SHGetStockIconInfo(SIID_STACK, SHGSI_ICON, &editIcon)) {
     HWND hWndEditorButton = CreateWindow(WC_BUTTON, L"Text Editor Support", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
-                                         10, buttonHeight * 3 + 205, wndWidth - padding, buttonHeight, hWnd, (HMENU)EDITOR_BUTTON, hInstance, nullptr);
+                                         10, buttonHeight * 3 + 175, wndWidth - padding, buttonHeight, hWnd, (HMENU)EDITOR_BUTTON, hInstance, nullptr);
     ApplyModernStyle(hWndEditorButton);
     ApplyButtonIcon(hWndEditorButton, editIcon.hIcon);
   }
@@ -256,7 +256,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow) {
   SHSTOCKICONINFO readIcon = { sizeof(readIcon) };
   if(!SHGetStockIconInfo(SIID_HELP, SHGSI_ICON, &readIcon)) {
     HWND hWndReadmeButton = CreateWindow(WC_BUTTON, L"Read Me", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
-                                         10, buttonHeight * 4 + 225, wndWidth - padding, buttonHeight, hWnd, (HMENU)README_BUTTON, hInstance, nullptr);
+                                         10, buttonHeight * 4 + 185, wndWidth - padding, buttonHeight, hWnd, (HMENU)README_BUTTON, hInstance, nullptr);
     ApplyModernStyle(hWndReadmeButton);
     ApplyButtonIcon(hWndReadmeButton, readIcon.hIcon);
   }
@@ -392,7 +392,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
     if(bannerImage) {
       Graphics graphics(hdc);
-      graphics.DrawImage(bannerImage, 60, 8, bannerImage->GetWidth(), bannerImage->GetHeight());
+      graphics.DrawImage(bannerImage, 60, 10, bannerImage->GetWidth(), bannerImage->GetHeight());
     }
 
     EndPaint(hWnd, &ps);
