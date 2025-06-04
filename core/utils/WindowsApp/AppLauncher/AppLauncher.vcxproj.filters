@@ -48,6 +48,9 @@
     <Image Include="..\..\..\..\images\Gear.ico">
       <Filter>Resource Files</Filter>
     </Image>
+    <Image Include="objeck-launcher.png">
+      <Filter>Resource Files</Filter>
+    </Image>
     <Image Include="Gear.ico">
       <Filter>Resource Files</Filter>
     </Image>

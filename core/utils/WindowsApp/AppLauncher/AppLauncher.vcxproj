@@ -241,6 +241,7 @@
   <ItemGroup>
     <Image Include="..\..\..\..\images\Gear.ico" />
     <Image Include="Gear.ico" />
+    <Image Include="objeck-launcher.png" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
