@@ -1,13 +1,17 @@
-/***************************************************************************
- * Copyright (c) 2020-2023, Randy Hollines
- * All rights reserved.
- ***************************************************************************/
-
+// Modernized AppLauncher.cpp with Windows 11 Look & Feel Enhancements
 #include "framework.h"
 #include "AppLauncher.h"
 
-#define MAX_LOADSTRING 256
+#include <gdiplus.h>
+#include <commctrl.h>
 
+#pragma comment (lib,"Gdiplus.lib")
+#pragma comment(lib, "dwmapi.lib")
+#pragma comment(lib, "uxtheme.lib")
+
+using namespace Gdiplus;
+
+#define MAX_LOADSTRING 256
 #define CMD_BUTTON 201
 #define API_BUTTON 202 
 #define EXAMPLE_BUTTON 203
@@ -16,35 +20,38 @@
 #define CLOSE_BUTTON 206
 #define VERSION_TIMER 207
 
-// Global Variables:
-HINSTANCE hInst;                                // current instance
-WCHAR szTitle[MAX_LOADSTRING];                  // The title bar text
-WCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
+HINSTANCE hInst;
+WCHAR szTitle[MAX_LOADSTRING];
+WCHAR szWindowClass[MAX_LOADSTRING];
+std::wstring applicationPath;
+std::wstring programDataPath;
+Image* bannerImage;
 
-std::wstring applicationPath;                   // application path
-std::wstring programDataPath;                   // program data path
-
-// Forward declarations of functions included in this code module:
 ATOM RegisterWndClass(HINSTANCE hInstance);
 BOOL InitInstance(HINSTANCE, int);
-
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK VersionProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
-VOID CALLBACK VersionCheckProc(
-  HWND hwnd,        // handle to window for timer messages 
-  UINT message,     // WM_TIMER message 
-  UINT idTimer,     // timer identifier 
-  DWORD dwTime);     // current system time 
-
+VOID CALLBACK VersionCheckProc(HWND hwnd, UINT message, UINT idTimer, DWORD dwTime);
 BOOL InitEnvironment();
 BOOL WriteLineToFile(HANDLE file, std::wstring text);
 int GetLatestVersion();
 int GetLocalVersion();
+ULONG_PTR gdiToken;
+
+void InitGDIPlus() {
+  GdiplusStartupInput gdiplusStartupInput;
+  GdiplusStartup(&gdiToken, &gdiplusStartupInput, nullptr);
+}
+void ShutdownGDIPlus() {
+  GdiplusShutdown(gdiToken);
+}
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPWSTR    lpCmdLine, _In_ int nCmdShow)
 {
   UNREFERENCED_PARAMETER(hPrevInstance);
   UNREFERENCED_PARAMETER(lpCmdLine);
+
+  InitGDIPlus();
 
   // Initialize global strings
   LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
@@ -52,22 +59,48 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
   RegisterWndClass(hInstance);
 
   // Perform application initialization:
-  if(!InitInstance (hInstance, nCmdShow)) {
-      return FALSE;
+  if(!InitInstance(hInstance, nCmdShow)) {
+    return FALSE;
   }
 
   HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_WINDOWSTEST));
 
   // Main message loop:
   MSG msg;
-  while (GetMessage(&msg, nullptr, 0, 0)) {
-      if(!TranslateAccelerator(msg.hwnd, hAccelTable, &msg)) {
-          TranslateMessage(&msg);
-          DispatchMessage(&msg);
-      }
+  while(GetMessage(&msg, nullptr, 0, 0)) {
+    if(!TranslateAccelerator(msg.hwnd, hAccelTable, &msg)) {
+      TranslateMessage(&msg);
+      DispatchMessage(&msg);
+    }
   }
 
-  return (int)msg.wParam;
+  const int ret = (int)msg.wParam;
+  ShutdownGDIPlus();
+
+  return ret;
+}
+
+BOOL EnableMicaEffect(HWND hwnd) {
+    BOOL enabled = TRUE;
+    DWM_SYSTEMBACKDROP_TYPE backdropType = DWMSBT_MAINWINDOW;
+    DwmSetWindowAttribute(hwnd, DWMWA_SYSTEMBACKDROP_TYPE, &backdropType, sizeof(backdropType));
+
+    return TRUE;
+}
+
+HFONT CreateModernFont() {
+    return CreateFont(0, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+                      DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+                      CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_SWISS, L"Segoe UI Variable");
+}
+
+void ApplyModernStyle(HWND hwnd) {
+    SendMessage(hwnd, WM_SETFONT, (WPARAM)CreateModernFont(), TRUE);
+    SetWindowTheme(hwnd, L"Explorer", NULL);
+}
+
+void ApplyButtonIcon(HWND hwnd, HICON hIcon) {
+    SendMessage(hwnd, BM_SETIMAGE, IMAGE_ICON, (LPARAM)hIcon);
 }
 
 ATOM RegisterWndClass(HINSTANCE hInstance)
@@ -75,17 +108,17 @@ ATOM RegisterWndClass(HINSTANCE hInstance)
   WNDCLASSEXW wcex;
 
   wcex.cbSize = sizeof(WNDCLASSEX);
-  wcex.style          = CS_HREDRAW | CS_VREDRAW;
-  wcex.lpfnWndProc    = WndProc;
-  wcex.cbClsExtra     = 0;
-  wcex.cbWndExtra     = 0;
-  wcex.hInstance      = hInstance;
-  wcex.hIcon          = LoadIcon(hInstance, MAKEINTRESOURCE(IDC_APP_ICON));
-  wcex.hCursor        = LoadCursor(nullptr, IDC_ARROW);
-  wcex.hbrBackground  = (HBRUSH)(COLOR_WINDOW+1);
-  wcex.lpszMenuName   = MAKEINTRESOURCEW(IDC_WINDOWSTEST);
-  wcex.lpszClassName  = szWindowClass;
-  wcex.hIconSm        = LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDC_APP_ICON));
+  wcex.style = CS_HREDRAW | CS_VREDRAW;
+  wcex.lpfnWndProc = WndProc;
+  wcex.cbClsExtra = 0;
+  wcex.cbWndExtra = 0;
+  wcex.hInstance = hInstance;
+  wcex.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDC_APP_ICON));
+  wcex.hCursor = LoadCursor(nullptr, IDC_ARROW);
+  wcex.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
+  wcex.lpszMenuName = MAKEINTRESOURCEW(IDC_WINDOWSTEST);
+  wcex.lpszClassName = szWindowClass;
+  wcex.hIconSm = LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDC_APP_ICON));
 
   return RegisterClassExW(&wcex);
 }
@@ -112,8 +145,7 @@ DWORD FindProcessId(const wchar_t* processname)
       result = pe32.th32ProcessID;
       break;
     }
-  } 
-  while(Process32Next(hProcessSnap, &pe32));
+  } while(Process32Next(hProcessSnap, &pe32));
 
   CloseHandle(hProcessSnap);
   return result;
@@ -129,114 +161,111 @@ void GetWindowsFromProcessId(DWORD pId, std::vector <HWND>& hWnds)
     if(checkId == pId) {
       hWnds.push_back(curWnd);
     }
-  } 
-  while(curWnd != nullptr);
+  } while(curWnd != nullptr);
 }
 
-BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
-{
-hInst = hInstance;
+#include <gdiplus.h>
+#include <atlbase.h> // for CComPtr, CComStream
 
-  const int wndWidth = 450; 
-  const int wndHeight = 560;
+using namespace Gdiplus;
+using namespace std;
+
+// Helper to load a GDI+ Image from resource
+Image* LoadImageFromResource(HINSTANCE hInstance, UINT resourceID, LPCWSTR resourceType) {
+  HRSRC hResource = FindResource(hInstance, MAKEINTRESOURCE(resourceID), resourceType);
+  if(!hResource) return nullptr;
+
+  DWORD imageSize = SizeofResource(hInstance, hResource);
+  HGLOBAL hGlobal = LoadResource(hInstance, hResource);
+  if(!hGlobal) return nullptr;
+
+  LPVOID pResourceData = LockResource(hGlobal);
+  if(!pResourceData) return nullptr;
+
+  // Copy to a memory stream
+  HGLOBAL hBuffer = GlobalAlloc(GMEM_MOVEABLE, imageSize);
+  if(!hBuffer) return nullptr;
+
+  void* pBuffer = GlobalLock(hBuffer);
+  memcpy(pBuffer, pResourceData, imageSize);
+  GlobalUnlock(hBuffer);
+
+  IStream* pStream = nullptr;
+  CreateStreamOnHGlobal(hBuffer, TRUE, &pStream);
+  if(!pStream) return nullptr;
+
+  Image* image = new Image(pStream);
+  pStream->Release();
+
+  return image;
+}
+
+BOOL InitInstance(HINSTANCE hInstance, int nCmdShow) {
+  hInst = hInstance;
+
+  const int wndWidth = 440;
+  const int wndHeight = 695;
   const int buttonHeight = 82;
+  const int padding = 35;
 
-  // check for an existing instance
-  std::vector <HWND> hWnds;
-  GetWindowsFromProcessId(FindProcessId(L"ObLauncher.exe"), hWnds);
-  if(hWnds.size()) {
-    for(size_t i = 0; i < hWnds.size(); ++i) {
-      HWND hOtherWnd = hWnds[i];
-      SetForegroundWindow(hOtherWnd);
-      if(IsIconic(hOtherWnd)) {
-        ShowWindow(hOtherWnd, SW_RESTORE);
-      }
-    }
-
-    return FALSE;
-  }
- 
-
+  bannerImage = LoadImageFromResource(hInst, IDC_APP_ICON, L"PNG");
+  
   HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX,
                             CW_USEDEFAULT, CW_USEDEFAULT, wndWidth, wndHeight, nullptr,
                             nullptr, hInstance, nullptr);
 
-  const int padding = 35;
-  HWND hWndCmdButton = CreateWindow(WC_BUTTON, L"Command Prompt",
-                                    BS_DEFCOMMANDLINK | WS_CHILD | WS_VISIBLE,
-                                    10, 10, wndWidth - padding, buttonHeight,
-                                    hWnd, (HMENU)CMD_BUTTON, hInstance, nullptr);
-
-  HWND hWndApiButton = CreateWindow(WC_BUTTON, L"API Documentation",
-                                    BS_COMMANDLINK | WS_CHILD | WS_VISIBLE,
-                                    10, buttonHeight * 1 + 10 * 2, wndWidth - padding, buttonHeight,
-                                    hWnd, (HMENU)API_BUTTON, hInstance, nullptr);
-
-  HWND hWndExamplesButton = CreateWindow(WC_BUTTON, L"Code Examples",
-                                        BS_COMMANDLINK | WS_CHILD | WS_VISIBLE,
-                                        10, buttonHeight * 2 + 10 * 3, wndWidth - padding, buttonHeight,
-                                        hWnd, (HMENU)EXAMPLE_BUTTON, hInstance, nullptr);
-
-  HWND hWndEditorButton = CreateWindow(WC_BUTTON, L"Text Editor Support",
-                                       BS_COMMANDLINK | WS_CHILD | WS_VISIBLE,
-                                       10, buttonHeight * 3 + 10 * 4, wndWidth - padding, buttonHeight,
-                                       hWnd, (HMENU)EDITOR_BUTTON, hInstance, nullptr);
-
-  HWND hWndReadmeButton = CreateWindow(WC_BUTTON, L"Read Me",
-                                      BS_COMMANDLINK | WS_CHILD | WS_VISIBLE,
-                                      10, buttonHeight * 4 + 10 * 5, wndWidth - padding, buttonHeight,
-                                      hWnd, (HMENU)README_BUTTON, hInstance, nullptr);
-
-  const int closeButtonWidth = 80;
-  HWND hWndCloseButton = CreateWindow(WC_BUTTON, L"Close",
-                                      WS_CHILD | WS_VISIBLE,
-                                      wndWidth / 2 - closeButtonWidth / 2, 480, closeButtonWidth, 24,
-                                      hWnd, (HMENU)CLOSE_BUTTON, hInstance, nullptr);
-
-  if(!hWnd || !hWndCmdButton || !hWndApiButton || !hWndExamplesButton || !hWndReadmeButton) {
+  if(!hWnd) {
     return FALSE;
   }
 
-  HINSTANCE hShellDll = LoadLibrary(L"SHELL32.dll");
+  EnableMicaEffect(hWnd);
 
-  // hWndCmdButton
-  SendMessage(hWndCmdButton, BCM_SETNOTE, 0, (LPARAM)L"Objeck command prompt environment.\r\n(Alt+Shift+C)");
-  HICON hIcon = LoadIcon(hShellDll, MAKEINTRESOURCE(242));
-  SendMessageW(hWndCmdButton, BM_SETIMAGE, (WPARAM)IMAGE_ICON, (LPARAM)hIcon);
-   
-  // hWndApiButton
-  SendMessage(hWndApiButton, BCM_SETNOTE, 0, (LPARAM)L"Documentation for bundles and supporting classes.\r\n(Alt+Shift+D)");
-  hIcon = LoadIcon(hShellDll, MAKEINTRESOURCE(134));
-  SendMessageW(hWndApiButton, BM_SETIMAGE, (WPARAM)IMAGE_ICON, (LPARAM)hIcon);
-   
-  // hWndExamplesButton
-  SendMessage(hWndExamplesButton, BCM_SETNOTE, 0, (LPARAM)L"Sample code examples, copy locally to modify");
-  hIcon = LoadIcon(hShellDll, MAKEINTRESOURCE(147));
-  SendMessageW(hWndExamplesButton, BM_SETIMAGE, (WPARAM)IMAGE_ICON, (LPARAM)hIcon);
-
-  // hWndEditorButton
-  SendMessage(hWndEditorButton, BCM_SETNOTE, 0, (LPARAM)L"Text editor support for syntax highlighting and compiling code.");
-  hIcon = LoadIcon(hShellDll, MAKEINTRESOURCE(133));
-  SendMessageW(hWndEditorButton, BM_SETIMAGE, (WPARAM)IMAGE_ICON, (LPARAM)hIcon);
-
-  // hWndReadmeButton
-  SendMessage(hWndReadmeButton, BCM_SETNOTE, 0, (LPARAM)L"Information about this release and getting started.");
-  hIcon = LoadIcon(hShellDll, MAKEINTRESOURCE(1001));
-  SendMessageW(hWndReadmeButton, BM_SETIMAGE, (WPARAM)IMAGE_ICON, (LPARAM)hIcon);
-
-  // 30-second timer
-  UINT_PTR uResult = SetTimer(hWnd, VERSION_TIMER, /*30000*/10000, (TIMERPROC)VersionCheckProc);
-  if(!uResult) {
-    return FALSE;
+  // Load stock icon (e.g., command prompt icon)
+  SHSTOCKICONINFO cmdIcon = { sizeof(cmdIcon) };
+  if(!SHGetStockIconInfo(SIID_RENAME, SHGSI_ICON, &cmdIcon)) {
+    HWND hWndCmdButton = CreateWindow(WC_BUTTON, L"Command Prompt", WS_VISIBLE | WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
+                                      10, 145, wndWidth - padding, buttonHeight, hWnd, (HMENU)CMD_BUTTON, hInstance, nullptr);
+    ApplyModernStyle(hWndCmdButton);
+    ApplyButtonIcon(hWndCmdButton, cmdIcon.hIcon);
   }
 
-  // show window
+  SHSTOCKICONINFO apiIcon = { sizeof(apiIcon) };
+  if(!SHGetStockIconInfo(SIID_DOCASSOC, SHGSI_ICON, &apiIcon)) {
+    HWND hWndApiButton = CreateWindow(WC_BUTTON, L"API Documentation", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
+                                      10, buttonHeight * 1 + 165, wndWidth - padding, buttonHeight, hWnd, (HMENU)API_BUTTON, hInstance, nullptr);
+    ApplyModernStyle(hWndApiButton);
+    ApplyButtonIcon(hWndApiButton, apiIcon.hIcon);
+  }
+
+  SHSTOCKICONINFO exIcon = { sizeof(exIcon) };
+  if(!SHGetStockIconInfo(SIID_AUTOLIST, SHGSI_ICON, &exIcon)) {
+    HWND hWndExamplesButton = CreateWindow(WC_BUTTON, L"Code Examples", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
+                                           10, buttonHeight * 2 + 185, wndWidth - padding, buttonHeight, hWnd, (HMENU)EXAMPLE_BUTTON, hInstance, nullptr);
+    ApplyModernStyle(hWndExamplesButton);
+    ApplyButtonIcon(hWndExamplesButton, exIcon.hIcon);
+  }
+
+  SHSTOCKICONINFO editIcon = { sizeof(editIcon) };
+  if(!SHGetStockIconInfo(SIID_STACK, SHGSI_ICON, &editIcon)) {
+    HWND hWndEditorButton = CreateWindow(WC_BUTTON, L"Text Editor Support", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
+                                         10, buttonHeight * 3 + 205, wndWidth - padding, buttonHeight, hWnd, (HMENU)EDITOR_BUTTON, hInstance, nullptr);
+    ApplyModernStyle(hWndEditorButton);
+    ApplyButtonIcon(hWndEditorButton, editIcon.hIcon);
+  }
+
+  SHSTOCKICONINFO readIcon = { sizeof(readIcon) };
+  if(!SHGetStockIconInfo(SIID_HELP, SHGSI_ICON, &readIcon)) {
+    HWND hWndReadmeButton = CreateWindow(WC_BUTTON, L"Read Me", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
+                                         10, buttonHeight * 4 + 225, wndWidth - padding, buttonHeight, hWnd, (HMENU)README_BUTTON, hInstance, nullptr);
+    ApplyModernStyle(hWndReadmeButton);
+    ApplyButtonIcon(hWndReadmeButton, readIcon.hIcon);
+  }
+
   ShowWindow(hWnd, nCmdShow);
   UpdateWindow(hWnd);
 
   return InitEnvironment();
 }
-
 INT_PTR CALLBACK VersionProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 {
   UNREFERENCED_PARAMETER(lParam);
@@ -293,7 +322,7 @@ VOID CALLBACK VersionCheckProc(HWND hWnd, UINT message, UINT idTimer, DWORD dwTi
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
-  switch (message) {
+  switch(message) {
   case WM_COMMAND: {
     const int wmId = LOWORD(wParam);
     // Parse the menu selections:
@@ -304,7 +333,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
       command += L"\"";             // end
       ShellExecute(nullptr, L"open", L"cmd.exe", command.c_str(), nullptr, SW_SHOWDEFAULT);
     }
-      break;
+                   break;
 
     case API_BUTTON: {
       std::wstring command = L"\""; // start
@@ -312,15 +341,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
       command += L"\"";             // end
       ShellExecute(nullptr, L"open", command.c_str(), nullptr, nullptr, SW_SHOWDEFAULT);
     }
-      break;
-      
+                   break;
+
     case EXAMPLE_BUTTON: {
       std::wstring command = L"\""; // start
       command += applicationPath + L"\\..\\examples";
       command += L"\"";             // end
       ShellExecute(nullptr, L"open", command.c_str(), nullptr, nullptr, SW_SHOWDEFAULT);
     }
-      break;
+                       break;
 
     case EDITOR_BUTTON: {
       std::wstring command = L"\""; // start
@@ -336,7 +365,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
       command += L"\"";             // end
       ShellExecute(nullptr, L"open", command.c_str(), nullptr, nullptr, SW_SHOWDEFAULT);
     }
-      break;
+                      break;
 
     case CLOSE_BUTTON:
     case IDM_EXIT:
@@ -350,7 +379,24 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     break;
 
   case WM_DESTROY:
+    if(bannerImage) {
+      delete bannerImage;
+      bannerImage = nullptr;
+    }
     PostQuitMessage(0);
+    break;
+
+  case WM_PAINT: {
+    PAINTSTRUCT ps;
+    HDC hdc = BeginPaint(hWnd, &ps);
+
+    if(bannerImage) {
+      Graphics graphics(hdc);
+      graphics.DrawImage(bannerImage, 60, 8, bannerImage->GetWidth(), bannerImage->GetHeight());
+    }
+
+    EndPaint(hWnd, &ps);
+  }
     break;
 
   default:
@@ -460,7 +506,7 @@ BOOL GetLatestVersion()
 
   CHAR buffer[bufferSize];
   ZeroMemory(&buffer, bufferSize);
-  
+
   DWORD bytesRead;
   if(!InternetReadFile(hOpen, (LPVOID)buffer, bufferSize, &bytesRead)) {
     InternetCloseHandle(hOpen);
