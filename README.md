@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-it can program things
+Another programming language
 </p>
 
 <hr/>
