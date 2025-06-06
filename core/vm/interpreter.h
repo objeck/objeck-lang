@@ -334,17 +334,20 @@ namespace Runtime {
     void inline ObjTypeOf(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
     void inline ObjInstCast(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
 
+
+
+
+
     inline void ProcessJitMethodCall(StackMethod* called, size_t* instance, StackInstr**& instrs, long& ip, size_t*& op_stack, long*& stack_pos);
     inline void ProcessAsyncMethodCall(StackMethod* called, size_t* param);
     inline void ProcessInterpretedMethodCall(StackMethod* called, size_t* instance, StackInstr**& instrs, long& ip);
-
-
     inline void ProcessNewArray(StackInstr* instr, size_t* &op_stack, long* &stack_pos, bool is_float = false);
     inline void ProcessReturn(StackInstr** &instrs, long &ip);
     inline void ProcessMethodCall(StackInstr* instr, StackInstr** &instrs, long &ip, size_t* &op_stack, long* &stack_pos);
     inline void ProcessDynamicMethodCall(StackInstr* instr, StackInstr** &instrs, long &ip, size_t* &op_stack, long* &stack_pos);
     inline void SharedLibraryLoad(StackInstr* instr);
     inline void SharedLibraryUnload(StackInstr* instr);
+
 
 
 
