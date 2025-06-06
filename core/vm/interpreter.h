@@ -337,7 +337,41 @@ namespace Runtime {
     void inline ObjInstCast(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
 
 
-
+    inline void ExtLibLoad(StackInstr* instr, size_t*& op_stack, long*& stack_pos);
+    inline void ExtLibUnload(StackInstr* instr, size_t*& op_stack, long*& stack_pos);
+    inline void LoadCharLit(StackInstr* instr, size_t*& op_stack, long*& stack_pos);
+    inline void LoadIntLit(StackInstr* instr, size_t*& op_stack, long*& stack_pos);
+    inline void LoadFloatLit(StackInstr* instr, size_t*& op_stack, long*& stack_pos);
+    inline void CeilFloat(StackInstr* instr, size_t*& op_stack, long*& stack_pos);
+    inline void TruncFloat(StackInstr* instr, size_t*& op_stack, long*& stack_pos);
+    inline void FlorFloat(StackInstr* instr, size_t*& op_stack, long*& stack_pos);
+    inline void SinFloat(StackInstr* instr, size_t*& op_stack, long*& stack_pos);
+    inline void CosFloat(StackInstr* instr, size_t*& op_stack, long*& stack_pos);
+    inline void TanFloat(StackInstr* instr, size_t*& op_stack, long*& stack_pos);
+    inline void AsinFloat(StackInstr* instr, size_t*& op_stack, long*& stack_pos);
+    inline void AcosFloat(StackInstr* instr, size_t*& op_stack, long*& stack_pos);
+    inline void AtanFloat(StackInstr* instr, size_t*& op_stack, long*& stack_pos);
+    inline void Log2Float(StackInstr* instr, size_t*& op_stack, long*& stack_pos);
+    inline void CbrtFloat(StackInstr* instr, size_t*& op_stack, long*& stack_pos);
+    inline void LogFloat(StackInstr* instr, size_t*& op_stack, long*& stack_pos);
+    inline void RoundFloat(StackInstr* instr, size_t*& op_stack, long*& stack_pos);
+    inline void ExpFloat(StackInstr* instr, size_t*& op_stack, long*& stack_pos);
+    inline void Log10Float(StackInstr* instr, size_t*& op_stack, long*& stack_pos);
+    inline void SqrtFloat(StackInstr* instr, size_t*& op_stack, long*& stack_pos);
+    inline void GammaFloat(StackInstr* instr, size_t*& op_stack, long*& stack_pos);
+    inline void NanInt(StackInstr* instr, size_t*& op_stack, long*& stack_pos);
+    inline void InfInt(StackInstr* instr, size_t*& op_stack, long*& stack_pos);
+    inline void NegInfInt(StackInstr* instr, size_t*& op_stack, long*& stack_pos);
+    inline void NanFloat(StackInstr* instr, size_t*& op_stack, long*& stack_pos);
+    inline void InfFloat(StackInstr* instr, size_t*& op_stack, long*& stack_pos);
+    inline void NegInfFloat(StackInstr* instr, size_t*& op_stack, long*& stack_pos);
+    inline void RandFloat(StackInstr* instr, size_t*& op_stack, long*& stack_pos);
+    inline void AcoshFloat(StackInstr* instr, size_t*& op_stack, long*& stack_pos);
+    inline void AsinhFloat(StackInstr* instr, size_t*& op_stack, long*& stack_pos);
+    inline void AtanhFloat(StackInstr* instr, size_t*& op_stack, long*& stack_pos);
+    inline void CoshFloat(StackInstr* instr, size_t*& op_stack, long*& stack_pos);
+    inline void SinhFloat(StackInstr* instr, size_t*& op_stack, long*& stack_pos);
+    inline void TanhFloat(StackInstr* instr, size_t*& op_stack, long*& stack_pos);
 
 
     inline void ProcessJitMethodCall(StackMethod* called, size_t* instance, StackInstr**& instrs, long& ip, size_t*& op_stack, long*& stack_pos);
