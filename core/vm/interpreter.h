@@ -297,6 +297,8 @@ namespace Runtime {
     void inline NeqlFloat(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
     void inline LesFloat(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
     void inline GtrFloat(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
+    void inline ModFloat(StackInstr* instr, size_t*& op_stack, long*& stack_pos);
+    void inline PowFloat(StackInstr* instr, size_t*& op_stack, long*& stack_pos);
     void inline LoadArySize(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
     void inline CpyByteAry(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
     void inline CpyCharAry(StackInstr* instr, size_t* &op_stack, long* &stack_pos);

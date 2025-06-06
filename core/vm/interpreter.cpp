@@ -165,6 +165,8 @@ void StackInterpreter::Initialize(StackProgram* p, size_t m)
   instr_pointers[NEW_FUNC_INST] = &StackInterpreter::ProcessNewFunctionInstance;
   instr_pointers[NEW_BYTE_ARY] = &StackInterpreter::ProcessNewByteArray;
 
+  instr_pointers[MOD_FLOAT] = &StackInterpreter::ModFloat;
+  instr_pointers[POW_FLOAT] = &StackInterpreter::PowFloat;
     
 #ifdef _WIN32
   InitializeCriticalSection(&cached_frames_cs);
@@ -249,10 +251,6 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
     }
     
     switch(instr_type) {
-    case NEW_FLOAT_ARY:
-      ProcessNewArray(instr, op_stack, stack_pos, true);
-      break;
-
     case RTRN:
       ProcessReturn(instrs, ip);
       // return directly back to JIT code
@@ -281,6 +279,17 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
         ReleaseStackFrame(*stack_frame);
         return;
       }
+      break;
+
+      //
+      // replaceable
+      // 
+    case NEW_INT_ARY:
+      ProcessNewArray(instr, op_stack, stack_pos);
+      break;
+
+    case NEW_FLOAT_ARY:
+      ProcessNewArray(instr, op_stack, stack_pos, true);
       break;
 
       // shared library support
@@ -438,21 +447,7 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
       right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 1]));
       *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2])) = atan2(left_double, right_double);
       (*stack_pos)--;
-      break;
-
-    case MOD_FLOAT:
-      left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
-      right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 1]));
-      *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2])) = fmod(left_double, right_double);
-      (*stack_pos)--;
-      break;
-      
-    case POW_FLOAT:
-      left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
-      right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 1]));
-      *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2])) = pow(left_double, right_double);
-      (*stack_pos)--;
-      break;
+      break;    
 
     case I2F:
 #ifdef _DEBUG
@@ -537,11 +532,7 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
         exit(1);
 #endif
       }
-      break;
-
-    case NEW_INT_ARY:
-      ProcessNewArray(instr, op_stack, stack_pos);
-      break;
+      break;    
 
       // note: just for debugger
     case END_STMTS:
@@ -559,6 +550,19 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
   std::wcout << L"---------------------------" << std::endl;
   std::wcout << L"Dispatch method='" << mthd_name << L"', time=" << (double)(end - start) / CLOCKS_PER_SEC << L" second(s)." << std::endl;
 #endif
+}
+
+void inline StackInterpreter::ModFloat(StackInstr* instr, size_t*& op_stack, long*& stack_pos) {
+    FLOAT_VALUE left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
+    FLOAT_VALUE right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 1]));
+    *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2])) = fmod(left_double, right_double);
+    (*stack_pos)--;
+}
+void inline StackInterpreter::PowFloat(StackInstr* instr, size_t*& op_stack, long*& stack_pos) {
+  FLOAT_VALUE left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
+  FLOAT_VALUE right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 1]));
+  *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2])) = pow(left_double, right_double);
+  (*stack_pos)--;
 }
 
 void StackInterpreter::StorLoclIntVar(StackInstr* instr, size_t* &op_stack, long* &stack_pos)
