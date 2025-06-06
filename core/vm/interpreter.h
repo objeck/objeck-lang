@@ -64,7 +64,10 @@ namespace Runtime {
     size_t* self;
     size_t* param;
   };
-  
+
+  class StackInterpreter;
+  typedef void (StackInterpreter::* InstrPtr)(StackInstr* instr, size_t*& op_stack, long*& stack_pos);
+
   //
   // StackInterpreter
   //
@@ -73,6 +76,7 @@ namespace Runtime {
     static StackProgram* program;
     static std::set<StackInterpreter*> intpr_threads;
     static std::stack<StackFrame*> cached_frames;
+    static InstrPtr* instr_pointers;
 
 #ifdef _WIN32
     static bool is_stdio_binary;
@@ -261,77 +265,64 @@ namespace Runtime {
     void inline CopyClsInstIntVar(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
     void inline LoadLoclIntVar(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
     void inline LoadClsInstIntVar(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
-
-    void inline Str2Int(size_t* &op_stack, long* &stack_pos);
-    void inline Str2Float(size_t* &op_stack, long* &stack_pos);
-    void inline Int2Str(size_t* &op_stack, long* &stack_pos);
-    void inline Float2Str(size_t*& op_stack, long*& stack_pos);
-    void inline ByteChar2Int(size_t*& op_stack, long*& stack_pos);
-    void inline ShlInt(size_t* &op_stack, long* &stack_pos);
-    void inline ShrInt(size_t* &op_stack, long* &stack_pos);
-    void inline AndInt(size_t* &op_stack, long* &stack_pos);
-    void inline OrInt(size_t* &op_stack, long* &stack_pos);
-    void inline AddInt(size_t* &op_stack, long* &stack_pos);
-    void inline AddFloat(size_t* &op_stack, long* &stack_pos);
-    void inline SubInt(size_t* &op_stack, long* &stack_pos);
-    void inline SubFloat(size_t* &op_stack, long* &stack_pos);
-    void inline MulInt(size_t* &op_stack, long* &stack_pos);
-    void inline DivInt(size_t* &op_stack, long* &stack_pos);
-    void inline MulFloat(size_t* &op_stack, long* &stack_pos);
-    void inline DivFloat(size_t* &op_stack, long* &stack_pos);
-    void inline ModInt(size_t* &op_stack, long* &stack_pos);
-    void inline BitAndInt(size_t* &op_stack, long* &stack_pos);
-    void inline BitOrInt(size_t* &op_stack, long* &stack_pos);
-    void inline BitXorInt(size_t*& op_stack, long*& stack_pos);
-    void inline BitNotInt(size_t*& op_stack, long*& stack_pos);
-    void inline LesEqlInt(size_t* &op_stack, long* &stack_pos);
-    void inline GtrEqlInt(size_t* &op_stack, long* &stack_pos);
-    void inline LesEqlFloat(size_t* &op_stack, long* &stack_pos);
-    void inline GtrEqlFloat(size_t* &op_stack, long* &stack_pos);
-    void inline EqlInt(size_t* &op_stack, long* &stack_pos);
-    void inline NeqlInt(size_t* &op_stack, long* &stack_pos);
-    void inline LesInt(size_t* &op_stack, long* &stack_pos);
-    void inline GtrInt(size_t* &op_stack, long* &stack_pos);
-    void inline EqlFloat(size_t* &op_stack, long* &stack_pos);
-    void inline NeqlFloat(size_t* &op_stack, long* &stack_pos);
-    void inline LesFloat(size_t* &op_stack, long* &stack_pos);
-    void inline GtrFloat(size_t* &op_stack, long* &stack_pos);
-    void inline LoadArySize(size_t* &op_stack, long* &stack_pos);
-    void inline CpyByteAry(size_t* &op_stack, long* &stack_pos);
-    void inline CpyCharAry(size_t* &op_stack, long* &stack_pos);
-    void inline CpyIntAry(size_t* &op_stack, long* &stack_pos);
-    void inline CpyFloatAry(size_t* &op_stack, long* &stack_pos);
-    void inline ZeroByteAry(size_t*& op_stack, long*& stack_pos);
-    void inline ZeroCharAry(size_t*& op_stack, long*& stack_pos);
-    void inline ZeroIntAry(size_t*& op_stack, long*& stack_pos);
-    void inline ZeroFloatAry(size_t*& op_stack, long*& stack_pos);
-    void inline ObjTypeOf(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
-    void inline ObjInstCast(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
-    void inline AsyncMthdCall(size_t* &op_stack, long* &stack_pos);
-    void inline ThreadJoin(size_t* &op_stack, long* &stack_pos);
-    void inline ThreadMutex(size_t* &op_stack, long* &stack_pos);
-    void inline CriticalStart(size_t* &op_stack, long* &stack_pos);
-    void inline CriticalEnd(size_t* &op_stack, long* &stack_pos);
-
-    inline void ProcessNewArray(StackInstr* instr, size_t* &op_stack, long* &stack_pos, bool is_float = false);
+    void inline Str2Int(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
+    void inline Str2Float(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
+    void inline Int2Str(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
+    void inline ShlInt(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
+    void inline ShrInt(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
+    void inline AndInt(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
+    void inline OrInt(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
+    void inline AddInt(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
+    void inline AddFloat(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
+    void inline SubInt(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
+    void inline SubFloat(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
+    void inline MulInt(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
+    void inline DivInt(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
+    void inline MulFloat(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
+    void inline DivFloat(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
+    void inline ModInt(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
+    void inline BitAndInt(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
+    void inline BitOrInt(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
+    void inline BitXorInt(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
+    void inline BitNotInt(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
+    void inline LesEqlInt(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
+    void inline GtrEqlInt(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
+    void inline LesEqlFloat(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
+    void inline GtrEqlFloat(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
+    void inline EqlInt(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
+    void inline NeqlInt(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
+    void inline LesInt(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
+    void inline GtrInt(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
+    void inline EqlFloat(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
+    void inline NeqlFloat(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
+    void inline LesFloat(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
+    void inline GtrFloat(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
+    void inline LoadArySize(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
+    void inline CpyByteAry(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
+    void inline CpyCharAry(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
+    void inline CpyIntAry(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
+    void inline CpyFloatAry(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
+    void inline ZeroByteAry(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
+    void inline ZeroCharAry(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
+    void inline ZeroIntAry(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
+    void inline ZeroFloatAry(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
+    void inline AsyncMthdCall(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
+    void inline ThreadJoin(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
+    void inline ThreadMutex(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
+    void inline CriticalStart(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
+    void inline CriticalEnd(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
+    void inline Float2Str(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
+    void inline ByteChar2Int(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
     inline void ProcessNewByteArray(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
     inline void ProcessNewCharArray(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
     inline void ProcessNewObjectInstance(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
-    inline void ProcessNewFunctionInstance(StackInstr* instr, size_t*& op_stack, long*& stack_pos);
-    inline void ProcessReturn(StackInstr** &instrs, long &ip);
-
-    inline void ProcessMethodCall(StackInstr* instr, StackInstr** &instrs, long &ip, size_t* &op_stack, long* &stack_pos);
-    inline void ProcessDynamicMethodCall(StackInstr* instr, StackInstr** &instrs, long &ip, size_t* &op_stack, long* &stack_pos);
-    inline void ProcessJitMethodCall(StackMethod* called, size_t* instance, StackInstr** &instrs, long &ip, size_t* &op_stack, long* &stack_pos);
-    inline void ProcessAsyncMethodCall(StackMethod* called, size_t* param);
-
-    inline void ProcessInterpretedMethodCall(StackMethod* called, size_t* instance, StackInstr** &instrs, long &ip);
+    inline void ProcessNewFunctionInstance(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
     inline void ProcessLoadIntArrayElement(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
     inline void ProcessStoreIntArrayElement(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
     inline void ProcessLoadFloatArrayElement(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
     inline void ProcessStoreFloatArrayElement(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
     inline void ProcessLoadByteArrayElement(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
-    inline void ProcessStoreByteArrayElement(StackInstr* instr, size_t* &op_stack, long* &stack_pos);    
+    inline void ProcessStoreByteArrayElement(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
     inline void ProcessStoreCharArrayElement(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
     inline void ProcessLoadCharArrayElement(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
     inline void ProcessStoreFunctionVar(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
@@ -339,10 +330,24 @@ namespace Runtime {
     inline void ProcessStoreFloat(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
     inline void ProcessLoadFloat(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
     inline void ProcessCopyFloat(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
+    inline void SharedLibraryCall(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
+    void inline ObjTypeOf(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
+    void inline ObjInstCast(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
 
+    inline void ProcessJitMethodCall(StackMethod* called, size_t* instance, StackInstr**& instrs, long& ip, size_t*& op_stack, long*& stack_pos);
+    inline void ProcessAsyncMethodCall(StackMethod* called, size_t* param);
+    inline void ProcessInterpretedMethodCall(StackMethod* called, size_t* instance, StackInstr**& instrs, long& ip);
+
+
+    inline void ProcessNewArray(StackInstr* instr, size_t* &op_stack, long* &stack_pos, bool is_float = false);
+    inline void ProcessReturn(StackInstr** &instrs, long &ip);
+    inline void ProcessMethodCall(StackInstr* instr, StackInstr** &instrs, long &ip, size_t* &op_stack, long* &stack_pos);
+    inline void ProcessDynamicMethodCall(StackInstr* instr, StackInstr** &instrs, long &ip, size_t* &op_stack, long* &stack_pos);
     inline void SharedLibraryLoad(StackInstr* instr);
     inline void SharedLibraryUnload(StackInstr* instr);
-    inline void SharedLibraryCall(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
+
+
+
     
   public:
 		// initialize the runtime system
