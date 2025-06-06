@@ -336,6 +336,15 @@ namespace Runtime {
     void inline ObjTypeOf(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
     void inline ObjInstCast(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
 
+    inline void Atan2Float(StackInstr* instr, size_t*& op_stack, long*& stack_pos);
+    inline void IntToFloat(StackInstr* instr, size_t*& op_stack, long*& stack_pos);
+    inline void Float2Int(StackInstr* instr, size_t*& op_stack, long*& stack_pos);
+    inline void SwapInt(StackInstr* instr, size_t*& op_stack, long*& stack_pos);
+    inline void PopInt(StackInstr* instr, size_t*& op_stack, long*& stack_pos);
+    inline void PopFloat(StackInstr* instr, size_t*& op_stack, long*& stack_pos);
+    inline void ThreadSleep(StackInstr* instr, size_t*& op_stack, long*& stack_pos);
+    inline void LoadClsMem(StackInstr* instr, size_t*& op_stack, long*& stack_pos);
+    inline void LoadInstMem(StackInstr* instr, size_t*& op_stack, long*& stack_pos);
 
     inline void ExtLibLoad(StackInstr* instr, size_t*& op_stack, long*& stack_pos);
     inline void ExtLibUnload(StackInstr* instr, size_t*& op_stack, long*& stack_pos);
