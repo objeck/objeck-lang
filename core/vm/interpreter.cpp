@@ -249,10 +249,6 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
     }
     
     switch(instr_type) {
-    case NEW_INT_ARY:
-      ProcessNewArray(instr, op_stack, stack_pos);
-      break;
-
     case NEW_FLOAT_ARY:
       ProcessNewArray(instr, op_stack, stack_pos, true);
       break;
@@ -296,14 +292,6 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
       SharedLibraryUnload(instr);
       break;
 
-
-
-
-
-
-
-
-    
     case LOAD_CHAR_LIT:
 #ifdef _DEBUG
       std::wcout << L"stack oper: LOAD_INT_LIT; call_pos=" << (*call_stack_pos) << std::endl;
@@ -318,17 +306,13 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
       PushInt(instr->GetInt64Operand(), op_stack, stack_pos);
       break;
 
-    
-
     case LOAD_FLOAT_LIT:
 #ifdef _DEBUG
       std::wcout << L"stack oper: LOAD_FLOAT_LIT; call_pos=" << (*call_stack_pos) << std::endl;
 #endif
       PushFloat(instr->GetFloatOperand(), op_stack, stack_pos);
       break;
-
-    
-
+      
     case CEIL_FLOAT:
       PushFloat(ceil(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
       break;
@@ -505,15 +489,6 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
       PopFloat(op_stack, stack_pos);
       break;
 
-      
-
-
-
-
-    
-
-    
-
     case JMP:
 #ifdef _DEBUG
       std::wcout << L"stack oper: JMP; call_pos=" << (*call_stack_pos) << std::endl;
@@ -548,12 +523,6 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
       PushInt((*stack_frame)->mem[0], op_stack, stack_pos);
       break;
 
-      
-
-    
-
-    
-      
     case TRAP:
     case TRAP_RTRN:
 #ifdef _DEBUG
