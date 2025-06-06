@@ -539,11 +539,16 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
       }
       break;
 
+    case NEW_INT_ARY:
+      ProcessNewArray(instr, op_stack, stack_pos);
+      break;
+
       // note: just for debugger
     case END_STMTS:
       break;
 
     default:
+      std::wcerr << L">>> Unknown instruction type: " << instr_type << L" <<<" << std::endl;
       break;
     }
   }
