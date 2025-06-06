@@ -548,7 +548,7 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
       break;
 
     default:
-      std::wcerr << L">>> Unknown instruction type: " << instr_type << L" <<<" << std::endl;
+      // std::wcerr << L">>> Unknown instruction type: " << instr_type << L" <<<" << std::endl;
       break;
     }
   }
