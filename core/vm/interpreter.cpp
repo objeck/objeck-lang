@@ -81,6 +81,7 @@ void StackInterpreter::Initialize(StackProgram* p, size_t m)
 {
   program = p;
 
+  // TODO: free this
   instr_pointers = new InstrPtr[END_STMTS];
   memset(instr_pointers, 0, sizeof(InstrPtr) * END_STMTS);
 

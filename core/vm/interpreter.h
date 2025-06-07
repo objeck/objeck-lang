@@ -479,6 +479,9 @@ namespace Runtime {
         free(frame->mem);
         delete frame;
       }
+
+      delete[] instr_pointers;
+      instr_pointers = nullptr;
     }
 
 #ifdef _WIN32
