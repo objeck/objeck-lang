@@ -89,19 +89,18 @@ namespace instructions {
 }
 
 /**
- * Converts UTF-8 bytes a
- * Unicode string
+ * Hashes a UTF-8 Unicode string
  */
 static size_t HashString(const wchar_t* char_ary, const size_t char_ary_pos) {
-    // djb2 hash
   if(!char_ary || !char_ary_pos) {
     return 0;
   }
 
-  size_t hash = 5381;
-  
+  size_t hash = 14695981039346656037ull; // FNV offset basis (64-bit)
+
   for(size_t i = 0; i < char_ary_pos; ++i) {
-    hash = ((hash << 5) + hash) + char_ary[i];
+    hash ^= static_cast<size_t>(char_ary[i]);
+    hash *= 1099511628211ull; // FNV prime (64-bit)
   }
 
   return hash;
