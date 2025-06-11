@@ -81,6 +81,7 @@ void StackInterpreter::Initialize(StackProgram* p, size_t m)
 {
   program = p;
 
+  // TODO: free this
   instr_pointers = new InstrPtr[END_STMTS];
   memset(instr_pointers, 0, sizeof(InstrPtr) * END_STMTS);
 
@@ -139,8 +140,6 @@ void StackInterpreter::Initialize(StackProgram* p, size_t m)
   instr_pointers[THREAD_MUTEX] = &StackInterpreter::ThreadMutex;
   instr_pointers[CRITICAL_START] = &StackInterpreter::CriticalStart;
   instr_pointers[CRITICAL_END] = &StackInterpreter::CriticalEnd;
-
-  // Array element handlers
   instr_pointers[LOAD_INT_ARY_ELM] = &StackInterpreter::ProcessLoadIntArrayElement;
   instr_pointers[STOR_INT_ARY_ELM] = &StackInterpreter::ProcessStoreIntArrayElement;
   instr_pointers[LOAD_FLOAT_ARY_ELM] = &StackInterpreter::ProcessLoadFloatArrayElement;
@@ -149,25 +148,62 @@ void StackInterpreter::Initialize(StackProgram* p, size_t m)
   instr_pointers[STOR_BYTE_ARY_ELM] = &StackInterpreter::ProcessStoreByteArrayElement;
   instr_pointers[LOAD_CHAR_ARY_ELM] = &StackInterpreter::ProcessLoadCharArrayElement;
   instr_pointers[STOR_CHAR_ARY_ELM] = &StackInterpreter::ProcessStoreCharArrayElement;
-
-  // Function var handlers
   instr_pointers[STOR_FUNC_VAR] = &StackInterpreter::ProcessStoreFunctionVar;
   instr_pointers[LOAD_FUNC_VAR] = &StackInterpreter::ProcessLoadFunctionVar;
-
-  // Float var handlers
   instr_pointers[STOR_FLOAT_VAR] = &StackInterpreter::ProcessStoreFloat;
   instr_pointers[LOAD_FLOAT_VAR] = &StackInterpreter::ProcessLoadFloat;
   instr_pointers[COPY_FLOAT_VAR] = &StackInterpreter::ProcessCopyFloat;
-
-  // New object/array handlers
   instr_pointers[NEW_CHAR_ARY] = &StackInterpreter::ProcessNewCharArray;
   instr_pointers[NEW_OBJ_INST] = &StackInterpreter::ProcessNewObjectInstance;
   instr_pointers[NEW_FUNC_INST] = &StackInterpreter::ProcessNewFunctionInstance;
   instr_pointers[NEW_BYTE_ARY] = &StackInterpreter::ProcessNewByteArray;
-
   instr_pointers[MOD_FLOAT] = &StackInterpreter::ModFloat;
   instr_pointers[POW_FLOAT] = &StackInterpreter::PowFloat;
-    
+  instr_pointers[EXT_LIB_LOAD] = &StackInterpreter::ExtLibLoad;
+  instr_pointers[EXT_LIB_UNLOAD] = &StackInterpreter::ExtLibUnload;
+  instr_pointers[LOAD_CHAR_LIT] = &StackInterpreter::LoadCharLit;
+  instr_pointers[LOAD_INT_LIT] = &StackInterpreter::LoadIntLit;
+  instr_pointers[LOAD_FLOAT_LIT] = &StackInterpreter::LoadFloatLit;
+  instr_pointers[CEIL_FLOAT] = &StackInterpreter::CeilFloat;
+  instr_pointers[TRUNC_FLOAT] = &StackInterpreter::TruncFloat;
+  instr_pointers[FLOR_FLOAT] = &StackInterpreter::FlorFloat;
+  instr_pointers[SIN_FLOAT] = &StackInterpreter::SinFloat;
+  instr_pointers[COS_FLOAT] = &StackInterpreter::CosFloat;
+  instr_pointers[TAN_FLOAT] = &StackInterpreter::TanFloat;
+  instr_pointers[ASIN_FLOAT] = &StackInterpreter::AsinFloat;
+  instr_pointers[ACOS_FLOAT] = &StackInterpreter::AcosFloat;
+  instr_pointers[ATAN_FLOAT] = &StackInterpreter::AtanFloat;
+  instr_pointers[LOG2_FLOAT] = &StackInterpreter::Log2Float;
+  instr_pointers[CBRT_FLOAT] = &StackInterpreter::CbrtFloat;
+  instr_pointers[LOG_FLOAT] = &StackInterpreter::LogFloat;
+  instr_pointers[ROUND_FLOAT] = &StackInterpreter::RoundFloat;
+  instr_pointers[EXP_FLOAT] = &StackInterpreter::ExpFloat;
+  instr_pointers[LOG10_FLOAT] = &StackInterpreter::Log10Float;
+  instr_pointers[SQRT_FLOAT] = &StackInterpreter::SqrtFloat;
+  instr_pointers[GAMMA_FLOAT] = &StackInterpreter::GammaFloat;
+  instr_pointers[NAN_INT] = &StackInterpreter::NanInt;
+  instr_pointers[INF_INT] = &StackInterpreter::InfInt;
+  instr_pointers[NEG_INF_INT] = &StackInterpreter::NegInfInt;
+  instr_pointers[NAN_FLOAT] = &StackInterpreter::NanFloat;
+  instr_pointers[INF_FLOAT] = &StackInterpreter::InfFloat;
+  instr_pointers[NEG_INF_FLOAT] = &StackInterpreter::NegInfFloat;
+  instr_pointers[RAND_FLOAT] = &StackInterpreter::RandFloat;
+  instr_pointers[ACOSH_FLOAT] = &StackInterpreter::AcoshFloat;
+  instr_pointers[ASINH_FLOAT] = &StackInterpreter::AsinhFloat;
+  instr_pointers[ATANH_FLOAT] = &StackInterpreter::AtanhFloat;
+  instr_pointers[COSH_FLOAT] = &StackInterpreter::CoshFloat;
+  instr_pointers[SINH_FLOAT] = &StackInterpreter::SinhFloat;
+  instr_pointers[TANH_FLOAT] = &StackInterpreter::TanhFloat;
+  instr_pointers[ATAN2_FLOAT] = &StackInterpreter::Atan2Float;
+  instr_pointers[I2F] = &StackInterpreter::IntToFloat;
+  instr_pointers[F2I] = &StackInterpreter::Float2Int;
+  instr_pointers[SWAP_INT] = &StackInterpreter::SwapInt;
+  instr_pointers[POP_INT] = &StackInterpreter::PopInt;
+  instr_pointers[POP_FLOAT] = &StackInterpreter::PopFloat;
+  instr_pointers[THREAD_SLEEP] = &StackInterpreter::ThreadSleep;
+  instr_pointers[LOAD_CLS_MEM] = &StackInterpreter::LoadClsMem;
+  instr_pointers[LOAD_INST_MEM] = &StackInterpreter::LoadInstMem;
+
 #ifdef _WIN32
   InitializeCriticalSection(&cached_frames_cs);
   InitializeCriticalSection(&intpr_threads_cs);
@@ -204,9 +240,6 @@ void StackInterpreter::Initialize(StackProgram* p, size_t m)
  ********************************/
 void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackMethod* method, size_t* instance, bool jit_called)
 {
-  INT64_VALUE left;
-  double left_double, right_double;
-  
 #ifdef _TIMING
   clock_t start = clock();
 #endif
@@ -281,207 +314,12 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
       }
       break;
 
-      //
-      // replaceable
-      // 
     case NEW_INT_ARY:
       ProcessNewArray(instr, op_stack, stack_pos);
       break;
 
     case NEW_FLOAT_ARY:
       ProcessNewArray(instr, op_stack, stack_pos, true);
-      break;
-
-      // shared library support
-    case EXT_LIB_LOAD:
-      SharedLibraryLoad(instr);
-      break;
-
-    case EXT_LIB_UNLOAD:
-      SharedLibraryUnload(instr);
-      break;
-
-    case LOAD_CHAR_LIT:
-#ifdef _DEBUG
-      std::wcout << L"stack oper: LOAD_INT_LIT; call_pos=" << (*call_stack_pos) << std::endl;
-#endif
-      PushInt(instr->GetOperand(), op_stack, stack_pos);
-      break;
-
-    case LOAD_INT_LIT:
-#ifdef _DEBUG
-      std::wcout << L"stack oper: LOAD_INT_LIT; call_pos=" << (*call_stack_pos) << std::endl;
-#endif
-      PushInt(instr->GetInt64Operand(), op_stack, stack_pos);
-      break;
-
-    case LOAD_FLOAT_LIT:
-#ifdef _DEBUG
-      std::wcout << L"stack oper: LOAD_FLOAT_LIT; call_pos=" << (*call_stack_pos) << std::endl;
-#endif
-      PushFloat(instr->GetFloatOperand(), op_stack, stack_pos);
-      break;
-      
-    case CEIL_FLOAT:
-      PushFloat(ceil(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
-      break;
-
-    case TRUNC_FLOAT:
-      PushFloat(trunc(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
-      break;
-
-    case FLOR_FLOAT:
-      PushFloat(floor(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
-      break;
-
-    case SIN_FLOAT:
-      PushFloat(sin(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
-      break;
-
-    case COS_FLOAT:
-      PushFloat(cos(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
-      break;
-
-    case TAN_FLOAT:
-      PushFloat(tan(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
-      break;
-
-    case ASIN_FLOAT:
-      PushFloat(asin(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
-      break;
-
-    case ACOS_FLOAT:
-      PushFloat(acos(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
-      break;
-
-    case ATAN_FLOAT:
-      PushFloat(atan(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
-      break;
-
-    case LOG2_FLOAT:
-      PushFloat(log2(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
-      break;
-
-    case CBRT_FLOAT:
-      PushFloat(cbrt(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
-      break;
-    
-    case LOG_FLOAT:
-      PushFloat(log(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
-      break;
-
-    case ROUND_FLOAT:
-      PushFloat(round(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
-      break;
-
-    case EXP_FLOAT:
-      PushFloat(exp(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
-      break;
-
-    case LOG10_FLOAT:
-      PushFloat(log10(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
-      break;
-
-    case SQRT_FLOAT:
-      PushFloat(sqrt(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
-      break;
-
-    case GAMMA_FLOAT:
-      PushFloat(tgamma(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
-      break;
-
-    case NAN_INT:
-      PushFloat(std::numeric_limits<INT_VALUE>::quiet_NaN(), op_stack, stack_pos);
-      break;
-
-    case INF_INT:
-      PushFloat(std::numeric_limits<INT_VALUE>::infinity(), op_stack, stack_pos);
-      break;
-
-    case NEG_INF_INT:
-      PushFloat(-1 * std::numeric_limits<INT_VALUE>::infinity(), op_stack, stack_pos);
-      break;
-
-    case NAN_FLOAT:
-      PushFloat(std::numeric_limits<double>::quiet_NaN(), op_stack, stack_pos);
-      break;
-
-    case INF_FLOAT:
-      PushFloat(std::numeric_limits<double>::infinity(), op_stack, stack_pos);
-      break;
-
-    case NEG_INF_FLOAT:
-      PushFloat(-1.0 * std::numeric_limits<double>::infinity(), op_stack, stack_pos);
-      break;
-
-    case RAND_FLOAT:
-      PushFloat(MemoryManager::GetRandomValue(), op_stack, stack_pos);
-      break;
-
-    case ACOSH_FLOAT:
-      PushFloat(acosh(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
-      break;
-
-    case ASINH_FLOAT:
-      PushFloat(asinh(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
-      break;
-
-    case ATANH_FLOAT:
-      PushFloat(atanh(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
-      break;
-
-    case COSH_FLOAT:
-      PushFloat(cosh(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
-      break;
-
-    case SINH_FLOAT:
-      PushFloat(sinh(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
-      break;
-
-    case TANH_FLOAT:
-      PushFloat(tanh(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
-      break;
-
-    case ATAN2_FLOAT:
-      left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
-      right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 1]));
-      *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2])) = atan2(left_double, right_double);
-      (*stack_pos)--;
-      break;    
-
-    case I2F:
-#ifdef _DEBUG
-      std::wcout << L"stack oper: I2F; call_pos=" << (*call_stack_pos) << std::endl;
-#endif
-      PushFloat((double)((INT64_VALUE)PopInt(op_stack, stack_pos)), op_stack, stack_pos);
-      break;
-
-    case F2I:
-#ifdef _DEBUG
-      std::wcout << L"stack oper: F2I; call_pos=" << (*call_stack_pos) << std::endl;
-#endif
-      PushInt((INT64_VALUE)PopFloat(op_stack, stack_pos), op_stack, stack_pos);
-      break;
-      
-    case SWAP_INT:
-#ifdef _DEBUG
-      std::wcout << L"stack oper: SWAP_INT; call_pos=" << (*call_stack_pos) << std::endl;
-#endif
-      SwapInt(op_stack, stack_pos);
-      break;
-
-    case POP_INT:
-#ifdef _DEBUG
-      std::wcout << L"stack oper: PopInt; call_pos=" << (*call_stack_pos) << std::endl;
-#endif
-      PopInt(op_stack, stack_pos);
-      break;
-
-    case POP_FLOAT:
-#ifdef _DEBUG
-      std::wcout << L"stack oper: POP_FLOAT; call_pos=" << (*call_stack_pos) << std::endl;
-#endif
-      PopFloat(op_stack, stack_pos);
       break;
 
     case JMP:
@@ -494,28 +332,6 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
       else if((INT64_VALUE)PopInt(op_stack, stack_pos) == instr->GetOperand2()) {
         ip = instr->GetOperand();
       }      
-      break;
-
-    case THREAD_SLEEP:
-#ifdef _DEBUG
-      std::wcout << L"stack oper: THREAD_SLEEP; call_pos=" << (*call_stack_pos) << std::endl;
-#endif
-      left = (INT64_VALUE)PopInt(op_stack, stack_pos);
-      std::this_thread::sleep_for(std::chrono::milliseconds(left));
-      break;
-
-    case LOAD_CLS_MEM:
-#ifdef _DEBUG
-      std::wcout << L"stack oper: LOAD_CLS_MEM; call_pos=" << (*call_stack_pos) << std::endl;
-#endif
-      PushInt((size_t)(*stack_frame)->method->GetClass()->GetClassMemory(), op_stack, stack_pos);
-      break;
-
-    case LOAD_INST_MEM:
-#ifdef _DEBUG
-      std::wcout << L"stack oper: LOAD_INST_MEM; call_pos=" << (*call_stack_pos) << std::endl;
-#endif
-      PushInt((*stack_frame)->mem[0], op_stack, stack_pos);
       break;
 
     case TRAP:
@@ -550,6 +366,219 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
   std::wcout << L"---------------------------" << std::endl;
   std::wcout << L"Dispatch method='" << mthd_name << L"', time=" << (double)(end - start) / CLOCKS_PER_SEC << L" second(s)." << std::endl;
 #endif
+}
+
+void StackInterpreter::ExtLibLoad(StackInstr* instr, size_t*& op_stack, long*& stack_pos) {
+  SharedLibraryLoad(instr);
+}
+
+void StackInterpreter::ExtLibUnload(StackInstr* instr, size_t*& op_stack, long*& stack_pos) {
+  SharedLibraryUnload(instr);
+}
+
+void StackInterpreter::LoadCharLit(StackInstr* instr, size_t*& op_stack, long*& stack_pos) {
+#ifdef _DEBUG
+  std::wcout << L"stack oper: LOAD_INT_LIT; call_pos=" << (*call_stack_pos) << std::endl;
+#endif
+  PushInt(instr->GetOperand(), op_stack, stack_pos);
+}
+
+void StackInterpreter::LoadIntLit(StackInstr* instr, size_t*& op_stack, long*& stack_pos) {
+#ifdef _DEBUG
+  std::wcout << L"stack oper: LOAD_INT_LIT; call_pos=" << (*call_stack_pos) << std::endl;
+#endif
+  PushInt(instr->GetInt64Operand(), op_stack, stack_pos);
+}
+
+void StackInterpreter::LoadFloatLit(StackInstr* instr, size_t*& op_stack, long*& stack_pos) {
+#ifdef _DEBUG
+  std::wcout << L"stack oper: LOAD_FLOAT_LIT; call_pos=" << (*call_stack_pos) << std::endl;
+#endif
+  PushFloat(instr->GetFloatOperand(), op_stack, stack_pos);
+}
+
+void StackInterpreter::CeilFloat(StackInstr* instr, size_t*& op_stack, long*& stack_pos) {
+  PushFloat(ceil(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
+}
+
+void StackInterpreter::TruncFloat(StackInstr* instr, size_t*& op_stack, long*& stack_pos) {
+  PushFloat(trunc(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
+}
+
+void StackInterpreter::FlorFloat(StackInstr* instr, size_t*& op_stack, long*& stack_pos) {
+  PushFloat(floor(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
+}
+
+void StackInterpreter::SinFloat(StackInstr* instr, size_t*& op_stack, long*& stack_pos) {
+  PushFloat(sin(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
+}
+
+void StackInterpreter::CosFloat(StackInstr* instr, size_t*& op_stack, long*& stack_pos) {
+  PushFloat(cos(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
+}
+
+void StackInterpreter::TanFloat(StackInstr* instr, size_t*& op_stack, long*& stack_pos) {
+  PushFloat(tan(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
+}
+
+void StackInterpreter::AsinFloat(StackInstr* instr, size_t*& op_stack, long*& stack_pos) {
+  PushFloat(asin(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
+}
+
+void StackInterpreter::AcosFloat(StackInstr* instr, size_t*& op_stack, long*& stack_pos) {
+  PushFloat(acos(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
+}
+
+void StackInterpreter::AtanFloat(StackInstr* instr, size_t*& op_stack, long*& stack_pos) {
+  PushFloat(atan(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
+}
+
+void StackInterpreter::Log2Float(StackInstr* instr, size_t*& op_stack, long*& stack_pos) {
+  PushFloat(log2(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
+}
+
+void StackInterpreter::CbrtFloat(StackInstr* instr, size_t*& op_stack, long*& stack_pos) {
+  PushFloat(cbrt(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
+}
+
+void StackInterpreter::LogFloat(StackInstr* instr, size_t*& op_stack, long*& stack_pos) {
+  PushFloat(log(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
+}
+
+void StackInterpreter::RoundFloat(StackInstr* instr, size_t*& op_stack, long*& stack_pos) {
+  PushFloat(round(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
+}
+
+void StackInterpreter::ExpFloat(StackInstr* instr, size_t*& op_stack, long*& stack_pos) {
+  PushFloat(exp(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
+}
+
+void StackInterpreter::Log10Float(StackInstr* instr, size_t*& op_stack, long*& stack_pos) {
+  PushFloat(log10(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
+}
+
+void StackInterpreter::SqrtFloat(StackInstr* instr, size_t*& op_stack, long*& stack_pos) {
+  PushFloat(sqrt(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
+}
+
+void StackInterpreter::GammaFloat(StackInstr* instr, size_t*& op_stack, long*& stack_pos) {
+  PushFloat(tgamma(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
+}
+
+void StackInterpreter::NanInt(StackInstr* instr, size_t*& op_stack, long*& stack_pos) {
+  PushFloat(std::numeric_limits<INT_VALUE>::quiet_NaN(), op_stack, stack_pos);
+}
+
+void StackInterpreter::InfInt(StackInstr* instr, size_t*& op_stack, long*& stack_pos) {
+  PushFloat(std::numeric_limits<INT_VALUE>::infinity(), op_stack, stack_pos);
+}
+
+void StackInterpreter::NegInfInt(StackInstr* instr, size_t*& op_stack, long*& stack_pos) {
+  PushFloat(-1 * std::numeric_limits<INT_VALUE>::infinity(), op_stack, stack_pos);
+}
+
+void StackInterpreter::NanFloat(StackInstr* instr, size_t*& op_stack, long*& stack_pos) {
+  PushFloat(std::numeric_limits<double>::quiet_NaN(), op_stack, stack_pos);
+}
+
+void StackInterpreter::InfFloat(StackInstr* instr, size_t*& op_stack, long*& stack_pos) {
+  PushFloat(std::numeric_limits<double>::infinity(), op_stack, stack_pos);
+}
+
+void StackInterpreter::NegInfFloat(StackInstr* instr, size_t*& op_stack, long*& stack_pos) {
+  PushFloat(-1.0 * std::numeric_limits<double>::infinity(), op_stack, stack_pos);
+}
+
+void StackInterpreter::RandFloat(StackInstr* instr, size_t*& op_stack, long*& stack_pos) {
+  PushFloat(MemoryManager::GetRandomValue(), op_stack, stack_pos);
+}
+
+void StackInterpreter::AcoshFloat(StackInstr* instr, size_t*& op_stack, long*& stack_pos) {
+  PushFloat(acosh(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
+}
+
+void StackInterpreter::AsinhFloat(StackInstr* instr, size_t*& op_stack, long*& stack_pos) {
+  PushFloat(asinh(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
+}
+
+void StackInterpreter::AtanhFloat(StackInstr* instr, size_t*& op_stack, long*& stack_pos) {
+  PushFloat(atanh(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
+}
+
+void StackInterpreter::CoshFloat(StackInstr* instr, size_t*& op_stack, long*& stack_pos) {
+  PushFloat(cosh(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
+}
+
+void StackInterpreter::SinhFloat(StackInstr* instr, size_t*& op_stack, long*& stack_pos) {
+  PushFloat(sinh(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
+}
+
+void StackInterpreter::TanhFloat(StackInstr* instr, size_t*& op_stack, long*& stack_pos) {
+  PushFloat(tanh(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
+}
+
+void StackInterpreter::Atan2Float(StackInstr* instr, size_t*& op_stack, long*& stack_pos) {
+  const FLOAT_VALUE left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
+  const FLOAT_VALUE right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 1]));
+  *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2])) = atan2(left_double, right_double);
+  (*stack_pos)--;
+}
+
+void StackInterpreter::IntToFloat(StackInstr* instr, size_t*& op_stack, long*& stack_pos) {
+#ifdef _DEBUG
+  std::wcout << L"stack oper: I2F; call_pos=" << (*call_stack_pos) << std::endl;
+#endif
+  PushFloat((double)((INT64_VALUE)PopInt(op_stack, stack_pos)), op_stack, stack_pos);
+}
+
+void StackInterpreter::Float2Int(StackInstr* instr, size_t*& op_stack, long*& stack_pos) {
+#ifdef _DEBUG
+  std::wcout << L"stack oper: F2I; call_pos=" << (*call_stack_pos) << std::endl;
+#endif
+  PushInt((INT64_VALUE)PopFloat(op_stack, stack_pos), op_stack, stack_pos);
+}
+
+void StackInterpreter::SwapInt(StackInstr* instr, size_t*& op_stack, long*& stack_pos) {
+#ifdef _DEBUG
+  std::wcout << L"stack oper: SWAP_INT; call_pos=" << (*call_stack_pos) << std::endl;
+#endif
+  SwapInt(op_stack, stack_pos);
+}
+
+void StackInterpreter::PopInt(StackInstr* instr, size_t*& op_stack, long*& stack_pos) {
+#ifdef _DEBUG
+  std::wcout << L"stack oper: PopInt; call_pos=" << (*call_stack_pos) << std::endl;
+#endif
+  PopInt(op_stack, stack_pos);
+}
+
+void StackInterpreter::PopFloat(StackInstr* instr, size_t*& op_stack, long*& stack_pos) {
+#ifdef _DEBUG
+  std::wcout << L"stack oper: POP_FLOAT; call_pos=" << (*call_stack_pos) << std::endl;
+#endif
+  PopFloat(op_stack, stack_pos);
+}
+
+void StackInterpreter::ThreadSleep(StackInstr* instr, size_t*& op_stack, long*& stack_pos) {
+#ifdef _DEBUG
+  std::wcout << L"stack oper: THREAD_SLEEP; call_pos=" << (*call_stack_pos) << std::endl;
+#endif
+  const INT64_VALUE left = (INT64_VALUE)PopInt(op_stack, stack_pos);
+  std::this_thread::sleep_for(std::chrono::milliseconds(left));
+}
+
+void StackInterpreter::LoadClsMem(StackInstr* instr, size_t*& op_stack, long*& stack_pos) {
+#ifdef _DEBUG
+  std::wcout << L"stack oper: LOAD_CLS_MEM; call_pos=" << (*call_stack_pos) << std::endl;
+#endif
+  PushInt((size_t)(*stack_frame)->method->GetClass()->GetClassMemory(), op_stack, stack_pos);
+}
+
+void StackInterpreter::LoadInstMem(StackInstr* instr, size_t*& op_stack, long*& stack_pos) {
+#ifdef _DEBUG
+  std::wcout << L"stack oper: LOAD_INST_MEM; call_pos=" << (*call_stack_pos) << std::endl;
+#endif
+  PushInt((*stack_frame)->mem[0], op_stack, stack_pos);
 }
 
 void inline StackInterpreter::ModFloat(StackInstr* instr, size_t*& op_stack, long*& stack_pos) {
