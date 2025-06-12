@@ -3396,7 +3396,10 @@ void IntermediateEmitter::EmitFor(For* for_stmt)
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LBL, unconditional_continue));
 
     // update statement
-    EmitStatement(for_stmt->GetUpdateStatement());
+    std::vector<Statement*> update_statements = for_stmt->GetUpdateStatements()->GetStatements();
+    for(size_t i = 0; i < update_statements.size(); ++i) {
+      EmitStatement(update_statements[i]);
+    }
 
     // conditional jump
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, JMP, unconditional, -1));
