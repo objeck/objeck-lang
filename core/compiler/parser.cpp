@@ -1540,7 +1540,8 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
   const std::wstring file_name = GetFileName();
 
   Statement* statement = nullptr;
-
+  is_semi_colon = false;
+  
   // identifier
   if(Match(TOKEN_IDENT)) {
     const std::wstring ident = ParseBundleName();
@@ -3352,6 +3353,7 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
   else {
     // semi-colon at the end of block statements, optional
     if(Match(TOKEN_SEMI_COLON)) {
+      is_semi_colon = true;
       NextToken();
     }
   }
@@ -5443,7 +5445,13 @@ For * Parser::ParseFor(int depth)
   
   // pre-statement
   StatementList* pre_statements = TreeFactory::Instance()->MakeStatementList();
-  pre_statements->AddStatement(ParseStatement(depth + 1));
+  while(Match(TOKEN_IDENT) && !is_semi_colon) {
+    pre_statements->AddStatement(ParseStatement(depth + 1));
+    if(Match(TOKEN_COMMA)) {
+      NextToken();
+    }
+  }
+  is_semi_colon = false;
 
   // conditional
   Expression* cond_expr = ParseExpression(depth + 1);

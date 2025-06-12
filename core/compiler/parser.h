@@ -95,6 +95,7 @@ class Parser {
   std::wstring src_path;
   std::vector<std::pair<std::wstring, std::wstring> > programs;
   bool expand_generic_def;
+  bool is_semi_colon;
 
 #if defined(_DIAG_LIB) || defined(_MODULE)
   std::vector<std::wstring> error_strings;
@@ -220,7 +221,7 @@ class Parser {
     LoadErrorCodes();
     current_class = nullptr;
     current_method = prev_method = nullptr;
-    expand_generic_def = false;
+    expand_generic_def = is_semi_colon  = false;
   }
 
   ~Parser() {
