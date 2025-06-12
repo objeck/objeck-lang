@@ -1,0 +1,9 @@
+use System.IO.Filesystem;
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		for(i := 3, j := 7; i < 9; i += 1;) {
+			i->PrintLine();
+		};
+	}
+}
