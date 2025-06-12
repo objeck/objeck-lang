@@ -4447,8 +4447,10 @@ void ContextAnalyzer::AnalyzeFor(For* for_stmt, const int depth)
     }
 
     // update expression
-    AnalyzeStatement(for_stmt->GetUpdateStatement(), depth + 1);
-    // AnalyzeStatements(for_stmt->GetUpdateStatements(), depth + 1);
+    const std::vector<Statement*> update_stmts = for_stmt->GetUpdateStatements()->GetStatements();
+    for(const auto& update_stmt : update_stmts) {
+      AnalyzeStatement(update_stmt, depth + 1);
+    }
   }
   
   // statements

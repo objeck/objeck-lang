@@ -1717,10 +1717,6 @@ namespace frontend {
       return cond_expr;
     }
 
-    Statement* GetUpdateStatement() {
-      return update_stmts->GetStatements()[0];
-    }
-
     StatementList* GetUpdateStatements() {
       return update_stmts;
     }
