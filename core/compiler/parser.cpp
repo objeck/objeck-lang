@@ -95,7 +95,7 @@ std::wstring Parser::ParseBundleName()
 {
   std::wstring name;
   if(Match(TOKEN_IDENT)) {
-    while(Match(TOKEN_IDENT) && !Match(TOKEN_END_OF_STREAM)) {
+    while(Match(TOKEN_IDENT)) {
       name += scanner->GetToken()->GetIdentifier();
       NextToken();
       if(Match(TOKEN_PERIOD)) {
@@ -327,7 +327,7 @@ void Parser::ParseBundle(int depth)
 
   // parse 'use' type declarations 
   std::vector<Type*> static_uses;
-  while(Match(TOKEN_USE_ID) && !Match(TOKEN_END_OF_STREAM)) {
+  while(Match(TOKEN_USE_ID)) {
     NextToken();
 
     // 'use' or 'use bundle' to import classes via bundles
@@ -432,7 +432,7 @@ void Parser::ParseBundle(int depth)
   while(!Match(TOKEN_END_OF_STREAM)) {
     // parse bundle
     if(Match(TOKEN_BUNDLE_ID)) {
-      while(Match(TOKEN_BUNDLE_ID) && !Match(TOKEN_END_OF_STREAM)) {
+      while(Match(TOKEN_BUNDLE_ID)) {
         NextToken();
 
         std::wstring bundle_name = ParseBundleName();
@@ -1541,7 +1541,7 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
 
   Statement* statement = nullptr;
   is_semi_colon = false;
-  
+
   // identifier
   if(Match(TOKEN_IDENT)) {
     const std::wstring ident = ParseBundleName();
@@ -1823,6 +1823,7 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
       break;
 
     case TOKEN_SEMI_COLON:
+    case TOKEN_COMMA:
       statement = TreeFactory::Instance()->MakeEmptyStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition());
       break;
 
@@ -2915,7 +2916,6 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
       NextToken();
       break;
 
-
     case SYM_LINK_EXISTS:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::SYM_LINK_EXISTS);
@@ -2951,16 +2951,6 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
                                                                instructions::SOCK_TCP_BIND);
       NextToken();
       break;
-
-
-
-
-
-
-
-
-
-
 
     case SOCK_UDP_CREATE:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
@@ -3660,7 +3650,7 @@ Declaration* Parser::ParseDeclaration(IdentifierContext& context, bool is_stmt, 
 
   // parse additional names
   if(is_stmt) {
-    while(Match(TOKEN_COMMA) && !Match(TOKEN_END_OF_STREAM)) {
+    while(Match(TOKEN_COMMA)) {
       NextToken();
 
       if(!Match(TOKEN_IDENT)) {
@@ -3882,7 +3872,7 @@ ExpressionList* Parser::ParseIndices(int depth)
     else {
       if(Match(TOKEN_COMMA)) {
         expressions->AddExpression(TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos - 1, L"#"));
-        while(Match(TOKEN_COMMA) && !Match(TOKEN_END_OF_STREAM)) {
+        while(Match(TOKEN_COMMA)) {
           expressions->AddExpression(TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos - 1, L"#"));
           NextToken();
         }
@@ -3984,7 +3974,7 @@ Expression* Parser::ParseLogic(int depth)
   }
 
   CalculatedExpression* expression = nullptr;
-  while((Match(TOKEN_AND) || Match(TOKEN_OR)) && !Match(TOKEN_END_OF_STREAM)) {
+  while((Match(TOKEN_AND) || Match(TOKEN_OR))) {
     if(expression) {
       left = expression;
     }
@@ -4098,7 +4088,7 @@ Expression* Parser::ParseTerm(int depth)
   }
 
   CalculatedExpression* expression = nullptr;
-  while((Match(TOKEN_ADD) || Match(TOKEN_SUB)) && !Match(TOKEN_END_OF_STREAM)) {
+  while((Match(TOKEN_ADD) || Match(TOKEN_SUB))) {
     if(expression) {
       CalculatedExpression* right;
       if(Match(TOKEN_ADD)) {
@@ -4158,7 +4148,7 @@ Expression* Parser::ParseFactor(int depth)
   }
   
   CalculatedExpression* expression = nullptr;
-  while(GetToken() >= TOKEN_MUL && GetToken() <= TOKEN_XOR_ID && !Match(TOKEN_END_OF_STREAM)) {
+  while(GetToken() >= TOKEN_MUL && GetToken() <= TOKEN_XOR_ID) {
     if(expression) {
       CalculatedExpression* right;
       switch(GetToken()) {
@@ -5242,8 +5232,10 @@ For* Parser::ParseEach(bool reverse, int depth)
   }
 
   StatementList* pre_statements = TreeFactory::Instance()->MakeStatementList();
+  StatementList* update_stmts = TreeFactory::Instance()->MakeStatementList();
+
   CalculatedExpression* cond_expr = nullptr;
-  Statement* update_stmt = nullptr; StatementList* statements = nullptr;
+  StatementList* statements = nullptr;
 
   // reverse iteration 
   if(reverse) {
@@ -5306,8 +5298,8 @@ For* Parser::ParseEach(bool reverse, int depth)
     // update statement
     Variable* update_left = TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos - (int)count_ident.size(), count_ident);
     Expression* update_right = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos, 1);
-    update_stmt = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), 
-                                                                   update_left, update_right, SUB_ASSIGN_STMT);
+    update_stmts->AddStatement(TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, 
+                               GetLineNumber(), GetLinePosition(), update_left, update_right, SUB_ASSIGN_STMT));
     if(!Match(TOKEN_CLOSED_PAREN)) {
       ProcessError(L"Expected ')'", TOKEN_CLOSED_PAREN);
     }
@@ -5404,7 +5396,8 @@ For* Parser::ParseEach(bool reverse, int depth)
     // update statement
     Variable* update_left = TreeFactory::Instance()->MakeVariable(file_name, line_num, 1, count_ident);
     Expression* update_right = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos, 1);
-    update_stmt = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), update_left, update_right, ADD_ASSIGN_STMT);
+    update_stmts->AddStatement(TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, 
+                               GetLineNumber(), GetLinePosition(), update_left, update_right, ADD_ASSIGN_STMT));
     if(!Match(TOKEN_CLOSED_PAREN)) {
       ProcessError(L"Expected ')'", TOKEN_CLOSED_PAREN);
     }
@@ -5417,16 +5410,16 @@ For* Parser::ParseEach(bool reverse, int depth)
   }
 
   if(is_bound) {
-    return TreeFactory::Instance()->MakeFor(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), pre_statements, cond_expr, update_stmt, bind_assign, statements);
+    return TreeFactory::Instance()->MakeFor(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), pre_statements, cond_expr, update_stmts, bind_assign, statements);
   }
 
-  return TreeFactory::Instance()->MakeFor(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), pre_statements, cond_expr, update_stmt, statements);
+  return TreeFactory::Instance()->MakeFor(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), pre_statements, cond_expr, update_stmts, statements);
 }
 
 /****************************
  * Parses a 'for' statement
  ****************************/
-For * Parser::ParseFor(int depth)
+For* Parser::ParseFor(int depth)
 {
   const int line_num = GetLineNumber();
   const int line_pos = GetLinePosition();
@@ -5462,7 +5455,15 @@ For * Parser::ParseFor(int depth)
   symbol_table->CurrentParseScope()->NewParseScope();
   
   // update statement
-  Statement* update_stmt = ParseStatement(depth + 1, false);
+  StatementList* update_stmts = TreeFactory::Instance()->MakeStatementList();
+  while(Match(TOKEN_IDENT) && !is_semi_colon) {
+    update_stmts->AddStatement(ParseStatement(depth + 1, false));
+    if(Match(TOKEN_COMMA)) {
+      NextToken();
+    }
+  }
+  is_semi_colon = false;
+
   if(!Match(TOKEN_CLOSED_PAREN)) {
     ProcessError(L"Expected ')'", TOKEN_CLOSED_PAREN);
   }
@@ -5473,7 +5474,8 @@ For * Parser::ParseFor(int depth)
   symbol_table->CurrentParseScope()->PreviousParseScope();
   symbol_table->CurrentParseScope()->PreviousParseScope();
 
-  return TreeFactory::Instance()->MakeFor(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), pre_statements, cond_expr, update_stmt, statements);
+  return TreeFactory::Instance()->MakeFor(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), pre_statements, 
+                                          cond_expr, update_stmts, statements);
 }
 
 /****************************
@@ -5512,16 +5514,16 @@ Select* Parser::ParseSelect(int depth)
   StatementList* other = nullptr;
   std::vector<StatementList*> statement_lists;
   std::map<ExpressionList*, StatementList*> statement_map;
-  while((Match(TOKEN_LABEL_ID) || Match(TOKEN_OTHER_ID)) && !Match(TOKEN_END_OF_STREAM)) {
+  while((Match(TOKEN_LABEL_ID) || Match(TOKEN_OTHER_ID))) {
     bool is_other_label = false;
     ExpressionList* labels = TreeFactory::Instance()->MakeExpressionList();
     // parse labels
-    while((Match(TOKEN_LABEL_ID) || Match(TOKEN_OTHER_ID)) && !Match(TOKEN_END_OF_STREAM)) {
+    while((Match(TOKEN_LABEL_ID) || Match(TOKEN_OTHER_ID))) {
       if(Match(TOKEN_LABEL_ID)) {
         NextToken();
         labels->AddExpression(ParseSimpleExpression(depth + 1));
 
-        while(Match(TOKEN_COMMA) && !Match(TOKEN_END_OF_STREAM)) {
+        while(Match(TOKEN_COMMA)) {
           NextToken();
           labels->AddExpression(ParseSimpleExpression(depth + 1));
         }
@@ -5640,7 +5642,7 @@ Assignment* Parser::ParseAssignment(Variable* variable, int depth)
   }
   expressions.push(expression);
 
-  while(Match(TOKEN_ASSIGN) && !Match(TOKEN_END_OF_STREAM)) {
+  while(Match(TOKEN_ASSIGN)) {
     NextToken();
 
     expression = ParseExpression(depth + 1);

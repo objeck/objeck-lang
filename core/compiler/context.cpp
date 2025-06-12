@@ -4448,6 +4448,7 @@ void ContextAnalyzer::AnalyzeFor(For* for_stmt, const int depth)
 
     // update expression
     AnalyzeStatement(for_stmt->GetUpdateStatement(), depth + 1);
+    // AnalyzeStatements(for_stmt->GetUpdateStatements(), depth + 1);
   }
   
   // statements
