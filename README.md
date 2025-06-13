@@ -15,7 +15,9 @@ Another programming language
 </p>
 
 ## Updates
-
+* v2025.6.3
+    * Added multi-statement pre/update support for ``for`` loops
+      
 * <ins>v2025.6.2</ins>
     * New [API documentation](https://www.objeck.org/doc/api/index.html) system
     * Added support for OpenAI's <a href='https://platform.openai.com/docs/api-reference/responses'>Responses API</a>
