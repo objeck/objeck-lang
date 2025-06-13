@@ -439,7 +439,7 @@ void Linker::Load(bool is_lib)
           libraries.insert(std::pair<std::wstring, Library*>(file_path, library));
           std::vector<std::wstring>::iterator found = find(paths.begin(), paths.end(), file_path);
           if(found == paths.end()) {
-            paths.push_back(file_path);
+            paths.push_back(std::move(file_path));
           }
         }
 
@@ -527,7 +527,7 @@ std::map<std::wstring, std::vector<std::pair<std::wstring, std::wstring>>> Linke
             value = TrimNameValue(value);
 
             std::pair<std::wstring, std::wstring> name_value(name, value);
-            section_names_values.push_back(name_value);
+            section_names_values.push_back(std::move(name_value));
           }
           else {
             std::wstring name = TrimNameValue(line);
