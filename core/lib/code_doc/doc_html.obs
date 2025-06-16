@@ -440,11 +440,10 @@ class HtmlMaker {
 						return class_link;
 					};
 				};
-
-"class_link=\"{$name}\""->PrintLine();
 			};
 		}
 
+		# "class_link=\"{$name}\""->PrintLine();
 		return name;
 	}
 
