@@ -410,7 +410,40 @@ class HtmlMaker {
 			return GetComplexTypeLink(decoded_name, file_uses);
 		};
 
+
+		if(bundle_str <> Nil & class_enum_str <> Nil ) {
+			bundle_klass_index   := class_enum_str->FindLast('.');
+			if(bundle_klass_index   > -1) {
+				bundle_part_str := class_enum_str->SubString(bundle_klass_index);
+				bundle_klass_index += 1;
+				class_part_str := class_enum_str->SubString(bundle_klass_index, class_enum_str->Size() - bundle_klass_index);
+
+				bundle_name := bundle_str + '.' + bundle_part_str;
+
+				bundle_blocks := @parser->GetBundles();
+				bundle_found := bundle_blocks->Find(bundle_name);
+				if(bundle_found <> Nil) {
+					bundle_klasses := bundle_found->GetClasses();
+					class_block := bundle_klasses->Find(class_part_str);
+					if(class_block <> Nil) {
+						class_link := "<a href='"
+						class_link += GetClassLink(class_block);
+						
+						link_target := class_part_str->ToLower();
+						class_link += "?scrollTo={$link_target}'>";
+						
+						class_link += class_part_str;
+						class_link += "</a>";
+
+						# "class_link=\"{$class_link}\""->PrintLine();
+						return class_link;
+					};
+				};
+			};
+		}
+
 		# "class_link=\"{$name}\""->PrintLine();
+
 		return name;
 	}
 
