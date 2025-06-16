@@ -366,38 +366,6 @@ class HtmlMaker {
 			};
 		}
 		#
-		# resolve within file
-		#
-		else if(bundle_str <> Nil & class_enum_str <> Nil ) {
-			bundle_class_index := class_enum_str->FindLast('.');
-			if(bundle_class_index > -1) {
-				bundle_part_str := class_enum_str->SubString(bundle_class_index);
-				bundle_class_index += 1;
-
-				bundle_blocks := @parser->GetBundles();
-				found_bundle_block := bundle_blocks->Find(bundle_str + '.' + bundle_part_str);
-				if(found_bundle_block <> Nil) {
-					bundle_classes := found_bundle_block->GetClasses();
-
-					class_part_str := class_enum_str->SubString(bundle_class_index, class_enum_str->Size() - bundle_class_index);
-					found_class_block := bundle_classes->Find(class_part_str);
-					if(found_class_block <> Nil) {
-						class_link := "<a href='"
-						class_link += GetClassLink(found_class_block);
-						
-						link_target := class_part_str->ToLower();
-						class_link += "?scrollTo={$link_target}'>";
-						
-						class_link += class_part_str;
-						class_link += "</a>";
-
-						# "class_link=\"{$class_link}\""->PrintLine();
-						return class_link;
-					};
-				};
-			};
-		}
-		#
 		# class with enum
 		#
 		else if(class_enum_str <> Nil & enum_value_str <> Nil) {
@@ -442,7 +410,40 @@ class HtmlMaker {
 			return GetComplexTypeLink(decoded_name, file_uses);
 		};
 
-		# "class_link=\"{$name}\""->PrintLine();
+
+		if(bundle_str <> Nil & class_enum_str <> Nil ) {
+			bundle_klass_index   := class_enum_str->FindLast('.');
+			if(bundle_klass_index   > -1) {
+				bundle_part_str := class_enum_str->SubString(bundle_klass_index);
+				bundle_klass_index += 1;
+				class_part_str := class_enum_str->SubString(bundle_klass_index, class_enum_str->Size() - bundle_klass_index);
+
+				bundle_name := bundle_str + '.' + bundle_part_str;
+
+				bundle_blocks := @parser->GetBundles();
+				bundle_found := bundle_blocks->Find(bundle_name);
+				if(bundle_found <> Nil) {
+					bundle_klasses := bundle_found->GetClasses();
+
+					class_block := bundle_klasses->Find(class_part_str);
+					if(class_block <> Nil) {
+						class_link := "<a href='"
+						class_link += GetClassLink(class_block);
+						
+						link_target := class_part_str->ToLower();
+						class_link += "?scrollTo={$link_target}'>";
+						
+						class_link += class_part_str;
+						class_link += "</a>";
+
+						# "class_link=\"{$class_link}\""->PrintLine();
+						return class_link;
+					};
+				};
+
+"class_link=\"{$name}\""->PrintLine();
+			};
+		}
 
 		return name;
 	}
