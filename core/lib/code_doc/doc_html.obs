@@ -410,7 +410,7 @@ class HtmlMaker {
 			return GetComplexTypeLink(decoded_name, file_uses);
 		};
 
-
+		# resolve within file
 		if(bundle_str <> Nil & class_enum_str <> Nil ) {
 			bundle_klass_index   := class_enum_str->FindLast('.');
 			if(bundle_klass_index   > -1) {
@@ -418,16 +418,14 @@ class HtmlMaker {
 				bundle_klass_index += 1;
 				class_part_str := class_enum_str->SubString(bundle_klass_index, class_enum_str->Size() - bundle_klass_index);
 
-				bundle_name := bundle_str + '.' + bundle_part_str;
-
 				bundle_blocks := @parser->GetBundles();
-				bundle_found := bundle_blocks->Find(bundle_name);
-				if(bundle_found <> Nil) {
-					bundle_klasses := bundle_found->GetClasses();
-					class_block := bundle_klasses->Find(class_part_str);
-					if(class_block <> Nil) {
+				found_bundle_block := bundle_blocks->Find(bundle_str + '.' + bundle_part_str);
+				if(found_bundle_block <> Nil) {
+					bundle_klasses := found_bundle_block->GetClasses();
+					found_klass_block := bundle_klasses->Find(class_part_str);
+					if(found_klass_block <> Nil) {
 						class_link := "<a href='"
-						class_link += GetClassLink(class_block);
+						class_link += GetClassLink(found_klass_block);
 						
 						link_target := class_part_str->ToLower();
 						class_link += "?scrollTo={$link_target}'>";
