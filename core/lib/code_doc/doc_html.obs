@@ -117,7 +117,15 @@ class HtmlMaker {
 
 		# set main
 		main_html := "<h2>";
-		main_html += class_block->GetShortName();
+		if(class_block->IsInterface()) {
+			main_html += "<i>";
+			main_html += class_block->GetShortName();
+			main_html += "</i>";
+		}
+		else {
+			main_html += class_block->GetShortName();
+		};
+		
 		main_html += "</h2><p>";
 		main_html += class_block->GetDesc();
 		main_html += "</p>";
@@ -652,8 +660,9 @@ class HtmlMaker {
 
 						html += "?scrollTo={$link_target}'>";
 						if(class_block->IsInterface()) {
+							html->Append("<i>");
 							html->Append(class_block->GetName());
-							html->Append(" [I]");
+							html->Append("</i>");
 						}
 						else {
 							html->Append(class_block->GetName());
@@ -672,9 +681,9 @@ class HtmlMaker {
 						link_name := GetEnumLink(enum_block);
 
 						html->Append(link_name);
-						html += "?scrollTo={$link_target}'><i>";
+						html += "?scrollTo={$link_target}'>";
 						html->Append(enum_block->GetName());
-						html += " [#]</i></a></li>";
+						html += " [#]</a></li>";
 					};
 				};
 				
