@@ -41,6 +41,7 @@ Completion->Generate("llava", prompt, file)->PrintLine();
 		Generates a response from the model given an input
 		@param model model name (i.e. llama3, llava)
 		@param prompt prompt
+		@return query response
 		~#
 		function : Generate(model : String, prompt : String) ~ String {
 			return JsonElement->Decode(Generate(model, prompt, Nil));
@@ -51,6 +52,7 @@ Completion->Generate("llava", prompt, file)->PrintLine();
 		@param model model name (i.e. llama3, llava)
 		@param prompt prompt
 		@param format output format
+		@return query response
 		~#
 		function : Generate(model : String, prompt : String, format : String) ~ String {
 			query_json := JsonElement->New(JsonElement->JsonType->OBJECT);
@@ -93,6 +95,7 @@ Completion->Generate("llava", prompt, file)->PrintLine();
 		@param model model name (i.e. llama3, llava)
 		@param prompt prompt
 		@param image image file
+		@return query response
 		~#
 		function : Generate(model : String, prompt : String, image : File) ~ String {
 			images := File->New[1];
@@ -106,6 +109,7 @@ Completion->Generate("llava", prompt, file)->PrintLine();
 		@param model model name (i.e. llama3, llava)
 		@param prompt prompt
 		@param images image images
+		@return query response
 		~#
 		function : Generate(model : String, prompt : String, images : File[]) ~ String {
 			images_json := JsonElement->New(JsonElement->JsonType->ARRAY);
