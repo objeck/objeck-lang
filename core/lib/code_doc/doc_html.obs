@@ -416,12 +416,13 @@ class HtmlMaker {
 			if(bundle_class_index > -1) {
 				bundle_part_str := class_enum_str->SubString(bundle_class_index);
 				bundle_class_index += 1;
-				class_part_str := class_enum_str->SubString(bundle_class_index, class_enum_str->Size() - bundle_class_index);
 
 				bundle_blocks := @parser->GetBundles();
 				found_bundle_block := bundle_blocks->Find(bundle_str + '.' + bundle_part_str);
 				if(found_bundle_block <> Nil) {
 					bundle_classes := found_bundle_block->GetClasses();
+
+					class_part_str := class_enum_str->SubString(bundle_class_index, class_enum_str->Size() - bundle_class_index);
 					found_class_block := bundle_classes->Find(class_part_str);
 					if(found_class_block <> Nil) {
 						class_link := "<a href='"
