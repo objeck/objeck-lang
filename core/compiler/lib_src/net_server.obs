@@ -1401,41 +1401,27 @@ bundle Web.HTTP.Server {
 							boundry_offset := "boundary="->Size() + 1;
 							marker_str := line->SubString(boundry_offset, line->Size() - boundry_offset - 1);
 							marker_bytes := marker_str->ToByteArray();
-						}
-						else {
-"METADATA: {$line}"->PrintLine();
 						};
 					};
 				};
 			}
 			while(offset > -1);
 
-			# read encoding string
-#			marker_bytes := ReadLine(0, @encoded);
-marker_str := marker_bytes->ToString();
-"MARKER_BYTES: {$marker_str}"->PrintLine();
-
 			if(marker_bytes = Nil) {
 				return Nil;
 			};
-
-"--- 0 ---"->PrintLine();
 
 			encoding_size := @encoded->Size();
 			
 			# fetch all markers
 			marker_indexes := Byte->FindAll(@encoded, marker_bytes);
 			if(marker_indexes = Nil) {
-"--- 1 ---"->PrintLine();
 				return Nil;
 			};
 
-"--- 2 ---"->PrintLine();
-
-
-for(i := 0; i < marker_indexes->Size() - 1; i += 1;) {
-	marker_indexes[i]->PrintLine();
-};
+			for(i := 0; i < marker_indexes->Size() - 1; i += 1;) {
+				marker_indexes[i]->PrintLine();
+			};
 
 			boundry_index := 0;
 			for(i := 0; i < marker_indexes->Size() - 1; i += 1;) {
@@ -1445,12 +1431,8 @@ for(i := 0; i < marker_indexes->Size() - 1; i += 1;) {
 				};
 				boundry_index += boundary_bytes->Size();
 
-boundry_value := @encoded[boundry_index];
-"--- {$boundry_index}, value={$boundry_value} ---"->PrintLine();
-
 				# read white space
 				if(MatchSpace(boundry_index, @encoded)) {
-"--- 3 ---"->PrintLine();
 					boundry_index += 2;
 				};
 	 

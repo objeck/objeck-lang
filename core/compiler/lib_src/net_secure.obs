@@ -340,7 +340,7 @@ if(html <> Nil) {
 				};
 				# "### address='{$address}', port={$port}, location='{$location}'"->PrintLine();
 
-				socket := TCPSecureSocket->New(address, port);
+				socket := TCPSecureSocket->New(address, port, pem);
 				if(socket->IsOpen()) {
 					@response_headers->Empty();
 
@@ -553,8 +553,8 @@ if(html <> Nil) {
 		@param pem the Privacy Enhanced Mail file		
 		@return output buffer
 		~#
-		function : QuickGet(url : Web.HTTP.Url, content_type : String, headers : Map<String, String>, pem : String) ~ Web.HTTP.Response {			
-			client := HttpsClient->New(false);
+		function : QuickGet(url : Web.HTTP.Url, content_type : String, headers : Map<String, String>, pem : String) ~ Web.HTTP.Response {		
+			client := HttpsClient->New();
 
 			if(headers <> Nil) {
 				header_key_values := headers->GetKeyValues()<Pair<String, String>>;
@@ -572,7 +572,7 @@ if(html <> Nil) {
 				};
 			};
 
-			return client->Get(url, content_type);
+			return client->Get(url, content_type, pem);
 		}
 
 		#~
@@ -592,6 +592,16 @@ if(html <> Nil) {
 		~#
 		method : public : Get(url : Web.HTTP.Url, content_type : String) ~ Web.HTTP.Response {
 			return PullOperation(url, content_type, HttpsClient->Task->GET, Nil);
+		}
+
+		#~
+		Performs a HTTPS GET
+		@param url URL
+		@param content_type content type
+		@return string read
+		~#
+		method : public : Get(url : Web.HTTP.Url, content_type : String, pem : String) ~ Web.HTTP.Response {
+			return PullOperation(url, content_type, HttpsClient->Task->GET, pem);
 		}
 
 		#~
@@ -720,7 +730,7 @@ if(html <> Nil) {
 				};
 				# "### address='{$address}', port={$port}, location='{$location}'"->PrintLine();
 
-				socket := TCPSecureSocket->New(address, port);
+				socket := TCPSecureSocket->New(address, port, pem);
 				if(socket->IsOpen()) {
 					@response_headers->Empty();
 
