@@ -9933,16 +9933,19 @@ bundle System.IO.Net {
 		@is_open : Bool;
 		@address : System.String;
 		@port : Int;
-		
+		@pem : String;
+
 		#~
 		Default constructor
 		@param address network address
 		@param port network port
 		~#
-		New(address : System.String, port : Int) {
+		New(address : System.String, port : Int, pem : String := Nil) {
 			Parent();
 			@address := address;
 			@port := port;
+			@pem := pem;
+
 			SOCK_TCP_SSL_CONNECT;
 		}
 
