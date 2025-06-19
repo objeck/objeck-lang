@@ -1,4 +1,4 @@
-/***************************************************************************
+﻿/***************************************************************************
  * Provides runtime support for Windows (Win32) based systems.
  *
  * Copyright (c) 2025, Randy Hollines
@@ -568,7 +568,7 @@ class IPSecureSocket {
     if(!SSL_CTX_load_verify_locations(ctx, cert_path.c_str(), nullptr)) {
       BIO_free_all(bio);
       SSL_CTX_free(ctx);
-      std::wcerr << L"Unable to locate or read cryptographic data from PEM file: '" << BytesToUnicode(pem_file) << L"'" << std::endl;
+      std::wcerr << L">>> Unable to find/read cryptographic PEM file : '" << BytesToUnicode(pem_file) << L"' <<<" << std::endl;
       return false;
     }
     
