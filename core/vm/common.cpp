@@ -4022,9 +4022,9 @@ bool TrapProcessor::SockTcpInString(StackProgram* program, size_t* inst, size_t*
 
 bool TrapProcessor::SockTcpSslConnect(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
-  size_t* addr_array = (size_t*)PopInt(op_stack, stack_pos);
-  const long port = (long)PopInt(op_stack, stack_pos);
   size_t* pem_file_array = (size_t*)PopInt(op_stack, stack_pos);
+  const long port = (long)PopInt(op_stack, stack_pos);
+  size_t* addr_array = (size_t*)PopInt(op_stack, stack_pos);
 
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(addr_array && instance) {
@@ -4043,7 +4043,7 @@ bool TrapProcessor::SockTcpSslConnect(StackProgram* program, size_t* inst, size_
     IPSecureSocket::Close((SSL_CTX*)instance[0], (BIO*)instance[1], (X509*)instance[2]);
 
     SSL_CTX* ctx; BIO* bio; X509* cert;
-    const bool is_open = IPSecureSocket::Open(addr.c_str(), port, ctx, bio, cert);
+    const bool is_open = IPSecureSocket::Open(addr.c_str(), port, pem_file.c_str(), ctx, bio, cert);
     if(is_open) {
       instance[0] = (size_t)ctx;
       instance[1] = (size_t)bio;
