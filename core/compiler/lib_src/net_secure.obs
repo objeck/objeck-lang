@@ -33,7 +33,6 @@ if(html <> Nil) {
 		@cookies : Vector<Cookie>;
 		@cert_issuer : String;
 		@cert_subject : String;
-		@pem : String;
 		
 		#~
 		Default constructor
@@ -47,23 +46,6 @@ if(html <> Nil) {
 			@response_headers := Hash->New()<String, String>;
 
 			@cookies_enabled := cookies_enabled;
-			@cookies := Vector->New()<Cookie>;
-		}
-
-		#~
-		Default constructor
-		@param cookies_enabled true if cookies are enabled, false otherwise		
-		~#
-		New(cookies_enabled : Bool, pem : String) {
-			@request_headers := Hash->New()<String, String>;
-			@request_headers->Insert("Cache-Control"->ToLower(), "max-age=0");
-			@request_headers->Insert("User-Agent"->ToLower(), "Objeck/1.0");
-			
-			@response_headers := Hash->New()<String, String>;
-
-			@cookies_enabled := cookies_enabled;
-			@pem := pem;
-
 			@cookies := Vector->New()<Cookie>;
 		}
 		
