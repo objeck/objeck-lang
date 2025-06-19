@@ -561,14 +561,13 @@ class IPSecureSocket {
       cert_path = pem_file;
     }
     else {
-      cert_path = UnicodeToBytes(GetLibraryPath());
-      cert_path += CACERT_PEM_FILE;
+      cert_path = UnicodeToBytes(GetLibraryPath()) + CACERT_PEM_FILE;
     }
 
     if(!SSL_CTX_load_verify_locations(ctx, cert_path.c_str(), nullptr)) {
       BIO_free_all(bio);
       SSL_CTX_free(ctx);
-      std::wcerr << L">>> Unable to find/read cryptographic PEM file : '" << BytesToUnicode(pem_file) << L"' <<<" << std::endl;
+      std::wcerr << L">>> Unable to find/read cryptographic PEM file : '" << BytesToUnicode(cert_path) << L"' <<<" << std::endl;
       return false;
     }
     
