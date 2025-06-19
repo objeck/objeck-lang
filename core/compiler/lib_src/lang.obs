@@ -9939,6 +9939,7 @@ bundle System.IO.Net {
 		Default constructor
 		@param address network address
 		@param port network port
+		@param pem the Privacy Enhanced Mail file (optional)		
 		~#
 		New(address : System.String, port : Int, pem : String := Nil) {
 			Parent();
