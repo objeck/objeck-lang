@@ -340,7 +340,7 @@ if(html <> Nil) {
 				};
 				# "### address='{$address}', port={$port}, location='{$location}'"->PrintLine();
 
-				socket := TCPSecureSocket->New(address, port, pem);
+				socket := TCPSecureSocket->New(address, port);
 				if(socket->IsOpen()) {
 					@response_headers->Empty();
 
@@ -554,7 +554,7 @@ if(html <> Nil) {
 		@return output buffer
 		~#
 		function : QuickGet(url : Web.HTTP.Url, content_type : String, headers : Map<String, String>, pem : String) ~ Web.HTTP.Response {			
-			client := HttpsClient->New(false, pem);
+			client := HttpsClient->New(false);
 
 			if(headers <> Nil) {
 				header_key_values := headers->GetKeyValues()<Pair<String, String>>;
@@ -660,7 +660,7 @@ if(html <> Nil) {
 		@return output buffer
 		~#
 		function : QuickDelete(url : Web.HTTP.Url, content_type : String, headers : Map<String, String>, pem : String) ~ Web.HTTP.Response {			
-			client := HttpsClient->New(false, pem);
+			client := HttpsClient->New();
 			if(headers <> Nil) {
 				header_key_values := headers->GetKeyValues()<Pair<String, String>>;
 				each(i : header_key_values) {
@@ -720,7 +720,7 @@ if(html <> Nil) {
 				};
 				# "### address='{$address}', port={$port}, location='{$location}'"->PrintLine();
 
-				socket := TCPSecureSocket->New(address, port, pem);
+				socket := TCPSecureSocket->New(address, port);
 				if(socket->IsOpen()) {
 					@response_headers->Empty();
 
