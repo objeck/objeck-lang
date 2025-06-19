@@ -502,17 +502,21 @@ public:
  ****************************/
 class IPSecureSocket {
  public:
-  static bool Open(const char* address, int port, SSL_CTX* &ctx, BIO* &bio, X509* &cert) {
+  static bool Open(const char* address, int port, const char* pem_file, SSL_CTX* &ctx, BIO* &bio, X509* &cert) {
     ctx = SSL_CTX_new(SSLv23_client_method());
     bio = BIO_new_ssl_connect(ctx);
     if(!bio) {
       SSL_CTX_free(ctx);
       return false;
     }
-    
-    std::wstring path = GetLibraryPath();
-    std::string cert_path(path.begin(), path.end());
-    cert_path += CACERT_PEM_FILE;
+
+    std::string cert_path; 
+    if(pem_file) {
+      cert_path = pem_file;
+    }
+    else {
+      cert_path = UnicodeToBytes(GetLibraryPath()) + CACERT_PEM_FILE;
+    }
     
     if(!SSL_CTX_load_verify_locations(ctx, cert_path.c_str(), nullptr)) {
       BIO_free_all(bio);
