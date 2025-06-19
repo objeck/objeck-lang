@@ -4022,12 +4022,23 @@ bool TrapProcessor::SockTcpInString(StackProgram* program, size_t* inst, size_t*
 
 bool TrapProcessor::SockTcpSslConnect(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
+  size_t* addr_array = (size_t*)PopInt(op_stack, stack_pos);
   const long port = (long)PopInt(op_stack, stack_pos);
-  size_t* array = (size_t*)PopInt(op_stack, stack_pos);
+  size_t* pem_file_array = (size_t*)PopInt(op_stack, stack_pos);
+
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  if(array && instance) {
-    array = (size_t*)array[0];
-    const std::string addr = UnicodeToBytes((wchar_t*)(array + 3));
+  if(addr_array && instance) {
+    addr_array = (size_t*)addr_array[0];
+    const std::string addr = UnicodeToBytes((wchar_t*)(addr_array + 3));
+
+    std::string pem_file;
+    pem_file_array = (size_t*)pem_file_array[0];
+    if(pem_file_array) {
+      pem_file = UnicodeToBytes((wchar_t*)(pem_file_array + 3));
+    }
+    else {
+      pem_file = "";
+    }
 
     IPSecureSocket::Close((SSL_CTX*)instance[0], (BIO*)instance[1], (X509*)instance[2]);
 
