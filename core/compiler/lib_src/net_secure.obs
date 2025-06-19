@@ -33,6 +33,7 @@ if(html <> Nil) {
 		@cookies : Vector<Cookie>;
 		@cert_issuer : String;
 		@cert_subject : String;
+		@pem : String;
 		
 		#~
 		Default constructor
@@ -46,6 +47,23 @@ if(html <> Nil) {
 			@response_headers := Hash->New()<String, String>;
 
 			@cookies_enabled := cookies_enabled;
+			@cookies := Vector->New()<Cookie>;
+		}
+
+		#~
+		Default constructor
+		@param cookies_enabled true if cookies are enabled, false otherwise		
+		~#
+		New(cookies_enabled : Bool, pem : String) {
+			@request_headers := Hash->New()<String, String>;
+			@request_headers->Insert("Cache-Control"->ToLower(), "max-age=0");
+			@request_headers->Insert("User-Agent"->ToLower(), "Objeck/1.0");
+			
+			@response_headers := Hash->New()<String, String>;
+
+			@cookies_enabled := cookies_enabled;
+			@pem := pem;
+
 			@cookies := Vector->New()<Cookie>;
 		}
 		
@@ -252,7 +270,19 @@ if(html <> Nil) {
 		@return string read
 		~#
 		method : public : Post(url : Web.HTTP.Url, data : Byte[], content_type : String) ~ Web.HTTP.Response {
-			return PushPullOperation(url, data, content_type, HttpsClient->Task->POST);
+			return PushPullOperation(url, data, content_type, HttpsClient->Task->POST, Nil);
+		}
+
+		#~
+		Performs a HTTPS POST
+		@param url URL
+		@param data data to oper
+		@param content_type content type
+		@param pem the Privacy Enhanced Mail file
+		@return string read
+		~#
+		method : public : Post(url : Web.HTTP.Url, data : Byte[], content_type : String, pem : String) ~ Web.HTTP.Response {
+			return PushPullOperation(url, data, content_type, HttpsClient->Task->POST, pem);
 		}
 
 		#~
@@ -262,7 +292,7 @@ if(html <> Nil) {
 		@return string read
 		~#
 		method : public : Post(url : Web.HTTP.Url, data : Byte[]) ~ Web.HTTP.Response {
-			return PushPullOperation(url, data, "text/plain", HttpsClient->Task->POST);
+			return PushPullOperation(url, data, "text/plain", HttpsClient->Task->POST, Nil);
 		}
 
 		#~
@@ -273,7 +303,19 @@ if(html <> Nil) {
 		@return string read
 		~#
 		method : public : Put(url : Web.HTTP.Url, data : Byte[], content_type : String) ~ Web.HTTP.Response {
-			return PushPullOperation(url, data, content_type, HttpsClient->Task->PUT);
+			return PushPullOperation(url, data, content_type, HttpsClient->Task->PUT, Nil);
+		}
+
+		#~
+		Performs a HTTPS PUT
+		@param url URL
+		@param data data to oper
+		@param content_type content type
+		@param pem the Privacy Enhanced Mail file
+		@return string read
+		~#
+		method : public : Put(url : Web.HTTP.Url, data : Byte[], content_type : String, pem : String) ~ Web.HTTP.Response {
+			return PushPullOperation(url, data, content_type, HttpsClient->Task->PUT, pem);
 		}
 
 		#~
@@ -283,10 +325,10 @@ if(html <> Nil) {
 		@return string read
 		~#
 		method : public : Put(url : Web.HTTP.Url, data : Byte[]) ~ Web.HTTP.Response {
-			return PushPullOperation(url, data, "text/plain", HttpsClient->Task->PUT);
+			return PushPullOperation(url, data, "text/plain", HttpsClient->Task->PUT, Nil);
 		}
 
-		method : PushPullOperation(url : Web.HTTP.Url, data : Byte[], content_type : String, task : HttpsClient->Task) ~ Web.HTTP.Response {
+		method : PushPullOperation(url : Web.HTTP.Url, data : Byte[], content_type : String, task : HttpsClient->Task, pem : String) ~ Web.HTTP.Response {
 			content : ByteBuffer;
 			status_code := 500;
 
@@ -316,7 +358,7 @@ if(html <> Nil) {
 				};
 				# "### address='{$address}', port={$port}, location='{$location}'"->PrintLine();
 
-				socket := TCPSecureSocket->New(address, port);
+				socket := TCPSecureSocket->New(address, port, pem);
 				if(socket->IsOpen()) {
 					@response_headers->Empty();
 
@@ -522,6 +564,36 @@ if(html <> Nil) {
 		}
 
 		#~
+		Performs a HTTPS GET and returns results as a String
+		@param url URL
+		@param content_type content type
+		@param headers key/value headers
+		@param pem the Privacy Enhanced Mail file		
+		@return output buffer
+		~#
+		function : QuickGet(url : Web.HTTP.Url, content_type : String, headers : Map<String, String>, pem : String) ~ Web.HTTP.Response {			
+			client := HttpsClient->New(false, pem);
+
+			if(headers <> Nil) {
+				header_key_values := headers->GetKeyValues()<Pair<String, String>>;
+				each(i : header_key_values) {
+					key_value := header_key_values->Get(i);
+					key := key_value->GetFirst();
+					value := key_value->GetSecond();
+					
+					if(value->IsEmpty()) {
+						client->RemoveHeader(key);
+					}
+					else {
+						client->AddHeader(key, value);
+					};
+				};
+			};
+
+			return client->Get(url, content_type);
+		}
+
+		#~
 		Performs a HTTPS GET
 		@param url URL
 		@return string read
@@ -537,7 +609,7 @@ if(html <> Nil) {
 		@return string read
 		~#
 		method : public : Get(url : Web.HTTP.Url, content_type : String) ~ Web.HTTP.Response {
-			return PullOperation(url, content_type, HttpsClient->Task->GET);
+			return PullOperation(url, content_type, HttpsClient->Task->GET, Nil);
 		}
 
 		#~
@@ -598,16 +670,45 @@ if(html <> Nil) {
 		}
 
 		#~
+		Performs a HTTPS DELETE and returns results as a String
+		@param url URL
+		@param content_type content type
+		@param headers key/value headers
+		@param pem the Privacy Enhanced Mail file
+		@return output buffer
+		~#
+		function : QuickDelete(url : Web.HTTP.Url, content_type : String, headers : Map<String, String>, pem : String) ~ Web.HTTP.Response {			
+			client := HttpsClient->New(false, pem);
+			if(headers <> Nil) {
+				header_key_values := headers->GetKeyValues()<Pair<String, String>>;
+				each(i : header_key_values) {
+					key_value := header_key_values->Get(i);
+					key := key_value->GetFirst();
+					value := key_value->GetSecond();
+					
+					if(value->IsEmpty()) {
+						client->RemoveHeader(key);
+					}
+					else {
+						client->AddHeader(key, value);
+					};
+				};
+			};
+
+			return client->Delete(url, content_type);
+		}
+
+		#~
 		Performs a HTTPS DELETE
 		@param url URL
 		@param content_type content type
 		@return string read
 		~#
 		method : public : Delete(url : Web.HTTP.Url, content_type : String) ~ Web.HTTP.Response {
-			return PullOperation(url, content_type, HttpsClient->Task->DELETE);
+			return PullOperation(url, content_type, HttpsClient->Task->DELETE, Nil);
 		}
 
-		method : PullOperation(url : Web.HTTP.Url, content_type : String, task : HttpsClient->Task) ~ Web.HTTP.Response {
+		method : PullOperation(url : Web.HTTP.Url, content_type : String, task : HttpsClient->Task, pem : String) ~ Web.HTTP.Response {
 			content : ByteBuffer;
 			status_code := 500;
 
@@ -637,7 +738,7 @@ if(html <> Nil) {
 				};
 				# "### address='{$address}', port={$port}, location='{$location}'"->PrintLine();
 
-				socket := TCPSecureSocket->New(address, port);
+				socket := TCPSecureSocket->New(address, port, pem);
 				if(socket->IsOpen()) {
 					@response_headers->Empty();
 
