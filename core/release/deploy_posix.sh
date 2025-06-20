@@ -103,7 +103,6 @@ cd ../../release
 cd ../..
 cp -R docs/syntax core/release/deploy/doc/syntax
 cp docs/readme.html core/release/deploy
-cp docs/doc/readme.css core/release/deploy/doc
 
 cp LICENSE core/release/deploy
 unzip docs/api.zip -d core/release/deploy/doc
