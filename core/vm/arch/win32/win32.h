@@ -548,7 +548,7 @@ public:
  ****************************/
 class IPSecureSocket {
  public:
-  static bool Open(const char* address, int port, const char* pem_file, SSL_CTX* &ctx, BIO* &bio, X509* &cert) {
+  static bool Open(const char* address, int port, const std::string &pem_file, SSL_CTX* &ctx, BIO* &bio, X509* &cert) {
     ctx = SSL_CTX_new(SSLv23_client_method());
     bio = BIO_new_ssl_connect(ctx);
     if(!bio) {
@@ -557,7 +557,7 @@ class IPSecureSocket {
     }
 
     std::string cert_path;
-    if(pem_file) {
+    if(!pem_file.empty()) {
       cert_path = pem_file;
     }
     else {

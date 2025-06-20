@@ -4032,18 +4032,15 @@ bool TrapProcessor::SockTcpSslConnect(StackProgram* program, size_t* inst, size_
     const std::string addr = UnicodeToBytes((wchar_t*)(addr_array + 3));
 
     std::string pem_file;
-    pem_file_array = (size_t*)pem_file_array[0];
     if(pem_file_array) {
+      pem_file_array = (size_t*)pem_file_array[0];
       pem_file = UnicodeToBytes((wchar_t*)(pem_file_array + 3));
-    }
-    else {
-      pem_file = "";
     }
 
     IPSecureSocket::Close((SSL_CTX*)instance[0], (BIO*)instance[1], (X509*)instance[2]);
 
     SSL_CTX* ctx; BIO* bio; X509* cert;
-    const bool is_open = IPSecureSocket::Open(addr.c_str(), port, pem_file.c_str(), ctx, bio, cert);
+    const bool is_open = IPSecureSocket::Open(addr.c_str(), port, pem_file, ctx, bio, cert);
     if(is_open) {
       instance[0] = (size_t)ctx;
       instance[1] = (size_t)bio;
