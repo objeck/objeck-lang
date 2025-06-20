@@ -470,7 +470,7 @@ void Linker::Load(bool is_lib)
             Library* library = new Library(file_path);
             library->Load();
             libraries.insert(std::pair<std::wstring, Library*>(file_path, library));
-            paths.push_back(file_path);
+            paths.push_back(std::move(file_path));
           }
         }
         else {
