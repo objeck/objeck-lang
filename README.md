@@ -16,8 +16,8 @@ Another programming language
 
 ## Updates
 v2025.6.3
-    * Support for user-provided HTTPS PEM files
-    * Added multi-statement pre/update support for ``for`` loops
+  * Support for user-provided HTTPS PEM files
+  * Added multi-statement pre/update support for ``for`` loops
       
 <ins>v2025.6.2</ins>
   * New [API documentation](https://www.objeck.org/doc/api/index.html) system
