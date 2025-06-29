@@ -17,4 +17,5 @@ v2025.3.0
 ---
  Updated VS Code LSP support for macOS and Linux
  Collection bug fixes
- LSP bug fixes ⌨️ - More aggressive method inlining
+ LSP bug fixes
+ - More aggressive method inlining
