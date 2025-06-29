@@ -26,10 +26,10 @@ v2025.6.2
   * Improved JSON scheme support
     
 v2025.3.0
-  * Updated VS Code LSP support for macOS and Linux ✍🏽
-  * Collection bug fixes 🫙
-  * LSP bug fixes ⌨️
-  * More aggressive method inlining 🏎️
+  * Updated VS Code LSP support for macOS and Linux
+  * Collection bug fixes
+  * LSP bug fixes
+  * More aggressive method inlining
     
 ## Code Examples
 
