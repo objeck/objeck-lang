@@ -15,11 +15,11 @@ Another programming language
 </p>
 
 ## Updates
-v2025.6.3
+<ins>v2025.6.3</ins>
   * Support for user-provided HTTPS PEM files
   * Added multi-statement pre/update support for ``for`` loops
       
-<ins>v2025.6.2</ins>
+v2025.6.2
   * New [API documentation](https://www.objeck.org/doc/api/index.html) system
   * Added support for OpenAI's <a href='https://platform.openai.com/docs/api-reference/responses'>Responses API</a>
   * Updated Windows launcher
