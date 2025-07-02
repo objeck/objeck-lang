@@ -9,7 +9,7 @@
 ~#
 
 #~
-Immutable tuple classes (-lib gen_collect)
+Tuple classes (-lib gen_collect)
 ~#	
 bundle Collection.Tuple {
 	#~
