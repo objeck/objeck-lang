@@ -1,5 +1,5 @@
 <p align="center">
-  <img src='https://github.com/objeck/objeck-lang/blob/master/core/lib/code_doc/templates/resources/objeck-logo.png' height="168"/>
+  <img src='https://github.com/objeck/objeck-lang/blob/master/core/lib/code_doc/templates/resources/objeck-logo-alt.png' height="168"/>
 </p>
 
 <p align="center">
@@ -15,21 +15,21 @@ Another programming language
 </p>
 
 ## Updates
-v2025.6.3
+<ins>v2025.6.3</ins>
   * Support for user-provided HTTPS PEM files
   * Added multi-statement pre/update support for ``for`` loops
       
-<ins>v2025.6.2</ins>
+v2025.6.2
   * New [API documentation](https://www.objeck.org/doc/api/index.html) system
   * Added support for OpenAI's <a href='https://platform.openai.com/docs/api-reference/responses'>Responses API</a>
   * Updated Windows launcher
   * Improved JSON scheme support
     
 v2025.3.0
-  * Updated VS Code LSP support for macOS and Linux ✍🏽
-  * Collection bug fixes 🫙
-  * LSP bug fixes ⌨️
-  * More aggressive method inlining 🏎️
+  * Updated VS Code LSP support for macOS and Linux
+  * Collection bug fixes
+  * LSP bug fixes
+  * More aggressive method inlining
     
 ## Code Examples
 

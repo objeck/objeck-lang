@@ -1,5 +1,10 @@
-v2025.6.1 (June 5, 2025)
+v2025.6.3 (June 29, 2025)
 ===
+
+v2025.6.3
+---
+Support for user-provided HTTPS PEM files
+Added multi-statement pre/update support 'for' loops
 
 v2025.6.2
 ---
@@ -10,13 +15,7 @@ Improved JSON scheme support
 
 v2025.3.0
 ---
- Updated VS Code LSP support for macOS and Linux ✍🏽 
- Collection bug fixes 🫙 
- LSP bug fixes ⌨️ - More aggressive method inlining 🏎️
-
-v2025.2.2
----
-Improved named pipe support 🔌
-Updates to the LSP client/server ⌨️
-Fixed Windows installer issues with missing DLLs 🏗️
-Error handling bug fixes
+ Updated VS Code LSP support for macOS and Linux
+ Collection bug fixes
+ LSP bug fixes
+ More aggressive method inlining
