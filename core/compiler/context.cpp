@@ -6786,7 +6786,9 @@ bool ContextAnalyzer::CheckGenericEqualTypes(Type* left, Type* right, Expression
           std::vector<Type*> right_generics = right_generic_type->GetGenerics();
           Type* right_concrete_type = ResolveGenericType(left_generic_type, expression, right_klass, lib_right_klass);
           right_concrete_types.push_back(right_concrete_type);
-          AppendGenericNames(right_type_name, right_concrete_type->GetGenerics());
+          
+          std::vector<Type*> right_generic_concrete_types = right_concrete_type->GetGenerics();
+          AppendGenericNames(right_type_name, right_generic_concrete_types);
         }
         right_type_name += L'>';
 
