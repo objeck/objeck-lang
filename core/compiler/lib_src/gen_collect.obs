@@ -311,7 +311,7 @@ bundle Collection.Tuple {
 	}
 
 	#~
-	Tuple class that supports 5 values
+	Quintet class that supports 5 values
 	~#
 	class Quintet <A, B, C, D, E> {
 		@a : A;
@@ -3057,6 +3057,72 @@ function : Example() ~ Nil {
 		}
 
 		#~
+		Zip two vectors together
+		@return list of pairs
+		~#
+		function : Zip(a : Vector<H>, b : Vector<H>) ~ Vector<Collection.Tuple.Pair<H,H>> {
+			max := a->Size();
+			if(b->Size() < max) {
+				max := b->Size();
+			};
+
+			zipped := Vector->New()<Collection.Tuple.Pair<H,H>>;
+			each(i : max) {
+				tuple := Collection.Tuple.Pair->New(a->Get(i), b->Get(i))<H, H>;
+				zipped->AddBack(tuple)<Collection.Tuple.Pair<H,H>>;
+			};
+
+			return zipped;
+		}
+
+		#~
+		Zip three vectors together
+		@return list of triplets
+		~#
+		function : Zip(a : Vector<H>, b : Vector<H>, c : Vector<H>) ~ Vector<Collection.Tuple.Triplet<H,H,H>> {
+			max := a->Size();
+			if(b->Size() < max) {
+				max := b->Size();
+				if(c->Size() < max) {
+					max := c->Size();
+				};
+			};
+
+			zipped := Vector->New()<Collection.Tuple.Triplet<H,H,H>>;
+			each(i : max) {
+				tuple := Collection.Tuple.Triplet->New(a->Get(i), b->Get(i), c->Get(i))<H,H,H>;
+				zipped->AddBack(tuple)<Collection.Tuple.Triplet<H,H,H>>;
+			};
+			
+			return zipped;
+		}
+
+		#~
+		Zip four vectors together
+		@return list of quintets
+		~#
+		function : Zip(a : Vector<H>, b : Vector<H>, c : Vector<H>, d : Vector<H>) ~ Vector<Collection.Tuple.Quartet<H,H,H,H>> {
+			max := a->Size();
+			if(b->Size() < max) {
+				max := b->Size();
+				if(c->Size() < max) {
+					max := c->Size();
+					if(d->Size() < max) {
+						max := d->Size();
+					};
+				};
+			};
+
+			zipped := Vector->New()<Collection.Tuple.Quartet<H,H,H,H>>;
+			each(i : max) {
+				tuple := Collection.Tuple.Quartet->New(a->Get(i), b->Get(i), c->Get(i), d->Get(i))<H,H,H,H>;
+				zipped->AddBack(tuple)<Collection.Tuple.Quartet<H,H,H,H>>;
+			};
+			
+			return zipped;
+		}
+
+		#~
 		Reverses element order
 		@return reversed vector, if the vector is empty or hold 1 item then the original list is returned
 		~#
@@ -3370,7 +3436,7 @@ function : Show(value : IntRef) ~ Nil {
 		Copy constructor
 		@param values values to copy 
 		~#
-		New(values : Vector<H>) {
+		New(values : CompareVector<H>) {
 			@values := values->ToArray();
 			@size := values->Size();
 		}
@@ -3812,6 +3878,11 @@ function : Show(value : IntRef) ~ Nil {
 			return node;
 		}
 
+		function : Dict(v1 : Vector<Collection.Tuple.Pair<K, V>>) ~ Map<K, V> {
+			"--- Dict ---"->PrintLine();
+			return Nil;
+		}
+
 		#~
 		Size of queue
 		@return size of queue
@@ -3855,24 +3926,6 @@ function : Show(value : IntRef) ~ Nil {
 			return node;
 		}
 		
-		#~
-		Creates a map from a vector of keys and values
-		@param keys keys
-		@param values values
-		@return map of key/value pairs
-		~#
-		function : Zip(keys : CompareVector<K>, values : Vector<V>) ~ Map<K,V> {			
-			if(keys->Size() = values->Size()) {
-				zip := Map->New()<K,V>;
-				each(i : keys) {
-					zip->Insert(keys->Get(i), values->Get(i));
-				};
-				return zip;
-			};
-
-			return Nil;
-		}
-
 		#~
 		Searches for a value in a map
 		@param key search key
@@ -4698,24 +4751,6 @@ set_hash->Has("Oakland")->PrintLine();
 			};
 
 			return a;
-		}
-		
-		#~
-		Creates a map from a vector of keys and values
-		@param keys keys
-		@param values values
-		@return map of key/value pairs
-		~#
-		function : Zip(keys : CompareVector<K>, values : Vector<V>) ~ MultiMap<K,V> {			
-			if(keys->Size() = values->Size()) {
-				zip := MultiMap->New()<K,V>;
-				each(i : keys) {
-					zip->Insert(keys->Get(i), values->Get(i));
-				};
-				return zip;
-			};
-
-			return Nil;
 		}
 
 		#~
