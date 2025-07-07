@@ -17,7 +17,7 @@ Another programming language
 ## Updates
 
 v2025.7.0
-  * Added ``Hash->Dict(..)``, ``Map->Dict(..)`` and ``Vector->Zip(..)``
+  * Added ``Hash->Dict(..)``, ``Map->Dict(..)`` and ``Vector->Zip(..)`` to collections
   * Updated style (docs, logos, etc.)
   * Bug fixes
     
