@@ -16,11 +16,11 @@ Another programming language
 
 ## Updates
 
-<ins>v2025.7.0</ins>
+v2025.7.0
   * Added ``Hash->Dict(..)``, ``Map->Dict(..)`` and ``Vector->Zip(..)``
   * Updated style (docs, logos, etc.)
     
-v2025.6.3
+<ins>v2025.6.3</ins>
   * Support for user-provided HTTPS PEM files
   * Added multi-statement pre/update support for ``for`` loops
       
