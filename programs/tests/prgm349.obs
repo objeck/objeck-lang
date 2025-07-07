@@ -1,0 +1,10 @@
+use Collection;
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		
+	}
+
+	function : Zip(args : List[]<List>) ~ Nil {
+	}
+}

@@ -1,0 +1,62 @@
+use Collection;
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		v1 := Vector->New(["a", "b", "c"])<String>;	
+		v2 := Vector->New(["d", "e", "f"])<String>;	
+		v3 := Vector->New(["g", "h", "i"])<String>;	
+		v4 := Vector->New(["j", "k", "l"])<String>;	
+
+		p1 := Test2(v1,v2)<Collection.Tuple.Pair<String, String>>;
+		p1->Size()->PrintLine();
+
+		Test3(v1,v2,v3);
+		Test4(v1,v2,v3,v4);
+
+		x := Map->Dict(p1)<String, String>;
+	}
+
+	function : Test(v1 : Vector<Collection.Tuple.Pair<String, String>>) ~ Nil {
+	}
+
+	function : Test2(v1 : Vector<String>, v2 : Vector<String>) ~ Vector<Collection.Tuple.Pair<String, String>> {
+		v1->Size()->PrintLine();
+		v2->Size()->PrintLine();
+
+		z1 := Vector->Zip(v1,v2)<Collection.Tuple.Pair<String, String>>;
+		each(i : z1) {
+			t := z1->Get(i)<String, String>;
+			t->ToString()->PrintLine();
+		};
+		"---"->PrintLine();
+
+		return z1;
+	}
+
+	function : Test3(v1 : Vector<String>, v2 : Vector<String>, v3 : Vector<String>) ~ Nil {
+		v1->Size()->PrintLine();
+		v2->Size()->PrintLine();
+		v3->Size()->PrintLine();
+
+		z1 := Vector->Zip(v1,v2,v3)<Collection.Tuple.Triplet<String, String, String>>;
+		each(i : z1) {
+			t := z1->Get(i)<String, String, String>;
+			t->ToString()->PrintLine();
+		};
+		"---"->PrintLine();
+	}
+
+	function : Test4(v1 : Vector<String>, v2 : Vector<String>, v3 : Vector<String>, v4 : Vector<String>) ~ Nil {
+		v1->Size()->PrintLine();
+		v2->Size()->PrintLine();
+		v3->Size()->PrintLine();
+		v4->Size()->PrintLine();
+
+		z1 := Vector->Zip(v1,v2,v3,v4)<Collection.Tuple.Quartet<String, String, String, String>>;
+		each(i : z1) {
+			t := z1->Get(i)<String, String, String>;
+			t->ToString()->PrintLine();
+		};
+		"---"->PrintLine();
+	}
+}
