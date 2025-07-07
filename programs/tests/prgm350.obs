@@ -7,13 +7,11 @@ class Test {
 		v3 := Vector->New(["g", "h", "i"])<String>;	
 		v4 := Vector->New(["j", "k", "l"])<String>;	
 
-		p1 := Test2(v1,v2)<Collection.Tuple.Pair<String, String>>;
-		p1->Size()->PrintLine();
-
+		p := Test2(v1,v4)<Collection.Tuple.Pair<String, String>>;
 		Test3(v1,v2,v3);
 		Test4(v1,v2,v3,v4);
 
-		m := Map->Dict(p1)<String, String>;
+		m := Map->Dict(p)<String, String>;
 		m->Find("a")->PrintLine();
 		m->Find("b")->PrintLine();
 		m->Find("c")->PrintLine();
