@@ -6811,7 +6811,7 @@ bool ContextAnalyzer::CheckGenericEqualTypes(Type* left, Type* right, Expression
       }
 
       if(!right_concrete_types.empty()) {
-        right->SetGenerics(right_concrete_types);
+//        right->SetGenerics(right_concrete_types);
       }
     }
   }
