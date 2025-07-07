@@ -1132,6 +1132,23 @@ hash->Has(408)->PrintLine();
 			@buckets := CompareList->New[@capacity]<K>;
 			@size := 0;
 		}
+		
+		#~
+		Converts a vector pairs to a hash
+		@param pairs vector of pairs
+		@return hashed pairs
+		~#
+		function : Dict(pairs : Vector<Collection.Tuple.Pair<K, V>>) ~ Hash<K, V> {
+			dict := Hash->New()<K, V>;
+
+			each(pair in pairs) {
+				k := pair->GetFirst();
+				v := pair->GetSecond();
+				dict->Insert(k, v);
+			};
+
+			return dict;
+		}
 
 		#~
 		Formats the collection into a string. If an element implements the 'Stringify' 
@@ -3878,9 +3895,21 @@ function : Show(value : IntRef) ~ Nil {
 			return node;
 		}
 
-		function : Dict(v1 : Vector<Collection.Tuple.Pair<K, V>>) ~ Map<K, V> {
-			"--- Dict ---"->PrintLine();
-			return Nil;
+		#~
+		Converts a vector pairs to a map
+		@param pairs vector of pairs
+		@return mapped pairs
+		~#
+		function : Dict(pairs : Vector<Collection.Tuple.Pair<K, V>>) ~ Map<K, V> {
+			dict := Map->New()<K, V>;
+
+			each(pair in pairs) {
+				k := pair->GetFirst();
+				v := pair->GetSecond();
+				dict->Insert(k, v);
+			};
+
+			return dict;
 		}
 
 		#~
