@@ -1,5 +1,5 @@
 <p align="center">
-  <img src='https://github.com/objeck/objeck-lang/blob/master/core/lib/code_doc/templates/resources/objeck-logo-alt.png' height="80"/>
+  <img src='https://github.com/objeck/objeck-lang/blob/master/core/lib/code_doc/templates/resources/objeck-logo-alt.png' width="50%" height="50%"/>
 </p>
 
 <p align="center">
