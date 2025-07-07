@@ -34,6 +34,7 @@ header {
 .version {
   font-size: 0.85rem;
   color: #4a5568;
+  padding: 0px 1rem 0.5rem;
 }
 
 .container {
