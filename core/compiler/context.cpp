@@ -6801,7 +6801,7 @@ bool ContextAnalyzer::CheckGenericEqualTypes(Type* left, Type* right, Expression
           }
           right_type_name += L'>';
 
-          if(left_generic_type->IsResolved() && left_type_name != right_type_name) {
+          if(left_type_name != right_type_name) {
             if(check_only) {
               return false;
             }
