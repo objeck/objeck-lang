@@ -19,6 +19,7 @@ Another programming language
 v2025.7.0
   * Added ``Hash->Dict(..)``, ``Map->Dict(..)`` and ``Vector->Zip(..)``
   * Updated style (docs, logos, etc.)
+  * Bug fixes
     
 <ins>v2025.6.3</ins>
   * Support for user-provided HTTPS PEM files
