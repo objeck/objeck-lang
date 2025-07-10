@@ -39,8 +39,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 2025,7,0
- PRODUCTVERSION 2025,7,0
+ FILEVERSION 2025,7,1
+ PRODUCTVERSION 2025,7,1
  FILEFLAGSMASK 0x17L
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -58,12 +58,12 @@ BEGIN
             VALUE "Comments", "Objeck REPL"
             VALUE "CompanyName", "objeck.org"
             VALUE "FileDescription", "Objeck REPL"
-            VALUE "FileVersion", "2025.7.0"
+            VALUE "FileVersion", "2025.7.1"
             VALUE "InternalName", "obr"
             VALUE "LegalCopyright", "Copyright (c) 2025 Randy Hollines"
             VALUE "OriginalFilename", "obr.exe"
             VALUE "ProductName", "Objeck Runtime"
-            VALUE "ProductVersion", "2025.7.0"
+            VALUE "ProductVersion", "2025.7.1"
         END
     END
     BLOCK "VarFileInfo"
