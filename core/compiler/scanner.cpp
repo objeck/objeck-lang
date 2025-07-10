@@ -749,22 +749,30 @@ void Scanner::ParseInteger(int index, int base /*= 0*/)
   const size_t length = end_pos - start_pos;
   std::wstring ident(buffer, start_pos, length);
 
-  // parse and check for errors
-  wchar_t* ending = nullptr;
-  if(base == 2) {
-    tokens[index]->SetInt64Lit(wcstoll(ident.c_str() + 2, &ending, 2));
-  }
-  else {
-    tokens[index]->SetInt64Lit(wcstoll(ident.c_str(), &ending, base));
-  }
-
-  // set token
-  if(wcslen(ending)) {
+  if(ident.back() == L'_') {
     tokens[index]->SetType(TOKEN_UNKNOWN);
   }
   else {
-    tokens[index]->SetType(TOKEN_INT_LIT);
+    ident.erase(std::remove(ident.begin(), ident.end(), L'_'), ident.end());
+
+    // parse and check for errors
+    wchar_t* ending = nullptr;
+    if(base == 2) {
+      tokens[index]->SetInt64Lit(wcstoll(ident.c_str() + 2, &ending, 2));
+    }
+    else {
+      tokens[index]->SetInt64Lit(wcstoll(ident.c_str(), &ending, base));
+    }
+
+    // set token
+    if(wcslen(ending)) {
+      tokens[index]->SetType(TOKEN_UNKNOWN);
+    }
+    else {
+      tokens[index]->SetType(TOKEN_INT_LIT);
+    }
   }
+
   tokens[index]->SetLineNbr(line_nbr);
   tokens[index]->SetLinePos((int)(line_pos - length - 1));
   tokens[index]->SetFileName(filename);
@@ -775,16 +783,24 @@ void Scanner::ParseDouble(int index)
   // copy string
   const size_t length = end_pos - start_pos;
   std::wstring ident(buffer, start_pos, length);
-  
-  // parse and check for errors
-  wchar_t* ending;
-  tokens[index]->SetFloatLit(wcstod(ident.c_str(), &ending));
-  if(wcslen(ending)) {
+
+  if(ident.back() == L'_') {
     tokens[index]->SetType(TOKEN_UNKNOWN);
   }
   else {
-    tokens[index]->SetType(TOKEN_FLOAT_LIT);
+    ident.erase(std::remove(ident.begin(), ident.end(), L'_'), ident.end());
+
+    // parse and check for errors
+    wchar_t* ending;
+    tokens[index]->SetFloatLit(wcstod(ident.c_str(), &ending));
+    if(wcslen(ending)) {
+      tokens[index]->SetType(TOKEN_UNKNOWN);
+    }
+    else {
+      tokens[index]->SetType(TOKEN_FLOAT_LIT);
+    }
   }
+
   tokens[index]->SetLineNbr(line_nbr);
   tokens[index]->SetLinePos((int)(line_pos - length - 1));
   tokens[index]->SetFileName(filename);
@@ -1203,7 +1219,7 @@ void Scanner::ParseToken(int index)
       NextChar();
     }
 
-    while(iswdigit(cur_char) || cur_char == L'.' || 
+    while(iswdigit(cur_char) || cur_char == L'.' || cur_char == L'_' ||
           // hex/bin format
           cur_char == L'x' || cur_char == L'X' || (cur_char >= L'a' && cur_char <= L'f') ||
           (cur_char >= L'A' && cur_char <= L'F') ||

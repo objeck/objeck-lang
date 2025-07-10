@@ -1,5 +1,5 @@
 <p align="center">
-  <img src='https://github.com/objeck/objeck-lang/blob/master/core/lib/code_doc/templates/resources/objeck-logo-alt.png' height="140"/>
+  <img src='https://github.com/objeck/objeck-lang/blob/master/core/lib/code_doc/templates/resources/objeck-logo-alt.png' height="125px"/>
 </p>
 
 <p align="center">
@@ -15,7 +15,13 @@ Another programming language
 </p>
 
 ## Updates
-<ins>v2025.6.3</ins>
+
+<ins>v2025.7.0</ins>
+  * Added ``Hash->Dict(..)``, ``Map->Dict(..)`` and ``Vector->Zip(..)`` to collections
+  * Updated style (docs, logos, etc.)
+  * Bug fixes
+    
+v2025.6.3
   * Support for user-provided HTTPS PEM files
   * Added multi-statement pre/update support for ``for`` loops
       
@@ -24,12 +30,6 @@ v2025.6.2
   * Added support for OpenAI's <a href='https://platform.openai.com/docs/api-reference/responses'>Responses API</a>
   * Updated Windows launcher
   * Improved JSON scheme support
-    
-v2025.3.0
-  * Updated VS Code LSP support for macOS and Linux
-  * Collection bug fixes
-  * LSP bug fixes
-  * More aggressive method inlining
     
 ## Code Examples
 
