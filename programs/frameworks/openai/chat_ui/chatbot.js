@@ -8,8 +8,8 @@ const createChatLi = (message, className) => {
 	const chatLi = document.createElement("li");
 	chatLi.classList.add("chat", className);
 	
-	let chatContent = className === "chat-outgoing" ? `<p>${message}</p>` : `<p>${message}</p>`;
-	chatLi.innerHTML = chatContent;
+	let chatContent = className === "chat-outgoing" ? message : message;
+	chatLi.textContent = chatContent;
 
 	return chatLi;
 }

@@ -198,7 +198,7 @@ xcopy /e ..\..\docs\syntax\* %TARGET%\doc\syntax
 
 REM update and process readme
 mkdir %TARGET%\style 
-copy ..\..\docs\style\readme\*.css %TARGET%\style
+copy ..\..\docs\style\*.css %TARGET%\style
 copy ..\lib\code_doc\templates\resources\*.png %TARGET%\style
 copy ..\..\docs\readme.html %TARGET%
 copy ..\..\LICENSE %TARGET%
