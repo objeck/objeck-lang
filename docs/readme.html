@@ -7,56 +7,65 @@
    Objeck Language
   </title>
   <link href="style/styles.css" rel="stylesheet"/>
+  <link rel="icon" href="style/favicon.ico" type="image/x-icon" />
+  
   <script>
-   document.addEventListener("DOMContentLoaded", () => {
-          const menu = document.querySelector(".menu");
-          const menuItems = document.querySelector(".menu-items");
+    document.addEventListener("DOMContentLoaded", () => {
+      const menu = document.querySelector(".menu");
+      const menuItems = document.querySelector(".menu-items");
 
-          menu.addEventListener("click", (e) => {
-            e.stopPropagation();
-            menuItems.style.display = menuItems.style.display === "block" ? "none" : "block";
-          });
+      menu.addEventListener("click", (e) => {
+        e.stopPropagation();
+        menuItems.style.display = menuItems.style.display === "block" ? "none" : "block";
+      });
 
-          document.addEventListener("click", () => {
-            menuItems.style.display = "none";
-          });
-        });
+      document.addEventListener("click", () => {
+        menuItems.style.display = "none";
+      });
+    });
   </script>
+
  </head>
  <body>
+  
   <header>
-   <a href='https://objeck.org/'><img alt="Objeck Logo" class="logo" src="style/objeck-logo.png"/></a>
-   <p style="text-align: center; font-size: 0.95rem;">
-    v2025.6.3 (June 29, 2025)
-   </p>
-   <div class="menu">
-    <div class="menu-bar">
+    <div class="banner">
+      <!-- Centered Logo -->
+      <a href="https://objeck.org/">
+        <img alt="Objeck Logo" class="logo" src="style/objeck-logo.png" />
+      </a>
+      <!-- Centered Tagline -->
+      <h1 class="tagline">High-level Code @ Native Speed</h1>
+
+      <!-- Hamburger Menu Icon -->
+      <div class="menu">
+        <div class="menu-bar"></div>
+        <div class="menu-bar"></div>
+        <div class="menu-bar"></div>
+
+        <!-- Menu Items -->
+        <div class="menu-items">
+          <a href="https://objeck.org/index.html">Home</a>
+          <a href="https://sourceforge.net/projects/objeck-lang/files/">Downloads</a>
+          <a href="https://objeck.org/readme.html">Changelog</a>
+          <a href="https://objeck.org/getting_started.html">Quick Start</a>
+          <a href="https://github.com/objeck/objeck-lang">GitHub</a>
+        </div>
+      </div>
     </div>
-    <div class="menu-bar">
-    </div>
-    <div class="menu-bar">
-    </div>
-    <div class="menu-items">
-     <a href="getting_started.html">
-      Getting Started
-     </a>
-     <a href="readme.html">
-      Release Notes
-     </a>
-     <a href="https://sourceforge.net/projects/objeck-lang/files/">
-      Download
-     </a>
-     <a href="https://github.com/objeck/objeck-lang">
-      GitHub
-     </a>
-    </div>
-   </div>
   </header>
+
   <main style="text-align: left;">
-   <hr/>
-   <p class="box-text">Syntax additions and HTTPS PEM file support</p>
+   <p class="box-text">Syntax additions, updates to collections, and HTTPS PEM file support.</p>
    
-   <h3><u>v2025.6.3</u></h3>
+   <h3><u>2025.7.0</u></h3>
+    <ul>
+        <li>Added <code>Hash->Dict(..)</code>, <code>Map->Dict(..)</code> and <code>Vector->Zip(..)</code> to collections</li>
+        <li>Updated style (docs, logos, etc.)</li>
+        <li>Bug fixes</li>
+    </ul>
+
+    <h3>v2025.6.3</h3>
        <ul>
             <li>Support for user-provided HTTPS PEM files</li>
             <li>Added multi-statement pre/update support <code>for</code> loops</li>
@@ -68,14 +77,6 @@
         <li>Updated Windows launcher</li>
         <li>Added support for OpenAI's Responses API</li>
         <li>Improved JSON scheme support</li>
-    </ul>
-
-    <h3>2025.3.0</h3>
-    <ul>
-        <li>Updated VS Code LSP support for macOS and Linux ✍🏽</li>
-        <li>Collection bug fixes 🫙</li>
-        <li>LSP bug fixes ⌨️</li>
-        <li>More aggressive method inlining 🏎️</li>
     </ul>
    
    <p class="box-text">
@@ -381,7 +382,6 @@ openssl req -x509 -newkey rsa:4096 -sha256 -days 3650 -nodes -keyout local.key -
      , I do not sleep much.
     </li>
    </ul>
-   <hr/>
   </main>
   <footer class="footer">
    © 2025 Randy Hollines. All Rights Reserved.
