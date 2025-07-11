@@ -16,6 +16,9 @@ Another programming language
 
 ## Updates
 
+v2025.7.1
+  * On the stove
+
 <ins>v2025.7.0</ins>
   * Added ``Hash->Dict(..)``, ``Map->Dict(..)`` and ``Vector->Zip(..)`` to collections
   * Updated style (docs, logos, etc.)
@@ -24,12 +27,6 @@ Another programming language
 v2025.6.3
   * Support for user-provided HTTPS PEM files
   * Added multi-statement pre/update support for ``for`` loops
-      
-v2025.6.2
-  * New [API documentation](https://www.objeck.org/doc/api/index.html) system
-  * Added support for OpenAI's <a href='https://platform.openai.com/docs/api-reference/responses'>Responses API</a>
-  * Updated Windows launcher
-  * Improved JSON scheme support
     
 ## Code Examples
 
