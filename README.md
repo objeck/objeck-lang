@@ -17,7 +17,7 @@ Another programming language
 ## Updates
 
 v2025.7.1
-  * On the stove
+  * Warming on the stove...
 
 <ins>v2025.7.0</ins>
   * Added ``Hash->Dict(..)``, ``Map->Dict(..)`` and ``Vector->Zip(..)`` to collections
