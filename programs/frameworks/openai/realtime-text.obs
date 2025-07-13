@@ -4,7 +4,8 @@ class Test {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
 			token := FileReader->ReadFile(args[0]);
-			client := Connect(Url->New( "wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-12-17"), token);
+			model := "gpt-4o-realtime-preview-2025-06-03";
+			client := Connect(Url->New( "wss://api.openai.com/v1/realtime?model={$model}"), token);
 			
 			if(<>SendQuery("What is the longest street in Colorado?", client)) {
 				">>> Error sending query <<<"->PrintLine();
@@ -159,6 +160,7 @@ class Test {
 			}
 			else if(type_str->Equals("response.audio.delta")) {
 				response_audio += response_json->Get("delta")->GetString();
+				System.Concurrency.Thread->Sleep(15000);
 			}
 			else if(type_str->Equals("response.done")) {
 				is_done := true;
