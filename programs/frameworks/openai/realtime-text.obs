@@ -1,4 +1,4 @@
- use Collection, Web.HTTP, System.IO.Filesystem, Data.JSON, Game.SDL2;
+use Collection, API.OpenAI, Game.SDL2, System.IO.Filesystem;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
@@ -11,222 +11,25 @@ class Test {
 				return;
 			};
 
-			TextInAudioOut(args[1], "gpt-4o-realtime-preview-2025-06-03", args[2]->ToInt(), token);
-		};
-	}
-
-	function : TextInAudioOut(msg : String, model : String, wait_sec : Int, token : String) ~ Nil {
-		if(Core->Init(HardwareFlags->SDL_INIT_AUDIO) < 0) {
-			"SDL could not initialize audio!"->ErrorLine();
-			return;
-		};
-
-		MixChunk->PlayPcm("test.dat", 22050, AudioFormat->SDL_AUDIO_S16LSB, 1);
-
-		Core->Quit();
-
-#~
-		client := Connect(Url->New( "wss://api.openai.com/v1/realtime?model={$model}"), token);
-		if(<>SendQuery(msg, client)) {
-			">>> Error sending query <<<"->PrintLine();
-			return;
-		};
-
-		# binary audio and text
-		response := ReceiveResponse(client, wait_sec);
-		if(response->GetFirst() <> Nil & response->GetSecond() <> Nil) {
-			response_text := response->GetFirst();
-			response_text_size := response_text->Size();
-"response_text: size={$response_text_size}"->PrintLine();	
-			FileWriter->WriteFile("test.txt", response_text);
-			
-			response_audio := response->GetSecond();
-			response_audio_bytes := response_audio->Get();
-			response_audio_bytes_size := response_audio_bytes->Size();
-"response_audio_bytes: size={$response_audio_bytes_size}"->PrintLine();	
-			FileWriter->WriteFile("test.dat", response_audio_bytes);
-
-"---\nplaying audio..."->PrintLine();
-			MixChunk->PlayPcm("test.dat", 22050, AudioFormat->SDL_AUDIO_S16LSB, 1);
-		};
-		
-		client->CloseSocket();
-~#
-	}
-
-
-	function : Connect(url : Url, token : String) ~ SecureWebSocket {
-		client := SecureWebSocket->New(url);
-		client->AddHeader("Authorization", "Bearer {$token}");
-		client->AddHeader("OpenAI-Beta", "realtime=v1");
-
-		if(client->Connect()) {
-			"Connected..."->PrintLine();
-
-			recv_msg := client->ReadSocketText();
-			if(recv_msg = Nil) {
-				return Nil;
-			};
-
-			response_json := JsonParser->TextToElement(recv_msg);
-			if(response_json = Nil) {
-				status_code := client->GetStatusMessage();
-				">>> closed: code={$status_code} <<<"->PrintLine();
-
-				return Nil;
-			};
-
-			type_str := response_json->Get("type")->GetString();
-			if(<>type_str->Equals("session.created")) {
-				status_code := client->GetStatusMessage();
-				">>> closed: code={$status_code} <<<"->PrintLine();
-
-				return Nil;
-			};
-
-			return client;
-		};
-
-		return Nil;
-	}
-
-	function : SendQuery(query : String, client : SecureWebSocket) ~ Bool {
-		builder := JsonBuilder->New();
-		convo_json := builder->PushObject();
-		convo_json->Insert("type", "conversation.item.create");
-
-		item_json := builder->PushObject("item");
-		item_json->Insert("type", "message");
-		item_json->Insert("role", "user");
-		
-		content_elem_json := JsonElement->New(JsonElement->JsonType->OBJECT);
-		content_elem_json->Insert("type", "input_text");
-        content_elem_json->Insert("text", query)
-
-		content_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
-		content_array_json->Add(content_elem_json);
-		item_json->Insert("content", content_array_json);
-
-		send_msg := builder->PopAll()->ToString();
-		# "send_msg_1=\"{$send_msg}\""->PrintLine();
-		client->WriteSocket(send_msg);
-
-		recv_msg := client->ReadSocketText();
-		if(recv_msg = Nil) {
-			status_code := client->GetStatusMessage();
-			">>> closed: code={$status_code} <<<"->PrintLine();
-			return false;
-		};
-
-		response_json := JsonParser->TextToElement(recv_msg);
-		if(response_json = Nil) {
-			"### Error: Unable to parse response ###"->ErrorLine();
-		};
-
-		type_str := response_json->Get("type")->GetString();
-		if(<>type_str->Equals("conversation.item.created")) {
-			error_msg := response_json->Get("error")->Get("message")->GetString();
-			">>> Error: {$error_msg} <<<"->ErrorLine();
-			return false;
-		};
-
-		status := response_json->Get("item")->Get("status")->GetString();
-		if(<>status->Equals("completed")) {
-			"### Error: Unexpected: status={$status} ###"->ErrorLine();
-			return false;
-		};
-
-		builder := JsonBuilder->New();
-		create_json := builder->PushObject();
-		create_json->Insert("type", "response.create");
-		create_response_json := create_json->PushObject("response");
-		create_response_json->Insert("voice", "sage");
-       	create_response_json->Insert("output_audio_format", "pcm16");
-       	create_response_json->Insert("tool_choice", "auto");
-
-		modalities_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
-		modalities_array_json->Add("text");
-		modalities_array_json->Add("audio");
-		create_response_json->Insert("modalities", modalities_array_json);
-
-        send_msg := builder->PopAll()->ToString();
-		# "send_msg_2=\"{$send_msg}\""->PrintLine();
-		client->WriteSocket(send_msg);
-
-		recv_msg := client->ReadSocketText();
-		if(recv_msg = Nil) {
-			status_code := client->GetStatusMessage();
-			">>> closed: code={$status_code} <<<"->PrintLine();
-			return false;
-		};
-
-		response_json := JsonParser->TextToElement(recv_msg);
-		if(response_json = Nil) {
-			"### Error: Unable to parse response ###"->ErrorLine();
-		};
-
-		type_str := response_json->Get("type")->GetString();
-		if(<>type_str->Equals("response.created")) {
-			error_msg := response_json->Get("error")->Get("message")->GetString();
-			">>> Error: {$error_msg} <<<"->ErrorLine();
-			return false;
-		};
-
-		return true;
-	}
-
-	function : ReceiveResponse(client : SecureWebSocket, wait_sec : Int) ~ Pair<String, ByteArrayRef> {
-		response_text := "";
-		response_audio := "";
-			
-		is_done := false;
-		while(<>is_done) {
-			recv_msg := client->ReadSocketText();
-			if(recv_msg = Nil) {
-				return Nil;
-			};
-
-			response_json := JsonParser->TextToElement(recv_msg);
-			if(response_json = Nil) {
-				"### Error: Unable to parse response ###"->ErrorLine();
-				return Nil;
-			};
-
-			type_str := response_json->Get("type")->GetString();
-			if(type_str->Equals("response.text.delta") | type_str->Equals("response.audio_transcript.delta")) {
-				response_text += response_json->Get("delta")->GetString();
-			}
-			else if(type_str->Equals("response.audio.delta")) {
-				response_audio += response_json->Get("delta")->GetString();
-			}
-			else if(type_str->Equals("response.done")) {
-				is_done := true;
-			}
-			else if(type_str->Equals("response.cancelled")) {
-				response_text := "";
-			}
-			else if(type_str->Equals("conversation.item.created")) {
-				status := response_json->Get("item")->Get("status")->GetString();
-				if(<>status->Equals("in_progress")) {
-					"### Error: Unexpected: status={$status} ###"->ErrorLine();
-					return Nil;
-				};
-				System.Concurrency.Thread->Sleep(wait_sec * 1000);
-			}
-			else if(type_str->Equals("rate_limits.updated")) {
-				rate_limits := response_json->Get("rate_limits");
-				if(rate_limits->Size() <> 2) {
-					"### Error invalid rate limits ###"->ErrorLine();
-					return Nil;
-				};
-			}
-			else if(<>type_str->EndsWith(".added") & <>type_str->EndsWith(".done")) {
-				"### Error unexpected type: {$type_str} ###"->ErrorLine();
-				return Nil;
+			response := Realtime->Respond(args[1], "gpt-4o-realtime-preview-2025-06-03", args[2]->ToInt(), token);
+			if(response <> Nil & response->GetFirst() <> Nil & response->GetSecond() <> Nil) {
+				response_text := response->GetFirst();
+				response_text_size := response_text->Size();
+	
+				"text: size={$response_text_size}"->PrintLine();	
+				FileWriter->WriteFile("test.txt", response_text);
+				
+				response_audio := response->GetSecond();
+				response_audio_bytes := response_audio->Get();
+				response_audio_bytes_size := response_audio_bytes->Size();
+				"audio_bytes: size={$response_audio_bytes_size}"->PrintLine();
+				
+				file := "test.dat";
+				FileWriter->WriteFile(file, response_audio_bytes);
+				
+				"---\nplaying audio..."->PrintLine();
+				Mixer->PlayPcm(file, 22050, AudioFormat->SDL_AUDIO_S16LSB, 1);
 			};
 		};
-
-		audio_bytes := Cipher.Decrypt->Base64(response_audio);
-		return Pair->New(response_text, ByteArrayRef->New(audio_bytes))<String, ByteArrayRef>;
 	}
 }
