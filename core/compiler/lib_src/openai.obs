@@ -2110,8 +2110,7 @@ bundle API.OpenAI {
 		~#
 		function : Respond(audio : Byte[], model : String, voice : String, token : String) ~ Pair<String, ByteArrayRef> {
 			client := Connect(Url->New("wss://api.openai.com/v1/realtime?model={$model}"), token);
-#~
-			if(client <> Nil & <>SendQuery(model, voice, client)) {
+			if(client <> Nil & <>SendQuery(audio, voice, client)) {
 				">>> Error sending query <<<"->PrintLine();
 				return Nil;
 			};
@@ -2121,8 +2120,6 @@ bundle API.OpenAI {
 			client->CloseSocket();
 
 			return response;
-~#
-			return Nil;			
 		}
 
 		#~

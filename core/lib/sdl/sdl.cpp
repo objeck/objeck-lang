@@ -3635,6 +3635,8 @@ extern "C" {
 
     SDL_CloseAudioDevice(dev);
 
+    SDL_CloseAudio();
+
     // copy output
     size_t* output_byte_array = APITools_MakeByteArray(context, audio_buffer.size());
     unsigned char* output_byte_array_buffer = (unsigned char*)(output_byte_array + 3);
@@ -3648,6 +3650,11 @@ extern "C" {
   __declspec(dllexport)
 #endif
   void sdl_mixer_play_pcm(VMContext& context) {
+    if(SDL_Init(SDL_INIT_AUDIO) < 0) {
+      APITools_SetIntValue(context, 0, 0);
+      return;
+    }
+
     size_t* byte_array = (size_t*)APITools_GetArray(context, 1)[0];
     audio_buffer_len = ((long)APITools_GetArraySize(byte_array));
     audio_buffer_pos = (Uint8*)APITools_GetArray(byte_array);
@@ -3673,6 +3680,8 @@ extern "C" {
     while(audio_buffer_len > 0) {
       SDL_Delay(100);
     }
+
+    SDL_CloseAudio();
         
     APITools_SetIntValue(context, 0, 1);
   }
