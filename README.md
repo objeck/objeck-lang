@@ -17,9 +17,8 @@ Another programming language
 ## Updates
 
 v2025.7.1
-  * OpenAI realtime API support for the ``gpt-4o-realtime-preview-2025-06-03`` preview
-  * Add new [Lame](https://lame.sourceforge.io/) audio MP3 encoding support
-  * Add PCM16 and MP3 playback APIs via existing SDL2 audio support
+  * OpenAI Realtime API support for the ``gpt-4o-realtime-preview-2025-06-03`` preview
+  * Add PCM16 recording and playback APIs via SDL2 mixer
 
 <ins>v2025.7.0</ins>
   * Added ``Hash->Dict(..)``, ``Map->Dict(..)`` and ``Vector->Zip(..)`` to collections
