@@ -44,14 +44,26 @@ class Hello {
 ```
 
 ```ruby
-# openai response
-query := Collection.Pair->New("user", "What is the most common espresso drink ordered in Columbia?")<String, String>;
-response := Response->Respond("gpt-4o-mini", query, token);
-if(response = Nil) {
-  Response->GetLastError()->ErrorLine();
-  return;
+# openai realtime api
+response := Realtime->Respond("How many James Bond movies have been made?", "gpt-4o-realtime-preview-2025-06-03", 15, token);
+if(response <> Nil & response->GetFirst() <> Nil & response->GetSecond() <> Nil) {
+  response_text := response->GetFirst();
+  response_text_size := response_text->Size();
+
+  "text: size={$response_text_size}, text='{$response_text}'"->PrintLine();  
+  FileWriter->WriteFile("test.txt", response_text);
+  
+  response_audio := response->GetSecond();
+  response_audio_bytes := response_audio->Get();
+  response_audio_bytes_size := response_audio_bytes->Size();
+  "audio: size={$response_audio_bytes_size}"->PrintLine();
+  
+  file := "test.dat";
+  FileWriter->WriteFile(file, response_audio_bytes);
+
+  "---\nplaying audio..."->PrintLine();
+  Mixer->PlayPcm(file, 22050, AudioFormat->SDL_AUDIO_S16LSB, 1);
 };
-response->ToString()->PrintLine();
 ```
 
 ```ruby
