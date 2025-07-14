@@ -24,16 +24,17 @@ class Test {
 
 		# binary audio and text
 		response := ReceiveResponse(client, wait_sec);
-		if(response->GetSecond() <> Nil) {
-			audio_base64_str := response->GetSecond();
-			audio_base64_str_size := audio_base64_str->Size();
-"audio_base64_str: size={$audio_base64_str_size}"->PrintLine();	
-			FileWriter->WriteFile("test.txt", audio_base64_str);
+		if(response->GetFirst() <> Nil & response->GetSecond() <> Nil) {
+			response_text := response->GetFirst();
+			response_text_size := response_text->Size();
+"response_text: size={$response_text_size}"->PrintLine();	
+			FileWriter->WriteFile("test.txt", response_text);
 			
-			audio_bytes := Cipher.Decrypt->Base64(audio_base64_str);
-			audio_bytes_size := audio_bytes->Size();
-"audio_bytes: size={$audio_bytes_size}"->PrintLine();	
-			FileWriter->WriteFile("test.dat", audio_bytes);
+			response_audio := response->GetSecond();
+			response_audio_bytes := response_audio->Get();
+			response_audio_bytes_size := response_audio_bytes->Size();
+"response_audio_bytes: size={$response_audio_bytes_size}"->PrintLine();	
+			FileWriter->WriteFile("test.dat", response_audio_bytes);
 		};
 		
 		client->CloseSocket();
@@ -160,7 +161,7 @@ class Test {
 		return true;
 	}
 
-	function : ReceiveResponse(client : SecureWebSocket, wait_sec : Int) ~ Pair<String, String> {
+	function : ReceiveResponse(client : SecureWebSocket, wait_sec : Int) ~ Pair<String, ByteArrayRef> {
 		response_text := "";
 		response_audio := "";
 			
@@ -206,14 +207,12 @@ class Test {
 				};
 			}
 			else if(<>type_str->EndsWith(".added") & <>type_str->EndsWith(".done")) {
-#				"type='{$type_str}'"->PrintLine();
-#				recv_msg->PrintLine();
-
 				"### Error unexpected type: {$type_str} ###"->ErrorLine();
 				return Nil;
 			};
 		};
 
-		return Pair->New(response_text, response_audio)<String, String>;
+		audio_bytes := Cipher.Decrypt->Base64(response_audio);
+		return Pair->New(response_text, ByteArrayRef->New(audio_bytes))<String, ByteArrayRef>;
 	}
 }
