@@ -7977,6 +7977,27 @@ bundle Game.SDL2 {
 			return value->Get() = 1;
 	    }
 
+	    #~
+	    Play a PCM audio file
+	    @param bytes bytes to be played
+	    @param sample_rate playback sample rate
+	    @param audio_format playback audio format see, AudioFormat
+	    @param channels number of playback channels
+	    ~#
+	    function : RecordPcm(sample_rate : Int, audio_format : Int, channels : Int, time_secs : Int) ~ Byte[] {
+	    	array_args := Base->New[5];
+	    	array_args[0] := ByteArrayRef->New(Nil->As(Byte[]));
+			array_args[1] := IntRef->New(sample_rate);
+			array_args[2] := IntRef->New(audio_format);
+			array_args[3] := IntRef->New(channels);
+			array_args[4] := IntRef->New(time_secs);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_mixer_record_pcm", array_args);
+
+			holder := array_args[0]->As(ByteArrayRef);
+			return holder->Get();
+	    }
+
 		#~
 		Halt channel playback, or all channels
 		@param channel to stop playing, or -1 for all channels

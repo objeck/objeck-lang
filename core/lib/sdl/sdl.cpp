@@ -182,7 +182,7 @@ extern "C" {
       APITools_SetIntValue(context, 0, SDL_GL_LoadLibrary(path.c_str()));
     }
     else {
-      APITools_SetIntValue(context, 0, SDL_GL_LoadLibrary(NULL));
+      APITools_SetIntValue(context, 0, SDL_GL_LoadLibrary(nullptr ));
     }
   }
 
@@ -381,7 +381,7 @@ extern "C" {
     SDL_Surface* surface = (SDL_Surface*)APITools_GetIntValue(context, 1);
 
     const size_t* palette_obj = APITools_GetObjectValue(context, 2);
-    SDL_Palette* palette = palette_obj ? (SDL_Palette*)palette_obj[0] : NULL;
+    SDL_Palette* palette = palette_obj ? (SDL_Palette*)palette_obj[0] : nullptr ;
 
     APITools_SetIntValue(context, 0, SDL_SetSurfacePalette(surface, palette));
   }
@@ -432,7 +432,7 @@ extern "C" {
 #endif
   void sdl_surface_savebmp(VMContext& context) {
     const size_t* surface_obj = APITools_GetObjectValue(context, 1);
-    SDL_Surface* surface = surface_obj ? (SDL_Surface*)surface_obj[0] : NULL;
+    SDL_Surface* surface = surface_obj ? (SDL_Surface*)surface_obj[0] : nullptr ;
     const std::wstring w_file = APITools_GetStringValue(context, 2);
     const  std::string file = UnicodeToBytes(w_file);
 
@@ -561,7 +561,7 @@ extern "C" {
     SDL_Rect rect;
     sdl_rect_raw_write(&rect, rect_obj);
 
-    APITools_SetIntValue(context, 0, SDL_SetClipRect(surface, rect_obj ? &rect : NULL));
+    APITools_SetIntValue(context, 0, SDL_SetClipRect(surface, rect_obj ? &rect : nullptr ));
   }
 
 #ifdef _WIN32
@@ -575,7 +575,7 @@ extern "C" {
     SDL_PixelFormat fmt;
     sdl_pixel_format_raw_write(&fmt, fmt_obj);
 
-    APITools_SetIntValue(context, 0, (size_t)SDL_ConvertSurface(surface, fmt_obj ? &fmt : NULL, flags));
+    APITools_SetIntValue(context, 0, (size_t)SDL_ConvertSurface(surface, fmt_obj ? &fmt : nullptr , flags));
   }
   
 #ifdef _WIN32
@@ -718,7 +718,7 @@ extern "C" {
     const int g = (int)APITools_GetIntValue(context, 3);
     const int b = (int)APITools_GetIntValue(context, 4);
 
-    APITools_SetIntValue(context, 0, SDL_MapRGB(pixel_format_obj ? &pixel_format : NULL, r, g, b));
+    APITools_SetIntValue(context, 0, SDL_MapRGB(pixel_format_obj ? &pixel_format : nullptr , r, g, b));
   }
 
 #ifdef _WIN32
@@ -735,7 +735,7 @@ extern "C" {
     const int b = (int)APITools_GetIntValue(context, 4);
     const int a = (int)APITools_GetIntValue(context, 5);
 
-    APITools_SetIntValue(context, 0, SDL_MapRGBA(pixel_format_obj ? &pixel_format : NULL, r, g, b, a));
+    APITools_SetIntValue(context, 0, SDL_MapRGBA(pixel_format_obj ? &pixel_format : nullptr , r, g, b, a));
   }
 
 #ifdef _WIN32
@@ -761,7 +761,7 @@ extern "C" {
     SDL_Rect rect;
     sdl_rect_raw_write(&rect, rect_obj);
 
-    APITools_SetIntValue(context, 0, SDL_FillRect(surface, rect_obj ? &rect : NULL, color));
+    APITools_SetIntValue(context, 0, SDL_FillRect(surface, rect_obj ? &rect : nullptr , color));
   }
 
 #ifdef _WIN32
@@ -775,14 +775,14 @@ extern "C" {
     sdl_rect_raw_write(&srcrect, srcrect_obj);
 
     const size_t* dst_obj = APITools_GetObjectValue(context, 3);
-    SDL_Surface* dst = dst_obj ? (SDL_Surface*)dst_obj[0] : NULL;
+    SDL_Surface* dst = dst_obj ? (SDL_Surface*)dst_obj[0] : nullptr ;
 
     size_t* dstrect_obj = APITools_GetObjectValue(context, 4);
     SDL_Rect dstrect;
     sdl_rect_raw_write(&dstrect, dstrect_obj);
 
     APITools_SetIntValue(context, 0, SDL_BlitSurface(surface,
-      srcrect_obj ? &srcrect : NULL, dst, dstrect_obj ? &dstrect : NULL));
+      srcrect_obj ? &srcrect : nullptr , dst, dstrect_obj ? &dstrect : nullptr ));
   }
 
 #ifdef _WIN32
@@ -796,14 +796,14 @@ extern "C" {
     sdl_rect_raw_write(&srcrect, srcrect_obj);
 
     const size_t* dst_obj = APITools_GetObjectValue(context, 3);
-    SDL_Surface* dst = dst_obj ? (SDL_Surface*)dst_obj[0] : NULL;
+    SDL_Surface* dst = dst_obj ? (SDL_Surface*)dst_obj[0] : nullptr ;
 
     size_t* dstrect_obj = APITools_GetObjectValue(context, 4);
     SDL_Rect dstrect;
     sdl_rect_raw_write(&dstrect, dstrect_obj);
 
-    APITools_SetIntValue(context, 0, SDL_LowerBlit(surface, srcrect_obj ? &srcrect : NULL, 
-      dst, dstrect_obj ? &dstrect : NULL));
+    APITools_SetIntValue(context, 0, SDL_LowerBlit(surface, srcrect_obj ? &srcrect : nullptr , 
+      dst, dstrect_obj ? &dstrect : nullptr ));
   }
 
 #ifdef _WIN32
@@ -817,14 +817,14 @@ extern "C" {
     sdl_rect_raw_write(&srcrect, srcrect_obj);
 
     const size_t* dst_obj = APITools_GetObjectValue(context, 3);
-    SDL_Surface* dst = dst_obj ? (SDL_Surface*)dst_obj[0] : NULL;
+    SDL_Surface* dst = dst_obj ? (SDL_Surface*)dst_obj[0] : nullptr ;
 
     size_t* dstrect_obj = APITools_GetObjectValue(context, 4);
     SDL_Rect dstrect;
     sdl_rect_raw_write(&dstrect, dstrect_obj);
 
     APITools_SetIntValue(context, 0, SDL_BlitScaled(surface,
-      srcrect_obj ? &srcrect : NULL, dst, dstrect_obj ? &dstrect : NULL));
+      srcrect_obj ? &srcrect : nullptr , dst, dstrect_obj ? &dstrect : nullptr ));
   }
 
 #ifdef _WIN32
@@ -838,13 +838,13 @@ extern "C" {
     sdl_rect_raw_write(&srcrect, srcrect_obj);
 
     const size_t* dst_obj = APITools_GetObjectValue(context, 3);
-    SDL_Surface* dst = dst_obj ? (SDL_Surface*)dst_obj[0] : NULL;
+    SDL_Surface* dst = dst_obj ? (SDL_Surface*)dst_obj[0] : nullptr ;
 
     size_t* dstrect_obj = APITools_GetObjectValue(context, 4);
     SDL_Rect dstrect;
     sdl_rect_raw_write(&dstrect, dstrect_obj);
 
-    APITools_SetIntValue(context, 0, SDL_LowerBlitScaled(surface, srcrect_obj ? &srcrect : NULL, dst, dstrect_obj ? &dstrect : NULL));
+    APITools_SetIntValue(context, 0, SDL_LowerBlitScaled(surface, srcrect_obj ? &srcrect : nullptr , dst, dstrect_obj ? &dstrect : nullptr ));
   }
 
   //
@@ -885,7 +885,7 @@ extern "C" {
           sdl_palette_raw_write(pixel_format->palette, palette_obj);
       }
       else {
-        pixel_format->palette = NULL;
+        pixel_format->palette = nullptr ;
       }
       pixel_format->BitsPerPixel = (Uint8)pixel_format_obj[2];
       pixel_format->BytesPerPixel = (Uint8)pixel_format_obj[3];
@@ -975,7 +975,7 @@ extern "C" {
     SDL_Rect B;
     sdl_rect_raw_write(&B, B_obj);
 
-    APITools_SetIntValue(context, 0, SDL_HasIntersection(rect_obj ? &rect : NULL, B_obj ? &B : NULL));
+    APITools_SetIntValue(context, 0, SDL_HasIntersection(rect_obj ? &rect : nullptr , B_obj ? &B : nullptr ));
   }
   
 #ifdef _WIN32
@@ -992,7 +992,7 @@ extern "C" {
 
     size_t* C_obj = APITools_GetObjectValue(context, 3);
     SDL_Rect C;
-    const int return_value = SDL_IntersectRect(rect_obj ? &rect : NULL, B_obj ? &B : NULL, C_obj ? &C : NULL);
+    const int return_value = SDL_IntersectRect(rect_obj ? &rect : nullptr , B_obj ? &B : nullptr , C_obj ? &C : nullptr );
     sdl_rect_raw_read(&C, C_obj);
 
     APITools_SetIntValue(context, 0, return_value);
@@ -1013,7 +1013,7 @@ extern "C" {
     size_t* C_obj = APITools_GetObjectValue(context, 2);
     
     SDL_Rect C;
-    SDL_UnionRect(rect_obj ? &rect : NULL, B_obj ? &B : NULL, &C);
+    SDL_UnionRect(rect_obj ? &rect : nullptr , B_obj ? &B : nullptr , &C);
     sdl_rect_raw_read(&C, C_obj);
   }
 
@@ -1030,7 +1030,7 @@ extern "C" {
     int X2 = (int)APITools_GetIntValue(context, 4);
     int Y2 = (int)APITools_GetIntValue(context, 5);
 
-    APITools_SetIntValue(context, 0, SDL_IntersectRectAndLine(rect_obj ? &rect : NULL, &X1, &Y1, &X2, &Y2));
+    APITools_SetIntValue(context, 0, SDL_IntersectRectAndLine(rect_obj ? &rect : nullptr , &X1, &Y1, &X2, &Y2));
   }
 
 #ifdef _WIN32
@@ -1045,7 +1045,7 @@ extern "C" {
     size_t* point_obj = (size_t*)APITools_GetObjectValue(context, 2);
     sdl_point_raw_write(&point, point_obj);
 
-    APITools_SetIntValue(context, 0, SDL_PointInRect(point_obj ? &point : NULL, rect_obj ? &rect : NULL));
+    APITools_SetIntValue(context, 0, SDL_PointInRect(point_obj ? &point : nullptr , rect_obj ? &rect : nullptr ));
   }
 
   //
@@ -1173,10 +1173,10 @@ extern "C" {
     sdl_display_mode_raw_write(&mode, mode_obj);
 
     SDL_DisplayMode closest;
-    SDL_DisplayMode* return_value = SDL_GetClosestDisplayMode(displayIndex, mode_obj ? &mode : NULL, &closest);
+    SDL_DisplayMode* return_value = SDL_GetClosestDisplayMode(displayIndex, mode_obj ? &mode : nullptr , &closest);
     sdl_display_mode_raw_read(&closest, closest_obj);
 
-    APITools_SetIntValue(context, 0, return_value == NULL);
+    APITools_SetIntValue(context, 0, return_value == nullptr );
   }
 
   void sdl_display_mode_raw_read(SDL_DisplayMode* mode, size_t* display_mode_obj) {
@@ -1270,7 +1270,7 @@ extern "C" {
     SDL_DisplayMode mode;
     sdl_display_mode_raw_write(&mode, mode_obj);
 
-    APITools_SetIntValue(context, 0, SDL_SetWindowDisplayMode(window, mode_obj ? &mode : NULL));
+    APITools_SetIntValue(context, 0, SDL_SetWindowDisplayMode(window, mode_obj ? &mode : nullptr ));
   }
 
 #ifdef _WIN32
@@ -1323,7 +1323,7 @@ extern "C" {
     SDL_Window* window = (SDL_Window*)APITools_GetIntValue(context, 0);
 
     const size_t* icon_obj = APITools_GetObjectValue(context, 1);
-    SDL_Surface* icon = icon_obj ? (SDL_Surface*)icon_obj[0] : NULL;
+    SDL_Surface* icon = icon_obj ? (SDL_Surface*)icon_obj[0] : nullptr ;
     
     SDL_SetWindowIcon(window, icon);
   }
@@ -1335,7 +1335,7 @@ extern "C" {
     SDL_Window* window = (SDL_Window*)APITools_GetIntValue(context, 1);
 
     const size_t* parent_window_obj = APITools_GetObjectValue(context, 2);
-    SDL_Window* parent_window = parent_window_obj ? (SDL_Window*)parent_window_obj[0] : NULL;
+    SDL_Window* parent_window = parent_window_obj ? (SDL_Window*)parent_window_obj[0] : nullptr ;
 
     APITools_SetIntValue(context, 0, SDL_SetWindowModalFor(window, parent_window));
   }
@@ -2087,7 +2087,7 @@ extern "C" {
     SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
 
     const size_t* texture_obj = APITools_GetObjectValue(context, 2);
-    SDL_Texture* texture = texture_obj ? (SDL_Texture*)texture_obj[0] : NULL;
+    SDL_Texture* texture = texture_obj ? (SDL_Texture*)texture_obj[0] : nullptr ;
 
     APITools_SetIntValue(context, 0, SDL_SetRenderTarget(renderer, texture));
   }
@@ -2119,7 +2119,7 @@ extern "C" {
     SDL_Rect rect;
     sdl_rect_raw_write(&rect, rect_obj);
 
-    APITools_SetIntValue(context, 0, SDL_RenderFillRect(renderer, rect_obj ? &rect : NULL));
+    APITools_SetIntValue(context, 0, SDL_RenderFillRect(renderer, rect_obj ? &rect : nullptr ));
   }
 
 #ifdef _WIN32
@@ -2146,7 +2146,7 @@ extern "C" {
     SDL_Rect rect;
     sdl_rect_raw_write(&rect, rect_obj);
 
-    APITools_SetIntValue(context, 0, SDL_RenderDrawRect(renderer, rect_obj ? &rect : NULL));
+    APITools_SetIntValue(context, 0, SDL_RenderDrawRect(renderer, rect_obj ? &rect : nullptr ));
   }
 
 #ifdef _WIN32
@@ -2159,7 +2159,7 @@ extern "C" {
     SDL_Rect rect;
     sdl_rect_raw_write(&rect, rect_obj);
 
-    APITools_SetIntValue(context, 0, SDL_RenderSetViewport(renderer, rect_obj ? &rect : NULL));
+    APITools_SetIntValue(context, 0, SDL_RenderSetViewport(renderer, rect_obj ? &rect : nullptr ));
   }
 
 #ifdef _WIN32
@@ -2287,7 +2287,7 @@ extern "C" {
     SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
     
     const size_t* texture_obj = APITools_GetObjectValue(context, 2);
-    SDL_Texture* texture = texture_obj ? (SDL_Texture*)texture_obj[0] : NULL;
+    SDL_Texture* texture = texture_obj ? (SDL_Texture*)texture_obj[0] : nullptr ;
 
     size_t* srcrect_obj = APITools_GetObjectValue(context, 3);
     SDL_Rect srcrect;
@@ -2298,7 +2298,7 @@ extern "C" {
     sdl_rect_raw_write(&dstrect, dstrect_obj);
 
     APITools_SetIntValue(context, 0, SDL_RenderCopy(renderer, texture, 
-      srcrect_obj ? &srcrect : NULL, dstrect_obj ? &dstrect : NULL));
+      srcrect_obj ? &srcrect : nullptr , dstrect_obj ? &dstrect : nullptr ));
   }
 
 #ifdef _WIN32
@@ -2308,7 +2308,7 @@ extern "C" {
     SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
 
     const size_t* texture_obj = APITools_GetObjectValue(context, 2);
-    SDL_Texture* texture = texture_obj ? (SDL_Texture*)texture_obj[0] : NULL;
+    SDL_Texture* texture = texture_obj ? (SDL_Texture*)texture_obj[0] : nullptr ;
 
     size_t* srcrect_obj = APITools_GetObjectValue(context, 3);
     SDL_Rect srcrect;
@@ -2327,7 +2327,7 @@ extern "C" {
     const SDL_RendererFlip flip = (SDL_RendererFlip)APITools_GetIntValue(context, 7);
 
     APITools_SetIntValue(context, 0, SDL_RenderCopyEx(renderer, texture, 
-      srcrect_obj ? &srcrect : NULL, dstrect_obj ? &dstrect : NULL, angle, center_obj ? &center : NULL, flip));
+      srcrect_obj ? &srcrect : nullptr , dstrect_obj ? &dstrect : nullptr , angle, center_obj ? &center : nullptr , flip));
 }
 
 #ifdef _WIN32
@@ -2461,7 +2461,7 @@ extern "C" {
     size_t* access_obj = APITools_GetObjectValue(context, 3);
 
     Uint32 format; int access, w, h;
-    APITools_SetIntValue(context, 0, SDL_QueryTexture(texture, format_obj ? &format : NULL, access_obj ? &access : NULL, &w, &h));
+    APITools_SetIntValue(context, 0, SDL_QueryTexture(texture, format_obj ? &format : nullptr , access_obj ? &access : nullptr , &w, &h));
 
     if(format_obj) {
       APITools_SetIntValue(context, 2, format);
@@ -2487,9 +2487,9 @@ extern "C" {
     
     // create PixelData
     void* pixels; int pitch;
-    if(!SDL_LockTexture(texture, rect_obj ? &rect : NULL, &pixels, &pitch)) {
+    if(!SDL_LockTexture(texture, rect_obj ? &rect : nullptr , &pixels, &pitch)) {
       int width, height;
-      SDL_QueryTexture(texture, NULL, NULL, &width, &height);
+      SDL_QueryTexture(texture, nullptr , nullptr , &width, &height);
 #ifdef _DEBUG
       assert(width == pitch / sizeof(Uint32));
 #endif
@@ -3584,6 +3584,69 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
+  void sdl_mixer_record_pcm(VMContext& context) {
+    const int sample_rate = (int)APITools_GetIntValue(context, 1);
+    const int audio_format = (int)APITools_GetIntValue(context, 2);
+    const int channels = (int)APITools_GetIntValue(context, 3);
+    const int time_secs = (int)APITools_GetIntValue(context, 4);
+    size_t* output_holder = APITools_GetArray(context, 0);
+
+    if(SDL_Init(SDL_INIT_AUDIO) < 0) {
+      output_holder[0] = 0;
+      return;
+    }
+
+    const int BUFFER_SIZE = 4096;
+    SDL_AudioSpec desiredSpec;
+    SDL_zero(desiredSpec);
+    desiredSpec.freq = sample_rate;
+    desiredSpec.format = audio_format;
+    desiredSpec.channels = channels;
+    desiredSpec.samples = BUFFER_SIZE;
+    desiredSpec.callback = nullptr;  // We'll use SDL_DequeueAudio
+
+    SDL_AudioSpec obtainedSpec;
+    SDL_zero(obtainedSpec);
+
+    SDL_AudioDeviceID dev = SDL_OpenAudioDevice(nullptr, 1, &desiredSpec, &obtainedSpec, 0);
+    if(!dev) {
+      output_holder[0] = 0;
+      return;
+    }
+
+    SDL_PauseAudioDevice(dev, 0);
+
+    const Uint32 total_bytes = sample_rate * channels * (obtainedSpec.format == AUDIO_S16LSB ? 2 : 1) * time_secs;
+
+    Uint8 buffer[BUFFER_SIZE] = { 0 };
+    std::vector<Uint8> audio_buffer;
+    Uint32 captured = 0;
+    while(captured < total_bytes) {
+      Uint32 available = SDL_GetQueuedAudioSize(dev);
+      if(available >= BUFFER_SIZE) {
+        SDL_DequeueAudio(dev, buffer, BUFFER_SIZE);        
+        audio_buffer.insert(audio_buffer.end(), buffer, buffer + BUFFER_SIZE);
+        captured += BUFFER_SIZE;
+      }
+      else {
+        SDL_Delay(10);
+      }
+    }
+
+    SDL_CloseAudioDevice(dev);
+
+    // copy output
+    size_t* output_byte_array = APITools_MakeByteArray(context, audio_buffer.size());
+    unsigned char* output_byte_array_buffer = (unsigned char*)(output_byte_array + 3);
+    for(size_t i = 0; i < audio_buffer.size(); ++i) {
+      output_byte_array_buffer[i] = audio_buffer[i];
+    }
+    output_holder[0] = (size_t)output_byte_array;
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
   void sdl_mixer_play_pcm(VMContext& context) {
     size_t* byte_array = (size_t*)APITools_GetArray(context, 1)[0];
     audio_buffer_len = ((long)APITools_GetArraySize(byte_array));
@@ -3601,7 +3664,7 @@ extern "C" {
     spec.samples = 4096;
     spec.callback = audio_callback;
 
-    if(SDL_OpenAudio(&spec, NULL) < 0) {
+    if(SDL_OpenAudio(&spec, nullptr ) < 0) {
       APITools_SetIntValue(context, 0, 0);
       return;
     }
