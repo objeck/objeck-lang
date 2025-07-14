@@ -58,7 +58,7 @@ if(response <> Nil & response->GetFirst() <> Nil & response->GetSecond() <> Nil)
   response_audio_bytes_size := response_audio_bytes->Size();
   "audio: size={$response_audio_bytes_size}"->PrintLine();
   
-  file := "test.dat";
+  file := "test.pcm16";
   FileWriter->WriteFile(file, response_audio_bytes);
 
   "---\nplaying audio..."->PrintLine();
