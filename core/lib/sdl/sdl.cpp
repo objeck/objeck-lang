@@ -3655,6 +3655,9 @@ extern "C" {
       return;
     }
 
+    int a = SDL_INIT_EVERYTHING;
+    std::wcout << SDL_INIT_EVERYTHING << std::endl;
+
     size_t* byte_array = (size_t*)APITools_GetArray(context, 1)[0];
     audio_buffer_len = ((long)APITools_GetArraySize(byte_array));
     audio_buffer_pos = (Uint8*)APITools_GetArray(byte_array);
