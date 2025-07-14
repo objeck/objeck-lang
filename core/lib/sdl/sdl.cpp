@@ -3567,59 +3567,32 @@ extern "C" {
   //
   // Mixer
   //
-  static unsigned char* cur_audio_pos; static int audio_len; // ulgy globals
+  static Uint8* audio_buffer_pos; static int audio_buffer_len;
 
   static void audio_callback(void* userdata, Uint8* stream, int len) {
-    if(!audio_len) {
+    if(!audio_buffer_len) {
       return;
     }
 
-    len = (len > audio_len) ? audio_len : len;
-    SDL_memcpy(stream, cur_audio_pos, len);
+    len = (len > audio_buffer_len) ? audio_buffer_len : len;
+    SDL_memcpy(stream, audio_buffer_pos, len);
 
-    cur_audio_pos += len;
-    audio_len -= len;
+    audio_buffer_pos += len;
+    audio_buffer_len -= len;
   }
 
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
   void sdl_mixer_play_pcm(VMContext& context) {
-    const std::wstring w_file = APITools_GetStringValue(context, 1);
-    const  std::string file_name = UnicodeToBytes(w_file);
+    size_t* byte_array = (size_t*)APITools_GetArray(context, 1)[0];
+    audio_buffer_len = ((long)APITools_GetArraySize(byte_array));
+    audio_buffer_pos = (Uint8*)APITools_GetArray(byte_array);
 
     const int sample_rate = (int)APITools_GetIntValue(context, 2);
     const int audio_format = (int)APITools_GetIntValue(context, 3);
     const int channels = (int)APITools_GetIntValue(context, 4);
-
-#ifdef _WIN32
-    FILE* file_in = nullptr;
-    if(fopen_s(&file_in, file_name.c_str(), "rb")) {
-      APITools_SetIntValue(context, 0, 0);
-      return;
-    }
-#else
-    FILE* file_in = fopen(file_name.c_str(), "rb");
-#endif
-    if(!file_in) {
-      APITools_SetIntValue(context, 0, 0);
-      return;
-    }
-
-    fseek(file_in, 0, SEEK_END);
-    audio_len = ftell(file_in);
-    rewind(file_in);
-
-    cur_audio_pos = (unsigned char*)malloc(audio_len);
-    unsigned char* audio_pos = cur_audio_pos;
-    if(!audio_pos) {
-      fclose(file_in);
-      APITools_SetIntValue(context, 0, 0);
-      return;
-    }
-    fread(cur_audio_pos, 1, audio_len, file_in);
-    fclose(file_in);
-
+        
     SDL_AudioSpec spec;
     SDL_zero(spec);
     spec.freq = sample_rate;
@@ -3634,12 +3607,10 @@ extern "C" {
     }
 
     SDL_PauseAudio(0);
-    while(audio_len > 0) {
+    while(audio_buffer_len > 0) {
       SDL_Delay(100);
     }
-    SDL_CloseAudio();
-    free(audio_pos);
-
+        
     APITools_SetIntValue(context, 0, 1);
   }
   
@@ -3658,8 +3629,23 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-  void sdl_mix_quit(VMContext& context) {
+  void sdl_mixer_init(VMContext& context) {
+    const int flags = (int)APITools_GetIntValue(context, 1);
+    APITools_SetIntValue(context, 0, Mix_Init(flags));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_mixer_quit(VMContext& context) {
     Mix_Quit();
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_mixer_close(VMContext& context) {
+    Mix_CloseAudio();
   }
   
 #ifdef _WIN32
