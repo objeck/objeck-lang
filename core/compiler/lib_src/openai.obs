@@ -2112,7 +2112,7 @@ bundle API.OpenAI {
 			client := SecureWebSocket->New(url);
 			client->AddHeader("Authorization", "Bearer {$token}");
 			client->AddHeader("OpenAI-Beta", "realtime=v1");
-			
+
 			if(client->Connect()) {
 				recv_msg := client->ReadSocketText();
 				if(recv_msg = Nil) {
