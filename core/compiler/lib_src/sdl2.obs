@@ -7931,11 +7931,19 @@ bundle Game.SDL2 {
 		}
 
 		#~
-		Closes the audio mixer
+		Shuts down SDL_mixer’s higher-level audio system
 		~#
 		function : Close() ~ Nil {
 			array_args := Base->New[0];
 			Proxy->GetDllProxy()->CallFunction("sdl_mixer_close", array_args);
+		}
+
+		#~
+		Closes a low-level audio device and stops playback/capture
+		~#
+		function : CloseAudio() ~ Nil {
+			array_args := Base->New[0];
+			Proxy->GetDllProxy()->CallFunction("sdl_audio_close", array_args);
 		}
 
 		#~

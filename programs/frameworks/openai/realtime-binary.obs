@@ -3,21 +3,24 @@ use Collection, API.OpenAI, Game.SDL2, System.IO.Filesystem;
 class Test {
 	function : Main(args : String[]) ~ Nil {
 		audio_bytes : Byte[];
+		rate := 22050;
+		format := AudioFormat->SDL_AUDIO_S16LSB;
+		channels := 1;
 
 		if(args->Size() = 1) {
-			audio_bytes := Mixer->RecordPcm(22050, AudioFormat->SDL_AUDIO_S16LSB, 1, 7);
+			audio_bytes := Mixer->RecordPcm(rate, format, channels, 5);
 			audio_bytes->Size()->PrintLine();
-			FileWriter->WriteFile("foo.pcm16", audio_bytes);
-			Mixer->PlayPcm(audio_bytes, 22050, AudioFormat->SDL_AUDIO_S16LSB, 1);
+			FileWriter->WriteFile("input.pcm16", audio_bytes);
+			Mixer->PlayPcm(audio_bytes, rate, format, channels);
 		}
 		else if(args->Size() = 2) {
-			audio_bytes := FileReader->ReadBinaryFile("foo.pcm16");
+			audio_bytes := FileReader->ReadBinaryFile(args[1]);
 			audio_bytes_size := audio_bytes->Size();
 			"audio: size={$audio_bytes_size}"->PrintLine();
-			Mixer->PlayPcm(audio_bytes, 22050, AudioFormat->SDL_AUDIO_S16LSB, 1);
+			Mixer->PlayPcm(audio_bytes, rate, format, channels);
 		}		
 		else {
-			">>> Missing parameter <<<"->ErrorLine();
+			">>> Missing parameters: license_file [input_file.pcm16] <<<"->ErrorLine();
 			return;
 		}
 
@@ -27,7 +30,7 @@ class Test {
 			">>> Unable to read API token file: '{$api_token_file}' <<<"->PrintLine();
 			return;
 		};
-		
+
 		response := Realtime->Respond(audio_bytes, "gpt-4o-realtime-preview-2025-06-03", "alloy", token);
 		if(response <> Nil & response->GetFirst() <> Nil & response->GetSecond() <> Nil) {
 			text := response->GetFirst();
@@ -43,7 +46,7 @@ class Test {
 			FileWriter->WriteFile(file, audio_bytes);
 
 			"---\nplaying audio..."->PrintLine();
-			Mixer->PlayPcm(audio_bytes, 22050, AudioFormat->SDL_AUDIO_S16LSB, 1);
+			Mixer->PlayPcm(audio_bytes, rate, format, channels);
 		};
 
 		Mixer->Close();

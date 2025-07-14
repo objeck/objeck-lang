@@ -3719,6 +3719,13 @@ extern "C" {
   void sdl_mixer_close(VMContext& context) {
     Mix_CloseAudio();
   }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_audio_close(VMContext& context) {
+    SDL_CloseAudio();
+  }
   
 #ifdef _WIN32
   __declspec(dllexport)
