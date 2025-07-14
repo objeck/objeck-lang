@@ -310,6 +310,20 @@ bundle Game.SDL2 {
 	}
 
 	#~
+	Hardware flags
+	~#
+	consts AudioFormat {
+		SDL_AUDIO_U8 := 0x0008,
+		SDL_AUDIO_S8 := 0x8008,
+		SDL_AUDIO_U16LSB := 0x0010,
+		SDL_AUDIO_S16LSB := 0x8010,
+		SDL_AUDIO_U16MSB := 0x1010,
+		SDL_AUDIO_S16MSB := 0x9010,
+		SDL_AUDIO_U16 := 0x0010,
+		SDL_AUDIO_S16 := 0x8010
+	}
+
+	#~
 	Window flags
 	~#
 	consts WindowFlags {
@@ -7993,6 +8007,28 @@ bundle Game.SDL2 {
 	    method : public : IsNull() ~ Bool {
 			return @mix_chunk = 0;
 		}
+
+		#~
+	    Play a PCM audio file
+	    @param file file name to play
+	    @param sample_rate playback sample rate
+	    @param audio_format playback audio format see, AudioFormat
+	    @param channels number of playback channels
+	    ~#
+	    function : PlayPcm(file : String, sample_rate : Int, audio_format : Int, channels : Int) ~ Bool {
+	    	array_args := Base->New[5];
+	    	array_args[0] := IntRef->New();
+			array_args[1] := file;
+			array_args[2] := IntRef->New(sample_rate);
+			array_args[3] := IntRef->New(audio_format);
+			array_args[4] := IntRef->New(channels);
+
+"--- 0 ---"->PrintLine();
+			Proxy->GetDllProxy()->CallFunction("sdl_mixer_play_pcm", array_args);
+
+			value := array_args[0]->As(IntRef);
+			return value->Get() = 1;
+	    }
 
 		#~
 		Play chunk on channel
