@@ -1,4 +1,4 @@
- use Collection, Web.HTTP, System.IO.Filesystem, Data.JSON;
+ use Collection, Web.HTTP, System.IO.Filesystem, Data.JSON, Game.SDL2;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
@@ -16,6 +16,16 @@ class Test {
 	}
 
 	function : TextInAudioOut(msg : String, model : String, wait_sec : Int, token : String) ~ Nil {
+		if(Core->Init(HardwareFlags->SDL_INIT_AUDIO) < 0) {
+			"SDL could not initialize audio!"->ErrorLine();
+			return;
+		};
+
+		MixChunk->PlayPcm("test.dat", 22050, AudioFormat->SDL_AUDIO_S16LSB, 1);
+
+		Core->Quit();
+
+#~
 		client := Connect(Url->New( "wss://api.openai.com/v1/realtime?model={$model}"), token);
 		if(<>SendQuery(msg, client)) {
 			">>> Error sending query <<<"->PrintLine();
@@ -35,9 +45,13 @@ class Test {
 			response_audio_bytes_size := response_audio_bytes->Size();
 "response_audio_bytes: size={$response_audio_bytes_size}"->PrintLine();	
 			FileWriter->WriteFile("test.dat", response_audio_bytes);
+
+"---\nplaying audio..."->PrintLine();
+			MixChunk->PlayPcm("test.dat", 22050, AudioFormat->SDL_AUDIO_S16LSB, 1);
 		};
 		
 		client->CloseSocket();
+~#
 	}
 
 
