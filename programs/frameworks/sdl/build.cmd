@@ -1,4 +1,4 @@
-rem @echo off
+@echo off
 setlocal
 
 if not [%1]==[x64] if not [%1]==[arm64] (
@@ -24,6 +24,7 @@ set OBJECK_LIB_DST=%OBJECK_ROOT%\core\release\%TARGET%\lib
 set OBJECK_SDL2_DEBUG_ROOT=%OBJECK_ROOT%\core\lib\sdl\sdl\Debug\x64
 
 obc -src %OBJECK_LIB_SRC%\\sdl2.obs -lib collect.obl -tar lib -dest %OBJECK_LIB_DST%\sdl2.obl
+obc -src %OBJECK_ROOT%\core\compiler\lib_src\openai.obs -lib json,cipher,net,net_server,misc -tar lib -dest %OBJECK_ROOT%\core\release\%TARGET%\lib\openai.obl
 rem obc -src %OBJECK_LIB_SRC%\json.obs -tar lib -dest %OBJECK_LIB_DST%\json.obl
 rem obc -src %OBJECK_LIB_SRC%\ml.obs -lib json,csv -tar lib -dest %OBJECK_LIB_DST%\ml.obl
 rem obc -src %OBJECK_LIB_SRC%\net_common.obs,%OBJECK_LIB_SRC%\net.obs,%OBJECK_LIB_SRC%\net_secure.obs -lib json,cipher -tar lib -dest %OBJECK_LIB_DST%\net.obl
