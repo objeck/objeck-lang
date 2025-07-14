@@ -52,7 +52,8 @@ struct VMContext {
   size_t* op_stack;
   long* stack_pos;
   // managed allocation routines
-  APITools_AllocateArray_Ptr alloc_managed_array;  APITools_AllocateObject_Ptr alloc_managed_obj;
+  APITools_AllocateArray_Ptr alloc_managed_array;  
+  APITools_AllocateObject_Ptr alloc_managed_obj;
   // method call routines
   APITools_MethodCallByName_Ptr call_method_by_name;
   APITools_MethodCallById_Ptr call_method_by_id;
