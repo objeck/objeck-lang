@@ -2,37 +2,43 @@
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		if(args->Size() = 1) {
+		# key, message, wait_time
+		if(args->Size() = 3) {
 			api_token_file := args[0];
 			token := FileReader->ReadFile(api_token_file);
 			if(token = Nil) {
 				">>> Unable to read API token file: '{$api_token_file}' <<<"->PrintLine();
 				return;
 			};
-			model := "gpt-4o-realtime-preview-2025-06-03";
-			
-			client := Connect(Url->New( "wss://api.openai.com/v1/realtime?model={$model}"), token);
-			if(<>SendQuery("What is the longest street in Colorado?", client)) {
-				">>> Error sending query <<<"->PrintLine();
-				return;
-			};
 
-			response := ReceiveResponse(client);
-			if(response->GetSecond() <> Nil) {
-				audio_base64_str := response->GetSecond();
-				audio_base64_str_size := audio_base64_str->Size();
-"audio_base64_str: size={$audio_base64_str_size}"->PrintLine();	
-				FileWriter->WriteFile("test.txt", audio_base64_str);
-				
-				audio_bytes := Cipher.Decrypt->Base64(audio_base64_str);
-				audio_bytes_size := audio_bytes->Size();
-"audio_bytes: size={$audio_bytes_size}"->PrintLine();	
-				FileWriter->WriteFile("test.dat", audio_bytes);
-			};
-			
-			client->CloseSocket();
+			TextInAudioOut(args[1], "gpt-4o-realtime-preview-2025-06-03", args[2]->ToInt(), token);
 		};
 	}
+
+	function : TextInAudioOut(msg : String, model : String, wait_sec : Int, token : String) ~ Nil {
+		client := Connect(Url->New( "wss://api.openai.com/v1/realtime?model={$model}"), token);
+		if(<>SendQuery(msg, client)) {
+			">>> Error sending query <<<"->PrintLine();
+			return;
+		};
+
+		# binary audio and text
+		response := ReceiveResponse(client, wait_sec);
+		if(response->GetSecond() <> Nil) {
+			audio_base64_str := response->GetSecond();
+			audio_base64_str_size := audio_base64_str->Size();
+"audio_base64_str: size={$audio_base64_str_size}"->PrintLine();	
+			FileWriter->WriteFile("test.txt", audio_base64_str);
+			
+			audio_bytes := Cipher.Decrypt->Base64(audio_base64_str);
+			audio_bytes_size := audio_bytes->Size();
+"audio_bytes: size={$audio_bytes_size}"->PrintLine();	
+			FileWriter->WriteFile("test.dat", audio_bytes);
+		};
+		
+		client->CloseSocket();
+	}
+
 
 	function : Connect(url : Url, token : String) ~ SecureWebSocket {
 		client := SecureWebSocket->New(url);
@@ -80,7 +86,7 @@ class Test {
 		
 		content_elem_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 		content_elem_json->Insert("type", "input_text");
-        content_elem_json->Insert("text", "What is the longest street in Colorado?")
+        content_elem_json->Insert("text", query)
 
 		content_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
 		content_array_json->Add(content_elem_json);
@@ -154,7 +160,7 @@ class Test {
 		return true;
 	}
 
-	function : ReceiveResponse(client : SecureWebSocket) ~ Pair<String, String> {
+	function : ReceiveResponse(client : SecureWebSocket, wait_sec : Int) ~ Pair<String, String> {
 		response_text := "";
 		response_audio := "";
 			
@@ -190,7 +196,7 @@ class Test {
 					"### Error: Unexpected: status={$status} ###"->ErrorLine();
 					return Nil;
 				};
-				System.Concurrency.Thread->Sleep(17500);
+				System.Concurrency.Thread->Sleep(wait_sec * 1000);
 			}
 			else if(type_str->Equals("rate_limits.updated")) {
 				rate_limits := response_json->Get("rate_limits");
