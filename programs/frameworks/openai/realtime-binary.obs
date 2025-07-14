@@ -11,9 +11,9 @@ class Test {
 
 		if(args->Size() = 1) {
 			"Recording..."->PrintLine();
-			audio_bytes := Mixer->RecordPcm(0, rate, format, channels, 7);
+			audio_bytes := Mixer->RecordPcm(rate, format, channels, 7);
 			audio_bytes_size := audio_bytes->Size();
-			"recorded_size={$audio_bytes_size}"->PrintLine();
+			"audio_input_size={$audio_bytes_size}"->PrintLine();
 
 			FileWriter->WriteFile("input.pcm16", audio_bytes);
 			Mixer->PlayPcm(audio_bytes, rate, format, channels);
@@ -56,7 +56,7 @@ class Test {
 
 		Mixer->Close();
 	}
-	
+
 	function : ListDevices() ~ Nil {
 		rec_devices := Mixer->ListRecordingDevices();
 		each(rec_device in rec_devices) {
