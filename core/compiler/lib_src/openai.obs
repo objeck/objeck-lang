@@ -2087,13 +2087,16 @@ Support for OpenAIs models, assistants, realtime and general APIs (-lib openai)
 bundle API.OpenAI {
 	#~
 	Realtime API support
-	@param text text query
-	@param model model name
-	@param wait_sec time to wait for response to build, in seconds
-	@param token API token
-	@return pair with text and binary audio outputs
 	~#
 	class Realtime {
+		#~
+		Query with text input and text and audio outputs
+		@param text text query
+		@param model model name
+		@param wait_sec time to wait for response to build, in seconds
+		@param token API token
+		@return pair with text and binary audio outputs
+		~#
 		function : Respond(text : String, model : String, wait_sec : Int, token : String) ~ Pair<String, ByteArrayRef> {
 			client := Connect(Url->New("wss://api.openai.com/v1/realtime?model={$model}"), token);
 			if(<>SendQuery(text, client)) {
