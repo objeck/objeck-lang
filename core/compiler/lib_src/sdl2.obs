@@ -7938,6 +7938,20 @@ bundle Game.SDL2 {
 	        return value->Get();
 		}
 
+		#~ 
+		List available recording devices
+		@return available recording devices
+		~#
+		function : ListRecordingDevices() ~ String[] {
+	        array_args := Base->New[1];
+	        array_args[0] := StringArrayRef->New();
+
+	        Proxy->GetDllProxy()->CallFunction("sdl_mixer_record_devs", array_args);
+
+	        value := array_args[0]->As(StringArrayRef);
+	        return value->Get();
+		}
+
 		#~
 		Shutdown and cleanup the mixer API
 		~#
@@ -8002,11 +8016,34 @@ bundle Game.SDL2 {
 	    }
 
 	    #~
-	    Play a PCM audio file
-	    @param bytes bytes to be played
+	    Records a PCM audio stream
+	    @param dev_id recording device ID
 	    @param sample_rate playback sample rate
 	    @param audio_format playback audio format see, AudioFormat
 	    @param channels number of playback channels
+	    @param time_secs number seconds to record playback
+	    ~#
+	    function : RecordPcm(dev_id : Int, sample_rate : Int, audio_format : Int, channels : Int, time_secs : Int) ~ Byte[] {
+	    	array_args := Base->New[6];
+	    	array_args[0] := ByteArrayRef->New(Nil->As(Byte[]));
+			array_args[1] := IntRef->New(dev_id);
+			array_args[2] := IntRef->New(sample_rate);
+			array_args[3] := IntRef->New(audio_format);
+			array_args[4] := IntRef->New(channels);
+			array_args[5] := IntRef->New(time_secs);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_mixer_record_id_pcm", array_args);
+
+			holder := array_args[0]->As(ByteArrayRef);
+			return holder->Get();
+	    }
+
+	    #~
+	    Play a PCM audio file
+	    @param sample_rate playback sample rate
+	    @param audio_format playback audio format see, AudioFormat
+	    @param channels number of playback channels
+	    @param time_secs number seconds to record playback
 	    ~#
 	    function : RecordPcm(sample_rate : Int, audio_format : Int, channels : Int, time_secs : Int) ~ Byte[] {
 	    	array_args := Base->New[5];
