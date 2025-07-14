@@ -2090,15 +2090,27 @@ bundle API.OpenAI {
 	~#
 	class Realtime {
 		#~
-		Query with text input and text and audio outputs
+		Query with text input and respond with text and audio outputs
 		@param text text query
 		@param model model name
 		@param token API token
 		@return pair with text and binary audio outputs
 		~#
 		function : Respond(text : String, model : String, token : String) ~ Pair<String, ByteArrayRef> {
+			return Respond(text, model, "sage", token);
+		}
+
+		#~
+		Query with text input and respond with text and audio outputs
+		@param text text query
+		@param model model name
+		@param voice voice use when generating the audio 
+		@param token API token
+		@return pair with text and binary audio outputs
+		~#
+		function : Respond(text : String, model : String, voice : String, token : String) ~ Pair<String, ByteArrayRef> {
 			client := Connect(Url->New("wss://api.openai.com/v1/realtime?model={$model}"), token);
-			if(<>SendQuery(text, client)) {
+			if(client <> Nil & <>SendQuery(text, voice, client)) {
 				">>> Error sending query <<<"->PrintLine();
 				return Nil;
 			};
@@ -2130,7 +2142,7 @@ bundle API.OpenAI {
 				};
 
 				type_str := response_json->Get("type")->GetString();
-				if(<>type_str->Equals("session.created")) {
+				if(type_str = Nil & <>type_str->Equals("session.created")) {
 					status_code := client->GetStatusMessage();
 					">>> closed: code={$status_code} <<<"->PrintLine();
 
@@ -2143,7 +2155,7 @@ bundle API.OpenAI {
 			return Nil;
 		}
 
-		function : private : SendQuery(query : String, client : SecureWebSocket) ~ Bool {
+		function : private : SendQuery(query : String, voice : String, client : SecureWebSocket) ~ Bool {
 			# create conversation
 			builder := JsonBuilder->New();
 			convo_json := builder->PushObject();
@@ -2178,7 +2190,7 @@ bundle API.OpenAI {
 			};
 
 			type_str := response_json->Get("type")->GetString();
-			if(<>type_str->Equals("conversation.item.created")) {
+			if(type_str = Nil & <>type_str->Equals("conversation.item.created")) {
 				error_msg := response_json->Get("error")->Get("message")->GetString();
 				">>> Error: {$error_msg} <<<"->ErrorLine();
 				return false;
@@ -2194,8 +2206,7 @@ bundle API.OpenAI {
 			update_msg := "{
   				\"type\": \"session.update\",
   				\"session\": {
-    				\"voice\": \"alloy\",
-    				\"voice\": \"sage\",
+    				\"voice\": \"{$voice}\",
 	       			\"output_audio_format\": \"pcm16\",
     				\"input_audio_transcription\": {
 						\"model\": \"whisper-1\"
@@ -2224,7 +2235,7 @@ bundle API.OpenAI {
 			};
 
 			type_str := response_json->Get("type")->GetString();
-			if(<>type_str->Equals("session.updated")) {
+			if(type_str = Nil & <>type_str->Equals("session.updated")) {
 				error_msg := response_json->Get("error")->Get("message")->GetString();
 				">>> Error: {$error_msg} <<<"->ErrorLine();
 				return false;
@@ -2254,7 +2265,7 @@ bundle API.OpenAI {
 			};
 
 			type_str := response_json->Get("type")->GetString();
-			if(<>type_str->Equals("response.created")) {
+			if(type_str = Nil & <>type_str->Equals("response.created")) {
 				error_msg := response_json->Get("error")->Get("message")->GetString();
 				">>> Error: {$error_msg} <<<"->ErrorLine();
 				return false;
@@ -2299,6 +2310,7 @@ bundle API.OpenAI {
 						">>> Error: Unexpected: status={$status} <<<"->ErrorLine();
 						return Nil;
 					};
+					System.Concurrency.Thread->Sleep(1200);
 				}
 				else if(type_str->Equals("rate_limits.updated")) {
 					rate_limits := response_json->Get("rate_limits");
