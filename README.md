@@ -45,24 +45,22 @@ class Hello {
 
 ```ruby
 # openai realtime api
-response := Realtime->Respond("How many James Bond movies have been made?", "gpt-4o-realtime-preview-2025-06-03", 15, token);
+response := Realtime->Respond("How many James Bond movies have been made?", "gpt-4o-realtime-preview-2025-06-03", token);
 if(response <> Nil & response->GetFirst() <> Nil & response->GetSecond() <> Nil) {
-  response_text := response->GetFirst();
-  response_text_size := response_text->Size();
-
-  "text: size={$response_text_size}, text='{$response_text}'"->PrintLine();  
-  FileWriter->WriteFile("test.txt", response_text);
+  # get text
+  text := response->GetFirst();
+  text_size := text->Size();
+  "text: size={$text_size}, text='{$text}'"->PrintLine();  
   
-  response_audio := response->GetSecond();
-  response_audio_bytes := response_audio->Get();
-  response_audio_bytes_size := response_audio_bytes->Size();
-  "audio: size={$response_audio_bytes_size}"->PrintLine();
-  
-  file := "test.pcm16";
-  FileWriter->WriteFile(file, response_audio_bytes);
+  # get audio
+  audio := response->GetSecond();
+  audio_bytes := audio->Get();
+  audio_bytes_size := audio_bytes->Size();
+  "audio: size={$audio_bytes_size}"->PrintLine();
 
-  "---\nplaying audio..."->PrintLine();
-  Mixer->PlayPcm(file, 22050, AudioFormat->SDL_AUDIO_S16LSB, 1);
+  # play audio
+  "---\nplaying..."->PrintLine();
+  Mixer->PlayPcm(audio_bytes, 22050, AudioFormat->SDL_AUDIO_S16LSB, 1);
 };
 ```
 

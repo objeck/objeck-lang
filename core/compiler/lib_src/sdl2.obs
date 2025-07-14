@@ -310,7 +310,20 @@ bundle Game.SDL2 {
 	}
 
 	#~
-	Hardware flags
+	Mixer initialization flags
+	~#
+	consts MixerInitFlags {
+	   SDL_MIX_INIT_FLAC := 0x00000001,
+	   SDL_MIX_INIT_MOD := 0x00000002,
+	   SDL_MIX_INIT_MP3 := 0x00000008,
+	   SDL_MIX_INIT_OGG := 0x00000010,
+	   SDL_MIX_INIT_MID := 0x00000020,
+	   SDL_MIX_INIT_OPUS := 0x00000040,
+	   SDL_MIX_INIT_WAVPACK := 0x00000080
+	}
+	
+	#~
+	Audio format flags
 	~#
 	consts AudioFormat {
 		SDL_AUDIO_U8 := 0x0008,
@@ -322,7 +335,7 @@ bundle Game.SDL2 {
 		SDL_AUDIO_U16 := 0x0010,
 		SDL_AUDIO_S16 := 0x8010
 	}
-
+	
 	#~
 	Window flags
 	~#
@@ -7893,12 +7906,36 @@ bundle Game.SDL2 {
 			return value->Get() = 0;
 		}
 
+		#~ 
+		Initialize the audio mixer
+		@param flags OR'd values refer to MixerInitFlags
+		@return status code
+		~#
+		function : Init(flags : Int) ~ Int {
+	        array_args := Base->New[2];
+	        array_args[0] := IntRef->New();
+	        array_args[1] := IntRef->New(flags);
+
+	        Proxy->GetDllProxy()->CallFunction("sdl_mixer_init", array_args);
+
+	        value := array_args[0]->As(IntRef);
+	        return value->Get();
+		}
+
 		#~
 		Shutdown and cleanup the mixer API
 		~#
 		function : Quit() ~ Nil {
 			array_args := Base->New[0];
-			Proxy->GetDllProxy()->CallFunction("sdl_mix_quit", array_args);
+			Proxy->GetDllProxy()->CallFunction("sdl_mixer_quit", array_args);
+		}
+
+		#~
+		Closes the audio mixer
+		~#
+		function : Close() ~ Nil {
+			array_args := Base->New[0];
+			Proxy->GetDllProxy()->CallFunction("sdl_mixer_close", array_args);
 		}
 
 		#~
@@ -7921,15 +7958,15 @@ bundle Game.SDL2 {
 
 		#~
 	    Play a PCM audio file
-	    @param file file name to play
+	    @param bytes bytes to be played
 	    @param sample_rate playback sample rate
 	    @param audio_format playback audio format see, AudioFormat
 	    @param channels number of playback channels
 	    ~#
-	    function : PlayPcm(file : String, sample_rate : Int, audio_format : Int, channels : Int) ~ Bool {
+	    function : PlayPcm(bytes : Byte[], sample_rate : Int, audio_format : Int, channels : Int) ~ Bool {
 	    	array_args := Base->New[5];
 	    	array_args[0] := IntRef->New();
-			array_args[1] := file;
+			array_args[1] := ByteArrayRef->New(bytes);
 			array_args[2] := IntRef->New(sample_rate);
 			array_args[3] := IntRef->New(audio_format);
 			array_args[4] := IntRef->New(channels);

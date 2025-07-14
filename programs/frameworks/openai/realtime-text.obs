@@ -2,8 +2,17 @@ use Collection, API.OpenAI, Game.SDL2, System.IO.Filesystem;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
+		# pcm file name
+		if(args->Size() = 1) {
+			audio_bytes := FileReader->ReadBinaryFile(args[0]);
+			audio_bytes_size := audio_bytes->Size();
+			"audio: size={$audio_bytes_size}"->PrintLine();
+			
+			Mixer->PlayPcm(audio_bytes, 22050, AudioFormat->SDL_AUDIO_S16LSB, 1);
+			Mixer->Close();
+		}
 		# key, message, wait_time
-		if(args->Size() = 3) {
+		else if(args->Size() = 2) {
 			api_token_file := args[0];
 			token := FileReader->ReadFile(api_token_file);
 			if(token = Nil) {
@@ -11,25 +20,26 @@ class Test {
 				return;
 			};
 
-			response := Realtime->Respond(args[1], "gpt-4o-realtime-preview-2025-06-03", args[2]->ToInt(), token);
+			response := Realtime->Respond(args[1], "gpt-4o-realtime-preview-2025-06-03", token);
 			if(response <> Nil & response->GetFirst() <> Nil & response->GetSecond() <> Nil) {
-				response_text := response->GetFirst();
-				response_text_size := response_text->Size();
-	
-				"text: size={$response_text_size}, text='{$response_text}'"->PrintLine();	
-				FileWriter->WriteFile("test.txt", response_text);
+				text := response->GetFirst();
+				text_size := text->Size();
+				"text: size={$text_size}, text='{$text}'"->PrintLine();	
 				
-				response_audio := response->GetSecond();
-				response_audio_bytes := response_audio->Get();
-				response_audio_bytes_size := response_audio_bytes->Size();
-				"audio: size={$response_audio_bytes_size}"->PrintLine();
+				audio := response->GetSecond();
+				audio_bytes := audio->Get();
+				audio_bytes_size := audio_bytes->Size();
+				"audio: size={$audio_bytes_size}"->PrintLine();
 				
 				file := "test.dat";
-				FileWriter->WriteFile(file, response_audio_bytes);
+				FileWriter->WriteFile(file, audio_bytes);
 
 				"---\nplaying audio..."->PrintLine();
-				Mixer->PlayPcm(file, 22050, AudioFormat->SDL_AUDIO_S16LSB, 1);
+				Mixer->PlayPcm(audio_bytes, 22050, AudioFormat->SDL_AUDIO_S16LSB, 1);
 			};
-		};
+		}
+		else {
+			">>> Missing parameter <<<"->ErrorLine();
+		}
 	}
 }
