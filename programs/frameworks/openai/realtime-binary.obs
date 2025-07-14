@@ -7,9 +7,14 @@ class Test {
 		format := AudioFormat->SDL_AUDIO_S16LSB;
 		channels := 1;
 
+		ListDevices();
+
 		if(args->Size() = 1) {
-			audio_bytes := Mixer->RecordPcm(rate, format, channels, 5);
-			audio_bytes->Size()->PrintLine();
+			"Recording..."->PrintLine();
+			audio_bytes := Mixer->RecordPcm(0, rate, format, channels, 7);
+			audio_bytes_size := audio_bytes->Size();
+			"recorded_size={$audio_bytes_size}"->PrintLine();
+
 			FileWriter->WriteFile("input.pcm16", audio_bytes);
 			Mixer->PlayPcm(audio_bytes, rate, format, channels);
 		}
@@ -50,5 +55,12 @@ class Test {
 		};
 
 		Mixer->Close();
+	}
+	
+	function : ListDevices() ~ Nil {
+		rec_devices := Mixer->ListRecordingDevices();
+		each(rec_device in rec_devices) {
+			rec_device->PrintLine();
+		};
 	}
 }

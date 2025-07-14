@@ -2241,7 +2241,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-  void sdl_renderer_get_info(VMContext& context) {
+    void sdl_renderer_get_info(VMContext& context) {
     SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
     size_t* info_obj = APITools_GetObjectValue(context, 2);
 
@@ -2249,7 +2249,7 @@ extern "C" {
       SDL_RendererInfo info;
       const int return_value = SDL_GetRendererInfo(renderer, &info);
 
-       std::string name(info.name);
+      std::string name(info.name);
       std::wstring wname(name.begin(), name.end());
 
       info_obj[0] = (size_t)APITools_CreateStringObject(context, wname);
@@ -3584,15 +3584,17 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-  void sdl_mixer_record_pcm(VMContext& context) {
-    const int sample_rate = (int)APITools_GetIntValue(context, 1);
-    const int audio_format = (int)APITools_GetIntValue(context, 2);
-    const int channels = (int)APITools_GetIntValue(context, 3);
-    const int time_secs = (int)APITools_GetIntValue(context, 4);
+  void sdl_mixer_record_id_pcm(VMContext& context) {
+    const int dev_id = (int)APITools_GetIntValue(context, 1);
+    const int sample_rate = (int)APITools_GetIntValue(context, 2);
+    const int audio_format = (int)APITools_GetIntValue(context, 3);
+    const int channels = (int)APITools_GetIntValue(context, 4);
+    const int time_secs = (int)APITools_GetIntValue(context, 5);
     size_t* output_holder = APITools_GetArray(context, 0);
 
     if(SDL_Init(SDL_INIT_AUDIO) < 0) {
       output_holder[0] = 0;
+      SDL_CloseAudio();
       return;
     }
 
@@ -3603,14 +3605,82 @@ extern "C" {
     desiredSpec.format = audio_format;
     desiredSpec.channels = channels;
     desiredSpec.samples = BUFFER_SIZE;
-    desiredSpec.callback = nullptr;  // We'll use SDL_DequeueAudio
+    desiredSpec.callback = nullptr;
 
     SDL_AudioSpec obtainedSpec;
     SDL_zero(obtainedSpec);
 
-    SDL_AudioDeviceID dev = SDL_OpenAudioDevice(nullptr, 1, &desiredSpec, &obtainedSpec, 0);
+    SDL_AudioDeviceID dev = SDL_OpenAudioDevice(SDL_GetAudioDeviceName(dev_id, SDL_TRUE), SDL_TRUE, &desiredSpec, &obtainedSpec, 0);
     if(!dev) {
       output_holder[0] = 0;
+      SDL_CloseAudio();
+      return;
+    }
+
+    SDL_PauseAudioDevice(dev, 0);
+
+    const Uint32 total_bytes = sample_rate * channels * (obtainedSpec.format == AUDIO_S16LSB ? 2 : 1) * time_secs;
+
+    Uint8 buffer[BUFFER_SIZE] = { 0 };
+    std::vector<Uint8> audio_buffer;
+    Uint32 captured = 0;
+    while(captured < total_bytes) {
+      Uint32 available = SDL_GetQueuedAudioSize(dev);
+      if(available >= BUFFER_SIZE) {
+        SDL_DequeueAudio(dev, buffer, BUFFER_SIZE);
+        audio_buffer.insert(audio_buffer.end(), buffer, buffer + BUFFER_SIZE);
+        captured += BUFFER_SIZE;
+      }
+      else {
+        SDL_Delay(10);
+      }
+    }
+
+    SDL_CloseAudioDevice(dev);
+
+    SDL_CloseAudio();
+
+    // copy output
+    size_t* output_byte_array = APITools_MakeByteArray(context, audio_buffer.size());
+    unsigned char* output_byte_array_buffer = (unsigned char*)(output_byte_array + 3);
+    for(size_t i = 0; i < audio_buffer.size(); ++i) {
+      output_byte_array_buffer[i] = audio_buffer[i];
+    }
+    output_holder[0] = (size_t)output_byte_array;
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_mixer_record_pcm(VMContext& context) {
+    const int sample_rate = (int)APITools_GetIntValue(context, 1);
+    const int audio_format = (int)APITools_GetIntValue(context, 2);
+    const int channels = (int)APITools_GetIntValue(context, 3);
+    const int time_secs = (int)APITools_GetIntValue(context, 4);
+    size_t* output_holder = APITools_GetArray(context, 0);
+
+    if(SDL_Init(SDL_INIT_AUDIO) < 0) {
+      output_holder[0] = 0;
+      SDL_CloseAudio();
+      return;
+    }
+
+    const int BUFFER_SIZE = 4096;
+    SDL_AudioSpec desiredSpec;
+    SDL_zero(desiredSpec);
+    desiredSpec.freq = sample_rate;
+    desiredSpec.format = audio_format;
+    desiredSpec.channels = channels;
+    desiredSpec.samples = BUFFER_SIZE;
+    desiredSpec.callback = nullptr;
+
+    SDL_AudioSpec obtainedSpec;
+    SDL_zero(obtainedSpec);
+
+    SDL_AudioDeviceID dev = SDL_OpenAudioDevice(nullptr, SDL_TRUE, &desiredSpec, &obtainedSpec, 0);
+    if(!dev) {
+      output_holder[0] = 0;
+      SDL_CloseAudio();
       return;
     }
 
@@ -3652,11 +3722,9 @@ extern "C" {
   void sdl_mixer_play_pcm(VMContext& context) {
     if(SDL_Init(SDL_INIT_AUDIO) < 0) {
       APITools_SetIntValue(context, 0, 0);
+      SDL_CloseAudio();
       return;
     }
-
-    int a = SDL_INIT_EVERYTHING;
-    std::wcout << SDL_INIT_EVERYTHING << std::endl;
 
     size_t* byte_array = (size_t*)APITools_GetArray(context, 1)[0];
     audio_buffer_len = ((long)APITools_GetArraySize(byte_array));
@@ -3676,6 +3744,7 @@ extern "C" {
 
     if(SDL_OpenAudio(&spec, nullptr ) < 0) {
       APITools_SetIntValue(context, 0, 0);
+      SDL_CloseAudio();
       return;
     }
 
@@ -3687,6 +3756,39 @@ extern "C" {
     SDL_CloseAudio();
         
     APITools_SetIntValue(context, 0, 1);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_mixer_record_devs(VMContext& context) {
+    if(SDL_Init(SDL_INIT_AUDIO) < 0) {
+      APITools_SetIntValue(context, 0, 0);
+      SDL_CloseAudio();
+      return;
+    }
+
+    size_t* output_holder = APITools_GetArray(context, 0);
+
+    const int dev_count = SDL_GetNumAudioDevices(SDL_TRUE);
+    if(dev_count < 1) {
+      output_holder[0] = 0;
+      SDL_CloseAudio();
+      return;
+    }
+
+    size_t* str_obj_array = APITools_MakeIntArray(context, dev_count);
+    size_t* str_obj_array_ptr = str_obj_array + 3;
+
+    for(int i = 0; i < dev_count; ++i) {
+      const char* dev_name = SDL_GetAudioDeviceName(i, SDL_TRUE);
+      const std::wstring wdevice_name = L"id=" + std::to_wstring(i) + L", name='" + BytesToUnicode(dev_name) + L'\'';
+      str_obj_array_ptr[i] = (size_t)APITools_CreateStringObject(context, wdevice_name);
+    }
+
+    SDL_CloseAudio();
+
+    output_holder[0] = (size_t)str_obj_array;
   }
   
 #ifdef _WIN32
