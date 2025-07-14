@@ -20,7 +20,7 @@ class Test {
 				return;
 			};
 
-			response := Realtime->Respond(args[1], "gpt-4o-realtime-preview-2025-06-03", token);
+			response := Realtime->Respond(args[1], "gpt-4o-realtime-preview-2025-06-03", "alloy", token);
 			if(response <> Nil & response->GetFirst() <> Nil & response->GetSecond() <> Nil) {
 				text := response->GetFirst();
 				text_size := text->Size();
