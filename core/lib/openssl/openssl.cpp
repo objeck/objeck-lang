@@ -31,9 +31,10 @@
 #include <string.h>
 #include <openssl/sha.h>
 #include <openssl/aes.h>
-#include "../../vm/lib_api.h"
 #include <openssl/md5.h>
 #include <openssl/ripemd.h>
+
+#include "../../vm/lib_api.h"
 
 extern "C" {
   //
@@ -42,7 +43,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-    void load_lib(VMContext& context) {
+  void load_lib(VMContext& context) {
   }
 
   //
@@ -51,7 +52,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-    void unload_lib() {
+  void unload_lib() {
   }
 
   //
@@ -60,7 +61,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-    void openssl_hash_sha1(VMContext& context) {
+  void openssl_hash_sha1(VMContext& context) {
     // get parameters
     size_t* input_array = (size_t*)APITools_GetArray(context, 1)[0];
     const long input_size = ((long)APITools_GetArraySize(input_array));
@@ -107,13 +108,6 @@ extern "C" {
     memcpy(output_byte_array_buffer, output, SHA_DIGEST_LENGTH * sizeof(unsigned char));
     output_holder[0] = (size_t)output_byte_array;
 
-    /*
-    unsigned char* output_byte_array_buffer = (unsigned char*)(output_byte_array + 3);
-    for(int i = 0; i < SHA_DIGEST_LENGTH; i++) {
-      output_byte_array_buffer[i] = output[i];
-    }
-    */
-
     EVP_MD_CTX_free(ctx);
   }
 
@@ -123,7 +117,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-    void openssl_hash_sha256(VMContext& context) {
+  void openssl_hash_sha256(VMContext& context) {
     // get parameters
     size_t* input_array = (size_t*)APITools_GetArray(context, 1)[0];
     const long input_size = ((long)APITools_GetArraySize(input_array));
@@ -170,13 +164,6 @@ extern "C" {
     memcpy(output_byte_array_buffer, output, SHA256_DIGEST_LENGTH * sizeof(unsigned char));
     output_holder[0] = (size_t)output_byte_array;
 
-    /*
-    unsigned char* output_byte_array_buffer = (unsigned char*)(output_byte_array + 3);
-    for(int i = 0; i < SHA256_DIGEST_LENGTH; i++) {
-      output_byte_array_buffer[i] = output[i];
-    }
-    */
-
     EVP_MD_CTX_free(ctx);
   }
 
@@ -186,7 +173,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-    void openssl_hash_sha512(VMContext& context) {
+  void openssl_hash_sha512(VMContext& context) {
     // get parameters
     size_t* input_array = (size_t*)APITools_GetArray(context, 1)[0];
     const long input_size = ((long)APITools_GetArraySize(input_array));
@@ -233,13 +220,6 @@ extern "C" {
     memcpy(output_byte_array_buffer, output, SHA512_DIGEST_LENGTH * sizeof(unsigned char));
     output_holder[0] = (size_t)output_byte_array;
 
-    /*
-    unsigned char* output_byte_array_buffer = (unsigned char*)(output_byte_array + 3);
-    for(int i = 0; i < SHA512_DIGEST_LENGTH; i++) {
-      output_byte_array_buffer[i] = output[i];
-    }
-    */
-
     EVP_MD_CTX_free(ctx);
   }
 
@@ -249,7 +229,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-    void openssl_hash_ripemd160(VMContext& context) {
+  void openssl_hash_ripemd160(VMContext& context) {
     // get parameters
     size_t* input_array = (size_t*)APITools_GetArray(context, 1)[0];
     const long input_size = ((long)APITools_GetArraySize(input_array));
@@ -317,13 +297,6 @@ extern "C" {
     unsigned char* output_byte_array_buffer = reinterpret_cast<unsigned char*>(output_byte_array + 3);
     memcpy(output_byte_array_buffer, output, RIPEMD160_DIGEST_LENGTH * sizeof(unsigned char));
     output_holder[0] = (size_t)output_byte_array;
-
-    /*
-    unsigned char* output_byte_array_buffer = (unsigned char*)(output_byte_array + 3);
-    for(int i = 0; i < RIPEMD160_DIGEST_LENGTH; i++) {
-      output_byte_array_buffer[i] = output[i];
-    }
-    */
   }
 
   //
@@ -332,7 +305,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-    void openssl_hash_md5(VMContext& context) {
+  void openssl_hash_md5(VMContext& context) {
     // get parameters
     size_t* input_array = (size_t*)APITools_GetArray(context, 1)[0];
     const long input_size = ((long)APITools_GetArraySize(input_array));
@@ -379,14 +352,6 @@ extern "C" {
     memcpy(output_byte_array_buffer, output, MD5_DIGEST_LENGTH * sizeof(unsigned char));
     output_holder[0] = (size_t)output_byte_array;
 
-    /*
-    // copy output
-    unsigned char* output_byte_array_buffer = (unsigned char*)(output_byte_array + 3);
-    for(int i = 0; i < MD5_DIGEST_LENGTH; i++) {
-      output_byte_array_buffer[i] = output[i];
-    }
-    */
-
     EVP_MD_CTX_free(ctx);
   }
 
@@ -396,7 +361,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-    void openssl_encrypt_aes256(VMContext& context) {
+  void openssl_encrypt_aes256(VMContext& context) {
     // get parameters
     size_t* key_array = (size_t*)APITools_GetArray(context, 1)[0];
     const long key_size = ((long)APITools_GetArraySize(key_array));
@@ -455,13 +420,6 @@ extern "C" {
     unsigned char* output_byte_array_buffer = reinterpret_cast<unsigned char*>(output_byte_array + 3);
     memcpy(output_byte_array_buffer, output, total_size * sizeof(unsigned char));
     output_holder[0] = (size_t)output_byte_array;
-    
-    /*
-    unsigned char* output_byte_array_buffer = (unsigned char*)(output_byte_array + 3);
-    for(int i = 0; i < total_size; i++) {
-      output_byte_array_buffer[i] = output[i];
-    }
-    */
 
     free(output);
     output = nullptr;
@@ -473,7 +431,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-    void openssl_decrypt_aes256(VMContext& context) {
+  void openssl_decrypt_aes256(VMContext& context) {
     // get parameters
     size_t* key_array = (size_t*)APITools_GetArray(context, 1)[0];
     const long key_size = ((long)APITools_GetArraySize(key_array));
@@ -531,13 +489,6 @@ extern "C" {
     unsigned char* output_byte_array_buffer = reinterpret_cast<unsigned char*>(output_byte_array + 3);
     memcpy(output_byte_array_buffer, output, total_size * sizeof(unsigned char));
     output_holder[0] = (size_t)output_byte_array;
-    
-    /*
-    unsigned char* output_byte_array_buffer = (unsigned char*)(output_byte_array + 3);
-    for(int i = 0; i < total_size; i++) {
-      output_byte_array_buffer[i] = output[i];
-    }
-    */
 
     free(output);
     output = nullptr;
@@ -553,7 +504,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-    void openssl_encrypt_base64(VMContext& context) {
+  void openssl_encrypt_base64(VMContext& context) {
     // get parameters
     size_t* input_array = (size_t*)APITools_GetArray(context, 1)[0];
     const long input_size = ((long)APITools_GetArraySize(input_array));
@@ -593,7 +544,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-    void openssl_decrypt_base64(VMContext& context) {
+  void openssl_decrypt_base64(VMContext& context) {
     const std::wstring w_input = APITools_GetStringValue(context, 1);
     const std::string input = UnicodeToBytes(w_input);
 
@@ -615,14 +566,6 @@ extern "C" {
     unsigned char* output_byte_array_buffer = reinterpret_cast<unsigned char*>(output_byte_array + 3);
     memcpy(output_byte_array_buffer, buffer, total_size * sizeof(unsigned char));
     output_holder[0] = (size_t)output_byte_array;
-
-    /*
-    unsigned char* output_byte_array_buffer = (unsigned char*)(output_byte_array + 3);
-    for(size_t i = 0; i < total_size; ++i) {
-      output_byte_array_buffer[i] = buffer[i];
-    }
-    output_holder[0] = (size_t)output_byte_array;
-    */
 
     delete[] buffer;
     buffer = nullptr;
