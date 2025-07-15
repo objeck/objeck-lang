@@ -1,8 +1,10 @@
-ARGS=-O3 -D_SYSTEM -Wall -Wno-unused-function -std=c++20
+ARGS=-O3 -D_SYSTEM -Wall -std=c++20 -mavx2 -Wno-sequence-point -Wno-unused-function
 SRC=types.o tree.o scanner.o parser.o linker.o context.o intermediate.o optimization.o emit.o compiler.o posix_main.o
 OBJ_LIBS=sys.a
 LOGGER_PATH=../shared
 EXE=sys_obc
+
+%.o : %.mod
 
 $(EXE): $(SRC) $(OBJ_LIBS)
 	$(CXX) -o $(EXE) $(SRC) $(OBJ_LIBS) -lz
