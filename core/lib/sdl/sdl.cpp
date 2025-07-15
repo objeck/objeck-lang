@@ -3637,8 +3637,8 @@ extern "C" {
     }
 
     SDL_CloseAudioDevice(dev);
-
     SDL_CloseAudio();
+    SDL_QuitSubSystem(SDL_INIT_AUDIO);
 
     // copy output
     size_t* output_byte_array = APITools_MakeByteArray(context, audio_buffer.size());
@@ -3702,8 +3702,8 @@ extern "C" {
     }
 
     SDL_CloseAudioDevice(dev);
-
     SDL_CloseAudio();
+    SDL_QuitSubSystem(SDL_INIT_AUDIO);
 
     // copy output
     size_t* output_byte_array = APITools_MakeByteArray(context, audio_buffer.size());
