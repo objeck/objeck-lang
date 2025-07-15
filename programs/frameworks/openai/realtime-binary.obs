@@ -27,7 +27,7 @@ class Test {
 		else {
 			">>> Missing parameters: license_file [input_file.pcm16] <<<"->ErrorLine();
 			return;
-		}
+		};
 
 		api_token_file := args[0];
 		token := FileReader->ReadFile(api_token_file);

@@ -103,13 +103,18 @@ extern "C" {
 
     // copy output
     size_t* output_byte_array = APITools_MakeByteArray(context, SHA_DIGEST_LENGTH);
+    unsigned char* output_byte_array_buffer = reinterpret_cast<unsigned char*>(output_byte_array + 3);
+    memcpy(output_byte_array_buffer, output, SHA_DIGEST_LENGTH * sizeof(unsigned char));
+    output_holder[0] = (size_t)output_byte_array;
+
+    /*
     unsigned char* output_byte_array_buffer = (unsigned char*)(output_byte_array + 3);
     for(int i = 0; i < SHA_DIGEST_LENGTH; i++) {
       output_byte_array_buffer[i] = output[i];
     }
+    */
 
     EVP_MD_CTX_free(ctx);
-    output_holder[0] = (size_t)output_byte_array;
   }
 
   //
@@ -161,13 +166,18 @@ extern "C" {
 
     // copy output
     size_t* output_byte_array = APITools_MakeByteArray(context, SHA256_DIGEST_LENGTH);
+    unsigned char* output_byte_array_buffer = reinterpret_cast<unsigned char*>(output_byte_array + 3);
+    memcpy(output_byte_array_buffer, output, SHA256_DIGEST_LENGTH * sizeof(unsigned char));
+    output_holder[0] = (size_t)output_byte_array;
+
+    /*
     unsigned char* output_byte_array_buffer = (unsigned char*)(output_byte_array + 3);
     for(int i = 0; i < SHA256_DIGEST_LENGTH; i++) {
       output_byte_array_buffer[i] = output[i];
     }
+    */
 
     EVP_MD_CTX_free(ctx);
-    output_holder[0] = (size_t)output_byte_array;
   }
 
   //
@@ -219,13 +229,18 @@ extern "C" {
 
     // copy output
     size_t* output_byte_array = APITools_MakeByteArray(context, SHA512_DIGEST_LENGTH);
+    unsigned char* output_byte_array_buffer = reinterpret_cast<unsigned char*>(output_byte_array + 3);
+    memcpy(output_byte_array_buffer, output, SHA512_DIGEST_LENGTH * sizeof(unsigned char));
+    output_holder[0] = (size_t)output_byte_array;
+
+    /*
     unsigned char* output_byte_array_buffer = (unsigned char*)(output_byte_array + 3);
     for(int i = 0; i < SHA512_DIGEST_LENGTH; i++) {
       output_byte_array_buffer[i] = output[i];
     }
+    */
 
     EVP_MD_CTX_free(ctx);
-    output_holder[0] = (size_t)output_byte_array;
   }
 
   //
@@ -299,12 +314,16 @@ extern "C" {
 
     // copy output
     size_t* output_byte_array = APITools_MakeByteArray(context, RIPEMD160_DIGEST_LENGTH);
+    unsigned char* output_byte_array_buffer = reinterpret_cast<unsigned char*>(output_byte_array + 3);
+    memcpy(output_byte_array_buffer, output, RIPEMD160_DIGEST_LENGTH * sizeof(unsigned char));
+    output_holder[0] = (size_t)output_byte_array;
+
+    /*
     unsigned char* output_byte_array_buffer = (unsigned char*)(output_byte_array + 3);
     for(int i = 0; i < RIPEMD160_DIGEST_LENGTH; i++) {
       output_byte_array_buffer[i] = output[i];
     }
-
-    output_holder[0] = (size_t)output_byte_array;
+    */
   }
 
   //
@@ -356,13 +375,19 @@ extern "C" {
 
     // copy output
     size_t* output_byte_array = APITools_MakeByteArray(context, MD5_DIGEST_LENGTH);
+    unsigned char* output_byte_array_buffer = reinterpret_cast<unsigned char*>(output_byte_array + 3);
+    memcpy(output_byte_array_buffer, output, MD5_DIGEST_LENGTH * sizeof(unsigned char));
+    output_holder[0] = (size_t)output_byte_array;
+
+    /*
+    // copy output
     unsigned char* output_byte_array_buffer = (unsigned char*)(output_byte_array + 3);
     for(int i = 0; i < MD5_DIGEST_LENGTH; i++) {
       output_byte_array_buffer[i] = output[i];
     }
+    */
 
     EVP_MD_CTX_free(ctx);
-    output_holder[0] = (size_t)output_byte_array;
   }
 
   //
@@ -503,7 +528,6 @@ extern "C" {
     // copy output
     const int total_size = output_size + final_size;
     size_t* output_byte_array = APITools_MakeByteArray(context, total_size);
-
     unsigned char* output_byte_array_buffer = reinterpret_cast<unsigned char*>(output_byte_array + 3);
     memcpy(output_byte_array_buffer, output, total_size * sizeof(unsigned char));
     output_holder[0] = (size_t)output_byte_array;
@@ -588,11 +612,17 @@ extern "C" {
     const size_t total_size = decode_size;
     size_t* output_holder = APITools_GetArray(context, 0);
     size_t* output_byte_array = APITools_MakeByteArray(context, total_size);
+    unsigned char* output_byte_array_buffer = reinterpret_cast<unsigned char*>(output_byte_array + 3);
+    memcpy(output_byte_array_buffer, buffer, total_size * sizeof(unsigned char));
+    output_holder[0] = (size_t)output_byte_array;
+
+    /*
     unsigned char* output_byte_array_buffer = (unsigned char*)(output_byte_array + 3);
     for(size_t i = 0; i < total_size; ++i) {
       output_byte_array_buffer[i] = buffer[i];
     }
     output_holder[0] = (size_t)output_byte_array;
+    */
 
     delete[] buffer;
     buffer = nullptr;
