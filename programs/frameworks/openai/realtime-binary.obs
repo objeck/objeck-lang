@@ -11,7 +11,7 @@ class Test {
 
 		if(args->Size() = 1) {
 			"Recording..."->PrintLine();
-			audio_bytes := Mixer->RecordPcm(rate, format, channels, 7);
+			audio_bytes := Mixer->RecordPcm(rate, format, channels, 6);
 			audio_bytes_size := audio_bytes->Size();
 			"audio_input_size={$audio_bytes_size}"->PrintLine();
 
