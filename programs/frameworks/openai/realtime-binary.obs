@@ -2,55 +2,65 @@ use Collection, API.OpenAI, Game.SDL2, System.IO.Filesystem;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
+		audio_bytes : Byte[];
+		rate := 22050;
+		format := AudioFormat->SDL_AUDIO_S16LSB;
+		channels := 1;
+
+		ListDevices();
+
 		if(args->Size() = 1) {
-			audio_bytes := Mixer->RecordPcm(22050, AudioFormat->SDL_AUDIO_S16LSB, 1, 7);
-			audio_bytes->Size()->PrintLine();
-			FileWriter->WriteFile("foo.pcm16", audio_bytes);
-			Mixer->PlayPcm(audio_bytes, 22050, AudioFormat->SDL_AUDIO_S16LSB, 1);
+			"Recording..."->PrintLine();
+			audio_bytes := Mixer->RecordPcm(rate, format, channels, 7);
+			audio_bytes_size := audio_bytes->Size();
+			"audio_input_size={$audio_bytes_size}"->PrintLine();
+
+			FileWriter->WriteFile("input.pcm16", audio_bytes);
+			Mixer->PlayPcm(audio_bytes, rate, format, channels);
 		}
+		else if(args->Size() = 2) {
+			audio_bytes := FileReader->ReadBinaryFile(args[1]);
+			audio_bytes_size := audio_bytes->Size();
+			"audio: size={$audio_bytes_size}"->PrintLine();
+			Mixer->PlayPcm(audio_bytes, rate, format, channels);
+		}		
 		else {
-			">>> Missing parameter <<<"->ErrorLine();
+			">>> Missing parameters: license_file [input_file.pcm16] <<<"->ErrorLine();
+			return;
 		}
-#~		
-		# pcm file name
-		if(args->Size() = 1) {
-			audio_bytes := FileReader->ReadBinaryFile(args[0]);
+
+		api_token_file := args[0];
+		token := FileReader->ReadFile(api_token_file);
+		if(token = Nil) {
+			">>> Unable to read API token file: '{$api_token_file}' <<<"->PrintLine();
+			return;
+		};
+
+		response := Realtime->Respond(audio_bytes, "gpt-4o-realtime-preview-2025-06-03", "alloy", token);
+		if(response <> Nil & response->GetFirst() <> Nil & response->GetSecond() <> Nil) {
+			text := response->GetFirst();
+			text_size := text->Size();
+			"text: size={$text_size}, text='{$text}'"->PrintLine();	
+			
+			audio := response->GetSecond();
+			audio_bytes := audio->Get();
 			audio_bytes_size := audio_bytes->Size();
 			"audio: size={$audio_bytes_size}"->PrintLine();
 			
-			Mixer->PlayPcm(audio_bytes, 22050, AudioFormat->SDL_AUDIO_S16LSB, 1);
-			Mixer->Close();
-		}
-		# key, message, wait_time
-		else if(args->Size() = 2) {
-			api_token_file := args[0];
-			token := FileReader->ReadFile(api_token_file);
-			if(token = Nil) {
-				">>> Unable to read API token file: '{$api_token_file}' <<<"->PrintLine();
-				return;
-			};
+			file := "out.pcm16";
+			FileWriter->WriteFile(file, audio_bytes);
 
-			response := Realtime->Respond(args[1], "gpt-4o-realtime-preview-2025-06-03", "alloy", token);
-			if(response <> Nil & response->GetFirst() <> Nil & response->GetSecond() <> Nil) {
-				text := response->GetFirst();
-				text_size := text->Size();
-				"text: size={$text_size}, text='{$text}'"->PrintLine();	
-				
-				audio := response->GetSecond();
-				audio_bytes := audio->Get();
-				audio_bytes_size := audio_bytes->Size();
-				"audio: size={$audio_bytes_size}"->PrintLine();
-				
-				file := "out.pcm16";
-				FileWriter->WriteFile(file, audio_bytes);
+			"---\nplaying audio..."->PrintLine();
+			Mixer->PlayPcm(audio_bytes, rate, format, channels);
+		};
 
-				"---\nplaying audio..."->PrintLine();
-				Mixer->PlayPcm(audio_bytes, 22050, AudioFormat->SDL_AUDIO_S16LSB, 1);
-			};
-		}
-		else {
-			">>> Missing parameter <<<"->ErrorLine();
-		}
-~#		
+		Mixer->Close();
+	}
+
+	function : ListDevices() ~ Nil {
+		rec_devices := Mixer->ListRecordingDevices();
+		each(rec_device in rec_devices) {
+			rec_device->PrintLine();
+		};
 	}
 }
