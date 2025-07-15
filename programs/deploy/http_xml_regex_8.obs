@@ -10,7 +10,8 @@ use Collection;
 
 class Program {
 	function : Main(args : String[]) ~ Nil {
-		master_tasks := ProcessTasks(["100_doors", "99_bottles_of_beer", "Filter", "Array_length", "Greatest_common_divisor", "Greatest_element_of_a_list", "Greatest_subsequential_sum"]);
+#		master_tasks := ProcessTasks(["100_doors", "99_bottles_of_beer", "Filter", "Array_length", "Greatest_common_divisor", "Greatest_element_of_a_list", "Greatest_subsequential_sum"]);
+		master_tasks := ProcessTasks(["100_doors"]);
 		"---"->PrintLine();
 		PrintTasks(master_tasks);
 	}
@@ -35,7 +36,6 @@ class Program {
 		langs := Set->New()<String>;
 
 		header_regex := RegEx->New("==\\{\\{header\\|(\\w|/|-|_)+\\}\\}==");
-		lang_regex := RegEx->New("<(\\s)*lang(\\s)*>");
 
 		url := "https://rosettacode.org/wiki/{$task}?action=raw";
 		lines := HttpsClient->New()->QuickGet(Url->New(url))->GetContent()->ToString()->Split("\n");
@@ -48,17 +48,7 @@ class Program {
 			header := header_regex->FindFirst(line);
 			if(header <> Nil) {
 				last_header := HeaderName(header->ToString());
-			};
-
-			# get language			
-			lang := lang_regex->FindFirst(line);
-			if(lang <> Nil) {
-				if(last_header <> Nil) {
-					langs->Insert("{$last_header}");
-				}
-				else {
-					langs->Insert("no language");
-				};
+				langs->Insert(last_header);
 			};
 		};
 
