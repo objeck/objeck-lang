@@ -1,45 +1,105 @@
-use Collection, API.OpenAI, Game.SDL2, System.IO.Filesystem;
+#include <iostream>
+#include <fstream>
+#include <vector>
+#include <lame/lame.h>  // make sure libmp3lame is installed and in include path
 
-class Test {
-	function : Main(args : String[]) ~ Nil {
-		# pcm file name
-		if(args->Size() = 1) {
-			audio_bytes := FileReader->ReadBinaryFile(args[0]);
-			audio_bytes_size := audio_bytes->Size();
-			"audio: size={$audio_bytes_size}"->PrintLine();
-			
-			Mixer->PlayPcm(audio_bytes, 22050, AudioFormat->SDL_AUDIO_S16LSB, 1);
-			Mixer->Close();
-		}
-		# key, message, wait_time
-		else if(args->Size() = 2) {
-			api_token_file := args[0];
-			token := FileReader->ReadFile(api_token_file);
-			if(token = Nil) {
-				">>> Unable to read API token file: '{$api_token_file}' <<<"->PrintLine();
-				return;
-			};
+int main(int argc, char* argv[]) {
+  if (argc == 3) {
+    // ----- Settings -----
+    const char* input_pcm = argv[1];     // raw 16-bit signed little-endian PCM
+    const char* output_mp3 = argv[2];
+    int sample_rate = 22050;  // Hz
+    int num_channels = 1;     // 1=mono, 2=stereo
 
-			response := Realtime->Respond(args[1], "gpt-4o-realtime-preview-2025-06-03", "alloy", token);
-			if(response <> Nil & response->GetFirst() <> Nil & response->GetSecond() <> Nil) {
-				text := response->GetFirst();
-				text_size := text->Size();
-				"text: size={$text_size}, text='{$text}'"->PrintLine();	
-				
-				audio := response->GetSecond();
-				audio_bytes := audio->Get();
-				audio_bytes_size := audio_bytes->Size();
-				"audio: size={$audio_bytes_size}"->PrintLine();
-				
-				file := "test.dat";
-				FileWriter->WriteFile(file, audio_bytes);
+    // ----- Read input PCM file into memory -----
+    std::ifstream pcm_file(input_pcm, std::ios::binary);
+    if (!pcm_file) {
+      std::cerr << "Failed to open input file\n";
+      return 1;
+    }
 
-				"---\nplaying audio..."->PrintLine();
-				Mixer->PlayPcm(audio_bytes, 22050, AudioFormat->SDL_AUDIO_S16LSB, 1);
-			};
-		}
-		else {
-			">>> Missing parameter <<<"->ErrorLine();
-		}
-	}
+    // get size
+    pcm_file.seekg(0, std::ios::end);
+    std::streamsize pcm_size = pcm_file.tellg();
+    pcm_file.seekg(0, std::ios::beg);
+
+    std::vector<short> pcm_data(pcm_size / sizeof(short));
+    pcm_file.read(reinterpret_cast<char*>(pcm_data.data()), pcm_size);
+    pcm_file.close();
+
+    // ----- Initialize LAME encoder -----
+    lame_t lame_context = lame_init();
+    lame_set_in_samplerate(lame_context, sample_rate);
+    lame_set_num_channels(lame_context, num_channels);
+    lame_set_VBR(lame_context, vbr_default);  // variable bitrate, good quality
+    if (lame_init_params(lame_context) < 0) {
+      std::cerr << "lame_init_params failed\n";
+      lame_close(lame_context);
+      return 1;
+    }
+
+    // ----- Prepare output buffer -----
+    std::ofstream mp3_file(output_mp3, std::ios::binary);
+    if (!mp3_file) {
+      std::cerr << "Failed to open output MP3 file\n";
+      lame_close(lame_context);
+      return 1;
+    }
+
+    const size_t pcm_samples_per_chunk = 1152 * 2; // LAME prefers multiples of 1152
+    const size_t mp3_buffer_size = (size_t)(1.25 * pcm_samples_per_chunk + 7200); // recommended
+    std::vector<unsigned char> mp3_buffer(mp3_buffer_size);
+
+    // ----- Encode PCM samples in chunks -----
+    size_t total_samples = pcm_data.size() / num_channels;
+    size_t processed = 0;
+    while (processed < total_samples) {
+      size_t chunk = std::min(pcm_samples_per_chunk, total_samples - processed);
+
+      int encoded_bytes = 0;
+      if (num_channels == 2) {
+        // stereo: interleaved samples
+        encoded_bytes = lame_encode_buffer_interleaved(
+          lame_context,
+          &pcm_data[processed * num_channels],
+          (int)chunk,
+          mp3_buffer.data(),
+          (int)mp3_buffer.size()
+        );
+      } else {
+        // mono
+        encoded_bytes = lame_encode_buffer(
+          lame_context,
+          &pcm_data[processed], // left channel
+          nullptr,               // no right channel
+          (int)chunk,
+          mp3_buffer.data(),
+          (int)mp3_buffer.size()
+        );
+      }
+
+      if (encoded_bytes < 0) {
+        std::cerr << "LAME encoding error: " << encoded_bytes << "\n";
+        break;
+      }
+
+      if (encoded_bytes > 0) {
+        mp3_file.write(reinterpret_cast<char*>(mp3_buffer.data()), encoded_bytes);
+      }
+
+      processed += chunk;
+    }
+
+    // ----- Flush and close -----
+    int flush_bytes = lame_encode_flush(lame_context, mp3_buffer.data(), (int)mp3_buffer.size());
+    if (flush_bytes > 0) {
+      mp3_file.write(reinterpret_cast<char*>(mp3_buffer.data()), flush_bytes);
+    }
+
+    mp3_file.close();
+    lame_close(lame_context);
+
+    std::cout << "Encoding complete: " << output_mp3 << "\n";
+    return 0;
+  }
 }
