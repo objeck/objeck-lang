@@ -3643,7 +3643,7 @@ extern "C" {
     // copy output
     size_t* output_byte_array = APITools_MakeByteArray(context, audio_buffer.size());
     unsigned char* output_byte_array_buffer = reinterpret_cast<unsigned char*>(output_byte_array + 3);
-    std::memcpy(output_byte_array_buffer, audio_buffer.data(), audio_buffer.size() * sizeof(Uint8));
+    memcpy(output_byte_array_buffer, audio_buffer.data(), audio_buffer.size() * sizeof(Uint8));
     output_holder[0] = (size_t)output_byte_array;
   }
 
@@ -3708,7 +3708,7 @@ extern "C" {
     // copy output
     size_t* output_byte_array = APITools_MakeByteArray(context, audio_buffer.size());
     unsigned char* output_byte_array_buffer = reinterpret_cast<unsigned char*>(output_byte_array + 3);
-    std::memcpy(output_byte_array_buffer, audio_buffer.data(), audio_buffer.size() * sizeof(Uint8));
+    memcpy(output_byte_array_buffer, audio_buffer.data(), audio_buffer.size() * sizeof(Uint8));
     output_holder[0] = (size_t)output_byte_array;
   }
 
