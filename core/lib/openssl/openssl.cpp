@@ -428,7 +428,7 @@ extern "C" {
     const int total_size = output_size + final_size;
     size_t* output_byte_array = APITools_MakeByteArray(context, total_size);
     unsigned char* output_byte_array_buffer = reinterpret_cast<unsigned char*>(output_byte_array + 3);
-    std::memcpy(output_byte_array_buffer, output, total_size * sizeof(unsigned char));
+    memcpy(output_byte_array_buffer, output, total_size * sizeof(unsigned char));
     output_holder[0] = (size_t)output_byte_array;
     
     /*
@@ -505,7 +505,7 @@ extern "C" {
     size_t* output_byte_array = APITools_MakeByteArray(context, total_size);
 
     unsigned char* output_byte_array_buffer = reinterpret_cast<unsigned char*>(output_byte_array + 3);
-    std::memcpy(output_byte_array_buffer, output, total_size * sizeof(unsigned char));
+    memcpy(output_byte_array_buffer, output, total_size * sizeof(unsigned char));
     output_holder[0] = (size_t)output_byte_array;
     
     /*
