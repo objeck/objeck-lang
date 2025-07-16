@@ -1,6 +1,8 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <algorithm>
+
 #include <lame/lame.h> 
 
 #include "../../vm/lib_api.h"
@@ -48,7 +50,7 @@ extern "C" {
     }
 
     std::vector<short> pcm_data(static_cast<size_t>(input_size) / sizeof(short));
-    std::memcpy(pcm_data.data(), input, static_cast<size_t>(input_size));
+    memcpy(pcm_data.data(), input, static_cast<size_t>(input_size));
 
     lame_t lame_context = lame_init();
     lame_set_in_samplerate(lame_context, sample_rate);
@@ -76,7 +78,7 @@ extern "C" {
 
     size_t processed = 0;
     while(processed < total_samples) {
-      const size_t chunk = min(pcm_samples_per_chunk, total_samples - processed);
+      const size_t chunk = std::min(pcm_samples_per_chunk, total_samples - processed);
 
       int encoded_bytes = 0;
       if(num_channels == 2) {
