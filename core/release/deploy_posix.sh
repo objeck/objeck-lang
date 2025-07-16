@@ -68,6 +68,10 @@ cd ../openssl
 ./build_linux.sh openssl
 cp openssl.so ../../release/deploy/lib/native/libobjk_openssl.so
 
+cd ../lame
+./build_linux.sh lame
+cp lame.so ../../release/deploy/lib/native/libobjk_lame.so
+
 cd ../matrix
 ./build_linux.sh matrix
 cp matrix.so ../../release/deploy/lib/native/libobjk_ml.so
