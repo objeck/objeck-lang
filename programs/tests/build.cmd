@@ -1,4 +1,4 @@
-@echo off
+rem @echo off
 setlocal
 
 if not [%1]==[x64] if not [%1]==[arm64] (
@@ -22,13 +22,17 @@ set OBJK_BASE=\Users\objec\Documents\Code\objeck-lang
 set PATH=%PATH%;%OBJK_BASE%\core\release\%TARGET%\bin
 set OBJECK_LIB_PATH=%OBJK_BASE%\core\release\%TARGET%\lib
 
-obc -src %OBJK_BASE%\core\compiler\lib_src\gen_collect.obs -lib lang -tar lib -opt s3 -dest %OBJK_BASE%\core\release\%TARGET%\lib\gen_collect.obl -strict
+obc -src %OBJK_BASE%\core\compiler\lib_src\lame.obs -tar lib -opt s3 -dest %OBJK_BASE%\core\release\%TARGET%\lib\lame.obl
+rem obc -src %OBJK_BASE%\core\compiler\lib_src\gen_collect.obs -lib lang -tar lib -opt s3 -dest %OBJK_BASE%\core\release\%TARGET%\lib\gen_collect.obl -strict
 rem obc -src %OBJK_BASE%\core\compiler\lib_src\cipher.obs -tar lib -dest %OBJK_BASE%\core\release\%TARGET%\lib\cipher.obl
 rem obc -src %OBJK_BASE%\core\compiler\lib_src\net.obs,%OBJK_BASE%\core\compiler\lib_src\net_common.obs,%OBJK_BASE%\core\compiler\lib_src\net_secure.obs -tar lib -lib json,cipher -dest %OBJK_BASE%\core\release\%TARGET%\lib\net.obl
 rem obc -src %OBJK_BASE%\core\compiler\lib_src\json_stream.obs -tar lib -dest %OBJK_BASE%\core\release\%TARGET%\lib\json_stream.obl
 
+copy /y %OBJK_BASE%\core\lib\lame\vs\ARM64\Debug\libobjk_lame.dll %OBJECK_LIB_PATH%\native
+copy /y %OBJK_BASE%\core\lib\lame\win\arm64\libmp3lame.dll %OBJK_BASE%\core\release\%TARGET%\bin
+
 if [%2] == [] goto end
-	obc -src %2 -lib json_stream
+	obc -src %2 -lib lame
 	obr %2 %3
 :end
 

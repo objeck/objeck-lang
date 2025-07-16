@@ -7686,20 +7686,7 @@ bundle Game.SDL2 {
 	        value := array_args[0]->As(IntRef);
 	        return Surface->New(value->Get());
 		}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+		
 		#~
 		Render the LATIN1 encoded text blended
 		@param text the LATIN1 null terminated string to render.
