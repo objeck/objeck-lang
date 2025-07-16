@@ -17,8 +17,9 @@ Another programming language
 ## Updates
 
 v2025.7.1
-  * OpenAI Realtime API support for the ``gpt-4o-realtime-preview-2025-06-03`` preview
-  * Add PCM16 recording and playback APIs via SDL2 mixer
+  * OpenAI Realtime API support for the ``gpt-4o-realtime-preview-2025-06-03`` preview (done)
+  * Adding PCM16 recording and playback APIs via SDL2 mixer (done)
+  * PCM16 to MP33 audio translation support
 
 <ins>v2025.7.0</ins>
   * Added ``Hash->Dict(..)``, ``Map->Dict(..)`` and ``Vector->Zip(..)`` to collections
