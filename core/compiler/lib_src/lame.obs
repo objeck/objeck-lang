@@ -1,0 +1,45 @@
+#~~
+# Objeck encryption routines 
+# Copyright (c) 2023 Randy Hollines
+~~#	
+
+use System.API;
+
+#~
+Auxiliary SDL support classes (-lib lame)
+~#
+bundle Game.SDL2.Aux {
+	class Proxy {
+		@lib_proxy : static : DllProxy;
+		
+		function : GetDllProxy() ~ DllProxy {
+			if(@lib_proxy = Nil) {
+				@lib_proxy := DllProxy->New("libobjk_lame");
+			};
+
+			return @lib_proxy;
+		}
+	}
+	
+	#~
+	Converts a PCM audio stream to MP3 audio stream 
+	~#
+	class Lame {
+		#~
+		Converts a PCM audio stream to MP3 audio stream 
+		~#
+		function : PcmToMp3(stream_in : Byte[]) ~ Byte[] {
+			if(stream_in <> Nil) {
+				array_args := Base->New[2];
+				array_args[0] := ByteArrayRef->New(Nil->As(Byte[]));
+				array_args[1] := ByteArrayRef->New(stream_in);				
+				Proxy->GetDllProxy()->CallFunction("lame_pcm_mp3", array_args);
+				
+				holder := array_args[0]->As(ByteArrayRef);
+				return holder->Get();
+			};
+			
+			return Nil;
+		}
+	}
+}
