@@ -1,0 +1,15 @@
+use Game.SDL2.Aux, System.IO.Filesystem;
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		# "../frameworks/openai/test.pcm16"
+		if(args->Size() = 1) {
+			file_out := "out.mp3";
+
+			bytes_in := FileReader->ReadBinaryFile(args[0]);
+			bytes_out := Lame->PcmToMp3(bytes_in);
+			FileWriter->WriteFile(file_out, bytes_out);
+			"Wrote: {$file_out}..."->PrintLine();
+		};
+	}
+}
