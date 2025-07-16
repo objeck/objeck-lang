@@ -70,6 +70,8 @@ if [%1] == [x64] (
 	copy "%VCToolsRedistDir%\x64\Microsoft.VC143.CRT\vcruntime140_1.dll" %TARGET%\bin
 )
 
+copy ..\lib\lame\win\%1\*.dll %TARGET%\bin
+
 REM native launcher
 if [%1] == [arm64] (
 	cd ..\utils\launcher
@@ -106,6 +108,35 @@ if [%1] == [x64] (
 	copy Release\win64\*.dll ..\..\release\%TARGET%\lib\native
 )
 cd ..\..\release
+
+
+
+
+
+
+
+
+REM lame support
+cd ..\lib\lame
+
+if [%1] == [arm64] (
+	devenv vs\lame.sln /rebuild "Release|ARM64"
+	copy vs\ARM64\Release\libobjk_lame.dll ..\..\release\%TARGET%\lib\native
+)
+
+if [%1] == [x64] (
+	devenv vs\lame.sln /rebuild "Release|x64"
+	copy vs\x64\Release\libobjk_lame.dll ..\..\release\%TARGET%\lib\native
+)
+cd ..\..\..\release
+
+
+
+
+
+
+
+
 
 REM app
 cd ..\utils\WindowsApp
