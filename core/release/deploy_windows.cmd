@@ -109,13 +109,6 @@ if [%1] == [x64] (
 )
 cd ..\..\release
 
-
-
-
-
-
-
-
 REM lame support
 cd ..\lib\lame
 
@@ -128,15 +121,7 @@ if [%1] == [x64] (
 	devenv vs\lame.sln /rebuild "Release|x64"
 	copy vs\x64\Release\libobjk_lame.dll ..\..\release\%TARGET%\lib\native
 )
-cd ..\..\..\release
-
-
-
-
-
-
-
-
+cd ..\..\release
 
 REM app
 cd ..\utils\WindowsApp
