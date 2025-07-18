@@ -10,51 +10,47 @@ class Test {
 		ListDevices();
 
 		if(args->Size() = 1) {
-			"Recording..."->PrintLine();
-			audio_bytes := Mixer->RecordPcm(rate, format, channels, 6);
-			audio_bytes_size := audio_bytes->Size();
-			"audio_input_size={$audio_bytes_size}"->PrintLine();
+			each(i : 6) {
+				"Recording..."->PrintLine();
+				audio_bytes := Mixer->RecordPcm(rate, format, channels, 6);
+				audio_bytes_size := audio_bytes->Size();
+				"audio_input_size={$audio_bytes_size}"->PrintLine();
 
-			FileWriter->WriteFile("input.pcm16", audio_bytes);
-			Mixer->PlayPcm(audio_bytes, rate, format, channels);
+				FileWriter->WriteFile("input.pcm16", audio_bytes);
+				Mixer->PlayPcm(audio_bytes, rate, format, channels);
+			
+
+				api_token_file := args[0];
+				token := FileReader->ReadFile(api_token_file);
+				if(token = Nil) {
+					">>> Unable to read API token file: '{$api_token_file}' <<<"->PrintLine();
+					return;
+				};
+
+				response := Realtime->Respond(audio_bytes, "gpt-4o-realtime-preview-2025-06-03", "alloy", token);
+				if(response <> Nil & response->GetFirst() <> Nil & response->GetSecond() <> Nil) {
+					text := response->GetFirst();
+					text_size := text->Size();
+					"text: size={$text_size}, text='{$text}'"->PrintLine();	
+					
+					audio := response->GetSecond();
+					audio_bytes := audio->Get();
+					audio_bytes_size := audio_bytes->Size();
+					"audio: size={$audio_bytes_size}"->PrintLine();
+					
+					file := "out.pcm16";
+					FileWriter->WriteFile(file, audio_bytes);
+
+					"---\nplaying audio..."->PrintLine();
+					Mixer->PlayPcm(audio_bytes, rate, format, channels);
+				};
+
+				"Waiting out rate limiting"->PrintLine();
+				System.Concurrency.Thread->Sleep(3000);
+			};
+
+			Mixer->Close();
 		}
-		else if(args->Size() = 2) {
-			audio_bytes := FileReader->ReadBinaryFile(args[1]);
-			audio_bytes_size := audio_bytes->Size();
-			"audio: size={$audio_bytes_size}"->PrintLine();
-			Mixer->PlayPcm(audio_bytes, rate, format, channels);
-		}		
-		else {
-			">>> Missing parameters: license_file [input_file.pcm16] <<<"->ErrorLine();
-			return;
-		};
-
-		api_token_file := args[0];
-		token := FileReader->ReadFile(api_token_file);
-		if(token = Nil) {
-			">>> Unable to read API token file: '{$api_token_file}' <<<"->PrintLine();
-			return;
-		};
-
-		response := Realtime->Respond(audio_bytes, "gpt-4o-realtime-preview-2025-06-03", "alloy", token);
-		if(response <> Nil & response->GetFirst() <> Nil & response->GetSecond() <> Nil) {
-			text := response->GetFirst();
-			text_size := text->Size();
-			"text: size={$text_size}, text='{$text}'"->PrintLine();	
-			
-			audio := response->GetSecond();
-			audio_bytes := audio->Get();
-			audio_bytes_size := audio_bytes->Size();
-			"audio: size={$audio_bytes_size}"->PrintLine();
-			
-			file := "out.pcm16";
-			FileWriter->WriteFile(file, audio_bytes);
-
-			"---\nplaying audio..."->PrintLine();
-			Mixer->PlayPcm(audio_bytes, rate, format, channels);
-		};
-
-		Mixer->Close();
 	}
 
 	function : ListDevices() ~ Nil {
