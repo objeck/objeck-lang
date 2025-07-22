@@ -18,5 +18,5 @@ Building with Visual Studio 2022
   - CPU_DISPATH = FP16
   - NEON_INTRINSICS = checked
   - PNG_ARM_NEON = off
-7). Compile the build target (modules -> opencv_world) and build 
-8). Go to the build directory and check copy files from ``bin``, ``include``, and ``include`` (from the root source directory)
+7) Compile the build target (modules -> opencv_world) and build 
+8) Go to the build directory and check copy files from ``bin``, ``include``, and ``include`` (from the root source directory)
