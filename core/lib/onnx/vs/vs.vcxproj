@@ -78,7 +78,7 @@
     <TargetName>libobjk_onnx</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);$(LibraryPath);..\win\opencv\x64\lib</LibraryPath>
+    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);$(LibraryPath);..\win\opencv\x64\lib;..\win\opencv\x64\lib;..\win\onnx\x64\lib</LibraryPath>
     <IncludePath>$(VC_IncludePath);..\win\onnx\include;..\win\opencv\include;..\..\openssl\win\include;..\..\zlib\win</IncludePath>
     <ReferencePath>$(VC_ReferencesPath_x64</ReferencePath>
     <TargetName>libobjk_onnx</TargetName>
@@ -137,7 +137,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>$(CoreLibraryDependencies);%(AdditionalDependencies);opencv_world4120.lib</AdditionalDependencies>
+      <AdditionalDependencies>$(CoreLibraryDependencies);%(AdditionalDependencies);opencv_world4120.lib;onnxruntime.lib;onnxruntime_providers.lib</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
