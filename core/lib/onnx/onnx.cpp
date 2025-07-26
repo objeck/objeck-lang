@@ -73,17 +73,21 @@ extern "C" {
    void onnx_run(VMContext& context) {
       Ort::Env env(OrtLoggingLevel::ORT_LOGGING_LEVEL_WARNING, "ONNXRuntime_QNN_Example");
 
+      const auto images_path = "C:/Users/objec/Documents/Temp/onnx/data/test2017/";
+      const auto model_path = L"c:/users/objec/documents/temp/onnx/resnet34-v2-7.onnx";
+
       // Set up QNN options
       std::unordered_map<std::string, std::string> qnn_options;
+		qnn_options["backend_type"] = "htp";
 
       // Create session options with QNN execution provider
       Ort::SessionOptions session_options;
-      session_options.AppendExecutionProvider("DML", qnn_options);
+      session_options.AppendExecutionProvider("QNN", qnn_options);
       session_options.SetExecutionMode(ExecutionMode::ORT_SEQUENTIAL);
       session_options.DisableMemPattern();
 
       // Load model
-      Ort::Session session(env, L"resnet34-v2-7.onnx", session_options);
+      Ort::Session session(env, model_path, session_options);
 
       // look for NPU device
       auto execution_providers = Ort::GetAvailableProviders();
@@ -92,7 +96,7 @@ extern "C" {
          std::cout << "Provider: id=" << i << ", name='" << provider_name << "'" << std::endl;
       }
 
-      std::string image_dir("../data/test2017/");
+      std::string image_dir(images_path);
 
       // Load labels from file
       std::vector<std::string> label_names = load_labels(image_dir + "labels.txt");
@@ -123,8 +127,8 @@ extern "C" {
       std::vector<std::string> selected_images(all_images.begin(), all_images.begin() + pickCount);
 
       // Open log file
-      std::ofstream log_file("results_dml.csv");
-      log_file << "inf_sample,inf_time_ms,inf_conf_pct,image_index,image_name,image_label\n";
+      // std::ofstream log_file("results_dml.csv");
+      // log_file << "inf_sample,inf_time_ms,inf_conf_pct,image_index,image_name,image_label\n";
 
       // Print them out
       for(size_t i = 0; i < selected_images.size(); ++i) {
@@ -229,12 +233,12 @@ extern "C" {
 
          // only print high confidence results
          if(top_confidence > 0.7f) {
-            log_file << i << ", " << duration << "," << top_confidence << "," << image_index
+            std::cout << i << ", " << duration << "," << top_confidence << "," << image_index
                << "," << selected_image << "," << label_names[image_index] << "\n";
          }
       }
 
-      log_file.close();
+      // log_file.close();
 
       std::cout << "Fin." << std::endl;
    }
