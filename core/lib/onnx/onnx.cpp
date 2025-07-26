@@ -4,7 +4,7 @@
 #include <filesystem>
 
 #include <opencv2/opencv.hpp>
-#include <onnxruntime_cxx_api.h>
+#include <onnxruntime/core/session/onnxruntime_cxx_api.h>
 
 #include "../../vm/lib_api.h"
 
