@@ -1,0 +1,9 @@
+use API.Onnx, System.IO.Filesystem;
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() = 1) {
+			
+		};
+	}
+}
