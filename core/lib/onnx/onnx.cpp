@@ -119,7 +119,7 @@ extern "C" {
       std::shuffle(all_images.begin(), all_images.end(), g);
 
       // Pick the first n images (or fewer if not enough)
-      int pickCount = std::min(sample_size, (int)all_images.size());
+      int pickCount = min(sample_size, (int)all_images.size());
       std::vector<std::string> selected_images(all_images.begin(), all_images.begin() + pickCount);
 
       // Open log file
@@ -133,7 +133,7 @@ extern "C" {
          cv::Mat img = cv::imread(selected_image);
          if(img.empty()) {
             std::cerr << "Failed to load image!" << std::endl;
-            return -1;
+            return;
          }
 
          // Start timing

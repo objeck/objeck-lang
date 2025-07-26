@@ -42,13 +42,13 @@
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
@@ -73,14 +73,16 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <LibraryPath>$(LibraryPath);..\win\x64\lib</LibraryPath>
-    <IncludePath>$(VC_IncludePath);..\..\openssl\win\include</IncludePath>
+    <LibraryPath>$(LibraryPath);..\win\opencv\x64\lib</LibraryPath>
+    <IncludePath>$(VC_IncludePath);..\..\openssl\win\include;..\win\opencv\include;..\..\openssl\win\include;..\..\zlib\win</IncludePath>
     <ReferencePath>$(VC_ReferencesPath_x64</ReferencePath>
+    <TargetName>libobjk_onnx</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);$(LibraryPath);..\win\x64\lib;..\..\openssl\win\include;..\..\zlib\win</LibraryPath>
-    <IncludePath>$(VC_IncludePath);..\..\openssl\win\include</IncludePath>
+    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);$(LibraryPath);..\win\opencv\x64\lib</LibraryPath>
+    <IncludePath>$(VC_IncludePath);..\..\openssl\win\include;..\win\opencv\include;..\..\openssl\win\include;..\..\zlib\win</IncludePath>
     <ReferencePath>$(VC_ReferencesPath_x64</ReferencePath>
+    <TargetName>libobjk_onnx</TargetName>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
