@@ -74,12 +74,12 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LibraryPath>$(LibraryPath);..\win\x64\lib</LibraryPath>
-    <IncludePath>$(VC_IncludePath);..\win\include</IncludePath>
+    <IncludePath>$(VC_IncludePath);..\..\openssl\win\include</IncludePath>
     <ReferencePath>$(VC_ReferencesPath_x64</ReferencePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);$(LibraryPath);..\win\x64\lib</LibraryPath>
-    <IncludePath>$(VC_IncludePath);..\win\include</IncludePath>
+    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);$(LibraryPath);..\win\x64\lib;..\..\openssl\win\include;..\..\zlib\win</LibraryPath>
+    <IncludePath>$(VC_IncludePath);..\..\openssl\win\include</IncludePath>
     <ReferencePath>$(VC_ReferencesPath_x64</ReferencePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
