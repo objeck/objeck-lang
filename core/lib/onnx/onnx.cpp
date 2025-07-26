@@ -1,253 +1,217 @@
-#include <onnxruntime_cxx_api.h>
-#include <dml_provider_factory.h>
-
-#include <opencv2/opencv.hpp>
-
-#include <vector>
-#include <string>
+#include <iostream>
 #include <fstream>
-#include <iomanip>
-#include <sstream>
 #include <random>
 #include <filesystem>
+
+#include <opencv2/opencv.hpp>
+#include <onnxruntime_cxx_api.h>
 
 #ifdef _WIN32
 namespace fs = std::filesystem;
 #endif
 
+cv::Mat preprocess(const cv::Mat& img);
 std::vector<std::string> load_labels(const std::string name);
 
-int main(int argc, char* argv[]) {
-	// Initialize environment
-	Ort::Env env(ORT_LOGGING_LEVEL_WARNING, "Image Identifiction");
+int main() {
+   Ort::Env env(OrtLoggingLevel::ORT_LOGGING_LEVEL_WARNING, "ONNXRuntime_QNN_Example");
 
-	// Initialize session options
-	Ort::SessionOptions session_options;
-	session_options.SetExecutionMode(ExecutionMode::ORT_SEQUENTIAL);
-	session_options.DisableMemPattern();
+   // Set up QNN options
+   std::unordered_map<std::string, std::string> qnn_options;
 
-	// Get the OrtDmlApi
-	OrtApi const& ortApi = Ort::GetApi();
-	OrtDmlApi const* ortDmlApi = nullptr;
-	ortApi.GetExecutionProviderApi("DML", ORT_API_VERSION, reinterpret_cast<void const**>(&ortDmlApi));
-	
-	// enable hardware acceleration
-	OrtStatus* status = nullptr;
-	status = ortDmlApi->SessionOptionsAppendExecutionProvider_DML(session_options, 0);
+   // Create session options with QNN execution provider
+   Ort::SessionOptions session_options;
+   session_options.AppendExecutionProvider("DML", qnn_options);
+   session_options.SetExecutionMode(ExecutionMode::ORT_SEQUENTIAL);
+   session_options.DisableMemPattern();
 
-	if(status != nullptr) {
-		// handle error
-		Ort::GetApi().ReleaseStatus(status);
-		std::cerr << "No inference results..." << std::endl;
-		return 1;
-	}
+   // Load model
+   Ort::Session session(env, L"resnet34-v2-7.onnx", session_options);
 
-	// Create session
-	Ort::Session session(env, L"resnet34-v2-7.onnx", session_options);
+   // look for NPU device
+   auto execution_providers = Ort::GetAvailableProviders();
+   for(size_t i = 0; i < execution_providers.size(); ++i) {
+      auto provider_name = execution_providers[i];
+      std::cout << "Provider: id=" << i << ", name='" << provider_name << "'" << std::endl;
+   }
 
-	// look for NPU device
-	auto execution_providers = Ort::GetAvailableProviders();
-	for(size_t i = 0; i < execution_providers.size(); ++i) {
-		auto provider_name = execution_providers[i];
-		std::cout << "Provider: id=" << i << ", name='" << provider_name << "'" << std::endl;
-	}
+   std::string image_dir("../data/test2017/");
 
-	// Get input info
-	Ort::AllocatorWithDefaultOptions allocator;
-	size_t num_input_nodes = session.GetInputCount();
-	std::vector<const char*> input_node_names;
-	std::vector<int64_t> input_node_dims;
+   // Load labels from file
+   std::vector<std::string> label_names = load_labels(image_dir + "labels.txt");
 
-	for(size_t i = 0; i < num_input_nodes; ++i) {
-		Ort::AllocatedStringPtr input_name = session.GetInputNameAllocated(i, allocator);
-		input_node_names.push_back(input_name.get());
+   // image directory
+   int sample_size = 100; // how many random images to pick
 
-		// get input type info
-		Ort::TypeInfo type_info = session.GetInputTypeInfo(i);
-		auto tensor_info = type_info.GetTensorTypeAndShapeInfo();
+   std::vector<std::string> all_images;
 
-		// get input shapes
-		input_node_dims = tensor_info.GetShape();
-	}
+   // Gather all .jpg files in the directory
+   for(const auto& entry : fs::directory_iterator(image_dir)) {
+      if(entry.is_regular_file()) {
+         std::string path = entry.path().string();
+         // check extension case-insensitively
+         if(entry.path().extension() == ".jpg" || entry.path().extension() == ".jpg") {
+            all_images.push_back(path);
+         }
+      }
+   }
 
-	// image directory
-	std::string imageDir("data/test2017/");
-	int sample_size = 5000; // how many random images to pick
+   // Shuffle the vector randomly
+   std::random_device rd;
+   std::mt19937 g(rd());
+   std::shuffle(all_images.begin(), all_images.end(), g);
 
-	std::vector<std::string> all_images;
+   // Pick the first n images (or fewer if not enough)
+   int pickCount = std::min(sample_size, (int)all_images.size());
+   std::vector<std::string> selected_images(all_images.begin(), all_images.begin() + pickCount);
 
-	// Gather all .jpg files in the directory
-	for(const auto& entry : fs::directory_iterator(imageDir)) {
-		if(entry.is_regular_file()) {
-			std::string path = entry.path().string();
-			// check extension case-insensitively
-			if(entry.path().extension() == ".jpg" || entry.path().extension() == ".jpg") {
-				all_images.push_back(path);
-			}
-		}
-	}
+   // Open log file
+   std::ofstream log_file("results_dml.csv");
+   log_file << "inf_sample,inf_time_ms,inf_conf_pct,image_index,image_name,image_label\n";
 
-	// Shuffle the vector randomly
-	std::random_device rd;
-	std::mt19937 g(rd());
-	std::shuffle(all_images.begin(), all_images.end(), g);
+   // Print them out
+   for(size_t i = 0; i < selected_images.size(); ++i) {
+      // Load image with OpenCV
+      const auto selected_image = selected_images[i];
+      cv::Mat img = cv::imread(selected_image);
+      if(img.empty()) {
+         std::cerr << "Failed to load image!" << std::endl;
+         return -1;
+      }
 
-	// Pick the first n images (or fewer if not enough)
-	int pickCount = std::min(sample_size, (int)all_images.size());
-	std::vector<std::string> selected_images(all_images.begin(), all_images.begin() + pickCount);
+      // Start timing
+      auto start = std::chrono::high_resolution_clock::now();
 
-	// Open log file
-	std::ofstream log_file("results_dml.csv");
+      // Preprocess image
+      cv::Mat input = preprocess(img);
 
-	log_file << "inf_sample,inf_time_ms,inf_conf_pct,image_index,image_name,image_label\n";
+      // Convert HWC -> CHW
+      std::vector<float> input_tensor_values;
+      input_tensor_values.reserve(3 * 224 * 224);
+      for(int c = 0; c < 3; c++) {
+         for(int y = 0; y < 224; y++) {
+            for(int x = 0; x < 224; x++) {
+               input_tensor_values.push_back(input.at<cv::Vec3f>(y, x)[c]);
+            }
+         }
+      }
 
-	// Print them out
-	std::vector<std::string> label_names = load_labels(imageDir + "labels.txt");
-	for(size_t i = 0; i < selected_images.size(); ++i) {
-		// get read in image
-		auto selected_image = selected_images[i];
-		cv::Mat image = cv::imread(selected_image); // BGR format
+      // Create input tensor
+      std::array<int64_t, 4> input_shape = { 1, 3, 224, 224 };
+      Ort::MemoryInfo mem_info = Ort::MemoryInfo::CreateCpu(
+         OrtDeviceAllocator, OrtMemTypeCPU);
 
-		// Start timing
-		auto start = std::chrono::high_resolution_clock::now();
+      Ort::Value input_tensor = Ort::Value::CreateTensor<float>(
+         mem_info, input_tensor_values.data(), input_tensor_values.size(),
+         input_shape.data(), input_shape.size());
 
-		// Resize to 224x224
-		cv::Mat resized;
-		cv::resize(image, resized, cv::Size(224, 224));
+      // Get input/output names
+      Ort::AllocatorWithDefaultOptions allocator;
+      const char* input_name = session.GetInputNameAllocated(0, allocator).get();
+      const char* output_name = session.GetOutputNameAllocated(0, allocator).get();
 
-		// Convert to float and normalize to 0–1
-		cv::Mat image_float;
-		resized.convertTo(image_float, CV_32F, 1.0f / 255.0f);
+      // Run inference
+      std::vector<const char*> input_names = { input_name };
+      std::vector<const char*> output_names = { output_name };
+      auto output_tensors = session.Run(
+         Ort::RunOptions { nullptr }, input_names.data(), &input_tensor, 1,
+         output_names.data(), 1);
 
-		// Split channels and reorder to NCHW
-		std::vector<cv::Mat> channels(3);
-		cv::split(image_float, channels); // BGR order
-		// If model expects RGB, swap channels[0] and channels[2]
-		std::swap(channels[0], channels[2]);
+      // Calculate duration in milliseconds
+      auto end = std::chrono::high_resolution_clock::now();
+      auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
-		// Flatten into a single vector in CHW order
-		std::vector<float> input_tensor_values;
-		for(int c = 0; c < 3; c++) {
-			input_tensor_values.insert(input_tensor_values.end(),
-				(float*)channels[c].datastart,
-				(float*)channels[c].dataend);
-		}
+      // Process output (classification scores)
+      float* raw_output = output_tensors.front().GetTensorMutableData<float>();
+      float* output_data = output_tensors.front().GetTensorMutableData<float>();
+      Ort::Value& output_tensor = output_tensors.front();
 
-		// Define the shape (NCHW)
-		std::vector<int64_t> input_shape = { 1, 3, 224, 224 };
+      // Get shape info
+      Ort::TensorTypeAndShapeInfo shape_info = output_tensor.GetTensorTypeAndShapeInfo();
 
-		// Create input tensor once and reuse
-		Ort::MemoryInfo memory_info = Ort::MemoryInfo::CreateCpu(
-			OrtAllocatorType::OrtArenaAllocator, OrtMemTypeDefault);
+      // Number of elements
+      size_t output_len = shape_info.GetElementCount();
 
-		Ort::AllocatedStringPtr input_name_ptr = session.GetInputNameAllocated(0, allocator);
-		Ort::AllocatedStringPtr output_name_ptr = session.GetOutputNameAllocated(0, allocator);
+      /*
+      for (size_t j = 0; j < output_len; ++j) {
+         std::cout << "Run: " << j << " output: " << output_data[j] << std::endl;
+      }
+      */
 
-		const char* input_names[] = { input_name_ptr.get() };
-		const char* output_names[] = { output_name_ptr.get() };
+      std::vector<float> probs(output_len);
+      float max_logit = output_data[0];
 
-		Ort::Value input_tensor = Ort::Value::CreateTensor<float>(
-			memory_info,
-			input_tensor_values.data(),
-			input_tensor_values.size(),
-			input_shape.data(),
-			input_shape.size()
-		);
+      // find max for numerical stability
+      for(size_t j = 1; j < output_len; j++) {
+         if(output_data[j] > max_logit) {
+            max_logit = output_data[j];
+         }
+      }
 
-		// inference query
-		auto outputs = session.Run(
-			Ort::RunOptions { nullptr },
-			input_names,
-			&input_tensor,
-			1,
-			output_names,
-			1
-		);
+      // compute exp(logit - max_logit)
+      float sum_exp = 0.0f;
+      for(size_t j = 0; j < output_len; j++) {
+         probs[j] = std::exp(output_data[j] - max_logit);
+         sum_exp += probs[j];
+      }
 
-		if(outputs.empty()) {
-			std::cerr << "No inference results..." << std::endl;
-			Ort::GetApi().ReleaseStatus(status);
-			return 1;
-		}
+      // normalize
+      for(size_t j = 0; j < output_len; j++) {
+         probs[j] /= sum_exp;
+      }
 
-		// Calculate duration in milliseconds
-		auto end = std::chrono::high_resolution_clock::now();
-		auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+      size_t image_index = 0;
+      float top_confidence = probs[0];
 
-		float* output_data = outputs.front().GetTensorMutableData<float>();
-		Ort::Value& output_tensor = outputs.front();
+      for(size_t j = 1; j < output_len; j++) {
+         if(probs[j] > top_confidence) {
+            top_confidence = probs[j];
+            image_index = j;
+         }
+      }
 
-		// Get shape info
-		Ort::TensorTypeAndShapeInfo shape_info = output_tensor.GetTensorTypeAndShapeInfo();
+      // only print high confidence results
+      if(top_confidence > 0.7f) {
+         log_file << i << ", " << duration << "," << top_confidence << "," << image_index
+            << "," << selected_image << "," << label_names[image_index] << "\n";
+      }
+   }
 
-		// Number of elements
-		size_t output_len = shape_info.GetElementCount();
+   log_file.close();
 
-		/*
-		for (size_t j = 0; j < output_len; ++j) {
-			 std::cout << "Run: " << j << " output: " << output_data[j] << std::endl;
-		}
-		*/
-
-		std::vector<float> probs(output_len);
-		float max_logit = output_data[0];
-
-		// find max for numerical stability
-		for(size_t j = 1; j < output_len; j++) {
-			if(output_data[j] > max_logit) {
-				max_logit = output_data[j];
-			}
-		}
-
-		// compute exp(logit - max_logit)
-		float sum_exp = 0.0f;
-		for(size_t j = 0; j < output_len; j++) {
-			probs[j] = std::exp(output_data[j] - max_logit);
-			sum_exp += probs[j];
-		}
-
-		// normalize
-		for(size_t j = 0; j < output_len; j++) {
-			probs[j] /= sum_exp;
-		}
-
-		size_t image_index = 0;
-		float top_confidence = probs[0];
-
-		for(size_t j = 1; j < output_len; j++) {
-			if(probs[j] > top_confidence) {
-				top_confidence = probs[j];
-				image_index = j;
-			}
-		}
-
-		// only print high confidence results
-		if(top_confidence > 0.7f) {
-			log_file << i << "," << duration << "," << top_confidence << "," << image_index
-				<< "," << selected_image << "," << label_names[image_index] << "\n";
-		}
-	}
-
-	log_file.close();
-
-	std::cout << "Fin." << std::endl;
-
-	return 0;
+   std::cout << "Fin." << std::endl;
 }
 
-// Datasets: https://cocodataset.org/#download
+// Helper to preprocess input for ResNet
+cv::Mat preprocess(const cv::Mat& img) {
+   cv::Mat resized;
+   cv::resize(img, resized, cv::Size(224, 224)); // ResNet input size
+   resized.convertTo(resized, CV_32F, 1.0 / 255);
+
+   // Normalize (mean/std from ImageNet)
+   cv::Mat channels[3];
+   cv::split(resized, channels);
+   for(int i = 0; i < 3; ++i) {
+      channels[i] = (channels[i] - 0.485f) / 0.229f;
+   }
+   cv::merge(channels, 3, resized);
+
+   return resized;
+}
+
 // 2017 Train/Val/Test: http://images.cocodataset.org/zips/train2017.zip
 std::vector<std::string> load_labels(const std::string name) {
-	std::vector<std::string> labels;
+   std::vector<std::string> labels;
 
-	std::ifstream file_in(name);
+   std::ifstream file_in(name);
 
-	std::string label;
-	while(std::getline(file_in, label)) {
-		labels.push_back(label);
-	}
+   std::string label;
+   while(std::getline(file_in, label)) {
+      labels.push_back(label);
+   }
 
-	file_in.close();
+   file_in.close();
 
-	return labels;
+   return labels;
 }
+
