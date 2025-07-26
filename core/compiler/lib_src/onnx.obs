@@ -29,7 +29,7 @@ bundle API.Onnx {
 		TODO
 		~#
 		function : Run(model_name : String) ~ Nil {
-			if(stream_in <> Nil) {
+			if(model_name <> Nil) {
 				array_args := Base->New[2];
 				array_args[0] := Nil;
 				array_args[1] := model_name;
@@ -41,7 +41,7 @@ bundle API.Onnx {
 ~#				
 			};
 			
-			return Nil;
+#			return Nil;
 		}
 	}
 }
