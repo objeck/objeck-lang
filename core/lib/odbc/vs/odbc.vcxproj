@@ -111,7 +111,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>..\..\openssl\win\include;..\..\zlib\win;$(IncludePath)</IncludePath>
+    <IncludePath>$(IncludePath);..\..\openssl\win\include;..\..\zlib\win</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">
     <LinkIncremental>true</LinkIncremental>
@@ -125,7 +125,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>..\..\openssl\win\include;..\..\zlib\win;$(IncludePath)</IncludePath>
+    <IncludePath>$(IncludePath);..\..\openssl\win\include;..\..\zlib\win</IncludePath>
     <OutDir>..\$(Configuration)\win64\</OutDir>
     <TargetName>libobjk_odbc</TargetName>
     <IntDir>$(Configuration)\</IntDir>
