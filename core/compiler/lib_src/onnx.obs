@@ -1,0 +1,47 @@
+#~~
+# Objeck encryption routines 
+# Copyright (c) 2025 Randy Hollines
+~~#	
+
+use System.API;
+
+#~
+TODO (-lib onnx)
+~#
+bundle API.Onnx {
+	class Proxy {
+		@lib_proxy : static : DllProxy;
+		
+		function : GetDllProxy() ~ DllProxy {
+			if(@lib_proxy = Nil) {
+				@lib_proxy := DllProxy->New("libobjk_onnx");
+			};
+
+			return @lib_proxy;
+		}
+	}
+	
+	#~
+	TODO
+	~#
+	class OnnxRuntime {
+		#~
+		TODO
+		~#
+		function : Run(model_name : String) ~ Nil {
+			if(stream_in <> Nil) {
+				array_args := Base->New[2];
+				array_args[0] := Nil;
+				array_args[1] := model_name;
+				Proxy->GetDllProxy()->CallFunction("onnx_run", array_args);
+				
+#~				
+				holder := array_args[0]->As(ByteArrayRef);
+				return holder->Get();
+~#				
+			};
+			
+			return Nil;
+		}
+	}
+}
