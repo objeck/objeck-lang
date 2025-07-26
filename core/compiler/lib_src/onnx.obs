@@ -1,5 +1,5 @@
 #~~
-# Objeck encryption routines 
+# TODO
 # Copyright (c) 2025 Randy Hollines
 ~~#	
 
@@ -28,7 +28,7 @@ bundle API.Onnx {
 		#~
 		TODO
 		~#
-		function : Run(image_bytes : Byte[], image_height : Int, image_width, model : String) ~ Byte[] {
+		function : ProcessImage(image_bytes : Byte[], image_height : Int, image_width, model : String) ~ Byte[] {
 			if(model_name <> Nil) {
 #~
 				array_args := Base->New[2];
@@ -42,6 +42,13 @@ bundle API.Onnx {
 ~#				
 			};
 			
+			return Nil;
+		}
+
+		#~
+		TODO
+		~#
+		function : ProcessImages(images_bytes : Byte[,], image_height : Int, image_width, model : String) ~ Byte[,] {
 			return Nil;
 		}
 	}
