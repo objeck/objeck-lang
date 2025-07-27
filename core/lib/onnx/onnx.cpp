@@ -70,7 +70,7 @@ extern "C" {
 #ifdef _WIN32
    __declspec(dllexport)
 #endif
-   void onnx_run(VMContext& context) {
+   void onnx_process_image(VMContext& context) {
       Ort::Env env(OrtLoggingLevel::ORT_LOGGING_LEVEL_WARNING, "ONNXRuntime_QNN_Example");
 
       const auto images_path = "C:/Users/objec/Documents/Temp/onnx/data/test2017/";
