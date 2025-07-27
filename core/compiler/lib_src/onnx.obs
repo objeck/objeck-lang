@@ -37,13 +37,9 @@ bundle API.Onnx {
 			array_args[4] := model;
 
 			Proxy->GetDllProxy()->CallFunction("onnx_process_image", array_args);
-				
-#~
-			holder := array_args[0]->As(ByteArrayRef);
+			
+			holder := array_args[0]->As(FloatArrayRef);
 			return holder->Get();
-~#
-
-			return Nil;
 		}
 
 		#~
