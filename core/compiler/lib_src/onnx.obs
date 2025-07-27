@@ -28,15 +28,17 @@ bundle API.Onnx {
 		#~
 		TODO
 		~#
-		function : ProcessImage(image_bytes : Byte[], image_height : Int, image_width, model : String) ~ Byte[] {
+		function : ProcessImage(image : Byte[], resize_height : Int, resize_width, model : String) ~ Byte[] {
 			if(model_name <> Nil) {
+				array_args := Base->New[4];
+				array_args[0] := FloatArrayRef->();
+				array_args[1] := IntRef(resize_height);
+				array_args[2] := IntRef(resize_width);
+				array_args[3] := model;
+
+				Proxy->GetDllProxy()->CallFunction("onnx_process_image", array_args);
+				
 #~
-				array_args := Base->New[2];
-				array_args[0] := Nil;
-				array_args[1] := model_name;
-				Proxy->GetDllProxy()->CallFunction("onnx_run", array_args);
-				
-				
 				holder := array_args[0]->As(ByteArrayRef);
 				return holder->Get();
 ~#				
@@ -48,7 +50,7 @@ bundle API.Onnx {
 		#~
 		TODO
 		~#
-		function : ProcessImages(images_bytes : Byte[,], image_height : Int, image_width, model : String) ~ Byte[,] {
+		function : ProcessImages(images : Byte[,], resize_height : Int, resize_width, model : String) ~ Byte[,] {
 			return Nil;
 		}
 	}
