@@ -29,6 +29,7 @@ cv::Mat preprocess(const cv::Mat& img) {
    return resized;
 }
 
+/*
 // 2017 Train/Val/Test: http://images.cocodataset.org/zips/train2017.zip
 std::vector<std::string> load_labels(const std::string name) {
    std::vector<std::string> labels;
@@ -44,6 +45,7 @@ std::vector<std::string> load_labels(const std::string name) {
 
    return labels;
 }
+*/
 
 extern "C" {
    //
@@ -71,7 +73,7 @@ extern "C" {
    __declspec(dllexport)
 #endif
    void onnx_process_image(VMContext& context) {
-      // get parameters
+      // Get parameters
       size_t* output_holder = APITools_GetArray(context, 0);
 
       size_t* input_array = (size_t*)APITools_GetArray(context, 1)[0];
@@ -83,7 +85,7 @@ extern "C" {
 
       const std::wstring model_path = APITools_GetStringValue(context, 4);
 
-      // check parameters
+      // Validate parameters
       if(!input_bytes || resize_height < 1 || resize_width < 1 || model_path.empty()) {
          output_holder[0] = 0;
          return;
@@ -106,7 +108,7 @@ extern "C" {
       session_options.SetExecutionMode(ExecutionMode::ORT_SEQUENTIAL);
       session_options.DisableMemPattern();
 
-      // Load model
+		// Create ONNX session
       Ort::Session session(env, model_path.c_str(), session_options);
 
       /*
@@ -136,9 +138,9 @@ extern "C" {
       // Convert HWC -> CHW
       std::vector<float> input_tensor_values;
       input_tensor_values.reserve(3 * 224 * 224);
-      for(int c = 0; c < 3; c++) {
-         for(int y = 0; y < 224; y++) {
-            for(int x = 0; x < 224; x++) {
+      for(int c = 0; c < 3; ++c) {
+         for(int y = 0; y < 224; ++y) {
+            for(int x = 0; x < 224; ++x) {
                input_tensor_values.push_back(input.at<cv::Vec3f>(y, x)[c]);
             }
          }
@@ -186,10 +188,10 @@ extern "C" {
       // Number of elements
       const size_t output_len = shape_info.GetElementCount();
 
-      // copy output
+      // Copy results
       size_t* output_double_array = APITools_MakeFloatArray(context, output_len);
       double* output_double_array_buffer = reinterpret_cast<double*>(output_double_array + 3);
-      for(size_t i = 0; i < output_len; i++) {
+      for(size_t i = 0; i < output_len; ++i) {
          output_double_array_buffer[i] = output_data[i];
       }
       output_holder[0] = (size_t)output_double_array;
@@ -201,7 +203,7 @@ extern "C" {
       float max_logit = output_data[0];
 
       // find max for numerical stability
-      for(size_t j = 1; j < output_len; j++) {
+      for(size_t j = 1; j < output_len; ++j) {
          if(output_data[j] > max_logit) {
             max_logit = output_data[j];
          }
@@ -210,7 +212,7 @@ extern "C" {
       
       // compute exp(logit - max_logit)
       float sum_exp = 0.0f;
-      for(size_t j = 0; j < output_len; j++) {
+      for(size_t j = 0; j < output_len; ++j) {
          probs[j] = std::exp(output_data[j] - max_logit);
          sum_exp += probs[j];
       }
@@ -218,7 +220,7 @@ extern "C" {
 
       
       // normalize
-      for(size_t j = 0; j < output_len; j++) {
+      for(size_t j = 0; j < output_len; ++j) {
          probs[j] /= sum_exp;
       }
 
@@ -226,7 +228,7 @@ extern "C" {
       size_t image_index = 0;
       float top_confidence = probs[0];
 
-      for(size_t j = 1; j < output_len; j++) {
+      for(size_t j = 1; j < output_len; ++j) {
          if(probs[j] > top_confidence) {
             top_confidence = probs[j];
             image_index = j;
@@ -242,7 +244,6 @@ extern "C" {
             << ", size=" << input_size << "," << label_names[image_index] << "\n";
       }
       */
-      
    }
 }
 
