@@ -30,8 +30,12 @@ rem obc -src %OBJK_BASE%\core\compiler\lib_src\net.obs,%OBJK_BASE%\core\compiler
 rem obc -src %OBJK_BASE%\core\compiler\lib_src\json_stream.obs -tar lib -dest %OBJK_BASE%\core\release\%TARGET%\lib\json_stream.obl
 
 copy /y %OBJK_BASE%\core\lib\onnx\x64\Debug\libobjk_onnx.dll %OBJECK_LIB_PATH%\native
+
 copy /y %OBJK_BASE%\core\lib\onnx\win\onnx\x64\bin\*.dll ..\..\core\vm\x64\Debug
+copy /y %OBJK_BASE%\core\lib\onnx\win\onnx\x64\bin\*.dll %OBJK_BASE%\core\release\%TARGET%\bin
+
 copy /y %OBJK_BASE%\core\lib\onnx\win\opencv\x64\bin\*.dll ..\..\core\vm\x64\Debug
+copy /y %OBJK_BASE%\core\lib\onnx\win\opencv\x64\bin\*.dll %OBJK_BASE%\core\release\%TARGET%\bin
 
 if [%2] == [] goto end
 	obc -src %2 -lib onnx
