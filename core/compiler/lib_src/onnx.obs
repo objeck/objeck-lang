@@ -28,29 +28,28 @@ bundle API.Onnx {
 		#~
 		TODO
 		~#
-		function : ProcessImage(image : Byte[], resize_height : Int, resize_width, model : String) ~ Byte[] {
-			if(model_name <> Nil) {
-				array_args := Base->New[4];
-				array_args[0] := FloatArrayRef->();
-				array_args[1] := IntRef(resize_height);
-				array_args[2] := IntRef(resize_width);
-				array_args[3] := model;
+		function : ProcessImage(image : Byte[], resize_height : Int, resize_width : Int, model : String) ~ Float[] {
+			array_args := Base->New[5];
+			array_args[0] := FloatArrayRef->New();
+			array_args[1] := ByteArrayRef->New(image);
+			array_args[2] := IntRef->New(resize_height);
+			array_args[3] := IntRef->New(resize_width);
+			array_args[4] := model;
 
-				Proxy->GetDllProxy()->CallFunction("onnx_process_image", array_args);
+			Proxy->GetDllProxy()->CallFunction("onnx_process_image", array_args);
 				
 #~
-				holder := array_args[0]->As(ByteArrayRef);
-				return holder->Get();
-~#				
-			};
-			
+			holder := array_args[0]->As(ByteArrayRef);
+			return holder->Get();
+~#
+
 			return Nil;
 		}
 
 		#~
 		TODO
 		~#
-		function : ProcessImages(images : Byte[,], resize_height : Int, resize_width, model : String) ~ Byte[,] {
+		function : ProcessImage(images : Byte[,], resize_height : Int, resize_width : Int, model : String) ~ Float[,] {
 			return Nil;
 		}
 	}
