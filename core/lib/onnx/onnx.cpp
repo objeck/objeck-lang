@@ -36,7 +36,7 @@ extern "C" {
 #ifdef _WIN32
    __declspec(dllexport)
 #endif
-      void load_lib(VMContext& context) {
+   void load_lib(VMContext& context) {
    }
 
    //
@@ -45,7 +45,7 @@ extern "C" {
 #ifdef _WIN32
    __declspec(dllexport)
 #endif
-      void unload_lib() {
+   void unload_lib() {
    }
 
    //
