@@ -192,7 +192,7 @@ extern "C" {
       size_t* output_double_array = APITools_MakeFloatArray(context, output_len);
       double* output_double_array_buffer = reinterpret_cast<double*>(output_double_array + 3);
       for(size_t i = 0; i < output_len; ++i) {
-         output_double_array_buffer[i] = output_data[i];
+         output_double_array_buffer[i] = static_cast<double>(output_data[i]);
       }
       output_holder[0] = (size_t)output_double_array;
 
