@@ -170,7 +170,7 @@ extern "C" {
       Ort::TensorTypeAndShapeInfo shape_info = output_tensor.GetTensorTypeAndShapeInfo();
 
       // Number of elements
-      size_t output_len = shape_info.GetElementCount();
+      const size_t output_len = shape_info.GetElementCount();
 
       /*
       for (size_t j = 0; j < output_len; ++j) {
@@ -215,8 +215,17 @@ extern "C" {
          std::cout << duration << "," << top_confidence << "," << image_index
             << ", size=" << input_size << "," << label_names[image_index] << "\n";
       }
+      
+      // copy output
+      size_t* output_double_array = APITools_MakeFloatArray(context, output_len);
+      double* output_double_array_buffer = reinterpret_cast<double*>(output_double_array + 3);
+      
+      // memcpy(output_double_array_buffer, output, SHA256_DIGEST_LENGTH * sizeof(unsigned char));
+      for(size_t j = 1; j < output_len; j++) {
+         output_double_array_buffer[j] = output_data[j];
+      }
 
-      // log_file.close();
+      output_holder[0] = (size_t)output_double_array;
 
       std::cout << "Fin." << std::endl;
    }

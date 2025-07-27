@@ -12,7 +12,21 @@ class Test {
 			image_bytes := FileReader->ReadBinaryFile(image_path);
 			image_size := image_bytes->Size();
 			"image_size={$image_size}"->PrintLine();
-			OnnxRuntime->ProcessImage(image_bytes, 224, 224, model_path);
+
+			result_vector := OnnxRuntime->ProcessImage(image_bytes, 224, 224, model_path);
+			result_size := result_vector->Size();
+			"result_size={$result_size}"->PrintLine();
+
+			image_index := 0;
+			top_confidence := result_vector[0];
+
+			for(j := 1; j < result_size; j++) {
+			   if(result_vector[j] > top_confidence) {
+			      top_confidence := result_vector[j];
+			      image_index := j;
+			   };
+			};
+			image_index->PrintLine();
 		};
 	}
 }
