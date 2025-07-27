@@ -3,7 +3,16 @@ use API.Onnx, System.IO.Filesystem;
 class Test {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
-			OnnxRuntime->Run("abc");
+			image_path := args[0] + "/data/tarantula.jpg";
+			model_path := args[0] + "/resnet34-v2-7.onnx";
+
+			image_path->PrintLine();
+			model_path->PrintLine();
+
+			image_bytes := FileReader->ReadBinaryFile(image_path);
+			image_size := image_bytes->Size();
+			"image_size={$image_size}"->PrintLine();
+			OnnxRuntime->ProcessImage(image_bytes, 224, 224, model_path);
 		};
 	}
 }
