@@ -89,8 +89,12 @@ extern "C" {
          return;
       }
 
+      
       Ort::Env env(OrtLoggingLevel::ORT_LOGGING_LEVEL_WARNING, "ONNXRuntime_QNN_Example");
+      
+      /*
       auto label_names = load_labels("C:/Users/objec/Documents/Temp/onnx/data/test2017/labels.txt");
+      */
       
       // Set up QNN options
       std::unordered_map<std::string, std::string> qnn_options;
@@ -105,12 +109,14 @@ extern "C" {
       // Load model
       Ort::Session session(env, model_path.c_str(), session_options);
 
+      /*
       // look for NPU device
       auto execution_providers = Ort::GetAvailableProviders();
       for(size_t i = 0; i < execution_providers.size(); ++i) {
          auto provider_name = execution_providers[i];
          std::cout << "Provider: id=" << i << ", name='" << provider_name << "'" << std::endl;
       }
+      */
       
       std::vector<uchar> image_data(input_bytes, input_bytes + input_size);
       cv::Mat img = cv::imdecode(image_data, cv::IMREAD_COLOR);
@@ -119,8 +125,10 @@ extern "C" {
          return;
       }
 
+      /*
       // Start timing
       auto start = std::chrono::high_resolution_clock::now();
+      */
 
       // Preprocess image
       cv::Mat input = preprocess(img);
@@ -138,12 +146,13 @@ extern "C" {
 
       // Create input tensor
       std::array<int64_t, 4> input_shape = { 1, 3, 224, 224 };
-      Ort::MemoryInfo mem_info = Ort::MemoryInfo::CreateCpu(
-         OrtDeviceAllocator, OrtMemTypeCPU);
-
+      Ort::MemoryInfo mem_info = Ort::MemoryInfo::CreateCpu(OrtDeviceAllocator, OrtMemTypeCPU);
       Ort::Value input_tensor = Ort::Value::CreateTensor<float>(
-         mem_info, input_tensor_values.data(), input_tensor_values.size(),
-         input_shape.data(), input_shape.size());
+         mem_info, 
+         input_tensor_values.data(), 
+         input_tensor_values.size(),
+         input_shape.data(), 
+         input_shape.size());
 
       // Get input/output names
       Ort::AllocatorWithDefaultOptions allocator;
@@ -154,16 +163,21 @@ extern "C" {
       std::vector<const char*> input_names = { input_name };
       std::vector<const char*> output_names = { output_name };
       auto output_tensors = session.Run(
-         Ort::RunOptions { nullptr }, input_names.data(), &input_tensor, 1,
-         output_names.data(), 1);
+         Ort::RunOptions { nullptr }, 
+         input_names.data(), 
+         &input_tensor, 
+         1,
+         output_names.data(), 
+         1);
 
+      /*
       // Calculate duration in milliseconds
       auto end = std::chrono::high_resolution_clock::now();
       auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+      */
 
       // Process output (classification scores)
-      float* raw_output = output_tensors.front().GetTensorMutableData<float>();
-      float* output_data = output_tensors.front().GetTensorMutableData<float>();
+      const float* output_data = output_tensors.front().GetTensorMutableData<float>();
       Ort::Value& output_tensor = output_tensors.front();
 
       // Get shape info
@@ -172,12 +186,17 @@ extern "C" {
       // Number of elements
       const size_t output_len = shape_info.GetElementCount();
 
-      /*
-      for (size_t j = 0; j < output_len; ++j) {
-         std::cout << "Run: " << j << " output: " << output_data[j] << std::endl;
+      // copy output
+      size_t* output_double_array = APITools_MakeFloatArray(context, output_len);
+      double* output_double_array_buffer = reinterpret_cast<double*>(output_double_array + 3);
+      for(size_t i = 0; i < output_len; i++) {
+         output_double_array_buffer[i] = output_data[i];
       }
-      */
+      output_holder[0] = (size_t)output_double_array;
 
+      /*
+      std::cout << "Fin.\n---\n";
+                  
       std::vector<float> probs(output_len);
       float max_logit = output_data[0];
 
@@ -187,19 +206,23 @@ extern "C" {
             max_logit = output_data[j];
          }
       }
-
+      std::cout << "=> max_logit=" << max_logit << '\n';
+      
       // compute exp(logit - max_logit)
       float sum_exp = 0.0f;
       for(size_t j = 0; j < output_len; j++) {
          probs[j] = std::exp(output_data[j] - max_logit);
          sum_exp += probs[j];
       }
+      std::cout << "=> sum_exp=" << sum_exp << '\n';
 
+      
       // normalize
       for(size_t j = 0; j < output_len; j++) {
          probs[j] /= sum_exp;
       }
 
+      
       size_t image_index = 0;
       float top_confidence = probs[0];
 
@@ -210,24 +233,16 @@ extern "C" {
          }
       }
 
+      std::cout << "=> top_confidence=" << top_confidence << '\n';
+      std::cout << "=> image_index=" << image_index << '\n';
+
       // only print high confidence results
       if(top_confidence > 0.7f) {
          std::cout << duration << "," << top_confidence << "," << image_index
             << ", size=" << input_size << "," << label_names[image_index] << "\n";
       }
+      */
       
-      // copy output
-      size_t* output_double_array = APITools_MakeFloatArray(context, output_len);
-      double* output_double_array_buffer = reinterpret_cast<double*>(output_double_array + 3);
-      
-      // memcpy(output_double_array_buffer, output, SHA256_DIGEST_LENGTH * sizeof(unsigned char));
-      for(size_t j = 1; j < output_len; j++) {
-         output_double_array_buffer[j] = output_data[j];
-      }
-
-      output_holder[0] = (size_t)output_double_array;
-
-      std::cout << "Fin." << std::endl;
    }
 }
 
