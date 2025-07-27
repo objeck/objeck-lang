@@ -13,9 +13,9 @@ namespace fs = std::filesystem;
 #endif
 
 // Preprocess image for ResNet input
-cv::Mat preprocess(const cv::Mat& img) {
+cv::Mat preprocess(const cv::Mat& img, int resize_height, int resize_width) {
    cv::Mat resized;
-   cv::resize(img, resized, cv::Size(224, 224)); // ResNet input size
+   cv::resize(img, resized, cv::Size(resize_width, resize_height)); // ResNet input size
    resized.convertTo(resized, CV_32F, 1.0 / 255);
 
    // Normalize (mean/std from ImageNet)
@@ -100,21 +100,21 @@ extern "C" {
       */
 
       // Preprocess image
-      cv::Mat input = preprocess(img);
+      cv::Mat input = preprocess(img, resize_height, resize_width);
 
       // Convert HWC -> CHW
       std::vector<float> input_tensor_values;
-      input_tensor_values.reserve(3 * 224 * 224);
+      input_tensor_values.reserve(3 * resize_height * resize_width);
       for(int c = 0; c < 3; ++c) {
-         for(int y = 0; y < 224; ++y) {
-            for(int x = 0; x < 224; ++x) {
+         for(int y = 0; y < resize_height; ++y) {
+            for(int x = 0; x < resize_width; ++x) {
                input_tensor_values.push_back(input.at<cv::Vec3f>(y, x)[c]);
             }
          }
       }
 
       // Create input tensor
-      std::array<int64_t, 4> input_shape = { 1, 3, 224, 224 };
+      std::array<int64_t, 4> input_shape = { 1, 3, resize_height, resize_width };
       Ort::MemoryInfo mem_info = Ort::MemoryInfo::CreateCpu(OrtDeviceAllocator, OrtMemTypeCPU);
       Ort::Value input_tensor = Ort::Value::CreateTensor<float>(
          mem_info, 
