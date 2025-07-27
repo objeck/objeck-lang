@@ -12,8 +12,8 @@ class Test {
 			image_labels := LoadLabels(label_path);
 			image_labels_size := image_labels->Size();
 
-			each(i : 20) {
-				j := Int->Random(0, 4);
+			each(i : 25) {
+				j := Int->Random(0, 6);
 
 				select(j) {
 					label 0: {
@@ -34,6 +34,14 @@ class Test {
 
 					label 4: {
 						image_path += "wine.jpg";
+					}
+
+					label 5: {
+						image_path += "pier.jpg";
+					}
+
+					label 6: {
+						image_path += "prison.jpg";
 					}
 				}
 
@@ -80,7 +88,7 @@ class Test {
 				};
 
 				data_label := image_labels->Get(image_index);
-				"result_conf={$top_confidence}, image_index={$image_index}, data_label={$data_label}"->PrintLine();
+				"result_conf={$top_confidence}, image_index={$image_index}, data_label={$data_label}\n---\n"->PrintLine();
 
 				image_path := root_dir + "/data/";
 			};
