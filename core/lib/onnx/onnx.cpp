@@ -4,7 +4,7 @@
 #include <filesystem>
 
 #include <opencv2/opencv.hpp>
-#include <onnxruntime/core/session/onnxruntime_cxx_api.h>
+#include <onnxruntime_cxx_api.h>
 
 #include "../../vm/lib_api.h"
 
@@ -12,7 +12,7 @@
 namespace fs = std::filesystem;
 #endif
 
-// Helper to preprocess input for ResNet
+// Preprocess image for ResNet input
 cv::Mat preprocess(const cv::Mat& img) {
    cv::Mat resized;
    cv::resize(img, resized, cv::Size(224, 224)); // ResNet input size
@@ -28,24 +28,6 @@ cv::Mat preprocess(const cv::Mat& img) {
 
    return resized;
 }
-
-/*
-// 2017 Train/Val/Test: http://images.cocodataset.org/zips/train2017.zip
-std::vector<std::string> load_labels(const std::string name) {
-   std::vector<std::string> labels;
-
-   std::ifstream file_in(name);
-
-   std::string label;
-   while(std::getline(file_in, label)) {
-      labels.push_back(label);
-   }
-
-   file_in.close();
-
-   return labels;
-}
-*/
 
 extern "C" {
    //
@@ -67,7 +49,7 @@ extern "C" {
    }
 
    //
-   // covert PCM to MP3 audio
+   // Process image using ONNX model
    //
 #ifdef _WIN32
    __declspec(dllexport)
@@ -91,35 +73,20 @@ extern "C" {
          return;
       }
 
+      Ort::Env env(OrtLoggingLevel::ORT_LOGGING_LEVEL_WARNING);
       
-      Ort::Env env(OrtLoggingLevel::ORT_LOGGING_LEVEL_WARNING, "ONNXRuntime_QNN_Example");
-      
-      /*
-      auto label_names = load_labels("C:/Users/objec/Documents/Temp/onnx/data/test2017/labels.txt");
-      */
-      
-      // Set up QNN options
-      std::unordered_map<std::string, std::string> qnn_options;
-		qnn_options["backend_type"] = "htp";
+      // Set DML provider options
+      std::unordered_map<std::string, std::string> provider_options;
+		  provider_options["device_id"] = "0";
 
       // Create session options with QNN execution provider
       Ort::SessionOptions session_options;
-      session_options.AppendExecutionProvider("QNN", qnn_options);
-      session_options.SetExecutionMode(ExecutionMode::ORT_SEQUENTIAL);
-      session_options.DisableMemPattern();
+      session_options.AppendExecutionProvider("DmlExecutionProvider", provider_options);
+      session_options.SetExecutionMode(ExecutionMode::ORT_PARALLEL);
 
-		// Create ONNX session
+      // Create ONNX session
       Ort::Session session(env, model_path.c_str(), session_options);
 
-      /*
-      // look for NPU device
-      auto execution_providers = Ort::GetAvailableProviders();
-      for(size_t i = 0; i < execution_providers.size(); ++i) {
-         auto provider_name = execution_providers[i];
-         std::cout << "Provider: id=" << i << ", name='" << provider_name << "'" << std::endl;
-      }
-      */
-      
       std::vector<uchar> image_data(input_bytes, input_bytes + input_size);
       cv::Mat img = cv::imdecode(image_data, cv::IMREAD_COLOR);
       if(img.empty()) {
@@ -195,55 +162,36 @@ extern "C" {
          output_double_array_buffer[i] = static_cast<double>(output_data[i]);
       }
       output_holder[0] = (size_t)output_double_array;
+   }
 
-      /*
-      std::cout << "Fin.\n---\n";
-                  
-      std::vector<float> probs(output_len);
-      float max_logit = output_data[0];
+   //
+   // List available ONNX execution providers
+   //
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+  void onnx_get_provider_names(VMContext& context) {
+     // Get output parameter
+     size_t* output_holder = APITools_GetArray(context, 0);
 
-      // find max for numerical stability
-      for(size_t j = 1; j < output_len; ++j) {
-         if(output_data[j] > max_logit) {
-            max_logit = output_data[j];
-         }
-      }
-      std::cout << "=> max_logit=" << max_logit << '\n';
-      
-      // compute exp(logit - max_logit)
-      float sum_exp = 0.0f;
-      for(size_t j = 0; j < output_len; ++j) {
-         probs[j] = std::exp(output_data[j] - max_logit);
-         sum_exp += probs[j];
-      }
-      std::cout << "=> sum_exp=" << sum_exp << '\n';
+     // Get execution provider names
+     std::vector<std::wstring> execution_provider_names;
 
-      
-      // normalize
-      for(size_t j = 0; j < output_len; ++j) {
-         probs[j] /= sum_exp;
-      }
+     auto execution_providers = Ort::GetAvailableProviders();
+     for(size_t i = 0; i < execution_providers.size(); ++i) {
+       auto execution_provider = execution_providers[i];
+       execution_provider_names.push_back(BytesToUnicode(execution_provider));
+     }
 
-      
-      size_t image_index = 0;
-      float top_confidence = probs[0];
+     // Copy results
+     size_t* output_string_array = APITools_MakeIntArray(context, execution_provider_names.size());
+     size_t* output_string_array_buffer = output_string_array + 3;
+     for(size_t i = 0; i < execution_provider_names.size(); ++i) {
+       output_string_array_buffer[i] = (size_t)APITools_CreateStringObject(context, execution_provider_names[i]);
+     }
 
-      for(size_t j = 1; j < output_len; ++j) {
-         if(probs[j] > top_confidence) {
-            top_confidence = probs[j];
-            image_index = j;
-         }
-      }
-
-      std::cout << "=> top_confidence=" << top_confidence << '\n';
-      std::cout << "=> image_index=" << image_index << '\n';
-
-      // only print high confidence results
-      if(top_confidence > 0.7f) {
-         std::cout << duration << "," << top_confidence << "," << image_index
-            << ", size=" << input_size << "," << label_names[image_index] << "\n";
-      }
-      */
+     // Set output holder
+     output_holder[0] = (size_t)output_string_array;
    }
 }
 
