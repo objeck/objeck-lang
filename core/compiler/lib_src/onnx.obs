@@ -45,8 +45,14 @@ bundle API.Onnx {
 		#~
 		TODO
 		~#
-		function : ProcessImage(images : Byte[,], resize_height : Int, resize_width : Int, model : String) ~ Float[,] {
-			return Nil;
+		function : GetProviderNames() ~ String[] {
+			array_args := Base->New[1];
+			array_args[0] := StringArrayRef->New();
+			
+			Proxy->GetDllProxy()->CallFunction("onnx_get_provider_names", array_args);
+			
+			holder := array_args[0]->As(StringArrayRef);
+			return holder->Get();
 		}
 	}
 }
