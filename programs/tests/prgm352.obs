@@ -3,57 +3,70 @@ use API.Onnx, System.IO.Filesystem, Collection;
 class Test {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
-			root_dir := args[0];
+			provider_names := OnnxRuntime->GetProviderNames();
+			each(provider_name in provider_names) {
+				provider_name->PrintLine();
+			};
 
-			image_path := root_dir + "/data/";
-			model_path := root_dir + "/resnet34-v2-7.onnx";
-			label_path := root_dir + "/data/test2017/labels.txt";
+			ProcessImages(args[0]);
+		};
+	}
 
-			image_labels := LoadLabels(label_path);
-			image_labels_size := image_labels->Size();
+	function : ProcessImages(root_dir : String) ~ Nil {
+		image_path := root_dir + "/images/";
+		model_path := root_dir + "/resnet34-v2-7.onnx";
+		label_path := root_dir + "/images/labels.txt";
 
-			each(i : 25) {
-				j := Int->Random(0, 6);
+		image_labels := LoadLabels(label_path);
 
-				select(j) {
-					label 0: {
-						image_path += "lion.jpg";
-					}
+		each(i : 50) {
+			j := Int->Random(0, 6);
 
-					label 1: {
-						image_path += "tarantula.jpg";
-					}
-
-					label 2: {
-						image_path += "grasshopper.jpg";
-					}
-
-					label 3: {
-						image_path += "ski.jpg";
-					}
-
-					label 4: {
-						image_path += "wine.jpg";
-					}
-
-					label 5: {
-						image_path += "pier.jpg";
-					}
-
-					label 6: {
-						image_path += "prison.jpg";
-					}
+			select(j) {
+				label 0: {
+					image_path += "lion.jpg";
 				}
 
-				"image_labels_size={$image_labels_size}"->PrintLine();
-				"image_path={$image_path}"->PrintLine();
-				"model_path={$model_path}"->PrintLine();
+				label 1: {
+					image_path += "tarantula.jpg";
+				}
 
-				image_bytes := FileReader->ReadBinaryFile(image_path);
-				image_size := image_bytes->Size();
-				"image_size={$image_size}"->PrintLine();
+				label 2: {
+					image_path += "grasshopper.jpg";
+				}
 
-				result_vector := OnnxRuntime->ProcessImage(image_bytes, 224, 224, model_path);
+				label 3: {
+					image_path += "ski.jpg";
+				}
+
+				label 4: {
+					image_path += "wine.jpg";
+				}
+
+				label 5: {
+					image_path += "pier.jpg";
+				}
+
+				label 6: {
+					image_path += "prison.jpg";
+				}
+			}
+
+#~
+			image_labels_size := image_labels->Size();
+
+			"image_labels_size={$image_labels_size}"->PrintLine();
+			"image_path={$image_path}"->PrintLine();
+			"model_path={$model_path}"->PrintLine();
+			"label_path={$label_path}"->PrintLine();
+~#
+
+			image_bytes := FileReader->ReadBinaryFile(image_path);
+			image_size := image_bytes->Size();
+			"image_size={$image_size}"->PrintLine();
+
+			result_vector := OnnxRuntime->ProcessImage(image_bytes, 224, 224, model_path);
+			if(result_vector <> Nil) {
 				result_size := result_vector->Size();
 
 				# find max for numerical stability
@@ -89,9 +102,9 @@ class Test {
 
 				data_label := image_labels->Get(image_index);
 				"result_conf={$top_confidence}, image_index={$image_index}, data_label={$data_label}\n---\n"->PrintLine();
-
-				image_path := root_dir + "/data/";
 			};
+
+			image_path := root_dir + "/images/";
 		};
 	}
 

@@ -31,8 +31,10 @@ rem obc -src %OBJK_BASE%\core\compiler\lib_src\json_stream.obs -tar lib -dest %O
 
 copy /y %OBJK_BASE%\core\lib\onnx\x64\Debug\libobjk_onnx.dll %OBJECK_LIB_PATH%\native
 
-copy /y %OBJK_BASE%\core\lib\onnx\win\onnx\x64\bin\*.dll ..\..\core\vm\x64\Debug
-copy /y %OBJK_BASE%\core\lib\onnx\win\onnx\x64\bin\*.dll %OBJK_BASE%\core\release\%TARGET%\bin
+
+
+copy /y %OBJK_BASE%\core\lib\onnx\packages\Microsoft.ML.OnnxRuntime.DirectML.1.22.1\runtimes\win-x64\native\*.dll ..\..\core\vm\x64\Debug
+copy /y %OBJK_BASE%\core\lib\onnx\packages\Microsoft.ML.OnnxRuntime.DirectML.1.22.1\runtimes\win-x64\native\*.dll %OBJK_BASE%\core\release\%TARGET%\bin
 
 copy /y %OBJK_BASE%\core\lib\onnx\win\opencv\x64\bin\*.dll ..\..\core\vm\x64\Debug
 copy /y %OBJK_BASE%\core\lib\onnx\win\opencv\x64\bin\*.dll %OBJK_BASE%\core\release\%TARGET%\bin
