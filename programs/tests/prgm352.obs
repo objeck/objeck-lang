@@ -89,10 +89,7 @@ class Test {
 
 			result_vector := OnnxRuntime->ProcessImage(image_bytes, 224, 224, model_path);
 			if(result_vector <> Nil) {
-"--- 0 ---"->ErrorLine();
-
 				result_size := result_vector->Size();
-"--- 1 ---"->ErrorLine();
 
 				# find max for numerical stability
 				max_logit := result_vector[0];
@@ -124,7 +121,6 @@ class Test {
 				      image_index := j;
 				   };
 				};
-"--- 2 ---"->ErrorLine();
 
 				data_label := image_labels->Get(image_index);
 				"result_conf={$top_confidence}, image_index={$image_index}, data_label={$data_label}\n---\n"->PrintLine();

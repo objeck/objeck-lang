@@ -78,8 +78,7 @@ extern "C" {
       // Set up QNN options
       std::unordered_map<std::string, std::string> qnn_options;
       qnn_options["backend_type"] = "htp";
-      // qnn_options["backend_path"] = "QnnHtp.dll";
-      
+            
       // Create session options with QNN execution provider
       Ort::SessionOptions session_options;
       session_options.AppendExecutionProvider("QNN", qnn_options);
