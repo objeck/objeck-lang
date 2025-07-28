@@ -9,7 +9,7 @@ use System.API;
 Provides encryption and encoding functionality (-lib cipher)
 ~#
 bundle Cipher {
-	class Proxy {
+	class : private: Proxy {
 		@lib_proxy : static : DllProxy;
 		
 		function : GetDllProxy() ~ DllProxy {

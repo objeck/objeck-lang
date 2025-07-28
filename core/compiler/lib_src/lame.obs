@@ -9,7 +9,7 @@ use System.API;
 Auxiliary SDL support classes (-lib lame)
 ~#
 bundle Game.SDL2.Aux {
-	class Proxy {
+	class : private: Proxy {
 		@lib_proxy : static : DllProxy;
 		
 		function : GetDllProxy() ~ DllProxy {
