@@ -15,7 +15,7 @@ class Foo {
 	}
 }
 
-class Proxy {
+class : private: Proxy {
 	@lib_proxy : static : System.API.DllProxy;
 
 	function : GetDllProxy() ~ System.API.DllProxy {

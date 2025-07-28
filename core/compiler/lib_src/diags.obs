@@ -5,7 +5,7 @@ use System.API;
 Support for basic code diagnostics (-lib diags)
 ~#
 bundle System.Diagnostics {
-	class Proxy {
+	class : private: Proxy {
 		@lib_proxy : static : DllProxy;
 
 		function : GetDllProxy() ~ DllProxy {

@@ -13,7 +13,7 @@ use Data.CSV;
 Machine learning and data science routines (-lib ml)
 ~#
 bundle System.ML {
-	class Proxy {
+	class : private: Proxy {
 		@lib_proxy : static : System.API.DllProxy;
 		
 		function : GetDllProxy() ~ System.API.DllProxy {

@@ -9,7 +9,7 @@ use System.API;
 TODO (-lib onnx)
 ~#
 bundle API.Onnx {
-	class Proxy {
+	class : private : Proxy {
 		@lib_proxy : static : DllProxy;
 		
 		function : GetDllProxy() ~ DllProxy {

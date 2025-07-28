@@ -4,7 +4,7 @@ use Collection;
 Support for web servers. Note, shared library implementations (.so, .dll) specified in the 'config.ini' file using the 'lib_name' parameter.
 ~#
 bundle Web.Server {
-	class Proxy {
+	class : private: Proxy {
 		@lib_proxy : static : System.API.DllProxy;
 		
 		function : GetDllProxy() ~ System.API.DllProxy {

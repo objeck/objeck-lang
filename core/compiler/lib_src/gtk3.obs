@@ -4,7 +4,7 @@ use System.API;
 Provides GUI support via GTK3 (-lib gtk3.obl)
 ~#
 bundle GTK3 {
-	class Proxy {
+	class : private: Proxy {
 		@lib_proxy : static : DllProxy;
 		
 		function : GetDllProxy() ~ DllProxy {

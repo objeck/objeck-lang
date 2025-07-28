@@ -21,7 +21,7 @@ bundle Gtk3 {
 		G_APPLICATION_REPLACE := 512
 	}
 
-	class Proxy {
+	class : private: Proxy {
 		@lib_proxy : static : DllProxy;
 		
 		function : GetDllProxy() ~ DllProxy {
