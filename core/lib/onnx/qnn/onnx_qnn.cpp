@@ -6,7 +6,7 @@
 #include <opencv2/opencv.hpp>
 #include <onnxruntime_cxx_api.h>
 
-#include "../../vm/lib_api.h"
+#include "../../../vm/lib_api.h"
 
 #ifdef _WIN32
 namespace fs = std::filesystem;
@@ -75,14 +75,13 @@ extern "C" {
 
       Ort::Env env(OrtLoggingLevel::ORT_LOGGING_LEVEL_WARNING);
       
-      // Set DML provider options
-      std::unordered_map<std::string, std::string> provider_options;
-		  provider_options["device_id"] = "0";
-
+      // Set up QNN options
+      std::unordered_map<std::string, std::string> qnn_options;
+      qnn_options["backend_type"] = "htp";
+      
       // Create session options with QNN execution provider
       Ort::SessionOptions session_options;
-      session_options.AppendExecutionProvider("DmlExecutionProvider", provider_options);
-      // session_options.SetExecutionMode(ExecutionMode::ORT_PARALLEL);
+      session_options.AppendExecutionProvider("QNN", qnn_options);
 
       // Create ONNX session
       Ort::Session session(env, model_path.c_str(), session_options);
