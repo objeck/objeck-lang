@@ -16,11 +16,13 @@ if [%1] == [arm64] (
 	set TARGET=deploy-arm64
 )
 
-rem del /q *.obe
+set TYPE=Debug
 
 set OBJK_BASE=\Users\objec\Documents\Code\objeck-lang
 set PATH=%PATH%;%OBJK_BASE%\core\release\%TARGET%\bin
 set OBJECK_LIB_PATH=%OBJK_BASE%\core\release\%TARGET%\lib
+
+rem del /q *.obe
 
 obc -src %OBJK_BASE%\core\compiler\lib_src\onnx.obs -tar lib -opt s3 -dest %OBJK_BASE%\core\release\%TARGET%\lib\onnx.obl
 rem obc -src %OBJK_BASE%\core\compiler\lib_src\lame.obs -tar lib -opt s3 -dest %OBJK_BASE%\core\release\%TARGET%\lib\lame.obl
@@ -29,16 +31,15 @@ rem obc -src %OBJK_BASE%\core\compiler\lib_src\cipher.obs -tar lib -dest %OBJK_B
 rem obc -src %OBJK_BASE%\core\compiler\lib_src\net.obs,%OBJK_BASE%\core\compiler\lib_src\net_common.obs,%OBJK_BASE%\core\compiler\lib_src\net_secure.obs -tar lib -lib json,cipher -dest %OBJK_BASE%\core\release\%TARGET%\lib\net.obl
 rem obc -src %OBJK_BASE%\core\compiler\lib_src\json_stream.obs -tar lib -dest %OBJK_BASE%\core\release\%TARGET%\lib\json_stream.obl
 
-copy /y %OBJK_BASE%\core\lib\onnx\dml\%1\Debug\libobjk_onnx.dll %OBJECK_LIB_PATH%\native
+copy /y %OBJK_BASE%\core\lib\onnx\dml\%1\%TYPE%\libobjk_onnx.dll %OBJECK_LIB_PATH%\native
 
-copy /y %OBJK_BASE%\core\lib\onnx\dml\packages\Microsoft.ML.OnnxRuntime.DirectML.1.22.1\runtimes\win-%1\native\*.dll ..\..\core\vm\%1\Debug
+copy /y %OBJK_BASE%\core\lib\onnx\dml\packages\Microsoft.ML.OnnxRuntime.DirectML.1.22.1\runtimes\win-%1\native\*.dll ..\..\core\vm\%1\%TYPE%
 copy /y %OBJK_BASE%\core\lib\onnx\dml\packages\Microsoft.ML.OnnxRuntime.DirectML.1.22.1\runtimes\win-%1\native\*.dll %OBJK_BASE%\core\release\%TARGET%\bin
 
-copy /y %OBJK_BASE%\core\lib\onnx\win\opencv\%1\bin\*.dll ..\..\core\vm\%1\Debug
+copy /y %OBJK_BASE%\core\lib\onnx\win\opencv\%1\bin\*.dll ..\..\core\vm\%1\%TYPE%
 copy /y %OBJK_BASE%\core\lib\onnx\win\opencv\%1\bin\*.dll %OBJK_BASE%\core\release\%TARGET%\bin
 
 if [%2] == [] goto end
 	obc -src %2 -lib onnx
 rem	obr %2 %3
 :end
-
