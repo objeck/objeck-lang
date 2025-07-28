@@ -1,4 +1,4 @@
-rem @echo off
+@echo off
 setlocal
 
 if not [%1]==[x64] if not [%1]==[arm64] (
