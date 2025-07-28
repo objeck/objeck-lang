@@ -177,7 +177,7 @@
       <AdditionalDependencies>$(CoreLibraryDependencies);%(AdditionalDependencies);opencv_world4120d.lib;onnxruntime.lib;onnxruntime_providers.lib</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>rem pushd C:\Users\objec\Documents\Code\objeck-lang\programs\tests &amp;&amp; build.cmd x64 prgm352 &amp;&amp; popd</Command>
+      <Command>pushd C:\Users\objec\Documents\Code\objeck-lang\programs\tests &amp;&amp; build_onnx.cmd arm64 qnn prgm352 &amp;&amp; popd</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
