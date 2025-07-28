@@ -116,7 +116,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">
     <IncludePath>$(VC_IncludePath);..\..\win\opencv\include;..\win\onnx\include\onnxruntime\core\session;..\..\..\openssl\win\include;..\..\..\zlib\win</IncludePath>
     <TargetName>libobjk_onnx</TargetName>
-    <LibraryPath>$(VC_LibraryPath_x64);..\..\win\opencv\arm64\lib;..\win\onnx\arm64\lib</LibraryPath>
+    <LibraryPath>$(LibraryPath);..\..\win\opencv\arm64\lib;..\win\onnx\arm64\lib</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
