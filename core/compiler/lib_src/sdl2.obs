@@ -9,7 +9,7 @@ use System.API;
 General SDL2 wrapper (-lib sdl2)
 ~#
 bundle Game.SDL2 {
-	class Proxy {
+	class : private: Proxy {
 		@lib_proxy : static : DllProxy;
 		
 		function : GetDllProxy() ~ DllProxy {
