@@ -31,15 +31,32 @@ rem obc -src %OBJK_BASE%\core\compiler\lib_src\cipher.obs -tar lib -dest %OBJK_B
 rem obc -src %OBJK_BASE%\core\compiler\lib_src\net.obs,%OBJK_BASE%\core\compiler\lib_src\net_common.obs,%OBJK_BASE%\core\compiler\lib_src\net_secure.obs -tar lib -lib json,cipher -dest %OBJK_BASE%\core\release\%TARGET%\lib\net.obl
 rem obc -src %OBJK_BASE%\core\compiler\lib_src\json_stream.obs -tar lib -dest %OBJK_BASE%\core\release\%TARGET%\lib\json_stream.obl
 
-copy /y %OBJK_BASE%\core\lib\onnx\dml\%1\%TYPE%\libobjk_onnx.dll %OBJECK_LIB_PATH%\native
-
-copy /y %OBJK_BASE%\core\lib\onnx\dml\packages\Microsoft.ML.OnnxRuntime.DirectML.1.22.1\runtimes\win-%1\native\*.dll ..\..\core\vm\%1\%TYPE%
-copy /y %OBJK_BASE%\core\lib\onnx\dml\packages\Microsoft.ML.OnnxRuntime.DirectML.1.22.1\runtimes\win-%1\native\*.dll %OBJK_BASE%\core\release\%TARGET%\bin
-
 copy /y %OBJK_BASE%\core\lib\onnx\win\opencv\%1\bin\*.dll ..\..\core\vm\%1\%TYPE%
 copy /y %OBJK_BASE%\core\lib\onnx\win\opencv\%1\bin\*.dll %OBJK_BASE%\core\release\%TARGET%\bin
 
-if [%2] == [] goto end
-	obc -src %2 -lib onnx
-rem	obr %2 %3
+if [%2] == [dml] (
+	del /q %OBJECK_LIB_PATH%\native\*.dll
+	copy /y %OBJK_BASE%\core\lib\onnx\dml\%1\%TYPE%\libobjk_onnx.dll %OBJECK_LIB_PATH%\native
+	
+	del /q ..\..\core\vm\%1\%TYPE%\*.dll
+	copy /y %OBJK_BASE%\core\lib\onnx\dml\packages\Microsoft.ML.OnnxRuntime.DirectML.1.22.1\runtimes\win-%1\native\*.dll ..\..\core\vm\%1\%TYPE%
+	
+	del /q %OBJK_BASE%\core\release\%TARGET%\bin\*.dll
+	copy /y %OBJK_BASE%\core\lib\onnx\dml\packages\Microsoft.ML.OnnxRuntime.DirectML.1.22.1\runtimes\win-%1\native\*.dll %OBJK_BASE%\core\release\%TARGET%\bin
+)
+
+if [%2] == [qnn] (
+	del /q %OBJECK_LIB_PATH%\native
+	copy /y %OBJK_BASE%\core\lib\onnx\qnn\%1\%TYPE%\libobjk_onnx.dll %OBJECK_LIB_PATH%\native
+
+	del /q ..\..\core\vm\%1\%TYPE%\*.dll
+	copy /y %OBJK_BASE%\core\lib\onnx\qnn\win\onnx\%1\bin\*.dll ..\..\core\vm\%1\%TYPE%
+
+	del /q %OBJK_BASE%\core\release\%TARGET%\bin\*.dll
+	copy /y %OBJK_BASE%\core\lib\onnx\qnn\win\onnx\%1\bin\*.dll %OBJK_BASE%\core\release\%TARGET%\bin
+)
+
+if [%3] == [] goto end
+	obc -src %3 -lib onnx
+	rem	obr %3 %4
 :end
