@@ -22,8 +22,6 @@ set OBJK_BASE=\Users\objec\Documents\Code\objeck-lang
 set PATH=%PATH%;%OBJK_BASE%\core\release\%TARGET%\bin
 set OBJECK_LIB_PATH=%OBJK_BASE%\core\release\%TARGET%\lib
 
-rem del /q *.obe
-
 obc -src %OBJK_BASE%\core\compiler\lib_src\onnx.obs -tar lib -opt s3 -dest %OBJK_BASE%\core\release\%TARGET%\lib\onnx.obl
 rem obc -src %OBJK_BASE%\core\compiler\lib_src\lame.obs -tar lib -opt s3 -dest %OBJK_BASE%\core\release\%TARGET%\lib\lame.obl
 rem obc -src %OBJK_BASE%\core\compiler\lib_src\gen_collect.obs -lib lang -tar lib -opt s3 -dest %OBJK_BASE%\core\release\%TARGET%\lib\gen_collect.obl -strict
@@ -37,10 +35,10 @@ copy /y %OBJK_BASE%\core\lib\onnx\win\opencv\%1\bin\*.dll %OBJK_BASE%\core\relea
 if [%2] == [dml] (
 	del /q %OBJECK_LIB_PATH%\native\*.dll
 	copy /y %OBJK_BASE%\core\lib\onnx\dml\%1\%TYPE%\libobjk_onnx.dll %OBJECK_LIB_PATH%\native
-	
+
 	del /q ..\..\core\vm\%1\%TYPE%\*.dll
 	copy /y %OBJK_BASE%\core\lib\onnx\dml\packages\Microsoft.ML.OnnxRuntime.DirectML.1.22.1\runtimes\win-%1\native\*.dll ..\..\core\vm\%1\%TYPE%
-	
+
 	del /q %OBJK_BASE%\core\release\%TARGET%\bin\*.dll
 	copy /y %OBJK_BASE%\core\lib\onnx\dml\packages\Microsoft.ML.OnnxRuntime.DirectML.1.22.1\runtimes\win-%1\native\*.dll %OBJK_BASE%\core\release\%TARGET%\bin
 )
@@ -57,6 +55,7 @@ if [%2] == [qnn] (
 )
 
 if [%3] == [] goto end
+	del /q *.obe
 	obc -src %3 -lib onnx
 	rem	obr %3 %4
 :end
