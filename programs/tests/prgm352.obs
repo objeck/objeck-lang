@@ -12,16 +12,15 @@ $(LocalDebuggerEnvironment)
 class Test {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
-			args[0]->PrintLine();
+			image_path := args[0];
+			"image_path={$image_path}"->PrintLine();
 
-"--- 0 ---"->PrintLine();
 			provider_names := OnnxRuntime->GetProviderNames();
 			each(provider_name in provider_names) {
 				provider_name->PrintLine();
 			};
-"--- 1 ---"->PrintLine();
 
-			ProcessImages(args[0]);
+			ProcessImages(image_path);
 		};
 	}
 
@@ -37,7 +36,6 @@ class Test {
 		label_path := image_path + "labels.txt";
 		label_path := label_path->ReplaceAll('\\', '/');
 
-		"image_path={$image_path}"->PrintLine();
 		"model_path={$model_path}"->PrintLine();
 		"label_path={$label_path}\n"->PrintLine();
 
