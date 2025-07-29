@@ -73,99 +73,106 @@ extern "C" {
          return;
       }
 
-      Ort::Env env(OrtLoggingLevel::ORT_LOGGING_LEVEL_WARNING);
-      
-      // Set DML provider options
-      std::unordered_map<std::string, std::string> provider_options;
-		  provider_options["device_id"] = "0";
+      try {
+         Ort::Env env(OrtLoggingLevel::ORT_LOGGING_LEVEL_WARNING);
 
-      // Create session options with QNN execution provider
-      Ort::SessionOptions session_options;
-      session_options.AppendExecutionProvider("DmlExecutionProvider", provider_options);
-      // session_options.SetExecutionMode(ExecutionMode::ORT_PARALLEL);
+         // Set DML provider options
+         std::unordered_map<std::string, std::string> provider_options;
+         provider_options["device_id"] = "0";
 
-      // Create ONNX session
-      Ort::Session session(env, model_path.c_str(), session_options);
+         // Create session options with QNN execution provider
+         Ort::SessionOptions session_options;
+         session_options.AppendExecutionProvider("DmlExecutionProvider", provider_options);
+         // session_options.SetExecutionMode(ExecutionMode::ORT_PARALLEL);
 
-      std::vector<uchar> image_data(input_bytes, input_bytes + input_size);
-      cv::Mat img = cv::imdecode(image_data, cv::IMREAD_COLOR);
-      if(img.empty()) {
-         std::cerr << "Failed to load image!" << std::endl;
-         return;
-      }
+         // Create ONNX session
+         Ort::Session session(env, model_path.c_str(), session_options);
 
-      /*
-      // Start timing
-      auto start = std::chrono::high_resolution_clock::now();
-      */
+         std::vector<uchar> image_data(input_bytes, input_bytes + input_size);
+         cv::Mat img = cv::imdecode(image_data, cv::IMREAD_COLOR);
+         if(img.empty()) {
+            std::wcerr << L"Failed to load  image!" << std::endl;
+            output_holder[0] = 0;
+            return;
+         }
 
-      // Preprocess image
-      cv::Mat input = preprocess(img, resize_height, resize_width);
+         /*
+         // Start timing
+         auto start = std::chrono::high_resolution_clock::now();
+         */
 
-      // Convert HWC -> CHW
-      std::vector<float> input_tensor_values;
-      input_tensor_values.reserve(3 * resize_height * resize_width);
-      for(int c = 0; c < 3; ++c) {
-         for(int y = 0; y < resize_height; ++y) {
-            for(int x = 0; x < resize_width; ++x) {
-               input_tensor_values.push_back(input.at<cv::Vec3f>(y, x)[c]);
+         // Preprocess image
+         cv::Mat input = preprocess(img, resize_height, resize_width);
+
+         // Convert HWC -> CHW
+         std::vector<float> input_tensor_values;
+         input_tensor_values.reserve(3 * resize_height * resize_width);
+         for(int c = 0; c < 3; ++c) {
+            for(int y = 0; y < resize_height; ++y) {
+               for(int x = 0; x < resize_width; ++x) {
+                  input_tensor_values.push_back(input.at<cv::Vec3f>(y, x)[c]);
+               }
             }
          }
+
+         // Create input tensor
+         std::array<int64_t, 4> input_shape = { 1, 3, resize_height, resize_width };
+         Ort::MemoryInfo mem_info = Ort::MemoryInfo::CreateCpu(OrtDeviceAllocator, OrtMemTypeCPU);
+         Ort::Value input_tensor = Ort::Value::CreateTensor<float>(
+            mem_info,
+            input_tensor_values.data(),
+            input_tensor_values.size(),
+            input_shape.data(),
+            input_shape.size());
+
+         // Get input/output names
+         Ort::AllocatorWithDefaultOptions allocator;
+
+         Ort::AllocatedStringPtr input_name_ptr = session.GetInputNameAllocated(0, allocator);
+         std::string input_name_str = input_name_ptr.get();
+         std::vector<const char*> input_names = { input_name_str.c_str() };
+
+         Ort::AllocatedStringPtr output_name_ptr = session.GetOutputNameAllocated(0, allocator);
+         std::string output_name_str = output_name_ptr.get();
+         std::vector<const char*> output_names = { output_name_str.c_str() };
+
+         // Run inference
+         auto output_tensors = session.Run(
+            Ort::RunOptions { nullptr },
+            input_names.data(),
+            &input_tensor,
+            1,
+            output_names.data(),
+            1);
+
+         /*
+         // Calculate duration in milliseconds
+         auto end = std::chrono::high_resolution_clock::now();
+         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+         */
+
+         // Process output (classification scores)
+         const float* output_data = output_tensors.front().GetTensorMutableData<float>();
+         Ort::Value& output_tensor = output_tensors.front();
+
+         // Get shape info
+         Ort::TensorTypeAndShapeInfo shape_info = output_tensor.GetTensorTypeAndShapeInfo();
+
+         // Number of elements
+         const size_t output_len = shape_info.GetElementCount();
+
+         // Copy results
+         size_t* output_double_array = APITools_MakeFloatArray(context, output_len);
+         double* output_double_array_buffer = reinterpret_cast<double*>(output_double_array + 3);
+         for(size_t i = 0; i < output_len; ++i) {
+            output_double_array_buffer[i] = static_cast<double>(output_data[i]);
+         }
+         output_holder[0] = (size_t)output_double_array;
       }
-
-      // Create input tensor
-      std::array<int64_t, 4> input_shape = { 1, 3, resize_height, resize_width };
-      Ort::MemoryInfo mem_info = Ort::MemoryInfo::CreateCpu(OrtDeviceAllocator, OrtMemTypeCPU);
-      Ort::Value input_tensor = Ort::Value::CreateTensor<float>(
-         mem_info, 
-         input_tensor_values.data(), 
-         input_tensor_values.size(),
-         input_shape.data(), 
-         input_shape.size());
-
-      // Get input/output names
-      Ort::AllocatorWithDefaultOptions allocator;
-
-      Ort::AllocatedStringPtr input_name_ptr = session.GetInputNameAllocated(0, allocator);
-      std::string input_name_str = input_name_ptr.get();
-      std::vector<const char*> input_names = { input_name_str.c_str() };
-
-      Ort::AllocatedStringPtr output_name_ptr = session.GetOutputNameAllocated(0, allocator);
-      std::string output_name_str = output_name_ptr.get();
-      std::vector<const char*> output_names = { output_name_str.c_str() };
-      
-      // Run inference
-      auto output_tensors = session.Run(
-         Ort::RunOptions { nullptr }, 
-         input_names.data(), 
-         &input_tensor, 
-         1,
-         output_names.data(), 
-         1);
-
-      /*
-      // Calculate duration in milliseconds
-      auto end = std::chrono::high_resolution_clock::now();
-      auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-      */
-
-      // Process output (classification scores)
-      const float* output_data = output_tensors.front().GetTensorMutableData<float>();
-      Ort::Value& output_tensor = output_tensors.front();
-
-      // Get shape info
-      Ort::TensorTypeAndShapeInfo shape_info = output_tensor.GetTensorTypeAndShapeInfo();
-
-      // Number of elements
-      const size_t output_len = shape_info.GetElementCount();
-
-      // Copy results
-      size_t* output_double_array = APITools_MakeFloatArray(context, output_len);
-      double* output_double_array_buffer = reinterpret_cast<double*>(output_double_array + 3);
-      for(size_t i = 0; i < output_len; ++i) {
-         output_double_array_buffer[i] = static_cast<double>(output_data[i]);
+      catch(const Ort::Exception& e) {
+         std::wcerr << L"ONNX Runtime Error: " << e.what() << std::endl;
+         output_holder[0] = 0;
       }
-      output_holder[0] = (size_t)output_double_array;
    }
 
    //

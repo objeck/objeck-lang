@@ -128,7 +128,7 @@ class Test {
 				"result_conf={$top_confidence}, image_index={$image_index}, data_label={$data_label}\n---\n"->PrintLine();
 			}
 			else {
-				">>> Error: No results <<<"->ErrorLine();
+				"--- Error: No results returned ---"->ErrorLine();
 				return;
 			};
 
