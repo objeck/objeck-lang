@@ -307,5 +307,3 @@ if [%2] NEQ [deploy] goto end
 		move "%USERPROFILE%\Documents\Objeck-Build\objeck-windows-x64_0.0.0.msi" "%USERPROFILE%\Documents\Objeck-Build\release-x64"
 	)
 :end
-
-echo ^TODO: ^>^>^> Add support for ONNX libraries (arm64/x64) ^<^<^<
