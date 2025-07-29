@@ -135,8 +135,6 @@ extern "C" {
       std::vector<const char*> output_names = { output_name_str.c_str() };
       
       // Run inference
-      std::vector<const char*> input_names = { input_name };
-      std::vector<const char*> output_names = { output_name };
       auto output_tensors = session.Run(
          Ort::RunOptions { nullptr }, 
          input_names.data(), 
