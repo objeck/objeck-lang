@@ -17,11 +17,11 @@ if [%1] == [x64] (
 
 set ZIP_BIN="\Program Files\7-Zip"
 
-if [%1] == [arm64] (
+if [%1] == [arm64] (o
 	set TARGET=deploy-arm64
 )
 
-set TYPE=Debug
+set TYPE=Release
 
 set OBJK_BASE=\Users\objec\Documents\Code\objeck-lang
 set PATH=%PATH%;%OBJK_BASE%\core\release\%TARGET%\bin
