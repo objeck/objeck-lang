@@ -176,26 +176,52 @@ if [%1] == [x64] (
 )
 cd ..\..\release
 
-REM TODO: migrate to arm64
+REM onnx support
+cd ..\lib\onnx	
+if [%1] == [arm64] (
+	cd qnn
+	devenv onnx_qnn.sln /rebuild "Release|ARM64"
+	copy arm64\Release\libobjk_onnx.dll ..\..\..\release\%TARGET%\lib\native
+
+	copy /y ..\win\opencv\arm64\bin\opencv_world4120.dll ..\..\..\release\%TARGET%\bin
+	copy /y ..\win\opencv\arm64\bin\opencv_videoio_ffmpeg4120_64.dll ..\..\..\release\%TARGET%\bin
+	copy /y win\onnx\arm64\bin\*.dll ..\..\..\release\%TARGET%\bin
+
+	cd ..
+)
+
+if [%1] == [x64] (
+	cd dml
+
+	devenv onnx_dml.sln /rebuild "Release|x64"
+	copy x64\Release\libobjk_onnx.dll ..\..\..\release\%TARGET%\lib\native
+
+	copy /y ..\win\opencv\x64\bin\opencv_world4120.dll ..\..\..\release\%TARGET%\bin
+	copy /y ..\win\opencv\x64\bin\opencv_videoio_ffmpeg4120_64.dll ..\..\..\release\%TARGET%\bin
+	copy /y ..\packages\Microsoft.ML.OnnxRuntime.DirectML.1.22.1\runtimes\win-x64\native\*.dll ..\..\..\release\%TARGET%\bin
+
+	cd ..
+)
+cd ..\..\release
+
+REM sdl support
+cd ..\lib\sdl	
 if [%1] == [arm64] (
 	REM sdl
-	cd ..\lib\sdl
 	devenv sdl\sdl.sln /rebuild "Release|ARM64"
 	copy sdl\Release\arm64\*.dll ..\..\release\%TARGET%\lib\native
 	copy lib\fonts\*.ttf ..\..\release\%TARGET%\lib\sdl\fonts
 	copy lib\arm64\*.dll ..\..\release\%TARGET%\lib\sdl
-	cd ..\..\release
 )
 
 if [%1] == [x64] (
 	REM sdl
-	cd ..\lib\sdl
 	devenv sdl\sdl.sln /rebuild "Release|x64"
 	copy sdl\Release\x64\*.dll ..\..\release\%TARGET%\lib\native
 	copy lib\fonts\*.ttf ..\..\release\%TARGET%\lib\sdl\fonts
 	copy lib\x64\*.dll ..\..\release\%TARGET%\lib\sdl
-	cd ..\..\release
 )
+cd ..\..\release
 
 REM copy examples
 mkdir %TARGET%\examples\
