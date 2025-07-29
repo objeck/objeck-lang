@@ -12,10 +12,14 @@ $(LocalDebuggerEnvironment)
 class Test {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
+			args[0]->PrintLine();
+
+"--- 0 ---"->PrintLine();
 			provider_names := OnnxRuntime->GetProviderNames();
 			each(provider_name in provider_names) {
 				provider_name->PrintLine();
 			};
+"--- 1 ---"->PrintLine();
 
 			ProcessImages(args[0]);
 		};
@@ -35,11 +39,11 @@ class Test {
 
 		"image_path={$image_path}"->PrintLine();
 		"model_path={$model_path}"->PrintLine();
-		"label_path={$label_path}"->PrintLine();
+		"label_path={$label_path}\n"->PrintLine();
 
 		image_labels := LoadLabels(label_path);
 
-		each(i : 50) {
+		each(i : 25) {
 			j := Int->Random(0, 6);
 
 			select(j) {
@@ -84,8 +88,8 @@ class Test {
 			image_bytes := FileReader->ReadBinaryFile(image_path);
 			image_size := image_bytes->Size();
 
-			"0: image_path={$image_path}"->PrintLine();
-			"1: image_size={$image_size}"->PrintLine();
+			"{$i}: image_path={$image_path}"->PrintLine();
+			"{$i}: image_size={$image_size}"->PrintLine();
 
 			result_vector := OnnxRuntime->ProcessImage(image_bytes, 224, 224, model_path);
 			if(result_vector <> Nil) {
