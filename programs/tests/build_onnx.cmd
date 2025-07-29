@@ -35,7 +35,7 @@ rem obc -src %OBJK_BASE%\core\compiler\lib_src\net.obs,%OBJK_BASE%\core\compiler
 rem obc -src %OBJK_BASE%\core\compiler\lib_src\json_stream.obs -tar lib -dest %OBJK_BASE%\core\release\%TARGET%\lib\json_stream.obl
 
 del /q %OBJECK_LIB_PATH%\native\libobjk_onnx.dll
-copy /y %OBJK_BASE%\core\lib\onnx\qnn\%1\%TYPE%\libobjk_onnx.dll %OBJECK_LIB_PATH%\native
+copy /y %OBJK_BASE%\core\lib\onnx\%2\%1\%TYPE%\libobjk_onnx.dll %OBJECK_LIB_PATH%\native
 
 del /q ..\..\core\vm\%1\%TYPE%\*.dll
 copy /y %OBJK_BASE%\core\lib\onnx\win\opencv\%1\bin\*.dll ..\..\core\vm\%1\%TYPE%
@@ -50,12 +50,11 @@ if [%2] == [dml] (
 
 if [%2] == [qnn] (
 	copy /y %OBJK_BASE%\core\lib\onnx\qnn\win\onnx\%1\bin\*.dll ..\..\core\vm\%1\%TYPE%
-
 	copy /y %OBJK_BASE%\core\lib\onnx\qnn\win\onnx\%1\bin\*.dll %OBJK_BASE%\core\release\%TARGET%\bin
 )
 
 if [%3] == [] goto end
 	del /q *.obe
 	obc -src %3 -lib onnx
-	rem	obr %3 %4
+	rem obr %3 %4
 :end
