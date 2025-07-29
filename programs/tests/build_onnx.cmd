@@ -1,4 +1,4 @@
-@echo off
+rem @echo off
 setlocal
 
 if not [%1]==[x64] if not [%1]==[arm64] (
@@ -39,19 +39,18 @@ copy /y %OBJK_BASE%\core\lib\onnx\qnn\%1\%TYPE%\libobjk_onnx.dll %OBJECK_LIB_PAT
 
 del /q ..\..\core\vm\%1\%TYPE%\*.dll
 copy /y %OBJK_BASE%\core\lib\onnx\win\opencv\%1\bin\*.dll ..\..\core\vm\%1\%TYPE%
+
+del /q %OBJK_BASE%\core\release\%TARGET%\bin\*.dll
 copy /y %OBJK_BASE%\core\lib\onnx\win\opencv\%1\bin\*.dll %OBJK_BASE%\core\release\%TARGET%\bin
 
 if [%2] == [dml] (
 	copy /y %OBJK_BASE%\core\lib\onnx\dml\packages\Microsoft.ML.OnnxRuntime.DirectML.1.22.1\runtimes\win-%1\native\*.dll ..\..\core\vm\%1\%TYPE%
-
-	del /q %OBJK_BASE%\core\release\%TARGET%\bin\*.dll
 	copy /y %OBJK_BASE%\core\lib\onnx\dml\packages\Microsoft.ML.OnnxRuntime.DirectML.1.22.1\runtimes\win-%1\native\*.dll %OBJK_BASE%\core\release\%TARGET%\bin
 )
 
 if [%2] == [qnn] (
 	copy /y %OBJK_BASE%\core\lib\onnx\qnn\win\onnx\%1\bin\*.dll ..\..\core\vm\%1\%TYPE%
 
-	del /q %OBJK_BASE%\core\release\%TARGET%\bin\*.dll
 	copy /y %OBJK_BASE%\core\lib\onnx\qnn\win\onnx\%1\bin\*.dll %OBJK_BASE%\core\release\%TARGET%\bin
 )
 
