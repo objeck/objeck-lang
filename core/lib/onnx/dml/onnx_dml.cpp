@@ -125,9 +125,15 @@ extern "C" {
 
       // Get input/output names
       Ort::AllocatorWithDefaultOptions allocator;
-      const char* input_name = session.GetInputNameAllocated(0, allocator).get();
-      const char* output_name = session.GetOutputNameAllocated(0, allocator).get();
 
+      Ort::AllocatedStringPtr input_name_ptr = session.GetInputNameAllocated(0, allocator);
+      std::string input_name_str = input_name_ptr.get();
+      std::vector<const char*> input_names = { input_name_str.c_str() };
+
+      Ort::AllocatedStringPtr output_name_ptr = session.GetOutputNameAllocated(0, allocator);
+      std::string output_name_str = output_name_ptr.get();
+      std::vector<const char*> output_names = { output_name_str.c_str() };
+      
       // Run inference
       std::vector<const char*> input_names = { input_name };
       std::vector<const char*> output_names = { output_name };
