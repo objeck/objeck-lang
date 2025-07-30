@@ -10,35 +10,45 @@
 
 #include "../../vm/lib_api.h"
 
+enum ImageFormat {
+  JPEG = 64,
+  PNG ,
+  WEBP,
+  GIF
+};
+
 // TOOD: image conversion logic
 // convertFormat(png_bytes, jpeg_bytes, ".jpg", cv::IMREAD_UNCHANGED, {cv::IMWRITE_JPEG_QUALITY, 95});
-std::vector<unsigned char> convert_image_bytes(VMContext& context, const unsigned char* input_bytes, size_t input_size, int output_format)
+std::vector<unsigned char> convert_image_bytes(VMContext& context, const unsigned char* input_bytes, size_t input_size, size_t output_format)
 {
   std::string output_ext; std::vector<int> encode_params;
   switch(output_format) {
     // JPEG
-  case 0:
+  case ImageFormat::JPEG:
     output_ext = ".jpg";
     encode_params = { cv::IMWRITE_JPEG_QUALITY, 95 }; // image quality
     break;
 
     // PNG
-  case 1:
+  case ImageFormat::PNG:
     output_ext = ".png";
     encode_params = { cv::IMWRITE_PNG_COMPRESSION, 3 }; // PNG compression level
     break;
 
     // WEBP
-  case 2:
+  case ImageFormat::WEBP:
     output_ext = ".webp";
     encode_params = { cv::IMWRITE_WEBP_QUALITY, 95 }; // image quality
     break;
 
     // GIF
-  case 3:
+  case ImageFormat::GIF:
     output_ext = ".gif";
     encode_params = { cv::IMWRITE_GIF_QUALITY, 95 }; // image quality
     break;
+
+  default:
+    return std::vector<unsigned char>();
   }
 
   // Decode input image
@@ -48,8 +58,8 @@ std::vector<unsigned char> convert_image_bytes(VMContext& context, const unsigne
     return std::vector<unsigned char>();
   }
 
-  // Special handling for HDR  JPEG (tone map to 8-bit)
-  if(output_ext == ".jpg" && image.depth() == CV_32F) {
+  // Special handling for HDR JPEG (tone map to 8-bit)
+  if(output_format == ImageFormat::JPEG && image.depth() == CV_32F) {
     image.convertTo(image, CV_8UC3, 255.0);  // tone mapping
   }
 

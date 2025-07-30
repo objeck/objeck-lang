@@ -33,8 +33,8 @@ extern "C" {
       const long input_size = ((long)APITools_GetArraySize(input_array));
       const unsigned char* input_bytes = (unsigned char*)APITools_GetArray(input_array);
 
-      const int resize_height = (int)APITools_GetIntValue(context, 2);
-      const int resize_width = (int)APITools_GetIntValue(context, 3);
+      const long resize_height = (long)APITools_GetIntValue(context, 2);
+      const long resize_width = (long)APITools_GetIntValue(context, 3);
 
       const std::wstring model_path = APITools_GetStringValue(context, 4);
 
@@ -161,10 +161,10 @@ extern "C" {
      size_t* output_holder = APITools_GetArray(context, 0);
 
      size_t* input_array = (size_t*)APITools_GetArray(context, 1)[0];
-     const long input_size = ((long)APITools_GetArraySize(input_array));
+     const long input_size = (long)APITools_GetArraySize(input_array);
      const unsigned char* input_bytes = (unsigned char*)APITools_GetArray(input_array);
 
-     const int output_format = (int)APITools_GetIntValue(context, 2);
+     const size_t output_format = APITools_GetIntValue(context, 2);
 
      // convert image
      std::vector<unsigned char> output_image_bytes = convert_image_bytes(context, input_bytes, input_size, output_format);
