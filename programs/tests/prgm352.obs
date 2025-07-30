@@ -15,7 +15,7 @@ class Test {
 			image_path := args[0];
 			"image_path={$image_path}"->PrintLine();
 
-			ConvertImage(image_path + "/images/lion.jpg", "c:/users/objec/documents/temp/lion.png")
+			ConvertImage(image_path + "/images/lion.jpg", "c:/users/objec/documents/temp/lion.webp")
 
 #~
 			provider_names := OnnxRuntime->GetProviders();
@@ -35,12 +35,13 @@ class Test {
 		input_size := input_bytes->Size();
 		"input_size={$input_size}"->PrintLine();
 
-		output_bytes := result_vector := OpenCV->ConvertImage(input_bytes, OpenCV->ImageFormat->PNG);
-#~
+		output_bytes := result_vector := OpenCV->ConvertImage(input_bytes, OpenCV->ImageFormat->WEBP);
+		
 		output_size := output_bytes->Size();
-
 		"output_size={$output_size}"->PrintLine();
-~#		
+		FileWriter->WriteFile(output_path, output_bytes);
+
+		"Wrote: '{$output_path}'"->PrintLine();
 	}
 
 	function : ProcessImages(root_dir : String) ~ Nil {
