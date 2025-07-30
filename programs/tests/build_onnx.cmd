@@ -21,7 +21,7 @@ if [%1] == [arm64] (
 	set TARGET=deploy-arm64
 )
 
-set TYPE=Release
+set TYPE=Debug
 
 set OBJK_BASE=\Users\objec\Documents\Code\objeck-lang
 set PATH=%PATH%;%OBJK_BASE%\core\release\%TARGET%\bin
