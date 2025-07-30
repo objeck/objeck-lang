@@ -1,4 +1,4 @@
-rem @echo off
+@echo off
 setlocal
 
 if not [%1]==[x64] if not [%1]==[arm64] (
@@ -17,7 +17,7 @@ if [%1] == [x64] (
 
 set ZIP_BIN="\Program Files\7-Zip"
 
-if [%1] == [arm64] (o
+if [%1] == [arm64] (
 	set TARGET=deploy-arm64
 )
 

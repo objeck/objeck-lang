@@ -20,7 +20,27 @@ bundle API.Onnx {
 			return @lib_proxy;
 		}
 	}
-	
+
+	#~
+	TODO
+	~#
+	class OpenCV {
+		enum ImageFormat {
+			JPEG,
+			PNG,
+			WEBP,
+			HDR,
+			BMP
+		}
+
+		#~
+		TODO
+		~#
+		function : Convert(input_image : Byte[], input_format : OpenCV->ImageFormat, output_format : OpenCV->ImageFormat) ~ Byte[] {
+			return Nil;
+		}
+	}
+
 	#~
 	TODO
 	~#
@@ -41,11 +61,11 @@ bundle API.Onnx {
 			holder := array_args[0]->As(FloatArrayRef);
 			return holder->Get();
 		}
-
+		
 		#~
 		TODO
 		~#
-		function : GetProviderNames() ~ String[] {
+		function : GetProviders() ~ String[] {
 			array_args := Base->New[1];
 			array_args[0] := StringArrayRef->New();
 			
