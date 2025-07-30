@@ -35,13 +35,12 @@ bundle API.Onnx {
 		#~
 		TODO
 		~#
-		function : ConvertImage(input_image : Byte[], input_format : OpenCV->ImageFormat, output_format : OpenCV->ImageFormat) ~ Byte[] {
-			array_args := Base->New[4];
+		function : ConvertImage(input_image : Byte[], output_format : OpenCV->ImageFormat) ~ Byte[] {
+			array_args := Base->New[3];
 
 			array_args[0] := ByteArrayRef->New();
 			array_args[1] := ByteArrayRef->New(input_image);
-			array_args[2] := IntRef->New(input_format);
-			array_args[3] := IntRef->New(output_format);
+			array_args[2] := IntRef->New(output_format->As(Int));
 
 			Proxy->GetDllProxy()->CallFunction("opencv_convert_image", array_args);
 			
