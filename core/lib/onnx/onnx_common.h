@@ -11,9 +11,13 @@
 #include "../../vm/lib_api.h"
 
 // TOOD: image conversion logic
+// convertFormat(png_bytes, jpeg_bytes, ".jpg", cv::IMREAD_UNCHANGED, {cv::IMWRITE_JPEG_QUALITY, 95});
 std::vector<unsigned char> convert_image_bytes(VMContext& context, const unsigned char* input_bytes, size_t input_size, int input_format, int output_format)
 {
   std::string output_ext;
+  switch(input_format) {
+
+  }
 
   // Decode input image
   std::vector<uchar> image_data(input_bytes, input_bytes + input_size);
@@ -29,7 +33,7 @@ std::vector<unsigned char> convert_image_bytes(VMContext& context, const unsigne
 
   // Encode to target format
   std::vector<unsigned char> output_bytes;
-  const std::vector<int>& encode_params = {};
+  const std::vector<int>& encode_params = {}; // TODO: pass in
   if(!cv::imencode(output_ext, image, output_bytes, encode_params)) {
     return std::vector<unsigned char>();
   }
