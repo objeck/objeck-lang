@@ -168,7 +168,17 @@ extern "C" {
      const int output_format = (int)APITools_GetIntValue(context, 3);
 
      // convert image
-     output_holder[0] = (size_t)convert_image_bytes(context, input_bytes, input_format, output_format);
+     std::vector<unsigned char> output_image_bytes = convert_image_bytes(context, input_bytes, input_size, input_format, output_format);
+
+     // Copy results
+     size_t* output_byte_buffer = APITools_MakeByteArray(context, output_image_bytes.size());
+     unsigned char* output_byte_array_buffer = (unsigned char*)(output_byte_buffer + 3);
+
+     for(size_t i = 0; i < output_image_bytes.size(); ++i) {
+       output_byte_array_buffer[i] = output_image_bytes[i];
+     }
+
+     output_holder[0] = (size_t)output_byte_buffer;
    }
 }
 
