@@ -25,7 +25,7 @@ bundle API.Onnx {
 	TODO
 	~#
 	class OpenCV {
-		enum ImageFormat {
+		enum ImageFormat := 64 {
 			JPEG,
 			PNG,
 			WEBP,
