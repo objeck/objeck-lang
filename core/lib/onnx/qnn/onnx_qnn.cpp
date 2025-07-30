@@ -149,5 +149,26 @@ extern "C" {
      // get provider names and set output holder
      output_holder[0] = (size_t)get_provider_names(context);
    }
+
+   //
+   // Convert an image from one format to another
+   //
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void opencv_convert_image(VMContext& context) {
+     // Get parameters
+     size_t* output_holder = APITools_GetArray(context, 0);
+
+     size_t* input_array = (size_t*)APITools_GetArray(context, 1)[0];
+     const long input_size = ((long)APITools_GetArraySize(input_array));
+     const unsigned char* input_bytes = (unsigned char*)APITools_GetArray(input_array);
+
+     const int input_format = (int)APITools_GetIntValue(context, 2);
+     const int output_format = (int)APITools_GetIntValue(context, 3);
+
+     // convert image
+     output_holder[0] = (size_t)convert_image_bytes(context, input_bytes, input_format, output_format);
+   }
 }
 

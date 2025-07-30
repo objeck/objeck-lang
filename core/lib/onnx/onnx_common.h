@@ -10,6 +10,12 @@
 
 #include "../../vm/lib_api.h"
 
+// TOOD: image conversion logic
+unsigned char* convert_image_bytes(VMContext& context, const unsigned char* input_bytes, int input_format, int output_format)
+{
+  return nullptr;
+}
+
 // Preprocess image for ResNet input (normalize + HWC to CHW)
 std::vector<float> preprocess(const cv::Mat& img, int resize_height, int resize_width) {
   cv::Mat resized;
