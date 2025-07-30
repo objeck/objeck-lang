@@ -11,9 +11,30 @@
 #include "../../vm/lib_api.h"
 
 // TOOD: image conversion logic
-unsigned char* convert_image_bytes(VMContext& context, const unsigned char* input_bytes, int input_format, int output_format)
+std::vector<unsigned char> convert_image_bytes(VMContext& context, const unsigned char* input_bytes, size_t input_size, int input_format, int output_format)
 {
-  return nullptr;
+  std::string output_ext;
+
+  // Decode input image
+  std::vector<uchar> image_data(input_bytes, input_bytes + input_size);
+  cv::Mat image = cv::imdecode(image_data, cv::IMREAD_UNCHANGED);
+  if(image.empty()) {
+    return std::vector<unsigned char>();
+  }
+
+  // Special handling for HDR  JPEG (tone map to 8-bit)
+  if(output_ext == ".jpg" && image.depth() == CV_32F) {
+    image.convertTo(image, CV_8UC3, 255.0);  // tone mapping
+  }
+
+  // Encode to target format
+  std::vector<unsigned char> output_bytes;
+  const std::vector<int>& encode_params = {};
+  if(!cv::imencode(output_ext, image, output_bytes, encode_params)) {
+    return std::vector<unsigned char>();
+  }
+
+  return output_bytes;
 }
 
 // Preprocess image for ResNet input (normalize + HWC to CHW)
