@@ -12,11 +12,33 @@
 
 // TOOD: image conversion logic
 // convertFormat(png_bytes, jpeg_bytes, ".jpg", cv::IMREAD_UNCHANGED, {cv::IMWRITE_JPEG_QUALITY, 95});
-std::vector<unsigned char> convert_image_bytes(VMContext& context, const unsigned char* input_bytes, size_t input_size, int input_format, int output_format)
+std::vector<unsigned char> convert_image_bytes(VMContext& context, const unsigned char* input_bytes, size_t input_size, int output_format)
 {
-  std::string output_ext;
-  switch(input_format) {
+  std::string output_ext; std::vector<int> encode_params;
+  switch(output_format) {
+    // JPEG
+  case 0:
+    output_ext = ".jpg";
+    encode_params = { cv::IMWRITE_JPEG_QUALITY, 95 }; // image quality
+    break;
 
+    // PNG
+  case 1:
+    output_ext = ".png";
+    encode_params = { cv::IMWRITE_PNG_COMPRESSION, 3 }; // PNG compression level
+    break;
+
+    // WEBP
+  case 2:
+    output_ext = ".webp";
+    encode_params = { cv::IMWRITE_WEBP_QUALITY, 95 }; // image quality
+    break;
+
+    // GIF
+  case 3:
+    output_ext = ".gif";
+    encode_params = { cv::IMWRITE_GIF_QUALITY, 95 }; // image quality
+    break;
   }
 
   // Decode input image
@@ -33,7 +55,6 @@ std::vector<unsigned char> convert_image_bytes(VMContext& context, const unsigne
 
   // Encode to target format
   std::vector<unsigned char> output_bytes;
-  const std::vector<int>& encode_params = {}; // TODO: pass in
   if(!cv::imencode(output_ext, image, output_bytes, encode_params)) {
     return std::vector<unsigned char>();
   }
