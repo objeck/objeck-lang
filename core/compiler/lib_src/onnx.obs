@@ -29,8 +29,7 @@ bundle API.Onnx {
 			JPEG,
 			PNG,
 			WEBP,
-			HDR,
-			BMP
+			GIF
 		}
 
 		#~
