@@ -113,13 +113,13 @@ REM lame support
 cd ..\lib\lame
 
 if [%1] == [arm64] (
-	devenv vs\lame.sln /rebuild "Release|ARM64"
-	copy vs\ARM64\Release\libobjk_lame.dll ..\..\release\%TARGET%\lib\native
+	devenv lame.sln /rebuild "Release|ARM64"
+	copy ARM64\Release\libobjk_lame.dll ..\..\release\%TARGET%\lib\native
 )
 
 if [%1] == [x64] (
-	devenv vs\lame.sln /rebuild "Release|x64"
-	copy vs\x64\Release\libobjk_lame.dll ..\..\release\%TARGET%\lib\native
+	devenv lame.sln /rebuild "Release|x64"
+	copy x64\Release\libobjk_lame.dll ..\..\release\%TARGET%\lib\native
 )
 cd ..\..\release
 
