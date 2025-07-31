@@ -92,20 +92,31 @@ class Test {
 
 			result_count := shape[1]
 			result_count->PrintLine();
+
+			dims := result->GetDimensions();
+			cols := dims[1];
+			rows := dims[0];
 			
 			for(i := 0; i < result_count; i += 1;) {
-				x := output[i * (num_classes + 5) + 0];
-				y := output[i * (num_classes + 5) + 1];
-				w := output[i * (num_classes + 5) + 2];
-				h := output[i * (num_classes + 5) + 3];
+				x := output[i * (num_classes + 5) + 0]->As(Int);
+				y := output[i * (num_classes + 5) + 1]->As(Int);
+				w := output[i * (num_classes + 5) + 2]->As(Int);
+				h := output[i * (num_classes + 5) + 3]->As(Int);
 				conf := output[i * (num_classes + 5) + 4];
 
+				left := (x - w / 2.0) * cols;
+				top := (y - h / 2.0) * rows;
+				width := w * cols;
+				height := h * rows;
 
 				if(conf > 0.5) {
 					start := i * (num_classes + 5) + 5;
 					end := start + num_classes;
 					class_id := FindGreatest(start, end, output) - start;
-					"class_id={$class_id}, conf={$conf}"->PrintLine();
+					image_label := image_labels->Get(class_id);
+
+					"class_id={$class_id}, class_name={$image_label}, conf={$conf}"->PrintLine();
+					"{$left}, {$top}, {$width}, {$height}\n---\n"->PrintLine();
 
 #~
 					left := static_cast<int>((x - w / 2.0) * input_img.cols);
@@ -130,7 +141,7 @@ class Test {
 		image_path := image_path->ReplaceAll('\\', '/');
 	}
 
-	function : FindGreatest(start : Int, end : Int, output : Float[]) ~ Int {
+	function : native : FindGreatest(start : Int, end : Int, output : Float[]) ~ Int {
 		index := start;
 
 		for(i := start + 1; i < end; i += 1;) {
