@@ -102,15 +102,10 @@ class Test {
 
 
 				if(conf > 0.5) {
-					conf->PrintLine();
-
-					
 					start := i * (num_classes + 5) + 5;
-					class_id := FindIndex(start, start + num_classes, output) - start;
-
-
-					class_id->PrintLine();
-#					z := b - a;
+					end := start + num_classes;
+					class_id := FindGreatest(start, end, output) - start;
+					"class_id={$class_id}, conf={$conf}"->PrintLine();
 
 #~
 					left := static_cast<int>((x - w / 2.0) * input_img.cols);
@@ -135,7 +130,7 @@ class Test {
 		image_path := image_path->ReplaceAll('\\', '/');
 	}
 
-	function : FindIndex(start : Int, end : Int, output : Float[]) ~ Int {
+	function : FindGreatest(start : Int, end : Int, output : Float[]) ~ Int {
 		index := start;
 
 		for(i := start + 1; i < end; i += 1;) {
