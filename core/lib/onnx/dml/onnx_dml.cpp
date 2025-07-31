@@ -139,7 +139,7 @@ extern "C" {
          const size_t output_len = shape_info.GetElementCount();
 
 			// Build results
-         size_t* result_obj = APITools_CreateObject(context, L"API.Onnx.Result");
+         size_t* result_obj = APITools_CreateObject(context, L"API.Onnx.ImageResult");
 
          // Copy output
          size_t* output_array = APITools_MakeFloatArray(context, output_len);
@@ -160,6 +160,12 @@ extern "C" {
          }
          result_obj[1] = (size_t)output_shape_array;
 
+         size_t* output_image_array = APITools_MakeIntArray(context, 2);
+         size_t* output_image_array_buffer = output_image_array + 3;
+         output_image_array_buffer[0] = img.rows;
+         output_image_array_buffer[1] = img.cols;
+         result_obj[2] = (size_t)output_image_array;
+         
          APITools_SetObjectValue(context, 0, result_obj);
       }
       catch(const Ort::Exception& e) {

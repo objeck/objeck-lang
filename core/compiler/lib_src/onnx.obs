@@ -95,7 +95,7 @@ bundle API.Onnx {
 		@param preprocessor image preprocessor
 		@return inference, vector array and shape array 
 		~#
-		function : ImageInference(image : Byte[], height : Int, width : Int, model : String, preprocessor : API.Onnx.Runtime->ImagePreprocessor) ~ API.Onnx.Result {
+		function : ImageInference(image : Byte[], height : Int, width : Int, model : String, preprocessor : API.Onnx.Runtime->ImagePreprocessor) ~ API.Onnx.ImageResult {
 			array_args := Base->New[6];
 
 			array_args[0] := Nil;
@@ -107,7 +107,7 @@ bundle API.Onnx {
 
 			Proxy->GetDllProxy()->CallFunction("onnx_process_image", array_args);
 			
-			return array_args[0]->As(API.Onnx.Result);
+			return array_args[0]->As(API.Onnx.ImageResult);
 		}
 
 		#~
@@ -128,9 +128,10 @@ bundle API.Onnx {
 	#~
 	Inference results, consisting of vector float array and an integer shape array  
 	~#
-	class Result {
+	class ImageResult {
 		@output : Float[];
 		@shape : Int[];
+		@dims : Int[];
 
 		New : private () {}
 
@@ -151,6 +152,14 @@ bundle API.Onnx {
 		}
 
 		#~
+		Gets the image dimensions
+		@return image dimensions
+		~#
+		method : public : GetDimensions() ~ Int[] {
+			return @dims;
+		}
+
+		#~
 		Gets the output shape
 		@return output shape
 		~#
@@ -166,11 +175,20 @@ bundle API.Onnx {
 			};
 
 			if(@shape = Nil) {
-				buffer += '0';
+				buffer += "0, image-dims=";
 			}
 			else {
 				shape_size := @shape->Size();
-				buffer += shape_size;
+				buffer += "{$shape_size}, image-dims=";
+			};
+
+			if(@dims = Nil) {
+				buffer += "0x0";
+			}
+			else {
+				width := @dims[0];
+				height := @dims[1];
+				buffer += "{$width}x{$height}";
 			};
 
 			return buffer;
