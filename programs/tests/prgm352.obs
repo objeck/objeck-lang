@@ -71,7 +71,7 @@ class Test {
 		"image_path={$image_path}"->PrintLine();
 		"image_size={$image_size}"->PrintLine();
 
-		result_vector := OnnxRuntime->ProcessImage(image_bytes, 640, 640, model_path);
+		result_vector := OnnxRuntime->ProcessImage(image_bytes, 640, 640, model_path, OnnxRuntime->Preprocessor->YOLO);
 		if(result_vector <> Nil) {
 			result_size := result_vector->Size();
 
@@ -179,7 +179,7 @@ class Test {
 			"{$i}: image_path={$image_path}"->PrintLine();
 			"{$i}: image_size={$image_size}"->PrintLine();
 
-			result_vector := OnnxRuntime->ProcessImage(image_bytes, 224, 224, model_path);
+			result_vector := OnnxRuntime->ProcessImage(image_bytes, 224, 224, model_path, OnnxRuntime->Preprocessor->YOLO);
 			if(result_vector <> Nil) {
 				result_size := result_vector->Size();
 
