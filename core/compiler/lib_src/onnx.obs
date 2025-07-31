@@ -39,7 +39,7 @@ bundle API.OpenCV {
 		#~
 		Image format conversion
 		@param input_image image bytes
-		@output_format image output format
+		@param output_format image output format
 		@return bytes for converted image
 		~#
 		function : Convert(input_image : Byte[], output_format : Image->Format) ~ Byte[] {
