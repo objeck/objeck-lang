@@ -52,18 +52,25 @@ bundle API.Onnx {
 	#~
 	TODO
 	~#
-	class OnnxRuntime {
+	class OnnxRuntime {		
+		enum Preprocessor := 128 {
+			RESNET,
+			YOLO,
+			OTHER
+		}
+
 		#~
 		TODO
 		~#
-		function : ProcessImage(image : Byte[], resize_height : Int, resize_width : Int, model : String) ~ Float[] {
-			array_args := Base->New[5];
+		function : ProcessImage(image : Byte[], resize_height : Int, resize_width : Int, model : String, model_preprocessor : OnnxRuntime->Preprocessor) ~ Float[] {
+			array_args := Base->New[6];
 
 			array_args[0] := FloatArrayRef->New();
 			array_args[1] := ByteArrayRef->New(image);
 			array_args[2] := IntRef->New(resize_height);
 			array_args[3] := IntRef->New(resize_width);
 			array_args[4] := model;
+			array_args[5] := IntRef->New(model_preprocessor->As(Int));
 
 			Proxy->GetDllProxy()->CallFunction("onnx_process_image", array_args);
 			
