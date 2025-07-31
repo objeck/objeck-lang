@@ -103,11 +103,16 @@ class Test {
 
 				if(conf > 0.5) {
 					conf->PrintLine();
-#~
-					class_id := std::max_element(output + i * (num_classes + 5) + 5,
-						output + i * (num_classes + 5) + 5 + num_classes) -
-						(output + i * (num_classes + 5) + 5);
 
+					
+					start := i * (num_classes + 5) + 5;
+					class_id := FindIndex(start, start + num_classes, output) - start;
+
+
+					class_id->PrintLine();
+#					z := b - a;
+
+#~
 					left := static_cast<int>((x - w / 2.0) * input_img.cols);
 					top := static_cast<int>((y - h / 2.0) * input_img.rows);
 					width := static_cast<int>(w * input_img.cols);
@@ -128,6 +133,18 @@ class Test {
 
 		image_path := root_dir + "/images/";
 		image_path := image_path->ReplaceAll('\\', '/');
+	}
+
+	function : FindIndex(start : Int, end : Int, output : Float[]) ~ Int {
+		index := start;
+
+		for(i := start + 1; i < end; i += 1;) {
+			if(output[i] > output[index]) {
+				index := i;
+			}
+		}
+
+		return index;
 	}
 
 	#
