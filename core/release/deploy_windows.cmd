@@ -199,6 +199,7 @@ if [%1] == [x64] (
 	copy /y ..\win\opencv\x64\bin\opencv_world4120.dll ..\..\..\release\%TARGET%\bin
 	copy /y ..\win\opencv\x64\bin\opencv_videoio_ffmpeg4120_64.dll ..\..\..\release\%TARGET%\bin
 	copy /y ..\packages\Microsoft.ML.OnnxRuntime.DirectML.1.22.1\runtimes\win-x64\native\*.dll ..\..\..\release\%TARGET%\bin
+	copy /y ..\packages\Microsoft.AI.DirectML.1.15.4\bin\x64-win\DirectML.dll  ..\..\..\release\%TARGET%\bin
 
 	cd ..
 )
