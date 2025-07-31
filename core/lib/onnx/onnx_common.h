@@ -72,8 +72,22 @@ std::vector<unsigned char> convert_image_bytes(VMContext& context, const unsigne
   return output_bytes;
 }
 
-// Preprocess image for ResNet input (normalize + HWC to CHW)
-std::vector<float> preprocess(const cv::Mat& img, int resize_height, int resize_width) {
+// Preprocess the image for YOLO
+cv::Mat yolo_preprocess(const cv::Mat& img, int resize_height, int resize_width) {
+   cv::Mat resized, blob;
+
+   const cv::Size input_size(640, 640);
+   cv::resize(img, resized, input_size);
+
+   cv::cvtColor(resized, resized, cv::COLOR_BGR2RGB);
+   resized.convertTo(resized, CV_32F, 1.0 / 255.0);
+   cv::dnn::blobFromImage(resized, blob, 1.0, input_size, cv::Scalar(), true, false);
+
+   return blob;
+}
+
+// Preprocess image for ResNet
+std::vector<float> resnet_preprocess(const cv::Mat& img, int resize_height, int resize_width) {
   cv::Mat resized;
   cv::resize(img, resized, cv::Size(resize_width, resize_height));
   resized.convertTo(resized, CV_32F, 1.0 / 255.0);

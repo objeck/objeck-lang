@@ -76,18 +76,32 @@ extern "C" {
          auto start = std::chrono::high_resolution_clock::now();
          */
 
+/* 
          // Preprocess image and convert HWC -> CHW
          std::vector<float> input_tensor_values = preprocess(img, resize_height, resize_width);
-         
+*/        
+
+         // TODO: YOLOv5 preprocessing
+         cv::Mat foo = yolo_preprocess(img, resize_height, resize_width);
+
          // Create input tensor
          std::array<int64_t, 4> input_shape = { 1, 3, resize_height, resize_width };
+
+         // TODO: YOLOv5 preprocessing
+         size_t input_tensor_size = 3 * resize_height * resize_width;
+
          Ort::MemoryInfo mem_info = Ort::MemoryInfo::CreateCpu(OrtDeviceAllocator, OrtMemTypeCPU);
          Ort::Value input_tensor = Ort::Value::CreateTensor<float>(
             mem_info,
-            input_tensor_values.data(),
-            input_tensor_values.size(),
+            // input_tensor_values.data(),
+            foo.ptr<float>(),
+            
+            // input_tensor_values.size(),
+            input_tensor_size, 
+            
+            // input_shape.size()
             input_shape.data(),
-            input_shape.size());
+            4);
 
          // Get input/output names
          Ort::AllocatorWithDefaultOptions allocator;
@@ -180,7 +194,6 @@ extern "C" {
        output_byte_array_buffer[i] = output_image_bytes[i];
      }
 
-     output_holder[0] = (size_t)output_byte_buffer;
      output_holder[0] = (size_t)output_byte_buffer;
    }
 }
