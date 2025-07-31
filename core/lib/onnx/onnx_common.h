@@ -17,6 +17,12 @@ enum ImageFormat {
   GIF
 };
 
+enum Preprocessor {
+   RESNET = 128,
+   YOLO,
+   OTHER
+};
+
 // TOOD: image conversion logic
 // convertFormat(png_bytes, jpeg_bytes, ".jpg", cv::IMREAD_UNCHANGED, {cv::IMWRITE_JPEG_QUALITY, 95});
 std::vector<unsigned char> convert_image_bytes(VMContext& context, const unsigned char* input_bytes, size_t input_size, size_t output_format)
@@ -73,17 +79,23 @@ std::vector<unsigned char> convert_image_bytes(VMContext& context, const unsigne
 }
 
 // Preprocess the image for YOLO
-cv::Mat yolo_preprocess(const cv::Mat& img, int resize_height, int resize_width) {
-   cv::Mat resized, blob;
+std::vector<float> yolo_preprocess(const cv::Mat& img, int resize_height, int resize_width) {
+   cv::Mat resized, float_img, blob;
 
-   const cv::Size input_size(640, 640);
+   // Resize and convert to float RGB
+   const cv::Size input_size(resize_width, resize_height);
    cv::resize(img, resized, input_size);
-
    cv::cvtColor(resized, resized, cv::COLOR_BGR2RGB);
-   resized.convertTo(resized, CV_32F, 1.0 / 255.0);
-   cv::dnn::blobFromImage(resized, blob, 1.0, input_size, cv::Scalar(), true, false);
+   resized.convertTo(float_img, CV_32F, 1.0 / 255.0);
 
-   return blob;
+   // Convert to blob in NCHW format (1x3xHxW)
+   cv::dnn::blobFromImage(float_img, blob, 1.0, input_size, cv::Scalar(), true, false);
+
+   // Copy data from cv::Mat to std::vector<float>
+   std::vector<float> input_tensor_values(blob.total());
+   std::memcpy(input_tensor_values.data(), blob.ptr<float>(), blob.total() * sizeof(float));
+
+   return input_tensor_values;
 }
 
 // Preprocess image for ResNet

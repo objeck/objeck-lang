@@ -41,6 +41,8 @@ extern "C" {
       const int resize_width = (int)APITools_GetIntValue(context, 3);
 
       const std::wstring model_path = APITools_GetStringValue(context, 4);
+      
+      const Preprocessor input_preprocessor = (Preprocessor)APITools_GetIntValue(context, 5);
 
       // Validate parameters
       if(!input_bytes || resize_height < 1 || resize_width < 1 || model_path.empty()) {
@@ -75,31 +77,38 @@ extern "C" {
          // Start timing
          auto start = std::chrono::high_resolution_clock::now();
          */
+         
+			// Check model format and preprocess image
+         std::vector<float> input_tensor_values;
+         size_t input_tensor_size = 0;
+         
+         switch(input_preprocessor) {
+         case Preprocessor::RESNET:
+            // Preprocess image for ResNet
+            input_tensor_values = resnet_preprocess(img, resize_height, resize_width);
+            input_tensor_size = input_tensor_values.size();
+            break;
+         
+         case Preprocessor::YOLO:
+            // Preprocess image for YOLO
+            input_tensor_values = yolo_preprocess(img, resize_height, resize_width);
+            input_tensor_size = 3 * resize_height * resize_width;
+            break;
 
-/* 
-         // Preprocess image and convert HWC -> CHW
-         std::vector<float> input_tensor_values = preprocess(img, resize_height, resize_width);
-*/        
-
-         // TODO: YOLOv5 preprocessing
-         cv::Mat foo = yolo_preprocess(img, resize_height, resize_width);
+         default:
+            std::wcerr << L"Unsupported preprocessor type!" << std::endl;
+            output_holder[0] = 0;
+            return;
+			}
 
          // Create input tensor
          std::array<int64_t, 4> input_shape = { 1, 3, resize_height, resize_width };
 
-         // TODO: YOLOv5 preprocessing
-         size_t input_tensor_size = 3 * resize_height * resize_width;
-
          Ort::MemoryInfo mem_info = Ort::MemoryInfo::CreateCpu(OrtDeviceAllocator, OrtMemTypeCPU);
          Ort::Value input_tensor = Ort::Value::CreateTensor<float>(
             mem_info,
-            // input_tensor_values.data(),
-            foo.ptr<float>(),
-            
-            // input_tensor_values.size(),
+            input_tensor_values.data(),
             input_tensor_size, 
-            
-            // input_shape.size()
             input_shape.data(),
             4);
 
