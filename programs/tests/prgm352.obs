@@ -51,7 +51,7 @@ class Test {
 		image_path := root_dir + "/images/";
 		image_path := image_path->ReplaceAll('\\', '/');
 
-		model_path := root_dir + "/yolov5s.onnx";
+		model_path := root_dir + "/yolov8n.onnx";
 		model_path := model_path->ReplaceAll('\\', '/');
 
 		label_path := image_path + "labels.txt";

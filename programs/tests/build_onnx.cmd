@@ -44,6 +44,9 @@ del /q %OBJK_BASE%\core\release\%TARGET%\bin\*.dll
 copy /y %OBJK_BASE%\core\lib\onnx\win\opencv\%1\bin\*.dll %OBJK_BASE%\core\release\%TARGET%\bin
 
 if [%2] == [dml] (
+	copy /y %OBJK_BASE%\core\lib\onnx\dml\packages\Microsoft.AI.DirectML.1.15.4\bin\%1-win\*.dll ..\..\core\vm\%1\%TYPE%
+	copy /y %OBJK_BASE%\core\lib\onnx\dml\packages\Microsoft.AI.DirectML.1.15.4\bin\%1-win\*.dll %OBJK_BASE%\core\release\%TARGET%\bin
+
 	copy /y %OBJK_BASE%\core\lib\onnx\dml\packages\Microsoft.ML.OnnxRuntime.DirectML.1.22.1\runtimes\win-%1\native\*.dll ..\..\core\vm\%1\%TYPE%
 	copy /y %OBJK_BASE%\core\lib\onnx\dml\packages\Microsoft.ML.OnnxRuntime.DirectML.1.22.1\runtimes\win-%1\native\*.dll %OBJK_BASE%\core\release\%TARGET%\bin
 )
