@@ -1,12 +1,64 @@
 #~~
 # TODO
 # Copyright (c) 2025 Randy Hollines
+# ONNX and OpenCV wrappers
 ~~#	
 
 use System.API;
 
 #~
-TODO (-lib onnx)
+Open Computer Vision (OpenCV) support for image rendering and compilation. (-lib onnx)
+~#
+bundle API.OpenCV {
+	class : private : Proxy {
+		@lib_proxy : static : DllProxy;
+		
+		function : GetDllProxy() ~ DllProxy {
+			if(@lib_proxy = Nil) {
+				@lib_proxy := DllProxy->New("libobjk_onnx");
+			};
+
+			return @lib_proxy;
+		}
+	}
+
+	#~
+	Image manipulation routines
+	~#
+	class Image {
+		#~
+		Image type
+		~#
+		enum Format := 64 {
+			JPEG,
+			PNG,
+			WEBP,
+			GIF
+		}
+
+		#~
+		Image format conversion
+		@param input_image image bytes
+		@output_format image output format
+		@return bytes for converted image
+		~#
+		function : Convert(input_image : Byte[], output_format : Image->Format) ~ Byte[] {
+			array_args := Base->New[3];
+
+			array_args[0] := ByteArrayRef->New();
+			array_args[1] := ByteArrayRef->New(input_image);
+			array_args[2] := IntRef->New(output_format->As(Int));
+
+			Proxy->GetDllProxy()->CallFunction("opencv_convert_image", array_args);
+			
+			holder := array_args[0]->As(ByteArrayRef);
+			return holder->Get();
+		}
+	}
+}
+
+#~
+Open Neural Network Exchange support (ONNX) for generative AI and large language models (-lib onnx)
 ~#
 bundle API.Onnx {
 	class : private : Proxy {
@@ -22,64 +74,45 @@ bundle API.Onnx {
 	}
 
 	#~
-	TODO
+	ONNX cross-platform inference engine  
 	~#
-	class OpenCV {
-		enum ImageFormat := 64 {
-			JPEG,
-			PNG,
-			WEBP,
-			GIF
-		}
-
+	class Runtime {
 		#~
-		TODO
+		Image preprocessing algorithms
 		~#
-		function : ConvertImage(input_image : Byte[], output_format : OpenCV->ImageFormat) ~ Byte[] {
-			array_args := Base->New[3];
-
-			array_args[0] := ByteArrayRef->New();
-			array_args[1] := ByteArrayRef->New(input_image);
-			array_args[2] := IntRef->New(output_format->As(Int));
-
-			Proxy->GetDllProxy()->CallFunction("opencv_convert_image", array_args);
-			
-			holder := array_args[0]->As(ByteArrayRef);
-			return holder->Get();
-		}
-	}
-
-	#~
-	TODO
-	~#
-	class OnnxRuntime {		
-		enum Preprocessor := 128 {
+		enum ImagePreprocessor := 128 {
 			RESNET,
 			YOLO,
 			OTHER
 		}
 
 		#~
-		TODO
+		Run model on an image
+		@param image image bytes
+		@param height image height
+		@param width image width
+		@param model inference model
+		@param preprocessor image preprocessor
+		@return inference, vector array and shape array 
 		~#
-		function : ProcessImage(image : Byte[], resize_height : Int, resize_width : Int, model : String, model_preprocessor : OnnxRuntime->Preprocessor) ~ Float[] {
+		function : ImageInference(image : Byte[], height : Int, width : Int, model : String, preprocessor : API.Onnx.Runtime->ImagePreprocessor) ~ API.Onnx.Result {
 			array_args := Base->New[6];
 
-			array_args[0] := FloatArrayRef->New();
+			array_args[0] := Nil;
 			array_args[1] := ByteArrayRef->New(image);
-			array_args[2] := IntRef->New(resize_height);
-			array_args[3] := IntRef->New(resize_width);
+			array_args[2] := IntRef->New(height);
+			array_args[3] := IntRef->New(width);
 			array_args[4] := model;
-			array_args[5] := IntRef->New(model_preprocessor->As(Int));
+			array_args[5] := IntRef->New(preprocessor->As(Int));
 
 			Proxy->GetDllProxy()->CallFunction("onnx_process_image", array_args);
 			
-			holder := array_args[0]->As(FloatArrayRef);
-			return holder->Get();
+			return array_args[0]->As(API.Onnx.Result);
 		}
 
 		#~
-		TODO
+		Gets a list of providers
+		@return list of providers
 		~#
 		function : GetProviders() ~ String[] {
 			array_args := Base->New[1];
@@ -89,6 +122,58 @@ bundle API.Onnx {
 			
 			holder := array_args[0]->As(StringArrayRef);
 			return holder->Get();
+		}
+	}
+
+	#~
+	Inference results, consisting of vector float array and an integer shape array  
+	~#
+	class Result {
+		@output : Float[];
+		@shape : Int[];
+
+		New : private () {}
+
+		#~
+		Gets the output results
+		@return output results
+		~#
+		method : public : GetOutput() ~ Float[] {
+			return @output;
+		}
+
+		#~
+		Gets the output shape
+		@return output shape
+		~#
+		method : public : GetShape() ~ Int[] {
+			return @shape;
+		}
+
+		#~
+		Gets the output shape
+		@return output shape
+		~#
+		method : public : ToString() ~ String {
+			buffer := "output-size=";
+
+			if(@output = Nil) {
+				buffer += "0, shape-size=";
+			}
+			else {
+				output_size := @output->Size();
+				buffer += "{$output_size}, shape-size=";
+			};
+
+			if(@shape = Nil) {
+				buffer += '0';
+			}
+			else {
+				shape_size := @shape->Size();
+				buffer += shape_size;
+			};
+
+			return buffer;
 		}
 	}
 }

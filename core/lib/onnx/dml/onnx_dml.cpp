@@ -30,9 +30,6 @@ extern "C" {
    __declspec(dllexport)
 #endif
    void onnx_process_image(VMContext& context) {
-      // Get parameters
-      size_t* output_holder = APITools_GetArray(context, 0);
-
       size_t* input_array = (size_t*)APITools_GetArray(context, 1)[0];
       const long input_size = ((long)APITools_GetArraySize(input_array));
       const unsigned char* input_bytes = (unsigned char*)APITools_GetArray(input_array);
@@ -46,7 +43,6 @@ extern "C" {
 
       // Validate parameters
       if(!input_bytes || resize_height < 1 || resize_width < 1 || model_path.empty()) {
-         output_holder[0] = 0;
          return;
       }
 
@@ -69,7 +65,6 @@ extern "C" {
          cv::Mat img = cv::imdecode(image_data, cv::IMREAD_COLOR);
          if(img.empty()) {
             std::wcerr << L"Failed to load  image!" << std::endl;
-            output_holder[0] = 0;
             return;
          }
 
@@ -97,7 +92,6 @@ extern "C" {
 
          default:
             std::wcerr << L"Unsupported preprocessor type!" << std::endl;
-            output_holder[0] = 0;
             return;
 			}
 
@@ -138,27 +132,38 @@ extern "C" {
          auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
          */
 
-         // Process output (classification scores)
-         const float* output_data = output_tensors.front().GetTensorMutableData<float>();
+			// Process output and shape infomoration
          Ort::Value& output_tensor = output_tensors.front();
-
-         // Get shape info
-         Ort::TensorTypeAndShapeInfo shape_info = output_tensor.GetTensorTypeAndShapeInfo();
-
-         // Number of elements
+         const float* output_data = output_tensor.GetTensorMutableData<float>();
+         const Ort::TensorTypeAndShapeInfo shape_info = output_tensor.GetTensorTypeAndShapeInfo();
          const size_t output_len = shape_info.GetElementCount();
 
-         // Copy results
-         size_t* output_double_array = APITools_MakeFloatArray(context, output_len);
-         double* output_double_array_buffer = reinterpret_cast<double*>(output_double_array + 3);
+			// Build results
+         size_t* result_obj = APITools_CreateObject(context, L"API.Onnx.Result");
+
+         // Copy output
+         size_t* output_array = APITools_MakeFloatArray(context, output_len);
+         double* output_array_buffer = reinterpret_cast<double*>(output_array + 3);
          for(size_t i = 0; i < output_len; ++i) {
-            output_double_array_buffer[i] = static_cast<double>(output_data[i]);
+            output_array_buffer[i] = static_cast<double>(output_data[i]);
          }
-         output_holder[0] = (size_t)output_double_array;
+
+         result_obj[0] = (size_t)output_array;
+
+         // Copy output shape
+         auto output_shape = output_tensor.GetTensorTypeAndShapeInfo().GetShape();
+         
+         size_t* output_shape_array = APITools_MakeIntArray(context, output_shape.size());
+         size_t* output_shape_array_buffer = output_shape_array + 3;
+         for(size_t i = 0; i < output_shape.size(); ++i) {
+            output_shape_array_buffer[i] = output_shape[i];
+         }
+         result_obj[1] = (size_t)output_shape_array;
+
+         APITools_SetObjectValue(context, 0, result_obj);
       }
       catch(const Ort::Exception& e) {
          std::wcerr << L"ONNX Runtime Error: " << e.what() << std::endl;
-         output_holder[0] = 0;
       }
    }
 
