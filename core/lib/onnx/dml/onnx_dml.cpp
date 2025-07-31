@@ -56,7 +56,7 @@ extern "C" {
          // Create session options with QNN execution provider
          Ort::SessionOptions session_options;
          session_options.AppendExecutionProvider("DmlExecutionProvider", provider_options);
-         // session_options.SetExecutionMode(ExecutionMode::ORT_PARALLEL);
+         session_options.SetExecutionMode(ExecutionMode::ORT_PARALLEL);
 
          // Create ONNX session
          Ort::Session session(env, model_path.c_str(), session_options);
