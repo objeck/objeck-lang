@@ -64,10 +64,10 @@ extern "C" {
          return;
        }
 
-       /*
+#ifdef _TIMING
        // Start timing
        auto start = std::chrono::high_resolution_clock::now();
-       */
+#endif
 
        // Check model format and preprocess image
        std::vector<float> input_tensor_values;
@@ -122,11 +122,12 @@ extern "C" {
          output_names.data(),
          1);
 
-       /*
+#ifdef _TIMING
        // Calculate duration in milliseconds
        auto end = std::chrono::high_resolution_clock::now();
        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-       */
+       std::wcout << L"ONNX inference took " << duration << L" ms" << std::endl;
+#endif
 
        // Process output and shape infomoration
        Ort::Value& output_tensor = output_tensors.front();
