@@ -24,9 +24,9 @@ class Test {
 			};
 ~#
 			
-#			ProcessYoloImages(image_path);
+			ProcessYoloImages(image_path);
 
-			ProcessResNetImages(image_path)
+#			ProcessResNetImages(image_path)
 		};
 	}
 
@@ -204,10 +204,8 @@ class Test {
 
 			result := API.Onnx.Runtime->ImageInference(image_bytes, 224, 224, model_path, API.Onnx.Runtime->ImagePreprocessor->RESNET);
 			if(result <> Nil) {
-"--- 0 ---"->PrintLine();				
 				result_vector := result->GetOutput();
 				result_size := result_vector->Size();
-"--- 1 ---"->PrintLine();
 
 				# find max for numerical stability
 				max_logit := result_vector[0];
