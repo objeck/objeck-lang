@@ -74,8 +74,8 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <LibraryPath>$(LibraryPath);..\..\..\opencv\win\opencv\x64\lib;..\packages\Microsoft.ML.OnnxRuntime.DirectML.1.22.1\runtimes\win-x64\native</LibraryPath>
-    <IncludePath>$(VC_IncludePath);..\..\..\opencv\win\opencv\include;..\..\..\openssl\win\include;..\..\..\zlib\win</IncludePath>
+    <LibraryPath>$(LibraryPath);..\..\..\opencv\win\x64\lib;..\packages\Microsoft.ML.OnnxRuntime.DirectML.1.22.1\runtimes\win-x64\native</LibraryPath>
+    <IncludePath>$(VC_IncludePath);..\..\..\opencv\win\include;..\..\..\openssl\win\include;..\..\..\zlib\win</IncludePath>
     <ReferencePath>$(VC_ReferencesPath_x64</ReferencePath>
     <TargetName>libobjk_onnx</TargetName>
   </PropertyGroup>
@@ -85,8 +85,8 @@
     <TargetName>libobjk_onnx</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <LibraryPath>$(LibraryPath);..\..\..\opencv\win\opencv\x64\lib;..\packages\Microsoft.ML.OnnxRuntime.DirectML.1.22.1\runtimes\win-x64\native</LibraryPath>
-    <IncludePath>$(VC_IncludePath);..\..\..\opencv\win\opencv\include;..\..\..\openssl\win\include;..\..\..\zlib\win</IncludePath>
+    <LibraryPath>$(LibraryPath);..\..\..\opencv\win\x64\lib;..\packages\Microsoft.ML.OnnxRuntime.DirectML.1.22.1\runtimes\win-x64\native</LibraryPath>
+    <IncludePath>$(VC_IncludePath);..\..\..\opencv\win\include;..\..\..\openssl\win\include;..\..\..\zlib\win</IncludePath>
     <ReferencePath>$(VC_ReferencesPath_x64</ReferencePath>
     <TargetName>libobjk_onnx</TargetName>
   </PropertyGroup>
