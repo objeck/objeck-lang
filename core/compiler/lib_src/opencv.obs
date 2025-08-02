@@ -39,6 +39,19 @@ bundle API.OpenCV {
 			GIF
 		}
 
+		New(image_path : String) {
+			array_args := Base->New[2];
+
+			array_args[0] := ByteArrayRef->New();
+			array_args[1] := image_path;
+
+			Proxy->GetDllProxy()->CallFunction("opencv_load_image_path", array_args);
+			holder := array_args[0]->As(ByteArrayRef);
+
+			@image_bytes := holder->Get();
+			@image_max := @image_bytes->Size();
+		}
+
 		New(image_bytes : Byte[]) {
 			@image_bytes := image_bytes;
 			@image_max := @image_bytes->Size();
