@@ -2866,9 +2866,9 @@ extern "C" {
     sdl_rect_raw_read(&rect, rect_obj);
   }
 
-  #ifdef _WIN32
-  __declspec(dllexport)
-  #endif
+#ifdef _WIN32
+__declspec(dllexport)
+#endif
   void sdl_keyboard_get_state(VMContext& context) {
     int numkeys;
     const Uint8* states = SDL_GetKeyboardState(&numkeys);
@@ -2915,7 +2915,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-    void sdl_gamecontroller_mapping_for_index(VMContext& context) {
+  void sdl_gamecontroller_mapping_for_index(VMContext& context) {
     const int mapping_index = (int)APITools_GetIntValue(context, 1);
     const  std::string return_value = SDL_GameControllerMappingForIndex(mapping_index);
 
