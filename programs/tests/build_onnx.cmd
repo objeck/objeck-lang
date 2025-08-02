@@ -1,4 +1,4 @@
-@echo off
+REM @echo off
 setlocal
 
 if not [%1]==[x64] if not [%1]==[arm64] (
@@ -38,10 +38,10 @@ del /q %OBJECK_LIB_PATH%\native\libobjk_onnx.dll
 copy /y %OBJK_BASE%\core\lib\onnx\%2\%1\%TYPE%\libobjk_onnx.dll %OBJECK_LIB_PATH%\native
 
 del /q ..\..\core\vm\%1\%TYPE%\*.dll
-copy /y %OBJK_BASE%\core\lib\onnx\win\opencv\%1\bin\*.dll ..\..\core\vm\%1\%TYPE%
+copy /y %OBJK_BASE%\core\lib\opencv\win\%1\bin\*.dll ..\..\core\vm\%1\%TYPE%
 
 del /q %OBJK_BASE%\core\release\%TARGET%\bin\*.dll
-copy /y %OBJK_BASE%\core\lib\onnx\win\opencv\%1\bin\*.dll %OBJK_BASE%\core\release\%TARGET%\bin
+copy /y %OBJK_BASE%\core\lib\opencv\win\%1\bin\*.dll %OBJK_BASE%\core\release\%TARGET%\bin
 
 if [%2] == [dml] (
 	copy /y %OBJK_BASE%\core\lib\onnx\dml\packages\Microsoft.AI.DirectML.1.15.4\bin\%1-win\*.dll ..\..\core\vm\%1\%TYPE%
