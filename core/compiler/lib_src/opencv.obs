@@ -26,6 +26,9 @@ bundle API.OpenCV {
 	Image manipulation routines
 	~#
 	class Image {
+		@image_bytes : Byte[];
+		@image_max : Int;
+
 		#~
 		Image type
 		~#
@@ -36,7 +39,12 @@ bundle API.OpenCV {
 			GIF
 		}
 
-		#~
+		New(image_bytes : Byte[]) {
+			@image_bytes := image_bytes;
+			@image_max := @image_bytes->Size();
+		}
+
+		#~ TOOD: update
 		Image format conversion
 		@param input_image image bytes
 		@param output_format image output format
