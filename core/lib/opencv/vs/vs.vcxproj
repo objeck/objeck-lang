@@ -72,8 +72,8 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <LibraryPath>$(LibraryPath);..\win\opencv\x64\lib</LibraryPath>
-    <IncludePath>$(VC_IncludePath);;..\win\opencv\include;..\..\openssl\win\include;..\..\zlib\win</IncludePath>
+    <LibraryPath>$(LibraryPath);..\win\x64\lib</LibraryPath>
+    <IncludePath>$(VC_IncludePath);..\win\include;..\..\openssl\win\include;..\..\zlib\win</IncludePath>
     <ReferencePath>$(VC_ReferencesPath_x64</ReferencePath>
     <TargetName>libobjk_opencv</TargetName>
   </PropertyGroup>
@@ -82,10 +82,10 @@
     <TargetName>libobjk_onnx</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <IncludePath>$(VC_IncludePath);;..\win\opencv\include;..\..\openssl\win\include;..\..\zlib\win</IncludePath>
+    <IncludePath>$(VC_IncludePath);..\win\include;..\..\openssl\win\include;..\..\zlib\win</IncludePath>
     <ReferencePath>$(VC_ReferencesPath_x64</ReferencePath>
     <TargetName>libobjk_opencv</TargetName>
-    <LibraryPath>$(LibraryPath);..\win\opencv\x64\lib</LibraryPath>
+    <LibraryPath>$(LibraryPath);..\win\x64\lib</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">
     <IncludePath>$(VC_IncludePath);..\..\win\opencv\include;..\..\..\openssl\win\include;..\..\..\zlib\win</IncludePath>
