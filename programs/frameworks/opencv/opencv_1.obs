@@ -1,0 +1,266 @@
+use API.Onnx, System.IO.Filesystem, Collection;
+
+#~
+debug settings
+- args: C:\Users\objec\Documents\Code\objeck-lang\programs\tests\prgm352.obe C:\Users\objec\Documents\Code\objeck-lang\core\lib\onnx\data
+- wdir: ..\..\release\deploy-arm64\bin
+- env: OBJECK_LIB_PATH=C:\Users\objec\Documents\Code\objeck-lang\core\release\deploy-arm64\lib
+PATH=%PATH%;C:\Users\objec\Documents\Code\objeck-lang\core\release\deploy-arm64\bin
+$(LocalDebuggerEnvironment)
+~#
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() = 1) {
+			image_path := args[0];
+			"image_path={$image_path}"->PrintLine();
+
+#~
+			ConvertImage(image_path + "/images/lion.jpg", "c:/users/objec/documents/temp/lion.webp")
+			
+			provider_names := API.Onnx.Runtime->GetProviders();
+			each(provider_name in provider_names) {
+				provider_name->PrintLine();
+			};
+~#
+			
+			ProcessYoloImages(image_path);
+
+#			ProcessResNetImages(image_path)
+		};
+	}
+
+	function : ConvertImage(input_path : String, output_path : String) ~ Nil {
+		input_bytes := FileReader->ReadBinaryFile(input_path);
+		"input_path={$input_path}"->PrintLine();
+
+		input_size := input_bytes->Size();
+		"input_size={$input_size}"->PrintLine();
+
+		output_bytes := result_vector := API.OpenCV.Image->Convert(input_bytes, API.OpenCV.Image->Format->WEBP);
+		
+		output_size := output_bytes->Size();
+		"output_size={$output_size}"->PrintLine();
+		FileWriter->WriteFile(output_path, output_bytes);
+
+		"Wrote: '{$output_path}'"->PrintLine();
+	}
+
+	#
+	# Yolo-v5
+	#
+	function : ProcessYoloImages(root_dir : String) ~ Nil {
+		image_path := root_dir + "/images/";
+		image_path := image_path->ReplaceAll('\\', '/');
+
+		model_path := root_dir + "/yolov5x.onnx";
+		model_path := model_path->ReplaceAll('\\', '/');
+
+		label_path := image_path + "yolo_labels.txt";
+		label_path := label_path->ReplaceAll('\\', '/');
+
+		"model_path={$model_path}"->PrintLine();
+		"label_path={$label_path}"->PrintLine();
+
+		image_labels := LoadLabels(label_path);
+		image_label_size := image_labels->Size();
+		"image_label_size={$image_label_size}"->PrintLine();
+
+		# set image
+		image_path += "dogs.jpg";
+
+		image_bytes := FileReader->ReadBinaryFile(image_path);
+		image_size := image_bytes->Size();
+
+		"image_path={$image_path}"->PrintLine();
+		"image_size={$image_size}\n"->PrintLine();
+
+		result := API.Onnx.Runtime->ImageInference(image_bytes, 640, 640, model_path, API.Onnx.Runtime->ImagePreprocessor->YOLO);
+		if(result <> Nil) {
+			"-- Ok --"->PrintLine();
+
+			output := result->GetOutput();
+			(output = Nil)->PrintLine();
+
+			output_size := output->Size();
+			"output_size={$output_size}"->PrintLine();
+
+			shape := result->GetShape();
+			shape_size := shape->Size();
+			"shape_size={$shape_size}"->PrintLine();
+
+			shape->ToString()->PrintLine()
+			num_classes := 80;
+
+			result_count := shape[1]
+			result_count->PrintLine();
+
+			dims := result->GetDimensions();
+			cols := dims[1];
+			rows := dims[0];
+			
+			for(i := 0; i < result_count; i += 1;) {
+				x := output[i * (num_classes + 5) + 0];
+				y := output[i * (num_classes + 5) + 1];
+				w := output[i * (num_classes + 5) + 2];
+				h := output[i * (num_classes + 5) + 3];
+				conf := output[i * (num_classes + 5) + 4];
+
+				left := (((x - w / 2.0) * cols) / 640.0)->As(Int);
+				top := (((y - h / 2.0) * rows) / 640.0)->As(Int);
+				width := ((w * cols) / 640.0)->As(Int);
+				height := ((h * rows) / 640.0)->As(Int);
+
+				if(conf >= 0.5) {
+					start := i * (num_classes + 5) + 5;
+					end := start + num_classes;
+					class_id := FindGreatest(start, end, output) - start;
+					image_label := image_labels->Get(class_id);
+
+					"class_id={$class_id}, class_name={$image_label}, conf={$conf}"->PrintLine();
+					"{$left}, {$top}, {$width}, {$height}\n---\n"->PrintLine();
+				};
+			};
+		}
+		else {
+			"--- Error: No results returned ---"->ErrorLine();
+			return;
+		};
+
+		image_path := root_dir + "/images/";
+		image_path := image_path->ReplaceAll('\\', '/');
+	}
+
+	function : native : FindGreatest(start : Int, end : Int, output : Float[]) ~ Int {
+		index := start;
+
+		for(i := start + 1; i < end; i += 1;) {
+			if(output[i] > output[index]) {
+				index := i;
+			}
+		}
+
+		return index;
+	}
+
+	#
+	# ResNet-34
+	#
+	function : ProcessResNetImages(root_dir : String) ~ Nil {
+		root_dir->PrintLine();
+
+		image_path := root_dir + "/images/";
+		image_path := image_path->ReplaceAll('\\', '/');
+
+		model_path := root_dir + "/resnet34-v2-7.onnx";
+		model_path := model_path->ReplaceAll('\\', '/');
+
+		label_path := image_path + "resnet_labels.txt";
+		label_path := label_path->ReplaceAll('\\', '/');
+
+		"model_path={$model_path}"->PrintLine();
+		"label_path={$label_path}\n"->PrintLine();
+
+		image_labels := LoadLabels(label_path);
+
+		each(i : 15) {
+			j := Int->Random(0, 6);
+
+			select(j) {
+				label 0: {
+					image_path += "lion.jpg";
+				}
+
+				label 1: {
+					image_path += "tarantula.jpg";
+				}
+
+				label 2: {
+					image_path += "grasshopper.jpg";
+				}
+
+				label 3: {
+					image_path += "ski.jpg";
+				}
+
+				label 4: {
+					image_path += "wine.jpg";
+				}
+
+				label 5: {
+					image_path += "pier.jpg";
+				}
+
+				label 6: {
+					image_path += "prison.jpg";
+				}
+			}
+
+			image_bytes := FileReader->ReadBinaryFile(image_path);
+			image_size := image_bytes->Size();
+
+			"{$i}: image_path={$image_path}"->PrintLine();
+			"{$i}: image_size={$image_size}"->PrintLine();
+
+			result := API.Onnx.Runtime->ImageInference(image_bytes, 224, 224, model_path, API.Onnx.Runtime->ImagePreprocessor->RESNET);
+			if(result <> Nil) {
+				result_vector := result->GetOutput();
+				result_size := result_vector->Size();
+
+				# find max for numerical stability
+				max_logit := result_vector[0];
+				for(j := 1; j < result_size; j++) {
+				   if(result_vector[j] > max_logit) {
+				      max_logit := result_vector[j];
+				   }
+				}
+
+				# compute exp(logit - max_logit)
+				probs := Float->New[result_size];
+				sum_exp := 0.0;
+				for(j := 0; j < result_size; j++) {
+				   probs[j] := Float->Exp(result_vector[j] - max_logit);
+				   sum_exp += probs[j];
+				}
+
+				# normalize
+				for(j := 0; j < result_size; j++) {
+				   probs[j] /= sum_exp;
+				}
+
+				# find the top confidence
+				image_index := 0;
+				top_confidence := result_vector[0];			
+				for(j := 1; j < result_size; j++) {
+				   if(probs[j] > top_confidence) {
+				      top_confidence := probs[j];
+				      image_index := j;
+				   };
+				};
+
+				data_label := image_labels->Get(image_index);
+				"result_conf={$top_confidence}, image_index={$image_index}, data_label={$data_label}\n---\n"->PrintLine();
+			}
+			else {
+				"--- Error: No results returned ---"->ErrorLine();
+				return;
+			};
+
+			image_path := root_dir + "/images/";
+			image_path := image_path->ReplaceAll('\\', '/');
+		};
+	}
+
+	function : LoadLabels(label_path : String) ~ Vector<String> {
+		labels := Vector->New()<String>;
+
+		file_in := FileReader->New(label_path);
+		while(<>file_in->IsEoF()) {
+			data_label := file_in->ReadLine();
+			labels->AddBack(data_label);
+		};
+		file_in->Close();
+
+		return labels;
+	}
+}
