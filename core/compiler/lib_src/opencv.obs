@@ -1,0 +1,58 @@
+#~~
+# TODO
+# Copyright (c) 2025 Randy Hollines
+# ONNX and OpenCV wrappers
+~~#	
+
+use System.API;
+
+#~
+Open Computer Vision (OpenCV) support for image rendering and compilation. (-lib onnx)
+~#
+bundle API.OpenCV {
+	class : private : Proxy {
+		@lib_proxy : static : DllProxy;
+		
+		function : GetDllProxy() ~ DllProxy {
+			if(@lib_proxy = Nil) {
+				@lib_proxy := DllProxy->New("libobjk_opencv");
+			};
+
+			return @lib_proxy;
+		}
+	}
+
+	#~
+	Image manipulation routines
+	~#
+	class Image {
+		#~
+		Image type
+		~#
+		enum Format := 64 {
+			JPEG,
+			PNG,
+			WEBP,
+			GIF
+		}
+
+		#~
+		Image format conversion
+		@param input_image image bytes
+		@param output_format image output format
+		@return bytes for converted image
+		~#
+		function : Convert(input_image : Byte[], output_format : Image->Format) ~ Byte[] {
+			array_args := Base->New[3];
+
+			array_args[0] := ByteArrayRef->New();
+			array_args[1] := ByteArrayRef->New(input_image);
+			array_args[2] := IntRef->New(output_format->As(Int));
+
+			Proxy->GetDllProxy()->CallFunction("opencv_convert_image", array_args);
+			
+			holder := array_args[0]->As(ByteArrayRef);
+			return holder->Get();
+		}
+	}
+}
