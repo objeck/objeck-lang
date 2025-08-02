@@ -77,9 +77,9 @@
     <LibraryPath>$(LibraryPath);..\..\win\opencv\arm64\lib;..\win\onnx\arm64\lib</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>$(VC_IncludePath);..\..\..\opencv\win\opencv\include;..\win\onnx\include\onnxruntime\core\session;..\..\..\openssl\win\include;..\..\..\zlib\win</IncludePath>
+    <IncludePath>$(VC_IncludePath);..\..\..\opencv\win\include;..\win\onnx\include\onnxruntime\core\session;..\..\..\openssl\win\include;..\..\..\zlib\win</IncludePath>
     <TargetName>libobjk_onnx</TargetName>
-    <LibraryPath>$(LibraryPath);..\..\..\opencv\win\opencv\x64\lib;..\win\onnx\x64\lib</LibraryPath>
+    <LibraryPath>$(LibraryPath);..\..\..\opencv\win\x64\lib;..\win\onnx\x64\lib</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">
     <IncludePath>$(VC_IncludePath);..\..\win\opencv\include;..\win\onnx\include\onnxruntime\core\session;..\..\..\openssl\win\include;..\..\..\zlib\win</IncludePath>
@@ -87,9 +87,9 @@
     <LibraryPath>$(LibraryPath);..\..\win\opencv\arm64\lib;..\win\onnx\arm64\lib</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <IncludePath>$(VC_IncludePath);..\..\..\opencv\win\opencv\include;..\win\onnx\include\onnxruntime\core\session;..\..\..\openssl\win\include;..\..\..\zlib\win</IncludePath>
+    <IncludePath>$(VC_IncludePath);..\..\..\opencv\win\include;..\win\onnx\include\onnxruntime\core\session;..\..\..\openssl\win\include;..\..\..\zlib\win</IncludePath>
     <TargetName>libobjk_onnx</TargetName>
-    <LibraryPath>$(LibraryPath);..\..\..\opencv\win\opencv\x64\lib;..\win\onnx\x64\lib</LibraryPath>
+    <LibraryPath>$(LibraryPath);..\..\..\opencv\win\x64\lib;..\win\onnx\x64\lib</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">
     <ClCompile>
