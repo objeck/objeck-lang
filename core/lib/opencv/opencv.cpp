@@ -38,6 +38,36 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
+  void opencv_load_image_path(VMContext& context) {
+    const std::wstring w_image_path = APITools_GetStringValue(context, 1);
+    const  std::string image_path = UnicodeToBytes(w_image_path);
+
+    cv::Mat image = cv::imread(image_path, cv::IMREAD_COLOR);
+    if(image.empty()) {
+      APITools_SetIntValue(context, 0, 0);
+      return;
+		}
+
+    std::vector<unsigned char*> image_bytes(image.total() * image.elemSize());
+    std::memcpy(image_bytes.data(), image.data, image_bytes.size());
+
+    // Copy results
+    size_t* output_byte_buffer = APITools_MakeByteArray(context, output_image_bytes.size());
+    unsigned char* output_byte_array_buffer = (unsigned char*)(output_byte_buffer + 3);
+
+    for(size_t i = 0; i < output_image_bytes.size(); ++i) {
+      output_byte_array_buffer[i] = output_image_bytes[i];
+    }
+
+    output_holder[0] = (size_t)output_byte_buffer;
+  }
+
+  //
+  // Convert an image from one format to another
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
   void opencv_convert_image(VMContext& context) {
     // Get parameters
     size_t* output_holder = APITools_GetArray(context, 0);
