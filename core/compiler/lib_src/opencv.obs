@@ -41,7 +41,7 @@ bundle API.OpenCV {
 			GIF
 		}
 
-		New() {
+		New : private() {
 		}
 
 		function : Load(image_path : String) ~ API.OpenCV.Image {
@@ -79,6 +79,14 @@ bundle API.OpenCV {
 			return @image_cols;
 		}
 
+		method : public : Type() ~ Int {
+			return @image_type;
+		}
+
+		method : public : Bytes() ~ Byte[] {
+			return @image_bytes;
+		}
+
 		method : public : Show(title : String) ~ Nil {
 			array_args := Base->New[2];
 
@@ -94,8 +102,16 @@ bundle API.OpenCV {
 		@param output_format image output format
 		@return bytes for converted image
 		~#
-		method : public : Convert(output_format : Image->Format) ~ API.OpenCV.Image {			
-			return Nil;
+		method : public : Convert(format : Image->Format) ~ API.OpenCV.Image {			
+			array_args := Base->New[3];
+
+			array_args[0] := Nil;
+			array_args[1] := @self;
+			array_args[2] := IntRef->New(format->As(Int));
+
+			Proxy->GetDllProxy()->CallFunction("opencv_convert_image", array_args);
+
+			return array_args[0]->As(API.OpenCV.Image);
 		}
 	}
 }
