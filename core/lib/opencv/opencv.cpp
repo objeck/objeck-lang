@@ -39,8 +39,6 @@ extern "C" {
   __declspec(dllexport)
 #endif
   void opencv_load_image_path(VMContext& context) {
-    size_t* output_holder = APITools_GetArray(context, 0);
-
     const std::wstring w_image_path = APITools_GetStringValue(context, 1);
     const std::string image_path = UnicodeToBytes(w_image_path);
 
@@ -50,18 +48,9 @@ extern "C" {
       return;
 		}
 
-    const unsigned char* data = image.data;
-    if(!data) {
-      APITools_SetIntValue(context, 0, 0);
-      return;
-    }
-
-    const size_t data_size = image.total() * image.elemSize();
-    size_t* output_byte_buffer = APITools_MakeByteArray(context, data_size);
-    unsigned char* output_byte_array_buffer = (unsigned char*)(output_byte_buffer + 3);
-
-    memcpy(output_byte_array_buffer, data, data_size);
-    output_holder[0] = (size_t)output_byte_buffer;
+    size_t* image_obj = APITools_CreateObject(context, L"API.OpenCV.Image");
+    opencv_raw_write(image, image_obj, context);
+    APITools_SetObjectValue(context, 0, image_obj);
   }
 
   //
@@ -71,7 +60,25 @@ extern "C" {
   __declspec(dllexport)
 #endif
   void opencv_show_image(VMContext& context) {
+    size_t* image_obj = APITools_GetObjectValue(context, 0);
 
+    const std::wstring w_title = APITools_GetStringValue(context, 1);
+    const std::string title = UnicodeToBytes(w_title);
+
+    const int type = (int)image_obj[0];
+    const int rows = (int)image_obj[2];
+    const int cols = (int)image_obj[1];
+    size_t* data_array = (size_t*)image_obj[3];
+
+    // get parameters
+    const size_t data_size = APITools_GetArraySize(data_array);
+    const unsigned char* data = (unsigned char*)APITools_GetArray(data_array);
+
+    cv::Mat image(rows, cols, type);
+    memcpy(image.data, data, data_size);
+
+    cv::imshow(title, image);
+    cv::waitKey(0);
   }
 
   //

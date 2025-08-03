@@ -22,6 +22,21 @@ enum Preprocessor {
    OTHER
 };
 
+void opencv_raw_read(cv::Mat &image, size_t* image_obj, VMContext& context) {
+}
+
+void opencv_raw_write(cv::Mat &image, size_t* image_obj, VMContext& context) {
+  image_obj[0] = image.type(); // type
+  image_obj[1] = image.cols; // columns
+  image_obj[2] = image.rows; // rows
+
+  const size_t data_size = image.total() * image.elemSize(); // size
+  size_t* array = APITools_MakeByteArray(context, data_size);
+  unsigned char* byte_array = (unsigned char*)(array + 3);
+  memcpy(byte_array, image.data, data_size);
+  image_obj[3] = (size_t)array;
+}
+
 // TOOD: image conversion logic
 // convertFormat(png_bytes, jpeg_bytes, ".jpg", cv::IMREAD_UNCHANGED, {cv::IMWRITE_JPEG_QUALITY, 95});
 std::vector<unsigned char> convert_image_bytes(VMContext& context, const unsigned char* input_bytes, size_t input_size, size_t output_format)
