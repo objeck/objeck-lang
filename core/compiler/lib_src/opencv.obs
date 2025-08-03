@@ -44,6 +44,26 @@ bundle API.OpenCV {
 		New : private() {
 		}
 
+		method : public : Size() ~ Int {
+			return @image_bytes->Size();
+		}
+
+		method : public : Rows() ~ Int {
+			return @image_rows;
+		}
+
+		method : public : Columns() ~ Int {
+			return @image_cols;
+		}
+
+		method : public : Type() ~ Int {
+			return @image_type;
+		}
+
+		method : public : Bytes() ~ Byte[] {
+			return @image_bytes;
+		}
+
 		function : Load(image_path : String) ~ API.OpenCV.Image {
 			array_args := Base->New[2];
 
@@ -65,26 +85,6 @@ bundle API.OpenCV {
 			Proxy->GetDllProxy()->CallFunction("opencv_load_image_bytes", array_args);
 
 			return array_args[0]->As(API.OpenCV.Image);
-		}
-
-		method : public : Size() ~ Int {
-			return @image_bytes->Size();
-		}
-
-		method : public : Rows() ~ Int {
-			return @image_rows;
-		}
-
-		method : public : Columns() ~ Int {
-			return @image_cols;
-		}
-
-		method : public : Type() ~ Int {
-			return @image_type;
-		}
-
-		method : public : Bytes() ~ Byte[] {
-			return @image_bytes;
 		}
 
 		method : public : Show(title : String) ~ Nil {

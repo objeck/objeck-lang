@@ -5,14 +5,21 @@ class Test {
 		if(args->Size() = 1) {
 			image_path := args[0];
 			"image_path={$image_path}"->PrintLine();
+			dogs_image_path := image_path + "\\dogs.jpg";
 
-			dogs_image := image_path + "\\dogs.jpg";
-			image := Image->Load(dogs_image);
+			image := Image->Load(dogs_image_path);
 			image->Columns()->PrintLine();
 			image->Rows()->PrintLine();
 			image->Size()->PrintLine();
+			image->Show("From File\n----\n");
 
-			image->Show("Doggies!");
+			wine_image_path := image_path + "\\wine.jpg";
+			image_bytes := FileReader->ReadBinaryFile(wine_image_path);
+			image := Image->Load(image_bytes);
+			image->Columns()->PrintLine();
+			image->Rows()->PrintLine();
+			image->Size()->PrintLine();
+			image->Show("From Memory\n----\n");
 		};
 	}
 }
