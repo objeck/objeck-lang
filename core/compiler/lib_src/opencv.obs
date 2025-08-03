@@ -4,7 +4,7 @@
 # OpenCV wrapper
 ~~#	
 
-use System.API;
+use System.API, Collection.Tuple;
 
 #~
 Open Computer Vision (OpenCV) support for image rendering and compilation. (-lib opencv)
@@ -144,6 +144,93 @@ bundle API.OpenCV {
 
 			holder := array_args[0]->As(ByteArrayRef);
 			return holder->Get();
+		}
+	}
+
+	#~
+	OpenCV point 
+	~#
+	class Point {
+		@x : Int;
+		@y : Int;
+
+		New(x : Int, y : Int) {
+			@x := x;
+			@y := y;
+		}
+
+		method : public : GetX() ~ Int {
+			return @x;
+		}
+
+		method : public : GetY() ~ Int {
+			return @y;
+		}
+	}
+
+	#~
+	OpenCV rectangle 
+	~#
+	class Rect {
+		@x : Int;
+		@y : Int;
+		@width : Int;
+		@height : Int;
+
+		New(x : Int, y : Int, width : Int, height : Int) {
+			@x := x;
+			@y := y;
+			@width := width;
+			@height := height;
+		}
+
+		method : public : GetX() ~ Int {
+			return @x;
+		}
+
+		method : public : GetY() ~ Int {
+			return @y;
+		}
+
+		method : public : GetWidth() ~ Int {
+			return @width;
+		}
+
+		method : public : GetHeight() ~ Int {
+			return @height;
+		}
+	}
+
+	#~
+	OpenCV scalar 
+	~#
+	class Scalar {
+		@v0 : Float;
+		@v1 : Float;
+		@v2 : Float;
+		@v3 : Float;
+
+		New(v0 : Float, v1 : Float, v2 : Float, v3 : Float) {
+			@v0 := v0;
+			@v1 := v1;
+			@v2 := v2;
+			@v3 := v3;
+		}
+
+		method : public : GetV0() ~ Float {
+			return @v0;
+		}
+
+		method : public : GetV1() ~ Float {
+			return @v1;
+		}
+
+		method : public : GetV2() ~ Float {
+			return @v2;
+		}
+
+		method : public : GetV3() ~ Float {
+			return @v3;
 		}
 	}
 }
