@@ -33,7 +33,30 @@ extern "C" {
   }
 
   //
-  // Convert an image from one format to another
+// Load image from memory
+//
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void opencv_load_image_bytes(VMContext& context) {
+    // get parameters
+    size_t* input_array = (size_t*)APITools_GetArray(context, 1)[0];
+    const long input_size = ((long)APITools_GetArraySize(input_array));
+    const unsigned char* input_bytes = (unsigned char*)APITools_GetArray(input_array);
+
+    std::vector<uchar> image_data(input_bytes, input_bytes + input_size);
+    cv::Mat image = cv::imdecode(image_data, cv::IMREAD_UNCHANGED);
+    if(image.empty()) {
+      APITools_SetIntValue(context, 0, 0);
+      return;
+    }
+
+    size_t* image_obj = opencv_raw_write(image, context);
+    APITools_SetObjectValue(context, 0, image_obj);
+  }
+
+  //
+  // Load image from file
   //
 #ifdef _WIN32
   __declspec(dllexport)
