@@ -39,8 +39,10 @@ extern "C" {
   __declspec(dllexport)
 #endif
   void opencv_load_image_path(VMContext& context) {
+    size_t* output_holder = APITools_GetArray(context, 0);
+
     const std::wstring w_image_path = APITools_GetStringValue(context, 1);
-    const  std::string image_path = UnicodeToBytes(w_image_path);
+    const std::string image_path = UnicodeToBytes(w_image_path);
 
     cv::Mat image = cv::imread(image_path, cv::IMREAD_COLOR);
     if(image.empty()) {
@@ -48,18 +50,28 @@ extern "C" {
       return;
 		}
 
-    std::vector<unsigned char*> image_bytes(image.total() * image.elemSize());
-    std::memcpy(image_bytes.data(), image.data, image_bytes.size());
-
-    // Copy results
-    size_t* output_byte_buffer = APITools_MakeByteArray(context, output_image_bytes.size());
-    unsigned char* output_byte_array_buffer = (unsigned char*)(output_byte_buffer + 3);
-
-    for(size_t i = 0; i < output_image_bytes.size(); ++i) {
-      output_byte_array_buffer[i] = output_image_bytes[i];
+    const unsigned char* data = image.data;
+    if(!data) {
+      APITools_SetIntValue(context, 0, 0);
+      return;
     }
 
+    const size_t data_size = image.total() * image.elemSize();
+    size_t* output_byte_buffer = APITools_MakeByteArray(context, data_size);
+    unsigned char* output_byte_array_buffer = (unsigned char*)(output_byte_buffer + 3);
+
+    memcpy(output_byte_array_buffer, data, data_size);
     output_holder[0] = (size_t)output_byte_buffer;
+  }
+
+  //
+  // Convert an image from one format to another
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void opencv_show_image(VMContext& context) {
+
   }
 
   //
