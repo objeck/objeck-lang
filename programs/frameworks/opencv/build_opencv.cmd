@@ -30,6 +30,9 @@ set OBJECK_LIB_PATH=%OBJK_BASE%\core\release\%TARGET%\lib
 obc -src %OBJK_BASE%\core\compiler\lib_src\opencv.obs -tar lib -opt s3 -dest %OBJK_BASE%\core\release\%TARGET%\lib\opencv.obl
 rem obc -src %OBJK_BASE%\core\compiler\lib_src\lame.obs -tar lib -opt s3 -dest %OBJK_BASE%\core\release\%TARGET%\lib\lame.obl
 
+del /q %OBJECK_LIB_PATH%\native\libobjk_opencv.dll
+copy /y %OBJK_BASE%\core\lib\opencv\%1\%TYPE%\libobjk_opencv.dll %OBJECK_LIB_PATH%\native
+
 del /q ..\..\..\core\vm\%1\%TYPE%\*.dll
 copy /y %OBJK_BASE%\core\lib\opencv\win\%1\bin\*.dll ..\..\..\core\vm\%1\%TYPE%
 

@@ -1,0 +1,13 @@
+use API.OpenCV, System.IO.Filesystem, Collection;
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() = 1) {
+			image_path := args[0];
+			"image_path={$image_path}"->PrintLine();
+
+			dogs_image := image_path + "\\dogs.jpg";
+			image := Image->LoadFromFile(dogs_image);
+		};
+	}
+}
