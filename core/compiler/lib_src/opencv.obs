@@ -26,10 +26,8 @@ bundle API.OpenCV {
 	Image manipulation routines
 	~#
 	class Image {
-		@bytes : Byte[]; # TODO: just store length
-		@type : Int;
-		@rows : Int;
-		@cols : Int;
+		@image_bytes : Byte[]; # TODO: just store length
+		@image_size_max : Int;
 
 		#~
 		Image type
@@ -41,44 +39,36 @@ bundle API.OpenCV {
 			GIF
 		}
 
-		New(bytes : Byte[]) {
-			@bytes := bytes;
+		New(image_bytes : Byte[]) {
+			@image_bytes := image_bytes;
+			@image_size_max := image_bytes->Size();
 		}
 
 		function : LoadFromFile(image_path : String) ~ API.OpenCV.Image {
-			array_args := Base->New[5];
+			array_args := Base->New[2];
 
-			array_args[0] := Nil;
+			array_args[0] := ByteArrayRef->New();
 			array_args[1] := image_path;
-			array_args[2] := IntRef->New(); # type
-			array_args[3] := IntRef->New(); # rows
-			array_args[4] := IntRef->New(); # cols
 
 			Proxy->GetDllProxy()->CallFunction("opencv_load_image_path", array_args);
 
-			type_obj := array_args[2]->As(IntRef);
-			type := type_obj->Get();
-
-			rows_obj := array_args[3]->As(IntRef);
-			rows := rows_obj->Get();
-
-			cols_obj := array_args[4]->As(IntRef);
-			cols := cols_obj->Get();
-
 			bytes_obj := array_args[0]->As(ByteArrayRef);
-			bytes := bytes_obj->Get();
+			if(bytes_obj <> Nil) {
+				return API.OpenCV.Image->New(bytes_obj->Get());
+			};
 
 			return Nil;
 		}
 
-		function : LoadFromMemory(image_bytes : Byte[]) ~ API.OpenCV.Image {
-			@image_bytes := image_bytes;
-			@image_max := @image_bytes->Size();
+		method : public : Show() ~ Nil {
+			array_args := Base->New[1];
 
-			return API.OpenCV.Image->New();
+			array_args[0] := ByteArrayRef->New(@image_bytes);
+
+			Proxy->GetDllProxy()->CallFunction("opencv_show_image", array_args);
 		}
 
-		function : WriteToFile(image_path : String) ~  Bool {
+		method : public : WriteToFile(image_path : String) ~  Bool {
 			return false;
 		}
 
@@ -92,7 +82,7 @@ bundle API.OpenCV {
 			array_args := Base->New[3];
 
 			array_args[0] := ByteArrayRef->New();
-			array_args[1] := ByteArrayRef->New(@bytes);
+			array_args[1] := ByteArrayRef->New(@image_bytes);
 			array_args[2] := IntRef->New(output_format->As(Int));
 
 			Proxy->GetDllProxy()->CallFunction("opencv_convert_image", array_args);
