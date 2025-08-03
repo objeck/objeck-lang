@@ -22,10 +22,25 @@ enum Preprocessor {
    OTHER
 };
 
-void opencv_raw_read(cv::Mat &image, size_t* image_obj, VMContext& context) {
+cv::Mat opencv_raw_read(size_t* image_obj, VMContext& context) {
+  const int type = (int)image_obj[0];
+  const int rows = (int)image_obj[2];
+  const int cols = (int)image_obj[1];
+  size_t* data_array = (size_t*)image_obj[3];
+
+  // get parameters
+  const size_t data_size = APITools_GetArraySize(data_array);
+  const unsigned char* data = (unsigned char*)APITools_GetArray(data_array);
+
+  cv::Mat image(rows, cols, type);
+  memcpy(image.data, data, data_size);
+
+  return image;
 }
 
-void opencv_raw_write(cv::Mat &image, size_t* image_obj, VMContext& context) {
+size_t* opencv_raw_write(cv::Mat &image, VMContext& context) {
+  size_t* image_obj = APITools_CreateObject(context, L"API.OpenCV.Image");
+
   image_obj[0] = image.type(); // type
   image_obj[1] = image.cols; // columns
   image_obj[2] = image.rows; // rows
@@ -35,6 +50,8 @@ void opencv_raw_write(cv::Mat &image, size_t* image_obj, VMContext& context) {
   unsigned char* byte_array = (unsigned char*)(array + 3);
   memcpy(byte_array, image.data, data_size);
   image_obj[3] = (size_t)array;
+
+  return image_obj;
 }
 
 // TOOD: image conversion logic
