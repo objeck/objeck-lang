@@ -129,9 +129,9 @@ bundle API.OpenCV {
 		}
 
 		#~
-		Convert an image to a given format
+		Convert an image to a given byte format
 		@param format output format
-		@return bytes of converted image
+		@return converted image bytes
 		~#
 		method : public : Convert(format : Image->Format) ~ Byte[] {			
 			array_args := Base->New[3];
