@@ -20,6 +20,11 @@ class Test {
 			image->Rows()->PrintLine();
 			image->Size()->PrintLine();
 			image->Show("From Memory\n----\n");
+
+			webp_bytes := image->Convert(Image->Format->WEBP);
+			image->Size()->PrintLine();
+			webp_bytes->Size()->PrintLine();
+			FileWriter->WriteFile("out.webp", webp_bytes);
 		};
 	}
 }

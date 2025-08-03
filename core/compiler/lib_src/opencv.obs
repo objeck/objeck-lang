@@ -136,7 +136,7 @@ bundle API.OpenCV {
 		method : public : Convert(format : Image->Format) ~ Byte[] {			
 			array_args := Base->New[3];
 
-			array_args[0] := Nil;
+			array_args[0] := ByteArrayRef->New();
 			array_args[1] := @self;
 			array_args[2] := IntRef->New(format->As(Int));
 
