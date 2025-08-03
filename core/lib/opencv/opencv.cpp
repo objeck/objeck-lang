@@ -12,6 +12,7 @@ extern "C" {
   __declspec(dllexport)
 #endif
   void load_lib(VMContext& context) {
+    cv::utils::logging::setLogLevel(cv::utils::logging::LOG_LEVEL_ERROR);
   }
 
   //
