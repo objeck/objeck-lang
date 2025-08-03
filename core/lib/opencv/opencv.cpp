@@ -48,8 +48,7 @@ extern "C" {
       return;
 		}
 
-    size_t* image_obj = APITools_CreateObject(context, L"API.OpenCV.Image");
-    opencv_raw_write(image, image_obj, context);
+    size_t* image_obj = opencv_raw_write(image, context);
     APITools_SetObjectValue(context, 0, image_obj);
   }
 
@@ -65,17 +64,7 @@ extern "C" {
     const std::wstring w_title = APITools_GetStringValue(context, 1);
     const std::string title = UnicodeToBytes(w_title);
 
-    const int type = (int)image_obj[0];
-    const int rows = (int)image_obj[2];
-    const int cols = (int)image_obj[1];
-    size_t* data_array = (size_t*)image_obj[3];
-
-    // get parameters
-    const size_t data_size = APITools_GetArraySize(data_array);
-    const unsigned char* data = (unsigned char*)APITools_GetArray(data_array);
-
-    cv::Mat image(rows, cols, type);
-    memcpy(image.data, data, data_size);
+    cv::Mat image = opencv_raw_read(image_obj, context);
 
     cv::imshow(title, image);
     cv::waitKey(0);
