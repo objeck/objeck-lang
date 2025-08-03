@@ -56,7 +56,7 @@ size_t* opencv_raw_write(cv::Mat &image, VMContext& context) {
 
 // TOOD: image conversion logic
 // convertFormat(png_bytes, jpeg_bytes, ".jpg", cv::IMREAD_UNCHANGED, {cv::IMWRITE_JPEG_QUALITY, 95});
-std::vector<unsigned char> convert_image_bytes(VMContext& context, const unsigned char* input_bytes, size_t input_size, size_t output_format)
+std::vector<unsigned char> convert_image_bytes(cv::Mat &image, size_t output_format)
 {
   std::string output_ext; std::vector<int> encode_params;
   switch(output_format) {
@@ -86,14 +86,7 @@ std::vector<unsigned char> convert_image_bytes(VMContext& context, const unsigne
 
   default:
     return std::vector<unsigned char>();
-  }
-
-  // Decode input image
-  std::vector<uchar> image_data(input_bytes, input_bytes + input_size);
-  cv::Mat image = cv::imdecode(image_data, cv::IMREAD_UNCHANGED);
-  if(image.empty()) {
-    return std::vector<unsigned char>();
-  }
+  }  
 
   // Special handling for HDR JPEG (tone map to 8-bit)
   if(output_format == ImageFormat::JPEG && image.depth() == CV_32F) {

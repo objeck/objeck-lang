@@ -1,13 +1,13 @@
 #~~
 # TODO
 # Copyright (c) 2025 Randy Hollines
-# ONNX and OpenCV wrappers
+# OpenCV wrapper
 ~~#	
 
 use System.API;
 
 #~
-Open Computer Vision (OpenCV) support for image rendering and compilation. (-lib onnx)
+Open Computer Vision (OpenCV) support for image rendering and compilation. (-lib opencv)
 ~#
 bundle API.OpenCV {
 	class : private : Proxy {
@@ -23,7 +23,7 @@ bundle API.OpenCV {
 	}
 
 	#~
-	Image manipulation routines
+	OpenCV image support routines
 	~#
 	class Image {
 		@image_type : Int;
@@ -44,26 +44,51 @@ bundle API.OpenCV {
 		New : private() {
 		}
 
+		#~
+		Gets image size
+		@return image size
+		~#
 		method : public : Size() ~ Int {
 			return @image_bytes->Size();
 		}
 
+		#~
+		Gets image rows
+		@return image rows
+		~#
 		method : public : Rows() ~ Int {
 			return @image_rows;
 		}
 
+		#~
+		Gets image columns
+		@return image columns
+		~#
 		method : public : Columns() ~ Int {
 			return @image_cols;
 		}
 
+		#~
+		Gets image type
+		@return image type
+		~#
 		method : public : Type() ~ Int {
 			return @image_type;
 		}
 
+		#~
+		Gets image bytes
+		@return image bytes
+		~#
 		method : public : Bytes() ~ Byte[] {
 			return @image_bytes;
 		}
 
+		#~
+		Load image from file
+		@param image_path image file path
+		@return loaded image
+		~#
 		function : Load(image_path : String) ~ API.OpenCV.Image {
 			array_args := Base->New[2];
 
@@ -75,7 +100,11 @@ bundle API.OpenCV {
 			return array_args[0]->As(API.OpenCV.Image);
 		}
 
-		# TODO: test
+		#~
+		Load image from bytes
+		@param image_path image file path
+		@return loaded image
+		~#
 		function : Load(image_bytes : Byte[]) ~ API.OpenCV.Image {
 			array_args := Base->New[2];
 
@@ -87,6 +116,9 @@ bundle API.OpenCV {
 			return array_args[0]->As(API.OpenCV.Image);
 		}
 
+		#~
+		Shows an image
+		~#
 		method : public : Show(title : String) ~ Nil {
 			array_args := Base->New[2];
 
@@ -96,13 +128,12 @@ bundle API.OpenCV {
 			Proxy->GetDllProxy()->CallFunction("opencv_show_image", array_args);
 		}
 
-		#~ TOOD: update
-		Image format conversion
-		@param input_image image bytes
-		@param output_format image output format
-		@return bytes for converted image
+		#~
+		Convert an image to a given format
+		@param format output format
+		@return bytes of converted image
 		~#
-		method : public : Convert(format : Image->Format) ~ API.OpenCV.Image {			
+		method : public : Convert(format : Image->Format) ~ Byte[] {			
 			array_args := Base->New[3];
 
 			array_args[0] := Nil;
@@ -111,7 +142,8 @@ bundle API.OpenCV {
 
 			Proxy->GetDllProxy()->CallFunction("opencv_convert_image", array_args);
 
-			return array_args[0]->As(API.OpenCV.Image);
+			holder := array_args[0]->As(ByteArrayRef);
+			return holder->Get();
 		}
 	}
 }
