@@ -13,8 +13,7 @@ class Test {
 			image->Size()->PrintLine();
 
 			foo := image->DrawCircle(Point->New(50, 50), 25, Scalar->New(0, 255, 0), 2);
-
-			foo->Show("From File\n----\n");
+			foo->Resize(Size->New(320, 320))->Show("From File\n----\n");
 
 
 
