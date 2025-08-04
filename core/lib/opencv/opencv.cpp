@@ -133,6 +133,43 @@ extern "C" {
   }
 
   //
+  // Draw a circle on image
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void opencv_draw_circle(VMContext& context) {
+    size_t* image_in_obj = APITools_GetObjectValue(context, 1);
+    size_t* pt_obj = APITools_GetObjectValue(context, 2);
+    const long radius = (long)APITools_GetIntValue(context, 3);
+    size_t* color_obj = APITools_GetObjectValue(context, 4);
+    const long thickness = (long)APITools_GetIntValue(context, 5);
+    const long type = (long)APITools_GetIntValue(context, 6);
+
+    if(!image_in_obj || !pt_obj || !color_obj) {
+      return;
+    }
+
+    cv::Mat image = opencv_raw_read(image_in_obj, context);
+    if(image.empty()) {
+      return;
+    }
+
+    const long x = (long)pt_obj[0];
+    const long y = (long)pt_obj[1];
+
+    const double r = *((double*)&color_obj[0]);
+    const double g = *((double*)&color_obj[1]);
+    const double b = *((double*)&color_obj[2]);
+    const double a = *((double*)&color_obj[3]);
+
+    cv::circle(image, cv::Point(x, y), radius, cv::Scalar(r, g, b, a), thickness, type);
+
+    size_t* image_out_obj = opencv_raw_write(image, context);
+    APITools_SetObjectValue(context, 0, image_out_obj);
+  }
+
+  //
   // Convert an image from one format to another
   //
 #ifdef _WIN32
