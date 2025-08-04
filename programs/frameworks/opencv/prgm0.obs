@@ -12,7 +12,7 @@ class Test {
 			image->Rows()->PrintLine();
 			image->Size()->PrintLine();
 
-			foo := image->DrawRectangle(Rect->New(50, 50, 200, 200), Scalar->New(0, 255, 0), 2);
+			foo := image->DrawCircle(Point->New(50, 50), 25, Scalar->New(0, 255, 0), 2);
 
 			foo->Show("From File\n----\n");
 

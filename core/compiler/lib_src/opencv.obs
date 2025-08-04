@@ -188,6 +188,25 @@ bundle API.OpenCV {
 
 			return array_args[0]->As(API.OpenCV.Image);
 		}
+
+		#~
+		Convert an image to a given byte format
+		@param format output format
+		@return converted image bytes
+		~#
+		method : public : Resize(sz : Size, px : Float := 0.0, py : Float := 0.0) ~ API.OpenCV.Image {
+			array_args := Base->New[7];
+
+			array_args[0] := Nil;
+			array_args[1] := @self;
+			array_args[2] := sz;
+			array_args[3] := FloatRef->New(px);
+			array_args[3] := FloatRef->New(py);
+
+			Proxy->GetDllProxy()->CallFunction("opencv_resize_image", array_args);
+
+			return array_args[0]->As(API.OpenCV.Image);
+		}
 	}
 
 	#~
@@ -221,6 +240,27 @@ bundle API.OpenCV {
 		New(x : Int, y : Int, width : Int, height : Int) {
 			Parent(x, y);
 
+			@width := width;
+			@height := height;
+		}
+
+		method : public : GetWidth() ~ Int {
+			return @width;
+		}
+
+		method : public : GetHeight() ~ Int {
+			return @height;
+		}
+	}
+
+	#~
+	OpenCV size 
+	~#
+	class Size {
+		@width : Int;
+		@height : Int;
+
+		New(width : Int, height : Int) {
 			@width := width;
 			@height := height;
 		}
