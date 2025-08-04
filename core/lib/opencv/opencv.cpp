@@ -108,11 +108,13 @@ extern "C" {
     const long type = (long)APITools_GetIntValue(context, 5);
 
     if(!image_in_obj || !rect_obj || !color_obj) {
+      APITools_SetObjectValue(context, 0, 0);
       return;
     }
 
     cv::Mat image = opencv_raw_read(image_in_obj, context);
     if(image.empty()) {
+      APITools_SetObjectValue(context, 0, 0);
       return;
     }
 
@@ -133,6 +135,39 @@ extern "C" {
   }
 
   //
+  // Resize an image
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void opencv_resize_image(VMContext& context) {
+    size_t* image_in_obj = APITools_GetObjectValue(context, 1);
+    size_t* size_obj = APITools_GetObjectValue(context, 2);
+    const double fx = APITools_GetFloatValue(context, 3);
+    const double fy = APITools_GetFloatValue(context, 4);
+    const long interpolation = (long)APITools_GetIntValue(context, 5);
+
+    if(!image_in_obj || !size_obj) {
+      APITools_SetObjectValue(context, 0, 0);
+      return;
+    }
+
+    cv::Mat image = opencv_raw_read(image_in_obj, context);
+    if(image.empty()) {
+      APITools_SetObjectValue(context, 0, 0);
+      return;
+    }
+
+    const long width = (long)size_obj[0];
+    const long height = (long)size_obj[1];
+
+    cv::resize(image, image, cv::Size(width, height), fx, fy, interpolation);
+
+    size_t* image_out_obj = opencv_raw_write(image, context);
+    APITools_SetObjectValue(context, 0, image_out_obj);
+  }
+
+  //
   // Draw a circle on image
   //
 #ifdef _WIN32
@@ -147,11 +182,13 @@ extern "C" {
     const long type = (long)APITools_GetIntValue(context, 6);
 
     if(!image_in_obj || !pt_obj || !color_obj) {
+      APITools_SetObjectValue(context, 0, 0);
       return;
     }
 
     cv::Mat image = opencv_raw_read(image_in_obj, context);
     if(image.empty()) {
+      APITools_SetObjectValue(context, 0, 0);
       return;
     }
 

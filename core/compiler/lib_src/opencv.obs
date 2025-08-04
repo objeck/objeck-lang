@@ -160,7 +160,7 @@ bundle API.OpenCV {
 			array_args[2] := rect;
 			array_args[3] := color;
 			array_args[4] := IntRef->New(thickness);
-			array_args[5] := IntRef->New(type->As(Int));
+			array_args[5] := IntRef->New(type);
 
 			Proxy->GetDllProxy()->CallFunction("opencv_draw_rect", array_args);
 
@@ -182,7 +182,7 @@ bundle API.OpenCV {
 			array_args[3] := IntRef->New(radius);;
 			array_args[4] := color;
 			array_args[5] := IntRef->New(thickness);
-			array_args[6] := IntRef->New(type->As(Int));
+			array_args[6] := IntRef->New(type);
 
 			Proxy->GetDllProxy()->CallFunction("opencv_draw_circle", array_args);
 
@@ -196,13 +196,14 @@ bundle API.OpenCV {
 		~#
 		method : public : Resize(sz : Size, px : Float := 0.0, py : Float := 0.0, 
 				interpolation : InterpolationFlags := InterpolationFlags->INTER_LINEAR) ~ API.OpenCV.Image {
-			array_args := Base->New[7];
+			array_args := Base->New[6];
 
 			array_args[0] := Nil;
 			array_args[1] := @self;
 			array_args[2] := sz;
 			array_args[3] := FloatRef->New(px);
-			array_args[3] := FloatRef->New(py);
+			array_args[4] := FloatRef->New(py);
+			array_args[5] := IntRef->New(interpolation);
 
 			Proxy->GetDllProxy()->CallFunction("opencv_resize_image", array_args);
 
