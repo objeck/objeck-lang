@@ -145,6 +145,27 @@ bundle API.OpenCV {
 			holder := array_args[0]->As(ByteArrayRef);
 			return holder->Get();
 		}
+
+		#~
+		Convert an image to a given byte format
+		@param format output format
+		@return converted image bytes
+		~#
+		method : public : DrawRectangle(rect : Rect, color : Scalar, thickness : Int, 
+				type : LineType := LineType->LINE_8) ~ API.OpenCV.Image {
+			array_args := Base->New[6];
+
+			array_args[0] := Nil;
+			array_args[1] := @self;
+			array_args[2] := rect;
+			array_args[3] := color;
+			array_args[4] := IntRef->New(thickness);
+			array_args[5] := IntRef->New(type->As(Int));
+
+			Proxy->GetDllProxy()->CallFunction("opencv_draw_rect", array_args);
+
+			return array_args[0]->As(API.OpenCV.Image);
+		}
 	}
 
 	#~
@@ -210,7 +231,7 @@ bundle API.OpenCV {
 		@v2 : Float;
 		@v3 : Float;
 
-		New(v0 : Float, v1 : Float, v2 : Float, v3 : Float) {
+		New(v0 : Float, v1 : Float, v2 : Float := 0.0, v3 : Float := 0.0) {
 			@v0 := v0;
 			@v1 := v1;
 			@v2 := v2;
@@ -232,5 +253,12 @@ bundle API.OpenCV {
 		method : public : GetV3() ~ Float {
 			return @v3;
 		}
+	}
+
+	consts LineType {
+	    FILLED := -1, # fill
+	    LINE_4 := 4, # 4-connected line
+	    LINE_8 := 8, # 8-connected line
+	    LINE_AA := 16 # anti-aliased line
 	}
 }

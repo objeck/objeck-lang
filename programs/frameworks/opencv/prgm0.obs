@@ -11,8 +11,14 @@ class Test {
 			image->Columns()->PrintLine();
 			image->Rows()->PrintLine();
 			image->Size()->PrintLine();
-			image->Show("From File\n----\n");
 
+			foo := image->DrawRectangle(Rect->New(50, 50, 200, 200), Scalar->New(0, 255, 0), 2);
+
+			foo->Show("From File\n----\n");
+
+
+
+#~
 			wine_image_path := image_path + "\\wine.jpg";
 			image_bytes := FileReader->ReadBinaryFile(wine_image_path);
 			image := Image->Load(image_bytes);
@@ -25,6 +31,7 @@ class Test {
 			image->Size()->PrintLine();
 			webp_bytes->Size()->PrintLine();
 			FileWriter->WriteFile("out.webp", webp_bytes);
+~#			
 		};
 	}
 }
