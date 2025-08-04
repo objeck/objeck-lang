@@ -168,6 +168,34 @@ extern "C" {
   }
 
   //
+  // Convert image space
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+    void opencv_cvt_color_image(VMContext& context) {
+    size_t* image_in_obj = APITools_GetObjectValue(context, 1);
+    const long code = (long)APITools_GetIntValue(context, 2);
+    const long channels = (long)APITools_GetIntValue(context, 3);
+
+    if(!image_in_obj) {
+      APITools_SetObjectValue(context, 0, 0);
+      return;
+    }
+
+    cv::Mat image = opencv_raw_read(image_in_obj, context);
+    if(image.empty()) {
+      APITools_SetObjectValue(context, 0, 0);
+      return;
+    }
+
+    cv::cvtColor(image, image, code, channels);
+
+    size_t* image_out_obj = opencv_raw_write(image, context);
+    APITools_SetObjectValue(context, 0, image_out_obj);
+  }
+
+  //
   // Draw a circle on image
   //
 #ifdef _WIN32
