@@ -227,6 +227,25 @@ bundle API.OpenCV {
 
 			return array_args[0]->As(API.OpenCV.Image);
 		}
+
+		#~
+		Convert an image to a given byte format
+		@param format output format
+		@return converted image bytes
+		~#
+		method : public : ConvertTo(type : CvHal, alpha : Float, beta : Float := 0.0) ~ API.OpenCV.Image {
+			array_args := Base->New[5];
+
+			array_args[0] := Nil;
+			array_args[1] := @self;
+			array_args[2] := IntRef->New(type);
+			array_args[3] := FloatRef->New(alpha);
+			array_args[4] := FloatRef->New(beta);
+
+			Proxy->GetDllProxy()->CallFunction("opencv_convert_image", array_args);
+
+			return array_args[0]->As(API.OpenCV.Image);
+		}
 	}
 
 	#~
@@ -619,5 +638,106 @@ bundle API.OpenCV {
 		COLOR_RGBA2YUV_YUNV := 151,
 		COLOR_BGRA2YUV_YUNV := 152,
 		COLOR_COLORCVT_MAX := 155
+	}
+
+	consts CvHal {
+		# Return Codes
+		CV_HAL_ERROR_OK := 0,
+		CV_HAL_ERROR_NOT_IMPLEMENTED := 1,
+		CV_HAL_ERROR_UNKNOWN := -1,
+
+		# Comparison Operations
+		CV_HAL_CMP_EQ := 0,
+		CV_HAL_CMP_GT := 1,
+		CV_HAL_CMP_GE := 2,
+		CV_HAL_CMP_LT := 3,
+		CV_HAL_CMP_LE := 4,
+		CV_HAL_CMP_NE := 5,
+
+		# Border Types
+		CV_HAL_BORDER_CONSTANT := 0,
+		CV_HAL_BORDER_REPLICATE := 1,
+		CV_HAL_BORDER_REFLECT := 2,
+		CV_HAL_BORDER_WRAP := 3,
+		CV_HAL_BORDER_REFLECT_101 := 4,
+		CV_HAL_BORDER_TRANSPARENT := 5,
+		CV_HAL_BORDER_ISOLATED := 16,
+
+		# DFT Flags
+		CV_HAL_DFT_INVERSE := 1,
+		CV_HAL_DFT_SCALE := 2,
+		CV_HAL_DFT_ROWS := 4,
+		CV_HAL_DFT_COMPLEX_OUTPUT := 16,
+		CV_HAL_DFT_REAL_OUTPUT := 32,
+		CV_HAL_DFT_TWO_STAGE := 64,
+		CV_HAL_DFT_STAGE_COLS := 128,
+		CV_HAL_DFT_IS_CONTINUOUS := 512,
+		CV_HAL_DFT_IS_INPLACE := 1024,
+
+		# SVD Flags
+		CV_HAL_SVD_NO_UV := 1,
+		CV_HAL_SVD_SHORT_UV := 2,
+		CV_HAL_SVD_MODIFY_A := 4,
+		CV_HAL_SVD_FULL_UV := 8,
+
+		# GEMM Flags
+		CV_HAL_GEMM_1_T := 1,
+		CV_HAL_GEMM_2_T := 2,
+		CV_HAL_GEMM_3_T := 4,
+
+		# Depth and Channel Constants
+		CV_CN_MAX := 512,
+		CV_CN_SHIFT := 3,
+		CV_DEPTH_MAX := 8,
+
+		CV_8U := 0,
+		CV_8S := 1,
+		CV_16U := 2,
+		CV_16S := 3,
+		CV_32S := 4,
+		CV_32F := 5,
+		CV_64F := 6,
+		CV_16F := 7,
+
+		# Mat type macros (for channels 1–4)
+		CV_8UC1 := 0,
+		CV_8UC2 := 8,
+		CV_8UC3 := 16,
+		CV_8UC4 := 24,
+
+		CV_8SC1 := 1,
+		CV_8SC2 := 9,
+		CV_8SC3 := 17,
+		CV_8SC4 := 25,
+
+		CV_16UC1 := 2,
+		CV_16UC2 := 10,
+		CV_16UC3 := 18,
+		CV_16UC4 := 26,
+
+		CV_16SC1 := 3,
+		CV_16SC2 := 11,
+		CV_16SC3 := 19,
+		CV_16SC4 := 27,
+
+		CV_32SC1 := 4,
+		CV_32SC2 := 12,
+		CV_32SC3 := 20,
+		CV_32SC4 := 28,
+
+		CV_32FC1 := 5,
+		CV_32FC2 := 13,
+		CV_32FC3 := 21,
+		CV_32FC4 := 29,
+
+		CV_64FC1 := 6,
+		CV_64FC2 := 14,
+		CV_64FC3 := 22,
+		CV_64FC4 := 30,
+
+		CV_16FC1 := 7,
+		CV_16FC2 := 15,
+		CV_16FC3 := 23,
+		CV_16FC4 := 31
 	}
 }
