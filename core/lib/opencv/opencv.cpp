@@ -201,7 +201,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-    void opencv_convert_image(VMContext& context) {
+    void opencv_convert_to_image(VMContext& context) {
     size_t* image_in_obj = APITools_GetObjectValue(context, 1);
     const long type = (long)APITools_GetIntValue(context, 2);
     const double alpha = APITools_GetFloatValue(context, 3);
