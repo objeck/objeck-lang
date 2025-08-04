@@ -242,7 +242,7 @@ bundle API.OpenCV {
 			array_args[3] := FloatRef->New(alpha);
 			array_args[4] := FloatRef->New(beta);
 
-			Proxy->GetDllProxy()->CallFunction("opencv_convert_image", array_args);
+			Proxy->GetDllProxy()->CallFunction("opencv_convert_to_image", array_args);
 
 			return array_args[0]->As(API.OpenCV.Image);
 		}
