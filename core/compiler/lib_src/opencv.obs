@@ -140,7 +140,7 @@ bundle API.OpenCV {
 			array_args[1] := @self;
 			array_args[2] := IntRef->New(format->As(Int));
 
-			Proxy->GetDllProxy()->CallFunction("opencv_convert_image", array_args);
+			Proxy->GetDllProxy()->CallFunction("opencv_convert_image_format", array_args);
 
 			holder := array_args[0]->As(ByteArrayRef);
 			return holder->Get();

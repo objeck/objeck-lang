@@ -196,6 +196,36 @@ extern "C" {
   }
 
   //
+  // Convert image space
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+    void opencv_convert_image(VMContext& context) {
+    size_t* image_in_obj = APITools_GetObjectValue(context, 1);
+    const long type = (long)APITools_GetIntValue(context, 2);
+    const double alpha = APITools_GetFloatValue(context, 3);
+    const double beta = APITools_GetFloatValue(context, 4);
+
+    if(!image_in_obj) {
+      APITools_SetObjectValue(context, 0, 0);
+      return;
+    }
+
+    cv::Mat image_in = opencv_raw_read(image_in_obj, context);
+    if(image_in.empty()) {
+      APITools_SetObjectValue(context, 0, 0);
+      return;
+    }
+
+    cv::Mat image_out;
+    image_in.convertTo(image_out, type, alpha, beta);
+
+    size_t* image_out_obj = opencv_raw_write(image_out, context);
+    APITools_SetObjectValue(context, 0, image_out_obj);
+  }
+
+  //
   // Draw a circle on image
   //
 #ifdef _WIN32
@@ -240,7 +270,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-  void opencv_convert_image(VMContext& context) {
+  void opencv_convert_image_format(VMContext& context) {
     size_t* output_holder = APITools_GetArray(context, 0);
     
     size_t* image_obj = APITools_GetObjectValue(context, 1);
