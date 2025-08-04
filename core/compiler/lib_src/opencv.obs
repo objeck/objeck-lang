@@ -209,6 +209,24 @@ bundle API.OpenCV {
 
 			return array_args[0]->As(API.OpenCV.Image);
 		}
+
+		#~
+		Convert an image to a given byte format
+		@param format output format
+		@return converted image bytes
+		~#
+		method : public : CvtColor(code : ColorConversionCodes, channels : Int := 0) ~ API.OpenCV.Image {
+			array_args := Base->New[4];
+
+			array_args[0] := Nil;
+			array_args[1] := @self;
+			array_args[2] := IntRef->New(code);
+			array_args[3] := IntRef->New(channels);
+
+			Proxy->GetDllProxy()->CallFunction("opencv_cvt_color_image", array_args);
+
+			return array_args[0]->As(API.OpenCV.Image);
+		}
 	}
 
 	#~
