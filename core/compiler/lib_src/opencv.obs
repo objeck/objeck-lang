@@ -166,6 +166,28 @@ bundle API.OpenCV {
 
 			return array_args[0]->As(API.OpenCV.Image);
 		}
+
+		#~
+		Convert an image to a given byte format
+		@param format output format
+		@return converted image bytes
+		~#
+		method : public : DrawCircle(pt : Point, radius : Int , color : Scalar, thickness : Int, 
+				type : LineType := LineType->LINE_8) ~ API.OpenCV.Image {
+			array_args := Base->New[7];
+
+			array_args[0] := Nil;
+			array_args[1] := @self;
+			array_args[2] := pt;
+			array_args[3] := IntRef->New(radius);;
+			array_args[4] := color;
+			array_args[5] := IntRef->New(thickness);
+			array_args[6] := IntRef->New(type->As(Int));
+
+			Proxy->GetDllProxy()->CallFunction("opencv_draw_circle", array_args);
+
+			return array_args[0]->As(API.OpenCV.Image);
+		}
 	}
 
 	#~
@@ -192,25 +214,15 @@ bundle API.OpenCV {
 	#~
 	OpenCV rectangle 
 	~#
-	class Rect {
-		@x : Int;
-		@y : Int;
+	class Rect from Point {
 		@width : Int;
 		@height : Int;
 
 		New(x : Int, y : Int, width : Int, height : Int) {
-			@x := x;
-			@y := y;
+			Parent(x, y);
+
 			@width := width;
 			@height := height;
-		}
-
-		method : public : GetX() ~ Int {
-			return @x;
-		}
-
-		method : public : GetY() ~ Int {
-			return @y;
 		}
 
 		method : public : GetWidth() ~ Int {
