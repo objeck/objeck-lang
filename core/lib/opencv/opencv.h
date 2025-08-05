@@ -6,7 +6,6 @@
 #include <filesystem>
 
 #include <opencv2/opencv.hpp>
-#include <onnxruntime_cxx_api.h>
 
 #include "../../../vm/lib_api.h"
 
@@ -22,6 +21,57 @@ enum Preprocessor {
    YOLO,
    OTHER
 };
+
+//
+// Common supporting functions
+//
+
+// Convert OpenCV Mat to image format
+std::vector<unsigned char> convert_image_bytes(cv::Mat &image, size_t output_format)
+{
+  std::string output_ext; std::vector<int> encode_params;
+  switch(output_format) {
+    // JPEG
+  case ImageFormat::JPEG:
+    output_ext = ".jpg";
+    encode_params = { cv::IMWRITE_JPEG_QUALITY, 95 }; // image quality
+    break;
+
+    // PNG
+  case ImageFormat::PNG:
+    output_ext = ".png";
+    encode_params = { cv::IMWRITE_PNG_COMPRESSION, 3 }; // PNG compression level
+    break;
+
+    // WEBP
+  case ImageFormat::WEBP:
+    output_ext = ".webp";
+    encode_params = { cv::IMWRITE_WEBP_QUALITY, 95 }; // image quality
+    break;
+
+    // GIF
+  case ImageFormat::GIF:
+    output_ext = ".gif";
+    encode_params = { cv::IMWRITE_GIF_QUALITY, 95 }; // image quality
+    break;
+
+  default:
+    return std::vector<unsigned char>();
+  }  
+
+  // Special handling for HDR JPEG (tone map to 8-bit)
+  if(output_format == ImageFormat::JPEG && image.depth() == CV_32F) {
+    image.convertTo(image, CV_8UC3, 255.0);  // tone mapping
+  }
+
+  // Encode to target format
+  std::vector<unsigned char> output_bytes;
+  if(!cv::imencode(output_ext, image, output_bytes, encode_params)) {
+    return std::vector<unsigned char>();
+  }
+
+  return output_bytes;
+}
 
 // Preprocess the image for YOLO
 std::vector<float> yolo_preprocess(const cv::Mat& img, int resize_height, int resize_width) {
@@ -67,27 +117,6 @@ std::vector<float> resnet_preprocess(const cv::Mat& img, int resize_height, int 
   }
 
   return input_tensor_values;
-}
-
-// Get available execution provider names
-size_t* get_provider_names(VMContext& context) {
-  // Get execution provider names
-  std::vector<std::wstring> execution_provider_names;
-
-  auto execution_providers = Ort::GetAvailableProviders();
-  for(size_t i = 0; i < execution_providers.size(); ++i) {
-    auto execution_provider = execution_providers[i];
-    execution_provider_names.push_back(BytesToUnicode(execution_provider));
-  }
-
-  // Copy results
-  size_t* output_string_array = APITools_MakeIntArray(context, execution_provider_names.size());
-  size_t* output_string_array_buffer = output_string_array + 3;
-  for(size_t i = 0; i < execution_provider_names.size(); ++i) {
-    output_string_array_buffer[i] = (size_t)APITools_CreateStringObject(context, execution_provider_names[i]);
-  }
-
-  return output_string_array;
 }
 
 // Read OpenCV image from raw data

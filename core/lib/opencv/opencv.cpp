@@ -1,4 +1,4 @@
-#include "common.h"
+#include "opencv.h"
 
 #ifdef _WIN32
 namespace fs = std::filesystem;
@@ -193,22 +193,6 @@ extern "C" {
     unsigned char* output_byte_array_buffer = reinterpret_cast<unsigned char*>(output_byte_array + 3);
     memcpy(output_byte_array_buffer, ouput_bytes.data(), ouput_bytes.size());
     output_holder[0] = (size_t)output_byte_array;
-  }
-
-  //
-  // Common ONNX operations
-  //
-  
-  // List available ONNX execution providers
-#ifdef _WIN32
-  __declspec(dllexport)
-#endif
-  void onnx_get_provider_names(VMContext& context) {
-    // Get output parameter
-    size_t* output_holder = APITools_GetArray(context, 0);
-
-    // get provider names and set output holder
-    output_holder[0] = (size_t)get_provider_names(context);
   }
 }
 
