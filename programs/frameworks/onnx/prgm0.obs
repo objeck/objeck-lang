@@ -1,0 +1,36 @@
+use API.OpenCV, System.IO.Filesystem, Collection;
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() = 1) {
+			image_path := args[0];
+			"image_path={$image_path}"->PrintLine();
+			dogs_image_path := image_path + "\\dogs.jpg";
+
+			image := Image->Load(dogs_image_path);
+			image->Columns()->PrintLine();
+			image->Rows()->PrintLine();
+			image->Size()->PrintLine();
+
+			foo := image->DrawCircle(Point->New(50, 50), 25, Scalar->New(0, 255, 0), 2);
+			foo->Resize(Size->New(320, 320))->Show("From File\n----\n");
+
+
+			image->Show("abc");
+#~
+			wine_image_path := image_path + "\\wine.jpg";
+			image_bytes := FileReader->ReadBinaryFile(wine_image_path);
+			image := Image->Load(image_bytes);
+			image->Columns()->PrintLine();
+			image->Rows()->PrintLine();
+			image->Size()->PrintLine();
+			image->Show("From Memory\n----\n");
+
+			webp_bytes := image->Convert(Image->Format->WEBP);
+			image->Size()->PrintLine();
+			webp_bytes->Size()->PrintLine();
+			FileWriter->WriteFile("out.webp", webp_bytes);
+~#			
+		};
+	}
+}
