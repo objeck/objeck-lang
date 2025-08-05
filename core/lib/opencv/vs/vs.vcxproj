@@ -81,7 +81,7 @@
     <LibraryPath>$(LibraryPath);..\win\x64\lib</LibraryPath>
     <IncludePath>$(VC_IncludePath);..\win\include;..\..\openssl\win\include;..\..\zlib\win</IncludePath>
     <ReferencePath>$(VC_ReferencesPath_x64</ReferencePath>
-    <TargetName>libobjk_onnx</TargetName>
+    <TargetName>libobjk_opencv</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">
     <LibraryPath>$(LibraryPath);..\..\win\opencv\arm64\lib;..\packages\Microsoft.ML.OnnxRuntime.DirectML.1.22.1\runtimes\win-x64\native</LibraryPath>
