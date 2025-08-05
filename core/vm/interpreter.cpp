@@ -2964,7 +2964,7 @@ void StackInterpreter::SharedLibraryCall(StackInstr* instr, size_t* &op_stack, l
   HINSTANCE dll_handle = (HINSTANCE)instance[1];
   if(dll_handle) {
     // get function pointer
-    const std::string str =   UnicodeToBytes(wstr);
+    const std::string str = UnicodeToBytes(wstr);
     ext_func = (lib_func_def)GetProcAddress(dll_handle, str.c_str());
     if(!ext_func) {
       std::wcerr << L">>> Runtime error calling function: " << wstr << L" <<<" << std::endl;

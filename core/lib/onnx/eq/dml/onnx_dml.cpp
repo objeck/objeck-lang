@@ -5,26 +5,44 @@ namespace fs = std::filesystem;
 #endif
 
 extern "C" {
-   // initialize library
+  // List available ONNX execution providers
 #ifdef _WIN32
    __declspec(dllexport)
 #endif
-   void load_lib(VMContext& context) {
-      cv::utils::logging::setLogLevel(cv::utils::logging::LOG_LEVEL_ERROR);
-   }
+  extern void onnx_get_provider_names(VMContext& context);
+
+  // initialize library
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+  void load_lib(VMContext& context) {
+    cv::utils::logging::setLogLevel(cv::utils::logging::LOG_LEVEL_ERROR);
+  }
 
    // release library
 #ifdef _WIN32
    __declspec(dllexport)
 #endif
-   void unload_lib() {
-   }
-
-   // Process image using ONNX model
+  void unload_lib() {
+  }
+  
+  // List available ONNX execution providers
 #ifdef _WIN32
    __declspec(dllexport)
 #endif
-   void onnx_process_image(VMContext& context) {
+  void onnx_get_provider_names(VMContext& context) {
+    // Get output parameter
+    size_t* output_holder = APITools_GetArray(context, 0);
+
+    // get provider names and set output holder
+    output_holder[0] = (size_t)get_provider_names(context);
+  }
+
+  // Process image using ONNX model
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+  void onnx_process_image(VMContext& context) {
       size_t* input_array = (size_t*)APITools_GetArray(context, 1)[0];
       const long input_size = ((long)APITools_GetArraySize(input_array));
       const unsigned char* input_bytes = (unsigned char*)APITools_GetArray(input_array);
@@ -167,4 +185,5 @@ extern "C" {
          std::wcerr << L"ONNX Runtime Error: " << e.what() << std::endl;
       }
    }
+
 }
