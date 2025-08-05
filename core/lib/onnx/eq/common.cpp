@@ -9,9 +9,7 @@ extern "C" {
   // OpevCV operations
   //
 
-  //
   // Load image from memory
-  //
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
@@ -32,9 +30,7 @@ extern "C" {
     APITools_SetObjectValue(context, 0, image_obj);
   }
 
-  //
   // Load image from file
-  //
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
@@ -52,9 +48,7 @@ extern "C" {
     APITools_SetObjectValue(context, 0, image_obj);
   }
 
-  //
   // Display image
-  //
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
@@ -70,9 +64,7 @@ extern "C" {
     cv::waitKey(0);
   }
 
-  //
   // Draw a rectangle on image
-  //
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
@@ -110,9 +102,7 @@ extern "C" {
     APITools_SetObjectValue(context, 0, image_out_obj);
   }
 
-  //
   // Draw a circle on image
-  //
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
@@ -149,9 +139,7 @@ extern "C" {
     APITools_SetObjectValue(context, 0, image_out_obj);
   }
   
-  //
   // Resize an image
-  //
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
@@ -182,9 +170,7 @@ extern "C" {
     APITools_SetObjectValue(context, 0, image_out_obj);
   }
   
-  //
   // Convert image to a given format
-  //
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
@@ -213,9 +199,7 @@ extern "C" {
   // Common ONNX operations
   //
   
-  //
   // List available ONNX execution providers
-  //
 #ifdef _WIN32
   __declspec(dllexport)
 #endif

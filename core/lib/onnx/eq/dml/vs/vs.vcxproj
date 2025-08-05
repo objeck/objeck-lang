@@ -74,7 +74,7 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <LibraryPath>$(LibraryPath);..\..\..\..\opencv\win\x64\lib;..\packages\Microsoft.ML.OnnxRuntime.DirectML.1.22.1\runtimes\win-x64\native</LibraryPath>
+    <LibraryPath>$(LibraryPath);..\..\..\win\x64\lib;..\packages\Microsoft.ML.OnnxRuntime.DirectML.1.22.1\runtimes\win-x64\native</LibraryPath>
     <IncludePath>$(VC_IncludePath);..\..\..\win\include;..\..\..\..\openssl\win\include;..\..\..\..\zlib\win</IncludePath>
     <ReferencePath>$(VC_ReferencesPath_x64</ReferencePath>
     <TargetName>libobjk_onnx</TargetName>
@@ -110,7 +110,7 @@
       <AdditionalDependencies>$(CoreLibraryDependencies);%(AdditionalDependencies);opencv_world4120d.lib;onnxruntime.lib</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>pushd C:\Users\objec\Documents\Code\objeck-lang\programs\tests &amp;&amp; build_onnx.cmd x64 dml prgm352 &amp;&amp; popd</Command>
+      <Command>pushd ..\..\..\..\..\..\programs\frameworks\onnx &amp;&amp; build x64 Debug &amp;&amp; popd</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">
@@ -167,7 +167,6 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\common.cpp" />
     <ClCompile Include="..\onnx_dml.cpp" />
   </ItemGroup>
   <ItemGroup>

@@ -5,28 +5,22 @@ namespace fs = std::filesystem;
 #endif
 
 extern "C" {
-   //
    // initialize library
-   //
 #ifdef _WIN32
    __declspec(dllexport)
 #endif
    void load_lib(VMContext& context) {
-     cv::utils::logging::setLogLevel(cv::utils::logging::LOG_LEVEL_ERROR);
+      cv::utils::logging::setLogLevel(cv::utils::logging::LOG_LEVEL_ERROR);
    }
 
-   //
    // release library
-   //
 #ifdef _WIN32
    __declspec(dllexport)
 #endif
    void unload_lib() {
    }
 
-   //
    // Process image using ONNX model
-   //
 #ifdef _WIN32
    __declspec(dllexport)
 #endif
@@ -39,7 +33,7 @@ extern "C" {
       const int resize_width = (int)APITools_GetIntValue(context, 3);
 
       const std::wstring model_path = APITools_GetStringValue(context, 4);
-      
+
       const Preprocessor input_preprocessor = (Preprocessor)APITools_GetIntValue(context, 5);
 
       // Validate parameters
@@ -65,7 +59,7 @@ extern "C" {
          std::vector<uchar> image_data(input_bytes, input_bytes + input_size);
          cv::Mat img = cv::imdecode(image_data, cv::IMREAD_COLOR);
          if(img.empty()) {
-            std::wcerr << L"Failed to load  image!" << std::endl;
+            std::wcerr << L"Failed to read image!" << std::endl;
             return;
          }
 
@@ -73,18 +67,18 @@ extern "C" {
          // Start timing
          auto start = std::chrono::high_resolution_clock::now();
          */
-         
-			// Check model format and preprocess image
+
+         // Check model format and preprocess image
          std::vector<float> input_tensor_values;
          size_t input_tensor_size = 0;
-         
+
          switch(input_preprocessor) {
          case Preprocessor::RESNET:
             // Preprocess image for ResNet
             input_tensor_values = resnet_preprocess(img, resize_height, resize_width);
             input_tensor_size = input_tensor_values.size();
             break;
-         
+
          case Preprocessor::YOLO:
             // Preprocess image for YOLO
             input_tensor_values = yolo_preprocess(img, resize_height, resize_width);
@@ -94,7 +88,7 @@ extern "C" {
          default:
             std::wcerr << L"Unsupported preprocessor type!" << std::endl;
             return;
-			}
+         }
 
          // Create input tensor
          std::array<int64_t, 4> input_shape = { 1, 3, resize_height, resize_width };
@@ -103,7 +97,7 @@ extern "C" {
          Ort::Value input_tensor = Ort::Value::CreateTensor<float>(
             mem_info,
             input_tensor_values.data(),
-            input_tensor_size, 
+            input_tensor_size,
             input_shape.data(),
             4);
 
@@ -120,7 +114,7 @@ extern "C" {
 
          // Run inference
          auto output_tensors = session.Run(
-            Ort::RunOptions { nullptr },
+            Ort::RunOptions{ nullptr },
             input_names.data(),
             &input_tensor,
             1,
@@ -133,13 +127,13 @@ extern "C" {
          auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
          */
 
-			// Process output and shape infomoration
+         // Process output and shape infomoration
          Ort::Value& output_tensor = output_tensors.front();
          const float* output_data = output_tensor.GetTensorMutableData<float>();
          const Ort::TensorTypeAndShapeInfo shape_info = output_tensor.GetTensorTypeAndShapeInfo();
          const size_t output_len = shape_info.GetElementCount();
 
-			// Build results
+         // Build results
          size_t* result_obj = APITools_CreateObject(context, L"API.Onnx.ImageResult");
 
          // Copy output
@@ -153,7 +147,7 @@ extern "C" {
 
          // Copy output shape
          auto output_shape = output_tensor.GetTensorTypeAndShapeInfo().GetShape();
-         
+
          size_t* output_shape_array = APITools_MakeIntArray(context, output_shape.size());
          size_t* output_shape_array_buffer = output_shape_array + 3;
          for(size_t i = 0; i < output_shape.size(); ++i) {
@@ -166,7 +160,7 @@ extern "C" {
          output_image_array_buffer[0] = img.rows;
          output_image_array_buffer[1] = img.cols;
          result_obj[2] = (size_t)output_image_array;
-         
+
          APITools_SetObjectValue(context, 0, result_obj);
       }
       catch(const Ort::Exception& e) {
@@ -174,4 +168,3 @@ extern "C" {
       }
    }
 }
-
