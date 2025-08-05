@@ -246,6 +246,29 @@ bundle API.OpenCV {
 
 			return array_args[0]->As(API.OpenCV.Image);
 		}
+
+		#~
+		Convert an image to a given byte format
+		@param format output format
+		@return converted image bytes
+		~#
+		method : public : BlobFromImage(scale_factor : Float := 1.0, size : Size, mean : Scalar, 
+				swap_rb : Bool, crop : Bool, depth : Int) ~ API.OpenCV.Image {
+			array_args := Base->New[8];
+
+			array_args[0] := Nil;
+			array_args[1] := @self;
+			array_args[2] := FloatRef->New(scale_factor);
+			array_args[3] := size;
+			array_args[4] := mean;
+			array_args[5] := BoolRef->New(swap_rb);
+			array_args[6] := BoolRef->New(crop);
+			array_args[7] := IntRef->New(depth);
+
+			Proxy->GetDllProxy()->CallFunction("opencv_blob_from_image", array_args);
+
+			return array_args[0]->As(API.OpenCV.Image);
+		}
 	}
 
 	#~
