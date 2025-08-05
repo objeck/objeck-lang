@@ -1,4 +1,4 @@
-#include "../onnx_common.h"
+#include "../common.h"
 
 #ifdef _WIN32
 namespace fs = std::filesystem;
@@ -12,6 +12,7 @@ extern "C" {
    __declspec(dllexport)
 #endif
    void load_lib(VMContext& context) {
+     cv::utils::logging::setLogLevel(cv::utils::logging::LOG_LEVEL_ERROR);
    }
 
    //
@@ -171,50 +172,6 @@ extern "C" {
       catch(const Ort::Exception& e) {
          std::wcerr << L"ONNX Runtime Error: " << e.what() << std::endl;
       }
-   }
-
-   //
-   // List available ONNX execution providers
-   //
-#ifdef _WIN32
-   __declspec(dllexport)
-#endif
-     void onnx_get_provider_names(VMContext& context) {
-     // Get output parameter
-     size_t* output_holder = APITools_GetArray(context, 0);
-
-     // get provider names and set output holder
-     output_holder[0] = (size_t)get_provider_names(context);
-   }
-
-   //
-   // Convert an image from one format to another
-   //
-#ifdef _WIN32
-   __declspec(dllexport)
-#endif
-   void opencv_convert_image(VMContext& context) {
-     // Get parameters
-     size_t* output_holder = APITools_GetArray(context, 0);
-
-     size_t* input_array = (size_t*)APITools_GetArray(context, 1)[0];
-     const long input_size = ((long)APITools_GetArraySize(input_array));
-     const unsigned char* input_bytes = (unsigned char*)APITools_GetArray(input_array);
-
-     const int output_format = (int)APITools_GetIntValue(context, 2);
-
-     // convert image
-     std::vector<unsigned char> output_image_bytes = convert_image_bytes(context, input_bytes, input_size, output_format);
-
-     // Copy results
-     size_t* output_byte_buffer = APITools_MakeByteArray(context, output_image_bytes.size());
-     unsigned char* output_byte_array_buffer = (unsigned char*)(output_byte_buffer + 3);
-
-     for(size_t i = 0; i < output_image_bytes.size(); ++i) {
-       output_byte_array_buffer[i] = output_image_bytes[i];
-     }
-
-     output_holder[0] = (size_t)output_byte_buffer;
    }
 }
 

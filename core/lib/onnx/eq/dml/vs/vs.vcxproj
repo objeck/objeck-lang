@@ -74,8 +74,8 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <LibraryPath>$(LibraryPath);..\..\..\opencv\win\x64\lib;..\packages\Microsoft.ML.OnnxRuntime.DirectML.1.22.1\runtimes\win-x64\native</LibraryPath>
-    <IncludePath>$(VC_IncludePath);..\..\..\opencv\win\include;..\..\..\openssl\win\include;..\..\..\zlib\win</IncludePath>
+    <LibraryPath>$(LibraryPath);..\..\..\..\opencv\win\x64\lib;..\packages\Microsoft.ML.OnnxRuntime.DirectML.1.22.1\runtimes\win-x64\native</LibraryPath>
+    <IncludePath>$(VC_IncludePath);..\..\..\win\include;..\..\..\..\openssl\win\include;..\..\..\..\zlib\win</IncludePath>
     <ReferencePath>$(VC_ReferencesPath_x64</ReferencePath>
     <TargetName>libobjk_onnx</TargetName>
   </PropertyGroup>
@@ -167,10 +167,11 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\common.cpp" />
     <ClCompile Include="..\onnx_dml.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\onnx_common.h" />
+    <ClInclude Include="..\..\common.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
