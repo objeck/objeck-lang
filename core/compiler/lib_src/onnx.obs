@@ -23,22 +23,21 @@ bundle API.Onnx {
 	}
 
 	class Runtime {
-		function : InferenceYolo(image : Byte[], height : Int, width : Int, model : String) ~ API.Onnx.ImageResult {
-			array_args := Base->New[6];
+		function : InferenceYolo(image : Byte[], height : Int, width : Int, model : String) ~ API.Onnx.YoloResult {
+			array_args := Base->New[5];
 
 			array_args[0] := Nil;
 			array_args[1] := ByteArrayRef->New(image);
 			array_args[2] := IntRef->New(height);
 			array_args[3] := IntRef->New(width);
 			array_args[4] := model;
-			array_args[5] := IntRef->New(preprocessor->As(Int));
 
 			Proxy->GetDllProxy()->CallFunction("onnx_process_image", array_args);
 			
-			return array_args[0]->As(API.Onnx.ImageResult);
+			return array_args[0]->As(API.Onnx.YoloResult);
 		}
 
-		function : InferenceResNet(image : Byte[], height : Int, width : Int, model : String) ~ API.Onnx.ImageResult {
+		function : InferenceResNet(image : Byte[], height : Int, width : Int, model : String) ~ API.Onnx.ResNetResult {
 			return Nil;
 		}
 
