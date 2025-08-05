@@ -8,7 +8,7 @@
 #include <opencv2/opencv.hpp>
 #include <onnxruntime_cxx_api.h>
 
-#include "../../vm/lib_api.h"
+#include "../../../vm/lib_api.h"
 
 enum ImageFormat {
   JPEG = 64,
@@ -23,9 +23,8 @@ enum Preprocessor {
    OTHER
 };
 
-// TOOD: image conversion logic
-// convertFormat(png_bytes, jpeg_bytes, ".jpg", cv::IMREAD_UNCHANGED, {cv::IMWRITE_JPEG_QUALITY, 95});
-std::vector<unsigned char> convert_image_bytes(VMContext& context, const unsigned char* input_bytes, size_t input_size, size_t output_format)
+// Convert OpenCV Mat to image format
+std::vector<unsigned char> convert_image_bytes(cv::Mat &image, size_t output_format)
 {
   std::string output_ext; std::vector<int> encode_params;
   switch(output_format) {
@@ -55,14 +54,7 @@ std::vector<unsigned char> convert_image_bytes(VMContext& context, const unsigne
 
   default:
     return std::vector<unsigned char>();
-  }
-
-  // Decode input image
-  std::vector<uchar> image_data(input_bytes, input_bytes + input_size);
-  cv::Mat image = cv::imdecode(image_data, cv::IMREAD_UNCHANGED);
-  if(image.empty()) {
-    return std::vector<unsigned char>();
-  }
+  }  
 
   // Special handling for HDR JPEG (tone map to 8-bit)
   if(output_format == ImageFormat::JPEG && image.depth() == CV_32F) {
@@ -124,6 +116,7 @@ std::vector<float> resnet_preprocess(const cv::Mat& img, int resize_height, int 
   return input_tensor_values;
 }
 
+// Get available execution provider names
 size_t* get_provider_names(VMContext& context) {
   // Get execution provider names
   std::vector<std::wstring> execution_provider_names;
@@ -142,4 +135,38 @@ size_t* get_provider_names(VMContext& context) {
   }
 
   return output_string_array;
+}
+
+// Read OpenCV image from raw data
+cv::Mat opencv_raw_read(size_t* image_obj, VMContext& context) {
+  const int type = (int)image_obj[0];
+  const int rows = (int)image_obj[2];
+  const int cols = (int)image_obj[1];
+  size_t* data_array = (size_t*)image_obj[3];
+
+  // get parameters
+  const size_t data_size = APITools_GetArraySize(data_array);
+  const unsigned char* data = (unsigned char*)APITools_GetArray(data_array);
+
+  cv::Mat image(rows, cols, type);
+  memcpy(image.data, data, data_size);
+
+  return image;
+}
+
+// Write OpenCV image to raw data
+size_t* opencv_raw_write(cv::Mat& image, VMContext& context) {
+  size_t* image_obj = APITools_CreateObject(context, L"API.OpenCV.Image");
+
+  image_obj[0] = image.type(); // type
+  image_obj[1] = image.cols; // columns
+  image_obj[2] = image.rows; // rows
+
+  const size_t data_size = image.total() * image.elemSize(); // size
+  size_t* array = APITools_MakeByteArray(context, data_size);
+  unsigned char* byte_array = (unsigned char*)(array + 3);
+  memcpy(byte_array, image.data, data_size);
+  image_obj[3] = (size_t)array;
+
+  return image_obj;
 }
