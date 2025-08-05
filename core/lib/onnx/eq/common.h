@@ -23,6 +23,10 @@ enum Preprocessor {
    OTHER
 };
 
+//
+// Common supporting functions
+//
+
 // Convert OpenCV Mat to image format
 std::vector<unsigned char> convert_image_bytes(cv::Mat &image, size_t output_format)
 {
