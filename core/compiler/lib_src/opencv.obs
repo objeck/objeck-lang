@@ -15,7 +15,7 @@ bundle API.OpenCV {
 		
 		function : GetDllProxy() ~ DllProxy {
 			if(@lib_proxy = Nil) {
-				@lib_proxy := DllProxy->New("libobjk_onnx");
+				@lib_proxy := DllProxy->New("libobjk_opencv");
 			};
 
 			return @lib_proxy;
