@@ -176,6 +176,8 @@ if [%1] == [x64] (
 )
 cd ..\..\release
 
+goto onnxend
+
 REM onnx support
 cd ..\lib\onnx	
 if [%1] == [arm64] (
@@ -204,6 +206,8 @@ if [%1] == [x64] (
 	cd ..
 )
 cd ..\..\release
+
+:onnxend
 
 REM sdl support
 cd ..\lib\sdl	

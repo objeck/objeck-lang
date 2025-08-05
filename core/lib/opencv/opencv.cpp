@@ -201,7 +201,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-    void opencv_convert_to_image(VMContext& context) {
+  void opencv_convert_to_image(VMContext& context) {
     size_t* image_in_obj = APITools_GetObjectValue(context, 1);
     const long type = (long)APITools_GetIntValue(context, 2);
     const double alpha = APITools_GetFloatValue(context, 3);
@@ -220,6 +220,49 @@ extern "C" {
 
     cv::Mat image_out;
     image_in.convertTo(image_out, type, alpha, beta);
+
+    size_t* image_out_obj = opencv_raw_write(image_out, context);
+    APITools_SetObjectValue(context, 0, image_out_obj);
+  }
+
+  //
+  // Convert image space
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void opencv_blob_from_image(VMContext& context) {
+    size_t* image_in_obj = APITools_GetObjectValue(context, 1);
+    const double scale_factor = APITools_GetFloatValue(context, 2);
+    size_t* size_obj = APITools_GetObjectValue(context, 3);
+    size_t* mean_obj = APITools_GetObjectValue(context, 4);
+    const bool swap_rb = APITools_GetBoolValue(context, 5);
+    const bool crop = APITools_GetBoolValue(context, 6);
+    const long depth = (long)APITools_GetIntValue(context, 7);
+
+    if(!image_in_obj) {
+      APITools_SetObjectValue(context, 0, 0);
+      return;
+    }
+
+    cv::Mat image_in = opencv_raw_read(image_in_obj, context);
+    if(image_in.empty()) {
+      APITools_SetObjectValue(context, 0, 0);
+      return;
+    }
+
+    const long sz_width = (long)size_obj[0];
+    const long sz_height = (long)size_obj[1];
+    cv::Size size(sz_width, sz_height);
+
+    const double v0 = *((double*)&mean_obj[0]);
+    const double v1 = *((double*)&mean_obj[1]);
+    const double v2 = *((double*)&mean_obj[2]);
+    const double v3 = *((double*)&mean_obj[3]);
+    cv::Scalar mean(v0, v1, v2, v3);
+
+    cv::Mat image_out;
+    cv::dnn::blobFromImage(image_in, image_out, scale_factor, size, mean, swap_rb, crop, depth);
 
     size_t* image_out_obj = opencv_raw_write(image_out, context);
     APITools_SetObjectValue(context, 0, image_out_obj);
