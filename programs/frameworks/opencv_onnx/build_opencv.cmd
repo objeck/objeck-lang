@@ -56,7 +56,8 @@ REM
 REM Test
 REM 
 
-if [%3] == [] goto end
+goto end
+if [%3] == [] 
 	del /q *.obe
 	obc -src %3 -lib opencv
 	rem obr %3 %4

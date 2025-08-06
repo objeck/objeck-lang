@@ -50,7 +50,7 @@ class Test {
 		"image_size={$image_size}\n"->PrintLine();
 
 		labels := image_labels->ToArray()->As(String[]);
-		result := API.Onnx.Runtime->YoloInference(image_bytes, 640, 640, model_path, labels);
+		result := API.Onnx.Runtime->YoloInference(image_bytes, 640, 640, model_path, 80, labels);
 		if(result = Nil) {
 			"--- Error: No results ---"->ErrorLine();
 			return;
@@ -63,6 +63,12 @@ class Test {
 		};
 
 		"-- Ok --"->PrintLine();
+
+		classifications := result->GetClassifications();
+		
+		each(classification in classifications) {
+			classification->ToString()->PrintLine();
+		};
 
 #~
 		output := result->GetOutput();

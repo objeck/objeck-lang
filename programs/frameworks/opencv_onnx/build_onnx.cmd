@@ -63,6 +63,6 @@ REM
 
 if [%3] == [] goto end
 	del /q *.obe
-	obc -src %3 -lib onnx
-	rem obr %3 %4
+	obc -src %3 -lib opencv,onnx
+	obr %3 %4
 :end
