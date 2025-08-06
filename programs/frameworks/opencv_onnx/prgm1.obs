@@ -13,7 +13,6 @@ class Test {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
 			image_path := args[0];
-			"image_path={$image_path}"->PrintLine();
 			
 			ProcessYoloImages(image_path);
 #			ProcessResNetImages(image_path)
@@ -30,9 +29,10 @@ class Test {
 		model_path := root_dir + "/yolov5x.onnx";
 		model_path := model_path->ReplaceAll('\\', '/');
 
-		label_path := image_path + "yolo_labels.txt";
+		label_path := root_dir + "/yolo_labels.txt";
 		label_path := label_path->ReplaceAll('\\', '/');
 
+		"image_path={$image_path}"->PrintLine();
 		"model_path={$model_path}"->PrintLine();
 		"label_path={$label_path}"->PrintLine();
 
