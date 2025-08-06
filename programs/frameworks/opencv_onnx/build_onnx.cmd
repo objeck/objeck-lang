@@ -23,34 +23,35 @@ call build_opencv %1 %2 %3
 
 set TYPE=%2
 
-set PATH=%PATH%;%OBJK_BIN_PATH%
+set PATH=%PATH%;%OBJECK_BIN_PATH%
 
-set OBJK_BASE=..\..\..
-set OBJK_BIN_PATH=%OBJK_BASE%\core\release\%TARGET%\bin
-set OBJK_LIB_PATH=%OBJK_BASE%\core\release\%TARGET%\lib
-set OBJK_DEBUG_PATH=%OBJK_BASE%\core\vm\%1\%TYPE%
+set OBJECK_BASE=..\..\..
+set OBJECK_BIN_PATH=%OBJECK_BASE%\core\release\%TARGET%\bin
+set OBJECK_LIB_PATH=%OBJECK_BASE%\core\release\%TARGET%\lib
+set OBJECK_DEBUG_PATH=%OBJECK_BASE%\core\vm\%1\%TYPE%
+set PATH=%PATH%;%OBJECK_BIN_PATH%
 
 REM
 REM Clean
 REM 
 
-del /q %OBJK_LIB_PATH%\native\libobjk_onnx.dll
-REM del /q %OBJK_DEBUG_PATH%\*.dll
-REM del /q %OBJK_BIN_PATH%\*.dll
+del /q %OBJECK_LIB_PATH%\native\libobjk_onnx.dll
+REM del /q %OBJECK_DEBUG_PATH%\*.dll
+REM del /q %OBJECK_BIN_PATH%\*.dll
 
 REM
 REM Compile libraries
 REM 
-obc -src %OBJK_BASE%\core\compiler\lib_src\onnx.obs -tar lib -opt s3 -dest %OBJK_LIB_PATH%\onnx.obl
-rem obc -src %OBJK_BASE%\core\compiler\lib_src\lame.obs -tar lib -opt s3 -dest %OBJK_LIB_PATH%\lame.obl
+obc -src %OBJECK_BASE%\core\compiler\lib_src\onnx.obs -tar lib -opt s3 -dest %OBJECK_LIB_PATH%\onnx.obl
+rem obc -src %OBJECK_BASE%\core\compiler\lib_src\lame.obs -tar lib -opt s3 -dest %OBJECK_LIB_PATH%\lame.obl
 
 REM
 REM ONNX libraries
 REM 
 
-copy /y %OBJK_BASE%\core\lib\onnx\eq\dml\%1\%TYPE%\libobjk_onnx.dll %OBJK_LIB_PATH%\native
-copy /y %OBJK_BASE%\core\lib\onnx\eq\dml\packages\Microsoft.AI.DirectML.1.15.4\bin\%1-win\*.dll %OBJK_DEBUG_PATH%
-copy /y %OBJK_BASE%\core\lib\onnx\eq\dml\packages\Microsoft.AI.DirectML.1.15.4\bin\%1-win\*.dll %OBJK_BIN_PATH%
+copy /y %OBJECK_BASE%\core\lib\onnx\eq\dml\%1\%TYPE%\libobjk_onnx.dll %OBJECK_LIB_PATH%\native
+copy /y %OBJECK_BASE%\core\lib\onnx\eq\dml\packages\Microsoft.AI.DirectML.1.15.4\bin\%1-win\*.dll %OBJECK_DEBUG_PATH%
+copy /y %OBJECK_BASE%\core\lib\onnx\eq\dml\packages\Microsoft.AI.DirectML.1.15.4\bin\%1-win\*.dll %OBJECK_BIN_PATH%
 
 REM
 REM Test
