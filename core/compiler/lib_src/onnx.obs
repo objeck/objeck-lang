@@ -23,7 +23,7 @@ bundle API.Onnx {
 	}
 
 	class Runtime {
-		function : YoloInference(image : Byte[], height : Int, width : Int, model : String) ~ API.Onnx.YoloResult {
+		function : YoloInference(image : Byte[], height : Int, width : Int, model : String, labels : String[]) ~ API.Onnx.YoloResult {
 			array_args := Base->New[5];
 
 			array_args[0] := Nil;
@@ -34,7 +34,10 @@ bundle API.Onnx {
 
 			Proxy->GetDllProxy()->CallFunction("onnx_yolo_image_inf", array_args);
 			
-			return array_args[0]->As(API.Onnx.YoloResult);
+			results := array_args[0]->As(API.Onnx.YoloResult);
+			results->SetLabels(labels);
+
+			return results;
 		}
 
 		function : ResNetInference(image : Byte[], height : Int, width : Int, model : String) ~ API.Onnx.ResNetResult {
@@ -61,7 +64,7 @@ bundle API.Onnx {
 		@shape : Int[];
 		@dims : Int[];
 		@classifications : YoloClassification[];
-		@image_labels : static : Collection.Vector<String>;
+		@image_labels : String[];
 
 		New : private () {}
 
@@ -71,6 +74,10 @@ bundle API.Onnx {
 		~#
 		method : public : GetOutput() ~ Float[] {
 			return @output;
+		}
+
+		method : public : SetLabels(image_labels : String[]) ~ Nil {
+			@image_labels := image_labels;
 		}
 
 		#~
@@ -122,7 +129,7 @@ bundle API.Onnx {
 						start := i * (num_classes + 5) + 5;
 						end := start + num_classes;
 						class_id := GreatestFloat(start, end, @output) - start;
-						image_label := @image_labels->Get(class_id);
+						image_label := @image_labels[class_id];
 
 						"class_id={$class_id}, class_name={$image_label}, conf={$conf}"->PrintLine();
 						"{$left}, {$top}, {$width}, {$height}\n---\n"->PrintLine();
