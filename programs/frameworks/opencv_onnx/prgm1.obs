@@ -14,36 +14,10 @@ class Test {
 		if(args->Size() = 1) {
 			image_path := args[0];
 			"image_path={$image_path}"->PrintLine();
-
-#~
-			ConvertImage(image_path + "/images/lion.jpg", "c:/users/objec/documents/temp/lion.webp")
-			
-			provider_names := API.Onnx.Runtime->GetProviders();
-			each(provider_name in provider_names) {
-				provider_name->PrintLine();
-			};
-~#
 			
 			ProcessYoloImages(image_path);
-
 #			ProcessResNetImages(image_path)
 		};
-	}
-
-	function : ConvertImage(input_path : String, output_path : String) ~ Nil {
-		input_bytes := FileReader->ReadBinaryFile(input_path);
-		"input_path={$input_path}"->PrintLine();
-
-		input_size := input_bytes->Size();
-		"input_size={$input_size}"->PrintLine();
-
-		output_bytes := result_vector := API.OpenCV.Image->Convert(input_bytes, API.OpenCV.Image->Format->WEBP);
-		
-		output_size := output_bytes->Size();
-		"output_size={$output_size}"->PrintLine();
-		FileWriter->WriteFile(output_path, output_bytes);
-
-		"Wrote: '{$output_path}'"->PrintLine();
 	}
 
 	#
@@ -75,12 +49,11 @@ class Test {
 		"image_path={$image_path}"->PrintLine();
 		"image_size={$image_size}\n"->PrintLine();
 
-		result := API.Onnx.Runtime->ImageInference(image_bytes, 640, 640, model_path, API.Onnx.Runtime->ImagePreprocessor->YOLO);
+		result := API.Onnx.Runtime->YoloInference(image_bytes, 640, 640, model_path);
 		if(result <> Nil) {
 			"-- Ok --"->PrintLine();
 
 			output := result->GetOutput();
-			(output = Nil)->PrintLine();
 
 			output_size := output->Size();
 			"output_size={$output_size}"->PrintLine();
@@ -162,6 +135,7 @@ class Test {
 		"label_path={$label_path}\n"->PrintLine();
 
 		image_labels := LoadLabels(label_path);
+		image_labels->Size()->PrintLine();
 
 		each(i : 15) {
 			j := Int->Random(0, 6);
@@ -202,8 +176,9 @@ class Test {
 			"{$i}: image_path={$image_path}"->PrintLine();
 			"{$i}: image_size={$image_size}"->PrintLine();
 
-			result := API.Onnx.Runtime->ImageInference(image_bytes, 224, 224, model_path, API.Onnx.Runtime->ImagePreprocessor->RESNET);
+			result := API.Onnx.Runtime->ResNetInference(image_bytes, 224, 224, model_path);
 			if(result <> Nil) {
+#~				
 				result_vector := result->GetOutput();
 				result_size := result_vector->Size();
 
@@ -240,6 +215,7 @@ class Test {
 
 				data_label := image_labels->Get(image_index);
 				"result_conf={$top_confidence}, image_index={$image_index}, data_label={$data_label}\n---\n"->PrintLine();
+~#			
 			}
 			else {
 				"--- Error: No results returned ---"->ErrorLine();
