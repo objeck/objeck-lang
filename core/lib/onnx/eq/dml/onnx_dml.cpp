@@ -5,12 +5,6 @@ namespace fs = std::filesystem;
 #endif
 
 extern "C" {
-  // List available ONNX execution providers
-#ifdef _WIN32
-   __declspec(dllexport)
-#endif
-  extern void onnx_get_provider_names(VMContext& context);
-
   // initialize library
 #ifdef _WIN32
    __declspec(dllexport)
@@ -42,7 +36,7 @@ extern "C" {
 #ifdef _WIN32
    __declspec(dllexport)
 #endif
-  void onnx_process_image(VMContext& context) {
+   void onnx_yolo_image_inf(VMContext& context) {
       size_t* input_array = (size_t*)APITools_GetArray(context, 1)[0];
       const long input_size = ((long)APITools_GetArraySize(input_array));
       const unsigned char* input_bytes = (unsigned char*)APITools_GetArray(input_array);
@@ -52,8 +46,6 @@ extern "C" {
 
       const std::wstring model_path = APITools_GetStringValue(context, 4);
 
-      const Preprocessor input_preprocessor = (Preprocessor)APITools_GetIntValue(context, 5);
-
       // Validate parameters
       if(!input_bytes || resize_height < 1 || resize_width < 1 || model_path.empty()) {
          return;
@@ -61,7 +53,7 @@ extern "C" {
 
       try {
          Ort::Env env(OrtLoggingLevel::ORT_LOGGING_LEVEL_WARNING);
-
+         
          // Set DML provider options
          std::unordered_map<std::string, std::string> provider_options;
          provider_options["device_id"] = "0";
@@ -86,10 +78,11 @@ extern "C" {
          auto start = std::chrono::high_resolution_clock::now();
          */
 
-         // Check model format and preprocess image
-         std::vector<float> input_tensor_values;
-         size_t input_tensor_size = 0;
-
+         // Preprocess image for YOLO
+         std::vector<float>          input_tensor_values = yolo_preprocess(img, resize_height, resize_width);
+         size_t input_tensor_size = input_tensor_size = 3 * resize_height * resize_width;
+          
+         /*
          switch(input_preprocessor) {
          case Preprocessor::RESNET:
             // Preprocess image for ResNet
@@ -107,6 +100,7 @@ extern "C" {
             std::wcerr << L"Unsupported preprocessor type!" << std::endl;
             return;
          }
+         */
 
          // Create input tensor
          std::array<int64_t, 4> input_shape = { 1, 3, resize_height, resize_width };
@@ -152,7 +146,7 @@ extern "C" {
          const size_t output_len = shape_info.GetElementCount();
 
          // Build results
-         size_t* result_obj = APITools_CreateObject(context, L"API.Onnx.ImageResult");
+         size_t* result_obj = APITools_CreateObject(context, L"API.Onnx.YoloResult");
 
          // Copy output
          size_t* output_array = APITools_MakeFloatArray(context, output_len);
