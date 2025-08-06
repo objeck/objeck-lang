@@ -23,7 +23,8 @@ bundle API.Onnx {
 	}
 
 	class Runtime {
-		function : YoloInference(image : Byte[], height : Int, width : Int, model : String, labels : String[]) ~ API.Onnx.YoloResult {
+		function : YoloInference(image : Byte[], height : Int, width : Int, model : String, 
+				num_classes : Int, labels : String[]) ~ API.Onnx.YoloResult {
 			array_args := Base->New[5];
 
 			array_args[0] := Nil;
@@ -35,7 +36,7 @@ bundle API.Onnx {
 			Proxy->GetDllProxy()->CallFunction("onnx_yolo_image_inf", array_args);
 			
 			results := array_args[0]->As(API.Onnx.YoloResult);
-			results->SetLabels(labels);
+			results->Set(image, num_classes, labels);
 
 			return results;
 		}
@@ -60,11 +61,16 @@ bundle API.Onnx {
 	}
 
 	class YoloResult {
+		# set by library
 		@output : Float[];
 		@shape : Int[];
 		@dims : Int[];
-		@classifications : YoloClassification[];
+		# end set by library
+
+		@image_bytes : Byte[];
+		@classifications : Collection.Vector<YoloClassification>;
 		@image_labels : String[];
+		@num_classes : Int;
 
 		New : private () {}
 
@@ -76,8 +82,12 @@ bundle API.Onnx {
 			return @output;
 		}
 
-		method : public : SetLabels(image_labels : String[]) ~ Nil {
+		method : public : Set(image_bytes : Byte[], num_classes : Int, image_labels : String[]) ~ Nil {
+			@image_bytes := image_bytes;
+			@num_classes := num_classes;
 			@image_labels := image_labels;
+
+			@classifications := Collection.Vector->New()<YoloClassification>;
 		}
 
 		#~
@@ -89,6 +99,22 @@ bundle API.Onnx {
 		}
 
 		#~
+		Gets image byte
+		@return image bytes
+		~#
+		method : public : GetImages() ~ Byte[] {
+			return @image_bytes;
+		}
+
+		#~
+		Gets the labels
+		@return labels
+		~#
+		method : public : GetLabels() ~ String[] {
+			return @image_labels;
+		}
+
+		#~
 		Gets the image dimensions
 		@return image dimensions
 		~#
@@ -96,17 +122,8 @@ bundle API.Onnx {
 			return @dims; 
 		}
 
-		method : public : ProcessClassifications() ~ Nil {
+		method : native : ProcessClassifications() ~ Nil {
 			if(@output <> Nil & @shape <> Nil & @dims <> Nil) {
-				output_size := @output->Size();
-				"output_size={$output_size}"->PrintLine();
-
-				shape_size := @shape->Size();
-				"shape_size={$shape_size}"->PrintLine();
-
-				@shape->ToString()->PrintLine()
-				num_classes := 80;
-
 				result_count := @shape[1]
 				result_count->PrintLine();
 
@@ -114,32 +131,38 @@ bundle API.Onnx {
 				rows := @dims[0];
 
 				for(i := 0; i < result_count; i += 1;) {
-					x := @output[i * (num_classes + 5) + 0];
-					y := @output[i * (num_classes + 5) + 1];
-					w := @output[i * (num_classes + 5) + 2];
-					h := @output[i * (num_classes + 5) + 3];
-					conf := @output[i * (num_classes + 5) + 4];
+					x := @output[i * (@num_classes + 5) + 0];
+					y := @output[i * (@num_classes + 5) + 1];
+					w := @output[i * (@num_classes + 5) + 2];
+					h := @output[i * (@num_classes + 5) + 3];
+					conf := @output[i * (@num_classes + 5) + 4];
 
 					left := (((x - w / 2.0) * cols) / 640.0)->As(Int);
 					top := (((y - h / 2.0) * rows) / 640.0)->As(Int);
 					width := ((w * cols) / 640.0)->As(Int);
 					height := ((h * rows) / 640.0)->As(Int);
 
-					if(conf >= 0.5) {
-						start := i * (num_classes + 5) + 5;
-						end := start + num_classes;
+					if(conf >= 0.6) {
+						start := i * (@num_classes + 5) + 5;
+						end := start + @num_classes;
 						class_id := GreatestFloat(start, end, @output) - start;
 						image_label := @image_labels[class_id];
 
-						"class_id={$class_id}, class_name={$image_label}, conf={$conf}"->PrintLine();
-						"{$left}, {$top}, {$width}, {$height}\n---\n"->PrintLine();
+						@classifications->AddBack(YoloClassification->New(class_id, image_label, conf, 
+							Rect->New(left, top, width, height)));
 					};
 				};
+
+				@classifications->Size()->PrintLine();
 			};
 		}
 
-		method : public : GetClassifications() ~ YoloClassification[] {
-			if(@classifications = Nil) {
+		#~
+		Gets an array of classifications
+		@return array of classifications
+		~#
+		method : public : GetClassifications() ~ Collection.Vector<YoloClassification> {
+			if(@classifications->IsEmpty()) {
 				ProcessClassifications();
 			};
 
@@ -174,11 +197,19 @@ bundle API.Onnx {
 			};
 
 			if(@shape = Nil) {
-				buffer += "0, image-dims=";
+				buffer += "0, labels=";
 			}
 			else {
 				shape_size := @shape->Size();
-				buffer += "{$shape_size}, image-dims=";
+				buffer += "{$shape_size}, labels=";
+			};
+
+			if(@shape = Nil) {
+				buffer += "0, image-dims=";
+			}
+			else {
+				image_labels_size := @image_labels->Size();
+				buffer += "{$image_labels_size}, image_labels_size-dims=";
 			};
 
 			if(@dims = Nil) {
@@ -206,8 +237,16 @@ bundle API.Onnx {
 			@confidence := confidence;
 			@box := box;
 		}
-	}
 
+		#~
+		Gets the output shape
+		@return output shape
+		~#
+		method : public : ToString() ~ String {
+			x := @box->GetX(); y := @box->GetY(); w := @box->GetWidth(); h := @box->GetHeight();
+			return "id={$@id}, class='{$@name}', conf={$@confidence}, bounds=[{$x}, {$y}, {$w}, {$h}]";
+		}
+	}
 
 	class ResNetResult {
 		@output : Float[];
@@ -241,8 +280,8 @@ bundle API.Onnx {
 		}
 
 		#~
-		Gets the output shape
-		@return output shape
+		Gets string representation
+		@return string representation
 		~#
 		method : public : ToString() ~ String {
 			buffer := "output-size=";
@@ -495,6 +534,14 @@ bundle API.OpenCV {
 		method : public : GetY() ~ Int {
 			return @y;
 		}
+
+		#~
+		Gets string representation
+		@return string representation
+		~#
+		method : public : ToString() ~ String {
+			return "x={$@x}, y={$@y}";
+		}
 	}
 
 	class Rect from Point {
@@ -515,6 +562,14 @@ bundle API.OpenCV {
 		method : public : GetHeight() ~ Int {
 			return @height;
 		}
+
+		#~
+		Gets string representation
+		@return string representation
+		~#
+		method : public : ToString() ~ String {
+			return "x={$@x}, y={$@y}, width={$@width}, height={$@height}";
+		}
 	}
 
 	class Size {
@@ -532,6 +587,14 @@ bundle API.OpenCV {
 
 		method : public : GetHeight() ~ Int {
 			return @height;
+		}
+
+		#~
+		Gets string representation
+		@return string representation
+		~#
+		method : public : ToString() ~ String {
+			return "width={$@width}, height={$@height}";
 		}
 	}
 
@@ -562,6 +625,14 @@ bundle API.OpenCV {
 
 		method : public : GetV3() ~ Float {
 			return @v3;
+		}
+
+		#~
+		Gets string representation
+		@return string representation
+		~#
+		method : public : ToString() ~ String {
+			return "v0={$@v0}, v1={$@v1}, v2={$@v2}, v3={$@v3}";
 		}
 	}
 
