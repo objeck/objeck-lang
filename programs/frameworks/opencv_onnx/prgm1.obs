@@ -103,7 +103,13 @@ class Test {
 				"class_id={$class_id}, class_name={$image_label}, conf={$conf}"->PrintLine();
 				"{$left}, {$top}, {$width}, {$height}\n---\n"->PrintLine();
 
-				image := image->DrawRectangle(Rect->New(left, top, width, height), Scalar->New(0, 255, 0), 2);
+				image := image->DrawRectangle(Rect->New(left, top - 24, width, height), Scalar->New(0, 255, 0), 2);
+				image := image->DrawText(
+					image_label,
+					Point->New(left, top), 
+					Font->FONT_HERSHEY_SIMPLEX,
+					1.5,
+					Scalar->New(255, 0, 0));
 			};
 		};
 
