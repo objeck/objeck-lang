@@ -19,6 +19,8 @@ if not [%2]==[Debug] if not [%2]==[Release] (
 	goto end
 )
 
+call build_opencv %1 %2 %3
+
 set TYPE=%2
 
 set PATH=%PATH%;%OBJK_BIN_PATH%
@@ -33,8 +35,8 @@ REM Clean
 REM 
 
 del /q %OBJK_LIB_PATH%\native\libobjk_onnx.dll
-del /q %OBJK_DEBUG_PATH%\*.dll
-del /q %OBJK_BIN_PATH%\*.dll
+REM del /q %OBJK_DEBUG_PATH%\*.dll
+REM del /q %OBJK_BIN_PATH%\*.dll
 
 REM
 REM Compile libraries
@@ -47,16 +49,8 @@ REM ONNX libraries
 REM 
 
 copy /y %OBJK_BASE%\core\lib\onnx\eq\dml\%1\%TYPE%\libobjk_onnx.dll %OBJK_LIB_PATH%\native
-
 copy /y %OBJK_BASE%\core\lib\onnx\eq\dml\packages\Microsoft.AI.DirectML.1.15.4\bin\%1-win\*.dll %OBJK_DEBUG_PATH%
 copy /y %OBJK_BASE%\core\lib\onnx\eq\dml\packages\Microsoft.AI.DirectML.1.15.4\bin\%1-win\*.dll %OBJK_BIN_PATH%
-
-REM
-REM OpenCV libraries
-REM 
-
-copy /y %OBJK_BASE%\core\lib\onnx\win\%1\bin\*.dll %OBJK_DEBUG_PATH%
-copy /y %OBJK_BASE%\core\lib\onnx\win\%1\bin\*.dll %OBJK_BIN_PATH%
 
 REM
 REM Test
