@@ -125,7 +125,6 @@ bundle API.Onnx {
 		method : native : ProcessClassifications() ~ Nil {
 			if(@output <> Nil & @shape <> Nil & @dims <> Nil) {
 				result_count := @shape[1]
-				result_count->PrintLine();
 
 				cols := @dims[1];
 				rows := @dims[0];
@@ -142,7 +141,7 @@ bundle API.Onnx {
 					width := ((w * cols) / 640.0)->As(Int);
 					height := ((h * rows) / 640.0)->As(Int);
 
-					if(conf >= 0.6) {
+					if(conf >= 0.7) {
 						start := i * (@num_classes + 5) + 5;
 						end := start + @num_classes;
 						class_id := GreatestFloat(start, end, @output) - start;
@@ -152,8 +151,6 @@ bundle API.Onnx {
 							Rect->New(left, top, width, height)));
 					};
 				};
-
-				@classifications->Size()->PrintLine();
 			};
 		}
 
@@ -229,13 +226,29 @@ bundle API.Onnx {
 		@id : Int;
 		@name : String;
 		@confidence : Float;
-		@box : Rect;
+		@bounds : Rect;
 
-		New(id : Int, name : String, confidence : Float, box : Rect) {
+		New(id : Int, name : String, confidence : Float, bounds : Rect) {
 			@id := id;
 			@name := name;
 			@confidence := confidence;
-			@box := box;
+			@bounds := bounds;
+		}
+
+		method : public : GetId() ~ Int {
+			return @id;
+		}
+
+		method : public : GetName() ~ String {
+			return @name;
+		}
+
+		method : public : GetBounds() ~ Rect {
+			return @bounds;
+		}
+
+		method : public : GetConfidence() ~ Float {
+			return @confidence;
 		}
 
 		#~
@@ -243,7 +256,7 @@ bundle API.Onnx {
 		@return output shape
 		~#
 		method : public : ToString() ~ String {
-			x := @box->GetX(); y := @box->GetY(); w := @box->GetWidth(); h := @box->GetHeight();
+			x := @bounds->GetX(); y := @bounds->GetY(); w := @bounds->GetWidth(); h := @bounds->GetHeight();
 			return "id={$@id}, class='{$@name}', conf={$@confidence}, bounds=[{$x}, {$y}, {$w}, {$h}]";
 		}
 	}
