@@ -50,8 +50,12 @@ REM ONNX libraries
 REM 
 
 copy /y %OBJECK_BASE%\core\lib\onnx\eq\dml\%1\%TYPE%\libobjk_onnx.dll %OBJECK_LIB_PATH%\native
+
 copy /y %OBJECK_BASE%\core\lib\onnx\eq\dml\packages\Microsoft.AI.DirectML.1.15.4\bin\%1-win\*.dll %OBJECK_DEBUG_PATH%
+copy /y %OBJECK_BASE%\core\lib\onnx\eq\dml\packages\Microsoft.ML.OnnxRuntime.DirectML.1.22.1\runtimes\win-%1\native\*.dll %OBJECK_DEBUG_PATH%
+
 copy /y %OBJECK_BASE%\core\lib\onnx\eq\dml\packages\Microsoft.AI.DirectML.1.15.4\bin\%1-win\*.dll %OBJECK_BIN_PATH%
+copy /y %OBJECK_BASE%\core\lib\onnx\eq\dml\packages\Microsoft.ML.OnnxRuntime.DirectML.1.22.1\runtimes\win-%1\native\*.dll %OBJECK_BIN_PATH%
 
 REM
 REM Test
