@@ -21,35 +21,36 @@ if not [%2]==[Debug] if not [%2]==[Release] (
 
 set TYPE=%2
 
-set PATH=%PATH%;%OBJK_BIN_PATH%
+set PATH=%PATH%;%OBJECK_BIN_PATH%
 
-set OBJK_BASE=..\..\..
-set OBJK_BIN_PATH=%OBJK_BASE%\core\release\%TARGET%\bin
-set OBJK_LIB_PATH=%OBJK_BASE%\core\release\%TARGET%\lib
-set OBJK_DEBUG_PATH=%OBJK_BASE%\core\vm\%1\%TYPE%
+set OBJECK_BASE=..\..\..
+set OBJECK_BIN_PATH=%OBJECK_BASE%\core\release\%TARGET%\bin
+set OBJECK_LIB_PATH=%OBJECK_BASE%\core\release\%TARGET%\lib
+set OBJECK_DEBUG_PATH=%OBJECK_BASE%\core\vm\%1\%TYPE%
+set PATH=%PATH%;%OBJECK_BIN_PATH%
 
 REM
 REM Clean
 REM 
 
-del /q %OBJK_LIB_PATH%\native\libobjk_opencv.dll
-del /q %OBJK_DEBUG_PATH%\*.dll
-del /q %OBJK_BIN_PATH%\*.dll
+del /q %OBJECK_LIB_PATH%\native\libobjk_opencv.dll
+del /q %OBJECK_DEBUG_PATH%\*.dll
+del /q %OBJECK_BIN_PATH%\*.dll
 
 REM
 REM Compile libraries
 REM 
-obc -src %OBJK_BASE%\core\compiler\lib_src\opencv.obs -tar lib -opt s3 -dest %OBJK_LIB_PATH%\opencv.obl
-rem obc -src %OBJK_BASE%\core\compiler\lib_src\lame.obs -tar lib -opt s3 -dest %OBJK_LIB_PATH%\lame.obl
+obc -src %OBJECK_BASE%\core\compiler\lib_src\opencv.obs -tar lib -opt s3 -dest %OBJECK_LIB_PATH%\opencv.obl
+rem obc -src %OBJECK_BASE%\core\compiler\lib_src\lame.obs -tar lib -opt s3 -dest %OBJECK_LIB_PATH%\lame.obl
 
 REM
 REM OpenCV libraries
 REM 
 
-copy /y %OBJK_BASE%\core\lib\opencv\%1\%TYPE%\libobjk_opencv.dll %OBJK_LIB_PATH%\native
+copy /y %OBJECK_BASE%\core\lib\opencv\%1\%TYPE%\libobjk_opencv.dll %OBJECK_LIB_PATH%\native
 
-copy /y %OBJK_BASE%\core\lib\opencv\win\%1\bin\*.dll %OBJK_DEBUG_PATH%
-copy /y %OBJK_BASE%\core\lib\opencv\win\%1\bin\*.dll %OBJK_BIN_PATH%
+copy /y %OBJECK_BASE%\core\lib\opencv\win\%1\bin\*.dll %OBJECK_DEBUG_PATH%
+copy /y %OBJECK_BASE%\core\lib\opencv\win\%1\bin\*.dll %OBJECK_BIN_PATH%
 
 REM
 REM Test
