@@ -24,7 +24,7 @@ bundle API.Onnx {
 
 	class Runtime {
 		function : YoloInference(image : Byte[], height : Int, width : Int, model : String, 
-				num_classes : Int, labels : String[]) ~ API.Onnx.YoloResult {
+				labels : String[]) ~ API.Onnx.YoloResult {
 			array_args := Base->New[5];
 
 			array_args[0] := Nil;
@@ -36,7 +36,7 @@ bundle API.Onnx {
 			Proxy->GetDllProxy()->CallFunction("onnx_yolo_image_inf", array_args);
 			
 			results := array_args[0]->As(API.Onnx.YoloResult);
-			results->Set(image, num_classes, labels);
+			results->Set(image, labels);
 
 			return results;
 		}
@@ -82,10 +82,10 @@ bundle API.Onnx {
 			return @output;
 		}
 
-		method : public : Set(image_bytes : Byte[], num_classes : Int, image_labels : String[]) ~ Nil {
+		method : public : Set(image_bytes : Byte[], image_labels : String[]) ~ Nil {
 			@image_bytes := image_bytes;
-			@num_classes := num_classes;
 			@image_labels := image_labels;
+			@num_classes := image_labels->Size();
 
 			@classifications := Collection.Vector->New()<YoloClassification>;
 		}
