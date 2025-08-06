@@ -49,7 +49,8 @@ class Test {
 		"image_path={$image_path}"->PrintLine();
 		"image_size={$image_size}\n"->PrintLine();
 
-		result := API.Onnx.Runtime->YoloInference(image_bytes, 640, 640, model_path);
+		labels := image_labels->ToArray()->As(String[]);
+		result := API.Onnx.Runtime->YoloInference(image_bytes, 640, 640, model_path, labels);
 		if(result = Nil) {
 			"--- Error: No results ---"->ErrorLine();
 			return;
@@ -63,6 +64,7 @@ class Test {
 
 		"-- Ok --"->PrintLine();
 
+#~
 		output := result->GetOutput();
 
 		output_size := output->Size();
@@ -118,6 +120,7 @@ class Test {
 		# TODO: for a loop
 		image_path := root_dir + "/images/";
 		image_path := image_path->ReplaceAll('\\', '/');
+~#		
 	}
 
 	function : native : FindGreatest(start : Int, end : Int, output : Float[]) ~ Int {
