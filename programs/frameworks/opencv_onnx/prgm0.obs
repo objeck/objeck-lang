@@ -5,14 +5,20 @@ class Test {
 		if(args->Size() = 1) {
 			image_path := args[0];
 			"image_path={$image_path}"->PrintLine();
-			dogs_image_path := image_path + "\\dogs.jpg";
+			dogs_image_path := image_path + "/images/dogs.jpg";
 
 			image := Image->Load(dogs_image_path);
 			image->Columns()->PrintLine();
 			image->Rows()->PrintLine();
 			image->Size()->PrintLine();
 
-			foo := image->DrawCircle(Point->New(50, 50), 25, Scalar->New(0, 255, 0), 2);
+			foo := image->DrawText(
+				"Hello!", 
+				Point->New(50, 50), 
+				Font->FONT_HERSHEY_SIMPLEX,
+				1.5,
+				Scalar->New(255, 0, 0));
+
 			foo->Resize(Size->New(320, 320))->Show("From File\n----\n");
 			
 			image->Show("abc");

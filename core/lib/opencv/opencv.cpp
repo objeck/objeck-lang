@@ -55,8 +55,8 @@ extern "C" {
 
     cv::Mat image = cv::imread(image_path, cv::IMREAD_COLOR);
     if(image.empty()) {
-      APITools_SetIntValue(context, 0, 0);
-      return;
+       APITools_SetObjectValue(context, 0, 0);
+       return;
 		}
 
     size_t* image_obj = opencv_raw_write(image, context);
@@ -153,7 +153,49 @@ extern "C" {
     size_t* image_out_obj = opencv_raw_write(image, context);
     APITools_SetObjectValue(context, 0, image_out_obj);
   }
-  
+
+  // Draw text on image
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+   void opencv_draw_text(VMContext& context) {
+      size_t* image_in_obj = APITools_GetObjectValue(context, 1);
+
+      const std::wstring w_text = APITools_GetStringValue(context, 2);
+      const std::string text = UnicodeToBytes(w_text);
+
+      size_t* pt_obj = APITools_GetObjectValue(context, 3);
+      const long font_face = (long)APITools_GetIntValue(context, 4);
+      const double scale = APITools_GetFloatValue(context, 5);
+      size_t* color_obj = APITools_GetObjectValue(context, 6);
+      const long thickness = (long)APITools_GetIntValue(context, 7);
+      const long type = (long)APITools_GetIntValue(context, 8);
+
+      if(!image_in_obj || !pt_obj || !color_obj) {
+         APITools_SetObjectValue(context, 0, 0);
+         return;
+      }
+
+      cv::Mat image = opencv_raw_read(image_in_obj, context);
+      if(image.empty()) {
+         APITools_SetObjectValue(context, 0, 0);
+         return;
+      }
+
+      const long x = (long)pt_obj[0];
+      const long y = (long)pt_obj[1];
+
+      const double r = *((double*)&color_obj[0]);
+      const double g = *((double*)&color_obj[1]);
+      const double b = *((double*)&color_obj[2]);
+      const double a = *((double*)&color_obj[3]);
+
+      cv::putText(image, text, cv::Point(x, y), font_face, scale, cv::Scalar(r, g, b, a), thickness, type);
+
+      size_t* image_out_obj = opencv_raw_write(image, context);
+      APITools_SetObjectValue(context, 0, image_out_obj);
+  }
+
   // Resize an image
 #ifdef _WIN32
   __declspec(dllexport)
