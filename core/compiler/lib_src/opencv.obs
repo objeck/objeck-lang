@@ -148,7 +148,7 @@ bundle API.OpenCV {
 		@param format output format
 		@return converted image bytes
 		~#
-		method : public : DrawRectangle(rect : Rect, color : Scalar, thickness : Int, 
+		method : public : DrawRectangle(rect : Rect, color : Scalar, thickness : Int := 1, 
 				type : LineType := LineType->LINE_8) ~ API.OpenCV.Image {
 			array_args := Base->New[6];
 
@@ -169,7 +169,7 @@ bundle API.OpenCV {
 		@param format output format
 		@return converted image bytes
 		~#
-		method : public : DrawCircle(pt : Point, radius : Int , color : Scalar, thickness : Int, 
+		method : public : DrawCircle(pt : Point, radius : Int, color : Scalar, thickness : Int := 1, 
 				type : LineType := LineType->LINE_8) ~ API.OpenCV.Image {
 			array_args := Base->New[7];
 
@@ -182,6 +182,30 @@ bundle API.OpenCV {
 			array_args[6] := IntRef->New(type);
 
 			Proxy->GetDllProxy()->CallFunction("opencv_draw_circle", array_args);
+
+			return array_args[0]->As(API.OpenCV.Image);
+		}
+
+		#~
+		Convert an image to a given byte format
+		@param format output format
+		@return converted image bytes
+		~#
+		method : public : DrawText(text : String, pt : Point, font : Font, scale : Float, color : Scalar, 
+				thickness : Int := 1, type : LineType := LineType->LINE_8) ~ API.OpenCV.Image {
+			array_args := Base->New[9];
+
+			array_args[0] := Nil;
+			array_args[1] := @self;
+			array_args[2] := text;
+			array_args[3] := pt;
+			array_args[4] := IntRef->New(font);;
+			array_args[5] := FloatRef->New(scale);
+			array_args[6] := color;
+			array_args[7] := IntRef->New(thickness);
+			array_args[8] := IntRef->New(type);
+
+			Proxy->GetDllProxy()->CallFunction("opencv_draw_text", array_args);
 
 			return array_args[0]->As(API.OpenCV.Image);
 		}
@@ -292,6 +316,18 @@ bundle API.OpenCV {
 		method : public : GetV3() ~ Float {
 			return @v3;
 		}
+	}
+
+	consts Font {
+		FONT_HERSHEY_SIMPLEX := 0,
+		FONT_HERSHEY_PLAIN := 1,
+		FONT_HERSHEY_DUPLEX := 2,
+		FONT_HERSHEY_COMPLEX := 3,
+		FONT_HERSHEY_TRIPLEX := 4,
+		FONT_HERSHEY_COMPLEX_SMALL := 5,
+		FONT_HERSHEY_SCRIPT_SIMPLEX := 6,
+		FONT_HERSHEY_SCRIPT_COMPLEX := 7,
+		FONT_ITALIC := 16
 	}
 
 	consts LineType {
