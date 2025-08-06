@@ -23,7 +23,7 @@ bundle API.Onnx {
 	}
 
 	class Runtime {
-		function : InferenceYolo(image : Byte[], height : Int, width : Int, model : String) ~ API.Onnx.YoloResult {
+		function : YoloInference(image : Byte[], height : Int, width : Int, model : String) ~ API.Onnx.YoloResult {
 			array_args := Base->New[5];
 
 			array_args[0] := Nil;
@@ -32,12 +32,12 @@ bundle API.Onnx {
 			array_args[3] := IntRef->New(width);
 			array_args[4] := model;
 
-			Proxy->GetDllProxy()->CallFunction("onnx_process_image", array_args);
+			Proxy->GetDllProxy()->CallFunction("onnx_yolo_image_inf", array_args);
 			
 			return array_args[0]->As(API.Onnx.YoloResult);
 		}
 
-		function : InferenceResNet(image : Byte[], height : Int, width : Int, model : String) ~ API.Onnx.ResNetResult {
+		function : ResNetInference(image : Byte[], height : Int, width : Int, model : String) ~ API.Onnx.ResNetResult {
 			return Nil;
 		}
 
@@ -86,6 +86,70 @@ bundle API.Onnx {
 		method : public : GetDimensions() ~ Int[] {
 			return @dims;
 		}
+
+		#~
+		if(result <> Nil) {
+			"-- Ok --"->PrintLine();
+
+			output := result->GetOutput();
+
+			output_size := output->Size();
+			"output_size={$output_size}"->PrintLine();
+
+			shape := result->GetShape();
+			shape_size := shape->Size();
+			"shape_size={$shape_size}"->PrintLine();
+
+			shape->ToString()->PrintLine()
+			num_classes := 80;
+
+			result_count := shape[1]
+			result_count->PrintLine();
+
+			dims := result->GetDimensions();
+			cols := dims[1];
+			rows := dims[0];
+			
+			for(i := 0; i < result_count; i += 1;) {
+				x := output[i * (num_classes + 5) + 0];
+				y := output[i * (num_classes + 5) + 1];
+				w := output[i * (num_classes + 5) + 2];
+				h := output[i * (num_classes + 5) + 3];
+				conf := output[i * (num_classes + 5) + 4];
+
+				left := (((x - w / 2.0) * cols) / 640.0)->As(Int);
+				top := (((y - h / 2.0) * rows) / 640.0)->As(Int);
+				width := ((w * cols) / 640.0)->As(Int);
+				height := ((h * rows) / 640.0)->As(Int);
+
+				if(conf >= 0.5) {
+					start := i * (num_classes + 5) + 5;
+					end := start + num_classes;
+					class_id := FindGreatest(start, end, output) - start;
+					image_label := image_labels->Get(class_id);
+
+					"class_id={$class_id}, class_name={$image_label}, conf={$conf}"->PrintLine();
+					"{$left}, {$top}, {$width}, {$height}\n---\n"->PrintLine();
+				};
+			};
+		}
+		else {
+			"--- Error: No results returned ---"->ErrorLine();
+			return;
+		};
+
+		function : native : FindGreatest(start : Int, end : Int, output : Float[]) ~ Int {
+			index := start;
+
+			for(i := start + 1; i < end; i += 1;) {
+				if(output[i] > output[index]) {
+					index := i;
+				}
+			}
+
+			return index;
+		}
+		~#
 
 		#~
 		Gets the output shape
