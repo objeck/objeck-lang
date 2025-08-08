@@ -78,7 +78,7 @@ extern "C" {
 
     size_t processed = 0;
     while(processed < total_samples) {
-      const size_t chunk = min(pcm_samples_per_chunk, total_samples - processed);
+      const size_t chunk = std::min(pcm_samples_per_chunk, total_samples - processed);
 
       int encoded_bytes = 0;
       if(num_channels == 2) {
