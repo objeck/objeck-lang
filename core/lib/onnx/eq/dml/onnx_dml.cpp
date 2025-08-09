@@ -54,11 +54,11 @@ extern "C" {
       }
 
       try {
-// Start timing
-auto start = std::chrono::high_resolution_clock::now();
+         // Start timing
+         auto start = std::chrono::high_resolution_clock::now();
 
          Ort::Env env(OrtLoggingLevel::ORT_LOGGING_LEVEL_WARNING);
-         
+
          // Set DML provider options
          std::unordered_map<std::string, std::string> provider_options;
          provider_options["device_id"] = "0";
@@ -78,12 +78,10 @@ auto start = std::chrono::high_resolution_clock::now();
             return;
          }
 
-         
-
          // Preprocess image for YOLO
          std::vector<float> input_tensor_values = yolo_preprocess(img, resize_height, resize_width);
          size_t input_tensor_size = input_tensor_size = 3 * resize_height * resize_width;
-          
+
          /*
          switch(input_preprocessor) {
          case Preprocessor::RESNET:
@@ -162,7 +160,7 @@ auto start = std::chrono::high_resolution_clock::now();
          }
          yolo_result_obj[1] = (size_t)output_shape_array;
 
-		 // Copy image size
+         // Copy image size
          const int rows = img.rows;
          const int cols = img.cols;
 
@@ -171,82 +169,83 @@ auto start = std::chrono::high_resolution_clock::now();
          output_image_array_buffer[0] = rows;
          output_image_array_buffer[1] = cols;
          yolo_result_obj[2] = (size_t)output_image_array;
-         
-		 // Process results
+
+         // Process results
          std::vector<size_t> class_results;
 
          const int result_count = (int)output_shape[1];
          for(int i = 0; i < result_count; ++i) {
-             const int base = i * (num_classes + 5);
-             const double x = output_data[base + 0];
-             const double y = output_data[base + 1];
-             const double w = output_data[base + 2];
-             const double h = output_data[base + 3];
-             const double conf = output_data[base + 4];
+            const int base = i * (num_classes + 5);
+            const double x = output_data[base + 0];
+            const double y = output_data[base + 1];
+            const double w = output_data[base + 2];
+            const double h = output_data[base + 3];
+            const double conf = output_data[base + 4];
 
-             if(conf >= 0.7) {
-                 int left = static_cast<int>(((x - w / 2.0) * cols) / resize_width);
-                 int top = static_cast<int>(((y - h / 2.0) * rows) / resize_height);
-                 int width = static_cast<int>((w * cols) / resize_width);
-                 int height = static_cast<int>((h * rows) / resize_height);
+            if(conf >= 0.7) {
+               int left = static_cast<int>(((x - w / 2.0) * cols) / resize_width);
+               int top = static_cast<int>(((y - h / 2.0) * rows) / resize_height);
+               int width = static_cast<int>((w * cols) / resize_width);
+               int height = static_cast<int>((h * rows) / resize_height);
 
-                 // Find the class with the highest probability
-                 int start = base + 5;
-                 int end = start + num_classes;
-                 int class_id = 0;
-                 double max_score = output_data[start];
+               // Find the class with the highest probability
+               int start = base + 5;
+               int end = start + num_classes;
+               int class_id = 0;
+               double max_score = output_data[start];
 
-                 for(int j = 1; j < num_classes; ++j) {
-                     double score = output_data[start + j];
-                     if(score > max_score) {
-                         max_score = score;
-                         class_id = j;
-                     }
-                 }
+               for(int j = 1; j < num_classes; ++j) {
+                  double score = output_data[start + j];
+                  if(score > max_score) {
+                     max_score = score;
+                     class_id = j;
+                  }
+               }
 
-                 size_t* class_result_obj = APITools_CreateObject(context, L"API.Onnx.YoloClassification");
-				 class_result_obj[0] = class_id; // class ID
-                 
-                 double temp = conf;
-                 memcpy(&class_result_obj[1], &temp, sizeof(double)); // confidence
-                 
-				 // copy rectangle
-                 size_t* class_rect_obj = APITools_CreateObject(context, L"API.OpenCV.Rect");
-                 class_rect_obj[0] = left;
-                 class_rect_obj[1] = top;
-                 class_rect_obj[2] = width;
-                 class_rect_obj[3] = height;
-                 class_result_obj[2] = (size_t)class_rect_obj;
+               size_t* class_result_obj = APITools_CreateObject(context, L"API.Onnx.YoloClassification");
+               class_result_obj[0] = class_id; // class ID
 
-                 /*
-                 // Add classification
-                 std::wcout << L"Detected object: Class ID = " << class_id << L", Confidence = " 
-                     << conf << L", Bounding Box = [" << left << L", " << top << L", "
-                     << width << L", " << height << L"]" << std::endl;
-                 */
+               double temp = conf;
+               memcpy(&class_result_obj[1], &temp, sizeof(double)); // confidence
 
-				 class_results.push_back((size_t)class_result_obj);
-             }
+               // copy rectangle
+               size_t* class_rect_obj = APITools_CreateObject(context, L"API.OpenCV.Rect");
+               class_rect_obj[0] = left;
+               class_rect_obj[1] = top;
+               class_rect_obj[2] = width;
+               class_rect_obj[3] = height;
+               class_result_obj[2] = (size_t)class_rect_obj;
+
+               /*
+               // Add classification
+               std::wcout << L"Detected object: Class ID = " << class_id << L", Confidence = "
+                   << conf << L", Bounding Box = [" << left << L", " << top << L", "
+                   << width << L", " << height << L"]" << std::endl;
+               */
+
+               class_results.push_back((size_t)class_result_obj);
+            }
          }
 
-		 // Create class results array
+         // Create class results array
          size_t* class_array = APITools_MakeIntArray(context, class_results.size());
          size_t* class_array_ptr = class_array + 3;
          for(size_t i = 0; i < class_results.size(); ++i) {
             class_array_ptr[i] = class_results[i];
-		 }
+         }
          yolo_result_obj[3] = (size_t)class_array;
 
          APITools_SetObjectValue(context, 0, yolo_result_obj);
 
-// Calculate duration in milliseconds
-auto end = std::chrono::high_resolution_clock::now();
-auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-std::wcout << L"ONNX inference completed in " << duration << L" ms." << std::endl;
+         /*
+         // Calculate duration in milliseconds
+         auto end = std::chrono::high_resolution_clock::now();
+         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+         std::wcout << L"ONNX inference completed in " << duration << L" ms." << std::endl;
+         */
       }
       catch(const Ort::Exception& e) {
          std::wcerr << L"ONNX Runtime Error: " << e.what() << std::endl;
       }
    }
-
 }
