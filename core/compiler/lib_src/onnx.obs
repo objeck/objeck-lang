@@ -4,7 +4,7 @@
 # ONNX and OpenCV wrappers
 ~~#	
 
-use System.API;
+use System.API, API.OpenCV;
 
 #~
 Open Neural Network Exchange support (ONNX) for generative AI and large language models (-lib onnx)
