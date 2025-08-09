@@ -49,15 +49,15 @@ class Test {
 		"image_path={$image_path}"->PrintLine();
 		"image_size={$image_size}\n"->PrintLine();
 
-		labels := image_labels->ToArray()->As(String[]);
-		result := API.Onnx.Runtime->YoloInference(image_bytes, 640, 640, model_path, labels);
+		label_names := image_labels->ToArray()->As(String[]);
+		result := API.Onnx.Runtime->YoloInference(image_bytes, 640, 640, model_path, label_names);
 		if(result = Nil) {
 			"--- Error: No results ---"->ErrorLine();
 			return;
 		};
 
 		image := Image->Load(image_bytes);
-		if(result = Nil) {
+		if(image = Nil) {
 			"--- Error: Unable to load image ---"->ErrorLine();
 			return;
 		};
@@ -65,38 +65,21 @@ class Test {
 		"-- Ok --"->PrintLine();
 
 		classifications := result->GetClassifications();
-		
 		each(classification in classifications) {
-			image_label := classification->GetName();
+			label_str := label_names[classification->GetId()];
+			class_str := classification->ToString();
+			"name='{$label_str}', class={$class_str}"->PrintLine();
 
-			rect := classification->GetBounds();
-			left := rect->GetX();
-			top := rect->GetY();
-
-			image := image->DrawRectangle(Rect->New(
-				left, top, rect->GetWidth(), rect->GetHeight()), 
-				Scalar->New(0, 255, 0), 2);
+			bounds := classification->GetBounds();
 			image := image->DrawText(
-				image_label,
-				Point->New(left, top), 
+				label_str,
+				Point->New(bounds->GetX(), bounds->GetY()), 
 				Font->FONT_HERSHEY_SIMPLEX,
 				0.75,
 				Scalar->New(255, 0, 0));
-		};
-
-		image->Show("Image 0");	
-	}
-
-	function : native : FindGreatest(start : Int, end : Int, output : Float[]) ~ Int {
-		index := start;
-
-		for(i := start + 1; i < end; i += 1;) {
-			if(output[i] > output[index]) {
-				index := i;
-			}
 		}
-
-		return index;
+		
+		image->Show("Image w/ Bounds");
 	}
 
 	#
@@ -161,6 +144,7 @@ class Test {
 
 			result := API.Onnx.Runtime->ResNetInference(image_bytes, 224, 224, model_path);
 			if(result <> Nil) {
+
 #~				
 				result_vector := result->GetOutput();
 				result_size := result_vector->Size();
@@ -211,15 +195,15 @@ class Test {
 	}
 
 	function : LoadLabels(label_path : String) ~ Vector<String> {
-		labels := Vector->New()<String>;
+		label_names := Vector->New()<String>;
 
 		file_in := FileReader->New(label_path);
 		while(<>file_in->IsEoF()) {
 			data_label := file_in->ReadLine();
-			labels->AddBack(data_label);
+			label_names->AddBack(data_label);
 		};
 		file_in->Close();
 
-		return labels;
+		return label_names;
 	}
 }

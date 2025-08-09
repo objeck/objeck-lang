@@ -25,13 +25,14 @@ bundle API.Onnx {
 	class Runtime {
 		function : YoloInference(image : Byte[], height : Int, width : Int, model : String, 
 				labels : String[]) ~ API.Onnx.YoloResult {
-			array_args := Base->New[5];
+			array_args := Base->New[6];
 
 			array_args[0] := Nil;
 			array_args[1] := ByteArrayRef->New(image);
 			array_args[2] := IntRef->New(height);
 			array_args[3] := IntRef->New(width);
 			array_args[4] := model;
+			array_args[5] := IntRef->New(labels->Size());
 
 			Proxy->GetDllProxy()->CallFunction("onnx_yolo_image_inf", array_args);
 			
@@ -65,10 +66,10 @@ bundle API.Onnx {
 		@output : Float[];
 		@shape : Int[];
 		@dims : Int[];
+		@classifications : YoloClassification[];
 		# end set by library
 
 		@image_bytes : Byte[];
-		@classifications : Collection.Vector<YoloClassification>;
 		@image_labels : String[];
 		@num_classes : Int;
 
@@ -86,8 +87,6 @@ bundle API.Onnx {
 			@image_bytes := image_bytes;
 			@image_labels := image_labels;
 			@num_classes := image_labels->Size();
-
-			@classifications := Collection.Vector->New()<YoloClassification>;
 		}
 
 		#~
@@ -122,47 +121,11 @@ bundle API.Onnx {
 			return @dims; 
 		}
 
-		method : native : ProcessClassifications() ~ Nil {
-			if(@output <> Nil & @shape <> Nil & @dims <> Nil) {
-				result_count := @shape[1]
-
-				cols := @dims[1];
-				rows := @dims[0];
-
-				for(i := 0; i < result_count; i += 1;) {
-					x := @output[i * (@num_classes + 5) + 0];
-					y := @output[i * (@num_classes + 5) + 1];
-					w := @output[i * (@num_classes + 5) + 2];
-					h := @output[i * (@num_classes + 5) + 3];
-					conf := @output[i * (@num_classes + 5) + 4];
-
-					left := (((x - w / 2.0) * cols) / 640.0)->As(Int);
-					top := (((y - h / 2.0) * rows) / 640.0)->As(Int);
-					width := ((w * cols) / 640.0)->As(Int);
-					height := ((h * rows) / 640.0)->As(Int);
-
-					if(conf >= 0.7) {
-						start := i * (@num_classes + 5) + 5;
-						end := start + @num_classes;
-						class_id := GreatestFloat(start, end, @output) - start;
-						image_label := @image_labels[class_id];
-
-						@classifications->AddBack(YoloClassification->New(class_id, image_label, conf, 
-							Rect->New(left, top, width, height)));
-					};
-				};
-			};
-		}
-
 		#~
 		Gets an array of classifications
 		@return array of classifications
 		~#
-		method : public : GetClassifications() ~ Collection.Vector<YoloClassification> {
-			if(@classifications->IsEmpty()) {
-				ProcessClassifications();
-			};
-
+		method : public : GetClassifications() ~ YoloClassification[] {
 			return @classifications;
 		}
 
@@ -224,23 +187,17 @@ bundle API.Onnx {
 
 	class YoloClassification {
 		@id : Int;
-		@name : String;
 		@confidence : Float;
 		@bounds : Rect;
 
-		New(id : Int, name : String, confidence : Float, bounds : Rect) {
+		New(id : Int, confidence : Float, bounds : Rect) {
 			@id := id;
-			@name := name;
 			@confidence := confidence;
 			@bounds := bounds;
 		}
 
 		method : public : GetId() ~ Int {
 			return @id;
-		}
-
-		method : public : GetName() ~ String {
-			return @name;
 		}
 
 		method : public : GetBounds() ~ Rect {
@@ -257,7 +214,7 @@ bundle API.Onnx {
 		~#
 		method : public : ToString() ~ String {
 			x := @bounds->GetX(); y := @bounds->GetY(); w := @bounds->GetWidth(); h := @bounds->GetHeight();
-			return "id={$@id}, class='{$@name}', conf={$@confidence}, bounds=[{$x}, {$y}, {$w}, {$h}]";
+			return "id={$@id}, conf={$@confidence}, bounds=[{$x}, {$y}, {$w}, {$h}]";
 		}
 	}
 
