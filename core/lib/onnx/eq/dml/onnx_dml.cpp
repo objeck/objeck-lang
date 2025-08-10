@@ -86,7 +86,7 @@ extern "C" {
 
          // Preprocess image for YOLO
          std::vector<float> input_tensor_values = yolo_preprocess(img, resize_height, resize_width);
-         size_t input_tensor_size = input_tensor_size = 3 * resize_height * resize_width;
+         size_t input_tensor_size = 3 * resize_height * resize_width;
          
          // Create input tensor
          std::array<int64_t, 4> input_shape = { 1, 3, resize_height, resize_width };
@@ -176,7 +176,6 @@ extern "C" {
 
                // Find the class with the highest probability
                int start = base + 5;
-               int end = start + labels_size;
                int class_id = 0;
                double max_score = output_data[start];
 
