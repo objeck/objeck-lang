@@ -9,7 +9,7 @@ extern "C" {
 #ifdef _WIN32
    __declspec(dllexport)
 #endif
-      void load_lib(VMContext& context) {
+   void load_lib(VMContext& context) {
       cv::utils::logging::setLogLevel(cv::utils::logging::LOG_LEVEL_ERROR);
    }
 
@@ -17,7 +17,7 @@ extern "C" {
 #ifdef _WIN32
    __declspec(dllexport)
 #endif
-      void unload_lib() {
+   void unload_lib() {
    }
 
    // List available ONNX execution providers

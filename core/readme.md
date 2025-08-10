@@ -14,7 +14,7 @@
 Objeck can be built for various targets. The language is implemented in C++ and assembly (i.e., generated machine code) and assisted by code generators for SDL2 and GTK 3/4 bindings.
 
 ### Linux (x64, ARM64)
-*  For Linux, install required libraries: <code>sudo apt-get install build-essential git libssl-dev unixodbc-dev libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev libsdl2-mixer-dev libmp3lame-dev libreadline-dev unzip libeigen3-dev</code>
+*  For Linux, install required libraries: <code>sudo apt-get install build-essential git libssl-dev unixodbc-dev libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev libsdl2-mixer-dev libmp3lame-dev libreadline-dev unzip libeigen3-dev libopencv-dev</code>
 *  cd to <code>objeck-lang/core/release</code> and run <code>./deploy_posix.sh</code> with the parameter <code>64</code> or <code>rpi</code> for x64 or ARM64 Linux
 *  Build output with binaries and documentation will be located in <code>objeck-lang/core/release/deploy</code>
 *  Reference <code>objeck-lang/core/release/deploy/readme.html</code> to set additional paths and find examples
