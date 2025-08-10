@@ -1,5 +1,7 @@
 #include "../common.h"
 
+#include <opencv2/core/utils/logger.hpp>
+
 #ifdef _WIN32
 namespace fs = std::filesystem;
 #endif
@@ -44,7 +46,10 @@ extern "C" {
       const int resize_height = (int)APITools_GetIntValue(context, 2);
       const int resize_width = (int)APITools_GetIntValue(context, 3);
 
-      const std::wstring model_path = APITools_GetStringValue(context, 4);
+      const std::wstring w_model_path = APITools_GetStringValue(context, 4);
+#ifndef _WIN32
+      const  std::string model_path = UnicodeToBytes(w_model_path);
+#endif
 
       const double conf_threshold = APITools_GetFloatValue(context, 5);
 
@@ -53,7 +58,7 @@ extern "C" {
       const size_t* labels_objs = APITools_GetArray(labels_array);
 
       // Validate parameters
-      if(!input_bytes || !labels_objs || model_path.empty() || conf_threshold < 0.0 || resize_height < 1 || resize_width < 1 || labels_size < 1) {
+      if(!input_bytes || !labels_objs || w_model_path.empty() || conf_threshold < 0.0 || resize_height < 1 || resize_width < 1 || labels_size < 1) {
          return;
       }
 
@@ -75,7 +80,11 @@ extern "C" {
          session_options.SetExecutionMode(ExecutionMode::ORT_PARALLEL);
 
          // Create ONNX session
+#ifdef _WIN32
+         Ort::Session session(env, w_model_path.c_str(), session_options);
+#else
          Ort::Session session(env, model_path.c_str(), session_options);
+#endif
 
          std::vector<uchar> image_data(input_bytes, input_bytes + input_size);
          cv::Mat img = cv::imdecode(image_data, cv::IMREAD_COLOR);
@@ -86,7 +95,7 @@ extern "C" {
 
          // Preprocess image for YOLO
          std::vector<float> input_tensor_values = yolo_preprocess(img, resize_height, resize_width);
-         size_t input_tensor_size = input_tensor_size = 3 * resize_height * resize_width;
+         size_t input_tensor_size = 3 * resize_height * resize_width;
          
          // Create input tensor
          std::array<int64_t, 4> input_shape = { 1, 3, resize_height, resize_width };
@@ -176,7 +185,6 @@ extern "C" {
 
                // Find the class with the highest probability
                int start = base + 5;
-               int end = start + labels_size;
                int class_id = 0;
                double max_score = output_data[start];
 
@@ -253,14 +261,17 @@ extern "C" {
       const int resize_height = (int)APITools_GetIntValue(context, 2);
       const int resize_width = (int)APITools_GetIntValue(context, 3);
 
-      const std::wstring model_path = APITools_GetStringValue(context, 4);
+      const std::wstring w_model_path = APITools_GetStringValue(context, 4);
+#ifndef _WIN32
+      const  std::string model_path = UnicodeToBytes(w_model_path);
+#endif
 
       size_t* labels_array = (size_t*)APITools_GetArray(context, 5)[0];
       const long labels_size = ((long)APITools_GetArraySize(labels_array));
       const size_t* labels_objs = APITools_GetArray(labels_array);
 
       // Validate parameters
-      if(!input_bytes || !labels_objs || resize_height < 1 || resize_width < 1 || labels_size < 1 || model_path.empty()) {
+      if(!input_bytes || !labels_objs || resize_height < 1 || resize_width < 1 || labels_size < 1 || w_model_path.empty()) {
          return;
       }
 
@@ -282,7 +293,11 @@ extern "C" {
          session_options.SetExecutionMode(ExecutionMode::ORT_PARALLEL);
 
          // Create ONNX session
+#ifdef _WIN32
+         Ort::Session session(env, w_model_path.c_str(), session_options);
+#else
          Ort::Session session(env, model_path.c_str(), session_options);
+#endif
 
          std::vector<uchar> image_data(input_bytes, input_bytes + input_size);
          cv::Mat img = cv::imdecode(image_data, cv::IMREAD_COLOR);
@@ -357,7 +372,7 @@ extern "C" {
          }
 
          // find the top confidence
-         size_t image_index = 0;
+         int image_index = 0;
          double top_confidence= output_data[0];
          for(size_t j = 1; j < output_len; j++) {
             if(output_array_buffer[j] > top_confidence) {
