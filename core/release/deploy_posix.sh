@@ -76,6 +76,10 @@ cd ../matrix
 ./build_linux.sh matrix
 cp matrix.so ../../release/deploy/lib/native/libobjk_ml.so
 
+cd ../opencv
+./build_linux.sh opencv
+cp opencv.so ../../release/deploy/lib/native/libobjk_opencv.so
+
 cd ../sdl
 ./build_linux.sh sdl
 cp sdl.so ../../release/deploy/lib/native/libobjk_sdl.so
