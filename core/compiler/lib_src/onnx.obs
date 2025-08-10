@@ -1,7 +1,6 @@
 #~~
-# TODO
 # Copyright (c) 2025 Randy Hollines
-# ONNX and OpenCV wrappers
+# ONNX wrapper
 ~~#	
 
 use System.API, API.OpenCV;
@@ -22,7 +21,19 @@ bundle API.Onnx {
 		}
 	}
 
+	#~
+	Yolo runtime
+	~#
 	class Runtime {
+		#~
+		Yolo image inference
+		@param image image bytes
+		@param height image height
+		@param image width width
+		@param model Yolo model
+		@param conf_threshold confidence threshold
+		@param labels classification labels
+		~#
 		function : YoloInference(image : Byte[], height : Int, width : Int, model : String, 
 				conf_threshold : Float, labels : String[]) ~ API.Onnx.YoloResult {
 
@@ -48,6 +59,14 @@ bundle API.Onnx {
 			return results;
 		}
 
+		#~
+		ResNet image inference
+		@param image image bytes
+		@param height image height
+		@param image width width
+		@param model Resnet model
+		@param labels classification labels
+		~#
 		function : ResNetInference(image : Byte[], height : Int, width : Int, model : String, labels : String[]) ~ API.Onnx.ResNetResult {
 			if(image = Nil | labels = Nil) {
 				return Nil;
@@ -81,10 +100,9 @@ bundle API.Onnx {
 		}
 	}
 
-	class Option {
-		New() {}
-	}
-
+	#~
+	Yolo inference results
+	~#
 	class YoloResult {
 		@output : Float[];
 		@shape : Int[];
@@ -162,8 +180,8 @@ bundle API.Onnx {
 		}
 
 		#~
-		Gets the output shape
-		@return output shape
+		String representation 
+		@return string representation 
 		~#
 		method : public : ToString() ~ String {
 			buffer := "output-size=";
@@ -213,37 +231,53 @@ bundle API.Onnx {
 		}
 	}
 
+	#~
+	Yolo classification results
+	~#
 	class YoloClassification {
 		@id : Int;
 		@name : String;
 		@confidence : Float;
 		@bounds : Rect;
 
-		New(id : Int, confidence : Float, bounds : Rect) {
-			@id := id;
-			@confidence := confidence;
-			@bounds := bounds;
+		New : private () {
 		}
 
+		#~
+		Get classification ID
+		@return classification ID
+		~#
 		method : public : GetId() ~ Int {
 			return @id;
 		}
 
+		#~
+		Get classification name
+		@return classification name
+		~#
 		method : public : GetName() ~ String {
 			return @name;
 		}
 
+		#~
+		Get classification bounds
+		@return classification bounds
+		~#
 		method : public : GetBounds() ~ Rect {
 			return @bounds;
 		}
 
+		#~
+		Get classification confidence
+		@return classification confidence
+		~#
 		method : public : GetConfidence() ~ Float {
 			return @confidence;
 		}
 
 		#~
-		Gets the output shape
-		@return output shape
+		Get string representation
+		@return string representation
 		~#
 		method : public : ToString() ~ String {
 			x := @bounds->GetX(); y := @bounds->GetY(); w := @bounds->GetWidth(); h := @bounds->GetHeight();
@@ -251,6 +285,9 @@ bundle API.Onnx {
 		}
 	}
 
+	#~
+	ResNet results
+	~#
 	class ResNetResult {
 		@output : Float[];
 		@shape : Int[];
@@ -273,24 +310,24 @@ bundle API.Onnx {
 		}
 
 		#~
-		Gets the output results
-		@return output results
+		Get classification ID
+		@return classification ID
 		~#
 		method : public : GetId() ~ Int {
 			return @class_id;
 		}
 
 		#~
-		Gets the output results
-		@return output results
+		Get classification name
+		@return classification name
 		~#
 		method : public : GetName() ~ String {
 			return @name;
 		}
 
 		#~
-		Gets the output results
-		@return output results
+		Get classification confidence
+		@return classification confidence
 		~#
 		method : public : GetConfidence() ~ Float {
 			return @confidence;
@@ -318,7 +355,7 @@ bundle API.Onnx {
 		}
 
 		#~
-		Gets string representation
+		Get string representation
 		@return string representation
 		~#
 		method : public : ToString() ~ String {

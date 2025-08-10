@@ -24,7 +24,7 @@ extern "C" {
 #ifdef _WIN32
    __declspec(dllexport)
 #endif
-      void onnx_get_provider_names(VMContext& context) {
+   void onnx_get_provider_names(VMContext& context) {
       // Get output parameter
       size_t* output_holder = APITools_GetArray(context, 0);
 

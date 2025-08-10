@@ -1,7 +1,6 @@
 #~~
-# TODO
 # Copyright (c) 2025 Randy Hollines
-# ONNX and OpenCV wrappers
+# OpenCV wrapper
 ~~#	
 
 use System.API;
@@ -22,6 +21,9 @@ bundle API.OpenCV {
 		}
 	}
 
+	#~
+	OpenCV image
+	~#
 	class Image {
 		@image_type : Int;
 		@image_cols : Int;
@@ -144,9 +146,12 @@ bundle API.OpenCV {
 		}
 
 		#~
-		Convert an image to a given byte format
-		@param format output format
-		@return converted image bytes
+		Draws a bounding rectangle
+		@param rect bounding rectangle
+		@param color bounding rectangle color
+		@param thickness bounding rectangle thickness
+		@param type bounding rectangle type
+		@return updated image
 		~#
 		method : public : DrawRectangle(rect : Rect, color : Scalar, thickness : Int := 1, 
 				type : LineType := LineType->LINE_8) ~ API.OpenCV.Image {
@@ -165,9 +170,13 @@ bundle API.OpenCV {
 		}
 
 		#~
-		Convert an image to a given byte format
-		@param format output format
-		@return converted image bytes
+		Draws a bounding circle
+		@param pt circle center 
+		@param radius circle radius 
+		@param color bounding circle color
+		@param thickness bounding circle thickness
+		@param type bounding circle type
+		@return updated image		
 		~#
 		method : public : DrawCircle(pt : Point, radius : Int, color : Scalar, thickness : Int := 1, 
 				type : LineType := LineType->LINE_8) ~ API.OpenCV.Image {
@@ -187,9 +196,13 @@ bundle API.OpenCV {
 		}
 
 		#~
-		Convert an image to a given byte format
-		@param format output format
-		@return converted image bytes
+		Draws text on an image
+		@param text text to draw
+		@param font text font
+		@param color bounding circle color
+		@param thickness bounding circle thickness
+		@param type bounding circle type
+		@return updated image
 		~#
 		method : public : DrawText(text : String, pt : Point, font : Font, scale : Float, color : Scalar, 
 				thickness : Int := 1, type : LineType := LineType->LINE_8) ~ API.OpenCV.Image {
@@ -211,19 +224,22 @@ bundle API.OpenCV {
 		}
 
 		#~
-		Convert an image to a given byte format
-		@param format output format
-		@return converted image bytes
+		Resizes an image
+		@param sz image size
+		@param fx x-scale factor
+		@param fy y-scale factor
+		@param interpolation filling missing pixels method
+		@return updated image
 		~#
-		method : public : Resize(sz : Size, px : Float := 0.0, py : Float := 0.0, 
+		method : public : Resize(sz : Size, fx : Float := 0.0, fy : Float := 0.0, 
 				interpolation : InterpolationFlags := InterpolationFlags->INTER_LINEAR) ~ API.OpenCV.Image {
 			array_args := Base->New[6];
 
 			array_args[0] := Nil;
 			array_args[1] := @self;
 			array_args[2] := sz;
-			array_args[3] := FloatRef->New(px);
-			array_args[4] := FloatRef->New(py);
+			array_args[3] := FloatRef->New(fx);
+			array_args[4] := FloatRef->New(fy);
 			array_args[5] := IntRef->New(interpolation);
 
 			Proxy->GetDllProxy()->CallFunction("opencv_resize_image", array_args);
@@ -232,28 +248,54 @@ bundle API.OpenCV {
 		}
 	}
 
+	#~
+	OpenCV point
+	~#
 	class Point {
 		@x : Int;
 		@y : Int;
 
+		#~
+		Constructor
+		@param x x-position
+		@param y y-position
+		~#
 		New(x : Int, y : Int) {
 			@x := x;
 			@y := y;
 		}
 
+		#~
+		Get X position
+		@return x-position
+		~#
 		method : public : GetX() ~ Int {
 			return @x;
 		}
 
+		#~
+		Get Y position
+		@return y-position
+		~#
 		method : public : GetY() ~ Int {
 			return @y;
 		}
 	}
 
+	#~
+	OpenCV rectangle
+	~#
 	class Rect from Point {
 		@width : Int;
 		@height : Int;
 
+		#~
+		Constructor
+		@param x x-position
+		@param y y-position
+		@param width width
+		@param height height
+		~#
 		New(x : Int, y : Int, width : Int, height : Int) {
 			Parent(x, y);
 
@@ -261,39 +303,73 @@ bundle API.OpenCV {
 			@height := height;
 		}
 
+		#~
+		Get width
+		@return width
+		~#
 		method : public : GetWidth() ~ Int {
 			return @width;
 		}
 
+		#~
+		Get height
+		@return height
+		~#
 		method : public : GetHeight() ~ Int {
 			return @height;
 		}
 	}
 
+	#~
+	OpenCV size
+	~#
 	class Size {
 		@width : Int;
 		@height : Int;
 
+		#~
+		Constructor
+		@param width width
+		@param height height
+		~#
 		New(width : Int, height : Int) {
 			@width := width;
 			@height := height;
 		}
 
+		#~
+		Get width
+		@return width
+		~#
 		method : public : GetWidth() ~ Int {
 			return @width;
 		}
 
+		#~
+		Get height
+		@return height
+		~#
 		method : public : GetHeight() ~ Int {
 			return @height;
 		}
 	}
 
+	#~
+	OpenCV scalar
+	~#
 	class Scalar {
 		@v0 : Float;
 		@v1 : Float;
 		@v2 : Float;
 		@v3 : Float;
 
+		#~
+		Constructor
+		@param v0 value 0
+		@param v1 value 1
+		@param v2 value 2
+		@param v3 value 3
+		~#
 		New(v0 : Float, v1 : Float, v2 : Float := 0.0, v3 : Float := 0.0) {
 			@v0 := v0;
 			@v1 := v1;
@@ -301,23 +377,42 @@ bundle API.OpenCV {
 			@v3 := v3;
 		}
 
+		#~
+		Get value 0
+		@return value 0
+		~#
 		method : public : GetV0() ~ Float {
 			return @v0;
 		}
 
+		#~
+		Get value 1
+		@return value 1
+		~#
 		method : public : GetV1() ~ Float {
 			return @v1;
 		}
 
+		#~
+		Get value 2
+		@return value 2
+		~#
 		method : public : GetV2() ~ Float {
 			return @v2;
 		}
 
+		#~
+		Get value 3
+		@return value 3
+		~#
 		method : public : GetV3() ~ Float {
 			return @v3;
 		}
 	}
 
+	#~
+	OpenCV font values
+	~#
 	consts Font {
 		FONT_HERSHEY_SIMPLEX := 0,
 		FONT_HERSHEY_PLAIN := 1,
@@ -330,6 +425,9 @@ bundle API.OpenCV {
 		FONT_ITALIC := 16
 	}
 
+	#~
+	OpenCV line values
+	~#
 	consts LineType {
 	    FILLED := -1, # fill
 	    LINE_4 := 4, # 4-connected line
@@ -337,6 +435,9 @@ bundle API.OpenCV {
 	    LINE_AA := 16 # anti-aliased line
 	}
 
+	#~
+	OpenCV interpolation values
+	~#
 	consts InterpolationFlags {
 	    INTER_NEAREST := 0,
 	    INTER_LINEAR := 1,
