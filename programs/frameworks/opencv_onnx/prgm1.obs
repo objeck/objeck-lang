@@ -1,14 +1,5 @@
 use API.Onnx, use API.OpenCV, System.IO.Filesystem, Collection;
 
-#~
-debug settings
-- args: C:\Users\objec\Documents\Code\objeck-lang\programs\tests\prgm352.obe C:\Users\objec\Documents\Code\objeck-lang\core\lib\onnx\data
-- wdir: ..\..\release\deploy-arm64\bin
-- env: OBJECK_LIB_PATH=C:\Users\objec\Documents\Code\objeck-lang\core\release\deploy-arm64\lib
-PATH=%PATH%;C:\Users\objec\Documents\Code\objeck-lang\core\release\deploy-arm64\bin
-$(LocalDebuggerEnvironment)
-~#
-
 class Test {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
@@ -49,6 +40,12 @@ class Test {
 		"image_path={$image_path}"->PrintLine();
 		"image_size={$image_size}\n"->PrintLine();
 
+		image := Image->Load(image_bytes);
+		if(image = Nil) {
+			"--- Error: Unable to load image ---"->ErrorLine();
+			return;
+		};
+
 		label_names := image_labels->ToArray()->As(String[]);
 		result := API.Onnx.Runtime->YoloInference(image_bytes, 640, 640, model_path, label_names);
 		if(result = Nil) {
@@ -56,29 +53,28 @@ class Test {
 			return;
 		};
 
-		image := Image->Load(image_bytes);
-		if(image = Nil) {
-			"--- Error: Unable to load image ---"->ErrorLine();
-			return;
-		};
-
-		"-- Ok --"->PrintLine();
-
 		classifications := result->GetClassifications();
 		each(classification in classifications) {
-			label_str := label_names[classification->GetId()];
+			label_str := classification->GetName();
 			class_str := classification->ToString();
 			"name='{$label_str}', class={$class_str}"->PrintLine();
 
 			bounds := classification->GetBounds();
+			left := bounds->GetX();
+			top := bounds->GetY();
+
+			image := image->DrawRectangle(Rect->New(
+				left, top, bounds->GetWidth(), bounds->GetHeight()), 
+				Scalar->New(0, 255, 0), 2);
+
 			image := image->DrawText(
 				label_str,
-				Point->New(bounds->GetX(), bounds->GetY()), 
+				Point->New(left, top), 
 				Font->FONT_HERSHEY_SIMPLEX,
 				0.75,
 				Scalar->New(255, 0, 0));
-		}
-		
+		};
+
 		image->Show("Image w/ Bounds");
 	}
 
