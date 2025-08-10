@@ -32,7 +32,7 @@ class Test {
 		"image_label_size={$image_label_size}"->PrintLine();
 
 		# set image
-		image_path += "wine.jpg";
+		image_path += "skiers.jpg";
 
 		image_bytes := FileReader->ReadBinaryFile(image_path);
 		image_size := image_bytes->Size();
@@ -53,11 +53,14 @@ class Test {
 			return;
 		};
 
+		result->ToString()->PrintLine();
+		"==="->PrintLine();
+
 		classifications := result->GetClassifications();
 		each(classification in classifications) {
 			label_str := classification->GetName();
 			class_str := classification->ToString();
-			"name='{$label_str}', class={$class_str}"->PrintLine();
+			"name='{$label_str}', class={$class_str}\n---"->PrintLine();
 
 			bounds := classification->GetBounds();
 			left := bounds->GetX();

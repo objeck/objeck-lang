@@ -168,11 +168,19 @@ bundle API.Onnx {
 			};
 
 			if(@shape = Nil) {
+				buffer += "0, classifications=";
+			}
+			else {
+				labels_size := @image_labels->Size();
+				buffer += "{$labels_size}, classifications=";
+			};
+
+			if(@classifications = Nil) {
 				buffer += "0, image-dims=";
 			}
 			else {
-				image_labels_size := @image_labels->Size();
-				buffer += "{$image_labels_size}, image_labels_size-dims=";
+				classifications_size := @classifications->Size();
+				buffer += "{$classifications_size}, image-dims=";
 			};
 
 			if(@dims = Nil) {
@@ -222,7 +230,7 @@ bundle API.Onnx {
 		~#
 		method : public : ToString() ~ String {
 			x := @bounds->GetX(); y := @bounds->GetY(); w := @bounds->GetWidth(); h := @bounds->GetHeight();
-			return "id={$@id}, conf={$@confidence}, bounds=[{$x}, {$y}, {$w}, {$h}]";
+			return "id={$@id}, name={$@name}, conf={$@confidence}, bounds=[{$x}, {$y}, {$w}, {$h}]";
 		}
 	}
 
