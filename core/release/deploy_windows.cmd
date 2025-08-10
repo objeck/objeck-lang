@@ -176,9 +176,6 @@ if [%1] == [x64] (
 )
 cd ..\..\release
 
-
-
-
 REM opencv support
 cd ..\lib\opencv	
 if [%1] == [arm64] (
@@ -197,8 +194,6 @@ if [%1] == [x64] (
 	copy /y win\x64\bin\opencv_videoio_ffmpeg4120_64.dll ..\..\release\%TARGET%\bin
 )
 cd ..\..\release
-
-
 
 REM onnx support
 cd ..\lib\onnx	

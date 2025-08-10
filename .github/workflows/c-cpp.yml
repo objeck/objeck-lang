@@ -19,7 +19,7 @@ jobs:
       run : sudo apt-get update; sudo apt-get upgrade
 
     - name: add-deps
-      run: sudo apt-get install build-essential libssl-dev unixodbc-dev libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev libsdl2-mixer-dev libreadline-dev libeigen3-dev
+      run: sudo apt-get install build-essential libopencv-dev libssl-dev unixodbc-dev libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev libsdl2-mixer-dev libreadline-dev libeigen3-dev
     
     - name: build-bootstrap
       working-directory: ./core/compiler
