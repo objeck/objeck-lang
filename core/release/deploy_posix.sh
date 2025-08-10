@@ -80,7 +80,11 @@ cd ../opencv
 ./build_linux.sh opencv
 cp opencv.so ../../release/deploy/lib/native/libobjk_opencv.so
 
-cd ../sdl
+cd ../onnx/eq/cuda
+./build_linux.sh onnx_cuda
+cp onnx_cuda.so ../../../../release/deploy/lib/native/libobjk_onnx.so
+
+cd ../../../sdl
 ./build_linux.sh sdl
 cp sdl.so ../../release/deploy/lib/native/libobjk_sdl.so
 cp lib/fonts/*.ttf ../../release/deploy/lib/sdl/fonts
