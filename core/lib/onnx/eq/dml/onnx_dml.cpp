@@ -198,7 +198,7 @@ extern "C" {
                }
 
                // confidence
-               *((double*)(&class_result_obj[4])) = confidence;
+               *((double*)(&class_result_obj[2])) = confidence;
 
                // copy rectangle
                size_t* class_rect_obj = APITools_CreateObject(context, L"API.OpenCV.Rect");
