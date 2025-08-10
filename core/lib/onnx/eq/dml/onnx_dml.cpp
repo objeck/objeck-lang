@@ -46,12 +46,14 @@ extern "C" {
 
       const std::wstring model_path = APITools_GetStringValue(context, 4);
 
-      size_t* labels_array = (size_t*)APITools_GetArray(context, 5)[0];
+      const double conf_threshold = APITools_GetFloatValue(context, 5);
+
+      size_t* labels_array = (size_t*)APITools_GetArray(context, 6)[0];
       const long labels_size = ((long)APITools_GetArraySize(labels_array));
       const size_t* labels_objs = APITools_GetArray(labels_array);
 
       // Validate parameters
-      if(!input_bytes || !labels_objs || resize_height < 1 || resize_width < 1 || labels_size < 1 || model_path.empty()) {
+      if(!input_bytes || !labels_objs || model_path.empty() || conf_threshold < 0.0 || resize_height < 1 || resize_width < 1 || labels_size < 1) {
          return;
       }
 
@@ -85,13 +87,7 @@ extern "C" {
          // Preprocess image for YOLO
          std::vector<float> input_tensor_values = yolo_preprocess(img, resize_height, resize_width);
          size_t input_tensor_size = input_tensor_size = 3 * resize_height * resize_width;
-
-         /*
-         // Preprocess image for ResNet
-         input_tensor_values = resnet_preprocess(img, resize_height, resize_width);
-         input_tensor_size = input_tensor_values.size();
-         */
-
+         
          // Create input tensor
          std::array<int64_t, 4> input_shape = { 1, 3, resize_height, resize_width };
 
@@ -172,7 +168,7 @@ extern "C" {
             const double h = output_data[base + 3];
             const double confidence = output_data[base + 4];
 
-            if(confidence >= 0.7) {
+            if(confidence >= conf_threshold) {
                int left = static_cast<int>(((x - w / 2.0) * cols) / resize_width);
                int top = static_cast<int>(((y - h / 2.0) * rows) / resize_height);
                int width = static_cast<int>((w * cols) / resize_width);
@@ -202,9 +198,7 @@ extern "C" {
                }
 
                // confidence
-//               memcpy(&class_result_obj[2], &conf, sizeof(conf));
                *((double*)(&class_result_obj[4])) = confidence;
-
 
                // copy rectangle
                size_t* class_rect_obj = APITools_CreateObject(context, L"API.OpenCV.Rect");
@@ -398,7 +392,6 @@ extern "C" {
          resnet_result_obj[2] = (size_t)output_image_array;
 
          resnet_result_obj[3] = image_index; // top idex
-//         memcpy(&resnet_result_obj[4], &top_confidence, sizeof(top_confidence)); // set top confidence
          *((double*)(&resnet_result_obj[4])) = top_confidence;
 
          // copy label name
