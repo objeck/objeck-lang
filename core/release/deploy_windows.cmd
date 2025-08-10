@@ -176,38 +176,55 @@ if [%1] == [x64] (
 )
 cd ..\..\release
 
-goto onnxend
+
+
+
+REM opencv support
+cd ..\lib\opencv	
+if [%1] == [arm64] (
+	devenv opencv_qnn.sln /rebuild "Release|ARM64"
+	copy arm64\Release\libobjk_opencv.dll ..\..\release\%TARGET%\lib\native
+
+	copy /y win\arm64\bin\opencv_world4120.dll ..\..\release\%TARGET%\bin
+	copy /y win\arm64\bin\opencv_videoio_ffmpeg4120_64.dll ..\..\release\%TARGET%\bin
+)
+
+if [%1] == [x64] (
+	devenv opencv.sln /rebuild "Release|x64"
+	copy x64\Release\libobjk_opencv.dll ..\..\release\%TARGET%\lib\native
+
+	copy /y win\x64\bin\opencv_world4120.dll ..\..\release\%TARGET%\bin
+	copy /y win\x64\bin\opencv_videoio_ffmpeg4120_64.dll ..\..\release\%TARGET%\bin
+)
+cd ..\..\release
+
+
 
 REM onnx support
 cd ..\lib\onnx	
 if [%1] == [arm64] (
-	cd qnn
+	cd eq\qnn
+
 	devenv onnx_qnn.sln /rebuild "Release|ARM64"
-	copy arm64\Release\libobjk_onnx.dll ..\..\..\release\%TARGET%\lib\native
+	copy arm64\Release\libobjk_onnx.dll ..\..\..\..\release\%TARGET%\lib\native
 
-	copy /y ..\win\opencv\arm64\bin\opencv_world4120.dll ..\..\..\release\%TARGET%\bin
-	copy /y ..\win\opencv\arm64\bin\opencv_videoio_ffmpeg4120_64.dll ..\..\..\release\%TARGET%\bin
-	copy /y win\onnx\arm64\bin\*.dll ..\..\..\release\%TARGET%\bin
+	copy /y win\onnx\arm64\bin\*.dll ..\..\..\..\release\%TARGET%\bin
 
-	cd ..
+	cd ..\..
 )
 
 if [%1] == [x64] (
-	cd dml
+	cd eq\dml
 
 	devenv onnx_dml.sln /rebuild "Release|x64"
-	copy x64\Release\libobjk_onnx.dll ..\..\..\release\%TARGET%\lib\native
+	copy x64\Release\libobjk_onnx.dll ..\..\..\..\release\%TARGET%\lib\native
 
-	copy /y ..\win\opencv\x64\bin\opencv_world4120.dll ..\..\..\release\%TARGET%\bin
-	copy /y ..\win\opencv\x64\bin\opencv_videoio_ffmpeg4120_64.dll ..\..\..\release\%TARGET%\bin
-	copy /y ..\packages\Microsoft.ML.OnnxRuntime.DirectML.1.22.1\runtimes\win-x64\native\*.dll ..\..\..\release\%TARGET%\bin
-	copy /y ..\packages\Microsoft.AI.DirectML.1.15.4\bin\x64-win\DirectML.dll  ..\..\..\release\%TARGET%\bin
+	copy /y packages\Microsoft.ML.OnnxRuntime.DirectML.1.22.1\runtimes\win-x64\native\*.dll ..\..\..\..\release\%TARGET%\bin
+	copy /y packages\Microsoft.AI.DirectML.1.15.4\bin\x64-win\DirectML.dll  ..\..\..\..\release\%TARGET%\bin
 
-	cd ..
+	cd ..\..
 )
 cd ..\..\release
-
-:onnxend
 
 REM sdl support
 cd ..\lib\sdl	

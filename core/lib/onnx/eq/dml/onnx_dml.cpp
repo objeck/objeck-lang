@@ -45,11 +45,13 @@ extern "C" {
       const int resize_width = (int)APITools_GetIntValue(context, 3);
 
       const std::wstring model_path = APITools_GetStringValue(context, 4);
-
-      const int num_classes = (int)APITools_GetIntValue(context, 5);
+      
+      size_t* labels_array = (size_t*)APITools_GetArray(context, 5)[0];
+      const long labels_size = ((long)APITools_GetArraySize(labels_array));
+      const size_t* labels_objs = APITools_GetArray(labels_array);
 
       // Validate parameters
-      if(!input_bytes || resize_height < 1 || resize_width < 1 || model_path.empty()) {
+      if(!input_bytes || !labels_objs || resize_height < 1 || resize_width < 1 || labels_size < 1 || model_path.empty()) {
          return;
       }
 
@@ -83,23 +85,9 @@ extern "C" {
          size_t input_tensor_size = input_tensor_size = 3 * resize_height * resize_width;
 
          /*
-         switch(input_preprocessor) {
-         case Preprocessor::RESNET:
-            // Preprocess image for ResNet
-            input_tensor_values = resnet_preprocess(img, resize_height, resize_width);
-            input_tensor_size = input_tensor_values.size();
-            break;
-
-         case Preprocessor::YOLO:
-            // Preprocess image for YOLO
-            input_tensor_values = yolo_preprocess(img, resize_height, resize_width);
-            input_tensor_size = 3 * resize_height * resize_width;
-            break;
-
-         default:
-            std::wcerr << L"Unsupported preprocessor type!" << std::endl;
-            return;
-         }
+         // Preprocess image for ResNet
+         input_tensor_values = resnet_preprocess(img, resize_height, resize_width);
+         input_tensor_size = input_tensor_values.size();
          */
 
          // Create input tensor
@@ -175,7 +163,7 @@ extern "C" {
 
          const int result_count = (int)output_shape[1];
          for(int i = 0; i < result_count; ++i) {
-            const int base = i * (num_classes + 5);
+            const int base = i * (labels_size + 5);
             const double x = output_data[base + 0];
             const double y = output_data[base + 1];
             const double w = output_data[base + 2];
@@ -190,11 +178,11 @@ extern "C" {
 
                // Find the class with the highest probability
                int start = base + 5;
-               int end = start + num_classes;
+               int end = start + labels_size;
                int class_id = 0;
                double max_score = output_data[start];
 
-               for(int j = 1; j < num_classes; ++j) {
+               for(int j = 1; j < labels_size; ++j) {
                   double score = output_data[start + j];
                   if(score > max_score) {
                      max_score = score;
@@ -202,11 +190,17 @@ extern "C" {
                   }
                }
 
+               // class ID
                size_t* class_result_obj = APITools_CreateObject(context, L"API.Onnx.YoloClassification");
-               class_result_obj[0] = class_id; // class ID
+               class_result_obj[0] = class_id;
 
-               double temp = conf;
-               memcpy(&class_result_obj[1], &temp, sizeof(double)); // confidence
+               // copy label name
+               if(class_id < labels_size) {
+                  class_result_obj[1] = labels_objs[class_id];
+               }
+
+               // confidence
+               memcpy(&class_result_obj[2], &conf, sizeof(conf));
 
                // copy rectangle
                size_t* class_rect_obj = APITools_CreateObject(context, L"API.OpenCV.Rect");
@@ -214,7 +208,7 @@ extern "C" {
                class_rect_obj[1] = top;
                class_rect_obj[2] = width;
                class_rect_obj[3] = height;
-               class_result_obj[2] = (size_t)class_rect_obj;
+               class_result_obj[3] = (size_t)class_rect_obj;
 
                /*
                // Add classification

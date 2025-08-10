@@ -25,6 +25,11 @@ bundle API.Onnx {
 	class Runtime {
 		function : YoloInference(image : Byte[], height : Int, width : Int, model : String, 
 				labels : String[]) ~ API.Onnx.YoloResult {
+
+			if(image = Nil | labels = Nil) {
+				return Nil;
+			};
+
 			array_args := Base->New[6];
 
 			array_args[0] := Nil;
@@ -32,7 +37,7 @@ bundle API.Onnx {
 			array_args[2] := IntRef->New(height);
 			array_args[3] := IntRef->New(width);
 			array_args[4] := model;
-			array_args[5] := IntRef->New(labels->Size());
+			array_args[5] := StringArrayRef->New(labels);
 
 			Proxy->GetDllProxy()->CallFunction("onnx_yolo_image_inf", array_args);
 			
@@ -62,12 +67,10 @@ bundle API.Onnx {
 	}
 
 	class YoloResult {
-		# set by library
 		@output : Float[];
 		@shape : Int[];
 		@dims : Int[];
 		@classifications : YoloClassification[];
-		# end set by library
 
 		@image_bytes : Byte[];
 		@image_labels : String[];
@@ -187,6 +190,7 @@ bundle API.Onnx {
 
 	class YoloClassification {
 		@id : Int;
+		@name : String;
 		@confidence : Float;
 		@bounds : Rect;
 
@@ -198,6 +202,10 @@ bundle API.Onnx {
 
 		method : public : GetId() ~ Int {
 			return @id;
+		}
+
+		method : public : GetName() ~ String {
+			return @name;
 		}
 
 		method : public : GetBounds() ~ Rect {
