@@ -23,8 +23,7 @@ bundle API.Onnx {
 	}
 
 	class Runtime {
-		function : YoloInference(image : Byte[], height : Int, width : Int, model : String, 
-				labels : String[]) ~ API.Onnx.YoloResult {
+		function : YoloInference(image : Byte[], height : Int, width : Int, model : String, labels : String[]) ~ API.Onnx.YoloResult {
 
 			if(image = Nil | labels = Nil) {
 				return Nil;
@@ -47,8 +46,26 @@ bundle API.Onnx {
 			return results;
 		}
 
-		function : ResNetInference(image : Byte[], height : Int, width : Int, model : String) ~ API.Onnx.ResNetResult {
-			return Nil;
+		function : ResNetInference(image : Byte[], height : Int, width : Int, model : String, labels : String[]) ~ API.Onnx.ResNetResult {
+			if(image = Nil | labels = Nil) {
+				return Nil;
+			};
+
+			array_args := Base->New[6];
+
+			array_args[0] := Nil;
+			array_args[1] := ByteArrayRef->New(image);
+			array_args[2] := IntRef->New(height);
+			array_args[3] := IntRef->New(width);
+			array_args[4] := model;
+			array_args[5] := StringArrayRef->New(labels);
+
+			Proxy->GetDllProxy()->CallFunction("onnx_resnet_image_inf", array_args);
+			
+			results := array_args[0]->As(API.Onnx.ResNetResult);
+			results->Set(image, labels);
+
+			return results;
 		}
 
 		function : GetProviders() ~ String[] {
@@ -74,7 +91,6 @@ bundle API.Onnx {
 
 		@image_bytes : Byte[];
 		@image_labels : String[];
-		@num_classes : Int;
 
 		New : private () {}
 
@@ -89,7 +105,6 @@ bundle API.Onnx {
 		method : public : Set(image_bytes : Byte[], image_labels : String[]) ~ Nil {
 			@image_bytes := image_bytes;
 			@image_labels := image_labels;
-			@num_classes := image_labels->Size();
 		}
 
 		#~
@@ -238,6 +253,12 @@ bundle API.Onnx {
 		@output : Float[];
 		@shape : Int[];
 		@dims : Int[];
+		@class_id : Int;
+		@confidence : Float;
+		@name : String;
+
+		@image_bytes : Byte[];
+		@image_labels : String[];
 
 		New : private () {}
 
@@ -247,6 +268,35 @@ bundle API.Onnx {
 		~#
 		method : public : GetOutput() ~ Float[] {
 			return @output;
+		}
+
+		#~
+		Gets the output results
+		@return output results
+		~#
+		method : public : GetId() ~ Int {
+			return @class_id;
+		}
+
+		#~
+		Gets the output results
+		@return output results
+		~#
+		method : public : GetName() ~ String {
+			return @name;
+		}
+
+		#~
+		Gets the output results
+		@return output results
+		~#
+		method : public : GetConfidence() ~ Float {
+			return @confidence;
+		}
+
+		method : public : Set(image_bytes : Byte[], image_labels : String[]) ~ Nil {
+			@image_bytes := image_bytes;
+			@image_labels := image_labels;
 		}
 
 		#~
