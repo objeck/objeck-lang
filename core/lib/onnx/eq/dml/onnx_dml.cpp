@@ -170,9 +170,9 @@ extern "C" {
             const double y = output_data[base + 1];
             const double w = output_data[base + 2];
             const double h = output_data[base + 3];
-            const double conf = output_data[base + 4];
+            const double confidence = output_data[base + 4];
 
-            if(conf >= 0.7) {
+            if(confidence >= 0.7) {
                int left = static_cast<int>(((x - w / 2.0) * cols) / resize_width);
                int top = static_cast<int>(((y - h / 2.0) * rows) / resize_height);
                int width = static_cast<int>((w * cols) / resize_width);
@@ -202,7 +202,9 @@ extern "C" {
                }
 
                // confidence
-               memcpy(&class_result_obj[2], &conf, sizeof(conf));
+//               memcpy(&class_result_obj[2], &conf, sizeof(conf));
+               *((double*)(&class_result_obj[4])) = confidence;
+
 
                // copy rectangle
                size_t* class_rect_obj = APITools_CreateObject(context, L"API.OpenCV.Rect");
@@ -396,7 +398,8 @@ extern "C" {
          resnet_result_obj[2] = (size_t)output_image_array;
 
          resnet_result_obj[3] = image_index; // top idex
-         memcpy(&resnet_result_obj[4], &top_confidence, sizeof(top_confidence)); // set top confidence
+//         memcpy(&resnet_result_obj[4], &top_confidence, sizeof(top_confidence)); // set top confidence
+         *((double*)(&resnet_result_obj[4])) = top_confidence;
 
          // copy label name
          if(image_index < labels_size) {
