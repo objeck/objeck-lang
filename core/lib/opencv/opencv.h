@@ -6,8 +6,10 @@
 #include <filesystem>
 
 #include <opencv2/opencv.hpp>
+#include <opencv2/core/utils/logger.hpp>
+#include <opencv2/imgcodecs.hpp>
 
-#include "../../../vm/lib_api.h"
+#include "../../vm/lib_api.h"
 
 enum ImageFormat {
   JPEG = 64,
@@ -49,11 +51,13 @@ std::vector<unsigned char> convert_image_bytes(cv::Mat &image, size_t output_for
     encode_params = { cv::IMWRITE_WEBP_QUALITY, 95 }; // image quality
     break;
 
+#ifdef _WIN32
     // GIF
   case ImageFormat::GIF:
     output_ext = ".gif";
     encode_params = { cv::IMWRITE_GIF_QUALITY, 95 }; // image quality
     break;
+#endif
 
   default:
     return std::vector<unsigned char>();
