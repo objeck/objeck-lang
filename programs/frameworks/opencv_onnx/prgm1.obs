@@ -5,8 +5,8 @@ class Test {
 		if(args->Size() = 1) {
 			image_path := args[0];
 			
-			ProcessYoloImages(image_path);
-#			ProcessResNetImages(image_path)
+#			ProcessYoloImages(image_path);
+			ProcessResNetImages(image_path)
 		};
 	}
 
@@ -14,6 +14,8 @@ class Test {
 	# Yolo-v5
 	#
 	function : ProcessYoloImages(root_dir : String) ~ Nil {
+		"### ProcessYoloImages ###"->PrintLine();
+
 		image_path := root_dir + "/images/";
 		image_path := image_path->ReplaceAll('\\', '/');
 
@@ -85,7 +87,7 @@ class Test {
 	# ResNet-34
 	#
 	function : ProcessResNetImages(root_dir : String) ~ Nil {
-		root_dir->PrintLine();
+		"### ProcessResNetImages ###"->PrintLine();
 
 		image_path := root_dir + "/images/";
 		image_path := image_path->ReplaceAll('\\', '/');
@@ -93,103 +95,35 @@ class Test {
 		model_path := root_dir + "/resnet34-v2-7.onnx";
 		model_path := model_path->ReplaceAll('\\', '/');
 
-		label_path := image_path + "resnet_labels.txt";
+		label_path := root_dir + "/resnet_labels.txt";
 		label_path := label_path->ReplaceAll('\\', '/');
 
+		"image_path={$image_path}"->PrintLine();
 		"model_path={$model_path}"->PrintLine();
-		"label_path={$label_path}\n"->PrintLine();
+		"label_path={$label_path}"->PrintLine();
 
 		image_labels := LoadLabels(label_path);
-		image_labels->Size()->PrintLine();
+		image_label_size := image_labels->Size();
+		"image_label_size={$image_label_size}"->PrintLine();
 
-		each(i : 15) {
-			j := Int->Random(0, 6);
+		image_path += "dogs.jpg";
+				
+		image_bytes := FileReader->ReadBinaryFile(image_path);
+		image_size := image_bytes->Size();
 
-			select(j) {
-				label 0: {
-					image_path += "lion.jpg";
-				}
+		"image_path={$image_path}"->PrintLine();
+		"image_size={$image_size}"->PrintLine();
 
-				label 1: {
-					image_path += "tarantula.jpg";
-				}
-
-				label 2: {
-					image_path += "grasshopper.jpg";
-				}
-
-				label 3: {
-					image_path += "ski.jpg";
-				}
-
-				label 4: {
-					image_path += "wine.jpg";
-				}
-
-				label 5: {
-					image_path += "pier.jpg";
-				}
-
-				label 6: {
-					image_path += "prison.jpg";
-				}
-			}
-
-			image_bytes := FileReader->ReadBinaryFile(image_path);
-			image_size := image_bytes->Size();
-
-			"{$i}: image_path={$image_path}"->PrintLine();
-			"{$i}: image_size={$image_size}"->PrintLine();
-
-			result := API.Onnx.Runtime->ResNetInference(image_bytes, 224, 224, model_path);
-			if(result <> Nil) {
-
-#~				
-				result_vector := result->GetOutput();
-				result_size := result_vector->Size();
-
-				# find max for numerical stability
-				max_logit := result_vector[0];
-				for(j := 1; j < result_size; j++) {
-				   if(result_vector[j] > max_logit) {
-				      max_logit := result_vector[j];
-				   }
-				}
-
-				# compute exp(logit - max_logit)
-				probs := Float->New[result_size];
-				sum_exp := 0.0;
-				for(j := 0; j < result_size; j++) {
-				   probs[j] := Float->Exp(result_vector[j] - max_logit);
-				   sum_exp += probs[j];
-				}
-
-				# normalize
-				for(j := 0; j < result_size; j++) {
-				   probs[j] /= sum_exp;
-				}
-
-				# find the top confidence
-				image_index := 0;
-				top_confidence := result_vector[0];			
-				for(j := 1; j < result_size; j++) {
-				   if(probs[j] > top_confidence) {
-				      top_confidence := probs[j];
-				      image_index := j;
-				   };
-				};
-
-				data_label := image_labels->Get(image_index);
-				"result_conf={$top_confidence}, image_index={$image_index}, data_label={$data_label}\n---\n"->PrintLine();
-~#			
-			}
-			else {
-				"--- Error: No results returned ---"->ErrorLine();
-				return;
-			};
-
-			image_path := root_dir + "/images/";
-			image_path := image_path->ReplaceAll('\\', '/');
+		label_names := image_labels->ToArray()->As(String[]);
+		result := API.Onnx.Runtime->ResNetInference(image_bytes, 224, 224, model_path, label_names);
+		if(result <> Nil) {
+			result->GetId()->PrintLine();
+			result->GetName()->PrintLine();
+			result->GetConfidence()->PrintLine();
+			"--- Ok ---"->PrintLine();
+		}
+		else {
+			"--- Error: No results returned ---"->ErrorLine();
 		};
 	}
 
