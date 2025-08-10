@@ -5,14 +5,12 @@ class Test {
 		if(args->Size() = 1) {
 			image_path := args[0];
 			
-#			ProcessYoloImages(image_path);
-			ProcessResNetImages(image_path)
+			ProcessYoloImages(image_path);
+#			ProcessResNetImages(image_path)
 		};
 	}
 
-	#
 	# Yolo-v5
-	#
 	function : ProcessYoloImages(root_dir : String) ~ Nil {
 		"### ProcessYoloImages ###"->PrintLine();
 
@@ -49,7 +47,7 @@ class Test {
 		};
 
 		label_names := image_labels->ToArray()->As(String[]);
-		result := API.Onnx.Runtime->YoloInference(image_bytes, 640, 640, model_path, label_names);
+		result := API.Onnx.Runtime->YoloInference(image_bytes, 640, 640, model_path, 0.65, label_names);
 		if(result = Nil) {
 			"--- Error: No results ---"->ErrorLine();
 			return;
@@ -83,9 +81,7 @@ class Test {
 		image->Show("Image w/ Bounds");
 	}
 
-	#
 	# ResNet-34
-	#
 	function : ProcessResNetImages(root_dir : String) ~ Nil {
 		"### ProcessResNetImages ###"->PrintLine();
 
