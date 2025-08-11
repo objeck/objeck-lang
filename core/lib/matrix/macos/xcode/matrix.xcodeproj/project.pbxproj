@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 56;
+	objectVersion = 90;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -18,10 +18,8 @@
 /* Begin PBXFrameworksBuildPhase section */
 		ED4135A12AEC6CB500D84878 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
 			files = (
 			);
-			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
@@ -47,10 +45,8 @@
 /* Begin PBXHeadersBuildPhase section */
 		ED41359F2AEC6CB500D84878 /* Headers */ = {
 			isa = PBXHeadersBuildPhase;
-			buildActionMask = 2147483647;
 			files = (
 			);
-			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXHeadersBuildPhase section */
 
@@ -64,8 +60,6 @@
 				ED4135A12AEC6CB500D84878 /* Frameworks */,
 			);
 			buildRules = (
-			);
-			dependencies = (
 			);
 			name = xcode;
 			productName = xcode;
@@ -87,7 +81,6 @@
 				};
 			};
 			buildConfigurationList = ED41359E2AEC6CB500D84878 /* Build configuration list for PBXProject "matrix" */;
-			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -95,6 +88,7 @@
 				Base,
 			);
 			mainGroup = ED41359A2AEC6CB500D84878;
+			preferredProjectObjectVersion = 90;
 			productRefGroup = ED4135A42AEC6CB500D84878 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -107,16 +101,14 @@
 /* Begin PBXSourcesBuildPhase section */
 		ED4135A02AEC6CB500D84878 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
 			files = (
 				ED97BD8625517426001C4842 /* matrix.cpp in Sources */,
 			);
-			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
-		ED4135A52AEC6CB500D84878 /* Debug */ = {
+		ED4135A52AEC6CB500D84878 /* Debug configuration for PBXProject "matrix" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -177,7 +169,7 @@
 			};
 			name = Debug;
 		};
-		ED4135A62AEC6CB500D84878 /* Release */ = {
+		ED4135A62AEC6CB500D84878 /* Release configuration for PBXProject "matrix" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -231,7 +223,7 @@
 			};
 			name = Release;
 		};
-		ED4135A82AEC6CB500D84878 /* Debug */ = {
+		ED4135A82AEC6CB500D84878 /* Debug configuration for PBXNativeTarget "xcode" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CLANG_ENABLE_MODULES = NO;
@@ -251,7 +243,7 @@
 			};
 			name = Debug;
 		};
-		ED4135A92AEC6CB500D84878 /* Release */ = {
+		ED4135A92AEC6CB500D84878 /* Release configuration for PBXNativeTarget "xcode" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CLANG_ENABLE_MODULES = NO;
@@ -278,19 +270,17 @@
 		ED41359E2AEC6CB500D84878 /* Build configuration list for PBXProject "matrix" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				ED4135A52AEC6CB500D84878 /* Debug */,
-				ED4135A62AEC6CB500D84878 /* Release */,
+				ED4135A52AEC6CB500D84878 /* Debug configuration for PBXProject "matrix" */,
+				ED4135A62AEC6CB500D84878 /* Release configuration for PBXProject "matrix" */,
 			);
-			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
 		ED4135A72AEC6CB500D84878 /* Build configuration list for PBXNativeTarget "xcode" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				ED4135A82AEC6CB500D84878 /* Debug */,
-				ED4135A92AEC6CB500D84878 /* Release */,
+				ED4135A82AEC6CB500D84878 /* Debug configuration for PBXNativeTarget "xcode" */,
+				ED4135A92AEC6CB500D84878 /* Release configuration for PBXNativeTarget "xcode" */,
 			);
-			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
