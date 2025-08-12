@@ -11,7 +11,7 @@ extern "C" {
 #ifdef _WIN32
    __declspec(dllexport)
 #endif
-      void load_lib(VMContext& context) {
+   void load_lib(VMContext& context) {
       cv::utils::logging::setLogLevel(cv::utils::logging::LOG_LEVEL_ERROR);
    }
 
@@ -19,14 +19,14 @@ extern "C" {
 #ifdef _WIN32
    __declspec(dllexport)
 #endif
-      void unload_lib() {
+   void unload_lib() {
    }
 
    // List available ONNX execution providers
 #ifdef _WIN32
    __declspec(dllexport)
 #endif
-      void onnx_get_provider_names(VMContext& context) {
+   void onnx_get_provider_names(VMContext& context) {
       // Get output parameter
       size_t* output_holder = APITools_GetArray(context, 0);
 
@@ -38,7 +38,7 @@ extern "C" {
 #ifdef _WIN32
    __declspec(dllexport)
 #endif
-      void onnx_yolo_image_inf(VMContext& context) {
+   void onnx_yolo_image_inf(VMContext& context) {
       size_t* input_array = (size_t*)APITools_GetArray(context, 1)[0];
       const long input_size = ((long)APITools_GetArraySize(input_array));
       const unsigned char* input_bytes = (unsigned char*)APITools_GetArray(input_array);
@@ -51,7 +51,7 @@ extern "C" {
       const double conf_threshold = APITools_GetFloatValue(context, 5);
 
       size_t* labels_array = (size_t*)APITools_GetArray(context, 6)[0];
-      const long labels_size = ((long)APITools_GetArraySize(labels_array));
+      const long labels_size = (long)APITools_GetArraySize(labels_array);
       const size_t* labels_objs = APITools_GetArray(labels_array);
 
       // Validate parameters
@@ -121,22 +121,19 @@ extern "C" {
             output_names.data(),
             1);
 
-         // Process output and shape infomoration
+         // Process output and shape information
          Ort::Value& output_tensor = output_tensors.front();
          const float* output_data = output_tensor.GetTensorMutableData<float>();
          const Ort::TensorTypeAndShapeInfo shape_info = output_tensor.GetTensorTypeAndShapeInfo();
          const size_t output_len = shape_info.GetElementCount();
 
-         // Build results
+         // Build results and copy output
          size_t* yolo_result_obj = APITools_CreateObject(context, L"API.Onnx.YoloResult");
-
-         // Copy output
          size_t* output_array = APITools_MakeFloatArray(context, output_len);
          double* output_array_buffer = reinterpret_cast<double*>(output_array + 3);
          for(size_t i = 0; i < output_len; ++i) {
             output_array_buffer[i] = static_cast<double>(output_data[i]);
          }
-
          yolo_result_obj[0] = (size_t)output_array;
 
          // Copy output shape
@@ -171,16 +168,16 @@ extern "C" {
             const double confidence = output_data[base + 4];
 
             if(confidence >= conf_threshold) {
-               int left = static_cast<int>(((x - w / 2.0) * cols) / resize_width);
-               int top = static_cast<int>(((y - h / 2.0) * rows) / resize_height);
-               int width = static_cast<int>((w * cols) / resize_width);
-               int height = static_cast<int>((h * rows) / resize_height);
+               const int left = static_cast<int>(((x - w / 2.0) * cols) / resize_width);
+               const int top = static_cast<int>(((y - h / 2.0) * rows) / resize_height);
+               const int width = static_cast<int>((w * cols) / resize_width);
+               const int height = static_cast<int>((h * rows) / resize_height);
 
                // Find the class with the highest probability
-               int start = base + 5;
-               int class_id = 0;
-               double max_score = output_data[start];
+               const int start = base + 5;
 
+               int class_id = -1;
+               double max_score = output_data[start];
                for(int j = 1; j < labels_size; ++j) {
                   double score = output_data[start + j];
                   if(score > max_score) {
@@ -246,7 +243,7 @@ extern "C" {
 #ifdef _WIN32
    __declspec(dllexport)
 #endif
-      void onnx_resnet_image_inf(VMContext& context) {
+   void onnx_resnet_image_inf(VMContext& context) {
       size_t* input_array = (size_t*)APITools_GetArray(context, 1)[0];
       const long input_size = ((long)APITools_GetArraySize(input_array));
       const unsigned char* input_bytes = (unsigned char*)APITools_GetArray(input_array);
@@ -257,7 +254,7 @@ extern "C" {
       const std::wstring model_path = APITools_GetStringValue(context, 4);
 
       size_t* labels_array = (size_t*)APITools_GetArray(context, 5)[0];
-      const long labels_size = ((long)APITools_GetArraySize(labels_array));
+      const long labels_size = (long)APITools_GetArraySize(labels_array);
       const size_t* labels_objs = APITools_GetArray(labels_array);
 
       // Validate parameters
@@ -275,11 +272,11 @@ extern "C" {
 
          // Set DML provider options
          std::unordered_map<std::string, std::string> provider_options;
-         provider_options["device_id"] = "0";
+         provider_options["backend_type"] = "htp";
 
          // Create session options with QNN execution provider
          Ort::SessionOptions session_options;
-         session_options.AppendExecutionProvider("DmlExecutionProvider", provider_options);
+         session_options.AppendExecutionProvider("QNNExecutionProvider", provider_options);
          session_options.SetExecutionMode(ExecutionMode::ORT_PARALLEL);
 
          // Create ONNX session
@@ -327,7 +324,7 @@ extern "C" {
             output_names.data(),
             1);
 
-         // Process output and shape infomoration
+         // Process output and shape information
          Ort::Value& output_tensor = output_tensors.front();
          const float* output_data = output_tensor.GetTensorMutableData<float>();
          const Ort::TensorTypeAndShapeInfo shape_info = output_tensor.GetTensorTypeAndShapeInfo();
@@ -337,7 +334,7 @@ extern "C" {
          size_t* output_array = APITools_MakeFloatArray(context, output_len);
          double* output_array_buffer = reinterpret_cast<double*>(output_array + 3);
 
-         // find max for numerical stability
+         // Find max for numerical stability
          double max_logit = output_data[0];
          for(size_t j = 1; j < output_len; j++) {
             if(output_data[j] > max_logit) {
@@ -345,7 +342,7 @@ extern "C" {
             }
          }
 
-         // compute exp(logit - max_logit)
+         // Compute exp(logit - max_logit)
          double sum_exp = 0.0;
          for(size_t j = 0; j < output_len; j++) {
             output_array_buffer[j] = std::exp(output_data[j] - max_logit);
@@ -392,8 +389,8 @@ extern "C" {
          output_image_array_buffer[1] = cols;
          resnet_result_obj[2] = (size_t)output_image_array;
 
-         resnet_result_obj[3] = image_index; // top idex
-         *((double*)(&resnet_result_obj[4])) = top_confidence;
+         resnet_result_obj[3] = image_index; // top index
+         *((double*)(&resnet_result_obj[4])) = top_confidence; // top confidence
 
          // copy label name
          if(image_index < labels_size) {
