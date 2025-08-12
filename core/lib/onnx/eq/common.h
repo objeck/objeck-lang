@@ -123,4 +123,3 @@ size_t* opencv_raw_write(cv::Mat& image, VMContext& context) {
 
   return image_obj;
 }
-
