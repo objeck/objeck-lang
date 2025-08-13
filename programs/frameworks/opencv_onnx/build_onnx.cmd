@@ -19,7 +19,12 @@ if not [%2]==[Debug] if not [%2]==[Release] (
 	goto end
 )
 
-call build_opencv %1 %2 %3
+if not [%3]==[dml] if not [%3]==[qnn] (
+	echo EPs are: 'dml' and 'qnn'
+	goto end
+)
+
+call build_opencv %1 %2 %3 %4
 
 set TYPE=%2
 
@@ -36,8 +41,8 @@ REM Clean
 REM 
 
 del /q %OBJECK_LIB_PATH%\native\libobjk_onnx.dll
-REM del /q %OBJECK_DEBUG_PATH%\*.dll
-REM del /q %OBJECK_BIN_PATH%\*.dll
+del /q %OBJECK_DEBUG_PATH%\*.dll
+del /q %OBJECK_BIN_PATH%\*.dll
 
 REM
 REM Compile libraries
@@ -49,20 +54,28 @@ REM
 REM ONNX libraries
 REM 
 
-copy /y %OBJECK_BASE%\core\lib\onnx\eq\dml\%1\%TYPE%\libobjk_onnx.dll %OBJECK_LIB_PATH%\native
+if [%3]==[dml] (
+	copy /y %OBJECK_BASE%\core\lib\onnx\eq\dml\%1\%TYPE%\libobjk_onnx.dll %OBJECK_LIB_PATH%\native
 
-copy /y %OBJECK_BASE%\core\lib\onnx\eq\dml\packages\Microsoft.AI.DirectML.1.15.4\bin\%1-win\*.dll %OBJECK_DEBUG_PATH%
-copy /y %OBJECK_BASE%\core\lib\onnx\eq\dml\packages\Microsoft.ML.OnnxRuntime.DirectML.1.22.1\runtimes\win-%1\native\*.dll %OBJECK_DEBUG_PATH%
+	copy /y %OBJECK_BASE%\core\lib\onnx\eq\dml\packages\Microsoft.AI.DirectML.1.15.4\bin\%1-win\*.dll %OBJECK_DEBUG_PATH%
+	copy /y %OBJECK_BASE%\core\lib\onnx\eq\dml\packages\Microsoft.ML.OnnxRuntime.DirectML.1.22.1\runtimes\win-%1\native\*.dll %OBJECK_DEBUG_PATH%
 
-copy /y %OBJECK_BASE%\core\lib\onnx\eq\dml\packages\Microsoft.AI.DirectML.1.15.4\bin\%1-win\*.dll %OBJECK_BIN_PATH%
-copy /y %OBJECK_BASE%\core\lib\onnx\eq\dml\packages\Microsoft.ML.OnnxRuntime.DirectML.1.22.1\runtimes\win-%1\native\*.dll %OBJECK_BIN_PATH%
+	copy /y %OBJECK_BASE%\core\lib\onnx\eq\dml\packages\Microsoft.AI.DirectML.1.15.4\bin\%1-win\*.dll %OBJECK_BIN_PATH%
+	copy /y %OBJECK_BASE%\core\lib\onnx\eq\dml\packages\Microsoft.ML.OnnxRuntime.DirectML.1.22.1\runtimes\win-%1\native\*.dll %OBJECK_BIN_PATH%
+) else (
+	copy /y %OBJECK_BASE%\core\lib\onnx\eq\qnn\%1\%TYPE%\libobjk_onnx.dll %OBJECK_LIB_PATH%\native
+
+	copy /y %OBJECK_BASE%\core\lib\onnx\eq\qnn\win\onnx\%1\bin\*.dll %OBJECK_DEBUG_PATH%
+
+	copy /y %OBJECK_BASE%\core\lib\onnx\eq\qnn\win\onnx\%1\bin\*.dll %OBJECK_BIN_PATH%
+)
 
 REM
 REM Test
 REM 
 
-if [%3] == [] goto end
+if [%4] == [] goto end
 	del /q *.obe
-	obc -src %3 -lib opencv,onnx
-	obr %3 %4
+	obc -src %4 -lib opencv,onnx
+	obr %4 %4
 :end
