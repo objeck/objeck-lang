@@ -16,13 +16,11 @@ Another programming language
 
 ## Updates
 
-v2025.8.1
-  * Support for OpenAI's GPT-5 models (i.e., reasoning and verbosity) [done]
-  * OpenAI MCP support
-
 v2025.8.0
   * ONNX Runtime (ORT) support, ORT is a cross-platform inference engine designed to accelerate ML across hardware and software platforms (done, in test)
   * Open Computer Vision (OpenCV) integration, OpenCV supports real-time computer vision (all but macOS and Linux, coming soon)
+  * Support for OpenAI's GPT-5 models (i.e., reasoning and verbosity) [done]
+  * OpenAI MCP support
 
 v2025.7.1
   * OpenAI Realtime API support for the ``gpt-4o-realtime-preview-2025-06-03`` preview [done]
