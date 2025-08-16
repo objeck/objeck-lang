@@ -8,15 +8,15 @@ class Test {
 		};
 		token := GetApiKey(args[0]);
 
-		Test0(token);
+#		Test0(token);
 		Test1(token);
 #		Test2(token);
 #		Test3(token);
 	}
 	
 	function : Test0(token : String) ~ Nil {
-		query := Collection.Pair->New("user", "What is the most common espresso drink ordered in Columbia?")<String, String>;
-		response := Response->Respond("gpt-5-mini", query, token);
+		query := Collection.Pair->New("user", "What is the most common n/a beer in the US?")<String, String>;
+		response := Response->Respond("gpt-5-mini", query, ReasoningEffort->MEDIUM, Verbosity->MEDIUM, token);
 		if(response = Nil) {
 			Response->GetLastError()->ErrorLine();
 			return;

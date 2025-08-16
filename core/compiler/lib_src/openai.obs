@@ -190,6 +190,7 @@ bundle API.OpenAI.Responses {
 	Controls how many reasoning tokens the model generates
 	~#
 	enum ReasoningEffort {
+		NA,
 		LOW, 
 		MEDIUM, 
 		HIGH
@@ -199,11 +200,12 @@ bundle API.OpenAI.Responses {
 	Determines how many output tokens are generated
 	~#
 	enum Verbosity {
+		NA,
 		LOW, 
 		MEDIUM, 
 		HIGH
 	}
-	
+
 	#~
 	Model response for a given text and files
 	~#
@@ -323,22 +325,22 @@ bundle API.OpenAI.Responses {
 			messages := Vector->New()<Pair<String, String>>;
 			messages->AddBack(message);
 
-			return Respond(model, messages, -1, -1.0, -1.0, ReasoningEffort->LOW, Nil, token);
+			return Respond(model, messages, -1, -1.0, -1.0, ReasoningEffort->NA, Verbosity->NA, Nil, token);
 		}
 
 		#~
 		Model response for the given query
 		@param message completion message and image query.
 		@param model ID of the model to use
-		@param effort model's reasoning effort 
+		@param reasoning_effort model's reasoning reasoning_effort 
 		@param token API token
 		@return completion response
 		~#
-		function : Respond(model : String, message : Pair<String, String>, effort : ReasoningEffort, token : String) ~ Response {
+		function : Respond(model : String, message : Pair<String, String>, reasoning_effort : ReasoningEffort, verbosity : Verbosity, token : String) ~ Response {
 			messages := Vector->New()<Pair<String, String>>;
 			messages->AddBack(message);
 
-			return Respond(model, messages, -1, -1.0, -1.0, effort, Nil, token);
+			return Respond(model, messages, -1, -1.0, -1.0, reasoning_effort, verbosity Nil, token);
 		}
 
 		#~
@@ -353,23 +355,23 @@ bundle API.OpenAI.Responses {
 			messages := Vector->New()<Pair<String, String>>;
 			messages->AddBack(message);
 
-			return Respond(model, messages, -1, -1.0, -1.0, ReasoningEffort->LOW, schema, token);
+			return Respond(model, messages, -1, -1.0, -1.0, ReasoningEffort->NA, Verbosity->NA, schema, token);
 		}
 
 		#~
 		Model response for the given query
 		@param message completion message and image query.
 		@param model ID of the model to use
-		@param effort model's reasoning effort 		
+		@param reasoning_effort model's reasoning reasoning_effort 		
 		@param schema output schema
 		@param token API token
 		@return completion response
 		~#
-		function : Respond(model : String, message : Pair<String, String>, schema : ParameterType, effort : ReasoningEffort, token : String) ~ Response {
+		function : Respond(model : String, message : Pair<String, String>, schema : ParameterType, reasoning_effort : ReasoningEffort, verbosity : Verbosity, token : String) ~ Response {
 			messages := Vector->New()<Pair<String, String>>;
 			messages->AddBack(message);
 
-			return Respond(model, messages, -1, -1.0, -1.0, effort, schema, token);
+			return Respond(model, messages, -1, -1.0, -1.0, reasoning_effort, verbosity, schema, token);
 		}
 
 		#~
@@ -379,15 +381,15 @@ bundle API.OpenAI.Responses {
 		@param max_tokens maximum number of completion tokens returned by the API
 		@param temperature amount of randomness in the response, valued between 0 inclusive and 2 exclusive
 		@param top_p nucleus sampling threshold, valued between 0 and 1 inclusive
-		@param effort model's reasoning effort 
+		@param reasoning_effort model's reasoning reasoning_effort 
 		@param token API token
 		@return completion response
 		~#
-		function : Respond(model : String, message : Pair<String, String>, max_tokens : Int, temperature : Float, top_p : Float, effort : ReasoningEffort, token : String) ~ Response {
+		function : Respond(model : String, message : Pair<String, String>, max_tokens : Int, temperature : Float, top_p : Float, reasoning_effort : ReasoningEffort, verbosity : Verbosity, token : String) ~ Response {
 			messages := Vector->New()<Pair<String, String>>;
 			messages->AddBack(message);
 
-			return Respond(model, messages, max_tokens, temperature, top_p, effort, Nil, token);
+			return Respond(model, messages, max_tokens, temperature, top_p, reasoning_effort, verbosity Nil, token);
 		}
 
 		#~
@@ -397,16 +399,16 @@ bundle API.OpenAI.Responses {
 		@param max_tokens maximum number of completion tokens returned by the API
 		@param temperature amount of randomness in the response, valued between 0 inclusive and 2 exclusive
 		@param top_p nucleus sampling threshold, valued between 0 and 1 inclusive
-		@param effort model's reasoning effort 
+		@param reasoning_effort model's reasoning reasoning_effort 
 		@param schema output schema
 		@param token API token
 		@return completion response
 		~#
-		function : Respond(model : String, message : Pair<String, String>, max_tokens : Int, temperature : Float, top_p : Float, effort : ReasoningEffort, schema : ParameterType, token : String) ~ Response {
+		function : Respond(model : String, message : Pair<String, String>, max_tokens : Int, temperature : Float, top_p : Float, reasoning_effort : ReasoningEffort, verbosity : Verbosity, schema : ParameterType, token : String) ~ Response {
 			messages := Vector->New()<Pair<String, String>>;
 			messages->AddBack(message);
 
-			return Respond(model, messages, max_tokens, temperature, top_p, effort, schema, token);
+			return Respond(model, messages, max_tokens, temperature, top_p, reasoning_effort, verbosity, schema, token);
 		}
 
 		#~
@@ -418,7 +420,7 @@ bundle API.OpenAI.Responses {
 		@return completion response
 		~#
 		function : Respond(model : String, messages : Vector<Pair<String, String>>, schema : ParameterType, token : String) ~ Response {
-			return Respond(model, messages, -1, -1.0, -1.0, ReasoningEffort->LOW, schema, token);
+			return Respond(model, messages, -1, -1.0, -1.0, ReasoningEffort->NA, Verbosity->NA, schema, token);
 		}
 
 		#~
@@ -428,12 +430,12 @@ bundle API.OpenAI.Responses {
 		@param max_tokens maximum number of completion tokens returned by the API
 		@param temperature amount of randomness in the response, valued between 0 inclusive and 2 exclusive
 		@param top_p nucleus sampling threshold, valued between 0 and 1 inclusive
-		@param effort model's reasoning effort 
+		@param reasoning_effort model's reasoning reasoning_effort 
 		@param schema output schema
 		@param token API token
 		@return completion response
 		~#
-		function : Respond(model : String, messages : Vector<Pair<String, String>>, max_tokens : Int, temperature : Float, top_p : Float, effort : ReasoningEffort, schema : ParameterType, token : String) ~ Response {
+		function : Respond(model : String, messages : Vector<Pair<String, String>>, max_tokens : Int, temperature : Float, top_p : Float, reasoning_effort : ReasoningEffort, verbosity : Verbosity, schema : ParameterType, token : String) ~ Response {
 			completion_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 			completion_json->Insert("model", model);
 
@@ -449,17 +451,21 @@ bundle API.OpenAI.Responses {
 				completion_json->Insert("top_p", top_p);
 			};
 
-			effort_json := JsonElement->New(JsonElement->JsonType->OBJECT);
-			if(effort = ReasoningEffort->LOW) {
-				effort_json->Insert("effort", "low");
-			}
-			else if(effort = ReasoningEffort->MEDIUM) {
-				effort_json->Insert("effort", "medium");
-			}
-			else {
-				effort_json->Insert("effort", "high");
-			}
-			completion_json->Insert("reasoning", effort_json);
+			if(reasoning_effort <> ReasoningEffort->NA) {
+				reasoning_effort_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+				
+				if(reasoning_effort = ReasoningEffort->LOW) {
+					reasoning_effort_json->Insert("effort", "low");
+				}
+				else if(reasoning_effort = ReasoningEffort->MEDIUM) {
+					reasoning_effort_json->Insert("effort", "medium");
+				}
+				else {
+					reasoning_effort_json->Insert("effort", "high");
+				};
+
+				completion_json->Insert("reasoning", reasoning_effort_json);
+			};
 
 			messages_json := JsonElement->New(JsonElement->JsonType->ARRAY);
 			each(message in messages) {
@@ -473,18 +479,33 @@ bundle API.OpenAI.Responses {
 			};
 			completion_json->Insert("input", messages_json);
 
-			if(schema <> Nil) {
-				format_json := JsonElement->New(JsonElement->JsonType->OBJECT);
-				format_json->Insert("type", "json_schema");
-				format_json->Insert("strict", true);
-				format_json->Insert("name", "json_response");
-
-				openai_schema := schema->ToJson();
-				openai_schema->Insert("additionalProperties", false);
-				format_json->Insert("schema", openai_schema);
-				
+			if(schema <> Nil | verbosity <> Verbosity->NA) {
 				text_json := JsonElement->New(JsonElement->JsonType->OBJECT);
-				text_json->Insert("format", format_json);
+
+				if(schema <> Nil) {
+					format_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+					format_json->Insert("type", "json_schema");
+					format_json->Insert("strict", true);
+					format_json->Insert("name", "json_response");
+
+					openai_schema := schema->ToJson();
+					openai_schema->Insert("additionalProperties", false);
+					format_json->Insert("schema", openai_schema);
+					
+					text_json->Insert("format", format_json);
+				};
+
+				if(verbosity <> Verbosity->NA) {
+					if(verbosity = Verbosity->LOW) {
+						text_json->Insert("verbosity", "low");
+					}
+					else if(verbosity = Verbosity->MEDIUM) {
+						text_json->Insert("verbosity", "medium");
+					}
+					else {
+						text_json->Insert("verbosity", "high");
+					};
+				};
 
 				completion_json->Insert("text", text_json);
 			};
@@ -534,7 +555,7 @@ bundle API.OpenAI.Responses {
 			messages := Vector->New()<FileQuery>;
 			messages->AddBack(message);
 
-			return Respond(model, messages, -1, -1.0, -1.0, Nil, schema, token);
+			return Respond(model, messages, -1, -1.0, -1.0, ReasoningEffort->NA, Verbosity->NA, schema, token);
 		}
 
 		#~
@@ -548,7 +569,7 @@ bundle API.OpenAI.Responses {
 			messages := Vector->New()<FileQuery>;
 			messages->AddBack(message);
 
-			return Respond(model, messages, -1, -1.0, -1.0, Nil, Nil, token);
+			return Respond(model, messages, -1, -1.0, -1.0, ReasoningEffort->NA, Verbosity->NA, Nil, token);
 		}
 
 		#~
@@ -558,16 +579,16 @@ bundle API.OpenAI.Responses {
 		@param max_tokens maximum number of completion tokens returned by the API
 		@param temperature amount of randomness in the response, valued between 0 inclusive and 2 exclusive
 		@param top_p nucleus sampling threshold, valued between 0 and 1 inclusive
-		@param effort model's reasoning effort 
+		@param reasoning_effort model's reasoning reasoning_effort 
 		@param schema output schema
 		@param token API token
 		@return completion response
 		~#
-		function : Respond(model : String, message : API.OpenAI.FileQuery, max_tokens : Int, temperature : Float, top_p : Float, effort : ReasoningEffort, schema : ParameterType, token : String) ~ Response {
+		function : Respond(model : String, message : API.OpenAI.FileQuery, max_tokens : Int, temperature : Float, top_p : Float, reasoning_effort : ReasoningEffort, verbosity : Verbosity, schema : ParameterType, token : String) ~ Response {
 			messages := Vector->New()<FileQuery>;
 			messages->AddBack(message);
 
-			return Respond(model, messages, max_tokens, temperature, top_p, effort, schema, token);
+			return Respond(model, messages, max_tokens, temperature, top_p, reasoning_effort, verbosity, schema, token);
 		}
 
 		#~
@@ -577,15 +598,15 @@ bundle API.OpenAI.Responses {
 		@param max_tokens maximum number of completion tokens returned by the API
 		@param temperature amount of randomness in the response, valued between 0 inclusive and 2 exclusive
 		@param top_p nucleus sampling threshold, valued between 0 and 1 inclusive
-		@param effort model's reasoning effort 
+		@param reasoning_effort model's reasoning reasoning_effort 
 		@param token API token
 		@return completion response
 		~#
-		function : Respond(model : String, message : API.OpenAI.FileQuery, max_tokens : Int, temperature : Float, top_p : Float, effort : ReasoningEffort, token : String) ~ Response {
+		function : Respond(model : String, message : API.OpenAI.FileQuery, max_tokens : Int, temperature : Float, top_p : Float, reasoning_effort : ReasoningEffort, verbosity : Verbosity, token : String) ~ Response {
 			messages := Vector->New()<FileQuery>;
 			messages->AddBack(message);
 
-			return Respond(model, messages, max_tokens, temperature, top_p, effort, Nil, token);
+			return Respond(model, messages, max_tokens, temperature, top_p, reasoning_effort, verbosity Nil, token);
 		}
 
 		#~
@@ -597,7 +618,7 @@ bundle API.OpenAI.Responses {
 		@return completion response
 		~#
 		function : Respond(model : String, messages : Vector<FileQuery>, schema : ParameterType, token : String) ~ Response {
-			return Respond(model, messages, -1, -1.0, -1.0, Nil, schema, token);
+			return Respond(model, messages, -1, -1.0, -1.0, ReasoningEffort->NA, Verbosity->NA, schema, token);
 		}
 
 		#~
@@ -607,12 +628,12 @@ bundle API.OpenAI.Responses {
 		@param max_tokens maximum number of completion tokens returned by the API
 		@param temperature amount of randomness in the response, valued between 0 inclusive and 2 exclusive
 		@param top_p nucleus sampling threshold, valued between 0 and 1 inclusive
-		@param effort model's reasoning effort 
+		@param reasoning_effort model's reasoning reasoning_effort 
 		@param schema output schema
 		@param token API token
 		@return completion response
 		~#
-		function : Respond(model : String, messages : Vector<FileQuery>, max_tokens : Int, temperature : Float, top_p : Float, effort : ReasoningEffort, schema : ParameterType, token : String) ~ Response {
+		function : Respond(model : String, messages : Vector<FileQuery>, max_tokens : Int, temperature : Float, top_p : Float, reasoning_effort : ReasoningEffort, verbosity : Verbosity, schema : ParameterType, token : String) ~ Response {
 			completion_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 			completion_json->Insert("model", model);
 
@@ -716,7 +737,7 @@ bundle API.OpenAI.Responses {
 			messages := Vector->New()<Pair<String, API.OpenAI.ImageQuery>>;
 			messages->AddBack(message);
 
-			return Respond(model, messages, -1, -1.0, -1.0, Nil, schema, token);
+			return Respond(model, messages, -1, -1.0, -1.0, ReasoningEffort->NA, Verbosity->NA, schema, token);
 		}
 
 		#~
@@ -730,7 +751,7 @@ bundle API.OpenAI.Responses {
 			messages := Vector->New()<Pair<String, API.OpenAI.ImageQuery>>;
 			messages->AddBack(message);
 
-			return Respond(model, messages, -1, -1.0, -1.0, Nil, Nil, token);
+			return Respond(model, messages, -1, -1.0, -1.0, ReasoningEffort->NA, Verbosity->NA, Nil, token);
 		}
 
 		#~
@@ -740,16 +761,16 @@ bundle API.OpenAI.Responses {
 		@param max_tokens maximum number of completion tokens returned by the API
 		@param temperature amount of randomness in the response, valued between 0 inclusive and 2 exclusive
 		@param top_p nucleus sampling threshold, valued between 0 and 1 inclusive
-		@param effort model's reasoning effort 
+		@param reasoning_effort model's reasoning reasoning_effort 
 		@param schema output schema
 		@param token API token
 		@return completion response
 		~#
-		function : Respond(model : String, message : Pair<String, API.OpenAI.ImageQuery>, max_tokens : Int, temperature : Float, top_p : Float, effort : ReasoningEffort, schema : ParameterType, token : String) ~ Response {
+		function : Respond(model : String, message : Pair<String, API.OpenAI.ImageQuery>, max_tokens : Int, temperature : Float, top_p : Float, reasoning_effort : ReasoningEffort, verbosity : Verbosity, schema : ParameterType, token : String) ~ Response {
 			messages := Vector->New()<Pair<String, API.OpenAI.ImageQuery>>;
 			messages->AddBack(message);
 
-			return Respond(model, messages, max_tokens, temperature, top_p, effort, schema, token);
+			return Respond(model, messages, max_tokens, temperature, top_p, reasoning_effort, verbosity, schema, token);
 		}
 		
 		#~
@@ -760,15 +781,15 @@ bundle API.OpenAI.Responses {
 		@param temperature amount of randomness in the response, valued between 0 inclusive and 2 exclusive
 		@param top_p nucleus sampling threshold, valued between 0 and 1 inclusive
 		@param schema output schema
-		@param effort model's reasoning effort 
+		@param reasoning_effort model's reasoning reasoning_effort 
 		@param token API token
 		@return completion response
 		~#
-		function : Respond(model : String, message : Pair<String, API.OpenAI.ImageQuery>, max_tokens : Int, temperature : Float, top_p : Float, effort : ReasoningEffort, token : String) ~ Response {
+		function : Respond(model : String, message : Pair<String, API.OpenAI.ImageQuery>, max_tokens : Int, temperature : Float, top_p : Float, reasoning_effort : ReasoningEffort, verbosity : Verbosity, token : String) ~ Response {
 			messages := Vector->New()<Pair<String, API.OpenAI.ImageQuery>>;
 			messages->AddBack(message);
 
-			return Respond(model, messages, max_tokens, temperature, top_p, effort, Nil, token);
+			return Respond(model, messages, max_tokens, temperature, top_p, reasoning_effort, verbosity Nil, token);
 		}
 
 		#~
@@ -780,7 +801,7 @@ bundle API.OpenAI.Responses {
 		@return completion response
 		~#
 		function : Respond(model : String, messages : Vector<Pair<String, API.OpenAI.ImageQuery>>, schema : ParameterType, token : String) ~ Response {
-			return Respond(model, messages, -1, -1.0, -1.0, Nil, schema, token);
+			return Respond(model, messages, -1, -1.0, -1.0, ReasoningEffort->NA, Verbosity->NA, schema, token);
 		}
 
 		#~
@@ -790,12 +811,12 @@ bundle API.OpenAI.Responses {
 		@param max_tokens maximum number of completion tokens returned by the API
 		@param temperature amount of randomness in the response, valued between 0 inclusive and 2 exclusive
 		@param top_p nucleus sampling threshold, valued between 0 and 1 inclusive
-		@param effort model's reasoning effort 
+		@param reasoning_effort model's reasoning reasoning_effort 
 		@param token API token
 		@param schema output schema
 		@return completion response
 		~#
-		function : Respond(model : String, messages : Vector<Pair<String, API.OpenAI.ImageQuery>>, max_tokens : Int, temperature : Float, top_p : Float, effort : ReasoningEffort, schema : ParameterType, token : String) ~ Response {
+		function : Respond(model : String, messages : Vector<Pair<String, API.OpenAI.ImageQuery>>, max_tokens : Int, temperature : Float, top_p : Float, reasoning_effort : ReasoningEffort, verbosity : Verbosity, schema : ParameterType, token : String) ~ Response {
 			completion_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 			completion_json->Insert("model", model);
 
