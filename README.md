@@ -16,25 +16,25 @@ Another programming language
 
 ## Updates
 
+v2025.8.1
+  * Support for OpenAI's GPT-5 models (i.e., reasoning and verbosity) [done]
+  * OpenAI MCP support
+
 v2025.8.0
-  * ONNX Runtime (ORT) support, ORT is a cross-platform high-performance inference engine designed to accelerate ML across hardware and software platforms.
-  * Open Computer Vision (OpenCV) integration, OpenCV supports real-time computer vision, containing over 2,500 open-source algorithms. 
+  * ONNX Runtime (ORT) support, ORT is a cross-platform inference engine designed to accelerate ML across hardware and software platforms (done, in test)
+  * Open Computer Vision (OpenCV) integration, OpenCV supports real-time computer vision (all but macOS and Linux, coming soon)
 
 v2025.7.1
-  * OpenAI Realtime API support for the ``gpt-4o-realtime-preview-2025-06-03`` preview (done)
-  * Adding PCM16 recording and playback APIs via SDL2 mixer (done)
+  * OpenAI Realtime API support for the ``gpt-4o-realtime-preview-2025-06-03`` preview [done]
+  * Adding PCM16 recording and playback APIs via SDL2 mixer [done]
   * PCM16 to MP3 audio translation support (all but macOS, coming soon)
-  * Adding initial support for the Cursor AI IDE (done)
+  * Adding initial support for the Cursor AI IDE [done]
 
 <ins>v2025.7.0</ins>
   * Added ``Hash->Dict(..)``, ``Map->Dict(..)`` and ``Vector->Zip(..)`` to collections
   * Updated style (docs, logos, etc.)
   * Bug fixes
-    
-v2025.6.3
-  * Support for user-provided HTTPS PEM files
-  * Added multi-statement pre/update support for ``for`` loops
-    
+
 ## Code Examples
 
 ```ruby
