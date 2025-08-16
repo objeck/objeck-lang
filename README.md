@@ -17,8 +17,8 @@ Another programming language
 ## Updates
 
 v2025.8.0
-  * ONNX Runtime (ORT) support, ORT is a cross-platform inference engine designed to accelerate ML across hardware and software platforms [done, in test]
-  * Open Computer Vision (OpenCV) integration, OpenCV supports real-time computer vision (all but macOS and Linux, coming soon)
+  * ONNX Runtime support, ORT is a cross-platform inference engine designed to accelerate ML across hardware and software platforms [done, in test]
+  * Open Computer Vision integration, OpenCV supports real-time computer vision (all but macOS and Linux, coming soon)
   * Support for OpenAI's GPT-5 models (i.e., reasoning and verbosity) [done]
   * OpenAI MCP support
 
