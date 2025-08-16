@@ -16,7 +16,7 @@ class Test {
 	
 	function : Test0(token : String) ~ Nil {
 		query := Collection.Pair->New("user", "What is the most common espresso drink ordered in Columbia?")<String, String>;
-		response := Response->Respond("gpt-4o-mini", query, token);
+		response := Response->Respond("gpt-5-mini", query, token);
 		if(response = Nil) {
 			Response->GetLastError()->ErrorLine();
 			return;
@@ -26,7 +26,7 @@ class Test {
 
 	function : Test1(token : String) ~ Nil {
 		query := Collection.Pair->New("user", "What is the longest street in Colorado?")<String, String>;
-		model := "gpt-4o-mini";
+		model := "gpt-5-mini";
 		
 		# TODO: 
 		required := ["name", "length", "state", "city"];
@@ -61,7 +61,7 @@ class Test {
 		}
 
 		file_query := API.OpenAI.FileQuery->New("This is a job position from LinkedIn, can you tell me about the title, salary, state and city for this opportunity?", pdf_file, "user");
-		model := "gpt-4o-mini";
+		model := "gpt-5-mini";
 
 		required := ["title", "salary", "experience", "city"];
 		schema := ParameterType->New(required, "longest street");
@@ -86,7 +86,7 @@ class Test {
 
 		image := API.OpenAI.ImageQuery->New("What number is this?", bytes, API.OpenAI.ImageQuery->MimeType->PNG);
 		file_query := Collection.Pair->New("user", image)<String, API.OpenAI.ImageQuery>;
-		model := "gpt-4o-mini";
+		model := "gpt-5-mini";
 
 #~
 		# TODO: 
