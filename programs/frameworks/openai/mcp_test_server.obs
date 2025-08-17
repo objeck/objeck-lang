@@ -29,9 +29,12 @@ class RequestHandler from HttpRequestHandler {
 			if(@is_debug) {
 				request->GetContent()->PrintLine();
 			};
+		}
+		else {
+			">>> WTF <<<"->PrintLine();
 		};
 
-		response->SetCodeType(200, "text/event-stream");
+		response->SetCodeTypeContent(200, "text/event-stream", ": keepalive\n\n");
 		return false;
 	}
 
@@ -44,25 +47,45 @@ class RequestHandler from HttpRequestHandler {
 			content := request->GetContent();
 
 			if(@is_debug) {
-				content->Trim()->PrintLine();
+				ShowPayload(content);
 			};
 
 			parser :=JsonParser->New(content);
 			if(parser->Parse()) {
 				root_json := parser->GetRoot();
-								
+
 				method_json := root_json->Get("method");
 				if(method_json <> Nil) {
 					method_name := method_json->GetValue();
 
 					if(@is_debug) {
-						"Post: method_name='{$method_name}'"->PrintLine();
+						"[Post: method_name='{$method_name}']"->PrintLine();
 					};
+
 
 					#
 					# initialize
 					# 
-					if(method_name <> Nil & method_name->Equals("initialize")) {
+					if(method_name <> Nil & method_name->Equals("ping")) {
+						id := root_json->Get("id")->GetValue()->ToInt();
+						payload := "{
+							\"jsonrpc\":
+							\"2.0\",
+							\"id\": {$id},
+							\"result\": {}
+						}";
+
+						if(@is_debug) {
+							ShowPayload(payload);
+						};
+
+						response->SetCodeTypeContent(200, "application/json", payload);
+						return false;
+					}
+					#
+					# initialize
+					# 
+					else if(method_name <> Nil & method_name->Equals("initialize")) {
 						id := root_json->Get("id")->GetValue()->ToInt();
 						payload := "{
 							\"jsonrpc\": \"2.0\",
@@ -78,13 +101,13 @@ class RequestHandler from HttpRequestHandler {
 								\"serverInfo\": {
 									\"name\": \"MyMcpServer\",
 									\"version\": \"0.1.0\"
-							    },
+								},
 								\"instructions\": \"Welcome! This server is ready to accept MCP requests.\"
 							}
 						}";
 
 						if(@is_debug) {
-							payload->PrintLine();
+							ShowPayload(payload);
 						};
 
 						response->SetCodeTypeContent(200, "application/json", payload);
@@ -113,11 +136,137 @@ class RequestHandler from HttpRequestHandler {
 						}";
 
 						if(@is_debug) {
-							payload->PrintLine();
+							ShowPayload(payload);
 						};
 
 						response->SetCodeTypeContent(200, "application/json", payload);
 						return false;
+					}
+					#
+					# resources/list
+					# 
+					else if(method_name <> Nil & method_name->Equals("resources/list")) {
+						id := root_json->Get("id")->GetValue()->ToInt();
+						payload := "{
+							\"jsonrpc\": \"2.0\",
+							\"id\": {$id},
+							\"result\": {
+								\"resources\": [ {
+										\"uri\": \"file:///readme.txt\",
+										\"name\": \"README\",
+										\"description\": \"Project readme\",
+										\"mimeType\": \"text/plain\"
+									}
+								]
+							}
+						}";
+
+						if(@is_debug) {
+							ShowPayload(payload);
+						};
+
+						response->SetCodeTypeContent(200, "application/json", payload);
+						return false;
+					}
+					#
+					# resources/read
+					# 
+					else if(method_name <> Nil & method_name->Equals("resources/read")) {
+						id := root_json->Get("id")->GetValue()->ToInt();
+						payload := "{
+							\"jsonrpc\": \"2.0\",
+							\"id\": {$id},
+							\"result\": {
+								\"contents\": [ {
+										\"uri\": \"file:///readme.txt\",
+										\"mimeType\": \"text/plain\",
+										\"text\": \"Hello from resources/read\\n\"
+									}
+								]
+							}
+						}";
+
+						#~
+						"mimeType": "image/png",
+        				"blob": "iVBORw0KGgoAAAANSUhEUgAA..."  // base64
+						~#
+
+						if(@is_debug) {
+							ShowPayload(payload);
+						};
+
+						response->SetCodeTypeContent(200, "application/json", payload);
+						return false;
+					}
+					#
+					# tools/list
+					# 
+					else if(method_name <> Nil & method_name->Equals("tools/list")) {
+						id := root_json->Get("id")->GetValue()->ToInt();
+						payload := "{
+							\"jsonrpc\": \"2.0\",
+							\"id\": {$id},
+							\"result\": {
+								\"tools\": [      
+									{        
+										\"name\": \"echo\",
+										\"description\":
+										\"Echo a string\",
+										\"inputSchema\": {
+											\"type\": \"object\",
+											\"properties\": { \"text\": { \"type\": \"string\" } },
+											\"required\": [\"text\"]
+										}
+									}
+								]
+							}
+						}";
+
+						if(@is_debug) {
+							ShowPayload(payload);
+						};
+
+						response->SetCodeTypeContent(200, "application/json", payload);
+						return false;
+					}
+					#
+					# tools/call
+					# 
+					else if(method_name <> Nil & method_name->Equals("tools/call")) {
+						call_name : String;
+						text_param : String;
+						
+						params_json := root_json->Get("params");
+						if(params_json <> Nil) {
+							params_name_json := params_json->Get("name");
+							params_args_json := params_json->Get("arguments");
+							if(params_name_json <> Nil & params_args_json <> Nil) {
+								call_name := params_name_json->GetValue();
+								text_param := params_args_json->Get("text")->GetValue();
+							};
+						};
+
+						if(text_param <> Nil & call_name <> Nil & call_name->Equals("echo")) {
+							id := root_json->Get("id")->GetValue()->ToInt();
+							payload := "{
+								\"jsonrpc\": 
+								\"2.0\",  
+								\"id\": {$id},  
+								\"result\": {    
+									\"content\": [
+										{ \"type\": \"text\", \"text\": \"{$text_param}\" }    
+									],    
+									\"isError\": false  
+								}
+							}";
+
+							if(@is_debug) {
+								ShowPayload(payload);
+							};
+
+							response->SetCodeTypeContent(200, "application/json", payload);
+							return false;
+						}
 					};
 				};
 			};
@@ -125,8 +274,12 @@ class RequestHandler from HttpRequestHandler {
 
 		response->SetCode(204);
 		if(@is_debug) {
-			">>> Unknown? <<<"->ErrorLine();
+			">>>  Unknown Message <<<"->ErrorLine();
 		};
 		return false;
+	}
+
+	function : ShowPayload(payload : String) ~ Nil {
+		payload->ReplaceAll("\t", "  ")->PrintLine();
 	}
 } 
