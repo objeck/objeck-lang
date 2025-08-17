@@ -325,6 +325,10 @@ bundle API.OpenAI.Responses {
 				tools_json->Insert("server_label", @server_label);
 		        tools_json->Insert("server_url", @server_url->GetUrl());
 		        tools_json->Insert("require_approval", "never");
+
+				allowed_tools_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+		        allowed_tools_json->Add("get_coding_scores");
+		       	tools_json->Insert("allowed_tools", allowed_tools_json);
 			};
 
 			return tools_json;
@@ -467,7 +471,7 @@ bundle API.OpenAI.Responses {
 			messages := Vector->New()<Pair<String, String>>;
 			messages->AddBack(message);
 
-			return Respond(model, messages, -1, -1.0, -1.0, reasoning_effort, verbosity, Nil, Nil, token);
+			return Respond(model, messages, -1, -1.0, -1.0, reasoning_effort, verbosity, Nil, tools, token);
 		}
 
 		#~
@@ -501,7 +505,7 @@ bundle API.OpenAI.Responses {
 			messages := Vector->New()<Pair<String, String>>;
 			messages->AddBack(message);
 
-			return Respond(model, messages, -1, -1.0, -1.0, reasoning_effort, verbosity, schema, Nil, token);
+			return Respond(model, messages, -1, -1.0, -1.0, reasoning_effort, verbosity, schema, tools, token);
 		}
 
 		#~
@@ -521,7 +525,7 @@ bundle API.OpenAI.Responses {
 			messages := Vector->New()<Pair<String, String>>;
 			messages->AddBack(message);
 
-			return Respond(model, messages, max_tokens, temperature, top_p, reasoning_effort, verbosity, Nil, Nil, token);
+			return Respond(model, messages, max_tokens, temperature, top_p, reasoning_effort, verbosity, Nil, tools, token);
 		}
 
 		#~
@@ -542,7 +546,7 @@ bundle API.OpenAI.Responses {
 			messages := Vector->New()<Pair<String, String>>;
 			messages->AddBack(message);
 
-			return Respond(model, messages, max_tokens, temperature, top_p, reasoning_effort, verbosity, schema, Nil, token);
+			return Respond(model, messages, max_tokens, temperature, top_p, reasoning_effort, verbosity, schema, tools, token);
 		}
 
 		#~
@@ -575,7 +579,10 @@ bundle API.OpenAI.Responses {
 			completion_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 			completion_json->Insert("model", model);
 
+"--- 0 ---"->PrintLine();
+
 			if(tools <> Nil) {
+"--- 1 ---"->PrintLine();
 				tools_json := JsonElement->New(JsonElement->JsonType->ARRAY);
 				each(tool in tools) {
 					tools_json->Add(tool->ToJson());
@@ -670,6 +677,7 @@ bundle API.OpenAI.Responses {
 					response->GetContent()->ToString()->PrintLine();				
 				};
 
+#~
 				chat_json := JsonParser->TextToElement(response->GetContent()->ToString());
 				if(chat_json = Nil) {
 					"### Error: Unable to parse response ###"->ErrorLine();
@@ -683,6 +691,7 @@ bundle API.OpenAI.Responses {
 				};
 
 				return Response->New(chat_json);
+~#				
 			};
 
 			return Nil;

@@ -2,21 +2,25 @@ use API.OpenAI.Responses, Data.JSON.Scheme, Collection;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		if(args->Size() <> 1) {
+		if(args->Size() <> 2) {
 			">>> Missing OpenAI license file. <<<"->ErrorLine();
 			return;
 		};
 		token := GetApiKey(args[0]);
 
-#		Test0(token);
-		Test1(token);
+		Test0(args[1], token);
+#		Test1(token);
 #		Test2(token);
 #		Test3(token);
 	}
 	
-	function : Test0(token : String) ~ Nil {
-		query := Collection.Pair->New("user", "What is the most common n/a beer in the US?")<String, String>;
-		response := Response->Respond("gpt-5-mini", query, ReasoningEffort->MEDIUM, Verbosity->MEDIUM, token);
+	function : Test0(url_str : String, token : String) ~ Nil {
+		query := Collection.Pair->New("user", "What is the local coding score?")<String, String>;
+
+		tools := Vector->New()<Tool>;
+		tools->AddBack(Tool->New("local_coding_scores", Web.HTTP.Url->New(url_str)));
+
+		response := Response->Respond("gpt-5-mini", query, ReasoningEffort->MEDIUM, Verbosity->MEDIUM, tools, token);
 		if(response = Nil) {
 			Response->GetLastError()->ErrorLine();
 			return;
