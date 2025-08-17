@@ -1,0 +1,132 @@
+use Collection, Data.JSON, Web.HTTP, Web.HTTP.Server;
+
+class TestMcp {
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() = 1) {
+			WebServer->Serve(RequestHandler->New()->GetClass(), args[0]->ToInt(), true);
+		}
+		else {
+			">>> Usage <<<"->PrintLine();
+		};
+	}
+}
+
+class RequestHandler from HttpRequestHandler {
+	@is_debug : Bool;
+
+	New() {
+		Parent();
+
+		@is_debug := true;
+	}
+
+	method : ProcessGet(request : Web.HTTP.Server.Request, response : Web.HTTP.Server.Response) ~ Bool {
+		if(@is_debug) {
+			"\n### Called: GET ####"->PrintLine();
+		};
+	
+		if(request->HasContent()) {
+			if(@is_debug) {
+				request->GetContent()->PrintLine();
+			};
+		};
+
+		response->SetCodeType(200, "text/event-stream");
+		return false;
+	}
+
+	method : ProcessPost(request : Web.HTTP.Server.Request, response : Web.HTTP.Server.Response) ~ Bool {
+		if(@is_debug) {
+			"\n### Called: POST ###"->PrintLine();
+		};
+
+		if(request->HasContent()) {
+			content := request->GetContent();
+
+			if(@is_debug) {
+				content->Trim()->PrintLine();
+			};
+
+			parser :=JsonParser->New(content);
+			if(parser->Parse()) {
+				root_json := parser->GetRoot();
+								
+				method_json := root_json->Get("method");
+				if(method_json <> Nil) {
+					method_name := method_json->GetValue();
+
+					if(@is_debug) {
+						"Post: method_name='{$method_name}'"->PrintLine();
+					};
+
+					#
+					# initialize
+					# 
+					if(method_name <> Nil & method_name->Equals("initialize")) {
+						id := root_json->Get("id")->GetValue()->ToInt();
+						payload := "{
+							\"jsonrpc\": \"2.0\",
+							\"id\": {$id},
+							\"result\": {
+								\"protocolVersion\": \"2025-06-18\",
+								\"capabilities\": {
+									\"tools\": { \"listChanged\": true },
+									\"resources\": { \"listChanged\": true },
+									\"prompts\": { \"listChanged\": true },
+									\"logging\": {}
+								},
+								\"serverInfo\": {
+									\"name\": \"MyMcpServer\",
+									\"version\": \"0.1.0\"
+							    },
+								\"instructions\": \"Welcome! This server is ready to accept MCP requests.\"
+							}
+						}";
+
+						if(@is_debug) {
+							payload->PrintLine();
+						};
+
+						response->SetCodeTypeContent(200, "application/json", payload);
+						return false;
+					}
+					#
+					# notifications/initialized
+					# 
+					else if(method_name <> Nil & method_name->Equals("notifications/initialized")) {
+						if(@is_debug) {
+							"### notifications/initialized ###"->PrintLine();
+						};
+
+						response->SetCode(202);
+						return false;
+					}
+					#
+					# logging/setLevel
+					# 
+					else if(method_name <> Nil & method_name->Equals("logging/setLevel")) {
+						id := root_json->Get("id")->GetValue()->ToInt();
+						payload := "{
+							\"jsonrpc\": \"2.0\",
+							\"id\": {$id},
+							\"result\": {}
+						}";
+
+						if(@is_debug) {
+							payload->PrintLine();
+						};
+
+						response->SetCodeTypeContent(200, "application/json", payload);
+						return false;
+					};
+				};
+			};
+		};
+
+		response->SetCode(204);
+		if(@is_debug) {
+			">>> Unknown? <<<"->ErrorLine();
+		};
+		return false;
+	}
+} 
