@@ -429,10 +429,10 @@ bundle API.OpenCV {
 	OpenCV line values
 	~#
 	consts LineType {
-	    FILLED := -1, # fill
-	    LINE_4 := 4, # 4-connected line
-	    LINE_8 := 8, # 8-connected line
-	    LINE_AA := 16 # anti-aliased line
+	    FILLED := -1,
+	    LINE_4 := 4,
+	    LINE_8 := 8,
+	    LINE_AA := 16
 	}
 
 	#~
