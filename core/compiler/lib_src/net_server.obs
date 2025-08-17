@@ -874,6 +874,14 @@ bundle Web.HTTP.Server {
 		}
 
 		#~
+		Checks for request body content
+		@return true if content exists, false otherwise
+		~#
+		method : public : HasContent() ~ Bool {
+			return @content <> Nil;
+		}
+
+		#~
 		Gets the request body content as bytes
 		@return request content as bytes
 		~#
@@ -1153,7 +1161,7 @@ bundle Web.HTTP.Server {
 		}
 
 		#~
-		Set response code and content
+		Set response code, type and content
 		@param code response code
 		@param type content type
 		@param content response content
@@ -1161,6 +1169,16 @@ bundle Web.HTTP.Server {
 		method : public : SetCodeTypeContent(code : Int, type : String, content : Byte[]) ~ Nil {
 			@code := code;
 			@content := content;
+			SetContentType(type);
+		}
+
+		#~
+		Set response code and type
+		@param code response code
+		@param type content type
+		~#
+		method : public : SetCodeType(code : Int, type : String) ~ Nil {
+			@code := code;
 			SetContentType(type);
 		}
 
@@ -1182,6 +1200,14 @@ bundle Web.HTTP.Server {
 		~#
 		method : public : GetContent() ~ Byte[] {
 			return @content;
+		}
+
+		#~
+		Checks for request body content
+		@return true if content exists, false otherwise
+		~#
+		method : public : HasContent() ~ Bool {
+			return @content <> Nil;
 		}
 
 		#~
@@ -1464,14 +1490,12 @@ bundle Web.HTTP.Server {
 
 					# read white space
 					if(<>MatchSpace(boundry_index, @encoded)) {
-"--- 4 ---"->PrintLine();
 
 						return Nil;
 					};
 					boundry_index += 2;
 				}
 				while(<>done);
-"--- 5 ---"->PrintLine();
 				
 				# read content
 				content_size := marker_indexes[i + 1] - boundry_index - 2;
@@ -1487,7 +1511,6 @@ bundle Web.HTTP.Server {
 					boundry_index += 2;
 				};
 
-"--- 6 ---"->PrintLine();
 
 				multipart_content->AddBack(MultipartContent->New(headers, content_bytes));
 			};
@@ -1601,6 +1624,14 @@ bundle Web.HTTP.Server {
 		~#
 		method : public : GetContent() ~ Byte[] {
 			return @content;
+		}
+
+		#~
+		Checks for request body content
+		@return true if content exists, false otherwise
+		~#
+		method : public : HasContent() ~ Bool {
+			return @content <> Nil;
 		}
 	}
 
@@ -2099,11 +2130,11 @@ class RequestHandler from HttpsRequestHandler {
 					};
 				};
 
+				# get request headers
+				request_headers := GetHeaders();
+
 				# verify request
 				if(request_verb <> Nil & request_path <> Nil & <>request_path->IsEmpty()) {
-					# get request headers
-					request_headers := GetHeaders();
-
 					# GET and HEAD request
 					if(request_verb->Equals("GET") | request_verb->Equals("HEAD")) {
 						# retrieve content
@@ -2145,8 +2176,11 @@ class RequestHandler from HttpsRequestHandler {
 						};
 					};
 				};
-				
-				@client->Close();
+
+				connection_type := request_headers->Find("connection")
+				if(connection_type <> Nil & connection_type->Equals("keep-alive")) {
+					@client->Close();
+				};				
 			};
 		}
 
@@ -2296,12 +2330,11 @@ class RequestHandler from HttpsRequestHandler {
 					};
 				};
 
+				# get request headers
+				request_headers := GetHeaders();
+
 				# verify request
 				if(request_verb <> Nil & request_path <> Nil & <>request_path->IsEmpty()) {
-					# get request headers
-					request_headers := GetHeaders();
-
-
 					# GET and HEAD request
 					if(request_verb->Equals("GET") | request_verb->Equals("HEAD")) {
 						# retrieve content
@@ -2343,8 +2376,11 @@ class RequestHandler from HttpsRequestHandler {
 						};
 					};
 				};
-				
-				@client->Close();
+
+				connection_type := request_headers->Find("connection")
+				if(connection_type <> Nil & connection_type->Equals("keep-alive")) {
+					@client->Close();
+				};
 			};
 		}
 
