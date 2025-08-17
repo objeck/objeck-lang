@@ -458,6 +458,8 @@ bundle API.OpenAI.Responses {
 		@param message completion message and image query.
 		@param model ID of the model to use
 		@param reasoning_effort model's reasoning reasoning_effort 
+		@param verbosity verbosity of response
+		@param tools list of tools
 		@param token API token
 		@return completion response
 		~#
@@ -489,6 +491,9 @@ bundle API.OpenAI.Responses {
 		@param model ID of the model to use
 		@param reasoning_effort model's reasoning reasoning_effort 		
 		@param schema output schema
+		@param reasoning_effort model's reasoning reasoning_effort 
+		@param verbosity verbosity of response
+		@param tools list of tools
 		@param token API token
 		@return completion response
 		~#
@@ -507,6 +512,8 @@ bundle API.OpenAI.Responses {
 		@param temperature amount of randomness in the response, valued between 0 inclusive and 2 exclusive
 		@param top_p nucleus sampling threshold, valued between 0 and 1 inclusive
 		@param reasoning_effort model's reasoning reasoning_effort 
+		@param verbosity verbosity of response
+		@param tools list of tools
 		@param token API token
 		@return completion response
 		~#
@@ -525,7 +532,9 @@ bundle API.OpenAI.Responses {
 		@param temperature amount of randomness in the response, valued between 0 inclusive and 2 exclusive
 		@param top_p nucleus sampling threshold, valued between 0 and 1 inclusive
 		@param reasoning_effort model's reasoning reasoning_effort 
+		@param verbosity verbosity of response
 		@param schema output schema
+		@param tools list of tools
 		@param token API token
 		@return completion response
 		~#
@@ -556,14 +565,16 @@ bundle API.OpenAI.Responses {
 		@param temperature amount of randomness in the response, valued between 0 inclusive and 2 exclusive
 		@param top_p nucleus sampling threshold, valued between 0 and 1 inclusive
 		@param reasoning_effort model's reasoning reasoning_effort 
+		@param verbosity verbosity of response
 		@param schema output schema
+		@param tools list of tools
 		@param token API token
 		@return completion response
 		~#
 		function : Respond(model : String, messages : Vector<Pair<String, String>>, max_tokens : Int, temperature : Float, top_p : Float, reasoning_effort : ReasoningEffort, verbosity : Verbosity, schema : ParameterType, tools : Vector<Tool>, token : String) ~ Response {
 			completion_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 			completion_json->Insert("model", model);
-			
+
 			if(tools <> Nil) {
 				tools_json := JsonElement->New(JsonElement->JsonType->ARRAY);
 				each(tool in tools) {
@@ -714,7 +725,9 @@ bundle API.OpenAI.Responses {
 		@param temperature amount of randomness in the response, valued between 0 inclusive and 2 exclusive
 		@param top_p nucleus sampling threshold, valued between 0 and 1 inclusive
 		@param reasoning_effort model's reasoning reasoning_effort 
+		@param verbosity verbosity of response
 		@param schema output schema
+		@param tools list of tools
 		@param token API token
 		@return completion response
 		~#
@@ -733,6 +746,8 @@ bundle API.OpenAI.Responses {
 		@param temperature amount of randomness in the response, valued between 0 inclusive and 2 exclusive
 		@param top_p nucleus sampling threshold, valued between 0 and 1 inclusive
 		@param reasoning_effort model's reasoning reasoning_effort 
+		@param verbosity verbosity of response
+		@param tools list of tools
 		@param token API token
 		@return completion response
 		~#
@@ -763,7 +778,9 @@ bundle API.OpenAI.Responses {
 		@param temperature amount of randomness in the response, valued between 0 inclusive and 2 exclusive
 		@param top_p nucleus sampling threshold, valued between 0 and 1 inclusive
 		@param reasoning_effort model's reasoning reasoning_effort 
+		@param verbosity verbosity of response
 		@param schema output schema
+		@param tools list of tools
 		@param token API token
 		@return completion response
 		~#
@@ -896,7 +913,9 @@ bundle API.OpenAI.Responses {
 		@param temperature amount of randomness in the response, valued between 0 inclusive and 2 exclusive
 		@param top_p nucleus sampling threshold, valued between 0 and 1 inclusive
 		@param reasoning_effort model's reasoning reasoning_effort 
+		@param verbosity verbosity of response
 		@param schema output schema
+		@param tools list of tools
 		@param token API token
 		@return completion response
 		~#
@@ -916,7 +935,9 @@ bundle API.OpenAI.Responses {
 		@param top_p nucleus sampling threshold, valued between 0 and 1 inclusive
 		@param schema output schema
 		@param reasoning_effort model's reasoning reasoning_effort 
+		@param verbosity verbosity of response
 		@param token API token
+		@param tools list of tools
 		@return completion response
 		~#
 		function : Respond(model : String, message : Pair<String, API.OpenAI.ImageQuery>, max_tokens : Int, temperature : Float, top_p : Float, reasoning_effort : ReasoningEffort, verbosity : Verbosity, tools : Vector<Tool>, token : String) ~ Response {
@@ -946,8 +967,10 @@ bundle API.OpenAI.Responses {
 		@param temperature amount of randomness in the response, valued between 0 inclusive and 2 exclusive
 		@param top_p nucleus sampling threshold, valued between 0 and 1 inclusive
 		@param reasoning_effort model's reasoning reasoning_effort 
-		@param token API token
+		@param verbosity verbosity of response
+		@param tools list of tools
 		@param schema output schema
+		@param token API token
 		@return completion response
 		~#
 		function : Respond(model : String, messages : Vector<Pair<String, API.OpenAI.ImageQuery>>, max_tokens : Int, temperature : Float, top_p : Float, reasoning_effort : ReasoningEffort, verbosity : Verbosity, tools : Vector<Tool>, schema : ParameterType, token : String) ~ Response {
