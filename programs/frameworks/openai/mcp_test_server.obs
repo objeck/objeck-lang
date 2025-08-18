@@ -54,10 +54,10 @@ class RequestHandler from HttpRequestHandler {
 						if(@is_debug) {
 							"[Post: method_name='{$method_name}']"->PrintLine();
 						};
-	
+						
 						# execute method
 						select(method_name) {
-							# initialize
+							# ping
 							label "ping": {
 								id := root_json->Get("id")->GetValue()->ToInt();
 								payload := "{
@@ -122,6 +122,33 @@ class RequestHandler from HttpRequestHandler {
 									\"jsonrpc\": \"2.0\",
 									\"id\": {$id},
 									\"result\": {}
+								}";
+
+								if(@is_debug) {
+									ShowPayload(payload);
+								};
+
+								response->SetCodeTypeContent(200, "application/json", payload);
+								return false;
+							}
+
+							# resources/templates/list
+							label "resources/templates/list": {
+								id := root_json->Get("id")->GetValue()->ToInt();
+								payload := "{
+									\"jsonrpc\": \"2.0\",
+									\"id\": {$id},
+									\"result\": {
+										\"resourceTemplates\": [
+											{
+												\"uriTemplate\": \"file:///{path}\",
+												\"name\": \"Project Files\",
+												\"title\": \"Project Files\",
+												\"description\": \"Access files in the project directory\",        
+												\"mimeType\": \"application/octet-stream\"
+											}
+										]
+									}
 								}";
 
 								if(@is_debug) {
@@ -377,33 +404,6 @@ class RequestHandler from HttpRequestHandler {
 										}
 									};
 								};
-							}
-
-							# resources/templates/list
-							label "resources/templates/list": {
-								id := root_json->Get("id")->GetValue()->ToInt();
-								payload := "{
-									\"jsonrpc\": \"2.0\",
-									\"id\": {$id},
-									\"result\": {
-										\"resourceTemplates\": [
-											{
-												\"uriTemplate\": \"file:///{path}\",
-												\"name\": \"Project Files\",
-												\"title\": \"Project Files\",
-												\"description\": \"Access files in the project directory\",        
-												\"mimeType\": \"application/octet-stream\"
-											}
-										]
-									}
-								}";
-
-								if(@is_debug) {
-									ShowPayload(payload);
-								};
-
-								response->SetCodeTypeContent(200, "application/json", payload);
-								return false;
 							}
 						};
 					};
