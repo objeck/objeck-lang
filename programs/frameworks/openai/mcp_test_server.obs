@@ -215,43 +215,133 @@ class RequestHandler from HttpRequestHandler {
 								response->SetCodeTypeContent(200, "application/json", payload);
 								return false;
 							}
-							
-							# tools/call
-							label "tools/call": {
-								call_name : String;
-								text_param : String;
-								
-								params_json := root_json->Get("params");
-								if(params_json <> Nil) {
-									params_name_json := params_json->Get("name");
-									params_args_json := params_json->Get("arguments");
-									if(params_name_json <> Nil & params_args_json <> Nil) {
-										call_name := params_name_json->GetValue();
-										text_param := params_args_json->Get("text")->GetValue();
-									};
+
+							# prompts/list
+							label "prompts/list": {
+								id := root_json->Get("id")->GetValue()->ToInt();
+								payload := "{
+									\"jsonrpc\": \"2.0\",  
+									\"id\": {$id},  \"result\": {    
+										\"prompts\": [ 
+											{        
+												\"name\": \"greet\",
+												\"title\": \"Greet a User\",
+												\"description\": \"Compose a friendly greeting.\",
+												\"arguments\": [ { 
+													\"name\": \"name\", \"description\": \"User's name\", \"required\": true }
+												]
+											},
+											{
+												\"name\": \"explain_topic\",
+												\"title\": \"Explain a Topic\",
+												\"description\": \"Short explanation suitable for a beginner.\",
+												\"arguments\": [ {
+													\"name\": \"topic\", \"description\": \"Subject to explain\", \"required\": true }
+												]
+											}
+										]
+									}
+								}";
+
+								if(@is_debug) {
+									ShowPayload(payload);
 								};
 
-								if(text_param <> Nil & call_name <> Nil & call_name->Equals("echo")) {
-									id := root_json->Get("id")->GetValue()->ToInt();
-									payload := "{
-										\"jsonrpc\": 
-										\"2.0\",  
-										\"id\": {$id},  
-										\"result\": {    
-											\"content\": [
-												{ \"type\": \"text\", \"text\": \"{$text_param}\" }    
-											],    
-											\"isError\": false  
-										}
-									}";
+								response->SetCodeTypeContent(200, "application/json", payload);
+								return false;
+							}
 
-									if(@is_debug) {
-										ShowPayload(payload);
+							# prompts/get
+							label "prompts/get": {
+								call_name : String; 
+								
+								call_params_json := root_json->Get("params");								
+								if(call_params_json <> Nil) {
+									name_json := call_params_json->Get("name");
+									if(name_json <> Nil) {
+										call_name := name_json->GetValue();
 									};
 
-									response->SetCodeTypeContent(200, "application/json", payload);
-									return false;
-								}
+									call_params_json := call_params_json->Get("arguments");
+									if(call_params_json <> Nil & call_name <> Nil) {
+										id := root_json->Get("id")->GetValue()->ToInt();
+
+										# greet prompt
+										if(call_name->Equals("greet")) {
+											name := call_params_json->Get("name")->GetValue();									
+											
+											payload := "{
+												\"jsonrpc\": 
+												\"2.0\",  
+												\"id\": {$id},  
+												\"result\": {  
+													\"description\": \"Greeting prompt\",  
+													\"messages\": [
+														{
+															\"role\": \"user\",
+															\"content\": { 
+																\"type\": \"text\", 
+																\"text\": \"{$name}\" 
+															}
+														}
+													]    
+												}
+											}";
+
+											if(@is_debug) {
+												ShowPayload(payload);
+											};
+
+											response->SetCodeTypeContent(200, "application/json", payload);
+											return false;
+										}
+									};
+								};
+							}
+
+							# tools/call
+							label "tools/call": {
+								call_name : String; text : String;
+
+								call_params_json := root_json->Get("params");								
+								if(call_params_json <> Nil) {
+									name_json := call_params_json->Get("name");
+									if(name_json <> Nil) {
+										call_name := name_json->GetValue();
+									};
+
+									call_params_json := call_params_json->Get("arguments");
+									if(call_params_json <> Nil & call_name <> Nil) {
+										id := root_json->Get("id")->GetValue()->ToInt();
+										
+										# echo call
+										if(call_name->Equals("echo")) {
+											text := call_params_json->Get("text")->GetValue();									
+											
+											payload := "{
+												\"jsonrpc\": 
+												\"2.0\",  
+												\"id\": {$id},  
+												\"result\": {    
+													\"content\": [
+														{ 
+															\"type\": \"text\", 
+															\"text\": \"{$text}\" 
+														}    
+													],    
+													\"isError\": false  
+												}
+											}";
+
+											if(@is_debug) {
+												ShowPayload(payload);
+											};
+
+											response->SetCodeTypeContent(200, "application/json", payload);
+											return false;
+										}
+									};
+								};
 							}
 						};
 					};
