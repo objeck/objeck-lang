@@ -24,16 +24,7 @@ class RequestHandler from HttpRequestHandler {
 		if(@is_debug) {
 			"\n### Called: GET ####"->PrintLine();
 		};
-	
-		if(request->HasContent()) {
-			if(@is_debug) {
-				request->GetContent()->PrintLine();
-			};
-		}
-		else {
-			">>> WTF <<<"->PrintLine();
-		};
-
+		
 		response->SetCodeTypeContent(200, "text/event-stream", ": keepalive\n\n");
 		return false;
 	}
