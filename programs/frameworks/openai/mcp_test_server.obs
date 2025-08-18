@@ -54,7 +54,7 @@ class RequestHandler from HttpRequestHandler {
 						if(@is_debug) {
 							"[Post: method_name='{$method_name}']"->PrintLine();
 						};
-						
+
 						# execute method
 						select(method_name) {
 							# ping
@@ -141,10 +141,17 @@ class RequestHandler from HttpRequestHandler {
 									\"result\": {
 										\"resourceTemplates\": [
 											{
-												\"uriTemplate\": \"file:///{path}\",
+												\"uriTemplate\": \"https:///{path}\",
 												\"name\": \"Project Files\",
 												\"title\": \"Project Files\",
-												\"description\": \"Access files in the project directory\",        
+												\"description\": \"Access files on the project site\",        
+												\"mimeType\": \"application/octet-stream\"
+											},
+											{
+												\"uriTemplate\": \"file:///{path}\",
+												\"name\": \"Local Files\",
+												\"title\": \"Local Files\",
+												\"description\": \"Access files in local directory\",        
 												\"mimeType\": \"application/octet-stream\"
 											}
 										]
