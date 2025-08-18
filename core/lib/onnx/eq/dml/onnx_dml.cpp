@@ -119,7 +119,7 @@ extern "C" {
             output_names.data(),
             1);
 
-         // Process output and shape infomoration
+         // Process output and shape information
          Ort::Value& output_tensor = output_tensors.front();
          const float* output_data = output_tensor.GetTensorMutableData<float>();
          const Ort::TensorTypeAndShapeInfo shape_info = output_tensor.GetTensorTypeAndShapeInfo();
