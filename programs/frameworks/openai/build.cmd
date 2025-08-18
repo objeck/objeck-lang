@@ -18,7 +18,7 @@ if [%1] == [arm64] (
 
 del *.obe
 
-set OBJECK_ROOT=C:\Users\objec\Documents\Code\objeck-lang
+set OBJECK_ROOT=..\..\..
 set OBJECK_LIB_SRC=%OBJECK_ROOT%\core\compiler\lib_src
 set OBJECK_LIB_DST=%OBJECK_ROOT%\core\release\%TARGET%\lib
 set OBJECK_SDL2_DEBUG_ROOT=%OBJECK_ROOT%\core\lib\sdl\sdl\Debug\x64
