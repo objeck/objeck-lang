@@ -160,30 +160,36 @@ class RequestHandler from HttpRequestHandler {
 							# resources/read
 							label "resources/read": {
 								id := root_json->Get("id")->GetValue()->ToInt();
-								payload := "{
-									\"jsonrpc\": \"2.0\",
-									\"id\": {$id},
-									\"result\": {
-										\"contents\": [ {
-												\"uri\": \"file:///readme.txt\",
-												\"mimeType\": \"text/plain\",
-												\"text\": \"Hello from resources/read\\n\"
-											}
-										]
-									}
-								}";
 
-								#~
-								"mimeType": "image/png",
-		        				"blob": "iVBORw0KGgoAAAANSUhEUgAA..."  // base64
-								~#
+								call_params_json := root_json->Get("params");								
+								if(call_params_json <> Nil) {
+									uri := call_params_json->Get("uri")->GetValue();
+										
+									payload := "{
+										\"jsonrpc\": \"2.0\",
+										\"id\": {$id},
+										\"result\": {
+											\"contents\": [ {
+													\"uri\": \"{$uri}\",
+													\"mimeType\": \"text/plain\",
+													\"text\": \"Hello from resources/read, check URI\\n\"
+												}
+											]
+										}
+									}";
 
-								if(@is_debug) {
-									ShowPayload(payload);
+									#~
+									"mimeType": "image/png",
+			        				"blob": "iVBORw0KGgoAAAANSUhEUgAA..."  // base64
+									~#
+
+									if(@is_debug) {
+										ShowPayload(payload);
+									};
+
+									response->SetCodeTypeContent(200, "application/json", payload);
+									return false;
 								};
-
-								response->SetCodeTypeContent(200, "application/json", payload);
-								return false;
 							}
 							
 							# tools/list
@@ -268,8 +274,8 @@ class RequestHandler from HttpRequestHandler {
 
 										# greet prompt
 										if(call_name->Equals("greet")) {
-											name := call_params_json->Get("name")->GetValue();									
-											
+											name := call_params_json->Get("name")->GetValue();
+
 											payload := "{
 												\"jsonrpc\": 
 												\"2.0\",  
@@ -282,6 +288,35 @@ class RequestHandler from HttpRequestHandler {
 															\"content\": { 
 																\"type\": \"text\", 
 																\"text\": \"{$name}\" 
+															}
+														}
+													]    
+												}
+											}";
+
+											if(@is_debug) {
+												ShowPayload(payload);
+											};
+
+											response->SetCodeTypeContent(200, "application/json", payload);
+											return false;
+										}
+										# greet prompt
+										else if(call_name->Equals("explain_topic")) {
+											explain_topic := call_params_json->Get("topic")->GetValue();
+											
+											payload := "{
+												\"jsonrpc\": 
+												\"2.0\",  
+												\"id\": {$id},  
+												\"result\": {  
+													\"description\": \"Explain prompt\",  
+													\"messages\": [
+														{
+															\"role\": \"user\",
+															\"content\": { 
+																\"type\": \"text\", 
+																\"text\": \"{$explain_topic}\" 
 															}
 														}
 													]    
@@ -342,6 +377,33 @@ class RequestHandler from HttpRequestHandler {
 										}
 									};
 								};
+							}
+
+							# resources/templates/list
+							label "resources/templates/list": {
+								id := root_json->Get("id")->GetValue()->ToInt();
+								payload := "{
+									\"jsonrpc\": \"2.0\",
+									\"id\": {$id},
+									\"result\": {
+										\"resourceTemplates\": [
+											{
+												\"uriTemplate\": \"file:///{path}\",
+												\"name\": \"Project Files\",
+												\"title\": \"Project Files\",
+												\"description\": \"Access files in the project directory\",        
+												\"mimeType\": \"application/octet-stream\"
+											}
+										]
+									}
+								}";
+
+								if(@is_debug) {
+									ShowPayload(payload);
+								};
+
+								response->SetCodeTypeContent(200, "application/json", payload);
+								return false;
 							}
 						};
 					};
