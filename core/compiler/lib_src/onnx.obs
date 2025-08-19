@@ -26,7 +26,7 @@ bundle API.Onnx {
 	~#
 	class Runtime {
 		#~
-		Yolo image inference
+		Yolo image inference, support for models v8 and above
 		@param image image bytes
 		@param height image height
 		@param image width width
@@ -101,7 +101,7 @@ bundle API.Onnx {
 	}
 
 	#~
-	Yolo inference results
+	Yolo inference result
 	~#
 	class YoloResult {
 		@output : Float[];
@@ -232,7 +232,7 @@ bundle API.Onnx {
 	}
 
 	#~
-	Yolo classification results
+	Yolo classification result
 	~#
 	class YoloClassification {
 		@id : Int;
