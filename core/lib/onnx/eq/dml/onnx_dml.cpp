@@ -191,6 +191,7 @@ extern "C" {
          // Copy original image size
          const int rows = img.rows;
          const int cols = img.cols;
+
          size_t* output_image_array = APITools_MakeIntArray(context, 2);
          size_t* output_image_array_buffer = output_image_array + 3;
          output_image_array_buffer[0] = rows;
@@ -198,58 +199,67 @@ extern "C" {
          yolo_result_obj[2] = (size_t)output_image_array;
 
          // Decode YOLO11/YOLO12 fused head: supports [1,C,N] or [1,N,C] and (4+nc) or (4+1+nc)
-         int64_t A = (output_shape.size() >= 2) ? output_shape[1] : 0;
-         int64_t B = (output_shape.size() >= 3) ? output_shape[2] : 0;
+         const int64_t A = (output_shape.size() >= 2) ? output_shape[1] : 0;
+         const int64_t B = (output_shape.size() >= 3) ? output_shape[2] : 0;
          if(output_shape.size() != 3 || output_shape[0] != 1) {
             std::wcerr << L"Unexpected YOLO output shape" << std::endl;
          }
 
-         int64_t C = std::min<int64_t>(A, B);      // channels per candidate  (≈ 84 or 85)
-         int64_t N = std::max<int64_t>(A, B);      // number of candidates    (≈ 8400)
-         bool need_transpose = (A == C);           // original was [1,C,N] if A is smaller
+         const int64_t num_channels = std::min<int64_t>(A, B); // channels per candidate  (~84 or 85)
+         const int64_t num_candidates = std::max<int64_t>(A, B); // number of candidates    (~8400)
+         const bool need_transpose = (A == num_channels); // original was [1,C,N] if A is smaller
 
-         std::vector<float> preds; preds.reserve((size_t)N * C);
+         std::vector<float> preds; preds.reserve((size_t)num_candidates * num_channels);
          const float* data_ptr = output_data;
          if(need_transpose) {
-            preds.resize((size_t)N * C);
+            preds.resize((size_t)num_candidates * num_channels);
             // transpose [1,C,N] -> [N,C]
-            for(int64_t c = 0; c < C; ++c)
-               for(int64_t n = 0; n < N; ++n)
-                  preds[(size_t)n * C + c] = output_data[c * N + n];
+            for(int64_t c = 0; c < num_channels; ++c)
+               for(int64_t n = 0; n < num_candidates; ++n)
+                  preds[(size_t)n * num_channels + c] = output_data[c * num_candidates + n];
             data_ptr = preds.data();
          }
-         // now data_ptr points to a contiguous [N, C] view
-
 
          // head layout
-         int Ctotal = (int)C;
+         int c_total = (int)num_channels;
          int nc_hint = (int)labels_size;
          bool has_obj = false;
-         int idx_obj = -1, idx_cls0 = 4;
+         int idx_obj = -1;
+         int idx_cls0 = 4;
 
-         if(Ctotal == 4 + nc_hint) { has_obj = false; idx_cls0 = 4; }
-         else if(Ctotal == 5 + nc_hint) { has_obj = true; idx_obj = 4; idx_cls0 = 5; }
-         else if(Ctotal > 5) { has_obj = false; idx_cls0 = 4; nc_hint = Ctotal - 4; }
+         if(c_total == 4 + nc_hint) { 
+            has_obj = false; idx_cls0 = 4; 
+         }
+         else if(c_total == 5 + nc_hint) { 
+            has_obj = true; idx_obj = 4; idx_cls0 = 5; 
+         }
+         else if(c_total > 5) { 
+            has_obj = false; idx_cls0 = 4; nc_hint = c_total - 4; 
+         }
          else {
-            std::wcerr << L"Unexpected channels per candidate: " << Ctotal << std::endl;
+            std::wcerr << L"Unexpected channels per candidate: " << c_total << std::endl;
          }
 
          // collect candidates
-         std::vector<cv::Rect> boxes; boxes.reserve((size_t)N);
-         std::vector<double> scores; scores.reserve((size_t)N);
-         std::vector<int> classes; classes.reserve((size_t)N);
+         std::vector<cv::Rect> boxes; 
+         boxes.reserve((size_t)num_candidates);
+         std::vector<double> scores; 
+         scores.reserve((size_t)num_candidates);
+         std::vector<int> classes; 
+         classes.reserve((size_t)num_candidates);
 
-         for(int64_t i = 0; i < N; ++i) {
-            const float* p = data_ptr + i * C;
+         for(int64_t i = 0; i < num_candidates; ++i) {
+            const float* p = data_ptr + i * num_channels;
             float cx = p[0], cy = p[1], w = p[2], h = p[3];
 
-            // best class prob
-            // head layout has set: C, idx_cls0, has_obj, idx_obj, labels_size
-            int max_classes_in_tensor = (int)(C - idx_cls0);
+            // best class prob, head layout has set: C, idx_cls0, has_obj, idx_obj, labels_size
+            int max_classes_in_tensor = (int)(num_channels - idx_cls0);
             int nc = (int)labels_size;
             if(nc <= 0 || nc > max_classes_in_tensor) nc = max_classes_in_tensor;
 
-            auto sigmoid = [](float x) { return 1.f / (1.f + std::exp(-x)); };
+            auto sigmoid = [](float x) { 
+               return 1.f / (1.f + std::exp(-x)); 
+            };
 
             int best = 0; float bestp = 0.f;
             for(int j = 0; j < nc; ++j) {
@@ -279,10 +289,10 @@ extern "C" {
                x2 = std::min(std::max(x2, 0.f), (float)cols - 1);
                y2 = std::min(std::max(y2, 0.f), (float)rows - 1);
 
-               int left = (int)std::round(x1);
-               int top = (int)std::round(y1);
-               int width = (int)std::round(x2 - x1);
-               int height = (int)std::round(y2 - y1);
+               const int left = (int)std::round(x1);
+               const int top = (int)std::round(y1);
+               const int width = (int)std::round(x2 - x1);
+               const int height = (int)std::round(y2 - y1);
                if(width > 0 && height > 0) {
                   boxes.emplace_back(left, top, width, height);
                   scores.push_back((double)score);
@@ -299,10 +309,10 @@ extern "C" {
          std::vector<size_t> class_results;
          class_results.reserve(keep.size());
          for(size_t k = 0; k < keep.size(); ++k) {
-            size_t i = keep[k];
+            const size_t i = keep[k];
 
-            int class_id = classes[i];
-            double confidence = scores[i];
+            const int class_id = classes[i];
+            const double confidence = scores[i];
             const cv::Rect& r = boxes[i];
 
 #ifdef _DEBUG

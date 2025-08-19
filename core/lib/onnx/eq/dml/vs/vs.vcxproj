@@ -110,7 +110,7 @@
       <AdditionalDependencies>$(CoreLibraryDependencies);%(AdditionalDependencies);opencv_world4120d.lib;onnxruntime.lib</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>pushd ..\..\..\..\..\..\programs\frameworks\opencv_onnx &amp;&amp; build_onnx x64 Debug &amp;&amp; popd</Command>
+      <Command>pushd ..\..\..\..\..\..\programs\frameworks\opencv_onnx &amp;&amp; build_onnx.cmd x64 Debug dml &amp;&amp; popd</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">

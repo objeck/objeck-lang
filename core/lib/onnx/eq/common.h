@@ -29,16 +29,18 @@ enum Preprocessor {
 
 // Preprocessing metadata used to undo letterbox and map boxes back to the original image.
 struct PreprocInfo {
-   int in_w = 0, in_h = 0;           // network input size
-   int img_w = 0, img_h = 0;         // original image size
-   float scale = 1.0f;               // resize scale used during letterbox
+   int in_w = 0, in_h = 0; // network input size
+   int img_w = 0, img_h = 0; // original image size
+   float scale = 1.0f; // resize scale used during letterbox
    float pad_x = 0.0f, pad_y = 0.0f; // padding applied (left/top)
 };
 
 // Aspect-preserving resize with padding (letterbox)
 inline cv::Mat letterbox(const cv::Mat& img, int resize_height, int resize_width, PreprocInfo& info) {
-   info.img_w = img.cols; info.img_h = img.rows;
-   info.in_w = resize_width; info.in_h = resize_height;
+   info.img_w = img.cols; 
+   info.img_h = img.rows;
+   info.in_w = resize_width; 
+   info.in_h = resize_height;
 
    const float r = std::min((float)resize_width / img.cols, (float)resize_height / img.rows);
    const int new_w = (int)std::round(img.cols * r);
@@ -74,12 +76,15 @@ std::vector<float> yolo_preprocess(const cv::Mat& img, int resize_height, int re
    return input_tensor_values;
 }
 
-// New YOLO preprocess that uses letterbox (recommended for YOLO11/YOLO12)
+// YOLO preprocess that uses letterbox (recommended for YOLO11/YOLO12)
 inline std::vector<float> yolo_preprocess_letterbox(const cv::Mat& img, int resize_height, int resize_width, PreprocInfo& info) {
    cv::Mat lb = letterbox(img, resize_height, resize_width, info);
    cv::Mat rgb; cv::cvtColor(lb, rgb, cv::COLOR_BGR2RGB);
    rgb.convertTo(rgb, CV_32F, 1.0 / 255.0);
-   std::vector<cv::Mat> ch(3); cv::split(rgb, ch);
+   
+   std::vector<cv::Mat> ch(3); 
+   cv::split(rgb, ch);
+
    std::vector<float> input; input.reserve((size_t)3 * rgb.rows * rgb.cols);
    for(auto& c : ch) {
       input.insert(input.end(), (float*)c.datastart, (float*)c.dataend);
