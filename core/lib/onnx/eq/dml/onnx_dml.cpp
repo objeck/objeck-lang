@@ -1,8 +1,54 @@
-#include "../common.h"
+﻿#include "../common.h"
 
 #ifdef _WIN32
 namespace fs = std::filesystem;
 #endif
+
+#include <unordered_map> 
+#include <cmath>
+#include <algorithm>
+#include <numeric>
+
+//  Simple IoU and NMS utilities for YOLO post-processing
+static float iou_rect(float x1, float y1, float x2, float y2, float X1, float Y1, float X2, float Y2) {
+   float xx1 = std::max(x1, X1), yy1 = std::max(y1, Y1);
+   float xx2 = std::min(x2, X2), yy2 = std::min(y2, Y2);
+   float w = std::max(0.f, xx2 - xx1), h = std::max(0.f, yy2 - yy1);
+   float inter = w * h, uni = (x2 - x1) * (y2 - y1) + (X2 - X1) * (Y2 - Y1) - inter;
+   return uni <= 0 ? 0.f : inter / uni;
+}
+
+static void nms(std::vector<size_t>& keep_idx, const std::vector<cv::Rect>& boxes, const std::vector<double>& scores, float iou_thres) {
+   std::vector<size_t> idx(boxes.size());
+   std::iota(idx.begin(), idx.end(), 0);
+   std::sort(idx.begin(), idx.end(), [&](size_t a, size_t b) {return scores[a] > scores[b]; });
+   std::vector<char> sup(boxes.size(), 0);
+   for(size_t i = 0; i < idx.size(); ++i) {
+      size_t p = idx[i];
+      // replace `continue` with if/else
+      if(!sup[p]) {
+         keep_idx.push_back(p);
+         for(size_t j = i + 1; j < idx.size(); ++j) {
+            size_t q = idx[j];
+            if(!sup[q]) {
+               float iou = iou_rect((float)boxes[p].x, (float)boxes[p].y,
+                                    (float)(boxes[p].x + boxes[p].width),
+                                    (float)(boxes[p].y + boxes[p].height),
+                                    (float)boxes[q].x, (float)boxes[q].y,
+                                    (float)(boxes[q].x + boxes[q].width),
+                                    (float)(boxes[q].y + boxes[q].height));
+               if(iou > iou_thres) sup[q] = 1;
+            }
+            else {
+               // suppressed q
+            }
+         }
+      }
+      else {
+         // suppressed pivot p
+      }
+   }
+}
 
 extern "C" {
    // initialize library
@@ -17,7 +63,7 @@ extern "C" {
 #ifdef _WIN32
    __declspec(dllexport)
 #endif
-   void unload_lib() {
+      void unload_lib() {
    }
 
    // List available ONNX execution providers
@@ -47,6 +93,7 @@ extern "C" {
       const std::wstring model_path = APITools_GetStringValue(context, 4);
 
       const double conf_threshold = APITools_GetFloatValue(context, 5);
+      const double iou_threshold = 0.45; //  default NMS IoU
 
       size_t* labels_array = (size_t*)APITools_GetArray(context, 6)[0];
       const long labels_size = ((long)APITools_GetArraySize(labels_array));
@@ -58,19 +105,14 @@ extern "C" {
       }
 
       try {
-         /*
-         // Start timing
-         auto start = std::chrono::high_resolution_clock::now();
-         */
-
          Ort::Env env(OrtLoggingLevel::ORT_LOGGING_LEVEL_WARNING);
 
          // Set DML provider options
          std::unordered_map<std::string, std::string> provider_options;
          provider_options["device_id"] = "0";
 
-         // Create session options with QNN execution provider
-         Ort::SessionOptions session_options;
+         // Create session options with DML execution provider
+         Ort::SessionOptions session_options;// comment
          session_options.AppendExecutionProvider("DmlExecutionProvider", provider_options);
          session_options.SetExecutionMode(ExecutionMode::ORT_PARALLEL);
 
@@ -84,10 +126,11 @@ extern "C" {
             return;
          }
 
-         // Preprocess image for YOLO
-         std::vector<float> input_tensor_values = yolo_preprocess(img, resize_height, resize_width);
-         size_t input_tensor_size = 3 * resize_height * resize_width;
-         
+         // Preprocess image using letterbox (YOLO11/12 compatible)
+         PreprocInfo pp;
+         std::vector<float> input_tensor_values = yolo_preprocess_letterbox(img, resize_height, resize_width, pp);
+         size_t input_tensor_size = input_tensor_values.size();
+
          // Create input tensor
          std::array<int64_t, 4> input_shape = { 1, 3, resize_height, resize_width };
 
@@ -128,13 +171,12 @@ extern "C" {
          // Build results
          size_t* yolo_result_obj = APITools_CreateObject(context, L"API.Onnx.YoloResult");
 
-         // Copy output
+         // Copy raw output for debugging/compat
          size_t* output_array = APITools_MakeFloatArray(context, output_len);
          double* output_array_buffer = reinterpret_cast<double*>(output_array + 3);
          for(size_t i = 0; i < output_len; ++i) {
             output_array_buffer[i] = static_cast<double>(output_data[i]);
          }
-
          yolo_result_obj[0] = (size_t)output_array;
 
          // Copy output shape
@@ -146,76 +188,141 @@ extern "C" {
          }
          yolo_result_obj[1] = (size_t)output_shape_array;
 
-         // Copy image size
+         // Copy original image size
          const int rows = img.rows;
          const int cols = img.cols;
-
          size_t* output_image_array = APITools_MakeIntArray(context, 2);
          size_t* output_image_array_buffer = output_image_array + 3;
          output_image_array_buffer[0] = rows;
          output_image_array_buffer[1] = cols;
          yolo_result_obj[2] = (size_t)output_image_array;
 
-         // Process results
-         std::vector<size_t> class_results;
+         // Decode YOLO11/YOLO12 fused head: supports [1,C,N] or [1,N,C] and (4+nc) or (4+1+nc)
+         int64_t A = (output_shape.size() >= 2) ? output_shape[1] : 0;
+         int64_t B = (output_shape.size() >= 3) ? output_shape[2] : 0;
+         if(output_shape.size() != 3 || output_shape[0] != 1) {
+            std::wcerr << L"Unexpected YOLO output shape" << std::endl;
+         }
 
-         const int result_count = (int)output_shape[1];
-         for(int i = 0; i < result_count; ++i) {
-            const int base = i * (labels_size + 5);
-            const double x = output_data[base + 0];
-            const double y = output_data[base + 1];
-            const double w = output_data[base + 2];
-            const double h = output_data[base + 3];
-            const double confidence = output_data[base + 4];
+         int64_t C = std::min<int64_t>(A, B);      // channels per candidate  (≈ 84 or 85)
+         int64_t N = std::max<int64_t>(A, B);      // number of candidates    (≈ 8400)
+         bool need_transpose = (A == C);           // original was [1,C,N] if A is smaller
 
-            if(confidence >= conf_threshold) {
-               int left = static_cast<int>(((x - w / 2.0) * cols) / resize_width);
-               int top = static_cast<int>(((y - h / 2.0) * rows) / resize_height);
-               int width = static_cast<int>((w * cols) / resize_width);
-               int height = static_cast<int>((h * rows) / resize_height);
+         std::vector<float> preds; preds.reserve((size_t)N * C);
+         const float* data_ptr = output_data;
+         if(need_transpose) {
+            preds.resize((size_t)N * C);
+            // transpose [1,C,N] -> [N,C]
+            for(int64_t c = 0; c < C; ++c)
+               for(int64_t n = 0; n < N; ++n)
+                  preds[(size_t)n * C + c] = output_data[c * N + n];
+            data_ptr = preds.data();
+         }
+         // now data_ptr points to a contiguous [N, C] view
 
-               // Find the class with the highest probability
-               int start = base + 5;
-               int class_id = 0;
-               double max_score = output_data[start];
 
-               for(int j = 1; j < labels_size; ++j) {
-                  double score = output_data[start + j];
-                  if(score > max_score) {
-                     max_score = score;
-                     class_id = j;
-                  }
-               }
+         // head layout
+         int Ctotal = (int)C;
+         int nc_hint = (int)labels_size;
+         bool has_obj = false;
+         int idx_obj = -1, idx_cls0 = 4;
 
-               // class ID
-               size_t* class_result_obj = APITools_CreateObject(context, L"API.Onnx.YoloClassification");
-               class_result_obj[0] = class_id;
+         if(Ctotal == 4 + nc_hint) { has_obj = false; idx_cls0 = 4; }
+         else if(Ctotal == 5 + nc_hint) { has_obj = true; idx_obj = 4; idx_cls0 = 5; }
+         else if(Ctotal > 5) { has_obj = false; idx_cls0 = 4; nc_hint = Ctotal - 4; }
+         else {
+            std::wcerr << L"Unexpected channels per candidate: " << Ctotal << std::endl;
+         }
 
-               // copy label name
-               if(class_id < labels_size) {
-                  class_result_obj[1] = labels_objs[class_id];
-               }
+         // collect candidates
+         std::vector<cv::Rect> boxes; boxes.reserve((size_t)N);
+         std::vector<double> scores; scores.reserve((size_t)N);
+         std::vector<int> classes; classes.reserve((size_t)N);
 
-               // confidence
-               *((double*)(&class_result_obj[2])) = confidence;
+         for(int64_t i = 0; i < N; ++i) {
+            const float* p = data_ptr + i * C;
+            float cx = p[0], cy = p[1], w = p[2], h = p[3];
 
-               // copy rectangle
-               size_t* class_rect_obj = APITools_CreateObject(context, L"API.OpenCV.Rect");
-               class_rect_obj[0] = left;
-               class_rect_obj[1] = top;
-               class_rect_obj[2] = width;
-               class_rect_obj[3] = height;
-               class_result_obj[3] = (size_t)class_rect_obj;
+            // best class prob
+            // head layout has set: C, idx_cls0, has_obj, idx_obj, labels_size
+            int max_classes_in_tensor = (int)(C - idx_cls0);
+            int nc = (int)labels_size;
+            if(nc <= 0 || nc > max_classes_in_tensor) nc = max_classes_in_tensor;
 
-               /*
-               // Add classification
-               std::wcout << L"Detected object: Class ID = " << class_id << L", Confidence = "
-                   << conf << L", Bounding Box = [" << left << L", " << top << L", "
-                   << width << L", " << height << L"]" << std::endl;
-               */
+            auto sigmoid = [](float x) { return 1.f / (1.f + std::exp(-x)); };
 
-               class_results.push_back((size_t)class_result_obj);
+            int best = 0; float bestp = 0.f;
+            for(int j = 0; j < nc; ++j) {
+               float pj = sigmoid(p[idx_cls0 + j]);   // ensure [0,1]
+               if(pj > bestp) { bestp = pj; best = j; }
             }
+            float obj = has_obj ? sigmoid(p[idx_obj]) : 1.f;
+            float score = obj * bestp;
+            // if/else instead of continue on confidence
+            if(score >= (float)conf_threshold) {
+
+               // xywh (pixel space at network input) -> xyxy
+               float x1 = cx - w * 0.5f;
+               float y1 = cy - h * 0.5f;
+               float x2 = cx + w * 0.5f;
+               float y2 = cy + h * 0.5f;
+
+               // undo letterbox
+               x1 = (x1 - pp.pad_x) / pp.scale;
+               y1 = (y1 - pp.pad_y) / pp.scale;
+               x2 = (x2 - pp.pad_x) / pp.scale;
+               y2 = (y2 - pp.pad_y) / pp.scale;
+
+               // clip to image
+               x1 = std::min(std::max(x1, 0.f), (float)cols - 1);
+               y1 = std::min(std::max(y1, 0.f), (float)rows - 1);
+               x2 = std::min(std::max(x2, 0.f), (float)cols - 1);
+               y2 = std::min(std::max(y2, 0.f), (float)rows - 1);
+
+               int left = (int)std::round(x1);
+               int top = (int)std::round(y1);
+               int width = (int)std::round(x2 - x1);
+               int height = (int)std::round(y2 - y1);
+               if(width > 0 && height > 0) {
+                  boxes.emplace_back(left, top, width, height);
+                  scores.push_back((double)score);
+                  classes.push_back(best);
+               }
+            }
+         }
+
+         // NMS (class-wise)
+         std::vector<size_t> keep;
+         nms(keep, boxes, scores, (float)iou_threshold);
+
+         // Build class result objects
+         std::vector<size_t> class_results;
+         class_results.reserve(keep.size());
+         for(size_t k = 0; k < keep.size(); ++k) {
+            size_t i = keep[k];
+
+            int class_id = classes[i];
+            double confidence = scores[i];
+            const cv::Rect& r = boxes[i];
+
+#ifdef _DEBUG
+            std::wcout << L"class_id: " << class_id << L", confidence: " << confidence << L", rect: (" << r.x
+               << "," << r.y << L"," << r.width << "," << r.height << ")" << std::endl;
+#endif
+
+            size_t* class_result_obj = APITools_CreateObject(context, L"API.Onnx.YoloClassification");
+            class_result_obj[0] = class_id;
+            if(class_id < labels_size) {
+               class_result_obj[1] = labels_objs[class_id];
+            }
+            *((double*)(&class_result_obj[2])) = confidence;
+
+            size_t* class_rect_obj = APITools_CreateObject(context, L"API.OpenCV.Rect");
+            class_rect_obj[0] = r.x; class_rect_obj[1] = r.y;
+            class_rect_obj[2] = r.width; class_rect_obj[3] = r.height;
+            class_result_obj[3] = (size_t)class_rect_obj;
+
+            class_results.push_back((size_t)class_result_obj);
          }
 
          // Create class results array
@@ -227,13 +334,6 @@ extern "C" {
          yolo_result_obj[3] = (size_t)class_array;
 
          APITools_SetObjectValue(context, 0, yolo_result_obj);
-
-         /*
-         // Calculate duration in milliseconds
-         auto end = std::chrono::high_resolution_clock::now();
-         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-         std::wcout << L"ONNX inference completed in " << duration << L" ms." << std::endl;
-         */
       }
       catch(const Ort::Exception& e) {
          std::wcerr << L"ONNX Runtime Error: " << e.what() << std::endl;
@@ -264,11 +364,6 @@ extern "C" {
       }
 
       try {
-         /*
-         // Start timing
-         auto start = std::chrono::high_resolution_clock::now();
-         */
-
          Ort::Env env(OrtLoggingLevel::ORT_LOGGING_LEVEL_WARNING);
 
          // Set DML provider options
@@ -334,7 +429,7 @@ extern "C" {
          // Copy output
          size_t* output_array = APITools_MakeFloatArray(context, output_len);
          double* output_array_buffer = reinterpret_cast<double*>(output_array + 3);
-         
+
          // find max for numerical stability
          double max_logit = output_data[0];
          for(size_t j = 1; j < output_len; j++) {
@@ -357,15 +452,13 @@ extern "C" {
 
          // find the top confidence
          size_t image_index = 0;
-         double top_confidence= output_data[0];
+         double top_confidence = output_array_buffer[0];// fix bug using probs not logits
          for(size_t j = 1; j < output_len; j++) {
             if(output_array_buffer[j] > top_confidence) {
                top_confidence = output_array_buffer[j];
                image_index = j;
             }
          }
-
-         // std::wcout << L"Predicted class ID: " << image_index << L", confidence: " << top_confidence; 
 
          // Build results
          size_t* resnet_result_obj = APITools_CreateObject(context, L"API.Onnx.ResNetResult");
@@ -390,7 +483,7 @@ extern "C" {
          output_image_array_buffer[1] = cols;
          resnet_result_obj[2] = (size_t)output_image_array;
 
-         resnet_result_obj[3] = image_index; // top idex
+         resnet_result_obj[3] = image_index; // top index comment typo fix
          *((double*)(&resnet_result_obj[4])) = top_confidence;
 
          // copy label name
@@ -399,13 +492,6 @@ extern "C" {
          }
 
          APITools_SetObjectValue(context, 0, resnet_result_obj);
-
-         /*
-         // Calculate duration in milliseconds
-         auto end = std::chrono::high_resolution_clock::now();
-         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-         std::wcout << L"ONNX inference completed in " << duration << L" ms." << std::endl;
-         */
       }
       catch(const Ort::Exception& e) {
          std::wcerr << L"ONNX Runtime Error: " << e.what() << std::endl;

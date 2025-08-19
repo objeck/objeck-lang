@@ -41,8 +41,8 @@ REM Clean
 REM 
 
 del /q %OBJECK_LIB_PATH%\native\libobjk_onnx.dll
-del /q %OBJECK_DEBUG_PATH%\*.dll
-del /q %OBJECK_BIN_PATH%\*.dll
+REM del /q %OBJECK_DEBUG_PATH%\*.dll
+REM del /q %OBJECK_BIN_PATH%\*.dll
 
 REM
 REM Compile libraries
@@ -77,5 +77,5 @@ REM
 if [%4] == [] goto end
 	del /q *.obe
 	obc -src %4 -lib opencv,onnx
-	obr %4 %4
+	obr %4 %5
 :end
