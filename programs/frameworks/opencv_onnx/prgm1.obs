@@ -17,7 +17,7 @@ class Test {
 		image_path := root_dir + "/images/";
 		image_path := image_path->ReplaceAll('\\', '/');
 
-		model_path := root_dir + "/yolov5x.onnx";
+		model_path := root_dir + "/yolo11x.onnx";
 		model_path := model_path->ReplaceAll('\\', '/');
 
 		label_path := root_dir + "/yolo_labels.txt";
@@ -32,7 +32,7 @@ class Test {
 		"image_label_size={$image_label_size}"->PrintLine();
 
 		# set image
-		image_path += "skiers.jpg";
+		image_path += "dogs.jpg";
 
 		image_bytes := FileReader->ReadBinaryFile(image_path);
 		image_size := image_bytes->Size();

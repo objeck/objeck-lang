@@ -1,4 +1,4 @@
-@echo off
+rem @echo off
 setlocal
 
 if not [%1]==[x64] if not [%1]==[arm64] (
@@ -49,7 +49,7 @@ REM
 
 copy /y %OBJECK_BASE%\core\lib\opencv\%1\%TYPE%\libobjk_opencv.dll %OBJECK_LIB_PATH%\native
 
-copy /y %OBJECK_BASE%\core\lib\opencv\win\%1\bin\*.dll %OBJECK_DEBUG_PATH%
+REM copy /y %OBJECK_BASE%\core\lib\opencv\win\%1\bin\*.dll %OBJECK_DEBUG_PATH%
 copy /y %OBJECK_BASE%\core\lib\opencv\win\%1\bin\*.dll %OBJECK_BIN_PATH%
 
 REM
