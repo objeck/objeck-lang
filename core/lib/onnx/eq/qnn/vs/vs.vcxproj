@@ -72,22 +72,24 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">
-    <IncludePath>$(VC_IncludePath);..\win\onnx\include\onnxruntime\core/session;..\..\..\..\opencv\win\include;..\..\..\..\openssl\win\include;..\..\..\..\zlib\win</IncludePath>
+    <IncludePath>$(VC_IncludePath);..\win\onnx\include\onnxruntime\core\session;..\..\..\..\opencv\win\include;..\..\..\..\openssl\win\include;..\..\..\..\zlib\win</IncludePath>
     <TargetName>libobjk_onnx</TargetName>
     <LibraryPath>$(LibraryPath);..\win\onnx\arm64\lib;..\..\..\..\opencv\win\arm64\lib</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <TargetName>libobjk_onnx</TargetName>
-    <LibraryPath>$(LibraryPath);..\win\onnx\arm64\lib;..\..\..\..\opencv\win\x64\lib</LibraryPath>
+    <LibraryPath>$(LibraryPath);..\win\onnx\x64\lib;..\..\..\..\opencv\win\x64\lib</LibraryPath>
+    <IncludePath>$(VC_IncludePath);..\win\onnx\include\onnxruntime\core\session;..\..\..\..\opencv\win\include;..\..\..\..\openssl\win\include;..\..\..\..\zlib\win</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">
-    <IncludePath>$(VC_IncludePath);..\win\onnx\include\onnxruntime\core/session;..\..\..\..\opencv\win\include;..\..\..\..\openssl\win\include;..\..\..\..\zlib\win</IncludePath>
+    <IncludePath>$(VC_IncludePath);..\win\onnx\include\onnxruntime\core\session;..\..\..\..\opencv\win\include;..\..\..\..\openssl\win\include;..\..\..\..\zlib\win</IncludePath>
     <TargetName>libobjk_onnx</TargetName>
     <LibraryPath>$(LibraryPath);..\win\onnx\arm64\lib;..\..\..\..\opencv\win\arm64\lib</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <TargetName>libobjk_onnx</TargetName>
-    <LibraryPath>$(LibraryPath);..\win\onnx\arm64\lib;..\..\..\..\opencv\win\x64\lib</LibraryPath>
+    <LibraryPath>$(LibraryPath);..\win\onnx\x64\lib;..\..\..\..\opencv\win\x64\lib</LibraryPath>
+    <IncludePath>$(VC_IncludePath);..\win\onnx\include\onnxruntime\core\session;..\..\..\..\opencv\win\include;..\..\..\..\openssl\win\include;..\..\..\..\zlib\win</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">
     <ClCompile>
@@ -123,7 +125,8 @@
       <AdditionalDependencies>$(CoreLibraryDependencies);%(AdditionalDependencies);opencv_world4120d.lib;onnxruntime.lib;onnxruntime_providers.lib</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>pushd C:\Users\objec\Documents\Code\objeck-lang\programs\tests &amp;&amp; build_onnx.cmd x64 qnn prgm352 &amp;&amp; popd</Command>
+      <Command>
+      </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">
