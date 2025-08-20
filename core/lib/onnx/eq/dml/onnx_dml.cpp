@@ -5,50 +5,6 @@ namespace fs = std::filesystem;
 #endif
 
 #include <unordered_map> 
-#include <cmath>
-#include <algorithm>
-#include <numeric>
-
-//  Simple IoU and NMS utilities for YOLO post-processing
-static float iou_rect(float x1, float y1, float x2, float y2, float X1, float Y1, float X2, float Y2) {
-   float xx1 = std::max(x1, X1), yy1 = std::max(y1, Y1);
-   float xx2 = std::min(x2, X2), yy2 = std::min(y2, Y2);
-   float w = std::max(0.f, xx2 - xx1), h = std::max(0.f, yy2 - yy1);
-   float inter = w * h, uni = (x2 - x1) * (y2 - y1) + (X2 - X1) * (Y2 - Y1) - inter;
-   return uni <= 0 ? 0.f : inter / uni;
-}
-
-static void nms(std::vector<size_t>& keep_idx, const std::vector<cv::Rect>& boxes, const std::vector<double>& scores, float iou_thres) {
-   std::vector<size_t> idx(boxes.size());
-   std::iota(idx.begin(), idx.end(), 0);
-   std::sort(idx.begin(), idx.end(), [&](size_t a, size_t b) {return scores[a] > scores[b]; });
-   std::vector<char> sup(boxes.size(), 0);
-   for(size_t i = 0; i < idx.size(); ++i) {
-      size_t p = idx[i];
-      // replace `continue` with if/else
-      if(!sup[p]) {
-         keep_idx.push_back(p);
-         for(size_t j = i + 1; j < idx.size(); ++j) {
-            size_t q = idx[j];
-            if(!sup[q]) {
-               float iou = iou_rect((float)boxes[p].x, (float)boxes[p].y,
-                                    (float)(boxes[p].x + boxes[p].width),
-                                    (float)(boxes[p].y + boxes[p].height),
-                                    (float)boxes[q].x, (float)boxes[q].y,
-                                    (float)(boxes[q].x + boxes[q].width),
-                                    (float)(boxes[q].y + boxes[q].height));
-               if(iou > iou_thres) sup[q] = 1;
-            }
-            else {
-               // suppressed q
-            }
-         }
-      }
-      else {
-         // suppressed pivot p
-      }
-   }
-}
 
 extern "C" {
    // initialize library

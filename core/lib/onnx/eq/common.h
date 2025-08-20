@@ -10,6 +10,9 @@
 #include <fstream>
 #include <random>
 #include <filesystem>
+#include <cmath>
+#include <algorithm>
+#include <numeric>
 
 #include <opencv2/opencv.hpp>
 #include <onnxruntime_cxx_api.h>
@@ -36,7 +39,7 @@ struct PreprocInfo {
 };
 
 // Aspect-preserving resize with padding (letterbox)
-inline cv::Mat letterbox(const cv::Mat& img, int resize_height, int resize_width, PreprocInfo& info) {
+static inline cv::Mat letterbox(const cv::Mat& img, int resize_height, int resize_width, PreprocInfo& info) {
    info.img_w = img.cols; 
    info.img_h = img.rows;
    info.in_w = resize_width; 
@@ -56,8 +59,49 @@ inline cv::Mat letterbox(const cv::Mat& img, int resize_height, int resize_width
    return out;
 }
 
+//  Simple IoU and NMS utilities for YOLO post-processing
+static float iou_rect(float x1, float y1, float x2, float y2, float X1, float Y1, float X2, float Y2) {
+   float xx1 = std::max(x1, X1), yy1 = std::max(y1, Y1);
+   float xx2 = std::min(x2, X2), yy2 = std::min(y2, Y2);
+   float w = std::max(0.f, xx2 - xx1), h = std::max(0.f, yy2 - yy1);
+   float inter = w * h, uni = (x2 - x1) * (y2 - y1) + (X2 - X1) * (Y2 - Y1) - inter;
+   return uni <= 0 ? 0.f : inter / uni;
+}
+
+static void nms(std::vector<size_t>& keep_idx, const std::vector<cv::Rect>& boxes, const std::vector<double>& scores, float iou_thres) {
+   std::vector<size_t> idx(boxes.size());
+   std::iota(idx.begin(), idx.end(), 0);
+   std::sort(idx.begin(), idx.end(), [&](size_t a, size_t b) {return scores[a] > scores[b]; });
+   std::vector<char> sup(boxes.size(), 0);
+   for(size_t i = 0; i < idx.size(); ++i) {
+      size_t p = idx[i];
+      // replace `continue` with if/else
+      if(!sup[p]) {
+         keep_idx.push_back(p);
+         for(size_t j = i + 1; j < idx.size(); ++j) {
+            size_t q = idx[j];
+            if(!sup[q]) {
+               float iou = iou_rect((float)boxes[p].x, (float)boxes[p].y,
+                                    (float)(boxes[p].x + boxes[p].width),
+                                    (float)(boxes[p].y + boxes[p].height),
+                                    (float)boxes[q].x, (float)boxes[q].y,
+                                    (float)(boxes[q].x + boxes[q].width),
+                                    (float)(boxes[q].y + boxes[q].height));
+               if(iou > iou_thres) sup[q] = 1;
+            }
+            else {
+               // suppressed q
+            }
+         }
+      }
+      else {
+         // suppressed pivot p
+      }
+   }
+}
+
 // Preprocess the image for YOLO (legacy direct-resize kept for compatibility)
-std::vector<float> yolo_preprocess(const cv::Mat& img, int resize_height, int resize_width) {
+static std::vector<float> yolo_preprocess(const cv::Mat& img, int resize_height, int resize_width) {
    cv::Mat resized, float_img, blob;
 
    // Resize and convert to float RGB
@@ -77,7 +121,7 @@ std::vector<float> yolo_preprocess(const cv::Mat& img, int resize_height, int re
 }
 
 // YOLO preprocess that uses letterbox (recommended for YOLO11/YOLO12)
-inline std::vector<float> yolo_preprocess_letterbox(const cv::Mat& img, int resize_height, int resize_width, PreprocInfo& info) {
+static inline std::vector<float> yolo_preprocess_letterbox(const cv::Mat& img, int resize_height, int resize_width, PreprocInfo& info) {
    cv::Mat lb = letterbox(img, resize_height, resize_width, info);
    cv::Mat rgb; cv::cvtColor(lb, rgb, cv::COLOR_BGR2RGB);
    rgb.convertTo(rgb, CV_32F, 1.0 / 255.0);
@@ -94,7 +138,7 @@ inline std::vector<float> yolo_preprocess_letterbox(const cv::Mat& img, int resi
 }
 
 // Preprocess image for ResNet
-std::vector<float> resnet_preprocess(const cv::Mat& img, int resize_height, int resize_width) {
+static std::vector<float> resnet_preprocess(const cv::Mat& img, int resize_height, int resize_width) {
    cv::Mat resized;
    cv::resize(img, resized, cv::Size(resize_width, resize_height));
    resized.convertTo(resized, CV_32F, 1.0 / 255.0);
@@ -120,7 +164,7 @@ std::vector<float> resnet_preprocess(const cv::Mat& img, int resize_height, int 
 }
 
 // Get available execution provider names
-size_t* get_provider_names(VMContext& context) {
+static size_t* get_provider_names(VMContext& context) {
    // Get execution provider names
    std::vector<std::wstring> execution_provider_names;
 
@@ -141,7 +185,7 @@ size_t* get_provider_names(VMContext& context) {
 }
 
 // Read OpenCV image from raw data
-cv::Mat opencv_raw_read(size_t* image_obj, VMContext& context) {
+static cv::Mat opencv_raw_read(size_t* image_obj, VMContext& context) {
    const int type = (int)image_obj[0];
    const int rows = (int)image_obj[2];
    const int cols = (int)image_obj[1];
@@ -158,7 +202,7 @@ cv::Mat opencv_raw_read(size_t* image_obj, VMContext& context) {
 }
 
 // Write OpenCV image to raw data
-size_t* opencv_raw_write(cv::Mat& image, VMContext& context) {
+static size_t* opencv_raw_write(cv::Mat& image, VMContext& context) {
    size_t* image_obj = APITools_CreateObject(context, L"API.OpenCV.Image");
 
    image_obj[0] = image.type(); // type
