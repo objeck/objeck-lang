@@ -106,8 +106,7 @@
       <AdditionalDependencies>$(CoreLibraryDependencies);%(AdditionalDependencies);opencv_world4120d.lib;onnxruntime.lib;onnxruntime_providers.lib</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>
-      </Command>
+      <Command>pushd ..\..\..\..\..\..\programs\frameworks\opencv_onnx &amp;&amp; build_onnx.cmd arm64 Debug qnn &amp;&amp; popd</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -167,7 +166,7 @@
     <ClCompile Include="..\onnx_qnn.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\onnx_common.h" />
+    <ClInclude Include="..\..\common.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
