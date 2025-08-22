@@ -5845,7 +5845,7 @@ each(i : cities) {
 		@param delim splitting delimiter
 		@return array of split sub strings 
 		~#
-		method : public : native : Split(delim : String) ~ String[] {
+		method : public : Split(delim : String) ~ String[] {
 			delim_size := delim->Size();
 			if(delim_size = 0 | @pos = 0) {
 				return String->New[0];
@@ -5928,7 +5928,7 @@ each(i : cities) {
 		@param delim splitting delimiter
 		@return array of split sub strings 
 		~#
-		method : public : native : Split(delim : Char) ~ String[] {
+		method : public : Split(delim : Char) ~ String[] {
 			count := 0;
 			
 			each(i : @pos) {
