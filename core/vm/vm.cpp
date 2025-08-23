@@ -49,7 +49,7 @@ int Execute(int argc, const char* argv[], size_t gc_threshold)
 
     // execute
     size_t* op_stack = new size_t[OP_STACK_SIZE];
-    long* stack_pos = new long;
+    size_t* stack_pos = new size_t;
     (*stack_pos) = 0;
     
 #ifdef _TIMING

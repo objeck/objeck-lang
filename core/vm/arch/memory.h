@@ -57,7 +57,7 @@
 
 struct StackOperMemory {
   size_t* op_stack;
-  long* stack_pos;
+  size_t* stack_pos;
 };
 
 // used to monitor the state of active stack frames
@@ -70,7 +70,7 @@ struct StackFrameMonitor {
 // holders
 struct CollectionInfo {
   size_t* op_stack;
-  long stack_pos;
+  size_t stack_pos;
 };
 
 struct ClassMethodId {
@@ -130,7 +130,7 @@ class MemoryManager {
   static unsigned int WINAPI CheckJitRoots(LPVOID arg);
   
   // recover memory
-  static void CollectAllMemory(size_t* op_stack, long stack_pos);
+  static void CollectAllMemory(size_t* op_stack, size_t stack_pos);
   static unsigned int WINAPI CollectMemory(LPVOID arg);
 #else  
   // mark memory
@@ -139,7 +139,7 @@ class MemoryManager {
   static void* CheckPdaRoots(void* arg);
   static void* CheckJitRoots(void* arg);
   // recover memory
-  static void CollectAllMemory(size_t* op_stack, long stack_pos);
+  static void CollectAllMemory(size_t* op_stack, size_t stack_pos);
   static void* CollectMemory(void* arg);
 #endif
     
@@ -216,7 +216,7 @@ class MemoryManager {
   static void CheckMemory(size_t* mem, StackDclr** dclrs, const long dcls_size, const long depth);
   static void CheckObject(size_t* mem, bool is_obj, const long depth);
   
-  static size_t* AllocateObject(const wchar_t* obj_name, size_t* op_stack, long stack_pos, bool collect = true) {
+  static size_t* AllocateObject(const wchar_t* obj_name, size_t* op_stack, size_t stack_pos, bool collect = true) {
     StackClass* cls = prgm->GetClass(obj_name);
     if(cls) {
       return AllocateObject(cls->GetId(), op_stack, stack_pos, collect);
@@ -225,8 +225,8 @@ class MemoryManager {
     return nullptr;
   }
   
-  static size_t* AllocateObject(const long obj_id, size_t* op_stack, long stack_pos, bool collect = true);
-  static size_t* AllocateArray(const size_t size, const MemoryType type, size_t* op_stack, long stack_pos, bool collect = true);
+  static size_t* AllocateObject(const long obj_id, size_t* op_stack, size_t stack_pos, bool collect = true);
+  static size_t* AllocateArray(const size_t size, const MemoryType type, size_t* op_stack, size_t stack_pos, bool collect = true);
   
   // object verification
   static size_t* ValidObjectCast(size_t* mem, long to_id, long* cls_hierarchy, long** cls_interfaces);
