@@ -2244,7 +2244,7 @@ void* StackInterpreter::AsyncMethodCall(void* arg)
 
   // execute
   size_t* thread_op_stack = new size_t[OP_STACK_SIZE];
-  long* thread_stack_pos = new long;
+  size_t* thread_stack_pos = new size_t;
   (*thread_stack_pos) = 0;
 
   // set parameter
