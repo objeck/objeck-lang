@@ -335,7 +335,7 @@ void Runtime::Debugger::ProcessRun() {
     
     // execute
     op_stack = new size_t[CALC_STACK_SIZE];
-    stack_pos = new long;
+    stack_pos = new size_t;
     (*stack_pos) = 0;
 
 #ifdef _TIMING

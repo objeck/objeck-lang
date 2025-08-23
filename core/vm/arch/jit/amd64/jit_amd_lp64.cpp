@@ -5198,7 +5198,7 @@ void JitRuntime::Initialize(StackProgram* p)
 }
 
 // Executes machine code
-long JitRuntime::Execute(StackMethod* method, size_t* inst, size_t* op_stack, long* stack_pos, StackFrame** call_stack, long* call_stack_pos, StackFrame* frame) 
+long JitRuntime::Execute(StackMethod* method, size_t* inst, size_t* op_stack, size_t* stack_pos, StackFrame** call_stack, long* call_stack_pos, StackFrame* frame) 
 {
   const long cls_id = method->GetClass()->GetId();
   const long mthd_id = method->GetId();

@@ -126,7 +126,7 @@ namespace Runtime {
     StackProgram* cur_program;
     StackFrame* cur_frame;
     size_t* op_stack;
-    long* stack_pos;
+    size_t* stack_pos;
     Loader* loader;
 
     // pretty prints a method
