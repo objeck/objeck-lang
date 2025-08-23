@@ -1029,7 +1029,7 @@ namespace Runtime {
   /**
    * Prototype for JIT function
    */
-  typedef long(*jit_fun_ptr)(long cls_id, long mthd_id, size_t* cls_mem, size_t* inst, size_t* op_stack, long* stack_pos, 
+  typedef long(*jit_fun_ptr)(long cls_id, long mthd_id, size_t* cls_mem, size_t* inst, size_t* op_stack, size_t* stack_pos, 
                              StackFrame** call_stack, long* call_stack_pos, size_t** jit_mem, long* offset);
 
   /**
@@ -1042,7 +1042,7 @@ namespace Runtime {
     static void Initialize(StackProgram* p);
 
     // Executes machine code
-    long Execute(StackMethod* method, size_t* inst, size_t* op_stack, long* stack_pos, 
+    long Execute(StackMethod* method, size_t* inst, size_t* op_stack, size_t* stack_pos, 
                  StackFrame** call_stack, long* call_stack_pos, StackFrame* frame);
   };
 }
