@@ -866,7 +866,7 @@ void* MemoryManager::CheckStack(void* arg)
 #endif    
 #endif
 
-  while(info->stack_pos > -1) {
+  while((int64_t)info->stack_pos > -1) {
     size_t* check_mem = (size_t*)info->op_stack[info->stack_pos--];
 #ifndef _GC_SERIAL
     MUTEX_LOCK(&allocated_lock);
