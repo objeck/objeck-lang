@@ -149,7 +149,6 @@ bundle Web.HTTP.Server {
 				};
 
 				while(<>@stop) {
-"--- 0 ---"->PrintLine();				
 					thread := System.Concurrency.Thread->New() {
 						New() {
 							Parent()
@@ -161,7 +160,6 @@ bundle Web.HTTP.Server {
 							client := params->GetSecond();
 							server_config := params->GetThird();
 							is_debug := params->GetForth();
-"--- 1 ---"->PrintLine();				
 
 							handler := callback->Instance(callback->GetName())->As(HttpRequestHandler);
 							handler->SetConfig(server_config, is_debug->Get());
@@ -171,7 +169,6 @@ bundle Web.HTTP.Server {
 
 					params := Collection.Tuple.Quartet->New(callback, @server->Accept(), @server_config, BoolRef->New(@is_debug))<Class, TCPSocket, WebServerConfig, BoolRef>;
 					thread->Execute(params);
-"--- 2 ---"->PrintLine();				
 				};
 			}
 			else {

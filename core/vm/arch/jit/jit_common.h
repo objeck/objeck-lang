@@ -53,11 +53,11 @@ public:
   ~JitCompiler();
 
   static void JitStackCallback(const long instr_id, StackInstr* instr, const long cls_id,
-                               const long mthd_id, size_t* inst, size_t* op_stack, long* stack_pos,
+                               const long mthd_id, size_t* inst, size_t* op_stack, size_t* stack_pos,
                                StackFrame** call_stack, long* call_stack_pos, const long ip);
 
-  inline static size_t PopInt(size_t* op_stack, long* stack_pos);
-  inline static void PushInt(size_t* op_stack, long* stack_pos, size_t value);
-  inline static FLOAT_VALUE PopFloat(size_t* op_stack, long* stack_pos);
-  inline static void PushFloat(const FLOAT_VALUE v, size_t* op_stack, long* stack_pos);
+  inline static size_t PopInt(size_t* op_stack, size_t* stack_pos);
+  inline static void PushInt(size_t* op_stack, size_t* stack_pos, size_t value);
+  inline static FLOAT_VALUE PopFloat(size_t* op_stack, size_t* stack_pos);
+  inline static void PushFloat(const FLOAT_VALUE v, size_t* op_stack, size_t* stack_pos);
 };

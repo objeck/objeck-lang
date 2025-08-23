@@ -26,14 +26,10 @@ class Test {
 
 #	function : Test(path : String) ~ Int {
 	function : native : Test(path : String) ~ Int {
-"--- 0 ---"->PrintLine();		
 		input := System.IO.Filesystem.FileReader->ReadFile(path)
-"--- 1 ---"->PrintLine();
 		input->PrintLine();
-"--- 2 ---"->PrintLine();
 
-	"Hello World"
-->PrintLine();
+		"Hello World"->PrintLine();
 
 		v := Vector->New()<String>;
 		v->AddBack("aa")
