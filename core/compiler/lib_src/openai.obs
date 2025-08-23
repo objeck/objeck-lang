@@ -579,10 +579,8 @@ bundle API.OpenAI.Responses {
 			completion_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 			completion_json->Insert("model", model);
 
-"--- 0 ---"->PrintLine();
 
 			if(tools <> Nil) {
-"--- 1 ---"->PrintLine();
 				tools_json := JsonElement->New(JsonElement->JsonType->ARRAY);
 				each(tool in tools) {
 					tools_json->Add(tool->ToJson());

@@ -52,7 +52,7 @@ JitCompiler::~JitCompiler()
  * JIT machine code callback
  */
 void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const long cls_id,
-                                   const long mthd_id, size_t* inst, size_t* op_stack, long* stack_pos,
+                                   const long mthd_id, size_t* inst, size_t* op_stack, size_t* stack_pos,
                                    StackFrame** call_stack, long* call_stack_pos, const long ip)
 {
 #ifdef _DEBUG_JIT
@@ -661,7 +661,7 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
 /**
  * Pop integer value
  */
-size_t JitCompiler::PopInt(size_t* op_stack, long* stack_pos) {
+size_t JitCompiler::PopInt(size_t* op_stack, size_t* stack_pos) {
   const size_t value = op_stack[--(*stack_pos)];
 #ifdef _DEBUG_JIT
   std::wcout << L"\t[pop_i: value=" << (size_t*)value << L"(" << value << L")]" << L"; pos=" << (*stack_pos) << std::endl;
@@ -673,7 +673,7 @@ size_t JitCompiler::PopInt(size_t* op_stack, long* stack_pos) {
 /**
  * Push integer value
  */
-void JitCompiler::PushInt(size_t* op_stack, long* stack_pos, size_t value) {
+void JitCompiler::PushInt(size_t* op_stack, size_t* stack_pos, size_t value) {
   op_stack[(*stack_pos)++] = value;
 #ifdef _DEBUG_JIT
   std::wcout << L"\t[push_i: value=" << (size_t*)value << L"(" << value << L")]" << L"; pos=" << (*stack_pos) << std::endl;
@@ -683,7 +683,7 @@ void JitCompiler::PushInt(size_t* op_stack, long* stack_pos, size_t value) {
 /**
  * Pop FLOAT value
  */
-FLOAT_VALUE JitCompiler::PopFloat(size_t* op_stack, long* stack_pos) {
+FLOAT_VALUE JitCompiler::PopFloat(size_t* op_stack, size_t* stack_pos) {
   (*stack_pos)--;
 
 #ifdef _DEBUG_JIT
@@ -698,7 +698,7 @@ FLOAT_VALUE JitCompiler::PopFloat(size_t* op_stack, long* stack_pos) {
 /**
  * Push FLOAT value
  */
-void JitCompiler::PushFloat(const FLOAT_VALUE v, size_t* op_stack, long* stack_pos) {
+void JitCompiler::PushFloat(const FLOAT_VALUE v, size_t* op_stack, size_t* stack_pos) {
 #ifdef _DEBUG_JIT
   std::wcout << L"  [push_f: stack_pos=" << (*stack_pos) << L"; value=" << v
     << L"]; call_pos=" << (*stack_pos) << std::endl;

@@ -37,10 +37,10 @@
 #define ARRAY_HEADER_OFFSET 3
 
 // function declaration for native C++ callbacks
-typedef void(*APITools_MethodCallByName_Ptr) (size_t* op_stack, long* stack_pos, size_t* instance, const wchar_t* cls_name, const wchar_t* mthd_name);
-typedef void(*APITools_MethodCallById_Ptr) (size_t* op_stack, long* stack_pos, size_t* instance, const int cls_id, const int mthd_id);
-typedef size_t* (*APITools_AllocateObject_Ptr) (const wchar_t*, size_t* op_stack, long stack_pos, bool collect);
-typedef size_t* (*APITools_AllocateArray_Ptr) (const size_t size, const instructions::MemoryType type, size_t* op_stack, long stack_pos, bool collect);
+typedef void(*APITools_MethodCallByName_Ptr) (size_t* op_stack, size_t* stack_pos, size_t* instance, const wchar_t* cls_name, const wchar_t* mthd_name);
+typedef void(*APITools_MethodCallById_Ptr) (size_t* op_stack, size_t* stack_pos, size_t* instance, const int cls_id, const int mthd_id);
+typedef size_t* (*APITools_AllocateObject_Ptr) (const wchar_t*, size_t* op_stack, size_t stack_pos, bool collect);
+typedef size_t* (*APITools_AllocateArray_Ptr) (const size_t size, const instructions::MemoryType type, size_t* op_stack, size_t stack_pos, bool collect);
 
 //
 // API calling context
@@ -50,7 +50,7 @@ struct VMContext {
   size_t* data_array;
   // stack references
   size_t* op_stack;
-  long* stack_pos;
+  size_t* stack_pos;
   // managed allocation routines
   APITools_AllocateArray_Ptr alloc_managed_array;  
   APITools_AllocateObject_Ptr alloc_managed_obj;

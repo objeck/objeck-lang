@@ -205,7 +205,7 @@ void MemoryManager::RemovePdaMethodRoot(StackFrameMonitor* monitor)
 #endif
 }
 
-size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, long stack_pos, bool collect)
+size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, size_t stack_pos, bool collect)
 {
   StackClass* cls = prgm->GetClass(obj_id);
 #ifdef _DEBUG_GC
@@ -261,7 +261,7 @@ size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, long 
   return mem;
 }
 
-size_t* MemoryManager::AllocateArray(const size_t size, const MemoryType type, size_t* op_stack, long stack_pos, bool collect)
+size_t* MemoryManager::AllocateArray(const size_t size, const MemoryType type, size_t* op_stack, size_t stack_pos, bool collect)
 {
   size_t calc_size;
   size_t* mem;
@@ -511,7 +511,7 @@ size_t* MemoryManager::ValidObjectCast(size_t* mem, long to_id, long* cls_hierar
   return nullptr;
 }
 
-void MemoryManager::CollectAllMemory(size_t* op_stack, long stack_pos)
+void MemoryManager::CollectAllMemory(size_t* op_stack, size_t stack_pos)
 {
 #ifdef _TIMING
   std::wcout << L"=========================================" << std::endl;
