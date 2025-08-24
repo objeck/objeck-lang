@@ -1459,20 +1459,19 @@ bundle Game.Framework {
 				return false;
 			};
 			
-"--- 7 ---"->PrintLine();			
 			font_path := Runtime->GetProperty("lib_dir");
 			if(font_path = Nil) {
 				"Failed to load font!"->ErrorLine();
 				return false;
 			};
 			font_path += "/sdl/fonts/lazy.ttf";
-"--- 8 ---"->PrintLine();
+
 			@font := Font->New(font_path, 24);
 			if(@font->IsNull()) {
 				"Failed to load font '{$font_path}'!"->ErrorLine();
 				return false;
 			};
-"--- 9 ---"->PrintLine();
+
 			if(<>Mixer->OpenAudio(44100, Mixer->Flags->MIX_DEFAULT_FORMAT, 2, 2048)) {
 				"SDL mixer could not initialize!"->ErrorLine();
 				return false;
