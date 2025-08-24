@@ -6342,6 +6342,14 @@ each(i : cities) {
 		function : GetInstallDir() ~ String {
 			return GetProperty("install_dir");
 		}
+
+		#~
+		Returns the library directory
+		@return installation directory
+		~#
+		function : GetLibraryDir() ~ String {
+			return GetProperty("lib_dir");
+		}
 		
 		#~
 		Fetches a runtime property. System properties include: 'user_dir', temp_dir and 'install_dir'.
