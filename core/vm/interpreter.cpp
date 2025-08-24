@@ -2767,22 +2767,18 @@ void StackInterpreter::SharedLibraryLoad(StackInstr* instr)
   }
   
   std::wstring path_str;
+  const std::wstring pre_path = GetLibraryPath();
 #ifdef _OBJECK_NATIVE_LIB_PATH
 #ifdef _WIN32
-  size_t value_len;
-  char value[SMALL_BUFFER_MAX];
-  if(!getenv_s(&value_len, value, SMALL_BUFFER_MAX, "OBJECK_LIB_PATH") && strlen(value) > 0) {
-    path_str += BytesToUnicode(value);
-    path_str += L"\\native\\";
+  if(!pre_path.empty()) {
+    path_str += pre_path + L"\\native\\";
   }
   else {
     path_str += L"..\\lib\\native\\";
   }
 #else
-  char* value = getenv("OBJECK_LIB_PATH");
-  if(value) {
-    path_str += BytesToUnicode(value);
-    path_str += L"/native/";
+  if(!pre_path.empty()) {
+     path_str += pre_path + L"/native/";
   }
   else {
     path_str += L"../lib/native/";
