@@ -273,24 +273,8 @@ void StackProgram::InitializeProprieties()
   }
 #endif
 #endif
-
-#ifdef _WIN32
-  char* objk_lib_path = nullptr; size_t objk_lib_path_size = 0;
-  _dupenv_s(&objk_lib_path, &objk_lib_path_size, "OBJECK_LIB_PATH");
-#else
-  const char* objk_lib_path = std::getenv("OBJECK_LIB_PATH");
-#endif
-  if(objk_lib_path) {
-    std::wstring lib_path = BytesToUnicode(objk_lib_path);
-    if(lib_path.back() == L'/' || lib_path.back() == L'\\') {
-      lib_path.pop_back();
-    }
-    properties_map.insert(std::pair<std::wstring, std::wstring>(L"lib_dir", lib_path));
-  }
-#ifdef _WIN32
-  free(objk_lib_path);
-  objk_lib_path = nullptr;
-#endif
+   
+   properties_map.insert(std::pair<std::wstring, std::wstring>(L"lib_dir", GetLibraryPath()));
 
   // user and temp directories
 #ifdef _WIN32  
