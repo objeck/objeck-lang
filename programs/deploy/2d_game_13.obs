@@ -69,7 +69,6 @@ class Game {
 
 	New() {
 		@initialized := true;
-
 		@framework := GameFramework->New(GameConsts->SCREEN_WIDTH, GameConsts->SCREEN_HEIGHT, "Secret Platform");
 		@framework->SetClearColor(Color->New(255, 255, 255));
 
@@ -80,7 +79,7 @@ class Game {
 		else {
 			@base_path := "media";
 		};
-
+		
 		music_path := String->New(@base_path) + "/music.wav";
 		@music := MixMusic->New(music_path);
 		if(@music->IsNull()) {
@@ -137,7 +136,7 @@ class Game {
 			return false;
 		};
 
-		font_path := Runtime->GetInstallDir() + "/lib/sdl/fonts/lazy.ttf";
+		font_path := Runtime->GetLibraryDir() + "/lib/sdl/fonts/lazy.ttf";
 
 		font := Font->New(font_path, 36);
 		if(font->IsNull()) {
