@@ -2133,6 +2133,9 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
   case SOCK_TCP_ACCEPT:
     return SockTcpAccept(program, inst, op_stack, stack_pos, frame);
 
+  case SOCK_TCP_SELECT:
+     return SockTcpSelect(program, inst, op_stack, stack_pos, frame);
+
   case SOCK_TCP_CLOSE:
     return SockTcpClose(program, inst, op_stack, stack_pos, frame);
 
@@ -2168,6 +2171,9 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
 
   case SOCK_TCP_SSL_ACCEPT:
     return SockTcpSslAccept(program, inst, op_stack, stack_pos, frame);
+
+  case SOCK_TCP_SSL_SELECT:
+     return SockTcpSslSelect(program, inst, op_stack, stack_pos, frame);
 
   case SOCK_TCP_SSL_SRV_CERT:
     return SockTcpSslCertSrv(program, inst, op_stack, stack_pos, frame);
@@ -3919,6 +3925,17 @@ bool TrapProcessor::SockTcpListen(StackProgram* program, size_t* inst, size_t* &
   return true;
 }
 
+bool TrapProcessor::SockTcpSelect(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
+{
+   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+   if(instance && (long)instance[0] > -1) {
+      SOCKET client = (SOCKET)instance[0];
+   }
+
+   PushInt(0, op_stack, stack_pos);
+   return true;
+}
+
 bool TrapProcessor::SockTcpAccept(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
@@ -4258,6 +4275,18 @@ bool TrapProcessor::SockTcpSslListen(StackProgram* program, size_t* inst, size_t
   
   PushInt(0, op_stack, stack_pos);
   return true;
+}
+
+bool TrapProcessor::SockTcpSslSelect(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
+{
+   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+   if(instance) {
+      BIO* client_bio = (BIO*)instance[0];
+      BIO* bio = (BIO*)instance[1];
+   }
+
+   PushInt(0, op_stack, stack_pos);
+   return true;
 }
 
 bool TrapProcessor::SockTcpSslAccept(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
