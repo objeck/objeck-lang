@@ -3958,10 +3958,10 @@ bool TrapProcessor::SockTcpSelect(StackProgram* program, size_t* inst, size_t*& 
 #else
       // POSIX: nfds = highest fd + 1
       if(is_write) {
-         ret = select(sock + 1, NULL, &fds, NULL, &tv);
+         ret = select(client + 1, NULL, &fds, NULL, &tv);
       }
       else {
-         ret = select(sock + 1, &fds, NULL, NULL, &tv);
+         ret = select(client + 1, &fds, NULL, NULL, &tv);
       }
 
       if(ret < 0) {
