@@ -3033,6 +3033,12 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
       NextToken();
       break;
 
+    case SOCK_TCP_SELECT:
+       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                                instructions::SOCK_TCP_SELECT);
+       NextToken();
+       break;
+
     case SOCK_TCP_SSL_LISTEN:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), 
                                                                instructions::SOCK_TCP_SSL_LISTEN);
@@ -3044,6 +3050,12 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
                                                                instructions::SOCK_TCP_SSL_ACCEPT);
       NextToken();
       break;
+
+    case SOCK_TCP_SSL_SELECT:
+       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                                instructions::SOCK_TCP_SSL_SELECT);
+       NextToken();
+       break;
 
     case SOCK_TCP_SSL_SRV_CLOSE:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), 
