@@ -3930,9 +3930,25 @@ bool TrapProcessor::SockTcpSelect(StackProgram* program, size_t* inst, size_t*& 
    size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
    if(instance && (long)instance[0] > -1) {
       SOCKET client = (SOCKET)instance[0];
+
+      fd_set readfds;
+      FD_ZERO(&readfds);
+      FD_SET(client, &readfds);
+
+      struct timeval tv = { 0 }; // zero timeout = poll
+      int ret = select(client + 1, &readfds, NULL, NULL, &tv);
+      if(ret > 0 && FD_ISSET(client, &readfds)) {
+         PushInt(1, op_stack, stack_pos);
+
+      }
+      else {
+         PushInt(0, op_stack, stack_pos);
+      }
+   }
+   else {
+      PushInt(0, op_stack, stack_pos);
    }
 
-   PushInt(0, op_stack, stack_pos);
    return true;
 }
 

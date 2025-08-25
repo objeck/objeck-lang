@@ -9791,6 +9791,14 @@ bundle System.IO.Net {
 		method : public : WriteByte(b : Int) ~ Bool {
 			SOCK_TCP_OUT_BYTE;
 		}
+
+		#~
+		Checks if read/write data is available
+		@return true if data is available, false otherwise
+		~#
+		method : public : Select(is_write : Bool) ~ Bool {
+			SOCK_TCP_SELECT;
+		}
 		
 		#~
 		Writes bytes from a byte buffer
@@ -9980,6 +9988,14 @@ bundle System.IO.Net {
 		~#
 		method : public : GetSubject() ~ String {
 			SOCK_TCP_SSL_SUBJECT;
+		}
+
+		#~
+		Checks if read/write data is available
+		@return true if data is available, false otherwise
+		~#
+		method : public : Select(is_write : Bool) ~ Bool {
+			SOCK_TCP_SSL_SELECT;
 		}
 		
 		#~
