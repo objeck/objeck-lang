@@ -1520,6 +1520,71 @@ enum TimeInterval {
 };
 
 class TrapProcessor {
+   // Returns: 1 = ready, 0 = not ready, -1 = error
+   static int bio_ready_for_io(BIO* bio, bool is_write) {
+      if(!bio) return -1;
+
+      // For reads, see if OpenSSL already has decrypted bytes buffered.
+      if(!is_write) {
+         size_t pending = (size_t)BIO_ctrl_pending(bio);
+         if(pending > 0) return 1;
+      }
+
+      // Get the underlying socket/file descriptor from the BIO.
+      int fd = -1;
+      if(BIO_get_fd(bio, &fd) <= 0 || fd < 0) {
+         // BIO is not fd-backed (e.g., memory BIO) or invalid
+         return -1;
+      }
+
+      struct timeval tv;
+      tv.tv_sec = 0;
+      tv.tv_usec = 0; // poll (non-blocking)
+
+#ifdef _WIN32
+      SOCKET s = (SOCKET)fd;
+
+      fd_set rfds, wfds;
+      FD_ZERO(&rfds);
+      FD_ZERO(&wfds);
+      if(is_write) {
+         FD_SET(s, &wfds);
+      }
+      else {
+         FD_SET(s, &rfds);
+      }
+
+      int ret = select(0,              // ignored on Windows
+                       is_write ? NULL : &rfds,
+                       is_write ? &wfds : NULL,
+                       NULL,
+                       &tv);
+
+      if(ret == SOCKET_ERROR) return -1;
+
+      if(ret > 0) {
+         if(!is_write && FD_ISSET(s, &rfds)) return 1;
+         if(is_write && FD_ISSET(s, &wfds)) return 1;
+      }
+      return 0;
+
+#else
+      fd_set fds;
+      FD_ZERO(&fds);
+      FD_SET(fd, &fds);
+
+      int ret = select(fd + 1,
+                       is_write ? NULL : &fds,
+                       is_write ? &fds : NULL,
+                       NULL,
+                       &tv);
+
+      if(ret < 0) return -1;
+      if(ret > 0 && FD_ISSET(fd, &fds)) return 1;
+      return 0;
+#endif
+   }
+
   static inline bool GetTime(struct tm*& curr_time, time_t raw_time, bool is_gmt) {
 #ifdef _WIN32
     struct tm temp_time;
