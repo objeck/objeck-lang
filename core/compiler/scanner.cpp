@@ -655,12 +655,14 @@ void Scanner::CheckIdentifier(int index)
     case SOCK_UDP_OUT_STRING:
     case SOCK_TCP_SSL_LISTEN:
     case SOCK_TCP_SSL_ACCEPT:
+    case SOCK_TCP_SSL_SELECT
     case SOCK_TCP_SSL_SRV_CERT:
-		case SOCK_TCP_SSL_ERROR:
-		case SOCK_IP_ERROR:
+	 case SOCK_TCP_SSL_ERROR:
+	 case SOCK_IP_ERROR:
     case SOCK_TCP_SSL_SRV_CLOSE:
     case SOCK_TCP_LISTEN:
     case SOCK_TCP_ACCEPT:
+    case SOCK_TCP_SELECT:
     case SOCK_TCP_IS_CONNECTED:
     case SOCK_TCP_CLOSE:
     case SOCK_TCP_IN_BYTE:
