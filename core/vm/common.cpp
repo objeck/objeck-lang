@@ -3927,28 +3927,57 @@ bool TrapProcessor::SockTcpListen(StackProgram* program, size_t* inst, size_t* &
 
 bool TrapProcessor::SockTcpSelect(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
 {
+   const bool is_write = (bool)PopInt(op_stack, stack_pos);
    size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+
    if(instance && (long)instance[0] > -1) {
       SOCKET client = (SOCKET)instance[0];
 
-      fd_set readfds;
-      FD_ZERO(&readfds);
-      FD_SET(client, &readfds);
+      fd_set fds;
+      FD_ZERO(&fds);
+      FD_SET(client, &fds);
 
-      struct timeval tv = { 0 }; // zero timeout = poll
-      int ret = select(client + 1, &readfds, NULL, NULL, &tv);
-      if(ret > 0 && FD_ISSET(client, &readfds)) {
-         PushInt(1, op_stack, stack_pos);
+      struct timeval tv;
+      tv.tv_sec = 0;
+      tv.tv_usec = 0;  // zero timeout = poll
 
+      int ret;
+#ifdef _WIN32
+      // nfds is ignored on Windows, pass 0
+      if(is_write) {
+         ret = select(0, NULL, &fds, NULL, &tv);
       }
       else {
+         ret = select(0, &fds, NULL, NULL, &tv);
+      }
+
+      if(ret == SOCKET_ERROR) {
          PushInt(0, op_stack, stack_pos);
+         return true;
+      }
+#else
+      // POSIX: nfds = highest fd + 1
+      if(is_write) {
+         ret = select(sock + 1, NULL, &fds, NULL, &tv);
+      }
+      else {
+         ret = select(sock + 1, &fds, NULL, NULL, &tv);
+      }
+
+      if(ret < 0) {
+         PushInt(0, op_stack, stack_pos);
+         return true;
+      }
+#endif
+
+      if(ret > 0 && FD_ISSET(client, &fds)) {
+         PushInt(1, op_stack, stack_pos);
+         return true;
       }
    }
-   else {
-      PushInt(0, op_stack, stack_pos);
-   }
 
+   PushInt(0, op_stack, stack_pos);
+   
    return true;
 }
 
@@ -4295,11 +4324,23 @@ bool TrapProcessor::SockTcpSslListen(StackProgram* program, size_t* inst, size_t
 
 bool TrapProcessor::SockTcpSslSelect(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
 {
+   const bool is_write = (bool)PopInt(op_stack, stack_pos);
    size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-   if(instance) {
-      BIO* client_bio = (BIO*)instance[0];
+
+   if(instance && (long)instance[0] > -1) {
+      SSL_CTX* ctx = (SSL_CTX*)instance[0];
       BIO* bio = (BIO*)instance[1];
+
+      if(bio_ready_for_io(bio, is_write) == 1) {
+         PushInt(1, op_stack, stack_pos);
+      }
+      else {
+         PushInt(0, op_stack, stack_pos);
+      }
+
+      return true;
    }
+
 
    PushInt(0, op_stack, stack_pos);
    return true;
