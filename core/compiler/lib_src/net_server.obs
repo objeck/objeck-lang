@@ -2178,7 +2178,7 @@ class RequestHandler from HttpsRequestHandler {
 				};
 
 				connection_type := request_headers->Find("connection");
-				if(<>@client->Select(false) & connection_type <> Nil & connection_type->Equals("keep-alive")) {
+				if(@client->Select(false) <> 1 & connection_type <> Nil & connection_type->Equals("keep-alive")) {
 					@client->Close();
 				};				
 			};
@@ -2378,7 +2378,7 @@ class RequestHandler from HttpsRequestHandler {
 				};
 
 				connection_type := request_headers->Find("connection");
-				if(<>@client->Select(false) & connection_type <> Nil & connection_type->Equals("keep-alive")) {
+				if(@client->Select(false) <> 1 & connection_type <> Nil & connection_type->Equals("keep-alive")) {
 					@client->Close();
 				};
 			};
