@@ -72,6 +72,8 @@
 #include <unistd.h>
 #include <sys/types.h>
 #else
+#include <sys/types.h>
+#include <sys/socket.h>
 #include <unordered_map>
 #include <unordered_set>
 #include <pthread.h>
@@ -1521,7 +1523,11 @@ enum TimeInterval {
 
 class TrapProcessor {
    // Returns: 1 = ready, 0 = not ready, -1 = error
+#ifdef _WIN32
    static int socket_ready_for_io(SOCKET sock, bool is_write) {
+#else
+   static int socket_ready_for_io(int sock, bool is_write) {
+#endif
       fd_set fds;
       FD_ZERO(&fds);
       FD_SET(sock, &fds);
