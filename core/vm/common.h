@@ -1534,10 +1534,10 @@ class TrapProcessor {
 #ifdef _WIN32
       // nfds is ignored on Windows, pass 0
       if(is_write) {
-         ret = select(0, NULL, &fds, NULL, &tv);
+         ret = select(0, nullptr, &fds, nullptr, &tv);
       }
       else {
-         ret = select(0, &fds, NULL, NULL, &tv);
+         ret = select(0, &fds, nullptr, nullptr, &tv);
       }
 
       if(ret == SOCKET_ERROR) {
@@ -1546,10 +1546,10 @@ class TrapProcessor {
 #else
       // POSIX: nfds = highest fd + 1
       if(is_write) {
-         ret = select(sock + 1, NULL, &fds, NULL, &tv);
+         ret = select(sock + 1, nullptr, &fds, nullptr, &tv);
       }
       else {
-         ret = select(sock + 1, &fds, NULL, NULL, &tv);
+         ret = select(sock + 1, &fds, nullptr, nullptr, &tv);
       }
 
       if(ret < 0) {
@@ -1570,7 +1570,9 @@ class TrapProcessor {
       // For reads, see if OpenSSL already has decrypted bytes buffered.
       if(!is_write) {
          size_t pending = (size_t)BIO_ctrl_pending(bio);
-         if(pending > 0) return 1;
+         if(pending > 0) {
+            return 1;
+         }
       }
 
       // Get the underlying socket/file descriptor from the BIO.
@@ -1586,9 +1588,12 @@ class TrapProcessor {
 #ifdef _WIN32
       SOCKET s = (SOCKET)fd;
 
-      fd_set rfds, wfds;
+      fd_set rfds;
       FD_ZERO(&rfds);
+
+      fd_set wfds;
       FD_ZERO(&wfds);
+
       if(is_write) {
          FD_SET(s, &wfds);
       }
@@ -1596,8 +1601,7 @@ class TrapProcessor {
          FD_SET(s, &rfds);
       }
 
-      int ret = select(0, is_write ? NULL : &rfds, is_write ? &wfds : NULL, NULL, &tv);
-
+      const int ret = select(0, is_write ? nullptr : &rfds, is_write ? &wfds : nullptr, nullptr, &tv);
       if(ret == SOCKET_ERROR) {
          return -1;
       }
@@ -1611,6 +1615,7 @@ class TrapProcessor {
             return 1;
          }
       }
+
       return 0;
 
 #else
@@ -1618,7 +1623,7 @@ class TrapProcessor {
       FD_ZERO(&fds);
       FD_SET(fd, &fds);
 
-      int ret = select(fd + 1, is_write ? NULL : &fds, is_write ? &fds : NULL, NULL, &tv);
+      int ret = select(fd + 1, is_write ? nullptr : &fds, is_write ? &fds : nullptr, nullptr, &tv);
 
       if(ret < 0) {
          return -1;
