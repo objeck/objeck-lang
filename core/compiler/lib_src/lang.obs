@@ -9794,9 +9794,9 @@ bundle System.IO.Net {
 
 		#~
 		Checks if read/write data is available
-		@return true if data is available, false otherwise
+		@return 1 if ready, 0 if not ready, -1 is error
 		~#
-		method : public : Select(is_write : Bool) ~ Bool {
+		method : public : Select(is_write : Bool) ~ Int {
 			SOCK_TCP_SELECT;
 		}
 		
@@ -9992,9 +9992,9 @@ bundle System.IO.Net {
 
 		#~
 		Checks if read/write data is available
-		@return true if data is available, false otherwise
+		@return 1 if ready, 0 if not ready, -1 is error
 		~#
-		method : public : Select(is_write : Bool) ~ Bool {
+		method : public : Select(is_write : Bool) ~ Int {
 			SOCK_TCP_SSL_SELECT;
 		}
 		
