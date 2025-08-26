@@ -9794,6 +9794,7 @@ bundle System.IO.Net {
 
 		#~
 		Checks if read/write data is available
+		@param is_write if true check for write, otherwise read
 		@return 1 if ready, 0 if not ready, -1 is error
 		~#
 		method : public : Select(is_write : Bool) ~ Int {
@@ -9992,6 +9993,7 @@ bundle System.IO.Net {
 
 		#~
 		Checks if read/write data is available
+		@param is_write if true check for write, otherwise read
 		@return 1 if ready, 0 if not ready, -1 is error
 		~#
 		method : public : Select(is_write : Bool) ~ Int {
