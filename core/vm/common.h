@@ -1521,9 +1521,52 @@ enum TimeInterval {
 
 class TrapProcessor {
    // Returns: 1 = ready, 0 = not ready, -1 = error
-   static int bio_ready_for_io(BIO* bio, bool is_write) {
-      if(!bio) return -1;
+   static int socket_ready_for_io(SOCKET sock, bool is_write) {
+      fd_set fds;
+      FD_ZERO(&fds);
+      FD_SET(sock, &fds);
 
+      struct timeval tv;
+      tv.tv_sec = 0;
+      tv.tv_usec = 0;  // zero timeout = poll
+
+      int ret = -1;
+#ifdef _WIN32
+      // nfds is ignored on Windows, pass 0
+      if(is_write) {
+         ret = select(0, NULL, &fds, NULL, &tv);
+      }
+      else {
+         ret = select(0, &fds, NULL, NULL, &tv);
+      }
+
+      if(ret == SOCKET_ERROR) {
+         return -1;
+      }
+#else
+      // POSIX: nfds = highest fd + 1
+      if(is_write) {
+         ret = select(sock + 1, NULL, &fds, NULL, &tv);
+      }
+      else {
+         ret = select(sock + 1, &fds, NULL, NULL, &tv);
+      }
+
+      if(ret < 0) {
+         return -1;
+      }
+#endif
+
+      if(ret > 0 && FD_ISSET(sock, &fds)) {
+         return 1; // socket ready
+      }
+
+      return 0; // not ready
+   }
+
+
+   // Returns: 1 = ready, 0 = not ready, -1 = error
+   static int bio_ready_for_io(BIO* bio, bool is_write) {
       // For reads, see if OpenSSL already has decrypted bytes buffered.
       if(!is_write) {
          size_t pending = (size_t)BIO_ctrl_pending(bio);
@@ -1533,13 +1576,12 @@ class TrapProcessor {
       // Get the underlying socket/file descriptor from the BIO.
       int fd = -1;
       if(BIO_get_fd(bio, &fd) <= 0 || fd < 0) {
-         // BIO is not fd-backed (e.g., memory BIO) or invalid
          return -1;
       }
 
       struct timeval tv;
       tv.tv_sec = 0;
-      tv.tv_usec = 0; // poll (non-blocking)
+      tv.tv_usec = 0;
 
 #ifdef _WIN32
       SOCKET s = (SOCKET)fd;
@@ -1554,17 +1596,20 @@ class TrapProcessor {
          FD_SET(s, &rfds);
       }
 
-      int ret = select(0,              // ignored on Windows
-                       is_write ? NULL : &rfds,
-                       is_write ? &wfds : NULL,
-                       NULL,
-                       &tv);
+      int ret = select(0, is_write ? NULL : &rfds, is_write ? &wfds : NULL, NULL, &tv);
 
-      if(ret == SOCKET_ERROR) return -1;
+      if(ret == SOCKET_ERROR) {
+         return -1;
+      }
 
       if(ret > 0) {
-         if(!is_write && FD_ISSET(s, &rfds)) return 1;
-         if(is_write && FD_ISSET(s, &wfds)) return 1;
+         if(!is_write && FD_ISSET(s, &rfds)) {
+            return 1;
+         }
+
+         if(is_write && FD_ISSET(s, &wfds)) {
+            return 1;
+         }
       }
       return 0;
 
@@ -1573,14 +1618,16 @@ class TrapProcessor {
       FD_ZERO(&fds);
       FD_SET(fd, &fds);
 
-      int ret = select(fd + 1,
-                       is_write ? NULL : &fds,
-                       is_write ? &fds : NULL,
-                       NULL,
-                       &tv);
+      int ret = select(fd + 1, is_write ? NULL : &fds, is_write ? &fds : NULL, NULL, &tv);
 
-      if(ret < 0) return -1;
-      if(ret > 0 && FD_ISSET(fd, &fds)) return 1;
+      if(ret < 0) {
+         return -1;
+      }
+
+      if(ret > 0 && FD_ISSET(fd, &fds)) {
+         return 1;
+      }
+
       return 0;
 #endif
    }
