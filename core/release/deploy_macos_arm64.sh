@@ -62,6 +62,14 @@ cd ../odbc
 xcodebuild -project macos/xcode/ODBC.xcodeproj clean build
 cp macos/xcode/build/Release/libobjk_odbc.dylib ../../release/deploy/lib/native/libobjk_odbc.dylib
 
+cd ../lame
+xcodebuild -project macos/lame.xcodeproj clean build
+cp macos//build/Release/libobjk_lame.dylib ../../release/deploy/lib/native/libobjk_lame.dylib
+
+cd ../opencv
+xcodebuild -project macos/objk_opencv.xcodeproj -target objk_opencv clean build
+cp macos/build/Release/libobjk_opencv.dylib ../../release/deploy/lib/native/libobjk_opencv.dylib
+
 cd ../matrix
 xcodebuild -project macos/xcode/matrix.xcodeproj clean build
 cp macos/xcode/build/Release/libxcode.dylib ../../release/deploy/lib/native/libobjk_ml.dylib
@@ -69,7 +77,7 @@ cp macos/xcode/build/Release/libxcode.dylib ../../release/deploy/lib/native/libo
 cd ../diags
 xcodebuild -project macos/xcode/objk_diags.xcodeproj clean build
 cp macos/xcode/build/Release/libobjk_diags.dylib ../../release/deploy/lib/native/libobjk_diags.dylib
-
+Architecturesg
 # copy docs
 cd ../../..
 cp -R docs/syntax core/release/deploy/doc/syntax
