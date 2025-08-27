@@ -18,7 +18,7 @@ Another programming language
 
 v2025.9.1
   * ONNX Runtime support, ORT is a cross-platform inference engine designed to accelerate ML across hardware and software platforms [macOS and Linux, coming soon]
-  * Open Computer Vision integration, OpenCV supports real-time computer vision [macOS and Linux, coming soon]
+  * Open Computer Vision integration, OpenCV supports real-time computer vision [Linux, coming soon]
 
 v2025.9.0
   * OpenAI Realtime API support for the ``gpt-4o-realtime-preview-2025-06-03`` preview [done]
@@ -345,4 +345,5 @@ yesterday := System.Time.Date->New();
 yesterday->AddDays(-1);
 yesterday->ToString()->PrintLine();
 ```
+
 
