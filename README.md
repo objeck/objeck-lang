@@ -16,18 +16,18 @@ Another programming language
 
 ## Updates
 
-v2025.8.0
+v2025.9.1
   * ONNX Runtime support, ORT is a cross-platform inference engine designed to accelerate ML across hardware and software platforms [macOS and Linux, coming soon]
-  * Open Computer Vision integration, OpenCV supports real-time computer vision [done, in test] 
-  * Support for OpenAI's GPT-5 models (i.e., reasoning and verbosity) [done]
-  * OpenAI MCP support
+  * Open Computer Vision integration, OpenCV supports real-time computer vision [macOS and Linux, coming soon]
 
-v2025.7.1
+v2025.9.0
   * OpenAI Realtime API support for the ``gpt-4o-realtime-preview-2025-06-03`` preview [done]
   * Adding PCM16 recording and playback APIs via SDL2 mixer [done]
-  * PCM16 to MP3 audio translation support (all but macOS, coming soon)
   * Adding initial support for the Cursor AI IDE [done]
-
+  * Support for OpenAI's GPT-5 models (i.e., reasoning and verbosity) [done]
+  * OpenAI MCP support [in test] 
+  * PCM16 to MP3 audio translation support [macOS, coming soon]
+  
 <ins>v2025.7.0</ins>
   * Added ``Hash->Dict(..)``, ``Map->Dict(..)`` and ``Vector->Zip(..)`` to collections
   * Updated style (docs, logos, etc.)
@@ -345,3 +345,4 @@ yesterday := System.Time.Date->New();
 yesterday->AddDays(-1);
 yesterday->ToString()->PrintLine();
 ```
+
