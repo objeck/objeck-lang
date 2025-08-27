@@ -11,7 +11,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		EDB682482E4970140082B2AF /* liblame.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = liblame.a; sourceTree = BUILT_PRODUCTS_DIR; };
+		EDB682482E4970140082B2AF /* libobjk_lame.dylib */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libobjk_lame.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
 		EDFB52272E49705600A176CA /* lame.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = lame.cpp; path = ../lame.cpp; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
@@ -37,7 +37,7 @@
 		EDB682492E4970140082B2AF /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				EDB682482E4970140082B2AF /* liblame.a */,
+				EDB682482E4970140082B2AF /* libobjk_lame.dylib */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -55,9 +55,9 @@
 /* End PBXHeadersBuildPhase section */
 
 /* Begin PBXNativeTarget section */
-		EDB682472E4970140082B2AF /* lame */ = {
+		EDB682472E4970140082B2AF /* objk_lame */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = EDB682532E4970140082B2AF /* Build configuration list for PBXNativeTarget "lame" */;
+			buildConfigurationList = EDB682532E4970140082B2AF /* Build configuration list for PBXNativeTarget "objk_lame" */;
 			buildPhases = (
 				EDB682442E4970140082B2AF /* Headers */,
 				EDB682452E4970140082B2AF /* Sources */,
@@ -67,11 +67,11 @@
 			);
 			dependencies = (
 			);
-			name = lame;
+			name = objk_lame;
 			packageProductDependencies = (
 			);
 			productName = lame;
-			productReference = EDB682482E4970140082B2AF /* liblame.a */;
+			productReference = EDB682482E4970140082B2AF /* libobjk_lame.dylib */;
 			productType = "com.apple.product-type.library.static";
 		};
 /* End PBXNativeTarget section */
@@ -102,7 +102,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				EDB682472E4970140082B2AF /* lame */,
+				EDB682472E4970140082B2AF /* objk_lame */,
 			);
 		};
 /* End PBXProject section */
@@ -172,11 +172,14 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
+				LIBRARY_SEARCH_PATHS = /opt/homebrew/lib;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACH_O_TYPE = mh_dylib;
 				MACOSX_DEPLOYMENT_TARGET = 15.5;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
+				OTHER_LDFLAGS = "-lmp3lame";
 				SDKROOT = macosx;
 			};
 			name = Debug;
@@ -228,10 +231,13 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
+				LIBRARY_SEARCH_PATHS = /opt/homebrew/lib;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACH_O_TYPE = mh_dylib;
 				MACOSX_DEPLOYMENT_TARGET = 15.5;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
+				OTHER_LDFLAGS = "-lmp3lame";
 				SDKROOT = macosx;
 			};
 			name = Release;
@@ -239,8 +245,10 @@
 		EDB682542E4970140082B2AF /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ARCHS = arm64;
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 37JDXYTCG2;
+				EXECUTABLE_EXTENSION = dylib;
 				EXECUTABLE_PREFIX = lib;
 				GCC_ENABLE_CPP_EXCEPTIONS = YES;
 				GCC_ENABLE_CPP_RTTI = YES;
@@ -256,8 +264,10 @@
 		EDB682552E4970140082B2AF /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ARCHS = arm64;
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 37JDXYTCG2;
+				EXECUTABLE_EXTENSION = dylib;
 				EXECUTABLE_PREFIX = lib;
 				GCC_ENABLE_CPP_EXCEPTIONS = YES;
 				GCC_ENABLE_CPP_RTTI = YES;
@@ -282,7 +292,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		EDB682532E4970140082B2AF /* Build configuration list for PBXNativeTarget "lame" */ = {
+		EDB682532E4970140082B2AF /* Build configuration list for PBXNativeTarget "objk_lame" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				EDB682542E4970140082B2AF /* Debug */,

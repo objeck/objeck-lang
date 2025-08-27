@@ -11,7 +11,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		ED23CC682E497D9200F694C7 /* libmacos.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libmacos.a; sourceTree = BUILT_PRODUCTS_DIR; };
+		ED23CC682E497D9200F694C7 /* libobjk_opencv.dylib */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libobjk_opencv.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
 		ED23CC762E497DB900F694C7 /* opencv.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = opencv.cpp; path = ../opencv.cpp; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
@@ -37,7 +37,7 @@
 		ED23CC692E497D9200F694C7 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				ED23CC682E497D9200F694C7 /* libmacos.a */,
+				ED23CC682E497D9200F694C7 /* libobjk_opencv.dylib */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -55,9 +55,9 @@
 /* End PBXHeadersBuildPhase section */
 
 /* Begin PBXNativeTarget section */
-		ED23CC672E497D9200F694C7 /* macos */ = {
+		ED23CC672E497D9200F694C7 /* objk_opencv */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = ED23CC732E497D9200F694C7 /* Build configuration list for PBXNativeTarget "macos" */;
+			buildConfigurationList = ED23CC732E497D9200F694C7 /* Build configuration list for PBXNativeTarget "objk_opencv" */;
 			buildPhases = (
 				ED23CC642E497D9200F694C7 /* Headers */,
 				ED23CC652E497D9200F694C7 /* Sources */,
@@ -67,11 +67,11 @@
 			);
 			dependencies = (
 			);
-			name = macos;
+			name = objk_opencv;
 			packageProductDependencies = (
 			);
 			productName = macos;
-			productReference = ED23CC682E497D9200F694C7 /* libmacos.a */;
+			productReference = ED23CC682E497D9200F694C7 /* libobjk_opencv.dylib */;
 			productType = "com.apple.product-type.library.static";
 		};
 /* End PBXNativeTarget section */
@@ -102,7 +102,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				ED23CC672E497D9200F694C7 /* macos */,
+				ED23CC672E497D9200F694C7 /* objk_opencv */,
 			);
 		};
 /* End PBXProject section */
@@ -158,6 +158,7 @@
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				EXECUTABLE_EXTENSION = dylib;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;
@@ -172,12 +173,22 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
+				LIBRARY_SEARCH_PATHS = /opt/homebrew/lib;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACH_O_TYPE = mh_dylib;
 				MACOSX_DEPLOYMENT_TARGET = 15.5;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
-				SDKROOT = macosx;
+				OTHER_LDFLAGS = (
+					"-lopencv_dnn",
+					"-lopencv_core",
+					"-lopencv_imgproc",
+					"-lopencv_imgcodecs",
+					"-lopencv_highgui",
+					"-lopencv_videoio",
+				);
+				SDKROOT = macosx15.5;
 			};
 			name = Debug;
 		};
@@ -220,6 +231,7 @@
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				EXECUTABLE_EXTENSION = dylib;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
@@ -228,17 +240,29 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
+				LIBRARY_SEARCH_PATHS = /opt/homebrew/lib;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACH_O_TYPE = mh_dylib;
 				MACOSX_DEPLOYMENT_TARGET = 15.5;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
-				SDKROOT = macosx;
+				ONLY_ACTIVE_ARCH = YES;
+				OTHER_LDFLAGS = (
+					"-lopencv_dnn",
+					"-lopencv_core",
+					"-lopencv_imgproc",
+					"-lopencv_imgcodecs",
+					"-lopencv_highgui",
+					"-lopencv_videoio",
+				);
+				SDKROOT = macosx15.5;
 			};
 			name = Release;
 		};
 		ED23CC742E497D9200F694C7 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ARCHS = arm64;
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 37JDXYTCG2;
 				EXECUTABLE_PREFIX = lib;
@@ -256,6 +280,7 @@
 		ED23CC752E497D9200F694C7 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ARCHS = arm64;
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 37JDXYTCG2;
 				EXECUTABLE_PREFIX = lib;
@@ -282,7 +307,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		ED23CC732E497D9200F694C7 /* Build configuration list for PBXNativeTarget "macos" */ = {
+		ED23CC732E497D9200F694C7 /* Build configuration list for PBXNativeTarget "objk_opencv" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				ED23CC742E497D9200F694C7 /* Debug */,
