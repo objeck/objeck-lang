@@ -86,7 +86,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">
     <LibraryPath>$(LibraryPath);..\win\arm64\lib</LibraryPath>
     <IncludePath>$(VC_IncludePath);..\win\include;..\..\openssl\win\include;..\..\zlib\win</IncludePath>
-    <TargetName>libobjk_onnx</TargetName>
+    <TargetName>libobjk_opencv</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LibraryPath>$(LibraryPath);..\win\x64\lib</LibraryPath>
@@ -97,7 +97,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">
     <LibraryPath>$(LibraryPath);..\win\arm64\lib</LibraryPath>
     <IncludePath>$(VC_IncludePath);..\win\include;..\..\openssl\win\include;..\..\zlib\win</IncludePath>
-    <TargetName>libobjk_onnx</TargetName>
+    <TargetName>libobjk_opencv</TargetName>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
