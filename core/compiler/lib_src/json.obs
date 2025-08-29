@@ -829,21 +829,6 @@ if(doc <> Nil) {
 		
 		#~
 		Constructor
-		@param type Json element type
-		@param value Json string value
-		~#
-		New(type : JsonElement->JsonType, value : String) {
-			if(type = JsonElement->JsonType->STRING | type = JsonElement->JsonType->NUMBER) {
-				@type := type;	
-				@value := value;				
-			}
-			else {
-				@type := JsonElement->JsonType->OTHER;
-			};
-		}
-
-		#~
-		Constructor
 		@param value Json string value
 		~#
 		New(value : String) {
