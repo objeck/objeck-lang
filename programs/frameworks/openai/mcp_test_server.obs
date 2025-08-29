@@ -3,6 +3,10 @@ use Collection, Data.JSON, Web.HTTP, Web.HTTP.Server;
 class TestMcp {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
+			RequestHandler->Initialize(
+				"MCP Example", 
+				"0.0.1" "
+				Welcome! This server is ready to accept MCP requests.");
 			WebServer->Serve(RequestHandler->New()->GetClass(), args[0]->ToInt(), true);
 		}
 		else {
@@ -13,13 +17,22 @@ class TestMcp {
 
 class RequestHandler from HttpRequestHandler {
 	@is_debug : Bool;
-	@instructions : String;
+
+	@name : static : String;
+	@version : static : String;
+	@instructions : static : String;
 
 	New() {
 		Parent();
 
 		@instructions := "Welcome! This server is ready to accept MCP requests.";
 		@is_debug := true;
+	}
+
+	function : Initialize(name : String, version : String, instructions : String) ~ Nil {
+		@name := name;
+		@version := version;
+		@instructions := instructions;
 	}
 
 	method : ProcessGet(request : Web.HTTP.Server.Request, response : Web.HTTP.Server.Response) ~ Bool {
@@ -93,30 +106,10 @@ class RequestHandler from HttpRequestHandler {
 
 								# server information
 								server_json :=  JsonElement->New(JsonElement->JsonType->OBJECT);
-								server_json->Insert("name", "MyMcpServer");
-								server_json->Insert("version", "0.1.0");
+								server_json->Insert("name", @name);
+								server_json->Insert("version", @version);
 
 								result->Insert("serverInfo", server_json);
-
-#~
-								payload := "{
-									\"jsonrpc\": \"2.0\",
-									\"id\": {$id},
-									
-									\"result\": {
-										
-										\"capabilities\": {
-											\"tools\": { \"listChanged\": true },
-											\"resources\": { \"listChanged\": true },
-											\"prompts\": { \"listChanged\": true }
-										},
-										\"serverInfo\": {
-											
-										},
-										\"instructions\": \"Welcome! This server is ready to accept MCP requests.\"
-									}
-								}";
-~#								
 
 								WriteResponse(result, id, response, 200);
 								return false;
@@ -135,17 +128,7 @@ class RequestHandler from HttpRequestHandler {
 							# logging/setLevel
 							label "logging/setLevel": {
 								id := root_json->Get("id")->GetValue()->ToInt();
-								payload := "{
-									\"jsonrpc\": \"2.0\",
-									\"id\": {$id},
-									\"result\": {}
-								}";
-
-								if(@is_debug) {
-									ShowPayload(payload);
-								};
-
-								response->SetCodeTypeContent(200, "application/json", payload);
+								WriteResponse(Nil, id, response, 200);
 								return false;
 							}
 
