@@ -13,10 +13,12 @@ class TestMcp {
 
 class RequestHandler from HttpRequestHandler {
 	@is_debug : Bool;
+	@instructions : String;
 
 	New() {
 		Parent();
 
+		@instructions := "Welcome! This server is ready to accept MCP requests.";
 		@is_debug := true;
 	}
 
@@ -60,40 +62,63 @@ class RequestHandler from HttpRequestHandler {
 							# ping
 							label "ping": {
 								id := root_json->Get("id")->GetValue()->ToInt();
-
 								WriteResponse(Nil, id, response, 200);
-
-
 								return false;
 							}
 
 							# initialize
 							label "initialize": {
 								id := root_json->Get("id")->GetValue()->ToInt();
+
+								result := JsonElement->New(JsonElement->JsonType->OBJECT);
+								result->Insert("protocolVersion", "2025-06-18");
+								result->Insert("instructions", @instructions);
+
+								# add capabilities
+								capabilities_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+
+								tools_json :=  JsonElement->New(JsonElement->JsonType->OBJECT);
+								tools_json->Insert("listChanged", true);
+								capabilities_json->Insert("tools", tools_json);
+								
+								resources_json :=  JsonElement->New(JsonElement->JsonType->OBJECT);
+								resources_json->Insert("listChanged", true);
+								capabilities_json->Insert("resources", resources_json);
+
+								prompts_json :=  JsonElement->New(JsonElement->JsonType->OBJECT);
+								prompts_json->Insert("listChanged", true);
+								capabilities_json->Insert("resources", prompts_json);
+
+								result->Insert("capabilities", capabilities_json);
+
+								# server information
+								server_json :=  JsonElement->New(JsonElement->JsonType->OBJECT);
+								server_json->Insert("name", "MyMcpServer");
+								server_json->Insert("version", "0.1.0");
+
+								result->Insert("serverInfo", server_json);
+
+#~
 								payload := "{
 									\"jsonrpc\": \"2.0\",
 									\"id\": {$id},
+									
 									\"result\": {
-										\"protocolVersion\": \"2025-06-18\",
+										
 										\"capabilities\": {
 											\"tools\": { \"listChanged\": true },
 											\"resources\": { \"listChanged\": true },
-											\"prompts\": { \"listChanged\": true },
-											\"logging\": {}
+											\"prompts\": { \"listChanged\": true }
 										},
 										\"serverInfo\": {
-											\"name\": \"MyMcpServer\",
-											\"version\": \"0.1.0\"
+											
 										},
 										\"instructions\": \"Welcome! This server is ready to accept MCP requests.\"
 									}
 								}";
+~#								
 
-								if(@is_debug) {
-									ShowPayload(payload);
-								};
-
-								response->SetCodeTypeContent(200, "application/json", payload);
+								WriteResponse(result, id, response, 200);
 								return false;
 							}
 							
@@ -430,7 +455,7 @@ class RequestHandler from HttpRequestHandler {
 		};
 
 		if(@is_debug) {
-			packet->ToString()->PrintLine();
+			packet->ToFormattedString()->PrintLine();
 		};
 
 		response->SetCodeTypeContent(code, "application/json", packet->ToString());
