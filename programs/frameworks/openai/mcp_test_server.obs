@@ -60,18 +60,10 @@ class RequestHandler from HttpRequestHandler {
 							# ping
 							label "ping": {
 								id := root_json->Get("id")->GetValue()->ToInt();
-								payload := "{
-									\"jsonrpc\":
-									\"2.0\",
-									\"id\": {$id},
-									\"result\": {}
-								}";
 
-								if(@is_debug) {
-									ShowPayload(payload);
-								};
+								WriteResponse(Nil, id, response, 200);
 
-								response->SetCodeTypeContent(200, "application/json", payload);
+
 								return false;
 							}
 
@@ -423,6 +415,25 @@ class RequestHandler from HttpRequestHandler {
 			">>>  Unknown Message <<<"->ErrorLine();
 		};
 		return false;
+	}
+
+	method : WriteResponse(message : JsonElement, id : Int, response : Web.HTTP.Server.Response, code : Int) ~ Nil {
+		packet := JsonElement->New(JsonElement->JsonType->OBJECT);
+		packet->Insert("jsonrpc", "2.0");
+		packet->Insert("id", id);
+
+		if(message <> Nil) {
+			packet->Insert("result", message);
+		}
+		else {
+			packet->Insert("result", JsonElement->New(JsonElement->JsonType->OBJECT));
+		};
+
+		if(@is_debug) {
+			packet->ToString()->PrintLine();
+		};
+
+		response->SetCodeTypeContent(code, "application/json", packet->ToString());
 	}
 
 	function : ShowPayload(payload : String) ~ Nil {

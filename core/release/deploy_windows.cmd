@@ -179,7 +179,7 @@ cd ..\..\release
 REM opencv support
 cd ..\lib\opencv	
 if [%1] == [arm64] (
-	devenv opencv_qnn.sln /rebuild "Release|ARM64"
+	devenv opencv.sln /rebuild "Release|ARM64"
 	copy arm64\Release\libobjk_opencv.dll ..\..\release\%TARGET%\lib\native
 
 	copy /y win\arm64\bin\opencv_world4120.dll ..\..\release\%TARGET%\bin
