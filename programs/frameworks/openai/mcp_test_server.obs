@@ -135,59 +135,45 @@ class RequestHandler from HttpRequestHandler {
 							# resources/templates/list
 							label "resources/templates/list": {
 								id := root_json->Get("id")->GetValue()->ToInt();
-								payload := "{
-									\"jsonrpc\": \"2.0\",
-									\"id\": {$id},
-									\"result\": {
-										\"resourceTemplates\": [
-											{
-												\"uriTemplate\": \"https:///{path}\",
-												\"name\": \"Project Files\",
-												\"title\": \"Project Files\",
-												\"description\": \"Access files on the project site\",        
-												\"mimeType\": \"application/octet-stream\"
-											},
-											{
-												\"uriTemplate\": \"file:///{path}\",
-												\"name\": \"Local Files\",
-												\"title\": \"Local Files\",
-												\"description\": \"Access files in local directory\",        
-												\"mimeType\": \"application/octet-stream\"
-											}
-										]
-									}
-								}";
 
-								if(@is_debug) {
-									ShowPayload(payload);
-								};
+								templates_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
 
-								response->SetCodeTypeContent(200, "application/json", payload);
+								# TODO: method callback 
+								template_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+								template_json->Insert("uriTemplate", "https:///{path}");
+								template_json->Insert("name", "Project Files");
+								template_json->Insert("title", "Project Files");
+								template_json->Insert("description", "Access files on the project site");
+								template_json->Insert("mimeType", "application/octet-stream");
+
+								templates_array_json->Add(template_json);
+
+								result := JsonElement->New(JsonElement->JsonType->OBJECT);
+								result->Insert("resourceTemplates", templates_array_json);
+								
+								WriteResponse(result, id, response, 200);
 								return false;
 							}
 							
 							# resources/list
 							label "resources/list": {
 								id := root_json->Get("id")->GetValue()->ToInt();
-								payload := "{
-									\"jsonrpc\": \"2.0\",
-									\"id\": {$id},
-									\"result\": {
-										\"resources\": [ {
-												\"uri\": \"file:///readme.txt\",
-												\"name\": \"README\",
-												\"description\": \"Project readme\",
-												\"mimeType\": \"text/plain\"
-											}
-										]
-									}
-								}";
 
-								if(@is_debug) {
-									ShowPayload(payload);
-								};
+								resources_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
 
-								response->SetCodeTypeContent(200, "application/json", payload);
+								# TODO: method callback 
+								resource_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+								resource_json->Insert("uri", "file:///{_meta}");
+								resource_json->Insert("name", "Project Files");
+								resource_json->Insert("description", "Access files on the project site");
+								resource_json->Insert("mimeType", "application/octet-stream");
+
+								resources_array_json->Add(resource_json);
+
+								result := JsonElement->New(JsonElement->JsonType->OBJECT);
+								result->Insert("resources", resources_array_json);
+								
+								WriteResponse(result, id, response, 200);
 								return false;
 							}
 							
