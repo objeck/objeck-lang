@@ -263,15 +263,8 @@ copy ..\..\docs\readme.html %TARGET%
 copy ..\..\LICENSE %TARGET%
 
 REM copy docs
-if [%1] == [arm64] (
-	call code_doc64.cmd arm64 deploy
-	rmdir /s /q arm64
-)
-
-if [%1] == [x64] (
-	call code_doc64.cmd x64 deploy
-	rmdir /s /q x64
-)
+call code_doc64.cmd %1 deploy
+rmdir /s /q %1
 
 :installer
 
