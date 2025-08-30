@@ -264,8 +264,8 @@ copy ..\..\LICENSE %TARGET%
 
 REM copy docs
 if [%1] == [arm64] (
-	%ZIP_BIN%\7z.exe x ..\..\docs\api.zip -o%TARGET%\doc
-	rmdir /s /q ARM64
+	call code_doc64.cmd arm64 deploy
+	rmdir /s /q arm64
 )
 
 if [%1] == [x64] (
