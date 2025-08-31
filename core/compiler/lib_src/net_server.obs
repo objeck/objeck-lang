@@ -918,7 +918,7 @@ bundle Web.HTTP.Server {
 		@param name header name
 		@return request header
 		~#
-		method : public : GetRequestHeader(name : String) ~ String {
+		method : public : GetHeader(name : String) ~ String {
 			return @request_headers->Find(name)<String>;
 		}
 	}
