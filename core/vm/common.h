@@ -42,6 +42,9 @@
 #include <set>
 #include <string>
 #include <ctime>
+#include <array>
+#include <cstdint>
+#include <stdexcept>
 #include <string.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -61,10 +64,10 @@
 #include <unordered_set>
 #include <userenv.h>
 #include <cstring>
+#include <bcrypt.h>
 #elif _OSX
+#include <sys/random.h> 
 #include <mach-o/dyld.h>
-#include <unordered_map>
-#include <unordered_set>
 #include <pthread.h>
 #include <stdint.h>
 #include <dlfcn.h>
@@ -72,10 +75,9 @@
 #include <unistd.h>
 #include <sys/types.h>
 #else
+#include <sys/random.h> 
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <unordered_map>
-#include <unordered_set>
 #include <pthread.h>
 #include <pwd.h>
 #include <stdint.h>
@@ -1821,7 +1823,8 @@ class TrapProcessor {
   static bool TimerStart(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame);
   static bool TimerEnd(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame);
   static bool TimerElapsed(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame);
-  static bool GetPltfrm(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame);
+  static bool GetPltfrm(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
+  static bool GetUuid(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
   static bool GetVersion(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame);
   static bool GetSysProp(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame);
   static bool SetSysProp(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame);
@@ -2112,3 +2115,67 @@ void APITools_MethodCallId(size_t* op_stack, size_t *stack_pos, size_t* instance
  * SSL password callback
  ********************************/
 int pem_passwd_cb(char* buffer, int size, int rw_flag, void* passwd);
+
+/********************************
+ * GUUID/UUID generation (version 4)
+ ********************************/
+
+inline void secure_random_bytes(std::uint8_t* dst, std::size_t len) {
+#if defined(_WIN32)
+   if(BCryptGenRandom(nullptr, dst, static_cast<ULONG>(len), BCRYPT_USE_SYSTEM_PREFERRED_RNG) != 0) {
+      throw std::runtime_error("BCryptGenRandom failed");
+   }
+#elif defined(__APPLE__) || defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__)
+   arc4random_buf(dst, len);
+#elif defined(__linux__)
+   // Try getrandom first (no file descriptor needed)
+   std::size_t done = 0;
+   while(done < len) {
+      ssize_t r = getrandom(dst + done, len - done, 0);
+      if(r > 0) { done += static_cast<std::size_t>(r); continue; }
+      if(r < 0 && errno == EINTR) continue;
+
+      // Fallback to /dev/urandom if getrandom not available or blocked
+      int fd = open("/dev/urandom", O_RDONLY);
+      if(fd < 0) throw std::runtime_error("open(/dev/urandom) failed");
+      std::size_t got = 0;
+      while(got < (len - done)) {
+         ssize_t rr = read(fd, dst + done + got, (len - done) - got);
+         if(rr > 0) { got += static_cast<std::size_t>(rr); continue; }
+         if(rr < 0 && errno == EINTR) continue;
+         close(fd);
+         throw std::runtime_error("read(/dev/urandom) failed");
+      }
+      close(fd);
+
+      done += got;
+   }
+#else
+   // Very portable fallback; quality depends on the implementation.
+   // Prefer adding a platform path above if you target a specific OS.
+   for(std::size_t i = 0; i < len; ++i) {
+      dst[i] = static_cast<std::uint8_t>(std::rand() & 0xFF); \
+   }
+#endif
+ }
+
+ inline std::wstring uuidv4() {
+   std::array<std::uint8_t, 16> bytes{};
+   secure_random_bytes(bytes.data(), bytes.size());
+
+   // Set version (4) and variant (RFC 4122)
+   bytes[6] = static_cast<std::uint8_t>((bytes[6] & 0x0F) | 0x40); // version 4
+   bytes[8] = static_cast<std::uint8_t>((bytes[8] & 0x3F) | 0x80); // variant 10xxxxxx
+
+   // Format 8-4-4-4-12
+   std::wostringstream oss;
+   oss << std::hex << std::nouppercase << std::setfill(L'0');
+   for(int i = 0; i < 16; ++i) {
+      oss << std::setw(2) << static_cast<int>(bytes[i]);
+      if(i == 3 || i == 5 || i == 7 || i == 9) {
+         oss << '-';
+      }
+   }
+
+   return oss.str();
+ }

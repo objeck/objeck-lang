@@ -6312,6 +6312,14 @@ each(i : cities) {
 		}
 
 		#~
+		Generates a RFC 4122 version-4 UUID string
+		@return UUID string
+		~#
+		function : GetUuid() ~ String {
+			GET_UUID;
+		}
+
+		#~
 		Returns the package version string
 		@return package version string
 		~#
