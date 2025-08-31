@@ -7041,17 +7041,17 @@ bundle System.Time {
 
 		#~
 		Constructor
-		@param time alarm time
+		@param time alarm time in ms
 		@param recur true if reoccurring, false otherwise
 		~#
 		New(time : Int, recur : Bool) {
 			Parent();
 			@timer := Clock->New(time, recur);
 		}
-
+		
 		#~
 		Constructor
-		@param time alarm time
+		@param time alarm time in ms
 		~#
 		New(time : Int) {
 			Parent();
