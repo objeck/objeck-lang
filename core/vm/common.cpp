@@ -42,6 +42,7 @@
 #ifdef _WIN32
 #include "arch/win32/win32.h"
 #include "arch/memory.h"
+#pragma comment(lib, "bcrypt.lib")
 #else
 #include "arch/memory.h"
 #include "arch/posix/posix.h"
@@ -2100,6 +2101,9 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
   case GET_PLTFRM:
     return GetPltfrm(program, inst, op_stack, stack_pos, frame);
 
+  case GET_UUID:
+     return GetUuid(program, inst, op_stack, stack_pos, frame);
+
   case GET_VERSION:
     return GetVersion(program, inst, op_stack, stack_pos, frame);
 
@@ -3686,6 +3690,14 @@ bool TrapProcessor::GetPltfrm(StackProgram* program, size_t* inst, size_t* &op_s
   ProcessPlatform(program, op_stack, stack_pos);
 
   return true;
+}
+
+bool TrapProcessor::GetUuid(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
+{
+   size_t* str_obj = CreateStringObject(uuidv4(), program, op_stack, stack_pos);
+   PushInt((size_t)str_obj, op_stack, stack_pos);
+
+   return true;
 }
 
 bool TrapProcessor::GetVersion(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)

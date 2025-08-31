@@ -319,6 +319,7 @@ void Scanner::LoadKeywords()
   ident_map[L"DATE_FROM_UNIX_GMT_TIME"] = DATE_FROM_UNIX_GMT_TIME;
   ident_map[L"DATE_FROM_UNIX_LOCAL_TIME"] = DATE_FROM_UNIX_LOCAL_TIME;
   ident_map[L"GET_PLTFRM"] = GET_PLTFRM;
+  ident_map[L"GET_UUID"] = GET_UUID;
   ident_map[L"GET_VERSION"] = GET_VERSION;
   ident_map[L"GET_SYS_PROP"] = GET_SYS_PROP;
   ident_map[L"SET_SYS_PROP"] = SET_SYS_PROP;
@@ -626,6 +627,7 @@ void Scanner::CheckIdentifier(int index)
     case DATE_FROM_UNIX_GMT_TIME:
     case DATE_FROM_UNIX_LOCAL_TIME:
     case GET_PLTFRM:
+    case GET_UUID:
     case GET_VERSION:
     case GET_SYS_PROP:
     case GET_SYS_ENV:
