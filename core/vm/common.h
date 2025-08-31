@@ -45,6 +45,8 @@
 #include <array>
 #include <cstdint>
 #include <stdexcept>
+#include <unordered_map>
+#include <unordered_set>
 #include <string.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -60,14 +62,13 @@
 #include <direct.h>
 #include <windows.h>
 #include <process.h>
-#include <unordered_map>
-#include <unordered_set>
 #include <userenv.h>
 #include <cstring>
 #include <bcrypt.h>
 #elif _OSX
 #include <sys/random.h> 
 #include <mach-o/dyld.h>
+#include <fcntl.h>
 #include <pthread.h>
 #include <stdint.h>
 #include <dlfcn.h>
@@ -78,6 +79,7 @@
 #include <sys/random.h> 
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <fcntl.h>
 #include <pthread.h>
 #include <pwd.h>
 #include <stdint.h>
