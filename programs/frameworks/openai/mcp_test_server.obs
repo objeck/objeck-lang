@@ -18,6 +18,7 @@ class TestMcp {
 class RequestHandler from HttpRequestHandler {
 	@is_debug : Bool;
 
+	@id : static : Int;
 	@name : static : String;
 	@version : static : String;
 	@instructions : static : String;
@@ -27,6 +28,7 @@ class RequestHandler from HttpRequestHandler {
 
 		@instructions := "Welcome! This server is ready to accept MCP requests.";
 		@is_debug := true;
+		@id += 1;
 	}
 
 	function : Initialize(name : String, version : String, instructions : String) ~ Nil {
@@ -37,7 +39,7 @@ class RequestHandler from HttpRequestHandler {
 
 	method : ProcessGet(request : Web.HTTP.Server.Request, response : Web.HTTP.Server.Response) ~ Bool {
 		if(@is_debug) {
-			"\n### GET ####"->PrintLine();
+			"\n### GET: id={$@id} ####"->PrintLine();
 		};
 		
 		response->SetCodeTypeContent(200, "text/event-stream", ": keepalive\n\n");
@@ -46,7 +48,7 @@ class RequestHandler from HttpRequestHandler {
 
 	method : ProcessPost(request : Web.HTTP.Server.Request, response : Web.HTTP.Server.Response) ~ Bool {
 		if(@is_debug) {
-			"\n### POST ###"->PrintLine();
+			"\n### POST: id={$@id} ###"->PrintLine();
 		};
 
 		if(request->HasContent()) {
@@ -111,6 +113,7 @@ class RequestHandler from HttpRequestHandler {
 
 								result->Insert("serverInfo", server_json);
 
+response->SetHeader("Mcp-Session-Id", "a1b2c3d4-e5f6-7890-1234-567890abcdef");
 								WriteResponse(result, id, response, 200);
 								return false;
 							}

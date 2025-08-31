@@ -416,6 +416,7 @@ enum ScannerTokenType {
   TIMER_ELAPSED,
   // platform
   GET_PLTFRM,
+  GET_UUID,
   GET_VERSION,
   GET_SYS_PROP,
   SET_SYS_PROP,

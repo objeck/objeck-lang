@@ -213,7 +213,7 @@ namespace instructions {
     SOCK_TCP_SSL_SELECT,
     SOCK_TCP_SSL_SRV_CERT,
     SOCK_TCP_SSL_ERROR,
-		SOCK_TCP_SSL_SRV_CLOSE,
+    SOCK_TCP_SSL_SRV_CLOSE,
     // serialization
     SERL_INT,
     SERL_FLOAT,
@@ -235,6 +235,7 @@ namespace instructions {
     DESERL_CHAR_ARY,
     // platform
     GET_PLTFRM,
+    GET_UUID,
     GET_VERSION,
     GET_SYS_PROP,
     SET_SYS_PROP,
