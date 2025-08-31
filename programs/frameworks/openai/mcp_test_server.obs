@@ -1,4 +1,4 @@
-use Collection, Data.JSON, Web.HTTP, Web.HTTP.Server;
+use Collection, Data.JSON, Web.HTTP.Server;
 
 class TestMcp {
 	function : Main(args : String[]) ~ Nil {
@@ -22,6 +22,10 @@ class RequestHandler from HttpRequestHandler {
 	@version : static : String;
 	@instructions : static : String;
 
+	@session_cache_timer : static : CacheTimer;
+	@session_cache_mutex : static : System.Concurrency.ThreadMutex;
+	@session_cache : static : Hash<String, Hash<String, String>>;
+
 	New() {
 		Parent();
 
@@ -29,21 +33,45 @@ class RequestHandler from HttpRequestHandler {
 		@is_debug := true;
 	}
 
+	function : CheckCache() ~ Nil {
+		critical(@session_cache_mutex) {
+			# get key/values
+			session_key_values := @session_cache->GetKeyValues()<Pair<String, Hash<String, String>>>;
+			each(session_key_value in session_key_values) {
+				session_key_value->GetFirst()->PrintLine();
+			};
+		}
+	}
+
 	function : Initialize(name : String, version : String, instructions : String) ~ Nil {
 		@name := name;
 		@version := version;
 		@instructions := instructions;
+
+ 		@session_cache_mutex := System.Concurrency.ThreadMutex->New("cache_mutex");
+ 		@session_cache := Hash->New()<String, Hash<String, String>>;
+
+		@session_cache_timer := CacheTimer->New(15000); # 15 seconds
+ 		@session_cache_timer->Start(Nil);
 	}
 
 	method : ProcessGet(request : Web.HTTP.Server.Request, response : Web.HTTP.Server.Response) ~ Bool {
+		session : Hash<String, String>;
 		session_id := request->GetHeader("mcp-session-id");
+		if(session_id <> Nil) {
+			critical(@session_cache_mutex) {
+				session := @session_cache->Find(session_id);
+			};
+		};
 
 		if(@is_debug) {
 			if(session_id = Nil) {
 				session_id := "<nil>";
 			};
 
-			"\n### GET: session_id='{$session_id}' ####"->PrintLine();
+			has_session := session <> Nil;
+
+			"\n### GET: session_id='{$session_id}', has_session={$has_session} ####"->PrintLine();
 		};
 		
 		response->SetCodeTypeContent(200, "text/event-stream", ": keepalive\n\n");
@@ -51,14 +79,23 @@ class RequestHandler from HttpRequestHandler {
 	}
 
 	method : ProcessPost(request : Web.HTTP.Server.Request, response : Web.HTTP.Server.Response) ~ Bool {
+		session : Hash<String, String>;
 		session_id := request->GetHeader("mcp-session-id");
+		if(session_id <> Nil) {
+			critical(@session_cache_mutex) {
+				session := @session_cache->Find(session_id);
+			};
+		};
 
+		session_id := request->GetHeader("mcp-session-id");
 		if(@is_debug) {
 			if(session_id = Nil) {
 				session_id := "<nil>";
 			};
 
-			"\n### POST: session_id='{$session_id}' ###"->PrintLine();
+			has_session := session <> Nil;
+
+			"\n### POST: session_id='{$session_id}', has_session={$has_session} ####"->PrintLine();
 		};
 
 		if(request->HasContent()) {
@@ -68,7 +105,7 @@ class RequestHandler from HttpRequestHandler {
 				ShowPayload(content);
 			};
 
-			parser :=JsonParser->New(content);
+			parser := JsonParser->New(content);
 			if(parser->Parse()) {
 				root_json := parser->GetRoot();
 
@@ -83,6 +120,7 @@ class RequestHandler from HttpRequestHandler {
 						};
 
 						# execute method
+
 						select(method_name) {
 							# ping
 							label "ping": {
@@ -123,8 +161,19 @@ class RequestHandler from HttpRequestHandler {
 
 								result->Insert("serverInfo", server_json);
 
-								response->SetHeader("mcp-session-id", Runtime->GetUuid());
+								session_id := Runtime->GetUuid();
+								
+								session := Hash->New()<String, String>;
+								session->Insert("_timestamp_", System.Time.Date->New()->GetUnixTime()->ToString())
+								# TODO: insert time
+
+								critical(@session_cache_mutex) {
+									@session_cache->Insert(session_id, session);
+								};
+
+								response->SetHeader("mcp-session-id", session_id);
 								WriteResponse(result, id, response, 200);
+
 								return false;
 							}
 							
@@ -447,3 +496,13 @@ class RequestHandler from HttpRequestHandler {
 		payload->ReplaceAll("\t", "  ")->PrintLine();
 	}
 } 
+
+class CacheTimer from System.Time.Alarm {
+	New(time : Int) {
+		Parent(time, true);
+	}
+
+	method : public : Ring(param:System.Base) ~ Nil {
+		RequestHandler->CheckCache();
+	}
+}
