@@ -113,7 +113,7 @@ class RequestHandler from HttpRequestHandler {
 
 								result->Insert("serverInfo", server_json);
 
-response->SetHeader("Mcp-Session-Id", "a1b2c3d4-e5f6-7890-1234-567890abcdef");
+response->SetHeader("Mcp-Session-Id", Runtime->GetGuuid());
 								WriteResponse(result, id, response, 200);
 								return false;
 							}
