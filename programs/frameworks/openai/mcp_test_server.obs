@@ -16,7 +16,7 @@ class TestMcp {
 }
 
 class RequestHandler from HttpRequestHandler {
-	@is_debug : Bool;
+	@is_debug : static : Bool;
 
 	@name : static : String;
 	@version : static : String;
@@ -28,24 +28,7 @@ class RequestHandler from HttpRequestHandler {
 
 	New() {
 		Parent();
-
 		@instructions := "Welcome! This server is ready to accept MCP requests.";
-		@is_debug := true;
-	}
-
-	function : CheckCache() ~ Nil {
-		critical(@session_cache_mutex) {
-			# get key/values
-			session_key_values := @session_cache->GetKeyValues()<Pair<String, Hash<String, String>>>;
-			each(session_key_value in session_key_values) {
-				session_key_value->GetFirst()->PrintLine();
-
-				foo := session_key_value->GetSecond();
-				foo->Find("_timestamp_")->PrintLine();
-				
-				"---"->PrintLine();
-			};
-		}
 	}
 
 	function : Initialize(name : String, version : String, instructions : String) ~ Nil {
@@ -57,6 +40,43 @@ class RequestHandler from HttpRequestHandler {
  		@session_cache := Hash->New()<String, Hash<String, String>>;
 		@session_cache_timer := CacheTimer->New(15000); # 15 seconds
  		@session_cache_timer->Start(Nil);
+
+ 		@is_debug := true;
+	}
+
+	function : CheckCache() ~ Nil {
+		critical(@session_cache_mutex) {
+			# get key/values
+			expired_session_keys := Vector->New()<String>;
+
+			session_key_values := @session_cache->GetKeyValues()<Pair<String, Hash<String, String>>>;
+			each(session_key_value in session_key_values) {
+				session := session_key_value->GetSecond();
+				timestamp_str := session->Find("_timestamp_");
+				if(timestamp_str <> Nil) {
+					time_diff := System.Time.Date->New()->GetUnixTime() - timestamp_str->ToInt();
+					session_key := session_key_value->GetFirst();
+					if(@is_debug) {
+						"session: key={$session_key}, diff={$time_diff}"->PrintLine();
+					};
+
+					if(time_diff >= 60) {
+						expired_session_keys->AddBack(session_key);
+					}
+				};				
+			};
+
+			each(session_key in expired_session_keys) {
+				@session_cache->Remove(session_key);
+				if(@is_debug) {
+					"*** removing: key={$session_key} ***"->PrintLine();
+				};
+			};
+
+			if(@is_debug) {
+				"---"->PrintLine();
+			};
+		}
 	}
 
 	method : ProcessGet(request : Web.HTTP.Server.Request, response : Web.HTTP.Server.Response) ~ Bool {
@@ -74,7 +94,6 @@ class RequestHandler from HttpRequestHandler {
 			};
 
 			has_session := session <> Nil;
-
 			"\n### GET: session_id='{$session_id}', has_session={$has_session} ####"->PrintLine();
 		};
 		
@@ -91,14 +110,12 @@ class RequestHandler from HttpRequestHandler {
 			};
 		};
 
-		session_id := request->GetHeader("mcp-session-id");
 		if(@is_debug) {
 			if(session_id = Nil) {
 				session_id := "<nil>";
 			};
 
 			has_session := session <> Nil;
-
 			"\n### POST: session_id='{$session_id}', has_session={$has_session} ####"->PrintLine();
 		};
 
@@ -113,192 +130,157 @@ class RequestHandler from HttpRequestHandler {
 			if(parser->Parse()) {
 				root_json := parser->GetRoot();
 
-				method_json := root_json->Get("method");
-				if(method_json <> Nil) {
-					method_name := method_json->GetValue();
+				# process method
+				method_name := root_json->Get("method")->GetValue();
+				if(method_name <> Nil) {
+					if(@is_debug) {
+						"[Post: method_name='{$method_name}']"->PrintLine();
+					};
 
-					# process method
-					if(method_name <> Nil) {
-						if(@is_debug) {
-							"[Post: method_name='{$method_name}']"->PrintLine();
-						};
+					# execute method
+					select(method_name) {
+						# ping
+						label "ping": {
+							id := root_json->Get("id")->GetValue()->ToInt();
+							WriteResponse(Nil, id, response, 200);
+							return false;
+						}
 
-						# execute method
+						# initialize
+						label "initialize": {
+							id := root_json->Get("id")->GetValue()->ToInt();
 
-						select(method_name) {
-							# ping
-							label "ping": {
-								id := root_json->Get("id")->GetValue()->ToInt();
-								WriteResponse(Nil, id, response, 200);
-								return false;
-							}
+							result := JsonElement->New(JsonElement->JsonType->OBJECT);
+							result->Insert("protocolVersion", "2025-06-18");
+							result->Insert("instructions", @instructions);
 
-							# initialize
-							label "initialize": {
-								id := root_json->Get("id")->GetValue()->ToInt();
+							# add capabilities
+							capabilities_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 
-								result := JsonElement->New(JsonElement->JsonType->OBJECT);
-								result->Insert("protocolVersion", "2025-06-18");
-								result->Insert("instructions", @instructions);
-
-								# add capabilities
-								capabilities_json := JsonElement->New(JsonElement->JsonType->OBJECT);
-
-								tools_json :=  JsonElement->New(JsonElement->JsonType->OBJECT);
-								tools_json->Insert("listChanged", true);
-								capabilities_json->Insert("tools", tools_json);
-								
-								resources_json :=  JsonElement->New(JsonElement->JsonType->OBJECT);
-								resources_json->Insert("listChanged", true);
-								capabilities_json->Insert("resources", resources_json);
-
-								prompts_json :=  JsonElement->New(JsonElement->JsonType->OBJECT);
-								prompts_json->Insert("listChanged", true);
-								capabilities_json->Insert("resources", prompts_json);
-
-								result->Insert("capabilities", capabilities_json);
-
-								# server information
-								server_json :=  JsonElement->New(JsonElement->JsonType->OBJECT);
-								server_json->Insert("name", @name);
-								server_json->Insert("version", @version);
-
-								result->Insert("serverInfo", server_json);
-
-								session_id := Runtime->GetUuid();
-								
-								session := Hash->New()<String, String>;
-								session->Insert("_timestamp_", System.Time.Date->New()->GetUnixTime()->ToString())
-								# TODO: insert time
-
-								critical(@session_cache_mutex) {
-									@session_cache->Insert(session_id, session);
-								};
-
-								response->SetHeader("mcp-session-id", session_id);
-								WriteResponse(result, id, response, 200);
-
-								return false;
-							}
+							tools_json :=  JsonElement->New(JsonElement->JsonType->OBJECT);
+							tools_json->Insert("listChanged", true);
+							capabilities_json->Insert("tools", tools_json);
 							
-							# notifications/initialized
-							label "notifications/initialized": {
-								if(@is_debug) {
-									"### notifications/initialized ###"->PrintLine();
-								};
+							resources_json :=  JsonElement->New(JsonElement->JsonType->OBJECT);
+							resources_json->Insert("listChanged", true);
+							capabilities_json->Insert("resources", resources_json);
 
-								response->SetCode(202);
-								return false;
-							}
+							prompts_json :=  JsonElement->New(JsonElement->JsonType->OBJECT);
+							prompts_json->Insert("listChanged", true);
+							capabilities_json->Insert("resources", prompts_json);
+
+							result->Insert("capabilities", capabilities_json);
+
+							# server information
+							server_json :=  JsonElement->New(JsonElement->JsonType->OBJECT);
+							server_json->Insert("name", @name);
+							server_json->Insert("version", @version);
+
+							result->Insert("serverInfo", server_json);
+
+							session_id := Runtime->GetUuid();
 							
-							# logging/setLevel
-							label "logging/setLevel": {
-								id := root_json->Get("id")->GetValue()->ToInt();
-								WriteResponse(Nil, id, response, 200);
-								return false;
-							}
+							session := Hash->New()<String, String>;
+							session->Insert("_timestamp_", System.Time.Date->New()->GetUnixTime()->ToString())
+							# TODO: insert time
 
-							# resources/templates/list
-							label "resources/templates/list": {
-								id := root_json->Get("id")->GetValue()->ToInt();
+							critical(@session_cache_mutex) {
+								@session_cache->Insert(session_id, session);
+							};
 
-								templates_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+							response->SetHeader("mcp-session-id", session_id);
+							WriteResponse(result, id, response, 200);
 
-								# TODO: method callback 
-								template_json := JsonElement->New(JsonElement->JsonType->OBJECT);
-								template_json->Insert("uriTemplate", "https:///{path}");
-								template_json->Insert("name", "Project Files");
-								template_json->Insert("title", "Project Files");
-								template_json->Insert("description", "Access files on the project site");
-								template_json->Insert("mimeType", "application/octet-stream");
+							return false;
+						}
+						
+						# notifications/initialized
+						label "notifications/initialized": {
+							if(@is_debug) {
+								"### notifications/initialized ###"->PrintLine();
+							};
 
-								templates_array_json->Add(template_json);
+							response->SetCode(202);
+							return false;
+						}
+						
+						# logging/setLevel
+						label "logging/setLevel": {
+							id := root_json->Get("id")->GetValue()->ToInt();
+							WriteResponse(Nil, id, response, 200);
+							return false;
+						}
 
-								result := JsonElement->New(JsonElement->JsonType->OBJECT);
-								result->Insert("resourceTemplates", templates_array_json);
-								
-								WriteResponse(result, id, response, 200);
-								return false;
-							}
+						# resources/templates/list
+						label "resources/templates/list": {
+							id := root_json->Get("id")->GetValue()->ToInt();
+
+							templates_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+
+							# TODO: method callback 
+							template_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+							template_json->Insert("uriTemplate", "https:///{path}");
+							template_json->Insert("name", "Project Files");
+							template_json->Insert("title", "Project Files");
+							template_json->Insert("description", "Access files on the project site");
+							template_json->Insert("mimeType", "application/octet-stream");
+
+							templates_array_json->Add(template_json);
+
+							result := JsonElement->New(JsonElement->JsonType->OBJECT);
+							result->Insert("resourceTemplates", templates_array_json);
 							
-							# resources/list
-							label "resources/list": {
-								id := root_json->Get("id")->GetValue()->ToInt();
+							WriteResponse(result, id, response, 200);
+							return false;
+						}
+						
+						# resources/list
+						label "resources/list": {
+							id := root_json->Get("id")->GetValue()->ToInt();
 
-								resources_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+							resources_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
 
-								# TODO: method callback 
-								resource_json := JsonElement->New(JsonElement->JsonType->OBJECT);
-								resource_json->Insert("uri", "file:///{_meta}");
-								resource_json->Insert("name", "Project Files");
-								resource_json->Insert("description", "Access files on the project site");
-								resource_json->Insert("mimeType", "application/octet-stream");
+							# TODO: method callback 
+							resource_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+							resource_json->Insert("uri", "file:///{_meta}");
+							resource_json->Insert("name", "Project Files");
+							resource_json->Insert("description", "Access files on the project site");
+							resource_json->Insert("mimeType", "application/octet-stream");
 
-								resources_array_json->Add(resource_json);
+							resources_array_json->Add(resource_json);
 
-								result := JsonElement->New(JsonElement->JsonType->OBJECT);
-								result->Insert("resources", resources_array_json);
-								
-								WriteResponse(result, id, response, 200);
-								return false;
-							}
+							result := JsonElement->New(JsonElement->JsonType->OBJECT);
+							result->Insert("resources", resources_array_json);
 							
-							# resources/read
-							label "resources/read": {
-								id := root_json->Get("id")->GetValue()->ToInt();
+							WriteResponse(result, id, response, 200);
+							return false;
+						}
+						
+						# resources/read
+						label "resources/read": {
+							id := root_json->Get("id")->GetValue()->ToInt();
 
-								call_params_json := root_json->Get("params");								
-								if(call_params_json <> Nil) {
-									uri := call_params_json->Get("uri")->GetValue();
-										
-									payload := "{
-										\"jsonrpc\": \"2.0\",
-										\"id\": {$id},
-										\"result\": {
-											\"contents\": [ {
-													\"uri\": \"{$uri}\",
-													\"mimeType\": \"text/plain\",
-													\"text\": \"Hello from resources/read, check URI\\n\"
-												}
-											]
-										}
-									}";
-
-									#~
-									"mimeType": "image/png",
-			        				"blob": "iVBORw0KGgoAAAANSUhEUgAA..."  // base64
-									~#
-
-									if(@is_debug) {
-										ShowPayload(payload);
-									};
-
-									response->SetCodeTypeContent(200, "application/json", payload);
-									return false;
-								};
-							}
-							
-							# tools/list
-							label "tools/list": {
-								id := root_json->Get("id")->GetValue()->ToInt();
+							call_params_json := root_json->Get("params");								
+							if(call_params_json <> Nil) {
+								uri := call_params_json->Get("uri")->GetValue();
+									
 								payload := "{
 									\"jsonrpc\": \"2.0\",
 									\"id\": {$id},
 									\"result\": {
-										\"tools\": [      
-											{        
-												\"name\": \"echo\",
-												\"description\":
-												\"Echo a string\",
-												\"inputSchema\": {
-													\"type\": \"object\",
-													\"properties\": { \"text\": { \"type\": \"string\" } },
-													\"required\": [\"text\"]
-												}
+										\"contents\": [ {
+												\"uri\": \"{$uri}\",
+												\"mimeType\": \"text/plain\",
+												\"text\": \"Hello from resources/read, check URI\\n\"
 											}
 										]
 									}
 								}";
+
+								#~
+								"mimeType": "image/png",
+		        				"blob": "iVBORw0KGgoAAAANSUhEUgAA..."  // base64
+								~#
 
 								if(@is_debug) {
 									ShowPayload(payload);
@@ -306,165 +288,195 @@ class RequestHandler from HttpRequestHandler {
 
 								response->SetCodeTypeContent(200, "application/json", payload);
 								return false;
-							}
-
-							# prompts/list
-							label "prompts/list": {
-								id := root_json->Get("id")->GetValue()->ToInt();
-								payload := "{
-									\"jsonrpc\": \"2.0\",  
-									\"id\": {$id},  \"result\": {    
-										\"prompts\": [ 
-											{        
-												\"name\": \"greet\",
-												\"title\": \"Greet a User\",
-												\"description\": \"Compose a friendly greeting.\",
-												\"arguments\": [ { 
-													\"name\": \"name\", \"description\": \"User's name\", \"required\": true }
-												]
-											},
-											{
-												\"name\": \"explain_topic\",
-												\"title\": \"Explain a Topic\",
-												\"description\": \"Short explanation suitable for a beginner.\",
-												\"arguments\": [ {
-													\"name\": \"topic\", \"description\": \"Subject to explain\", \"required\": true }
-												]
+							};
+						}
+						
+						# tools/list
+						label "tools/list": {
+							id := root_json->Get("id")->GetValue()->ToInt();
+							payload := "{
+								\"jsonrpc\": \"2.0\",
+								\"id\": {$id},
+								\"result\": {
+									\"tools\": [      
+										{        
+											\"name\": \"echo\",
+											\"description\":
+											\"Echo a string\",
+											\"inputSchema\": {
+												\"type\": \"object\",
+												\"properties\": { \"text\": { \"type\": \"string\" } },
+												\"required\": [\"text\"]
 											}
-										]
-									}
-								}";
+										}
+									]
+								}
+							}";
 
-								if(@is_debug) {
-									ShowPayload(payload);
+							if(@is_debug) {
+								ShowPayload(payload);
+							};
+
+							response->SetCodeTypeContent(200, "application/json", payload);
+							return false;
+						}
+
+						# prompts/list
+						label "prompts/list": {
+							id := root_json->Get("id")->GetValue()->ToInt();
+							payload := "{
+								\"jsonrpc\": \"2.0\",  
+								\"id\": {$id},  \"result\": {    
+									\"prompts\": [ 
+										{        
+											\"name\": \"greet\",
+											\"title\": \"Greet a User\",
+											\"description\": \"Compose a friendly greeting.\",
+											\"arguments\": [ { 
+												\"name\": \"name\", \"description\": \"User's name\", \"required\": true }
+											]
+										},
+										{
+											\"name\": \"explain_topic\",
+											\"title\": \"Explain a Topic\",
+											\"description\": \"Short explanation suitable for a beginner.\",
+											\"arguments\": [ {
+												\"name\": \"topic\", \"description\": \"Subject to explain\", \"required\": true }
+											]
+										}
+									]
+								}
+							}";
+
+							if(@is_debug) {
+								ShowPayload(payload);
+							};
+
+							response->SetCodeTypeContent(200, "application/json", payload);
+							return false;
+						}
+
+						# prompts/get
+						label "prompts/get": {
+							call_name : String; 
+							
+							call_params_json := root_json->Get("params");								
+							if(call_params_json <> Nil) {
+								name_json := call_params_json->Get("name");
+								if(name_json <> Nil) {
+									call_name := name_json->GetValue();
 								};
 
-								response->SetCodeTypeContent(200, "application/json", payload);
-								return false;
-							}
+								call_params_json := call_params_json->Get("arguments");
+								if(call_params_json <> Nil & call_name <> Nil) {
+									id := root_json->Get("id")->GetValue()->ToInt();
 
-							# prompts/get
-							label "prompts/get": {
-								call_name : String; 
-								
-								call_params_json := root_json->Get("params");								
-								if(call_params_json <> Nil) {
-									name_json := call_params_json->Get("name");
-									if(name_json <> Nil) {
-										call_name := name_json->GetValue();
-									};
+									# greet prompt
+									if(call_name->Equals("greet")) {
+										name := call_params_json->Get("name")->GetValue();
 
-									call_params_json := call_params_json->Get("arguments");
-									if(call_params_json <> Nil & call_name <> Nil) {
-										id := root_json->Get("id")->GetValue()->ToInt();
-
-										# greet prompt
-										if(call_name->Equals("greet")) {
-											name := call_params_json->Get("name")->GetValue();
-
-											payload := "{
-												\"jsonrpc\": 
-												\"2.0\",  
-												\"id\": {$id},  
-												\"result\": {  
-													\"description\": \"Greeting prompt\",  
-													\"messages\": [
-														{
-															\"role\": \"user\",
-															\"content\": { 
-																\"type\": \"text\", 
-																\"text\": \"{$name}\" 
-															}
-														}
-													]    
-												}
-											}";
-
-											if(@is_debug) {
-												ShowPayload(payload);
-											};
-
-											response->SetCodeTypeContent(200, "application/json", payload);
-											return false;
-										}
-										# greet prompt
-										else if(call_name->Equals("explain_topic")) {
-											explain_topic := call_params_json->Get("topic")->GetValue();
-											
-											payload := "{
-												\"jsonrpc\": 
-												\"2.0\",  
-												\"id\": {$id},  
-												\"result\": {  
-													\"description\": \"Explain prompt\",  
-													\"messages\": [
-														{
-															\"role\": \"user\",
-															\"content\": { 
-																\"type\": \"text\", 
-																\"text\": \"{$explain_topic}\" 
-															}
-														}
-													]    
-												}
-											}";
-
-											if(@is_debug) {
-												ShowPayload(payload);
-											};
-
-											response->SetCodeTypeContent(200, "application/json", payload);
-											return false;
-										}
-									};
-								};
-							}
-
-							# tools/call
-							label "tools/call": {
-								call_name : String; text : String;
-
-								call_params_json := root_json->Get("params");								
-								if(call_params_json <> Nil) {
-									name_json := call_params_json->Get("name");
-									if(name_json <> Nil) {
-										call_name := name_json->GetValue();
-									};
-
-									call_params_json := call_params_json->Get("arguments");
-									if(call_params_json <> Nil & call_name <> Nil) {
-										id := root_json->Get("id")->GetValue()->ToInt();
-										
-										# echo call
-										if(call_name->Equals("echo")) {
-											text := call_params_json->Get("text")->GetValue();									
-											
-											payload := "{
-												\"jsonrpc\": 
-												\"2.0\",  
-												\"id\": {$id},  
-												\"result\": {    
-													\"content\": [
-														{ 
+										payload := "{
+											\"jsonrpc\": 
+											\"2.0\",  
+											\"id\": {$id},  
+											\"result\": {  
+												\"description\": \"Greeting prompt\",  
+												\"messages\": [
+													{
+														\"role\": \"user\",
+														\"content\": { 
 															\"type\": \"text\", 
-															\"text\": \"{$text}\" 
-														}    
-													],    
-													\"isError\": false  
-												}
-											}";
+															\"text\": \"{$name}\" 
+														}
+													}
+												]    
+											}
+										}";
 
-											if(@is_debug) {
-												ShowPayload(payload);
-											};
+										if(@is_debug) {
+											ShowPayload(payload);
+										};
 
-											response->SetCodeTypeContent(200, "application/json", payload);
-											return false;
-										}
-									};
+										response->SetCodeTypeContent(200, "application/json", payload);
+										return false;
+									}
+									# greet prompt
+									else if(call_name->Equals("explain_topic")) {
+										explain_topic := call_params_json->Get("topic")->GetValue();
+										
+										payload := "{
+											\"jsonrpc\": 
+											\"2.0\",  
+											\"id\": {$id},  
+											\"result\": {  
+												\"description\": \"Explain prompt\",  
+												\"messages\": [
+													{
+														\"role\": \"user\",
+														\"content\": { 
+															\"type\": \"text\", 
+															\"text\": \"{$explain_topic}\" 
+														}
+													}
+												]    
+											}
+										}";
+
+										if(@is_debug) {
+											ShowPayload(payload);
+										};
+
+										response->SetCodeTypeContent(200, "application/json", payload);
+										return false;
+									}
 								};
-							}
-						};
+							};
+						}
+
+						# tools/call
+						label "tools/call": {
+							call_name : String; text : String;
+
+							call_params_json := root_json->Get("params");								
+							if(call_params_json <> Nil) {
+								name_json := call_params_json->Get("name");
+								if(name_json <> Nil) {
+									call_name := name_json->GetValue();
+								};
+
+								call_params_json := call_params_json->Get("arguments");
+								if(call_params_json <> Nil & call_name <> Nil) {
+									id := root_json->Get("id")->GetValue()->ToInt();
+									
+									# echo call
+									if(call_name->Equals("echo")) {
+										text := call_params_json->Get("text")->GetValue();									
+										
+										payload := "{
+											\"jsonrpc\": 
+											\"2.0\",  
+											\"id\": {$id},  
+											\"result\": {    
+												\"content\": [
+													{ 
+														\"type\": \"text\", 
+														\"text\": \"{$text}\" 
+													}    
+												],    
+												\"isError\": false  
+											}
+										}";
+
+										if(@is_debug) {
+											ShowPayload(payload);
+										};
+
+										response->SetCodeTypeContent(200, "application/json", payload);
+										return false;
+									}
+								};
+							};
+						}
 					};
 				};
 			};
