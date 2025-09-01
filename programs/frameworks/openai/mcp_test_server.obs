@@ -267,35 +267,21 @@ class RequestHandler from HttpRequestHandler {
 						label "resources/read": {
 							id := root_json->Get("id")->GetValue()->ToInt();
 
-							call_params_json := root_json->Get("params");								
-							if(call_params_json <> Nil) {
-								uri := call_params_json->Get("uri")->GetValue();
-									
-								payload := "{
-									\"jsonrpc\": \"2.0\",
-									\"id\": {$id},
-									\"result\": {
-										\"contents\": [ {
-												\"uri\": \"{$uri}\",
-												\"mimeType\": \"text/plain\",
-												\"text\": \"Hello from resources/read, check URI\\n\"
-											}
-										]
-									}
-								}";
+							resources_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
 
-								#~
-								"mimeType": "image/png",
-		        				"blob": "iVBORw0KGgoAAAANSUhEUgAA..."  // base64
-								~#
+							# TODO: method callback 
+							resource_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+							resource_json->Insert("uri", "file:///{_meta}");
+							resource_json->Insert("mimeType", "application/octet-stream");
+							resource_json->Insert("text", "Hello from resources/read, check URI\\n\\tHello!");
 
-								if(@is_debug) {
-									ShowPayload(payload);
-								};
+							resources_array_json->Add(resource_json);
 
-								response->SetCodeTypeContent(200, "application/json", payload);
-								return false;
-							};
+							result := JsonElement->New(JsonElement->JsonType->OBJECT);
+							result->Insert("contents", resources_array_json);
+							
+							WriteResponse(result, id, response, 200);
+							return false;						
 						}
 						
 						# tools/list
