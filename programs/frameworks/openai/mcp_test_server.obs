@@ -39,6 +39,11 @@ class RequestHandler from HttpRequestHandler {
 			session_key_values := @session_cache->GetKeyValues()<Pair<String, Hash<String, String>>>;
 			each(session_key_value in session_key_values) {
 				session_key_value->GetFirst()->PrintLine();
+
+				foo := session_key_value->GetSecond();
+				foo->Find("_timestamp_")->PrintLine();
+				
+				"---"->PrintLine();
 			};
 		}
 	}
@@ -50,7 +55,6 @@ class RequestHandler from HttpRequestHandler {
 
  		@session_cache_mutex := System.Concurrency.ThreadMutex->New("cache_mutex");
  		@session_cache := Hash->New()<String, Hash<String, String>>;
-
 		@session_cache_timer := CacheTimer->New(15000); # 15 seconds
  		@session_cache_timer->Start(Nil);
 	}
