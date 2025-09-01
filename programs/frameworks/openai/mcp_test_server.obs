@@ -11,6 +11,7 @@ class TestMcp {
 			config_json->Insert("instructions", "You are at test Objeck MCP server");
 			config_json->Insert("version", "0.0.1");
 			config_json->Insert("http_port", args[0]);
+			config_json->Insert("http_session_timeout", 15);
 			config_json->Insert("debug", true);
 
 			config := config_builder->Pop();
