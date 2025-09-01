@@ -1,5 +1,6 @@
 use Collection, Data.JSON, Web.HTTP.Server;
 
+# npx @modelcontextprotocol/inspector
 class TestMcp {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
@@ -112,11 +113,18 @@ class RequestHandler from HttpRequestHandler {
 
 		if(@is_debug) {
 			if(session_id = Nil) {
-				session_id := "<nil>";
+				"\n### POST ####"->PrintLine();
+			}
+			else {
+				has_session := session <> Nil;
+				"\n### POST: session_id='{$session_id}', has_session={$has_session} ####"->PrintLine();
 			};
+		};
 
-			has_session := session <> Nil;
-			"\n### POST: session_id='{$session_id}', has_session={$has_session} ####"->PrintLine();
+		# expired session
+		if(session_id <> Nil & session = Nil) {
+			response->SetCode(404);
+			return false;
 		};
 
 		if(request->HasContent()) {
@@ -182,8 +190,7 @@ class RequestHandler from HttpRequestHandler {
 							
 							session := Hash->New()<String, String>;
 							session->Insert("_timestamp_", System.Time.Date->New()->GetUnixTime()->ToString())
-							# TODO: insert time
-
+							
 							critical(@session_cache_mutex) {
 								@session_cache->Insert(session_id, session);
 							};
