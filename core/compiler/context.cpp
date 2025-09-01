@@ -3714,9 +3714,13 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
     }
     
     // cannot create an instance of a virtual class
-    if((lib_method->GetMethodType() == NEW_PUBLIC_METHOD ||
-       lib_method->GetMethodType() == NEW_PRIVATE_METHOD) && is_virtual) {
+    if((lib_method->GetMethodType() == NEW_PUBLIC_METHOD || lib_method->GetMethodType() == NEW_PRIVATE_METHOD) && is_virtual) {
       ProcessError(static_cast<Expression*>(method_call), L"Cannot create an instance of a virtual class or interface, check the constructor");
+    }
+
+    // cannot call an unimplemented function
+    if(lib_method->IsVirtual() && lib_method->IsStatic()) {
+       ProcessError(static_cast<Expression*>(method_call), L"Cannot call an unimplemented virtual function");
     }
 
     // associate method

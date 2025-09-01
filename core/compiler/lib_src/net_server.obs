@@ -2073,6 +2073,9 @@ class RequestHandler from HttpsRequestHandler {
 	}
 }
 
+#~
+MCP server support (-lib net_server)
+~#
 bundle Web.HTTP.Server.MCP {
 	#~
 	MCP server
@@ -2089,6 +2092,8 @@ bundle Web.HTTP.Server.MCP {
 			return @is_debug;
 		}
 
+		function : virtual : Foo() ~ Nil;
+		
 		#~
 		Initializes the MPC server
 		@param config JSON configuration file
@@ -2098,14 +2103,17 @@ bundle Web.HTTP.Server.MCP {
 				">>> Error MCP server already initialized <<<"->ErrorLine();
 				return;
 			};
-			
+
 			@config := config;
-			@is_debug := @config->Get("debug")->GetBool();
+			@is_debug := config->Get("debug")->GetBool();
 			
-			McpRequestHandler->Initialize(config);
-			
-			http_port := @config->Get("http_port")->GetValue();
-			WebServer->Serve(McpRequestHandler->New()->GetClass(), http_port->ToInt(), @is_debug);
+			http_port := config->Get("http_port")->GetInt();
+			if(http_port <= 0 | <>McpRequestHandler->Initialize(config)) {
+				">>> Unable to initialize MCP server <<<"->ErrorLine();
+				return;
+			};
+						
+			WebServer->Serve(McpRequestHandler->New()->GetClass(), http_port, @is_debug);
 		}
 	}
 
@@ -2120,13 +2128,20 @@ bundle Web.HTTP.Server.MCP {
 			Parent();
 		}
 
-		function : Initialize(config : JsonElement) ~ Nil {
+		function : Initialize(config : JsonElement) ~ Bool {
 			@config := config;
+
+			session_timeout := config->Get("http_session_timeout")->GetInt();
+			if(session_timeout <= 0) {
+				return false;
+			};
 
 			@session_cache_mutex := System.Concurrency.ThreadMutex->New("cache_mutex");
 	 		@session_cache := Hash->New()<String, Hash<String, String>>;
-			@session_cache_timer := CacheTimer->New(15000); # 15 seconds
+			@session_cache_timer := CacheTimer->New(session_timeout * 1000); # in seconds
 	 		@session_cache_timer->Start(Nil);
+
+	 		return true;
 		}
 
 		function : CheckCache() ~ Nil {
