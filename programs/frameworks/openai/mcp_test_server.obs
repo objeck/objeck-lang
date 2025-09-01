@@ -44,7 +44,7 @@ class RequestHandler from HttpRequestHandler {
 				foo->Find("_timestamp_")->PrintLine();
 				
 				"---"->PrintLine();
-			}
+			};
 		}
 	}
 
