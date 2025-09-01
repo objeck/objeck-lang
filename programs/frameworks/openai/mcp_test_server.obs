@@ -1,4 +1,4 @@
-use Data.JSON, Web.HTTP.Server.MCP;
+use Collection, Data.JSON, Web.HTTP.Server.MCP;
 
 # run mcp inspector: npx @modelcontextprotocol/inspector
 class TestMcp {
@@ -17,10 +17,20 @@ class TestMcp {
 			config := config_builder->Pop();
 			config->ToString()->PrintLine();
 
-			McpServer->Serve(config);
+			McpServer->Serve(config, TestHandler->New());
 		}
 		else {
 			">>> Usage: JSON configuration file <<<"->PrintLine();
 		};
+	}
+}
+
+class TestHandler from McpRequestHandler {
+	New() {
+		Parent();
+	}
+
+	method : GetResources() ~ Vector<Resource> {
+		return Nil;
 	}
 }

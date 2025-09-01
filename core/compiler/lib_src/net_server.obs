@@ -2098,7 +2098,7 @@ bundle Web.HTTP.Server.MCP {
 		Initializes the MPC server
 		@param config JSON configuration file
 		~#
-		function : Serve(config : JsonElement) ~ Nil {
+		function : Serve(config : JsonElement, handler : McpRequestHandler) ~ Nil {
 			if(@config <> Nil) {
 				">>> Error MCP server already initialized <<<"->ErrorLine();
 				return;
@@ -2112,8 +2112,8 @@ bundle Web.HTTP.Server.MCP {
 				">>> Unable to initialize MCP server <<<"->ErrorLine();
 				return;
 			};
-						
-			WebServer->Serve(McpRequestHandler->New()->GetClass(), http_port, @is_debug);
+
+			WebServer->Serve(handler->GetClass(), http_port, @is_debug);
 		}
 	}
 
@@ -2178,6 +2178,8 @@ bundle Web.HTTP.Server.MCP {
 				};
 			}
 		}
+
+		method : virtual : GetResources() ~ Vector<Resource>;
 
 		method : ProcessGet(request : Web.HTTP.Server.Request, response : Web.HTTP.Server.Response) ~ Bool {
 			session : Hash<String, String>;
@@ -2618,6 +2620,10 @@ bundle Web.HTTP.Server.MCP {
 		method : public : Ring(param:System.Base) ~ Nil {
 			McpRequestHandler->CheckCache();
 		}
+	}
+
+	class Resource {
+		New() {}
 	}
 }
 
