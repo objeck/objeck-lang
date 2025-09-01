@@ -1836,6 +1836,7 @@ bundle Data.JSON.Scheme {
 		#~
 		Constructor
 		@param type parameter type
+		@param is_array true if array, false otherwise
 		~#
 		New(type : ParameterType->Type, is_array : Bool) {
 			@type := type;
@@ -1845,8 +1846,9 @@ bundle Data.JSON.Scheme {
 		}
 
 		#~
-		+Constructor
+		Constructor
 		@param type parameter type
+		@param is_array true if array, false otherwise
 		@param desc description 
 		~#
 		New(type : ParameterType->Type, is_array : Bool, desc : String) {
@@ -1860,6 +1862,7 @@ bundle Data.JSON.Scheme {
 		#~
 		Constructor
 		@param req_params require parameters
+		@param is_array true if array, false otherwise
 		~#
 		New(req_params : String[], is_array : Bool) {
 			@type := ParameterType->Type->OBJECT;
