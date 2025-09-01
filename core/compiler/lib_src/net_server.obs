@@ -1653,6 +1653,957 @@ bundle Web.HTTP.Server {
 		~#
 		method : public : virtual : ProcessPost(request : Web.HTTP.Server.Request, response : Web.HTTP.Server.Response) ~ Bool;
 	}
+
+	#~
+	Request handler for HTTPS GET and POST requests. <p>Sample <a href="https://github.com/objeck/objeck-web-server/blob/master/config/simple_config.json" target="_blank">configuration</a> file<./p>
+
+```
+use Web.HTTP.Server;
+
+class Test {
+   function : Main(args : String[]) ~ Nil {
+      WebServer->ServeSecure("config/simple_config.json");
+   }
+}
+
+class RequestHandler from HttpsRequestHandler {
+   New() {
+      Parent();
+   }
+   
+   method : ProcessGet(request : Request, response : Response) ~ Bool {
+      return response->HasStaticHandler();
+   }
+
+   method : ProcessPost(request : Request, response : Response) ~ Bool {
+      return false;
+   }
+}      
+```
+	~#
+	class HttpsRequestHandler from System.Concurrency.Thread {
+		@client : TCPSecureSocket;
+		@server_config : WebServerConfig;
+		@is_debug : Bool;
+
+		New() {
+			Parent();
+		}
+
+		method : public : SetConfig(server_config : WebServerConfig, is_debug : Bool) ~ Nil {
+			@server_config := server_config;
+			@is_debug := is_debug;
+		}
+        
+		method : public : Run(param : Base) ~ Nil {
+			@client := param->As(TCPSecureSocket);
+
+			if(@client <> Nil & @client->IsOpen()) {
+				# get request
+				request := @client->ReadLine();
+				if(@is_debug) {
+					request_address := @client->GetAddress();
+					"===\nRequest: '{$request}' from '{$request_address}'\n==="->PrintLine();
+				};
+
+				# parse request
+				request_verb : String; request_path : String;
+				if(request->Size() > 0) {
+					request_parts := request->Split(" ");
+					if(request_parts->Size() = 3) {
+						request_verb := request_parts[0];
+						request_path := request_parts[1];
+					};
+				};
+
+				# get request headers
+				request_headers := GetHeaders();
+
+				# verify request
+				if(request_verb <> Nil & request_path <> Nil & <>request_path->IsEmpty()) {
+					# GET and HEAD request
+					if(request_verb->Equals("GET") | request_verb->Equals("HEAD")) {
+						# retrieve content
+						if(request_path = Nil | request_path->Equals("/") | request_path->Has("..")) {
+							request_path := "/index.html";
+						};
+
+						# write response
+						http_request := Request->New(request_path, request_headers);
+						http_response := Response->New(@server_config, http_request->GetPath());
+						
+						if(ProcessGet(http_request, http_response) & @server_config <> Nil & @server_config->IsHandlingFiles()) {
+							@server_config->ProcessGet(http_request, http_response);
+						};
+						ProcessResponse(http_response, request_verb->Equals("HEAD"));
+					}
+					# POST request
+					else if(request_verb->Equals("POST")) {
+						content_length_str := request_headers->Find("content-length");
+						if(content_length_str <> Nil) {
+							content_length  := content_length_str->ToInt();
+							if(content_length > 0) {
+								buffer := WebCommon->ReadPost(content_length, @client);
+								
+								# retrieve content
+								if(request_path = Nil | request_path->Equals("/") | request_path->Has("..")) {
+									request_path := "/index.html";
+								};
+
+								# write response
+								http_request := Request->New(request_path, request_headers, buffer);
+								http_response := Response->New(@server_config, http_request->GetPath());
+								
+								if(ProcessPost(http_request, http_response) & @server_config <> Nil & @server_config->IsHandlingFiles()) {
+									@server_config->ProcessPost(http_request, http_response);
+								};
+								ProcessResponse(http_response);
+							};
+						};
+					};
+				};
+
+				@client->Close();
+			};
+		}
+
+		method : ProcessResponse(response : Response, is_head : Bool := false) ~ Nil {
+			if(response <> Nil) {
+				response_headers := response->GetHeaders();
+				if(response->GetCode() = 200) {
+					response_header := "";
+					key_values := response_headers->GetKeyValues()<Pair<String, String>>;
+					each(i : key_values) {
+						key_value := key_values->Get(i);
+						key := key_value->GetFirst();
+						value := key_value->GetSecond();
+						response_header += "{$key}: {$value}\r\n";
+					};
+
+					content := response->GetContent();
+					if(content <> Nil) {
+						content_size := content->Size();
+						response_header += "content-length: {$content_size}\r\nAccept-Ranges: bytes\r\nConnection: close\r\n";
+
+						cookies := response->GetCookies()<Cookie>;
+						each(i : cookies) {
+							cookie := cookies->Get(i);
+							response_header += "Set-Cookie: ";
+							response_header += cookie->ToString();
+							response_header += "\r\n";
+						};
+
+						@client->WriteString("HTTP/1.1 200 OK\r\n{$response_header}\r\n");
+						if(<>is_head) {
+							@client->WriteBuffer(content);
+						};
+					}
+					else {
+						@client->WriteString("HTTP/1.1 200\r\n\r\n");
+					};
+				}
+				else {
+					select(response->GetCode()) {
+						label 202 {
+							@client->WriteString("HTTP/1.1 202 Accepted\r\n\r\n");
+						}
+
+						label 302 {
+							reason := response->GetReason();
+							if(reason <> Nil) {
+								@client->WriteString("HTTP/1.1 302 Found\r\nLocation: {$reason}\r\nConnection: close\r\n\r\n");
+							}
+							else {
+								@client->WriteString("HTTP/1.1 400\r\n\r\n");
+							};
+						}
+
+						label 404 {
+							@client->WriteString("HTTP/1.1 404 Not Found\r\n\r\n");
+						}
+
+						label 410 {
+							@client->WriteString("HTTP/1.1 410 Gone\r\n\r\n");
+						}
+
+						other {
+							@client->WriteString("HTTP/1.1 400\r\n\r\n");
+						}
+					};
+				};
+			};
+		}
+		
+		#~
+		Get HTTP headers
+		@return HTTP headers
+		~#
+		method : public : GetHeaders() ~ Map<String, String> {
+			headers := Map->New()<String, String>;
+			
+			header := @client->ReadLine();
+			while(header <> Nil & header->Size() > 0) {
+				if(@is_debug) {				
+					"header: {$header}"->PrintLine();
+				};
+                
+				header_parts := header->Split(": ");
+				if(header_parts->Size() = 2) {
+					headers->Insert(header_parts[0]->ToLower(), header_parts[1]);
+				};
+
+				header := @client->ReadLine();
+			};
+			
+			return headers;
+		}
+
+		#~
+		Callback for GET requests
+		@param request HTTP request
+		@param response HTTP response
+		@return true to continue processing, false otherwise
+		~#
+		method : virtual : ProcessGet(request : Web.HTTP.Server.Request, response : Web.HTTP.Server.Response) ~ Bool;
+
+		#~
+		Callback for POST requests
+		@param request HTTP request
+		@param response HTTP response
+		@return true to continue processing, false otherwise
+		~#
+		method : virtual : ProcessPost(request : Web.HTTP.Server.Request, response : Web.HTTP.Server.Response) ~ Bool;
+	}
+
+	#~
+	Request handler for HTTP GET and POST requests
+	~#
+	class HttpRequestHandler from System.Concurrency.Thread {
+		@client : TCPSocket;
+		@server_config : WebServerConfig;
+		@is_debug : Bool;
+
+		New() {
+			Parent();
+		}
+
+		method : public : SetConfig(server_config : WebServerConfig, is_debug : Bool) ~ Nil {
+			@server_config := server_config;
+			@is_debug := is_debug;
+		}
+
+		method : public : Run(param : Base) ~ Nil {
+			@client := param->As(TCPSocket);
+
+			if(@client <> Nil & @client->IsOpen()) {
+				# get request
+				request := @client->ReadLine();
+				if(@is_debug) {
+					request_address := @client->GetAddress();
+					"===\nRequest: '{$request}' from '{$request_address}'\n==="->PrintLine();
+				};
+
+				# parse request
+				request_verb : String; request_path : String;
+				if(request->Size() > 0) {
+					request_parts := request->Split(" ");
+					if(request_parts->Size() = 3) {
+						request_verb := request_parts[0];
+						request_path := request_parts[1];
+					};
+				};
+
+				# get request headers
+				request_headers := GetHeaders();
+
+				# verify request
+				if(request_verb <> Nil & request_path <> Nil & <>request_path->IsEmpty()) {
+					# GET and HEAD request
+					if(request_verb->Equals("GET") | request_verb->Equals("HEAD")) {
+						# retrieve content
+						if(request_path = Nil | request_path->Equals("/") | request_path->Has("..")) {
+							request_path := "/index.html";
+						};
+
+						# write response
+						http_request := Request->New(request_path, request_headers);
+						http_response := Response->New(@server_config, http_request->GetPath());
+						
+						if(ProcessGet(http_request, http_response) & @server_config <> Nil & @server_config->IsHandlingFiles()) {
+							@server_config->ProcessGet(http_request, http_response);
+						};
+						ProcessResponse(http_response, request_verb->Equals("HEAD"));
+					}
+					# POST request
+					else if(request_verb->Equals("POST")) {
+						content_length_str := request_headers->Find("content-length");
+						if(content_length_str <> Nil) {
+							content_length := content_length_str->ToInt();
+							if(content_length > 0) {
+								buffer := WebCommon->ReadPost(content_length, @client);
+								
+								# retrieve content
+								if(request_path = Nil | request_path->Equals("/") | request_path->Has("..")) {
+									request_path := "/index.html";
+								};
+
+								# write response
+								http_request := Request->New(request_path, request_headers, buffer);
+								http_response := Response->New(@server_config, http_request->GetPath());
+								
+								if(ProcessPost(http_request, http_response) & @server_config <> Nil & @server_config->IsHandlingFiles()) {
+									@server_config->ProcessPost(http_request, http_response);
+								};
+								ProcessResponse(http_response);
+							};
+						};
+					};
+				};
+				
+				@client->Close();
+			};
+		}
+
+		method : ProcessResponse(response : Response, is_head : Bool := false) ~ Nil {
+			if(response <> Nil) {
+				response_headers := response->GetHeaders();
+				if(response->GetCode() = 200) {
+					response_header := "";
+					key_values := response_headers->GetKeyValues()<Pair<String, String>>;
+					each(i : key_values) {
+						key_value := key_values->Get(i);
+						key := key_value->GetFirst();
+						value := key_value->GetSecond();
+						response_header += "{$key}: {$value}\r\n";
+					};
+
+					content := response->GetContent();
+					if(content <> Nil) {
+						content_size := content->Size();
+						response_header += "Content-Length: {$content_size}\r\nAccept-Ranges: bytes\r\nConnection: close\r\n";
+
+						cookies := response->GetCookies()<Cookie>;
+						each(i : cookies) {
+							cookie := cookies->Get(i);
+							response_header += "Set-Cookie: ";
+							response_header += cookie->ToString();
+							response_header += "\r\n";
+						};
+
+						@client->WriteString("HTTP/1.1 200 OK\r\n{$response_header}\r\n");
+						if(<>is_head) {
+							@client->WriteBuffer(content);
+						};
+					}
+					else {
+						@client->WriteString("HTTP/1.1 200\r\n\r\n");
+					};
+				}
+				else {
+					select(response->GetCode()) {
+						label 202 {
+							@client->WriteString("HTTP/1.1 202 Accepted\r\n\r\n");
+						}
+
+						label 302 {
+							reason := response->GetReason();
+							if(reason <> Nil) {
+								@client->WriteString("HTTP/1.1 302 Found\r\nLocation: {$reason}\r\nConnection: close\r\n\r\n");
+							}
+							else {
+								@client->WriteString("HTTP/1.1 400\r\n\r\n");
+							};
+						}
+
+						label 404 {
+							@client->WriteString("HTTP/1.1 404 Not Found\r\n\r\n");
+						}
+
+						label 410 {
+							@client->WriteString("HTTP/1.1 410 Gone\r\n\r\n");
+						}
+
+						other {
+							@client->WriteString("HTTP/1.1 400\r\n\r\n");
+						}
+					};
+				};
+			};
+		}
+		
+		#~
+		Get HTTP headers
+		@return HTTP headers
+		~#
+		method : public : GetHeaders() ~ Map<String, String> {
+			headers := Map->New()<String, String>;
+			
+			header := @client->ReadLine();
+			while(header <> Nil & header->Size() > 0) {
+				if(@is_debug) {				
+					"header: {$header}"->PrintLine();
+				};
+
+				header_parts := header->Split(": ");
+				if(header_parts->Size() = 2) {
+					headers->Insert(header_parts[0]->ToLower(), header_parts[1]);
+				};
+
+				header := @client->ReadLine();
+			};
+			
+			return headers;
+		}
+
+		#~
+		Callback for GET requests
+		@param request HTTP request
+		@param response HTTP response
+		@return true to continue processing, false otherwise
+		~#
+		method : virtual : ProcessGet(request : Web.HTTP.Server.Request, response : Web.HTTP.Server.Response) ~ Bool;
+
+		#~
+		Callback for POST requests
+		@param request HTTP request
+		@param response HTTP response
+		@return true to continue processing, false otherwise
+		~#
+		method : virtual : ProcessPost(request : Web.HTTP.Server.Request, response : Web.HTTP.Server.Response) ~ Bool;
+	}
+}
+
+bundle Web.HTTP.Server.MCP {
+	#~
+	MCP server
+	~#
+	class McpServer {
+		@is_debug : static : Bool;
+		@config : static : JsonElement;
+
+		#~
+		Returns rather the server is in debug mode
+		@return true is in debug mode, false otherwise
+		~#
+		function : IsDebug() ~ Bool {
+			return @is_debug;
+		}
+
+		#~
+		Initializes the MPC server
+		@param config JSON configuration file
+		~#
+		function : Serve(config : JsonElement) ~ Nil {
+			if(@config <> Nil) {
+				">>> Error MCP server already initialized <<<"->ErrorLine();
+				return;
+			};
+			
+			@config := config;
+			@is_debug := @config->Get("debug")->GetBool();
+			
+			McpRequestHandler->Initialize(config);
+			
+			http_port := @config->Get("http_port")->GetValue();
+			WebServer->Serve(McpRequestHandler->New()->GetClass(), http_port->ToInt(), @is_debug);
+		}
+	}
+
+	class McpRequestHandler from HttpRequestHandler {
+		@config : static : JsonElement;
+
+		@session_cache : static : Hash<String, Hash<String, String>>;
+		@session_cache_timer : static : CacheTimer;
+		@session_cache_mutex : static : System.Concurrency.ThreadMutex;
+
+		New() {
+			Parent();
+		}
+
+		function : Initialize(config : JsonElement) ~ Nil {
+			@config := config;
+
+			@session_cache_mutex := System.Concurrency.ThreadMutex->New("cache_mutex");
+	 		@session_cache := Hash->New()<String, Hash<String, String>>;
+			@session_cache_timer := CacheTimer->New(15000); # 15 seconds
+	 		@session_cache_timer->Start(Nil);
+		}
+
+		function : CheckCache() ~ Nil {
+			critical(@session_cache_mutex) {
+				# get key/values
+				expired_session_keys := Vector->New()<String>;
+
+				session_key_values := @session_cache->GetKeyValues()<Pair<String, Hash<String, String>>>;
+				each(session_key_value in session_key_values) {
+					session := session_key_value->GetSecond();
+					timestamp_str := session->Find("_timestamp_");
+					if(timestamp_str <> Nil) {
+						time_diff := System.Time.Date->New()->GetUnixTime() - timestamp_str->ToInt();
+						session_key := session_key_value->GetFirst();
+						if(McpServer->IsDebug()) {
+							"session: key={$session_key}, diff={$time_diff}"->PrintLine();
+						};
+
+						if(time_diff >= 60) {
+							expired_session_keys->AddBack(session_key);
+						}
+					};				
+				};
+
+				each(session_key in expired_session_keys) {
+					@session_cache->Remove(session_key);
+					if(McpServer->IsDebug()) {
+						"*** removing: key={$session_key} ***"->PrintLine();
+					};
+				};
+
+				if(McpServer->IsDebug()) {
+					"---"->PrintLine();
+				};
+			}
+		}
+
+		method : ProcessGet(request : Web.HTTP.Server.Request, response : Web.HTTP.Server.Response) ~ Bool {
+			session : Hash<String, String>;
+			session_id := request->GetHeader("mcp-session-id");
+			if(session_id <> Nil) {
+				critical(@session_cache_mutex) {
+					session := @session_cache->Find(session_id);
+				};
+			};
+
+			if(McpServer->IsDebug()) {
+				if(session_id = Nil) {
+					session_id := "<nil>";
+				};
+
+				has_session := session <> Nil;
+				"\n### GET: session_id='{$session_id}', has_session={$has_session} ####"->PrintLine();
+			};
+			
+			response->SetCodeTypeContent(200, "text/event-stream", ": keepalive\n\n");
+			return false;
+		}
+
+		method : ProcessPost(request : Web.HTTP.Server.Request, response : Web.HTTP.Server.Response) ~ Bool {
+			session : Hash<String, String>;
+			session_id := request->GetHeader("mcp-session-id");
+			if(session_id <> Nil) {
+				critical(@session_cache_mutex) {
+					session := @session_cache->Find(session_id);
+				};
+			};
+
+			if(McpServer->IsDebug()) {
+				if(session_id = Nil) {
+					"\n### POST ####"->PrintLine();
+				}
+				else {
+					has_session := session <> Nil;
+					"\n### POST: session_id='{$session_id}', has_session={$has_session} ####"->PrintLine();
+				};
+			};
+
+			# expired session
+			if(session_id <> Nil & session = Nil) {
+				response->SetCode(404);
+				return false;
+			};
+
+			if(request->HasContent()) {
+				content := request->GetContent();
+
+				if(McpServer->IsDebug()) {
+					ShowPayload(content);
+				};
+
+				parser := JsonParser->New(content);
+				if(parser->Parse()) {
+					root_json := parser->GetRoot();
+
+					# process method
+					method_name := root_json->Get("method")->GetValue();
+					if(method_name <> Nil) {
+						if(McpServer->IsDebug()) {
+							"[Post: method_name='{$method_name}']"->PrintLine();
+						};
+
+						# execute method
+						select(method_name) {
+							# ping
+							label "ping": {
+								id := root_json->Get("id")->GetValue()->ToInt();
+								WriteResponse(Nil, id, response, 200);
+								return false;
+							}
+
+							# initialize
+							label "initialize": {
+								name := @config->Get("name")->GetValue();
+								instructions := @config->Get("instructions")->GetValue();
+								version := @config->Get("version")->GetValue();
+
+								# TODO: better error checking
+								id := root_json->Get("id")->GetValue()->ToInt();
+
+								result := JsonElement->New(JsonElement->JsonType->OBJECT);
+								result->Insert("protocolVersion", "2025-06-18");
+								result->Insert("instructions", instructions);
+
+								# add capabilities
+								capabilities_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+
+								tools_json :=  JsonElement->New(JsonElement->JsonType->OBJECT);
+								tools_json->Insert("listChanged", true);
+								capabilities_json->Insert("tools", tools_json);
+								
+								resources_json :=  JsonElement->New(JsonElement->JsonType->OBJECT);
+								resources_json->Insert("listChanged", true);
+								capabilities_json->Insert("resources", resources_json);
+
+								prompts_json :=  JsonElement->New(JsonElement->JsonType->OBJECT);
+								prompts_json->Insert("listChanged", true);
+								capabilities_json->Insert("resources", prompts_json);
+
+								result->Insert("capabilities", capabilities_json);
+
+								# server information
+								server_json :=  JsonElement->New(JsonElement->JsonType->OBJECT);
+								server_json->Insert("name", name);
+								server_json->Insert("version", version);
+
+								result->Insert("serverInfo", server_json);
+
+								session_id := Runtime->GetUuid();
+								
+								session := Hash->New()<String, String>;
+								session->Insert("_timestamp_", System.Time.Date->New()->GetUnixTime()->ToString())
+								
+								critical(@session_cache_mutex) {
+									@session_cache->Insert(session_id, session);
+								};
+
+								response->SetHeader("mcp-session-id", session_id);
+								WriteResponse(result, id, response, 200);
+
+								return false;
+							}
+							
+							# notifications/initialized
+							label "notifications/initialized": {
+								if(McpServer->IsDebug()) {
+									"### notifications/initialized ###"->PrintLine();
+								};
+
+								response->SetCode(202);
+								return false;
+							}
+							
+							# logging/setLevel
+							label "logging/setLevel": {
+								id := root_json->Get("id")->GetValue()->ToInt();
+								WriteResponse(Nil, id, response, 200);
+								return false;
+							}
+
+							# resources/templates/list
+							label "resources/templates/list": {
+								id := root_json->Get("id")->GetValue()->ToInt();
+
+								templates_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+
+								# TODO: method callback 
+								template_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+								template_json->Insert("uriTemplate", "https:///{path}");
+								template_json->Insert("name", "Project Files");
+								template_json->Insert("title", "Project Files");
+								template_json->Insert("description", "Access files on the project site");
+								template_json->Insert("mimeType", "application/octet-stream");
+
+								templates_array_json->Add(template_json);
+
+								result := JsonElement->New(JsonElement->JsonType->OBJECT);
+								result->Insert("resourceTemplates", templates_array_json);
+								
+								WriteResponse(result, id, response, 200);
+								return false;
+							}
+							
+							# resources/list
+							label "resources/list": {
+								id := root_json->Get("id")->GetValue()->ToInt();
+
+								resources_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+
+								# TODO: method callback 
+								resource_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+								resource_json->Insert("uri", "file:///{_meta}");
+								resource_json->Insert("name", "Project Files");
+								resource_json->Insert("description", "Access files on the project site");
+								resource_json->Insert("mimeType", "application/octet-stream");
+
+								resources_array_json->Add(resource_json);
+
+								result := JsonElement->New(JsonElement->JsonType->OBJECT);
+								result->Insert("resources", resources_array_json);
+								
+								WriteResponse(result, id, response, 200);
+								return false;
+							}
+							
+							# resources/read
+							label "resources/read": {
+								id := root_json->Get("id")->GetValue()->ToInt();
+
+								resources_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+
+								# TODO: method callback 
+								resource_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+								resource_json->Insert("uri", "file:///{_meta}");
+								resource_json->Insert("mimeType", "application/octet-stream");
+								resource_json->Insert("text", "Hello from resources/read, check URI\\n\\tHello!");
+
+								resources_array_json->Add(resource_json);
+
+								result := JsonElement->New(JsonElement->JsonType->OBJECT);
+								result->Insert("contents", resources_array_json);
+								
+								WriteResponse(result, id, response, 200);
+								return false;						
+							}
+							
+							# tools/list
+							label "tools/list": {
+								id := root_json->Get("id")->GetValue()->ToInt();
+								payload := "{
+									\"jsonrpc\": \"2.0\",
+									\"id\": {$id},
+									\"result\": {
+										\"tools\": [      
+											{        
+												\"name\": \"echo\",
+												\"description\":
+												\"Echo a string\",
+												\"inputSchema\": {
+													\"type\": \"object\",
+													\"properties\": { \"text\": { \"type\": \"string\" } },
+													\"required\": [\"text\"]
+												}
+											}
+										]
+									}
+								}";
+
+								if(McpServer->IsDebug()) {
+									ShowPayload(payload);
+								};
+
+								response->SetCodeTypeContent(200, "application/json", payload);
+								return false;
+							}
+
+							# prompts/list
+							label "prompts/list": {
+								id := root_json->Get("id")->GetValue()->ToInt();
+								payload := "{
+									\"jsonrpc\": \"2.0\",  
+									\"id\": {$id},  \"result\": {    
+										\"prompts\": [ 
+											{        
+												\"name\": \"greet\",
+												\"title\": \"Greet a User\",
+												\"description\": \"Compose a friendly greeting.\",
+												\"arguments\": [ { 
+													\"name\": \"name\", \"description\": \"User's name\", \"required\": true }
+												]
+											},
+											{
+												\"name\": \"explain_topic\",
+												\"title\": \"Explain a Topic\",
+												\"description\": \"Short explanation suitable for a beginner.\",
+												\"arguments\": [ {
+													\"name\": \"topic\", \"description\": \"Subject to explain\", \"required\": true }
+												]
+											}
+										]
+									}
+								}";
+
+								if(McpServer->IsDebug()) {
+									ShowPayload(payload);
+								};
+
+								response->SetCodeTypeContent(200, "application/json", payload);
+								return false;
+							}
+
+							# prompts/get
+							label "prompts/get": {
+								call_name : String; 
+								
+								call_params_json := root_json->Get("params");								
+								if(call_params_json <> Nil) {
+									name_json := call_params_json->Get("name");
+									if(name_json <> Nil) {
+										call_name := name_json->GetValue();
+									};
+
+									call_params_json := call_params_json->Get("arguments");
+									if(call_params_json <> Nil & call_name <> Nil) {
+										id := root_json->Get("id")->GetValue()->ToInt();
+
+										# greet prompt
+										if(call_name->Equals("greet")) {
+											name := call_params_json->Get("name")->GetValue();
+
+											payload := "{
+												\"jsonrpc\": 
+												\"2.0\",  
+												\"id\": {$id},  
+												\"result\": {  
+													\"description\": \"Greeting prompt\",  
+													\"messages\": [
+														{
+															\"role\": \"user\",
+															\"content\": { 
+																\"type\": \"text\", 
+																\"text\": \"{$name}\" 
+															}
+														}
+													]    
+												}
+											}";
+
+											if(McpServer->IsDebug()) {
+												ShowPayload(payload);
+											};
+
+											response->SetCodeTypeContent(200, "application/json", payload);
+											return false;
+										}
+										# greet prompt
+										else if(call_name->Equals("explain_topic")) {
+											explain_topic := call_params_json->Get("topic")->GetValue();
+											
+											payload := "{
+												\"jsonrpc\": 
+												\"2.0\",  
+												\"id\": {$id},  
+												\"result\": {  
+													\"description\": \"Explain prompt\",  
+													\"messages\": [
+														{
+															\"role\": \"user\",
+															\"content\": { 
+																\"type\": \"text\", 
+																\"text\": \"{$explain_topic}\" 
+															}
+														}
+													]    
+												}
+											}";
+
+											if(McpServer->IsDebug()) {
+												ShowPayload(payload);
+											};
+
+											response->SetCodeTypeContent(200, "application/json", payload);
+											return false;
+										}
+									};
+								};
+							}
+
+							# tools/call
+							label "tools/call": {
+								call_name : String; text : String;
+
+								call_params_json := root_json->Get("params");								
+								if(call_params_json <> Nil) {
+									name_json := call_params_json->Get("name");
+									if(name_json <> Nil) {
+										call_name := name_json->GetValue();
+									};
+
+									call_params_json := call_params_json->Get("arguments");
+									if(call_params_json <> Nil & call_name <> Nil) {
+										id := root_json->Get("id")->GetValue()->ToInt();
+										
+										# echo call
+										if(call_name->Equals("echo")) {
+											text := call_params_json->Get("text")->GetValue();									
+											
+											payload := "{
+												\"jsonrpc\": 
+												\"2.0\",  
+												\"id\": {$id},  
+												\"result\": {    
+													\"content\": [
+														{ 
+															\"type\": \"text\", 
+															\"text\": \"{$text}\" 
+														}    
+													],    
+													\"isError\": false  
+												}
+											}";
+
+											if(McpServer->IsDebug()) {
+												ShowPayload(payload);
+											};
+
+											response->SetCodeTypeContent(200, "application/json", payload);
+											return false;
+										}
+									};
+								};
+							}
+						};
+					};
+				};
+			};
+
+			response->SetCode(204);
+			if(McpServer->IsDebug()) {
+				">>>  Unknown Message <<<"->ErrorLine();
+			};
+			return false;
+		}
+
+		method : WriteResponse(message : JsonElement, id : Int, response : Web.HTTP.Server.Response, code : Int) ~ Nil {
+			packet := JsonElement->New(JsonElement->JsonType->OBJECT);
+			packet->Insert("jsonrpc", "2.0");
+			packet->Insert("id", id);
+
+			if(message <> Nil) {
+				packet->Insert("result", message);
+			}
+			else {
+				packet->Insert("result", JsonElement->New(JsonElement->JsonType->OBJECT));
+			};
+
+			if(McpServer->IsDebug()) {
+				packet->ToFormattedString()->PrintLine();
+			};
+
+			response->SetCodeTypeContent(code, "application/json", packet->ToString());
+		}
+
+		function : ShowPayload(payload : String) ~ Nil {
+			payload->ReplaceAll("\t", "  ")->PrintLine();
+		}
+	} 
+
+	class : private : CacheTimer from System.Time.Alarm {
+		New(time : Int) {
+			Parent(time, true);
+		}
+
+		method : public : Ring(param:System.Base) ~ Nil {
+			McpRequestHandler->CheckCache();
+		}
+	}
 }
 
 #~
@@ -2061,428 +3012,5 @@ each(i : 3) {
 
 			return buffer;
 		}
-	}
-}
-
-#~
-Web server support (-lib net_server)
-~#
-bundle Web.HTTP.Server {
-	#~
-	Request handler for HTTPS GET and POST requests. <p>Sample <a href="https://github.com/objeck/objeck-web-server/blob/master/config/simple_config.json" target="_blank">configuration</a> file<./p>
-
-	```
-use Web.HTTP.Server;
-
-class Test {
-   function : Main(args : String[]) ~ Nil {
-      WebServer->ServeSecure("config/simple_config.json");
-   }
-}
-
-class RequestHandler from HttpsRequestHandler {
-   New() {
-      Parent();
-   }
-   
-   method : ProcessGet(request : Request, response : Response) ~ Bool {
-      return response->HasStaticHandler();
-   }
-
-   method : ProcessPost(request : Request, response : Response) ~ Bool {
-      return false;
-   }
-}      
-	```
-	~#
-	class HttpsRequestHandler from System.Concurrency.Thread {
-		@client : TCPSecureSocket;
-		@server_config : WebServerConfig;
-		@is_debug : Bool;
-
-		New() {
-			Parent();
-		}
-
-		method : public : SetConfig(server_config : WebServerConfig, is_debug : Bool) ~ Nil {
-			@server_config := server_config;
-			@is_debug := is_debug;
-		}
-        
-		method : public : Run(param : Base) ~ Nil {
-			@client := param->As(TCPSecureSocket);
-
-			if(@client <> Nil & @client->IsOpen()) {
-				# get request
-				request := @client->ReadLine();
-				if(@is_debug) {
-					request_address := @client->GetAddress();
-					"===\nRequest: '{$request}' from '{$request_address}'\n==="->PrintLine();
-				};
-
-				# parse request
-				request_verb : String; request_path : String;
-				if(request->Size() > 0) {
-					request_parts := request->Split(" ");
-					if(request_parts->Size() = 3) {
-						request_verb := request_parts[0];
-						request_path := request_parts[1];
-					};
-				};
-
-				# get request headers
-				request_headers := GetHeaders();
-
-				# verify request
-				if(request_verb <> Nil & request_path <> Nil & <>request_path->IsEmpty()) {
-					# GET and HEAD request
-					if(request_verb->Equals("GET") | request_verb->Equals("HEAD")) {
-						# retrieve content
-						if(request_path = Nil | request_path->Equals("/") | request_path->Has("..")) {
-							request_path := "/index.html";
-						};
-
-						# write response
-						http_request := Request->New(request_path, request_headers);
-						http_response := Response->New(@server_config, http_request->GetPath());
-						
-						if(ProcessGet(http_request, http_response) & @server_config <> Nil & @server_config->IsHandlingFiles()) {
-							@server_config->ProcessGet(http_request, http_response);
-						};
-						ProcessResponse(http_response, request_verb->Equals("HEAD"));
-					}
-					# POST request
-					else if(request_verb->Equals("POST")) {
-						content_length_str := request_headers->Find("content-length");
-						if(content_length_str <> Nil) {
-							content_length  := content_length_str->ToInt();
-							if(content_length > 0) {
-								buffer := WebCommon->ReadPost(content_length, @client);
-								
-								# retrieve content
-								if(request_path = Nil | request_path->Equals("/") | request_path->Has("..")) {
-									request_path := "/index.html";
-								};
-
-								# write response
-								http_request := Request->New(request_path, request_headers, buffer);
-								http_response := Response->New(@server_config, http_request->GetPath());
-								
-								if(ProcessPost(http_request, http_response) & @server_config <> Nil & @server_config->IsHandlingFiles()) {
-									@server_config->ProcessPost(http_request, http_response);
-								};
-								ProcessResponse(http_response);
-							};
-						};
-					};
-				};
-
-				@client->Close();
-			};
-		}
-
-		method : ProcessResponse(response : Response, is_head : Bool := false) ~ Nil {
-			if(response <> Nil) {
-				response_headers := response->GetHeaders();
-				if(response->GetCode() = 200) {
-					response_header := "";
-					key_values := response_headers->GetKeyValues()<Pair<String, String>>;
-					each(i : key_values) {
-						key_value := key_values->Get(i);
-						key := key_value->GetFirst();
-						value := key_value->GetSecond();
-						response_header += "{$key}: {$value}\r\n";
-					};
-
-					content := response->GetContent();
-					if(content <> Nil) {
-						content_size := content->Size();
-						response_header += "content-length: {$content_size}\r\nAccept-Ranges: bytes\r\nConnection: close\r\n";
-
-						cookies := response->GetCookies()<Cookie>;
-						each(i : cookies) {
-							cookie := cookies->Get(i);
-							response_header += "Set-Cookie: ";
-							response_header += cookie->ToString();
-							response_header += "\r\n";
-						};
-
-						@client->WriteString("HTTP/1.1 200 OK\r\n{$response_header}\r\n");
-						if(<>is_head) {
-							@client->WriteBuffer(content);
-						};
-					}
-					else {
-						@client->WriteString("HTTP/1.1 200\r\n\r\n");
-					};
-				}
-				else {
-					select(response->GetCode()) {
-						label 202 {
-							@client->WriteString("HTTP/1.1 202 Accepted\r\n\r\n");
-						}
-
-						label 302 {
-							reason := response->GetReason();
-							if(reason <> Nil) {
-								@client->WriteString("HTTP/1.1 302 Found\r\nLocation: {$reason}\r\nConnection: close\r\n\r\n");
-							}
-							else {
-								@client->WriteString("HTTP/1.1 400\r\n\r\n");
-							};
-						}
-
-						label 404 {
-							@client->WriteString("HTTP/1.1 404 Not Found\r\n\r\n");
-						}
-
-						label 410 {
-							@client->WriteString("HTTP/1.1 410 Gone\r\n\r\n");
-						}
-
-						other {
-							@client->WriteString("HTTP/1.1 400\r\n\r\n");
-						}
-					};
-				};
-			};
-		}
-		
-		#~
-		Get HTTP headers
-		@return HTTP headers
-		~#
-		method : public : GetHeaders() ~ Map<String, String> {
-			headers := Map->New()<String, String>;
-			
-			header := @client->ReadLine();
-			while(header <> Nil & header->Size() > 0) {
-				if(@is_debug) {				
-					"header: {$header}"->PrintLine();
-				};
-                
-				header_parts := header->Split(": ");
-				if(header_parts->Size() = 2) {
-					headers->Insert(header_parts[0]->ToLower(), header_parts[1]);
-				};
-
-				header := @client->ReadLine();
-			};
-			
-			return headers;
-		}
-
-		#~
-		Callback for GET requests
-		@param request HTTP request
-		@param response HTTP response
-		@return true to continue processing, false otherwise
-		~#
-		method : virtual : ProcessGet(request : Web.HTTP.Server.Request, response : Web.HTTP.Server.Response) ~ Bool;
-
-		#~
-		Callback for POST requests
-		@param request HTTP request
-		@param response HTTP response
-		@return true to continue processing, false otherwise
-		~#
-		method : virtual : ProcessPost(request : Web.HTTP.Server.Request, response : Web.HTTP.Server.Response) ~ Bool;
-	}
-
-	#~
-	Request handler for HTTP GET and POST requests
-	~#
-	class HttpRequestHandler from System.Concurrency.Thread {
-		@client : TCPSocket;
-		@server_config : WebServerConfig;
-		@is_debug : Bool;
-
-		New() {
-			Parent();
-		}
-
-		method : public : SetConfig(server_config : WebServerConfig, is_debug : Bool) ~ Nil {
-			@server_config := server_config;
-			@is_debug := is_debug;
-		}
-
-		method : public : Run(param : Base) ~ Nil {
-			@client := param->As(TCPSocket);
-
-			if(@client <> Nil & @client->IsOpen()) {
-				# get request
-				request := @client->ReadLine();
-				if(@is_debug) {
-					request_address := @client->GetAddress();
-					"===\nRequest: '{$request}' from '{$request_address}'\n==="->PrintLine();
-				};
-
-				# parse request
-				request_verb : String; request_path : String;
-				if(request->Size() > 0) {
-					request_parts := request->Split(" ");
-					if(request_parts->Size() = 3) {
-						request_verb := request_parts[0];
-						request_path := request_parts[1];
-					};
-				};
-
-				# get request headers
-				request_headers := GetHeaders();
-
-				# verify request
-				if(request_verb <> Nil & request_path <> Nil & <>request_path->IsEmpty()) {
-					# GET and HEAD request
-					if(request_verb->Equals("GET") | request_verb->Equals("HEAD")) {
-						# retrieve content
-						if(request_path = Nil | request_path->Equals("/") | request_path->Has("..")) {
-							request_path := "/index.html";
-						};
-
-						# write response
-						http_request := Request->New(request_path, request_headers);
-						http_response := Response->New(@server_config, http_request->GetPath());
-						
-						if(ProcessGet(http_request, http_response) & @server_config <> Nil & @server_config->IsHandlingFiles()) {
-							@server_config->ProcessGet(http_request, http_response);
-						};
-						ProcessResponse(http_response, request_verb->Equals("HEAD"));
-					}
-					# POST request
-					else if(request_verb->Equals("POST")) {
-						content_length_str := request_headers->Find("content-length");
-						if(content_length_str <> Nil) {
-							content_length := content_length_str->ToInt();
-							if(content_length > 0) {
-								buffer := WebCommon->ReadPost(content_length, @client);
-								
-								# retrieve content
-								if(request_path = Nil | request_path->Equals("/") | request_path->Has("..")) {
-									request_path := "/index.html";
-								};
-
-								# write response
-								http_request := Request->New(request_path, request_headers, buffer);
-								http_response := Response->New(@server_config, http_request->GetPath());
-								
-								if(ProcessPost(http_request, http_response) & @server_config <> Nil & @server_config->IsHandlingFiles()) {
-									@server_config->ProcessPost(http_request, http_response);
-								};
-								ProcessResponse(http_response);
-							};
-						};
-					};
-				};
-				
-				@client->Close();
-			};
-		}
-
-		method : ProcessResponse(response : Response, is_head : Bool := false) ~ Nil {
-			if(response <> Nil) {
-				response_headers := response->GetHeaders();
-				if(response->GetCode() = 200) {
-					response_header := "";
-					key_values := response_headers->GetKeyValues()<Pair<String, String>>;
-					each(i : key_values) {
-						key_value := key_values->Get(i);
-						key := key_value->GetFirst();
-						value := key_value->GetSecond();
-						response_header += "{$key}: {$value}\r\n";
-					};
-
-					content := response->GetContent();
-					if(content <> Nil) {
-						content_size := content->Size();
-						response_header += "Content-Length: {$content_size}\r\nAccept-Ranges: bytes\r\nConnection: close\r\n";
-
-						cookies := response->GetCookies()<Cookie>;
-						each(i : cookies) {
-							cookie := cookies->Get(i);
-							response_header += "Set-Cookie: ";
-							response_header += cookie->ToString();
-							response_header += "\r\n";
-						};
-
-						@client->WriteString("HTTP/1.1 200 OK\r\n{$response_header}\r\n");
-						if(<>is_head) {
-							@client->WriteBuffer(content);
-						};
-					}
-					else {
-						@client->WriteString("HTTP/1.1 200\r\n\r\n");
-					};
-				}
-				else {
-					select(response->GetCode()) {
-						label 202 {
-							@client->WriteString("HTTP/1.1 202 Accepted\r\n\r\n");
-						}
-
-						label 302 {
-							reason := response->GetReason();
-							if(reason <> Nil) {
-								@client->WriteString("HTTP/1.1 302 Found\r\nLocation: {$reason}\r\nConnection: close\r\n\r\n");
-							}
-							else {
-								@client->WriteString("HTTP/1.1 400\r\n\r\n");
-							};
-						}
-
-						label 404 {
-							@client->WriteString("HTTP/1.1 404 Not Found\r\n\r\n");
-						}
-
-						label 410 {
-							@client->WriteString("HTTP/1.1 410 Gone\r\n\r\n");
-						}
-
-						other {
-							@client->WriteString("HTTP/1.1 400\r\n\r\n");
-						}
-					};
-				};
-			};
-		}
-		
-		#~
-		Get HTTP headers
-		@return HTTP headers
-		~#
-		method : public : GetHeaders() ~ Map<String, String> {
-			headers := Map->New()<String, String>;
-			
-			header := @client->ReadLine();
-			while(header <> Nil & header->Size() > 0) {
-				if(@is_debug) {				
-					"header: {$header}"->PrintLine();
-				};
-
-				header_parts := header->Split(": ");
-				if(header_parts->Size() = 2) {
-					headers->Insert(header_parts[0]->ToLower(), header_parts[1]);
-				};
-
-				header := @client->ReadLine();
-			};
-			
-			return headers;
-		}
-
-		#~
-		Callback for GET requests
-		@param request HTTP request
-		@param response HTTP response
-		@return true to continue processing, false otherwise
-		~#
-		method : virtual : ProcessGet(request : Web.HTTP.Server.Request, response : Web.HTTP.Server.Response) ~ Bool;
-
-		#~
-		Callback for POST requests
-		@param request HTTP request
-		@param response HTTP response
-		@return true to continue processing, false otherwise
-		~#
-		method : virtual : ProcessPost(request : Web.HTTP.Server.Request, response : Web.HTTP.Server.Response) ~ Bool;
 	}
 }
