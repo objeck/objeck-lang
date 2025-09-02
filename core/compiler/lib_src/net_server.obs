@@ -2181,9 +2181,7 @@ bundle Web.HTTP.Server.MCP {
 
 		method : virtual : GetResources() ~ Vector<Resource>;
 		method : virtual : GetTemplates() ~ Vector<ResourceTemplate>;
-		method : GetResourceDetails(uri : Url) ~ Vector<ResourceDetails> {
-			return Nil;
-		}
+		method : virtual : GetResourceDetails(uri : Url) ~ Vector<ResourceDetails>;
 
 		method : ProcessGet(request : Web.HTTP.Server.Request, response : Web.HTTP.Server.Response) ~ Bool {
 			session : Hash<String, String>;
@@ -2370,23 +2368,19 @@ bundle Web.HTTP.Server.MCP {
 							label "resources/read": {
 								id := root_json->Get("id")->GetInt();
 								uri_str := root_json->Get("params")->Get("uri")->GetValue();
-"### {$uri_str} ###"->PrintLine();
 
 								resources_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
 
-								# TODO: method callback 
-								resource_json := JsonElement->New(JsonElement->JsonType->OBJECT);
-								resource_json->Insert("uri", "file:///{_meta}");
-								resource_json->Insert("mimeType", "application/octet-stream");
-								resource_json->Insert("text", "Hello from resources/read, check URI\\n\\tHello!");
-
-								resources_array_json->Add(resource_json);
+								resource_details := GetResourceDetails(Url->New(uri_str));
+								each(resource_detail in resource_details) {
+									resources_array_json->Add(resource_detail->ToJson());
+								};
 
 								result := JsonElement->New(JsonElement->JsonType->OBJECT);
 								result->Insert("contents", resources_array_json);
 								
 								WriteResponse(result, id, response, 200);
-								return false;						
+								return false;
 							}
 							
 							# tools/list
