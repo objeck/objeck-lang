@@ -2665,6 +2665,43 @@ bundle Web.HTTP.Server.MCP {
 		}
 	}
 
+	#~
+	TODO
+	~#
+	class ResourceDetails {
+		@uri : Url;
+		@mime_type : String;
+		@text : String;
+
+		New(uri : Url, name : String, mime_type : String, text : String) {
+			@uri := uri;
+			@mime_type := mime_type;
+			@text := text;
+		}
+
+		method : public : GetUri() ~ Url {
+			return @uri;
+		}
+
+		method : public : GetText() ~ String {
+			return @text;
+		}
+		
+		method : public : GetMimeType() ~ String {
+			return @mime_type;
+		}
+
+		method : public : ToJson() ~ JsonElement {
+			buffer_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+
+			buffer_json->Insert("uri", @uri->GetUrl());
+			buffer_json->Insert("mimeType", @mime_type);
+			buffer_json->Insert("text", @text);
+			
+			return buffer_json;
+		}
+	}
+
 	class ResourceTemplate from Resource {
 		@title : String;
 
