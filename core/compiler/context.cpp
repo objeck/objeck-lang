@@ -7709,6 +7709,11 @@ bool ContextAnalyzer::ResolveClassEnumType(Type* type, Class* context_klass)
       // concreate generics
       auto generic_types = type->GetGenerics();
       for(auto& generic_type : generic_types) {
+         Class* klass = nullptr; LibraryClass* lib_klass = nullptr;
+         if(!GetProgramOrLibraryClass(generic_type, klass, lib_klass)) {
+            return false;
+         }
+
          if(!ResolveClassEnumType(generic_type, context_klass)) {
             return false;
          }
