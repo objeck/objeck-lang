@@ -1824,15 +1824,6 @@ bundle Data.JSON.Scheme {
 		@return JSON element representation
 		~# 
 		method : public : ToJson() ~ JsonElement {
-			return ToJson("parameters");
-		}
-
-		#~
-		JSON element representation 
-		@param params_header parameter header string
-		@return JSON element representation
-		~# 
-		method : public : ToJson(params_header : String) ~ JsonElement {
 			func_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 			func_obj_json->Insert("name", @name);
 			func_obj_json->Insert("description", @desc);
@@ -1850,19 +1841,16 @@ bundle Data.JSON.Scheme {
 					prop_obj_json->Insert(param_name, param_obj_json->ToJson());
 				};
 			};
-
-			params_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			
+			func_obj_json->Insert("type", "object");
+			func_obj_json->Insert("properties", prop_obj_json);
 			if(@req_params <> Nil) {
 				req_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
 				each(req_param in @req_params) {
 					req_array_json->Add(req_param)
 				};
-				params_obj_json->Insert("required", req_array_json);
+				func_obj_json->Insert("required", req_array_json);
 			};
-			params_obj_json->Insert("type", "object");
-			params_obj_json->Insert("properties", prop_obj_json);
-
-			func_obj_json->Insert("{$params_header}", params_obj_json);
 
 			return func_obj_json;
 		}
