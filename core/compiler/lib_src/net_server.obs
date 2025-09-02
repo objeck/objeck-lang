@@ -2180,6 +2180,10 @@ bundle Web.HTTP.Server.MCP {
 		}
 
 		method : virtual : GetResources() ~ Vector<Resource>;
+		method : virtual : GetTemplates() ~ Vector<ResourceTemplate>;
+		method : GetResourceDetails(uri : Url) ~ Vector<ResourceDetails> {
+			return Nil;
+		}
 
 		method : ProcessGet(request : Web.HTTP.Server.Request, response : Web.HTTP.Server.Response) ~ Bool {
 			session : Hash<String, String>;
@@ -2250,7 +2254,7 @@ bundle Web.HTTP.Server.MCP {
 						select(method_name) {
 							# ping
 							label "ping": {
-								id := root_json->Get("id")->GetValue()->ToInt();
+								id := root_json->Get("id")->GetInt();
 								WriteResponse(Nil, id, response, 200);
 								return false;
 							}
@@ -2262,7 +2266,7 @@ bundle Web.HTTP.Server.MCP {
 								version := @config->Get("version")->GetValue();
 
 								# TODO: better error checking
-								id := root_json->Get("id")->GetValue()->ToInt();
+								id := root_json->Get("id")->GetInt();
 
 								result := JsonElement->New(JsonElement->JsonType->OBJECT);
 								result->Insert("protocolVersion", "2025-06-18");
@@ -2319,26 +2323,21 @@ bundle Web.HTTP.Server.MCP {
 							
 							# logging/setLevel
 							label "logging/setLevel": {
-								id := root_json->Get("id")->GetValue()->ToInt();
+								id := root_json->Get("id")->GetInt();
 								WriteResponse(Nil, id, response, 200);
 								return false;
 							}
 
 							# resources/templates/list
 							label "resources/templates/list": {
-								id := root_json->Get("id")->GetValue()->ToInt();
+								id := root_json->Get("id")->GetInt();
 
 								templates_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
 
-								# TODO: method callback 
-								template_json := JsonElement->New(JsonElement->JsonType->OBJECT);
-								template_json->Insert("uriTemplate", "https:///{path}");
-								template_json->Insert("name", "Project Files");
-								template_json->Insert("title", "Project Files");
-								template_json->Insert("description", "Access files on the project site");
-								template_json->Insert("mimeType", "application/octet-stream");
-
-								templates_array_json->Add(template_json);
+								templates := GetTemplates();
+								each(template in templates) {
+									templates_array_json->Add(template->ToJson());
+								};
 
 								result := JsonElement->New(JsonElement->JsonType->OBJECT);
 								result->Insert("resourceTemplates", templates_array_json);
@@ -2351,18 +2350,14 @@ bundle Web.HTTP.Server.MCP {
 							
 							# resources/list
 							label "resources/list": {
-								id := root_json->Get("id")->GetValue()->ToInt();
+								id := root_json->Get("id")->GetInt();
 
 								resources_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
 
-								# TODO: method callback 
-								resource_json := JsonElement->New(JsonElement->JsonType->OBJECT);
-								resource_json->Insert("uri", "file:///{_meta}");
-								resource_json->Insert("name", "Project Files");
-								resource_json->Insert("description", "Access files on the project site");
-								resource_json->Insert("mimeType", "application/octet-stream");
-
-								resources_array_json->Add(resource_json);
+								resources := GetResources();
+								each(resource in resources) {
+									resources_array_json->Add(resource->ToJson());
+								};
 
 								result := JsonElement->New(JsonElement->JsonType->OBJECT);
 								result->Insert("resources", resources_array_json);
@@ -2373,7 +2368,9 @@ bundle Web.HTTP.Server.MCP {
 							
 							# resources/read
 							label "resources/read": {
-								id := root_json->Get("id")->GetValue()->ToInt();
+								id := root_json->Get("id")->GetInt();
+								uri_str := root_json->Get("params")->Get("uri")->GetValue();
+"### {$uri_str} ###"->PrintLine();
 
 								resources_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
 
@@ -2394,7 +2391,7 @@ bundle Web.HTTP.Server.MCP {
 							
 							# tools/list
 							label "tools/list": {
-								id := root_json->Get("id")->GetValue()->ToInt();
+								id := root_json->Get("id")->GetInt();
 								payload := "{
 									\"jsonrpc\": \"2.0\",
 									\"id\": {$id},
@@ -2424,7 +2421,7 @@ bundle Web.HTTP.Server.MCP {
 
 							# prompts/list
 							label "prompts/list": {
-								id := root_json->Get("id")->GetValue()->ToInt();
+								id := root_json->Get("id")->GetInt();
 								payload := "{
 									\"jsonrpc\": \"2.0\",  
 									\"id\": {$id},  \"result\": {    
@@ -2470,7 +2467,7 @@ bundle Web.HTTP.Server.MCP {
 
 									call_params_json := call_params_json->Get("arguments");
 									if(call_params_json <> Nil & call_name <> Nil) {
-										id := root_json->Get("id")->GetValue()->ToInt();
+										id := root_json->Get("id")->GetInt();
 
 										# greet prompt
 										if(call_name->Equals("greet")) {
@@ -2547,7 +2544,7 @@ bundle Web.HTTP.Server.MCP {
 
 									call_params_json := call_params_json->Get("arguments");
 									if(call_params_json <> Nil & call_name <> Nil) {
-										id := root_json->Get("id")->GetValue()->ToInt();
+										id := root_json->Get("id")->GetInt();
 										
 										# echo call
 										if(call_name->Equals("echo")) {
@@ -2659,8 +2656,33 @@ bundle Web.HTTP.Server.MCP {
 		method : public : ToJson() ~ JsonElement {
 			buffer_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 
-			buffer_json->Insert("uri", @uri->ToString());
+			buffer_json->Insert("uri", @uri->GetUrl());
 			buffer_json->Insert("name", @name);
+			buffer_json->Insert("description", @description);
+			buffer_json->Insert("mimeType", @mime_type);
+
+			return buffer_json;
+		}
+	}
+
+	class ResourceTemplate from Resource {
+		@title : String;
+
+		New(uri : Url, name : String, title : String, description : String, mime_type : String) {
+			Parent(uri, name, description, mime_type);
+			@title := title;
+		}
+
+		method : public : GetTitle() ~ String {
+			return @title;
+		}
+
+		method : public : ToJson() ~ JsonElement {
+			buffer_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+
+			buffer_json->Insert("uriTemplate", @uri->GetUrl());
+			buffer_json->Insert("name", @name);
+			buffer_json->Insert("title", @title);
 			buffer_json->Insert("description", @description);
 			buffer_json->Insert("mimeType", @mime_type);
 

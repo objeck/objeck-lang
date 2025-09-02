@@ -4667,7 +4667,7 @@ void ContextAnalyzer::AnalyzeReturn(Return* rtrn, const int depth)
     ValidateConcrete(expression->GetEvalType(), mthd_type, expression, depth);
 
     if(mthd_type->GetType() == CLASS_TYPE && !ResolveClassEnumType(mthd_type)) {
-      ProcessError(rtrn, L"Undefined class or enum: '" + FormatTypeString(mthd_type->GetName()) + L"'");
+       ProcessError(rtrn, L"Undefined class or enum: '" + FormatTypeString(mthd_type->GetName()) + L"'\n\tIf generic ensure concrete types are properly defined.");
     }
   }
   else if(mthd_type->GetType() != NIL_TYPE && current_method->GetMethodType() != NEW_PUBLIC_METHOD && current_method->GetMethodType() != NEW_PRIVATE_METHOD) {
@@ -7688,77 +7688,105 @@ const std::wstring ContextAnalyzer::EncodeType(Type* type)
 
 bool ContextAnalyzer::ResolveClassEnumType(Type* type, Class* context_klass)
 {
-  if(type->IsResolved()) {
-    return true;
-  }
-  
-  Class* klass = SearchProgramClasses(type->GetName());
-  if(klass) {
-    klass->SetCalled(true);
-    type->SetName(klass->GetName());
-    type->SetResolved(true);
-    return true;
-  }
+   if(type->IsResolved()) {
+      auto is_resloved = true;
 
-  LibraryClass* lib_klass = linker->SearchClassLibraries(type->GetName(), program->GetLibUses());
-  if(lib_klass) {
-    lib_klass->SetCalled(true);
-    type->SetName(lib_klass->GetName());
-    type->SetResolved(true);
-    return true;
-  }
-
-  // generics
-  if(context_klass->HasGenerics()) {
-    klass = context_klass->GetGenericClass(type->GetName());
-    if(klass) {
-      if(klass->HasGenericInterface()) {
-        Type* inf_type = klass->GetGenericInterface();
-        if(ResolveClassEnumType(inf_type)) {
-          type->SetName(inf_type->GetName());
-          type->SetResolved(true);
-          return true;
-        }
+      auto generic_types = type->GetGenerics();
+      for(size_t i = 0; is_resloved && i < generic_types.size(); ++i) {
+         auto generic_type = generic_types[i];
+         if(!generic_type->IsResolved()) {
+            is_resloved = false;
+         }
       }
-      else {
-        type->SetName(type->GetName());
-        type->SetResolved(true);
-        return true;
-      }
-    }
-  }
 
-  Enum* eenum = SearchProgramEnums(type->GetName());
-  if(eenum) {
-    type->SetName(type->GetName());
-    type->SetResolved(true);
-    return true;
-  }
-  else {
-    eenum = SearchProgramEnums(context_klass->GetName() + L"#" + type->GetName());
-    if(eenum) {
-      type->SetName(context_klass->GetName() + L"#" + type->GetName());
+      if(is_resloved) {
+         return true;
+      }
+   }
+
+   Class* klass = SearchProgramClasses(type->GetName());
+   if(klass) {
+      // concreate generics
+      auto generic_types = type->GetGenerics();
+      for(auto& generic_type : generic_types) {
+         if(!ResolveClassEnumType(generic_type, context_klass)) {
+            return false;
+         }
+      }
+
+      klass->SetCalled(true);
+      type->SetName(klass->GetName());
       type->SetResolved(true);
       return true;
-    }
-  }
+   }
 
-  LibraryEnum* lib_eenum = linker->SearchEnumLibraries(type->GetName(), program->GetLibUses());
-  if(lib_eenum) {
-    type->SetName(lib_eenum->GetName());
-    type->SetResolved(true);
-    return true;
-  }
-  else {
-    lib_eenum = linker->SearchEnumLibraries(type->GetName(), program->GetLibUses());
-    if(lib_eenum) {
+   LibraryClass* lib_klass = linker->SearchClassLibraries(type->GetName(), program->GetLibUses());
+   if(lib_klass) {
+      // concreate generics
+      auto generic_types = type->GetGenerics();
+      for(auto& generic_type : generic_types) {
+         if(!ResolveClassEnumType(generic_type, context_klass)) {
+            return false;
+         }
+      }
+
+      lib_klass->SetCalled(true);
+      type->SetName(lib_klass->GetName());
+      type->SetResolved(true);
+      return true;
+   }
+
+   // class defined generics
+   if(context_klass->HasGenerics()) {
+      klass = context_klass->GetGenericClass(type->GetName());
+      if(klass) {
+         if(klass->HasGenericInterface()) {
+            Type* inf_type = klass->GetGenericInterface();
+            if(ResolveClassEnumType(inf_type)) {
+               type->SetName(inf_type->GetName());
+               type->SetResolved(true);
+               return true;
+            }
+         }
+         else {
+            type->SetName(type->GetName());
+            type->SetResolved(true);
+            return true;
+         }
+      }
+   }
+
+   Enum* eenum = SearchProgramEnums(type->GetName());
+   if(eenum) {
+      type->SetName(type->GetName());
+      type->SetResolved(true);
+      return true;
+   }
+   else {
+      eenum = SearchProgramEnums(context_klass->GetName() + L"#" + type->GetName());
+      if(eenum) {
+         type->SetName(context_klass->GetName() + L"#" + type->GetName());
+         type->SetResolved(true);
+         return true;
+      }
+   }
+
+   LibraryEnum* lib_eenum = linker->SearchEnumLibraries(type->GetName(), program->GetLibUses());
+   if(lib_eenum) {
       type->SetName(lib_eenum->GetName());
       type->SetResolved(true);
       return true;
-    }
-  }
+   }
+   else {
+      lib_eenum = linker->SearchEnumLibraries(type->GetName(), program->GetLibUses());
+      if(lib_eenum) {
+         type->SetName(lib_eenum->GetName());
+         type->SetResolved(true);
+         return true;
+      }
+   }
 
-  return false;
+   return false;
 }
 
 std::wstring ContextAnalyzer::FormatTypeString(const std::wstring name)
