@@ -2806,7 +2806,7 @@ bundle Web.HTTP.Server.MCP {
 			input_schema_json := @input_schema->ToJson();
 			input_schema_json->Insert("type", "object")
 			buffer_json->Insert("inputSchema", input_schema_json);
-			
+
 "--- 1 ---"->PrintLine();
 			if(@output_schema <> Nil) {
 				output_schema_json := @output_schema->ToJson();
