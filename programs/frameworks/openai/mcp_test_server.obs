@@ -1,4 +1,4 @@
-use Collection, Data.JSON, Web.HTTP.Server.MCP;
+use Collection, Data.JSON, Web.HTTP, Web.HTTP.Server.MCP;
 
 # run mcp inspector: npx @modelcontextprotocol/inspector
 class TestMcp {
@@ -6,18 +6,17 @@ class TestMcp {
 		if(args->Size() = 1) {
 			config_builder := JsonBuilder->New();
 			
-			config_json := config_builder->PushObject();
-			config_json->Insert("name", "MCP server");
-			config_json->Insert("instructions", "You are at test Objeck MCP server");
-			config_json->Insert("version", "0.0.1");
-			config_json->Insert("http_port", args[0]->ToInt());
-			config_json->Insert("http_session_timeout", 15);
-			config_json->Insert("debug", true);
-			config := config_builder->Pop();
+			elem_json := config_builder->PushObject();
+			elem_json->Insert("name", "MCP server");
+			elem_json->Insert("instructions", "You are at test Objeck MCP server");
+			elem_json->Insert("version", "0.0.1");
+			elem_json->Insert("http_port", args[0]->ToInt());
+			elem_json->Insert("http_session_timeout", 15);
+			elem_json->Insert("debug", true);
+			config_json := config_builder->Pop();
 
-			config->ToString()->PrintLine();
-
-			McpServer->Serve(config, TestHandler->New());
+			config_json->ToString()->PrintLine();
+			McpServer->Serve(config_json, TestHandler->New());
 		}
 		else {
 			">>> Usage: JSON configuration file <<<"->PrintLine();
@@ -30,7 +29,33 @@ class TestHandler from McpRequestHandler {
 		Parent();
 	}
 
-	method : GetResources() ~ Vector<Resource> {
+	method : GetResourceDetails(uri : Url) ~ Vector<ResourceDetails> {
 		return Nil;
 	}
+
+	method : GetResources() ~ Vector<Resource> {
+		resources := Vector->New()<Resource>;
+
+		resources->AddBack(Web.HTTP.Server.MCP.Resource->New(
+			Web.HTTP.Url->New("file:///c:/temp/file.txt"), 
+			"project-files", 
+			"Access files on the project site", 
+			"application/octet-stream"));
+
+		return resources;
+	}
+
+	method : GetTemplates() ~ Vector<ResourceTemplate> {
+		resource_templates := Vector->New()<ResourceTemplate>;
+
+		resource_templates->AddBack(Web.HTTP.Server.MCP.ResourceTemplate->New(
+			Url->New("file:///c:/temp/file.txt"), 
+			"project-files", 
+			"Project Files", 
+			"Access files on the project site", 
+			"application/octet-stream"));
+
+		return resource_templates;
+	}
+
 }
