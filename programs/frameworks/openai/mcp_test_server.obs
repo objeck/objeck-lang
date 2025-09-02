@@ -30,7 +30,16 @@ class TestHandler from McpRequestHandler {
 	}
 
 	method : GetResourceDetails(uri : Url) ~ Vector<ResourceDetails> {
-		return Nil;
+		
+		resource_details := Vector->New()<ResourceDetails>;
+
+		resource_details->AddBack(Web.HTTP.Server.MCP.ResourceDetails->New(
+			Web.HTTP.Url->New("file:///c:/temp/file.txt"), 
+			"application/octet-stream",
+			"Hello from resources/read, check URI\\n\\tHello!"));
+
+		return resource_details;
+
 	}
 
 	method : GetResources() ~ Vector<Resource> {
