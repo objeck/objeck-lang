@@ -7706,11 +7706,11 @@ bool ContextAnalyzer::ResolveClassEnumType(Type* type, Class* context_klass)
 
    Class* klass = SearchProgramClasses(type->GetName());
    if(klass) {
-      // concreate generics
+      // concreate generic types
       auto generic_types = type->GetGenerics();
       for(auto& generic_type : generic_types) {
-         Class* klass = nullptr; LibraryClass* lib_klass = nullptr;
-         if(!GetProgramOrLibraryClass(generic_type, klass, lib_klass)) {
+         Class* check_klass = nullptr; LibraryClass* check_lib_klass = nullptr;
+         if(!GetProgramOrLibraryClass(generic_type, check_klass, check_lib_klass)) {
             return false;
          }
 
@@ -7727,9 +7727,14 @@ bool ContextAnalyzer::ResolveClassEnumType(Type* type, Class* context_klass)
 
    LibraryClass* lib_klass = linker->SearchClassLibraries(type->GetName(), program->GetLibUses());
    if(lib_klass) {
-      // concreate generics
+      // concreate generic types
       auto generic_types = type->GetGenerics();
       for(auto& generic_type : generic_types) {
+         Class* check_klass = nullptr; LibraryClass* check_lib_klass = nullptr;
+         if(!GetProgramOrLibraryClass(generic_type, check_klass, check_lib_klass)) {
+            return false;
+         }
+
          if(!ResolveClassEnumType(generic_type, context_klass)) {
             return false;
          }
