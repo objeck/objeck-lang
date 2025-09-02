@@ -1826,7 +1826,10 @@ bundle Data.JSON.Scheme {
 		method : public : ToJson() ~ JsonElement {
 			func_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 			func_obj_json->Insert("name", @name);
-			func_obj_json->Insert("description", @desc);
+
+			if(@desc <> Nil) {
+				func_obj_json->Insert("description", @desc);
+			};
 			
 			# JSON parameters
 			prop_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
@@ -1841,7 +1844,7 @@ bundle Data.JSON.Scheme {
 					prop_obj_json->Insert(param_name, param_obj_json->ToJson());
 				};
 			};
-			
+
 			func_obj_json->Insert("type", "object");
 			func_obj_json->Insert("properties", prop_obj_json);
 			if(@req_params <> Nil) {
