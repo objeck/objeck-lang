@@ -2628,10 +2628,43 @@ bundle Web.HTTP.Server.MCP {
 	TODO
 	~#
 	class Resource {
-		New() {}
+		@uri : Url;
+		@name : String;
+		@description : String;
+		@mime_type : String;
+
+		New(uri : Url, name : String, description : String, mime_type : String) {
+			@uri := uri;
+			@name := name;
+			@description := description;
+			@mime_type := mime_type;
+		}
+
+		method : public : GetUri() ~ Url {
+			return @uri;
+		}
+
+		method : public : GetName() ~ String {
+			return @name;
+		}
+		
+		method : public : GetDescription() ~ String {
+			return @description;
+		}
+		
+		method : public : GetMimeType() ~ String {
+			return @mime_type;
+		}
 
 		method : public : ToJson() ~ JsonElement {
-			return Nil;
+			buffer_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+
+			buffer_json->Insert("uri", @uri->ToString());
+			buffer_json->Insert("name", @name);
+			buffer_json->Insert("description", @description);
+			buffer_json->Insert("mimeType", @mime_type);
+
+			return buffer_json;
 		}
 	}
 }
