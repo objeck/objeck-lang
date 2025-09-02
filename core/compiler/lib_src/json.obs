@@ -1834,9 +1834,7 @@ bundle Data.JSON.Scheme {
 			# JSON parameters
 			prop_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 			if(@params <> Nil) {
-				
 				param_values := @params->GetKeyValues()<Pair<String, ParameterType>>;
-
 				each(param_value in param_values) {
 					param_name := param_value->GetFirst();
 					param_obj_json := param_value->GetSecond();
