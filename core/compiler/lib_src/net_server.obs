@@ -1,4 +1,4 @@
-use System.IO.Net, Collection, Data.JSON, Web.HTTP;
+use System.IO.Net, Collection, Data.JSON, Web.HTTP, Data.JSON.Scheme;
 
 #~
 Web server support (-lib net_server)
@@ -2179,10 +2179,11 @@ bundle Web.HTTP.Server.MCP {
 			}
 		}
 
-		method : virtual : GetResources() ~ Vector<Resource>;
-		method : virtual : GetTemplates() ~ Vector<ResourceTemplate>;
+		method : virtual : GetResourceItems() ~ Vector<ResourceItem>;
 		method : virtual : GetResourceDetails(uri : Url) ~ Vector<ResourceDetails>;
-
+		method : virtual : GetTemplates() ~ Vector<ResourceTemplate>;
+		method : virtual : GetTools() ~ Vector<Tool>;
+		
 		method : ProcessGet(request : Web.HTTP.Server.Request, response : Web.HTTP.Server.Response) ~ Bool {
 			session : Hash<String, String>;
 			session_id := request->GetHeader("mcp-session-id");
@@ -2340,7 +2341,7 @@ bundle Web.HTTP.Server.MCP {
 								result := JsonElement->New(JsonElement->JsonType->OBJECT);
 								result->Insert("resourceTemplates", templates_array_json);
 
-								GetResources();
+								GetResourceItems();
 								
 								WriteResponse(result, id, response, 200);
 								return false;
@@ -2352,7 +2353,7 @@ bundle Web.HTTP.Server.MCP {
 
 								resources_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
 
-								resources := GetResources();
+								resources := GetResourceItems();
 								each(resource in resources) {
 									resources_array_json->Add(resource->ToJson());
 								};
@@ -2393,11 +2394,13 @@ bundle Web.HTTP.Server.MCP {
 										\"tools\": [      
 											{        
 												\"name\": \"echo\",
-												\"description\":
-												\"Echo a string\",
+												\"description\": \"Echo a string\",
 												\"inputSchema\": {
 													\"type\": \"object\",
-													\"properties\": { \"text\": { \"type\": \"string\" } },
+													\"properties\": { 
+														\"text\": { \"type\": \"string\" },
+														\"time\": { \"type\": \"number\" } 
+													},
 													\"required\": [\"text\"]
 												}
 											}
@@ -2618,7 +2621,7 @@ bundle Web.HTTP.Server.MCP {
 	#~
 	TODO
 	~#
-	class Resource {
+	class ResourceItem {
 		@uri : Url;
 		@name : String;
 		@description : String;
@@ -2696,7 +2699,10 @@ bundle Web.HTTP.Server.MCP {
 		}
 	}
 
-	class ResourceTemplate from Resource {
+	#~
+	TODO
+	~#
+	class ResourceTemplate from ResourceItem {
 		@title : String;
 
 		New(uri : Url, name : String, title : String, description : String, mime_type : String) {
@@ -2716,6 +2722,75 @@ bundle Web.HTTP.Server.MCP {
 			buffer_json->Insert("title", @title);
 			buffer_json->Insert("description", @description);
 			buffer_json->Insert("mimeType", @mime_type);
+
+			return buffer_json;
+		}
+	}
+
+	#~
+	TODO
+	~#
+	class Tool {
+		@name : String;
+		@title : String;
+		@description : String;
+		@input_schema : FunctionType;
+		@output_schema : FunctionType;
+
+		New(name : String, title : String, description : String, input_schema : FunctionType, output_schema : FunctionType) {
+			@name := name;
+			@title := title;
+			@description := description;
+
+			@input_schema := input_schema;
+			@output_schema := output_schema;
+		}
+
+		New(name : String, input_schema : FunctionType, output_schema : FunctionType) {
+			@name := name;
+			
+			@input_schema := input_schema;
+			@output_schema := output_schema;
+		}
+
+		method : public : GetName() ~ String {
+			return @name;
+		}
+
+		method : public : GeTitle() ~ String {
+			return @title;
+		}
+		
+		method : public : GetDescription() ~ String {
+			return @description;
+		}
+
+		method : public : GetInputSchema() ~ FunctionType {
+			return @input_schema;
+		}
+
+		method : public : GetOutputSchema() ~ FunctionType {
+			return @output_schema;
+		}
+
+		method : public : ToJson() ~ JsonElement {
+			buffer_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+
+			buffer_json->Insert("name", @name);
+			
+			if(@title <> Nil) {
+				buffer_json->Insert("title", @title);
+			};
+
+			if(@description <> Nil) {
+				buffer_json->Insert("description", @description);
+			};
+
+			buffer_json->Insert("inputSchema", @input_schema->ToJson());
+
+			if(@output_schema <> Nil) {
+				buffer_json->Insert("outputSchema", @output_schema->ToJson());
+			};
 
 			return buffer_json;
 		}

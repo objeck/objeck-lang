@@ -1615,41 +1615,74 @@ bundle Data.JSON.Scheme {
 	~#
 	class FunctionType implements Compare {
 		@name: String;
+		@title: String;
 		@desc: String;
 		@params : Map<String, ParameterType>;
 		@req_params : String[];
 
+		#~
+		Constructor
+		@param func_type_json function JSOfN type
+		~#
 		New(func_type_json : JsonElement) {
+			Parse(func_type_json, "parameters");
+		}
 
+		#~
+		Constructor
+		@param func_type_json function JSON type
+		@param params_header parameter header string
+		~#
+		New(func_type_json : JsonElement, params_header : String) {
+			Parse(func_type_json, params_header);
+		}
+
+		method : Parse(func_type_json : JsonElement, params_header : String) ~ Nil {
 			@name := func_type_json->Get("name")->GetString();
-			@desc := func_type_json->Get("description")->GetString();
+			
+			if(func_type_json->Has("title")){
+				@title := func_type_json->Get("title")->GetString();
+			}
+			
+			if(func_type_json->Has("description")){
+				@desc := func_type_json->Get("description")->GetString();
+			}
 
 			# get properties by name
 			@params := Map->New()<String, ParameterType>;
 
-			params_json := func_type_json->FindElements("parameters/properties");
+			params_json := func_type_json->FindElements("{$params_header}/properties");
 			param_names := params_json->GetNames();
 			each(param_name in param_names) {
 				param_json := params_json->Get(param_name);
 
 				param_type := param_json->Get("type")->GetString();
-				param_desc := param_json->Get("description")->GetString();
+
+				param_desc : String;
+				if(param_json->Has("description")) {
+					param_desc := param_json->Get("description")->GetString();
+				};
+
+				param_title : String;
+				if(param_json->Has("title")) {
+					param_title := param_json->Get("title")->GetString();
+				};
 
 				param : ParameterType;
 				if(param_type->Equals("string")) {
-					param := ParameterType->New(ParameterType->Type->STRING, param_desc);
+					param := ParameterType->New(ParameterType->Type->STRING, param_desc, param_title);
 				}
 				else if(param_type->Equals("number")) {
-					param := ParameterType->New(ParameterType->Type->NUMBER, param_desc);
+					param := ParameterType->New(ParameterType->Type->NUMBER, param_desc, param_title);
 				}
 				else if(param_type->Equals("integer")) {
-					param := ParameterType->New(ParameterType->Type->INTEGER, param_desc);
+					param := ParameterType->New(ParameterType->Type->INTEGER, param_desc, param_title);
 				}
 				else if(param_type->Equals("object")) {
-					param := ParameterType->New(ParameterType->Type->OBJECT, param_desc);
+					param := ParameterType->New(ParameterType->Type->OBJECT, param_desc, param_title);
 				}
 				else if(param_type->Equals("boolean")) {
-					param := ParameterType->New(ParameterType->Type->BOOLEAN, param_desc);
+					param := ParameterType->New(ParameterType->Type->BOOLEAN, param_desc, param_title);
 				};
 
 				@params->Insert(param_name, param);
@@ -1657,13 +1690,12 @@ bundle Data.JSON.Scheme {
 				# "param_name='{$param_name}', param_type={$param_type}, param_desc='{$param_desc}'"->PrintLine();
 			};
 
-			required_parms := func_type_json->FindElements("parameters/required");
+			required_parms := func_type_json->FindElements("{$params_header}/required");
 			@req_params := String->New[required_parms->Size()];
 			each(i : required_parms) {
 				required_parm := required_parms->Get(i);
 				@req_params[i] := required_parm->GetString();
 			}
-			# TODO: parse and set values
 		}
 
 		#~
@@ -1715,11 +1747,35 @@ bundle Data.JSON.Scheme {
 		}
 
 		#~
+		Constructor
+		@param name function name
+		@param title function title
+		@param params parameters to add to JSON object
+		@param req_params required parameters 
+		@param desc description 
+		~#
+		New(name : String, title : String, params : Map<String, ParameterType>, req_params : String[], desc : String) {
+			@name := name;
+			@title := title;
+			@req_params := req_params;
+			@params := params;
+			@desc := desc;
+		}
+
+		#~
 		Get the function name
 		@return function name
 		~#
 		method : public : GetName() ~ String {
 			return @name;
+		}
+
+		#~
+		Get the function title
+		@return function title
+		~#
+		method : public : GetTitle() ~ String {
+			return @title;
 		}
 
 		#~
@@ -1768,6 +1824,15 @@ bundle Data.JSON.Scheme {
 		@return JSON element representation
 		~# 
 		method : public : ToJson() ~ JsonElement {
+			return ToJson("parameters");
+		}
+
+		#~
+		JSON element representation 
+		@param params_header parameter header string
+		@return JSON element representation
+		~# 
+		method : public : ToJson(params_header : String) ~ JsonElement {
 			func_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 			func_obj_json->Insert("name", @name);
 			func_obj_json->Insert("description", @desc);
@@ -1797,7 +1862,7 @@ bundle Data.JSON.Scheme {
 			params_obj_json->Insert("type", "object");
 			params_obj_json->Insert("properties", prop_obj_json);
 
-			func_obj_json->Insert("parameters", params_obj_json);
+			func_obj_json->Insert("{$params_header}", params_obj_json);
 
 			return func_obj_json;
 		}
@@ -1816,6 +1881,7 @@ bundle Data.JSON.Scheme {
 	~#
 	class ParameterType implements Compare {
 		@name : String;
+		@title : String;
 		@type : ParameterType->Type;
 		@desc : String;
 		@props : Map<String, ParameterType>;
@@ -1861,6 +1927,22 @@ bundle Data.JSON.Scheme {
 
 		#~
 		Constructor
+		@param type parameter type
+		@param is_array true if array, false otherwise
+		@param title parameter title
+		@param desc description 
+		~#
+		New(type : ParameterType->Type, is_array : Bool, title : String, desc : String) {
+			@type := type;
+			@is_array := is_array;
+			@desc := desc;
+			@title := title;
+
+			@props := Map->New()<String, ParameterType>;
+		}
+
+		#~
+		Constructor
 		@param req_params require parameters
 		@param is_array true if array, false otherwise
 		~#
@@ -1889,6 +1971,20 @@ bundle Data.JSON.Scheme {
 		~#
 		New(type : ParameterType->Type, desc : String) {
 			@type := type;
+			@desc := desc;
+
+			@props := Map->New()<String, ParameterType>;
+		}
+
+		#~
+		Constructor
+		@param type parameter type
+		@param title title 
+		@param desc description 
+		~#
+		New(type : ParameterType->Type, title : String, desc : String) {
+			@type := type;
+			@title := title;
 			@desc := desc;
 
 			@props := Map->New()<String, ParameterType>;
@@ -1956,6 +2052,22 @@ bundle Data.JSON.Scheme {
 		~#
 		method : public : SetDesc(desc : String) ~ Nil {
 			@desc := desc;
+		}
+
+		#~
+		Get the function title
+		@return function title
+		~#
+		method : public : GetTitle() ~ String {
+			return @title;
+		}
+
+		#~
+		Set the function title
+		@param title sets function title
+		~#
+		method : public : SetTitle(title : String) ~ Nil {
+			@title := title;
 		}
 
 		#~
