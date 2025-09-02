@@ -2673,7 +2673,7 @@ bundle Web.HTTP.Server.MCP {
 		@mime_type : String;
 		@text : String;
 
-		New(uri : Url, name : String, mime_type : String, text : String) {
+		New(uri : Url, mime_type : String, text : String) {
 			@uri := uri;
 			@mime_type := mime_type;
 			@text := text;
@@ -2697,7 +2697,7 @@ bundle Web.HTTP.Server.MCP {
 			buffer_json->Insert("uri", @uri->GetUrl());
 			buffer_json->Insert("mimeType", @mime_type);
 			buffer_json->Insert("text", @text);
-			
+
 			return buffer_json;
 		}
 	}
