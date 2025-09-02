@@ -1,4 +1,4 @@
-use Collection, Data.JSON, Web.HTTP, Web.HTTP.Server.MCP;
+use Collection, Data.JSON, Web.HTTP, Web.HTTP.Server.MCP, Data.JSON.Scheme;
 
 # run mcp inspector: npx @modelcontextprotocol/inspector
 class TestMcp {
@@ -30,7 +30,6 @@ class TestHandler from McpRequestHandler {
 	}
 
 	method : GetResourceDetails(uri : Url) ~ Vector<ResourceDetails> {
-		
 		resource_details := Vector->New()<ResourceDetails>;
 
 		resource_details->AddBack(Web.HTTP.Server.MCP.ResourceDetails->New(
@@ -39,13 +38,12 @@ class TestHandler from McpRequestHandler {
 			"Hello from resources/read, check URI\\n\\tHello!"));
 
 		return resource_details;
-
 	}
 
-	method : GetResources() ~ Vector<Resource> {
-		resources := Vector->New()<Resource>;
+	method : GetResourceItems() ~ Vector<ResourceItem> {
+		resources := Vector->New()<ResourceItem>;
 
-		resources->AddBack(Web.HTTP.Server.MCP.Resource->New(
+		resources->AddBack(Web.HTTP.Server.MCP.ResourceItem->New(
 			Web.HTTP.Url->New("file:///c:/temp/file.txt"), 
 			"project-files", 
 			"Access files on the project site", 
@@ -67,4 +65,9 @@ class TestHandler from McpRequestHandler {
 		return resource_templates;
 	}
 
+	method : GetTools() ~ Vector<Tool> {
+		tools := Vector->New()<Tool>;
+
+		return tools;
+	}
 }
