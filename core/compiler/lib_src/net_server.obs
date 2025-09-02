@@ -2183,7 +2183,7 @@ bundle Web.HTTP.Server.MCP {
 		method : virtual : GetResourceDetails(uri : Url) ~ Vector<ResourceDetails>;
 		method : virtual : GetTemplates() ~ Vector<ResourceTemplate>;
 		method : virtual : GetTools() ~ Vector<Tool>;
-		
+
 		method : ProcessGet(request : Web.HTTP.Server.Request, response : Web.HTTP.Server.Response) ~ Bool {
 			session : Hash<String, String>;
 			session_id := request->GetHeader("mcp-session-id");
@@ -2387,6 +2387,21 @@ bundle Web.HTTP.Server.MCP {
 							# tools/list
 							label "tools/list": {
 								id := root_json->Get("id")->GetInt();
+
+								tools_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+
+								tools := GetTools();
+								each(tool in tools) {
+									tools_array_json->Add(tool->ToJson());
+								};
+
+								result := JsonElement->New(JsonElement->JsonType->OBJECT);
+								result->Insert("tools", tools_array_json);
+								
+								WriteResponse(result, id, response, 200);
+								return false;
+#~								
+								id := root_json->Get("id")->GetInt();
 								payload := "{
 									\"jsonrpc\": \"2.0\",
 									\"id\": {$id},
@@ -2414,6 +2429,7 @@ bundle Web.HTTP.Server.MCP {
 
 								response->SetCodeTypeContent(200, "application/json", payload);
 								return false;
+~#								
 							}
 
 							# prompts/list
@@ -2786,10 +2802,16 @@ bundle Web.HTTP.Server.MCP {
 				buffer_json->Insert("description", @description);
 			};
 
-			buffer_json->Insert("inputSchema", @input_schema->ToJson());
-
+"--- 0 ---"->PrintLine();
+			input_schema_json := @input_schema->ToJson();
+			input_schema_json->Insert("type", "object")
+			buffer_json->Insert("inputSchema", input_schema_json);
+			
+"--- 1 ---"->PrintLine();
 			if(@output_schema <> Nil) {
-				buffer_json->Insert("outputSchema", @output_schema->ToJson());
+				output_schema_json := @output_schema->ToJson();
+				output_schema_json->Insert("type", "object")
+				buffer_json->Insert("outputSchema", output_schema_json);
 			};
 
 			return buffer_json;
