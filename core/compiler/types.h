@@ -236,6 +236,16 @@ namespace frontend {
       return generic_types;
     }
 
+    bool HasGeneric(Type* type) {
+       bool found = false;
+
+       for(auto& generic_type : generic_types) {
+          found = generic_type->GetName() == type->GetName();
+       }
+
+       return found;
+    }
+
     bool HasGenerics() {
       return generic_types.size() > 0;
     }

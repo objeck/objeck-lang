@@ -7558,11 +7558,11 @@ bool ContextAnalyzer::GetProgramOrLibraryClass(Type* type, Class*& klass, Librar
   std::wstring type_name = type->GetName();
   if(type_name.empty()) {
     switch(type->GetType()) {
-    case 	BOOLEAN_TYPE:
+    case BOOLEAN_TYPE:
       type_name = L"System.$Bool";
       break;
 
-    case 	BYTE_TYPE:
+    case BYTE_TYPE:
       type_name = L"System.$Byte";
       break;
 
@@ -7710,7 +7710,7 @@ bool ContextAnalyzer::ResolveClassEnumType(Type* type, Class* context_klass)
       auto generic_types = type->GetGenerics();
       for(auto& generic_type : generic_types) {
          Class* check_klass = nullptr; LibraryClass* check_lib_klass = nullptr;
-         if(!GetProgramOrLibraryClass(generic_type, check_klass, check_lib_klass)) {
+         if(!GetProgramOrLibraryClass(generic_type, check_klass, check_lib_klass) && !context_klass->GetGenericClass(generic_type->GetName()) && !type->HasGeneric(generic_type)) {
             return false;
          }
 
@@ -7731,7 +7731,7 @@ bool ContextAnalyzer::ResolveClassEnumType(Type* type, Class* context_klass)
       auto generic_types = type->GetGenerics();
       for(auto& generic_type : generic_types) {
          Class* check_klass = nullptr; LibraryClass* check_lib_klass = nullptr;
-         if(!GetProgramOrLibraryClass(generic_type, check_klass, check_lib_klass)) {
+         if(!GetProgramOrLibraryClass(generic_type, check_klass, check_lib_klass) && !context_klass->GetGenericClass(generic_type->GetName()) && !type->HasGeneric(generic_type)) {
             return false;
          }
 
