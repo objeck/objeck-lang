@@ -2342,6 +2342,8 @@ bundle Web.HTTP.Server.MCP {
 
 								result := JsonElement->New(JsonElement->JsonType->OBJECT);
 								result->Insert("resourceTemplates", templates_array_json);
+
+								GetResources();
 								
 								WriteResponse(result, id, response, 200);
 								return false;
@@ -2622,8 +2624,15 @@ bundle Web.HTTP.Server.MCP {
 		}
 	}
 
+	#~
+	TODO
+	~#
 	class Resource {
 		New() {}
+
+		method : public : ToJson() ~ JsonElement {
+			return Nil;
+		}
 	}
 }
 
