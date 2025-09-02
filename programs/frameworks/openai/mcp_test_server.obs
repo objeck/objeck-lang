@@ -73,8 +73,7 @@ class TestHandler from McpRequestHandler {
 		func_params->Insert("number", ParameterType->New(ParameterType->Type->NUMBER, false));
 		func := FunctionType->New("get_text_time", func_params, ["text"], "gets_text_time");
 
-		tools->AddBack(Web.HTTP.Server.MCP.Tool->New(
-			"echo", "echo-string", "Echo a string", func, Nil));
+		tools->AddBack(Web.HTTP.Server.MCP.Tool->New( "echo", "Echo a string", func));
 
 		return tools;
 	}

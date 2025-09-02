@@ -2762,6 +2762,21 @@ bundle Web.HTTP.Server.MCP {
 			@output_schema := output_schema;
 		}
 
+		New(name : String, description : String, input_schema : FunctionType, output_schema : FunctionType) {
+			@name := name;
+			@description := description;
+
+			@input_schema := input_schema;
+			@output_schema := output_schema;
+		}
+
+		New(name : String, description : String, input_schema : FunctionType) {
+			@name := name;
+			@description := description;
+
+			@input_schema := input_schema;
+		}
+
 		New(name : String, input_schema : FunctionType, output_schema : FunctionType) {
 			@name := name;
 			
@@ -2802,12 +2817,10 @@ bundle Web.HTTP.Server.MCP {
 				buffer_json->Insert("description", @description);
 			};
 
-"--- 0 ---"->PrintLine();
 			input_schema_json := @input_schema->ToJson();
 			input_schema_json->Insert("type", "object")
 			buffer_json->Insert("inputSchema", input_schema_json);
 
-"--- 1 ---"->PrintLine();
 			if(@output_schema <> Nil) {
 				output_schema_json := @output_schema->ToJson();
 				output_schema_json->Insert("type", "object")
