@@ -78,4 +78,19 @@ class TestHandler from McpRequestHandler {
 
 		return tools;
 	}
+
+	method : CallTool(name : String, arguments : JsonElement) ~ Vector<ToolContent> {
+		tools := Vector->New()<ToolContent>;
+
+		name := arguments->Get("name")->GetValue();
+		
+		age := "unknown";
+		if(arguments->Has("age") & <>arguments->Get("age")->GetValue()->IsEmpty()) {
+			age := arguments->Get("age")->GetValue();
+		};
+
+		tools->AddBack(Web.HTTP.Server.MCP.ToolContent->New("text", "Hello, {$name}! Your age is {$age}."));
+
+		return tools;
+	}
 }
