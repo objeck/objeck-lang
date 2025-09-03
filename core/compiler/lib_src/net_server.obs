@@ -2970,6 +2970,106 @@ bundle Web.HTTP.Server.MCP {
 			return buffer_json;
 		}
 	}
+
+	#~
+	TODO
+	~#
+	class PromptItem {
+		@name : String;
+		@uri : Url;
+		@title : String;
+		@description : String;
+		@arguments : Vector<PromptArgument>;
+
+		New(name : String, uri : Url, title : String, description : String) {
+			@name := name;
+			@uri := uri;
+			@title := title;
+			@description := description;
+		}
+
+		New(name : String, description : String) {
+			@name := name;
+			@description := description;
+		}
+
+		New(name : String) {
+			@name := name;			
+		}
+
+		method : public : GetName() ~ String {
+			return @name;
+		}
+
+		method : public : GeTitle() ~ String {
+			return @title;
+		}
+
+		method : public : GetUri() ~ Url {
+			return @uri;
+		}
+		
+		method : public : GetDescription() ~ String {
+			return @description;
+		}
+
+		method : public : GetArguments() ~ Vector<PromptArgument> {
+			return @arguments;
+		}
+
+		method : public : ToJson() ~ JsonElement {
+			buffer_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+
+			buffer_json->Insert("name", @name);
+			
+			if(@title <> Nil) {
+				buffer_json->Insert("title", @title);
+			};
+
+			if(@description <> Nil) {
+				buffer_json->Insert("description", @description);
+			};
+
+			if(@uri <> Nil) {
+				buffer_json->Insert("uriTemplate", @uri->GetUrl());
+			};
+
+			return buffer_json;
+		}
+	}
+
+	#~
+	TODO: restrict types?
+	~#
+	class PromptArgument {
+		@type : String;
+		@description : String;
+
+		New(type : String, description : String) {
+			@type := type;
+			@description := description;
+		}
+
+		method : public : GetType() ~ String {
+			return @type;
+		}
+
+		method : public : GetDescription() ~ String {
+			return @description;
+		}
+
+		method : public : ToJson() ~ JsonElement {
+			buffer_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+
+			buffer_json->Insert("type", @type);
+			
+			if(@description <> Nil) {
+				buffer_json->Insert("description", @description);
+			};
+
+			return buffer_json;
+		}
+	}
 }
 
 #~
