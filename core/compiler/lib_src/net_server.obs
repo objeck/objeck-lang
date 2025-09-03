@@ -2187,7 +2187,7 @@ bundle Web.HTTP.Server.MCP {
 		method : virtual : CallTool(name : String, arguments : JsonElement) ~ Vector<ToolContent>;
 		
 		method : virtual : ListPrompts() ~ Vector<PromptItem>;
-
+		method : virtual : CallPrompt(name : String, arguments : JsonElement) ~ Vector<PromptMessage>;
 		
 		method : ProcessGet(request : Web.HTTP.Server.Request, response : Web.HTTP.Server.Response) ~ Bool {
 			session : Hash<String, String>;
@@ -2461,8 +2461,7 @@ bundle Web.HTTP.Server.MCP {
 
 							# prompts/get
 							label "prompts/get": {
-								call_name : String; 
-								
+								call_name : String; text : String;
 								call_params_json := root_json->Get("params");								
 								if(call_params_json <> Nil) {
 									name_json := call_params_json->Get("name");
@@ -2474,64 +2473,18 @@ bundle Web.HTTP.Server.MCP {
 									if(call_params_json <> Nil & call_name <> Nil) {
 										id := root_json->Get("id")->GetInt();
 
-										# greet prompt
-										if(call_name->Equals("greet")) {
-											name := call_params_json->Get("name")->GetValue();
+										contents := CallPrompt(call_name, call_params_json);
 
-											payload := "{
-												\"jsonrpc\": 
-												\"2.0\",  
-												\"id\": {$id},  
-												\"result\": {  
-													\"description\": \"Greeting prompt\",  
-													\"messages\": [
-														{
-															\"role\": \"user\",
-															\"content\": { 
-																\"type\": \"text\", 
-																\"text\": \"{$name}\" 
-															}
-														}
-													]    
-												}
-											}";
+										content_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+										each(content in contents) {
+											content_array_json->Add(content->ToJson());
+										};
 
-											if(McpServer->IsDebug()) {
-												ShowPayload(payload);
-											};
-
-											response->SetCodeTypeContent(200, "application/json", payload);
-											return false;
-										}
-										# greet prompt
-										else if(call_name->Equals("explain_topic")) {
-											explain_topic := call_params_json->Get("topic")->GetValue();
-											
-											payload := "{
-												\"jsonrpc\": 
-												\"2.0\",  
-												\"id\": {$id},  
-												\"result\": {  
-													\"description\": \"Explain prompt\",  
-													\"messages\": [
-														{
-															\"role\": \"user\",
-															\"content\": { 
-																\"type\": \"text\", 
-																\"text\": \"{$explain_topic}\" 
-															}
-														}
-													]    
-												}
-											}";
-
-											if(McpServer->IsDebug()) {
-												ShowPayload(payload);
-											};
-
-											response->SetCodeTypeContent(200, "application/json", payload);
-											return false;
-										}
+										result := JsonElement->New(JsonElement->JsonType->OBJECT);
+										result->Insert("messages", content_array_json);
+										
+										WriteResponse(result, id, response, 200);
+										return false;
 									};
 								};
 							}
@@ -3098,7 +3051,7 @@ bundle Web.HTTP.Server.MCP {
 	#~
 	TODO: restrict types?
 	~#
-	class Message {
+	class PromptMessage {
 		@role : String;
 		@type : String;
 		@resource : ResourceContent;
@@ -3135,19 +3088,20 @@ bundle Web.HTTP.Server.MCP {
 		method : public : ToJson() ~ JsonElement {
 			buffer_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 
-#~
-			buffer_json->Insert("name", @name);
-			buffer_json->Insert("required", @required);
-			
-			if(@description <> Nil) {
-				buffer_json->Insert("description", @description);
+			buffer_json->Insert("role", @role);
+
+			content_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			content_json->Insert("type", @type);
+
+			if(@text <> Nil) {
+				content_json->Insert("text", @text);
+			}
+			else if(@resource <> Nil & @type->Equals("resource")) {
+				content_json->Insert("resource", @resource->ToJson());
 			};
 
-			if(@code <> Nil) {
-				buffer_json->Insert("code", @code);
-			};
-~#
-			
+			buffer_json->Insert("content", content_json);
+
 			return buffer_json;
 		}
 	}
