@@ -2179,11 +2179,12 @@ bundle Web.HTTP.Server.MCP {
 			}
 		}
 
-		method : virtual : GetResourceItems() ~ Vector<ResourceItem>;
-		method : virtual : GetResourceDetails(uri : Url) ~ Vector<ResourceDetails>;
-		method : virtual : GetTemplates() ~ Vector<ResourceTemplate>;
-		method : virtual : GetTools() ~ Vector<ToolItem>;
+		method : virtual : ListResources() ~ Vector<ResourceItem>;
+		method : virtual : GetResource(uri : Url) ~ Vector<ResourceContent>;
+		method : virtual : ListTemplates() ~ Vector<ResourceTemplate>;
+		method : virtual : ListTools() ~ Vector<ToolItem>;
 		method : virtual : CallTool(name : String, arguments : JsonElement) ~ Vector<ToolContent>;
+		# TODO: prompts
 
 		method : ProcessGet(request : Web.HTTP.Server.Request, response : Web.HTTP.Server.Response) ~ Bool {
 			session : Hash<String, String>;
@@ -2334,7 +2335,7 @@ bundle Web.HTTP.Server.MCP {
 
 								templates_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
 
-								templates := GetTemplates();
+								templates := ListTemplates();
 								each(template in templates) {
 									templates_array_json->Add(template->ToJson());
 								};
@@ -2342,7 +2343,7 @@ bundle Web.HTTP.Server.MCP {
 								result := JsonElement->New(JsonElement->JsonType->OBJECT);
 								result->Insert("resourceTemplates", templates_array_json);
 
-								GetResourceItems();
+								ListResources();
 								
 								WriteResponse(result, id, response, 200);
 								return false;
@@ -2354,7 +2355,7 @@ bundle Web.HTTP.Server.MCP {
 
 								resources_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
 
-								resources := GetResourceItems();
+								resources := ListResources();
 								each(resource in resources) {
 									resources_array_json->Add(resource->ToJson());
 								};
@@ -2373,7 +2374,7 @@ bundle Web.HTTP.Server.MCP {
 
 								resources_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
 
-								resource_details := GetResourceDetails(Url->New(uri_str));
+								resource_details := GetResource(Url->New(uri_str));
 								each(resource_detail in resource_details) {
 									resources_array_json->Add(resource_detail->ToJson());
 								};
@@ -2389,8 +2390,8 @@ bundle Web.HTTP.Server.MCP {
 							label "tools/list": {
 								id := root_json->Get("id")->GetInt();
 
-								tools := GetTools();
-								
+								tools := ListTools();
+
 								tools_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
 								each(tool in tools) {
 									tools_array_json->Add(tool->ToJson());
@@ -2429,35 +2430,6 @@ bundle Web.HTTP.Server.MCP {
 										
 										WriteResponse(result, id, response, 200);
 										return false;
-										
-#~										
-										# echo call
-										if(call_name->Equals("name-age")) {
-											text := call_params_json->Get("name")->GetValue();									
-											
-											payload := "{
-												\"jsonrpc\": 
-												\"2.0\",  
-												\"id\": {$id},  
-												\"result\": {    
-													\"content\": [
-														{ 
-															\"type\": \"text\", 
-															\"text\": \"{$text}\" 
-														}    
-													],    
-													\"isError\": false  
-												}
-											}";
-
-											if(McpServer->IsDebug()) {
-												ShowPayload(payload);
-											};
-
-											response->SetCodeTypeContent(200, "application/json", payload);
-											return false;
-										}
-~#											
 									};
 								};
 							}
@@ -2718,7 +2690,7 @@ bundle Web.HTTP.Server.MCP {
 	#~
 	TODO
 	~#
-	class ResourceDetails from ResourceItem {
+	class ResourceContent from ResourceItem {
 		@text : String;
 		@is_blob : Bool;
 		
