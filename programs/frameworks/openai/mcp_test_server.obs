@@ -29,10 +29,10 @@ class TestHandler from McpRequestHandler {
 		Parent();
 	}
 
-	method : GetResourceDetails(uri : Url) ~ Vector<ResourceDetails> {
-		resource_details := Vector->New()<ResourceDetails>;
+	method : GetResource(uri : Url) ~ Vector<ResourceContent> {
+		resource_details := Vector->New()<ResourceContent>;
 
-		resource_details->AddBack(Web.HTTP.Server.MCP.ResourceDetails->New(
+		resource_details->AddBack(Web.HTTP.Server.MCP.ResourceContent->New(
 			Url->New("file:///c:/temp/my-file.txt"), 
 			"my-file.txt"
 			"text/plain",
@@ -41,7 +41,7 @@ class TestHandler from McpRequestHandler {
 		return resource_details;
 	}
 
-	method : GetResourceItems() ~ Vector<ResourceItem> {
+	method : ListResources() ~ Vector<ResourceItem> {
 		resources := Vector->New()<ResourceItem>;
 
 		resources->AddBack(Web.HTTP.Server.MCP.ResourceItem->New(
@@ -53,7 +53,7 @@ class TestHandler from McpRequestHandler {
 		return resources;
 	}
 
-	method : GetTemplates() ~ Vector<ResourceTemplate> {
+	method : ListTemplates() ~ Vector<ResourceTemplate> {
 		resource_templates := Vector->New()<ResourceTemplate>;
 
 		resource_templates->AddBack(Web.HTTP.Server.MCP.ResourceTemplate->New(
@@ -66,7 +66,7 @@ class TestHandler from McpRequestHandler {
 		return resource_templates;
 	}
 
-	method : GetTools() ~ Vector<ToolItem> {
+	method : ListTools() ~ Vector<ToolItem> {
 		tools := Vector->New()<ToolItem>;
 
 		func_params := Map->New()<String, ParameterType>;
@@ -93,4 +93,6 @@ class TestHandler from McpRequestHandler {
 
 		return tools;
 	}
+
+	# TODO: prompts
 }
