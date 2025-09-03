@@ -94,7 +94,6 @@ class TestHandler from McpRequestHandler {
 		return tools;
 	}
 
-	# TODO: prompts
 	method : ListPrompts() ~ Vector<PromptItem> {
 		prompts := Vector->New()<PromptItem>;
 
@@ -111,5 +110,9 @@ class TestHandler from McpRequestHandler {
 			arguments));
 
 		return prompts;
+	}
+
+	method : CallPrompt(name : String, arguments : JsonElement) ~ Vector<PromptMessage> {
+		return Nil;
 	}
 }
