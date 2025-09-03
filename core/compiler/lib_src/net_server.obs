@@ -3094,6 +3094,63 @@ bundle Web.HTTP.Server.MCP {
 			return buffer_json;
 		}
 	}
+
+	#~
+	TODO: restrict types?
+	~#
+	class Message {
+		@role : String;
+		@type : String;
+		@resource : ResourceContent;
+		@text : String;
+
+		New(role : String, type : String, resource : ResourceContent) {
+			@role := role;
+			@type := type;
+			@resource := resource;
+		}
+
+		New(role : String, type : String, text : String) {
+			@role := role;
+			@type := type;
+			@text := text;
+		}
+
+		method : public : GetRole() ~ String {
+			return @role;
+		}
+
+		method : public : GetResource() ~ ResourceContent {
+			return @resource;
+		}
+
+		method : public : GetText() ~ String {
+			return @text;
+		}
+
+		method : public : GetType() ~ String {
+			return @type;
+		}
+
+		method : public : ToJson() ~ JsonElement {
+			buffer_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+
+#~
+			buffer_json->Insert("name", @name);
+			buffer_json->Insert("required", @required);
+			
+			if(@description <> Nil) {
+				buffer_json->Insert("description", @description);
+			};
+
+			if(@code <> Nil) {
+				buffer_json->Insert("code", @code);
+			};
+~#
+			
+			return buffer_json;
+		}
+	}
 }
 
 #~
