@@ -113,6 +113,12 @@ class TestHandler from McpRequestHandler {
 	}
 
 	method : CallPrompt(name : String, arguments : JsonElement) ~ Vector<PromptMessage> {
-		return Nil;
+		messages := Vector->New()<PromptMessage>;
+
+		messages->AddBack(Web.HTTP.Server.MCP.PromptMessage->New(
+			"user", "text",
+			"Byte magazine 1984"));
+
+		return messages;
 	}
 }
