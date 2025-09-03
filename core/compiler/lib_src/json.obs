@@ -1663,26 +1663,21 @@ bundle Data.JSON.Scheme {
 					param_desc := param_json->Get("description")->GetString();
 				};
 
-				param_title : String;
-				if(param_json->Has("title")) {
-					param_title := param_json->Get("title")->GetString();
-				};
-
 				param : ParameterType;
 				if(param_type->Equals("string")) {
-					param := ParameterType->New(ParameterType->Type->STRING, param_desc, param_title);
+					param := ParameterType->New(ParameterType->Type->STRING, param_desc);
 				}
 				else if(param_type->Equals("number")) {
-					param := ParameterType->New(ParameterType->Type->NUMBER, param_desc, param_title);
+					param := ParameterType->New(ParameterType->Type->NUMBER, param_desc);
 				}
 				else if(param_type->Equals("integer")) {
-					param := ParameterType->New(ParameterType->Type->INTEGER, param_desc, param_title);
+					param := ParameterType->New(ParameterType->Type->INTEGER, param_desc);
 				}
 				else if(param_type->Equals("object")) {
-					param := ParameterType->New(ParameterType->Type->OBJECT, param_desc, param_title);
+					param := ParameterType->New(ParameterType->Type->OBJECT, param_desc);
 				}
 				else if(param_type->Equals("boolean")) {
-					param := ParameterType->New(ParameterType->Type->BOOLEAN, param_desc, param_title);
+					param := ParameterType->New(ParameterType->Type->BOOLEAN, param_desc);
 				};
 
 				@params->Insert(param_name, param);
@@ -1869,8 +1864,6 @@ bundle Data.JSON.Scheme {
 	Function parameter type definition 
 	~#
 	class ParameterType implements Compare {
-		@name : String;
-		@title : String;
 		@type : ParameterType->Type;
 		@desc : String;
 		@props : Map<String, ParameterType>;
@@ -1916,22 +1909,6 @@ bundle Data.JSON.Scheme {
 
 		#~
 		Constructor
-		@param type parameter type
-		@param is_array true if array, false otherwise
-		@param title parameter title
-		@param desc description 
-		~#
-		New(type : ParameterType->Type, is_array : Bool, title : String, desc : String) {
-			@type := type;
-			@is_array := is_array;
-			@desc := desc;
-			@title := title;
-
-			@props := Map->New()<String, ParameterType>;
-		}
-
-		#~
-		Constructor
 		@param req_params require parameters
 		@param is_array true if array, false otherwise
 		~#
@@ -1960,20 +1937,6 @@ bundle Data.JSON.Scheme {
 		~#
 		New(type : ParameterType->Type, desc : String) {
 			@type := type;
-			@desc := desc;
-
-			@props := Map->New()<String, ParameterType>;
-		}
-
-		#~
-		Constructor
-		@param type parameter type
-		@param title title 
-		@param desc description 
-		~#
-		New(type : ParameterType->Type, title : String, desc : String) {
-			@type := type;
-			@title := title;
 			@desc := desc;
 
 			@props := Map->New()<String, ParameterType>;
@@ -2020,14 +1983,6 @@ bundle Data.JSON.Scheme {
 		}
 
 		#~
-		Get the function name
-		@return function name
-		~#
-		method : public : GetName() ~ String {
-			return @name;
-		}
-
-		#~
 		Get the function description
 		@return function description
 		~#
@@ -2041,22 +1996,6 @@ bundle Data.JSON.Scheme {
 		~#
 		method : public : SetDesc(desc : String) ~ Nil {
 			@desc := desc;
-		}
-
-		#~
-		Get the function title
-		@return function title
-		~#
-		method : public : GetTitle() ~ String {
-			return @title;
-		}
-
-		#~
-		Set the function title
-		@param title sets function title
-		~#
-		method : public : SetTitle(title : String) ~ Nil {
-			@title := title;
 		}
 
 		#~
@@ -2092,20 +2031,27 @@ bundle Data.JSON.Scheme {
 		}
 
 		#~
-		Compares two objects
-		@param rhs compare object
-		@return 0 if equal, -1 if right-hand side i greater, 1 if left-hand side is greater
-		~#
-		method : public : Compare(rhs : System.Compare) ~ Int {
-			return @name->Compare(rhs);
-		}
-
-		#~
 		Returns a hash ID for the given class
 		@return hash ID
 		~#
 		method : public : HashID() ~ Int {
-			return @name->HashID();
+			return @type;
+		}
+
+		method : public : Compare(rhs : System.Compare) ~ Int {
+			r := 1;
+
+			# check class type
+			if(@self->GetClassID() <> rhs->GetClassID()) {
+				r := -1;
+			};
+			
+			right : ParameterType := rhs->As(ParameterType);
+			if(@type = right->GetType()) {
+				r := 0;
+			};
+			
+			return r;
 		}
 
 		#~
