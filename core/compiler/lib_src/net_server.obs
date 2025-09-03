@@ -2182,7 +2182,7 @@ bundle Web.HTTP.Server.MCP {
 		method : virtual : GetResourceItems() ~ Vector<ResourceItem>;
 		method : virtual : GetResourceDetails(uri : Url) ~ Vector<ResourceDetails>;
 		method : virtual : GetTemplates() ~ Vector<ResourceTemplate>;
-		method : virtual : GetTools() ~ Vector<Tool>;
+		method : virtual : GetTools() ~ Vector<ToolItem>;
 
 		method : ProcessGet(request : Web.HTTP.Server.Request, response : Web.HTTP.Server.Response) ~ Bool {
 			session : Hash<String, String>;
@@ -2400,36 +2400,50 @@ bundle Web.HTTP.Server.MCP {
 								
 								WriteResponse(result, id, response, 200);
 								return false;
-#~								
-								id := root_json->Get("id")->GetInt();
-								payload := "{
-									\"jsonrpc\": \"2.0\",
-									\"id\": {$id},
-									\"result\": {
-										\"tools\": [      
-											{        
-												\"name\": \"echo\",
-												\"description\": \"Echo a string\",
-												\"inputSchema\": {
-													\"type\": \"object\",
-													\"properties\": { 
-														\"text\": { \"type\": \"string\" },
-														\"time\": { \"type\": \"number\" } 
-													},
-													\"required\": [\"text\"]
+							}
+
+							# tools/call
+							label "tools/call": {
+								call_name : String; text : String;
+								call_params_json := root_json->Get("params");								
+								if(call_params_json <> Nil) {
+									name_json := call_params_json->Get("name");
+									if(name_json <> Nil) {
+										call_name := name_json->GetValue();
+									};
+
+									call_params_json := call_params_json->Get("arguments");
+									if(call_params_json <> Nil & call_name <> Nil) {
+										id := root_json->Get("id")->GetInt();
+										
+										# echo call
+										if(call_name->Equals("name-age")) {
+											text := call_params_json->Get("name")->GetValue();									
+											
+											payload := "{
+												\"jsonrpc\": 
+												\"2.0\",  
+												\"id\": {$id},  
+												\"result\": {    
+													\"content\": [
+														{ 
+															\"type\": \"text\", 
+															\"text\": \"{$text}\" 
+														}    
+													],    
+													\"isError\": false  
 												}
-											}
-										]
-									}
-								}";
+											}";
 
-								if(McpServer->IsDebug()) {
-									ShowPayload(payload);
+											if(McpServer->IsDebug()) {
+												ShowPayload(payload);
+											};
+
+											response->SetCodeTypeContent(200, "application/json", payload);
+											return false;
+										}
+									};
 								};
-
-								response->SetCodeTypeContent(200, "application/json", payload);
-								return false;
-~#								
 							}
 
 							# prompts/list
@@ -2543,51 +2557,6 @@ bundle Web.HTTP.Server.MCP {
 									};
 								};
 							}
-
-							# tools/call
-							label "tools/call": {
-								call_name : String; text : String;
-
-								call_params_json := root_json->Get("params");								
-								if(call_params_json <> Nil) {
-									name_json := call_params_json->Get("name");
-									if(name_json <> Nil) {
-										call_name := name_json->GetValue();
-									};
-
-									call_params_json := call_params_json->Get("arguments");
-									if(call_params_json <> Nil & call_name <> Nil) {
-										id := root_json->Get("id")->GetInt();
-										
-										# echo call
-										if(call_name->Equals("echo")) {
-											text := call_params_json->Get("text")->GetValue();									
-											
-											payload := "{
-												\"jsonrpc\": 
-												\"2.0\",  
-												\"id\": {$id},  
-												\"result\": {    
-													\"content\": [
-														{ 
-															\"type\": \"text\", 
-															\"text\": \"{$text}\" 
-														}    
-													],    
-													\"isError\": false  
-												}
-											}";
-
-											if(McpServer->IsDebug()) {
-												ShowPayload(payload);
-											};
-
-											response->SetCodeTypeContent(200, "application/json", payload);
-											return false;
-										}
-									};
-								};
-							}
 						};
 					};
 				};
@@ -2642,16 +2611,54 @@ bundle Web.HTTP.Server.MCP {
 		@name : String;
 		@description : String;
 		@mime_type : String;
+		@title : String;
+		@size : Int;
 
-		New(uri : Url, name : String, description : String, mime_type : String) {
+		New(uri : Url, name : String, title : String, description : String, mime_type : String, size : Int) {
 			@uri := uri;
 			@name := name;
+			@title := title;
+			@description := description;
+			@mime_type := mime_type;
+			@size := size;
+		}
+
+		New(uri : Url, name : String, title : String, description : String, mime_type : String) {
+			@uri := uri;
+			@name := name;
+			@title := title;
 			@description := description;
 			@mime_type := mime_type;
 		}
 
+		New(uri : Url, name : String, title : String, mime_type : String) {
+			@uri := uri;
+			@name := name;
+			@title := title;
+			@mime_type := mime_type;
+		}
+
+		New(uri : Url, name : String, mime_type : String) {
+			@uri := uri;
+			@name := name;
+			@mime_type := mime_type;
+		}
+
+		New(uri : Url, name : String) {
+			@uri := uri;
+			@name := name;
+		}
+
 		method : public : GetUri() ~ Url {
 			return @uri;
+		}
+
+		method : public : GetTitle() ~ String {
+			return @title;
+		}
+
+		method : public : GetSize() ~ Int {
+			return @size;
 		}
 
 		method : public : GetName() ~ String {
@@ -2671,8 +2678,22 @@ bundle Web.HTTP.Server.MCP {
 
 			buffer_json->Insert("uri", @uri->GetUrl());
 			buffer_json->Insert("name", @name);
-			buffer_json->Insert("description", @description);
-			buffer_json->Insert("mimeType", @mime_type);
+
+			if(@description <> Nil) {
+				buffer_json->Insert("description", @description);
+			};
+
+			if(@title <> Nil) {
+				buffer_json->Insert("title", @title);
+			};
+
+			if(@mime_type <> Nil) {
+				buffer_json->Insert("mimeType", @mime_type);
+			};
+
+			if(@size > 0) {
+				buffer_json->Insert("size", @size);
+			};
 
 			return buffer_json;
 		}
@@ -2681,35 +2702,63 @@ bundle Web.HTTP.Server.MCP {
 	#~
 	TODO
 	~#
-	class ResourceDetails {
-		@uri : Url;
-		@mime_type : String;
+	class ResourceDetails from ResourceItem {
 		@text : String;
+		@is_blob : Bool;
+		
+		New(uri : Url, name : String, title : String, description : String, mime_type : String, text : String, is_blob : Bool := false) {
+			Parent(uri, name, title, description, mime_type);
 
-		New(uri : Url, mime_type : String, text : String) {
-			@uri := uri;
-			@mime_type := mime_type;
 			@text := text;
+			@is_blob := is_blob;
 		}
 
-		method : public : GetUri() ~ Url {
-			return @uri;
+		New(uri : Url, name : String, title : String, mime_type : String, text : String, is_blob : Bool := false) {
+			Parent(uri, name, title, mime_type);
+
+			@text := text;
+			@is_blob := is_blob;
+		}
+
+		New(uri : Url, name : String, mime_type : String, text : String, is_blob : Bool := false) {
+			Parent(uri, name, mime_type);
+
+			@text := text;
+			@is_blob := is_blob;
+		}
+
+		method : public : IsBlob() ~ Bool {
+			return @is_blob;
 		}
 
 		method : public : GetText() ~ String {
 			return @text;
-		}
-		
-		method : public : GetMimeType() ~ String {
-			return @mime_type;
 		}
 
 		method : public : ToJson() ~ JsonElement {
 			buffer_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 
 			buffer_json->Insert("uri", @uri->GetUrl());
-			buffer_json->Insert("mimeType", @mime_type);
-			buffer_json->Insert("text", @text);
+			buffer_json->Insert("name", @name);
+
+			if(@description <> Nil) {
+				buffer_json->Insert("description", @description);
+			};
+
+			if(@title <> Nil) {
+				buffer_json->Insert("title", @title);
+			};
+
+			if(@size > 0) {
+				buffer_json->Insert("size", @size);
+			};
+
+			if(@is_blob) {
+				buffer_json->Insert("blob", @text);
+			}
+			else {
+				buffer_json->Insert("text", @text);
+			};
 
 			return buffer_json;
 		}
@@ -2719,15 +2768,9 @@ bundle Web.HTTP.Server.MCP {
 	TODO
 	~#
 	class ResourceTemplate from ResourceItem {
-		@title : String;
-
 		New(uri : Url, name : String, title : String, description : String, mime_type : String) {
-			Parent(uri, name, description, mime_type);
+			Parent(uri, name, title, description, mime_type);
 			@title := title;
-		}
-
-		method : public : GetTitle() ~ String {
-			return @title;
 		}
 
 		method : public : ToJson() ~ JsonElement {
@@ -2746,7 +2789,7 @@ bundle Web.HTTP.Server.MCP {
 	#~
 	TODO
 	~#
-	class Tool {
+	class ToolItem {
 		@name : String;
 		@title : String;
 		@description : String;
@@ -2825,6 +2868,109 @@ bundle Web.HTTP.Server.MCP {
 				output_schema_json := @output_schema->ToJson();
 				output_schema_json->Insert("type", "object")
 				buffer_json->Insert("outputSchema", output_schema_json);
+			};
+
+			return buffer_json;
+		}
+	}
+
+	#~
+	TODO
+	~#
+	class ToolContent {
+		enum Type {
+			TEXT, 
+			IMAGE, 
+			AUDIO, 
+			LINK, 
+			EMBEDDED
+		}
+
+		@type : String;
+		@uri : Url;
+		@title : String;
+		@description : String;
+		@mime_type : String;
+
+		@text : String;
+		@is_blob : Bool;
+
+		New(type : String, text : String, is_blob : Bool := false) {
+			@type := type;
+			@text := text;
+			@is_blob := is_blob;
+		}
+
+		New(type : String, mime_type : String, text : String, is_blob : Bool := false) {
+			@type := type;
+			@mime_type := mime_type;
+			@text := text;
+			@is_blob := is_blob;
+		}
+
+		New(type : String, mime_type : String, description : String, text : String, is_blob : Bool := false) {
+			@type := type;
+			@mime_type := mime_type;
+			@description := description;
+			@text := text;
+			@is_blob := is_blob;
+		}
+
+		New(type : String, mime_type : String, title : String, description : String, text : String, is_blob : Bool := false) {
+			@type := type;
+			@mime_type := mime_type;
+			@title := title;
+			@description := description;
+			@text := text;
+			@is_blob := is_blob;
+		}
+
+		method : public : GetType() ~ String {
+			return @type;
+		}
+
+		method : public : GetTitle() ~ String {
+			return @title;
+		}
+		
+		method : public : GetDescription() ~ String {
+			return @description;
+		}
+		
+		method : public : GetMimeType() ~ String {
+			return @mime_type;
+		}
+
+		method : public : IsBlob() ~ Bool {
+			return @is_blob;
+		}
+
+		method : public : GetText() ~ String {
+			return @text;
+		}
+
+		method : public : ToJson() ~ JsonElement {
+			buffer_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+
+			buffer_json->Insert("type", @type);
+			
+			if(@title <> Nil) {
+				buffer_json->Insert("title", @title);
+			};
+
+			if(@description <> Nil) {
+				buffer_json->Insert("description", @description);
+			};
+
+			if(@mime_type <> Nil) {
+				buffer_json->Insert("mimeType", @mime_type);
+			};
+
+			if(@is_blob) {
+				buffer_json->Insert("data", @text);
+			}
+			else {
+				buffer_json->Insert("text", @text);
 			};
 
 			return buffer_json;

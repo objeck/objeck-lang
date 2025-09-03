@@ -33,8 +33,9 @@ class TestHandler from McpRequestHandler {
 		resource_details := Vector->New()<ResourceDetails>;
 
 		resource_details->AddBack(Web.HTTP.Server.MCP.ResourceDetails->New(
-			Web.HTTP.Url->New("file:///c:/temp/file.txt"), 
-			"application/octet-stream",
+			Url->New("file:///c:/temp/my-file.txt"), 
+			"my-file.txt"
+			"text/plain",
 			"Hello from resources/read, check URI\\n\\tHello!"));
 
 		return resource_details;
@@ -44,10 +45,10 @@ class TestHandler from McpRequestHandler {
 		resources := Vector->New()<ResourceItem>;
 
 		resources->AddBack(Web.HTTP.Server.MCP.ResourceItem->New(
-			Web.HTTP.Url->New("file:///c:/temp/file.txt"), 
-			"project-files", 
-			"Access files on the project site", 
-			"application/octet-stream"));
+			Url->New("file:///c:/temp/my-file.txt"), 
+			"my-file.txt"
+			"Access to my file", 
+			"text/plain"));
 
 		return resources;
 	}
@@ -56,24 +57,24 @@ class TestHandler from McpRequestHandler {
 		resource_templates := Vector->New()<ResourceTemplate>;
 
 		resource_templates->AddBack(Web.HTTP.Server.MCP.ResourceTemplate->New(
-			Url->New("file:///c:/temp/file.txt"), 
-			"project-files", 
-			"Project Files", 
-			"Access files on the project site", 
-			"application/octet-stream"));
+			Url->New("file:///{path}"), 
+			"my-template", 
+			"my-template-path", 
+			"This is my template", 
+			"text/plain"));
 
 		return resource_templates;
 	}
 
-	method : GetTools() ~ Vector<Tool> {
-		tools := Vector->New()<Tool>;
+	method : GetTools() ~ Vector<ToolItem> {
+		tools := Vector->New()<ToolItem>;
 
 		func_params := Map->New()<String, ParameterType>;
-		func_params->Insert("text", ParameterType->New(ParameterType->Type->STRING, false));
-		func_params->Insert("number", ParameterType->New(ParameterType->Type->NUMBER, false));
-		func := FunctionType->New("get_text_time", func_params, ["text"]);
+		func_params->Insert("name", ParameterType->New(ParameterType->Type->STRING, false));
+		func_params->Insert("age", ParameterType->New(ParameterType->Type->NUMBER, false));
+		func := FunctionType->New("GetNameAge", func_params, ["name"]);
 
-		tools->AddBack(Web.HTTP.Server.MCP.Tool->New("echo", "Echo a string", func));
+		tools->AddBack(Web.HTTP.Server.MCP.ToolItem->New("name-age", "Provide name and age", func));
 
 		return tools;
 	}
