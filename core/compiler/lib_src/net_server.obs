@@ -2183,6 +2183,7 @@ bundle Web.HTTP.Server.MCP {
 		method : virtual : GetResourceDetails(uri : Url) ~ Vector<ResourceDetails>;
 		method : virtual : GetTemplates() ~ Vector<ResourceTemplate>;
 		method : virtual : GetTools() ~ Vector<ToolItem>;
+		method : virtual : CallTool(name : String, arguments : JsonElement) ~ Vector<ToolContent>;
 
 		method : ProcessGet(request : Web.HTTP.Server.Request, response : Web.HTTP.Server.Response) ~ Bool {
 			session : Hash<String, String>;
@@ -2388,9 +2389,9 @@ bundle Web.HTTP.Server.MCP {
 							label "tools/list": {
 								id := root_json->Get("id")->GetInt();
 
-								tools_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
-
 								tools := GetTools();
+								
+								tools_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
 								each(tool in tools) {
 									tools_array_json->Add(tool->ToJson());
 								};
@@ -2415,7 +2416,21 @@ bundle Web.HTTP.Server.MCP {
 									call_params_json := call_params_json->Get("arguments");
 									if(call_params_json <> Nil & call_name <> Nil) {
 										id := root_json->Get("id")->GetInt();
+
+										contents := CallTool(call_name, call_params_json);
+
+										content_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+										each(content in contents) {
+											content_array_json->Add(content->ToJson());
+										};
+
+										result := JsonElement->New(JsonElement->JsonType->OBJECT);
+										result->Insert("content", content_array_json);
 										
+										WriteResponse(result, id, response, 200);
+										return false;
+										
+#~										
 										# echo call
 										if(call_name->Equals("name-age")) {
 											text := call_params_json->Get("name")->GetValue();									
@@ -2442,6 +2457,7 @@ bundle Web.HTTP.Server.MCP {
 											response->SetCodeTypeContent(200, "application/json", payload);
 											return false;
 										}
+~#											
 									};
 								};
 							}
@@ -2878,6 +2894,9 @@ bundle Web.HTTP.Server.MCP {
 	TODO
 	~#
 	class ToolContent {
+		#~
+		TODO
+		~#
 		enum Type {
 			TEXT, 
 			IMAGE, 
