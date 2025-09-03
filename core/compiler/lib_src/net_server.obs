@@ -2180,14 +2180,14 @@ bundle Web.HTTP.Server.MCP {
 		}
 
 		method : virtual : ListTemplates() ~ Vector<ResourceTemplate>;
-
 		method : virtual : ListResources() ~ Vector<ResourceItem>;
 		method : virtual : GetResource(uri : Url) ~ Vector<ResourceContent>;
 		
 		method : virtual : ListTools() ~ Vector<ToolItem>;
 		method : virtual : CallTool(name : String, arguments : JsonElement) ~ Vector<ToolContent>;
 		
-		# TODO: prompts
+		method : virtual : ListPrompts() ~ Vector<PromptItem>;
+
 		
 		method : ProcessGet(request : Web.HTTP.Server.Request, response : Web.HTTP.Server.Response) ~ Bool {
 			session : Hash<String, String>;
@@ -2278,6 +2278,10 @@ bundle Web.HTTP.Server.MCP {
 
 								# add capabilities
 								capabilities_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+
+								prompts_json :=  JsonElement->New(JsonElement->JsonType->OBJECT);
+								prompts_json->Insert("listChanged", true);
+								capabilities_json->Insert("prompts", prompts_json);
 
 								tools_json :=  JsonElement->New(JsonElement->JsonType->OBJECT);
 								tools_json->Insert("listChanged", true);
@@ -2440,35 +2444,18 @@ bundle Web.HTTP.Server.MCP {
 							# prompts/list
 							label "prompts/list": {
 								id := root_json->Get("id")->GetInt();
-								payload := "{
-									\"jsonrpc\": \"2.0\",  
-									\"id\": {$id},  \"result\": {    
-										\"prompts\": [ 
-											{        
-												\"name\": \"greet\",
-												\"title\": \"Greet a User\",
-												\"description\": \"Compose a friendly greeting.\",
-												\"arguments\": [ { 
-													\"name\": \"name\", \"description\": \"User's name\", \"required\": true }
-												]
-											},
-											{
-												\"name\": \"explain_topic\",
-												\"title\": \"Explain a Topic\",
-												\"description\": \"Short explanation suitable for a beginner.\",
-												\"arguments\": [ {
-													\"name\": \"topic\", \"description\": \"Subject to explain\", \"required\": true }
-												]
-											}
-										]
-									}
-								}";
 
-								if(McpServer->IsDebug()) {
-									ShowPayload(payload);
+								prompts := ListPrompts();
+
+								prompts_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+								each(tool in prompts) {
+									prompts_array_json->Add(tool->ToJson());
 								};
 
-								response->SetCodeTypeContent(200, "application/json", payload);
+								result := JsonElement->New(JsonElement->JsonType->OBJECT);
+								result->Insert("prompts", prompts_array_json);
+								
+								WriteResponse(result, id, response, 200);
 								return false;
 							}
 
@@ -2981,16 +2968,24 @@ bundle Web.HTTP.Server.MCP {
 		@description : String;
 		@arguments : Vector<PromptArgument>;
 
-		New(name : String, uri : Url, title : String, description : String) {
+		New(name : String, uri : Url, title : String, description : String, arguments : Vector<PromptArgument>) {
 			@name := name;
 			@uri := uri;
 			@title := title;
 			@description := description;
 		}
 
-		New(name : String, description : String) {
+		New(name : String, description : String, arguments : Vector<PromptArgument>) {
 			@name := name;
 			@description := description;
+			@arguments := arguments;
+		}
+
+		New(name : String, title : String, description : String, arguments : Vector<PromptArgument>) {
+			@name := name;
+			@title := title;
+			@description := description;
+			@arguments := arguments;
 		}
 
 		New(name : String) {
@@ -3034,6 +3029,12 @@ bundle Web.HTTP.Server.MCP {
 				buffer_json->Insert("uriTemplate", @uri->GetUrl());
 			};
 
+			arguments_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+			each(argument in @arguments) {
+				arguments_array_json->Add(argument->ToJson());
+			};
+			buffer_json->Insert("arguments", arguments_array_json);
+
 			return buffer_json;
 		}
 	}
@@ -3042,16 +3043,34 @@ bundle Web.HTTP.Server.MCP {
 	TODO: restrict types?
 	~#
 	class PromptArgument {
-		@type : String;
+		@name : String;
 		@description : String;
+		@code : String;
+		@required : Bool;
 
-		New(type : String, description : String) {
-			@type := type;
+		New(name : String, description : String, required : Bool := false) {
+			@name := name;
 			@description := description;
+			@required := required;
 		}
 
-		method : public : GetType() ~ String {
-			return @type;
+		New(name : String, description : String, code : String, required : Bool := false) {
+			@name := name;
+			@description := description;
+			@code := code;
+			@required := required;
+		}
+
+		method : public : GetName() ~ String {
+			return @name;
+		}
+
+		method : public : IsRequired() ~ Bool {
+			return @required;
+		}
+
+		method : public : GetCode() ~ String {
+			return @code;
 		}
 
 		method : public : GetDescription() ~ String {
@@ -3061,10 +3080,15 @@ bundle Web.HTTP.Server.MCP {
 		method : public : ToJson() ~ JsonElement {
 			buffer_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 
-			buffer_json->Insert("type", @type);
+			buffer_json->Insert("name", @name);
+			buffer_json->Insert("required", @required);
 			
 			if(@description <> Nil) {
 				buffer_json->Insert("description", @description);
+			};
+
+			if(@code <> Nil) {
+				buffer_json->Insert("code", @code);
 			};
 
 			return buffer_json;
