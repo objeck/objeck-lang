@@ -95,4 +95,21 @@ class TestHandler from McpRequestHandler {
 	}
 
 	# TODO: prompts
+	method : ListPrompts() ~ Vector<PromptItem> {
+		prompts := Vector->New()<PromptItem>;
+
+		arguments := Vector->New()<PromptArgument>;
+		arguments->AddBack(PromptArgument->New(
+			"code", 
+			 "The code to review",
+			 true));
+		
+		prompts->AddBack(Web.HTTP.Server.MCP.PromptItem->New(
+			"code_review", 
+			"Request Code Review",
+			"Asks the LLM to analyze code quality and suggest improvements",
+			arguments));
+
+		return prompts;
+	}
 }
