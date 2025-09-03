@@ -2179,13 +2179,16 @@ bundle Web.HTTP.Server.MCP {
 			}
 		}
 
+		method : virtual : ListTemplates() ~ Vector<ResourceTemplate>;
+
 		method : virtual : ListResources() ~ Vector<ResourceItem>;
 		method : virtual : GetResource(uri : Url) ~ Vector<ResourceContent>;
-		method : virtual : ListTemplates() ~ Vector<ResourceTemplate>;
+		
 		method : virtual : ListTools() ~ Vector<ToolItem>;
 		method : virtual : CallTool(name : String, arguments : JsonElement) ~ Vector<ToolContent>;
+		
 		# TODO: prompts
-
+		
 		method : ProcessGet(request : Web.HTTP.Server.Request, response : Web.HTTP.Server.Response) ~ Bool {
 			session : Hash<String, String>;
 			session_id := request->GetHeader("mcp-session-id");
