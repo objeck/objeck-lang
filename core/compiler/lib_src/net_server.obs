@@ -2809,17 +2809,6 @@ bundle Web.HTTP.Server.MCP {
 	TODO
 	~#
 	class ToolContent {
-		#~
-		TODO
-		~#
-		enum Type {
-			TEXT, 
-			IMAGE, 
-			AUDIO, 
-			LINK, 
-			EMBEDDED
-		}
-
 		@type : String;
 		@uri : Url;
 		@title : String;
