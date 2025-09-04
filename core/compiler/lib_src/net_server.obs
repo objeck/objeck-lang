@@ -80,25 +80,25 @@ bundle Web.HTTP.Server {
 					"=> Running on '{$host}' ({$platform}) port {$port}..."->PrintLine();
 				};
 
+				thread := System.Concurrency.Thread->New() {
+					New() {
+						Parent()
+					}
+
+					method : public : Run(arg : System.Base) ~ Nil {
+						params := arg->As(Collection.Tuple.Quartet<Class, TCPSecureSocket, WebServerConfig, BoolRef>);
+						callback := params->GetFirst();
+						secure_client := params->GetSecond();
+						server_config := params->GetThird();
+						is_debug := params->GetForth();
+
+						handler := callback->Instance(callback->GetName())->As(HttpsRequestHandler);
+						handler->SetConfig(server_config, is_debug->Get());
+						handler->Execute(secure_client);
+					}
+				};
+
 				while(<>@stop) {
-					thread := System.Concurrency.Thread->New() {
-						New() {
-							Parent()
-						}
-
-						method : public : Run(arg : System.Base) ~ Nil {
-							params := arg->As(Collection.Tuple.Quartet<Class, TCPSecureSocket, WebServerConfig, BoolRef>);
-							callback := params->GetFirst();
-							secure_client := params->GetSecond();
-							server_config := params->GetThird();
-							is_debug := params->GetForth();
-
-							handler := callback->Instance(callback->GetName())->As(HttpsRequestHandler);
-							handler->SetConfig(server_config, is_debug->Get());
-							handler->Execute(secure_client);
-						}
-					};
-
 					params := Collection.Tuple.Quartet->New(callback, @secure_server->Accept(), @server_config, BoolRef->New(@is_debug))<Class, TCPSecureSocket, WebServerConfig, BoolRef>;
 					thread->Execute(params);
 				};
@@ -148,25 +148,25 @@ bundle Web.HTTP.Server {
 					"=> Running on '{$host}' ({$platform}) port {$port}..."->PrintLine();
 				};
 
+				thread := System.Concurrency.Thread->New() {
+					New() {
+						Parent()
+					}
+
+					method : public : Run(arg : System.Base) ~ Nil {
+						params := arg->As(Collection.Tuple.Quartet<Class, TCPSocket, WebServerConfig, BoolRef>);
+						callback := params->GetFirst();
+						client := params->GetSecond();
+						server_config := params->GetThird();
+						is_debug := params->GetForth();
+
+						handler := callback->Instance(callback->GetName())->As(HttpRequestHandler);
+						handler->SetConfig(server_config, is_debug->Get());
+						handler->Execute(client);
+					}
+				};
+
 				while(<>@stop) {
-					thread := System.Concurrency.Thread->New() {
-						New() {
-							Parent()
-						}
-
-						method : public : Run(arg : System.Base) ~ Nil {
-							params := arg->As(Collection.Tuple.Quartet<Class, TCPSocket, WebServerConfig, BoolRef>);
-							callback := params->GetFirst();
-							client := params->GetSecond();
-							server_config := params->GetThird();
-							is_debug := params->GetForth();
-
-							handler := callback->Instance(callback->GetName())->As(HttpRequestHandler);
-							handler->SetConfig(server_config, is_debug->Get());
-							handler->Execute(client);
-						}
-					};
-
 					params := Collection.Tuple.Quartet->New(callback, @server->Accept(), @server_config, BoolRef->New(@is_debug))<Class, TCPSocket, WebServerConfig, BoolRef>;
 					thread->Execute(params);
 				};
