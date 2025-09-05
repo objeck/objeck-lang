@@ -183,7 +183,7 @@ class File {
   static  std::vector<std::string> ListDir(const char* path) {
      std::vector<std::string> files;
 
-    struct dirent** names;
+    struct dirent** names = nullptr;
     int n = scandir(path, &names, 0, alphasort);
     if(n > 0) {
       while(n--) {
