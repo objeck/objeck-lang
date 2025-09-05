@@ -170,7 +170,7 @@ static size_t* get_provider_names(VMContext& context) {
 
    auto execution_providers = Ort::GetAvailableProviders();
    for(size_t i = 0; i < execution_providers.size(); ++i) {
-      auto execution_provider = execution_providers[i];
+      auto &execution_provider = execution_providers[i];
       execution_provider_names.push_back(BytesToUnicode(execution_provider));
    }
 
