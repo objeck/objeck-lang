@@ -7,19 +7,25 @@ namespace fs = std::filesystem;
 #include <unordered_map> 
 
 extern "C" {
+   std::unique_ptr<Ort::Env> env;
+
    // initialize library
 #ifdef _WIN32
    __declspec(dllexport)
 #endif
    void load_lib(VMContext& context) {
       cv::utils::logging::setLogLevel(cv::utils::logging::LOG_LEVEL_ERROR);
+      if(!env) {
+         env = std::make_unique<Ort::Env>(ORT_LOGGING_LEVEL_WARNING, "onnx");
+      }
    }
 
    // release library
 #ifdef _WIN32
    __declspec(dllexport)
 #endif
-      void unload_lib() {
+   void unload_lib() {
+      env.reset(); // destroys Env after all sessions should be gone
    }
 
    // List available ONNX execution providers
@@ -53,8 +59,6 @@ extern "C" {
       const std::wstring model_path = APITools_GetStringValue(context, 4);
       
       try {
-         Ort::Env env(OrtLoggingLevel::ORT_LOGGING_LEVEL_WARNING);
-
          // Set DML provider options
          std::unordered_map<std::string, std::string> provider_options;
 
@@ -64,7 +68,7 @@ extern "C" {
          session_options.SetExecutionMode(ExecutionMode::ORT_PARALLEL);
 
          // Create ONNX session
-         const Ort::Session* session = new Ort::Session(env, model_path.c_str(), session_options);
+         const Ort::Session* session = new Ort::Session(*env, model_path.c_str(), session_options);
          APITools_SetIntValue(context, 0, (size_t)session);
       }
       catch(const std::exception& ex) {
