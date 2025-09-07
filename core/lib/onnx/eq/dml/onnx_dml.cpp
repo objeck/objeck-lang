@@ -335,6 +335,7 @@ extern "C" {
 
          APITools_SetObjectValue(context, 0, yolo_result_obj);
 
+         // TODO: keep session alive for multiple calls
          if(session) {
             delete session;
             session = nullptr;
