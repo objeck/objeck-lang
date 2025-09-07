@@ -34,19 +34,58 @@ extern "C" {
       output_holder[0] = (size_t)get_provider_names(context);
    }
 
+   // create a yolo session and return available execution providers
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void onnx_yolo_session(VMContext& context) {
+      const std::wstring w_provider = APITools_GetStringValue(context, 1);
+      const std::string provider = UnicodeToBytes(w_provider);
+
+      size_t* keys_array = (size_t*)APITools_GetArray(context, 2)[1];
+      const long keys_size = ((long)APITools_GetArraySize(keys_array));
+      const size_t* keys_ptrs = APITools_GetArray(keys_array);
+
+      size_t* values_array = (size_t*)APITools_GetArray(context, 3)[1];
+      const long values_size = ((long)APITools_GetArraySize(keys_array));
+      const size_t* values_ptrs = APITools_GetArray(keys_array);
+
+      const std::wstring model_path = APITools_GetStringValue(context, 4);
+      
+      try {
+         Ort::Env env(OrtLoggingLevel::ORT_LOGGING_LEVEL_WARNING);
+
+         // Set DML provider options
+         std::unordered_map<std::string, std::string> provider_options;
+
+         // Create session options with DML execution provider
+         Ort::SessionOptions session_options;// comment
+         session_options.AppendExecutionProvider(provider, provider_options);
+         session_options.SetExecutionMode(ExecutionMode::ORT_PARALLEL);
+
+         // Create ONNX session
+         const Ort::Session* session = new Ort::Session(env, model_path.c_str(), session_options);
+         APITools_SetIntValue(context, 0, (size_t)session);
+      }
+      catch(const std::exception& ex) {
+         std::wcerr << L"Error creating ONNX session: " << BytesToUnicode(ex.what()) << std::endl;
+      }
+   }
+
+
    // Process Yolo image using ONNX model
 #ifdef _WIN32
    __declspec(dllexport)
 #endif
    void onnx_yolo_image_inf(VMContext& context) {
-      size_t* input_array = (size_t*)APITools_GetArray(context, 1)[0];
+      Ort::Session* session = (Ort::Session*)APITools_GetIntValue(context, 1);
+
+      size_t* input_array = (size_t*)APITools_GetArray(context, 2)[0];
       const long input_size = ((long)APITools_GetArraySize(input_array));
       const unsigned char* input_bytes = (unsigned char*)APITools_GetArray(input_array);
 
-      const int resize_height = (int)APITools_GetIntValue(context, 2);
-      const int resize_width = (int)APITools_GetIntValue(context, 3);
-
-      const std::wstring model_path = APITools_GetStringValue(context, 4);
+      const int resize_height = (int)APITools_GetIntValue(context, 3);
+      const int resize_width = (int)APITools_GetIntValue(context, 4);
 
       const double conf_threshold = APITools_GetFloatValue(context, 5);
       const double iou_threshold = 0.45; //  default NMS IoU
@@ -56,28 +95,19 @@ extern "C" {
       const size_t* labels_objs = APITools_GetArray(labels_array);
 
       // Validate parameters
-      if(!input_bytes || !labels_objs || model_path.empty() || conf_threshold < 0.0 || resize_height < 1 || resize_width < 1 || labels_size < 1) {
+      if(!session || !input_bytes || !labels_objs || conf_threshold < 0.0 || resize_height < 1 || resize_width < 1 || labels_size < 1) {
          return;
       }
 
       try {
-         Ort::Env env(OrtLoggingLevel::ORT_LOGGING_LEVEL_WARNING);
-
-         // Set DML provider options
-         std::unordered_map<std::string, std::string> provider_options;
-         provider_options["device_id"] = "0";
-
-         // Create session options with DML execution provider
-         Ort::SessionOptions session_options;// comment
-         session_options.AppendExecutionProvider("DmlExecutionProvider", provider_options);
-         session_options.SetExecutionMode(ExecutionMode::ORT_PARALLEL);
-
-         // Create ONNX session
-         Ort::Session session(env, model_path.c_str(), session_options);
-
          std::vector<uchar> image_data(input_bytes, input_bytes + input_size);
          cv::Mat img = cv::imdecode(image_data, cv::IMREAD_COLOR);
          if(img.empty()) {
+            if(session) {
+               delete session;
+               session = nullptr;
+            }
+
             std::wcerr << L"Failed to read image!" << std::endl;
             return;
          }
@@ -101,16 +131,16 @@ extern "C" {
          // Get input/output names
          Ort::AllocatorWithDefaultOptions allocator;
 
-         Ort::AllocatedStringPtr input_name_ptr = session.GetInputNameAllocated(0, allocator);
+         Ort::AllocatedStringPtr input_name_ptr = session->GetInputNameAllocated(0, allocator);
          std::string input_name_str = input_name_ptr.get();
          std::vector<const char*> input_names = { input_name_str.c_str() };
 
-         Ort::AllocatedStringPtr output_name_ptr = session.GetOutputNameAllocated(0, allocator);
+         Ort::AllocatedStringPtr output_name_ptr = session->GetOutputNameAllocated(0, allocator);
          std::string output_name_str = output_name_ptr.get();
          std::vector<const char*> output_names = { output_name_str.c_str() };
 
          // Run inference
-         auto output_tensors = session.Run(
+         auto output_tensors = session->Run(
             Ort::RunOptions{ nullptr },
             input_names.data(),
             &input_tensor,
@@ -300,6 +330,11 @@ extern "C" {
          yolo_result_obj[3] = (size_t)class_array;
 
          APITools_SetObjectValue(context, 0, yolo_result_obj);
+
+         if(session) {
+            delete session;
+            session = nullptr;
+         }
       }
       catch(const Ort::Exception& e) {
          std::wcerr << L"ONNX Runtime Error: " << e.what() << std::endl;
@@ -342,11 +377,16 @@ extern "C" {
          session_options.SetExecutionMode(ExecutionMode::ORT_PARALLEL);
 
          // Create ONNX session
-         Ort::Session session(env, model_path.c_str(), session_options);
+         Ort::Session* session = new Ort::Session(env, model_path.c_str(), session_options);
 
          std::vector<uchar> image_data(input_bytes, input_bytes + input_size);
          cv::Mat img = cv::imdecode(image_data, cv::IMREAD_COLOR);
          if(img.empty()) {
+            if(session) {
+               delete session;
+               session = nullptr;
+            }
+
             std::wcerr << L"Failed to read image!" << std::endl;
             return;
          }
@@ -369,16 +409,16 @@ extern "C" {
          // Get input/output names
          Ort::AllocatorWithDefaultOptions allocator;
 
-         Ort::AllocatedStringPtr input_name_ptr = session.GetInputNameAllocated(0, allocator);
+         Ort::AllocatedStringPtr input_name_ptr = session->GetInputNameAllocated(0, allocator);
          std::string input_name_str = input_name_ptr.get();
          std::vector<const char*> input_names = { input_name_str.c_str() };
 
-         Ort::AllocatedStringPtr output_name_ptr = session.GetOutputNameAllocated(0, allocator);
+         Ort::AllocatedStringPtr output_name_ptr = session->GetOutputNameAllocated(0, allocator);
          std::string output_name_str = output_name_ptr.get();
          std::vector<const char*> output_names = { output_name_str.c_str() };
 
          // Run inference
-         auto output_tensors = session.Run(
+         auto output_tensors = session->Run(
             Ort::RunOptions{ nullptr },
             input_names.data(),
             &input_tensor,
@@ -458,6 +498,11 @@ extern "C" {
          }
 
          APITools_SetObjectValue(context, 0, resnet_result_obj);
+
+         if(session) {
+            delete session;
+            session = nullptr;
+         }
       }
       catch(const Ort::Exception& e) {
          std::wcerr << L"ONNX Runtime Error: " << e.what() << std::endl;
