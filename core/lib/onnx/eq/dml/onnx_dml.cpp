@@ -369,8 +369,6 @@ extern "C" {
       }
 
       try {
-         Ort::Env env(OrtLoggingLevel::ORT_LOGGING_LEVEL_WARNING);
-
          // Set DML provider options
          std::unordered_map<std::string, std::string> provider_options;
          provider_options["device_id"] = "0";
@@ -381,7 +379,7 @@ extern "C" {
          session_options.SetExecutionMode(ExecutionMode::ORT_PARALLEL);
 
          // Create ONNX session
-         Ort::Session* session = new Ort::Session(env, model_path.c_str(), session_options);
+         Ort::Session* session = new Ort::Session(*env, model_path.c_str(), session_options);
 
          std::vector<uchar> image_data(input_bytes, input_bytes + input_size);
          cv::Mat img = cv::imdecode(image_data, cv::IMREAD_COLOR);
