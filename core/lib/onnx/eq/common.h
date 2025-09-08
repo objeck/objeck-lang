@@ -27,6 +27,7 @@ enum ImageFormat {
 enum Preprocessor {
    RESNET = 128,
    YOLO,
+   DEEPLAB,
    OTHER
 };
 
