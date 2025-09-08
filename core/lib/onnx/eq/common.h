@@ -30,6 +30,108 @@ enum Preprocessor {
    OTHER
 };
 
+//
+// DeepLab utils
+//
+
+// DeepLab model specification
+struct ModelSpec {
+   // fixed input sizes
+   int W = 512;
+   int H = 512;        
+
+   bool nchw = true; // NCHW vs NHWC
+   bool input_is_float = true; // true: float32, false: uint8
+   
+   // ImageNet mean/std (used when input_is_float==true)
+   float mean[3] = { 0.485f, 0.456f, 0.406f };
+   float stdd[3] = { 0.229f, 0.224f, 0.225f };
+};
+
+// simple palette (customize)
+static cv::Vec3b class_to_color(int id) {
+   static const cv::Vec3b table[] = {
+     {  0,  0,  0}, {  0,  0,128}, {  0,128,  0}, {128,  0,  0},
+     {128,128,  0}, {  0,128,128}, {128,  0,128}, {128,128,128}
+   };
+   return table[id % (int)(sizeof(table) / sizeof(table[0]))];
+}
+
+// BGR image -> preprocessed float or uint8 tensor
+static void preprocess_bgr(const cv::Mat& bgr, const ModelSpec& spec,std::vector<float>& fbuf, std::vector<uint8_t>& ubuf, std::vector<int64_t>& shape)
+{
+   cv::Mat resized; cv::resize(bgr, resized, cv::Size(spec.W, spec.H));
+   cv::Mat rgb; cv::cvtColor(resized, rgb, cv::COLOR_BGR2RGB);
+
+   if(spec.input_is_float) {
+      rgb.convertTo(rgb, CV_32F, 1.0 / 255.0);
+      shape = spec.nchw ? std::vector<int64_t>{1, 3, spec.H, spec.W}
+      : std::vector<int64_t>{ 1,spec.H,spec.W,3 };
+      fbuf.resize((size_t)spec.H * spec.W * 3);
+
+      if(spec.nchw) {
+         std::vector<cv::Mat> ch; cv::split(rgb, ch);
+         // normalize channel-wise
+         for(int c = 0; c < 3; ++c) {
+            ch[c] = (ch[c] - spec.mean[c]) / spec.stdd[c];
+         }
+         size_t cstride = (size_t)spec.H * spec.W;
+         std::memcpy(fbuf.data() + 0 * cstride, ch[0].ptr<float>(), cstride * sizeof(float));
+         std::memcpy(fbuf.data() + 1 * cstride, ch[1].ptr<float>(), cstride * sizeof(float));
+         std::memcpy(fbuf.data() + 2 * cstride, ch[2].ptr<float>(), cstride * sizeof(float));
+      }
+      else {
+         // NHWC normalize in-place
+         for(int y = 0; y < spec.H; ++y) {
+            float* p = rgb.ptr<float>(y);
+            for(int x = 0; x < spec.W; ++x) {
+               float r = p[3 * x + 0], g = p[3 * x + 1], b = p[3 * x + 2];
+               p[3 * x + 0] = (r - spec.mean[0]) / spec.stdd[0];
+               p[3 * x + 1] = (g - spec.mean[1]) / spec.stdd[1];
+               p[3 * x + 2] = (b - spec.mean[2]) / spec.stdd[2];
+            }
+         }
+         fbuf.assign((float*)rgb.datastart, (float*)rgb.dataend);
+      }
+   }
+   else {
+      // UINT8 path (for QDQ models that accept uint8 input)
+      shape = spec.nchw ? std::vector<int64_t>{1, 3, spec.H, spec.W}
+      : std::vector<int64_t>{ 1,spec.H,spec.W,3 };
+      ubuf.resize((size_t)spec.H * spec.W * 3);
+      if(spec.nchw) {
+         std::vector<cv::Mat> ch; cv::split(rgb, ch);
+         size_t cstride = (size_t)spec.H * spec.W;
+         std::memcpy(ubuf.data() + 0 * cstride, ch[0].ptr<uint8_t>(), cstride);
+         std::memcpy(ubuf.data() + 1 * cstride, ch[1].ptr<uint8_t>(), cstride);
+         std::memcpy(ubuf.data() + 2 * cstride, ch[2].ptr<uint8_t>(), cstride);
+      }
+      else {
+         std::memcpy(ubuf.data(), rgb.data, (size_t)spec.H * spec.W * 3);
+      }
+   }
+}
+
+// logits [C,H,W] -> color mask
+static cv::Mat argmax_colorize(const float* logits, int C, int H, int W) {
+   cv::Mat mask(H, W, CV_8UC3);
+   for(int y = 0; y < H; ++y) {
+      for(int x = 0; x < W; ++x) {
+         int best = 0; float bestv = logits[0 * H * W + y * W + x];
+         for(int c = 1; c < C; ++c) {
+            float v = logits[c * H * W + y * W + x];
+            if(v > bestv) { bestv = v; best = c; }
+         }
+         mask.at<cv::Vec3b>(y, x) = class_to_color(best);
+      }
+   }
+   return mask;
+}
+
+//
+// YOLO utils
+//
+
 // Preprocessing metadata used to undo letterbox and map boxes back to the original image.
 struct PreprocInfo {
    int in_w = 0, in_h = 0; // network input size
@@ -137,6 +239,10 @@ static inline std::vector<float> yolo_preprocess_letterbox(const cv::Mat& img, i
    return input;
 }
 
+//
+// ResNet utils
+//
+
 // Preprocess image for ResNet
 static std::vector<float> resnet_preprocess(const cv::Mat& img, int resize_height, int resize_width) {
    cv::Mat resized;
@@ -163,6 +269,9 @@ static std::vector<float> resnet_preprocess(const cv::Mat& img, int resize_heigh
    return input_tensor_values;
 }
 
+//
+// General utils
+//
 // Get available execution provider names
 static size_t* get_provider_names(VMContext& context) {
    // Get execution provider names
