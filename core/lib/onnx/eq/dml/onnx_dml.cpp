@@ -7,7 +7,7 @@ namespace fs = std::filesystem;
 #include <unordered_map> 
 
 extern "C" {
-   std::unique_ptr<Ort::Env> env;
+   std::unique_ptr<Ort::Env> env = nullptr;
 
    // initialize library
 #ifdef _WIN32
@@ -40,11 +40,11 @@ extern "C" {
       output_holder[0] = (size_t)get_provider_names(context);
    }
 
-   // create a yolo session and return available execution providers
+   // create a yolo session
 #ifdef _WIN32
    __declspec(dllexport)
 #endif
-   void onnx_yolo_session(VMContext& context) {
+   void onnx_new_session(VMContext& context) {
       const std::wstring w_provider = APITools_GetStringValue(context, 1);
       const std::string provider = UnicodeToBytes(w_provider);
 
@@ -61,6 +61,7 @@ extern "C" {
       try {
          // Set DML provider options
          std::unordered_map<std::string, std::string> provider_options;
+         provider_options["device_id"] = "0";
 
          // Create session options with DML execution provider
          Ort::SessionOptions session_options;// comment
@@ -76,6 +77,20 @@ extern "C" {
       }
    }
 
+   // close a yolo session
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void onnx_close_session(VMContext& context) {
+      Ort::Session* session = (Ort::Session*)APITools_GetIntValue(context, 1);
+
+      if(session) {
+         delete session;
+         session = nullptr;
+      }
+
+      env.reset();
+   }
 
    // Process Yolo image using ONNX model
 #ifdef _WIN32
@@ -351,38 +366,26 @@ extern "C" {
    __declspec(dllexport)
 #endif
    void onnx_resnet_image_inf(VMContext& context) {
-      size_t* input_array = (size_t*)APITools_GetArray(context, 1)[0];
+      Ort::Session* session = (Ort::Session*)APITools_GetIntValue(context, 1);
+
+      size_t* input_array = (size_t*)APITools_GetArray(context, 2)[0];
       const long input_size = ((long)APITools_GetArraySize(input_array));
       const unsigned char* input_bytes = (unsigned char*)APITools_GetArray(input_array);
 
-      const int resize_height = (int)APITools_GetIntValue(context, 2);
-      const int resize_width = (int)APITools_GetIntValue(context, 3);
-
-      const std::wstring model_path = APITools_GetStringValue(context, 4);
+      const int resize_height = (int)APITools_GetIntValue(context, 3);
+      const int resize_width = (int)APITools_GetIntValue(context, 4);
 
       size_t* labels_array = (size_t*)APITools_GetArray(context, 5)[0];
       const long labels_size = ((long)APITools_GetArraySize(labels_array));
       const size_t* labels_objs = APITools_GetArray(labels_array);
 
       // Validate parameters
-      if(!input_bytes || !labels_objs || resize_height < 1 || resize_width < 1 || labels_size < 1 || model_path.empty()) {
+      if(!session || !input_bytes || !labels_objs || resize_height < 1 || resize_width < 1 || labels_size < 1) {
          return;
       }
 
       try {
-         // Set DML provider options
-         std::unordered_map<std::string, std::string> provider_options;
-         provider_options["device_id"] = "0";
-
-         // Create session options with QNN execution provider
-         Ort::SessionOptions session_options;
-         session_options.AppendExecutionProvider("DmlExecutionProvider", provider_options);
-         session_options.SetExecutionMode(ExecutionMode::ORT_PARALLEL);
-
-         // Create ONNX session
-         Ort::Session* session = new Ort::Session(*env, model_path.c_str(), session_options);
-
-         std::vector<uchar> image_data(input_bytes, input_bytes + input_size);
+        std::vector<uchar> image_data(input_bytes, input_bytes + input_size);
          cv::Mat img = cv::imdecode(image_data, cv::IMREAD_COLOR);
          if(img.empty()) {
             if(session) {

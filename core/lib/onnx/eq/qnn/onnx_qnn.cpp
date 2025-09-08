@@ -7,7 +7,7 @@ namespace fs = std::filesystem;
 #endif
 
 extern "C" {
-   std::unique_ptr<Ort::Env> env;
+   std::unique_ptr<Ort::Env> env = nullptr;;
 
    // initialize library
 #ifdef _WIN32
@@ -40,11 +40,11 @@ extern "C" {
       output_holder[0] = (size_t)get_provider_names(context);
    }
 
-   // create a yolo session and return available execution providers
+   // create a yolo session
 #ifdef _WIN32
    __declspec(dllexport)
 #endif
-   void onnx_yolo_session(VMContext& context) {
+   void onnx_new_session(VMContext& context) {
       const std::wstring w_provider = APITools_GetStringValue(context, 1);
       const std::string provider = UnicodeToBytes(w_provider);
 
@@ -59,22 +59,36 @@ extern "C" {
       const std::wstring model_path = APITools_GetStringValue(context, 4);
 
       try {
-         // Set QNN provider options
+         // Set DML provider options
          std::unordered_map<std::string, std::string> provider_options;
-         provider_options["backend_type"] = "htp";
 
-         // Create session options with QNN execution provider
-         Ort::SessionOptions session_options;
-         session_options.AppendExecutionProvider("QNN", provider_options);
+         // Create session options with DML execution provider
+         Ort::SessionOptions session_options;// comment
+         session_options.AppendExecutionProvider(provider, provider_options);
          session_options.SetExecutionMode(ExecutionMode::ORT_PARALLEL);
 
          // Create ONNX session
-         Ort::Session* session = new Ort::Session(*env, model_path.c_str(), session_options);
+         const Ort::Session* session = new Ort::Session(*env, model_path.c_str(), session_options);
          APITools_SetIntValue(context, 0, (size_t)session);
       }
       catch(const std::exception& ex) {
          std::wcerr << L"Error creating ONNX session: " << BytesToUnicode(ex.what()) << std::endl;
       }
+   }
+
+   // close a yolo session
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void onnx_close_session(VMContext& context) {
+      Ort::Session* session = (Ort::Session*)APITools_GetIntValue(context, 1);
+
+      if(session) {
+         delete session;
+         session = nullptr;
+      }
+
+      env.reset();
    }
 
    // Process Yolo image using ONNX model
@@ -83,22 +97,6 @@ extern "C" {
 #endif
    void onnx_yolo_image_inf(VMContext& context) {
       Ort::Session* session = (Ort::Session*)APITools_GetIntValue(context, 1);
-
-      /*
-      Ort::Env env(OrtLoggingLevel::ORT_LOGGING_LEVEL_WARNING);
-
-      // Set QNN provider options
-      std::unordered_map<std::string, std::string> provider_options;
-      provider_options["backend_type"] = "htp";
-
-      // Create session options with QNN execution provider
-      Ort::SessionOptions session_options;
-      session_options.AppendExecutionProvider("QNN", provider_options);
-      session_options.SetExecutionMode(ExecutionMode::ORT_PARALLEL);
-
-      // Create ONNX session
-      Ort::Session* session = new Ort::Session(env, L"data/yolo11x.onnx", session_options);
-      */
 
       size_t* input_array = (size_t*)APITools_GetArray(context, 2)[0];
       const long input_size = ((long)APITools_GetArraySize(input_array));
