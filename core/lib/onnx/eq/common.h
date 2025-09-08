@@ -37,10 +37,6 @@ enum Preprocessor {
 
 // DeepLab model specification
 struct ModelSpec {
-   // fixed input sizes
-   int W = 512;
-   int H = 512;        
-
    bool nchw = true; // NCHW vs NHWC
    bool input_is_float = true; // true: float32, false: uint8
    
@@ -48,6 +44,14 @@ struct ModelSpec {
    float mean[3] = { 0.485f, 0.456f, 0.406f };
    float stdd[3] = { 0.229f, 0.224f, 0.225f };
 };
+
+// Overlay color mask on original image
+inline cv::Mat overlay_mask(const cv::Mat& orig_bgr, const cv::Mat& mask_bgr, float alpha = 0.5f) {
+   CV_Assert(orig_bgr.size() == mask_bgr.size() && orig_bgr.type() == CV_8UC3 && mask_bgr.type() == CV_8UC3);
+   cv::Mat blended;
+   cv::addWeighted(orig_bgr, 1.0f - alpha, mask_bgr, alpha, 0.0, blended);
+   return blended;
+}
 
 // simple palette (customize)
 static cv::Vec3b class_to_color(int id) {
@@ -59,58 +63,47 @@ static cv::Vec3b class_to_color(int id) {
 }
 
 // BGR image -> preprocessed float or uint8 tensor
-static void preprocess_bgr(const cv::Mat& bgr, const ModelSpec& spec,std::vector<float>& fbuf, std::vector<uint8_t>& ubuf, std::vector<int64_t>& shape)
-{
-   cv::Mat resized; cv::resize(bgr, resized, cv::Size(spec.W, spec.H));
-   cv::Mat rgb; cv::cvtColor(resized, rgb, cv::COLOR_BGR2RGB);
+static std::vector<float> preprocess_deeplab(const cv::Mat& img, int resize_height, int resize_width, std::vector<int64_t>& shape) {
+   const ModelSpec spec;
+   std::vector<float> input_tensor_values;
 
-   if(spec.input_is_float) {
-      rgb.convertTo(rgb, CV_32F, 1.0 / 255.0);
-      shape = spec.nchw ? std::vector<int64_t>{1, 3, spec.H, spec.W}
-      : std::vector<int64_t>{ 1,spec.H,spec.W,3 };
-      fbuf.resize((size_t)spec.H * spec.W * 3);
+   cv::Mat resized; 
+   cv::resize(img, resized, cv::Size(resize_width, resize_height));
 
-      if(spec.nchw) {
-         std::vector<cv::Mat> ch; cv::split(rgb, ch);
-         // normalize channel-wise
-         for(int c = 0; c < 3; ++c) {
-            ch[c] = (ch[c] - spec.mean[c]) / spec.stdd[c];
-         }
-         size_t cstride = (size_t)spec.H * spec.W;
-         std::memcpy(fbuf.data() + 0 * cstride, ch[0].ptr<float>(), cstride * sizeof(float));
-         std::memcpy(fbuf.data() + 1 * cstride, ch[1].ptr<float>(), cstride * sizeof(float));
-         std::memcpy(fbuf.data() + 2 * cstride, ch[2].ptr<float>(), cstride * sizeof(float));
+   cv::Mat rgb; 
+   cv::cvtColor(resized, rgb, cv::COLOR_BGR2RGB);
+
+   rgb.convertTo(rgb, CV_32F, 1.0 / 255.0);
+   shape = spec.nchw ? std::vector<int64_t>{1, 3, resize_height, resize_width} : std::vector<int64_t>{ 1,resize_height,resize_width,3 };
+   input_tensor_values.resize((size_t)resize_height * resize_width * 3);
+
+   if(spec.nchw) {
+      std::vector<cv::Mat> ch; cv::split(rgb, ch);
+      // normalize channel-wise
+      for(int c = 0; c < 3; ++c) {
+         ch[c] = (ch[c] - spec.mean[c]) / spec.stdd[c];
       }
-      else {
-         // NHWC normalize in-place
-         for(int y = 0; y < spec.H; ++y) {
-            float* p = rgb.ptr<float>(y);
-            for(int x = 0; x < spec.W; ++x) {
-               float r = p[3 * x + 0], g = p[3 * x + 1], b = p[3 * x + 2];
-               p[3 * x + 0] = (r - spec.mean[0]) / spec.stdd[0];
-               p[3 * x + 1] = (g - spec.mean[1]) / spec.stdd[1];
-               p[3 * x + 2] = (b - spec.mean[2]) / spec.stdd[2];
-            }
-         }
-         fbuf.assign((float*)rgb.datastart, (float*)rgb.dataend);
-      }
+      size_t cstride = (size_t)resize_height * resize_width;
+      std::memcpy(input_tensor_values.data() + 0 * cstride, ch[0].ptr<float>(), cstride * sizeof(float));
+      std::memcpy(input_tensor_values.data() + 1 * cstride, ch[1].ptr<float>(), cstride * sizeof(float));
+      std::memcpy(input_tensor_values.data() + 2 * cstride, ch[2].ptr<float>(), cstride * sizeof(float));
    }
    else {
-      // UINT8 path (for QDQ models that accept uint8 input)
-      shape = spec.nchw ? std::vector<int64_t>{1, 3, spec.H, spec.W}
-      : std::vector<int64_t>{ 1,spec.H,spec.W,3 };
-      ubuf.resize((size_t)spec.H * spec.W * 3);
-      if(spec.nchw) {
-         std::vector<cv::Mat> ch; cv::split(rgb, ch);
-         size_t cstride = (size_t)spec.H * spec.W;
-         std::memcpy(ubuf.data() + 0 * cstride, ch[0].ptr<uint8_t>(), cstride);
-         std::memcpy(ubuf.data() + 1 * cstride, ch[1].ptr<uint8_t>(), cstride);
-         std::memcpy(ubuf.data() + 2 * cstride, ch[2].ptr<uint8_t>(), cstride);
+      // NHWC normalize in-place
+      for(int y = 0; y < resize_height; ++y) {
+         float* p = rgb.ptr<float>(y);
+         for(int x = 0; x < resize_width; ++x) {
+            float r = p[3 * x + 0], g = p[3 * x + 1], b = p[3 * x + 2];
+            p[3 * x + 0] = (r - spec.mean[0]) / spec.stdd[0];
+            p[3 * x + 1] = (g - spec.mean[1]) / spec.stdd[1];
+            p[3 * x + 2] = (b - spec.mean[2]) / spec.stdd[2];
+         }
       }
-      else {
-         std::memcpy(ubuf.data(), rgb.data, (size_t)spec.H * spec.W * 3);
-      }
+
+      input_tensor_values.assign((float*)rgb.datastart, (float*)rgb.dataend);
    }
+
+   return input_tensor_values;
 }
 
 // logits [C,H,W] -> color mask
