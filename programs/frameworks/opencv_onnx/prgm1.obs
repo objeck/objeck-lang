@@ -5,8 +5,8 @@ class Test {
 		if(args->Size() = 1) {
 			image_path := args[0];
 			
-#			ProcessYoloImages(image_path);
-			ProcessResNetImages(image_path)
+			ProcessYoloImages(image_path);
+#			ProcessResNetImages(image_path)
 		};
 	}
 
@@ -48,7 +48,7 @@ class Test {
 
 		label_names := image_labels->ToArray()->As(String[]);
 
-		session := API.Onnx.YoloSession->New(model_path, "DML", Nil);
+		session := API.Onnx.YoloSession->New(model_path, "QNN", Nil);
 		result := session->Inference(image_bytes, 640, 640, 0.65, label_names);
 		if(result = Nil) {
 			"--- Error: No results ---"->ErrorLine();
@@ -114,7 +114,7 @@ class Test {
 		"image_size={$image_size}"->PrintLine();
 
 		label_names := image_labels->ToArray()->As(String[]);
-		session := API.Onnx.ResNetSession->New(model_path, "DML", Nil);
+		session := API.Onnx.ResNetSession->New(model_path, "QNN", Nil);
 		result := session->Inference(image_bytes, 224, 224, label_names);
 		if(result <> Nil) {
 			result->GetId()->PrintLine();

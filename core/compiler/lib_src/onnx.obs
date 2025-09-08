@@ -81,7 +81,7 @@ bundle API.Onnx {
 		~#
 		method : public : Close() ~ Nil {
 			array_args := Base->New[1];
-			array_args[1] := IntRef->New(@session);
+			array_args[0] := IntRef->New(@session);
 
 			Proxy->GetDllProxy()->CallFunction("onnx_close_session", array_args);
 		}
@@ -349,7 +349,7 @@ bundle API.Onnx {
 		~#
 		method : public : Close() ~ Nil {
 			array_args := Base->New[1];
-			array_args[1] := IntRef->New(@session);
+			array_args[0] := IntRef->New(@session);
 
 			Proxy->GetDllProxy()->CallFunction("onnx_close_session", array_args);
 		}
