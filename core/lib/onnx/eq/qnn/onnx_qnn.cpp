@@ -97,6 +97,10 @@ extern "C" {
    __declspec(dllexport)
 #endif
    void onnx_yolo_image_inf(VMContext& context) {
+#ifdef _DEBUG
+      auto start = std::chrono::high_resolution_clock::now();
+#endif
+
       Ort::Session* session = (Ort::Session*)APITools_GetIntValue(context, 1);
 
       size_t* input_array = (size_t*)APITools_GetArray(context, 2)[0];
@@ -349,6 +353,12 @@ extern "C" {
          yolo_result_obj[3] = (size_t)class_array;
 
          APITools_SetObjectValue(context, 0, yolo_result_obj);
+
+#ifdef _DEBUG
+         auto end = std::chrono::high_resolution_clock::now();
+         auto duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+         std::wcout << L"ONNX YOLO inference and processing time: " << duration_ms << L" ms" << std::endl;
+#endif
       }
       catch(const Ort::Exception& e) {
          std::wcerr << L"ONNX Runtime Error: " << e.what() << std::endl;

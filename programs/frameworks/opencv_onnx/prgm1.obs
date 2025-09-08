@@ -17,7 +17,7 @@ class Test {
 		image_path := root_dir + "/images/";
 		image_path := image_path->ReplaceAll('\\', '/');
 
-		model_path := root_dir + "/yolo11x.onnx";
+		model_path := root_dir + "/yolov11s-seg.onnx";
 		model_path := model_path->ReplaceAll('\\', '/');
 
 		label_path := root_dir + "/yolo_labels.txt";
@@ -48,7 +48,38 @@ class Test {
 
 		label_names := image_labels->ToArray()->As(String[]);
 
-		session := API.Onnx.YoloSession->New(model_path, "DML", Nil);
+		session := API.Onnx.YoloSession->New(model_path, "QNN", Nil);
+		result := session->Inference(image_bytes, 640, 640, 0.65, label_names);
+		if(result = Nil) {
+			"--- Error: No results ---"->ErrorLine();
+			return;
+		};
+
+		result->ToString()->PrintLine();
+		"==="->PrintLine();
+
+		classifications := result->GetClassifications();
+		each(classification in classifications) {
+			label_str := classification->GetName();
+			class_str := classification->ToString();
+			"name='{$label_str}', class={$class_str}\n---"->PrintLine();
+
+			bounds := classification->GetBounds();
+			left := bounds->GetX();
+			top := bounds->GetY();
+
+			image := image->DrawRectangle(Rect->New(
+				left, top, bounds->GetWidth(), bounds->GetHeight()), 
+				Scalar->New(0, 255, 0), 2);
+
+			image := image->DrawText(
+				label_str,
+				Point->New(left, top), 
+				Font->FONT_HERSHEY_SIMPLEX,
+				0.75,
+				Scalar->New(255, 0, 0));
+		};
+
 		result := session->Inference(image_bytes, 640, 640, 0.65, label_names);
 		if(result = Nil) {
 			"--- Error: No results ---"->ErrorLine();
@@ -114,7 +145,7 @@ class Test {
 		"image_size={$image_size}"->PrintLine();
 
 		label_names := image_labels->ToArray()->As(String[]);
-		session := API.Onnx.ResNetSession->New(model_path, "DML", Nil);
+		session := API.Onnx.ResNetSession->New(model_path, "QNN", Nil);
 		result := session->Inference(image_bytes, 224, 224, label_names);
 		if(result <> Nil) {
 			result->GetId()->PrintLine();
