@@ -61,7 +61,7 @@ extern "C" {
       try {
          // Set DML provider options
          std::unordered_map<std::string, std::string> provider_options;
-         provider_options["backend_type"] = "htp";
+         provider_options["backend_type"] = "gpu";
 
          // Create session options with DML execution provider
          Ort::SessionOptions session_options;// comment
@@ -524,6 +524,9 @@ extern "C" {
    }
 
    // Process Deeplab image using ONNX model
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
    void onnx_deeplab_image_inf(VMContext& context) {
 #ifdef _DEBUG
       auto start = std::chrono::high_resolution_clock::now();
@@ -538,12 +541,8 @@ extern "C" {
       const int resize_height = (int)APITools_GetIntValue(context, 3);
       const int resize_width = (int)APITools_GetIntValue(context, 4);
 
-      size_t* labels_array = (size_t*)APITools_GetArray(context, 5)[0];
-      const long labels_size = (long)APITools_GetArraySize(labels_array);
-      const size_t* labels_objs = APITools_GetArray(labels_array);
-
       // Validate parameters
-      if(!session || !input_bytes || !labels_objs || resize_height < 1 || resize_width < 1 || labels_size < 1) {
+      if(!session || !input_bytes || resize_height < 1 || resize_width < 1) {
          return;
       }
 
@@ -561,12 +560,9 @@ extern "C" {
          }
 
          // Preprocess image for Deeplab
-         ModelSpec spec;
-         std::vector<float> fbuf;
-         std::vector<uint8_t> ubuf;
          std::vector<int64_t> input_shape;
-         preprocess_bgr(img, spec, fbuf, ubuf, input_shape);
-                
+         std::vector<float> fbuf = preprocess_deeplab(img, resize_height + 8, resize_width + 8, input_shape);
+
          // Create input tensor
          Ort::MemoryInfo mem_info = Ort::MemoryInfo::CreateCpu(OrtDeviceAllocator, OrtMemTypeCPU);
          Ort::Value input_tensor = Ort::Value::CreateTensor<float>(mem_info, fbuf.data(), fbuf.size(), input_shape.data(), input_shape.size());
@@ -611,12 +607,14 @@ extern "C" {
          const float* logits = output_tensor.GetTensorData<float>();
 
          cv::Mat mask = argmax_colorize(logits, C, H, W);
-         cv::Mat mask_up; cv::resize(mask, mask_up, img.size(), 0, 0, cv::INTER_NEAREST);
+         
+         cv::Mat mask_up; 
+         cv::resize(mask, mask_up, img.size(), 0, 0, cv::INTER_NEAREST);
 
-         cv::Mat overlay; cv::addWeighted(img, 0.55, mask_up, 0.45, 0.0, overlay);
+         cv::Mat blended = overlay_mask(img, mask_up, 0.45f);
 
-         // cv::imwrite("_mask.png", mask_up);
-         // cv::imwrite("_overlay.png", overlay);
+          cv::imwrite("foo_mask.png", mask_up);
+          cv::imwrite("foo_overlay.png", blended);
          // std::cout << "wrote: " << out_prefix << "_mask.png and _overlay.png\n";
 
          // APITools_SetObjectValue(context, 0, resnet_result_obj);
@@ -631,5 +629,4 @@ extern "C" {
          std::wcerr << L"ONNX Runtime Error: " << e.what() << std::endl;
       }
    }
-
 }
