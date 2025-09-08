@@ -20,10 +20,6 @@ extern "C" {
    void unload_lib() {
    }
 
-   //
-   // OpevCV operations
-   //
-
    // Load image from memory
 #ifdef _WIN32
    __declspec(dllexport)
@@ -252,4 +248,3 @@ extern "C" {
       output_holder[0] = (size_t)output_byte_array;
    }
 }
-

@@ -42,7 +42,7 @@ bundle API.Onnx {
 	class YoloSession {
 		@session : Int;
 
-		#~onnx_yolo_session
+		#~
 		Constructor.
 		@param model Resnet model
 		@param provider execution provider
@@ -71,9 +71,19 @@ bundle API.Onnx {
 			array_args[3] := StringArrayRef->New(values_array);
 			array_args[4] := model;
 						
-			Proxy->GetDllProxy()->CallFunction("onnx_yolo_session", array_args);
+			Proxy->GetDllProxy()->CallFunction("onnx_new_session", array_args);
 			value := array_args[0]->As(IntRef);
 			@session := value->Get();
+		}
+
+		#~
+		Closes the session
+		~#
+		method : public : Close() ~ Nil {
+			array_args := Base->New[1];
+			array_args[1] := IntRef->New(@session);
+
+			Proxy->GetDllProxy()->CallFunction("onnx_close_session", array_args);
 		}
 
 		#~
@@ -84,8 +94,7 @@ bundle API.Onnx {
 		@param conf_threshold confidence threshold
 		@param labels classification labels
 		~#
-		method : public : Inference(image : Byte[], height : Int, width : Int, 
-				conf_threshold : Float, labels : String[]) ~ API.Onnx.YoloResult {
+		method : public : Inference(image : Byte[], height : Int, width : Int, conf_threshold : Float, labels : String[]) ~ API.Onnx.YoloResult {
 
 			if(image = Nil | labels = Nil) {
 				return Nil;
@@ -108,79 +117,6 @@ bundle API.Onnx {
 
 			return results;
 		}
-
-		method : public : Close() ~ Nil {}
-	}
-
-	#~
-	Yolo inference session
-	~#
-	class ResNetSession {
-		@session : Int;
-
-		#~
-		Constructor.
-		@param model Resnet model
-		@param provider execution provider
-		@param config session configuration parameters
-		~#
-		New(model : String, provider : String, config : Map<String, String>) {
-			keys := Vector->New()<String>;
-			values := Vector->New()<String>;
-
-			if(config <> Nil) {
-				key_values := config->GetKeyValues()<Pair<String, String>>;
-				each(key_value in key_values) {
-					keys->AddBack(key_value->GetFirst());
-					values->AddBack(key_value->GetSecond());
-				};
-			};
-			
-			keys_array := keys->ToArray();
-			values_array := values->ToArray();
-
-			array_args := Base->New[5];
-
-			array_args[0] := IntRef->New();
-			array_args[1] := provider;			
-			array_args[2] := StringArrayRef->New(keys_array);
-			array_args[3] := StringArrayRef->New(values_array);
-			array_args[4] := model;
-			
-			Proxy->GetDllProxy()->CallFunction("onnx_resnet_session", array_args);
-			value := array_args[0]->As(IntRef);
-			@session := value->Get();
-		}
-
-		#~
-		ResNet image inference
-		@param image image bytes
-		@param height image height
-		@param image width width
-		@param labels classification labels
-		~#
-		method : public : Inference(image : Byte[], height : Int, width : Int, labels : String[]) ~ API.Onnx.ResNetResult {
-			if(image = Nil | labels = Nil) {
-				return Nil;
-			};
-
-			array_args := Base->New[5];
-
-			array_args[0] := Nil;
-			array_args[1] := ByteArrayRef->New(image);
-			array_args[2] := IntRef->New(height);
-			array_args[3] := IntRef->New(width);
-			array_args[4] := StringArrayRef->New(labels);
-
-			Proxy->GetDllProxy()->CallFunction("onnx_resnet_image_inf", array_args);
-			
-			results := array_args[0]->As(API.Onnx.ResNetResult);
-			results->Set(image, labels);
-
-			return results;
-		}
-
-		method : public : Close() ~ Nil {}
 	}
 
 	#~
@@ -365,6 +301,86 @@ bundle API.Onnx {
 		method : public : ToString() ~ String {
 			x := @bounds->GetX(); y := @bounds->GetY(); w := @bounds->GetWidth(); h := @bounds->GetHeight();
 			return "id={$@id}, name={$@name}, conf={$@confidence}, bounds=[{$x}, {$y}, {$w}, {$h}]";
+		}
+	}
+
+	#~
+	Yolo inference session
+	~#
+	class ResNetSession {
+		@session : Int;
+
+		#~
+		Constructor.
+		@param model Resnet model
+		@param provider execution provider
+		@param config session configuration parameters
+		~#
+		New(model : String, provider : String, config : Map<String, String>) {
+			keys := Vector->New()<String>;
+			values := Vector->New()<String>;
+
+			if(config <> Nil) {
+				key_values := config->GetKeyValues()<Pair<String, String>>;
+				each(key_value in key_values) {
+					keys->AddBack(key_value->GetFirst());
+					values->AddBack(key_value->GetSecond());
+				};
+			};
+
+			keys_array := keys->ToArray();
+			values_array := values->ToArray();
+
+			array_args := Base->New[5];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := provider;
+			array_args[2] := StringArrayRef->New(keys_array);
+			array_args[3] := StringArrayRef->New(values_array);
+			array_args[4] := model;
+						
+			Proxy->GetDllProxy()->CallFunction("onnx_new_session", array_args);
+			value := array_args[0]->As(IntRef);
+			@session := value->Get();
+		}
+
+		#~
+		Closes the session
+		~#
+		method : public : Close() ~ Nil {
+			array_args := Base->New[1];
+			array_args[1] := IntRef->New(@session);
+
+			Proxy->GetDllProxy()->CallFunction("onnx_close_session", array_args);
+		}
+
+		#~
+		ResNet image inference
+		@param image image bytes
+		@param height image height
+		@param image width width
+		@param labels classification labels
+		~#
+		method : public : Inference(image : Byte[], height : Int, width : Int, labels : String[]) ~ API.Onnx.ResNetResult {
+			if(image = Nil | labels = Nil) {
+				return Nil;
+			};
+
+			array_args := Base->New[6];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@session);
+			array_args[2] := ByteArrayRef->New(image);
+			array_args[3] := IntRef->New(height);
+			array_args[4] := IntRef->New(width);
+			array_args[5] := StringArrayRef->New(labels);
+
+			Proxy->GetDllProxy()->CallFunction("onnx_resnet_image_inf", array_args);
+			
+			results := array_args[0]->As(API.Onnx.ResNetResult);
+			results->Set(image, labels);
+
+			return results;
 		}
 	}
 
