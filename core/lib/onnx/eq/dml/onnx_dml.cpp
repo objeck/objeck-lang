@@ -503,4 +503,109 @@ extern "C" {
          std::wcerr << L"ONNX Runtime Error: " << e.what() << std::endl;
       }
    }
+
+   // Process Deeplab image using ONNX model
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void onnx_deeplab_image_inf(VMContext& context) {
+#ifdef _DEBUG
+      auto start = std::chrono::high_resolution_clock::now();
+#endif
+
+      Ort::Session* session = (Ort::Session*)APITools_GetIntValue(context, 1);
+
+      size_t* input_array = (size_t*)APITools_GetArray(context, 2)[0];
+      const long input_size = ((long)APITools_GetArraySize(input_array));
+      const unsigned char* input_bytes = (unsigned char*)APITools_GetArray(input_array);
+
+      const int resize_height = (int)APITools_GetIntValue(context, 3);
+      const int resize_width = (int)APITools_GetIntValue(context, 4);
+
+      // Validate parameters
+      if(!session || !input_bytes || resize_height < 1 || resize_width < 1) {
+         return;
+      }
+
+      try {
+         std::vector<uchar> image_data(input_bytes, input_bytes + input_size);
+         cv::Mat img = cv::imdecode(image_data, cv::IMREAD_COLOR);
+         if(img.empty()) {
+            if(session) {
+               delete session;
+               session = nullptr;
+            }
+
+            std::wcerr << L"Failed to read image!" << std::endl;
+            return;
+         }
+
+         // Preprocess image for Deeplab
+         std::vector<int64_t> input_shape;
+         std::vector<float> fbuf = preprocess_deeplab(img, resize_height, resize_width, input_shape);
+
+         // Create input tensor
+         Ort::MemoryInfo mem_info = Ort::MemoryInfo::CreateCpu(OrtDeviceAllocator, OrtMemTypeCPU);
+         Ort::Value input_tensor = Ort::Value::CreateTensor<float>(mem_info, fbuf.data(), fbuf.size(), input_shape.data(), input_shape.size());
+
+         // Get input/output names
+         Ort::AllocatorWithDefaultOptions allocator;
+
+         Ort::AllocatedStringPtr input_name_ptr = session->GetInputNameAllocated(0, allocator);
+         std::string input_name_str = input_name_ptr.get();
+         std::vector<const char*> input_names = { input_name_str.c_str() };
+
+         Ort::AllocatedStringPtr output_name_ptr = session->GetOutputNameAllocated(0, allocator);
+         std::string output_name_str = output_name_ptr.get();
+         std::vector<const char*> output_names = { output_name_str.c_str() };
+
+         // Run inference
+         auto output_tensors = session->Run(
+            Ort::RunOptions{ nullptr },
+            input_names.data(),
+            &input_tensor,
+            1,
+            output_names.data(),
+            1);
+
+         Ort::Value& output_tensor = output_tensors.front();
+         auto info = output_tensor.GetTensorTypeAndShapeInfo();
+         auto shape = info.GetShape(); // {1,C,H,W}
+
+         if(shape.size() != 4) {
+            if(session) {
+               delete session;
+               session = nullptr;
+            }
+
+            std::wcerr << L"Unexpected output shape!" << std::endl;
+            return;
+         }
+
+         const int C = (int)shape[1];
+         const int H = (int)shape[2];
+         const int W = (int)shape[3];
+         const float* logits = output_tensor.GetTensorData<float>();
+
+         cv::Mat mask = argmax_colorize(logits, C, H, W);
+         cv::Mat mask_up; cv::resize(mask, mask_up, img.size(), 0, 0, cv::INTER_NEAREST);
+
+         cv::Mat overlay; cv::addWeighted(img, 0.55, mask_up, 0.45, 0.0, overlay);
+
+         cv::imwrite("foo_mask.png", mask_up);
+         cv::imwrite("foo_overlay.png", overlay);
+         // std::cout << "wrote: " << out_prefix << "_mask.png and _overlay.png\n";
+
+         // APITools_SetObjectValue(context, 0, resnet_result_obj);
+
+#ifdef _DEBUG
+         const auto end = std::chrono::high_resolution_clock::now();
+         const auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+         std::wcout << L"ONNX Deeplab inference completed in " << duration << L" ms." << std::endl;
+#endif
+      }
+      catch(const Ort::Exception& e) {
+         std::wcerr << L"ONNX Runtime Error: " << e.what() << std::endl;
+      }
+   }
 }
