@@ -349,12 +349,6 @@ extern "C" {
          yolo_result_obj[3] = (size_t)class_array;
 
          APITools_SetObjectValue(context, 0, yolo_result_obj);
-
-         // TODO: keep session alive for multiple calls
-         if(session) {
-            delete session;
-            session = nullptr;
-         }
       }
       catch(const Ort::Exception& e) {
          std::wcerr << L"ONNX Runtime Error: " << e.what() << std::endl;
@@ -504,11 +498,6 @@ extern "C" {
          }
 
          APITools_SetObjectValue(context, 0, resnet_result_obj);
-
-         if(session) {
-            delete session;
-            session = nullptr;
-         }
       }
       catch(const Ort::Exception& e) {
          std::wcerr << L"ONNX Runtime Error: " << e.what() << std::endl;
