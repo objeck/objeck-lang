@@ -61,6 +61,7 @@ extern "C" {
       try {
          // Set DML provider options
          std::unordered_map<std::string, std::string> provider_options;
+         provider_options["backend_type"] = "htp";
 
          // Create session options with DML execution provider
          Ort::SessionOptions session_options;// comment
@@ -81,7 +82,7 @@ extern "C" {
    __declspec(dllexport)
 #endif
    void onnx_close_session(VMContext& context) {
-      Ort::Session* session = (Ort::Session*)APITools_GetIntValue(context, 1);
+      Ort::Session* session = (Ort::Session*)APITools_GetIntValue(context, 0);
 
       if(session) {
          delete session;
