@@ -121,6 +121,11 @@ extern "C" {
          std::vector<uchar> image_data(input_bytes, input_bytes + input_size);
          cv::Mat img = cv::imdecode(image_data, cv::IMREAD_COLOR);
          if(img.empty()) {
+            if(session) {
+               delete session;
+               session = nullptr;
+            }
+
             std::wcerr << L"Failed to read image!" << std::endl;
             return;
          }
@@ -258,7 +263,7 @@ extern "C" {
 
             auto sigmoid = [](float x) {
                return 1.f / (1.f + std::exp(-x));
-               };
+            };
 
             int best = 0; float bestp = 0.f;
             for(int j = 0; j < nc; ++j) {
@@ -376,6 +381,11 @@ extern "C" {
          std::vector<uchar> image_data(input_bytes, input_bytes + input_size);
          cv::Mat img = cv::imdecode(image_data, cv::IMREAD_COLOR);
          if(img.empty()) {
+            if(session) {
+               delete session;
+               session = nullptr;
+            }
+
             std::wcerr << L"Failed to read image!" << std::endl;
             return;
          }
