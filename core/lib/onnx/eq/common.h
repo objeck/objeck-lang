@@ -19,20 +19,6 @@
 
 std::unique_ptr<Ort::Env> env = nullptr;;
 
-enum ImageFormat {
-   JPEG = 64,
-   PNG,
-   WEBP,
-   GIF
-};
-
-enum Preprocessor {
-   RESNET = 128,
-   YOLO,
-   DEEPLAB,
-   OTHER
-};
-
 //
 // DeepLab utilities
 //
