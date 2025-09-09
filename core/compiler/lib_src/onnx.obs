@@ -45,10 +45,9 @@ bundle API.Onnx {
 		#~
 		Constructor.
 		@param model Resnet model
-		@param provider execution provider
 		@param config session configuration parameters
 		~#
-		New(model : String, provider : String, config : Map<String, String>) {
+		New(model : String, config : Map<String, String>) {
 			keys := Vector->New()<String>;
 			values := Vector->New()<String>;
 
@@ -63,13 +62,12 @@ bundle API.Onnx {
 			keys_array := keys->ToArray();
 			values_array := values->ToArray();
 
-			array_args := Base->New[5];
+			array_args := Base->New[4];
 
 			array_args[0] := IntRef->New();
-			array_args[1] := provider;
-			array_args[2] := StringArrayRef->New(keys_array);
-			array_args[3] := StringArrayRef->New(values_array);
-			array_args[4] := model;
+			array_args[1] := StringArrayRef->New(keys_array);
+			array_args[2] := StringArrayRef->New(values_array);
+			array_args[3] := model;
 						
 			Proxy->GetDllProxy()->CallFunction("onnx_new_session", array_args);
 			value := array_args[0]->As(IntRef);
@@ -305,7 +303,7 @@ bundle API.Onnx {
 	}
 
 	#~
-	Yolo inference session
+	ResNet inference session
 	~#
 	class ResNetSession {
 		@session : Int;
@@ -313,10 +311,9 @@ bundle API.Onnx {
 		#~
 		Constructor.
 		@param model Resnet model
-		@param provider execution provider
 		@param config session configuration parameters
 		~#
-		New(model : String, provider : String, config : Map<String, String>) {
+		New(model : String, config : Map<String, String>) {
 			keys := Vector->New()<String>;
 			values := Vector->New()<String>;
 
@@ -331,13 +328,12 @@ bundle API.Onnx {
 			keys_array := keys->ToArray();
 			values_array := values->ToArray();
 
-			array_args := Base->New[5];
+			array_args := Base->New[4];
 
 			array_args[0] := IntRef->New();
-			array_args[1] := provider;
-			array_args[2] := StringArrayRef->New(keys_array);
-			array_args[3] := StringArrayRef->New(values_array);
-			array_args[4] := model;
+			array_args[1] := StringArrayRef->New(keys_array);
+			array_args[2] := StringArrayRef->New(values_array);
+			array_args[3] := model;
 						
 			Proxy->GetDllProxy()->CallFunction("onnx_new_session", array_args);
 			value := array_args[0]->As(IntRef);
@@ -498,10 +494,9 @@ bundle API.Onnx {
 		#~
 		Constructor.
 		@param model Resnet model
-		@param provider execution provider
 		@param config session configuration parameters
 		~#
-		New(model : String, provider : String, config : Map<String, String>) {
+		New(model : String, config : Map<String, String>) {
 			keys := Vector->New()<String>;
 			values := Vector->New()<String>;
 
@@ -519,10 +514,9 @@ bundle API.Onnx {
 			array_args := Base->New[5];
 
 			array_args[0] := IntRef->New();
-			array_args[1] := provider;
-			array_args[2] := StringArrayRef->New(keys_array);
-			array_args[3] := StringArrayRef->New(values_array);
-			array_args[4] := model;
+			array_args[1] := StringArrayRef->New(keys_array);
+			array_args[2] := StringArrayRef->New(values_array);
+			array_args[3] := model;
 						
 			Proxy->GetDllProxy()->CallFunction("onnx_new_session", array_args);
 			value := array_args[0]->As(IntRef);
@@ -546,18 +540,16 @@ bundle API.Onnx {
 		@param image width width
 		@param labels classification labels
 		~#
-		method : public : Inference(image : Byte[], height : Int, width : Int) ~ API.Onnx.DeepLabResult {
+		method : public : Inference(image : Byte[]) ~ API.Onnx.DeepLabResult {
 			if(image = Nil) {
 				return Nil;
 			};
 
-			array_args := Base->New[5];
+			array_args := Base->New[3];
 
 			array_args[0] := Nil;
 			array_args[1] := IntRef->New(@session);
 			array_args[2] := ByteArrayRef->New(image);
-			array_args[3] := IntRef->New(height);
-			array_args[4] := IntRef->New(width);
 
 			Proxy->GetDllProxy()->CallFunction("onnx_deeplab_image_inf", array_args);
 			
@@ -567,23 +559,72 @@ bundle API.Onnx {
 		}
 	}
 
-
-
-
-
-
 	#~
 	DeepLab results
 	~#
 	class DeepLabResult {
+		@masked_dims : Int[];
+		@masked : API.OpenCV.Image;
+
+		@overlay_dims : Int[];
+		@overlay : API.OpenCV.Image;
+
 		New : private () {}
+
+		#~
+		Gets the masked image
+		@return masked image
+		~#
+		method : public : GetMaskedImage() ~ API.OpenCV.Image {
+			return @masked;
+		}
+
+		#~
+		Gets the overlay image
+		@return overlay image
+		~#
+		method : public : GetOverlayImage() ~ API.OpenCV.Image {
+			return @overlay;
+		}
+
+		#~
+		Gets the masked image dimensions
+		@return masked image dimensions
+		~#
+		method : public : GetMaskedDimensions() ~ Int[] {
+			return @masked_dims;
+		}
+
+		#~
+		Gets the overlay image dimensions
+		@return overlay image dimensions
+		~#
+		method : public : GetOverlayDimensions() ~ Int[] {
+			return @overlay_dims;
+		}
 
 		#~
 		Get string representation
 		@return string representation
 		~#
 		method : public : ToString() ~ String {
-			buffer := "output-size=";
+			buffer := "masked-size=";
+
+			if(@masked = Nil) {
+				buffer += "<nil>, overlay-size=";
+			}
+			else {
+				output_size := @masked->Size();
+				buffer += "{$output_size}, overlay-size=";
+			};
+
+			if(@overlay = Nil) {
+				buffer += "<nil>";
+			}
+			else {
+				output_size := @overlay->Size();
+				buffer += "{$output_size}";
+			};
 
 			return buffer;
 		}
