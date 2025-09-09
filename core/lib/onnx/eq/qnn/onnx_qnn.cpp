@@ -45,18 +45,15 @@ extern "C" {
    __declspec(dllexport)
 #endif
    void onnx_new_session(VMContext& context) {
-      const std::wstring w_provider = APITools_GetStringValue(context, 1);
-      const std::string provider = UnicodeToBytes(w_provider);
-
-      size_t* keys_array = (size_t*)APITools_GetArray(context, 2)[1];
+      size_t* keys_array = (size_t*)APITools_GetArray(context, 1)[1];
       const long keys_size = ((long)APITools_GetArraySize(keys_array));
       const size_t* keys_ptrs = APITools_GetArray(keys_array);
 
-      size_t* values_array = (size_t*)APITools_GetArray(context, 3)[1];
+      size_t* values_array = (size_t*)APITools_GetArray(context, 2)[1];
       const long values_size = ((long)APITools_GetArraySize(keys_array));
       const size_t* values_ptrs = APITools_GetArray(keys_array);
 
-      const std::wstring model_path = APITools_GetStringValue(context, 4);
+      const std::wstring model_path = APITools_GetStringValue(context, 3);
 
       try {
          // Set DML provider options
@@ -65,7 +62,7 @@ extern "C" {
 
          // Create session options with DML execution provider
          Ort::SessionOptions session_options;// comment
-         session_options.AppendExecutionProvider(provider, provider_options);
+         session_options.AppendExecutionProvider("QNN", provider_options);
          session_options.SetExecutionMode(ExecutionMode::ORT_PARALLEL);
 
          // Create ONNX session

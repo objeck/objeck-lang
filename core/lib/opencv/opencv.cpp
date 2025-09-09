@@ -27,7 +27,7 @@ extern "C" {
    void opencv_load_image_bytes(VMContext& context) {
       // get parameters
       size_t* input_array = (size_t*)APITools_GetArray(context, 1)[0];
-      const long input_size = ((long)APITools_GetArraySize(input_array));
+      const long input_size = (long)APITools_GetArraySize(input_array);
       const unsigned char* input_bytes = (unsigned char*)APITools_GetArray(input_array);
 
       std::vector<uchar> image_data(input_bytes, input_bytes + input_size);
