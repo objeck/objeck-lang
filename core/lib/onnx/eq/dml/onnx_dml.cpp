@@ -45,18 +45,15 @@ extern "C" {
    __declspec(dllexport)
 #endif
    void onnx_new_session(VMContext& context) {
-      const std::wstring w_provider = APITools_GetStringValue(context, 1);
-      const std::string provider = UnicodeToBytes(w_provider);
-
-      size_t* keys_array = (size_t*)APITools_GetArray(context, 2)[1];
-      const long keys_size = ((long)APITools_GetArraySize(keys_array));
+      size_t* keys_array = (size_t*)APITools_GetArray(context, 1)[1];
+      const long keys_size = (long)APITools_GetArraySize(keys_array);
       const size_t* keys_ptrs = APITools_GetArray(keys_array);
 
-      size_t* values_array = (size_t*)APITools_GetArray(context, 3)[1];
+      size_t* values_array = (size_t*)APITools_GetArray(context, 2)[1];
       const long values_size = ((long)APITools_GetArraySize(keys_array));
       const size_t* values_ptrs = APITools_GetArray(keys_array);
 
-      const std::wstring model_path = APITools_GetStringValue(context, 4);
+      const std::wstring model_path = APITools_GetStringValue(context, 3);
       
       try {
          // Set DML provider options
@@ -65,7 +62,7 @@ extern "C" {
 
          // Create session options with DML execution provider
          Ort::SessionOptions session_options;// comment
-         session_options.AppendExecutionProvider(provider, provider_options);
+         session_options.AppendExecutionProvider("DML", provider_options);
          session_options.SetExecutionMode(ExecutionMode::ORT_PARALLEL);
 
          // Create ONNX session
@@ -518,12 +515,9 @@ extern "C" {
       size_t* input_array = (size_t*)APITools_GetArray(context, 2)[0];
       const long input_size = ((long)APITools_GetArraySize(input_array));
       const unsigned char* input_bytes = (unsigned char*)APITools_GetArray(input_array);
-
-      const int resize_height = (int)APITools_GetIntValue(context, 3);
-      const int resize_width = (int)APITools_GetIntValue(context, 4);
-
+      
       // Validate parameters
-      if(!session || !input_bytes || resize_height < 1 || resize_width < 1) {
+      if(!session || !input_bytes) {
          return;
       }
 
@@ -542,7 +536,7 @@ extern "C" {
 
          // Preprocess image for Deeplab
          std::vector<int64_t> input_shape;
-         std::vector<float> fbuf = preprocess_deeplab(img, resize_height, resize_width, input_shape);
+         std::vector<float> fbuf = preprocess_deeplab(img, 520, 520, input_shape);
 
          // Create input tensor
          Ort::MemoryInfo mem_info = Ort::MemoryInfo::CreateCpu(OrtDeviceAllocator, OrtMemTypeCPU);
@@ -588,15 +582,38 @@ extern "C" {
          const float* logits = output_tensor.GetTensorData<float>();
 
          cv::Mat mask = argmax_colorize(logits, C, H, W);
-         cv::Mat mask_up; cv::resize(mask, mask_up, img.size(), 0, 0, cv::INTER_NEAREST);
+         
+         cv::Mat masked; 
+         cv::resize(mask, masked, img.size(), 0, 0, cv::INTER_NEAREST);
 
-         cv::Mat overlay; cv::addWeighted(img, 0.55, mask_up, 0.45, 0.0, overlay);
+         cv::Mat overlaid; 
+         cv::addWeighted(img, 0.55, masked, 0.45, 0.0, overlaid);
 
-         cv::imwrite("foo_mask.png", mask_up);
-         cv::imwrite("foo_overlay.png", overlay);
-         // std::cout << "wrote: " << out_prefix << "_mask.png and _overlay.png\n";
+         //
+         // Build results
+         size_t* deeplab_result_obj = APITools_CreateObject(context, L"API.Onnx.DeepLabResult");
 
-         // APITools_SetObjectValue(context, 0, resnet_result_obj);
+         // masked image
+         size_t* maked_image_array = APITools_MakeIntArray(context, 2);
+         size_t* masked_image_array_buffer = maked_image_array + 3;
+         masked_image_array_buffer[0] = masked.rows;
+         masked_image_array_buffer[1] = masked.cols;
+         deeplab_result_obj[0] = (size_t)maked_image_array;
+
+         size_t* masked_obj = opencv_raw_write(masked, context);
+         deeplab_result_obj[1] = (size_t)masked_obj;
+
+         // overlay image
+         size_t* overlay_image_array = APITools_MakeIntArray(context, 2);
+         size_t* output_image_array_buffer = overlay_image_array + 3;
+         output_image_array_buffer[0] = overlaid.rows;
+         output_image_array_buffer[1] = overlaid.cols;
+         deeplab_result_obj[2] = (size_t)overlay_image_array;
+
+         size_t* overlay_obj = opencv_raw_write(overlaid, context);
+         deeplab_result_obj[3] = (size_t)overlay_obj;
+         
+         APITools_SetObjectValue(context, 0, deeplab_result_obj);
 
 #ifdef _DEBUG
          const auto end = std::chrono::high_resolution_clock::now();
