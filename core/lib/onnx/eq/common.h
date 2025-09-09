@@ -315,7 +315,7 @@ static size_t* opencv_raw_write(cv::Mat& image, VMContext& context) {
 }
 
 // close a yolo session
-void close_session(VMContext& context) {
+static void close_session(VMContext& context) {
    Ort::Session* session = (Ort::Session*)APITools_GetIntValue(context, 0);
 
    if(session) {
@@ -327,7 +327,7 @@ void close_session(VMContext& context) {
 }
 
 // Process Yolo image using ONNX model
-void yolo_image_inf(VMContext& context) {
+static void yolo_image_inf(VMContext& context) {
 #ifdef _DEBUG
    auto start = std::chrono::high_resolution_clock::now();
 #endif
@@ -597,7 +597,7 @@ void yolo_image_inf(VMContext& context) {
 }
 
 // Process Resnet image using ONNX model
-void resnet_image_inf(VMContext& context) {
+static void resnet_image_inf(VMContext& context) {
    Ort::Session* session = (Ort::Session*)APITools_GetIntValue(context, 1);
 
    size_t* input_array = (size_t*)APITools_GetArray(context, 2)[0];
@@ -752,7 +752,7 @@ void resnet_image_inf(VMContext& context) {
 }
 
 // Process Deeplab image using ONNX model
-void deeplab_image_inf(VMContext& context) {
+static void deeplab_image_inf(VMContext& context) {
 #ifdef _DEBUG
    auto start = std::chrono::high_resolution_clock::now();
 #endif
@@ -871,4 +871,41 @@ void deeplab_image_inf(VMContext& context) {
    catch(const Ort::Exception& e) {
       std::wcerr << L"ONNX Runtime Error: " << e.what() << std::endl;
    }
+}
+
+// Minimal IEEE-754 float32 -> float16 converter (round-to-nearest-even)
+static inline uint16_t f32_to_f16(float f) {
+   uint32_t x; std::memcpy(&x, &f, sizeof(x));
+   uint32_t sign = (x >> 16) & 0x8000u;
+   uint32_t mant = x & 0x007FFFFFu;
+   int32_t  exp = (int32_t)((x >> 23) & 0xFF) - 127 + 15;
+   if(exp <= 0) {
+      if(exp < -10) return (uint16_t)sign;
+      mant = (mant | 0x00800000u) >> (1 - exp);
+      return (uint16_t)(sign | ((mant + 0x00001000u) >> 13));
+   }
+   else if(exp >= 31) {
+      return (uint16_t)(sign | 0x7C00u | (mant ? 0x01u : 0u));
+   }
+   else {
+      return (uint16_t)(sign | (exp << 10) | ((mant + 0x00001000u) >> 13));
+   }
+}
+
+// Build an input tensor in FP32 or FP16 depending on the model input type.
+static inline Ort::Value make_tensor_match_input_type(const std::vector<float>& nchw_f32, const std::vector<int64_t>& shape, ONNXTensorElementDataType elem_type) {
+   Ort::MemoryInfo mem = Ort::MemoryInfo::CreateCpu(OrtDeviceAllocator, OrtMemTypeDefault);
+   if(elem_type == ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16) {
+      std::vector<uint16_t> halfbuf(nchw_f32.size());
+      for(size_t i = 0; i < nchw_f32.size(); ++i) halfbuf[i] = f32_to_f16(nchw_f32[i]);
+      // Use the byte-size overload for FP16
+      return Ort::Value::CreateTensor(mem,
+                                      halfbuf.data(), halfbuf.size() * sizeof(uint16_t),
+                                      shape.data(), (size_t)shape.size(),
+                                      ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16);
+   }
+   // Default: FP32
+   return Ort::Value::CreateTensor<float>(mem,
+                                          const_cast<float*>(nchw_f32.data()), nchw_f32.size(),
+                                          shape.data(), (size_t)shape.size());
 }
