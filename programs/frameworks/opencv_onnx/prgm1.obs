@@ -5,10 +5,40 @@ class Test {
 		if(args->Size() = 1) {
 			image_path := args[0];
 			
-			ProcessDeepLabImages(image_path);
+			ProcessOpenPoseImages(image_path);
+#			ProcessDeepLabImages(image_path);
 #			ProcessYoloImages(image_path);
 #			ProcessResNetImages(image_path)
 		};
+	}
+
+	# OpenPose
+	function : ProcessOpenPoseImages(root_dir : String) ~ Nil {
+		"### ProcessOpenPoseImages ###"->PrintLine();
+
+		image_path := root_dir + "/images/";
+		image_path := image_path->ReplaceAll('\\', '/');
+
+		model_path := root_dir + "/deeplabv3.onnx";
+		model_path := model_path->ReplaceAll('\\', '/');
+
+		"image_path={$image_path}"->PrintLine();
+		"model_path={$model_path}"->PrintLine();
+
+		image_path += "runner.jpg";
+				
+		image_bytes := FileReader->ReadBinaryFile(image_path);
+		image_size := image_bytes->Size();
+
+		"image_path={$image_path}"->PrintLine();
+		"image_size={$image_size}"->PrintLine();
+
+		session := API.Onnx.OpenPoseSession->New(model_path, Nil);
+		result := session->Inference(image_bytes);
+		if(result <> Nil) {
+			overlay_image := result->GetMaskedImage();
+			overlay_image->Show("Overlay");
+		}
 	}
 
 	# DeepLabv3

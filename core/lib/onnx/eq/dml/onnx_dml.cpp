@@ -99,4 +99,12 @@ extern "C" {
    void onnx_deeplab_image_inf(VMContext& context) {
       deeplab_image_inf(context);
    }
+
+   // Process OpenPose image using ONNX model
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void onnx_openpose_image_inf(VMContext& context) {
+      openpose_image_inf(context);
+   }
 }

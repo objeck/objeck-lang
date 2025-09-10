@@ -38,6 +38,7 @@ inline cv::Mat overlay_mask(const cv::Mat& orig_bgr, const cv::Mat& mask_bgr, fl
    CV_Assert(orig_bgr.size() == mask_bgr.size() && orig_bgr.type() == CV_8UC3 && mask_bgr.type() == CV_8UC3);
    cv::Mat blended;
    cv::addWeighted(orig_bgr, 1.0f - alpha, mask_bgr, alpha, 0.0, blended);
+
    return blended;
 }
 
@@ -47,23 +48,24 @@ static cv::Vec3b class_to_color(int id) {
      {  0,  0,  0}, {  0,  0,128}, {  0,128,  0}, {128,  0,  0},
      {128,128,  0}, {  0,128,128}, {128,  0,128}, {128,128,128}
    };
+
    return table[id % (int)(sizeof(table) / sizeof(table[0]))];
 }
 
 // BGR image -> preprocessed float or uint8 tensor
-static std::vector<float> preprocess_deeplab(const cv::Mat& img, int resize_height, int resize_width, std::vector<int64_t>& shape) {
+static std::vector<float> deeplab_preprocess(const cv::Mat& img, int height, int width, std::vector<int64_t>& shape) {
    const ModelSpec spec;
    std::vector<float> input_tensor_values;
 
    cv::Mat resized; 
-   cv::resize(img, resized, cv::Size(resize_width, resize_height));
+   cv::resize(img, resized, cv::Size(width, height));
 
    cv::Mat rgb; 
    cv::cvtColor(resized, rgb, cv::COLOR_BGR2RGB);
 
    rgb.convertTo(rgb, CV_32F, 1.0 / 255.0);
-   shape = spec.nchw ? std::vector<int64_t>{1, 3, resize_height, resize_width} : std::vector<int64_t>{ 1,resize_height,resize_width,3 };
-   input_tensor_values.resize((size_t)resize_height * resize_width * 3);
+   shape = spec.nchw ? std::vector<int64_t>{1, 3, height, width} : std::vector<int64_t>{ 1,height,width,3 };
+   input_tensor_values.resize((size_t)height * width * 3);
 
    if(spec.nchw) {
       std::vector<cv::Mat> ch; cv::split(rgb, ch);
@@ -71,16 +73,16 @@ static std::vector<float> preprocess_deeplab(const cv::Mat& img, int resize_heig
       for(int c = 0; c < 3; ++c) {
          ch[c] = (ch[c] - spec.mean[c]) / spec.stdd[c];
       }
-      size_t cstride = (size_t)resize_height * resize_width;
+      size_t cstride = (size_t)height * width;
       std::memcpy(input_tensor_values.data() + 0 * cstride, ch[0].ptr<float>(), cstride * sizeof(float));
       std::memcpy(input_tensor_values.data() + 1 * cstride, ch[1].ptr<float>(), cstride * sizeof(float));
       std::memcpy(input_tensor_values.data() + 2 * cstride, ch[2].ptr<float>(), cstride * sizeof(float));
    }
    else {
       // NHWC normalize in-place
-      for(int y = 0; y < resize_height; ++y) {
+      for(int y = 0; y < height; ++y) {
          float* p = rgb.ptr<float>(y);
-         for(int x = 0; x < resize_width; ++x) {
+         for(int x = 0; x < width; ++x) {
             float r = p[3 * x + 0], g = p[3 * x + 1], b = p[3 * x + 2];
             p[3 * x + 0] = (r - spec.mean[0]) / spec.stdd[0];
             p[3 * x + 1] = (g - spec.mean[1]) / spec.stdd[1];
@@ -92,6 +94,19 @@ static std::vector<float> preprocess_deeplab(const cv::Mat& img, int resize_heig
    }
 
    return input_tensor_values;
+}
+
+// BGR image -> preprocessed NCHW float tensor (0..1)
+static void openpose_preprocess(const cv::Mat& img, int W, int H, std::vector<float>& out) {
+   cv::Mat r; cv::resize(img, r, cv::Size(W, H), 0, 0, cv::INTER_LINEAR);
+   cv::Mat rgb; cv::cvtColor(r, rgb, cv::COLOR_BGR2RGB);
+   rgb.convertTo(rgb, CV_32F, 1.0 / 255.0);
+   std::vector<cv::Mat> ch; cv::split(rgb, ch);
+   out.resize((size_t)3 * H * W);
+   size_t cs = (size_t)H * W;
+   std::memcpy(out.data() + 0 * cs, ch[0].ptr<float>(), cs * sizeof(float));
+   std::memcpy(out.data() + 1 * cs, ch[1].ptr<float>(), cs * sizeof(float));
+   std::memcpy(out.data() + 2 * cs, ch[2].ptr<float>(), cs * sizeof(float));
 }
 
 // logits [C,H,W] -> color mask
@@ -108,6 +123,18 @@ static cv::Mat argmax_colorize(const float* logits, int C, int H, int W) {
       }
    }
    return mask;
+}
+
+// argmax in 2D float array
+static cv::Point2f argmax2d(const float* m, int H, int W, float& peak) {
+   int bx = 0, by = 0; float bv = -1e9f;
+   for(int y = 0; y < H; ++y) {
+      const float* row = m + y * W;
+      for(int x = 0; x < W; ++x) { float v = row[x]; if(v > bv) { bv = v; by = y; bx = x; } }
+   }
+   peak = bv; 
+   
+   return { (float)bx,(float)by };
 }
 
 //
@@ -149,13 +176,17 @@ static float iou_rect(float x1, float y1, float x2, float y2, float X1, float Y1
    float xx2 = std::min(x2, X2), yy2 = std::min(y2, Y2);
    float w = std::max(0.f, xx2 - xx1), h = std::max(0.f, yy2 - yy1);
    float inter = w * h, uni = (x2 - x1) * (y2 - y1) + (X2 - X1) * (Y2 - Y1) - inter;
+
    return uni <= 0 ? 0.f : inter / uni;
 }
 
 static void nms(std::vector<size_t>& keep_idx, const std::vector<cv::Rect>& boxes, const std::vector<double>& scores, float iou_thres) {
    std::vector<size_t> idx(boxes.size());
    std::iota(idx.begin(), idx.end(), 0);
-   std::sort(idx.begin(), idx.end(), [&](size_t a, size_t b) {return scores[a] > scores[b]; });
+   std::sort(idx.begin(), idx.end(), [&](size_t a, size_t b) {
+      return scores[a] > scores[b]; 
+   });
+
    std::vector<char> sup(boxes.size(), 0);
    for(size_t i = 0; i < idx.size(); ++i) {
       size_t p = idx[i];
@@ -255,29 +286,40 @@ static std::vector<float> resnet_preprocess(const cv::Mat& img, int resize_heigh
 // General utilities
 //
 
-// Get available execution provider names
-void get_provider_names(VMContext& context) {
-   // Get output parameter
-   size_t* output_holder = APITools_GetArray(context, 0);
+// Minimal IEEE-754 float32 -> float16 converter (round-to-nearest-even)
+static inline uint16_t f32_to_f16(float f) {
+   uint32_t x; std::memcpy(&x, &f, sizeof(x));
+   uint32_t sign = (x >> 16) & 0x8000u;
+   uint32_t mant = x & 0x007FFFFFu;
+   int32_t  exp = (int32_t)((x >> 23) & 0xFF) - 127 + 15;
+   if(exp <= 0) {
+      if(exp < -10) return (uint16_t)sign;
+      mant = (mant | 0x00800000u) >> (1 - exp);
+      return (uint16_t)(sign | ((mant + 0x00001000u) >> 13));
+   }
+   else if(exp >= 31) {
+      return (uint16_t)(sign | 0x7C00u | (mant ? 0x01u : 0u));
+   }
+   else {
+      return (uint16_t)(sign | (exp << 10) | ((mant + 0x00001000u) >> 13));
+   }
+}
 
-   // Get execution provider names
-   std::vector<std::wstring> execution_provider_names;
-
-   auto execution_providers = Ort::GetAvailableProviders();
-   for(size_t i = 0; i < execution_providers.size(); ++i) {
-      auto &execution_provider = execution_providers[i];
-      execution_provider_names.push_back(BytesToUnicode(execution_provider));
+// Build an input tensor in FP32 or FP16 depending on the model input type.
+static inline Ort::Value make_tensor_match_input_type(const std::vector<float>& nchw_f32, const std::vector<int64_t>& shape, ONNXTensorElementDataType elem_type) {
+   Ort::MemoryInfo mem = Ort::MemoryInfo::CreateCpu(OrtDeviceAllocator, OrtMemTypeDefault);
+   if(elem_type == ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16) {
+      std::vector<uint16_t> halfbuf(nchw_f32.size());
+      for(size_t i = 0; i < nchw_f32.size(); ++i) halfbuf[i] = f32_to_f16(nchw_f32[i]);
+      // Use the byte-size overload for FP16
+      return Ort::Value::CreateTensor(mem,
+                                      halfbuf.data(), halfbuf.size() * sizeof(uint16_t),
+                                      shape.data(), (size_t)shape.size(),
+                                      ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16);
    }
 
-   // Copy results
-   size_t* output_string_array = APITools_MakeIntArray(context, execution_provider_names.size());
-   size_t* output_string_array_buffer = output_string_array + 3;
-   for(size_t i = 0; i < execution_provider_names.size(); ++i) {
-      output_string_array_buffer[i] = (size_t)APITools_CreateStringObject(context, execution_provider_names[i]);
-   }
-
-   // get provider names and set output holder
-   output_holder[0] = (size_t)output_string_array;
+   // Default: FP32
+   return Ort::Value::CreateTensor<float>(mem, const_cast<float*>(nchw_f32.data()), nchw_f32.size(), shape.data(), (size_t)shape.size());
 }
 
 // Read OpenCV image from raw data
@@ -324,6 +366,31 @@ static void close_session(VMContext& context) {
    }
 
    env.reset();
+}
+
+// Get available execution provider names
+void get_provider_names(VMContext& context) {
+   // Get output parameter
+   size_t* output_holder = APITools_GetArray(context, 0);
+
+   // Get execution provider names
+   std::vector<std::wstring> execution_provider_names;
+
+   auto execution_providers = Ort::GetAvailableProviders();
+   for(size_t i = 0; i < execution_providers.size(); ++i) {
+      auto& execution_provider = execution_providers[i];
+      execution_provider_names.push_back(BytesToUnicode(execution_provider));
+   }
+
+   // Copy results
+   size_t* output_string_array = APITools_MakeIntArray(context, execution_provider_names.size());
+   size_t* output_string_array_buffer = output_string_array + 3;
+   for(size_t i = 0; i < execution_provider_names.size(); ++i) {
+      output_string_array_buffer[i] = (size_t)APITools_CreateStringObject(context, execution_provider_names[i]);
+   }
+
+   // get provider names and set output holder
+   output_holder[0] = (size_t)output_string_array;
 }
 
 // Process Yolo image using ONNX model
@@ -499,7 +566,7 @@ static void yolo_image_inf(VMContext& context) {
 
          auto sigmoid = [](float x) {
             return 1.f / (1.f + std::exp(-x));
-            };
+         };
 
          int best = 0; float bestp = 0.f;
          for(int j = 0; j < nc; ++j) {
@@ -783,7 +850,7 @@ static void deeplab_image_inf(VMContext& context) {
 
       // Preprocess image for Deeplab
       std::vector<int64_t> input_shape;
-      std::vector<float> fbuf = preprocess_deeplab(img, 520, 520, input_shape);
+      std::vector<float> fbuf = deeplab_preprocess(img, 520, 520, input_shape);
 
       // Create input tensor
       Ort::MemoryInfo mem_info = Ort::MemoryInfo::CreateCpu(OrtDeviceAllocator, OrtMemTypeCPU);
@@ -836,7 +903,6 @@ static void deeplab_image_inf(VMContext& context) {
       cv::Mat overlaid;
       cv::addWeighted(img, 0.55, masked, 0.45, 0.0, overlaid);
 
-      //
       // Build results
       size_t* deeplab_result_obj = APITools_CreateObject(context, L"API.Onnx.DeepLabResult");
 
@@ -873,39 +939,143 @@ static void deeplab_image_inf(VMContext& context) {
    }
 }
 
-// Minimal IEEE-754 float32 -> float16 converter (round-to-nearest-even)
-static inline uint16_t f32_to_f16(float f) {
-   uint32_t x; std::memcpy(&x, &f, sizeof(x));
-   uint32_t sign = (x >> 16) & 0x8000u;
-   uint32_t mant = x & 0x007FFFFFu;
-   int32_t  exp = (int32_t)((x >> 23) & 0xFF) - 127 + 15;
-   if(exp <= 0) {
-      if(exp < -10) return (uint16_t)sign;
-      mant = (mant | 0x00800000u) >> (1 - exp);
-      return (uint16_t)(sign | ((mant + 0x00001000u) >> 13));
-   }
-   else if(exp >= 31) {
-      return (uint16_t)(sign | 0x7C00u | (mant ? 0x01u : 0u));
-   }
-   else {
-      return (uint16_t)(sign | (exp << 10) | ((mant + 0x00001000u) >> 13));
-   }
-}
+// Process OpenPose image using ONNX model
+static void openpose_image_inf(VMContext& context) {
+#ifdef _DEBUG
+   auto start = std::chrono::high_resolution_clock::now();
+#endif
 
-// Build an input tensor in FP32 or FP16 depending on the model input type.
-static inline Ort::Value make_tensor_match_input_type(const std::vector<float>& nchw_f32, const std::vector<int64_t>& shape, ONNXTensorElementDataType elem_type) {
-   Ort::MemoryInfo mem = Ort::MemoryInfo::CreateCpu(OrtDeviceAllocator, OrtMemTypeDefault);
-   if(elem_type == ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16) {
-      std::vector<uint16_t> halfbuf(nchw_f32.size());
-      for(size_t i = 0; i < nchw_f32.size(); ++i) halfbuf[i] = f32_to_f16(nchw_f32[i]);
-      // Use the byte-size overload for FP16
-      return Ort::Value::CreateTensor(mem,
-                                      halfbuf.data(), halfbuf.size() * sizeof(uint16_t),
-                                      shape.data(), (size_t)shape.size(),
-                                      ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16);
+   Ort::Session* session = (Ort::Session*)APITools_GetIntValue(context, 1);
+
+   size_t* input_array = (size_t*)APITools_GetArray(context, 2)[0];
+   const long input_size = ((long)APITools_GetArraySize(input_array));
+   const unsigned char* input_bytes = (unsigned char*)APITools_GetArray(input_array);
+
+   // Validate parameters
+   if(!session || !input_bytes) {
+      return;
    }
-   // Default: FP32
-   return Ort::Value::CreateTensor<float>(mem,
-                                          const_cast<float*>(nchw_f32.data()), nchw_f32.size(),
-                                          shape.data(), (size_t)shape.size());
+
+   try {
+      std::vector<uchar> image_data(input_bytes, input_bytes + input_size);
+      cv::Mat img = cv::imdecode(image_data, cv::IMREAD_COLOR);
+      if(img.empty()) {
+         if(session) {
+            delete session;
+            session = nullptr;
+         }
+
+         std::wcerr << L"Failed to read image!" << std::endl;
+         return;
+      }
+
+      // Preprocess image for OpenPose
+      Ort::AllocatorWithDefaultOptions alloc;
+
+      std::string in_name = session->GetInputNameAllocated(0, alloc).get();
+      std::vector<std::string> out_names_s;
+      size_t output_count = session->GetOutputCount();
+      std::vector<const char*> out_names(output_count);
+      out_names_s.resize(output_count);
+      for(size_t i = 0; i < output_count; ++i) { 
+         out_names_s[i] = session->GetOutputNameAllocated(i, alloc).get(); out_names[i] = out_names_s[i].c_str(); 
+      }
+
+      // Input shape/type
+      auto input_type_shape = session->GetInputTypeInfo(0).GetTensorTypeAndShapeInfo();
+      auto input_shape_vec = input_type_shape.GetShape(); // expect [1,3,H,W]
+      int input_height = input_shape_vec.size() >= 3 && input_shape_vec[2] > 0 ? (int)input_shape_vec[2] : 368;
+      int input_width = input_shape_vec.size() >= 4 && input_shape_vec[3] > 0 ? (int)input_shape_vec[3] : 368;
+      auto input_elem = input_type_shape.GetElementType();
+
+      std::vector<float> input_tensor_data; 
+      openpose_preprocess(img, input_width, input_height, input_tensor_data);
+      std::array<int64_t, 4> input_shape{ 1,3,input_height,input_width };
+
+      // Build FP32 or FP16 input (auto)
+      // Ort::Value input = make_tensor_match_input_type(input_tensor_data, { input_shape.begin(), input_shape.end() }, input_elem);
+     
+      Ort::MemoryInfo mem_info = Ort::MemoryInfo::CreateCpu(OrtDeviceAllocator, OrtMemTypeCPU);
+      Ort::Value input = Ort::Value::CreateTensor<float>(
+         mem_info,
+         input_tensor_data.data(),     // std::vector<float>
+         input_tensor_data.size(),
+         input_shape.data(),
+         input_shape.size()
+      );
+      
+      // Run
+      const char* in_names[] = { in_name.c_str() };
+      auto outs = session->Run(
+         Ort::RunOptions{ nullptr }, 
+         in_names, 
+         &input, 
+         1, 
+         out_names.data(), 
+         out_names.size());
+
+      // Treat outs[0] as heatmaps [1,C,Hh,Ww] (many OpenPose exports do this)
+      auto& output_tensor = outs[0];
+      auto output_info = output_tensor.GetTensorTypeAndShapeInfo();
+      auto output_shape = output_info.GetShape();
+      if(output_shape.size() != 4) {
+         if(session) {
+            delete session;
+            session = nullptr;
+         }
+
+         std::cerr << "unexpected output shape\n";
+         return;
+      }
+
+      const int num_channels = (int)output_shape[1], Hh = (int)output_shape[2], Ww = (int)output_shape[3];
+      const float* heat = output_tensor.GetTensorData<float>(); // ORT exposes as float for most EPs
+
+      // Single-person: one peak per keypoint channel (skip background if present)
+      int NUM_KP = std::min(num_channels - 1, 18); // 18 COCO body channels (commonly C = 19 incl. bg)
+      std::vector<cv::Point2f> kps(NUM_KP, { -1,-1 });
+      for(int k = 0; k < NUM_KP; ++k) {
+         float pk = 0.f; cv::Point2f p = argmax2d(heat + (size_t)k * Hh * Ww, Hh, Ww, pk);
+         if(pk > 0.1f) {
+            float x = (p.x * (float)input_width / (float)Ww) * ((float)img.cols / (float)input_width);
+            float y = (p.y * (float)input_height / (float)Hh) * ((float)img.rows / (float)input_height);
+            kps[k] = { x,y };
+         }
+      }
+
+      // Draw
+      cv::Mat pose_image = img.clone();
+      for(int k = 0; k < NUM_KP; ++k) if(kps[k].x >= 0) cv::circle(pose_image, kps[k], 3, { 0,255,0 }, -1, cv::LINE_AA);
+      // minimal pairs; adjust to match your model’s mapping
+      static const std::pair<int, int> pairs[] = { {1,2},{1,5},{2,3},{3,4},{5,6},{6,7},{1,8},{8,9},{9,10},{1,11},{11,12},{12,13} };
+      for(auto pr : pairs) {
+         int a = pr.first, b = pr.second;
+         if(a >= 0 && a < NUM_KP && b >= 0 && b < NUM_KP && kps[a].x >= 0 && kps[b].x >= 0)
+            cv::line(pose_image, kps[a], kps[b], { 0,200,255 }, 2, cv::LINE_AA);
+      }
+
+      // Build results
+      size_t* deeplab_result_obj = APITools_CreateObject(context, L"API.Onnx.OpenPoseResult");
+
+      // masked image
+      size_t* maked_image_array = APITools_MakeIntArray(context, 2);
+      size_t* pose_image_array_buffer = maked_image_array + 3;
+      pose_image_array_buffer[0] = pose_image.rows;
+      pose_image_array_buffer[1] = pose_image.cols;
+      deeplab_result_obj[0] = (size_t)maked_image_array;
+
+      size_t* pose_obj = opencv_raw_write(pose_image, context);
+      deeplab_result_obj[1] = (size_t)pose_obj;
+
+      APITools_SetObjectValue(context, 0, deeplab_result_obj);
+
+#ifdef _DEBUG
+      const auto end = std::chrono::high_resolution_clock::now();
+      const auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+      std::wcout << L"ONNX Deeplab inference completed in " << duration << L" ms." << std::endl;
+#endif
+   }
+   catch(const Ort::Exception& e) {
+      std::wcerr << L"ONNX Runtime Error: " << e.what() << std::endl;
+   }
 }
