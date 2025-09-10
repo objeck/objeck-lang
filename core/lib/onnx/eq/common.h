@@ -100,7 +100,11 @@ static std::vector<float> deeplab_preprocess(const cv::Mat& img, int height, int
 static void openpose_preprocess(const cv::Mat& img, int W, int H, std::vector<float>& out) {
    cv::Mat r; cv::resize(img, r, cv::Size(W, H), 0, 0, cv::INTER_LINEAR);
    cv::Mat rgb; cv::cvtColor(r, rgb, cv::COLOR_BGR2RGB);
-   rgb.convertTo(rgb, CV_32F, 1.0 / 255.0);
+   rgb.convertTo(rgb, CV_32F, 1.0f / 255.0f);
+
+   // Normalize to [-1,1] which many OpenPose ONNX exports expect
+   rgb = (rgb - 0.5f) / 0.5f;
+
    std::vector<cv::Mat> ch; cv::split(rgb, ch);
    out.resize((size_t)3 * H * W);
    size_t cs = (size_t)H * W;
@@ -109,13 +113,13 @@ static void openpose_preprocess(const cv::Mat& img, int W, int H, std::vector<fl
    std::memcpy(out.data() + 2 * cs, ch[2].ptr<float>(), cs * sizeof(float));
 }
 
-// logits [C,H,W] -> color mask
-static cv::Mat argmax_colorize(const float* logits, int C, int H, int W) {
+// logits [num_channel,H,W] -> color mask
+static cv::Mat argmax_colorize(const float* logits, int num_channel, int H, int W) {
    cv::Mat mask(H, W, CV_8UC3);
    for(int y = 0; y < H; ++y) {
       for(int x = 0; x < W; ++x) {
          int best = 0; float bestv = logits[0 * H * W + y * W + x];
-         for(int c = 1; c < C; ++c) {
+         for(int c = 1; c < num_channel; ++c) {
             float v = logits[c * H * W + y * W + x];
             if(v > bestv) { bestv = v; best = c; }
          }
@@ -505,7 +509,7 @@ static void yolo_image_inf(VMContext& context) {
       output_image_array_buffer[1] = cols;
       yolo_result_obj[2] = (size_t)output_image_array;
 
-      // Decode YOLO11/YOLO12 fused head: supports [1,C,N] or [1,N,C] and (4+nc) or (4+1+nc)
+      // Decode YOLO11/YOLO12 fused head: supports [1,num_channel,N] or [1,N,num_channel] and (4+nc) or (4+1+nc)
       const int64_t A = (output_shape.size() >= 2) ? output_shape[1] : 0;
       const int64_t B = (output_shape.size() >= 3) ? output_shape[2] : 0;
       if(output_shape.size() != 3 || output_shape[0] != 1) {
@@ -514,13 +518,13 @@ static void yolo_image_inf(VMContext& context) {
 
       const int64_t num_channels = std::min<int64_t>(A, B); // channels per candidate  (~84 or 85)
       const int64_t num_candidates = std::max<int64_t>(A, B); // number of candidates    (~8400)
-      const bool need_transpose = (A == num_channels); // original was [1,C,N] if A is smaller
+      const bool need_transpose = (A == num_channels); // original was [1,num_channel,N] if A is smaller
 
       std::vector<float> preds; preds.reserve((size_t)num_candidates * num_channels);
       const float* data_ptr = output_data;
       if(need_transpose) {
          preds.resize((size_t)num_candidates * num_channels);
-         // transpose [1,C,N] -> [N,C]
+         // transpose [1,num_channel,N] -> [N,num_channel]
          for(int64_t c = 0; c < num_channels; ++c)
             for(int64_t n = 0; n < num_candidates; ++n)
                preds[(size_t)n * num_channels + c] = output_data[c * num_candidates + n];
@@ -559,7 +563,7 @@ static void yolo_image_inf(VMContext& context) {
          const float* p = data_ptr + i * num_channels;
          float cx = p[0], cy = p[1], w = p[2], h = p[3];
 
-         // best class prob, head layout has set: C, idx_cls0, has_obj, idx_obj, labels_size
+         // best class prob, head layout has set: num_channel, idx_cls0, has_obj, idx_obj, labels_size
          int max_classes_in_tensor = (int)(num_channels - idx_cls0);
          int nc = (int)labels_size;
          if(nc <= 0 || nc > max_classes_in_tensor) nc = max_classes_in_tensor;
@@ -878,7 +882,7 @@ static void deeplab_image_inf(VMContext& context) {
 
       Ort::Value& output_tensor = output_tensors.front();
       auto info = output_tensor.GetTensorTypeAndShapeInfo();
-      auto shape = info.GetShape(); // {1,C,H,W}
+      auto shape = info.GetShape(); // {1,num_channel,H,W}
 
       if(shape.size() != 4) {
          if(session) {
@@ -890,12 +894,12 @@ static void deeplab_image_inf(VMContext& context) {
          return;
       }
 
-      const int C = (int)shape[1];
+      const int num_channel = (int)shape[1];
       const int H = (int)shape[2];
       const int W = (int)shape[3];
       const float* logits = output_tensor.GetTensorData<float>();
 
-      cv::Mat mask = argmax_colorize(logits, C, H, W);
+      cv::Mat mask = argmax_colorize(logits, num_channel, H, W);
 
       cv::Mat masked;
       cv::resize(mask, masked, img.size(), 0, 0, cv::INTER_NEAREST);
@@ -991,14 +995,11 @@ static void openpose_image_inf(VMContext& context) {
       std::vector<float> input_tensor_data; 
       openpose_preprocess(img, input_width, input_height, input_tensor_data);
       std::array<int64_t, 4> input_shape{ 1,3,input_height,input_width };
-
-      // Build FP32 or FP16 input (auto)
-      // Ort::Value input = make_tensor_match_input_type(input_tensor_data, { input_shape.begin(), input_shape.end() }, input_elem);
-     
+    
       Ort::MemoryInfo mem_info = Ort::MemoryInfo::CreateCpu(OrtDeviceAllocator, OrtMemTypeCPU);
       Ort::Value input = Ort::Value::CreateTensor<float>(
          mem_info,
-         input_tensor_data.data(),     // std::vector<float>
+         input_tensor_data.data(),
          input_tensor_data.size(),
          input_shape.data(),
          input_shape.size()
@@ -1014,44 +1015,118 @@ static void openpose_image_inf(VMContext& context) {
          out_names.data(), 
          out_names.size());
 
-      // Treat outs[0] as heatmaps [1,C,Hh,Ww] (many OpenPose exports do this)
-      auto& output_tensor = outs[0];
-      auto output_info = output_tensor.GetTensorTypeAndShapeInfo();
-      auto output_shape = output_info.GetShape();
-      if(output_shape.size() != 4) {
+      size_t heat_i = SIZE_MAX;
+      int num_channel = 0, heatmap_height = 0, heatmap_width = 0;
+      int channel_offset = 0; // for 57 = [38 PAFs | 19 heatmaps]
+      int total_channels = 0; // actual channels in the tensor
+
+      auto score_channels = [](int c) -> int {
+         // prefer exact known sizes, then closeness to 19
+         if(c == 19 || c == 26 || c == 18 || c == 25) {
+            return 1000;
+         }
+
+         if(c == 57) {
+            return 900; // HM+PAF concat
+         }
+
+         return 100 - std::min(std::abs(c - 19), std::abs(c - 26));
+      };
+
+      int best = -1;
+      for(size_t i = 0; i < outs.size(); ++i) {
+         auto s = outs[i].GetTensorTypeAndShapeInfo().GetShape();
+         if(s.size() == 4 && s[0] == 1) {
+           int c = (int)s[1], h = (int)s[2], w = (int)s[3];
+           if(h >= 8 && w >= 8 && h <= 2048 && w <= 2048) {
+              int sc = score_channels(c) + (int)std::log2((double)h * w);
+              if(sc > best) {
+                 best = sc; heat_i = (size_t)i;
+                 total_channels = c;
+                 heatmap_height = h; 
+                 heatmap_width = w;
+              }
+           }            
+         }
+      }
+      // bail if truly nothing plausible
+      if(heat_i == SIZE_MAX) {
          if(session) {
             delete session;
             session = nullptr;
          }
 
-         std::cerr << "unexpected output shape\n";
+         std::wcerr << L"No heatmap-like output found (none were 4D with N=1 and reasonable HxW)." << std::endl;
          return;
       }
 
-      const int num_channels = (int)output_shape[1], Hh = (int)output_shape[2], Ww = (int)output_shape[3];
-      const float* heat = output_tensor.GetTensorData<float>(); // ORT exposes as float for most EPs
+      // decide how many HM channels and where they start
+      if(total_channels == 57) { 
+         num_channel = 19; 
+         channel_offset = 38; 
+      }
+      else if(total_channels == 26 || total_channels == 25) { 
+         num_channel = total_channels; 
+      }
+      else if(total_channels == 19 || total_channels == 18) { 
+         num_channel = total_channels; 
+      }
+      else if(total_channels > 19 && total_channels < 128) { 
+         num_channel = std::min(total_channels, 26); 
+      } // generic fallback
+      else { 
+         num_channel = std::min(total_channels, 26); 
+      }
 
-      // Single-person: one peak per keypoint channel (skip background if present)
-      int NUM_KP = std::min(num_channels - 1, 18); // 18 COCO body channels (commonly C = 19 incl. bg)
-      std::vector<cv::Point2f> kps(NUM_KP, { -1,-1 });
+      const float* base = outs[heat_i].GetTensorData<float>();
+      auto atHM = [&](int k, int y, int x) -> float {
+         const int kk = k + channel_offset; // skips PAFs if needed
+         // NCHW: [1, C_total, H, W]
+         size_t idx = (size_t)kk * heatmap_height * heatmap_width + (size_t)y * heatmap_width + x;
+         return base[idx];         
+      };
+
+      // find peaks (skip background = last channel)
+      const int NUM_KP = std::max(0, std::min(num_channel - 1, 25)); // works for 18/19 and 25/26
+      std::vector<cv::Point2f> kps(NUM_KP, { -1.f,-1.f });
       for(int k = 0; k < NUM_KP; ++k) {
-         float pk = 0.f; cv::Point2f p = argmax2d(heat + (size_t)k * Hh * Ww, Hh, Ww, pk);
-         if(pk > 0.1f) {
-            float x = (p.x * (float)input_width / (float)Ww) * ((float)img.cols / (float)input_width);
-            float y = (p.y * (float)input_height / (float)Hh) * ((float)img.rows / (float)input_height);
-            kps[k] = { x,y };
+         float bestv = -1e9f; int bx = 0, by = 0;
+         
+         for(int y = 0; y < heatmap_height; ++y) {
+            for(int x = 0; x < heatmap_width; ++x) {
+               float v = atHM(k, y, x); // channel k (background assumed at num_channel-1)
+               if(v > bestv) { 
+                  bestv = v; by = y; bx = x; 
+               }
+            }
+         }
+         
+         if(bestv > 0.05f) {
+            kps[k] = { 
+               bx * (float)img.cols / (float)heatmap_width, by * (float)img.rows / (float)heatmap_height 
+            };
          }
       }
 
       // Draw
-      cv::Mat pose_image = img.clone();
-      for(int k = 0; k < NUM_KP; ++k) if(kps[k].x >= 0) cv::circle(pose_image, kps[k], 3, { 0,255,0 }, -1, cv::LINE_AA);
-      // minimal pairs; adjust to match your model’s mapping
-      static const std::pair<int, int> pairs[] = { {1,2},{1,5},{2,3},{3,4},{5,6},{6,7},{1,8},{8,9},{9,10},{1,11},{11,12},{12,13} };
+      cv::Mat vis = img.clone();
+      for(auto& p : kps) {
+         if(p.x >= 0) {
+            cv::circle(vis, p, 3, { 0,255,0 }, -1, cv::LINE_AA);
+         }
+      }
+
+      // skeleton pairs (25 keypoints)
+      const std::pair<int, int> pairs[] = {
+         {1,2},{1,5},{2,3},{3,4},{5,6},{6,7}, {1,8},{8,9},{9,10},{1,11},{11,12},{12,13}, {2,8},{5,11} 
+      };
+
+      // draw skeleton
       for(auto pr : pairs) {
          int a = pr.first, b = pr.second;
-         if(a >= 0 && a < NUM_KP && b >= 0 && b < NUM_KP && kps[a].x >= 0 && kps[b].x >= 0)
-            cv::line(pose_image, kps[a], kps[b], { 0,200,255 }, 2, cv::LINE_AA);
+         if(a >= 0 && a < NUM_KP && b >= 0 && b < NUM_KP && kps[a].x >= 0 && kps[b].x >= 0) {
+            cv::line(vis, kps[a], kps[b], { 0,200,255 }, 2, cv::LINE_AA);
+         }
       }
 
       // Build results
@@ -1060,11 +1135,11 @@ static void openpose_image_inf(VMContext& context) {
       // masked image
       size_t* maked_image_array = APITools_MakeIntArray(context, 2);
       size_t* pose_image_array_buffer = maked_image_array + 3;
-      pose_image_array_buffer[0] = pose_image.rows;
-      pose_image_array_buffer[1] = pose_image.cols;
+      pose_image_array_buffer[0] = vis.rows;
+      pose_image_array_buffer[1] = vis.cols;
       deeplab_result_obj[0] = (size_t)maked_image_array;
 
-      size_t* pose_obj = opencv_raw_write(pose_image, context);
+      size_t* pose_obj = opencv_raw_write(vis, context);
       deeplab_result_obj[1] = (size_t)pose_obj;
 
       APITools_SetObjectValue(context, 0, deeplab_result_obj);

@@ -44,8 +44,8 @@ extern "C" {
       const size_t* keys_ptrs = APITools_GetArray(keys_array);
 
       size_t* values_array = (size_t*)APITools_GetArray(context, 2)[1];
-      const long values_size = ((long)APITools_GetArraySize(keys_array));
-      const size_t* values_ptrs = APITools_GetArray(keys_array);
+      const long values_size = (long)APITools_GetArraySize(values_array);
+      const size_t* values_ptrs = APITools_GetArray(values_array);
 
       const std::wstring model_path = APITools_GetStringValue(context, 3);
       

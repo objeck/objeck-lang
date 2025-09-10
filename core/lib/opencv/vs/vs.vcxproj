@@ -132,8 +132,7 @@
       <AdditionalDependencies>$(CoreLibraryDependencies);%(AdditionalDependencies);opencv_world4120d.lib</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>
-      </Command>
+      <Command>pushd ..\..\..\..\programs\frameworks\opencv_onnx &amp;&amp;  build_opencv arm64 Debug &amp;&amp; popd</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
