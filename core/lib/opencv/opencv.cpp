@@ -71,7 +71,18 @@ extern "C" {
 
       cv::Mat image = opencv_raw_read(image_obj, context);
 
-      cv::imshow(title, image);
+      // Resize to 75% of original width/height
+      cv::Mat resized_image;
+      double scale = 0.33;
+      cv::resize(
+         image, resized_image,
+         cv::Size(),    // let OpenCV compute new size from scale
+         scale, scale,  // fx, fy (0.75 = 75%)
+         cv::INTER_LINEAR
+      );
+
+
+      cv::imshow(title, resized_image);
       cv::waitKey(0);
    }
 
