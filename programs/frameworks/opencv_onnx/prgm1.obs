@@ -19,13 +19,13 @@ class Test {
 		image_path := root_dir + "/images/";
 		image_path := image_path->ReplaceAll('\\', '/');
 
-		model_path := root_dir + "/deeplabv3.onnx";
+		model_path := root_dir + "/human-pose.onnx";
 		model_path := model_path->ReplaceAll('\\', '/');
 
 		"image_path={$image_path}"->PrintLine();
 		"model_path={$model_path}"->PrintLine();
 
-		image_path += "runner.jpg";
+		image_path += "yoga.jpg";
 				
 		image_bytes := FileReader->ReadBinaryFile(image_path);
 		image_size := image_bytes->Size();
