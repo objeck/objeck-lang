@@ -117,12 +117,23 @@ bundle API.OpenCV {
 
 		#~
 		Shows an image
+		@param title dialog title
 		~#
 		method : public : Show(title : String) ~ Nil {
-			array_args := Base->New[2];
+			Show(title, 1.0);
+		}
+
+		#~
+		Shows an image
+		@param title dialog title
+		@param scale scaling percentage 
+		~#
+		method : public : Show(title : String, scale : Float) ~ Nil {
+			array_args := Base->New[3];
 
 			array_args[0] := @self;
 			array_args[1] := title;
+			array_args[2] := FloatRef->New(scale);
 
 			Proxy->GetDllProxy()->CallFunction("opencv_show_image", array_args);
 		}
