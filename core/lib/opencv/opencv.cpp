@@ -69,18 +69,13 @@ extern "C" {
       const std::wstring w_title = APITools_GetStringValue(context, 1);
       const std::string title = UnicodeToBytes(w_title);
 
+      const double scaling = APITools_GetFloatValue(context, 2);
+
       cv::Mat image = opencv_raw_read(image_obj, context);
 
-      // Resize to 75% of original width/height
+      // resize
       cv::Mat resized_image;
-      double scale = 0.33;
-      cv::resize(
-         image, resized_image,
-         cv::Size(),    // let OpenCV compute new size from scale
-         scale, scale,  // fx, fy (0.75 = 75%)
-         cv::INTER_LINEAR
-      );
-
+      cv::resize(image, resized_image, cv::Size(), scaling, scaling, cv::INTER_LINEAR);
 
       cv::imshow(title, resized_image);
       cv::waitKey(0);

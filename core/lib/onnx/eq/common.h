@@ -1118,12 +1118,12 @@ static void openpose_image_inf(VMContext& context) {
 
       // skeleton pairs (25 keypoints)
       const std::pair<int, int> pairs[] = {
-         {1,2},{1,5},{2,3},{3,4},{5,6},{6,7}, {1,8},{8,9},{9,10},{1,11},{11,12},{12,13}, {2,8},{5,11} 
+         {1,2},{1,5},{2,3},{3,4},{5,6},{6,7},{1,8},{8,9},{9,10},{1,11},{11,12},{12,13},{2,8},{5,11} 
       };
 
       // draw skeleton
-      for(auto pr : pairs) {
-         int a = pr.first, b = pr.second;
+      for(auto& pr : pairs) {
+         const int a = pr.first, b = pr.second;
          if(a >= 0 && a < NUM_KP && b >= 0 && b < NUM_KP && kps[a].x >= 0 && kps[b].x >= 0) {
             cv::line(vis, kps[a], kps[b], { 0,200,255 }, 2, cv::LINE_AA);
          }
