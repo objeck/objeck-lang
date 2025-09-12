@@ -4,22 +4,22 @@ class Test {
 	# Nvidia DML 621 ms
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
-			image_dir := args[0];
+			data_dir := args[0];
 			
-			ProcessResNet(image_dir);
+			ProcessResNet(data_dir);
 			System.IO.Console->ReadLine();
 
-			ProcessDeepLab(image_dir);
+			ProcessDeepLab(data_dir);
 
-			ProcessYolo(image_dir);
+			ProcessYolo(data_dir);
 			
-			ProcessOpenPose(image_dir);
+			ProcessOpenPose(data_dir);
 		};
 	}
 
 	# OpenPose
 	function : ProcessOpenPose(root_dir : String) ~ Nil {
-		"### ProcessOpenPoseImages ###"->PrintLine();
+		"### OpenPose ###"->PrintLine();
 
 		image_dir := root_dir + "/images/";
 		image_dir := image_dir->ReplaceAll('\\', '/');
@@ -50,7 +50,7 @@ class Test {
 
 	# DeepLabv3
 	function : ProcessDeepLab(root_dir : String) ~ Nil {
-		"### ProcessDeepLabImages ###"->PrintLine();
+		"### DeepLab ###"->PrintLine();
 
 		image_dir := root_dir + "/images/";
 		image_dir := image_dir->ReplaceAll('\\', '/');
@@ -79,7 +79,7 @@ class Test {
 
 	# Yolo-v12
 	function : ProcessYolo(root_dir : String) ~ Nil {
-		"### ProcessYoloImages ###"->PrintLine();
+		"### Yolo ###"->PrintLine();
 
 		image_dir := root_dir + "/images/";
 		image_dir := image_dir->ReplaceAll('\\', '/');
@@ -129,7 +129,7 @@ class Test {
 		each(classification in classifications) {
 			label_str := classification->GetName();
 			class_str := classification->ToString();
-			"name='{$label_str}', class={$class_str}\n---"->PrintLine();
+			"name='{$label_str}', class={$class_str}"->PrintLine();
 
 			bounds := classification->GetBounds();
 			left := bounds->GetX();
@@ -146,13 +146,14 @@ class Test {
 				0.75,
 				Scalar->New(255, 0, 0));
 		};
+		"---"->PrintLine();
 
 		image->Show("Yolo", 0.75);
 	}
 
 	# ResNet-50
 	function : ProcessResNet(root_dir : String) ~ Nil {
-		"### ProcessResNetImages ###"->PrintLine();
+		"### ResNet ###"->PrintLine();
 
 		image_dir := root_dir + "/images/";
 		image_dir := image_dir->ReplaceAll('\\', '/');
