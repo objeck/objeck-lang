@@ -5,15 +5,15 @@ class Test {
 		if(args->Size() = 1) {
 			image_path := args[0];
 			
-			ProcessOpenPoseImages(image_path);
-#			ProcessDeepLabImages(image_path);
-#			ProcessYoloImages(image_path);
-#			ProcessResNetImages(image_path)
+			ProcessResNet(image_path)
+			ProcessDeepLab(image_path);
+			ProcessYolo(image_path);
+			ProcessOpenPose(image_path);
 		};
 	}
 
 	# OpenPose
-	function : ProcessOpenPoseImages(root_dir : String) ~ Nil {
+	function : ProcessOpenPose(root_dir : String) ~ Nil {
 		"### ProcessOpenPoseImages ###"->PrintLine();
 
 		image_path := root_dir + "/images/";
@@ -25,7 +25,7 @@ class Test {
 		"image_path={$image_path}"->PrintLine();
 		"model_path={$model_path}"->PrintLine();
 
-		image_path += "runner.jpg";
+		image_path += "sheep_person.jpg";
 				
 		image_bytes := FileReader->ReadBinaryFile(image_path);
 		image_size := image_bytes->Size();
@@ -38,11 +38,13 @@ class Test {
 		if(result <> Nil) {
 			overlay_image := result->GetMaskedImage();
 			overlay_image->Show("Overlay", 1.25);
-		}
+		};
+
+		session->Close();
 	}
 
 	# DeepLabv3
-	function : ProcessDeepLabImages(root_dir : String) ~ Nil {
+	function : ProcessDeepLab(root_dir : String) ~ Nil {
 		"### ProcessDeepLabImages ###"->PrintLine();
 
 		image_path := root_dir + "/images/";
@@ -71,13 +73,13 @@ class Test {
 	}
 
 	# Yolo-v12
-	function : ProcessYoloImages(root_dir : String) ~ Nil {
+	function : ProcessYolo(root_dir : String) ~ Nil {
 		"### ProcessYoloImages ###"->PrintLine();
 
 		image_path := root_dir + "/images/";
 		image_path := image_path->ReplaceAll('\\', '/');
 
-		model_path := root_dir + "/yolov12s-seg.onnx";
+		model_path := root_dir + "/yolov11s-seg.onnx";
 		model_path := model_path->ReplaceAll('\\', '/');
 
 		label_path := root_dir + "/yolo_labels.txt";
@@ -92,7 +94,7 @@ class Test {
 		"image_label_size={$image_label_size}"->PrintLine();
 
 		# set image
-		image_path += "skiing.jpg";
+		image_path += "sheep_person.jpg";
 
 		image_bytes := FileReader->ReadBinaryFile(image_path);
 		image_size := image_bytes->Size();
@@ -107,7 +109,7 @@ class Test {
 		};
 
 		label_names := image_labels->ToArray()->As(String[]);
-
+		
 		session := API.Onnx.YoloSession->New(model_path, Nil);
 		result := session->Inference(image_bytes, 640, 640, 0.65, label_names);
 		if(result = Nil) {
@@ -140,43 +142,11 @@ class Test {
 				Scalar->New(255, 0, 0));
 		};
 
-		result := session->Inference(image_bytes, 640, 640, 0.65, label_names);
-		if(result = Nil) {
-			"--- Error: No results ---"->ErrorLine();
-			return;
-		};
-
-		result->ToString()->PrintLine();
-		"==="->PrintLine();
-
-		classifications := result->GetClassifications();
-		each(classification in classifications) {
-			label_str := classification->GetName();
-			class_str := classification->ToString();
-			"name='{$label_str}', class={$class_str}\n---"->PrintLine();
-
-			bounds := classification->GetBounds();
-			left := bounds->GetX();
-			top := bounds->GetY();
-
-			image := image->DrawRectangle(Rect->New(
-				left, top, bounds->GetWidth(), bounds->GetHeight()), 
-				Scalar->New(0, 255, 0), 2);
-
-			image := image->DrawText(
-				label_str,
-				Point->New(left, top), 
-				Font->FONT_HERSHEY_SIMPLEX,
-				0.75,
-				Scalar->New(255, 0, 0));
-		};
-
 		image->Show("Image w/ Bounds");
-		session->Close();
 	}
 
 	# ResNet-50
-	function : ProcessResNetImages(root_dir : String) ~ Nil {
+	function : ProcessResNet(root_dir : String) ~ Nil {
 		"### ProcessResNetImages ###"->PrintLine();
 
 		image_path := root_dir + "/images/";
@@ -196,7 +166,7 @@ class Test {
 		image_label_size := image_labels->Size();
 		"image_label_size={$image_label_size}"->PrintLine();
 
-		image_path += "dog.jpg";
+		image_path += "sheep_person.jpg";
 				
 		image_bytes := FileReader->ReadBinaryFile(image_path);
 		image_size := image_bytes->Size();
