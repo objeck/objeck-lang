@@ -440,18 +440,18 @@ static void yolo_image_inf(VMContext& context) {
       // Preprocess image using letterbox (YOLO11/12 compatible)
       PreprocInfo pp;
       std::vector<float> input_tensor_values = yolo_preprocess_letterbox(img, resize_height, resize_width, pp);
-      size_t input_tensor_size = input_tensor_values.size();
-
-      // Create input tensor
       std::array<int64_t, 4> input_shape = { 1, 3, resize_height, resize_width };
 
-      Ort::MemoryInfo mem_info = Ort::MemoryInfo::CreateCpu(OrtDeviceAllocator, OrtMemTypeCPU);
-      Ort::Value input_tensor = Ort::Value::CreateTensor<float>(
-         mem_info,
-         input_tensor_values.data(),
-         input_tensor_size,
-         input_shape.data(),
-         4);
+      // Detect model input type
+      auto ti = session->GetInputTypeInfo(0).GetTensorTypeAndShapeInfo();
+      auto elem = ti.GetElementType(); // ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT or _FLOAT16
+
+      // Build tensor that matches the model input type (FP16 if model expects FP16)
+      Ort::Value input_tensor = make_tensor_match_input_type(
+         input_tensor_values,
+         { input_shape.begin(), input_shape.end() },
+         elem
+      );
 
       // Get input/output names
       Ort::AllocatorWithDefaultOptions allocator;
@@ -627,8 +627,7 @@ static void yolo_image_inf(VMContext& context) {
          const cv::Rect& r = boxes[i];
 
 #ifdef _DEBUG
-         std::wcout << L"class_id: " << class_id << L", confidence: " << confidence << L", rect: (" << r.x
-            << "," << r.y << L"," << r.width << "," << r.height << ")" << std::endl;
+         std::wcout << L"class_id: " << class_id << L", confidence: " << confidence << L", rect: (" << r.x << "," << r.y << L"," << r.width << "," << r.height << ")" << std::endl;
 #endif
 
          size_t* class_result_obj = APITools_CreateObject(context, L"API.Onnx.YoloClassification");
@@ -659,7 +658,7 @@ static void yolo_image_inf(VMContext& context) {
 #ifdef _DEBUG
       auto end = std::chrono::high_resolution_clock::now();
       auto duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-      std::wcout << L"ONNX YOLO inference and processing time: " << duration_ms << L" ms" << std::endl;
+      std::wcout << L"=> ONNX YOLO inference and processing time: " << duration_ms << L" ms" << std::endl;
 #endif
    }
    catch(const Ort::Exception& e) {
@@ -669,6 +668,9 @@ static void yolo_image_inf(VMContext& context) {
 
 // Process Resnet image using ONNX model
 static void resnet_image_inf(VMContext& context) {
+#ifdef _DEBUG
+   auto start = std::chrono::high_resolution_clock::now();
+#endif
    Ort::Session* session = (Ort::Session*)APITools_GetIntValue(context, 1);
 
    size_t* input_array = (size_t*)APITools_GetArray(context, 2)[0];
@@ -702,18 +704,16 @@ static void resnet_image_inf(VMContext& context) {
 
       // Preprocess image for YOLO
       std::vector<float> input_tensor_values = resnet_preprocess(img, resize_height, resize_width);
-      size_t input_tensor_size = input_tensor_values.size();
-
-      // Create input tensor
       std::array<int64_t, 4> input_shape = { 1, 3, resize_height, resize_width };
 
-      Ort::MemoryInfo mem_info = Ort::MemoryInfo::CreateCpu(OrtDeviceAllocator, OrtMemTypeCPU);
-      Ort::Value input_tensor = Ort::Value::CreateTensor<float>(
-         mem_info,
-         input_tensor_values.data(),
-         input_tensor_size,
-         input_shape.data(),
-         4);
+      auto ti = session->GetInputTypeInfo(0).GetTensorTypeAndShapeInfo();
+      auto elem = ti.GetElementType();
+
+      Ort::Value input_tensor = make_tensor_match_input_type(
+         input_tensor_values,
+         { input_shape.begin(), input_shape.end() },
+         elem
+      );
 
       // Get input/output names
       Ort::AllocatorWithDefaultOptions allocator;
@@ -775,8 +775,6 @@ static void resnet_image_inf(VMContext& context) {
          }
       }
 
-      // std::wcout << L"Predicted class ID: " << image_index << L", confidence: " << top_confidence; 
-
       // Build results
       size_t* resnet_result_obj = APITools_CreateObject(context, L"API.Onnx.ResNetResult");
       resnet_result_obj[0] = (size_t)output_array;
@@ -810,12 +808,11 @@ static void resnet_image_inf(VMContext& context) {
 
       APITools_SetObjectValue(context, 0, resnet_result_obj);
 
-      /*
-      // Calculate duration in milliseconds
+#ifdef _DEBUG
       auto end = std::chrono::high_resolution_clock::now();
-      auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-      std::wcout << L"ONNX inference completed in " << duration << L" ms." << std::endl;
-      */
+      auto duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+      std::wcout << L"=> ONNX YOLO inference and processing time: " << duration_ms << L" ms" << std::endl;
+#endif
    }
    catch(const Ort::Exception& e) {
       std::wcerr << L"ONNX Runtime Error: " << e.what() << std::endl;
@@ -854,11 +851,16 @@ static void deeplab_image_inf(VMContext& context) {
 
       // Preprocess image for Deeplab
       std::vector<int64_t> input_shape;
-      std::vector<float> fbuf = deeplab_preprocess(img, 520, 520, input_shape);
+      std::vector<float> preprocessed_input = deeplab_preprocess(img, 520, 520, input_shape);
 
-      // Create input tensor
-      Ort::MemoryInfo mem_info = Ort::MemoryInfo::CreateCpu(OrtDeviceAllocator, OrtMemTypeCPU);
-      Ort::Value input_tensor = Ort::Value::CreateTensor<float>(mem_info, fbuf.data(), fbuf.size(), input_shape.data(), input_shape.size());
+      auto ti = session->GetInputTypeInfo(0).GetTensorTypeAndShapeInfo();
+      auto elem = ti.GetElementType();
+
+      Ort::Value input_tensor = make_tensor_match_input_type(
+         preprocessed_input,          // FP32 buffer from preprocessing
+         input_shape,   // already a std::vector<int64_t>
+         elem
+      );
 
       // Get input/output names
       Ort::AllocatorWithDefaultOptions allocator;
@@ -935,7 +937,7 @@ static void deeplab_image_inf(VMContext& context) {
 #ifdef _DEBUG
       const auto end = std::chrono::high_resolution_clock::now();
       const auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-      std::wcout << L"ONNX Deeplab inference completed in " << duration << L" ms." << std::endl;
+      std::wcout << L"=> ONNX Deeplab inference completed in " << duration << L" ms." << std::endl;
 #endif
    }
    catch(const Ort::Exception& e) {
@@ -1147,7 +1149,7 @@ static void openpose_image_inf(VMContext& context) {
 #ifdef _DEBUG
       const auto end = std::chrono::high_resolution_clock::now();
       const auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-      std::wcout << L"ONNX Deeplab inference completed in " << duration << L" ms." << std::endl;
+      std::wcout << L"=> ONNX OpenPose inference completed in " << duration << L" ms." << std::endl;
 #endif
    }
    catch(const Ort::Exception& e) {
