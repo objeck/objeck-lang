@@ -1,7 +1,7 @@
 use API.Onnx, use API.OpenCV, System.IO.Filesystem, Collection;
 
 class Test {
-	# Nvidia DML 621 ms
+	# Nvidia DML 650-750 ms
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
 			data_dir := args[0];
