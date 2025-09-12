@@ -1,14 +1,19 @@
 use API.Onnx, use API.OpenCV, System.IO.Filesystem, Collection;
 
 class Test {
+	# Nvidia DML 621 ms
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
-			image_path := args[0];
+			image_dir := args[0];
 			
-			ProcessResNet(image_path)
-			ProcessDeepLab(image_path);
-			ProcessYolo(image_path);
-			ProcessOpenPose(image_path);
+			ProcessResNet(image_dir);
+			System.IO.Console->ReadLine();
+
+			ProcessDeepLab(image_dir);
+
+			ProcessYolo(image_dir);
+			
+			ProcessOpenPose(image_dir);
 		};
 	}
 
@@ -16,28 +21,28 @@ class Test {
 	function : ProcessOpenPose(root_dir : String) ~ Nil {
 		"### ProcessOpenPoseImages ###"->PrintLine();
 
-		image_path := root_dir + "/images/";
-		image_path := image_path->ReplaceAll('\\', '/');
+		image_dir := root_dir + "/images/";
+		image_dir := image_dir->ReplaceAll('\\', '/');
 
 		model_path := root_dir + "/human-pose.onnx";
 		model_path := model_path->ReplaceAll('\\', '/');
 
-		"image_path={$image_path}"->PrintLine();
+		"image_dir={$image_dir}"->PrintLine();
 		"model_path={$model_path}"->PrintLine();
 
-		image_path += "sheep_person.jpg";
+		image_dir += "sheep_person.jpg";
 				
-		image_bytes := FileReader->ReadBinaryFile(image_path);
+		image_bytes := FileReader->ReadBinaryFile(image_dir);
 		image_size := image_bytes->Size();
 
-		"image_path={$image_path}"->PrintLine();
+		"image_dir={$image_dir}"->PrintLine();
 		"image_size={$image_size}"->PrintLine();
 
 		session := API.Onnx.OpenPoseSession->New(model_path, Nil);
 		result := session->Inference(image_bytes);
 		if(result <> Nil) {
 			overlay_image := result->GetMaskedImage();
-			overlay_image->Show("Overlay", 1.25);
+			overlay_image->Show("OpenPose", 0.75);
 		};
 
 		session->Close();
@@ -47,28 +52,28 @@ class Test {
 	function : ProcessDeepLab(root_dir : String) ~ Nil {
 		"### ProcessDeepLabImages ###"->PrintLine();
 
-		image_path := root_dir + "/images/";
-		image_path := image_path->ReplaceAll('\\', '/');
+		image_dir := root_dir + "/images/";
+		image_dir := image_dir->ReplaceAll('\\', '/');
 
 		model_path := root_dir + "/deeplabv3.onnx";
 		model_path := model_path->ReplaceAll('\\', '/');
 
-		"image_path={$image_path}"->PrintLine();
+		"image_dir={$image_dir}"->PrintLine();
 		"model_path={$model_path}"->PrintLine();
 
-		image_path += "sheep_person.jpg";
+		image_dir += "sheep_person.jpg";
 				
-		image_bytes := FileReader->ReadBinaryFile(image_path);
+		image_bytes := FileReader->ReadBinaryFile(image_dir);
 		image_size := image_bytes->Size();
 
-		"image_path={$image_path}"->PrintLine();
+		"image_dir={$image_dir}"->PrintLine();
 		"image_size={$image_size}"->PrintLine();
 
 		session := API.Onnx.DeepLabSession->New(model_path, Nil);
 		result := session->Inference(image_bytes);
 		if(result <> Nil) {
 			overlay_image := result->GetMaskedImage();
-			overlay_image->Show("Overlay");
+			overlay_image->Show("DeepLab", 0.75);
 		}
 	}
 
@@ -76,8 +81,8 @@ class Test {
 	function : ProcessYolo(root_dir : String) ~ Nil {
 		"### ProcessYoloImages ###"->PrintLine();
 
-		image_path := root_dir + "/images/";
-		image_path := image_path->ReplaceAll('\\', '/');
+		image_dir := root_dir + "/images/";
+		image_dir := image_dir->ReplaceAll('\\', '/');
 
 		model_path := root_dir + "/yolov11s-seg.onnx";
 		model_path := model_path->ReplaceAll('\\', '/');
@@ -85,7 +90,7 @@ class Test {
 		label_path := root_dir + "/yolo_labels.txt";
 		label_path := label_path->ReplaceAll('\\', '/');
 
-		"image_path={$image_path}"->PrintLine();
+		"image_dir={$image_dir}"->PrintLine();
 		"model_path={$model_path}"->PrintLine();
 		"label_path={$label_path}"->PrintLine();
 
@@ -94,12 +99,12 @@ class Test {
 		"image_label_size={$image_label_size}"->PrintLine();
 
 		# set image
-		image_path += "sheep_person.jpg";
+		image_dir += "sheep_person.jpg";
 
-		image_bytes := FileReader->ReadBinaryFile(image_path);
+		image_bytes := FileReader->ReadBinaryFile(image_dir);
 		image_size := image_bytes->Size();
 
-		"image_path={$image_path}"->PrintLine();
+		"image_dir={$image_dir}"->PrintLine();
 		"image_size={$image_size}\n"->PrintLine();
 
 		image := Image->Load(image_bytes);
@@ -109,7 +114,7 @@ class Test {
 		};
 
 		label_names := image_labels->ToArray()->As(String[]);
-		
+
 		session := API.Onnx.YoloSession->New(model_path, Nil);
 		result := session->Inference(image_bytes, 640, 640, 0.65, label_names);
 		if(result = Nil) {
@@ -142,15 +147,15 @@ class Test {
 				Scalar->New(255, 0, 0));
 		};
 
-		image->Show("Image w/ Bounds");
+		image->Show("Yolo", 0.75);
 	}
 
 	# ResNet-50
 	function : ProcessResNet(root_dir : String) ~ Nil {
 		"### ProcessResNetImages ###"->PrintLine();
 
-		image_path := root_dir + "/images/";
-		image_path := image_path->ReplaceAll('\\', '/');
+		image_dir := root_dir + "/images/";
+		image_dir := image_dir->ReplaceAll('\\', '/');
 
 		model_path := root_dir + "/resnet34-v2-7.onnx";
 		model_path := model_path->ReplaceAll('\\', '/');
@@ -158,7 +163,7 @@ class Test {
 		label_path := root_dir + "/resnet_labels.txt";
 		label_path := label_path->ReplaceAll('\\', '/');
 
-		"image_path={$image_path}"->PrintLine();
+		"image_dir={$image_dir}"->PrintLine();
 		"model_path={$model_path}"->PrintLine();
 		"label_path={$label_path}"->PrintLine();
 
@@ -166,12 +171,12 @@ class Test {
 		image_label_size := image_labels->Size();
 		"image_label_size={$image_label_size}"->PrintLine();
 
-		image_path += "sheep_person.jpg";
+		image_dir += "sheep_person.jpg";
 				
-		image_bytes := FileReader->ReadBinaryFile(image_path);
+		image_bytes := FileReader->ReadBinaryFile(image_dir);
 		image_size := image_bytes->Size();
 
-		"image_path={$image_path}"->PrintLine();
+		"image_dir={$image_dir}"->PrintLine();
 		"image_size={$image_size}"->PrintLine();
 
 		label_names := image_labels->ToArray()->As(String[]);
