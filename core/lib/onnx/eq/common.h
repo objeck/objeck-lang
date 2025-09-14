@@ -33,6 +33,26 @@ struct DeepLabSpec {
    float stdd[3] = { 0.229f, 0.224f, 0.225f };
 };
 
+// Extract simplified polygons for a specific class id (e.g., road/crosswalk)
+static std::vector<std::vector<cv::Point>> extract_polygons(const cv::Mat& class_map_src, int target_class_id, double epsilon_px = 2.0) {
+   cv::Mat mask = (class_map_src == target_class_id);
+   std::vector<std::vector<cv::Point>> contours;
+   std::vector<cv::Vec4i> hierarchy;
+   cv::findContours(mask, contours, hierarchy, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+
+   // simplify
+   std::vector<std::vector<cv::Point>> polys;
+   polys.reserve(contours.size());
+   for(auto& c : contours) {
+      std::vector<cv::Point> poly;
+      if(c.size() >= 3) {
+         cv::approxPolyDP(c, poly, epsilon_px, true);
+         if(poly.size() >= 3) polys.push_back(std::move(poly));
+      }
+   }
+   return polys;
+}
+
 struct DeepLapSummary {
    cv::Mat class_map_src; // CV_8U at source size, ids in [0..C-1]
    std::vector<size_t> class_ids; // unique ids present (sorted ascending)
@@ -47,30 +67,6 @@ static cv::Vec3b class_to_color(int id) {
 
    return table[id % (int)(sizeof(table) / sizeof(table[0]))];
 }
-
-static const std::vector<std::wstring> VOC21 = {
-  L"background",
-  L"aeroplane",
-  L"bicycle",
-  L"bird",
-  L"boat",
-  L"bottle",
-  L"bus",
-  L"car",
-  L"cat",
-  L"chair",
-  L"cow",
-  L"diningtable",
-  L"dog",
-  L"horse",
-  L"motorbike",
-  L"person",
-  L"pottedplant",
-  L"sheep",
-  L"sofa",
-  L"train",
-  L"tvmonitor"
-};
 
 static cv::Mat build_logits_tensor(const float* logits, int C, int H, int W) {
    // logits: [C, H, W], return CV_8U map with values in [0..C-1]
@@ -737,33 +733,35 @@ static void yolo_image_inf(VMContext& context) {
       // Build class result objects
       std::vector<size_t> class_results;
       class_results.reserve(keep.size());
-      for(size_t k = 0; k < keep.size(); ++k) {
-         const size_t i = keep[k];
+      for(size_t i = 0; i < keep.size(); ++i) {
+         const size_t j = keep[i];
 
-         const int class_id = classes[i];
-         const double confidence = scores[i];
-         const cv::Rect& box = boxes[i];
+         const int class_id = classes[j];
+         const double confidence = scores[j];
+         const cv::Rect& box = boxes[j];
 
 #ifdef _DEBUG
          std::wcout << L"class_id: " << class_id << L", confidence: " << confidence << L", rect: (" << box.x << "," << box.y << L"," << box.width << "," << box.height << ")" << std::endl;
 #endif
-
          size_t* class_result_obj = APITools_CreateObject(context, L"API.Onnx.YoloClassification");
-         class_result_obj[0] = class_id;
-         if(class_id < labels_size) {
-            class_result_obj[1] = labels_objs[class_id];
+         if(class_result_obj) {
+            class_result_obj[0] = class_id;
+            if(class_id < labels_size) {
+               class_result_obj[1] = labels_objs[class_id];
+            }
+            *((double*)(&class_result_obj[2])) = confidence;
+
+            size_t* class_rect_obj = APITools_CreateObject(context, L"API.OpenCV.Rect");
+
+            class_rect_obj[0] = box.x;
+            class_rect_obj[1] = box.y;
+            class_rect_obj[2] = box.width;
+            class_rect_obj[3] = box.height;
+
+            class_result_obj[3] = (size_t)class_rect_obj;
+
+            class_results.push_back((size_t)class_result_obj);
          }
-         *((double*)(&class_result_obj[2])) = confidence;
-
-         size_t* class_rect_obj = APITools_CreateObject(context, L"API.OpenCV.Rect");
-         
-         class_rect_obj[0] = box.x; 
-         class_rect_obj[1] = box.y;
-         class_rect_obj[2] = box.width; 
-         class_rect_obj[3] = box.height;
-
-         class_result_obj[3] = (size_t)class_rect_obj;
-         class_results.push_back((size_t)class_result_obj);
       }
 
       // Create class results array
@@ -1056,10 +1054,6 @@ static void deeplab_image_inf(VMContext& context) {
       size_t* overlay_obj = opencv_raw_write(overlaid, context);
       deeplab_result_obj[3] = (size_t)overlay_obj;
 
-
-
-
-
       // set DeepLab metadata
       const cv::Size source_size(img.cols, img.rows);  // from your input image
       const DeepLapSummary summary = process_deeplab_output(output_tensor, source_size, deeplab_labels);
@@ -1071,18 +1065,18 @@ static void deeplab_image_inf(VMContext& context) {
       for(size_t i = 0; i < summary.class_ids.size(); ++i) {
          size_t* deeplab_cls_obj = APITools_CreateObject(context, L"API.Onnx.DeepLabClassification");
 
-         const size_t cls_id = summary.class_ids[i];
-         double confidence = summary.coverage[i];
-         const std::wstring& cls_name = (cls_id >= 0 && cls_id < (int)deeplab_labels.size()) ? 
-            deeplab_labels[cls_id] : (L"unknown_" + std::to_wstring(cls_id));
+         if(deeplab_cls_obj) {
+            const size_t cls_id = summary.class_ids[i];
+            double confidence = summary.coverage[i];
+            const std::wstring& cls_name = (cls_id >= 0 && cls_id < (int)deeplab_labels.size()) ?
+               deeplab_labels[cls_id] : (L"unknown_" + std::to_wstring(cls_id));
 
-         deeplab_cls_obj[0] = cls_id;
-         deeplab_cls_obj[1] = (size_t)APITools_CreateStringObject(context, cls_name);
-         *((double*)(&deeplab_cls_obj[2])) = confidence;
-
-         // std::wcout << (i ? L"," : L"") << L"{\"id\":" << cid << ",\"label\":\"" << name << L"\",\"coverage_pct\":" << cov << "}";
-
-         class_results.push_back((size_t)deeplab_cls_obj);
+            deeplab_cls_obj[0] = cls_id;
+            deeplab_cls_obj[1] = (size_t)APITools_CreateStringObject(context, cls_name);
+            *((double*)(&deeplab_cls_obj[2])) = confidence;
+            
+            class_results.push_back((size_t)deeplab_cls_obj);
+         }
       }
       // std::wcout << L"] } }\n";
 
@@ -1093,12 +1087,6 @@ static void deeplab_image_inf(VMContext& context) {
          class_array_ptr[i] = class_results[i];
       }
       deeplab_result_obj[4] = (size_t)class_array;
-
-
-
-
-
-
 
       APITools_SetObjectValue(context, 0, deeplab_result_obj);
 

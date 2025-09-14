@@ -58,7 +58,7 @@ class Test {
 		model_path := root_dir + "/deeplabv3.onnx";
 		model_path := model_path->ReplaceAll('\\', '/');
 
-		label_path := root_dir + "/yolo_labels.txt";
+		label_path := root_dir + "/deeplab_labels.txt";
 		label_path := label_path->ReplaceAll('\\', '/');
 
 		"image_dir={$image_dir}"->PrintLine();
@@ -74,10 +74,15 @@ class Test {
 
 		image_labels := LoadLabels(label_path);
 		label_names := image_labels->ToArray()->As(String[]);
-		
+
 		session := API.Onnx.DeepLabSession->New(model_path, Nil);
 		result := session->Inference(image_bytes, label_names);
 		if(result <> Nil) {
+			classifications := result->GetClassifications();
+			each(classification in classifications) {
+				classification->ToString()->PrintLine();
+			};
+			
 			overlay_image := result->GetMaskedImage();
 			overlay_image->Show("DeepLab", 0.75);
 		}
