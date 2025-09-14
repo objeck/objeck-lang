@@ -193,6 +193,8 @@ static std::vector<float> deeplab_preprocess(const cv::Mat& img, int height, int
 // OpenPose
 //
 
+struct KP { float x, y, conf; };
+
 // BGR image -> preprocessed NCHW float tensor (0..1)
 static void openpose_preprocess(const cv::Mat& img, int W, int H, std::vector<float>& out) {
    cv::Mat r; cv::resize(img, r, cv::Size(W, H), 0, 0, cv::INTER_LINEAR);
@@ -1246,22 +1248,21 @@ static void openpose_image_inf(VMContext& context) {
 
       // find peaks (skip background = last channel)
       const int NUM_KP = std::max(0, std::min(num_channel - 1, 25)); // works for 18/19 and 25/26
-      std::vector<cv::Point2f> kps(NUM_KP, { -1.f,-1.f });
+      std::vector<KP> kps(NUM_KP, { -1.f, -1.f, 0.f });
+
       for(int k = 0; k < NUM_KP; ++k) {
          float bestv = -1e9f; int bx = 0, by = 0;
-         
          for(int y = 0; y < heatmap_height; ++y) {
             for(int x = 0; x < heatmap_width; ++x) {
-               float v = atHM(k, y, x); // channel k (background assumed at num_channel-1)
-               if(v > bestv) { 
-                  bestv = v; by = y; bx = x; 
-               }
+               float v = atHM(k, y, x);
+               if(v > bestv) { bestv = v; by = y; bx = x; }
             }
          }
-         
          if(bestv > 0.05f) {
-            kps[k] = { 
-               bx * (float)img.cols / (float)heatmap_width, by * (float)img.rows / (float)heatmap_height 
+            kps[k] = {
+              bx * (float)img.cols / (float)heatmap_width,
+              by * (float)img.rows / (float)heatmap_height,
+              bestv
             };
          }
       }
@@ -1270,7 +1271,8 @@ static void openpose_image_inf(VMContext& context) {
       cv::Mat vis = img.clone();
       for(auto& p : kps) {
          if(p.x >= 0) {
-            cv::circle(vis, p, 3, { 0,255,0 }, -1, cv::LINE_AA);
+            cv::Point2f pp(p.x, p.y);
+            cv::circle(vis, pp, 3, { 0,255,0 }, -1, cv::LINE_AA);
          }
       }
 
@@ -1283,7 +1285,8 @@ static void openpose_image_inf(VMContext& context) {
       for(auto& pr : pairs) {
          const int a = pr.first, b = pr.second;
          if(a >= 0 && a < NUM_KP && b >= 0 && b < NUM_KP && kps[a].x >= 0 && kps[b].x >= 0) {
-            cv::line(vis, kps[a], kps[b], { 0,200,255 }, 2, cv::LINE_AA);
+            cv::Point2f aa(kps[a].x, kps[a].y); cv::Point2f bb(kps[b].x, kps[b].y);
+            cv::line(vis, aa, bb, { 0,200,255 }, 2, cv::LINE_AA);
          }
       }
 
