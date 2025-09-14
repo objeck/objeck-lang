@@ -60,9 +60,8 @@ extern "C" {
          session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
          session_options.SetExecutionMode(ExecutionMode::ORT_PARALLEL);
 
-         //
-         session_options.DisableMemPattern();   // sometimes helps with large dynamic shapes; measure
-         session_options.SetIntraOpNumThreads(std::thread::hardware_concurrency()); // preprocessing ops
+         session_options.DisableMemPattern();
+         session_options.SetIntraOpNumThreads(std::thread::hardware_concurrency());
 
          // Create ONNX session
          const Ort::Session* session = new Ort::Session(*env, model_path.c_str(), session_options);
