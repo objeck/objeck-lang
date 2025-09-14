@@ -11,9 +11,9 @@ class Test {
 
 			ProcessDeepLab(data_dir);
 
-#			ProcessYolo(data_dir);
+			ProcessYolo(data_dir);
 			
-#			ProcessOpenPose(data_dir);
+			ProcessOpenPose(data_dir);
 		};
 	}
 
