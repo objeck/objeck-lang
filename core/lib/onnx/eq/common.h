@@ -23,8 +23,8 @@ std::unique_ptr<Ort::Env> env = nullptr;;
 // DeepLab utilities
 //
 
-// DeepLab model specification
-struct ModelSpec {
+// model specification
+struct DeepLabSpec {
    bool nchw = true; // NCHW vs NHWC
    bool input_is_float = true; // true: float32, false: uint8
    
@@ -33,16 +33,12 @@ struct ModelSpec {
    float stdd[3] = { 0.229f, 0.224f, 0.225f };
 };
 
-// Overlay color mask on original image
-inline cv::Mat overlay_mask(const cv::Mat& orig_bgr, const cv::Mat& mask_bgr, float alpha = 0.5f) {
-   CV_Assert(orig_bgr.size() == mask_bgr.size() && orig_bgr.type() == CV_8UC3 && mask_bgr.type() == CV_8UC3);
-   cv::Mat blended;
-   cv::addWeighted(orig_bgr, 1.0f - alpha, mask_bgr, alpha, 0.0, blended);
+struct DeepLapSummary {
+   cv::Mat class_map_src; // CV_8U at source size, ids in [0..C-1]
+   std::vector<size_t> class_ids; // unique ids present (sorted ascending)
+   std::vector<double> coverage; // same length as class_ids, fraction 0..1
+};
 
-   return blended;
-}
-
-// simple palette (customize)
 static cv::Vec3b class_to_color(int id) {
    static const cv::Vec3b table[] = {
      {  0,  0,  0}, {  0,  0,128}, {  0,128,  0}, {128,  0,  0},
@@ -52,9 +48,110 @@ static cv::Vec3b class_to_color(int id) {
    return table[id % (int)(sizeof(table) / sizeof(table[0]))];
 }
 
-// BGR image -> preprocessed float or uint8 tensor
+static const std::vector<std::wstring> VOC21 = {
+  L"background",
+  L"aeroplane",
+  L"bicycle",
+  L"bird",
+  L"boat",
+  L"bottle",
+  L"bus",
+  L"car",
+  L"cat",
+  L"chair",
+  L"cow",
+  L"diningtable",
+  L"dog",
+  L"horse",
+  L"motorbike",
+  L"person",
+  L"pottedplant",
+  L"sheep",
+  L"sofa",
+  L"train",
+  L"tvmonitor"
+};
+
+static cv::Mat build_logits_tensor(const float* logits, int C, int H, int W) {
+   // logits: [C, H, W], return CV_8U map with values in [0..C-1]
+   cv::Mat cm(H, W, CV_8U);
+   const int HW = H * W;
+   for(int y = 0; y < H; ++y) {
+      uint8_t* row = cm.ptr<uint8_t>(y);
+      for(int x = 0; x < W; ++x) {
+         int idx = y * W + x;
+         int best_c = 0;
+         float best_v = logits[0 * HW + idx];
+         for(int c = 1; c < C; ++c) {
+            float v = logits[c * HW + idx];
+            if(v > best_v) { best_v = v; best_c = c; }
+         }
+         row[x] = static_cast<uint8_t>(best_c);
+      }
+   }
+
+   return cm;
+}
+
+static DeepLapSummary summarize_segmentation(const cv::Mat& class_map_src, int C, const std::vector<std::wstring>& labels) {
+   std::vector<uint64_t> hist(C, 0);
+   for(int y = 0; y < class_map_src.rows; ++y) {
+      const uint8_t* r = class_map_src.ptr<uint8_t>(y);
+      for(int x = 0; x < class_map_src.cols; ++x) {
+         uint8_t id = r[x];
+         if(id < C) hist[id]++;
+      }
+   }
+
+   DeepLapSummary out;
+   out.class_map_src = class_map_src;
+   const double total = static_cast<double>(class_map_src.total());
+   for(int cid = 0; cid < C; ++cid) {
+      if(hist[cid] > 0) {
+         out.class_ids.push_back(cid);
+         out.coverage.push_back(hist[cid] / total);
+      }
+   }
+   
+   return out;
+}
+
+static DeepLapSummary process_deeplab_output(const Ort::Value& out, const cv::Size& src_size, const std::vector<std::wstring> labels) {
+   if(!out.IsTensor()) {
+      throw std::runtime_error("DeepLab output is not a tensor.");
+   }
+
+   const auto info = out.GetTensorTypeAndShapeInfo();
+   const auto shape = info.GetShape();
+
+   // [1, c, h, w]  (logits)
+   cv::Mat class_map_model;
+   if(shape.size() == 4 && shape[1] > 1) {
+      // logits
+      int C = static_cast<int>(shape[1]);
+      int H = static_cast<int>(shape[2]);
+      int W = static_cast<int>(shape[3]);
+      const float* logits = out.GetTensorData<float>();
+      class_map_model = build_logits_tensor(logits, C, H, W);
+
+      // upsample with NEAREST to preserve ids
+      cv::Mat class_map_src;
+      cv::resize(class_map_model, class_map_src, src_size, 0, 0, cv::INTER_NEAREST);
+
+      // Clean any unexpected ids (shouldn't happen if NEAREST, but safe):
+      for(int y = 0; y < class_map_src.rows; ++y) {
+         uint8_t* r = class_map_src.ptr<uint8_t>(y);
+         for(int x = 0; x < class_map_src.cols; ++x) if(r[x] >= C) r[x] = 0;
+      }
+
+      return summarize_segmentation(class_map_src, C, labels);
+   }
+   
+   throw std::runtime_error("Unexpected DeepLab output shape.");
+}
+
 static std::vector<float> deeplab_preprocess(const cv::Mat& img, int height, int width, std::vector<int64_t>& shape) {
-   const ModelSpec spec;
+   const DeepLabSpec spec;
    std::vector<float> input_tensor_values;
 
    cv::Mat resized; 
@@ -95,6 +192,10 @@ static std::vector<float> deeplab_preprocess(const cv::Mat& img, int height, int
 
    return input_tensor_values;
 }
+
+//
+// OpenPose
+//
 
 // BGR image -> preprocessed NCHW float tensor (0..1)
 static void openpose_preprocess(const cv::Mat& img, int W, int H, std::vector<float>& out) {
@@ -257,7 +358,7 @@ static inline std::vector<float> yolo_preprocess_letterbox(const cv::Mat& img, i
 }
 
 //
-// ResNet utils
+// ResNet utilities
 //
 
 // Preprocess image for ResNet
@@ -287,7 +388,7 @@ static std::vector<float> resnet_preprocess(const cv::Mat& img, int resize_heigh
 }
 
 //
-// General utilities
+// General utilities and functions
 //
 
 // Minimal IEEE-754 float32 -> float16 converter (round-to-nearest-even)
@@ -309,6 +410,43 @@ static inline uint16_t f32_to_f16(float f) {
    }
 }
 
+// close a yolo session
+static void close_session(VMContext & context) {
+   Ort::Session* session = (Ort::Session*)APITools_GetIntValue(context, 0);
+
+   if(session) {
+      delete session;
+      session = nullptr;
+   }
+
+   env.reset();
+}
+
+// Get available execution provider names
+void get_provider_names(VMContext& context) {
+   // Get output parameter
+   size_t* output_holder = APITools_GetArray(context, 0);
+
+   // Get execution provider names
+   std::vector<std::wstring> execution_provider_names;
+
+   auto execution_providers = Ort::GetAvailableProviders();
+   for(size_t i = 0; i < execution_providers.size(); ++i) {
+      auto& execution_provider = execution_providers[i];
+      execution_provider_names.push_back(BytesToUnicode(execution_provider));
+   }
+
+   // Copy results
+   size_t* output_string_array = APITools_MakeIntArray(context, execution_provider_names.size());
+   size_t* output_string_array_buffer = output_string_array + 3;
+   for(size_t i = 0; i < execution_provider_names.size(); ++i) {
+      output_string_array_buffer[i] = (size_t)APITools_CreateStringObject(context, execution_provider_names[i]);
+   }
+
+   // get provider names and set output holder
+   output_holder[0] = (size_t)output_string_array;
+}
+
 // Build an input tensor in FP32 or FP16 depending on the model input type.
 static inline Ort::Value make_tensor_match_input_type(const std::vector<float>& nchw_f32, const std::vector<int64_t>& shape, ONNXTensorElementDataType elem_type) {
    Ort::MemoryInfo mem = Ort::MemoryInfo::CreateCpu(OrtDeviceAllocator, OrtMemTypeDefault);
@@ -325,6 +463,10 @@ static inline Ort::Value make_tensor_match_input_type(const std::vector<float>& 
    // Default: FP32
    return Ort::Value::CreateTensor<float>(mem, const_cast<float*>(nchw_f32.data()), nchw_f32.size(), shape.data(), (size_t)shape.size());
 }
+
+//
+// Reading and writing structs
+//
 
 // Read OpenCV image from raw data
 static cv::Mat opencv_raw_read(size_t* image_obj, VMContext& context) {
@@ -360,42 +502,9 @@ static size_t* opencv_raw_write(cv::Mat& image, VMContext& context) {
    return image_obj;
 }
 
-// close a yolo session
-static void close_session(VMContext& context) {
-   Ort::Session* session = (Ort::Session*)APITools_GetIntValue(context, 0);
-
-   if(session) {
-      delete session;
-      session = nullptr;
-   }
-
-   env.reset();
-}
-
-// Get available execution provider names
-void get_provider_names(VMContext& context) {
-   // Get output parameter
-   size_t* output_holder = APITools_GetArray(context, 0);
-
-   // Get execution provider names
-   std::vector<std::wstring> execution_provider_names;
-
-   auto execution_providers = Ort::GetAvailableProviders();
-   for(size_t i = 0; i < execution_providers.size(); ++i) {
-      auto& execution_provider = execution_providers[i];
-      execution_provider_names.push_back(BytesToUnicode(execution_provider));
-   }
-
-   // Copy results
-   size_t* output_string_array = APITools_MakeIntArray(context, execution_provider_names.size());
-   size_t* output_string_array_buffer = output_string_array + 3;
-   for(size_t i = 0; i < execution_provider_names.size(); ++i) {
-      output_string_array_buffer[i] = (size_t)APITools_CreateStringObject(context, execution_provider_names[i]);
-   }
-
-   // get provider names and set output holder
-   output_holder[0] = (size_t)output_string_array;
-}
+//
+// Inference
+//
 
 // Process Yolo image using ONNX model
 static void yolo_image_inf(VMContext& context) {
@@ -520,14 +629,17 @@ static void yolo_image_inf(VMContext& context) {
       const int64_t num_candidates = std::max<int64_t>(A, B); // number of candidates    (~8400)
       const bool need_transpose = (A == num_channels); // original was [1,num_channel,N] if A is smaller
 
-      std::vector<float> preds; preds.reserve((size_t)num_candidates * num_channels);
+      std::vector<float> preds; 
+      preds.reserve((size_t)num_candidates * num_channels);
       const float* data_ptr = output_data;
       if(need_transpose) {
          preds.resize((size_t)num_candidates * num_channels);
          // transpose [1,num_channel,N] -> [N,num_channel]
-         for(int64_t c = 0; c < num_channels; ++c)
-            for(int64_t n = 0; n < num_candidates; ++n)
+         for(int64_t c = 0; c < num_channels; ++c) {
+            for(int64_t n = 0; n < num_candidates; ++n) {
                preds[(size_t)n * num_channels + c] = output_data[c * num_candidates + n];
+            }
+         }
          data_ptr = preds.data();
       }
 
@@ -538,6 +650,7 @@ static void yolo_image_inf(VMContext& context) {
       int idx_obj = -1;
       int idx_cls0 = 4;
 
+      // determine layout
       if(c_total == 4 + nc_hint) {
          has_obj = false; idx_cls0 = 4;
       }
@@ -566,7 +679,9 @@ static void yolo_image_inf(VMContext& context) {
          // best class prob, head layout has set: num_channel, idx_cls0, has_obj, idx_obj, labels_size
          int max_classes_in_tensor = (int)(num_channels - idx_cls0);
          int nc = (int)labels_size;
-         if(nc <= 0 || nc > max_classes_in_tensor) nc = max_classes_in_tensor;
+         if(nc <= 0 || nc > max_classes_in_tensor) {
+            nc = max_classes_in_tensor;
+         }
 
          auto sigmoid = [](float x) {
             return 1.f / (1.f + std::exp(-x));
@@ -575,7 +690,10 @@ static void yolo_image_inf(VMContext& context) {
          int best = 0; float bestp = 0.f;
          for(int j = 0; j < nc; ++j) {
             float pj = sigmoid(p[idx_cls0 + j]);   // ensure [0,1]
-            if(pj > bestp) { bestp = pj; best = j; }
+            if(pj > bestp) { 
+               bestp = pj; 
+               best = j; 
+            }
          }
          float obj = has_obj ? sigmoid(p[idx_obj]) : 1.f;
          float score = obj * bestp;
@@ -624,10 +742,10 @@ static void yolo_image_inf(VMContext& context) {
 
          const int class_id = classes[i];
          const double confidence = scores[i];
-         const cv::Rect& r = boxes[i];
+         const cv::Rect& box = boxes[i];
 
 #ifdef _DEBUG
-         std::wcout << L"class_id: " << class_id << L", confidence: " << confidence << L", rect: (" << r.x << "," << r.y << L"," << r.width << "," << r.height << ")" << std::endl;
+         std::wcout << L"class_id: " << class_id << L", confidence: " << confidence << L", rect: (" << box.x << "," << box.y << L"," << box.width << "," << box.height << ")" << std::endl;
 #endif
 
          size_t* class_result_obj = APITools_CreateObject(context, L"API.Onnx.YoloClassification");
@@ -638,10 +756,13 @@ static void yolo_image_inf(VMContext& context) {
          *((double*)(&class_result_obj[2])) = confidence;
 
          size_t* class_rect_obj = APITools_CreateObject(context, L"API.OpenCV.Rect");
-         class_rect_obj[0] = r.x; class_rect_obj[1] = r.y;
-         class_rect_obj[2] = r.width; class_rect_obj[3] = r.height;
-         class_result_obj[3] = (size_t)class_rect_obj;
+         
+         class_rect_obj[0] = box.x; 
+         class_rect_obj[1] = box.y;
+         class_rect_obj[2] = box.width; 
+         class_rect_obj[3] = box.height;
 
+         class_result_obj[3] = (size_t)class_rect_obj;
          class_results.push_back((size_t)class_result_obj);
       }
 
@@ -831,6 +952,8 @@ static void deeplab_image_inf(VMContext& context) {
    const long input_size = ((long)APITools_GetArraySize(input_array));
    const unsigned char* input_bytes = (unsigned char*)APITools_GetArray(input_array);
 
+   const std::vector<std::wstring>& deeplab_labels = APITools_GetStringsValues(context, 3);
+
    // Validate parameters
    if(!session || !input_bytes) {
       return;
@@ -895,7 +1018,11 @@ static void deeplab_image_inf(VMContext& context) {
          std::wcerr << L"Unexpected output shape!" << std::endl;
          return;
       }
+      
+      // set results
+      size_t* deeplab_result_obj = APITools_CreateObject(context, L"API.Onnx.DeepLabResult");
 
+      // set images
       const int num_channel = (int)shape[1];
       const int H = (int)shape[2];
       const int W = (int)shape[3];
@@ -908,9 +1035,6 @@ static void deeplab_image_inf(VMContext& context) {
 
       cv::Mat overlaid;
       cv::addWeighted(img, 0.55, masked, 0.45, 0.0, overlaid);
-
-      // Build results
-      size_t* deeplab_result_obj = APITools_CreateObject(context, L"API.Onnx.DeepLabResult");
 
       // masked image
       size_t* maked_image_array = APITools_MakeIntArray(context, 2);
@@ -931,6 +1055,50 @@ static void deeplab_image_inf(VMContext& context) {
 
       size_t* overlay_obj = opencv_raw_write(overlaid, context);
       deeplab_result_obj[3] = (size_t)overlay_obj;
+
+
+
+
+
+      // set DeepLab metadata
+      const cv::Size source_size(img.cols, img.rows);  // from your input image
+      const DeepLapSummary summary = process_deeplab_output(output_tensor, source_size, deeplab_labels);
+      
+      // std::wcout << L"{ \"deeplab\": { \"classes\": [";
+      std::vector<size_t> class_results;
+      class_results.reserve(summary.class_ids.size());
+
+      for(size_t i = 0; i < summary.class_ids.size(); ++i) {
+         size_t* deeplab_cls_obj = APITools_CreateObject(context, L"API.Onnx.DeepLabClassification");
+
+         const size_t cls_id = summary.class_ids[i];
+         double confidence = summary.coverage[i];
+         const std::wstring& cls_name = (cls_id >= 0 && cls_id < (int)deeplab_labels.size()) ? 
+            deeplab_labels[cls_id] : (L"unknown_" + std::to_wstring(cls_id));
+
+         deeplab_cls_obj[0] = cls_id;
+         deeplab_cls_obj[1] = (size_t)APITools_CreateStringObject(context, cls_name);
+         *((double*)(&deeplab_cls_obj[2])) = confidence;
+
+         // std::wcout << (i ? L"," : L"") << L"{\"id\":" << cid << ",\"label\":\"" << name << L"\",\"coverage_pct\":" << cov << "}";
+
+         class_results.push_back((size_t)deeplab_cls_obj);
+      }
+      // std::wcout << L"] } }\n";
+
+      // Create class results array
+      size_t* class_array = APITools_MakeIntArray(context, class_results.size());
+      size_t* class_array_ptr = class_array + 3;
+      for(size_t i = 0; i < class_results.size(); ++i) {
+         class_array_ptr[i] = class_results[i];
+      }
+      deeplab_result_obj[4] = (size_t)class_array;
+
+
+
+
+
+
 
       APITools_SetObjectValue(context, 0, deeplab_result_obj);
 
