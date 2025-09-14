@@ -681,7 +681,7 @@ bundle API.Onnx {
 		@return string representation
 		~#
 		method : public : ToString() ~ String {
-			return "id={$@id}, name={$@name}, conf={$@confidence}";
+			return "[id={$@id}, name={$@name}, conf={$@confidence}]";
 		}
 	}
 
