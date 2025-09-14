@@ -540,16 +540,17 @@ bundle API.Onnx {
 		@param image width width
 		@param labels classification labels
 		~#
-		method : public : Inference(image : Byte[]) ~ API.Onnx.DeepLabResult {
+		method : public : Inference(image : Byte[], labels : String[]) ~ API.Onnx.DeepLabResult {
 			if(image = Nil) {
 				return Nil;
 			};
 
-			array_args := Base->New[3];
+			array_args := Base->New[4];
 
 			array_args[0] := Nil;
 			array_args[1] := IntRef->New(@session);
 			array_args[2] := ByteArrayRef->New(image);
+			array_args[3] := StringArrayRef->New(labels);
 
 			Proxy->GetDllProxy()->CallFunction("onnx_deeplab_image_inf", array_args);
 			
@@ -568,6 +569,16 @@ bundle API.Onnx {
 
 		@overlay_dims : Int[];
 		@overlay : API.OpenCV.Image;
+
+		@classifications : DeepLabClassification[];
+
+		#~
+		Gets an array of classifications
+		@return array of classifications
+		~#
+		method : public : GetClassifications() ~ DeepLabClassification[] {
+			return @classifications;
+		}
 
 		New : private () {}
 
@@ -630,13 +641,52 @@ bundle API.Onnx {
 		}
 	}
 
+	#~
+	DeepLab classification result
+	~#
+	class DeepLabClassification {
+		@id : Int;
+		@name : String;
+		@confidence : Float;
 
+		New : private () {
+		}
 
+		#~
+		Get classification ID
+		@return classification ID
+		~#
+		method : public : GetId() ~ Int {
+			return @id;
+		}
 
+		#~
+		Get classification name
+		@return classification name
+		~#
+		method : public : GetName() ~ String {
+			return @name;
+		}
 
+		#~
+		Get classification confidence
+		@return classification confidence
+		~#
+		method : public : GetConfidence() ~ Float {
+			return @confidence;
+		}
+
+		#~
+		Get string representation
+		@return string representation
+		~#
+		method : public : ToString() ~ String {
+			return "id={$@id}, name={$@name}, conf={$@confidence}";
+		}
+	}
 
 	#~
-	Deeplab inference session
+	OpenPose inference session
 	~#
 	class OpenPoseSession {
 		@session : Int;
@@ -688,7 +738,6 @@ bundle API.Onnx {
 		@param image image bytes
 		@param height image height
 		@param image width width
-		@param labels classification labels
 		~#
 		method : public : Inference(image : Byte[]) ~ API.Onnx.OpenPoseResult {
 			if(image = Nil) {
