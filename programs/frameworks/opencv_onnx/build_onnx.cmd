@@ -76,6 +76,6 @@ REM
 
 if [%4] == [] goto end
 	del /q *.obe
-	obc -src %4 -lib opencv,onnx
+	obc -src %4 -lib opencv,onnx -asm
 	obr %4 %5
 :end
