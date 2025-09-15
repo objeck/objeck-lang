@@ -40,7 +40,7 @@ del /q %OBJECK_BIN_PATH%\*.dll
 REM
 REM Compile libraries
 REM 
-obc -src %OBJECK_BASE%\core\compiler\lib_src\opencv.obs -tar lib -opt s3 -dest %OBJECK_LIB_PATH%\opencv.obl
+obc -src %OBJECK_BASE%\core\compiler\lib_src\opencv.obs -lib json -tar lib -opt s3 -dest %OBJECK_LIB_PATH%\opencv.obl
 rem obc -src %OBJECK_BASE%\core\compiler\lib_src\lame.obs -tar lib -opt s3 -dest %OBJECK_LIB_PATH%\lame.obl
 
 REM
@@ -59,6 +59,6 @@ REM
 goto end
 if [%3] == [] 
 	del /q *.obe
-	obc -src %3 -lib opencv
+	obc -src %3 -lib opencv,json
 	rem obr %3 %4
 :end
