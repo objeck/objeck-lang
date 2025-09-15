@@ -9,10 +9,8 @@ class Test {
 #			ProcessResNet(data_dir);
 #			System.IO.Console->ReadLine();
 
-			ProcessDeepLab(data_dir);
-
-			ProcessYolo(data_dir);
-			
+#			ProcessDeepLab(data_dir);
+#			ProcessYolo(data_dir);			
 			ProcessOpenPose(data_dir);
 		};
 	}
@@ -27,8 +25,14 @@ class Test {
 		model_path := root_dir + "/human-pose.onnx";
 		model_path := model_path->ReplaceAll('\\', '/');
 
+		label_path := root_dir + "/openpose_labels.txt";
+		label_path := label_path->ReplaceAll('\\', '/');
+
 		"image_dir={$image_dir}"->PrintLine();
 		"model_path={$model_path}"->PrintLine();
+
+		image_labels := LoadLabels(label_path);
+		label_names := image_labels->ToArray()->As(String[]);
 
 		image_dir += "sheep_person.jpg";
 				
@@ -39,8 +43,15 @@ class Test {
 		"image_size={$image_size}"->PrintLine();
 
 		session := API.Onnx.OpenPoseSession->New(model_path, Nil);
-		result := session->Inference(image_bytes);
+		result := session->Inference(image_bytes, label_names);
 		if(result <> Nil) {
+			result->ToString()->PrintLine();
+			
+			classifications := result->GetClassifications();
+			each(classification in classifications) {
+				classification->ToString()->PrintLine();
+			};
+
 			overlay_image := result->GetMaskedImage();
 			overlay_image->Show("OpenPose", 0.75);
 		};

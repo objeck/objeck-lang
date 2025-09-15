@@ -555,8 +555,10 @@ static void yolo_image_inf(VMContext& context) {
 
       // Build tensor that matches the model input type (FP16 if model expects FP16)
       Ort::Value input_tensor = make_tensor_match_input_type(
-         input_tensor_values,
-         { input_shape.begin(), input_shape.end() },
+         input_tensor_values, { 
+            input_shape.begin(), 
+            input_shape.end() 
+         },
          elem
       );
 
@@ -1060,7 +1062,6 @@ static void deeplab_image_inf(VMContext& context) {
       const cv::Size source_size(img.cols, img.rows);  // from your input image
       const DeepLapSummary summary = process_deeplab_output(output_tensor, source_size, deeplab_labels);
       
-      // std::wcout << L"{ \"deeplab\": { \"classes\": [";
       std::vector<size_t> class_results;
       class_results.reserve(summary.class_ids.size());
 
@@ -1115,8 +1116,12 @@ static void openpose_image_inf(VMContext& context) {
    const long input_size = ((long)APITools_GetArraySize(input_array));
    const unsigned char* input_bytes = (unsigned char*)APITools_GetArray(input_array);
 
+   size_t* labels_array = (size_t*)APITools_GetArray(context, 3)[0];
+   const long labels_size = ((long)APITools_GetArraySize(labels_array));
+   const size_t* labels_objs = APITools_GetArray(labels_array);
+
    // Validate parameters
-   if(!session || !input_bytes) {
+   if(!session || !input_bytes || !labels_objs) {
       return;
    }
 
@@ -1239,21 +1244,21 @@ static void openpose_image_inf(VMContext& context) {
       }
 
       const float* base = outs[heat_i].GetTensorData<float>();
-      auto atHM = [&](int k, int y, int x) -> float {
-         const int kk = k + channel_offset; // skips PAFs if needed
+      auto atHM = [&](size_t k, size_t y, size_t x) -> float {
+         const size_t kk = k + channel_offset; // skips PAFs if needed
          // NCHW: [1, C_total, H, W]
          size_t idx = (size_t)kk * heatmap_height * heatmap_width + (size_t)y * heatmap_width + x;
          return base[idx];         
       };
 
       // find peaks (skip background = last channel)
-      const int NUM_KP = std::max(0, std::min(num_channel - 1, 25)); // works for 18/19 and 25/26
+      const size_t NUM_KP = std::max(0, std::min(num_channel - 1, 25)); // works for 18/19 and 25/26
       std::vector<KP> kps(NUM_KP, { -1.f, -1.f, 0.f });
 
-      for(int k = 0; k < NUM_KP; ++k) {
-         float bestv = -1e9f; int bx = 0, by = 0;
-         for(int y = 0; y < heatmap_height; ++y) {
-            for(int x = 0; x < heatmap_width; ++x) {
+      for(size_t k = 0; k < NUM_KP; ++k) {
+         float bestv = -1e9f; size_t bx = 0, by = 0;
+         for(size_t y = 0; y < heatmap_height; ++y) {
+            for(size_t x = 0; x < heatmap_width; ++x) {
                float v = atHM(k, y, x);
                if(v > bestv) { bestv = v; by = y; bx = x; }
             }
@@ -1266,6 +1271,67 @@ static void openpose_image_inf(VMContext& context) {
             };
          }
       }
+
+      // --- JSON-ish print for OpenPose keypoints ---
+      float minx = 1e9f, miny = 1e9f, maxx = -1e9f, maxy = -1e9f; int valid = 0;
+      for(auto& p : kps) {
+         if(p.conf > 0.f) {
+            minx = std::min(minx, p.x); miny = std::min(miny, p.y);
+            maxx = std::max(maxx, p.x); maxy = std::max(maxy, p.y);
+            valid++;
+         }
+      }
+      cv::Rect person_bb;
+      if(valid > 0) {
+         person_bb = cv::Rect(
+            (int)std::max(0.f, minx), (int)std::max(0.f, miny),
+            (int)std::max(1.f, maxx - minx), (int)std::max(1.f, maxy - miny)
+         ) & cv::Rect(0, 0, img.cols, img.rows);
+      }
+
+      // Build results
+      size_t* openpose_result_obj = APITools_CreateObject(context, L"API.Onnx.OpenPoseResult");
+
+      // Normalize bbox to [0,1]
+      double xn = person_bb.x / (double)img.cols;
+      double yn = person_bb.y / (double)img.rows;
+      double wn = person_bb.width / (double)img.cols;
+      double hn = person_bb.height / (double)img.rows;
+
+      *((double*)(&openpose_result_obj[0])) = xn;
+      *((double*)(&openpose_result_obj[1])) = yn;
+      *((double*)(&openpose_result_obj[2])) = wn;
+      *((double*)(&openpose_result_obj[3])) = hn;
+      
+      std::vector<size_t> class_results;
+      class_results.reserve(NUM_KP);
+
+      for(int i = 0; i < NUM_KP; ++i) {
+         size_t* openpose_class_obj = APITools_CreateObject(context, L"API.Onnx.OpenPoseClassification");
+         if(openpose_class_obj) {
+            const KP& p = kps[i];
+            double x_norm = (p.conf > 0.f) ? (p.x / (double)img.cols) : -1.0;
+            double y_norm = (p.conf > 0.f) ? (p.y / (double)img.rows) : -1.0;
+
+            openpose_class_obj[0] = i; // id
+            if(i < labels_size) {
+               openpose_class_obj[1] = labels_objs[i]; // name
+            }
+            *((double*)(&openpose_class_obj[2])) = x_norm; // normalized x
+            *((double*)(&openpose_class_obj[3])) = y_norm; // normalized y
+            *((double*)(&openpose_class_obj[4])) = p.conf; // confidence
+
+            class_results.push_back((size_t)openpose_class_obj);
+         }
+      }
+
+      // Create class results array
+      size_t* class_array = APITools_MakeIntArray(context, class_results.size());
+      size_t* class_array_ptr = class_array + 3;
+      for(size_t i = 0; i < class_results.size(); ++i) {
+         class_array_ptr[i] = class_results[i];
+      }
+      openpose_result_obj[6] = (size_t)class_array;
 
       // Draw
       cv::Mat vis = img.clone();
@@ -1290,20 +1356,19 @@ static void openpose_image_inf(VMContext& context) {
          }
       }
 
-      // Build results
-      size_t* deeplab_result_obj = APITools_CreateObject(context, L"API.Onnx.OpenPoseResult");
+      
 
       // masked image
       size_t* maked_image_array = APITools_MakeIntArray(context, 2);
       size_t* pose_image_array_buffer = maked_image_array + 3;
       pose_image_array_buffer[0] = vis.rows;
       pose_image_array_buffer[1] = vis.cols;
-      deeplab_result_obj[0] = (size_t)maked_image_array;
+      openpose_result_obj[4] = (size_t)maked_image_array;
 
       size_t* pose_obj = opencv_raw_write(vis, context);
-      deeplab_result_obj[1] = (size_t)pose_obj;
+      openpose_result_obj[5] = (size_t)pose_obj;
 
-      APITools_SetObjectValue(context, 0, deeplab_result_obj);
+      APITools_SetObjectValue(context, 0, openpose_result_obj);
 
 #ifdef _DEBUG
       const auto end = std::chrono::high_resolution_clock::now();

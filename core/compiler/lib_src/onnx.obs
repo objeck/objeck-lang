@@ -619,22 +619,30 @@ bundle API.Onnx {
 		@return string representation
 		~#
 		method : public : ToString() ~ String {
-			buffer := "masked-size=";
+			buffer := "masked-image-size=";
 
 			if(@masked = Nil) {
-				buffer += "<nil>, overlay-size=";
+				buffer += "<nil>, overlay-image-size=";
 			}
 			else {
 				output_size := @masked->Size();
-				buffer += "{$output_size}, overlay-size=";
+				buffer += "{$output_size}, overlay-image-size=";
 			};
 
 			if(@overlay = Nil) {
-				buffer += "<nil>";
+				buffer += "<nil>, classifications=";
 			}
 			else {
 				output_size := @overlay->Size();
-				buffer += "{$output_size}";
+				buffer += "{$output_size}, classifications=";
+			};
+
+			if(@classifications = Nil) {
+				buffer += 0;
+			}
+			else {
+				classifications_size := @classifications->Size();
+				buffer += classifications_size;
 			};
 
 			return buffer;
@@ -739,17 +747,18 @@ bundle API.Onnx {
 		@param height image height
 		@param image width width
 		~#
-		method : public : Inference(image : Byte[]) ~ API.Onnx.OpenPoseResult {
+		method : public : Inference(image : Byte[], labels : String[]) ~ API.Onnx.OpenPoseResult {
 			if(image = Nil) {
 				return Nil;
 			};
 
-			array_args := Base->New[3];
+			array_args := Base->New[4];
 
 			array_args[0] := Nil;
 			array_args[1] := IntRef->New(@session);
 			array_args[2] := ByteArrayRef->New(image);
-
+			array_args[3] := StringArrayRef->New(labels);
+			
 			Proxy->GetDllProxy()->CallFunction("onnx_openpose_image_inf", array_args);
 			
 			results := array_args[0]->As(API.Onnx.OpenPoseResult);
@@ -762,10 +771,25 @@ bundle API.Onnx {
 	OpenPose results
 	~#
 	class OpenPoseResult {
+		@norm_x : Float;
+		@norm_y : Float;
+		@norm_w : Float;
+		@norm_h : Float;
+
 		@masked_dims : Int[];
 		@masked : API.OpenCV.Image;
+
+		@classifications : OpenPoseClassification[];
 		
 		New : private () {}
+
+		#~
+		Gets an array of classifications
+		@return array of classifications
+		~#
+		method : public : GetClassifications() ~ OpenPoseClassification[] {
+			return @classifications;
+		}
 
 		#~
 		Gets the masked image
@@ -784,21 +808,154 @@ bundle API.Onnx {
 		}
 
 		#~
+		Get normalized X-coordinate 
+		@return normalized X-coordinate 
+		~#
+		method : public : GetNormalizedX() ~ Float {
+			return @norm_x;
+		}
+
+		#~
+		Get normalized y-coordinate 
+		@return normalized y-coordinate
+		~#
+		method : public : GetNormalizedY() ~ Float {
+			return @norm_y;
+		}
+
+		#~
+		Get normalized height
+		@return normalized height
+		~#
+		method : public : GetNormalizedHeight() ~ Float {
+			return @norm_h;
+		}
+
+		#~
+		Get normalized width
+		@return normalized width
+		~#
+		method : public : GetNormalizedWidth() ~ Float {
+			return @norm_w;
+		}
+
+		#~
 		Get string representation
 		@return string representation
 		~#
 		method : public : ToString() ~ String {
-			buffer := "masked-size=";
+			buffer := "masked-image-size=";
 
 			if(@masked = Nil) {
-				buffer += "<nil>";
+				buffer += "<nil>, ";
 			}
 			else {
 				output_size := @masked->Size();
-				buffer += "{$output_size}";
+				buffer += "{$output_size}, ";
+			};
+
+			buffer += "normalized=["
+			buffer += @norm_x;
+			buffer += ',';
+			buffer += @norm_y;
+			buffer += ',';
+			buffer += @norm_w;
+			buffer += ',';
+			buffer += @norm_h;
+			buffer += "], num_classes=";
+
+			if(@classifications = Nil) {
+				buffer += 0;
+			}
+			else {
+				classifications_size := @classifications->Size();
+				buffer += classifications_size;
 			};
 
 			return buffer;
+		}
+	}
+
+	#~
+	OpenPose classification result
+	~#
+	class OpenPoseClassification {
+		@id : OpenPoseClassification->Type;
+		@name : String;
+		@norm_x : Float;
+		@norm_y : Float;
+		@confidence : Float;
+
+		enum Type {
+			NOSE, 
+			LEFT_EYE,
+			RIGHT_EYE,
+			LEFT_EAR,
+			RIGHT_EAR,
+			LEFT_SHOULDER,
+			RIGHT_SHOULDER,
+			LEFT_ELBOW,
+			RIGHT_ELBOW,
+			LEFT_WRIST,
+			RIGHT_WRIST,
+			LEFT_HIP,
+			RIGHT_HIP,
+			LEFT_KNEE,
+			RIGHT_KNEE,
+			LEFT_ANKLE,
+			RIGHT_ANKLE
+		}
+
+		New : private () {
+		}
+
+		#~
+		Get classification ID
+		@return classification ID
+		~#
+		method : public : GetId() ~ OpenPoseClassification->Type {
+			return @id;
+		}
+
+		#~
+		Get classification name
+		@return classification name
+		~#
+		method : public : GetName() ~ String {
+			return @name;
+		}
+
+		#~
+		Get classification confidence
+		@return classification confidence
+		~#
+		method : public : GetConfidence() ~ Float {
+			return @confidence;
+		}
+
+		#~
+		Get normalized X-coordinate 
+		@return normalized X-coordinate
+		~#
+		method : public : GetNormalizedX() ~ Float {
+			return @norm_x;
+		}
+
+		#~
+		Get normalized y-coordinate 
+		@return normalized y-coordinate
+		~#
+		method : public : GetNormalizedY() ~ Float {
+			return @norm_y;
+		}
+
+		#~
+		Get string representation
+		@return string representation
+		~#
+		method : public : ToString() ~ String {
+			id := @id->As(Int);
+			return "[id={$id}, name={$@name}, normalized=[{$@norm_x},{$@norm_x}], confidence={$@confidence}]";
 		}
 	}
 }
