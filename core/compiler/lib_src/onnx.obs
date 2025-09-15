@@ -3,7 +3,7 @@
 # ONNX wrapper
 ~~#	
 
-use Collection, System.API, API.OpenCV;
+use Collection, System.API, API.OpenCV, Data.JSON;
 
 #~
 Open Neural Network Exchange support (ONNX) for generative AI and large language models (-lib onnx)
@@ -197,6 +197,32 @@ bundle API.Onnx {
 		}
 
 		#~
+		JSON representation 
+		@return JSON representation 
+		~#
+		method : public : ToJson() ~ JsonElement {
+			elem_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+
+			dims_array := JsonElement->New(JsonElement->JsonType->ARRAY);
+			dims_array->Add(@dims[0]); dims_array->Add(@dims[1]);
+			elem_json->Insert("image-dims", dims_array);
+
+			shape_array := JsonElement->New(JsonElement->JsonType->ARRAY);
+			each(shape_elem in @shape) {
+				shape_array->Add(shape_elem);
+			};
+
+			classes_array := JsonElement->New(JsonElement->JsonType->ARRAY);
+			each(classification in @classifications) {
+				classes_array->Add(classification->ToJson());
+			};
+			elem_json->Insert("classes", classes_array);
+
+
+			return elem_json;
+		}
+
+		#~
 		String representation 
 		@return string representation 
 		~#
@@ -290,6 +316,21 @@ bundle API.Onnx {
 		~#
 		method : public : GetConfidence() ~ Float {
 			return @confidence;
+		}
+
+		#~
+		JSON representation 
+		@return JSON representation 
+		~#
+		method : public : ToJson() ~ JsonElement {
+			elem_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+
+			elem_json->Insert("class-id", @id);
+			elem_json->Insert("class-name", @name);
+			elem_json->Insert("confidence", @confidence);
+			elem_json->Insert("bounds" @bounds->ToJson());
+
+			return elem_json;
 		}
 
 		#~
