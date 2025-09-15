@@ -3,7 +3,7 @@
 # OpenCV wrapper
 ~~#	
 
-use System.API;
+use System.API, Data.JSON;
 
 #~
 Open Computer Vision (OpenCV) support for image rendering and compilation. (-lib onnx)
@@ -328,6 +328,19 @@ bundle API.OpenCV {
 		~#
 		method : public : GetHeight() ~ Int {
 			return @height;
+		}
+
+		#~
+		JSON representation 
+		@return JSON representation 
+		~#
+		method : public : ToJson() ~ JsonElement {
+			elem_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+
+			elem_json->Insert("width", @width);
+			elem_json->Insert("height", @height);
+
+			return elem_json;
 		}
 	}
 

@@ -10,8 +10,8 @@ class Test {
 #			System.IO.Console->ReadLine();
 
 #			ProcessDeepLab(data_dir);
-#			ProcessYolo(data_dir);			
-			ProcessOpenPose(data_dir);
+			ProcessYolo(data_dir);			
+#			ProcessOpenPose(data_dir);
 		};
 	}
 
@@ -46,7 +46,7 @@ class Test {
 		result := session->Inference(image_bytes, label_names);
 		if(result <> Nil) {
 			result->ToString()->PrintLine();
-			
+
 			classifications := result->GetClassifications();
 			each(classification in classifications) {
 				classification->ToString()->PrintLine();
@@ -144,6 +144,7 @@ class Test {
 			return;
 		};
 
+		result->ToJson()->ToString()->PrintLine();
 		result->ToString()->PrintLine();
 		"==="->PrintLine();
 
