@@ -64,7 +64,11 @@ extern "C" {
          session_options.SetIntraOpNumThreads(std::thread::hardware_concurrency());
 
          // Create ONNX session
+         if(!env) {
+            env = std::make_unique<Ort::Env>(ORT_LOGGING_LEVEL_WARNING, "onnx");
+         }
          const Ort::Session* session = new Ort::Session(*env, model_path.c_str(), session_options);
+         
          APITools_SetIntValue(context, 0, (size_t)session);
       }
       catch(const std::exception& ex) {
