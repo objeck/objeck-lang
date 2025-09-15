@@ -955,7 +955,9 @@ bundle API.Onnx {
 		~#
 		method : public : ToString() ~ String {
 			id := @id->As(Int);
-			return "[id={$id}, name={$@name}, normalized=[{$@norm_x},{$@norm_x}], confidence={$@confidence}]";
+			name := @name <> Nil ? @name : "<unknown>";
+
+			return "[id={$id}, name={$name}, normalized=[{$@norm_x},{$@norm_x}], confidence={$@confidence}]";
 		}
 	}
 }
