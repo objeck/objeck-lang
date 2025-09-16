@@ -743,7 +743,7 @@ bundle API.Onnx {
 			elem_json->Insert("id", @id);
 			elem_json->Insert("name", @name);
 
-			if(@polygons <> Nil) {
+			if(#~@polygons <> Nil~# false) {
 				polygons_json := JsonElement->New(JsonElement->JsonType->ARRAY);
 				each(polygon in @polygons) {
 					polygon_json := JsonElement->New(JsonElement->JsonType->ARRAY);

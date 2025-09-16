@@ -1,23 +1,66 @@
-use API.Onnx, use API.OpenCV, System.IO.Filesystem, Collection;
+use API.Onnx, Data.JSON, API.OpenCV, System.IO.Filesystem, Collection;
 
 class Test {
 	# Nvidia DML 650-750 ms
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
 			data_dir := args[0];
-			
-			ProcessResNet(data_dir);
 
-#~
-			ProcessDeepLab(data_dir);
-			ProcessYolo(data_dir);			
-			ProcessOpenPose(data_dir);
+			elem_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			
+			ProcessResNet(elem_json, data_dir);
+			ProcessDeepLab(elem_json, data_dir);
+			ProcessYolo(elem_json, data_dir);			
+			ProcessOpenPose(elem_json, data_dir);
+
+			FileWriter->WriteFile("data.json", elem_json->ToString());
+		};
+	}
+
+	# ResNet-50
+	function : ProcessResNet(elem_json : JsonElement, root_dir : String) ~ Nil {
+		"### ResNet ###"->PrintLine();
+
+		image_dir := root_dir + "/images/";
+		image_dir := image_dir->ReplaceAll('\\', '/');
+
+		model_path := root_dir + "/resnet34-v2-7.onnx";
+		model_path := model_path->ReplaceAll('\\', '/');
+
+		label_path := root_dir + "/resnet_labels.txt";
+		label_path := label_path->ReplaceAll('\\', '/');
+
+		"model_path={$model_path}"->PrintLine();
+		"label_path={$label_path}"->PrintLine();
+
+		image_labels := LoadLabels(label_path);
+		image_label_size := image_labels->Size();
+		"image_label_size={$image_label_size}"->PrintLine();
+
+		image_dir += "sheep_person.jpg";
+				
+		image_bytes := FileReader->ReadBinaryFile(image_dir);
+		image_size := image_bytes->Size();
+
+		"image_dir={$image_dir}"->PrintLine();
+		"image_size={$image_size}\n---"->PrintLine();
+
+		label_names := image_labels->ToArray()->As(String[]);
+		session := API.Onnx.ResNetSession->New(model_path, Nil);
+		result := session->Inference(image_bytes, 224, 224, label_names);
+		if(result <> Nil) {
+			elem_json->Insert("resnet", result->ToJson());
+			"==="->PrintLine();
+#~			
+			result->GetId()->PrintLine();
+			result->GetName()->PrintLine();
+			result->GetConfidence()->PrintLine();
 ~#			
 		};
 	}
 
 	# DeepLabv3
-	function : ProcessDeepLab(root_dir : String) ~ Nil {
+	function : ProcessDeepLab(elem_json : JsonElement, root_dir : String) ~ Nil {
 		"### DeepLab ###"->PrintLine();
 
 		image_dir := root_dir + "/images/";
@@ -45,10 +88,9 @@ class Test {
 		session := API.Onnx.DeepLabSession->New(model_path, Nil);
 		result := session->Inference(image_bytes, label_names);
 		if(result <> Nil) {
-			result->ToJson()->ToString()->PrintLine();
+			elem_json->Insert("deeplab", result->ToJson());
 			"==="->PrintLine();
-
-			#~
+#~
 			each(classification in classifications) {
 				classification->GetPolygons()->Size()->PrintLine();
 				classification->ToString()->PrintLine();
@@ -56,12 +98,12 @@ class Test {
 			
 			overlay_image := result->GetMaskedImage();
 			overlay_image->Show("DeepLab", 0.75);
-			~#
-		}
+~#
+		};
 	}
 
 	# Yolo-v12
-	function : ProcessYolo(root_dir : String) ~ Nil {
+	function : ProcessYolo(elem_json : JsonElement, root_dir : String) ~ Nil {
 		"### Yolo ###"->PrintLine();
 
 		image_dir := root_dir + "/images/";
@@ -99,45 +141,57 @@ class Test {
 
 		session := API.Onnx.YoloSession->New(model_path, Nil);
 		result := session->Inference(image_bytes, 640, 640, 0.65, label_names);
-		if(result = Nil) {
-			"--- Error: No results ---"->ErrorLine();
-			return;
-		};
+		if(result <> Nil) {
+			elem_json->Insert("yolo", result->ToJson());
 
-		result->ToJson()->ToString()->PrintLine();
-		"==="->PrintLine();
+			thumbnail := image->Resize(0.25);
+			thumbnail_bytes := thumbnail->Convert(Image->Format->JPEG);
+			thumbnail_str := Cipher.Encrypt->Base64(thumbnail_bytes);
+
+			dims_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+			dims_json->Add(thumbnail->Rows());
+			dims_json->Add(thumbnail->Columns());
+
+			image_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			image_json->Insert("size", dims_json);
+			image_json->Insert("base64", thumbnail_str);
+
+			elem_json->Insert("image", image_json);
+			
+			"==="->PrintLine();
 #~		
-		result->ToString()->PrintLine();
+			result->ToString()->PrintLine();
 
-		classifications := result->GetClassifications();
-		each(classification in classifications) {
-			label_str := classification->GetName();
-			class_str := classification->ToString();
-			"name='{$label_str}', class={$class_str}"->PrintLine();
+			classifications := result->GetClassifications();
+			each(classification in classifications) {
+				label_str := classification->GetName();
+				class_str := classification->ToString();
+				"name='{$label_str}', class={$class_str}"->PrintLine();
 
-			bounds := classification->GetBounds();
-			left := bounds->GetX();
-			top := bounds->GetY();
+				bounds := classification->GetBounds();
+				left := bounds->GetX();
+				top := bounds->GetY();
 
-			image := image->DrawRectangle(Rect->New(
-				left, top, bounds->GetWidth(), bounds->GetHeight()), 
-				Scalar->New(0, 255, 0), 2);
+				image := image->DrawRectangle(Rect->New(
+					left, top, bounds->GetWidth(), bounds->GetHeight()), 
+					Scalar->New(0, 255, 0), 2);
 
-			image := image->DrawText(
-				label_str,
-				Point->New(left, top), 
-				Font->FONT_HERSHEY_SIMPLEX,
-				0.75,
-				Scalar->New(255, 0, 0));
-		};
-		"---"->PrintLine();
+				image := image->DrawText(
+					label_str,
+					Point->New(left, top), 
+					Font->FONT_HERSHEY_SIMPLEX,
+					0.75,
+					Scalar->New(255, 0, 0));
+			};
+			"---"->PrintLine();
 
-		image->Show("Yolo", 0.75);
+			image->Show("Yolo", 0.75);
 ~#
+		};
 	}
 
 	# OpenPose
-	function : ProcessOpenPose(root_dir : String) ~ Nil {
+	function : ProcessOpenPose(elem_json : JsonElement, root_dir : String) ~ Nil {
 		"### OpenPose ###"->PrintLine();
 
 		image_dir := root_dir + "/images/";
@@ -168,9 +222,8 @@ class Test {
 		session := API.Onnx.OpenPoseSession->New(model_path, Nil);
 		result := session->Inference(image_bytes, label_names);
 		if(result <> Nil) {
-			result->ToJson()->ToString()->PrintLine();
+			elem_json->Insert("openpose", result->ToJson());
 			"==="->PrintLine();
-
 #~
 			classifications := result->GetClassifications();
 			each(classification in classifications) {
@@ -183,51 +236,6 @@ class Test {
 		};
 
 		session->Close();
-	}
-
-	# ResNet-50
-	function : ProcessResNet(root_dir : String) ~ Nil {
-		"### ResNet ###"->PrintLine();
-
-		image_dir := root_dir + "/images/";
-		image_dir := image_dir->ReplaceAll('\\', '/');
-
-		model_path := root_dir + "/resnet34-v2-7.onnx";
-		model_path := model_path->ReplaceAll('\\', '/');
-
-		label_path := root_dir + "/resnet_labels.txt";
-		label_path := label_path->ReplaceAll('\\', '/');
-
-		"model_path={$model_path}"->PrintLine();
-		"label_path={$label_path}"->PrintLine();
-
-		image_labels := LoadLabels(label_path);
-		image_label_size := image_labels->Size();
-		"image_label_size={$image_label_size}"->PrintLine();
-
-		image_dir += "sheep_person.jpg";
-				
-		image_bytes := FileReader->ReadBinaryFile(image_dir);
-		image_size := image_bytes->Size();
-
-		"image_dir={$image_dir}"->PrintLine();
-		"image_size={$image_size}\n---"->PrintLine();
-
-		label_names := image_labels->ToArray()->As(String[]);
-		session := API.Onnx.ResNetSession->New(model_path, Nil);
-		result := session->Inference(image_bytes, 224, 224, label_names);
-		if(result <> Nil) {
-			result->ToJson()->ToString()->PrintLine();
-			"==="->PrintLine();
-#~			
-			result->GetId()->PrintLine();
-			result->GetName()->PrintLine();
-			result->GetConfidence()->PrintLine();
-~#			
-		}
-		else {
-			"--- Error: No results returned ---"->ErrorLine();
-		};
 	}
 
 	function : LoadLabels(label_path : String) ~ Vector<String> {
