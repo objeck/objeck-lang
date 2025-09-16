@@ -902,31 +902,12 @@ static void resnet_image_inf(VMContext& context) {
       size_t* resnet_result_obj = APITools_CreateObject(context, L"API.Onnx.ResNetResult");
       resnet_result_obj[0] = (size_t)output_array;
 
-      // Copy output shape
-      auto output_shape = output_tensor.GetTensorTypeAndShapeInfo().GetShape();
-      size_t* output_shape_array = APITools_MakeIntArray(context, output_shape.size());
-      size_t* output_shape_array_buffer = output_shape_array + 3;
-      for(size_t i = 0; i < output_shape.size(); ++i) {
-         output_shape_array_buffer[i] = output_shape[i];
-      }
-      resnet_result_obj[1] = (size_t)output_shape_array;
-
-      // Copy image size
-      const int rows = img.rows;
-      const int cols = img.cols;
-
-      size_t* output_image_array = APITools_MakeIntArray(context, 2);
-      size_t* output_image_array_buffer = output_image_array + 3;
-      output_image_array_buffer[0] = rows;
-      output_image_array_buffer[1] = cols;
-      resnet_result_obj[2] = (size_t)output_image_array;
-
-      resnet_result_obj[3] = image_index; // top index
-      *((double*)(&resnet_result_obj[4])) = top_confidence; // top confidence
+      resnet_result_obj[1] = image_index; // top index
+      *((double*)(&resnet_result_obj[2])) = top_confidence; // top confidence
 
       // copy label name
       if(image_index < labels_size) {
-         resnet_result_obj[5] = labels_objs[image_index];
+         resnet_result_obj[3] = labels_objs[image_index];
       }
 
       APITools_SetObjectValue(context, 0, resnet_result_obj);

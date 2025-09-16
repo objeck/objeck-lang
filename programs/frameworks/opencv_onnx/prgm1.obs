@@ -6,12 +6,13 @@ class Test {
 		if(args->Size() = 1) {
 			data_dir := args[0];
 			
-#			ProcessResNet(data_dir);
-#			System.IO.Console->ReadLine();
+			ProcessResNet(data_dir);
 
+#~
 			ProcessDeepLab(data_dir);
 			ProcessYolo(data_dir);			
 			ProcessOpenPose(data_dir);
+~#			
 		};
 	}
 
@@ -216,10 +217,13 @@ class Test {
 		session := API.Onnx.ResNetSession->New(model_path, Nil);
 		result := session->Inference(image_bytes, 224, 224, label_names);
 		if(result <> Nil) {
+			result->ToJson()->ToString()->PrintLine();
+			"==="->PrintLine();
+#~			
 			result->GetId()->PrintLine();
 			result->GetName()->PrintLine();
 			result->GetConfidence()->PrintLine();
-			"==="->PrintLine();
+~#			
 		}
 		else {
 			"--- Error: No results returned ---"->ErrorLine();
