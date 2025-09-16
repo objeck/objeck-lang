@@ -1020,7 +1020,7 @@ static void deeplab_image_inf(VMContext& context) {
          std::wcerr << L"Unexpected output shape!" << std::endl;
          return;
       }
-      
+
       // set results
       size_t* deeplab_result_obj = APITools_CreateObject(context, L"API.Onnx.DeepLabResult");
 
@@ -1061,29 +1061,62 @@ static void deeplab_image_inf(VMContext& context) {
       // set DeepLab metadata
       const cv::Size source_size(img.cols, img.rows);  // from your input image
       const DeepLapSummary summary = process_deeplab_output(output_tensor, source_size, deeplab_labels);
-      
+
       std::vector<size_t> class_results;
       class_results.reserve(summary.class_ids.size());
 
+      // build results
       for(size_t i = 0; i < summary.class_ids.size(); ++i) {
          size_t* deeplab_cls_obj = APITools_CreateObject(context, L"API.Onnx.DeepLabClassification");
 
+         // build polygon list for this class
          if(deeplab_cls_obj) {
             const size_t cls_id = summary.class_ids[i];
-            double confidence = summary.coverage[i];
-            const std::wstring& cls_name = (cls_id >= 0 && cls_id < (int)deeplab_labels.size()) ?
-               deeplab_labels[cls_id] : (L"unknown_" + std::to_wstring(cls_id));
 
+            std::vector<size_t*> poly_objs;
+            auto polys = extract_polygons(summary.class_map_src, (int)cls_id, 2.0);
+            for(size_t i = 0; i < polys.size(); ++i) {
+               const auto& poly = polys[i];
+               for(size_t k = 0; k < poly.size(); ++k) {
+
+                  size_t* x_obj = APITools_CreateObject(context, L"System.IntRef");
+                  x_obj[0] = poly[k].x;
+
+                  size_t* y_obj = APITools_CreateObject(context, L"System.IntRef");
+                  y_obj[0] = poly[k].y;
+
+                  size_t* pair_obj = APITools_CreateObject(context, L"Collection.Tuple.Pair");
+                  pair_obj[0] = (size_t)x_obj;
+                  pair_obj[1] = (size_t)y_obj;
+
+                  poly_objs.push_back(pair_obj);
+               }
+            }
+
+            // copy results
+            size_t* polygon_array = APITools_MakeIntArray(context, poly_objs.size());
+            size_t* polygon_array_buffer = polygon_array + 3;
+            for(size_t i = 0; i < poly_objs.size(); ++i) {
+               polygon_array_buffer[i] = (size_t)poly_objs[i];
+            }
+
+            // set classification
             deeplab_cls_obj[0] = cls_id;
+
+            const std::wstring& cls_name = (cls_id >= 0 && cls_id < (int)deeplab_labels.size()) ? deeplab_labels[cls_id] : (L"unknown_" + std::to_wstring(cls_id));
             deeplab_cls_obj[1] = (size_t)APITools_CreateStringObject(context, cls_name);
+
+            const double confidence = summary.coverage[i];
             *((double*)(&deeplab_cls_obj[2])) = confidence;
-            
+
+            deeplab_cls_obj[3] = (size_t)polygon_array;
+
+            // add classification to results
             class_results.push_back((size_t)deeplab_cls_obj);
          }
       }
-      // std::wcout << L"] } }\n";
-
-      // Create class results array
+      
+      // build results array
       size_t* class_array = APITools_MakeIntArray(context, class_results.size());
       size_t* class_array_ptr = class_array + 3;
       for(size_t i = 0; i < class_results.size(); ++i) {
