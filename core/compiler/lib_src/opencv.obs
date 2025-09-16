@@ -257,6 +257,48 @@ bundle API.OpenCV {
 
 			return array_args[0]->As(API.OpenCV.Image);
 		}
+
+		#~
+		Resizes an image
+		@param fx x-scale factor
+		@param fy y-scale factor
+		@param interpolation filling missing pixels method
+		@return updated image
+		~#
+		method : public : Resize(fx : Float, fy : Float, interpolation : InterpolationFlags := InterpolationFlags->INTER_LINEAR) ~ API.OpenCV.Image {
+			array_args := Base->New[6];
+
+			array_args[0] := Nil;
+			array_args[1] := @self;
+			array_args[2] := Nil;
+			array_args[3] := FloatRef->New(fx);
+			array_args[4] := FloatRef->New(fy);
+			array_args[5] := IntRef->New(interpolation);
+
+			Proxy->GetDllProxy()->CallFunction("opencv_resize_image", array_args);
+
+			return array_args[0]->As(API.OpenCV.Image);
+		}
+
+		#~
+		Resizes an image
+		@param f scale factor
+		@return updated image
+		~#
+		method : public : Resize(f : Float := 0.0, interpolation : InterpolationFlags := InterpolationFlags->INTER_LINEAR) ~ API.OpenCV.Image {
+			array_args := Base->New[6];
+
+			array_args[0] := Nil;
+			array_args[1] := @self;
+			array_args[2] := Nil;
+			array_args[3] := FloatRef->New(f);
+			array_args[4] := FloatRef->New(f);
+			array_args[5] := IntRef->New(interpolation);
+
+			Proxy->GetDllProxy()->CallFunction("opencv_resize_image", array_args);
+
+			return array_args[0]->As(API.OpenCV.Image);
+		}
 	}
 
 	#~

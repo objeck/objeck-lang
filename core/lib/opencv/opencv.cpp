@@ -209,7 +209,7 @@ extern "C" {
       const double fy = APITools_GetFloatValue(context, 4);
       const long interpolation = (long)APITools_GetIntValue(context, 5);
 
-      if(!image_in_obj || !size_obj) {
+      if(!image_in_obj) {
          APITools_SetObjectValue(context, 0, 0);
          return;
       }
@@ -220,10 +220,15 @@ extern "C" {
          return;
       }
 
-      const long width = (long)size_obj[0];
-      const long height = (long)size_obj[1];
+      if(size_obj) {
+         const long width = (long)size_obj[0];
+         const long height = (long)size_obj[1];
 
-      cv::resize(image, image, cv::Size(width, height), fx, fy, interpolation);
+         cv::resize(image, image, cv::Size(width, height), fx, fy, interpolation);
+      }
+      else {
+         cv::resize(image, image, cv::Size(), fx, fy, interpolation);
+      }
 
       size_t* image_out_obj = opencv_raw_write(image, context);
       APITools_SetObjectValue(context, 0, image_out_obj);
