@@ -324,8 +324,8 @@ bundle API.Onnx {
 		method : public : ToJson() ~ JsonElement {
 			elem_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 
-			elem_json->Insert("class-id", @id);
-			elem_json->Insert("class-name", @name);
+			elem_json->Insert("id", @id);
+			elem_json->Insert("name", @name);
 			elem_json->Insert("confidence", @confidence);
 			elem_json->Insert("bounds" @bounds->ToJson());
 
@@ -755,8 +755,8 @@ bundle API.Onnx {
 		method : public : ToJson() ~ JsonElement {
 			elem_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 
-			elem_json->Insert("class-id", @id);
-			elem_json->Insert("class-name", @name);
+			elem_json->Insert("id", @id);
+			elem_json->Insert("name", @name);
 
 			if(@polygons <> Nil) {
 				polygons_json := JsonElement->New(JsonElement->JsonType->ARRAY);
@@ -767,7 +767,7 @@ bundle API.Onnx {
 
 					polygons_json->Add(polygon_json);
 				};
-				
+
 				elem_json->Insert("polygons", polygons_json);
 			};
 
@@ -935,6 +935,29 @@ bundle API.Onnx {
 		}
 
 		#~
+		JSON representation 
+		@return JSON representation 
+		~#
+		method : public : ToJson() ~ JsonElement {
+			elem_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+
+			norms_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+			norms_json->Add(@norm_x);
+			norms_json->Add(@norm_y);
+			norms_json->Add(@norm_w);
+			norms_json->Add(@norm_h);
+			elem_json->Insert("norms", norms_json);
+
+			classes_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+			each(classification in @classifications) {
+				classes_json->Add(classification->ToJson());
+			};
+			elem_json->Insert("classifications", classes_json);
+
+			return elem_json;
+		}
+
+		#~
 		Get string representation
 		@return string representation
 		~#
@@ -1045,6 +1068,25 @@ bundle API.Onnx {
 		}
 
 		#~
+		JSON representation 
+		@return JSON representation 
+		~#
+		method : public : ToJson() ~ JsonElement {
+			elem_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+
+			id := @id->As(Int);
+			elem_json->Insert("id", id);
+			elem_json->Insert("name", @name);
+			elem_json->Insert("confidence", @confidence);
+			
+			norms_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+			norms_json->Add(@norm_x);
+			norms_json->Add(@norm_y);
+			
+			return elem_json;
+		}
+
+		#~
 		Get string representation
 		@return string representation
 		~#
@@ -1052,7 +1094,7 @@ bundle API.Onnx {
 			id := @id->As(Int);
 			name := @name <> Nil ? @name : "<unknown>";
 
-			return "[id={$id}, name={$name}, normalized=[{$@norm_x},{$@norm_x}], confidence={$@confidence}]";
+			return "[id={$id}, name={$name}, normalized=[{$@norm_x},{$@norm_y}], confidence={$@confidence}]";
 		}
 	}
 }

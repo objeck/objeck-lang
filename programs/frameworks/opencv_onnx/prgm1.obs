@@ -10,8 +10,8 @@ class Test {
 #			System.IO.Console->ReadLine();
 
 			ProcessDeepLab(data_dir);
-#			ProcessYolo(data_dir);			
-#			ProcessOpenPose(data_dir);
+			ProcessYolo(data_dir);			
+			ProcessOpenPose(data_dir);
 		};
 	}
 
@@ -28,7 +28,6 @@ class Test {
 		label_path := root_dir + "/deeplab_labels.txt";
 		label_path := label_path->ReplaceAll('\\', '/');
 
-		"image_dir={$image_dir}"->PrintLine();
 		"model_path={$model_path}"->PrintLine();
 		"label_path={$label_path}"->PrintLine();
 		image_dir += "sheep_person.jpg";
@@ -37,7 +36,7 @@ class Test {
 		image_size := image_bytes->Size();
 
 		"image_dir={$image_dir}"->PrintLine();
-		"image_size={$image_size}"->PrintLine();
+		"image_size={$image_size}\n---"->PrintLine();
 
 		image_labels := LoadLabels(label_path);
 		label_names := image_labels->ToArray()->As(String[]);
@@ -46,6 +45,8 @@ class Test {
 		result := session->Inference(image_bytes, label_names);
 		if(result <> Nil) {
 			result->ToJson()->ToString()->PrintLine();
+			"==="->PrintLine();
+
 			#~
 			each(classification in classifications) {
 				classification->GetPolygons()->Size()->PrintLine();
@@ -71,7 +72,6 @@ class Test {
 		label_path := root_dir + "/yolo_labels.txt";
 		label_path := label_path->ReplaceAll('\\', '/');
 
-		"image_dir={$image_dir}"->PrintLine();
 		"model_path={$model_path}"->PrintLine();
 		"label_path={$label_path}"->PrintLine();
 
@@ -86,7 +86,7 @@ class Test {
 		image_size := image_bytes->Size();
 
 		"image_dir={$image_dir}"->PrintLine();
-		"image_size={$image_size}\n"->PrintLine();
+		"image_size={$image_size}\n---"->PrintLine();
 
 		image := Image->Load(image_bytes);
 		if(image = Nil) {
@@ -104,8 +104,9 @@ class Test {
 		};
 
 		result->ToJson()->ToString()->PrintLine();
-		result->ToString()->PrintLine();
 		"==="->PrintLine();
+#~		
+		result->ToString()->PrintLine();
 
 		classifications := result->GetClassifications();
 		each(classification in classifications) {
@@ -131,8 +132,7 @@ class Test {
 		"---"->PrintLine();
 
 		image->Show("Yolo", 0.75);
-
-		session->Close();
+~#
 	}
 
 	# OpenPose
@@ -152,7 +152,8 @@ class Test {
 		"model_path={$model_path}"->PrintLine();
 
 		image_labels := LoadLabels(label_path);
-		label_names := image_labels->ToArray()->As(String[]);
+		image_label_size := image_labels->Size();
+		"image_label_size={$image_label_size}"->PrintLine();
 
 		image_dir += "sheep_person.jpg";
 				
@@ -160,13 +161,16 @@ class Test {
 		image_size := image_bytes->Size();
 
 		"image_dir={$image_dir}"->PrintLine();
-		"image_size={$image_size}"->PrintLine();
+		"image_size={$image_size}\n---"->PrintLine();
 
+		label_names := image_labels->ToArray()->As(String[]);
 		session := API.Onnx.OpenPoseSession->New(model_path, Nil);
 		result := session->Inference(image_bytes, label_names);
 		if(result <> Nil) {
-			result->ToString()->PrintLine();
+			result->ToJson()->ToString()->PrintLine();
+			"==="->PrintLine();
 
+#~
 			classifications := result->GetClassifications();
 			each(classification in classifications) {
 				classification->ToString()->PrintLine();
@@ -174,6 +178,7 @@ class Test {
 
 			overlay_image := result->GetMaskedImage();
 			overlay_image->Show("OpenPose", 0.75);
+~#			
 		};
 
 		session->Close();
@@ -192,7 +197,6 @@ class Test {
 		label_path := root_dir + "/resnet_labels.txt";
 		label_path := label_path->ReplaceAll('\\', '/');
 
-		"image_dir={$image_dir}"->PrintLine();
 		"model_path={$model_path}"->PrintLine();
 		"label_path={$label_path}"->PrintLine();
 
@@ -206,7 +210,7 @@ class Test {
 		image_size := image_bytes->Size();
 
 		"image_dir={$image_dir}"->PrintLine();
-		"image_size={$image_size}"->PrintLine();
+		"image_size={$image_size}\n---"->PrintLine();
 
 		label_names := image_labels->ToArray()->As(String[]);
 		session := API.Onnx.ResNetSession->New(model_path, Nil);
@@ -215,7 +219,7 @@ class Test {
 			result->GetId()->PrintLine();
 			result->GetName()->PrintLine();
 			result->GetConfidence()->PrintLine();
-			"--- Ok ---"->PrintLine();
+			"==="->PrintLine();
 		}
 		else {
 			"--- Error: No results returned ---"->ErrorLine();
