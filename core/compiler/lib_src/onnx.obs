@@ -121,7 +121,7 @@ bundle API.Onnx {
 	Yolo inference result
 	~#
 	class YoloResult {
-		@output : Float[];
+		@confidences : Float[];
 		@shape : Int[];
 		@dims : Int[];
 		@classifications : YoloClassification[];
@@ -132,11 +132,11 @@ bundle API.Onnx {
 		New : private () {}
 
 		#~
-		Gets the output results
-		@return output results
+		Gets the confidences results
+		@return confidences results
 		~#
 		method : public : GetOutput() ~ Float[] {
-			return @output;
+			return @confidences;
 		}
 
 		method : public : Set(image_bytes : Byte[], image_labels : String[]) ~ Nil {
@@ -145,8 +145,8 @@ bundle API.Onnx {
 		}
 
 		#~
-		Gets the output shape
-		@return output shape
+		Gets the confidences shape
+		@return confidences shape
 		~#
 		method : public : GetShape() ~ Int[] {
 			return @shape;
@@ -184,11 +184,11 @@ bundle API.Onnx {
 			return @classifications;
 		}
 
-		function : native : GreatestFloat(start : Int, end : Int, output : Float[]) ~ Int {
+		function : native : GreatestFloat(start : Int, end : Int, confidences : Float[]) ~ Int {
 			index := start;
 
 			for(i := start + 1; i < end; i += 1;) {
-				if(output[i] > output[index]) {
+				if(confidences[i] > confidences[index]) {
 					index := i;
 				}
 			}
@@ -226,13 +226,13 @@ bundle API.Onnx {
 		@return string representation 
 		~#
 		method : public : ToString() ~ String {
-			buffer := "output-size=";
+			buffer := "confidences-size=";
 
-			if(@output = Nil) {
+			if(@confidences = Nil) {
 				buffer += "0, shape-size=";
 			}
 			else {
-				output_size := @output->Size();
+				output_size := @confidences->Size();
 				buffer += "{$output_size}, shape-size=";
 			};
 
@@ -424,9 +424,7 @@ bundle API.Onnx {
 	ResNet results
 	~#
 	class ResNetResult {
-		@output : Float[];
-		@shape : Int[];
-		@dims : Int[];
+		@confidences : Float[];
 		@class_id : Int;
 		@confidence : Float;
 		@name : String;
@@ -437,11 +435,11 @@ bundle API.Onnx {
 		New : private () {}
 
 		#~
-		Gets the output results
-		@return output results
+		Gets the confidences results
+		@return confidences results
 		~#
-		method : public : GetOutput() ~ Float[] {
-			return @output;
+		method : public : GeConfidences() ~ Float[] {
+			return @confidences;
 		}
 
 		#~
@@ -474,19 +472,23 @@ bundle API.Onnx {
 		}
 
 		#~
-		Gets the output shape
-		@return output shape
+		JSON representation 
+		@return JSON representation 
 		~#
-		method : public : GetShape() ~ Int[] {
-			return @shape;
-		}
+		method : public : ToJson() ~ JsonElement {
+			elem_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			
+			conf_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+			each(confidence in @confidences) {
+				conf_array_json->Add(confidence);
+			};
+			elem_json->Insert("confidences", conf_array_json);
 
-		#~
-		Gets the image dimensions
-		@return image dimensions
-		~#
-		method : public : GetDimensions() ~ Int[] {
-			return @dims;
+			elem_json->Insert("id", @class_id);
+			elem_json->Insert("name", @name);
+			elem_json->Insert("top-confidence", @confidence);
+
+			return elem_json;
 		}
 
 		#~
@@ -494,31 +496,14 @@ bundle API.Onnx {
 		@return string representation
 		~#
 		method : public : ToString() ~ String {
-			buffer := "output-size=";
+			buffer := "confidences-size=";
 
-			if(@output = Nil) {
+			if(@confidences = Nil) {
 				buffer += "0, shape-size=";
 			}
 			else {
-				output_size := @output->Size();
+				output_size := @confidences->Size();
 				buffer += "{$output_size}, shape-size=";
-			};
-
-			if(@shape = Nil) {
-				buffer += "0, image-dims=";
-			}
-			else {
-				shape_size := @shape->Size();
-				buffer += "{$shape_size}, image-dims=";
-			};
-
-			if(@dims = Nil) {
-				buffer += "0x0";
-			}
-			else {
-				width := @dims[0];
-				height := @dims[1];
-				buffer += "{$width}x{$height}";
 			};
 
 			return buffer;
@@ -1078,11 +1063,11 @@ bundle API.Onnx {
 			elem_json->Insert("id", id);
 			elem_json->Insert("name", @name);
 			elem_json->Insert("confidence", @confidence);
-			
+
 			norms_json := JsonElement->New(JsonElement->JsonType->ARRAY);
 			norms_json->Add(@norm_x);
 			norms_json->Add(@norm_y);
-			
+
 			return elem_json;
 		}
 
