@@ -218,7 +218,6 @@ bundle API.Onnx {
 			};
 			elem_json->Insert("classes", classes_array);
 
-
 			return elem_json;
 		}
 
@@ -656,6 +655,20 @@ bundle API.Onnx {
 		}
 
 		#~
+		JSON representation 
+		@return JSON representation 
+		~#
+		method : public : ToJson() ~ JsonElement {
+			elem_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+
+			each(classification in @classifications) {
+				elem_json->Add(classification->ToJson());
+			};
+
+			return elem_json;
+		}
+
+		#~
 		Get string representation
 		@return string representation
 		~#
@@ -698,6 +711,8 @@ bundle API.Onnx {
 		@name : String;
 		@confidence : Float;
 
+		@polygons : Collection.Tuple.Pair[]<IntRef, IntRef>;
+
 		New : private () {
 		}
 
@@ -707,6 +722,14 @@ bundle API.Onnx {
 		~#
 		method : public : GetId() ~ Int {
 			return @id;
+		}
+
+		#~
+		Get identified polygons 
+		@return identified polygons
+		~#
+		method : public : GetPolygons() ~ Collection.Tuple.Pair[]<IntRef, IntRef> {
+			return @polygons;
 		}
 
 		#~
@@ -726,11 +749,42 @@ bundle API.Onnx {
 		}
 
 		#~
+		JSON representation 
+		@return JSON representation 
+		~#
+		method : public : ToJson() ~ JsonElement {
+			elem_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+
+			elem_json->Insert("class-id", @id);
+			elem_json->Insert("class-name", @name);
+
+			if(@polygons <> Nil) {
+				polygons_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+				each(polygon in @polygons) {
+					polygon_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+					polygon_json->Add(polygon->GetFirst()->Get());
+					polygon_json->Add(polygon->GetSecond()->Get());
+
+					polygons_json->Add(polygon_json);
+				};
+				
+				elem_json->Insert("polygons", polygons_json);
+			};
+
+			return elem_json;
+		}
+
+		#~
 		Get string representation
 		@return string representation
 		~#
 		method : public : ToString() ~ String {
-			return "[id={$@id}, name={$@name}, conf={$@confidence}]";
+			poly_count := 0;
+			if(@polygons <> Nil) {
+				poly_count := @polygons->Size();
+			};
+
+			return "[id={$@id}, name={$@name}, conf={$@confidence}, poly_count={$poly_count}]";
 		}
 	}
 
