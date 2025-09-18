@@ -53,10 +53,21 @@ extern "C" {
          // Set DML provider options
          std::unordered_map<std::string, std::string> provider_options;
          provider_options["backend_type"] = "gpu";
+         provider_options["qnn_context_cache_enable"] = "1";
+         provider_options["qnn_context_cache_path"] = "./qnn_cache"; // persistent & writable
+         provider_options["profiling_level"] = "off";
+
+         provider_options["ep.context_enable"] = "1";
+         provider_options["ep.context_file_pat"] = "./qnn_cache/model_ctx.onnx";
+         provider_options["ep.context_embed_mode"] = "1";
+
 
          // Create session options with DML execution provider
          Ort::SessionOptions session_options;// comment
          session_options.AppendExecutionProvider("QNN", provider_options);
+
+
+
          session_options.SetExecutionMode(ExecutionMode::ORT_PARALLEL);
 
          // Create ONNX session
@@ -98,5 +109,13 @@ extern "C" {
 #endif
    void onnx_deeplab_image_inf(VMContext& context) {
       deeplab_image_inf(context);
+   }
+
+   // Process OpenPose image using ONNX model
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void onnx_openpose_image_inf(VMContext& context) {
+      openpose_image_inf(context);
    }
 }
