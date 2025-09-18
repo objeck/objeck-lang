@@ -166,6 +166,9 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>$(CoreLibraryDependencies);%(AdditionalDependencies);opencv_world4120.lib</AdditionalDependencies>
     </Link>
+    <PostBuildEvent>
+      <Command>pushd ..\..\..\..\programs\frameworks\opencv_onnx &amp;&amp;  build_opencv arm64 Release &amp;&amp; popd</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets" />
