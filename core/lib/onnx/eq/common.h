@@ -506,9 +506,9 @@ static size_t* opencv_raw_write(cv::Mat& image, VMContext& context) {
 
 // Process Yolo image using ONNX model
 static void yolo_image_inf(VMContext& context) {
-#ifdef _DEBUG
+// #ifdef _DEBUG
    auto start = std::chrono::high_resolution_clock::now();
-#endif
+// #endif
 
    Ort::Session* session = (Ort::Session*)APITools_GetIntValue(context, 1);
 
@@ -778,11 +778,11 @@ static void yolo_image_inf(VMContext& context) {
 
       APITools_SetObjectValue(context, 0, yolo_result_obj);
 
-#ifdef _DEBUG
+// #ifdef _DEBUG
       auto end = std::chrono::high_resolution_clock::now();
       auto duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
       std::wcout << L"=> ONNX YOLO inference and processing time: " << duration_ms << L" ms" << std::endl;
-#endif
+// #endif
    }
    catch(const Ort::Exception& e) {
       std::wcerr << L"ONNX Runtime Error: " << e.what() << std::endl;
@@ -791,9 +791,9 @@ static void yolo_image_inf(VMContext& context) {
 
 // Process Resnet image using ONNX model
 static void resnet_image_inf(VMContext& context) {
-#ifdef _DEBUG
+// #ifdef _DEBUG
    auto start = std::chrono::high_resolution_clock::now();
-#endif
+// #endif
    Ort::Session* session = (Ort::Session*)APITools_GetIntValue(context, 1);
 
    size_t* input_array = (size_t*)APITools_GetArray(context, 2)[0];
@@ -912,11 +912,11 @@ static void resnet_image_inf(VMContext& context) {
 
       APITools_SetObjectValue(context, 0, resnet_result_obj);
 
-#ifdef _DEBUG
+// #ifdef _DEBUG
       auto end = std::chrono::high_resolution_clock::now();
       auto duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
       std::wcout << L"=> ONNX YOLO inference and processing time: " << duration_ms << L" ms" << std::endl;
-#endif
+// #endif
    }
    catch(const Ort::Exception& e) {
       std::wcerr << L"ONNX Runtime Error: " << e.what() << std::endl;
@@ -925,9 +925,9 @@ static void resnet_image_inf(VMContext& context) {
 
 // Process Deeplab image using ONNX model
 static void deeplab_image_inf(VMContext& context) {
-#ifdef _DEBUG
+// #ifdef _DEBUG
    auto start = std::chrono::high_resolution_clock::now();
-#endif
+// #endif
 
    Ort::Session* session = (Ort::Session*)APITools_GetIntValue(context, 1);
 
@@ -1107,11 +1107,11 @@ static void deeplab_image_inf(VMContext& context) {
 
       APITools_SetObjectValue(context, 0, deeplab_result_obj);
 
-#ifdef _DEBUG
+// #ifdef _DEBUG
       const auto end = std::chrono::high_resolution_clock::now();
       const auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
       std::wcout << L"=> ONNX Deeplab inference completed in " << duration << L" ms." << std::endl;
-#endif
+// #endif
    }
    catch(const Ort::Exception& e) {
       std::wcerr << L"ONNX Runtime Error: " << e.what() << std::endl;
@@ -1120,9 +1120,9 @@ static void deeplab_image_inf(VMContext& context) {
 
 // Process OpenPose image using ONNX model
 static void openpose_image_inf(VMContext& context) {
-#ifdef _DEBUG
+// #ifdef _DEBUG
    auto start = std::chrono::high_resolution_clock::now();
-#endif
+// #endif
 
    Ort::Session* session = (Ort::Session*)APITools_GetIntValue(context, 1);
 
@@ -1384,11 +1384,11 @@ static void openpose_image_inf(VMContext& context) {
 
       APITools_SetObjectValue(context, 0, openpose_result_obj);
 
-#ifdef _DEBUG
+// #ifdef _DEBUG
       const auto end = std::chrono::high_resolution_clock::now();
       const auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
       std::wcout << L"=> ONNX OpenPose inference completed in " << duration << L" ms." << std::endl;
-#endif
+// #endif
    }
    catch(const Ort::Exception& e) {
       std::wcerr << L"ONNX Runtime Error: " << e.what() << std::endl;
