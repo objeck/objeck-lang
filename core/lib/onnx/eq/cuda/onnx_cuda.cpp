@@ -4,6 +4,9 @@
 namespace fs = std::filesystem;
 #endif
 
+#include <opencv2/core.hpp>
+#include <opencv2/core/utils/logger.hpp>
+
 #include <unordered_map> 
 
 extern "C" {
@@ -47,7 +50,8 @@ extern "C" {
       const long values_size = (long)APITools_GetArraySize(values_array);
       const size_t* values_ptrs = APITools_GetArray(values_array);
 
-      const std::wstring model_path = APITools_GetStringValue(context, 3);
+      const std::wstring w_model_path = APITools_GetStringValue(context, 3);
+      const std::string model_path = UnicodeToBytes(w_model_path);
       
       try {
          // Set DML provider options
@@ -61,7 +65,6 @@ extern "C" {
          session_options.SetExecutionMode(ExecutionMode::ORT_PARALLEL);
 
          session_options.DisableMemPattern();
-         session_options.SetIntraOpNumThreads(std::thread::hardware_concurrency());
 
          // Create ONNX session
          if(!env) {
