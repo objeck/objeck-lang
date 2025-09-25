@@ -32,6 +32,20 @@ extern "C" {
       }
    }
 
+   // Set video property
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void opencv_video_set(VMContext& context) {
+      cv::VideoCapture* capture = (cv::VideoCapture*)APITools_GetIntValue(context, 1);
+      if(capture) {
+         const int prop_id = (int)APITools_GetIntValue(context, 2);
+         const double value = APITools_GetFloatValue(context, 3);
+
+         APITools_SetFloatValue(context, 0, capture->set(prop_id, value));
+      }
+   }
+
    // Checks if video is opened
 #ifdef _WIN32
    __declspec(dllexport)

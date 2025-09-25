@@ -7,6 +7,7 @@ class Test {
 			capture := VideoCapture->New(args[0]);
 			if(capture->IsOpen()) {
 				capture->Get(VideoCapture->Property->CAP_PROP_FRAME_COUNT)->PrintLine();
+				capture->Set(VideoCapture->Property->CAP_PROP_POS_MSEC, 0.75);
 				capture->Release();
 			};
 		};
