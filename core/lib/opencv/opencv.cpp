@@ -20,6 +20,18 @@ extern "C" {
    void unload_lib() {
    }
 
+   // Get video property
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void opencv_video_get(VMContext& context) {
+      cv::VideoCapture* capture = (cv::VideoCapture*)APITools_GetIntValue(context, 1);
+      if(capture) {
+         const int prop_id = (int)APITools_GetIntValue(context, 2);
+         APITools_SetFloatValue(context, 0, capture->get(prop_id));
+      }
+   }
+
    // Release video
 #ifdef _WIN32
    __declspec(dllexport)

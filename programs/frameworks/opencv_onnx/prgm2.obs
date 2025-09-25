@@ -3,7 +3,10 @@ use API.Onnx, Data.JSON, API.OpenCV, System.IO.Filesystem, Collection;
 class Test {
 	# Nvidia DML 650-750 ms
 	function : Main(args : String[]) ~ Nil {
-		capture := VideoCapture->New("foo", VideoCapture->Property->CAP_DSHOW);
-		capture->Release();
+		if(args->Size() = 1) {
+			capture := VideoCapture->New(args[0]);
+			capture->Get(VideoCapture->Property->CAP_PROP_FRAME_COUNT)->PrintLine();
+			capture->Release();
+		};
 	}
 }
