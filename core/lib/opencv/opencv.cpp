@@ -32,6 +32,21 @@ extern "C" {
       }
    }
 
+   // Read in image
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void opencv_video_read(VMContext& context) {
+      cv::VideoCapture* capture = (cv::VideoCapture*)APITools_GetIntValue(context, 1);
+      if(capture) {
+         cv::Mat image;
+         const bool result = capture->read(image);
+         
+         size_t* image_obj = opencv_raw_write(image, context);                  
+         APITools_SetObjectValue(context, 0, image_obj);
+      }
+   }
+
    // Set video property
 #ifdef _WIN32
    __declspec(dllexport)
@@ -116,6 +131,17 @@ extern "C" {
 
       size_t* image_obj = opencv_raw_write(image, context);
       APITools_SetObjectValue(context, 0, image_obj);
+   }
+
+   // Determines if an image is empty
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void opencv_is_empty_image(VMContext& context) {
+      size_t* image_obj = APITools_GetObjectValue(context, 1);
+      
+      cv::Mat image = opencv_raw_read(image_obj, context);
+      APITools_SetIntValue(context, 0, image.empty());
    }
 
    // Load image from file
