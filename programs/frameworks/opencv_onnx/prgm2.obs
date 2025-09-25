@@ -8,6 +8,10 @@ class Test {
 			if(capture->IsOpen()) {
 				capture->Get(VideoCapture->Property->CAP_PROP_FRAME_COUNT)->PrintLine();
 				capture->Set(VideoCapture->Property->CAP_PROP_POS_MSEC, 0.75);
+
+				image := capture->Read();
+				image->Show("Test", 0.15);
+
 				capture->Release();
 			};
 		};

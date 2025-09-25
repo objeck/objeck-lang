@@ -141,6 +141,16 @@ bundle API.OpenCV {
 			@capture := value->Get();
 		}
 
+		method : public : Read() ~ API.OpenCV.Image {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@capture);
+			Proxy->GetDllProxy()->CallFunction("opencv_video_read", array_args);
+
+			return array_args[0]->As(API.OpenCV.Image);
+		}
+
 		method : public : Get(prop : Property) ~ Float {
 			array_args := Base->New[3];
 
@@ -213,6 +223,14 @@ bundle API.OpenCV {
 		~#
 		method : public : Size() ~ Int {
 			return @image_bytes->Size();
+		}
+
+		#~
+		Create an empty image instance
+		@return empty image instance
+		~#
+		function : Instance() ~ API.OpenCV.Image {
+			return Image->New();
 		}
 
 		#~
