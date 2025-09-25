@@ -153,6 +153,17 @@ bundle API.OpenCV {
 			return value->Get();
 		}
 
+		method : public : IsOpen() ~ Bool {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@capture);
+			Proxy->GetDllProxy()->CallFunction("opencv_video_is_open", array_args);
+
+			value := array_args[0]->As(IntRef);
+			return value->Get() = 0 ? false : true;
+		}
+
 		method : public : Release() ~ Nil {
 			array_args := Base->New[1];
 
