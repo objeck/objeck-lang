@@ -141,6 +141,59 @@ bundle API.OpenCV {
 			@capture := value->Get();
 		}
 
+		#~
+		Open video file or a capturing device or a IP video stream
+		@param id device ID
+		@return true if open, false otherwise
+		~#
+		method : public : Open(id : Int) ~ Bool {
+			array_args := Base->New[3];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@capture);
+			array_args[2] := IntRef->New(id);
+			Proxy->GetDllProxy()->CallFunction("opencv_open_id", array_args);
+
+			value := array_args[0]->As(IntRef);
+			return value->Get() = 0 ? false : true;
+		}
+
+		#~
+		Open video file or a capturing device or a IP video stream
+		@param id device ID
+		@param pref API prefernce
+		@return true if open, false otherwise
+		~#
+		method : public : Open(id : Int, pref : API) ~ Bool {
+			array_args := Base->New[4];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@capture);
+			array_args[2] := IntRef->New(id);
+			array_args[3] := IntRef->New(pref);
+			Proxy->GetDllProxy()->CallFunction("opencv_open_id_pref", array_args);
+
+			value := array_args[0]->As(IntRef);
+			return value->Get() = 0 ? false : true;
+		}
+
+		#~
+		Open video file or a capturing device or a IP video stream
+		@param name device name
+		@return true if open, false otherwise
+		~#
+		method : public : Open(name : String) ~ Bool {
+			array_args := Base->New[3];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@capture);
+			array_args[2] := name;
+			Proxy->GetDllProxy()->CallFunction("opencv_open_name", array_args);
+
+			value := array_args[0]->As(IntRef);
+			return value->Get() = 0 ? false : true;
+		}
+
 		method : public : Read() ~ API.OpenCV.Image {
 			array_args := Base->New[2];
 
@@ -290,28 +343,10 @@ bundle API.OpenCV {
 		}
 
 		#~
-		Open video file or a capturing device or a IP video stream
-		@param id device ID
-		@return true if open, false otherwise
-		~#
-		method : public : Open(id : Int) ~ Bool {
-			return false;
-		}
-
-		#~
-		Open video file or a capturing device or a IP video stream
-		@param name device name
-		@return true if open, false otherwise
-		~#
-		method : public : Open(name : String) ~ Bool {
-			return false;
-		}
-
-		#~
 		Determines if an image is empty
 		@return true if empty, false otherwise
 		~#
-		public : method : IsEmpty() ~ Bool {
+		method : public : IsEmpty() ~ Bool {
 			array_args := Base->New[2];
 
 			array_args[0] := IntRef->New();

@@ -32,6 +32,65 @@ extern "C" {
       }
    }
 
+
+
+
+
+
+
+
+
+
+
+
+   // Opens a stream
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void opencv_open_id_pref(VMContext& context) {
+      cv::VideoCapture* capture = (cv::VideoCapture*)APITools_GetIntValue(context, 1);
+      if(capture) {
+         const int device_id = (int)APITools_GetIntValue(context, 2);
+         const int pref_id = (int)APITools_GetIntValue(context, 3);
+
+         APITools_SetIntValue(context, 0, capture->open(device_id, pref_id));
+      }
+   }
+
+   // Opens a stream
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void opencv_open_id(VMContext& context) {
+      cv::VideoCapture* capture = (cv::VideoCapture*)APITools_GetIntValue(context, 1);
+      if(capture) {
+         const int device_id = (int)APITools_GetIntValue(context, 2);
+         APITools_SetIntValue(context, 0, capture->open(device_id));
+      }
+   }
+
+      // Opens a stream
+#ifdef _WIN32
+      __declspec(dllexport)
+#endif
+   void opencv_open_name(VMContext & context) {
+      cv::VideoCapture* capture = (cv::VideoCapture*)APITools_GetIntValue(context, 1);
+      if(capture) {
+         const std::wstring w_name = APITools_GetStringValue(context, 2);
+         const std::string name = UnicodeToBytes(w_name);
+
+         APITools_SetIntValue(context, 0, capture->open(name.c_str()));
+      }
+   }
+
+
+
+
+
+
+
+
+
    // Read in image
 #ifdef _WIN32
    __declspec(dllexport)
