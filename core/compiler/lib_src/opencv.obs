@@ -226,14 +226,6 @@ bundle API.OpenCV {
 		}
 
 		#~
-		Create an empty image instance
-		@return empty image instance
-		~#
-		function : Instance() ~ API.OpenCV.Image {
-			return Image->New();
-		}
-
-		#~
 		Gets image rows
 		@return image rows
 		~#
@@ -295,6 +287,39 @@ bundle API.OpenCV {
 			Proxy->GetDllProxy()->CallFunction("opencv_load_image_bytes", array_args);
 
 			return array_args[0]->As(API.OpenCV.Image);
+		}
+
+		#~
+		Open video file or a capturing device or a IP video stream
+		@param id device ID
+		@return true if open, false otherwise
+		~#
+		method : public : Open(id : Int) ~ Bool {
+			return false;
+		}
+
+		#~
+		Open video file or a capturing device or a IP video stream
+		@param name device name
+		@return true if open, false otherwise
+		~#
+		method : public : Open(name : String) ~ Bool {
+			return false;
+		}
+
+		#~
+		Determines if an image is empty
+		@return true if empty, false otherwise
+		~#
+		public : method : IsEmpty() ~ Bool {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := @self;
+			Proxy->GetDllProxy()->CallFunction("opencv_is_empty_image", array_args);
+
+			value := array_args[0]->As(IntRef);
+			return value->Get() = 0 ? false : true;
 		}
 
 		#~
