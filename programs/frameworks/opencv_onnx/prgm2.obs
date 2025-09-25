@@ -6,24 +6,22 @@ class Test {
 		if(args->Size() = 1) {
 			capture := VideoCapture->New(args[0]);
 			if(capture->IsOpen()) {
-				a := capture->Get(VideoCapture->Property->CAP_PROP_FRAME_COUNT);
-				b := capture->Get(VideoCapture->Property->CAP_PROP_FPS);
+				frame_count := capture->Get(VideoCapture->Property->CAP_PROP_FRAME_COUNT);
+				fps_count := frame_count / capture->Get(VideoCapture->Property->CAP_PROP_FPS);
 
-				c := a / b;
-c->PrintLine();				
-
-				capture->Get(VideoCapture->Property->CAP_PROP_POS_MSEC)->PrintLine();
-				
-
-
-				each(i : 10) {
-i->PrintLine();
+				each(i : fps_count) {
 					capture->Set(VideoCapture->Property->CAP_PROP_POS_MSEC, i * 1000);
 					image := capture->Read();
-					image->Show("Test", 0.15);
+					if(image <> Nil) {
+						image->Show("Test", 0.15);
+					};
 				};
+
 				capture->Release();
-			};
+			}
+			else {
+				">>> Stream not open <<<"->PrintLine();
+			}
 		};
 	}
 }
