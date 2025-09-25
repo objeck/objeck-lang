@@ -153,6 +153,19 @@ bundle API.OpenCV {
 			return value->Get();
 		}
 
+		method : public : Set(prop : Property, prop_value : Float) ~ Bool {
+			array_args := Base->New[4];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@capture);
+			array_args[2] := IntRef->New(prop);
+			array_args[3] := FloatRef->New(prop_value);
+			Proxy->GetDllProxy()->CallFunction("opencv_video_set", array_args);
+
+			value := array_args[0]->As(IntRef);
+			return value->Get() = 0 ? false : true;
+		}
+
 		method : public : IsOpen() ~ Bool {
 			array_args := Base->New[2];
 
