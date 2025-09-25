@@ -27,7 +27,7 @@ bundle API.OpenCV {
 	class VideoCapture {
 		@capture : Int;
 
-		consts Property {
+		consts API {
 			CAP_ANY := 0,
 			CAP_VFW := 200,
 			CAP_V4L := 200,
@@ -62,7 +62,61 @@ bundle API.OpenCV {
 			CAP_XINE := 2400
 		}
 
-		New(filename : String, prop : Property) {
+		consts Property {
+		  CAP_PROP_POS_MSEC := 0,
+		  CAP_PROP_POS_FRAMES := 1,
+		  CAP_PROP_POS_AVI_RATIO := 2,
+		  CAP_PROP_FRAME_WIDTH := 3,
+		  CAP_PROP_FRAME_HEIGHT := 4,
+		  CAP_PROP_FPS := 5,
+		  CAP_PROP_FOURCC := 6,
+		  CAP_PROP_FRAME_COUNT := 7,
+		  CAP_PROP_FORMAT := 8,
+		  CAP_PROP_MODE := 9,
+		  CAP_PROP_BRIGHTNESS := 10,
+		  CAP_PROP_CONTRAST := 11,
+		  CAP_PROP_SATURATION := 12,
+		  CAP_PROP_HUE := 13,
+		  CAP_PROP_GAIN := 14,
+		  CAP_PROP_EXPOSURE := 15,
+		  CAP_PROP_CONVERT_RGB := 16,
+		  CAP_PROP_WHITE_BALANCE_BLUE_U := 17,
+		  CAP_PROP_RECTIFICATION := 18,
+		  CAP_PROP_MONOCHROME := 19,
+		  CAP_PROP_SHARPNESS := 20,
+		  CAP_PROP_AUTO_EXPOSURE := 21,
+		  CAP_PROP_GAMMA := 22,
+		  CAP_PROP_TEMPERATURE := 23,
+		  CAP_PROP_TRIGGER := 24,
+		  CAP_PROP_TRIGGER_DELAY := 25,
+		  CAP_PROP_WHITE_BALANCE_RED_V := 26,
+		  CAP_PROP_ZOOM := 27,
+		  CAP_PROP_FOCUS := 28,
+		  CAP_PROP_GUID := 29,
+		  CAP_PROP_ISO_SPEED := 30,
+		  CAP_PROP_BACKLIGHT := 32,
+		  CAP_PROP_PAN := 33,
+		  CAP_PROP_TILT := 34,
+		  CAP_PROP_ROLL := 35,
+		  CAP_PROP_IRIS := 36,
+		  CAP_PROP_SETTINGS := 37,
+		  CAP_PROP_BUFFERSIZE := 38,
+		  CAP_PROP_AUTOFOCUS := 39,
+		  CAP_PROP_SAR_NUM := 40,
+		  CAP_PROP_SAR_DEN := 41,
+		  CAP_PROP_BACKEND := 42,
+		  CAP_PROP_CHANNEL := 43,
+		  CAP_PROP_AUTO_WB := 44,
+		  CAP_PROP_WB_TEMPERATURE := 45,
+		  CAP_PROP_CODEC_PIXEL_FORMAT := 46,
+		  CAP_PROP_BITRATE := 47,
+		  CAP_PROP_ORIENTATION_META := 48,
+		  CAP_PROP_ORIENTATION_AUTO := 49,
+		  CAP_PROP_OPEN_TIMEOUT_MSEC := 53,
+		  CAP_PROP_READ_TIMEOUT_MSEC := 54
+		}
+
+		New(filename : String, prop : API) {
 			array_args := Base->New[3];
 
 			array_args[0] := IntRef->New();
@@ -85,6 +139,18 @@ bundle API.OpenCV {
 
 			value := array_args[0]->As(IntRef);
 			@capture := value->Get();
+		}
+
+		method : public : Get(prop : Property) ~ Float {
+			array_args := Base->New[3];
+
+			array_args[0] := FloatRef->New();
+			array_args[1] := IntRef->New(@capture);
+			array_args[2] := IntRef->New(prop);
+			Proxy->GetDllProxy()->CallFunction("opencv_video_get", array_args);
+
+			value := array_args[0]->As(FloatRef);
+			return value->Get();
 		}
 
 		method : public : Release() ~ Nil {
