@@ -65,7 +65,7 @@ bundle API.OpenCV {
 		New(filename : String, prop : Property) {
 			array_args := Base->New[3];
 
-			array_args[0] := Nil;
+			array_args[0] := IntRef->New();
 			array_args[1] := filename;
 			array_args[2] := IntRef->New(prop);
 
@@ -78,13 +78,20 @@ bundle API.OpenCV {
 		New(filename : String) {
 			array_args := Base->New[2];
 
-			array_args[0] := Nil;
+			array_args[0] := IntRef->New();
 			array_args[1] := filename;
 
 			Proxy->GetDllProxy()->CallFunction("opencv_new_video_capture", array_args);
 
 			value := array_args[0]->As(IntRef);
 			@capture := value->Get();
+		}
+
+		method : public : Release() ~ Nil {
+			array_args := Base->New[1];
+
+			array_args[0] := IntRef->New(@capture);
+			Proxy->GetDllProxy()->CallFunction("opencv_release_video_capture", array_args);
 		}
 	}
 
