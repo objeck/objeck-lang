@@ -32,6 +32,17 @@ extern "C" {
       }
    }
 
+   // Checks if video is opened
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void opencv_video_is_open(VMContext& context) {
+      cv::VideoCapture* capture = (cv::VideoCapture*)APITools_GetIntValue(context, 1);
+      if(capture) {
+         APITools_SetIntValue(context, 0, capture->isOpened());
+      }
+   }
+
    // Release video
 #ifdef _WIN32
    __declspec(dllexport)
