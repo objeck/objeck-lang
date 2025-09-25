@@ -6,11 +6,15 @@ class Test {
 		if(args->Size() = 1) {
 			capture := VideoCapture->New(args[0]);
 			if(capture->IsOpen()) {
-				capture->Get(VideoCapture->Property->CAP_PROP_FRAME_COUNT)->PrintLine();
-				capture->Set(VideoCapture->Property->CAP_PROP_POS_MSEC, 0.75);
+				ms_dur := capture->Get(VideoCapture->Property->CAP_PROP_FRAME_COUNT);
 
-				image := capture->Read();
-				image->Show("Test", 0.15);
+				step_ms := 1000.0 / 30.0;
+				for(i := 0.0; i < ms_dur; i += step_ms;) {
+i->PrintLine();
+					capture->Set(VideoCapture->Property->CAP_PROP_POS_MSEC, i);
+					image := capture->Read();
+					image->Show("Test", 0.15);
+				};
 
 				capture->Release();
 			};
