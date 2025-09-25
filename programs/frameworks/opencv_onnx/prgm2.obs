@@ -4,5 +4,6 @@ class Test {
 	# Nvidia DML 650-750 ms
 	function : Main(args : String[]) ~ Nil {
 		capture := VideoCapture->New("foo", VideoCapture->Property->CAP_DSHOW);
+		capture->Release();
 	}
 }
