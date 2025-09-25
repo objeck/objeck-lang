@@ -154,7 +154,9 @@ extern "C" {
       const std::string video_path = UnicodeToBytes(w_video_path);
 
       cv::VideoCapture* capture = new cv::VideoCapture(video_path);
-      APITools_SetIntValue(context, 0, (size_t)capture);
+      if(capture->isOpened()) {
+         APITools_SetIntValue(context, 0, (size_t)capture);
+      }
    }
 
    // Load video

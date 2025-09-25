@@ -142,18 +142,22 @@ cv::Mat opencv_raw_read(size_t* image_obj, VMContext& context) {
 
 // Write OpenCV image to raw data
 size_t* opencv_raw_write(cv::Mat& image, VMContext& context) {
-  size_t* image_obj = APITools_CreateObject(context, L"API.OpenCV.Image");
+   if(!image.data) {
+      return nullptr;
+   }
 
-  image_obj[0] = image.type(); // type
-  image_obj[1] = image.cols; // columns
-  image_obj[2] = image.rows; // rows
+   size_t* image_obj = APITools_CreateObject(context, L"API.OpenCV.Image");
 
-  const size_t data_size = image.total() * image.elemSize(); // size
-  size_t* array = APITools_MakeByteArray(context, data_size);
-  unsigned char* byte_array = (unsigned char*)(array + 3);
-  memcpy(byte_array, image.data, data_size);
-  image_obj[3] = (size_t)array;
+   image_obj[0] = image.type(); // type
+   image_obj[1] = image.cols; // columns
+   image_obj[2] = image.rows; // rows
 
-  return image_obj;
+   const size_t data_size = image.total() * image.elemSize(); // size
+   size_t* array = APITools_MakeByteArray(context, data_size);
+   unsigned char* byte_array = (unsigned char*)(array + 3);
+   memcpy(byte_array, image.data, data_size);
+   image_obj[3] = (size_t)array;
+
+   return image_obj;
 }
 
