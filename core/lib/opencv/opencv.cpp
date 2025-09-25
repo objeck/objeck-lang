@@ -20,6 +20,20 @@ extern "C" {
    void unload_lib() {
    }
 
+   // Release video
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void opencv_release_video_capture(VMContext& context) {
+      cv::VideoCapture* capture = (cv::VideoCapture*)APITools_GetIntValue(context, 0);
+      if(capture) {
+         capture->release();
+
+         delete capture;
+         capture = nullptr;
+      }
+   }
+
    // Load video
 #ifdef _WIN32
    __declspec(dllexport)
@@ -29,7 +43,7 @@ extern "C" {
       const std::string video_path = UnicodeToBytes(w_video_path);
 
       cv::VideoCapture* capture = new cv::VideoCapture(video_path);
-      APITools_SetObjectValue(context, 0, (size_t*)capture);
+      APITools_SetIntValue(context, 0, (size_t)capture);
    }
 
    // Load video
@@ -43,7 +57,7 @@ extern "C" {
       const int prop_id = (int)APITools_GetIntValue(context, 2);
 
       cv::VideoCapture* capture = new cv::VideoCapture(video_path, prop_id);
-      APITools_SetObjectValue(context, 0, (size_t*)capture);
+      APITools_SetIntValue(context, 0, (size_t)capture);
    }
    
    // Load image from memory
