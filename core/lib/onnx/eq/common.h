@@ -915,7 +915,7 @@ static void resnet_image_inf(VMContext& context) {
 // #ifdef _DEBUG
       auto end = std::chrono::high_resolution_clock::now();
       auto duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-      std::wcout << L"=> ONNX YOLO inference and processing time: " << duration_ms << L" ms" << std::endl;
+      std::wcout << L"=> ONNX ResNet inference and processing time: " << duration_ms << L" ms" << std::endl;
 // #endif
    }
    catch(const Ort::Exception& e) {

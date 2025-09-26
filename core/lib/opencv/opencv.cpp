@@ -32,17 +32,6 @@ extern "C" {
       }
    }
 
-
-
-
-
-
-
-
-
-
-
-
    // Opens a stream
 #ifdef _WIN32
    __declspec(dllexport)
@@ -82,15 +71,7 @@ extern "C" {
          APITools_SetIntValue(context, 0, capture->open(name.c_str()));
       }
    }
-
-
-
-
-
-
-
-
-
+   
    // Read in image
 #ifdef _WIN32
    __declspec(dllexport)
