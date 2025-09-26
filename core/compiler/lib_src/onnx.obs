@@ -392,7 +392,7 @@ bundle API.Onnx {
 
 		#~
 		ResNet image inference
-		@param image image bytes
+		@param image JPEG image bytes
 		@param height image height
 		@param image width width
 		@param labels classification labels
