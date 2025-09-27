@@ -39,14 +39,8 @@ extern "C" {
    __declspec(dllexport)
 #endif
    void onnx_new_session(VMContext& context) {
-      size_t* keys_array = (size_t*)APITools_GetArray(context, 1)[1];
-      const long keys_size = ((long)APITools_GetArraySize(keys_array));
-      const size_t* keys_ptrs = APITools_GetArray(keys_array);
-
-      size_t* values_array = (size_t*)APITools_GetArray(context, 2)[1];
-      const long values_size = ((long)APITools_GetArraySize(keys_array));
-      const size_t* values_ptrs = APITools_GetArray(keys_array);
-
+      auto keys = APITools_GetStringsValues(context, 1);
+      auto values = APITools_GetStringsValues(context, 2);
       const std::wstring model_path = APITools_GetStringValue(context, 3);
 
       try {
@@ -61,6 +55,11 @@ extern "C" {
          provider_options["ep.context_file_pat"] = "./qnn_cache/model_ctx.onnx";
          provider_options["ep.context_embed_mode"] = "1";
 
+         if(!keys.empty() && keys.size() == values.size()) {
+            for(size_t i = 0; i < keys.size(); ++i) {
+               provider_options[UnicodeToBytes(keys[i])] = UnicodeToBytes(values[i]);
+            }
+         }
 
          // Create session options with DML execution provider
          Ort::SessionOptions session_options;// comment

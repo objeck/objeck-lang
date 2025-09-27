@@ -45,9 +45,21 @@ bundle API.Onnx {
 		#~
 		Constructor.
 		@param model Resnet model
+		~#
+		New(model : String) {
+			Init(model, Nil);
+		}
+
+		#~
+		Constructor.
+		@param model Resnet model
 		@param config session configuration parameters
 		~#
 		New(model : String, config : Map<String, String>) {
+			Init(model, config);
+		}
+
+		method : Init(model : String, config : Map<String, String>) ~ Nil {
 			keys := Vector->New()<String>;
 			values := Vector->New()<String>;
 
@@ -351,9 +363,21 @@ bundle API.Onnx {
 		#~
 		Constructor.
 		@param model Resnet model
+		~#
+		New(model : String) {
+			Init(model, Nil);
+		}
+
+		#~
+		Constructor.
+		@param model Resnet model
 		@param config session configuration parameters
 		~#
 		New(model : String, config : Map<String, String>) {
+			Init(model, config);
+		}
+
+		method : Init(model : String, config : Map<String, String>) ~ Nil {
 			keys := Vector->New()<String>;
 			values := Vector->New()<String>;
 
@@ -519,9 +543,21 @@ bundle API.Onnx {
 		#~
 		Constructor.
 		@param model Resnet model
+		~#
+		New(model : String) {
+			Init(model, Nil);
+		}
+
+		#~
+		Constructor.
+		@param model Resnet model
 		@param config session configuration parameters
 		~#
 		New(model : String, config : Map<String, String>) {
+			Init(model, config);
+		}
+
+		method : Init(model : String, config : Map<String, String>) ~ Nil {
 			keys := Vector->New()<String>;
 			values := Vector->New()<String>;
 
@@ -782,9 +818,21 @@ bundle API.Onnx {
 		#~
 		Constructor.
 		@param model Resnet model
+		~#
+		New(model : String) {
+			Init(model, Nil);
+		}
+
+		#~
+		Constructor.
+		@param model Resnet model
 		@param config session configuration parameters
 		~#
 		New(model : String, config : Map<String, String>) {
+			Init(model, config);
+		}
+
+		method : Init(model : String, config : Map<String, String>) ~ Nil {
 			keys := Vector->New()<String>;
 			values := Vector->New()<String>;
 
