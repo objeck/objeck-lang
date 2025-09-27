@@ -9,9 +9,9 @@ class Test {
 			elem_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 			
 			ProcessResNet(elem_json, data_dir);
-			ProcessDeepLab(elem_json, data_dir);
-			ProcessYolo(elem_json, data_dir);			
-			ProcessOpenPose(elem_json, data_dir);
+#			ProcessDeepLab(elem_json, data_dir);
+#			ProcessYolo(elem_json, data_dir);			
+#			ProcessOpenPose(elem_json, data_dir);
 
 			FileWriter->WriteFile("data.json", elem_json->ToString());
 		};
@@ -46,7 +46,8 @@ class Test {
 		"image_size={$image_size}\n---"->PrintLine();
 
 		label_names := image_labels->ToArray()->As(String[]);
-		session := API.Onnx.ResNetSession->New(model_path, Nil);
+		session := API.Onnx.ResNetSession->New(model_path);
+		
 		result := session->Inference(image_bytes, 224, 224, label_names);
 		if(result <> Nil) {
 			elem_json->Insert("resnet", result->ToJson());
