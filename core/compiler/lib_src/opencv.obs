@@ -27,7 +27,7 @@ bundle API.OpenCV {
 	class VideoCapture {
 		@capture : Int;
 
-		consts API {
+		consts Api {
 			CAP_ANY := 0,
 			CAP_VFW := 200,
 			CAP_V4L := 200,
@@ -40,11 +40,11 @@ bundle API.OpenCV {
 			CAP_QT := 500,
 			CAP_UNICAP := 600,
 			CAP_DSHOW := 700,
-			CAP_PVAPI := 800,
+			CAP_PVApi := 800,
 			CAP_OPENNI := 900,
 			CAP_OPENNI_ASUS := 910,
 			CAP_ANDROID := 1000,
-			CAP_XIAPI := 1100,
+			CAP_XIApi := 1100,
 			CAP_AVFOUNDATION := 1200,
 			CAP_GIGANETIX := 1300,
 			CAP_MSMF := 1400,
@@ -116,7 +116,7 @@ bundle API.OpenCV {
 		  CAP_PROP_READ_TIMEOUT_MSEC := 54
 		}
 
-		New(filename : String, prop : API) {
+		New(filename : String, prop : Api) {
 			array_args := Base->New[3];
 
 			array_args[0] := IntRef->New();
@@ -135,7 +135,32 @@ bundle API.OpenCV {
 			array_args[0] := IntRef->New();
 			array_args[1] := filename;
 
-			Proxy->GetDllProxy()->CallFunction("opencv_new_video_capture", array_args);
+			Proxy->GetDllProxy()->CallFunction("opencv_new_video_capture_", array_args);
+
+			value := array_args[0]->As(IntRef);
+			@capture := value->Get();
+		}
+
+		New(id : Int, prop : Api) {
+			array_args := Base->New[3];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(id);
+			array_args[2] := IntRef->New(prop);
+
+			Proxy->GetDllProxy()->CallFunction("opencv_new_video_capture_prop_id", array_args);
+
+			value := array_args[0]->As(IntRef);
+			@capture := value->Get();
+		}
+
+		New(id : Int) {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(id);
+
+			Proxy->GetDllProxy()->CallFunction("opencv_new_video_capture_id", array_args);
 
 			value := array_args[0]->As(IntRef);
 			@capture := value->Get();
@@ -161,10 +186,10 @@ bundle API.OpenCV {
 		#~
 		Open video file or a capturing device or a IP video stream
 		@param id device ID
-		@param pref API prefernce
+		@param pref Api prefernce
 		@return true if open, false otherwise
 		~#
-		method : public : Open(id : Int, pref : API) ~ Bool {
+		method : public : Open(id : Int, pref : Api) ~ Bool {
 			array_args := Base->New[4];
 
 			array_args[0] := IntRef->New();
