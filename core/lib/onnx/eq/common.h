@@ -1370,8 +1370,6 @@ static void openpose_image_inf(VMContext& context) {
          }
       }
 
-      
-
       // masked image
       size_t* maked_image_array = APITools_MakeIntArray(context, 2);
       size_t* pose_image_array_buffer = maked_image_array + 3;
