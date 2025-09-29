@@ -381,6 +381,23 @@ bundle API.OpenCV {
 		}
 
 		#~
+		Shows an image
+		@param title dialog title
+		@param scale scaling percentage 
+		@param wait ms wait time between images, 0 to wait for key
+		~#
+		method : public : Show(title : String, scale : Float, ms_wait : Int) ~ Nil {
+			array_args := Base->New[4];
+
+			array_args[0] := @self;
+			array_args[1] := title;
+			array_args[2] := FloatRef->New(scale);
+			array_args[3] := IntRef->New(ms_wait);
+
+			Proxy->GetDllProxy()->CallFunction("opencv_show_image_ms", array_args);
+		}
+
+		#~
 		Convert an image to a given byte format
 		@param format output format
 		@return converted image bytes

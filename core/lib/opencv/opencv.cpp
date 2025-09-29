@@ -223,7 +223,31 @@ extern "C" {
       cv::resize(image, resized_image, cv::Size(), scaling, scaling, cv::INTER_LINEAR);
 
       cv::imshow(title, resized_image);
-      cv::waitKey(0);
+      cv::waitKey(250);
+   }
+
+   // Display image
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void opencv_show_image_ms(VMContext& context) {
+      size_t* image_obj = APITools_GetObjectValue(context, 0);
+
+      const std::wstring w_title = APITools_GetStringValue(context, 1);
+      const std::string title = UnicodeToBytes(w_title);
+
+      const double scaling = APITools_GetFloatValue(context, 2);
+
+      const int wait = (int)APITools_GetIntValue(context, 3);
+
+      cv::Mat image = opencv_raw_read(image_obj, context);
+
+      // resize
+      cv::Mat resized_image;
+      cv::resize(image, resized_image, cv::Size(), scaling, scaling, cv::INTER_LINEAR);
+
+      cv::imshow(title, resized_image);
+      cv::waitKey(wait);
    }
 
    // Draw a rectangle on image

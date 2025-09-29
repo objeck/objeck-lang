@@ -3,146 +3,29 @@ use API.Onnx, Data.JSON, API.OpenCV, System.IO.Filesystem, Collection;
 class Test {
 	# Nvidia DML 650-750 ms
 	function : Main(args : String[]) ~ Nil {
-		if(args->Size() = 2) {
+		if(args->Size() = 1) {
 			video_file := args[0];
-			model_dir := args[1];
 
 			capture := VideoCapture->New(video_file);
 			if(capture->IsOpen()) {
 				frame_count := capture->Get(VideoCapture->Property->CAP_PROP_FRAME_COUNT);
-				fps_count := frame_count / capture->Get(VideoCapture->Property->CAP_PROP_FPS);
 
-				result_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
-
-				each(i : fps_count) {
-					capture->Set(VideoCapture->Property->CAP_PROP_POS_MSEC, i * 1000);
+				each(i : frame_count) {
+					capture->Set(VideoCapture->Property->CAP_PROP_POS_MSEC, i * 1500);
 					image := capture->Read();
 					if(image <> Nil) {
-						result_json := JsonElement->New(JsonElement->JsonType->OBJECT);
-						# image->Show("", 0.2);
-
-						ProcessResNet(image, model_dir, result_json);
-						ProcessYolo(image, model_dir, result_json);
-						ProcessDeepLab(image, model_dir, result_json);
-						ProcessOpenPose(image, model_dir, result_json);
-
-						result_array_json->Add(result_json);
+						image->Show("", .25, 500);
+					}
+					else {
+						i := frame_count;
 					};
 				};
 
 				capture->Release();
-
-				results_str := result_array_json->ToFormattedString();
-				FileWriter->WriteFile("processed.json", results_str);
-
 			}
 			else {
 				">>> Stream not open <<<"->PrintLine();
 			}
 		};
-	}
-
-	function : ProcessResNet(image : Image, dir_path : String, result_json : JsonElement) ~ Nil {
-		labels := dir_path + "/models/resnet_labels.txt"
-		model := dir_path + "/models/resnet34.onnx"
-
-		label_names := LoadLabels(labels)->ToArray()->As(String[]);
-		session := API.Onnx.ResNetSession->New(model);
-
-		result := session->Inference(image->Convert(Image->Format->JPEG), 224, 224, label_names);
-		if(result <> Nil) {
-			result_json->Insert("resnet", result->ToJson());
-		};
-	}
-
-	function : ProcessYolo(image : Image, dir_path : String, result_json : JsonElement) ~ Nil {
-		labels := dir_path + "/models/yolo_labels.txt"
-		model := dir_path + "/models/yolov11.onnx"
-		
-		label_names := LoadLabels(labels)->ToArray()->As(String[]);
-		session := API.Onnx.YoloSession->New(model);
-
-		result := session->Inference(image->Convert(Image->Format->JPEG), 640, 640, 0.65, label_names);
-		if(result <> Nil) {
-			result_json->Insert("yolo", result->ToJson());
-
-			classifications := result->GetClassifications();
-			each(classification in classifications) {
-				label_str := classification->GetName();
-				class_str := classification->ToString();
-				"name='{$label_str}', class={$class_str}"->PrintLine();
-
-				bounds := classification->GetBounds();
-				left := bounds->GetX();
-				top := bounds->GetY();
-
-				image := image->DrawRectangle(Rect->New(
-					left, top, bounds->GetWidth(), bounds->GetHeight()), 
-					Scalar->New(0, 255, 0), 2);
-
-				image := image->DrawText(
-					label_str,
-					Point->New(left, top), 
-					Font->FONT_HERSHEY_SIMPLEX,
-					0.75,
-					Scalar->New(255, 0, 0));
-			};
-
-			image->Show("Yolo", 0.2);
-		};
-	}
-
-	function : ProcessDeepLab(image : Image, dir_path : String, result_json : JsonElement) ~ Nil {
-		labels := dir_path + "/models/deeplab_labels.txt"
-		model := dir_path + "/models/deeplabv3.onnx"
-		
-		label_names := LoadLabels(labels)->ToArray()->As(String[]);
-		session := API.Onnx.DeepLabSession->New(model);
-
-		result := session->Inference(image->Convert(Image->Format->JPEG), label_names);
-		if(result <> Nil) {
-			result_json->Insert("deeplab", result->ToJson());
-
-			classifications := result->GetClassifications();
-			each(classification in classifications) {
-				classification->GetPolygons()->Size()->PrintLine();
-				classification->ToString()->PrintLine();
-			};
-			
-			overlay_image := result->GetMaskedImage();
-			overlay_image->Show("DeepLab", 0.2);
-		};
-	}
-
-	function : ProcessOpenPose(image : Image, dir_path : String, result_json : JsonElement) ~ Nil {
-		labels := dir_path + "/models/openpose_labels.txt"
-		model := dir_path + "/models/openpose.onnx"
-		
-		label_names := LoadLabels(labels)->ToArray()->As(String[]);
-		session := API.Onnx.OpenPoseSession->New(model);
-
-		label_names := LoadLabels(labels)->ToArray()->As(String[]);
-		session := API.Onnx.OpenPoseSession->New(model);
-
-		result := session->Inference(image->Convert(Image->Format->JPEG), label_names);
-		if(result <> Nil) {
-			result_json->Insert("openpose", result->ToJson());
-
-			overlay_image := result->GetMaskedImage();
-			overlay_image->Show("OpenPose", 0.2);
-		};
-	}
-
-	function : LoadLabels(label_path : String) ~ Vector<String> {
-		label_names := Vector->New()<String>;
-
-		file_in := FileReader->New(label_path);
-		while(<>file_in->IsEoF()) {
-			data_label := file_in->ReadLine();
-			label_names->AddBack(data_label);
-		};
-		file_in->Close();
-
-		return label_names;
 	}
 }
