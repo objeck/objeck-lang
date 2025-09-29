@@ -153,7 +153,34 @@ extern "C" {
       cv::VideoCapture* capture = new cv::VideoCapture(video_path, prop_id);
       APITools_SetIntValue(context, 0, (size_t)capture);
    }
-   
+
+   // Turn on device
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void opencv_new_video_capture_id(VMContext& context) {
+      const int dev_id = (int)APITools_GetIntValue(context, 1);
+
+      cv::VideoCapture* capture = new cv::VideoCapture(dev_id);
+      if(capture->isOpened()) {
+         APITools_SetIntValue(context, 0, (size_t)capture);
+      }
+   }
+
+   // Turn on device
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void opencv_new_video_capture_prop_id(VMContext& context) {
+      const int dev_id = (int)APITools_GetIntValue(context, 1);
+      const int prop_id = (int)APITools_GetIntValue(context, 2);
+
+      cv::VideoCapture* capture = new cv::VideoCapture(dev_id, prop_id);
+      if(capture->isOpened()) {
+         APITools_SetIntValue(context, 0, (size_t)capture);
+      }
+   }
+
    // Load image from memory
 #ifdef _WIN32
    __declspec(dllexport)
