@@ -7181,7 +7181,7 @@ bundle System.Time {
 		}
 		
 		#~
-		Gets the elapsed time in seconds
+		Number of clock ticks per/second
 		~#
 		method : public : GetElapsedTime() ~ Float {
 			if(@running) {
