@@ -57,8 +57,9 @@ extern "C" {
          // Create session options with DML execution provider
          Ort::SessionOptions session_options;// comment
          session_options.AppendExecutionProvider("DML", provider_options);
-         session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
          session_options.SetExecutionMode(ExecutionMode::ORT_PARALLEL);
+         session_options.SetInterOpNumThreads(1);
+         session_options.SetIntraOpNumThreads(1);  // often helps with DML init stability
 
          session_options.DisableMemPattern();
          session_options.SetIntraOpNumThreads(std::thread::hardware_concurrency());
