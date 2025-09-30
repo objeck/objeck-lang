@@ -8,6 +8,7 @@ class Test {
 			video_fps := args[2]->ToInt();
 
 			"video_file={$video_file}"->PrintLine();
+"#### 0 #####"->PrintLine();
 
 			capture := VideoCapture->New(video_file);
 			if(capture->IsOpen()) {
@@ -15,10 +16,11 @@ class Test {
 
 				result_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
 
-				t := System.Time.Timer->New();
+				timer := System.Time.Timer->New();
 
-				t->Start();
 				each(i : frame_count) {
+					timer->Start();
+
 					capture->Set(VideoCapture->Property->CAP_PROP_POS_MSEC, i * 1000 / video_fps);
 					image := capture->Read();
 					if(image <> Nil) {
@@ -37,11 +39,12 @@ class Test {
 						i := frame_count;
 					};
 
-					t->End();
+					timer->End();
+
+					time_secs := timer->GetElapsedTime();
+					"=> time_secs={$time_secs}"->PrintLine();
 				};
-
-				t->GetElapsedTime()->PrintLine();
-
+				
 				capture->Release();
 
 				results_str := result_array_json->ToFormattedString();
