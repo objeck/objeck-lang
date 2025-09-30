@@ -1,20 +1,20 @@
 use API.Onnx, Data.JSON, API.OpenCV, System.IO.Filesystem, Collection;
 
 class Test {
-	# Nvidia DML 650-750 ms
 	function : Main(args : String[]) ~ Nil {
-		if(args->Size() = 1) {
+		if(args->Size() = 2) {
 			video_file := args[0];
+			video_fps := args[1]->ToInt();
 
 			capture := VideoCapture->New(video_file);
 			if(capture->IsOpen()) {
 				frame_count := capture->Get(VideoCapture->Property->CAP_PROP_FRAME_COUNT);
 
 				each(i : frame_count) {
-					capture->Set(VideoCapture->Property->CAP_PROP_POS_MSEC, i * 1500);
+					capture->Set(VideoCapture->Property->CAP_PROP_POS_MSEC, i * 1000 / video_fps);
 					image := capture->Read();
 					if(image <> Nil) {
-						image->Show("", .25, 500);
+						image->Show("", .25);
 					}
 					else {
 						i := frame_count;
