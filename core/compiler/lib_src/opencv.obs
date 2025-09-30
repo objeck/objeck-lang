@@ -135,7 +135,7 @@ bundle API.OpenCV {
 			array_args[0] := IntRef->New();
 			array_args[1] := filename;
 
-			Proxy->GetDllProxy()->CallFunction("opencv_new_video_capture_", array_args);
+			Proxy->GetDllProxy()->CallFunction("opencv_new_video_capture", array_args);
 
 			value := array_args[0]->As(IntRef);
 			@capture := value->Get();
