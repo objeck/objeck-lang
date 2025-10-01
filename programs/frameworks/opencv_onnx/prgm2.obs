@@ -5,26 +5,24 @@ class Test {
 		if(args->Size() = 3) {
 			video_file := args[0];
 			model_dir := args[1];
-			video_fps := args[2]->ToInt();
 
 			"video_file={$video_file}"->PrintLine();
-"#### 0 #####"->PrintLine();
 
 			capture := VideoCapture->New(video_file);
 			if(capture->IsOpen()) {
 				frame_count := capture->Get(VideoCapture->Property->CAP_PROP_FRAME_COUNT);
+				fps := capture->Get(VideoCapture->Property->CAP_PROP_FPS);
 
 				result_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
 
 				timer := System.Time.Timer->New();
-
-				each(i : frame_count) {
+				for(i := 0; i < frame_count; i += fps;) {
 					timer->Start();
 
-					capture->Set(VideoCapture->Property->CAP_PROP_POS_MSEC, i * 1000 / video_fps);
+					capture->Set(VideoCapture->Property->CAP_PROP_POS_FRAMES, i);
 					image := capture->Read();
 					if(image <> Nil) {
-						# image->Show("", .25);
+#						image->Show("img-" + i + "-ms", .25, 1000);
 
 						result_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 
@@ -67,6 +65,8 @@ class Test {
 		if(result <> Nil) {
 			result_json->Insert("resnet", result->ToJson());
 		};
+
+		session->Close();
 	}
 
 	function : ProcessYolo(image : Image, dir_path : String, result_json : JsonElement) ~ Nil {
@@ -102,7 +102,9 @@ class Test {
 					Scalar->New(255, 0, 0));
 			};
 
-			image->Show("Yolo", 0.2);
+			# image->Show("Yolo", 0.2);
+
+			session->Close();
 		};
 	}
 
@@ -123,8 +125,11 @@ class Test {
 				classification->ToString()->PrintLine();
 			};
 			
-			overlay_image := result->GetMaskedImage();
-			overlay_image->Show("DeepLab", 0.2);
+#			overlay_image := result->GetMaskedImage();
+#			overlay_image->Show("DeepLab", 0.2);
+
+			session->Close();
+
 		};
 	}
 
@@ -142,8 +147,8 @@ class Test {
 		if(result <> Nil) {
 			result_json->Insert("openpose", result->ToJson());
 
-			overlay_image := result->GetMaskedImage();
-			overlay_image->Show("OpenPose", 0.2);
+#			overlay_image := result->GetMaskedImage();
+#			overlay_image->Show("OpenPose", 0.2);
 		};
 
 		session->Close();
