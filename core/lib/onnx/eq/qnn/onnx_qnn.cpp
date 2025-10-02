@@ -39,8 +39,8 @@ extern "C" {
    __declspec(dllexport)
 #endif
    void onnx_new_session(VMContext& context) {
-      auto keys = APITools_GetStringsValues(context, 1);
-      auto values = APITools_GetStringsValues(context, 2);
+      std::vector<std::wstring> keys = APITools_GetStringsValues(context, 1);
+      std::vector<std::wstring> values = APITools_GetStringsValues(context, 2);
       const std::wstring model_path = APITools_GetStringValue(context, 3);
 
       try {
@@ -55,6 +55,14 @@ extern "C" {
          provider_options["ep.context_file_pat"] = "./qnn_cache/model_ctx.onnx";
          provider_options["ep.context_embed_mode"] = "1";
 
+         if(!keys.empty() && keys.size() == values.size()) {
+            for(size_t i = 0; i < keys.size(); ++i) {
+               std::string key = UnicodeToBytes(keys[i]);
+               std::string value = UnicodeToBytes(values[i]);
+               provider_options[key] = value;
+            }
+         }
+         
          if(!keys.empty() && keys.size() == values.size()) {
             for(size_t i = 0; i < keys.size(); ++i) {
                provider_options[UnicodeToBytes(keys[i])] = UnicodeToBytes(values[i]);

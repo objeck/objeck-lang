@@ -39,20 +39,22 @@ extern "C" {
    __declspec(dllexport)
 #endif
    void onnx_new_session(VMContext& context) {
-      size_t* keys_array = (size_t*)APITools_GetArray(context, 1)[1];
-      const long keys_size = (long)APITools_GetArraySize(keys_array);
-      const size_t* keys_ptrs = APITools_GetArray(keys_array);
-
-      size_t* values_array = (size_t*)APITools_GetArray(context, 2)[1];
-      const long values_size = (long)APITools_GetArraySize(values_array);
-      const size_t* values_ptrs = APITools_GetArray(values_array);
-
+      std::vector<std::wstring> keys = APITools_GetStringsValues(context, 1);
+      std::vector<std::wstring> values = APITools_GetStringsValues(context, 2);
       const std::wstring model_path = APITools_GetStringValue(context, 3);
       
       try {
          // Set DML provider options
          std::unordered_map<std::string, std::string> provider_options;
          provider_options["device_id"] = "0";
+
+         if(!keys.empty() && keys.size() == values.size()) {
+            for(size_t i = 0; i < keys.size(); ++i) {
+               std::string key = UnicodeToBytes(keys[i]);
+               std::string value = UnicodeToBytes(values[i]);
+               provider_options[key] = value;
+            }
+         }
 
          // Create session options with DML execution provider
          Ort::SessionOptions session_options;// comment

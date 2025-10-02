@@ -10,13 +10,14 @@ class Test {
 
 			capture := VideoCapture->New(video_file);
 			if(capture->IsOpen()) {
-				frame_count := capture->Get(VideoCapture->Property->CAP_PROP_FRAME_COUNT);
+				frames := capture->Get(VideoCapture->Property->CAP_PROP_FRAME_COUNT);
 				fps := capture->Get(VideoCapture->Property->CAP_PROP_FPS);
+"{$frames}, {$fps}"->PrintLine();
 
 				result_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
 
 				timer := System.Time.Timer->New();
-				for(i := 0; i < frame_count; i += fps;) {
+				for(i := 0; i < frames; i += fps;) {
 					timer->Start();
 
 					capture->Set(VideoCapture->Property->CAP_PROP_POS_FRAMES, i);
@@ -34,7 +35,7 @@ class Test {
 						result_array_json->Add(result_json);
 					}
 					else {
-						i := frame_count;
+						i := frames;
 					};
 
 					timer->End();
@@ -59,7 +60,7 @@ class Test {
 		model := dir_path + "/models/resnet34.onnx"
 
 		label_names := LoadLabels(labels)->ToArray()->As(String[]);
-		session := API.Onnx.ResNetSession->New(model, Nil);
+		session := API.Onnx.ResNetSession->New(model, values);
 
 		result := session->Inference(image->Convert(Image->Format->JPEG), 224, 224, label_names);
 		if(result <> Nil) {
