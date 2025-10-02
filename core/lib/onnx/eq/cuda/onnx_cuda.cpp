@@ -42,16 +42,9 @@ extern "C" {
    __declspec(dllexport)
 #endif
    void onnx_new_session(VMContext& context) {
-      size_t* keys_array = (size_t*)APITools_GetArray(context, 1)[1];
-      const long keys_size = (long)APITools_GetArraySize(keys_array);
-      const size_t* keys_ptrs = APITools_GetArray(keys_array);
-
-      size_t* values_array = (size_t*)APITools_GetArray(context, 2)[1];
-      const long values_size = (long)APITools_GetArraySize(values_array);
-      const size_t* values_ptrs = APITools_GetArray(values_array);
-
-      const std::wstring w_model_path = APITools_GetStringValue(context, 3);
-      const std::string model_path = UnicodeToBytes(w_model_path);
+      std::vector<std::wstring> keys = APITools_GetStringsValues(context, 1);
+      std::vector<std::wstring> values = APITools_GetStringsValues(context, 2);
+      const std::wstring model_path = APITools_GetStringValue(context, 3);
       
       try {
          // Set DML provider options
@@ -61,6 +54,14 @@ extern "C" {
          // Create session options with DML execution provider
          Ort::SessionOptions session_options;// comment
          session_options.AppendExecutionProvider("DML", provider_options);
+         if(!keys.empty() && keys.size() == values.size()) {
+            for(size_t i = 0; i < keys.size(); ++i) {
+               std::string key = UnicodeToBytes(keys[i]);
+               std::string value = UnicodeToBytes(values[i]);
+               provider_options[key] = value;
+            }
+         }
+         
          session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
          session_options.SetExecutionMode(ExecutionMode::ORT_PARALLEL);
 
