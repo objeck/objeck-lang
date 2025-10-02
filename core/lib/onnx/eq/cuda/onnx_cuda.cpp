@@ -38,7 +38,7 @@ extern "C" {
    }
 
    // create a yolo session
-#ifdef _WIN32
+#ifdef _WIN3
    __declspec(dllexport)
 #endif
    void onnx_new_session(VMContext& context) {
