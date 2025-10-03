@@ -532,8 +532,8 @@ static void yolo_image_inf(VMContext& context) {
    }
 
    try {
-      std::vector<uchar> image_data(input_bytes, input_bytes + input_size);
-      cv::Mat img = cv::imdecode(image_data, cv::IMREAD_COLOR);
+      cv::Mat buf(1, (int)input_size, CV_8U, (void*)input_bytes);
+      cv::Mat img = cv::imdecode(buf, cv::IMREAD_COLOR);
       if(img.empty()) {
          if(session) {
             delete session;
@@ -813,8 +813,8 @@ static void resnet_image_inf(VMContext& context) {
    }
 
    try {
-      std::vector<uchar> image_data(input_bytes, input_bytes + input_size);
-      cv::Mat img = cv::imdecode(image_data, cv::IMREAD_COLOR);
+      cv::Mat buf(1, (int)input_size, CV_8U, (void*)input_bytes);
+      cv::Mat img = cv::imdecode(buf, cv::IMREAD_COLOR);
       if(img.empty()) {
          if(session) {
             delete session;
@@ -943,8 +943,8 @@ static void deeplab_image_inf(VMContext& context) {
    }
 
    try {
-      std::vector<uchar> image_data(input_bytes, input_bytes + input_size);
-      cv::Mat img = cv::imdecode(image_data, cv::IMREAD_COLOR);
+      cv::Mat buf(1, (int)input_size, CV_8U, (void*)input_bytes);
+      cv::Mat img = cv::imdecode(buf, cv::IMREAD_COLOR);
       if(img.empty()) {
          if(session) {
             delete session;
@@ -1140,8 +1140,8 @@ static void openpose_image_inf(VMContext& context) {
    }
 
    try {
-      std::vector<uchar> image_data(input_bytes, input_bytes + input_size);
-      cv::Mat img = cv::imdecode(image_data, cv::IMREAD_COLOR);
+      cv::Mat buf(1, (int)input_size, CV_8U, (void*)input_bytes);
+      cv::Mat img = cv::imdecode(buf, cv::IMREAD_COLOR);
       if(img.empty()) {
          if(session) {
             delete session;
