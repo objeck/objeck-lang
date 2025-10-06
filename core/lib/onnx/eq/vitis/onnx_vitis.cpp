@@ -55,14 +55,15 @@ extern "C" {
          
          // Create session options with DML execution provider
          Ort::SessionOptions session_options;// comment
-         session_options.AppendExecutionProvider_VitisAI(provider_options);
-
-
-
+         session_options.AppendExecutionProvider("VitisAI", provider_options);
          session_options.SetExecutionMode(ExecutionMode::ORT_PARALLEL);
-
+         
          // Create ONNX session
+         if (!env) {
+             env = std::make_unique<Ort::Env>(ORT_LOGGING_LEVEL_WARNING, "onnx");
+         }
          const Ort::Session* session = new Ort::Session(*env, model_path.c_str(), session_options);
+         
          APITools_SetIntValue(context, 0, (size_t)session);
       }
       catch(const std::exception& ex) {
