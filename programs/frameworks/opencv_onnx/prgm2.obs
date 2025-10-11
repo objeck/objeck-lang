@@ -6,13 +6,16 @@ class Test {
 			video_file := args[0];
 			model_dir := args[1];
 
-			"video_file={$video_file}"->PrintLine();
+			"Loading: '{$video_file}'..."->PrintLine();
 
 			capture := VideoCapture->New(video_file);
 			if(capture->IsOpen()) {
+				
 				frames := capture->Get(VideoCapture->Property->CAP_PROP_FRAME_COUNT);
 				fps := capture->Get(VideoCapture->Property->CAP_PROP_FPS);
-"{$frames}, {$fps}"->PrintLine();
+
+				"Loading models..."->PrintLine();
+
 
 				resnet_session := API.Onnx.ResNetSession->New(model_dir + "/models/resnet34.onnx");
 				yolo_session := API.Onnx.YoloSession->New(model_dir + "/models/yolov11.onnx");
@@ -32,10 +35,10 @@ class Test {
 
 						result_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 
-						ProcessResNet(image, resnet_session, model_dir, result_json);
-						ProcessYolo(image, yolo_session, model_dir, result_json);
-						ProcessDeepLab(image, deeplab_session, model_dir, result_json);
-						ProcessOpenPose(image, openpose_session, model_dir, result_json);
+						ProcessResNet(image, resnet_session, model_dir + "/models/resnet_labels.txt", result_json);
+						ProcessYolo(image, yolo_session, model_dir + "/models/yolo_labels.txt", result_json);
+						ProcessDeepLab(image, deeplab_session, model_dir + "/models/deeplab_labels.txt", result_json);
+						ProcessOpenPose(image, openpose_session, model_dir + "/models/openpose_labels.txt", result_json);
 
 						result_array_json->Add(result_json);
 					}
@@ -60,9 +63,7 @@ class Test {
 		};
 	}
 
-	function : ProcessResNet(image : Image, session : ResNetSession, dir_path : String, result_json : JsonElement) ~ Nil {
-		labels := dir_path + "/models/resnet_labels.txt"
-
+	function : ProcessResNet(image : Image, session : ResNetSession, labels : String, result_json : JsonElement) ~ Nil {
 		label_names := LoadLabels(labels)->ToArray()->As(String[]);
 
 		result := session->Inference(image->Convert(Image->Format->JPEG), 224, 224, label_names);
@@ -71,9 +72,7 @@ class Test {
 		};
 	}
 
-	function : ProcessYolo(image : Image, session : YoloSession, dir_path : String, result_json : JsonElement) ~ Nil {
-		labels := dir_path + "/models/yolo_labels.txt"
-		
+	function : ProcessYolo(image : Image, session : YoloSession, labels : String, result_json : JsonElement) ~ Nil {
 		label_names := LoadLabels(labels)->ToArray()->As(String[]);
 
 		result := session->Inference(image->Convert(Image->Format->JPEG), 640, 640, 0.65, label_names);
@@ -106,11 +105,8 @@ class Test {
 		};
 	}
 
-	function : ProcessDeepLab(image : Image, session : DeepLabSession, dir_path : String, result_json : JsonElement) ~ Nil {
-		labels := dir_path + "/models/deeplab_labels.txt"
-		
+	function : ProcessDeepLab(image : Image, session : DeepLabSession, labels : String, result_json : JsonElement) ~ Nil {
 		label_names := LoadLabels(labels)->ToArray()->As(String[]);
-
 		result := session->Inference(image->Convert(Image->Format->JPEG), label_names);
 		if(result <> Nil) {
 			result_json->Insert("deeplab", result->ToJson());
@@ -125,9 +121,7 @@ class Test {
 		};
 	}
 
-	function : ProcessOpenPose(image : Image, session : OpenPoseSession, dir_path : String, result_json : JsonElement) ~ Nil {
-		labels := dir_path + "/models/openpose_labels.txt"
-		
+	function : ProcessOpenPose(image : Image, session : OpenPoseSession, labels : String, result_json : JsonElement) ~ Nil {
 		label_names := LoadLabels(labels)->ToArray()->As(String[]);
 
 		result := session->Inference(image->Convert(Image->Format->JPEG), label_names);
