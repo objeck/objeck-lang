@@ -359,6 +359,12 @@ class ContextAnalyzer {
   // validate character string
   void AnalyzeCharacterStringVariable(SymbolEntry* entry, CharacterString* char_str, int depth);
 
+  // validate character string expression (for interpolated method calls, array access, etc.)
+  void AnalyzeCharacterStringExpression(const std::wstring& expr_text, CharacterString* char_str, int depth);
+
+  // check if token contains expression operators (method call, array access, etc.)
+  bool IsComplexExpression(const std::wstring& token);
+
   // checks for sting concatenation  
   StringConcat* AnalyzeStringConcat(Expression* expression, int depth);
 

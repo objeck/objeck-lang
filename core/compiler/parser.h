@@ -243,6 +243,9 @@ class Parser {
     return symbol_table;
   }
 
+  // Parses an expression from a text string (used for string interpolation)
+  static Expression* ParseExpressionText(const std::wstring& text, const std::wstring& filename, int line_num, int line_pos);
+
 #ifdef _MODULE
   std::vector<std::wstring> GetErrors();
 #endif

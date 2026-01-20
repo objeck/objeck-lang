@@ -737,7 +737,8 @@ namespace frontend {
    ****************************/
   enum CharacterStringSegmentType {
     STRING,
-    ENTRY
+    ENTRY,
+    EXPRESSION
   };
 
   class CharacterStringSegment {
@@ -747,6 +748,7 @@ namespace frontend {
     SymbolEntry* entry;
     Method* method;
     LibraryMethod* lib_method;
+    Expression* expr;
 
   public:
     CharacterStringSegment(const std::wstring &s) {
@@ -755,6 +757,7 @@ namespace frontend {
       entry = nullptr;
       method = nullptr;
       lib_method = nullptr;
+      expr = nullptr;
       id = -1;
     }
 
@@ -763,6 +766,7 @@ namespace frontend {
       entry = e;
       method = nullptr;
       lib_method = nullptr;
+      expr = nullptr;
       id = -1;
     }
 
@@ -771,6 +775,7 @@ namespace frontend {
       entry = e;
       method = m;
       lib_method = nullptr;
+      expr = nullptr;
       id = -1;
     }
 
@@ -779,6 +784,16 @@ namespace frontend {
       entry = e;
       method = nullptr;
       lib_method = m;
+      expr = nullptr;
+      id = -1;
+    }
+
+    CharacterStringSegment(Expression* x, Method* m, LibraryMethod* lm) {
+      type = EXPRESSION;
+      expr = x;
+      method = m;
+      lib_method = lm;
+      entry = nullptr;
       id = -1;
     }
 
@@ -812,8 +827,12 @@ namespace frontend {
     LibraryMethod* GetLibraryMethod() {
       return lib_method;
     }
+
+    Expression* GetExpression() {
+      return expr;
+    }
   };
-  
+
   /*************************
    * CharacterString class
    *************************/
@@ -876,7 +895,11 @@ namespace frontend {
     }
 
     void AddSegment(SymbolEntry* e, LibraryMethod* m) {
-      segments.push_back(new CharacterStringSegment(e, m)); 
+      segments.push_back(new CharacterStringSegment(e, m));
+    }
+
+    void AddSegment(Expression* x, Method* m, LibraryMethod* lm) {
+      segments.push_back(new CharacterStringSegment(x, m, lm));
     }
 
     std::vector<CharacterStringSegment*> GetSegments() {
