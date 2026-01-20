@@ -672,17 +672,32 @@ public:
 };
 
 /**
- * Parses command line arguments 
+ * Result structure for command line parsing
  */
-static std::map<const std::wstring, std::wstring> ParseCommnadLine(int argc, char* argv[], std::wstring &path_string) {
+struct CommandLineParseResult {
   std::map<const std::wstring, std::wstring> arguments;
+  std::vector<std::wstring> errors;
+  std::wstring reconstructed_path;
+};
 
-  // reconstruct command line
+/**
+ * Enhanced command line parser with GNU-style syntax support
+ * Supports:
+ *   - Legacy: -key value
+ *   - GNU long: --long-option value, --long-option=value
+ *   - GNU short: -s value, -s=value
+ *   - Boolean flags: --flag (stored as empty string)
+ *   - Quoted values: --option 'value with spaces'
+ */
+static CommandLineParseResult ParseCommandLine(int argc, const char* argv[]) {
+  CommandLineParseResult result;
+
+  // Reconstruct command line
   std::string path;
   for(int i = 1; i < 1024 && i < argc; ++i) {
     path += ' ';
-    char* cmd_param = argv[i];
-    if(strlen(cmd_param) > 0 && cmd_param[0] != L'\'' && (strrchr(cmd_param, L' ') || strrchr(cmd_param, L'\t'))) {
+    const char* cmd_param = argv[i];
+    if(strlen(cmd_param) > 0 && cmd_param[0] != '\'' && (strrchr(cmd_param, ' ') || strrchr(cmd_param, '\t'))) {
       path += '\'';
       path += cmd_param;
       path += '\'';
@@ -691,75 +706,203 @@ static std::map<const std::wstring, std::wstring> ParseCommnadLine(int argc, cha
       path += cmd_param;
     }
   }
-
-  // get command line parameters
-  path_string = BytesToUnicode(path);
+  result.reconstructed_path = BytesToUnicode(path);
 
   size_t pos = 0;
-  size_t end = path_string.size();
+  size_t end = result.reconstructed_path.size();
+
   while(pos < end) {
-    // ignore leading white space
-    while(pos < end && (path_string[pos] == L' ' || path_string[pos] == L'\t')) {
+    // Skip leading whitespace
+    while(pos < end && (result.reconstructed_path[pos] == L' ' || result.reconstructed_path[pos] == L'\t')) {
       pos++;
     }
-    if(path_string[pos] == L'-' && pos > 0 && path_string[pos - 1] == L' ') {
-      // parse key
-      size_t start = ++pos;
-      while(pos < end && path_string[pos] != L' ' && path_string[pos] != L'\t') {
-        pos++;
+
+    if(pos >= end) {
+      break;
+    }
+
+    // Check for option starting with '-'
+    if(result.reconstructed_path[pos] == L'-') {
+      size_t key_start = pos;
+      pos++; // Skip first '-'
+
+      // Determine option format: --long, -short, or legacy -key
+      bool is_gnu_long = false;
+      if(pos < end && result.reconstructed_path[pos] == L'-') {
+        is_gnu_long = true;
+        pos++; // Skip second '-'
       }
-      const std::wstring key = path_string.substr(start, pos - start);
-      
-      // parse white space
-      while(pos < end && (path_string[pos] == L' ' || path_string[pos] == L'\t')) {
+
+      // Parse key name
+      size_t key_name_start = pos;
+      while(pos < end && result.reconstructed_path[pos] != L' ' &&
+            result.reconstructed_path[pos] != L'\t' &&
+            result.reconstructed_path[pos] != L'=') {
         pos++;
       }
 
-      // parse value
+      if(key_name_start == pos) {
+        // Empty key name
+        result.errors.push_back(L"Empty option name at position " + std::to_wstring(key_start));
+        continue;
+      }
+
+      std::wstring key = result.reconstructed_path.substr(key_name_start, pos - key_name_start);
+
+      // Check for '=' separator
+      bool has_equals = (pos < end && result.reconstructed_path[pos] == L'=');
+      if(has_equals) {
+        pos++; // Skip '='
+      }
+
+      // Skip whitespace before value
+      while(pos < end && (result.reconstructed_path[pos] == L' ' || result.reconstructed_path[pos] == L'\t')) {
+        pos++;
+      }
+
+      // Parse value
       std::wstring value;
-      if(pos < end && path_string[pos] != L'-') {
-        start = pos;
-        bool is_string = false;
-        if(pos < end && path_string[pos] == L'\'') {
-          is_string = true;
-          start++;
+      bool has_value = false;
+
+      // Check if next token is a value (not another option)
+      if(pos < end && result.reconstructed_path[pos] != L'-') {
+        has_value = true;
+        size_t value_start = pos;
+        bool is_quoted = false;
+
+        // Check for quoted value
+        if(result.reconstructed_path[pos] == L'\'') {
+          is_quoted = true;
+          value_start++;
           pos++;
-        }
-        bool not_end = true;
-        while(pos < end && not_end) {
-          // check for end
-          if(is_string) {
-            not_end = path_string[pos] != L'\'';
-          }
-          else {
-            not_end = !(path_string[pos] == L' ' || path_string[pos] == L'\t');
-          }
-          // update position
-          if(not_end) {
+
+          // Find closing quote
+          while(pos < end && result.reconstructed_path[pos] != L'\'') {
             pos++;
           }
+
+          if(pos >= end) {
+            result.errors.push_back(L"Unclosed quote for option: " + key);
+          }
+
+          value = result.reconstructed_path.substr(value_start, pos - value_start);
+
+          if(pos < end && result.reconstructed_path[pos] == L'\'') {
+            pos++; // Skip closing quote
+          }
         }
-        value = path_string.substr(start, pos - start);
+        else {
+          // Unquoted value - read until whitespace
+          while(pos < end && result.reconstructed_path[pos] != L' ' && result.reconstructed_path[pos] != L'\t') {
+            pos++;
+          }
+          value = result.reconstructed_path.substr(value_start, pos - value_start);
+        }
+      }
+      else if(has_equals) {
+        // Had '=' but no value - empty value
+        has_value = true;
+        value = L"";
       }
 
-      // close string and add
-      if(path_string[pos] == L'\'') {
-        pos++;
+      // For GNU-style options without value, store as boolean flag (empty string)
+      if(!has_value && (is_gnu_long || (!is_gnu_long && key.length() == 1))) {
+        value = L"";
       }
 
-      std::map<const std::wstring, std::wstring>::iterator found = arguments.find(key);
-      if(found != arguments.end()) {
-        value += L',';
-        value += found->second;
+      // Handle duplicate keys - concatenate with comma (backward compatible behavior)
+      auto found = result.arguments.find(key);
+      if(found != result.arguments.end()) {
+        value = found->second + L"," + value;
       }
-      arguments[key] = value;
+
+      result.arguments[key] = value;
     }
     else {
+      // Not an option, skip this character
       pos++;
     }
   }
 
-  return arguments;
+  return result;
+}
+
+/**
+ * Legacy command line parser wrapper (for backward compatibility)
+ * @deprecated Use ParseCommandLine() instead for enhanced GNU-style syntax support
+ * Note: Function name contains typo (Commnad instead of Command) but kept for compatibility
+ */
+static std::map<const std::wstring, std::wstring> ParseCommnadLine(int argc, const char* argv[], std::wstring &path_string) {
+  CommandLineParseResult result = ParseCommandLine(argc, argv);
+  path_string = result.reconstructed_path;
+
+  // Log errors to stderr if any
+  for(const auto& error : result.errors) {
+    std::wcerr << L"Warning: " << error << std::endl;
+  }
+
+  return result.arguments;
+}
+
+/**
+ * Check if a command line argument exists
+ */
+static bool HasCommandLineArgument(
+    const std::map<const std::wstring, std::wstring>& args,
+    const std::wstring& key) {
+  return args.find(key) != args.end();
+}
+
+/**
+ * Get command line argument with default value
+ */
+static std::wstring GetCommandLineArgument(
+    const std::map<const std::wstring, std::wstring>& args,
+    const std::wstring& key,
+    const std::wstring& default_value = L"") {
+  auto found = args.find(key);
+  return (found != args.end()) ? found->second : default_value;
+}
+
+/**
+ * Check if argument is a boolean flag (present with empty value)
+ */
+static bool IsCommandLineFlag(
+    const std::map<const std::wstring, std::wstring>& args,
+    const std::wstring& key) {
+  auto found = args.find(key);
+  return (found != args.end() && found->second.empty());
+}
+
+/**
+ * Get command line argument checking multiple aliases (for short/long form support)
+ * Returns the value of the first matching alias, or default_value if none found
+ */
+static std::wstring GetCommandLineArgumentWithAliases(
+    const std::map<const std::wstring, std::wstring>& args,
+    const std::vector<std::wstring>& aliases,
+    const std::wstring& default_value = L"") {
+  for(const auto& alias : aliases) {
+    auto found = args.find(alias);
+    if(found != args.end()) {
+      return found->second;
+    }
+  }
+  return default_value;
+}
+
+/**
+ * Check if any of the provided aliases exists in arguments
+ */
+static bool HasCommandLineArgumentWithAliases(
+    const std::map<const std::wstring, std::wstring>& args,
+    const std::vector<std::wstring>& aliases) {
+  for(const auto& alias : aliases) {
+    if(args.find(alias) != args.end()) {
+      return true;
+    }
+  }
+  return false;
 }
 
 static std::wstring GetLibraryPath() {

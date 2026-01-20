@@ -67,7 +67,7 @@ static bool EndsWith(const wstring& str, const wstring& ending);
 /**
  * Parses the command line
  */
-static map<const wstring, wstring> ParseCommnadLine(int argc, char* argv[], list<wstring>& options);
+static map<const wstring, wstring> ParseCommnadLine(int argc, const char* argv[], list<wstring>& options);
 
 /**
  * Removed unneeded directory slashed

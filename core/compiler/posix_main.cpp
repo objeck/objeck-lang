@@ -44,23 +44,28 @@
 * Program start. Parses command
 * line parameters.
 ****************************/
-int main(int argc, char* argv[])
+int main(int argc, const char* argv[])
 {
   std::wstring usage;
-  usage += L"Usage: obc -src <source files> <options> -dest <output file>\n\n";
+  usage += L"Usage: obc [options] <source files>\n\n";
   usage += L"Options:\n";
-  usage += L"  -src:    [input] source files (separated by commas)\n";
-  usage += L"  -in:     [input] inline source code statements instead of specifying files\n";
-  usage += L"  -lib:    [input] list of linked libraries (separated by commas)\n";
-  usage += L"  -ver:    [input] displays the compiler version\n";
-  usage += L"  -tar:    [output] target type 'lib' for linkable library or 'exe' for executable (the default)\n";
-  usage += L"  -dest:   [output] output file name\n";
-  usage += L"  -asm:    [output] emits a human readable debug byte assembly file\n";
-  usage += L"  -opt:    [optional] compiler optimizations s0-s3 (s3 being the most aggressive and default)\n";
-  usage += L"  -alt:    [optional] use alternative C like syntax\n";
-  usage += L"  -debug:  [optional] compile with debug symbols\n";
-  usage += L"  -strict: [input] exclude default system libraries and specify them manually\n";
-  usage += L"\nExample: \"obc hello.obs\"\n\nVersion: ";
+  usage += L"  --source, -src, -s <files>      Source files (comma-separated)\n";
+  usage += L"  --destination, -dest, -d <file> Output file name\n";
+  usage += L"  --library, -lib, -l <libs>      Linked libraries (comma-separated)\n";
+  usage += L"  --target, -tar, -t <type>       Target: 'lib' or 'exe' (default: exe)\n";
+  usage += L"  --optimize, -opt, -o <level>    Optimization: s0-s3 (default: s3)\n";
+  usage += L"  --inline, -in, -i <code>        Inline code statements\n";
+  usage += L"  --debug, -D                     Include debug symbols\n";
+  usage += L"  --alt-syntax, -alt              Use alternative C-like syntax\n";
+  usage += L"  --assembly, -asm, -a            Emit assembly file\n";
+  usage += L"  --strict                        Exclude default libraries\n";
+  usage += L"  --version, -ver, -v             Show version\n";
+  usage += L"\nExamples:\n";
+  usage += L"  obc hello.obs\n";
+  usage += L"  obc --source hello.obs --destination hello.obe\n";
+  usage += L"  obc -s hello.obs -d hello.obe -o s3 -D\n";
+  usage += L"  obc -src file1.obs,file2.obs --debug\n";
+  usage += L"\nVersion: ";
   usage += VERSION_STRING;
   
 #if defined(_WIN64) && defined(_WIN32) && defined(_M_ARM64)
@@ -89,21 +94,22 @@ int main(int argc, char* argv[])
 
   int status;
   if(argc > 0) {
-    // parse command line
-    std::wstring cmd_line;    
-    std::map<const std::wstring, std::wstring> cmd_options = ParseCommnadLine(argc, argv, cmd_line);
+    // Parse command line using enhanced parser
+    CommandLineParseResult cmd_result = ParseCommandLine(argc, argv);
+    std::map<const std::wstring, std::wstring> cmd_options = cmd_result.arguments;
 
-    // look for source file a first parameter
-    if(argc > 1 && cmd_options.find(L"src") == cmd_options.end()) {
+    // Look for source file as first parameter (support --source, -src, -s)
+    if(argc > 1 && !HasCommandLineArgumentWithAliases(cmd_options, {L"source", L"src", L"s"})) {
+      const std::wstring& cmd_line = cmd_result.reconstructed_path;
       const size_t space_delim_index = cmd_line.find(L' ', 1);
       if(space_delim_index > 0 && space_delim_index != std::wstring::npos) {
-        cmd_options[L"src"] = cmd_line.erase(0, 1).substr(0, space_delim_index - 1);
+        cmd_options[L"src"] = cmd_line.substr(1, space_delim_index - 1);
       }
       else {
-        cmd_options[L"src"] = cmd_line.erase(0, 1);
+        cmd_options[L"src"] = cmd_line.substr(1);
       }
     }
-    
+
     std::list<std::wstring> argument_optionals;
     for(std::map<const std::wstring, std::wstring>::iterator intr = cmd_options.begin(); intr != cmd_options.end(); ++intr) {
       argument_optionals.push_back(intr->first);

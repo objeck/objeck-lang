@@ -36,15 +36,19 @@
  /********************************
   * Debugger main
   ********************************/
-int main(int argc, char* argv[])
+int main(int argc, const char* argv[])
 {
   std::wstring usage;
-  usage += L"Usage: obd -bin <program> [-src <source directory>] [-args \"'<arg 0>' '<arg 1>'\"]\n\n";
-  usage += L"Parameters:\n";
-  usage += L"  -bin: [input] Objeck binary file\n";
-  usage += L"  -src_dir: [option] source directory path, default is '.'\n";
-  usage += L"  -args: [option][end-flag] list of arguments\n\n";
-  usage += L"Example: \"obd -exe ..\\examples\\hello.obe -src ..\\examples\"\n\nVersion: ";
+  usage += L"Usage: obd [options]\n\n";
+  usage += L"Options:\n";
+  usage += L"  --binary, -bin, -b <file>       Objeck binary file (required)\n";
+  usage += L"  --source-dir, -src_dir <path>   Source directory path (default: '.')\n";
+  usage += L"  --arguments, -args, -a '<args>' Program arguments\n";
+  usage += L"\nExamples:\n";
+  usage += L"  obd --binary hello.obe\n";
+  usage += L"  obd -b hello.obe --source-dir ../examples\n";
+  usage += L"  obd -bin hello.obe -src_dir . -a \"'arg1' 'arg2'\"\n";
+  usage += L"\nVersion: ";
   usage += VERSION_STRING;
 
 #if defined(_WIN64) && defined(_WIN32) && defined(_M_ARM64)
@@ -88,29 +92,49 @@ int main(int argc, char* argv[])
     SetProcessInformation(GetCurrentProcess(), ProcessPowerThrottling, &PowerThrottling, sizeof(PowerThrottling));
 #endif
 
-    std::wstring cmd_line;
-    std::map<const std::wstring, std::wstring> arguments = ParseCommnadLine(argc, argv, cmd_line);
+    // Parse command line using enhanced parser
+    CommandLineParseResult cmd_result = ParseCommandLine(argc, argv);
+    std::map<const std::wstring, std::wstring> arguments = cmd_result.arguments;
 
-    // start debugger
-    std::map<const std::wstring, std::wstring>::iterator result = arguments.find(L"bin");
-    if(result == arguments.end()) {
+    // Check for binary file (support --binary, -bin, -b)
+    std::wstring file_name_param = GetCommandLineArgumentWithAliases(
+      arguments,
+      {L"binary", L"bin", L"b"}
+    );
+
+    if(file_name_param.empty()) {
       std::wcerr << usage << std::endl;
       return 1;
     }
-    const std::wstring& file_name_param = arguments[L"bin"];
 
-    std::wstring base_path_param = L".";
-    result = arguments.find(L"src_dir");
-    if(result != arguments.end()) {
-      base_path_param = arguments[L"src_dir"];
-    }
+    // Check for source directory (support --source-dir, -src_dir, -src)
+    std::wstring base_path_param = GetCommandLineArgumentWithAliases(
+      arguments,
+      {L"source-dir", L"src-dir", L"src_dir", L"src"},
+      L"."
+    );
 
-    std::wstring args_param;
-    const std::wstring args_str = L"args";
-    result = arguments.find(args_str);
-    if(result != arguments.end()) {
-      const size_t start = cmd_line.find(args_str) + args_str.size();
-      args_param = cmd_line.substr(start, cmd_line.size() - start);
+    // Check for program arguments (support --arguments, -args, -a)
+    std::wstring args_param = GetCommandLineArgumentWithAliases(
+      arguments,
+      {L"arguments", L"args", L"a"}
+    );
+
+    // If args found, extract remaining command line after the args flag
+    if(!args_param.empty()) {
+      // Find position of args in reconstructed path
+      const std::wstring& cmd_line = cmd_result.reconstructed_path;
+      size_t args_pos = cmd_line.find(L"-args");
+      if(args_pos == std::wstring::npos) {
+        args_pos = cmd_line.find(L"--arguments");
+      }
+      if(args_pos != std::wstring::npos) {
+        // Find the value start
+        size_t value_start = cmd_line.find_first_not_of(L" \t", args_pos + 5);
+        if(value_start != std::wstring::npos) {
+          args_param = cmd_line.substr(value_start);
+        }
+      }
     }
 
 #ifdef _WIN32
