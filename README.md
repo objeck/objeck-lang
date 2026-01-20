@@ -150,10 +150,6 @@ faces->Size()->PrintLine();  # "5 faces detected"
 - 💬 [Discussions](https://github.com/objeck/objeck-lang/discussions)
 - 🐛 [Issues](https://github.com/objeck/objeck-lang/issues)
 
----
 
-<p align="center">
-Made with ❤️ by the Objeck community
-</p>
 
 
