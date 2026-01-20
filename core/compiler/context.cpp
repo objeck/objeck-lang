@@ -8125,9 +8125,9 @@ void ContextAnalyzer::AnalyzeCharacterStringExpression(const std::wstring& expr_
     }
   }
 
-  // Parse expression
+  // Parse expression with current class context for function resolution
   Expression* expr = Parser::ParseExpressionText(unescaped_text, char_str->GetFileName(),
-                                                  char_str->GetLineNumber(), char_str->GetLinePosition());
+                                                  char_str->GetLineNumber(), char_str->GetLinePosition(), current_class);
   if(!expr) {
     ProcessError(char_str, L"Invalid expression in string interpolation: '" + expr_text + L"'");
     return;

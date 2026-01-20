@@ -250,7 +250,7 @@ class Parser {
   }
 
   // Parses an expression from a text string (used for string interpolation)
-  static Expression* ParseExpressionText(const std::wstring& text, const std::wstring& filename, int line_num, int line_pos);
+  static Expression* ParseExpressionText(const std::wstring& text, const std::wstring& filename, int line_num, int line_pos, Class* context_class = nullptr);
 
 #ifdef _MODULE
   std::vector<std::wstring> GetErrors();
