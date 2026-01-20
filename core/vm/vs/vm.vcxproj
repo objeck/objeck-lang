@@ -182,7 +182,7 @@
       <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
     </Link>
     <PostBuildEvent>
-      <Command>mt.exe -manifest $(SolutionDir)$(Platform)\..\..\vm\vs\manifest.xml -outputresource:..\$(Configuration)\win64\obr.exe;1</Command>
+      <Command>mt.exe -manifest $(ProjectDir)manifest.xml -outputresource:..\$(Configuration)\win64\obr.exe;1</Command>
     </PostBuildEvent>
     <PostBuildEvent>
       <Message>Add manifest</Message>
@@ -215,7 +215,7 @@
       <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
     </Link>
     <PostBuildEvent>
-      <Command>mt.exe -manifest $(SolutionDir)$(Platform)\..\..\vm\vs\manifest.xml -outputresource:$(SolutionDir)$(Platform)\$(Configuration)\obr.exe;1</Command>
+      <Command>mt.exe -manifest $(ProjectDir)manifest.xml -outputresource:$(SolutionDir)$(Platform)\$(Configuration)\obr.exe;1</Command>
     </PostBuildEvent>
     <PostBuildEvent>
       <Message>Add manifest</Message>
@@ -229,6 +229,7 @@
     <ClCompile Include="..\arch\memory.cpp" />
     <ClCompile Include="..\arch\win32\win32.cpp" />
     <ClCompile Include="..\common.cpp" />
+    <ClCompile Include="..\dispatch.cpp" />
     <ClCompile Include="..\interpreter.cpp" />
     <ClCompile Include="..\loader.cpp" />
     <ClCompile Include="..\vm.cpp" />
@@ -244,6 +245,7 @@
     <ClInclude Include="..\arch\memory.h" />
     <ClInclude Include="..\arch\win32\win32.h" />
     <ClInclude Include="..\common.h" />
+    <ClInclude Include="..\dispatch.h" />
     <ClInclude Include="..\interpreter.h" />
     <ClInclude Include="..\lib_api.h" />
     <ClInclude Include="..\loader.h" />
