@@ -30,6 +30,7 @@
  ***************************************************************************/
 
 #include "interpreter.h"
+#include "dispatch.h"
 #include "lib_api.h"
 
 #ifndef _NO_JIT
@@ -116,9 +117,6 @@ void StackInterpreter::Initialize(StackProgram* p, size_t m)
  ********************************/
 void StackInterpreter::Execute(size_t* op_stack, size_t* stack_pos, long i, StackMethod* method, size_t* instance, bool jit_called)
 {
-  INT64_VALUE left;
-  double left_double, right_double;
-  
 #ifdef _TIMING
   clock_t start = clock();
 #endif
@@ -147,616 +145,52 @@ void StackInterpreter::Execute(size_t* op_stack, size_t* stack_pos, long i, Stac
         << L"' ---------\n" << std::endl;
 #endif
 
-  // execute
+  // Setup dispatch context
+  DispatchContext ctx;
+  ctx.op_stack = op_stack;
+  ctx.stack_pos = stack_pos;
+  ctx.instrs = instrs;
+  ctx.ip = &ip;
+  ctx.stack_frame = stack_frame;
+  ctx.call_stack = call_stack;
+  ctx.call_stack_pos = call_stack_pos;
+  ctx.interp = this;
+  ctx.halt = &halt;
+
+  // execute using dispatch table
   do {
     StackInstr* instr = instrs[ip++];
-    
+    ctx.instr = instr;
+
 #ifdef _DEBUGGER
     debugger->ProcessInstruction(instr, ip, call_stack, (*call_stack_pos), (*stack_frame));
 #endif
+
+    DispatchResult result = g_dispatch_table[instr->GetType()](ctx);
+
+    if(result == DispatchResult::RETURN_JIT) {
+      return;
+    }
     
-    switch(instr->GetType()) {
-    case STOR_LOCL_INT_VAR:
-      StorLoclIntVar(instr, op_stack, stack_pos);
-      break;
-      
-    case STOR_CLS_INST_INT_VAR:
-      StorClsInstIntVar(instr, op_stack, stack_pos);
-      break;
-      
-    case STOR_FUNC_VAR:
-      ProcessStoreFunctionVar(instr, op_stack, stack_pos);
-      break;
-
-    case STOR_FLOAT_VAR:
-      ProcessStoreFloat(instr, op_stack, stack_pos);
-      break;
-      
-    case COPY_LOCL_INT_VAR:
-      CopyLoclIntVar(instr, op_stack, stack_pos);
-      break;
-      
-    case COPY_CLS_INST_INT_VAR:
-      CopyClsInstIntVar(instr, op_stack, stack_pos);
-      break;
-      
-    case COPY_FLOAT_VAR:
-      ProcessCopyFloat(instr, op_stack, stack_pos);
-      break;
-    
-    case LOAD_CHAR_LIT:
-#ifdef _DEBUG
-      std::wcout << L"stack oper: LOAD_INT_LIT; call_pos=" << (*call_stack_pos) << std::endl;
-#endif
-      PushInt(instr->GetOperand(), op_stack, stack_pos);
-      break;
-
-    case LOAD_INT_LIT:
-#ifdef _DEBUG
-      std::wcout << L"stack oper: LOAD_INT_LIT; call_pos=" << (*call_stack_pos) << std::endl;
-#endif
-      PushInt(instr->GetInt64Operand(), op_stack, stack_pos);
-      break;
-
-    case SHL_INT:
-      ShlInt(op_stack, stack_pos);
-      break;
-      
-    case SHR_INT:
-      ShrInt(op_stack, stack_pos);
-      break;
-
-    case LOAD_FLOAT_LIT:
-#ifdef _DEBUG
-      std::wcout << L"stack oper: LOAD_FLOAT_LIT; call_pos=" << (*call_stack_pos) << std::endl;
-#endif
-      PushFloat(instr->GetFloatOperand(), op_stack, stack_pos);
-      break;
-
-    case LOAD_LOCL_INT_VAR:
-      LoadLoclIntVar(instr, op_stack, stack_pos);
-      break;
-      
-    case LOAD_CLS_INST_INT_VAR:
-      LoadClsInstIntVar(instr, op_stack, stack_pos);
-      break;
-      
-    case LOAD_FUNC_VAR:
-      ProcessLoadFunctionVar(instr, op_stack, stack_pos);
-      break;
-
-    case LOAD_FLOAT_VAR:
-      ProcessLoadFloat(instr, op_stack, stack_pos);
-      break;
-
-    case AND_INT:
-      AndInt(op_stack, stack_pos);
-      break;
-
-    case OR_INT:
-      OrInt(op_stack, stack_pos);
-      break;
-
-    case ADD_INT:
-      AddInt(op_stack, stack_pos);
-      break;
-
-    case ADD_FLOAT:
-      AddFloat(op_stack, stack_pos);
-      break;
-
-    case SUB_INT:
-      SubInt(op_stack, stack_pos);
-      break;
-
-    case SUB_FLOAT:
-      SubFloat(op_stack, stack_pos);
-      break;
-
-    case MUL_INT:
-      MulInt(op_stack, stack_pos);
-      break;
-
-    case DIV_INT:
-      DivInt(op_stack, stack_pos);
-      break;
-
-    case MUL_FLOAT:
-      MulFloat(op_stack, stack_pos);
-      break;
-
-    case DIV_FLOAT:
-      DivFloat(op_stack, stack_pos);
-      break;
-
-    case MOD_INT:
-      ModInt(op_stack, stack_pos);
-      break;
-
-    case BIT_AND_INT:
-      BitAndInt(op_stack, stack_pos);
-      break;
-
-    case BIT_OR_INT:
-      BitOrInt(op_stack, stack_pos);
-      break;
-
-    case BIT_XOR_INT:
-      BitXorInt(op_stack, stack_pos);
-      break;
-
-    case BIT_NOT_INT:
-      BitNotInt(op_stack, stack_pos);
-      break;
-
-    case LES_EQL_INT:
-      LesEqlInt(op_stack, stack_pos);
-      break;
-
-    case GTR_EQL_INT:
-      GtrEqlInt(op_stack, stack_pos);
-      break;
-
-    case LES_EQL_FLOAT:
-      LesEqlFloat(op_stack, stack_pos);
-      break;
-
-    case GTR_EQL_FLOAT:
-      GtrEqlFloat(op_stack, stack_pos);
-      break;
-
-    case EQL_INT:
-      EqlInt(op_stack, stack_pos);
-      break;
-
-    case NEQL_INT:
-      NeqlInt(op_stack, stack_pos);
-      break;
-
-    case LES_INT:
-      LesInt(op_stack, stack_pos);
-      break;
-
-    case GTR_INT:
-      GtrInt(op_stack, stack_pos);
-      break;
-
-    case EQL_FLOAT:
-      EqlFloat(op_stack, stack_pos);
-      break;
-
-    case NEQL_FLOAT:
-      NeqlFloat(op_stack, stack_pos);
-      break;
-
-    case LES_FLOAT:
-      LesFloat(op_stack, stack_pos);
-      break;
-
-    case GTR_FLOAT:
-      GtrFloat(op_stack, stack_pos);
-      break;
-
-    case LOAD_ARY_SIZE:
-      LoadArySize(op_stack, stack_pos);
-      break;
-
-    case CPY_BYTE_ARY:
-      CpyByteAry(op_stack, stack_pos);
-      break;
-
-    case CPY_CHAR_ARY:
-      CpyCharAry(op_stack, stack_pos);
-      break;
-
-    case CPY_INT_ARY:
-      CpyIntAry(op_stack, stack_pos);
-      break;
-
-    case CPY_FLOAT_ARY:
-      CpyFloatAry(op_stack, stack_pos);
-      break;
-
-    case ZERO_BYTE_ARY:
-      ZeroByteAry(op_stack, stack_pos);
-      break;
-
-    case ZERO_CHAR_ARY:
-      ZeroCharAry(op_stack, stack_pos);
-      break;
-
-    case ZERO_INT_ARY:
-      ZeroIntAry(op_stack, stack_pos);
-      break;
-
-    case ZERO_FLOAT_ARY:
-      ZeroFloatAry(op_stack, stack_pos);
-      break;
-
-    case CEIL_FLOAT:
-      PushFloat(ceil(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
-      break;
-
-    case TRUNC_FLOAT:
-      PushFloat(trunc(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
-      break;
-
-    case FLOR_FLOAT:
-      PushFloat(floor(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
-      break;
-
-    case SIN_FLOAT:
-      PushFloat(sin(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
-      break;
-
-    case COS_FLOAT:
-      PushFloat(cos(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
-      break;
-
-    case TAN_FLOAT:
-      PushFloat(tan(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
-      break;
-
-    case ASIN_FLOAT:
-      PushFloat(asin(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
-      break;
-
-    case ACOS_FLOAT:
-      PushFloat(acos(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
-      break;
-
-    case ATAN_FLOAT:
-      PushFloat(atan(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
-      break;
-
-    case LOG2_FLOAT:
-      PushFloat(log2(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
-      break;
-
-    case CBRT_FLOAT:
-      PushFloat(cbrt(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
-      break;
-    
-    case LOG_FLOAT:
-      PushFloat(log(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
-      break;
-
-    case ROUND_FLOAT:
-      PushFloat(round(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
-      break;
-
-    case EXP_FLOAT:
-      PushFloat(exp(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
-      break;
-
-    case LOG10_FLOAT:
-      PushFloat(log10(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
-      break;
-
-    case SQRT_FLOAT:
-      PushFloat(sqrt(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
-      break;
-
-    case GAMMA_FLOAT:
-      PushFloat(tgamma(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
-      break;
-
-    case NAN_INT:
-      PushFloat(std::numeric_limits<INT_VALUE>::quiet_NaN(), op_stack, stack_pos);
-      break;
-
-    case INF_INT:
-      PushFloat(std::numeric_limits<INT_VALUE>::infinity(), op_stack, stack_pos);
-      break;
-
-    case NEG_INF_INT:
-      PushFloat(-1 * std::numeric_limits<INT_VALUE>::infinity(), op_stack, stack_pos);
-      break;
-
-    case NAN_FLOAT:
-      PushFloat(std::numeric_limits<double>::quiet_NaN(), op_stack, stack_pos);
-      break;
-
-    case INF_FLOAT:
-      PushFloat(std::numeric_limits<double>::infinity(), op_stack, stack_pos);
-      break;
-
-    case NEG_INF_FLOAT:
-      PushFloat(-1.0 * std::numeric_limits<double>::infinity(), op_stack, stack_pos);
-      break;
-
-    case RAND_FLOAT:
-      PushFloat(MemoryManager::GetRandomValue(), op_stack, stack_pos);
-      break;
-
-    case ACOSH_FLOAT:
-      PushFloat(acosh(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
-      break;
-
-    case ASINH_FLOAT:
-      PushFloat(asinh(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
-      break;
-
-    case ATANH_FLOAT:
-      PushFloat(atanh(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
-      break;
-
-    case COSH_FLOAT:
-      PushFloat(cosh(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
-      break;
-
-    case SINH_FLOAT:
-      PushFloat(sinh(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
-      break;
-
-    case TANH_FLOAT:
-      PushFloat(tanh(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
-      break;
-
-    case ATAN2_FLOAT:
-      left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
-      right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 1]));
-      *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2])) = atan2(left_double, right_double);
-      (*stack_pos)--;
-      break;
-
-    case MOD_FLOAT:
-      left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
-      right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 1]));
-      *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2])) = fmod(left_double, right_double);
-      (*stack_pos)--;
-      break;
-      
-    case POW_FLOAT:
-      left_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2]));
-      right_double = *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 1]));
-      *((FLOAT_VALUE*)(&op_stack[(*stack_pos) - 2])) = pow(left_double, right_double);
-      (*stack_pos)--;
-      break;
-
-    case I2F:
-#ifdef _DEBUG
-      std::wcout << L"stack oper: I2F; call_pos=" << (*call_stack_pos) << std::endl;
-#endif
-      PushFloat((double)((INT64_VALUE)PopInt(op_stack, stack_pos)), op_stack, stack_pos);
-      break;
-
-    case F2I:
-#ifdef _DEBUG
-      std::wcout << L"stack oper: F2I; call_pos=" << (*call_stack_pos) << std::endl;
-#endif
-      PushInt((INT64_VALUE)PopFloat(op_stack, stack_pos), op_stack, stack_pos);
-      break;
-
-    case S2I:
-      Str2Int(op_stack, stack_pos);
-      break;
-      
-    case S2F:
-      Str2Float(op_stack, stack_pos);
-      break;
-
-    case I2S:
-      Int2Str(op_stack, stack_pos);
-      break;
-      
-    case F2S:
-      Float2Str(op_stack, stack_pos);
-      break;
-      
-    case SWAP_INT:
-#ifdef _DEBUG
-      std::wcout << L"stack oper: SWAP_INT; call_pos=" << (*call_stack_pos) << std::endl;
-#endif
-      SwapInt(op_stack, stack_pos);
-      break;
-
-    case POP_INT:
-#ifdef _DEBUG
-      std::wcout << L"stack oper: PopInt; call_pos=" << (*call_stack_pos) << std::endl;
-#endif
-      PopInt(op_stack, stack_pos);
-      break;
-
-    case POP_FLOAT:
-#ifdef _DEBUG
-      std::wcout << L"stack oper: POP_FLOAT; call_pos=" << (*call_stack_pos) << std::endl;
-#endif
-      PopFloat(op_stack, stack_pos);
-      break;
-
-    case RTRN:
-      ProcessReturn(instrs, ip);
-      // return directly back to JIT code
-      if((*stack_frame) && (*stack_frame)->jit_called) {
-        (*stack_frame)->jit_called = false;
-        ReleaseStackFrame(*stack_frame);
-        return;
-      }
-      break;
-
-    case DYN_MTHD_CALL:
-      ProcessDynamicMethodCall(instr, instrs, ip, op_stack, stack_pos);
-      // return directly back to JIT code
-      if((*stack_frame)->jit_called) {
-        (*stack_frame)->jit_called = false;
-        ReleaseStackFrame(*stack_frame);
-        return;
-      }
-      break;
-
-    case MTHD_CALL:
-      ProcessMethodCall(instr, instrs, ip, op_stack, stack_pos);
-      // return directly back to JIT code
-      if((*stack_frame)->jit_called) {
-        (*stack_frame)->jit_called = false;
-        ReleaseStackFrame(*stack_frame);
-        return;
-      }
-      break;
-
-    case JMP:
-#ifdef _DEBUG
-      std::wcout << L"stack oper: JMP; call_pos=" << (*call_stack_pos) << std::endl;
-#endif
-      if(instr->GetOperand2() < 0) {
-        ip = instr->GetOperand();
-      }
-      else if((INT64_VALUE)PopInt(op_stack, stack_pos) == instr->GetOperand2()) {
-        ip = instr->GetOperand();
-      }      
-      break;
-
-    case OBJ_TYPE_OF:
-      ObjTypeOf(instr, op_stack, stack_pos);
-      break;
-
-    case OBJ_INST_CAST:
-      ObjInstCast(instr, op_stack, stack_pos);
-      break;
-
-    case ASYNC_MTHD_CALL:
-      AsyncMthdCall(op_stack, stack_pos);
-      break;
-
-    case THREAD_JOIN:
-      ThreadJoin(op_stack, stack_pos);
-      break;
-
-    case THREAD_MUTEX:
-      ThreadMutex(op_stack, stack_pos);
-      break;
-
-    case CRITICAL_START:
-      CriticalStart(op_stack, stack_pos);
-      break;
-
-    case CRITICAL_END:
-      CriticalEnd(op_stack, stack_pos);
-      break;
-
-    case NEW_BYTE_ARY:
-      ProcessNewByteArray(instr, op_stack, stack_pos);
-      break;
-
-    case NEW_CHAR_ARY:
-      ProcessNewCharArray(instr, op_stack, stack_pos);
-      break;
-      
-    case NEW_INT_ARY:
-      ProcessNewArray(instr, op_stack, stack_pos);
-      break;
-
-    case NEW_FLOAT_ARY:
-      ProcessNewArray(instr, op_stack, stack_pos, true);
-      break;
-
-    case NEW_OBJ_INST:
-      ProcessNewObjectInstance(instr, op_stack, stack_pos);
-      break;
-
-    case NEW_FUNC_INST:
-      ProcessNewFunctionInstance(instr, op_stack, stack_pos);
-      break;
-
-    case STOR_BYTE_ARY_ELM:
-      ProcessStoreByteArrayElement(instr, op_stack, stack_pos);
-      break;
-
-    case STOR_CHAR_ARY_ELM:
-      ProcessStoreCharArrayElement(instr, op_stack, stack_pos);
-      break;
-      
-    case LOAD_BYTE_ARY_ELM:
-      ProcessLoadByteArrayElement(instr, op_stack, stack_pos);
-      break;
-      
-    case LOAD_CHAR_ARY_ELM:
-      ProcessLoadCharArrayElement(instr, op_stack, stack_pos);
-      break;
-
-    case STOR_INT_ARY_ELM:
-      ProcessStoreIntArrayElement(instr, op_stack, stack_pos);
-      break;
-
-    case LOAD_INT_ARY_ELM:
-      ProcessLoadIntArrayElement(instr, op_stack, stack_pos);
-      break;
-
-    case STOR_FLOAT_ARY_ELM:
-      ProcessStoreFloatArrayElement(instr, op_stack, stack_pos);
-      break;
-
-    case LOAD_FLOAT_ARY_ELM:
-      ProcessLoadFloatArrayElement(instr, op_stack, stack_pos);
-      break;
-
-    case THREAD_SLEEP:
-#ifdef _DEBUG
-      std::wcout << L"stack oper: THREAD_SLEEP; call_pos=" << (*call_stack_pos) << std::endl;
-#endif
-      left = (INT64_VALUE)PopInt(op_stack, stack_pos);
-      std::this_thread::sleep_for(std::chrono::milliseconds(left));
-      break;
-
-    case LOAD_CLS_MEM:
-#ifdef _DEBUG
-      std::wcout << L"stack oper: LOAD_CLS_MEM; call_pos=" << (*call_stack_pos) << std::endl;
-#endif
-      PushInt((size_t)(*stack_frame)->method->GetClass()->GetClassMemory(), op_stack, stack_pos);
-      break;
-
-    case LOAD_INST_MEM:
-#ifdef _DEBUG
-      std::wcout << L"stack oper: LOAD_INST_MEM; call_pos=" << (*call_stack_pos) << std::endl;
-#endif
-      PushInt((*stack_frame)->mem[0], op_stack, stack_pos);
-      break;
-
-      // shared library support
-    case EXT_LIB_LOAD:
-      SharedLibraryLoad(instr);
-      break;
-
-    case EXT_LIB_UNLOAD:
-      SharedLibraryUnload(instr);
-      break;
-
-    case EXT_LIB_FUNC_CALL:
-      SharedLibraryCall(instr, op_stack, stack_pos);
-      break;
-      
-    case TRAP:
-    case TRAP_RTRN:
-#ifdef _DEBUG
-      std::wcout << L"stack oper: TRAP; call_pos=" << (*call_stack_pos) << std::endl;
-#endif
-      if(!TrapProcessor::ProcessTrap(program, (size_t*)(*stack_frame)->mem[0], op_stack, stack_pos, (*stack_frame))) {
-        StackErrorUnwind();
-#ifdef _NO_HALT
-        halt = true;
-        return;
-#else
-        exit(1);
-#endif
-      }
-      break;
-
-      // note: just for debugger
-    case END_STMTS:
-      break;
-
-    default:
+    if(result == DispatchResult::HALT) {
       break;
     }
+
+    // instrs may have changed from method calls
+    instrs = ctx.instrs;
   }
   while(!halt);
-  
+
 #ifdef _TIMING
   clock_t end = clock();
   std::wcout << L"---------------------------" << std::endl;
   std::wcout << L"Dispatch method='" << mthd_name << L"', time=" << (double)(end - start) / CLOCKS_PER_SEC << L" second(s)." << std::endl;
 #endif
+}
+
+bool StackInterpreter::ProcessTrap(size_t* &op_stack, size_t* &stack_pos)
+{
+  return TrapProcessor::ProcessTrap(program, (size_t*)(*stack_frame)->mem[0], op_stack, stack_pos, (*stack_frame));
 }
 
 void StackInterpreter::StorLoclIntVar(StackInstr* instr, size_t* &op_stack, size_t* &stack_pos)
@@ -1017,7 +451,7 @@ void StackInterpreter::Int2Str(size_t* &op_stack, size_t* &stack_pos)
   }
 }
 
-void inline StackInterpreter::Float2Str(size_t* &op_stack, size_t* &stack_pos)
+void StackInterpreter::Float2Str(size_t* &op_stack, size_t* &stack_pos)
 {
   size_t* str_ptr = (size_t*)PopInt(op_stack, stack_pos);
   if(str_ptr) {

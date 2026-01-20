@@ -1,6 +1,6 @@
 ARGS=-O3 -Wall -pthread -D_X64 -D_OBJECK_NATIVE_LIB_PATH -std=c++20 -mavx2 -Wno-unused-variable -Wno-unused-function -Wno-int-to-pointer-cast -Wno-unused-result
 
-SRC=common.o interpreter.o loader.o vm.o posix_main.o 
+SRC=common.o dispatch.o interpreter.o loader.o vm.o posix_main.o 
 OBJ_LIBS=jit_amd_lp64.a memory.a
 MEM_PATH=arch
 JIT_PATH=arch/jit/amd64
