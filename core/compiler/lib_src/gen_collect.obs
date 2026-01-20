@@ -1015,13 +1015,13 @@ set->Has(IntRef->New(2))->PrintLine(); # false
 ```
 	~#
 	class HashSet<H : Compare> {
-		@hash : Hash<H, Bool>;
+		@hash : Hash<H, BoolRef>;
 
 		#~
 		Default constructor
 		~#
 		New() {
-			@hash := Hash->New()<H, Bool>;
+			@hash := Hash->New()<H, BoolRef>;
 		}
 
 		#~
@@ -4091,7 +4091,7 @@ function : Show(value : IntRef) ~ Nil {
 		~#
 		method : public : Distinct() ~ CompareVector<H> {
 			result := CompareVector->New()<H>;
-			seen := Hash->New()<H, Bool>;
+			seen := Hash->New()<H, BoolRef>;
 
 			for(i := 0; i < @size; i += 1;) {
 				value := @values[i];
