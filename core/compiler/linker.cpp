@@ -40,12 +40,11 @@ using namespace instructions;
  * Creates associations with instructions
  * that reference library classes
  ****************************/
-void Linker::ResloveExternalClass(LibraryClass* klass) 
+void Linker::ResloveExternalClass(LibraryClass* klass)
 {
   std::map<const std::wstring, LibraryMethod*> methods = klass->GetMethods();
-  std::map<const std::wstring, LibraryMethod*>::iterator mthd_iter;
-  for(mthd_iter = methods.begin(); mthd_iter != methods.end(); ++mthd_iter) {
-    std::vector<LibraryInstr*> instrs =  mthd_iter->second->GetInstructions();
+  for(auto& mthd_pair : methods) {
+    std::vector<LibraryInstr*> instrs = mthd_pair.second->GetInstructions();
     for(size_t j = 0; j < instrs.size(); ++j) {
       LibraryInstr* instr = instrs[j];
       // check library call
@@ -80,10 +79,9 @@ void Linker::ResloveExternalClass(LibraryClass* klass)
 void Linker::ResloveExternalClasses()
 {
   // all libraries
-  std::map<const std::wstring, Library*>::iterator lib_iter;
-  for(lib_iter = libraries.begin(); lib_iter != libraries.end(); ++lib_iter) {
+  for(auto& lib_pair : libraries) {
     // all classes
-    std::vector<LibraryClass*> classes = lib_iter->second->GetClasses();
+    std::vector<LibraryClass*> classes = lib_pair.second->GetClasses();
     for(size_t i = 0; i < classes.size(); ++i) {
       // all methods
       if(classes[i]->GetCalled()) {
@@ -96,16 +94,14 @@ void Linker::ResloveExternalClasses()
 void Linker::ResolveExternalMethodCalls()
 {
   // all libraries
-  std::map<const std::wstring, Library*>::iterator lib_iter;
-  for(lib_iter = libraries.begin(); lib_iter != libraries.end(); ++lib_iter) {
+  for(auto& lib_pair : libraries) {
     // all classes
-    std::vector<LibraryClass*> classes = lib_iter->second->GetClasses();
+    std::vector<LibraryClass*> classes = lib_pair.second->GetClasses();
     for(size_t i = 0; i < classes.size(); ++i) {
       // all methods
       std::map<const std::wstring, LibraryMethod*> methods = classes[i]->GetMethods();
-      std::map<const std::wstring, LibraryMethod*>::iterator mthd_iter;
-      for(mthd_iter = methods.begin(); mthd_iter != methods.end(); ++mthd_iter) {
-        std::vector<LibraryInstr*> instrs =  mthd_iter->second->GetInstructions();
+      for(auto& mthd_pair : methods) {
+        std::vector<LibraryInstr*> instrs = mthd_pair.second->GetInstructions();
         for(size_t j = 0; j < instrs.size(); ++j) {
           LibraryInstr* instr = instrs[j];
 
@@ -225,8 +221,8 @@ std::vector<Library*> Linker::GetAllUsedLibraries()
 {
   std::vector<Library*> used_libraries;
 
-  for(std::map<const std::wstring, Library*>::iterator iter = libraries.begin(); iter != libraries.end(); ++iter) {
-    Library* library = iter->second;
+  for(auto& pair : libraries) {
+    Library* library = pair.second;
     std::vector<LibraryClass*> classes = library->GetClasses();
 
     bool add_library = false;
@@ -247,9 +243,8 @@ std::vector<Library*> Linker::GetAllUsedLibraries()
 std::vector<LibraryAlias*> Linker::GetAllAliases()
 {
   if(all_aliases.empty()) {
-    std::map<const std::wstring, Library*>::iterator iter;
-    for(iter = libraries.begin(); iter != libraries.end(); ++iter) {
-      std::vector<LibraryAlias*> aliases = iter->second->GetAliases();
+    for(auto& pair : libraries) {
+      std::vector<LibraryAlias*> aliases = pair.second->GetAliases();
       for(size_t i = 0; i < aliases.size(); ++i) {
         all_aliases.push_back(aliases[i]);
       }
@@ -641,10 +636,9 @@ std::vector<LibraryClass*> LibraryClass::GetLibraryChildren()
 {
   if(!lib_children.size()) {
     std::map<const std::wstring, const std::wstring> hierarchies = library->GetHierarchies();
-    std::map<const std::wstring, const std::wstring>::iterator iter;
-    for(iter = hierarchies.begin(); iter != hierarchies.end(); ++iter) {
-      if(iter->second == name) {
-        lib_children.push_back(library->GetClass(iter->first));
+    for(auto& pair : hierarchies) {
+      if(pair.second == name) {
+        lib_children.push_back(library->GetClass(pair.first));
       }
     }
   }
@@ -656,15 +650,14 @@ std::map<backend::IntermediateDeclarations*, std::pair<std::wstring, int>> Libra
 {
   std::map<backend::IntermediateDeclarations*, std::pair<std::wstring, int> > closure_entries;
 
-  std::map<std::wstring, backend::IntermediateDeclarations*>::iterator lamba_iter;
-  for(lamba_iter = lib_closure_entries.begin(); lamba_iter != lib_closure_entries.end(); ++lamba_iter) {
-    const std::wstring lib_mthd_name = lamba_iter->first;
+  for(auto& lambda_pair : lib_closure_entries) {
+    const std::wstring lib_mthd_name = lambda_pair.first;
     LibraryMethod* lib_method = GetMethod(lib_mthd_name);
     if(!lib_method) {
       std::wcerr << L"Internal compiler error: Invalid method name." << std::endl;
       exit(1);
     }
-    backend::IntermediateDeclarations* dclr = lamba_iter->second;
+    backend::IntermediateDeclarations* dclr = lambda_pair.second;
     closure_entries[dclr] = std::pair<std::wstring, int>(lib_mthd_name, lib_method->GetId());
   }
 
@@ -731,13 +724,13 @@ char* Library::LoadFileBuffer(std::wstring filename, size_t& buffer_size)
     in.seekg(0, std::ios::end);
     buffer_size = (size_t)in.tellg();
     in.seekg(0, std::ios::beg);
-    buffer = (char*)calloc(buffer_size + 1, sizeof(char));
+    buffer = static_cast<char*>(calloc(buffer_size + 1, sizeof(char)));
     in.read(buffer, buffer_size);
     // close file
     in.close();
 
     unsigned long dest_len;
-    char* out = OutputStream::UncompressZlib(buffer, (unsigned long)buffer_size, dest_len);
+    char* out = OutputStream::UncompressZlib(buffer, static_cast<unsigned long>(buffer_size), dest_len);
     if(!out) {
       std::wcerr << L"Unable to uncompress file: " << filename << std::endl;
       exit(1);

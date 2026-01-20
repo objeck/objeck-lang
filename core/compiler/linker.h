@@ -387,11 +387,8 @@ class LibraryEnum {
 
   ~LibraryEnum() {
     // clean up
-    std::map<const std::wstring, LibraryEnumItem*>::iterator iter;
-    for(iter = items.begin(); iter != items.end(); ++iter) {
-      LibraryEnumItem* tmp = iter->second;
-      delete tmp;
-      tmp = nullptr;
+    for(auto& pair : items) {
+      delete pair.second;
     }
     items.clear();
   }
@@ -473,13 +470,10 @@ class LibraryClass {
                 bool v, const int cs, const int in, backend::IntermediateDeclarations* ce, backend::IntermediateDeclarations* ie, 
                 std::map<std::wstring, backend::IntermediateDeclarations*> le, Library* l, const std::wstring &fn, bool d);
    
-  ~LibraryClass() {   
+  ~LibraryClass() {
     // clean up
-    std::map<const std::wstring, LibraryMethod*>::iterator iter;
-    for(iter = methods.begin(); iter != methods.end(); ++iter) {
-      LibraryMethod* tmp = iter->second;
-      delete tmp;
-      tmp = nullptr;
+    for(auto& pair : methods) {
+      delete pair.second;
     }
     methods.clear();
 
@@ -573,7 +567,7 @@ class LibraryClass {
   int GenericIndex(const std::wstring& n) {
     for(size_t i = 0; i < generic_classes.size(); ++i) {
       if(n == generic_classes[i]->GetName()) {
-        return (int)i;
+        return static_cast<int>(i);
       }
     }
 
@@ -740,13 +734,13 @@ class Library {
   std::vector<std::wstring> bundle_names;
   
   inline int32_t ReadInt() {
-    int32_t value = *((int32_t*)buffer);
+    int32_t value = *reinterpret_cast<int32_t*>(buffer);
     buffer += sizeof(value);
     return value;
   }
 
   inline int64_t ReadInt64() {
-    int64_t value = *((int64_t*)buffer);
+    int64_t value = *reinterpret_cast<int64_t*>(buffer);
     buffer += sizeof(value);
     return value;
   }
@@ -756,13 +750,13 @@ class Library {
   }
 
   inline uint32_t ReadUnsigned() {
-    uint32_t value = *((uint32_t*)buffer);
+    uint32_t value = *reinterpret_cast<uint32_t*>(buffer);
     buffer += sizeof(value);
     return value;
   }
 
   inline int ReadByte() {
-    uint8_t value = *((uint8_t*)buffer);
+    uint8_t value = *reinterpret_cast<uint8_t*>(buffer);
     buffer += sizeof(value);
     return value;
   }
@@ -805,7 +799,7 @@ class Library {
   }
 
   double ReadDouble() {
-    FLOAT_VALUE value = *((FLOAT_VALUE*)buffer);
+    FLOAT_VALUE value = *reinterpret_cast<FLOAT_VALUE*>(buffer);
     buffer += sizeof(value);
     return value;
   }
@@ -843,7 +837,7 @@ class Library {
     backend::IntermediateDeclarations* entries = new backend::IntermediateDeclarations;
     int num_params = ReadInt();
     for(int i = 0; i < num_params; ++i) {
-      instructions::ParamType type = (instructions::ParamType)ReadInt();
+      instructions::ParamType type = static_cast<instructions::ParamType>(ReadInt());
       std::wstring var_name;
       if(is_debug) {
         var_name = ReadString();
@@ -871,29 +865,20 @@ class Library {
 
   ~Library() {
     // clean up
-    std::map<const std::wstring, LibraryAlias*>::iterator alias_iter;
-    for(alias_iter = aliases.begin(); alias_iter != aliases.end(); ++alias_iter) {
-      LibraryAlias* tmp = alias_iter->second;
-      delete tmp;
-      tmp = nullptr;
+    for(auto& pair : aliases) {
+      delete pair.second;
     }
     aliases.clear();
-    aliases_list.clear(); 
+    aliases_list.clear();
 
-    std::map<const std::wstring, LibraryEnum*>::iterator enum_iter;
-    for(enum_iter = enums.begin(); enum_iter != enums.end(); ++enum_iter) {
-      LibraryEnum* tmp = enum_iter->second;
-      delete tmp;
-      tmp = nullptr;
+    for(auto& pair : enums) {
+      delete pair.second;
     }
     enums.clear();
     enum_list.clear();
 
-    std::map<const std::wstring, LibraryClass*>::iterator cls_iter;
-    for(cls_iter = named_classes.begin(); cls_iter != named_classes.end(); ++cls_iter) {
-      LibraryClass* tmp = cls_iter->second;
-      delete tmp;
-      tmp = nullptr;
+    for(auto& pair : named_classes) {
+      delete pair.second;
     }
     named_classes.clear();
     class_list.clear();
@@ -1057,11 +1042,8 @@ public:
 
   ~Linker() {
     // clean up
-    std::map<const std::wstring, Library*>::iterator iter;
-    for(iter = libraries.begin(); iter != libraries.end(); ++iter) {
-      Library* tmp = iter->second;
-      delete tmp;
-      tmp = nullptr;
+    for(auto& pair : libraries) {
+      delete pair.second;
     }
     libraries.clear();
 
