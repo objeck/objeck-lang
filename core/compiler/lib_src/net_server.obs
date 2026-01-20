@@ -90,7 +90,7 @@ bundle Web.HTTP.Server {
 						callback := params->GetFirst();
 						secure_client := params->GetSecond();
 						server_config := params->GetThird();
-						is_debug := params->GetForth();
+						is_debug := params->GetFourth();
 
 						handler := callback->Instance(callback->GetName())->As(HttpsRequestHandler);
 						handler->SetConfig(server_config, is_debug->Get());
@@ -158,7 +158,7 @@ bundle Web.HTTP.Server {
 						callback := params->GetFirst();
 						client := params->GetSecond();
 						server_config := params->GetThird();
-						is_debug := params->GetForth();
+						is_debug := params->GetFourth();
 
 						handler := callback->Instance(callback->GetName())->As(HttpRequestHandler);
 						handler->SetConfig(server_config, is_debug->Get());

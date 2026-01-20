@@ -5,7 +5,14 @@ Provides support for conversions (-lib misc)
 ~#	
 bundle System.Time {
 	#~
-	Utilities for handling dates.
+	Utilities for handling dates
+
+```
+date := DateUtility->Parse("12/25/2024", "MM/dd/yyyy", false);
+date->GetMonth()->PrintLine();
+date->GetDay()->PrintLine();
+date->GetYear()->PrintLine();
+```
 	~#
 	class DateUtility {
 		#~
