@@ -182,6 +182,12 @@ class Parser {
   void ParseAnonymousClass(MethodCall* method_call, int depth);
   StatementList* ParseStatementList(int depth);
   Statement* ParseStatement(int depth, bool semi_colon = true);
+  Statement* ParseIdentifierStatement(const std::wstring& ident, int line_num, int line_pos, const std::wstring& file_name, int depth);
+  Statement* ParsePrefixOperatorStatement(int line_num, int line_pos, const std::wstring& file_name, int depth);
+  Statement* ParseControlFlowStatement(int line_num, int line_pos, const std::wstring& file_name, int depth);
+#ifdef _SYSTEM
+  Statement* ParseSystemStatement(int line_num, int line_pos, const std::wstring& file_name, int depth);
+#endif
   Assignment* ParseAssignment(Variable* variable, int depth);
   StaticArray* ParseStaticArray(int depth);
   If* ParseIf(int depth);
