@@ -140,7 +140,7 @@ each(i : results) {
 			};
 
 			# Use hash for O(n) lookup instead of O(n²) nested loops
-			seen := Hash->New()<Compare, Bool>;
+			seen := Hash->New()<Compare, BoolRef>;
 
 			in_row := @head;
 			while(in_row <> Nil) {
@@ -849,7 +849,7 @@ each(i : results) {
 			};
 
 			# Use hash for O(n) lookup instead of O(n²) nested loops
-			seen := Hash->New()<Compare, Bool>;
+			seen := Hash->New()<Compare, BoolRef>;
 
 			each(i : input) {
 				in_row := input->Get(i);
