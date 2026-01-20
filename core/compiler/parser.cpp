@@ -7365,7 +7365,7 @@ Type* Parser::ParseType(int depth)
  * Parses an expression from a text string.
  * Used for string interpolation expressions.
  ****************************/
-Expression* Parser::ParseExpressionText(const std::wstring& text, const std::wstring& filename, int line_num, int line_pos)
+Expression* Parser::ParseExpressionText(const std::wstring& text, const std::wstring& filename, int line_num, int line_pos, Class* context_class)
 {
   // Create scanner on the expression text
   Scanner* expr_scanner = new Scanner(filename, false, text);
@@ -7376,6 +7376,9 @@ Expression* Parser::ParseExpressionText(const std::wstring& text, const std::wst
 
   // Set the scanner
   expr_parser.scanner = expr_scanner;
+
+  // Set the class context so function calls can be resolved
+  expr_parser.current_class = context_class;
 
   // Initialize tokens
   expr_parser.NextToken();
