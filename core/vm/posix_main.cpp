@@ -40,48 +40,50 @@ int main(const int argc, const char* argv[])
 {
   if(argc > 1) {
     //
-    // check for command line parameters
-    //  
+    // Parse command line parameters using enhanced parser
+    //
+    CommandLineParseResult cmd_result = ParseCommandLine(argc, argv);
+
     size_t gc_threshold = 0;
     int vm_param_count = 0;
-    
-    // bool set_foo_bar_param = false; // TODO: add if needed
-    for(int i = 1; i < argc; ++i) {
-      const std::string name_value(argv[i]);
-      // check for GC_THRESHOLD
-      if(!name_value.rfind("--GC_THRESHOLD=", 0)) {
-        const size_t name_value_index = name_value.find_first_of(L'=');
-        if(name_value_index != std::string::npos) {
-          ++vm_param_count;
-          const std::string value(name_value.substr(name_value_index + 1));
 
-          char* str_end;
-          gc_threshold = strtol(value.c_str(), &str_end, 10);
-          if(str_end) {
-            switch (*str_end) {
-            case 'k':
-            case 'K':
-              gc_threshold *= 1024UL;
-              break;
+    // Check for GC threshold (support both new and legacy formats)
+    std::wstring gc_value = GetCommandLineArgumentWithAliases(
+      cmd_result.arguments,
+      {L"gc-threshold", L"GC_THRESHOLD", L"GC-THRESHOLD"},
+      L""
+    );
 
-            case 'm':
-            case 'M':
-              gc_threshold *= 1048576UL;
-              break;
+    if(!gc_value.empty()) {
+      ++vm_param_count;
 
-            case 'g':
-            case 'G':
-              gc_threshold *= 1099511627776UL;
-              break;
-            }
-          }
+      // Convert wide string to narrow for parsing
+      std::string value_str;
+      for(wchar_t wc : gc_value) {
+        value_str += static_cast<char>(wc);
+      }
+
+      // Parse numeric value and suffix
+      char* str_end;
+      gc_threshold = strtol(value_str.c_str(), &str_end, 10);
+      if(str_end) {
+        switch (*str_end) {
+        case 'k':
+        case 'K':
+          gc_threshold *= 1024UL;
+          break;
+
+        case 'm':
+        case 'M':
+          gc_threshold *= 1048576UL;
+          break;
+
+        case 'g':
+        case 'G':
+          gc_threshold *= 1099511627776UL;
+          break;
         }
       }
-      /* TODO: add if needed
-      // check for FOO_BAR
-      else if(!name_value.rfind("--FOO_BAR=", 0)) {
-      }
-      */
     }
 
     // enable UTF-8 environment
@@ -108,14 +110,20 @@ int main(const int argc, const char* argv[])
 #else    
     Execute(argc - vm_param_count, argv + vm_param_count, gc_threshold);
 #endif    
-  } 
+  }
   else {
     wstring usage;
-    usage += L"Usage: obr <program>\n\n";
+    usage += L"Usage: obr [options] <program>\n\n";
 
     usage += L"Options:\n";
-    usage += L"\t--GC_THRESHOLD:\t[prepend] inital garbage collection threshold <number>(k|m|g)\n";
-    usage += L"\nExamples:\n\t\"obr hello.obe\"\n\t\"obr --GC_THRESHOLD=2m hello.obe\"\n \nVersion: ";
+    usage += L"  --gc-threshold=<size>     Initial garbage collection threshold\n";
+    usage += L"                            Size format: <number>(k|m|g)\n";
+    usage += L"                            Legacy: --GC_THRESHOLD=<size>\n";
+    usage += L"\nExamples:\n";
+    usage += L"  obr hello.obe\n";
+    usage += L"  obr --gc-threshold=2m hello.obe\n";
+    usage += L"  obr --GC_THRESHOLD=2m hello.obe  (legacy)\n";
+    usage += L"\nVersion: ";
     usage += VERSION_STRING;
     
 #if defined(_WIN64) && defined(_WIN32)

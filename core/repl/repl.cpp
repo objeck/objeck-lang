@@ -35,7 +35,7 @@
 /****************************
 * Program start
 ****************************/
-int main(int argc, char* argv[])
+int main(int argc, const char* argv[])
 {
 #ifndef _MSYS2_CLANG
   SetEnv();
@@ -50,66 +50,71 @@ int main(int argc, char* argv[])
   OpenLogger("debug.log");
 #endif
 
-  // parse command line
-  std::wstring cmd_line;
-  std::map<const std::wstring, std::wstring> arguments = ParseCommnadLine(argc, argv, cmd_line);
-  
+  // Parse command line using enhanced parser
+  CommandLineParseResult cmd_result = ParseCommandLine(argc, argv);
+  std::map<const std::wstring, std::wstring> arguments = cmd_result.arguments;
+
   std::wstring input;
   std::wstring libs;
   std::wstring opt;
   int mode = 0;
   bool is_exit = false;
 
-  // help
-  std::wstring help_flags[] = { HELP_PARAM, HELP_ALT_PARAM };
-  auto result = GetArgument(arguments, help_flags);
-  if(!result.empty()) {
+  // Check for help (support --help, -help, -h)
+  if(HasCommandLineArgumentWithAliases(arguments, {L"help", L"h"})) {
     Usage();
-    RemoveArgument(arguments, help_flags);
+    arguments.erase(L"help");
+    arguments.erase(L"h");
   }
   else {
-    std::wstring file_flags[] = { FILE_PARAM, FILE_ALT_PARAM };
-    result = GetArgument(arguments, file_flags);
-    if(!result.empty()) {
-      input = result;
+    // Check for file input (support --file, -file, -f)
+    std::wstring file_value = GetCommandLineArgumentWithAliases(arguments, {L"file", L"f"});
+    if(!file_value.empty()) {
+      input = file_value;
       mode = 1;
-      RemoveArgument(arguments, file_flags);
+      arguments.erase(L"file");
+      arguments.erase(L"f");
     }
 
-    std::wstring inline_flags[] = { INLINE_PARAM, INLINE_ALT_PARAM };
-    result = GetArgument(arguments, inline_flags);
-    if(!result.empty()) {
-      input = result;
+    // Check for inline code (support --inline, -inline, -i)
+    std::wstring inline_value = GetCommandLineArgumentWithAliases(arguments, {L"inline", L"i"});
+    if(!inline_value.empty()) {
+      input = inline_value;
       mode = 2;
-      RemoveArgument(arguments, inline_flags);
+      arguments.erase(L"inline");
+      arguments.erase(L"i");
     }
 
-    std::wstring exit_flags[] = { EXIT_PARAM, EXIT_ALT_PARAM };
-    if(HasArgument(arguments, exit_flags)) {
+    // Check for quit flag (support --quit, -quit, -q)
+    if(HasCommandLineArgumentWithAliases(arguments, {L"quit", L"q"})) {
       is_exit = true;
-      RemoveArgument(arguments, exit_flags);
+      arguments.erase(L"quit");
+      arguments.erase(L"q");
     }
 
-    std::wstring lib_flags[] = { LIBS_PARAM, LIBS_ALT_PARAM };
-    result = GetArgument(arguments, lib_flags);
-    if(!result.empty()) {
-      libs = result;
-      mode = 2;
-      RemoveArgument(arguments, lib_flags);
+    // Check for libraries (support --library, -lib, -l)
+    std::wstring lib_value = GetCommandLineArgumentWithAliases(arguments, {L"library", L"lib", L"l"});
+    if(!lib_value.empty()) {
+      libs = lib_value;
+      arguments.erase(L"library");
+      arguments.erase(L"lib");
+      arguments.erase(L"l");
     }
 
-    std::wstring opt_flags[] = { OPT_PARAM, OPT_ALT_PARAM };
-    result = GetArgument(arguments, opt_flags);
-    if(!result.empty()) {
-      input = result;
-      RemoveArgument(arguments, opt_flags);
+    // Check for optimization level (support --optimize, -opt, -o)
+    std::wstring opt_value = GetCommandLineArgumentWithAliases(arguments, {L"optimize", L"opt", L"o"});
+    if(!opt_value.empty()) {
+      opt = opt_value;
+      arguments.erase(L"optimize");
+      arguments.erase(L"opt");
+      arguments.erase(L"o");
     }
 
-    // input check
+    // Check for unknown arguments
     if(arguments.size()) {
       Usage();
     }
-    // start repl loop
+    // Start REPL loop
     else {
       Editor editor;
       editor.Edit(input, libs, opt, mode, is_exit);
@@ -124,15 +129,20 @@ int main(int argc, char* argv[])
 void Usage()
 {
   std::wstring usage;
-  usage += L"Usage: obi <options>\n\n";
+  usage += L"Usage: obi [options]\n\n";
   usage += L"Options:\n";
-  usage += L"  -help|-h:   [optional] shows help\n";
-  usage += L"  -file|-f:   [optional] optional source files (separated by commas)\n";
-  usage += L"  -inline|-i: [optional] inline source code statements\n";
-  usage += L"  -lib|-l:    [optional] list of linked libraries (separated by commas)\n";
-  usage += L"  -opt|-o:    [optional] compiler optimizations s0-s3 (s3 being the most aggressive and default)\n";
-  usage += L"  -quit|-q:   [optional] exits shell after executiong code\n";
-  usage += L"\nExample: \"obi -f hello.obs\"\n\nVersion: ";
+  usage += L"  --help, -h              Show this help message\n";
+  usage += L"  --file, -f <files>      Source files (comma-separated)\n";
+  usage += L"  --inline, -i <code>     Inline source code statements\n";
+  usage += L"  --library, -l <libs>    Linked libraries (comma-separated)\n";
+  usage += L"  --optimize, -o <level>  Optimization level: s0-s3 (default: s3)\n";
+  usage += L"  --quit, -q              Exit shell after executing code\n";
+  usage += L"\nExamples:\n";
+  usage += L"  obi\n";
+  usage += L"  obi --file hello.obs\n";
+  usage += L"  obi -f hello.obs --library mylib\n";
+  usage += L"  obi --inline 'Int->New(42)->PrintLine();' --quit\n";
+  usage += L"\nVersion: ";
   usage += VERSION_STRING;
 
 #if defined(_WIN64) && defined(_WIN32) && defined(_M_ARM64)
@@ -206,40 +216,4 @@ void SetEnv()
   setlocale(LC_ALL, "en_US.utf8");
 #endif
 #endif
-}
-
-std::wstring GetArgument(std::map<const std::wstring, std::wstring> arguments, const std::wstring values[]) 
-{
-  auto result = arguments.find(values[0]);
-  if(result != arguments.end()) {
-    return result->second;
-  }
-
-  result = arguments.find(values[1]);
-  if(result != arguments.end()) {
-    return result->second;
-  }
-
-  return L"";
-}
-
-bool HasArgument(std::map<const std::wstring, std::wstring> arguments, const std::wstring values[]) 
-{
-  auto result = arguments.find(values[0]);
-  if(result != arguments.end()) {
-    return true;
-  }
-
-  result = arguments.find(values[1]);
-  if(result != arguments.end()) {
-    return true;
-  }
-
-  return false;
-}
-
-void RemoveArgument(std::map<const std::wstring, std::wstring>& arguments, const std::wstring values[]) 
-{
-  arguments.erase(values[0]);
-  arguments.erase(values[1]);
 }
