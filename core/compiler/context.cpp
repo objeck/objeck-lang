@@ -31,6 +31,7 @@
 
 #include "context.h"
 #include "linker.h"
+#include "parser.h"
 #include "../shared/instrs.h"
 
 /****************************
@@ -1554,8 +1555,18 @@ void ContextAnalyzer::AnalyzeExpression(Expression* expression, const int depth)
         AnalyzeStaticArray(static_cast<StaticArray*>(expression), depth);
         break;
 
-      case CHAR_STR_EXPR:
-        AnalyzeCharacterString(static_cast<CharacterString*>(expression), depth + 1);
+      case CHAR_STR_EXPR: {
+        CharacterString* char_str = static_cast<CharacterString*>(expression);
+        AnalyzeCharacterString(char_str, depth + 1);
+        // Handle method calls attached to the string literal (e.g., "alice"->ToUpper())
+        if(char_str->GetMethodCall()) {
+          Expression* expr = char_str;
+          while(expr->GetMethodCall()) {
+            AnalyzeExpressionMethodCall(expr, depth + 1);
+            expr = expr->GetMethodCall();
+          }
+        }
+      }
         break;
 
       case COND_EXPR:
@@ -1745,12 +1756,17 @@ void ContextAnalyzer::AnalyzeCharacterString(CharacterString* char_str, const in
       if(var_start > -1) {
         if(str[i] == L'}') {
           const std::wstring token = str.substr(static_cast<std::basic_string<wchar_t, std::char_traits<wchar_t>, std::allocator<wchar_t>>::size_type>(var_start) + 2, i - var_start - 2);
-          SymbolEntry* entry = GetEntry(token);
-          if(entry) {
-            AnalyzeCharacterStringVariable(entry, char_str, depth);
+          if(IsComplexExpression(token)) {
+            AnalyzeCharacterStringExpression(token, char_str, depth);
           }
           else {
-            ProcessError(char_str, L"Undefined variable: '" + token + L"'");
+            SymbolEntry* entry = GetEntry(token);
+            if(entry) {
+              AnalyzeCharacterStringVariable(entry, char_str, depth);
+            }
+            else {
+              ProcessError(char_str, L"Undefined variable: '" + token + L"'");
+            }
           }
           // update
           var_start = -1;
@@ -1758,12 +1774,17 @@ void ContextAnalyzer::AnalyzeCharacterString(CharacterString* char_str, const in
         }
         else if(i + 1 == str.size()) {
           const std::wstring token = str.substr(static_cast<std::basic_string<wchar_t, std::char_traits<wchar_t>, std::allocator<wchar_t>>::size_type>(var_start) + 1, i - var_start);
-          SymbolEntry* entry = GetEntry(token);
-          if(entry) {
-            AnalyzeCharacterStringVariable(entry, char_str, depth);
+          if(IsComplexExpression(token)) {
+            AnalyzeCharacterStringExpression(token, char_str, depth);
           }
           else {
-            ProcessError(char_str, L"Undefined variable: '" + token + L"'");
+            SymbolEntry* entry = GetEntry(token);
+            if(entry) {
+              AnalyzeCharacterStringVariable(entry, char_str, depth);
+            }
+            else {
+              ProcessError(char_str, L"Undefined variable: '" + token + L"'");
+            }
           }
           // update
           var_start = -1;
@@ -4619,6 +4640,11 @@ void ContextAnalyzer::AnalyzeReturn(Return* rtrn, const int depth)
   Expression* expression = rtrn->GetExpression();
   if(expression) {
     AnalyzeExpression(expression, depth + 1);
+    // Handle string concatenation: replace ADD_EXPR with STR_CONCAT_EXPR
+    if(expression->GetPreviousExpression() && expression->GetPreviousExpression()->GetExpressionType() == STR_CONCAT_EXPR) {
+      expression = expression->GetPreviousExpression();
+      rtrn->SetExpression(expression);
+    }
     while(expression->GetMethodCall()) {
       AnalyzeExpressionMethodCall(expression, depth + 1);
       expression = expression->GetMethodCall();
@@ -8064,6 +8090,105 @@ void ContextAnalyzer::AnalyzeCharacterStringVariable(SymbolEntry* entry, Charact
       char_str->AddSegment(entry);
     }
   }
+}
+
+/****************************
+ * Check if token contains expression operators
+ * (method call, array access, etc.)
+ ****************************/
+bool ContextAnalyzer::IsComplexExpression(const std::wstring& token)
+{
+  return token.find(L"->") != std::wstring::npos ||
+         token.find(L'[') != std::wstring::npos ||
+         token.find(L'(') != std::wstring::npos;
+}
+
+/****************************
+ * Analyzes a character string expression
+ * (for interpolated method calls, array access, etc.)
+ ****************************/
+void ContextAnalyzer::AnalyzeCharacterStringExpression(const std::wstring& expr_text, CharacterString* char_str, int depth)
+{
+#ifdef _DEBUG
+  Debug(L"expression=|" + expr_text + L"|", char_str->GetLineNumber(), depth + 1);
+#endif
+
+  // Unescape quotes in the expression text (\" -> ")
+  std::wstring unescaped_text;
+  for(size_t i = 0; i < expr_text.size(); ++i) {
+    if(expr_text[i] == L'\\' && i + 1 < expr_text.size() && expr_text[i + 1] == L'"') {
+      unescaped_text += L'"';
+      ++i;  // Skip the backslash, the " will be added
+    }
+    else {
+      unescaped_text += expr_text[i];
+    }
+  }
+
+  // Parse expression
+  Expression* expr = Parser::ParseExpressionText(unescaped_text, char_str->GetFileName(),
+                                                  char_str->GetLineNumber(), char_str->GetLinePosition());
+  if(!expr) {
+    ProcessError(char_str, L"Invalid expression in string interpolation: '" + expr_text + L"'");
+    return;
+  }
+
+  // Analyze the expression
+  AnalyzeExpression(expr, depth + 1);
+
+  // Check for errors during analysis
+  Type* eval_type = expr->GetEvalType();
+  if(!eval_type) {
+    ProcessError(char_str, L"Cannot determine type of expression: '" + expr_text + L"'");
+    return;
+  }
+
+  // Check for Nil return type (compiler error)
+  if(eval_type->GetType() == NIL_TYPE) {
+    ProcessError(char_str, L"Expression cannot return Nil: '" + expr_text + L"'");
+    return;
+  }
+
+  // Check for array type (not allowed)
+  if(eval_type->GetDimension() > 0) {
+    ProcessError(char_str, L"Invalid expression type or dimension size: '" + expr_text + L"'");
+    return;
+  }
+
+  // Find ToString if not String type
+  Method* to_string_method = nullptr;
+  LibraryMethod* to_string_lib_method = nullptr;
+
+  if(eval_type->GetType() == CLASS_TYPE &&
+     eval_type->GetName() != L"System.String" &&
+     eval_type->GetName() != L"String") {
+    const std::wstring cls_name = eval_type->GetName();
+    Class* klass = SearchProgramClasses(cls_name);
+    if(klass) {
+      to_string_method = klass->GetMethod(cls_name + L":ToString:");
+      if(!to_string_method || to_string_method->GetMethodType() == PRIVATE_METHOD) {
+        ProcessError(char_str, L"Expression type does not have public 'ToString' method: '" + expr_text + L"'");
+        return;
+      }
+    }
+    else {
+      LibraryClass* lib_klass = linker->SearchClassLibraries(cls_name, program->GetLibUses());
+      if(lib_klass) {
+        to_string_lib_method = lib_klass->GetMethod(cls_name + L":ToString:");
+        if(!to_string_lib_method || to_string_lib_method->GetMethodType() == PRIVATE_METHOD) {
+          ProcessError(char_str, L"Expression type does not have public 'ToString' method: '" + expr_text + L"'");
+          return;
+        }
+      }
+      else {
+        ProcessError(char_str, L"Expression type does not have 'ToString' method: '" + expr_text + L"'");
+        return;
+      }
+    }
+  }
+
+  // Add as EXPRESSION segment
+  char_str->AddSegment(expr, to_string_method, to_string_lib_method);
 }
 
 void ContextAnalyzer::AnalyzeVariableCast(Type* to_type, Expression* expression)

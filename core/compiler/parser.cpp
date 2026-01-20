@@ -4279,7 +4279,7 @@ Expression* Parser::ParseSimpleExpression(int depth)
 #ifdef _DEBUG
   Debug(L"Simple expression", depth);
 #endif
-  
+
   Expression* expression = nullptr;
 
   if(Match(TOKEN_IDENT) || Match(TOKEN_ADD_ADD) || Match(TOKEN_SUB_SUB) || IsBasicType(GetToken())) {
@@ -4745,8 +4745,10 @@ MethodCall* Parser::ParseMethodCall(IdentifierContext& context, int depth)
   }
   // method call
   else if(Match(TOKEN_OPEN_PAREN)) {
-    const std::wstring klass_name = current_class->GetName();
-    
+    // When current_class is null (e.g., parsing isolated expression for string interpolation),
+    // use empty string - the context analyzer will determine the actual class from context
+    const std::wstring klass_name = current_class ? current_class->GetName() : L"";
+
     int end_pos = 0;
     ExpressionList* exprs = ParseExpressionList(end_pos, depth + 1);
 
@@ -5827,4 +5829,54 @@ Type* Parser::ParseType(int depth)
   }
 
   return type;
+}
+
+/****************************
+ * Parses an expression from a text string.
+ * Used for string interpolation expressions.
+ ****************************/
+Expression* Parser::ParseExpressionText(const std::wstring& text, const std::wstring& filename, int line_num, int line_pos)
+{
+  // Create scanner on the expression text
+  Scanner* expr_scanner = new Scanner(filename, false, text);
+
+  // Create minimal Parser instance
+  std::vector<std::pair<std::wstring, std::wstring>> empty_programs;
+  Parser expr_parser(L"", false, empty_programs);
+
+  // Set the scanner
+  expr_parser.scanner = expr_scanner;
+
+  // Initialize tokens
+  expr_parser.NextToken();
+
+  // Check for empty expression
+  if(expr_parser.Match(TOKEN_END_OF_STREAM)) {
+    delete expr_scanner;
+    expr_parser.scanner = nullptr;
+    expr_parser.program = nullptr;
+    return nullptr;
+  }
+
+  // Parse the expression
+  Expression* result = expr_parser.ParseExpression(0);
+
+  // Check that we consumed the entire expression
+  if(!expr_parser.Match(TOKEN_END_OF_STREAM)) {
+    delete expr_scanner;
+    expr_parser.scanner = nullptr;
+    expr_parser.program = nullptr;
+    return nullptr;
+  }
+
+  // Clean up scanner
+  delete expr_scanner;
+  expr_parser.scanner = nullptr;
+
+  // Prevent the temporary parser's destructor from deleting its program,
+  // which would call TreeFactory::Clear() and destroy all AST nodes
+  // (including those from the main compilation). Small memory leak is acceptable.
+  expr_parser.program = nullptr;
+
+  return result;
 }
