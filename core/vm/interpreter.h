@@ -61,7 +61,6 @@ namespace Runtime {
   enum class DispatchResult : int;
   struct DispatchContext;
   typedef DispatchResult (*OpcodeHandler)(DispatchContext& ctx);
-  extern OpcodeHandler g_dispatch_table[];
 
   // holds the calling context for async
   // method calls

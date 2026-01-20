@@ -886,7 +886,7 @@ static DispatchResult Handle_END_STMTS(DispatchContext& ctx) {
 //
 // Global dispatch table indexed by InstructionType enum
 //
-OpcodeHandler Runtime::g_dispatch_table[] = {
+OpcodeHandler Runtime::instr_dispatch[] = {
   // Load operations (0-9)
   Handle_LOAD_INT_LIT,          // 0: LOAD_INT_LIT
   Handle_LOAD_CHAR_LIT,         // 1: LOAD_CHAR_LIT

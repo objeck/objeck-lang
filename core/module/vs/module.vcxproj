@@ -203,6 +203,7 @@
     <ClCompile Include="..\..\vm\arch\memory.cpp" />
     <ClCompile Include="..\..\vm\arch\win32\win32.cpp" />
     <ClCompile Include="..\..\vm\common.cpp" />
+    <ClCompile Include="..\..\vm\dispatch.cpp" />
     <ClCompile Include="..\..\vm\interpreter.cpp" />
     <ClCompile Include="..\..\vm\loader.cpp" />
     <ClCompile Include="..\..\vm\vm.cpp" />
