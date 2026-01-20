@@ -61,5 +61,5 @@ namespace Runtime {
   typedef DispatchResult (*OpcodeHandler)(DispatchContext& ctx);
 
   // Global dispatch table indexed by InstructionType
-  extern OpcodeHandler g_dispatch_table[];
+  extern OpcodeHandler instr_dispatch[];
 }

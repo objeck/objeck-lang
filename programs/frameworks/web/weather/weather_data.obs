@@ -5,7 +5,7 @@ use Collection;
 
 class ForcastDemo {
 	function : Main(args : String[]) ~ Nil {
-		forcast_data : Tuples.Pair<String, String>;
+		forcast_data : Collection.Tuple.Pair<String, String>;
 
 		if(args->Size() = 1 & (args[0]->StartsWith("data/") | args[0]->StartsWith("data\\"))) {
 			forcast_data := FromFile(args[0]);
@@ -22,7 +22,7 @@ class ForcastDemo {
 		}
 	}
 
-	function : FormatHtml(forcast_data : Tuples.Pair<String, String>) ~ Nil {
+	function : FormatHtml(forcast_data : Collection.Tuple.Pair<String, String>) ~ Nil {
 		daily_data := ParseDailyForcast(forcast_data->GetFirst())
 
 		loc_str := forcast_data->GetSecond();
@@ -81,22 +81,23 @@ class ForcastDemo {
 		"Write file: {$filename}..."->PrintLine();
 	}
 
-	function : FromNet() ~ Tuples.Pair<String, String> {
+	function : FromNet() ~ Collection.Tuple.Pair<String, String> {
 		forcast_doc : String;
 		loc_str : String;
 
 		lat_lon := PromptGeocodeAddress();			
 		if(lat_lon <> Nil) {
-			lat := lat_lon->GetFirst();
-			lon := lat_lon->GetSecond();
+
+			lat := lat_lon->GetFirst()->Get();
+			lon := lat_lon->GetSecond()->Get();
 
 			location := "https://api.weather.gov/points/{$lat},{$lon}"
 			grid_bytes := HttpsClient->QuickGet(Url->New(location))
 			if(grid_bytes <> Nil) {
-				loc_data := ParseLocation(grid_bytes->ToString());
+				loc_data := ParseLocation(grid_bytes->GetContent()->ToString());
 				forcast_bytes := HttpsClient->QuickGet(Url->New(loc_data->GetThird()))
 				if(forcast_bytes <> Nil) {
-					forcast_doc := forcast_bytes->ToString();
+					forcast_doc := forcast_bytes->GetContent()->ToString();
 					if(<>Directory->Exists("data")) {
 						Directory->Create("data")
 					}
@@ -119,13 +120,13 @@ class ForcastDemo {
 		}
 
 		if(forcast_doc <> Nil & loc_str <> Nil) {
-			return Tuples.Pair->New(forcast_doc, loc_str)<String, String>
+			return Collection.Tuple.Pair->New(forcast_doc, loc_str)<String, String>
 		}
 
 		return Nil
 	}
 
-	function : FromFile(path_name : String) ~ Tuples.Pair<String, String> {
+	function : FromFile(path_name : String) ~ Collection.Tuple.Pair<String, String> {
 		forcast_doc := FileReader->ReadFile(path_name)
 		loc_str : String;
 
@@ -182,13 +183,13 @@ class ForcastDemo {
 		}
 
 		if(forcast_doc <> Nil & loc_str <> Nil) {
-			return Tuples.Pair->New(forcast_doc, loc_str)<String, String>
+			return Collection.Tuple.Pair->New(forcast_doc, loc_str)<String, String>
 		}
 
 		return Nil
 	}
 
-	function : ParseLocation(location : String) ~ Tuples.Triplet<String, String, String> {
+	function : ParseLocation(location : String) ~ Collection.Tuple.Triplet<String, String, String> {
 		parser := Data.JSON.JsonParser->New(location);
 		if(parser->Parse()) {
 			root := parser->GetRoot();
@@ -196,14 +197,13 @@ class ForcastDemo {
 			city := root->FindElements("properties/relativeLocation/properties/city")->GetString();
 			state := root->FindElements("properties/relativeLocation/properties/state")->GetString();
 			forcast_url := root->FindElements("properties/forecast")->GetString();
-
-			return Tuples.Triplet->New(city, state, forcast_url)<String, String, String>;
+			return Collection.Tuple.Triplet->New(city, state, forcast_url)<String, String, String>;
 		}
 
 		return Nil;
 	}
 
-	function : PromptGeocodeAddress() ~ Tuples.Pair<FloatRef, FloatRef> {
+	function : PromptGeocodeAddress() ~ Collection.Tuple.Pair<FloatRef, FloatRef> {
 		"Addess: "->Print();
 		address := System.IO.Console->ReadLine();
 
@@ -216,7 +216,7 @@ class ForcastDemo {
 		return GetLatLon(address, city, state);
 	}
 
-	function : GetLatLon(address : String, city : String, state : String) ~ Tuples.Pair<FloatRef, FloatRef> {
+	function : GetLatLon(address : String, city : String, state : String) ~ Collection.Tuple.Pair<FloatRef, FloatRef> {
 		address := Url->Encode(address);
 		city := Url->Encode(city);
 		state := Url->Encode(state);
@@ -224,16 +224,15 @@ class ForcastDemo {
 		url_str := "https://geocoding.geo.census.gov/geocoder/locations/address?street={$address}&city={$city}&state={$state}&benchmark=2020&format=json";
 		geocode_doc := HttpsClient->QuickGet(Url->New(url_str));
 		if(geocode_doc <> Nil) {
-			parser := Data.JSON.JsonParser->New(geocode_doc->ToString());
+			parser := Data.JSON.JsonParser->New(geocode_doc->GetContent());
 			if(parser->Parse()) {
 				address_matches_elm := parser->GetRoot()->FindElements("result/addressMatches");
 				if(address_matches_elm->Size() > 0) {
 					address_match_elm := address_matches_elm->Get(0);
-
 					lat := address_match_elm->FindElements("coordinates/y")->GetString();
 					lon := address_match_elm->FindElements("coordinates/x")->GetString();
 
-					return Tuples.Pair->New(lat->ToFloat(), lon->ToFloat())<FloatRef, FloatRef>;
+					return Collection.Tuple.Pair->New(lat->ToFloat(), lon->ToFloat())<FloatRef, FloatRef>;
 				}
 			}
 		}
@@ -241,13 +240,12 @@ class ForcastDemo {
 		return Nil;
 	}
 
-	function : ParseDailyForcast(response : String) ~ Tuples.Pair<Vector<DailyForcast>, FloatRef> {
+	function : ParseDailyForcast(response : String) ~ Collection.Tuple.Pair<Vector<DailyForcast>, FloatRef> {
 		daily_forcasts := Vector->New()<DailyForcast>;
 		elevation : String;
 
 		parser := Data.JSON.JsonParser->New(response);
 		if(parser->Parse()) {
-
 			root := parser->GetRoot();
 			elevation := root->FindElements("properties/elevation/value")->GetString();
 
@@ -281,7 +279,7 @@ class ForcastDemo {
 			"-- Invalid JSON document --"->ErrorLine()
 		}
 
-		return Tuples.Pair->New(daily_forcasts, elevation->ToFloat())<Vector<DailyForcast>, FloatRef>;
+		return Collection.Tuple.Pair->New(daily_forcasts, elevation->ToFloat())<Vector<DailyForcast>, FloatRef>;
 	}
 
 	function : FormatDate(time : Date) ~ String {
