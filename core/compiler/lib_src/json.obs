@@ -768,6 +768,18 @@ if(doc <> Nil) {
 
 	#~
 	JSON value element
+
+```
+json := JsonParser->Parse("{\"name\": \"John\", \"age\": 30}");
+json->Get("name")->GetValue()->PrintLine();
+json->Get("age")->GetInt()->PrintLine();
+
+# create JSON programmatically
+obj := JsonElement->New(JsonElement->JsonType->OBJECT);
+obj->Insert("city", "Oakland");
+obj->Insert("zip", 94612);
+obj->ToString()->PrintLine();
+```
 	~#
 	class JsonElement {
 		@type : JsonType;

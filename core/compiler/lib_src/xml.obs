@@ -11,6 +11,13 @@ Support for parsing XML documents (-lib xml)
 bundle Data.XML {
 	#~
 	Used to programmatically build XML documents
+
+```
+builder := XmlBuilder->New("root");
+builder->AddTextElement("name", "John");
+builder->AddTextElement("age", "30");
+builder->ToString()->PrintLine();
+```
 	~#
 	class XmlBuilder {
 		@root : XmlElement;
@@ -979,6 +986,18 @@ if(parser->Parse()) {
 	
 	#~
 	Represents an XML element
+
+```
+parser := XmlParser->New(xml_string);
+if(parser->Parse()) {
+   root := parser->GetRoot();
+   root->GetName()->PrintLine();
+   children := root->GetChildren()<XmlElement>;
+   each(child := children) {
+      child->GetContent()->PrintLine();
+   };
+};
+```
 	~#
 	class XmlElement {
 		@name : String;
