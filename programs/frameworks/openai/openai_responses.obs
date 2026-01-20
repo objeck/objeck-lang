@@ -2,14 +2,14 @@ use API.OpenAI.Responses, Data.JSON.Scheme, Collection;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		if(args->Size() <> 2) {
+		if(args->Size() <> 1) {
 			">>> Missing OpenAI license file. <<<"->ErrorLine();
 			return;
 		};
 		token := GetApiKey(args[0]);
 
-		Test0(args[1], token);
-#		Test1(token);
+#		Test0(args[1], token);
+		Test1(token);
 #		Test2(token);
 #		Test3(token);
 	}
@@ -33,10 +33,11 @@ class Test {
 		model := "gpt-5-mini";
 		
 		# TODO: 
-		required := ["name", "length", "state", "city"];
+		required := ["name", "length", "units", "state", "city"];
 		schema := ParameterType->New(required, "longest street");
 		schema->AddProp("name", ParameterType->New(ParameterType->Type->STRING, "name of the street"));
 		schema->AddProp("length", ParameterType->New(ParameterType->Type->NUMBER, "length of the street"));
+		schema->AddProp("units", ParameterType->New(ParameterType->Type->STRING, "unit type mi or km"));
 		schema->AddProp("state", ParameterType->New(ParameterType->Type->STRING, "state the street is located"));
 		schema->AddProp("city", ParameterType->New(ParameterType->Type->STRING, "city located"))
 
