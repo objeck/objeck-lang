@@ -3441,1236 +3441,1455 @@ Statement* Parser::ParseSystemStatement(int line_num, int line_pos, const std::w
 {
   Statement* statement = nullptr;
 
-  switch(GetToken()) {
+  switch(GetToken()) {  
   case ASYNC_MTHD_CALL:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::ASYNC_MTHD_CALL);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::ASYNC_MTHD_CALL);
+     NextToken();
+     break;
 
   case EXT_LIB_LOAD:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::EXT_LIB_LOAD);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::EXT_LIB_LOAD);
+     NextToken();
+     break;
 
   case EXT_LIB_UNLOAD:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::EXT_LIB_UNLOAD);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::EXT_LIB_UNLOAD);
+     NextToken();
+     break;
 
   case EXT_LIB_FUNC_CALL:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::EXT_LIB_FUNC_CALL);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::EXT_LIB_FUNC_CALL);
+     NextToken();
+     break;
 
   case THREAD_MUTEX:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::THREAD_MUTEX);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::THREAD_MUTEX);
+     NextToken();
+     break;
 
   case THREAD_SLEEP:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::THREAD_SLEEP);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::THREAD_SLEEP);
+     NextToken();
+     break;
 
   case THREAD_JOIN:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::THREAD_JOIN);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::THREAD_JOIN);
+     NextToken();
+     break;
 
   case SYS_TIME:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::SYS_TIME);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SYS_TIME);
+     NextToken();
+     break;
 
   case BYTES_TO_UNICODE:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::BYTES_TO_UNICODE);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::BYTES_TO_UNICODE);
+     NextToken();
+     break;
 
   case UNICODE_TO_BYTES:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::UNICODE_TO_BYTES);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::UNICODE_TO_BYTES);
+     NextToken();
+     break;
 
   case GMT_TIME:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::GMT_TIME);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::GMT_TIME);
+     NextToken();
+     break;
 
   case FILE_CREATE_TIME:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::FILE_CREATE_TIME);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::FILE_CREATE_TIME);
+     NextToken();
+     break;
+
 
   case FILE_ACCOUNT_OWNER:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::FILE_ACCOUNT_OWNER);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::FILE_ACCOUNT_OWNER);
+     NextToken();
+     break;
 
   case FILE_GROUP_OWNER:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::FILE_GROUP_OWNER);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::FILE_GROUP_OWNER);
+     NextToken();
+     break;
 
   case FILE_MODIFIED_TIME:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::FILE_MODIFIED_TIME);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::FILE_MODIFIED_TIME);
+     NextToken();
+     break;
 
   case FILE_ACCESSED_TIME:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::FILE_ACCESSED_TIME);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::FILE_ACCESSED_TIME);
+     NextToken();
+     break;
 
   case DATE_TIME_SET_1:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::DATE_TIME_SET_1);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::DATE_TIME_SET_1);
+     NextToken();
+     break;
 
   case DATE_TIME_SET_2:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::DATE_TIME_SET_2);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::DATE_TIME_SET_2);
+     NextToken();
+     break;
 
   case DATE_TIME_ADD_DAYS:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::DATE_TIME_ADD_DAYS);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::DATE_TIME_ADD_DAYS);
+     NextToken();
+     break;
 
   case DATE_TIME_ADD_HOURS:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::DATE_TIME_ADD_HOURS);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::DATE_TIME_ADD_HOURS);
+     NextToken();
+     break;
 
   case DATE_TIME_ADD_MINS:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::DATE_TIME_ADD_MINS);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::DATE_TIME_ADD_MINS);
+     NextToken();
+     break;
 
   case DATE_TIME_ADD_SECS:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::DATE_TIME_ADD_SECS);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::DATE_TIME_ADD_SECS);
+     NextToken();
+     break;
 
   case DATE_FROM_UNIX_GMT_TIME:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::DATE_FROM_UNIX_GMT_TIME);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::DATE_FROM_UNIX_GMT_TIME);
+     NextToken();
+     break;
 
   case DATE_FROM_UNIX_LOCAL_TIME:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::DATE_FROM_UNIX_LOCAL_TIME);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::DATE_FROM_UNIX_LOCAL_TIME);
+     NextToken();
+     break;
 
   case DATE_TO_UNIX_TIME:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::DATE_TO_UNIX_TIME);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::DATE_TO_UNIX_TIME);
+     NextToken();
+     break;
 
   case GET_PLTFRM:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::GET_PLTFRM);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::GET_PLTFRM);
+     NextToken();
+     break;
 
   case GET_UUID:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::GET_UUID);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::GET_UUID);
+     NextToken();
+     break;
 
   case GET_VERSION:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::GET_VERSION);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::GET_VERSION);
+     NextToken();
+     break;
 
   case GET_SYS_PROP:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::GET_SYS_PROP);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::GET_SYS_PROP);
+     NextToken();
+     break;
 
   case GET_SYS_ENV:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::GET_SYS_ENV);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::GET_SYS_ENV);
+     NextToken();
+     break;
 
   case SET_SYS_ENV:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::SET_SYS_ENV);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SET_SYS_ENV);
+     NextToken();
+     break;
 
   case SET_SYS_PROP:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::SET_SYS_PROP);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SET_SYS_PROP);
+     NextToken();
+     break;
 
   case ASSERT_TRUE:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::ASSERT_TRUE);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::ASSERT_TRUE);
+     NextToken();
+     break;
 
   case SYS_CMD:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::SYS_CMD);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SYS_CMD);
+     NextToken();
+     break;
 
   case SYS_CMD_OUT:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::SYS_CMD_OUT);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SYS_CMD_OUT);
+     NextToken();
+     break;
 
   case SET_SIGNAL:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::SET_SIGNAL);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SET_SIGNAL);
+     NextToken();
+     break;
 
   case RAISE_SIGNAL:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::RAISE_SIGNAL);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::RAISE_SIGNAL);
+     NextToken();
+     break;
 
   case EXIT:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::EXIT);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::EXIT);
+     NextToken();
+     break;
 
   case TIMER_START:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::TIMER_START);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::TIMER_START);
+     NextToken();
+     break;
 
   case TIMER_END:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::TIMER_END);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::TIMER_END);
+     NextToken();
+     break;
 
   case TIMER_ELAPSED:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::TIMER_ELAPSED);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::TIMER_ELAPSED);
+     NextToken();
+     break;
 
   case FLOR_FLOAT:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::FLOR_FLOAT);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::FLOR_FLOAT);
+     NextToken();
+     break;
 
   case CPY_BYTE_ARY:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::CPY_BYTE_ARY);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::CPY_BYTE_ARY);
+     NextToken();
+     break;
 
   case S2I:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::S2I);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::S2I);
+     NextToken();
+     break;
 
   case S2F:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::S2F);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::S2F);
+     NextToken();
+     break;
 
   case I2S:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::I2S);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::I2S);
+     NextToken();
+     break;
 
   case F2S:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::F2S);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::F2S);
+     NextToken();
+     break;
 
   case LOAD_ARY_SIZE:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::LOAD_ARY_SIZE);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::LOAD_ARY_SIZE);
+     NextToken();
+     break;
 
   case CPY_CHAR_ARY:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::CPY_CHAR_ARY);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::CPY_CHAR_ARY);
+     NextToken();
+     break;
 
   case CPY_INT_ARY:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::CPY_INT_ARY);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::CPY_INT_ARY);
+     NextToken();
+     break;
 
   case CPY_FLOAT_ARY:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::CPY_FLOAT_ARY);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::CPY_FLOAT_ARY);
+     NextToken();
+     break;
 
   case ZERO_BYTE_ARY:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::ZERO_BYTE_ARY);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::ZERO_BYTE_ARY);
+     NextToken();
+     break;
 
   case ZERO_CHAR_ARY:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::ZERO_CHAR_ARY);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::ZERO_CHAR_ARY);
+     NextToken();
+     break;
 
   case ZERO_INT_ARY:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::ZERO_INT_ARY);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::ZERO_INT_ARY);
+     NextToken();
+     break;
 
   case ZERO_FLOAT_ARY:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::ZERO_FLOAT_ARY);
-    NextToken();
-    break;
-
-  case FLOR_FLOAT2:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::FLOR_FLOAT2);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::ZERO_FLOAT_ARY);
+     NextToken();
+     break;
 
   case CEIL_FLOAT:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::CEIL_FLOAT);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::CEIL_FLOAT);
+     NextToken();
+     break;
 
   case TRUNC_FLOAT:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::TRUNC_FLOAT);
-    NextToken();
-    break;
-
-  case ROUND_FLOAT:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::ROUND_FLOAT);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::TRUNC_FLOAT);
+     NextToken();
+     break;
 
   case SIN_FLOAT:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::SIN_FLOAT);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SIN_FLOAT);
+     NextToken();
+     break;
 
   case COS_FLOAT:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::COS_FLOAT);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::COS_FLOAT);
+     NextToken();
+     break;
 
   case TAN_FLOAT:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::TAN_FLOAT);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::TAN_FLOAT);
+     NextToken();
+     break;
 
   case ASIN_FLOAT:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::ASIN_FLOAT);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::ASIN_FLOAT);
+     NextToken();
+     break;
 
   case ACOS_FLOAT:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::ACOS_FLOAT);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::ACOS_FLOAT);
+     NextToken();
+     break;
 
   case ATAN_FLOAT:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::ATAN_FLOAT);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::ATAN_FLOAT);
+     NextToken();
+     break;
 
   case LOG2_FLOAT:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::LOG2_FLOAT);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::LOG2_FLOAT);
+     NextToken();
+     break;
 
   case CBRT_FLOAT:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::CBRT_FLOAT);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::CBRT_FLOAT);
+     NextToken();
+     break;
 
   case ATAN2_FLOAT:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::ATAN2_FLOAT);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::ATAN2_FLOAT);
+     NextToken();
+     break;
 
   case ACOSH_FLOAT:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::ACOSH_FLOAT);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::ACOSH_FLOAT);
+     NextToken();
+     break;
 
   case ASINH_FLOAT:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::ASINH_FLOAT);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::ASINH_FLOAT);
+     NextToken();
+     break;
 
   case ATANH_FLOAT:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::ATANH_FLOAT);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::ATANH_FLOAT);
+     NextToken();
+     break;
 
   case COSH_FLOAT:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::COSH_FLOAT);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::COSH_FLOAT);
+     NextToken();
+     break;
 
   case SINH_FLOAT:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::SINH_FLOAT);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SINH_FLOAT);
+     NextToken();
+     break;
 
   case TANH_FLOAT:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::TANH_FLOAT);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::TANH_FLOAT);
+     NextToken();
+     break;
 
   case MOD_FLOAT:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::MOD_FLOAT);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::MOD_FLOAT);
+     NextToken();
+     break;
 
   case LOG_FLOAT:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::LOG_FLOAT);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::LOG_FLOAT);
+     NextToken();
+     break;
 
-  case LOG10_FLOAT:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::LOG10_FLOAT);
-    NextToken();
-    break;
-
-  case GAMMA_FLOAT:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::GAMMA_FLOAT);
-    NextToken();
-    break;
-
-  case NAN_INT:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::NAN_INT);
-    NextToken();
-    break;
-
-  case INF_INT:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::INF_INT);
-    NextToken();
-    break;
-
-  case NEG_INF_INT:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::NEG_INF_INT);
-    NextToken();
-    break;
-
-  case SQRT_FLOAT:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::SQRT_FLOAT);
-    NextToken();
-    break;
-
-  case POW_FLOAT:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::POW_FLOAT);
-    NextToken();
-    break;
+  case ROUND_FLOAT:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::ROUND_FLOAT);
+     NextToken();
+     break;
 
   case EXP_FLOAT:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::EXP_FLOAT);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::EXP_FLOAT);
+     NextToken();
+     break;
+
+  case LOG10_FLOAT:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::LOG10_FLOAT);
+     NextToken();
+     break;
+
+  case POW_FLOAT:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::POW_FLOAT);
+     NextToken();
+     break;
+
+  case SQRT_FLOAT:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SQRT_FLOAT);
+     NextToken();
+     break;
+
+  case GAMMA_FLOAT:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::GAMMA_FLOAT);
+     NextToken();
+     break;
 
   case RAND_FLOAT:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::RAND_FLOAT);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::RAND_FLOAT);
+     NextToken();
+     break;
 
-  case LOAD_CLS_BY_INST:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::LOAD_CLS_BY_INST);
-    NextToken();
-    break;
+  case NAN_INT:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::NAN_INT);
+     NextToken();
+     break;
 
-  case LOAD_CLS_BY_NAME:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::LOAD_CLS_BY_NAME);
-    NextToken();
-    break;
+  case INF_INT:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::INF_INT);
+     NextToken();
+     break;
 
-  case LOAD_NEW_OBJ_INST:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::LOAD_NEW_OBJ_INST);
-    NextToken();
-    break;
+  case NEG_INF_INT:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::NEG_INF_INT);
+     NextToken();
+     break;
 
-  case LOAD_INST_UID:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::LOAD_INST_UID);
-    NextToken();
-    break;
+  case NAN_FLOAT:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::NAN_FLOAT);
+     NextToken();
+     break;
 
-  case LOAD_MULTI_ARY_SIZE:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::LOAD_MULTI_ARY_SIZE);
-    NextToken();
-    break;
+  case INF_FLOAT:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::INF_FLOAT);
+     NextToken();
+     break;
 
-  case LOAD_CLS_INST_ID:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::LOAD_CLS_INST_ID);
-    NextToken();
-    break;
-
-  case LOAD_CLS_BY_ID:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::LOAD_CLS_BY_ID);
-    NextToken();
-    break;
-
-  case LOAD_CLS_NAME:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::LOAD_CLS_NAME);
-    NextToken();
-    break;
-
-  case LOAD_PARENT_CLS_NAME:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::LOAD_PARENT_CLS_NAME);
-    NextToken();
-    break;
-
-  case LOAD_PARENT_CLS:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::LOAD_PARENT_CLS);
-    NextToken();
-    break;
-
-  case LOAD_CLS_CHILDREN:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::LOAD_CLS_CHILDREN);
-    NextToken();
-    break;
-
-  case LOAD_CLS_INTERFACES:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::LOAD_CLS_INTERFACES);
-    NextToken();
-    break;
-
-  case LOAD_CLS_MTHD_NAME:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::LOAD_CLS_MTHD_NAME);
-    NextToken();
-    break;
-
-  case LOAD_MTHD_NAME:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::LOAD_MTHD_NAME);
-    NextToken();
-    break;
-
-  case LOAD_MTHD_PARM_NAME:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::LOAD_MTHD_PARM_NAME);
-    NextToken();
-    break;
-
-  case LOAD_MTHD_RTRN_NAME:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::LOAD_MTHD_RTRN_NAME);
-    NextToken();
-    break;
-
-  case LOAD_MTHD_CALL_TYPE:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::LOAD_MTHD_CALL_TYPE);
-    NextToken();
-    break;
-
-  case LOAD_MTHD_IS_LAMBDA:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::LOAD_MTHD_IS_LAMBDA);
-    NextToken();
-    break;
-
-  case OBJ_TYPE_OF:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::OBJ_TYPE_OF);
-    NextToken();
-    break;
-
-  case FILE_OPEN_READ:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::FILE_OPEN_READ);
-    NextToken();
-    break;
-
-  case FILE_OPEN_APPEND:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::FILE_OPEN_APPEND);
-    NextToken();
-    break;
-
-  case FILE_OPEN_WRITE:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::FILE_OPEN_WRITE);
-    NextToken();
-    break;
-
-  case FILE_IN_BYTE:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::FILE_IN_BYTE);
-    NextToken();
-    break;
-
-  case FILE_IN_CHAR_ARY:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::FILE_IN_CHAR_ARY);
-    NextToken();
-    break;
-
-  case FILE_IN_BYTE_ARY:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::FILE_IN_BYTE_ARY);
-    NextToken();
-    break;
-
-  case FILE_OUT_BYTE:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::FILE_OUT_BYTE);
-    NextToken();
-    break;
-
-  case FILE_OUT_BYTE_ARY:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::FILE_OUT_BYTE_ARY);
-    NextToken();
-    break;
-
-  case FILE_OUT_CHAR_ARY:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::FILE_OUT_CHAR_ARY);
-    NextToken();
-    break;
-
-  case FILE_IN_STRING:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::FILE_IN_STRING);
-    NextToken();
-    break;
-
-  case FILE_OUT_STRING:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::FILE_OUT_STRING);
-    NextToken();
-    break;
-
-  case FILE_SEEK:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::FILE_SEEK);
-    NextToken();
-    break;
-
-  case FILE_EOF:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::FILE_EOF);
-    NextToken();
-    break;
-
-  case FILE_REWIND:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::FILE_REWIND);
-    NextToken();
-    break;
-
-  case FILE_CLOSE:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::FILE_CLOSE);
-    NextToken();
-    break;
-
-  case FILE_FLUSH:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::FILE_FLUSH);
-    NextToken();
-    break;
-
-  case FILE_IS_OPEN:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::FILE_IS_OPEN);
-    NextToken();
-    break;
-
-  case FILE_EXISTS:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::FILE_EXISTS);
-    NextToken();
-    break;
-
-  case FILE_CAN_READ_ONLY:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::FILE_CAN_READ_ONLY);
-    NextToken();
-    break;
-
-  case FILE_SIZE:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::FILE_SIZE);
-    NextToken();
-    break;
-
-  case FILE_FULL_PATH:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::FILE_FULL_PATH);
-    NextToken();
-    break;
-
-  case FILE_TEMP_NAME:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::FILE_TEMP_NAME);
-    NextToken();
-    break;
-
-  case FILE_DELETE:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::FILE_DELETE);
-    NextToken();
-    break;
-
-  case FILE_RENAME:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::FILE_RENAME);
-    NextToken();
-    break;
-
-  case FILE_COPY:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::FILE_COPY);
-    NextToken();
-    break;
-
-  case DIR_CREATE:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::DIR_CREATE);
-    NextToken();
-    break;
-
-  case DIR_EXISTS:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::DIR_EXISTS);
-    NextToken();
-    break;
-
-  case DIR_LIST:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::DIR_LIST);
-    NextToken();
-    break;
-
-  case DIR_DELETE:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::DIR_DELETE);
-    NextToken();
-    break;
-
-  case SYM_LINK_CREATE:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::SYM_LINK_CREATE);
-    NextToken();
-    break;
-
-  case HARD_LINK_CREATE:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::HARD_LINK_CREATE);
-    NextToken();
-    break;
-
-  case STD_IN_STRING:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::STD_IN_STRING);
-    NextToken();
-    break;
+  case NEG_INF_FLOAT:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::NEG_INF_FLOAT);
+     NextToken();
+     break;
 
   case STD_OUT_BOOL:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::STD_OUT_BOOL);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::STD_OUT_BOOL);
+     NextToken();
+     break;
 
   case STD_OUT_BYTE:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::STD_OUT_BYTE);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::STD_OUT_BYTE);
+     NextToken();
+     break;
 
   case STD_OUT_CHAR:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::STD_OUT_CHAR);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::STD_OUT_CHAR);
+     NextToken();
+     break;
 
   case STD_OUT_INT:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::STD_OUT_INT);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::STD_OUT_INT);
+     NextToken();
+     break;
 
   case STD_OUT_FLOAT:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::STD_OUT_FLOAT);
-    NextToken();
-    break;
-
-  case STD_OUT_CHAR_ARY:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::STD_OUT_CHAR_ARY);
-    NextToken();
-    break;
-
-  case STD_OUT_BYTE_ARY:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::STD_OUT_BYTE_ARY);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::STD_OUT_FLOAT);
+     NextToken();
+     break;
 
   case STD_OUT_STRING:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::STD_OUT_STRING);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::STD_OUT_STRING);
+     NextToken();
+     break;
+
+  case STD_OUT_BYTE_ARY_LEN:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::STD_OUT_BYTE_ARY_LEN);
+     NextToken();
+     break;
+
+  case STD_OUT_CHAR_ARY_LEN:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::STD_OUT_CHAR_ARY_LEN);
+     NextToken();
+     break;
+
+  case STD_IN_BYTE_ARY_LEN:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::STD_IN_BYTE_ARY_LEN);
+     NextToken();
+     break;
+
+  case STD_IN_CHAR_ARY_LEN:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::STD_IN_CHAR_ARY_LEN);
+     NextToken();
+     break;
 
   case STD_ERR_BOOL:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::STD_ERR_BOOL);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::STD_ERR_BOOL);
+     NextToken();
+     break;
 
   case STD_ERR_BYTE:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::STD_ERR_BYTE);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::STD_ERR_BYTE);
+     NextToken();
+     break;
 
   case STD_ERR_CHAR:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::STD_ERR_CHAR);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::STD_ERR_CHAR);
+     NextToken();
+     break;
 
   case STD_ERR_INT:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::STD_ERR_INT);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::STD_ERR_INT);
+     NextToken();
+     break;
 
   case STD_ERR_FLOAT:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::STD_ERR_FLOAT);
-    NextToken();
-    break;
-
-  case STD_ERR_CHAR_ARY:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::STD_ERR_CHAR_ARY);
-    NextToken();
-    break;
-
-  case STD_ERR_BYTE_ARY:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::STD_ERR_BYTE_ARY);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::STD_ERR_FLOAT);
+     NextToken();
+     break;
 
   case STD_ERR_STRING:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::STD_ERR_STRING);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::STD_ERR_STRING);
+     NextToken();
+     break;
+
+  case STD_ERR_BYTE_ARY:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::STD_ERR_BYTE_ARY);
+     NextToken();
+     break;
+
+  case STD_ERR_CHAR_ARY:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::STD_ERR_CHAR_ARY);
+     NextToken();
+     break;
 
   case STD_FLUSH:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::STD_FLUSH);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::STD_FLUSH);
+     NextToken();
+     break;
 
   case STD_ERR_FLUSH:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::STD_ERR_FLUSH);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::STD_ERR_FLUSH);
+     NextToken();
+     break;
+
+  case LOAD_MULTI_ARY_SIZE:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::LOAD_MULTI_ARY_SIZE);
+     NextToken();
+     break;
+
+  case LOAD_CLS_INST_ID:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::LOAD_CLS_INST_ID);
+     NextToken();
+     break;
+
+  case STRING_HASH_ID:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::STRING_HASH_ID);
+     NextToken();
+     break;
+
+  case LOAD_CLS_BY_INST:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::LOAD_CLS_BY_INST);
+     NextToken();
+     break;
+
+  case LOAD_NEW_OBJ_INST:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::LOAD_NEW_OBJ_INST);
+     NextToken();
+     break;
+
+  case LOAD_INST_UID:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::LOAD_INST_UID);
+     NextToken();
+     break;
+
+  case STD_IN_STRING:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::STD_IN_STRING);
+     NextToken();
+     break;
+
+  case STD_INT_FMT:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), instructions::STD_INT_FMT);
+     NextToken();
+     break;
+
+  case STD_FLOAT_FMT:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), instructions::STD_FLOAT_FMT);
+     NextToken();
+     break;
+
+  case STD_FLOAT_PER:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), instructions::STD_FLOAT_PER);
+     NextToken();
+     break;
+
+  case STD_WIDTH:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), instructions::STD_WIDTH);
+     NextToken();
+     break;
+
+  case STD_FILL:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), instructions::STD_FILL);
+     NextToken();
+     break;
+
+  case COMPRESS_ZLIB_BYTES:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::COMPRESS_ZLIB_BYTES);
+     NextToken();
+     break;
+
+  case UNCOMPRESS_ZLIB_BYTES:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::UNCOMPRESS_ZLIB_BYTES);
+     NextToken();
+     break;
+
+  case COMPRESS_GZIP_BYTES:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::COMPRESS_GZIP_BYTES);
+     NextToken();
+     break;
+
+  case UNCOMPRESS_GZIP_BYTES:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::UNCOMPRESS_GZIP_BYTES);
+     NextToken();
+     break;
+
+  case COMPRESS_BR_BYTES:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::COMPRESS_BR_BYTES);
+     NextToken();
+     break;
+
+  case UNCOMPRESS_BR_BYTES:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::UNCOMPRESS_BR_BYTES);
+     NextToken();
+     break;
+
+  case CRC32_BYTES:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::CRC32_BYTES);
+     NextToken();
+     break;
+
+  case FILE_OPEN_READ:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::FILE_OPEN_READ);
+     NextToken();
+     break;
+
+  case FILE_OPEN_APPEND:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::FILE_OPEN_APPEND);
+     NextToken();
+     break;
+
+  case FILE_CLOSE:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::FILE_CLOSE);
+     NextToken();
+     break;
+
+  case FILE_FLUSH:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::FILE_FLUSH);
+     NextToken();
+     break;
+
+  case FILE_IN_BYTE:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::FILE_IN_BYTE);
+     NextToken();
+     break;
+
+  case FILE_IN_BYTE_ARY:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::FILE_IN_BYTE_ARY);
+     NextToken();
+     break;
+
+  case FILE_IN_CHAR_ARY:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::FILE_IN_CHAR_ARY);
+     NextToken();
+     break;
+
+  case FILE_IN_STRING:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::FILE_IN_STRING);
+     NextToken();
+     break;
+
+  case FILE_OPEN_WRITE:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::FILE_OPEN_WRITE);
+     NextToken();
+     break;
+
+  case FILE_OPEN_READ_WRITE:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::FILE_OPEN_READ_WRITE);
+     NextToken();
+     break;
+
+  case FILE_OUT_BYTE:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::FILE_OUT_BYTE);
+     NextToken();
+     break;
+
+  case FILE_OUT_BYTE_ARY:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::FILE_OUT_BYTE_ARY);
+     NextToken();
+     break;
+
+  case FILE_OUT_CHAR_ARY:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::FILE_OUT_CHAR_ARY);
+     NextToken();
+     break;
+
+  case FILE_OUT_STRING:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::FILE_OUT_STRING);
+     NextToken();
+     break;
+
+  case FILE_EXISTS:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::FILE_EXISTS);
+     NextToken();
+     break;
+
+  case FILE_CAN_READ_ONLY:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::FILE_CAN_READ_ONLY);
+     NextToken();
+     break;
+
+  case FILE_CAN_WRITE_ONLY:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::FILE_CAN_WRITE_ONLY);
+     NextToken();
+     break;
+
+  case FILE_CAN_READ_WRITE:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::FILE_CAN_READ_WRITE);
+     NextToken();
+     break;
+
+  case FILE_SIZE:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::FILE_SIZE);
+     NextToken();
+     break;
+
+  case FILE_FULL_PATH:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::FILE_FULL_PATH);
+     NextToken();
+     break;
+
+  case FILE_TEMP_NAME:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::FILE_TEMP_NAME);
+     NextToken();
+     break;
+
+  case FILE_SEEK:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::FILE_SEEK);
+     NextToken();
+     break;
+
+  case FILE_EOF:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::FILE_EOF);
+     NextToken();
+     break;
+
+  case FILE_DELETE:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::FILE_DELETE);
+     NextToken();
+     break;
+
+  case FILE_RENAME:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::FILE_RENAME);
+     NextToken();
+     break;
+
+  case FILE_COPY:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::FILE_COPY);
+     NextToken();
+     break;
+
+  case PIPE_OPEN:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::PIPE_OPEN);
+     NextToken();
+     break;
+
+  case PIPE_CREATE:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::PIPE_CREATE);
+     NextToken();
+     break;
+
+  case PIPE_IN_BYTE:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::PIPE_IN_BYTE);
+     NextToken();
+     break;
+
+  case PIPE_OUT_BYTE:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::PIPE_OUT_BYTE);
+     NextToken();
+     break;
+
+  case PIPE_IN_BYTE_ARY:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::PIPE_IN_BYTE_ARY);
+     NextToken();
+     break;
+
+  case PIPE_IN_CHAR_ARY:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::PIPE_IN_CHAR_ARY);
+     NextToken();
+     break;
+
+  case PIPE_OUT_BYTE_ARY:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::PIPE_OUT_BYTE_ARY);
+     NextToken();
+     break;
+
+  case PIPE_OUT_CHAR_ARY:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::PIPE_OUT_CHAR_ARY);
+     NextToken();
+     break;
+
+  case PIPE_IN_STRING:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::PIPE_IN_STRING);
+     NextToken();
+     break;
+
+  case PIPE_OUT_STRING:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::PIPE_OUT_STRING);
+     NextToken();
+     break;
+
+  case PIPE_CLOSE:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::PIPE_CLOSE);
+     NextToken();
+     break;
+
+  case DIR_CREATE:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::DIR_CREATE);
+     NextToken();
+     break;
+
+  case DIR_SLASH:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::DIR_SLASH);
+     NextToken();
+     break;
+
+  case DIR_EXISTS:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::DIR_EXISTS);
+     NextToken();
+     break;
+
+  case DIR_COPY:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::DIR_COPY);
+     NextToken();
+     break;
+
+  case DIR_LIST:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::DIR_LIST);
+     NextToken();
+     break;
+
+  case DIR_DELETE:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::DIR_DELETE);
+     NextToken();
+     break;
+
+  case DIR_GET_CUR:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::DIR_GET_CUR);
+     NextToken();
+     break;
+
+  case DIR_SET_CUR:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::DIR_SET_CUR);
+     NextToken();
+     break;
+
+  case SYM_LINK_CREATE:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SYM_LINK_CREATE);
+     NextToken();
+     break;
+
+  case SYM_LINK_COPY:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SYM_LINK_COPY);
+     NextToken();
+     break;
+
+  case SYM_LINK_LOC:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SYM_LINK_LOC);
+     NextToken();
+     break;
+
+  case SYM_LINK_EXISTS:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SYM_LINK_EXISTS);
+     NextToken();
+     break;
+
+  case HARD_LINK_CREATE:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::HARD_LINK_CREATE);
+     NextToken();
+     break;
+
+  case FILE_REWIND:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::FILE_REWIND);
+     NextToken();
+     break;
+
+  case FILE_IS_OPEN:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::FILE_IS_OPEN);
+     NextToken();
+     break;
 
   case SOCK_TCP_CONNECT:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::SOCK_TCP_CONNECT);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SOCK_TCP_CONNECT);
+     NextToken();
+     break;
 
-  case SOCK_TCP_IS_CONNECTED:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::SOCK_TCP_IS_CONNECTED);
-    NextToken();
-    break;
+  case SOCK_TCP_BIND:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SOCK_TCP_BIND);
+     NextToken();
+     break;
 
-  case SOCK_TCP_CLOSE:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::SOCK_TCP_CLOSE);
-    NextToken();
-    break;
+  case SOCK_UDP_CREATE:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SOCK_UDP_CREATE);
+     NextToken();
+     break;
 
-  case SOCK_TCP_IN_BYTE:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::SOCK_TCP_IN_BYTE);
-    NextToken();
-    break;
+  case SOCK_UDP_BIND:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SOCK_UDP_BIND);
+     NextToken();
+     break;
 
-  case SOCK_TCP_IN_BYTE_ARY:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::SOCK_TCP_IN_BYTE_ARY);
-    NextToken();
-    break;
+  case SOCK_UDP_CLOSE:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SOCK_UDP_CLOSE);
+     NextToken();
+     break;
 
-  case SOCK_TCP_IN_CHAR_ARY:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::SOCK_TCP_IN_CHAR_ARY);
-    NextToken();
-    break;
+  case SOCK_UDP_IN_BYTE:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SOCK_UDP_IN_BYTE);
+     NextToken();
+     break;
 
-  case SOCK_TCP_IN_STRING:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::SOCK_TCP_IN_STRING);
-    NextToken();
-    break;
+  case SOCK_UDP_IN_BYTE_ARY:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SOCK_UDP_IN_BYTE_ARY);
+     NextToken();
+     break;
 
-  case SOCK_TCP_OUT_STRING:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::SOCK_TCP_OUT_STRING);
-    NextToken();
-    break;
+  case SOCK_UDP_IN_CHAR_ARY:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SOCK_UDP_IN_CHAR_ARY);
+     NextToken();
+     break;
 
-  case SOCK_TCP_OUT_BYTE:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::SOCK_TCP_OUT_BYTE);
-    NextToken();
-    break;
+  case SOCK_UDP_OUT_BYTE:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SOCK_UDP_OUT_BYTE);
+     NextToken();
+     break;
 
-  case SOCK_TCP_OUT_BYTE_ARY:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::SOCK_TCP_OUT_BYTE_ARY);
-    NextToken();
-    break;
+  case SOCK_UDP_OUT_BYTE_ARY:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SOCK_UDP_OUT_BYTE_ARY);
+     NextToken();
+     break;
 
-  case SOCK_TCP_OUT_CHAR_ARY:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::SOCK_TCP_OUT_CHAR_ARY);
-    NextToken();
-    break;
+  case SOCK_UDP_OUT_CHAR_ARY:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SOCK_UDP_OUT_CHAR_ARY);
+     NextToken();
+     break;
 
-  case SOCK_TCP_HOST_NAME:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::SOCK_TCP_HOST_NAME);
-    NextToken();
-    break;
+  case SOCK_UDP_IN_STRING:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SOCK_UDP_IN_STRING);
+     NextToken();
+     break;
 
-  case SOCK_TCP_RESOLVE_NAME:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::SOCK_TCP_RESOLVE_NAME);
-    NextToken();
-    break;
+  case SOCK_UDP_OUT_STRING:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SOCK_UDP_OUT_STRING);
+     NextToken();
+     break;
 
-  case SOCK_TCP_SRV_OPEN:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::SOCK_TCP_SRV_OPEN);
-    NextToken();
-    break;
 
-  case SOCK_TCP_SRV_CLOSE:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::SOCK_TCP_SRV_CLOSE);
-    NextToken();
-    break;
 
-  case SOCK_TCP_SRV_ACCEPT:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::SOCK_TCP_SRV_ACCEPT);
-    NextToken();
-    break;
 
-  case SOCK_TCP_SSL_CONNECT:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::SOCK_TCP_SSL_CONNECT);
-    NextToken();
-    break;
+  case SOCK_TCP_LISTEN:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SOCK_TCP_LISTEN);
+     NextToken();
+     break;
 
-  case SOCK_TCP_SSL_CERT:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::SOCK_TCP_SSL_CERT);
-    NextToken();
-    break;
+  case SOCK_TCP_ACCEPT:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SOCK_TCP_ACCEPT);
+     NextToken();
+     break;
 
-  case SOCK_TCP_SSL_ISSUER:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::SOCK_TCP_SSL_ISSUER);
-    NextToken();
-    break;
+  case SOCK_TCP_SELECT:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SOCK_TCP_SELECT);
+     NextToken();
+     break;
 
-  case SOCK_TCP_SSL_SUBJECT:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::SOCK_TCP_SSL_SUBJECT);
-    NextToken();
-    break;
+  case SOCK_TCP_SSL_LISTEN:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SOCK_TCP_SSL_LISTEN);
+     NextToken();
+     break;
 
-  case SOCK_TCP_SSL_SRV_OPEN:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::SOCK_TCP_SSL_SRV_OPEN);
-    NextToken();
-    break;
+  case SOCK_TCP_SSL_ACCEPT:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SOCK_TCP_SSL_ACCEPT);
+     NextToken();
+     break;
+
+  case SOCK_TCP_SSL_SELECT:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SOCK_TCP_SSL_SELECT);
+     NextToken();
+     break;
 
   case SOCK_TCP_SSL_SRV_CLOSE:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::SOCK_TCP_SSL_SRV_CLOSE);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SOCK_TCP_SSL_SRV_CLOSE);
+     NextToken();
+     break;
 
-  case SOCK_TCP_SSL_SRV_ACCEPT:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::SOCK_TCP_SSL_SRV_ACCEPT);
-    NextToken();
-    break;
+  case SOCK_TCP_SSL_ERROR:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), instructions::SOCK_TCP_SSL_ERROR);
+     NextToken();
+     break;
 
-  case SOCK_TCP_SSL_IS_CONNECTED:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::SOCK_TCP_SSL_IS_CONNECTED);
-    NextToken();
-    break;
+  case SOCK_IP_ERROR:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), instructions::SOCK_IP_ERROR);
+     NextToken();
+     break;
+
+  case SOCK_TCP_IS_CONNECTED:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SOCK_TCP_IS_CONNECTED);
+     NextToken();
+     break;
+
+  case SOCK_TCP_CLOSE:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SOCK_TCP_CLOSE);
+     NextToken();
+     break;
+
+  case SOCK_TCP_IN_BYTE:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SOCK_TCP_IN_BYTE);
+     NextToken();
+     break;
+
+  case SOCK_TCP_IN_BYTE_ARY:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SOCK_TCP_IN_BYTE_ARY);
+     NextToken();
+     break;
+
+  case SOCK_TCP_IN_CHAR_ARY:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SOCK_TCP_IN_CHAR_ARY);
+     NextToken();
+     break;
+
+  case SOCK_TCP_OUT_STRING:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SOCK_TCP_OUT_STRING);
+     NextToken();
+     break;
+
+  case SOCK_TCP_IN_STRING:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SOCK_TCP_IN_STRING);
+     NextToken();
+     break;
+
+  case SOCK_TCP_OUT_BYTE:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SOCK_TCP_OUT_BYTE);
+     NextToken();
+     break;
+
+  case SOCK_TCP_OUT_BYTE_ARY:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SOCK_TCP_OUT_BYTE_ARY);
+     NextToken();
+     break;
+
+  case SOCK_TCP_OUT_CHAR_ARY:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SOCK_TCP_OUT_CHAR_ARY);
+     NextToken();
+     break;
+
+  case SOCK_TCP_HOST_NAME:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SOCK_TCP_HOST_NAME);
+     NextToken();
+     break;
+
+  case SOCK_TCP_RESOLVE_NAME:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SOCK_TCP_RESOLVE_NAME);
+     NextToken();
+     break;
+
+  case SOCK_TCP_SSL_CONNECT:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SOCK_TCP_SSL_CONNECT);
+     NextToken();
+     break;
+
+  case SOCK_TCP_SSL_ISSUER:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SOCK_TCP_SSL_ISSUER);
+     NextToken();
+     break;
+
+  case SOCK_TCP_SSL_SUBJECT:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SOCK_TCP_SSL_SUBJECT);
+     NextToken();
+     break;
 
   case SOCK_TCP_SSL_CLOSE:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::SOCK_TCP_SSL_CLOSE);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SOCK_TCP_SSL_CLOSE);
+     NextToken();
+     break;
 
   case SOCK_TCP_SSL_IN_BYTE:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::SOCK_TCP_SSL_IN_BYTE);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SOCK_TCP_SSL_IN_BYTE);
+     NextToken();
+     break;
 
   case SOCK_TCP_SSL_IN_BYTE_ARY:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::SOCK_TCP_SSL_IN_BYTE_ARY);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SOCK_TCP_SSL_IN_BYTE_ARY);
+     NextToken();
+     break;
 
   case SOCK_TCP_SSL_IN_CHAR_ARY:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::SOCK_TCP_SSL_IN_CHAR_ARY);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SOCK_TCP_SSL_IN_CHAR_ARY);
+     NextToken();
+     break;
 
   case SOCK_TCP_SSL_OUT_STRING:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::SOCK_TCP_SSL_OUT_STRING);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SOCK_TCP_SSL_OUT_STRING);
+     NextToken();
+     break;
 
   case SOCK_TCP_SSL_IN_STRING:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::SOCK_TCP_SSL_IN_STRING);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SOCK_TCP_SSL_IN_STRING);
+     NextToken();
+     break;
 
   case SOCK_TCP_SSL_OUT_BYTE:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::SOCK_TCP_SSL_OUT_BYTE);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SOCK_TCP_SSL_OUT_BYTE);
+     NextToken();
+     break;
 
   case SOCK_TCP_SSL_OUT_BYTE_ARY:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::SOCK_TCP_SSL_OUT_BYTE_ARY);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SOCK_TCP_SSL_OUT_BYTE_ARY);
+     NextToken();
+     break;
 
   case SOCK_TCP_SSL_OUT_CHAR_ARY:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::SOCK_TCP_SSL_OUT_CHAR_ARY);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SOCK_TCP_SSL_OUT_CHAR_ARY);
+     NextToken();
+     break;
 
   case SERL_CHAR:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::SERL_CHAR);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SERL_CHAR);
+     NextToken();
+     break;
 
   case SERL_INT:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::SERL_INT);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SERL_INT);
+     NextToken();
+     break;
 
   case SERL_FLOAT:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::SERL_FLOAT);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SERL_FLOAT);
+     NextToken();
+     break;
 
   case SERL_OBJ_INST:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::SERL_OBJ_INST);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SERL_OBJ_INST);
+     NextToken();
+     break;
 
   case SERL_BYTE_ARY:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::SERL_BYTE_ARY);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SERL_BYTE_ARY);
+     NextToken();
+     break;
 
   case SERL_CHAR_ARY:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::SERL_CHAR_ARY);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SERL_CHAR_ARY);
+     NextToken();
+     break;
 
   case SERL_INT_ARY:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::SERL_INT_ARY);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SERL_INT_ARY);
+     NextToken();
+     break;
 
   case SERL_OBJ_ARY:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::SERL_OBJ_ARY);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SERL_OBJ_ARY);
+     NextToken();
+     break;
 
   case SERL_FLOAT_ARY:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::SERL_FLOAT_ARY);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SERL_FLOAT_ARY);
+     NextToken();
+     break;
 
   case DESERL_CHAR:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::DESERL_CHAR);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::DESERL_CHAR);
+     NextToken();
+     break;
 
   case DESERL_INT:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::DESERL_INT);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::DESERL_INT);
+     NextToken();
+     break;
 
   case DESERL_FLOAT:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::DESERL_FLOAT);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::DESERL_FLOAT);
+     NextToken();
+     break;
 
   case DESERL_OBJ_INST:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::DESERL_OBJ_INST);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::DESERL_OBJ_INST);
+     NextToken();
+     break;
 
   case DESERL_BYTE_ARY:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::DESERL_BYTE_ARY);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::DESERL_BYTE_ARY);
+     NextToken();
+     break;
 
   case DESERL_CHAR_ARY:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::DESERL_CHAR_ARY);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::DESERL_CHAR_ARY);
+     NextToken();
+     break;
 
   case DESERL_INT_ARY:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::DESERL_INT_ARY);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::DESERL_INT_ARY);
+     NextToken();
+     break;
 
   case DESERL_OBJ_ARY:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::DESERL_OBJ_ARY);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::DESERL_OBJ_ARY);
+     NextToken();
+     break;
 
   case DESERL_FLOAT_ARY:
-    statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                             instructions::DESERL_FLOAT_ARY);
-    NextToken();
-    break;
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::DESERL_FLOAT_ARY);
+     NextToken();
+     break;
 
   default:
     break;
