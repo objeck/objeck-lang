@@ -15,6 +15,18 @@ Supports processing of semi-structured data (-lib query)
 bundle Query.Structured {
 	#~
 	Container for semi-structured data
+
+```
+table := Table->New("users", ["name", "age"]);
+row := table->Insert();
+row->Set("name", "Alice");
+row->Set("age", IntRef->New(30));
+
+results := table->Query("select * from users where age > 25");
+each(i : results) {
+   results->Get(i)->ToString()->PrintLine();
+};
+```
 	~#
 	class Table {
 		@name : String;
@@ -121,34 +133,28 @@ bundle Query.Structured {
 		~#
 		method : public : Unique(name : String) ~ Vector<Row> {
 			out := Vector->New()<Row>;
-			
-			index := GetIndex(name);		
+
+			index := GetIndex(name);
 			if(index < 0) {
 				return out;
 			};
-			
+
+			# Use hash for O(n) lookup instead of O(n²) nested loops
+			seen := Hash->New()<Compare, Bool>;
+
 			in_row := @head;
 			while(in_row <> Nil) {
 				left := in_row->Get(index);
-				
-				found := false;
-				for(j := 0; found = false & j < out->Size(); j += 1;) {
-					out_row := out->Get(j);
-					right := out_row->Get(index);
-					if(left->Compare(right) = 0) {
-						found := true;
-					};
-				};
-				
-				# add
-				if(<>found) {
+
+				if(left <> Nil & <>seen->Has(left)) {
+					seen->Insert(left, true);
 					out->AddBack(in_row);
 				};
-				
+
 				# next
 				in_row := in_row->Next();
 			};
-			
+
 			return out;
 		}
 		
@@ -836,30 +842,25 @@ bundle Query.Structured {
 		
 		method : Unique(col : String, input : Vector<Row>) ~ Vector<Row> {
 			out := Vector->New()<Row>;
-			
+
 			index := @table->GetIndex(col);
 			if(index < 0) {
 				return out;
 			};
-			
+
+			# Use hash for O(n) lookup instead of O(n²) nested loops
+			seen := Hash->New()<Compare, Bool>;
+
 			each(i : input) {
 				in_row := input->Get(i);
 				left := in_row->Get(index);
-				
-				found := false;
-				for(j := 0; found = false & j < out->Size(); j += 1;) {
-					out_row := out->Get(j);
-					right := out_row->Get(index);
-					if(left->Compare(right) = 0) {
-						found := true;
-					};
-				};
-				
-				if(<>found) {
+
+				if(left <> Nil & <>seen->Has(left)) {
+					seen->Insert(left, true);
 					out->AddBack(in_row);
 				};
 			};
-			
+
 			return out;
 		}
 		
@@ -1024,47 +1025,45 @@ bundle Query.Structured {
 		
 		method : MergeAnd(left : Vector<Row>, right : Vector<Row>) ~ Vector<Row> {
 			merged := Vector->New()<Row>;
-			
+
 			if(left <> Nil & right <> Nil) {
+				# Build hash from left set for O(1) lookup
+				left_set := Hash->New()<IntRef, Row>;
+				each(i : left) {
+					row := left->Get(i);
+					left_set->Insert(row->GetInstanceID(), row);
+				};
+
+				# Find intersection: items in both sets
 				each(i : right) {
 					right_value := right->Get(i);
-					
-					found := false;
-					for(j := 0; found = false & j < left->Size(); j += 1;) {
-						left_value := left->Get(j);
-						if(left_value = right_value) {
-							found := true;
-						};
-					};
-					
-					if(found) {
+					if(left_set->Has(right_value->GetInstanceID())) {
 						merged->AddBack(right_value);
 					};
 				};
 			};
-			
+
 			return merged;
 		}
 		
 		method : MergeOr(left : Vector<Row>, right : Vector<Row>) ~ Vector<Row> {
 			if(left <> Nil & right <> Nil) {
+				# Build hash from left set for O(1) lookup
+				left_set := Hash->New()<IntRef, Row>;
+				each(i : left) {
+					row := left->Get(i);
+					left_set->Insert(row->GetInstanceID(), row);
+				};
+
+				# Find union: add items from right that aren't in left
 				each(i : right) {
 					right_value := right->Get(i);
-					
-					not_found := false;
-					for(j := 0; not_found = false & j < left->Size(); j += 1;) {
-						left_value := left->Get(j);
-						if(left_value <> right_value) {
-							not_found := true;
-						};
-					};
-					
-					if(not_found) {
+					if(<>left_set->Has(right_value->GetInstanceID())) {
 						left->AddBack(right_value);
 					};
 				};
 			};
-			
+
 			return left;
 		}
 	}

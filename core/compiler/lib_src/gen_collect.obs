@@ -10,10 +10,16 @@
 
 #~
 Tuple classes (-lib gen_collect)
-~#	
+~#
 bundle Collection.Tuple {
 	#~
 	Tuple class that supports 2 values
+
+```
+pair := Collection.Tuple.Pair->New("name", 42)<String, IntRef>;
+pair->GetFirst()->PrintLine();
+pair->GetSecond()->PrintLine();
+```
 	~#
 	class Pair<A, B> {
 		@a : A;
@@ -88,6 +94,13 @@ bundle Collection.Tuple {
 	
 	#~
 	Tuple class that supports 3 values
+
+```
+triplet := Collection.Tuple.Triplet->New("Alice", 30, true)<String, IntRef, BoolRef>;
+triplet->GetFirst()->PrintLine();
+triplet->GetSecond()->PrintLine();
+triplet->GetThird()->PrintLine();
+```
 	~#
 	class Triplet<A, B, C> {
 		@a : A;
@@ -188,6 +201,14 @@ bundle Collection.Tuple {
 	
 	#~
 	Tuple class that supports 4 values
+
+```
+quartet := Collection.Tuple.Quartet->New("Bob", 25, 3.14, true)<String, IntRef, FloatRef, BoolRef>;
+quartet->GetFirst()->PrintLine();
+quartet->GetSecond()->PrintLine();
+quartet->GetThird()->PrintLine();
+quartet->GetFourth()->PrintLine();
+```
 	~#
 	class Quartet<A, B, C, D> {
 		@a : A;
@@ -200,7 +221,7 @@ bundle Collection.Tuple {
 		@param a first parameter
 		@param b second parameter
 		@param c third parameter
-		@param d forth parameter
+		@param d fourth parameter
 		~#
 		New(a : A, b : B, c : C, d : D) {
 			@a := a;
@@ -234,10 +255,10 @@ bundle Collection.Tuple {
 		}
 
 		#~
-		Returns the forth value
-		@return forth value
+		Returns the fourth value
+		@return fourth value
 		~#
-		method : public : GetForth() ~ D {
+		method : public : GetFourth() ~ D {
 			return @d;
 		}
 
@@ -312,6 +333,13 @@ bundle Collection.Tuple {
 
 	#~
 	Quintet class that supports 5 values
+
+```
+quintet := Collection.Tuple.Quintet->New("test", 1, 2.5, 'a', true)<String, IntRef, FloatRef, CharRef, BoolRef>;
+quintet->GetFirst()->PrintLine();
+quintet->GetSecond()->PrintLine();
+quintet->GetFifth()->PrintLine();
+```
 	~#
 	class Quintet <A, B, C, D, E> {
 		@a : A;
@@ -325,7 +353,7 @@ bundle Collection.Tuple {
 		@param a first parameter
 		@param b second parameter
 		@param c third parameter
-		@param d forth parameter
+		@param d fourth parameter
 		@param e fifth parameter
 		~#
 		New(a : A, b : B, c : C, d : D, e : E) {
@@ -361,18 +389,18 @@ bundle Collection.Tuple {
 		}
 
 		#~
-		Returns the forth value
-		@return forth value
+		Returns the fourth value
+		@return fourth value
 		~#
-		method : public : GetForth() ~ D {
+		method : public : GetFourth() ~ D {
 			return @d;
 		}
 
 		#~
-		Returns the fith value
-		@return fith value
+		Returns the fifth value
+		@return fifth value
 		~#
-		method : public : GetFith() ~ E {
+		method : public : GetFifth() ~ E {
 			return @e;
 		}
 
@@ -918,12 +946,22 @@ each(value := values) {
 		}
 
 		#~
-		Searches for a value in cache
+		Searches for a value in cache and updates access priority for LRU/MRU
 		@param key search key
 		@return found value, Nil if not found
 		~#
 		method : public : Find(key : K) ~ S {
-			return @cache->Find(key);
+			value := @cache->Find(key);
+			if(value <> Nil) {
+				# Update priority: move accessed key to front for proper LRU/MRU behavior
+				@priority->Rewind();
+				found := @priority->Find(key);
+				if(found <> Nil) {
+					@priority->Remove();
+					@priority->AddFront(key);
+				};
+			};
+			return value;
 		}
 
 		#~
@@ -959,9 +997,141 @@ each(value := values) {
 			@priority->Empty();
 		}
 	}
-	
+
 	#~
-	Collection pair
+	Hash-based set for O(1) membership testing without storing values
+
+```
+set := Collection.HashSet->New()<IntRef>;
+set->Add(IntRef->New(1));
+set->Add(IntRef->New(2));
+set->Add(IntRef->New(3));
+
+set->Has(IntRef->New(2))->PrintLine(); # true
+set->Has(IntRef->New(5))->PrintLine(); # false
+
+set->Remove(IntRef->New(2));
+set->Has(IntRef->New(2))->PrintLine(); # false
+```
+	~#
+	class HashSet<H : Compare> {
+		@hash : Hash<H, Bool>;
+
+		#~
+		Default constructor
+		~#
+		New() {
+			@hash := Hash->New()<H, Bool>;
+		}
+
+		#~
+		Adds a value to the set
+		@param value value to add
+		@return true if added, false if already exists
+		~#
+		method : public : Add(value : H) ~ Bool {
+			if(value = Nil | @hash->Has(value)) {
+				return false;
+			};
+			@hash->Insert(value, true);
+			return true;
+		}
+
+		#~
+		Checks if a value exists in the set
+		@param value value to check
+		@return true if found, false otherwise
+		~#
+		method : public : Has(value : H) ~ Bool {
+			return @hash->Has(value);
+		}
+
+		#~
+		Removes a value from the set
+		@param value value to remove
+		@return true if removed, false if not found
+		~#
+		method : public : Remove(value : H) ~ Bool {
+			return @hash->Remove(value);
+		}
+
+		#~
+		Size of set
+		@return number of elements
+		~#
+		method : public : Size() ~ Int {
+			return @hash->Size();
+		}
+
+		#~
+		Checks if set is empty
+		@return true if empty, false otherwise
+		~#
+		method : public : IsEmpty() ~ Bool {
+			return @hash->IsEmpty();
+		}
+
+		#~
+		Clears the set
+		~#
+		method : public : Empty() ~ Nil {
+			@hash->Empty();
+		}
+
+		#~
+		Gets all values as a vector
+		@return vector of values
+		~#
+		method : public : ToVector() ~ Vector<H> {
+			return @hash->GetKeys()<H>;
+		}
+
+		#~
+		Gets all values as an array
+		@return array of values
+		~#
+		method : public : ToArray() ~ H[] {
+			keys := @hash->GetKeys()<H>;
+			array := H->New[keys->Size()];
+			each(i : keys) {
+				array[i] := keys->Get(i);
+			};
+			return array;
+		}
+
+		#~
+		Formats the set into a string
+		@return string representation
+		~#
+		method : public : ToString() ~ String {
+			buffer := "{";
+			keys := @hash->GetKeys()<H>;
+			each(i : keys) {
+				value := keys->Get(i);
+				if(value->TypeOf(Stringify)) {
+					buffer->Append(value->As(System.Stringify)->ToString());
+				}
+				else {
+					buffer->Append(value->GetInstanceID()->ToHexString());
+				};
+				if(i + 1 < keys->Size()) {
+					buffer->Append(',');
+				};
+			};
+			buffer->Append('}');
+			return buffer;
+		}
+	}
+
+	#~
+	Collection pair that implements Compare interface for use in sorted collections
+
+```
+pair := Collection.Pair->New(IntRef->New(1), "one")<IntRef, String>;
+pair->GetFirst()->PrintLine();
+pair->GetSecond()->PrintLine();
+pair->ToString()->PrintLine();
+```
 	~#
 	class Pair<F : Compare, S> implements System.Compare, System.Stringify {
 		@first : F;
@@ -1513,7 +1683,17 @@ hash->Has(408)->PrintLine();
 	}
 	
 	#~
-	Growable stack of generics
+	Growable stack of generics (LIFO)
+
+```
+stack := Collection.Stack->New()<IntRef>;
+stack->Push(1);
+stack->Push(2);
+stack->Push(3);
+stack->Pop()->PrintLine();  # prints 3
+stack->Top()->PrintLine();  # prints 2
+stack->Size()->PrintLine(); # prints 2
+```
 	~#
 	class Stack<H> {
 		@head : ListNode<H>;
@@ -3384,6 +3564,77 @@ function : Example() ~ Nil {
 			Runtime->Copy(array, 0, @values, 0, @size);
 			return array;
 		}
+
+		#~
+		Checks if any element matches the predicate
+		@param f predicate function
+		@return true if any element matches, false otherwise
+		~#
+		method : public : Any(f : (H) ~ Bool) ~ Bool {
+			for(i := 0; i < @size; i += 1;) {
+				if(f(@values[i])) {
+					return true;
+				};
+			};
+			return false;
+		}
+
+		#~
+		Checks if all elements match the predicate
+		@param f predicate function
+		@return true if all elements match, false otherwise
+		~#
+		method : public : All(f : (H) ~ Bool) ~ Bool {
+			for(i := 0; i < @size; i += 1;) {
+				if(<>f(@values[i])) {
+					return false;
+				};
+			};
+			return true;
+		}
+
+		#~
+		Counts elements matching the predicate
+		@param f predicate function
+		@return count of matching elements
+		~#
+		method : public : Count(f : (H) ~ Bool) ~ Int {
+			count := 0;
+			for(i := 0; i < @size; i += 1;) {
+				if(f(@values[i])) {
+					count += 1;
+				};
+			};
+			return count;
+		}
+
+		#~
+		Finds the first element matching the predicate
+		@param f predicate function
+		@return first matching element, or Nil if not found
+		~#
+		method : public : FindFirst(f : (H) ~ Bool) ~ H {
+			for(i := 0; i < @size; i += 1;) {
+				if(f(@values[i])) {
+					return @values[i];
+				};
+			};
+			return Nil;
+		}
+
+		#~
+		Finds the index of the first element matching the predicate
+		@param f predicate function
+		@return index of first matching element, or -1 if not found
+		~#
+		method : public : FindIndex(f : (H) ~ Bool) ~ Int {
+			for(i := 0; i < @size; i += 1;) {
+				if(f(@values[i])) {
+					return i;
+				};
+			};
+			return -1;
+		}
 	}
 
 	#~
@@ -3709,13 +3960,15 @@ function : Show(value : IntRef) ~ Nil {
 				b[i] := a[i];
 			};
 
-			i := low; 
-			j := mid + 1; 
+			i := low;
+			j := mid + 1;
 			k := low;
-			
+
 			# copy back next-greatest element at each time
 			while(i <= mid & j <= hi) {
-				if(b[i]->Compare(b[j]) < 0 | b[i]->Compare(b[j]) = 0) {
+				# cache comparison result to avoid calling Compare() twice
+				cmp := b[i]->Compare(b[j]);
+				if(cmp <= 0) {
 					a[k] := b[i];
 					k += 1;
 					i += 1;
@@ -3726,7 +3979,7 @@ function : Show(value : IntRef) ~ Nil {
 					j += 1;
 				};
 			};
-			
+
 			# copy back remaining elements of first half (if any)
 			while(i <= mid) {
 				a[k] := b[i];
@@ -3831,8 +4084,98 @@ function : Show(value : IntRef) ~ Nil {
 			Runtime->Copy(array, 0, @values, 0, @size);
 			return array;
 		}
+
+		#~
+		Returns a new vector with duplicate elements removed
+		@return vector with unique elements only
+		~#
+		method : public : Distinct() ~ CompareVector<H> {
+			result := CompareVector->New()<H>;
+			seen := Hash->New()<H, Bool>;
+
+			for(i := 0; i < @size; i += 1;) {
+				value := @values[i];
+				if(value <> Nil & <>seen->Has(value)) {
+					seen->Insert(value, true);
+					result->AddBack(value);
+				};
+			};
+
+			return result;
+		}
+
+		#~
+		Checks if any element matches the predicate
+		@param f predicate function
+		@return true if any element matches, false otherwise
+		~#
+		method : public : Any(f : (H) ~ Bool) ~ Bool {
+			for(i := 0; i < @size; i += 1;) {
+				if(f(@values[i])) {
+					return true;
+				};
+			};
+			return false;
+		}
+
+		#~
+		Checks if all elements match the predicate
+		@param f predicate function
+		@return true if all elements match, false otherwise
+		~#
+		method : public : All(f : (H) ~ Bool) ~ Bool {
+			for(i := 0; i < @size; i += 1;) {
+				if(<>f(@values[i])) {
+					return false;
+				};
+			};
+			return true;
+		}
+
+		#~
+		Counts elements matching the predicate
+		@param f predicate function
+		@return count of matching elements
+		~#
+		method : public : Count(f : (H) ~ Bool) ~ Int {
+			count := 0;
+			for(i := 0; i < @size; i += 1;) {
+				if(f(@values[i])) {
+					count += 1;
+				};
+			};
+			return count;
+		}
+
+		#~
+		Finds the first element matching the predicate
+		@param f predicate function
+		@return first matching element, or Nil if not found
+		~#
+		method : public : FindFirst(f : (H) ~ Bool) ~ H {
+			for(i := 0; i < @size; i += 1;) {
+				if(f(@values[i])) {
+					return @values[i];
+				};
+			};
+			return Nil;
+		}
+
+		#~
+		Finds the index of the first element matching the predicate
+		@param f predicate function
+		@return index of first matching element, or -1 if not found
+		~#
+		method : public : FindIndex(f : (H) ~ Bool) ~ Int {
+			for(i := 0; i < @size; i += 1;) {
+				if(f(@values[i])) {
+					return i;
+				};
+			};
+			return -1;
+		}
 	}
-	
+
 	#~
 	Balanced ordered tree of 'Compare' keys and 'Base' values
 	
@@ -4598,6 +4941,17 @@ set_hash->Has("Oakland")->PrintLine();
 		
 	#~
 	Ordered binary tree that holds multiple values with the same key
+
+```
+mmap := Collection.MultiMap->New()<String, IntRef>;
+mmap->Insert("fruits", 1);
+mmap->Insert("fruits", 2);
+mmap->Insert("vegetables", 3);
+values := mmap->Find("fruits")<IntRef>;
+each(v := values) {
+   v->PrintLine();
+};
+```
 	~#
 	class MultiMap<K : Compare, V> {
 		@map : Map<K, Vector<V> >;

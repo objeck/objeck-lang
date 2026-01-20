@@ -10,6 +10,14 @@ Process and perform calculations on CSV files (-lib csv.obl)
 bundle Data.CSV {
 	#~
 	CSV row
+
+```
+csv := CsvTable->New(FileReader->ReadFile("data.csv"));
+row := csv->Get(0);
+row->Get(0)->PrintLine();       # by index
+row->Get("name")->PrintLine();  # by column name
+row->Size()->PrintLine();       # column count
+```
 	~#
 	class CsvRow {
 		@table : CsvTable;
@@ -399,6 +407,16 @@ bundle Data.CSV {
 	
 	#~
 	CSV table
+
+```
+csv := CsvTable->New(FileReader->ReadFile("data.csv"));
+if(csv->IsParsed()) {
+   each(i : csv) {
+      row := csv->Get(i);
+      row->Get(0)->PrintLine();
+   };
+};
+```
 	~#
 	class CsvTable {
 		@data : Vector<CsvRow>;
