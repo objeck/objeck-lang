@@ -52,63 +52,71 @@ int main(const int argc, const char* argv[])
 {
   if(argc > 1) {
     //
-    // check for command line parameters
+    // Parse command line parameters using enhanced parser
     //
+    CommandLineParseResult cmd_result = ParseCommandLine(argc, argv);
+
     bool set_stdio_param = false;
     size_t gc_threshold = 0;
-
-    // bool set_foo_bar_param = false; // TODO: add if needed
     int vm_param_count = 0;
-    for(int i = 1; i < argc; ++i) {
-      const std::string name_value(argv[i]);
-      // check for OBJECK_STDIO
-      if(!name_value.rfind("--OBJECK_STDIO=", 0)) {
-        const size_t name_value_index = name_value.find_first_of(L'=');
-        if(name_value_index != std::string::npos) {
-          ++vm_param_count;
-          const std::string value(name_value.substr(name_value_index + 1));
 
-          SetStdIo(value.c_str());
-          set_stdio_param = true;
+    // Check for OBJECK_STDIO (Windows-only, support both new and legacy formats)
+    std::wstring stdio_value = GetCommandLineArgumentWithAliases(
+      cmd_result.arguments,
+      {L"objeck-stdio", L"OBJECK_STDIO", L"OBJECK-STDIO"},
+      L""
+    );
+
+    if(!stdio_value.empty()) {
+      ++vm_param_count;
+
+      // Convert wide string to narrow for SetStdIo
+      std::string value_str;
+      for(wchar_t wc : stdio_value) {
+        value_str += static_cast<char>(wc);
+      }
+
+      SetStdIo(value_str.c_str());
+      set_stdio_param = true;
+    }
+
+    // Check for GC threshold (support both new and legacy formats)
+    std::wstring gc_value = GetCommandLineArgumentWithAliases(
+      cmd_result.arguments,
+      {L"gc-threshold", L"GC_THRESHOLD", L"GC-THRESHOLD"},
+      L""
+    );
+
+    if(!gc_value.empty()) {
+      ++vm_param_count;
+
+      // Convert wide string to narrow for parsing
+      std::string value_str;
+      for(wchar_t wc : gc_value) {
+        value_str += static_cast<char>(wc);
+      }
+
+      // Parse numeric value and suffix
+      char* str_end;
+      gc_threshold = strtol(value_str.c_str(), &str_end, 10);
+      if(str_end) {
+        switch (*str_end) {
+        case 'k':
+        case 'K':
+          gc_threshold *= 1024UL;
+          break;
+
+        case 'm':
+        case 'M':
+          gc_threshold *= 1048576UL;
+          break;
+
+        case 'g':
+        case 'G':
+          gc_threshold *= 1099511627776UL;
+          break;
         }
       }
-      // check for GC_THRESHOLD
-      else if(!name_value.rfind("--GC_THRESHOLD=", 0)) {
-        const size_t name_value_index = name_value.find_first_of(L'=');
-        if(name_value_index != std::string::npos) {
-          const size_t name_value_index = name_value.find_first_of(L'=');
-          if(name_value_index != std::string::npos) {
-            ++vm_param_count;
-            const std::string value(name_value.substr(name_value_index + 1));
-
-            char* str_end;
-            gc_threshold = strtol(value.c_str(), &str_end, 10);
-            if(str_end) {
-              switch (*str_end) {
-              case 'k':
-              case 'K':
-                gc_threshold *= 1024UL;
-                break;
-
-              case 'm':
-              case 'M':
-                gc_threshold *= 1048576UL;
-                break;
-
-              case 'g':
-              case 'G':
-                gc_threshold *= 1099511627776UL;
-                break;
-              }
-            }
-          }
-        }
-      }
-      /* TODO: add if needed
-      // check for FOO_BAR
-      else if(!name_value.rfind("--FOO_BAR=", 0)) {
-      }
-      */
     }
 
     //
@@ -156,13 +164,20 @@ int main(const int argc, const char* argv[])
   }
   else {
     std::wstring usage;
-    usage += L"Usage: obr <program>\n\n";
+    usage += L"Usage: obr [options] <program>\n\n";
 
     usage += L"Options:\n";
-    usage += L"\t--OBJECK_STDIO:\t[prepend] if set, STDIO output is binary\n";
-    usage += L"\t--GC_THRESHOLD:\t[prepend] inital garbage collection memory threshold <number>(kb|mb|gb)\n";
-
-    usage += L"\nExamples:\n\t\"obr hello.obe\"\n\t\"obr --GC_THRESHOLD=2m hello.obe\"\n \nVersion: ";
+    usage += L"  --objeck-stdio=<value>    STDIO output mode (binary mode if set)\n";
+    usage += L"                            Legacy: --OBJECK_STDIO=<value>\n";
+    usage += L"  --gc-threshold=<size>     Initial garbage collection threshold\n";
+    usage += L"                            Size format: <number>(k|m|g)\n";
+    usage += L"                            Legacy: --GC_THRESHOLD=<size>\n";
+    usage += L"\nExamples:\n";
+    usage += L"  obr hello.obe\n";
+    usage += L"  obr --gc-threshold=2m hello.obe\n";
+    usage += L"  obr --objeck-stdio=binary hello.obe\n";
+    usage += L"  obr --GC_THRESHOLD=2m hello.obe  (legacy)\n";
+    usage += L"\nVersion: ";
 
     usage += VERSION_STRING;
     

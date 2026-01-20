@@ -281,91 +281,26 @@ bool CheckInstallDir(const wstring& install_dir)
   return fs::exists(readme_path) && fs::exists(license_path);
 }
 
-map<const wstring, wstring> ParseCommnadLine(int argc, char* argv[], list<wstring> &options)
+/**
+ * Launcher-specific command line parser wrapper
+ * Uses the shared enhanced parser and populates the options list
+ */
+map<const wstring, wstring> ParseCommnadLine(int argc, const char* argv[], list<wstring> &options)
 {
-  map<const wstring, wstring> arguments;
+  // Use shared parser for enhanced GNU-style syntax support
+  CommandLineParseResult result = ParseCommandLine(argc, argv);
 
-  // reconstruct command line
-  string path;
-  for(int i = 1; i < 1024 && i < argc; ++i) {
-    path += ' ';
-    char* cmd_param = argv[i];
-    if(strlen(cmd_param) > 0 && cmd_param[0] != L'\'' && (strrchr(cmd_param, L' ') || strrchr(cmd_param, L'\t'))) {
-      path += '\'';
-      path += cmd_param;
-      path += '\'';
-    }
-    else {
-      path += cmd_param;
-    }
+  // Log any parsing errors
+  for(const auto& error : result.errors) {
+    wcerr << L"Warning: " << error << endl;
   }
 
-  // get command line parameters
-  wstring path_string = BytesToUnicode(path);
-
-  size_t pos = 0;
-  size_t end = path_string.size();
-  while(pos < end) {
-    // ignore leading white space
-    while(pos < end && (path_string[pos] == L' ' || path_string[pos] == L'\t')) {
-      pos++;
-    }
-    if(path_string[pos] == L'-' && pos > 0 && path_string[pos - 1] == L' ') {
-      // parse key
-      size_t start = ++pos;
-      while(pos < end && path_string[pos] != L' ' && path_string[pos] != L'\t') {
-        pos++;
-      }
-      const wstring key = path_string.substr(start, pos - start);
-      // parse value
-      while(pos < end && (path_string[pos] == L' ' || path_string[pos] == L'\t')) {
-        pos++;
-      }
-      start = pos;
-      bool is_string = false;
-      if(pos < end && path_string[pos] == L'\'') {
-        is_string = true;
-        start++;
-        pos++;
-      }
-      bool not_end = true;
-      while(pos < end && not_end) {
-        // check for end
-        if(is_string) {
-          not_end = path_string[pos] != L'\'';
-        }
-        else {
-          not_end = !(path_string[pos] == L' ' || path_string[pos] == L'\t');
-        }
-        // update position
-        if(not_end) {
-          pos++;
-        }
-      }
-      wstring value = path_string.substr(start, pos - start);
-
-      // close string and add
-      if(path_string[pos] == L'\'') {
-        pos++;
-      }
-
-      map<const wstring, wstring>::iterator found = arguments.find(key);
-      if(found != arguments.end()) {
-        value += L',';
-        value += found->second;
-      }
-      arguments[key] = value;
-    }
-    else {
-      pos++;
-    }
+  // Populate options list with all argument keys
+  for(const auto& pair : result.arguments) {
+    options.push_back(pair.first);
   }
 
-  for(map<const wstring, wstring>::iterator intr = arguments.begin(); intr != arguments.end(); ++intr) {
-    options.push_back(intr->first);
-  }
-
-  return arguments;
+  return result.arguments;
 }
 
 wstring GetCommandParameter(const wstring& key, map<const wstring, wstring>& cmd_params, list<wstring>& argument_options, bool optional)

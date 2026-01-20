@@ -36,6 +36,7 @@
 #else
 #include <dirent.h>
 #endif
+#include <set>
 #include "compiler.h"
 #include "types.h"
 
@@ -100,9 +101,8 @@ int OptionsCompile(std::map<const std::wstring, std::wstring>& arguments, std::l
   setlocale(LC_CTYPE, "UTF-8");
 #endif
   
-  // check for optimize flag
-  std::map<const std::wstring, std::wstring>::iterator result = arguments.find(L"ver");
-  if(result != arguments.end()) {
+  // Check for version flag (support --version, -ver, -v)
+  if(HasCommandLineArgumentWithAliases(arguments, {L"version", L"ver", L"v"})) {
 
 #if defined(_WIN64) && defined(_WIN32) && defined(_M_ARM64)
     std::wcout << VERSION_STRING << L" Objeck (arm64 Windows)" << std::endl;
@@ -122,36 +122,42 @@ int OptionsCompile(std::map<const std::wstring, std::wstring>& arguments, std::l
     std::wcout << VERSION_STRING << L" Objeck (Linux ARMv7)" << std::endl;
 #else
     std::wcout << VERSION_STRING << L" Objeck (Linux x86)" << std::endl;
-#endif 
+#endif
     std::wcout << L"---" << std::endl;
     std::wcout << L"Copyright (c) 2025, Randy Hollines" << std::endl;
     std::wcout << L"This is free software; see the source for copying conditions.There is NO" << std::endl;
     std::wcout << L"warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE." << std::endl;
+    argument_options.remove(L"version");
     argument_options.remove(L"ver");
+    argument_options.remove(L"v");
     exit(0);
   }
 
-  // check source input
+  // Check source input (support --source/-src/-s or --inline/-in/-i)
   std::wstring program;
   std::wstring src_files;
   std::wstring dest_file;
 
-  result = arguments.find(L"src");
-  if(result == arguments.end()) {
-    result = arguments.find(L"in");
-    if(result == arguments.end()) {
+  std::wstring src_value = GetCommandLineArgumentWithAliases(arguments, {L"source", L"src", L"s"});
+  if(src_value.empty()) {
+    std::wstring inline_value = GetCommandLineArgumentWithAliases(arguments, {L"inline", L"in", L"i"});
+    if(inline_value.empty()) {
       std::wcerr << usage << std::endl;
       return COMMAND_ERROR;
     }
     program = L"class Objeck { function : Main(args : String[]) ~ Nil {";
-    program += arguments[L"in"];
+    program += inline_value;
     program += L"} }";
+    argument_options.remove(L"inline");
     argument_options.remove(L"in");
+    argument_options.remove(L"i");
     dest_file = L"program";
   }
   else {
+    argument_options.remove(L"source");
     argument_options.remove(L"src");
-    src_files = result->second;
+    argument_options.remove(L"s");
+    src_files = src_value;
     
     // parse file name w/o extension
     if(!frontend::EndsWith(src_files, L".obs")) {
@@ -184,21 +190,21 @@ int OptionsCompile(std::map<const std::wstring, std::wstring>& arguments, std::l
     }
   }
 
-  // check program target
-  std::wstring target;
-  result = arguments.find(L"tar");
-  if(result != arguments.end()) {
-    target = result->second;
+  // Check program target (support --target, -tar, -t)
+  std::wstring target = GetCommandLineArgumentWithAliases(arguments, {L"target", L"tar", L"t"});
+  if(!target.empty()) {
     if(target != L"lib" && target != L"exe") {
       std::wcerr << usage << std::endl;
       return COMMAND_ERROR;
     }
+    argument_options.remove(L"target");
     argument_options.remove(L"tar");
+    argument_options.remove(L"t");
   }
 
-  // check program output
-  result = arguments.find(L"dest");
-  if(result == arguments.end()) {
+  // Check program output (support --destination, -dest, -d)
+  std::wstring dest_value = GetCommandLineArgumentWithAliases(arguments, {L"destination", L"dest", L"d"});
+  if(dest_value.empty()) {
     if(!src_files.empty()) {
       dest_file = src_files;
     }
@@ -211,8 +217,10 @@ int OptionsCompile(std::map<const std::wstring, std::wstring>& arguments, std::l
     }
   }
   else {
-    dest_file = result->second;
+    dest_file = dest_value;
+    argument_options.remove(L"destination");
     argument_options.remove(L"dest");
+    argument_options.remove(L"d");
   }
 
   if(dest_file.empty()) {
@@ -227,78 +235,115 @@ int OptionsCompile(std::map<const std::wstring, std::wstring>& arguments, std::l
     dest_file += L".obl";
   }
     
-  // check program libraries path and 'strict' usage
+  // Check program libraries path and 'strict' usage (support --strict flag)
   std::wstring sys_lib_path;
-  result = arguments.find(L"strict");
-  if(result != arguments.end()) {
-    result = arguments.find(L"lib");
-    if(result != arguments.end()) {
-      sys_lib_path = result->second;
+  if(HasCommandLineArgumentWithAliases(arguments, {L"strict"})) {
+    std::wstring lib_value = GetCommandLineArgumentWithAliases(arguments, {L"library", L"lib", L"l"});
+    if(!lib_value.empty()) {
+      sys_lib_path = lib_value;
       if(sys_lib_path.empty()) {
         std::wcerr << usage << std::endl;
         return COMMAND_ERROR;
       }
+      argument_options.remove(L"library");
       argument_options.remove(L"lib");
+      argument_options.remove(L"l");
     }
     argument_options.remove(L"strict");
   }
   else {
     sys_lib_path = L"lang,gen_collect";
-    result = arguments.find(L"lib");
-    if(result != arguments.end()) {
-      std::wstring lib_path = result->second;
+    std::wstring lib_value = GetCommandLineArgumentWithAliases(arguments, {L"library", L"lib", L"l"});
+    if(!lib_value.empty()) {
+      std::wstring lib_path = lib_value;
       if(lib_path.empty()) {
         std::wcerr << usage << std::endl;
         return COMMAND_ERROR;
       }
 
-      // --- START: command line clean up
-      frontend::RemoveSubString(lib_path, L".obl");
-      frontend::RemoveSubString(lib_path, L"gen_collect,");
-      frontend::RemoveSubString(lib_path, L"gen_collect");
-      frontend::RemoveSubString(lib_path, L"collect,");
-      frontend::RemoveSubString(lib_path, L"collect");
-      frontend::RemoveSubString(lib_path, L",,");
-      // --- END
+      // Clean up library list: remove extensions, filter defaults, handle duplicates
+      std::vector<std::wstring> libs;
+      std::set<std::wstring> seen;
+
+      // Split by comma and process each library
+      size_t start = 0;
+      size_t pos = 0;
+      while(pos <= lib_path.size()) {
+        if(pos == lib_path.size() || lib_path[pos] == L',') {
+          if(pos > start) {
+            std::wstring lib = lib_path.substr(start, pos - start);
+
+            // Trim whitespace
+            size_t first = lib.find_first_not_of(L" \t");
+            size_t last = lib.find_last_not_of(L" \t");
+            if(first != std::wstring::npos) {
+              lib = lib.substr(first, last - first + 1);
+
+              // Remove .obl extension if present
+              if(frontend::EndsWith(lib, L".obl")) {
+                lib = lib.substr(0, lib.size() - 4);
+              }
+
+              // Filter out default libraries (they're already in sys_lib_path)
+              if(lib != L"gen_collect" && lib != L"collect" && lib != L"lang" && !lib.empty()) {
+                // Remove duplicates
+                if(seen.find(lib) == seen.end()) {
+                  libs.push_back(lib);
+                  seen.insert(lib);
+                }
+              }
+            }
+          }
+          start = pos + 1;
+        }
+        pos++;
+      }
+
+      // Rebuild cleaned library path
+      lib_path.clear();
+      for(size_t i = 0; i < libs.size(); ++i) {
+        if(i > 0) lib_path += L",";
+        lib_path += libs[i];
+      }
       sys_lib_path += L"," + lib_path;
+      argument_options.remove(L"library");
       argument_options.remove(L"lib");
+      argument_options.remove(L"l");
     }
   }
 
-  // check for optimization flags
-  std::wstring optimize;
-  result = arguments.find(L"opt");
-  if(result != arguments.end()) {
-    optimize = result->second;
+  // Check for optimization flags (support --optimize, -opt, -o)
+  std::wstring optimize = GetCommandLineArgumentWithAliases(arguments, {L"optimize", L"opt", L"o"});
+  if(!optimize.empty()) {
     if(optimize != L"s0" && optimize != L"s1" && optimize != L"s2" && optimize != L"s3") {
       std::wcerr << usage << std::endl;
       return COMMAND_ERROR;
     }
+    argument_options.remove(L"optimize");
     argument_options.remove(L"opt");
+    argument_options.remove(L"o");
   }
-  
-  // use alternate syntax
-  bool alt_syntax = false;
-  result = arguments.find(L"alt");
-  if(result != arguments.end()) {
-    alt_syntax = true;
+
+  // Use alternate syntax (support --alt-syntax, -alt)
+  bool alt_syntax = HasCommandLineArgumentWithAliases(arguments, {L"alt-syntax", L"alt"});
+  if(alt_syntax) {
+    argument_options.remove(L"alt-syntax");
     argument_options.remove(L"alt");
   }
 
-  // check for debug flag
-  bool is_debug = false;
-  result = arguments.find(L"debug");
-  if(result != arguments.end()) {
-    is_debug = true;
+  // Check for debug flag (support --debug, -D)
+  bool is_debug = HasCommandLineArgumentWithAliases(arguments, {L"debug", L"D"});
+  if(is_debug) {
     argument_options.remove(L"debug");
+    argument_options.remove(L"D");
   }
 
-  // check for asm flag
-  bool show_asm = false;
-  result = arguments.find(L"asm");
-  if(result != arguments.end()) {
-    show_asm = true;
+  // Check for asm flag (support --assembly, -asm, -a)
+  bool show_asm = HasCommandLineArgumentWithAliases(arguments, {L"assembly", L"asm", L"a"});
+  if(show_asm) {
+    argument_options.remove(L"assembly");
     argument_options.remove(L"asm");
+    argument_options.remove(L"a");
   }
 
   if(argument_options.size() != 0) {
