@@ -88,6 +88,51 @@ each(candidate in candidates) {
 			CLUSTERING
 		}
 
+		#~
+		Model name constants for Gemini 2.0/2.5 models
+		~#
+		function : native : GEMINI_2_0_FLASH_EXP() ~ String {
+			return "models/gemini-2.0-flash-exp";
+		}
+
+		function : native : GEMINI_2_0_FLASH_THINKING_EXP_01_21() ~ String {
+			return "models/gemini-2.0-flash-thinking-exp-01-21";
+		}
+
+		function : native : GEMINI_2_0_FLASH_THINKING_EXP() ~ String {
+			return "models/gemini-2.0-flash-thinking-exp";
+		}
+
+		function : native : GEMINI_EXP_1206() ~ String {
+			return "models/gemini-exp-1206";
+		}
+
+		#~
+		Model name constants for Gemini 1.5 models
+		~#
+		function : native : GEMINI_1_5_FLASH() ~ String {
+			return "models/gemini-1.5-flash";
+		}
+
+		function : native : GEMINI_1_5_FLASH_8B() ~ String {
+			return "models/gemini-1.5-flash-8b";
+		}
+
+		function : native : GEMINI_1_5_PRO() ~ String {
+			return "models/gemini-1.5-pro";
+		}
+
+		#~
+		Model name constants for legacy models
+		~#
+		function : native : GEMINI_PRO() ~ String {
+			return "models/gemini-pro";
+		}
+
+		function : native : GEMINI_PRO_VISION() ~ String {
+			return "models/gemini-pro-vision";
+		}
+
 		New : private(model_json : JsonElement) {
 			Parent();
 
@@ -257,14 +302,25 @@ each(candidate in candidates) {
 					if(part->TypeOf(TextPart)) {
 						text_part := part->As(TextPart);
 						part_obj_json->Insert("text", text_part->GetText());
-					}					
-					else {
+					}
+					# audio (Gemini 2.0+)
+					else if(part->TypeOf(AudioPart)) {
+						audio_part := part->As(AudioPart);
+
+						inline_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+						inline_obj_json->Insert("mimeType", audio_part->GetMimeType());
+						inline_obj_json->Insert("data", audio_part->GetBase64Data());
+
+						part_obj_json->Insert("inlineData", inline_obj_json);
+					}
+					# binary/image
+					else if(part->TypeOf(BinaryPart)) {
 						binary_part := part->As(BinaryPart);
 
 						inline_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 						inline_obj_json->Insert("mimeType", binary_part->GetMimeType());
 						inline_obj_json->Insert("data", binary_part->GetBase64Data());
-						
+
 						part_obj_json->Insert("inlineData", inline_obj_json);
 					};
 
@@ -369,11 +425,19 @@ each(candidate in candidates) {
 						text_json := part_json->Get("text");
 						part := TextPart->New(text_json->GetString());
 					}
-					# inline part
+					# inline part (audio, image, or other binary data)
 					else if(part_json->Has("inlineData")) {
 						inline_mime_type := part_json->FindElements("inlineData/mimeType")->GetString();
 						inline_data := part_json->FindElements("inlineData/data")->GetString();
-						part := BinaryPart->New(Cipher.Decrypt->Base64(inline_data), inline_mime_type);
+						decoded_data := Cipher.Decrypt->Base64(inline_data);
+
+						# check if audio (Gemini 2.0+)
+						if(inline_mime_type->StartsWith("audio/")) {
+							part := AudioPart->New(decoded_data, inline_mime_type);
+						}
+						else {
+							part := BinaryPart->New(decoded_data, inline_mime_type);
+						};
 					}
 					# inline part
 					else if(part_json->Has("functionCall")) {
@@ -576,14 +640,25 @@ each(candidate in candidates) {
 					if(part->TypeOf(TextPart)) {
 						text_part := part->As(TextPart);
 						part_obj_json->Insert("text", text_part->GetText());
-					}					
-					else {
+					}
+					# audio (Gemini 2.0+)
+					else if(part->TypeOf(AudioPart)) {
+						audio_part := part->As(AudioPart);
+
+						inline_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+						inline_obj_json->Insert("mimeType", audio_part->GetMimeType());
+						inline_obj_json->Insert("data", audio_part->GetBase64Data());
+
+						part_obj_json->Insert("inlineData", inline_obj_json);
+					}
+					# binary/image
+					else if(part->TypeOf(BinaryPart)) {
 						binary_part := part->As(BinaryPart);
 
 						inline_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 						inline_obj_json->Insert("mimeType", binary_part->GetMimeType());
 						inline_obj_json->Insert("data", binary_part->GetBase64Data());
-						
+
 						part_obj_json->Insert("inlineData", inline_obj_json);
 					};
 
@@ -795,6 +870,60 @@ each(candidate in candidates) {
 	}
 
 	#~
+	Audio message part (Gemini 2.0+)
+	Supports audio input and output for multimodal interactions
+	~#
+	class AudioPart from Part implements Stringify {
+		@data : Byte[];
+		@mime_type : String;
+
+		#~
+		Constructor for audio input/output
+		@param data audio data in bytes
+		@param mime_type MIME type (e.g., "audio/wav", "audio/mp3", "audio/pcm")
+		~#
+		New(data : Byte[], mime_type : String) {
+			Parent();
+
+			@data := data;
+			@mime_type := mime_type;
+		}
+
+		#~
+		Get Base64 encoding audio string
+		@return encoding audio string
+		~#
+		method : public : GetBase64Data() ~ String {
+			return Cipher.Encrypt->Base64(@data);
+		}
+
+		#~
+		Get raw audio data
+		@return audio data bytes
+		~#
+		method : public : GetData() ~ Byte[] {
+			return @data;
+		}
+
+		#~
+		Get MIME type
+		@return MIME type
+		~#
+		method : public : GetMimeType() ~ String {
+			return @mime_type;
+		}
+
+		#~
+		String representation of the object
+		@return string representation
+		~#
+		method : public : ToString() ~ String {
+			data_size := @data->Size();
+			return "audio_size={$data_size}, mime_type='{$@mime_type}'";
+		}
+	}
+
+	#~
 	Abstract message part
 	~#
 	class Part {
@@ -802,7 +931,8 @@ each(candidate in candidates) {
 		method : virtual : public : ToString() ~ String;
 	}
 
-	# TODO: implement, support is spotty
+	# TODO: implement comprehensive generation config support
+	# TODO: implement streamGenerateContent for real-time streaming (requires SSE/streaming HTTP support)
 	class GenerationConfig from EndPoint {
 		New() {
 			Parent();
@@ -1083,11 +1213,19 @@ session->ToString()->PrintLine();
 						part := TextPart->New(text_json->GetString());
 					};
 
-					# inline part
+					# inline part (audio, image, or other binary data)
 					if(part_json->Has("inlineData")) {
 						inline_mime_type := part_json->FindElements("inlineData/mimeType")->GetString();
 						inline_data := part_json->FindElements("inlineData/data")->GetString();
-						part := BinaryPart->New(Cipher.Decrypt->Base64(inline_data), inline_mime_type);
+						decoded_data := Cipher.Decrypt->Base64(inline_data);
+
+						# check if audio (Gemini 2.0+)
+						if(inline_mime_type->StartsWith("audio/")) {
+							part := AudioPart->New(decoded_data, inline_mime_type);
+						}
+						else {
+							part := BinaryPart->New(decoded_data, inline_mime_type);
+						};
 					};
 
 					parts->AddBack(part);
@@ -1633,14 +1771,25 @@ bundle API.Google.Gemini.Tuning {
 					if(part->TypeOf(TextPart)) {
 						text_part := part->As(TextPart);
 						part_obj_json->Insert("text", text_part->GetText());
-					}					
-					else {
+					}
+					# audio (Gemini 2.0+)
+					else if(part->TypeOf(AudioPart)) {
+						audio_part := part->As(AudioPart);
+
+						inline_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+						inline_obj_json->Insert("mimeType", audio_part->GetMimeType());
+						inline_obj_json->Insert("data", audio_part->GetBase64Data());
+
+						part_obj_json->Insert("inlineData", inline_obj_json);
+					}
+					# binary/image
+					else if(part->TypeOf(BinaryPart)) {
 						binary_part := part->As(BinaryPart);
 
 						inline_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 						inline_obj_json->Insert("mimeType", binary_part->GetMimeType());
 						inline_obj_json->Insert("data", binary_part->GetBase64Data());
-						
+
 						part_obj_json->Insert("inlineData", inline_obj_json);
 					};
 
