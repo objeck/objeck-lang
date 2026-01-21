@@ -1,0 +1,131 @@
+#
+# Gemini 2.0 Audio Example
+# Demonstrates audio input and audio output capabilities
+#
+
+use API.Google.Gemini;
+use System.IO.Filesystem;
+
+bundle Default {
+	class GeminiAudio {
+		function : Main(args : String[]) ~ Nil {
+			if(args->Size() < 1) {
+				"Usage: gemini_audio <audio_file.wav|audio_file.mp3>"->ErrorLine();
+				Runtime->Exit(1);
+			};
+
+			audio_file := args[0];
+			token := EndPoint->GetApiKey();
+			if(token = Nil) {
+				"Unable to load API key from 'gemini_api_key.dat'"->ErrorLine();
+				Runtime->Exit(1);
+			};
+
+			# Example 1: Send audio input and get text response
+			"=== Example 1: Audio Input -> Text Output ==="->PrintLine();
+			AudioToText(audio_file, token);
+			"\n"->PrintLine();
+
+			# Example 2: Send text input and get audio response (if supported by model)
+			"=== Example 2: Text Input -> Potential Audio Output ==="->PrintLine();
+			TextToAudioResponse(token);
+		}
+
+		#~
+		Sends audio file to Gemini and gets text transcription/analysis
+		~#
+		function : AudioToText(audio_file : String, token : String) ~ Nil {
+			# Read audio file
+			audio_data := FileReader->ReadBinaryFile(audio_file);
+			if(audio_data = Nil | audio_data->Size() = 0) {
+				"Error: Unable to read audio file: {$audio_file}"->ErrorLine();
+				return;
+			};
+
+			# Determine MIME type from file extension
+			mime_type := "audio/wav";  # default
+			if(audio_file->EndsWith(".mp3")) {
+				mime_type := "audio/mp3";
+			}
+			else if(audio_file->EndsWith(".ogg")) {
+				mime_type := "audio/ogg";
+			}
+			else if(audio_file->EndsWith(".pcm")) {
+				mime_type := "audio/pcm";
+			};
+
+			"Sending audio file: {$audio_file} ({$audio_data->Size()} bytes, {$mime_type})"->PrintLine();
+
+			# Create content with audio and text prompt
+			content := Content->New("user")
+				->AddPart(TextPart->New("Please transcribe and analyze this audio. What is being said?"))
+				->AddPart(AudioPart->New(audio_data, mime_type));
+
+			# Send to Gemini 2.0 Flash (supports audio)
+			candidates := Model->GenerateContent(Model->GEMINI_2_0_FLASH_EXP(), content, token);
+
+			# Process response
+			if(candidates <> Nil & <>candidates->IsEmpty()) {
+				candidate := candidates->Get(0);
+				"Response: {$candidate->GetAllText()}"->PrintLine();
+			}
+			else {
+				error := EndPoint->GetLastError();
+				"Error: {$error}"->ErrorLine();
+			};
+		}
+
+		#~
+		Sends text prompt and checks for audio in response
+		Note: Audio output support varies by model and may not always be present
+		~#
+		function : TextToAudioResponse(token : String) ~ Nil {
+			# Create text content
+			content := Content->New("user")
+				->AddPart(TextPart->New("Tell me a short joke"));
+
+			# Send to Gemini
+			candidates := Model->GenerateContent(Model->GEMINI_2_0_FLASH_EXP(), content, token);
+
+			# Process response
+			if(candidates <> Nil & <>candidates->IsEmpty()) {
+				candidate := candidates->Get(0);
+
+				# Check all parts for audio
+				parts := candidate->GetParts();
+				has_audio := false;
+
+				each(i : parts) {
+					part := parts->Get(i);
+
+					if(part->TypeOf(TextPart)) {
+						text_part := part->As(TextPart);
+						"Text response: {$text_part->GetText()}"->PrintLine();
+					}
+					else if(part->TypeOf(AudioPart)) {
+						audio_part := part->As(AudioPart);
+						audio_data := audio_part->GetData();
+						mime_type := audio_part->GetMimeType();
+
+						"Audio response received: {$audio_data->Size()} bytes, {$mime_type}"->PrintLine();
+
+						# Save audio to file
+						output_file := "gemini_response.wav";
+						FileWriter->WriteFile(output_file, audio_data);
+						"Audio saved to: {$output_file}"->PrintLine();
+
+						has_audio := true;
+					};
+				};
+
+				if(<>has_audio) {
+					"(No audio in response - this is normal for most models/prompts)"->PrintLine();
+				};
+			}
+			else {
+				error := EndPoint->GetLastError();
+				"Error: {$error}"->ErrorLine();
+			};
+		}
+	}
+}
