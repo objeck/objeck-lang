@@ -31,7 +31,6 @@ AI/ML prototyping • Computer vision • Web services • Game development
 
 ```bash
 # Install (example for macOS/Linux)
-curl -o objeck-lang.tar.gz https://objeck.org/latest.tar.gz
 tar xzf objeck-lang.tar.gz
 export PATH=$PATH:~/objeck-lang/bin
 
