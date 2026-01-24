@@ -31,6 +31,7 @@ AI/ML prototyping • Computer vision • Web services • Game development
 
 ```bash
 # Install (example for macOS/Linux)
+curl -LO https://github.com/objeck/objeck-lang/releases/download/v2025.7.0/objeck-linux-x64_v2025.7.0.tgz
 tar xzf objeck-lang.tar.gz
 export PATH=$PATH:~/objeck-lang/bin
 
@@ -148,6 +149,7 @@ faces->Size()->PrintLine();  # "5 faces detected"
 - 🎯 [Examples](https://github.com/objeck/objeck-lang/tree/master/programs)
 - 💬 [Discussions](https://github.com/objeck/objeck-lang/discussions)
 - 🐛 [Issues](https://github.com/objeck/objeck-lang/issues)
+
 
 
 
