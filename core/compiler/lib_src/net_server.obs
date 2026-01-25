@@ -209,6 +209,9 @@ bundle Web.HTTP.Server {
 		}
 	}
 
+	#~
+	Web server configuration manager
+	~#
 	class WebServerConfig implements RequestPageHandler {
 		@filename : String;
 		@instance_str : String;
@@ -223,16 +226,28 @@ bundle Web.HTTP.Server {
 		@default_handler : FileHandler;
 		@content_cache : Map<String, ByteArrayRef>;
 
+		#~
+		Constructor
+		@param filename configuration file path
+		~#
 		New(filename : String) {
 			@filename := filename;
 			@file_group_handler_map := Hash->New()<String, FileGroupHandler>;
 			@content_cache := Map->New()<String, ByteArrayRef>;
 		}
 
+		#~
+		Gets the configuration filename
+		@return configuration filename
+		~#
 		method : public : GetFilename() ~ String {
 			return @filename;
 		}
 
+		#~
+		Gets the request handler class
+		@return request handler class
+		~#
 		method : public : GetClass() ~ Class {
 			class_instance := Class->Instance(@instance_str);
 			if(class_instance <> Nil) {
@@ -241,31 +256,60 @@ bundle Web.HTTP.Server {
 
 			return Nil;
 		}
-		
+
+		#~
+		Checks if debug mode is enabled
+		@return true if debug mode is enabled, false otherwise
+		~#
 		method : public : IsDebug() ~ Bool {
 			return @is_debug;
 		}
 
+		#~
+		Checks if file handling is enabled
+		@return true if file handling is enabled, false otherwise
+		~#
 		method : public : IsHandlingFiles() ~ Bool {
 			return @is_handling_files;
 		}
 
+		#~
+		Gets the server port
+		@return server port
+		~#
 		method : public : GetPort() ~ Int {
 			return @port;
 		}
 
+		#~
+		Gets the SSL certificate path
+		@return SSL certificate path
+		~#
 		method : public : GetCertPath() ~ String {
 			return @cert_path;
 		}
 
+		#~
+		Gets the SSL certificate key path
+		@return SSL certificate key path
+		~#
 		method : public : GetCertKeyPath() ~ String {
 			return @cert_key_path;
 		}
 
+		#~
+		Gets the SSL certificate password
+		@return SSL certificate password
+		~#
 		method : public : GetCertPassword() ~ String {
 			return @cert_passwd;
 		}
 
+		#~
+		Checks if a static handler exists for the given name
+		@param name handler name
+		@return true if static handler exists, false otherwise
+		~#
 		method : public : HasStaticHandler(name : String) ~ Bool {
 			alias_str : String;
 			if(name->StartsWith('/')) {
@@ -289,6 +333,10 @@ bundle Web.HTTP.Server {
 			return @default_handler <> Nil;
 		}
 
+		#~
+		Loads the configuration from file
+		@return true if successful, false otherwise
+		~#
 		method : public : Load() ~ Bool {
 			parser := JsonParser->New(System.IO.Filesystem.FileReader->ReadFile(@filename));
 			if(parser->Parse()) {				
@@ -423,6 +471,13 @@ bundle Web.HTTP.Server {
 			return false;
 		}
 
+		#~
+		Adds files to a group
+		@param group file group
+		@param mimi MIME type
+		@param item_json JSON configuration
+		@return true if successful, false otherwise
+		~#
 		method : AddFiles(group : String, mimi : String, item_json : JsonElement) ~ Bool {		
 			if(<>group->StartsWith('.')) {
 				"Error: file 'group' value must start with '.'"->ErrorLine();
@@ -436,6 +491,13 @@ bundle Web.HTTP.Server {
 			return true;
 		}
 
+		#~
+		Adds a file handler to a group
+		@param group file group
+		@param mimi MIME type
+		@param item_json JSON configuration
+		@return true if successful, false otherwise
+		~#
 		method : AddHandler(group : String, mimi : String, item_json : JsonElement) ~ Bool {
 			alias_str := "<None>";
 			alias_json := item_json->Get("alias");
@@ -475,6 +537,10 @@ bundle Web.HTTP.Server {
 			return true;
 		}
 
+		#~
+		Gets the string representation of the configuration
+		@return string representation
+		~#
 		method : public : ToString() ~ String {
 			buffer := "[Network]\n";
 			buffer += "\tfilename='{$@filename}', instance='{$@instance_str}', handling_files='{$@is_handling_files}', port='{$@port}, is_debug='{$@is_debug}\n";
@@ -514,6 +580,12 @@ bundle Web.HTTP.Server {
 			return Process(request , response);
 		}
 
+		#~
+		Processes HTTP request and response
+		@param request HTTP request
+		@param response HTTP response
+		@return true if successful, false otherwise
+		~#
 		method : Process(request : Request, response : Response) ~ Bool {
 			request_path : String;
 			if(response->HasForwardAlias()) {
@@ -563,6 +635,12 @@ bundle Web.HTTP.Server {
 			return false;
 		}
 
+		#~
+		Processes a file handler request
+		@param file_handler file handler
+		@param response HTTP response
+		@return true if successful, false otherwise
+		~#
 		method : Process(file_handler : FileHandler, response : Response) ~ Bool {
 			if(@is_debug) {
 				file_handler_str := file_handler->ToString();
@@ -621,15 +699,30 @@ bundle Web.HTTP.Server {
 		}
 	}
 
+	#~
+	File group handler for managing file groups
+	~#
 	class : private : FileGroupHandler {
 		@group : String;
 		@alias_map : Map<String, FileHandler>;
 
+		#~
+		Constructor
+		@param group file group name
+		~#
 		New(group : String) {
 			@group := group;
 			@alias_map := Map->New()<String, FileHandler>;
 		}
 
+		#~
+		Inserts a file handler
+		@param alias_str alias name
+		@param location_str file location
+		@param mime_type_str MIME type
+		@param cache_flag true to cache file, false otherwise
+		@return true if successful, false otherwise
+		~#
 		method : public : Insert(alias_str : String, location_str : String, mime_type_str : String, cache_flag : Bool) ~ Bool {
 			if(alias_str->Equals("<None>") | location_str->Equals("<None>") | @alias_map->Has(location_str)) {
 				return false;
@@ -641,14 +734,28 @@ bundle Web.HTTP.Server {
 			return true;
 		}
 
+		#~
+		Gets a file handler by alias
+		@param alias_str alias name
+		@return file handler if found, Nil otherwise
+		~#
 		method : public : GetFileHander(alias_str : String) ~ FileHandler {
 			return @alias_map->Find(alias_str);
 		}
 
+		#~
+		Checks if group has a handler
+		@param alias_str alias name
+		@return true if handler exists, false otherwise
+		~#
 		method : public : HasGroupHander(alias_str : String) ~ Bool {
 			return @alias_map->Has(alias_str);
 		}
 
+		#~
+		Gets the string representation
+		@return string representation
+		~#
 		method : public : ToString() ~ String {
 			buffer := "";
 
@@ -664,6 +771,9 @@ bundle Web.HTTP.Server {
 		}
 	}
 
+	#~
+	File handler for serving static files
+	~#
 	class : private : FileHandler {
 		@group : String;
 		@alias_str : String;
@@ -671,6 +781,14 @@ bundle Web.HTTP.Server {
 		@mime_type : String;
 		@cache : Bool;
 
+		#~
+		Constructor
+		@param group file group name
+		@param alias_str alias name
+		@param location file location
+		@param mime_type MIME type
+		@param cache true to cache file, false otherwise
+		~#
 		New(group : String, alias_str : String, location : String, mime_type : String, cache : Bool) {
 			@group := group;
 			@alias_str := alias_str;
@@ -679,22 +797,42 @@ bundle Web.HTTP.Server {
 			@cache := cache;
 		}
 
+		#~
+		Gets the alias name
+		@return alias name
+		~#
 		method : public : GetAlias() ~ String {
 			return @alias_str;
 		}
 
+		#~
+		Gets the file location
+		@return file location
+		~#
 		method : public : GetLocation() ~ String {
 			return @location;
 		}
 
+		#~
+		Gets the MIME type
+		@return MIME type
+		~#
 		method : public : GetMimeType() ~ String {
 			return @mime_type;
 		}
 
+		#~
+		Checks if file is cached
+		@return true if cached, false otherwise
+		~#
 		method : public : IsCached() ~ Bool {
 			return @cache;
 		}
 
+		#~
+		Gets the string representation
+		@return string representation
+		~#
 		method : public : ToString() ~ String {
 			return "alias='{$@alias_str}', location='{$@location}', mime_type='{$@mime_type}', cache={$@cache}, group='{$@group}'";
 		}
@@ -713,6 +851,11 @@ bundle Web.HTTP.Server {
 		@cookies : Map<String, Cookie>;
 		@content : Byte[];
 
+		#~
+		Constructor
+		@param request_line HTTP request line
+		@param request_headers HTTP request headers
+		~#
 		New(request_line : String, request_headers : Map<String, String>) {
 			@request_line := request_line;
 			@request_headers := request_headers;
@@ -729,6 +872,12 @@ bundle Web.HTTP.Server {
 			};
 		}
 
+		#~
+		Constructor
+		@param request_line HTTP request line
+		@param request_headers HTTP request headers
+		@param content request body content
+		~#
 		New(request_line : String, request_headers : Map<String, String>, content : Byte[]) {
 			@request_line := request_line;
 			@request_headers := request_headers;
@@ -788,6 +937,9 @@ bundle Web.HTTP.Server {
 			return Nil;
 		}
 
+		#~
+		Parses request parameters from content
+		~#
 		method : ParseParams() ~ Nil {
 			if(@content <> Nil & @request_params = Nil) {
 				@request_params := Map->New()<String, String>;
@@ -845,6 +997,9 @@ bundle Web.HTTP.Server {
 			return @cookies->GetValues()<Cookie>;
 		}
 
+		#~
+		Parses cookies from request headers
+		~#
 		method : ParseCookies() ~ Nil {
 			if(@cookies = Nil) {
 				@cookies := Map->New()<String, Cookie>;
@@ -945,6 +1100,11 @@ bundle Web.HTTP.Server {
 			BR
 		}
 
+		#~
+		Constructor
+		@param server_config web server configuration
+		@param request_path HTTP request path
+		~#
 		New(server_config : WebServerConfig, request_path : String) {
 			@server_config := server_config;
 			@request_path := request_path;
@@ -1311,6 +1471,9 @@ bundle Web.HTTP.Server {
 		@parts : Vector<MultipartContent>;
 		@boundary : String;
 
+		#~
+		Constructor
+		~#
 		New() {
 			@parts := Vector->New()<MultipartContent>;
 			@boundary := GetBoundary();
@@ -1686,15 +1849,27 @@ class RequestHandler from HttpsRequestHandler {
 		@server_config : WebServerConfig;
 		@is_debug : Bool;
 
+		#~
+		Constructor
+		~#
 		New() {
 			Parent();
 		}
 
+		#~
+		Sets the server configuration
+		@param server_config web server configuration
+		@param is_debug true for debug output, false otherwise
+		~#
 		method : public : SetConfig(server_config : WebServerConfig, is_debug : Bool) ~ Nil {
 			@server_config := server_config;
 			@is_debug := is_debug;
 		}
-        
+
+		#~
+		Executes the request handler thread
+		@param param thread parameter containing client socket
+		~#
 		method : public : Run(param : Base) ~ Nil {
 			@client := param->As(TCPSecureSocket);
 
@@ -1767,6 +1942,11 @@ class RequestHandler from HttpsRequestHandler {
 			};
 		}
 
+		#~
+		Processes the HTTPS response
+		@param response HTTP response
+		@param is_head true if HEAD request, false otherwise
+		~#
 		method : ProcessResponse(response : Response, is_head : Bool := false) ~ Nil {
 			if(response <> Nil) {
 				response_headers := response->GetHeaders();
@@ -1883,15 +2063,27 @@ class RequestHandler from HttpsRequestHandler {
 		@server_config : WebServerConfig;
 		@is_debug : Bool;
 
+		#~
+		Constructor
+		~#
 		New() {
 			Parent();
 		}
 
+		#~
+		Sets the server configuration
+		@param server_config web server configuration
+		@param is_debug true for debug output, false otherwise
+		~#
 		method : public : SetConfig(server_config : WebServerConfig, is_debug : Bool) ~ Nil {
 			@server_config := server_config;
 			@is_debug := is_debug;
 		}
 
+		#~
+		Executes the request handler thread
+		@param param thread parameter containing client socket
+		~#
 		method : public : Run(param : Base) ~ Nil {
 			@client := param->As(TCPSocket);
 
@@ -1959,11 +2151,16 @@ class RequestHandler from HttpsRequestHandler {
 						};
 					};
 				};
-				
+
 				@client->Close();
 			};
 		}
 
+		#~
+		Processes the HTTP response
+		@param response HTTP response
+		@param is_head true if HEAD request, false otherwise
+		~#
 		method : ProcessResponse(response : Response, is_head : Bool := false) ~ Nil {
 			if(response <> Nil) {
 				response_headers := response->GetHeaders();
@@ -2092,10 +2289,13 @@ bundle Web.HTTP.Server.MCP {
 			return @is_debug;
 		}
 
-		function : virtual : Foo() ~ Nil;
-		
 		#~
-		Initializes the MPC server
+		Virtual placeholder method
+		~#
+		function : virtual : Foo() ~ Nil;
+
+		#~
+		Initializes the MCP server
 		@param config JSON configuration file
 		~#
 		function : Serve(config : JsonElement, handler : McpRequestHandler) ~ Nil {
@@ -2117,6 +2317,9 @@ bundle Web.HTTP.Server.MCP {
 		}
 	}
 
+	#~
+	MCP request handler
+	~#
 	class McpRequestHandler from HttpRequestHandler {
 		@config : static : JsonElement;
 
@@ -2124,10 +2327,18 @@ bundle Web.HTTP.Server.MCP {
 		@session_cache_timer : static : CacheTimer;
 		@session_cache_mutex : static : System.Concurrency.ThreadMutex;
 
+		#~
+		Constructor
+		~#
 		New() {
 			Parent();
 		}
 
+		#~
+		Initializes the MCP request handler
+		@param config JSON configuration
+		@return true if successful, false otherwise
+		~#
 		function : Initialize(config : JsonElement) ~ Bool {
 			@config := config;
 
@@ -2144,6 +2355,9 @@ bundle Web.HTTP.Server.MCP {
 	 		return true;
 		}
 
+		#~
+		Checks and clears expired sessions from cache
+		~#
 		function : CheckCache() ~ Nil {
 			critical(@session_cache_mutex) {
 				# get key/values
@@ -2179,16 +2393,59 @@ bundle Web.HTTP.Server.MCP {
 			}
 		}
 
+		#~
+		Lists resource templates
+		@return vector of resource templates
+		~#
 		method : virtual : ListTemplates() ~ Vector<ResourceTemplate>;
+
+		#~
+		Lists resources
+		@return vector of resource items
+		~#
 		method : virtual : ListResources() ~ Vector<ResourceItem>;
+
+		#~
+		Gets a resource by URI
+		@param uri resource URI
+		@return vector of resource content
+		~#
 		method : virtual : GetResource(uri : Url) ~ Vector<ResourceContent>;
-		
+
+		#~
+		Lists available tools
+		@return vector of tool items
+		~#
 		method : virtual : ListTools() ~ Vector<ToolItem>;
+
+		#~
+		Calls a tool
+		@param name tool name
+		@param arguments tool arguments
+		@return vector of tool content
+		~#
 		method : virtual : CallTool(name : String, arguments : JsonElement) ~ Vector<ToolContent>;
-		
+
+		#~
+		Lists available prompts
+		@return vector of prompt items
+		~#
 		method : virtual : ListPrompts() ~ Vector<PromptItem>;
+
+		#~
+		Calls a prompt
+		@param name prompt name
+		@param arguments prompt arguments
+		@return vector of prompt messages
+		~#
 		method : virtual : CallPrompt(name : String, arguments : JsonElement) ~ Vector<PromptMessage>;
-		
+
+		#~
+		Processes GET requests
+		@param request HTTP request
+		@param response HTTP response
+		@return true to continue processing, false otherwise
+		~#
 		method : ProcessGet(request : Web.HTTP.Server.Request, response : Web.HTTP.Server.Response) ~ Bool {
 			session : Hash<String, String>;
 			session_id := request->GetHeader("mcp-session-id");
@@ -2211,6 +2468,12 @@ bundle Web.HTTP.Server.MCP {
 			return false;
 		}
 
+		#~
+		Processes POST requests
+		@param request HTTP request
+		@param response HTTP response
+		@return true to continue processing, false otherwise
+		~#
 		method : ProcessPost(request : Web.HTTP.Server.Request, response : Web.HTTP.Server.Response) ~ Bool {
 			session : Hash<String, String>;
 			session_id := request->GetHeader("mcp-session-id");
@@ -2500,6 +2763,13 @@ bundle Web.HTTP.Server.MCP {
 			return false;
 		}
 
+		#~
+		Writes a JSON-RPC response
+		@param message response message
+		@param id request ID
+		@param response HTTP response
+		@param code HTTP status code
+		~#
 		method : WriteResponse(message : JsonElement, id : Int, response : Web.HTTP.Server.Response, code : Int) ~ Nil {
 			packet := JsonElement->New(JsonElement->JsonType->OBJECT);
 			packet->Insert("jsonrpc", "2.0");
@@ -2519,23 +2789,38 @@ bundle Web.HTTP.Server.MCP {
 			response->SetCodeTypeContent(code, "application/json", packet->ToString());
 		}
 
+		#~
+		Displays payload for debugging
+		@param payload payload string
+		~#
 		function : ShowPayload(payload : String) ~ Nil {
 			payload->ReplaceAll("\t", "  ")->PrintLine();
 		}
-	} 
+	}
 
+	#~
+	Cache timer for session management
+	~#
 	class : private : CacheTimer from System.Time.Alarm {
+		#~
+		Constructor
+		@param time timer interval in milliseconds
+		~#
 		New(time : Int) {
 			Parent(time, true);
 		}
 
+		#~
+		Timer callback method
+		@param param callback parameter
+		~#
 		method : public : Ring(param:System.Base) ~ Nil {
 			McpRequestHandler->CheckCache();
 		}
 	}
 
 	#~
-	TODO
+	MCP resource item
 	~#
 	class ResourceItem {
 		@uri : Url;
@@ -2545,6 +2830,15 @@ bundle Web.HTTP.Server.MCP {
 		@title : String;
 		@size : Int;
 
+		#~
+		Constructor
+		@param uri resource URI
+		@param name resource name
+		@param title resource title
+		@param description resource description
+		@param mime_type MIME type
+		@param size resource size
+		~#
 		New(uri : Url, name : String, title : String, description : String, mime_type : String, size : Int) {
 			@uri := uri;
 			@name := name;
@@ -2554,6 +2848,14 @@ bundle Web.HTTP.Server.MCP {
 			@size := size;
 		}
 
+		#~
+		Constructor
+		@param uri resource URI
+		@param name resource name
+		@param title resource title
+		@param description resource description
+		@param mime_type MIME type
+		~#
 		New(uri : Url, name : String, title : String, description : String, mime_type : String) {
 			@uri := uri;
 			@name := name;
@@ -2562,6 +2864,13 @@ bundle Web.HTTP.Server.MCP {
 			@mime_type := mime_type;
 		}
 
+		#~
+		Constructor
+		@param uri resource URI
+		@param name resource name
+		@param title resource title
+		@param mime_type MIME type
+		~#
 		New(uri : Url, name : String, title : String, mime_type : String) {
 			@uri := uri;
 			@name := name;
@@ -2569,41 +2878,80 @@ bundle Web.HTTP.Server.MCP {
 			@mime_type := mime_type;
 		}
 
+		#~
+		Constructor
+		@param uri resource URI
+		@param name resource name
+		@param mime_type MIME type
+		~#
 		New(uri : Url, name : String, mime_type : String) {
 			@uri := uri;
 			@name := name;
 			@mime_type := mime_type;
 		}
 
+		#~
+		Constructor
+		@param uri resource URI
+		@param name resource name
+		~#
 		New(uri : Url, name : String) {
 			@uri := uri;
 			@name := name;
 		}
 
+		#~
+		Gets the resource URI
+		@return resource URI
+		~#
 		method : public : GetUri() ~ Url {
 			return @uri;
 		}
 
+		#~
+		Gets the resource title
+		@return resource title
+		~#
 		method : public : GetTitle() ~ String {
 			return @title;
 		}
 
+		#~
+		Gets the resource size
+		@return resource size
+		~#
 		method : public : GetSize() ~ Int {
 			return @size;
 		}
 
+		#~
+		Gets the resource name
+		@return resource name
+		~#
 		method : public : GetName() ~ String {
 			return @name;
 		}
-		
+
+		#~
+		Gets the resource description
+		@return resource description
+		~#
 		method : public : GetDescription() ~ String {
 			return @description;
 		}
-		
+
+		#~
+		Gets the MIME type
+		@return MIME type
+		~#
 		method : public : GetMimeType() ~ String {
 			return @mime_type;
 		}
 
+		#~
+		Converts to JSON element
+		@return JSON element
+		~#
 		method : public : ToJson() ~ JsonElement {
 			buffer_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 
@@ -2631,12 +2979,22 @@ bundle Web.HTTP.Server.MCP {
 	}
 
 	#~
-	TODO
+	MCP resource content
 	~#
 	class ResourceContent from ResourceItem {
 		@text : String;
 		@is_blob : Bool;
-		
+
+		#~
+		Constructor
+		@param uri resource URI
+		@param name resource name
+		@param title resource title
+		@param description resource description
+		@param mime_type MIME type
+		@param text resource text content
+		@param is_blob true if blob data, false otherwise
+		~#
 		New(uri : Url, name : String, title : String, description : String, mime_type : String, text : String, is_blob : Bool := false) {
 			Parent(uri, name, title, description, mime_type);
 
@@ -2644,6 +3002,15 @@ bundle Web.HTTP.Server.MCP {
 			@is_blob := is_blob;
 		}
 
+		#~
+		Constructor
+		@param uri resource URI
+		@param name resource name
+		@param title resource title
+		@param mime_type MIME type
+		@param text resource text content
+		@param is_blob true if blob data, false otherwise
+		~#
 		New(uri : Url, name : String, title : String, mime_type : String, text : String, is_blob : Bool := false) {
 			Parent(uri, name, title, mime_type);
 
@@ -2651,6 +3018,14 @@ bundle Web.HTTP.Server.MCP {
 			@is_blob := is_blob;
 		}
 
+		#~
+		Constructor
+		@param uri resource URI
+		@param name resource name
+		@param mime_type MIME type
+		@param text resource text content
+		@param is_blob true if blob data, false otherwise
+		~#
 		New(uri : Url, name : String, mime_type : String, text : String, is_blob : Bool := false) {
 			Parent(uri, name, mime_type);
 
@@ -2658,14 +3033,26 @@ bundle Web.HTTP.Server.MCP {
 			@is_blob := is_blob;
 		}
 
+		#~
+		Checks if content is blob data
+		@return true if blob data, false otherwise
+		~#
 		method : public : IsBlob() ~ Bool {
 			return @is_blob;
 		}
 
+		#~
+		Gets the text content
+		@return text content
+		~#
 		method : public : GetText() ~ String {
 			return @text;
 		}
 
+		#~
+		Converts to JSON element
+		@return JSON element
+		~#
 		method : public : ToJson() ~ JsonElement {
 			buffer_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 
@@ -2696,14 +3083,26 @@ bundle Web.HTTP.Server.MCP {
 	}
 
 	#~
-	TODO
+	MCP resource template
 	~#
 	class ResourceTemplate from ResourceItem {
+		#~
+		Constructor
+		@param uri resource URI template
+		@param name resource name
+		@param title resource title
+		@param description resource description
+		@param mime_type MIME type
+		~#
 		New(uri : Url, name : String, title : String, description : String, mime_type : String) {
 			Parent(uri, name, title, description, mime_type);
 			@title := title;
 		}
 
+		#~
+		Converts to JSON element
+		@return JSON element
+		~#
 		method : public : ToJson() ~ JsonElement {
 			buffer_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 
@@ -2718,7 +3117,7 @@ bundle Web.HTTP.Server.MCP {
 	}
 
 	#~
-	TODO
+	MCP tool item
 	~#
 	class ToolItem {
 		@name : String;
@@ -2727,6 +3126,14 @@ bundle Web.HTTP.Server.MCP {
 		@input_schema : FunctionType;
 		@output_schema : FunctionType;
 
+		#~
+		Constructor
+		@param name tool name
+		@param title tool title
+		@param description tool description
+		@param input_schema input schema
+		@param output_schema output schema
+		~#
 		New(name : String, title : String, description : String, input_schema : FunctionType, output_schema : FunctionType) {
 			@name := name;
 			@title := title;
@@ -2736,6 +3143,13 @@ bundle Web.HTTP.Server.MCP {
 			@output_schema := output_schema;
 		}
 
+		#~
+		Constructor
+		@param name tool name
+		@param description tool description
+		@param input_schema input schema
+		@param output_schema output schema
+		~#
 		New(name : String, description : String, input_schema : FunctionType, output_schema : FunctionType) {
 			@name := name;
 			@description := description;
@@ -2744,6 +3158,12 @@ bundle Web.HTTP.Server.MCP {
 			@output_schema := output_schema;
 		}
 
+		#~
+		Constructor
+		@param name tool name
+		@param description tool description
+		@param input_schema input schema
+		~#
 		New(name : String, description : String, input_schema : FunctionType) {
 			@name := name;
 			@description := description;
@@ -2751,6 +3171,12 @@ bundle Web.HTTP.Server.MCP {
 			@input_schema := input_schema;
 		}
 
+		#~
+		Constructor
+		@param name tool name
+		@param input_schema input schema
+		@param output_schema output schema
+		~#
 		New(name : String, input_schema : FunctionType, output_schema : FunctionType) {
 			@name := name;
 			
@@ -2758,26 +3184,50 @@ bundle Web.HTTP.Server.MCP {
 			@output_schema := output_schema;
 		}
 
+		#~
+		Gets the tool name
+		@return tool name
+		~#
 		method : public : GetName() ~ String {
 			return @name;
 		}
 
+		#~
+		Gets the tool title
+		@return tool title
+		~#
 		method : public : GeTitle() ~ String {
 			return @title;
 		}
-		
+
+		#~
+		Gets the tool description
+		@return tool description
+		~#
 		method : public : GetDescription() ~ String {
 			return @description;
 		}
 
+		#~
+		Gets the input schema
+		@return input schema
+		~#
 		method : public : GetInputSchema() ~ FunctionType {
 			return @input_schema;
 		}
 
+		#~
+		Gets the output schema
+		@return output schema
+		~#
 		method : public : GetOutputSchema() ~ FunctionType {
 			return @output_schema;
 		}
 
+		#~
+		Converts to JSON element
+		@return JSON element
+		~#
 		method : public : ToJson() ~ JsonElement {
 			buffer_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 
@@ -2806,7 +3256,7 @@ bundle Web.HTTP.Server.MCP {
 	}
 
 	#~
-	TODO
+	MCP tool content
 	~#
 	class ToolContent {
 		@type : String;
@@ -2818,12 +3268,25 @@ bundle Web.HTTP.Server.MCP {
 		@text : String;
 		@is_blob : Bool;
 
+		#~
+		Constructor
+		@param type content type
+		@param text content text
+		@param is_blob true if blob data, false otherwise
+		~#
 		New(type : String, text : String, is_blob : Bool := false) {
 			@type := type;
 			@text := text;
 			@is_blob := is_blob;
 		}
 
+		#~
+		Constructor
+		@param type content type
+		@param mime_type MIME type
+		@param text content text
+		@param is_blob true if blob data, false otherwise
+		~#
 		New(type : String, mime_type : String, text : String, is_blob : Bool := false) {
 			@type := type;
 			@mime_type := mime_type;
@@ -2831,6 +3294,14 @@ bundle Web.HTTP.Server.MCP {
 			@is_blob := is_blob;
 		}
 
+		#~
+		Constructor
+		@param type content type
+		@param mime_type MIME type
+		@param description content description
+		@param text content text
+		@param is_blob true if blob data, false otherwise
+		~#
 		New(type : String, mime_type : String, description : String, text : String, is_blob : Bool := false) {
 			@type := type;
 			@mime_type := mime_type;
@@ -2839,6 +3310,15 @@ bundle Web.HTTP.Server.MCP {
 			@is_blob := is_blob;
 		}
 
+		#~
+		Constructor
+		@param type content type
+		@param mime_type MIME type
+		@param title content title
+		@param description content description
+		@param text content text
+		@param is_blob true if blob data, false otherwise
+		~#
 		New(type : String, mime_type : String, title : String, description : String, text : String, is_blob : Bool := false) {
 			@type := type;
 			@mime_type := mime_type;
@@ -2848,30 +3328,58 @@ bundle Web.HTTP.Server.MCP {
 			@is_blob := is_blob;
 		}
 
+		#~
+		Gets the content type
+		@return content type
+		~#
 		method : public : GetType() ~ String {
 			return @type;
 		}
 
+		#~
+		Gets the content title
+		@return content title
+		~#
 		method : public : GetTitle() ~ String {
 			return @title;
 		}
-		
+
+		#~
+		Gets the content description
+		@return content description
+		~#
 		method : public : GetDescription() ~ String {
 			return @description;
 		}
-		
+
+		#~
+		Gets the MIME type
+		@return MIME type
+		~#
 		method : public : GetMimeType() ~ String {
 			return @mime_type;
 		}
 
+		#~
+		Checks if content is blob data
+		@return true if blob data, false otherwise
+		~#
 		method : public : IsBlob() ~ Bool {
 			return @is_blob;
 		}
 
+		#~
+		Gets the text content
+		@return text content
+		~#
 		method : public : GetText() ~ String {
 			return @text;
 		}
 
+		#~
+		Converts to JSON element
+		@return JSON element
+		~#
 		method : public : ToJson() ~ JsonElement {
 			buffer_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 
@@ -2901,7 +3409,7 @@ bundle Web.HTTP.Server.MCP {
 	}
 
 	#~
-	TODO
+	MCP prompt item
 	~#
 	class PromptItem {
 		@name : String;
@@ -2910,6 +3418,14 @@ bundle Web.HTTP.Server.MCP {
 		@description : String;
 		@arguments : Vector<PromptArgument>;
 
+		#~
+		Constructor
+		@param name prompt name
+		@param uri prompt URI
+		@param title prompt title
+		@param description prompt description
+		@param arguments prompt arguments
+		~#
 		New(name : String, uri : Url, title : String, description : String, arguments : Vector<PromptArgument>) {
 			@name := name;
 			@uri := uri;
@@ -2917,12 +3433,25 @@ bundle Web.HTTP.Server.MCP {
 			@description := description;
 		}
 
+		#~
+		Constructor
+		@param name prompt name
+		@param description prompt description
+		@param arguments prompt arguments
+		~#
 		New(name : String, description : String, arguments : Vector<PromptArgument>) {
 			@name := name;
 			@description := description;
 			@arguments := arguments;
 		}
 
+		#~
+		Constructor
+		@param name prompt name
+		@param title prompt title
+		@param description prompt description
+		@param arguments prompt arguments
+		~#
 		New(name : String, title : String, description : String, arguments : Vector<PromptArgument>) {
 			@name := name;
 			@title := title;
@@ -2930,30 +3459,58 @@ bundle Web.HTTP.Server.MCP {
 			@arguments := arguments;
 		}
 
+		#~
+		Constructor
+		@param name prompt name
+		~#
 		New(name : String) {
-			@name := name;			
+			@name := name;
 		}
 
+		#~
+		Gets the prompt name
+		@return prompt name
+		~#
 		method : public : GetName() ~ String {
 			return @name;
 		}
 
+		#~
+		Gets the prompt title
+		@return prompt title
+		~#
 		method : public : GeTitle() ~ String {
 			return @title;
 		}
 
+		#~
+		Gets the prompt URI
+		@return prompt URI
+		~#
 		method : public : GetUri() ~ Url {
 			return @uri;
 		}
-		
+
+		#~
+		Gets the prompt description
+		@return prompt description
+		~#
 		method : public : GetDescription() ~ String {
 			return @description;
 		}
 
+		#~
+		Gets the prompt arguments
+		@return prompt arguments
+		~#
 		method : public : GetArguments() ~ Vector<PromptArgument> {
 			return @arguments;
 		}
 
+		#~
+		Converts to JSON element
+		@return JSON element
+		~#
 		method : public : ToJson() ~ JsonElement {
 			buffer_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 
@@ -2982,7 +3539,7 @@ bundle Web.HTTP.Server.MCP {
 	}
 
 	#~
-	TODO: restrict types?
+	MCP prompt argument
 	~#
 	class PromptArgument {
 		@name : String;
@@ -2990,12 +3547,25 @@ bundle Web.HTTP.Server.MCP {
 		@code : String;
 		@required : Bool;
 
+		#~
+		Constructor
+		@param name argument name
+		@param description argument description
+		@param required true if required, false otherwise
+		~#
 		New(name : String, description : String, required : Bool := false) {
 			@name := name;
 			@description := description;
 			@required := required;
 		}
 
+		#~
+		Constructor
+		@param name argument name
+		@param description argument description
+		@param code argument code
+		@param required true if required, false otherwise
+		~#
 		New(name : String, description : String, code : String, required : Bool := false) {
 			@name := name;
 			@description := description;
@@ -3003,22 +3573,42 @@ bundle Web.HTTP.Server.MCP {
 			@required := required;
 		}
 
+		#~
+		Gets the argument name
+		@return argument name
+		~#
 		method : public : GetName() ~ String {
 			return @name;
 		}
 
+		#~
+		Checks if argument is required
+		@return true if required, false otherwise
+		~#
 		method : public : IsRequired() ~ Bool {
 			return @required;
 		}
 
+		#~
+		Gets the argument code
+		@return argument code
+		~#
 		method : public : GetCode() ~ String {
 			return @code;
 		}
 
+		#~
+		Gets the argument description
+		@return argument description
+		~#
 		method : public : GetDescription() ~ String {
 			return @description;
 		}
 
+		#~
+		Converts to JSON element
+		@return JSON element
+		~#
 		method : public : ToJson() ~ JsonElement {
 			buffer_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 
@@ -3038,7 +3628,7 @@ bundle Web.HTTP.Server.MCP {
 	}
 
 	#~
-	TODO: restrict types?
+	MCP prompt message
 	~#
 	class PromptMessage {
 		@role : String;
@@ -3046,34 +3636,66 @@ bundle Web.HTTP.Server.MCP {
 		@resource : ResourceContent;
 		@text : String;
 
+		#~
+		Constructor
+		@param role message role
+		@param type message type
+		@param resource resource content
+		~#
 		New(role : String, type : String, resource : ResourceContent) {
 			@role := role;
 			@type := type;
 			@resource := resource;
 		}
 
+		#~
+		Constructor
+		@param role message role
+		@param type message type
+		@param text message text
+		~#
 		New(role : String, type : String, text : String) {
 			@role := role;
 			@type := type;
 			@text := text;
 		}
 
+		#~
+		Gets the message role
+		@return message role
+		~#
 		method : public : GetRole() ~ String {
 			return @role;
 		}
 
+		#~
+		Gets the resource content
+		@return resource content
+		~#
 		method : public : GetResource() ~ ResourceContent {
 			return @resource;
 		}
 
+		#~
+		Gets the message text
+		@return message text
+		~#
 		method : public : GetText() ~ String {
 			return @text;
 		}
 
+		#~
+		Gets the message type
+		@return message type
+		~#
 		method : public : GetType() ~ String {
 			return @type;
 		}
 
+		#~
+		Converts to JSON element
+		@return JSON element
+		~#
 		method : public : ToJson() ~ JsonElement {
 			buffer_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 
@@ -3199,15 +3821,22 @@ each(i : 3) {
 		}
 	}
 
+	#~
+	OAuth request handler
+	~#
 	class : private : OAuthHandler from HttpRequestHandler {
 		@client_id : static : String;
 		@client_secret: static : String;
 		@redirect_uri : static : String;
 		@state : static : String;
 		@token_uri_str : static : String;
-		
+
 		@token : static : OAuthToken;
 
+		#~
+		Initializes the OAuth handler
+		@param config OAuth configuration
+		~#
 		function : Initialize(config : OAuthConfig) ~ Nil {
 			@client_id := config->GetClientId();
 			@client_secret := config->GetClientSecret();
@@ -3216,20 +3845,39 @@ each(i : 3) {
 			@token_uri_str := config->GetTokenUri();
 		}
 
+		#~
+		Constructor
+		~#
 		New() {
 			Parent();
 		}
 
+		#~
+		Gets the OAuth token
+		@return OAuth token
+		~#
 		function : Get() ~ OAuthToken {
 			return @token;
 		}
 
+		#~
+		Sets the OAuth token
+		@param access_token access token
+		@param expires_in expiration time
+		@param scope token scope
+		~#
 		function : Set(access_token : String, expires_in : Int, scope : String) ~ Nil {
 			if(@token <> Nil) {
 				@token->Set(access_token, expires_in, scope);
 			};
 		}
 
+		#~
+		Processes GET requests for OAuth callback
+		@param request HTTP request
+		@param response HTTP response
+		@return true to continue processing, false otherwise
+		~#
 		method : ProcessGet(request : Web.HTTP.Server.Request, response : Web.HTTP.Server.Response) ~ Bool {
 			if(<>request->HasParam("error") & request->GetParam("state")->Equals(@state)) {
 				code_id := request->GetParam("code");
@@ -3262,11 +3910,20 @@ each(i : 3) {
 			return false;
 		}
 
+		#~
+		Processes POST requests
+		@param request HTTP request
+		@param response HTTP response
+		@return true to continue processing, false otherwise
+		~#
 		method : ProcessPost(request : Web.HTTP.Server.Request, response : Web.HTTP.Server.Response) ~ Bool {
 			return false;
 		}
 	}
 
+	#~
+	OAuth configuration
+	~#
 	class : private : OAuthConfig {
 		@install_json : JsonElement;
 
@@ -3280,6 +3937,11 @@ each(i : 3) {
 		@auth_uri : String;
 		@token_uri : String;
 
+		#~
+		Constructor
+		@param install_json installation JSON configuration
+		@param scopes OAuth scopes
+		~#
 		New : private(install_json : JsonElement, scopes : String[]) {
 			@install_json := install_json;
 
@@ -3305,6 +3967,12 @@ each(i : 3) {
 			};
 		}
 
+		#~
+		Loads OAuth configuration from file
+		@param filename configuration file path
+		@param scopes OAuth scopes
+		@return OAuth configuration if successful, Nil otherwise
+		~#
 		function : Load(filename : String, scopes : String[]) ~ OAuthConfig {
 			buffer := System.IO.Filesystem.FileReader->ReadFile(filename);
 			if(buffer <> Nil) {
@@ -3317,18 +3985,35 @@ each(i : 3) {
 			return Nil;
 		}
 
+		#~
+		Gets the redirect URI
+		@return redirect URI
+		~#
 		method : public : GetRedirectUri() ~ String {
 			return @redirect_uri;
 		}
 
+		#~
+		Gets the redirect port
+		@return redirect port
+		~#
 		method : public : GetRedirectPort() ~ Int {
 			return @redirect_port;
 		}
 
+		#~
+		Gets the OAuth scope
+		@return OAuth scope
+		~#
 		method : public : GetScope() ~ String {
 			return @scope;
 		}
 
+		#~
+		Gets a configuration value by name
+		@param name configuration name
+		@return configuration value
+		~#
 		method : Get(name : String) ~ String {
 			if(@install_json <> Nil) {
 				return @install_json->Get(name)->GetString();
@@ -3337,6 +4022,10 @@ each(i : 3) {
 			return Nil;
 		}
 
+		#~
+		Gets the client ID
+		@return client ID
+		~#
 		method : public : GetClientId() ~ String {
 			if(@client_id = Nil) {
 				@client_id := Get("client_id");
@@ -3345,6 +4034,10 @@ each(i : 3) {
 			return @client_id;
 		}
 
+		#~
+		Gets the client secret
+		@return client secret
+		~#
 		method : public : GetClientSecret() ~ String {
 			if(@client_secret = Nil) {
 				@client_secret := Get("client_secret");
@@ -3353,6 +4046,10 @@ each(i : 3) {
 			return @client_secret;
 		}
 
+		#~
+		Gets the authorization URI
+		@return authorization URI
+		~#
 		method : public : GetAuthUri() ~ String {
 			if(@auth_uri = Nil) {
 				@auth_uri := Get("auth_uri");
@@ -3361,6 +4058,10 @@ each(i : 3) {
 			return @auth_uri;
 		}
 
+		#~
+		Gets the token URI
+		@return token URI
+		~#
 		method : public : GetTokenUri() ~ String {
 			if(@token_uri = Nil) {
 				@token_uri := Get("token_uri");
@@ -3369,6 +4070,10 @@ each(i : 3) {
 			return @token_uri;
 		}
 
+		#~
+		Gets the state parameter
+		@return state parameter
+		~#
 		method : public : GetState() ~ String {
 			if(@state = Nil) {
 				@state := GenerateState();
@@ -3377,6 +4082,10 @@ each(i : 3) {
 			return @state;
 		}
 
+		#~
+		Generates a random state parameter
+		@return random state string
+		~#
 		method : GenerateState() ~ String {
 			values := [ 
 				'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
@@ -3410,6 +4119,13 @@ each(i : 3) {
 		@expires_in : Int;
 		@session : String;
 
+		#~
+		Constructor
+		@param access_token access token
+		@param refresh_token refresh token
+		@param expires_in expiration time
+		@param scope token scope
+		~#
 		New(access_token : String, refresh_token : String, expires_in : Int, scope : String) {
 			@access_token := access_token;
 			@refresh_token := refresh_token; 
@@ -3419,6 +4135,12 @@ each(i : 3) {
 			@session := FormatNewToken(@access_token, @expires_in);
 		}
 
+		#~
+		Formats a new token
+		@param access_token access token
+		@param expires_in expiration time
+		@return formatted token string
+		~#
 		function : FormatNewToken(access_token : String, expires_in : Int) ~ String {
 			date := System.Time.Date->New();
 			date->AddSeconds(expires_in);
@@ -3426,7 +4148,12 @@ each(i : 3) {
 
 			return "{$date_str}\r\n{$access_token}";
 		}
-		
+
+		#~
+		Reads and validates token format
+		@param secret_str secret string
+		@return token if valid, Nil otherwise
+		~#
 		function : ReadTokenFormat(secret_str : String) ~ String {
 			if(secret_str <> Nil) {
 				client_secret_parts := secret_str->Split("\r\n");
@@ -3481,6 +4208,12 @@ each(i : 3) {
 			return @expires_in;
 		}
 
+		#~
+		Sets the token values
+		@param access_token access token
+		@param expires_in expiration time
+		@param scope token scope
+		~#
 		method : public : Set(access_token : String, expires_in : Int, scope : String) ~ Nil {
 			@access_token := access_token;
 			@expires_in := expires_in;
