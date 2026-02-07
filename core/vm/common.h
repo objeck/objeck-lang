@@ -54,9 +54,13 @@
 #include "../shared/instrs.h"
 #include "../shared/sys.h"
 #include "../shared/traps.h"
-#include <openssl/bio.h>
-#include <openssl/ssl.h>
-#include <openssl/err.h>
+#include <mbedtls/ssl.h>
+#include <mbedtls/net_sockets.h>
+#include <mbedtls/entropy.h>
+#include <mbedtls/ctr_drbg.h>
+#include <mbedtls/x509_crt.h>
+#include <mbedtls/pk.h>
+#include <mbedtls/error.h>
 
 #ifdef _WIN32
 #include <direct.h>
@@ -91,6 +95,65 @@
 
 #define CALC_STACK_SIZE 16384
 #define CACERT_PEM_FILE "cacert.pem"
+
+//
+// mbedTLS context wrappers for SSL/TLS connections
+//
+struct SecureSocketCtx {
+  mbedtls_ssl_context ssl;
+  mbedtls_ssl_config conf;
+  mbedtls_net_context net;
+  mbedtls_x509_crt cacert;
+  mbedtls_entropy_context entropy;
+  mbedtls_ctr_drbg_context ctr_drbg;
+  int last_error;
+
+  SecureSocketCtx() : last_error(0) {
+    mbedtls_ssl_init(&ssl);
+    mbedtls_ssl_config_init(&conf);
+    mbedtls_net_init(&net);
+    mbedtls_x509_crt_init(&cacert);
+    mbedtls_entropy_init(&entropy);
+    mbedtls_ctr_drbg_init(&ctr_drbg);
+  }
+
+  ~SecureSocketCtx() {
+    mbedtls_ssl_free(&ssl);
+    mbedtls_ssl_config_free(&conf);
+    mbedtls_net_free(&net);
+    mbedtls_x509_crt_free(&cacert);
+    mbedtls_ctr_drbg_free(&ctr_drbg);
+    mbedtls_entropy_free(&entropy);
+  }
+};
+
+struct SecureServerCtx {
+  mbedtls_ssl_config conf;
+  mbedtls_x509_crt srvcert;
+  mbedtls_pk_context pkey;
+  mbedtls_entropy_context entropy;
+  mbedtls_ctr_drbg_context ctr_drbg;
+  mbedtls_net_context listen_fd;
+  int last_error;
+
+  SecureServerCtx() : last_error(0) {
+    mbedtls_ssl_config_init(&conf);
+    mbedtls_x509_crt_init(&srvcert);
+    mbedtls_pk_init(&pkey);
+    mbedtls_entropy_init(&entropy);
+    mbedtls_ctr_drbg_init(&ctr_drbg);
+    mbedtls_net_init(&listen_fd);
+  }
+
+  ~SecureServerCtx() {
+    mbedtls_ssl_config_free(&conf);
+    mbedtls_x509_crt_free(&srvcert);
+    mbedtls_pk_free(&pkey);
+    mbedtls_ctr_drbg_free(&ctr_drbg);
+    mbedtls_entropy_free(&entropy);
+    mbedtls_net_free(&listen_fd);
+  }
+};
 
 #ifdef _WIN32
 #define MUTEX_LOCK EnterCriticalSection
@@ -1576,18 +1639,22 @@ class TrapProcessor {
 
 
    // Returns: 1 = ready, 0 = not ready, -1 = error
-   static int bio_ready_for_io(BIO* bio, bool is_write) {
-      // For reads, see if OpenSSL already has decrypted bytes buffered.
+   static int ssl_ready_for_io(SecureSocketCtx* ctx, bool is_write) {
+      if(!ctx) {
+         return -1;
+      }
+
+      // For reads, check if mbedTLS has buffered decrypted data.
       if(!is_write) {
-         size_t pending = (size_t)BIO_ctrl_pending(bio);
+         size_t pending = mbedtls_ssl_get_bytes_avail(&ctx->ssl);
          if(pending > 0) {
             return 1;
          }
       }
 
-      // Get the underlying socket/file descriptor from the BIO.
-      int fd = -1;
-      if(BIO_get_fd(bio, &fd) <= 0 || fd < 0) {
+      // Get the underlying socket file descriptor.
+      int fd = ctx->net.fd;
+      if(fd < 0) {
          return -1;
       }
 

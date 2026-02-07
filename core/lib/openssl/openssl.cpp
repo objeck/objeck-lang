@@ -1,13 +1,14 @@
 /***************************************************************************
- * OpenSSL support for Objeck
+ * Cryptographic support for Objeck (mbedTLS backend)
  *
- * Copyright (c) 2011-2020, Randy Hollines
+ * Copyright (c) 2011-2026, Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
- * - Redistributions of source code must retain the above copyright * notice, this list of conditions and the following disclaimer.
+ * - Redistributions of source code must retain the above copyright
+ * notice, this list of conditions and the following disclaimer.
  * - Redistributions in binary form must reproduce the above copyright
  * notice, this list of conditions and the following disclaimer in
  * the documentation and/or other materials provided with the distribution.
@@ -29,12 +30,120 @@
  ***************************************************************************/
 
 #include <string.h>
-#include <openssl/sha.h>
-#include <openssl/aes.h>
-#include <openssl/md5.h>
-#include <openssl/ripemd.h>
+#include <stdlib.h>
+#include <mbedtls/md.h>
+#include <mbedtls/cipher.h>
+#include <mbedtls/base64.h>
 
 #include "../../vm/lib_api.h"
+
+// Digest length constants
+#define SHA1_DIGEST_LEN    20
+#define SHA256_DIGEST_LEN  32
+#define SHA512_DIGEST_LEN  64
+#define MD5_DIGEST_LEN     16
+#define RIPEMD160_DIGEST_LEN 20
+#define AES_BLOCK_LEN      16
+
+//
+// Reimplementation of OpenSSL's EVP_BytesToKey for AES backward compatibility.
+// Derives key and IV from password + salt using iterated hashing.
+//
+static int evp_bytes_to_key(mbedtls_md_type_t md_type,
+                            const unsigned char* salt, int salt_len,
+                            const unsigned char* password, int password_len,
+                            int count,
+                            unsigned char* key_out, int key_len,
+                            unsigned char* iv_out, int iv_len)
+{
+  const mbedtls_md_info_t* md_info = mbedtls_md_info_from_type(md_type);
+  if(!md_info) {
+    return 0;
+  }
+
+  const int md_size = mbedtls_md_get_size(md_info);
+  unsigned char md_buf[MBEDTLS_MD_MAX_SIZE];
+  const int total_needed = key_len + iv_len;
+  int generated = 0;
+  int addmd = 0;
+
+  unsigned char* output = (unsigned char*)malloc(total_needed);
+  if(!output) {
+    return 0;
+  }
+
+  mbedtls_md_context_t ctx;
+  mbedtls_md_init(&ctx);
+
+  if(mbedtls_md_setup(&ctx, md_info, 0) != 0) {
+    mbedtls_md_free(&ctx);
+    free(output);
+    return 0;
+  }
+
+  while(generated < total_needed) {
+    mbedtls_md_starts(&ctx);
+
+    if(addmd) {
+      mbedtls_md_update(&ctx, md_buf, md_size);
+    }
+    addmd = 1;
+
+    mbedtls_md_update(&ctx, password, password_len);
+    if(salt) {
+      mbedtls_md_update(&ctx, salt, salt_len);
+    }
+    mbedtls_md_finish(&ctx, md_buf);
+
+    for(int i = 1; i < count; i++) {
+      mbedtls_md_starts(&ctx);
+      mbedtls_md_update(&ctx, md_buf, md_size);
+      mbedtls_md_finish(&ctx, md_buf);
+    }
+
+    int to_copy = (total_needed - generated < md_size) ? (total_needed - generated) : md_size;
+    memcpy(output + generated, md_buf, to_copy);
+    generated += to_copy;
+  }
+
+  mbedtls_md_free(&ctx);
+
+  memcpy(key_out, output, key_len);
+  memcpy(iv_out, output + key_len, iv_len);
+  free(output);
+
+  return key_len;
+}
+
+//
+// Generic hash helper using mbedTLS message digest API
+//
+static void hash_data(VMContext& context, mbedtls_md_type_t md_type, int digest_len) {
+  size_t* input_array = (size_t*)APITools_GetArray(context, 1)[0];
+  const long input_size = ((long)APITools_GetArraySize(input_array));
+  const unsigned char* input = (unsigned char*)APITools_GetArray(input_array);
+  size_t* output_holder = APITools_GetArray(context, 0);
+
+  const mbedtls_md_info_t* md_info = mbedtls_md_info_from_type(md_type);
+  if(!md_info) {
+    output_holder[0] = 0;
+    return;
+  }
+
+  unsigned char output[MBEDTLS_MD_MAX_SIZE];
+  memset(output, 0, MBEDTLS_MD_MAX_SIZE);
+
+  if(mbedtls_md(md_info, input, input_size, output) != 0) {
+    output_holder[0] = 0;
+    return;
+  }
+
+  // copy output
+  size_t* output_byte_array = APITools_MakeByteArray(context, digest_len);
+  unsigned char* output_byte_array_buffer = reinterpret_cast<unsigned char*>(output_byte_array + 3);
+  memcpy(output_byte_array_buffer, output, digest_len * sizeof(unsigned char));
+  output_holder[0] = (size_t)output_byte_array;
+}
 
 extern "C" {
   //
@@ -62,53 +171,7 @@ extern "C" {
   __declspec(dllexport)
 #endif
   void openssl_hash_sha1(VMContext& context) {
-    // get parameters
-    size_t* input_array = (size_t*)APITools_GetArray(context, 1)[0];
-    const long input_size = ((long)APITools_GetArraySize(input_array));
-    const unsigned char* input = (unsigned char*)APITools_GetArray(input_array);
-    size_t* output_holder = APITools_GetArray(context, 0);
-
-    EVP_MD_CTX* ctx = EVP_MD_CTX_new();
-    if(!ctx) {
-      output_holder[0] = 0;
-      return;
-    }
-
-    if(!EVP_DigestInit_ex(ctx, EVP_sha1(), nullptr)) {
-      EVP_MD_CTX_free(ctx);
-      output_holder[0] = 0;
-      return;
-    }
-
-    if(!EVP_DigestUpdate(ctx, input, input_size)) {
-      EVP_MD_CTX_free(ctx);
-      output_holder[0] = 0;
-      return;
-    }
-
-    unsigned char output[EVP_MAX_MD_SIZE];
-    memset(output, 0, EVP_MAX_MD_SIZE);
-
-    unsigned int hash_len = 0;
-    if(!EVP_DigestFinal_ex(ctx, output, &hash_len)) {
-      EVP_MD_CTX_free(ctx);
-      output_holder[0] = 0;
-      return;
-    }
-
-    if(hash_len != SHA_DIGEST_LENGTH) {
-      EVP_MD_CTX_free(ctx);
-      output_holder[0] = 0;
-      return;
-    }
-
-    // copy output
-    size_t* output_byte_array = APITools_MakeByteArray(context, SHA_DIGEST_LENGTH);
-    unsigned char* output_byte_array_buffer = reinterpret_cast<unsigned char*>(output_byte_array + 3);
-    memcpy(output_byte_array_buffer, output, SHA_DIGEST_LENGTH * sizeof(unsigned char));
-    output_holder[0] = (size_t)output_byte_array;
-
-    EVP_MD_CTX_free(ctx);
+    hash_data(context, MBEDTLS_MD_SHA1, SHA1_DIGEST_LEN);
   }
 
   //
@@ -118,53 +181,7 @@ extern "C" {
   __declspec(dllexport)
 #endif
   void openssl_hash_sha256(VMContext& context) {
-    // get parameters
-    size_t* input_array = (size_t*)APITools_GetArray(context, 1)[0];
-    const long input_size = ((long)APITools_GetArraySize(input_array));
-    const unsigned char* input = (unsigned char*)APITools_GetArray(input_array);
-    size_t* output_holder = APITools_GetArray(context, 0);
-
-    EVP_MD_CTX* ctx = EVP_MD_CTX_new();
-    if(!ctx) {
-      output_holder[0] = 0;
-      return;
-    }
-
-    if(!EVP_DigestInit_ex(ctx, EVP_sha256(), nullptr)) {
-      EVP_MD_CTX_free(ctx);
-      output_holder[0] = 0;
-      return;
-    }
-
-    if(!EVP_DigestUpdate(ctx, input, input_size)) {
-      EVP_MD_CTX_free(ctx);
-      output_holder[0] = 0;
-      return;
-    }
-
-    unsigned char output[EVP_MAX_MD_SIZE];
-    memset(output, 0, EVP_MAX_MD_SIZE);
-
-    unsigned int hash_len = 0;
-    if(!EVP_DigestFinal_ex(ctx, output, &hash_len)) {
-      EVP_MD_CTX_free(ctx);
-      output_holder[0] = 0;
-      return;
-    }
-
-    if(hash_len != SHA256_DIGEST_LENGTH) {
-      EVP_MD_CTX_free(ctx);
-      output_holder[0] = 0;
-      return;
-    }
-
-    // copy output
-    size_t* output_byte_array = APITools_MakeByteArray(context, SHA256_DIGEST_LENGTH);
-    unsigned char* output_byte_array_buffer = reinterpret_cast<unsigned char*>(output_byte_array + 3);
-    memcpy(output_byte_array_buffer, output, SHA256_DIGEST_LENGTH * sizeof(unsigned char));
-    output_holder[0] = (size_t)output_byte_array;
-
-    EVP_MD_CTX_free(ctx);
+    hash_data(context, MBEDTLS_MD_SHA256, SHA256_DIGEST_LEN);
   }
 
   //
@@ -174,53 +191,7 @@ extern "C" {
   __declspec(dllexport)
 #endif
   void openssl_hash_sha512(VMContext& context) {
-    // get parameters
-    size_t* input_array = (size_t*)APITools_GetArray(context, 1)[0];
-    const long input_size = ((long)APITools_GetArraySize(input_array));
-    const unsigned char* input = (unsigned char*)APITools_GetArray(input_array);
-    size_t* output_holder = APITools_GetArray(context, 0);
-
-    EVP_MD_CTX* ctx = EVP_MD_CTX_new();
-    if(!ctx) {
-      output_holder[0] = 0;
-      return;
-    }
-
-    if(!EVP_DigestInit_ex(ctx, EVP_sha512(), nullptr)) {
-      EVP_MD_CTX_free(ctx);
-      output_holder[0] = 0;
-      return;
-    }
-
-    if(!EVP_DigestUpdate(ctx, input, input_size)) {
-      EVP_MD_CTX_free(ctx);
-      output_holder[0] = 0;
-      return;
-    }
-
-    unsigned char output[EVP_MAX_MD_SIZE];
-    memset(output, 0, EVP_MAX_MD_SIZE);
-
-    unsigned int hash_len = 0;
-    if(!EVP_DigestFinal_ex(ctx, output, &hash_len)) {
-      EVP_MD_CTX_free(ctx);
-      output_holder[0] = 0;
-      return;
-    }
-
-    if(hash_len != SHA512_DIGEST_LENGTH) {
-      EVP_MD_CTX_free(ctx);
-      output_holder[0] = 0;
-      return;
-    }
-
-    // copy output
-    size_t* output_byte_array = APITools_MakeByteArray(context, SHA512_DIGEST_LENGTH);
-    unsigned char* output_byte_array_buffer = reinterpret_cast<unsigned char*>(output_byte_array + 3);
-    memcpy(output_byte_array_buffer, output, SHA512_DIGEST_LENGTH * sizeof(unsigned char));
-    output_holder[0] = (size_t)output_byte_array;
-
-    EVP_MD_CTX_free(ctx);
+    hash_data(context, MBEDTLS_MD_SHA512, SHA512_DIGEST_LEN);
   }
 
   //
@@ -230,73 +201,7 @@ extern "C" {
   __declspec(dllexport)
 #endif
   void openssl_hash_ripemd160(VMContext& context) {
-    // get parameters
-    size_t* input_array = (size_t*)APITools_GetArray(context, 1)[0];
-    const long input_size = ((long)APITools_GetArraySize(input_array));
-    const unsigned char* input = (unsigned char*)APITools_GetArray(input_array);
-    size_t* output_holder = APITools_GetArray(context, 0);
-
-#ifdef _WIN32
-    // hash 
-    EVP_MD_CTX* ctx = EVP_MD_CTX_new();
-    if(!ctx || input_size <= 0) {
-      output_holder[0] = 0;
-      return;
-    }
-
-    if(!EVP_DigestInit_ex(ctx, EVP_ripemd160(), nullptr)) {
-      EVP_MD_CTX_free(ctx);
-      output_holder[0] = 0;
-      return;
-    }
-
-    if(!EVP_DigestUpdate(ctx, input, input_size)) {
-      EVP_MD_CTX_free(ctx);
-      output_holder[0] = 0;
-      return;
-    }
-
-    unsigned char output[EVP_MAX_MD_SIZE];
-    memset(output, 0, EVP_MAX_MD_SIZE);
-
-    unsigned int hash_len = 0;
-    if(!EVP_DigestFinal_ex(ctx, output, &hash_len)) {
-      EVP_MD_CTX_free(ctx);
-      output_holder[0] = 0;
-      return;
-    }
-
-    if(hash_len != RIPEMD160_DIGEST_LENGTH) {
-      EVP_MD_CTX_free(ctx);
-      output_holder[0] = 0;
-      return;
-    }
-    EVP_MD_CTX_free(ctx);
-#else
-    // hash 
-    unsigned char output[RIPEMD160_DIGEST_LENGTH];
-    RIPEMD160_CTX sha256;
-    if(!RIPEMD160_Init(&sha256)) {
-      output_holder[0] = 0;
-      return;
-    }
-
-    if(!RIPEMD160_Update(&sha256, input, input_size)) {
-      output_holder[0] = 0;
-      return;
-    }
-
-    if(!RIPEMD160_Final(output, &sha256)) {
-      output_holder[0] = 0;
-      return;
-    }
-#endif
-
-    // copy output
-    size_t* output_byte_array = APITools_MakeByteArray(context, RIPEMD160_DIGEST_LENGTH);
-    unsigned char* output_byte_array_buffer = reinterpret_cast<unsigned char*>(output_byte_array + 3);
-    memcpy(output_byte_array_buffer, output, RIPEMD160_DIGEST_LENGTH * sizeof(unsigned char));
-    output_holder[0] = (size_t)output_byte_array;
+    hash_data(context, MBEDTLS_MD_RIPEMD160, RIPEMD160_DIGEST_LEN);
   }
 
   //
@@ -306,53 +211,7 @@ extern "C" {
   __declspec(dllexport)
 #endif
   void openssl_hash_md5(VMContext& context) {
-    // get parameters
-    size_t* input_array = (size_t*)APITools_GetArray(context, 1)[0];
-    const long input_size = ((long)APITools_GetArraySize(input_array));
-    const unsigned char* input = (unsigned char*)APITools_GetArray(input_array);
-    size_t* output_holder = APITools_GetArray(context, 0);
-
-    EVP_MD_CTX* ctx = EVP_MD_CTX_new();
-    if(!ctx) {
-      output_holder[0] = 0;
-      return;
-    }
-
-    if(!EVP_DigestInit_ex(ctx, EVP_md5(), nullptr)) {
-      EVP_MD_CTX_free(ctx);
-      output_holder[0] = 0;
-      return;
-    }
-
-    if(!EVP_DigestUpdate(ctx, input, input_size)) {
-      EVP_MD_CTX_free(ctx);
-      output_holder[0] = 0;
-      return;
-    }
-
-    unsigned char output[EVP_MAX_MD_SIZE];
-    memset(output, 0, EVP_MAX_MD_SIZE);
-
-    unsigned int hash_len = 0;
-    if(!EVP_DigestFinal_ex(ctx, output, &hash_len)) {
-      EVP_MD_CTX_free(ctx);
-      output_holder[0] = 0;
-      return;
-    }
-
-    if(hash_len != MD5_DIGEST_LENGTH) {
-      EVP_MD_CTX_free(ctx);
-      output_holder[0] = 0;
-      return;
-    }
-
-    // copy output
-    size_t* output_byte_array = APITools_MakeByteArray(context, MD5_DIGEST_LENGTH);
-    unsigned char* output_byte_array_buffer = reinterpret_cast<unsigned char*>(output_byte_array + 3);
-    memcpy(output_byte_array_buffer, output, MD5_DIGEST_LENGTH * sizeof(unsigned char));
-    output_holder[0] = (size_t)output_byte_array;
-
-    EVP_MD_CTX_free(ctx);
+    hash_data(context, MBEDTLS_MD_MD5, MD5_DIGEST_LEN);
   }
 
   //
@@ -375,54 +234,84 @@ extern "C" {
 
     // TODO: add salt
     static const unsigned char salt[8] = { 0xA7, 0x3C, 0x91, 0x4E, 0x2B, 0xF5, 0xD8, 0x6A };
-    
-    // cipher
+
+    // derive key and IV
     unsigned char iv[32];
     unsigned char key_out[32];
-    if(EVP_BytesToKey(EVP_aes_256_cbc(), EVP_sha512(), salt, key, key_size, 8, key_out, iv) != 32) {
+    if(evp_bytes_to_key(MBEDTLS_MD_SHA512, salt, 8, key, key_size, 8, key_out, 32, iv, 16) != 32) {
       output_holder[0] = 0;
       return;
     }
 
-    int output_size = input_size + AES_BLOCK_SIZE;
-    unsigned char* output = (unsigned char*)calloc(output_size, sizeof(unsigned char));
-    EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
-    if(!EVP_EncryptInit_ex(ctx, EVP_aes_256_cbc(), nullptr, key, iv)) {
-      EVP_CIPHER_CTX_free(ctx);
+    // encrypt
+    mbedtls_cipher_context_t ctx;
+    mbedtls_cipher_init(&ctx);
+
+    const mbedtls_cipher_info_t* cipher_info = mbedtls_cipher_info_from_type(MBEDTLS_CIPHER_AES_256_CBC);
+    if(!cipher_info) {
+      mbedtls_cipher_free(&ctx);
+      output_holder[0] = 0;
+      return;
+    }
+
+    if(mbedtls_cipher_setup(&ctx, cipher_info) != 0) {
+      mbedtls_cipher_free(&ctx);
+      output_holder[0] = 0;
+      return;
+    }
+
+    if(mbedtls_cipher_setkey(&ctx, key_out, 256, MBEDTLS_ENCRYPT) != 0) {
+      mbedtls_cipher_free(&ctx);
+      output_holder[0] = 0;
+      return;
+    }
+
+    if(mbedtls_cipher_set_iv(&ctx, iv, 16) != 0) {
+      mbedtls_cipher_free(&ctx);
+      output_holder[0] = 0;
+      return;
+    }
+
+    if(mbedtls_cipher_reset(&ctx) != 0) {
+      mbedtls_cipher_free(&ctx);
+      output_holder[0] = 0;
+      return;
+    }
+
+    int alloc_size = input_size + AES_BLOCK_LEN;
+    unsigned char* output = (unsigned char*)calloc(alloc_size, sizeof(unsigned char));
+    if(!output) {
+      mbedtls_cipher_free(&ctx);
+      output_holder[0] = 0;
+      return;
+    }
+
+    size_t olen = 0;
+    if(mbedtls_cipher_update(&ctx, input, input_size, output, &olen) != 0) {
+      mbedtls_cipher_free(&ctx);
       free(output);
-      output = nullptr;
       output_holder[0] = 0;
       return;
     }
 
-    if(!EVP_EncryptUpdate(ctx, output, &output_size, input, input_size)) {
-      EVP_CIPHER_CTX_free(ctx);
+    size_t finish_olen = 0;
+    if(mbedtls_cipher_finish(&ctx, output + olen, &finish_olen) != 0) {
+      mbedtls_cipher_free(&ctx);
       free(output);
-      output = nullptr;
       output_holder[0] = 0;
       return;
     }
 
-    int final_size;
-    if(!EVP_EncryptFinal_ex(ctx, output + output_size, &final_size)) {
-      EVP_CIPHER_CTX_free(ctx);
-      free(output);
-      output = nullptr;
-      output_holder[0] = 0;
-      return;
-    }
-
-    EVP_CIPHER_CTX_free(ctx);
+    mbedtls_cipher_free(&ctx);
 
     // copy output
-    const int total_size = output_size + final_size;
+    const int total_size = (int)(olen + finish_olen);
     size_t* output_byte_array = APITools_MakeByteArray(context, total_size);
     unsigned char* output_byte_array_buffer = reinterpret_cast<unsigned char*>(output_byte_array + 3);
     memcpy(output_byte_array_buffer, output, total_size * sizeof(unsigned char));
     output_holder[0] = (size_t)output_byte_array;
 
     free(output);
-    output = nullptr;
   }
 
   //
@@ -446,61 +335,88 @@ extern "C" {
     // TODO: add salt
     static const unsigned char salt[8] = { 0xA7, 0x3C, 0x91, 0x4E, 0x2B, 0xF5, 0xD8, 0x6A };
 
-    // decrypt
+    // derive key and IV
     unsigned char iv[32];
     unsigned char key_out[32];
-    int result = EVP_BytesToKey(EVP_aes_256_cbc(), EVP_sha512(), salt, key, key_size, 8, key_out, iv);
-    if(result != 32) {
+    if(evp_bytes_to_key(MBEDTLS_MD_SHA512, salt, 8, key, key_size, 8, key_out, 32, iv, 16) != 32) {
       output_holder[0] = 0;
       return;
     }
 
-    EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
-    if(!EVP_DecryptInit_ex(ctx, EVP_aes_256_cbc(), nullptr, key, iv)) {
-      EVP_CIPHER_CTX_free(ctx);
+    // decrypt
+    mbedtls_cipher_context_t ctx;
+    mbedtls_cipher_init(&ctx);
+
+    const mbedtls_cipher_info_t* cipher_info = mbedtls_cipher_info_from_type(MBEDTLS_CIPHER_AES_256_CBC);
+    if(!cipher_info) {
+      mbedtls_cipher_free(&ctx);
       output_holder[0] = 0;
       return;
     }
 
-    int output_size = input_size + AES_BLOCK_SIZE;
-    unsigned char* output = (unsigned char*)calloc(output_size, sizeof(unsigned char));
-    if(!EVP_DecryptUpdate(ctx, output, &output_size, input, input_size)) {
-      EVP_CIPHER_CTX_free(ctx);
+    if(mbedtls_cipher_setup(&ctx, cipher_info) != 0) {
+      mbedtls_cipher_free(&ctx);
+      output_holder[0] = 0;
+      return;
+    }
+
+    if(mbedtls_cipher_setkey(&ctx, key_out, 256, MBEDTLS_DECRYPT) != 0) {
+      mbedtls_cipher_free(&ctx);
+      output_holder[0] = 0;
+      return;
+    }
+
+    if(mbedtls_cipher_set_iv(&ctx, iv, 16) != 0) {
+      mbedtls_cipher_free(&ctx);
+      output_holder[0] = 0;
+      return;
+    }
+
+    if(mbedtls_cipher_reset(&ctx) != 0) {
+      mbedtls_cipher_free(&ctx);
+      output_holder[0] = 0;
+      return;
+    }
+
+    int alloc_size = input_size + AES_BLOCK_LEN;
+    unsigned char* output = (unsigned char*)calloc(alloc_size, sizeof(unsigned char));
+    if(!output) {
+      mbedtls_cipher_free(&ctx);
+      output_holder[0] = 0;
+      return;
+    }
+
+    size_t olen = 0;
+    if(mbedtls_cipher_update(&ctx, input, input_size, output, &olen) != 0) {
+      mbedtls_cipher_free(&ctx);
       free(output);
-      output = nullptr;
       output_holder[0] = 0;
       return;
     }
 
-    int final_size;
-    if(!EVP_DecryptFinal_ex(ctx, output + output_size, &final_size)) {
-      EVP_CIPHER_CTX_free(ctx);
+    size_t finish_olen = 0;
+    if(mbedtls_cipher_finish(&ctx, output + olen, &finish_olen) != 0) {
+      mbedtls_cipher_free(&ctx);
       free(output);
-      output = nullptr;
       output_holder[0] = 0;
       return;
     }
 
-    EVP_CIPHER_CTX_free(ctx);
+    mbedtls_cipher_free(&ctx);
 
     // copy output
-    const int total_size = output_size + final_size;
+    const int total_size = (int)(olen + finish_olen);
     size_t* output_byte_array = APITools_MakeByteArray(context, total_size);
     unsigned char* output_byte_array_buffer = reinterpret_cast<unsigned char*>(output_byte_array + 3);
     memcpy(output_byte_array_buffer, output, total_size * sizeof(unsigned char));
     output_holder[0] = (size_t)output_byte_array;
 
     free(output);
-    output = nullptr;
   }
 
   //
-  // Base64
+  // Base64 encode
   //
-  // The MIT License(MIT)
-  // Copyright(c) 2013 Barry Steyn
-  // https://gist.github.com/barrysteyn/7308212
-  // 
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
@@ -510,37 +426,28 @@ extern "C" {
     const long input_size = ((long)APITools_GetArraySize(input_array));
     const unsigned char* input = (unsigned char*)APITools_GetArray(input_array);
 
-    BIO* b64 = BIO_new(BIO_f_base64());
-    BIO* bio = BIO_new(BIO_s_mem());
-    bio = BIO_push(b64, bio);
+    // determine output size
+    size_t olen = 0;
+    mbedtls_base64_encode(nullptr, 0, &olen, input, input_size);
 
-    BIO_set_flags(bio, BIO_FLAGS_BASE64_NO_NL); //Do not use newlines to flush buffer
-    BIO_write(bio, input, input_size);
-    BIO_flush(bio);
+    unsigned char* output = new unsigned char[olen + 1];
+    output[olen] = '\0';
 
-    BUF_MEM* bufferPtr;
-    BIO_get_mem_ptr(bio, &bufferPtr);
-    BIO_set_close(bio, BIO_NOCLOSE);
-    BIO_free_all(bio);
+    if(mbedtls_base64_encode(output, olen, &olen, input, input_size) != 0) {
+      delete[] output;
+      APITools_SetStringValue(context, 0, L"");
+      return;
+    }
 
-    const std::wstring w_value(bufferPtr->data, bufferPtr->data + bufferPtr->length);
+    const std::wstring w_value(output, output + olen);
     APITools_SetStringValue(context, 0, w_value);
+
+    delete[] output;
   }
 
-  size_t calcDecodeLength(const char* b64input) { //Calculates the length of a decoded string
-    size_t len = strlen(b64input);
-    size_t padding = 0;
-
-    if(b64input[len - 1] == '=' && b64input[len - 2] == '=') { //last two chars are =
-      padding = 2;
-    }
-    else if(b64input[len - 1] == '=') { //last char is =
-      padding = 1;
-    }
-
-    return (len * 3) / 4 - padding;
-  }
-
+  //
+  // Base64 decode
+  //
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
@@ -548,19 +455,21 @@ extern "C" {
     const std::wstring w_input = APITools_GetStringValue(context, 1);
     const std::string input = UnicodeToBytes(w_input);
 
-    const size_t decode_size = calcDecodeLength(input.c_str());
-    char* buffer = new char[decode_size + 1];
-    buffer[decode_size] = '\0';
+    // determine output size
+    size_t olen = 0;
+    mbedtls_base64_decode(nullptr, 0, &olen, (const unsigned char*)input.c_str(), input.size());
 
-    BIO* bio = BIO_new_mem_buf(input.c_str(), -1);
-    BIO* b64 = BIO_new(BIO_f_base64());
-    bio = BIO_push(b64, bio);
+    unsigned char* buffer = new unsigned char[olen + 1];
+    buffer[olen] = '\0';
 
-    BIO_set_flags(bio, BIO_FLAGS_BASE64_NO_NL);
-    BIO_read(bio, buffer, (int)decode_size);
-    BIO_free_all(bio);
+    if(mbedtls_base64_decode(buffer, olen, &olen, (const unsigned char*)input.c_str(), input.size()) != 0) {
+      delete[] buffer;
+      size_t* output_holder = APITools_GetArray(context, 0);
+      output_holder[0] = 0;
+      return;
+    }
 
-    const size_t total_size = decode_size;
+    const size_t total_size = olen;
     size_t* output_holder = APITools_GetArray(context, 0);
     size_t* output_byte_array = APITools_MakeByteArray(context, total_size);
     unsigned char* output_byte_array_buffer = reinterpret_cast<unsigned char*>(output_byte_array + 3);
@@ -568,7 +477,6 @@ extern "C" {
     output_holder[0] = (size_t)output_byte_array;
 
     delete[] buffer;
-    buffer = nullptr;
   }
 }
 

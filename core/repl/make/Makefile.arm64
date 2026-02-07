@@ -5,7 +5,7 @@ MODULE_PATH=../module
 EXE=obi
 
 $(EXE): $(SRC) $(OBJ_LIBS)
-	$(CXX) -o $(EXE) $(SRC) $(OBJ_LIBS) ../compiler/compiler.a ../compiler/sys.a ../vm/vm.a ../vm/memory.a ../vm/arch/jit/arm64/jit_common.a ../vm/arch/jit/arm64/jit_arm_a64.o -ldl -lcrypto -lreadline -lssl -pthread -lz
+	$(CXX) -o $(EXE) $(SRC) $(OBJ_LIBS) ../compiler/compiler.a ../compiler/sys.a ../vm/vm.a ../vm/memory.a ../vm/arch/jit/arm64/jit_common.a ../vm/arch/jit/arm64/jit_arm_a64.o -ldl -lmbedtls -lmbedx509 -lmbedcrypto -lreadline -pthread -lz
 
 %.o: %.cpp
 	$(CXX) $(ARGS) -c $< 

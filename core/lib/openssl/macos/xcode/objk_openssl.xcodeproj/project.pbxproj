@@ -260,8 +260,9 @@
 				HEADER_SEARCH_PATHS = ../include;
 				LIBRARY_SEARCH_PATHS = "";
 				OTHER_LDFLAGS = (
-					"-Wl,../arm64/libssl.a",
-					"-Wl,../arm64/libcrypto.a",
+					"-Wl,../arm64/libmbedtls.a",
+					"-Wl,../arm64/libmbedx509.a",
+					"-Wl,../arm64/libmbedcrypto.a",
 					"-lz",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -285,8 +286,9 @@
 				HEADER_SEARCH_PATHS = ../include;
 				LIBRARY_SEARCH_PATHS = "";
 				OTHER_LDFLAGS = (
-					"-Wl,../arm64/libssl.a",
-					"-Wl,../arm64/libcrypto.a",
+					"-Wl,../arm64/libmbedtls.a",
+					"-Wl,../arm64/libmbedx509.a",
+					"-Wl,../arm64/libmbedcrypto.a",
 					"-lz",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
