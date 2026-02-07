@@ -235,13 +235,18 @@ extern "C" {
     // TODO: add salt
     static const unsigned char salt[8] = { 0xA7, 0x3C, 0x91, 0x4E, 0x2B, 0xF5, 0xD8, 0x6A };
 
-    // derive key and IV
+    // derive IV via EVP_BytesToKey (matches original OpenSSL behavior)
     unsigned char iv[32];
-    unsigned char key_out[32];
-    if(evp_bytes_to_key(MBEDTLS_MD_SHA512, salt, 8, key, key_size, 8, key_out, 32, iv, 16) != 32) {
+    unsigned char key_derived[32];
+    if(evp_bytes_to_key(MBEDTLS_MD_SHA512, salt, 8, key, key_size, 8, key_derived, 32, iv, 16) != 32) {
       output_holder[0] = 0;
       return;
     }
+
+    // use raw password bytes as key (matches original OpenSSL EVP_EncryptInit_ex behavior)
+    unsigned char key_padded[32];
+    memset(key_padded, 0, 32);
+    memcpy(key_padded, key, (key_size < 32) ? key_size : 32);
 
     // encrypt
     mbedtls_cipher_context_t ctx;
@@ -260,7 +265,7 @@ extern "C" {
       return;
     }
 
-    if(mbedtls_cipher_setkey(&ctx, key_out, 256, MBEDTLS_ENCRYPT) != 0) {
+    if(mbedtls_cipher_setkey(&ctx, key_padded, 256, MBEDTLS_ENCRYPT) != 0) {
       mbedtls_cipher_free(&ctx);
       output_holder[0] = 0;
       return;
@@ -335,13 +340,18 @@ extern "C" {
     // TODO: add salt
     static const unsigned char salt[8] = { 0xA7, 0x3C, 0x91, 0x4E, 0x2B, 0xF5, 0xD8, 0x6A };
 
-    // derive key and IV
+    // derive IV via EVP_BytesToKey (matches original OpenSSL behavior)
     unsigned char iv[32];
-    unsigned char key_out[32];
-    if(evp_bytes_to_key(MBEDTLS_MD_SHA512, salt, 8, key, key_size, 8, key_out, 32, iv, 16) != 32) {
+    unsigned char key_derived[32];
+    if(evp_bytes_to_key(MBEDTLS_MD_SHA512, salt, 8, key, key_size, 8, key_derived, 32, iv, 16) != 32) {
       output_holder[0] = 0;
       return;
     }
+
+    // use raw password bytes as key (matches original OpenSSL EVP_DecryptInit_ex behavior)
+    unsigned char key_padded[32];
+    memset(key_padded, 0, 32);
+    memcpy(key_padded, key, (key_size < 32) ? key_size : 32);
 
     // decrypt
     mbedtls_cipher_context_t ctx;
@@ -360,7 +370,7 @@ extern "C" {
       return;
     }
 
-    if(mbedtls_cipher_setkey(&ctx, key_out, 256, MBEDTLS_DECRYPT) != 0) {
+    if(mbedtls_cipher_setkey(&ctx, key_padded, 256, MBEDTLS_DECRYPT) != 0) {
       mbedtls_cipher_free(&ctx);
       output_holder[0] = 0;
       return;
