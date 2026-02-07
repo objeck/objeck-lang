@@ -7,7 +7,7 @@ MOD_PATH=../../../core/module
 EXE=objeck.dll
 
 $(EXE): $(SRC) $(OBJ_LIBS) 
-	$(CXX) -shared -m64 -o $(EXE) $(SRC) $(OBJ_LIBS) compiler.a vm.a sys.a ../../vm/memory.a ../../vm/arch/jit/amd64/jit_common.a ../../vm/jit_amd_lp64.a ../../vm/arch/win32/win32.o -lssl -lcrypto -lz -pthread -lwsock32 -luserenv -lws2_32
+	$(CXX) -shared -m64 -o $(EXE) $(SRC) $(OBJ_LIBS) compiler.a vm.a sys.a ../../vm/memory.a ../../vm/arch/jit/amd64/jit_common.a ../../vm/jit_amd_lp64.a ../../vm/arch/win32/win32.o -lmbedtls -lmbedx509 -lmbedcrypto -lz -pthread -lwsock32 -luserenv -lws2_32
 
 %.o: %.cpp
 	$(CXX) -m64 $(ARGS) -c $< 
