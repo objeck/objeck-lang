@@ -249,8 +249,9 @@
 				ONLY_ACTIVE_ARCH = YES;
 				OTHER_LDFLAGS = (
 					"-Wl,../../module/xcode/build/Release/libmodule.a",
-					"-Wl,../../lib/openssl/macos/arm64/libssl.a",
-					"-Wl,../../lib/openssl/macos/arm64/libcrypto.a",
+					"-Wl,../../lib/openssl/macos/arm64/libmbedtls.a",
+					"-Wl,../../lib/openssl/macos/arm64/libmbedx509.a",
+					"-Wl,../../lib/openssl/macos/arm64/libmbedcrypto.a",
 					"-lz",
 				);
 				PRODUCT_MODULE_NAME = obi;
@@ -271,8 +272,9 @@
 				ONLY_ACTIVE_ARCH = YES;
 				OTHER_LDFLAGS = (
 					"-Wl,../../module/xcode/build/Release/libmodule.a",
-					"-Wl,../../lib/openssl/macos/arm64/libssl.a",
-					"-Wl,../../lib/openssl/macos/arm64/libcrypto.a",
+					"-Wl,../../lib/openssl/macos/arm64/libmbedtls.a",
+					"-Wl,../../lib/openssl/macos/arm64/libmbedx509.a",
+					"-Wl,../../lib/openssl/macos/arm64/libmbedcrypto.a",
 					"-lz",
 				);
 				PRODUCT_MODULE_NAME = obi;

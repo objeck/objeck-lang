@@ -4,4 +4,4 @@ rm -rf *.o
 rm -rf *.so
 
 g++ -O3 -std=c++11 -Wall -fPIC -c *$1.cpp -Wno-unused-function -Wno-deprecated-declarations
-g++ -O3 -shared -Wl,-soname,$1.so.1 -o $1.so *.o -lssl -lmp3lame
+g++ -O3 -shared -Wl,-soname,$1.so.1 -o $1.so *.o -lmbedtls -lmbedx509 -lmbedcrypto -lmp3lame

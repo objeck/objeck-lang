@@ -258,8 +258,9 @@
 				);
 				OTHER_LDFLAGS = (
 					"-Wl,../libiodbc.a",
-					"-Wl,../../../openssl/macos/arm64/libssl.a",
-					"-Wl,../../../openssl/macos/arm64/libcrypto.a",
+					"-Wl,../../../openssl/macos/arm64/libmbedtls.a",
+					"-Wl,../../../openssl/macos/arm64/libmbedx509.a",
+					"-Wl,../../../openssl/macos/arm64/libmbedcrypto.a",
 					"-lz",
 				);
 				PRODUCT_NAME = objk_odbc;
@@ -287,8 +288,9 @@
 				);
 				OTHER_LDFLAGS = (
 					"-Wl,../libiodbc.a",
-					"-Wl,../../../openssl/macos/arm64/libssl.a",
-					"-Wl,../../../openssl/macos/arm64/libcrypto.a",
+					"-Wl,../../../openssl/macos/arm64/libmbedtls.a",
+					"-Wl,../../../openssl/macos/arm64/libmbedx509.a",
+					"-Wl,../../../openssl/macos/arm64/libmbedcrypto.a",
 					"-lz",
 				);
 				PRODUCT_NAME = objk_odbc;

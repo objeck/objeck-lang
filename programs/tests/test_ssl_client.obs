@@ -1,0 +1,236 @@
+#~
+# compile: obc -src test_ssl_client.obs -lib net,cipher -dest test_ssl_client.obe
+# run: obr test_ssl_client.obe
+#
+# Tests for OpenSSL to mbedTLS migration - SSL/TLS Secure Socket Client
+# Validates TCPSecureSocket connection, data exchange, and certificate info
+#
+# NOTE: These tests require network access to public HTTPS servers.
+# They may fail if there is no internet connectivity or if the target
+# servers are unreachable.
+~#
+
+use System.IO.Net;
+use Web.HTTP;
+
+class SslClientTest {
+	@pass_count : static : Int;
+	@fail_count : static : Int;
+	@skip_count : static : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		@pass_count := 0;
+		@fail_count := 0;
+		@skip_count := 0;
+
+		"============================================"->PrintLine();
+		"  mbedTLS Migration Tests - SSL/TLS Client"->PrintLine();
+		"============================================"->PrintLine();
+		""->PrintLine();
+
+		TestSecureSocketConnect();
+		TestSecureSocketHttpGet();
+		TestCertificateInfo();
+		TestSecureSocketClose();
+		TestHttpsClientQuickGet();
+		TestSecureSocketInvalidHost();
+
+		""->PrintLine();
+		"============================================"->PrintLine();
+		total := @pass_count + @fail_count;
+		"  Results: {$@pass_count}/{$total} passed, {$@skip_count} skipped"->PrintLine();
+		if(@fail_count > 0) {
+			"  FAILURES: {$@fail_count}"->PrintLine();
+		}
+		else {
+			"  ALL TESTS PASSED"->PrintLine();
+		};
+		"============================================"->PrintLine();
+	}
+
+	#
+	# Helper: report test result
+	#
+	function : AssertTrue(test_name : String, condition : Bool) ~ Nil {
+		if(condition) {
+			@pass_count += 1;
+			"[PASS] {$test_name}"->PrintLine();
+		}
+		else {
+			@fail_count += 1;
+			"[FAIL] {$test_name}"->PrintLine();
+		};
+	}
+
+	function : Skip(test_name : String, reason : String) ~ Nil {
+		@skip_count += 1;
+		"[SKIP] {$test_name} - {$reason}"->PrintLine();
+	}
+
+	#
+	# Test 1: Basic secure socket connection
+	# Connect to a well-known HTTPS server and verify the socket opens
+	#
+	function : TestSecureSocketConnect() ~ Nil {
+		"--- Secure Socket Connect Test ---"->PrintLine();
+
+		socket := TCPSecureSocket->New("www.google.com", 443);
+		is_open := socket->IsOpen();
+		AssertTrue("TCPSecureSocket connects to www.google.com:443", is_open);
+
+		if(is_open) {
+			socket->Close();
+		};
+
+		""->PrintLine();
+	}
+
+	#
+	# Test 2: Send HTTP GET over secure socket and read response
+	#
+	function : TestSecureSocketHttpGet() ~ Nil {
+		"--- Secure Socket HTTP GET Test ---"->PrintLine();
+
+		socket := TCPSecureSocket->New("httpbin.org", 443);
+		if(<>socket->IsOpen()) {
+			Skip("HTTP GET over TLS", "could not connect to httpbin.org:443");
+			""->PrintLine();
+			return;
+		};
+
+		# Send a minimal HTTP/1.1 GET request
+		request := "GET /get HTTP/1.1\r\nHost: httpbin.org\r\nUser-Agent: Objeck-Test/1.0\r\nConnection: close\r\n\r\n";
+		socket->WriteString(request);
+
+		# Read the status line
+		status_line := socket->ReadLine();
+		AssertTrue("HTTP GET receives status line", status_line <> Nil & status_line->Size() > 0);
+
+		if(status_line <> Nil) {
+			has_http := status_line->StartsWith("HTTP/1.");
+			AssertTrue("Status line starts with HTTP/1.", has_http);
+
+			has_200 := status_line->Find("200") > -1;
+			AssertTrue("Status line contains 200 OK", has_200);
+		};
+
+		# Read headers until blank line
+		header_count := 0;
+		found_content_type := false;
+		do {
+			line := socket->ReadLine();
+			if(line <> Nil & line->Size() > 0) {
+				header_count += 1;
+				if(line->Find("Content-Type") > -1 | line->Find("content-type") > -1) {
+					found_content_type := true;
+				};
+			};
+		}
+		while(line <> Nil & line->Size() > 0);
+
+		AssertTrue("Received response headers (count > 0)", header_count > 0);
+		AssertTrue("Response includes Content-Type header", found_content_type);
+
+		socket->Close();
+		""->PrintLine();
+	}
+
+	#
+	# Test 3: Certificate issuer and subject information
+	#
+	function : TestCertificateInfo() ~ Nil {
+		"--- Certificate Info Test ---"->PrintLine();
+
+		socket := TCPSecureSocket->New("www.google.com", 443);
+		if(<>socket->IsOpen()) {
+			Skip("Certificate issuer retrieval", "could not connect to www.google.com:443");
+			Skip("Certificate subject retrieval", "could not connect to www.google.com:443");
+			""->PrintLine();
+			return;
+		};
+
+		issuer := socket->GetIssuer();
+		AssertTrue("GetIssuer() returns non-nil string", issuer <> Nil);
+		if(issuer <> Nil) {
+			AssertTrue("GetIssuer() returns non-empty string", issuer->Size() > 0);
+			# Google certs are typically issued by a Google Trust Services or WR CA
+			"       Issuer: {$issuer}"->PrintLine();
+		};
+
+		subject := socket->GetSubject();
+		AssertTrue("GetSubject() returns non-nil string", subject <> Nil);
+		if(subject <> Nil) {
+			AssertTrue("GetSubject() returns non-empty string", subject->Size() > 0);
+			"       Subject: {$subject}"->PrintLine();
+		};
+
+		socket->Close();
+		""->PrintLine();
+	}
+
+	#
+	# Test 4: Socket close behavior
+	#
+	function : TestSecureSocketClose() ~ Nil {
+		"--- Secure Socket Close Test ---"->PrintLine();
+
+		socket := TCPSecureSocket->New("www.google.com", 443);
+		if(<>socket->IsOpen()) {
+			Skip("Socket close test", "could not connect to www.google.com:443");
+			""->PrintLine();
+			return;
+		};
+
+		AssertTrue("Socket is open before close", socket->IsOpen());
+		socket->Close();
+		# After close, IsOpen should return false
+		AssertTrue("Socket is closed after Close()", <>socket->IsOpen());
+
+		""->PrintLine();
+	}
+
+	#
+	# Test 5: High-level HttpsClient QuickGet
+	# Uses the Web.HTTP.HttpsClient wrapper which internally uses TCPSecureSocket
+	#
+	function : TestHttpsClientQuickGet() ~ Nil {
+		"--- HttpsClient QuickGet Test ---"->PrintLine();
+
+		url := Url->New("https://httpbin.org/get");
+		response := HttpsClient->QuickGet(url);
+
+		if(response = Nil) {
+			Skip("HttpsClient QuickGet", "could not reach httpbin.org");
+			""->PrintLine();
+			return;
+		};
+
+		status := response->GetCode();
+		AssertTrue("HttpsClient QuickGet returns status 200", status = 200);
+
+		content := response->GetContent();
+		AssertTrue("HttpsClient QuickGet returns non-nil content", content <> Nil);
+		if(content <> Nil) {
+			content_str := String->New(content);
+			AssertTrue("HttpsClient QuickGet content is non-empty", content_str->Size() > 0);
+
+			# httpbin.org /get returns JSON containing the URL
+			has_url := content_str->Find("httpbin.org") > -1;
+			AssertTrue("HttpsClient QuickGet content mentions httpbin.org", has_url);
+		};
+
+		""->PrintLine();
+	}
+
+	#
+	# Test 6: Connection to invalid host should fail gracefully
+	#
+	function : TestSecureSocketInvalidHost() ~ Nil {
+		"--- Secure Socket Invalid Host Test ---"->PrintLine();
+
+		socket := TCPSecureSocket->New("this.host.definitely.does.not.exist.invalid", 443);
+		AssertTrue("TCPSecureSocket to invalid host is not open", <>socket->IsOpen());
+
+		""->PrintLine();
+	}
+}

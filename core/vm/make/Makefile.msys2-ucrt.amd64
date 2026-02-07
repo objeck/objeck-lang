@@ -8,7 +8,7 @@ WIN32_PATH=arch/win32
 EXE=obr
 
 $(EXE): $(SRC) $(OBJ_LIBS)
-	$(CXX) -m64 -o $(EXE) $(SRC) $(OBJ_LIBS) -lssl -lcrypto -lz -pthread -lwsock32 -luserenv -lws2_32
+	$(CXX) -m64 -o $(EXE) $(SRC) $(OBJ_LIBS) -lmbedtls -lmbedx509 -lmbedcrypto -lz -pthread -lwsock32 -luserenv -lws2_32
 
 memory.a:
 	cd $(MEM_PATH); $(MAKE) -f make/Makefile.msys2-ucrt.amd64
