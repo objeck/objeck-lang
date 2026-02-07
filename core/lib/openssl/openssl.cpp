@@ -265,6 +265,12 @@ extern "C" {
       return;
     }
 
+    if(mbedtls_cipher_set_padding_mode(&ctx, MBEDTLS_PADDING_PKCS7) != 0) {
+      mbedtls_cipher_free(&ctx);
+      output_holder[0] = 0;
+      return;
+    }
+
     if(mbedtls_cipher_setkey(&ctx, key_padded, 256, MBEDTLS_ENCRYPT) != 0) {
       mbedtls_cipher_free(&ctx);
       output_holder[0] = 0;
@@ -365,6 +371,12 @@ extern "C" {
     }
 
     if(mbedtls_cipher_setup(&ctx, cipher_info) != 0) {
+      mbedtls_cipher_free(&ctx);
+      output_holder[0] = 0;
+      return;
+    }
+
+    if(mbedtls_cipher_set_padding_mode(&ctx, MBEDTLS_PADDING_PKCS7) != 0) {
       mbedtls_cipher_free(&ctx);
       output_holder[0] = 0;
       return;
