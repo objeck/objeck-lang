@@ -5,8 +5,9 @@ cp /clang64/bin/libc++.dll deploy-msys2-clang/bin
 cp /clang64/bin/libunwind.dll deploy-msys2-clang/bin
 cp /clang64/bin/libwinpthread-1.dll deploy-msys2-clang/bin
 cp /clang64/bin/zlib1.dll deploy-msys2-clang/bin
-cp /clang64/bin/libcrypto-3-x64.dll deploy-msys2-clang/bin
-cp /clang64/bin/libssl-3-x64.dll deploy-msys2-clang/bin
+cp /clang64/bin/libmbedtls.dll deploy-msys2-clang/bin
+cp /clang64/bin/libmbedx509.dll deploy-msys2-clang/bin
+cp /clang64/bin/libmbedcrypto.dll deploy-msys2-clang/bin
 cp /clang64/bin/libodbc-2.dll deploy-msys2-clang/bin
 cp /clang64/bin/libiconv-2.dll deploy-msys2-clang/bin
 cp /clang64/bin/libltdl-7.dll deploy-msys2-clang/bin
