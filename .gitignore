@@ -24,3 +24,11 @@ dist/
 *.exe
 *.msi
 *.ipch
+*.ipdb
+*.iobj
+*.idb
+*.ilk
+*.ifc
+*.exp
+*.nupkg
+*.obj
