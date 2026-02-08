@@ -335,9 +335,8 @@
 				LIBRARY_SEARCH_PATHS = "";
 				OTHER_LDFLAGS = "";
 				"OTHER_LDFLAGS[arch=*]" = (
-					"-Wl,../../../openssl/macos/arm64/libmbedtls.a",
-					"-Wl,../../../openssl/macos/arm64/libmbedx509.a",
-					"-Wl,../../../openssl/macos/arm64/libmbedcrypto.a",
+					"-Wl,../../../openssl/macos/arm64/libssl.a",
+					"-Wl,../../../openssl/macos/arm64/libcrypto.a",
 					"-lz",
 					"-lreadline",
 				);
@@ -363,9 +362,8 @@
 				LIBRARY_SEARCH_PATHS = "";
 				OTHER_LDFLAGS = "";
 				"OTHER_LDFLAGS[arch=*]" = (
-					"-Wl,../../../openssl/macos/arm64/libmbedtls.a",
-					"-Wl,../../../openssl/macos/arm64/libmbedx509.a",
-					"-Wl,../../../openssl/macos/arm64/libmbedcrypto.a",
+					"-Wl,../../../openssl/macos/arm64/libssl.a",
+					"-Wl,../../../openssl/macos/arm64/libcrypto.a",
 					"-lz",
 					"-lreadline",
 				);

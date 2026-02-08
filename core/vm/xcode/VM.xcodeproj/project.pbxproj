@@ -325,9 +325,8 @@
 				);
 				MACOSX_DEPLOYMENT_TARGET = 13.3;
 				OTHER_LDFLAGS = (
-					"-Wl,../../lib/openssl/macos/arm64/libmbedtls.a",
-					"-Wl,../../lib/openssl/macos/arm64/libmbedx509.a",
-					"-Wl,../../lib/openssl/macos/arm64/libmbedcrypto.a",
+					"-Wl,../../lib/openssl/macos/arm64/libssl.a",
+					"-Wl,../../lib/openssl/macos/arm64/libcrypto.a",
 					"-lz",
 				);
 				PRELINK_LIBS = "";
@@ -370,9 +369,8 @@
 				MACOSX_DEPLOYMENT_TARGET = 13.3;
 				ONLY_ACTIVE_ARCH = YES;
 				OTHER_LDFLAGS = (
-					"-Wl,../../lib/openssl/macos/arm64/libmbedtls.a",
-					"-Wl,../../lib/openssl/macos/arm64/libmbedx509.a",
-					"-Wl,../../lib/openssl/macos/arm64/libmbedcrypto.a",
+					"-Wl,../../lib/openssl/macos/arm64/libssl.a",
+					"-Wl,../../lib/openssl/macos/arm64/libcrypto.a",
 					"-lz",
 				);
 				PRELINK_LIBS = "";
