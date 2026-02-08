@@ -3723,20 +3723,40 @@ void JitAmd64::sub_mem_reg(long offset, Register src, Register dest) {
 
 // TODO: 64-bit literal operation for Windows
 void JitAmd64::mul_imm_reg(int64_t imm, Register reg) {
+  // Optimization: Replace multiply by power-of-2 with left shift
+  // Example: x * 8 becomes x << 3 (faster, smaller encoding)
+  if(imm > 0 && (imm & (imm - 1)) == 0) {
+    // imm is a power of 2, calculate shift amount
+    int shift = 0;
+    int64_t temp = imm;
+    while(temp > 1) {
+      temp >>= 1;
+      shift++;
+    }
 #ifdef _DEBUG_JIT
-  std::wcout << L"  " << (++instr_count) << L": [imuq $" << imm 
-        << L", %"<< GetRegisterName(reg) << L"]" << std::endl;
+    std::wcout << L"  " << (++instr_count) << L": [shlq $" << shift
+          << L", %" << GetRegisterName(reg) << L"] (optimized from mul $"
+          << imm << L")" << std::endl;
 #endif
-  // encode
-  AddMachineCode(ROB(reg, reg));
-  AddMachineCode(0x69);
-  unsigned char code = 0xc0;
-  // write value
-  RegisterEncode3(code, 2, reg);
-  RegisterEncode3(code, 5, reg);
-  AddMachineCode(code);
-  // write value
-  AddImm((long)imm); // TODO: load imm to reg, perform operation 
+    shl_imm_reg(shift, reg);
+  }
+  else {
+    // Use regular multiply for non-power-of-2 values
+#ifdef _DEBUG_JIT
+    std::wcout << L"  " << (++instr_count) << L": [imuq $" << imm
+          << L", %"<< GetRegisterName(reg) << L"]" << std::endl;
+#endif
+    // encode
+    AddMachineCode(ROB(reg, reg));
+    AddMachineCode(0x69);
+    unsigned char code = 0xc0;
+    // write value
+    RegisterEncode3(code, 2, reg);
+    RegisterEncode3(code, 5, reg);
+    AddMachineCode(code);
+    // write value
+    AddImm((long)imm);
+  }
 }
 
 void JitAmd64::mul_reg_reg(Register src, Register dest) {

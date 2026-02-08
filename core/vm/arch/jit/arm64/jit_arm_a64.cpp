@@ -2450,10 +2450,30 @@ void JitArm64::dec_reg(Register dest) {
 }
 
 void JitArm64::mul_imm_reg(long imm, Register reg) {
-  RegisterHolder* src_holder = GetRegister();
-  move_imm_reg(imm, src_holder->GetRegister());
-  mul_reg_reg(src_holder->GetRegister(), reg);
-  ReleaseRegister(src_holder);
+  // Optimization: Replace multiply by power-of-2 with left shift
+  // Example: x * 8 becomes x << 3 (faster, no register allocation needed)
+  if(imm > 0 && (imm & (imm - 1)) == 0) {
+    // imm is a power of 2, calculate shift amount
+    int shift = 0;
+    long temp = imm;
+    while(temp > 1) {
+      temp >>= 1;
+      shift++;
+    }
+#ifdef _DEBUG_JIT_JIT
+    std::wcout << L"  " << (++instr_count) << L": [lsl " << GetRegisterName(reg)
+          << L", " << GetRegisterName(reg) << L", #" << shift
+          << L"] (optimized from mul #" << imm << L")" << std::endl;
+#endif
+    shl_imm_reg(shift, reg);
+  }
+  else {
+    // Use regular multiply for non-power-of-2 values
+    RegisterHolder* src_holder = GetRegister();
+    move_imm_reg(imm, src_holder->GetRegister());
+    mul_reg_reg(src_holder->GetRegister(), reg);
+    ReleaseRegister(src_holder);
+  }
 }
 
 void JitArm64::mul_mem_reg(long offset, Register src, Register dest) {
