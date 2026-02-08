@@ -768,11 +768,9 @@ static CommandLineParseResult ParseCommandLine(int argc, const char* argv[]) {
       if(pos < end && result.reconstructed_path[pos] != L'-') {
         has_value = true;
         size_t value_start = pos;
-        bool is_quoted = false;
 
         // Check for quoted value
         if(result.reconstructed_path[pos] == L'\'') {
-          is_quoted = true;
           value_start++;
           pos++;
 
