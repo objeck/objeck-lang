@@ -350,68 +350,6 @@ void TrimFileEnding(wstring& filename)
   }
 }
 
-static bool BytesToUnicode(const string& in, wstring& out)
-{
-#ifdef _WIN32
-  // allocate space
-  const int wsize = MultiByteToWideChar(CP_UTF8, 0, in.c_str(), -1, nullptr, 0);
-  if(wsize == 0) {
-    return false;
-  }
-  wchar_t* buffer = new wchar_t[wsize];
-
-  // convert
-  const int check = MultiByteToWideChar(CP_UTF8, 0, in.c_str(), -1, buffer, wsize);
-  if(check == 0) {
-    delete[] buffer;
-    buffer = nullptr;
-    return false;
-  }
-
-  // create string
-  out.append(buffer, wsize - 1);
-
-  // clean up
-  delete[] buffer;
-  buffer = nullptr;
-#else
-  // allocate space
-  size_t size = mbstowcs(nullptr, in.c_str(), in.size());
-  if(size == (size_t)-1) {
-    return false;
-  }
-  wchar_t* buffer = new wchar_t[size + 1];
-
-  // convert
-  size_t check = mbstowcs(buffer, in.c_str(), in.size());
-  if(check == (size_t)-1) {
-    delete[] buffer;
-    buffer = nullptr;
-    return false;
-  }
-  buffer[size] = L'\0';
-
-  // create string
-  out.append(buffer, size);
-
-  // clean up
-  delete[] buffer;
-  buffer = nullptr;
-#endif
-
-  return true;
-}
-
-wstring BytesToUnicode(const string& in)
-{
-  wstring out;
-  if(BytesToUnicode(in, out)) {
-    return out;
-  }
-
-  return L"";
-}
-
 wstring GetUsage()
 {
   wstring usage = L"Usage: obb -src_file <input *.obe> -to_dir <target directory> -to_name <app name>\n\n";

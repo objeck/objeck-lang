@@ -78,7 +78,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
     <IncludePath>..\win\include;..\..\zlib\win;$(IncludePath);$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
-    <LibraryPath>..\..\zlib\win\x64;..\win\x64;$(LibraryPath)</LibraryPath>
+    <LibraryPath>..\..\zlib\win\x64;..\win\x64;..\..\openssl\win\x64;$(LibraryPath)</LibraryPath>
     <TargetName>libobjk_crypto</TargetName>
     <IntDir>$(Configuration)\</IntDir>
     <OutDir>..\$(Configuration)\win64\</OutDir>
@@ -88,7 +88,7 @@
     <TargetExt>.dll</TargetExt>
     <LinkIncremental>true</LinkIncremental>
     <IncludePath>..\win\include;..\..\zlib\win;$(IncludePath);$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
-    <LibraryPath>..\..\zlib\win\x64;..\win\x64;$(LibraryPath)</LibraryPath>
+    <LibraryPath>..\..\zlib\win\arm64;..\win\arm64;..\..\openssl\win\arm64;$(LibraryPath)</LibraryPath>
     <TargetName>libobjk_crypto</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -97,10 +97,10 @@
     <TargetName>libobjk_crypto</TargetName>
     <OutDir>..\$(Configuration)\win64\</OutDir>
     <IntDir>$(Configuration)\</IntDir>
-    <LibraryPath>..\..\zlib\win\x64;..\win\x64;$(LibraryPath)</LibraryPath>
+    <LibraryPath>..\..\zlib\win\x64;..\win\x64;..\..\openssl\win\x64;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">
-    <LibraryPath>..\..\zlib\win\arm64;..\win\arm64;$(LibraryPath)</LibraryPath>
+    <LibraryPath>..\..\zlib\win\arm64;..\win\arm64;..\..\openssl\win\arm64;$(LibraryPath)</LibraryPath>
     <LinkIncremental>false</LinkIncremental>
     <IncludePath>..\win\include;..\..\zlib\win;$(IncludePath);$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
     <TargetName>libobjk_crypto</TargetName>
