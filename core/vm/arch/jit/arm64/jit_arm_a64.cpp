@@ -2235,7 +2235,7 @@ void JitArm64::move_imm_reg(long imm, Register reg) {
     std::wcout << L"  " << (++instr_count) << L": [mvn " << GetRegisterName(reg) << L", #" << imm << L"]" << std::endl;
 #endif
     uint32_t op_code = 0x92800000;
-    
+
     op_code |= (abs(imm) - 1) << 5;
     op_code |= reg;
 
@@ -2246,17 +2246,57 @@ void JitArm64::move_imm_reg(long imm, Register reg) {
     std::wcout << L"  " << (++instr_count) << L": [mov " << GetRegisterName(reg) << L", #" << imm << L"]" << std::endl;
 #endif
     uint32_t op_code = 0xd2800000;
-    
+
     op_code |= abs(imm) << 5;
     op_code |= reg;
-    
+
     AddMachineCode(op_code);
   }
   else {
-    // save code index
-    move_mem_reg(INT_CONSTS, SP, X9);
-    move_mem_reg(0, X9, reg);
-    const_int_pool.insert(pair<size_t, size_t>(imm, code_index - 1));
+    // Optimization: Try to synthesize with MOVZ/MOVK for values with 1-2 non-zero 16-bit chunks
+    // This is faster than constant pool access (avoids memory load)
+    uint64_t val = (uint64_t)imm;
+    int non_zero_chunks = 0;
+    int chunk_positions[4];
+
+    // Count non-zero 16-bit chunks
+    for(int i = 0; i < 4; i++) {
+      uint16_t chunk = (val >> (i * 16)) & 0xFFFF;
+      if(chunk != 0) {
+        chunk_positions[non_zero_chunks++] = i;
+      }
+    }
+
+    // Use MOVZ/MOVK synthesis for 1-2 non-zero chunks (more efficient than constant pool)
+    if(non_zero_chunks > 0 && non_zero_chunks <= 2) {
+      // First instruction: MOVZ with first non-zero chunk
+      int pos = chunk_positions[0];
+      uint16_t chunk = (val >> (pos * 16)) & 0xFFFF;
+
+      uint32_t op_code = 0xd2800000;  // MOVZ
+      op_code |= ((uint32_t)pos << 21);  // shift amount
+      op_code |= ((uint32_t)chunk << 5); // immediate value
+      op_code |= reg;
+      AddMachineCode(op_code);
+
+      // Second instruction: MOVK for second chunk if present
+      if(non_zero_chunks == 2) {
+        pos = chunk_positions[1];
+        chunk = (val >> (pos * 16)) & 0xFFFF;
+
+        op_code = 0xf2800000;  // MOVK (keep other bits)
+        op_code |= ((uint32_t)pos << 21);
+        op_code |= ((uint32_t)chunk << 5);
+        op_code |= reg;
+        AddMachineCode(op_code);
+      }
+    }
+    else {
+      // Fall back to constant pool for complex values (3-4 non-zero chunks)
+      move_mem_reg(INT_CONSTS, SP, X9);
+      move_mem_reg(0, X9, reg);
+      const_int_pool.insert(pair<size_t, size_t>(imm, code_index - 1));
+    }
   }
 }
 

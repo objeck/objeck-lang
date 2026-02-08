@@ -2630,16 +2630,31 @@ void JitAmd64::move_imm_reg(int64_t imm, Register reg) {
 void JitAmd64::move_imm_reg(long imm, Register reg) {
 #endif
 #ifdef _DEBUG_JIT
-  std::wcout << L"  " << (++instr_count) << L": [movsq $" << imm << L", %" 
+  std::wcout << L"  " << (++instr_count) << L": [movsq $" << imm << L", %"
         << GetRegisterName(reg) << L"]" << std::endl;
 #endif
-  // encode
-  AddMachineCode(XB(reg));
-  unsigned char code = 0xb8;
-  RegisterEncode3(code, 5, reg);
-  AddMachineCode(code);
-  // write value
-  AddImm64(imm);
+
+  // Optimization: Use 32-bit immediate when possible (saves 3 bytes)
+  // Check if value fits in signed 32-bit range
+  if (imm >= INT32_MIN && imm <= INT32_MAX) {
+    // Use MOV r/m64, imm32 with sign extension (7 bytes vs 10 bytes)
+    // REX.W + C7 /0 + imm32
+    AddMachineCode(B(reg));  // REX.W prefix for 64-bit operation
+    AddMachineCode(0xc7);     // MOV r/m64, imm32 opcode
+    unsigned char code = 0xc0;
+    RegisterEncode3(code, 5, reg);
+    AddMachineCode(code);
+    // write 32-bit value (sign-extended to 64-bit)
+    AddImm((int32_t)imm);
+  } else {
+    // Use full 64-bit movabs for large values
+    AddMachineCode(XB(reg));
+    unsigned char code = 0xb8;
+    RegisterEncode3(code, 5, reg);
+    AddMachineCode(code);
+    // write 64-bit value
+    AddImm64(imm);
+  }
 }
 
 void JitAmd64::move_imm_xreg(RegInstr* instr, Register reg) {
