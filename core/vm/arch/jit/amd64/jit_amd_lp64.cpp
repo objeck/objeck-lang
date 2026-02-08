@@ -3437,14 +3437,35 @@ void JitAmd64::add_imm_reg(int64_t imm, Register reg) {
   std::wcout << L"  " << (++instr_count) << L": [addq $" << imm << L", %"
         << GetRegisterName(reg) << L"]" << std::endl;
 #endif
-  // encode
-  AddMachineCode(B(reg));
-  AddMachineCode(0x81);
-  unsigned char code = 0xc0;
-  RegisterEncode3(code, 5, reg);
-  AddMachineCode(code);
-  // write value
-  AddImm((long)imm); // TODO: load imm to reg, perform operation 
+
+  // Optimization: Use INC for +1 (2-3 bytes vs 7 bytes)
+  if(imm == 1) {
+    // INC r64: REX.W + 0xFF /0
+    AddMachineCode(B(reg));           // REX.W prefix
+    AddMachineCode(0xFF);              // INC/DEC opcode
+    unsigned char code = 0xc0;
+    RegisterEncode3(code, 5, reg);    // ModR/M with /0 for INC
+    AddMachineCode(code);
+  }
+  // Optimization: Use DEC for -1 (2-3 bytes vs 7 bytes)
+  else if(imm == -1) {
+    // DEC r64: REX.W + 0xFF /1
+    AddMachineCode(B(reg));           // REX.W prefix
+    AddMachineCode(0xFF);              // INC/DEC opcode
+    unsigned char code = 0xc8;        // ModR/M with /1 for DEC
+    RegisterEncode3(code, 5, reg);
+    AddMachineCode(code);
+  }
+  else {
+    // Regular ADD with immediate
+    AddMachineCode(B(reg));
+    AddMachineCode(0x81);
+    unsigned char code = 0xc0;
+    RegisterEncode3(code, 5, reg);
+    AddMachineCode(code);
+    // write value
+    AddImm((long)imm);
+  }
 }
 
 void JitAmd64::add_imm_xreg(RegInstr* instr, Register reg) {
@@ -3693,13 +3714,34 @@ void JitAmd64::sub_imm_reg(int64_t imm, Register reg) {
   std::wcout << L"  " << (++instr_count) << L": [subq $" << imm << L", %"
         << GetRegisterName(reg) << L"]" << std::endl;
 #endif
-  // encode
-  AddMachineCode(B(reg));
-  AddMachineCode(0x81);
-  unsigned char code = 0xe8;
-  RegisterEncode3(code, 5, reg);
-  AddMachineCode(code);
-  AddImm((long)imm);
+
+  // Optimization: Use DEC for -1 (2-3 bytes vs 7 bytes)
+  if(imm == 1) {
+    // DEC r64: REX.W + 0xFF /1
+    AddMachineCode(B(reg));           // REX.W prefix
+    AddMachineCode(0xFF);              // INC/DEC opcode
+    unsigned char code = 0xc8;        // ModR/M with /1 for DEC
+    RegisterEncode3(code, 5, reg);
+    AddMachineCode(code);
+  }
+  // Optimization: Use INC for subtracting -1 (2-3 bytes vs 7 bytes)
+  else if(imm == -1) {
+    // INC r64: REX.W + 0xFF /0
+    AddMachineCode(B(reg));           // REX.W prefix
+    AddMachineCode(0xFF);              // INC/DEC opcode
+    unsigned char code = 0xc0;        // ModR/M with /0 for INC
+    RegisterEncode3(code, 5, reg);
+    AddMachineCode(code);
+  }
+  else {
+    // Regular SUB with immediate
+    AddMachineCode(B(reg));
+    AddMachineCode(0x81);
+    unsigned char code = 0xe8;
+    RegisterEncode3(code, 5, reg);
+    AddMachineCode(code);
+    AddImm((long)imm);
+  }
 }
 
 // TODO: 64-bit literal operation for Windows
