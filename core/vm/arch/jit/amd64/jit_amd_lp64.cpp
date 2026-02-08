@@ -3791,9 +3791,22 @@ void JitAmd64::sub_mem_reg(long offset, Register src, Register dest) {
 
 // TODO: 64-bit literal operation for Windows
 void JitAmd64::mul_imm_reg(int64_t imm, Register reg) {
+  // Optimization: Use NEG for multiply by -1 (2-3 bytes vs 7 bytes)
+  if(imm == -1) {
+#ifdef _DEBUG_JIT
+    std::wcout << L"  " << (++instr_count) << L": [negq %"
+          << GetRegisterName(reg) << L"] (optimized from mul $-1)" << std::endl;
+#endif
+    // NEG r64: REX.W + 0xF7 /3
+    AddMachineCode(B(reg));           // REX.W prefix
+    AddMachineCode(0xF7);              // NEG/NOT opcode group
+    unsigned char code = 0xd8;        // ModR/M with /3 for NEG
+    RegisterEncode3(code, 5, reg);
+    AddMachineCode(code);
+  }
   // Optimization: Replace multiply by power-of-2 with left shift
   // Example: x * 8 becomes x << 3 (faster, smaller encoding)
-  if(imm > 0 && (imm & (imm - 1)) == 0) {
+  else if(imm > 0 && (imm & (imm - 1)) == 0) {
     // imm is a power of 2, calculate shift amount
     int shift = 0;
     int64_t temp = imm;
