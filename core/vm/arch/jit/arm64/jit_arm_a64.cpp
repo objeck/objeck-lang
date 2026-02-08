@@ -1767,10 +1767,12 @@ void JitArm64::ProcessReturn(long params) {
 RegInstr* JitArm64::ProcessIntFold(long left_imm, long right_imm, InstructionType type) {
   switch(type) {
   case AND_INT:
-    return new RegInstr(IMM_INT, left_imm && right_imm);
-    
+    // Bug fix: Use bitwise AND (&), not logical AND (&&)
+    return new RegInstr(IMM_INT, left_imm & right_imm);
+
   case OR_INT:
-    return new RegInstr(IMM_INT, left_imm || right_imm);
+    // Bug fix: Use bitwise OR (|), not logical OR (||)
+    return new RegInstr(IMM_INT, left_imm | right_imm);
     
   case ADD_INT:
     return new RegInstr(IMM_INT, left_imm + right_imm);
