@@ -4100,14 +4100,26 @@ void JitAmd64::inc_mem(long offset, Register dest) {
 }
 
 void JitAmd64::shl_imm_reg(int64_t value, Register dest) {
-  AddMachineCode(B(dest));
-  AddMachineCode(0xc1);
-  unsigned char code = 0xe0;
-  RegisterEncode3(code, 5, dest);
-  AddMachineCode(code);
-  AddMachineCode((unsigned char)value);
+  // Optimization: Use single-operand form for shift by 1 (saves 1 byte)
+  if(value == 1) {
+    // SHL r64, 1: REX.W + 0xD1 /4 (3 bytes vs 4 bytes)
+    AddMachineCode(B(dest));
+    AddMachineCode(0xD1);              // SHL/SHR/SAR by 1 opcode
+    unsigned char code = 0xe0;        // ModR/M with /4 for SHL
+    RegisterEncode3(code, 5, dest);
+    AddMachineCode(code);
+  }
+  else {
+    // Regular SHL with 8-bit immediate
+    AddMachineCode(B(dest));
+    AddMachineCode(0xc1);
+    unsigned char code = 0xe0;
+    RegisterEncode3(code, 5, dest);
+    AddMachineCode(code);
+    AddMachineCode((unsigned char)value);
+  }
 #ifdef _DEBUG_JIT
-  std::wcout << L"  " << (++instr_count) << L": [shlq $" << value << L", %" 
+  std::wcout << L"  " << (++instr_count) << L": [shlq $" << value << L", %"
         << GetRegisterName(dest) << L"]" << std::endl;
 #endif
 }
@@ -4160,14 +4172,26 @@ void JitAmd64::shl_mem_reg(long offset, Register src, Register dest)
 }
 
 void JitAmd64::shr_imm_reg(int64_t value, Register dest) {
-  AddMachineCode(B(dest));
-  AddMachineCode(0xc1);
-  unsigned char code = 0xe8;
-  RegisterEncode3(code, 5, dest);
-  AddMachineCode(code);
-  AddMachineCode((unsigned char)value);
+  // Optimization: Use single-operand form for shift by 1 (saves 1 byte)
+  if(value == 1) {
+    // SHR r64, 1: REX.W + 0xD1 /5 (3 bytes vs 4 bytes)
+    AddMachineCode(B(dest));
+    AddMachineCode(0xD1);              // SHL/SHR/SAR by 1 opcode
+    unsigned char code = 0xe8;        // ModR/M with /5 for SHR
+    RegisterEncode3(code, 5, dest);
+    AddMachineCode(code);
+  }
+  else {
+    // Regular SHR with 8-bit immediate
+    AddMachineCode(B(dest));
+    AddMachineCode(0xc1);
+    unsigned char code = 0xe8;
+    RegisterEncode3(code, 5, dest);
+    AddMachineCode(code);
+    AddMachineCode((unsigned char)value);
+  }
 #ifdef _DEBUG_JIT
-  std::wcout << L"  " << (++instr_count) << L": [shrq $" << value << L", %" 
+  std::wcout << L"  " << (++instr_count) << L": [shrq $" << value << L", %"
         << GetRegisterName(dest) << L"]" << std::endl;
 #endif
 }
