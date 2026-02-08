@@ -31,12 +31,13 @@
  ***************************************************************************/
 
 #include "builder.h"
+#include "../../shared/sys.h"
 
 int main(int argc, char* argv[])
 {
   // get command line parameters
   list<wstring> argument_options;
-  map<const wstring, wstring> cmd_params = ParseCommnadLine(argc, argv, argument_options);
+  map<const wstring, wstring> cmd_params = ParseCommnadLine(argc, const_cast<const char**>(argv), argument_options);
   if(cmd_params.size() < 3) {
     wcout << GetUsage() << endl;
     exit(1);
