@@ -2824,18 +2824,22 @@ void JitArm64::xor_mem_reg(long offset, Register src, Register dest) {
 }
 
 void JitArm64::cmp_imm_reg(long imm, Register reg) {
+  // Track if this is a zero comparison for CBZ/CBNZ optimization
+  last_cmp_was_zero = (imm == 0);
+  last_cmp_reg = reg;
+
   if(imm >= 0 && imm <= 4096) {
 #ifdef _DEBUG_JIT_JIT
   std::wcout << L"  " << (++instr_count) << L": [cmp/cmn " << GetRegisterName(reg) << L", " << imm << L"]" << std::endl;
 #endif
-    
+
     uint32_t op_code = 0xF100001F;
-    
+
     uint32_t op_dest = reg << 5;
     op_code |= op_dest;
-  
+
     op_code |= abs(imm) << 10;
-    
+
     AddMachineCode(op_code);
   }
   else {
@@ -2851,6 +2855,40 @@ void JitArm64::cmp_mem_reg(long offset, Register src, Register dest) {
   move_mem_reg(offset, src, src_holder->GetRegister());
   cmp_reg_reg(src_holder->GetRegister(), dest);
   ReleaseRegister(src_holder);
+}
+
+/**
+ * CBZ: Compare and Branch if Zero
+ * Single-instruction alternative to CMP + B.EQ for zero comparisons
+ * Encoding: 0xB4000000 | (imm19 << 5) | Rt
+ * Branch offset will be patched during fixup phase
+ */
+void JitArm64::cbz_reg(Register reg) {
+#ifdef _DEBUG_JIT_JIT
+  std::wcout << L"  " << (++instr_count) << L": [cbz "
+             << GetRegisterName(reg) << L", <offset>] (optimized from cmp+b.eq)" << std::endl;
+#endif
+  // CBZ encoding: 0xB4000000 | (rt << 0)
+  // imm19: branch offset (bits 5-23), filled during fixup
+  uint32_t op_code = 0xB4000000;
+  op_code |= (reg & 0x1F);  // Encode register in bits 0-4
+  AddMachineCode(op_code);
+}
+
+/**
+ * CBNZ: Compare and Branch if Non-Zero
+ * Single-instruction alternative to CMP + B.NE for zero comparisons
+ * Encoding: 0xB5000000 | (imm19 << 5) | Rt
+ */
+void JitArm64::cbnz_reg(Register reg) {
+#ifdef _DEBUG_JIT_JIT
+  std::wcout << L"  " << (++instr_count) << L": [cbnz "
+             << GetRegisterName(reg) << L", <offset>] (optimized from cmp+b.ne)" << std::endl;
+#endif
+  // CBNZ encoding: 0xB5000000 | (rt << 0)
+  uint32_t op_code = 0xB5000000;
+  op_code |= (reg & 0x1F);  // Encode register in bits 0-4
+  AddMachineCode(op_code);
 }
 
 void JitArm64::cmp_reg_reg(Register src, Register dest) {
@@ -3653,18 +3691,30 @@ bool JitArm64::cond_jmp(InstructionType type) {
 
       case EQL_INT:
       case EQL_FLOAT:
+        // OPTIMIZATION: Use CBZ for zero comparisons (1 instruction vs 2)
+        if(type == EQL_INT && last_cmp_was_zero) {
+          cbz_reg(last_cmp_reg);
+        }
+        else {
 #ifdef _DEBUG_JIT_JIT
-        std::std::wcout << L"  " << (++instr_count) << L": [b.eq]" << std::endl;
+          std::wcout << L"  " << (++instr_count) << L": [b.eq]" << std::endl;
 #endif
-        AddMachineCode(0x54000000);
+          AddMachineCode(0x54000000);
+        }
         break;
 
       case NEQL_INT:
       case NEQL_FLOAT:
+        // OPTIMIZATION: Use CBNZ for non-zero comparisons (1 instruction vs 2)
+        if(type == NEQL_INT && last_cmp_was_zero) {
+          cbnz_reg(last_cmp_reg);
+        }
+        else {
 #ifdef _DEBUG_JIT_JIT
-        std::std::wcout << L"  " << (++instr_count) << L": [bne]" << std::endl;
+          std::wcout << L"  " << (++instr_count) << L": [b.ne]" << std::endl;
 #endif
-        AddMachineCode(0x54000001);
+          AddMachineCode(0x54000001);
+        }
         break;
 
       case LES_EQL_INT:
@@ -3710,18 +3760,30 @@ bool JitArm64::cond_jmp(InstructionType type) {
           
       case EQL_INT:
       case EQL_FLOAT:
+        // OPTIMIZATION: Use CBNZ for zero comparisons (jump if NOT equal to zero)
+        if(type == EQL_INT && last_cmp_was_zero) {
+          cbnz_reg(last_cmp_reg);
+        }
+        else {
 #ifdef _DEBUG_JIT_JIT
-        std::std::wcout << L"  " << (++instr_count) << L": [b.ne]" << std::endl;
+          std::wcout << L"  " << (++instr_count) << L": [b.ne]" << std::endl;
 #endif
-        AddMachineCode(0x54000001);
+          AddMachineCode(0x54000001);
+        }
         break;
 
       case NEQL_INT:
       case NEQL_FLOAT:
+        // OPTIMIZATION: Use CBZ for zero comparisons (jump if equal to zero)
+        if(type == NEQL_INT && last_cmp_was_zero) {
+          cbz_reg(last_cmp_reg);
+        }
+        else {
 #ifdef _DEBUG_JIT_JIT
-        std::std::wcout << L"  " << (++instr_count) << L": [b.eq]" << std::endl;
+          std::wcout << L"  " << (++instr_count) << L": [b.eq]" << std::endl;
 #endif
-        AddMachineCode(0x54000000);
+          AddMachineCode(0x54000000);
+        }
         break;
 
       case LES_EQL_INT:
@@ -4449,7 +4511,10 @@ bool JitArm64::Compile(StackMethod* cm)
   if(!cm->GetNativeCode()) {
     skip_jump = false;
     method = cm;
-    
+    // Initialize CBZ/CBNZ optimization tracking
+    last_cmp_was_zero = false;
+    last_cmp_reg = X0;  // Initialize to a valid register
+
 #ifdef _DEBUG_JIT_JIT
     const long cls_id = method->GetClass()->GetId();
     const long mthd_id = method->GetId();

@@ -360,7 +360,10 @@ namespace Runtime {
     long code_buf_max;
     bool compile_success;
     bool skip_jump;
-    
+    // CBZ/CBNZ optimization: track last comparison
+    bool last_cmp_was_zero;
+    Register last_cmp_reg;
+
     // setup and teardown
     void Prolog();
     void Epilog();
@@ -676,7 +679,11 @@ namespace Runtime {
     void cmp_reg_reg(Register src, Register dest);
     void cmp_mem_reg(long offset, Register src, Register dest);
     void cmp_imm_reg(long imm, Register reg);
-    
+
+    // CBZ/CBNZ: Compare and Branch if Zero/Non-Zero (optimized for zero comparisons)
+    void cbz_reg(Register reg);   // Branch if reg == 0
+    void cbnz_reg(Register reg);  // Branch if reg != 0
+
     void cmp_freg_freg(Register src, Register dest);
     void cmp_mem_freg(long offset, Register src, Register dest);
     void cmp_imm_freg(size_t addr, Register reg);
