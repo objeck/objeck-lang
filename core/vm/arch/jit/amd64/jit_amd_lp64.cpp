@@ -2636,9 +2636,20 @@ void JitAmd64::move_imm_reg(long imm, Register reg) {
         << GetRegisterName(reg) << L"]" << std::endl;
 #endif
 
+  // Optimization: Use XOR reg, reg for zero (saves 5 bytes, recognized as zero idiom)
+  if (imm == 0) {
+    // XOR r64, r64 (2-3 bytes vs 7 bytes for MOV)
+    // REX.W + 0x31 + ModR/M
+    AddMachineCode(ROB(reg, reg));  // REX.W prefix with register encodings
+    AddMachineCode(0x31);            // XOR r/m64, r64 opcode
+    unsigned char code = 0xc0;
+    RegisterEncode3(code, 2, reg);   // source register
+    RegisterEncode3(code, 5, reg);   // destination register (same)
+    AddMachineCode(code);
+  }
   // Optimization: Use 32-bit immediate when possible (saves 3 bytes)
   // Check if value fits in signed 32-bit range
-  if (imm >= INT32_MIN && imm <= INT32_MAX) {
+  else if (imm >= INT32_MIN && imm <= INT32_MAX) {
     // Use MOV r/m64, imm32 with sign extension (7 bytes vs 10 bytes)
     // REX.W + C7 /0 + imm32
     AddMachineCode(B(reg));  // REX.W prefix for 64-bit operation
@@ -3269,7 +3280,22 @@ void JitAmd64::cmp_mem_reg(long offset, Register src, Register dest) {
 
 // TODO: 64-bit literal operation for Windows
 void JitAmd64::cmp_imm_reg(int64_t imm, Register reg) {
-  if(imm < INT32_MIN || imm > INT32_MAX) {
+  // Optimization: Use TEST reg, reg for zero comparison (saves 4 bytes)
+  if(imm == 0) {
+#ifdef _DEBUG_JIT
+    std::wcout << L"  " << (++instr_count) << L": [testq %"
+      << GetRegisterName(reg) << L", %" << GetRegisterName(reg) << L"]" << std::endl;
+#endif
+    // TEST r64, r64 (3 bytes vs 7 bytes for CMP)
+    // REX.W + 0x85 + ModR/M
+    AddMachineCode(ROB(reg, reg));  // REX.W prefix
+    AddMachineCode(0x85);            // TEST r/m64, r64 opcode
+    unsigned char code = 0xc0;
+    RegisterEncode3(code, 2, reg);   // source register
+    RegisterEncode3(code, 5, reg);   // destination register (same)
+    AddMachineCode(code);
+  }
+  else if(imm < INT32_MIN || imm > INT32_MAX) {
     RegisterHolder* holder = GetRegister();
     move_imm_reg(imm, holder->GetRegister());
     cmp_reg_reg(holder->GetRegister(), reg);
