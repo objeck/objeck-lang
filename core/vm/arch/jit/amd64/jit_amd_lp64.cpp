@@ -4428,14 +4428,27 @@ void JitAmd64::and_imm_reg(int64_t imm, Register reg) {
   std::wcout << L"  " << (++instr_count) << L": [andq $" << imm << L", %"
         << GetRegisterName(reg) << L"]" << std::endl;
 #endif
-  // encode
-  AddMachineCode(B(reg));
-  AddMachineCode(0x81);
-  unsigned char code = 0xe0;
-  RegisterEncode3(code, 5, reg);
-  AddMachineCode(code);
-  // write value
-  AddImm((long)imm); // TODO: load imm to reg, perform operation 
+
+  // Optimization: Use 8-bit immediate form for small values (saves 3 bytes)
+  if(imm >= INT8_MIN && imm <= INT8_MAX) {
+    // AND r64, imm8: REX.W + 0x83 /4 + imm8 (4 bytes vs 7 bytes)
+    AddMachineCode(B(reg));
+    AddMachineCode(0x83);              // AND r/m64, imm8 opcode
+    unsigned char code = 0xe0;        // ModR/M with /4 for AND
+    RegisterEncode3(code, 5, reg);
+    AddMachineCode(code);
+    AddMachineCode((unsigned char)(imm & 0xFF)); // 8-bit immediate
+  }
+  else {
+    // Regular AND with 32-bit immediate
+    AddMachineCode(B(reg));
+    AddMachineCode(0x81);
+    unsigned char code = 0xe0;
+    RegisterEncode3(code, 5, reg);
+    AddMachineCode(code);
+    // write value
+    AddImm((long)imm);
+  }
 }
 
 void JitAmd64::and_reg_reg(Register src, Register dest) {
@@ -4483,14 +4496,27 @@ void JitAmd64::or_imm_reg(int64_t imm, Register reg) {
   std::wcout << L"  " << (++instr_count) << L": [orq $" << imm << L", %"
         << GetRegisterName(reg) << L"]" << std::endl;
 #endif
-  // encode
-  AddMachineCode(B(reg));
-  AddMachineCode(0x81);
-  unsigned char code = 0xc8;
-  RegisterEncode3(code, 5, reg);
-  AddMachineCode(code);
-  // write value
-  AddImm((long)imm); // TODO: load imm to reg, perform operation 
+
+  // Optimization: Use 8-bit immediate form for small values (saves 3 bytes)
+  if(imm >= INT8_MIN && imm <= INT8_MAX) {
+    // OR r64, imm8: REX.W + 0x83 /1 + imm8 (4 bytes vs 7 bytes)
+    AddMachineCode(B(reg));
+    AddMachineCode(0x83);              // OR r/m64, imm8 opcode
+    unsigned char code = 0xc8;        // ModR/M with /1 for OR
+    RegisterEncode3(code, 5, reg);
+    AddMachineCode(code);
+    AddMachineCode((unsigned char)(imm & 0xFF)); // 8-bit immediate
+  }
+  else {
+    // Regular OR with 32-bit immediate
+    AddMachineCode(B(reg));
+    AddMachineCode(0x81);
+    unsigned char code = 0xc8;
+    RegisterEncode3(code, 5, reg);
+    AddMachineCode(code);
+    // write value
+    AddImm((long)imm);
+  }
 }
 
 void JitAmd64::or_reg_reg(Register src, Register dest) {
@@ -4527,14 +4553,27 @@ void JitAmd64::xor_imm_reg(int64_t imm, Register reg) {
   std::wcout << L"  " << (++instr_count) << L": [xorq $" << imm << L", %"
         << GetRegisterName(reg) << L"]" << std::endl;
 #endif
-  // encode
-  AddMachineCode(B(reg));
-  AddMachineCode(0x81);
-  unsigned char code = 0xf0;
-  RegisterEncode3(code, 5, reg);
-  AddMachineCode(code);
-  // write value
-  AddImm((long)imm); // TODO: load imm to reg, perform operation 
+
+  // Optimization: Use 8-bit immediate form for small values (saves 3 bytes)
+  if(imm >= INT8_MIN && imm <= INT8_MAX) {
+    // XOR r64, imm8: REX.W + 0x83 /6 + imm8 (4 bytes vs 7 bytes)
+    AddMachineCode(B(reg));
+    AddMachineCode(0x83);              // XOR r/m64, imm8 opcode
+    unsigned char code = 0xf0;        // ModR/M with /6 for XOR
+    RegisterEncode3(code, 5, reg);
+    AddMachineCode(code);
+    AddMachineCode((unsigned char)(imm & 0xFF)); // 8-bit immediate
+  }
+  else {
+    // Regular XOR with 32-bit immediate
+    AddMachineCode(B(reg));
+    AddMachineCode(0x81);
+    unsigned char code = 0xf0;
+    RegisterEncode3(code, 5, reg);
+    AddMachineCode(code);
+    // write value
+    AddImm((long)imm);
+  }
 }
 
 void JitAmd64::xor_reg_reg(Register src, Register dest) {
