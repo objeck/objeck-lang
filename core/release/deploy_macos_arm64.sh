@@ -48,9 +48,9 @@ cp xcode/build/Release/obn ../../release/deploy/lib/native/misc
 cp ../../vm/misc/config.prop ../../release/deploy/lib/native/misc
 
 # build libraries
-cd ../../lib/openssl
-xcodebuild -project macos/xcode/objk_openssl.xcodeproj clean build
-cp macos/xcode/build/Release/libobjk_openssl.dylib ../../release/deploy/lib/native/libobjk_openssl.dylib
+cd ../../lib/crypto
+xcodebuild -project macos/xcode/objk_crypto.xcodeproj clean build
+cp macos/xcode/build/Release/libobjk_crypto.dylib ../../release/deploy/lib/native/libobjk_crypto.dylib
 
 cd ../sdl
 xcodebuild -project macos/xcode/sdl.xcodeproj build

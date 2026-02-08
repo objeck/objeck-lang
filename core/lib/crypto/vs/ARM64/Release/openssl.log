@@ -1,0 +1,4 @@
+﻿  openssl.cpp
+     Creating library C:\Users\objec\Documents\Code\objeck-lang\core\lib\openssl\ARM64\Release\libobjk_openssl.lib and object C:\Users\objec\Documents\Code\objeck-lang\core\lib\openssl\ARM64\Release\libobjk_openssl.exp
+LINK : warning LNK4098: defaultlib 'LIBCMT' conflicts with use of other libs; use /NODEFAULTLIB:library
+  openssl.vcxproj -> C:\Users\objec\Documents\Code\objeck-lang\core\lib\openssl\ARM64\Release\libobjk_openssl.dll

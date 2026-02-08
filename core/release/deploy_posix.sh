@@ -64,9 +64,9 @@ cd ../lib/odbc
 ./build_linux.sh odbc
 cp odbc.so ../../release/deploy/lib/native/libobjk_odbc.so
 
-cd ../openssl
-./build_linux.sh openssl
-cp openssl.so ../../release/deploy/lib/native/libobjk_openssl.so
+cd ../crypto
+./build_linux.sh crypto
+cp crypto.so ../../release/deploy/lib/native/libobjk_crypto.so
 
 cd ../lame
 ./build_linux.sh lame

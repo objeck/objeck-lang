@@ -7512,8 +7512,8 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_9EE569A53EBA4C75B156A40AAA6F9F80"
             {
-            "SourcePath" = "8:..\\..\\..\\..\\Objeck-Build\\release-arm64\\objeck-lang-arm64\\lib\\native\\libobjk_openssl.dll"
-            "TargetName" = "8:libobjk_openssl.dll"
+            "SourcePath" = "8:..\\..\\..\\..\\Objeck-Build\\release-arm64\\objeck-lang-arm64\\lib\\native\\libobjk_crypto.dll"
+            "TargetName" = "8:libobjk_crypto.dll"
             "Tag" = "8:"
             "Folder" = "8:_9D29F31DF14E429989D09128D4F64727"
             "Condition" = "8:"
