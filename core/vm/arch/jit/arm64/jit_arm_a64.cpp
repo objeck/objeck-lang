@@ -2250,7 +2250,19 @@ void JitArm64::move_imm_reg(int64_t imm, Register reg) {
 #else
 void JitArm64::move_imm_reg(long imm, Register reg) {
 #endif
-  if(imm >= -4096 && imm < 0) {
+  // Optimization: Use MOV from zero register for zero (XZR/WZR)
+  // This is encoded as ORR Xd, XZR, XZR which is often faster
+  if(imm == 0) {
+#ifdef _DEBUG_JIT_JIT
+    std::wcout << L"  " << (++instr_count) << L": [mov " << GetRegisterName(reg) << L", xzr]" << std::endl;
+#endif
+    // MOV Xd, XZR (encoded as ORR Xd, XZR, XZR)
+    // Opcode: 0xAA1F03E0 | (dest)
+    uint32_t op_code = 0xAA1F03E0;
+    op_code |= reg;
+    AddMachineCode(op_code);
+  }
+  else if(imm >= -4096 && imm < 0) {
 #ifdef _DEBUG_JIT_JIT
     std::wcout << L"  " << (++instr_count) << L": [mvn " << GetRegisterName(reg) << L", #" << imm << L"]" << std::endl;
 #endif
