@@ -4493,8 +4493,21 @@ void JitAmd64::and_imm_reg(int64_t imm, Register reg) {
         << GetRegisterName(reg) << L"]" << std::endl;
 #endif
 
+  // Optimization: AND with 0 always gives 0 (use XOR)
+  if(imm == 0) {
+    AddMachineCode(ROB(reg, reg));
+    AddMachineCode(0x31);
+    unsigned char code = 0xc0;
+    RegisterEncode3(code, 2, reg);
+    RegisterEncode3(code, 5, reg);
+    AddMachineCode(code);
+  }
+  // Optimization: AND with -1 (all bits set) is identity (no-op)
+  else if(imm == -1) {
+    // No operation needed
+  }
   // Optimization: Use 8-bit immediate form for small values (saves 3 bytes)
-  if(imm >= INT8_MIN && imm <= INT8_MAX) {
+  else if(imm >= INT8_MIN && imm <= INT8_MAX) {
     // AND r64, imm8: REX.W + 0x83 /4 + imm8 (4 bytes vs 7 bytes)
     AddMachineCode(B(reg));
     AddMachineCode(0x83);              // AND r/m64, imm8 opcode
@@ -4561,8 +4574,17 @@ void JitAmd64::or_imm_reg(int64_t imm, Register reg) {
         << GetRegisterName(reg) << L"]" << std::endl;
 #endif
 
+  // Optimization: OR with 0 is identity (no-op)
+  if(imm == 0) {
+    // No operation needed
+  }
+  // Optimization: OR with -1 (all bits set) sets all bits
+  else if(imm == -1) {
+    // Set all bits: MOV reg, -1 or use NOT after XOR
+    move_imm_reg(-1, reg);
+  }
   // Optimization: Use 8-bit immediate form for small values (saves 3 bytes)
-  if(imm >= INT8_MIN && imm <= INT8_MAX) {
+  else if(imm >= INT8_MIN && imm <= INT8_MAX) {
     // OR r64, imm8: REX.W + 0x83 /1 + imm8 (4 bytes vs 7 bytes)
     AddMachineCode(B(reg));
     AddMachineCode(0x83);              // OR r/m64, imm8 opcode
@@ -4618,8 +4640,21 @@ void JitAmd64::xor_imm_reg(int64_t imm, Register reg) {
         << GetRegisterName(reg) << L"]" << std::endl;
 #endif
 
+  // Optimization: XOR with 0 is identity (no-op)
+  if(imm == 0) {
+    // No operation needed
+  }
+  // Optimization: XOR with -1 (all bits set) is NOT operation
+  else if(imm == -1) {
+    // Use NOT instruction (2-3 bytes)
+    AddMachineCode(B(reg));
+    AddMachineCode(0xF7);
+    unsigned char code = 0xd0;
+    RegisterEncode3(code, 5, reg);
+    AddMachineCode(code);
+  }
   // Optimization: Use 8-bit immediate form for small values (saves 3 bytes)
-  if(imm >= INT8_MIN && imm <= INT8_MAX) {
+  else if(imm >= INT8_MIN && imm <= INT8_MAX) {
     // XOR r64, imm8: REX.W + 0x83 /6 + imm8 (4 bytes vs 7 bytes)
     AddMachineCode(B(reg));
     AddMachineCode(0x83);              // XOR r/m64, imm8 opcode
