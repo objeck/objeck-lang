@@ -5,8 +5,9 @@ cp /ucrt64/bin/libgcc_s_seh-1.dll deploy-msys2-ucrt/bin
 cp /ucrt64/bin/libstdc++-6.dll deploy-msys2-ucrt/bin
 cp /ucrt64/bin/libwinpthread-1.dll deploy-msys2-ucrt/bin
 cp /ucrt64/bin/zlib1.dll deploy-msys2-ucrt/bin
-cp /ucrt64/bin/libcrypto-3-x64.dll deploy-msys2-ucrt/bin
-cp /ucrt64/bin/libssl-3-x64.dll deploy-msys2-ucrt/bin
+cp /ucrt64/bin/libmbedtls.dll deploy-msys2-ucrt/bin
+cp /ucrt64/bin/libmbedx509.dll deploy-msys2-ucrt/bin
+cp /ucrt64/bin/libmbedcrypto.dll deploy-msys2-ucrt/bin
 cp /ucrt64/bin/libodbc-2.dll deploy-msys2-ucrt/bin
 cp /ucrt64/bin/libiconv-2.dll deploy-msys2-ucrt/bin
 cp /ucrt64/bin/libltdl-7.dll deploy-msys2-ucrt/bin

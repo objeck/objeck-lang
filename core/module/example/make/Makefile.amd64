@@ -5,7 +5,7 @@ MODULE_PATH=..
 EXE=example
 
 $(EXE): $(SRC) $(OBJ_LIBS)
-	$(CXX) -m64 -o $(EXE) $(SRC) $(OBJ_LIBS) ../../compiler/compiler.a ../../compiler/sys.a ../../vm/vm.a ../../vm/memory.a ../../vm/arch/jit/amd64/jit_common.a ../../vm/arch/jit/amd64/jit_amd_lp64.o -ldl -lcrypto -lreadline -lssl -lz
+	$(CXX) -m64 -o $(EXE) $(SRC) $(OBJ_LIBS) ../../compiler/compiler.a ../../compiler/sys.a ../../vm/vm.a ../../vm/memory.a ../../vm/arch/jit/amd64/jit_common.a ../../vm/arch/jit/amd64/jit_amd_lp64.o -ldl -lmbedtls -lmbedx509 -lmbedcrypto -lreadline -lz
 
 %.o: %.cpp
 	$(CXX) -m64 $(ARGS) -c $< 
