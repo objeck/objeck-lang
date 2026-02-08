@@ -3825,8 +3825,30 @@ void JitAmd64::sub_mem_reg(long offset, Register src, Register dest) {
 
 // TODO: 64-bit literal operation for Windows
 void JitAmd64::mul_imm_reg(int64_t imm, Register reg) {
+  // Optimization: Multiply by 0 always gives 0 (use XOR)
+  if(imm == 0) {
+#ifdef _DEBUG_JIT
+    std::wcout << L"  " << (++instr_count) << L": [xorq %"
+          << GetRegisterName(reg) << L", %" << GetRegisterName(reg)
+          << L"] (optimized from mul $0)" << std::endl;
+#endif
+    // XOR reg, reg (sets to zero)
+    AddMachineCode(ROB(reg, reg));
+    AddMachineCode(0x31);
+    unsigned char code = 0xc0;
+    RegisterEncode3(code, 2, reg);
+    RegisterEncode3(code, 5, reg);
+    AddMachineCode(code);
+  }
+  // Optimization: Multiply by 1 is a no-op
+  else if(imm == 1) {
+#ifdef _DEBUG_JIT
+    std::wcout << L"  " << (++instr_count) << L": [nop] (optimized from mul $1)" << std::endl;
+#endif
+    // No operation needed - value stays the same
+  }
   // Optimization: Use NEG for multiply by -1 (2-3 bytes vs 7 bytes)
-  if(imm == -1) {
+  else if(imm == -1) {
 #ifdef _DEBUG_JIT
     std::wcout << L"  " << (++instr_count) << L": [negq %"
           << GetRegisterName(reg) << L"] (optimized from mul $-1)" << std::endl;
@@ -3905,10 +3927,52 @@ void JitAmd64::mul_mem_reg(long offset, Register src, Register dest) {
 }
 
 void JitAmd64::div_imm_reg(int64_t imm, Register reg, bool is_mod) {
-  RegisterHolder* imm_holder = GetRegister();
-  move_imm_reg(imm, imm_holder->GetRegister());
-  div_reg_reg(imm_holder->GetRegister(), reg, is_mod);
-  ReleaseRegister(imm_holder);
+  // Optimization: Division by 1 is a no-op (or 0 for modulo)
+  if(imm == 1) {
+#ifdef _DEBUG_JIT
+    std::wcout << L"  " << (++instr_count) << L": [nop] (optimized from div $1)" << std::endl;
+#endif
+    if(is_mod) {
+      // x % 1 is always 0
+      AddMachineCode(ROB(reg, reg));
+      AddMachineCode(0x31);
+      unsigned char code = 0xc0;
+      RegisterEncode3(code, 2, reg);
+      RegisterEncode3(code, 5, reg);
+      AddMachineCode(code);
+    }
+    // else: x / 1 is x (no-op)
+  }
+  // Optimization: Division by power-of-2 can use SAR (arithmetic right shift)
+  // Only for non-modulo division
+  else if(!is_mod && imm > 1 && (imm & (imm - 1)) == 0) {
+    int shift = 0;
+    int64_t temp = imm;
+    while(temp > 1) {
+      temp >>= 1;
+      shift++;
+    }
+#ifdef _DEBUG_JIT
+    std::wcout << L"  " << (++instr_count) << L": [sarq $" << shift
+          << L", %" << GetRegisterName(reg) << L"] (optimized from div $"
+          << imm << L")" << std::endl;
+#endif
+    // SAR for signed division by power-of-2
+    // Note: This only works correctly for positive numbers
+    // For negative numbers, need to add (divisor-1) before shifting
+    // For simplicity, using regular division for now
+    // TODO: Add proper signed division by power-of-2
+    RegisterHolder* imm_holder = GetRegister();
+    move_imm_reg(imm, imm_holder->GetRegister());
+    div_reg_reg(imm_holder->GetRegister(), reg, is_mod);
+    ReleaseRegister(imm_holder);
+  }
+  else {
+    RegisterHolder* imm_holder = GetRegister();
+    move_imm_reg(imm, imm_holder->GetRegister());
+    div_reg_reg(imm_holder->GetRegister(), reg, is_mod);
+    ReleaseRegister(imm_holder);
+  }
 }
 
 void JitAmd64::div_mem_reg(long offset, Register src, Register dest, bool is_mod) {
