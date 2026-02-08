@@ -1,0 +1,8 @@
+C:\Users\objec\Documents\Code\objeck-lang\core\compiler\context.cpp;C:\Users\objec\Documents\Code\objeck-lang\core\lib\diags\vs\Release\context.obj
+C:\Users\objec\Documents\Code\objeck-lang\core\compiler\linker.cpp;C:\Users\objec\Documents\Code\objeck-lang\core\lib\diags\vs\Release\linker.obj
+C:\Users\objec\Documents\Code\objeck-lang\core\compiler\parser.cpp;C:\Users\objec\Documents\Code\objeck-lang\core\lib\diags\vs\Release\parser.obj
+C:\Users\objec\Documents\Code\objeck-lang\core\compiler\scanner.cpp;C:\Users\objec\Documents\Code\objeck-lang\core\lib\diags\vs\Release\scanner.obj
+C:\Users\objec\Documents\Code\objeck-lang\core\compiler\tree.cpp;C:\Users\objec\Documents\Code\objeck-lang\core\lib\diags\vs\Release\tree.obj
+C:\Users\objec\Documents\Code\objeck-lang\core\compiler\types.cpp;C:\Users\objec\Documents\Code\objeck-lang\core\lib\diags\vs\Release\types.obj
+C:\Users\objec\Documents\Code\objeck-lang\core\shared\logger.cpp;C:\Users\objec\Documents\Code\objeck-lang\core\lib\diags\vs\Release\logger.obj
+C:\Users\objec\Documents\Code\objeck-lang\core\lib\diags\diags.cpp;C:\Users\objec\Documents\Code\objeck-lang\core\lib\diags\vs\Release\diags.obj

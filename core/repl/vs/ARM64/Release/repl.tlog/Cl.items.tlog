@@ -1,0 +1,7 @@
+C:\Users\objec\Documents\Code\objeck-lang\core\shared\logger.cpp;C:\Users\objec\Documents\Code\objeck-lang\core\repl\vs\ARM64\Release\logger.obj
+C:\Users\objec\Documents\Code\objeck-lang\core\shared\sys.cpp;C:\Users\objec\Documents\Code\objeck-lang\core\repl\vs\ARM64\Release\sys.obj
+C:\Users\objec\Documents\Code\objeck-lang\core\repl\editor.cpp;C:\Users\objec\Documents\Code\objeck-lang\core\repl\vs\ARM64\Release\editor.obj
+C:\Users\objec\Documents\Code\objeck-lang\core\repl\repl.cpp;C:\Users\objec\Documents\Code\objeck-lang\core\repl\vs\ARM64\Release\repl.obj
+C:\Users\objec\Documents\Code\objeck-lang\core\vm\arch\jit\jit_common.cpp;C:\Users\objec\Documents\Code\objeck-lang\core\repl\vs\ARM64\Release\jit_common.obj
+C:\Users\objec\Documents\Code\objeck-lang\core\vm\arch\jit\arm64\jit_arm_a64.cpp;C:\Users\objec\Documents\Code\objeck-lang\core\repl\vs\ARM64\Release\jit_arm_a64.obj
+C:\Users\objec\Documents\Code\objeck-lang\core\vm\arch\jit\arm64\jit_arm_a64.h;C:\Users\objec\Documents\Code\objeck-lang\core\repl\vs\ARM64\Release\jit_arm_a64.obj

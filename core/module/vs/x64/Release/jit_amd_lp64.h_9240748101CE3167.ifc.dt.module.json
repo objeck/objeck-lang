@@ -1,0 +1,22 @@
+{
+    "version": 1,
+    "revision": 0,
+    "rules": [
+        {
+            "primary-output": "x64\\Release\\jit_amd_lp64.obj",
+            "outputs": [
+                "x64\\Release\\jit_amd_lp64.h_9240748101CE3167.ifc.dt.module.json",
+                "x64\\Release\\jit_amd_lp64.h_9240748101CE3167.ifc.dt.d.json",
+                "x64\\Release\\jit_amd_lp64.h.ifc"
+            ],
+            "provides": [
+                {
+                    "logical-name": "C:\\Users\\objec\\Documents\\Code\\objeck-lang\\core\\vm\\arch\\jit\\amd64\\jit_amd_lp64.h",
+                    "source-path": "c:\\users\\objec\\documents\\code\\objeck-lang\\core\\vm\\arch\\jit\\amd64\\jit_amd_lp64.h",
+                    "lookup-method": "absolute"
+                }
+            ],
+            "requires": []
+        }
+    ]
+}

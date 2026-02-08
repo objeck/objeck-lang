@@ -1,0 +1,70 @@
+#~
+# compile: obc -src lambda_17.obs
+# run: obr lambda_17.obe
+~#
+
+use Collection;
+
+enum Oper {
+	ADD,
+	SUB
+}
+
+alias Funcs {
+	Apply : (Int) ~ Int,
+	Oper : (Oper, Int, Int) ~ Int,
+	Double : (FloatRef) ~ FloatRef
+}
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		f := Square(Int) ~ Int;
+		PrintOne(f);
+
+		f1 := \Funcs->Apply : (a) => a * a;
+		PrintOne(f1);
+
+		f2 := \Funcs->Oper : (o, a, b) => {
+			select(o) {
+				label Oper->ADD: {
+					return a + b;
+				}
+
+				label Oper->SUB: {
+					return a - b;
+				}
+
+				other: {
+					return a * b;
+				}
+			};
+		};
+		PrintTwo(f2);
+		
+		map := Map->New()<IntRef, String>;
+		map->Insert(1, "One");
+		map->Insert(3, "Three");
+		map->Insert(5, "Five");
+		map->Insert(7, "Seven");
+		map->Insert(9, "Nine");
+		map->Each(\^(k, v) => "{$k}: {$v}"->PrintLine());
+		
+		limit := map->GetKeys()<IntRef>->Limit(2)<IntRef>;
+		limit->Size()->PrintLine();
+		each(i : limit) {
+			limit->Get(i)->PrintLine();
+		};
+	}
+
+	function : Square(a : Int) ~ Int {
+		return a * a / 2;
+	}
+
+	function : PrintOne(f : (Int) ~ Int) ~ Nil {
+		f(12)->PrintLine();
+	}
+
+	function : PrintTwo(f : (Oper, Int, Int) ~ Int) ~ Nil {
+		f(Oper->ADD, 12,8)->PrintLine();
+	}
+}

@@ -1,0 +1,48 @@
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		strings := Collection.Vector->New()<String>;
+		strings->AddBack("One");
+		strings->AddBack("Three");
+		strings->AddBack("Five");
+		strings->AddBack("Seven");
+		strings->AddBack("Nine");
+		strings->Each(\^(s) => s->PrintLine());
+
+		# ===
+		map := Collection.Map->New()<IntRef, String>;
+		map->Insert(1, "One");
+		map->Insert(3, "Three");
+		map->Insert(5, "Five");
+		map->Insert(7, "Seven");
+		map->Insert(9, "Nine");
+		map->Each(\^(k, v) => "{$k}: {$v}"->PrintLine());
+			
+		# ===
+		nums := [1.2, 3.4, 5.6, 7.8];
+		each(i : nums) {
+			num := nums[i];
+			(i + num)->PrintLine();
+		};
+
+		# ---
+
+		each(num in nums) {
+			num->PrintLine();
+		};
+
+		# ===
+
+		strings := Collection.Vector->New()<String>;
+		strings->AddBack("abd");
+		strings->AddBack("efg");
+		strings->AddBack("hij");
+		strings->AddBack("lmn");
+
+		reverse(string := strings) {
+			string += ", 123";
+			each(letter in string) {
+				letter->PrintLine();
+			};
+		};
+	}
+}

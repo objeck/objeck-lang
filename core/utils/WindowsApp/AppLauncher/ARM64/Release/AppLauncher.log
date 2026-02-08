@@ -1,0 +1,2 @@
+﻿  AppLauncher.cpp
+LINK : fatal error LNK1104: cannot open file 'atls.lib'

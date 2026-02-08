@@ -1,0 +1,1982 @@
+{
+  "version": "2.1.0",
+  "$schema": "https://schemastore.azurewebsites.net/schemas/json/sarif-2.1.0-rtm.5.json",
+  "runs": [
+    {
+      "results": [
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'StackInstr::operand3' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/vm/interpreter.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/vm/common.h"
+                },
+                "region": {
+                  "startLine": 144,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "StackInstr::{ctor}",
+                  "decoratedName": "??0StackInstr@@QEAA@H_J@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "StackInstr::operand3"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'StackInstr::native_offset' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/vm/interpreter.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/vm/common.h"
+                },
+                "region": {
+                  "startLine": 144,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "StackInstr::{ctor}",
+                  "decoratedName": "??0StackInstr@@QEAA@H_J@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "StackInstr::native_offset"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'StackInstr::operand' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/vm/interpreter.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/vm/common.h"
+                },
+                "region": {
+                  "startLine": 144,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "StackInstr::{ctor}",
+                  "decoratedName": "??0StackInstr@@QEAA@H_J@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "StackInstr::operand"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'StackInstr::alt_operand' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/vm/interpreter.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/vm/common.h"
+                },
+                "region": {
+                  "startLine": 150,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "StackInstr::{ctor}",
+                  "decoratedName": "??0StackInstr@@QEAA@HW4InstructionType@instructions@@@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "StackInstr::alt_operand"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'StackInstr::alt_operand' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/vm/interpreter.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/vm/common.h"
+                },
+                "region": {
+                  "startLine": 156,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "StackInstr::{ctor}",
+                  "decoratedName": "??0StackInstr@@QEAA@HW4InstructionType@instructions@@J@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "StackInstr::alt_operand"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'StackProgram::byte_strings' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/vm/interpreter.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/vm/common.h"
+                },
+                "region": {
+                  "startLine": 948,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "StackProgram::{ctor}",
+                  "decoratedName": "??0StackProgram@@QEAA@XZ",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "StackProgram::byte_strings"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'StackProgram::num_int_strings' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/vm/interpreter.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/vm/common.h"
+                },
+                "region": {
+                  "startLine": 948,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "StackProgram::{ctor}",
+                  "decoratedName": "??0StackProgram@@QEAA@XZ",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "StackProgram::num_int_strings"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'StackProgram::bool_strings' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/vm/interpreter.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/vm/common.h"
+                },
+                "region": {
+                  "startLine": 948,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "StackProgram::{ctor}",
+                  "decoratedName": "??0StackProgram@@QEAA@XZ",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "StackProgram::bool_strings"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'StackProgram::num_bool_strings' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/vm/interpreter.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/vm/common.h"
+                },
+                "region": {
+                  "startLine": 948,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "StackProgram::{ctor}",
+                  "decoratedName": "??0StackProgram@@QEAA@XZ",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "StackProgram::num_bool_strings"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'StackProgram::init_method' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/vm/interpreter.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/vm/common.h"
+                },
+                "region": {
+                  "startLine": 948,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "StackProgram::{ctor}",
+                  "decoratedName": "??0StackProgram@@QEAA@XZ",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "StackProgram::init_method"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'StackProgram::float_strings' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/vm/interpreter.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/vm/common.h"
+                },
+                "region": {
+                  "startLine": 948,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "StackProgram::{ctor}",
+                  "decoratedName": "??0StackProgram@@QEAA@XZ",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "StackProgram::float_strings"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'StackProgram::int_strings' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/vm/interpreter.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/vm/common.h"
+                },
+                "region": {
+                  "startLine": 948,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "StackProgram::{ctor}",
+                  "decoratedName": "??0StackProgram@@QEAA@XZ",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "StackProgram::int_strings"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'StackProgram::class_num' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/vm/interpreter.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/vm/common.h"
+                },
+                "region": {
+                  "startLine": 948,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "StackProgram::{ctor}",
+                  "decoratedName": "??0StackProgram@@QEAA@XZ",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "StackProgram::class_num"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'StackProgram::num_byte_strings' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/vm/interpreter.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/vm/common.h"
+                },
+                "region": {
+                  "startLine": 948,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "StackProgram::{ctor}",
+                  "decoratedName": "??0StackProgram@@QEAA@XZ",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "StackProgram::num_byte_strings"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'StackProgram::num_float_strings' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/vm/interpreter.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/vm/common.h"
+                },
+                "region": {
+                  "startLine": 948,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "StackProgram::{ctor}",
+                  "decoratedName": "??0StackProgram@@QEAA@XZ",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "StackProgram::num_float_strings"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'StackProgram::num_char_strings' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/vm/interpreter.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/vm/common.h"
+                },
+                "region": {
+                  "startLine": 948,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "StackProgram::{ctor}",
+                  "decoratedName": "??0StackProgram@@QEAA@XZ",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "StackProgram::num_char_strings"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'Runtime::StackInterpreter::halt' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/vm/interpreter.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/vm/interpreter.h"
+                },
+                "region": {
+                  "startLine": 437,
+                  "startColumn": 5
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "Runtime::StackInterpreter::{ctor}",
+                  "decoratedName": "??0StackInterpreter@Runtime@@QEAA@PEAPEAUStackFrame@@PEAJ@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "Runtime::StackInterpreter::halt"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'Runtime::StackInterpreter::halt' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/vm/interpreter.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/vm/interpreter.h"
+                },
+                "region": {
+                  "startLine": 447,
+                  "startColumn": 5
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "Runtime::StackInterpreter::{ctor}",
+                  "decoratedName": "??0StackInterpreter@Runtime@@QEAA@XZ",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "Runtime::StackInterpreter::halt"
+          }
+        },
+        {
+          "ruleId": "C6031",
+          "message": {
+            "text": "Return value ignored: 'ReadFile'."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/vm/interpreter.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/vm/arch/win32/win32.h"
+                },
+                "region": {
+                  "startLine": 411,
+                  "startColumn": 7,
+                  "endLine": 411,
+                  "endColumn": 40
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "Pipe::ReadString",
+                  "decoratedName": "?ReadString@Pipe@@SA?AV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@PEAX@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'Runtime::RegInstr::operand2' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/vm/interpreter.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/vm/arch/jit/amd64/jit_amd_lp64.h"
+                },
+                "region": {
+                  "startLine": 169,
+                  "startColumn": 5
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "Runtime::RegInstr::{ctor}",
+                  "decoratedName": "??0RegInstr@Runtime@@QEAA@PEAVRegisterHolder@1@@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "Runtime::RegInstr::operand2"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'Runtime::RegInstr::operand' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/vm/interpreter.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/vm/arch/jit/amd64/jit_amd_lp64.h"
+                },
+                "region": {
+                  "startLine": 169,
+                  "startColumn": 5
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "Runtime::RegInstr::{ctor}",
+                  "decoratedName": "??0RegInstr@Runtime@@QEAA@PEAVRegisterHolder@1@@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "Runtime::RegInstr::operand"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'Runtime::RegInstr::operand' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/vm/interpreter.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/vm/arch/jit/amd64/jit_amd_lp64.h"
+                },
+                "region": {
+                  "startLine": 180,
+                  "startColumn": 5
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "Runtime::RegInstr::{ctor}",
+                  "decoratedName": "??0RegInstr@Runtime@@QEAA@PEAN@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "Runtime::RegInstr::operand"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'Runtime::RegInstr::instr' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/vm/interpreter.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/vm/arch/jit/amd64/jit_amd_lp64.h"
+                },
+                "region": {
+                  "startLine": 191,
+                  "startColumn": 5
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "Runtime::RegInstr::{ctor}",
+                  "decoratedName": "??0RegInstr@Runtime@@QEAA@W4_RegType@1@_J@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "Runtime::RegInstr::instr"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'Runtime::RegInstr::holder' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/vm/interpreter.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/vm/arch/jit/amd64/jit_amd_lp64.h"
+                },
+                "region": {
+                  "startLine": 191,
+                  "startColumn": 5
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "Runtime::RegInstr::{ctor}",
+                  "decoratedName": "??0RegInstr@Runtime@@QEAA@W4_RegType@1@_J@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "Runtime::RegInstr::holder"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'Runtime::RegInstr::operand2' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/vm/interpreter.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/vm/arch/jit/amd64/jit_amd_lp64.h"
+                },
+                "region": {
+                  "startLine": 191,
+                  "startColumn": 5
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "Runtime::RegInstr::{ctor}",
+                  "decoratedName": "??0RegInstr@Runtime@@QEAA@W4_RegType@1@_J@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "Runtime::RegInstr::operand2"
+          }
+        },
+        {
+          "ruleId": "C6308",
+          "message": {
+            "text": "'realloc' might return null pointer: assigning null pointer to 'code', which is passed as an argument to 'realloc', will cause the original memory block to be leaked."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/vm/interpreter.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/vm/arch/jit/amd64/jit_amd_lp64.h"
+                },
+                "region": {
+                  "startLine": 386,
+                  "startColumn": 32,
+                  "endLine": 386,
+                  "endColumn": 61
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "Runtime::JitAmd64::AddMachineCode",
+                  "decoratedName": "?AddMachineCode@JitAmd64@Runtime@@AEAAXE@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'Runtime::JitAmd64::rax_reg' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/vm/interpreter.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/vm/arch/jit/amd64/jit_amd_lp64.h"
+                },
+                "region": {
+                  "startLine": 960,
+                  "startColumn": 5
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "Runtime::JitAmd64::{ctor}",
+                  "decoratedName": "??0JitAmd64@Runtime@@QEAA@XZ",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "Runtime::JitAmd64::rax_reg"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'Runtime::JitAmd64::skip_jump' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/vm/interpreter.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/vm/arch/jit/amd64/jit_amd_lp64.h"
+                },
+                "region": {
+                  "startLine": 960,
+                  "startColumn": 5
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "Runtime::JitAmd64::{ctor}",
+                  "decoratedName": "??0JitAmd64@Runtime@@QEAA@XZ",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "Runtime::JitAmd64::skip_jump"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'Runtime::JitAmd64::compile_success' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/vm/interpreter.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/vm/arch/jit/amd64/jit_amd_lp64.h"
+                },
+                "region": {
+                  "startLine": 960,
+                  "startColumn": 5
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "Runtime::JitAmd64::{ctor}",
+                  "decoratedName": "??0JitAmd64@Runtime@@QEAA@XZ",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "Runtime::JitAmd64::compile_success"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'Runtime::JitAmd64::code_buf_max' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/vm/interpreter.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/vm/arch/jit/amd64/jit_amd_lp64.h"
+                },
+                "region": {
+                  "startLine": 960,
+                  "startColumn": 5
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "Runtime::JitAmd64::{ctor}",
+                  "decoratedName": "??0JitAmd64@Runtime@@QEAA@XZ",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "Runtime::JitAmd64::code_buf_max"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'Runtime::JitAmd64::instr_index' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/vm/interpreter.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/vm/arch/jit/amd64/jit_amd_lp64.h"
+                },
+                "region": {
+                  "startLine": 960,
+                  "startColumn": 5
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "Runtime::JitAmd64::{ctor}",
+                  "decoratedName": "??0JitAmd64@Runtime@@QEAA@XZ",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "Runtime::JitAmd64::instr_index"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'Runtime::JitAmd64::float_consts' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/vm/interpreter.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/vm/arch/jit/amd64/jit_amd_lp64.h"
+                },
+                "region": {
+                  "startLine": 960,
+                  "startColumn": 5
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "Runtime::JitAmd64::{ctor}",
+                  "decoratedName": "??0JitAmd64@Runtime@@QEAA@XZ",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "Runtime::JitAmd64::float_consts"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'Runtime::JitAmd64::floats_index' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/vm/interpreter.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/vm/arch/jit/amd64/jit_amd_lp64.h"
+                },
+                "region": {
+                  "startLine": 960,
+                  "startColumn": 5
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "Runtime::JitAmd64::{ctor}",
+                  "decoratedName": "??0JitAmd64@Runtime@@QEAA@XZ",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "Runtime::JitAmd64::floats_index"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'Runtime::JitAmd64::epilog_index' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/vm/interpreter.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/vm/arch/jit/amd64/jit_amd_lp64.h"
+                },
+                "region": {
+                  "startLine": 960,
+                  "startColumn": 5
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "Runtime::JitAmd64::{ctor}",
+                  "decoratedName": "??0JitAmd64@Runtime@@QEAA@XZ",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "Runtime::JitAmd64::epilog_index"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'Runtime::JitAmd64::code_index' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/vm/interpreter.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/vm/arch/jit/amd64/jit_amd_lp64.h"
+                },
+                "region": {
+                  "startLine": 960,
+                  "startColumn": 5
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "Runtime::JitAmd64::{ctor}",
+                  "decoratedName": "??0JitAmd64@Runtime@@QEAA@XZ",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "Runtime::JitAmd64::code_index"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'Runtime::JitAmd64::code' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/vm/interpreter.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/vm/arch/jit/amd64/jit_amd_lp64.h"
+                },
+                "region": {
+                  "startLine": 960,
+                  "startColumn": 5
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "Runtime::JitAmd64::{ctor}",
+                  "decoratedName": "??0JitAmd64@Runtime@@QEAA@XZ",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "Runtime::JitAmd64::code"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'Runtime::JitAmd64::instr_count' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/vm/interpreter.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/vm/arch/jit/amd64/jit_amd_lp64.h"
+                },
+                "region": {
+                  "startLine": 960,
+                  "startColumn": 5
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "Runtime::JitAmd64::{ctor}",
+                  "decoratedName": "??0JitAmd64@Runtime@@QEAA@XZ",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "Runtime::JitAmd64::instr_count"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'Runtime::JitAmd64::method' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/vm/interpreter.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/vm/arch/jit/amd64/jit_amd_lp64.h"
+                },
+                "region": {
+                  "startLine": 960,
+                  "startColumn": 5
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "Runtime::JitAmd64::{ctor}",
+                  "decoratedName": "??0JitAmd64@Runtime@@QEAA@XZ",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "Runtime::JitAmd64::method"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'Runtime::JitAmd64::org_local_space' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/vm/interpreter.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/vm/arch/jit/amd64/jit_amd_lp64.h"
+                },
+                "region": {
+                  "startLine": 960,
+                  "startColumn": 5
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "Runtime::JitAmd64::{ctor}",
+                  "decoratedName": "??0JitAmd64@Runtime@@QEAA@XZ",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "Runtime::JitAmd64::org_local_space"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'Runtime::JitAmd64::local_space' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/vm/interpreter.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/vm/arch/jit/amd64/jit_amd_lp64.h"
+                },
+                "region": {
+                  "startLine": 960,
+                  "startColumn": 5
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "Runtime::JitAmd64::{ctor}",
+                  "decoratedName": "??0JitAmd64@Runtime@@QEAA@XZ",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "Runtime::JitAmd64::local_space"
+          }
+        }
+      ],
+      "tool": {
+        "driver": {
+          "name": "PREfast",
+          "fullName": "PREfast Code Analysis",
+          "version": "14.43.34810.0",
+          "informationUri": "https://aka.ms/cpp/ca"
+        }
+      },
+      "invocations": [
+        {
+          "executionSuccessful": true
+        }
+      ],
+      "artifacts": [
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/vm/interpreter.cpp"
+          },
+          "roles": [
+            "analysisTarget"
+          ],
+          "hashes": {
+            "sha-256": "d3cdf3764dd84bd65512eb22b8b1309d052268a6b02317e38e6115f1385c4b07"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/vm/common.h"
+          },
+          "roles": [
+            "resultFile"
+          ],
+          "hashes": {
+            "sha-256": "0b0bb4a467d3aaa6cd58c6bb539e0d308a402fc36a8153741a43831506b4f297"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/vm/interpreter.h"
+          },
+          "roles": [
+            "resultFile"
+          ],
+          "hashes": {
+            "sha-256": "e942cd1ba72382d3b1ab3f37bebfc0e3130958fa404874ea391f52a392c0aefa"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/vm/arch/win32/win32.h"
+          },
+          "roles": [
+            "resultFile"
+          ],
+          "hashes": {
+            "sha-256": "5693e504c100d10aa77e27e6645070e0f67ad61bf35d213a91c4369a488c4f2f"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/vm/arch/jit/amd64/jit_amd_lp64.h"
+          },
+          "roles": [
+            "resultFile"
+          ],
+          "hashes": {
+            "sha-256": "c4c254f096c11a96d0a06ff60369f9a8154d5b64adcd6105f552a16f46d0bbf7"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/shared/instrs.h"
+          },
+          "hashes": {
+            "sha-256": "6b7c4dc34a91c03f955fac220ff4d10861cf0d5d9344618cc09ff60e0f64575c"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/shared/sys.h"
+          },
+          "hashes": {
+            "sha-256": "ec031a2b99e68210544db02c98168ac6a5883f4ae852f5960d1f10cdff4f30d5"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/lib/zlib/win/zlib.h"
+          },
+          "hashes": {
+            "sha-256": "8a5579af72ea4f427ff00a4150f0ccb3fc5c1e4379f726e101133b1ab9fc600c"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/lib/zlib/win/zconf.h"
+          },
+          "hashes": {
+            "sha-256": "f5134250a67d57459234b63858f0d9d3ef8dcc48e9e1028d3f4fdcf6eae677ae"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/shared/logger.h"
+          },
+          "hashes": {
+            "sha-256": "01446bf14b18eb33e6d6094394d51be88fac2234c8445d354fa86b69aa12b4bd"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/shared/traps.h"
+          },
+          "hashes": {
+            "sha-256": "54c0dcda4adffd34ebdc9a2a00fb77a669de540ef170a4d21cbfbf8493da77ac"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/lib/openssl/win/include/openssl/bio.h"
+          },
+          "hashes": {
+            "sha-256": "eed0c6db915f886085c6441365c9b7675036b3a92cbc4845961cb20aced9e8a1"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/lib/openssl/win/include/openssl/macros.h"
+          },
+          "hashes": {
+            "sha-256": "b7a29071e54e710e9c3a8c2df91810923f2b7be3896dd8e2754069a891fea2f9"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/lib/openssl/win/include/openssl/opensslconf.h"
+          },
+          "hashes": {
+            "sha-256": "890184233890bacd52fd420fef07befad411b9a318b97efbf36f46673d3e7841"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/lib/openssl/win/include/openssl/configuration.h"
+          },
+          "hashes": {
+            "sha-256": "a1309104ea0f1102fc00075f235c5b70ecfcc4dc2c278f5f3254ad1403679789"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/lib/openssl/win/include/openssl/opensslv.h"
+          },
+          "hashes": {
+            "sha-256": "e57aeaa9cfb602ab0b0d774208cc674999c0dc37ff924e6945db6a8b4b742c6d"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/lib/openssl/win/include/openssl/e_os2.h"
+          },
+          "hashes": {
+            "sha-256": "3eb5b2ed396dfb68e10acb59f714732be4941d17a97ebb659768c570da6fad0a"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/lib/openssl/win/include/openssl/crypto.h"
+          },
+          "hashes": {
+            "sha-256": "7188cc15d76384b1d15cefbe3b94ffd936b5eff6531c78f76258e4e89ef00552"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/lib/openssl/win/include/openssl/safestack.h"
+          },
+          "hashes": {
+            "sha-256": "1089ec732df2ababf7185ecf93660a5a8e2cf6d84eee3097afa514086cde7cb5"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/lib/openssl/win/include/openssl/stack.h"
+          },
+          "hashes": {
+            "sha-256": "69f94382a15a3c4cfd1dda32108db5234727b36ed0e25f1fb12e0993c7b5ac95"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/lib/openssl/win/include/openssl/types.h"
+          },
+          "hashes": {
+            "sha-256": "a31a95347d84dc6821c2fef7d76dcaae385814ec04458b0c6891e8c0220d8ba4"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/lib/openssl/win/include/openssl/cryptoerr.h"
+          },
+          "hashes": {
+            "sha-256": "b4a370d355fbfaad54f3241044f755c93b2265490f188e877150ec7550fe59ff"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/lib/openssl/win/include/openssl/symhacks.h"
+          },
+          "hashes": {
+            "sha-256": "68b54776fa15943f3f018be6c7dc7a8847c9f512fb5eeec4f093804197dc2dfa"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/lib/openssl/win/include/openssl/cryptoerr_legacy.h"
+          },
+          "hashes": {
+            "sha-256": "870042252331e89723d31079469104cafd676f0fedcbe0d99f56f3e8862fff8d"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/lib/openssl/win/include/openssl/core.h"
+          },
+          "hashes": {
+            "sha-256": "a4a8e73bd642913e2ec268d13460f7bb97aceea59152430483e013775328eb3d"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/lib/openssl/win/include/openssl/bioerr.h"
+          },
+          "hashes": {
+            "sha-256": "fab33e1a3a6d998634e31e86556c7badfae58876c753d10c841e3506edb9bb3e"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/lib/openssl/win/include/openssl/ssl.h"
+          },
+          "hashes": {
+            "sha-256": "b8273bae9fa8045c2861b6bfdfedb624a67e1042496994deed98409aba792091"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/lib/openssl/win/include/openssl/e_ostime.h"
+          },
+          "hashes": {
+            "sha-256": "587a7593925c8d5b2f0dc3060904e3a4a7472be0ebc7dbfe2f6af6e40eb8bcc7"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/lib/openssl/win/include/openssl/comp.h"
+          },
+          "hashes": {
+            "sha-256": "4388d300c658b9523ce561d3c289646596aca4f65d4465d4a45f13894da69653"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/lib/openssl/win/include/openssl/comperr.h"
+          },
+          "hashes": {
+            "sha-256": "851f81212d489813f368757bc9511ccfa76b9cb66024607f3f0d4846a42eb085"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/lib/openssl/win/include/openssl/x509.h"
+          },
+          "hashes": {
+            "sha-256": "a45b17632a11597fba3878748d43afbab54a377b8c37af196b321544cceba0ff"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/lib/openssl/win/include/openssl/buffer.h"
+          },
+          "hashes": {
+            "sha-256": "c87b52702746e224e6242f4a2a2070b007502ea92063b41df2c4f6bec11c37ca"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/lib/openssl/win/include/openssl/buffererr.h"
+          },
+          "hashes": {
+            "sha-256": "73f33a7b4406477a0eaf9d0ec42f43b2594167b1d6b84175f378cf5b0de07c12"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/lib/openssl/win/include/openssl/evp.h"
+          },
+          "hashes": {
+            "sha-256": "98a276b8a6031904b9b42d871360d8b1bb78a70a9d1c54b46bab62f9fa5fcffb"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/lib/openssl/win/include/openssl/core_dispatch.h"
+          },
+          "hashes": {
+            "sha-256": "f7babd33f7a00b8addc1e4e7f1159366ba38eba57051d957b89ec20ca2b66bc3"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/lib/openssl/win/include/openssl/indicator.h"
+          },
+          "hashes": {
+            "sha-256": "a978c859885ddbb45a2da177bf13e47c91b49930e6c03464f8a8104aa6b12dff"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/lib/openssl/win/include/openssl/params.h"
+          },
+          "hashes": {
+            "sha-256": "10d8e0157e339ee01f3b9c60c4b5bc60e6d4edce1084f0c9589ff75bf3a9f693"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/lib/openssl/win/include/openssl/bn.h"
+          },
+          "hashes": {
+            "sha-256": "ee24f408eb0e8cdf72e94d6d7fd4a411d3e12824592e493b72764957cf75a58b"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/lib/openssl/win/include/openssl/bnerr.h"
+          },
+          "hashes": {
+            "sha-256": "f0dfac26985a7ae40174e90173df9f95b15bba4d3768290746d7258ff1b0ae64"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/lib/openssl/win/include/openssl/evperr.h"
+          },
+          "hashes": {
+            "sha-256": "3f7190ff45e64cc29b55d73d62350f8344c085c18891a8a6f9752e807e9b242c"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/lib/openssl/win/include/openssl/objects.h"
+          },
+          "hashes": {
+            "sha-256": "9f04a6f480aa7af7a6cd6563c712818799cbb12e99061f57b46a72060909ef90"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/lib/openssl/win/include/openssl/obj_mac.h"
+          },
+          "hashes": {
+            "sha-256": "abb32104ed1ce52545239e3014a1f3df0b3cd7913c366bfbee0a298a4b65d2b5"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/lib/openssl/win/include/openssl/asn1.h"
+          },
+          "hashes": {
+            "sha-256": "14ed6e1e9b40b3b3c1c8d0284d41e56f23e33dcd9f234440a33d7a75d45c0c66"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/lib/openssl/win/include/openssl/asn1err.h"
+          },
+          "hashes": {
+            "sha-256": "50703d11cce3d6defab8d664d3d917c6aaaa9ee677538757b811bbb288d60407"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/lib/openssl/win/include/openssl/objectserr.h"
+          },
+          "hashes": {
+            "sha-256": "e17a8d7f62a1ef257fd90e604d4293bf02d5f81ae8198efe1e197c5b27baeb8c"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/lib/openssl/win/include/openssl/ec.h"
+          },
+          "hashes": {
+            "sha-256": "0b028cf04ba8769a693f022725c91ef902a9e31f12a950180d1b4e8fa6952ff2"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/lib/openssl/win/include/openssl/ecerr.h"
+          },
+          "hashes": {
+            "sha-256": "ce4fec7ee41de25a20abb7a9f00fe93305793a7bd2023d434b9aa6f64f91058a"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/lib/openssl/win/include/openssl/rsa.h"
+          },
+          "hashes": {
+            "sha-256": "c30eeea9aef005afac36c1ec5565d4069194c088cb7a22930d7ba0ed814d7402"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/lib/openssl/win/include/openssl/rsaerr.h"
+          },
+          "hashes": {
+            "sha-256": "a745e6b2835af7bb933e78870a270d51ab33778fe10a5cd377422d4b9587dcf0"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/lib/openssl/win/include/openssl/dsa.h"
+          },
+          "hashes": {
+            "sha-256": "3e9b65a16899dd737b4c8fa99bd94f0cf94dcfb6ebea4a24e7b21fc92e409e46"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/lib/openssl/win/include/openssl/dh.h"
+          },
+          "hashes": {
+            "sha-256": "d834937ef536956fffe4f567745a1736714ffec4c4cf248d94c910b1748b14cf"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/lib/openssl/win/include/openssl/dherr.h"
+          },
+          "hashes": {
+            "sha-256": "9a9878ebd561a4fb1d38c8157d511f5de0893ac7b928f33b5cc52450bcc41a9d"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/lib/openssl/win/include/openssl/dsaerr.h"
+          },
+          "hashes": {
+            "sha-256": "69c2ecff5f62898461bc521ea918abd2a673206dd5e8d43288ad25d2c012f163"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/lib/openssl/win/include/openssl/sha.h"
+          },
+          "hashes": {
+            "sha-256": "553407b2787ef08f69396973063de06340097cb7e4c1569265a533b3567e1856"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/lib/openssl/win/include/openssl/x509err.h"
+          },
+          "hashes": {
+            "sha-256": "4e9a934927f37a70ee71b8ad7dcb6da3de409b0acc9eafb861a3183ba73578eb"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/lib/openssl/win/include/openssl/x509_vfy.h"
+          },
+          "hashes": {
+            "sha-256": "6a7718b81a21024a364fb83f4bf817475e04f416b0ee3ea3247971035b06f5bf"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/lib/openssl/win/include/openssl/lhash.h"
+          },
+          "hashes": {
+            "sha-256": "d38353268d77a96cdadb629b6d7e36a2e002b88d5de5e411e240a7c156afcd97"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/lib/openssl/win/include/openssl/pkcs7.h"
+          },
+          "hashes": {
+            "sha-256": "7e7b9a8af81c2db5c1340c47381a44115d8ab374be13ad8eac9b2d586fb01ad4"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/lib/openssl/win/include/openssl/pkcs7err.h"
+          },
+          "hashes": {
+            "sha-256": "9fe7a51f3de13b1fd03b319c64b8bd287164eb6ce7d3481994141c0be51396d5"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/lib/openssl/win/include/openssl/http.h"
+          },
+          "hashes": {
+            "sha-256": "6fc1fa843e64e476ec255979fecaf3402b3c5d9b6a775e53b06ba210736c1e1b"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/lib/openssl/win/include/openssl/conf.h"
+          },
+          "hashes": {
+            "sha-256": "7624a2978f9a051aa7a769937c95bb2fd9e3a7bb0117d2499fb6cc5e1ac914df"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/lib/openssl/win/include/openssl/conferr.h"
+          },
+          "hashes": {
+            "sha-256": "ee8aaa36553894d836b728ce9a52234d22b5d812bbbb75fa09645e7b1011346a"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/lib/openssl/win/include/openssl/conftypes.h"
+          },
+          "hashes": {
+            "sha-256": "e8f6697076d2464eaecfe2cdae8d2045388c53da2372fd52df5f6cfdc4d63375"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/lib/openssl/win/include/openssl/pem.h"
+          },
+          "hashes": {
+            "sha-256": "be8d9226118a01137e96e99f0f4f5e6e309b466c15085d41b5717b06fbf28557"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/lib/openssl/win/include/openssl/pemerr.h"
+          },
+          "hashes": {
+            "sha-256": "843df90b1b434eed626bb6b8bccd5f6ed530e592d706584f56a725d254d8a5d2"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/lib/openssl/win/include/openssl/hmac.h"
+          },
+          "hashes": {
+            "sha-256": "e49fbe0086f8fbefa5648eef70bc84e8090a9226a1e3c6e856499373004aed0a"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/lib/openssl/win/include/openssl/async.h"
+          },
+          "hashes": {
+            "sha-256": "f0112bd2d6f7ef9d2192f614c7d43bf6a0b3cc8be8f3116ba539b7a6579698a7"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/lib/openssl/win/include/openssl/asyncerr.h"
+          },
+          "hashes": {
+            "sha-256": "154f003cfbf49040a04d9aac459cf5009a5a1d76298b222d66ba5b5a4e3721af"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/lib/openssl/win/include/openssl/ct.h"
+          },
+          "hashes": {
+            "sha-256": "6ccbacdb973371c4a93638e14b0096494d8a22df7c84e60a5433aac8a2f00bb5"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/lib/openssl/win/include/openssl/cterr.h"
+          },
+          "hashes": {
+            "sha-256": "562bfe4ac984ebfef4fb91bdbe0a649d157f5057ab61ffee3a844d23f7c72c0a"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/lib/openssl/win/include/openssl/sslerr.h"
+          },
+          "hashes": {
+            "sha-256": "1f46eba8debbc53efb2ec5fc2b7a7d63e8909a522a1a3d8ab310956c411c0eed"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/lib/openssl/win/include/openssl/sslerr_legacy.h"
+          },
+          "hashes": {
+            "sha-256": "4323bb82ce04ab284a35826707dcd4b838109344a1bc12d09e29ba1ed8bfd197"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/lib/openssl/win/include/openssl/prov_ssl.h"
+          },
+          "hashes": {
+            "sha-256": "31ded7f804f341c01c2f305187d1cf76daebe4426a1c6b4d2abc2b12d6e2d090"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/lib/openssl/win/include/openssl/ssl2.h"
+          },
+          "hashes": {
+            "sha-256": "92e3330e2867bf17d3b305ba0f6fe6b073ad4bdb9db519e4224bbd993f1e9cb7"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/lib/openssl/win/include/openssl/ssl3.h"
+          },
+          "hashes": {
+            "sha-256": "f901dfcb95371c404b9e8b67d36ef2413a915447bd306e0f96237c97867a6146"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/lib/openssl/win/include/openssl/tls1.h"
+          },
+          "hashes": {
+            "sha-256": "6ac9841cbc4ee173345e2654a61d1007b9b1d296eb431bc3e9f376bf079d2712"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/lib/openssl/win/include/openssl/dtls1.h"
+          },
+          "hashes": {
+            "sha-256": "1d1f404032a9eb31408c1f10bdff554d5740fb345b64b86fb74da8df95fbd901"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/lib/openssl/win/include/openssl/srtp.h"
+          },
+          "hashes": {
+            "sha-256": "20ddd75f9579087b24339e12c14b11939bca462e3cbc2e4b1867773407d6162a"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/lib/openssl/win/include/openssl/quic.h"
+          },
+          "hashes": {
+            "sha-256": "e12a9265850bdc44f959cb7b33e641c888de22bdfbd31a1258679b1af15e2ced"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/lib/openssl/win/include/openssl/err.h"
+          },
+          "hashes": {
+            "sha-256": "ed10bc0f932f8e3509da3bbfe3f077e448476eb92f988f0da0afcb378e4b2f78"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/vm/arch/memory.h"
+          },
+          "hashes": {
+            "sha-256": "50c9a601ac5b1472042fb45e8c5df6d856a00b741dc057273ef205a0787b50e6"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/vm/lib_api.h"
+          },
+          "hashes": {
+            "sha-256": "8736ad8e4bf992230ced165d75ef0b6a15f497b93dd456fdc19638abd4aed02e"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/vm/arch/jit/jit_common.h"
+          },
+          "hashes": {
+            "sha-256": "9463ee22dc5ceeed333b7639fe5d295410c940c4fea19b620f47e711ec6e3af4"
+          }
+        }
+      ]
+    }
+  ]
+}

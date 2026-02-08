@@ -1,0 +1,7 @@
+﻿  matrix.cpp
+     Creating library C:\Users\objec\Documents\Code\objeck-lang\core\lib\matrix\Release\x64\libobjk_ml.lib and object C:\Users\objec\Documents\Code\objeck-lang\core\lib\matrix\Release\x64\libobjk_ml.exp
+  Generating code
+  Previous IPDB not found, fall back to full compilation.
+  All 16345 functions were compiled because no usable IPDB/IOBJ from previous compilation was found.
+  Finished generating code
+  matrix.vcxproj -> C:\Users\objec\Documents\Code\objeck-lang\core\lib\matrix\Release\x64\libobjk_ml.dll

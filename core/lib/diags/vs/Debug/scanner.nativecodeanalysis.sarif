@@ -1,0 +1,3504 @@
+{
+  "version": "2.1.0",
+  "$schema": "https://schemastore.azurewebsites.net/schemas/json/sarif-2.1.0-rtm.5.json",
+  "runs": [
+    {
+      "results": [
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'frontend::Type::dimension' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/scanner.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/types.h"
+                },
+                "region": {
+                  "startLine": 148,
+                  "startColumn": 5
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "frontend::Type::{ctor}",
+                  "decoratedName": "??0Type@frontend@@AEAA@PEAV01@@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "frontend::Type::dimension"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'frontend::Type::type' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/scanner.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/types.h"
+                },
+                "region": {
+                  "startLine": 148,
+                  "startColumn": 5
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "frontend::Type::{ctor}",
+                  "decoratedName": "??0Type@frontend@@AEAA@PEAV01@@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "frontend::Type::type"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'frontend::Type::lib_klass_cache_ptr' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/scanner.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/types.h"
+                },
+                "region": {
+                  "startLine": 148,
+                  "startColumn": 5
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "frontend::Type::{ctor}",
+                  "decoratedName": "??0Type@frontend@@AEAA@PEAV01@@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "frontend::Type::lib_klass_cache_ptr"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'frontend::Type::klass_cache_ptr' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/scanner.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/types.h"
+                },
+                "region": {
+                  "startLine": 148,
+                  "startColumn": 5
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "frontend::Type::{ctor}",
+                  "decoratedName": "??0Type@frontend@@AEAA@PEAV01@@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "frontend::Type::klass_cache_ptr"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'frontend::Type::is_resolved' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/scanner.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/types.h"
+                },
+                "region": {
+                  "startLine": 148,
+                  "startColumn": 5
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "frontend::Type::{ctor}",
+                  "decoratedName": "??0Type@frontend@@AEAA@PEAV01@@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "frontend::Type::is_resolved"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'frontend::Type::line_pos' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/scanner.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/types.h"
+                },
+                "region": {
+                  "startLine": 148,
+                  "startColumn": 5
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "frontend::Type::{ctor}",
+                  "decoratedName": "??0Type@frontend@@AEAA@PEAV01@@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "frontend::Type::line_pos"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'frontend::Type::line_num' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/scanner.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/types.h"
+                },
+                "region": {
+                  "startLine": 148,
+                  "startColumn": 5
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "frontend::Type::{ctor}",
+                  "decoratedName": "??0Type@frontend@@AEAA@PEAV01@@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "frontend::Type::line_num"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'frontend::Type::func_param_count' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/scanner.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/types.h"
+                },
+                "region": {
+                  "startLine": 148,
+                  "startColumn": 5
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "frontend::Type::{ctor}",
+                  "decoratedName": "??0Type@frontend@@AEAA@PEAV01@@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "frontend::Type::func_param_count"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'frontend::Type::func_rtrn' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/scanner.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/types.h"
+                },
+                "region": {
+                  "startLine": 148,
+                  "startColumn": 5
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "frontend::Type::{ctor}",
+                  "decoratedName": "??0Type@frontend@@AEAA@PEAV01@@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "frontend::Type::func_rtrn"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'LibraryInstr::operand7' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/scanner.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 73,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "LibraryInstr::{ctor}",
+                  "decoratedName": "??0LibraryInstr@@QEAA@HW4InstructionType@instructions@@@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "LibraryInstr::operand7"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'LibraryInstr::operand4' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/scanner.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 73,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "LibraryInstr::{ctor}",
+                  "decoratedName": "??0LibraryInstr@@QEAA@HW4InstructionType@instructions@@@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "LibraryInstr::operand4"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'LibraryInstr::operand3' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/scanner.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 73,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "LibraryInstr::{ctor}",
+                  "decoratedName": "??0LibraryInstr@@QEAA@HW4InstructionType@instructions@@@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "LibraryInstr::operand3"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'LibraryInstr::operand2' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/scanner.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 73,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "LibraryInstr::{ctor}",
+                  "decoratedName": "??0LibraryInstr@@QEAA@HW4InstructionType@instructions@@@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "LibraryInstr::operand2"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'LibraryInstr::operand7' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/scanner.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 79,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "LibraryInstr::{ctor}",
+                  "decoratedName": "??0LibraryInstr@@QEAA@HW4InstructionType@instructions@@H@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "LibraryInstr::operand7"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'LibraryInstr::operand4' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/scanner.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 79,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "LibraryInstr::{ctor}",
+                  "decoratedName": "??0LibraryInstr@@QEAA@HW4InstructionType@instructions@@H@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "LibraryInstr::operand4"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'LibraryInstr::operand3' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/scanner.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 79,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "LibraryInstr::{ctor}",
+                  "decoratedName": "??0LibraryInstr@@QEAA@HW4InstructionType@instructions@@H@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "LibraryInstr::operand3"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'LibraryInstr::operand2' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/scanner.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 79,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "LibraryInstr::{ctor}",
+                  "decoratedName": "??0LibraryInstr@@QEAA@HW4InstructionType@instructions@@H@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "LibraryInstr::operand2"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'LibraryInstr::operand4' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/scanner.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 85,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "LibraryInstr::{ctor}",
+                  "decoratedName": "??0LibraryInstr@@QEAA@HW4InstructionType@instructions@@_J@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "LibraryInstr::operand4"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'LibraryInstr::operand3' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/scanner.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 85,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "LibraryInstr::{ctor}",
+                  "decoratedName": "??0LibraryInstr@@QEAA@HW4InstructionType@instructions@@_J@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "LibraryInstr::operand3"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'LibraryInstr::operand2' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/scanner.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 85,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "LibraryInstr::{ctor}",
+                  "decoratedName": "??0LibraryInstr@@QEAA@HW4InstructionType@instructions@@_J@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "LibraryInstr::operand2"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'LibraryInstr::operand' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/scanner.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 85,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "LibraryInstr::{ctor}",
+                  "decoratedName": "??0LibraryInstr@@QEAA@HW4InstructionType@instructions@@_J@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "LibraryInstr::operand"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'LibraryInstr::operand7' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/scanner.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 91,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "LibraryInstr::{ctor}",
+                  "decoratedName": "??0LibraryInstr@@QEAA@HW4InstructionType@instructions@@N@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "LibraryInstr::operand7"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'LibraryInstr::operand3' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/scanner.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 91,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "LibraryInstr::{ctor}",
+                  "decoratedName": "??0LibraryInstr@@QEAA@HW4InstructionType@instructions@@N@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "LibraryInstr::operand3"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'LibraryInstr::operand2' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/scanner.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 91,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "LibraryInstr::{ctor}",
+                  "decoratedName": "??0LibraryInstr@@QEAA@HW4InstructionType@instructions@@N@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "LibraryInstr::operand2"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'LibraryInstr::operand7' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/scanner.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 98,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "LibraryInstr::{ctor}",
+                  "decoratedName": "??0LibraryInstr@@QEAA@HW4InstructionType@instructions@@HH@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "LibraryInstr::operand7"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'LibraryInstr::operand4' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/scanner.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 98,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "LibraryInstr::{ctor}",
+                  "decoratedName": "??0LibraryInstr@@QEAA@HW4InstructionType@instructions@@HH@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "LibraryInstr::operand4"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'LibraryInstr::operand3' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/scanner.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 98,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "LibraryInstr::{ctor}",
+                  "decoratedName": "??0LibraryInstr@@QEAA@HW4InstructionType@instructions@@HH@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "LibraryInstr::operand3"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'LibraryInstr::operand7' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/scanner.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 105,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "LibraryInstr::{ctor}",
+                  "decoratedName": "??0LibraryInstr@@QEAA@HW4InstructionType@instructions@@HHH@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "LibraryInstr::operand7"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'LibraryInstr::operand4' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/scanner.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 105,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "LibraryInstr::{ctor}",
+                  "decoratedName": "??0LibraryInstr@@QEAA@HW4InstructionType@instructions@@HHH@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "LibraryInstr::operand4"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'LibraryInstr::operand7' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/scanner.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 113,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "LibraryInstr::{ctor}",
+                  "decoratedName": "??0LibraryInstr@@QEAA@HW4InstructionType@instructions@@V?$basic_string@_WU?$char_traits@_W@std@@V?$allocator@_W@2@@std@@@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "LibraryInstr::operand7"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'LibraryInstr::operand4' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/scanner.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 113,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "LibraryInstr::{ctor}",
+                  "decoratedName": "??0LibraryInstr@@QEAA@HW4InstructionType@instructions@@V?$basic_string@_WU?$char_traits@_W@std@@V?$allocator@_W@2@@std@@@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "LibraryInstr::operand4"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'LibraryInstr::operand3' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/scanner.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 113,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "LibraryInstr::{ctor}",
+                  "decoratedName": "??0LibraryInstr@@QEAA@HW4InstructionType@instructions@@V?$basic_string@_WU?$char_traits@_W@std@@V?$allocator@_W@2@@std@@@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "LibraryInstr::operand3"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'LibraryInstr::operand2' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/scanner.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 113,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "LibraryInstr::{ctor}",
+                  "decoratedName": "??0LibraryInstr@@QEAA@HW4InstructionType@instructions@@V?$basic_string@_WU?$char_traits@_W@std@@V?$allocator@_W@2@@std@@@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "LibraryInstr::operand2"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'LibraryInstr::operand' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/scanner.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 113,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "LibraryInstr::{ctor}",
+                  "decoratedName": "??0LibraryInstr@@QEAA@HW4InstructionType@instructions@@V?$basic_string@_WU?$char_traits@_W@std@@V?$allocator@_W@2@@std@@@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "LibraryInstr::operand"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'LibraryInstr::operand7' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/scanner.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 119,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "LibraryInstr::{ctor}",
+                  "decoratedName": "??0LibraryInstr@@QEAA@HW4InstructionType@instructions@@HV?$basic_string@_WU?$char_traits@_W@std@@V?$allocator@_W@2@@std@@1@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "LibraryInstr::operand7"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'LibraryInstr::operand4' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/scanner.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 119,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "LibraryInstr::{ctor}",
+                  "decoratedName": "??0LibraryInstr@@QEAA@HW4InstructionType@instructions@@HV?$basic_string@_WU?$char_traits@_W@std@@V?$allocator@_W@2@@std@@1@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "LibraryInstr::operand4"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'LibraryInstr::operand2' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/scanner.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 119,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "LibraryInstr::{ctor}",
+                  "decoratedName": "??0LibraryInstr@@QEAA@HW4InstructionType@instructions@@HV?$basic_string@_WU?$char_traits@_W@std@@V?$allocator@_W@2@@std@@1@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "LibraryInstr::operand2"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'LibraryInstr::operand' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/scanner.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 119,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "LibraryInstr::{ctor}",
+                  "decoratedName": "??0LibraryInstr@@QEAA@HW4InstructionType@instructions@@HV?$basic_string@_WU?$char_traits@_W@std@@V?$allocator@_W@2@@std@@1@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "LibraryInstr::operand"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'LibraryClass::cls_space' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/scanner.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 458,
+                  "startColumn": 4
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "LibraryClass::{ctor}",
+                  "decoratedName": "??0LibraryClass@@QEAA@AEBV?$basic_string@_WU?$char_traits@_W@std@@V?$allocator@_W@2@@std@@0@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "LibraryClass::cls_space"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'LibraryClass::inst_space' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/scanner.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 458,
+                  "startColumn": 4
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "LibraryClass::{ctor}",
+                  "decoratedName": "??0LibraryClass@@QEAA@AEBV?$basic_string@_WU?$char_traits@_W@std@@V?$allocator@_W@2@@std@@0@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "LibraryClass::inst_space"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'LibraryClass::is_public' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/scanner.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 458,
+                  "startColumn": 4
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "LibraryClass::{ctor}",
+                  "decoratedName": "??0LibraryClass@@QEAA@AEBV?$basic_string@_WU?$char_traits@_W@std@@V?$allocator@_W@2@@std@@0@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "LibraryClass::is_public"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'LibraryClass::is_virtual' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/scanner.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 458,
+                  "startColumn": 4
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "LibraryClass::{ctor}",
+                  "decoratedName": "??0LibraryClass@@QEAA@AEBV?$basic_string@_WU?$char_traits@_W@std@@V?$allocator@_W@2@@std@@0@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "LibraryClass::is_virtual"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'LibraryClass::is_interface' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/scanner.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 458,
+                  "startColumn": 4
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "LibraryClass::{ctor}",
+                  "decoratedName": "??0LibraryClass@@QEAA@AEBV?$basic_string@_WU?$char_traits@_W@std@@V?$allocator@_W@2@@std@@0@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "LibraryClass::is_interface"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'LibraryClass::id' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/scanner.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 458,
+                  "startColumn": 4
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "LibraryClass::{ctor}",
+                  "decoratedName": "??0LibraryClass@@QEAA@AEBV?$basic_string@_WU?$char_traits@_W@std@@V?$allocator@_W@2@@std@@0@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "LibraryClass::id"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'LibraryClass::is_debug' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/scanner.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 458,
+                  "startColumn": 4
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "LibraryClass::{ctor}",
+                  "decoratedName": "??0LibraryClass@@QEAA@AEBV?$basic_string@_WU?$char_traits@_W@std@@V?$allocator@_W@2@@std@@0@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "LibraryClass::is_debug"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'LibraryClass::was_called' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/scanner.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 458,
+                  "startColumn": 4
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "LibraryClass::{ctor}",
+                  "decoratedName": "??0LibraryClass@@QEAA@AEBV?$basic_string@_WU?$char_traits@_W@std@@V?$allocator@_W@2@@std@@0@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "LibraryClass::was_called"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'Library::buffer_pos' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/scanner.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 867,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "Library::{ctor}",
+                  "decoratedName": "??0Library@@QEAA@AEBV?$basic_string@_WU?$char_traits@_W@std@@V?$allocator@_W@2@@std@@@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "Library::buffer_pos"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'Library::buffer_size' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/scanner.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 867,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "Library::{ctor}",
+                  "decoratedName": "??0Library@@QEAA@AEBV?$basic_string@_WU?$char_traits@_W@std@@V?$allocator@_W@2@@std@@@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "Library::buffer_size"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'Library::buffer' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/scanner.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 867,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "Library::{ctor}",
+                  "decoratedName": "??0Library@@QEAA@AEBV?$basic_string@_WU?$char_traits@_W@std@@V?$allocator@_W@2@@std@@@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "Library::buffer"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'frontend::Method::klass' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/scanner.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/tree.h"
+                },
+                "region": {
+                  "startLine": 2062,
+                  "startColumn": 5
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "frontend::Method::{ctor}",
+                  "decoratedName": "??0Method@frontend@@AEAA@AEBV?$basic_string@_WU?$char_traits@_W@std@@V?$allocator@_W@2@@std@@HHHH0W4MethodType@1@_N2@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "frontend::Method::klass"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'frontend::Method::symbol_table' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/scanner.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/tree.h"
+                },
+                "region": {
+                  "startLine": 2062,
+                  "startColumn": 5
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "frontend::Method::{ctor}",
+                  "decoratedName": "??0Method@frontend@@AEAA@AEBV?$basic_string@_WU?$char_traits@_W@std@@V?$allocator@_W@2@@std@@HHHH0W4MethodType@1@_N2@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "frontend::Method::symbol_table"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'frontend::Method::klass' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/scanner.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/tree.h"
+                },
+                "region": {
+                  "startLine": 2081,
+                  "startColumn": 5
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "frontend::Method::{ctor}",
+                  "decoratedName": "??0Method@frontend@@AEAA@AEBV?$basic_string@_WU?$char_traits@_W@std@@V?$allocator@_W@2@@std@@HHHH0@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "frontend::Method::klass"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'frontend::Method::symbol_table' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/scanner.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/tree.h"
+                },
+                "region": {
+                  "startLine": 2081,
+                  "startColumn": 5
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "frontend::Method::{ctor}",
+                  "decoratedName": "??0Method@frontend@@AEAA@AEBV?$basic_string@_WU?$char_traits@_W@std@@V?$allocator@_W@2@@std@@HHHH0@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "frontend::Method::symbol_table"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'frontend::ParsedBundle::end_line_pos' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/scanner.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/tree.h"
+                },
+                "region": {
+                  "startLine": 3593,
+                  "startColumn": 5
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "frontend::ParsedBundle::{ctor}",
+                  "decoratedName": "??0ParsedBundle@frontend@@QEAA@AEBV?$basic_string@_WU?$char_traits@_W@std@@V?$allocator@_W@2@@std@@HHAEAV23@PEAVSymbolTableManager@1@@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "frontend::ParsedBundle::end_line_pos"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'frontend::ParsedBundle::end_line_num' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/scanner.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/tree.h"
+                },
+                "region": {
+                  "startLine": 3593,
+                  "startColumn": 5
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "frontend::ParsedBundle::{ctor}",
+                  "decoratedName": "??0ParsedBundle@frontend@@QEAA@AEBV?$basic_string@_WU?$char_traits@_W@std@@V?$allocator@_W@2@@std@@HHAEAV23@PEAVSymbolTableManager@1@@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "frontend::ParsedBundle::end_line_num"
+          }
+        },
+        {
+          "ruleId": "C6386",
+          "message": {
+            "text": "Buffer overrun while writing to 'int_array':  the writable size is 'int_elements.public: unsigned __int64 __cdecl std::vector<class frontend::Expression *,class std::allocator<class frontend::Expression *> >::size(void)const ()*8' bytes, but '16' bytes might be written."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/scanner.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/tree.h"
+                },
+                "region": {
+                  "startLine": 3856,
+                  "startColumn": 9,
+                  "endLine": 3856,
+                  "endColumn": 79
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "frontend::ParsedProgram::AddIntString",
+                  "decoratedName": "?AddIntString@ParsedProgram@frontend@@QEAAXAEAV?$vector@PEAVExpression@frontend@@V?$allocator@PEAVExpression@frontend@@@std@@@std@@H@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "codeFlows": [
+            {
+              "threadFlows": [
+                {
+                  "locations": [
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/tree.h"
+                          },
+                          "region": {
+                            "startLine": 3854,
+                            "startColumn": 20
+                          }
+                        },
+                        "message": {
+                          "text": "'int_array' is an array of 1 elements (8 bytes)"
+                        }
+                      },
+                      "kinds": [
+                        "declaration"
+                      ],
+                      "importance": "essential"
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/tree.h"
+                          },
+                          "region": {
+                            "startLine": 3855,
+                            "startColumn": 18
+                          }
+                        }
+                      },
+                      "importance": "unimportant"
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/tree.h"
+                          },
+                          "region": {
+                            "startLine": 3855,
+                            "startColumn": 27
+                          }
+                        },
+                        "message": {
+                          "text": "Enter this loop, (assume 'i<int_elements.size()')"
+                        }
+                      },
+                      "kinds": [
+                        "branch"
+                      ]
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/tree.h"
+                          },
+                          "region": {
+                            "startLine": 3856,
+                            "startColumn": 22
+                          }
+                        }
+                      },
+                      "importance": "unimportant"
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/tree.h"
+                          },
+                          "region": {
+                            "startLine": 3855,
+                            "startColumn": 50
+                          }
+                        },
+                        "message": {
+                          "text": "'i' may equal 1"
+                        }
+                      },
+                      "kinds": [
+                        "declaration"
+                      ],
+                      "importance": "essential"
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/tree.h"
+                          },
+                          "region": {
+                            "startLine": 3855,
+                            "startColumn": 27
+                          }
+                        },
+                        "message": {
+                          "text": "Continue this loop, (assume 'i<int_elements.size()')"
+                        }
+                      },
+                      "kinds": [
+                        "branch"
+                      ]
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/tree.h"
+                          },
+                          "region": {
+                            "startLine": 3856,
+                            "startColumn": 22
+                          }
+                        },
+                        "message": {
+                          "text": "'i' is an In/Out argument to 'std::vector<frontend::Expression *,std::allocator<frontend::Expression *> >::[]' (declared at c:\\program files\\microsoft visual studio\\2022\\professional\\vc\\tools\\msvc\\14.43.34808\\include\\vector:1912)"
+                        }
+                      },
+                      "kinds": [
+                        "declaration"
+                      ]
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/tree.h"
+                          },
+                          "region": {
+                            "startLine": 3856,
+                            "startColumn": 22
+                          }
+                        },
+                        "message": {
+                          "text": "Invalid write to 'int_array[1]', (writable range is 0 to 0)"
+                        }
+                      },
+                      "kinds": [
+                        "usage"
+                      ],
+                      "importance": "essential"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ruleId": "C6386",
+          "message": {
+            "text": "Buffer overrun while writing to 'int_array':  the writable size is 'int_elements.public: unsigned __int64 __cdecl std::vector<class frontend::Expression *,class std::allocator<class frontend::Expression *> >::size(void)const ()*8' bytes, but '16' bytes might be written."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/scanner.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/tree.h"
+                },
+                "region": {
+                  "startLine": 3870,
+                  "startColumn": 9,
+                  "endLine": 3870,
+                  "endColumn": 79
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "frontend::ParsedProgram::GetIntStringId",
+                  "decoratedName": "?GetIntStringId@ParsedProgram@frontend@@QEAAHAEAV?$vector@PEAVExpression@frontend@@V?$allocator@PEAVExpression@frontend@@@std@@@std@@@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "codeFlows": [
+            {
+              "threadFlows": [
+                {
+                  "locations": [
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/tree.h"
+                          },
+                          "region": {
+                            "startLine": 3868,
+                            "startColumn": 20
+                          }
+                        },
+                        "message": {
+                          "text": "'int_array' is an array of 1 elements (8 bytes)"
+                        }
+                      },
+                      "kinds": [
+                        "declaration"
+                      ],
+                      "importance": "essential"
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/tree.h"
+                          },
+                          "region": {
+                            "startLine": 3869,
+                            "startColumn": 18
+                          }
+                        }
+                      },
+                      "importance": "unimportant"
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/tree.h"
+                          },
+                          "region": {
+                            "startLine": 3869,
+                            "startColumn": 27
+                          }
+                        },
+                        "message": {
+                          "text": "Enter this loop, (assume 'i<int_elements.size()')"
+                        }
+                      },
+                      "kinds": [
+                        "branch"
+                      ]
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/tree.h"
+                          },
+                          "region": {
+                            "startLine": 3870,
+                            "startColumn": 22
+                          }
+                        }
+                      },
+                      "importance": "unimportant"
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/tree.h"
+                          },
+                          "region": {
+                            "startLine": 3869,
+                            "startColumn": 50
+                          }
+                        },
+                        "message": {
+                          "text": "'i' may equal 1"
+                        }
+                      },
+                      "kinds": [
+                        "declaration"
+                      ],
+                      "importance": "essential"
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/tree.h"
+                          },
+                          "region": {
+                            "startLine": 3869,
+                            "startColumn": 27
+                          }
+                        },
+                        "message": {
+                          "text": "Continue this loop, (assume 'i<int_elements.size()')"
+                        }
+                      },
+                      "kinds": [
+                        "branch"
+                      ]
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/tree.h"
+                          },
+                          "region": {
+                            "startLine": 3870,
+                            "startColumn": 22
+                          }
+                        },
+                        "message": {
+                          "text": "'i' is an In/Out argument to 'std::vector<frontend::Expression *,std::allocator<frontend::Expression *> >::[]' (declared at c:\\program files\\microsoft visual studio\\2022\\professional\\vc\\tools\\msvc\\14.43.34808\\include\\vector:1912)"
+                        }
+                      },
+                      "kinds": [
+                        "declaration"
+                      ]
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/tree.h"
+                          },
+                          "region": {
+                            "startLine": 3870,
+                            "startColumn": 22
+                          }
+                        },
+                        "message": {
+                          "text": "Invalid write to 'int_array[1]', (writable range is 0 to 0)"
+                        }
+                      },
+                      "kinds": [
+                        "usage"
+                      ],
+                      "importance": "essential"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ruleId": "C6386",
+          "message": {
+            "text": "Buffer overrun while writing to 'float_array':  the writable size is 'float_elements.public: unsigned __int64 __cdecl std::vector<class frontend::Expression *,class std::allocator<class frontend::Expression *> >::size(void)const ()*8' bytes, but '16' bytes might be written."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/scanner.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/tree.h"
+                },
+                "region": {
+                  "startLine": 3902,
+                  "startColumn": 9,
+                  "endLine": 3902,
+                  "endColumn": 81
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "frontend::ParsedProgram::AddFloatString",
+                  "decoratedName": "?AddFloatString@ParsedProgram@frontend@@QEAAXAEAV?$vector@PEAVExpression@frontend@@V?$allocator@PEAVExpression@frontend@@@std@@@std@@H@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "codeFlows": [
+            {
+              "threadFlows": [
+                {
+                  "locations": [
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/tree.h"
+                          },
+                          "region": {
+                            "startLine": 3900,
+                            "startColumn": 20
+                          }
+                        },
+                        "message": {
+                          "text": "'float_array' is an array of 1 elements (8 bytes)"
+                        }
+                      },
+                      "kinds": [
+                        "declaration"
+                      ],
+                      "importance": "essential"
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/tree.h"
+                          },
+                          "region": {
+                            "startLine": 3901,
+                            "startColumn": 18
+                          }
+                        }
+                      },
+                      "importance": "unimportant"
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/tree.h"
+                          },
+                          "region": {
+                            "startLine": 3901,
+                            "startColumn": 27
+                          }
+                        },
+                        "message": {
+                          "text": "Enter this loop, (assume 'i<float_elements.size()')"
+                        }
+                      },
+                      "kinds": [
+                        "branch"
+                      ]
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/tree.h"
+                          },
+                          "region": {
+                            "startLine": 3902,
+                            "startColumn": 24
+                          }
+                        }
+                      },
+                      "importance": "unimportant"
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/tree.h"
+                          },
+                          "region": {
+                            "startLine": 3901,
+                            "startColumn": 52
+                          }
+                        },
+                        "message": {
+                          "text": "'i' may equal 1"
+                        }
+                      },
+                      "kinds": [
+                        "declaration"
+                      ],
+                      "importance": "essential"
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/tree.h"
+                          },
+                          "region": {
+                            "startLine": 3901,
+                            "startColumn": 27
+                          }
+                        },
+                        "message": {
+                          "text": "Continue this loop, (assume 'i<float_elements.size()')"
+                        }
+                      },
+                      "kinds": [
+                        "branch"
+                      ]
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/tree.h"
+                          },
+                          "region": {
+                            "startLine": 3902,
+                            "startColumn": 24
+                          }
+                        },
+                        "message": {
+                          "text": "'i' is an In/Out argument to 'std::vector<frontend::Expression *,std::allocator<frontend::Expression *> >::[]' (declared at c:\\program files\\microsoft visual studio\\2022\\professional\\vc\\tools\\msvc\\14.43.34808\\include\\vector:1912)"
+                        }
+                      },
+                      "kinds": [
+                        "declaration"
+                      ]
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/tree.h"
+                          },
+                          "region": {
+                            "startLine": 3902,
+                            "startColumn": 24
+                          }
+                        },
+                        "message": {
+                          "text": "Invalid write to 'float_array[1]', (writable range is 0 to 0)"
+                        }
+                      },
+                      "kinds": [
+                        "usage"
+                      ],
+                      "importance": "essential"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ruleId": "C6386",
+          "message": {
+            "text": "Buffer overrun while writing to 'bool_array':  the writable size is 'bool_elements.public: unsigned __int64 __cdecl std::vector<class frontend::Expression *,class std::allocator<class frontend::Expression *> >::size(void)const ()*1' bytes, but '2' bytes might be written."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/scanner.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/tree.h"
+                },
+                "region": {
+                  "startLine": 3916,
+                  "startColumn": 9,
+                  "endLine": 3916,
+                  "endColumn": 81
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "frontend::ParsedProgram::AddBoolString",
+                  "decoratedName": "?AddBoolString@ParsedProgram@frontend@@QEAAXAEAV?$vector@PEAVExpression@frontend@@V?$allocator@PEAVExpression@frontend@@@std@@@std@@H@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "codeFlows": [
+            {
+              "threadFlows": [
+                {
+                  "locations": [
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/tree.h"
+                          },
+                          "region": {
+                            "startLine": 3914,
+                            "startColumn": 13
+                          }
+                        },
+                        "message": {
+                          "text": "'bool_array' is an array of 1 elements (1 bytes)"
+                        }
+                      },
+                      "kinds": [
+                        "declaration"
+                      ],
+                      "importance": "essential"
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/tree.h"
+                          },
+                          "region": {
+                            "startLine": 3915,
+                            "startColumn": 18
+                          }
+                        }
+                      },
+                      "importance": "unimportant"
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/tree.h"
+                          },
+                          "region": {
+                            "startLine": 3915,
+                            "startColumn": 27
+                          }
+                        },
+                        "message": {
+                          "text": "Enter this loop, (assume 'i<bool_elements.size()')"
+                        }
+                      },
+                      "kinds": [
+                        "branch"
+                      ]
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/tree.h"
+                          },
+                          "region": {
+                            "startLine": 3916,
+                            "startColumn": 23
+                          }
+                        }
+                      },
+                      "importance": "unimportant"
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/tree.h"
+                          },
+                          "region": {
+                            "startLine": 3915,
+                            "startColumn": 51
+                          }
+                        },
+                        "message": {
+                          "text": "'i' may equal 1"
+                        }
+                      },
+                      "kinds": [
+                        "declaration"
+                      ],
+                      "importance": "essential"
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/tree.h"
+                          },
+                          "region": {
+                            "startLine": 3915,
+                            "startColumn": 27
+                          }
+                        },
+                        "message": {
+                          "text": "Continue this loop, (assume 'i<bool_elements.size()')"
+                        }
+                      },
+                      "kinds": [
+                        "branch"
+                      ]
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/tree.h"
+                          },
+                          "region": {
+                            "startLine": 3916,
+                            "startColumn": 23
+                          }
+                        },
+                        "message": {
+                          "text": "'i' is an In/Out argument to 'std::vector<frontend::Expression *,std::allocator<frontend::Expression *> >::[]' (declared at c:\\program files\\microsoft visual studio\\2022\\professional\\vc\\tools\\msvc\\14.43.34808\\include\\vector:1912)"
+                        }
+                      },
+                      "kinds": [
+                        "declaration"
+                      ]
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/tree.h"
+                          },
+                          "region": {
+                            "startLine": 3916,
+                            "startColumn": 23
+                          }
+                        },
+                        "message": {
+                          "text": "Invalid write to 'bool_array[1]', (writable range is 0 to 0)"
+                        }
+                      },
+                      "kinds": [
+                        "usage"
+                      ],
+                      "importance": "essential"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ruleId": "C6386",
+          "message": {
+            "text": "Buffer overrun while writing to 'bool_array':  the writable size is 'Bool_elements.public: unsigned __int64 __cdecl std::vector<class frontend::Expression *,class std::allocator<class frontend::Expression *> >::size(void)const ()*1' bytes, but '2' bytes might be written."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/scanner.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/tree.h"
+                },
+                "region": {
+                  "startLine": 3930,
+                  "startColumn": 9,
+                  "endLine": 3930,
+                  "endColumn": 81
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "frontend::ParsedProgram::GetBoolStringId",
+                  "decoratedName": "?GetBoolStringId@ParsedProgram@frontend@@QEAAHAEAV?$vector@PEAVExpression@frontend@@V?$allocator@PEAVExpression@frontend@@@std@@@std@@@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "codeFlows": [
+            {
+              "threadFlows": [
+                {
+                  "locations": [
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/tree.h"
+                          },
+                          "region": {
+                            "startLine": 3928,
+                            "startColumn": 13
+                          }
+                        },
+                        "message": {
+                          "text": "'bool_array' is an array of 1 elements (1 bytes)"
+                        }
+                      },
+                      "kinds": [
+                        "declaration"
+                      ],
+                      "importance": "essential"
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/tree.h"
+                          },
+                          "region": {
+                            "startLine": 3929,
+                            "startColumn": 18
+                          }
+                        }
+                      },
+                      "importance": "unimportant"
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/tree.h"
+                          },
+                          "region": {
+                            "startLine": 3929,
+                            "startColumn": 27
+                          }
+                        },
+                        "message": {
+                          "text": "Enter this loop, (assume 'i<Bool_elements.size()')"
+                        }
+                      },
+                      "kinds": [
+                        "branch"
+                      ]
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/tree.h"
+                          },
+                          "region": {
+                            "startLine": 3930,
+                            "startColumn": 23
+                          }
+                        }
+                      },
+                      "importance": "unimportant"
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/tree.h"
+                          },
+                          "region": {
+                            "startLine": 3929,
+                            "startColumn": 51
+                          }
+                        },
+                        "message": {
+                          "text": "'i' may equal 1"
+                        }
+                      },
+                      "kinds": [
+                        "declaration"
+                      ],
+                      "importance": "essential"
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/tree.h"
+                          },
+                          "region": {
+                            "startLine": 3929,
+                            "startColumn": 27
+                          }
+                        },
+                        "message": {
+                          "text": "Continue this loop, (assume 'i<Bool_elements.size()')"
+                        }
+                      },
+                      "kinds": [
+                        "branch"
+                      ]
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/tree.h"
+                          },
+                          "region": {
+                            "startLine": 3930,
+                            "startColumn": 23
+                          }
+                        },
+                        "message": {
+                          "text": "'i' is an In/Out argument to 'std::vector<frontend::Expression *,std::allocator<frontend::Expression *> >::[]' (declared at c:\\program files\\microsoft visual studio\\2022\\professional\\vc\\tools\\msvc\\14.43.34808\\include\\vector:1912)"
+                        }
+                      },
+                      "kinds": [
+                        "declaration"
+                      ]
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/tree.h"
+                          },
+                          "region": {
+                            "startLine": 3930,
+                            "startColumn": 23
+                          }
+                        },
+                        "message": {
+                          "text": "Invalid write to 'bool_array[1]', (writable range is 0 to 0)"
+                        }
+                      },
+                      "kinds": [
+                        "usage"
+                      ],
+                      "importance": "essential"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ruleId": "C6386",
+          "message": {
+            "text": "Buffer overrun while writing to 'byte_array':  the writable size is 'byte_elements.public: unsigned __int64 __cdecl std::vector<class frontend::Expression *,class std::allocator<class frontend::Expression *> >::size(void)const ()*1' bytes, but '2' bytes might be written."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/scanner.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/tree.h"
+                },
+                "region": {
+                  "startLine": 3971,
+                  "startColumn": 9,
+                  "endLine": 3971,
+                  "endColumn": 87
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "frontend::ParsedProgram::AddByteString",
+                  "decoratedName": "?AddByteString@ParsedProgram@frontend@@QEAAXAEAV?$vector@PEAVExpression@frontend@@V?$allocator@PEAVExpression@frontend@@@std@@@std@@H@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "codeFlows": [
+            {
+              "threadFlows": [
+                {
+                  "locations": [
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/tree.h"
+                          },
+                          "region": {
+                            "startLine": 3969,
+                            "startColumn": 13
+                          }
+                        },
+                        "message": {
+                          "text": "'byte_array' is an array of 1 elements (1 bytes)"
+                        }
+                      },
+                      "kinds": [
+                        "declaration"
+                      ],
+                      "importance": "essential"
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/tree.h"
+                          },
+                          "region": {
+                            "startLine": 3970,
+                            "startColumn": 18
+                          }
+                        }
+                      },
+                      "importance": "unimportant"
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/tree.h"
+                          },
+                          "region": {
+                            "startLine": 3970,
+                            "startColumn": 27
+                          }
+                        },
+                        "message": {
+                          "text": "Enter this loop, (assume 'i<byte_elements.size()')"
+                        }
+                      },
+                      "kinds": [
+                        "branch"
+                      ]
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/tree.h"
+                          },
+                          "region": {
+                            "startLine": 3971,
+                            "startColumn": 23
+                          }
+                        }
+                      },
+                      "importance": "unimportant"
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/tree.h"
+                          },
+                          "region": {
+                            "startLine": 3970,
+                            "startColumn": 51
+                          }
+                        },
+                        "message": {
+                          "text": "'i' may equal 1"
+                        }
+                      },
+                      "kinds": [
+                        "declaration"
+                      ],
+                      "importance": "essential"
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/tree.h"
+                          },
+                          "region": {
+                            "startLine": 3970,
+                            "startColumn": 27
+                          }
+                        },
+                        "message": {
+                          "text": "Continue this loop, (assume 'i<byte_elements.size()')"
+                        }
+                      },
+                      "kinds": [
+                        "branch"
+                      ]
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/tree.h"
+                          },
+                          "region": {
+                            "startLine": 3971,
+                            "startColumn": 23
+                          }
+                        },
+                        "message": {
+                          "text": "'i' is an In/Out argument to 'std::vector<frontend::Expression *,std::allocator<frontend::Expression *> >::[]' (declared at c:\\program files\\microsoft visual studio\\2022\\professional\\vc\\tools\\msvc\\14.43.34808\\include\\vector:1912)"
+                        }
+                      },
+                      "kinds": [
+                        "declaration"
+                      ]
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/tree.h"
+                          },
+                          "region": {
+                            "startLine": 3971,
+                            "startColumn": 23
+                          }
+                        },
+                        "message": {
+                          "text": "Invalid write to 'byte_array[1]', (writable range is 0 to 0)"
+                        }
+                      },
+                      "kinds": [
+                        "usage"
+                      ],
+                      "importance": "essential"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ruleId": "C6386",
+          "message": {
+            "text": "Buffer overrun while writing to 'byte_array':  the writable size is 'byte_elements.public: unsigned __int64 __cdecl std::vector<class frontend::Expression *,class std::allocator<class frontend::Expression *> >::size(void)const ()*1' bytes, but '2' bytes might be written."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/scanner.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/tree.h"
+                },
+                "region": {
+                  "startLine": 3985,
+                  "startColumn": 9,
+                  "endLine": 3985,
+                  "endColumn": 87
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "frontend::ParsedProgram::GetByteStringId",
+                  "decoratedName": "?GetByteStringId@ParsedProgram@frontend@@QEAAHAEAV?$vector@PEAVExpression@frontend@@V?$allocator@PEAVExpression@frontend@@@std@@@std@@@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "codeFlows": [
+            {
+              "threadFlows": [
+                {
+                  "locations": [
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/tree.h"
+                          },
+                          "region": {
+                            "startLine": 3983,
+                            "startColumn": 13
+                          }
+                        },
+                        "message": {
+                          "text": "'byte_array' is an array of 1 elements (1 bytes)"
+                        }
+                      },
+                      "kinds": [
+                        "declaration"
+                      ],
+                      "importance": "essential"
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/tree.h"
+                          },
+                          "region": {
+                            "startLine": 3984,
+                            "startColumn": 18
+                          }
+                        }
+                      },
+                      "importance": "unimportant"
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/tree.h"
+                          },
+                          "region": {
+                            "startLine": 3984,
+                            "startColumn": 27
+                          }
+                        },
+                        "message": {
+                          "text": "Enter this loop, (assume 'i<byte_elements.size()')"
+                        }
+                      },
+                      "kinds": [
+                        "branch"
+                      ]
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/tree.h"
+                          },
+                          "region": {
+                            "startLine": 3985,
+                            "startColumn": 23
+                          }
+                        }
+                      },
+                      "importance": "unimportant"
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/tree.h"
+                          },
+                          "region": {
+                            "startLine": 3984,
+                            "startColumn": 51
+                          }
+                        },
+                        "message": {
+                          "text": "'i' may equal 1"
+                        }
+                      },
+                      "kinds": [
+                        "declaration"
+                      ],
+                      "importance": "essential"
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/tree.h"
+                          },
+                          "region": {
+                            "startLine": 3984,
+                            "startColumn": 27
+                          }
+                        },
+                        "message": {
+                          "text": "Continue this loop, (assume 'i<byte_elements.size()')"
+                        }
+                      },
+                      "kinds": [
+                        "branch"
+                      ]
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/tree.h"
+                          },
+                          "region": {
+                            "startLine": 3985,
+                            "startColumn": 23
+                          }
+                        },
+                        "message": {
+                          "text": "'i' is an In/Out argument to 'std::vector<frontend::Expression *,std::allocator<frontend::Expression *> >::[]' (declared at c:\\program files\\microsoft visual studio\\2022\\professional\\vc\\tools\\msvc\\14.43.34808\\include\\vector:1912)"
+                        }
+                      },
+                      "kinds": [
+                        "declaration"
+                      ]
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/tree.h"
+                          },
+                          "region": {
+                            "startLine": 3985,
+                            "startColumn": 23
+                          }
+                        },
+                        "message": {
+                          "text": "Invalid write to 'byte_array[1]', (writable range is 0 to 0)"
+                        }
+                      },
+                      "kinds": [
+                        "usage"
+                      ],
+                      "importance": "essential"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ruleId": "C6386",
+          "message": {
+            "text": "Buffer overrun while writing to 'float_array':  the writable size is 'float_elements.public: unsigned __int64 __cdecl std::vector<class frontend::Expression *,class std::allocator<class frontend::Expression *> >::size(void)const ()*8' bytes, but '16' bytes might be written."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/scanner.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/tree.h"
+                },
+                "region": {
+                  "startLine": 4026,
+                  "startColumn": 9,
+                  "endLine": 4026,
+                  "endColumn": 81
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "frontend::ParsedProgram::GetFloatStringId",
+                  "decoratedName": "?GetFloatStringId@ParsedProgram@frontend@@QEAAHAEAV?$vector@PEAVExpression@frontend@@V?$allocator@PEAVExpression@frontend@@@std@@@std@@@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "codeFlows": [
+            {
+              "threadFlows": [
+                {
+                  "locations": [
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/tree.h"
+                          },
+                          "region": {
+                            "startLine": 4024,
+                            "startColumn": 20
+                          }
+                        },
+                        "message": {
+                          "text": "'float_array' is an array of 1 elements (8 bytes)"
+                        }
+                      },
+                      "kinds": [
+                        "declaration"
+                      ],
+                      "importance": "essential"
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/tree.h"
+                          },
+                          "region": {
+                            "startLine": 4025,
+                            "startColumn": 18
+                          }
+                        }
+                      },
+                      "importance": "unimportant"
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/tree.h"
+                          },
+                          "region": {
+                            "startLine": 4025,
+                            "startColumn": 27
+                          }
+                        },
+                        "message": {
+                          "text": "Enter this loop, (assume 'i<float_elements.size()')"
+                        }
+                      },
+                      "kinds": [
+                        "branch"
+                      ]
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/tree.h"
+                          },
+                          "region": {
+                            "startLine": 4026,
+                            "startColumn": 24
+                          }
+                        }
+                      },
+                      "importance": "unimportant"
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/tree.h"
+                          },
+                          "region": {
+                            "startLine": 4025,
+                            "startColumn": 52
+                          }
+                        },
+                        "message": {
+                          "text": "'i' may equal 1"
+                        }
+                      },
+                      "kinds": [
+                        "declaration"
+                      ],
+                      "importance": "essential"
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/tree.h"
+                          },
+                          "region": {
+                            "startLine": 4025,
+                            "startColumn": 27
+                          }
+                        },
+                        "message": {
+                          "text": "Continue this loop, (assume 'i<float_elements.size()')"
+                        }
+                      },
+                      "kinds": [
+                        "branch"
+                      ]
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/tree.h"
+                          },
+                          "region": {
+                            "startLine": 4026,
+                            "startColumn": 24
+                          }
+                        },
+                        "message": {
+                          "text": "'i' is an In/Out argument to 'std::vector<frontend::Expression *,std::allocator<frontend::Expression *> >::[]' (declared at c:\\program files\\microsoft visual studio\\2022\\professional\\vc\\tools\\msvc\\14.43.34808\\include\\vector:1912)"
+                        }
+                      },
+                      "kinds": [
+                        "declaration"
+                      ]
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/tree.h"
+                          },
+                          "region": {
+                            "startLine": 4026,
+                            "startColumn": 24
+                          }
+                        },
+                        "message": {
+                          "text": "Invalid write to 'float_array[1]', (writable range is 0 to 0)"
+                        }
+                      },
+                      "kinds": [
+                        "usage"
+                      ],
+                      "importance": "essential"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'Token::kind' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/scanner.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/scanner.h"
+                },
+                "region": {
+                  "startLine": 450,
+                  "startColumn": 4
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "Token::{ctor}",
+                  "decoratedName": "??0Token@@QEAA@XZ",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "Token::kind"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'Token::token_type' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/scanner.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/scanner.h"
+                },
+                "region": {
+                  "startLine": 450,
+                  "startColumn": 4
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "Token::{ctor}",
+                  "decoratedName": "??0Token@@QEAA@XZ",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "Token::token_type"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'Token::line_nbr' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/scanner.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/scanner.h"
+                },
+                "region": {
+                  "startLine": 450,
+                  "startColumn": 4
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "Token::{ctor}",
+                  "decoratedName": "??0Token@@QEAA@XZ",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "Token::line_nbr"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'Token::line_pos' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/scanner.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/scanner.h"
+                },
+                "region": {
+                  "startLine": 450,
+                  "startColumn": 4
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "Token::{ctor}",
+                  "decoratedName": "??0Token@@QEAA@XZ",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "Token::line_pos"
+          }
+        }
+      ],
+      "tool": {
+        "driver": {
+          "name": "PREfast",
+          "fullName": "PREfast Code Analysis",
+          "version": "14.43.34810.0",
+          "informationUri": "https://aka.ms/cpp/ca"
+        }
+      },
+      "invocations": [
+        {
+          "executionSuccessful": true
+        }
+      ],
+      "artifacts": [
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/scanner.cpp"
+          },
+          "roles": [
+            "analysisTarget"
+          ],
+          "hashes": {
+            "sha-256": "09c21c02948111c053229d71d5df78f424dbe65d987ed1ee84ddae989f29ae30"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/types.h"
+          },
+          "roles": [
+            "resultFile"
+          ],
+          "hashes": {
+            "sha-256": "464488e980b0a4aa17878440b6455824291ff5fc7678ab020e083e9b201a5d81"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+          },
+          "roles": [
+            "resultFile"
+          ],
+          "hashes": {
+            "sha-256": "d01b3dc7058400a527a8f4bcbffd2f62135a6566335f36815c1f216f38c991a9"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/tree.h"
+          },
+          "roles": [
+            "resultFile"
+          ],
+          "hashes": {
+            "sha-256": "426c6b7ce7369be0d113e7c16181a378a38aca47aae9d7f994a947c6b161db34"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/scanner.h"
+          },
+          "roles": [
+            "resultFile"
+          ],
+          "hashes": {
+            "sha-256": "ef7ddaf0d98c34a65ed8ac41dfcfa24c13c32bbc7155e0eb92e9b091c3fd1111"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/shared/instrs.h"
+          },
+          "hashes": {
+            "sha-256": "6b7c4dc34a91c03f955fac220ff4d10861cf0d5d9344618cc09ff60e0f64575c"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/shared/sys.h"
+          },
+          "hashes": {
+            "sha-256": "ec031a2b99e68210544db02c98168ac6a5883f4ae852f5960d1f10cdff4f30d5"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/lib/zlib/win/zlib.h"
+          },
+          "hashes": {
+            "sha-256": "8a5579af72ea4f427ff00a4150f0ccb3fc5c1e4379f726e101133b1ab9fc600c"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/lib/zlib/win/zconf.h"
+          },
+          "hashes": {
+            "sha-256": "f5134250a67d57459234b63858f0d9d3ef8dcc48e9e1028d3f4fdcf6eae677ae"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/shared/logger.h"
+          },
+          "hashes": {
+            "sha-256": "01446bf14b18eb33e6d6094394d51be88fac2234c8445d354fa86b69aa12b4bd"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/shared/traps.h"
+          },
+          "hashes": {
+            "sha-256": "54c0dcda4adffd34ebdc9a2a00fb77a669de540ef170a4d21cbfbf8493da77ac"
+          }
+        }
+      ]
+    }
+  ]
+}

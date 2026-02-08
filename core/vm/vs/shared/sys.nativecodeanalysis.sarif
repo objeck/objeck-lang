@@ -1,0 +1,67 @@
+{
+  "version": "2.1.0",
+  "$schema": "https://schemastore.azurewebsites.net/schemas/json/sarif-2.1.0-rtm.5.json",
+  "runs": [
+    {
+      "results": [],
+      "tool": {
+        "driver": {
+          "name": "PREfast",
+          "fullName": "PREfast Code Analysis",
+          "version": "14.43.34810.0",
+          "informationUri": "https://aka.ms/cpp/ca"
+        }
+      },
+      "invocations": [
+        {
+          "executionSuccessful": true
+        }
+      ],
+      "artifacts": [
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/shared/sys.cpp"
+          },
+          "roles": [
+            "analysisTarget"
+          ],
+          "hashes": {
+            "sha-256": "6d7f8edc59b96c75a8a6d04ca47362a69f76ddb7932d2962b16d42751c670733"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/shared/sys.h"
+          },
+          "hashes": {
+            "sha-256": "ec031a2b99e68210544db02c98168ac6a5883f4ae852f5960d1f10cdff4f30d5"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/lib/zlib/win/zlib.h"
+          },
+          "hashes": {
+            "sha-256": "8a5579af72ea4f427ff00a4150f0ccb3fc5c1e4379f726e101133b1ab9fc600c"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/lib/zlib/win/zconf.h"
+          },
+          "hashes": {
+            "sha-256": "f5134250a67d57459234b63858f0d9d3ef8dcc48e9e1028d3f4fdcf6eae677ae"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/shared/logger.h"
+          },
+          "hashes": {
+            "sha-256": "01446bf14b18eb33e6d6094394d51be88fac2234c8445d354fa86b69aa12b4bd"
+          }
+        }
+      ]
+    }
+  ]
+}

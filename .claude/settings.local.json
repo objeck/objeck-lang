@@ -1,0 +1,36 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(wc:*)",
+      "Bash(git -C \"C:\\\\Users\\\\objec\\\\Documents\\\\Code\\\\objeck-lang\" log --oneline --max-count=20)",
+      "Bash(ls:*)",
+      "Bash(dir:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git checkout:*)",
+      "Bash(git merge:*)",
+      "Bash(git push:*)",
+      "Bash(git pull:*)",
+      "Bash(\"core/release/deploy-x64/bin/obc.exe\":*)",
+      "Bash(./bin/obc.exe:*)",
+      "Bash(git rm:*)",
+      "Bash(./obc.exe:*)",
+      "Bash(./core/release/deploy-x64/bin/obc.exe:*)",
+      "Bash(\"/c/Program Files/Microsoft Visual Studio/2022/Professional/Common7/IDE/devenv\" crypto.sln /rebuild \"Release|x64\")",
+      "Bash(\"/c/Program Files/Microsoft Visual Studio/2022/Professional/MSBuild/Current/Bin/MSBuild.exe\" crypto.sln /t:Rebuild /p:Configuration=Release /p:Platform=x64)",
+      "Bash(\"/c/Program Files/Microsoft Visual Studio/2022/Professional/MSBuild/Current/Bin/MSBuild.exe\" crypto.vcxproj //t:Rebuild //p:Configuration=Release //p:Platform=x64)",
+      "Bash(./obr.exe:*)",
+      "Bash(git reset:*)",
+      "Bash(find:*)",
+      "Bash(msbuild:*)",
+      "Bash(gcc --version:*)",
+      "Bash(make:*)",
+      "Bash(mingw32-make:*)",
+      "Bash(core/vm/obr.exe --version:*)",
+      "Bash(echo:*)",
+      "Bash(OBJECK_LIB_PATH=./lib ./bin/obc.exe:*)",
+      "Bash(gh:*)",
+      "Bash(tee:*)"
+    ]
+  }
+}

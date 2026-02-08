@@ -1,0 +1,14 @@
+﻿  context.cpp
+  linker.cpp
+  parser.cpp
+  scanner.cpp
+  tree.cpp
+  types.cpp
+  logger.cpp
+  diags.cpp
+  Generating Code...
+  libz-static.lib(uncompr.obj) : MSIL .netmodule or module compiled with /GL found; restarting link with /LTCG; add /LTCG to the link command line to improve linker performance
+     Creating library C:\Users\objec\Documents\Code\objeck-lang\core\lib\diags\vs\Release\x64\libobjk_diags.lib and object C:\Users\objec\Documents\Code\objeck-lang\core\lib\diags\vs\Release\x64\libobjk_diags.exp
+  Generating code
+  Finished generating code
+  diag.vcxproj -> C:\Users\objec\Documents\Code\objeck-lang\core\lib\diags\vs\Release\x64\libobjk_diags.dll

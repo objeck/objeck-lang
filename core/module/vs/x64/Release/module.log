@@ -1,0 +1,27 @@
+﻿  Scanning sources for module dependencies...
+  jit_amd_lp64.h
+  Compiling...
+  jit_amd_lp64.h
+  compiler.cpp
+  context.cpp
+  emit.cpp
+  intermediate.cpp
+  linker.cpp
+  optimization.cpp
+  parser.cpp
+  scanner.cpp
+  tree.cpp
+  types.cpp
+  sys.cpp
+  jit_amd_lp64.cpp
+  jit_common.cpp
+  memory.cpp
+  win32.cpp
+  common.cpp
+  dispatch.cpp
+  interpreter.cpp
+  loader.cpp
+  vm.cpp
+  Compiling...
+  lang.cpp
+  module.vcxproj -> C:\Users\objec\Documents\Code\objeck-lang\core\release\x64\Release\objeck.lib

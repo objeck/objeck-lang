@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <PropertyPageSchema Include="$(MSBuildThisFileDirectory)Microsoft.AI.DirectML.Rules.Project.xml"/>
+  </ItemGroup>
+
+  <PropertyGroup>
+    <Microsoft_AI_DirectML_Bin_Dir_Windows_x64>$(MSBuildThisFileDirectory)..\bin\x64-win</Microsoft_AI_DirectML_Bin_Dir_Windows_x64>
+    <Microsoft_AI_DirectML_Bin_Dir_Windows_x86>$(MSBuildThisFileDirectory)..\bin\x86-win</Microsoft_AI_DirectML_Bin_Dir_Windows_x86>
+    <Microsoft_AI_DirectML_Bin_Dir_Windows_Arm>$(MSBuildThisFileDirectory)..\bin\arm-win</Microsoft_AI_DirectML_Bin_Dir_Windows_Arm>
+    <Microsoft_AI_DirectML_Bin_Dir_Windows_Arm64>$(MSBuildThisFileDirectory)..\bin\arm64-win</Microsoft_AI_DirectML_Bin_Dir_Windows_Arm64>
+    <Microsoft_AI_DirectML_Bin_Dir_Windows_Arm64ec>$(MSBuildThisFileDirectory)..\bin\arm64ec-win</Microsoft_AI_DirectML_Bin_Dir_Windows_Arm64ec>
+    <Microsoft_AI_DirectML_Bin_Dir_Linux_x64>$(MSBuildThisFileDirectory)..\bin\x64-linux</Microsoft_AI_DirectML_Bin_Dir_Linux_x64>
+    <Microsoft_AI_DirectML_Bin_Dir_Scarlett>$(MSBuildThisFileDirectory)..\bin\x64-xbox-scarlett</Microsoft_AI_DirectML_Bin_Dir_Scarlett>
+    <Microsoft_AI_DirectML_Include_Dir>$(MSBuildThisFileDirectory)..\include</Microsoft_AI_DirectML_Include_Dir>
+    <Microsoft_AI_DirectML_Library_Basename>DirectML</Microsoft_AI_DirectML_Library_Basename>
+    <Microsoft_AI_DirectML_Debug_Layer_Basename>DirectML.Debug</Microsoft_AI_DirectML_Debug_Layer_Basename>
+  </PropertyGroup>
+
+</Project>

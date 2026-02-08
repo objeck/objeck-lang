@@ -1,0 +1,11 @@
+﻿  opencv.cpp
+     Creating library C:\Users\objec\Documents\Code\objeck-lang\core\lib\opencv\x64\Debug\libobjk_opencv.lib and object C:\Users\objec\Documents\Code\objeck-lang\core\lib\opencv\x64\Debug\libobjk_opencv.exp
+  vs.vcxproj -> C:\Users\objec\Documents\Code\objeck-lang\core\lib\opencv\x64\Debug\libobjk_opencv.dll
+  Compiled 7 classes.
+  Wrote target file: '..\..\..\core\release\deploy-x64\lib\opencv.obl'.
+  ---
+          1 file(s) copied.
+  ..\..\..\core\lib\opencv\win\x64\bin\opencv_videoio_ffmpeg4120_64.dll
+  ..\..\..\core\lib\opencv\win\x64\bin\opencv_world4120.dll
+  ..\..\..\core\lib\opencv\win\x64\bin\opencv_world4120d.dll
+          3 file(s) copied.

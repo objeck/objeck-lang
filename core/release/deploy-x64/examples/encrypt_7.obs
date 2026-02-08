@@ -1,0 +1,29 @@
+﻿#~
+# compile: obc -src encrypt_7.obs -lib cipher -dest encrypt_7.obe
+# run: obr encrypt_7.obe
+~#
+	
+class Encryption {
+	function : Main(args : String[]) ~ Nil {
+		input := "Nas is like..."->ToByteArray();
+		hash := Cipher.Hash->SHA256(input);
+		
+		input := "The quick brown fox jumped over the lazy dog's back"->ToByteArray();
+		hash := Cipher.Hash->MD5(input);
+		hash->ToHexString()->PrintLine();
+
+		input := "Rosetta Code"->ToByteArray();
+		hash := Cipher.Hash->RIPEMD160(input);
+		hash->ToHexString()->PrintLine();
+		
+		key := "Forest Room 5"->ToByteArray();
+		input := "I switched my motto / Instead of saying f*ck tomorrow, that buck that bought a bottle could've struck the lotto."->ToByteArray();
+		encrypted := Cipher.Encrypt->AES256(key, input);
+		if(encrypted <> Nil) {
+			decprypted := Cipher.Decrypt->AES256(key, encrypted);
+			if(decprypted <> Nil) {
+				String->New(decprypted)->PrintLine();
+			};
+		};
+	}	
+}

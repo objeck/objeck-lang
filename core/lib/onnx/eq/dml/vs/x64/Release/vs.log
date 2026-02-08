@@ -1,0 +1,7 @@
+﻿  onnx_dml.cpp
+     Creating library C:\Users\objec\Documents\Code\objeck-lang\core\lib\onnx\eq\dml\x64\Release\libobjk_onnx.lib and object C:\Users\objec\Documents\Code\objeck-lang\core\lib\onnx\eq\dml\x64\Release\libobjk_onnx.exp
+  Generating code
+  Previous IPDB not found, fall back to full compilation.
+  All 1660 functions were compiled because no usable IPDB/IOBJ from previous compilation was found.
+  Finished generating code
+  vs.vcxproj -> C:\Users\objec\Documents\Code\objeck-lang\core\lib\onnx\eq\dml\x64\Release\libobjk_onnx.dll

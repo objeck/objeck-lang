@@ -1,0 +1,106 @@
+use API.OpenAI;
+
+class OpenAIQueary {
+	function : Main(args : String[]) ~ Nil {
+		token := GetApiKey("openai_api_key.dat");
+
+		if(token = Nil | args->Size() < 1) {
+			">>> Please provide a directive <<"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		param := args[0];
+		assistant : Assistant;
+
+		# create assistant
+		if(param->Equals("create")) {
+			assistant := Assistant->Create("gpt-4-turbo", "Outdoor New Mexico guide",
+				"Outdoor New Mexico guide", "You are expert on New Mexico outdoor activities", token);
+			if(assistant = Nil) {
+				">>> Unable create assistant <<"->PrintLine();
+				Runtime->Exit(1);
+			};
+
+			id := assistant->GetId();
+			"Created assistant: id={$id}"->PrintLine();
+		}
+		# delete assistant
+		else if(param->Equals("delete") & args->Size() = 2) {
+			id := args[1];
+			status := Assistant->Delete(id, token);
+			"Deleted assistant: id='{$id}', status={$status}"->PrintLine();
+			Runtime->Exit(0);
+		}
+		# load assistant
+		else {
+			id := param;
+			assistant := Assistant->Load(param, token);
+			if(assistant = Nil) {
+				">>> Unable load assistant <<"->PrintLine();
+				Runtime->Exit(1);
+			};
+
+			"Loaded assistant: id={$id}"->PrintLine();
+		};
+
+		# create thread
+		thread := API.OpenAI.Thread->Create(token);
+		if(thread = Nil) {
+			">>> Unable create thread <<"->PrintLine();
+			Runtime->Exit(1);
+		};
+		
+		# create message
+		Message->Create("user", "What oldest hotel in New Mexico?", thread, token);
+		
+		# create run
+		run := API.OpenAI.Run->Create(assistant, thread, token);
+		run_id := run->GetId();
+		"Run started: id={$run_id}"->PrintLine();
+
+		# check run
+		is_done := false;
+		for(i := 0; <>is_done & i < 10; i += 1;) {
+			System.Concurrency.Thread->Sleep(1500);
+			run->Refresh(token);
+			'.'->Print();
+			is_done := run->GetStatus()->Equals("completed");
+		};
+
+		if(<>is_done) {
+			">>> Unable complete run <<"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		# retrieve response messages
+		messages := Message->ListMessages(thread, token);
+		each(message in messages) {
+			message_contents := message->GetContents();
+			if(message_contents <> Nil) {
+				each(message_content in message_contents) {
+					message_content->GetSecond()->PrintLine();
+					"---"->PrintLine();
+				};
+			};
+		};
+
+		# remove thread
+		status := Thread->Delete(thread->GetId(), token);
+		"Removed thread: status={$status}"->PrintLine();
+	}
+
+	function : GetApiKey(filename : String) ~ String {
+		token := System.IO.Filesystem.FileReader->ReadFile(filename);
+		if(token <> Nil) {
+			token := token->Trim();
+			if(<>token->StartsWith("sk-")) {
+				">>> Unable to read token from file: '{$filename}' <<"->PrintLine();
+				Runtime->Exit(1);
+			};
+
+			return token;
+		};
+
+		return Nil;
+	}
+}

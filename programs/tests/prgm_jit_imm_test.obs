@@ -1,0 +1,114 @@
+use Collection;
+
+class JitImmediateTest {
+  function : Main(args : String[]) ~ Nil {
+    "=== JIT Immediate Value Optimization Test ===\n"->Print();
+
+    # Test small immediate values (should use optimized path)
+    TestSmallImmediate();
+
+    # Test medium immediate values (32-bit range)
+    TestMediumImmediate();
+
+    # Test large immediate values (64-bit, should use movabs/constant pool)
+    TestLargeImmediate();
+
+    # Test arithmetic with immediates
+    TestArithmeticImmediate();
+
+    "\n=== All tests passed ===\n"->Print();
+  }
+
+  function : TestSmallImmediate() ~ Nil {
+    "\nTest 1: Small immediate values (0-4095)\n"->Print();
+
+    a := 0;
+    b := 1;
+    c := 100;
+    d := 1000;
+    e := 4095;
+
+    if(a = 0 & b = 1 & c = 100 & d = 1000 & e = 4095) {
+      "  ✓ Small immediates: PASS\n"->Print();
+    } else {
+      "  ✗ Small immediates: FAIL\n"->Print();
+    };
+  }
+
+  function : TestMediumImmediate() ~ Nil {
+    "\nTest 2: Medium immediate values (32-bit range)\n"->Print();
+
+    # Positive 32-bit values
+    a := 100000;
+    b := 1000000;
+    c := 2147483647;  # INT32_MAX
+
+    # Negative 32-bit values
+    d := -100000;
+    e := -1000000;
+    f := -2147483648; # INT32_MIN
+
+    if(a = 100000 & b = 1000000 & c = 2147483647 &
+       d = -100000 & e = -1000000 & f = -2147483648) {
+      "  ✓ Medium immediates (32-bit): PASS\n"->Print();
+    } else {
+      "  ✗ Medium immediates (32-bit): FAIL\n"->Print();
+    };
+  }
+
+  function : TestLargeImmediate() ~ Nil {
+    "\nTest 3: Large immediate values (64-bit)\n"->Print();
+
+    # Values outside 32-bit range
+    a := 3000000000;        # > INT32_MAX
+    b := -3000000000;       # < INT32_MIN
+    c := 9223372036854775807;  # INT64_MAX
+
+    if(a = 3000000000 & b = -3000000000 & c = 9223372036854775807) {
+      "  ✓ Large immediates (64-bit): PASS\n"->Print();
+    } else {
+      "  ✗ Large immediates (64-bit): FAIL\n"->Print();
+    };
+  }
+
+  function : TestArithmeticImmediate() ~ Nil {
+    "\nTest 4: Arithmetic operations with immediate values\n"->Print();
+
+    # Addition
+    a := 100 + 200;
+    if(a <> 300) {
+      "  ✗ Addition: FAIL\n"->Print();
+      return;
+    };
+
+    # Subtraction
+    b := 1000 - 250;
+    if(b <> 750) {
+      "  ✗ Subtraction: FAIL\n"->Print();
+      return;
+    };
+
+    # Multiplication
+    c := 50 * 20;
+    if(c <> 1000) {
+      "  ✗ Multiplication: FAIL\n"->Print();
+      return;
+    };
+
+    # Division
+    d := 1000 / 10;
+    if(d <> 100) {
+      "  ✗ Division: FAIL\n"->Print();
+      return;
+    };
+
+    # Mixed operations
+    e := (100 + 50) * 2 - 25;
+    if(e <> 275) {
+      "  ✗ Mixed operations: FAIL\n"->Print();
+      return;
+    };
+
+    "  ✓ Arithmetic with immediates: PASS\n"->Print();
+  }
+}

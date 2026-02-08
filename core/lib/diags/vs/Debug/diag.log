@@ -1,0 +1,16 @@
+﻿  context.cpp
+  linker.cpp
+  parser.cpp
+  scanner.cpp
+  tree.cpp
+  types.cpp
+  logger.cpp
+  diags.cpp
+  Generating Code...
+LINK : warning LNK4075: ignoring '/INCREMENTAL' due to '/LTCG' specification
+     Creating library C:\Users\objec\Documents\Code\objeck-lang\core\lib\diags\vs\Debug\x64\libobjk_diags.lib and object C:\Users\objec\Documents\Code\objeck-lang\core\lib\diags\vs\Debug\x64\libobjk_diags.exp
+  Generating code
+  Previous IPDB not found, fall back to full compilation.
+  All 23 functions were compiled because no usable IPDB/IOBJ from previous compilation was found.
+  Finished generating code
+  diag.vcxproj -> C:\Users\objec\Documents\Code\objeck-lang\core\lib\diags\vs\Debug\x64\libobjk_diags.dll

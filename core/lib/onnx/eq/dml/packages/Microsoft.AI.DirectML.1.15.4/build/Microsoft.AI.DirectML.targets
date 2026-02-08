@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+  <!-- Microsoft_AI_DirectML_Bin_Dir_Target is only set when building for specific platform targets: x64, Win32/x86, ARM, ARM64, or ARM64EC.
+       Unrecognized platform targets will not support the automatic linking, include paths, and binary copies below. -->
+  <PropertyGroup>
+    <Microsoft_AI_DirectML_Bin_Dir_Target Condition="'$(PlatformTarget)' == 'x64'">$(Microsoft_AI_DirectML_Bin_Dir_Windows_x64)</Microsoft_AI_DirectML_Bin_Dir_Target>
+    <Microsoft_AI_DirectML_Bin_Dir_Target Condition="'$(PlatformTarget)' == 'Win32' Or '$(PlatformTarget)' == 'x86'">$(Microsoft_AI_DirectML_Bin_Dir_Windows_x86)</Microsoft_AI_DirectML_Bin_Dir_Target>
+    <Microsoft_AI_DirectML_Bin_Dir_Target Condition="'$(PlatformTarget)' == 'ARM'">$(Microsoft_AI_DirectML_Bin_Dir_Windows_Arm)</Microsoft_AI_DirectML_Bin_Dir_Target>
+    <Microsoft_AI_DirectML_Bin_Dir_Target Condition="'$(PlatformTarget)' == 'ARM64'">$(Microsoft_AI_DirectML_Bin_Dir_Windows_Arm64)</Microsoft_AI_DirectML_Bin_Dir_Target>
+    <Microsoft_AI_DirectML_Bin_Dir_Target Condition="'$(PlatformTarget)' == 'ARM64EC'">$(Microsoft_AI_DirectML_Bin_Dir_Windows_Arm64ec)</Microsoft_AI_DirectML_Bin_Dir_Target>
+    <!-- Map the project GDK target to the closest DirectML GDK target by major version. -->
+    <Microsoft_AI_DirectML_GDK_Target Condition="'$(XDKEditionTarget)' != '' And '$(XDKEditionTarget)' &gt;= '220300' And '$(XDKEditionTarget)' &lt;= '220399'">220301</Microsoft_AI_DirectML_GDK_Target>
+    <Microsoft_AI_DirectML_GDK_Target Condition="'$(XDKEditionTarget)' != '' And '$(XDKEditionTarget)' &gt;= '220600' And '$(XDKEditionTarget)' &lt;= '220699'">220604</Microsoft_AI_DirectML_GDK_Target>
+    <Microsoft_AI_DirectML_GDK_Target Condition="'$(XDKEditionTarget)' != '' And '$(XDKEditionTarget)' &gt;= '221000' And '$(XDKEditionTarget)' &lt;= '221099'">221000</Microsoft_AI_DirectML_GDK_Target>
+    <Microsoft_AI_DirectML_Bin_Dir_Target Condition="'$(Platform)' == 'Gaming.Xbox.Scarlett.x64'">$(Microsoft_AI_DirectML_Bin_Dir_Scarlett)-$(Microsoft_AI_DirectML_GDK_Target)</Microsoft_AI_DirectML_Bin_Dir_Target>
+  </PropertyGroup>
+
+  <ItemDefinitionGroup Condition="'$(Microsoft_AI_DirectML_SkipIncludeDir)' != 'true'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(Microsoft_AI_DirectML_Include_Dir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+  </ItemDefinitionGroup>
+
+  <ItemDefinitionGroup Condition="'$(Microsoft_AI_DirectML_Bin_Dir_Target)' != '' AND '$(Microsoft_AI_DirectML_SkipLink)' != 'true'">
+    <Link>
+      <AdditionalLibraryDirectories>$(Microsoft_AI_DirectML_Bin_Dir_Target);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>$(Microsoft_AI_DirectML_Library_Basename).lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+
+  <ItemGroup Condition="'$(Microsoft_AI_DirectML_Bin_Dir_Target)' != '' AND '$(Microsoft_AI_DirectML_SkipLibraryCopy)' != 'true'">
+    <Content Include="$(Microsoft_AI_DirectML_Bin_Dir_Target)\$(Microsoft_AI_DirectML_Library_Basename).dll">
+      <Link>%(RecursiveDir)%(FileName)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="$(Microsoft_AI_DirectML_Bin_Dir_Target)\$(Microsoft_AI_DirectML_Library_Basename).pdb">
+      <Link>%(RecursiveDir)%(FileName)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(Microsoft_AI_DirectML_Bin_Dir_Target)' != '' AND '$(Microsoft_AI_DirectML_SkipDebugLayerCopy)' != 'true'">
+    <Content Include="$(Microsoft_AI_DirectML_Bin_Dir_Target)\$(Microsoft_AI_DirectML_Debug_Layer_Basename).dll">
+      <Link>%(RecursiveDir)%(FileName)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="$(Microsoft_AI_DirectML_Bin_Dir_Target)\$(Microsoft_AI_DirectML_Debug_Layer_Basename).pdb">
+      <Link>%(RecursiveDir)%(FileName)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <!-- Warn the user if the DirectML package doesn't support the current GDK target. It *might* work, but there's no guarantee. -->
+  <Target Name="DmlGdkEditionValidation" BeforeTargets="_CheckForInvalidConfigurationAndPlatform">
+      <Error Condition="'$(Platform)' == 'Gaming.Xbox.Scarlett.x64' AND '$(Microsoft_AI_DirectML_GDK_Target)' == ''"
+             Text="The active DirectML redistributable package is not supported on the current GDK edition ($(XDKEditionTarget))." />
+  </Target>
+</Project>

@@ -1,0 +1,22 @@
+#~
+# compile: obc -src https_1.obs -lib net,json
+# run: obr https_1.obe url
+~#
+
+use Collection;
+use Web.HTTP;
+
+class HttpsTest {
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() = 1) {
+			html := HttpsClient->QuickGet(Web.HTTP.Url->New(args[0]))->GetContent()->ToString();
+			if(html = Nil) {
+				"--- Unable to fetch URL ---"->ErrorLine();
+			}
+			else {
+#				html->Size()->PrintLine();
+				html->PrintLine();
+			};
+		};
+	}
+}

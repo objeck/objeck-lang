@@ -1,0 +1,4 @@
+C:\Users\objec\Documents\Code\objeck-lang\core\lib\onnx\eq\dml\x64\Release\DirectML.dll
+C:\Users\objec\Documents\Code\objeck-lang\core\lib\onnx\eq\dml\x64\Release\DirectML.pdb
+C:\Users\objec\Documents\Code\objeck-lang\core\lib\onnx\eq\dml\x64\Release\onnxruntime.dll
+C:\Users\objec\Documents\Code\objeck-lang\core\lib\onnx\eq\dml\x64\Release\onnxruntime_providers_shared.dll

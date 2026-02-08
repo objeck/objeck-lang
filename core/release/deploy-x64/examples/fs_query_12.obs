@@ -1,0 +1,16 @@
+#~
+# compile: obc -src fs_query_12.obs -lib query,regex,misc,net,json,csv
+# run: obr fs_query_12.obe
+~#
+
+use Query.Structured;
+
+class Example {
+	function : Main(args : String[]) ~ Nil {
+		table := Finder->New(".*\\.wav");
+		results := table->FindFiles("media")<String>;
+		each(i : results) {
+			results->Get(i)->PrintLine();
+		};
+	}
+}

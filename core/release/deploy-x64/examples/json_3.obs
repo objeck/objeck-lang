@@ -1,0 +1,30 @@
+﻿#~
+# compile: obc -src json_3.obs -lib json,net,json
+# run: obr json_3.obe
+~#
+
+use Data.JSON;
+use Web.HTTP;
+use System.IO.Net;
+
+class JsonWeb {
+	function : Main(args : String[]) ~ Nil {		
+		url := Web.HTTP.Url->New("https://reqbin.com/echo/get/json");
+
+		response := HttpsClient->QuickGet(url);
+		if(response <> Nil) {
+response->GetCode()->PrintLine();
+			parser := JsonParser->New(response->GetContent());
+			if(parser->Parse()) {
+				root := parser->GetRoot();
+				success := root->Get("success");
+				if(success <> Nil) {
+					success->GetString()->Equals("true")->PrintLine();
+					return;
+				};
+			};
+		};
+			
+		"-- Unable to parse or process JSON! --"->ErrorLine();
+	}
+}

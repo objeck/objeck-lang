@@ -1,0 +1,23 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.26430.6
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{54435603-DBB4-11D2-8724-00A0C9A8B90C}") = "setup", "setup-arm64.vdproj", "{5606039A-9146-489A-8EF4-CF1B997EF8AB}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Default = Debug|Default
+		Release|Default = Release|Default
+		Description = Simple, object-oriented and functional
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{5606039A-9146-489A-8EF4-CF1B997EF8AB}.Debug|Default.ActiveCfg = Debug
+		{5606039A-9146-489A-8EF4-CF1B997EF8AB}.Debug|Default.Build.0 = Debug
+		{5606039A-9146-489A-8EF4-CF1B997EF8AB}.Release|Default.ActiveCfg = Release
+		{5606039A-9146-489A-8EF4-CF1B997EF8AB}.Release|Default.Build.0 = Release
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

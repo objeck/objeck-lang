@@ -1,0 +1,14 @@
+C:\Users\objec\Documents\Code\objeck-lang\core\shared\sys.cpp;C:\Users\objec\Documents\Code\objeck-lang\core\debugger\vs\ARM64\Release\sys.obj
+C:\Users\objec\Documents\Code\objeck-lang\core\vm\arch\jit\arm64\jit_arm_a64.h;C:\Users\objec\Documents\Code\objeck-lang\core\debugger\vs\ARM64\Release\jit_arm_a64.obj
+C:\Users\objec\Documents\Code\objeck-lang\core\vm\arch\jit\arm64\jit_arm_a64.cpp;C:\Users\objec\Documents\Code\objeck-lang\core\debugger\vs\ARM64\Release\jit_arm_a64.obj
+C:\Users\objec\Documents\Code\objeck-lang\core\vm\arch\jit\jit_common.cpp;C:\Users\objec\Documents\Code\objeck-lang\core\debugger\vs\ARM64\Release\jit_common.obj
+C:\Users\objec\Documents\Code\objeck-lang\core\vm\arch\memory.cpp;C:\Users\objec\Documents\Code\objeck-lang\core\debugger\vs\ARM64\Release\memory.obj
+C:\Users\objec\Documents\Code\objeck-lang\core\vm\arch\win32\win32.cpp;C:\Users\objec\Documents\Code\objeck-lang\core\debugger\vs\ARM64\Release\win32.obj
+C:\Users\objec\Documents\Code\objeck-lang\core\vm\common.cpp;C:\Users\objec\Documents\Code\objeck-lang\core\debugger\vs\ARM64\Release\common.obj
+C:\Users\objec\Documents\Code\objeck-lang\core\vm\interpreter.cpp;C:\Users\objec\Documents\Code\objeck-lang\core\debugger\vs\ARM64\Release\interpreter.obj
+C:\Users\objec\Documents\Code\objeck-lang\core\vm\loader.cpp;C:\Users\objec\Documents\Code\objeck-lang\core\debugger\vs\ARM64\Release\loader.obj
+C:\Users\objec\Documents\Code\objeck-lang\core\vm\vm.cpp;C:\Users\objec\Documents\Code\objeck-lang\core\debugger\vs\ARM64\Release\vm.obj
+C:\Users\objec\Documents\Code\objeck-lang\core\debugger\debugger.cpp;C:\Users\objec\Documents\Code\objeck-lang\core\debugger\vs\ARM64\Release\debugger.obj
+C:\Users\objec\Documents\Code\objeck-lang\core\debugger\parser.cpp;C:\Users\objec\Documents\Code\objeck-lang\core\debugger\vs\ARM64\Release\parser.obj
+C:\Users\objec\Documents\Code\objeck-lang\core\debugger\scanner.cpp;C:\Users\objec\Documents\Code\objeck-lang\core\debugger\vs\ARM64\Release\scanner.obj
+C:\Users\objec\Documents\Code\objeck-lang\core\debugger\tree.cpp;C:\Users\objec\Documents\Code\objeck-lang\core\debugger\vs\ARM64\Release\tree.obj

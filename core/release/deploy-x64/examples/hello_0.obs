@@ -1,0 +1,12 @@
+#~
+# compile: obc -src hello_0.obs
+# run: obr hello_0.obe
+~#
+
+class Hello {
+  function : Main(args : String[]) ~ Nil {
+    "Hello World" → PrintLine();
+    "Καλημέρα κόσμε" → PrintLine();
+    "こんにちは 世界" → PrintLine();
+  }
+}

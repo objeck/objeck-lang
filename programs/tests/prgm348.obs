@@ -1,0 +1,12 @@
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		socket := System.IO.Net.TCPSecureSocket->New("www.example.com", 443, "release/deploy-arm64/lib/cacert.pem");
+		if(socket->IsOpen()) {
+			"Open"->PrintLine();
+			socket->Close();
+		}
+		else {
+			"Closed"->PrintLine();
+		}
+	}
+}

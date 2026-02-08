@@ -1,0 +1,154 @@
+#~ The Computer Language Benchmarks Game
+   https://benchmarksgame.alioth.debian.org/u64q/mandelbrot-description.html#mandelbrot
+ 
+   contributed by Stefan Krause
+   slightly modified by Chad Whipkey
+   parallelized by Colin D Bennett 2008-10-04
+   reduce synchronization cost by The Anh Tran
+
+   translated by Randy Hollines
+   
+   compile: obc -src threads_6.obs
+   run: obr threads_6.obe
+~#
+
+
+use System.Concurrency;
+
+class MandelBrot {
+	function : Main(args : String[]) ~ Nil {
+		n := 200;
+		if (args->Size() > 0) {
+			n := args[0]->ToInt();
+		};
+
+		width_bytes := n/8+1;
+		output_data := Byte->New[n, width_bytes];
+		bytes_per_line := Int->New[n];
+
+		CaculateThread->Init(n, output_data, bytes_per_line);
+
+		IO.Console->Print("P4\n")->Print(n)->Print(' ')->Print(n)->Print('\n');
+
+		threads := Thread->New[3];
+		each(i : threads) {
+			threads[i] := CaculateThread->New(i->ToString());
+		};
+		each(i : threads) {
+			threads[i]->Execute(Nil);
+		};
+		each(i : threads) {
+			threads[i]->Join();
+		};
+		
+		# Print(output_data, bytes_per_line, n);
+
+		for(i := 0; i < n; i+=1;) {
+			for(j := 0; j < bytes_per_line[i]; j+=1;) {
+				output_data[i,j]->Print();
+			};
+		};
+	}
+
+	function : native : Print(output_data : Byte[,], bytes_per_line : Int[], n : Int) ~ Nil {
+		for(i := 0; i < n; i+=1;) {
+			for(j := 0; j < bytes_per_line[i]; j+=1;) {
+				output_data[i,j]->Print();
+			};
+		};
+	}
+}
+
+class CaculateThread from Thread {
+	@size : static : Int;
+	@output_data : static : Byte[,];
+	@bytes_per_line : static : Int[];
+	@inverse_N : static : Float;
+	@current_line : static : Int;
+	@inc_mutex : static : ThreadMutex;
+
+	New(id : String) {
+		Parent(id);
+	}
+
+	function : Init(size : Int, output_data : Byte[,], bytes_per_line : Int[]) ~ Nil {
+		@size := size;
+		@output_data := output_data;
+		@bytes_per_line := bytes_per_line;
+		@inverse_N := 2.0/size->As(Float);
+		@current_line := 0;
+		@inc_mutex := ThreadMutex->New("inc_mutex");
+	}
+
+	method : public : Run(param : System.Base) ~ Nil {
+		Compute();
+	}
+
+	method : native : Compute() ~ Nil {
+		y : Int;
+
+		while(true) {
+			critical(@inc_mutex) {
+				y := @current_line;
+				@current_line+=1;
+			};
+
+			if(y >= @size) {
+				return;
+			};
+
+			bit_num := 0;
+			byte_count := 0;
+			byte_accumulate := 0;
+								
+			Civ := y->As(Float) * @inverse_N - 1.0;
+
+			for(x := 0; x < @size; x+=1;) {
+				Crv := x->As(Float) * @inverse_N - 1.5;
+						
+				Zrv := Crv;
+				Ziv := Civ;
+
+				Trv := Crv * Crv;
+				Tiv := Civ * Civ;
+						
+				TrvTiv : Float;
+				i := 49;
+				do {
+					Ziv := (Zrv * Ziv) + (Zrv * Ziv) + Civ;
+					Zrv := Trv - Tiv + Crv;
+
+					Trv := Zrv * Zrv;
+					Tiv := Ziv * Ziv;
+
+					TrvTiv := Trv + Tiv;
+					if(TrvTiv <= 4.0) {
+						i -= 1;
+					};	
+				}
+				while(TrvTiv <= 4.0 & i > 0);
+
+				byte_accumulate := byte_accumulate << 1;	
+				if(i = 0) {
+					byte_accumulate+=1;
+				};
+
+				bit_num += 1;
+				if(bit_num = 8) {					
+					@output_data[y, byte_count] := byte_accumulate->As(Byte);
+					byte_count += 1;
+					bit_num := 0;
+					byte_accumulate := 0;
+				};
+			};
+
+			if(bit_num <> 0) {
+				byte_accumulate := byte_accumulate << (8 - (@size and 7));
+				@output_data[y, byte_count] := byte_accumulate->As(Byte);
+				byte_count += 1;
+			};	
+
+			@bytes_per_line[y] := byte_count;
+		};
+	}
+}

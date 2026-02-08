@@ -1,0 +1,9 @@
+use Collection, System.IO.Filesystem;
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		url_path := "file:///";
+		url_path += File->GetFullName("mcp_test_server.obs")->ReplaceAll('\\', '/');
+		url_path->PrintLine();
+	}
+}

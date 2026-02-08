@@ -1,0 +1,6 @@
+﻿  context.cpp
+  libz-static.lib(compress.obj) : MSIL .netmodule or module compiled with /GL found; restarting link with /LTCG; add /LTCG to the link command line to improve linker performance
+LINK : warning LNK4075: ignoring '/INCREMENTAL' due to '/LTCG' specification
+  Generating code
+  Finished generating code
+  compiler.vcxproj -> C:\Users\objec\Documents\Code\objeck-lang\core\compiler\x64\Debug\obc.exe

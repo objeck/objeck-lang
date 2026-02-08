@@ -1,0 +1,145 @@
+<?xml version="1.0"?>
+
+<!DOCTYPE MODE SYSTEM "xmode.dtd">
+
+<MODE>
+	<PROPS>
+		<PROPERTY NAME="commentStart" VALUE="#~" />
+		<PROPERTY NAME="commentEnd" VALUE="~#" />
+		<PROPERTY NAME="lineComment" VALUE="#" />
+
+		<!-- Auto indent -->
+		<PROPERTY NAME="indentOpenBrackets" VALUE="{" />
+		<PROPERTY NAME="indentCloseBrackets" VALUE="}" />
+		<PROPERTY NAME="unalignedOpenBrackets" VALUE="(" />
+		<PROPERTY NAME="unalignedCloseBrackets" VALUE=")" />
+		<PROPERTY NAME="indentNextLine"
+			VALUE="\s*(((if|while)\s*\(|else\s*|else\s+if\s*\(|for\s*\(.*\))[^{;]*)" />
+		<PROPERTY NAME="unindentThisLine"
+			VALUE="^.*(default:\s*|label.*:.*)$" />
+		<PROPERTY NAME="electricKeys" VALUE=":" />
+	</PROPS>
+	<RULES IGNORE_CASE="FALSE"
+		HIGHLIGHT_DIGITS="TRUE"
+		DIGIT_RE="(0x[\p{XDigit}]+[lL]?|[\p{Digit}]+(e[\p{Digit}]*)?[lLdDfF]?)">
+
+		<SPAN TYPE="COMMENT1">
+			<BEGIN>#~</BEGIN>
+			<END>~#</END>
+		</SPAN>
+
+		<EOL_SPAN TYPE="COMMENT2">#</EOL_SPAN>
+
+		<SPAN TYPE="LITERAL1" ESCAPE="\" NO_LINE_BREAK="FALSE">
+			<BEGIN>"</BEGIN>
+			<END>"</END>
+		</SPAN>
+
+		<SPAN TYPE="LITERAL1" ESCAPE="\" NO_LINE_BREAK="TRUE">
+			<BEGIN>'</BEGIN>
+			<END>'</END>
+		</SPAN>
+
+		<SEQ TYPE="OPERATOR">~</SEQ>
+		<SEQ TYPE="OPERATOR">!</SEQ>
+		<SEQ TYPE="OPERATOR">:</SEQ>
+		<SEQ TYPE="OPERATOR">;</SEQ>
+		<SEQ TYPE="OPERATOR">{</SEQ>
+		<SEQ TYPE="OPERATOR">}</SEQ>
+		<SEQ TYPE="OPERATOR">,</SEQ>
+		<SEQ TYPE="OPERATOR">.</SEQ>
+		<SEQ TYPE="OPERATOR">[</SEQ>
+		<SEQ TYPE="OPERATOR">]</SEQ>
+		<SEQ TYPE="OPERATOR">+</SEQ>
+		<SEQ TYPE="OPERATOR">-</SEQ>
+		<SEQ TYPE="OPERATOR">&gt;</SEQ>
+		<SEQ TYPE="OPERATOR">&lt;</SEQ>
+		<SEQ TYPE="OPERATOR">=</SEQ>
+		<SEQ TYPE="OPERATOR">*</SEQ>
+		<SEQ TYPE="OPERATOR">/</SEQ>
+		<SEQ TYPE="OPERATOR">^</SEQ>
+		<SEQ TYPE="OPERATOR">|</SEQ>
+		<SEQ TYPE="OPERATOR">&amp;</SEQ>
+		<SEQ TYPE="OPERATOR">%</SEQ>
+		<SEQ TYPE="OPERATOR">?</SEQ>
+
+		<MARK_PREVIOUS TYPE="FUNCTION" MATCH_TYPE="OPERATOR">(</MARK_PREVIOUS>
+		<SEQ TYPE="OPERATOR">)</SEQ>
+
+		<KEYWORDS>
+			<KEYWORD1>from</KEYWORD1>
+			<KEYWORD1>implements</KEYWORD1>
+			<KEYWORD1>alias</KEYWORD1>
+			<KEYWORD1>use</KEYWORD1>
+			<KEYWORD1>leaving</KEYWORD1>
+			<KEYWORD1>if</KEYWORD1>
+			<KEYWORD1>else</KEYWORD1>
+			<KEYWORD1>do</KEYWORD1>
+			<KEYWORD1>in</KEYWORD1>
+			<KEYWORD1>while</KEYWORD1>
+			<KEYWORD1>select</KEYWORD1>
+			<KEYWORD1>break</KEYWORD1>
+			<KEYWORD1>continue</KEYWORD1>
+			<KEYWORD1>other</KEYWORD1>
+			<KEYWORD1>otherwise</KEYWORD1>
+			<KEYWORD1>for</KEYWORD1>
+			<KEYWORD1>each</KEYWORD1>
+			<KEYWORD1>reverse</KEYWORD1>
+			<KEYWORD1>label</KEYWORD1>
+			<KEYWORD1>return</KEYWORD1>
+			<KEYWORD1>critical</KEYWORD1>
+			<KEYWORD1>New</KEYWORD1>
+			<KEYWORD1>Parent</KEYWORD1>
+			<KEYWORD1>As</KEYWORD1>
+			<KEYWORD1>and</KEYWORD1>
+			<KEYWORD1>or</KEYWORD1>
+			<KEYWORD1>xor</KEYWORD1>
+			<KEYWORD1>not</KEYWORD1>
+
+			<KEYWORD2>class</KEYWORD2>
+			<KEYWORD2>interface</KEYWORD2>
+			<KEYWORD2>enum</KEYWORD2>
+			<KEYWORD2>consts</KEYWORD2>
+			<KEYWORD2>bundle</KEYWORD2>
+			<KEYWORD2>method</KEYWORD2>
+			<KEYWORD2>function</KEYWORD2>
+
+			<KEYWORD1>public</KEYWORD1>
+			<KEYWORD1>abstract</KEYWORD1>
+			<KEYWORD1>private</KEYWORD1>
+			<KEYWORD1>static</KEYWORD1>
+			<KEYWORD1>native</KEYWORD1>
+			<KEYWORD1>virtual</KEYWORD1>
+
+			<KEYWORD3>Nil</KEYWORD3>
+			<KEYWORD3>Byte</KEYWORD3>
+			<KEYWORD3>ByteRef</KEYWORD3>
+			<KEYWORD3>Int</KEYWORD3>
+			<KEYWORD3>IntRef</KEYWORD3>
+			<KEYWORD3>Float</KEYWORD3>
+			<KEYWORD3>FloatRef</KEYWORD3>
+			<KEYWORD3>Char</KEYWORD3>
+			<KEYWORD3>CharRef</KEYWORD3>
+			<KEYWORD3>Bool</KEYWORD3>
+			<KEYWORD3>BoolRef</KEYWORD3>
+			<KEYWORD3>String</KEYWORD3>
+			<KEYWORD3>BaseArrayRef</KEYWORD3>
+			<KEYWORD3>BoolArrayRef</KEYWORD3>
+			<KEYWORD3>ByteArrayRef</KEYWORD3>
+			<KEYWORD3>CharArrayRef</KEYWORD3>
+			<KEYWORD3>FloatArrayRef</KEYWORD3>
+			<KEYWORD3>IntArrayRef</KEYWORD3>
+			<KEYWORD3>StringArrayRef</KEYWORD3>
+			<KEYWORD3>Func2Ref</KEYWORD3>
+			<KEYWORD3>Func3Ref</KEYWORD3>
+			<KEYWORD3>Func4Ref</KEYWORD3>
+			<KEYWORD3>FuncRef</KEYWORD3>
+
+			<LITERAL2>true</LITERAL2>
+			<LITERAL2>false</LITERAL2>
+			<!--<LITERAL2>Nil</LITERAL2>-->
+		</KEYWORDS>
+	</RULES>
+
+</MODE>
+

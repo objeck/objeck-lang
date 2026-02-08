@@ -1,0 +1,15 @@
+﻿  logger.cpp
+  compiler.cpp
+  context.cpp
+  emit.cpp
+  intermediate.cpp
+  linker.cpp
+  optimization.cpp
+  parser.cpp
+  posix_main.cpp
+  scanner.cpp
+  tree.cpp
+  types.cpp
+  Generating code
+  Finished generating code
+  compiler.vcxproj -> C:\Users\objec\Documents\Code\objeck-lang\core\release\ARM64\Release\obc.exe

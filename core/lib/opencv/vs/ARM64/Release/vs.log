@@ -1,0 +1,15 @@
+﻿  opencv.cpp
+     Creating library C:\Users\objec\Documents\Code\objeck-lang\core\lib\opencv\ARM64\Release\libobjk_opencv.lib and object C:\Users\objec\Documents\Code\objeck-lang\core\lib\opencv\ARM64\Release\libobjk_opencv.exp
+  Generating code
+  Finished generating code
+  vs.vcxproj -> C:\Users\objec\Documents\Code\objeck-lang\core\lib\opencv\ARM64\Release\libobjk_opencv.dll
+  The system cannot find the path specified.
+  The system cannot find the path specified.
+  The system cannot find the path specified.
+  'obc' is not recognized as an internal or external command,
+  operable program or batch file.
+  The system cannot find the path specified.
+          0 file(s) copied.
+  ..\..\..\core\lib\opencv\win\arm64\bin\*.dll 
+          0 file(s) copied.
+  The system cannot find the file specified.

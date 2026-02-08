@@ -1,0 +1,37 @@
+use API.OpenAI, API.OpenAI.Chat, Collection;
+
+class OpenAICompletion {
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() = 1) {
+			query := args[0];
+			token := GetApiKey("openai_api_key.dat");
+
+			messages := Vector->New()<Pair<String, String>>;
+			messages->AddBack(Pair->New("user", query)<String, String>);
+
+			completion := Completion->Complete("gpt-4o", messages, token);
+			if(completion <> Nil) {
+				choices := completion->GetChoices();
+				each(choice in choices) {
+					message := choice->GetMessage()<String, String>;
+					message->GetSecond()->PrintLine();
+				};
+			};
+		};
+	}
+
+	function : GetApiKey(filename : String) ~ String {
+		token := System.IO.Filesystem.FileReader->ReadFile(filename);
+		if(token <> Nil) {
+			token := token->Trim();
+			if(token = Nil | <>token->StartsWith("sk-")) {
+				">>> Unable to read token from file: '{$filename}' <<"->PrintLine();
+				Runtime->Exit(1);
+			};
+
+			return token;
+		};
+
+		return Nil;
+	}
+}

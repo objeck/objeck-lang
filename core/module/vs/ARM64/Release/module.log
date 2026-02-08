@@ -1,0 +1,24 @@
+﻿  jit_arm_a64.h
+  compiler.cpp
+  context.cpp
+  emit.cpp
+  intermediate.cpp
+  linker.cpp
+  optimization.cpp
+  parser.cpp
+  scanner.cpp
+  tree.cpp
+  types.cpp
+  sys.cpp
+  jit_arm_a64.cpp
+  jit_common.cpp
+  memory.cpp
+  win32.cpp
+  common.cpp
+  interpreter.cpp
+  loader.cpp
+  vm.cpp
+  Compiling...
+  lang.cpp
+ARM64\Release\jit_arm_a64.obj : warning LNK4042: object specified more than once; extras ignored
+  module.vcxproj -> C:\Users\objec\Documents\Code\objeck-lang\core\release\ARM64\Release\objeck.lib

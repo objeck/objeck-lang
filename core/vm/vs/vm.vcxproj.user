@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <LocalDebuggerCommandArguments>demo_one tests\drone\images drone\labels.txt</LocalDebuggerCommandArguments>
+    <LocalDebuggerWorkingDirectory>..\..\..\programs\frameworks\opencv_onnx</LocalDebuggerWorkingDirectory>
+    <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
+    <LocalDebuggerEnvironment>PATH=%PATH%;C:\Users\objec\Documents\Code\objeck-lang\core\release\deploy-x64\bin;C:\Users\objec\Documents\Code\objeck-lang\core\release\deploy-x64\lib\sdl
+OBJECK_LIB_PATH=C:\Users\objec\Documents\Code\objeck-lang\core\release\deploy-x64\lib
+$(LocalDebuggerEnvironment)</LocalDebuggerEnvironment>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <LocalDebuggerCommandArguments>prgm2 tests\runner.mp4 tests </LocalDebuggerCommandArguments>
+    <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
+    <LocalDebuggerWorkingDirectory>..\..\..\programs\frameworks\opencv_onnx</LocalDebuggerWorkingDirectory>
+    <LocalDebuggerEnvironment>PATH=%PATH%;C:\Users\objec\Documents\Code\objeck-lang\core\release\deploy-x64\bin;C:\Users\objec\Documents\Code\objeck-lang\core\release\deploy-x64\lib\sdl
+OBJECK_LIB_PATH=C:\Users\objec\Documents\Code\objeck-lang\core\release\deploy-x64\lib
+$(LocalDebuggerEnvironment)</LocalDebuggerEnvironment>
+  </PropertyGroup>
+</Project>

@@ -1,0 +1,17 @@
+Nose
+Left eye
+Right eye
+Left ear
+Right ear 
+Left shoulder
+Right shoulder
+Left elbow
+Right elbow 
+Left wrist
+Right wrist
+Left hip
+Right hip 
+Left knee
+Right knee
+Left ankle
+Right ankle

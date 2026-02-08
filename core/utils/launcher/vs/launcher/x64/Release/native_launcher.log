@@ -1,0 +1,6 @@
+﻿  launcher.cpp
+  Generating code
+  Previous IPDB not found, fall back to full compilation.
+  All 189 functions were compiled because no usable IPDB/IOBJ from previous compilation was found.
+  Finished generating code
+  native_launcher.vcxproj -> C:\Users\objec\Documents\Code\objeck-lang\core\utils\launcher\x64\Release\obn.exe

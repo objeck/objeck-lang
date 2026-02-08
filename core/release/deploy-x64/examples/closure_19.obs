@@ -1,0 +1,22 @@
+#~
+# compile: obc -src closure_19.obs -dest closure_19.obe
+# run: obr closure_19.obe
+~#
+
+use Collection;
+
+class Capture {
+	function : Main(args : String[]) ~ Nil {
+		 funcs := Vector->New()<FuncRef<IntRef>>;
+		 
+		 for(i := 0; i < 10; i += 1;) {
+		 	funcs->AddBack(FuncRef->New(\() ~ IntRef : () => i->Factorial() * funcs->Size())<IntRef>);
+		 };
+		 
+		 each(i : funcs) {
+		 	value := funcs->Get(i);
+			func := value->Get();
+		 	func()->Get()->PrintLine();
+		 };
+	}
+}

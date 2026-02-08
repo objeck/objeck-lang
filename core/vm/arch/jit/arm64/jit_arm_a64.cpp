@@ -67,7 +67,16 @@ void JitArm64::Prolog() {
     0xf90013e7, // str x7, [sp, #32]
     0xf9000fe8, // str x8, [sp, #24]
     0xf9000be9, // str x9, [sp, #16]
-    0xF90033Ea  // str x10, [sp, #96]
+    0xF90033Ea, // str x10, [sp, #96]
+    // Save callee-saved FP registers D8-D15
+    0xFD003408, // str d8, [sp, #104]
+    0xFD003809, // str d9, [sp, #112]
+    0xFD003C0A, // str d10, [sp, #120]
+    0xFD00400B, // str d11, [sp, #128]
+    0xFD00440C, // str d12, [sp, #136]
+    0xFD00480D, // str d13, [sp, #144]
+    0xFD004C0E, // str d14, [sp, #152]
+    0xFD00500F  // str d15, [sp, #160]
   };
   
   // copy setup
@@ -119,7 +128,16 @@ void JitArm64::Epilog() {
   add_offset |= final_local_space << 10;
   
   move_imm_reg(0, X0);
+  // Restore callee-saved FP registers D8-D15
   uint32_t teardown_code[] = {
+    0xFD403408, // ldr d8, [sp, #104]
+    0xFD403809, // ldr d9, [sp, #112]
+    0xFD403C0A, // ldr d10, [sp, #120]
+    0xFD40400B, // ldr d11, [sp, #128]
+    0xFD40440C, // ldr d12, [sp, #136]
+    0xFD40480D, // ldr d13, [sp, #144]
+    0xFD404C0E, // ldr d14, [sp, #152]
+    0xFD40500F, // ldr d15, [sp, #160]
     add_offset, // add sp, sp, #final_local_space
     0xd65f03c0  // ret
   };
@@ -4460,6 +4478,16 @@ bool JitArm64::Compile(StackMethod* cm)
     
     
     // floating point registers
+    // D8-D15 are callee-saved (will be saved/restored in prolog/epilog)
+    aval_fregs.push_back(new RegisterHolder(D15, true));
+    aval_fregs.push_back(new RegisterHolder(D14, true));
+    aval_fregs.push_back(new RegisterHolder(D13, true));
+    aval_fregs.push_back(new RegisterHolder(D12, true));
+    aval_fregs.push_back(new RegisterHolder(D11, true));
+    aval_fregs.push_back(new RegisterHolder(D10, true));
+    aval_fregs.push_back(new RegisterHolder(D9, true));
+    aval_fregs.push_back(new RegisterHolder(D8, true));
+    // D0-D7 are caller-saved (no save/restore needed)
     aval_fregs.push_back(new RegisterHolder(D7, true));
     aval_fregs.push_back(new RegisterHolder(D6, true));
     aval_fregs.push_back(new RegisterHolder(D5, true));

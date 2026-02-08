@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>BBEditDocumentType</key>
+	<string>CodelessLanguageModule</string>
+	<key>BBLMColorsSyntax</key>
+	<true/>
+	<key>BBLMIsCaseSensitive</key>
+	<true/>
+	<key>BBLMKeywordList</key>
+	<array>
+		<string>critical</string>
+		<string>use</string>
+		<string>leaving</string>
+		<string>lambdas</string>
+		<string>and</string>
+		<string>or</string>
+		<string>xor</string>
+		<string>not</string>
+		<string>virtual</string>
+		<string>if</string>
+		<string>else</string>
+		<string>do</string>
+		<string>while</string>
+		<string>break</string>
+		<string>continue</string>
+		<string>bundle</string>
+		<string>native</string>
+		<string>static</string>
+		<string>public</string>
+		<string>private</string>
+		<string>class</string>
+		<string>interface</string>
+		<string>select</string>
+		<string>other</string>
+		<string>otherwise</string>
+		<string>enum</string>
+		<string>for</string>
+		<string>each</string>
+		<string>reverse</string>
+		<string>label</string>
+		<string>return</string>
+		<string>Byte</string>
+		<string>Int</string>
+		<string>Parent</string>
+		<string>from</string>
+		<string>implements</string>
+		<string>Float</string>
+		<string>Char</string>
+		<string>Bool</string>
+		<string>String</string>
+		<string>Nil</string>
+		<string>true</string>
+		<string>false</string>
+		<string>function</string>
+		<string>method</string>
+	</array>
+	<key>BBLMLanguageCode</key>
+	<string>LSL</string>
+	<key>BBLMLanguageDisplayName</key>
+	<string>Objeck</string>
+	<key>BBLMScansFunctions</key>
+	<true/>
+	<key>BBLMSuffixMap</key>
+	<array>
+		<dict>
+			<key>BBLMLanguageSuffix</key>
+			<string>.obs</string>
+		</dict>
+	</array>
+	<key>Language Features</key>
+	<dict>
+		<key>Close Block Comments</key>
+		<string>~#</string>
+		<key>Close Parameter Lists</key>
+		<string>)</string>
+		<key>Close Statement Blocks</key>
+		<string>}</string>
+		<key>Close Strings 1</key>
+		<string>&quot;</string>
+		<key>Close Strings 2</key>
+		<string>&apos;</string>
+		<key>End-of-line Ends Strings 1</key>
+		<false/>
+		<key>End-of-line Ends Strings 2</key>
+		<false/>
+		<key>Escape Char in Strings 1</key>
+		<string>\</string>
+		<key>Escape Char in Strings 2</key>
+		<string>\</string>
+		<key>Identifier and Keyword Characters</key>
+		<string>@0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz</string>
+		<key>Open Block Comments</key>
+		<string>#~</string>
+		<key>Open Line Comments</key>
+		<string>#</string>
+		<key>Open Parameter Lists</key>
+		<string>(</string>
+		<key>Open Statement Blocks</key>
+		<string>{</string>
+		<key>Open Strings 1</key>
+		<string>&quot;</string>
+		<key>Open Strings 2</key>
+		<string>&apos;</string>
+		<key>Prefix for Functions</key>
+		<string></string>
+		<key>Prefix for Procedures</key>
+		<string></string>
+		<key>Terminator for Prototypes 1</key>
+		<string></string>
+		<key>Terminator for Prototypes 2</key>
+		<string></string>
+	</dict>
+</dict>
+</plist>

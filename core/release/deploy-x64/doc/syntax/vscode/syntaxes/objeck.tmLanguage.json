@@ -1,0 +1,145 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "Objeck",
+	"patterns": [
+		{
+			"include": "#comments"
+		},
+		{
+			"include": "#strings"
+		},
+		{
+			"include": "#storage-modifiers"
+		},
+		{
+			"include": "#entities"
+		},
+		{
+			"include": "#numbers"
+		},
+		{
+			"include": "#booleans"
+		},
+		{
+			"include": "#char-const"
+		},
+		{
+			"include": "#primitive-types"
+		},
+		{
+			"include": "#keywords"
+		}
+	],
+	"repository": {
+		"char-const": {
+			"patterns": [
+				{
+					"match": "b?'([^'\\\\]|\\\\(x[0-9A-Fa-f]{2}|[0-2][0-7]{0,2}|3[0-6][0-7]?|37[0-7]?|[4-7][0-7]?|.))'",
+					"name": "string.quoted.single.objeck"
+				}]
+		},
+		"comments": {
+			"patterns": [
+				{
+					"begin": "\\#~",
+					"end": "~\\#",
+					"name": "comment.block.objeck"
+				},
+				{
+					"begin": "\\#",
+					"end": "\\n",
+					"name": "comment.line.objeck"
+				}]
+		},
+		"entities": {
+			"patterns": [
+				{
+					"match": "\\b(class|method|function)\\b",
+					"name": "entity.name.type.class"
+				}]
+		},
+		"primitive-types": {
+			"patterns": [
+				{
+					"match": "\\b(Nil|Byte|ByteRef|Int|IntRef|Float|FloatRef|Char|CharRef|Bool|BoolRef|String|BaseArrayRef|BoolArrayRef|ByteArrayRef|CharArrayRef|FloatArrayRef|IntArrayRef|StringArrayRef|Func2Ref|Func3Ref|Func4Ref|FuncRef)\\b",
+					"name": "storage.type.objeck"
+				}]
+		},
+		"numbers": {
+			"patterns": [
+				{
+					"match": "(?x)\n\\b(?<!\\$)\n0(x|X)\n(\n  (?<!\\.)[0-9a-fA-F]([0-9a-fA-F_]*[0-9a-fA-F])?[Ll]?(?!\\.)\n  |\n  (\n    [0-9a-fA-F]([0-9a-fA-F_]*[0-9a-fA-F])?\\.?\n    |\n    ([0-9a-fA-F]([0-9a-fA-F_]*[0-9a-fA-F])?)?\\.[0-9a-fA-F]([0-9a-fA-F_]*[0-9a-fA-F])?\n  )\n  [Pp][+-]?[0-9]([0-9_]*[0-9])?[FfDd]?\n)\n\\b(?!\\$)",
+					"name": "constant.numeric.objeck"
+				},
+				{
+					"match": "\\b(?<!\\$)0(b|B)[01]([01_]*[01])?[Ll]?\\b(?!\\$)",
+					"name": "constant.numeric.objeck"
+				},
+				{
+					"match": "\\b(?<!\\$)0[0-7]([0-7_]*[0-7])?[Ll]?\\b(?!\\$)",
+					"name": "constant.numeric.octal.objeck"
+				},
+				{
+					"match": "(?x)\n(?<!\\$)\n(\n  \\b[0-9]([0-9_]*[0-9])?\\.\\B(?!\\.)\n  |\n  \\b[0-9]([0-9_]*[0-9])?\\.([Ee][+-]?[0-9]([0-9_]*[0-9])?)[FfDd]?\\b\n  |\n  \\b[0-9]([0-9_]*[0-9])?\\.([Ee][+-]?[0-9]([0-9_]*[0-9])?)?[FfDd]\\b\n  |\n  \\b[0-9]([0-9_]*[0-9])?\\.([0-9]([0-9_]*[0-9])?)([Ee][+-]?[0-9]([0-9_]*[0-9])?)?[FfDd]?\\b\n  |\n  (?<!\\.)\\B\\.[0-9]([0-9_]*[0-9])?([Ee][+-]?[0-9]([0-9_]*[0-9])?)?[FfDd]?\\b\n  |\n  \\b[0-9]([0-9_]*[0-9])?([Ee][+-]?[0-9]([0-9_]*[0-9])?)[FfDd]?\\b\n  |\n  \\b[0-9]([0-9_]*[0-9])?([Ee][+-]?[0-9]([0-9_]*[0-9])?)?[FfDd]\\b\n  |\n  \\b(0|[1-9]([0-9_]*[0-9])?)(?!\\.)[Ll]?\\b\n)\n(?!\\$)",
+					"name": "constant.numeric.objeck"
+				}
+			]
+		},
+		"booleans": {
+			"patterns": [
+				{
+					"match": "\\b(true|false)\\b",
+					"name": "constant.numeric.boolean.objeck"
+				}
+			]
+		},
+		"keywords": {
+			"patterns": [
+				{
+					"match": "\\b(use|leaving|if|else|do|while|select|break|continue|in|other|otherwise|for|each|reverse|label|return|critical)\\b",
+					"name": "keyword.control.objeck"
+				},
+				{
+					"match": "\\b(As)\\b",
+					"name": "keyword.operator.objeck"
+				},
+				{
+					"match": "\\b(not|and|or|xor|not)\\b",
+					"name": "keyword.operator.objeck"
+				},
+				{
+					"match": "(->|<=|>=|<>|<|>)",
+					"name": "keyword.operator.objeck"
+				},
+				{
+					"match": "(:=)",
+					"name": "keyword.operator.objeck"
+				},
+				{
+					"match": "(\\+|\\*|/|%|-|=)",
+					"name": "keyword.operator.objeck"
+				}
+			]
+		},
+		"storage-modifiers": {
+			"patterns": [
+				{
+					"name": "storage.modifier.objeck",
+					"match": "\\b(public|abstract|private|static|native)\\b"
+				}
+			]
+		},
+		"strings": {
+			"name": "string.quoted.double.objeck",
+			"begin": "\"",
+			"end": "\"",
+			"patterns": [
+				{
+					"name": "constant.character.escape.objeck",
+					"match": "\\\\."
+				}
+			]
+		}
+	},
+	"scopeName": "source.objeck"
+}

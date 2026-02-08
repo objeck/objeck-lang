@@ -1,0 +1,18 @@
+﻿  jit_amd_lp64.cpp
+  jit_common.cpp
+  common.cpp
+  dispatch.cpp
+  interpreter.cpp
+C:\Users\objec\Documents\Code\objeck-lang\core\vm\interpreter.cpp(659,18): warning C5051: attribute [[unlikely]] requires at least '/std:c++20'; ignored
+C:\Users\objec\Documents\Code\objeck-lang\core\vm\interpreter.cpp(693,27): warning C5051: attribute [[unlikely]] requires at least '/std:c++20'; ignored
+  vm.cpp
+  win_main.cpp
+  Generating Code...
+  libz-static.lib(deflate.obj) : MSIL .netmodule or module compiled with /GL found; restarting link with /LTCG; add /LTCG to the link command line to improve linker performance
+LINK : warning LNK4075: ignoring '/INCREMENTAL' due to '/LTCG' specification
+     Creating library C:\Users\objec\Documents\Code\objeck-lang\core\vm\x64\Debug\obr.lib and object C:\Users\objec\Documents\Code\objeck-lang\core\vm\x64\Debug\obr.exp
+LINK : warning LNK4098: defaultlib 'LIBCMTD' conflicts with use of other libs; use /NODEFAULTLIB:library
+msvcrtd.lib(initializers.obj) : warning LNK4098: defaultlib 'msvcrt.lib' conflicts with use of other libs; use /NODEFAULTLIB:library
+  Generating code
+  Finished generating code
+  vm.vcxproj -> C:\Users\objec\Documents\Code\objeck-lang\core\vm\x64\Debug\obr.exe

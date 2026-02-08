@@ -1,0 +1,196 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+ Authors: Randy Hollines, Marco Barisione, Emanuele Aina
+ Copyright (C) 2005-2007 Marco Barisione <barisione@gmail.com>
+ Copyright (C) 2005-2007 Emanuele Aina
+ Copyright (C) 2010 Randy Hollines
+
+ This library is free software; you can redistribute it and/or
+ modify it under the terms of the GNU Library General Public
+ License as published by the Free Software Foundation; either
+ version 2 of the License, or (at your option) any later version.
+
+ This library is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ Library General Public License for more details.
+
+ You should have received a copy of the GNU Library General Public
+ License along with this library; if not, write to the
+ Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+ Boston, MA 02111-1307, USA.
+
+-->
+<language id="objeck" _name="Objeck" version="2.0" _section="Sources">
+    <metadata>
+      <property name="mimetypes">text/x-c;text/x-csrc;image/x-xpixmap</property>
+      <property name="globs">*.obs</property>
+      <property name="line-comment-start">#</property>
+      <property name="ff">#~</property>
+      <property name="block-comment-end">~#</property>
+    </metadata>
+
+    <styles>
+        <style id="comment"           _name="Comment"             map-to="def:comment"/>
+        <style id="error"             _name="Error"               map-to="def:error"/>
+        <style id="string"            _name="String"              map-to="def:string"/>
+        <style id="char"              _name="Character"           map-to="def:character"/>
+        <style id="keyword"           _name="Keyword"             map-to="def:keyword"/>
+        <style id="type"              _name="Data Type"           map-to="def:type"/>
+        <style id="escaped-character" _name="Escaped Character"   map-to="def:special-char"/>
+        <style id="floating-point"    _name="Floating point number" map-to="def:floating-point"/>
+        <style id="decimal"           _name="Decimal number"      map-to="def:decimal"/>
+        <style id="octal"             _name="Octal number"        map-to="def:base-n-integer"/>
+        <style id="hexadecimal"       _name="Hexadecimal number"  map-to="def:base-n-integer"/>
+        <style id="boolean"           _name="Boolean value"       map-to="def:boolean"/>
+    </styles>
+
+    <definitions>
+        <define-regex id="escaped-character" extended="true">
+            \\(                   # leading backslash
+            [\\\"\'nrbtfav\?] |   # escaped character
+            [0-7]{1,3} |          # one, two, or three octal digits
+            x[0-9A-Fa-f]+         # 'x' followed by hex digits
+            )
+        </define-regex>
+
+        <context id="objeck" class="no-spell-check">
+            <include>
+
+                <!-- gtk-doc -->
+                <context ref="gtk-doc:inline-docs-section"/>
+
+                <!-- Comments -->
+                <context id="comment-multiline" style-ref="comment" class="comment" class-disabled="no-spell-check">
+                    <start>#~</start>
+                    <end>~#</end>
+                    <include>
+                        <context ref="def:in-comment"/>
+                    </include>
+                </context>
+
+		<context id="comment" style-ref="comment" end-at-line-end="true" class="comment" class-disabled="no-spell-check">
+                 <start>#</start>
+                    <include>
+                      <context ref="def:in-line-comment"/>
+                    </include>
+                </context>
+
+                <context id="close-comment-outside-comment" style-ref="error">
+                    <match>#/(?!#)</match>
+                </context>
+		
+                <context id="string" style-ref="string" end-at-line-end="true" class="string" class-disabled="no-spell-check">
+                    <start>L?"</start>
+                    <end>"</end>
+                    <include>
+                        <context id="escaped-character" style-ref="escaped-character">
+                            <match>\%{escaped-character}</match>
+                        </context>
+                        <context ref="def:line-continue"/>
+                    </include>
+                </context>
+
+                <context id="char" style-ref="char">
+                    <match>L?'(\%{escaped-character}|.)'</match>
+                </context>
+
+                <!-- http://www.lysator.liu.se/c/ANSI-C-grammar-l.html -->
+                <context id="float" style-ref="floating-point">
+                    <match extended="true">
+                        (?&lt;![\w\.])
+                        ((\.[0-9]+ | [0-9]+\.[0-9]*) ([Ee][+-]?[0-9]*)? |
+                         ([0-9]+[Ee][+-]?[0-9]*))
+                        [fFlL]?
+                        (?![\w\.])
+                    </match>
+                </context>
+
+                <context id="hexadecimal" style-ref="hexadecimal">
+                    <match extended="true">
+                        (?&lt;![\w\.])
+                        0[xX][a-fA-F0-9]+[uUlL]*
+                        (?![\w\.])
+                    </match>
+                </context>
+
+                <context id="octal" style-ref="octal">
+                    <match extended="true">
+                        (?&lt;![\w\.])
+                        0[0-7]+[uUlL]*
+                        (?![\w\.])
+                    </match>
+                </context>
+
+                <context id="decimal" style-ref="decimal">
+                    <match extended="true">
+                        (?&lt;![\w\.])
+                        [0-9]+[uUlL]*
+                        (?![\w\.])
+                    </match>
+                </context>
+
+                <!-- Keywords -->
+                <context id="keywords" style-ref="keyword" class="keyword">
+                    <keyword>and</keyword>
+                    <keyword>or</keyword>
+                    <keyword>xor</keyword>
+                    <keyword>not</keyword>
+                    <keyword>virtual</keyword>
+                    <keyword>if</keyword>
+                    <keyword>else</keyword>
+                    <keyword>do</keyword>
+                    <keyword>in</keyword>
+                    <keyword>while</keyword>
+                    <keyword>break</keyword>
+                    <keyword>continue</keyword>
+                    <keyword>use</keyword>
+                    <keyword>bundle</keyword>
+                    <keyword>native</keyword>
+                    <keyword>static</keyword>
+                    <keyword>public</keyword>
+                    <keyword>private</keyword>
+                    <keyword>class</keyword>
+                    <keyword>interface</keyword>
+                    <keyword>function</keyword>
+                     <keyword>method</keyword>
+                    <keyword>select</keyword>
+                    <keyword>other</keyword>
+                    <keyword>otherwise</keyword>
+                    <keyword>enum</keyword>
+                    <keyword>for</keyword>
+                    <keyword>each</keyword>
+                    <keyword>reverse</keyword>
+                    <keyword>label</keyword>
+                    <keyword>return</keyword>
+                    <keyword>critical</keyword>
+                    <keyword>leaving</keyword>
+                    <keyword>lambdas</keyword>
+                    <keyword>use</keyword>
+					<keyword>leaving</keyword>
+                </context>
+
+                <context id="types" style-ref="type" class="type">
+                    <keyword>Byte</keyword>
+                    <keyword>Int</keyword>
+                    <keyword>Parent</keyword>
+                    <keyword>from</keyword>
+					<keyword>implements</keyword>
+                    <keyword>Float</keyword>
+                    <keyword>Char</keyword>
+                    <keyword>Bool</keyword>
+                    <keyword>Nil</keyword>
+                    <keyword>String</keyword>
+                </context>
+
+                <!-- Booleans -->
+                <context id="boolean" style-ref="boolean" class="boolean">
+                    <keyword>true</keyword>
+                    <keyword>false</keyword>
+                </context>
+
+            </include>
+        </context>
+    </definitions>
+</language>

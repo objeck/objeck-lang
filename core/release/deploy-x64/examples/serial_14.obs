@@ -1,0 +1,81 @@
+#~
+compile: obc -src serial_14.obs
+run: obr serial_14.obe (write|read)
+~#
+
+use Collection;
+use System.IO;
+use System.IO.Filesystem;
+
+class Client {
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() = 1) {
+			if(args[0]->Equals("read")) {
+				ReadFile();
+			}
+			else if(args[0]->Equals("write")) {
+				pair := Pair->New(4, 13)<IntRef, IntRef>;
+
+				values := Map->New()<String, Compare>;
+				values->Insert("name", "Objeck");
+				values->Insert("age", IntRef->New(10));
+				values->Insert("pi", FloatRef->New(3.145));
+
+				serializer := Serializer->New();
+				serializer->Write(pair);
+				serializer->Write(values);
+				serializer->Write("Fin.");
+				bytes := serializer->Serialize();
+
+				WriteFile(bytes);
+			};
+		};
+	}
+
+	function : ReadFile() ~ Nil {
+		file_name := Runtime->GetTempDir();
+		file_name += "/data.dat";
+		bytes := FileReader->ReadBinaryFile(file_name);
+		if(bytes = Nil) {
+			"--- Unable to read file ---"->ErrorLine();
+			return;
+		};
+
+		size := bytes->Size();
+		"server: file='{$file_name}', size={$size} bytes"->PrintLine();
+		
+		deserializer := Deserializer->New(bytes);
+
+		pair := deserializer->ReadObject()->As(Pair<IntRef, IntRef>);
+		pair->GetFirst()->PrintLine();
+		pair->GetSecond()->PrintLine();
+
+		values := deserializer->ReadObject()->As(Map<String, Compare>);
+		values->Size()->PrintLine();
+
+		name := values->Find("name")->As(String);
+		name->PrintLine();
+
+		pi := values->Find("pi")->As(FloatRef);
+		pi->Get()->PrintLine();
+
+		fin := deserializer->ReadObject()->As(String);
+		fin->PrintLine();
+
+		File->Delete(file_name);
+	}
+
+	function : WriteFile(bytes : Byte[]) ~ Nil {
+		size := bytes->Size();
+		file_name := Runtime->GetTempDir();
+		file_name += "/data.dat";
+		"client: file='{$file_name}', size={$size} bytes"->PrintLine();
+		
+		file := FileWriter->New(file_name);
+		leaving {
+			file->Close();
+		};
+		
+		file->WriteBuffer(bytes);
+	}
+}

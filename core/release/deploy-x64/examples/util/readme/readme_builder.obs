@@ -1,0 +1,313 @@
+use API.OpenAI, API.OpenAI.Chat, Data.JSON, Collection;
+
+#
+# obr readme_ai features.in readme.html.in openai_api_key.dat
+#
+class ReadmeBuilder {
+	@config_json : JsonElement;
+	@token : String;
+	
+	@title : String;
+	@version : String;
+	@version_year : Int;
+
+	New(config_file : String) {
+		input := System.IO.Filesystem.FileReader->ReadFile(config_file);
+		if(input = Nil) {
+			">>> Unable to read configuration file <<<"->ErrorLine();
+			Runtime->Exit(1);
+		};
+
+		@config_json := JsonParser->TextToElement(input);
+		if(@config_json = Nil) {
+			">>> Unable to parse configuration file <<<"->ErrorLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() <> 1) {
+			">>> readme_builder [config_file_path] <<<"->ErrorLine();
+			Runtime->Exit(1);
+		};
+
+		builder := ReadmeBuilder->New(args[0]);
+		
+		if(<>builder->Build()) {
+			">>> Unable to build readme, check the configuration file <<<"->ErrorLine();
+			Runtime->Exit(1);
+		};
+
+		builder->FormatWriteHtml();
+		builder->FormatWriteMarkdown();
+	}
+
+	method : Build() ~ Bool {
+		title_json := @config_json->Get("title");
+		if(title_json = Nil) {
+			return false;
+		};
+		title := title_json->GetString();
+
+		prompt := "Please make the following text after '---' sound a brief feature announcement.
+Please format the output as plain text, with no special characters.
+--- {$title}";
+		@title := Complete(prompt);
+
+		version_json := @config_json->FindElements("version/string");
+		if(version_json = Nil) {
+			return false;
+		};
+		@version := version_json->GetString();
+		
+		version_year_json := @config_json->FindElements("version/year");
+		if(version_year_json = Nil) {
+			return false;
+		};
+		@version_year := version_year_json->GetInt();
+
+		if(<>@config_json->Has("files") | <>@config_json->Has("features")) {
+			return false;
+		};
+
+		return true;
+	}
+
+	method : FormatWriteHtml() ~ Bool {
+		html := "<p>" + @title + "</p>\n";
+
+		features_json := @config_json->Get("features");
+		each(i : features_json) {
+			feature_json := features_json->Get(i);
+			feature_version := feature_json->Get("version")->GetString();
+
+			# set title
+			if(i = 0) {
+				html += "\n\t\t<p><u>" + feature_version + "</u></p>\n";
+			}
+			else {
+				html += "\n\t\t<p>" + feature_version + "</p>\n";
+			};
+			
+			# set features
+			html += "\t\t<ul>\n"
+			in_sublist := false;
+			feature_items_json :=  feature_json->Get("items");
+			each(j : feature_items_json) {
+				feature_item_json := feature_items_json->Get(j);
+				next_feature_item_json := feature_items_json->Get(j + 1);
+
+				# get current and next feature entry
+				feature_item := JsonElement->Decode(feature_item_json->GetString());				
+				next_feature_item : String;
+				if(next_feature_item_json <> Nil) {
+					next_feature_item := JsonElement->Decode(next_feature_item_json->GetString());
+				};
+
+				# add items and sub-items
+				if(in_sublist) {
+					html += "\t\t";
+				};
+
+				html += "\t\t\t<li>";
+				if(next_feature_item <> Nil & next_feature_item->StartsWith('\t')) {
+					html += feature_item->Trim();
+
+					if(in_sublist) {
+						html += "</li>\n";
+					}
+					else {
+						html += "\n\t\t\t\t<ul>\n";
+						in_sublist := true;
+					};
+				}
+				else {
+					html += feature_item->Trim();
+
+					if(in_sublist) {
+						html += "\n\t\t\t\t</ul>\n\t\t\t</li>\n";
+					}
+					else {
+						html += "</li>\n";
+					};
+					in_sublist := false;
+				};
+			};
+
+			# add ending tags
+			if(in_sublist) {
+				html += "\t\t\t\t</ul>\n\t\t\t</li>\n";
+			}
+			in_sublist := false;
+
+			html += "\t\t</ul>\n"
+		};
+		
+		# merge html template
+		html_template_json := @config_json->FindElements("files/html_template");
+		if(html_template_json = Nil) {
+			">>> Unable to read name of html merge file <<<"->ErrorLine();
+			Runtime->Exit(1);
+		};
+
+		html_template := System.IO.Filesystem.FileReader->ReadFile(html_template_json->GetString());
+		if(html_template = Nil) {
+			">>> Unable to read html merge file <<<"->ErrorLine();
+			Runtime->Exit(1);
+		};
+
+		date_today := System.Time.Date->New(false);
+		release_date := date_today->GetMonthName();
+		release_date += ' ';
+		release_date += date_today->GetDay();
+		release_date += ", ";
+		release_date += date_today->GetYear();
+
+		html_out := html_template->ReplaceAll("<![CDATA[REL_FEATURES]]>", html->Trim())
+			->ReplaceAll("<![CDATA[REL_VERSION]]>", @version)
+			->ReplaceAll("<![CDATA[REL_DATE]]>", release_date)
+			->ReplaceAll("<![CDATA[REL_YEAR]]>", @version_year->ToString())->Trim();
+
+		# write file
+		html_out_json := @config_json->FindElements("files/html_out");
+		if(html_out_json = Nil) {
+			">>> Unable to read name of html output file <<<"->ErrorLine();
+			Runtime->Exit(1);
+		};
+
+		if(html <> Nil & <>html->IsEmpty()) {
+			html_file_out := html_out_json->GetString();
+			System.IO.Filesystem.FileWriter->WriteFile(html_file_out, html_out);
+			"Wrote HTML file '{$html_file_out}'..."->PrintLine();
+		}
+		else {
+			return false;
+		};
+
+		return true;
+	}
+
+	method : FormatWriteMarkdown() ~ Bool {
+		markdown := @title + "\n\n";
+
+		features_json := @config_json->Get("features");
+		each(i : features_json) {
+			feature_json := features_json->Get(i);
+			feature_version := feature_json->Get("version")->GetString();
+
+			# set title
+			if(i = 0) {
+				markdown += "**" + feature_version + "**\n\n";
+			}
+			else {
+				markdown += feature_version + "\n\n";
+			};
+			
+			# set features
+			in_sublist := false;
+			feature_items_json :=  feature_json->Get("items");
+			each(j : feature_items_json) {
+				feature_item_json := feature_items_json->Get(j);
+				next_feature_item_json := feature_items_json->Get(j + 1);
+
+				# get current and next feature entry
+				feature_item := JsonElement->Decode(feature_item_json->GetString());				
+				next_feature_item : String;
+				if(next_feature_item_json <> Nil) {
+					next_feature_item := JsonElement->Decode(next_feature_item_json->GetString());
+				};
+
+				# add items and sub-items
+				if(in_sublist) {
+					markdown += "  ";
+				};
+
+				markdown += "- ";
+				if(next_feature_item <> Nil & next_feature_item->StartsWith('\t')) {
+					markdown += feature_item->Trim();
+
+					markdown += "\n";
+					if(<>in_sublist) {
+						in_sublist := true;
+					};
+				}
+				else {
+					markdown += feature_item->Trim() + '\n';
+					in_sublist := false;
+				};
+			};
+
+			# add ending tags
+			markdown += "\n";
+			if(<>in_sublist) {
+				in_sublist := true;
+			};
+
+			in_sublist := false;
+		};
+
+		# write file
+		markdown_out_json := @config_json->FindElements("files/markdown_out");
+		if(markdown_out_json = Nil) {
+			">>> Unable to read name of html output file <<<"->ErrorLine();
+			Runtime->Exit(1);
+		};
+
+		if(markdown <> Nil & <>markdown->IsEmpty()) {
+			markdown_out := markdown_out_json->GetString();
+			System.IO.Filesystem.FileWriter->WriteFile(markdown_out, markdown->Trim());
+			"Wrote markdown file '{$markdown_out}'..."->PrintLine();
+		}
+		else {
+			return false;
+		};
+		
+		return true;
+	}
+
+	method : Complete(message : String) ~ String {
+		query := Collection.Pair->New("user", Data.JSON.JsonElement->Encode(message))<String, String>;
+		
+		model := "gpt-4o-mini";
+		token := GetApiKey();
+
+		completion := Completion->Complete(model, query, token);
+		if(completion = Nil) {
+			Completion->GetLastError()->ErrorLine();
+			return Nil;
+		};
+
+		first_choice := completion->GetFirstChoice();
+		if(first_choice = Nil) {
+			return Nil;
+		};
+
+		message_choice := first_choice->GetMessage()<String, String>;
+		return message_choice->GetSecond();
+	}
+
+	method : GetApiKey() ~ String {
+		if(@token = Nil) {
+			openai_token_file_json := @config_json->FindElements("files/openai_token");
+			if(openai_token_file_json = Nil) {
+				">>> Unable to read openai token file <<<"->ErrorLine();
+				Runtime->Exit(1);
+			};
+			filename := openai_token_file_json->GetString();
+
+			@token := System.IO.Filesystem.FileReader->ReadFile(filename);
+			if(@token = Nil) {
+				">>> Unable to read token from file: '{$filename}' <<"->ErrorLine();
+				Runtime->Exit(1);
+			};
+
+			@token := @token->Trim();
+			if(<>@token->StartsWith("sk-")) {
+				">>> Unable to read a valid token from file: '{$filename}' <<"->ErrorLine();
+				Runtime->Exit(1);
+			};
+		};
+
+		return @token;
+	}
+}

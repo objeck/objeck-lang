@@ -9,6 +9,7 @@ make -f make/Makefile.arm64
 
 ./obc -src lib_src/gen_collect.obs -lib ../lib/lang -tar lib -opt s3 -dest ../lib/gen_collect.obl -strict
 ./obc -src lib_src/json_stream.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/json_stream.obl
+./obc -src lib_src/cipher.obs -tar lib -opt s3 -dest ../lib/cipher.obl
 ./obc -src lib_src/opencv.obs -lib cipher,json -tar lib -opt s3 -dest ../lib/opencv.obl
 ./obc -src lib_src/onnx.obs -lib opencv,cipher,json -tar lib -opt s3 -dest ../lib/onnx.obl
 ./obc -src lib_src/lame.obs -tar lib -opt s3 -dest ../lib/lame.obl

@@ -1,0 +1,43 @@
+use Collection;
+use System.ML;
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		input_file := "data/gender.csv";
+		model_file := "data/gender.dat";
+
+		network : NeuralNetwork;
+		inputs_targets := MatrixReader->LoadSplitMatrices(input_file, 1, 0.8); # 20% test data
+
+		# load model
+		if(args->Size() = 1 & args[0]->Equals("brun")) {
+			network := NeuralNetwork->Load(model_file);
+			"Loaded model"->PrintLine();
+			
+			"Testing model..."->PrintLine();
+			tests := inputs_targets[2];
+			answers := inputs_targets[3];
+
+			failures := 0;
+			each(i : answers) {
+				answer := answers->Get(i)->ToBool();
+				predict := network->Query(FloatMatrixRef->New(tests->Get(i)->Get()));
+				if(predict <> answer) {
+					failures += 1;
+				};
+			};
+
+			correct := 100.0 * (1.0 - failures->As(Float) / tests->Size()->As(Float));
+			System.IO.Console->Print("Tests: ")->Print(tests->Size())->Print(", correct: ")->SetFloatPrecision(5)->Print(correct)->PrintLine("%");
+		}
+		# train and store model
+		else {
+			"Training model..."->PrintLine();
+			network := NeuralNetwork->Train(2, inputs_targets[0], 8, 1, inputs_targets[1], 0.01625, 196);
+			if(inputs_targets <> Nil) {
+				network->Store(model_file);
+				"Stored model"->PrintLine();
+			};
+		}		
+	}
+}

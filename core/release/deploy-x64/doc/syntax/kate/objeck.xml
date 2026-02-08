@@ -1,0 +1,188 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE language SYSTEM "language.dtd" [
+  <!ENTITY hex "[0-9a-fA-F]">
+  <!ENTITY int "(?:[0-9](?:_?[0-9]++)*+)">
+  <!ENTITY hex_int "(?:[0-9A-Fa-f](?:_?[0-9A-Fa-f]++)*+)">
+  <!ENTITY exp_float "(?:[eE][+-]?&int;)">
+  <!ENTITY exp_hexfloat "(?:[pP][-+]?&int;)">
+]>
+
+<language name="Objeck" version="6" kateversion="5.79" section="Sources" indenter="cstyle" extensions="*.obs;.obw">
+  <highlighting>
+
+    <list name="keywords">
+      <item>class</item>
+      <item>interface</item>
+      <item>enum</item>
+      <item>alias</item>
+      <item>interface</item>
+      <item>consts</item>
+      <item>method</item>
+      <item>function</item>
+      <item>critical</item>
+      <item>As</item>
+      <item>native</item>
+      <item>\ic</item>
+      <item>private</item>
+    </list>
+
+    <list name="controlflow">
+      <item>if</item>
+      <item>else</item>
+      <item>do</item>
+      <item>in</item>
+      <item>while</item>
+      <item>static</item>
+      <item>select</item>
+      <item>break</item>
+      <item>continue</item>
+      <item>other</item>
+      <item>otherwise</item>
+      <item>for</item>
+      <item>each</item>
+      <item>reverse</item>
+      <item>label</item>
+      <item>return</item>
+    </list>
+
+    <list name="types">
+      <item>Nil</item>
+      <item>Byte</item>
+      <item>ByteRef</item>
+      <item>Int</item>
+      <item>IntRef</item>
+      <item>Float</item>
+      <item>FloatRef</item>
+      <item>Char</item>
+      <item>CharRef</item>
+      <item>Bool</item>
+      <item>BoolRef</item>
+      <item>String</item>
+      <item>BaseArrayRef</item>
+      <item>BoolArrayRef</item>
+      <item>ByteArrayRef</item>
+      <item>CharArrayRef</item>
+      <item>FloatArrayRef</item>
+      <item>IntArrayRef</item>
+      <item>StringArrayRef</item>
+      <item>Func2Ref</item>
+      <item>Func3Ref</item>
+      <item>Func4Ref</item>
+      <item>FuncRef</item>
+    </list>
+
+    <list name="predeclared">
+      <item>false</item>
+      <item>Nil</item>
+      <item>true</item>
+    </list>
+
+    <contexts>
+      <context name="normal" attribute="Normal Text" lineEndContext="#stay">
+        <DetectSpaces />
+        <keyword attribute="Keyword" context="#stay" String="keywords" />
+        <keyword attribute="Control Flow" context="#stay" String="controlflow" />
+        <keyword attribute="Predeclared Identifier" context="#stay" String="predeclared" />
+        <keyword attribute="Data Type" context="#stay" String="types" />
+        <DetectIdentifier />
+        <DetectChar attribute="Symbol" context="#stay" char="{" beginRegion="Brace1" />
+        <DetectChar attribute="Symbol" context="#stay" char="}" endRegion="Brace1"   />
+        <Detect2Chars attribute="Comment" context="Commentar 1" char="#" char1="#"   />
+        <Detect2Chars attribute="Comment" context="Commentar 2" char="#" char1="~" beginRegion="Comment" />
+        <RegExpr context="Number" String="\.?[0-9]" lookAhead="true" />
+        <AnyChar attribute="Symbol" context="#stay" String=":!%&amp;()+,-/.*&lt;=&gt;?[]|~^;"/>
+        <DetectChar attribute="String" context="String" char="&quot;" />
+        <DetectChar attribute="Char" context="Char" char="'" />
+        <DetectChar attribute="String" context="Multiline String" char="`"/>
+      </context>
+
+      <context attribute="Comment" lineEndContext="#pop" name="Commentar 1">
+        <DetectSpaces />
+        <IncludeRules context="##Comments" />
+        <DetectIdentifier />
+      </context>
+
+      <context attribute="Comment" lineEndContext="#stay" name="Commentar 2">
+        <DetectSpaces />
+        <Detect2Chars attribute="Comment" context="#pop" char="~" char1="#" endRegion="Comment"/>
+        <IncludeRules context="##Comments" />
+        <DetectIdentifier />
+      </context>
+
+      <!-- https://go.dev/ref/spec#Integer_literals -->
+      <!-- https://go.dev/ref/spec#Floating-point_literals -->
+      <context attribute="Normal Text" lineEndContext="#pop" name="Number">
+        <WordDetect attribute="Decimal" context="NumberSuffix" String="0" weakDeliminator="."/>
+        <RegExpr attribute="Float" context="NumberSuffix" String="\.&int;&exp_float;?|0[xX](?:\.&hex_int;&exp_hexfloat;?|_?&hex_int;(?:&exp_hexfloat;|\.&hex_int;?&exp_hexfloat;?))|&int;(?:&exp_float;|\.&int;?&exp_float;?)" />
+        <DetectChar context="#pop!IntStartsWith0" char="0" lookAhead="1"/>
+        <RegExpr attribute="Decimal" context="NumberSuffix" String="&int;" />
+      </context>
+      <context name="IntStartsWith0" attribute="Normal Text" lineEndContext="#pop">
+        <RegExpr attribute="Hex" context="NumberSuffix" String="0[xX](?:_?[0-9A-Fa-f]++)*+" />
+        <RegExpr attribute="Binary" context="NumberSuffix" String="0[Bb](?:_?[01]++)*+" />
+        <RegExpr attribute="Octal" context="NumberSuffix" String="0[Oo]?(?:_?[0-7]++)*+" />
+        <DetectChar attribute="Decimal" context="NumberSuffix" char="0"/>
+      </context>
+
+      <context name="NumberSuffix" attribute="Error" lineEndContext="#pop#pop" fallthroughContext="NumericSuffixError">
+        <DetectChar attribute="Suffix" context="NumericSuffixError" char="i" />
+        <DetectChar attribute="Error" context="#stay" char="_" />
+      </context>
+      <context name="NumericSuffixError" attribute="Error" lineEndContext="#pop#pop#pop" fallthroughContext="#pop#pop#pop">
+        <RegExpr attribute="Error" context="#pop#pop#pop" String="[._0-9A-Za-z]+" />
+      </context>
+
+      <!-- https://go.dev/ref/spec#String_literals -->
+      <context attribute="String" lineEndContext="#pop" name="String">
+        <DetectChar attribute="String" context="#pop" char="&quot;" />
+        <IncludeRules context="FindEscape" />
+      </context>
+
+      <context attribute="String" lineEndContext="#pop" name="FindEscape">
+        <DetectChar context="EscapedChar" char="\" lookAhead="1"/>
+      </context>
+      <context attribute="String" lineEndContext="#pop" name="EscapedChar">
+        <RegExpr attribute="String Char" context="#pop" String="\\[abfnrtv\\'&quot;]|\\x&hex;{2}|\\u&hex;{4}|\\U&hex;{8}|\\[0-3][0-7]{2}" />
+        <RegExpr attribute="Error" context="#pop" String="\\[xuU]&hex;*|\\[0-7]{1,3}|\\" />
+      </context>
+
+      <context attribute="String" lineEndContext="#stay" name="Multiline String">
+        <DetectChar attribute="String" context="#pop" char="`"/>
+      </context>
+
+      <context attribute="Char" lineEndContext="#pop" name="Char">
+        <DetectChar attribute="Char" context="#pop" char="'" />
+        <IncludeRules context="FindEscape" />
+      </context>
+
+    </contexts>
+
+    <itemDatas>
+      <itemData name="Normal Text"  defStyleNum="dsNormal"   spellChecking="false"/>
+      <itemData name="Keyword"      defStyleNum="dsKeyword"  spellChecking="false"/>
+      <itemData name="Control Flow" defStyleNum="dsControlFlow" spellChecking="false"/>
+      <itemData name="Predeclared Identifier" defStyleNum="dsOthers"  spellChecking="false" />
+      <itemData name="Builtin Function"       defStyleNum="dsBuiltIn" spellChecking="false" />
+      <itemData name="Data Type"    defStyleNum="dsDataType" spellChecking="false"/>
+      <itemData name="String Char"  defStyleNum="dsChar"     spellChecking="false"/>
+      <itemData name="String"       defStyleNum="dsString"  />
+      <itemData name="Comment"      defStyleNum="dsComment" />
+      <itemData name="Decimal"      defStyleNum="dsDecVal"   spellChecking="false"/>
+      <itemData name="Binary"       defStyleNum="dsBaseN"    spellChecking="false"/>
+      <itemData name="Octal"        defStyleNum="dsBaseN"    spellChecking="false"/>
+      <itemData name="Hex"          defStyleNum="dsBaseN"    spellChecking="false"/>
+      <itemData name="Float"        defStyleNum="dsFloat"    spellChecking="false"/>
+      <itemData name="Suffix"       defStyleNum="dsBuiltIn"  spellChecking="false"/>
+      <itemData name="Char"         defStyleNum="dsChar"     spellChecking="false"/>
+      <itemData name="Symbol"       defStyleNum="dsOperator" spellChecking="false"/>
+      <itemData name="Error"        defStyleNum="dsError"    spellChecking="false"/>
+    </itemDatas>
+    </highlighting>
+  <general>
+    <comments>
+      <comment name="singleLine" start="##" position="afterwhitespace" />
+      <comment name="multiLine" start="#~" end="~#" region="Comment"/>
+    </comments>
+    <keywords casesensitive="1" additionalDeliminator="'&quot;" />
+  </general>
+</language>

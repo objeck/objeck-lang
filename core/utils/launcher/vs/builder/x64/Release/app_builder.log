@@ -1,0 +1,24 @@
+﻿  builder.cpp
+C:\Users\objec\Documents\Code\objeck-lang\core\utils\launcher\builder.cpp(39,44): error C2664: 'std::map<const std::wstring,std::wstring,std::less<const std::wstring>,std::allocator<std::pair<const std::wstring,std::wstring>>> ParseCommnadLine(int,const char *[],std::list<std::wstring,std::allocator<std::wstring>> &)': cannot convert argument 2 from 'char *[]' to 'const char *[]'
+      C:\Users\objec\Documents\Code\objeck-lang\core\utils\launcher\builder.cpp(39,67):
+      Conversion loses qualifiers
+      C:\Users\objec\Documents\Code\objeck-lang\core\utils\launcher\builder.h(70,36):
+      see declaration of 'ParseCommnadLine'
+      C:\Users\objec\Documents\Code\objeck-lang\core\utils\launcher\builder.cpp(39,44):
+      while trying to match the argument list '(int, char *[], std::list<std::wstring,std::allocator<std::wstring>>)'
+  
+C:\Users\objec\Documents\Code\objeck-lang\core\utils\launcher\builder.cpp(291,3): error C2065: 'CommandLineParseResult': undeclared identifier
+C:\Users\objec\Documents\Code\objeck-lang\core\utils\launcher\builder.cpp(291,26): error C2146: syntax error: missing ';' before identifier 'result'
+C:\Users\objec\Documents\Code\objeck-lang\core\utils\launcher\builder.cpp(291,26): error C2065: 'result': undeclared identifier
+C:\Users\objec\Documents\Code\objeck-lang\core\utils\launcher\builder.cpp(291,35): error C3861: 'ParseCommandLine': identifier not found
+C:\Users\objec\Documents\Code\objeck-lang\core\utils\launcher\builder.cpp(294,27): error C2065: 'result': undeclared identifier
+C:\Users\objec\Documents\Code\objeck-lang\core\utils\launcher\builder.cpp(294,19): error C2530: 'error': references must be initialized
+C:\Users\objec\Documents\Code\objeck-lang\core\utils\launcher\builder.cpp(294,19): error C3531: 'error': a symbol whose type contains 'auto' must have an initializer
+C:\Users\objec\Documents\Code\objeck-lang\core\utils\launcher\builder.cpp(294,25): error C2143: syntax error: missing ';' before ':'
+C:\Users\objec\Documents\Code\objeck-lang\core\utils\launcher\builder.cpp(294,40): error C2143: syntax error: missing ';' before ')'
+C:\Users\objec\Documents\Code\objeck-lang\core\utils\launcher\builder.cpp(299,26): error C2065: 'result': undeclared identifier
+C:\Users\objec\Documents\Code\objeck-lang\core\utils\launcher\builder.cpp(299,19): error C2530: 'pair': references must be initialized
+C:\Users\objec\Documents\Code\objeck-lang\core\utils\launcher\builder.cpp(299,19): error C3531: 'pair': a symbol whose type contains 'auto' must have an initializer
+C:\Users\objec\Documents\Code\objeck-lang\core\utils\launcher\builder.cpp(299,24): error C2143: syntax error: missing ';' before ':'
+C:\Users\objec\Documents\Code\objeck-lang\core\utils\launcher\builder.cpp(299,42): error C2143: syntax error: missing ';' before ')'
+C:\Users\objec\Documents\Code\objeck-lang\core\utils\launcher\builder.cpp(303,10): error C2065: 'result': undeclared identifier

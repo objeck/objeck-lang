@@ -1,0 +1,7 @@
+﻿  odbc.cpp
+     Creating library ..\Release\win64\libobjk_odbc.lib and object ..\Release\win64\libobjk_odbc.exp
+  Generating code
+  Previous IPDB not found, fall back to full compilation.
+  All 687 functions were compiled because no usable IPDB/IOBJ from previous compilation was found.
+  Finished generating code
+  odbc.vcxproj -> C:\Users\objec\Documents\Code\objeck-lang\core\lib\odbc\Release\win64\libobjk_odbc.dll

@@ -1,0 +1,51 @@
+use API.Google.Gemini, API.Google.Gemini.Tuning, Data.JSON, Data.JSON.Scheme;
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		args_size := args->Size();
+		if(args_size > 0) {
+			action := args[0];
+
+			if(action->Equals("query_tuned_model") & args_size = 2) {
+				model_name := args[0];
+				query := args[1];
+
+				tuned_model := Tuner->Get(model_name);
+				if(tuned_model <> Nil & tuned_model->GetState()->Equals("ACTIVE")) {
+					content := Content->New("user")->AddPart(TextPart->New(query));
+					candidates := tuned_model->GenerateContent(content);
+					if(candidates->Size() > 0) {
+						candidates->First()->GetAllText()->Trim()->PrintLine();
+					};
+				}
+				else {
+					status := tuned_model->GetState();
+					model_name := tuned_model = Nil ? "<unknown>" : tuned_model->GetName();
+					">>> Model not ready: model_name='{$model_name}', status='{$status}' <<<"->PrintLine();
+				};		
+			}
+			else if(action->Equals("delete_tuned_models") & args_size = 1) {
+				status := Tuner->DeleteAllModels();
+				"Delete all tuned models: status={$status}"->PrintLine();
+			}
+			else if(action->Equals("create_tuned_model") & args_size = 1) {
+				training_data := Dataset->New();
+				each(i : 150) {
+					value := Int->Random(-100, 100);
+					training_data->AddExample(TuningExample->New(value->ToString(), (value - 1)->ToString()));
+				};
+
+				hyper_params := Hyperparameters->New(2, 0.001, 5);
+				tuning_task := TuningTask->New(training_data, hyper_params);
+
+				display_name := "number generator model";
+				base_model := "models/gemini-1.0-pro-001";
+				
+				tuned_model := Tuner->Create(display_name , base_model, tuning_task);
+				if(tuned_model <> Nil) {
+					tuned_model->ToString()->PrintLine();
+				};
+			}
+		}
+	}
+}

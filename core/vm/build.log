@@ -1,0 +1,76 @@
+g++ -m64 -O3 -Wall -std=c++20 -mavx2 -pthread -D_MSYS2 -D_X64 -D_WIN32 -D_OBJECK_NATIVE_LIB_PATH -Wno-uninitialized -Wno-unknown-pragmas -Wno-unused-function -Wno-unused-variable -Wno-int-to-pointer-cast -Wno-unused-but-set-variable -Wno-dangling-pointer -c common.cpp 
+g++ -m64 -O3 -Wall -std=c++20 -mavx2 -pthread -D_MSYS2 -D_X64 -D_WIN32 -D_OBJECK_NATIVE_LIB_PATH -Wno-uninitialized -Wno-unknown-pragmas -Wno-unused-function -Wno-unused-variable -Wno-int-to-pointer-cast -Wno-unused-but-set-variable -Wno-dangling-pointer -c dispatch.cpp 
+g++ -m64 -O3 -Wall -std=c++20 -mavx2 -pthread -D_MSYS2 -D_X64 -D_WIN32 -D_OBJECK_NATIVE_LIB_PATH -Wno-uninitialized -Wno-unknown-pragmas -Wno-unused-function -Wno-unused-variable -Wno-int-to-pointer-cast -Wno-unused-but-set-variable -Wno-dangling-pointer -c interpreter.cpp 
+g++ -m64 -O3 -Wall -std=c++20 -mavx2 -pthread -D_MSYS2 -D_X64 -D_WIN32 -D_OBJECK_NATIVE_LIB_PATH -Wno-uninitialized -Wno-unknown-pragmas -Wno-unused-function -Wno-unused-variable -Wno-int-to-pointer-cast -Wno-unused-but-set-variable -Wno-dangling-pointer -c loader.cpp 
+g++ -m64 -O3 -Wall -std=c++20 -mavx2 -pthread -D_MSYS2 -D_X64 -D_WIN32 -D_OBJECK_NATIVE_LIB_PATH -Wno-uninitialized -Wno-unknown-pragmas -Wno-unused-function -Wno-unused-variable -Wno-int-to-pointer-cast -Wno-unused-but-set-variable -Wno-dangling-pointer -c vm.cpp 
+g++ -m64 -O3 -Wall -std=c++20 -mavx2 -pthread -D_MSYS2 -D_X64 -D_WIN32 -D_OBJECK_NATIVE_LIB_PATH -Wno-uninitialized -Wno-unknown-pragmas -Wno-unused-function -Wno-unused-variable -Wno-int-to-pointer-cast -Wno-unused-but-set-variable -Wno-dangling-pointer -c win_main.cpp 
+cd arch/win32; C:/Strawberry/c/bin/mingw32-make.exe -f make/Makefile.msys2-ucrt.amd64	
+mingw32-make[1]: Entering directory 'C:/Users/objec/Documents/Code/objeck-lang/core/vm/arch/win32'
+g++ -m64 -O3 -Wall -Wno-unused-function -std=c++20 -mavx2 -Wno-unknown-pragmas -Wno-unused-function -Wno-unused-variable -Wno-dangling-pointer -Wno-int-to-pointer-cast  -c win32.cpp 
+In file included from ../../common.h:55,
+                 from win32.h:36,
+                 from win32.cpp:35:
+../../../shared/sys.h: In function 'CommandLineParseResult ParseCommandLine(int, const char**)':
+../../../shared/sys.h:771:14: warning: variable 'is_quoted' set but not used [-Wunused-but-set-variable]
+  771 |         bool is_quoted = false;
+      |              ^~~~~~~~~
+cd arch/jit/amd64; C:/Strawberry/c/bin/mingw32-make.exe -f make/Makefile.msys2-ucrt.amd64
+mingw32-make[1]: Entering directory 'C:/Users/objec/Documents/Code/objeck-lang/core/vm/arch/jit/amd64'
+cd ..; C:/Strawberry/c/bin/mingw32-make.exe -f make/Makefile.msys2-ucrt.amd64
+mingw32-make[2]: Entering directory 'C:/Users/objec/Documents/Code/objeck-lang/core/vm/arch/jit'
+g++ -m64 -O3 -Wall -Wno-unused-function -std=c++20 -mavx2 -Wno-unknown-pragmas -Wno-unused-function -Wno-unused-variable -Wno-int-to-pointer-cast -Wno-maybe-uninitialized -c jit_common.cpp 
+g++ -m64 -O3 -D_X64 -Wall -Wno-unused-function -std=c++20 -mavx2 -Wno-deprecated-declarations -Wno-unknown-pragmas -Wno-unused-function -Wno-unused-variable -Wno-int-to-pointer-cast -Wno-maybe-uninitialized -c ../jit_common.cpp 
+ar -cvq ../../win32.a win32.o
+a - win32.o
+mingw32-make[1]: Leaving directory 'C:/Users/objec/Documents/Code/objeck-lang/core/vm/arch/win32'
+g++ -m64 -O3 -D_X64 -Wall -Wno-unused-function -std=c++20 -mavx2 -Wno-deprecated-declarations -Wno-unknown-pragmas -Wno-unused-function -Wno-unused-variable -Wno-int-to-pointer-cast -Wno-maybe-uninitialized -c jit_amd_lp64.cpp 
+cd arch; C:/Strawberry/c/bin/mingw32-make.exe -f make/Makefile.msys2-ucrt.amd64
+mingw32-make[1]: Entering directory 'C:/Users/objec/Documents/Code/objeck-lang/core/vm/arch'
+g++ -m64 -O3 -Wall -D_X64 -D_MSYS2 -std=c++20 -mavx2 -Wno-unknown-pragmas -Wno-unused-function -Wno-maybe-uninitialized -c memory.cpp 
+In file included from ../win32/../../common.h:55,
+                 from ../win32/win32.h:36,
+                 from jit_common.h:35,
+                 from jit_common.cpp:32:
+../win32/../../../shared/sys.h: In function 'CommandLineParseResult ParseCommandLine(int, const char**)':
+../win32/../../../shared/sys.h:771:14: warning: variable 'is_quoted' set but not used [-Wunused-but-set-variable]
+  771 |         bool is_quoted = false;
+      |              ^~~~~~~~~
+In file included from ../../win32/../../common.h:55,
+                 from ../../win32/win32.h:36,
+                 from ../jit_common.h:35,
+                 from ../jit_common.cpp:32:
+../../win32/../../../shared/sys.h: In function 'CommandLineParseResult ParseCommandLine(int, const char**)':
+../../win32/../../../shared/sys.h:771:14: warning: variable 'is_quoted' set but not used [-Wunused-but-set-variable]
+  771 |         bool is_quoted = false;
+      |              ^~~~~~~~~
+In file included from ../../win32/../../common.h:55,
+                 from ../../win32/win32.h:36,
+                 from ../jit_common.h:35,
+                 from jit_amd_lp64.h:34,
+                 from jit_amd_lp64.cpp:32:
+../../win32/../../../shared/sys.h: In function 'CommandLineParseResult ParseCommandLine(int, const char**)':
+../../win32/../../../shared/sys.h:771:14: warning: variable 'is_quoted' set but not used [-Wunused-but-set-variable]
+  771 |         bool is_quoted = false;
+      |              ^~~~~~~~~
+In file included from ../common.h:55,
+                 from memory.h:35,
+                 from memory.cpp:32:
+../../shared/sys.h: In function 'CommandLineParseResult ParseCommandLine(int, const char**)':
+../../shared/sys.h:771:14: warning: variable 'is_quoted' set but not used [-Wunused-but-set-variable]
+  771 |         bool is_quoted = false;
+      |              ^~~~~~~~~
+ar -cvq amd64/jit_common.a jit_common.o
+a - jit_common.o
+mingw32-make[2]: Leaving directory 'C:/Users/objec/Documents/Code/objeck-lang/core/vm/arch/jit'
+windres vs/objeck.rc -O coff -o objeck.res -D_MSYS2_CLANG
+ar -cvq ../memory.a memory.o 
+a - memory.o
+mingw32-make[1]: Leaving directory 'C:/Users/objec/Documents/Code/objeck-lang/core/vm/arch'
+ar -cvq ../../../jit_amd_lp64.a ../jit_common.o jit_amd_lp64.o
+a - ../jit_common.o
+a - jit_amd_lp64.o
+mingw32-make[1]: Leaving directory 'C:/Users/objec/Documents/Code/objeck-lang/core/vm/arch/jit/amd64'
+g++ -m64 -o obr common.o dispatch.o interpreter.o loader.o vm.o win_main.o win32.a jit_amd_lp64.a memory.a objeck.res -lssl -lcrypto -lz -pthread -lwsock32 -luserenv -lws2_32
+C:/Strawberry/c/bin/../lib/gcc/x86_64-w64-mingw32/13.2.0/../../../../x86_64-w64-mingw32/bin/ld.exe: common.o:common.cpp:(.text$_Z6uuidv4B5cxx11v[_Z6uuidv4B5cxx11v]+0x72): undefined reference to `BCryptGenRandom'
+collect2.exe: error: ld returned 1 exit status
+mingw32-make: *** [makefile:11: obr] Error 1

@@ -1,0 +1,26 @@
+﻿  onnx_dml.cpp
+  vs.vcxproj -> C:\Users\objec\Documents\Code\objeck-lang\core\lib\onnx\eq\dml\x64\Debug\libobjk_onnx.dll
+  Compiled 7 classes.
+  Wrote target file: '..\..\..\core\release\deploy-x64\lib\opencv.obl'.
+  ---
+          1 file(s) copied.
+  ..\..\..\core\lib\opencv\win\x64\bin\opencv_videoio_ffmpeg4120_64.dll
+  ..\..\..\core\lib\opencv\win\x64\bin\opencv_world4120.dll
+  ..\..\..\core\lib\opencv\win\x64\bin\opencv_world4120d.dll
+          3 file(s) copied.
+  Compiled 13 classes.
+  Wrote target file: '..\..\..\core\release\deploy-x64\lib\onnx.obl'.
+  ---
+          1 file(s) copied.
+  ..\..\..\core\lib\onnx\eq\dml\packages\Microsoft.AI.DirectML.1.15.4\bin\x64-win\DirectML.Debug.dll
+  ..\..\..\core\lib\onnx\eq\dml\packages\Microsoft.AI.DirectML.1.15.4\bin\x64-win\DirectML.dll
+          2 file(s) copied.
+  ..\..\..\core\lib\onnx\eq\dml\packages\Microsoft.ML.OnnxRuntime.DirectML.1.22.1\runtimes\win-x64\native\onnxruntime.dll
+  ..\..\..\core\lib\onnx\eq\dml\packages\Microsoft.ML.OnnxRuntime.DirectML.1.22.1\runtimes\win-x64\native\onnxruntime_providers_shared.dll
+          2 file(s) copied.
+  ..\..\..\core\lib\onnx\eq\dml\packages\Microsoft.AI.DirectML.1.15.4\bin\x64-win\DirectML.Debug.dll
+  ..\..\..\core\lib\onnx\eq\dml\packages\Microsoft.AI.DirectML.1.15.4\bin\x64-win\DirectML.dll
+          2 file(s) copied.
+  ..\..\..\core\lib\onnx\eq\dml\packages\Microsoft.ML.OnnxRuntime.DirectML.1.22.1\runtimes\win-x64\native\onnxruntime.dll
+  ..\..\..\core\lib\onnx\eq\dml\packages\Microsoft.ML.OnnxRuntime.DirectML.1.22.1\runtimes\win-x64\native\onnxruntime_providers_shared.dll
+          2 file(s) copied.

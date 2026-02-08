@@ -1,0 +1,62 @@
+#~
+# compile: obc -src xml_2 -lib xml,gen_collect
+# run: obr xml_2.obe
+~#
+
+use System.IO;
+use Data.XML;
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		input := "";
+		input += "<inventory title=\"OmniCorp Store #45x10^3\">";
+		input += "<section name=\"health\">";
+		input += "<item upc=\"123456789\" stock=\"12\">";
+		input += "<name>Invisibility Cream</name>";
+		input += "<price>14.50</price>";
+		input += "<description>Makes you invisible</description>";
+		input += "</item>";
+		input += "<item upc=\"445322344\" stock=\"18\">";
+		input += "<name>Levitation Salve</name>";
+		input += "<price>23.99</price>";
+		input += "<description>Levitate yourself for up to 3 hours per application</description>";
+		input += "</item>";
+		input += "</section>";
+		input += "<section name=\"food\">";
+		input += "<item upc=\"485672034\" stock=\"653\">";
+		input += "<name>Blork and Freen Instameal</name>";
+		input += "<price>4.95</price>";
+		input += "<description>A tasty meal input a tablet; just add water</description>";
+		input += "</item>";
+		input += "<item upc=\"132957764\" stock=\"44\">";
+		input += "<name>Grob winglets</name>";
+		input += "<price>3.56</price>";
+		input += "<description>Tender winglets of Grob. Just add water</description>";
+		input += "</item>";
+		input += "</section>";
+		input += "</inventory>";
+		
+		parser := XmlParser->New(input);
+		if(parser->Parse()) {
+			# get first item
+			results := parser->FindElements("/inventory/section[1]/item[1]")<XmlElement>;
+			if(results <> Nil) {
+				Console->Print("items: ")->PrintLine(results->Size());
+			};
+			# get all prices
+			results := parser->FindElements("/inventory/section/item/price")<XmlElement>;
+			if(results <> Nil) {
+				each(i : results) {					
+					element := results->Get(i);
+					element->GetContent()->PrintLine();
+				};
+			};
+			# get names
+			results := parser->FindElements("/inventory/section/item/name")<XmlElement>;
+			if(results <> Nil) {
+				Console->Print("names: ")->PrintLine(results->Size());
+			};
+		};
+	}
+}
+

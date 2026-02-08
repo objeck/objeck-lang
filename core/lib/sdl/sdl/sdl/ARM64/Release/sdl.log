@@ -1,0 +1,9 @@
+﻿  sdl.cpp
+  SDL2_framerate.c
+  SDL2_gfxPrimitives.c
+  SDL2_imageFilter.c
+  SDL2_rotozoom.c
+     Creating library C:\Users\objec\Documents\Code\objeck-lang\core\lib\sdl\sdl\Release\ARM64\libobjk_sdl.lib and object C:\Users\objec\Documents\Code\objeck-lang\core\lib\sdl\sdl\Release\ARM64\libobjk_sdl.exp
+  Generating code
+  Finished generating code
+  sdl.vcxproj -> C:\Users\objec\Documents\Code\objeck-lang\core\lib\sdl\sdl\Release\ARM64\libobjk_sdl.dll

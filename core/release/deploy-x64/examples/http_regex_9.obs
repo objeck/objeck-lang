@@ -1,0 +1,29 @@
+#~
+# compile: obc -src http_regex_9.obs -lib net,json,regex
+# run: obr http_regex_9.obe https://www.objeck.org
+# note: takes a few seconds to run
+~#
+
+use Web.HTTP;
+use Query.RegEx;
+
+class RegExUrls {
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() = 1) {
+			input := args[0];
+
+			output := HttpsClient->New()->QuickGet(Web.HTTP.Url->New(input))->GetContent()->ToString();
+			output_len := output->Size();
+			"URL: {$input}, read: {$output_len} character(s)"->PrintLine();
+
+			"running regex..."->PrintLine();		
+			expr := "(href|HREF|src|SRC)=(\"|')(http://|https://|/)?((\\w|\\d|-|_)+(\\.|/)?)+(\\?(\\w|\\d|-|_)+=(\\w|\\d|-|_)+)?(&(\\w|\\d|-|_)+=(\\w|\\d|-|_)+)?(\"|')";
+			
+			found := RegEx->New(expr)->Find(output)<Result>;
+			"---"->PrintLine();
+			each(i : found) {
+				found->Get(i)->ToString()->PrintLine();
+			};
+		};
+	}
+}

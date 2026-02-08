@@ -1,0 +1,17 @@
+﻿  logger.cpp
+  compiler.cpp
+  context.cpp
+  emit.cpp
+  intermediate.cpp
+  linker.cpp
+  optimization.cpp
+  parser.cpp
+  posix_main.cpp
+  scanner.cpp
+  tree.cpp
+  types.cpp
+  Generating code
+  Previous IPDB not found, fall back to full compilation.
+  All 12313 functions were compiled because no usable IPDB/IOBJ from previous compilation was found.
+  Finished generating code
+  compiler.vcxproj -> C:\Users\objec\Documents\Code\objeck-lang\core\compiler\Release\win64\obc.exe

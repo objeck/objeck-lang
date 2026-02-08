@@ -1,0 +1,2 @@
+﻿  onnx_qnn.cpp
+LINK : fatal error LNK1104: cannot open file 'opencv_world4120d.lib'

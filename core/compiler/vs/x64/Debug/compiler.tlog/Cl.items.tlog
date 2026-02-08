@@ -1,0 +1,12 @@
+C:\Users\objec\Documents\Code\objeck-lang\core\shared\logger.cpp;C:\Users\objec\Documents\Code\objeck-lang\core\compiler\vs\x64\Debug\logger.obj
+C:\Users\objec\Documents\Code\objeck-lang\core\compiler\compiler.cpp;C:\Users\objec\Documents\Code\objeck-lang\core\compiler\vs\x64\Debug\compiler.obj
+C:\Users\objec\Documents\Code\objeck-lang\core\compiler\context.cpp;C:\Users\objec\Documents\Code\objeck-lang\core\compiler\vs\x64\Debug\context.obj
+C:\Users\objec\Documents\Code\objeck-lang\core\compiler\emit.cpp;C:\Users\objec\Documents\Code\objeck-lang\core\compiler\vs\x64\Debug\emit.obj
+C:\Users\objec\Documents\Code\objeck-lang\core\compiler\intermediate.cpp;C:\Users\objec\Documents\Code\objeck-lang\core\compiler\vs\x64\Debug\intermediate.obj
+C:\Users\objec\Documents\Code\objeck-lang\core\compiler\linker.cpp;C:\Users\objec\Documents\Code\objeck-lang\core\compiler\vs\x64\Debug\linker.obj
+C:\Users\objec\Documents\Code\objeck-lang\core\compiler\optimization.cpp;C:\Users\objec\Documents\Code\objeck-lang\core\compiler\vs\x64\Debug\optimization.obj
+C:\Users\objec\Documents\Code\objeck-lang\core\compiler\parser.cpp;C:\Users\objec\Documents\Code\objeck-lang\core\compiler\vs\x64\Debug\parser.obj
+C:\Users\objec\Documents\Code\objeck-lang\core\compiler\posix_main.cpp;C:\Users\objec\Documents\Code\objeck-lang\core\compiler\vs\x64\Debug\posix_main.obj
+C:\Users\objec\Documents\Code\objeck-lang\core\compiler\scanner.cpp;C:\Users\objec\Documents\Code\objeck-lang\core\compiler\vs\x64\Debug\scanner.obj
+C:\Users\objec\Documents\Code\objeck-lang\core\compiler\tree.cpp;C:\Users\objec\Documents\Code\objeck-lang\core\compiler\vs\x64\Debug\tree.obj
+C:\Users\objec\Documents\Code\objeck-lang\core\compiler\types.cpp;C:\Users\objec\Documents\Code\objeck-lang\core\compiler\vs\x64\Debug\types.obj

@@ -1,0 +1,6 @@
+﻿  AppLauncher.cpp
+  Generating code
+  Previous IPDB not found, fall back to full compilation.
+  All 288 functions were compiled because no usable IPDB/IOBJ from previous compilation was found.
+  Finished generating code
+  AppLauncher.vcxproj -> C:\Users\objec\Documents\Code\objeck-lang\core\utils\WindowsApp\x64\Release\ObLauncher.exe

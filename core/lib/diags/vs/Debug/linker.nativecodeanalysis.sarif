@@ -1,0 +1,1810 @@
+{
+  "version": "2.1.0",
+  "$schema": "https://schemastore.azurewebsites.net/schemas/json/sarif-2.1.0-rtm.5.json",
+  "runs": [
+    {
+      "results": [
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'frontend::Type::type' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/linker.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/types.h"
+                },
+                "region": {
+                  "startLine": 148,
+                  "startColumn": 5
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "frontend::Type::{ctor}",
+                  "decoratedName": "??0Type@frontend@@AEAA@PEAV01@@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "frontend::Type::type"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'frontend::Type::dimension' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/linker.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/types.h"
+                },
+                "region": {
+                  "startLine": 148,
+                  "startColumn": 5
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "frontend::Type::{ctor}",
+                  "decoratedName": "??0Type@frontend@@AEAA@PEAV01@@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "frontend::Type::dimension"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'frontend::Type::lib_klass_cache_ptr' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/linker.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/types.h"
+                },
+                "region": {
+                  "startLine": 148,
+                  "startColumn": 5
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "frontend::Type::{ctor}",
+                  "decoratedName": "??0Type@frontend@@AEAA@PEAV01@@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "frontend::Type::lib_klass_cache_ptr"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'frontend::Type::klass_cache_ptr' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/linker.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/types.h"
+                },
+                "region": {
+                  "startLine": 148,
+                  "startColumn": 5
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "frontend::Type::{ctor}",
+                  "decoratedName": "??0Type@frontend@@AEAA@PEAV01@@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "frontend::Type::klass_cache_ptr"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'frontend::Type::is_resolved' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/linker.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/types.h"
+                },
+                "region": {
+                  "startLine": 148,
+                  "startColumn": 5
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "frontend::Type::{ctor}",
+                  "decoratedName": "??0Type@frontend@@AEAA@PEAV01@@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "frontend::Type::is_resolved"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'frontend::Type::line_pos' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/linker.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/types.h"
+                },
+                "region": {
+                  "startLine": 148,
+                  "startColumn": 5
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "frontend::Type::{ctor}",
+                  "decoratedName": "??0Type@frontend@@AEAA@PEAV01@@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "frontend::Type::line_pos"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'frontend::Type::line_num' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/linker.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/types.h"
+                },
+                "region": {
+                  "startLine": 148,
+                  "startColumn": 5
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "frontend::Type::{ctor}",
+                  "decoratedName": "??0Type@frontend@@AEAA@PEAV01@@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "frontend::Type::line_num"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'frontend::Type::func_param_count' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/linker.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/types.h"
+                },
+                "region": {
+                  "startLine": 148,
+                  "startColumn": 5
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "frontend::Type::{ctor}",
+                  "decoratedName": "??0Type@frontend@@AEAA@PEAV01@@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "frontend::Type::func_param_count"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'frontend::Type::func_rtrn' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/linker.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/types.h"
+                },
+                "region": {
+                  "startLine": 148,
+                  "startColumn": 5
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "frontend::Type::{ctor}",
+                  "decoratedName": "??0Type@frontend@@AEAA@PEAV01@@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "frontend::Type::func_rtrn"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'LibraryInstr::operand4' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/linker.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 73,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "LibraryInstr::{ctor}",
+                  "decoratedName": "??0LibraryInstr@@QEAA@HW4InstructionType@instructions@@@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "LibraryInstr::operand4"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'LibraryInstr::operand3' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/linker.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 73,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "LibraryInstr::{ctor}",
+                  "decoratedName": "??0LibraryInstr@@QEAA@HW4InstructionType@instructions@@@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "LibraryInstr::operand3"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'LibraryInstr::operand2' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/linker.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 73,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "LibraryInstr::{ctor}",
+                  "decoratedName": "??0LibraryInstr@@QEAA@HW4InstructionType@instructions@@@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "LibraryInstr::operand2"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'LibraryInstr::operand7' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/linker.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 73,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "LibraryInstr::{ctor}",
+                  "decoratedName": "??0LibraryInstr@@QEAA@HW4InstructionType@instructions@@@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "LibraryInstr::operand7"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'LibraryInstr::operand4' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/linker.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 79,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "LibraryInstr::{ctor}",
+                  "decoratedName": "??0LibraryInstr@@QEAA@HW4InstructionType@instructions@@H@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "LibraryInstr::operand4"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'LibraryInstr::operand3' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/linker.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 79,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "LibraryInstr::{ctor}",
+                  "decoratedName": "??0LibraryInstr@@QEAA@HW4InstructionType@instructions@@H@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "LibraryInstr::operand3"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'LibraryInstr::operand2' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/linker.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 79,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "LibraryInstr::{ctor}",
+                  "decoratedName": "??0LibraryInstr@@QEAA@HW4InstructionType@instructions@@H@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "LibraryInstr::operand2"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'LibraryInstr::operand7' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/linker.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 79,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "LibraryInstr::{ctor}",
+                  "decoratedName": "??0LibraryInstr@@QEAA@HW4InstructionType@instructions@@H@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "LibraryInstr::operand7"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'LibraryInstr::operand4' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/linker.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 85,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "LibraryInstr::{ctor}",
+                  "decoratedName": "??0LibraryInstr@@QEAA@HW4InstructionType@instructions@@_J@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "LibraryInstr::operand4"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'LibraryInstr::operand3' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/linker.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 85,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "LibraryInstr::{ctor}",
+                  "decoratedName": "??0LibraryInstr@@QEAA@HW4InstructionType@instructions@@_J@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "LibraryInstr::operand3"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'LibraryInstr::operand2' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/linker.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 85,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "LibraryInstr::{ctor}",
+                  "decoratedName": "??0LibraryInstr@@QEAA@HW4InstructionType@instructions@@_J@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "LibraryInstr::operand2"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'LibraryInstr::operand' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/linker.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 85,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "LibraryInstr::{ctor}",
+                  "decoratedName": "??0LibraryInstr@@QEAA@HW4InstructionType@instructions@@_J@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "LibraryInstr::operand"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'LibraryInstr::operand3' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/linker.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 91,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "LibraryInstr::{ctor}",
+                  "decoratedName": "??0LibraryInstr@@QEAA@HW4InstructionType@instructions@@N@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "LibraryInstr::operand3"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'LibraryInstr::operand2' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/linker.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 91,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "LibraryInstr::{ctor}",
+                  "decoratedName": "??0LibraryInstr@@QEAA@HW4InstructionType@instructions@@N@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "LibraryInstr::operand2"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'LibraryInstr::operand7' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/linker.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 91,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "LibraryInstr::{ctor}",
+                  "decoratedName": "??0LibraryInstr@@QEAA@HW4InstructionType@instructions@@N@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "LibraryInstr::operand7"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'LibraryInstr::operand4' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/linker.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 98,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "LibraryInstr::{ctor}",
+                  "decoratedName": "??0LibraryInstr@@QEAA@HW4InstructionType@instructions@@HH@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "LibraryInstr::operand4"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'LibraryInstr::operand3' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/linker.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 98,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "LibraryInstr::{ctor}",
+                  "decoratedName": "??0LibraryInstr@@QEAA@HW4InstructionType@instructions@@HH@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "LibraryInstr::operand3"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'LibraryInstr::operand7' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/linker.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 98,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "LibraryInstr::{ctor}",
+                  "decoratedName": "??0LibraryInstr@@QEAA@HW4InstructionType@instructions@@HH@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "LibraryInstr::operand7"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'LibraryInstr::operand4' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/linker.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 105,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "LibraryInstr::{ctor}",
+                  "decoratedName": "??0LibraryInstr@@QEAA@HW4InstructionType@instructions@@HHH@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "LibraryInstr::operand4"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'LibraryInstr::operand7' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/linker.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 105,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "LibraryInstr::{ctor}",
+                  "decoratedName": "??0LibraryInstr@@QEAA@HW4InstructionType@instructions@@HHH@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "LibraryInstr::operand7"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'LibraryInstr::operand4' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/linker.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 113,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "LibraryInstr::{ctor}",
+                  "decoratedName": "??0LibraryInstr@@QEAA@HW4InstructionType@instructions@@V?$basic_string@_WU?$char_traits@_W@std@@V?$allocator@_W@2@@std@@@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "LibraryInstr::operand4"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'LibraryInstr::operand3' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/linker.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 113,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "LibraryInstr::{ctor}",
+                  "decoratedName": "??0LibraryInstr@@QEAA@HW4InstructionType@instructions@@V?$basic_string@_WU?$char_traits@_W@std@@V?$allocator@_W@2@@std@@@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "LibraryInstr::operand3"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'LibraryInstr::operand2' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/linker.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 113,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "LibraryInstr::{ctor}",
+                  "decoratedName": "??0LibraryInstr@@QEAA@HW4InstructionType@instructions@@V?$basic_string@_WU?$char_traits@_W@std@@V?$allocator@_W@2@@std@@@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "LibraryInstr::operand2"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'LibraryInstr::operand' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/linker.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 113,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "LibraryInstr::{ctor}",
+                  "decoratedName": "??0LibraryInstr@@QEAA@HW4InstructionType@instructions@@V?$basic_string@_WU?$char_traits@_W@std@@V?$allocator@_W@2@@std@@@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "LibraryInstr::operand"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'LibraryInstr::operand7' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/linker.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 113,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "LibraryInstr::{ctor}",
+                  "decoratedName": "??0LibraryInstr@@QEAA@HW4InstructionType@instructions@@V?$basic_string@_WU?$char_traits@_W@std@@V?$allocator@_W@2@@std@@@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "LibraryInstr::operand7"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'LibraryInstr::operand4' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/linker.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 119,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "LibraryInstr::{ctor}",
+                  "decoratedName": "??0LibraryInstr@@QEAA@HW4InstructionType@instructions@@HV?$basic_string@_WU?$char_traits@_W@std@@V?$allocator@_W@2@@std@@1@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "LibraryInstr::operand4"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'LibraryInstr::operand2' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/linker.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 119,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "LibraryInstr::{ctor}",
+                  "decoratedName": "??0LibraryInstr@@QEAA@HW4InstructionType@instructions@@HV?$basic_string@_WU?$char_traits@_W@std@@V?$allocator@_W@2@@std@@1@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "LibraryInstr::operand2"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'LibraryInstr::operand' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/linker.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 119,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "LibraryInstr::{ctor}",
+                  "decoratedName": "??0LibraryInstr@@QEAA@HW4InstructionType@instructions@@HV?$basic_string@_WU?$char_traits@_W@std@@V?$allocator@_W@2@@std@@1@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "LibraryInstr::operand"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'LibraryInstr::operand7' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/linker.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 119,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "LibraryInstr::{ctor}",
+                  "decoratedName": "??0LibraryInstr@@QEAA@HW4InstructionType@instructions@@HV?$basic_string@_WU?$char_traits@_W@std@@V?$allocator@_W@2@@std@@1@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "LibraryInstr::operand7"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'LibraryClass::id' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/linker.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 458,
+                  "startColumn": 4
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "LibraryClass::{ctor}",
+                  "decoratedName": "??0LibraryClass@@QEAA@AEBV?$basic_string@_WU?$char_traits@_W@std@@V?$allocator@_W@2@@std@@0@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "LibraryClass::id"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'LibraryClass::cls_space' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/linker.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 458,
+                  "startColumn": 4
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "LibraryClass::{ctor}",
+                  "decoratedName": "??0LibraryClass@@QEAA@AEBV?$basic_string@_WU?$char_traits@_W@std@@V?$allocator@_W@2@@std@@0@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "LibraryClass::cls_space"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'LibraryClass::is_public' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/linker.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 458,
+                  "startColumn": 4
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "LibraryClass::{ctor}",
+                  "decoratedName": "??0LibraryClass@@QEAA@AEBV?$basic_string@_WU?$char_traits@_W@std@@V?$allocator@_W@2@@std@@0@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "LibraryClass::is_public"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'LibraryClass::is_interface' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/linker.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 458,
+                  "startColumn": 4
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "LibraryClass::{ctor}",
+                  "decoratedName": "??0LibraryClass@@QEAA@AEBV?$basic_string@_WU?$char_traits@_W@std@@V?$allocator@_W@2@@std@@0@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "LibraryClass::is_interface"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'LibraryClass::is_virtual' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/linker.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 458,
+                  "startColumn": 4
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "LibraryClass::{ctor}",
+                  "decoratedName": "??0LibraryClass@@QEAA@AEBV?$basic_string@_WU?$char_traits@_W@std@@V?$allocator@_W@2@@std@@0@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "LibraryClass::is_virtual"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'LibraryClass::inst_space' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/linker.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 458,
+                  "startColumn": 4
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "LibraryClass::{ctor}",
+                  "decoratedName": "??0LibraryClass@@QEAA@AEBV?$basic_string@_WU?$char_traits@_W@std@@V?$allocator@_W@2@@std@@0@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "LibraryClass::inst_space"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'LibraryClass::is_debug' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/linker.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 458,
+                  "startColumn": 4
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "LibraryClass::{ctor}",
+                  "decoratedName": "??0LibraryClass@@QEAA@AEBV?$basic_string@_WU?$char_traits@_W@std@@V?$allocator@_W@2@@std@@0@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "LibraryClass::is_debug"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'LibraryClass::was_called' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/linker.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 458,
+                  "startColumn": 4
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "LibraryClass::{ctor}",
+                  "decoratedName": "??0LibraryClass@@QEAA@AEBV?$basic_string@_WU?$char_traits@_W@std@@V?$allocator@_W@2@@std@@0@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "LibraryClass::was_called"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'Library::buffer_size' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/linker.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 867,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "Library::{ctor}",
+                  "decoratedName": "??0Library@@QEAA@AEBV?$basic_string@_WU?$char_traits@_W@std@@V?$allocator@_W@2@@std@@@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "Library::buffer_size"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'Library::buffer' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/linker.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 867,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "Library::{ctor}",
+                  "decoratedName": "??0Library@@QEAA@AEBV?$basic_string@_WU?$char_traits@_W@std@@V?$allocator@_W@2@@std@@@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "Library::buffer"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'Library::buffer_pos' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/linker.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 867,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "Library::{ctor}",
+                  "decoratedName": "??0Library@@QEAA@AEBV?$basic_string@_WU?$char_traits@_W@std@@V?$allocator@_W@2@@std@@@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "Library::buffer_pos"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'FloatStringInstruction::value' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/linker.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 720,
+                  "startColumn": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "FloatStringInstruction::{ctor}",
+                  "decoratedName": "??0FloatStringInstruction@@QEAA@XZ",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "FloatStringInstruction::value"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'BoolStringInstruction::value' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/linker.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 710,
+                  "startColumn": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "BoolStringInstruction::{ctor}",
+                  "decoratedName": "??0BoolStringInstruction@@QEAA@XZ",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "BoolStringInstruction::value"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'ByteStringInstruction::value' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/linker.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 705,
+                  "startColumn": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "ByteStringInstruction::{ctor}",
+                  "decoratedName": "??0ByteStringInstruction@@QEAA@XZ",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "ByteStringInstruction::value"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'IntStringInstruction::value' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "analysisTarget": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/linker.cpp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+                },
+                "region": {
+                  "startLine": 715,
+                  "startColumn": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "IntStringInstruction::{ctor}",
+                  "decoratedName": "??0IntStringInstruction@@QEAA@XZ",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "IntStringInstruction::value"
+          }
+        }
+      ],
+      "tool": {
+        "driver": {
+          "name": "PREfast",
+          "fullName": "PREfast Code Analysis",
+          "version": "14.43.34810.0",
+          "informationUri": "https://aka.ms/cpp/ca"
+        }
+      },
+      "invocations": [
+        {
+          "executionSuccessful": true
+        }
+      ],
+      "artifacts": [
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/compiler/linker.cpp"
+          },
+          "roles": [
+            "analysisTarget"
+          ],
+          "hashes": {
+            "sha-256": "35ae70a3983c1835bb5e34d68dfd4dc5dbe297e41fa212d2668c5853b486587d"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/types.h"
+          },
+          "roles": [
+            "resultFile"
+          ],
+          "hashes": {
+            "sha-256": "464488e980b0a4aa17878440b6455824291ff5fc7678ab020e083e9b201a5d81"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///C:/Users/objec/Documents/Code/objeck-lang/core/compiler/linker.h"
+          },
+          "roles": [
+            "resultFile"
+          ],
+          "hashes": {
+            "sha-256": "d01b3dc7058400a527a8f4bcbffd2f62135a6566335f36815c1f216f38c991a9"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/shared/instrs.h"
+          },
+          "hashes": {
+            "sha-256": "6b7c4dc34a91c03f955fac220ff4d10861cf0d5d9344618cc09ff60e0f64575c"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/shared/sys.h"
+          },
+          "hashes": {
+            "sha-256": "ec031a2b99e68210544db02c98168ac6a5883f4ae852f5960d1f10cdff4f30d5"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/lib/zlib/win/zlib.h"
+          },
+          "hashes": {
+            "sha-256": "8a5579af72ea4f427ff00a4150f0ccb3fc5c1e4379f726e101133b1ab9fc600c"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/lib/zlib/win/zconf.h"
+          },
+          "hashes": {
+            "sha-256": "f5134250a67d57459234b63858f0d9d3ef8dcc48e9e1028d3f4fdcf6eae677ae"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/shared/logger.h"
+          },
+          "hashes": {
+            "sha-256": "01446bf14b18eb33e6d6094394d51be88fac2234c8445d354fa86b69aa12b4bd"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/shared/traps.h"
+          },
+          "hashes": {
+            "sha-256": "54c0dcda4adffd34ebdc9a2a00fb77a669de540ef170a4d21cbfbf8493da77ac"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/users/objec/documents/code/objeck-lang/core/shared/version.h"
+          },
+          "hashes": {
+            "sha-256": "1a887031f6c82ddb7f91b702ec0c8e299cd26af2d0d56e2adbb577cd0f6e108c"
+          }
+        }
+      ]
+    }
+  ]
+}

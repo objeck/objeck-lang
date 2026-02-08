@@ -1,0 +1,11 @@
+C:\Users\objec\Documents\Code\objeck-lang\core\shared\sys.cpp;C:\Users\objec\Documents\Code\objeck-lang\core\vm\vs\shared\sys.obj
+C:\Users\objec\Documents\Code\objeck-lang\core\vm\arch\jit\amd64\jit_amd_lp64.cpp;C:\Users\objec\Documents\Code\objeck-lang\core\vm\vs\x64\arch\jit\amd64\jit_amd_lp64.obj
+C:\Users\objec\Documents\Code\objeck-lang\core\vm\arch\jit\jit_common.cpp;C:\Users\objec\Documents\Code\objeck-lang\core\vm\vs\x64\arch\jit\jit_common.obj
+C:\Users\objec\Documents\Code\objeck-lang\core\vm\arch\memory.cpp;C:\Users\objec\Documents\Code\objeck-lang\core\vm\vs\x64\arch\memory.obj
+C:\Users\objec\Documents\Code\objeck-lang\core\vm\arch\win32\win32.cpp;C:\Users\objec\Documents\Code\objeck-lang\core\vm\vs\x64\arch\win32\win32.obj
+C:\Users\objec\Documents\Code\objeck-lang\core\vm\common.cpp;C:\Users\objec\Documents\Code\objeck-lang\core\vm\vs\x64\common.obj
+C:\Users\objec\Documents\Code\objeck-lang\core\vm\dispatch.cpp;C:\Users\objec\Documents\Code\objeck-lang\core\vm\vs\x64\dispatch.obj
+C:\Users\objec\Documents\Code\objeck-lang\core\vm\interpreter.cpp;C:\Users\objec\Documents\Code\objeck-lang\core\vm\vs\x64\interpreter.obj
+C:\Users\objec\Documents\Code\objeck-lang\core\vm\loader.cpp;C:\Users\objec\Documents\Code\objeck-lang\core\vm\vs\x64\loader.obj
+C:\Users\objec\Documents\Code\objeck-lang\core\vm\vm.cpp;C:\Users\objec\Documents\Code\objeck-lang\core\vm\vs\x64\vm.obj
+C:\Users\objec\Documents\Code\objeck-lang\core\vm\win_main.cpp;C:\Users\objec\Documents\Code\objeck-lang\core\vm\vs\x64\win_main.obj

@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="en">
+   <head>
+      <meta charset="UTF-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <title>Objeck Documentation</title>
+      <link rel="stylesheet" href="style.css" />
+      <link href="resources/prism.css" rel="stylesheet" />
+   </head>
+   <body>
+      <header>
+         <h1>Objeck</h1>
+         <div class="version">a programming language — v2025.5.0</div>
+      </header>
+      <nav>
+         <a id='api.google.gemini'></a><strong>API.Google.Gemini</strong>
+         <ul>
+            <li><a href='api.google.gemini-binarypart.html' target='main'>BinaryPart</a></li>
+            <li><a href='api.google.gemini-candidate.html' target='main'>Candidate</a></li>
+            <li><a href='api.google.gemini-chat.html' target='main'>Chat</a></li>
+            <li><a href='api.google.gemini-content.html' target='main'>Content</a></li>
+            <li><a href='api.google.gemini-endpoint.html' target='main'>EndPoint</a></li>
+            <li><a href='api.google.gemini-model.html' target='main'>Model</a></li>
+            <li><a href='api.google.gemini-oauthendpoint.html' target='main'>OAuthEndPoint</a></li>
+            <li><a href='api.google.gemini-part.html' target='main'>Part</a></li>
+            <li><a href='api.google.gemini-textpart.html' target='main'>TextPart</a></li>
+         </ul>
+      
+         <a id='api.google.gemini.corpus'></a><strong>API.Google.Gemini.Corpus</strong>
+         <ul>
+            <li><a href='api.google.gemini.corpus-chunk.html' target='main'>Chunk</a></li>
+            <li><a href='api.google.gemini.corpus-corpus.html' target='main'>Corpus</a></li>
+            <li><a href='api.google.gemini.corpus-document.html' target='main'>Document</a></li>
+         </ul>
+         <a id='api.google.gemini.tuning'></a><strong>API.Google.Gemini.Tuning</strong>
+         <ul>
+            <li><a href='api.google.gemini.tuning-dataset.html' target='main'>Dataset</a></li>
+            <li><a href='api.google.gemini.tuning-hyperparameters.html' target='main'>Hyperparameters</a></li>
+            <li><a href='api.google.gemini.tuning-tunedmodel.html' target='main'>TunedModel</a></li>
+            <li><a href='api.google.gemini.tuning-tuner.html' target='main'>Tuner</a></li>
+            <li><a href='api.google.gemini.tuning-tuningexample.html' target='main'>TuningExample</a></li>
+            <li><a href='api.google.gemini.tuning-tuningtask.html' target='main'>TuningTask</a></li>
+         </ul>
+         <a id='api.ollama'></a><strong>API.Ollama</strong>
+         <ul>
+            <li><a href='api.ollama-chat.html' target='main'>Chat</a></li>
+            <li><a href='api.ollama-completion.html' target='main'>Completion</a></li>
+            <li><a href='api.ollama-endpoint.html' target='main'>EndPoint</a></li>
+            <li><a href='api.ollama-model.html' target='main'>Model</a></li>
+            <li><a href='api.ollama-modeldetails.html' target='main'>ModelDetails</a></li>
+            <li><a href='api.ollama-modelinfo.html' target='main'>ModelInfo</a></li>
+            <li><a href='api.ollama-modelpulled.html' target='main'>ModelPulled</a></li>
+         </ul>
+         <a id='api.openai'></a><strong>API.OpenAI</strong>
+         <ul>
+            <li><a href='api.openai-assistant.html' target='main'>Assistant</a></li>
+            <li><a href='api.openai-contents.html' target='main'>Contents</a></li>
+            <li><a href='api.openai-endpoint.html' target='main'>EndPoint</a></li>
+            <li><a href='api.openai-file.html' target='main'>File</a></li>
+            <li><a href='api.openai-filequery.html' target='main'>FileQuery</a></li>
+            <li><a href='api.openai-image.html' target='main'>Image</a></li>
+            <li><a href='api.openai-imagequery.html' target='main'>ImageQuery</a></li>
+            <li><a href='api.openai-message.html' target='main'>Message</a></li>
+            <li><a href='api.openai-run.html' target='main'>Run</a></li>
+            <li><a href='api.openai-thread.html' target='main'>Thread</a></li>
+            <li><a href='api.openai-vectorstore.html' target='main'>VectorStore</a></li>
+            <li><a href='api.openai-vectorstorefile.html' target='main'>VectorStoreFile</a></li>
+            <li><a href='api.openai-mimetype.html' target='main'>MimeType (#)</a></li>
+         </ul>
+         <a id='api.openai.audio'></a><strong>API.OpenAI.Audio</strong>
+         <ul>
+            <li><a href='api.openai.audio-speech.html' target='main'>Speech</a></li>
+            <li><a href='api.openai.audio-transcription.html' target='main'>Transcription</a></li>
+         </ul>
+         <a id='api.openai.chat'></a><strong>API.OpenAI.Chat</strong>
+         <ul>
+            <li><a href='api.openai.chat-choice.html' target='main'>Choice</a></li>
+            <li><a href='api.openai.chat-completion.html' target='main'>Completion</a></li>
+            <li><a href='api.openai.chat-conversation.html' target='main'>Conversation</a></li>
+         </ul>
+         <a id='api.openai.responses'></a><strong>API.OpenAI.Responses</strong>
+         <ul>
+            <li><a href='api.openai.responses-content.html' target='main'>Content</a></li>
+            <li><a href='api.openai.responses-output.html' target='main'>Output</a></li>
+            <li><a href='api.openai.responses-response.html' target='main'>Response</a></li>
+         </ul>
+         <a id='api.openai.tuning'></a><strong>API.OpenAI.Tuning</strong>
+         <ul>
+            <li><a href='api.openai.tuning-checkpoint.html' target='main'>Checkpoint</a></li>
+            <li><a href='api.openai.tuning-job.html' target='main'>Job</a></li>
+            <li><a href='api.openai.tuning-tuner.html' target='main'>Tuner</a></li>
+         </ul>
+         <a id='cipher'></a><strong>Cipher</strong>
+         <ul>
+            <li><a href='cipher-decrypt.html' target='main'>Decrypt</a></li>
+            <li><a href='cipher-encrypt.html' target='main'>Encrypt</a></li>
+            <li><a href='cipher-hash.html' target='main'>Hash</a></li>
+         </ul>
+         <a id='collection'></a><strong>Collection</strong>
+         <ul>
+            <li><a href='collection-backwarditerator_h_.html' target='main'>BackwardIterator&lt;H&gt;</a></li>
+            <li><a href='collection-cache_k-compare_s_.html' target='main'>Cache&lt;K:Compare,S&gt;</a></li>
+            <li><a href='collection-comparebackwarditerator_h-compare_.html' target='main'>CompareBackwardIterator&lt;H:Compare&gt;</a></li>
+            <li><a href='collection-compareforwarditerator_h-compare_.html' target='main'>CompareForwardIterator&lt;H:Compare&gt;</a></li>
+            <li><a href='collection-comparelist_h-compare_.html' target='main'>CompareList&lt;H:Compare&gt;</a></li>
+            <li><a href='collection-comparevector_h-compare_.html' target='main'>CompareVector&lt;H:Compare&gt;</a></li>
+            <li><a href='collection-forwarditerator_h_.html' target='main'>ForwardIterator&lt;H&gt;</a></li>
+            <li><a href='collection-hash_k-compare_v_.html' target='main'>Hash&lt;K:Compare,V&gt;</a></li>
+            <li><a href='collection-heap_h-compare_.html' target='main'>Heap&lt;H:Compare&gt;</a></li>
+            <li><a href='collection-list_h_.html' target='main'>List&lt;H&gt;</a></li>
+            <li><a href='collection-map_k-compare_v_.html' target='main'>Map&lt;K:Compare,V&gt;</a></li>
+            <li><a href='collection-multimap_k-compare_v_.html' target='main'>MultiMap&lt;K:Compare,V&gt;</a></li>
+            <li><a href='collection-pair_f-compare_s_.html' target='main'>Pair&lt;F:Compare,S&gt;</a></li>
+            <li><a href='collection-queue_h_.html' target='main'>Queue&lt;H&gt;</a></li>
+            <li><a href='collection-set_k-compare_.html' target='main'>Set&lt;K:Compare&gt;</a></li>
+            <li><a href='collection-sethash_k-compare_.html' target='main'>SetHash&lt;K:Compare&gt;</a></li>
+            <li><a href='collection-stack_h_.html' target='main'>Stack&lt;H&gt;</a></li>
+            <li><a href='collection-vector_h_.html' target='main'>Vector&lt;H&gt;</a></li>
+            <li><a href='collection-cache-$type.html' target='main'>Cache-&gt;Type (#)</a></li>
+            <li><a href='collection-hash-$capacity.html' target='main'>Hash-&gt;Capacity (#)</a></li>
+            <li><a href='collection-heap-$order.html' target='main'>Heap-&gt;Order (#)</a></li>
+         </ul>
+         <a id='collection.tuple'></a><strong>Collection.Tuple</strong>
+         <ul>
+            <li><a href='collection.tuple-pair_a_b_.html' target='main'>Pair&lt;A,B&gt;</a></li>
+            <li><a href='collection.tuple-quartet_a_b_c_d_.html' target='main'>Quartet&lt;A,B,C,D&gt;</a></li>
+            <li><a href='collection.tuple-quintet_a_b_c_d_e_.html' target='main'>Quintet&lt;A,B,C,D,E&gt;</a></li>
+            <li><a href='collection.tuple-triplet_a_b_c_.html' target='main'>Triplet&lt;A,B,C&gt;</a></li>
+         </ul>
+         <a id='data.csv'></a><strong>Data.CSV</strong>
+         <ul>
+            <li><a href='data.csv-csvcolumn.html' target='main'>CsvColumn</a></li>
+            <li><a href='data.csv-csvrow.html' target='main'>CsvRow</a></li>
+            <li><a href='data.csv-csvtable.html' target='main'>CsvTable</a></li>
+         </ul>
+         <a id='data.json'></a><strong>Data.JSON</strong>
+         <ul>
+            <li><a href='data.json-jsonbuilder.html' target='main'>JsonBuilder</a></li>
+            <li><a href='data.json-jsonelement.html' target='main'>JsonElement</a></li>
+            <li><a href='data.json-jsonparser.html' target='main'>JsonParser</a></li>
+            <li><a href='data.json-jsonelement-$jsontype.html' target='main'>JsonElement-&gt;JsonType (#)</a></li>
+         </ul>
+         <a id='data.json.rpc'></a><strong>Data.JSON.RPC</strong>
+         <ul>
+            <li><a href='data.json.rpc-client.html' target='main'>Client</a></li>
+            <li><a href='data.json.rpc-server.html' target='main'>Server</a></li>
+         </ul>
+         <a id='data.json.scheme'></a><strong>Data.JSON.Scheme</strong>
+         <ul>
+            <li><a href='data.json.scheme-functiontype.html' target='main'>FunctionType</a></li>
+            <li><a href='data.json.scheme-parametertype.html' target='main'>ParameterType</a></li>
+            <li><a href='data.json.scheme-type.html' target='main'>Type (#)</a></li>
+         </ul>
+         <a id='data.json.stream'></a><strong>Data.JSON.Stream</strong>
+         <ul>
+            <li><a href='data.json.stream-streamparser.html' target='main'>StreamParser</a></li>
+            <li><a href='data.json.stream-type.html' target='main'>Type (#)</a></li>
+         </ul>
+         <a id='data.xml'></a><strong>Data.XML</strong>
+         <ul>
+            <li><a href='data.xml-xmlattribute.html' target='main'>XmlAttribute</a></li>
+            <li><a href='data.xml-xmlbuilder.html' target='main'>XmlBuilder</a></li>
+            <li><a href='data.xml-xmlelement.html' target='main'>XmlElement</a></li>
+            <li><a href='data.xml-xmlparser.html' target='main'>XmlParser</a></li>
+            <li><a href='data.xml-xmlelement-$type.html' target='main'>XmlElement-&gt;Type (#)</a></li>
+         </ul>
+         <a id='database.odbc'></a><strong>Database.ODBC</strong>
+         <ul>
+            <li><a href='database.odbc-columninfo.html' target='main'>ColumnInfo</a></li>
+            <li><a href='database.odbc-connection.html' target='main'>Connection</a></li>
+            <li><a href='database.odbc-date.html' target='main'>Date</a></li>
+            <li><a href='database.odbc-parameterstatement.html' target='main'>ParameterStatement</a></li>
+            <li><a href='database.odbc-resultset.html' target='main'>ResultSet</a></li>
+            <li><a href='database.odbc-timestamp.html' target='main'>Timestamp</a></li>
+            <li><a href='database.odbc-columninfo-$type.html' target='main'>ColumnInfo-&gt;Type (#)</a></li>
+         </ul>
+         <a id='game.framework'></a><strong>Game.Framework</strong>
+         <ul>
+            <li><a href='game.framework-animatedimagesprite.html' target='main'>AnimatedImageSprite</a></li>
+            <li><a href='game.framework-gameframework.html' target='main'>GameFramework</a></li>
+            <li><a href='game.framework-imagesprite.html' target='main'>ImageSprite</a></li>
+            <li><a href='game.framework-position.html' target='main'>Position</a></li>
+            <li><a href='game.framework-rectangle.html' target='main'>Rectangle</a></li>
+            <li><a href='game.framework-shape.html' target='main'><i>Shape</i></a></li>
+            <li><a href='game.framework-sprite.html' target='main'>Sprite</a></li>
+            <li><a href='game.framework-textsprite.html' target='main'>TextSprite</a></li>
+            <li><a href='game.framework-titledimagesprite.html' target='main'>TitledImageSprite</a></li>
+            <li><a href='game.framework-vector2.html' target='main'>Vector2</a></li>
+         </ul>
+         <a id='game.sdl2'></a><strong>Game.SDL2</strong>
+         <ul>
+            <li><a href='game.sdl2-cpu.html' target='main'>CPU</a></li>
+            <li><a href='game.sdl2-clipboard.html' target='main'>Clipboard</a></li>
+            <li><a href='game.sdl2-color.html' target='main'>Color</a></li>
+            <li><a href='game.sdl2-core.html' target='main'>Core</a></li>
+            <li><a href='game.sdl2-cursor.html' target='main'>Cursor</a></li>
+            <li><a href='game.sdl2-display.html' target='main'>Display</a></li>
+            <li><a href='game.sdl2-displaymode.html' target='main'>DisplayMode</a></li>
+            <li><a href='game.sdl2-event.html' target='main'>Event</a></li>
+            <li><a href='game.sdl2-filesystem.html' target='main'>Filesystem</a></li>
+            <li><a href='game.sdl2-font.html' target='main'>Font</a></li>
+            <li><a href='game.sdl2-gamecontroller.html' target='main'>GameController</a></li>
+            <li><a href='game.sdl2-gamecontrollerbuttonbind.html' target='main'>GameControllerButtonBind</a></li>
+            <li><a href='game.sdl2-hints.html' target='main'>Hints</a></li>
+            <li><a href='game.sdl2-image.html' target='main'>Image</a></li>
+            <li><a href='game.sdl2-joyaxisevent.html' target='main'>JoyAxisEvent</a></li>
+            <li><a href='game.sdl2-joybuttonevent.html' target='main'>JoyButtonEvent</a></li>
+            <li><a href='game.sdl2-joyhatevent.html' target='main'>JoyHatEvent</a></li>
+            <li><a href='game.sdl2-joystick.html' target='main'>Joystick</a></li>
+            <li><a href='game.sdl2-keyboard.html' target='main'>Keyboard</a></li>
+            <li><a href='game.sdl2-keyboardevent.html' target='main'>KeyboardEvent</a></li>
+            <li><a href='game.sdl2-keysym.html' target='main'>Keysym</a></li>
+            <li><a href='game.sdl2-mixchunk.html' target='main'>MixChunk</a></li>
+            <li><a href='game.sdl2-mixmusic.html' target='main'>MixMusic</a></li>
+            <li><a href='game.sdl2-mixer.html' target='main'>Mixer</a></li>
+            <li><a href='game.sdl2-mousebuttonevent.html' target='main'>MouseButtonEvent</a></li>
+            <li><a href='game.sdl2-mousemotionevent.html' target='main'>MouseMotionEvent</a></li>
+            <li><a href='game.sdl2-mousewheelevent.html' target='main'>MouseWheelEvent</a></li>
+            <li><a href='game.sdl2-pixeldata.html' target='main'>PixelData</a></li>
+            <li><a href='game.sdl2-pixelformat.html' target='main'>PixelFormat</a></li>
+            <li><a href='game.sdl2-platform.html' target='main'>Platform</a></li>
+            <li><a href='game.sdl2-point.html' target='main'>Point</a></li>
+            <li><a href='game.sdl2-power.html' target='main'>Power</a></li>
+            <li><a href='game.sdl2-rect.html' target='main'>Rect</a></li>
+            <li><a href='game.sdl2-renderer.html' target='main'>Renderer</a></li>
+            <li><a href='game.sdl2-rendererinfo.html' target='main'>RendererInfo</a></li>
+            <li><a href='game.sdl2-surface.html' target='main'>Surface</a></li>
+            <li><a href='game.sdl2-textinputevent.html' target='main'>TextInputEvent</a></li>
+            <li><a href='game.sdl2-texture.html' target='main'>Texture</a></li>
+            <li><a href='game.sdl2-timer.html' target='main'>Timer</a></li>
+            <li><a href='game.sdl2-window.html' target='main'>Window</a></li>
+            <li><a href='game.sdl2-blendmode.html' target='main'>BlendMode (#)</a></li>
+            <li><a href='game.sdl2-eventaction.html' target='main'>EventAction (#)</a></li>
+            <li><a href='game.sdl2-eventtype.html' target='main'>EventType (#)</a></li>
+            <li><a href='game.sdl2-glattr.html' target='main'>GLattr (#)</a></li>
+            <li><a href='game.sdl2-gamecontrolleraxis.html' target='main'>GameControllerAxis (#)</a></li>
+            <li><a href='game.sdl2-gamecontrollerbindtype.html' target='main'>GameControllerBindType (#)</a></li>
+            <li><a href='game.sdl2-gamecontrollerbutton.html' target='main'>GameControllerButton (#)</a></li>
+            <li><a href='game.sdl2-gamecontrollertype.html' target='main'>GameControllerType (#)</a></li>
+            <li><a href='game.sdl2-hardwareflags.html' target='main'>HardwareFlags (#)</a></li>
+            <li><a href='game.sdl2-hintpriority.html' target='main'>HintPriority (#)</a></li>
+            <li><a href='game.sdl2-imageflags.html' target='main'>ImageFlags (#)</a></li>
+            <li><a href='game.sdl2-joystickhatvalue.html' target='main'>JoystickHatValue (#)</a></li>
+            <li><a href='game.sdl2-joystickpowerlevel.html' target='main'>JoystickPowerLevel (#)</a></li>
+            <li><a href='game.sdl2-joysticktype.html' target='main'>JoystickType (#)</a></li>
+            <li><a href='game.sdl2-keystate.html' target='main'>KeyState (#)</a></li>
+            <li><a href='game.sdl2-keymod.html' target='main'>Keymod (#)</a></li>
+            <li><a href='game.sdl2-messageboxflags.html' target='main'>MessageBoxFlags (#)</a></li>
+            <li><a href='game.sdl2-mousebuttonvalue.html' target='main'>MouseButtonValue (#)</a></li>
+            <li><a href='game.sdl2-mousewheeldirection.html' target='main'>MouseWheelDirection (#)</a></li>
+            <li><a href='game.sdl2-pixelvalue.html' target='main'>PixelValue (#)</a></li>
+            <li><a href='game.sdl2-powererstate.html' target='main'>PowererState (#)</a></li>
+            <li><a href='game.sdl2-rendererflags.html' target='main'>RendererFlags (#)</a></li>
+            <li><a href='game.sdl2-rendererflip.html' target='main'>RendererFlip (#)</a></li>
+            <li><a href='game.sdl2-scancode.html' target='main'>Scancode (#)</a></li>
+            <li><a href='game.sdl2-sensortype.html' target='main'>SensorType (#)</a></li>
+            <li><a href='game.sdl2-textureaccess.html' target='main'>TextureAccess (#)</a></li>
+            <li><a href='game.sdl2-windowflags.html' target='main'>WindowFlags (#)</a></li>
+         </ul>
+         <a id='query.regex'></a><strong>Query.RegEx</strong>
+         <ul>
+            <li><a href='query.regex-regex.html' target='main'>RegEx</a></li>
+            <li><a href='query.regex-result.html' target='main'>Result</a></li>
+         </ul>
+         <a id='query.structured'></a><strong>Query.Structured</strong>
+         <ul>
+            <li><a href='query.structured-finder.html' target='main'>Finder</a></li>
+            <li><a href='query.structured-row.html' target='main'>Row</a></li>
+            <li><a href='query.structured-table.html' target='main'>Table</a></li>
+            <li><a href='query.structured-qualifier.html' target='main'>Qualifier (#)</a></li>
+         </ul>
+         <a id='system'></a><strong>System</strong>
+         <ul>
+            <li><a href='system-base.html' target='main'>Base</a></li>
+            <li><a href='system-basearrayref.html' target='main'>BaseArrayRef</a></li>
+            <li><a href='system-basiccompare.html' target='main'>BasicCompare</a></li>
+            <li><a href='system-bool.html' target='main'>Bool</a></li>
+            <li><a href='system-boolarrayref.html' target='main'>BoolArrayRef</a></li>
+            <li><a href='system-boolref.html' target='main'>BoolRef</a></li>
+            <li><a href='system-byte.html' target='main'>Byte</a></li>
+            <li><a href='system-bytearrayref.html' target='main'>ByteArrayRef</a></li>
+            <li><a href='system-bytebuffer.html' target='main'>ByteBuffer</a></li>
+            <li><a href='system-byteref.html' target='main'>ByteRef</a></li>
+            <li><a href='system-char.html' target='main'>Char</a></li>
+            <li><a href='system-chararrayref.html' target='main'>CharArrayRef</a></li>
+            <li><a href='system-charrange.html' target='main'>CharRange</a></li>
+            <li><a href='system-charref.html' target='main'>CharRef</a></li>
+            <li><a href='system-clone.html' target='main'><i>Clone</i></a></li>
+            <li><a href='system-commandoutput.html' target='main'>CommandOutput</a></li>
+            <li><a href='system-compare.html' target='main'><i>Compare</i></a></li>
+            <li><a href='system-comparearrayref.html' target='main'>CompareArrayRef</a></li>
+            <li><a href='system-float.html' target='main'>Float</a></li>
+            <li><a href='system-floatarrayref.html' target='main'>FloatArrayRef</a></li>
+            <li><a href='system-floatrange.html' target='main'>FloatRange</a></li>
+            <li><a href='system-floatref.html' target='main'>FloatRef</a></li>
+            <li><a href='system-func2ref_x_r_.html' target='main'>Func2Ref&lt;X,R&gt;</a></li>
+            <li><a href='system-func3ref_x_y_r_.html' target='main'>Func3Ref&lt;X,Y,R&gt;</a></li>
+            <li><a href='system-func4ref_x_y_z_r_.html' target='main'>Func4Ref&lt;X,Y,Z,R&gt;</a></li>
+            <li><a href='system-funcref_r_.html' target='main'>FuncRef&lt;R&gt;</a></li>
+            <li><a href='system-int.html' target='main'>Int</a></li>
+            <li><a href='system-intarrayref.html' target='main'>IntArrayRef</a></li>
+            <li><a href='system-intrange.html' target='main'>IntRange</a></li>
+            <li><a href='system-intref.html' target='main'>IntRef</a></li>
+            <li><a href='system-number.html' target='main'>Number</a></li>
+            <li><a href='system-primitive.html' target='main'><i>Primitive</i></a></li>
+            <li><a href='system-range.html' target='main'><i>Range</i></a></li>
+            <li><a href='system-runtime.html' target='main'>Runtime</a></li>
+            <li><a href='system-string.html' target='main'>String</a></li>
+            <li><a href='system-stringarrayref.html' target='main'>StringArrayRef</a></li>
+            <li><a href='system-stringify.html' target='main'><i>Stringify</i></a></li>
+            <li><a href='system-number-$format.html' target='main'>Number-&gt;Format (#)</a></li>
+            <li><a href='system-runtime-$signal.html' target='main'>Runtime-&gt;Signal (#)</a></li>
+         </ul>
+         <a id='system.api'></a><strong>System.API</strong>
+         <ul>
+            <li><a href='system.api-dllproxy.html' target='main'>DllProxy</a></li>
+         </ul>
+         <a id='system.concurrency'></a><strong>System.Concurrency</strong>
+         <ul>
+            <li><a href='system.concurrency-thread.html' target='main'>Thread</a></li>
+            <li><a href='system.concurrency-threadmutex.html' target='main'>ThreadMutex</a></li>
+         </ul>
+         <a id='system.diagnostics'></a><strong>System.Diagnostics</strong>
+         <ul>
+            <li><a href='system.diagnostics-analysis.html' target='main'>Analysis</a></li>
+            <li><a href='system.diagnostics-analyzer.html' target='main'>Analyzer</a></li>
+            <li><a href='system.diagnostics-result.html' target='main'>Result</a></li>
+            <li><a href='system.diagnostics-result-$kind.html' target='main'>Result-&gt;Kind (#)</a></li>
+         </ul>
+         <a id='system.io'></a><strong>System.IO</strong>
+         <ul>
+            <li><a href='system.io-console.html' target='main'>Console</a></li>
+            <li><a href='system.io-deserializer.html' target='main'>Deserializer</a></li>
+            <li><a href='system.io-inputstream.html' target='main'><i>InputStream</i></a></li>
+            <li><a href='system.io-outputstream.html' target='main'><i>OutputStream</i></a></li>
+            <li><a href='system.io-pipe.html' target='main'>Pipe</a></li>
+            <li><a href='system.io-serializer.html' target='main'>Serializer</a></li>
+            <li><a href='system.io-mode.html' target='main'>Mode (#)</a></li>
+         </ul>
+         <a id='system.io.filesystem'></a><strong>System.IO.Filesystem</strong>
+         <ul>
+            <li><a href='system.io.filesystem-directory.html' target='main'>Directory</a></li>
+            <li><a href='system.io.filesystem-file.html' target='main'>File</a></li>
+            <li><a href='system.io.filesystem-filereader.html' target='main'>FileReader</a></li>
+            <li><a href='system.io.filesystem-filereaderwriter.html' target='main'>FileReaderWriter</a></li>
+            <li><a href='system.io.filesystem-filewriter.html' target='main'>FileWriter</a></li>
+            <li><a href='system.io.filesystem-hardlink.html' target='main'>HardLink</a></li>
+            <li><a href='system.io.filesystem-logger.html' target='main'>Logger</a></li>
+            <li><a href='system.io.filesystem-symboliclink.html' target='main'>SymbolicLink</a></li>
+         </ul>
+         <a id='system.io.net'></a><strong>System.IO.Net</strong>
+         <ul>
+            <li><a href='system.io.net-tcpsecuresocket.html' target='main'>TCPSecureSocket</a></li>
+            <li><a href='system.io.net-tcpsecuresocketserver.html' target='main'>TCPSecureSocketServer</a></li>
+            <li><a href='system.io.net-tcpsocket.html' target='main'>TCPSocket</a></li>
+            <li><a href='system.io.net-tcpsocketserver.html' target='main'>TCPSocketServer</a></li>
+            <li><a href='system.io.net-udpsocket.html' target='main'>UDPSocket</a></li>
+            <li><a href='system.io.net-udpsocketserver.html' target='main'>UDPSocketServer</a></li>
+         </ul>
+         <a id='system.introspection'></a><strong>System.Introspection</strong>
+         <ul>
+            <li><a href='system.introspection-class.html' target='main'>Class</a></li>
+            <li><a href='system.introspection-datatype.html' target='main'>DataType</a></li>
+            <li><a href='system.introspection-method.html' target='main'>Method</a></li>
+            <li><a href='system.introspection-datatype-$typeid.html' target='main'>DataType-&gt;TypeId (#)</a></li>
+         </ul>
+         <a id='system.ml'></a><strong>System.ML</strong>
+         <ul>
+            <li><a href='system.ml-bayesentry.html' target='main'>BayesEntry</a></li>
+            <li><a href='system.ml-bayesgroup.html' target='main'>BayesGroup</a></li>
+            <li><a href='system.ml-boolmatrixref.html' target='main'>BoolMatrixRef</a></li>
+            <li><a href='system.ml-decisiontree.html' target='main'>DecisionTree</a></li>
+            <li><a href='system.ml-floatmatrixref.html' target='main'>FloatMatrixRef</a></li>
+            <li><a href='system.ml-kmeans.html' target='main'>KMeans</a></li>
+            <li><a href='system.ml-kmeansgroup.html' target='main'>KMeansGroup</a></li>
+            <li><a href='system.ml-kmeansgrouping.html' target='main'>KMeansGrouping</a></li>
+            <li><a href='system.ml-knearestneighbors.html' target='main'>KNearestNeighbors</a></li>
+            <li><a href='system.ml-kneighbor.html' target='main'>KNeighbor</a></li>
+            <li><a href='system.ml-linearresult.html' target='main'>LinearResult</a></li>
+            <li><a href='system.ml-linearsolver.html' target='main'>LinearSolver</a></li>
+            <li><a href='system.ml-matrix2d.html' target='main'>Matrix2D</a></li>
+            <li><a href='system.ml-matrixreader.html' target='main'>MatrixReader</a></li>
+            <li><a href='system.ml-naivebayes.html' target='main'>NaiveBayes</a></li>
+            <li><a href='system.ml-neuralnetwork.html' target='main'>NeuralNetwork</a></li>
+            <li><a href='system.ml-randomforest.html' target='main'>RandomForest</a></li>
+         </ul>
+         <a id='system.time'></a><strong>System.Time</strong>
+         <ul>
+            <li><a href='system.time-alarm.html' target='main'>Alarm</a></li>
+            <li><a href='system.time-date.html' target='main'>Date</a></li>
+            <li><a href='system.time-dateutility.html' target='main'>DateUtility</a></li>
+            <li><a href='system.time-timer.html' target='main'>Timer</a></li>
+         </ul>
+         <a id='system.utility'></a><strong>System.Utility</strong>
+         <ul>
+            <li><a href='system.utility-codeformatter.html' target='main'>CodeFormatter</a></li>
+            <li><a href='system.utility-parser.html' target='main'>Parser</a></li>
+            <li><a href='system.utility-spinner.html' target='main'>Spinner</a></li>
+         </ul>
+         <a id='web.http'></a><strong>Web.HTTP</strong>
+         <ul>
+            <li><a href='web.http-cookie.html' target='main'>Cookie</a></li>
+            <li><a href='web.http-httpclient.html' target='main'>HttpClient</a></li>
+            <li><a href='web.http-httpsclient.html' target='main'>HttpsClient</a></li>
+            <li><a href='web.http-response.html' target='main'>Response</a></li>
+            <li><a href='web.http-securewebsocket.html' target='main'>SecureWebSocket</a></li>
+            <li><a href='web.http-url.html' target='main'>Url</a></li>
+            <li><a href='web.http-webdownloader.html' target='main'>WebDownloader</a></li>
+            <li><a href='web.http-websocket.html' target='main'>WebSocket</a></li>
+         </ul>
+         <a id='web.rss'></a><strong>Web.RSS</strong>
+         <ul>
+            <li><a href='web.rss-rsschannel.html' target='main'>RSSChannel</a></li>
+            <li><a href='web.rss-rsspost.html' target='main'>RSSPost</a></li>
+            <li><a href='web.rss-rssreader.html' target='main'>RSSReader</a></li>
+         </ul>
+      </nav>
+     
+     <div class="container"> 
+<main>
+      <h2>Hyperparameters</h2>
+      <hr/>
+      <p>Hyperparameters controlling the tuning process</p>
+      <p>Implements: <i><a href='system-stringify.html' target='main'>Stringify</a></i></p>
+      <strong>Operations</strong>
+      <ul>
+         <li><a href='#hyperparameters-new'>New</a></li>
+         <li><a href='#hyperparameters-getbatchsize'>GetBatchSize</a></li>
+         <li><a href='#hyperparameters-getepochcount'>GetEpochCount</a></li>
+         <li><a href='#hyperparameters-getlearningrate'>GetLearningRate</a></li>
+         <li><a href='#hyperparameters-getlearningratemultiplier'>GetLearningRateMultiplier</a></li>
+         <li><a href='#hyperparameters-tojson'>ToJson</a></li>
+         <li><a href='#hyperparameters-tostring'>ToString</a></li>
+      </ul>
+      <hr/>
+
+
+      <h3>New</h3>
+      <a id='hyperparameters-new'></a>
+      <p><strong>Constructor</strong></p>
+      <code>New(batch_size:Int, learning_rate:Float, epoch_count:Int)</code>Parameters
+      <table>
+         <tr>
+            <th>Name</th>
+            <th>Type</th>
+            <th>Description</th>
+         </tr>
+         <tr>
+            <td>batch_size</td>
+            <td><a href='system-int.html' target='main'>Int</a></td>
+            <td>the batch size hyperparameter for tuning</td>
+         </tr>
+         <tr>
+            <td>learning_rate</td>
+            <td><a href='system-float.html' target='main'>Float</a></td>
+            <td>the learning rate hyperparameter for tuning</td>
+         </tr>
+         <tr>
+            <td>epoch_count</td>
+            <td><a href='system-int.html' target='main'>Int</a></td>
+            <td>number of training epochs</td>
+         </tr>
+      </table>
+      <p><strong>Constructor</strong></p>
+      <code>New(batch_size:Int, learning_rate:Float, epoch_count:Int, learning_rate_multiplier:Float)</code>Parameters
+      <table>
+         <tr>
+            <th>Name</th>
+            <th>Type</th>
+            <th>Description</th>
+         </tr>
+         <tr>
+            <td>batch_size</td>
+            <td><a href='system-int.html' target='main'>Int</a></td>
+            <td>batch size hyperparameter for tuning</td>
+         </tr>
+         <tr>
+            <td>learning_rate</td>
+            <td><a href='system-float.html' target='main'>Float</a></td>
+            <td>learning rate hyperparameter for tuning</td>
+         </tr>
+         <tr>
+            <td>epoch_count</td>
+            <td><a href='system-int.html' target='main'>Int</a></td>
+            <td>number of training epochs</td>
+         </tr>
+         <tr>
+            <td>learning_rate_multiplier</td>
+            <td><a href='system-float.html' target='main'>Float</a></td>
+            <td>learning rate multiplier is used to calculate a final learningrate based on the default (recommended) value</td>
+         </tr>
+      </table>
+      <h3>GetBatchSize</h3>
+      <a id='hyperparameters-getbatchsize'></a>
+      <p><strong>Get the batch size hyperparameter for tuning</strong></p>
+      <code>method : public : GetBatchSize() ~ Int</code>Return
+      <table>
+         <tr>
+            <th>Type</th>
+            <th>Description</th>
+         </tr>
+         <tr>
+            <td><a href='system-int.html' target='main'>Int</a></td>
+            <td>batch size hyperparameter for tuning</td>
+         </tr>
+      </table>
+      <br/>
+      <h3>GetEpochCount</h3>
+      <a id='hyperparameters-getepochcount'></a>
+      <p><strong>Get the number of training epochs</strong></p>
+      <code>method : public : GetEpochCount() ~ Int</code>Return
+      <table>
+         <tr>
+            <th>Type</th>
+            <th>Description</th>
+         </tr>
+         <tr>
+            <td><a href='system-int.html' target='main'>Int</a></td>
+            <td>number of training epochs</td>
+         </tr>
+      </table>
+      <br/>
+      <h3>GetLearningRate</h3>
+      <a id='hyperparameters-getlearningrate'></a>
+      <p><strong>Get the learning rate hyperparameter for tuning</strong></p>
+      <code>method : public : GetLearningRate() ~ Float</code>Return
+      <table>
+         <tr>
+            <th>Type</th>
+            <th>Description</th>
+         </tr>
+         <tr>
+            <td><a href='system-float.html' target='main'>Float</a></td>
+            <td>learning rate hyperparameter for tuning</td>
+         </tr>
+      </table>
+      <br/>
+      <h3>GetLearningRateMultiplier</h3>
+      <a id='hyperparameters-getlearningratemultiplier'></a>
+      <p><strong>Get the learning rate multiplier</strong></p>
+      <code>method : public : GetLearningRateMultiplier() ~ Float</code>Return
+      <table>
+         <tr>
+            <th>Type</th>
+            <th>Description</th>
+         </tr>
+         <tr>
+            <td><a href='system-float.html' target='main'>Float</a></td>
+            <td>learning rate multiplier</td>
+         </tr>
+      </table>
+      <br/>
+      <h3>ToJson</h3>
+      <a id='hyperparameters-tojson'></a>
+      <p><strong>JSON representation of the instance</strong></p>
+      <code>method : public : ToJson() ~ JsonElement</code>Return
+      <table>
+         <tr>
+            <th>Type</th>
+            <th>Description</th>
+         </tr>
+         <tr>
+            <td><a href='data.json-jsonelement.html' target='main'>JsonElement</a></td>
+            <td>JSON representation of the instance</td>
+         </tr>
+      </table>
+      <br/>
+      <h3>ToString</h3>
+      <a id='hyperparameters-tostring'></a>
+      <p><strong>JSON string representation of the instance</strong></p>
+      <code>method : public : ToString() ~ String</code>Return
+      <table>
+         <tr>
+            <th>Type</th>
+            <th>Description</th>
+         </tr>
+         <tr>
+            <td><a href='system-string.html' target='main'>String</a></td>
+            <td>JSON string representation of the instance</td>
+         </tr>
+      </table>
+      <br/>
+
+   </main></div>
+   </body>
+   <script src="resources/prism.js"></script>
+</html>

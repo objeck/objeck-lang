@@ -1,0 +1,10 @@
+class Hello {
+	function : Main(args : String[]) ~ Nil {
+		hello_world := HelloWorld();
+		"{$hello_world}!"->PrintLine();
+	}
+
+	function : HelloWorld() ~ String {
+		return "Hello World!";
+	}
+}

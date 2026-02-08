@@ -1,0 +1,92 @@
+#~
+# compile: obc -src rss_https_xml_15.obs -lib xml,rss,net
+# run: obr rss_https_xml_15.obe "https://www.techmeme.com/feed.xml" <filename>
+~#
+
+use Web.HTTP;
+use Web.RSS;
+use Collection;
+use System.IO.Filesystem;
+
+class RSS {
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() > 0) {
+			reader := RSSReader->New(args[0]);
+			if(reader->IsOk()) {	
+				html := "<html><body>";
+				GetMetaData(html, reader->GetChannel());
+				GetPosts(html, reader->GetPosts()<RSSPost>);
+				html += "</body></html>";
+				if(args->Size() = 2) {
+					WriteHtml(html, args[1]);
+				}
+				else {
+					html->PrintLine();
+				};
+			};
+		};
+	}
+	
+	function : WriteHtml(html : String, file : String) ~ Nil {
+		out := FileWriter->New(file);
+		leaving {
+			out->Close();
+		};
+		out->WriteString(html);
+		"Wrote file: {$file}..."->PrintLine();
+	}
+
+	function : GetMetaData(html : String, channel : RSSChannel) ~ Nil {
+		title := channel->GetTitle();
+		description := channel->GetDescription();
+		link := channel->GetLink();
+
+		html += "<b><a href='";
+		html += link;
+		html += "'>";
+		html += title;
+		html += "</a></b></br><p>";
+		html += description;
+		html += "</p>";
+	}
+
+	function : GetPosts(html : String, posts : Vector<RSSPost>) ~ Nil {
+		each(i : posts) {
+			post := posts->Get(i);
+			title := post->GetTitle();
+			description := post->GetDescription();
+			link := post->GetLink();
+			pub_date := post->GetDate();
+						
+			if(pub_date <> Nil & link <> Nil & title <> Nil) {
+				if(description <> Nil & (description->Find("href") > -1 | description->Find("HREF") > -1)) {
+					html += "<p><h3>";
+					html += pub_date;
+					html += "</h3>";
+					html += description;
+					html += "</p>";
+				}
+				else if(description <> Nil) {
+					html += "<p><h3>";
+					html += pub_date;
+					html += "</h3><b><a href='";
+					html += link;
+					html += "'>";
+					html += title;
+					html += "</a></b></br>";
+					html += description;
+					html += "</p>";
+				}
+				else {
+					html += "<p><h3>";
+					html += pub_date;
+					html += "</h3><b><a href='";
+					html += link;
+					html += "'>";
+					html += title;
+					html += "</a></b></br></p>";
+				};
+			};
+		};
+	}
+}

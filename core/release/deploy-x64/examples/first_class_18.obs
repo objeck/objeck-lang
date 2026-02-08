@@ -1,0 +1,32 @@
+#~
+# compile: obc -src first_class_18.obs
+# run: obr first_class_18.obe
+~#
+
+use Collection;
+
+alias Func {
+	Double : (FloatRef) ~ FloatRef
+}
+
+class FirstClass {
+	function : Main(args : String[]) ~ Nil {
+		vector := Vector->New()<Func2Ref <FloatRef, FloatRef>>;
+		# store functions in collections
+		vector->AddBack(Func2Ref->New(\Func->Double : (v) 
+			=>  v * v)<FloatRef, FloatRef>);
+		# new function from preexisting function at run-time
+		vector->AddBack(Func2Ref->New(\Func->Double : (v) 
+			=> Float->Sqrt(v->Get()))<FloatRef, FloatRef>);
+		# process collection
+		each(i : vector) {
+			# return value of other functions and pass argument to other function
+			func : \Func->Double := vector->Get(i)->Get();
+			Show(func);
+		};
+	}
+
+	function : Show(func : (FloatRef) ~ FloatRef) ~ Nil {
+		func(13.5)->Get()->PrintLine();
+	}
+}

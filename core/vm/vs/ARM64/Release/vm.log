@@ -1,0 +1,22 @@
+﻿  sys.cpp
+  jit_arm_a64.cpp
+  jit_common.cpp
+  memory.cpp
+  win32.cpp
+  common.cpp
+  interpreter.cpp
+  loader.cpp
+  vm.cpp
+  win_main.cpp
+     Creating library C:\Users\objec\Documents\Code\objeck-lang\core\release\ARM64\Release\obr.lib and object C:\Users\objec\Documents\Code\objeck-lang\core\release\ARM64\Release\obr.exp
+LINK : warning LNK4098: defaultlib 'LIBCMT' conflicts with use of other libs; use /NODEFAULTLIB:library
+  Generating code
+  Finished generating code
+  vm.vcxproj -> C:\Users\objec\Documents\Code\objeck-lang\core\release\ARM64\Release\obr.exe
+  Add manifest
+  Microsoft (R) Manifest Tool
+  
+  Copyright (c) Microsoft Corporation. 
+  
+  All rights reserved.
+  

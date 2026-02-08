@@ -1,0 +1,21 @@
+#~
+# compile: obc -src gemini_22.obs -lib net,json,misc,gemini,cipher
+# run: obr gemini_22.obe media\thirteen.png
+~#
+
+use API.Google.Gemini, System.IO.Filesystem;
+
+class IdentifyImage {
+  function : Main(args : String[]) ~ Nil {
+    if(args->Size() = 1) {
+      content := Content->New("user")->AddPart(TextPart->New("What number is this image showing?"))
+        ->AddPart(BinaryPart->New(FileReader->ReadBinaryFile(args[0]), "image/png"))
+        ->AddPart(TextPart->New("Format output as JSON"));
+
+      candidates := Model->GenerateContent("models/gemini-1.5-flash", content, EndPoint->GetApiKey());
+      if(candidates->Size() > 0) {
+        candidates->First()->GetAllText()->Trim()->PrintLine();
+      };
+    };
+  }
+}

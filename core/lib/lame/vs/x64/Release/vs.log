@@ -1,0 +1,8 @@
+﻿  lame.cpp
+     Creating library C:\Users\objec\Documents\Code\objeck-lang\core\lib\lame\x64\Release\libobjk_lame.lib and object C:\Users\objec\Documents\Code\objeck-lang\core\lib\lame\x64\Release\libobjk_lame.exp
+  Previous IPDB not found, fall back to full compilation.
+LINK : warning LNK4098: defaultlib 'LIBCMT' conflicts with use of other libs; use /NODEFAULTLIB:library
+  Generating code
+  All 167 functions were compiled because no usable IPDB/IOBJ from previous compilation was found.
+  Finished generating code
+  vs.vcxproj -> C:\Users\objec\Documents\Code\objeck-lang\core\lib\lame\x64\Release\libobjk_lame.dll

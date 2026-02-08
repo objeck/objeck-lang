@@ -1,0 +1,167 @@
+%YAML 1.2
+---
+# See http://www.sublimetext.com/docs/3/syntax.html
+name: Objeck
+file_extensions:
+  - obs
+scope: source.objeck-obs
+
+variables:
+  identifier: \b[[:alpha:]_][[:alnum:]_]*\b # upper and lowercase
+  escaped_char: '\\(x\h{2}|u\h{1,4}|.)'
+
+contexts:
+  main:
+    # Multi-line comments begin with a '#~' and end with '~#'
+    - match: '#~'
+      scope: comment.block.objeck-obs
+      push: multi_line_comment
+
+    # Line comments begin with a '#' and continue to the end of the line
+    - match: '#'
+      scope: comment.block.objeck-obs
+      push: line_comment
+
+    # Strings begin and end with quotes, and use backslashes as an escape
+    # character
+    - match: \'(.|{{escaped_char}})\'
+      scope: constant.character.escape.objeck-obs
+
+    - match: '"'
+      scope: string.quoted.double.objeck-obs
+      push: double_quoted_string
+
+    # Keywords 
+    - match: '\b(if|in|else|do|while|static|select|break|continue|other|otherwise|for|each|reverse|label|return|critical)\b'
+      scope: keyword.control.objeck-obs
+
+    - match: '\b(use|leaving|virtual|Parent|As|from|implements)\b'
+      scope: keyword.other
+
+    - match: '\b(bundle)\b'
+      scope: storage.type.trait.objeck-obs
+
+    - match: '\b(Byte|ByteRef|Int|IntRef|Float|FloatRef|Char|CharRef|Bool|BoolRef|String|BaseArrayRef|BoolArrayRef|ByteArrayRef|CharArrayRef|FloatArrayRef|IntArrayRef|StringArrayRef|Func2Ref|Func3Ref|Func4Ref|FuncRef)\b'
+      scope: storage.type.objeck-obs
+
+    - match: \[|\]|,
+      scope: punctuation.separator.objeck-obs
+
+    - match: '\b(true|false|Nil)\b'
+      scope: constant.language.objeck-obs
+
+    # Numbers
+    - match: '\b((0(x|X|b|B)[0-9a-fA-F]*)|(([0-9]+\.?[0-9]*)|(\.[0-9]+))((e|E)(\+|-)?[0-9]+)?)\b'
+      scope: constant.numeric.objeck-obs
+  
+    - match: '(-\>)\b(New)\b'
+      scope: meta.function-call
+
+    - match: '\b(New)\b'
+      scope: meta.constructor.objeck-obs
+      captures:
+        1: entity.name.function.constructor.objeck-obs
+
+    - match: \+\=|-\=|\*\=|/\=|(:=)
+      scope: keyword.operator.assignment.objeck-obs
+
+    - match: \||&|(<>)|<|>|<|>|(>=)|(<=)|=
+      scope: keyword.operator.logical.objeck-obs
+
+    - match: \+|\-|/|%|\*
+      scope: keyword.operator.arithmetic.objeck-obs
+
+    - match: '\b(not|and|or|xor)\b'
+      scope: keyword.operator.bitwise.objeck-obs
+    
+    - match: '(class)\s+:\s+(native|public|private)\s*:\s+'
+      scope: meta.function.objeck-obs
+      captures:
+        1: storage.type.class.objeck-obs
+        2: storage.modifier.objeck-obs
+      push: func_def
+
+    - match: '(class)\s+'
+      scope: storage.type.class.objeck-obs
+      push: cls_def
+
+    - match: '(interface)\s+'
+      scope: entity.name.interface.objeck-obs
+      push: interface_def
+
+    - match: '(enum)\s+'
+      scope: entity.name.enum.objeck-obs
+      push: enum_def
+
+    - match: '(alias)\s+'
+      scope: entity.name.interface.objeck-obs
+      push: alias_def
+      
+    - match: '(consts)\s+'
+      scope: entity.name.const.objeck-obs
+      push: enum_def
+
+    - match: '(method|function)\s+:\s+(public|private)\s*:\s+(native)\s*:\s+'
+      scope: meta.function.objeck-obs
+      captures:
+        1: storage.type.function.objeck-obs
+        2: storage.modifier.objeck-obs
+        3: storage.modifier.objeck-obs
+      push: func_def
+
+    - match: '(method|function)\s+:\s+(native|public|private)\s*:\s+'
+      scope: meta.function.objeck-obs
+      captures:
+        1: storage.type.function.objeck-obs
+        2: storage.modifier.objeck-obs
+      push: func_def
+
+    - match: '(method|function)\s+:\s+'
+      scope: meta.function.objeck-obs
+      captures:
+        1: storage.type.function.objeck-obs
+      push: func_def
+
+    - match: ({{identifier}})\s*(\()
+      scope: meta.function-call
+
+  line_comment:
+    - meta_scope: comment.line.objeck-obs
+    - match: $
+      pop: true
+
+  multi_line_comment:
+    - meta_scope: comment.block.objeck-obs
+    - match: '~#'
+      pop: true
+      
+  double_quoted_string:
+    - meta_scope: string.quoted.double.objeck-obs
+    - match: \\.
+    - match: '"'
+      pop: true
+      
+  cls_def:
+    - match: '{{identifier}}'
+      scope: entity.name.class.objeck-obs
+      pop: true
+      
+  interface_def:
+    - match: '{{identifier}}'
+      scope: entity.name.interface_def.objeck-obs
+      pop: true
+      
+  enum_def:
+    - match: '{{identifier}}'
+      scope: entity.name.enum.objeck-obs
+      pop: true
+
+  alias_def:
+    - match: '{{identifier}}'
+      scope: entity.name.interface.objeck-obs
+      pop: true
+
+  func_def:
+    - match: '{{identifier}}'
+      scope: entity.name.function.objeck-obs
+      pop: true
