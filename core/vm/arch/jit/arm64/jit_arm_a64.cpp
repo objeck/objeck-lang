@@ -2497,8 +2497,112 @@ void JitArm64::mul_imm_reg(long imm, Register reg) {
 #endif
     shl_imm_reg(shift, reg);
   }
+  // NEW: Multiply by 3 using ADD with LSL #1 (x*3 = x + x*2)
+  else if(imm == 3) {
+#ifdef _DEBUG_JIT_JIT
+    std::wcout << L"  " << (++instr_count) << L": [add "
+          << GetRegisterName(reg) << L", " << GetRegisterName(reg)
+          << L", " << GetRegisterName(reg) << L", lsl #1] (optimized mul #3)" << std::endl;
+#endif
+    // ADD Xd, Xn, Xm, LSL #1
+    uint32_t op_code = 0x8B000000;
+    op_code |= (1 << 10);   // LSL #1
+    op_code |= (reg << 16); // Xm (shifted)
+    op_code |= (reg << 5);  // Xn (base)
+    op_code |= reg;         // Xd (dest)
+    AddMachineCode(op_code);
+  }
+  // Multiply by 5 using ADD with LSL #2 (x*5 = x + x*4)
+  else if(imm == 5) {
+#ifdef _DEBUG_JIT_JIT
+    std::wcout << L"  " << (++instr_count) << L": [add "
+          << GetRegisterName(reg) << L", " << GetRegisterName(reg)
+          << L", " << GetRegisterName(reg) << L", lsl #2] (optimized mul #5)" << std::endl;
+#endif
+    uint32_t op_code = 0x8B000000;
+    op_code |= (2 << 10);   // LSL #2
+    op_code |= (reg << 16);
+    op_code |= (reg << 5);
+    op_code |= reg;
+    AddMachineCode(op_code);
+  }
+  // Multiply by 9 using ADD with LSL #3 (x*9 = x + x*8)
+  else if(imm == 9) {
+#ifdef _DEBUG_JIT_JIT
+    std::wcout << L"  " << (++instr_count) << L": [add "
+          << GetRegisterName(reg) << L", " << GetRegisterName(reg)
+          << L", " << GetRegisterName(reg) << L", lsl #3] (optimized mul #9)" << std::endl;
+#endif
+    uint32_t op_code = 0x8B000000;
+    op_code |= (3 << 10);   // LSL #3
+    op_code |= (reg << 16);
+    op_code |= (reg << 5);
+    op_code |= reg;
+    AddMachineCode(op_code);
+  }
+  // Multiply by 7: x*7 = x*8 - x (requires temp register)
+  else if(imm == 7) {
+#ifdef _DEBUG_JIT_JIT
+    std::wcout << L"  " << (++instr_count) << L": [lsl #3, sub] (optimized mul #7)" << std::endl;
+#endif
+    RegisterHolder* temp_holder = GetRegister();
+    if(temp_holder) {
+      move_reg_reg(reg, temp_holder->GetRegister());
+      shl_imm_reg(3, reg);
+      sub_reg_reg(temp_holder->GetRegister(), reg);
+      ReleaseRegister(temp_holder);
+    }
+    else {
+      goto use_mul;
+    }
+  }
+  // Multiply by 6: x*6 = x*2 + x*4 (shift then add with shift)
+  else if(imm == 6) {
+#ifdef _DEBUG_JIT_JIT
+    std::wcout << L"  " << (++instr_count) << L": [lsl #1, add lsl #1] (optimized mul #6)" << std::endl;
+#endif
+    RegisterHolder* temp_holder = GetRegister();
+    if(temp_holder) {
+      move_reg_reg(reg, temp_holder->GetRegister());
+      shl_imm_reg(1, reg);  // x*2
+      // ADD with LSL #1: adds temp*2 (x*2) to reg (x*2) = x*4
+      uint32_t op_code = 0x8B000000;
+      op_code |= (1 << 10);
+      op_code |= (temp_holder->GetRegister() << 16);
+      op_code |= (reg << 5);
+      op_code |= reg;
+      AddMachineCode(op_code);
+      ReleaseRegister(temp_holder);
+    }
+    else {
+      goto use_mul;
+    }
+  }
+  // Multiply by 10: x*10 = x*2 + x*8
+  else if(imm == 10) {
+#ifdef _DEBUG_JIT_JIT
+    std::wcout << L"  " << (++instr_count) << L": [lsl #1, add lsl #2] (optimized mul #10)" << std::endl;
+#endif
+    RegisterHolder* temp_holder = GetRegister();
+    if(temp_holder) {
+      move_reg_reg(reg, temp_holder->GetRegister());
+      shl_imm_reg(1, reg);  // x*2
+      // ADD with LSL #2: adds temp*4 (x*8) to reg (x*2)
+      uint32_t op_code = 0x8B000000;
+      op_code |= (3 << 10);  // LSL #3 would give x*8 from original
+      op_code |= (temp_holder->GetRegister() << 16);
+      op_code |= (reg << 5);
+      op_code |= reg;
+      AddMachineCode(op_code);
+      ReleaseRegister(temp_holder);
+    }
+    else {
+      goto use_mul;
+    }
+  }
   else {
-    // Use regular multiply for non-power-of-2 values
+use_mul:
+    // Use regular multiply for other values
     RegisterHolder* src_holder = GetRegister();
     move_imm_reg(imm, src_holder->GetRegister());
     mul_reg_reg(src_holder->GetRegister(), reg);

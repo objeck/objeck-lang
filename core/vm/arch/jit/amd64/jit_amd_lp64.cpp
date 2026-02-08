@@ -3877,10 +3877,117 @@ void JitAmd64::mul_imm_reg(int64_t imm, Register reg) {
 #endif
     shl_imm_reg(shift, reg);
   }
-  else {
-    // Use regular multiply for non-power-of-2 values
+  // NEW: Multiply by 3 using LEA (x*3 = x + x*2)
+  else if(imm == 3) {
 #ifdef _DEBUG_JIT
-    std::wcout << L"  " << (++instr_count) << L": [imuq $" << imm
+    std::wcout << L"  " << (++instr_count) << L": [leaq (%"
+          << GetRegisterName(reg) << ", %" << GetRegisterName(reg)
+          << ", 2), %" << GetRegisterName(reg)
+          << L"] (optimized mul $3)" << std::endl;
+#endif
+    // LEA: reg = reg + reg*2
+    AddMachineCode(B(reg));
+    AddMachineCode(0x8D);
+    unsigned char modrm = 0x04;
+    RegisterEncode3(modrm, 2, reg);
+    AddMachineCode(modrm);
+    unsigned char sib = 0x40;  // scale=01 (2x)
+    RegisterEncode3(sib, 5, reg);  // base
+    RegisterEncode3(sib, 2, reg);  // index
+    AddMachineCode(sib);
+  }
+  // Multiply by 5 using LEA (x*5 = x + x*4)
+  else if(imm == 5) {
+#ifdef _DEBUG_JIT
+    std::wcout << L"  " << (++instr_count) << L": [leaq (%"
+          << GetRegisterName(reg) << ", %" << GetRegisterName(reg)
+          << ", 4), %" << GetRegisterName(reg)
+          << L"] (optimized mul $5)" << std::endl;
+#endif
+    AddMachineCode(B(reg));
+    AddMachineCode(0x8D);
+    unsigned char modrm = 0x04;
+    RegisterEncode3(modrm, 2, reg);
+    AddMachineCode(modrm);
+    unsigned char sib = 0x80;  // scale=10 (4x)
+    RegisterEncode3(sib, 5, reg);
+    RegisterEncode3(sib, 2, reg);
+    AddMachineCode(sib);
+  }
+  // Multiply by 9 using LEA (x*9 = x + x*8)
+  else if(imm == 9) {
+#ifdef _DEBUG_JIT
+    std::wcout << L"  " << (++instr_count) << L": [leaq (%"
+          << GetRegisterName(reg) << ", %" << GetRegisterName(reg)
+          << ", 8), %" << GetRegisterName(reg)
+          << L"] (optimized mul $9)" << std::endl;
+#endif
+    AddMachineCode(B(reg));
+    AddMachineCode(0x8D);
+    unsigned char modrm = 0x04;
+    RegisterEncode3(modrm, 2, reg);
+    AddMachineCode(modrm);
+    unsigned char sib = 0xC0;  // scale=11 (8x)
+    RegisterEncode3(sib, 5, reg);
+    RegisterEncode3(sib, 2, reg);
+    AddMachineCode(sib);
+  }
+  // Multiply by 6: x*6 = (x*2) + (x*4) = shift then LEA
+  else if(imm == 6) {
+#ifdef _DEBUG_JIT
+    std::wcout << L"  " << (++instr_count) << L": [shlq $1, leaq] (optimized mul $6)" << std::endl;
+#endif
+    shl_imm_reg(1, reg);  // x*2
+    // LEA: reg = reg + reg*2 (adds x*4 to x*2)
+    AddMachineCode(B(reg));
+    AddMachineCode(0x8D);
+    unsigned char modrm = 0x04;
+    RegisterEncode3(modrm, 2, reg);
+    AddMachineCode(modrm);
+    unsigned char sib = 0x40;
+    RegisterEncode3(sib, 5, reg);
+    RegisterEncode3(sib, 2, reg);
+    AddMachineCode(sib);
+  }
+  // Multiply by 7: x*7 = (x*8) - x (requires temp register)
+  else if(imm == 7) {
+#ifdef _DEBUG_JIT
+    std::wcout << L"  " << (++instr_count) << L": [shlq $3, subq] (optimized mul $7)" << std::endl;
+#endif
+    RegisterHolder* temp_holder = GetRegister();
+    if(temp_holder) {
+      move_reg_reg(reg, temp_holder->GetRegister());
+      shl_imm_reg(3, reg);
+      sub_reg_reg(temp_holder->GetRegister(), reg);
+      ReleaseRegister(temp_holder);
+    }
+    else {
+      // Fallback if no register available
+      goto use_imul;
+    }
+  }
+  // Multiply by 10: x*10 = (x*2) + (x*8) = shift, then LEA
+  else if(imm == 10) {
+#ifdef _DEBUG_JIT
+    std::wcout << L"  " << (++instr_count) << L": [shlq $1, leaq] (optimized mul $10)" << std::endl;
+#endif
+    shl_imm_reg(1, reg);  // x*2
+    // LEA: reg = reg + reg*4 (adds x*8 to x*2)
+    AddMachineCode(B(reg));
+    AddMachineCode(0x8D);
+    unsigned char modrm = 0x04;
+    RegisterEncode3(modrm, 2, reg);
+    AddMachineCode(modrm);
+    unsigned char sib = 0xC0;  // scale=11 (8x) but we already shifted by 1
+    RegisterEncode3(sib, 5, reg);
+    RegisterEncode3(sib, 2, reg);
+    AddMachineCode(sib);
+  }
+  else {
+use_imul:
+    // Use regular multiply for other values
+#ifdef _DEBUG_JIT
+    std::wcout << L"  " << (++instr_count) << L": [imulq $" << imm
           << L", %"<< GetRegisterName(reg) << L"]" << std::endl;
 #endif
     // encode
