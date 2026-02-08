@@ -1,0 +1,467 @@
+#~
+# compile: obc -src test_mbedtls_migration.obs -lib cipher -dest test_mbedtls_migration.obe
+# run: obr test_mbedtls_migration.obe
+#
+# Tests for OpenSSL to mbedTLS migration - Cipher library
+# Validates hash functions, AES-256 encrypt/decrypt, and Base64 encode/decode
+~#
+
+class MbedTlsMigrationTest {
+	@pass_count : static : Int;
+	@fail_count : static : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		@pass_count := 0;
+		@fail_count := 0;
+
+		"=========================================="->PrintLine();
+		"  mbedTLS Migration Tests - Cipher Library"->PrintLine();
+		"=========================================="->PrintLine();
+		""->PrintLine();
+
+		TestSHA1();
+		TestSHA256();
+		TestSHA512();
+		TestMD5();
+		TestRIPEMD160();
+		TestAES256RoundTrip();
+		TestAES256RoundTripLong();
+		TestBase64RoundTrip();
+		TestBase64KnownVector();
+		TestBase64EmptyInput();
+		TestHashNilInput();
+		TestAES256NilInput();
+
+		""->PrintLine();
+		"=========================================="->PrintLine();
+		total := @pass_count + @fail_count;
+		"  Results: {$@pass_count}/{$total} passed"->PrintLine();
+		if(@fail_count > 0) {
+			"  FAILURES: {$@fail_count}"->PrintLine();
+		}
+		else {
+			"  ALL TESTS PASSED"->PrintLine();
+		};
+		"=========================================="->PrintLine();
+	}
+
+	#
+	# Helper: convert byte array to lowercase hex string (zero-padded per byte)
+	# e.g., [0xa9, 0x99, 0x3e] => "a9993e"
+	#
+	function : BytesToHex(bytes : Byte[]) ~ String {
+		if(bytes = Nil) {
+			return Nil;
+		};
+
+		hex_chars := "0123456789abcdef";
+		result := "";
+		each(i : bytes) {
+			b := bytes[i]->As(Int);
+			hi := (b >> 4) and 0x0f;
+			lo := b and 0x0f;
+			result->Append(hex_chars->Get(hi));
+			result->Append(hex_chars->Get(lo));
+		};
+		return result;
+	}
+
+	#
+	# Helper: report test result
+	#
+	function : AssertEqual(test_name : String, expected : String, actual : String) ~ Nil {
+		if(expected->Equals(actual)) {
+			@pass_count += 1;
+			"[PASS] {$test_name}"->PrintLine();
+		}
+		else {
+			@fail_count += 1;
+			"[FAIL] {$test_name}"->PrintLine();
+			"       expected: {$expected}"->PrintLine();
+			"       actual:   {$actual}"->PrintLine();
+		};
+	}
+
+	function : AssertTrue(test_name : String, condition : Bool) ~ Nil {
+		if(condition) {
+			@pass_count += 1;
+			"[PASS] {$test_name}"->PrintLine();
+		}
+		else {
+			@fail_count += 1;
+			"[FAIL] {$test_name}"->PrintLine();
+		};
+	}
+
+	function : AssertNil(test_name : String, value : Base) ~ Nil {
+		if(value = Nil) {
+			@pass_count += 1;
+			"[PASS] {$test_name}"->PrintLine();
+		}
+		else {
+			@fail_count += 1;
+			"[FAIL] {$test_name} - expected Nil but got a value"->PrintLine();
+		};
+	}
+
+	#
+	# SHA-1 Tests
+	#
+	function : TestSHA1() ~ Nil {
+		"--- SHA-1 Hash Tests ---"->PrintLine();
+
+		# Test vector: SHA1("abc") = a9993e364706816aba3e25717850c26c9cd0d89d
+		input := "abc"->ToByteArray();
+		hash := Cipher.Hash->SHA1(input);
+		hex := BytesToHex(hash);
+		AssertEqual("SHA1(\"abc\")", "a9993e364706816aba3e25717850c26c9cd0d89d", hex);
+
+		# Test vector: SHA1("") = da39a3ee5e6b4b0d3255bfef95601890afd80709
+		input := ""->ToByteArray();
+		hash := Cipher.Hash->SHA1(input);
+		hex := BytesToHex(hash);
+		AssertEqual("SHA1(\"\")", "da39a3ee5e6b4b0d3255bfef95601890afd80709", hex);
+
+		# Test vector: SHA1("abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq")
+		# = 84983e441c3bd26ebaae4aa1f95129e5e54670f1
+		input := "abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq"->ToByteArray();
+		hash := Cipher.Hash->SHA1(input);
+		hex := BytesToHex(hash);
+		AssertEqual("SHA1(long NIST string)", "84983e441c3bd26ebaae4aa1f95129e5e54670f1", hex);
+
+		""->PrintLine();
+	}
+
+	#
+	# SHA-256 Tests
+	#
+	function : TestSHA256() ~ Nil {
+		"--- SHA-256 Hash Tests ---"->PrintLine();
+
+		# Test vector: SHA256("abc") = ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad
+		input := "abc"->ToByteArray();
+		hash := Cipher.Hash->SHA256(input);
+		hex := BytesToHex(hash);
+		AssertEqual("SHA256(\"abc\")", "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad", hex);
+
+		# Test vector: SHA256("") = e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+		input := ""->ToByteArray();
+		hash := Cipher.Hash->SHA256(input);
+		hex := BytesToHex(hash);
+		AssertEqual("SHA256(\"\")", "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", hex);
+
+		# Test vector: SHA256("abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq")
+		# = 248d6a61d20638b8e5c026930c3e6039a33ce45964ff2167f6ecedd419db06c1
+		input := "abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq"->ToByteArray();
+		hash := Cipher.Hash->SHA256(input);
+		hex := BytesToHex(hash);
+		AssertEqual("SHA256(long NIST string)", "248d6a61d20638b8e5c026930c3e6039a33ce45964ff2167f6ecedd419db06c1", hex);
+
+		""->PrintLine();
+	}
+
+	#
+	# SHA-512 Tests
+	#
+	function : TestSHA512() ~ Nil {
+		"--- SHA-512 Hash Tests ---"->PrintLine();
+
+		# Test vector: SHA512("abc")
+		# = ddaf35a193617abacc417349ae20413112e6fa4e89a97ea20a9eeee64b55d39a
+		#   2192992a274fc1a836ba3c23a3feebbd454d4423643ce80e2a9ac94fa54ca49f
+		input := "abc"->ToByteArray();
+		hash := Cipher.Hash->SHA512(input);
+		hex := BytesToHex(hash);
+		expected := "ddaf35a193617abacc417349ae20413112e6fa4e89a97ea20a9eeee64b55d39a2192992a274fc1a836ba3c23a3feebbd454d4423643ce80e2a9ac94fa54ca49f";
+		AssertEqual("SHA512(\"abc\")", expected, hex);
+
+		# Test vector: SHA512("")
+		# = cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce
+		#   47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e
+		input := ""->ToByteArray();
+		hash := Cipher.Hash->SHA512(input);
+		hex := BytesToHex(hash);
+		expected := "cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e";
+		AssertEqual("SHA512(\"\")", expected, hex);
+
+		""->PrintLine();
+	}
+
+	#
+	# MD5 Tests
+	#
+	function : TestMD5() ~ Nil {
+		"--- MD5 Hash Tests ---"->PrintLine();
+
+		# Test vector: MD5("abc") = 900150983cd24fb0d6963f7d28e17f72
+		input := "abc"->ToByteArray();
+		hash := Cipher.Hash->MD5(input);
+		hex := BytesToHex(hash);
+		AssertEqual("MD5(\"abc\")", "900150983cd24fb0d6963f7d28e17f72", hex);
+
+		# Test vector: MD5("") = d41d8cd98f00b204e9800998ecf8427e
+		input := ""->ToByteArray();
+		hash := Cipher.Hash->MD5(input);
+		hex := BytesToHex(hash);
+		AssertEqual("MD5(\"\")", "d41d8cd98f00b204e9800998ecf8427e", hex);
+
+		# Test vector: MD5("The quick brown fox jumps over the lazy dog")
+		# = 9e107d9d372bb6826bd81d3542a419d6
+		input := "The quick brown fox jumps over the lazy dog"->ToByteArray();
+		hash := Cipher.Hash->MD5(input);
+		hex := BytesToHex(hash);
+		AssertEqual("MD5(\"The quick brown fox...\")", "9e107d9d372bb6826bd81d3542a419d6", hex);
+
+		# MD5("The quick brown fox jumped over the lazy dog's back")
+		# This is the same string used in the existing encrypt_7.obs test
+		input := "The quick brown fox jumped over the lazy dog's back"->ToByteArray();
+		hash := Cipher.Hash->MD5(input);
+		AssertTrue("MD5(encrypt_7 compat) returns non-nil", hash <> Nil);
+		if(hash <> Nil) {
+			AssertTrue("MD5(encrypt_7 compat) produces 16 bytes", hash->Size() = 16);
+		};
+
+		""->PrintLine();
+	}
+
+	#
+	# RIPEMD-160 Tests
+	#
+	function : TestRIPEMD160() ~ Nil {
+		"--- RIPEMD-160 Hash Tests ---"->PrintLine();
+
+		# Test vector: RIPEMD160("abc") = 8eb208f7e05d987a9b044a8e98c6b087f15a0bfc
+		input := "abc"->ToByteArray();
+		hash := Cipher.Hash->RIPEMD160(input);
+		hex := BytesToHex(hash);
+		AssertEqual("RIPEMD160(\"abc\")", "8eb208f7e05d987a9b044a8e98c6b087f15a0bfc", hex);
+
+		# Test vector: RIPEMD160("") = 9c1185a5c5e9fc54612808977ee8f548b2258d31
+		input := ""->ToByteArray();
+		hash := Cipher.Hash->RIPEMD160(input);
+		hex := BytesToHex(hash);
+		AssertEqual("RIPEMD160(\"\")", "9c1185a5c5e9fc54612808977ee8f548b2258d31", hex);
+
+		# Test vector: RIPEMD160("Rosetta Code") = b3be159860842cebaa7174c8fff0aa9e50a5199f
+		# This is the same string used in the existing encrypt_7.obs test
+		input := "Rosetta Code"->ToByteArray();
+		hash := Cipher.Hash->RIPEMD160(input);
+		hex := BytesToHex(hash);
+		AssertEqual("RIPEMD160(\"Rosetta Code\")", "b3be159860842cebaa7174c8fff0aa9e50a5199f", hex);
+
+		# Test vector: RIPEMD160("message digest") = 5d0689ef49d2fae572b881b123a85ffa21595f36
+		input := "message digest"->ToByteArray();
+		hash := Cipher.Hash->RIPEMD160(input);
+		hex := BytesToHex(hash);
+		AssertEqual("RIPEMD160(\"message digest\")", "5d0689ef49d2fae572b881b123a85ffa21595f36", hex);
+
+		""->PrintLine();
+	}
+
+	#
+	# AES-256 Round-trip Tests
+	#
+	function : TestAES256RoundTrip() ~ Nil {
+		"--- AES-256 Round-trip Tests ---"->PrintLine();
+
+		key := "MySecretKey12345"->ToByteArray();
+		plaintext := "Hello, mbedTLS!"->ToByteArray();
+
+		encrypted := Cipher.Encrypt->AES256(key, plaintext);
+		AssertTrue("AES256 encrypt returns non-nil", encrypted <> Nil);
+
+		if(encrypted <> Nil) {
+			AssertTrue("AES256 ciphertext differs from plaintext", <>ByteArraysEqual(encrypted, plaintext));
+
+			decrypted := Cipher.Decrypt->AES256(key, encrypted);
+			AssertTrue("AES256 decrypt returns non-nil", decrypted <> Nil);
+
+			if(decrypted <> Nil) {
+				decrypted_str := String->New(decrypted);
+				AssertEqual("AES256 round-trip preserves data", "Hello, mbedTLS!", decrypted_str);
+			};
+		};
+
+		""->PrintLine();
+	}
+
+	function : TestAES256RoundTripLong() ~ Nil {
+		"--- AES-256 Round-trip (long text) ---"->PrintLine();
+
+		# Use the same key and plaintext from encrypt_7.obs to ensure backward compatibility
+		key := "Forest Room 5"->ToByteArray();
+		original := "I switched my motto / Instead of saying f*ck tomorrow, that buck that bought a bottle could've struck the lotto.";
+		plaintext := original->ToByteArray();
+
+		encrypted := Cipher.Encrypt->AES256(key, plaintext);
+		AssertTrue("AES256 encrypt (long) returns non-nil", encrypted <> Nil);
+
+		if(encrypted <> Nil) {
+			decrypted := Cipher.Decrypt->AES256(key, encrypted);
+			AssertTrue("AES256 decrypt (long) returns non-nil", decrypted <> Nil);
+
+			if(decrypted <> Nil) {
+				decrypted_str := String->New(decrypted);
+				AssertEqual("AES256 round-trip (long) preserves data", original, decrypted_str);
+			};
+		};
+
+		# Test with wrong key - decrypted result should differ from original
+		wrong_key := "WrongKey99999999"->ToByteArray();
+		if(encrypted <> Nil) {
+			bad_decrypt := Cipher.Decrypt->AES256(wrong_key, encrypted);
+			if(bad_decrypt <> Nil) {
+				bad_str := String->New(bad_decrypt);
+				is_different := <>bad_str->Equals(original);
+				AssertTrue("AES256 wrong key produces different output", is_different);
+			}
+			else {
+				# Nil result with wrong key is also acceptable behavior
+				AssertTrue("AES256 wrong key returns Nil (acceptable)", true);
+			};
+		};
+
+		""->PrintLine();
+	}
+
+	#
+	# Base64 Round-trip Tests
+	#
+	function : TestBase64RoundTrip() ~ Nil {
+		"--- Base64 Round-trip Tests ---"->PrintLine();
+
+		original := "The quick brown fox jumps over the lazy dog";
+		input := original->ToByteArray();
+
+		encoded := Cipher.Encrypt->Base64(input);
+		AssertTrue("Base64 encode returns non-nil", encoded <> Nil);
+
+		if(encoded <> Nil) {
+			AssertTrue("Base64 encoded string is non-empty", encoded->Size() > 0);
+
+			decoded := Cipher.Decrypt->Base64(encoded);
+			AssertTrue("Base64 decode returns non-nil", decoded <> Nil);
+
+			if(decoded <> Nil) {
+				decoded_str := String->New(decoded);
+				AssertEqual("Base64 round-trip preserves data", original, decoded_str);
+			};
+		};
+
+		""->PrintLine();
+	}
+
+	function : TestBase64KnownVector() ~ Nil {
+		"--- Base64 Known Vector Tests ---"->PrintLine();
+
+		# "Hello, World!" => "SGVsbG8sIFdvcmxkIQ=="
+		input := "Hello, World!"->ToByteArray();
+		encoded := Cipher.Encrypt->Base64(input);
+		AssertEqual("Base64 encode(\"Hello, World!\")", "SGVsbG8sIFdvcmxkIQ==", encoded);
+
+		# Decode known Base64 string back
+		decoded := Cipher.Decrypt->Base64("SGVsbG8sIFdvcmxkIQ==");
+		if(decoded <> Nil) {
+			decoded_str := String->New(decoded);
+			AssertEqual("Base64 decode(\"SGVsbG8sIFdvcmxkIQ==\")", "Hello, World!", decoded_str);
+		}
+		else {
+			AssertTrue("Base64 decode known vector returns non-nil", false);
+		};
+
+		# "Man" => "TWFu"
+		input := "Man"->ToByteArray();
+		encoded := Cipher.Encrypt->Base64(input);
+		AssertEqual("Base64 encode(\"Man\")", "TWFu", encoded);
+
+		# "Ma" => "TWE=" (single padding)
+		input := "Ma"->ToByteArray();
+		encoded := Cipher.Encrypt->Base64(input);
+		AssertEqual("Base64 encode(\"Ma\")", "TWE=", encoded);
+
+		# "M" => "TQ==" (double padding)
+		input := "M"->ToByteArray();
+		encoded := Cipher.Encrypt->Base64(input);
+		AssertEqual("Base64 encode(\"M\")", "TQ==", encoded);
+
+		""->PrintLine();
+	}
+
+	function : TestBase64EmptyInput() ~ Nil {
+		"--- Base64 Empty Input Test ---"->PrintLine();
+
+		input := ""->ToByteArray();
+		encoded := Cipher.Encrypt->Base64(input);
+		AssertTrue("Base64 encode empty input returns non-nil", encoded <> Nil);
+		if(encoded <> Nil) {
+			AssertEqual("Base64 encode empty input is empty string", "", encoded);
+		};
+
+		""->PrintLine();
+	}
+
+	#
+	# Nil input handling tests
+	#
+	function : TestHashNilInput() ~ Nil {
+		"--- Nil Input Handling Tests ---"->PrintLine();
+
+		hash := Cipher.Hash->SHA1(Nil->As(Byte[]));
+		AssertNil("SHA1(Nil) returns Nil", hash);
+
+		hash := Cipher.Hash->SHA256(Nil->As(Byte[]));
+		AssertNil("SHA256(Nil) returns Nil", hash);
+
+		hash := Cipher.Hash->SHA512(Nil->As(Byte[]));
+		AssertNil("SHA512(Nil) returns Nil", hash);
+
+		hash := Cipher.Hash->MD5(Nil->As(Byte[]));
+		AssertNil("MD5(Nil) returns Nil", hash);
+
+		hash := Cipher.Hash->RIPEMD160(Nil->As(Byte[]));
+		AssertNil("RIPEMD160(Nil) returns Nil", hash);
+
+		""->PrintLine();
+	}
+
+	function : TestAES256NilInput() ~ Nil {
+		"--- AES-256 Nil Input Tests ---"->PrintLine();
+
+		key := "SomeKey"->ToByteArray();
+
+		encrypted := Cipher.Encrypt->AES256(Nil->As(Byte[]), "data"->ToByteArray());
+		AssertNil("AES256 encrypt with Nil key returns Nil", encrypted);
+
+		encrypted := Cipher.Encrypt->AES256(key, Nil->As(Byte[]));
+		AssertNil("AES256 encrypt with Nil data returns Nil", encrypted);
+
+		decrypted := Cipher.Decrypt->AES256(Nil->As(Byte[]), "data"->ToByteArray());
+		AssertNil("AES256 decrypt with Nil key returns Nil", decrypted);
+
+		decrypted := Cipher.Decrypt->AES256(key, Nil->As(Byte[]));
+		AssertNil("AES256 decrypt with Nil data returns Nil", decrypted);
+
+		""->PrintLine();
+	}
+
+	#
+	# Helper: compare two byte arrays for equality
+	#
+	function : ByteArraysEqual(a : Byte[], b : Byte[]) ~ Bool {
+		if(a = Nil & b = Nil) {
+			return true;
+		};
+		if(a = Nil | b = Nil) {
+			return false;
+		};
+		if(a->Size() <> b->Size()) {
+			return false;
+		};
+		each(i : a) {
+			if(a[i] <> b[i]) {
+				return false;
+			};
+		};
+		return true;
+	}
+}

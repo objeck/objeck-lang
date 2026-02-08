@@ -548,14 +548,21 @@ public:
  ****************************/
 class IPSecureSocket {
  public:
-  static bool Open(const char* address, int port, const std::string &pem_file, SSL_CTX* &ctx, BIO* &bio, X509* &cert) {
-    ctx = SSL_CTX_new(SSLv23_client_method());
-    bio = BIO_new_ssl_connect(ctx);
-    if(!bio) {
-      SSL_CTX_free(ctx);
+  static bool Open(const char* address, int port, const std::string &pem_file, SecureSocketCtx* &sctx) {
+    sctx = new SecureSocketCtx();
+
+    // Seed the random number generator
+    const char* pers = "objeck_ssl_client";
+    int ret = mbedtls_ctr_drbg_seed(&sctx->ctr_drbg, mbedtls_entropy_func, &sctx->entropy,
+                                     (const unsigned char*)pers, strlen(pers));
+    if(ret != 0) {
+      sctx->last_error = ret;
+      delete sctx;
+      sctx = nullptr;
       return false;
     }
 
+    // Load CA certificates
     std::string cert_path;
     if(!pem_file.empty()) {
       cert_path = pem_file;
@@ -564,108 +571,136 @@ class IPSecureSocket {
       cert_path = UnicodeToBytes(GetLibraryPath()) + CACERT_PEM_FILE;
     }
 
-    if(!SSL_CTX_load_verify_locations(ctx, cert_path.c_str(), nullptr)) {
-      BIO_free_all(bio);
-      SSL_CTX_free(ctx);
+    ret = mbedtls_x509_crt_parse_file(&sctx->cacert, cert_path.c_str());
+    if(ret < 0) {
+      sctx->last_error = ret;
       std::wcerr << L">>> Unable to find/read cryptographic PEM file : '" << BytesToUnicode(cert_path) << L"' <<<" << std::endl;
-      return false;
-    }
-    
-    SSL* ssl;
-    BIO_get_ssl(bio, &ssl);
-    SSL_set_mode(ssl, SSL_MODE_AUTO_RETRY);
-    std::string ssl_address = address;
-    if(ssl_address.size() < 1 || port < 0) {
-      BIO_free_all(bio);
-      SSL_CTX_free(ctx);
-      return false;
-    }    
-    ssl_address += ":";
-    ssl_address += UnicodeToBytes(IntToString(port));
-    BIO_set_conn_hostname(bio, ssl_address.c_str());
-    
-    if(!SSL_set_tlsext_host_name(ssl, address)) {
-      BIO_free_all(bio);
-      SSL_CTX_free(ctx);
-      return false;
-    }
-    
-    if(BIO_do_connect(bio) <= 0) {
-      BIO_free_all(bio);
-      SSL_CTX_free(ctx);
+      delete sctx;
+      sctx = nullptr;
       return false;
     }
 
-    if(BIO_do_handshake(bio) <= 0) {
-      BIO_free_all(bio);
-      SSL_CTX_free(ctx);
-      return false;
-    }
-    
-    cert = SSL_get_peer_certificate(ssl);
-    if(!cert) {
-      BIO_free_all(bio);
-      SSL_CTX_free(ctx);
+    // Connect to server
+    std::string addr_str = address;
+    if(addr_str.size() < 1 || port < 0) {
+      delete sctx;
+      sctx = nullptr;
       return false;
     }
 
-    const int status = SSL_get_verify_result(ssl);
-    if(status != X509_V_OK && status != X509_V_ERR_DEPTH_ZERO_SELF_SIGNED_CERT) {
-      BIO_free_all(bio);
-      SSL_CTX_free(ctx);
-      X509_free(cert);
+    std::string port_str = std::to_string(port);
+    ret = mbedtls_net_connect(&sctx->net, address, port_str.c_str(), MBEDTLS_NET_PROTO_TCP);
+    if(ret != 0) {
+      sctx->last_error = ret;
+      delete sctx;
+      sctx = nullptr;
       return false;
     }
-    
+
+    // Configure SSL
+    ret = mbedtls_ssl_config_defaults(&sctx->conf, MBEDTLS_SSL_IS_CLIENT,
+                                       MBEDTLS_SSL_TRANSPORT_STREAM, MBEDTLS_SSL_PRESET_DEFAULT);
+    if(ret != 0) {
+      sctx->last_error = ret;
+      delete sctx;
+      sctx = nullptr;
+      return false;
+    }
+
+    // VERIFY_OPTIONAL allows self-signed certs (matching previous OpenSSL behavior)
+    mbedtls_ssl_conf_authmode(&sctx->conf, MBEDTLS_SSL_VERIFY_OPTIONAL);
+    mbedtls_ssl_conf_ca_chain(&sctx->conf, &sctx->cacert, nullptr);
+    mbedtls_ssl_conf_rng(&sctx->conf, mbedtls_ctr_drbg_random, &sctx->ctr_drbg);
+
+    ret = mbedtls_ssl_setup(&sctx->ssl, &sctx->conf);
+    if(ret != 0) {
+      sctx->last_error = ret;
+      delete sctx;
+      sctx = nullptr;
+      return false;
+    }
+
+    // Set SNI hostname
+    ret = mbedtls_ssl_set_hostname(&sctx->ssl, address);
+    if(ret != 0) {
+      sctx->last_error = ret;
+      delete sctx;
+      sctx = nullptr;
+      return false;
+    }
+
+    mbedtls_ssl_set_bio(&sctx->ssl, &sctx->net, mbedtls_net_send, mbedtls_net_recv, nullptr);
+
+    // Perform TLS handshake
+    while((ret = mbedtls_ssl_handshake(&sctx->ssl)) != 0) {
+      if(ret != MBEDTLS_ERR_SSL_WANT_READ && ret != MBEDTLS_ERR_SSL_WANT_WRITE) {
+        sctx->last_error = ret;
+        delete sctx;
+        sctx = nullptr;
+        return false;
+      }
+    }
+
+    // Verify peer certificate (allow self-signed)
+    uint32_t flags = mbedtls_ssl_get_verify_result(&sctx->ssl);
+    if(flags != 0 && flags != MBEDTLS_X509_BADCERT_NOT_TRUSTED) {
+      sctx->last_error = MBEDTLS_ERR_X509_CERT_VERIFY_FAILED;
+      delete sctx;
+      sctx = nullptr;
+      return false;
+    }
+
     return true;
   }
-  
-  static void WriteByte(char value, SSL_CTX* ctx, BIO* bio) {
-    int status = BIO_write(bio, &value, 1);
-    if(status < 0) {
-      value = '\0';
+
+  static void WriteByte(char value, SecureSocketCtx* sctx) {
+    int ret = mbedtls_ssl_write(&sctx->ssl, (const unsigned char*)&value, 1);
+    if(ret < 0) {
+      sctx->last_error = ret;
     }
   }
-  
-  static int WriteBytes(const char* values, int len, SSL_CTX* ctx, BIO* bio) {
-    int status = BIO_write(bio, values, len);
-    if(status < 0) {
-      return -1;
-    } 
-    
-    return BIO_flush(bio);
+
+  static int WriteBytes(const char* values, int len, SecureSocketCtx* sctx) {
+    int written = 0;
+    while(written < len) {
+      int ret = mbedtls_ssl_write(&sctx->ssl, (const unsigned char*)values + written, len - written);
+      if(ret < 0) {
+        if(ret == MBEDTLS_ERR_SSL_WANT_WRITE) {
+          continue;
+        }
+        sctx->last_error = ret;
+        return -1;
+      }
+      written += ret;
+    }
+    return written;
   }
 
-  static char ReadByte(SSL_CTX* ctx, BIO* bio, int &status) {
-    char value;
-    status = BIO_read(bio, &value, 1);
-    if(status < 0) {
+  static char ReadByte(SecureSocketCtx* sctx, int &status) {
+    unsigned char value;
+    status = mbedtls_ssl_read(&sctx->ssl, &value, 1);
+    if(status <= 0) {
+      if(status < 0) {
+        sctx->last_error = status;
+      }
       return '\0';
-    } 
-    
-    return value;
+    }
+    return (char)value;
   }
-  
-  static int ReadBytes(char* values, int len, SSL_CTX* ctx, BIO* bio) {
-    int status = BIO_read(bio, values, len);
+
+  static int ReadBytes(char* values, int len, SecureSocketCtx* sctx) {
+    int status = mbedtls_ssl_read(&sctx->ssl, (unsigned char*)values, len);
     if(status < 0) {
+      sctx->last_error = status;
       return -1;
-    } 
-    
+    }
     return status;
   }
-  
-  static void Close(SSL_CTX* ctx, BIO* bio, X509* cert) {
-    if(bio) {
-      BIO_free_all(bio);
-    }
 
-    if(ctx) {
-      SSL_CTX_free(ctx);
-    }
-
-    if(cert) {
-      X509_free(cert);
+  static void Close(SecureSocketCtx* sctx) {
+    if(sctx) {
+      mbedtls_ssl_close_notify(&sctx->ssl);
+      delete sctx;
     }
   }
 };

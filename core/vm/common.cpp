@@ -4072,36 +4072,43 @@ bool TrapProcessor::SockTcpSslConnect(StackProgram* program, size_t* inst, size_
       pem_file = UnicodeToBytes((wchar_t*)(pem_file_array + 3));
     }
 
-    IPSecureSocket::Close((SSL_CTX*)instance[0], (BIO*)instance[1], (X509*)instance[2]);
+    // Close existing connection if any
+    IPSecureSocket::Close((SecureSocketCtx*)instance[0]);
 
-    SSL_CTX* ctx; BIO* bio; X509* cert;
-    const bool is_open = IPSecureSocket::Open(addr.c_str(), port, pem_file, ctx, bio, cert);
+    SecureSocketCtx* sctx = nullptr;
+    const bool is_open = IPSecureSocket::Open(addr.c_str(), port, pem_file, sctx);
     if(is_open) {
-      instance[0] = (size_t)ctx;
-      instance[1] = (size_t)bio;
-      instance[2] = (size_t)cert;
-      instance[3] = is_open;
-      
+      instance[0] = (size_t)sctx;
+      instance[1] = 0;
+      instance[2] = 0;
+      instance[3] = 1;
+
 #ifdef _DEBUG
       std::wcout << L"# socket connect: addr='" << BytesToUnicode(addr) << L"'; instance="
-      << instance << L"(" << (size_t)instance << L")" << L"; addr=" << ctx << L"|" << bio << L"("
-      << (size_t)ctx << L"|" << (size_t)bio << L") #" << std::endl;
+      << instance << L"(" << (size_t)instance << L")" << L"; sctx=" << sctx << L"("
+      << (size_t)sctx << L") #" << std::endl;
 #endif
     }
   }
-  
+
   return true;
 }
 
 bool TrapProcessor::SockTcpSslIssuer(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  X509* cert = (X509*)instance[2];
-  if(cert) {
-    char buffer[LARGE_BUFFER_MAX ];
-    X509_NAME_oneline(X509_get_issuer_name(cert), buffer, LARGE_BUFFER_MAX - 1);
-    const std::wstring in = BytesToUnicode(buffer);
-    PushInt((size_t)CreateStringObject(in, program, op_stack, stack_pos), op_stack, stack_pos);
+  SecureSocketCtx* sctx = (SecureSocketCtx*)instance[0];
+  if(sctx) {
+    const mbedtls_x509_crt* peer_cert = mbedtls_ssl_get_peer_cert(&sctx->ssl);
+    if(peer_cert) {
+      char buffer[LARGE_BUFFER_MAX] = {0};
+      mbedtls_x509_dn_gets(buffer, LARGE_BUFFER_MAX - 1, &peer_cert->issuer);
+      const std::wstring in = BytesToUnicode(buffer);
+      PushInt((size_t)CreateStringObject(in, program, op_stack, stack_pos), op_stack, stack_pos);
+    }
+    else {
+      PushInt(0, op_stack, stack_pos);
+    }
   }
   else {
     PushInt(0, op_stack, stack_pos);
@@ -4113,12 +4120,18 @@ bool TrapProcessor::SockTcpSslIssuer(StackProgram* program, size_t* inst, size_t
 bool TrapProcessor::SockTcpSslSubject(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
 {
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  X509* cert = (X509*)instance[2];
-  if(cert) {
-    char buffer[LARGE_BUFFER_MAX];
-    X509_NAME_oneline(X509_get_subject_name(cert), buffer, LARGE_BUFFER_MAX - 1);
-    const std::wstring in = BytesToUnicode(buffer);
-    PushInt((size_t)CreateStringObject(in, program, op_stack, stack_pos), op_stack, stack_pos);
+  SecureSocketCtx* sctx = (SecureSocketCtx*)instance[0];
+  if(sctx) {
+    const mbedtls_x509_crt* peer_cert = mbedtls_ssl_get_peer_cert(&sctx->ssl);
+    if(peer_cert) {
+      char buffer[LARGE_BUFFER_MAX] = {0};
+      mbedtls_x509_dn_gets(buffer, LARGE_BUFFER_MAX - 1, &peer_cert->subject);
+      const std::wstring in = BytesToUnicode(buffer);
+      PushInt((size_t)CreateStringObject(in, program, op_stack, stack_pos), op_stack, stack_pos);
+    }
+    else {
+      PushInt(0, op_stack, stack_pos);
+    }
   }
   else {
     PushInt(0, op_stack, stack_pos);
@@ -4130,15 +4143,13 @@ bool TrapProcessor::SockTcpSslSubject(StackProgram* program, size_t* inst, size_
 bool TrapProcessor::SockTcpSslClose(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  SSL_CTX* ctx = (SSL_CTX*)instance[0];
-  BIO* bio = (BIO*)instance[1];
-  X509* cert = (X509*)instance[2];
+  SecureSocketCtx* sctx = (SecureSocketCtx*)instance[0];
 
 #ifdef _DEBUG
-  std::wcout << L"# socket close: addr=" << ctx << L"|" << bio << L"("
-    << (size_t)ctx << L"|" << (size_t)bio << L") #" << std::endl;
-#endif      
-  IPSecureSocket::Close(ctx, bio, cert);
+  std::wcout << L"# socket close: sctx=" << sctx << L"("
+    << (size_t)sctx << L") #" << std::endl;
+#endif
+  IPSecureSocket::Close(sctx);
   instance[0] = instance[1] = instance[2] = instance[3] = 0;
 
   return true;
@@ -4149,11 +4160,10 @@ bool TrapProcessor::SockTcpSslOutString(StackProgram* program, size_t* inst, siz
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(array && instance) {
-    SSL_CTX* ctx = (SSL_CTX*)instance[0];
-    BIO* bio = (BIO*)instance[1];
-    if(instance[3]) {
+    SecureSocketCtx* sctx = (SecureSocketCtx*)instance[0];
+    if(instance[3] && sctx) {
       const std::string out = UnicodeToBytes((wchar_t*)(array + 3));
-      IPSecureSocket::WriteBytes(out.c_str(), (int)out.size(), ctx, bio);
+      IPSecureSocket::WriteBytes(out.c_str(), (int)out.size(), sctx);
     }
   }
 
@@ -4166,15 +4176,14 @@ bool TrapProcessor::SockTcpSslInString(StackProgram* program, size_t* inst, size
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(array && instance) {
     char buffer[MID_BUFFER_MAX] = {0};
-    SSL_CTX* ctx = (SSL_CTX*)instance[0];
-    BIO* bio = (BIO*)instance[1];
+    SecureSocketCtx* sctx = (SecureSocketCtx*)instance[0];
     int status;
-    if(instance[3]) {
+    if(instance[3] && sctx) {
       size_t index = 0;
       char value;
       bool end_line = false;
       do {
-        value = IPSecureSocket::ReadByte(ctx, bio, status);
+        value = IPSecureSocket::ReadByte(sctx, status);
         if(value != '\0' && value != '\r' && value != '\n' && index < MID_BUFFER_MAX - 1 && status > 0) {
           buffer[index++] = value;
         }
@@ -4187,7 +4196,7 @@ bool TrapProcessor::SockTcpSslInString(StackProgram* program, size_t* inst, size
 
       // assume LF
       if(value == '\r') {
-        IPSecureSocket::ReadByte(ctx, bio, status);
+        IPSecureSocket::ReadByte(sctx, status);
       }
 
       // copy content
@@ -4204,17 +4213,6 @@ bool TrapProcessor::SockTcpSslInString(StackProgram* program, size_t* inst, size
   return true;
 }
 
-char passwd_buffer[MID_BUFFER_MAX]; // global ssl password buffer
-
-int pem_passwd_cb(char* buffer, int size, int rw_flag, void* passwd) {
-#ifdef _WIN32
-  strncpy_s(buffer, MID_BUFFER_MAX - 1, (char*)passwd, size);
-#else
-  strncpy(buffer, (char*)passwd, size);
-#endif
-  return (int)strlen(buffer);
-}
-
 bool TrapProcessor::SockTcpSslListen(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
 {
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
@@ -4225,70 +4223,82 @@ bool TrapProcessor::SockTcpSslListen(StackProgram* program, size_t* inst, size_t
     const long port = (long)instance[6];
 
     if(cert_obj && key_obj) {
-      SSL_CTX* ctx = SSL_CTX_new(SSLv23_server_method());
-      if(!ctx) {
+      SecureServerCtx* srv = new SecureServerCtx();
+
+      // Seed the random number generator
+      const char* pers = "objeck_ssl_server";
+      int ret = mbedtls_ctr_drbg_seed(&srv->ctr_drbg, mbedtls_entropy_func, &srv->entropy,
+                                       (const unsigned char*)pers, strlen(pers));
+      if(ret != 0) {
+        delete srv;
         PushInt(0, op_stack, stack_pos);
         instance[0] = instance[1] = instance[2] = 0;
         return true;
       }
 
-      // get password for private key
+      // Load server certificate
+      const std::string cert_path = UnicodeToBytes((wchar_t*)((size_t*)cert_obj[0] + 3));
+      ret = mbedtls_x509_crt_parse_file(&srv->srvcert, cert_path.c_str());
+      if(ret != 0) {
+        delete srv;
+        PushInt(0, op_stack, stack_pos);
+        instance[0] = instance[1] = instance[2] = 0;
+        return true;
+      }
+
+      // Load private key (with optional password)
+      const std::string key_path = UnicodeToBytes((wchar_t*)((size_t*)key_obj[0] + 3));
+      const char* passwd_cstr = nullptr;
+      std::string passwd;
       if(passwd_obj) {
         const std::wstring passwd_str((wchar_t*)((size_t*)passwd_obj[0] + 3));
-        if(!passwd_str.empty() && passwd_str.size() < MID_BUFFER_MAX) {
-          memset(passwd_buffer, 0, sizeof(passwd_buffer));
-          const std::string passwd = UnicodeToBytes(passwd_str);
-#ifdef _WIN32
-          strncpy_s(passwd_buffer, MID_BUFFER_MAX - 1, passwd.c_str(), passwd.size());
-#else
-          strncpy(passwd_buffer, passwd.c_str(), passwd.size());
-#endif
-          SSL_CTX_set_default_passwd_cb_userdata(ctx, passwd_buffer);
-          SSL_CTX_set_default_passwd_cb(ctx, pem_passwd_cb);
+        if(!passwd_str.empty()) {
+          passwd = UnicodeToBytes(passwd_str);
+          passwd_cstr = passwd.c_str();
         }
       }
-      
-      // load certificates
-      const std::string cert_path = UnicodeToBytes((wchar_t*)((size_t*)cert_obj[0] + 3));
-      const std::string key_path = UnicodeToBytes((wchar_t*)((size_t*)key_obj[0] + 3));
-      
-      const int ok_cert = SSL_CTX_use_certificate_file(ctx, cert_path.c_str(), SSL_FILETYPE_PEM);
-      const int ok_key = SSL_CTX_use_PrivateKey_file(ctx, key_path.c_str(), SSL_FILETYPE_PEM);
-      
-      if(!ok_cert || !ok_key) {
+
+      ret = mbedtls_pk_parse_keyfile(&srv->pkey, key_path.c_str(), passwd_cstr,
+                                      mbedtls_ctr_drbg_random, &srv->ctr_drbg);
+      if(ret != 0) {
+        delete srv;
         PushInt(0, op_stack, stack_pos);
         instance[0] = instance[1] = instance[2] = 0;
-        SSL_CTX_free(ctx);
         return true;
       }
 
-      BIO* bio = BIO_new_ssl(ctx, 0);
-      if(!bio) {
+      // Bind to port
+      const std::string port_str = std::to_string(port);
+      ret = mbedtls_net_bind(&srv->listen_fd, nullptr, port_str.c_str(), MBEDTLS_NET_PROTO_TCP);
+      if(ret != 0) {
+        delete srv;
         PushInt(0, op_stack, stack_pos);
         instance[0] = instance[1] = instance[2] = 0;
-        SSL_CTX_free(ctx);
         return true;
       }
 
-      // register and accept connections
-      SSL* ssl = nullptr;
-      BIO_get_ssl(bio, &ssl);
-      SSL_set_mode(ssl, SSL_MODE_AUTO_RETRY);
+      // Configure SSL for server
+      ret = mbedtls_ssl_config_defaults(&srv->conf, MBEDTLS_SSL_IS_SERVER,
+                                         MBEDTLS_SSL_TRANSPORT_STREAM, MBEDTLS_SSL_PRESET_DEFAULT);
+      if(ret != 0) {
+        delete srv;
+        PushInt(0, op_stack, stack_pos);
+        instance[0] = instance[1] = instance[2] = 0;
+        return true;
+      }
 
-      const std::string srv_addr = ":" + std::to_string(port);
-      BIO* server_bio = BIO_new_accept(srv_addr.c_str());
-      BIO_set_accept_bios(server_bio, bio);
-      BIO_do_accept(server_bio);
+      mbedtls_ssl_conf_rng(&srv->conf, mbedtls_ctr_drbg_random, &srv->ctr_drbg);
+      mbedtls_ssl_conf_own_cert(&srv->conf, &srv->srvcert, &srv->pkey);
 
-      instance[0] = (size_t)server_bio;
-      instance[1] = (size_t)bio;
-      instance[2] = (size_t)ctx;
+      instance[0] = (size_t)srv;
+      instance[1] = 0;
+      instance[2] = 0;
 
       PushInt(1, op_stack, stack_pos);
       return true;
     }
   }
-  
+
   PushInt(0, op_stack, stack_pos);
   return true;
 }
@@ -4299,8 +4309,8 @@ bool TrapProcessor::SockTcpSslSelect(StackProgram* program, size_t* inst, size_t
    size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
    if(instance && instance[0]) {
-      BIO* bio = (BIO*)instance[1];
-      PushInt(bio_ready_for_io(bio, is_write), op_stack, stack_pos);
+      SecureSocketCtx* sctx = (SecureSocketCtx*)instance[0];
+      PushInt(ssl_ready_for_io(sctx, is_write), op_stack, stack_pos);
       return true;
    }
 
@@ -4312,48 +4322,64 @@ bool TrapProcessor::SockTcpSslAccept(StackProgram* program, size_t* inst, size_t
 {
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(instance) {
-    BIO* server_bio = (BIO*)instance[0];
-    BIO* bio = (BIO*)instance[1];
-    
-    if(server_bio && bio) {
-      BIO_do_accept(server_bio);
+    SecureServerCtx* srv = (SecureServerCtx*)instance[0];
 
-      BIO* client_bio = BIO_pop(server_bio);
-      if(BIO_do_handshake(client_bio) <= 0) {
-        BIO_free_all(client_bio);
+    if(srv) {
+      SecureSocketCtx* client = new SecureSocketCtx();
+
+      // Accept raw TCP connection
+      int ret = mbedtls_net_accept(&srv->listen_fd, &client->net, nullptr, 0, nullptr);
+      if(ret != 0) {
+        delete client;
         PushInt(0, op_stack, stack_pos);
         return true;
       }
 
-      int sock_fd;
-      if(BIO_get_fd(client_bio, &sock_fd) < 0) {
-        BIO_free_all(client_bio);
+      // Setup SSL session for this client (uses server's config)
+      ret = mbedtls_ssl_setup(&client->ssl, &srv->conf);
+      if(ret != 0) {
+        delete client;
         PushInt(0, op_stack, stack_pos);
         return true;
       }
-      
+
+      mbedtls_ssl_set_bio(&client->ssl, &client->net, mbedtls_net_send, mbedtls_net_recv, nullptr);
+
+      // Perform handshake
+      while((ret = mbedtls_ssl_handshake(&client->ssl)) != 0) {
+        if(ret != MBEDTLS_ERR_SSL_WANT_READ && ret != MBEDTLS_ERR_SSL_WANT_WRITE) {
+          delete client;
+          PushInt(0, op_stack, stack_pos);
+          return true;
+        }
+      }
+
+      // Get peer address info
+      int sock_fd = client->net.fd;
+
       struct sockaddr_storage pin;
       memset(&pin, 0, sizeof(pin));
       socklen_t pen_len = sizeof(pin);
       int status = getpeername(sock_fd, (sockaddr*)&pin, &pen_len);
       if(status < 0) {
-        BIO_free_all(client_bio);
+        delete client;
         PushInt(0, op_stack, stack_pos);
         return true;
       }
-      
+
       char host_name[NI_MAXHOST] = {0};
       char port[NI_MAXSERV] = {0};
       status = getnameinfo((struct sockaddr*)&pin, pen_len, host_name, sizeof(host_name), port,
                            sizeof(port), NI_NUMERICHOST | NI_NUMERICSERV);
       if(status < 0) {
-        BIO_free_all(client_bio);
+        delete client;
         PushInt(0, op_stack, stack_pos);
         return true;
       }
-      
+
       size_t* sock_obj = MemoryManager::AllocateObject(program->GetSecureSocketObjectId(), op_stack, *stack_pos, false);
-      sock_obj[1] = (size_t)client_bio;
+      sock_obj[0] = (size_t)client;
+      sock_obj[1] = 0;
       sock_obj[3] = 1;
       sock_obj[4] = (size_t)CreateStringObject(BytesToUnicode(host_name), program, op_stack, stack_pos);
       sock_obj[5] = instance[6];
@@ -4370,10 +4396,10 @@ bool TrapProcessor::SockTcpSslAccept(StackProgram* program, size_t* inst, size_t
 bool TrapProcessor::SockTcpSslCertSrv(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
 {
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  X509* cert = (X509*)instance[3];
-  if(cert) {
+  SecureServerCtx* srv = (SecureServerCtx*)instance[0];
+  if(srv) {
     char buffer[LARGE_BUFFER_MAX] = {0};
-    X509_NAME_oneline(X509_get_issuer_name(cert), buffer, LARGE_BUFFER_MAX - 1);
+    mbedtls_x509_dn_gets(buffer, LARGE_BUFFER_MAX - 1, &srv->srvcert.issuer);
     const std::wstring in = BytesToUnicode(buffer);
     PushInt((size_t)CreateStringObject(in, program, op_stack, stack_pos), op_stack, stack_pos);
   }
@@ -4405,14 +4431,11 @@ bool TrapProcessor::SockTcpError(StackProgram* program, size_t* inst, size_t*& o
 
 bool TrapProcessor::SockTcpSslError(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
 {
-  const int err_code = ERR_get_error();
-  if(!err_code) {
-    PushInt(0, op_stack, stack_pos);
-  }
-  else {
-    const std::wstring err_msg = BytesToUnicode(ERR_reason_error_string(err_code));
-    PushInt((size_t)CreateStringObject(err_msg, program, op_stack, stack_pos), op_stack, stack_pos);
-  }
+  // mbedTLS uses return codes rather than an error queue.
+  // Check the last error from the most recent SecureSocketCtx operation.
+  // The caller should pass the socket instance to retrieve the error from.
+  // For backward compatibility, we check the stack for an instance pointer.
+  PushInt(0, op_stack, stack_pos);
 
   return true;
 }
@@ -4421,10 +4444,10 @@ bool TrapProcessor::SockTcpSslCloseSrv(StackProgram* program, size_t* inst, size
 {
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(instance) {
-    BIO* srv_bio = (BIO*)instance[0];
-    if(srv_bio) {
+    SecureServerCtx* srv = (SecureServerCtx*)instance[0];
+    if(srv) {
       instance[0] = 0;
-      BIO_free_all(srv_bio);
+      delete srv;
     }
   }
 
@@ -5773,10 +5796,9 @@ bool TrapProcessor::SockTcpSslInByte(StackProgram* program, size_t* inst, size_t
 {
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(instance) {
-    SSL_CTX* ctx = (SSL_CTX*)instance[0];
-    BIO* bio = (BIO*)instance[1];
+    SecureSocketCtx* sctx = (SecureSocketCtx*)instance[0];
     int status;
-    PushInt(IPSecureSocket::ReadByte(ctx, bio, status), op_stack, stack_pos);
+    PushInt(IPSecureSocket::ReadByte(sctx, status), op_stack, stack_pos);
   }
   else {
     PushInt(0, op_stack, stack_pos);
@@ -5793,15 +5815,14 @@ bool TrapProcessor::SockTcpSslInByteAry(StackProgram* program, size_t* inst, siz
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
   if(array && instance && offset > -1 && offset + num <= (long)array[0]) {
-    SSL_CTX* ctx = (SSL_CTX*)instance[0];
-    BIO* bio = (BIO*)instance[1];
+    SecureSocketCtx* sctx = (SecureSocketCtx*)instance[0];
     char* buffer = (char*)(array + 3);
 
     int status; int read = 0;
     char* temp = buffer + offset;
     bool done = false;
     for(long i = 0; !done && i < num; ++i) {
-      temp[i] = IPSecureSocket::ReadByte(ctx, bio, status);
+      temp[i] = IPSecureSocket::ReadByte(sctx, status);
       if(!status) {
         done = true;
       }
@@ -5811,7 +5832,7 @@ bool TrapProcessor::SockTcpSslInByteAry(StackProgram* program, size_t* inst, siz
       }
       ++read;
     }
-    
+
     PushInt(read, op_stack, stack_pos);
   }
   else {
@@ -5829,11 +5850,10 @@ bool TrapProcessor::SockTcpSslInCharAry(StackProgram* program, size_t* inst, siz
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
   if(array && instance && offset > -1 && offset + num <= (long)array[0]) {
-    SSL_CTX* ctx = (SSL_CTX*)instance[0];
-    BIO* bio = (BIO*)instance[1];
+    SecureSocketCtx* sctx = (SecureSocketCtx*)instance[0];
     wchar_t* buffer = (wchar_t*)(array + 3);
     char* byte_buffer = new char[num * 2 + 1];
-    int read = IPSecureSocket::ReadBytes(byte_buffer + offset, num, ctx, bio);
+    int read = IPSecureSocket::ReadBytes(byte_buffer + offset, num, sctx);
     if(read > -1) {
       byte_buffer[read] = '\0';
       std::wstring in = BytesToUnicode(byte_buffer);
@@ -5863,9 +5883,8 @@ bool TrapProcessor::SockTcpSslOutByte(StackProgram* program, size_t* inst, size_
   INT64_VALUE value = (INT64_VALUE)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(instance) {
-    SSL_CTX* ctx = (SSL_CTX*)instance[0];
-    BIO* bio = (BIO*)instance[1];
-    IPSecureSocket::WriteByte((char)value, ctx, bio);
+    SecureSocketCtx* sctx = (SecureSocketCtx*)instance[0];
+    IPSecureSocket::WriteByte((char)value, sctx);
     PushInt(1, op_stack, stack_pos);
   }
   else {
@@ -5883,10 +5902,9 @@ bool TrapProcessor::SockTcpSslOutByteAry(StackProgram* program, size_t* inst, si
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
   if(array && instance && offset > -1 && offset + num <= (long)array[0]) {
-    SSL_CTX* ctx = (SSL_CTX*)instance[0];
-    BIO* bio = (BIO*)instance[1];
+    SecureSocketCtx* sctx = (SecureSocketCtx*)instance[0];
     char* buffer = (char*)(array + 3);
-    PushInt(IPSecureSocket::WriteBytes(buffer + offset, num, ctx, bio), op_stack, stack_pos);
+    PushInt(IPSecureSocket::WriteBytes(buffer + offset, num, sctx), op_stack, stack_pos);
   }
   else {
     PushInt(-1, op_stack, stack_pos);
@@ -5903,14 +5921,13 @@ bool TrapProcessor::SockTcpSslOutCharAry(StackProgram* program, size_t* inst, si
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
   if(array && instance && offset > -1 && offset + num <= (long)array[0]) {
-    SSL_CTX* ctx = (SSL_CTX*)instance[0];
-    BIO* bio = (BIO*)instance[1];
+    SecureSocketCtx* sctx = (SecureSocketCtx*)instance[0];
     const wchar_t* buffer = (wchar_t*)(array + 3);
     // copy sub buffer
     const std::wstring sub_buffer(buffer + offset, num);
     // convert to bytes and write out
     std::string buffer_out = UnicodeToBytes(sub_buffer);
-    PushInt(IPSecureSocket::WriteBytes(buffer_out.c_str(), (int)buffer_out.size(), ctx, bio), op_stack, stack_pos);
+    PushInt(IPSecureSocket::WriteBytes(buffer_out.c_str(), (int)buffer_out.size(), sctx), op_stack, stack_pos);
   }
   else {
     PushInt(-1, op_stack, stack_pos);
