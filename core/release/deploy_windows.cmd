@@ -95,16 +95,16 @@ REM libraries
 del /q %TARGET%\bin\a.*
 copy ..\vm\misc\*.pem %TARGET%\lib
 
-REM openssl support
-cd ..\lib\openssl
+REM crypto support
+cd ..\lib\crypto
 
 if [%1] == [arm64] (
-	devenv openssl.sln /rebuild "Release|ARM64"
+	devenv crypto.sln /rebuild "Release|ARM64"
 	copy ARM64\Release\*.dll ..\..\release\%TARGET%\lib\native
 )
 
 if [%1] == [x64] (
-	devenv openssl.sln /rebuild "Release|x64"
+	devenv crypto.sln /rebuild "Release|x64"
 	copy Release\win64\*.dll ..\..\release\%TARGET%\lib\native
 )
 cd ..\..\release

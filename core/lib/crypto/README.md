@@ -1,8 +1,8 @@
-# openssl-win-build
+# Objeck Crypto Library
 
-OpenSSL Windows builds with Visual Studio.
+Cryptographic support for the Objeck language, providing hash functions, AES-256 encryption, and Base64 encoding/decoding.
 
-This version is OpenSSL-3.4.0, released on 22-Oct-2024, and built for x64 and arm64 Windows targets.
+The current implementation uses OpenSSL-3.4.0 (released 22-Oct-2024) as the underlying crypto provider, built for x64 and arm64 Windows targets.
 
 ## Building OpenSSL for Windows
 

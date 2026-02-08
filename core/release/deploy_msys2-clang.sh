@@ -46,9 +46,9 @@ cd ../lib/odbc
 ./build_msys2-clang.sh odbc
 cp odbc.dll ../../release/deploy-msys2-clang/lib/native/libobjk_odbc.dll
 
-cd ../openssl
-./build_msys2-clang.sh openssl
-cp openssl.dll ../../release/deploy-msys2-clang/lib/native/libobjk_openssl.dll
+cd ../crypto
+./build_msys2-clang.sh crypto
+cp crypto.dll ../../release/deploy-msys2-clang/lib/native/libobjk_crypto.dll
 
 cd ../matrix
 ./build_msys2-clang.sh matrix

@@ -1,5 +1,5 @@
 /***************************************************************************
- * OpenSSL support for Objeck
+ * Cryptographic support for Objeck
  *
  * Copyright (c) 2011-2020, Randy Hollines
  * All rights reserved.
@@ -61,7 +61,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-  void openssl_hash_sha1(VMContext& context) {
+  void crypto_hash_sha1(VMContext& context) {
     // get parameters
     size_t* input_array = (size_t*)APITools_GetArray(context, 1)[0];
     const long input_size = ((long)APITools_GetArraySize(input_array));
@@ -117,7 +117,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-  void openssl_hash_sha256(VMContext& context) {
+  void crypto_hash_sha256(VMContext& context) {
     // get parameters
     size_t* input_array = (size_t*)APITools_GetArray(context, 1)[0];
     const long input_size = ((long)APITools_GetArraySize(input_array));
@@ -173,7 +173,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-  void openssl_hash_sha512(VMContext& context) {
+  void crypto_hash_sha512(VMContext& context) {
     // get parameters
     size_t* input_array = (size_t*)APITools_GetArray(context, 1)[0];
     const long input_size = ((long)APITools_GetArraySize(input_array));
@@ -229,7 +229,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-  void openssl_hash_ripemd160(VMContext& context) {
+  void crypto_hash_ripemd160(VMContext& context) {
     // get parameters
     size_t* input_array = (size_t*)APITools_GetArray(context, 1)[0];
     const long input_size = ((long)APITools_GetArraySize(input_array));
@@ -305,7 +305,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-  void openssl_hash_md5(VMContext& context) {
+  void crypto_hash_md5(VMContext& context) {
     // get parameters
     size_t* input_array = (size_t*)APITools_GetArray(context, 1)[0];
     const long input_size = ((long)APITools_GetArraySize(input_array));
@@ -361,7 +361,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-  void openssl_encrypt_aes256(VMContext& context) {
+  void crypto_encrypt_aes256(VMContext& context) {
     // get parameters
     size_t* key_array = (size_t*)APITools_GetArray(context, 1)[0];
     const long key_size = ((long)APITools_GetArraySize(key_array));
@@ -431,7 +431,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-  void openssl_decrypt_aes256(VMContext& context) {
+  void crypto_decrypt_aes256(VMContext& context) {
     // get parameters
     size_t* key_array = (size_t*)APITools_GetArray(context, 1)[0];
     const long key_size = ((long)APITools_GetArraySize(key_array));
@@ -504,7 +504,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-  void openssl_encrypt_base64(VMContext& context) {
+  void crypto_encrypt_base64(VMContext& context) {
     // get parameters
     size_t* input_array = (size_t*)APITools_GetArray(context, 1)[0];
     const long input_size = ((long)APITools_GetArraySize(input_array));
@@ -544,7 +544,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-  void openssl_decrypt_base64(VMContext& context) {
+  void crypto_decrypt_base64(VMContext& context) {
     const std::wstring w_input = APITools_GetStringValue(context, 1);
     const std::string input = UnicodeToBytes(w_input);
 

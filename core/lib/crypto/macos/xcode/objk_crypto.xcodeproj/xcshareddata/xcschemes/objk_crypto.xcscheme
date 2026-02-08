@@ -15,9 +15,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "ED97AE322597E75B00344432"
-               BuildableName = "libobjk_openssl.dylib"
-               BlueprintName = "objk_openssl"
-               ReferencedContainer = "container:objk_openssl.xcodeproj">
+               BuildableName = "libobjk_crypto.dylib"
+               BlueprintName = "objk_crypto"
+               ReferencedContainer = "container:objk_crypto.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -51,9 +51,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "ED97AE322597E75B00344432"
-            BuildableName = "libobjk_openssl.dylib"
-            BlueprintName = "objk_openssl"
-            ReferencedContainer = "container:objk_openssl.xcodeproj">
+            BuildableName = "libobjk_crypto.dylib"
+            BlueprintName = "objk_crypto"
+            ReferencedContainer = "container:objk_crypto.xcodeproj">
          </BuildableReference>
       </MacroExpansion>
    </ProfileAction>

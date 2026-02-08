@@ -14,7 +14,7 @@ bundle Cipher {
 		
 		function : GetDllProxy() ~ DllProxy {
 			if(@lib_proxy = Nil) {
-				@lib_proxy := DllProxy->New("libobjk_openssl");
+				@lib_proxy := DllProxy->New("libobjk_crypto");
 			};
 
 			return @lib_proxy;
@@ -35,7 +35,7 @@ bundle Cipher {
 				array_args := Base->New[2];
 				array_args[0] := ByteArrayRef->New(Nil->As(Byte[]));
 				array_args[1] := ByteArrayRef->New(stream_in);				
-				Proxy->GetDllProxy()->CallFunction("openssl_hash_sha1", array_args);
+				Proxy->GetDllProxy()->CallFunction("crypto_hash_sha1", array_args);
 				
 				holder := array_args[0]->As(ByteArrayRef);
 				return holder->Get();
@@ -54,7 +54,7 @@ bundle Cipher {
 				array_args := Base->New[2];
 				array_args[0] := ByteArrayRef->New(Nil->As(Byte[]));
 				array_args[1] := ByteArrayRef->New(stream_in);				
-				Proxy->GetDllProxy()->CallFunction("openssl_hash_sha256", array_args);
+				Proxy->GetDllProxy()->CallFunction("crypto_hash_sha256", array_args);
 				
 				holder := array_args[0]->As(ByteArrayRef);
 				return holder->Get();
@@ -73,7 +73,7 @@ bundle Cipher {
 				array_args := Base->New[2];
 				array_args[0] := ByteArrayRef->New(Nil->As(Byte[]));
 				array_args[1] := ByteArrayRef->New(stream_in);				
-				Proxy->GetDllProxy()->CallFunction("openssl_hash_sha512", array_args);
+				Proxy->GetDllProxy()->CallFunction("crypto_hash_sha512", array_args);
 				
 				holder := array_args[0]->As(ByteArrayRef);
 				return holder->Get();
@@ -92,7 +92,7 @@ bundle Cipher {
 				array_args := Base->New[2];
 				array_args[0] := ByteArrayRef->New(Nil->As(Byte[]));
 				array_args[1] := ByteArrayRef->New(stream_in);				
-				Proxy->GetDllProxy()->CallFunction("openssl_hash_md5", array_args);
+				Proxy->GetDllProxy()->CallFunction("crypto_hash_md5", array_args);
 				
 				holder := array_args[0]->As(ByteArrayRef);
 				return holder->Get();
@@ -112,7 +112,7 @@ bundle Cipher {
 				array_args[0] := ByteArrayRef->New(Nil->As(Byte[]));
 				array_args[1] := ByteArrayRef->New(stream_in);
 
-				Proxy->GetDllProxy()->CallFunction("openssl_hash_ripemd160", array_args);
+				Proxy->GetDllProxy()->CallFunction("crypto_hash_ripemd160", array_args);
 				
 				holder := array_args[0]->As(ByteArrayRef);
 				return holder->Get();
@@ -139,7 +139,7 @@ bundle Cipher {
 				array_args[1] := ByteArrayRef->New(key);
 				array_args[2] := ByteArrayRef->New(stream_in);
 
-				Proxy->GetDllProxy()->CallFunction("openssl_encrypt_aes256", array_args);
+				Proxy->GetDllProxy()->CallFunction("crypto_encrypt_aes256", array_args);
 				
 				holder := array_args[0]->As(ByteArrayRef);
 				return holder->Get();
@@ -158,7 +158,7 @@ bundle Cipher {
 			array_args[0] := Nil;
 			array_args[1] := ByteArrayRef->New(input);
 
-			Proxy->GetDllProxy()->CallFunction("openssl_encrypt_base64", array_args);
+			Proxy->GetDllProxy()->CallFunction("crypto_encrypt_base64", array_args);
 
 			return array_args[0]->As(String);
 		}
@@ -181,7 +181,7 @@ bundle Cipher {
 				array_args[1] := ByteArrayRef->New(key);
 				array_args[2] := ByteArrayRef->New(stream_in);	
 
-				Proxy->GetDllProxy()->CallFunction("openssl_decrypt_aes256", array_args);
+				Proxy->GetDllProxy()->CallFunction("crypto_decrypt_aes256", array_args);
 				
 				holder := array_args[0]->As(ByteArrayRef);
 				return holder->Get();
@@ -200,7 +200,7 @@ bundle Cipher {
 			array_args[0] := ByteArrayRef->New(Nil->As(Byte[]));
 			array_args[1] := input;
 
-			Proxy->GetDllProxy()->CallFunction("openssl_decrypt_base64", array_args);
+			Proxy->GetDllProxy()->CallFunction("crypto_decrypt_base64", array_args);
 
 			holder := array_args[0]->As(ByteArrayRef);
 			return holder->Get();

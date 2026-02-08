@@ -7,12 +7,12 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		ED97AE452597E7DE00344432 /* openssl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED97AE442597E7DE00344432 /* openssl.cpp */; };
+		ED97AE452597E7DE00344432 /* crypto.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED97AE442597E7DE00344432 /* crypto.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		ED97AE332597E75B00344432 /* libobjk_openssl.dylib */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = libobjk_openssl.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
-		ED97AE442597E7DE00344432 /* openssl.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = openssl.cpp; path = ../../../openssl.cpp; sourceTree = "<group>"; };
+		ED97AE332597E75B00344432 /* libobjk_crypto.dylib */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = libobjk_crypto.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
+		ED97AE442597E7DE00344432 /* crypto.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = crypto.cpp; path = ../../../crypto.cpp; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -29,7 +29,7 @@
 		ED97AE2A2597E75B00344432 = {
 			isa = PBXGroup;
 			children = (
-				ED97AE352597E75B00344432 /* objk_openssl */,
+				ED97AE352597E75B00344432 /* objk_crypto */,
 				ED97AE342597E75B00344432 /* Products */,
 			);
 			indentWidth = 3;
@@ -39,17 +39,17 @@
 		ED97AE342597E75B00344432 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				ED97AE332597E75B00344432 /* libobjk_openssl.dylib */,
+				ED97AE332597E75B00344432 /* libobjk_crypto.dylib */,
 			);
 			name = Products;
 			sourceTree = "<group>";
 		};
-		ED97AE352597E75B00344432 /* objk_openssl */ = {
+		ED97AE352597E75B00344432 /* objk_crypto */ = {
 			isa = PBXGroup;
 			children = (
-				ED97AE442597E7DE00344432 /* openssl.cpp */,
+				ED97AE442597E7DE00344432 /* crypto.cpp */,
 			);
-			path = objk_openssl;
+			path = objk_crypto;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -65,9 +65,9 @@
 /* End PBXHeadersBuildPhase section */
 
 /* Begin PBXNativeTarget section */
-		ED97AE322597E75B00344432 /* objk_openssl */ = {
+		ED97AE322597E75B00344432 /* objk_crypto */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = ED97AE3E2597E75B00344432 /* Build configuration list for PBXNativeTarget "objk_openssl" */;
+			buildConfigurationList = ED97AE3E2597E75B00344432 /* Build configuration list for PBXNativeTarget "objk_crypto" */;
 			buildPhases = (
 				ED97AE2F2597E75B00344432 /* Headers */,
 				ED97AE302597E75B00344432 /* Sources */,
@@ -77,9 +77,9 @@
 			);
 			dependencies = (
 			);
-			name = objk_openssl;
+			name = objk_crypto;
 			productName = xcode;
-			productReference = ED97AE332597E75B00344432 /* libobjk_openssl.dylib */;
+			productReference = ED97AE332597E75B00344432 /* libobjk_crypto.dylib */;
 			productType = "com.apple.product-type.library.dynamic";
 		};
 /* End PBXNativeTarget section */
@@ -95,7 +95,7 @@
 					};
 				};
 			};
-			buildConfigurationList = ED97AE2E2597E75B00344432 /* Build configuration list for PBXProject "objk_openssl" */;
+			buildConfigurationList = ED97AE2E2597E75B00344432 /* Build configuration list for PBXProject "objk_crypto" */;
 			compatibilityVersion = "Xcode 9.3";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -108,7 +108,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				ED97AE322597E75B00344432 /* objk_openssl */,
+				ED97AE322597E75B00344432 /* objk_crypto */,
 			);
 		};
 /* End PBXProject section */
@@ -118,7 +118,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				ED97AE452597E7DE00344432 /* openssl.cpp in Sources */,
+				ED97AE452597E7DE00344432 /* crypto.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -297,7 +297,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		ED97AE2E2597E75B00344432 /* Build configuration list for PBXProject "objk_openssl" */ = {
+		ED97AE2E2597E75B00344432 /* Build configuration list for PBXProject "objk_crypto" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				ED97AE3C2597E75B00344432 /* Debug */,
@@ -306,7 +306,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		ED97AE3E2597E75B00344432 /* Build configuration list for PBXNativeTarget "objk_openssl" */ = {
+		ED97AE3E2597E75B00344432 /* Build configuration list for PBXNativeTarget "objk_crypto" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				ED97AE3F2597E75B00344432 /* Debug */,
