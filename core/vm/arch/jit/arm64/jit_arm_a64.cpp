@@ -4227,32 +4227,36 @@ RegisterHolder* JitArm64::ArrayIndex(StackInstr* instr, MemoryType type)
   }
 
   const long dim = instr->GetOperand();
-  for(int i = 1; i < dim; ++i) {
-    // index *= array[i];
-    mul_mem_reg((i + 2) * sizeof(size_t), array_holder->GetRegister(), index_holder->GetRegister());    
-    delete holder;
-    holder = nullptr;
-    
-    holder = working_stack.front();
-    working_stack.pop_front();
-    switch(holder->GetType()) {
-    case IMM_INT:
-      add_imm_reg((long)holder->GetOperand(), index_holder->GetRegister());
-      break;
+  // Optimization: Skip loop for 1D arrays (most common case)
+  // Multi-dimensional array indexing requires multiply-accumulate loop
+  if(dim > 1) {
+    for(int i = 1; i < dim; ++i) {
+      // index *= array[i];
+      mul_mem_reg((i + 2) * sizeof(size_t), array_holder->GetRegister(), index_holder->GetRegister());
+      delete holder;
+      holder = nullptr;
 
-    case REG_INT:
-      add_reg_reg(holder->GetRegister()->GetRegister(),
-                  index_holder->GetRegister());
-      break;
+      holder = working_stack.front();
+      working_stack.pop_front();
+      switch(holder->GetType()) {
+      case IMM_INT:
+        add_imm_reg((long)holder->GetOperand(), index_holder->GetRegister());
+        break;
 
-    case MEM_INT:
-      add_mem_reg((long)holder->GetOperand(), SP, index_holder->GetRegister());
-      break;
+      case REG_INT:
+        add_reg_reg(holder->GetRegister()->GetRegister(),
+                    index_holder->GetRegister());
+        break;
 
-    default:
-      wcerr << L">>> Internal error! <<<" << std::endl;
-      exit(1);
-      break;
+      case MEM_INT:
+        add_mem_reg((long)holder->GetOperand(), SP, index_holder->GetRegister());
+        break;
+
+      default:
+        wcerr << L">>> Internal error! <<<" << std::endl;
+        exit(1);
+        break;
+      }
     }
   }
 
