@@ -3301,12 +3301,26 @@ void JitAmd64::cmp_imm_reg(int64_t imm, Register reg) {
     cmp_reg_reg(holder->GetRegister(), reg);
     ReleaseRegister(holder);
   }
+  // Optimization: Use 8-bit immediate form for small values (saves 3 bytes)
+  else if(imm >= INT8_MIN && imm <= INT8_MAX) {
+#ifdef _DEBUG_JIT
+    std::wcout << L"  " << (++instr_count) << L": [cmpq $" << imm << L", %"
+      << GetRegisterName(reg) << L"]" << std::endl;
+#endif
+    // CMP r64, imm8: REX.W + 0x83 /7 + imm8 (4 bytes vs 7 bytes)
+    AddMachineCode(XB(reg));           // REX.W prefix (with extensions)
+    AddMachineCode(0x83);              // CMP r/m64, imm8 opcode
+    unsigned char code = 0xf8;        // ModR/M with /7 for CMP
+    RegisterEncode3(code, 5, reg);
+    AddMachineCode(code);
+    AddMachineCode((unsigned char)(imm & 0xFF)); // 8-bit immediate
+  }
   else {
 #ifdef _DEBUG_JIT
     std::wcout << L"  " << (++instr_count) << L": [cmpq $" << imm << L", %"
       << GetRegisterName(reg) << L"]" << std::endl;
 #endif
-    // encode
+    // Regular CMP with 32-bit immediate
     AddMachineCode(XB(reg));
     AddMachineCode(0x81);
     unsigned char code = 0xf8;
@@ -3456,8 +3470,18 @@ void JitAmd64::add_imm_reg(int64_t imm, Register reg) {
     RegisterEncode3(code, 5, reg);
     AddMachineCode(code);
   }
+  // Optimization: Use 8-bit immediate form for small values (saves 3 bytes)
+  else if(imm >= INT8_MIN && imm <= INT8_MAX) {
+    // ADD r64, imm8: REX.W + 0x83 /0 + imm8 (4 bytes vs 7 bytes)
+    AddMachineCode(B(reg));           // REX.W prefix
+    AddMachineCode(0x83);              // ADD r/m64, imm8 opcode
+    unsigned char code = 0xc0;
+    RegisterEncode3(code, 5, reg);    // ModR/M with /0 for ADD
+    AddMachineCode(code);
+    AddMachineCode((unsigned char)(imm & 0xFF)); // 8-bit immediate
+  }
   else {
-    // Regular ADD with immediate
+    // Regular ADD with 32-bit immediate
     AddMachineCode(B(reg));
     AddMachineCode(0x81);
     unsigned char code = 0xc0;
@@ -3733,8 +3757,18 @@ void JitAmd64::sub_imm_reg(int64_t imm, Register reg) {
     RegisterEncode3(code, 5, reg);
     AddMachineCode(code);
   }
+  // Optimization: Use 8-bit immediate form for small values (saves 3 bytes)
+  else if(imm >= INT8_MIN && imm <= INT8_MAX) {
+    // SUB r64, imm8: REX.W + 0x83 /5 + imm8 (4 bytes vs 7 bytes)
+    AddMachineCode(B(reg));           // REX.W prefix
+    AddMachineCode(0x83);              // SUB r/m64, imm8 opcode
+    unsigned char code = 0xe8;        // ModR/M with /5 for SUB
+    RegisterEncode3(code, 5, reg);
+    AddMachineCode(code);
+    AddMachineCode((unsigned char)(imm & 0xFF)); // 8-bit immediate
+  }
   else {
-    // Regular SUB with immediate
+    // Regular SUB with 32-bit immediate
     AddMachineCode(B(reg));
     AddMachineCode(0x81);
     unsigned char code = 0xe8;
