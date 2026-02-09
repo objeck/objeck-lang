@@ -1,2 +1,0 @@
-﻿  onnx_dml.cpp
-LINK : fatal error LNK1181: cannot open input file 'C:\Users\objec\Documents\Code\objeck-lang\core\lib\onnx\eq\dml\packages\Microsoft.ML.OnnxRuntime.DirectML.1.22.1\build\native\..\..\runtimes\win-x64\native\onnxruntime.lib'
