@@ -10,6 +10,39 @@ IF "%VCINSTALLDIR%"=="" (
 	goto end
 )
 
+REM Check for mbedTLS ARM64 libraries
+if [%1] == [arm64] (
+	if not exist "..\lib\openssl\win\arm64\mbedtls.lib" (
+		echo.
+		echo ============================================================
+		echo  ERROR: mbedTLS ARM64 libraries not found
+		echo ============================================================
+		echo.
+		echo The ARM64 build requires mbedTLS 3.6.3 libraries.
+		echo.
+		echo Building mbedTLS ARM64 libraries automatically...
+		echo This is a one-time setup that will take 5-10 minutes.
+		echo.
+
+		pushd ..\lib\crypto
+		call build_mbedtls_arm64.cmd
+		popd
+
+		if not exist "..\lib\openssl\win\arm64\mbedtls.lib" (
+			echo.
+			echo ERROR: Failed to build mbedTLS ARM64 libraries.
+			echo Please see core\lib\crypto\BUILD_MBEDTLS_ARM64.md for manual instructions.
+			echo.
+			goto end
+		)
+
+		echo.
+		echo mbedTLS ARM64 libraries installed successfully!
+		echo Continuing with build...
+		echo.
+	)
+)
+
 set ZIP_BIN="\Program Files\7-Zip"
 
 if [%1] == [arm64] (

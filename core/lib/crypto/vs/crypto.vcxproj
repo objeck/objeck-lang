@@ -90,6 +90,8 @@
     <IncludePath>..\win\include;..\..\zlib\win;$(IncludePath);$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
     <LibraryPath>..\..\zlib\win\arm64;..\win\arm64;..\..\openssl\win\arm64;$(LibraryPath)</LibraryPath>
     <TargetName>libobjk_crypto</TargetName>
+    <OutDir>..\ARM64\$(Configuration)\</OutDir>
+    <IntDir>ARM64\$(Configuration)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
@@ -104,6 +106,8 @@
     <LinkIncremental>false</LinkIncremental>
     <IncludePath>..\win\include;..\..\zlib\win;$(IncludePath);$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
     <TargetName>libobjk_crypto</TargetName>
+    <OutDir>..\ARM64\$(Configuration)\</OutDir>
+    <IntDir>ARM64\$(Configuration)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Label="Vcpkg">
     <VcpkgEnabled>false</VcpkgEnabled>
@@ -120,9 +124,6 @@
       <SubSystem>Console</SubSystem>
       <AdditionalDependencies>libz-static.lib;mbedtls.lib;mbedcrypto.lib;mbedx509.lib;bcrypt.lib;crypt32.lib;ws2_32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
-    <PostBuildEvent>
-      <Command>copy /y C:\Users\objec\Documents\Code\objeck-lang\core\lib\crypto\Debug\win64\libobjk_crypto.dll C:\Users\objec\Documents\Code\objeck-lang\core\release\deploy64\lib\native</Command>
-    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">
     <ClCompile>
@@ -136,9 +137,6 @@
       <SubSystem>Console</SubSystem>
       <AdditionalDependencies>libz-static.lib;mbedtls.lib;mbedcrypto.lib;mbedx509.lib;bcrypt.lib;crypt32.lib;ws2_32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
-    <PostBuildEvent>
-      <Command>copy /y C:\Users\objec\Documents\Code\objeck-lang\core\lib\crypto\Debug\win64\libobjk_crypto.dll C:\Users\objec\Documents\Code\objeck-lang\core\release\deploy64\lib\native</Command>
-    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
