@@ -61,6 +61,7 @@
 #include <mbedtls/x509_crt.h>
 #include <mbedtls/pk.h>
 #include <mbedtls/error.h>
+#include <mbedtls/version.h>
 
 #ifdef _WIN32
 #include <direct.h>
