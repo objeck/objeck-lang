@@ -1,3 +1,0 @@
-wget https://www.mlpack.org/datasets/ml-20m/ratings-only.csv.gz
-wget https://www.mlpack.org/datasets/ml-20m/movies.csv.gz
-gunzip ratings-only.csv.gz movies.csv.gz

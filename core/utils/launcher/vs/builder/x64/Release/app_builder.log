@@ -1,6 +1,0 @@
-﻿  builder.cpp
-  Generating code
-  Previous IPDB not found, fall back to full compilation.
-  All 882 functions were compiled because no usable IPDB/IOBJ from previous compilation was found.
-  Finished generating code
-  app_builder.vcxproj -> C:\Users\objec\Documents\Code\objeck-lang\core\utils\launcher\x64\Release\obb.exe

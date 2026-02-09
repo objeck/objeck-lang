@@ -1,3 +1,73 @@
+# Objeck build outputs
 *.o
 *.a
 *.obe
+
+# MSVC compiled objects
+*.obj
+
+# Linker artifacts
+*.exp
+*.ilk
+
+# Debug symbols and incremental build
+*.pdb
+*.idb
+*.iobj
+*.ipdb
+
+# Compiled Windows resources
+*.res
+
+# C++ module interface
+*.ifc
+*.ifc.d.json
+*.module.json
+
+# MSBuild tracking and logs
+*.tlog
+*.lastbuildstate
+*.Build.CppClean.log
+*.exe.recipe
+*.vcxproj.FileListAbsolute.txt
+UpgradeLog.htm
+
+# Visual Studio user/cache files
+.vs/
+
+# Claude
+.claude/
+
+# Build output directories
+**/x64/Debug/
+**/x64/Release/
+**/ARM64/Debug/
+**/ARM64/Release/
+**/Release/win64/
+**/Release/x64/
+**/Debug/x64/
+**/Debug/win64/
+**/vs/Release/
+**/vs/Debug/
+
+# Deprecated/unused
+core/lib/experimental/
+
+# Deploy/release staging
+core/release/deploy-x64/
+core/release/test-x64/
+core/release/x64/
+
+# NuGet packages (binaries)
+*.nupkg
+
+# NuGet extracted packages
+**/packages/
+
+# Temp logs
+logs_*/
+
+# Misc
+nul
+build.txt
+*.zip
