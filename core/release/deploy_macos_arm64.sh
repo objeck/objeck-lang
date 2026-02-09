@@ -77,12 +77,11 @@ cp macos/xcode/build/Release/libxcode.dylib ../../release/deploy/lib/native/libo
 cd ../diags
 xcodebuild -project macos/xcode/objk_diags.xcodeproj clean build
 cp macos/xcode/build/Release/libobjk_diags.dylib ../../release/deploy/lib/native/libobjk_diags.dylib
-Architecturesg
 # copy docs
 cd ../../..
 cp -R docs/syntax core/release/deploy/doc/syntax
 cp docs/readme.html core/release/deploy
-cp docs/doc/readme.css core/release/deploy/doc
+cp docs/style/readme.css core/release/deploy/doc
 cp LICENSE core/release/deploy
 unzip docs/api.zip -d core/release/deploy/doc
 

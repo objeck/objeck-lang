@@ -51,6 +51,7 @@
 		ED9AB5BB2A41402D00C0A8DA /* context.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED9AB5A72A41402D00C0A8DA /* context.cpp */; };
 		ED9AB5BC2A41402D00C0A8DA /* intermediate.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED9AB5A82A41402D00C0A8DA /* intermediate.cpp */; };
 		ED9AB5BD2A41402D00C0A8DA /* compiler.h in Headers */ = {isa = PBXBuildFile; fileRef = ED9AB5A92A41402D00C0A8DA /* compiler.h */; };
+		ED2B99902A413913000B6CD8 /* dispatch.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED2B99912A413913000B6CD8 /* dispatch.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -99,6 +100,8 @@
 		ED9AB5A72A41402D00C0A8DA /* context.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = context.cpp; path = ../../../compiler/context.cpp; sourceTree = "<group>"; };
 		ED9AB5A82A41402D00C0A8DA /* intermediate.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = intermediate.cpp; path = ../../../compiler/intermediate.cpp; sourceTree = "<group>"; };
 		ED9AB5A92A41402D00C0A8DA /* compiler.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = compiler.h; path = ../../../compiler/compiler.h; sourceTree = "<group>"; };
+		ED2B99912A413913000B6CD8 /* dispatch.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = dispatch.cpp; path = ../../../vm/dispatch.cpp; sourceTree = "<group>"; };
+		ED2B99922A413913000B6CD8 /* dispatch.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = dispatch.h; path = ../../../vm/dispatch.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -154,6 +157,8 @@
 				ED2B99752A413913000B6CD8 /* lib_api.h */,
 				ED2B99732A413913000B6CD8 /* loader.cpp */,
 				ED2B99772A413913000B6CD8 /* loader.h */,
+				ED2B99912A413913000B6CD8 /* dispatch.cpp */,
+				ED2B99922A413913000B6CD8 /* dispatch.h */,
 				ED2B99712A413913000B6CD8 /* vm.cpp */,
 				ED2B99782A413913000B6CD8 /* vm.h */,
 			);
@@ -298,6 +303,7 @@
 				ED2B997C2A413913000B6CD8 /* loader.cpp in Sources */,
 				ED9AB5B12A41402D00C0A8DA /* types.cpp in Sources */,
 				ED9AB5B82A41402D00C0A8DA /* compiler.cpp in Sources */,
+				ED2B99902A413913000B6CD8 /* dispatch.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
