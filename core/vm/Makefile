@@ -7,7 +7,7 @@ JIT_PATH=arch/jit/amd64
 EXE= obr
 
 $(EXE): $(SRC) $(OBJ_LIBS)
-	$(CXX) -m64 -o $(EXE) $(SRC) $(OBJ_LIBS) -lssl -lcrypto -ldl -lz -pthread
+	$(CXX) -m64 -o $(EXE) $(SRC) $(OBJ_LIBS) -lmbedtls -lmbedx509 -lmbedcrypto -ldl -lz -pthread
 
 memory.a:
 	cd $(MEM_PATH); $(MAKE) -f make/Makefile.amd64
