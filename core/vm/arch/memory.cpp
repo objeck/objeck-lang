@@ -37,7 +37,7 @@ StackProgram* MemoryManager::prgm;
 std::unordered_set<StackFrame**> MemoryManager::pda_frames;
 std::unordered_set<StackFrameMonitor*> MemoryManager::pda_monitors;
 std::vector<StackFrame*> MemoryManager::jit_frames;
-std::set<size_t*> MemoryManager::allocated_memory;
+std::unordered_set<size_t*> MemoryManager::allocated_memory;
 
 std::unordered_map<size_t, std::list<size_t*>*> MemoryManager::free_memory_cache;
 size_t MemoryManager::free_memory_cache_size;
@@ -350,10 +350,6 @@ size_t* MemoryManager::GetMemory(size_t size) {
 }
 
 void MemoryManager::AddFreeMemory(size_t* raw_mem) {
-  if(free_memory_cache_size > mem_max_size) {
-    ClearFreeMemory();
-  }
-
   const size_t size = AlignMemorySize(raw_mem[0]);
   if(size) {
     AddFreeCache(size, raw_mem);
@@ -535,43 +531,9 @@ void MemoryManager::CollectAllMemory(size_t* op_stack, size_t stack_pos)
   info->op_stack = op_stack; 
   info->stack_pos = stack_pos;
 
-#ifndef _GC_SERIAL
-#ifdef _WIN32
-  HANDLE collect_thread_id = (HANDLE)_beginthreadex(nullptr, 0, CollectMemory, info, 0, nullptr);
-  if(!collect_thread_id) {
-    std::wcerr << L"Unable to create garbage collection thread!" << std::endl;
-    exit(-1);
-  }
-#else
-  pthread_attr_t attrs;
-  pthread_attr_init(&attrs);
-  pthread_attr_setdetachstate(&attrs, PTHREAD_CREATE_JOINABLE);
-  
-  pthread_t collect_thread;
-  if(pthread_create(&collect_thread, &attrs, CollectMemory, (void*)info)) {
-    std::wcerr << L"Unable to create garbage collection thread!" << std::endl;
-    exit(-1);
-  }
-#endif
-#else
   CollectMemory(info);
-#endif
 
 #ifndef _GC_SERIAL
-#ifdef _WIN32
-  if(WaitForSingleObject(collect_thread_id, INFINITE) != WAIT_OBJECT_0) {
-    std::wcerr << L"Unable to join garbage collection threads!" << std::endl;
-    exit(-1);
-  }  
-  CloseHandle(collect_thread_id);
-#else
-  void* status;
-  if(pthread_join(collect_thread, &status)) {
-    std::wcerr << L"Unable to join garbage collection threads!" << std::endl;
-    exit(-1);
-  }
-  pthread_attr_destroy(&attrs);
-#endif  
   MUTEX_UNLOCK(&marked_sweep_lock);
 #endif
 
@@ -714,73 +676,70 @@ void* MemoryManager::CollectMemory(void* arg)
   std::wcout << L"-----------------------------------------" << std::endl;
 #endif
 
-#ifndef _GC_SERIAL
+  std::vector<size_t*> dead_memory;
 
-#endif
-  std::set<size_t*> live_memory;
-
-  // for(size_t i = 0; i < allocated_memory.size(); ++i) {
-  for (std::set<size_t*>::iterator iter = allocated_memory.begin(); iter != allocated_memory.end(); ++iter) {
-    // size_t* mem = allocated_memory[i];
+  for(std::unordered_set<size_t*>::iterator iter = allocated_memory.begin(); iter != allocated_memory.end(); ++iter) {
     size_t* mem = *iter;
 
     // check dynamic memory
-    bool found = false;
     if(mem[MARKED_FLAG]) {
       mem[MARKED_FLAG] = 0L;
-      found = true;
-    }
-
-    // live
-    if(found) {
-      live_memory.insert(mem);
     }
     // will be collected
     else {
-      // object or array  
-      size_t mem_size;
-      if(mem[TYPE] == NIL_TYPE) {
-        StackClass* cls = (StackClass*)mem[SIZE_OR_CLS];
-#ifdef _DEBUG_GC
-        assert(cls);
-#endif
-        if(cls) {
-          mem_size = cls->GetInstanceMemorySize();
-        }
-        else {
-          mem_size = mem[SIZE_OR_CLS];
-        }
-      } 
-      else {
-        mem_size = mem[SIZE_OR_CLS];
-      }
-
-      // account for deallocated memory
-      allocation_size -= mem_size;
-
-#ifdef _MEM_LOGGING
-      mem_logger << mem_cycle << L", dealloc," << (mem[SIZE_OR_CLS] ? "obj," : "array,") << mem << L"," << mem_size << std::endl;
-#endif
-
-      // cache or free memory
-      size_t* tmp = mem - EXTRA_BUF_SIZE;
-      AddFreeMemory(tmp - 1);
-#ifdef _DEBUG_GC
-      std::wcout << L"# freeing memory: addr=" << mem << L"(" << (size_t)mem
-            << L"), size=" << mem_size << L" byte(s) #" << std::endl;
-#endif
+      dead_memory.push_back(mem);
     }
   }
 
 #ifndef _GC_SERIAL
   MUTEX_UNLOCK(&marked_lock);
-#endif  
+#endif
+
+  // free dead objects and remove from allocated set
+  const size_t prev_size = allocated_memory.size();
+  for(size_t i = 0; i < dead_memory.size(); ++i) {
+    size_t* mem = dead_memory[i];
+
+    // object or array
+    size_t mem_size;
+    if(mem[TYPE] == NIL_TYPE) {
+      StackClass* cls = (StackClass*)mem[SIZE_OR_CLS];
+#ifdef _DEBUG_GC
+      assert(cls);
+#endif
+      if(cls) {
+        mem_size = cls->GetInstanceMemorySize();
+      }
+      else {
+        mem_size = mem[SIZE_OR_CLS];
+      }
+    }
+    else {
+      mem_size = mem[SIZE_OR_CLS];
+    }
+
+    // account for deallocated memory
+    allocation_size -= mem_size;
+
+#ifdef _MEM_LOGGING
+    mem_logger << mem_cycle << L", dealloc," << (mem[SIZE_OR_CLS] ? "obj," : "array,") << mem << L"," << mem_size << std::endl;
+#endif
+
+    // cache or free memory
+    size_t* tmp = mem - EXTRA_BUF_SIZE;
+    AddFreeMemory(tmp - 1);
+    allocated_memory.erase(mem);
+#ifdef _DEBUG_GC
+    std::wcout << L"# freeing memory: addr=" << mem << L"(" << (size_t)mem
+          << L"), size=" << mem_size << L" byte(s) #" << std::endl;
+#endif
+  }
 
   // did not collect memory; adjust constraints
-  if(live_memory.size() >= allocated_memory.size() - 1) {
+  if(dead_memory.empty() || allocated_memory.size() >= prev_size - 1) {
     if(uncollected_count < UNCOLLECTED_COUNT) {
       uncollected_count++;
-    } 
+    }
     else {
       mem_max_size <<= 4;
       uncollected_count = 0;
@@ -790,7 +749,7 @@ void* MemoryManager::CollectMemory(void* arg)
   else if(mem_max_size != MEM_START_MAX) {
     if(collected_count < COLLECTED_COUNT) {
       collected_count++;
-    } 
+    }
     else {
       mem_max_size >>= 2;
       if(mem_max_size <= 0) {
@@ -800,8 +759,11 @@ void* MemoryManager::CollectMemory(void* arg)
     }
   }
 
-  // copy live memory to allocated memory
-  allocated_memory = live_memory;
+  // clear free memory cache if oversized
+  if(free_memory_cache_size > mem_max_size) {
+    ClearFreeMemory();
+  }
+
 #ifndef _GC_SERIAL
   MUTEX_UNLOCK(&allocated_lock);
 #endif
@@ -822,12 +784,6 @@ void* MemoryManager::CollectMemory(void* arg)
 #ifdef _TIMING
   end = clock();
   std::wcout << std::dec << L"Sweep time: " << (double)(end - start) / CLOCKS_PER_SEC << L" second(s)." << std::endl;
-#endif
-  
-#ifndef _WIN32
-#ifndef _GC_SERIAL
-  pthread_exit(nullptr);
-#endif
 #endif
   
   return 0;
@@ -1198,7 +1154,6 @@ void* MemoryManager::CheckPdaRoots(void* arg)
       }
 
       // copy frames locally
-      frames.push_back(cur_frame);
       while(--call_stack_pos > -1) {
         StackFrame* frame = call_stack[call_stack_pos];
         if(frame->jit_mem) {
@@ -1433,7 +1388,14 @@ void MemoryManager::CheckMemory(size_t* mem, StackDclr** dclrs, const long dcls_
 
 void MemoryManager::CheckObject(size_t* mem, bool is_obj, long depth)
 {
-  if(allocated_memory.find(mem) != allocated_memory.end()) {
+#ifndef _GC_SERIAL
+  MUTEX_LOCK(&allocated_lock);
+#endif
+  const bool is_allocated = allocated_memory.find(mem) != allocated_memory.end();
+#ifndef _GC_SERIAL
+  MUTEX_UNLOCK(&allocated_lock);
+#endif
+  if(is_allocated) {
     StackClass* cls;
     if(is_obj) {
       cls = GetClass(mem);
@@ -1472,8 +1434,7 @@ void MemoryManager::CheckObject(size_t* mem, bool is_obj, long depth)
       // primitive or object array
       if(MarkMemory(mem)) {
         // ensure we're only checking int and obj arrays
-        if(std::binary_search(allocated_memory.begin(), allocated_memory.end(), mem) && 
-          (mem[TYPE] == NIL_TYPE || mem[TYPE] == INT_TYPE)) {
+        if(mem[TYPE] == NIL_TYPE || mem[TYPE] == INT_TYPE) {
             size_t* array = mem;
             const size_t size = array[0];
             const size_t dim = array[1];
