@@ -35,6 +35,84 @@
 #include "../shared/instrs.h"
 
 /****************************
+ * Maps expression type to
+ * operator symbol string
+ ****************************/
+static const std::wstring ExpressionTypeToOperator(ExpressionType type)
+{
+  switch(type) {
+  case ADD_EXPR:
+    return L"+";
+  case SUB_EXPR:
+    return L"-";
+  case MUL_EXPR:
+    return L"*";
+  case DIV_EXPR:
+    return L"/";
+  case MOD_EXPR:
+    return L"%";
+  case EQL_EXPR:
+    return L"=";
+  case NEQL_EXPR:
+    return L"<>";
+  case LES_EXPR:
+    return L"<";
+  case GTR_EXPR:
+    return L">";
+  case LES_EQL_EXPR:
+    return L"<=";
+  case GTR_EQL_EXPR:
+    return L">=";
+  case AND_EXPR:
+    return L"&";
+  case OR_EXPR:
+    return L"|";
+  case BIT_AND_EXPR:
+    return L"and";
+  case BIT_OR_EXPR:
+    return L"or";
+  case BIT_XOR_EXPR:
+    return L"xor";
+  case SHL_EXPR:
+    return L"<<";
+  case SHR_EXPR:
+    return L">>";
+  default:
+    return L"?";
+  }
+}
+
+/****************************
+ * Returns short type name
+ * from frontend type enum
+ ****************************/
+static const std::wstring ShortTypeName(frontend::Type* type)
+{
+  switch(type->GetType()) {
+  case BYTE_TYPE:
+    return L"Byte";
+  case CHAR_TYPE:
+    return L"Char";
+  case INT_TYPE:
+    return L"Int";
+  case FLOAT_TYPE:
+    return L"Float";
+  case BOOLEAN_TYPE:
+    return L"Bool";
+  case NIL_TYPE:
+    return L"Nil";
+  case VAR_TYPE:
+    return L"Var";
+  case FUNC_TYPE:
+    return L"Function";
+  case CLASS_TYPE:
+    return type->GetName();
+  default:
+    return type->GetName();
+  }
+}
+
+/****************************
  * Emits an error
  ****************************/
 void ContextAnalyzer::ProcessError(ParseNode* node, const std::wstring &msg)
@@ -321,7 +399,8 @@ void ContextAnalyzer::AnalyzeEnum(Enum* eenum, const int depth)
 #endif
 
   if(!HasProgramOrLibraryEnum(eenum->GetName())) {
-    ProcessError(eenum, L"Undefined enum: '" + FormatTypeString(eenum->GetName()));
+    ProcessError(eenum, L"Undefined enum: '" + FormatTypeString(eenum->GetName()) + L"'"
+                 L"\n\tEnsure the enum is declared or add a 'use' statement for external bundles.");
   }
 
   if(linker->SearchClassLibraries(eenum->GetName(), program->GetLibUses(eenum->GetFileName())) ||
@@ -554,16 +633,10 @@ void ContextAnalyzer::AnalyzeMethods(Class* klass, const int depth)
 
   // look for parent virtual methods
   if(current_class->GetParent() && current_class->GetParent()->IsVirtual()) {
-    if(!AnalyzeVirtualMethods(current_class, current_class->GetParent(), depth)) {
-      ProcessError(current_class, L"Not all virtual methods have been implemented for the class/interface: " +
-                   current_class->GetParent()->GetName());
-    }
+    AnalyzeVirtualMethods(current_class, current_class->GetParent(), depth);
   }
   else if(current_class->GetLibraryParent() && current_class->GetLibraryParent()->IsVirtual()) {
-    if(!AnalyzeVirtualMethods(current_class, current_class->GetLibraryParent(), depth)) {
-      ProcessError(current_class, L"Not all virtual methods have been implemented for the class/interface: " +
-                   current_class->GetLibraryParent()->GetName());
-    }
+    AnalyzeVirtualMethods(current_class, current_class->GetLibraryParent(), depth);
   }
 
   // collect anonymous classes
@@ -638,7 +711,8 @@ bool ContextAnalyzer::AnalyzeVirtualMethods(Class* impl_class, Class* virtual_cl
   
   const bool success = error_msg.empty();
   if(!success) {
-    ProcessError(impl_class, L"The following virtual methods/functions have not been implemented:" + error_msg);
+    ProcessError(impl_class, L"Virtual methods/functions from '" + virtual_class->GetName() +
+                 L"' have not been implemented:" + error_msg);
   }
 
   return success;
@@ -785,7 +859,7 @@ bool ContextAnalyzer::AnalyzeVirtualMethods(Class* impl_class, LibraryClass* lib
                                impl_method->IsStatic(), impl_method->IsVirtual(), virtual_method);
         }
         else {
-          error_msg += L"\n\t'Missing:";
+          error_msg += L"\n\tMissing: '";
           error_msg += virtual_method->GetUserName();
           error_msg += L'\'';
         }
@@ -795,9 +869,10 @@ bool ContextAnalyzer::AnalyzeVirtualMethods(Class* impl_class, LibraryClass* lib
 
   const bool success = error_msg.empty();
   if(!success) {
-    ProcessError(impl_class, L"The following virtual methods/functions have not been implemented:" + error_msg);
+    ProcessError(impl_class, L"Virtual methods/functions from '" + lib_virtual_class->GetName() +
+                 L"' have not been implemented:" + error_msg);
   }
-  
+
   return success;
 }
 
@@ -2071,7 +2146,8 @@ void ContextAnalyzer::AnalyzeVariable(Variable* variable, SymbolEntry* entry, co
   }
   // undefined variable (at class level)
   else {
-    ProcessError(variable, L"Undefined variable: '" + variable->GetName() + L"'");
+    ProcessError(variable, L"Undefined variable: '" + variable->GetName() + L"'"
+                 L"\n\tCheck spelling, ensure the variable is declared in the current scope, or add a 'use' statement for external bundles.");
   }
 
   if(variable->GetPreStatement() && variable->GetPostStatement()) {
@@ -2398,7 +2474,9 @@ void ContextAnalyzer::ValidateGenericConcreteMapping(const std::vector<Type*> co
 {
   const std::vector<LibraryClass*> class_generics = lib_klass->GetGenericClasses();
   if(class_generics.size() != concrete_types.size()) {
-    ProcessError(node, L"Cannot utilize an unqualified instance of class: '" + lib_klass->GetName() + L"'");
+    ProcessError(node, L"Generic type mismatch for class '" + lib_klass->GetName() +
+                 L"': expected " + ToString(class_generics.size()) +
+                 L" type parameter(s), got " + ToString(concrete_types.size()));
   }
   // check individual types
   if(class_generics.size() == concrete_types.size()) {
@@ -2444,7 +2522,9 @@ void ContextAnalyzer::ValidateGenericConcreteMapping(const std::vector<Type*> co
 {
   const std::vector<Class*> class_generics = klass->GetGenericClasses();
   if(class_generics.size() != concrete_types.size()) {
-    ProcessError(node, L"Cannot create an unqualified instance of class: '" + klass->GetName() + L"'");
+    ProcessError(node, L"Generic type mismatch for class '" + klass->GetName() +
+                 L"': expected " + ToString(class_generics.size()) +
+                 L" type parameter(s), got " + ToString(concrete_types.size()));
   }
   // check individual types
   if(class_generics.size() == concrete_types.size()) {
@@ -3463,7 +3543,9 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, b
       const std::vector<Class*> class_generics = klass->GetGenericClasses();      
       std::vector<Type*> concrete_types = GetConcreteTypes(method_call);
       if(class_generics.size() != concrete_types.size()) {
-        ProcessError(static_cast<Expression*>(method_call), L"Cannot create an unqualified instance of class: '" + klass->GetName() + L"'");
+        ProcessError(static_cast<Expression*>(method_call), L"Generic type mismatch for class '" + klass->GetName() +
+                     L"': expected " + ToString(class_generics.size()) +
+                     L" type parameter(s), got " + ToString(concrete_types.size()));
       }
       // check individual types
       if(class_generics.size() == concrete_types.size()) {
@@ -3769,7 +3851,9 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
       const std::vector<LibraryClass*> class_generics = lib_klass->GetGenericClasses();
       const std::vector<Type*> concrete_types = GetConcreteTypes(method_call);
       if(class_generics.size() != concrete_types.size()) {
-        ProcessError(static_cast<Expression*>(method_call), L"Cannot create an unqualified instance of class: '" + lib_method->GetUserName() + L"'");
+        ProcessError(static_cast<Expression*>(method_call), L"Generic type mismatch for class '" + lib_klass->GetName() +
+                     L"': expected " + ToString(class_generics.size()) +
+                     L" type parameter(s), got " + ToString(concrete_types.size()));
       }
       // check individual types
       if(class_generics.size() == concrete_types.size()) {
@@ -5280,60 +5364,65 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
     return;
   }
 
+  const std::wstring op = ExpressionTypeToOperator(expression->GetExpressionType());
+
   if(!IsScalar(left_expr) || !IsScalar(right_expr)) {
     // check for valid equal and not-equal checks, consider Nil and array based equal and not-equal checks
     if(!(right->GetType() == NIL_TYPE && (expression->GetExpressionType() == EQL_EXPR || expression->GetExpressionType() == NEQL_EXPR)) && left->GetDimension() != right->GetDimension()) {
-      ProcessError(left_expr, L"Invalid array based calculation");
+      ProcessError(left_expr, L"Invalid array operation '" + op + L"'");
     }
   }
   else {
+    const std::wstring left_name = ShortTypeName(left);
+    const std::wstring right_name = ShortTypeName(right);
+
     switch(left->GetType()) {
     case VAR_TYPE:
       // VAR
       switch(right->GetType()) {
       case FUNC_TYPE:
-        ProcessError(left_expr, L"Invalid operation using classes: Var and Function");
+        ProcessError(left_expr, L"Invalid operation '" + op + L"' between types: Var and Function");
         break;
 
       case VAR_TYPE:
-        ProcessError(left_expr, L"Invalid operation using classes: Var and Var");
+        ProcessError(left_expr, L"Invalid operation '" + op + L"' between types: Var and Var");
         break;
-          
+
       case ALIAS_TYPE:
         break;
 
       case NIL_TYPE:
-        ProcessError(left_expr, L"Invalid operation using classes: Var and Nil");
+        ProcessError(left_expr, L"Invalid operation '" + op + L"' between types: Var and Nil");
         break;
 
       case BYTE_TYPE:
-        ProcessError(left_expr, L"Invalid operation using classes: Var and System.Byte");
+        ProcessError(left_expr, L"Invalid operation '" + op + L"' between types: Var and Byte");
         break;
 
       case CHAR_TYPE:
-        ProcessError(left_expr, L"Invalid operation using classes: Var and System.Char");
+        ProcessError(left_expr, L"Invalid operation '" + op + L"' between types: Var and Char");
         break;
 
       case INT_TYPE:
-        ProcessError(left_expr, L"Invalid operation using classes: Var and Int");
+        ProcessError(left_expr, L"Invalid operation '" + op + L"' between types: Var and Int");
         break;
 
       case FLOAT_TYPE:
-        ProcessError(left_expr, L"Invalid operation using classes: Var and System.Float");
+        ProcessError(left_expr, L"Invalid operation '" + op + L"' between types: Var and Float");
         break;
 
       case CLASS_TYPE:
         if(HasProgramOrLibraryEnum(right->GetName())) {
-          ProcessError(left_expr, L"Invalid operation using classes: Var and Enum");
+          ProcessError(left_expr, L"Invalid operation '" + op + L"' between types: Var and Enum");
         }
         break;
 
       case BOOLEAN_TYPE:
-        ProcessError(left_expr, L"Invalid operation using classes: Var and System.Bool");
+        ProcessError(left_expr, L"Invalid operation '" + op + L"' between types: Var and Bool");
         break;
       }
       break;
-        
+
     case ALIAS_TYPE:
       break;
 
@@ -5341,41 +5430,41 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
       // NIL
       switch(right->GetType()) {
       case FUNC_TYPE:
-        ProcessError(left_expr, L"Invalid operation using classes: Nil and function reference");
+        ProcessError(left_expr, L"Invalid operation '" + op + L"' between types: Nil and Function");
         break;
 
       case VAR_TYPE:
-        ProcessError(left_expr, L"Invalid operation using classes: Nil and Var");
+        ProcessError(left_expr, L"Invalid operation '" + op + L"' between types: Nil and Var");
         break;
-          
+
       case ALIAS_TYPE:
         break;
 
       case NIL_TYPE:
-        ProcessError(left_expr, L"Invalid operation using classes: Nil and Nil");
+        ProcessError(left_expr, L"Invalid operation '" + op + L"' between types: Nil and Nil");
         break;
 
       case BYTE_TYPE:
-        ProcessError(left_expr, L"Invalid operation using classes: Nil and System.Byte");
+        ProcessError(left_expr, L"Invalid operation '" + op + L"' between types: Nil and Byte");
         break;
 
       case CHAR_TYPE:
-        ProcessError(left_expr, L"Invalid operation using classes: Nil and System.Char");
+        ProcessError(left_expr, L"Invalid operation '" + op + L"' between types: Nil and Char");
         break;
 
       case INT_TYPE:
-        ProcessError(left_expr, L"Invalid operation using classes: Nil and Int");
+        ProcessError(left_expr, L"Invalid operation '" + op + L"' between types: Nil and Int");
         break;
 
       case FLOAT_TYPE:
-        ProcessError(left_expr, L"Invalid operation using classes: Nil and System.Float");
+        ProcessError(left_expr, L"Invalid operation '" + op + L"' between types: Nil and Float");
         break;
 
       case CLASS_TYPE:
         break;
 
       case BOOLEAN_TYPE:
-        ProcessError(left_expr, L"Invalid operation using classes: Nil and System.Bool");
+        ProcessError(left_expr, L"Invalid operation '" + op + L"' between types: Nil and Bool");
         break;
       }
       break;
@@ -5384,18 +5473,18 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
       // BYTE
       switch(right->GetType()) {
       case FUNC_TYPE:
-        ProcessError(left_expr, L"Invalid operation using classes: System.Byte and function reference");
+        ProcessError(left_expr, L"Invalid operation '" + op + L"' between types: Byte and Function");
         break;
 
       case VAR_TYPE:
-        ProcessError(left_expr, L"Invalid operation using classes: System.Byte and Var");
+        ProcessError(left_expr, L"Invalid operation '" + op + L"' between types: Byte and Var");
         break;
-      
+
       case ALIAS_TYPE:
         break;
-          
+
       case NIL_TYPE:
-        ProcessError(left_expr, L"Invalid operation using classes: System.Byte and Nil");
+        ProcessError(left_expr, L"Invalid operation '" + op + L"' between types: Byte and Nil");
         break;
 
       case CHAR_TYPE:
@@ -5415,13 +5504,13 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
           expression->SetEvalType(left, true);
         }
         else if(!UnboxingCalculation(right, right_expr, expression, false, depth)) {
-          ProcessError(left_expr, L"Invalid operation using classes: System.Int and " +
+          ProcessError(left_expr, L"Invalid operation '" + op + L"' between types: Byte and " +
                        FormatTypeString(right->GetName()));
         }
         break;
 
       case BOOLEAN_TYPE:
-        ProcessError(left_expr, L"Invalid operation using classes: System.Byte and System.Bool");
+        ProcessError(left_expr, L"Invalid operation '" + op + L"' between types: Byte and Bool");
         break;
       }
       break;
@@ -5430,18 +5519,18 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
       // CHAR
       switch(right->GetType()) {
       case FUNC_TYPE:
-        ProcessError(left_expr, L"Invalid operation using classes: System.Char and function reference");
+        ProcessError(left_expr, L"Invalid operation '" + op + L"' between types: Char and Function");
         break;
 
       case VAR_TYPE:
-        ProcessError(left_expr, L"Invalid operation using classes: System.Char and Var");
+        ProcessError(left_expr, L"Invalid operation '" + op + L"' between types: Char and Var");
         break;
-          
+
       case ALIAS_TYPE:
         break;
 
       case NIL_TYPE:
-        ProcessError(left_expr, L"Invalid operation using classes: System.Char and Nil");
+        ProcessError(left_expr, L"Invalid operation '" + op + L"' between types: Char and Nil");
         break;
 
       case INT_TYPE:
@@ -5461,13 +5550,13 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
           expression->SetEvalType(left, true);
         }
         else if(!UnboxingCalculation(right, right_expr, expression, false, depth)) {
-          ProcessError(left_expr, L"Invalid operation using classes: System.Int and " +
+          ProcessError(left_expr, L"Invalid operation '" + op + L"' between types: Char and " +
                        FormatTypeString(right->GetName()));
         }
         break;
 
       case BOOLEAN_TYPE:
-        ProcessError(left_expr, L"Invalid operation using classes:  Char and System.Bool");
+        ProcessError(left_expr, L"Invalid operation '" + op + L"' between types: Char and Bool");
         break;
       }
       break;
@@ -5476,18 +5565,18 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
       // INT
       switch(right->GetType()) {
       case FUNC_TYPE:
-        ProcessError(left_expr, L"Invalid operation using classes: System.Int and function reference");
+        ProcessError(left_expr, L"Invalid operation '" + op + L"' between types: Int and Function");
         break;
 
       case VAR_TYPE:
-        ProcessError(left_expr, L"Invalid operation using classes: System.Int and Var");
+        ProcessError(left_expr, L"Invalid operation '" + op + L"' between types: Int and Var");
         break;
-          
+
       case ALIAS_TYPE:
         break;
 
       case NIL_TYPE:
-        ProcessError(left_expr, L"Invalid operation using classes: System.Int and Nil");
+        ProcessError(left_expr, L"Invalid operation '" + op + L"' between types: Int and Nil");
         break;
 
       case BYTE_TYPE:
@@ -5507,13 +5596,13 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
           expression->SetEvalType(left, true);
         }
         else if(!UnboxingCalculation(right, right_expr, expression, false, depth)) {
-          ProcessError(left_expr, L"Invalid operation using classes: System.Int and " +
+          ProcessError(left_expr, L"Invalid operation '" + op + L"' between types: Int and " +
                        FormatTypeString(right->GetName()));
         }
         break;
 
       case BOOLEAN_TYPE:
-        ProcessError(left_expr, L"Invalid operation using classes: System.Int and System.Bool");
+        ProcessError(left_expr, L"Invalid operation '" + op + L"' between types: Int and Bool");
         break;
       }
       break;
@@ -5522,18 +5611,18 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
       // FLOAT
       switch(right->GetType()) {
       case FUNC_TYPE:
-        ProcessError(left_expr, L"Invalid operation using classes: System.Float and function reference");
+        ProcessError(left_expr, L"Invalid operation '" + op + L"' between types: Float and Function");
         break;
 
       case VAR_TYPE:
-        ProcessError(left_expr, L"Invalid operation using classes: System.Float and Var");
+        ProcessError(left_expr, L"Invalid operation '" + op + L"' between types: Float and Var");
         break;
-          
+
       case ALIAS_TYPE:
         break;
 
       case NIL_TYPE:
-        ProcessError(left_expr, L"Invalid operation using classes: System.Float and Nil");
+        ProcessError(left_expr, L"Invalid operation '" + op + L"' between types: Float and Nil");
         break;
 
       case FLOAT_TYPE:
@@ -5556,13 +5645,13 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
           expression->SetEvalType(left, true);
         }
         else {
-          ProcessError(left_expr, L"Invalid operation using classes: System.Float and " +
+          ProcessError(left_expr, L"Invalid operation '" + op + L"' between types: Float and " +
                        FormatTypeString(right->GetName()));
         }
         break;
 
       case BOOLEAN_TYPE:
-        ProcessError(left_expr, L"Invalid operation using classes: System.Float and System.Bool");
+        ProcessError(left_expr, L"Invalid operation '" + op + L"' between types: Float and Bool");
         break;
       }
       break;
@@ -5571,13 +5660,13 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
       // CLASS
       switch(right->GetType()) {
       case FUNC_TYPE:
-        ProcessError(left_expr, L"Invalid operation using classes: " +
+        ProcessError(left_expr, L"Invalid operation '" + op + L"' between types: " +
                      FormatTypeString(left->GetName()) +
-                     L" and function reference");
+                     L" and Function");
         break;
 
       case VAR_TYPE:
-        ProcessError(left_expr, L"Invalid operation using classes: " +
+        ProcessError(left_expr, L"Invalid operation '" + op + L"' between types: " +
                      FormatTypeString(left->GetName()) +
                      L" and Var");
         break;
@@ -5592,8 +5681,8 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
           expression->SetEvalType(right, true);
         }
         else if(!UnboxingCalculation(left, left_expr, expression, true, depth)) {
-          ProcessError(left_expr, L"Invalid operation using classes: " +
-                       FormatTypeString(left->GetName()) + L" and System.Byte");
+          ProcessError(left_expr, L"Invalid operation '" + op + L"' between types: " +
+                       FormatTypeString(left->GetName()) + L" and Byte");
         }
         break;
 
@@ -5603,8 +5692,8 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
           expression->SetEvalType(right, true);
         }
         else if(!UnboxingCalculation(left, left_expr, expression, true, depth)) {
-          ProcessError(left_expr, L"Invalid operation using classes: " +
-                       FormatTypeString(left->GetName()) + L" and System.Char");
+          ProcessError(left_expr, L"Invalid operation '" + op + L"' between types: " +
+                       FormatTypeString(left->GetName()) + L" and Char");
         }
         break;
 
@@ -5614,7 +5703,7 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
           expression->SetEvalType(right, true);
         }
         else if(!UnboxingCalculation(left, left_expr, expression, true, depth)) {
-          ProcessError(left_expr, L"Invalid operation using classes: " + FormatTypeString(left->GetName()) + L" and System.Int");
+          ProcessError(left_expr, L"Invalid operation '" + op + L"' between types: " + FormatTypeString(left->GetName()) + L" and Int");
         }
         break;
 
@@ -5622,9 +5711,9 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
         if(HasProgramOrLibraryEnum(left->GetName())) {
           left_expr->SetCastType(right, true);
           expression->SetEvalType(right, true);
-        } 
+        }
         else if(!UnboxingCalculation(left, left_expr, expression, true, depth)) {
-          ProcessError(left_expr, L"Invalid operation using classes: " + FormatTypeString(left->GetName()) + L" and System.Float");
+          ProcessError(left_expr, L"Invalid operation '" + op + L"' between types: " + FormatTypeString(left->GetName()) + L" and Float");
         }
         break;
 
@@ -5637,25 +5726,25 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
         const bool can_unbox_right = UnboxingCalculation(right, right_expr, expression, false, depth);
         const bool is_right_enum = HasProgramOrLibraryEnum(right->GetName());
 
-        if(!can_unbox_left && !is_left_enum && !can_unbox_right && !is_right_enum && 
+        if(!can_unbox_left && !is_left_enum && !can_unbox_right && !is_right_enum &&
            expression->GetExpressionType() != EQL_EXPR && expression->GetExpressionType() != NEQL_EXPR) {
-          ProcessError(left_expr, L"Invalid operation using classes: " + FormatTypeString(left->GetName()) + L" and " + FormatTypeString(right->GetName()));
+          ProcessError(left_expr, L"Invalid operation '" + op + L"' between types: " + FormatTypeString(left->GetName()) + L" and " + FormatTypeString(right->GetName()));
         }
-        
+
         if((is_left_enum && !is_right_enum) || (!is_left_enum && is_right_enum)) {
-          ProcessError(left_expr, L"Invalid operation between class and enum: '" + FormatTypeString(left->GetName()) + 
+          ProcessError(left_expr, L"Invalid operation '" + op + L"' between class and enum: '" + FormatTypeString(left->GetName()) +
                        L"' and '" + FormatTypeString(right->GetName()) + L"'");
         }
         else if((is_left_enum && is_right_enum) || (can_unbox_left && can_unbox_right)) {
           AnalyzeClassCast(left, right, left_expr, false, depth + 1);
         }
         else if(can_unbox_left && !is_right_enum) {
-          ProcessError(left_expr, L"Invalid operation between class and enum: '" + left->GetName() + L"' and '" + right->GetName() + L"'");
+          ProcessError(left_expr, L"Invalid operation '" + op + L"' between class and enum: '" + left->GetName() + L"' and '" + right->GetName() + L"'");
         }
         else if(can_unbox_right && !is_left_enum) {
-          ProcessError(left_expr, L"Invalid operation between class and enum: '" + left->GetName() + L"' and '" + right->GetName() + L"'");
+          ProcessError(left_expr, L"Invalid operation '" + op + L"' between class and enum: '" + left->GetName() + L"' and '" + right->GetName() + L"'");
         }
-        
+
         if(left->GetName() == L"System.FloatRef" || right->GetName() == L"System.FloatRef") {
           expression->SetEvalType(TypeFactory::Instance()->MakeType(FLOAT_TYPE), true);
         }
@@ -5664,9 +5753,9 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
         }
       }
         break;
-        
+
       case BOOLEAN_TYPE:
-        ProcessError(left_expr, L"Invalid operation using classes: " + FormatTypeString(left->GetName()) + L" and System.Bool");
+        ProcessError(left_expr, L"Invalid operation '" + op + L"' between types: " + FormatTypeString(left->GetName()) + L" and Bool");
         break;
       }
       break;
@@ -5675,34 +5764,34 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
       // BOOLEAN
       switch(right->GetType()) {
       case FUNC_TYPE:
-        ProcessError(left_expr, L"Invalid operation using classes: System.Bool and function reference");
+        ProcessError(left_expr, L"Invalid operation '" + op + L"' between types: Bool and Function");
         break;
 
       case VAR_TYPE:
-        ProcessError(left_expr, L"Invalid operation using classes: System.Bool and Var");
+        ProcessError(left_expr, L"Invalid operation '" + op + L"' between types: Bool and Var");
         break;
-          
+
       case ALIAS_TYPE:
         break;
 
       case NIL_TYPE:
-        ProcessError(left_expr, L"Invalid operation using classes: System.Bool and Nil");
+        ProcessError(left_expr, L"Invalid operation '" + op + L"' between types: Bool and Nil");
         break;
 
       case BYTE_TYPE:
-        ProcessError(left_expr, L"Invalid operation using classes: System.Bool and System.Byte");
+        ProcessError(left_expr, L"Invalid operation '" + op + L"' between types: Bool and Byte");
         break;
 
       case CHAR_TYPE:
-        ProcessError(left_expr, L"Invalid operation using classes: System.Bool and System.Char");
+        ProcessError(left_expr, L"Invalid operation '" + op + L"' between types: Bool and Char");
         break;
 
       case INT_TYPE:
-        ProcessError(left_expr, L"Invalid operation using classes: System.Bool and Int");
+        ProcessError(left_expr, L"Invalid operation '" + op + L"' between types: Bool and Int");
         break;
 
       case FLOAT_TYPE:
-        ProcessError(left_expr, L"Invalid operation using classes: System.Bool and System.Float");
+        ProcessError(left_expr, L"Invalid operation '" + op + L"' between types: Bool and Float");
         break;
 
       case CLASS_TYPE:
@@ -5711,11 +5800,11 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
           expression->SetEvalType(left, true);
         }
         else if(!UnboxingCalculation(right, right_expr, expression, false, depth)) {
-          ProcessError(left_expr, L"Invalid operation using classes: System.Bool and " +
+          ProcessError(left_expr, L"Invalid operation '" + op + L"' between types: Bool and " +
                        FormatTypeString(right->GetName()));
         }
         break;
-        
+
       case BOOLEAN_TYPE:
         expression->SetEvalType(left, true);
         break;
@@ -5738,7 +5827,7 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
         }
 
         if(left->GetName() != right->GetName()) {
-          ProcessError(expression, L"Invalid operation using functions: " +
+          ProcessError(expression, L"Invalid operation '" + op + L"' between functions: " +
                        FormatTypeString(left->GetName()) + L" and " +
                        FormatTypeString(right->GetName()));
         }
@@ -5746,39 +5835,39 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
                       break;
 
       case VAR_TYPE:
-        ProcessError(left_expr, L"Invalid operation using classes: function reference and Var");
+        ProcessError(left_expr, L"Invalid operation '" + op + L"' between types: Function and Var");
         break;
-          
+
       case ALIAS_TYPE:
         break;
 
       case NIL_TYPE:
-        ProcessError(left_expr, L"Invalid operation using classes: function reference and Nil");
+        ProcessError(left_expr, L"Invalid operation '" + op + L"' between types: Function and Nil");
         break;
 
       case BYTE_TYPE:
-        ProcessError(left_expr, L"Invalid operation using classes: function reference and System.Byte");
+        ProcessError(left_expr, L"Invalid operation '" + op + L"' between types: Function and Byte");
         break;
 
       case CHAR_TYPE:
-        ProcessError(left_expr, L"Invalid operation using classes: function reference and System.Char");
+        ProcessError(left_expr, L"Invalid operation '" + op + L"' between types: Function and Char");
         break;
 
       case INT_TYPE:
-        ProcessError(left_expr, L"Invalid operation using classes: function reference and Int");
+        ProcessError(left_expr, L"Invalid operation '" + op + L"' between types: Function and Int");
         break;
 
       case FLOAT_TYPE:
-        ProcessError(left_expr, L"Invalid operation using classes: function reference and System.Float");
+        ProcessError(left_expr, L"Invalid operation '" + op + L"' between types: Function and Float");
         break;
 
       case CLASS_TYPE:
-        ProcessError(left_expr, L"Invalid operation using classes: function reference and " +
+        ProcessError(left_expr, L"Invalid operation '" + op + L"' between types: Function and " +
                      FormatTypeString(right->GetName()));
         break;
 
       case BOOLEAN_TYPE:
-        ProcessError(left_expr, L"Invalid operation using classes: function reference and System.Bool");
+        ProcessError(left_expr, L"Invalid operation '" + op + L"' between types: Function and Bool");
         break;
       }
       break;
