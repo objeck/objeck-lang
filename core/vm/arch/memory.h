@@ -86,7 +86,7 @@ class MemoryManager {
   static std::unordered_set<StackFrameMonitor*> pda_monitors; // deleted elsewhere
   static std::unordered_set<StackFrame**> pda_frames;
   static std::vector<StackFrame*> jit_frames; // deleted elsewhere
-  static std::set<size_t*> allocated_memory;
+  static std::unordered_set<size_t*> allocated_memory;
   static std::unordered_map<size_t, std::list<size_t*>*> free_memory_cache;
   static size_t free_memory_cache_size;
   
@@ -151,7 +151,7 @@ class MemoryManager {
 #ifndef _GC_SERIAL
     MUTEX_LOCK(&allocated_lock);
 #endif
-    std::set<size_t*>::iterator found = allocated_memory.find(mem);
+    std::unordered_set<size_t*>::iterator found = allocated_memory.find(mem);
     if(found != allocated_memory.end() && mem[TYPE] == instructions::MemoryType::NIL_TYPE) {
 #ifndef _GC_SERIAL
       MUTEX_UNLOCK(&allocated_lock);
@@ -187,7 +187,7 @@ class MemoryManager {
       free_memory_cache.clear();
     }
 
-    for(std::set<size_t*>::iterator iter = allocated_memory.begin(); iter != allocated_memory.end(); ++iter) {
+    for(std::unordered_set<size_t*>::iterator iter = allocated_memory.begin(); iter != allocated_memory.end(); ++iter) {
       size_t* mem = *iter;
       mem -= EXTRA_BUF_SIZE + 1;
       free(mem);
