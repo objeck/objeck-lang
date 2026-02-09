@@ -165,7 +165,6 @@ void GetWindowsFromProcessId(DWORD pId, std::vector <HWND>& hWnds)
 }
 
 #include <gdiplus.h>
-#include <atlbase.h> // for CComPtr, CComStream
 
 using namespace Gdiplus;
 using namespace std;
