@@ -200,9 +200,12 @@ void JitAmd64::RegisterRoot() {
   const int index = ((offset - 8) >> 3) + 6;
   if(index > 0) {
     move_imm_reg(index, RCX);
+    long loop_target = code_index;
     move_imm_mem(0, 0, holder->GetRegister());
     add_imm_reg(sizeof(size_t), holder->GetRegister());
-    loop(-20);
+    // LOOP rel8: offset is from end of LOOP instruction (2 bytes) back to loop_target
+    long loop_end = code_index + 2;
+    loop((int8_t)(loop_target - loop_end));
   }
 
   move_mem_reg(JIT_OFFSET, RBP, mem_holder->GetRegister());
@@ -2658,15 +2661,8 @@ void JitAmd64::move_imm_reg(int64_t imm, Register reg) {
 #else
 void JitAmd64::move_imm_reg(long imm, Register reg) {
 #endif
-  // Optimization: XOR reg, reg for zero
-  if(imm == 0) {
-#ifdef _DEBUG_JIT
-    std::wcout << L"  " << (++instr_count) << L": [xorq %" << GetRegisterName(reg)
-          << L", %" << GetRegisterName(reg) << L"] (zero idiom)" << std::endl;
-#endif
-    xor_reg_reg(reg, reg);
-    return;
-  }
+  // NOTE: XOR reg,reg clobbers FLAGS - cannot use as move_imm_reg(0) replacement
+  // because callers may depend on preserved flags.
 
   // Optimization: MOV r/m64, imm32 (sign-extended) for values in 32-bit range
   if(imm >= INT32_MIN && imm <= INT32_MAX) {
@@ -3472,6 +3468,21 @@ void JitAmd64::add_imm_mem(int64_t imm, long offset, Register dest) {
 // TODO: 64-bit literal operation for Windows
 void JitAmd64::add_imm_reg(int64_t imm, Register reg) {
   if(imm == 0) { return; }
+  if(imm == 1) { inc_reg(reg); return; }
+  if(imm == -1) { dec_reg(reg); return; }
+  if(imm >= INT8_MIN && imm <= INT8_MAX) {
+#ifdef _DEBUG_JIT
+    std::wcout << L"  " << (++instr_count) << L": [addq $" << imm << L", %"
+          << GetRegisterName(reg) << L"] (imm8)" << std::endl;
+#endif
+    AddMachineCode(B(reg));
+    AddMachineCode(0x83);
+    unsigned char code = 0xc0;
+    RegisterEncode3(code, 5, reg);
+    AddMachineCode(code);
+    AddMachineCode((unsigned char)(int8_t)imm);
+    return;
+  }
 #ifdef _DEBUG_JIT
   std::wcout << L"  " << (++instr_count) << L": [addq $" << imm << L", %"
         << GetRegisterName(reg) << L"]" << std::endl;
@@ -3726,6 +3737,22 @@ void JitAmd64::div_mem_xreg(long offset, Register src, Register dest) {
 
 // TODO: 64-bit literal operation for Windows
 void JitAmd64::sub_imm_reg(int64_t imm, Register reg) {
+  if(imm == 0) { return; }
+  if(imm == 1) { dec_reg(reg); return; }
+  if(imm == -1) { inc_reg(reg); return; }
+  if(imm >= INT8_MIN && imm <= INT8_MAX) {
+#ifdef _DEBUG_JIT
+    std::wcout << L"  " << (++instr_count) << L": [subq $" << imm << L", %"
+          << GetRegisterName(reg) << L"] (imm8)" << std::endl;
+#endif
+    AddMachineCode(B(reg));
+    AddMachineCode(0x83);
+    unsigned char code = 0xe8;
+    RegisterEncode3(code, 5, reg);
+    AddMachineCode(code);
+    AddMachineCode((unsigned char)(int8_t)imm);
+    return;
+  }
 #ifdef _DEBUG_JIT
   std::wcout << L"  " << (++instr_count) << L": [subq $" << imm << L", %"
         << GetRegisterName(reg) << L"]" << std::endl;
@@ -3785,6 +3812,67 @@ void JitAmd64::sub_mem_reg(long offset, Register src, Register dest) {
 
 // TODO: 64-bit literal operation for Windows
 void JitAmd64::mul_imm_reg(int64_t imm, Register reg) {
+  if(imm == 0) { move_imm_reg(0, reg); return; }
+  if(imm == 1) { return; }
+  if(imm == -1) {
+    // NEG r64: REX.W + F7 /3
+    AddMachineCode(B(reg));
+    AddMachineCode(0xf7);
+    unsigned char code = 0xd8;
+    RegisterEncode3(code, 5, reg);
+    AddMachineCode(code);
+    return;
+  }
+  // power of 2: use SHL
+  if(imm > 0 && (imm & (imm - 1)) == 0) {
+    int shift = 0;
+    int64_t tmp = imm;
+    while(tmp > 1) { tmp >>= 1; shift++; }
+    shl_imm_reg(shift, reg);
+    return;
+  }
+  // multiply by 3: LEA reg, [reg + reg*2]
+  if(imm == 3) {
+    bool ext = (reg > RSP && reg < XMM0) || reg > XMM7;
+    AddMachineCode(ext ? 0x4f : 0x48);
+    AddMachineCode(0x8d);
+    unsigned char modrm = 0x04;
+    RegisterEncode3(modrm, 2, reg);
+    AddMachineCode(modrm);
+    unsigned char sib = 0x40;
+    RegisterEncode3(sib, 2, reg);
+    RegisterEncode3(sib, 5, reg);
+    AddMachineCode(sib);
+    return;
+  }
+  // multiply by 5: LEA reg, [reg + reg*4]
+  if(imm == 5) {
+    bool ext = (reg > RSP && reg < XMM0) || reg > XMM7;
+    AddMachineCode(ext ? 0x4f : 0x48);
+    AddMachineCode(0x8d);
+    unsigned char modrm = 0x04;
+    RegisterEncode3(modrm, 2, reg);
+    AddMachineCode(modrm);
+    unsigned char sib = 0x80;
+    RegisterEncode3(sib, 2, reg);
+    RegisterEncode3(sib, 5, reg);
+    AddMachineCode(sib);
+    return;
+  }
+  // multiply by 9: LEA reg, [reg + reg*8]
+  if(imm == 9) {
+    bool ext = (reg > RSP && reg < XMM0) || reg > XMM7;
+    AddMachineCode(ext ? 0x4f : 0x48);
+    AddMachineCode(0x8d);
+    unsigned char modrm = 0x04;
+    RegisterEncode3(modrm, 2, reg);
+    AddMachineCode(modrm);
+    unsigned char sib = 0xc0;
+    RegisterEncode3(sib, 2, reg);
+    RegisterEncode3(sib, 5, reg);
+    AddMachineCode(sib);
+    return;
+  }
 #ifdef _DEBUG_JIT
   std::wcout << L"  " << (++instr_count) << L": [imuq $" << imm
         << L", %"<< GetRegisterName(reg) << L"]" << std::endl;
@@ -3832,6 +3920,12 @@ void JitAmd64::mul_mem_reg(long offset, Register src, Register dest) {
 }
 
 void JitAmd64::div_imm_reg(int64_t imm, Register reg, bool is_mod) {
+  if(imm == 1) {
+    if(is_mod) {
+      move_imm_reg(0, reg);
+    }
+    return;
+  }
   RegisterHolder* imm_holder = GetRegister();
   move_imm_reg(imm, imm_holder->GetRegister());
   div_reg_reg(imm_holder->GetRegister(), reg, is_mod);
@@ -4040,6 +4134,19 @@ void JitAmd64::inc_mem(long offset, Register dest) {
 }
 
 void JitAmd64::shl_imm_reg(int64_t value, Register dest) {
+  if(value == 1) {
+    // SHL r64, 1: REX.W + D1 /4 (3 bytes vs 4)
+    AddMachineCode(B(dest));
+    AddMachineCode(0xd1);
+    unsigned char code = 0xe0;
+    RegisterEncode3(code, 5, dest);
+    AddMachineCode(code);
+#ifdef _DEBUG_JIT
+    std::wcout << L"  " << (++instr_count) << L": [shlq $1, %"
+          << GetRegisterName(dest) << L"]" << std::endl;
+#endif
+    return;
+  }
   AddMachineCode(B(dest));
   AddMachineCode(0xc1);
   unsigned char code = 0xe0;
@@ -4340,7 +4447,7 @@ void JitAmd64::cvt_mem_xreg(long offset, Register src, Register dest) {
 
 // TODO: 64-bit literal operation for Windows
 void JitAmd64::and_imm_reg(int64_t imm, Register reg) {
-  if(imm == 0) { xor_reg_reg(reg, reg); return; }
+  if(imm == 0) { move_imm_reg(0, reg); return; }
   if(imm == -1) { return; }
   if(imm >= INT8_MIN && imm <= INT8_MAX) {
 #ifdef _DEBUG_JIT
