@@ -92,33 +92,62 @@ void JitAmd64::Epilog()
 #endif
   epilog_index = code_index;
 
-  // jump to nominal
+  // jump to nominal (backpatched)
   AddMachineCode(0xe9);
-  AddImm(60);
+  long jmp_nominal_pos = code_index;
+  AddImm(0);
 
   // null deference
+  nil_deref_handler_index = code_index;
   move_imm_reg(-1, RAX);
   AddMachineCode(0xe9);
-  AddImm(55);
-  
+  long jmp_null_pos = code_index;
+  AddImm(0);
+
   // under bounds
+  bounds_less_handler_index = code_index;
   move_imm_reg(-2, RAX);
   AddMachineCode(0xe9);
-  AddImm(40);
-  
+  long jmp_under_pos = code_index;
+  AddImm(0);
+
   // over bounds
+  bounds_greater_handler_index = code_index;
   move_imm_reg(-3, RAX);
   AddMachineCode(0xe9);
-  AddImm(25);
-  
+  long jmp_over_pos = code_index;
+  AddImm(0);
+
   // divide by 0
+  div_by_zero_handler_index = code_index;
   move_imm_reg(-4, RAX);
   AddMachineCode(0xe9);
-  AddImm(10);
-  
+  long jmp_div_pos = code_index;
+  AddImm(0);
+
   // set nominal
+  long nominal_index = code_index;
   move_imm_reg(0, RAX);
-  
+
+  // backpatch epilog jumps
+  long teardown_index = code_index;
+  long jmp_offset;
+
+  jmp_offset = nominal_index - (jmp_nominal_pos + 4);
+  memcpy(&code[jmp_nominal_pos], &jmp_offset, 4);
+
+  jmp_offset = teardown_index - (jmp_null_pos + 4);
+  memcpy(&code[jmp_null_pos], &jmp_offset, 4);
+
+  jmp_offset = teardown_index - (jmp_under_pos + 4);
+  memcpy(&code[jmp_under_pos], &jmp_offset, 4);
+
+  jmp_offset = teardown_index - (jmp_over_pos + 4);
+  memcpy(&code[jmp_over_pos], &jmp_offset, 4);
+
+  jmp_offset = teardown_index - (jmp_div_pos + 4);
+  memcpy(&code[jmp_div_pos], &jmp_offset, 4);
+
   unsigned char teardown_code[] = {
     // restore registers
 #ifndef _WIN64
@@ -1865,11 +1894,9 @@ void JitAmd64::ProcessReturn(long params) {
 RegInstr* JitAmd64::ProcessIntFold(int64_t left_imm, int64_t right_imm, InstructionType type) {
   switch(type) {
   case AND_INT:
-    // Bug fix: Use bitwise AND (&), not logical AND (&&)
     return new RegInstr(IMM_INT, left_imm & right_imm);
 
   case OR_INT:
-    // Bug fix: Use bitwise OR (|), not logical OR (||)
     return new RegInstr(IMM_INT, left_imm | right_imm);
     
   case ADD_INT:
@@ -2631,43 +2658,42 @@ void JitAmd64::move_imm_reg(int64_t imm, Register reg) {
 #else
 void JitAmd64::move_imm_reg(long imm, Register reg) {
 #endif
+  // Optimization: XOR reg, reg for zero
+  if(imm == 0) {
+#ifdef _DEBUG_JIT
+    std::wcout << L"  " << (++instr_count) << L": [xorq %" << GetRegisterName(reg)
+          << L", %" << GetRegisterName(reg) << L"] (zero idiom)" << std::endl;
+#endif
+    xor_reg_reg(reg, reg);
+    return;
+  }
+
+  // Optimization: MOV r/m64, imm32 (sign-extended) for values in 32-bit range
+  if(imm >= INT32_MIN && imm <= INT32_MAX) {
+#ifdef _DEBUG_JIT
+    std::wcout << L"  " << (++instr_count) << L": [movq $" << imm << L", %"
+          << GetRegisterName(reg) << L"] (imm32)" << std::endl;
+#endif
+    AddMachineCode(B(reg));
+    AddMachineCode(0xc7);
+    unsigned char code = 0xc0;
+    RegisterEncode3(code, 5, reg);
+    AddMachineCode(code);
+    AddImm((int32_t)imm);
+    return;
+  }
+
 #ifdef _DEBUG_JIT
   std::wcout << L"  " << (++instr_count) << L": [movsq $" << imm << L", %"
         << GetRegisterName(reg) << L"]" << std::endl;
 #endif
-
-  // Optimization: Use XOR reg, reg for zero (saves 5 bytes, recognized as zero idiom)
-  if (imm == 0) {
-    // XOR r64, r64 (2-3 bytes vs 7 bytes for MOV)
-    // REX.W + 0x31 + ModR/M
-    AddMachineCode(ROB(reg, reg));  // REX.W prefix with register encodings
-    AddMachineCode(0x31);            // XOR r/m64, r64 opcode
-    unsigned char code = 0xc0;
-    RegisterEncode3(code, 2, reg);   // source register
-    RegisterEncode3(code, 5, reg);   // destination register (same)
-    AddMachineCode(code);
-  }
-  // Optimization: Use 32-bit immediate when possible (saves 3 bytes)
-  // Check if value fits in signed 32-bit range
-  else if (imm >= INT32_MIN && imm <= INT32_MAX) {
-    // Use MOV r/m64, imm32 with sign extension (7 bytes vs 10 bytes)
-    // REX.W + C7 /0 + imm32
-    AddMachineCode(B(reg));  // REX.W prefix for 64-bit operation
-    AddMachineCode(0xc7);     // MOV r/m64, imm32 opcode
-    unsigned char code = 0xc0;
-    RegisterEncode3(code, 5, reg);
-    AddMachineCode(code);
-    // write 32-bit value (sign-extended to 64-bit)
-    AddImm((int32_t)imm);
-  } else {
-    // Use full 64-bit movabs for large values
-    AddMachineCode(XB(reg));
-    unsigned char code = 0xb8;
-    RegisterEncode3(code, 5, reg);
-    AddMachineCode(code);
-    // write 64-bit value
-    AddImm64(imm);
-  }
+  // encode
+  AddMachineCode(XB(reg));
+  unsigned char code = 0xb8;
+  RegisterEncode3(code, 5, reg);
+  AddMachineCode(code);
+  // write value
+  AddImm64(imm);
 }
 
 void JitAmd64::move_imm_xreg(RegInstr* instr, Register reg) {
@@ -3280,47 +3306,45 @@ void JitAmd64::cmp_mem_reg(long offset, Register src, Register dest) {
 
 // TODO: 64-bit literal operation for Windows
 void JitAmd64::cmp_imm_reg(int64_t imm, Register reg) {
-  // Optimization: Use TEST reg, reg for zero comparison (saves 4 bytes)
-  if(imm == 0) {
-#ifdef _DEBUG_JIT
-    std::wcout << L"  " << (++instr_count) << L": [testq %"
-      << GetRegisterName(reg) << L", %" << GetRegisterName(reg) << L"]" << std::endl;
-#endif
-    // TEST r64, r64 (3 bytes vs 7 bytes for CMP)
-    // REX.W + 0x85 + ModR/M
-    AddMachineCode(ROB(reg, reg));  // REX.W prefix
-    AddMachineCode(0x85);            // TEST r/m64, r64 opcode
-    unsigned char code = 0xc0;
-    RegisterEncode3(code, 2, reg);   // source register
-    RegisterEncode3(code, 5, reg);   // destination register (same)
-    AddMachineCode(code);
-  }
-  else if(imm < INT32_MIN || imm > INT32_MAX) {
+  if(imm < INT32_MIN || imm > INT32_MAX) {
     RegisterHolder* holder = GetRegister();
     move_imm_reg(imm, holder->GetRegister());
     cmp_reg_reg(holder->GetRegister(), reg);
     ReleaseRegister(holder);
   }
-  // Optimization: Use 8-bit immediate form for small values (saves 3 bytes)
-  else if(imm >= INT8_MIN && imm <= INT8_MAX) {
+  else if(imm == 0) {
+    // TEST reg, reg (3 bytes vs 7 for CMP reg, 0)
 #ifdef _DEBUG_JIT
-    std::wcout << L"  " << (++instr_count) << L": [cmpq $" << imm << L", %"
-      << GetRegisterName(reg) << L"]" << std::endl;
+    std::wcout << L"  " << (++instr_count) << L": [testq %"
+      << GetRegisterName(reg) << L", %" << GetRegisterName(reg)
+      << L"] (zero cmp)" << std::endl;
 #endif
-    // CMP r64, imm8: REX.W + 0x83 /7 + imm8 (4 bytes vs 7 bytes)
-    AddMachineCode(XB(reg));           // REX.W prefix (with extensions)
-    AddMachineCode(0x83);              // CMP r/m64, imm8 opcode
-    unsigned char code = 0xf8;        // ModR/M with /7 for CMP
+    AddMachineCode(ROB(reg, reg));
+    AddMachineCode(0x85);
+    unsigned char code = 0xc0;
+    RegisterEncode3(code, 2, reg);
     RegisterEncode3(code, 5, reg);
     AddMachineCode(code);
-    AddMachineCode((unsigned char)(imm & 0xFF)); // 8-bit immediate
+  }
+  else if(imm >= INT8_MIN && imm <= INT8_MAX) {
+    // CMP r64, imm8 (4 bytes vs 7)
+#ifdef _DEBUG_JIT
+    std::wcout << L"  " << (++instr_count) << L": [cmpq $" << imm << L", %"
+      << GetRegisterName(reg) << L"] (imm8)" << std::endl;
+#endif
+    AddMachineCode(B(reg));
+    AddMachineCode(0x83);
+    unsigned char code = 0xf8;
+    RegisterEncode3(code, 5, reg);
+    AddMachineCode(code);
+    AddMachineCode((unsigned char)(int8_t)imm);
   }
   else {
 #ifdef _DEBUG_JIT
     std::wcout << L"  " << (++instr_count) << L": [cmpq $" << imm << L", %"
       << GetRegisterName(reg) << L"]" << std::endl;
 #endif
-    // Regular CMP with 32-bit immediate
+    // encode
     AddMachineCode(XB(reg));
     AddMachineCode(0x81);
     unsigned char code = 0xf8;
@@ -3447,49 +3471,17 @@ void JitAmd64::add_imm_mem(int64_t imm, long offset, Register dest) {
     
 // TODO: 64-bit literal operation for Windows
 void JitAmd64::add_imm_reg(int64_t imm, Register reg) {
+  if(imm == 0) { return; }
 #ifdef _DEBUG_JIT
   std::wcout << L"  " << (++instr_count) << L": [addq $" << imm << L", %"
         << GetRegisterName(reg) << L"]" << std::endl;
 #endif
-
-  // Optimization: Use INC for +1 (2-3 bytes vs 7 bytes)
-  if(imm == 1) {
-    // INC r64: REX.W + 0xFF /0
-    AddMachineCode(B(reg));           // REX.W prefix
-    AddMachineCode(0xFF);              // INC/DEC opcode
-    unsigned char code = 0xc0;
-    RegisterEncode3(code, 5, reg);    // ModR/M with /0 for INC
-    AddMachineCode(code);
-  }
-  // Optimization: Use DEC for -1 (2-3 bytes vs 7 bytes)
-  else if(imm == -1) {
-    // DEC r64: REX.W + 0xFF /1
-    AddMachineCode(B(reg));           // REX.W prefix
-    AddMachineCode(0xFF);              // INC/DEC opcode
-    unsigned char code = 0xc8;        // ModR/M with /1 for DEC
-    RegisterEncode3(code, 5, reg);
-    AddMachineCode(code);
-  }
-  // Optimization: Use 8-bit immediate form for small values (saves 3 bytes)
-  else if(imm >= INT8_MIN && imm <= INT8_MAX) {
-    // ADD r64, imm8: REX.W + 0x83 /0 + imm8 (4 bytes vs 7 bytes)
-    AddMachineCode(B(reg));           // REX.W prefix
-    AddMachineCode(0x83);              // ADD r/m64, imm8 opcode
-    unsigned char code = 0xc0;
-    RegisterEncode3(code, 5, reg);    // ModR/M with /0 for ADD
-    AddMachineCode(code);
-    AddMachineCode((unsigned char)(imm & 0xFF)); // 8-bit immediate
-  }
-  else {
-    // Regular ADD with 32-bit immediate
-    AddMachineCode(B(reg));
-    AddMachineCode(0x81);
-    unsigned char code = 0xc0;
-    RegisterEncode3(code, 5, reg);
-    AddMachineCode(code);
-    // write value
-    AddImm((long)imm);
-  }
+  AddMachineCode(B(reg));
+  AddMachineCode(0x81);
+  unsigned char code = 0xc0;
+  RegisterEncode3(code, 5, reg);
+  AddMachineCode(code);
+  AddImm((long)imm);
 }
 
 void JitAmd64::add_imm_xreg(RegInstr* instr, Register reg) {
@@ -3738,44 +3730,12 @@ void JitAmd64::sub_imm_reg(int64_t imm, Register reg) {
   std::wcout << L"  " << (++instr_count) << L": [subq $" << imm << L", %"
         << GetRegisterName(reg) << L"]" << std::endl;
 #endif
-
-  // Optimization: Use DEC for -1 (2-3 bytes vs 7 bytes)
-  if(imm == 1) {
-    // DEC r64: REX.W + 0xFF /1
-    AddMachineCode(B(reg));           // REX.W prefix
-    AddMachineCode(0xFF);              // INC/DEC opcode
-    unsigned char code = 0xc8;        // ModR/M with /1 for DEC
-    RegisterEncode3(code, 5, reg);
-    AddMachineCode(code);
-  }
-  // Optimization: Use INC for subtracting -1 (2-3 bytes vs 7 bytes)
-  else if(imm == -1) {
-    // INC r64: REX.W + 0xFF /0
-    AddMachineCode(B(reg));           // REX.W prefix
-    AddMachineCode(0xFF);              // INC/DEC opcode
-    unsigned char code = 0xc0;        // ModR/M with /0 for INC
-    RegisterEncode3(code, 5, reg);
-    AddMachineCode(code);
-  }
-  // Optimization: Use 8-bit immediate form for small values (saves 3 bytes)
-  else if(imm >= INT8_MIN && imm <= INT8_MAX) {
-    // SUB r64, imm8: REX.W + 0x83 /5 + imm8 (4 bytes vs 7 bytes)
-    AddMachineCode(B(reg));           // REX.W prefix
-    AddMachineCode(0x83);              // SUB r/m64, imm8 opcode
-    unsigned char code = 0xe8;        // ModR/M with /5 for SUB
-    RegisterEncode3(code, 5, reg);
-    AddMachineCode(code);
-    AddMachineCode((unsigned char)(imm & 0xFF)); // 8-bit immediate
-  }
-  else {
-    // Regular SUB with 32-bit immediate
-    AddMachineCode(B(reg));
-    AddMachineCode(0x81);
-    unsigned char code = 0xe8;
-    RegisterEncode3(code, 5, reg);
-    AddMachineCode(code);
-    AddImm((long)imm);
-  }
+  AddMachineCode(B(reg));
+  AddMachineCode(0x81);
+  unsigned char code = 0xe8;
+  RegisterEncode3(code, 5, reg);
+  AddMachineCode(code);
+  AddImm((long)imm);
 }
 
 // TODO: 64-bit literal operation for Windows
@@ -3825,182 +3785,20 @@ void JitAmd64::sub_mem_reg(long offset, Register src, Register dest) {
 
 // TODO: 64-bit literal operation for Windows
 void JitAmd64::mul_imm_reg(int64_t imm, Register reg) {
-  // Optimization: Multiply by 0 always gives 0 (use XOR)
-  if(imm == 0) {
 #ifdef _DEBUG_JIT
-    std::wcout << L"  " << (++instr_count) << L": [xorq %"
-          << GetRegisterName(reg) << L", %" << GetRegisterName(reg)
-          << L"] (optimized from mul $0)" << std::endl;
+  std::wcout << L"  " << (++instr_count) << L": [imuq $" << imm
+        << L", %"<< GetRegisterName(reg) << L"]" << std::endl;
 #endif
-    // XOR reg, reg (sets to zero)
-    AddMachineCode(ROB(reg, reg));
-    AddMachineCode(0x31);
-    unsigned char code = 0xc0;
-    RegisterEncode3(code, 2, reg);
-    RegisterEncode3(code, 5, reg);
-    AddMachineCode(code);
-  }
-  // Optimization: Multiply by 1 is a no-op
-  else if(imm == 1) {
-#ifdef _DEBUG_JIT
-    std::wcout << L"  " << (++instr_count) << L": [nop] (optimized from mul $1)" << std::endl;
-#endif
-    // No operation needed - value stays the same
-  }
-  // Optimization: Use NEG for multiply by -1 (2-3 bytes vs 7 bytes)
-  else if(imm == -1) {
-#ifdef _DEBUG_JIT
-    std::wcout << L"  " << (++instr_count) << L": [negq %"
-          << GetRegisterName(reg) << L"] (optimized from mul $-1)" << std::endl;
-#endif
-    // NEG r64: REX.W + 0xF7 /3
-    AddMachineCode(B(reg));           // REX.W prefix
-    AddMachineCode(0xF7);              // NEG/NOT opcode group
-    unsigned char code = 0xd8;        // ModR/M with /3 for NEG
-    RegisterEncode3(code, 5, reg);
-    AddMachineCode(code);
-  }
-  // Optimization: Replace multiply by power-of-2 with left shift
-  // Example: x * 8 becomes x << 3 (faster, smaller encoding)
-  else if(imm > 0 && (imm & (imm - 1)) == 0) {
-    // imm is a power of 2, calculate shift amount
-    int shift = 0;
-    int64_t temp = imm;
-    while(temp > 1) {
-      temp >>= 1;
-      shift++;
-    }
-#ifdef _DEBUG_JIT
-    std::wcout << L"  " << (++instr_count) << L": [shlq $" << shift
-          << L", %" << GetRegisterName(reg) << L"] (optimized from mul $"
-          << imm << L")" << std::endl;
-#endif
-    shl_imm_reg(shift, reg);
-  }
-  // NEW: Multiply by 3 using LEA (x*3 = x + x*2)
-  else if(imm == 3) {
-#ifdef _DEBUG_JIT
-    std::wcout << L"  " << (++instr_count) << L": [leaq (%"
-          << GetRegisterName(reg) << ", %" << GetRegisterName(reg)
-          << ", 2), %" << GetRegisterName(reg)
-          << L"] (optimized mul $3)" << std::endl;
-#endif
-    // LEA: reg = reg + reg*2
-    AddMachineCode(B(reg));
-    AddMachineCode(0x8D);
-    unsigned char modrm = 0x04;
-    RegisterEncode3(modrm, 2, reg);
-    AddMachineCode(modrm);
-    unsigned char sib = 0x40;  // scale=01 (2x)
-    RegisterEncode3(sib, 5, reg);  // base
-    RegisterEncode3(sib, 2, reg);  // index
-    AddMachineCode(sib);
-  }
-  // Multiply by 5 using LEA (x*5 = x + x*4)
-  else if(imm == 5) {
-#ifdef _DEBUG_JIT
-    std::wcout << L"  " << (++instr_count) << L": [leaq (%"
-          << GetRegisterName(reg) << ", %" << GetRegisterName(reg)
-          << ", 4), %" << GetRegisterName(reg)
-          << L"] (optimized mul $5)" << std::endl;
-#endif
-    AddMachineCode(B(reg));
-    AddMachineCode(0x8D);
-    unsigned char modrm = 0x04;
-    RegisterEncode3(modrm, 2, reg);
-    AddMachineCode(modrm);
-    unsigned char sib = 0x80;  // scale=10 (4x)
-    RegisterEncode3(sib, 5, reg);
-    RegisterEncode3(sib, 2, reg);
-    AddMachineCode(sib);
-  }
-  // Multiply by 9 using LEA (x*9 = x + x*8)
-  else if(imm == 9) {
-#ifdef _DEBUG_JIT
-    std::wcout << L"  " << (++instr_count) << L": [leaq (%"
-          << GetRegisterName(reg) << ", %" << GetRegisterName(reg)
-          << ", 8), %" << GetRegisterName(reg)
-          << L"] (optimized mul $9)" << std::endl;
-#endif
-    AddMachineCode(B(reg));
-    AddMachineCode(0x8D);
-    unsigned char modrm = 0x04;
-    RegisterEncode3(modrm, 2, reg);
-    AddMachineCode(modrm);
-    unsigned char sib = 0xC0;  // scale=11 (8x)
-    RegisterEncode3(sib, 5, reg);
-    RegisterEncode3(sib, 2, reg);
-    AddMachineCode(sib);
-  }
-  // Multiply by 6: x*6 = (x*2) + (x*4) = shift then LEA
-  else if(imm == 6) {
-#ifdef _DEBUG_JIT
-    std::wcout << L"  " << (++instr_count) << L": [shlq $1, leaq] (optimized mul $6)" << std::endl;
-#endif
-    shl_imm_reg(1, reg);  // x*2
-    // LEA: reg = reg + reg*2 (adds x*4 to x*2)
-    AddMachineCode(B(reg));
-    AddMachineCode(0x8D);
-    unsigned char modrm = 0x04;
-    RegisterEncode3(modrm, 2, reg);
-    AddMachineCode(modrm);
-    unsigned char sib = 0x40;
-    RegisterEncode3(sib, 5, reg);
-    RegisterEncode3(sib, 2, reg);
-    AddMachineCode(sib);
-  }
-  // Multiply by 7: x*7 = (x*8) - x (requires temp register)
-  else if(imm == 7) {
-#ifdef _DEBUG_JIT
-    std::wcout << L"  " << (++instr_count) << L": [shlq $3, subq] (optimized mul $7)" << std::endl;
-#endif
-    RegisterHolder* temp_holder = GetRegister();
-    if(temp_holder) {
-      move_reg_reg(reg, temp_holder->GetRegister());
-      shl_imm_reg(3, reg);
-      sub_reg_reg(temp_holder->GetRegister(), reg);
-      ReleaseRegister(temp_holder);
-    }
-    else {
-      // Fallback if no register available
-      goto use_imul;
-    }
-  }
-  // Multiply by 10: x*10 = (x*2) + (x*8) = shift, then LEA
-  else if(imm == 10) {
-#ifdef _DEBUG_JIT
-    std::wcout << L"  " << (++instr_count) << L": [shlq $1, leaq] (optimized mul $10)" << std::endl;
-#endif
-    shl_imm_reg(1, reg);  // x*2
-    // LEA: reg = reg + reg*4 (adds x*8 to x*2)
-    AddMachineCode(B(reg));
-    AddMachineCode(0x8D);
-    unsigned char modrm = 0x04;
-    RegisterEncode3(modrm, 2, reg);
-    AddMachineCode(modrm);
-    unsigned char sib = 0xC0;  // scale=11 (8x) but we already shifted by 1
-    RegisterEncode3(sib, 5, reg);
-    RegisterEncode3(sib, 2, reg);
-    AddMachineCode(sib);
-  }
-  else {
-use_imul:
-    // Use regular multiply for other values
-#ifdef _DEBUG_JIT
-    std::wcout << L"  " << (++instr_count) << L": [imulq $" << imm
-          << L", %"<< GetRegisterName(reg) << L"]" << std::endl;
-#endif
-    // encode
-    AddMachineCode(ROB(reg, reg));
-    AddMachineCode(0x69);
-    unsigned char code = 0xc0;
-    // write value
-    RegisterEncode3(code, 2, reg);
-    RegisterEncode3(code, 5, reg);
-    AddMachineCode(code);
-    // write value
-    AddImm((long)imm);
-  }
+  // encode
+  AddMachineCode(ROB(reg, reg));
+  AddMachineCode(0x69);
+  unsigned char code = 0xc0;
+  // write value
+  RegisterEncode3(code, 2, reg);
+  RegisterEncode3(code, 5, reg);
+  AddMachineCode(code);
+  // write value
+  AddImm((long)imm); // TODO: load imm to reg, perform operation
 }
 
 void JitAmd64::mul_reg_reg(Register src, Register dest) {
@@ -4034,52 +3832,10 @@ void JitAmd64::mul_mem_reg(long offset, Register src, Register dest) {
 }
 
 void JitAmd64::div_imm_reg(int64_t imm, Register reg, bool is_mod) {
-  // Optimization: Division by 1 is a no-op (or 0 for modulo)
-  if(imm == 1) {
-#ifdef _DEBUG_JIT
-    std::wcout << L"  " << (++instr_count) << L": [nop] (optimized from div $1)" << std::endl;
-#endif
-    if(is_mod) {
-      // x % 1 is always 0
-      AddMachineCode(ROB(reg, reg));
-      AddMachineCode(0x31);
-      unsigned char code = 0xc0;
-      RegisterEncode3(code, 2, reg);
-      RegisterEncode3(code, 5, reg);
-      AddMachineCode(code);
-    }
-    // else: x / 1 is x (no-op)
-  }
-  // Optimization: Division by power-of-2 can use SAR (arithmetic right shift)
-  // Only for non-modulo division
-  else if(!is_mod && imm > 1 && (imm & (imm - 1)) == 0) {
-    int shift = 0;
-    int64_t temp = imm;
-    while(temp > 1) {
-      temp >>= 1;
-      shift++;
-    }
-#ifdef _DEBUG_JIT
-    std::wcout << L"  " << (++instr_count) << L": [sarq $" << shift
-          << L", %" << GetRegisterName(reg) << L"] (optimized from div $"
-          << imm << L")" << std::endl;
-#endif
-    // SAR for signed division by power-of-2
-    // Note: This only works correctly for positive numbers
-    // For negative numbers, need to add (divisor-1) before shifting
-    // For simplicity, using regular division for now
-    // TODO: Add proper signed division by power-of-2
-    RegisterHolder* imm_holder = GetRegister();
-    move_imm_reg(imm, imm_holder->GetRegister());
-    div_reg_reg(imm_holder->GetRegister(), reg, is_mod);
-    ReleaseRegister(imm_holder);
-  }
-  else {
-    RegisterHolder* imm_holder = GetRegister();
-    move_imm_reg(imm, imm_holder->GetRegister());
-    div_reg_reg(imm_holder->GetRegister(), reg, is_mod);
-    ReleaseRegister(imm_holder);
-  }
+  RegisterHolder* imm_holder = GetRegister();
+  move_imm_reg(imm, imm_holder->GetRegister());
+  div_reg_reg(imm_holder->GetRegister(), reg, is_mod);
+  ReleaseRegister(imm_holder);
 }
 
 void JitAmd64::div_mem_reg(long offset, Register src, Register dest, bool is_mod) {
@@ -4233,15 +3989,28 @@ void JitAmd64::div_reg_reg(Register src, Register dest, bool is_mod) {
   }
 }
 
-void JitAmd64::dec_reg(Register dest) {
-  AddMachineCode(B(dest));
-  unsigned char code = 0x48;
-  RegisterEncode3(code, 5, dest);
-  AddMachineCode(code);
+void JitAmd64::inc_reg(Register dest) {
 #ifdef _DEBUG_JIT
-  std::wcout << L"  " << (++instr_count) << L": [decq %" 
+  std::wcout << L"  " << (++instr_count) << L": [incq %"
         << GetRegisterName(dest) << L"]" << std::endl;
 #endif
+  AddMachineCode(B(dest));
+  AddMachineCode(0xff);
+  unsigned char code = 0xc0;
+  RegisterEncode3(code, 5, dest);
+  AddMachineCode(code);
+}
+
+void JitAmd64::dec_reg(Register dest) {
+#ifdef _DEBUG_JIT
+  std::wcout << L"  " << (++instr_count) << L": [decq %"
+        << GetRegisterName(dest) << L"]" << std::endl;
+#endif
+  AddMachineCode(B(dest));
+  AddMachineCode(0xff);
+  unsigned char code = 0xc8;
+  RegisterEncode3(code, 5, dest);
+  AddMachineCode(code);
 }
 
 void JitAmd64::dec_mem(long offset, Register dest) {
@@ -4271,24 +4040,12 @@ void JitAmd64::inc_mem(long offset, Register dest) {
 }
 
 void JitAmd64::shl_imm_reg(int64_t value, Register dest) {
-  // Optimization: Use single-operand form for shift by 1 (saves 1 byte)
-  if(value == 1) {
-    // SHL r64, 1: REX.W + 0xD1 /4 (3 bytes vs 4 bytes)
-    AddMachineCode(B(dest));
-    AddMachineCode(0xD1);              // SHL/SHR/SAR by 1 opcode
-    unsigned char code = 0xe0;        // ModR/M with /4 for SHL
-    RegisterEncode3(code, 5, dest);
-    AddMachineCode(code);
-  }
-  else {
-    // Regular SHL with 8-bit immediate
-    AddMachineCode(B(dest));
-    AddMachineCode(0xc1);
-    unsigned char code = 0xe0;
-    RegisterEncode3(code, 5, dest);
-    AddMachineCode(code);
-    AddMachineCode((unsigned char)value);
-  }
+  AddMachineCode(B(dest));
+  AddMachineCode(0xc1);
+  unsigned char code = 0xe0;
+  RegisterEncode3(code, 5, dest);
+  AddMachineCode(code);
+  AddMachineCode((unsigned char)value);
 #ifdef _DEBUG_JIT
   std::wcout << L"  " << (++instr_count) << L": [shlq $" << value << L", %"
         << GetRegisterName(dest) << L"]" << std::endl;
@@ -4343,26 +4100,14 @@ void JitAmd64::shl_mem_reg(long offset, Register src, Register dest)
 }
 
 void JitAmd64::shr_imm_reg(int64_t value, Register dest) {
-  // Optimization: Use single-operand form for shift by 1 (saves 1 byte)
-  if(value == 1) {
-    // SHR r64, 1: REX.W + 0xD1 /5 (3 bytes vs 4 bytes)
-    AddMachineCode(B(dest));
-    AddMachineCode(0xD1);              // SHL/SHR/SAR by 1 opcode
-    unsigned char code = 0xe8;        // ModR/M with /5 for SHR
-    RegisterEncode3(code, 5, dest);
-    AddMachineCode(code);
-  }
-  else {
-    // Regular SHR with 8-bit immediate
-    AddMachineCode(B(dest));
-    AddMachineCode(0xc1);
-    unsigned char code = 0xe8;
-    RegisterEncode3(code, 5, dest);
-    AddMachineCode(code);
-    AddMachineCode((unsigned char)value);
-  }
+  AddMachineCode(B(dest));
+  AddMachineCode(0xc1);
+  unsigned char code = 0xe8;
+  RegisterEncode3(code, 5, dest);
+  AddMachineCode(code);
+  AddMachineCode((unsigned char)value);
 #ifdef _DEBUG_JIT
-  std::wcout << L"  " << (++instr_count) << L": [shrq $" << value << L", %"
+  std::wcout << L"  " << (++instr_count) << L": [shrq $" << value << L", %" 
         << GetRegisterName(dest) << L"]" << std::endl;
 #endif
 }
@@ -4595,44 +4340,31 @@ void JitAmd64::cvt_mem_xreg(long offset, Register src, Register dest) {
 
 // TODO: 64-bit literal operation for Windows
 void JitAmd64::and_imm_reg(int64_t imm, Register reg) {
+  if(imm == 0) { xor_reg_reg(reg, reg); return; }
+  if(imm == -1) { return; }
+  if(imm >= INT8_MIN && imm <= INT8_MAX) {
+#ifdef _DEBUG_JIT
+    std::wcout << L"  " << (++instr_count) << L": [andq $" << imm << L", %"
+          << GetRegisterName(reg) << L"] (imm8)" << std::endl;
+#endif
+    AddMachineCode(B(reg));
+    AddMachineCode(0x83);
+    unsigned char code = 0xe0;
+    RegisterEncode3(code, 5, reg);
+    AddMachineCode(code);
+    AddMachineCode((unsigned char)(int8_t)imm);
+    return;
+  }
 #ifdef _DEBUG_JIT
   std::wcout << L"  " << (++instr_count) << L": [andq $" << imm << L", %"
         << GetRegisterName(reg) << L"]" << std::endl;
 #endif
-
-  // Optimization: AND with 0 always gives 0 (use XOR)
-  if(imm == 0) {
-    AddMachineCode(ROB(reg, reg));
-    AddMachineCode(0x31);
-    unsigned char code = 0xc0;
-    RegisterEncode3(code, 2, reg);
-    RegisterEncode3(code, 5, reg);
-    AddMachineCode(code);
-  }
-  // Optimization: AND with -1 (all bits set) is identity (no-op)
-  else if(imm == -1) {
-    // No operation needed
-  }
-  // Optimization: Use 8-bit immediate form for small values (saves 3 bytes)
-  else if(imm >= INT8_MIN && imm <= INT8_MAX) {
-    // AND r64, imm8: REX.W + 0x83 /4 + imm8 (4 bytes vs 7 bytes)
-    AddMachineCode(B(reg));
-    AddMachineCode(0x83);              // AND r/m64, imm8 opcode
-    unsigned char code = 0xe0;        // ModR/M with /4 for AND
-    RegisterEncode3(code, 5, reg);
-    AddMachineCode(code);
-    AddMachineCode((unsigned char)(imm & 0xFF)); // 8-bit immediate
-  }
-  else {
-    // Regular AND with 32-bit immediate
-    AddMachineCode(B(reg));
-    AddMachineCode(0x81);
-    unsigned char code = 0xe0;
-    RegisterEncode3(code, 5, reg);
-    AddMachineCode(code);
-    // write value
-    AddImm((long)imm);
-  }
+  AddMachineCode(B(reg));
+  AddMachineCode(0x81);
+  unsigned char code = 0xe0;
+  RegisterEncode3(code, 5, reg);
+  AddMachineCode(code);
+  AddImm((long)imm);
 }
 
 void JitAmd64::and_reg_reg(Register src, Register dest) {
@@ -4676,40 +4408,31 @@ void JitAmd64::not_reg(Register reg) {
 
 // TODO: 64-bit literal operation for Windows
 void JitAmd64::or_imm_reg(int64_t imm, Register reg) {
+  if(imm == 0) { return; }
+  if(imm == -1) { move_imm_reg(-1, reg); return; }
+  if(imm >= INT8_MIN && imm <= INT8_MAX) {
+#ifdef _DEBUG_JIT
+    std::wcout << L"  " << (++instr_count) << L": [orq $" << imm << L", %"
+          << GetRegisterName(reg) << L"] (imm8)" << std::endl;
+#endif
+    AddMachineCode(B(reg));
+    AddMachineCode(0x83);
+    unsigned char code = 0xc8;
+    RegisterEncode3(code, 5, reg);
+    AddMachineCode(code);
+    AddMachineCode((unsigned char)(int8_t)imm);
+    return;
+  }
 #ifdef _DEBUG_JIT
   std::wcout << L"  " << (++instr_count) << L": [orq $" << imm << L", %"
         << GetRegisterName(reg) << L"]" << std::endl;
 #endif
-
-  // Optimization: OR with 0 is identity (no-op)
-  if(imm == 0) {
-    // No operation needed
-  }
-  // Optimization: OR with -1 (all bits set) sets all bits
-  else if(imm == -1) {
-    // Set all bits: MOV reg, -1 or use NOT after XOR
-    move_imm_reg(-1, reg);
-  }
-  // Optimization: Use 8-bit immediate form for small values (saves 3 bytes)
-  else if(imm >= INT8_MIN && imm <= INT8_MAX) {
-    // OR r64, imm8: REX.W + 0x83 /1 + imm8 (4 bytes vs 7 bytes)
-    AddMachineCode(B(reg));
-    AddMachineCode(0x83);              // OR r/m64, imm8 opcode
-    unsigned char code = 0xc8;        // ModR/M with /1 for OR
-    RegisterEncode3(code, 5, reg);
-    AddMachineCode(code);
-    AddMachineCode((unsigned char)(imm & 0xFF)); // 8-bit immediate
-  }
-  else {
-    // Regular OR with 32-bit immediate
-    AddMachineCode(B(reg));
-    AddMachineCode(0x81);
-    unsigned char code = 0xc8;
-    RegisterEncode3(code, 5, reg);
-    AddMachineCode(code);
-    // write value
-    AddImm((long)imm);
-  }
+  AddMachineCode(B(reg));
+  AddMachineCode(0x81);
+  unsigned char code = 0xc8;
+  RegisterEncode3(code, 5, reg);
+  AddMachineCode(code);
+  AddImm((long)imm);
 }
 
 void JitAmd64::or_reg_reg(Register src, Register dest) {
@@ -4742,44 +4465,31 @@ void JitAmd64::or_mem_reg(long offset, Register src, Register dest) {
 
 // TODO: 64-bit literal operation for Windows
 void JitAmd64::xor_imm_reg(int64_t imm, Register reg) {
+  if(imm == 0) { return; }
+  if(imm == -1) { not_reg(reg); return; }
+  if(imm >= INT8_MIN && imm <= INT8_MAX) {
+#ifdef _DEBUG_JIT
+    std::wcout << L"  " << (++instr_count) << L": [xorq $" << imm << L", %"
+          << GetRegisterName(reg) << L"] (imm8)" << std::endl;
+#endif
+    AddMachineCode(B(reg));
+    AddMachineCode(0x83);
+    unsigned char code = 0xf0;
+    RegisterEncode3(code, 5, reg);
+    AddMachineCode(code);
+    AddMachineCode((unsigned char)(int8_t)imm);
+    return;
+  }
 #ifdef _DEBUG_JIT
   std::wcout << L"  " << (++instr_count) << L": [xorq $" << imm << L", %"
         << GetRegisterName(reg) << L"]" << std::endl;
 #endif
-
-  // Optimization: XOR with 0 is identity (no-op)
-  if(imm == 0) {
-    // No operation needed
-  }
-  // Optimization: XOR with -1 (all bits set) is NOT operation
-  else if(imm == -1) {
-    // Use NOT instruction (2-3 bytes)
-    AddMachineCode(B(reg));
-    AddMachineCode(0xF7);
-    unsigned char code = 0xd0;
-    RegisterEncode3(code, 5, reg);
-    AddMachineCode(code);
-  }
-  // Optimization: Use 8-bit immediate form for small values (saves 3 bytes)
-  else if(imm >= INT8_MIN && imm <= INT8_MAX) {
-    // XOR r64, imm8: REX.W + 0x83 /6 + imm8 (4 bytes vs 7 bytes)
-    AddMachineCode(B(reg));
-    AddMachineCode(0x83);              // XOR r/m64, imm8 opcode
-    unsigned char code = 0xf0;        // ModR/M with /6 for XOR
-    RegisterEncode3(code, 5, reg);
-    AddMachineCode(code);
-    AddMachineCode((unsigned char)(imm & 0xFF)); // 8-bit immediate
-  }
-  else {
-    // Regular XOR with 32-bit immediate
-    AddMachineCode(B(reg));
-    AddMachineCode(0x81);
-    unsigned char code = 0xf0;
-    RegisterEncode3(code, 5, reg);
-    AddMachineCode(code);
-    // write value
-    AddImm((long)imm);
-  }
+  AddMachineCode(B(reg));
+  AddMachineCode(0x81);
+  unsigned char code = 0xf0;
+  RegisterEncode3(code, 5, reg);
+  AddMachineCode(code);
+  AddImm((long)imm);
 }
 
 void JitAmd64::xor_reg_reg(Register src, Register dest) {
@@ -5267,33 +4977,29 @@ RegisterHolder* JitAmd64::ArrayIndex(StackInstr* instr, MemoryType type)
   }
 
   const long dim = instr->GetOperand();
-  // Optimization: Skip loop for 1D arrays (most common case)
-  // Multi-dimensional array indexing requires multiply-accumulate loop
-  if(dim > 1) {
-    for(int i = 1; i < dim; ++i) {
-      // index *= array[i];
-      mul_mem_reg((i + 2) * sizeof(size_t), array_holder->GetRegister(), index_holder->GetRegister());
-      delete holder;
-      holder = nullptr;
+  for(int i = 1; i < dim; ++i) {
+    // index *= array[i];
+    mul_mem_reg((i + 2) * sizeof(size_t), array_holder->GetRegister(), index_holder->GetRegister());
+    delete holder;
+    holder = nullptr;
 
-      holder = working_stack.front();
-      working_stack.pop_front();
-      switch(holder->GetType()) {
-      case IMM_INT:
-        add_imm_reg(holder->GetOperand(), index_holder->GetRegister());
-        break;
+    holder = working_stack.front();
+    working_stack.pop_front();
+    switch(holder->GetType()) {
+    case IMM_INT:
+      add_imm_reg(holder->GetOperand(), index_holder->GetRegister());
+      break;
 
-      case REG_INT:
-        add_reg_reg(holder->GetRegister()->GetRegister(), index_holder->GetRegister());
-        break;
+    case REG_INT:
+      add_reg_reg(holder->GetRegister()->GetRegister(), index_holder->GetRegister());
+      break;
 
-      case MEM_INT:
-        add_mem_reg((long)holder->GetOperand(), RBP, index_holder->GetRegister());
-        break;
+    case MEM_INT:
+      add_mem_reg((long)holder->GetOperand(), RBP, index_holder->GetRegister());
+      break;
 
-      default:
-        break;
-      }
+    default:
+      break;
     }
   }
 
@@ -5570,25 +5276,25 @@ bool JitAmd64::Compile(StackMethod* cm)
 
     for(size_t i = 0; i < nil_deref_offsets.size(); ++i) {
       const long index = nil_deref_offsets[i];
-      long offset = epilog_index - index + 1;
+      long offset = nil_deref_handler_index - (index + 4);
       memcpy(&code[index], &offset, 4);
     }
 
     for(size_t i = 0; i < bounds_less_offsets.size(); ++i) {
       const long index = bounds_less_offsets[i];
-      long offset = epilog_index - index + 16;
+      long offset = bounds_less_handler_index - (index + 4);
       memcpy(&code[index], &offset, 4);
     }
 
     for(size_t i = 0; i < bounds_greater_offsets.size(); ++i) {
       const long index = bounds_greater_offsets[i];
-      long offset = epilog_index - index + 31;
+      long offset = bounds_greater_handler_index - (index + 4);
       memcpy(&code[index], &offset, 4);
     }
 
     for(size_t i = 0; i < div_by_zero_offsets.size(); ++i) {
       const long index = div_by_zero_offsets[i];
-      long offset = epilog_index - index + 46;
+      long offset = div_by_zero_handler_index - (index + 4);
       memcpy(&code[index], &offset, 4);
     }
 #ifdef _DEBUG_JIT

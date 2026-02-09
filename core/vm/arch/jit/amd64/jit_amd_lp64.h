@@ -333,6 +333,10 @@ namespace Runtime {
     unsigned char* code;
     long code_index;
     long epilog_index;
+    long nil_deref_handler_index;
+    long bounds_less_handler_index;
+    long bounds_greater_handler_index;
+    long div_by_zero_handler_index;
     double* float_consts;
     long floats_index;
     long instr_index;
@@ -912,6 +916,7 @@ namespace Runtime {
     void cmov_reg(Register reg, InstructionType oper);
 
     // inc/dec instructions
+    void inc_reg(Register dest);
     void dec_reg(Register dest);
     void dec_mem(long offset, Register dest);
     void inc_mem(long offset, Register dest);
