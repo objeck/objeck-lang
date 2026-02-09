@@ -1,7 +1,2 @@
 ﻿  onnx_dml.cpp
-     Creating library C:\Users\objec\Documents\Code\objeck-lang\core\lib\onnx\eq\dml\x64\Release\libobjk_onnx.lib and object C:\Users\objec\Documents\Code\objeck-lang\core\lib\onnx\eq\dml\x64\Release\libobjk_onnx.exp
-  Generating code
-  Previous IPDB not found, fall back to full compilation.
-  All 1660 functions were compiled because no usable IPDB/IOBJ from previous compilation was found.
-  Finished generating code
-  vs.vcxproj -> C:\Users\objec\Documents\Code\objeck-lang\core\lib\onnx\eq\dml\x64\Release\libobjk_onnx.dll
+LINK : fatal error LNK1181: cannot open input file 'C:\Users\objec\Documents\Code\objeck-lang\core\lib\onnx\eq\dml\packages\Microsoft.ML.OnnxRuntime.DirectML.1.22.1\build\native\..\..\runtimes\win-x64\native\onnxruntime.lib'

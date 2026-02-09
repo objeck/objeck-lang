@@ -5,7 +5,7 @@
         {
             "primary-output": "x64\\Debug\\jit_amd_lp64.h.obj",
             "outputs": [
-                "C:\\Users\\objec\\Documents\\Code\\objeck-lang\\core\\repl\\x64\\Debug\\objeck.pdb",
+                "C:\\Users\\objec\\Documents\\Code\\objeck-lang\\core\\release\\x64\\Debug\\objeck.pdb",
                 "x64\\Debug\\",
                 "C:\\Users\\objec\\Documents\\Code\\objeck-lang\\core\\module\\vs\\x64\\Debug\\jit_amd_lp64.h.ifc"
             ],
