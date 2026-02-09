@@ -257,12 +257,15 @@
 				GCC_ENABLE_CPP_EXCEPTIONS = YES;
 				GCC_ENABLE_CPP_RTTI = YES;
 				GCC_SYMBOLS_PRIVATE_EXTERN = YES;
-				HEADER_SEARCH_PATHS = ../include;
+				HEADER_SEARCH_PATHS = (
+					../include,
+					../../../openssl/macos/include,
+				);
 				LIBRARY_SEARCH_PATHS = "";
 				OTHER_LDFLAGS = (
-					"-Wl,../arm64/libmbedtls.a",
-					"-Wl,../arm64/libmbedx509.a",
-					"-Wl,../arm64/libmbedcrypto.a",
+					"-Wl,../../../openssl/macos/arm64/libmbedtls.a",
+					"-Wl,../../../openssl/macos/arm64/libmbedx509.a",
+					"-Wl,../../../openssl/macos/arm64/libmbedcrypto.a",
 					"-lz",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -283,12 +286,15 @@
 				GCC_ENABLE_CPP_EXCEPTIONS = YES;
 				GCC_ENABLE_CPP_RTTI = YES;
 				GCC_SYMBOLS_PRIVATE_EXTERN = YES;
-				HEADER_SEARCH_PATHS = ../include;
+				HEADER_SEARCH_PATHS = (
+					../include,
+					../../../openssl/macos/include,
+				);
 				LIBRARY_SEARCH_PATHS = "";
 				OTHER_LDFLAGS = (
-					"-Wl,../arm64/libmbedtls.a",
-					"-Wl,../arm64/libmbedx509.a",
-					"-Wl,../arm64/libmbedcrypto.a",
+					"-Wl,../../../openssl/macos/arm64/libmbedtls.a",
+					"-Wl,../../../openssl/macos/arm64/libmbedx509.a",
+					"-Wl,../../../openssl/macos/arm64/libmbedcrypto.a",
 					"-lz",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";

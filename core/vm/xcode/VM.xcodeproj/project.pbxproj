@@ -16,6 +16,7 @@
 		ED53942C2613698C0085A5F8 /* jit_arm_a64.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED53942A2613698C0085A5F8 /* jit_arm_a64.cpp */; };
 		ED539434261369A20085A5F8 /* logger.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED539432261369A20085A5F8 /* logger.cpp */; };
 		EDE14A6328FB4D21004D4C25 /* jit_common.cpp in Sources */ = {isa = PBXBuildFile; fileRef = EDE14A6228FB4D21004D4C25 /* jit_common.cpp */; };
+		ED539440261369610085A5F8 /* dispatch.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED539441261369610085A5F8 /* dispatch.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -56,6 +57,8 @@
 		EDE14A6128FB4D21004D4C25 /* jit_common.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = jit_common.h; path = ../arch/jit/jit_common.h; sourceTree = "<group>"; };
 		EDE14A6228FB4D21004D4C25 /* jit_common.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = jit_common.cpp; path = ../arch/jit/jit_common.cpp; sourceTree = "<group>"; };
 		EDFEDD8F256EE38100382F3F /* obr */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = obr; sourceTree = BUILT_PRODUCTS_DIR; };
+		ED539441261369610085A5F8 /* dispatch.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = dispatch.cpp; path = ../dispatch.cpp; sourceTree = "<group>"; };
+		ED539442261369610085A5F8 /* dispatch.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = dispatch.h; path = ../dispatch.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -111,6 +114,8 @@
 				ED539417261369610085A5F8 /* loader.cpp */,
 				ED539416261369610085A5F8 /* loader.h */,
 				ED53941B261369610085A5F8 /* posix_main.cpp */,
+				ED539441261369610085A5F8 /* dispatch.cpp */,
+				ED539442261369610085A5F8 /* dispatch.h */,
 				ED53941E261369610085A5F8 /* vm.cpp */,
 				ED53941D261369610085A5F8 /* vm.h */,
 			);
@@ -185,6 +190,7 @@
 				ED539424261369610085A5F8 /* vm.cpp in Sources */,
 				ED539428261369760085A5F8 /* memory.cpp in Sources */,
 				ED539423261369610085A5F8 /* posix_main.cpp in Sources */,
+				ED539440261369610085A5F8 /* dispatch.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
