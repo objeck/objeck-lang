@@ -80,11 +80,14 @@ cd ../opencv
 ./build_linux.sh opencv
 cp opencv.so ../../release/deploy/lib/native/libobjk_opencv.so
 
-cd ../onnx/eq/cuda
-./build_linux.sh onnx_cuda
-cp onnx_cuda.so ../../../../release/deploy/lib/native/libobjk_onnx.so
-
-cd ../../../sdl
+if [ -z "$1" ] || [ "$1" != "arm64" ]; then
+	cd ../onnx/eq/cuda
+	./build_linux.sh onnx_cuda
+	cp onnx_cuda.so ../../../../release/deploy/lib/native/libobjk_onnx.so
+	cd ../../../sdl
+else
+	cd ../sdl
+fi
 ./build_linux.sh sdl
 cp sdl.so ../../release/deploy/lib/native/libobjk_sdl.so
 cp lib/fonts/*.ttf ../../release/deploy/lib/sdl/fonts
@@ -115,6 +118,7 @@ cd ../../release
 cd ../..
 cp -R docs/syntax core/release/deploy/doc/syntax
 cp docs/readme.html core/release/deploy
+cp docs/style/readme.css core/release/deploy/doc
 
 cp LICENSE core/release/deploy
 unzip docs/api.zip -d core/release/deploy/doc

@@ -4258,8 +4258,12 @@ bool TrapProcessor::SockTcpSslListen(StackProgram* program, size_t* inst, size_t
         }
       }
 
+#if MBEDTLS_VERSION_MAJOR >= 3
       ret = mbedtls_pk_parse_keyfile(&srv->pkey, key_path.c_str(), passwd_cstr,
                                       mbedtls_ctr_drbg_random, &srv->ctr_drbg);
+#else
+      ret = mbedtls_pk_parse_keyfile(&srv->pkey, key_path.c_str(), passwd_cstr);
+#endif
       if(ret != 0) {
         delete srv;
         PushInt(0, op_stack, stack_pos);
