@@ -1,6 +1,2 @@
 ﻿  AppLauncher.cpp
-  Generating code
-  Previous IPDB not found, fall back to full compilation.
-  All 288 functions were compiled because no usable IPDB/IOBJ from previous compilation was found.
-  Finished generating code
-  AppLauncher.vcxproj -> C:\Users\objec\Documents\Code\objeck-lang\core\utils\WindowsApp\x64\Release\ObLauncher.exe
+C:\Users\objec\Documents\Code\objeck-lang\core\utils\WindowsApp\AppLauncher\AppLauncher.cpp(168,10): error C1083: Cannot open include file: 'atlbase.h': No such file or directory
