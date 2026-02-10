@@ -1,0 +1,451 @@
+name: Release Build
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version number (e.g., 2026.2.1)'
+        required: true
+        type: string
+
+jobs:
+  # ============================================
+  # Prepare Release Metadata
+  # ============================================
+
+  prepare:
+    name: Prepare Release
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      version_number: ${{ steps.version.outputs.version_number }}
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Extract version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION="${{ github.ref_name }}"
+            VERSION="${VERSION#v}"  # Remove 'v' prefix
+          fi
+
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+          # Generate version number (remove dots: 2026.2.1 -> 202621)
+          VERSION_NUMBER=$(echo "$VERSION" | tr -d '.')
+          echo "version_number=$VERSION_NUMBER" >> $GITHUB_OUTPUT
+
+          echo "📦 Release version: $VERSION"
+          echo "📊 Version number: $VERSION_NUMBER"
+
+      - name: Update version files
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          VERSION_NUMBER="${{ steps.version.outputs.version_number }}"
+          VERSION_WINDOWS=$(echo "$VERSION" | tr '.' ',')
+
+          # Extract year from version
+          YEAR=$(echo "$VERSION" | cut -d'.' -f1)
+
+          # Update version.h
+          cat > core/shared/version.h << EOF
+          #pragma once
+
+          #include "instrs.h"
+          #include "traps.h"
+
+          #define MAGIC_NUM_EXE 0xffbe // bitmask 'e'
+          #define MAGIC_NUM_LIB 0xffb6 // bitmask 'k'
+
+          #define VER_NUM $VERSION_NUMBER
+          #define VERSION_STRING L"$VERSION"
+          EOF
+
+          echo "✅ Updated version.h with version $VERSION"
+
+      - name: Upload version metadata
+        uses: actions/upload-artifact@v4
+        with:
+          name: version-metadata
+          path: core/shared/version.h
+          retention-days: 1
+
+  # ============================================
+  # Build All Platforms in Parallel
+  # ============================================
+
+  build:
+    name: Build ${{ matrix.platform }}
+    needs: prepare
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Windows x64
+          - platform: windows-x64
+            os: windows-latest
+            arch: x64
+            deploy_script: deploy_windows.cmd x64 deploy
+            shell: cmd
+            artifact_pattern: "objeck-windows-x64_0.0.0.*"
+
+          # Windows ARM64
+          - platform: windows-arm64
+            os: windows-latest
+            arch: ARM64
+            deploy_script: deploy_windows.cmd arm64 deploy
+            shell: cmd
+            artifact_pattern: "objeck-windows-arm64_0.0.0.*"
+
+          # Linux x64
+          - platform: linux-x64
+            os: ubuntu-latest
+            arch: x64
+            deploy_script: ./deploy_posix.sh x64 deploy
+            shell: bash
+            artifact_pattern: "objeck-linux-x64_0.0.0.tgz"
+
+          # Linux ARM64
+          - platform: linux-arm64
+            os: ubuntu-24.04-arm
+            arch: arm64
+            deploy_script: ./deploy_posix.sh arm64 deploy
+            shell: bash
+            artifact_pattern: "objeck-linux-arm64_0.0.0.tgz"
+
+          # macOS ARM64
+          - platform: macos-arm64
+            os: macos-14
+            arch: arm64
+            deploy_script: ./deploy_macos_arm64.sh deploy
+            shell: bash
+            artifact_pattern: "objeck-macos-arm64_0.0.0.tgz"
+
+    defaults:
+      run:
+        shell: ${{ matrix.shell }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download version metadata
+        uses: actions/download-artifact@v4
+        with:
+          name: version-metadata
+          path: core/shared/
+
+      # ============================================
+      # Install Dependencies (Same as CI)
+      # ============================================
+
+      - name: Cache APT packages (Linux)
+        if: runner.os == 'Linux'
+        uses: actions/cache@v4
+        with:
+          path: /var/cache/apt/archives
+          key: ${{ runner.os }}-${{ matrix.arch }}-apt-release
+          restore-keys: |
+            ${{ runner.os }}-${{ matrix.arch }}-apt-
+
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            libopencv-dev \
+            libmbedtls-dev \
+            unixodbc-dev \
+            libsdl2-dev \
+            libsdl2-image-dev \
+            libsdl2-ttf-dev \
+            libsdl2-mixer-dev \
+            libreadline-dev \
+            libeigen3-dev \
+            libmp3lame-dev
+
+      - name: Cache Homebrew (macOS)
+        if: runner.os == 'macOS'
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Caches/Homebrew
+            /opt/homebrew/Cellar
+          key: ${{ runner.os }}-brew-release
+          restore-keys: |
+            ${{ runner.os }}-brew-
+
+      - name: Install macOS dependencies
+        if: runner.os == 'macOS'
+        run: |
+          brew install opencv mbedtls unixodbc sdl2 sdl2_image sdl2_ttf sdl2_mixer readline eigen lame
+          brew cleanup
+
+      - name: Setup Visual Studio (Windows)
+        if: runner.os == 'Windows'
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Setup MSVC Environment (Windows)
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: ${{ matrix.arch }}
+
+      # ============================================
+      # Build Bootstrap
+      # ============================================
+
+      - name: Build bootstrap (Windows)
+        if: runner.os == 'Windows'
+        working-directory: ./core/compiler
+        run: call update_version.cmd
+
+      - name: Build bootstrap (Linux)
+        if: runner.os == 'Linux'
+        working-directory: ./core/compiler
+        run: ./update_version.sh
+
+      - name: Build bootstrap (macOS)
+        if: runner.os == 'macOS'
+        working-directory: ./core/compiler
+        run: ./update_version_arm.sh
+
+      # ============================================
+      # Build Full Release
+      # ============================================
+
+      - name: Build release
+        working-directory: ./core/release
+        run: ${{ matrix.deploy_script }}
+
+      # ============================================
+      # Find and Upload Artifacts
+      # ============================================
+
+      - name: Find release artifacts (Windows)
+        if: runner.os == 'Windows'
+        id: artifacts-win
+        shell: pwsh
+        run: |
+          $buildDir = "$env:USERPROFILE\Documents\Objeck-Build"
+          $files = Get-ChildItem -Path $buildDir -Recurse -Include ${{ matrix.artifact_pattern }}
+
+          if ($files.Count -eq 0) {
+            Write-Error "No artifacts found matching pattern: ${{ matrix.artifact_pattern }}"
+            exit 1
+          }
+
+          foreach ($file in $files) {
+            Write-Output "Found: $($file.FullName)"
+            echo "artifact_path=$($file.FullName)" >> $env:GITHUB_OUTPUT
+          }
+
+      - name: Find release artifacts (POSIX)
+        if: runner.os != 'Windows'
+        id: artifacts-posix
+        shell: bash
+        run: |
+          ARTIFACT=$(find ~/Desktop -name "${{ matrix.artifact_pattern }}" -type f | head -n 1)
+
+          if [ -z "$ARTIFACT" ]; then
+            echo "❌ No artifacts found matching pattern: ${{ matrix.artifact_pattern }}"
+            exit 1
+          fi
+
+          echo "✅ Found: $ARTIFACT"
+          echo "artifact_path=$ARTIFACT" >> $GITHUB_OUTPUT
+
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.platform }}
+          path: |
+            ${{ runner.os == 'Windows' && steps.artifacts-win.outputs.artifact_path || steps.artifacts-posix.outputs.artifact_path }}
+          retention-days: 7
+
+  # ============================================
+  # Build LSP Package
+  # ============================================
+
+  build-lsp:
+    name: Build LSP Package
+    needs: prepare
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download version metadata
+        uses: actions/download-artifact@v4
+        with:
+          name: version-metadata
+          path: core/shared/
+
+      - name: Setup Visual Studio
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Setup MSVC Environment
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Build bootstrap
+        working-directory: ./core/compiler
+        run: call update_version.cmd
+
+      - name: Build LSP
+        working-directory: ./core/release
+        shell: cmd
+        run: deploy_windows.cmd x64
+
+      - name: Package LSP
+        shell: pwsh
+        run: |
+          $version = "${{ needs.prepare.outputs.version }}"
+          $lspDir = "objeck-lsp"
+
+          # Create LSP directory structure
+          New-Item -ItemType Directory -Force -Path $lspDir
+          New-Item -ItemType Directory -Force -Path "$lspDir\bin"
+          New-Item -ItemType Directory -Force -Path "$lspDir\lib"
+
+          # Copy LSP binaries (compiler and runtime)
+          Copy-Item "core\release\deploy-x64\bin\obc.exe" "$lspDir\bin\"
+          Copy-Item "core\release\deploy-x64\bin\obr.exe" "$lspDir\bin\"
+          Copy-Item "core\release\deploy-x64\lib\*.obl" "$lspDir\lib\"
+          Copy-Item "core\release\deploy-x64\lib\*.ini" "$lspDir\lib\"
+
+          # Create ZIP
+          Compress-Archive -Path $lspDir -DestinationPath "objeck-lsp_0.0.0.zip"
+
+          Write-Output "✅ LSP package created: objeck-lsp_0.0.0.zip"
+
+      - name: Upload LSP artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-lsp
+          path: objeck-lsp_0.0.0.zip
+          retention-days: 7
+
+  # ============================================
+  # Generate API Documentation
+  # ============================================
+
+  build-docs:
+    name: Generate API Docs
+    needs: prepare
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download version metadata
+        uses: actions/download-artifact@v4
+        with:
+          name: version-metadata
+          path: core/shared/
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential libmbedtls-dev libreadline-dev
+
+      - name: Build compiler and runtime
+        run: |
+          cd core/compiler
+          ./update_version.sh
+          cd ../release
+          ./deploy_posix.sh x64
+
+      - name: Generate API documentation
+        working-directory: ./core/release/deploy/bin
+        run: |
+          VERSION="${{ needs.prepare.outputs.version }}"
+
+          mkdir -p ../../../../docs/api
+
+          ./obc -src ../../../lib/code_doc/doc_html.obs,../../../lib/code_doc/doc_parser.obs \
+            -lib cipher,json,xml,misc,net -dest code_doc.obe
+
+          ./obr code_doc.obe \
+            ../../../lib/code_doc/templates \
+            "$VERSION" \
+            ../../../compiler/lib_src/lang.obs \
+            ../../../compiler/lib_src/regex.obs \
+            ../../../compiler/lib_src/json.obs \
+            ../../../compiler/lib_src/xml.obs \
+            ../../../compiler/lib_src/cipher.obs \
+            ../../../compiler/lib_src/odbc.obs \
+            ../../../compiler/lib_src/csv.obs \
+            ../../../compiler/lib_src/query.obs \
+            ../../../compiler/lib_src/sdl2.obs \
+            ../../../compiler/lib_src/sdl_game.obs \
+            ../../../compiler/lib_src/gen_collect.obs \
+            ../../../compiler/lib_src/net.obs \
+            ../../../compiler/lib_src/rss.obs \
+            ../../../compiler/lib_src/misc.obs
+
+      - name: Package API documentation
+        working-directory: ./docs
+        run: |
+          zip -r api.zip api/
+          echo "✅ API documentation packaged"
+
+      - name: Upload API docs
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-docs
+          path: docs/api.zip
+          retention-days: 7
+
+  # ============================================
+  # Release Summary
+  # ============================================
+
+  summary:
+    name: Build Summary
+    needs: [prepare, build, build-lsp, build-docs]
+    runs-on: ubuntu-latest
+    if: always()
+
+    steps:
+      - name: Generate build summary
+        run: |
+          echo "# 🚀 Release Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** ${{ needs.prepare.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Version Number:** ${{ needs.prepare.outputs.version_number }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Build Status" >> $GITHUB_STEP_SUMMARY
+          echo "- Windows x64: ${{ needs.build.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Windows ARM64: ${{ needs.build.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Linux x64: ${{ needs.build.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Linux ARM64: ${{ needs.build.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- macOS ARM64: ${{ needs.build.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- LSP Package: ${{ needs.build-lsp.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- API Docs: ${{ needs.build-docs.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ needs.build.result }}" = "success" ] && \
+             [ "${{ needs.build-lsp.result }}" = "success" ] && \
+             [ "${{ needs.build-docs.result }}" = "success" ]; then
+            echo "✅ **All builds completed successfully!**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Next step: Run release-publish workflow to create GitHub Release" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Some builds failed. Please review logs.**" >> $GITHUB_STEP_SUMMARY
+          fi
