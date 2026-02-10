@@ -150,14 +150,14 @@ bundle System.NLP {
 	Text preprocessing utilities for cleaning and normalizing text
 	~#
 	class TextPreprocessor {
-		@stopwords : static : Hash<String, Bool>;
+		@stopwords : static : Hash<String, BoolRef>;
 
 		#~
 		Initializes common English stopwords
 		~#
 		function : Init() ~ Nil {
 			if(@stopwords = Nil) {
-				@stopwords := Hash->New()<String, Bool>;
+				@stopwords := Hash->New()<String, BoolRef>;
 
 				# Common English stopwords
 				words := [
@@ -177,7 +177,7 @@ bundle System.NLP {
 				];
 
 				each(word : words) {
-					@stopwords->Insert(word, true);
+					@stopwords->Insert(word, BoolRef->New(true));
 				};
 			};
 		}
@@ -310,7 +310,7 @@ bundle System.NLP {
 	Term Frequency-Inverse Document Frequency (TF-IDF) vectorizer for document analysis
 	~#
 	class TF_IDF {
-		@vocabulary : Hash<String, Int>;
+		@vocabulary : Hash<String, IntRef>;
 		@idf : Float[];
 		@document_count : Int;
 
@@ -318,7 +318,7 @@ bundle System.NLP {
 		Constructor
 		~#
 		New() {
-			@vocabulary := Hash->New()<String, Int>;
+			@vocabulary := Hash->New()<String, IntRef>;
 			@document_count := 0;
 		}
 
@@ -334,19 +334,19 @@ bundle System.NLP {
 			@document_count := documents->Size();
 
 			# Build vocabulary and document frequencies
-			doc_freq := Hash->New()<String, Int>;
+			doc_freq := Hash->New()<String, IntRef>;
 
 			each(doc : documents) {
 				tokens := Tokenizer->WordTokenize(doc);
-				unique_tokens := Hash->New()<String, Bool>;
+				unique_tokens := Hash->New()<String, BoolRef>;
 
 				each(token : tokens) {
 					lowercase_token := token->ToLower();
-					unique_tokens->Insert(lowercase_token, true);
+					unique_tokens->Insert(lowercase_token, BoolRef->New(true));
 
 					if(<>@vocabulary->Has(lowercase_token)) {
 						idx := @vocabulary->Size();
-						@vocabulary->Insert(lowercase_token, idx);
+						@vocabulary->Insert(lowercase_token, IntRef->New(idx));
 					};
 				};
 
@@ -355,10 +355,10 @@ bundle System.NLP {
 				each(key : keys) {
 					count := doc_freq->Find(key);
 					if(count <> Nil) {
-						doc_freq->Insert(key, count + 1);
+						doc_freq->Insert(key, IntRef->New(count->Get() + 1));
 					}
 					else {
-						doc_freq->Insert(key, 1);
+						doc_freq->Insert(key, IntRef->New(1));
 					};
 				};
 			};
@@ -372,12 +372,12 @@ bundle System.NLP {
 				idx := @vocabulary->Find(key);
 				df := doc_freq->Find(key);
 
-				if(df <> Nil & df > 0) {
+				if(df <> Nil & df->Get() > 0) {
 					# IDF = log(N / df)
-					@idf[idx] := Float->Log(@document_count->As(Float) / df->As(Float));
+					@idf[idx->Get()] := Float->Log(@document_count->As(Float) / df->Get()->As(Float));
 				}
 				else {
-					@idf[idx] := 0.0;
+					@idf[idx->Get()] := 0.0;
 				};
 			};
 		}
@@ -401,15 +401,15 @@ bundle System.NLP {
 				return tfidf;
 			};
 
-			term_freq := Hash->New()<String, Int>;
+			term_freq := Hash->New()<String, IntRef>;
 			each(token : tokens) {
 				lowercase_token := token->ToLower();
 				count := term_freq->Find(lowercase_token);
 				if(count <> Nil) {
-					term_freq->Insert(lowercase_token, count + 1);
+					term_freq->Insert(lowercase_token, IntRef->New(count->Get() + 1));
 				}
 				else {
-					term_freq->Insert(lowercase_token, 1);
+					term_freq->Insert(lowercase_token, IntRef->New(1));
 				};
 			};
 
@@ -418,8 +418,8 @@ bundle System.NLP {
 			each(key : keys) {
 				idx := @vocabulary->Find(key);
 				if(idx <> Nil) {
-					tf := term_freq->Find(key)->As(Float) / tokens->Size()->As(Float);
-					tfidf[idx] := tf * @idf[idx];
+					tf := term_freq->Find(key)->Get()->As(Float) / tokens->Size()->As(Float);
+					tfidf[idx->Get()] := tf * @idf[idx->Get()];
 				};
 			};
 
@@ -430,7 +430,7 @@ bundle System.NLP {
 		Gets the vocabulary (word to index mapping)
 		@return vocabulary hash map
 		~#
-		method : public : GetVocabulary() ~ Hash<String, Int> {
+		method : public : GetVocabulary() ~ Hash<String, IntRef> {
 			return @vocabulary;
 		}
 
