@@ -46,7 +46,7 @@ bundle System.NLP {
 			parts := cleaned->Split(" ");
 			tokens := Vector->New()<String>;
 
-			each(part : parts) {
+			each(part := parts) {
 				trimmed := part->Trim();
 				if(<>trimmed->IsEmpty()) {
 					tokens->AddBack(trimmed);
@@ -176,7 +176,7 @@ bundle System.NLP {
 					"would", "you", "your", "yours", "yourself", "yourselves"
 				];
 
-				each(word : words) {
+				each(word := words) {
 					@stopwords->Insert(word, BoolRef->New(true));
 				};
 			};
@@ -209,7 +209,7 @@ bundle System.NLP {
 
 			filtered := Vector->New()<String>;
 
-			each(token : tokens) {
+			each(token := tokens) {
 				lowercase_token := token->ToLower();
 				if(<>@stopwords->Has(lowercase_token)) {
 					filtered->AddBack(token);
@@ -298,7 +298,7 @@ bundle System.NLP {
 			};
 
 			stemmed := String->New[tokens->Size()];
-			each(i : tokens) {
+			each(i := tokens) {
 				stemmed[i] := Stem(tokens[i]);
 			};
 
@@ -336,11 +336,11 @@ bundle System.NLP {
 			# Build vocabulary and document frequencies
 			doc_freq := Hash->New()<String, IntRef>;
 
-			each(doc : documents) {
+			each(doc := documents) {
 				tokens := Tokenizer->WordTokenize(doc);
 				unique_tokens := Hash->New()<String, BoolRef>;
 
-				each(token : tokens) {
+				each(token := tokens) {
 					lowercase_token := token->ToLower();
 					unique_tokens->Insert(lowercase_token, BoolRef->New(true));
 
@@ -352,7 +352,7 @@ bundle System.NLP {
 
 				# Count documents containing each unique token
 				keys := unique_tokens->GetKeys()<String>;
-				each(key : keys) {
+				each(key := keys) {
 					count := doc_freq->Find(key);
 					if(count <> Nil) {
 						doc_freq->Insert(key, IntRef->New(count->Get() + 1));
@@ -368,7 +368,7 @@ bundle System.NLP {
 			@idf := Float->New[vocab_size];
 
 			keys := @vocabulary->GetKeys()<String>;
-			each(key : keys) {
+			each(key := keys) {
 				idx := @vocabulary->Find(key);
 				df := doc_freq->Find(key);
 
@@ -402,7 +402,7 @@ bundle System.NLP {
 			};
 
 			term_freq := Hash->New()<String, IntRef>;
-			each(token : tokens) {
+			each(token := tokens) {
 				lowercase_token := token->ToLower();
 				count := term_freq->Find(lowercase_token);
 				if(count <> Nil) {
@@ -415,7 +415,7 @@ bundle System.NLP {
 
 			# Calculate TF-IDF
 			keys := term_freq->GetKeys()<String>;
-			each(key : keys) {
+			each(key := keys) {
 				idx := @vocabulary->Find(key);
 				if(idx <> Nil) {
 					tf := term_freq->Find(key)->Get()->As(Float) / tokens->Size()->As(Float);
@@ -462,7 +462,7 @@ bundle System.NLP {
 			norm1 := 0.0;
 			norm2 := 0.0;
 
-			each(i : vec1) {
+			each(i := vec1) {
 				dot_product += vec1[i] * vec2[i];
 				norm1 += vec1[i] * vec1[i];
 				norm2 += vec2[i] * vec2[i];
@@ -492,19 +492,19 @@ bundle System.NLP {
 
 			# Create sets
 			set1 := Hash->New()<String, BoolRef>;
-			each(token : tokens1) {
+			each(token := tokens1) {
 				set1->Insert(token->ToLower(), BoolRef->New(true));
 			};
 
 			set2 := Hash->New()<String, BoolRef>;
-			each(token : tokens2) {
+			each(token := tokens2) {
 				set2->Insert(token->ToLower(), BoolRef->New(true));
 			};
 
 			# Calculate intersection
 			intersection := 0;
 			keys1 := set1->GetKeys()<String>;
-			each(key : keys1) {
+			each(key := keys1) {
 				if(set2->Has(key)) {
 					intersection += 1;
 				};
@@ -551,12 +551,12 @@ bundle System.NLP {
 
 			# Initialize first row and column
 			rows := len1 + 1;
-			each(i : rows) {
+			each(i := rows) {
 				dp[i, 0] := i;
 			};
 
 			cols := len2 + 1;
-			each(j : cols) {
+			each(j := cols) {
 				dp[0, j] := j;
 			};
 
@@ -626,7 +626,7 @@ bundle System.NLP {
 					"positive", "success", "win", "winner", "achieve", "accomplished"
 				];
 
-				each(word : positive) {
+				each(word := positive) {
 					@positive_words->Insert(word, IntRef->New(1));
 				};
 
@@ -635,7 +635,7 @@ bundle System.NLP {
 					"extraordinary", "phenomenal", "exceptional", "remarkable", "outstanding"
 				];
 
-				each(word : strong_positive) {
+				each(word := strong_positive) {
 					@positive_words->Insert(word, IntRef->New(2));
 				};
 
@@ -647,7 +647,7 @@ bundle System.NLP {
 					"ugly", "disgusting", "pathetic", "useless", "worthless", "inferior"
 				];
 
-				each(word : negative) {
+				each(word := negative) {
 					@negative_words->Insert(word, IntRef->New(1));
 				};
 
@@ -656,7 +656,7 @@ bundle System.NLP {
 					"atrocious", "abysmal", "dreadful", "appalling", "catastrophic"
 				];
 
-				each(word : strong_negative) {
+				each(word := strong_negative) {
 					@negative_words->Insert(word, IntRef->New(2));
 				};
 			};
@@ -677,7 +677,7 @@ bundle System.NLP {
 			tokens := Tokenizer->WordTokenize(text);
 			score := 0;
 
-			each(token : tokens) {
+			each(token := tokens) {
 				lowercase_token := token->ToLower();
 
 				pos_score := @positive_words->Find(lowercase_token);
