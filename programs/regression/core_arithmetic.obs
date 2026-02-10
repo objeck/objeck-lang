@@ -1,0 +1,63 @@
+#~
+# Core Arithmetic Operations Test
+# Tests basic arithmetic operations, type conversions, and operator precedence
+# Based on programs/tests/prgm1.obs
+~#
+
+class CoreArithmeticTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing core arithmetic operations..."->PrintLine();
+
+        pass := true;
+
+        # Integer arithmetic
+        a := 70;
+        if(a / 2 <> 35) { pass := false; "  FAIL: 70 / 2"->PrintLine(); };
+        if(4 * a <> 280) { pass := false; "  FAIL: 4 * 70"->PrintLine(); };
+        if(9 - a <> -61) { pass := false; "  FAIL: 9 - 70"->PrintLine(); };
+        if(a - 9 <> 61) { pass := false; "  FAIL: 70 - 9"->PrintLine(); };
+        if(a % 9 <> 7) { pass := false; "  FAIL: 70 % 9"->PrintLine(); };
+
+        # Float arithmetic
+        c := 3.1415;
+        d := 11.12;
+        diff := c - d;
+        if(diff > -7.98 | diff < -7.99) {
+            pass := false;
+            "  FAIL: 3.1415 - 11.12 = {$diff}"->PrintLine();
+        };
+
+        # Mixed int/float arithmetic
+        b := 13;
+        result := b + 9.33;
+        if(result < 22.32 | result > 22.34) {
+            pass := false;
+            "  FAIL: 13 + 9.33 = {$result}"->PrintLine();
+        };
+
+        # Operator precedence
+        x := 1;
+        x += (8 * 2);  # Should be 17
+        if(x <> 17) {
+            pass := false;
+            "  FAIL: 1 + (8 * 2) = {$x}"->PrintLine();
+        };
+
+        # Type conversions
+        ch := 55->As(Char);
+        if(ch <> '7') {
+            pass := false;
+            "  FAIL: 55->As(Char) = {$ch}, expected '7'"->PrintLine();
+        };
+
+        # Division
+        if(9/3 <> 3) { pass := false; "  FAIL: 9/3"->PrintLine(); };
+        if(3-9 <> -6) { pass := false; "  FAIL: 3-9"->PrintLine(); };
+
+        if(pass) {
+            "PASS: Core arithmetic operations"->PrintLine();
+        } else {
+            "FAIL: Core arithmetic operations"->PrintLine();
+        };
+    }
+}

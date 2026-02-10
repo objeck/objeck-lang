@@ -70,6 +70,12 @@ jobs:
         ./obr ../../../../programs/deploy/loops_19.obe; \
         ./obr ../../../../programs/deploy/xml_2.obe
 
+    - name: run-regression-tests
+      working-directory: ./programs/regression
+      run: |
+        chmod +x run_regression.sh
+        ./run_regression.sh x64
+
     - name: doc-apis
       working-directory: ./core/release/deploy/bin
       run: |

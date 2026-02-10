@@ -1,0 +1,67 @@
+#~
+# Core Control Flow Test
+# Tests if/else, loops, and select statements
+~#
+
+class CoreControlFlowTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing core control flow..."->PrintLine();
+
+        pass := true;
+
+        # Test if/else
+        x := 10;
+        if(x > 5) {
+            # Correct path
+        } else {
+            pass := false;
+            "  FAIL: if/else"->PrintLine();
+        };
+
+        # Test for loop
+        sum := 0;
+        for(i := 0; i < 10; i += 1;) {
+            sum += i;
+        };
+        if(sum <> 45) {
+            pass := false;
+            "  FAIL: for loop sum"->PrintLine();
+        };
+
+        # Test while loop
+        count := 0;
+        j := 0;
+        while(j < 5) {
+            count += 1;
+            j += 1;
+        };
+        if(count <> 5) {
+            pass := false;
+            "  FAIL: while loop"->PrintLine();
+        };
+
+        # Test select
+        value := 2;
+        select(value) {
+            label 1: {
+                pass := false;
+                "  FAIL: select matched 1"->PrintLine();
+            }
+
+            label 2: {
+                # Correct - should reach here
+            }
+
+            other: {
+                pass := false;
+                "  FAIL: select matched other"->PrintLine();
+            }
+        };
+
+        if(pass) {
+            "PASS: Core control flow"->PrintLine();
+        } else {
+            "FAIL: Core control flow"->PrintLine();
+        };
+    }
+}

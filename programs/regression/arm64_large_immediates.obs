@@ -1,0 +1,41 @@
+#~
+# ARM64 Large Immediate Test
+# Tests add_imm_reg/sub_imm_reg with values > 4095
+# Related commit: cc65c18b7 - Fixed result register for immediates > 4095
+~#
+
+class ARM64LargeImmediateTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing ARM64 large immediate arithmetic..."->PrintLine();
+
+        # Test add_imm_reg/sub_imm_reg with values > 4095
+        a := 5000;
+        b := a + 7000;  # Should be 12000
+        c := b - 3000;  # Should be 9000
+        d := c + 10000; # Should be 19000
+        e := d - 15000; # Should be 4000
+
+        pass := true;
+        if(b <> 12000) { pass := false; "  FAIL: 5000 + 7000 = {$b}, expected 12000"->PrintLine(); };
+        if(c <> 9000) { pass := false; "  FAIL: 12000 - 3000 = {$c}, expected 9000"->PrintLine(); };
+        if(d <> 19000) { pass := false; "  FAIL: 9000 + 10000 = {$d}, expected 19000"->PrintLine(); };
+        if(e <> 4000) { pass := false; "  FAIL: 19000 - 15000 = {$e}, expected 4000"->PrintLine(); };
+
+        # Test with loops and large constants
+        sum := 0;
+        for(i := 0; i < 10; i += 1;) {
+            sum += 6000;
+        };
+
+        if(sum <> 60000) {
+            pass := false;
+            "  FAIL: Loop sum = {$sum}, expected 60000"->PrintLine();
+        };
+
+        if(pass) {
+            "PASS: ARM64 large immediate arithmetic"->PrintLine();
+        } else {
+            "FAIL: ARM64 large immediate arithmetic"->PrintLine();
+        };
+    }
+}
