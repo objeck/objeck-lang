@@ -4599,7 +4599,8 @@ function : Show(value : IntRef) ~ Nil {
 					node->SetRight(Insert(key, value, node->GetRight()));
 				}
 				else {
-					return node;		
+					node->Set(value);
+					return node;
 				};
 				node := Skew(node);
 				node := Split(node);
@@ -4776,7 +4777,11 @@ function : Show(value : IntRef) ~ Nil {
 		method : public : Get() ~ V {
 			return @value;
 		}
-		
+
+		method : public : Set(value : V) ~ Nil {
+			@value := value;
+		}
+
 		method : public : GetLevel() ~ Int {
 			return @level;
 		}
@@ -4936,13 +4941,13 @@ set_hash->Has("Oakland")->PrintLine();
 	```	
 	~#
 	class SetHash<K : Compare> {
-		@hash : Hash<K, K>;
+		@set : HashSet<K>;
 
 		#~
-		Default constructor 
+		Default constructor
 		~#
 		New() {
-			@hash := Hash->New()<K, K>;
+			@set := HashSet->New()<K>;
 		}
 
 		#~
@@ -4950,71 +4955,49 @@ set_hash->Has("Oakland")->PrintLine();
 		@param key key
 		~#
 		method : public : Insert(key : K) ~ Nil {
-			@hash->Insert(key, key);
+			@set->Add(key);
 		}
 
 		#~
-		Formats the collection into a string. If an element implements the 'Stringify' 
+		Formats the collection into a string. If an element implements the 'Stringify'
 		interface, it's 'ToString()' is called.
 		@return string representation
 		~#
 		method : public : ToString() ~ String {
-			buffer := "[";
-
-			keys := GetKeys()<K>;
-			each(i : keys) {
-				# get string value if instance implements 'Stringify'
-				key := keys->Get(i);
-
-				if(key->TypeOf(Stringify)) {
-					buffer->Append(key->As(System.Stringify)->ToString());
-				}
-				# use instance ID instead
-				else {
-					buffer->Append(key->GetInstanceID()->ToHexString());
-				};
-
-				# add comma
-				if(i + 1 < keys->Size()) {
-					buffer->Append(',');
-				};
-			};
-			buffer->Append(']');
-
-			return buffer;
+			return @set->ToString();
 		}
-		
+
 		#~
 		Removes a key from the set
 		@param key key for value to remove
-		@return true if removed, false otherwise		
+		@return true if removed, false otherwise
 		~#
 		method : public : Remove(key : K) ~ Bool {
-			return @hash->Remove(key);
+			return @set->Remove(key);
 		}
-    
-    	#~
+
+		#~
 		Checks for key in set
 		@param key search key
 		@return true if found, false otherwise
 		~#
 		method : public : Has(key : K) ~ Bool {
-			return @hash->Has(key);
+			return @set->Has(key);
 		}
-    
+
 		#~
 		Get a collection of keys
 		@return vector of keys
 		~#
 		method : public : GetKeys() ~ Vector<K> {
-			return @hash->GetKeys();
+			return @set->ToVector();
 		}
 
 		#~
 		Clears the set
 		~#
 		method : public : Empty() ~ Nil {
-			@hash->Empty();
+			@set->Empty();
 		}
 
 		#~
@@ -5022,15 +5005,15 @@ set_hash->Has("Oakland")->PrintLine();
 		@return true if empty, false otherwise
 		~#
 		method : public : IsEmpty() ~ Bool {
-			return @hash->IsEmpty();
+			return @set->IsEmpty();
 		}
-		
+
 		#~
-		Size of map
-		@return size of queue
+		Size of set
+		@return number of elements
 		~#
 		method : public : Size() ~ Int {
-			return @hash->Size();
+			return @set->Size();
 		}
 	}
 		
@@ -5278,20 +5261,4 @@ each(v := values) {
 		}
 	}
 
-	class Func2Composer<X, R> {
-		@func : Func2Ref<X, R>;
-
-		New(first : Func2Ref<X, R>) {
-			@func := first;
-		}
-
-		method : public : Apply(x : X) ~ R {		
-			func := @func->Get();
-			return func(x);
-		}
-
-		method : public : Compose(before : Func2Ref<Base, X>) ~ Func2Composer<Base, R> {
-			return Nil;
-		}
-	}
 }
