@@ -2100,14 +2100,14 @@ function : Example() ~ Nil {
 		@cursor : CompareListNode<H>;
 
 		#~
-		Default constructor 
+		Default constructor
 		~#
 		New() {
 			@size := 0;
 		}
 
 		#~
-		Formats the collection into a string. If an element implements the 'Stringify' 
+		Formats the collection into a string. If an element implements the 'Stringify'
 		interface, it's 'ToString()' is called.
 		@return string representation
 		~#
@@ -2116,7 +2116,7 @@ function : Example() ~ Nil {
 
 			elem := @head;
 			while(elem <> Nil) {
-				# get string value if instance implements 'Stringify'				
+				# get string value if instance implements 'Stringify'
 				value := elem->Get();
 				if(value->TypeOf(Stringify)) {
 					buffer->Append(value->As(System.Stringify)->ToString());
@@ -2133,7 +2133,7 @@ function : Example() ~ Nil {
 				if(elem <> Nil) {
 					buffer->Append(',');
 				};
-				
+
 			};
 			buffer->Append(']');
 
@@ -2175,7 +2175,7 @@ function : Example() ~ Nil {
 
 		#~
 		Adds a value to the end
-		@param value value to append 
+		@param value value to append
 		~#
 		method : public : native : AddBack(value : H) ~ Nil {
 			node := CompareListNode->New(value)<H>;
@@ -2186,12 +2186,12 @@ function : Example() ~ Nil {
 			}
 			else {
 				@tail->SetNext(node);
-			 	node->SetPrevious(@tail);	
+			 	node->SetPrevious(@tail);
 				@tail := node;
 			};
 			@size += 1;
 		}
-	
+
 		#~
 		Removes the last value from the list
 		~#
@@ -2202,7 +2202,7 @@ function : Example() ~ Nil {
 
 		#~
 		Adds a value to the front
-		@param value value to prepend 
+		@param value value to prepend
 		~#
 		method : public : native : AddFront(value : H) ~ Nil {
 			node := CompareListNode->New(value)<H>;
@@ -2218,7 +2218,7 @@ function : Example() ~ Nil {
 			};
 			@size += 1;
 		}
-		
+
 		#~
 		Removes the first value from the list
 		~#
@@ -2232,14 +2232,14 @@ function : Example() ~ Nil {
 		~#
 		method : public : Rewind() ~ Nil {
 			@cursor := @head;
-		}		
+		}
 
 		#~
 		Moves the pointer to the end of the list
 		~#
 		method : public : Forward() ~ Nil {
 			@cursor := @tail;
-		}		
+		}
 
 		#~
 		Advances the pointer
@@ -2272,13 +2272,13 @@ function : Example() ~ Nil {
 		}
 
 		#~
-		Maps the given function to each value in the list 
+		Maps the given function to each value in the list
 		@param f function to apply
 		@return newly calculated list
 		~#
 		method : public : Map(f : (H) ~ H) ~ CompareList<H> {
 			list : CompareList<H> := CompareList->New()<H>;
-			
+
 			start := @head;
 			while(start <> Nil) {
 				list->AddBack(f(start->Get()));
@@ -2296,7 +2296,7 @@ function : Example() ~ Nil {
 		~#
 		method : public : Filter(f : (H) ~ Bool) ~ CompareList<H> {
 			list : CompareList<H> := CompareList->New()<H>;
-			
+
 			start := @head;
 			while(start <> Nil) {
 				if(f(start->Get())) {
@@ -2316,7 +2316,7 @@ function : Example() ~ Nil {
 		@return reduced vector
 		~#
 		method : public : Reduce(a : H, f : (H, H) ~ H) ~ H {
-			start := @head->GetNext();
+			start := @head;
 			while(start <> Nil) {
 				a := f(a, start->Get());
 				start := start->GetNext();
@@ -2896,7 +2896,7 @@ function : Example() ~ Nil {
 		@return reduced vector
 		~#
 		method : public : Reduce(a : H, f : (H, H) ~ H) ~ H {
-			start := @head->GetNext();
+			start := @head;
 			while(start <> Nil) {
 				a := f(a, start->Get());
 				start := start->GetNext();
@@ -3240,18 +3240,18 @@ function : Example() ~ Nil {
 	class Vector<H> {
 		@values : H[];
 		@size : Int;
-		
+
 		#~
-		Default constructor 
+		Default constructor
 		~#
 		New() {
 			@values := H->New[32];
 			@size := 0;
 		}
-		
+
 		#~
 		Copy constructor
-		@param values values to copy 
+		@param values values to copy
 		~#
 		New(values : H[]) {
 			@values := H->New[values->Size()];
@@ -3261,16 +3261,20 @@ function : Example() ~ Nil {
 
 		#~
 		Copy constructor
-		@param values values to copy 
+		@param values values to copy
 		~#
 		New(values : Vector<H>) {
 			@values := values->ToArray();
 			@size := values->Size();
 		}
-		
+
 		method : Expand() ~ Nil {
 			if(@size >= @values->Size()) {
-				temp : H[] := H->New[@size + (@size >> 2)];
+				grow := @size >> 2;
+				if(grow < 4) {
+					grow := 4;
+				};
+				temp : H[] := H->New[@size + grow];
 				Runtime->Copy(temp, 0, @values, 0, @size);
 				@values := temp;
 			};
@@ -3741,7 +3745,7 @@ function : Show(value : IntRef) ~ Nil {
 
 			len := @size;
 			reversed := Collection.CompareVector->New()<H>;
-			each(i : @values) {
+			each(i : @size) {
 				reversed->AddBack(@values[--len])
 			};
 
@@ -3779,12 +3783,16 @@ function : Show(value : IntRef) ~ Nil {
 
 		method : Expand() ~ Nil {
 			if(@size >= @values->Size()) {
-				temp : H[] := H->New[@size + (@size >> 2)];
+				grow := @size >> 2;
+				if(grow < 4) {
+					grow := 4;
+				};
+				temp : H[] := H->New[@size + grow];
 				Runtime->Copy(temp, 0, @values, 0, @size);
 				@values := temp;
 			};
 		}
-		
+
 		#~
 		Compresses the Vector freeing unused memory
 		~#
@@ -4597,8 +4605,8 @@ function : Show(value : IntRef) ~ Nil {
 		method : Predecessor(node : Collection.TreeNode<K, V>) ~ TreeNode<K, V> {
 			if(node->GetLeft() <> Nil) {
 				left : TreeNode<K, V> := node->GetLeft();
-				while(left->GetLeft() <> Nil) {
-					left := left->GetLeft();
+				while(left->GetRight() <> Nil) {
+					left := left->GetRight();
 				};
 
 				return left;
@@ -4610,8 +4618,8 @@ function : Show(value : IntRef) ~ Nil {
 		method : Successor(node : Collection.TreeNode<K, V>) ~ TreeNode<K, V> {
 			if(node->GetRight() <> Nil) {
 				right : TreeNode<K, V> := node->GetRight();
-				while(right->GetRight() <> Nil) {
-					right := right->GetRight();
+				while(right->GetLeft() <> Nil) {
+					right := right->GetLeft();
 				};
 
 				return right;
@@ -5192,7 +5200,13 @@ each(v := values) {
 		@return size of values
 		~#
 		method : public : TotalSize() ~ Int {
-			return @map->GetValues()->Size();
+			total := 0;
+			values := @map->GetValues()<Vector<V> >;
+			each(i : values) {
+				inner := values->Get(i)<Vector<V> >;
+				total += inner->Size();
+			};
+			return total;
 		}
 	}
 
