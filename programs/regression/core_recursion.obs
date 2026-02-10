@@ -1,0 +1,94 @@
+#~
+# Core Recursion Test
+# Tests recursive function calls and tail recursion
+~#
+
+class CoreRecursionTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing core recursion..."->PrintLine();
+
+        pass := true;
+
+        # Test simple recursion (factorial)
+        result := Factorial(5);
+        if(result <> 120) {
+            pass := false;
+            "  FAIL: Factorial(5)"->PrintLine();
+        };
+
+        # Test recursion with base case
+        result := Factorial(0);
+        if(result <> 1) {
+            pass := false;
+            "  FAIL: Factorial(0)"->PrintLine();
+        };
+
+        # Test Fibonacci
+        result := Fibonacci(10);
+        if(result <> 55) {
+            pass := false;
+            "  FAIL: Fibonacci(10)"->PrintLine();
+        };
+
+        # Test recursion with accumulator
+        result := SumRange(1, 10);
+        if(result <> 55) {
+            pass := false;
+            "  FAIL: SumRange(1, 10)"->PrintLine();
+        };
+
+        # Test mutual recursion
+        even_result := IsEven(6);
+        if(even_result = false) {
+            pass := false;
+            "  FAIL: IsEven(6)"->PrintLine();
+        };
+
+        odd_result := IsOdd(7);
+        if(odd_result = false) {
+            pass := false;
+            "  FAIL: IsOdd(7)"->PrintLine();
+        };
+
+        if(pass) {
+            "PASS: Core recursion"->PrintLine();
+        } else {
+            "FAIL: Core recursion"->PrintLine();
+        };
+    }
+
+    function : Factorial(n : Int) ~ Int {
+        if(n <= 1) {
+            return 1;
+        };
+        return n * Factorial(n - 1);
+    }
+
+    function : Fibonacci(n : Int) ~ Int {
+        if(n <= 1) {
+            return n;
+        };
+        return Fibonacci(n - 1) + Fibonacci(n - 2);
+    }
+
+    function : SumRange(start : Int, end : Int) ~ Int {
+        if(start > end) {
+            return 0;
+        };
+        return start + SumRange(start + 1, end);
+    }
+
+    function : IsEven(n : Int) ~ Bool {
+        if(n = 0) {
+            return true;
+        };
+        return IsOdd(n - 1);
+    }
+
+    function : IsOdd(n : Int) ~ Bool {
+        if(n = 0) {
+            return false;
+        };
+        return IsEven(n - 1);
+    }
+}
