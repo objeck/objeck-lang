@@ -34,12 +34,39 @@ jobs:
             deploy_script: deploy_windows.cmd x64
             shell: cmd
 
+          # Windows MSYS2 build (UCRT64)
+          - os: windows-latest
+            arch: x64
+            msys: ucrt64
+            deploy_script: ./deploy_msys2-ucrt.sh
+            shell: msys2 {0}
+
     defaults:
       run:
         shell: ${{ matrix.shell }}
 
     steps:
     - uses: actions/checkout@v4
+
+    # Setup MSYS2 (for MSYS2 builds)
+    - name: Setup MSYS2
+      if: matrix.msys != ''
+      uses: msys2/setup-msys2@v2
+      with:
+        msystem: ${{ matrix.msys }}
+        update: true
+        install: >-
+          mingw-w64-ucrt-x86_64-gcc
+          mingw-w64-ucrt-x86_64-mbedtls
+          mingw-w64-ucrt-x86_64-SDL2
+          mingw-w64-ucrt-x86_64-SDL2_ttf
+          mingw-w64-ucrt-x86_64-SDL2_mixer
+          mingw-w64-ucrt-x86_64-SDL2_image
+          mingw-w64-ucrt-x86_64-unixodbc
+          mingw-w64-ucrt-x86_64-eigen3
+          mingw-w64-ucrt-x86_64-pkgconf
+          make
+          unzip
 
     # Cache for Linux APT packages
     - name: Cache APT packages (Linux)
@@ -80,10 +107,13 @@ jobs:
 
     # Setup ccache for faster compilation
     - name: Setup ccache
-      if: runner.os != 'Windows'
+      if: runner.os != 'Windows' || matrix.msys != ''
       run: |
         if [ "${{ runner.os }}" = "Linux" ]; then
           sudo apt-get install -y ccache
+        elif [ "${{ matrix.msys }}" != "" ]; then
+          # ccache for MSYS2
+          pacman -S --noconfirm mingw-w64-ucrt-x86_64-ccache
         else
           brew install ccache
         fi
@@ -107,20 +137,26 @@ jobs:
 
     # Windows dependencies (Visual Studio is pre-installed)
     - name: Setup Visual Studio (Windows)
-      if: runner.os == 'Windows'
+      if: runner.os == 'Windows' && matrix.msys == ''
       uses: microsoft/setup-msbuild@v2
 
     - name: Setup MSVC Environment (Windows)
-      if: runner.os == 'Windows'
+      if: runner.os == 'Windows' && matrix.msys == ''
       uses: ilammy/msvc-dev-cmd@v1
       with:
         arch: ${{ matrix.arch }}
 
-    # Build bootstrap (Windows)
-    - name: Build bootstrap (Windows)
-      if: runner.os == 'Windows'
+    # Build bootstrap (Windows MSVC)
+    - name: Build bootstrap (Windows MSVC)
+      if: runner.os == 'Windows' && matrix.msys == ''
       working-directory: ./core/compiler
       run: call update_version.cmd
+
+    # Build bootstrap (MSYS2)
+    - name: Build bootstrap (MSYS2)
+      if: matrix.msys != ''
+      working-directory: ./core/compiler
+      run: ./update_version.sh
 
     # Build bootstrap (macOS ARM64)
     - name: Build bootstrap (macOS ARM64)
@@ -128,9 +164,9 @@ jobs:
       working-directory: ./core/compiler
       run: ./update_version_arm.sh
 
-    # Build bootstrap (Linux/macOS x64)
-    - name: Build bootstrap (Linux/macOS x64)
-      if: runner.os != 'Windows' && !(runner.os == 'macOS' && matrix.arch == 'arm64')
+    # Build bootstrap (Linux)
+    - name: Build bootstrap (Linux)
+      if: runner.os == 'Linux'
       working-directory: ./core/compiler
       run: ./update_version.sh
 
@@ -138,13 +174,13 @@ jobs:
     - name: Build toolchain
       working-directory: ./core/release
       env:
-        CC: ${{ runner.os != 'Windows' && 'ccache gcc' || '' }}
-        CXX: ${{ runner.os != 'Windows' && 'ccache g++' || '' }}
+        CC: ${{ (runner.os != 'Windows' || matrix.msys != '') && 'ccache gcc' || '' }}
+        CXX: ${{ (runner.os != 'Windows' || matrix.msys != '') && 'ccache g++' || '' }}
       run: ${{ matrix.deploy_script }}
 
     # Show ccache statistics
     - name: Show ccache stats
-      if: runner.os != 'Windows'
+      if: runner.os != 'Windows' || matrix.msys != ''
       run: ccache --show-stats
 
     # Determine deploy directory
@@ -186,9 +222,9 @@ jobs:
         ./obc -lib cipher,net,odbc,rss,regex,misc,xml,json -src ../../../../programs/deploy/loops_19.obs
         ./obc -lib cipher,net,odbc,rss,regex,misc,xml,json -src ../../../../programs/deploy/xml_2.obs
 
-    # Compile tests (Windows)
-    - name: Compile tests (Windows)
-      if: runner.os == 'Windows'
+    # Compile tests (Windows MSVC)
+    - name: Compile tests (Windows MSVC)
+      if: runner.os == 'Windows' && matrix.msys == ''
       working-directory: ./core/release/${{ steps.deploy-dir.outputs.dir }}/bin
       shell: cmd
       run: |
@@ -197,9 +233,19 @@ jobs:
         obc.exe -lib cipher,net,xml,json -src ../../../../programs/deploy/json_3.obs
         obc.exe -lib cipher,net,xml,json -src ../../../../programs/deploy/xml_2.obs
 
+    # Compile tests (MSYS2)
+    - name: Compile tests (MSYS2)
+      if: matrix.msys != ''
+      working-directory: ./core/release/${{ steps.deploy-dir.outputs.dir }}/bin
+      run: |
+        ./obc -lib cipher,net,xml,json -src ../../../../programs/deploy/hello_0.obs
+        ./obc -lib cipher,net,xml,json -src ../../../../programs/deploy/functions_5.obs
+        ./obc -lib cipher,net,xml,json -src ../../../../programs/deploy/json_3.obs
+        ./obc -lib cipher,net,xml,json -src ../../../../programs/deploy/xml_2.obs
+
     # Run tests (POSIX)
-    - name: Run tests (Linux/macOS)
-      if: runner.os != 'Windows'
+    - name: Run tests (Linux/macOS/MSYS2)
+      if: runner.os != 'Windows' || matrix.msys != ''
       working-directory: ./core/release/${{ steps.deploy-dir.outputs.dir }}/bin
       run: |
         ./obr ../../../../programs/deploy/calc_life_10.obe
@@ -219,9 +265,9 @@ jobs:
         ./obr ../../../../programs/deploy/loops_19.obe
         ./obr ../../../../programs/deploy/xml_2.obe
 
-    # Run tests (Windows)
-    - name: Run tests (Windows)
-      if: runner.os == 'Windows'
+    # Run tests (Windows MSVC)
+    - name: Run tests (Windows MSVC)
+      if: runner.os == 'Windows' && matrix.msys == ''
       working-directory: ./core/release/${{ steps.deploy-dir.outputs.dir }}/bin
       shell: cmd
       run: |
@@ -231,16 +277,16 @@ jobs:
         obr.exe ../../../../programs/deploy/xml_2.obe
 
     # Run regression tests (POSIX)
-    - name: Run regression tests (Linux/macOS)
-      if: runner.os != 'Windows'
+    - name: Run regression tests (Linux/macOS/MSYS2)
+      if: runner.os != 'Windows' || matrix.msys != ''
       working-directory: ./programs/regression
       run: |
         chmod +x run_regression.sh
         ./run_regression.sh ${{ matrix.arch }}
 
-    # Run regression tests (Windows)
-    - name: Run regression tests (Windows)
-      if: runner.os == 'Windows'
+    # Run regression tests (Windows MSVC)
+    - name: Run regression tests (Windows MSVC)
+      if: runner.os == 'Windows' && matrix.msys == ''
       working-directory: ./programs/regression
       shell: cmd
       run: run_regression.cmd ${{ matrix.arch }}
@@ -258,7 +304,7 @@ jobs:
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: objeck-${{ runner.os }}-${{ matrix.arch }}
+        name: objeck-${{ runner.os }}-${{ matrix.arch }}${{ matrix.msys != '' && '-msys2' || '' }}
         path: |
           core/release/${{ steps.deploy-dir.outputs.dir }}/bin/*
           core/release/${{ steps.deploy-dir.outputs.dir }}/lib/*
