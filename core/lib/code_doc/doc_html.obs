@@ -1,6 +1,6 @@
 #~
 ` HTML code documentation system
-Copyright (c) 2014, 2019, 2025 Randy Hollines
+Copyright (c) 2014, 2019, 2026 Randy Hollines
 ~#
 
 use System.IO.Filesystem;
