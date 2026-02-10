@@ -17,19 +17,111 @@
 
 ## Architecture Overview
 
-**📖 [Comprehensive Architecture Documentation](../docs/architecture.md)** - Interactive Mermaid diagrams covering:
-- Complete system architecture
-- Compiler pipeline with optimization levels
-- Virtual Machine runtime and JIT compilation
-- Platform-specific ARM64/x64 JIT details
-- Library ecosystem (30+ libraries)
-- Development tools (REPL, Debugger, LSP)
-- CI/CD pipeline
-- Memory management deep dive
+```mermaid
+graph TB
+    subgraph "Development Tools"
+        REPL["REPL<br/>(Interactive Shell)"]
+        Debugger["Debugger<br/>(Breakpoints & Inspection)"]
+        LSP["LSP Proxy"]
+        Editors["VS Code | Sublime | Kate<br/>Textadapt | eCode"]
+    end
+
+    subgraph "Compiler"
+        Source["Source Code<br/>(.obs)"]
+        Scanner["Scanner"]
+        Parser["Parser"]
+        Analyzer["Contextual<br/>Analyzer"]
+        IR["Intermediate<br/>Code Generation"]
+        Optimizer["Bytecode Optimizer<br/>━━━━━━━━━━━━━━━━<br/>Jump Reduction<br/>Constant Folding<br/>Method Inlining<br/>Dead Store Removal<br/>Constant Propagation<br/>Strength Reduction<br/>Instruction Optimization"]
+        Emitter["Binary Code<br/>Emitter"]
+        Linker["Linker"]
+    end
+
+    subgraph "Libraries & Binary"
+        StdLib["Standard Libraries<br/>━━━━━━━━━━━━━━━━<br/>Core: lang, misc, regex<br/>AI/ML: onnx, opencv, ollama<br/>Web: json_rpc, web_server<br/>Data: json, xml, csv<br/>Media: sdl2, lame"]
+        BinaryLib["Binary Library<br/>(.obl)"]
+    end
+
+    subgraph "Virtual Machine"
+        Loader["Loader"]
+        Interpreter["Runtime<br/>Interpreter"]
+        HotCode["Hot Code Detection<br/>(100+ calls)"]
+        JIT_ARM["ARM64 JIT<br/>(AArch64)"]
+        JIT_AMD["AMD64 JIT<br/>(x86-64)"]
+        MemMgr["Memory Manager<br/>━━━━━━━━━━━━━━━━<br/>Hash Lookup<br/>Mark & Sweep GC<br/>Generational"]
+        HostAPI["Host APIs"]
+        CodeCache["JIT Code Cache"]
+    end
+
+    subgraph "Platform & Runtime"
+        POSIX["POSIX APIs<br/>(Linux/macOS)"]
+        Win32["Win32 APIs<br/>(Windows)"]
+        PlatformRT["Platform Runtime<br/>ARM64 | AMD64"]
+        ExecBin["Executable<br/>Binary<br/>(.obe)"]
+    end
+
+    subgraph "CI/CD"
+        GHA["GitHub Actions<br/>Multi-Platform CI"]
+        Tests["Regression Tests<br/>(10 automated)"]
+    end
+
+    %% Compiler Flow
+    Source --> Scanner --> Parser
+    Parser --> Analyzer --> IR --> Optimizer --> Emitter
+    Emitter --> Linker
+    StdLib --> Linker
+    Linker --> BinaryLib
+
+    %% VM Flow
+    BinaryLib --> Loader
+    Loader --> Interpreter
+    Interpreter --> HotCode
+    HotCode -->|Hot Method| JIT_ARM
+    HotCode -->|Hot Method| JIT_AMD
+    JIT_ARM --> CodeCache
+    JIT_AMD --> CodeCache
+    CodeCache --> PlatformRT
+
+    %% Memory & Host APIs
+    Interpreter <--> MemMgr
+    JIT_ARM <--> MemMgr
+    JIT_AMD <--> MemMgr
+    Interpreter --> HostAPI
+    CodeCache --> HostAPI
+
+    %% Platform
+    HostAPI --> POSIX
+    HostAPI --> Win32
+    POSIX --> PlatformRT
+    Win32 --> PlatformRT
+    PlatformRT --> ExecBin
+
+    %% Dev Tools Integration
+    REPL --> Parser
+    REPL --> Interpreter
+    Debugger <--> Interpreter
+    Debugger --> ExecBin
+    LSP --> Parser
+    LSP --> Analyzer
+    LSP --> Editors
+
+    %% CI/CD
+    Linker --> GHA
+    GHA --> Tests
+
+    %% Styling
+    style Optimizer fill:#fff4e1
+    style MemMgr fill:#ffe1e1
+    style JIT_ARM fill:#e1f5ff
+    style JIT_AMD fill:#e1f5ff
+    style CodeCache fill:#e1ffe1
+    style StdLib fill:#f0f0f0
+    style GHA fill:#e1ffe1
+```
+
+**📖 [Detailed Architecture Documentation](../docs/architecture.md)** - Deep technical views with 10+ interactive diagrams covering compiler internals, JIT compilation, memory management, library ecosystem, and more.
 
 **Legacy Diagram:** [design4.png](https://github.com/objeck/objeck-lang/blob/master/docs/images/design4.png) (historical reference)
-
-![Architecture Diagram](https://github.com/objeck/objeck-lang/blob/master/docs/images/design4.png)
 
 ### Key Subsystems
 
