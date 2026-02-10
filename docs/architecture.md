@@ -298,7 +298,7 @@ graph TB
     D -->|Arrays, strings| F
     E -->|Native code| F
 
-    F -->|O(1) Hash Lookup| G[Object Table]
+    F -->|"O(1) Hash Lookup"| G[Object Table]
     F -->|GC| H[Mark & Sweep]
 
     style F fill:#ffe1e1
