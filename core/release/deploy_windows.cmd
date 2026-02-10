@@ -321,31 +321,49 @@ if [%2] NEQ [deploy] goto end
 	copy ..\..\docs\eula.rtf "%USERPROFILE%\Documents\Objeck-Build\%INSTALL_TARGET%\doc"
 	
 	if [%1] == [arm64] (
-		signtool sign /tr http://timestamp.sectigo.com /td sha256 /fd sha256 /a release-arm64\setup.msi
+		REM Build MSI installer first
+		copy /y ..\utils\setup\arm64 .
+		devenv setup-arm64.sln /rebuild "Release"
+
+		REM Try to sign MSI if certificate is available
+		signtool sign /tr http://timestamp.sectigo.com /td sha256 /fd sha256 /a release-arm64\setup.msi 2>nul
+		if errorlevel 1 (
+			echo Warning: Code signing failed or no certificate available - continuing with unsigned MSI
+		) else (
+			echo MSI signed successfully
+		)
+
+		REM Package everything
 		copy release-arm64\setup.msi "%USERPROFILE%\Documents\Objeck-Build\objeck-windows-arm64_0.0.0.msi"
 
 		rmdir /s /q "%USERPROFILE%\Documents\Objeck-Build\release-arm64"
 		mkdir "%USERPROFILE%\Documents\Objeck-Build\release-arm64"
 		move "%USERPROFILE%\Documents\Objeck-Build\%INSTALL_TARGET%" "%USERPROFILE%\Documents\Objeck-Build\release-arm64\%INSTALL_TARGET%"
-			
-		copy /y ..\utils\setup\arm64 .
-		devenv setup-arm64.sln /rebuild "Release"
 
 		%ZIP_BIN%\7z.exe a -r -tzip "%USERPROFILE%\Documents\Objeck-Build\release-arm64\objeck-windows-arm64_0.0.0.zip" "%USERPROFILE%\Documents\Objeck-Build\release-arm64\%INSTALL_TARGET%"
 		move "%USERPROFILE%\Documents\Objeck-Build\objeck-windows-arm64_0.0.0.msi" "%USERPROFILE%\Documents\Objeck-Build\release-arm64"
 	)
 
 	if [%1] == [x64] (
-		signtool sign /tr http://timestamp.sectigo.com /td sha256 /fd sha256 /a release-x64\setup.msi
+		REM Build MSI installer first
+		copy /y ..\utils\setup\x64 .
+		devenv setup-x64.sln /rebuild "Release"
+
+		REM Try to sign MSI if certificate is available
+		signtool sign /tr http://timestamp.sectigo.com /td sha256 /fd sha256 /a release-x64\setup.msi 2>nul
+		if errorlevel 1 (
+			echo Warning: Code signing failed or no certificate available - continuing with unsigned MSI
+		) else (
+			echo MSI signed successfully
+		)
+
+		REM Package everything
 		copy release-x64\setup.msi "%USERPROFILE%\Documents\Objeck-Build\objeck-windows-x64_0.0.0.msi"
 
 		rmdir /s /q "%USERPROFILE%\Documents\Objeck-Build\release-x64"
 		mkdir "%USERPROFILE%\Documents\Objeck-Build\release-x64"
 		move "%USERPROFILE%\Documents\Objeck-Build\%INSTALL_TARGET%" "%USERPROFILE%\Documents\Objeck-Build\release-x64\%INSTALL_TARGET%"
-		
-		copy /y ..\utils\setup\x64 .
-		devenv setup-x64.sln /rebuild "Release"
-		
+
 		%ZIP_BIN%\7z.exe a -r -tzip "%USERPROFILE%\Documents\Objeck-Build\release-x64\objeck-windows-x64_0.0.0.zip" "%USERPROFILE%\Documents\Objeck-Build\release-x64\%INSTALL_TARGET%"
 		move "%USERPROFILE%\Documents\Objeck-Build\objeck-windows-x64_0.0.0.msi" "%USERPROFILE%\Documents\Objeck-Build\release-x64"
 	)
