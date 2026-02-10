@@ -190,7 +190,7 @@ jobs:
       working-directory: ./core/release
       run: |
         if [ "${{ matrix.msys }}" != "" ]; then
-          echo "dir=deploy-msys2-${{ matrix.msys }}" >> $GITHUB_OUTPUT
+          echo "dir=deploy-msys2-ucrt" >> $GITHUB_OUTPUT
         elif [ -d "deploy-${{ matrix.arch }}" ]; then
           echo "dir=deploy-${{ matrix.arch }}" >> $GITHUB_OUTPUT
         elif [ -d "deploy" ]; then
