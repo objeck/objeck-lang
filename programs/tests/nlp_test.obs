@@ -1,0 +1,230 @@
+use Collection;
+use System.NLP;
+
+bundle Default {
+	class NLPTest {
+		function : Main(args : String[]) ~ Nil {
+			"=== Testing NLP Library ==="->PrintLine();
+			"\n--- 1. Tokenization ---"->PrintLine();
+			TestTokenization();
+
+			"\n--- 2. Text Preprocessing ---"->PrintLine();
+			TestPreprocessing();
+
+			"\n--- 3. TF-IDF ---"->PrintLine();
+			TestTfIdf();
+
+			"\n--- 4. Text Similarity ---"->PrintLine();
+			TestSimilarity();
+
+			"\n--- 5. Sentiment Analysis ---"->PrintLine();
+			TestSentiment();
+		}
+
+		function : TestTokenization() ~ Nil {
+			text := "Hello, world! This is a test. Natural language processing is amazing.";
+
+			# Word tokenization
+			"  Input text: {$text}"->PrintLine();
+			words := System.NLP.Tokenizer->WordTokenize(text);
+			"  Word tokens ({$words->Size()}):"->PrintLine();
+			PrintTokens(words);
+
+			# Sentence tokenization
+			sentences := System.NLP.Tokenizer->SentenceTokenize(text);
+			"\n  Sentence tokens ({$sentences->Size()}):"->PrintLine();
+			PrintTokens(sentences);
+
+			# Character n-grams
+			ngram_text := "hello";
+			char_ngrams := System.NLP.Tokenizer->CharNGrams(ngram_text, 3);
+			"\n  Character 3-grams of '{$ngram_text}':"->PrintLine();
+			PrintTokens(char_ngrams);
+
+			# Word n-grams
+			word_bigrams := System.NLP.Tokenizer->WordNGrams(words, 2);
+			"\n  Word bigrams (first 5):"->PrintLine();
+			count := word_bigrams->Size() < 5 ? word_bigrams->Size() : 5;
+			each(i : count) {
+				"    [{$i}] {$word_bigrams[i]}"->PrintLine();
+			};
+		}
+
+		function : TestPreprocessing() ~ Nil {
+			text := "The Quick Brown FOX jumped over the lazy dog!";
+			"  Original: {$text}"->PrintLine();
+
+			# Lowercase
+			lower := System.NLP.TextPreprocessor->Lowercase(text);
+			"  Lowercase: {$lower}"->PrintLine();
+
+			# Remove punctuation
+			no_punct := System.NLP.TextPreprocessor->RemovePunctuation(text);
+			"  No punctuation: {$no_punct}"->PrintLine();
+
+			# Tokenize and remove stopwords
+			tokens := System.NLP.Tokenizer->WordTokenize(lower);
+			"  Tokens before stopword removal: {$tokens->Size()}"->PrintLine();
+			filtered := System.NLP.TextPreprocessor->RemoveStopwords(tokens);
+			"  Tokens after stopword removal: {$filtered->Size()}"->PrintLine();
+			"  Filtered tokens:"->PrintLine();
+			PrintTokens(filtered);
+
+			# Stemming
+			"\n  Stemming examples:"->PrintLine();
+			words := ["running", "runs", "ran", "runner", "easily", "fairly"];
+			each(i : words->Size()) {
+				word := words[i];
+				stem := System.NLP.TextPreprocessor->Stem(word);
+				"    {$word} -> {$stem}"->PrintLine();
+			};
+		}
+
+		function : TestTfIdf() ~ Nil {
+			# Create sample documents
+			documents := [
+				"The cat sat on the mat",
+				"The dog sat on the log",
+				"Cats and dogs are pets",
+				"The cat and dog are friends"
+			];
+
+			"  Training on {$documents->Size()} documents:"->PrintLine();
+			each(i : documents->Size()) {
+				count := i + 1;
+				"    Doc {$count}: {$documents[i]}"->PrintLine();
+			};
+
+			# Train TF-IDF
+			tfidf := System.NLP.TF_IDF->New();
+			tfidf->Fit(documents);
+
+			# Get vocabulary
+			vocab := tfidf->GetVocabulary();
+			"\n  Vocabulary size: {$vocab->Size()}"->PrintLine();
+
+			# Transform a new document
+			test_doc := "The cat and the dog";
+			"  Test document: {$test_doc}"->PrintLine();
+			vector := tfidf->Transform(test_doc);
+
+			if(vector <> Nil) {
+				"  TF-IDF vector (length {$vector->Size()}):"->PrintLine();
+				"    [";
+				each(i : vector->Size()) {
+					val := vector[i];
+					"{$val}";
+					next := i + 1;
+					if(next < vector->Size()) {
+						", ";
+					};
+				};
+				"]"->PrintLine();
+
+				# Show non-zero values with terms
+				"\n  Non-zero TF-IDF values:"->PrintLine();
+				keys := vocab->GetKeys();
+				each(i : keys->Size()) {
+					term := keys->Get(i)->As(String);
+					idx := vocab->Get(term)->As(Int);
+					if(idx < vector->Size() & vector[idx] > 0.0) {
+						"    '{$term}': {$vector[idx]}"->PrintLine();
+					};
+				};
+			};
+		}
+
+		function : TestSimilarity() ~ Nil {
+			# Cosine similarity
+			vec1 := [1.0, 2.0, 3.0, 4.0];
+			vec2 := [2.0, 4.0, 6.0, 8.0];
+			vec3 := [1.0, 0.0, 0.0, 0.0];
+
+			"  Vector 1: [1.0, 2.0, 3.0, 4.0]"->PrintLine();
+			"  Vector 2: [2.0, 4.0, 6.0, 8.0]"->PrintLine();
+			"  Vector 3: [1.0, 0.0, 0.0, 0.0]"->PrintLine();
+
+			cos12 := System.NLP.TextSimilarity->CosineSimilarity(vec1, vec2);
+			cos13 := System.NLP.TextSimilarity->CosineSimilarity(vec1, vec3);
+			cos23 := System.NLP.TextSimilarity->CosineSimilarity(vec2, vec3);
+
+			"\n  Cosine similarities:"->PrintLine();
+			"    vec1 vs vec2: {$cos12}"->PrintLine();
+			"    vec1 vs vec3: {$cos13}"->PrintLine();
+			"    vec2 vs vec3: {$cos23}"->PrintLine();
+
+			# Jaccard similarity
+			tokens1 := ["the", "cat", "sat", "on", "the", "mat"];
+			tokens2 := ["the", "dog", "sat", "on", "the", "log"];
+			tokens3 := ["completely", "different", "words"];
+
+			"\n  Jaccard similarities:"->PrintLine();
+			jaccard12 := System.NLP.TextSimilarity->JaccardSimilarity(tokens1, tokens2);
+			jaccard13 := System.NLP.TextSimilarity->JaccardSimilarity(tokens1, tokens3);
+			"    tokens1 vs tokens2: {$jaccard12}"->PrintLine();
+			"    tokens1 vs tokens3: {$jaccard13}"->PrintLine();
+
+			# Levenshtein distance
+			"\n  Levenshtein distances:"->PrintLine();
+			pairs := [
+				["kitten", "sitting"],
+				["saturday", "sunday"],
+				["book", "back"],
+				["hello", "hello"]
+			];
+
+			each(i : pairs->Size()) {
+				pair := pairs[i];
+				str1 := pair[0];
+				str2 := pair[1];
+				dist := System.NLP.TextSimilarity->LevenshteinDistance(str1, str2);
+				norm := System.NLP.TextSimilarity->NormalizedEditDistance(str1, str2);
+				"    '{$str1}' vs '{$str2}': distance={$dist}, normalized={$norm}"->PrintLine();
+			};
+		}
+
+		function : TestSentiment() ~ Nil {
+			# Test various sentences
+			sentences := [
+				"This is absolutely wonderful and amazing!",
+				"I love this product, it's fantastic!",
+				"This is terrible and awful.",
+				"I hate this, it's the worst thing ever.",
+				"The weather is okay today.",
+				"This is a neutral statement about nothing in particular.",
+				"Great job! Excellent work! Outstanding performance!",
+				"Bad, horrible, terrible, awful, disgusting."
+			];
+
+			"  Testing sentiment analysis on {$sentences->Size()} sentences:"->PrintLine();
+			each(i : sentences->Size()) {
+				text := sentences[i];
+				result := System.NLP.SentimentAnalyzer->AnalyzeDetailed(text);
+
+				count := i + 1;
+				"\n  [{$count}] \"{$text}\""->PrintLine();
+				"      {$result->ToString()}"->PrintLine();
+			};
+
+			# Test quick classification
+			"\n  Quick classification test:"->PrintLine();
+			test_text := "This is good but also bad.";
+			classification := System.NLP.SentimentAnalyzer->Classify(test_text);
+			score := System.NLP.SentimentAnalyzer->Analyze(test_text);
+			"    Text: \"{$test_text}\""->PrintLine();
+			"    Classification: {$classification}"->PrintLine();
+			"    Score: {$score}"->PrintLine();
+		}
+
+		function : PrintTokens(tokens : String[]) ~ Nil {
+			if(tokens <> Nil) {
+				each(i : tokens->Size()) {
+					"    [{$i}] {$tokens[i]}"->PrintLine();
+				};
+			}
+			else {
+				"    (null)"->PrintLine();
+			};
+		}
+	}
+}
