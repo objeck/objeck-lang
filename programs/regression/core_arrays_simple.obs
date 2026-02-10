@@ -1,0 +1,88 @@
+#~
+# Core Array Operations Test (Simplified)
+# Tests basic array creation, access, and modification
+~#
+
+class CoreArraysSimpleTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing core array operations..."->PrintLine();
+
+        pass := true;
+
+        # Test integer array
+        int_array := Int->New[10];
+        for(i := 0; i < 10; i += 1;) {
+            int_array[i] := i * 2;
+        };
+
+        if(int_array[5] <> 10) {
+            pass := false;
+            "  FAIL: Integer array[5]"->PrintLine();
+        };
+
+        # Test array size
+        if(int_array->Size() <> 10) {
+            pass := false;
+            "  FAIL: Integer array size"->PrintLine();
+        };
+
+        # Test string array
+        str_array := String->New[3];
+        str_array[0] := "first";
+        str_array[1] := "second";
+        str_array[2] := "third";
+
+        if(str_array[1] <> "second") {
+            pass := false;
+            "  FAIL: String array[1]"->PrintLine();
+        };
+
+        # Test multi-dimensional array
+        matrix := Int->New[5, 5];
+        for(i := 0; i < 5; i += 1;) {
+            for(j := 0; j < 5; j += 1;) {
+                matrix[i, j] := i * 5 + j;
+            };
+        };
+
+        if(matrix[2, 3] <> 13) {
+            pass := false;
+            "  FAIL: Matrix[2,3]"->PrintLine();
+        };
+
+        # Test float array
+        float_array := Float->New[5];
+        float_array[0] := 1.5;
+        float_array[1] := 2.5;
+        float_array[2] := 3.5;
+
+        sum := 0.0;
+        for(i := 0; i < 3; i += 1;) {
+            sum += float_array[i];
+        };
+
+        if(sum < 7.4 | sum > 7.6) {
+            pass := false;
+            "  FAIL: Float array sum"->PrintLine();
+        };
+
+        # Test char array
+        char_array := Char->New[5];
+        char_array[0] := 'H';
+        char_array[1] := 'e';
+        char_array[2] := 'l';
+        char_array[3] := 'l';
+        char_array[4] := 'o';
+
+        if(char_array[0] <> 'H' | char_array[4] <> 'o') {
+            pass := false;
+            "  FAIL: Char array"->PrintLine();
+        };
+
+        if(pass) {
+            "PASS: Core array operations"->PrintLine();
+        } else {
+            "FAIL: Core array operations"->PrintLine();
+        };
+    }
+}

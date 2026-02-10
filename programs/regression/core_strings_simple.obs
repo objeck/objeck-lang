@@ -1,0 +1,75 @@
+#~
+# Core String Operations Test (Simplified)
+# Tests basic string operations without complex method chaining
+~#
+
+class CoreStringsSimpleTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing core string operations..."->PrintLine();
+
+        pass := true;
+
+        # Test string size
+        str := "Hello World";
+        if(str->Size() <> 11) {
+            pass := false;
+            "  FAIL: String size"->PrintLine();
+        };
+
+        # Test character access
+        ch := str->Get(0);
+        if(ch <> 'H') {
+            pass := false;
+            "  FAIL: Get(0)"->PrintLine();
+        };
+
+        ch := str->Get(6);
+        if(ch <> 'W') {
+            pass := false;
+            "  FAIL: Get(6)"->PrintLine();
+        };
+
+        # Test string comparison
+        str2 := "Hello World";
+        if(str <> str2) {
+            pass := false;
+            "  FAIL: String comparison"->PrintLine();
+        };
+
+        # Test SubString
+        sub := str->SubString(6);
+        if(sub <> "World") {
+            pass := false;
+            "  FAIL: SubString(6)"->PrintLine();
+        };
+
+        # Test Find
+        index := str->Find('W');
+        if(index <> 6) {
+            pass := false;
+            "  FAIL: Find('W')"->PrintLine();
+        };
+
+        # Test ToInt
+        num_str := "123";
+        num := num_str->ToInt();
+        if(num <> 123) {
+            pass := false;
+            "  FAIL: ToInt()"->PrintLine();
+        };
+
+        # Test number to string
+        val := 456;
+        str3 := val->ToString();
+        if(str3 <> "456") {
+            pass := false;
+            "  FAIL: ToString()"->PrintLine();
+        };
+
+        if(pass) {
+            "PASS: Core string operations"->PrintLine();
+        } else {
+            "FAIL: Core string operations"->PrintLine();
+        };
+    }
+}
