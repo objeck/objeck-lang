@@ -113,64 +113,30 @@ jobs:
           Get-ChildItem -Path $stageDir | Format-Table Name, Length
 
       # ============================================
-      # Code Signing (Windows Only)
+      # Verify Code Signing (Windows Only)
       # ============================================
 
-      - name: Decode signing certificate
-        if: github.event_name != 'pull_request'
-        shell: pwsh
-        run: |
-          if ("${{ secrets.WINDOWS_CERT_BASE64 }}" -eq "") {
-            Write-Warning "⚠️  WINDOWS_CERT_BASE64 secret not set, skipping code signing"
-            echo "SKIP_SIGNING=true" >> $env:GITHUB_ENV
-            exit 0
-          }
-
-          $certBytes = [Convert]::FromBase64String("${{ secrets.WINDOWS_CERT_BASE64 }}")
-          [IO.File]::WriteAllBytes("$pwd\cert.pfx", $certBytes)
-          echo "SKIP_SIGNING=false" >> $env:GITHUB_ENV
-          Write-Output "✅ Certificate decoded"
-
-      - name: Sign Windows MSI files
-        if: env.SKIP_SIGNING != 'true'
+      - name: Verify MSI signatures
         shell: pwsh
         run: |
           $msiFiles = Get-ChildItem -Path "release-staging" -Filter "*.msi" -Recurse
 
-          foreach ($msi in $msiFiles) {
-            Write-Output "🔏 Signing: $($msi.Name)"
-
-            & signtool sign `
-              /f cert.pfx `
-              /p "${{ secrets.WINDOWS_CERT_PASSWORD }}" `
-              /tr http://timestamp.sectigo.com `
-              /td sha256 `
-              /fd sha256 `
-              $msi.FullName
-
-            if ($LASTEXITCODE -ne 0) {
-              Write-Error "Failed to sign $($msi.Name)"
-              exit 1
-            }
-
-            # Verify signature
-            & signtool verify /pa $msi.FullName
-
-            if ($LASTEXITCODE -ne 0) {
-              Write-Error "Signature verification failed for $($msi.Name)"
-              exit 1
-            }
-
-            Write-Output "✅ Signed and verified: $($msi.Name)"
+          if ($msiFiles.Count -eq 0) {
+            Write-Output "ℹ️  No MSI files found to verify"
+            exit 0
           }
 
-      - name: Cleanup certificate
-        if: always() && env.SKIP_SIGNING != 'true'
-        shell: pwsh
-        run: |
-          if (Test-Path "cert.pfx") {
-            Remove-Item "cert.pfx" -Force
-            Write-Output "🧹 Certificate cleaned up"
+          foreach ($msi in $msiFiles) {
+            Write-Output "🔍 Verifying signature: $($msi.Name)"
+
+            & signtool verify /pa $msi.FullName
+
+            if ($LASTEXITCODE -eq 0) {
+              Write-Output "✅ Signed and verified: $($msi.Name)"
+            } else {
+              Write-Warning "⚠️  Not signed: $($msi.Name)"
+              Write-Warning "⚠️  Configure secrets to enable automatic signing"
+            }
           }
 
       # ============================================

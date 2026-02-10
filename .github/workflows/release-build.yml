@@ -204,6 +204,40 @@ jobs:
           arch: ${{ matrix.arch }}
 
       # ============================================
+      # Import Code Signing Certificate (Windows)
+      # ============================================
+
+      - name: Import code signing certificate (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          # Check if certificate secret is available
+          if ("${{ secrets.WINDOWS_CERT_BASE64 }}" -eq "") {
+            Write-Warning "⚠️  WINDOWS_CERT_BASE64 secret not set"
+            Write-Warning "⚠️  MSI installers will be created but NOT signed"
+            Write-Warning "⚠️  To enable signing, configure secrets per docs/GITHUB_ACTIONS_SETUP.md"
+            exit 0
+          }
+
+          Write-Output "🔐 Importing code signing certificate..."
+
+          # Decode certificate from base64
+          $certBytes = [Convert]::FromBase64String("${{ secrets.WINDOWS_CERT_BASE64 }}")
+          $certPath = "$env:TEMP\codesign.pfx"
+          [IO.File]::WriteAllBytes($certPath, $certBytes)
+
+          # Import certificate into CurrentUser certificate store
+          # This allows signtool to use /a flag to auto-select certificate
+          $pwd = ConvertTo-SecureString -String "${{ secrets.WINDOWS_CERT_PASSWORD }}" -Force -AsPlainText
+          Import-PfxCertificate -FilePath $certPath -CertStoreLocation Cert:\CurrentUser\My -Password $pwd -Exportable
+
+          # Clean up certificate file
+          Remove-Item $certPath -Force
+
+          Write-Output "✅ Certificate imported to certificate store"
+          Write-Output "✅ signtool /a will now work during build"
+
+      # ============================================
       # Build Bootstrap
       # ============================================
 
