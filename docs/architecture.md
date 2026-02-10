@@ -713,13 +713,12 @@ graph TB
         B --> D{Platform Matrix}
 
         D -->|Linux x64| E1[Ubuntu Latest]
-        D -->|macOS x64| E2[macOS-13 Intel]
-        D -->|macOS ARM64| E3[macOS-latest M1/M2]
-        D -->|Windows x64| E4[Windows Latest]
+        D -->|macOS ARM64| E2[macOS-latest M1/M2/M3/M4]
+        D -->|Windows x64| E3[Windows Latest]
     end
 
     subgraph "Build Process"
-        E1 & E2 & E3 & E4 --> F[Install Dependencies]
+        E1 & E2 & E3 --> F[Install Dependencies]
 
         F --> G{Cache Hit?}
         G -->|Yes| H[Restore Cache]
@@ -754,8 +753,7 @@ graph TB
 | Platform | OS | Architecture | Compiler | Tests |
 |----------|----|--------------| ---------|-------|
 | **Linux** | Ubuntu 22.04 | x64 | GCC 11+ | 17 + 10 regression |
-| **macOS** | macOS 13 | x64 (Intel) | Clang 15+ | 17 + 10 regression |
-| **macOS** | macOS 14+ | ARM64 (M1/M2) | Clang 15+ | 17 + 10 regression |
+| **macOS** | macOS 15+ | ARM64 (M1/M2/M3/M4) | Clang 15+ | 17 + 10 regression |
 | **Windows** | Windows 2022 | x64 | MSVC 2022 | 4 core + 10 regression |
 
 ### Caching Strategy
@@ -1108,7 +1106,6 @@ sequenceDiagram
 | Platform | Macro | Compiler | ABI |
 |----------|-------|----------|-----|
 | **Linux x64** | `__linux__` && `__x86_64__` | GCC/Clang | System V AMD64 |
-| **macOS x64** | `__APPLE__` && `__x86_64__` | Clang | System V AMD64 |
 | **macOS ARM64** | `__APPLE__` && `__aarch64__` | Clang | ARM64 AAPCS |
 | **Windows x64** | `_WIN32` && `_WIN64` | MSVC | Microsoft x64 |
 | **Windows ARM64** | `_WIN32` && `_M_ARM64` | MSVC | ARM64EC |
@@ -1294,7 +1291,7 @@ This architecture demonstrates a modern, multi-platform language implementation 
 ✅ **Rich Library Ecosystem:** 30+ libraries including AI/ML, web servers
 ✅ **Modern Development Tools:** REPL, debugger, LSP support
 ✅ **Automated CI/CD:** Multi-platform testing with caching
-✅ **Cross-Platform:** Linux, macOS, Windows on x64 and ARM64
+✅ **Cross-Platform:** Linux x64, macOS ARM64 (Apple Silicon), Windows x64/ARM64
 
 **For More Information:**
 - [Core Implementation README](../core/readme.md)

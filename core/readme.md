@@ -208,9 +208,9 @@ sudo apt-get update && sudo apt-get install -y \
 
 ---
 
-### macOS (Apple Silicon)
+### macOS (Apple Silicon Only)
 
-**Supported:** macOS 15+ (Sequoia or later)
+**Supported:** macOS 15+ (Sequoia or later) - **Apple Silicon (M1/M2/M3/M4) only**
 
 ```bash
 # 1. Install Xcode Command Line Tools
