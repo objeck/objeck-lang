@@ -1,24 +1,24 @@
-ARGS=-O3 -Wall -std=c++20 -D_ARM64 -D_OBJECK_NATIVE_LIB_PATH -Wno-unused-variable -Wno-unused-function -Wno-int-to-pointer-cast -Wno-unused-variable 
+ARGS=-O3 -Wall -pthread -D_X64 -D_OBJECK_NATIVE_LIB_PATH -std=c++20 -mavx2 -Wno-unused-variable -Wno-unused-function -Wno-int-to-pointer-cast -Wno-unused-result
 
 SRC=common.o dispatch.o interpreter.o loader.o vm.o posix_main.o 
-OBJ_LIBS= jit_arm_a64.a memory.a
-MEM_PATH= arch
-JIT_PATH= arch/jit/arm64
+OBJ_LIBS=jit_amd_lp64.a memory.a
+MEM_PATH=arch
+JIT_PATH=arch/jit/amd64
 EXE= obr
 
 $(EXE): $(SRC) $(OBJ_LIBS)
-	$(CXX) -o $(EXE) $(SRC) $(OBJ_LIBS) -lmbedtls -lmbedx509 -lmbedcrypto -ldl -lz -pthread
+	$(CXX) -m64 -o $(EXE) $(SRC) $(OBJ_LIBS) -lmbedtls -lmbedx509 -lmbedcrypto -ldl -lz -pthread
 
 memory.a:
-	cd $(MEM_PATH); $(MAKE) -f make/Makefile.arm64
+	cd $(MEM_PATH); $(MAKE) -f make/Makefile.amd64
 	
-jit_arm_a64.a:
-	cd $(JIT_PATH); $(MAKE) -f make/Makefile.arm64
+jit_amd_lp64.a:
+	cd $(JIT_PATH); $(MAKE) -f make/Makefile.amd64
 	
 %.o: %.cpp
-	$(CXX) $(ARGS) -c $< 
+	$(CXX) -m64 $(ARGS) -c $< 
 
 clean:
-	cd $(MEM_PATH); $(MAKE) clean -f make/Makefile.arm64
-	cd $(JIT_PATH); $(MAKE) clean -f make/Makefile.arm64
+	cd $(MEM_PATH); $(MAKE) clean -f make/Makefile.amd64
+	cd $(JIT_PATH); $(MAKE) clean -f make/Makefile.amd64
 	rm -f $(EXE).exe $(EXE) *.exe *.o *~
