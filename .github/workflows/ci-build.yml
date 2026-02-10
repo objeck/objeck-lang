@@ -35,11 +35,12 @@ jobs:
             deploy_script: ./deploy_posix.sh x64
             shell: bash
 
-          - platform: linux-arm64
-            os: ubuntu-24.04-arm
-            arch: arm64
-            deploy_script: ./deploy_posix.sh arm64
-            shell: bash
+          # Linux ARM64 - Commented out until GitHub-hosted ARM64 runners are stable
+          # - platform: linux-arm64
+          #   os: ubuntu-latest  # Will use QEMU for ARM64 if needed
+          #   arch: arm64
+          #   deploy_script: ./deploy_posix.sh arm64
+          #   shell: bash
 
           # macOS build
           - platform: macos-arm64
