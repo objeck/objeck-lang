@@ -1,0 +1,168 @@
+use Collection;
+use System.ML;
+
+bundle Default {
+class MLEnhancementsTest {
+	function : Main(args : String[]) ~ Nil {
+		"=== Testing ML Enhancements ==="->PrintLine();
+		"\n--- 1. Activation Functions ---"->PrintLine();
+		TestActivationFunctions();
+
+		"\n--- 2. Feature Scaling ---"->PrintLine();
+		TestFeatureScaling();
+
+		"\n--- 3. Metrics ---"->PrintLine();
+		TestMetrics();
+
+		"\n--- 4. Cross Validation ---"->PrintLine();
+		TestCrossValidation();
+	}
+
+	function : TestActivationFunctions() ~ Nil {
+		# Test scalar activation functions
+		x := 0.5;
+		sigmoid_val := System.ML.Matrix2D->Sigmoid(x);
+		relu_val := System.ML.Matrix2D->ReLU(x);
+		tanh_val := System.ML.Matrix2D->Tanh(x);
+		leaky_val := System.ML.Matrix2D->LeakyReLU(x, 0.01);
+
+		"  Input x = {$x}"->PrintLine();
+		"  Sigmoid(x) = {$sigmoid_val}"->PrintLine();
+		"  ReLU(x) = {$relu_val}"->PrintLine();
+		"  Tanh(x) = {$tanh_val}"->PrintLine();
+		"  LeakyReLU(x, 0.01) = {$leaky_val}"->PrintLine();
+
+		# Test negative value
+		x := -0.5;
+		relu_neg := System.ML.Matrix2D->ReLU(x);
+		leaky_neg := System.ML.Matrix2D->LeakyReLU(x, 0.01);
+		"\n  Input x = {$x}"->PrintLine();
+		"  ReLU(x) = {$relu_neg}"->PrintLine();
+		"  LeakyReLU(x, 0.01) = {$leaky_neg}"->PrintLine();
+
+		# Test Softmax on a matrix
+		data := [
+			[2.0, 1.0, 0.1]
+		];
+		"\n  Softmax input:"->PrintLine();
+		result := System.ML.Matrix2D->Softmax(data);
+		"  Softmax output:"->PrintLine();
+		PrintMatrix(result);
+	}
+
+	function : TestFeatureScaling() ~ Nil {
+		# Create sample data
+		data := [
+			[1.0, 10.0, 100.0]
+			[2.0, 20.0, 200.0]
+			[3.0, 30.0, 300.0]
+			[4.0, 40.0, 400.0]
+		];
+
+		"  Original data:"->PrintLine();
+		PrintMatrix(data);
+
+		# Standard Scaler (Z-score normalization)
+		scaled := System.ML.FeatureScaler->StandardScaler(data);
+		"\n  StandardScaler (mean=0, std=1):"->PrintLine();
+		PrintMatrix(scaled);
+
+		# Min-Max Scaler
+		minmax := System.ML.FeatureScaler->MinMaxScaler(data);
+		"\n  MinMaxScaler (range [0,1]):"->PrintLine();
+		PrintMatrix(minmax);
+
+		# L2 Normalization
+		normalized := System.ML.FeatureScaler->Normalize(data);
+		"\n  L2 Normalize (unit norm per row):"->PrintLine();
+		PrintMatrix(normalized);
+	}
+
+	function : TestMetrics() ~ Nil {
+		# Sample predictions vs actuals
+		predictions := [true, true, false, false, true, false, true, false];
+		actuals :=     [true, false, false, true, true, false, false, false];
+
+		"  Predictions: {$predictions}"->PrintLine();
+		"  Actuals:     {$actuals}"->PrintLine();
+
+		accuracy := System.ML.Metrics->Accuracy(predictions, actuals);
+		precision := System.ML.Metrics->Precision(predictions, actuals);
+		recall := System.ML.Metrics->Recall(predictions, actuals);
+		f1 := System.ML.Metrics->F1Score(predictions, actuals);
+		mcc := System.ML.Metrics->MCC(predictions, actuals);
+
+		"\n  Metrics:"->PrintLine();
+		"    Accuracy:  {$accuracy}"->PrintLine();
+		"    Precision: {$precision}"->PrintLine();
+		"    Recall:    {$recall}"->PrintLine();
+		"    F1 Score:  {$f1}"->PrintLine();
+		"    MCC:       {$mcc}"->PrintLine();
+
+		"\n  Confusion Matrix:"->PrintLine();
+		confusion := System.ML.Metrics->ConfusionMatrix(predictions, actuals);
+		System.ML.Metrics->PrintConfusionMatrix(confusion);
+	}
+
+	function : TestCrossValidation() ~ Nil {
+		# Create sample data
+		data := [
+			[1.0, 2.0]
+			[2.0, 4.0]
+			[3.0, 6.0]
+			[4.0, 8.0]
+			[5.0, 10.0]
+			[6.0, 12.0]
+			[7.0, 14.0]
+			[8.0, 16.0]
+			[9.0, 18.0]
+			[10.0, 20.0]
+		];
+
+		"  Original data has {$data->Rows()} rows"->PrintLine();
+
+		# Train-Test Split
+		split := System.ML.CrossValidation->TrainTestSplit(data, 0.3);
+		if(split <> Nil) {
+			train := split[0]->Get();
+			test := split[1]->Get();
+			train_dims := train->Size();
+			test_dims := test->Size();
+			"  Train-Test Split (30% test):"->PrintLine();
+			"    Training set: {$train_dims[0]} rows"->PrintLine();
+			"    Test set:     {$test_dims[0]} rows"->PrintLine();
+		};
+
+		# K-Fold Cross Validation
+		k := 3;
+		folds := System.ML.CrossValidation->KFold(data, k);
+		if(folds <> Nil) {
+			"\n  {$k}-Fold Cross Validation:"->PrintLine();
+			each(i : k) {
+				fold := folds[i];
+				fold_size := fold->Size();
+				count := i + 1;
+				"    Fold {$count}: {$fold_size} samples"->PrintLine();
+			};
+		};
+	}
+
+	function : PrintMatrix(m : Float[,]) ~ Nil {
+		dims := m->Size();
+		rows := dims[0];
+		cols := dims[1];
+
+		each(i : rows) {
+			buffer := "    [";
+			each(j : cols) {
+				buffer->Append(m[i,j]->ToString());
+				col_plus := j + 1;
+				if(col_plus < cols) {
+					buffer->Append(", ");
+				};
+			};
+			buffer->Append("]")->PrintLine();
+		};
+	}
+}
+}

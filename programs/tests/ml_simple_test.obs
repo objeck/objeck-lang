@@ -1,0 +1,23 @@
+use System.ML;
+
+bundle Default {
+	class MLSimpleTest {
+		function : Main(args : String[]) ~ Nil {
+			"=== Testing ML Enhancements (Simple) ==="->PrintLine();
+
+			# Test existing Sigmoid first
+			x := 0.5;
+			sigmoid_result := Matrix2D->Sigmoid(x);
+			"Sigmoid({$x}) = {$sigmoid_result}"->PrintLine();
+
+			# Test ReLU
+			relu_result := Matrix2D->ReLU(x);
+			"ReLU({$x}) = {$relu_result}"->PrintLine();
+
+			# Test negative
+			y := -0.5;
+			relu_neg := Matrix2D->ReLU(y);
+			"ReLU({$y}) = {$relu_neg}"->PrintLine();
+		}
+	}
+}

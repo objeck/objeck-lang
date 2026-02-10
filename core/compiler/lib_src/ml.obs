@@ -682,7 +682,7 @@ bundle System.ML {
 			b_dims := b->Size();
 			b_rows := b_dims[0];
 			b_cols := b_dims[1];
-			
+
 			if(a_cols <> b_rows & a_rows <> b_cols) {
 				return Nil;
 			};
@@ -695,6 +695,136 @@ bundle System.ML {
 						cx += a[a_col, x_col] * b[x_col, right_col];
 					};
 					c[a_col, right_col] := Sigmoid(cx);
+				};
+			};
+
+			return c;
+		}
+
+		#~
+		ReLU (Rectified Linear Unit) activation function
+		@param x input value
+		@return ReLU value (max(0, x))
+		~#
+		function : native : ReLU(x : Float) ~ Float {
+			return x > 0.0 ? x : 0.0;
+		}
+
+		#~
+		Applies the ReLU function to all elements
+		@param b matrix
+		@return updated matrix
+		~#
+		function : native : ReLU(b : Float[,]) ~ Float[,] {
+			b_dims := b->Size();
+			b_rows := b_dims[0];
+			b_cols := b_dims[1];
+
+			c := Float->New[b_rows, b_cols];
+			for(i := 0; i < b_rows; i += 1;) {
+				for(j := 0; j < b_cols; j += 1;) {
+					c[i,j] := ReLU(b[i,j]);
+				};
+			};
+
+			return c;
+		}
+
+		#~
+		Leaky ReLU activation function
+		@param x input value
+		@param alpha slope for negative values (default 0.01)
+		@return Leaky ReLU value
+		~#
+		function : native : LeakyReLU(x : Float, alpha : Float) ~ Float {
+			return x > 0.0 ? x : alpha * x;
+		}
+
+		#~
+		Applies the Leaky ReLU function to all elements
+		@param b matrix
+		@param alpha slope for negative values
+		@return updated matrix
+		~#
+		function : native : LeakyReLU(b : Float[,], alpha : Float) ~ Float[,] {
+			b_dims := b->Size();
+			b_rows := b_dims[0];
+			b_cols := b_dims[1];
+
+			c := Float->New[b_rows, b_cols];
+			for(i := 0; i < b_rows; i += 1;) {
+				for(j := 0; j < b_cols; j += 1;) {
+					c[i,j] := LeakyReLU(b[i,j], alpha);
+				};
+			};
+
+			return c;
+		}
+
+		#~
+		Tanh (Hyperbolic Tangent) activation function
+		@param x input value
+		@return Tanh value
+		~#
+		function : native : Tanh(x : Float) ~ Float {
+			return (Float->Pow(Float->E(), x) - Float->Pow(Float->E(), -x)) /
+			       (Float->Pow(Float->E(), x) + Float->Pow(Float->E(), -x));
+		}
+
+		#~
+		Applies the Tanh function to all elements
+		@param b matrix
+		@return updated matrix
+		~#
+		function : native : Tanh(b : Float[,]) ~ Float[,] {
+			b_dims := b->Size();
+			b_rows := b_dims[0];
+			b_cols := b_dims[1];
+
+			c := Float->New[b_rows, b_cols];
+			for(i := 0; i < b_rows; i += 1;) {
+				for(j := 0; j < b_cols; j += 1;) {
+					c[i,j] := Tanh(b[i,j]);
+				};
+			};
+
+			return c;
+		}
+
+		#~
+		Softmax activation function for classification
+		@param b matrix (single row or column vector)
+		@return normalized probability distribution
+		~#
+		function : native : Softmax(b : Float[,]) ~ Float[,] {
+			b_dims := b->Size();
+			b_rows := b_dims[0];
+			b_cols := b_dims[1];
+
+			# Find max for numerical stability
+			max_val := b[0,0];
+			for(i := 0; i < b_rows; i += 1;) {
+				for(j := 0; j < b_cols; j += 1;) {
+					if(b[i,j] > max_val) {
+						max_val := b[i,j];
+					};
+				};
+			};
+
+			# Compute exp(x - max) and sum
+			exp_sum := 0.0;
+			c := Float->New[b_rows, b_cols];
+			for(i := 0; i < b_rows; i += 1;) {
+				for(j := 0; j < b_cols; j += 1;) {
+					c[i,j] := Float->Pow(Float->E(), b[i,j] - max_val);
+					exp_sum += c[i,j];
+				};
+			};
+
+			# Normalize
+			for(i := 0; i < b_rows; i += 1;) {
+				for(j := 0; j < b_cols; j += 1;) {
+					c[i,j] := SafeDiv(c[i,j], exp_sum);
 				};
 			};
 
@@ -2831,6 +2961,419 @@ each(group in groups) {
 			};
 
 			return buffer;
+		}
+	}
+
+	#~
+	Feature scaling and normalization utilities
+	~#
+	class FeatureScaler {
+		#~
+		Standardizes features by removing mean and scaling to unit variance (Z-score normalization)
+		@param data input matrix
+		@return standardized matrix with mean=0 and std=1
+		~#
+		function : native : StandardScaler(data : Float[,]) ~ Float[,] {
+			dims := data->Size();
+			rows := dims[0];
+			cols := dims[1];
+
+			result := Float->New[rows, cols];
+
+			# Standardize each column
+			each(col : cols) {
+				# Calculate mean
+				sum := 0.0;
+				each(row : rows) {
+					sum += data[row, col];
+				};
+				mean := sum / rows->As(Float);
+
+				# Calculate standard deviation
+				sum_sq := 0.0;
+				each(row : rows) {
+					diff := data[row, col] - mean;
+					sum_sq += diff * diff;
+				};
+				std := Float->Sqrt(sum_sq / rows->As(Float));
+
+				# Standardize
+				each(row : rows) {
+					if(std > 0.0) {
+						result[row, col] := (data[row, col] - mean) / std;
+					}
+					else {
+						result[row, col] := 0.0;
+					};
+				};
+			};
+
+			return result;
+		}
+
+		#~
+		Scales features to a [0, 1] range (Min-Max normalization)
+		@param data input matrix
+		@return scaled matrix with values in [0, 1]
+		~#
+		function : native : MinMaxScaler(data : Float[,]) ~ Float[,] {
+			dims := data->Size();
+			rows := dims[0];
+			cols := dims[1];
+
+			result := Float->New[rows, cols];
+
+			# Scale each column
+			each(col : cols) {
+				# Find min and max
+				min_val := data[0, col];
+				max_val := data[0, col];
+
+				each(row : rows) {
+					if(data[row, col] < min_val) {
+						min_val := data[row, col];
+					};
+					if(data[row, col] > max_val) {
+						max_val := data[row, col];
+					};
+				};
+
+				# Scale to [0, 1]
+				range := max_val - min_val;
+				each(row : rows) {
+					if(range > 0.0) {
+						result[row, col] := (data[row, col] - min_val) / range;
+					}
+					else {
+						result[row, col] := 0.0;
+					};
+				};
+			};
+
+			return result;
+		}
+
+		#~
+		Normalizes each row to unit norm (L2 normalization)
+		@param data input matrix
+		@return normalized matrix where each row has L2 norm = 1
+		~#
+		function : native : Normalize(data : Float[,]) ~ Float[,] {
+			dims := data->Size();
+			rows := dims[0];
+			cols := dims[1];
+
+			result := Float->New[rows, cols];
+
+			# Normalize each row
+			each(row : rows) {
+				# Calculate L2 norm
+				sum_sq := 0.0;
+				each(col : cols) {
+					sum_sq += data[row, col] * data[row, col];
+				};
+				norm := Float->Sqrt(sum_sq);
+
+				# Normalize
+				each(col : cols) {
+					if(norm > 0.0) {
+						result[row, col] := data[row, col] / norm;
+					}
+					else {
+						result[row, col] := 0.0;
+					};
+				};
+			};
+
+			return result;
+		}
+	}
+
+	#~
+	Model evaluation metrics for classification tasks
+	~#
+	class Metrics {
+		#~
+		Calculates accuracy: (TP + TN) / Total
+		@param predictions predicted boolean values
+		@param actuals actual boolean values
+		@return accuracy score between 0.0 and 1.0
+		~#
+		function : native : Accuracy(predictions : Bool[], actuals : Bool[]) ~ Float {
+			if(predictions->Size() <> actuals->Size() | predictions->Size() = 0) {
+				return 0.0;
+			};
+
+			correct := 0;
+			each(i : predictions) {
+				if(predictions[i] = actuals[i]) {
+					correct += 1;
+				};
+			};
+
+			return correct->As(Float) / predictions->Size()->As(Float);
+		}
+
+		#~
+		Calculates precision: TP / (TP + FP)
+		@param predictions predicted boolean values
+		@param actuals actual boolean values
+		@return precision score between 0.0 and 1.0
+		~#
+		function : native : Precision(predictions : Bool[], actuals : Bool[]) ~ Float {
+			if(predictions->Size() <> actuals->Size() | predictions->Size() = 0) {
+				return 0.0;
+			};
+
+			tp := 0; # True Positives
+			fp := 0; # False Positives
+
+			each(i : predictions) {
+				if(predictions[i] & actuals[i]) {
+					tp += 1;
+				}
+				else if(predictions[i] & <>actuals[i]) {
+					fp += 1;
+				};
+			};
+
+			if(tp + fp = 0) {
+				return 0.0;
+			};
+
+			return tp->As(Float) / (tp + fp)->As(Float);
+		}
+
+		#~
+		Calculates recall (sensitivity): TP / (TP + FN)
+		@param predictions predicted boolean values
+		@param actuals actual boolean values
+		@return recall score between 0.0 and 1.0
+		~#
+		function : native : Recall(predictions : Bool[], actuals : Bool[]) ~ Float {
+			if(predictions->Size() <> actuals->Size() | predictions->Size() = 0) {
+				return 0.0;
+			};
+
+			tp := 0; # True Positives
+			fn := 0; # False Negatives
+
+			each(i : predictions) {
+				if(predictions[i] & actuals[i]) {
+					tp += 1;
+				}
+				else if(<>predictions[i] & actuals[i]) {
+					fn += 1;
+				};
+			};
+
+			if(tp + fn = 0) {
+				return 0.0;
+			};
+
+			return tp->As(Float) / (tp + fn)->As(Float);
+		}
+
+		#~
+		Calculates F1 score: 2 * (Precision * Recall) / (Precision + Recall)
+		@param predictions predicted boolean values
+		@param actuals actual boolean values
+		@return F1 score between 0.0 and 1.0
+		~#
+		function : native : F1Score(predictions : Bool[], actuals : Bool[]) ~ Float {
+			precision := Precision(predictions, actuals);
+			recall := Recall(predictions, actuals);
+
+			if(precision + recall = 0.0) {
+				return 0.0;
+			};
+
+			return 2.0 * (precision * recall) / (precision + recall);
+		}
+
+		#~
+		Creates a confusion matrix
+		@param predictions predicted boolean values
+		@param actuals actual boolean values
+		@return 2x2 confusion matrix [[TN, FP], [FN, TP]]
+		~#
+		function : native : ConfusionMatrix(predictions : Bool[], actuals : Bool[]) ~ Int[,] {
+			matrix := Int->New[2, 2];
+
+			if(predictions->Size() <> actuals->Size() | predictions->Size() = 0) {
+				return matrix;
+			};
+
+			each(i : predictions) {
+				# TN (0,0), FP (0,1), FN (1,0), TP (1,1)
+				pred_idx := predictions[i] ? 1 : 0;
+				actual_idx := actuals[i] ? 1 : 0;
+				matrix[actual_idx, pred_idx] += 1;
+			};
+
+			return matrix;
+		}
+
+		#~
+		Calculates Matthews Correlation Coefficient (MCC)
+		@param predictions predicted boolean values
+		@param actuals actual boolean values
+		@return MCC score between -1.0 and 1.0
+		~#
+		function : native : MCC(predictions : Bool[], actuals : Bool[]) ~ Float {
+			if(predictions->Size() <> actuals->Size() | predictions->Size() = 0) {
+				return 0.0;
+			};
+
+			tp := 0; tn := 0; fp := 0; fn := 0;
+
+			each(i : predictions) {
+				if(predictions[i] & actuals[i]) {
+					tp += 1;
+				}
+				else if(<>predictions[i] & <>actuals[i]) {
+					tn += 1;
+				}
+				else if(predictions[i] & <>actuals[i]) {
+					fp += 1;
+				}
+				else {
+					fn += 1;
+				};
+			};
+
+			numerator := (tp * tn - fp * fn)->As(Float);
+			denominator := Float->Sqrt((tp + fp)->As(Float) * (tp + fn)->As(Float) *
+			                           (tn + fp)->As(Float) * (tn + fn)->As(Float));
+
+			if(denominator = 0.0) {
+				return 0.0;
+			};
+
+			return numerator / denominator;
+		}
+
+		#~
+		Prints a formatted confusion matrix
+		@param matrix 2x2 confusion matrix
+		~#
+		function : native : PrintConfusionMatrix(matrix : Int[,]) ~ Nil {
+			tn := matrix[0,0];
+			fp := matrix[0,1];
+			fn := matrix[1,0];
+			tp := matrix[1,1];
+
+			"Confusion Matrix:"->PrintLine();
+			"                Predicted"->PrintLine();
+			"              Negative  Positive"->PrintLine();
+			"Actual Neg  |   {$tn}   |   {$fp}   |"->PrintLine();
+			"Actual Pos  |   {$fn}   |   {$tp}   |"->PrintLine();
+		}
+	}
+
+	#~
+	Cross-validation utilities for model evaluation
+	~#
+	class CrossValidation {
+		#~
+		Splits data into K folds for cross-validation
+		@param data input matrix
+		@param k number of folds
+		@return array of K fold indices
+		~#
+		function : native : KFold(data : Float[,], k : Int) ~ Vector[]<IntRef> {
+			dims := data->Size();
+			rows := dims[0];
+
+			if(k <= 0 | k > rows) {
+				return Nil;
+			};
+
+			fold_size := rows / k;
+			indices := Int->New[rows];
+			each(i : rows) {
+				indices[i] := i;
+			};
+
+			# Shuffle indices
+			each(i : rows) {
+				j := (rows - 1)->Random();
+				temp := indices[i];
+				indices[i] := indices[j];
+				indices[j] := temp;
+			};
+
+			# Create folds
+			folds := Vector->New[k]<IntRef>;
+			each(fold : k) {
+				fold_indices := Vector->New()<IntRef>;
+				start := fold * fold_size;
+				ending := fold = k - 1 ? rows : (fold + 1) * fold_size;
+
+				for(i := start; i < ending; i += 1;) {
+					fold_indices->AddBack(indices[i]);
+				};
+
+				folds[fold] := fold_indices;
+			};
+
+			return folds;
+		}
+
+		#~
+		Splits data into training and test sets
+		@param data input matrix
+		@param test_ratio percentage of data for testing (0.0 to 1.0)
+		@return array with [training_data, test_data]
+		~#
+		function : native : TrainTestSplit(data : Float[,], test_ratio : Float) ~ FloatMatrixRef[] {
+			if(test_ratio <= 0.0 | test_ratio >= 1.0) {
+				return Nil;
+			};
+
+			dims := data->Size();
+			rows := dims[0];
+			cols := dims[1];
+
+			test_size := (rows->As(Float) * test_ratio)->As(Int);
+			train_size := rows - test_size;
+
+			# Shuffle indices
+			indices := Int->New[rows];
+			each(i : rows) {
+				indices[i] := i;
+			};
+
+			each(i : rows) {
+				j := (rows - 1)->Random();
+				temp := indices[i];
+				indices[i] := indices[j];
+				indices[j] := temp;
+			};
+
+			# Split data
+			train_data := Float->New[train_size, cols];
+			test_data := Float->New[test_size, cols];
+
+			each(i : train_size) {
+				idx := indices[i];
+				each(j : cols) {
+					train_data[i, j] := data[idx, j];
+				};
+			};
+
+			for(i := train_size; i < rows; i += 1;) {
+				idx := indices[i];
+				each(j : cols) {
+					test_data[i - train_size, j] := data[idx, j];
+				};
+			};
+
+			result := FloatMatrixRef->New[2];
+			result[0] := FloatMatrixRef->New(train_data);
+			result[1] := FloatMatrixRef->New(test_data);
+
+			return result;
 		}
 	}
 }
