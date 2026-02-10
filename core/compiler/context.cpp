@@ -4246,13 +4246,29 @@ void ContextAnalyzer::AnalyzeIndices(ExpressionList* indices, const int depth)
             unboxed_expressions.push_back(unboxed_expresion);
           }
           else {
-            ProcessError(expression, L"Expected Byte, Char, Int or Enum class type");
+            // Check if this is a bound variable from each loop
+            if(expression->GetExpressionType() == VAR_EXPR) {
+              Variable* var = static_cast<Variable*>(expression);
+              ProcessError(expression, L"Expected Byte, Char, Int or Enum class type\n\tNote: Variable '" + var->GetName() +
+                          L"' is bound to array elements using ':='\n\tUse ':' instead of ':=' to iterate over indices in 'each' loops");
+            }
+            else {
+              ProcessError(expression, L"Expected Byte, Char, Int or Enum class type");
+            }
           }
         }
         break;
 
       default:
-        ProcessError(expression, L"Expected Byte, Char, Int or Enum class type");
+        // Check if this is a bound variable from each loop
+        if(expression->GetExpressionType() == VAR_EXPR) {
+          Variable* var = static_cast<Variable*>(expression);
+          ProcessError(expression, L"Expected Byte, Char, Int or Enum class type\n\tNote: Variable '" + var->GetName() +
+                      L"' is bound to array elements using ':='\n\tUse ':' instead of ':=' to iterate over indices in 'each' loops");
+        }
+        else {
+          ProcessError(expression, L"Expected Byte, Char, Int or Enum class type");
+        }
         break;
       }
     }
