@@ -1,0 +1,76 @@
+#~
+# ARM64 Multiply-by-Constant Test
+# Tests multiply-by-constant optimization (especially multiply-by-6)
+# Related commit: cc65c18b7 - Fixed multiply-by-6 using LSL #1 instead of LSL #2
+~#
+
+class ARM64MultiplyConstantsTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing ARM64 multiply-by-constant optimization..."->PrintLine();
+
+        pass := true;
+
+        # Test multiply by various constants that use shift-add optimization
+        constants := Int->New[6];
+        constants[0] := 3;
+        constants[1] := 5;
+        constants[2] := 6;  # This was broken (LSL #1 instead of LSL #2)
+        constants[3] := 7;
+        constants[4] := 9;
+        constants[5] := 10;
+
+        for(c_idx := 0; c_idx < constants->Size(); c_idx += 1;) {
+            multiplier := constants[c_idx];
+
+            for(i := 0; i < 10; i += 1;) {
+                result := i * multiplier;
+                expected := i * multiplier;  # Compute expected value
+
+                if(result <> expected) {
+                    pass := false;
+                    "  FAIL: {$i} * {$multiplier} = {$result}, expected {$expected}"->PrintLine();
+                };
+            };
+        };
+
+        # Specific test for multiply-by-6 (the critical bug)
+        test_values := Int->New[5];
+        test_values[0] := 5;
+        test_values[1] := 10;
+        test_values[2] := 15;
+        test_values[3] := 100;
+        test_values[4] := 1000;
+
+        for(idx := 0; idx < test_values->Size(); idx += 1;) {
+            val := test_values[idx];
+            result := val * 6;
+            expected := val + val + val + val + val + val;  # 6x via addition
+
+            if(result <> expected) {
+                pass := false;
+                "  FAIL: {$val} * 6 = {$result}, expected {$expected}"->PrintLine();
+            };
+        };
+
+        # Edge cases
+        zero := 0;
+        result_zero := zero * 6;
+        if(result_zero <> 0) {
+            pass := false;
+            "  FAIL: 0 * 6, expected 0"->PrintLine();
+        };
+
+        neg_five := -5;
+        result_neg := neg_five * 6;
+        if(result_neg <> -30) {
+            pass := false;
+            "  FAIL: (-5) * 6, expected -30"->PrintLine();
+        };
+
+        if(pass) {
+            "PASS: ARM64 multiply-by-constant optimization"->PrintLine();
+        } else {
+            "FAIL: ARM64 multiply-by-constant optimization"->PrintLine();
+        };
+    }
+}

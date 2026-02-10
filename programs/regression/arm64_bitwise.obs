@@ -1,0 +1,49 @@
+#~
+# ARM64 Bitwise Operations Test
+# Tests bitwise AND, OR, XOR operations
+# Related commit: cc65c18b7
+~#
+
+class ARM64BitwiseTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing ARM64 bitwise operations..."->PrintLine();
+
+        pass := true;
+
+        # Test bitwise AND
+        a := 13;  # 1101
+        b := 7;   # 0111
+        c := a and b;  # Should be 5 (0101)
+        if(c <> 5) {
+            pass := false;
+            "  FAIL: 13 AND 7 = {$c}, expected 5"->PrintLine();
+        };
+
+        # Test bitwise OR
+        d := a or b;  # Should be 15 (1111)
+        if(d <> 15) {
+            pass := false;
+            "  FAIL: 13 OR 7 = {$d}, expected 15"->PrintLine();
+        };
+
+        # Test bitwise XOR
+        e := a xor b;  # Should be 10 (1010)
+        if(e <> 10) {
+            pass := false;
+            "  FAIL: 13 XOR 7 = {$e}, expected 10"->PrintLine();
+        };
+
+        # Test combinations
+        f := (a and b) or (a xor b);
+        if(f <> 15) {
+            pass := false;
+            "  FAIL: (13 AND 7) OR (13 XOR 7) = {$f}, expected 15"->PrintLine();
+        };
+
+        if(pass) {
+            "PASS: ARM64 bitwise operations"->PrintLine();
+        } else {
+            "FAIL: ARM64 bitwise operations"->PrintLine();
+        };
+    }
+}

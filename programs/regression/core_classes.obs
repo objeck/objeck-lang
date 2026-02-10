@@ -1,0 +1,105 @@
+#~
+# Core Classes Test
+# Tests class instantiation, inheritance, method calls, and select statements
+# Based on programs/tests/prgm10.obs
+~#
+
+class Foo {
+    @value1 : Int;
+    @value2 : Float;
+
+    New(value1 : Int, value2 : Float) {
+        @value1 := value1;
+        @value2 := value2;
+    }
+
+    method : public : GetValue1() ~ Int {
+        return @value1;
+    }
+
+    method : public : GetValue2() ~ Float {
+        return @value2;
+    }
+}
+
+class Bar from Foo {
+    @foos : Foo[];
+
+    New(foo: Foo) {
+        Parent(foo->GetValue1(), foo->GetValue2());
+        @foos := Foo->New[4];
+        @foos[0] := Foo->New(1, 1.0);
+        @foos[1] := Foo->New(2, 2.0);
+        @foos[2] := Foo->New(3, 3.0);
+        @foos[3] := Foo->New(4, 4.0);
+    }
+
+    method : public : DoStuff() ~ Float {
+        a := 13;
+        return @value1 * a - @value2;
+    }
+
+    method : public : GetFoo() ~ Foo {
+        return @foos[1];
+    }
+}
+
+class CoreClassesTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing core class operations..."->PrintLine();
+
+        pass := true;
+
+        # Test basic class instantiation and method calls
+        foo := Foo->New(7, 3.1415);
+        if(foo->GetValue1() <> 7) {
+            pass := false;
+            "  FAIL: foo->GetValue1() = {$foo->GetValue1()}, expected 7"->PrintLine();
+        };
+
+        val2 := foo->GetValue2();
+        if(val2 < 3.14 | val2 > 3.15) {
+            pass := false;
+            "  FAIL: foo->GetValue2() = {$val2}, expected ~3.1415"->PrintLine();
+        };
+
+        # Test inheritance
+        bar := Bar->New(foo);
+        retrieved_foo := bar->GetFoo();
+        if(retrieved_foo->GetValue1() <> 2) {
+            pass := false;
+            "  FAIL: bar->GetFoo()->GetValue1() = {$retrieved_foo->GetValue1()}, expected 2"->PrintLine();
+        };
+
+        # Test select statement with integers
+        select(10) {
+            label 7: {
+                pass := false;
+                "  FAIL: Select matched 7 instead of other"->PrintLine();
+            }
+
+            other: {
+                # Correct - should reach here
+            }
+        };
+
+        # Test select with characters
+        test_char := 'H';
+        select(test_char) {
+            label 'H': {
+                # Correct - should reach here
+            }
+
+            other: {
+                pass := false;
+                "  FAIL: Select didn't match 'H'"->PrintLine();
+            }
+        };
+
+        if(pass) {
+            "PASS: Core class operations"->PrintLine();
+        } else {
+            "FAIL: Core class operations"->PrintLine();
+        };
+    }
+}

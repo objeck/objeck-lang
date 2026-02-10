@@ -1,0 +1,47 @@
+#~
+# ARM64 Character Array Test
+# Tests STRH/LDRH instruction encoding (16-bit operations)
+# Related commit: cc65c18b7 - Fixed STRH opcode 0x59 → 0x79, LDRH 0x394 → 0x794
+~#
+
+class ARM64CharArrayTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing ARM64 char array operations..."->PrintLine();
+
+        # Test STRH/LDRH instruction encoding
+        char_array := Char->New[100];
+
+        # Test various indices to ensure correct offset scaling
+        char_array[0] := 'A';
+        char_array[10] := 'B';
+        char_array[50] := 'C';
+        char_array[99] := 'Z';
+
+        # Verify values
+        pass := true;
+        if(char_array[0] <> 'A') { pass := false; "  FAIL: char_array[0], expected 'A'"->PrintLine(); };
+        if(char_array[10] <> 'B') { pass := false; "  FAIL: char_array[10], expected 'B'"->PrintLine(); };
+        if(char_array[50] <> 'C') { pass := false; "  FAIL: char_array[50], expected 'C'"->PrintLine(); };
+        if(char_array[99] <> 'Z') { pass := false; "  FAIL: char_array[99], expected 'Z'"->PrintLine(); };
+
+        # Test string operations with char arrays
+        str := "Hello, ARM64!";
+        for(i := 0; i < str->Size(); i += 1;) {
+            char_array[i] := str->Get(i);
+        };
+
+        # Verify string was copied correctly
+        for(i := 0; i < str->Size(); i += 1;) {
+            if(char_array[i] <> str->Get(i)) {
+                pass := false;
+                "  FAIL: String copy mismatch at index"->PrintLine();
+            };
+        };
+
+        if(pass) {
+            "PASS: ARM64 char array operations"->PrintLine();
+        } else {
+            "FAIL: ARM64 char array operations"->PrintLine();
+        };
+    }
+}
