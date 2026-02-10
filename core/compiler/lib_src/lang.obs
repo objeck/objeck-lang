@@ -4990,6 +4990,65 @@ each(i : cities) {
 		}
 
 		#~
+		Checks if string contains only alphabetic characters (a-z, A-Z)
+		@return true if all characters are alphabetic, false otherwise
+		~#
+		method : public : IsAlpha() ~ Bool {
+			if(@pos = 0) {
+				return false;
+			};
+
+			each(i : @pos) {
+				c := @string[i];
+				if(<>(c >= 'a' & c <= 'z') & <>(c >= 'A' & c <= 'Z')) {
+					return false;
+				};
+			};
+
+			return true;
+		}
+
+		#~
+		Checks if string contains only numeric characters (0-9)
+		@return true if all characters are numeric, false otherwise
+		~#
+		method : public : IsNumeric() ~ Bool {
+			if(@pos = 0) {
+				return false;
+			};
+
+			each(i : @pos) {
+				c := @string[i];
+				if(<>(c >= '0' & c <= '9')) {
+					return false;
+				};
+			};
+
+			return true;
+		}
+
+		#~
+		Checks if string contains only alphanumeric characters (a-z, A-Z, 0-9)
+		@return true if all characters are alphanumeric, false otherwise
+		~#
+		method : public : IsAlphaNumeric() ~ Bool {
+			if(@pos = 0) {
+				return false;
+			};
+
+			each(i : @pos) {
+				c := @string[i];
+				is_alpha := (c >= 'a' & c <= 'z') | (c >= 'A' & c <= 'Z');
+				is_digit := c >= '0' & c <= '9';
+				if(<>is_alpha & <>is_digit) {
+					return false;
+				};
+			};
+
+			return true;
+		}
+
+		#~
 		Counts the occurrence of a character
 		@param char character to search for
 		@return count of occurrences or -1 if not found
@@ -5057,6 +5116,15 @@ each(i : cities) {
 		}
 
 		#~
+		Checks if string contains a substring
+		@param find string to search for
+		@return true if found, false otherwise
+		~#
+		method : public : Contains(find : String) ~ Bool {
+			return Find(find) > -1;
+		}
+
+		#~
 		Searches for all occurrences of a string
 		@param find string to search for
 		@return an array of indexes
@@ -5094,6 +5162,30 @@ each(i : cities) {
 			};
 
 			return results;
+		}
+
+		#~
+		Counts occurrences of a substring
+		@param find string to count
+		@return number of occurrences found
+		~#
+		method : public : Count(find : String) ~ Int {
+			if(find = Nil | find->IsEmpty()) {
+				return 0;
+			};
+
+			count := 0;
+			offset := 0;
+			do {
+				offset := Find(offset, find);
+				if(offset > -1) {
+					count += 1;
+					offset += find->Size();
+				};
+			}
+			while(offset > -1);
+
+			return count;
 		}
 
 		#~
