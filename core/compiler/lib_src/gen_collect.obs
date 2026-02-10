@@ -1776,7 +1776,7 @@ stack->Size()->PrintLine(); # prints 2
 		@return popped valued, Nil if stack is empty
 		~#
 		method : native : public : Pop(n : Int) ~ H {
-			value : H;
+			value : H := Nil;
 
 			if(n > 0) {
 				count := 0;
@@ -2380,13 +2380,15 @@ function : Example() ~ Nil {
 		method : public : Rest() ~ CompareList<H> {
 			list : CompareList<H> := CompareList->New()<H>;
 			
-			start := @head->GetNext();
-			while(start <> Nil) {
-				list->AddBack(start->Get());
-				start := start->GetNext();
-			};
+			if(@head <> Nil) {
+				start := @head->GetNext();
+				while(start <> Nil) {
+					list->AddBack(start->Get());
+					start := start->GetNext();
+				};
 
-			list->Rewind();
+				list->Rewind();
+			};
 
 			return list;
 		}
@@ -3584,7 +3586,7 @@ function : Example() ~ Nil {
 		method : public : Remove(i : Int) ~ H {
 			if(i > -1 & i < @size) {
 				value := @values[i];
-				temp := H->New[@values->Size()];
+				temp := H->New[@size - 1];
 				Runtime->Copy(temp, 0, @values, 0, i);
 				Runtime->Copy(temp, i, @values, i + 1, @size - i - 1);
 				@values := temp;
@@ -3967,7 +3969,7 @@ function : Show(value : IntRef) ~ Nil {
 		method : public : Remove(i : Int) ~ H {
 			if(i > -1 & i < @size) {
 				value := @values[i];
-				temp := H->New[@values->Size()];
+				temp := H->New[@size - 1];
 				Runtime->Copy(temp, 0, @values, 0, i);
 				Runtime->Copy(temp, i, @values, i + 1, @size - i - 1);
 				@values := temp;
@@ -5149,7 +5151,7 @@ each(v := values) {
 			each(i : keys) {
 
 				# get key
-				key := keys->Get(i)->As(Compare);
+				key := keys->Get(i);
 				if(key->TypeOf(Stringify)) {
 					buffer->Append('(');
 					buffer->Append(key->As(System.Stringify)->ToString());
