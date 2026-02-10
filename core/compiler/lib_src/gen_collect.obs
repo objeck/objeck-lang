@@ -1406,18 +1406,14 @@ hash->Has(408)->PrintLine();
 
 			# Check if key already exists
 			found := false;
-			if(list->Size() > 0) {
-				node := list->Get(0);
-				i := 0;
-				while(i < list->Size() & found = false) {
-					pair : HashPair<V> := node->Get()->As(HashPair<V>);
-					if(key->Equals(pair->GetKey())) {
-						pair->Set(value);
-						found := true;
-					};
-					node := node->GetNext();
-					i += 1;
+			list->Rewind();
+			while(list->More() & found = false) {
+				pair : HashPair<V> := list->Get()<V>;
+				if(pair->Compare(key) = 0) {
+					pair->Set(value);
+					found := true;
 				};
+				list->Next();
 			};
 
 			# Only add if key doesn't exist
@@ -1698,6 +1694,10 @@ hash->Has(408)->PrintLine();
 
 		method : public : Get() ~ V {
 			return @value;
+		}
+
+		method : public : Set(value : V) ~ Nil {
+			@value := value;
 		}
 	}
 	
