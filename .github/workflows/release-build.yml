@@ -238,26 +238,8 @@ jobs:
           Write-Output "✅ signtool /a will now work during build"
 
       # ============================================
-      # Build Bootstrap
-      # ============================================
-
-      - name: Build bootstrap (Windows)
-        if: runner.os == 'Windows'
-        working-directory: ./core/compiler
-        run: call update_version.cmd
-
-      - name: Build bootstrap (Linux)
-        if: runner.os == 'Linux'
-        working-directory: ./core/compiler
-        run: ./update_version.sh
-
-      - name: Build bootstrap (macOS)
-        if: runner.os == 'macOS'
-        working-directory: ./core/compiler
-        run: ./update_version_arm.sh
-
-      # ============================================
       # Build Full Release
+      # Note: Bootstrap is skipped because version.h is already updated by prepare job
       # ============================================
 
       - name: Build release
@@ -336,10 +318,6 @@ jobs:
         with:
           arch: x64
 
-      - name: Build bootstrap
-        working-directory: ./core/compiler
-        run: call update_version.cmd
-
       - name: Build LSP
         working-directory: ./core/release
         shell: cmd
@@ -400,9 +378,7 @@ jobs:
 
       - name: Build compiler and runtime
         run: |
-          cd core/compiler
-          ./update_version.sh
-          cd ../release
+          cd core/release
           ./deploy_posix.sh x64
 
       - name: Generate API documentation
