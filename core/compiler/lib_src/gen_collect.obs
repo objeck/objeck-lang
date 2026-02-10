@@ -3427,8 +3427,6 @@ function : Example() ~ Nil {
 		@return limited list
 		~#
 		method : public : Limit(l : Int) ~ Vector<H> {
-			array := H->New[@size];
-
 			if(l > -1 & l < @size) {
 				array := H->New[l];
 				for(i : Int := 0; i < l; i += 1;) {
@@ -3488,10 +3486,10 @@ function : Example() ~ Nil {
 		~#
 		method : public : Remove(i : Int) ~ H {
 			if(i > -1 & i < @size) {
+				value := @values[i];
 				temp := H->New[@values->Size()];
 				Runtime->Copy(temp, 0, @values, 0, i);
 				Runtime->Copy(temp, i, @values, i + 1, @size - i - 1);
-				value := @values[i];
 				@values := temp;
 				@size -= 1;
 				return value;
@@ -3815,8 +3813,6 @@ function : Show(value : IntRef) ~ Nil {
 		@return limited list
 		~#
 		method : public : Limit(l : Int) ~ CompareVector<H> {
-			array := H->New[@size];
-
 			if(l > -1 & l < @size) {
 				array := H->New[l];
 				for(i : Int := 0; i < l; i += 1;) {
@@ -3869,10 +3865,10 @@ function : Show(value : IntRef) ~ Nil {
 		~#
 		method : public : Remove(i : Int) ~ H {
 			if(i > -1 & i < @size) {
+				value := @values[i];
 				temp := H->New[@values->Size()];
 				Runtime->Copy(temp, 0, @values, 0, i);
 				Runtime->Copy(temp, i, @values, i + 1, @size - i - 1);
-				value := @values[i];
 				@values := temp;
 				@size -= 1;
 				return value;
@@ -4367,9 +4363,9 @@ function : Show(value : IntRef) ~ Nil {
 				# process left 
 				Each(node->GetLeft(), f);
 
-				key := node->GetKey()->As(Clone)->Clone();
+				key := node->GetKey();
 				value := node->Get();
-				f(key->As(Compare), value);
+				f(key, value);
 
 				# process right
 				Each(node->GetRight(), f);
