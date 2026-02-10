@@ -204,9 +204,21 @@ jobs:
 
     # ============================================
     # Test Suite
+    # Note: Windows ARM64 is cross-compiled and cannot run tests on x64 runner
     # ============================================
 
+    - name: Skip tests (cross-compiled platform)
+      if: matrix.platform == 'windows-arm64'
+      shell: bash
+      run: |
+        echo "⚠️  Tests skipped for Windows ARM64"
+        echo "This platform is cross-compiled on x64 runner"
+        echo "ARM64 binaries cannot execute on x64 hardware"
+        echo "Build verification only - no test execution"
+        echo "✅ Build successful"
+
     - name: Compile tests
+      if: matrix.platform != 'windows-arm64'
       working-directory: ./core/release/${{ steps.deploy-dir.outputs.dir }}/bin
       shell: bash
       run: |
@@ -256,6 +268,7 @@ jobs:
         fi
 
     - name: Run tests
+      if: matrix.platform != 'windows-arm64'
       working-directory: ./core/release/${{ steps.deploy-dir.outputs.dir }}/bin
       shell: bash
       run: |
@@ -287,7 +300,7 @@ jobs:
     # ============================================
 
     - name: Run regression tests (POSIX)
-      if: runner.os != 'Windows'
+      if: runner.os != 'Windows' && matrix.platform != 'windows-arm64'
       working-directory: ./programs/regression
       run: |
         chmod +x run_regression.sh
@@ -309,7 +322,7 @@ jobs:
         fi
 
     - name: Run regression tests (Windows)
-      if: runner.os == 'Windows'
+      if: runner.os == 'Windows' && matrix.platform != 'windows-arm64'
       working-directory: ./programs/regression
       shell: cmd
       run: run_regression.cmd ${{ matrix.arch }}
