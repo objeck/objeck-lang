@@ -104,9 +104,9 @@ sudo apt-get update && sudo apt-get install -y \
 
 ---
 
-### macOS (Apple Silicon / Intel)
+### macOS (Apple Silicon)
 
-**Supported:** macOS 12+ (Monterey or later)
+**Supported:** macOS 15+ (Sequoia or later)
 
 ```bash
 # 1. Install Xcode Command Line Tools
@@ -120,8 +120,7 @@ brew install lame opencv onnxruntime mbedtls sdl2 sdl2_image sdl2_ttf sdl2_mixer
 
 # 4. Build
 cd core/release
-./deploy_macos_arm64.sh  # For Apple Silicon
-./deploy_posix.sh x64    # For Intel
+./deploy_macos_arm64.sh
 
 # 5. Output
 # Binaries: core/release/deploy/bin/
@@ -436,3 +435,4 @@ GC: Mark-and-sweep with generational collection
 - Windows ARM64 support
 
 See [CHANGELOG.md](../CHANGELOG.md) for full history.
+
