@@ -298,7 +298,7 @@ bundle System.NLP {
 			};
 
 			stemmed := String->New[tokens->Size()];
-			each(i := tokens) {
+			each(i : tokens->Size()) {
 				stemmed[i] := Stem(tokens[i]);
 			};
 
@@ -462,7 +462,7 @@ bundle System.NLP {
 			norm1 := 0.0;
 			norm2 := 0.0;
 
-			each(i := vec1) {
+			each(i : vec1->Size()) {
 				dot_product += vec1[i] * vec2[i];
 				norm1 += vec1[i] * vec1[i];
 				norm2 += vec2[i] * vec2[i];
@@ -551,12 +551,12 @@ bundle System.NLP {
 
 			# Initialize first row and column
 			rows := len1 + 1;
-			each(i := rows) {
+			each(i : rows) {
 				dp[i, 0] := i;
 			};
 
 			cols := len2 + 1;
-			each(j := cols) {
+			each(j : cols) {
 				dp[0, j] := j;
 			};
 
