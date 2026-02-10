@@ -121,11 +121,23 @@ jobs:
       with:
         arch: ${{ matrix.arch }}
 
-    # Build bootstrap
-    - name: Build bootstrap
+    # Build bootstrap (Windows)
+    - name: Build bootstrap (Windows)
+      if: runner.os == 'Windows'
       working-directory: ./core/compiler
-      run: |
-        ${{ runner.os == 'Windows' && 'call update_version.cmd' || './update_version.sh' }}
+      run: call update_version.cmd
+
+    # Build bootstrap (macOS ARM64)
+    - name: Build bootstrap (macOS ARM64)
+      if: runner.os == 'macOS' && matrix.arch == 'arm64'
+      working-directory: ./core/compiler
+      run: ./update_version_arm.sh
+
+    # Build bootstrap (Linux/macOS x64)
+    - name: Build bootstrap (Linux/macOS x64)
+      if: runner.os != 'Windows' && !(runner.os == 'macOS' && matrix.arch == 'arm64')
+      working-directory: ./core/compiler
+      run: ./update_version.sh
 
     # Build toolchain with ccache
     - name: Build toolchain
@@ -144,13 +156,15 @@ jobs:
     - name: Set deploy directory
       id: deploy-dir
       shell: bash
+      working-directory: ./core/release
       run: |
-        if [ -d "core/release/deploy-${{ matrix.arch }}" ]; then
+        if [ -d "deploy-${{ matrix.arch }}" ]; then
           echo "dir=deploy-${{ matrix.arch }}" >> $GITHUB_OUTPUT
-        elif [ -d "core/release/deploy" ]; then
+        elif [ -d "deploy" ]; then
           echo "dir=deploy" >> $GITHUB_OUTPUT
         else
           echo "ERROR: Deploy directory not found"
+          ls -la
           exit 1
         fi
 
