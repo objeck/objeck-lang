@@ -61,7 +61,16 @@ namespace Runtime {
 #define TMP_X3 168
 #define TMP_X4 176
 #define TMP_X5 184
-#define RED_ZONE 192
+  // callee-saved FP register save slots
+#define SAVE_D8  192
+#define SAVE_D9  200
+#define SAVE_D10 208
+#define SAVE_D11 216
+#define SAVE_D12 224
+#define SAVE_D13 232
+#define SAVE_D14 240
+#define SAVE_D15 248
+#define RED_ZONE 256
 
   // buffer sizes
 #define MAX_INTS 128
@@ -270,7 +279,7 @@ namespace Runtime {
    */
   class PageHolder {
     uint32_t* buffer;
-    uint32_t available, index;
+    uint32_t available, index, total_alloc_size;
 
   public:
     PageHolder(int32_t size) {
@@ -301,10 +310,15 @@ namespace Runtime {
 #endif
       
       available = alloc_size;
+      total_alloc_size = alloc_size;
     }
 
     ~PageHolder() {
-      free(buffer);
+#if defined(_M_ARM64)
+      VirtualFree(buffer, 0, MEM_RELEASE);
+#else
+      munmap(buffer, total_alloc_size);
+#endif
       buffer = nullptr;
     }
 
