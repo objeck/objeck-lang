@@ -1406,16 +1406,18 @@ hash->Has(408)->PrintLine();
 
 			# Check if key already exists
 			found := false;
-			node := list->Get(0);
-			i := 0;
-			while(i < list->Size() & found = false) {
-				pair : HashPair<V> := node->Get()->As(HashPair<V>);
-				if(key->Equals(pair->GetKey())) {
-					pair->Set(value);
-					found := true;
+			if(list->Size() > 0) {
+				node := list->Get(0);
+				i := 0;
+				while(i < list->Size() & found = false) {
+					pair : HashPair<V> := node->Get()->As(HashPair<V>);
+					if(key->Equals(pair->GetKey())) {
+						pair->Set(value);
+						found := true;
+					};
+					node := node->GetNext();
+					i += 1;
 				};
-				node := node->GetNext();
-				i += 1;
 			};
 
 			# Only add if key doesn't exist
