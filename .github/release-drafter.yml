@@ -1,0 +1,134 @@
+name-template: 'v$RESOLVED_VERSION'
+tag-template: 'v$RESOLVED_VERSION'
+
+categories:
+  - title: '🚀 Features'
+    labels:
+      - 'feature'
+      - 'enhancement'
+    collapse-after: 5
+
+  - title: '🐛 Bug Fixes'
+    labels:
+      - 'fix'
+      - 'bugfix'
+      - 'bug'
+    collapse-after: 5
+
+  - title: '⚡ Performance'
+    labels:
+      - 'performance'
+      - 'optimization'
+      - 'jit'
+    collapse-after: 3
+
+  - title: '🏗️ ARM64 / Platform Support'
+    labels:
+      - 'arm64'
+      - 'platform'
+      - 'windows'
+      - 'macos'
+      - 'linux'
+    collapse-after: 5
+
+  - title: '📚 Documentation'
+    labels:
+      - 'documentation'
+      - 'docs'
+    collapse-after: 3
+
+  - title: '🧪 Testing'
+    labels:
+      - 'test'
+      - 'ci'
+      - 'regression'
+    collapse-after: 3
+
+  - title: '🔧 Maintenance'
+    labels:
+      - 'chore'
+      - 'dependencies'
+      - 'refactor'
+    collapse-after: 3
+
+change-template: '- $TITLE (#$NUMBER) @$AUTHOR'
+change-title-escapes: '\<*_&'
+
+version-resolver:
+  major:
+    labels:
+      - 'major'
+      - 'breaking'
+  minor:
+    labels:
+      - 'minor'
+      - 'feature'
+      - 'enhancement'
+  patch:
+    labels:
+      - 'patch'
+      - 'fix'
+      - 'bugfix'
+      - 'bug'
+      - 'documentation'
+      - 'chore'
+  default: patch
+
+template: |
+  ## What's Changed
+
+  $CHANGES
+
+  ## 🎯 Highlights
+
+  <!-- Add key highlights here before release -->
+
+  ## 📦 Downloads
+
+  Choose the appropriate build for your platform:
+
+  | Platform | Architecture | Download |
+  |----------|--------------|----------|
+  | **Linux** | x64 | [objeck-linux-x64_$RESOLVED_VERSION.tar.gz]() |
+  | **Linux** | ARM64 | [objeck-linux-arm64_$RESOLVED_VERSION.tar.gz]() |
+  | **macOS** | Intel (x64) | [objeck-macos-x64_$RESOLVED_VERSION.tar.gz]() |
+  | **macOS** | Apple Silicon | [objeck-macos-arm64_$RESOLVED_VERSION.tar.gz]() |
+  | **Windows** | x64 | [objeck-windows-x64_$RESOLVED_VERSION.zip]() |
+  | **Windows** | ARM64 | [objeck-windows-arm64_$RESOLVED_VERSION.zip]() |
+
+  ## 🔗 Links
+
+  - 📖 [Full Documentation](https://www.objeck.org)
+  - 🎓 [Getting Started Guide](https://github.com/objeck/objeck-lang#quick-start)
+  - 💬 [Discussions](https://github.com/objeck/objeck-lang/discussions)
+  - 🐛 [Report Issues](https://github.com/objeck/objeck-lang/issues)
+
+  ## 📝 Installation
+
+  ### Linux / macOS
+  ```bash
+  # Extract archive
+  tar xzf objeck-*.tar.gz
+  cd objeck-lang
+
+  # Add to PATH
+  export PATH=$PATH:$(pwd)/bin
+
+  # Verify installation
+  obc --version
+  ```
+
+  ### Windows
+  ```cmd
+  REM Extract ZIP to C:\objeck-lang
+
+  REM Add to PATH
+  set PATH=%PATH%;C:\objeck-lang\bin
+
+  REM Verify installation
+  obc --version
+  ```
+
+  ---
+
+  **Full Changelog**: https://github.com/objeck/objeck-lang/compare/$PREVIOUS_TAG...v$RESOLVED_VERSION
