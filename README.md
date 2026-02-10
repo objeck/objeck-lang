@@ -55,9 +55,9 @@ obc -s hello.obs -d hello.obe
 
 ## What's New
 
-**v2026.2.1** ✅ *Coming Soon*
+**v2026.2.1** ✅ *Release Soon*
   * **Performance**: Memory manager optimized with O(1) lookups and in-place sweeping
-  * **ARM64 JIT**: 11 critical optimizations including char arrays, register targeting, multiply-by-constant
+  * **ARM64 JIT**: 11 critical optimizations, including char arrays, register targeting, multiply-by-constant
   * **x64 JIT**: Instruction encoding optimizations with dynamic backpatching
   * **Windows ARM64**: Full platform support with mbedTLS 3.6.3
   * **Testing**: Comprehensive regression suite with 350+ tests and automated CI/CD
@@ -177,6 +177,7 @@ vector := tfidf->Transform("cats and dogs");  # [0.47, 0.0, 0.47, ...]
 - 🎯 [Examples](https://github.com/objeck/objeck-lang/tree/master/programs)
 - 💬 [Discussions](https://github.com/objeck/objeck-lang/discussions)
 - 🐛 [Issues](https://github.com/objeck/objeck-lang/issues)
+
 
 
 
