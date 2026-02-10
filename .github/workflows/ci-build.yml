@@ -244,7 +244,17 @@ jobs:
         fi
 
         echo "Compiler found: $OBC"
+        echo "Library directory: $LIB_DIR"
+
+        # Set library path for macOS
+        if [ "${{ runner.os }}" = "macOS" ]; then
+          export DYLD_LIBRARY_PATH="$(pwd)/../lib:$DYLD_LIBRARY_PATH"
+          echo "Set DYLD_LIBRARY_PATH for macOS"
+        fi
+
         echo "Testing basic compilation..."
+        echo "Working directory: $(pwd)"
+        ls -la "$LIB_DIR" | head -20
 
         # Basic tests for all platforms
         $OBC -lib cipher,net,xml,json -src ../../../../programs/deploy/hello_0.obs || exit 1
