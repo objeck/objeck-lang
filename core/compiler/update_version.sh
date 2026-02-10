@@ -10,12 +10,12 @@ make -f make/Makefile.amd64
 ./obc -src lib_src/gen_collect.obs -lib ../lib/lang -tar lib -opt s3 -dest ../lib/gen_collect.obl -strict
 ./obc -src lib_src/json_stream.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/json_stream.obl
 ./obc -src lib_src/cipher.obs -tar lib -opt s3 -dest ../lib/cipher.obl
+./obc -src lib_src/json.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/json.obl
 ./obc -src lib_src/opencv.obs -lib cipher,json -tar lib -opt s3 -dest ../lib/opencv.obl
 ./obc -src lib_src/onnx.obs -lib opencv,cipher,json -tar lib -opt s3 -dest ../lib/onnx.obl
 ./obc -src lib_src/lame.obs -tar lib -opt s3 -dest ../lib/lame.obl
 ./obc -src lib_src/diags.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/diags.obl
 ./obc -src lib_src/xml.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/xml.obl
-./obc -src lib_src/json.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/json.obl
 ./obc -src lib_src/regex.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/regex.obl
 ./obc -src lib_src/csv.obs -tar lib -lib gen_collect -opt s3 -dest ../lib/csv.obl
 ./obc -src lib_src/ml.obs -lib gen_collect,csv -tar lib -opt s3 -dest ../lib/ml.obl
