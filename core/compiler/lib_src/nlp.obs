@@ -14,6 +14,13 @@ Natural Language Processing utilities (-lib nlp)
 bundle System.NLP {
 	#~
 	Text tokenization utilities for breaking text into words, sentences, and n-grams
+
+```
+text := "Hello, world! This is a test.";
+words := System.NLP.Tokenizer->WordTokenize(text);
+sentences := System.NLP.Tokenizer->SentenceTokenize(text);
+bigrams := System.NLP.Tokenizer->WordNGrams(words, 2);
+```
 	~#
 	class Tokenizer {
 		#~
@@ -148,6 +155,15 @@ bundle System.NLP {
 
 	#~
 	Text preprocessing utilities for cleaning and normalizing text
+
+```
+text := "The Quick Brown FOX!";
+lower := System.NLP.TextPreprocessor->Lowercase(text);
+clean := System.NLP.TextPreprocessor->RemovePunctuation(text);
+tokens := System.NLP.Tokenizer->WordTokenize(lower);
+filtered := System.NLP.TextPreprocessor->RemoveStopwords(tokens);
+stemmed := System.NLP.TextPreprocessor->StemAll(filtered);
+```
 	~#
 	class TextPreprocessor {
 		@stopwords : static : Hash<String, BoolRef>;
@@ -308,6 +324,16 @@ bundle System.NLP {
 
 	#~
 	Term Frequency-Inverse Document Frequency (TF-IDF) vectorizer for document analysis
+
+```
+documents := ["The cat sat on the mat", "The dog sat on the log", "Cats and dogs are pets"];
+tfidf := System.NLP.TF_IDF->New();
+tfidf->Fit(documents);
+
+test_doc := "The cat and the dog";
+vector := tfidf->Transform(test_doc);
+vocab := tfidf->GetVocabulary();
+```
 	~#
 	class TF_IDF {
 		@vocabulary : Hash<String, IntRef>;
@@ -445,6 +471,18 @@ bundle System.NLP {
 
 	#~
 	Text similarity metrics for comparing documents and strings
+
+```
+vec1 := [1.0, 2.0, 3.0];
+vec2 := [2.0, 4.0, 6.0];
+similarity := System.NLP.TextSimilarity->CosineSimilarity(vec1, vec2);
+
+tokens1 := ["the", "cat", "sat"];
+tokens2 := ["the", "dog", "sat"];
+jaccard := System.NLP.TextSimilarity->JaccardSimilarity(tokens1, tokens2);
+
+distance := System.NLP.TextSimilarity->LevenshteinDistance("kitten", "sitting");
+```
 	~#
 	class TextSimilarity {
 		#~
@@ -604,6 +642,14 @@ bundle System.NLP {
 
 	#~
 	Basic lexicon-based sentiment analysis
+
+```
+text := "This is absolutely wonderful and amazing!";
+score := System.NLP.SentimentAnalyzer->Analyze(text);
+classification := System.NLP.SentimentAnalyzer->Classify(text);
+result := System.NLP.SentimentAnalyzer->AnalyzeDetailed(text);
+result->ToString()->PrintLine();
+```
 	~#
 	class SentimentAnalyzer {
 		@positive_words : static : Hash<String, IntRef>;
@@ -727,6 +773,12 @@ bundle System.NLP {
 
 	#~
 	Sentiment analysis result
+
+```
+result := System.NLP.SentimentAnalyzer->AnalyzeDetailed("Great product!");
+score := result->GetScore();
+label := result->GetClassification();
+```
 	~#
 	class SentimentResult {
 		@score : Int;
