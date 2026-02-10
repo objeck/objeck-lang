@@ -31,8 +31,8 @@ AI/ML prototyping • Computer vision • Web services • Game development
 
 ```bash
 # Install (example for macOS/Linux)
-curl -LO https://github.com/objeck/objeck-lang/releases/download/v2025.7.0/objeck-linux-x64_v2025.7.0.tgz
-tar xzf objeck-linux-x64_v2025.7.0.tgz
+curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.2.1/objeck-linux-x64_v2026.2.1.tgz
+tar xzf objeck-linux-x64_v2026.2.1.tgz
 export PATH=$PATH:~/objeck-lang/bin
 
 # Hello World
@@ -55,7 +55,7 @@ obc -s hello.obs -d hello.obe
 
 ## What's New
 
-**v2026.2.1** ✅ *Release Soon*
+**v2026.2.1** ✅
   * **Performance**: Memory manager optimized with O(1) lookups and in-place sweeping
   * **ARM64 JIT**: 11 critical optimizations, including char arrays, register targeting, multiply-by-constant
   * **x64 JIT**: Instruction encoding optimizations with dynamic backpatching
@@ -65,6 +65,7 @@ obc -s hello.obs -d hello.obe
   * **NLP Library**: New natural language processing library with tokenization, TF-IDF, text similarity, and sentiment analysis
   * **ML Enhancements**: Extended ML library with activation functions, feature scaling, metrics, and cross-validation
   * **Crypto**: Migrated to mbedTLS for lighter footprint (OpenSSL replacement)
+  * **Bug Fix**: Fixed critical String.Trim()/TrimFront() index out of bounds crash that affected string processing
 
 **v2026.2.0** ✅
   * Modern GNU-style CLI (`--source`/`-s`, `--debug`/`-D`) with full backward compatibility
