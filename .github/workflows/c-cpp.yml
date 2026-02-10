@@ -22,12 +22,7 @@ jobs:
             deploy_script: ./deploy_posix.sh x64
             shell: bash
 
-          # macOS builds
-          - os: macos-13  # Intel
-            arch: x64
-            deploy_script: ./deploy_posix.sh x64
-            shell: bash
-
+          # macOS build (Apple Silicon only)
           - os: macos-latest  # Apple Silicon (ARM64)
             arch: arm64
             deploy_script: ./deploy_macos_arm64.sh
