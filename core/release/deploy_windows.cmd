@@ -322,7 +322,7 @@ if [%2] NEQ [deploy] goto end
 	
 	if [%1] == [arm64] (
 		REM Build MSI installer first
-		copy /y ..\utils\setup\arm64 .
+		pushd ..\utils\setup\arm64
 		devenv setup-arm64.sln /rebuild "Release"
 
 		REM Try to sign MSI if certificate is available
@@ -335,6 +335,7 @@ if [%2] NEQ [deploy] goto end
 
 		REM Package everything
 		copy release-arm64\setup.msi "%USERPROFILE%\Documents\Objeck-Build\objeck-windows-arm64_0.0.0.msi"
+		popd
 
 		rmdir /s /q "%USERPROFILE%\Documents\Objeck-Build\release-arm64"
 		mkdir "%USERPROFILE%\Documents\Objeck-Build\release-arm64"
@@ -346,7 +347,7 @@ if [%2] NEQ [deploy] goto end
 
 	if [%1] == [x64] (
 		REM Build MSI installer first
-		copy /y ..\utils\setup\x64 .
+		pushd ..\utils\setup\x64
 		devenv setup-x64.sln /rebuild "Release"
 
 		REM Try to sign MSI if certificate is available
@@ -359,6 +360,7 @@ if [%2] NEQ [deploy] goto end
 
 		REM Package everything
 		copy release-x64\setup.msi "%USERPROFILE%\Documents\Objeck-Build\objeck-windows-x64_0.0.0.msi"
+		popd
 
 		rmdir /s /q "%USERPROFILE%\Documents\Objeck-Build\release-x64"
 		mkdir "%USERPROFILE%\Documents\Objeck-Build\release-x64"
