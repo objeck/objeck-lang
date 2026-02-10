@@ -1,14 +1,37 @@
 use Collection;
 
-class FirstClass {
-   function : Main(args : String[]) ~ Nil {
-      fl := CompareVector->New()<FloatRef>;
-      fl->AddBack(1.25); fl->AddBack(3.5); fl->AddBack(6.66);
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		# Test Map Insert/Find/Each
+		map := Map->New()<String, IntRef>;
+		map->Insert("one", 1);
+		map->Insert("two", 2);
+		map->Insert("three", 3);
 
-      il := Vector->New()<FloatRef>;
-      il->AddBack(101); il->AddBack(321); il->AddBack(950);
-      
-      zipped := Map->Zip(fl, il)<FloatRef, FloatRef>;
-      zipped->Each(\^(a, b) => ( a + b )->PrintLine() );
-   }
+		map->Find("one")->PrintLine();
+		map->Find("two")->PrintLine();
+		map->Find("three")->PrintLine();
+		map->Size()->PrintLine();
+
+		"----------------"->PrintLine();
+
+		# Test Vector.Zip (2-arg)
+		a := Vector->New()<IntRef>;
+		a->AddBack(10);
+		a->AddBack(20);
+		a->AddBack(30);
+
+		b := Vector->New()<IntRef>;
+		b->AddBack(100);
+		b->AddBack(200);
+		b->AddBack(300);
+
+		zipped := Vector->Zip(a, b)<IntRef>;
+		zipped->Size()->PrintLine();
+
+		"----------------"->PrintLine();
+
+		# Test Map Each
+		map->Each(\^(k, v) => "{$k}={$v}"->PrintLine());
+	}
 }

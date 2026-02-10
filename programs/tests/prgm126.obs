@@ -1,14 +1,32 @@
-﻿class Test {
-	function : Main(args : String[]) ~ Nil {
-		q := Struct.IntQueue->New();
-		q->Add(1);
-		q->Add(2);
-		q->Add(3);
+use Collection;
 
-		q->Remove()->PrintLine();
-		q->Remove()->PrintLine();
-		q->Remove()->PrintLine();
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		# Test Queue AddBack/RemoveFront (FIFO)
+		q := Queue->New()<IntRef>;
+		q->AddBack(1);
+		q->AddBack(2);
+		q->AddBack(3);
+
+		q->RemoveFront()->PrintLine();
+		q->RemoveFront()->PrintLine();
+		q->RemoveFront()->PrintLine();
 
 		q->IsEmpty()->PrintLine();
+
+		"----------------"->PrintLine();
+
+		# Test Queue Front/Back
+		q2 := Queue->New()<IntRef>;
+		q2->AddBack(10);
+		q2->AddBack(20);
+		q2->AddBack(30);
+
+		q2->Front()->PrintLine();
+		q2->Back()->PrintLine();
+
+		# Test RemoveBack returns correct value
+		q2->RemoveBack()->PrintLine();
+		q2->Back()->PrintLine();
 	}
 }

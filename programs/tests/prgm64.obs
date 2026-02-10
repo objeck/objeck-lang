@@ -1,47 +1,46 @@
 use Collection;
 
-bundle Default {
-	class Test {
-		function : Main(args : System.String[]) ~ Nil {
-			Run();
-		}
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		hash := Hash->New()<String, String>;
+		hash->Insert("pug", "aa");
+		hash->Insert("terrier", "ca");
+		hash->Insert("bangel", "ab");
 
-#		function : Run() ~ Nil {
-		function : native : Run() ~ Nil {		
-			hash := StringHash->New();
-			hash->Insert("pug", "aa");
-			hash->Insert("terrier", "ca");
-			hash->Insert("bangel", "ab");
+		# Test Remove
+		hash->Remove("pug");
 
-			hash->Remove("pug");
+		value := hash->Find("pug");
+		if(value <> Nil) {
+			value->PrintLine();
+		};
 
-			value : String := hash->Find("pug")->As(String);
-			if(value <> Nil) {
-				value->PrintLine();
-			};
+		value := hash->Find("bangel");
+		if(value <> Nil) {
+			value->PrintLine();
+		};
 
-#			hash->Remove("bangel");
+		# Test Has
+		hash->Has("terrier")->PrintLine();
+		hash->Has("randy")->PrintLine();
 
-			value := hash->Find("bangel")->As(String);
-			if(value <> Nil) {
-				value->PrintLine();
-			};
+		value := hash->Find("terrier");
+		if(value <> Nil) {
+			value->PrintLine();
+		};
 
-			hash->Has("terrier")->PrintLine();
-			hash->Has("randy")->PrintLine();
+		hash->Size()->PrintLine();
 
-			value := hash->Find("terrier")->As(String);
-			if(value <> Nil) {
-				value->PrintLine();
-			};
+		"----------------"->PrintLine();
 
-			keys := hash->GetKeys();
-			keys->Size()->PrintLine();
+		# Test Insert duplicate key (should update value)
+		hash2 := Hash->New()<String, String>;
+		hash2->Insert("key1", "original");
+		hash2->Find("key1")->PrintLine();
 
-			values := hash->GetValues();
-			values->Size()->PrintLine();
+		hash2->Insert("key1", "updated");
+		hash2->Find("key1")->PrintLine();
 
-			hash->Size()->PrintLine();
-		}
+		hash2->Size()->PrintLine();
 	}
 }
