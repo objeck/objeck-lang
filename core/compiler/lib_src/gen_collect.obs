@@ -1404,8 +1404,25 @@ hash->Has(408)->PrintLine();
 				@buckets[hash] := list;
 			};
 
-			list->AddBack(HashPair->New(key->As(Compare), value)<V>);
-			@size += 1;
+			# Check if key already exists
+			found := false;
+			node := list->Get(0);
+			i := 0;
+			while(i < list->Size() & found = false) {
+				pair : HashPair<V> := node->Get()->As(HashPair<V>);
+				if(key->Equals(pair->GetKey())) {
+					pair->Set(value);
+					found := true;
+				};
+				node := node->GetNext();
+				i += 1;
+			};
+
+			# Only add if key doesn't exist
+			if(found = false) {
+				list->AddBack(HashPair->New(key->As(Compare), value)<V>);
+				@size += 1;
+			};
 		}
 
 		#~
@@ -1713,8 +1730,10 @@ stack->Size()->PrintLine(); # prints 2
 			array := H->New[@size];
 			
 			i := 0;
-			while(@head <> Nil) {
-				array[i] := Pop();
+			node := @head;
+			while(node <> Nil) {
+				array[i] := node->Get();
+				node := node->GetNext();
 				i += 1;
 			};
 			
@@ -3282,9 +3301,9 @@ function : Example() ~ Nil {
 			max := a->Size();
 			if(b->Size() < max) {
 				max := b->Size();
-				if(c->Size() < max) {
-					max := c->Size();
-				};
+			};
+			if(c->Size() < max) {
+				max := c->Size();
 			};
 
 			zipped := Vector->New()<Collection.Tuple.Triplet<H,H,H>>;
@@ -3304,12 +3323,12 @@ function : Example() ~ Nil {
 			max := a->Size();
 			if(b->Size() < max) {
 				max := b->Size();
-				if(c->Size() < max) {
-					max := c->Size();
-					if(d->Size() < max) {
-						max := d->Size();
-					};
-				};
+			};
+			if(c->Size() < max) {
+				max := c->Size();
+			};
+			if(d->Size() < max) {
+				max := d->Size();
 			};
 
 			zipped := Vector->New()<Collection.Tuple.Quartet<H,H,H,H>>;
