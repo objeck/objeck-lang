@@ -1,20 +1,20 @@
-ARGS=-O3 -Wall -D_X64 -std=c++20 -mavx2 -Wno-unused-function -Wno-sequence-point
+ARGS=-O3 -Wall -D_ARM64 -std=c++20 -Wno-unused-function -Wno-sequence-point
 SRC=types.o tree.o scanner.o parser.o linker.o context.o intermediate.o optimization.o emit.o compiler.o posix_main.o
 OBJ_LIBS=sys.a
 LOGGER_PATH=../shared
 EXE=obc
 
+$(EXE): $(SRC) $(OBJ_LIBS)
+	$(CXX) -o $(EXE) $(SRC) $(OBJ_LIBS) -lz
+
 %.o : %.mod
 
-$(EXE): $(SRC) $(OBJ_LIBS)
-	$(CXX) -m64 -o $(EXE) $(SRC) $(OBJ_LIBS) -lz
-
 %.o: %.cpp
-	$(CXX) -m64 $(ARGS) -c $< 
+	$(CXX) $(ARGS) -c $< 
 
 sys.a:
-	cd $(LOGGER_PATH); $(MAKE) -f make/Makefile.amd64
+	cd $(LOGGER_PATH); $(MAKE) -f make/Makefile.arm64
 
 clean:
-	cd $(LOGGER_PATH); $(MAKE) -f make/Makefile.amd64 clean
+	cd $(LOGGER_PATH); $(MAKE) -f make/Makefile.arm64 clean
 	rm -f $(EXE) *.o *~

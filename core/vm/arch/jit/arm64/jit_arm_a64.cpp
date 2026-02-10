@@ -68,15 +68,15 @@ void JitArm64::Prolog() {
     0xf9000fe8, // str x8, [sp, #24]
     0xf9000be9, // str x9, [sp, #16]
     0xF90033Ea, // str x10, [sp, #96]
-    // Save callee-saved FP registers D8-D15
-    0xFD003408, // str d8, [sp, #104]
-    0xFD003809, // str d9, [sp, #112]
-    0xFD003C0A, // str d10, [sp, #120]
-    0xFD00400B, // str d11, [sp, #128]
-    0xFD00440C, // str d12, [sp, #136]
-    0xFD00480D, // str d13, [sp, #144]
-    0xFD004C0E, // str d14, [sp, #152]
-    0xFD00500F  // str d15, [sp, #160]
+    // Save callee-saved FP registers D8-D15 (non-overlapping with temp slots)
+    0xFD0063E8, // str d8, [sp, #192]
+    0xFD0067E9, // str d9, [sp, #200]
+    0xFD006BEA, // str d10, [sp, #208]
+    0xFD006FEB, // str d11, [sp, #216]
+    0xFD0073EC, // str d12, [sp, #224]
+    0xFD0077ED, // str d13, [sp, #232]
+    0xFD007BEE, // str d14, [sp, #240]
+    0xFD007FEF  // str d15, [sp, #248]
   };
   
   // copy setup
@@ -128,16 +128,16 @@ void JitArm64::Epilog() {
   add_offset |= final_local_space << 10;
   
   move_imm_reg(0, X0);
-  // Restore callee-saved FP registers D8-D15
+  // Restore callee-saved FP registers D8-D15 (non-overlapping with temp slots)
   uint32_t teardown_code[] = {
-    0xFD403408, // ldr d8, [sp, #104]
-    0xFD403809, // ldr d9, [sp, #112]
-    0xFD403C0A, // ldr d10, [sp, #120]
-    0xFD40400B, // ldr d11, [sp, #128]
-    0xFD40440C, // ldr d12, [sp, #136]
-    0xFD40480D, // ldr d13, [sp, #144]
-    0xFD404C0E, // ldr d14, [sp, #152]
-    0xFD40500F, // ldr d15, [sp, #160]
+    0xFD4063E8, // ldr d8, [sp, #192]
+    0xFD4067E9, // ldr d9, [sp, #200]
+    0xFD406BEA, // ldr d10, [sp, #208]
+    0xFD406FEB, // ldr d11, [sp, #216]
+    0xFD4073EC, // ldr d12, [sp, #224]
+    0xFD4077ED, // ldr d13, [sp, #232]
+    0xFD407BEE, // ldr d14, [sp, #240]
+    0xFD407FEF, // ldr d15, [sp, #248]
     add_offset, // add sp, sp, #final_local_space
     0xd65f03c0  // ret
   };
@@ -2172,13 +2172,13 @@ void JitArm64::move_reg_mem32(Register src, long offset, Register dest) {
   uint32_t op_code = 0xB9000000;
   uint32_t op_dest = dest << 5;
   op_code |= op_dest;
-  
+
   uint32_t op_src = src;
   op_code |= op_src;
-  
+
   uint32_t op_offset = abs(offset);
-  op_code |= op_offset / sizeof(size_t) << 10;
-    
+  op_code |= (op_offset / 4) << 10;
+
   // encode
   AddMachineCode(op_code);
 }
@@ -2189,7 +2189,7 @@ void JitArm64::move_reg_mem16(Register src, long offset, Register dest) {
   assert(offset > -1);
 #endif
 
-  uint32_t op_code = 0x59000000;
+  uint32_t op_code = 0x79000000;
   uint32_t op_dest = dest << 5;
   op_code |= op_dest;
 
@@ -2197,7 +2197,7 @@ void JitArm64::move_reg_mem16(Register src, long offset, Register dest) {
   op_code |= op_src;
 
   uint32_t op_offset = abs(offset);
-  op_code |= op_offset / sizeof(size_t) << 10;
+  op_code |= (op_offset / 2) << 10;
 
   // encode
   AddMachineCode(op_code);
@@ -2233,13 +2233,13 @@ void JitArm64::move_mem32_reg(long offset, Register src, Register dest) {
   uint32_t op_code = 0xB9400000;
   uint32_t op_src = src << 5;
   op_code |= op_src;
-  
+
   uint32_t op_dest = dest;
   op_code |= op_dest;
-  
-  uint32_t op_offset = abs(offset) / sizeof(size_t);
+
+  uint32_t op_offset = abs(offset) / 4;
   op_code |= op_offset << 10;
-  
+
   // encode
   AddMachineCode(op_code);
 }
@@ -2383,7 +2383,7 @@ void JitArm64::add_imm_reg(long imm, Register reg) {
   else {
     RegisterHolder* imm_holder = GetRegister();
     move_imm_reg(imm, imm_holder->GetRegister());
-    add_reg_reg(reg, imm_holder->GetRegister());
+    add_reg_reg(imm_holder->GetRegister(), reg);
     ReleaseRegister(imm_holder);
   }
 }
@@ -2458,7 +2458,7 @@ void JitArm64::sub_imm_reg(long imm, Register reg) {
   else {
     RegisterHolder* imm_holder = GetRegister();
     move_imm_reg(imm, imm_holder->GetRegister());
-    sub_reg_reg(reg, imm_holder->GetRegister());
+    sub_reg_reg(imm_holder->GetRegister(), reg);
     ReleaseRegister(imm_holder);
   }
 }
@@ -2559,15 +2559,15 @@ void JitArm64::mul_imm_reg(long imm, Register reg) {
   // Multiply by 6: x*6 = x*2 + x*4 (shift then add with shift)
   else if(imm == 6) {
 #ifdef _DEBUG_JIT_JIT
-    std::wcout << L"  " << (++instr_count) << L": [lsl #1, add lsl #1] (optimized mul #6)" << std::endl;
+    std::wcout << L"  " << (++instr_count) << L": [lsl #1, add lsl #2] (optimized mul #6)" << std::endl;
 #endif
     RegisterHolder* temp_holder = GetRegister();
     if(temp_holder) {
       move_reg_reg(reg, temp_holder->GetRegister());
       shl_imm_reg(1, reg);  // x*2
-      // ADD with LSL #1: adds temp*2 (x*2) to reg (x*2) = x*4
+      // ADD with LSL #2: adds temp*4 (x*4) to reg (x*2) = x*6
       uint32_t op_code = 0x8B000000;
-      op_code |= (1 << 10);
+      op_code |= (2 << 10);
       op_code |= (temp_holder->GetRegister() << 16);
       op_code |= (reg << 5);
       op_code |= reg;
@@ -2842,7 +2842,7 @@ void JitArm64::not_reg(Register reg) {
 #ifdef _DEBUG_JIT
   std::std::wcout << L"  " << (++instr_count) << L": [not " << GetRegisterName(reg) << L"]" << std::endl;
 #endif
-  uint32_t op_code = 0x2A2003E0;
+  uint32_t op_code = 0xAA2003E0;
   
   // rn <- src
   uint32_t op_src = reg << 16;
@@ -2932,7 +2932,7 @@ void JitArm64::cmp_imm_reg(long imm, Register reg) {
   last_cmp_was_zero = (imm == 0);
   last_cmp_reg = reg;
 
-  if(imm >= 0 && imm <= 4096) {
+  if(imm >= 0 && imm <= 4095) {
 #ifdef _DEBUG_JIT_JIT
   std::wcout << L"  " << (++instr_count) << L": [cmp/cmn " << GetRegisterName(reg) << L", " << imm << L"]" << std::endl;
 #endif
@@ -2996,6 +2996,8 @@ void JitArm64::cbnz_reg(Register reg) {
 }
 
 void JitArm64::cmp_reg_reg(Register src, Register dest) {
+  last_cmp_was_zero = false;
+
 #ifdef _DEBUG_JIT_JIT
   std::wcout << L"  " << (++instr_count) << L": [cmp " << GetRegisterName(dest)
        << L", " << GetRegisterName(src) << L"]" << std::endl;
@@ -3712,27 +3714,27 @@ void JitArm64::move_reg_mem8(Register src, long offset, Register dest) {
   op_code |= op_src;
   
   uint32_t op_offset = abs(offset);
-  op_code |= op_offset / sizeof(size_t) << 10;
-    
+  op_code |= op_offset << 10;
+
   // encode
   AddMachineCode(op_code);
 }
 
 void JitArm64::move_mem16_reg(long offset, Register src, Register dest) {
 #ifdef _DEBUG_JIT_JIT
-  std::wcout << L"  " << (++instr_count) << L": [ldrb " << GetRegisterName(dest)
+  std::wcout << L"  " << (++instr_count) << L": [ldrh " << GetRegisterName(dest)
     << L", (" << GetRegisterName(src) << L", #" << offset << L")]" << std::endl;
   assert(offset > -1);
 #endif
 
-  uint32_t op_code = 0x39400000;
+  uint32_t op_code = 0x79400000;
   uint32_t op_src = src << 5;
   op_code |= op_src;
 
   uint32_t op_dest = dest;
   op_code |= op_dest;
 
-  uint32_t op_offset = abs(offset) / sizeof(size_t);
+  uint32_t op_offset = abs(offset) / 2;
   op_code |= op_offset << 10;
 
   // encode
@@ -3754,7 +3756,7 @@ void JitArm64::move_mem8_reg(long offset, Register src, Register dest) {
   uint32_t op_dest = dest;
   op_code |= op_dest;
 
-  uint32_t op_offset = abs(offset) / sizeof(size_t);
+  uint32_t op_offset = abs(offset);
   op_code |= op_offset << 10;
 
   // encode
@@ -4929,14 +4931,14 @@ uint32_t* PageHolder::AddCode(uint32_t* code, int32_t size) {
   memcpy(temp, code, byte_size);
 
 #if defined(_OSX)
-  __clear_cache(temp, temp + byte_size);
+  __clear_cache((char*)temp, (char*)temp + byte_size);
 #elif defined(_M_ARM64)
   if(!FlushInstructionCache(GetCurrentProcess(), temp, byte_size)) {
     wcerr << L">>> Unable to flush instruction cache! <<<" << std::endl;
     exit(1);
   }
 #else
-  __builtin___clear_cache(temp, temp + byte_size);
+  __builtin___clear_cache((char*)temp, (char*)temp + byte_size);
 #endif
   
 #ifdef _OSX
