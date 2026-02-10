@@ -126,7 +126,7 @@ bundle Default {
 				keys := vocab->GetKeys();
 				each(i : keys->Size()) {
 					term := keys->Get(i)->As(String);
-					idx := vocab->Get(term)->As(Int);
+					idx := vocab->Get(term)->As(IntRef)->Get();
 					if(idx < vector->Size() & vector[idx] > 0.0) {
 						"    '{$term}': {$vector[idx]}"->PrintLine();
 					};
