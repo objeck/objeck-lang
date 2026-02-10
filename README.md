@@ -55,13 +55,19 @@ obc -s hello.obs -d hello.obe
 
 ## What's New
 
-**v2026.2.0** ✅ *Latest*
+**v2026.2.1** ✅ *Latest*
+  * **Performance**: Memory manager optimized with O(1) lookups and in-place sweeping
+  * **ARM64 JIT**: 11 critical optimizations including char arrays, register targeting, multiply-by-constant
+  * **x64 JIT**: Instruction encoding optimizations with dynamic backpatching
+  * **Windows ARM64**: Full platform support with mbedTLS 3.6.3
+  * **Testing**: Comprehensive regression suite with 350+ tests and automated CI/CD
+  * **Compiler**: Enhanced error messages with operator symbols and inline hints
+  * **Crypto**: Migrated to mbedTLS for lighter footprint (OpenSSL replacement)
+
+**v2026.2.0** ✅
   * Modern GNU-style CLI (`--source`/`-s`, `--debug`/`-D`) with full backward compatibility
   * Enhanced library path handling
   * Development workflow improvements with Claude Code
-
-**v2025.9.1** 🚧
-  * ONNX Runtime support [in progress → v2026.3.x]
 
 **v2025.9.0** ✅
   * OpenCV integration for real-time computer vision
@@ -134,14 +140,20 @@ faces->Size()->PrintLine();  # "5 faces detected"
 
 **Modern tooling and practices:**
 - 🤖 **Claude Code** for pair programming, debugging, and refactoring
-- 🔄 **CI/CD**: GitHub Actions (CodeQL, C/C++ builds)
-- 🔍 **Quality**: Coverity static analysis
-- 🧪 **Testing**: Cross-platform (Windows/Linux/macOS, x64/ARM64)
+- 🔄 **CI/CD**: Automated testing on every commit (GitHub Actions)
+- 🔍 **Quality**: Coverity static analysis + CodeQL security scanning
+- 🧪 **Testing**: 350+ tests across 3 suites (regression, comprehensive, deploy)
+  - **Regression suite**: 10 focused tests for critical functionality
+  - **Comprehensive suite**: 323+ tests for full language validation
+  - **Deploy suite**: 17 real-world usage examples
+  - Full cross-platform coverage (Windows/Linux/macOS, x64/ARM64)
 
 **Editor Support:**
 - LSP plugins for [VSCode, Sublime, Kate, and more](https://github.com/objeck/objeck-lsp)
 - REPL for interactive development
 - API docs at [objeck.org](https://www.objeck.org)
+
+**📚 [Testing Documentation](programs/TESTING.md)** • **🧪 [Regression Tests](programs/regression/)**
 
 ## Resources
 

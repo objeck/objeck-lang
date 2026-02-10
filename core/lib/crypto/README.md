@@ -10,15 +10,22 @@ The current implementation uses **Mbed TLS 3.6.3** as the underlying crypto prov
 The x64 libraries are already included in the repository at `objeck-lang/core/lib/openssl/win/x64/`.
 
 ### For Windows ARM64
-**IMPORTANT:** The ARM64 libraries are NOT included in the repository. You must build or download them.
+**AUTOMATED:** The ARM64 libraries are automatically built when running `deploy_windows.cmd arm64`.
 
-See [BUILD_MBEDTLS_ARM64.md](BUILD_MBEDTLS_ARM64.md) for detailed instructions on how to:
-- Build mbedTLS 3.6.3 for ARM64 using vcpkg (recommended)
-- Build mbedTLS 3.6.3 for ARM64 from source
+If you need to build them manually, run:
+```cmd
+cd objeck-lang\core\lib\crypto
+build_mbedtls_arm64.cmd
+```
+
+Or see [BUILD_MBEDTLS_ARM64.md](BUILD_MBEDTLS_ARM64.md) for detailed instructions on:
+- Automated build using the provided script (easiest)
+- Manual build using vcpkg (recommended)
+- Building from source (advanced)
 
 Required libraries:
 - `mbedtls.lib`
 - `mbedcrypto.lib`
 - `mbedx509.lib`
 
-These must be placed in: `objeck-lang/core/lib/openssl/win/arm64/` 
+These are automatically placed in: `objeck-lang/core/lib/openssl/win/arm64/` 
