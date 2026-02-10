@@ -15,17 +15,28 @@ GREEN='\033[0;32m'
 RED='\033[0;31m'
 NC='\033[0m' # No Color
 
+# Resolve paths relative to this script
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+ROOT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
+OBC="$ROOT_DIR/core/compiler/obc"
+OBR="$ROOT_DIR/core/vm/obr"
+COMPILER_DIR="$ROOT_DIR/core/compiler"
+
 test_file() {
     local src=$1
     local lib=$2
     local desc=$3
+    local abs_src="$SCRIPT_DIR/$src"
+    local abs_dest="$SCRIPT_DIR/${src%.obs}.obe"
 
     echo "Testing: $desc ($src)"
     echo -n "  Compiling... "
 
-    if ../../core/release/deploy/bin/obc -src $src -lib $lib -dest ${src%.obs}.obe 2>&1 | grep -q "error:"; then
+    # Run compiler from its own directory so it finds libraries
+    compile_output=$(cd "$COMPILER_DIR" && "$OBC" -src "$abs_src" -lib $lib -dest "$abs_dest" 2>&1)
+    if [ $? -ne 0 ]; then
         echo -e "${RED}FAILED${NC}"
-        ../../core/release/deploy/bin/obc -src $src -lib $lib -dest ${src%.obs}.obe
+        echo "$compile_output"
         ((FAIL++))
         return 1
     fi
@@ -33,7 +44,7 @@ test_file() {
     echo -e "${GREEN}OK${NC}"
     echo -n "  Running... "
 
-    if ../../core/release/deploy/bin/obr ${src%.obs}.obe > /tmp/test_output.txt 2>&1; then
+    if "$OBR" "$abs_dest" > /tmp/test_output.txt 2>&1; then
         echo -e "${GREEN}OK${NC}"
         ((PASS++))
         return 0
