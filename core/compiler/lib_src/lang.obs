@@ -5529,6 +5529,7 @@ each(i : cities) {
 		method : public : Set(char : Char, index : Int) ~ Bool {
 			if(index > -1 & index < @pos) {
 				@string[index] := char;
+				return true;
 			};
 
 			return false;
