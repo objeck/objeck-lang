@@ -1747,10 +1747,12 @@ stack->Size()->PrintLine(); # prints 2
 			value : H;
 
 			if(n > 0) {
-				while(@head <> Nil & n < @size) {
-					@head := @head->GetNext();
+				count := 0;
+				while(@head <> Nil & count < n) {
 					value := @head->Get();
+					@head := @head->GetNext();
 					@size -= 1;
+					count += 1;
 				};
 			};
 
@@ -1887,7 +1889,7 @@ queue->Front()->PrintLine();
 		~#
 		method : public : RemoveBack() ~ H {
 			if(@queue->Size() > 0) {
-				value := @queue->Front();
+				value := @queue->Back();
 				@queue->RemoveBack();
 				return value;
 			};
@@ -3426,7 +3428,7 @@ function : Example() ~ Nil {
 		@return true if values were swapped
 		~#
 		method : public : Swap(a : Int, b : Int) ~ Bool {
-			if(a < -1 | b < -1 | a > @size | b > @size) {
+			if(a < 0 | b < 0 | a >= @size | b >= @size) {
 				return false;
 			};
 			
@@ -3510,7 +3512,7 @@ function : Example() ~ Nil {
 		@return first value, or Nil if not set
 		~#
 		method : public : First() ~ H {
-			if(@size > -1) {
+			if(@size > 0) {
 				return @values[0];
 			}
 
@@ -3891,7 +3893,7 @@ function : Show(value : IntRef) ~ Nil {
 		@return first value, or Nil if not set
 		~#
 		method : public : First() ~ H {
-			if(@size > -1) {
+			if(@size > 0) {
 				return @values[0];
 			}
 
