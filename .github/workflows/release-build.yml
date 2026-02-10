@@ -374,7 +374,18 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential libmbedtls-dev libreadline-dev
+          sudo apt-get install -y \
+            build-essential \
+            libopencv-dev \
+            libmbedtls-dev \
+            unixodbc-dev \
+            libsdl2-dev \
+            libsdl2-image-dev \
+            libsdl2-ttf-dev \
+            libsdl2-mixer-dev \
+            libreadline-dev \
+            libeigen3-dev \
+            libmp3lame-dev
 
       - name: Build compiler and runtime
         run: |
