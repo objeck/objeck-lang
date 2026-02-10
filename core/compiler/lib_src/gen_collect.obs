@@ -5262,10 +5262,10 @@ each(v := values) {
 		method : public : Each(f : (K, V) ~ Nil) ~ MultiMap<K, V> {
 			keys := GetKeys();
 			each(i : keys) {
-				key := keys->Get(i)->As(Clone)->Clone();
-				values := Find(key->As(Compare));
+				key := keys->Get(i);
+				values := Find(key);
 				each(j : values) {
-					f(key->As(Compare), values->Get(j));
+					f(key, values->Get(j));
 				};
 			};
 			return @self;
