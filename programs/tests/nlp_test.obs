@@ -46,7 +46,8 @@ bundle Default {
 			"\n  Word bigrams (first 5):"->PrintLine();
 			count := word_bigrams->Size() < 5 ? word_bigrams->Size() : 5;
 			each(i : count) {
-				"    [{$i}] {$word_bigrams[i]}"->PrintLine();
+				bigram := word_bigrams[i];
+				"    [{$i}] {$bigram}"->PrintLine();
 			};
 		}
 
@@ -92,7 +93,8 @@ bundle Default {
 			"  Training on {$documents->Size()} documents:"->PrintLine();
 			each(i : documents->Size()) {
 				count := i + 1;
-				"    Doc {$count}: {$documents[i]}"->PrintLine();
+				doc := documents[i];
+				"    Doc {$count}: {$doc}"->PrintLine();
 			};
 
 			# Train TF-IDF
@@ -110,25 +112,29 @@ bundle Default {
 
 			if(vector <> Nil) {
 				"  TF-IDF vector (length {$vector->Size()}):"->PrintLine();
-				"    [";
+				"    ["->Print();
 				each(i : vector->Size()) {
 					val := vector[i];
-					"{$val}";
+					"{$val}"->Print();
 					next := i + 1;
 					if(next < vector->Size()) {
-						", ";
+						", "->Print();
 					};
 				};
 				"]"->PrintLine();
 
 				# Show non-zero values with terms
 				"\n  Non-zero TF-IDF values:"->PrintLine();
-				keys := vocab->GetKeys();
+				keys := vocab->GetKeys()<String>;
 				each(i : keys->Size()) {
-					term := keys->Get(i)->As(String);
-					idx := vocab->Get(term)->As(IntRef)->Get();
-					if(idx < vector->Size() & vector[idx] > 0.0) {
-						"    '{$term}': {$vector[idx]}"->PrintLine();
+					term := keys->Get(i);
+					idx_ref := vocab->Find(term);
+					if(idx_ref <> Nil) {
+						idx := idx_ref->Get();
+						if(idx < vector->Size() & vector[idx] > 0.0) {
+							val := vector[idx];
+							"    '{$term}': {$val}"->PrintLine();
+						};
 					};
 				};
 			};
@@ -166,21 +172,31 @@ bundle Default {
 
 			# Levenshtein distance
 			"\n  Levenshtein distances:"->PrintLine();
-			pairs := [
-				["kitten", "sitting"],
-				["saturday", "sunday"],
-				["book", "back"],
-				["hello", "hello"]
-			];
 
-			each(i : pairs->Size()) {
-				pair := pairs[i];
-				str1 := pair[0];
-				str2 := pair[1];
-				dist := System.NLP.TextSimilarity->LevenshteinDistance(str1, str2);
-				norm := System.NLP.TextSimilarity->NormalizedEditDistance(str1, str2);
-				"    '{$str1}' vs '{$str2}': distance={$dist}, normalized={$norm}"->PrintLine();
-			};
+			pair1 := ["kitten", "sitting"];
+			pair2 := ["saturday", "sunday"];
+			pair3 := ["book", "back"];
+			pair4 := ["hello", "hello"];
+
+			str1 := pair1[0]; str2 := pair1[1];
+			dist := System.NLP.TextSimilarity->LevenshteinDistance(str1, str2);
+			norm := System.NLP.TextSimilarity->NormalizedEditDistance(str1, str2);
+			"    '{$str1}' vs '{$str2}': distance={$dist}, normalized={$norm}"->PrintLine();
+
+			str1 := pair2[0]; str2 := pair2[1];
+			dist := System.NLP.TextSimilarity->LevenshteinDistance(str1, str2);
+			norm := System.NLP.TextSimilarity->NormalizedEditDistance(str1, str2);
+			"    '{$str1}' vs '{$str2}': distance={$dist}, normalized={$norm}"->PrintLine();
+
+			str1 := pair3[0]; str2 := pair3[1];
+			dist := System.NLP.TextSimilarity->LevenshteinDistance(str1, str2);
+			norm := System.NLP.TextSimilarity->NormalizedEditDistance(str1, str2);
+			"    '{$str1}' vs '{$str2}': distance={$dist}, normalized={$norm}"->PrintLine();
+
+			str1 := pair4[0]; str2 := pair4[1];
+			dist := System.NLP.TextSimilarity->LevenshteinDistance(str1, str2);
+			norm := System.NLP.TextSimilarity->NormalizedEditDistance(str1, str2);
+			"    '{$str1}' vs '{$str2}': distance={$dist}, normalized={$norm}"->PrintLine();
 		}
 
 		function : TestSentiment() ~ Nil {
@@ -219,7 +235,8 @@ bundle Default {
 		function : PrintTokens(tokens : String[]) ~ Nil {
 			if(tokens <> Nil) {
 				each(i : tokens->Size()) {
-					"    [{$i}] {$tokens[i]}"->PrintLine();
+					token := tokens[i];
+					"    [{$i}] {$token}"->PrintLine();
 				};
 			}
 			else {
