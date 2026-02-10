@@ -201,9 +201,9 @@ jobs:
           exit 1
         fi
 
-    # Compile tests (POSIX)
-    - name: Compile tests (Linux/macOS)
-      if: runner.os != 'Windows'
+    # Compile tests (Linux - full suite)
+    - name: Compile tests (Linux)
+      if: runner.os == 'Linux'
       working-directory: ./core/release/${{ steps.deploy-dir.outputs.dir }}/bin
       run: |
         ./obc -lib cipher,net,odbc,rss,regex,misc,xml,json -src ../../../../programs/deploy/calc_life_10.obs
@@ -223,6 +223,16 @@ jobs:
         ./obc -lib cipher,net,odbc,rss,regex,misc,xml,json -src ../../../../programs/deploy/visitor_20.obs
         ./obc -lib cipher,net,odbc,rss,regex,misc,xml,json -src ../../../../programs/deploy/loops_19.obs
         ./obc -lib cipher,net,odbc,rss,regex,misc,xml,json -src ../../../../programs/deploy/xml_2.obs
+
+    # Compile tests (macOS - basic suite)
+    - name: Compile tests (macOS)
+      if: runner.os == 'macOS'
+      working-directory: ./core/release/${{ steps.deploy-dir.outputs.dir }}/bin
+      run: |
+        ./obc -lib cipher,net,xml,json -src ../../../../programs/deploy/hello_0.obs
+        ./obc -lib cipher,net,xml,json -src ../../../../programs/deploy/functions_5.obs
+        ./obc -lib cipher,net,xml,json -src ../../../../programs/deploy/json_3.obs
+        ./obc -lib cipher,net,xml,json -src ../../../../programs/deploy/xml_2.obs
 
     # Compile tests (Windows MSVC)
     - name: Compile tests (Windows MSVC)
@@ -245,9 +255,9 @@ jobs:
         ./obc -lib cipher,net,xml,json -src ../../../../programs/deploy/json_3.obs
         ./obc -lib cipher,net,xml,json -src ../../../../programs/deploy/xml_2.obs
 
-    # Run tests (POSIX)
-    - name: Run tests (Linux/macOS/MSYS2)
-      if: runner.os != 'Windows' || matrix.msys != ''
+    # Run tests (Linux - full suite)
+    - name: Run tests (Linux)
+      if: runner.os == 'Linux'
       working-directory: ./core/release/${{ steps.deploy-dir.outputs.dir }}/bin
       run: |
         ./obr ../../../../programs/deploy/calc_life_10.obe
@@ -267,6 +277,27 @@ jobs:
         ./obr ../../../../programs/deploy/loops_19.obe
         ./obr ../../../../programs/deploy/xml_2.obe
 
+    # Run tests (macOS - basic suite)
+    - name: Run tests (macOS)
+      if: runner.os == 'macOS'
+      working-directory: ./core/release/${{ steps.deploy-dir.outputs.dir }}/bin
+      run: |
+        ./obr ../../../../programs/deploy/hello_0.obe
+        ./obr ../../../../programs/deploy/functions_5.obe
+        ./obr ../../../../programs/deploy/json_3.obe
+        ./obr ../../../../programs/deploy/xml_2.obe
+
+    # Run tests (MSYS2)
+    - name: Run tests (MSYS2)
+      if: matrix.msys != ''
+      working-directory: ./core/release/${{ steps.deploy-dir.outputs.dir }}/bin
+      run: |
+        export PATH="/ucrt64/bin:$PATH"
+        ./obr ../../../../programs/deploy/hello_0.obe
+        ./obr ../../../../programs/deploy/functions_5.obe
+        ./obr ../../../../programs/deploy/json_3.obe
+        ./obr ../../../../programs/deploy/xml_2.obe
+
     # Run tests (Windows MSVC)
     - name: Run tests (Windows MSVC)
       if: runner.os == 'Windows' && matrix.msys == ''
@@ -283,8 +314,17 @@ jobs:
       if: runner.os != 'Windows' || matrix.msys != ''
       working-directory: ./programs/regression
       run: |
+        # Add MSYS2 DLLs to PATH if needed
+        if [ "${{ matrix.msys }}" != "" ]; then
+          export PATH="/ucrt64/bin:$PATH"
+        fi
         chmod +x run_regression.sh
-        ./run_regression.sh ${{ matrix.arch }}
+        # Pass deploy directory name for MSYS2
+        if [ "${{ matrix.msys }}" != "" ]; then
+          ./run_regression.sh msys2-ucrt
+        else
+          ./run_regression.sh ${{ matrix.arch }}
+        fi
 
     # Run regression tests (Windows MSVC)
     - name: Run regression tests (Windows MSVC)

@@ -50,7 +50,7 @@ for test in *.obs; do
 
     if [ ${PIPESTATUS[0]} -ne 0 ]; then
         cd "$REGRESSION_DIR"
-        echo "  ❌ FAIL (compilation error)"
+        echo "  [FAIL] Compilation error"
         ((FAIL_COUNT++))
         continue
     fi
@@ -60,10 +60,10 @@ for test in *.obs; do
     "$ABS_VM" "$NAME.obe" > "$RESULTS_DIR/${NAME}_output.txt" 2>&1
 
     if [ $? -eq 0 ]; then
-        echo "  ✅ PASS"
+        echo "  [PASS]"
         ((PASS_COUNT++))
     else
-        echo "  ❌ FAIL (runtime error)"
+        echo "  [FAIL] Runtime error"
         ((FAIL_COUNT++))
     fi
 done
