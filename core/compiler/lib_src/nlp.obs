@@ -491,14 +491,14 @@ bundle System.NLP {
 			};
 
 			# Create sets
-			set1 := Hash->New()<String, Bool>;
+			set1 := Hash->New()<String, BoolRef>;
 			each(token : tokens1) {
-				set1->Insert(token->ToLower(), true);
+				set1->Insert(token->ToLower(), BoolRef->New(true));
 			};
 
-			set2 := Hash->New()<String, Bool>;
+			set2 := Hash->New()<String, BoolRef>;
 			each(token : tokens2) {
-				set2->Insert(token->ToLower(), true);
+				set2->Insert(token->ToLower(), BoolRef->New(true));
 			};
 
 			# Calculate intersection
@@ -550,11 +550,13 @@ bundle System.NLP {
 			dp := Int->New[len1 + 1, len2 + 1];
 
 			# Initialize first row and column
-			each(i : len1 + 1) {
+			rows := len1 + 1;
+			each(i : rows) {
 				dp[i, 0] := i;
 			};
 
-			each(j : len2 + 1) {
+			cols := len2 + 1;
+			each(j : cols) {
 				dp[0, j] := j;
 			};
 
@@ -604,16 +606,16 @@ bundle System.NLP {
 	Basic lexicon-based sentiment analysis
 	~#
 	class SentimentAnalyzer {
-		@positive_words : static : Hash<String, Int>;
-		@negative_words : static : Hash<String, Int>;
+		@positive_words : static : Hash<String, IntRef>;
+		@negative_words : static : Hash<String, IntRef>;
 
 		#~
 		Initializes sentiment lexicons with common positive and negative words
 		~#
 		function : Init() ~ Nil {
 			if(@positive_words = Nil) {
-				@positive_words := Hash->New()<String, Int>;
-				@negative_words := Hash->New()<String, Int>;
+				@positive_words := Hash->New()<String, IntRef>;
+				@negative_words := Hash->New()<String, IntRef>;
 
 				# Positive words (with intensity scores)
 				positive := [
@@ -625,7 +627,7 @@ bundle System.NLP {
 				];
 
 				each(word : positive) {
-					@positive_words->Insert(word, 1);
+					@positive_words->Insert(word, IntRef->New(1));
 				};
 
 				# Strong positive words (higher intensity)
@@ -634,7 +636,7 @@ bundle System.NLP {
 				];
 
 				each(word : strong_positive) {
-					@positive_words->Insert(word, 2);
+					@positive_words->Insert(word, IntRef->New(2));
 				};
 
 				# Negative words (with intensity scores)
@@ -646,7 +648,7 @@ bundle System.NLP {
 				];
 
 				each(word : negative) {
-					@negative_words->Insert(word, 1);
+					@negative_words->Insert(word, IntRef->New(1));
 				};
 
 				# Strong negative words (higher intensity)
@@ -655,7 +657,7 @@ bundle System.NLP {
 				];
 
 				each(word : strong_negative) {
-					@negative_words->Insert(word, 2);
+					@negative_words->Insert(word, IntRef->New(2));
 				};
 			};
 		}
@@ -680,12 +682,12 @@ bundle System.NLP {
 
 				pos_score := @positive_words->Find(lowercase_token);
 				if(pos_score <> Nil) {
-					score += pos_score;
+					score += pos_score->Get();
 				};
 
 				neg_score := @negative_words->Find(lowercase_token);
 				if(neg_score <> Nil) {
-					score -= neg_score;
+					score -= neg_score->Get();
 				};
 			};
 
