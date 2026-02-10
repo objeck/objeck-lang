@@ -4133,10 +4133,11 @@ function : Show(value : IntRef) ~ Nil {
 			while(low <= high) {
 				mid := (low + high) >> 1;
       	
-				if(@values[mid]->Compare(value) > 0) {
+				cmp := @values[mid]->Compare(value);
+				if(cmp > 0) {
 					high := mid - 1;
 				}
-				else if(@values[mid]->Compare(value) < 0) {
+				else if(cmp < 0) {
 					low := mid + 1;
 				}
 				else {
@@ -4436,10 +4437,11 @@ function : Show(value : IntRef) ~ Nil {
 		
 		method : Find(key : K, node : Collection.TreeNode<K, V>) ~ V {
 			if(node <> Nil) {
-				if(key->Compare(node->GetKey()) < 0) {
+				cmp := key->Compare(node->GetKey());
+				if(cmp < 0) {
 					return Find(key, node->GetLeft());
 				}
-				else if(key->Compare(node->GetKey()) > 0) {
+				else if(cmp > 0) {
 					return Find(key, node->GetRight());
 				}
 				else {
@@ -4615,10 +4617,11 @@ function : Show(value : IntRef) ~ Nil {
 				@size += 1;
 			}
 			else {
-				if(key->Compare(node->GetKey()) < 0) {
+				cmp := key->Compare(node->GetKey());
+				if(cmp < 0) {
 					node->SetLeft(Insert(key, value, node->GetLeft()));
 				}
-				else if(key->Compare(node->GetKey()) > 0) {
+				else if(cmp > 0) {
 					node->SetRight(Insert(key, value, node->GetRight()));
 				}
 				else {
@@ -4637,20 +4640,25 @@ function : Show(value : IntRef) ~ Nil {
 		@param key key for value to remove
 		~#
 		method : public : Remove(key : K) ~ Bool {
+			if(@root = Nil) {
+				return false;
+			};
+			
 			if(@size = 1 & key->Compare(@root->GetKey()) = 0) {
 				@root := Nil;
 				@size := 0;
 				return true;
 			};
 			
-			node := Remove(key, @root);
-			if(node = Nil) {
-				return false;
+			@last := Nil;
+			@root := Remove(key, @root);
+			if(@last <> Nil) {
+				@size -= 1;
+				@last := Nil;
+				return true;
 			};
 			
-			@root := node;
-			@size -= 1;
-			return true;
+			return false;
 		}
 		
 		method : native : Remove(key : K, node : Collection.TreeNode<K, V>) ~  Collection.TreeNode<K, V> {
@@ -4658,25 +4666,29 @@ function : Show(value : IntRef) ~ Nil {
 				return Nil;
 			};
 
-			if(key->Compare(node->GetKey()) < 0) {
+			cmp := key->Compare(node->GetKey());
+			if(cmp < 0) {
 				node->SetLeft(Remove(key, node->GetLeft()));
 			}
-			else if(key->Compare(node->GetKey()) > 0) {
+			else if(cmp > 0) {
 				node->SetRight(Remove(key, node->GetRight()));
 			}
 			else {
+				@last := node;
 				if(node->GetLeft() = Nil & node->GetRight() = Nil) {
 					return Nil;
 				}
 				else if(node->GetLeft() = Nil) {
 					temp : TreeNode<K, V> := Successor(node);
 					node->SetRight(Remove(temp->GetKey(), node->GetRight()));
-					node := temp;
+					node->SetKey(temp->GetKey());
+					node->Set(temp->Get());
 				} 
 				else {
 					temp : TreeNode<K, V> := Predecessor(node);
 					node->SetLeft(Remove(temp->GetKey(), node->GetLeft()));
-					node := temp;
+					node->SetKey(temp->GetKey());
+					node->Set(temp->Get());
 				};
 				
 			};
