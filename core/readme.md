@@ -1,60 +1,438 @@
+# Objeck Language Core
 
-# Architecture  
+> **Compiler, Virtual Machine, JIT, and Runtime System**
 
-![alt text](https://github.com/objeck/objeck-lang/blob/master/docs/images/design4.png "Title")
+[![CI Status](https://github.com/objeck/objeck-lang/actions/workflows/c-cpp.yml/badge.svg)](https://github.com/objeck/objeck-lang/actions)
 
-### Notable Subsystems
-* [Compiler](https://github.com/objeck/objeck-lang/blob/master/core/compiler)
-* [Virtual Machine](https://github.com/objeck/objeck-lang/blob/master/core/vm)
-* [Debugger](https://github.com/objeck/objeck-lang/blob/master/core/debugger)
-* [REPL](https://github.com/objeck/objeck-lang/blob/master/core/repl)
-* [Memory manager](https://github.com/objeck/objeck-lang/blob/master/core/vm/arch)
-* [Just-In-Time (JIT) compilation](https://github.com/objeck/objeck-lang/blob/master/core/vm/arch/jit)
+## Table of Contents
+- [Architecture Overview](#architecture-overview)
+- [Quick Start](#quick-start)
+- [Building from Source](#building-from-source)
+- [Testing](#testing)
+- [Development Workflow](#development-workflow)
+- [Troubleshooting](#troubleshooting)
+- [Contributing](#contributing)
 
-## Working with the Code
-Objeck can be built for various targets. The language is implemented in C++ and assembly (i.e., generated machine code) and assisted by code generators for SDL2 and GTK 3/4 bindings.
+---
 
-### Linux (x64, ARM64)
-*  For Linux, install required libraries: <code>sudo apt-get install build-essential git libmbedtls-dev unixodbc-dev libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev libsdl2-mixer-dev libmp3lame-dev libreadline-dev unzip libeigen3-dev libopencv-dev</code>
-*  cd to <code>objeck-lang/core/release</code> and run <code>./deploy_posix.sh</code> with the parameter <code>64</code> or <code>rpi</code> for x64 or ARM64 Linux
-*  Build output with binaries and documentation will be located in <code>objeck-lang/core/release/deploy</code>
-*  Reference <code>objeck-lang/core/release/deploy/readme.html</code> to set additional paths and find examples
+## Architecture Overview
 
-### macOS (ARM64)
-*  Install Xcode with command line tools
-*  Open a command shell and go to <code>objeck-lang/core/release</code> and run <code>./deploy_macos_arm64.sh</code>
-*  Build output with binaries and documentation will be located in <code>objeck-lang/core/release/deploy</code>
-*  Reference <code>objeck-lang/core/release/deploy/readme.html</code> to set additional paths and find examples
-*  Package dependencies (install [brew](https://brew.sh/))
-  * <code>brew install lame opencv onnxruntime</code>
+![Architecture Diagram](https://github.com/objeck/objeck-lang/blob/master/docs/images/design4.png)
 
-### Windows (ARM64, Visual Studio)
-*  Install MSVS build tools for arm64 via the Visual Studio Installer. Go to 'Modify', 'Individual Components', and search 'arm64' ![Alt text](../docs/images/woa_installer.png)
-*  Using Visual Studio 2022 or later open <code>objeck-lang/core/release/objeck.sln</code>
-*  Ensure the core build completes successfully (in Release mode)
-*  To build everything, open a Visual Studio arm64 command prompt and go to <code>objeck-lang/core/release</code> directory and run <code>deploy_windows.cmd arm64</code>
-*  Build output with binaries and documentation will be located in <code>objeck-lang/core/release/deploy-arm64</code>
-*  Reference <code>objeck-lang/core/release/deploy-arm64/readme.html</code> to learn how to set the environment variables and find code examples
+### Key Subsystems
 
-### Windows (x64, Visual Studio)
-*  Using Visual Studio 2022 or later open <code>objeck-lang/core/release/objeck.sln</code>
-*  Ensure the core build completes successfully (in Release mode)
-*  To build everything, open a Visual Studio x64 command prompt and go to <code>objeck-lang/core/release</code> directory and run <code>deploy_windows.cmd x64</code>
-*  Build output with binaries and documentation will be located in <code>objeck-lang/core/release/deploy-x64</code>
-*  Reference <code>objeck-lang/core/release/deploy-x64/readme.html</code> to learn how to set the environment variables and find code examples
+| Component | Description | Path |
+|-----------|-------------|------|
+| **Compiler** | Bytecode compiler with optimization passes (s0-s3) | [core/compiler](compiler/) |
+| **Virtual Machine** | Stack-based VM with JIT compilation | [core/vm](vm/) |
+| **JIT Compiler** | ARM64/x64 native code generation | [core/vm/arch/jit](vm/arch/jit/) |
+| **Memory Manager** | Generational GC with O(1) lookups | [core/vm/arch](vm/arch/) |
+| **Debugger** | Interactive debugger with breakpoints | [core/debugger](debugger/) |
+| **REPL** | Interactive shell with autocomplete | [core/repl](repl/) |
 
-### Windows (x64, MSYS2)
-* Under the UCRT64 (Unicode shell support)
-  * Package dependencies
-  * <code>pacman --noconfirm -S mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-mbedtls make mingw-w64-ucrt-x86_64-SDL2 unzip mingw-w64-ucrt-x86_64-SDL2_ttf mingw-w64-ucrt-x86_64-SDL2_mixer mingw-w64-ucrt-x86_64-SDL2_image mingw-w64-ucrt-x86_64-unixodbc mingw-w64-ucrt-x86_64-eigen3 mingw-w64-ucrt-x86_64-pkgconf</code>
-  * cd to <code>objeck-lang/core/release</code> and run <code>./deploy_msys2-ucrt.sh</code>
-  *  Build output with binaries and documentation will be located in <code>objeck-lang/core/release/deploy-msys2-ucrt</code>
-  *  Set the path for to the UCRT64 'bin' directory
-  *  Reference <code>objeck-lang/core/release/deploy-msys2-ucrt/readme.html</code> to set additional paths and find examples
-* Under the Clang64
-  * Package dependencies
-  * <code>pacman --noconfirm -S mingw-w64-clang-x86_64-gcc mingw-w64-clang-x86_64-mbedtls make mingw-w64-clang-x86_64-SDL2 unzip mingw-w64-clang-x86_64-SDL2_ttf mingw-w64-clang-x86_64-SDL2_mixer mingw-w64-clang-x86_64-SDL2_image mingw-w64-clang-x86_64-unixodbc mingw-w64-clang-x86_64-eigen3 mingw-w64-clang-x86_64-pkgconf</code>
-  * cd to <code>objeck-lang/core/release</code> and run <code>./deploy_msys2-clang.sh</code>
-  *  Build output with binaries and documentation will be located in <code>objeck-lang/core/release/deploy-msys2-clang</code>
-  *  Set the path for to the Clang64 'bin' directory
-  *  Reference <code>objeck-lang/core/release/deploy-msys2-clang/readme.html</code> to set additional paths and find examples
+**Tech Stack:** C++17, x64/ARM64 assembly, GNU Make / Visual Studio
+
+---
+
+## Quick Start
+
+### 🐧 Linux (One Command)
+```bash
+# Install dependencies and build
+sudo apt-get install -y build-essential git libmbedtls-dev unixodbc-dev \
+  libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev libsdl2-mixer-dev \
+  libmp3lame-dev libreadline-dev libeigen3-dev libopencv-dev
+
+cd core/release && ./deploy_posix.sh x64
+export PATH=$PATH:$(pwd)/deploy/bin
+obc --version
+```
+
+### 🍎 macOS (One Command)
+```bash
+# Install Homebrew dependencies
+brew install lame opencv onnxruntime mbedtls sdl2 sdl2_image sdl2_ttf sdl2_mixer
+
+cd core/release && ./deploy_macos_arm64.sh
+export PATH=$PATH:$(pwd)/deploy/bin
+obc --version
+```
+
+### 🪟 Windows (Quick Build)
+```cmd
+REM Open Visual Studio x64 Command Prompt
+cd core\release
+deploy_windows.cmd x64
+
+REM Binaries will be in deploy-x64\bin
+```
+
+---
+
+## Building from Source
+
+### Linux (x64 / ARM64)
+
+**Supported:** Ubuntu 20.04+, Debian 11+, Fedora 35+
+
+```bash
+# 1. Clone repository
+git clone https://github.com/objeck/objeck-lang.git
+cd objeck-lang/core/release
+
+# 2. Install dependencies
+sudo apt-get update && sudo apt-get install -y \
+  build-essential git libmbedtls-dev unixodbc-dev \
+  libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev libsdl2-mixer-dev \
+  libmp3lame-dev libreadline-dev unzip libeigen3-dev libopencv-dev
+
+# 3. Build
+./deploy_posix.sh x64    # For x64
+./deploy_posix.sh rpi    # For ARM64/Raspberry Pi
+
+# 4. Output
+# Binaries: core/release/deploy/bin/{obc,obr,obd,obi}
+# Libraries: core/release/deploy/lib/*.obl
+```
+
+**What each dependency does:**
+- `libmbedtls-dev` - Crypto operations (SHA, AES, TLS)
+- `libsdl2-*` - Game development, graphics, audio
+- `libopencv-dev` - Computer vision (optional but recommended)
+- `libeigen3-dev` - Linear algebra for ML
+- `libmp3lame-dev` - MP3 encoding
+
+---
+
+### macOS (Apple Silicon / Intel)
+
+**Supported:** macOS 12+ (Monterey or later)
+
+```bash
+# 1. Install Xcode Command Line Tools
+xcode-select --install
+
+# 2. Install Homebrew
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+# 3. Install dependencies
+brew install lame opencv onnxruntime mbedtls sdl2 sdl2_image sdl2_ttf sdl2_mixer
+
+# 4. Build
+cd core/release
+./deploy_macos_arm64.sh  # For Apple Silicon
+./deploy_posix.sh x64    # For Intel
+
+# 5. Output
+# Binaries: core/release/deploy/bin/
+```
+
+---
+
+### Windows (Visual Studio)
+
+**Supported:** Visual Studio 2022+ with C++ tools
+
+#### x64 Build
+```cmd
+1. Open "x64 Native Tools Command Prompt for VS 2022"
+2. cd core\release
+3. deploy_windows.cmd x64
+4. Binaries: core\release\deploy-x64\bin\
+```
+
+#### ARM64 Build
+```cmd
+1. Install ARM64 build tools:
+   - Open Visual Studio Installer
+   - Modify → Individual Components
+   - Search "arm64" and install MSVC v143 ARM64 build tools
+
+2. Open "x64_arm64 Cross Tools Command Prompt for VS 2022"
+3. cd core\release
+4. deploy_windows.cmd arm64
+5. Binaries: core\release\deploy-arm64\bin\
+```
+
+**Note:** First ARM64 build automatically downloads mbedTLS (5-10 min one-time setup)
+
+---
+
+### Windows (MSYS2)
+
+**Alternative to Visual Studio using GCC/Clang**
+
+#### UCRT64 (Recommended)
+```bash
+# 1. Install MSYS2 from https://www.msys2.org
+# 2. Open "MSYS2 UCRT64" shell
+
+# 3. Install packages
+pacman -S --noconfirm mingw-w64-ucrt-x86_64-gcc \
+  mingw-w64-ucrt-x86_64-mbedtls mingw-w64-ucrt-x86_64-SDL2 \
+  mingw-w64-ucrt-x86_64-SDL2_ttf mingw-w64-ucrt-x86_64-SDL2_mixer \
+  mingw-w64-ucrt-x86_64-SDL2_image mingw-w64-ucrt-x86_64-unixodbc \
+  mingw-w64-ucrt-x86_64-eigen3 make unzip
+
+# 4. Build
+cd core/release
+./deploy_msys2-ucrt.sh
+
+# 5. Output: core/release/deploy-msys2-ucrt/
+```
+
+#### Clang64 (Alternative)
+```bash
+# Use deploy_msys2-clang.sh instead
+# Replace "ucrt" with "clang" in package names
+```
+
+---
+
+## Testing
+
+### Automated Testing (CI)
+
+**GitHub Actions** runs on every commit:
+- ✅ Linux x64, macOS x64/ARM64, Windows x64
+- ✅ 17 deployment tests + 10 regression tests
+- ✅ Multi-platform builds with caching
+
+```bash
+# View CI status
+# https://github.com/objeck/objeck-lang/actions
+```
+
+### Run Tests Locally
+
+#### Regression Suite (10 tests)
+```bash
+cd programs/regression
+
+# Linux/macOS
+./run_regression.sh x64
+
+# Windows
+run_regression.cmd x64
+```
+
+**Tests cover:**
+- Core language features (classes, arrays, control flow)
+- ARM64 JIT fixes (char arrays, immediates, bitwise ops)
+- Crypto operations (mbedTLS migration)
+
+#### Manual Testing
+```bash
+cd core/release/deploy/bin
+
+# Compile and run
+./obc -src ../../../../programs/deploy/hello_0.obs
+./obr ../../../../programs/deploy/hello_0.obe
+```
+
+---
+
+## Development Workflow
+
+### Making Changes
+
+```bash
+# 1. Create feature branch
+git checkout -b feature/my-improvement
+
+# 2. Make changes to compiler/VM/etc.
+
+# 3. Rebuild
+cd core/release
+./deploy_posix.sh x64  # Or appropriate build script
+
+# 4. Test
+cd ../../programs/regression
+./run_regression.sh x64
+
+# 5. Commit with descriptive message
+git add .
+git commit -m "Fix ARM64 JIT: improve register allocation"
+
+# 6. Push and create PR
+git push origin feature/my-improvement
+```
+
+### Debug Builds
+
+```bash
+# Linux/macOS: Edit Makefiles to use -g -O0
+cd core/compiler
+make clean && make DEBUG=1
+
+# Windows: Use Debug configuration in Visual Studio
+# Or: msbuild objeck.sln /p:Configuration=Debug
+```
+
+### Common Development Tasks
+
+| Task | Command |
+|------|---------|
+| Rebuild compiler only | `cd core/compiler && make clean && make` |
+| Rebuild VM only | `cd core/vm && make clean && make` |
+| Clean all | `cd core/release && make clean` |
+| Test single file | `obc -src test.obs && obr test.obe` |
+| View bytecode | `obd test.obe` (disassembler) |
+| Enable JIT debug | Set `JIT_DEBUG=1` env var |
+
+---
+
+## Troubleshooting
+
+### Build Errors
+
+**Problem:** `mbedtls.h not found`
+```bash
+# Linux
+sudo apt-get install libmbedtls-dev
+
+# macOS
+brew install mbedtls
+
+# Windows ARM64
+# Automatically downloads on first build
+# Or manually: cd core/lib/crypto && build_mbedtls_arm64.cmd
+```
+
+**Problem:** `SDL2 not found`
+```bash
+# Linux
+sudo apt-get install libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev
+
+# macOS
+brew install sdl2 sdl2_image sdl2_ttf sdl2_mixer
+```
+
+**Problem:** `undefined reference to opencv_...`
+```bash
+# OpenCV is optional for most builds
+# If needed:
+sudo apt-get install libopencv-dev  # Linux
+brew install opencv                  # macOS
+```
+
+### Runtime Errors
+
+**Problem:** `Unable to read library: '../lib/lang.obl'`
+- **Cause:** Running compiler from wrong directory
+- **Fix:** Compiler must run from its `bin/` directory or use absolute paths
+
+**Problem:** Segfault in JIT code
+- Set `JIT_DEBUG=1` to see generated assembly
+- Check `core/vm/arch/jit/README.md` for debugging tips
+
+**Problem:** Regression tests fail
+- Check `programs/regression/results/*.log` for details
+- Ensure all dependencies installed
+- Try clean rebuild: `make clean && ./deploy_posix.sh x64`
+
+### Performance Issues
+
+**Problem:** Slow compilation
+- Use optimization level: `obc -opt s3` (default)
+- Enable ccache: `export CC="ccache gcc"`
+
+**Problem:** Slow runtime
+- Check if JIT is enabled: `JIT_STATUS=1 obr program.obe`
+- Ensure Release build, not Debug
+
+---
+
+## Contributing
+
+### First-Time Contributors
+
+**Good first issues:**
+1. Add test cases to regression suite
+2. Improve error messages in compiler
+3. Document undocumented functions
+4. Fix typos in code comments
+
+**Getting help:**
+- 📖 [Main README](../README.md)
+- 💬 [GitHub Discussions](https://github.com/objeck/objeck-lang/discussions)
+- 🐛 [Issue Tracker](https://github.com/objeck/objeck-lang/issues)
+
+### Code Style
+
+- **C++:** Follow existing style (2-space indent, BSD braces)
+- **Assembly:** Commented explaining purpose of each section
+- **Commit messages:** Descriptive (e.g., "Fix ARM64 JIT: char array STRH encoding")
+
+### Pull Request Checklist
+
+- [ ] Code compiles on Linux/macOS/Windows
+- [ ] Regression tests pass: `./run_regression.sh x64`
+- [ ] Added test for new feature/bugfix
+- [ ] Updated relevant documentation
+- [ ] Commit message describes "why" not just "what"
+
+---
+
+## Architecture Deep Dive
+
+### Compiler Pipeline
+```
+Source (.obs) → Lexer → Parser → AST → Optimizer (s0-s3) → Bytecode (.obe)
+```
+
+**Optimization Levels:**
+- `s0` - No optimization (fastest compile)
+- `s1` - Basic (constant folding, dead code)
+- `s2` - Moderate (inline small functions)
+- `s3` - Aggressive (all optimizations) ⭐ **default**
+
+### VM Execution Flow
+```
+Bytecode → Interpreter → Hot Code Detection → JIT → Native Code (ARM64/x64)
+```
+
+**JIT Tiering:**
+1. First 100 calls: Interpreted
+2. After threshold: Compile to native code
+3. Optimizations: Register allocation, instruction combining, branch prediction
+
+### Memory Management
+```
+Stack: Local variables, call frames
+Heap: Objects, arrays (managed by GC)
+GC: Mark-and-sweep with generational collection
+```
+
+**GC Improvements (v2026.2):**
+- O(1) object lookups (hash-based)
+- In-place sweeping (reduced memory moves)
+- Improved ARM64 performance
+
+---
+
+## Useful Links
+
+- 📚 [Language Documentation](https://www.objeck.org)
+- 🔧 [Compiler Internals](compiler/README.md)
+- ⚡ [JIT Architecture](vm/arch/jit/README.md)
+- 🧪 [Regression Tests](../programs/regression/README.md)
+- 🌐 [Official Website](https://www.objeck.org)
+- 📊 [CI/CD Pipeline](../.github/workflows/c-cpp.yml)
+
+---
+
+## Version Info
+
+**Current:** v2026.2.1
+**Released:** February 2026
+**License:** BSD 3-Clause
+
+**Recent improvements:**
+- ARM64 JIT optimizations (11 fixes)
+- Memory manager O(1) lookups
+- mbedTLS crypto migration
+- Multi-platform CI with caching
+- Windows ARM64 support
+
+See [CHANGELOG.md](../CHANGELOG.md) for full history.
