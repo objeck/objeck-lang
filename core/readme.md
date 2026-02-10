@@ -17,6 +17,18 @@
 
 ## Architecture Overview
 
+**📖 [Comprehensive Architecture Documentation](../docs/architecture.md)** - Interactive Mermaid diagrams covering:
+- Complete system architecture
+- Compiler pipeline with optimization levels
+- Virtual Machine runtime and JIT compilation
+- Platform-specific ARM64/x64 JIT details
+- Library ecosystem (30+ libraries)
+- Development tools (REPL, Debugger, LSP)
+- CI/CD pipeline
+- Memory management deep dive
+
+**Legacy Diagram:** [design4.png](https://github.com/objeck/objeck-lang/blob/master/docs/images/design4.png) (historical reference)
+
 ![Architecture Diagram](https://github.com/objeck/objeck-lang/blob/master/docs/images/design4.png)
 
 ### Key Subsystems
