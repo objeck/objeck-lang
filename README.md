@@ -96,6 +96,19 @@ faces := detector->Detect(image);
 faces->Size()->PrintLine();  # "5 faces detected"
 ```
 
+### Natural Language Processing
+```ruby
+# Sentiment analysis and TF-IDF
+text := "This product is absolutely wonderful!";
+sentiment := SentimentAnalyzer->Classify(text);  # "positive"
+
+# Train TF-IDF on documents
+docs := ["cats are pets", "dogs are pets", "birds can fly"];
+tfidf := TF_IDF->New();
+tfidf->Fit(docs);
+vector := tfidf->Transform("cats and dogs");  # [0.47, 0.0, 0.47, ...]
+```
+
 [🎯 More examples](https://github.com/objeck/objeck-lang/tree/master/programs/examples)
 
 ## Language Features
@@ -120,6 +133,7 @@ faces->Size()->PrintLine();  # "5 faces detected"
 
 **AI & Machine Learning**
 - [OpenAI](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/openai.obs), [Gemini](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/gemini.obs), [Ollama](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/ollama.obs)
+- [NLP](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/nlp.obs) (tokenization, TF-IDF, text similarity, sentiment analysis)
 - [OpenCV](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/opencv.obs) (computer vision)
 - [ONNX Runtime](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/onnx.obs) (cross-platform ML inference)
 
