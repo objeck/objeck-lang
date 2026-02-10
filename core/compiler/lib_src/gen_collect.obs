@@ -622,7 +622,10 @@ while(<>heap->IsEmpty()) {
 						@heap[@length] := Nil;
 						@length--;
 
-						ShiftDown();
+						if(@length > 0 & i <= @length) {
+							ShiftDown(i);
+							ShiftUp(i);
+						};
 
 						return true;
 					};
@@ -672,7 +675,10 @@ while(<>heap->IsEmpty()) {
 		}
 
 		method : ShiftUp() ~ Nil {
-			index := @length;
+			ShiftUp(@length);
+		}
+
+		method : ShiftUp(index : Int) ~ Nil {
 			if(@min) {
 				while(HasParent(index) & (GetParent(index)->Compare(@heap[index]) > 0)) {
 					Swap(index, GetParentIndex(index));
@@ -688,7 +694,10 @@ while(<>heap->IsEmpty()) {
 		}
 
 		method : ShiftDown() ~ Nil {
-			index := 1;
+			ShiftDown(1);
+		}
+
+		method : ShiftDown(index : Int) ~ Nil {
 			if(@min) {
 				while(HasLeftChild((index))) {
 					smaller := GetLeftIndex(index);
@@ -867,6 +876,8 @@ each(value := values) {
 				found := @priority->Find(key);
 				if(found <> Nil) {
 					@priority->Remove();
+					@priority->AddFront(key);
+					@cache->Insert(key, value);
 				}
 				else {
 					@cache->Insert(key, value);
@@ -2468,6 +2479,9 @@ function : Example() ~ Nil {
 				if(@cursor->GetPrevious() <> Nil) {
 					@cursor->GetPrevious()->SetNext(@cursor->GetNext());
 				};
+				if(@cursor->GetNext() <> Nil) {
+					@cursor->GetNext()->SetPrevious(@cursor->GetPrevious());
+				};
 				if(@cursor = @head & @cursor = @tail) {
 			 		@cursor := @cursor->GetNext();
 			 		@head := @cursor;
@@ -2496,6 +2510,9 @@ function : Example() ~ Nil {
 			if(node <> Nil) {
 				if(node->GetPrevious() <> Nil) {
 					node->GetPrevious()->SetNext(node->GetNext());
+				};
+				if(node->GetNext() <> Nil) {
+					node->GetNext()->SetPrevious(node->GetPrevious());
 				};
 				if(node = @head & node = @tail) {
 			 		node := node->GetNext();
@@ -3084,6 +3101,9 @@ function : Example() ~ Nil {
 				if(@cursor->GetPrevious() <> Nil) {
 					@cursor->GetPrevious()->SetNext(@cursor->GetNext());
 				};
+				if(@cursor->GetNext() <> Nil) {
+					@cursor->GetNext()->SetPrevious(@cursor->GetPrevious());
+				};
 				if(@cursor = @head & @cursor = @tail) {
 			 		@cursor := @cursor->GetNext();
 			 		@head := @cursor;
@@ -3108,6 +3128,9 @@ function : Example() ~ Nil {
 			if(node <> Nil) {
 				if(node->GetPrevious() <> Nil) {
 					node->GetPrevious()->SetNext(node->GetNext());
+				};
+				if(node->GetNext() <> Nil) {
+					node->GetNext()->SetPrevious(node->GetPrevious());
 				};
 				if(node = @head & node = @tail) {
 			 		node := node->GetNext();
@@ -4698,19 +4721,25 @@ function : Show(value : IntRef) ~ Nil {
 		}
 
 		 method : DecreaseLevel(node : Collection.TreeNode<K, V>) ~ TreeNode<K, V> {
-			if(node->GetLeft() <> Nil & node->GetRight() <> Nil) {
-				left : Int := node->GetLeft()->GetLevel();
-				right : Int := node->GetRight()->GetLevel();
-				value : Int := Int->Min(left, right);
-			
-				if(value < node->GetLevel()) {
-					node->SetLevel(value);
-					if(value < node->GetRight()->GetLevel()) {
-						node->GetRight()->SetLevel(value);
-					};
+			left : Int := 0;
+			right : Int := 0;
+
+			if(node->GetLeft() <> Nil) {
+				left := node->GetLeft()->GetLevel();
+			};
+
+			if(node->GetRight() <> Nil) {
+				right := node->GetRight()->GetLevel();
+			};
+
+			value : Int := Int->Min(left, right) + 1;
+
+			if(value < node->GetLevel()) {
+				node->SetLevel(value);
+				if(node->GetRight() <> Nil & value < node->GetRight()->GetLevel()) {
+					node->GetRight()->SetLevel(value);
 				};
 			};
-			
 			return node;
 		}
 		
