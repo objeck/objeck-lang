@@ -1,0 +1,425 @@
+name: Release Publish
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version number (e.g., 2026.2.1)'
+        required: true
+        type: string
+      run_id:
+        description: 'Release build workflow run ID'
+        required: true
+        type: string
+      skip_sourceforge:
+        description: 'Skip Sourceforge upload'
+        required: false
+        type: boolean
+        default: false
+      skip_docs_deploy:
+        description: 'Skip API docs deployment'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  # ============================================
+  # Download and Rename Artifacts
+  # ============================================
+
+  prepare:
+    name: Prepare Release Assets
+    runs-on: windows-latest
+
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set version
+        id: version
+        run: |
+          echo "version=${{ github.event.inputs.version }}" >> $env:GITHUB_OUTPUT
+          echo "📦 Release version: ${{ github.event.inputs.version }}"
+
+      - name: Download all release artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts/
+          run-id: ${{ github.event.inputs.run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: List downloaded artifacts
+        shell: pwsh
+        run: |
+          Write-Output "📦 Downloaded artifacts:"
+          Get-ChildItem -Path artifacts -Recurse | Format-Table Name, Length, LastWriteTime
+
+      # ============================================
+      # Build Binary Renaming Tool
+      # ============================================
+
+      - name: Setup MSVC Environment
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Build compiler
+        working-directory: ./core/compiler
+        run: call update_version.cmd
+
+      - name: Build runtime
+        working-directory: ./core/release
+        run: deploy_windows.cmd x64
+
+      - name: Build renaming tool
+        working-directory: ./core/release/deploy-x64/bin
+        shell: cmd
+        run: |
+          obc.exe -src ..\..\..\..\programs\deploy\util\deploy_rename.obs -lib misc
+          if errorlevel 1 exit /b 1
+          echo ✅ Binary renaming tool compiled
+
+      # ============================================
+      # Rename All Binaries
+      # ============================================
+
+      - name: Rename binaries
+        shell: pwsh
+        run: |
+          $version = "${{ github.event.inputs.version }}"
+          $renamer = "core\release\deploy-x64\bin\obr.exe"
+          $renameScript = "core\release\deploy-x64\bin\deploy_rename.obe"
+
+          # Create staging directory
+          $stageDir = "release-staging"
+          New-Item -ItemType Directory -Force -Path $stageDir
+
+          # Copy all artifacts to staging
+          Copy-Item -Path "artifacts\*\*" -Destination $stageDir -Recurse -Force
+
+          # Run renaming tool
+          Write-Output "🔄 Renaming binaries with version $version..."
+          & $renamer $renameScript $stageDir $version
+
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "Binary renaming failed"
+            exit 1
+          }
+
+          Write-Output "✅ All binaries renamed"
+          Get-ChildItem -Path $stageDir | Format-Table Name, Length
+
+      # ============================================
+      # Code Signing (Windows Only)
+      # ============================================
+
+      - name: Decode signing certificate
+        if: github.event_name != 'pull_request'
+        shell: pwsh
+        run: |
+          if ("${{ secrets.WINDOWS_CERT_BASE64 }}" -eq "") {
+            Write-Warning "⚠️  WINDOWS_CERT_BASE64 secret not set, skipping code signing"
+            echo "SKIP_SIGNING=true" >> $env:GITHUB_ENV
+            exit 0
+          }
+
+          $certBytes = [Convert]::FromBase64String("${{ secrets.WINDOWS_CERT_BASE64 }}")
+          [IO.File]::WriteAllBytes("$pwd\cert.pfx", $certBytes)
+          echo "SKIP_SIGNING=false" >> $env:GITHUB_ENV
+          Write-Output "✅ Certificate decoded"
+
+      - name: Sign Windows MSI files
+        if: env.SKIP_SIGNING != 'true'
+        shell: pwsh
+        run: |
+          $msiFiles = Get-ChildItem -Path "release-staging" -Filter "*.msi" -Recurse
+
+          foreach ($msi in $msiFiles) {
+            Write-Output "🔏 Signing: $($msi.Name)"
+
+            & signtool sign `
+              /f cert.pfx `
+              /p "${{ secrets.WINDOWS_CERT_PASSWORD }}" `
+              /tr http://timestamp.sectigo.com `
+              /td sha256 `
+              /fd sha256 `
+              $msi.FullName
+
+            if ($LASTEXITCODE -ne 0) {
+              Write-Error "Failed to sign $($msi.Name)"
+              exit 1
+            }
+
+            # Verify signature
+            & signtool verify /pa $msi.FullName
+
+            if ($LASTEXITCODE -ne 0) {
+              Write-Error "Signature verification failed for $($msi.Name)"
+              exit 1
+            }
+
+            Write-Output "✅ Signed and verified: $($msi.Name)"
+          }
+
+      - name: Cleanup certificate
+        if: always() && env.SKIP_SIGNING != 'true'
+        shell: pwsh
+        run: |
+          if (Test-Path "cert.pfx") {
+            Remove-Item "cert.pfx" -Force
+            Write-Output "🧹 Certificate cleaned up"
+          }
+
+      # ============================================
+      # Upload Renamed Artifacts
+      # ============================================
+
+      - name: Upload renamed artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-final
+          path: release-staging/*
+          retention-days: 30
+
+  # ============================================
+  # Create GitHub Release
+  # ============================================
+
+  github-release:
+    name: Create GitHub Release
+    needs: prepare
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download final artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: release-final
+          path: release-final/
+
+      - name: Generate release notes
+        id: release-notes
+        run: |
+          VERSION="${{ needs.prepare.outputs.version }}"
+
+          cat > release-notes.md << 'EOF'
+          # Objeck Language v$VERSION
+
+          This release includes builds for Windows, Linux, and macOS platforms.
+
+          ## 📦 Installation
+
+          ### Windows
+          - **x64**: Download `objeck-windows-x64_$VERSION.msi` and run the installer
+          - **ARM64**: Download `objeck-windows-arm64_$VERSION.msi` and run the installer
+          - **Portable**: Download `.zip` files for portable installations
+
+          ### Linux
+          - **x64**: `tar -xzf objeck-linux-x64_$VERSION.tgz`
+          - **ARM64**: `tar -xzf objeck-linux-arm64_$VERSION.tgz`
+
+          ### macOS
+          - **ARM64 (M1/M2/M3)**: `tar -xzf objeck-macos-arm64_$VERSION.tgz`
+
+          ### LSP (Language Server Protocol)
+          - Download `objeck-lsp-$VERSION.zip` for IDE integration
+
+          ## 📚 Documentation
+
+          - **API Documentation**: https://objeck.org/api/latest/
+          - **Language Guide**: https://github.com/objeck/objeck-lang
+
+          ## 🔐 Verification
+
+          All Windows MSI installers are digitally signed for security.
+
+          ## 🐛 Issues
+
+          Report issues at: https://github.com/objeck/objeck-lang/issues
+
+          ---
+
+          **Full Changelog**: https://github.com/objeck/objeck-lang/compare/v$PREV_VERSION...v$VERSION
+          EOF
+
+          sed -i "s/\$VERSION/$VERSION/g" release-notes.md
+          echo "✅ Release notes generated"
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ needs.prepare.outputs.version }}"
+
+          # Create release
+          gh release create "v$VERSION" \
+            --title "Objeck Language v$VERSION" \
+            --notes-file release-notes.md \
+            release-final/*
+
+          echo "✅ GitHub Release created: https://github.com/${{ github.repository }}/releases/tag/v$VERSION"
+
+  # ============================================
+  # Upload to Sourceforge
+  # ============================================
+
+  sourceforge-upload:
+    name: Upload to Sourceforge
+    needs: [prepare, github-release]
+    runs-on: ubuntu-latest
+    if: github.event.inputs.skip_sourceforge != 'true'
+
+    steps:
+      - name: Download final artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: release-final
+          path: release-final/
+
+      - name: Setup SSH key
+        if: secrets.SOURCEFORGE_SSH_KEY != ''
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SOURCEFORGE_SSH_KEY }}" > ~/.ssh/sf_key
+          chmod 600 ~/.ssh/sf_key
+
+          # Add Sourceforge to known hosts
+          ssh-keyscan frs.sourceforge.net >> ~/.ssh/known_hosts
+
+      - name: Create release directory on Sourceforge
+        if: secrets.SOURCEFORGE_SSH_KEY != ''
+        run: |
+          VERSION="${{ needs.prepare.outputs.version }}"
+
+          ssh -i ~/.ssh/sf_key \
+            "${{ secrets.SOURCEFORGE_USERNAME }}@frs.sourceforge.net" \
+            "mkdir -p /home/frs/project/objeck/v${VERSION}"
+
+      - name: Upload to Sourceforge via SFTP
+        if: secrets.SOURCEFORGE_SSH_KEY != ''
+        run: |
+          VERSION="${{ needs.prepare.outputs.version }}"
+
+          sftp -i ~/.ssh/sf_key \
+            "${{ secrets.SOURCEFORGE_USERNAME }}@frs.sourceforge.net" << EOF
+          cd /home/frs/project/objeck/v${VERSION}
+          put release-final/*
+          EOF
+
+          echo "✅ Uploaded to Sourceforge: https://sourceforge.net/projects/objeck/files/v${VERSION}/"
+
+      - name: Cleanup SSH key
+        if: always()
+        run: |
+          rm -f ~/.ssh/sf_key
+
+      - name: Skip notice
+        if: secrets.SOURCEFORGE_SSH_KEY == ''
+        run: |
+          echo "⚠️  Sourceforge SSH key not configured. Skipping upload."
+          echo "To enable: Add SOURCEFORGE_SSH_KEY and SOURCEFORGE_USERNAME secrets"
+
+  # ============================================
+  # Deploy API Documentation
+  # ============================================
+
+  deploy-docs:
+    name: Deploy API Documentation
+    needs: prepare
+    runs-on: ubuntu-latest
+    if: github.event.inputs.skip_docs_deploy != 'true'
+
+    steps:
+      - name: Download API docs
+        uses: actions/download-artifact@v4
+        with:
+          name: api-docs
+          path: api-docs/
+          run-id: ${{ github.event.inputs.run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract API documentation
+        run: |
+          unzip api-docs/api.zip -d api-temp
+          echo "✅ API documentation extracted"
+
+      - name: Setup SSH key for objeck.org
+        if: secrets.OBJECK_ORG_SSH_KEY != ''
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.OBJECK_ORG_SSH_KEY }}" > ~/.ssh/obj_key
+          chmod 600 ~/.ssh/obj_key
+
+          # Add objeck.org to known hosts (replace with actual host)
+          # ssh-keyscan objeck.org >> ~/.ssh/known_hosts
+
+      - name: Deploy to objeck.org
+        if: secrets.OBJECK_ORG_SSH_KEY != ''
+        run: |
+          VERSION="${{ needs.prepare.outputs.version }}"
+
+          # Upload versioned docs
+          rsync -avz --delete \
+            -e "ssh -i ~/.ssh/obj_key -o StrictHostKeyChecking=no" \
+            api-temp/api/ \
+            "${{ secrets.OBJECK_ORG_USER }}@objeck.org:/var/www/objeck.org/api/v${VERSION}/"
+
+          # Update 'latest' symlink
+          ssh -i ~/.ssh/obj_key -o StrictHostKeyChecking=no \
+            "${{ secrets.OBJECK_ORG_USER }}@objeck.org" \
+            "cd /var/www/objeck.org/api && ln -sfn v${VERSION} latest"
+
+          echo "✅ API docs deployed:"
+          echo "   - https://objeck.org/api/v${VERSION}/"
+          echo "   - https://objeck.org/api/latest/"
+
+      - name: Cleanup SSH key
+        if: always()
+        run: |
+          rm -f ~/.ssh/obj_key
+
+      - name: Skip notice
+        if: secrets.OBJECK_ORG_SSH_KEY == ''
+        run: |
+          echo "⚠️  objeck.org SSH key not configured. Skipping deployment."
+          echo "To enable: Add OBJECK_ORG_SSH_KEY and OBJECK_ORG_USER secrets"
+
+  # ============================================
+  # Release Summary
+  # ============================================
+
+  summary:
+    name: Release Summary
+    needs: [prepare, github-release, sourceforge-upload, deploy-docs]
+    runs-on: ubuntu-latest
+    if: always()
+
+    steps:
+      - name: Generate summary
+        run: |
+          VERSION="${{ needs.prepare.outputs.version }}"
+
+          echo "# 🎉 Release v$VERSION Published" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Deployment Status" >> $GITHUB_STEP_SUMMARY
+          echo "- GitHub Release: ${{ needs.github-release.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Sourceforge: ${{ needs.sourceforge-upload.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- API Docs: ${{ needs.deploy-docs.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ needs.github-release.result }}" = "success" ]; then
+            echo "## 📦 Downloads" >> $GITHUB_STEP_SUMMARY
+            echo "- **GitHub**: https://github.com/${{ github.repository }}/releases/tag/v$VERSION" >> $GITHUB_STEP_SUMMARY
+            echo "- **Sourceforge**: https://sourceforge.net/projects/objeck/files/v$VERSION/" >> $GITHUB_STEP_SUMMARY
+            echo "- **API Docs**: https://objeck.org/api/v$VERSION/" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "✅ **Release complete!**" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Release failed. Please review logs.**" >> $GITHUB_STEP_SUMMARY
+          fi

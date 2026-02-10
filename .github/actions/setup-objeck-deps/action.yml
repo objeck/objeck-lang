@@ -1,0 +1,114 @@
+name: 'Setup Objeck Dependencies'
+description: 'Install all dependencies required to build Objeck Language'
+
+inputs:
+  platform:
+    description: 'Platform (linux, macos, windows)'
+    required: true
+  arch:
+    description: 'Architecture (x64, arm64)'
+    required: true
+  use-cache:
+    description: 'Use dependency caching'
+    required: false
+    default: 'true'
+
+runs:
+  using: 'composite'
+  steps:
+    # ============================================
+    # Linux Dependencies
+    # ============================================
+    - name: Cache APT packages (Linux)
+      if: inputs.platform == 'linux' && inputs.use-cache == 'true'
+      uses: actions/cache@v4
+      with:
+        path: /var/cache/apt/archives
+        key: ${{ runner.os }}-${{ inputs.arch }}-apt-${{ hashFiles('.github/**') }}
+        restore-keys: |
+          ${{ runner.os }}-${{ inputs.arch }}-apt-
+
+    - name: Install Linux dependencies
+      if: inputs.platform == 'linux'
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          build-essential \
+          libopencv-dev \
+          libmbedtls-dev \
+          unixodbc-dev \
+          libsdl2-dev \
+          libsdl2-image-dev \
+          libsdl2-ttf-dev \
+          libsdl2-mixer-dev \
+          libreadline-dev \
+          libeigen3-dev \
+          libmp3lame-dev \
+          ccache
+
+    # ============================================
+    # macOS Dependencies
+    # ============================================
+    - name: Cache Homebrew (macOS)
+      if: inputs.platform == 'macos' && inputs.use-cache == 'true'
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/Library/Caches/Homebrew
+          /opt/homebrew/Cellar
+        key: ${{ runner.os }}-brew-${{ hashFiles('.github/**') }}
+        restore-keys: |
+          ${{ runner.os }}-brew-
+
+    - name: Install macOS dependencies
+      if: inputs.platform == 'macos'
+      shell: bash
+      run: |
+        brew install \
+          opencv \
+          mbedtls \
+          unixodbc \
+          sdl2 \
+          sdl2_image \
+          sdl2_ttf \
+          sdl2_mixer \
+          readline \
+          eigen \
+          lame \
+          ccache
+        brew cleanup
+
+    # ============================================
+    # Windows Dependencies
+    # ============================================
+    - name: Setup Visual Studio (Windows)
+      if: inputs.platform == 'windows'
+      uses: microsoft/setup-msbuild@v2
+
+    - name: Setup MSVC Environment (Windows)
+      if: inputs.platform == 'windows'
+      uses: ilammy/msvc-dev-cmd@v1
+      with:
+        arch: ${{ inputs.arch }}
+
+    # ============================================
+    # ccache Setup (Non-Windows)
+    # ============================================
+    - name: Cache ccache
+      if: inputs.platform != 'windows' && inputs.use-cache == 'true'
+      uses: actions/cache@v4
+      with:
+        path: ~/.ccache
+        key: ${{ runner.os }}-${{ inputs.arch }}-ccache-${{ github.sha }}
+        restore-keys: |
+          ${{ runner.os }}-${{ inputs.arch }}-ccache-
+
+    - name: Setup ccache
+      if: inputs.platform != 'windows'
+      shell: bash
+      run: |
+        ccache --max-size=500M
+        ccache --set-config=compression=true
+        ccache --zero-stats
+        echo "✅ ccache configured"

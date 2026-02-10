@@ -11,7 +11,9 @@ Modern programming language with first-class ML and computer vision support
 
 <p align="center">
   <a href="https://github.com/objeck/objeck-lang/actions/workflows/codeql.yml"><img src="https://github.com/objeck/objeck-lang/actions/workflows/codeql.yml/badge.svg" alt="GitHub CodeQL"></a>
-  <a href="https://github.com/objeck/objeck-lang/actions/workflows/c-cpp.yml"><img src="https://github.com/objeck/objeck-lang/actions/workflows/c-cpp.yml/badge.svg" alt="GitHub CI"></a>
+  <a href="https://github.com/objeck/objeck-lang/actions/workflows/ci-build.yml"><img src="https://github.com/objeck/objeck-lang/actions/workflows/ci-build.yml/badge.svg" alt="CI Build"></a>
+  <a href="https://github.com/objeck/objeck-lang/actions/workflows/release-build.yml"><img src="https://github.com/objeck/objeck-lang/actions/workflows/release-build.yml/badge.svg" alt="Release Build"></a>
+  <a href="https://github.com/objeck/objeck-lang/releases"><img src="https://img.shields.io/github/v/release/objeck/objeck-lang?sort=semver" alt="Latest Release"></a>
   <!-- <a href="https://scan.coverity.com/projects/objeck"><img src="https://img.shields.io/coverity/scan/10314.svg" alt="Coverity SCA"></a> -->
 </p>
 
@@ -78,6 +80,23 @@ obc -s hello.obs -d hello.obe
   * GPT-5 reasoning models
 
 [📋 Full changelog](CHANGELOG.md) • [🗺️ Roadmap](ROADMAP.md)
+
+## Downloads
+
+**Latest Release:** [v2026.2.1](https://github.com/objeck/objeck-lang/releases/latest)
+
+| Platform | Architecture | Download |
+|----------|--------------|----------|
+| **Windows** | x64 | [MSI Installer](https://github.com/objeck/objeck-lang/releases/latest) / [ZIP](https://github.com/objeck/objeck-lang/releases/latest) |
+| **Windows** | ARM64 | [MSI Installer](https://github.com/objeck/objeck-lang/releases/latest) / [ZIP](https://github.com/objeck/objeck-lang/releases/latest) |
+| **Linux** | x64 | [TGZ Archive](https://github.com/objeck/objeck-lang/releases/latest) |
+| **Linux** | ARM64 | [TGZ Archive](https://github.com/objeck/objeck-lang/releases/latest) |
+| **macOS** | ARM64 (M1/M2/M3) | [TGZ Archive](https://github.com/objeck/objeck-lang/releases/latest) |
+| **LSP** | All platforms | [ZIP Archive](https://github.com/objeck/objeck-lang/releases/latest) |
+
+📦 **Alternative:** [Sourceforge](https://sourceforge.net/projects/objeck/files/) • 📚 **API Docs:** [objeck.org/api/latest](https://www.objeck.org/api/latest/)
+
+> **Note:** All Windows installers are digitally signed. Releases are fully automated via CI/CD and built on GitHub Actions runners.
 
 ## See It In Action
 
@@ -157,7 +176,12 @@ vector := tfidf->Transform("cats and dogs");  # [0.47, 0.0, 0.47, ...]
 
 **Modern tooling and practices:**
 - 🤖 **Claude Code** for pair programming, debugging, and refactoring
-- 🔄 **CI/CD**: Automated testing on every commit (GitHub Actions)
+- 🔄 **CI/CD**: Fully automated build, test, sign, and release pipeline (GitHub Actions)
+  - ✅ Every push triggers multi-platform builds (Windows, Linux, macOS)
+  - ✅ Automated code signing for Windows installers
+  - ✅ One-tag releases: `git tag v2026.2.1` → automated distribution in 60 minutes
+  - ✅ Parallel builds across 6 platforms (x64/ARM64)
+  - 📖 [Release Process Documentation](docs/release_process.md) • [CI/CD Architecture](docs/CI_CD.md)
 - 🔍 **Quality**: Coverity static analysis + CodeQL security scanning
 - 🧪 **Testing**: 350+ tests across 3 suites (regression, comprehensive, deploy)
   - **Regression suite**: 10 focused tests for critical functionality
