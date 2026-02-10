@@ -1,54 +1,68 @@
 use Collection;
 
-bundle Default {
-	class Test {
-		function : Main(args : String[]) ~ Nil {
-			Run();
-		}
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		# Test Vector with Swap
+		v := Vector->New()<IntRef>;
+		v->AddBack(23);
+		v->AddBack(145);
+		v->AddBack(17);
+		v->AddBack(8);
 
-		function : native : Run() ~ Nil {		
-			ints := IntVector->New();
-			ints->AddBack(23);
-			ints->AddBack(145);
-			ints->AddBack(17);
-			ints->AddBack(8);
+		each(i : v) {
+			v->Get(i)->PrintLine();
+		};
 
-			for(i := 0; i < ints->Size(); i := i + 1;) {
-				ints->Get(i)->PrintLine();
-			};
-			
-			ints->Min()->PrintLine();
-			ints->Max()->PrintLine();
-			ints->Average()->PrintLine();
+		# Test Swap
+		v->Swap(0, 3);
+		v->Get(0)->PrintLine();
+		v->Get(3)->PrintLine();
 
-			ints->Sort();
+		"----------------"->PrintLine();
 
-			for(i := 0; i < ints->Size(); i := i + 1;) {
-				ints->Get(i)->PrintLine();
-			};
-			
+		# Test CompareVector with Sort and First
+		ints := CompareVector->New()<IntRef>;
+		ints->AddBack(23);
+		ints->AddBack(145);
+		ints->AddBack(17);
+		ints->AddBack(8);
 
-			"----------------"->PrintLine();
+		# Test First
+		ints->First()->PrintLine();
 
-			floats := FloatVector->New();
-			floats->AddBack(3.5);
-			floats->AddBack(13.45);
-			floats->AddBack(6.2);
-			floats->AddBack(46.12);
+		# Test Sort
+		ints->Sort();
 
-			for(i := 0; i < floats->Size(); i := i + 1;) {
-				floats->Get(i)->PrintLine();
-			};
+		each(i : ints) {
+			ints->Get(i)->PrintLine();
+		};
 
-			floats->Min()->PrintLine();
-			floats->Max()->PrintLine();
-			floats->Average()->PrintLine();
-	
-			floats->Sort();
-				
-			for(i := 0; i < floats->Size(); i := i + 1;) {
-				floats->Get(i)->PrintLine();
-			};
-		}
+		"----------------"->PrintLine();
+
+		# Test CompareVector with FloatRef
+		floats := CompareVector->New()<FloatRef>;
+		floats->AddBack(3.5);
+		floats->AddBack(13.45);
+		floats->AddBack(6.2);
+		floats->AddBack(46.12);
+
+		# Test First
+		floats->First()->PrintLine();
+
+		# Test Sort
+		floats->Sort();
+
+		each(i : floats) {
+			floats->Get(i)->PrintLine();
+		};
+
+		"----------------"->PrintLine();
+
+		# Test Limit
+		limited := ints->Limit(2);
+		limited->Size()->PrintLine();
+		each(i : limited) {
+			limited->Get(i)->PrintLine();
+		};
 	}
 }

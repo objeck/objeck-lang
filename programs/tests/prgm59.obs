@@ -1,27 +1,33 @@
 use Collection;
 
-bundle Default {
-	class Hello {
-		function : Main(args : System.String[]) ~ Nil {
-			Run();
-		}
-	
-#		function : native : Run() ~ Nil {
-		function : Run() ~ Nil {
-#~
-			v := Vector->New();
-			v->AddBack(IntRef->New(23)->As(System.Base));
-			v->AddBack(IntRef->New(12)->As(System.Base));
-			v->AddBack(IntRef->New(10)->As(System.Base));
-~#
-			s := IntStack->New();
-			s->Push(23);
-			s->Push(12);
-			s->Push(8);
-			s->Push(10);
-			s->Pop();
-			s->Pop();
-			s->Top()->PrintLine();
-		}
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		# Test Stack Push/Pop/Top
+		s := Stack->New()<IntRef>;
+		s->Push(23);
+		s->Push(12);
+		s->Push(8);
+		s->Push(10);
+		s->Pop()->PrintLine();
+		s->Pop()->PrintLine();
+		s->Top()->PrintLine();
+
+		"----------------"->PrintLine();
+
+		# Test Stack Size and IsEmpty
+		s->Size()->PrintLine();
+		s->IsEmpty()->PrintLine();
+
+		"----------------"->PrintLine();
+
+		# Test ToArray is non-destructive
+		s2 := Stack->New()<IntRef>;
+		s2->Push(1);
+		s2->Push(2);
+		s2->Push(3);
+		arr := s2->ToArray();
+		arr->Size()->PrintLine();
+		s2->Size()->PrintLine();
+		s2->Top()->PrintLine();
 	}
 }

@@ -1811,6 +1811,34 @@ stack->Size()->PrintLine(); # prints 2
 		}
 
 		#~
+		Formats the collection into a string. If an element implements the 'Stringify'
+		interface, it's 'ToString()' is called.
+		@return string representation
+		~#
+		method : public : ToString() ~ String {
+			buffer := "[";
+
+			node := @head;
+			while(node <> Nil) {
+				value := node->Get();
+				if(value->TypeOf(Stringify)) {
+					buffer->Append(value->As(System.Stringify)->ToString());
+				}
+				else {
+					buffer->Append(value->GetInstanceID()->ToHexString());
+				};
+
+				node := node->GetNext();
+				if(node <> Nil) {
+					buffer->Append(',');
+				};
+			};
+			buffer->Append(']');
+
+			return buffer;
+		}
+
+		#~
 		Checks to see if the stack is empty
 		@return true if empty, false otherwise
 		~#
@@ -1819,7 +1847,7 @@ stack->Size()->PrintLine(); # prints 2
 		}
 
 		#~
-		Clears the vector
+		Clears the stack
 		~#
 		method : public : Empty() ~ Nil {
 			@head := Nil;
@@ -1935,12 +1963,21 @@ queue->Front()->PrintLine();
 		}
 		
 		#~
+		Formats the collection into a string. If an element implements the 'Stringify'
+		interface, it's 'ToString()' is called.
+		@return string representation
+		~#
+		method : public : ToString() ~ String {
+			return @queue->ToString();
+		}
+
+		#~
 		Clears the queue
 		~#
 		method : public : Empty() ~ Nil {
 			@queue->Empty();
 		}
-		
+
 		#~
 		Checks to see if the queue is empty
 		@return true if empty, false otherwise
@@ -1948,7 +1985,7 @@ queue->Front()->PrintLine();
 		method : public : IsEmpty() ~ Bool {
 			return @queue->IsEmpty();
 		}
-		
+
 		#~
 		Size of queue
 		@return size of queue
@@ -2100,14 +2137,14 @@ function : Example() ~ Nil {
 		@cursor : CompareListNode<H>;
 
 		#~
-		Default constructor 
+		Default constructor
 		~#
 		New() {
 			@size := 0;
 		}
 
 		#~
-		Formats the collection into a string. If an element implements the 'Stringify' 
+		Formats the collection into a string. If an element implements the 'Stringify'
 		interface, it's 'ToString()' is called.
 		@return string representation
 		~#
@@ -2116,7 +2153,7 @@ function : Example() ~ Nil {
 
 			elem := @head;
 			while(elem <> Nil) {
-				# get string value if instance implements 'Stringify'				
+				# get string value if instance implements 'Stringify'
 				value := elem->Get();
 				if(value->TypeOf(Stringify)) {
 					buffer->Append(value->As(System.Stringify)->ToString());
@@ -2133,7 +2170,7 @@ function : Example() ~ Nil {
 				if(elem <> Nil) {
 					buffer->Append(',');
 				};
-				
+
 			};
 			buffer->Append(']');
 
@@ -2175,7 +2212,7 @@ function : Example() ~ Nil {
 
 		#~
 		Adds a value to the end
-		@param value value to append 
+		@param value value to append
 		~#
 		method : public : native : AddBack(value : H) ~ Nil {
 			node := CompareListNode->New(value)<H>;
@@ -2186,12 +2223,12 @@ function : Example() ~ Nil {
 			}
 			else {
 				@tail->SetNext(node);
-			 	node->SetPrevious(@tail);	
+			 	node->SetPrevious(@tail);
 				@tail := node;
 			};
 			@size += 1;
 		}
-	
+
 		#~
 		Removes the last value from the list
 		~#
@@ -2202,7 +2239,7 @@ function : Example() ~ Nil {
 
 		#~
 		Adds a value to the front
-		@param value value to prepend 
+		@param value value to prepend
 		~#
 		method : public : native : AddFront(value : H) ~ Nil {
 			node := CompareListNode->New(value)<H>;
@@ -2218,7 +2255,7 @@ function : Example() ~ Nil {
 			};
 			@size += 1;
 		}
-		
+
 		#~
 		Removes the first value from the list
 		~#
@@ -2232,14 +2269,14 @@ function : Example() ~ Nil {
 		~#
 		method : public : Rewind() ~ Nil {
 			@cursor := @head;
-		}		
+		}
 
 		#~
 		Moves the pointer to the end of the list
 		~#
 		method : public : Forward() ~ Nil {
 			@cursor := @tail;
-		}		
+		}
 
 		#~
 		Advances the pointer
@@ -2272,13 +2309,13 @@ function : Example() ~ Nil {
 		}
 
 		#~
-		Maps the given function to each value in the list 
+		Maps the given function to each value in the list
 		@param f function to apply
 		@return newly calculated list
 		~#
 		method : public : Map(f : (H) ~ H) ~ CompareList<H> {
 			list : CompareList<H> := CompareList->New()<H>;
-			
+
 			start := @head;
 			while(start <> Nil) {
 				list->AddBack(f(start->Get()));
@@ -2296,7 +2333,7 @@ function : Example() ~ Nil {
 		~#
 		method : public : Filter(f : (H) ~ Bool) ~ CompareList<H> {
 			list : CompareList<H> := CompareList->New()<H>;
-			
+
 			start := @head;
 			while(start <> Nil) {
 				if(f(start->Get())) {
@@ -2316,7 +2353,7 @@ function : Example() ~ Nil {
 		@return reduced vector
 		~#
 		method : public : Reduce(a : H, f : (H, H) ~ H) ~ H {
-			start := @head->GetNext();
+			start := @head;
 			while(start <> Nil) {
 				a := f(a, start->Get());
 				start := start->GetNext();
@@ -2896,7 +2933,7 @@ function : Example() ~ Nil {
 		@return reduced vector
 		~#
 		method : public : Reduce(a : H, f : (H, H) ~ H) ~ H {
-			start := @head->GetNext();
+			start := @head;
 			while(start <> Nil) {
 				a := f(a, start->Get());
 				start := start->GetNext();
@@ -3240,18 +3277,18 @@ function : Example() ~ Nil {
 	class Vector<H> {
 		@values : H[];
 		@size : Int;
-		
+
 		#~
-		Default constructor 
+		Default constructor
 		~#
 		New() {
 			@values := H->New[32];
 			@size := 0;
 		}
-		
+
 		#~
 		Copy constructor
-		@param values values to copy 
+		@param values values to copy
 		~#
 		New(values : H[]) {
 			@values := H->New[values->Size()];
@@ -3261,16 +3298,20 @@ function : Example() ~ Nil {
 
 		#~
 		Copy constructor
-		@param values values to copy 
+		@param values values to copy
 		~#
 		New(values : Vector<H>) {
 			@values := values->ToArray();
 			@size := values->Size();
 		}
-		
+
 		method : Expand() ~ Nil {
 			if(@size >= @values->Size()) {
-				temp : H[] := H->New[@size + (@size >> 2)];
+				grow := @size >> 2;
+				if(grow < 4) {
+					grow := 4;
+				};
+				temp : H[] := H->New[@size + grow];
 				Runtime->Copy(temp, 0, @values, 0, @size);
 				@values := temp;
 			};
@@ -3421,6 +3462,37 @@ function : Example() ~ Nil {
 				f(@values[i]);
 			};
 			return @self;
+		}
+
+		#~
+		Uses the given function to filter out values
+		@param f function to use a filter. If the function evaluates to true the value is added to the collection.
+		@return filtered vector
+		~#
+		method : public : Filter(f : (H) ~ Bool) ~ Vector<H> {
+			filtered := Vector->New()<H>;
+
+			for(i : Int := 0; i < @size; i += 1;) {
+				if(f(@values[i])) {
+					filtered->AddBack(@values[i]);
+				};
+			};
+
+			return filtered;
+		}
+
+		#~
+		Uses the given function to reduce the values
+		@param a initial value (i.e. accumulator)
+		@param f function to use a reduce
+		@return reduced value
+		~#
+		method : public : Reduce(a : H, f : (H, H) ~ H) ~ H {
+			for(i : Int := 0; i < @size; i += 1;) {
+				a := f(a, @values[i]);
+			};
+
+			return a;
 		}
 
 		#~
@@ -3741,7 +3813,7 @@ function : Show(value : IntRef) ~ Nil {
 
 			len := @size;
 			reversed := Collection.CompareVector->New()<H>;
-			each(i : @values) {
+			each(i : @size) {
 				reversed->AddBack(@values[--len])
 			};
 
@@ -3779,12 +3851,16 @@ function : Show(value : IntRef) ~ Nil {
 
 		method : Expand() ~ Nil {
 			if(@size >= @values->Size()) {
-				temp : H[] := H->New[@size + (@size >> 2)];
+				grow := @size >> 2;
+				if(grow < 4) {
+					grow := 4;
+				};
+				temp : H[] := H->New[@size + grow];
 				Runtime->Copy(temp, 0, @values, 0, @size);
 				@values := temp;
 			};
 		}
-		
+
 		#~
 		Compresses the Vector freeing unused memory
 		~#
@@ -4523,7 +4599,8 @@ function : Show(value : IntRef) ~ Nil {
 					node->SetRight(Insert(key, value, node->GetRight()));
 				}
 				else {
-					return node;		
+					node->Set(value);
+					return node;
 				};
 				node := Skew(node);
 				node := Split(node);
@@ -4597,8 +4674,8 @@ function : Show(value : IntRef) ~ Nil {
 		method : Predecessor(node : Collection.TreeNode<K, V>) ~ TreeNode<K, V> {
 			if(node->GetLeft() <> Nil) {
 				left : TreeNode<K, V> := node->GetLeft();
-				while(left->GetLeft() <> Nil) {
-					left := left->GetLeft();
+				while(left->GetRight() <> Nil) {
+					left := left->GetRight();
 				};
 
 				return left;
@@ -4610,8 +4687,8 @@ function : Show(value : IntRef) ~ Nil {
 		method : Successor(node : Collection.TreeNode<K, V>) ~ TreeNode<K, V> {
 			if(node->GetRight() <> Nil) {
 				right : TreeNode<K, V> := node->GetRight();
-				while(right->GetRight() <> Nil) {
-					right := right->GetRight();
+				while(right->GetLeft() <> Nil) {
+					right := right->GetLeft();
 				};
 
 				return right;
@@ -4700,7 +4777,11 @@ function : Show(value : IntRef) ~ Nil {
 		method : public : Get() ~ V {
 			return @value;
 		}
-		
+
+		method : public : Set(value : V) ~ Nil {
+			@value := value;
+		}
+
 		method : public : GetLevel() ~ Int {
 			return @level;
 		}
@@ -4860,13 +4941,13 @@ set_hash->Has("Oakland")->PrintLine();
 	```	
 	~#
 	class SetHash<K : Compare> {
-		@hash : Hash<K, K>;
+		@set : HashSet<K>;
 
 		#~
-		Default constructor 
+		Default constructor
 		~#
 		New() {
-			@hash := Hash->New()<K, K>;
+			@set := HashSet->New()<K>;
 		}
 
 		#~
@@ -4874,71 +4955,49 @@ set_hash->Has("Oakland")->PrintLine();
 		@param key key
 		~#
 		method : public : Insert(key : K) ~ Nil {
-			@hash->Insert(key, key);
+			@set->Add(key);
 		}
 
 		#~
-		Formats the collection into a string. If an element implements the 'Stringify' 
+		Formats the collection into a string. If an element implements the 'Stringify'
 		interface, it's 'ToString()' is called.
 		@return string representation
 		~#
 		method : public : ToString() ~ String {
-			buffer := "[";
-
-			keys := GetKeys()<K>;
-			each(i : keys) {
-				# get string value if instance implements 'Stringify'
-				key := keys->Get(i);
-
-				if(key->TypeOf(Stringify)) {
-					buffer->Append(key->As(System.Stringify)->ToString());
-				}
-				# use instance ID instead
-				else {
-					buffer->Append(key->GetInstanceID()->ToHexString());
-				};
-
-				# add comma
-				if(i + 1 < keys->Size()) {
-					buffer->Append(',');
-				};
-			};
-			buffer->Append(']');
-
-			return buffer;
+			return @set->ToString();
 		}
-		
+
 		#~
 		Removes a key from the set
 		@param key key for value to remove
-		@return true if removed, false otherwise		
+		@return true if removed, false otherwise
 		~#
 		method : public : Remove(key : K) ~ Bool {
-			return @hash->Remove(key);
+			return @set->Remove(key);
 		}
-    
-    	#~
+
+		#~
 		Checks for key in set
 		@param key search key
 		@return true if found, false otherwise
 		~#
 		method : public : Has(key : K) ~ Bool {
-			return @hash->Has(key);
+			return @set->Has(key);
 		}
-    
+
 		#~
 		Get a collection of keys
 		@return vector of keys
 		~#
 		method : public : GetKeys() ~ Vector<K> {
-			return @hash->GetKeys();
+			return @set->ToVector();
 		}
 
 		#~
 		Clears the set
 		~#
 		method : public : Empty() ~ Nil {
-			@hash->Empty();
+			@set->Empty();
 		}
 
 		#~
@@ -4946,15 +5005,15 @@ set_hash->Has("Oakland")->PrintLine();
 		@return true if empty, false otherwise
 		~#
 		method : public : IsEmpty() ~ Bool {
-			return @hash->IsEmpty();
+			return @set->IsEmpty();
 		}
-		
+
 		#~
-		Size of map
-		@return size of queue
+		Size of set
+		@return number of elements
 		~#
 		method : public : Size() ~ Int {
-			return @hash->Size();
+			return @set->Size();
 		}
 	}
 		
@@ -5192,24 +5251,14 @@ each(v := values) {
 		@return size of values
 		~#
 		method : public : TotalSize() ~ Int {
-			return @map->GetValues()->Size();
+			total := 0;
+			values := @map->GetValues()<Vector<V> >;
+			each(i : values) {
+				inner := values->Get(i)<Vector<V> >;
+				total += inner->Size();
+			};
+			return total;
 		}
 	}
 
-	class Func2Composer<X, R> {
-		@func : Func2Ref<X, R>;
-
-		New(first : Func2Ref<X, R>) {
-			@func := first;
-		}
-
-		method : public : Apply(x : X) ~ R {		
-			func := @func->Get();
-			return func(x);
-		}
-
-		method : public : Compose(before : Func2Ref<Base, X>) ~ Func2Composer<Base, R> {
-			return Nil;
-		}
-	}
 }
