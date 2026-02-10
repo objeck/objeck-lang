@@ -46,6 +46,55 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
+    # Cache for Linux APT packages
+    - name: Cache APT packages (Linux)
+      if: runner.os == 'Linux'
+      uses: actions/cache@v4
+      with:
+        path: |
+          /var/cache/apt/archives
+          /var/lib/apt/lists
+        key: ${{ runner.os }}-apt-${{ hashFiles('.github/workflows/c-cpp.yml') }}
+        restore-keys: |
+          ${{ runner.os }}-apt-
+
+    # Cache for macOS Homebrew
+    - name: Cache Homebrew (macOS)
+      if: runner.os == 'macOS'
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/Library/Caches/Homebrew
+          /usr/local/Cellar
+          /opt/homebrew/Cellar
+        key: ${{ runner.os }}-${{ matrix.arch }}-brew-${{ hashFiles('.github/workflows/c-cpp.yml') }}
+        restore-keys: |
+          ${{ runner.os }}-${{ matrix.arch }}-brew-
+
+    # Cache for ccache (all platforms with ccache)
+    - name: Cache ccache
+      if: runner.os != 'Windows'
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.ccache
+          ~/Library/Caches/ccache
+        key: ${{ runner.os }}-${{ matrix.arch }}-ccache-${{ github.sha }}
+        restore-keys: |
+          ${{ runner.os }}-${{ matrix.arch }}-ccache-
+
+    # Setup ccache for faster compilation
+    - name: Setup ccache
+      if: runner.os != 'Windows'
+      run: |
+        if [ "${{ runner.os }}" = "Linux" ]; then
+          sudo apt-get install -y ccache
+        else
+          brew install ccache
+        fi
+        ccache --max-size=500M
+        ccache --set-config=compression=true
+
     # Linux dependencies
     - name: Install Linux dependencies
       if: runner.os == 'Linux'
@@ -58,6 +107,8 @@ jobs:
       if: runner.os == 'macOS'
       run: |
         brew install opencv mbedtls unixodbc sdl2 sdl2_image sdl2_ttf sdl2_mixer readline eigen lame
+        # Cleanup to reduce cache size
+        brew cleanup
 
     # Windows dependencies (Visual Studio is pre-installed)
     - name: Setup Visual Studio (Windows)
@@ -76,10 +127,18 @@ jobs:
       run: |
         ${{ runner.os == 'Windows' && 'call update_version.cmd' || './update_version.sh' }}
 
-    # Build toolchain
+    # Build toolchain with ccache
     - name: Build toolchain
       working-directory: ./core/release
+      env:
+        CC: ${{ runner.os != 'Windows' && 'ccache gcc' || '' }}
+        CXX: ${{ runner.os != 'Windows' && 'ccache g++' || '' }}
       run: ${{ matrix.deploy_script }}
+
+    # Show ccache statistics
+    - name: Show ccache stats
+      if: runner.os != 'Windows'
+      run: ccache --show-stats
 
     # Determine deploy directory
     - name: Set deploy directory
