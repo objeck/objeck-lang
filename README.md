@@ -62,6 +62,8 @@ obc -s hello.obs -d hello.obe
   * **Windows ARM64**: Full platform support with mbedTLS 3.6.3
   * **Testing**: Comprehensive regression suite with 350+ tests and automated CI/CD
   * **Compiler**: Enhanced error messages with operator symbols and inline hints
+  * **NLP Library**: New natural language processing library with tokenization, TF-IDF, text similarity, and sentiment analysis
+  * **ML Enhancements**: Extended ML library with activation functions, feature scaling, metrics, and cross-validation
   * **Crypto**: Migrated to mbedTLS for lighter footprint (OpenSSL replacement)
 
 **v2026.2.0** ✅
