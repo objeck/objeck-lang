@@ -4463,14 +4463,13 @@ each(i : cities) {
 				@max := 8;
 				@string := Char->New[@max];
 				@pos := 0;
+				Append(array);
 			}
 			else {
 				@max := array->Size();
 				@string := array;
-				@pos := 0;
+				@pos := array->Size();
 			};
-
-			Append(array);
 		}
 		
 		#~
@@ -5246,17 +5245,20 @@ each(i : cities) {
 		}
 
 		#~
-		Removes all matching characters from a string
+		Removes the first occurrence of a character from a string
 		@param char character to remove
-		@return string with matching characters removed
+		@return string with first matching character removed
 		~#
 		method : public : Remove(char : Char) ~ String {
+			index := Find(char);
+			if(index < 0) {
+				return @self;
+			};
+
 			new_string := String->New();
-			
 			for(i := 0; i < @pos; i += 1;) {
-				cur_char := @string[i];
-				if(cur_char <> char) {
-					new_string->Append(cur_char);
+				if(i <> index) {
+					new_string->Append(@string[i]);
 				};
 			};
 
