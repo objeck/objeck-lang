@@ -3,6 +3,8 @@ from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
 
+from app.services.validator import validate_demo_id
+
 router = APIRouter()
 
 DEMOS_DIR = Path(__file__).parent.parent.parent.parent / "demos"
@@ -47,6 +49,9 @@ async def list_demos():
 
 @router.get("/api/demos/{demo_id}")
 async def get_demo(demo_id: str):
+    if not validate_demo_id(demo_id):
+        raise HTTPException(status_code=400, detail="Invalid demo ID")
+
     data = load_demos()
     if demo_id not in data["demos"]:
         raise HTTPException(status_code=404, detail="Demo not found")
