@@ -132,20 +132,20 @@ REM crypto support (optional - requires mbedtls)
 cd ..\lib\crypto
 
 if [%1] == [arm64] (
-	devenv crypto.sln /rebuild "Release|ARM64" 2>nul
-	if errorlevel 1 (
-		echo Warning: Crypto library build failed - skipping (mbedtls may not be available)
+	devenv crypto.sln /rebuild "Release|ARM64"
+	if exist ARM64\Release\*.dll (
+		copy ARM64\Release\*.dll ..\..\release\%TARGET%\lib\native
 	) else (
-		if exist ARM64\Release\*.dll copy ARM64\Release\*.dll ..\..\release\%TARGET%\lib\native
+		echo Warning: Crypto library DLL not found - skipping (mbedtls may not be available)
 	)
 )
 
 if [%1] == [x64] (
-	devenv crypto.sln /rebuild "Release|x64" 2>nul
-	if errorlevel 1 (
-		echo Warning: Crypto library build failed - skipping (mbedtls may not be available)
+	devenv crypto.sln /rebuild "Release|x64"
+	if exist Release\win64\*.dll (
+		copy Release\win64\*.dll ..\..\release\%TARGET%\lib\native
 	) else (
-		if exist Release\win64\*.dll copy Release\win64\*.dll ..\..\release\%TARGET%\lib\native
+		echo Warning: Crypto library DLL not found - skipping (mbedtls may not be available)
 	)
 )
 cd ..\..\release
