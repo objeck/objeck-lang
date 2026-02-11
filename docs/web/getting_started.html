@@ -1,0 +1,2287 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <title>
+   Objeck Language
+  </title>
+  <link rel="icon" href="style/favicon.ico" type="image/x-icon" />
+  <link href="style/styles.css" rel="stylesheet" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/base16/twilight.min.css" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"/>
+  </script>
+  <script>
+   hljs.highlightAll();
+  </script>
+  
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const menu = document.querySelector(".menu");
+      const menuItems = document.querySelector(".menu-items");
+
+      menu.addEventListener("click", (e) => {
+        e.stopPropagation();
+        menuItems.style.display = menuItems.style.display === "block" ? "none" : "block";
+      });
+
+      document.addEventListener("click", () => {
+        menuItems.style.display = "none";
+      });
+    });
+  </script>
+
+ </head>
+ <body>
+  
+    <header>
+    <div class="banner">
+      <a href="https://objeck.org/">
+        <img alt="Objeck Logo" class="logo" src="style/objeck-logo.png"/>
+      </a>
+
+      <div class="menu">
+        <div class="menu-bar"></div>
+        <div class="menu-bar"></div>
+        <div class="menu-bar"></div>
+
+        <div class="menu-items">
+          <a href="index.html">Home</a>
+          <a href="https://playground.objeck.org">Playground</a>
+          <a href="getting_started.html">Quick Start</a>
+          <a href="https://github.com/objeck/objeck-lang/releases/latest">Downloads</a>
+          <a href="readme.html">Changelog</a>
+          <a href="https://www.objeck.org/doc/api/index.html" target="_blank">API Docs</a>
+          <a href="https://github.com/objeck/objeck-lang">GitHub</a>
+        </div>
+      </div>
+    </div>
+  </header>
+  
+  <main role="main" style="text-align: left;">
+   <div class="container">
+    <p>
+     Before you get started, checkout Objeck's
+      <a href="https://www.objeck.org/doc/api/index.html">
+       class libraries
+      </a>
+      . Over the years, the language has become a collection of libraries to get stuff done. See what's available and read on.
+    </p>
+    <div id="toc_container">
+     <p>
+      <h4>
+       Contents
+      </h4>
+      <p>
+      </p>
+      <ul>
+       <li>
+        <a href="#installation">
+         Installation
+        </a>
+        <ul>
+         <li>
+          <a href="#windows">
+           Windows
+          </a>
+         </li>
+         <li>
+          <a href="#mac_linux">
+           macOS and Linux
+          </a>
+         </li>
+         <li>
+          <a href="#hello_world">
+           Writing "Hello World!"
+          </a>
+         </li>
+         <li>
+          <a href="#videos">
+           Video Tutorials
+          </a>
+         </li>
+        </ul>
+       </li>
+       <li>
+        <a href="#compiling_code">
+         Compiling Code
+        </a>
+       </li>
+       <li>
+        <a href="#basics">
+         Basics
+        </a>
+        <ul>
+         <li>
+          <a href="#lits_vars">
+           Literals and Variables
+          </a>
+         </li>
+         <li>
+          <a href="#comments">
+           Comments
+          </a>
+         </li>
+         <li>
+          <a href="#ctrl_flow">
+           Control Flow
+          </a>
+         </li>
+         <li>
+          <a href="#operators">
+           Operators
+          </a>
+         </li>
+         <li>
+          <a href="#strings">
+           Strings
+          </a>
+         </li>
+         <li>
+          <a href="#arrays">
+           Arrays
+          </a>
+         </li>
+         <li>
+          <a href="#enum_const">
+           Enums and Constants
+          </a>
+         </li>
+         <li>
+          <a href="#props">
+           Properties
+          </a>
+         </li>
+        </ul>
+       </li>
+       <li>
+        <a href="#classes_interfaces">
+         Classes and Interfaces
+        </a>
+       </li>
+       <li>
+        <a href="#funcs">
+         Closures and Lambda Expressions
+        </a>
+       </li>
+       <li>
+        <a href="#collect">
+         Collections
+        </a>
+       </li>
+       <ul>
+        <li>
+         <a href="#collect_vector">
+          Vectors
+         </a>
+        </li>
+        <li>
+         <a href="#collect_list">
+          Lists
+         </a>
+        </li>
+        <li>
+         <a href="#collect_map_hash">
+          Maps and Hashes
+         </a>
+        </li>
+        <li>
+         <a href="#collect_map_set">
+          Sets
+         </a>
+        </li>
+        <li>
+         <a href="#collect_map_queue">
+          Queues
+         </a>
+        </li>
+       </ul>
+       <li>
+        <a href="#threads">
+         Threads
+        </a>
+       </li>
+       <li>
+        <a href="#jit_compile">
+         JIT Compilation
+        </a>
+       </li>
+       <li>
+        <a href="#create_libs">
+         Creating Libraries
+        </a>
+       </li>
+       <li>
+        <a href="#activities">
+         Activities
+        </a>
+       </li>
+       <ul>
+        <li>
+         <a href="#file-read">
+          File Read &amp; Write
+         </a>
+        </li>
+        <li>
+         <a href="#json_parsing">
+          JSON Parsing
+         </a>
+        </li>
+        <li>
+         <a href="#alarm">
+          Alarm Clock
+         </a>
+        </li>
+        <li>
+         <a href="#regex">
+          RegEx Parsing
+         </a>
+        </li>
+        <li>
+         <a href="#web-client">
+          Web Client
+         </a>
+        </li>
+        <li>
+         <a href="#web-server">
+          Web Server
+         </a>
+        </li>
+       </ul>
+       <li>
+        <a href="#environment">
+         Programming Environment
+        </a>
+        <ul>
+         <li>
+          <a href="howto.html">
+           IDE Support
+          </a>
+         </li>
+         <li>
+          <a href="#repl">
+           REPL Shell
+          </a>
+         </li>
+         <li>
+          <a href="#debugger">
+           Debugger
+          </a>
+         </li>
+         <li>
+          <a href="#create_portable">
+           Generating a Portable Runtime
+          </a>
+         </li>
+        </ul>
+       </li>
+       <li>
+        <a href="#examples">
+         Examples
+        </a>
+       </li>
+      </ul>
+     </p>
+    </div>
+    <div class="container">
+     <!-- installation -->
+     <h2 id="installation">
+      Installation
+     </h2>
+     <p>
+      Objeck can be installed using the Windows installer or compressed archives. Supported platforms are Windows (x64), macOS (ARM64) and Linux (x64 and AMD64).
+     </p>
+     <p>
+      In order to compile programs outside of the
+      <pre class="cmd">bin</pre>
+      directory the
+      <pre class="cmd">OBJECK_LIB_PATH</pre>
+      environment variable must be set. When this variable is set all library files must be in the directory specified. If the Windows installer is used these variables will be automatically when you launch the Objeck command prompt.
+     </p>
+     <h3 id="windows">
+      Windows
+     </h3>
+     <p>
+      To manually setting the environment paths in Windows:
+     </p>
+     <pre class="cmd">&gt; set OBJECK_LIB_PATH=C:\Users\[account]\objeck-lang\lib
+&gt; set PATH=%PATH%;C:\Users\[account]\objeck-lang\bin;C:\Users\[account]\objeck-lang\lib\sdl</pre>
+     <h3 id="mac_linux">
+      macOS and Linux
+     </h3>
+     <p>
+      To manually setting the environment paths in macOS and Linux:
+     </p>
+     <pre class="cmd">&gt; export PATH=$PATH:/home/[account]/objeck-lang/bin
+&gt; export OBJECK_LIB_PATH=/home/[account]/objeck-lang/lib</pre>
+     <h4>
+      Simple Compile &amp; Execute
+     </h4>
+     <pre class="cmd">&gt; obc -src hello.obs
+&gt; obc -src 'C:\Program Files\objeck-lang\examples\encrypt.obs' -lib encrypt -dest encrypt
+&gt; obr hello.obe</pre>
+     <p>
+      Compile/execute for code that has library dependencies:
+     </p>
+     <pre class="cmd">&gt; obc -src ..\examples\xml_path.obs -lib xml</pre>
+     <!-- hello world! -->
+     <h3 id="hello_world">
+      Hello World!
+     </h3>
+     <pre><code class="language-cpp">class Hello {
+  function : Main(args : String[]) ~ Nil {
+    "Hello World"-&gt;PrintLine();
+    "Καλημέρα κόσμε"-&gt;PrintLine();
+    "こんにちは 世界"-&gt;PrintLine();
+  }
+}
+</code></pre>
+     <p>
+      Save the code above in file called "hello.obs". To compile the code execute the following command:
+      <p>
+       <pre class="cmd">&gt; obc hello</pre>
+       <p>
+        This command compiles the source file "hello.obs" into the target file "hello.obe" and links in any dependent libraries. To run the program execute the command:
+       </p>
+       <pre class="cmd">&gt; obr hello</pre>
+       <h3 id="videos">
+        Video Tutorials
+       </h3>
+       <p>
+        To assist with getting starting with Objeck video tutorials are available. The videos cover a range of topics and are updated periodically.
+       </p>
+       <ul>
+        <li>
+         <a href="https://www.youtube.com/watch?v=eiWdUs8txGc">
+          Getting Started
+         </a>
+        </li>
+        <li>
+         <a href="https://www.youtube.com/watch?v=6jumPoRLXHQ">
+          Data Types
+         </a>
+        </li>
+        <li>
+         <a href="https://www.youtube.com/watch?v=JUb80XoKX-4">
+          Parsing JSON
+         </a>
+        </li>
+        <li>
+         <a href="https://www.youtube.com/watch?v=VTbms3iV5p4">
+          Secure Web Server
+         </a>
+        </li>
+       </ul>
+       <h2 id="compiling_code">
+        Compiling Code
+       </h2>
+       <p>
+        The Objeck compiler produces two types of binaries. The first is a VM executable and the second is a library. Libraries can be linked to executables by passing the names of libraries to the compiler when compiling an executable. As a naming convention executables end with *.obe while shared libraries end with *.obl.
+       </p>
+       <p>
+        Here are a few examples. The first example compiles and runs a program that processes XML. For this program we link in the collections and XML parsing libraries.
+       </p>
+       <pre class="cmd">&gt; obc -src examples/2_xml.obs -lib xml
+&gt; obr xml_path.obe</pre>
+       <p>
+        The next example compiles and runs program that uses the encryption library.
+       </p>
+       <pre class="cmd">&gt; obc -src examples/7_encrypt.obs -lib encrypt
+&gt; obr encryption.obe</pre>
+       <small>
+        TABLE 1 – COMPILER OPTIONS
+       </small>
+       <table border="1" cellpadding="3px">
+        <tr>
+         <th>
+          Option
+         </th>
+         <th>
+          Description
+         </th>
+        </tr>
+        <tr>
+         <td>
+          -src
+         </td>
+         <td>
+          path to source files delimited by commas
+         </td>
+        </tr>
+        <tr>
+         <td>
+          -lib
+         </td>
+         <td>
+          list of linked libraries separated by commas
+         </td>
+        </tr>
+        <tr>
+         <td>
+          -ver
+         </td>
+         <td>
+          displays the compiler version
+         </td>
+        </tr>
+        <tr>
+         <td>
+          -tar
+         </td>
+         <td>
+          ttarget type 'lib' for linkable library or 'exe' for executable default is 'exe'
+         </td>
+        </tr>
+        <tr>
+         <td>
+          -opt
+         </td>
+         <td>
+          optimization level, s0 thru s3 being most aggressive; default is s3
+         </td>
+        </tr>
+        <tr>
+         <td>
+          -dest
+         </td>
+         <td>
+          binary output filename
+         </td>
+        </tr>
+        <tr>
+         <td>
+          -asm
+         </td>
+         <td>
+          emits a human readable debug byte assembly file
+         </td>
+        </tr>
+        <tr>
+         <td>
+          -alt
+         </td>
+         <td>
+          use C like syntax instead of UML like default
+         </td>
+        </tr>
+        <tr>
+         <td>
+          -debug
+         </td>
+         <td>
+          compile with debug symbols (must be last argument)
+         </td>
+        </tr>
+        <tr>
+         <td>
+          -strict
+         </td>
+         <td>
+          exclude default system libraries and provide them manually
+         </td>
+        </tr>
+       </table>
+       <p>
+       </p>
+       <pre class="cmd">&gt; obr --GC_THRESHOLD=128m hello.obe</pre>
+       <small>
+        TABLE 2 – PREPENDED VM OPTIONS
+       </small>
+       <table border="1" cellpadding="3px">
+        <tr>
+         <th>
+          Option
+         </th>
+         <th>
+          Description
+         </th>
+        </tr>
+        <tr>
+         <td>
+          --OBJECK_STDIO
+         </td>
+         <td>
+          if set, STDIO is binary on Windows, default is false
+         </td>
+        </tr>
+        <tr>
+         <td>
+          --GC_THRESHOLD
+         </td>
+         <td>
+          initial garbage collection threshold (i.e.; 128m), default is 1/16 of host memory
+         </td>
+        </tr>
+       </table>
+       <h2 id="basics">
+        Basics
+       </h2>
+       <p>
+        Let's first look at literals, variables, comments, control flow and basic data types.
+       </p>
+       <h3 id="lits_vars">
+        Literals and variables
+       </h3>
+       <p>
+        Literals are defined as they are in most programming languages. In Objeck literals are treated as objects and may have methods associated with them.
+       </p>
+       <pre class="line-numbers"><code class="language-cpp">'\u00BD'-&gt;PrintLine();
+13-&gt;Min(3)-&gt;PrintLine();
+3.89-&gt;Sin()-&gt;PrintLine();
+0xCB0-&gt;PrintLine(); # hex
+-0b1101-&gt;PrintLine(); # bin
+052-&gt;PrintLine(); # oct
+"Hello World"-&gt;Size()-&gt;PrintLine();
+</code></pre>
+       <p>
+        Here are a few examples of variable declarations and assignments. Variable types can be explicitly defined or implicitly inferred through assignments or casts. If a variable's type is inferred it cannot be redefined later in the program however it can be cast.
+       </p>
+       <pre class="line-numbers"><code class="language-cpp">a : Int;
+b : Float := 13.5;
+c := 7.25; # type inferred as Float
+d := (b * 2)-&gt;As(Int); # type inferred as Int
+</code></pre>
+       <p>
+        Also support for multi-variable assignment and negation.
+       </p>
+       <pre class="line-numbers"><code class="language-cpp">a, b : Float := 13.5;
+b += -a * 13;
+"{$b}"-&gt;PrintLine();
+a := b := c := 3.15;
+"{$a} {$b} {$c}"-&gt;PrintLine();
+d := a &lt; b ? "less" : "greater"; # conditional operator
+</code></pre>
+       <p>
+        Types can also be described and referenced using aliases.
+       </p>
+       <pre class="line-numbers"><code class="language-cpp">function : Multiplier(a : FloatRef, b : FloatRef) ~ \Func-&gt;Proc {
+  return \Func-&gt;Proc : (c) =&gt;  a * b * c;
+  }
+}
+
+alias Func {
+  Proc : (FloatRef) ~ FloatRef
+}
+</code></pre>
+       <small>
+        TABLE 3 – DATA TYPES
+       </small>
+       <table border="1" cellpadding="3px">
+        <tr>
+         <th>
+          Type
+         </th>
+         <th>
+          Description
+         </th>
+        </tr>
+        <tr>
+         <td>
+          Char
+         </td>
+         <td>
+          Unicode character value (4-bytes POSIX, 2-bytes Windows)
+         </td>
+        </tr>
+        <tr>
+         <td>
+          Char[]
+         </td>
+         <td>
+          Unicode character array (4-bytes POSIX, 2-bytes Windows)
+         </td>
+        </tr>
+        <tr>
+         <td>
+          Bool
+         </td>
+         <td>
+          Boolean value (1-byte)
+         </td>
+        </tr>
+        <tr>
+         <td>
+          Bool[]
+         </td>
+         <td>
+          Boolean array (1-byte)
+         </td>
+        </tr>
+        <tr>
+         <td>
+          Byte
+         </td>
+         <td>
+          1-byte integer value
+         </td>
+        </tr>
+        <tr>
+         <td>
+          Byte[]
+         </td>
+         <td>
+          1-byte integer array
+         </td>
+        </tr>
+        <tr>
+         <td>
+          Int
+         </td>
+         <td>
+          8-byte integer value (4-bytes on file system)
+         </td>
+        </tr>
+        <tr>
+         <td>
+          Int[]
+         </td>
+         <td>
+          8-byte integer array (4-bytes on file system)
+         </td>
+        </tr>
+        <tr>
+         <td>
+          Float
+         </td>
+         <td>
+          8-byte decimal value
+         </td>
+        </tr>
+        <tr>
+         <td>
+          Float[]
+         </td>
+         <td>
+          8-byte decimal array
+         </td>
+        </tr>
+        <tr>
+         <td>
+          Object
+         </td>
+         <td>
+          Reference to an abstract data type (8-bytes)
+         </td>
+        </tr>
+        <tr>
+         <td>
+          Object[]
+         </td>
+         <td>
+          Array of abstract data types (8-bytes)
+         </td>
+        </tr>
+        <tr>
+         <td>
+          Function
+         </td>
+         <td>
+          Functional reference (8-byte, paring)
+         </td>
+        </tr>
+       </table>
+       <p>
+       </p>
+       <h3 id="comments">
+        Comments
+       </h3>
+       <p>
+        Comments may span a single line or multiple lines. In addition, comments for bundles, classes, interfaces and functions/methods may be used to produce code documentation. Please refer to the project website for additional information about generating documentation from your code.
+       </p>
+       <pre class="line-numbers"><code class="language-cpp">flag := false; # single line comment
+#~
+multiline comment. flag above
+may be set to true or false
+~#
+</code></pre>
+       <p>
+       </p>
+       <h3 id="ctrl_flow">
+        Control Flow
+       </h3>
+       <p>
+        As with most languages Objeck supports conditional expressions and control flow logic. One nuance is that conditional statements end with semi-colons.
+       </p>
+       <h4>
+        If/else
+       </h4>
+       <p>
+        An "if/else" statement is a basic control statement.
+       </p>
+       <pre class="line-numbers"><code class="language-cpp">number := Console-&gt;ReadLine()-&gt;ToInt();
+if(number &lt;&gt; 3) {
+ "Not equal to 3"-&gt;PrintLine();
+} else if(number &lt; 13) {
+ "Less than 13"-&gt;PrintLine();
+} else {
+ "Some other number"-&gt;PrintLine();
+};
+</code></pre>
+       <h4>
+        Select
+       </h4>
+       <p>
+        Select statements can be used to efficiently map integer and enum values to blocks of code.
+       </p>
+       <pre class="line-numbers"><code class="language-cpp">select(c) {
+ label Color-&gt;Red: { "Red"-&gt;PrintLine(); }
+ label Color-&gt;Green: { "Green"-&gt;PrintLine(); }
+ label Color-&gt;Purple: { "Purple"-&gt;PrintLine(); }
+ other: { "Another color"-&gt;PrintLine(); }
+};
+
+select(n) {
+ label 9:
+ label 19: { n-&gt;PrintLine(); } 
+ label 0x1b: { (3 * 9 = n)-&gt;PrintLine(); }
+};</code></pre>
+       <p>
+        The language supports for the following looping statements
+        <p>
+         <h4>
+          Do/While
+         </h4>
+         <p>
+          A "do/while" loop is a basic post-test loop.
+         </p>
+         <pre class="line-numbers"><code class="language-cpp">i := 0;
+do {
+ i-&gt;PrintLine();
+ i += 1;
+} while(i &lt;&gt; 10);
+</code></pre>
+         <h4>
+          For
+         </h4>
+         <p>
+          A "for" loop is a controlled loop with an explicated control expression.
+         </p>
+         <pre class="line-numbers"><code class="language-cpp">location := "East Bay";
+for(i := 0; i &lt; location-&gt;Size(); i += 1;) {
+ location-&gt;Get(i)-&gt;PrintLine();
+};
+</code></pre>
+         <h4>
+          Each
+         </h4>
+         <p>
+          An "each" loop is a controlled loop that iterates though all elements in an array or collection. Items can also be iterated in reverse using the "reverse" keyword.
+         </p>
+         <pre class="line-numbers"><code class="language-cpp">area_code := Int-&gt;New[3];
+area_codes := Int-&gt;New[3];
+area_codes[0] := 5;
+area_codes[1] := 1;
+area_codes[2] := 0;
+
+sum := 0;
+each(i : area_codes) {
+ sum += area_codes[i];
+};
+sum-&gt;PrintLine();
+</code></pre>
+         <p>
+         </p>
+         <h4>
+          Reverse
+         </h4>
+         <p>
+          The "reverse" keyword iterates items in reverse.
+         </p>
+         <pre class="line-numbers"><code class="language-cpp">numbers := [1, 2, 3, 4, 5];
+reverse(i : numbers) {
+	numbers[i]-&gt;PrintLine();
+};
+</code></pre>
+         <p>
+          An "each" or "reverse" loop can also bind to a variable using the assignment operator instead of a colon.
+         </p>
+         <pre class="line-numbers"><code class="language-cpp">strings := Generic.Vector-&gt;New()&lt;String&gt;;
+strings-&gt;AddBack("abd");
+strings-&gt;AddBack("efg");
+strings-&gt;AddBack("hij");
+strings-&gt;AddBack("lmn");
+
+reverse(string := strings) {
+	string += ", 123";
+	each(letter := string) {
+		letter-&gt;PrintLine();
+	};
+};
+</code></pre>
+         <p>
+         </p>
+         <h4>
+          Leaving
+         </h4>
+         <p>
+          The "leaving" keyword is used to execute a block of code at the end of method/function
+         </p>
+         <pre class="line-numbers"><code class="language-cpp">
+function : WriteSocket(bytes : Byte[]) ~ Nil {
+	client := TCPSocket-&gt;New("localhost", 4660);
+	leaving {
+		client-&gt;Close();
+	};
+
+	if(client-&gt;IsOpen()) {
+		size := bytes-&gt;Size();
+		size_str := size-&gt;ToString();
+		client-&gt;WriteString(size_str);
+		client-&gt;WriteBuffer(0, size, bytes)-&gt;PrintLine();
+	};
+}
+</code></pre>
+         <h3 id="operators">
+          Operators
+         </h3>
+         <p>
+          There’s support for logical, mathematical and bitwise operators. Operator precedence from weakest to strongest is: logical, [+, -] and [*, /, %, &lt;&lt;, &gt;&gt;, and, or, xor]. Operators of the same precedence are evaluated from left-to-right.
+         </p>
+         <p>
+          <small>
+           TABLE 4 - LOGICAL
+          </small>
+          <table border="1" cellpadding="3px">
+           <tr>
+            <th>
+             Operator
+            </th>
+            <th>
+             Description
+            </th>
+           </tr>
+           <tr>
+            <td>
+             &amp;
+            </td>
+            <td>
+             And
+            </td>
+           </tr>
+           <tr>
+            <td>
+             |
+            </td>
+            <td>
+             Or
+            </td>
+           </tr>
+           <tr>
+            <td>
+             =
+            </td>
+            <td>
+             Equal
+            </td>
+           </tr>
+           <tr>
+            <td>
+             &lt;&gt;
+            </td>
+            <td>
+             Not equal and unary not
+            </td>
+           </tr>
+           <tr>
+            <td>
+             &lt;
+            </td>
+            <td>
+             Less than
+            </td>
+           </tr>
+           <tr>
+            <td>
+             &gt;
+            </td>
+            <td>
+             Greater than
+            </td>
+           </tr>
+           <tr>
+            <td>
+             &lt;=
+            </td>
+            <td>
+             Less than or equal
+            </td>
+           </tr>
+           <tr>
+            <td>
+             &gt;=
+            </td>
+            <td>
+             Greater than or equal
+            </td>
+           </tr>
+          </table>
+         </p>
+         <p>
+          <small>
+           TABLE 5 - MATHEMATICAL
+          </small>
+          <table border="1" cellpadding="3px">
+           <tr>
+            <th>
+             Operator
+            </th>
+            <th>
+             Description
+            </th>
+           </tr>
+           <tr>
+            <td>
+             +
+            </td>
+            <td>
+             Add
+            </td>
+           </tr>
+           <tr>
+            <td>
+             +=
+            </td>
+            <td>
+             Add to variable
+            </td>
+           </tr>
+           <tr>
+            <td>
+             ++
+            </td>
+            <td>
+             Increment variable
+            </td>
+           </tr>
+           <tr>
+            <td>
+             -
+            </td>
+            <td>
+             Subtract
+            </td>
+           </tr>
+           <tr>
+            <td>
+             -=
+            </td>
+            <td>
+             Subtract from variable
+            </td>
+           </tr>
+           <tr>
+            <td>
+             --
+            </td>
+            <td>
+             Decrement variable
+            </td>
+           </tr>
+           <tr>
+            <td>
+             *
+            </td>
+            <td>
+             Multiply
+            </td>
+           </tr>
+           <tr>
+            <td>
+             *=
+            </td>
+            <td>
+             Multiply to variable
+            </td>
+           </tr>
+           <tr>
+            <td>
+             /
+            </td>
+            <td>
+             Divide
+            </td>
+           </tr>
+           <tr>
+            <td>
+             /=
+            </td>
+            <td>
+             Divide from variable
+            </td>
+           </tr>
+           <tr>
+            <td>
+             %
+            </td>
+            <td>
+             Modulus
+            </td>
+           </tr>
+          </table>
+         </p>
+         <p>
+          <small>
+           TABLE 6 – BITWISE
+          </small>
+          <table border="1" cellpadding="3px">
+           <tr>
+            <th>
+             Operator
+            </th>
+            <th>
+             Description
+            </th>
+           </tr>
+           <tr>
+            <td>
+             &lt;&lt;
+            </td>
+            <td>
+             Shift left
+            </td>
+           </tr>
+           <tr>
+            <td>
+             &gt;&gt;
+            </td>
+            <td>
+             Shift right
+            </td>
+           </tr>
+           <tr>
+            <td>
+             and
+            </td>
+            <td>
+             Bitwise and
+            </td>
+           </tr>
+           <tr>
+            <td>
+             or
+            </td>
+            <td>
+             Bitwise or
+            </td>
+           </tr>
+           <tr>
+            <td>
+             xor
+            </td>
+            <td>
+             Bitwise xor
+            </td>
+           </tr>
+          </table>
+         </p>
+         <pre class="line-numbers"><code class="language-cpp">class Luhn {
+  function : IsValid(cc : String) ~ Bool {
+    isOdd := true; oddSum := 0; evenSum := 0;
+    for(i := cc-&gt;Size() - 1; i &gt;= 0; i -= 1;) {
+      digit : Int := cc-&gt;Get(i) - '0';
+      if(isOdd) {
+        oddSum += digit;
+      } else {
+        evenSum += digit / 5 + (2 * digit) % 10;
+      };
+      isOdd := isOdd &lt;&gt; true;
+    };
+    return (oddSum + evenSum) % 10 = 0;
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    IsValid("49927398716")-&gt;PrintLine();
+    IsValid("49927398717")-&gt;PrintLine();
+    IsValid("1234567812345678")-&gt;PrintLine();
+    IsValid("1234567812345670")-&gt;PrintLine();
+  }
+}
+</code></pre>
+         <p>
+          Code fragment from the Base64 encoding class
+         </p>
+         <pre class="line-numbers"><code class="language-cpp"># Primary encoding loop
+r := ""; i : Int; a := 0;
+for(i := 0; i &lt; end; i += 3;) {
+  a := (data[i] &lt;&lt; 16) or (data[i+1] &lt;&lt; 8) or (data[i+2]);
+  r-&gt;Append( lut[0x3F and (a &gt;&gt; 18)] );
+  r-&gt;Append( lut[0x3F and (a &gt;&gt; 12)] );
+  r-&gt;Append( lut[0x3F and (a &gt;&gt; 6)] );
+  r-&gt;Append( lut[0x3F and a] );
+};</code></pre>
+         <p>
+          The language has support for dynamically allocated arrays, Unicode strings and various containers.
+         </p>
+         <h3 id="arrays">
+          Arrays
+         </h3>
+         <p>
+          Arrays can hold an indexed list of like types. Arrays are dynamically allocated from the heap and their memory managed by the garbage collector. The runtime system supports bounds checking and will cease execution (generating a stack trace) if array bounds are violated.
+         </p>
+         <p>
+          Allocating and indexing arrays
+         </p>
+         <p>
+          <pre><code class="language-cpp"># allocate Int array
+boxes := Int-&gt;New[2,3];
+boxes[0,0] := 2;
+boxes[0,1] := 4;
+boxes[0,2] := 8;
+boxes[1,0] := 1;
+boxes[1,1] := 2;
+boxes[1,2] := 3;
+dims := boxes-&gt;Size(); # get the dimensions
+dims[0]-&gt;PrintLine(); # dimension 1
+dims[1]-&gt;PrintLine(); # dimension 2
+
+# create some strings an iterate over them
+directions := String-&gt;New[4];
+directions[0] := "North";
+directions[1] := "South";
+directions[2] := "East";
+directions[3] := "West";
+each(i : directions) {
+  directions[i]-&gt;PrintLine();
+};
+</code></pre>
+         </p>
+         <h3 id="strings">
+          Strings
+         </h3>
+         <p>
+          Character strings are a collection of Unicode characters backed by the String class. The string class supports a number of operations such as insert, find, substring, type parsing (i.e. String to Float), etc. Variable values can also be inlined into string literals. Strings can be converted into character arrays and UTF-8 byte arrays. The
+          <code>
+           $
+          </code>
+          character can be used to interpret strings verbatim, ignoring escape characters.
+         </p>
+         <pre><code class="language-cpp">name := "DJ";
+name += ' ';
+name += "Premier";
+name += $"bell \b \b bell";
+name-&gt;PrintLine();
+name-&gt;SubString(2)-&gt;PrintLine();
+name-&gt;Size()-&gt;PrintLine();
+</code></pre>
+         <p>
+          Code fragment from a sundial program
+         </p>
+         <pre><code class="language-cpp">"Hour\t\tsun hour angle\t\tdial hour line angle from 6am to 6pm"-&gt;PrintLine();
+for(h := -6; h &lt;= 6; h+=1;) {
+  hra := 15.0 * h;
+  hra -= lng - ref;
+  hla := (slat* (hra*2*Float-&gt;Pi()/360.0)-&gt;Tan())
+    -&gt;ArcTan() * 360.0 / (2*Float-&gt;Pi());
+  "HR={$h}\t\tHRA={$hra}\t\tHLA={$hla}"-&gt;PrintLine();
+};
+</code></pre>
+         <p>
+         </p>
+         <h2 id="enum_const">
+          Enums and Constants
+         </h2>
+         <p>
+          Enums are enumerated named constant values. Enums values are sequential and start from an offset. Constants, like enums, are named constant values however each value can be uniquely assigned.
+         </p>
+         <pre class="line-numbers"><code class="language-cpp">enum Color {
+ Red,
+ Blue,
+ Green
+}
+
+class Character {
+  @move : Character-&gt;Direction;
+
+  enum Direction {
+   Left := -100,
+   Right,
+   Up,
+   Down
+  }
+}
+	
+consts Products {
+ PipBoy := 101,
+ ValutSuit := 111,
+ Laser := 675
+}
+</code></pre>
+         <p>
+         </p>
+         <h2 id="props">
+          Properties
+         </h2>
+         <p>
+          Property name/value pairs can be set programmatically or external via a configuration file. The configuration file must be named
+          <code>
+           config.prop
+          </code>
+          and reside in the same that the directory that the program is executed from.
+         </p>
+         <pre class="line-numbers"><code class="language-cpp">ren=stimpy
+cola=pepsi
+</code></pre>
+         <p>
+          Here is an example using an external proprieties file and creating new a new property.
+         </p>
+         <pre class="line-numbers"><code class="language-cpp">Runtime-&gt;GetProperty("ren")-&gt;PrintLine();
+Runtime-&gt;GetProperty("cola")-&gt;PrintLine();
+
+Runtime-&gt;SetProperty("hello", "world");
+Runtime-&gt;GetProperty("hello")-&gt;PrintLine();
+</code></pre>
+         <h2 id="classes_interfaces">
+          Classes and Interfaces
+         </h2>
+         <p>
+          A class is an abstract collection of data with related operations. An interface is a set of operations (a contract) that implementing classes must honor. In Objeck, interfaces are public and classes may be public or private. Member variables are private and must accessed using "getters" and "setters". Classes may also define enum types.
+         </p>
+         <p>
+          Below is a code example of that demonstrates many of these concepts. There are
+          <a href="https://github.com/objeck/objeck-lang/tree/master/programs/deploy">
+           code examples
+          </a>
+          for other features such as reflection, serialization and more.
+         </p>
+         <pre class="line-numbers"><code class="language-cpp">interface Registration {
+  method : virtual : public : GetColor() ~ String;
+  method : virtual : public : GetMake() ~ String;
+  method : virtual : public : GetModel() ~ String;
+}
+enum EngineType {
+  Gas := 200,
+  Hybrid,
+  Electric,
+  Warp
+}
+
+class : public : Vehicle {
+  @wheels : Int;
+  @color : String;
+  @engine_type : EngineType;
+  
+  New(wheels : Int, color : String, engine_type : EngineType) {
+    @wheels := wheels;
+    @color := color;
+    @engine_type := engine_type;
+ }
+ 
+ method : public : GetColor() ~ String {
+   return @color;
+ }
+ 
+ method : public : GetEngine() ~ EngineType {
+   return @engine_type;
+ }
+}
+ 
+
+class : public StarShip from Vehicle implements Registration {
+  New() {
+    Parent(13, "Metal Fuschia", EngineType-&gt;Warp);
+  }
+ 
+  method : public : GetMake() ~ String {
+    return "Excelsior";
+  }
+ 
+  method : public : GetModel() ~ String {
+    return "NX-2000";
+  }
+
+  method : public : EchoDescription() ~ Nil {
+    "Partying with the Borg, they brought drinks!"-&gt;PrintLine();
+  }
+}
+
+class : public Pinto from Vehicle implements Registration {
+  New() {
+    Parent();
+  }
+ 
+  method : public : GetMake() ~ String {
+    return "Ford";
+  }
+  
+  method : public : GetModel() ~ String {
+    return "Pinto";
+  }
+}
+
+class : public VehicleTest {
+  function : Main(args : String[]) ~ Nil {
+    pinto := Pinto-&gt;New();
+    star_ship := StarShip-&gt;New();
+    type_of := pinto-&gt;TypeOf(Vehicle);
+    type_of-&gt;PrintLine();
+    type_of := star_ship-&gt;TypeOf(Vehicle);
+    type_of-&gt;PrintLine();
+    type_of := pinto-&gt;TypeOf(StarShip);
+    type_of-&gt;PrintLine();
+    registration := star_ship-&gt;As(Registration);
+    registration-&gt;GetMake()-&gt;PrintLine();
+    registration-&gt;GetColor()-&gt;PrintLine();
+    enterprise := registration-&gt;As(StarShip);
+    enterprise-&gt;EchoDescription();
+  }
+}</code></pre>
+         <p>
+         </p>
+         <p>
+          Anonymous classes can be created that define "inline" required interface methods or functions. External variables may be referenced within an anonymous class if they’re passed as references to the class constructor.
+         </p>
+         <pre class="line-numbers"><code class="language-cpp">interface Greetings {
+  method : virtual : public : SayHi() ~ Nil;
+}
+
+class Hello {
+  function : Main(args : String[]) ~ Nil {
+    hey := Base-&gt;New() implements Greetings {
+      New() {}
+      method : public : SayHi() ~ Nil {
+        "Hey..."-&gt;PrintLine();
+      }
+    };
+ 
+    howdy := Base-&gt;New() implements Greetings {
+      New() {}
+      method : public : SayHi() ~ Nil {
+        "Howdy!"-&gt;PrintLine();
+      }
+    };
+  }
+}
+</code></pre>
+         <p>
+         </p>
+         <h2 id="collect">
+          Collections
+         </h2>
+         <p>
+          In addition, to arrays the language supports various generic collections such as Vectors, Lists, Maps, Stack, Queues, etc. To learn more about the collections classes please check out the API documentation. In order to use these classes you must "use" the collections bundle or use a fully qualified name consider the following lines of code:
+         </p>
+         <pre><code class="language-cpp">use Collection;
+
+genres := Vector-&gt;New()&lt;String&gt;;	
+genres := Collection.Vector-&gt;New()&lt;String&gt;;
+</code></pre>
+         <h3 id="collect_vector">
+          Vectors
+         </h3>
+         <p>
+          Vectors are arrays that can be dynamically resized. They support fast indexing, iterating and appending of values. In order to improve performance memory for vectors is preallocated.
+         </p>
+         <pre class="line-numbers"><code class="language-cpp">genres := Vector-&gt;New()&lt;String&gt;;
+genres-&gt;AddBack("Hip hop");
+genres-&gt;AddBack("Classical");
+genres-&gt;AddBack("Jazz");
+genres-&gt;AddBack("Rock");
+genres-&gt;AddBack("Folk");
+each(i : genres) {
+  genres-&gt;Get(i)-&gt;PrintLine();
+};
+</code></pre>
+         <h3 id="collect_list">
+          Lists
+         </h3>
+         <p>
+          Lists are a collection of linear linked nodes. They support the fast insertion and removal of values. Memory for nodes are allocated on-demand however nodes may not be directly indexed as with Vectors.
+         </p>
+         <pre class="line-numbers"><code class="language-cpp">artists := List-&gt;New()&lt;String&gt;;
+artists-&gt;AddBack("Hendrix");
+artists-&gt;AddFront("Beck");
+# move cursor back for middle insertion
+artists-&gt;Back();
+artists-&gt;Insert("Common");
+# move cursor to start of list
+artists-&gt;Rewind();
+# iterate over values
+while(artists-&gt;More()) {
+  artists-&gt;Get()-&gt;PrintLine();
+  artists-&gt;Next();
+};
+</code></pre>
+         <h3 id="collect_map_hash">
+          Maps and Hashes
+         </h3>
+         <p>
+          Map and Hash classes manage key/value pairs. Maps manage values in tree and allocate memory on demand. Maps are slower than hashes however manage memory better. Hashes use keys as indices into arrays and support fast insertion and deletion at the cost of memory. Maps are ordered while Hashes are not.
+         </p>
+         <pre class="line-numbers"><code class="language-cpp">area_codes := Map-&gt;New()&lt;IntRef, String&gt;;
+area_codes-&gt;Insert(510, "Oakland");
+area_codes-&gt;Insert(415, "San Francisco");
+area_codes-&gt;Insert(650, "Palo Alto");
+area_codes-&gt;Insert(925, "San Jose");
+
+area_codes-&gt;Find(510)-&gt;PrintLine();
+codes := area_codes-&gt;GetValues()&lt;String&gt;;
+each(code := codes) {
+  code-&gt;PrintLine();
+};
+</code></pre>
+         <h3 id="collect_map_set">
+          Sets
+         </h3>
+         <p>
+          Sets are key are a collection of ordered keys.
+         </p>
+         <pre class="line-numbers"><code class="language-cpp">area_codes := Set-&gt;New()&lt;IntRef&gt;;
+area_codes-&gt;Insert(510);
+area_codes-&gt;Insert(415);
+area_codes-&gt;Insert(650);
+area_codes-&gt;Insert(925);
+
+area_codes-&gt;Has(510)-&gt;PrintLine();
+codes := area_codes-&gt;GetKeys()&lt;IntRef&gt;;
+each(code := codes) {
+  code-&gt;PrintLine();
+};
+</code></pre>
+         <h3 id="collect_map_queue">
+          Queues
+         </h3>
+         <p>
+          Queues support adding items to front and back of a stack-like structure.
+         </p>
+         <pre class="line-numbers"><code class="language-cpp">queue := Collection.Queue-&gt;New()<floatref>;
+queue-&gt;AddFront(33.3);
+queue-&gt;AddBack(99.9);
+queue-&gt;AddFront(66.6);
+queue-&gt;Front()-&gt;PrintLine();
+</floatref></code></pre>
+         <h2 id="funcs">
+          Closures and Lambda Expressions
+         </h2>
+         <p>
+          First class functions allow programmers to use functions like variables. They can be passed into methods/functions, have methods/functions return functions and be assigned to variables. In addition, Objeck supports
+          <a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/closure_19.obs">
+           closures
+          </a>
+          and
+          <a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/lambda_17.obs">
+           lambda expressions
+          </a>
+          .
+         </p>
+         <pre class="line-numbers"><code class="language-cpp">class FofG {
+  @f : static : (Int) ~ Int;
+  @g : static : (Int) ~ Int;
+
+  function : Main(args : String[]) ~ Nil {
+    compose := Composer(F(Int) ~ Int, G(Int) ~ Int);
+    compose(13)-&gt;PrintLine();
+  }
+
+  function : F(a : Int) ~ Int {
+    return a + 14;
+  }
+ 
+  function : G(a : Int) ~ Int {
+    return a + 15;
+  }
+ 
+  function : native : Compose(x : Int) ~ Int {
+    return @f(@g(x));
+  }
+
+  function : Composer(f : (Int) ~ Int, g : (Int) ~ Int) ~ (Int) ~ Int {
+    @f := f;
+    @g := g;
+    
+    return Compose(Int) ~ Int;
+  }
+}
+</code></pre>
+         <p>
+         </p>
+         <p>
+          Lambda expressions allow programmers to create anonymous functions and assign references to these functions. Such functions can be used for inline calculations and programming logic. In addition to expressions, the language supports lambdas expressions that contain 'if' and 'select' statements and return a value.
+         </p>
+         <pre class="line-numbers"><code class="language-cpp">vector := Vector-&gt;New()&lt;Func2Ref &lt;FloatRef, FloatRef&gt; &gt;;
+# store functions in collections
+vector-&gt;AddBack(Func2Ref-&gt;New(\Func-&gt;Double : (v) 
+  =&gt;  v * v)&lt;FloatRef, FloatRef&gt;);
+# new function from preexisting function at run-time
+vector-&gt;AddBack(Func2Ref-&gt;New(\Func-&gt;Double : (v) 
+  =&gt; Float-&gt;SquareRoot(v-&gt;Get()))&lt;FloatRef, FloatRef&gt;);
+# process collection
+each(i : vector) {
+  # return value of other functions and pass argument to other function
+  Show(vector-&gt;Get(i)&lt;Func2Ref&gt;-&gt;Get()&lt;FloatRef, FloatRef&gt;);
+};
+</code></pre>
+         <p>
+          Objeck supports closures by allowing the value of local variables to captured and used in later invocations of code.
+         </p>
+         <pre class="line-numbers"><code class="language-cpp">funcs := Vector-&gt;New()&lt;FuncRef&lt;IntRef&gt; &gt;;
+# create 10 functions capturing i     
+for(i := 0; i &lt; 10; i += 1;) {
+  funcs-&gt;AddBack(FuncRef-&gt;New(\() ~ IntRef : () =&gt; i * i)&lt;IntRef&gt;);
+};
+# invoke functions
+each(i : funcs) {
+  func := funcs-&gt;Get(i)-&gt;Get()&lt;IntRef&gt;;
+  func()-&gt;Get()-&gt;PrintLine();
+};
+</code></pre>
+         <p>
+          Lambda parameters types can also be inferred using the modified syntax below.
+         </p>
+         <pre class="line-numbers"><code class="language-cpp">map := Map-&gt;New()&gt;IntRef, String&gt;;
+map-&gt;Insert(1, "One");
+map-&gt;Insert(3, "Three");
+map-&gt;Insert(5, "Five");
+map-&gt;Insert(7, "Seven");
+map-&gt;Insert(9, "Nine");
+map-&gt;Each(\^(k, v) =&gt; "{$k}: {$v}"-&gt;PrintLine());
+</code></pre>
+         <h2 id="threads">
+          Threads
+         </h2>
+         <p>
+          Threads can be created by subclassing the Thread class, implementing the Run(..) method, and then calling Execute(..) to start the thread. Multiple threads can be joined together using the Join(..) method. The ThreadMutex class is used to protect critical sections using the "critical" keyword for code blocks.
+         </p>
+         <p>
+          The code snippet below shows how to lock a critical section.
+          <a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/threads_6.obs">
+           Here
+          </a>
+          is a complete code example demonstrating the concepts above.
+         </p>
+         <pre class="line-numbers"><code class="language-cpp"># lock cache for while we search or insert content
+critical(@content_mutex) {
+	# found in cache
+	found := @content_cache-&gt;Find(path_name);
+	if(found &lt;&gt; Nil) {
+		content := found-&gt;Get();
+	}
+	# not found, add to cache
+	else {
+		content := System.IO.Filesystem.FileReader-&gt;ReadBinaryFile(path_name);
+		if(content &lt;&gt; Nil) {
+			@content_cache-&gt;Insert(path_name, ByteArrayRef-&gt;New(content));
+		};
+	};
+};
+</code></pre>
+         <h2 id="jit_compile">
+          JIT Compilation
+         </h2>
+         <p>
+          Method and function may be JIT compiler to speed up their execution. The Methods/functions are compiled the first time they are called and subsequent calls execute the per-compiled code. To direct the runtime to JIT compile code for a given function/method use the "native" keyword.
+         </p>
+         <p>
+          Good candidates for JIT compilation are computationally expensive blocks of code with lots of loops. Code that contains numerous floating-point calculations may also benefit from being sped up.
+         </p>
+         <p>
+          As an example, observe the execution time of this prime number program with and without the use of the native keyword.
+         </p>
+         <pre class="line-numbers"><code class="language-cpp">class FindPrime {
+   function : Main(args : System.String[]) ~ Nil {
+     Run(100000);
+   }
+ 
+   function : native : Run(topCandidate : Int) ~ Nil {
+     candidate := 2;
+     while(candidate &lt;= topCandidate) {
+       trialDivisor := 2;
+       prime := 1;
+
+       found := true;
+       while(trialDivisor * trialDivisor &lt;= candidate &amp; found) {
+         if(candidate % trialDivisor = 0) {
+           prime := 0;
+           found := false;
+         }
+         else {
+           trialDivisor++;
+         };
+       };
+
+       if(found) {
+         candidate-&gt;PrintLine();
+       };
+       candidate++;
+     };
+   }
+}
+</code></pre>
+         <h3 id="create_libs">
+          Creating Libraries
+         </h3>
+         <p>
+          Creating class libraries is pretty straightforward. Put one or more classes into one or more files and compile the code with the “-tar lib” option. Code for libraries cannot contain a “main” function.
+         </p>
+         <pre class="line-numbers"><code class="language-cpp">class Pair {
+  @key : Compare;
+  @value : Base;
+ 
+  New(key : Compare, value : Base) {
+    @key := key;
+    @value := value;
+  }
+ 
+  method : public : GetKey() ~ Compare {
+    return @key;
+  }
+ 
+  method : public : Get() ~ Base {
+    return @value;
+  }
+}
+</code></pre>
+         <p>
+          To compile the code type the following:
+         </p>
+         <pre class="cmd">&gt; obc -src pair.obs –tar lib -dest pair.obl</pre>
+         <p>
+          To use the library in program type the following:
+         </p>
+         <pre class="cmd">&gt; obc -src points.obs –lib pair</pre>
+         <h2 id="activities">
+          Activities
+         </h2>
+         <p>
+          Here's a list of common programming tasks implemented in Objeck.
+         </p>
+         <h4 id="file-read">
+          File Read &amp; Write
+         </h4>
+         <p>
+          Reads and prints a file
+         </p>
+         <pre class="line-numbers"><code class="language-cpp">content := System.IO.Filesystem.FileReader-&gt;ReadFile("in.txt");
+content-&gt;PrintLine();
+System.IO.Filesystem.FileReader-&gt;WriteFile("out.txt", content);
+</code></pre>
+         <h4 id="json_parsing">
+          HTTPS Client &amp; JSON Parsing
+         </h4>
+         <p>
+          Read JSON from a timeserver and parser the date/time
+         </p>
+         <pre class="line-numbers"><code class="language-cpp">get_buf := Web.HTTP.HttpClient-&gt;QuickGet(Web.HTTP.Url-&gt;New("http://worldtimeapi.org/api/ip"));
+if(get_buf &lt;&gt; Nil) {
+	json_elem := Data.JSON.JsonParser-&gt;TextToElement(get_buf-&gt;ToString());
+	if(json_elem &lt;&gt; Nil) {
+		date_time_elem := json_elem-&gt;Get("datetime");
+		if(date_time_elem &lt;&gt; Nil) {
+			date_time := ParseTime(date_time_elem-&gt;GetString());
+			if(date_time &lt;&gt; Nil) {
+				date_time-&gt;ToString()-&gt;PrintLine();
+			};
+		};
+	};
+};
+</code></pre>
+         <h4 id="xml-parsing">
+          Parse XML
+         </h4>
+         <p>
+          Parse and XML document and access elements
+         </p>
+         <pre class="line-numbers"><code class="language-cpp">class Pair {
+in := "";
+in += "<inventory #45x10^3\"="" store="" title='\"OmniCorp'>";
+in += "<section name='\"health\"'>";
+in += "<item stock='\"12\"' upc='\"123456789\"'>";
+in += "<name>Invisibility Cream</name>";
+in += "<price>14.50</price>";
+in += "<description>Makes you invisible</description>";
+in += "</item>";
+in += "<item stock='\"18\"' upc='\"445322344\"'>";
+in += "<name>Levitation Salve</name>";
+in += "<price>23.99</price>";
+in += "<description>Levitate yourself for up to 3 hours per application</description>";
+in += "</item>";
+in += "</section>";
+in += "<section name='\"food\"'>";
+in += "<item stock='\"653\"' upc='\"485672034\"'>";
+in += "<name>Blork and Freen Instameal</name>";
+in += "<price>4.95</price>";
+in += "<description>A tasty meal in a tablet; just add water</description>";
+in += "</item>";
+in += "<item stock='\"44\"' upc='\"132957764\"'>";
+in += "<name>Grob winglets</name>";
+in += "<price>3.56</price>";
+in += "<description>Tender winglets of Grob. Just add water</description>";
+in += "</item>";
+in += "</section>";
+in += "</inventory>";
+
+parser := XmlParser-&gt;New(in);
+if(parser-&gt;Parse()) {
+	# get first item
+	results := parser-&gt;FindElements("/inventory/section[1]/item[1]")<xmlelement>;
+	if(results &lt;&gt; Nil) {
+		Standard-&gt;Print("items: ")-&gt;PrintLine(results-&gt;Size());
+	};
+	# get all prices
+	results := parser-&gt;FindElements("/inventory/section/item/price")<xmlelement>;
+	if(results &lt;&gt; Nil) {
+		each(i : results) {					
+			element := results-&gt;Get(i);
+			element-&gt;GetContent()-&gt;PrintLine();
+		};
+	};
+	# get names
+	results := parser-&gt;FindElements("/inventory/section/item/name")<xmlelement>;
+	if(results &lt;&gt; Nil) {
+		Standard-&gt;Print("names: ")-&gt;PrintLine(results-&gt;Size());
+	};
+};
+</xmlelement></xmlelement></xmlelement></code></pre>
+         <h4 id="alarm">
+          Alarm
+         </h4>
+         <p>
+          Sets alarms for 3 and 5 seconds
+         </p>
+         <pre class="line-numbers"><code class="language-cpp">System.Time.Alarm-&gt;New() {
+	New() {
+		Parent(1500);
+	}
+	
+	method : public : Ring(b : Base) ~ Nil {
+		v := b-&gt;As(IntRef)-&gt;Get();
+		"Foo {$v}!"-&gt;PrintLine();
+	}
+}-&gt;Start(IntRef-&gt;New(7));
+
+System.Time.Alarm-&gt;New() {
+	New() {
+		Parent(3000);
+	}
+	
+	method : public : Ring(b : Base) ~ Nil {
+		str := b-&gt;As(String);
+		"Bar {$str}."-&gt;PrintLine();
+	}
+}-&gt;Start("It's Math...");
+
+System.Time.Alarm-&gt;New() {
+	New() {
+		Parent(5000, true);
+	}
+	
+	method : public : Ring(b : Base) ~ Nil {
+		"!Soap!"-&gt;PrintLine();
+	}
+}-&gt;Start(Nil);
+
+"Thread started..."-&gt;PrintLine();
+System.Concurrency.Thread-&gt;Sleep(30000);
+"Done."-&gt;PrintLine();
+</code></pre>
+         <h4 id="regex">
+          Regular Expression
+         </h4>
+         <p>
+          Sample RegEx queries
+         </p>
+         <pre class="line-numbers"><code class="language-cpp">class Pair {
+string := "I am a string";
+# exact match
+regex := RegEx-&gt;New(".*string");
+if(regex-&gt;MatchExact(".*string")) {
+	"ends with 'string'"-&gt;PrintLine();
+};
+# replace all
+regex := RegEx-&gt;New(" a ");
+regex-&gt;ReplaceAll(string, " another ")-&gt;PrintLine();
+
+regex := RegEx-&gt;New("((4\\.[0-3])|(2\\.[0-3]))");
+found := regex-&gt;Find("Mozilla/4.0")<result>;
+each(i : found) {
+	found-&gt;Get(i)-&gt;ToString()-&gt;PrintLine();
+};
+
+regex := RegEx-&gt;New("1[3-5]?9");
+match := regex-&gt;Match("149");
+if(match &lt;&gt; Nil) {
+	match-&gt;PrintLine();
+};
+
+regex := RegEx-&gt;New("([a-z]|[0-9]|-)+");
+match := regex-&gt;Match("my_title_here");
+if(match &lt;&gt; Nil) {
+	match-&gt;PrintLine();
+};
+</result></code></pre>
+         <h4 id="web-client">
+          Web Client
+         </h4>
+         <p>
+          Fetched a webpage and parses the URLs
+         </p>
+         <pre class="line-numbers"><code class="language-cpp">class Pair {
+input := args[0];
+
+output := HttpsClient-&gt;New()-&gt;QuickGet(Web.HTTP.Url-&gt;New(input))-&gt;ToString();
+output_len := output-&gt;Size();
+"URL: {$input}, read: {$output_len} character(s)"-&gt;PrintLine();
+
+"running regex..."-&gt;PrintLine();		
+expr := "(href|HREF|src|SRC)=(\"|')(http://|https://|/)?((\\w|\\d|-|_)+(\\.|/)?)+(\\?(\\w|\\d|-|_)+=(\\w|\\d|-|_)+)?(&amp;(\\w|\\d|-|_)+=(\\w|\\d|-|_)+)?(\"|')";
+
+found := RegEx-&gt;New(expr)-&gt;Find(output)<result>;
+"---"-&gt;PrintLine();
+each(i : found) {
+	found-&gt;Get(i)-&gt;ToString()-&gt;PrintLine();
+};
+</result></code></pre>
+         <h4 id="web-server">
+          Web Server
+         </h4>
+         <p>
+          HTTPS web sever for user authentication
+         </p>
+         <pre class="line-numbers"><code class="language-cpp">class Pair {
+use Web.HTTP.Server;
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		WebServer-&gt;ServeSecure("config/passwd_config.json");
+	}
+}
+
+class RequestHandler from HttpsRequestHandler {
+	New() {
+		Parent();
+	}
+	
+	method : ProcessGet(request : Request, response : Response) ~ Bool {
+		# authenticated
+		if(request-&gt;HasParam("unauthenticated")) {
+			response-&gt;RemoveCookie("authenticated");
+		}
+		# unauthenticated
+		else if(request-&gt;HasCookie("authenticated")) {
+			return response-&gt;SetForwardAlias("auth.html");
+		}
+		# check name and password
+		else if(request-&gt;HasParam("name") &amp; request-&gt;HasParam("password")) {
+			name := request-&gt;GetParam("name");
+			password := request-&gt;GetParam("password");
+			if(name-&gt;Equals("mega") &amp; password-&gt;Equals("1234")) {
+				response-&gt;AddCookie(Web.HTTP.Cookie-&gt;New("authenticated", "true"));
+				return response-&gt;SetForwardAlias("auth.html");
+			};
+		};
+		
+		# show login page
+		return response-&gt;SetForwardAlias("index.html");
+	}
+
+	method : ProcessPost(request : Request, response : Response) ~ Bool {
+		return false;
+	}
+}
+</code></pre>
+         <h2 id="environment">
+          Programming Environment
+         </h2>
+         <p>
+          Tools to make Objeck programming easier to use.
+         </p>
+         <h3 id="repl">
+          REPL Shell
+         </h3>
+         <p>
+          The interactive read–eval–print loop (REPL) shell allows users to quickly test their code without writing a complete program or compiling source files. REPL commands can be listed by typing 'help' or 'h.' Future releases of Objeck will include enhancements to the shell, such as the ability to load and save source files and enhanced editing capabilities.
+         </p>
+         <h3 id="debugger">
+          Debugger
+         </h3>
+         <p>
+          The command line debugger allows to inspect the runtime behavior of a program. 
+		To use the debugger a program must first be compiled with debug symbols by passing 
+		the "-debug" option to the compiler. For a working example let's use the 
+		program in "Figure 1". We'll start by saving the program to a text file 
+		call "luhn.obe"
+         </p>
+         To compile the code type the following:
+         <pre class="cmd">&gt; obc -src luhn.obs -debug</pre>
+         For this example let’s assume the source file is in the same location as the executable.
+		To start the debugger type the following:
+         <pre class="cmd">&gt; obd -bin luhn.obe -src_dir .</pre>
+         Let’s first set a breakpoint on line 17 and run the program.
+         <pre class="cmd">&gt; &gt; b 17
+added breakpoint: file='luhn.obs:17'
+&gt; r
+break: file='luhn.obs:17', method='Luhn-&gt;Main(..)'</pre>
+         Next let’s list the code around the breakpoint.
+         <pre class="cmd">&gt; &gt; l
+   12: };
+   13: return (oddSum + evenSum) % 10 = 0;
+   14: }
+   15:
+   16: function : Main(args : String[]) ~ Nil {
+=&gt; 17:    IsValid("49927398716")-&gt;PrintLine();
+   18:    IsValid("49927398717")-&gt;PrintLine();
+   19:    IsValid("1234567812345678")-&gt;PrintLine();
+   20:    IsValid("1234567812345670")-&gt;PrintLine();
+   21: }
+   22: }</pre>
+         Now let’s step into the “IsValid” function:
+         <pre class="cmd">&gt; &gt; s
+&gt; break: file='luhn.obs:2', method='Luhn-&gt;IsValid(..)'
+&gt; l
+   1: class Luhn {
+=&gt; 2: function : IsValid(cc : String) ~ Bool {
+   3:   isOdd := true; oddSum := 0; evenSum := 0;
+   4:   for(i := cc-&gt;Size() - 1; i &gt;= 0; i -= 1;) {
+   5:     digit : Int := cc-&gt;Get(i) - '0';
+   6:     if(isOdd) {
+   7:       oddSum += digit;
+   8:     } else {
+   9:       evenSum += digit / 5 + (2 * digit) % 10
+   10:    };
+&gt; n</pre>
+         Let’s print out the value for “cc”.
+         <pre class="cmd">&gt; &gt; p cc
+print: type=System.String, value="49927398716"
+Now let’s break on line 9 and print the value for “evenSum”.
+&gt; b 9
+added breakpoint: file='luhn.obs:9'
+&gt; c
+&gt; break: file='luhn.obs:9', method='Luhn-&gt;IsValid(..)'
+&gt; n
+&gt; break: file='luhn.obs:11', method='Luhn-&gt;IsValid(..)'
+&gt; p evenSum
+print: type=Int, value=2</pre>
+         Lastly, let’s print out the call stack before exiting.
+         <pre class="cmd">&gt; &gt; stack
+stack:
+ frame: pos=2, class=Luhn, method=IsValid(o.System.String), file=luhn.obs:5
+ frame: pos=1, class=Luhn, method=Main(o.System.String*), file=luhn.obs:17
+&gt; q
+breakpoints cleared.
+goodbye.</pre>
+         <small>
+          TABLE 7 – DEBUGGER COMMANDS
+         </small>
+         <table border="1" cellpadding="3px">
+          <tr>
+           <th>
+            Command
+           </th>
+           <th>
+            Description
+           </th>
+           <th>
+            Example
+           </th>
+          </tr>
+          <tr>
+           <td>
+            [b]reak
+           </td>
+           <td>
+            sets a breakpoint
+           </td>
+           <td>
+            b luhn.obs:17
+           </td>
+          </tr>
+          <tr>
+           <td>
+            breaks
+           </td>
+           <td>
+            shows all breakpoints
+           </td>
+           <td>
+           </td>
+          </tr>
+          <tr>
+           <td>
+            [d]elete
+           </td>
+           <td>
+            deletes a breakpoint
+           </td>
+           <td>
+            d luhn.obs:17
+           </td>
+          </tr>
+          <tr>
+           <td>
+            clear
+           </td>
+           <td>
+            clears all breakpoints
+           </td>
+           <td>
+           </td>
+          </tr>
+          <tr>
+           <td>
+            [n]ext
+           </td>
+           <td>
+            moves to the next line within the same
+				method/function with debug information
+           </td>
+           <td>
+           </td>
+          </tr>
+          <tr>
+           <td>
+            [s]tep
+           </td>
+           <td>
+            moves to the next line with debug information
+           </td>
+           <td>
+           </td>
+          </tr>
+          <tr>
+           <td>
+            [j]ump
+           </td>
+           <td>
+            jumps out of an existing method/function and moves
+				to the next line with debug information
+           </td>
+           <td>
+           </td>
+          </tr>
+          <tr>
+           <td>
+            args
+           </td>
+           <td>
+            specifies program arguments
+           </td>
+           <td>
+            "'First' 'Second'"
+           </td>
+          </tr>
+          <tr>
+           <td>
+            [r]un
+           </td>
+           <td>
+            runs loaded program
+           </td>
+           <td>
+           </td>
+          </tr>
+          <tr>
+           <td>
+            [m]emory
+           </td>
+           <td>
+            shows used memory and garbage collection threshold
+           </td>
+           <td>
+            memory: allocated=0.32k, threshold=3,072k
+           </td>
+          </tr>
+          <tr>
+           <td>
+            [p]rint
+           </td>
+           <td>
+            prints the value of an expression, along with metadata
+           </td>
+           <td>
+            print: type=System.String, value="49927398716"
+           </td>
+          </tr>
+          <tr>
+           <td>
+            [l]ist
+           </td>
+           <td>
+            lists a range of lines in a source file or the lines near 
+				the current breakpoint
+           </td>
+           <td>
+           </td>
+          </tr>
+          <tr>
+           <td>
+            [i]nfo
+           </td>
+           <td>
+            displays the variables for a class
+           </td>
+           <td>
+            program executable: file='hiya.obe'
+				current file='fred.obs:9', method='Luhn-&gt;IsValid(..)'
+           </td>
+          </tr>
+          <tr>
+           <td>
+            [s]tack
+           </td>
+           <td>
+            displays the call stack
+           </td>
+           <td>
+            p cc
+           </td>
+          </tr>
+          <tr>
+           <td>
+            bin
+           </td>
+           <td>
+            loads a new executable binary
+           </td>
+           <td>
+           </td>
+          </tr>
+          <tr>
+           <td>
+            src_dir
+           </td>
+           <td>
+            specifies a new source directory
+           </td>
+           <td>
+           </td>
+          </tr>
+          <tr>
+           <td>
+            [q]uit
+           </td>
+           <td>
+            exits a given debugging session
+           </td>
+           <td>
+           </td>
+          </tr>
+         </table>
+         <h3 id="create_portable">
+          Generating a Portable Runtime
+         </h3>
+         <p>
+          A portable runtime environment can be created using the "obb" command
+         </p>
+         <p>
+          Encrypt and decrypt example:
+         </p>
+         <pre class="cmd">&gt; obb -src_file encrypt_7.obe -to_dir /tmp -to_name encrypt</pre>
+         <p>
+          Optionally, application specific resources can be copied using the "-src_dir" option.
+         </p>
+         <p>
+          Here's the step-by-step process for Windows:
+          <br/>
+          1. Create an empty working directory for your app
+          <br/>
+          2. Copy the code below to a file called 'hello.obs' and save it to the working directory
+          <pre class="line-numbers"><code class="language-cpp">class Native {
+  function : Main(args : String[]) ~ Nil {
+    "Hello World!"-&gt;PrintLine();
+  }
+}
+</code></pre>
+          3. Compile 'hello.obs' and verify the existence of the compiled program 'hello.obe'.
+          <pre class="cmd">&gt; obc hello.obs</pre>
+          4. Create the native and executable
+          <pre class="cmd">&gt; obb -src_file hello.obe -to_dir . hello</pre>
+          5. Test the app binary 'hello'
+          <pre class="cmd">&gt; cd hello &amp;&amp; hello &amp;&amp; cd ..</pre>
+         </p>
+         <h2 id="examples">
+          Examples
+          <p>
+           Please refer to the list of applications below that have been developed for more in-depth coding examples
+          </p>
+          <ol>
+           <li>
+            Gaming and graphics:
+            <a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/2d_game_13.obs">
+             2D Side Scroller
+            </a>
+            ,
+            <a href="https://github.com/objeck/objeck-lang/tree/master/programs/frameworks/sdl">
+             Lazy Foo SDL2 Examples
+            </a>
+           </li>
+           <li>
+            AI:
+            <a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/neural_21.obs">
+             Neural Network
+            </a>
+            ,
+            <a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/tic_tac_toe_16.obs">
+             Tic-Tac-Toe
+            </a>
+           </li>
+           <li>
+            Text Processing:
+            <a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/xml_2.obs">
+             XML
+            </a>
+            [
+            <a href="https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/xml.obs">
+             library
+            </a>
+            ],
+            <a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/json_3.obs">
+             JSON
+            </a>
+            [
+            <a href="https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/json.obs">
+             library
+            </a>
+            ],
+            <a href="https://github.com/objeck/objeck-lang/blob/master/programs/tests/rc/csv_data.obs">
+             CSV
+            </a>
+            [
+            <a href="https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/csv.obs">
+             library
+            </a>
+            ]
+           </li>
+           <li>
+            Web:
+            <a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/rss_https_xml_15.obs">
+             RSS Reader
+            </a>
+            ,
+            <a href="https://github.com/objeck/objeck-web-server/blob/master/ssl_server.obs">
+             HTTPS Server
+            </a>
+           </li>
+           <li>
+            Compilers:
+            <a href="https://github.com/objeck/objeck-lang/tree/master/programs/langs/tiny/">
+             Tiny Language
+            </a>
+            ,
+            <a href="https://github.com/objeck/objeck-lang/tree/master/programs/langs/bf">
+             Brain F**k
+            </a>
+            ,
+            <a href="https://github.com/objeck/objeck-lang/blob/master/programs/langs/lisp/mini_lisp.obs">
+             Lisp
+            </a>
+           </li>
+           <li>
+            Benchmarks:
+            <a href="https://github.com/objeck/objeck-lang/tree/master/programs/tests/clbg">
+             Computer Language
+Benchmarks Game
+            </a>
+           </li>
+          </ol>
+         </h2>
+        </p>
+       </p>
+      </p>
+     </p>
+    </div>
+   </div>
+  </main>
+  <footer class="footer">
+   © 2025 Randy Hollines. All Rights Reserved.
+  </footer>
+ </body>
+</html>
