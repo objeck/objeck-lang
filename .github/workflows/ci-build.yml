@@ -201,23 +201,12 @@ jobs:
       env:
         CC: ${{ runner.os != 'Windows' && 'ccache gcc' || '' }}
         CXX: ${{ runner.os != 'Windows' && 'ccache g++' || '' }}
-      run: |
-        # Ensure ccache is in PATH for macOS
-        if [ "${{ runner.os }}" = "macOS" ]; then
-          export PATH="/opt/homebrew/bin:$PATH"
-        fi
-
-        ${{ matrix.deploy_script }}
+      run: ${{ matrix.deploy_script }}
+      shell: ${{ matrix.shell }}
 
     - name: Show ccache stats
       if: runner.os != 'Windows'
-      run: |
-        # Ensure ccache is in PATH for macOS
-        if [ "$RUNNER_OS" = "macOS" ]; then
-          export PATH="/opt/homebrew/bin:$PATH"
-        fi
-
-        ccache --show-stats
+      run: ccache --show-stats
 
     # ============================================
     # Determine Deploy Directory
