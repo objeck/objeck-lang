@@ -312,13 +312,27 @@ if [%2] NEQ [deploy] goto end
 	)
 	
 	rmdir /q /s %TARGET%\examples\doc
-	rmdir /q /s "%USERPROFILE%\Documents\Objeck-Build\%INSTALL_TARGET%"
-	mkdir "%USERPROFILE%\Documents\Objeck-Build\%INSTALL_TARGET%"
-	xcopy /e %TARGET% "%USERPROFILE%\Documents\Objeck-Build\%INSTALL_TARGET%"
-	mkdir "%USERPROFILE%\Documents\Objeck-Build\%INSTALL_TARGET%\doc\icons"
-	copy ..\..\docs\images\setup_icons\*.ico "%USERPROFILE%\Documents\Objeck-Build\%INSTALL_TARGET%\doc\icons"
-	copy ..\..\docs\images\setup_icons\*.jpg "%USERPROFILE%\Documents\Objeck-Build\%INSTALL_TARGET%\doc\icons"
-	copy ..\..\docs\eula.rtf "%USERPROFILE%\Documents\Objeck-Build\%INSTALL_TARGET%\doc"
+
+	REM Create directory structure for MSI build (files must be in release-x64 or release-arm64)
+	if [%1] == [arm64] (
+		rmdir /q /s "%USERPROFILE%\Documents\Objeck-Build\release-arm64"
+		mkdir "%USERPROFILE%\Documents\Objeck-Build\release-arm64\%INSTALL_TARGET%"
+		xcopy /e %TARGET% "%USERPROFILE%\Documents\Objeck-Build\release-arm64\%INSTALL_TARGET%"
+		mkdir "%USERPROFILE%\Documents\Objeck-Build\release-arm64\%INSTALL_TARGET%\doc\icons"
+		copy ..\..\docs\images\setup_icons\*.ico "%USERPROFILE%\Documents\Objeck-Build\release-arm64\%INSTALL_TARGET%\doc\icons"
+		copy ..\..\docs\images\setup_icons\*.jpg "%USERPROFILE%\Documents\Objeck-Build\release-arm64\%INSTALL_TARGET%\doc\icons"
+		copy ..\..\docs\eula.rtf "%USERPROFILE%\Documents\Objeck-Build\release-arm64\%INSTALL_TARGET%\doc"
+	)
+
+	if [%1] == [x64] (
+		rmdir /q /s "%USERPROFILE%\Documents\Objeck-Build\release-x64"
+		mkdir "%USERPROFILE%\Documents\Objeck-Build\release-x64\%INSTALL_TARGET%"
+		xcopy /e %TARGET% "%USERPROFILE%\Documents\Objeck-Build\release-x64\%INSTALL_TARGET%"
+		mkdir "%USERPROFILE%\Documents\Objeck-Build\release-x64\%INSTALL_TARGET%\doc\icons"
+		copy ..\..\docs\images\setup_icons\*.ico "%USERPROFILE%\Documents\Objeck-Build\release-x64\%INSTALL_TARGET%\doc\icons"
+		copy ..\..\docs\images\setup_icons\*.jpg "%USERPROFILE%\Documents\Objeck-Build\release-x64\%INSTALL_TARGET%\doc\icons"
+		copy ..\..\docs\eula.rtf "%USERPROFILE%\Documents\Objeck-Build\release-x64\%INSTALL_TARGET%\doc"
+	)
 
 	if [%1] == [arm64] (
 		REM Build MSI installer (files must exist in Objeck-Build first)
@@ -334,16 +348,9 @@ if [%2] NEQ [deploy] goto end
 			echo MSI signed successfully
 		)
 
-		REM Copy signed/unsigned MSI
-		copy ..\utils\setup\arm64\release-arm64\setup.msi "%USERPROFILE%\Documents\Objeck-Build\objeck-windows-arm64_0.0.0.msi"
-
-		REM Restructure directories
-		rmdir /s /q "%USERPROFILE%\Documents\Objeck-Build\release-arm64"
-		mkdir "%USERPROFILE%\Documents\Objeck-Build\release-arm64"
-		move "%USERPROFILE%\Documents\Objeck-Build\%INSTALL_TARGET%" "%USERPROFILE%\Documents\Objeck-Build\release-arm64\%INSTALL_TARGET%"
-
+		REM Copy MSI and create ZIP
+		copy ..\utils\setup\arm64\release-arm64\setup.msi "%USERPROFILE%\Documents\Objeck-Build\release-arm64\objeck-windows-arm64_0.0.0.msi"
 		%ZIP_BIN%\7z.exe a -r -tzip "%USERPROFILE%\Documents\Objeck-Build\release-arm64\objeck-windows-arm64_0.0.0.zip" "%USERPROFILE%\Documents\Objeck-Build\release-arm64\%INSTALL_TARGET%"
-		move "%USERPROFILE%\Documents\Objeck-Build\objeck-windows-arm64_0.0.0.msi" "%USERPROFILE%\Documents\Objeck-Build\release-arm64"
 	)
 
 	if [%1] == [x64] (
@@ -360,15 +367,8 @@ if [%2] NEQ [deploy] goto end
 			echo MSI signed successfully
 		)
 
-		REM Copy signed/unsigned MSI
-		copy ..\utils\setup\x64\release-x64\setup.msi "%USERPROFILE%\Documents\Objeck-Build\objeck-windows-x64_0.0.0.msi"
-
-		REM Restructure directories
-		rmdir /s /q "%USERPROFILE%\Documents\Objeck-Build\release-x64"
-		mkdir "%USERPROFILE%\Documents\Objeck-Build\release-x64"
-		move "%USERPROFILE%\Documents\Objeck-Build\%INSTALL_TARGET%" "%USERPROFILE%\Documents\Objeck-Build\release-x64\%INSTALL_TARGET%"
-
+		REM Copy MSI and create ZIP
+		copy ..\utils\setup\x64\release-x64\setup.msi "%USERPROFILE%\Documents\Objeck-Build\release-x64\objeck-windows-x64_0.0.0.msi"
 		%ZIP_BIN%\7z.exe a -r -tzip "%USERPROFILE%\Documents\Objeck-Build\release-x64\objeck-windows-x64_0.0.0.zip" "%USERPROFILE%\Documents\Objeck-Build\release-x64\%INSTALL_TARGET%"
-		move "%USERPROFILE%\Documents\Objeck-Build\objeck-windows-x64_0.0.0.msi" "%USERPROFILE%\Documents\Objeck-Build\release-x64"
 	)
 :end
