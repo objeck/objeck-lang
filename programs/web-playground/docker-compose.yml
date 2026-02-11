@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend/app:/app/app
+      - ./demos:/app/demos
+      - /var/run/docker.sock:/var/run/docker.sock
+      - playground-data:/app/data
+    environment:
+      - PLAYGROUND_ALLOWED_ORIGINS=["http://localhost:8080","http://localhost:3000","http://127.0.0.1:8080"]
+      - PLAYGROUND_HOST_TMP_DIR=/tmp/playground
+      - PLAYGROUND_SHARE_DB_PATH=/app/data/shares.db
+
+  frontend:
+    image: python:3.12-slim
+    command: python -m http.server 8080
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+    ports:
+      - "8080:8080"
+
+volumes:
+  playground-data:

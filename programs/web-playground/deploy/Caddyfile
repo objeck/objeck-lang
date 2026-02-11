@@ -1,0 +1,34 @@
+# Objeck Playground - Caddy reverse proxy configuration
+# Handles automatic HTTPS via Let's Encrypt
+
+api.objeck.org {
+    reverse_proxy localhost:8000
+
+    header {
+        X-Content-Type-Options nosniff
+        X-Frame-Options DENY
+        Referrer-Policy strict-origin-when-cross-origin
+    }
+
+    log {
+        output file /var/log/caddy/api-access.log
+        format json
+    }
+}
+
+# Uncomment to host the frontend on the same VPS:
+# playground.objeck.org {
+#     root * /opt/playground/frontend
+#     file_server
+#
+#     header {
+#         X-Content-Type-Options nosniff
+#         X-Frame-Options SAMEORIGIN
+#         Referrer-Policy strict-origin-when-cross-origin
+#     }
+#
+#     log {
+#         output file /var/log/caddy/playground-access.log
+#         format json
+#     }
+# }

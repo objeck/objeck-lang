@@ -1,0 +1,42 @@
+class LoopDemo {
+  function : Main(args : String[]) ~ Nil {
+    # Array literal
+    nums := [10, 20, 30, 40, 50];
+
+    # for loop
+    "for loop:"->PrintLine();
+    for(i := 0; i < nums->Size(); i += 1;) {
+      "  nums[{$i}] = "->Print(); nums[i]->PrintLine();
+    };
+
+    # each loop (indexed)
+    "\neach loop (indexed):"->PrintLine();
+    each(i : nums) {
+      "  index {$i} => "->Print(); nums[i]->PrintLine();
+    };
+
+    # each-in loop (value)
+    "\neach-in loop (value):"->PrintLine();
+    each(n in nums) {
+      "  value: {$n}"->PrintLine();
+    };
+
+    # while loop
+    "\nwhile loop (countdown):"->PrintLine();
+    count := 5;
+    while(count > 0) {
+      "  {$count}"->PrintLine();
+      count -= 1;
+    };
+    "  Liftoff!"->PrintLine();
+
+    # do-while loop
+    "\ndo-while loop:"->PrintLine();
+    n := 1;
+    do {
+      "  {$n}"->Print();
+      n *= 2;
+    } while(n <= 64);
+    ""->PrintLine();
+  }
+}

@@ -1,0 +1,39 @@
+use Query.RegEx;
+
+class Test {
+  function : Main(args : String[]) ~ Nil {
+    string := "I am a string";
+
+    # Exact match
+    regex := RegEx->New(".*string");
+    if(regex->MatchExact(".*string")) {
+      "Pattern '.*string' matches exactly"->PrintLine();
+    };
+
+    # Replace all
+    regex := RegEx->New(" a ");
+    result := regex->ReplaceAll(string, " another ");
+    "Replace: '{$result}'"->PrintLine();
+
+    # Find groups
+    regex := RegEx->New("((4\\.[0-3])|(2\\.[0-3]))");
+    found := regex->Find("Mozilla/4.0")<Result>;
+    "\nFind in 'Mozilla/4.0':"->PrintLine();
+    each(i : found) {
+      "  "->Print(); found->Get(i)->ToString()->PrintLine();
+    };
+
+    # Match
+    regex := RegEx->New("1[3-5]?9");
+    match := regex->Match("149");
+    if(match <> Nil) {
+      "Match '1[3-5]?9' against '149': {$match}"->PrintLine();
+    };
+
+    regex := RegEx->New("([a-z]|[0-9]|-)+");
+    match := regex->Match("my_title_here");
+    if(match <> Nil) {
+      "Match '([a-z]|[0-9]|-)+' against 'my_title_here': {$match}"->PrintLine();
+    };
+  }
+}

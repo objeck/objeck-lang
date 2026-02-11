@@ -1,0 +1,21 @@
+FROM debian:bookworm-slim
+
+# Only install libssl3 runtime (for cipher library)
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends libssl3 && \
+    rm -rf /var/lib/apt/lists/* && \
+    rm -f /usr/bin/apt* /usr/bin/dpkg* /usr/bin/wget /usr/bin/curl
+
+# Copy Objeck toolchain (binaries + allowed libraries only)
+COPY sandbox-deploy/bin/obc /opt/objeck/bin/obc
+COPY sandbox-deploy/bin/obr /opt/objeck/bin/obr
+COPY sandbox-deploy/lib/ /opt/objeck/lib/
+
+ENV PATH="/opt/objeck/bin:${PATH}"
+ENV OBJECK_LIB_PATH="/opt/objeck/lib"
+
+# Create non-root user for execution
+RUN useradd -r -s /usr/sbin/nologin sandbox
+USER sandbox
+
+WORKDIR /tmp
