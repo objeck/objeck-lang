@@ -378,8 +378,10 @@ jobs:
     name: Generate API Docs
     needs: prepare
     runs-on: ubuntu-latest
-    # Skip for test builds - pre-compiled libraries have version mismatch
-    if: "!contains(needs.prepare.outputs.version, 'test')"
+    # Skip for pre-release builds (test, rc, beta, alpha, etc.)
+    # Pre-compiled libraries won't match pre-release versions
+    # Only generate docs for official releases (no hyphen in version)
+    if: "!contains(needs.prepare.outputs.version, '-')"
 
     steps:
       - name: Checkout code
