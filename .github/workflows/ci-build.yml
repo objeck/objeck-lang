@@ -117,6 +117,9 @@ jobs:
           lame \
           ccache
         brew cleanup
+
+        # Add Homebrew bin to PATH (immediate + persistent)
+        export PATH="/opt/homebrew/bin:$PATH"
         echo "/opt/homebrew/bin" >> $GITHUB_PATH
 
     # Windows setup
