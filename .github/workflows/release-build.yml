@@ -211,9 +211,15 @@ jobs:
         run: |
           # Install mbedtls via vcpkg for crypto library
           vcpkg install mbedtls:${{ matrix.arch }}-windows
-          vcpkg integrate install
+
+          # Set include/lib paths for Visual Studio
+          $vcpkgRoot = "C:\vcpkg\installed\${{ matrix.arch }}-windows"
+          echo "INCLUDE=$vcpkgRoot\include;$env:INCLUDE" >> $env:GITHUB_ENV
+          echo "LIB=$vcpkgRoot\lib;$env:LIB" >> $env:GITHUB_ENV
 
           Write-Output "✅ Installed mbedtls for ${{ matrix.arch }}"
+          Write-Output "Set INCLUDE=$vcpkgRoot\include"
+          Write-Output "Set LIB=$vcpkgRoot\lib"
 
       # ============================================
       # Import Code Signing Certificate (Windows)
