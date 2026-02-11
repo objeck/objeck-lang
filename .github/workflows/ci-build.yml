@@ -165,10 +165,16 @@ jobs:
     - name: Setup ccache
       if: runner.os != 'Windows'
       run: |
-        which ccache || { echo "ccache not found in PATH"; exit 1; }
-        ccache --max-size=500M
-        ccache --set-config=compression=true
-        ccache --zero-stats
+        # Use full path for macOS, rely on PATH for Linux
+        if [ "${{ runner.os }}" = "macOS" ]; then
+          CCACHE="/opt/homebrew/bin/ccache"
+        else
+          CCACHE="ccache"
+        fi
+
+        $CCACHE --max-size=500M
+        $CCACHE --set-config=compression=true
+        $CCACHE --zero-stats
 
     # ============================================
     # Build Compiler Bootstrap
