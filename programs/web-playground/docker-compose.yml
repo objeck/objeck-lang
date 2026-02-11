@@ -1,5 +1,8 @@
 version: '3.8'
 
+# Local development compose (without Docker sandbox)
+# For production, use systemd + Caddy (see deploy/)
+
 services:
   backend:
     build:
@@ -10,12 +13,16 @@ services:
     volumes:
       - ./backend/app:/app/app
       - ./demos:/app/demos
-      - /var/run/docker.sock:/var/run/docker.sock
       - playground-data:/app/data
     environment:
+      - PLAYGROUND_LOCAL_DEV=true
+      - PLAYGROUND_OBC_PATH=/opt/objeck/bin/obc
+      - PLAYGROUND_OBR_PATH=/opt/objeck/bin/obr
+      - PLAYGROUND_OBJECK_LIB_PATH=/opt/objeck/lib
       - PLAYGROUND_ALLOWED_ORIGINS=["http://localhost:8080","http://localhost:3000","http://127.0.0.1:8080"]
       - PLAYGROUND_HOST_TMP_DIR=/tmp/playground
       - PLAYGROUND_SHARE_DB_PATH=/app/data/shares.db
+      - PLAYGROUND_RATE_LIMIT=1000/minute
 
   frontend:
     image: python:3.12-slim

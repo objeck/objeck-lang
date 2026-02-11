@@ -1,18 +1,102 @@
 import uuid
 import time
 import shutil
+import subprocess
 from pathlib import Path
-
-import docker
 
 from app.config import settings
 from app.models.schemas import RunResponse
 
-client = docker.from_env()
-
 
 async def run_code(code: str, libs: list[str], timeout: int) -> RunResponse:
+    """Execute Objeck code — uses local dev mode or Docker sandbox."""
+    if settings.local_dev:
+        return await _run_local(code, libs, timeout)
+    return await _run_docker(code, libs, timeout)
+
+
+async def _run_local(code: str, libs: list[str], timeout: int) -> RunResponse:
+    """Execute Objeck code directly with obc/obr (local dev, no Docker)."""
+
+    run_id = str(uuid.uuid4())[:12]
+    work_dir = Path(settings.host_tmp_dir) / run_id
+    start_time = time.monotonic()
+
+    try:
+        work_dir.mkdir(parents=True, exist_ok=True)
+        src_file = work_dir / "program.obs"
+        obe_file = work_dir / "program.obe"
+        src_file.write_text(code, encoding="utf-8")
+
+        env = {"OBJECK_LIB_PATH": settings.objeck_lib_path}
+
+        # Build compile command
+        cmd_compile = [settings.obc_path, "-src", str(src_file)]
+        if libs:
+            cmd_compile += ["-lib", ",".join(libs)]
+        cmd_compile += ["-dest", str(obe_file)]
+
+        # Compile
+        result = subprocess.run(
+            cmd_compile, capture_output=True, text=True,
+            timeout=30, env=env,
+        )
+
+        if result.returncode != 0:
+            elapsed_ms = int((time.monotonic() - start_time) * 1000)
+            output = (result.stdout + result.stderr).strip()
+            return RunResponse(
+                success=False, output=output, error="",
+                compile_error=True, execution_time_ms=elapsed_ms,
+            )
+
+        # Run
+        result = subprocess.run(
+            [settings.obr_path, str(obe_file)],
+            capture_output=True, text=True,
+            timeout=timeout, env=env,
+        )
+
+        elapsed_ms = int((time.monotonic() - start_time) * 1000)
+        output = (result.stdout + result.stderr).strip()
+
+        truncated = False
+        if len(output) > settings.max_output_size:
+            output = output[:settings.max_output_size]
+            output += "\n\n--- Output truncated (exceeded 64KB) ---"
+            truncated = True
+
+        return RunResponse(
+            success=(result.returncode == 0),
+            output=output,
+            error="" if result.returncode == 0 else f"Process exited with code {result.returncode}",
+            execution_time_ms=elapsed_ms,
+            truncated=truncated,
+        )
+
+    except subprocess.TimeoutExpired:
+        elapsed_ms = int((time.monotonic() - start_time) * 1000)
+        return RunResponse(
+            success=False, output="",
+            error=f"Execution timed out after {timeout} seconds",
+            execution_time_ms=elapsed_ms,
+        )
+    except Exception as e:
+        elapsed_ms = int((time.monotonic() - start_time) * 1000)
+        return RunResponse(
+            success=False, output="",
+            error=f"Internal error: {e}",
+            execution_time_ms=elapsed_ms,
+        )
+    finally:
+        shutil.rmtree(work_dir, ignore_errors=True)
+
+
+async def _run_docker(code: str, libs: list[str], timeout: int) -> RunResponse:
     """Execute Objeck code in a sandboxed Docker container."""
+
+    import docker
+    client = docker.from_env()
 
     run_id = str(uuid.uuid4())[:12]
     container_name = f"playground-{run_id}"
