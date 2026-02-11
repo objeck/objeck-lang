@@ -104,18 +104,15 @@ jobs:
     - name: Install macOS dependencies
       if: runner.os == 'macOS'
       run: |
-        brew install \
-          opencv \
-          mbedtls \
-          unixodbc \
-          sdl2 \
-          sdl2_image \
-          sdl2_ttf \
-          sdl2_mixer \
-          readline \
-          eigen \
-          lame \
-          ccache
+        PACKAGES="opencv mbedtls unixodbc sdl2 sdl2_image sdl2_ttf sdl2_mixer readline eigen lame ccache"
+
+        brew install $PACKAGES
+
+        # Link packages that may be cached but unlinked
+        for pkg in $PACKAGES; do
+          brew link --overwrite "$pkg" 2>/dev/null || true
+        done
+
         brew cleanup
 
         # Add Homebrew bin to PATH (immediate + persistent)
@@ -165,16 +162,10 @@ jobs:
     - name: Setup ccache
       if: runner.os != 'Windows'
       run: |
-        # Use full path for macOS, rely on PATH for Linux
-        if [ "${{ runner.os }}" = "macOS" ]; then
-          CCACHE="/opt/homebrew/bin/ccache"
-        else
-          CCACHE="ccache"
-        fi
-
-        $CCACHE --max-size=500M
-        $CCACHE --set-config=compression=true
-        $CCACHE --zero-stats
+        which ccache || { echo "ccache not found in PATH"; exit 1; }
+        ccache --max-size=500M
+        ccache --set-config=compression=true
+        ccache --zero-stats
 
     # ============================================
     # Build Compiler Bootstrap
