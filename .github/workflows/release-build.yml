@@ -205,6 +205,16 @@ jobs:
         with:
           arch: ${{ matrix.arch }}
 
+      - name: Install Windows dependencies
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          # Install mbedtls via vcpkg for crypto library
+          vcpkg install mbedtls:${{ matrix.arch }}-windows
+          vcpkg integrate install
+
+          Write-Output "✅ Installed mbedtls for ${{ matrix.arch }}"
+
       # ============================================
       # Import Code Signing Certificate (Windows)
       # ============================================
