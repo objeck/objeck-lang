@@ -1,0 +1,66 @@
+class Weasel {
+  function : Main(args : String[]) ~ Nil {
+    target := "METHINKS IT IS LIKE A WEASEL"->ToCharArray();
+    chars := "ABCDEFGHIJKLMNOPQRSTUVWXYZ "->ToCharArray();
+    len := target->Size();
+    copies := 50;
+
+    # Start with random parent
+    parent := Char->New[len];
+    each(i : parent) {
+      parent[i] := chars[(Float->Random() * 1000.0)->As(Int) % chars->Size()];
+    };
+
+    child := Char->New[len];
+    bestChild := Char->New[len];
+
+    fit := 0;
+    each(i : target) {
+      if(parent[i] = target[i]) { fit += 1; };
+    };
+
+    gen := 0;
+    s := String->New(parent);
+    "Gen {$gen}: {$s} ({$fit}/{$len})"->PrintLine();
+
+    while(fit < len & gen < 500) {
+      # Fixed per-character mutation rate (standard weasel approach)
+      rate := 0.05;
+      bestFit := -1;
+
+      # Generate copies and pick the best
+      for(c := 0; c < copies; c += 1;) {
+        each(i : parent) {
+          if(Float->Random() < rate) {
+            child[i] := chars[(Float->Random() * 1000.0)->As(Int) % chars->Size()];
+          }
+          else {
+            child[i] := parent[i];
+          };
+        };
+
+        cfit := 0;
+        each(i : target) {
+          if(child[i] = target[i]) { cfit += 1; };
+        };
+
+        if(cfit > bestFit) {
+          each(j : child) { bestChild[j] := child[j]; };
+          bestFit := cfit;
+        };
+      };
+
+      # Replace parent if improved
+      if(bestFit >= fit) {
+        each(j : bestChild) { parent[j] := bestChild[j]; };
+        fit := bestFit;
+      };
+
+      gen += 1;
+      if(gen % 10 = 0 | fit = len) {
+        s := String->New(parent);
+        "Gen {$gen}: {$s} ({$fit}/{$len})"->PrintLine();
+      };
+    };
+  }
+}

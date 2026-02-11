@@ -1,0 +1,379 @@
+/* Objeck Playground - Dark/Light Theme Styles */
+
+:root {
+    --bg-primary: #1E1E2E;
+    --bg-secondary: #2B2B3B;
+    --bg-header: #181825;
+    --bg-toolbar: #232336;
+    --text-primary: #CDD6F4;
+    --text-secondary: #A6ADC8;
+    --text-muted: #6C7086;
+    --accent: #89B4FA;
+    --accent-hover: #74A8FC;
+    --accent-text: #1E1E2E;
+    --border: #45475A;
+    --success: #A6E3A1;
+    --error: #F38BA8;
+    --warning: #FAB387;
+    --output-bg: #11111B;
+    --modal-backdrop: rgba(0, 0, 0, 0.6);
+    --shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="light"] {
+    --bg-primary: #FFFFFF;
+    --bg-secondary: #F5F5F5;
+    --bg-header: #E8E8E8;
+    --bg-toolbar: #EBEBEB;
+    --text-primary: #1E1E1E;
+    --text-secondary: #6E6E6E;
+    --text-muted: #999999;
+    --accent: #0066CC;
+    --accent-hover: #0052A3;
+    --accent-text: #FFFFFF;
+    --border: #D4D4D4;
+    --success: #22863A;
+    --error: #CB2431;
+    --warning: #B08800;
+    --output-bg: #F6F8FA;
+    --modal-backdrop: rgba(0, 0, 0, 0.4);
+    --shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Reset and base */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body {
+    height: 100%;
+    overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+}
+
+body {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Header */
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 16px;
+    background: var(--bg-header);
+    border-bottom: 1px solid var(--border);
+    height: 48px;
+    flex-shrink: 0;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.header-left h1 {
+    font-size: 16px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.version-tag {
+    font-size: 11px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    background: var(--bg-secondary);
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+}
+
+.header-center {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Buttons */
+#run-btn {
+    padding: 6px 20px;
+    font-size: 13px;
+    font-weight: 600;
+    background: var(--accent);
+    color: var(--accent-text);
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: background 0.15s;
+}
+
+#run-btn:hover { background: var(--accent-hover); }
+#run-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.run-icon { font-size: 11px; }
+
+.btn-secondary {
+    padding: 5px 12px;
+    font-size: 12px;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: border-color 0.15s;
+}
+
+.btn-secondary:hover { border-color: var(--accent); }
+
+/* Spinner */
+.spinner {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.spinner-dot {
+    width: 14px;
+    height: 14px;
+    border: 2px solid var(--text-muted);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Toolbar */
+#toolbar {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 6px 16px;
+    background: var(--bg-toolbar);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    flex-wrap: wrap;
+    min-height: 36px;
+}
+
+.toolbar-section {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.toolbar-section > label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
+#lib-selector {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.lib-chip {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    cursor: pointer;
+    padding: 2px 8px;
+    border-radius: 3px;
+    border: 1px solid var(--border);
+    background: var(--bg-primary);
+    color: var(--text-secondary);
+    transition: all 0.15s;
+    user-select: none;
+}
+
+.lib-chip:hover { border-color: var(--accent); }
+.lib-chip.active {
+    border-color: var(--accent);
+    background: var(--accent);
+    color: var(--accent-text);
+}
+
+.lib-chip input { display: none; }
+
+#demo-select {
+    padding: 4px 8px;
+    font-size: 12px;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    min-width: 200px;
+}
+
+#demo-select:focus { outline: 1px solid var(--accent); }
+#demo-select optgroup { font-weight: 600; }
+
+/* Main content */
+#main-content {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+}
+
+#editor-pane {
+    flex: 1;
+    min-width: 200px;
+    overflow: hidden;
+}
+
+#editor-container { height: 100%; }
+
+/* Resize handle */
+#resize-handle {
+    width: 5px;
+    cursor: col-resize;
+    background: var(--border);
+    flex-shrink: 0;
+    transition: background 0.15s;
+}
+
+#resize-handle:hover,
+#resize-handle.active {
+    background: var(--accent);
+}
+
+/* Output pane */
+#output-pane {
+    flex: 0 0 40%;
+    min-width: 200px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.output-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 12px;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+}
+
+.output-header span:first-child {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+#exec-time {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+}
+
+#output-content {
+    flex: 1;
+    overflow: auto;
+    padding: 12px;
+    font-size: 13px;
+    font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+    background: var(--output-bg);
+    color: var(--text-primary);
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    line-height: 1.5;
+}
+
+#output-content.error { color: var(--error); }
+#output-content.success { color: var(--success); }
+#output-content.compile-error { color: var(--warning); }
+
+/* Modal */
+.modal {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: var(--modal-backdrop);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 24px;
+    min-width: 400px;
+    max-width: 90vw;
+    box-shadow: var(--shadow);
+}
+
+.modal-content h3 {
+    margin-bottom: 16px;
+    font-size: 16px;
+}
+
+#share-url {
+    width: 100%;
+    padding: 8px 12px;
+    font-size: 13px;
+    font-family: 'JetBrains Mono', Consolas, monospace;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    margin-bottom: 12px;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+/* Keyboard shortcut hint */
+.shortcut-hint {
+    font-size: 11px;
+    color: var(--text-muted);
+    padding: 2px 6px;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    font-family: 'JetBrains Mono', Consolas, monospace;
+}
+
+/* Hidden utility */
+.hidden { display: none !important; }
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+    #main-content { flex-direction: column; }
+    #resize-handle {
+        width: 100%;
+        height: 5px;
+        cursor: row-resize;
+    }
+    #output-pane { flex: 0 0 40%; min-width: unset; }
+    #toolbar { font-size: 11px; gap: 10px; }
+    #demo-select { min-width: 140px; }
+    .header-left h1 { font-size: 14px; }
+    .shortcut-hint { display: none; }
+}
+
+@media (max-width: 480px) {
+    header { padding: 0 8px; }
+    #toolbar { padding: 4px 8px; }
+    .lib-chip { font-size: 10px; padding: 1px 5px; }
+}

@@ -1,0 +1,71 @@
+use System.IO;
+use Collection;
+
+bundle Default {
+  class RpnCalc {
+    function : Main(args : String[]) ~ Nil {
+      Calculate("3 4 2 * 1 5 - 2 3 ^ ^ / +");
+      ""->PrintLine();
+      Calculate("2 3 ^ 5 +");
+    }
+
+    function : Calculate(rpn : String) ~ Nil {
+      "Expression: {$rpn}"->PrintLine();
+
+      tokens := rpn->Split(" ");
+      stack := Vector->New()<FloatRef>;
+      each(i : tokens) {
+        token := tokens[i]->Trim();
+        if(token->Size() > 0) {
+          if(token->Get(0)->IsDigit()) {
+            stack->AddBack(FloatRef->New(token->ToFloat()));
+          }
+          else {
+            ridx := stack->Size() - 1;
+            lidx := stack->Size() - 2;
+            right := stack->Get(ridx)->As(FloatRef)->Get();
+            left := stack->Get(lidx)->As(FloatRef)->Get();
+            stack->RemoveBack();
+            stack->RemoveBack();
+            select(token->Get(0)) {
+              label '+': {
+                stack->AddBack(FloatRef->New(left + right));
+              }
+
+              label '-': {
+                stack->AddBack(FloatRef->New(left - right));
+              }
+
+              label '*': {
+                stack->AddBack(FloatRef->New(left * right));
+              }
+
+              label '/': {
+                stack->AddBack(FloatRef->New(left / right));
+              }
+
+              label '^': {
+                stack->AddBack(FloatRef->New(Float->Pow(left, right)));
+              }
+            };
+          };
+          PrintStack(stack);
+        };
+      };
+      result := stack->Get(0)->As(FloatRef)->Get();
+      Console->Print("Result: ")->PrintLine(result);
+    }
+
+    function : PrintStack(stack : Vector<FloatRef>) ~ Nil {
+      "  ["->Print();
+      each(i : stack) {
+        v := stack->Get(i)->As(FloatRef)->Get();
+        v->Print();
+        if(i + 1 < stack->Size()) {
+          ", "->Print();
+        };
+      };
+      ']'->PrintLine();
+    }
+  }
+}

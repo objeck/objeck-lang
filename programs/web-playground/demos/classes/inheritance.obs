@@ -1,0 +1,63 @@
+class Animal {
+  @name : String;
+  @sound : String;
+
+  New(name : String, sound : String) {
+    @name := name;
+    @sound := sound;
+  }
+
+  method : public : Speak() ~ String {
+    return "{$@name} says {$@sound}";
+  }
+
+  method : public : GetName() ~ String {
+    return @name;
+  }
+}
+
+class Dog from Animal {
+  @tricks : Int;
+
+  New(name : String) {
+    Parent(name, "Woof!");
+    @tricks := 0;
+  }
+
+  method : public : LearnTrick() ~ Nil {
+    @tricks += 1;
+  }
+
+  method : public : Speak() ~ String {
+    return "Dog {$@name} says Woof! (knows {$@tricks} tricks)";
+  }
+}
+
+class Cat from Animal {
+  New(name : String) {
+    Parent(name, "Meow!");
+  }
+
+  method : public : Speak() ~ String {
+    return "Cat {$@name} says Meow!";
+  }
+}
+
+class Test {
+  function : Main(args : String[]) ~ Nil {
+    dog := Dog->New("Rex");
+    cat := Cat->New("Whiskers");
+
+    dog->Speak()->PrintLine();
+    dog->LearnTrick();
+    dog->LearnTrick();
+    dog->Speak()->PrintLine();
+
+    cat->Speak()->PrintLine();
+
+    # Access base class method
+    "\nBase names:"->PrintLine();
+    "  "->Print(); dog->GetName()->PrintLine();
+    "  "->Print(); cat->GetName()->PrintLine();
+  }
+}

@@ -1,0 +1,22 @@
+[Unit]
+Description=Objeck Playground API
+After=docker.service network.target
+Requires=docker.service
+
+[Service]
+Type=simple
+User=playground
+Group=playground
+WorkingDirectory=/opt/playground/backend
+ExecStart=/opt/playground/venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers 2
+Restart=always
+RestartSec=5
+
+EnvironmentFile=/opt/playground/playground.env
+
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/opt/playground/data /tmp/playground
+
+[Install]
+WantedBy=multi-user.target

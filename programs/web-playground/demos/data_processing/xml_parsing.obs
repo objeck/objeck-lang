@@ -1,0 +1,61 @@
+use System.IO;
+use Data.XML;
+
+class Test {
+  function : Main(args : String[]) ~ Nil {
+    input := "";
+    input += "<inventory title=\"OmniCorp Store\">";
+    input += "<section name=\"health\">";
+    input += "<item upc=\"123456789\" stock=\"12\">";
+    input += "<name>Invisibility Cream</name>";
+    input += "<price>14.50</price>";
+    input += "<description>Makes you invisible</description>";
+    input += "</item>";
+    input += "<item upc=\"445322344\" stock=\"18\">";
+    input += "<name>Levitation Salve</name>";
+    input += "<price>23.99</price>";
+    input += "<description>Levitate yourself for up to 3 hours per application</description>";
+    input += "</item>";
+    input += "</section>";
+    input += "<section name=\"food\">";
+    input += "<item upc=\"485672034\" stock=\"653\">";
+    input += "<name>Blork and Freen Instameal</name>";
+    input += "<price>4.95</price>";
+    input += "</item>";
+    input += "<item upc=\"132957764\" stock=\"44\">";
+    input += "<name>Grob winglets</name>";
+    input += "<price>3.56</price>";
+    input += "</item>";
+    input += "</section>";
+    input += "</inventory>";
+
+    parser := XmlParser->New(input);
+    if(parser->Parse()) {
+      # Get first item in first section
+      results := parser->FindElements("/inventory/section[1]/item[1]")<XmlElement>;
+      if(results <> Nil) {
+        Console->Print("Items in first section, first item: ")->PrintLine(results->Size());
+      };
+
+      # Get all prices
+      "\nAll prices:"->PrintLine();
+      results := parser->FindElements("/inventory/section/item/price")<XmlElement>;
+      if(results <> Nil) {
+        each(i : results) {
+          element := results->Get(i);
+          "  $"->Print(); element->GetContent()->PrintLine();
+        };
+      };
+
+      # Get all names
+      "\nAll product names:"->PrintLine();
+      results := parser->FindElements("/inventory/section/item/name")<XmlElement>;
+      if(results <> Nil) {
+        each(i : results) {
+          element := results->Get(i);
+          "  "->Print(); element->GetContent()->PrintLine();
+        };
+      };
+    };
+  }
+}

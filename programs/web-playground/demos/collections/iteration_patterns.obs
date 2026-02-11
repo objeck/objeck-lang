@@ -1,0 +1,39 @@
+use Collection;
+
+class Iteration {
+  function : Main(args : String[]) ~ Nil {
+    # Iterate over a vector using 'each'
+    names := Vector->New()<String>;
+    names->AddBack("Alice");
+    names->AddBack("Bob");
+    names->AddBack("Charlie");
+    names->AddBack("Diana");
+
+    "Iterating with 'each':"->PrintLine();
+    each(i : names) {
+      name := names->Get(i)->As(String);
+      "  [{$i}] {$name}"->PrintLine();
+    };
+
+    "---"->PrintLine();
+
+    # Iterate using 'Each' higher-order method with lambda
+    "Using lambda Each:"->PrintLine();
+    names->Each(\^(name) => "  Hello, {$name}!"->PrintLine());
+
+    "---"->PrintLine();
+
+    # Hash map: insert, find, and iterate
+    map := Map->New()<IntRef, String>;
+    map->Insert(1, "One");
+    map->Insert(2, "Two");
+    map->Insert(3, "Three");
+
+    "\nMap iteration with Each:"->PrintLine();
+    map->Each(\^(k, v) => "  {$k} => {$v}"->PrintLine());
+
+    "\nMap lookup:"->PrintLine();
+    value := map->Find(IntRef->New(2))->As(String);
+    "  Find(2) = {$value}"->PrintLine();
+  }
+}

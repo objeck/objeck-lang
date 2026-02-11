@@ -1,0 +1,79 @@
+{
+  "categories": [
+    {
+      "name": "Getting Started",
+      "folder": "basics",
+      "demos": [
+        { "id": "hello", "file": "hello_world.obs", "title": "Hello World", "description": "Basic hello world program", "libs": [] },
+        { "id": "variables", "file": "variables.obs", "title": "Variables & Types", "description": "Variable declarations, types, and arithmetic", "libs": [] },
+        { "id": "strings", "file": "string_manipulation.obs", "title": "String Manipulation", "description": "String methods, interpolation, and processing", "libs": [] },
+        { "id": "arrays", "file": "arrays_and_loops.obs", "title": "Arrays & Loops", "description": "Arrays, for/each/while/do-while loops", "libs": [] },
+        { "id": "factorial", "file": "factorial.obs", "title": "Factorial", "description": "Built-in factorial method on integers", "libs": [] }
+      ]
+    },
+    {
+      "name": "Functions & Closures",
+      "folder": "functions",
+      "demos": [
+        { "id": "composition", "file": "function_composition.obs", "title": "Function Composition", "description": "Composing first-class functions", "libs": [] },
+        { "id": "closures", "file": "closures.obs", "title": "Closures", "description": "Closures capturing variables", "libs": ["collect"] },
+        { "id": "first-class", "file": "first_class_functions.obs", "title": "First-Class Functions", "description": "Storing and passing functions", "libs": ["collect"] },
+        { "id": "lambdas", "file": "lambdas.obs", "title": "Lambdas & Aliases", "description": "Lambda expressions, type aliases, and enums", "libs": ["collect"] },
+        { "id": "higher-order", "file": "higher_order.obs", "title": "Higher-Order Functions", "description": "Filter, reduce, and each operations", "libs": ["collect"] }
+      ]
+    },
+    {
+      "name": "Classes & OOP",
+      "folder": "classes",
+      "demos": [
+        { "id": "basic-class", "file": "basic_class.obs", "title": "Basic Class", "description": "Class with fields, constructor, and methods", "libs": [] },
+        { "id": "inheritance", "file": "inheritance.obs", "title": "Inheritance", "description": "Class hierarchy with method overriding", "libs": [] },
+        { "id": "interfaces", "file": "interfaces.obs", "title": "Interfaces & Delegates", "description": "Interface definition and delegation pattern", "libs": [] },
+        { "id": "anonymous", "file": "anonymous_classes.obs", "title": "Anonymous Classes", "description": "Inline anonymous class implementations", "libs": [] },
+        { "id": "visitor", "file": "visitor_pattern.obs", "title": "Visitor Pattern", "description": "Expression visitor with virtual dispatch", "libs": [] }
+      ]
+    },
+    {
+      "name": "Algorithms",
+      "folder": "algorithms",
+      "demos": [
+        { "id": "quicksort", "file": "quicksort.obs", "title": "QuickSort", "description": "In-place quicksort algorithm", "libs": [] },
+        { "id": "nqueens", "file": "n_queens.obs", "title": "N-Queens", "description": "8-queens backtracking solver", "libs": [] },
+        { "id": "weasel", "file": "weasel_evolution.obs", "title": "Weasel Evolution", "description": "Dawkins weasel evolutionary algorithm", "libs": [] },
+        { "id": "binary-tree", "file": "binary_tree.obs", "title": "Binary Tree Traversal", "description": "Pre/in/post/level-order traversals", "libs": ["collect"] },
+        { "id": "rpn", "file": "rpn_calculator.obs", "title": "RPN Calculator", "description": "Reverse Polish notation stack calculator", "libs": ["collect"] },
+        { "id": "fibonacci-word", "file": "fibonacci_word.obs", "title": "Fibonacci Word", "description": "Fibonacci word sequence with entropy", "libs": [] }
+      ]
+    },
+    {
+      "name": "Collections",
+      "folder": "collections",
+      "demos": [
+        { "id": "vectors-maps", "file": "vectors_and_maps.obs", "title": "Vectors & Maps", "description": "Vector, Map, and lambda iteration", "libs": ["collect"] },
+        { "id": "filter-reduce", "file": "filter_reduce.obs", "title": "Filter & Reduce", "description": "Functional operations on collections", "libs": ["collect"] },
+        { "id": "iteration", "file": "iteration_patterns.obs", "title": "Iteration Patterns", "description": "Vector, Map, and lambda-based iteration", "libs": ["collect"] }
+      ]
+    },
+    {
+      "name": "Data Processing",
+      "folder": "data_processing",
+      "demos": [
+        { "id": "json", "file": "json_parsing.obs", "title": "JSON Parsing", "description": "Parse and build JSON data", "libs": ["json", "collect"] },
+        { "id": "xml", "file": "xml_parsing.obs", "title": "XML Parsing", "description": "Parse XML with XPath-like queries", "libs": ["xml", "collect"] },
+        { "id": "regex", "file": "regex_matching.obs", "title": "Regex Matching", "description": "Pattern matching with regular expressions", "libs": ["regex"] },
+        { "id": "encryption", "file": "encryption.obs", "title": "Encryption", "description": "SHA256, MD5, AES256 encryption", "libs": ["cipher"] }
+      ]
+    },
+    {
+      "name": "Math & Puzzles",
+      "folder": "math",
+      "demos": [
+        { "id": "primes", "file": "primes.obs", "title": "Prime Numbers (AKS)", "description": "AKS primality test", "libs": [] },
+        { "id": "roman", "file": "roman_numerals.obs", "title": "Roman Numerals", "description": "Integer to Roman numeral conversion", "libs": [] },
+        { "id": "matrix", "file": "identity_matrix.obs", "title": "Identity Matrix", "description": "Generate and print identity matrices", "libs": [] },
+        { "id": "caesar", "file": "caesar_cipher.obs", "title": "Caesar Cipher", "description": "Classic shift cipher encode/decode", "libs": [] },
+        { "id": "palindrome", "file": "palindrome.obs", "title": "Palindrome Check", "description": "String palindrome detection", "libs": [] }
+      ]
+    }
+  ]
+}

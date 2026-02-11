@@ -1,0 +1,27 @@
+# Objeck Playground - Caddy configuration
+# All-on-VPS: serves frontend + proxies API on a single domain
+# Automatic HTTPS via Let's Encrypt
+
+playground.objeck.org {
+    # API routes go to FastAPI backend
+    handle /api/* {
+        reverse_proxy localhost:8000
+    }
+
+    # Everything else serves the static frontend
+    handle {
+        root * /opt/playground/frontend
+        file_server
+    }
+
+    header {
+        X-Content-Type-Options nosniff
+        X-Frame-Options SAMEORIGIN
+        Referrer-Policy strict-origin-when-cross-origin
+    }
+
+    log {
+        output file /var/log/caddy/playground-access.log
+        format json
+    }
+}

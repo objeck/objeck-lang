@@ -29,6 +29,12 @@ Modern programming language with first-class ML and computer vision support
 **Perfect for:**
 AI/ML prototyping • Computer vision • Web services • Game development
 
+## Try It Online
+
+**No installation needed** — write, compile, and run Objeck code directly in your browser:
+
+**[playground.objeck.org](http://104.236.228.162)** — 33 demo programs across 7 categories with Monaco editor and syntax highlighting.
+
 ## Quick Start
 
 ```bash
@@ -56,6 +62,8 @@ obc -s hello.obs -d hello.obe
 💡 **Examples**: [github.com/objeck/objeck-lang/programs](https://github.com/objeck/objeck-lang/tree/master/programs)
 
 ## What's New
+
+**Web Playground** — [Try Objeck in your browser](http://104.236.228.162). Code runs in sandboxed Docker containers on a dedicated server. Includes 33 demos covering the language basics, OOP, algorithms, collections, data processing, and more. ([Source](programs/web-playground/))
 
 **v2026.2.1** ✅
   * **Performance**: Memory manager optimized with O(1) lookups and in-place sweeping
@@ -198,6 +206,7 @@ vector := tfidf->Transform("cats and dogs");  # [0.47, 0.0, 0.47, ...]
 
 ## Resources
 
+- 🌐 [Web Playground](http://104.236.228.162) — try Objeck in your browser
 - 📖 [Documentation](https://www.objeck.org)
 - 🎯 [Examples](https://github.com/objeck/objeck-lang/tree/master/programs)
 - 💬 [Discussions](https://github.com/objeck/objeck-lang/discussions)

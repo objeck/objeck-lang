@@ -1,0 +1,51 @@
+use Collection;
+
+class HigherOrder {
+  function : Main(args : String[]) ~ Nil {
+    # Filter: keep only even numbers
+    values := CompareVector->New()<IntRef>;
+    each(i : 10) {
+      values->AddBack(IntRef->New(i + 1));
+    };
+    evens := values->Filter(IsEven(IntRef) ~ Bool);
+
+    "Even numbers:"->PrintLine();
+    each(i : evens) {
+      evens->Get(i)->As(IntRef)->Get()->PrintLine();
+    };
+
+    # Reduce: sum and product
+    floats := Vector->New()<FloatRef>;
+    floats->AddBack(FloatRef->New(1.0));
+    floats->AddBack(FloatRef->New(2.0));
+    floats->AddBack(FloatRef->New(3.0));
+    floats->AddBack(FloatRef->New(4.0));
+    floats->AddBack(FloatRef->New(5.0));
+    sum := floats->Reduce(FloatRef->New(0.0), Add(FloatRef, FloatRef) ~ FloatRef);
+    product := floats->Reduce(FloatRef->New(1.0), Mul(FloatRef, FloatRef) ~ FloatRef);
+    s := sum->Get();
+    p := product->Get();
+    "\nSum: {$s}"->PrintLine();
+    "Product: {$p}"->PrintLine();
+
+    # Each with lambda
+    "\nNames:"->PrintLine();
+    names := Vector->New()<String>;
+    names->AddBack("Alice");
+    names->AddBack("Bob");
+    names->AddBack("Charlie");
+    names->Each(\^(s) => "  Hello, {$s}!"->PrintLine());
+  }
+
+  function : IsEven(v : IntRef) ~ Bool {
+    return v->Get() % 2 = 0;
+  }
+
+  function : Add(a : FloatRef, b : FloatRef) ~ FloatRef {
+    return FloatRef->New(a->Get() + b->Get());
+  }
+
+  function : Mul(a : FloatRef, b : FloatRef) ~ FloatRef {
+    return FloatRef->New(a->Get() * b->Get());
+  }
+}
