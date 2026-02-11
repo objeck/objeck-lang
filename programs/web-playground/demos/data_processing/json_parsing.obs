@@ -1,0 +1,42 @@
+use Data.JSON;
+
+bundle Default {
+  class Json {
+    function : Main(args : String[]) ~ Nil {
+      # Parse JSON
+      parser := JsonParser->New("{ \"foo\": 1, \"bar\": [10, \"apples\"] }");
+      if(parser->Parse()) {
+        root := parser->GetRoot();
+        "Parsed JSON:"->PrintLine();
+        root->ToString()->PrintLine();
+
+        "\nAccessing elements:"->PrintLine();
+        foo := root->Get("foo");
+        if(foo <> Nil) {
+          "  foo = "->Print(); foo->GetValue()->PrintLine();
+        };
+
+        bar := root->Get("bar");
+        if(bar <> Nil) {
+          "  bar = "->Print(); bar->ToString()->PrintLine();
+        };
+      };
+
+      # Build JSON
+      "\nBuilding JSON:"->PrintLine();
+      builder := JsonBuilder->New();
+      builder->PushObject();
+      builder->Insert("name", "Objeck");
+      builder->Insert("version", 2025);
+      builder->Insert("compiled", true);
+
+      features := JsonElement->New(JsonElement->JsonType->ARRAY);
+      features->Add("closures");
+      features->Add("generics");
+      features->Add("JIT");
+      builder->Insert("features", features);
+
+      builder->Pop()->ToString()->PrintLine();
+    }
+  }
+}

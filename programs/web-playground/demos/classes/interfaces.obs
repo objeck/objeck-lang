@@ -1,0 +1,53 @@
+interface Thingable {
+  method : public : virtual : Thing() ~ String;
+}
+
+class Delegator {
+  @delegate : Thingable;
+
+  New() {
+  }
+
+  method : public : SetDelegate(delegate : Thingable) ~ Nil {
+    @delegate := delegate;
+  }
+
+  method : public : Operation() ~ String {
+    if(@delegate = Nil) {
+      return "default implementation";
+    }
+    else {
+      return @delegate->Thing();
+    };
+  }
+}
+
+class Delegate implements Thingable {
+  New() {
+  }
+
+  method : public : Thing() ~ String {
+    return "delegate implementation";
+  }
+}
+
+class Example {
+  function : Main(args : String[]) ~ Nil {
+    # Without a delegate
+    a := Delegator->New();
+    a->Operation()->PrintLine();
+
+    # With a delegate
+    d := Delegate->New();
+    a->SetDelegate(d);
+    a->Operation()->PrintLine();
+
+    # With an anonymous class
+    a->SetDelegate(Base->New() implements Thingable {
+      method : public : Thing() ~ String {
+        return "anonymous delegate implementation";
+      }
+    });
+    a->Operation()->PrintLine();
+  }
+}

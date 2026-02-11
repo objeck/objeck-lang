@@ -1,0 +1,9 @@
+class Factorial {
+  function : Main(args : String[]) ~ Nil {
+    # Using the built-in Factorial method
+    for(n := 0; n <= 12; n += 1;) {
+      result := n->Factorial();
+      "{$n}! = {$result}"->PrintLine();
+    };
+  }
+}

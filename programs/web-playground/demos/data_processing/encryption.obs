@@ -1,0 +1,36 @@
+class Encryption {
+  function : Main(args : String[]) ~ Nil {
+    # SHA-256 hash
+    input := "Hello Objeck"->ToByteArray();
+    hash := Cipher.Hash->SHA256(input);
+    "SHA-256 of 'Hello Objeck':"->PrintLine();
+    "  "->Print(); hash->ToHexString()->PrintLine();
+
+    # MD5 hash
+    input := "The quick brown fox jumped over the lazy dog's back"->ToByteArray();
+    hash := Cipher.Hash->MD5(input);
+    "MD5:"->PrintLine();
+    "  "->Print(); hash->ToHexString()->PrintLine();
+
+    # RIPEMD-160 hash
+    input := "Rosetta Code"->ToByteArray();
+    hash := Cipher.Hash->RIPEMD160(input);
+    "RIPEMD-160:"->PrintLine();
+    "  "->Print(); hash->ToHexString()->PrintLine();
+
+    # AES-256 encrypt/decrypt
+    key := "Forest Room 5"->ToByteArray();
+    plaintext := "The quick brown fox jumps over the lazy dog"->ToByteArray();
+    encrypted := Cipher.Encrypt->AES256(key, plaintext);
+    if(encrypted <> Nil) {
+      "AES-256 encrypted (hex):"->PrintLine();
+      "  "->Print(); encrypted->ToHexString()->PrintLine();
+
+      decrypted := Cipher.Decrypt->AES256(key, encrypted);
+      if(decrypted <> Nil) {
+        "Decrypted:"->PrintLine();
+        "  "->Print(); String->New(decrypted)->PrintLine();
+      };
+    };
+  }
+}
