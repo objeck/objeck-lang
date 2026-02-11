@@ -196,7 +196,6 @@ jobs:
         CC: ${{ runner.os != 'Windows' && 'ccache gcc' || '' }}
         CXX: ${{ runner.os != 'Windows' && 'ccache g++' || '' }}
       run: ${{ matrix.deploy_script }}
-      shell: ${{ matrix.shell }}
 
     - name: Show ccache stats
       if: runner.os != 'Windows'
