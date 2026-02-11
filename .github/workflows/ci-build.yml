@@ -90,29 +90,30 @@ jobs:
           ccache
 
     # macOS dependencies with caching
-    - name: Cache Homebrew (macOS)
+    - name: Cache Homebrew downloads (macOS)
       if: runner.os == 'macOS'
       uses: actions/cache@v4
       with:
-        path: |
-          ~/Library/Caches/Homebrew
-          /opt/homebrew/Cellar
-        key: ${{ runner.os }}-brew-${{ hashFiles('.github/workflows/**') }}
+        path: ~/Library/Caches/Homebrew
+        key: ${{ runner.os }}-brew-downloads-${{ hashFiles('.github/workflows/**') }}
         restore-keys: |
-          ${{ runner.os }}-brew-
+          ${{ runner.os }}-brew-downloads-
 
     - name: Install macOS dependencies
       if: runner.os == 'macOS'
       run: |
-        PACKAGES="opencv mbedtls unixodbc sdl2 sdl2_image sdl2_ttf sdl2_mixer readline eigen lame ccache"
-
-        brew install $PACKAGES
-
-        # Link packages that may be cached but unlinked
-        for pkg in $PACKAGES; do
-          brew link --overwrite "$pkg" 2>/dev/null || true
-        done
-
+        brew install \
+          opencv \
+          mbedtls \
+          unixodbc \
+          sdl2 \
+          sdl2_image \
+          sdl2_ttf \
+          sdl2_mixer \
+          readline \
+          eigen \
+          lame \
+          ccache
         brew cleanup
 
         # Add Homebrew bin to PATH (immediate + persistent)
