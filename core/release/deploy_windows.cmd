@@ -371,7 +371,7 @@ if [%2] NEQ [deploy] goto end
 
 		REM Copy MSI and create ZIP
 		copy ..\utils\setup\arm64\release-arm64\setup.msi ..\..\Objeck-Build\release-arm64\objeck-windows-arm64_0.0.0.msi
-		%ZIP_BIN%\7z.exe a -r -tzip ..\..\Objeck-Build\release-arm64\objeck-windows-arm64_0.0.0.zip ..\..\Objeck-Build\release-arm64\%INSTALL_TARGET%
+		powershell -Command "Compress-Archive -Path '..\..\Objeck-Build\release-arm64\%INSTALL_TARGET%' -DestinationPath '..\..\Objeck-Build\release-arm64\objeck-windows-arm64_0.0.0.zip' -Force"
 	)
 
 	if [%1] == [x64] (
@@ -390,6 +390,6 @@ if [%2] NEQ [deploy] goto end
 
 		REM Copy MSI and create ZIP
 		copy ..\utils\setup\x64\release-x64\setup.msi ..\..\Objeck-Build\release-x64\objeck-windows-x64_0.0.0.msi
-		%ZIP_BIN%\7z.exe a -r -tzip ..\..\Objeck-Build\release-x64\objeck-windows-x64_0.0.0.zip ..\..\Objeck-Build\release-x64\%INSTALL_TARGET%
+		powershell -Command "Compress-Archive -Path '..\..\Objeck-Build\release-x64\%INSTALL_TARGET%' -DestinationPath '..\..\Objeck-Build\release-x64\objeck-windows-x64_0.0.0.zip' -Force"
 	)
 :end
