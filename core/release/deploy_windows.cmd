@@ -82,9 +82,10 @@ if [%1] == [x64] (
 mkdir %TARGET%\bin
 if [%1] == [arm64] (
 	copy ARM64\Release\*.exe %TARGET%\bin
-	REM Native ARM64 runner - mt.exe works directly, no cross-compilation needed
-	mt.exe -manifest ..\vm\vs\manifest.xml -outputresource:%TARGET%\bin\obr.exe;1
-	mt.exe -manifest ..\vm\vs\manifest.xml -outputresource:%TARGET%\bin\obi.exe;1
+	REM Cross-compilation: use x64 host mt.exe (ARM64 mt.exe can't run on x64 host)
+	REM WindowsSdkVerBinPath has trailing backslash, e.g., "C:\Program Files (x86)\Windows Kits\10\bin\10.0.26100.0\"
+	"%WindowsSdkVerBinPath%x64\mt.exe" -manifest ..\vm\vs\manifest.xml -outputresource:%TARGET%\bin\obr.exe;1
+	"%WindowsSdkVerBinPath%x64\mt.exe" -manifest ..\vm\vs\manifest.xml -outputresource:%TARGET%\bin\obi.exe;1
 
 	copy "%VCToolsRedistDir%\arm64\Microsoft.VC143.CRT\vcruntime140.dll" %TARGET%\bin
 	copy "%VCToolsRedistDir%\arm64\Microsoft.VC143.CRT\vcruntime140_1.dll" %TARGET%\bin
@@ -242,6 +243,9 @@ cd ..\lib\onnx
 if [%1] == [arm64] (
 	cd eq\qnn
 
+	REM Restore NuGet packages before building
+	nuget restore onnx_qnn.sln
+
 	devenv onnx_qnn.sln /rebuild "Release|ARM64"
 	copy arm64\Release\libobjk_onnx.dll ..\..\..\..\release\%TARGET%\lib\native
 
@@ -252,6 +256,9 @@ if [%1] == [arm64] (
 
 if [%1] == [x64] (
 	cd eq\dml
+
+	REM Restore NuGet packages before building
+	nuget restore onnx_dml.sln
 
 	devenv onnx_dml.sln /rebuild "Release|x64"
 	copy x64\Release\libobjk_onnx.dll ..\..\..\..\release\%TARGET%\lib\native
@@ -304,9 +311,13 @@ copy ..\lib\code_doc\templates\resources\*.png %TARGET%\style
 copy ..\..\docs\readme.html %TARGET%
 copy ..\..\LICENSE %TARGET%
 
-REM copy docs
-call code_doc64.cmd %1 deploy
-rmdir /s /q %1
+REM copy docs (skip for ARM64 cross-compilation - can't run ARM64 binaries on x64 host)
+if [%1] == [x64] (
+	call code_doc64.cmd %1 deploy
+	rmdir /s /q %1
+) else (
+	echo Skipping code_doc for ARM64 cross-compilation
+)
 
 :installer
 
