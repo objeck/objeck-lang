@@ -315,6 +315,22 @@ main {
   margin: 8px 0;
 }
 
+.box-icon {
+  display: inline-block;
+  width: 40px;
+  height: 40px;
+  line-height: 40px;
+  border-radius: 8px;
+  background-color: #2d3a4d;
+  color: #7dd3fc;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  font-weight: 700;
+  margin-bottom: 10px;
+  letter-spacing: 0.5px;
+  text-align: center;
+}
+
 .box b {
   font-weight: 600;
   color: #f3f4f6;
