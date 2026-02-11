@@ -314,24 +314,25 @@ if [%2] NEQ [deploy] goto end
 	rmdir /q /s %TARGET%\examples\doc
 
 	REM Create directory structure for MSI build (files must be in release-x64 or release-arm64)
+	REM Use repo-relative path (..\..\Objeck-Build) to match MSI project expectations
 	if [%1] == [arm64] (
-		rmdir /q /s "%USERPROFILE%\Documents\Objeck-Build\release-arm64"
-		mkdir "%USERPROFILE%\Documents\Objeck-Build\release-arm64\%INSTALL_TARGET%"
-		xcopy /e %TARGET% "%USERPROFILE%\Documents\Objeck-Build\release-arm64\%INSTALL_TARGET%"
-		mkdir "%USERPROFILE%\Documents\Objeck-Build\release-arm64\%INSTALL_TARGET%\doc\icons"
-		copy ..\..\docs\images\setup_icons\*.ico "%USERPROFILE%\Documents\Objeck-Build\release-arm64\%INSTALL_TARGET%\doc\icons"
-		copy ..\..\docs\images\setup_icons\*.jpg "%USERPROFILE%\Documents\Objeck-Build\release-arm64\%INSTALL_TARGET%\doc\icons"
-		copy ..\..\docs\eula.rtf "%USERPROFILE%\Documents\Objeck-Build\release-arm64\%INSTALL_TARGET%\doc"
+		rmdir /q /s ..\..\Objeck-Build\release-arm64
+		mkdir ..\..\Objeck-Build\release-arm64\%INSTALL_TARGET%
+		xcopy /e %TARGET% ..\..\Objeck-Build\release-arm64\%INSTALL_TARGET%
+		mkdir ..\..\Objeck-Build\release-arm64\%INSTALL_TARGET%\doc\icons
+		copy ..\..\docs\images\setup_icons\*.ico ..\..\Objeck-Build\release-arm64\%INSTALL_TARGET%\doc\icons
+		copy ..\..\docs\images\setup_icons\*.jpg ..\..\Objeck-Build\release-arm64\%INSTALL_TARGET%\doc\icons
+		copy ..\..\docs\eula.rtf ..\..\Objeck-Build\release-arm64\%INSTALL_TARGET%\doc
 	)
 
 	if [%1] == [x64] (
-		rmdir /q /s "%USERPROFILE%\Documents\Objeck-Build\release-x64"
-		mkdir "%USERPROFILE%\Documents\Objeck-Build\release-x64\%INSTALL_TARGET%"
-		xcopy /e %TARGET% "%USERPROFILE%\Documents\Objeck-Build\release-x64\%INSTALL_TARGET%"
-		mkdir "%USERPROFILE%\Documents\Objeck-Build\release-x64\%INSTALL_TARGET%\doc\icons"
-		copy ..\..\docs\images\setup_icons\*.ico "%USERPROFILE%\Documents\Objeck-Build\release-x64\%INSTALL_TARGET%\doc\icons"
-		copy ..\..\docs\images\setup_icons\*.jpg "%USERPROFILE%\Documents\Objeck-Build\release-x64\%INSTALL_TARGET%\doc\icons"
-		copy ..\..\docs\eula.rtf "%USERPROFILE%\Documents\Objeck-Build\release-x64\%INSTALL_TARGET%\doc"
+		rmdir /q /s ..\..\Objeck-Build\release-x64
+		mkdir ..\..\Objeck-Build\release-x64\%INSTALL_TARGET%
+		xcopy /e %TARGET% ..\..\Objeck-Build\release-x64\%INSTALL_TARGET%
+		mkdir ..\..\Objeck-Build\release-x64\%INSTALL_TARGET%\doc\icons
+		copy ..\..\docs\images\setup_icons\*.ico ..\..\Objeck-Build\release-x64\%INSTALL_TARGET%\doc\icons
+		copy ..\..\docs\images\setup_icons\*.jpg ..\..\Objeck-Build\release-x64\%INSTALL_TARGET%\doc\icons
+		copy ..\..\docs\eula.rtf ..\..\Objeck-Build\release-x64\%INSTALL_TARGET%\doc
 	)
 
 	if [%1] == [arm64] (
@@ -349,8 +350,8 @@ if [%2] NEQ [deploy] goto end
 		)
 
 		REM Copy MSI and create ZIP
-		copy ..\utils\setup\arm64\release-arm64\setup.msi "%USERPROFILE%\Documents\Objeck-Build\release-arm64\objeck-windows-arm64_0.0.0.msi"
-		%ZIP_BIN%\7z.exe a -r -tzip "%USERPROFILE%\Documents\Objeck-Build\release-arm64\objeck-windows-arm64_0.0.0.zip" "%USERPROFILE%\Documents\Objeck-Build\release-arm64\%INSTALL_TARGET%"
+		copy ..\utils\setup\arm64\release-arm64\setup.msi ..\..\Objeck-Build\release-arm64\objeck-windows-arm64_0.0.0.msi
+		%ZIP_BIN%\7z.exe a -r -tzip ..\..\Objeck-Build\release-arm64\objeck-windows-arm64_0.0.0.zip ..\..\Objeck-Build\release-arm64\%INSTALL_TARGET%
 	)
 
 	if [%1] == [x64] (
@@ -368,7 +369,7 @@ if [%2] NEQ [deploy] goto end
 		)
 
 		REM Copy MSI and create ZIP
-		copy ..\utils\setup\x64\release-x64\setup.msi "%USERPROFILE%\Documents\Objeck-Build\release-x64\objeck-windows-x64_0.0.0.msi"
-		%ZIP_BIN%\7z.exe a -r -tzip "%USERPROFILE%\Documents\Objeck-Build\release-x64\objeck-windows-x64_0.0.0.zip" "%USERPROFILE%\Documents\Objeck-Build\release-x64\%INSTALL_TARGET%"
+		copy ..\utils\setup\x64\release-x64\setup.msi ..\..\Objeck-Build\release-x64\objeck-windows-x64_0.0.0.msi
+		%ZIP_BIN%\7z.exe a -r -tzip ..\..\Objeck-Build\release-x64\objeck-windows-x64_0.0.0.zip ..\..\Objeck-Build\release-x64\%INSTALL_TARGET%
 	)
 :end
