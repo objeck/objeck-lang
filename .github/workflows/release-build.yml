@@ -257,7 +257,7 @@ jobs:
         id: artifacts-win
         shell: pwsh
         run: |
-          $buildDir = "$env:USERPROFILE\Documents\Objeck-Build"
+          $buildDir = "$env:GITHUB_WORKSPACE\Objeck-Build"
           $files = Get-ChildItem -Path $buildDir -Recurse -Include ${{ matrix.artifact_pattern }}
 
           if ($files.Count -eq 0) {
