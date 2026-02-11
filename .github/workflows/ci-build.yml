@@ -117,6 +117,7 @@ jobs:
           lame \
           ccache
         brew cleanup
+        echo "/opt/homebrew/bin" >> $GITHUB_PATH
 
     # Windows setup
     - name: Setup Visual Studio (Windows)
@@ -161,14 +162,7 @@ jobs:
     - name: Setup ccache
       if: runner.os != 'Windows'
       run: |
-        # Ensure ccache is in PATH (macOS needs explicit brew path)
-        if [ "${{ runner.os }}" = "macOS" ]; then
-          export PATH="/opt/homebrew/bin:$PATH"
-        fi
-
-        # Verify ccache is available
         which ccache || { echo "ccache not found in PATH"; exit 1; }
-
         ccache --max-size=500M
         ccache --set-config=compression=true
         ccache --zero-stats
