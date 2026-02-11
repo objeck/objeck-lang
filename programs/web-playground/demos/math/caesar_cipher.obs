@@ -1,0 +1,36 @@
+class Caesar {
+  function : native : Encode(enc : String, offset : Int) ~ String {
+    offset := offset % 26 + 26;
+    encoded := "";
+    enc := enc->ToLower();
+    each(i : enc) {
+      c := enc->Get(i);
+      if(c->IsChar()) {
+        j := (c - 'a' + offset) % 26;
+        encoded->Append(j + 'a');
+      }
+      else {
+        encoded->Append(c);
+      };
+    };
+
+    return encoded;
+  }
+
+  function : Decode(enc : String, offset : Int) ~ String {
+    return Encode(enc, offset * -1);
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    message := "The quick brown fox Jumped over the lazy Dog";
+    shift := 12;
+
+    "Original:  {$message}"->PrintLine();
+
+    enc := Encode(message, shift);
+    "Encoded({$shift}): {$enc}"->PrintLine();
+
+    dec := Decode(enc, shift);
+    "Decoded:   {$dec}"->PrintLine();
+  }
+}

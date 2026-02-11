@@ -1,0 +1,34 @@
+class Variables {
+  function : Main(args : String[]) ~ Nil {
+    # Integer
+    x := 42;
+    "Integer: {$x}"->PrintLine();
+
+    # Float
+    pi := 3.14159;
+    "Float: {$pi}"->PrintLine();
+
+    # Character
+    ch := 'A';
+    "Char: {$ch}"->PrintLine();
+
+    # Boolean
+    flag := true;
+    "Bool: {$flag}"->PrintLine();
+
+    # String
+    name := "Objeck";
+    "String: {$name}"->PrintLine();
+
+    # String interpolation
+    "The answer is {$x} and pi is {$pi}"->PrintLine();
+
+    # Arithmetic
+    a := 10; b := 3;
+    "  {$a} + {$b} = "->Print(); (a + b)->PrintLine();
+    "  {$a} - {$b} = "->Print(); (a - b)->PrintLine();
+    "  {$a} * {$b} = "->Print(); (a * b)->PrintLine();
+    "  {$a} / {$b} = "->Print(); (a / b)->PrintLine();
+    "  {$a} % {$b} = "->Print(); (a % b)->PrintLine();
+  }
+}

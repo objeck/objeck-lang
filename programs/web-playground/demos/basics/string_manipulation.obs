@@ -1,0 +1,29 @@
+class StringDemo {
+  function : Main(args : String[]) ~ Nil {
+    text := "  Hello, Objeck World!  ";
+
+    "Original: '{$text}'"->PrintLine();
+    trimmed := text->Trim();
+    "Trimmed:  '{$trimmed}'"->PrintLine();
+    "Upper:    "->Print(); trimmed->ToUpper()->PrintLine();
+    "Lower:    "->Print(); trimmed->ToLower()->PrintLine();
+    "Length:   "->Print(); trimmed->Size()->PrintLine();
+
+    # Substring
+    sub := trimmed->SubString(7, 6);
+    "Substr:   '{$sub}'"->PrintLine();
+
+    # Find
+    pos := text->Find("Objeck");
+    "Find 'Objeck' at: {$pos}"->PrintLine();
+
+    # Replace
+    replaced := trimmed->ReplaceAll("World", "Language");
+    "Replace:  '{$replaced}'"->PrintLine();
+
+    # Reverse
+    word := "racecar";
+    "'{$word}' reversed: "->Print();
+    word->Reverse()->PrintLine();
+  }
+}

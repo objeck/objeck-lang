@@ -1,0 +1,45 @@
+use Collection;
+
+class FilterReduce {
+  function : Main(args : String[]) ~ Nil {
+    # Filter: find even numbers
+    numbers := CompareVector->New()<IntRef>;
+    each(i : 10) {
+      numbers->AddBack(IntRef->New(i + 1));
+    };
+    evens := numbers->Filter(IsEven(IntRef) ~ Bool);
+
+    "Even numbers from 1-10:"->PrintLine();
+    each(i : evens) {
+      evens->Get(i)->As(IntRef)->Get()->PrintLine();
+    };
+
+    # Reduce: sum values
+    values := Vector->New()<FloatRef>;
+    values->AddBack(FloatRef->New(1.2));
+    values->AddBack(FloatRef->New(2.3));
+    values->AddBack(FloatRef->New(3.4));
+    values->AddBack(FloatRef->New(4.5));
+    values->AddBack(FloatRef->New(5.6));
+    sum := values->Reduce(FloatRef->New(0.0), Add(FloatRef, FloatRef) ~ FloatRef);
+    product := values->Reduce(FloatRef->New(1.0), Mul(FloatRef, FloatRef) ~ FloatRef);
+
+    s := sum->Get();
+    p := product->Get();
+    "\nReduce operations on [1.2, 2.3, 3.4, 4.5, 5.6]:"->PrintLine();
+    "  Sum:     {$s}"->PrintLine();
+    "  Product: {$p}"->PrintLine();
+  }
+
+  function : IsEven(v : IntRef) ~ Bool {
+    return v->Get() % 2 = 0;
+  }
+
+  function : Add(a : FloatRef, b : FloatRef) ~ FloatRef {
+    return FloatRef->New(a->Get() + b->Get());
+  }
+
+  function : Mul(a : FloatRef, b : FloatRef) ~ FloatRef {
+    return FloatRef->New(a->Get() * b->Get());
+  }
+}

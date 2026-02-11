@@ -1,0 +1,7 @@
+class Hello {
+  function : Main(args : String[]) ~ Nil {
+    "Hello World!"->PrintLine();
+    "Kalemera kosme"->PrintLine();
+    "Konnichiwa Sekai"->PrintLine();
+  }
+}

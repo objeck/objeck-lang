@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Objeck Playground</title>
+    <meta name="description" content="Try the Objeck programming language in your browser. Write, compile, and run Objeck code instantly.">
+    <link rel="stylesheet" href="css/playground.css">
+</head>
+<body>
+    <!-- Header -->
+    <header>
+        <div class="header-left">
+            <h1>Objeck Playground</h1>
+            <span class="version-tag">v2025</span>
+        </div>
+        <div class="header-center">
+            <button id="run-btn" title="Run (Ctrl+Enter)">
+                <span class="run-icon">&#9654;</span> Run
+            </button>
+            <span class="shortcut-hint">Ctrl+Enter</span>
+            <div id="spinner" class="spinner hidden">
+                <div class="spinner-dot"></div>
+                Running...
+            </div>
+        </div>
+        <div class="header-right">
+            <button id="share-btn" class="btn-secondary" title="Share this code">Share</button>
+            <button id="theme-toggle" class="btn-secondary" title="Toggle dark/light theme">
+                <span id="theme-icon">&#9790;</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Toolbar -->
+    <div id="toolbar">
+        <div class="toolbar-section">
+            <label>Libraries:</label>
+            <div id="lib-selector"></div>
+        </div>
+        <div class="toolbar-section">
+            <label for="demo-select">Examples:</label>
+            <select id="demo-select">
+                <option value="">-- Select a demo --</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Main content: split pane -->
+    <div id="main-content">
+        <div id="editor-pane">
+            <div id="editor-container"></div>
+        </div>
+        <div id="resize-handle"></div>
+        <div id="output-pane">
+            <div class="output-header">
+                <span>Output</span>
+                <span id="exec-time" class="hidden"></span>
+                <button id="clear-output" class="btn-secondary">Clear</button>
+            </div>
+            <pre id="output-content">Click "Run" or press Ctrl+Enter to execute your code.</pre>
+        </div>
+    </div>
+
+    <!-- Share modal -->
+    <div id="share-modal" class="modal hidden">
+        <div class="modal-content">
+            <h3>Share this code</h3>
+            <input id="share-url" type="text" readonly>
+            <div class="modal-actions">
+                <button id="copy-share-url" class="btn-secondary">Copy URL</button>
+                <button id="close-modal" class="btn-secondary">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Monaco Editor from CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.50.0/min/vs/loader.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
