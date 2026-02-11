@@ -145,6 +145,14 @@ jobs:
     - name: Setup ccache
       if: runner.os != 'Windows'
       run: |
+        # Ensure ccache is in PATH (macOS needs explicit brew path)
+        if [ "${{ runner.os }}" = "macOS" ]; then
+          export PATH="/opt/homebrew/bin:$PATH"
+        fi
+
+        # Verify ccache is available
+        which ccache || { echo "ccache not found in PATH"; exit 1; }
+
         ccache --max-size=500M
         ccache --set-config=compression=true
         ccache --zero-stats
@@ -177,11 +185,23 @@ jobs:
       env:
         CC: ${{ runner.os != 'Windows' && 'ccache gcc' || '' }}
         CXX: ${{ runner.os != 'Windows' && 'ccache g++' || '' }}
-      run: ${{ matrix.deploy_script }}
+      run: |
+        # Ensure ccache is in PATH for macOS
+        if [ "${{ runner.os }}" = "macOS" ]; then
+          export PATH="/opt/homebrew/bin:$PATH"
+        fi
+
+        ${{ matrix.deploy_script }}
 
     - name: Show ccache stats
       if: runner.os != 'Windows'
-      run: ccache --show-stats
+      run: |
+        # Ensure ccache is in PATH for macOS
+        if [ "$RUNNER_OS" = "macOS" ]; then
+          export PATH="/opt/homebrew/bin:$PATH"
+        fi
+
+        ccache --show-stats
 
     # ============================================
     # Determine Deploy Directory
