@@ -40,8 +40,10 @@ jobs:
 
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-          # Generate version number (remove dots: 2026.2.1 -> 202621)
-          VERSION_NUMBER=$(echo "$VERSION" | tr -d '.')
+          # Generate version number (remove dots and non-numeric suffixes)
+          # Extract only numeric and dot parts (e.g., "2026.2.1-test" -> "2026.2.1")
+          VERSION_NUMERIC=$(echo "$VERSION" | sed 's/[^0-9.].*$//')
+          VERSION_NUMBER=$(echo "$VERSION_NUMERIC" | tr -d '.')
           echo "version_number=$VERSION_NUMBER" >> $GITHUB_OUTPUT
 
           echo "📦 Release version: $VERSION"

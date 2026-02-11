@@ -134,6 +134,7 @@ cd core/release
 
 # deploy
 if [ ! -z "$2" ] && [ "$2" = "deploy" ]; then
+	mkdir -p ~/Desktop
 	rm -rf ~/Desktop/objeck*
 	cp -rf deploy ~/Desktop/objeck-lang
 	cd ~/Desktop
