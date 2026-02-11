@@ -12,10 +12,7 @@ ExecStart=/opt/playground/venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 
 Restart=always
 RestartSec=5
 
-Environment=PLAYGROUND_SANDBOX_IMAGE=objeck-sandbox:latest
-Environment=PLAYGROUND_HOST_TMP_DIR=/tmp/playground
-Environment=PLAYGROUND_SHARE_DB_PATH=/opt/playground/data/shares.db
-Environment=PLAYGROUND_ALLOWED_ORIGINS=["https://playground.objeck.org","https://www.objeck.org","https://objeck.org"]
+EnvironmentFile=/opt/playground/playground.env
 
 NoNewPrivileges=true
 ProtectSystem=strict
