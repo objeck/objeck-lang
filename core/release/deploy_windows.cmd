@@ -92,13 +92,13 @@ if [%1] == [arm64] (
 
 if [%1] == [x64] (
 	copy ..\compiler\release\win64\*.exe %TARGET%\bin
-	mt.exe -manifest ..\vm\vs\manifest.xml -outputresource:%TARGET%\bin\obr.exe;1	
-
 	copy ..\repl\release\win64\*.exe %TARGET%\bin
-	mt.exe -manifest ..\vm\vs\manifest.xml -outputresource:%TARGET%\bin\obi.exe;1
-
 	copy ..\vm\release\win64\*.exe %TARGET%\bin
 	copy ..\debugger\release\win64\*.exe %TARGET%\bin
+
+	REM Embed manifests AFTER copying binaries
+	mt.exe -manifest ..\vm\vs\manifest.xml -outputresource:%TARGET%\bin\obr.exe;1
+	mt.exe -manifest ..\vm\vs\manifest.xml -outputresource:%TARGET%\bin\obi.exe;1
 
 	copy "%VCToolsRedistDir%\x64\Microsoft.VC143.CRT\vcruntime140.dll" %TARGET%\bin
 	copy "%VCToolsRedistDir%\x64\Microsoft.VC143.CRT\vcruntime140_1.dll" %TARGET%\bin
