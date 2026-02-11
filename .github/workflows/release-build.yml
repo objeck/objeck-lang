@@ -40,8 +40,10 @@ jobs:
 
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-          # Generate version number (remove dots: 2026.2.1 -> 202621)
-          VERSION_NUMBER=$(echo "$VERSION" | tr -d '.')
+          # Generate version number (remove dots and non-numeric suffixes)
+          # Extract only numeric and dot parts (e.g., "2026.2.1-test" -> "2026.2.1")
+          VERSION_NUMERIC=$(echo "$VERSION" | sed 's/[^0-9.].*$//')
+          VERSION_NUMBER=$(echo "$VERSION_NUMERIC" | tr -d '.')
           echo "version_number=$VERSION_NUMBER" >> $GITHUB_OUTPUT
 
           echo "📦 Release version: $VERSION"
@@ -100,7 +102,7 @@ jobs:
             shell: cmd
             artifact_pattern: "objeck-windows-x64_0.0.0.*"
 
-          # Windows ARM64
+          # Windows ARM64 (cross-compiled on x64 runner)
           - platform: windows-arm64
             os: windows-latest
             arch: ARM64
@@ -203,6 +205,22 @@ jobs:
         with:
           arch: ${{ matrix.arch }}
 
+      - name: Install Windows dependencies
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          # Install mbedtls via vcpkg for crypto library
+          vcpkg install mbedtls:${{ matrix.arch }}-windows
+
+          # Set include/lib paths for Visual Studio
+          $vcpkgRoot = "C:\vcpkg\installed\${{ matrix.arch }}-windows"
+          echo "INCLUDE=$vcpkgRoot\include;$env:INCLUDE" >> $env:GITHUB_ENV
+          echo "LIB=$vcpkgRoot\lib;$env:LIB" >> $env:GITHUB_ENV
+
+          Write-Output "✅ Installed mbedtls for ${{ matrix.arch }}"
+          Write-Output "Set INCLUDE=$vcpkgRoot\include"
+          Write-Output "Set LIB=$vcpkgRoot\lib"
+
       # ============================================
       # Import Code Signing Certificate (Windows)
       # ============================================
@@ -255,7 +273,7 @@ jobs:
         id: artifacts-win
         shell: pwsh
         run: |
-          $buildDir = "$env:USERPROFILE\Documents\Objeck-Build"
+          $buildDir = "$env:GITHUB_WORKSPACE\Objeck-Build"
           $files = Get-ChildItem -Path $buildDir -Recurse -Include ${{ matrix.artifact_pattern }}
 
           if ($files.Count -eq 0) {

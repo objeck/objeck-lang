@@ -82,8 +82,10 @@ if [%1] == [x64] (
 mkdir %TARGET%\bin
 if [%1] == [arm64] (
 	copy ARM64\Release\*.exe %TARGET%\bin
-	mt.exe -manifest ..\vm\vs\manifest.xml -outputresource:%TARGET%\bin\obr.exe;1
-	mt.exe -manifest ..\vm\vs\manifest.xml -outputresource:%TARGET%\bin\obi.exe;1
+	REM Cross-compilation: use x64 host mt.exe (ARM64 mt.exe can't run on x64 host)
+	REM WindowsSdkVerBinPath has trailing backslash, e.g., "C:\Program Files (x86)\Windows Kits\10\bin\10.0.26100.0\"
+	"%WindowsSdkVerBinPath%x64\mt.exe" -manifest ..\vm\vs\manifest.xml -outputresource:%TARGET%\bin\obr.exe;1
+	"%WindowsSdkVerBinPath%x64\mt.exe" -manifest ..\vm\vs\manifest.xml -outputresource:%TARGET%\bin\obi.exe;1
 
 	copy "%VCToolsRedistDir%\arm64\Microsoft.VC143.CRT\vcruntime140.dll" %TARGET%\bin
 	copy "%VCToolsRedistDir%\arm64\Microsoft.VC143.CRT\vcruntime140_1.dll" %TARGET%\bin
@@ -91,13 +93,13 @@ if [%1] == [arm64] (
 
 if [%1] == [x64] (
 	copy ..\compiler\release\win64\*.exe %TARGET%\bin
-	mt.exe -manifest ..\vm\vs\manifest.xml -outputresource:%TARGET%\bin\obr.exe;1	
-
 	copy ..\repl\release\win64\*.exe %TARGET%\bin
-	mt.exe -manifest ..\vm\vs\manifest.xml -outputresource:%TARGET%\bin\obi.exe;1
-
 	copy ..\vm\release\win64\*.exe %TARGET%\bin
 	copy ..\debugger\release\win64\*.exe %TARGET%\bin
+
+	REM Embed manifests AFTER copying binaries
+	mt.exe -manifest ..\vm\vs\manifest.xml -outputresource:%TARGET%\bin\obr.exe;1
+	mt.exe -manifest ..\vm\vs\manifest.xml -outputresource:%TARGET%\bin\obi.exe;1
 
 	copy "%VCToolsRedistDir%\x64\Microsoft.VC143.CRT\vcruntime140.dll" %TARGET%\bin
 	copy "%VCToolsRedistDir%\x64\Microsoft.VC143.CRT\vcruntime140_1.dll" %TARGET%\bin
@@ -128,17 +130,25 @@ REM libraries
 del /q %TARGET%\bin\a.*
 copy ..\vm\misc\*.pem %TARGET%\lib
 
-REM crypto support
+REM crypto support (optional - requires mbedtls)
 cd ..\lib\crypto
 
 if [%1] == [arm64] (
 	devenv crypto.sln /rebuild "Release|ARM64"
-	copy ARM64\Release\*.dll ..\..\release\%TARGET%\lib\native
+	if exist ARM64\Release\*.dll (
+		copy ARM64\Release\*.dll ..\..\release\%TARGET%\lib\native
+	) else (
+		echo Warning: Crypto library DLL not found - skipping (mbedtls may not be available)
+	)
 )
 
 if [%1] == [x64] (
 	devenv crypto.sln /rebuild "Release|x64"
-	copy Release\win64\*.dll ..\..\release\%TARGET%\lib\native
+	if exist Release\win64\*.dll (
+		copy Release\win64\*.dll ..\..\release\%TARGET%\lib\native
+	) else (
+		echo Warning: Crypto library DLL not found - skipping (mbedtls may not be available)
+	)
 )
 cd ..\..\release
 
@@ -233,6 +243,9 @@ cd ..\lib\onnx
 if [%1] == [arm64] (
 	cd eq\qnn
 
+	REM Restore NuGet packages before building
+	nuget restore onnx_qnn.sln
+
 	devenv onnx_qnn.sln /rebuild "Release|ARM64"
 	copy arm64\Release\libobjk_onnx.dll ..\..\..\..\release\%TARGET%\lib\native
 
@@ -243,6 +256,9 @@ if [%1] == [arm64] (
 
 if [%1] == [x64] (
 	cd eq\dml
+
+	REM Restore NuGet packages before building
+	nuget restore onnx_dml.sln
 
 	devenv onnx_dml.sln /rebuild "Release|x64"
 	copy x64\Release\libobjk_onnx.dll ..\..\..\..\release\%TARGET%\lib\native
@@ -295,9 +311,13 @@ copy ..\lib\code_doc\templates\resources\*.png %TARGET%\style
 copy ..\..\docs\readme.html %TARGET%
 copy ..\..\LICENSE %TARGET%
 
-REM copy docs
-call code_doc64.cmd %1 deploy
-rmdir /s /q %1
+REM copy docs (skip for ARM64 cross-compilation - can't run ARM64 binaries on x64 host)
+if [%1] == [x64] (
+	call code_doc64.cmd %1 deploy
+	rmdir /s /q %1
+) else (
+	echo Skipping code_doc for ARM64 cross-compilation
+)
 
 :installer
 
@@ -312,13 +332,28 @@ if [%2] NEQ [deploy] goto end
 	)
 	
 	rmdir /q /s %TARGET%\examples\doc
-	rmdir /q /s "%USERPROFILE%\Documents\Objeck-Build\%INSTALL_TARGET%"
-	mkdir "%USERPROFILE%\Documents\Objeck-Build\%INSTALL_TARGET%"
-	xcopy /e %TARGET% "%USERPROFILE%\Documents\Objeck-Build\%INSTALL_TARGET%"
-	mkdir "%USERPROFILE%\Documents\Objeck-Build\%INSTALL_TARGET%\doc\icons"
-	copy ..\..\docs\images\setup_icons\*.ico "%USERPROFILE%\Documents\Objeck-Build\%INSTALL_TARGET%\doc\icons"
-	copy ..\..\docs\images\setup_icons\*.jpg "%USERPROFILE%\Documents\Objeck-Build\%INSTALL_TARGET%\doc\icons"
-	copy ..\..\docs\eula.rtf "%USERPROFILE%\Documents\Objeck-Build\%INSTALL_TARGET%\doc"
+
+	REM Create directory structure for MSI build (files must be in release-x64 or release-arm64)
+	REM Use repo-relative path (..\..\Objeck-Build) to match MSI project expectations
+	if [%1] == [arm64] (
+		rmdir /q /s ..\..\Objeck-Build\release-arm64
+		mkdir ..\..\Objeck-Build\release-arm64\%INSTALL_TARGET%
+		xcopy /e %TARGET% ..\..\Objeck-Build\release-arm64\%INSTALL_TARGET%
+		mkdir ..\..\Objeck-Build\release-arm64\%INSTALL_TARGET%\doc\icons
+		copy ..\..\docs\images\setup_icons\*.ico ..\..\Objeck-Build\release-arm64\%INSTALL_TARGET%\doc\icons
+		copy ..\..\docs\images\setup_icons\*.jpg ..\..\Objeck-Build\release-arm64\%INSTALL_TARGET%\doc\icons
+		copy ..\..\docs\eula.rtf ..\..\Objeck-Build\release-arm64\%INSTALL_TARGET%\doc
+	)
+
+	if [%1] == [x64] (
+		rmdir /q /s ..\..\Objeck-Build\release-x64
+		mkdir ..\..\Objeck-Build\release-x64\%INSTALL_TARGET%
+		xcopy /e %TARGET% ..\..\Objeck-Build\release-x64\%INSTALL_TARGET%
+		mkdir ..\..\Objeck-Build\release-x64\%INSTALL_TARGET%\doc\icons
+		copy ..\..\docs\images\setup_icons\*.ico ..\..\Objeck-Build\release-x64\%INSTALL_TARGET%\doc\icons
+		copy ..\..\docs\images\setup_icons\*.jpg ..\..\Objeck-Build\release-x64\%INSTALL_TARGET%\doc\icons
+		copy ..\..\docs\eula.rtf ..\..\Objeck-Build\release-x64\%INSTALL_TARGET%\doc
+	)
 
 	if [%1] == [arm64] (
 		REM Build MSI installer (files must exist in Objeck-Build first)
@@ -334,16 +369,9 @@ if [%2] NEQ [deploy] goto end
 			echo MSI signed successfully
 		)
 
-		REM Copy signed/unsigned MSI
-		copy ..\utils\setup\arm64\release-arm64\setup.msi "%USERPROFILE%\Documents\Objeck-Build\objeck-windows-arm64_0.0.0.msi"
-
-		REM Restructure directories
-		rmdir /s /q "%USERPROFILE%\Documents\Objeck-Build\release-arm64"
-		mkdir "%USERPROFILE%\Documents\Objeck-Build\release-arm64"
-		move "%USERPROFILE%\Documents\Objeck-Build\%INSTALL_TARGET%" "%USERPROFILE%\Documents\Objeck-Build\release-arm64\%INSTALL_TARGET%"
-
-		%ZIP_BIN%\7z.exe a -r -tzip "%USERPROFILE%\Documents\Objeck-Build\release-arm64\objeck-windows-arm64_0.0.0.zip" "%USERPROFILE%\Documents\Objeck-Build\release-arm64\%INSTALL_TARGET%"
-		move "%USERPROFILE%\Documents\Objeck-Build\objeck-windows-arm64_0.0.0.msi" "%USERPROFILE%\Documents\Objeck-Build\release-arm64"
+		REM Copy MSI and create ZIP
+		copy ..\utils\setup\arm64\release-arm64\setup.msi ..\..\Objeck-Build\release-arm64\objeck-windows-arm64_0.0.0.msi
+		%ZIP_BIN%\7z.exe a -r -tzip ..\..\Objeck-Build\release-arm64\objeck-windows-arm64_0.0.0.zip ..\..\Objeck-Build\release-arm64\%INSTALL_TARGET%
 	)
 
 	if [%1] == [x64] (
@@ -360,15 +388,8 @@ if [%2] NEQ [deploy] goto end
 			echo MSI signed successfully
 		)
 
-		REM Copy signed/unsigned MSI
-		copy ..\utils\setup\x64\release-x64\setup.msi "%USERPROFILE%\Documents\Objeck-Build\objeck-windows-x64_0.0.0.msi"
-
-		REM Restructure directories
-		rmdir /s /q "%USERPROFILE%\Documents\Objeck-Build\release-x64"
-		mkdir "%USERPROFILE%\Documents\Objeck-Build\release-x64"
-		move "%USERPROFILE%\Documents\Objeck-Build\%INSTALL_TARGET%" "%USERPROFILE%\Documents\Objeck-Build\release-x64\%INSTALL_TARGET%"
-
-		%ZIP_BIN%\7z.exe a -r -tzip "%USERPROFILE%\Documents\Objeck-Build\release-x64\objeck-windows-x64_0.0.0.zip" "%USERPROFILE%\Documents\Objeck-Build\release-x64\%INSTALL_TARGET%"
-		move "%USERPROFILE%\Documents\Objeck-Build\objeck-windows-x64_0.0.0.msi" "%USERPROFILE%\Documents\Objeck-Build\release-x64"
+		REM Copy MSI and create ZIP
+		copy ..\utils\setup\x64\release-x64\setup.msi ..\..\Objeck-Build\release-x64\objeck-windows-x64_0.0.0.msi
+		%ZIP_BIN%\7z.exe a -r -tzip ..\..\Objeck-Build\release-x64\objeck-windows-x64_0.0.0.zip ..\..\Objeck-Build\release-x64\%INSTALL_TARGET%
 	)
 :end
