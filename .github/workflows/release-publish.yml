@@ -1,6 +1,13 @@
 name: Release Publish
 
 on:
+  # Automatic trigger when Release Build completes
+  workflow_run:
+    workflows: ["Release Build"]
+    types: [completed]
+    branches: [master]
+
+  # Manual trigger (fallback/override)
   workflow_dispatch:
     inputs:
       version:
@@ -24,11 +31,74 @@ on:
 
 jobs:
   # ============================================
+  # Check Trigger and Extract Parameters
+  # ============================================
+
+  check-trigger:
+    name: Check Trigger and Extract Parameters
+    runs-on: ubuntu-latest
+    outputs:
+      should_publish: ${{ steps.check.outputs.should_publish }}
+      version: ${{ steps.extract.outputs.version }}
+      run_id: ${{ steps.extract.outputs.run_id }}
+
+    steps:
+      - name: Check workflow_run conclusion
+        id: check
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_run" ]; then
+            echo "🤖 Automatic trigger from Release Build workflow"
+
+            if [ "${{ github.event.workflow_run.conclusion }}" != "success" ]; then
+              echo "❌ Release Build failed - skipping publish"
+              echo "should_publish=false" >> $GITHUB_OUTPUT
+              exit 0
+            fi
+
+            echo "✅ Release Build succeeded - proceeding with publish"
+          else
+            echo "👤 Manual trigger - proceeding with publish"
+          fi
+
+          echo "should_publish=true" >> $GITHUB_OUTPUT
+
+      - name: Extract version and run_id
+        id: extract
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_run" ]; then
+            # Automatic trigger - extract from workflow_run event
+            VERSION="${{ github.event.workflow_run.head_branch }}"
+            VERSION="${VERSION#v}"  # Remove 'v' prefix if present
+            RUN_ID="${{ github.event.workflow_run.id }}"
+
+            echo "📦 Automatic extraction:"
+            echo "   Branch: ${{ github.event.workflow_run.head_branch }}"
+            echo "   Version: $VERSION"
+            echo "   Run ID: $RUN_ID"
+          else
+            # Manual trigger - use inputs
+            VERSION="${{ github.event.inputs.version }}"
+            RUN_ID="${{ github.event.inputs.run_id }}"
+
+            echo "📦 Manual trigger:"
+            echo "   Version: $VERSION"
+            echo "   Run ID: $RUN_ID"
+          fi
+
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "run_id=$RUN_ID" >> $GITHUB_OUTPUT
+
+  # ============================================
+  # Download and Rename Artifacts
+  # ============================================
+  # ============================================
   # Download and Rename Artifacts
   # ============================================
 
   prepare:
     name: Prepare Release Assets
+    needs: check-trigger
+    if: needs.check-trigger.outputs.should_publish == 'true'
     runs-on: windows-latest
 
     outputs:
@@ -41,14 +111,14 @@ jobs:
       - name: Set version
         id: version
         run: |
-          echo "version=${{ github.event.inputs.version }}" >> $env:GITHUB_OUTPUT
-          echo "📦 Release version: ${{ github.event.inputs.version }}"
+          echo "version=${{ needs.check-trigger.outputs.version }}" >> $env:GITHUB_OUTPUT
+          echo "📦 Release version: ${{ needs.check-trigger.outputs.version }}"
 
       - name: Download all release artifacts
         uses: actions/download-artifact@v4
         with:
           path: artifacts/
-          run-id: ${{ github.event.inputs.run_id }}
+          run-id: ${{ needs.check-trigger.outputs.run_id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: List downloaded artifacts
@@ -89,7 +159,7 @@ jobs:
       - name: Rename binaries
         shell: pwsh
         run: |
-          $version = "${{ github.event.inputs.version }}"
+          $version = "${{ needs.check-trigger.outputs.version }}"
           $renamer = "core\release\deploy-x64\bin\obr.exe"
           $renameScript = "core\release\deploy-x64\bin\deploy_rename.obe"
 
@@ -237,9 +307,11 @@ jobs:
 
   sourceforge-upload:
     name: Upload to Sourceforge
-    needs: [prepare, github-release]
+    needs: [check-trigger, prepare, github-release]
     runs-on: ubuntu-latest
-    if: github.event.inputs.skip_sourceforge != 'true'
+    if: |
+      needs.check-trigger.outputs.should_publish == 'true' &&
+      (github.event_name == 'workflow_run' || github.event.inputs.skip_sourceforge != 'true')
 
     steps:
       - name: Download final artifacts
@@ -297,9 +369,11 @@ jobs:
 
   deploy-docs:
     name: Deploy API Documentation
-    needs: prepare
+    needs: [check-trigger, prepare]
     runs-on: ubuntu-latest
-    if: github.event.inputs.skip_docs_deploy != 'true'
+    if: |
+      needs.check-trigger.outputs.should_publish == 'true' &&
+      (github.event_name == 'workflow_run' || github.event.inputs.skip_docs_deploy != 'true')
 
     steps:
       - name: Download API docs
@@ -307,7 +381,7 @@ jobs:
         with:
           name: api-docs
           path: api-docs/
-          run-id: ${{ github.event.inputs.run_id }}
+          run-id: ${{ needs.check-trigger.outputs.run_id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Extract API documentation
@@ -362,9 +436,9 @@ jobs:
 
   summary:
     name: Release Summary
-    needs: [prepare, github-release, sourceforge-upload, deploy-docs]
+    needs: [check-trigger, prepare, github-release, sourceforge-upload, deploy-docs]
     runs-on: ubuntu-latest
-    if: always()
+    if: always() && needs.check-trigger.outputs.should_publish == 'true'
 
     steps:
       - name: Generate summary
