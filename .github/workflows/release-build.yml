@@ -102,9 +102,9 @@ jobs:
             shell: cmd
             artifact_pattern: "objeck-windows-x64_0.0.0.*"
 
-          # Windows ARM64
+          # Windows ARM64 (native ARM64 runner - no cross-compilation!)
           - platform: windows-arm64
-            os: windows-latest
+            os: windows-11-arm64
             arch: ARM64
             deploy_script: deploy_windows.cmd arm64 deploy
             shell: cmd
