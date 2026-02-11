@@ -15,7 +15,7 @@ RestartSec=5
 Environment=PLAYGROUND_SANDBOX_IMAGE=objeck-sandbox:latest
 Environment=PLAYGROUND_HOST_TMP_DIR=/tmp/playground
 Environment=PLAYGROUND_SHARE_DB_PATH=/opt/playground/data/shares.db
-Environment=PLAYGROUND_ALLOWED_ORIGINS=["https://www.objeck.org","https://objeck.org","https://playground.objeck.org"]
+Environment=PLAYGROUND_ALLOWED_ORIGINS=["https://playground.objeck.org","https://www.objeck.org","https://objeck.org"]
 
 NoNewPrivileges=true
 ProtectSystem=strict

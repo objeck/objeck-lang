@@ -2,6 +2,12 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
+    # Local dev mode: runs obc/obr directly (no Docker needed)
+    local_dev: bool = False
+    obc_path: str = ""
+    obr_path: str = ""
+    objeck_lib_path: str = ""
+
     # Docker
     sandbox_image: str = "objeck-sandbox:latest"
     max_execution_time: int = 10

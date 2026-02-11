@@ -1,11 +1,14 @@
 #!/bin/bash
-# Objeck Playground - VPS provisioning script
-# Target: Ubuntu 22.04+ (DigitalOcean, AWS Lightsail, etc.)
+# Objeck Playground - VPS provisioning script (all-on-VPS)
+# Target: Ubuntu 22.04+ (DigitalOcean, Linode, Hetzner, etc.)
 # Usage: sudo bash setup-vps.sh
 
 set -euo pipefail
 
+DOMAIN="${1:-playground.objeck.org}"
+
 echo "=== Objeck Playground VPS Setup ==="
+echo "Domain: $DOMAIN"
 
 # System update
 echo ""
@@ -40,7 +43,7 @@ fi
 # Install Python
 echo ""
 echo "--- Installing Python ---"
-apt-get install -y python3 python3-pip python3-venv
+apt-get install -y python3 python3-pip python3-venv git
 
 # Configure firewall
 echo ""
@@ -66,26 +69,44 @@ echo "--- Creating Directories ---"
 mkdir -p /opt/playground/data
 mkdir -p /tmp/playground
 mkdir -p /var/log/caddy
-chown playground:playground /opt/playground /opt/playground/data /tmp/playground
+chown -R playground:playground /opt/playground /tmp/playground
 
 # Summary
 VPS_IP=$(curl -s ifconfig.me 2>/dev/null || echo "<unknown>")
 echo ""
 echo "=== Setup Complete ==="
 echo ""
+echo "VPS IP: ${VPS_IP}"
+echo ""
 echo "Next steps:"
-echo "  1. Copy application code to /opt/playground"
-echo "  2. Set up Python venv:"
-echo "     cd /opt/playground/backend"
+echo ""
+echo "  1. Clone the repo:"
+echo "     sudo -u playground git clone https://github.com/objeck/objeck-lang.git /opt/playground/repo"
+echo ""
+echo "  2. Link the playground code:"
+echo "     ln -sf /opt/playground/repo/programs/web-playground/backend /opt/playground/backend"
+echo "     ln -sf /opt/playground/repo/programs/web-playground/frontend /opt/playground/frontend"
+echo "     ln -sf /opt/playground/repo/programs/web-playground/demos /opt/playground/demos"
+echo "     ln -sf /opt/playground/repo/programs/web-playground/docker /opt/playground/docker"
+echo ""
+echo "  3. Set up Python venv:"
 echo "     python3 -m venv /opt/playground/venv"
-echo "     /opt/playground/venv/bin/pip install -r requirements.txt"
-echo "  3. Build sandbox Docker image:"
-echo "     cd /opt/playground && bash docker/build-sandbox.sh"
-echo "  4. Copy Caddyfile to /etc/caddy/Caddyfile and restart caddy"
-echo "  5. Install systemd service:"
-echo "     cp deploy/playground.service /etc/systemd/system/"
+echo "     /opt/playground/venv/bin/pip install -r /opt/playground/backend/requirements.txt"
+echo ""
+echo "  4. Build sandbox Docker image:"
+echo "     sudo -u playground bash /opt/playground/docker/build-sandbox.sh /opt/playground/repo/core/release/deploy"
+echo ""
+echo "  5. Install Caddyfile:"
+echo "     cp /opt/playground/repo/programs/web-playground/deploy/Caddyfile /etc/caddy/Caddyfile"
+echo "     systemctl restart caddy"
+echo ""
+echo "  6. Install systemd service:"
+echo "     cp /opt/playground/repo/programs/web-playground/deploy/playground.service /etc/systemd/system/"
 echo "     systemctl daemon-reload"
 echo "     systemctl enable --now playground"
-echo "  6. Set DNS A record:"
-echo "     api.objeck.org -> ${VPS_IP}"
-echo "     playground.objeck.org -> ${VPS_IP} (optional)"
+echo ""
+echo "  7. Set DNS A record:"
+echo "     ${DOMAIN} -> ${VPS_IP}"
+echo ""
+echo "  8. Verify:"
+echo "     curl https://${DOMAIN}/api/health"

@@ -1,34 +1,33 @@
 #!/bin/bash
 # Objeck Playground - Zero-downtime update script
-# Usage: sudo -u playground bash update.sh
+# Usage: sudo bash update.sh
 
 set -euo pipefail
 
-PLAYGROUND_DIR="/opt/playground"
+REPO_DIR="/opt/playground/repo"
 
 echo "=== Updating Objeck Playground ==="
-
-cd "$PLAYGROUND_DIR"
 
 # Pull latest code
 echo ""
 echo "--- Pulling latest code ---"
-git pull origin master
+cd "$REPO_DIR"
+sudo -u playground git pull origin master
 
 # Update Python dependencies if changed
 echo ""
 echo "--- Updating dependencies ---"
-/opt/playground/venv/bin/pip install -q -r backend/requirements.txt
+/opt/playground/venv/bin/pip install -q -r /opt/playground/backend/requirements.txt
 
 # Rebuild sandbox image if Dockerfile changed
 echo ""
 echo "--- Rebuilding sandbox image ---"
-bash docker/build-sandbox.sh
+sudo -u playground bash /opt/playground/docker/build-sandbox.sh "$REPO_DIR/core/release/deploy"
 
 # Restart the API service
 echo ""
 echo "--- Restarting API ---"
-sudo systemctl restart playground
+systemctl restart playground
 
 # Clean up old Docker images
 echo ""
@@ -44,7 +43,7 @@ if curl -sf http://localhost:8000/api/health > /dev/null; then
     echo "API is healthy"
 else
     echo "WARNING: API health check failed!"
-    sudo systemctl status playground --no-pager
+    systemctl status playground --no-pager
 fi
 
 echo ""

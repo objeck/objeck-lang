@@ -6,11 +6,10 @@
 
     // --- Configuration ---
 
+    // All-on-VPS: API is same origin. Local dev: backend on :8000
     const API_BASE = window.location.port === '8080'
         ? 'http://localhost:8000'
-        : (window.location.origin.includes('localhost')
-            ? 'http://localhost:8000'
-            : window.location.origin);
+        : window.location.origin;
 
     const AVAILABLE_LIBS = [
         { id: 'collect', name: 'Collections', desc: 'Vector, Map, List, etc.' },
