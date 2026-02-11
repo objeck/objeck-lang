@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <title>Objeck — Object-Oriented, JIT-Compiled Programming Language</title>
+  <meta name="description" content="A modern, object-oriented and functional programming language. JIT-compiled for performance, with first-class AI/ML support. Try it in your browser."/>
+  <link href="style/styles.css" rel="stylesheet"/>
+  <link rel="icon" href="style/favicon.ico" type="image/x-icon"/>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const menu = document.querySelector(".menu");
+      const menuItems = document.querySelector(".menu-items");
+
+      menu.addEventListener("click", (e) => {
+        e.stopPropagation();
+        menuItems.style.display = menuItems.style.display === "block" ? "none" : "block";
+      });
+
+      document.addEventListener("click", () => {
+        menuItems.style.display = "none";
+      });
+    });
+  </script>
+ </head>
+ <body>
+
+  <header>
+    <div class="banner">
+      <a href="https://objeck.org/">
+        <img alt="Objeck Logo" class="logo" src="style/objeck-logo.png"/>
+      </a>
+
+      <!-- Hamburger Menu -->
+      <div class="menu">
+        <div class="menu-bar"></div>
+        <div class="menu-bar"></div>
+        <div class="menu-bar"></div>
+
+        <div class="menu-items">
+          <a href="index.html">Home</a>
+          <a href="https://playground.objeck.org">Playground</a>
+          <a href="getting_started.html">Quick Start</a>
+          <a href="https://github.com/objeck/objeck-lang/releases/latest">Downloads</a>
+          <a href="readme.html">Changelog</a>
+          <a href="https://www.objeck.org/doc/api/index.html" target="_blank">API Docs</a>
+          <a href="https://github.com/objeck/objeck-lang">GitHub</a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- Hero Section -->
+    <section class="hero">
+      <h1 class="hero-title">Object-Oriented Code,<br/>Native Speed</h1>
+      <p class="hero-subtitle">
+        A modern, JIT-compiled language with first-class support for AI, ML, and computer vision.
+        Cross-platform on Linux, macOS, and Windows — including ARM64.
+      </p>
+      <div class="hero-actions">
+        <a class="btn btn-primary" href="https://playground.objeck.org">
+          Try It In Your Browser
+        </a>
+        <a class="btn btn-secondary" href="https://github.com/objeck/objeck-lang/releases/latest">
+          Download v2026.2.1
+        </a>
+      </div>
+    </section>
+
+    <!-- Code Example -->
+    <section class="code-preview">
+      <pre><code><span class="kw">class</span> Hello {
+  <span class="kw">function</span> : Main(args : String[]) ~ Nil {
+    <span class="str">"Hello World"</span>->PrintLine();
+
+    values := [<span class="num">1</span>, <span class="num">2</span>, <span class="num">3</span>, <span class="num">4</span>, <span class="num">5</span>];
+    squares := values->Map(Int)<span class="kw">-></span>Do(\(v) => v * v);
+    squares->Each(\(v) => v->PrintLine());
+  }
+}</code></pre>
+    </section>
+
+    <!-- Featured: Playground -->
+    <section class="features">
+      <a class="box box-featured" href="https://playground.objeck.org">
+        <span class="badge-new">New</span>
+        <b>Web Playground</b>
+        <hr/>
+        <span class="box-text">
+          Write, compile, and run Objeck code directly in your browser. Includes 33 demo programs across 7 categories — no installation needed.
+        </span>
+      </a>
+
+      <!-- Other Cards -->
+      <div class="boxes">
+        <a class="box" href="getting_started.html">
+          <b>Quick Start</b>
+          <hr/>
+          <span class="box-text">
+            Introduction to the language with concepts and sample code.
+          </span>
+        </a>
+        <a class="box" href="https://www.objeck.org/doc/api/index.html" target="_blank">
+          <b>API Reference</b>
+          <hr/>
+          <span class="box-text">
+            Full documentation for all supported libraries.
+          </span>
+        </a>
+        <a class="box" href="https://rosettacode.org/wiki/Category:Objeck" target="_blank">
+          <b>350+ Solutions</b>
+          <hr/>
+          <span class="box-text">
+            Rosetta Code examples compared with other languages.
+          </span>
+        </a>
+      </div>
+    </section>
+
+    <!-- Highlights -->
+    <section class="highlights">
+      <h2 class="section-title">Language Highlights</h2>
+      <div class="highlight-grid">
+        <div class="highlight-item">
+          <div class="highlight-icon">JIT</div>
+          <h3>JIT Compiled</h3>
+          <p>ARM64 and x86-64 JIT compilation for native performance.</p>
+        </div>
+        <div class="highlight-item">
+          <div class="highlight-icon">AI</div>
+          <h3>AI &amp; ML Ready</h3>
+          <p>OpenAI, Gemini, Ollama, ONNX, and OpenCV libraries built in.</p>
+        </div>
+        <div class="highlight-item">
+          <div class="highlight-icon">FN</div>
+          <h3>OOP + Functional</h3>
+          <p>Generics, closures, lambdas, first-class functions, and reflection.</p>
+        </div>
+        <div class="highlight-item">
+          <div class="highlight-icon">NLP</div>
+          <h3>Text Processing</h3>
+          <p>Tokenization, TF-IDF, text similarity, and sentiment analysis.</p>
+        </div>
+        <div class="highlight-item">
+          <div class="highlight-icon">NET</div>
+          <h3>Web &amp; Networking</h3>
+          <p>HTTP client/server, TLS, OAuth, JSON, XML, and CSV support.</p>
+        </div>
+        <div class="highlight-item">
+          <div class="highlight-icon">DEV</div>
+          <h3>Developer Tools</h3>
+          <p>REPL, LSP for VSCode/Sublime/Kate, debugger, and code docs.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Platforms -->
+    <section class="platforms">
+      <h2 class="section-title">Cross-Platform</h2>
+      <div class="platform-list">
+        <span class="platform-badge">Linux x64</span>
+        <span class="platform-badge">Linux ARM64</span>
+        <span class="platform-badge">macOS ARM64</span>
+        <span class="platform-badge">Windows x64</span>
+        <span class="platform-badge">Windows ARM64</span>
+        <span class="platform-badge">Raspberry Pi</span>
+      </div>
+    </section>
+
+    <!-- Links -->
+    <section class="link-bar">
+      <a class="btn btn-secondary" href="https://github.com/objeck/objeck-lang">GitHub</a>
+      <a class="btn btn-secondary" href="readme.html">Changelog</a>
+      <a class="btn btn-secondary" href="https://github.com/objeck/objeck-lang/discussions">Discussions</a>
+    </section>
+  </main>
+
+  <footer class="footer">
+    &copy; 2025-2026 Randy Hollines. All Rights Reserved.
+  </footer>
+ </body>
+</html>
