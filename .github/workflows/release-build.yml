@@ -281,10 +281,18 @@ jobs:
             exit 1
           }
 
+          # Collect all matching file paths (newline-separated for multi-path upload)
+          $paths = @()
           foreach ($file in $files) {
             Write-Output "Found: $($file.FullName)"
-            echo "artifact_path=$($file.FullName)" >> $env:GITHUB_OUTPUT
+            $paths += $file.FullName
           }
+
+          # Write multiline output for upload step
+          $pathsStr = $paths -join "`n"
+          echo "artifact_paths<<EOF" >> $env:GITHUB_OUTPUT
+          echo $pathsStr >> $env:GITHUB_OUTPUT
+          echo "EOF" >> $env:GITHUB_OUTPUT
 
       - name: Find release artifacts (POSIX)
         if: runner.os != 'Windows'
@@ -299,14 +307,14 @@ jobs:
           fi
 
           echo "✅ Found: $ARTIFACT"
-          echo "artifact_path=$ARTIFACT" >> $GITHUB_OUTPUT
+          echo "artifact_paths=$ARTIFACT" >> $GITHUB_OUTPUT
 
       - name: Upload release artifacts
         uses: actions/upload-artifact@v4
         with:
           name: release-${{ matrix.platform }}
           path: |
-            ${{ runner.os == 'Windows' && steps.artifacts-win.outputs.artifact_path || steps.artifacts-posix.outputs.artifact_path }}
+            ${{ runner.os == 'Windows' && steps.artifacts-win.outputs.artifact_paths || steps.artifacts-posix.outputs.artifact_paths }}
           retention-days: 7
 
   # ============================================
