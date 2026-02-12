@@ -421,6 +421,7 @@ void Scanner::CheckIdentifier(int index)
     case TOKEN_OR_ID:
     case TOKEN_XOR_ID:
     case TOKEN_CRITICAL_ID:
+    case TOKEN_ASSUME_NONNULL_ID:
     case TOKEN_VIRTUAL_ID:
     case TOKEN_FROM_ID:
     case TOKEN_OTHER_ID:

@@ -553,6 +553,7 @@ class ContextAnalyzer {
   void AnalyzeWhile(While* while_stmt, const int depth);
   void AnalyzeSelect(Select* select_stmt, const int depth);
   void AnalyzeCritical(CriticalSection* mutex, const int depth);
+  void AnalyzeAssumeNonNull(AssumeNonNull* assume_nonnull_stmt, const int depth);
   void AnalyzeFor(For* for_stmt, const int depth);
   void AnalyzeReturn(Return* rtrn, const int depth);
   void AnalyzeLeaving(Leaving* leaving_stmt, const int depth);

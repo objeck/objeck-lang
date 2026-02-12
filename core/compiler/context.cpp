@@ -1601,6 +1601,10 @@ void ContextAnalyzer::AnalyzeStatement(Statement* statement, const int depth)
       AnalyzeCritical(static_cast<CriticalSection*>(statement), depth);
       break;
 
+    case ASSUME_NONNULL_STMT:
+      AnalyzeAssumeNonNull(static_cast<AssumeNonNull*>(statement), depth);
+      break;
+
     default:
       ProcessError(statement, L"Undefined statement");
       break;
@@ -4473,6 +4477,15 @@ void ContextAnalyzer::AnalyzeCritical(CriticalSection* mutex, const int depth)
     }
     AnalyzeStatements(mutex->GetStatements(), depth + 1);
   }
+}
+
+/****************************
+ * Analyzes an 'assume_nonnull' statement
+ ****************************/
+void ContextAnalyzer::AnalyzeAssumeNonNull(AssumeNonNull* assume_nonnull_stmt, const int depth)
+{
+  // Simply analyze the statements inside the block
+  AnalyzeStatements(assume_nonnull_stmt->GetStatements(), depth + 1);
 }
 
 /****************************
