@@ -4468,7 +4468,11 @@ each(i : cities) {
 			else {
 				@max := array->Size();
 				@string := array;
-				@pos := array->Size();
+				# calculate actual string length (not buffer capacity)
+				@pos := 0;
+				while(@pos < @max & @string[@pos] <> '\0') {
+					@pos += 1;
+				};
 			};
 		}
 		
