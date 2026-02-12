@@ -101,6 +101,7 @@ namespace frontend {
     RETURN_STMT,
     LEAVING_STMT,
     CRITICAL_STMT,
+    ASSUME_NONNULL_STMT,
     SYSTEM_STMT,
     EMPTY_STMT
   };
@@ -1670,6 +1671,29 @@ namespace frontend {
 
     const StatementType GetStatementType() {
       return CRITICAL_STMT;
+    }
+  };
+
+  /****************************
+   * AssumeNonNull class
+   ****************************/
+  class AssumeNonNull : public Statement {
+    StatementList* statements;
+
+  public:
+  AssumeNonNull(const std::wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, StatementList* s) : Statement(file_name, line_num, line_pos, end_line_num, end_line_pos) {
+      statements = s;
+    }
+
+    ~AssumeNonNull() {
+    }
+
+    StatementList* GetStatements() {
+      return statements;
+    }
+
+    const StatementType GetStatementType() {
+      return ASSUME_NONNULL_STMT;
     }
   };
 
@@ -3531,6 +3555,12 @@ namespace frontend {
 
     CriticalSection* MakeCriticalSection(const std::wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, Variable* var, StatementList* stmts) {
       CriticalSection* tmp = new CriticalSection(file_name, line_num, line_pos, end_line_num, end_line_pos, var, stmts);
+      statements.push_back(tmp);
+      return tmp;
+    }
+
+    AssumeNonNull* MakeAssumeNonNull(const std::wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, StatementList* stmts) {
+      AssumeNonNull* tmp = new AssumeNonNull(file_name, line_num, line_pos, end_line_num, end_line_pos, stmts);
       statements.push_back(tmp);
       return tmp;
     }

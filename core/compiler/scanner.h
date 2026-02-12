@@ -155,6 +155,7 @@ enum ScannerTokenType {
   TOKEN_CHAR_ID,
   TOKEN_NIL_ID,
   TOKEN_CRITICAL_ID,
+  TOKEN_ASSUME_NONNULL_ID,
 #ifdef _SYSTEM
   S2I,
   S2F,

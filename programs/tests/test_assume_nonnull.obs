@@ -1,0 +1,79 @@
+#~
+# Test for assume_nonnull block feature
+# This test demonstrates the new assume_nonnull construct
+~#
+
+use Collection;
+
+class TestAssumeNonNull {
+  function : Main(args : String[]) ~ Nil {
+    "Testing assume_nonnull block..."->PrintLine();
+    
+    # Test 1: Basic assume_nonnull block
+    TestBasic();
+    
+    # Test 2: assume_nonnull with method calls
+    TestMethodCalls();
+    
+    # Test 3: assume_nonnull with collections
+    TestCollections();
+    
+    "---"->PrintLine();
+    "All assume_nonnull tests completed successfully!"->PrintLine();
+  }
+  
+  function : TestBasic() ~ Nil {
+    "Test 1: Basic assume_nonnull block"->PrintLine();
+    
+    value := "Hello World";
+    
+    assume_nonnull {
+      # Inside assume_nonnull block, we can use value without checking for Nil
+      length := value->Size();
+      "  Value length: {$length}"->PrintLine();
+      
+      upper := value->ToUpper();
+      "  Uppercase: {$upper}"->PrintLine();
+    };
+    
+    "  Test 1 PASSED"->PrintLine();
+  }
+  
+  function : TestMethodCalls() ~ Nil {
+    "Test 2: assume_nonnull with method calls"->PrintLine();
+    
+    result := GetSomeString();
+    
+    assume_nonnull {
+      # result is assumed to be non-nil
+      trimmed := result->Trim();
+      "  Trimmed result: '{$trimmed}'"->PrintLine();
+    };
+    
+    "  Test 2 PASSED"->PrintLine();
+  }
+  
+  function : GetSomeString() ~ String {
+    return "  Some test string  ";
+  }
+  
+  function : TestCollections() ~ Nil {
+    "Test 3: assume_nonnull with collections"->PrintLine();
+    
+    list := Vector->New()<String>;
+    list->AddBack("First");
+    list->AddBack("Second");
+    list->AddBack("Third");
+    
+    assume_nonnull {
+      # Accessing collection without nil checks
+      first := list->Get(0);
+      "  First element: {$first}"->PrintLine();
+      
+      size := list->Size();
+      "  List size: {$size}"->PrintLine();
+    };
+    
+    "  Test 3 PASSED"->PrintLine();
+  }
+}

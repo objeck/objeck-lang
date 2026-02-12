@@ -1239,6 +1239,10 @@ void IntermediateEmitter::EmitStatement(Statement* statement)
   case CRITICAL_STMT:
     EmitCriticalSection(static_cast<CriticalSection*>(statement));
     break;
+
+  case ASSUME_NONNULL_STMT:
+    EmitAssumeNonNull(static_cast<AssumeNonNull*>(statement));
+    break;
     
   case SYSTEM_STMT:
     EmitSystemDirective(static_cast<SystemStatement*>(statement));
@@ -3506,6 +3510,23 @@ void IntermediateEmitter::EmitCriticalSection(CriticalSection* critical_stmt)
 
   EmitVariable(critical_stmt->GetVariable());
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(critical_stmt, cur_line_num, CRITICAL_END));
+}
+
+/****************************
+ * Translates an 'assume_nonnull' statement
+ ****************************/
+void IntermediateEmitter::EmitAssumeNonNull(AssumeNonNull* assume_nonnull_stmt)
+{
+  cur_line_num = assume_nonnull_stmt->GetLineNumber();
+
+  StatementList* statement_list = assume_nonnull_stmt->GetStatements();
+  std::vector<Statement*> statements = statement_list->GetStatements();
+
+  // Simply emit the statements inside the block
+  // The runtime will already abort on Nil dereference
+  for(size_t i = 0; i < statements.size(); ++i) {
+    EmitStatement(statements[i]);
+  }
 }
 
 /****************************

@@ -201,6 +201,7 @@ class Parser {
   For* ParseFor(int depth);
   For* ParseEach(int depth);
   CriticalSection* ParseCritical(int depth);
+  AssumeNonNull* ParseAssumeNonNull(int depth);
   For* ParseEach(bool reverse, int depth);
   Return* ParseReturn(int depth);
   Leaving* ParseLeaving(int depth);

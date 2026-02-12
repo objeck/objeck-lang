@@ -1570,6 +1570,7 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
     case TOKEN_EACH_ID:
     case TOKEN_REVERSE_ID:
     case TOKEN_CRITICAL_ID:
+    case TOKEN_ASSUME_NONNULL_ID:
       statement = ParseControlFlowStatement(line_num, line_pos, file_name, depth);
       break;
 
@@ -3424,6 +3425,10 @@ Statement* Parser::ParseControlFlowStatement(int line_num, int line_pos, const s
 
   case TOKEN_CRITICAL_ID:
     statement = ParseCritical(depth + 1);
+    break;
+
+  case TOKEN_ASSUME_NONNULL_ID:
+    statement = ParseAssumeNonNull(depth + 1);
     break;
 
   default:
@@ -6676,6 +6681,28 @@ CriticalSection* Parser::ParseCritical(int depth)
   symbol_table->CurrentParseScope()->PreviousParseScope();
 
   return TreeFactory::Instance()->MakeCriticalSection(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), variable, statements);
+}
+
+/****************************
+ * Parses an 'assume_nonnull' statement
+ ****************************/
+AssumeNonNull* Parser::ParseAssumeNonNull(int depth)
+{
+  const std::wstring file_name = GetFileName();
+  const int line_num = GetLineNumber();
+  const int line_pos = GetLinePosition();
+
+#ifdef _DEBUG
+  Debug(L"Assume NonNull", depth);
+#endif
+
+  NextToken();
+
+  symbol_table->CurrentParseScope()->NewParseScope();
+  StatementList* statements = ParseStatementList(depth + 1);
+  symbol_table->CurrentParseScope()->PreviousParseScope();
+
+  return TreeFactory::Instance()->MakeAssumeNonNull(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), statements);
 }
 
 /****************************

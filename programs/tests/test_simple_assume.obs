@@ -1,0 +1,9 @@
+class Test {
+  function : Main(args : String[]) ~ Nil {
+    "Testing..."->PrintLine();
+    assume_nonnull {
+      "Inside block"->PrintLine();
+    };
+    "Done"->PrintLine();
+  }
+}

@@ -150,6 +150,7 @@ void Scanner::LoadKeywords()
   ident_map[L"As"] = TOKEN_AS_ID;
   ident_map[L"TypeOf"] = TOKEN_TYPE_OF_ID;
   ident_map[L"critical"] = TOKEN_CRITICAL_ID;
+  ident_map[L"assume_nonnull"] = TOKEN_ASSUME_NONNULL_ID;
 #ifdef _SYSTEM
   ident_map[L"S2I"] = S2I;
   ident_map[L"S2F"] = S2F;
