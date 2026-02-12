@@ -91,9 +91,6 @@ jobs:
   # ============================================
   # Download and Rename Artifacts
   # ============================================
-  # ============================================
-  # Download and Rename Artifacts
-  # ============================================
 
   prepare:
     name: Prepare Release Assets
@@ -312,6 +309,9 @@ jobs:
     if: |
       needs.check-trigger.outputs.should_publish == 'true' &&
       (github.event_name == 'workflow_run' || github.event.inputs.skip_sourceforge != 'true')
+    env:
+      SOURCEFORGE_SSH_KEY: ${{ secrets.SOURCEFORGE_SSH_KEY }}
+      SOURCEFORGE_USERNAME: ${{ secrets.SOURCEFORGE_USERNAME }}
 
     steps:
       - name: Download final artifacts
@@ -321,7 +321,7 @@ jobs:
           path: release-final/
 
       - name: Setup SSH key
-        if: secrets.SOURCEFORGE_SSH_KEY != ''
+        if: env.SOURCEFORGE_SSH_KEY != ''
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.SOURCEFORGE_SSH_KEY }}" > ~/.ssh/sf_key
@@ -331,21 +331,21 @@ jobs:
           ssh-keyscan frs.sourceforge.net >> ~/.ssh/known_hosts
 
       - name: Create release directory on Sourceforge
-        if: secrets.SOURCEFORGE_SSH_KEY != ''
+        if: env.SOURCEFORGE_SSH_KEY != ''
         run: |
           VERSION="${{ needs.prepare.outputs.version }}"
 
           ssh -i ~/.ssh/sf_key \
-            "${{ secrets.SOURCEFORGE_USERNAME }}@frs.sourceforge.net" \
+            "${{ env.SOURCEFORGE_USERNAME }}@frs.sourceforge.net" \
             "mkdir -p /home/frs/project/objeck/v${VERSION}"
 
       - name: Upload to Sourceforge via SFTP
-        if: secrets.SOURCEFORGE_SSH_KEY != ''
+        if: env.SOURCEFORGE_SSH_KEY != ''
         run: |
           VERSION="${{ needs.prepare.outputs.version }}"
 
           sftp -i ~/.ssh/sf_key \
-            "${{ secrets.SOURCEFORGE_USERNAME }}@frs.sourceforge.net" << EOF
+            "${{ env.SOURCEFORGE_USERNAME }}@frs.sourceforge.net" << EOF
           cd /home/frs/project/objeck/v${VERSION}
           put release-final/*
           EOF
@@ -358,7 +358,7 @@ jobs:
           rm -f ~/.ssh/sf_key
 
       - name: Skip notice
-        if: secrets.SOURCEFORGE_SSH_KEY == ''
+        if: env.SOURCEFORGE_SSH_KEY == ''
         run: |
           echo "⚠️  Sourceforge SSH key not configured. Skipping upload."
           echo "To enable: Add SOURCEFORGE_SSH_KEY and SOURCEFORGE_USERNAME secrets"
@@ -374,6 +374,9 @@ jobs:
     if: |
       needs.check-trigger.outputs.should_publish == 'true' &&
       (github.event_name == 'workflow_run' || github.event.inputs.skip_docs_deploy != 'true')
+    env:
+      OBJECK_ORG_SSH_KEY: ${{ secrets.OBJECK_ORG_SSH_KEY }}
+      OBJECK_ORG_USER: ${{ secrets.OBJECK_ORG_USER }}
 
     steps:
       - name: Download API docs
@@ -390,7 +393,7 @@ jobs:
           echo "✅ API documentation extracted"
 
       - name: Setup SSH key for objeck.org
-        if: secrets.OBJECK_ORG_SSH_KEY != ''
+        if: env.OBJECK_ORG_SSH_KEY != ''
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.OBJECK_ORG_SSH_KEY }}" > ~/.ssh/obj_key
@@ -400,7 +403,7 @@ jobs:
           # ssh-keyscan objeck.org >> ~/.ssh/known_hosts
 
       - name: Deploy to objeck.org
-        if: secrets.OBJECK_ORG_SSH_KEY != ''
+        if: env.OBJECK_ORG_SSH_KEY != ''
         run: |
           VERSION="${{ needs.prepare.outputs.version }}"
 
@@ -408,11 +411,11 @@ jobs:
           rsync -avz --delete \
             -e "ssh -i ~/.ssh/obj_key -o StrictHostKeyChecking=no" \
             api-temp/api/ \
-            "${{ secrets.OBJECK_ORG_USER }}@objeck.org:/var/www/objeck.org/api/v${VERSION}/"
+            "${{ env.OBJECK_ORG_USER }}@objeck.org:/var/www/objeck.org/api/v${VERSION}/"
 
           # Update 'latest' symlink
           ssh -i ~/.ssh/obj_key -o StrictHostKeyChecking=no \
-            "${{ secrets.OBJECK_ORG_USER }}@objeck.org" \
+            "${{ env.OBJECK_ORG_USER }}@objeck.org" \
             "cd /var/www/objeck.org/api && ln -sfn v${VERSION} latest"
 
           echo "✅ API docs deployed:"
@@ -425,7 +428,7 @@ jobs:
           rm -f ~/.ssh/obj_key
 
       - name: Skip notice
-        if: secrets.OBJECK_ORG_SSH_KEY == ''
+        if: env.OBJECK_ORG_SSH_KEY == ''
         run: |
           echo "⚠️  objeck.org SSH key not configured. Skipping deployment."
           echo "To enable: Add OBJECK_ORG_SSH_KEY and OBJECK_ORG_USER secrets"
