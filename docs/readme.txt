@@ -14,6 +14,8 @@ v2026.2.0
 - Migrated crypto library from OpenSSL to mbedTLS
 - Modern GNU-style CLI flags with backward compatibility
 - Memory manager and JIT performance optimizations
+- Fixed method chaining on array-indexed elements after cast (#524)
+- Fixed String buffer size in ToString() for Int and Float
 - Collections and String bug fixes and new methods
 - Fully automated CI/CD release pipeline
 - Bug fixes

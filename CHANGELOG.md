@@ -36,8 +36,10 @@ All notable changes to Objeck will be documented in this file.
 
 ### Compiler Improvements
 - Better error messages with operator symbols, normalized type names, inline hints
+- Fixed method chaining on array-indexed elements after cast (#524)
 
 ### Bug Fixes
+- **String**: Fixed `ToString()` buffer size for Int and Float (returned buffer capacity instead of content length)
 - ARM64 JIT: Fixed STRH/LDRH opcodes, memory offset scaling, bitwise NOT
 - Memory Manager: Fixed root scanning, race conditions, redundant binary search
 - Crypto: Fixed AES-256 CBC padding and key derivation
