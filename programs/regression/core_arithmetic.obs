@@ -22,7 +22,7 @@ class CoreArithmeticTest {
         c := 3.1415;
         d := 11.12;
         diff := c - d;
-        if(diff > -7.98 | diff < -7.99) {
+        if(diff > -7.97 | diff < -7.99) {
             pass := false;
             "  FAIL: 3.1415 - 11.12 = {$diff}"->PrintLine();
         };

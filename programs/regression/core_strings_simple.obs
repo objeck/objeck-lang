@@ -31,16 +31,16 @@ class CoreStringsSimpleTest {
 
         # Test string comparison
         str2 := "Hello World";
-        if(str <> str2) {
+        if(<>str->Equals(str2)) {
             pass := false;
             "  FAIL: String comparison"->PrintLine();
         };
 
         # Test SubString
-        sub := str->SubString(6);
-        if(sub <> "World") {
+        sub := str->SubString(6, 5);
+        if(<>sub->Equals("World")) {
             pass := false;
-            "  FAIL: SubString(6)"->PrintLine();
+            "  FAIL: SubString(6, 5)"->PrintLine();
         };
 
         # Test Find
@@ -58,12 +58,25 @@ class CoreStringsSimpleTest {
             "  FAIL: ToInt()"->PrintLine();
         };
 
-        # Test number to string
+        # Test number to string - ToString() should return correct size
         val := 456;
         str3 := val->ToString();
-        if(str3 <> "456") {
+        if(str3->Size() <> 3) {
             pass := false;
-            "  FAIL: ToString()"->PrintLine();
+            "  FAIL: ToString() size, expected 3 got "->Print();
+            str3->Size()->PrintLine();
+        };
+        if(<>str3->Equals("456")) {
+            pass := false;
+            "  FAIL: ToString() value"->PrintLine();
+        };
+
+        # Test Float ToString
+        fval := 3.14;
+        fstr := fval->ToString();
+        if(fstr->Size() < 3 | fstr->Size() > 10) {
+            pass := false;
+            "  FAIL: Float ToString() size"->PrintLine();
         };
 
         if(pass) {
