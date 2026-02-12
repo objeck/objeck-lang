@@ -32,7 +32,8 @@ class CoreArraysSimpleTest {
         str_array[1] := "second";
         str_array[2] := "third";
 
-        if(str_array[1] <> "second") {
+        s := str_array[1];
+        if(<>s->Equals("second")) {
             pass := false;
             "  FAIL: String array[1]"->PrintLine();
         };
