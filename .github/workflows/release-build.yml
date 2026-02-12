@@ -226,7 +226,7 @@ jobs:
       # ============================================
       # MSI signing is done locally after CI build using a hardware
       # SafeNet eToken (Sectigo OV Code Signing certificate).
-      # Run: core\release\sign_release.cmd <version>
+      # Run: tools\cicd\sign_release.cmd <version>
       # ============================================
 
       # ============================================
