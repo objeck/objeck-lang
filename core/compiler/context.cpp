@@ -2621,10 +2621,6 @@ bool ContextAnalyzer::AnalyzeExpressionMethodCall(Expression* expression, std::w
       type = expression->GetEvalType();
     }
     else if(expression->GetExpressionType() == VAR_EXPR) {
-      if(static_cast<Variable*>(expression)->GetIndices()) {
-        ProcessError(expression, L"Unable to make a method call from an indexed array element");
-        return false;
-      }
       type = expression->GetCastType();
     }
     else {
