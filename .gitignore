@@ -71,3 +71,7 @@ logs_*/
 nul
 build.txt
 *.zip
+# Compiled executables
+obc
+obr
+obpm
