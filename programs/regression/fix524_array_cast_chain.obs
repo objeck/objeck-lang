@@ -1,0 +1,54 @@
+#~
+# Fix #524: Cannot chain method calls on array-indexed elements after cast
+# Tests that Get(index)->As(Type)->Method() compiles and runs correctly
+~#
+
+use Collection;
+
+class Fix524Test {
+  function : Main(args : String[]) ~ Nil {
+    "Testing fix for #524: method chain on array-indexed cast..."->PrintLine();
+    pass := true;
+
+    # Test 1: Basic chain - Get(index)->As(Type)->Get()
+    stack := Vector->New()<FloatRef>;
+    stack->AddBack(FloatRef->New(3.14));
+    stack->AddBack(FloatRef->New(2.71));
+    val := stack->Get(0)->As(FloatRef)->Get();
+    if(val <> 3.14) {
+      pass := false;
+      "  FAIL: Get(0)->As(FloatRef)->Get() returned wrong value"->PrintLine();
+    };
+
+    # Test 2: Multiple element access
+    val2 := stack->Get(1)->As(FloatRef)->Get();
+    if(val2 <> 2.71) {
+      pass := false;
+      "  FAIL: Get(1)->As(FloatRef)->Get() returned wrong value"->PrintLine();
+    };
+
+    # Test 3: IntRef collection
+    nums := Vector->New()<IntRef>;
+    nums->AddBack(IntRef->New(42));
+    ival := nums->Get(0)->As(IntRef)->Get();
+    if(ival <> 42) {
+      pass := false;
+      "  FAIL: IntRef Get(0)->As(IntRef)->Get() returned wrong value"->PrintLine();
+    };
+
+    # Test 4: String collection with cast and method chain
+    words := Vector->New()<String>;
+    words->AddBack("hello");
+    len := words->Get(0)->As(String)->Size();
+    if(len <> 5) {
+      pass := false;
+      "  FAIL: String Get(0)->As(String)->Size() returned wrong value"->PrintLine();
+    };
+
+    if(pass) {
+      "PASS: Fix #524 array cast method chain"->PrintLine();
+    } else {
+      "FAIL: Fix #524 array cast method chain"->PrintLine();
+    };
+  }
+}
