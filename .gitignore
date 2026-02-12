@@ -70,5 +70,8 @@ logs_*/
 # Misc
 nul
 build.txt
-*.zipcore/compiler/obc
+*.zip
+
+# Compiler and VM binaries
+core/compiler/obc
 core/vm/obr
