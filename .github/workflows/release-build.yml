@@ -422,10 +422,52 @@ jobs:
           cd core/release
           ./deploy_posix.sh x64
 
+      - name: Recompile standard libraries
+        working-directory: ./core/release/deploy/bin
+        run: |
+          export OBJECK_LIB_PATH=$(pwd)/../lib
+          SRC=../../../compiler/lib_src
+          LIB=../lib
+
+          echo "Recompiling standard libraries with new compiler..."
+
+          # Core libraries (no dependencies)
+          ./obc -src $SRC/lang.obs -tar lib -opt s3 -dest $LIB/lang.obl
+          ./obc -src $SRC/gen_collect.obs -tar lib -opt s3 -dest $LIB/gen_collect.obl
+          ./obc -src $SRC/regex.obs -tar lib -opt s3 -dest $LIB/regex.obl
+          ./obc -src $SRC/xml.obs -tar lib -opt s3 -dest $LIB/xml.obl
+          ./obc -src $SRC/csv.obs -tar lib -opt s3 -dest $LIB/csv.obl
+          ./obc -src $SRC/cipher.obs -tar lib -opt s3 -dest $LIB/cipher.obl
+          ./obc -src $SRC/misc.obs -tar lib -opt s3 -dest $LIB/misc.obl
+
+          # Libraries with dependencies
+          ./obc -src $SRC/json.obs -lib gen_collect -tar lib -opt s3 -dest $LIB/json.obl
+          ./obc -src $SRC/net_common.obs,$SRC/net.obs,$SRC/net_secure.obs -lib json,cipher -tar lib -opt s3 -dest $LIB/net.obl
+          ./obc -src $SRC/net_server.obs -lib net,json,cipher -tar lib -opt s3 -dest $LIB/net_server.obl
+          ./obc -src $SRC/ml.obs -lib json,csv -tar lib -opt s3 -dest $LIB/ml.obl
+          ./obc -src $SRC/rss.obs -lib xml,net,cipher -tar lib -opt s3 -dest $LIB/rss.obl
+          ./obc -src $SRC/query.obs -lib json -tar lib -opt s3 -dest $LIB/query.obl
+          ./obc -src $SRC/odbc.obs -tar lib -opt s3 -dest $LIB/odbc.obl
+          ./obc -src $SRC/sdl2.obs -tar lib -opt s3 -dest $LIB/sdl2.obl
+          ./obc -src $SRC/sdl_game.obs -lib sdl2 -tar lib -opt s3 -dest $LIB/sdl_game.obl
+          ./obc -src $SRC/diags.obs -tar lib -opt s3 -dest $LIB/diags.obl
+          ./obc -src $SRC/lame.obs -tar lib -opt s3 -dest $LIB/lame.obl
+          ./obc -src $SRC/openai.obs -lib json,net,misc -tar lib -opt s3 -dest $LIB/openai.obl
+          ./obc -src $SRC/gemini.obs -lib misc,json,net,cipher -tar lib -opt s3 -dest $LIB/gemini.obl
+          ./obc -src $SRC/ollama.obs -lib json,net -tar lib -opt s3 -dest $LIB/ollama.obl
+          ./obc -src $SRC/json_rpc.obs -lib json,net -tar lib -opt s3 -dest $LIB/json_rpc.obl
+          ./obc -src $SRC/json_stream.obs -lib json -tar lib -opt s3 -dest $LIB/json_stream.obl
+          ./obc -src $SRC/opencv.obs -tar lib -opt s3 -dest $LIB/opencv.obl
+          ./obc -src $SRC/onnx.obs -tar lib -opt s3 -dest $LIB/onnx.obl
+          ./obc -src $SRC/nlp.obs -lib gen_collect -tar lib -opt s3 -dest $LIB/nlp.obl
+
+          echo "✅ All standard libraries recompiled"
+
       - name: Generate API documentation
         working-directory: ./core/release/deploy/bin
         run: |
           VERSION="${{ needs.prepare.outputs.version }}"
+          export OBJECK_LIB_PATH=$(pwd)/../lib
 
           mkdir -p ../../../../docs/api
 
