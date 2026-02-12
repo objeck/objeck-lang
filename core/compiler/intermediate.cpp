@@ -3522,8 +3522,11 @@ void IntermediateEmitter::EmitAssumeNonNull(AssumeNonNull* assume_nonnull_stmt)
   StatementList* statement_list = assume_nonnull_stmt->GetStatements();
   std::vector<Statement*> statements = statement_list->GetStatements();
 
-  // Simply emit the statements inside the block
-  // The runtime will already abort on Nil dereference
+  // Simply emit the statements inside the block.
+  // The assume_nonnull construct is syntactic sugar that indicates
+  // the programmer assumes values are non-nil. The existing runtime
+  // behavior already aborts on nil dereference, so no additional
+  // enforcement is needed.
   for(size_t i = 0; i < statements.size(); ++i) {
     EmitStatement(statements[i]);
   }
