@@ -464,6 +464,8 @@ void Scanner::CheckIdentifier(int index)
     case TOKEN_CHAR_ID:
     case TOKEN_NEW_ID:
     case TOKEN_NIL_ID:
+    case TOKEN_OTHERWISE_ID:
+    case TOKEN_TRY_ID:
 #ifdef _SYSTEM
     case S2I:
     case S2F:

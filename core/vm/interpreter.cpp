@@ -1882,6 +1882,9 @@ void StackInterpreter::ProcessMethodCall(StackInstr* instr, StackInstr** &instrs
     StackClass* concrete_class = MemoryManager::GetClass((size_t*)instance);
     if(!concrete_class) {
       if(TryErrorRecovery(stack_pos)) {
+        (*stack_frame) = PopFrame();
+        instrs = (*stack_frame)->method->GetInstructions();
+        ip = (*stack_frame)->ip;
         return;
       }
       std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
