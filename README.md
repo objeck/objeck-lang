@@ -39,7 +39,7 @@ AI/ML prototyping • Computer vision • Web services • Game development
 
 ```bash
 # Install (example for macOS/Linux)
-curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.2.1/objeck-linux-x64_v2026.2.1.tgz
+curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.2.0/objeck-linux-x64_v2026.2.0.tgz
 tar xzf objeck-linux-x64_v2026.2.1.tgz
 export PATH=$PATH:~/objeck-lang/bin
 
@@ -211,6 +211,7 @@ vector := tfidf->Transform("cats and dogs");  # [0.47, 0.0, 0.47, ...]
 - 🎯 [Examples](https://github.com/objeck/objeck-lang/tree/master/programs)
 - 💬 [Discussions](https://github.com/objeck/objeck-lang/discussions)
 - 🐛 [Issues](https://github.com/objeck/objeck-lang/issues)
+
 
 
 
