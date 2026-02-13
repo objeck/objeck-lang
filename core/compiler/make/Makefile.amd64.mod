@@ -9,6 +9,9 @@ $(LIB): $(SRC) $(OBJ_LIBS)
 	$(AR) -cvq $(LIB) $(SRC)
 	cp $(LIB) ../module
 
+% : %.mod
+%.o : %.mod
+
 %.o: %.cpp
 	$(CXX) -m64 $(ARGS) -c $< 
 

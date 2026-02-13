@@ -8,6 +8,9 @@ EXE=obc
 $(EXE): $(SRC) $(OBJ_LIBS) 
 	$(CXX) -m64 -o $(EXE) $(SRC) $(OBJ_LIBS) -lz
 
+% : %.mod
+%.o : %.mod
+
 %.o: %.cpp
 	$(CXX) -m64 $(ARGS) -c $< 
 
