@@ -188,6 +188,9 @@ namespace instructions {
     LIB_MTHD_CALL,
     LIB_OBJ_INST_CAST,
     LIB_FUNC_DEF,
+    // try/error handling
+    TRY_START,
+    TRY_END,
     // system directives
     END_STMTS
   };

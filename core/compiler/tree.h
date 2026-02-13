@@ -468,7 +468,9 @@ namespace frontend {
     CHAR_STR_EXPR,
     STAT_ARY_EXPR,
     STR_CONCAT_EXPR,
-    LAMBDA_EXPR
+    LAMBDA_EXPR,
+    OTHERWISE_EXPR,
+    TRY_EXPR
   };
 
   /****************************
@@ -1280,6 +1282,60 @@ namespace frontend {
 
     Expression* GetElseExpression() {
       return else_expression;
+    }
+  };
+
+  /****************************
+   * Otherwise class
+   ****************************/
+  class Otherwise : public Expression {
+    friend class TreeFactory;
+    Expression* expression;
+    Expression* default_expr;
+
+    Otherwise(const std::wstring &file_name, const int line_num, const int line_pos, Expression* expr, Expression* def) : Expression(file_name, line_num, line_pos) {
+      expression = expr;
+      default_expr = def;
+    }
+
+    ~Otherwise() {
+    }
+
+  public:
+    const ExpressionType GetExpressionType() {
+      return OTHERWISE_EXPR;
+    }
+
+    Expression* GetExpression() {
+      return expression;
+    }
+
+    Expression* GetDefaultExpression() {
+      return default_expr;
+    }
+  };
+
+  /****************************
+   * TryExpression class
+   ****************************/
+  class TryExpression : public Expression {
+    friend class TreeFactory;
+    Expression* expression;
+
+    TryExpression(const std::wstring &file_name, const int line_num, const int line_pos, Expression* expr) : Expression(file_name, line_num, line_pos) {
+      expression = expr;
+    }
+
+    ~TryExpression() {
+    }
+
+  public:
+    const ExpressionType GetExpressionType() {
+      return TRY_EXPR;
+    }
+
+    Expression* GetExpression() {
+      return expression;
     }
   };
 
@@ -3368,6 +3424,18 @@ namespace frontend {
 
     Cond* MakeCond(const std::wstring &file_name, const int line_num, const int line_pos, Expression* c, Expression* s, Expression* e) {
       Cond* tmp = new Cond(file_name, line_num, line_pos, c, s, e);
+      expressions.push_back(tmp);
+      return tmp;
+    }
+
+    Otherwise* MakeOtherwise(const std::wstring &file_name, const int line_num, const int line_pos, Expression* expr, Expression* def) {
+      Otherwise* tmp = new Otherwise(file_name, line_num, line_pos, expr, def);
+      expressions.push_back(tmp);
+      return tmp;
+    }
+
+    TryExpression* MakeTryExpression(const std::wstring &file_name, const int line_num, const int line_pos, Expression* expr) {
+      TryExpression* tmp = new TryExpression(file_name, line_num, line_pos, expr);
       expressions.push_back(tmp);
       return tmp;
     }

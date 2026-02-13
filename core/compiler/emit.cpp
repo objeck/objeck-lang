@@ -459,6 +459,11 @@ void IntermediateInstruction::Write(bool is_debug, OutputStream& out_stream) {
     WriteInt(operand, out_stream);
     break;
 
+  case TRY_START:
+    WriteInt(operand, out_stream);
+    WriteInt(operand2, out_stream);
+    break;
+
   default:
     break;
   }
@@ -1038,6 +1043,14 @@ void IntermediateInstruction::Debug(size_t i) {
 
   case TRAP_RTRN:
     GetLogger() << L"  " << std::left << std::setw(6) << i << L"TRAP_RTRN: args=" << operand << std::endl;
+    break;
+
+  case TRY_START:
+    GetLogger() << L"  " << std::left << std::setw(6) << i << L"TRY_START: handler=" << operand << std::endl;
+    break;
+
+  case TRY_END:
+    GetLogger() << L"  " << std::left << std::setw(6) << i << L"TRY_END" << std::endl;
     break;
 
   default:

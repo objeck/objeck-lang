@@ -3598,6 +3598,16 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
   case BIT_XOR_EXPR:
     EmitCalculation(static_cast<CalculatedExpression*>(expression));
     break;
+
+  case OTHERWISE_EXPR:
+    EmitOtherwise(static_cast<Otherwise*>(expression));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LOAD_INT_VAR, 0, LOCL));
+    break;
+
+  case TRY_EXPR:
+    EmitTry(static_cast<TryExpression*>(expression));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LOAD_INT_VAR, 0, LOCL));
+    break;
   }
 
   if(expression->GetTypeOf() && expression->GetExpressionType() != VAR_EXPR) {
@@ -4188,6 +4198,77 @@ void IntermediateEmitter::EmitConditional(Cond* conditional)
   // expression end
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, conditional, cur_line_num, LBL, end_label));
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, conditional, cur_line_num, LOAD_INT_VAR, 0, LOCL));
+}
+
+/****************************
+ * Translates an 'otherwise'
+ * expression.
+ ****************************/
+void IntermediateEmitter::EmitOtherwise(Otherwise* otherwise_expr)
+{
+  cur_line_num = static_cast<Expression*>(otherwise_expr)->GetLineNumber();
+
+  long end_label = ++unconditional_label;
+
+  // evaluate expression
+  EmitExpression(otherwise_expr->GetExpression());
+  EmitCast(otherwise_expr);
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, otherwise_expr, cur_line_num, STOR_INT_VAR, 0, LOCL));
+
+  // check if result is Nil (0)
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, otherwise_expr, cur_line_num, LOAD_INT_VAR, 0, LOCL));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(current_statement, otherwise_expr, cur_line_num, 0L));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, otherwise_expr, cur_line_num, NEQL_INT));
+
+  // jump to end if not Nil
+  long skip_label = ++conditional_label;
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, otherwise_expr, cur_line_num, JMP, skip_label, 1L));
+
+  // result is Nil: evaluate default expression
+  EmitExpression(otherwise_expr->GetDefaultExpression());
+  EmitCast(otherwise_expr);
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, otherwise_expr, cur_line_num, STOR_INT_VAR, 0, LOCL));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, otherwise_expr, cur_line_num, JMP, end_label, -1));
+  new_char_str_count = 0;
+
+  // not Nil: keep result
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, otherwise_expr, cur_line_num, LBL, skip_label));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, otherwise_expr, cur_line_num, LBL, end_label));
+}
+
+/****************************
+ * Translates a 'try'
+ * expression.
+ ****************************/
+void IntermediateEmitter::EmitTry(TryExpression* try_expr)
+{
+  cur_line_num = static_cast<Expression*>(try_expr)->GetLineNumber();
+
+  long handler_label = ++unconditional_label;
+  long end_label = ++unconditional_label;
+
+  // set error handler
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, try_expr, cur_line_num, TRY_START, handler_label, -1));
+
+  // evaluate expression
+  EmitExpression(try_expr->GetExpression());
+  EmitCast(try_expr);
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, try_expr, cur_line_num, STOR_INT_VAR, 0, LOCL));
+
+  // clear error handler
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, try_expr, cur_line_num, TRY_END));
+
+  // skip handler
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, try_expr, cur_line_num, JMP, end_label, -1));
+
+  // error handler: push Nil
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, try_expr, cur_line_num, LBL, handler_label));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(current_statement, try_expr, cur_line_num, 0L));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, try_expr, cur_line_num, STOR_INT_VAR, 0, LOCL));
+  new_char_str_count = 0;
+
+  // end
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, try_expr, cur_line_num, LBL, end_label));
 }
 
 /****************************

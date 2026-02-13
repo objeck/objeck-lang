@@ -5470,7 +5470,7 @@ Expression* Parser::ParseExpression(int depth)
 
   Expression* expression = nullptr;
   if(Match(TOKEN_NEQL) || (alt_syntax && Match(TOKEN_NOT))) {
-    return ParseLogic(depth + 1);
+    expression = ParseLogic(depth + 1);
   }
   else {
     expression = ParseLogic(depth + 1);
@@ -5480,15 +5480,27 @@ Expression* Parser::ParseExpression(int depth)
     if(Match(TOKEN_QUESTION)) {
 #ifdef _DEBUG
       Debug(L"Ternary conditional", depth);
-#endif   
+#endif
       NextToken();
       Expression* if_expression = ParseLogic(depth + 1);
       if(!Match(TOKEN_COLON)) {
         ProcessError(L"Expected ':'", TOKEN_COLON);
       }
       NextToken();
-      return TreeFactory::Instance()->MakeCond(file_name, line_num, line_pos, expression, if_expression, ParseLogic(depth + 1));
+      expression = TreeFactory::Instance()->MakeCond(file_name, line_num, line_pos, expression, if_expression, ParseLogic(depth + 1));
     }
+  }
+
+  //
+  // parses an 'otherwise' default expression
+  //
+  if(expression && Match(TOKEN_OTHERWISE_ID)) {
+#ifdef _DEBUG
+    Debug(L"Otherwise expression", depth);
+#endif
+    NextToken();
+    Expression* default_expr = ParseLogic(depth + 1);
+    expression = TreeFactory::Instance()->MakeOtherwise(file_name, line_num, line_pos, expression, default_expr);
   }
 
   return expression;
@@ -5934,7 +5946,16 @@ Expression* Parser::ParseSimpleExpression(int depth)
     NextToken();
     expression = ParseLambda(depth + 1);
   }
-  // negation 
+  // try expression
+  else if(Match(TOKEN_TRY_ID)) {
+#ifdef _DEBUG
+    Debug(L"Try expression", depth);
+#endif
+    NextToken();
+    Expression* try_expr = ParseLogic(depth + 1);
+    expression = TreeFactory::Instance()->MakeTryExpression(file_name, line_num, line_pos, try_expr);
+  }
+  // negation
   else if(Match(TOKEN_NOT_ID)) {
     NextToken();
     CalculatedExpression* calc_expr = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, line_pos, BIT_NOT_EXPR);

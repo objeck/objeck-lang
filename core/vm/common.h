@@ -511,6 +511,7 @@ class StackMethod {
       case THREAD_MUTEX:
       case CRITICAL_START:
       case CRITICAL_END:
+      case TRY_END:
         // copy and clear
       case CPY_BYTE_ARY:
       case CPY_CHAR_ARY:

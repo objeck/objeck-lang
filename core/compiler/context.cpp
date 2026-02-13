@@ -1740,6 +1740,14 @@ void ContextAnalyzer::AnalyzeExpression(Expression* expression, const int depth)
         AnalyzeCalculation(static_cast<CalculatedExpression*>(expression), depth + 1);
         break;
 
+      case OTHERWISE_EXPR:
+        AnalyzeOtherwise(static_cast<Otherwise*>(expression), depth);
+        break;
+
+      case TRY_EXPR:
+        AnalyzeTry(static_cast<TryExpression*>(expression), depth);
+        break;
+
       default:
         ProcessError(expression, L"Undefined expression");
         break;
@@ -1753,6 +1761,73 @@ void ContextAnalyzer::AnalyzeExpression(Expression* expression, const int depth)
     AnalyzeCast(expression, depth + 1);
 
     --expression_depth;
+  }
+}
+
+/****************************
+ * Analyzes an 'otherwise'
+ * expression
+ ****************************/
+void ContextAnalyzer::AnalyzeOtherwise(Otherwise* otherwise_expr, const int depth)
+{
+#ifdef _DEBUG
+  Debug(L"otherwise expression", otherwise_expr->GetLineNumber(), depth);
+#endif
+
+  Expression* expr = otherwise_expr->GetExpression();
+  AnalyzeExpression(expr, depth + 1);
+  Expression* default_expr = otherwise_expr->GetDefaultExpression();
+  AnalyzeExpression(default_expr, depth + 1);
+
+  Type* expr_type = GetExpressionType(expr, depth + 1);
+  Type* default_type = GetExpressionType(default_expr, depth + 1);
+
+  if(expr_type && default_type) {
+    if(expr_type->GetType() == CLASS_TYPE && default_type->GetType() == CLASS_TYPE) {
+      AnalyzeClassCast(expr_type, default_expr, depth + 1);
+    }
+    else if(expr_type->GetType() == NIL_TYPE) {
+      // Nil otherwise default: use default type
+    }
+    else if(default_type->GetType() == NIL_TYPE) {
+      // expr otherwise Nil: use expr type
+    }
+    else if(expr_type->GetType() != default_type->GetType() &&
+            !((expr_type->GetType() == CLASS_TYPE && default_type->GetType() == NIL_TYPE) ||
+            (expr_type->GetType() == NIL_TYPE && default_type->GetType() == CLASS_TYPE))) {
+      ProcessError(otherwise_expr, L"'otherwise' type mismatch between expression and default");
+    }
+
+    // set eval type from expression (or default if expression is Nil)
+    if(expr_type->GetType() == NIL_TYPE && default_type->GetType() != NIL_TYPE) {
+      otherwise_expr->SetEvalType(default_type, true);
+    }
+    else {
+      otherwise_expr->SetEvalType(expr_type, true);
+    }
+    current_method->SetAndOr(true);
+  }
+  else {
+    ProcessError(otherwise_expr, L"Invalid 'otherwise' expression");
+  }
+}
+
+/****************************
+ * Analyzes a 'try' expression
+ ****************************/
+void ContextAnalyzer::AnalyzeTry(TryExpression* try_expr, const int depth)
+{
+#ifdef _DEBUG
+  Debug(L"try expression", try_expr->GetLineNumber(), depth);
+#endif
+
+  Expression* expr = try_expr->GetExpression();
+  AnalyzeExpression(expr, depth + 1);
+
+  Type* expr_type = GetExpressionType(expr, depth + 1);
+  if(expr_type) {
+    try_expr->SetEvalType(expr_type, true);
+    current_method->SetAndOr(true);
   }
 }
 
