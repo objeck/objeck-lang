@@ -239,6 +239,7 @@ public:
     cached_instrs[THREAD_MUTEX] = new StackInstr(-1, THREAD_MUTEX);
     cached_instrs[CRITICAL_START] = new StackInstr(-1, CRITICAL_START);
     cached_instrs[CRITICAL_END] = new StackInstr(-1, CRITICAL_END);
+    cached_instrs[TRY_END] = new StackInstr(-1, TRY_END);
 
     cached_instrs[CPY_BYTE_ARY] = new StackInstr(-1, CPY_BYTE_ARY);
     cached_instrs[CPY_CHAR_ARY] = new StackInstr(-1, CPY_CHAR_ARY);

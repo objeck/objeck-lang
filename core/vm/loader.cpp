@@ -741,6 +741,13 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
     }
       break;
 
+    case TRY_START: {
+      const long handler = ReadInt();
+      const long cond = ReadInt();
+      mthd_instrs[i] = new StackInstr(line_num, TRY_START, handler, cond);
+    }
+      break;
+
       //
       // Start: instruction caching
       //
@@ -822,6 +829,7 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
     case THREAD_MUTEX:
     case CRITICAL_START:
     case CRITICAL_END:
+    case TRY_END:
     case CPY_BYTE_ARY:
     case CPY_CHAR_ARY:
     case CPY_INT_ARY:

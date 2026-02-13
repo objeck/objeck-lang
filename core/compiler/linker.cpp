@@ -1770,6 +1770,17 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
       instrs.push_back(new LibraryInstr(line_num, CRITICAL_END));
       break;
 
+    case TRY_START: {
+      const INT_VALUE handler = ReadInt();
+      const INT_VALUE cond = ReadInt();
+      instrs.push_back(new LibraryInstr(line_num, TRY_START, handler, cond));
+    }
+      break;
+
+    case TRY_END:
+      instrs.push_back(new LibraryInstr(line_num, TRY_END));
+      break;
+
     default: {
 #ifdef _DEBUG
       InstructionType instr = (InstructionType)type;

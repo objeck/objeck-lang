@@ -878,6 +878,26 @@ static DispatchResult Handle_LIB_FUNC_DEF(DispatchContext& ctx) {
 //
 // End marker (141)
 //
+// Try/error handling
+//
+static DispatchResult Handle_TRY_START(DispatchContext& ctx) {
+#ifdef _DEBUG
+  std::wcout << L"stack oper: TRY_START; call_pos=" << (*ctx.call_stack_pos) << std::endl;
+#endif
+  long handler_ip = ctx.instr->GetOperand();
+  ctx.interp->PushTryHandler(handler_ip, *ctx.stack_pos);
+  return DispatchResult::CONTINUE;
+}
+
+static DispatchResult Handle_TRY_END(DispatchContext& ctx) {
+#ifdef _DEBUG
+  std::wcout << L"stack oper: TRY_END; call_pos=" << (*ctx.call_stack_pos) << std::endl;
+#endif
+  ctx.interp->PopTryHandler();
+  return DispatchResult::CONTINUE;
+}
+
+//
 static DispatchResult Handle_END_STMTS(DispatchContext& ctx) {
   // End of statements marker, no operation
   return DispatchResult::CONTINUE;
@@ -1060,6 +1080,10 @@ OpcodeHandler Runtime::instr_dispatch[] = {
   Handle_LIB_OBJ_INST_CAST,     // 137: LIB_OBJ_INST_CAST
   Handle_LIB_FUNC_DEF,          // 138: LIB_FUNC_DEF
 
-  // End marker (139)
-  Handle_END_STMTS              // 139: END_STMTS
+  // Try/error handling (139-140)
+  Handle_TRY_START,             // 139: TRY_START
+  Handle_TRY_END,               // 140: TRY_END
+
+  // End marker (141)
+  Handle_END_STMTS              // 141: END_STMTS
 };

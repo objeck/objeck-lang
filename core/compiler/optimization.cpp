@@ -661,6 +661,8 @@ bool ItermediateOptimizer::CanInlineMethod(IntermediateMethod* mthd_called, std:
     case instructions::THREAD_MUTEX:
     case instructions::CRITICAL_START:
     case instructions::CRITICAL_END:
+    case instructions::TRY_START:
+    case instructions::TRY_END:
     case instructions::LIB_NEW_OBJ_INST:
     case instructions::LIB_MTHD_CALL:
     case instructions::LIB_OBJ_INST_CAST:

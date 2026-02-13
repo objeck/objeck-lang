@@ -101,6 +101,13 @@ namespace Runtime {
     // halt
     bool halt;
 
+    // try/error handler stack
+    static const int TRY_STACK_SIZE = 16;
+    long try_handler_stack[TRY_STACK_SIZE];
+    size_t try_handler_stack_pos[TRY_STACK_SIZE];
+    int try_handler_pos;
+    long try_recovery_ip;
+
 #ifdef _DEBUGGER
     Debugger* debugger;
 #endif
@@ -146,7 +153,71 @@ namespace Runtime {
       return (*call_stack_pos) == 0;
     }
 
+    //
+    // check if a try handler is active
+    //
+    inline bool HasTryHandler() {
+      return try_handler_pos > 0;
+    }
+
+    //
+    // get the current try handler target IP
+    //
+    inline long GetTryHandlerIP() {
+      return try_handler_stack[try_handler_pos - 1];
+    }
+
+    //
+    // get the saved stack position for current try handler
+    //
+    inline size_t GetTryHandlerStackPos() {
+      return try_handler_stack_pos[try_handler_pos - 1];
+    }
+
   public:
+    //
+    // pop the current try handler
+    //
+    inline void PopTryHandler() {
+      if(try_handler_pos > 0) {
+        --try_handler_pos;
+      }
+    }
+
+    //
+    // push a try handler
+    //
+    inline void PushTryHandler(long handler_ip, size_t saved_stack_pos) {
+      if(try_handler_pos < TRY_STACK_SIZE) {
+        try_handler_stack[try_handler_pos] = handler_ip;
+        try_handler_stack_pos[try_handler_pos] = saved_stack_pos;
+        ++try_handler_pos;
+      }
+    }
+
+    //
+    // recover from error using try handler
+    // returns true if recovery happened, false if no handler
+    //
+    inline bool TryErrorRecovery(size_t* &stack_pos) {
+      if(HasTryHandler()) {
+        try_recovery_ip = GetTryHandlerIP();
+        *stack_pos = GetTryHandlerStackPos();
+        PopTryHandler();
+        return true;
+      }
+      return false;
+    }
+
+    //
+    // check and get recovery IP (called from Execute loop)
+    //
+    inline long CheckTryRecovery() {
+      long ip = try_recovery_ip;
+      try_recovery_ip = -1;
+      return ip;
+    }
+
     // The following methods are public to allow access from dispatch handlers
 
     //
@@ -444,6 +515,8 @@ namespace Runtime {
       stack_frame_monitor = nullptr;
       stack_frame = new StackFrame*;
       halt = false;
+      try_handler_pos = 0;
+      try_recovery_ip = -1;
 
       MemoryManager::AddPdaMethodRoot(stack_frame);
     }
@@ -454,6 +527,8 @@ namespace Runtime {
       call_stack_pos = new long;
       *call_stack_pos = -1;
       halt = false;
+      try_handler_pos = 0;
+      try_recovery_ip = -1;
 
       // register monitor
       stack_frame_monitor = new StackFrameMonitor;
@@ -464,22 +539,24 @@ namespace Runtime {
       stack_frame_monitor->cur_frame = stack_frame;
       MemoryManager::AddPdaMethodRoot(stack_frame_monitor);
     }
-  
+
     StackInterpreter(StackProgram* p, size_t m) {
       Initialize(p, m);
-      
+
       // setup frame
       call_stack = new StackFrame*[CALL_STACK_SIZE];
       call_stack_pos = new long;
       *call_stack_pos = -1;
       stack_frame = new StackFrame*;
       halt = false;
+      try_handler_pos = 0;
+      try_recovery_ip = -1;
 
       // register monitor
       stack_frame_monitor = new StackFrameMonitor;
       stack_frame_monitor->call_stack = call_stack;
       stack_frame_monitor->call_stack_pos = call_stack_pos;
-      stack_frame_monitor->cur_frame = stack_frame;      
+      stack_frame_monitor->cur_frame = stack_frame;
       MemoryManager::AddPdaMethodRoot(stack_frame_monitor);
     }
 
@@ -492,15 +569,17 @@ namespace Runtime {
 #ifdef _DEBUGGER
     StackInterpreter(StackProgram* p, Debugger* d) {
       Initialize(p, 0);
-      
+
       debugger = d;
-      
+
       // setup frame
       call_stack = new StackFrame*[CALL_STACK_SIZE];
       call_stack_pos = new long;
       *call_stack_pos = -1;
       stack_frame = new StackFrame*;
       halt = false;
+      try_handler_pos = 0;
+      try_recovery_ip = -1;
 
       // register monitor
       stack_frame_monitor = new StackFrameMonitor;
