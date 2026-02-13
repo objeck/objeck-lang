@@ -21,6 +21,9 @@ jit_amd_lp64.a:
 win32.a:
 	cd $(WIN32_PATH); $(MAKE) -f make/Makefile.msys2-clang.amd64
 	
+% : %.mod
+%.o : %.mod
+
 %.o: %.cpp
 	$(CXX) -m64 $(ARGS) -c $< 
 
