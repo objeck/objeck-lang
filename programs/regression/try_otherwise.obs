@@ -12,17 +12,17 @@ class TryOtherwiseTest {
     # Test 1: otherwise with Nil value
     val : String;
     result := val otherwise "default";
-    if(result <> "default") {
+    if(result->Equals("default") = false) {
       pass := false;
-      "  FAIL: Nil otherwise 'default' = {$result}"->PrintLine();
+      "  FAIL: Nil otherwise 'default'"->PrintLine();
     };
 
     # Test 2: otherwise with non-Nil value
     val2 := "hello";
     result2 := val2 otherwise "world";
-    if(result2 <> "hello") {
+    if(result2->Equals("hello") = false) {
       pass := false;
-      "  FAIL: 'hello' otherwise 'world' = {$result2}"->PrintLine();
+      "  FAIL: 'hello' otherwise 'world'"->PrintLine();
     };
 
     # Test 3: try with Nil dereference
@@ -38,7 +38,7 @@ class TryOtherwiseTest {
     val4 := try obj2->Size() otherwise -1;
     if(val4 <> -1) {
       pass := false;
-      "  FAIL: try nil->Size() otherwise -1 = {$val4}"->PrintLine();
+      "  FAIL: try nil->Size() otherwise -1"->PrintLine();
     };
 
     # Test 5: try with successful expression
@@ -46,7 +46,7 @@ class TryOtherwiseTest {
     val5 := try obj3->Size();
     if(val5 <> 5) {
       pass := false;
-      "  FAIL: try 'hello'->Size() = {$val5}"->PrintLine();
+      "  FAIL: try 'hello'->Size() should be 5"->PrintLine();
     };
 
     # Test 6: try + otherwise with successful expression
@@ -54,7 +54,7 @@ class TryOtherwiseTest {
     val6 := try obj4->Size() otherwise -1;
     if(val6 <> 5) {
       pass := false;
-      "  FAIL: try 'world'->Size() otherwise -1 = {$val6}"->PrintLine();
+      "  FAIL: try 'world'->Size() otherwise -1 should be 5"->PrintLine();
     };
 
     if(pass) {

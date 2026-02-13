@@ -1128,7 +1128,7 @@ IntermediateBlock* ItermediateOptimizer::CleanLabelsLocation(IntermediateBlock* 
       IntermediateInstruction* instr = input_instrs[i];
 
       // update jumps
-      if(instr->GetType() == JMP) {
+      if(instr->GetType() == JMP || instr->GetType() == TRY_START) {
         const long jump_id = instr->GetOperand();
         std::map<long, IntermediateInstruction*>::iterator jump_result = lbl_ids.find(jump_id);
         if(jump_result != lbl_ids.end()) {
@@ -1169,6 +1169,15 @@ IntermediateBlock* ItermediateOptimizer::JumpToLocation(IntermediateBlock* input
       assert(result != lbl_offsets.end());
 #endif
       outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, JMP, result->second, instr->GetOperand2()));
+    }
+      break;
+
+    case TRY_START: {
+      std::unordered_map<int, int>::iterator result = lbl_offsets.find(instr->GetOperand());
+#ifdef _DEBUG
+      assert(result != lbl_offsets.end());
+#endif
+      outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, TRY_START, result->second, instr->GetOperand2()));
     }
       break;
 

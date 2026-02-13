@@ -1,6 +1,0 @@
-class Test {
-  function : Main(args : String[]) ~ Nil {
-    val := Nil otherwise "default";
-    val->PrintLine();
-  }
-}
