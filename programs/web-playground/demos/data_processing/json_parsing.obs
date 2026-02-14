@@ -1,3 +1,9 @@
+#~
+ JSON Parsing
+ Parse and build JSON data structures
+ Libs: enable 'JSON' and 'Collections' in the toolbar
+~#
+
 use Data.JSON;
 
 bundle Default {

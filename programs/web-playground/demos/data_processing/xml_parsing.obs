@@ -1,3 +1,9 @@
+#~
+ XML Parsing
+ Parse XML and query with XPath-like expressions
+ Libs: enable 'XML' and 'Collections' in the toolbar
+~#
+
 use System.IO;
 use Data.XML;
 

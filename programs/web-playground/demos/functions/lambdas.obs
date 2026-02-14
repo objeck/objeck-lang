@@ -1,3 +1,9 @@
+#~
+ Lambdas & Aliases
+ Lambda expressions, type aliases, and enums
+ Libs: enable 'Collections' in the toolbar
+~#
+
 use Collection;
 
 enum Oper {

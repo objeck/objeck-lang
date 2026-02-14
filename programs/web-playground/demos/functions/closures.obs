@@ -1,3 +1,9 @@
+#~
+ Closures
+ Closures capturing variables from enclosing scope
+ Libs: enable 'Collections' in the toolbar
+~#
+
 use Collection;
 
 class Capture {

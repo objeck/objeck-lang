@@ -12,7 +12,7 @@
     <header>
         <div class="header-left">
             <h1>Objeck Playground</h1>
-            <span class="version-tag">v2026</span>
+            <span class="version-tag">v2026.2.1</span>
         </div>
         <div class="header-center">
             <button id="run-btn" title="Run (Ctrl+Enter)">
@@ -35,8 +35,9 @@
     <!-- Toolbar -->
     <div id="toolbar">
         <div class="toolbar-section">
-            <label>Libraries:</label>
+            <label title="Enable libraries your code needs. Use 'use' to import them (e.g. 'use Collection;'). Demos auto-select the right libraries.">Libraries:<span class="help-hint">?</span></label>
             <div id="lib-selector"></div>
+            <span id="lib-notification" class="lib-notification"></span>
         </div>
         <div class="toolbar-section">
             <label for="demo-select">Examples:</label>
@@ -75,7 +76,7 @@
     </div>
 
     <!-- Monaco Editor from CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.50.0/min/vs/loader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.50.0/min/vs/loader.js" crossorigin="anonymous"></script>
     <script src="js/app.js"></script>
 </body>
 </html>

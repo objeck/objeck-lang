@@ -1,3 +1,9 @@
+#~
+ Regex Matching
+ Pattern matching with regular expressions
+ Libs: enable 'RegEx' in the toolbar
+~#
+
 use Query.RegEx;
 
 class Test {
