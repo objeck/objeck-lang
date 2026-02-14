@@ -2,7 +2,20 @@
 
 All notable changes to Objeck will be documented in this file.
 
-## [v2026.2.0] - 2026-02-12 ✅
+## [v2026.2.1] - 2026-02-14
+
+### New Features
+- **Try/Otherwise Error Handling**: `Try()` and `Otherwise()` compiler intrinsics on the `Base` class for safe method chaining with graceful error recovery (e.g., `obj->Try()->Method()->Otherwise(default)`)
+
+### Improvements
+- **Editor Syntax Highlighting**: Updated Monaco (playground) and VSCode syntax definitions to support `Try` and `Otherwise` as built-in keywords
+- **Web Playground**: Updated version tag and editor keyword support for v2026
+
+### Internal
+- Refactored Try/Otherwise from expression-level keywords to method intrinsics on `Base` class for cleaner semantics
+- Removed disabled legacy CI workflow (superseded by `ci-build.yml`)
+
+## [v2026.2.0] - 2026-02-12 ✅ Current Release
 
 ### New Features
 - **NLP Library**: Comprehensive natural language processing with tokenization, TF-IDF, similarity, and sentiment analysis

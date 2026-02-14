@@ -100,7 +100,7 @@
                 'from', 'critical',
             ],
             typeKeywords: ['Byte', 'Int', 'Float', 'Char', 'Bool', 'Nil', 'String'],
-            builtinKeywords: ['New', 'As', 'TypeOf', 'Parent', 'true', 'false'],
+            builtinKeywords: ['New', 'As', 'TypeOf', 'Parent', 'Try', 'Otherwise', 'true', 'false'],
             operators: [
                 '->', '=>', ':=', '+=', '-=', '*=', '/=',
                 '+', '-', '*', '/', '%',

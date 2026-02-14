@@ -23,7 +23,7 @@ export function registerObjeckLanguage(monaco) {
         ],
 
         builtinKeywords: [
-            'New', 'As', 'TypeOf', 'Parent', 'true', 'false',
+            'New', 'As', 'TypeOf', 'Parent', 'Try', 'Otherwise', 'true', 'false',
         ],
 
         operators: [

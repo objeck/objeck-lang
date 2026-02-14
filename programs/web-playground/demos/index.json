@@ -8,7 +8,8 @@
         { "id": "variables", "file": "variables.obs", "title": "Variables & Types", "description": "Variable declarations, types, and arithmetic", "libs": [] },
         { "id": "strings", "file": "string_manipulation.obs", "title": "String Manipulation", "description": "String methods, interpolation, and processing", "libs": [] },
         { "id": "arrays", "file": "arrays_and_loops.obs", "title": "Arrays & Loops", "description": "Arrays, for/each/while/do-while loops", "libs": [] },
-        { "id": "factorial", "file": "factorial.obs", "title": "Factorial", "description": "Built-in factorial method on integers", "libs": [] }
+        { "id": "factorial", "file": "factorial.obs", "title": "Factorial", "description": "Built-in factorial method on integers", "libs": [] },
+        { "id": "try-otherwise", "file": "try_otherwise.obs", "title": "Try/Otherwise", "description": "Safe method chaining with error recovery", "libs": [] }
       ]
     },
     {
