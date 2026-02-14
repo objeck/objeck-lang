@@ -81,7 +81,9 @@
 			<KEYWORD1>break</KEYWORD1>
 			<KEYWORD1>continue</KEYWORD1>
 			<KEYWORD1>other</KEYWORD1>
-			<KEYWORD1>otherwise</KEYWORD1>
+			<KEYWORD1>Try</KEYWORD1>
+			<KEYWORD1>Otherwise</KEYWORD1>
+			<KEYWORD1>TypeOf</KEYWORD1>
 			<KEYWORD1>for</KEYWORD1>
 			<KEYWORD1>each</KEYWORD1>
 			<KEYWORD1>reverse</KEYWORD1>
@@ -105,7 +107,7 @@
 			<KEYWORD2>function</KEYWORD2>
 
 			<KEYWORD1>public</KEYWORD1>
-			<KEYWORD1>abstract</KEYWORD1>
+			<KEYWORD1>alias</KEYWORD1>
 			<KEYWORD1>private</KEYWORD1>
 			<KEYWORD1>static</KEYWORD1>
 			<KEYWORD1>native</KEYWORD1>

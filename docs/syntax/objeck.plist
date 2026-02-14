@@ -13,7 +13,6 @@
 		<string>critical</string>
 		<string>use</string>
 		<string>leaving</string>
-		<string>lambdas</string>
 		<string>and</string>
 		<string>or</string>
 		<string>xor</string>
@@ -23,6 +22,7 @@
 		<string>else</string>
 		<string>do</string>
 		<string>while</string>
+		<string>in</string>
 		<string>break</string>
 		<string>continue</string>
 		<string>bundle</string>
@@ -32,9 +32,10 @@
 		<string>private</string>
 		<string>class</string>
 		<string>interface</string>
+		<string>alias</string>
+		<string>consts</string>
 		<string>select</string>
 		<string>other</string>
-		<string>otherwise</string>
 		<string>enum</string>
 		<string>for</string>
 		<string>each</string>
@@ -51,6 +52,11 @@
 		<string>Bool</string>
 		<string>String</string>
 		<string>Nil</string>
+		<string>As</string>
+		<string>New</string>
+		<string>TypeOf</string>
+		<string>Try</string>
+		<string>Otherwise</string>
 		<string>true</string>
 		<string>false</string>
 		<string>function</string>

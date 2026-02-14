@@ -157,8 +157,9 @@
                      <keyword>method</keyword>
                     <keyword>select</keyword>
                     <keyword>other</keyword>
-                    <keyword>otherwise</keyword>
                     <keyword>enum</keyword>
+                    <keyword>consts</keyword>
+                    <keyword>alias</keyword>
                     <keyword>for</keyword>
                     <keyword>each</keyword>
                     <keyword>reverse</keyword>
@@ -166,9 +167,12 @@
                     <keyword>return</keyword>
                     <keyword>critical</keyword>
                     <keyword>leaving</keyword>
-                    <keyword>lambdas</keyword>
                     <keyword>use</keyword>
-					<keyword>leaving</keyword>
+                    <keyword>New</keyword>
+                    <keyword>As</keyword>
+                    <keyword>TypeOf</keyword>
+                    <keyword>Try</keyword>
+                    <keyword>Otherwise</keyword>
                 </context>
 
                 <context id="types" style-ref="type" class="type">
