@@ -42,7 +42,6 @@ No installation needed - write, compile, and run Objeck code directly in your br
 curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.2.0/objeck-linux-x64_2026.2.0.tgz
 tar xzf objeck-linux-x64_2026.2.0.tgz
 export PATH=$PATH:./objeck-lang/bin
-export PATH=$PATH:./objeck-lang/bin
 export OBJECK_LIB_PATH=./objeck-lang/lib
 
 # Hello World
@@ -209,6 +208,7 @@ vector := tfidf->Transform("cats and dogs");  # [0.47, 0.0, 0.47, ...]
 - 🎯 [Examples](https://github.com/objeck/objeck-lang/tree/master/programs)
 - 💬 [Discussions](https://github.com/objeck/objeck-lang/discussions)
 - 🐛 [Issues](https://github.com/objeck/objeck-lang/issues)
+
 
 
 
