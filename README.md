@@ -31,9 +31,9 @@ AI/ML prototyping • Computer vision • Web services • Game development
 
 ## Try It Online
 
-**No installation needed** 👉🏾 write, compile, and run Objeck code directly in your browser:
+No installation needed - write, compile, and run Objeck code directly in your browser:
 
-**Interactive [playground](https://playground.objeck.org)** with 33 demo programs across 7 categories with Monaco editor and syntax highlighting.
+👉🏽 Interactive [playground](https://playground.objeck.org) with 33 demo programs across 7 categories with Monaco editor and syntax highlighting.
 
 ## Quick Start
 
@@ -209,6 +209,7 @@ vector := tfidf->Transform("cats and dogs");  # [0.47, 0.0, 0.47, ...]
 - 🎯 [Examples](https://github.com/objeck/objeck-lang/tree/master/programs)
 - 💬 [Discussions](https://github.com/objeck/objeck-lang/discussions)
 - 🐛 [Issues](https://github.com/objeck/objeck-lang/issues)
+
 
 
 
