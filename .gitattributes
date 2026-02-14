@@ -1,0 +1,10 @@
+# Force LF line endings for files that run on Linux/macOS
+*.sh text eol=lf
+Dockerfile* text eol=lf
+Caddyfile text eol=lf
+docker-compose*.yml text eol=lf
+Makefile* text eol=lf
+
+# GitHub Actions
+.github/**/*.yml text eol=lf
+.github/**/*.yaml text eol=lf
