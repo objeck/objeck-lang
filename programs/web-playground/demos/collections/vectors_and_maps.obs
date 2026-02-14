@@ -1,3 +1,9 @@
+#~
+ Vectors & Maps
+ Vector, Map, and lambda iteration patterns
+ Libs: enable 'Collections' in the toolbar
+~#
+
 class Test {
   function : Main(args : String[]) ~ Nil {
     strings := Collection.Vector->New()<String>;

@@ -23,7 +23,18 @@
         { id: 'misc', name: 'Misc', desc: 'Miscellaneous utilities' },
     ];
 
-    const DEFAULT_CODE = `class Hello {
+    const DEFAULT_CODE = `#~
+ Welcome to the Objeck Playground!
+ Click Run (or Ctrl+Enter) to execute this code.
+
+ Tips:
+ - Pick an example from the 'Examples' dropdown above
+ - Some programs need libraries: enable them in the toolbar
+   (demos auto-select the right ones for you)
+ - Use 'use' to import a library, e.g. "use Collection;"
+~#
+
+class Hello {
   function : Main(args : String[]) ~ Nil {
     "Hello World!"->PrintLine();
     "Welcome to the Objeck Playground"->PrintLine();
@@ -381,6 +392,11 @@
             editor.setValue(demo.code);
             setSelectedLibs(demo.libs || []);
 
+            // Show library notification when demo auto-selects libs
+            if (demo.libs && demo.libs.length > 0) {
+                showLibNotification(demo.libs);
+            }
+
             // Clear output
             document.getElementById('output-content').textContent = '';
             document.getElementById('output-content').className = '';
@@ -388,6 +404,17 @@
             // Ignore
         }
     });
+
+    function showLibNotification(libs) {
+        var el = document.getElementById('lib-notification');
+        var names = libs.map(function (id) {
+            var lib = AVAILABLE_LIBS.find(function (l) { return l.id === id; });
+            return lib ? lib.name : id;
+        });
+        el.textContent = 'Auto-enabled: ' + names.join(', ');
+        el.classList.add('show');
+        setTimeout(function () { el.classList.remove('show'); }, 3000);
+    }
 
     // --- Theme Toggle ---
 

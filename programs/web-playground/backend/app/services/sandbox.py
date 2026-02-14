@@ -82,10 +82,12 @@ async def _run_local(code: str, libs: list[str], timeout: int) -> RunResponse:
             execution_time_ms=elapsed_ms,
         )
     except Exception as e:
+        import logging
+        logging.getLogger(__name__).error("Local sandbox error: %s", e)
         elapsed_ms = int((time.monotonic() - start_time) * 1000)
         return RunResponse(
             success=False, output="",
-            error=f"Internal error: {e}",
+            error="Internal error: code execution failed",
             execution_time_ms=elapsed_ms,
         )
     finally:
@@ -188,19 +190,23 @@ async def _run_docker(code: str, libs: list[str], timeout: int) -> RunResponse:
         )
 
     except docker.errors.ContainerError as e:
+        import logging
+        logging.getLogger(__name__).error("Container error: %s", e)
         elapsed_ms = int((time.monotonic() - start_time) * 1000)
         return RunResponse(
             success=False,
             output="",
-            error=f"Container error: {e}",
+            error="Execution failed in sandbox",
             execution_time_ms=elapsed_ms,
         )
     except Exception as e:
+        import logging
+        logging.getLogger(__name__).error("Docker sandbox error: %s", e)
         elapsed_ms = int((time.monotonic() - start_time) * 1000)
         return RunResponse(
             success=False,
             output="",
-            error=f"Internal error: {e}",
+            error="Internal error: code execution failed",
             execution_time_ms=elapsed_ms,
         )
     finally:

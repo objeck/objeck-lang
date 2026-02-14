@@ -1,3 +1,9 @@
+#~
+ Encryption
+ SHA256, MD5, RIPEMD-160 hashing and AES256 encryption
+ Libs: enable 'Cipher' in the toolbar
+~#
+
 class Encryption {
   function : Main(args : String[]) ~ Nil {
     # SHA-256 hash

@@ -1,3 +1,9 @@
+#~
+ Iteration Patterns
+ Vector, Map, and lambda-based iteration
+ Libs: enable 'Collections' in the toolbar
+~#
+
 use Collection;
 
 class Iteration {

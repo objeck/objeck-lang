@@ -1,3 +1,9 @@
+#~
+ Binary Tree Traversal
+ Pre/in/post/level-order traversals of a binary tree
+ Libs: enable 'Collections' in the toolbar
+~#
+
 use Collection;
 
 class Test {

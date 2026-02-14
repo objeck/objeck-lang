@@ -1,3 +1,9 @@
+#~
+ Higher-Order Functions
+ Filter, reduce, and each operations on collections
+ Libs: enable 'Collections' in the toolbar
+~#
+
 use Collection;
 
 class HigherOrder {

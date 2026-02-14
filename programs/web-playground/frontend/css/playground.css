@@ -210,6 +210,34 @@ header {
 
 .lib-chip input { display: none; }
 
+.help-hint {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    line-height: 14px;
+    text-align: center;
+    font-size: 10px;
+    font-weight: 700;
+    border-radius: 50%;
+    background: var(--text-muted);
+    color: var(--bg-primary);
+    margin-left: 4px;
+    cursor: help;
+    vertical-align: middle;
+}
+
+.lib-notification {
+    font-size: 11px;
+    color: var(--accent);
+    margin-left: 8px;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.lib-notification.show {
+    opacity: 1;
+}
+
 #demo-select {
     padding: 4px 8px;
     font-size: 12px;
