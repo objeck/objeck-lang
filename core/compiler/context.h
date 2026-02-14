@@ -541,8 +541,8 @@ class ContextAnalyzer {
   void AnalyzeEnumCall(MethodCall* method_call, bool regress, const int depth);
   void AnalyzeCharacterString(CharacterString* char_str, const int depth);
   void AnalyzeConditional(Cond* conditional, const int depth);
-  void AnalyzeOtherwise(Otherwise* otherwise_expr, const int depth);
-  void AnalyzeTry(TryExpression* try_expr, const int depth);
+  void AnalyzeTryIntrinsic(MethodCall* method_call, Expression* expression, const int depth);
+  void AnalyzeOtherwiseIntrinsic(MethodCall* method_call, Expression* expression, const int depth);
   void AnalyzeStaticArray(StaticArray* array, const int depth);
   void AnalyzeCast(Expression* expression, const int depth);
   void AnalyzeClassCast(Type* left, Expression* expression, const int depth);

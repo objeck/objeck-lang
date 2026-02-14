@@ -126,7 +126,6 @@ void Scanner::LoadKeywords()
   ident_map[L"method"] = TOKEN_METHOD_ID;
   ident_map[L"select"] = TOKEN_SELECT_ID;
   ident_map[L"other"] = TOKEN_OTHER_ID;
-  ident_map[L"otherwise"] = TOKEN_OTHERWISE_ID;
   ident_map[L"enum"] = TOKEN_ENUM_ID;
   ident_map[L"consts"] = TOKEN_CONSTS_ID;
   ident_map[L"for"] = TOKEN_FOR_ID;
@@ -147,7 +146,6 @@ void Scanner::LoadKeywords()
   ident_map[L"false"] = TOKEN_FALSE_ID;
   ident_map[L"New"] = TOKEN_NEW_ID;
   ident_map[L"Nil"] = TOKEN_NIL_ID;
-  ident_map[L"try"] = TOKEN_TRY_ID;
   ident_map[L"As"] = TOKEN_AS_ID;
   ident_map[L"TypeOf"] = TOKEN_TYPE_OF_ID;
   ident_map[L"critical"] = TOKEN_CRITICAL_ID;
@@ -464,8 +462,6 @@ void Scanner::CheckIdentifier(int index)
     case TOKEN_CHAR_ID:
     case TOKEN_NEW_ID:
     case TOKEN_NIL_ID:
-    case TOKEN_OTHERWISE_ID:
-    case TOKEN_TRY_ID:
 #ifdef _SYSTEM
     case S2I:
     case S2F:

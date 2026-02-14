@@ -5491,18 +5491,6 @@ Expression* Parser::ParseExpression(int depth)
     }
   }
 
-  //
-  // parses an 'otherwise' default expression
-  //
-  if(expression && Match(TOKEN_OTHERWISE_ID)) {
-#ifdef _DEBUG
-    Debug(L"Otherwise expression", depth);
-#endif
-    NextToken();
-    Expression* default_expr = ParseLogic(depth + 1);
-    expression = TreeFactory::Instance()->MakeOtherwise(file_name, line_num, line_pos, expression, default_expr);
-  }
-
   return expression;
 }
 
@@ -5945,15 +5933,6 @@ Expression* Parser::ParseSimpleExpression(int depth)
   else if(Match(TOKEN_BACK_SLASH)) {
     NextToken();
     expression = ParseLambda(depth + 1);
-  }
-  // try expression
-  else if(Match(TOKEN_TRY_ID)) {
-#ifdef _DEBUG
-    Debug(L"Try expression", depth);
-#endif
-    NextToken();
-    Expression* try_expr = ParseLogic(depth + 1);
-    expression = TreeFactory::Instance()->MakeTryExpression(file_name, line_num, line_pos, try_expr);
   }
   // negation
   else if(Match(TOKEN_NOT_ID)) {

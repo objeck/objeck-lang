@@ -4061,6 +4061,23 @@ bundle System {
 		method : public : GetInstanceID() ~ Int {
 			LOAD_INST_UID;
 		}
+
+		#~
+		Compiler intrinsic: wraps subsequent chain calls in error recovery.
+		Returns Nil if the following method call raises an error.
+		@return result of the following method call, or Nil on error
+		~#
+		method : public : Try() ~ Base {
+		}
+
+		#~
+		Compiler intrinsic: returns the receiver if non-Nil, otherwise returns the default value.
+		@param default default value to return if receiver is Nil
+		@return receiver if non-Nil, otherwise default
+		~#
+		method : public : Otherwise(default : Base) ~ Base {
+			return default;
+		}
 	}
 	
 	#~
