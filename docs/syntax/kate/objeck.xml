@@ -15,15 +15,30 @@
       <item>interface</item>
       <item>enum</item>
       <item>alias</item>
-      <item>interface</item>
       <item>consts</item>
       <item>method</item>
       <item>function</item>
+      <item>bundle</item>
+      <item>use</item>
+      <item>leaving</item>
       <item>critical</item>
       <item>As</item>
+      <item>TypeOf</item>
+      <item>New</item>
+      <item>Parent</item>
+      <item>Try</item>
+      <item>Otherwise</item>
       <item>native</item>
-      <item>\ic</item>
+      <item>public</item>
       <item>private</item>
+      <item>static</item>
+      <item>virtual</item>
+      <item>from</item>
+      <item>implements</item>
+      <item>and</item>
+      <item>or</item>
+      <item>xor</item>
+      <item>not</item>
     </list>
 
     <list name="controlflow">
@@ -32,12 +47,10 @@
       <item>do</item>
       <item>in</item>
       <item>while</item>
-      <item>static</item>
       <item>select</item>
       <item>break</item>
       <item>continue</item>
       <item>other</item>
-      <item>otherwise</item>
       <item>for</item>
       <item>each</item>
       <item>reverse</item>

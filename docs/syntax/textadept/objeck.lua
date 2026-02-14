@@ -12,11 +12,11 @@ lex:add_rule('whitespace', token(lexer.WHITESPACE, lexer.space^1))
 
 -- Keywords.
 lex:add_rule('keyword', token(lexer.KEYWORD, word_match{
-  'class', 'method', 'function', 'public', 'abstract', 'private', 'static', 'native', 'virtual',
+  'class', 'method', 'function', 'public', 'private', 'static', 'native', 'virtual',
   'Parent', 'As', 'from', 'implements', 'interface', 'enum', 'alias', 'consts', 'bundle',
   'use', 'in', 'leaving', 'if', 'else', 'do', 'while', 'select', 'break', 'continue', 'other',
   'for', 'not', 'each', 'reverse', 'label', 'return', 'critical', 'New', 'and', 'or', 'xor',
-  'true', 'false'--, 'Nil'
+  'true', 'false', 'TypeOf', 'Try', 'Otherwise'--, 'Nil'
 }))
 
 -- Types.

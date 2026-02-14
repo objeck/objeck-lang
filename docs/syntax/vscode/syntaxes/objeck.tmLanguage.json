@@ -54,7 +54,7 @@
 		"entities": {
 			"patterns": [
 				{
-					"match": "\\b(class|method|function)\\b",
+					"match": "\\b(class|method|function|interface|enum|alias|consts|bundle)\\b",
 					"name": "entity.name.type.class"
 				}]
 		},
@@ -96,15 +96,19 @@
 		"keywords": {
 			"patterns": [
 				{
-					"match": "\\b(use|leaving|if|else|do|while|select|break|continue|in|other|otherwise|for|each|reverse|label|return|critical)\\b",
+					"match": "\\b(use|leaving|if|else|do|while|select|break|continue|in|other|for|each|reverse|label|return|critical|from|implements|virtual)\\b",
 					"name": "keyword.control.objeck"
 				},
 				{
-					"match": "\\b(As)\\b",
+					"match": "\\b(As|TypeOf)\\b",
 					"name": "keyword.operator.objeck"
 				},
 				{
-					"match": "\\b(not|and|or|xor|not)\\b",
+					"match": "\\b(New|Parent|Try|Otherwise)\\b",
+					"name": "support.function.builtin.objeck"
+				},
+				{
+					"match": "\\b(not|and|or|xor)\\b",
 					"name": "keyword.operator.objeck"
 				},
 				{
@@ -125,7 +129,7 @@
 			"patterns": [
 				{
 					"name": "storage.modifier.objeck",
-					"match": "\\b(public|abstract|private|static|native)\\b"
+					"match": "\\b(public|private|static|native|virtual)\\b"
 				}
 			]
 		},
