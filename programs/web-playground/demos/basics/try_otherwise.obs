@@ -1,0 +1,39 @@
+#~
+ Try/Otherwise Error Handling
+ Safe method chaining with graceful error recovery
+~#
+
+class TryOtherwiseDemo {
+  function : Main(args : String[]) ~ Nil {
+    "=== Try/Otherwise Error Handling ==="->PrintLine();
+
+    # Otherwise() returns a default when the receiver is Nil
+    name : String;
+    greeting := name->Otherwise("World");
+    "Hello, {$greeting}!"->PrintLine();
+
+    # With a non-Nil value, Otherwise() returns the original
+    name2 := "Objeck";
+    greeting2 := name2->Otherwise("World");
+    "Hello, {$greeting2}!"->PrintLine();
+
+    # Try() enables safe method chaining on Nil values
+    text : String;
+    length := text->Try()->Size()->Otherwise(-1);
+    "Nil string length: {$length}"->PrintLine();
+
+    # Try() with a valid object chains normally
+    text2 := "Hello";
+    length2 := text2->Try()->Size()->Otherwise(-1);
+    "'{$text2}' length: {$length2}"->PrintLine();
+
+    # Practical example: safe string processing
+    input : String;
+    result := input->Try()->ToUpper()->Otherwise("(no input)");
+    "Processed: {$result}"->PrintLine();
+
+    input2 := "objeck lang";
+    result2 := input2->Try()->ToUpper()->Otherwise("(no input)");
+    "Processed: {$result2}"->PrintLine();
+  }
+}
