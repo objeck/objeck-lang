@@ -3599,15 +3599,6 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
     EmitCalculation(static_cast<CalculatedExpression*>(expression));
     break;
 
-  case OTHERWISE_EXPR:
-    EmitOtherwise(static_cast<Otherwise*>(expression));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LOAD_INT_VAR, 0, LOCL));
-    break;
-
-  case TRY_EXPR:
-    EmitTry(static_cast<TryExpression*>(expression));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LOAD_INT_VAR, 0, LOCL));
-    break;
   }
 
   if(expression->GetTypeOf() && expression->GetExpressionType() != VAR_EXPR) {
@@ -3638,19 +3629,30 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
     // objects are considered nested if a method call is present
     bool is_nested = false || expression->GetExpressionType() == CHAR_STR_EXPR;
     while(method_call) {
+      // handle Try() intrinsic
+      if(method_call->IsTryIntrinsic()) {
+        EmitTryIntrinsic(method_call, expression, is_nested);
+        break;
+      }
+      // handle Otherwise() intrinsic
+      if(method_call->IsOtherwiseIntrinsic()) {
+        EmitOtherwiseIntrinsic(method_call, expression);
+        break;
+      }
+
       // declarations
       std::vector<Expression*> expressions = method_call->GetCallingParameters()->GetExpressions();
       for(size_t i = 0; i < expressions.size(); ++i) {
         EmitExpression(expressions[i]);
         EmitClassCast(expressions[i]);
         // need to swap values
-        if(!is_str_array && new_char_str_count > 0 && method_call->GetCallingParameters() && 
+        if(!is_str_array && new_char_str_count > 0 && method_call->GetCallingParameters() &&
            method_call->GetCallingParameters()->GetExpressions().size() > 0) {
           imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, SWAP_INT));
         }
       }
       new_char_str_count = 0;
-      
+
       // emit call
       EmitMethodCall(method_call, is_nested || expression->GetExpressionType() == COND_EXPR);
 
@@ -3680,12 +3682,12 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
       if(!method_call->GetVariable()) {
         EmitClassCast(method_call);
       }
-      
+
       // next call
       if(method_call->GetMethod()) {
         Method* method = method_call->GetMethod();
         if(method->GetReturn()->GetType() == CLASS_TYPE) {
-          bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(method->GetReturn()->GetName(), parsed_program->GetLibUses()) || 
+          bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(method->GetReturn()->GetName(), parsed_program->GetLibUses()) ||
             SearchProgramEnums(method->GetReturn()->GetName());
           if(!is_enum) {
             is_nested = true;
@@ -3693,7 +3695,7 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
           else {
             is_nested = false;
           }
-        } 
+        }
         else {
           is_nested = false;
         }
@@ -3701,7 +3703,7 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
       else if(method_call->GetLibraryMethod()) {
         LibraryMethod* lib_method = method_call->GetLibraryMethod();
         if(lib_method->GetReturn()->GetType() == CLASS_TYPE) {
-          bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(lib_method->GetReturn()->GetName(), parsed_program->GetLibUses()) || 
+          bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(lib_method->GetReturn()->GetName(), parsed_program->GetLibUses()) ||
             SearchProgramEnums(lib_method->GetReturn()->GetName());
           if(!is_enum) {
             is_nested = true;
@@ -3709,11 +3711,11 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
           else {
             is_nested = false;
           }
-        } 
+        }
         else {
           is_nested = false;
         }
-      } 
+      }
       else {
         is_nested = false;
       }
@@ -3881,34 +3883,89 @@ void IntermediateEmitter::EmitMethodCallExpression(MethodCall* method_call, bool
     } 
   }
   else {
-    // rewind calling parameters    
+    // rewind calling parameters
     if(!is_variable) {
       MethodCall* tail = method_call;
       while(tail->GetMethodCall()) {
         tail = tail->GetMethodCall();
       }
-      
-      // emit parameters for nested call
+
+      // emit parameters for nested call (skip intrinsics)
       MethodCall* temp = tail;
       while(temp) {
-        EmitMethodCallParameters(temp);
+        if(!temp->IsTryIntrinsic() && !temp->IsOtherwiseIntrinsic()) {
+          EmitMethodCallParameters(temp);
+        }
         temp = static_cast<MethodCall*>(temp->GetPreviousExpression());
       }
     }
-    
+
     bool is_nested = is_variable ? true : false;
     do {
+      // handle Try()/Otherwise() intrinsics - must load receiver first if it's the first call in chain
+      if(method_call->IsTryIntrinsic() || method_call->IsOtherwiseIntrinsic()) {
+        // Load the receiver variable if this is the first call (not already on stack)
+        if(!is_nested) {
+          Variable* variable = method_call->GetVariable();
+          SymbolEntry* entry = method_call->GetEntry();
+          if(variable && method_call->GetCallType() == METHOD_CALL) {
+            EmitVariable(variable);
+            EmitClassCast(method_call);
+          }
+          else if(entry) {
+            MemoryContext mem_context;
+            if(entry->IsLocal()) {
+              mem_context = LOCL;
+            } else if(entry->IsStatic()) {
+              mem_context = CLS;
+            } else {
+              mem_context = INST;
+            }
+            if(mem_context == INST) {
+              imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_INST_MEM));
+            } else if(mem_context == CLS) {
+              imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_CLS_MEM));
+            }
+            switch(entry->GetType()->GetType()) {
+            case frontend::BOOLEAN_TYPE:
+            case frontend::BYTE_TYPE:
+            case frontend::CHAR_TYPE:
+            case frontend::INT_TYPE:
+            case frontend::CLASS_TYPE:
+              imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_INT_VAR, entry->GetId(), mem_context));
+              break;
+            case frontend::FLOAT_TYPE:
+              if(entry->GetType()->GetDimension() > 0) {
+                imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_INT_VAR, entry->GetId(), mem_context));
+              } else {
+                imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_FLOAT_VAR, entry->GetId(), mem_context));
+              }
+              break;
+            default:
+              break;
+            }
+          }
+        }
+
+        if(method_call->IsTryIntrinsic()) {
+          EmitTryIntrinsic(method_call, static_cast<Expression*>(method_call), is_nested);
+        } else {
+          EmitOtherwiseIntrinsic(method_call, static_cast<Expression*>(method_call));
+        }
+        break;
+      }
+
       EmitMethodCall(method_call, is_nested);
       EmitCast(method_call);
       if(!method_call->GetVariable()) {
         EmitClassCast(method_call);
       }
-      
+
       // next call
       if(method_call->GetMethod()) {
         Method* method = method_call->GetMethod();
         if(method->GetReturn()->GetType() == CLASS_TYPE) {
-          bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(method->GetReturn()->GetName(), parsed_program->GetLibUses()) || 
+          bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(method->GetReturn()->GetName(), parsed_program->GetLibUses()) ||
             SearchProgramEnums(method->GetReturn()->GetName());
           if(!is_enum) {
             is_nested = true;
@@ -3916,15 +3973,15 @@ void IntermediateEmitter::EmitMethodCallExpression(MethodCall* method_call, bool
           else {
             is_nested = false;
           }
-        } 
+        }
         else {
           is_nested = false;
         }
-      } 
+      }
       else if(method_call->GetLibraryMethod()) {
         LibraryMethod* lib_method = method_call->GetLibraryMethod();
         if(lib_method->GetReturn()->GetType() == CLASS_TYPE) {
-          bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(lib_method->GetReturn()->GetName(), parsed_program->GetLibUses()) || 
+          bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(lib_method->GetReturn()->GetName(), parsed_program->GetLibUses()) ||
             SearchProgramEnums(lib_method->GetReturn()->GetName());
           if(!is_enum) {
             is_nested = true;
@@ -3932,17 +3989,17 @@ void IntermediateEmitter::EmitMethodCallExpression(MethodCall* method_call, bool
           else {
             is_nested = false;
           }
-        } 
+        }
         else {
           is_nested = false;
         }
-      } 
+      }
       else {
         is_nested = false;
       }
       // process next method
       method_call = method_call->GetMethodCall();
-    } 
+    }
     while(method_call);
   }
 }
@@ -4201,74 +4258,132 @@ void IntermediateEmitter::EmitConditional(Cond* conditional)
 }
 
 /****************************
- * Translates an 'otherwise'
- * expression.
+ * Translates a 'Try()' intrinsic
+ * in a method call chain.
+ * Wraps remaining chain calls
+ * in TRY_START/TRY_END.
  ****************************/
-void IntermediateEmitter::EmitOtherwise(Otherwise* otherwise_expr)
+void IntermediateEmitter::EmitTryIntrinsic(MethodCall* method_call, Expression* expression, bool is_nested)
 {
-  cur_line_num = static_cast<Expression*>(otherwise_expr)->GetLineNumber();
-
-  long end_label = ++unconditional_label;
-
-  // evaluate expression
-  EmitExpression(otherwise_expr->GetExpression());
-  EmitCast(otherwise_expr);
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, otherwise_expr, cur_line_num, STOR_INT_VAR, 0, LOCL));
-
-  // check if result is Nil (0)
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, otherwise_expr, cur_line_num, LOAD_INT_VAR, 0, LOCL));
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(current_statement, otherwise_expr, cur_line_num, 0L));
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, otherwise_expr, cur_line_num, NEQL_INT));
-
-  // jump to end if not Nil
-  long skip_label = ++conditional_label;
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, otherwise_expr, cur_line_num, JMP, skip_label, 1L));
-
-  // result is Nil: evaluate default expression
-  EmitExpression(otherwise_expr->GetDefaultExpression());
-  EmitCast(otherwise_expr);
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, otherwise_expr, cur_line_num, STOR_INT_VAR, 0, LOCL));
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, otherwise_expr, cur_line_num, JMP, end_label, -1));
-  new_char_str_count = 0;
-
-  // not Nil: keep result
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, otherwise_expr, cur_line_num, LBL, skip_label));
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, otherwise_expr, cur_line_num, LBL, end_label));
-}
-
-/****************************
- * Translates a 'try'
- * expression.
- ****************************/
-void IntermediateEmitter::EmitTry(TryExpression* try_expr)
-{
-  cur_line_num = static_cast<Expression*>(try_expr)->GetLineNumber();
-
   long handler_label = ++unconditional_label;
   long end_label = ++unconditional_label;
 
   // set error handler
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, try_expr, cur_line_num, TRY_START, handler_label, -1));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, TRY_START, handler_label, -1));
 
-  // evaluate expression
-  EmitExpression(try_expr->GetExpression());
-  EmitCast(try_expr);
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, try_expr, cur_line_num, STOR_INT_VAR, 0, LOCL));
+  // skip Try() itself and process rest of chain
+  // The receiver is already on the stack, so chained calls should be nested
+  is_nested = true;
+  method_call = method_call->GetMethodCall();
+  while(method_call) {
+    if(method_call->IsOtherwiseIntrinsic()) {
+      // end try scope before Otherwise
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, STOR_INT_VAR, 0, LOCL));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, TRY_END));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, JMP, end_label, -1));
 
-  // clear error handler
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, try_expr, cur_line_num, TRY_END));
+      // error handler: push Nil
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LBL, handler_label));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(current_statement, expression, cur_line_num, 0L));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, STOR_INT_VAR, 0, LOCL));
+      new_char_str_count = 0;
 
-  // skip handler
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, try_expr, cur_line_num, JMP, end_label, -1));
+      // end of try
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LBL, end_label));
+
+      // load try result and handle Otherwise
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LOAD_INT_VAR, 0, LOCL));
+      EmitOtherwiseIntrinsic(method_call, expression);
+      return;
+    }
+
+    // normal method call in chain
+    EmitMethodCall(method_call, is_nested);
+    EmitCast(method_call);
+    if(!method_call->GetVariable()) {
+      EmitClassCast(method_call);
+    }
+
+    // update is_nested
+    if(method_call->GetMethod()) {
+      Method* method = method_call->GetMethod();
+      if(method->GetReturn()->GetType() == CLASS_TYPE) {
+        bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(method->GetReturn()->GetName(), parsed_program->GetLibUses()) ||
+          SearchProgramEnums(method->GetReturn()->GetName());
+        is_nested = !is_enum;
+      }
+      else {
+        is_nested = false;
+      }
+    }
+    else if(method_call->GetLibraryMethod()) {
+      LibraryMethod* lib_method = method_call->GetLibraryMethod();
+      if(lib_method->GetReturn()->GetType() == CLASS_TYPE) {
+        bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(lib_method->GetReturn()->GetName(), parsed_program->GetLibUses()) ||
+          SearchProgramEnums(lib_method->GetReturn()->GetName());
+        is_nested = !is_enum;
+      }
+      else {
+        is_nested = false;
+      }
+    }
+    else {
+      is_nested = false;
+    }
+
+    method_call = method_call->GetMethodCall();
+  }
+
+  // end of chain without Otherwise - store result and end try
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, STOR_INT_VAR, 0, LOCL));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, TRY_END));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, JMP, end_label, -1));
 
   // error handler: push Nil
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, try_expr, cur_line_num, LBL, handler_label));
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(current_statement, try_expr, cur_line_num, 0L));
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, try_expr, cur_line_num, STOR_INT_VAR, 0, LOCL));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LBL, handler_label));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(current_statement, expression, cur_line_num, 0L));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, STOR_INT_VAR, 0, LOCL));
   new_char_str_count = 0;
 
   // end
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, try_expr, cur_line_num, LBL, end_label));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LBL, end_label));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LOAD_INT_VAR, 0, LOCL));
+}
+
+/****************************
+ * Translates an 'Otherwise()'
+ * intrinsic in a method call
+ * chain. Receiver value is
+ * already on the stack.
+ ****************************/
+void IntermediateEmitter::EmitOtherwiseIntrinsic(MethodCall* method_call, Expression* expression)
+{
+  long end_label = ++unconditional_label;
+
+  // save receiver to var 0
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, STOR_INT_VAR, 0, LOCL));
+
+  // nil check: var 0 != 0
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LOAD_INT_VAR, 0, LOCL));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(current_statement, expression, cur_line_num, 0L));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, NEQL_INT));
+
+  // jump if not Nil
+  long skip_label = ++conditional_label;
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, JMP, skip_label, 1L));
+
+  // Nil path: evaluate default expression
+  const std::vector<Expression*>& args = method_call->GetCallingParameters()->GetExpressions();
+  EmitExpression(args[0]);
+  EmitCast(method_call);
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, STOR_INT_VAR, 0, LOCL));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, JMP, end_label, -1));
+  new_char_str_count = 0;
+
+  // not Nil: keep receiver
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LBL, skip_label));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LBL, end_label));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LOAD_INT_VAR, 0, LOCL));
 }
 
 /****************************
@@ -5047,16 +5162,20 @@ void IntermediateEmitter::EmitVariable(Variable* variable)
       tail = tail->GetMethodCall();
     }
     
-    // emit parameters for nested call
+    // emit parameters for nested call (skip intrinsics)
     MethodCall* temp = tail;
-    while(temp && temp != variable->GetMethodCall()) {      
-      EmitMethodCallParameters(temp);
+    while(temp && temp != variable->GetMethodCall()) {
+      if(!temp->IsTryIntrinsic() && !temp->IsOtherwiseIntrinsic()) {
+        EmitMethodCallParameters(temp);
+      }
       // update
       temp = static_cast<MethodCall*>(temp->GetPreviousExpression());
     }
-    
+
     // emit parameters last call
-    EmitMethodCallParameters(variable->GetMethodCall());
+    if(!variable->GetMethodCall()->IsTryIntrinsic() && !variable->GetMethodCall()->IsOtherwiseIntrinsic()) {
+      EmitMethodCallParameters(variable->GetMethodCall());
+    }
  
   }
   

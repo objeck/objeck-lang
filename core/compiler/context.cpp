@@ -1740,14 +1740,6 @@ void ContextAnalyzer::AnalyzeExpression(Expression* expression, const int depth)
         AnalyzeCalculation(static_cast<CalculatedExpression*>(expression), depth + 1);
         break;
 
-      case OTHERWISE_EXPR:
-        AnalyzeOtherwise(static_cast<Otherwise*>(expression), depth);
-        break;
-
-      case TRY_EXPR:
-        AnalyzeTry(static_cast<TryExpression*>(expression), depth);
-        break;
-
       default:
         ProcessError(expression, L"Undefined expression");
         break;
@@ -1765,69 +1757,92 @@ void ContextAnalyzer::AnalyzeExpression(Expression* expression, const int depth)
 }
 
 /****************************
- * Analyzes an 'otherwise'
- * expression
+ * Analyzes a 'Try()' intrinsic
+ * method call
  ****************************/
-void ContextAnalyzer::AnalyzeOtherwise(Otherwise* otherwise_expr, const int depth)
+void ContextAnalyzer::AnalyzeTryIntrinsic(MethodCall* method_call, Expression* expression, const int depth)
 {
 #ifdef _DEBUG
-  Debug(L"otherwise expression", otherwise_expr->GetLineNumber(), depth);
+  Debug(L"Try() intrinsic", method_call->GetLineNumber(), depth);
 #endif
 
-  Expression* expr = otherwise_expr->GetExpression();
-  AnalyzeExpression(expr, depth + 1);
-  Expression* default_expr = otherwise_expr->GetDefaultExpression();
-  AnalyzeExpression(default_expr, depth + 1);
+  method_call->SetTryIntrinsic(true);
 
-  Type* expr_type = GetExpressionType(expr, depth + 1);
-  Type* default_type = GetExpressionType(default_expr, depth + 1);
-
-  if(expr_type && default_type) {
-    if(expr_type->GetType() == CLASS_TYPE && default_type->GetType() == CLASS_TYPE) {
-      AnalyzeClassCast(expr_type, default_expr, depth + 1);
-    }
-    else if(expr_type->GetType() == NIL_TYPE) {
-      // Nil otherwise default: use default type
-    }
-    else if(default_type->GetType() == NIL_TYPE) {
-      // expr otherwise Nil: use expr type
-    }
-    else if(expr_type->GetType() != default_type->GetType() &&
-            !((expr_type->GetType() == CLASS_TYPE && default_type->GetType() == NIL_TYPE) ||
-            (expr_type->GetType() == NIL_TYPE && default_type->GetType() == CLASS_TYPE))) {
-      ProcessError(otherwise_expr, L"'otherwise' type mismatch between expression and default");
-    }
-
-    // set eval type from expression (or default if expression is Nil)
-    if(expr_type->GetType() == NIL_TYPE && default_type->GetType() != NIL_TYPE) {
-      otherwise_expr->SetEvalType(default_type, true);
-    }
-    else {
-      otherwise_expr->SetEvalType(expr_type, true);
-    }
-    current_method->SetAndOr(true);
+  Type* recv_type = expression->GetEvalType();
+  if(!recv_type || recv_type->GetType() != CLASS_TYPE) {
+    ProcessError(static_cast<Expression*>(method_call), L"'Try()' can only be called on object types");
+    return;
   }
-  else {
-    ProcessError(otherwise_expr, L"Invalid 'otherwise' expression");
+
+  // Try() must be followed by a method call in the chain
+  MethodCall* next_call = method_call->GetMethodCall();
+  if(!next_call) {
+    ProcessError(static_cast<Expression*>(method_call), L"'Try()' must be followed by a method call");
+    return;
   }
+
+  // Set return type to receiver's type so the chain continues with the correct class
+  method_call->SetEvalType(recv_type, false);
+  current_method->SetAndOr(true);
+
+  // Continue resolving the chain from Try() - AnalyzeExpressionMethodCall will
+  // look at method_call->GetMethodCall() (Size(), etc.) and resolve it using
+  // method_call's eval type (the receiver's class, not Base)
+  AnalyzeExpressionMethodCall(static_cast<Expression*>(method_call), depth + 1);
 }
 
 /****************************
- * Analyzes a 'try' expression
+ * Analyzes an 'Otherwise()'
+ * intrinsic method call
  ****************************/
-void ContextAnalyzer::AnalyzeTry(TryExpression* try_expr, const int depth)
+void ContextAnalyzer::AnalyzeOtherwiseIntrinsic(MethodCall* method_call, Expression* expression, const int depth)
 {
 #ifdef _DEBUG
-  Debug(L"try expression", try_expr->GetLineNumber(), depth);
+  Debug(L"Otherwise() intrinsic", method_call->GetLineNumber(), depth);
 #endif
 
-  Expression* expr = try_expr->GetExpression();
-  AnalyzeExpression(expr, depth + 1);
+  method_call->SetOtherwiseIntrinsic(true);
 
-  Type* expr_type = GetExpressionType(expr, depth + 1);
-  if(expr_type) {
-    try_expr->SetEvalType(expr_type, true);
+  // Analyze the default argument
+  const std::vector<Expression*>& args = method_call->GetCallingParameters()->GetExpressions();
+  Expression* default_expr = args[0];
+  AnalyzeExpression(default_expr, depth + 1);
+
+  Type* recv_type = expression->GetEvalType();
+  Type* default_type = GetExpressionType(default_expr, depth + 1);
+
+  if(recv_type && default_type) {
+    if(recv_type->GetType() == CLASS_TYPE && default_type->GetType() == CLASS_TYPE) {
+      AnalyzeClassCast(recv_type, default_expr, depth + 1);
+    }
+    else if(recv_type->GetType() == NIL_TYPE) {
+      // Nil->Otherwise(default): use default type
+    }
+    else if(default_type->GetType() == NIL_TYPE) {
+      // expr->Otherwise(Nil): use expr type
+    }
+    else if(recv_type->GetType() != default_type->GetType() &&
+            !((recv_type->GetType() == CLASS_TYPE && default_type->GetType() == NIL_TYPE) ||
+            (recv_type->GetType() == NIL_TYPE && default_type->GetType() == CLASS_TYPE))) {
+      ProcessError(static_cast<Expression*>(method_call), L"'Otherwise()' type mismatch between receiver and default");
+    }
+
+    // set eval type from receiver (or default if receiver is Nil)
+    if(recv_type->GetType() == NIL_TYPE && default_type->GetType() != NIL_TYPE) {
+      method_call->SetEvalType(default_type, false);
+    }
+    else {
+      method_call->SetEvalType(recv_type, false);
+    }
     current_method->SetAndOr(true);
+
+    // resolve any chain after Otherwise()
+    if(method_call->GetMethodCall()) {
+      AnalyzeExpressionMethodCall(static_cast<Expression*>(method_call), depth + 1);
+    }
+  }
+  else {
+    ProcessError(static_cast<Expression*>(method_call), L"Invalid 'Otherwise()' expression");
   }
 }
 
@@ -2463,13 +2478,40 @@ void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, const int depth
     std::wstring encoding;
     Class* klass = AnalyzeProgramMethodCall(method_call, encoding, depth);
     if(klass) {
+      // check for Try()/Otherwise() intrinsics
+      if(method_call->GetCallType() == METHOD_CALL) {
+        const std::wstring mthd_name = method_call->GetMethodName();
+        const bool has_params = method_call->GetCallingParameters() != nullptr;
+        const size_t param_count = has_params ? method_call->GetCallingParameters()->GetExpressions().size() : 0;
+
+        if(mthd_name == L"Try" && has_params && param_count == 0) {
+          // Set receiver type from entry
+          if(entry && entry->GetType()) {
+            method_call->SetEvalType(entry->GetType(), false);
+          }
+          AnalyzeTryIntrinsic(method_call, static_cast<Expression*>(method_call), depth);
+          --nested_call_depth;
+          RogueReturn(method_call);
+          return;
+        }
+        if(mthd_name == L"Otherwise" && has_params && param_count == 1) {
+          if(entry && entry->GetType()) {
+            method_call->SetEvalType(entry->GetType(), false);
+          }
+          AnalyzeOtherwiseIntrinsic(method_call, static_cast<Expression*>(method_call), depth);
+          --nested_call_depth;
+          RogueReturn(method_call);
+          return;
+        }
+      }
+
       if(method_call->IsFunctionDefinition()) {
         AnalyzeFunctionReference(klass, method_call, encoding, depth);
       }
       else if(!method_call->GetMethod() && !method_call->GetLibraryMethod()) {
         AnalyzeMethodCall(klass, method_call, false, encoding, depth);
       }
-      
+
       // check for rouge return
       --nested_call_depth;
       RogueReturn(method_call);
@@ -2478,6 +2520,32 @@ void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, const int depth
     // library call
     LibraryClass* lib_klass = AnalyzeLibraryMethodCall(method_call, encoding, depth);
     if(lib_klass) {
+      // check for Try()/Otherwise() intrinsics
+      if(method_call->GetCallType() == METHOD_CALL) {
+        const std::wstring mthd_name = method_call->GetMethodName();
+        const bool has_params = method_call->GetCallingParameters() != nullptr;
+        const size_t param_count = has_params ? method_call->GetCallingParameters()->GetExpressions().size() : 0;
+
+        if(mthd_name == L"Try" && has_params && param_count == 0) {
+          if(entry && entry->GetType()) {
+            method_call->SetEvalType(entry->GetType(), false);
+          }
+          AnalyzeTryIntrinsic(method_call, static_cast<Expression*>(method_call), depth);
+          --nested_call_depth;
+          RogueReturn(method_call);
+          return;
+        }
+        if(mthd_name == L"Otherwise" && has_params && param_count == 1) {
+          if(entry && entry->GetType()) {
+            method_call->SetEvalType(entry->GetType(), false);
+          }
+          AnalyzeOtherwiseIntrinsic(method_call, static_cast<Expression*>(method_call), depth);
+          --nested_call_depth;
+          RogueReturn(method_call);
+          return;
+        }
+      }
+
       if(method_call->IsFunctionDefinition()) {
         AnalyzeFunctionReference(lib_klass, method_call, encoding, depth);
       }
@@ -2978,6 +3046,27 @@ void ContextAnalyzer::AnalyzeExpressionMethodCall(Expression* expression, const 
           ProcessError(static_cast<Expression*>(method_call), L"Invalid class type or assignment");
       }
       method_call->SetEnumCall(is_enum_call);
+
+      // check for Try()/Otherwise() intrinsics before normal method resolution
+      if(method_call->GetCallType() == METHOD_CALL) {
+        const std::wstring mthd_name = method_call->GetMethodName();
+        const bool has_params = method_call->GetCallingParameters() != nullptr;
+        const size_t param_count = has_params ? method_call->GetCallingParameters()->GetExpressions().size() : 0;
+
+        if(mthd_name == L"Try" && has_params && param_count == 0) {
+          AnalyzeTryIntrinsic(method_call, expression, depth);
+          --nested_call_depth;
+          RogueReturn(method_call);
+          return;
+        }
+
+        if(mthd_name == L"Otherwise" && has_params && param_count == 1) {
+          AnalyzeOtherwiseIntrinsic(method_call, expression, depth);
+          --nested_call_depth;
+          RogueReturn(method_call);
+          return;
+        }
+      }
 
       // check methods
       if(klass) {

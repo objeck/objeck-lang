@@ -468,9 +468,7 @@ namespace frontend {
     CHAR_STR_EXPR,
     STAT_ARY_EXPR,
     STR_CONCAT_EXPR,
-    LAMBDA_EXPR,
-    OTHERWISE_EXPR,
-    TRY_EXPR
+    LAMBDA_EXPR
   };
 
   /****************************
@@ -1282,60 +1280,6 @@ namespace frontend {
 
     Expression* GetElseExpression() {
       return else_expression;
-    }
-  };
-
-  /****************************
-   * Otherwise class
-   ****************************/
-  class Otherwise : public Expression {
-    friend class TreeFactory;
-    Expression* expression;
-    Expression* default_expr;
-
-    Otherwise(const std::wstring &file_name, const int line_num, const int line_pos, Expression* expr, Expression* def) : Expression(file_name, line_num, line_pos) {
-      expression = expr;
-      default_expr = def;
-    }
-
-    ~Otherwise() {
-    }
-
-  public:
-    const ExpressionType GetExpressionType() {
-      return OTHERWISE_EXPR;
-    }
-
-    Expression* GetExpression() {
-      return expression;
-    }
-
-    Expression* GetDefaultExpression() {
-      return default_expr;
-    }
-  };
-
-  /****************************
-   * TryExpression class
-   ****************************/
-  class TryExpression : public Expression {
-    friend class TreeFactory;
-    Expression* expression;
-
-    TryExpression(const std::wstring &file_name, const int line_num, const int line_pos, Expression* expr) : Expression(file_name, line_num, line_pos) {
-      expression = expr;
-    }
-
-    ~TryExpression() {
-    }
-
-  public:
-    const ExpressionType GetExpressionType() {
-      return TRY_EXPR;
-    }
-
-    Expression* GetExpression() {
-      return expression;
     }
   };
 
@@ -2821,8 +2765,10 @@ namespace frontend {
     std::vector<Type*> concrete_types;
     int mid_line_num;
     int mid_line_pos;
+    bool is_try_intrinsic;
+    bool is_otherwise_intrinsic;
 
-    MethodCall(const std::wstring &file_name, const int line_num, const int line_pos, const int end_line_num, 
+    MethodCall(const std::wstring &file_name, const int line_num, const int line_pos, const int end_line_num,
                const int end_line_pos, MethodCallType t, const std::wstring &v, ExpressionList* e);
 
     MethodCall(const std::wstring& file_name, const int line_num, const int line_pos, const int ml, const int mp,
@@ -2848,9 +2794,10 @@ namespace frontend {
       is_rouge_return = instructions::NIL_TYPE;
       func_rtrn = nullptr;
       anonymous_klass = nullptr;
+      is_try_intrinsic = is_otherwise_intrinsic = false;
     }
 
-    MethodCall(const std::wstring& file_name, const int line_num, const int line_pos, const int end_line_num, 
+    MethodCall(const std::wstring& file_name, const int line_num, const int line_pos, const int end_line_num,
                const int end_line_pos, const std::wstring& v, const std::wstring &m) : Statement(file_name, line_num, line_pos, end_line_num, end_line_pos), Expression(file_name, line_num, line_pos) {
       mid_line_num = mid_line_pos = -1;
       variable_name = v;
@@ -2871,6 +2818,7 @@ namespace frontend {
       is_rouge_return = instructions::NIL_TYPE;
       func_rtrn = nullptr;
       anonymous_klass = nullptr;
+      is_try_intrinsic = is_otherwise_intrinsic = false;
     }
 
     MethodCall(const std::wstring& file_name, const int line_num, const int line_pos, const int end_line_num,
@@ -2892,8 +2840,9 @@ namespace frontend {
       is_rouge_return = instructions::NIL_TYPE;
       func_rtrn = nullptr;
       anonymous_klass = nullptr;
+      is_try_intrinsic = is_otherwise_intrinsic = false;
     }
-    
+
     MethodCall(const std::wstring& file_name, const int line_num, const int line_pos, const int ml, const int mp,
                const int end_line_num, const int end_line_pos, Variable* v, const std::wstring& m,
                ExpressionList* e) : Statement(file_name, line_num, line_pos, end_line_num, end_line_pos), Expression(file_name, line_num, line_pos) {
@@ -2916,12 +2865,18 @@ namespace frontend {
       func_rtrn = nullptr;
       is_rouge_return = instructions::NIL_TYPE;
       anonymous_klass = nullptr;
+      is_try_intrinsic = is_otherwise_intrinsic = false;
     }
 
     ~MethodCall() {
     }
 
   public:
+    bool IsTryIntrinsic() const { return is_try_intrinsic; }
+    void SetTryIntrinsic(bool v) { is_try_intrinsic = v; }
+    bool IsOtherwiseIntrinsic() const { return is_otherwise_intrinsic; }
+    void SetOtherwiseIntrinsic(bool v) { is_otherwise_intrinsic = v; }
+
     void SetFunctionalReturn(Type* r) {
       func_rtrn = r;
       is_func_def = true;
@@ -3424,18 +3379,6 @@ namespace frontend {
 
     Cond* MakeCond(const std::wstring &file_name, const int line_num, const int line_pos, Expression* c, Expression* s, Expression* e) {
       Cond* tmp = new Cond(file_name, line_num, line_pos, c, s, e);
-      expressions.push_back(tmp);
-      return tmp;
-    }
-
-    Otherwise* MakeOtherwise(const std::wstring &file_name, const int line_num, const int line_pos, Expression* expr, Expression* def) {
-      Otherwise* tmp = new Otherwise(file_name, line_num, line_pos, expr, def);
-      expressions.push_back(tmp);
-      return tmp;
-    }
-
-    TryExpression* MakeTryExpression(const std::wstring &file_name, const int line_num, const int line_pos, Expression* expr) {
-      TryExpression* tmp = new TryExpression(file_name, line_num, line_pos, expr);
       expressions.push_back(tmp);
       return tmp;
     }

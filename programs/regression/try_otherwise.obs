@@ -1,66 +1,66 @@
 #~
 # Try/Otherwise Error Handling Test
-# Tests the 'try' expression and 'otherwise' keyword for error handling
+# Tests the Try() and Otherwise() intrinsic methods for error handling
 ~#
 
 class TryOtherwiseTest {
   function : Main(args : String[]) ~ Nil {
-    "Testing try/otherwise error handling..."->PrintLine();
+    "Testing Try()/Otherwise() error handling..."->PrintLine();
 
     pass := true;
 
-    # Test 1: otherwise with Nil value
+    # Test 1: Otherwise() with Nil value
     val : String;
-    result := val otherwise "default";
+    result := val->Otherwise("default");
     if(result->Equals("default") = false) {
       pass := false;
-      "  FAIL: Nil otherwise 'default'"->PrintLine();
+      "  FAIL: Nil->Otherwise('default')"->PrintLine();
     };
 
-    # Test 2: otherwise with non-Nil value
+    # Test 2: Otherwise() with non-Nil value
     val2 := "hello";
-    result2 := val2 otherwise "world";
+    result2 := val2->Otherwise("world");
     if(result2->Equals("hello") = false) {
       pass := false;
-      "  FAIL: 'hello' otherwise 'world'"->PrintLine();
+      "  FAIL: 'hello'->Otherwise('world')"->PrintLine();
     };
 
-    # Test 3: try with Nil dereference
+    # Test 3: Try() with Nil dereference
     obj : String;
-    val3 := try obj->Size();
+    val3 := obj->Try()->Size();
     if(val3 <> 0) {
       pass := false;
-      "  FAIL: try nil->Size() should be 0 (Nil)"->PrintLine();
+      "  FAIL: nil->Try()->Size() should be 0 (Nil)"->PrintLine();
     };
 
-    # Test 4: try + otherwise composition
+    # Test 4: Try() + Otherwise() composition
     obj2 : String;
-    val4 := try obj2->Size() otherwise -1;
+    val4 := obj2->Try()->Size()->Otherwise(-1);
     if(val4 <> -1) {
       pass := false;
-      "  FAIL: try nil->Size() otherwise -1"->PrintLine();
+      "  FAIL: nil->Try()->Size()->Otherwise(-1)"->PrintLine();
     };
 
-    # Test 5: try with successful expression
+    # Test 5: Try() with successful expression
     obj3 := "hello";
-    val5 := try obj3->Size();
+    val5 := obj3->Try()->Size();
     if(val5 <> 5) {
       pass := false;
-      "  FAIL: try 'hello'->Size() should be 5"->PrintLine();
+      "  FAIL: 'hello'->Try()->Size() should be 5"->PrintLine();
     };
 
-    # Test 6: try + otherwise with successful expression
+    # Test 6: Try() + Otherwise() with successful expression
     obj4 := "world";
-    val6 := try obj4->Size() otherwise -1;
+    val6 := obj4->Try()->Size()->Otherwise(-1);
     if(val6 <> 5) {
       pass := false;
-      "  FAIL: try 'world'->Size() otherwise -1 should be 5"->PrintLine();
+      "  FAIL: 'world'->Try()->Size()->Otherwise(-1) should be 5"->PrintLine();
     };
 
     if(pass) {
-      "PASS: Try/otherwise error handling"->PrintLine();
+      "PASS: Try()/Otherwise() error handling"->PrintLine();
     } else {
-      "FAIL: Try/otherwise error handling"->PrintLine();
+      "FAIL: Try()/Otherwise() error handling"->PrintLine();
     };
   }
 }
