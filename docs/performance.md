@@ -351,7 +351,20 @@ Adding `native` to the spectralnorm functions produced a **36.5x speedup** — t
 
 LuaJIT achieves 0.15s because it automatically JIT-compiles any hot trace. Objeck's method-level JIT is competitive when engaged (0.47s vs 0.15s = 3.1x, reasonable for a method JIT vs tracing JIT), but the requirement to manually mark methods with `native` means many real-world programs run entirely in the interpreter.
 
-**Recommendation:** Explore auto-JIT — automatically JIT-compile any method that exceeds a call count threshold (e.g., 100+ calls), similar to how JVMs work. This would close the gap for workloads like spectralnorm without requiring source code changes.
+### Auto-JIT Prototype (Attempted and Reverted)
+
+We implemented an auto-JIT prototype that automatically JIT-compiles any method after 10 calls:
+
+| Benchmark | Before Auto-JIT | With Auto-JIT | Change |
+|-----------|----------------|---------------|--------|
+| spectralnorm (no `native`) | 17.18s | **8.14s** | **2.1x faster** |
+| binarytrees | 21.80s | 57.39s | **2.6x slower** |
+
+**Why it helped spectralnorm:** The `A(i,j)` function got auto-JIT'd after 10 calls, then subsequent calls ran native code.
+
+**Why it hurt binarytrees:** Even a single `++call_count` per method call adds measurable overhead when there are millions of calls. The counter increment touches a non-local cache line on every call. binarytrees makes ~500K+ method calls for depth 17.
+
+**Conclusion:** Auto-JIT needs to be implemented at the JIT callback level (when a JIT-compiled method encounters an uncompiled callee), not in the interpreter dispatch loop. This avoids any per-call overhead in the interpreter fast path. This is how JVMs implement tiered compilation.
 
 ---
 
@@ -361,8 +374,8 @@ Opportunities identified during the v2026.2.1 optimization effort, ranked by mea
 
 | Opportunity | Category | Expected Impact | Complexity | Evidence |
 |-------------|----------|----------------|------------|----------|
-| **Auto-JIT** (remove `native` requirement) | VM/JIT | **VERY HIGH** | MED | spectralnorm: 36.5x speedup with `native` |
-| **Generational GC** | GC | HIGH | HIGH | binarytrees: 6.3x slower than Python |
+| **Auto-JIT at JIT callback level** | VM/JIT | **VERY HIGH** | HIGH | spectralnorm: 36.5x with `native`, 2.1x with prototype. Must avoid interpreter overhead. |
+| **Generational GC** | GC | HIGH | VERY HIGH | binarytrees: 6.3x slower than Python. Write barriers + nursery + promotion needed. |
 | **Escape analysis** | Compiler/VM | HIGH | HIGH | stack-allocate non-escaping objects |
 | **JIT register allocation improvements** | JIT | HIGH | HIGH | better spill/fill for complex methods |
 | **Atomic mark bits** | GC | MED-HIGH | MED | lock-free CAS instead of mutex for mark flags |
