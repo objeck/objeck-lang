@@ -61,7 +61,11 @@ obc hello && obr hello
 
 **Web Playground** — [Try Objeck in your browser](https://playground.objeck.org). Code runs in sandboxed Docker containers on a dedicated server. Includes 33 demos covering the language basics, OOP, algorithms, collections, data processing, and more. ([Source](programs/web-playground/))
 
-**v2026.2.1** ✅
+**v2026.2.1** 
+  * Nee try/otherwise air handling frame
+  * Additional compiler and runtime performance enhancements
+
+**v2026.2.0** ✅
   * **Performance**: Memory manager optimized with O(1) lookups and in-place sweeping
   * **ARM64 JIT**: 11 critical optimizations, including char arrays, register targeting, multiply-by-constant
   * **x64 JIT**: Instruction encoding optimizations with dynamic backpatching
@@ -72,16 +76,9 @@ obc hello && obr hello
   * **ML Enhancements**: Extended ML library with activation functions, feature scaling, metrics, and cross-validation
   * **Crypto**: Migrated to mbedTLS for lighter footprint (OpenSSL replacement)
   * **Bug Fix**: Fixed critical String.Trim()/TrimFront() index out of bounds crash that affected string processing
-
-**v2026.2.0** ✅
   * Modern GNU-style CLI (`--source`/`-s`, `--debug`/`-D`) with full backward compatibility
   * Enhanced library path handling
   * Development workflow improvements with Claude Code
-
-**v2025.9.0** ✅
-  * OpenCV integration for real-time computer vision
-  * OpenAI Realtime API (`gpt-4o-realtime-preview`)
-  * GPT-5 reasoning models
 
 [📋 Full changelog](CHANGELOG.md) • [🗺️ Roadmap](ROADMAP.md)
 
