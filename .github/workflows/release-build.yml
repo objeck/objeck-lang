@@ -120,7 +120,7 @@ jobs:
 
           # Linux ARM64 - using GitHub-hosted ARM64 runners (now GA)
           - platform: linux-arm64
-            os: ubuntu-24.04-arm64-2core
+            os: ubuntu-24.04-arm
             arch: arm64
             deploy_script: ./deploy_posix.sh arm64 deploy
             shell: bash
