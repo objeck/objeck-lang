@@ -5,7 +5,8 @@
 
 class Hello {
   function : Main(args : String[]) ~ Nil {
-    "Hello World" → PrintLine();
+ a := "!";
+    "Hello World {$a}"->PrintLine();
     "Καλημέρα κόσμε" → PrintLine();
     "こんにちは 世界" → PrintLine();
   }

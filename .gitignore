@@ -70,6 +70,13 @@ logs_*/
 # API keys
 *_api_key.dat
 
+# OpenCV build binaries
+core/lib/opencv/win/x64/bin/
+
+# OpenSSL static libraries
+core/lib/openssl/win/x64/libcrypto-static.lib
+core/lib/openssl/win/x64/libssl-static.lib
+
 # Misc
 nul
 build.txt
