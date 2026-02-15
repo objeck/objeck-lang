@@ -31,6 +31,16 @@
 
 #include "jit_common.h"
 
+#ifndef _NO_JIT
+#if defined(_M_ARM64)
+#include "arm64/jit_arm_a64.h"
+#elif defined(_WIN64) || defined(_X64)
+#include "amd64/jit_amd_lp64.h"
+#else
+#include "arm64/jit_arm_a64.h"
+#endif
+#endif
+
 StackProgram* JitCompiler::program;
 
 void JitCompiler::Initialize(StackProgram* p)
@@ -47,6 +57,25 @@ JitCompiler::~JitCompiler()
 {
 
 }
+
+#ifndef _NO_JIT
+bool JitCompiler::TryAutoJitCompile(StackMethod* callee)
+{
+  if(callee->GetNativeCode()) {
+    return true;
+  }
+
+#if defined(_M_ARM64)
+  Runtime::JitArm64 jit_compiler;
+#elif defined(_WIN64) || defined(_X64)
+  Runtime::JitAmd64 jit_compiler;
+#else
+  Runtime::JitArm64 jit_compiler;
+#endif
+
+  return jit_compiler.Compile(callee);
+}
+#endif
 
 /**
  * JIT machine code callback
@@ -65,9 +94,20 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
   switch(instr_id) {
   case MTHD_CALL:
   case DYN_MTHD_CALL: {
+    StackMethod* callee = program->GetClass(instr->GetOperand())->GetMethod(instr->GetOperand2());
+
+#ifndef _NO_JIT
+    // Auto-JIT: count calls from JIT code and compile hot methods
+    if(!callee->GetNativeCode()) {
+      callee->IncrementJitCallCount();
+      if(callee->GetJitCallCount() >= JIT_AUTO_THRESHOLD) {
+        TryAutoJitCompile(callee);
+      }
+    }
+#endif
+
 #ifdef _DEBUG_JIT
-    StackMethod* called = program->GetClass(instr->GetOperand())->GetMethod(instr->GetOperand2());
-    std::wcout << L"jit oper: MTHD_CALL: mthd=" << called->GetName() << std::endl;
+    std::wcout << L"jit oper: MTHD_CALL: mthd=" << callee->GetName() << std::endl;
 #endif
     Runtime::StackInterpreter intpr(call_stack, call_stack_pos);
     intpr.Execute(op_stack, stack_pos, ip, program->GetClass(cls_id)->GetMethod(mthd_id), inst, true);

@@ -41,6 +41,8 @@
 #include "../../common.h"
 #include "../../interpreter.h"
 
+#define JIT_AUTO_THRESHOLD 10
+
 class JitCompiler {
 protected:
   static StackProgram* program;
@@ -55,6 +57,8 @@ public:
   static void JitStackCallback(const long instr_id, StackInstr* instr, const long cls_id,
                                const long mthd_id, size_t* inst, size_t* op_stack, size_t* stack_pos,
                                StackFrame** call_stack, long* call_stack_pos, const long ip);
+
+  static bool TryAutoJitCompile(StackMethod* callee);
 
   inline static size_t PopInt(size_t* op_stack, size_t* stack_pos);
   inline static void PushInt(size_t* op_stack, size_t* stack_pos, size_t value);
