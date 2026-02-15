@@ -351,20 +351,33 @@ Adding `native` to the spectralnorm functions produced a **36.5x speedup** — t
 
 LuaJIT achieves 0.15s because it automatically JIT-compiles any hot trace. Objeck's method-level JIT is competitive when engaged (0.47s vs 0.15s = 3.1x, reasonable for a method JIT vs tracing JIT), but the requirement to manually mark methods with `native` means many real-world programs run entirely in the interpreter.
 
-### Auto-JIT Prototype (Attempted and Reverted)
+### Auto-JIT Implementation (v2026.2.1+)
 
-We implemented an auto-JIT prototype that automatically JIT-compiles any method after 10 calls:
+Auto-JIT was implemented with call counting at both the interpreter and JIT callback levels. Methods are automatically JIT-compiled after 10 calls (`JIT_AUTO_THRESHOLD`), regardless of whether they have the `native` keyword.
 
-| Benchmark | Before Auto-JIT | With Auto-JIT | Change |
-|-----------|----------------|---------------|--------|
-| spectralnorm (no `native`) | 17.18s | **8.14s** | **2.1x faster** |
-| binarytrees | 21.80s | 57.39s | **2.6x slower** |
+**Workstation results (AMD 7950X3D):**
 
-**Why it helped spectralnorm:** The `A(i,j)` function got auto-JIT'd after 10 calls, then subsequent calls ran native code.
+| Benchmark | Baseline (no auto-JIT) | With Auto-JIT | Manual `native` | Change |
+|-----------|----------------------|---------------|-----------------|--------|
+| spectralnorm (no `native`) | 17.18s | **7.90s** | 0.47s | **2.2x faster** |
+| binarytrees | 21.80s | 59.56s | — | **2.7x slower** |
+| nbody | 2.12s | 2.04s | — | neutral |
+| fannkuchredux | 2.23s | 2.22s | — | neutral |
 
-**Why it hurt binarytrees:** Even a single `++call_count` per method call adds measurable overhead when there are millions of calls. The counter increment touches a non-local cache line on every call. binarytrees makes ~500K+ method calls for depth 17.
+**Laptop results (macOS M-series):**
 
-**Conclusion:** Auto-JIT needs to be implemented at the JIT callback level (when a JIT-compiled method encounters an uncompiled callee), not in the interpreter dispatch loop. This avoids any per-call overhead in the interpreter fast path. This is how JVMs implement tiered compilation.
+| Benchmark | With Auto-JIT | Pure Interpreted | Change |
+|-----------|---------------|-----------------|--------|
+| spectralnorm | ~158s | ~286s | **1.8x faster** |
+
+**Why it helps spectralnorm:** The `A(i,j)` function gets auto-JIT'd after 10 calls, then subsequent 4M+ calls per iteration run as native code instead of interpreted.
+
+**Why it hurts binarytrees:** The per-call `IncrementJitCallCount()` adds overhead on every method call. binarytrees makes ~500K+ recursive calls for depth 17, and each counter increment touches a non-local cache line.
+
+**Next steps:** The auto-JIT gap between 7.90s and 0.47s (manual `native`) exists because the outer methods (`MultiplyAv`, `MultiplyAtv`) have their inner loops still dispatching through the interpreter even after `A()` is auto-JIT'd. Resolving the binarytrees regression requires either:
+- Amortizing the counter cost (check every Nth call via bitwise mask)
+- Moving counting to the JIT callback level only (skip interpreter counting for methods already proven not-JIT-compilable)
+- Using on-stack replacement (OSR) to JIT methods while they're already executing
 
 ---
 
