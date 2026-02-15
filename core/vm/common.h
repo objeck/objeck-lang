@@ -379,6 +379,7 @@ class StackMethod {
   long param_count;
   long mem_size;
   NativeCode* native_code;
+  long jit_call_count;
   MemoryType rtrn_type;
   StackDclr** dclrs;
   long num_dclrs;
@@ -394,6 +395,7 @@ class StackMethod {
     has_and_or = h;
     is_lambda = l;
     native_code = nullptr;
+    jit_call_count = 0;
     dclrs = d;
     num_dclrs = nd;
     param_count = p;
@@ -597,6 +599,14 @@ class StackMethod {
 
   inline NativeCode* GetNativeCode() const {
     return native_code;
+  }
+
+  inline long GetJitCallCount() const {
+    return jit_call_count;
+  }
+
+  inline void IncrementJitCallCount() {
+    ++jit_call_count;
   }
 
   MemoryType GetReturn() const {

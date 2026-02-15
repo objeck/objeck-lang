@@ -1846,13 +1846,21 @@ void StackInterpreter::ProcessDynamicMethodCall(StackInstr* instr, StackInstr** 
 #endif
 
 #ifndef _NO_JIT
+  // Auto-JIT: count interpreter calls and compile hot methods
+  if(!called->GetNativeCode() && !instr->GetOperand3()) {
+    called->IncrementJitCallCount();
+    if(called->GetJitCallCount() >= JIT_AUTO_THRESHOLD) {
+      JitCompiler::TryAutoJitCompile(called);
+    }
+  }
+
   // execute JIT call
-  if(instr->GetOperand3()) {
+  if(instr->GetOperand3() || called->GetNativeCode()) {
     ProcessJitMethodCall(called, instance, instrs, ip, op_stack, stack_pos);
   }
   // execute interpreter
   else {
-    (*stack_frame) = GetStackFrame(called, instance);    
+    (*stack_frame) = GetStackFrame(called, instance);
     instrs = (*stack_frame)->method->GetInstructions();
     ip = 0;
   }
@@ -1921,8 +1929,16 @@ void StackInterpreter::ProcessMethodCall(StackInstr* instr, StackInstr** &instrs
   }
 
 #ifndef _NO_JIT
+  // Auto-JIT: count interpreter calls and compile hot methods
+  if(!concrete_call->GetNativeCode() && !instr->GetOperand3()) {
+    concrete_call->IncrementJitCallCount();
+    if(concrete_call->GetJitCallCount() >= JIT_AUTO_THRESHOLD) {
+      JitCompiler::TryAutoJitCompile(concrete_call);
+    }
+  }
+
   // execute JIT call
-  if(instr->GetOperand3()) {
+  if(instr->GetOperand3() || concrete_call->GetNativeCode()) {
     ProcessJitMethodCall(concrete_call, instance, instrs, ip, op_stack, stack_pos);
   }
   // execute interpreter
