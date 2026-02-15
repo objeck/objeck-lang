@@ -1,5 +1,11 @@
 #!/bin/sh
 
+# disable code signing in CI environments
+SIGN_FLAGS=""
+if [ "${CI}" = "true" ]; then
+	SIGN_FLAGS="CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO"
+fi
+
 # setup directories
 rm -rf deploy
 mkdir deploy
@@ -13,7 +19,7 @@ mkdir deploy/doc
 
 # build compiler
 cd ../compiler
-xcodebuild -project xcode/Compiler.xcodeproj clean build
+xcodebuild -project xcode/Compiler.xcodeproj clean build $SIGN_FLAGS
 cp xcode/build/Release/obc ../release/deploy/bin
 cp ../lib/*.obl ../release/deploy/lib
 cp ../lib/*.ini ../release/deploy/lib
@@ -21,61 +27,61 @@ cp ../vm/misc/*.pem ../release/deploy/lib
 
 # build VM
 cd ../vm
-xcodebuild -project xcode/VM.xcodeproj clean build
+xcodebuild -project xcode/VM.xcodeproj clean build $SIGN_FLAGS
 cp xcode/build/Release/obr ../release/deploy/bin
 
 # build debugger
 cd ../debugger
-xcodebuild -project xcode/Debugger.xcodeproj clean build
+xcodebuild -project xcode/Debugger.xcodeproj clean build $SIGN_FLAGS
 cp xcode/build/Release/obd ../release/deploy/bin
 
 # build module library
 cd ../module
-xcodebuild -project xcode/module.xcodeproj clean build
+xcodebuild -project xcode/module.xcodeproj clean build $SIGN_FLAGS
 
 # build repl
 cd ../repl
-xcodebuild -project xcode/repl.xcodeproj clean build
+xcodebuild -project xcode/repl.xcodeproj clean build $SIGN_FLAGS
 cp xcode/build/Release/obi ../release/deploy/bin
 
 # build native launcher
 cd ../utils/launcher
-xcodebuild -project "xcode/Native Launcher.xcodeproj" -target obb clean build
+xcodebuild -project "xcode/Native Launcher.xcodeproj" -target obb clean build $SIGN_FLAGS
 cp xcode/build/Release/obb ../../release/deploy/bin
 
-xcodebuild -project "xcode/Native Launcher.xcodeproj" -target obn clean build
+xcodebuild -project "xcode/Native Launcher.xcodeproj" -target obn clean build $SIGN_FLAGS
 cp xcode/build/Release/obn ../../release/deploy/lib/native/misc
 cp ../../vm/misc/config.prop ../../release/deploy/lib/native/misc
 
 # build libraries
 cd ../../lib/crypto
-xcodebuild -project macos/xcode/objk_crypto.xcodeproj clean build
+xcodebuild -project macos/xcode/objk_crypto.xcodeproj clean build $SIGN_FLAGS
 cp macos/xcode/build/Release/libobjk_crypto.dylib ../../release/deploy/lib/native/libobjk_crypto.dylib
 
 cd ../sdl
-xcodebuild -project macos/xcode/sdl.xcodeproj build
+xcodebuild -project macos/xcode/sdl.xcodeproj build $SIGN_FLAGS
 cp macos/xcode/build/Release/libxcode.dylib ../../release/deploy/lib/native/libobjk_sdl.dylib
 cp macos/sdl2_arm64.tgz ../../release/deploy/lib/native
 cp lib/fonts/*.ttf ../../release/deploy/lib/sdl/fonts
 
 cd ../odbc
-xcodebuild -project macos/xcode/ODBC.xcodeproj clean build
+xcodebuild -project macos/xcode/ODBC.xcodeproj clean build $SIGN_FLAGS
 cp macos/xcode/build/Release/libobjk_odbc.dylib ../../release/deploy/lib/native/libobjk_odbc.dylib
 
 cd ../lame
-xcodebuild -project macos/lame.xcodeproj clean build
+xcodebuild -project macos/lame.xcodeproj clean build $SIGN_FLAGS
 cp macos//build/Release/libobjk_lame.dylib ../../release/deploy/lib/native/libobjk_lame.dylib
 
 cd ../opencv
-xcodebuild -project macos/objk_opencv.xcodeproj -target objk_opencv clean build
+xcodebuild -project macos/objk_opencv.xcodeproj -target objk_opencv clean build $SIGN_FLAGS
 cp macos/build/Release/libobjk_opencv.dylib ../../release/deploy/lib/native/libobjk_opencv.dylib
 
 cd ../matrix
-xcodebuild -project macos/xcode/matrix.xcodeproj clean build
+xcodebuild -project macos/xcode/matrix.xcodeproj clean build $SIGN_FLAGS
 cp macos/xcode/build/Release/libxcode.dylib ../../release/deploy/lib/native/libobjk_ml.dylib
 
 cd ../diags
-xcodebuild -project macos/xcode/objk_diags.xcodeproj clean build
+xcodebuild -project macos/xcode/objk_diags.xcodeproj clean build $SIGN_FLAGS
 cp macos/xcode/build/Release/libobjk_diags.dylib ../../release/deploy/lib/native/libobjk_diags.dylib
 # copy docs
 cd ../../..
