@@ -1,4 +1,4 @@
-<p align="center">
+#<p align="center">
   <img src='https://github.com/objeck/objeck-lang/blob/master/core/lib/code_doc/templates/resources/objeck-logo-alt.png' height="125px"/>
 </p>
 
@@ -62,7 +62,7 @@ obc hello && obr hello
 **Web Playground** — [Try Objeck in your browser](https://playground.objeck.org). Code runs in sandboxed Docker containers on a dedicated server. Includes 33 demos covering the language basics, OOP, algorithms, collections, data processing, and more. ([Source](programs/web-playground/))
 
 **v2026.2.1** 
-  * Nee try/otherwise air handling frame
+  * New 'try/otherwise' error handling framework
   * Additional compiler and runtime performance enhancements
 
 **v2026.2.0** ✅
