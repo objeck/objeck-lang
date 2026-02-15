@@ -1,0 +1,17 @@
+class BenchStrengthExt {
+	function : Main(args : String[]) ~ Nil {
+		n := 50000000;
+		if(args->Size() > 0) {
+			n := args[0]->ToInt();
+		};
+
+		sum := 0;
+
+		for(i := 0; i < n; i += 1;) {
+			# extended strength reduction targets: x*3, x*5, x*7, x*9, x*15
+			sum += i * 3 + i * 5 + i * 7 + i * 9 + i * 15;
+		};
+
+		sum->PrintLine();
+	}
+}

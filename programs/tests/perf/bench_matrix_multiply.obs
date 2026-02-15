@@ -1,0 +1,33 @@
+class BenchMatrixMultiply {
+	function : Main(args : String[]) ~ Nil {
+		n := 500;
+		if(args->Size() > 0) {
+			n := args[0]->ToInt();
+		};
+
+		a := Float->New[n, n];
+		b := Float->New[n, n];
+		c := Float->New[n, n];
+
+		# initialize matrices
+		for(i := 0; i < n; i += 1;) {
+			for(j := 0; j < n; j += 1;) {
+				a[i, j] := (i + j)->As(Float) * 0.5;
+				b[i, j] := (i - j)->As(Float) * 0.3;
+			};
+		};
+
+		# matrix multiply
+		for(i := 0; i < n; i += 1;) {
+			for(j := 0; j < n; j += 1;) {
+				sum := 0.0;
+				for(k := 0; k < n; k += 1;) {
+					sum += a[i, k] * b[k, j];
+				};
+				c[i, j] := sum;
+			};
+		};
+
+		c[0, 0]->PrintLine();
+	}
+}

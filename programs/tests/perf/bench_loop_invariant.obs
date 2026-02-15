@@ -1,0 +1,19 @@
+class BenchLoopInvariant {
+	function : Main(args : String[]) ~ Nil {
+		n := 10000000;
+		if(args->Size() > 0) {
+			n := args[0]->ToInt();
+		};
+
+		a := 17;
+		b := 31;
+		sum := 0;
+
+		for(i := 0; i < n; i += 1;) {
+			# a*b is loop invariant -- optimizer should hoist or propagate
+			sum += a * b + i;
+		};
+
+		sum->PrintLine();
+	}
+}

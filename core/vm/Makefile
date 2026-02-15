@@ -15,6 +15,9 @@ memory.a:
 jit_amd_lp64.a:
 	cd $(JIT_PATH); $(MAKE) -f make/Makefile.amd64
 	
+% : %.mod
+%.o : %.mod
+
 %.o: %.cpp
 	$(CXX) -m64 $(ARGS) -c $< 
 

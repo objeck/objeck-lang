@@ -1,0 +1,34 @@
+class Counter {
+	@value : Int;
+
+	New(v : Int) {
+		@value := v;
+	}
+
+	method : public : GetValue() ~ Int {
+		return @value;
+	}
+
+	method : public : Increment() ~ Nil {
+		@value += 1;
+	}
+}
+
+class BenchMethodDispatch {
+	function : Main(args : String[]) ~ Nil {
+		n := 50000000;
+		if(args->Size() > 0) {
+			n := args[0]->ToInt();
+		};
+
+		counter := Counter->New(0);
+
+		sum := 0;
+		for(i := 0; i < n; i += 1;) {
+			counter->Increment();
+			sum += counter->GetValue();
+		};
+
+		sum->PrintLine();
+	}
+}

@@ -1,0 +1,21 @@
+class BenchDeadCode {
+	function : Main(args : String[]) ~ Nil {
+		n := 50000000;
+		if(args->Size() > 0) {
+			n := args[0]->ToInt();
+		};
+
+		sum := 0;
+
+		for(i := 0; i < n; i += 1;) {
+			sum += i;
+
+			# dead assignments -- optimizer should eliminate
+			dead1 := i * 2;
+			dead2 := i * 3;
+			dead3 := dead1 + dead2;
+		};
+
+		sum->PrintLine();
+	}
+}

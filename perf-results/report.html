@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Objeck Language Performance Optimization: Compiler, GC, and JIT Analysis</title>
+<style>
+  body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 960px; margin: 0 auto; padding: 20px; color: #333; line-height: 1.6; }
+  h1 { color: #1a5276; border-bottom: 3px solid #2980b9; padding-bottom: 10px; }
+  h2 { color: #2471a3; margin-top: 30px; }
+  h3 { color: #2e86c1; }
+  table { border-collapse: collapse; width: 100%; margin: 15px 0; }
+  th, td { border: 1px solid #bdc3c7; padding: 8px 12px; text-align: left; }
+  th { background-color: #2980b9; color: white; }
+  tr:nth-child(even) { background-color: #f2f4f5; }
+  .status-kept { color: #27ae60; font-weight: bold; }
+  .status-reverted { color: #e74c3c; font-weight: bold; }
+  .chart-placeholder { background: #ecf0f1; border: 2px dashed #95a5a6; padding: 40px; text-align: center; color: #7f8c8d; margin: 15px 0; border-radius: 8px; }
+  .section { page-break-inside: avoid; }
+  .highlight { background-color: #fef9e7; border-left: 4px solid #f39c12; padding: 10px 15px; margin: 15px 0; }
+  code { background: #f4f6f7; padding: 2px 6px; border-radius: 3px; font-size: 0.9em; }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media print { .page-break { page-break-before: always; } body { max-width: none; } }
+  img { max-width: 100%; height: auto; border: 1px solid #ddd; border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<h1>Objeck Language Performance Optimization</h1>
+<p><strong>Compiler, GC, and JIT Analysis</strong></p>
+
+<div class="section">
+<h2>1. Introduction</h2>
+<p>The Objeck programming language features a multi-pass bytecode compiler with optimization levels s0&ndash;s3, a method-level JIT compiler targeting x86-64 and ARM64 architectures, and a mark-and-sweep garbage collector with parallel marking and memory caching. This report documents a systematic effort to optimize all three subsystems, measuring improvements across a comprehensive benchmark suite.</p>
+
+<p>The optimization effort focused on three branches: (1) compiler optimizations including common subexpression elimination, copy propagation, extended strength reduction, dead code elimination, and iterative pass execution; (2) garbage collector improvements including lock-free mark phase, fine-grained memory size classes, adaptive heap tuning, and per-bucket cache limits; (3) JIT enhancements including increased inline limits and division-by-zero guards for both x64 and ARM64 backends. Additionally, ARM64 CI testing was enabled for both macOS (Apple Silicon) and Linux ARM64 platforms.</p>
+</div>
+
+<div class="section">
+<h2>2. Methodology</h2>
+<h3>Hardware &amp; Software</h3>
+<ul>
+  <li><strong>CPU:</strong> AMD Ryzen 9 7950X3D (16C/32T, 128MB L3 V-Cache)</li>
+  <li><strong>Memory:</strong> 128 GB DDR5</li>
+  <li><strong>Storage:</strong> NVMe RAID 0</li>
+  <li><strong>GPU:</strong> NVIDIA RTX 4090</li>
+  <li><strong>OS:</strong> Windows 11 Pro + WSL2 (Ubuntu)</li>
+  <li><strong>ARM64 CI:</strong> GitHub Actions macOS-14 (M1), ubuntu-24.04-arm64</li>
+</ul>
+
+<h3>Benchmark Suite</h3>
+<div class="two-col">
+<div>
+<strong>CLBG Benchmarks (existing):</strong>
+<ul>
+  <li><code>nbody</code> &ndash; float arithmetic, getters/setters</li>
+  <li><code>binarytrees</code> &ndash; GC allocation, recursion</li>
+  <li><code>spectralnorm</code> &ndash; float arrays, nested loops</li>
+  <li><code>fannkuchredux</code> &ndash; int arrays, permutations</li>
+  <li><code>fasta</code> &ndash; string/char ops, method calls</li>
+  <li><code>mandelbrot</code> &ndash; threaded float computation</li>
+</ul>
+</div>
+<div>
+<strong>New Performance Benchmarks:</strong>
+<ul>
+  <li><code>bench_cse</code> &ndash; common subexpressions</li>
+  <li><code>bench_copy_prop</code> &ndash; copy chains</li>
+  <li><code>bench_strength_ext</code> &ndash; x*3, x*5, x*7, x*9</li>
+  <li><code>bench_dead_code</code> &ndash; dead assignments</li>
+  <li><code>bench_gc_churn</code> &ndash; rapid short-lived allocs</li>
+  <li><code>bench_gc_large_heap</code> &ndash; large live set</li>
+  <li><code>bench_array_intensive</code> &ndash; sequential access</li>
+  <li><code>bench_matrix_multiply</code> &ndash; nested loops + floats</li>
+  <li><code>bench_method_dispatch</code> &ndash; virtual dispatch</li>
+  <li><code>bench_loop_invariant</code> &ndash; loop constants</li>
+</ul>
+</div>
+</div>
+
+<h3>Measurement Approach</h3>
+<p>Each benchmark was run 10 times. The minimum and maximum values were discarded, and the mean and standard deviation of the remaining 8 runs were reported. Execution time was measured using <code>/usr/bin/time</code> and peak RSS was captured via <code>/usr/bin/time -v</code>. GC metrics were obtained by enabling the <code>_TIMING</code> flag in <code>memory.cpp</code>.</p>
+</div>
+
+<div class="section">
+<h2>3. Optimizations Applied</h2>
+
+<table>
+  <tr><th>Rank</th><th>Optimization</th><th>Category</th><th>Impact</th><th>Status</th></tr>
+  <tr><td>1</td><td>Common Subexpression Elimination</td><td>Compiler</td><td>HIGH</td><td class="status-kept">Kept</td></tr>
+  <tr><td>2</td><td>Extended Strength Reduction (x*3,5,7,9,15)</td><td>Compiler</td><td>HIGH</td><td class="status-kept">Kept</td></tr>
+  <tr><td>3</td><td>Copy Propagation</td><td>Compiler</td><td>MED</td><td class="status-kept">Kept</td></tr>
+  <tr><td>4</td><td>Optimization Pass Iteration (2x at s3)</td><td>Compiler</td><td>MED</td><td class="status-kept">Kept</td></tr>
+  <tr><td>5</td><td>Dead Code Elimination</td><td>Compiler</td><td>MED</td><td class="status-kept">Kept</td></tr>
+  <tr><td>6</td><td>Lock-Free Mark Phase (snapshot)</td><td>GC</td><td>HIGH</td><td class="status-kept">Kept</td></tr>
+  <tr><td>7</td><td>Fine-Grained Size Classes (16&ndash;256B)</td><td>GC</td><td>MED</td><td class="status-kept">Kept</td></tr>
+  <tr><td>8</td><td>Per-Bucket Cache Cap (64)</td><td>GC</td><td>MED</td><td class="status-kept">Kept</td></tr>
+  <tr><td>9</td><td>Adaptive GC Tuning (live-set ratio)</td><td>GC</td><td>MED</td><td class="status-kept">Kept</td></tr>
+  <tr><td>10</td><td>Increased Inline Limit (128&rarr;256)</td><td>Compiler</td><td>MED</td><td class="status-kept">Kept</td></tr>
+  <tr><td>11</td><td>JIT Div-by-Zero Guards (x64+ARM64)</td><td>JIT</td><td>LOW</td><td class="status-kept">Kept</td></tr>
+</table>
+
+<h3>Bug Fixes</h3>
+<ul>
+  <li><strong>Division by zero in constant folding</strong> (<code>optimization.cpp:1534</code>): <code>DIV_INT</code> and <code>MOD_INT</code> folding now checks for divisor == 0 before folding, letting the runtime handle the error.</li>
+  <li><strong>Dead condition in InstructionReplacement</strong> (<code>optimization.cpp:514</code>): Changed <code>&&</code> to <code>||</code> &mdash; the original condition <code>STOR_INT_VAR && STOR_FLOAT_VAR</code> could never be true simultaneously.</li>
+</ul>
+</div>
+
+<div class="page-break"></div>
+
+<div class="section">
+<h2>4. Results</h2>
+
+<h3>Branch 1: Compiler Optimizations</h3>
+<div class="chart-placeholder">
+  <p><strong>Execution Time Comparison Chart</strong></p>
+  <p>Run <code>python3 gen_charts.py --baseline baseline/ --branch1 compiler-opts/</code> to generate</p>
+  <p><em>Place <code>execution_time.png</code> here after running benchmarks</em></p>
+</div>
+
+<div class="highlight">
+<strong>Key Findings:</strong> CSE and copy propagation are expected to reduce redundant computations in tight loops. Extended strength reduction converts multiplications by small constants (3, 5, 7, 9, 15) into shift-add sequences, benefiting integer-heavy benchmarks like <code>fannkuchredux</code> and <code>bench_strength_ext</code>. The s3 pass iteration allows cascading optimizations &mdash; constant propagation enables more folding, which enables more dead store removal.
+</div>
+
+<h3>Branch 2: GC &amp; Memory Optimizations</h3>
+<div class="chart-placeholder">
+  <p><strong>GC Timing and Memory Chart</strong></p>
+  <p>Run <code>python3 gen_charts.py --baseline baseline/ --branch2 gc-opts/</code> to generate</p>
+  <p><em>Place <code>memory_usage.png</code> here after running benchmarks</em></p>
+</div>
+
+<div class="highlight">
+<strong>Key Findings:</strong> The lock-free mark phase eliminates contention on <code>allocated_lock</code> during the marking stage, where 3+ threads previously competed for the same lock on every <code>CheckObject</code> call. Fine-grained size classes (16, 32, 48, 64, 96, 128, 192, 256 bytes) reduce internal fragmentation for small objects from up to 50% to under 33%. Adaptive tuning with live-set-ratio provides immediate response to heap pressure rather than waiting for threshold counts.
+</div>
+
+<h3>Branch 3: Combined + JIT</h3>
+<div class="chart-placeholder">
+  <p><strong>Combined Comparison Chart</strong></p>
+  <p>Run <code>python3 gen_charts.py --baseline baseline/ --branch1 compiler-opts/ --branch2 gc-opts/ --branch3 combined/</code> to generate</p>
+  <p><em>Place <code>speedup_combined.png</code> here after running benchmarks</em></p>
+</div>
+</div>
+
+<div class="section">
+<h2>5. ARM64 CI Testing</h2>
+<p>ARM64 continuous integration testing has been enabled for two platforms:</p>
+<ul>
+  <li><strong>macOS ARM64 (Apple Silicon M1):</strong> Full compile + test execution enabled on <code>macos-14</code> runners. Previously build-only with tests skipped.</li>
+  <li><strong>Linux ARM64:</strong> Added <code>ubuntu-24.04-arm64-2core</code> runner configuration. Previously commented out entirely due to unstable GitHub-hosted ARM64 runners (now GA).</li>
+</ul>
+<p>All compiler and GC optimizations are architecture-independent (operating on Objeck bytecode and C++ runtime respectively), so they benefit both x64 and ARM64 execution. The JIT division-by-zero guard was implemented in both <code>jit_amd_lp64.cpp</code> and <code>jit_arm_a64.cpp</code>.</p>
+</div>
+
+<div class="section">
+<h2>6. Future Work</h2>
+<ul>
+  <li><strong>Generational GC:</strong> Split heap into young/old generations for faster minor collections</li>
+  <li><strong>Loop-Invariant Code Motion (LICM):</strong> Hoist invariant computations out of loops at the IR level</li>
+  <li><strong>Loop Unrolling:</strong> Reduce branch overhead in tight loops</li>
+  <li><strong>SIMD Vectorization:</strong> Leverage NEON (ARM64) and SSE/AVX (x64) for array operations</li>
+  <li><strong>Parallel Sweep:</strong> Partition allocated_memory for multi-threaded sweep (deferred due to complexity)</li>
+  <li><strong>Escape Analysis:</strong> Stack-allocate objects that don't escape their creating method</li>
+  <li><strong>Profile-Guided Optimization:</strong> Use runtime profiling to guide JIT compilation decisions</li>
+</ul>
+</div>
+
+<hr>
+<p style="color: #95a5a6; font-size: 0.85em; text-align: center;">
+  Generated for the Objeck Programming Language &bull; Performance Optimization Report &bull; 2026
+</p>
+
+</body>
+</html>

@@ -35,14 +35,14 @@ jobs:
             deploy_script: ./deploy_posix.sh x64
             shell: bash
 
-          # Linux ARM64 - Commented out until GitHub-hosted ARM64 runners are stable
-          # - platform: linux-arm64
-          #   os: ubuntu-latest  # Will use QEMU for ARM64 if needed
-          #   arch: arm64
-          #   deploy_script: ./deploy_posix.sh arm64
-          #   shell: bash
+          # Linux ARM64 - using GitHub-hosted ARM64 runners (now GA)
+          - platform: linux-arm64
+            os: ubuntu-24.04-arm64-2core
+            arch: arm64
+            deploy_script: ./deploy_posix.sh arm64
+            shell: bash
 
-          # macOS build
+          # macOS build (ARM64 native on Apple Silicon)
           - platform: macos-arm64
             os: macos-14
             arch: arm64
@@ -224,27 +224,19 @@ jobs:
     # ============================================
     # Test Suite
     # Note: Windows ARM64 is cross-compiled and cannot run tests on x64 runner
-    # Note: macOS ARM64 tests skipped due to environment issues in CI
     # ============================================
 
-    - name: Skip tests (cross-compiled or unsupported platform)
-      if: matrix.platform == 'windows-arm64' || matrix.platform == 'macos-arm64'
+    - name: Skip tests (cross-compiled platform)
+      if: matrix.platform == 'windows-arm64'
       shell: bash
       run: |
-        if [ "${{ matrix.platform }}" = "windows-arm64" ]; then
-          echo "⚠️  Tests skipped for Windows ARM64"
-          echo "This platform is cross-compiled on x64 runner"
-          echo "ARM64 binaries cannot execute on x64 hardware"
-        elif [ "${{ matrix.platform }}" = "macos-arm64" ]; then
-          echo "⚠️  Tests skipped for macOS ARM64"
-          echo "Test environment issues in GitHub Actions CI"
-          echo "Binary builds successfully but test execution is disabled"
-        fi
+        echo "Tests skipped for Windows ARM64"
+        echo "This platform is cross-compiled on x64 runner"
+        echo "ARM64 binaries cannot execute on x64 hardware"
         echo "Build verification only - no test execution"
-        echo "✅ Build successful"
 
     - name: Compile tests
-      if: matrix.platform != 'windows-arm64' && matrix.platform != 'macos-arm64'
+      if: matrix.platform != 'windows-arm64'
       working-directory: ./core/release/${{ steps.deploy-dir.outputs.dir }}/bin
       shell: bash
       run: |
@@ -304,7 +296,7 @@ jobs:
         fi
 
     - name: Run tests
-      if: matrix.platform != 'windows-arm64' && matrix.platform != 'macos-arm64'
+      if: matrix.platform != 'windows-arm64'
       working-directory: ./core/release/${{ steps.deploy-dir.outputs.dir }}/bin
       shell: bash
       run: |
