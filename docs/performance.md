@@ -226,6 +226,33 @@ Run benchmarks with: `bash perf-results/run_benchmarks.sh <deploy_dir> <output_d
 
 Generate charts with: `python3 perf-results/gen_charts.py --baseline <dir> --branch1 <dir>`
 
+### Cross-Language Comparison
+
+Measured on the same AMD 7950X3D machine. Python/Ruby/LuaJIT ran in Docker (Ubuntu 24.04), Objeck ran in WSL2 (Ubuntu). Same benchmark inputs across all languages.
+
+| Benchmark | Objeck | Python 3.12 | Ruby 3.2 | LuaJIT 2.1 | Objeck vs Best |
+|-----------|--------|-------------|----------|------------|---------------|
+| **nbody** (5M) | **2.12s** | 14.05s | 20.81s | **0.43s** | 4.9x slower than LuaJIT |
+| **binarytrees** (17) | 21.80s | **3.47s** | 3.54s | 3.56s | 6.3x slower than Python |
+| **spectralnorm** (2000) | 16.95s | 16.84s | 11.40s | **0.15s** | 113x slower than LuaJIT |
+| **fannkuchredux** (11) | **2.23s** | 31.51s | 86.32s | 9.17s | **FASTEST** (4.1x over LuaJIT) |
+
+#### Analysis
+
+**Where Objeck wins:**
+- **fannkuchredux** — Objeck's JIT excels at tight integer loops with array permutations. 4.1x faster than LuaJIT, 14x faster than Python, 39x faster than Ruby.
+- **nbody** — Objeck is 7x faster than Python and 10x faster than Ruby thanks to getter/setter inlining + JIT compilation.
+
+**Where Objeck needs improvement:**
+- **binarytrees (GC-bound)** — Objeck is 6.3x slower than Python/Ruby/LuaJIT. The mark-and-sweep GC with mutex-based locking is the bottleneck. Python's reference counting handles rapid allocation/deallocation efficiently. A generational GC or escape analysis would close this gap.
+- **spectralnorm (float arrays)** — Objeck is on par with Python (~17s) but 113x slower than LuaJIT (0.15s). LuaJIT's tracing JIT aggressively optimizes the inner loop's float array access. Objeck's method-level JIT doesn't vectorize or unroll these loops. This is the largest opportunity for improvement.
+
+#### Key Takeaways for Future Optimization
+
+1. **GC is the #1 bottleneck.** binarytrees shows a 6.3x gap vs Python. Generational GC or arena allocation for short-lived objects would have the biggest overall impact.
+2. **Float array loops need JIT attention.** spectralnorm's 113x gap vs LuaJIT suggests the JIT isn't generating efficient code for `LOAD_FLOAT_ARY_ELM` in tight loops. Loop-level JIT optimizations (unrolling, bounds check hoisting) would help.
+3. **Integer JIT is already excellent.** fannkuchredux proves the integer path is highly competitive — faster than LuaJIT's tracing JIT for this workload.
+
 ---
 
 ## 7. What We Tried and Reverted
