@@ -85,6 +85,9 @@ void MemoryManager::Initialize(StackProgram* p, size_t m)
   uncollected_count = 0;
   free_memory_cache_size = 0;
 
+  // pre-reserve allocated_memory to avoid rehashing during allocation bursts
+  allocated_memory.reserve(8192);
+
 #ifdef _MEM_LOGGING
   mem_logger.open("mem_log.csv");
   mem_logger << L"cycle,oper,type,addr,size" << std::endl;

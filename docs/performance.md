@@ -336,17 +336,37 @@ sequenceDiagram
 
 ---
 
-## 9. Future Work
+## 9. Deep Dive: The `native` Keyword and Auto-JIT
 
-Opportunities identified during the v2026.2.1 optimization effort:
+A critical finding from the cross-language comparison: Objeck only JIT-compiles methods marked with the `native` keyword. All other methods run in the interpreter, regardless of how hot they are.
 
-| Opportunity | Category | Expected Impact | Complexity |
-|-------------|----------|----------------|------------|
-| **Escape analysis** | Compiler/VM | HIGH | HIGH — stack-allocate non-escaping objects, eliminating GC pressure |
-| **Loop-invariant code motion** | Compiler | MED-HIGH | MED — hoist invariant computations out of loops |
-| **JIT register allocation improvements** | JIT | HIGH | HIGH — better spill/fill decisions for complex methods |
-| **Atomic mark bits** | GC | MED-HIGH | MED — lock-free CAS instead of mutex for mark flags |
-| **Generational GC** | GC | HIGH | HIGH — young/old generation split for faster minor collections |
+**spectralnorm experiment:**
+
+| Version | Time | vs LuaJIT |
+|---------|------|-----------|
+| Without `native` (interpreter) | 17.18s | 113x slower |
+| With `native` (JIT) | **0.47s** | 3.1x slower |
+
+Adding `native` to the spectralnorm functions produced a **36.5x speedup** — the single largest improvement opportunity in the entire codebase.
+
+LuaJIT achieves 0.15s because it automatically JIT-compiles any hot trace. Objeck's method-level JIT is competitive when engaged (0.47s vs 0.15s = 3.1x, reasonable for a method JIT vs tracing JIT), but the requirement to manually mark methods with `native` means many real-world programs run entirely in the interpreter.
+
+**Recommendation:** Explore auto-JIT — automatically JIT-compile any method that exceeds a call count threshold (e.g., 100+ calls), similar to how JVMs work. This would close the gap for workloads like spectralnorm without requiring source code changes.
+
+---
+
+## 10. Future Work
+
+Opportunities identified during the v2026.2.1 optimization effort, ranked by measured impact:
+
+| Opportunity | Category | Expected Impact | Complexity | Evidence |
+|-------------|----------|----------------|------------|----------|
+| **Auto-JIT** (remove `native` requirement) | VM/JIT | **VERY HIGH** | MED | spectralnorm: 36.5x speedup with `native` |
+| **Generational GC** | GC | HIGH | HIGH | binarytrees: 6.3x slower than Python |
+| **Escape analysis** | Compiler/VM | HIGH | HIGH | stack-allocate non-escaping objects |
+| **JIT register allocation improvements** | JIT | HIGH | HIGH | better spill/fill for complex methods |
+| **Atomic mark bits** | GC | MED-HIGH | MED | lock-free CAS instead of mutex for mark flags |
+| **Loop-invariant code motion** | Compiler | MED-HIGH | MED | hoist invariant computations out of loops |
 | **Loop unrolling** | Compiler | MED | LOW — reduce branch overhead in tight loops |
 | **SIMD vectorization** | JIT | MED | HIGH — NEON (ARM64) and SSE/AVX (x64) for array ops |
 | **Profile-guided optimization** | JIT | MED | MED — runtime profiling to guide compilation decisions |
