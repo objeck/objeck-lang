@@ -177,10 +177,15 @@ jobs:
       working-directory: ./core/compiler
       run: call update_version.cmd
 
-    - name: Build bootstrap (Linux)
-      if: runner.os == 'Linux'
+    - name: Build bootstrap (Linux x64)
+      if: runner.os == 'Linux' && matrix.arch == 'x64'
       working-directory: ./core/compiler
       run: ./update_version.sh
+
+    - name: Build bootstrap (Linux ARM64)
+      if: runner.os == 'Linux' && matrix.arch == 'arm64'
+      working-directory: ./core/compiler
+      run: ./update_version_arm.sh
 
     - name: Build bootstrap (macOS)
       if: runner.os == 'macOS'
