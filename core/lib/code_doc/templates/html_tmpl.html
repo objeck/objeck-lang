@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Objeck Documentation</title>
+    <link rel="stylesheet" href="style/styles.css" />
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/mono-blue.min.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+
+    <script>
+      window.addEventListener('DOMContentLoaded', () => {
+        const params = new URLSearchParams(window.location.search);
+        const targetId = params.get('scrollTo');
+        const nav = document.getElementById('side-nav');
+        const target = document.getElementById(targetId);
+        if (nav && target) {
+
+          const offset = 100;
+          const scrollTop = target.offsetTop - offset;
+
+          nav.scrollTo({
+            top: scrollTop < 0 ? 0 : scrollTop,
+            behavior: 'smooth'
+          });
+
+        }
+      });
+
+      document.addEventListener('DOMContentLoaded', () => {
+        hljs.highlightAll();
+
+        // nav search filter
+        const searchInput = document.getElementById('nav-search');
+        if (searchInput) {
+          searchInput.addEventListener('input', () => {
+            const query = searchInput.value.toLowerCase();
+            const nav = document.getElementById('side-nav');
+            const sections = nav.querySelectorAll('strong');
+
+            sections.forEach(section => {
+              const ul = section.nextElementSibling;
+              if (!ul || ul.tagName !== 'UL') return;
+
+              const items = ul.querySelectorAll('li');
+              let hasVisible = false;
+
+              items.forEach(item => {
+                const text = item.textContent.toLowerCase();
+                const bundleText = section.textContent.toLowerCase();
+                if (query === '' || text.includes(query) || bundleText.includes(query)) {
+                  item.style.display = '';
+                  hasVisible = true;
+                } else {
+                  item.style.display = 'none';
+                }
+              });
+
+              // hide entire bundle section if no matches
+              const anchor = section.previousElementSibling;
+              if (query === '' || hasVisible || section.textContent.toLowerCase().includes(query)) {
+                section.style.display = '';
+                ul.style.display = '';
+                if (anchor && anchor.tagName === 'A') anchor.style.display = '';
+              } else {
+                section.style.display = 'none';
+                ul.style.display = 'none';
+                if (anchor && anchor.tagName === 'A') anchor.style.display = 'none';
+              }
+            });
+          });
+        }
+
+        // dark mode toggle
+        const toggle = document.getElementById('dark-mode-toggle');
+        if (toggle) {
+          const saved = localStorage.getItem('objeck-dark-mode');
+          if (saved === 'true') {
+            document.body.classList.add('dark-mode');
+            toggle.textContent = 'Light';
+          }
+          toggle.addEventListener('click', () => {
+            document.body.classList.toggle('dark-mode');
+            const isDark = document.body.classList.contains('dark-mode');
+            localStorage.setItem('objeck-dark-mode', isDark);
+            toggle.textContent = isDark ? 'Light' : 'Dark';
+          });
+        }
+      });
+    </script>
+  </head>
+
+  <body>
+    <header>
+      <a href='index.html'><img src='style/objeck-logo.png'  style="max-width: 20%; height: auto;" /></a>
+      <div class="version">v@version <button id="dark-mode-toggle" class="theme-toggle">Dark</button></div>
+    </header>
+    <div class="container">
+      <div class="nav-wrapper">
+        <input type="text" id="nav-search" placeholder="Filter..." class="nav-search" />
+        @nav
+      </div>
+      <main>
+        <a href="index.html">All Bundles</a><hr/>
+        @main
+      </main>
+    </div>
+  </body>
+</html>

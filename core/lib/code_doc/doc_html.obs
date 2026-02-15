@@ -49,7 +49,7 @@ class HtmlMaker {
 		
 		template_path := String->New(@css_path);
 		template_path += '/';
-		template_path += "html_tmpl.dat";
+		template_path += "html_tmpl.html";
 		template_html := FileReader->ReadFile(template_path);
 		if(template_html = Nil) {
 			"--- Unable load header CSS template ---"->ErrorLine();
@@ -115,8 +115,14 @@ class HtmlMaker {
 		html := template_html->ReplaceAll("@version", @version);
 		html := html->ReplaceAll("@nav", nav_html);
 
-		# set main
-		main_html := "<h2>";
+		# set main - breadcrumb
+		main_html := "<div class='breadcrumb'><a href='index.html'>All Bundles</a> &rsaquo; ";
+		main_html += class_block->GetBundleName();
+		main_html += " &rsaquo; ";
+		main_html += class_block->GetShortName();
+		main_html += "</div>";
+
+		main_html += "<h2>";
 		if(class_block->IsInterface()) {
 			main_html += "<i>";
 			main_html += class_block->GetShortName();
@@ -125,15 +131,40 @@ class HtmlMaker {
 		else {
 			main_html += class_block->GetShortName();
 		};
-		
+
 		main_html += "</h2><p>";
 		main_html += class_block->GetDesc();
 		main_html += "</p>";
 
+		# inheritance and implements info
+		from_class := class_block->GetFrom();
+		implemented := class_block->GetImplemented();
+		if(from_class <> Nil | <>implemented->IsEmpty()) {
+			main_html += "<div class='inheritance-info'>";
+			if(from_class <> Nil) {
+				main_html += "<b>Inherits:</b> ";
+				main_html += GetTypeLink(from_class, file_uses);
+			};
+			if(<>implemented->IsEmpty()) {
+				if(from_class <> Nil) {
+					main_html += " &bull; ";
+				};
+				main_html += "<b>Implements:</b> ";
+				each(k : implemented) {
+					inf_name := implemented->Get(k);
+					main_html += GetTypeLink(inf_name, file_uses);
+					if(k + 1 < implemented->Size()) {
+						main_html += ", ";
+					};
+				};
+			};
+			main_html += "</div>";
+		};
+
 		if(class_block->GetCode() <> Nil) {
 			main_html += "<pre><code class='language-cpp'>";
 			main_html += class_block->GetCode();
-			main_html += "</pre></code>";
+			main_html += "</code></pre>";
 		};
 
 		func_names := class_block->GetFunctionNames();
@@ -271,9 +302,15 @@ class HtmlMaker {
 		# set nav
 		html := template_html->ReplaceAll("@version", @version);
 		html := html->ReplaceAll("@nav", nav_html);
-		
-		# set main
-		main_html := "<h2>";
+
+		# set main - breadcrumb
+		main_html := "<div class='breadcrumb'><a href='index.html'>All Bundles</a> &rsaquo; ";
+		main_html += enum_block->GetBundleName();
+		main_html += " &rsaquo; ";
+		main_html += enum_block->GetName();
+		main_html += "</div>";
+
+		main_html += "<h2>";
 		main_html += enum_block->GetName();
 		main_html += "</h2><p>";
 		main_html += enum_block->GetDesc();
@@ -285,8 +322,9 @@ class HtmlMaker {
 			main_html += enum_item;
 			main_html += "</li>";
 		};
+		main_html += "</ul>";
 
-		# write file	
+		# write file
 		html := html->ReplaceAll("@main", main_html);
 
 		filename := GetEnumLink(enum_block, "../html/");
@@ -633,9 +671,9 @@ class HtmlMaker {
 
 				link_target := bundle_block->GetName()->ToLower();
 				main_html += "<td><a href='";
-				main_html += "?scrollTo={$link_target}'</a>";
+				main_html += "?scrollTo={$link_target}'>";
 	  			main_html += block_name;
-	  			main_html += "</td>";
+	  			main_html += "</a></td>";
 	  			
 	  			main_html += "<td>";
 	  			main_html += bundle_block->GetDesc();
