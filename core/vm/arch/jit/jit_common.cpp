@@ -97,12 +97,9 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
     StackMethod* callee = program->GetClass(instr->GetOperand())->GetMethod(instr->GetOperand2());
 
 #ifndef _NO_JIT
-    // Auto-JIT: count calls from JIT code and compile hot methods
-    if(!callee->GetNativeCode()) {
-      callee->IncrementJitCallCount();
-      if(callee->GetJitCallCount() >= JIT_AUTO_THRESHOLD) {
-        TryAutoJitCompile(callee);
-      }
+    // Auto-JIT: compile hot callees from JIT code (no counting overhead)
+    if(!callee->GetNativeCode() && callee->GetJitCallCount() >= JIT_AUTO_THRESHOLD) {
+      TryAutoJitCompile(callee);
     }
 #endif
 
