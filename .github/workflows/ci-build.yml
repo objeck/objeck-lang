@@ -194,8 +194,8 @@ jobs:
     - name: Build toolchain
       working-directory: ./core/release
       env:
-        CC: ${{ runner.os != 'Windows' && 'ccache gcc' || '' }}
-        CXX: ${{ runner.os != 'Windows' && 'ccache g++' || '' }}
+        CC: ${{ runner.os == 'Linux' && 'ccache gcc' || '' }}
+        CXX: ${{ runner.os == 'Linux' && 'ccache g++' || '' }}
       run: ${{ matrix.deploy_script }}
 
     - name: Show ccache stats
