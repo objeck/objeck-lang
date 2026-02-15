@@ -46,9 +46,11 @@
         <!-- Menu Items -->
         <div class="menu-items">
           <a href="https://objeck.org/index.html">Home</a>
-          <a href="https://sourceforge.net/projects/objeck-lang/files/">Downloads</a>
-          <a href="https://objeck.org/readme.html">Changelog</a>
+          <a href="https://playground.objeck.org">Playground</a>
           <a href="https://objeck.org/getting_started.html">Quick Start</a>
+          <a href="https://github.com/objeck/objeck-lang/releases/latest">Downloads</a>
+          <a href="https://objeck.org/readme.html">Changelog</a>
+          <a href="https://www.objeck.org/doc/api/index.html" target="_blank">API Docs</a>
           <a href="https://github.com/objeck/objeck-lang">GitHub</a>
         </div>
       </div>
@@ -56,7 +58,7 @@
   </header>
 
   <main style="text-align: left;">
-   <p class="box-text">Syntax additions, updates to collections, and HTTPS PEM file support.</p>
+   <p>Syntax additions, updates to collections, and HTTPS PEM file support.</p>
    
    <h3><u>2025.7.0</u></h3>
     <ul>
@@ -79,14 +81,14 @@
         <li>Improved JSON scheme support</li>
     </ul>
    
-   <p class="box-text">
+   <p>
     Please refer to the GitHub
     <a href="https://github.com/objeck/objeck-lang">
      project site
     </a>
     for additional information.
    </p>
-   <p class="box-text">
+   <p>
     The Programmer's Guide is in the "doc" directory. Additional examples are available in the
     <a href="https://rosettacode.org/wiki/Category:Objeck" target="_blank">
      Rosetta Code
@@ -101,10 +103,10 @@
    <h3>
     Getting Started
    </h3>
-   <p class="box-text">
+   <p>
     For new developers, please refer to the
     <a href="https://www.objeck.org/getting_started.html">
-     getting starting guide
+     getting started guide
     </a>
     .
    </p>
@@ -152,7 +154,7 @@
    <h3>
     Windows launcher
    </h3>
-   <p class="box-text">
+   <p>
     The Windows Launcher is a convenient way to run programs and access documentation. On Windows, 
             configuration information is stored in the
     <pre class="cmd">%ProgramData%\Objeck</pre>
@@ -164,7 +166,7 @@
    <h3>
     Compiling and executing programs
    </h3>
-   <p class="box-text">
+   <p>
     To compile programs outside the
     <pre class="cmd">bin</pre>
     directory set, the
@@ -172,15 +174,15 @@
     environment 
             variable must be set. When this variable is set, all library files must be in the directory specified.
    </p>
-   <p class="box-text">
+   <p>
     If the Windows installer is used, these variables will be automatically set.
    </p>
-   <p class="box-text">
+   <p>
     To manually set the environment paths in Windows:
    </p>
    <ol>
     <li>
-     <pre class="cmd">set OBECK_LIB_PATH=&lt;program_path&gt;\objeck-lang\lib</pre>
+     <pre class="cmd">set OBJECK_LIB_PATH=&lt;program_path&gt;\objeck-lang\lib</pre>
     </li>
     <li>
      <pre class="cmd">set PATH=%PATH%;&lt;program_path&gt;\objeck-lang\bin;&lt;program_path&gt;\objeck-lang\lib\sdl</pre>
@@ -191,7 +193,7 @@
      path as the required SDL2 DLLs are already in the MSYS2 shell's path.
     </li>
    </ol>
-   <p class="box-text">
+   <p>
     To manually set the environment paths in macOS and Linux:
    </p>
    <ol>
@@ -202,12 +204,12 @@
      <pre class="cmd">export OBJECK_LIB_PATH=&lt;program_path&gt;/objeck-lang/lib</pre>
     </li>
    </ol>
-   <p class="box-text">
+   <p>
     On Windows, STDIO may be configured to be UFT-8, UTF-16, or binary by setting the environment variable
     <pre class="cmd">OBJECK_STDIO</pre>
     to "binary" or "utf16", the default is UTF-8.
    </p>
-   <p class="box-text">
+   <p>
     Simple compile/execute:
    </p>
    <ol>
@@ -220,7 +222,7 @@
      <pre class="cmd">obr my_prgm</pre>
     </li>
    </ol>
-   <p class="box-text">
+   <p>
     Compile/execute for code that has library dependencies:
    </p>
    <ol>
@@ -234,7 +236,7 @@
    <h3>
     SDL Support
    </h3>
-   <p class="box-text">
+   <p>
     The 2D gaming framework is built around
     <a href="https://www.libsdl.org/download-2.0.php">
      SDL2
@@ -245,7 +247,7 @@
    <h3>
     For Linux
    </h3>
-   <p class="box-text">
+   <p>
     <pre class="cmd">
 sudo apt install libsdl1.2debian libsdl-gfx1.2-5 libsdl-gfx1.2-dev libsdl-gfx1.2-doc libsdl-image1.2 
 libsdl-image1.2-dbg libsdl-image1.2-dev libsdl-mixer1.2 libsdl-mixer1.2-dbg libsdl-mixer1.2-dev 
@@ -277,7 +279,7 @@ libsdl-ttf2.0-0 libsdl-ttf2.0-dev
    <h3>
     Secure Web Server Support
    </h3>
-   <p class="box-text">
+   <p>
 The following steps generate a self-signed SSL certificate for the 'TCPSecureSocketServer' class using 
             OpenSSL commands (for Windows and Linux):
    </p>
@@ -306,7 +308,7 @@ openssl req -x509 -newkey rsa:4096 -sha256 -days 3650 -nodes -keyout local.key -
      Import 'cert.pem' into the host OS
     </li>
    </ol>
-   <p class="box-text">
+   <p>
     Follow these
     <a href="https://proxyman.io/posts/2020-09-09-Generate-Self-Signed-Certificate-iOS13-Mac-Catalina">
      instructions
@@ -316,7 +318,7 @@ openssl req -x509 -newkey rsa:4096 -sha256 -days 3650 -nodes -keyout local.key -
    <h3>
     Source Code
    </h3>
-   <p class="box-text">
+   <p>
     The Objeck source repository is located
     <a href="http://github.com/objeck/objeck-lang">
      here
@@ -332,7 +334,7 @@ openssl req -x509 -newkey rsa:4096 -sha256 -days 3650 -nodes -keyout local.key -
    <h3>
     License
    </h3>
-   <p class="box-text">
+   <p>
     The software was developed under the FreeBSD
     <a href="https://opensource.org/licenses/BSD-2-Clause">
      license
