@@ -1106,7 +1106,7 @@ class FuncSnippet from Snippet {
 				};
 				
 				if(@is_virtual) {
-					@signature->Append("virutal : ");
+					@signature->Append("virtual : ");
 				};
 		
 				@signature->Append(@name);
