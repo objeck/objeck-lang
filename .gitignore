@@ -67,6 +67,9 @@ core/release/x64/
 # Temp logs
 logs_*/
 
+# API keys
+*_api_key.dat
+
 # Misc
 nul
 build.txt
