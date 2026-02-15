@@ -74,17 +74,25 @@
 
         // dark mode toggle
         const toggle = document.getElementById('dark-mode-toggle');
-        if (toggle) {
-          const saved = localStorage.getItem('objeck-dark-mode');
-          if (saved === 'true') {
+        const logo = document.getElementById('site-logo');
+        function updateTheme(isDark) {
+          if (isDark) {
             document.body.classList.add('dark-mode');
-            toggle.textContent = 'Light';
+            if (toggle) toggle.textContent = 'Light';
+            if (logo) logo.src = 'style/objeck-logo-alt.png';
+          } else {
+            document.body.classList.remove('dark-mode');
+            if (toggle) toggle.textContent = 'Dark';
+            if (logo) logo.src = 'style/objeck-logo.png';
           }
+        }
+        // apply saved preference
+        updateTheme(localStorage.getItem('objeck-dark-mode') === 'true');
+        if (toggle) {
           toggle.addEventListener('click', () => {
-            document.body.classList.toggle('dark-mode');
-            const isDark = document.body.classList.contains('dark-mode');
+            const isDark = !document.body.classList.contains('dark-mode');
             localStorage.setItem('objeck-dark-mode', isDark);
-            toggle.textContent = isDark ? 'Light' : 'Dark';
+            updateTheme(isDark);
           });
         }
       });
@@ -93,7 +101,7 @@
 
   <body>
     <header>
-      <a href='index.html'><img src='style/objeck-logo.png'  style="max-width: 20%; height: auto;" /></a>
+      <a href='index.html'><img id='site-logo' src='style/objeck-logo.png' style="max-width: 20%; height: auto;" /></a>
       <div class="version">v@version <button id="dark-mode-toggle" class="theme-toggle">Dark</button></div>
     </header>
     <div class="container">
