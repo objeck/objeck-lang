@@ -61,9 +61,14 @@ obc hello && obr hello
 
 **Web Playground** — [Try Objeck in your browser](https://playground.objeck.org). Code runs in sandboxed Docker containers on a dedicated server. Includes 33 demos covering the language basics, OOP, algorithms, collections, data processing, and more. ([Source](programs/web-playground/))
 
-**v2026.2.1** 
+**v2026.2.1**
   * New 'try/otherwise' error handling framework
-  * Additional compiler and runtime performance enhancements
+  * **Performance**: 4.38x speedup on nbody — inline limit increase (128→256) enables JIT to optimize getter/setter-heavy code
+  * **Compiler**: Common subexpression elimination (CSE), dead code elimination, div-by-zero constant folding bugfix
+  * **JIT**: Division-by-zero guards in constant folding for both x64 and ARM64 backends
+  * **ARM64 CI**: Linux ARM64 and macOS ARM64 test execution enabled in GitHub Actions
+  * 10 new performance benchmarks with measurement tooling
+  * [Performance optimization details and benchmark data →](docs/performance.md)
 
 **v2026.2.0** ✅
   * **Performance**: Memory manager optimized with O(1) lookups and in-place sweeping
@@ -195,7 +200,7 @@ vector := tfidf->Transform("cats and dogs");  # [0.47, 0.0, 0.47, ...]
 - REPL for interactive development
 - API docs at [objeck.org](https://www.objeck.org)
 
-**📚 [Testing Documentation](programs/TESTING.md)** • **🧪 [Regression Tests](programs/regression/)**
+**📚 [Testing Documentation](programs/TESTING.md)** • **🧪 [Regression Tests](programs/regression/)** • **📊 [Performance & Benchmarks](docs/performance.md)**
 
 ## Resources
 
