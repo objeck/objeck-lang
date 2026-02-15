@@ -1,0 +1,21 @@
+class BenchCopyProp {
+	function : Main(args : String[]) ~ Nil {
+		n := 50000000;
+		if(args->Size() > 0) {
+			n := args[0]->ToInt();
+		};
+
+		sum := 0;
+
+		for(i := 0; i < n; i += 1;) {
+			# copy chains: a=i, b=a, c=b, d=c -- optimizer should propagate
+			a := i;
+			b := a;
+			c := b;
+			d := c;
+			sum += d;
+		};
+
+		sum->PrintLine();
+	}
+}

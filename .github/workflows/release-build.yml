@@ -118,13 +118,13 @@ jobs:
             shell: bash
             artifact_pattern: "objeck-linux-x64_0.0.0.tgz"
 
-          # Linux ARM64 - Commented out until GitHub-hosted ARM64 runners are stable
-          # - platform: linux-arm64
-          #   os: ubuntu-latest
-          #   arch: arm64
-          #   deploy_script: ./deploy_posix.sh arm64 deploy
-          #   shell: bash
-          #   artifact_pattern: "objeck-linux-arm64_0.0.0.tgz"
+          # Linux ARM64 - using GitHub-hosted ARM64 runners (now GA)
+          - platform: linux-arm64
+            os: ubuntu-24.04-arm64-2core
+            arch: arm64
+            deploy_script: ./deploy_posix.sh arm64 deploy
+            shell: bash
+            artifact_pattern: "objeck-linux-arm64_0.0.0.tgz"
 
           # macOS ARM64
           - platform: macos-arm64

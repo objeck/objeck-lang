@@ -32,7 +32,7 @@ graph TB
         Parser["Parser"]
         Analyzer["Contextual<br/>Analyzer"]
         IR["Intermediate<br/>Code Generation"]
-        Optimizer["Bytecode Optimizer<br/>━━━━━━━━━━━━━━━━<br/>Jump Reduction<br/>Constant Folding<br/>Method Inlining<br/>Dead Store Removal<br/>Constant Propagation<br/>Strength Reduction<br/>Instruction Optimization"]
+        Optimizer["Bytecode Optimizer<br/>━━━━━━━━━━━━━━━━<br/>Jump Reduction<br/>Constant Folding<br/>Method Inlining<br/>Dead Store Removal<br/>Constant Propagation<br/>Copy Propagation<br/>CSE<br/>Strength Reduction<br/>Dead Code Elimination<br/>Instruction Optimization"]
         Emitter["Binary Code<br/>Emitter"]
         Linker["Linker"]
     end
@@ -174,6 +174,45 @@ REM Binaries will be in deploy-x64\bin
 ---
 
 ## Building from Source
+
+### Bootstrap & Cross-Platform Build Workflow
+
+The Objeck build has **two stages**: a platform-independent bootstrap followed by a platform-specific build. This is required because the compiler is self-hosting (written in Objeck).
+
+#### Stage 1: Bootstrap (WSL/Linux -- mandatory first step)
+```bash
+cd core/compiler && bash update_version.sh    # Linux x64
+# or
+cd core/compiler && bash update_version_arm.sh  # ARM64/macOS
+```
+
+This script:
+1. Builds the bootstrap compiler (`sys_obc`) via `make -f make/Makefile.sys.amd64`
+2. Compiles the core runtime library: `./sys_obc -src lib_src/lang.obs -tar lib -opt s2 -dest ../lib/lang.obl`
+3. Builds the full compiler (`obc`) via `make -f make/Makefile.amd64`
+4. Compiles **all** standard libraries (`gen_collect`, `json`, `xml`, `cipher`, `net`, `regex`, `csv`, `ml`, etc.) into `.obl` files
+
+The resulting `.obl` library files are **platform-independent bytecode** and must be built before any platform-specific build.
+
+#### Stage 2: Platform Build
+After bootstrap, build the native toolchain for your target platform:
+- **Linux/WSL:** `cd core/release && bash deploy_posix.sh x64` (or `arm64`)
+- **macOS:** `cd core/release && bash deploy_macos_arm64.sh`
+- **Windows:** Open VS Developer Command Prompt, then `cd core\release && deploy_windows.cmd x64` (or `arm64`)
+
+#### WSL-to-Windows Handoff
+For Windows development using WSL for bootstrap:
+1. Run bootstrap in WSL: `cd core/compiler && bash update_version.sh`
+2. Commit and push the updated compiler and `.obl` files
+3. Pull on the Windows side
+4. Run the Windows platform build: `deploy_windows.cmd x64`
+
+#### Development Iteration
+- **Primary development:** WSL/Linux using POSIX Makefiles (fastest iteration)
+- **Final validation:** Windows native build via Visual Studio
+- **CI/CD:** GitHub Actions builds on Linux x64, Linux ARM64, macOS ARM64, Windows x64, and Windows ARM64
+
+---
 
 ### Linux (x64 / ARM64)
 

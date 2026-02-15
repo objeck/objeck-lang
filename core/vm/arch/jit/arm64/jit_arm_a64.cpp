@@ -1802,11 +1802,13 @@ RegInstr* JitArm64::ProcessIntFold(long left_imm, long right_imm, InstructionTyp
     return new RegInstr(IMM_INT, left_imm * right_imm);
     
   case DIV_INT:
+    if(right_imm == 0) return nullptr;
     return new RegInstr(IMM_INT, left_imm / right_imm);
-    
+
   case MOD_INT:
+    if(right_imm == 0) return nullptr;
     return new RegInstr(IMM_INT, left_imm % right_imm);
-    
+
   case SHL_INT:
     return new RegInstr(IMM_INT, left_imm << right_imm);
     
@@ -1856,10 +1858,24 @@ void JitArm64::ProcessIntCalculation(StackInstr* instruction) {
     // intermidate
   case IMM_INT:
     switch(right->GetType()) {
-    case IMM_INT:
-      working_stack.push_front(ProcessIntFold((long)left->GetOperand(), (long)right->GetOperand(), instruction->GetType()));
+    case IMM_INT: {
+      RegInstr* folded = ProcessIntFold((long)left->GetOperand(), (long)right->GetOperand(), instruction->GetType());
+      if(folded) {
+        working_stack.push_front(folded);
+      }
+      else {
+        // div by zero at compile time: emit both as registers, let runtime handle
+        RegisterHolder* lh = GetRegister();
+        move_imm_reg(left->GetOperand(), lh->GetRegister());
+        RegisterHolder* rh = GetRegister();
+        move_imm_reg(right->GetOperand(), rh->GetRegister());
+        math_reg_reg(rh->GetRegister(), lh->GetRegister(), instruction->GetType());
+        ReleaseRegister(rh);
+        working_stack.push_front(new RegInstr(lh));
+      }
+    }
       break;
-      
+
     case REG_INT: {
       RegisterHolder* imm_holder = GetRegister();
       move_imm_reg(left->GetOperand(), imm_holder->GetRegister());

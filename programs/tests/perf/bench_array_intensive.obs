@@ -1,0 +1,26 @@
+class BenchArrayIntensive {
+	function : Main(args : String[]) ~ Nil {
+		n := 10000;
+		if(args->Size() > 0) {
+			n := args[0]->ToInt();
+		};
+
+		size := 10000;
+		arr := Int->New[size];
+
+		# initialize
+		for(i := 0; i < size; i += 1;) {
+			arr[i] := i;
+		};
+
+		# sequential access pattern
+		sum := 0;
+		for(iter := 0; iter < n; iter += 1;) {
+			for(i := 0; i < size; i += 1;) {
+				sum += arr[i];
+			};
+		};
+
+		sum->PrintLine();
+	}
+}

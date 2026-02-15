@@ -38,7 +38,7 @@
 
 using namespace backend;
 
-#define LOCL_INLINE_MEM_MAX 128
+#define LOCL_INLINE_MEM_MAX 256
 #define JUMP_OFF_INC 257
 
 /****************************
@@ -48,12 +48,16 @@ using namespace backend;
  * Order of optimizations:
  * 0.0 - clean up jumps and other unneeded instructions (always happens)
  * 1.1 - setter and getter inlining
- * 1.2 - advanced method inlining 
- * 1.3 - constant propagation
- * 1.4 - dead store removal
- * 1.5 - constant folding
- * 2.1 - strength reduction
+ * 1.2 - advanced method inlining
+ * 1.3 - copy propagation (s2+)
+ * 1.4 - constant propagation
+ * 1.5 - dead store removal
+ * 1.6 - common subexpression elimination (s2+)
+ * 1.7 - constant folding
+ * 2.1 - strength reduction (extended, s2+)
  * 3.1 - replace store+load with copy
+ * 3.2 - dead code elimination (s2+)
+ * --- s3: repeat passes once more ---
  ****************************/
 
 union PropValue {
@@ -95,6 +99,15 @@ class ItermediateOptimizer {
   bool IsDeadStore(IntermediateInstruction* check_instr, size_t check_pos, std::vector<IntermediateInstruction*>& input_instrs);
   std::pair<size_t, size_t> DeadStoreEdit(size_t start_pos, std::vector<IntermediateInstruction*>& input_instrs);
   bool InDeadStoreRange(size_t pos, std::vector<std::pair<size_t, size_t>> dead_store_edits);
+
+  // copy propagation
+  IntermediateBlock* CopyProp(IntermediateBlock* input);
+
+  // common subexpression elimination
+  IntermediateBlock* CSE(IntermediateBlock* input);
+
+  // dead code elimination
+  IntermediateBlock* DeadCodeElim(IntermediateBlock* input);
 
   // constant propagation
   IntermediateBlock* ConstantProp(IntermediateBlock* input);

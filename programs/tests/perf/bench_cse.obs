@@ -1,0 +1,23 @@
+class BenchCSE {
+	function : Main(args : String[]) ~ Nil {
+		n := 5000000;
+		if(args->Size() > 0) {
+			n := args[0]->ToInt();
+		};
+
+		sum := 0;
+		a := 7;
+		b := 13;
+
+		for(i := 0; i < n; i += 1;) {
+			x := a + b;
+			y := a + b;  # common subexpression
+			z := a + b;  # common subexpression
+			sum += x + y + z;
+			a += 1;
+			b += 1;
+		};
+
+		sum->PrintLine();
+	}
+}

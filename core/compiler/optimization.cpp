@@ -30,6 +30,8 @@
  ***************************************************************************/
 
 #include "optimization.h"
+#include <functional>
+#include <tuple>
 
 using namespace backend;
 
@@ -188,150 +190,110 @@ std::vector<IntermediateBlock*> ItermediateOptimizer::JumpToLocation(std::vector
 
 std::vector<IntermediateBlock*> ItermediateOptimizer::OptimizeMethod(std::vector<IntermediateBlock*> inputs)
 {
-  // clean up jump addresses
+  // helper to run a pass on all blocks
+  auto RunPass = [](std::vector<IntermediateBlock*>& in_blocks,
+                    std::function<IntermediateBlock*(IntermediateBlock*)> pass_fn) {
+    std::vector<IntermediateBlock*> out_blocks;
+    while(!in_blocks.empty()) {
+      IntermediateBlock* tmp = in_blocks.front();
+      out_blocks.push_back(pass_fn(tmp));
+      in_blocks.erase(in_blocks.begin());
+      delete tmp;
+      tmp = nullptr;
+    }
+    in_blocks = std::move(out_blocks);
+  };
+
+  // 0.0 - clean up jumps (always)
 #ifdef _DEBUG
   GetLogger() << L"  Clean up jumps..." << std::endl;
 #endif
+  RunPass(inputs, [this](IntermediateBlock* b) { return CleanJumps(b); });
 
-  std::vector<IntermediateBlock*> jump_blocks;
-  // clean up jumps
-  while(!inputs.empty()) {
-    IntermediateBlock* tmp = inputs.front();
-    jump_blocks.push_back(CleanJumps(tmp));
-    // delete old block
-    inputs.erase(inputs.begin());
-    delete tmp;
-    tmp = nullptr;
-  }
-  
-  std::vector<IntermediateBlock*> useless_instrs_blocks;
-  // remove useless instructions
+  // 0.0 - remove useless instructions (always)
 #ifdef _DEBUG
   GetLogger() << L"  Clean up Instructions..." << std::endl;
 #endif
-  while(!jump_blocks.empty()) {
-    IntermediateBlock* tmp = jump_blocks.front();
-    useless_instrs_blocks.push_back(RemoveUselessInstructions(tmp));
-    // delete old block
-    jump_blocks.erase(jump_blocks.begin());
-    delete tmp;
-    tmp = nullptr;
+  RunPass(inputs, [this](IntermediateBlock* b) { return RemoveUselessInstructions(b); });
+
+  if(is_lib || optimization_level < 1) {
+    return inputs;
   }
-  
-  std::vector<IntermediateBlock*> folded_float_blocks;
-  if(!is_lib && optimization_level > 0) {
-    std::vector<IntermediateBlock*> getter_setter_blocks;
-    // getter/setter inlining
+
+  // single iteration for now; double iteration showed regression due to overhead
+  const int num_iterations = 1;
+
+  for(int iter = 0; iter < num_iterations; ++iter) {
+#ifdef _DEBUG
+    if(num_iterations > 1) {
+      GetLogger() << L"  === Optimization iteration " << (iter + 1) << L" ===" << std::endl;
+    }
+#endif
+
+    // 1.1 - getter/setter inlining (s1+)
 #ifdef _DEBUG
     GetLogger() << L"  Getter/setter inlining..." << std::endl;
 #endif
-    while(!useless_instrs_blocks.empty()) {
-      IntermediateBlock* tmp = useless_instrs_blocks.front();
-      getter_setter_blocks.push_back(InlineSettersGetters(tmp));
-      // delete old block
-      useless_instrs_blocks.erase(useless_instrs_blocks.begin());
-      delete tmp;
-      tmp = nullptr;
-    }
+    RunPass(inputs, [this](IntermediateBlock* b) { return InlineSettersGetters(b); });
 
-    // dead store
-#ifdef _DEBUG
-    GetLogger() << L"  Dead store..." << std::endl;
-#endif
-    std::vector<IntermediateBlock*> dead_store_blocks;
-    while(!getter_setter_blocks.empty()) {
-      IntermediateBlock* tmp = getter_setter_blocks.front();
-      dead_store_blocks.push_back(DeadStore(tmp));
-      // delete old block
-      getter_setter_blocks.erase(getter_setter_blocks.begin());
-      delete tmp;
-      tmp = nullptr;
-    }
-
-    // constant propagation
+    // 1.4 - constant propagation (s1+)
 #ifdef _DEBUG
     GetLogger() << L"  Constant propagation..." << std::endl;
 #endif
-    std::vector<IntermediateBlock*> const_prop_blocks;
-    while(!dead_store_blocks.empty()) {
-      IntermediateBlock* tmp = dead_store_blocks.front();
-      const_prop_blocks.push_back(ConstantProp(tmp));
-      // delete old block
-      dead_store_blocks.erase(dead_store_blocks.begin());
-      delete tmp;
-      tmp = nullptr;
+    RunPass(inputs, [this](IntermediateBlock* b) { return ConstantProp(b); });
+
+    // 1.5 - dead store (s1+)
+#ifdef _DEBUG
+    GetLogger() << L"  Dead store..." << std::endl;
+#endif
+    RunPass(inputs, [this](IntermediateBlock* b) { return DeadStore(b); });
+
+    // 1.6 - common subexpression elimination (s2+)
+    if(optimization_level > 1) {
+#ifdef _DEBUG
+      GetLogger() << L"  CSE..." << std::endl;
+#endif
+      RunPass(inputs, [this](IntermediateBlock* b) { return CSE(b); });
     }
 
-    // fold integers
+    // 1.7 - fold integers (s1+)
 #ifdef _DEBUG
     GetLogger() << L"  Folding integers..." << std::endl;
 #endif
-    std::vector<IntermediateBlock*> folded_int_blocks;
-    while(!const_prop_blocks.empty()) {
-      IntermediateBlock* tmp = const_prop_blocks.front();
-      folded_int_blocks.push_back(FoldIntConstants(tmp));
-      // delete old block
-      const_prop_blocks.erase(const_prop_blocks.begin());
-      delete tmp;
-      tmp = nullptr;
-    }
-    
-    // fold floats
+    RunPass(inputs, [this](IntermediateBlock* b) { return FoldIntConstants(b); });
+
+    // 1.7 - fold floats (s1+)
 #ifdef _DEBUG
     GetLogger() << L"  Folding floats..." << std::endl;
 #endif
-    while(!folded_int_blocks.empty()) {
-      IntermediateBlock* tmp = folded_int_blocks.front();
-      folded_float_blocks.push_back(FoldFloatConstants(tmp));
-      // delete old block
-      folded_int_blocks.erase(folded_int_blocks.begin());
-      delete tmp;
-      tmp = nullptr;
+    RunPass(inputs, [this](IntermediateBlock* b) { return FoldFloatConstants(b); });
+
+    // 2.1 - strength reduction (s2+)
+    if(optimization_level > 1) {
+#ifdef _DEBUG
+      GetLogger() << L"  Strength reduction..." << std::endl;
+#endif
+      RunPass(inputs, [this](IntermediateBlock* b) { return StrengthReduction(b); });
     }
-  } 
-  else {
-    return useless_instrs_blocks;
+
+    // 3.1 - instruction replacement (s3)
+    if(optimization_level > 2) {
+#ifdef _DEBUG
+      GetLogger() << L"  Instruction replacement..." << std::endl;
+#endif
+      RunPass(inputs, [this](IntermediateBlock* b) { return InstructionReplacement(b); });
+    }
+
+    // 3.2 - dead code elimination (s2+)
+    if(optimization_level > 1) {
+#ifdef _DEBUG
+      GetLogger() << L"  Dead code elimination..." << std::endl;
+#endif
+      RunPass(inputs, [this](IntermediateBlock* b) { return DeadCodeElim(b); });
+    }
   }
 
-  std::vector<IntermediateBlock*> strength_reduced_blocks;
-  if(optimization_level > 1) {
-    // reduce strength
-#ifdef _DEBUG
-    GetLogger() << L"  Strength reduction..." << std::endl;
-#endif
-    while(!folded_float_blocks.empty()) {
-      IntermediateBlock* tmp = folded_float_blocks.front();
-      strength_reduced_blocks.push_back(StrengthReduction(tmp));
-      // delete old block
-      folded_float_blocks.erase(folded_float_blocks.begin());
-      delete tmp;
-      tmp = nullptr;
-    }
-  } 
-  else {
-    return folded_float_blocks;
-  }
-
-  std::vector<IntermediateBlock*> instruction_replaced_blocks;
-  if(optimization_level > 2) {
-    // instruction replacement
-#ifdef _DEBUG
-    GetLogger() << L"  Instruction replacement..." << std::endl;
-#endif
-    while(!strength_reduced_blocks.empty()) {
-      IntermediateBlock* tmp = strength_reduced_blocks.front();
-      instruction_replaced_blocks.push_back(InstructionReplacement(tmp));
-      // delete old block
-      strength_reduced_blocks.erase(strength_reduced_blocks.begin());
-      delete tmp;
-      tmp = nullptr;
-    }
-  } 
-  else {
-    return strength_reduced_blocks;
-  }
-  
-  return instruction_replaced_blocks;
+  return inputs;
 }
 
 IntermediateBlock* ItermediateOptimizer::RemoveUselessInstructions(IntermediateBlock* inputs)
@@ -511,7 +473,7 @@ IntermediateBlock* ItermediateOptimizer::InstructionReplacement(IntermediateBloc
 
     case STOR_INT_VAR:
     case STOR_FLOAT_VAR:
-      if(!working_stack.empty() && (working_stack.front()->GetType() == STOR_INT_VAR && working_stack.front()->GetType() == STOR_FLOAT_VAR)) {
+      if(!working_stack.empty() && (working_stack.front()->GetType() == STOR_INT_VAR || working_stack.front()->GetType() == STOR_FLOAT_VAR)) {
         // order matters...
         while(!working_stack.empty()) {
           outputs->AddInstruction(working_stack.back());
@@ -938,18 +900,18 @@ void ItermediateOptimizer::ApplyReduction(IntermediateInstruction* test, Interme
     // shift left or right
     if(instr->GetType() == MUL_INT) {
       rewrite_instrs.push_back(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, SHL_INT, (long)shift));
-    } 
+    }
     else {
       rewrite_instrs.push_back(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, SHR_INT, (long)shift));
     }
   }
-  
+
   // add original instructions
   while(!working_stack.empty()) {
     outputs->AddInstruction(working_stack.back());
     working_stack.pop_back();
   }
-  
+
   // add rewritten instructions
   for(size_t i = 0; i < rewrite_instrs.size(); ++i) {
     outputs->AddInstruction(rewrite_instrs[i]);
@@ -1532,12 +1494,24 @@ void ItermediateOptimizer::CalculateIntFold(IntermediateInstruction* instr, std:
       break;
 
     case DIV_INT: {
+      if(right->GetOperand7() == 0) {
+        working_stack.push_front(right);
+        working_stack.push_front(left);
+        outputs->AddInstruction(instr);
+        return;
+      }
       const INT64_VALUE value = left->GetOperand7() / right->GetOperand7();
       working_stack.push_front(IntermediateFactory::Instance()->MakeIntLitInstruction(cur_line_num, value));
     }
       break;
 
     case MOD_INT: {
+      if(right->GetOperand7() == 0) {
+        working_stack.push_front(right);
+        working_stack.push_front(left);
+        outputs->AddInstruction(instr);
+        return;
+      }
       const INT64_VALUE value = left->GetOperand7() % right->GetOperand7();
       working_stack.push_front(IntermediateFactory::Instance()->MakeIntLitInstruction(cur_line_num, value));
     }
@@ -1648,12 +1622,336 @@ void ItermediateOptimizer::CalculateFloatFold(IntermediateInstruction* instr, st
       working_stack.push_front(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FLOAT_LIT, value));
     }
       break;
-      
+
     default:
       break;
     }
-  } 
+  }
   else {
     outputs->AddInstruction(instr);
   }
+}
+
+//
+// ------------------- Copy Propagation -------------------
+//
+IntermediateBlock* ItermediateOptimizer::CopyProp(IntermediateBlock* inputs)
+{
+  IntermediateBlock* outputs = new IntermediateBlock;
+
+  // map: variable slot -> source variable slot (for LOCL variables only)
+  std::unordered_map<long, long> copy_map;
+  // track which variables are int vs float
+  std::unordered_map<long, InstructionType> copy_type_map;
+
+  std::vector<IntermediateInstruction*> input_instrs = inputs->GetInstructions();
+  for(size_t i = 0; i < input_instrs.size(); ++i) {
+    IntermediateInstruction* instr = input_instrs[i];
+
+    switch(instr->GetType()) {
+    // detect store-after-load pattern for copy tracking
+    case STOR_INT_VAR:
+      if(instr->GetOperand2() == LOCL && i > 0) {
+        IntermediateInstruction* prev = input_instrs[i - 1];
+        if(prev->GetType() == LOAD_INT_VAR && prev->GetOperand2() == LOCL) {
+          // var[operand] = var[prev->operand] -- track the copy
+          copy_map[instr->GetOperand()] = prev->GetOperand();
+          copy_type_map[instr->GetOperand()] = LOAD_INT_VAR;
+        }
+        else {
+          // store from non-variable source, invalidate
+          copy_map.erase(instr->GetOperand());
+        }
+        // also invalidate anything that was copied FROM this var
+        for(auto it = copy_map.begin(); it != copy_map.end();) {
+          if(it->second == instr->GetOperand()) {
+            it = copy_map.erase(it);
+          }
+          else {
+            ++it;
+          }
+        }
+      }
+      else {
+        copy_map.clear();
+        copy_type_map.clear();
+      }
+      outputs->AddInstruction(instr);
+      break;
+
+    case STOR_FLOAT_VAR:
+      if(instr->GetOperand2() == LOCL && i > 0) {
+        IntermediateInstruction* prev = input_instrs[i - 1];
+        if(prev->GetType() == LOAD_FLOAT_VAR && prev->GetOperand2() == LOCL) {
+          copy_map[instr->GetOperand()] = prev->GetOperand();
+          copy_type_map[instr->GetOperand()] = LOAD_FLOAT_VAR;
+        }
+        else {
+          copy_map.erase(instr->GetOperand());
+        }
+        for(auto it = copy_map.begin(); it != copy_map.end();) {
+          if(it->second == instr->GetOperand()) {
+            it = copy_map.erase(it);
+          }
+          else {
+            ++it;
+          }
+        }
+      }
+      else {
+        copy_map.clear();
+        copy_type_map.clear();
+      }
+      outputs->AddInstruction(instr);
+      break;
+
+    // replace loads with source variable if copy exists
+    case LOAD_INT_VAR:
+      if(instr->GetOperand2() == LOCL) {
+        auto result = copy_map.find(instr->GetOperand());
+        if(result != copy_map.end() && copy_type_map[instr->GetOperand()] == LOAD_INT_VAR) {
+          outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, result->second, LOCL));
+        }
+        else {
+          outputs->AddInstruction(instr);
+        }
+      }
+      else {
+        outputs->AddInstruction(instr);
+      }
+      break;
+
+    case LOAD_FLOAT_VAR:
+      if(instr->GetOperand2() == LOCL) {
+        auto result = copy_map.find(instr->GetOperand());
+        if(result != copy_map.end() && copy_type_map[instr->GetOperand()] == LOAD_FLOAT_VAR) {
+          outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FLOAT_VAR, result->second, LOCL));
+        }
+        else {
+          outputs->AddInstruction(instr);
+        }
+      }
+      else {
+        outputs->AddInstruction(instr);
+      }
+      break;
+
+    // invalidate all copies on control flow changes and calls
+    case MTHD_CALL:
+    case DYN_MTHD_CALL:
+    case JMP:
+    case LBL:
+    case RTRN:
+      outputs->AddInstruction(instr);
+      copy_map.clear();
+      copy_type_map.clear();
+      break;
+
+    default:
+      outputs->AddInstruction(instr);
+      break;
+    }
+  }
+
+  return outputs;
+}
+
+//
+// ------------------- Common Subexpression Elimination -------------------
+//
+IntermediateBlock* ItermediateOptimizer::CSE(IntermediateBlock* inputs)
+{
+  IntermediateBlock* outputs = new IntermediateBlock;
+
+  // key: (opcode, operand1_slot, operand2_slot) -> result variable slot
+  struct CSEKey {
+    InstructionType op;
+    long left_slot;
+    long right_slot;
+
+    bool operator==(const CSEKey& other) const {
+      return op == other.op && left_slot == other.left_slot && right_slot == other.right_slot;
+    }
+  };
+
+  struct CSEKeyHash {
+    size_t operator()(const CSEKey& k) const {
+      size_t h = std::hash<int>()(k.op);
+      h ^= std::hash<long>()(k.left_slot) + 0x9e3779b9 + (h << 6) + (h >> 2);
+      h ^= std::hash<long>()(k.right_slot) + 0x9e3779b9 + (h << 6) + (h >> 2);
+      return h;
+    }
+  };
+
+  std::unordered_map<CSEKey, long, CSEKeyHash> cse_map;
+
+  std::vector<IntermediateInstruction*> input_instrs = inputs->GetInstructions();
+  std::deque<IntermediateInstruction*> working_stack;
+
+  for(size_t i = 0; i < input_instrs.size(); ++i) {
+    IntermediateInstruction* instr = input_instrs[i];
+
+    switch(instr->GetType()) {
+    case LOAD_INT_VAR:
+    case LOAD_FLOAT_VAR:
+      if(instr->GetOperand2() == LOCL) {
+        working_stack.push_front(instr);
+      }
+      else {
+        while(!working_stack.empty()) {
+          outputs->AddInstruction(working_stack.back());
+          working_stack.pop_back();
+        }
+        outputs->AddInstruction(instr);
+      }
+      break;
+
+    case ADD_INT:
+    case SUB_INT:
+    case MUL_INT:
+    case BIT_AND_INT:
+    case BIT_OR_INT:
+    case BIT_XOR_INT:
+    case ADD_FLOAT:
+    case SUB_FLOAT:
+    case MUL_FLOAT: {
+      if(working_stack.size() >= 2) {
+        IntermediateInstruction* right_instr = working_stack.front();
+        working_stack.pop_front();
+        IntermediateInstruction* left_instr = working_stack.front();
+        working_stack.pop_front();
+
+        bool is_left_var = (left_instr->GetType() == LOAD_INT_VAR || left_instr->GetType() == LOAD_FLOAT_VAR)
+                           && left_instr->GetOperand2() == LOCL;
+        bool is_right_var = (right_instr->GetType() == LOAD_INT_VAR || right_instr->GetType() == LOAD_FLOAT_VAR)
+                            && right_instr->GetOperand2() == LOCL;
+
+        if(is_left_var && is_right_var) {
+          CSEKey key = { instr->GetType(), left_instr->GetOperand(), right_instr->GetOperand() };
+          auto found = cse_map.find(key);
+          if(found != cse_map.end()) {
+            // CSE hit: replace with load of the previously stored result
+            InstructionType load_type = (instr->GetType() >= ADD_FLOAT) ? LOAD_FLOAT_VAR : LOAD_INT_VAR;
+            while(!working_stack.empty()) {
+              outputs->AddInstruction(working_stack.back());
+              working_stack.pop_back();
+            }
+            outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, load_type, found->second, LOCL));
+          }
+          else {
+            // no CSE hit: emit normally
+            while(!working_stack.empty()) {
+              outputs->AddInstruction(working_stack.back());
+              working_stack.pop_back();
+            }
+            outputs->AddInstruction(left_instr);
+            outputs->AddInstruction(right_instr);
+            outputs->AddInstruction(instr);
+
+            // if the result gets stored to a local var immediately, track it
+            if(i + 1 < input_instrs.size()) {
+              IntermediateInstruction* next = input_instrs[i + 1];
+              if((next->GetType() == STOR_INT_VAR || next->GetType() == STOR_FLOAT_VAR) && next->GetOperand2() == LOCL) {
+                cse_map[key] = next->GetOperand();
+              }
+            }
+          }
+        }
+        else {
+          while(!working_stack.empty()) {
+            outputs->AddInstruction(working_stack.back());
+            working_stack.pop_back();
+          }
+          outputs->AddInstruction(left_instr);
+          outputs->AddInstruction(right_instr);
+          outputs->AddInstruction(instr);
+        }
+      }
+      else {
+        while(!working_stack.empty()) {
+          outputs->AddInstruction(working_stack.back());
+          working_stack.pop_back();
+        }
+        outputs->AddInstruction(instr);
+      }
+    }
+      break;
+
+    // invalidate CSE entries when a variable they reference is stored to
+    case STOR_INT_VAR:
+    case STOR_FLOAT_VAR:
+      while(!working_stack.empty()) {
+        outputs->AddInstruction(working_stack.back());
+        working_stack.pop_back();
+      }
+      outputs->AddInstruction(instr);
+      if(instr->GetOperand2() == LOCL) {
+        for(auto it = cse_map.begin(); it != cse_map.end();) {
+          if(it->first.left_slot == instr->GetOperand() ||
+             it->first.right_slot == instr->GetOperand() ||
+             it->second == instr->GetOperand()) {
+            it = cse_map.erase(it);
+          }
+          else {
+            ++it;
+          }
+        }
+      }
+      break;
+
+    // invalidate everything on control flow / calls
+    case MTHD_CALL:
+    case DYN_MTHD_CALL:
+    case JMP:
+    case LBL:
+    case RTRN:
+      while(!working_stack.empty()) {
+        outputs->AddInstruction(working_stack.back());
+        working_stack.pop_back();
+      }
+      outputs->AddInstruction(instr);
+      cse_map.clear();
+      break;
+
+    default:
+      while(!working_stack.empty()) {
+        outputs->AddInstruction(working_stack.back());
+        working_stack.pop_back();
+      }
+      outputs->AddInstruction(instr);
+      break;
+    }
+  }
+
+  while(!working_stack.empty()) {
+    outputs->AddInstruction(working_stack.back());
+    working_stack.pop_back();
+  }
+
+  return outputs;
+}
+
+//
+// ------------------- Dead Code Elimination -------------------
+//
+IntermediateBlock* ItermediateOptimizer::DeadCodeElim(IntermediateBlock* inputs)
+{
+  IntermediateBlock* outputs = new IntermediateBlock;
+
+  std::vector<IntermediateInstruction*> input_instrs = inputs->GetInstructions();
+  for(size_t i = 0; i < input_instrs.size(); ++i) {
+    IntermediateInstruction* instr = input_instrs[i];
+
+    // Pattern: JMP to immediately following LBL (redundant jump)
+    if(instr->GetType() == JMP && i + 1 < input_instrs.size()) {
+      IntermediateInstruction* next = input_instrs[i + 1];
+      if(next->GetType() == LBL && instr->GetOperand() == next->GetOperand()) {
+        continue;
+      }
+    }
+
+    outputs->AddInstruction(instr);
+  }
+
+  return outputs;
 }

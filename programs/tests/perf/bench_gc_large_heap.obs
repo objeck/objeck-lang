@@ -1,0 +1,56 @@
+class HeapNode {
+	@left : HeapNode;
+	@right : HeapNode;
+	@value : Int;
+
+	New(v : Int) {
+		@value := v;
+	}
+
+	method : public : SetLeft(n : HeapNode) ~ Nil {
+		@left := n;
+	}
+
+	method : public : SetRight(n : HeapNode) ~ Nil {
+		@right := n;
+	}
+
+	method : public : Sum() ~ Int {
+		s := @value;
+		if(@left <> Nil) {
+			s += @left->Sum();
+		};
+		if(@right <> Nil) {
+			s += @right->Sum();
+		};
+		return s;
+	}
+}
+
+class BenchGCLargeHeap {
+	function : BuildTree(depth : Int, counter : Int) ~ HeapNode {
+		node := HeapNode->New(counter);
+		if(depth > 0) {
+			node->SetLeft(BuildTree(depth - 1, counter * 2));
+			node->SetRight(BuildTree(depth - 1, counter * 2 + 1));
+		};
+		return node;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		depth := 18;
+		if(args->Size() > 0) {
+			depth := args[0]->ToInt();
+		};
+
+		# build large live set
+		tree := BuildTree(depth, 1);
+
+		# force several GC cycles by allocating more
+		for(i := 0; i < 100000; i += 1;) {
+			tmp := HeapNode->New(i);
+		};
+
+		tree->Sum()->PrintLine();
+	}
+}
