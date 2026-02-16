@@ -392,6 +392,7 @@ namespace Runtime {
     void ProcessMethodCall(StackInstr* instr, StackInstr** &instrs, long &ip, size_t* &op_stack, size_t* &stack_pos);
     void ProcessDynamicMethodCall(StackInstr* instr, StackInstr** &instrs, long &ip, size_t* &op_stack, size_t* &stack_pos);
     void ProcessJitMethodCall(StackMethod* called, size_t* instance, StackInstr** &instrs, long &ip, size_t* &op_stack, size_t* &stack_pos);
+    void CheckAutoJit(StackMethod* called, StackInstr* instr);
     void ProcessAsyncMethodCall(StackMethod* called, size_t* param);
 
     void ProcessInterpretedMethodCall(StackMethod* called, size_t* instance, StackInstr** &instrs, long &ip);

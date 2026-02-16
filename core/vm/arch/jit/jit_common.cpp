@@ -80,9 +80,8 @@ bool JitCompiler::TryAutoJitCompile(StackMethod* callee)
     return true;
   }
 
-  // mark as permanently failed and patch all call sites to -1
+  // mark as permanently failed (operand3 stays 0, count at LONG_MAX stops further attempts)
   callee->SetJitAttempted();
-  PatchCallSites(callee, -1);
   return false;
 }
 
