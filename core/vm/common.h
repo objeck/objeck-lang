@@ -609,6 +609,10 @@ class StackMethod {
     ++jit_call_count;
   }
 
+  inline void SetJitAttempted() {
+    jit_call_count = LONG_MAX;
+  }
+
   MemoryType GetReturn() const {
     return rtrn_type;
   }

@@ -1846,30 +1846,11 @@ void StackInterpreter::ProcessDynamicMethodCall(StackInstr* instr, StackInstr** 
 #endif
 
 #ifndef _NO_JIT
-  // fast path: already JIT'd or marked native
-  if(instr->GetOperand3() || called->GetNativeCode()) {
+  // execute JIT call (native keyword set at compile time)
+  if(instr->GetOperand3()) {
     ProcessJitMethodCall(called, instance, instrs, ip, op_stack, stack_pos);
   }
-  // auto-JIT: only count if below threshold (stops counting once attempted)
-  else if(called->GetJitCallCount() < JIT_AUTO_THRESHOLD) {
-    called->IncrementJitCallCount();
-    if(called->GetJitCallCount() >= JIT_AUTO_THRESHOLD) {
-      if(JitCompiler::TryAutoJitCompile(called)) {
-        ProcessJitMethodCall(called, instance, instrs, ip, op_stack, stack_pos);
-      }
-      else {
-        (*stack_frame) = GetStackFrame(called, instance);
-        instrs = (*stack_frame)->method->GetInstructions();
-        ip = 0;
-      }
-    }
-    else {
-      (*stack_frame) = GetStackFrame(called, instance);
-      instrs = (*stack_frame)->method->GetInstructions();
-      ip = 0;
-    }
-  }
-  // interpreter: already attempted JIT (succeeded check is in fast path above)
+  // execute interpreter
   else {
     (*stack_frame) = GetStackFrame(called, instance);
     instrs = (*stack_frame)->method->GetInstructions();
@@ -1941,25 +1922,11 @@ void StackInterpreter::ProcessMethodCall(StackInstr* instr, StackInstr** &instrs
 
 #ifndef _NO_JIT
   // fast path: already JIT'd or marked native
-  if(instr->GetOperand3() || concrete_call->GetNativeCode()) {
+  // execute JIT call (native keyword set at compile time)
+  if(instr->GetOperand3()) {
     ProcessJitMethodCall(concrete_call, instance, instrs, ip, op_stack, stack_pos);
   }
-  // auto-JIT: only count if below threshold (stops counting once attempted)
-  else if(concrete_call->GetJitCallCount() < JIT_AUTO_THRESHOLD) {
-    concrete_call->IncrementJitCallCount();
-    if(concrete_call->GetJitCallCount() >= JIT_AUTO_THRESHOLD) {
-      if(JitCompiler::TryAutoJitCompile(concrete_call)) {
-        ProcessJitMethodCall(concrete_call, instance, instrs, ip, op_stack, stack_pos);
-      }
-      else {
-        ProcessInterpretedMethodCall(concrete_call, instance, instrs, ip);
-      }
-    }
-    else {
-      ProcessInterpretedMethodCall(concrete_call, instance, instrs, ip);
-    }
-  }
-  // interpreter: already attempted JIT (succeeded check is in fast path above)
+  // execute interpreter
   else {
     ProcessInterpretedMethodCall(concrete_call, instance, instrs, ip);
   }

@@ -73,7 +73,13 @@ bool JitCompiler::TryAutoJitCompile(StackMethod* callee)
   Runtime::JitArm64 jit_compiler;
 #endif
 
-  return jit_compiler.Compile(callee);
+  if(jit_compiler.Compile(callee)) {
+    return true;
+  }
+
+  // mark as permanently failed so we never check GetNativeCode() again
+  callee->SetJitAttempted();
+  return false;
 }
 #endif
 
