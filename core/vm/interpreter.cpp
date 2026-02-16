@@ -157,13 +157,14 @@ void StackInterpreter::Execute(size_t* op_stack, size_t* stack_pos, long i, Stac
   ctx.interp = this;
   ctx.halt = &halt;
 
-  // execute using dispatch table with inlined hot opcodes
+  // execute using dispatch table
   do {
     StackInstr* instr = &instrs[ip++];
     ctx.instr = instr;
 
 #ifdef _DEBUGGER
     debugger->ProcessInstruction(instr, ip, call_stack, (*call_stack_pos), (*stack_frame));
+#endif
     DispatchResult result = instr_dispatch[instr->GetType()](ctx);
     if(result == DispatchResult::RETURN_JIT) {
       return;
@@ -171,65 +172,6 @@ void StackInterpreter::Execute(size_t* op_stack, size_t* stack_pos, long i, Stac
     if(result == DispatchResult::HALT) {
       break;
     }
-#else
-    // inline the hottest opcodes to avoid indirect call overhead
-    switch(instr->GetType()) {
-    case LOAD_INT_LIT:
-      op_stack[(*stack_pos)++] = (size_t)instr->GetInt64Operand();
-      continue;
-
-    case LOAD_LOCL_INT_VAR:
-      op_stack[(*stack_pos)++] = (*stack_frame)->mem[instr->GetOperand() + 1];
-      continue;
-
-    case STOR_LOCL_INT_VAR:
-      (*stack_frame)->mem[instr->GetOperand() + 1] = op_stack[--(*stack_pos)];
-      continue;
-
-    case ADD_INT: {
-      const size_t sp = *stack_pos;
-      op_stack[sp - 2] = (size_t)((INT64_VALUE)op_stack[sp - 1] + (INT64_VALUE)op_stack[sp - 2]);
-      *stack_pos = sp - 1;
-      continue;
-    }
-
-    case SUB_INT: {
-      const size_t sp = *stack_pos;
-      op_stack[sp - 2] = (size_t)((INT64_VALUE)op_stack[sp - 1] - (INT64_VALUE)op_stack[sp - 2]);
-      *stack_pos = sp - 1;
-      continue;
-    }
-
-    case MUL_INT: {
-      const size_t sp = *stack_pos;
-      op_stack[sp - 2] = (size_t)((INT64_VALUE)op_stack[sp - 1] * (INT64_VALUE)op_stack[sp - 2]);
-      *stack_pos = sp - 1;
-      continue;
-    }
-
-    case LBL:
-      continue;
-
-    case JMP:
-      if(instr->GetOperand2() < 0) {
-        ip = instr->GetOperand();
-      }
-      else if((INT64_VALUE)op_stack[--(*stack_pos)] == instr->GetOperand2()) {
-        ip = instr->GetOperand();
-      }
-      continue;
-
-    default: {
-      DispatchResult result = instr_dispatch[instr->GetType()](ctx);
-      if(result == DispatchResult::RETURN_JIT) {
-        return;
-      }
-      if(result == DispatchResult::HALT) {
-        break;
-      }
-    }
-    }
-#endif
 
     // check for try error recovery
     long recovery_ip = CheckTryRecovery();
@@ -2782,10 +2724,9 @@ void Runtime::StackInterpreter::ReleaseStackFrame(StackFrame* frame)
   pthread_mutex_lock(&cached_frames_mutex);
 #endif      
 
-  // load cache - clear only what the method used
+  // load cache
   frame->jit_mem = nullptr;
-  const long used_size = frame->method ? frame->method->GetMemorySize() + 2 : LOCAL_SIZE;
-  memset(frame->mem, 0, (used_size < LOCAL_SIZE ? used_size : LOCAL_SIZE) * sizeof(char));
+  memset(frame->mem, 0, LOCAL_SIZE * sizeof(char));
   cached_frames.push(frame);
 #ifdef _DEBUG
   std::wcout << L"caching frame=" << frame << std::endl;

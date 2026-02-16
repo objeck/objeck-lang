@@ -716,9 +716,16 @@ void* MemoryManager::CollectMemory(void* arg)
   std::vector<size_t*> dead_memory;
   std::vector<size_t*> survivors_to_promote;
 
-  // Sweep both generations
+  // Sweep: in minor GC mode, only sweep young generation (old gen wasn't fully traced)
   for(auto iter = allocated_memory.begin(); iter != allocated_memory.end(); ++iter) {
     size_t* mem = *iter;
+
+    // In minor GC mode, skip old generation objects entirely
+    if(minor_gc_mode && (mem[MARKED_FLAG] & GC_OLD_BIT)) {
+      // Clear mark bit if set during root/remembered-set tracing
+      mem[MARKED_FLAG] &= ~GC_MARK_BIT;
+      continue;
+    }
 
     // check dynamic memory: mark bit is bit 0
     if(mem[MARKED_FLAG] & GC_MARK_BIT) {
@@ -765,8 +772,15 @@ void* MemoryManager::CollectMemory(void* arg)
     young_allocation_size -= mem_size;
     old_generation.insert(mem);
     old_allocation_size += mem_size;
-    // Set old bit, clear age
-    mem[MARKED_FLAG] = (mem[MARKED_FLAG] & ~GC_AGE_MASK) | GC_OLD_BIT;
+    // Set old bit, clear age, add to remembered set (may reference young objects)
+    mem[MARKED_FLAG] = (mem[MARKED_FLAG] & ~GC_AGE_MASK) | GC_OLD_BIT | GC_RSET_BIT;
+#ifndef _GC_SERIAL
+    MUTEX_LOCK(&remembered_set_lock);
+#endif
+    remembered_set.push_back(mem);
+#ifndef _GC_SERIAL
+    MUTEX_UNLOCK(&remembered_set_lock);
+#endif
   }
 
   // free dead objects and remove from allocated set
@@ -1482,62 +1496,9 @@ void MemoryManager::CheckMemory(size_t* mem, StackDclr** dclrs, const long dcls_
 
 void MemoryManager::CollectMinor(size_t* op_stack, size_t stack_pos)
 {
-#ifndef _GC_SERIAL
-#ifdef _WIN32
-  if(!TryEnterCriticalSection(&marked_sweep_lock)) {
-    return;
-  }
-#else
-  if(pthread_mutex_trylock(&marked_sweep_lock)) {
-    return;
-  }
-#endif
-#endif
-
-  minor_gc_mode = true;
-
-  CollectionInfo* info = new CollectionInfo;
-  info->op_stack = op_stack;
-  info->stack_pos = stack_pos;
-
-  // Scan remembered set: trace old objects' references into young gen
-#ifndef _GC_SERIAL
-  MUTEX_LOCK(&remembered_set_lock);
-#endif
-  for(size_t i = 0; i < remembered_set.size(); ++i) {
-    size_t* old_obj = remembered_set[i];
-    StackClass* cls = GetClass(old_obj);
-    if(cls) {
-      if(MarkMemory(old_obj)) {
-        CheckMemory(old_obj, cls->GetInstanceDeclarations(), cls->GetNumberInstanceDeclarations(), 0);
-      }
-    }
-    else if(old_obj[TYPE] == NIL_TYPE || old_obj[TYPE] == INT_TYPE) {
-      // object/int array in remembered set
-      if(MarkMemory(old_obj)) {
-        const size_t size = old_obj[0];
-        const size_t dim = old_obj[1];
-        size_t* objects = (size_t*)(old_obj + 2 + dim);
-        for(size_t k = 0; k < size; ++k) {
-          CheckObject((size_t*)objects[k], false, 1);
-        }
-      }
-    }
-  }
-#ifndef _GC_SERIAL
-  MUTEX_UNLOCK(&remembered_set_lock);
-#endif
-
-  // Run the normal mark phase (with minor_gc_mode set, old gen won't be recursed)
-  CollectMemory(info);
-
-  minor_gc_mode = false;
-
-#ifndef _GC_SERIAL
-  MUTEX_UNLOCK(&marked_sweep_lock);
-#endif
-
-  delete info;
+  // Disabled: minor GC has correctness issues with old-to-young tracking.
+  // Fall through to major GC when allocation_size exceeds mem_max_size.
+  return;
 }
 
 void MemoryManager::CollectMajor(size_t* op_stack, size_t stack_pos)
