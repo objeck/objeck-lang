@@ -48,6 +48,15 @@ size_t MemoryManager::mem_max_size;
 size_t MemoryManager::uncollected_count;
 size_t MemoryManager::collected_count;
 
+// Generational GC statics
+std::unordered_set<size_t*> MemoryManager::young_generation;
+std::unordered_set<size_t*> MemoryManager::old_generation;
+std::vector<size_t*> MemoryManager::remembered_set;
+size_t MemoryManager::young_allocation_size;
+size_t MemoryManager::old_allocation_size;
+size_t MemoryManager::young_max_size;
+bool MemoryManager::minor_gc_mode;
+
 #ifdef _MEM_LOGGING
 ofstream MemoryManager::mem_logger;
 long MemoryManager::mem_cycle = 0L;
@@ -62,6 +71,7 @@ CRITICAL_SECTION MemoryManager::allocated_lock;
 CRITICAL_SECTION MemoryManager::marked_lock;
 CRITICAL_SECTION MemoryManager::marked_sweep_lock;
 CRITICAL_SECTION MemoryManager::free_memory_cache_lock;
+CRITICAL_SECTION MemoryManager::remembered_set_lock;
 #else
 pthread_mutex_t MemoryManager::pda_monitor_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t MemoryManager::pda_frame_lock = PTHREAD_MUTEX_INITIALIZER;
@@ -70,6 +80,7 @@ pthread_mutex_t MemoryManager::allocated_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t MemoryManager::marked_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t MemoryManager::marked_sweep_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t MemoryManager::free_memory_cache_lock = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t MemoryManager::remembered_set_lock = PTHREAD_MUTEX_INITIALIZER;
 #endif
 
 void MemoryManager::Initialize(StackProgram* p, size_t m)
@@ -85,7 +96,15 @@ void MemoryManager::Initialize(StackProgram* p, size_t m)
   uncollected_count = 0;
   free_memory_cache_size = 0;
 
-  // pre-reserve allocated_memory to avoid rehashing during allocation bursts
+  // Generational GC init
+  young_allocation_size = 0;
+  old_allocation_size = 0;
+  young_max_size = YOUNG_GEN_MAX;
+  minor_gc_mode = false;
+
+  // pre-reserve generation sets to avoid rehashing during allocation bursts
+  young_generation.reserve(4096);
+  old_generation.reserve(4096);
   allocated_memory.reserve(8192);
 
 #ifdef _MEM_LOGGING
@@ -101,6 +120,7 @@ void MemoryManager::Initialize(StackProgram* p, size_t m)
   InitializeCriticalSection(&marked_lock);
   InitializeCriticalSection(&marked_sweep_lock);
   InitializeCriticalSection(&free_memory_cache_lock);
+  InitializeCriticalSection(&remembered_set_lock);
 #endif
 
   initialized = true;
@@ -115,11 +135,12 @@ FLOAT_VALUE MemoryManager::GetRandomValue() {
 }
 
 // if return true, trace memory otherwise do not
+// Generational: mark bit is bit 0 of MARKED_FLAG, preserving gen/age/rset bits
 inline bool MemoryManager::MarkMemory(size_t* mem)
 {
   if(mem) {
-    // check if memory has been marked
-    if(mem[MARKED_FLAG]) {
+    // check if memory has been marked (bit 0)
+    if(mem[MARKED_FLAG] & GC_MARK_BIT) {
       return false;
     }
 
@@ -127,14 +148,14 @@ inline bool MemoryManager::MarkMemory(size_t* mem)
 #ifndef _GC_SERIAL
     MUTEX_LOCK(&marked_lock);
 #endif
-    mem[MARKED_FLAG] = 1L;
+    mem[MARKED_FLAG] |= GC_MARK_BIT;
 #ifndef _GC_SERIAL
     MUTEX_UNLOCK(&marked_lock);
 #endif
 
     return true;
   }
-  
+
   return false;
 }
 
@@ -219,9 +240,13 @@ size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, size_
   if(cls) {
     const long size = cls->GetInstanceMemorySize();
 
-    // collect memory
+    // collect memory: try minor GC first if young gen is full
+    if(collect && young_allocation_size + size > young_max_size) {
+      CollectMinor(op_stack, stack_pos);
+    }
+    // fall back to major GC if overall heap is full
     if(collect && allocation_size + size > mem_max_size) {
-      CollectAllMemory(op_stack, stack_pos);
+      CollectMajor(op_stack, stack_pos);
     }
 
     // allocate memory
@@ -229,7 +254,7 @@ size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, size_
     bool is_cached = false;
 #endif
     const size_t alloc_size = size * 2 + sizeof(size_t) * EXTRA_BUF_SIZE;
-    
+
     mem = GetMemory(alloc_size);
     if(!mem) {
       std::wcerr << L">>> Unable to allocate memory of size: " << alloc_size << L", consider checking the code. <<<" << std::endl;
@@ -240,11 +265,13 @@ size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, size_
     mem[EXTRA_BUF_SIZE + SIZE_OR_CLS] = (size_t)cls;
     mem += EXTRA_BUF_SIZE;
 
-    // record
+    // record: new objects go into young generation
  #ifndef _GC_SERIAL
     MUTEX_LOCK(&allocated_lock);
  #endif
     allocation_size += size;
+    young_allocation_size += size;
+    young_generation.insert(mem);
     allocated_memory.insert(mem);
  #ifndef _GC_SERIAL
     MUTEX_UNLOCK(&allocated_lock);
@@ -290,9 +317,13 @@ size_t* MemoryManager::AllocateArray(const size_t size, const MemoryType type, s
     exit(1);
   }
 
-  // collect memory
-  if (collect && allocation_size + calc_size > mem_max_size) {
-    CollectAllMemory(op_stack, stack_pos);
+  // collect memory: try minor GC first if young gen is full
+  if(collect && young_allocation_size + calc_size > young_max_size) {
+    CollectMinor(op_stack, stack_pos);
+  }
+  // fall back to major GC if overall heap is full
+  if(collect && allocation_size + calc_size > mem_max_size) {
+    CollectMajor(op_stack, stack_pos);
   }
 
   // allocate memory
@@ -311,10 +342,13 @@ size_t* MemoryManager::AllocateArray(const size_t size, const MemoryType type, s
   mem[EXTRA_BUF_SIZE + SIZE_OR_CLS] = calc_size;
   mem += EXTRA_BUF_SIZE;
 
+  // new arrays go into young generation
 #ifndef _GC_SERIAL
   MUTEX_LOCK(&allocated_lock);
 #endif
   allocation_size += calc_size;
+  young_allocation_size += calc_size;
+  young_generation.insert(mem);
   allocated_memory.insert(mem);
 #ifndef _GC_SERIAL
   MUTEX_UNLOCK(&allocated_lock);
@@ -680,13 +714,28 @@ void* MemoryManager::CollectMemory(void* arg)
 #endif
 
   std::vector<size_t*> dead_memory;
+  std::vector<size_t*> survivors_to_promote;
 
-  for(std::unordered_set<size_t*>::iterator iter = allocated_memory.begin(); iter != allocated_memory.end(); ++iter) {
+  // Sweep both generations
+  for(auto iter = allocated_memory.begin(); iter != allocated_memory.end(); ++iter) {
     size_t* mem = *iter;
 
-    // check dynamic memory
-    if(mem[MARKED_FLAG]) {
-      mem[MARKED_FLAG] = 0L;
+    // check dynamic memory: mark bit is bit 0
+    if(mem[MARKED_FLAG] & GC_MARK_BIT) {
+      // clear mark bit only, preserve generation/age/rset bits
+      mem[MARKED_FLAG] &= ~GC_MARK_BIT;
+
+      // If young and surviving, check age for promotion
+      if(!(mem[MARKED_FLAG] & GC_OLD_BIT)) {
+        size_t age = (mem[MARKED_FLAG] & GC_AGE_MASK) >> GC_AGE_SHIFT;
+        if(age >= GC_AGE_MAX) {
+          survivors_to_promote.push_back(mem);
+        }
+        else {
+          // increment age
+          mem[MARKED_FLAG] = (mem[MARKED_FLAG] & ~GC_AGE_MASK) | (((age + 1) << GC_AGE_SHIFT) & GC_AGE_MASK);
+        }
+      }
     }
     // will be collected
     else {
@@ -697,6 +746,28 @@ void* MemoryManager::CollectMemory(void* arg)
 #ifndef _GC_SERIAL
   MUTEX_UNLOCK(&marked_lock);
 #endif
+
+  // Promote surviving young objects that reached max age
+  for(size_t i = 0; i < survivors_to_promote.size(); ++i) {
+    size_t* mem = survivors_to_promote[i];
+
+    // Get memory size for accounting
+    size_t mem_size;
+    if(mem[TYPE] == NIL_TYPE) {
+      StackClass* cls = (StackClass*)mem[SIZE_OR_CLS];
+      mem_size = cls ? cls->GetInstanceMemorySize() : mem[SIZE_OR_CLS];
+    }
+    else {
+      mem_size = mem[SIZE_OR_CLS];
+    }
+
+    young_generation.erase(mem);
+    young_allocation_size -= mem_size;
+    old_generation.insert(mem);
+    old_allocation_size += mem_size;
+    // Set old bit, clear age
+    mem[MARKED_FLAG] = (mem[MARKED_FLAG] & ~GC_AGE_MASK) | GC_OLD_BIT;
+  }
 
   // free dead objects and remove from allocated set
   const size_t prev_size = allocated_memory.size();
@@ -724,6 +795,16 @@ void* MemoryManager::CollectMemory(void* arg)
     // account for deallocated memory
     allocation_size -= mem_size;
 
+    // remove from generation sets
+    if(mem[MARKED_FLAG] & GC_OLD_BIT) {
+      old_generation.erase(mem);
+      old_allocation_size -= mem_size;
+    }
+    else {
+      young_generation.erase(mem);
+      young_allocation_size -= mem_size;
+    }
+
 #ifdef _MEM_LOGGING
     mem_logger << mem_cycle << L", dealloc," << (mem[SIZE_OR_CLS] ? "obj," : "array,") << mem << L"," << mem_size << std::endl;
 #endif
@@ -736,6 +817,14 @@ void* MemoryManager::CollectMemory(void* arg)
     std::wcout << L"# freeing memory: addr=" << mem << L"(" << (size_t)mem
           << L"), size=" << mem_size << L" byte(s) #" << std::endl;
 #endif
+  }
+
+  // Rebuild remembered set after major GC (remove dead entries)
+  remembered_set.clear();
+  for(auto iter = old_generation.begin(); iter != old_generation.end(); ++iter) {
+    size_t* mem = *iter;
+    // Clear rset bit; will be re-added by write barriers
+    mem[MARKED_FLAG] &= ~GC_RSET_BIT;
   }
 
   // did not collect memory; adjust constraints
@@ -830,7 +919,7 @@ void* MemoryManager::CheckStack(void* arg)
 #ifndef _GC_SERIAL
     MUTEX_LOCK(&allocated_lock);
 #endif
-    const bool found = allocated_memory.find(check_mem) != allocated_memory.end();
+    const bool found = IsAllocated(check_mem);
 #ifndef _GC_SERIAL
     MUTEX_UNLOCK(&allocated_lock);
 #endif
@@ -1047,7 +1136,7 @@ void* MemoryManager::CheckJitRoots(void* arg)
 #ifndef _GC_SERIAL
         MUTEX_LOCK(&allocated_lock);
 #endif 
-        const bool found = allocated_memory.find(check_mem) != allocated_memory.end();
+        const bool found = IsAllocated(check_mem);
 #ifndef _GC_SERIAL
         MUTEX_UNLOCK(&allocated_lock);
 #endif
@@ -1389,16 +1478,91 @@ void MemoryManager::CheckMemory(size_t* mem, StackDclr** dclrs, const long dcls_
   }
 }
 
+// ---- Generational GC: Minor and Major collection entry points ----
+
+void MemoryManager::CollectMinor(size_t* op_stack, size_t stack_pos)
+{
+#ifndef _GC_SERIAL
+#ifdef _WIN32
+  if(!TryEnterCriticalSection(&marked_sweep_lock)) {
+    return;
+  }
+#else
+  if(pthread_mutex_trylock(&marked_sweep_lock)) {
+    return;
+  }
+#endif
+#endif
+
+  minor_gc_mode = true;
+
+  CollectionInfo* info = new CollectionInfo;
+  info->op_stack = op_stack;
+  info->stack_pos = stack_pos;
+
+  // Scan remembered set: trace old objects' references into young gen
+#ifndef _GC_SERIAL
+  MUTEX_LOCK(&remembered_set_lock);
+#endif
+  for(size_t i = 0; i < remembered_set.size(); ++i) {
+    size_t* old_obj = remembered_set[i];
+    StackClass* cls = GetClass(old_obj);
+    if(cls) {
+      if(MarkMemory(old_obj)) {
+        CheckMemory(old_obj, cls->GetInstanceDeclarations(), cls->GetNumberInstanceDeclarations(), 0);
+      }
+    }
+    else if(old_obj[TYPE] == NIL_TYPE || old_obj[TYPE] == INT_TYPE) {
+      // object/int array in remembered set
+      if(MarkMemory(old_obj)) {
+        const size_t size = old_obj[0];
+        const size_t dim = old_obj[1];
+        size_t* objects = (size_t*)(old_obj + 2 + dim);
+        for(size_t k = 0; k < size; ++k) {
+          CheckObject((size_t*)objects[k], false, 1);
+        }
+      }
+    }
+  }
+#ifndef _GC_SERIAL
+  MUTEX_UNLOCK(&remembered_set_lock);
+#endif
+
+  // Run the normal mark phase (with minor_gc_mode set, old gen won't be recursed)
+  CollectMemory(info);
+
+  minor_gc_mode = false;
+
+#ifndef _GC_SERIAL
+  MUTEX_UNLOCK(&marked_sweep_lock);
+#endif
+
+  delete info;
+}
+
+void MemoryManager::CollectMajor(size_t* op_stack, size_t stack_pos)
+{
+  minor_gc_mode = false;
+  CollectAllMemory(op_stack, stack_pos);
+}
+
+// ---- End Generational GC ----
+
 void MemoryManager::CheckObject(size_t* mem, bool is_obj, long depth)
 {
 #ifndef _GC_SERIAL
   MUTEX_LOCK(&allocated_lock);
 #endif
-  const bool is_allocated = allocated_memory.find(mem) != allocated_memory.end();
+  const bool is_allocated = IsAllocated(mem);
 #ifndef _GC_SERIAL
   MUTEX_UNLOCK(&allocated_lock);
 #endif
   if(is_allocated) {
+    // Minor GC optimization: mark old objects but don't recurse into them
+    if(minor_gc_mode && IsOldGen(mem)) {
+      MarkMemory(mem);
+      return;
+    }
     StackClass* cls;
     if(is_obj) {
       cls = GetClass(mem);

@@ -55,6 +55,20 @@
 
 #define ALIGN_POOL_MAX (1 << 22)
 
+// Generational GC: bit-packing in MARKED_FLAG slot
+// Bit 0:    Mark bit (existing)
+// Bit 1:    Old generation flag (0=young, 1=old)
+// Bit 2:    Remembered-set flag (0=not in rset, 1=in rset)
+// Bits 3-7: Age counter (0-31, how many minor GCs survived)
+#define GC_MARK_BIT    0x1ULL
+#define GC_OLD_BIT     0x2ULL
+#define GC_RSET_BIT    0x4ULL
+#define GC_AGE_SHIFT   3
+#define GC_AGE_MASK    (0x1FULL << GC_AGE_SHIFT)
+#define GC_AGE_MAX     2        // promote after surviving 2 minor GCs
+
+#define YOUNG_GEN_MAX  (512 * 1024)  // minor GC trigger threshold
+
 struct StackOperMemory {
   size_t* op_stack;
   size_t* stack_pos;
@@ -89,6 +103,15 @@ class MemoryManager {
   static std::unordered_set<size_t*> allocated_memory;
   static std::unordered_map<size_t, std::list<size_t*>*> free_memory_cache;
   static size_t free_memory_cache_size;
+
+  // Generational GC data structures
+  static std::unordered_set<size_t*> young_generation;
+  static std::unordered_set<size_t*> old_generation;
+  static std::vector<size_t*> remembered_set;
+  static size_t young_allocation_size;
+  static size_t old_allocation_size;
+  static size_t young_max_size;
+  static bool minor_gc_mode;
   
 #ifdef _WIN32
   static CRITICAL_SECTION jit_frame_lock;
@@ -98,6 +121,7 @@ class MemoryManager {
   static CRITICAL_SECTION marked_lock;
   static CRITICAL_SECTION marked_sweep_lock;
   static CRITICAL_SECTION free_memory_cache_lock;
+  static CRITICAL_SECTION remembered_set_lock;
 #else
   static pthread_mutex_t pda_monitor_lock;
   static pthread_mutex_t pda_frame_lock;
@@ -106,6 +130,7 @@ class MemoryManager {
   static pthread_mutex_t marked_lock;
   static pthread_mutex_t marked_sweep_lock;
 	static pthread_mutex_t free_memory_cache_lock;
+  static pthread_mutex_t remembered_set_lock;
 #endif
     
   // note: protected by 'allocated_lock'
@@ -116,6 +141,23 @@ class MemoryManager {
 
   // if return true, trace memory otherwise do not
   static inline bool MarkMemory(size_t* mem);
+
+  // Generational GC helpers
+  static inline bool IsAllocated(size_t* mem) {
+    return young_generation.find(mem) != young_generation.end() ||
+           old_generation.find(mem) != old_generation.end();
+  }
+
+  static inline bool IsOldGen(size_t* mem) {
+    return mem && (mem[MARKED_FLAG] & GC_OLD_BIT);
+  }
+
+  static inline bool IsYoungGen(size_t* mem) {
+    return mem && !(mem[MARKED_FLAG] & GC_OLD_BIT);
+  }
+
+  static void CollectMinor(size_t* op_stack, size_t stack_pos);
+  static void CollectMajor(size_t* op_stack, size_t stack_pos);
 
 #ifdef _MEM_LOGGING
   static ofstream mem_logger;
@@ -151,8 +193,8 @@ class MemoryManager {
 #ifndef _GC_SERIAL
     MUTEX_LOCK(&allocated_lock);
 #endif
-    std::unordered_set<size_t*>::iterator found = allocated_memory.find(mem);
-    if(found != allocated_memory.end() && mem[TYPE] == instructions::MemoryType::NIL_TYPE) {
+    const bool found = IsAllocated(mem);
+    if(found && mem[TYPE] == instructions::MemoryType::NIL_TYPE) {
 #ifndef _GC_SERIAL
       MUTEX_UNLOCK(&allocated_lock);
 #endif
@@ -161,7 +203,7 @@ class MemoryManager {
 #ifndef _GC_SERIAL
     MUTEX_UNLOCK(&allocated_lock);
 #endif
-    
+
     return nullptr;
   }
 
@@ -187,13 +229,19 @@ class MemoryManager {
       free_memory_cache.clear();
     }
 
-    for(std::unordered_set<size_t*>::iterator iter = allocated_memory.begin(); iter != allocated_memory.end(); ++iter) {
-      size_t* mem = *iter;
-      mem -= EXTRA_BUF_SIZE + 1;
-      free(mem);
-      mem = nullptr;
-    }
+    // Free both generations
+    auto free_gen = [](std::unordered_set<size_t*>& gen) {
+      for(auto iter = gen.begin(); iter != gen.end(); ++iter) {
+        size_t* mem = *iter;
+        mem -= EXTRA_BUF_SIZE + 1;
+        free(mem);
+      }
+      gen.clear();
+    };
+    free_gen(young_generation);
+    free_gen(old_generation);
     allocated_memory.clear();
+    remembered_set.clear();
 
 #ifdef _WIN32
     DeleteCriticalSection(&jit_frame_lock);
@@ -202,8 +250,9 @@ class MemoryManager {
     DeleteCriticalSection(&marked_lock);
     DeleteCriticalSection(&marked_sweep_lock);
     DeleteCriticalSection(&free_memory_cache_lock);
+    DeleteCriticalSection(&remembered_set_lock);
 #endif
-      
+
     initialized = false;
   }
   
@@ -227,6 +276,21 @@ class MemoryManager {
   
   static size_t* AllocateObject(const long obj_id, size_t* op_stack, size_t stack_pos, bool collect = true);
   static size_t* AllocateArray(const size_t size, const MemoryType type, size_t* op_stack, size_t stack_pos, bool collect = true);
+
+  // Generational GC write barrier: call when storing a reference into an object
+  static inline void WriteBarrier(size_t* target_obj) {
+    if(!target_obj) return;
+    if(!(target_obj[MARKED_FLAG] & GC_OLD_BIT)) return;      // young target, skip
+    if(target_obj[MARKED_FLAG] & GC_RSET_BIT) return;         // already tracked
+    target_obj[MARKED_FLAG] |= GC_RSET_BIT;
+#ifndef _GC_SERIAL
+    MUTEX_LOCK(&remembered_set_lock);
+#endif
+    remembered_set.push_back(target_obj);
+#ifndef _GC_SERIAL
+    MUTEX_UNLOCK(&remembered_set_lock);
+#endif
+  }
   
   // object verification
   static size_t* ValidObjectCast(size_t* mem, long to_id, long* cls_hierarchy, long** cls_interfaces);
