@@ -59,6 +59,7 @@ public:
                                StackFrame** call_stack, long* call_stack_pos, const long ip);
 
   static bool TryAutoJitCompile(StackMethod* callee);
+  static void PatchCallSites(StackMethod* callee, long patch_value);
 
   inline static size_t PopInt(size_t* op_stack, size_t* stack_pos);
   inline static void PushInt(size_t* op_stack, size_t* stack_pos, size_t value);
