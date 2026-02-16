@@ -48,7 +48,7 @@ namespace Runtime {
     size_t* op_stack;
     size_t* stack_pos;
     StackInstr* instr;
-    StackInstr** instrs;
+    StackInstr* instrs;
     long* ip;
     StackFrame** stack_frame;
     StackFrame** call_stack;

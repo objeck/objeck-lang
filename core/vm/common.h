@@ -197,7 +197,7 @@ struct StackDclr
 /********************************
  * StackInstr class
  ********************************/
-class StackInstr 
+class StackInstr
 {
   InstructionType type;
   long operand;
@@ -211,6 +211,10 @@ class StackInstr
   int line_num;
 
  public:
+  StackInstr() : type(END_STMTS), operand(0), operand3(0), native_offset(0), line_num(-1) {
+    alt_operand.operand2 = 0;
+  }
+
   StackInstr(int l, INT64_VALUE v) {
     line_num = l;
     type = LOAD_INT_LIT;
@@ -374,8 +378,8 @@ class StackMethod {
   bool is_virtual;
   bool has_and_or;
   bool is_lambda;
-  StackInstr** instrs;  
-  int instr_count;  
+  StackInstr* instrs;
+  int instr_count;
   long param_count;
   long mem_size;
   NativeCode* native_code;
@@ -424,116 +428,7 @@ class StackMethod {
       native_code = nullptr;
     }
 
-    // clean up
-    for(int i = 0; i < instr_count; ++i) {
-      StackInstr* tmp = instrs[i];
-
-      switch(tmp->GetType()) {
-      case RTRN:
-        // int operations
-      case ADD_INT:
-      case SUB_INT:
-      case MUL_INT:
-      case DIV_INT:
-      case MOD_INT:
-      case LES_INT:
-      case GTR_INT:
-      case EQL_INT:
-      case NEQL_INT:
-      case LES_EQL_INT:
-      case GTR_EQL_INT:
-      case OR_INT:
-      case AND_INT:
-      case SWAP_INT:
-      case BIT_AND_INT:
-      case BIT_OR_INT:
-      case BIT_XOR_INT:
-      case BIT_NOT_INT:
-      case SHL_INT:
-      case SHR_INT:
-        // float operations
-      case ADD_FLOAT:
-      case SUB_FLOAT:
-      case MUL_FLOAT:
-      case DIV_FLOAT:
-      case MOD_FLOAT:
-      case LES_FLOAT:
-      case GTR_FLOAT:
-      case EQL_FLOAT:
-      case NEQL_FLOAT:
-      case LES_EQL_FLOAT:
-      case GTR_EQL_FLOAT:
-      case SQRT_FLOAT:
-      case RAND_FLOAT:
-      case ASIN_FLOAT:
-      case ACOS_FLOAT:
-      case ATAN_FLOAT:
-      case LOG2_FLOAT:
-      case CBRT_FLOAT:
-      case ATAN2_FLOAT:
-      case ACOSH_FLOAT:
-      case ASINH_FLOAT:
-      case ATANH_FLOAT:
-      case COSH_FLOAT:
-      case SINH_FLOAT:
-      case TANH_FLOAT:
-      case LOG_FLOAT:
-      case ROUND_FLOAT:
-      case EXP_FLOAT:
-      case LOG10_FLOAT:
-      case POW_FLOAT:
-      case GAMMA_FLOAT:
-      case NAN_INT:
-      case INF_INT:
-      case NEG_INF_INT:
-      case NAN_FLOAT:
-      case INF_FLOAT:
-      case NEG_INF_FLOAT:
-      case CEIL_FLOAT:
-      case TRUNC_FLOAT:
-      case FLOR_FLOAT:
-      case SIN_FLOAT:
-      case COS_FLOAT:
-      case TAN_FLOAT:
-        // conversions
-      case I2F:
-      case F2I:
-      case S2I:
-      case S2F:
-      case I2S:
-      case F2S:
-        // shared libraries
-      case LOAD_ARY_SIZE:
-      case EXT_LIB_LOAD:
-      case EXT_LIB_UNLOAD:
-      case EXT_LIB_FUNC_CALL:
-        // thread
-      case THREAD_JOIN:
-      case THREAD_SLEEP:
-      case THREAD_MUTEX:
-      case CRITICAL_START:
-      case CRITICAL_END:
-      case TRY_END:
-        // copy and clear
-      case CPY_BYTE_ARY:
-      case CPY_CHAR_ARY:
-      case CPY_INT_ARY:
-      case CPY_FLOAT_ARY:
-      case ZERO_BYTE_ARY:
-      case ZERO_CHAR_ARY:
-      case ZERO_INT_ARY:
-      case ZERO_FLOAT_ARY:
-        // program flow
-      case POP_INT:
-      case POP_FLOAT:
-        break;
-
-      default:
-        delete tmp;
-        tmp = nullptr;
-        break;
-      }
-    }
+    // contiguous array - single deallocation
     delete[] instrs;
     instrs = nullptr;
   }
@@ -617,7 +512,7 @@ class StackMethod {
     return rtrn_type;
   }
 
-  void SetInstructions(StackInstr** ii, int ic) {
+  void SetInstructions(StackInstr* ii, int ic) {
     instrs = ii;
     instr_count = ic;
   }
@@ -652,10 +547,10 @@ class StackMethod {
   }
 
   inline StackInstr* GetInstruction(long i) const {
-    return instrs[i];
+    return &instrs[i];
   }
 
-  inline StackInstr** GetInstructions() const {
+  inline StackInstr* GetInstructions() const {
     return instrs;
   }
 };

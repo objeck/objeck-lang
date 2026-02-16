@@ -131,7 +131,7 @@ void StackInterpreter::Execute(size_t* op_stack, size_t* stack_pos, long i, Stac
   std::wcout << L"creating frame=" << (*stack_frame) << std::endl;
 #endif
   (*stack_frame)->jit_called = jit_called;
-  StackInstr** instrs = (*stack_frame)->method->GetInstructions();
+  StackInstr* instrs = (*stack_frame)->method->GetInstructions();
   long ip = i;
 
 #ifdef _TIMING
@@ -159,7 +159,7 @@ void StackInterpreter::Execute(size_t* op_stack, size_t* stack_pos, long i, Stac
 
   // execute using dispatch table
   do {
-    StackInstr* instr = instrs[ip++];
+    StackInstr* instr = &instrs[ip++];
     ctx.instr = instr;
 
 #ifdef _DEBUGGER
@@ -1656,7 +1656,7 @@ void StackInterpreter::ProcessNewCharArray(StackInstr* instr, size_t* &op_stack,
  * Processes a return instruction, 
  * this modifies the call std::stack.
  ********************************/
-void StackInterpreter::ProcessReturn(StackInstr** &instrs, long &ip)
+void StackInterpreter::ProcessReturn(StackInstr* &instrs, long &ip)
 {
 #ifdef _DEBUG
   std::wcout << L"stack oper: RTRN; call_pos=" << (*call_stack_pos) << std::endl;
@@ -1834,7 +1834,7 @@ void __attribute__((noinline)) StackInterpreter::CheckAutoJit(StackMethod* calle
 /********************************
  * Processes a synchronous dynamic method call.
  ********************************/
-void StackInterpreter::ProcessDynamicMethodCall(StackInstr* instr, StackInstr** &instrs, long &ip, size_t* &op_stack, size_t* &stack_pos)
+void StackInterpreter::ProcessDynamicMethodCall(StackInstr* instr, StackInstr* &instrs, long &ip, size_t* &op_stack, size_t* &stack_pos)
 {
   // save current method
   (*stack_frame)->ip = ip;
@@ -1887,7 +1887,7 @@ void StackInterpreter::ProcessDynamicMethodCall(StackInstr* instr, StackInstr** 
 /********************************
  * Processes a synchronous method call.
  ********************************/
-void StackInterpreter::ProcessMethodCall(StackInstr* instr, StackInstr** &instrs, long &ip, size_t* &op_stack, size_t* &stack_pos)
+void StackInterpreter::ProcessMethodCall(StackInstr* instr, StackInstr* &instrs, long &ip, size_t* &op_stack, size_t* &stack_pos)
 {
   // save current method
   (*stack_frame)->ip = ip;
@@ -1965,7 +1965,7 @@ void StackInterpreter::ProcessMethodCall(StackInstr* instr, StackInstr** &instrs
  * Processes an interpreted
  * synchronous method call.
  ********************************/
-void StackInterpreter::ProcessJitMethodCall(StackMethod* called, size_t* instance, StackInstr** &instrs, long &ip, size_t* &op_stack, size_t* &stack_pos)
+void StackInterpreter::ProcessJitMethodCall(StackMethod* called, size_t* instance, StackInstr* &instrs, long &ip, size_t* &op_stack, size_t* &stack_pos)
 {
 #if defined(_DEBUGGER) || defined(_NO_JIT)
   ProcessInterpretedMethodCall(called, instance, instrs, ip);
@@ -2039,7 +2039,7 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, size_t* instanc
  * Processes an interpreted
  * synchronous method call.
  ********************************/
-void StackInterpreter::ProcessInterpretedMethodCall(StackMethod* called, size_t* instance, StackInstr** &instrs, long &ip)
+void StackInterpreter::ProcessInterpretedMethodCall(StackMethod* called, size_t* instance, StackInstr* &instrs, long &ip)
 {
 #ifdef _DEBUG
   std::wcout << L"=== MTHD_CALL: id=" << called->GetClass()->GetId() << L","
