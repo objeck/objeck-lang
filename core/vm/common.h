@@ -293,6 +293,10 @@ class StackInstr
     return line_num;
   }
 
+  inline void SetType(InstructionType t) {
+    type = t;
+  }
+
   inline void SetOperand3(long o3) {
     operand3 = o3;
   }

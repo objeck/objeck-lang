@@ -192,7 +192,10 @@ namespace instructions {
     TRY_START,
     TRY_END,
     // system directives
-    END_STMTS
+    END_STMTS,
+    // runtime-only opcodes (not emitted by compiler, used for auto-JIT opcode rewriting)
+    MTHD_CALL_JIT,
+    DYN_MTHD_CALL_JIT
   };
 
   // memory reference context, used for

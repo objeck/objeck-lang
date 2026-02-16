@@ -605,6 +605,26 @@ static DispatchResult Handle_DYN_MTHD_CALL(DispatchContext& ctx) {
   return DispatchResult::CONTINUE;
 }
 
+static DispatchResult Handle_MTHD_CALL_JIT(DispatchContext& ctx) {
+  ctx.interp->ProcessJitOnlyMethodCall(ctx.instr, ctx.instrs, *ctx.ip, ctx.op_stack, ctx.stack_pos);
+  if((*ctx.stack_frame)->jit_called) {
+    (*ctx.stack_frame)->jit_called = false;
+    StackInterpreter::ReleaseStackFrame(*ctx.stack_frame);
+    return DispatchResult::RETURN_JIT;
+  }
+  return DispatchResult::CONTINUE;
+}
+
+static DispatchResult Handle_DYN_MTHD_CALL_JIT(DispatchContext& ctx) {
+  ctx.interp->ProcessJitOnlyDynamicMethodCall(ctx.instr, ctx.instrs, *ctx.ip, ctx.op_stack, ctx.stack_pos);
+  if((*ctx.stack_frame)->jit_called) {
+    (*ctx.stack_frame)->jit_called = false;
+    StackInterpreter::ReleaseStackFrame(*ctx.stack_frame);
+    return DispatchResult::RETURN_JIT;
+  }
+  return DispatchResult::CONTINUE;
+}
+
 static DispatchResult Handle_JMP(DispatchContext& ctx) {
 #ifdef _DEBUG
   std::wcout << L"stack oper: JMP; call_pos=" << (*ctx.call_stack_pos) << std::endl;
@@ -1085,5 +1105,9 @@ OpcodeHandler Runtime::instr_dispatch[] = {
   Handle_TRY_END,               // 140: TRY_END
 
   // End marker (141)
-  Handle_END_STMTS              // 141: END_STMTS
+  Handle_END_STMTS,             // 141: END_STMTS
+
+  // Runtime-only: auto-JIT rewritten opcodes (142-143)
+  Handle_MTHD_CALL_JIT,         // 142: MTHD_CALL_JIT
+  Handle_DYN_MTHD_CALL_JIT      // 143: DYN_MTHD_CALL_JIT
 };
