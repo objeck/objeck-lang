@@ -107,10 +107,17 @@ void JitCompiler::PatchCallSites(StackMethod* callee, long patch_value)
       for(int i = 0; i < instr_count; ++i) {
         StackInstr* instr = method->GetInstruction(i);
         const InstructionType type = instr->GetType();
-        if((type == MTHD_CALL || type == DYN_MTHD_CALL) &&
-           instr->GetOperand() == target_cls_id &&
-           instr->GetOperand2() == target_mthd_id &&
-           instr->GetOperand3() == 0) {
+        if(instr->GetOperand() == target_cls_id &&
+           instr->GetOperand2() == target_mthd_id) {
+          if(patch_value > 0) {
+            // JIT success: rewrite opcode for zero-branch dispatch
+            if(type == MTHD_CALL) {
+              instr->SetType(MTHD_CALL_JIT);
+            }
+            else if(type == DYN_MTHD_CALL) {
+              instr->SetType(DYN_MTHD_CALL_JIT);
+            }
+          }
           instr->SetOperand3(patch_value);
         }
       }

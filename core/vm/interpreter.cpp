@@ -1825,8 +1825,16 @@ void __attribute__((noinline)) StackInterpreter::CheckAutoJit(StackMethod* calle
   if(called->GetJitCallCount() < JIT_AUTO_THRESHOLD) {
     called->IncrementJitCallCount();
     if(called->GetJitCallCount() == JIT_AUTO_THRESHOLD) {
-      JitCompiler::TryAutoJitCompile(called);
+      if(!JitCompiler::TryAutoJitCompile(called)) {
+        // JIT failed: mark this call site so we skip auto-JIT on future calls
+        instr->SetOperand3(-1);
+      }
+      // success: PatchCallSites already set operand3=1 on all call sites
     }
+  }
+  else if(called->GetJitCallCount() > JIT_AUTO_THRESHOLD) {
+    // already attempted and failed on another call site -- mark this one too
+    instr->SetOperand3(-1);
   }
 }
 #endif
@@ -1862,15 +1870,12 @@ void StackInterpreter::ProcessDynamicMethodCall(StackInstr* instr, StackInstr* &
 #endif
 
 #ifndef _NO_JIT
-  // operand3 > 0: JIT path (native keyword or auto-JIT patched)
-  // operand3 == 0: interpreter path (identical to baseline branch structure)
   if(instr->GetOperand3()) {
     ProcessJitMethodCall(called, instance, instrs, ip, op_stack, stack_pos);
   }
   else {
-    // auto-JIT: check and compile in a separate function to avoid icache bloat
     CheckAutoJit(called, instr);
-    if(instr->GetOperand3()) {
+    if(instr->GetType() == DYN_MTHD_CALL_JIT) {
       ProcessJitMethodCall(called, instance, instrs, ip, op_stack, stack_pos);
     }
     else {
@@ -1887,6 +1892,52 @@ void StackInterpreter::ProcessDynamicMethodCall(StackInstr* instr, StackInstr* &
 /********************************
  * Processes a synchronous method call.
  ********************************/
+/********************************
+ * Cold path: virtual method resolution + auto-JIT.
+ * Kept noinline to reduce icache pressure on the dispatch hot path.
+ ********************************/
+StackMethod* __attribute__((noinline, cold)) StackInterpreter::ResolveVirtualMethod(
+    StackMethod* concrete_call, size_t* instance, StackInstr* instr,
+    StackInstr* &instrs, long &ip, size_t* &stack_pos)
+{
+  StackClass* concrete_class = MemoryManager::GetClass((size_t*)instance);
+  if(!concrete_class) {
+    if(TryErrorRecovery(stack_pos)) {
+      (*stack_frame) = PopFrame();
+      instrs = (*stack_frame)->method->GetInstructions();
+      ip = (*stack_frame)->ip;
+      return nullptr;
+    }
+    std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
+    StackErrorUnwind();
+#ifdef _NO_HALT
+    halt = true;
+    return nullptr;
+#else
+    exit(1);
+#endif
+  }
+
+  StackMethod* virtual_call = concrete_class->GetVirtualMethod(instr->GetOperand(), instr->GetOperand2());
+  if(!virtual_call) {
+    const std::wstring qualified_method_name = concrete_call->GetName();
+    const std::wstring method_ending = qualified_method_name.substr(qualified_method_name.find(L':'));
+
+    std::wstring method_name = concrete_class->GetName() + method_ending;
+    virtual_call = concrete_class->GetMethod(method_name);
+    while(!virtual_call) {
+      concrete_class = concrete_class->GetParent();
+      method_name = concrete_class->GetName() + method_ending;
+      virtual_call = concrete_class->GetMethod(method_name);
+    }
+    concrete_class->AddVirutalMethod(instr->GetOperand(), instr->GetOperand2(), virtual_call);
+  }
+#ifdef _DEBUG
+  assert(virtual_call);
+#endif
+  return virtual_call;
+}
+
 void StackInterpreter::ProcessMethodCall(StackInstr* instr, StackInstr* &instrs, long &ip, size_t* &op_stack, size_t* &stack_pos)
 {
   // save current method
@@ -1899,57 +1950,23 @@ void StackInterpreter::ProcessMethodCall(StackInstr* instr, StackInstr* &instrs,
   // make call
   StackMethod* concrete_call = program->GetClass(instr->GetOperand())->GetMethod(instr->GetOperand2());
 
-	// dynamic method call
+  // virtual method call -- resolve in cold path
   if(concrete_call->IsVirtual()) {
-    // lookup binding
-    StackClass* concrete_class = MemoryManager::GetClass((size_t*)instance);
-    if(!concrete_class) {
-      if(TryErrorRecovery(stack_pos)) {
-        (*stack_frame) = PopFrame();
-        instrs = (*stack_frame)->method->GetInstructions();
-        ip = (*stack_frame)->ip;
-        return;
-      }
-      std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
-      StackErrorUnwind();
-#ifdef _NO_HALT
-      halt = true;
-      return;
-#else
-      exit(1);
-#endif
-    }
-
-    StackMethod* virtual_call = concrete_class->GetVirtualMethod(instr->GetOperand(), instr->GetOperand2());
-    if(!virtual_call) {
-      // binding method
-      const std::wstring qualified_method_name = concrete_call->GetName();
-      const std::wstring method_ending = qualified_method_name.substr(qualified_method_name.find(L':'));
-
-      // check method cache
-      std::wstring method_name = concrete_class->GetName() + method_ending;
-      virtual_call = concrete_class->GetMethod(method_name);
-      while(!virtual_call) {
-        concrete_class = concrete_class->GetParent();
-        method_name = concrete_class->GetName() + method_ending;
-        virtual_call = concrete_class->GetMethod(method_name);
-      }
-      // bind method call
-      concrete_class->AddVirutalMethod(instr->GetOperand(), instr->GetOperand2(), virtual_call);
-    }
-#ifdef _DEBUG
-    assert(virtual_call);
-#endif
-    concrete_call = virtual_call;
+    concrete_call = ResolveVirtualMethod(concrete_call, instance, instr, instrs, ip, stack_pos);
+    if(!concrete_call) return;
   }
 
 #ifndef _NO_JIT
+  // MTHD_CALL: compile-time native (operand3>0) or interpreter path
+  // Auto-JIT success rewrites opcode to MTHD_CALL_JIT (separate handler)
   if(instr->GetOperand3()) {
     ProcessJitMethodCall(concrete_call, instance, instrs, ip, op_stack, stack_pos);
   }
   else {
+    // auto-JIT counting (first 10 calls only, noinline)
     CheckAutoJit(concrete_call, instr);
-    if(instr->GetOperand3()) {
+    // if opcode was rewritten to MTHD_CALL_JIT, take JIT path
+    if(instr->GetType() == MTHD_CALL_JIT) {
       ProcessJitMethodCall(concrete_call, instance, instrs, ip, op_stack, stack_pos);
     }
     else {
@@ -1959,6 +1976,48 @@ void StackInterpreter::ProcessMethodCall(StackInstr* instr, StackInstr* &instrs,
 #else
   ProcessInterpretedMethodCall(concrete_call, instance, instrs, ip);
 #endif
+}
+
+/********************************
+ * JIT-only method call (dispatched via MTHD_CALL_JIT opcode).
+ * No auto-JIT checks, no operand3 branches -- straight to JIT.
+ ********************************/
+void StackInterpreter::ProcessJitOnlyMethodCall(StackInstr* instr, StackInstr* &instrs, long &ip, size_t* &op_stack, size_t* &stack_pos)
+{
+  (*stack_frame)->ip = ip;
+  PushFrame((*stack_frame));
+  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+  StackMethod* concrete_call = program->GetClass(instr->GetOperand())->GetMethod(instr->GetOperand2());
+
+  if(concrete_call->IsVirtual()) {
+    concrete_call = ResolveVirtualMethod(concrete_call, instance, instr, instrs, ip, stack_pos);
+    if(!concrete_call) return;
+  }
+
+  ProcessJitMethodCall(concrete_call, instance, instrs, ip, op_stack, stack_pos);
+}
+
+/********************************
+ * JIT-only dynamic method call (dispatched via DYN_MTHD_CALL_JIT opcode).
+ ********************************/
+void StackInterpreter::ProcessJitOnlyDynamicMethodCall(StackInstr* instr, StackInstr* &instrs, long &ip, size_t* &op_stack, size_t* &stack_pos)
+{
+  (*stack_frame)->ip = ip;
+  PushFrame((*stack_frame));
+
+  const size_t mthd_cls_id = PopInt(op_stack, stack_pos);
+  const long cls_id = (mthd_cls_id >> (16 * (1))) & 0xFFFF;
+  const long mthd_id = (mthd_cls_id >> (16 * (0))) & 0xFFFF;
+
+  if(mthd_id < 0 || cls_id < 0) {
+    std::wcerr << L"Internal VM error." << std::endl;
+    exit(1);
+  }
+
+  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+  StackMethod* called = program->GetClass(cls_id)->GetMethod(mthd_id);
+
+  ProcessJitMethodCall(called, instance, instrs, ip, op_stack, stack_pos);
 }
 
 /********************************
