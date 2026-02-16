@@ -1879,7 +1879,11 @@ void* StackInterpreter::AsyncMethodCall(void* arg)
  * Auto-JIT: check if a method should be JIT-compiled.
  * Kept out-of-line to avoid icache bloat in the dispatch loop.
  ********************************/
+#ifdef _MSC_VER
+__declspec(noinline) void StackInterpreter::CheckAutoJit(StackMethod* called, StackInstr* instr)
+#else
 void __attribute__((noinline)) StackInterpreter::CheckAutoJit(StackMethod* called, StackInstr* instr)
+#endif
 {
   if(called->GetJitCallCount() < JIT_AUTO_THRESHOLD) {
     called->IncrementJitCallCount();
@@ -1955,7 +1959,11 @@ void StackInterpreter::ProcessDynamicMethodCall(StackInstr* instr, StackInstr* &
  * Cold path: virtual method resolution + auto-JIT.
  * Kept noinline to reduce icache pressure on the dispatch hot path.
  ********************************/
+#ifdef _MSC_VER
+__declspec(noinline) StackMethod* StackInterpreter::ResolveVirtualMethod(
+#else
 StackMethod* __attribute__((noinline, cold)) StackInterpreter::ResolveVirtualMethod(
+#endif
     StackMethod* concrete_call, size_t* instance, StackInstr* instr,
     StackInstr* &instrs, long &ip, size_t* &stack_pos)
 {
