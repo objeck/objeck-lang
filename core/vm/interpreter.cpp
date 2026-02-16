@@ -1815,6 +1815,22 @@ void* StackInterpreter::AsyncMethodCall(void* arg)
 }
 #endif
 
+#ifndef _NO_JIT
+/********************************
+ * Auto-JIT: check if a method should be JIT-compiled.
+ * Kept out-of-line to avoid icache bloat in the dispatch loop.
+ ********************************/
+void __attribute__((noinline)) StackInterpreter::CheckAutoJit(StackMethod* called, StackInstr* instr)
+{
+  if(called->GetJitCallCount() < JIT_AUTO_THRESHOLD) {
+    called->IncrementJitCallCount();
+    if(called->GetJitCallCount() == JIT_AUTO_THRESHOLD) {
+      JitCompiler::TryAutoJitCompile(called);
+    }
+  }
+}
+#endif
+
 /********************************
  * Processes a synchronous dynamic method call.
  ********************************/
@@ -1846,10 +1862,15 @@ void StackInterpreter::ProcessDynamicMethodCall(StackInstr* instr, StackInstr** 
 #endif
 
 #ifndef _NO_JIT
-  // operand3: 0=not yet decided, >0=JIT ready, <0=JIT failed
+  // operand3 > 0: JIT path (native keyword or auto-JIT patched)
+  // operand3 == 0: interpreter path (identical to baseline branch structure)
   if(instr->GetOperand3()) {
-    // already decided: JIT (>0) or interpreter (<0)
-    if(instr->GetOperand3() > 0) {
+    ProcessJitMethodCall(called, instance, instrs, ip, op_stack, stack_pos);
+  }
+  else {
+    // auto-JIT: check and compile in a separate function to avoid icache bloat
+    CheckAutoJit(called, instr);
+    if(instr->GetOperand3()) {
       ProcessJitMethodCall(called, instance, instrs, ip, op_stack, stack_pos);
     }
     else {
@@ -1857,19 +1878,6 @@ void StackInterpreter::ProcessDynamicMethodCall(StackInstr* instr, StackInstr** 
       instrs = (*stack_frame)->method->GetInstructions();
       ip = 0;
     }
-  }
-  else {
-    // auto-JIT: count toward threshold (max 10 calls per method)
-    called->IncrementJitCallCount();
-    if(called->GetJitCallCount() == JIT_AUTO_THRESHOLD) {
-      if(JitCompiler::TryAutoJitCompile(called)) {
-        ProcessJitMethodCall(called, instance, instrs, ip, op_stack, stack_pos);
-        return;
-      }
-    }
-    (*stack_frame) = GetStackFrame(called, instance);
-    instrs = (*stack_frame)->method->GetInstructions();
-    ip = 0;
   }
 #else
   ProcessInterpretedMethodCall(called, instance, instrs, ip);
@@ -1936,24 +1944,17 @@ void StackInterpreter::ProcessMethodCall(StackInstr* instr, StackInstr** &instrs
   }
 
 #ifndef _NO_JIT
-  // fast path: already JIT'd or marked native
   if(instr->GetOperand3()) {
-    if(instr->GetOperand3() > 0) {
+    ProcessJitMethodCall(concrete_call, instance, instrs, ip, op_stack, stack_pos);
+  }
+  else {
+    CheckAutoJit(concrete_call, instr);
+    if(instr->GetOperand3()) {
       ProcessJitMethodCall(concrete_call, instance, instrs, ip, op_stack, stack_pos);
     }
     else {
       ProcessInterpretedMethodCall(concrete_call, instance, instrs, ip);
     }
-  }
-  else {
-    concrete_call->IncrementJitCallCount();
-    if(concrete_call->GetJitCallCount() == JIT_AUTO_THRESHOLD) {
-      if(JitCompiler::TryAutoJitCompile(concrete_call)) {
-        ProcessJitMethodCall(concrete_call, instance, instrs, ip, op_stack, stack_pos);
-        return;
-      }
-    }
-    ProcessInterpretedMethodCall(concrete_call, instance, instrs, ip);
   }
 #else
   ProcessInterpretedMethodCall(concrete_call, instance, instrs, ip);
