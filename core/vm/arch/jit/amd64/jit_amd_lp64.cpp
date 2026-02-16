@@ -966,12 +966,9 @@ void JitAmd64::ProcessInstructions() {
 #endif
       break;
       
-    default: {
-      InstructionType error = (InstructionType)instr->GetType();
-      std::wcerr << L"Unknown instruction: " << error << L"!" << std::endl;
-      exit(1);
-    }
-      break;
+    default:
+      compile_success = false;
+      return;
     }
   }
 }
