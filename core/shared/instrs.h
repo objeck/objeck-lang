@@ -141,6 +141,8 @@ namespace instructions {
     // control
     MTHD_CALL,
     DYN_MTHD_CALL,
+    MTHD_CALL_JIT, // only used by the VM
+    DYN_MTHD_CALL_JIT, // only used by the VM
     JMP,
     LBL,
     RTRN,
@@ -192,10 +194,7 @@ namespace instructions {
     TRY_START,
     TRY_END,
     // system directives
-    END_STMTS,
-    // runtime-only opcodes (not emitted by compiler, used for auto-JIT opcode rewriting)
-    MTHD_CALL_JIT,
-    DYN_MTHD_CALL_JIT
+    END_STMTS,    
   };
 
   // memory reference context, used for

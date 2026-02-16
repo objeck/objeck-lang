@@ -1763,7 +1763,7 @@ void ContextAnalyzer::AnalyzeExpression(Expression* expression, const int depth)
 void ContextAnalyzer::AnalyzeTryIntrinsic(MethodCall* method_call, Expression* expression, const int depth)
 {
 #ifdef _DEBUG
-  Debug(L"Try() intrinsic", method_call->GetLineNumber(), depth);
+  Debug(L"Try() intrinsic", static_cast<Expression*>(method_call)->GetLineNumber(), depth);
 #endif
 
   method_call->SetTryIntrinsic(true);
@@ -1798,7 +1798,7 @@ void ContextAnalyzer::AnalyzeTryIntrinsic(MethodCall* method_call, Expression* e
 void ContextAnalyzer::AnalyzeOtherwiseIntrinsic(MethodCall* method_call, Expression* expression, const int depth)
 {
 #ifdef _DEBUG
-  Debug(L"Otherwise() intrinsic", method_call->GetLineNumber(), depth);
+  Debug(L"Otherwise() intrinsic", static_cast<Expression*>(method_call)->GetLineNumber(), depth);
 #endif
 
   method_call->SetOtherwiseIntrinsic(true);
