@@ -1467,6 +1467,7 @@ void StackInterpreter::ProcessStoreFunctionVar(StackInstr* instr, size_t* &op_st
     }
     cls_inst_mem[instr->GetOperand()] = PopInt(op_stack, stack_pos);
     cls_inst_mem[instr->GetOperand() + 1] = PopInt(op_stack, stack_pos);
+    MemoryManager::WriteBarrier(cls_inst_mem);
   }
 }
 

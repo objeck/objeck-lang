@@ -716,37 +716,54 @@ void* MemoryManager::CollectMemory(void* arg)
   std::vector<size_t*> dead_memory;
   std::vector<size_t*> survivors_to_promote;
 
-  // Sweep: in minor GC mode, only sweep young generation (old gen wasn't fully traced)
-  for(auto iter = allocated_memory.begin(); iter != allocated_memory.end(); ++iter) {
-    size_t* mem = *iter;
+  if(minor_gc_mode) {
+    // Minor GC: only sweep young generation
+    for(auto iter = young_generation.begin(); iter != young_generation.end(); ++iter) {
+      size_t* mem = *iter;
 
-    // In minor GC mode, skip old generation objects entirely
-    if(minor_gc_mode && (mem[MARKED_FLAG] & GC_OLD_BIT)) {
-      // Clear mark bit if set during root/remembered-set tracing
-      mem[MARKED_FLAG] &= ~GC_MARK_BIT;
-      continue;
-    }
+      if(mem[MARKED_FLAG] & GC_MARK_BIT) {
+        mem[MARKED_FLAG] &= ~GC_MARK_BIT;
 
-    // check dynamic memory: mark bit is bit 0
-    if(mem[MARKED_FLAG] & GC_MARK_BIT) {
-      // clear mark bit only, preserve generation/age/rset bits
-      mem[MARKED_FLAG] &= ~GC_MARK_BIT;
-
-      // If young and surviving, check age for promotion
-      if(!(mem[MARKED_FLAG] & GC_OLD_BIT)) {
         size_t age = (mem[MARKED_FLAG] & GC_AGE_MASK) >> GC_AGE_SHIFT;
         if(age >= GC_AGE_MAX) {
           survivors_to_promote.push_back(mem);
         }
         else {
-          // increment age
           mem[MARKED_FLAG] = (mem[MARKED_FLAG] & ~GC_AGE_MASK) | (((age + 1) << GC_AGE_SHIFT) & GC_AGE_MASK);
         }
       }
+      else {
+        dead_memory.push_back(mem);
+      }
     }
-    // will be collected
-    else {
-      dead_memory.push_back(mem);
+
+    // Clear mark bits on old objects that were marked during remembered set tracing
+    for(auto iter = old_generation.begin(); iter != old_generation.end(); ++iter) {
+      size_t* mem = *iter;
+      mem[MARKED_FLAG] &= ~GC_MARK_BIT;
+    }
+  }
+  else {
+    // Major GC: sweep all allocated memory
+    for(auto iter = allocated_memory.begin(); iter != allocated_memory.end(); ++iter) {
+      size_t* mem = *iter;
+
+      if(mem[MARKED_FLAG] & GC_MARK_BIT) {
+        mem[MARKED_FLAG] &= ~GC_MARK_BIT;
+
+        if(!(mem[MARKED_FLAG] & GC_OLD_BIT)) {
+          size_t age = (mem[MARKED_FLAG] & GC_AGE_MASK) >> GC_AGE_SHIFT;
+          if(age >= GC_AGE_MAX) {
+            survivors_to_promote.push_back(mem);
+          }
+          else {
+            mem[MARKED_FLAG] = (mem[MARKED_FLAG] & ~GC_AGE_MASK) | (((age + 1) << GC_AGE_SHIFT) & GC_AGE_MASK);
+          }
+        }
+      }
+      else {
+        dead_memory.push_back(mem);
+      }
     }
   }
 
@@ -834,11 +851,15 @@ void* MemoryManager::CollectMemory(void* arg)
   }
 
   // Rebuild remembered set after major GC (remove dead entries)
-  remembered_set.clear();
-  for(auto iter = old_generation.begin(); iter != old_generation.end(); ++iter) {
-    size_t* mem = *iter;
-    // Clear rset bit; will be re-added by write barriers
-    mem[MARKED_FLAG] &= ~GC_RSET_BIT;
+  if(!minor_gc_mode) {
+    remembered_set.clear();
+    // After major GC, conservatively re-add ALL old objects to remembered set
+    // so the next minor GC traces all old→young references
+    for(auto iter = old_generation.begin(); iter != old_generation.end(); ++iter) {
+      size_t* mem = *iter;
+      mem[MARKED_FLAG] |= GC_RSET_BIT;
+      remembered_set.push_back(mem);
+    }
   }
 
   // did not collect memory; adjust constraints
@@ -1496,9 +1517,48 @@ void MemoryManager::CheckMemory(size_t* mem, StackDclr** dclrs, const long dcls_
 
 void MemoryManager::CollectMinor(size_t* op_stack, size_t stack_pos)
 {
-  // Disabled: minor GC has correctness issues with old-to-young tracking.
-  // Fall through to major GC when allocation_size exceeds mem_max_size.
-  return;
+#ifndef _GC_SERIAL
+#ifdef _WIN32
+  if(!TryEnterCriticalSection(&marked_sweep_lock)) {
+    return;
+  }
+#else
+  if(pthread_mutex_trylock(&marked_sweep_lock)) {
+    return;
+  }
+#endif
+#endif
+
+  // Phase 1: Trace remembered set with full recursion (minor_gc_mode=false)
+  // so old→old→young chains are fully followed
+  minor_gc_mode = false;
+#ifndef _GC_SERIAL
+  MUTEX_LOCK(&remembered_set_lock);
+#endif
+  for(size_t i = 0; i < remembered_set.size(); ++i) {
+    size_t* mem = remembered_set[i];
+    CheckObject(mem, true, 0);
+  }
+#ifndef _GC_SERIAL
+  MUTEX_UNLOCK(&remembered_set_lock);
+#endif
+
+  // Phase 2: Mark from roots with minor_gc_mode=true
+  // Old objects already marked in phase 1 won't be re-recursed (MarkMemory returns false)
+  minor_gc_mode = true;
+
+  CollectionInfo* info = new CollectionInfo;
+  info->op_stack = op_stack;
+  info->stack_pos = stack_pos;
+
+  CollectMemory(info);
+
+#ifndef _GC_SERIAL
+  MUTEX_UNLOCK(&marked_sweep_lock);
+#endif
+
+  delete info;
+  info = nullptr;
 }
 
 void MemoryManager::CollectMajor(size_t* op_stack, size_t stack_pos)

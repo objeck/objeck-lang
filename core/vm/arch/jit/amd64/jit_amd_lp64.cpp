@@ -5264,13 +5264,21 @@ bool JitAmd64::Compile(StackMethod* cm)
     skip_jump = false;
     method = cm;
 
+    // Pre-scan: reject methods with field-store instructions (no JIT write barrier)
+    for(long i = 0; i < method->GetInstructionCount(); ++i) {
+      const InstructionType type = method->GetInstruction(i)->GetType();
+      if(type == STOR_CLS_INST_INT_VAR || type == COPY_CLS_INST_INT_VAR || type == STOR_INT_ARY_ELM) {
+        return false;
+      }
+    }
+
 #ifdef _DEBUG_JIT
     long cls_id = method->GetClass()->GetId();
     long mthd_id = method->GetId();
     std::wcout << L"---------- Compiling Native Code: method_id=" << cls_id << L","
       << mthd_id << L"; mthd_name='" << method->GetName() << L"'; params="
       << method->GetParamCount() << L" ----------" << std::endl;
-#endif  
+#endif
     // code buffer memory
     code_buf_max = BUFFER_SIZE;
     code = (unsigned char*)malloc(code_buf_max);

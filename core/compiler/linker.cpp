@@ -545,34 +545,28 @@ std::map<std::wstring, std::vector<std::pair<std::wstring, std::wstring>>> Linke
 }
 
 const std::wstring Linker::TrimNameValue(const std::wstring& name_value) {
-  std::wstring timed_name_value;
-
-  if(!name_value.empty()) {
-    bool done = false;
-
-    size_t index = 0;
-    do {
-      const wchar_t name_value_char = name_value.at(index++);
-      if(!std::isspace(name_value_char)) {
-        done = true;
-      }
-    } while(!done);
-    size_t name_value_start = index - 1;
-
-    done = false;
-    index = name_value.size();
-    do {
-      const wchar_t name_value_char = name_value.at(--index);
-      if(!std::isspace(name_value_char)) {
-        ++index;
-        done = true;
-      }
-    } while(!done);
-
-    return name_value.substr(name_value_start, index - name_value_start);
+  if(name_value.empty()) {
+    return L"";
   }
 
-  return L"";
+  // trim leading whitespace
+  size_t name_value_start = 0;
+  while(name_value_start < name_value.size() && std::isspace(name_value.at(name_value_start))) {
+    name_value_start++;
+  }
+
+  // all whitespace
+  if(name_value_start >= name_value.size()) {
+    return L"";
+  }
+
+  // trim trailing whitespace
+  size_t name_value_end = name_value.size();
+  while(name_value_end > name_value_start && std::isspace(name_value.at(name_value_end - 1))) {
+    name_value_end--;
+  }
+
+  return name_value.substr(name_value_start, name_value_end - name_value_start);
 }
 
 
