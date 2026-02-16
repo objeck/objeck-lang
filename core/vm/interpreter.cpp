@@ -231,6 +231,8 @@ void StackInterpreter::StorClsInstIntVar(StackInstr* instr, size_t* &op_stack, s
   size_t mem = op_stack[(*stack_pos) - 2];
   (*stack_pos) -= 2;
   cls_inst_mem[instr->GetOperand()] = mem;
+  // Generational GC write barrier
+  MemoryManager::WriteBarrier(cls_inst_mem);
 }
 
 void StackInterpreter::CopyLoclIntVar(StackInstr* instr, size_t* &op_stack, size_t* &stack_pos)
@@ -263,6 +265,8 @@ void StackInterpreter::CopyClsInstIntVar(StackInstr* instr, size_t* &op_stack, s
 #endif
   }
   cls_inst_mem[instr->GetOperand()] = TopInt(op_stack, stack_pos);
+  // Generational GC write barrier
+  MemoryManager::WriteBarrier(cls_inst_mem);
 }
 
 void StackInterpreter::Str2Int(size_t* &op_stack, size_t* &stack_pos)
@@ -2180,6 +2184,8 @@ void StackInterpreter::ProcessStoreIntArrayElement(StackInstr* instr, size_t* &o
   }
 #endif
   array[index + instr->GetOperand()] = PopInt(op_stack, stack_pos);
+  // Generational GC write barrier for array stores (array base is at array - 2)
+  MemoryManager::WriteBarrier(array - 2);
 }
 
 /********************************
