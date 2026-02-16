@@ -1846,12 +1846,27 @@ void StackInterpreter::ProcessDynamicMethodCall(StackInstr* instr, StackInstr** 
 #endif
 
 #ifndef _NO_JIT
-  // execute JIT call (native keyword set at compile time)
+  // operand3: 0=not yet decided, >0=JIT ready, <0=JIT failed
   if(instr->GetOperand3()) {
-    ProcessJitMethodCall(called, instance, instrs, ip, op_stack, stack_pos);
+    // already decided: JIT (>0) or interpreter (<0)
+    if(instr->GetOperand3() > 0) {
+      ProcessJitMethodCall(called, instance, instrs, ip, op_stack, stack_pos);
+    }
+    else {
+      (*stack_frame) = GetStackFrame(called, instance);
+      instrs = (*stack_frame)->method->GetInstructions();
+      ip = 0;
+    }
   }
-  // execute interpreter
   else {
+    // auto-JIT: count toward threshold (max 10 calls per method)
+    called->IncrementJitCallCount();
+    if(called->GetJitCallCount() == JIT_AUTO_THRESHOLD) {
+      if(JitCompiler::TryAutoJitCompile(called)) {
+        ProcessJitMethodCall(called, instance, instrs, ip, op_stack, stack_pos);
+        return;
+      }
+    }
     (*stack_frame) = GetStackFrame(called, instance);
     instrs = (*stack_frame)->method->GetInstructions();
     ip = 0;
@@ -1922,12 +1937,22 @@ void StackInterpreter::ProcessMethodCall(StackInstr* instr, StackInstr** &instrs
 
 #ifndef _NO_JIT
   // fast path: already JIT'd or marked native
-  // execute JIT call (native keyword set at compile time)
   if(instr->GetOperand3()) {
-    ProcessJitMethodCall(concrete_call, instance, instrs, ip, op_stack, stack_pos);
+    if(instr->GetOperand3() > 0) {
+      ProcessJitMethodCall(concrete_call, instance, instrs, ip, op_stack, stack_pos);
+    }
+    else {
+      ProcessInterpretedMethodCall(concrete_call, instance, instrs, ip);
+    }
   }
-  // execute interpreter
   else {
+    concrete_call->IncrementJitCallCount();
+    if(concrete_call->GetJitCallCount() == JIT_AUTO_THRESHOLD) {
+      if(JitCompiler::TryAutoJitCompile(concrete_call)) {
+        ProcessJitMethodCall(concrete_call, instance, instrs, ip, op_stack, stack_pos);
+        return;
+      }
+    }
     ProcessInterpretedMethodCall(concrete_call, instance, instrs, ip);
   }
 #else

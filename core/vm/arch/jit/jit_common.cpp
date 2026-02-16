@@ -74,12 +74,49 @@ bool JitCompiler::TryAutoJitCompile(StackMethod* callee)
 #endif
 
   if(jit_compiler.Compile(callee)) {
+    // patch all MTHD_CALL instructions that reference this callee
+    // so the interpreter's GetOperand3() fast path catches them
+    PatchCallSites(callee, 1);
     return true;
   }
 
-  // mark as permanently failed so we never check GetNativeCode() again
+  // mark as permanently failed and patch all call sites to -1
   callee->SetJitAttempted();
+  PatchCallSites(callee, -1);
   return false;
+}
+
+void JitCompiler::PatchCallSites(StackMethod* callee, long patch_value)
+{
+  const long target_cls_id = callee->GetClass()->GetId();
+  const long target_mthd_id = callee->GetId();
+  const long cls_num = program->GetClassNumber();
+  StackClass** classes = program->GetClasses();
+
+  for(long c = 0; c < cls_num; ++c) {
+    StackClass* cls = classes[c];
+    if(!cls) continue;
+
+    const int mthd_num = cls->GetMethodCount();
+    StackMethod** methods = cls->GetMethods();
+
+    for(int m = 0; m < mthd_num; ++m) {
+      StackMethod* method = methods[m];
+      if(!method) continue;
+
+      const int instr_count = method->GetInstructionCount();
+      for(int i = 0; i < instr_count; ++i) {
+        StackInstr* instr = method->GetInstruction(i);
+        const InstructionType type = instr->GetType();
+        if((type == MTHD_CALL || type == DYN_MTHD_CALL) &&
+           instr->GetOperand() == target_cls_id &&
+           instr->GetOperand2() == target_mthd_id &&
+           instr->GetOperand3() == 0) {
+          instr->SetOperand3(patch_value);
+        }
+      }
+    }
+  }
 }
 #endif
 
