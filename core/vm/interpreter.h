@@ -387,15 +387,15 @@ namespace Runtime {
     void ProcessNewCharArray(StackInstr* instr, size_t* &op_stack, size_t* &stack_pos);
     void ProcessNewObjectInstance(StackInstr* instr, size_t* &op_stack, size_t* &stack_pos);
     void ProcessNewFunctionInstance(StackInstr* instr, size_t*& op_stack, size_t*& stack_pos);
-    void ProcessReturn(StackInstr** &instrs, long &ip);
+    void ProcessReturn(StackInstr* &instrs, long &ip);
 
-    void ProcessMethodCall(StackInstr* instr, StackInstr** &instrs, long &ip, size_t* &op_stack, size_t* &stack_pos);
-    void ProcessDynamicMethodCall(StackInstr* instr, StackInstr** &instrs, long &ip, size_t* &op_stack, size_t* &stack_pos);
-    void ProcessJitMethodCall(StackMethod* called, size_t* instance, StackInstr** &instrs, long &ip, size_t* &op_stack, size_t* &stack_pos);
+    void ProcessMethodCall(StackInstr* instr, StackInstr* &instrs, long &ip, size_t* &op_stack, size_t* &stack_pos);
+    void ProcessDynamicMethodCall(StackInstr* instr, StackInstr* &instrs, long &ip, size_t* &op_stack, size_t* &stack_pos);
+    void ProcessJitMethodCall(StackMethod* called, size_t* instance, StackInstr* &instrs, long &ip, size_t* &op_stack, size_t* &stack_pos);
     void CheckAutoJit(StackMethod* called, StackInstr* instr);
     void ProcessAsyncMethodCall(StackMethod* called, size_t* param);
 
-    void ProcessInterpretedMethodCall(StackMethod* called, size_t* instance, StackInstr** &instrs, long &ip);
+    void ProcessInterpretedMethodCall(StackMethod* called, size_t* instance, StackInstr* &instrs, long &ip);
     void ProcessLoadIntArrayElement(StackInstr* instr, size_t* &op_stack, size_t* &stack_pos);
     void ProcessStoreIntArrayElement(StackInstr* instr, size_t* &op_stack, size_t* &stack_pos);
     void ProcessLoadFloatArrayElement(StackInstr* instr, size_t* &op_stack, size_t* &stack_pos);

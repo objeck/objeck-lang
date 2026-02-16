@@ -489,36 +489,36 @@ void Loader::LoadMethods(StackClass* cls, bool is_debug)
 
 void Loader::LoadInitializationCode(StackMethod* method)
 {
-  std::vector<StackInstr*> instrs;
+  std::vector<StackInstr> instrs;
 
-  instrs.push_back(new StackInstr(-1, arguments.size()));
-  instrs.push_back(new StackInstr(-1, NEW_INT_ARY, (long)1));
-  instrs.push_back(new StackInstr(-1, STOR_LOCL_INT_VAR, 0L, LOCL));
+  instrs.push_back(StackInstr(-1, arguments.size()));
+  instrs.push_back(StackInstr(-1, NEW_INT_ARY, (long)1));
+  instrs.push_back(StackInstr(-1, STOR_LOCL_INT_VAR, 0L, LOCL));
 
   for(size_t i = 0; i < arguments.size(); ++i) {
-    instrs.push_back(new StackInstr(-1, arguments[i].size()));
-    instrs.push_back(new StackInstr(-1, NEW_CHAR_ARY, 1L));
-    instrs.push_back(new StackInstr(-1, (long)(num_char_strings + i)));
-    instrs.push_back(new StackInstr(-1, (long)instructions::CPY_CHAR_STR_ARY));
-    instrs.push_back(new StackInstr(-1, TRAP_RTRN, 3L));
+    instrs.push_back(StackInstr(-1, arguments[i].size()));
+    instrs.push_back(StackInstr(-1, NEW_CHAR_ARY, 1L));
+    instrs.push_back(StackInstr(-1, (long)(num_char_strings + i)));
+    instrs.push_back(StackInstr(-1, (long)instructions::CPY_CHAR_STR_ARY));
+    instrs.push_back(StackInstr(-1, TRAP_RTRN, 3L));
 
-    instrs.push_back(new StackInstr(-1, NEW_OBJ_INST, (long)string_cls_id));
+    instrs.push_back(StackInstr(-1, NEW_OBJ_INST, (long)string_cls_id));
     // note: method ID is position dependent
-    instrs.push_back(new StackInstr(-1, MTHD_CALL, (long)string_cls_id, 2L, 0L));
+    instrs.push_back(StackInstr(-1, MTHD_CALL, (long)string_cls_id, 2L, 0L));
 
-    instrs.push_back(new StackInstr(-1, i));
-    instrs.push_back(new StackInstr(-1, LOAD_LOCL_INT_VAR, 0L, LOCL));
-    instrs.push_back(new StackInstr(-1, STOR_INT_ARY_ELM, 1L, LOCL));
+    instrs.push_back(StackInstr(-1, i));
+    instrs.push_back(StackInstr(-1, LOAD_LOCL_INT_VAR, 0L, LOCL));
+    instrs.push_back(StackInstr(-1, STOR_INT_ARY_ELM, 1L, LOCL));
   }
 
-  instrs.push_back(new StackInstr(-1, LOAD_LOCL_INT_VAR, 0L, LOCL));
-  instrs.push_back(new StackInstr(-1, LOAD_INST_MEM));
-  instrs.push_back(new StackInstr(-1, MTHD_CALL, (long)start_class_id, (long)start_method_id, 0L));
-  instrs.push_back(cached_instrs[RTRN]);
+  instrs.push_back(StackInstr(-1, LOAD_LOCL_INT_VAR, 0L, LOCL));
+  instrs.push_back(StackInstr(-1, LOAD_INST_MEM));
+  instrs.push_back(StackInstr(-1, MTHD_CALL, (long)start_class_id, (long)start_method_id, 0L));
+  instrs.push_back(*cached_instrs[RTRN]);
 
-  // copy and set instructions
-  StackInstr** mthd_instrs = new StackInstr*[instrs.size()];
-  copy(instrs.begin(), instrs.end(), mthd_instrs);
+  // copy to contiguous array
+  StackInstr* mthd_instrs = new StackInstr[instrs.size()];
+  std::copy(instrs.begin(), instrs.end(), mthd_instrs);
   method->SetInstructions(mthd_instrs, (int)instrs.size());
 }
 
@@ -526,7 +526,7 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
 {
   int line_num = -1;
   const unsigned long num_instrs = ReadUnsigned();
-  StackInstr** mthd_instrs = new StackInstr*[num_instrs];
+  StackInstr* mthd_instrs = new StackInstr[num_instrs];
 
   for(unsigned long i = 0; i < num_instrs; ++i) {
     const int type = ReadByte();
@@ -536,185 +536,185 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
 
     switch(type) {
     case LOAD_INST_MEM:
-      mthd_instrs[i] = new StackInstr(line_num, LOAD_INST_MEM);
+      mthd_instrs[i] = StackInstr(line_num, LOAD_INST_MEM);
       break;
 
     case LOAD_CLS_MEM:
-      mthd_instrs[i] = new StackInstr(line_num, LOAD_CLS_MEM);
+      mthd_instrs[i] = StackInstr(line_num, LOAD_CLS_MEM);
       break;
 
     case LOAD_INT_LIT:
-      mthd_instrs[i] = new StackInstr(line_num, ReadInt64());
+      mthd_instrs[i] = StackInstr(line_num, ReadInt64());
       break;
 
     case LOAD_CHAR_LIT:
-      mthd_instrs[i] = new StackInstr(line_num, LOAD_CHAR_LIT, (long)ReadChar());
+      mthd_instrs[i] = StackInstr(line_num, LOAD_CHAR_LIT, (long)ReadChar());
       break;
 
     case TRAP:
-      mthd_instrs[i] = new StackInstr(line_num, TRAP, ReadInt());
+      mthd_instrs[i] = StackInstr(line_num, TRAP, ReadInt());
       break;
 
     case TRAP_RTRN:
-      mthd_instrs[i] = new StackInstr(line_num, TRAP_RTRN, ReadInt());
+      mthd_instrs[i] = StackInstr(line_num, TRAP_RTRN, ReadInt());
       break;
 
     case OBJ_INST_CAST:
-      mthd_instrs[i] = new StackInstr(line_num, OBJ_INST_CAST, ReadInt());
+      mthd_instrs[i] = StackInstr(line_num, OBJ_INST_CAST, ReadInt());
       break;
 
     case LOAD_FLOAT_LIT:
-      mthd_instrs[i] = new StackInstr(line_num, LOAD_FLOAT_LIT, ReadDouble());
+      mthd_instrs[i] = StackInstr(line_num, LOAD_FLOAT_LIT, ReadDouble());
       break;
 
     case NEW_FLOAT_ARY:
-      mthd_instrs[i] = new StackInstr(line_num, NEW_FLOAT_ARY, ReadInt());
+      mthd_instrs[i] = StackInstr(line_num, NEW_FLOAT_ARY, ReadInt());
       break;
 
     case NEW_INT_ARY:
-      mthd_instrs[i] = new StackInstr(line_num, NEW_INT_ARY, ReadInt());
+      mthd_instrs[i] = StackInstr(line_num, NEW_INT_ARY, ReadInt());
       break;
 
     case NEW_BYTE_ARY:
-      mthd_instrs[i] = new StackInstr(line_num, NEW_BYTE_ARY, ReadInt());
+      mthd_instrs[i] = StackInstr(line_num, NEW_BYTE_ARY, ReadInt());
       break;
 
     case NEW_CHAR_ARY:
-      mthd_instrs[i] = new StackInstr(line_num, NEW_CHAR_ARY, ReadInt());
+      mthd_instrs[i] = StackInstr(line_num, NEW_CHAR_ARY, ReadInt());
       break;
 
     case NEW_OBJ_INST:
-      mthd_instrs[i] = new StackInstr(line_num, NEW_OBJ_INST, ReadInt());
+      mthd_instrs[i] = StackInstr(line_num, NEW_OBJ_INST, ReadInt());
       break;
 
     case NEW_FUNC_INST:
-      mthd_instrs[i] = new StackInstr(line_num, NEW_FUNC_INST, ReadInt());
+      mthd_instrs[i] = StackInstr(line_num, NEW_FUNC_INST, ReadInt());
       break;
 
     case LBL:
-      mthd_instrs[i] = new StackInstr(line_num, LBL, ReadInt());
+      mthd_instrs[i] = StackInstr(line_num, LBL, ReadInt());
       break;
 
     case OBJ_TYPE_OF:
-      mthd_instrs[i] = new StackInstr(line_num, OBJ_TYPE_OF, ReadInt());
+      mthd_instrs[i] = StackInstr(line_num, OBJ_TYPE_OF, ReadInt());
       break;
 
     case LOAD_INT_VAR: {
       const long id = ReadInt();
       const MemoryContext mem_context = (MemoryContext)ReadInt();
-      mthd_instrs[i] = new StackInstr(line_num, mem_context == LOCL ? LOAD_LOCL_INT_VAR : LOAD_CLS_INST_INT_VAR, id, mem_context);
+      mthd_instrs[i] = StackInstr(line_num, mem_context == LOCL ? LOAD_LOCL_INT_VAR : LOAD_CLS_INST_INT_VAR, id, mem_context);
     }
       break;
 
     case LOAD_FUNC_VAR: {
       const long id = ReadInt();
       const MemoryContext mem_context = (MemoryContext)ReadInt();
-      mthd_instrs[i] = new StackInstr(line_num, LOAD_FUNC_VAR, id, mem_context);
+      mthd_instrs[i] = StackInstr(line_num, LOAD_FUNC_VAR, id, mem_context);
     }
       break;
 
     case LOAD_FLOAT_VAR: {
       const long id = ReadInt();
       const MemoryContext mem_context = (MemoryContext)ReadInt();
-      mthd_instrs[i] = new StackInstr(line_num, LOAD_FLOAT_VAR, id, mem_context);
+      mthd_instrs[i] = StackInstr(line_num, LOAD_FLOAT_VAR, id, mem_context);
     }
       break;
 
     case STOR_INT_VAR: {
       const long id = ReadInt();
       const MemoryContext mem_context = (MemoryContext)ReadInt();
-      mthd_instrs[i] = new StackInstr(line_num, mem_context == LOCL ? STOR_LOCL_INT_VAR : STOR_CLS_INST_INT_VAR, id, mem_context);
+      mthd_instrs[i] = StackInstr(line_num, mem_context == LOCL ? STOR_LOCL_INT_VAR : STOR_CLS_INST_INT_VAR, id, mem_context);
     }
       break;
 
     case STOR_FUNC_VAR: {
       const long id = ReadInt();
       const MemoryContext mem_context = (MemoryContext)ReadInt();
-      mthd_instrs[i] = new StackInstr(line_num, STOR_FUNC_VAR, id, mem_context);
+      mthd_instrs[i] = StackInstr(line_num, STOR_FUNC_VAR, id, mem_context);
     }
       break;
 
     case STOR_FLOAT_VAR: {
       const long id = ReadInt();
       const long mem_context = ReadInt();
-      mthd_instrs[i] = new StackInstr(line_num, STOR_FLOAT_VAR, id, mem_context);
+      mthd_instrs[i] = StackInstr(line_num, STOR_FLOAT_VAR, id, mem_context);
     }
       break;
 
     case COPY_INT_VAR: {
       const long id = ReadInt();
       const MemoryContext mem_context = (MemoryContext)ReadInt();
-      mthd_instrs[i] = new StackInstr(line_num, mem_context == LOCL ? COPY_LOCL_INT_VAR : COPY_CLS_INST_INT_VAR, id, mem_context);
+      mthd_instrs[i] = StackInstr(line_num, mem_context == LOCL ? COPY_LOCL_INT_VAR : COPY_CLS_INST_INT_VAR, id, mem_context);
     }
       break;
 
     case COPY_FLOAT_VAR: {
       const long id = ReadInt();
       const MemoryContext mem_context = (MemoryContext)ReadInt();
-      mthd_instrs[i] = new StackInstr(line_num, COPY_FLOAT_VAR, id, mem_context);
+      mthd_instrs[i] = StackInstr(line_num, COPY_FLOAT_VAR, id, mem_context);
     }
       break;
 
     case LOAD_BYTE_ARY_ELM: {
       const long dim = ReadInt();
       const MemoryContext mem_context = (MemoryContext)ReadInt();
-      mthd_instrs[i] = new StackInstr(line_num, LOAD_BYTE_ARY_ELM, dim, mem_context);
+      mthd_instrs[i] = StackInstr(line_num, LOAD_BYTE_ARY_ELM, dim, mem_context);
     }
       break;
 
     case LOAD_CHAR_ARY_ELM: {
       const long dim = ReadInt();
       const MemoryContext mem_context = (MemoryContext)ReadInt();
-      mthd_instrs[i] = new StackInstr(line_num, LOAD_CHAR_ARY_ELM, dim, mem_context);
+      mthd_instrs[i] = StackInstr(line_num, LOAD_CHAR_ARY_ELM, dim, mem_context);
     }
       break;
       
     case LOAD_INT_ARY_ELM: {
       const long dim = ReadInt();
       const MemoryContext mem_context = (MemoryContext)ReadInt();
-      mthd_instrs[i] = new StackInstr(line_num, LOAD_INT_ARY_ELM, dim, mem_context);
+      mthd_instrs[i] = StackInstr(line_num, LOAD_INT_ARY_ELM, dim, mem_context);
     }
       break;
 
     case LOAD_FLOAT_ARY_ELM: {
       const long dim = ReadInt();
       const MemoryContext mem_context = (MemoryContext)ReadInt();
-      mthd_instrs[i] = new StackInstr(line_num, LOAD_FLOAT_ARY_ELM, dim, mem_context);
+      mthd_instrs[i] = StackInstr(line_num, LOAD_FLOAT_ARY_ELM, dim, mem_context);
     }
       break;
 
     case STOR_BYTE_ARY_ELM: {
       const long dim = ReadInt();
       const MemoryContext mem_context = (MemoryContext)ReadInt();
-      mthd_instrs[i] = new StackInstr(line_num, STOR_BYTE_ARY_ELM, dim, mem_context);
+      mthd_instrs[i] = StackInstr(line_num, STOR_BYTE_ARY_ELM, dim, mem_context);
     }
       break;
 
     case STOR_CHAR_ARY_ELM: {
       const long dim = ReadInt();
       const MemoryContext mem_context = (MemoryContext)ReadInt();
-      mthd_instrs[i] = new StackInstr(line_num, STOR_CHAR_ARY_ELM, dim, mem_context);
+      mthd_instrs[i] = StackInstr(line_num, STOR_CHAR_ARY_ELM, dim, mem_context);
     }
       break;
 
     case STOR_INT_ARY_ELM: {
       const long dim = ReadInt();
       const MemoryContext mem_context = (MemoryContext)ReadInt();
-      mthd_instrs[i] = new StackInstr(line_num, STOR_INT_ARY_ELM, dim, mem_context);
+      mthd_instrs[i] = StackInstr(line_num, STOR_INT_ARY_ELM, dim, mem_context);
     }
       break;
 
     case STOR_FLOAT_ARY_ELM: {
       const long dim = ReadInt();
       const long mem_context = ReadInt();
-      mthd_instrs[i] = new StackInstr(line_num, STOR_FLOAT_ARY_ELM, dim, mem_context);
+      mthd_instrs[i] = StackInstr(line_num, STOR_FLOAT_ARY_ELM, dim, mem_context);
     }
       break;
 
     case DYN_MTHD_CALL: {
       const long num_params = ReadInt();
       const long rtrn_type = ReadInt();
-      mthd_instrs[i] = new StackInstr(line_num, DYN_MTHD_CALL, num_params, rtrn_type);
+      mthd_instrs[i] = StackInstr(line_num, DYN_MTHD_CALL, num_params, rtrn_type);
     }
       break;
 
@@ -722,7 +722,7 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
       const long cls_id = ReadInt();
       const long mthd_id = ReadInt();
       const long is_native = ReadInt();
-      mthd_instrs[i] = new StackInstr(line_num, MTHD_CALL, cls_id, mthd_id, is_native);
+      mthd_instrs[i] = StackInstr(line_num, MTHD_CALL, cls_id, mthd_id, is_native);
     }
       break;
 
@@ -730,21 +730,21 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
       const long cls_id = ReadInt();
       const long mthd_id = ReadInt();
       const long is_native = ReadInt();
-      mthd_instrs[i] = new StackInstr(line_num, ASYNC_MTHD_CALL, cls_id, mthd_id, is_native);
+      mthd_instrs[i] = StackInstr(line_num, ASYNC_MTHD_CALL, cls_id, mthd_id, is_native);
     }
       break;
 
     case JMP: {
       const long label = ReadInt();
       const long cond = ReadInt();
-      mthd_instrs[i] = new StackInstr(line_num, JMP, label, cond);
+      mthd_instrs[i] = StackInstr(line_num, JMP, label, cond);
     }
       break;
 
     case TRY_START: {
       const long handler = ReadInt();
       const long cond = ReadInt();
-      mthd_instrs[i] = new StackInstr(line_num, TRY_START, handler, cond);
+      mthd_instrs[i] = StackInstr(line_num, TRY_START, handler, cond);
     }
       break;
 
@@ -841,7 +841,7 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
     case ZERO_CHAR_ARY:
     case ZERO_INT_ARY:
     case ZERO_FLOAT_ARY:
-      mthd_instrs[i] = cached_instrs[type];
+      mthd_instrs[i] = *cached_instrs[type];
       break;
       //
       // End: instruction caching
