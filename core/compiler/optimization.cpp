@@ -216,6 +216,14 @@ std::vector<IntermediateBlock*> ItermediateOptimizer::OptimizeMethod(std::vector
 #endif
   RunPass(inputs, [this](IntermediateBlock* b) { return RemoveUselessInstructions(b); });
 
+  // 0.1 - dead block elimination (s1+)
+  if(optimization_level > 0) {
+#ifdef _DEBUG
+    GetLogger() << L"  Dead block elimination..." << std::endl;
+#endif
+    RunPass(inputs, [this](IntermediateBlock* b) { return DeadBlockElimination(b); });
+  }
+
   if(is_lib || optimization_level < 1) {
     return inputs;
   }
@@ -284,7 +292,15 @@ std::vector<IntermediateBlock*> ItermediateOptimizer::OptimizeMethod(std::vector
       RunPass(inputs, [this](IntermediateBlock* b) { return InstructionReplacement(b); });
     }
 
-    // 3.2 - dead code elimination (s2+)
+    // 3.2 - peephole optimization (s3)
+    if(optimization_level > 2) {
+#ifdef _DEBUG
+      GetLogger() << L"  Peephole optimization..." << std::endl;
+#endif
+      RunPass(inputs, [this](IntermediateBlock* b) { return PeepholeOptimize(b); });
+    }
+
+    // 3.3 - dead code elimination (s2+)
     if(optimization_level > 1) {
 #ifdef _DEBUG
       GetLogger() << L"  Dead code elimination..." << std::endl;
@@ -1948,6 +1964,100 @@ IntermediateBlock* ItermediateOptimizer::DeadCodeElim(IntermediateBlock* inputs)
       if(next->GetType() == LBL && instr->GetOperand() == next->GetOperand()) {
         continue;
       }
+    }
+
+    outputs->AddInstruction(instr);
+  }
+
+  return outputs;
+}
+
+// ---- Dead Block Elimination ----
+// After an unconditional JMP, instructions until the next reachable LBL are dead.
+IntermediateBlock* ItermediateOptimizer::DeadBlockElimination(IntermediateBlock* inputs)
+{
+  IntermediateBlock* outputs = new IntermediateBlock;
+  std::vector<IntermediateInstruction*> input_instrs = inputs->GetInstructions();
+
+  // Collect all reachable label IDs (JMP targets + TRY_START handler labels)
+  std::unordered_set<long> jmp_targets;
+  for(size_t i = 0; i < input_instrs.size(); ++i) {
+    const auto type = input_instrs[i]->GetType();
+    if(type == JMP || type == TRY_START) {
+      jmp_targets.insert(input_instrs[i]->GetOperand());
+    }
+  }
+
+  bool dead = false;
+  for(size_t i = 0; i < input_instrs.size(); ++i) {
+    IntermediateInstruction* instr = input_instrs[i];
+
+    if(dead) {
+      // A reachable label ends the dead region
+      if(instr->GetType() == LBL && jmp_targets.find(instr->GetOperand()) != jmp_targets.end()) {
+        dead = false;
+        outputs->AddInstruction(instr);
+      }
+      // else: skip dead instruction
+    }
+    else {
+      outputs->AddInstruction(instr);
+      // After unconditional JMP, mark subsequent instructions as dead
+      if(instr->GetType() == JMP && instr->GetOperand2() < 0) {
+        dead = true;
+      }
+    }
+  }
+
+  return outputs;
+}
+
+// ---- Peephole Optimization ----
+// Pattern-based instruction simplification using sliding window.
+IntermediateBlock* ItermediateOptimizer::PeepholeOptimize(IntermediateBlock* inputs)
+{
+  IntermediateBlock* outputs = new IntermediateBlock;
+  std::vector<IntermediateInstruction*> input_instrs = inputs->GetInstructions();
+  const size_t sz = input_instrs.size();
+
+  for(size_t i = 0; i < sz; ++i) {
+    IntermediateInstruction* instr = input_instrs[i];
+
+    // 2-instruction patterns: LOAD_INT_LIT followed by arithmetic
+    if(i + 1 < sz && instr->GetType() == LOAD_INT_LIT) {
+      IntermediateInstruction* next = input_instrs[i + 1];
+      const INT64_VALUE lit = instr->GetOperand7();
+
+      // LOAD_INT_LIT 0; ADD_INT => remove both (add zero identity)
+      if(lit == 0 && next->GetType() == ADD_INT) {
+        i++;  // skip both
+        continue;
+      }
+      // LOAD_INT_LIT 0; SUB_INT => remove both (subtract zero identity)
+      if(lit == 0 && next->GetType() == SUB_INT) {
+        i++;
+        continue;
+      }
+      // LOAD_INT_LIT 1; MUL_INT => remove both (multiply one identity)
+      if(lit == 1 && next->GetType() == MUL_INT) {
+        i++;
+        continue;
+      }
+      // LOAD_INT_LIT 0; MUL_INT => replace with LOAD_INT_LIT 0 (multiply by zero)
+      if(lit == 0 && next->GetType() == MUL_INT) {
+        // pop the previous operand (replace with swap+pop+load0)
+        // Simpler: just emit LOAD_INT_LIT 0 and POP_INT to replace the other operand
+        outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POP_INT));
+        outputs->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(cur_line_num, (INT64_VALUE)0));
+        i++;
+        continue;
+      }
+    }
+
+    // 2-instruction pattern: double BIT_NOT_INT cancels out
+    if(i + 1 < sz && instr->GetType() == BIT_NOT_INT && input_instrs[i + 1]->GetType() == BIT_NOT_INT) {
+      i++;  // skip both
+      continue;
     }
 
     outputs->AddInstruction(instr);

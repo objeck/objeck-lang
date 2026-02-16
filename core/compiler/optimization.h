@@ -109,6 +109,12 @@ class ItermediateOptimizer {
   // dead code elimination
   IntermediateBlock* DeadCodeElim(IntermediateBlock* input);
 
+  // dead block elimination (removes unreachable code after unconditional jumps)
+  IntermediateBlock* DeadBlockElimination(IntermediateBlock* input);
+
+  // peephole optimization (pattern-based instruction simplification)
+  IntermediateBlock* PeepholeOptimize(IntermediateBlock* input);
+
   // constant propagation
   IntermediateBlock* ConstantProp(IntermediateBlock* input);
 
