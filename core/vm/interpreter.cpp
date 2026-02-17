@@ -164,7 +164,6 @@ void StackInterpreter::Execute(size_t* op_stack, size_t* stack_pos, long i, Stac
 
 #ifdef _DEBUGGER
     debugger->ProcessInstruction(instr, ip, call_stack, (*call_stack_pos), (*stack_frame));
-#endif
     DispatchResult result = instr_dispatch[instr->GetType()](ctx);
     if(result == DispatchResult::RETURN_JIT) {
       return;
@@ -172,7 +171,72 @@ void StackInterpreter::Execute(size_t* op_stack, size_t* stack_pos, long i, Stac
     if(result == DispatchResult::HALT) {
       break;
     }
+#else
+    // Inline hot opcodes for performance — these use 'continue' to skip
+    // the recovery check (they can't trigger errors or change instrs).
+    // The default dispatch path falls through to the recovery check below.
+    switch(instr->GetType()) {
+    case LOAD_INT_LIT:
+      op_stack[(*stack_pos)++] = (size_t)instr->GetInt64Operand();
+      continue;
 
+    case LOAD_LOCL_INT_VAR:
+      op_stack[(*stack_pos)++] = (*stack_frame)->mem[instr->GetOperand() + 1];
+      continue;
+
+    case STOR_LOCL_INT_VAR:
+      (*stack_frame)->mem[instr->GetOperand() + 1] = op_stack[--(*stack_pos)];
+      continue;
+
+    case COPY_LOCL_INT_VAR:
+      (*stack_frame)->mem[instr->GetOperand() + 1] = op_stack[(*stack_pos) - 1];
+      continue;
+
+    case ADD_INT: {
+      const size_t sp = *stack_pos;
+      op_stack[sp - 2] = (size_t)((INT64_VALUE)op_stack[sp - 1] + (INT64_VALUE)op_stack[sp - 2]);
+      *stack_pos = sp - 1;
+      continue;
+    }
+
+    case SUB_INT: {
+      const size_t sp = *stack_pos;
+      op_stack[sp - 2] = (size_t)((INT64_VALUE)op_stack[sp - 1] - (INT64_VALUE)op_stack[sp - 2]);
+      *stack_pos = sp - 1;
+      continue;
+    }
+
+    case MUL_INT: {
+      const size_t sp = *stack_pos;
+      op_stack[sp - 2] = (size_t)((INT64_VALUE)op_stack[sp - 1] * (INT64_VALUE)op_stack[sp - 2]);
+      *stack_pos = sp - 1;
+      continue;
+    }
+
+    case LBL:
+      continue;
+
+    case JMP:
+      if(instr->GetOperand2() < 0) {
+        ip = instr->GetOperand();
+      }
+      else if((INT64_VALUE)op_stack[--(*stack_pos)] == instr->GetOperand2()) {
+        ip = instr->GetOperand();
+      }
+      continue;
+
+    default: {
+      DispatchResult result = instr_dispatch[instr->GetType()](ctx);
+      if(result == DispatchResult::RETURN_JIT) {
+        return;
+      }
+      if(result == DispatchResult::HALT) {
+        goto loop_exit;
+      }
+    }
+    }
+    // Only reached by default dispatch path (inlined opcodes skip via continue)
+#endif
     // check for try error recovery
     long recovery_ip = CheckTryRecovery();
     if(recovery_ip >= 0) {
@@ -183,6 +247,9 @@ void StackInterpreter::Execute(size_t* op_stack, size_t* stack_pos, long i, Stac
     instrs = ctx.instrs;
   }
   while(!halt);
+#ifndef _DEBUGGER
+loop_exit: ;
+#endif
 
 #ifdef _TIMING
   clock_t end = clock();

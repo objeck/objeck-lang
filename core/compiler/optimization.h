@@ -137,6 +137,9 @@ class ItermediateOptimizer {
   IntermediateBlock* InstructionReplacement(IntermediateBlock* inputs);
   void ReplacementInstruction(IntermediateInstruction* instr, std::deque<IntermediateInstruction*> &calc_stack, IntermediateBlock* outputs);
 
+  // peephole optimization
+  IntermediateBlock* PeepholeOptimize(IntermediateBlock* inputs);
+
   bool CanInlineMethod(IntermediateMethod* mthd_called, std::set<IntermediateMethod*> &inlined_mthds, std::set<int> &lbl_jmp_offsets);
   
   int CanInlineSetterGetter(IntermediateMethod* mthd_called);

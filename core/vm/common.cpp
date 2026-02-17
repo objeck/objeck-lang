@@ -1079,6 +1079,8 @@ size_t* ObjectDeserializer::DeserializeObject() {
                 mem_cache = deserializer.GetMemoryCache();
               }
             }
+            // write barrier: array may be old if deserialization triggers GC
+            MemoryManager::WriteBarrier(array);
 #ifdef _DEBUG
             std::wcout << L"--- DESERIALIZING: object array; value=" << array << L",  size="
               << array_size << L" ---" << std::endl;
@@ -1086,6 +1088,7 @@ size_t* ObjectDeserializer::DeserializeObject() {
             // update cache
             mem_cache[-mem_id] = array;
             instance[instance_pos++] = (size_t)array;
+            MemoryManager::WriteBarrier(instance);
           }
           else {
             std::map<INT_VALUE, size_t*>::iterator found = mem_cache.find(mem_id);
@@ -1093,6 +1096,7 @@ size_t* ObjectDeserializer::DeserializeObject() {
               return nullptr;
             }
             instance[instance_pos++] = (size_t)found->second;
+            MemoryManager::WriteBarrier(instance);
           }
         }
       }
@@ -1108,6 +1112,8 @@ size_t* ObjectDeserializer::DeserializeObject() {
           instance[instance_pos++] = (size_t)deserializer.DeserializeObject();
           buffer_offset = deserializer.GetOffset();
           mem_cache = deserializer.GetMemoryCache();
+          // write barrier: instance stores a reference to deserialized object
+          MemoryManager::WriteBarrier(instance);
         }
       }
       break;

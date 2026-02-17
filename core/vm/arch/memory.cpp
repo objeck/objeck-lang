@@ -37,7 +37,6 @@ StackProgram* MemoryManager::prgm;
 std::unordered_set<StackFrame**> MemoryManager::pda_frames;
 std::unordered_set<StackFrameMonitor*> MemoryManager::pda_monitors;
 std::vector<StackFrame*> MemoryManager::jit_frames;
-std::unordered_set<size_t*> MemoryManager::allocated_memory;
 
 std::unordered_map<size_t, std::list<size_t*>*> MemoryManager::free_memory_cache;
 size_t MemoryManager::free_memory_cache_size;
@@ -48,14 +47,20 @@ size_t MemoryManager::mem_max_size;
 size_t MemoryManager::uncollected_count;
 size_t MemoryManager::collected_count;
 
-// Generational GC statics
-std::unordered_set<size_t*> MemoryManager::young_generation;
+// Young generation bump allocator
+uint8_t* MemoryManager::young_region;
+size_t MemoryManager::young_region_size;
+std::atomic<size_t> MemoryManager::young_offset;
+
+// Old generation
 std::unordered_set<size_t*> MemoryManager::old_generation;
-std::vector<size_t*> MemoryManager::remembered_set;
-size_t MemoryManager::young_allocation_size;
 size_t MemoryManager::old_allocation_size;
-size_t MemoryManager::young_max_size;
-bool MemoryManager::minor_gc_mode;
+
+// Lock-free dirty list
+size_t* MemoryManager::dirty_list[DIRTY_LIST_MAX];
+std::atomic<size_t> MemoryManager::dirty_count;
+
+std::atomic<bool> MemoryManager::minor_gc_mode;
 
 #ifdef _MEM_LOGGING
 ofstream MemoryManager::mem_logger;
@@ -71,7 +76,6 @@ CRITICAL_SECTION MemoryManager::allocated_lock;
 CRITICAL_SECTION MemoryManager::marked_lock;
 CRITICAL_SECTION MemoryManager::marked_sweep_lock;
 CRITICAL_SECTION MemoryManager::free_memory_cache_lock;
-CRITICAL_SECTION MemoryManager::remembered_set_lock;
 #else
 pthread_mutex_t MemoryManager::pda_monitor_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t MemoryManager::pda_frame_lock = PTHREAD_MUTEX_INITIALIZER;
@@ -80,7 +84,6 @@ pthread_mutex_t MemoryManager::allocated_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t MemoryManager::marked_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t MemoryManager::marked_sweep_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t MemoryManager::free_memory_cache_lock = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t MemoryManager::remembered_set_lock = PTHREAD_MUTEX_INITIALIZER;
 #endif
 
 void MemoryManager::Initialize(StackProgram* p, size_t m)
@@ -96,16 +99,31 @@ void MemoryManager::Initialize(StackProgram* p, size_t m)
   uncollected_count = 0;
   free_memory_cache_size = 0;
 
-  // Generational GC init
-  young_allocation_size = 0;
-  old_allocation_size = 0;
-  young_max_size = YOUNG_GEN_MAX;
-  minor_gc_mode = false;
+  // Young generation bump allocator
+  young_region_size = YOUNG_REGION_SIZE;
+#ifdef _WIN32
+  young_region = (uint8_t*)VirtualAlloc(nullptr, young_region_size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+#else
+  young_region = (uint8_t*)mmap(nullptr, young_region_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+  if(young_region == MAP_FAILED) {
+    young_region = nullptr;
+  }
+#endif
+  if(!young_region) {
+    std::wcerr << L">>> Failed to allocate young generation region (" << young_region_size << L" bytes) <<<" << std::endl;
+    exit(1);
+  }
+  young_offset.store(0, std::memory_order_relaxed);
 
-  // pre-reserve generation sets to avoid rehashing during allocation bursts
-  young_generation.reserve(4096);
+  // Old generation
+  old_allocation_size = 0;
   old_generation.reserve(4096);
-  allocated_memory.reserve(8192);
+
+  // Dirty list
+  memset(dirty_list, 0, sizeof(dirty_list));
+  dirty_count.store(0, std::memory_order_relaxed);
+
+  minor_gc_mode.store(false, std::memory_order_relaxed);
 
 #ifdef _MEM_LOGGING
   mem_logger.open("mem_log.csv");
@@ -120,7 +138,6 @@ void MemoryManager::Initialize(StackProgram* p, size_t m)
   InitializeCriticalSection(&marked_lock);
   InitializeCriticalSection(&marked_sweep_lock);
   InitializeCriticalSection(&free_memory_cache_lock);
-  InitializeCriticalSection(&remembered_set_lock);
 #endif
 
   initialized = true;
@@ -239,52 +256,106 @@ size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, size_
   size_t* mem = nullptr;
   if(cls) {
     const long size = cls->GetInstanceMemorySize();
-
-    // collect memory: try minor GC first if young gen is full
-    if(collect && young_allocation_size + size > young_max_size) {
-      CollectMinor(op_stack, stack_pos);
-    }
-    // fall back to major GC if overall heap is full
-    if(collect && allocation_size + size > mem_max_size) {
-      CollectMajor(op_stack, stack_pos);
-    }
-
-    // allocate memory
-#ifdef _DEBUG_GC
-    bool is_cached = false;
-#endif
     const size_t alloc_size = size * 2 + sizeof(size_t) * EXTRA_BUF_SIZE;
+    const size_t total_bytes = alloc_size + sizeof(size_t);  // +1 word for raw_size prefix
 
-    mem = GetMemory(alloc_size);
-    if(!mem) {
-      std::wcerr << L">>> Unable to allocate memory of size: " << alloc_size << L", consider checking the code. <<<" << std::endl;
-      exit(1);
+    // Large object bypass: allocate directly in old gen
+    if(total_bytes > young_region_size >> 2) {
+      if(collect && allocation_size + size > mem_max_size) {
+        CollectMajor(op_stack, stack_pos);
+      }
+      mem = GetMemory(alloc_size);
+      if(!mem) {
+        std::wcerr << L">>> Unable to allocate memory of size: " << alloc_size << L" <<<" << std::endl;
+        exit(1);
+      }
+      mem[EXTRA_BUF_SIZE + TYPE] = NIL_TYPE;
+      mem[EXTRA_BUF_SIZE + SIZE_OR_CLS] = (size_t)cls;
+      mem += EXTRA_BUF_SIZE;
+      mem[MARKED_FLAG] |= GC_OLD_BIT;
+#ifndef _GC_SERIAL
+      MUTEX_LOCK(&allocated_lock);
+#endif
+      allocation_size += size;
+      old_allocation_size += size;
+      old_generation.insert(mem);
+#ifndef _GC_SERIAL
+      MUTEX_UNLOCK(&allocated_lock);
+#endif
+      return mem;
     }
 
+    // Trigger GC if young region is nearly full
+    if(collect && young_offset.load(std::memory_order_relaxed) + total_bytes > young_region_size * 9 / 10) {
+      if(old_allocation_size > mem_max_size) {
+        CollectMajor(op_stack, stack_pos);  // old gen too large — full GC to reclaim dead objects
+      }
+      else {
+        CollectMinor(op_stack, stack_pos);
+      }
+    }
+
+    // Bump allocate in young region
+    size_t offset = young_offset.fetch_add(total_bytes, std::memory_order_relaxed);
+    if(offset + total_bytes > young_region_size) {
+      // Young region full after race — undo and trigger GC
+      young_offset.fetch_sub(total_bytes, std::memory_order_relaxed);
+      if(collect) {
+        CollectMinor(op_stack, stack_pos);
+      }
+      offset = young_offset.fetch_add(total_bytes, std::memory_order_relaxed);
+      if(offset + total_bytes > young_region_size) {
+        // Still full — fall back to old gen
+        young_offset.fetch_sub(total_bytes, std::memory_order_relaxed);
+        if(collect && allocation_size + size > mem_max_size) {
+          CollectMajor(op_stack, stack_pos);
+        }
+        mem = GetMemory(alloc_size);
+        if(!mem) {
+          std::wcerr << L">>> Unable to allocate memory of size: " << alloc_size << L" <<<" << std::endl;
+          exit(1);
+        }
+        mem[EXTRA_BUF_SIZE + TYPE] = NIL_TYPE;
+        mem[EXTRA_BUF_SIZE + SIZE_OR_CLS] = (size_t)cls;
+        mem += EXTRA_BUF_SIZE;
+        mem[MARKED_FLAG] |= GC_OLD_BIT;
+#ifndef _GC_SERIAL
+        MUTEX_LOCK(&allocated_lock);
+#endif
+        allocation_size += size;
+        old_allocation_size += size;
+        old_generation.insert(mem);
+#ifndef _GC_SERIAL
+        MUTEX_UNLOCK(&allocated_lock);
+#endif
+        return mem;
+      }
+    }
+
+    // Bump allocate: region is already zeroed (from VirtualAlloc/mmap or post-GC memset)
+    size_t* raw_mem = (size_t*)(young_region + offset);
+    raw_mem[0] = alloc_size;
+    mem = raw_mem + 1;
     mem[EXTRA_BUF_SIZE + TYPE] = NIL_TYPE;
     mem[EXTRA_BUF_SIZE + SIZE_OR_CLS] = (size_t)cls;
     mem += EXTRA_BUF_SIZE;
+    // MARKED_FLAG is already 0 (no mark, no old bit, no rset bit) — young object
 
-    // record: new objects go into young generation
- #ifndef _GC_SERIAL
+#ifndef _GC_SERIAL
     MUTEX_LOCK(&allocated_lock);
- #endif
+#endif
     allocation_size += size;
-    young_allocation_size += size;
-    young_generation.insert(mem);
-    allocated_memory.insert(mem);
- #ifndef _GC_SERIAL
+#ifndef _GC_SERIAL
     MUTEX_UNLOCK(&allocated_lock);
- #endif
+#endif
 
 #ifdef _MEM_LOGGING
     mem_logger << mem_cycle << L",alloc,obj," << mem << L"," << size << std::endl;
 #endif
 
 #ifdef _DEBUG_GC
-    std::wcout << L"# allocating object: cached=" << (is_cached ? L"true" : L"false")  << L", addr=" << mem << L"(" 
-          << (size_t)mem << L"), size=" << size << L" byte(s), used=" << allocation_size << L" byte(s) #"
-          << std::endl;
+    std::wcout << L"# allocating object: addr=" << mem << L"(" << (size_t)mem
+          << L"), size=" << size << L" byte(s), used=" << allocation_size << L" byte(s) #" << std::endl;
 #endif
   }
 
@@ -317,39 +388,95 @@ size_t* MemoryManager::AllocateArray(const size_t size, const MemoryType type, s
     exit(1);
   }
 
-  // collect memory: try minor GC first if young gen is full
-  if(collect && young_allocation_size + calc_size > young_max_size) {
-    CollectMinor(op_stack, stack_pos);
-  }
-  // fall back to major GC if overall heap is full
-  if(collect && allocation_size + calc_size > mem_max_size) {
-    CollectMajor(op_stack, stack_pos);
-  }
-
-  // allocate memory
-#ifdef _DEBUG_GC
-  bool is_cached = false;
-#endif
   const size_t alloc_size = calc_size + sizeof(size_t) * EXTRA_BUF_SIZE;
+  // Align total_bytes to sizeof(size_t) for bump allocator (byte arrays may have non-aligned calc_size)
+  const size_t total_bytes_raw = alloc_size + sizeof(size_t);  // +1 word for raw_size prefix
+  const size_t total_bytes = (total_bytes_raw + sizeof(size_t) - 1) & ~(sizeof(size_t) - 1);
 
-  mem = GetMemory(alloc_size);
-  if(!mem) {
-    std::wcerr << L">>> Unable to allocate memory of size: " << alloc_size << L", consider checking the code. <<<" << std::endl;
-    exit(1);
+  // Large object bypass: allocate directly in old gen
+  if(total_bytes > young_region_size >> 2) {
+    if(collect && allocation_size + calc_size > mem_max_size) {
+      CollectMajor(op_stack, stack_pos);
+    }
+    mem = GetMemory(alloc_size);
+    if(!mem) {
+      std::wcerr << L">>> Unable to allocate memory of size: " << alloc_size << L" <<<" << std::endl;
+      exit(1);
+    }
+    mem[EXTRA_BUF_SIZE + TYPE] = type;
+    mem[EXTRA_BUF_SIZE + SIZE_OR_CLS] = calc_size;
+    mem += EXTRA_BUF_SIZE;
+    mem[MARKED_FLAG] |= GC_OLD_BIT;
+#ifndef _GC_SERIAL
+    MUTEX_LOCK(&allocated_lock);
+#endif
+    allocation_size += calc_size;
+    old_allocation_size += calc_size;
+    old_generation.insert(mem);
+#ifndef _GC_SERIAL
+    MUTEX_UNLOCK(&allocated_lock);
+#endif
+    return mem;
   }
 
+  // Trigger GC if young region is nearly full
+  if(collect && young_offset.load(std::memory_order_relaxed) + total_bytes > young_region_size * 9 / 10) {
+    if(old_allocation_size > mem_max_size) {
+      CollectMajor(op_stack, stack_pos);  // old gen too large — full GC to reclaim dead objects
+    }
+    else {
+      CollectMinor(op_stack, stack_pos);
+    }
+  }
+
+  // Bump allocate in young region
+  size_t offset = young_offset.fetch_add(total_bytes, std::memory_order_relaxed);
+  if(offset + total_bytes > young_region_size) {
+    young_offset.fetch_sub(total_bytes, std::memory_order_relaxed);
+    if(collect) {
+      CollectMinor(op_stack, stack_pos);
+    }
+    offset = young_offset.fetch_add(total_bytes, std::memory_order_relaxed);
+    if(offset + total_bytes > young_region_size) {
+      // Still full — fall back to old gen
+      young_offset.fetch_sub(total_bytes, std::memory_order_relaxed);
+      if(collect && allocation_size + calc_size > mem_max_size) {
+        CollectMajor(op_stack, stack_pos);
+      }
+      mem = GetMemory(alloc_size);
+      if(!mem) {
+        std::wcerr << L">>> Unable to allocate memory of size: " << alloc_size << L" <<<" << std::endl;
+        exit(1);
+      }
+      mem[EXTRA_BUF_SIZE + TYPE] = type;
+      mem[EXTRA_BUF_SIZE + SIZE_OR_CLS] = calc_size;
+      mem += EXTRA_BUF_SIZE;
+      mem[MARKED_FLAG] |= GC_OLD_BIT;
+#ifndef _GC_SERIAL
+      MUTEX_LOCK(&allocated_lock);
+#endif
+      allocation_size += calc_size;
+      old_allocation_size += calc_size;
+      old_generation.insert(mem);
+#ifndef _GC_SERIAL
+      MUTEX_UNLOCK(&allocated_lock);
+#endif
+      return mem;
+    }
+  }
+
+  // Bump allocate: region is already zeroed
+  size_t* raw_mem = (size_t*)(young_region + offset);
+  raw_mem[0] = alloc_size;
+  mem = raw_mem + 1;
   mem[EXTRA_BUF_SIZE + TYPE] = type;
   mem[EXTRA_BUF_SIZE + SIZE_OR_CLS] = calc_size;
   mem += EXTRA_BUF_SIZE;
 
-  // new arrays go into young generation
 #ifndef _GC_SERIAL
   MUTEX_LOCK(&allocated_lock);
 #endif
   allocation_size += calc_size;
-  young_allocation_size += calc_size;
-  young_generation.insert(mem);
-  allocated_memory.insert(mem);
 #ifndef _GC_SERIAL
   MUTEX_UNLOCK(&allocated_lock);
 #endif
@@ -359,9 +486,8 @@ size_t* MemoryManager::AllocateArray(const size_t size, const MemoryType type, s
 #endif
 
 #ifdef _DEBUG_GC
-  std::wcout << L"# allocating array: cached=" << (is_cached ? L"true" : L"false") << L", addr=" << mem
-    << L"(" << (size_t)mem << L"), size=" << calc_size << L" byte(s), used=" << allocation_size
-    << L" byte(s) #" << std::endl;
+  std::wcout << L"# allocating array: addr=" << mem << L"(" << (size_t)mem
+    << L"), size=" << calc_size << L" byte(s), used=" << allocation_size << L" byte(s) #" << std::endl;
 #endif
 
   return mem;
@@ -595,6 +721,8 @@ void* MemoryManager::CollectMemory(void* arg)
 #endif
 
   CollectionInfo* info = (CollectionInfo*)arg;
+  const size_t saved_stack_pos = info->stack_pos;  // Save before CheckStack modifies it
+
 
 #ifdef _DEBUG_GC
   size_t start = allocation_size;
@@ -713,157 +841,156 @@ void* MemoryManager::CollectMemory(void* arg)
   std::wcout << L"-----------------------------------------" << std::endl;
 #endif
 
-  std::vector<size_t*> dead_memory;
-  std::vector<size_t*> survivors_to_promote;
+  // --- Promote surviving young objects to old gen ---
+  std::vector<size_t*> promoted_objects;
+  size_t young_used = young_offset.load(std::memory_order_relaxed);
+  size_t dead_young_size = 0;
+  size_t promoted_count = 0;
 
-  if(minor_gc_mode) {
-    // Minor GC: only sweep young generation
-    for(auto iter = young_generation.begin(); iter != young_generation.end(); ++iter) {
-      size_t* mem = *iter;
+  // Linear walk through young region
+  uint8_t* scan_ptr = young_region;
+  while(scan_ptr < young_region + young_used) {
+    size_t* raw_mem = (size_t*)scan_ptr;
+    size_t alloc_size = raw_mem[0];
+    size_t total = sizeof(size_t) + alloc_size;
 
-      if(mem[MARKED_FLAG] & GC_MARK_BIT) {
-        mem[MARKED_FLAG] &= ~GC_MARK_BIT;
+    // Alignment: round up total to sizeof(size_t) boundary (matches allocation alignment)
+    total = (total + sizeof(size_t) - 1) & ~(sizeof(size_t) - 1);
 
-        size_t age = (mem[MARKED_FLAG] & GC_AGE_MASK) >> GC_AGE_SHIFT;
-        if(age >= GC_AGE_MAX) {
-          survivors_to_promote.push_back(mem);
-        }
-        else {
-          mem[MARKED_FLAG] = (mem[MARKED_FLAG] & ~GC_AGE_MASK) | (((age + 1) << GC_AGE_SHIFT) & GC_AGE_MASK);
-        }
-      }
-      else {
-        dead_memory.push_back(mem);
-      }
+    size_t* mem = raw_mem + 1 + EXTRA_BUF_SIZE;
+
+    // Get object size for accounting
+    size_t mem_size;
+    if(mem[TYPE] == NIL_TYPE) {
+      StackClass* cls = (StackClass*)mem[SIZE_OR_CLS];
+      mem_size = cls ? cls->GetInstanceMemorySize() : 0;
+    }
+    else {
+      mem_size = mem[SIZE_OR_CLS];
     }
 
-    // Clear mark bits on old objects that were marked during remembered set tracing
-    for(auto iter = old_generation.begin(); iter != old_generation.end(); ++iter) {
-      size_t* mem = *iter;
-      mem[MARKED_FLAG] &= ~GC_MARK_BIT;
+    if(mem[MARKED_FLAG] & GC_MARK_BIT) {
+      // Promote to old gen: allocate, copy, store forwarding pointer
+      size_t* new_raw = (size_t*)calloc(total, 1);
+      if(new_raw) {
+        memcpy(new_raw, raw_mem, total);
+        size_t* new_mem = new_raw + 1 + EXTRA_BUF_SIZE;
+        new_mem[MARKED_FLAG] = GC_OLD_BIT | GC_MARK_BIT;  // set old bit + keep mark bit so sweep preserves it
+        old_generation.insert(new_mem);
+        old_allocation_size += mem_size;
+        promoted_objects.push_back(new_mem);
+        promoted_count++;
+        // Store forwarding pointer in young region (safe — region is about to be reclaimed)
+        mem[MARKED_FLAG] = (size_t)new_mem;
+      }
     }
+    else {
+      // Dead young object
+      allocation_size -= mem_size;
+      dead_young_size += mem_size;
+    }
+
+    scan_ptr += total;
   }
-  else {
-    // Major GC: sweep all allocated memory
-    for(auto iter = allocated_memory.begin(); iter != allocated_memory.end(); ++iter) {
-      size_t* mem = *iter;
 
-      if(mem[MARKED_FLAG] & GC_MARK_BIT) {
-        mem[MARKED_FLAG] &= ~GC_MARK_BIT;
-
-        if(!(mem[MARKED_FLAG] & GC_OLD_BIT)) {
-          size_t age = (mem[MARKED_FLAG] & GC_AGE_MASK) >> GC_AGE_SHIFT;
-          if(age >= GC_AGE_MAX) {
-            survivors_to_promote.push_back(mem);
-          }
-          else {
-            mem[MARKED_FLAG] = (mem[MARKED_FLAG] & ~GC_AGE_MASK) | (((age + 1) << GC_AGE_SHIFT) & GC_AGE_MASK);
-          }
-        }
-      }
-      else {
-        dead_memory.push_back(mem);
-      }
-    }
-  }
 
 #ifndef _GC_SERIAL
   MUTEX_UNLOCK(&marked_lock);
 #endif
 
-  // Promote surviving young objects that reached max age
-  for(size_t i = 0; i < survivors_to_promote.size(); ++i) {
-    size_t* mem = survivors_to_promote[i];
+  // --- Sweep old generation (major GC only) ---
+  size_t dead_old_count = 0;
+  const size_t prev_old_size = old_generation.size();
 
-    // Get memory size for accounting
-    size_t mem_size;
-    if(mem[TYPE] == NIL_TYPE) {
-      StackClass* cls = (StackClass*)mem[SIZE_OR_CLS];
-      mem_size = cls ? cls->GetInstanceMemorySize() : mem[SIZE_OR_CLS];
-    }
-    else {
-      mem_size = mem[SIZE_OR_CLS];
-    }
-
-    young_generation.erase(mem);
-    young_allocation_size -= mem_size;
-    old_generation.insert(mem);
-    old_allocation_size += mem_size;
-    // Set old bit, clear age, add to remembered set (may reference young objects)
-    mem[MARKED_FLAG] = (mem[MARKED_FLAG] & ~GC_AGE_MASK) | GC_OLD_BIT | GC_RSET_BIT;
-#ifndef _GC_SERIAL
-    MUTEX_LOCK(&remembered_set_lock);
-#endif
-    remembered_set.push_back(mem);
-#ifndef _GC_SERIAL
-    MUTEX_UNLOCK(&remembered_set_lock);
-#endif
-  }
-
-  // free dead objects and remove from allocated set
-  const size_t prev_size = allocated_memory.size();
-  for(size_t i = 0; i < dead_memory.size(); ++i) {
-    size_t* mem = dead_memory[i];
-
-    // object or array
-    size_t mem_size;
-    if(mem[TYPE] == NIL_TYPE) {
-      StackClass* cls = (StackClass*)mem[SIZE_OR_CLS];
-#ifdef _DEBUG_GC
-      assert(cls);
-#endif
-      if(cls) {
-        mem_size = cls->GetInstanceMemorySize();
+  if(!minor_gc_mode.load(std::memory_order_acquire)) {
+    // Major GC: free dead old-gen objects
+    for(auto iter = old_generation.begin(); iter != old_generation.end(); ) {
+      size_t* mem = *iter;
+      if(mem[MARKED_FLAG] & GC_MARK_BIT) {
+        mem[MARKED_FLAG] &= ~GC_MARK_BIT;
+        ++iter;
       }
       else {
-        mem_size = mem[SIZE_OR_CLS];
+        size_t mem_size;
+        if(mem[TYPE] == NIL_TYPE) {
+          StackClass* cls = (StackClass*)mem[SIZE_OR_CLS];
+          mem_size = cls ? cls->GetInstanceMemorySize() : mem[SIZE_OR_CLS];
+        }
+        else {
+          mem_size = mem[SIZE_OR_CLS];
+        }
+        allocation_size -= mem_size;
+        old_allocation_size -= mem_size;
+        dead_old_count++;
+
+        size_t* tmp = mem - EXTRA_BUF_SIZE;
+        AddFreeMemory(tmp - 1);
+
+#ifdef _DEBUG_GC
+        std::wcout << L"# freeing old memory: addr=" << mem << L"(" << (size_t)mem
+              << L"), size=" << mem_size << L" byte(s) #" << std::endl;
+#endif
+        iter = old_generation.erase(iter);
+      }
+    }
+  }
+  else {
+    // Minor GC: just clear mark bits on old objects
+    for(auto iter = old_generation.begin(); iter != old_generation.end(); ++iter) {
+      size_t* mem = *iter;
+      mem[MARKED_FLAG] &= ~GC_MARK_BIT;
+    }
+  }
+
+  // --- Fixup phase: replace young pointers with forwarded old-gen addresses ---
+  if(young_used > 0) {
+    // Fix up roots (use saved_stack_pos since CheckStack decremented info->stack_pos to -1)
+    FixupRoots(info->op_stack, saved_stack_pos);
+
+    // Fix up old-gen objects
+    size_t dc = dirty_count.load(std::memory_order_relaxed);
+    bool overflow = dc > DIRTY_LIST_MAX;
+
+    if(overflow || !minor_gc_mode.load(std::memory_order_acquire)) {
+      // Overflow or major GC: scan all old-gen objects
+      for(auto iter = old_generation.begin(); iter != old_generation.end(); ++iter) {
+        FixupObject(*iter);
       }
     }
     else {
-      mem_size = mem[SIZE_OR_CLS];
+      // Minor GC: only fix up dirty objects + promoted objects
+      for(size_t i = 0; i < dc; ++i) {
+        // Dirty object might have been freed during major sweep — check it's still valid
+        if(dirty_list[i] && old_generation.count(dirty_list[i])) {
+          FixupObject(dirty_list[i]);
+        }
+      }
+      for(size_t i = 0; i < promoted_objects.size(); ++i) {
+        FixupObject(promoted_objects[i]);
+      }
     }
 
-    // account for deallocated memory
-    allocation_size -= mem_size;
-
-    // remove from generation sets
-    if(mem[MARKED_FLAG] & GC_OLD_BIT) {
-      old_generation.erase(mem);
-      old_allocation_size -= mem_size;
-    }
-    else {
-      young_generation.erase(mem);
-      young_allocation_size -= mem_size;
-    }
-
-#ifdef _MEM_LOGGING
-    mem_logger << mem_cycle << L", dealloc," << (mem[SIZE_OR_CLS] ? "obj," : "array,") << mem << L"," << mem_size << std::endl;
-#endif
-
-    // cache or free memory
-    size_t* tmp = mem - EXTRA_BUF_SIZE;
-    AddFreeMemory(tmp - 1);
-    allocated_memory.erase(mem);
-#ifdef _DEBUG_GC
-    std::wcout << L"# freeing memory: addr=" << mem << L"(" << (size_t)mem
-          << L"), size=" << mem_size << L" byte(s) #" << std::endl;
-#endif
+    // Reset young region
+    young_offset.store(0, std::memory_order_relaxed);
+    memset(young_region, 0, young_used);
   }
 
-  // Rebuild remembered set after major GC (remove dead entries)
-  if(!minor_gc_mode) {
-    remembered_set.clear();
-    // After major GC, conservatively re-add ALL old objects to remembered set
-    // so the next minor GC traces all old→young references
-    for(auto iter = old_generation.begin(); iter != old_generation.end(); ++iter) {
-      size_t* mem = *iter;
-      mem[MARKED_FLAG] |= GC_RSET_BIT;
-      remembered_set.push_back(mem);
+  // --- Clear dirty list and RSET bits ---
+  {
+    size_t dc = dirty_count.load(std::memory_order_relaxed);
+    size_t clear_count = dc < DIRTY_LIST_MAX ? dc : DIRTY_LIST_MAX;
+    for(size_t i = 0; i < clear_count; ++i) {
+      if(dirty_list[i] && old_generation.count(dirty_list[i])) {
+        dirty_list[i][MARKED_FLAG] &= ~GC_RSET_BIT;
+      }
+      dirty_list[i] = nullptr;
     }
+    dirty_count.store(0, std::memory_order_relaxed);
   }
 
-  // did not collect memory; adjust constraints
-  if(dead_memory.empty() || allocated_memory.size() >= prev_size - 1) {
+  // Adjust GC constraints based on collection effectiveness
+  size_t total_dead = dead_young_size + dead_old_count;
+  if(total_dead == 0) {
     if(uncollected_count < UNCOLLECTED_COUNT) {
       uncollected_count++;
     }
@@ -872,7 +999,6 @@ void* MemoryManager::CollectMemory(void* arg)
       uncollected_count = 0;
     }
   }
-  // collected memory; adjust constraints
   else if(mem_max_size != MEM_START_MAX) {
     if(collected_count < COLLECTED_COUNT) {
       collected_count++;
@@ -901,18 +1027,18 @@ void* MemoryManager::CollectMemory(void* arg)
 
 #ifdef _DEBUG_GC
   std::wcout << L"===============================================================" << std::endl;
-  std::wcout << L"Finished Collection: collected=" << (start - allocation_size)
-        << L" of " << start << L" byte(s) - " << std::showpoint << std::setprecision(3)
-        << (((double)(start - allocation_size) / (double)start) * 100.0)
-        << L"%" << std::endl;
+  std::wcout << L"Finished Collection: promoted=" << promoted_count
+        << L", dead_young=" << dead_young_size << L" byte(s)"
+        << L", dead_old=" << dead_old_count
+        << L", alloc=" << allocation_size << L" byte(s)" << std::endl;
   std::wcout << L"===============================================================" << std::endl;
 #endif
-  
+
 #ifdef _TIMING
   end = clock();
   std::wcout << std::dec << L"Sweep time: " << (double)(end - start) / CLOCKS_PER_SEC << L" second(s)." << std::endl;
 #endif
-  
+
   return 0;
 }
 
@@ -1513,6 +1639,341 @@ void MemoryManager::CheckMemory(size_t* mem, StackDclr** dclrs, const long dcls_
   }
 }
 
+// ---- Generational GC: Dirty object scanning ----
+
+void MemoryManager::ScanDirtyObject(size_t* mem)
+{
+  if(!mem) return;
+
+  // Scan one dirty old-gen object's direct fields for young pointers and mark them
+  if(mem[TYPE] == NIL_TYPE) {
+    StackClass* cls = (StackClass*)mem[SIZE_OR_CLS];
+    if(!cls) return;
+    StackDclr** dclrs = cls->GetInstanceDeclarations();
+    const long num_dclrs = cls->GetNumberInstanceDeclarations();
+    size_t* field_ptr = mem;
+    for(long i = 0; i < num_dclrs; ++i) {
+      switch(dclrs[i]->type) {
+      case FUNC_PARM: {
+        size_t* ref = (size_t*)*(field_ptr + 1);
+        if(ref && IsYoung(ref)) {
+          CheckObject(ref, true, 0);
+        }
+        field_ptr += 2;
+        break;
+      }
+      case OBJ_PARM: {
+        size_t* ref = (size_t*)(*field_ptr);
+        if(ref && IsYoung(ref)) {
+          CheckObject(ref, true, 0);
+        }
+        field_ptr++;
+        break;
+      }
+      case OBJ_ARY_PARM:
+      case BYTE_ARY_PARM:
+      case CHAR_ARY_PARM:
+      case INT_ARY_PARM:
+      case FLOAT_ARY_PARM: {
+        size_t* ref = (size_t*)(*field_ptr);
+        if(ref && IsYoung(ref)) {
+          if(MarkMemory(ref)) {
+            if(ref[TYPE] == INT_TYPE || ref[TYPE] == NIL_TYPE) {
+              size_t size = ref[0];
+              size_t dim = ref[1];
+              size_t* objects = ref + 2 + dim;
+              for(size_t k = 0; k < size; ++k) {
+                CheckObject((size_t*)objects[k], false, 1);
+              }
+            }
+          }
+        }
+        field_ptr++;
+        break;
+      }
+      default:
+        field_ptr++;
+        break;
+      }
+    }
+  }
+  else if(mem[TYPE] == INT_TYPE) {
+    size_t size = mem[0];
+    size_t dim = mem[1];
+    size_t* objects = mem + 2 + dim;
+    for(size_t k = 0; k < size; ++k) {
+      size_t* ref = (size_t*)objects[k];
+      if(ref && IsYoung(ref)) {
+        CheckObject(ref, false, 0);
+      }
+    }
+  }
+}
+
+// ---- Fixup functions: replace young pointers with forwarded old-gen addresses ----
+
+void MemoryManager::FixupMemory(size_t* mem, StackDclr** dclrs, const long dcls_size)
+{
+  for(long i = 0; i < dcls_size; ++i) {
+    switch(dclrs[i]->type) {
+    case FUNC_PARM: {
+      size_t* ref = (size_t*)*(mem + 1);
+      if(ref && IsYoung(ref)) {
+        size_t fwd = ref[MARKED_FLAG];
+        if(fwd) *(mem + 1) = fwd;
+      }
+      mem += 2;
+      break;
+    }
+    case OBJ_PARM:
+    case OBJ_ARY_PARM:
+    case BYTE_ARY_PARM:
+    case CHAR_ARY_PARM:
+    case INT_ARY_PARM:
+    case FLOAT_ARY_PARM: {
+      size_t* ref = (size_t*)(*mem);
+      if(ref && IsYoung(ref)) {
+        size_t fwd = ref[MARKED_FLAG];
+        if(fwd) *mem = fwd;
+      }
+      mem++;
+      break;
+    }
+    case CHAR_PARM:
+    case INT_PARM:
+    case FLOAT_PARM:
+      mem++;
+      break;
+    default:
+      mem++;
+      break;
+    }
+  }
+}
+
+void MemoryManager::FixupObject(size_t* mem)
+{
+  if(!mem) return;
+
+  if(mem[TYPE] == NIL_TYPE) {
+    StackClass* cls = (StackClass*)mem[SIZE_OR_CLS];
+    if(cls) {
+      FixupMemory(mem, cls->GetInstanceDeclarations(), cls->GetNumberInstanceDeclarations());
+    }
+  }
+  else if(mem[TYPE] == INT_TYPE) {
+    // Int/obj arrays can contain object references
+    size_t size = mem[0];
+    size_t dim = mem[1];
+    size_t* objects = mem + 2 + dim;
+    for(size_t i = 0; i < size; ++i) {
+      size_t* ref = (size_t*)objects[i];
+      if(ref && IsYoung(ref)) {
+        size_t fwd = ref[MARKED_FLAG];
+        if(fwd) objects[i] = fwd;
+      }
+    }
+  }
+}
+
+void MemoryManager::FixupRoots(size_t* op_stack, size_t stack_pos)
+{
+  // Fix up operand stack
+  for(size_t i = 0; i <= stack_pos; ++i) {
+    size_t* ref = (size_t*)op_stack[i];
+    if(ref && IsYoung(ref)) {
+      size_t fwd = ref[MARKED_FLAG];
+      if(fwd) op_stack[i] = fwd;
+    }
+  }
+
+  // Fix up static class memory
+  StackClass** clss = prgm->GetClasses();
+  const int cls_num = prgm->GetClassNumber();
+  for(int i = 0; i < cls_num; ++i) {
+    StackClass* cls = clss[i];
+    FixupMemory(cls->GetClassMemory(), cls->GetClassDeclarations(), cls->GetNumberClassDeclarations());
+  }
+
+  // Fix up PDA frames (skip JIT frames — they use jit_mem, not mem for locals)
+  std::vector<StackFrame*> jit_fixup_frames;
+
+#ifndef _GC_SERIAL
+  MUTEX_LOCK(&pda_frame_lock);
+#endif
+  for(auto iter = pda_frames.begin(); iter != pda_frames.end(); ++iter) {
+    StackFrame** frame_ptr = *iter;
+    if(*frame_ptr) {
+      StackFrame* frame = *frame_ptr;
+      if(frame->jit_mem) {
+        jit_fixup_frames.push_back(frame);
+      }
+      else {
+        StackMethod* method = frame->method;
+        size_t* mem = frame->mem;
+
+        // Fix up self
+        if(!method->IsLambda()) {
+          size_t* self = (size_t*)(*mem);
+          if(self && IsYoung(self)) {
+            size_t fwd = self[MARKED_FLAG];
+            if(fwd) *mem = fwd;
+          }
+        }
+
+        // Fix up locals
+        size_t* local_mem = mem + (method->HasAndOr() ? 2 : 1);
+        FixupMemory(local_mem, method->GetDeclarations(), method->GetNumberDeclarations());
+      }
+    }
+  }
+#ifndef _GC_SERIAL
+  MUTEX_UNLOCK(&pda_frame_lock);
+#endif
+
+  // Fix up PDA monitor frames
+#ifndef _GC_SERIAL
+  MUTEX_LOCK(&pda_monitor_lock);
+#endif
+  for(auto pda_iter = pda_monitors.begin(); pda_iter != pda_monitors.end(); ++pda_iter) {
+    StackFrameMonitor* monitor = *pda_iter;
+    long call_stack_pos = *(monitor->call_stack_pos);
+
+    if(call_stack_pos > 0) {
+      StackFrame** call_stack = monitor->call_stack;
+      StackFrame* cur_frame = *(monitor->cur_frame);
+
+      // Fix up current frame
+      if(cur_frame) {
+        if(cur_frame->jit_mem) {
+          jit_fixup_frames.push_back(cur_frame);
+        }
+        else {
+          StackMethod* method = cur_frame->method;
+          size_t* mem = cur_frame->mem;
+          if(!method->IsLambda()) {
+            size_t* self = (size_t*)(*mem);
+            if(self && IsYoung(self)) {
+              size_t fwd = self[MARKED_FLAG];
+              if(fwd) *mem = fwd;
+            }
+          }
+          size_t* local_mem = mem + (method->HasAndOr() ? 2 : 1);
+          FixupMemory(local_mem, method->GetDeclarations(), method->GetNumberDeclarations());
+        }
+      }
+
+      // Fix up call stack frames
+      while(--call_stack_pos > -1) {
+        StackFrame* frame = call_stack[call_stack_pos];
+        if(frame) {
+          if(frame->jit_mem) {
+            jit_fixup_frames.push_back(frame);
+          }
+          else {
+            StackMethod* method = frame->method;
+            size_t* mem = frame->mem;
+            if(!method->IsLambda()) {
+              size_t* self = (size_t*)(*mem);
+              if(self && IsYoung(self)) {
+                size_t fwd = self[MARKED_FLAG];
+                if(fwd) *mem = fwd;
+              }
+            }
+            size_t* local_mem = mem + (method->HasAndOr() ? 2 : 1);
+            FixupMemory(local_mem, method->GetDeclarations(), method->GetNumberDeclarations());
+          }
+        }
+      }
+    }
+  }
+#ifndef _GC_SERIAL
+  MUTEX_UNLOCK(&pda_monitor_lock);
+#endif
+
+  // Fix up JIT frames (collected from pda_frames and pda_monitors above)
+  for(size_t i = 0; i < jit_fixup_frames.size(); ++i) {
+    StackFrame* frame = jit_fixup_frames[i];
+    StackMethod* method = frame->method;
+    size_t* mem = frame->jit_mem;
+
+    if(mem) {
+      // Fix up self
+      if(!method->IsLambda()) {
+        size_t* self = (size_t*)frame->mem[0];
+        if(self && IsYoung(self)) {
+          size_t fwd = self[MARKED_FLAG];
+          if(fwd) frame->mem[0] = fwd;
+        }
+      }
+
+      // Fix up JIT locals
+#ifdef _ARM64
+      if(method->HasAndOr()) {
+        mem++;
+      }
+      StackDclr** dclrs = method->GetDeclarations();
+      const long dclrs_num = method->GetNumberDeclarations();
+      for(int j = 0; j < dclrs_num; ++j) {
+#else
+      StackDclr** dclrs = method->GetDeclarations();
+      const long dclrs_num = method->GetNumberDeclarations();
+      for(int j = dclrs_num - 1; j > -1; --j) {
+#endif
+        switch(dclrs[j]->type) {
+        case FUNC_PARM: {
+          size_t* ref = (size_t*)*(mem + 1);
+          if(ref && IsYoung(ref)) {
+            size_t fwd = ref[MARKED_FLAG];
+            if(fwd) *(mem + 1) = fwd;
+          }
+          mem += 2;
+          break;
+        }
+        case OBJ_PARM:
+        case OBJ_ARY_PARM:
+        case BYTE_ARY_PARM:
+        case CHAR_ARY_PARM:
+        case INT_ARY_PARM:
+        case FLOAT_ARY_PARM: {
+          size_t* ref = (size_t*)(*mem);
+          if(ref && IsYoung(ref)) {
+            size_t fwd = ref[MARKED_FLAG];
+            if(fwd) *mem = fwd;
+          }
+          mem++;
+          break;
+        }
+        default:
+          mem++;
+          break;
+        }
+      }
+
+      // Fix up JIT temps
+#ifdef _ARM64
+      size_t* start = frame->jit_mem - 1;
+      for(int k = 0; k > -JIT_TMP_LOOK_BACK; --k) {
+        size_t* ref = (size_t*)start[k];
+#else
+      for(int k = 0; k < JIT_TMP_LOOK_BACK; ++k) {
+        size_t* ref = (size_t*)mem[k];
+#endif
+        if(ref && IsYoung(ref)) {
+          size_t fwd = ref[MARKED_FLAG];
+          if(fwd) {
+#ifdef _ARM64
+            start[k] = (size_t)fwd;
+#else
+            mem[k] = (size_t)fwd;
+#endif
+          }
+        }
+      }
+    }
+  }
+}
+
 // ---- Generational GC: Minor and Major collection entry points ----
 
 void MemoryManager::CollectMinor(size_t* op_stack, size_t stack_pos)
@@ -1529,24 +1990,32 @@ void MemoryManager::CollectMinor(size_t* op_stack, size_t stack_pos)
 #endif
 #endif
 
-  // Phase 1: Trace remembered set with full recursion (minor_gc_mode=false)
-  // so old→old→young chains are fully followed
-  minor_gc_mode = false;
-#ifndef _GC_SERIAL
-  MUTEX_LOCK(&remembered_set_lock);
+#ifdef _DEBUG_GC
+  std::wcout << L"=== Minor GC: young_offset=" << young_offset.load(std::memory_order_relaxed)
+        << L", old_count=" << old_generation.size()
+        << L", dirty_count=" << dirty_count.load(std::memory_order_relaxed)
+        << L" ===" << std::endl;
 #endif
-  for(size_t i = 0; i < remembered_set.size(); ++i) {
-    size_t* mem = remembered_set[i];
-    CheckObject(mem, true, 0);
+
+  // Phase 1: Scan dirty old-gen objects for young references (with minor_gc_mode=true)
+  minor_gc_mode.store(true, std::memory_order_release);
+
+  size_t dc = dirty_count.load(std::memory_order_relaxed);
+  bool overflow = dc > DIRTY_LIST_MAX;
+
+  if(overflow) {
+    // Dirty list overflowed — scan all old-gen objects
+    for(auto iter = old_generation.begin(); iter != old_generation.end(); ++iter) {
+      ScanDirtyObject(*iter);
+    }
   }
-#ifndef _GC_SERIAL
-  MUTEX_UNLOCK(&remembered_set_lock);
-#endif
+  else {
+    for(size_t i = 0; i < dc; ++i) {
+      ScanDirtyObject(dirty_list[i]);
+    }
+  }
 
-  // Phase 2: Mark from roots with minor_gc_mode=true
-  // Old objects already marked in phase 1 won't be re-recursed (MarkMemory returns false)
-  minor_gc_mode = true;
-
+  // Phase 2: Mark from roots + sweep (promote-all + fixup + reset)
   CollectionInfo* info = new CollectionInfo;
   info->op_stack = op_stack;
   info->stack_pos = stack_pos;
@@ -1557,13 +2026,17 @@ void MemoryManager::CollectMinor(size_t* op_stack, size_t stack_pos)
   MUTEX_UNLOCK(&marked_sweep_lock);
 #endif
 
+#ifdef _DEBUG_GC
+  std::wcout << L"=== Minor GC complete: old_count=" << old_generation.size() << L" ===" << std::endl;
+#endif
+
   delete info;
   info = nullptr;
 }
 
 void MemoryManager::CollectMajor(size_t* op_stack, size_t stack_pos)
 {
-  minor_gc_mode = false;
+  minor_gc_mode.store(false, std::memory_order_release);
   CollectAllMemory(op_stack, stack_pos);
 }
 
@@ -1580,7 +2053,7 @@ void MemoryManager::CheckObject(size_t* mem, bool is_obj, long depth)
 #endif
   if(is_allocated) {
     // Minor GC optimization: mark old objects but don't recurse into them
-    if(minor_gc_mode && IsOldGen(mem)) {
+    if(minor_gc_mode.load(std::memory_order_acquire) && IsOldGen(mem)) {
       MarkMemory(mem);
       return;
     }
