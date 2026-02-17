@@ -581,7 +581,7 @@ static DispatchResult Handle_F2S(DispatchContext& ctx) {
 }
 
 //
-// Control flow (97-101)
+// Control flow (97-103)
 //
 static DispatchResult Handle_MTHD_CALL(DispatchContext& ctx) {
   ctx.interp->ProcessMethodCall(ctx.instr, ctx.instrs, *ctx.ip, ctx.op_stack, ctx.stack_pos);
@@ -655,7 +655,7 @@ static DispatchResult Handle_RTRN(DispatchContext& ctx) {
 }
 
 //
-// Memory operations (102-117)
+// Memory operations (104-117)
 //
 static DispatchResult Handle_NEW_BYTE_ARY(DispatchContext& ctx) {
   ctx.interp->ProcessNewByteArray(ctx.instr, ctx.op_stack, ctx.stack_pos);
@@ -896,9 +896,7 @@ static DispatchResult Handle_LIB_FUNC_DEF(DispatchContext& ctx) {
 }
 
 //
-// End marker (141)
-//
-// Try/error handling
+// Try/error handling (141-142)
 //
 static DispatchResult Handle_TRY_START(DispatchContext& ctx) {
 #ifdef _DEBUG
@@ -1042,72 +1040,73 @@ OpcodeHandler Runtime::instr_dispatch[] = {
   Handle_I2S,                   // 95: I2S
   Handle_F2S,                   // 96: F2S
 
-  // Control flow (97-101)
+  // Control flow (97-103)
   Handle_MTHD_CALL,             // 97: MTHD_CALL
   Handle_DYN_MTHD_CALL,         // 98: DYN_MTHD_CALL
-  Handle_JMP,                   // 99: JMP
-  Handle_LBL,                   // 100: LBL
-  Handle_RTRN,                  // 101: RTRN
+  Handle_MTHD_CALL_JIT,         // 99: MTHD_CALL_JIT
+  Handle_DYN_MTHD_CALL_JIT,     // 100: DYN_MTHD_CALL_JIT
+  Handle_JMP,                   // 101: JMP
+  Handle_LBL,                   // 102: LBL
+  Handle_RTRN,                  // 103: RTRN
 
-  // Memory operations (102-117)
-  Handle_NEW_BYTE_ARY,          // 102: NEW_BYTE_ARY
-  Handle_NEW_CHAR_ARY,          // 103: NEW_CHAR_ARY
-  Handle_NEW_INT_ARY,           // 104: NEW_INT_ARY
-  Handle_NEW_FLOAT_ARY,         // 105: NEW_FLOAT_ARY
-  Handle_NEW_OBJ_INST,          // 106: NEW_OBJ_INST
-  Handle_NEW_FUNC_INST,         // 107: NEW_FUNC_INST
-  Handle_CPY_BYTE_ARY,          // 108: CPY_BYTE_ARY
-  Handle_CPY_CHAR_ARY,          // 109: CPY_CHAR_ARY
-  Handle_CPY_INT_ARY,           // 110: CPY_INT_ARY
-  Handle_CPY_FLOAT_ARY,         // 111: CPY_FLOAT_ARY
-  Handle_ZERO_BYTE_ARY,         // 112: ZERO_BYTE_ARY
-  Handle_ZERO_CHAR_ARY,         // 113: ZERO_CHAR_ARY
-  Handle_ZERO_INT_ARY,          // 114: ZERO_INT_ARY
-  Handle_ZERO_FLOAT_ARY,        // 115: ZERO_FLOAT_ARY
+  // Memory operations (104-117)
+  Handle_NEW_BYTE_ARY,          // 104: NEW_BYTE_ARY
+  Handle_NEW_CHAR_ARY,          // 105: NEW_CHAR_ARY
+  Handle_NEW_INT_ARY,           // 106: NEW_INT_ARY
+  Handle_NEW_FLOAT_ARY,         // 107: NEW_FLOAT_ARY
+  Handle_NEW_OBJ_INST,          // 108: NEW_OBJ_INST
+  Handle_NEW_FUNC_INST,         // 109: NEW_FUNC_INST
+  Handle_CPY_BYTE_ARY,          // 110: CPY_BYTE_ARY
+  Handle_CPY_CHAR_ARY,          // 111: CPY_CHAR_ARY
+  Handle_CPY_INT_ARY,           // 112: CPY_INT_ARY
+  Handle_CPY_FLOAT_ARY,         // 113: CPY_FLOAT_ARY
+  Handle_ZERO_BYTE_ARY,         // 114: ZERO_BYTE_ARY
+  Handle_ZERO_CHAR_ARY,         // 115: ZERO_CHAR_ARY
+  Handle_ZERO_INT_ARY,          // 116: ZERO_INT_ARY
+  Handle_ZERO_FLOAT_ARY,        // 117: ZERO_FLOAT_ARY
 
-  // Type operations (116-117)
-  Handle_OBJ_INST_CAST,         // 116: OBJ_INST_CAST
-  Handle_OBJ_TYPE_OF,           // 117: OBJ_TYPE_OF
+  // Type operations (118-119)
+  Handle_OBJ_INST_CAST,         // 118: OBJ_INST_CAST
+  Handle_OBJ_TYPE_OF,           // 119: OBJ_TYPE_OF
 
-  // Trap operations (118-121)
-  Handle_TRAP,                  // 118: TRAP
-  Handle_TRAP_RTRN,             // 119: TRAP_RTRN
-  Handle_SET_SIGNAL,            // 120: SET_SIGNAL
-  Handle_RAISE_SIGNAL,          // 121: RAISE_SIGNAL
+  // Trap operations (120-123)
+  Handle_TRAP,                  // 120: TRAP
+  Handle_TRAP_RTRN,             // 121: TRAP_RTRN
+  Handle_SET_SIGNAL,            // 122: SET_SIGNAL
+  Handle_RAISE_SIGNAL,          // 123: RAISE_SIGNAL
 
-  // External library (122-124)
-  Handle_EXT_LIB_LOAD,          // 122: EXT_LIB_LOAD
-  Handle_EXT_LIB_UNLOAD,        // 123: EXT_LIB_UNLOAD
-  Handle_EXT_LIB_FUNC_CALL,     // 124: EXT_LIB_FUNC_CALL
+  // External library (124-126)
+  Handle_EXT_LIB_LOAD,          // 124: EXT_LIB_LOAD
+  Handle_EXT_LIB_UNLOAD,        // 125: EXT_LIB_UNLOAD
+  Handle_EXT_LIB_FUNC_CALL,     // 126: EXT_LIB_FUNC_CALL
 
-  // Stack operations (125-127)
-  Handle_SWAP_INT,              // 125: SWAP_INT
-  Handle_POP_INT,               // 126: POP_INT
-  Handle_POP_FLOAT,             // 127: POP_FLOAT
+  // Stack operations (127-129)
+  Handle_SWAP_INT,              // 127: SWAP_INT
+  Handle_POP_INT,               // 128: POP_INT
+  Handle_POP_FLOAT,             // 129: POP_FLOAT
 
-  // Thread operations (128-133)
-  Handle_ASYNC_MTHD_CALL,       // 128: ASYNC_MTHD_CALL
-  Handle_THREAD_JOIN,           // 129: THREAD_JOIN
-  Handle_THREAD_SLEEP,          // 130: THREAD_SLEEP
-  Handle_THREAD_MUTEX,          // 131: THREAD_MUTEX
-  Handle_CRITICAL_START,        // 132: CRITICAL_START
-  Handle_CRITICAL_END,          // 133: CRITICAL_END
+  // Thread operations (130-135)
+  Handle_ASYNC_MTHD_CALL,       // 130: ASYNC_MTHD_CALL
+  Handle_THREAD_JOIN,           // 131: THREAD_JOIN
+  Handle_THREAD_SLEEP,          // 132: THREAD_SLEEP
+  Handle_THREAD_MUTEX,          // 133: THREAD_MUTEX
+  Handle_CRITICAL_START,        // 134: CRITICAL_START
+  Handle_CRITICAL_END,          // 135: CRITICAL_END
 
-  // Library directives (134-138)
-  Handle_LIB_OBJ_TYPE_OF,       // 134: LIB_OBJ_TYPE_OF
-  Handle_LIB_NEW_OBJ_INST,      // 135: LIB_NEW_OBJ_INST
-  Handle_LIB_MTHD_CALL,         // 136: LIB_MTHD_CALL
-  Handle_LIB_OBJ_INST_CAST,     // 137: LIB_OBJ_INST_CAST
-  Handle_LIB_FUNC_DEF,          // 138: LIB_FUNC_DEF
+  // Library directives (136-140)
+  Handle_LIB_OBJ_TYPE_OF,       // 136: LIB_OBJ_TYPE_OF
+  Handle_LIB_NEW_OBJ_INST,      // 137: LIB_NEW_OBJ_INST
+  Handle_LIB_MTHD_CALL,         // 138: LIB_MTHD_CALL
+  Handle_LIB_OBJ_INST_CAST,     // 139: LIB_OBJ_INST_CAST
+  Handle_LIB_FUNC_DEF,          // 140: LIB_FUNC_DEF
 
-  // Try/error handling (139-140)
-  Handle_TRY_START,             // 139: TRY_START
-  Handle_TRY_END,               // 140: TRY_END
+  // Try/error handling (141-142)
+  Handle_TRY_START,             // 141: TRY_START
+  Handle_TRY_END,               // 142: TRY_END
 
-  // End marker (141)
-  Handle_END_STMTS,             // 141: END_STMTS
-
-  // Runtime-only: auto-JIT rewritten opcodes (142-143)
-  Handle_MTHD_CALL_JIT,         // 142: MTHD_CALL_JIT
-  Handle_DYN_MTHD_CALL_JIT      // 143: DYN_MTHD_CALL_JIT
+  // End marker (143)
+  Handle_END_STMTS              // 143: END_STMTS
 };
+
+static_assert(sizeof(Runtime::instr_dispatch) / sizeof(Runtime::instr_dispatch[0]) == instructions::END_STMTS + 1,
+              "Dispatch table size must match InstructionType enum count");

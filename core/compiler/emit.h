@@ -462,6 +462,12 @@ namespace backend {
       return instructions.size() == 0;
     }
 
+    void RemoveLastInstruction() {
+      if(!instructions.empty()) {
+        instructions.pop_back();
+      }
+    }
+
     void Write(bool is_debug, OutputStream& out_stream);
 
     void Debug() {

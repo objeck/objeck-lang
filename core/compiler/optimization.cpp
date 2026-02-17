@@ -292,6 +292,14 @@ std::vector<IntermediateBlock*> ItermediateOptimizer::OptimizeMethod(std::vector
       RunPass(inputs, [this](IntermediateBlock* b) { return InstructionReplacement(b); });
     }
 
+    // 3.15 - peephole optimization (s3)
+    if(optimization_level > 2) {
+#ifdef _DEBUG
+      GetLogger() << L"  Peephole optimization..." << std::endl;
+#endif
+      RunPass(inputs, [this](IntermediateBlock* b) { return PeepholeOptimize(b); });
+    }
+
     // 3.2 - dead code elimination (s2+)
     if(optimization_level > 1) {
 #ifdef _DEBUG
@@ -1954,6 +1962,65 @@ IntermediateBlock* ItermediateOptimizer::DeadCodeElim(IntermediateBlock* inputs)
     if(instr->GetType() == JMP && i + 1 < input_instrs.size()) {
       IntermediateInstruction* next = input_instrs[i + 1];
       if(next->GetType() == LBL && instr->GetOperand() == next->GetOperand()) {
+        continue;
+      }
+    }
+
+    outputs->AddInstruction(instr);
+  }
+
+  return outputs;
+}
+
+//
+// ------------------- Peephole Optimization -------------------
+//
+IntermediateBlock* ItermediateOptimizer::PeepholeOptimize(IntermediateBlock* inputs)
+{
+  IntermediateBlock* outputs = new IntermediateBlock;
+  std::vector<IntermediateInstruction*> input_instrs = inputs->GetInstructions();
+
+  for(size_t i = 0; i < input_instrs.size(); ++i) {
+    IntermediateInstruction* instr = input_instrs[i];
+
+    // Pattern 1: LOAD_INT_LIT 0 + ADD_INT → remove both (x + 0 = x, 0 + x = x)
+    if(instr->GetType() == ADD_INT && i >= 1) {
+      IntermediateInstruction* prev = input_instrs[i - 1];
+      if(prev->GetType() == LOAD_INT_LIT && prev->GetOperand7() == 0) {
+        // remove the LOAD_INT_LIT 0 that was already added
+        outputs->RemoveLastInstruction();
+        continue;
+      }
+    }
+
+    // Pattern 3: LOAD_INT_LIT 1 + MUL_INT → remove both (x * 1 = x, 1 * x = x)
+    if(instr->GetType() == MUL_INT && i >= 1) {
+      IntermediateInstruction* prev = input_instrs[i - 1];
+      if(prev->GetType() == LOAD_INT_LIT && prev->GetOperand7() == 1) {
+        outputs->RemoveLastInstruction();
+        continue;
+      }
+    }
+
+    // Pattern 4: LOAD_INT_LIT 0 + MUL_INT → replace with POP_INT + LOAD_INT_LIT 0
+    // (x * 0 = 0, 0 * x = 0)
+    if(instr->GetType() == MUL_INT && i >= 1) {
+      IntermediateInstruction* prev = input_instrs[i - 1];
+      if(prev->GetType() == LOAD_INT_LIT && prev->GetOperand7() == 0) {
+        // remove the LOAD_INT_LIT 0
+        outputs->RemoveLastInstruction();
+        // pop the other operand, push 0
+        outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POP_INT));
+        outputs->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(cur_line_num, (INT64_VALUE)0));
+        continue;
+      }
+    }
+
+    // Pattern 5: LOAD_INT_LIT 1 + DIV_INT → remove both (x / 1 = x)
+    if(instr->GetType() == DIV_INT && i >= 1) {
+      IntermediateInstruction* prev = input_instrs[i - 1];
+      if(prev->GetType() == LOAD_INT_LIT && prev->GetOperand7() == 1) {
+        outputs->RemoveLastInstruction();
         continue;
       }
     }
