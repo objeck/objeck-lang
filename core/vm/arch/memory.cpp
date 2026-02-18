@@ -258,29 +258,84 @@ size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, size_
     const long size = cls->GetInstanceMemorySize();
     const size_t alloc_size = size * 2 + sizeof(size_t) * EXTRA_BUF_SIZE;
 
-    // Allocate in old gen (bump allocator disabled — promotion/fixup cannot safely
-    // update PDA thread operand stacks and JIT-cached pointers)
-    if(collect && allocation_size + size > mem_max_size) {
-      CollectMajor(op_stack, stack_pos);
-    }
-    mem = GetMemory(alloc_size);
-    if(!mem) {
-      std::wcerr << L">>> Unable to allocate memory of size: " << alloc_size << L" <<<" << std::endl;
-      exit(1);
-    }
-    mem[EXTRA_BUF_SIZE + TYPE] = NIL_TYPE;
-    mem[EXTRA_BUF_SIZE + SIZE_OR_CLS] = (size_t)cls;
-    mem += EXTRA_BUF_SIZE;
-    mem[MARKED_FLAG] |= GC_OLD_BIT;
+    // Try young generation bump allocation
+    const size_t total = sizeof(size_t) + alloc_size;
+    const size_t aligned_total = (total + sizeof(size_t) - 1) & ~(sizeof(size_t) - 1);
+    size_t offset = young_offset.load(std::memory_order_relaxed);
+
+    if(offset + aligned_total <= young_region_size) {
+      // Bump allocate in young region
+      size_t new_offset = offset + aligned_total;
+      young_offset.store(new_offset, std::memory_order_relaxed);
+
+      size_t* raw_mem = (size_t*)(young_region + offset);
+      memset(raw_mem, 0, aligned_total);
+      raw_mem[0] = alloc_size;
+      mem = raw_mem + 1;
+      mem[EXTRA_BUF_SIZE + TYPE] = NIL_TYPE;
+      mem[EXTRA_BUF_SIZE + SIZE_OR_CLS] = (size_t)cls;
+      mem += EXTRA_BUF_SIZE;
+
 #ifndef _GC_SERIAL
-    MUTEX_LOCK(&allocated_lock);
+      MUTEX_LOCK(&allocated_lock);
 #endif
-    allocation_size += size;
-    old_allocation_size += size;
-    old_generation.insert(mem);
+      allocation_size += size;
 #ifndef _GC_SERIAL
-    MUTEX_UNLOCK(&allocated_lock);
+      MUTEX_UNLOCK(&allocated_lock);
 #endif
+    }
+    else {
+      // Young region full — trigger minor GC, then retry
+      if(collect) {
+        CollectMinor(op_stack, stack_pos);
+      }
+
+      offset = young_offset.load(std::memory_order_relaxed);
+      if(offset + aligned_total <= young_region_size) {
+        size_t new_offset = offset + aligned_total;
+        young_offset.store(new_offset, std::memory_order_relaxed);
+
+        size_t* raw_mem = (size_t*)(young_region + offset);
+        memset(raw_mem, 0, aligned_total);
+        raw_mem[0] = alloc_size;
+        mem = raw_mem + 1;
+        mem[EXTRA_BUF_SIZE + TYPE] = NIL_TYPE;
+        mem[EXTRA_BUF_SIZE + SIZE_OR_CLS] = (size_t)cls;
+        mem += EXTRA_BUF_SIZE;
+
+#ifndef _GC_SERIAL
+        MUTEX_LOCK(&allocated_lock);
+#endif
+        allocation_size += size;
+#ifndef _GC_SERIAL
+        MUTEX_UNLOCK(&allocated_lock);
+#endif
+      }
+      else {
+        // Still full after minor GC — allocate directly in old gen
+        if(collect && allocation_size + size > mem_max_size) {
+          CollectMajor(op_stack, stack_pos);
+        }
+        mem = GetMemory(alloc_size);
+        if(!mem) {
+          std::wcerr << L">>> Unable to allocate memory of size: " << alloc_size << L" <<<" << std::endl;
+          exit(1);
+        }
+        mem[EXTRA_BUF_SIZE + TYPE] = NIL_TYPE;
+        mem[EXTRA_BUF_SIZE + SIZE_OR_CLS] = (size_t)cls;
+        mem += EXTRA_BUF_SIZE;
+        mem[MARKED_FLAG] |= GC_OLD_BIT;
+#ifndef _GC_SERIAL
+        MUTEX_LOCK(&allocated_lock);
+#endif
+        allocation_size += size;
+        old_allocation_size += size;
+        old_generation.insert(mem);
+#ifndef _GC_SERIAL
+        MUTEX_UNLOCK(&allocated_lock);
+#endif
+      }
+    }
 
 #ifdef _MEM_LOGGING
     mem_logger << mem_cycle << L",alloc,obj," << mem << L"," << size << std::endl;
@@ -323,29 +378,84 @@ size_t* MemoryManager::AllocateArray(const size_t size, const MemoryType type, s
 
   const size_t alloc_size = calc_size + sizeof(size_t) * EXTRA_BUF_SIZE;
 
-  // Allocate in old gen (bump allocator disabled — promotion/fixup cannot safely
-  // update PDA thread operand stacks and JIT-cached pointers)
-  if(collect && allocation_size + calc_size > mem_max_size) {
-    CollectMajor(op_stack, stack_pos);
-  }
-  mem = GetMemory(alloc_size);
-  if(!mem) {
-    std::wcerr << L">>> Unable to allocate memory of size: " << alloc_size << L" <<<" << std::endl;
-    exit(1);
-  }
-  mem[EXTRA_BUF_SIZE + TYPE] = type;
-  mem[EXTRA_BUF_SIZE + SIZE_OR_CLS] = calc_size;
-  mem += EXTRA_BUF_SIZE;
-  mem[MARKED_FLAG] |= GC_OLD_BIT;
+  // Try young generation bump allocation
+  const size_t total = sizeof(size_t) + alloc_size;
+  const size_t aligned_total = (total + sizeof(size_t) - 1) & ~(sizeof(size_t) - 1);
+  size_t offset = young_offset.load(std::memory_order_relaxed);
+
+  if(offset + aligned_total <= young_region_size) {
+    // Bump allocate in young region
+    size_t new_offset = offset + aligned_total;
+    young_offset.store(new_offset, std::memory_order_relaxed);
+
+    size_t* raw_mem = (size_t*)(young_region + offset);
+    memset(raw_mem, 0, aligned_total);
+    raw_mem[0] = alloc_size;
+    mem = raw_mem + 1;
+    mem[EXTRA_BUF_SIZE + TYPE] = type;
+    mem[EXTRA_BUF_SIZE + SIZE_OR_CLS] = calc_size;
+    mem += EXTRA_BUF_SIZE;
+
 #ifndef _GC_SERIAL
-  MUTEX_LOCK(&allocated_lock);
+    MUTEX_LOCK(&allocated_lock);
 #endif
-  allocation_size += calc_size;
-  old_allocation_size += calc_size;
-  old_generation.insert(mem);
+    allocation_size += calc_size;
 #ifndef _GC_SERIAL
-  MUTEX_UNLOCK(&allocated_lock);
+    MUTEX_UNLOCK(&allocated_lock);
 #endif
+  }
+  else {
+    // Young region full — trigger minor GC, then retry
+    if(collect) {
+      CollectMinor(op_stack, stack_pos);
+    }
+
+    offset = young_offset.load(std::memory_order_relaxed);
+    if(offset + aligned_total <= young_region_size) {
+      size_t new_offset = offset + aligned_total;
+      young_offset.store(new_offset, std::memory_order_relaxed);
+
+      size_t* raw_mem = (size_t*)(young_region + offset);
+      memset(raw_mem, 0, aligned_total);
+      raw_mem[0] = alloc_size;
+      mem = raw_mem + 1;
+      mem[EXTRA_BUF_SIZE + TYPE] = type;
+      mem[EXTRA_BUF_SIZE + SIZE_OR_CLS] = calc_size;
+      mem += EXTRA_BUF_SIZE;
+
+#ifndef _GC_SERIAL
+      MUTEX_LOCK(&allocated_lock);
+#endif
+      allocation_size += calc_size;
+#ifndef _GC_SERIAL
+      MUTEX_UNLOCK(&allocated_lock);
+#endif
+    }
+    else {
+      // Still full after minor GC — allocate directly in old gen
+      if(collect && allocation_size + calc_size > mem_max_size) {
+        CollectMajor(op_stack, stack_pos);
+      }
+      mem = GetMemory(alloc_size);
+      if(!mem) {
+        std::wcerr << L">>> Unable to allocate memory of size: " << alloc_size << L" <<<" << std::endl;
+        exit(1);
+      }
+      mem[EXTRA_BUF_SIZE + TYPE] = type;
+      mem[EXTRA_BUF_SIZE + SIZE_OR_CLS] = calc_size;
+      mem += EXTRA_BUF_SIZE;
+      mem[MARKED_FLAG] |= GC_OLD_BIT;
+#ifndef _GC_SERIAL
+      MUTEX_LOCK(&allocated_lock);
+#endif
+      allocation_size += calc_size;
+      old_allocation_size += calc_size;
+      old_generation.insert(mem);
+#ifndef _GC_SERIAL
+      MUTEX_UNLOCK(&allocated_lock);
+#endif
+    }
+  }
 
 #ifdef _MEM_LOGGING
   mem_logger << mem_cycle << L",alloc,array," << mem << L"," << size << std::endl;
