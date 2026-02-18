@@ -583,23 +583,25 @@ void JitAmd64::ProcessInstructions() {
       Epilog();
       break;
       
-    case MTHD_CALL: {
+    case MTHD_CALL:
+    case MTHD_CALL_JIT: {
       StackMethod* called_method = program->GetClass(instr->GetOperand())->GetMethod(instr->GetOperand2());
       if(called_method) {
 #ifdef _DEBUG_JIT
         assert(called_method);
-        std::wcout << L"MTHD_CALL: name='" << called_method->GetName() << L"': id="<< instr->GetOperand() 
-              << L"," << instr->GetOperand2() << L", params=" << (called_method->GetParamCount() + 1) 
+        std::wcout << L"MTHD_CALL: name='" << called_method->GetName() << L"': id="<< instr->GetOperand()
+              << L"," << instr->GetOperand2() << L", params=" << (called_method->GetParamCount() + 1)
               << L": regs=" << aval_regs.size() << L"," << aux_regs.size() << std::endl;
-#endif      
+#endif
         // passing instance variable
-        ProcessStackCallback(MTHD_CALL, instr, instr_index, called_method->GetParamCount() + 1);      
+        ProcessStackCallback(MTHD_CALL, instr, instr_index, called_method->GetParamCount() + 1);
         ProcessReturnParameters(called_method->GetReturn());
       }
     }
       break;
-      
-    case DYN_MTHD_CALL: {
+
+    case DYN_MTHD_CALL:
+    case DYN_MTHD_CALL_JIT: {
 #ifdef _DEBUG_JIT
       std::wcout << L"DYN_MTHD_CALL: regs=" << aval_regs.size() << L"," << aux_regs.size() << std::endl;
 #endif  

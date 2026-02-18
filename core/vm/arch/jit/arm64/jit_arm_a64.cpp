@@ -553,7 +553,8 @@ void JitArm64::ProcessInstructions() {
       Epilog();
       break;
       
-    case MTHD_CALL: {
+    case MTHD_CALL:
+    case MTHD_CALL_JIT: {
       StackMethod* called_method = program->GetClass(instr->GetOperand())->GetMethod(instr->GetOperand2());
       if(called_method) {
 #ifdef _DEBUG_JIT_JIT
@@ -569,7 +570,8 @@ void JitArm64::ProcessInstructions() {
     }
       break;
       
-    case DYN_MTHD_CALL: {
+    case DYN_MTHD_CALL:
+    case DYN_MTHD_CALL_JIT: {
 #ifdef _DEBUG_JIT_JIT
       std::wcout << L"DYN_MTHD_CALL: regs=" << aval_regs.size() << endl;
 #endif
