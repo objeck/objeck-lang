@@ -172,25 +172,10 @@ jobs:
     # Build Compiler Bootstrap
     # ============================================
 
-    - name: Build bootstrap (Windows)
-      if: runner.os == 'Windows'
-      working-directory: ./core/compiler
-      run: call update_version.cmd
-
-    - name: Build bootstrap (Linux x64)
-      if: runner.os == 'Linux' && matrix.arch == 'x64'
+    - name: Build bootstrap (Linux x64 only)
+      if: matrix.platform == 'linux-x64'
       working-directory: ./core/compiler
       run: ./update_version.sh
-
-    - name: Build bootstrap (Linux ARM64)
-      if: runner.os == 'Linux' && matrix.arch == 'arm64'
-      working-directory: ./core/compiler
-      run: ./update_version_arm.sh
-
-    - name: Build bootstrap (macOS)
-      if: runner.os == 'macOS'
-      working-directory: ./core/compiler
-      run: ./update_version_arm.sh
 
     # ============================================
     # Build Toolchain
