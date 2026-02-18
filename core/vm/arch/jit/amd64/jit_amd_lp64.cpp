@@ -583,8 +583,7 @@ void JitAmd64::ProcessInstructions() {
       Epilog();
       break;
       
-    case MTHD_CALL:
-    case MTHD_CALL_JIT: {
+    case MTHD_CALL: {
       StackMethod* called_method = program->GetClass(instr->GetOperand())->GetMethod(instr->GetOperand2());
       if(called_method) {
 #ifdef _DEBUG_JIT
@@ -600,8 +599,7 @@ void JitAmd64::ProcessInstructions() {
     }
       break;
 
-    case DYN_MTHD_CALL:
-    case DYN_MTHD_CALL_JIT: {
+    case DYN_MTHD_CALL: {
 #ifdef _DEBUG_JIT
       std::wcout << L"DYN_MTHD_CALL: regs=" << aval_regs.size() << L"," << aux_regs.size() << std::endl;
 #endif  
@@ -5269,7 +5267,8 @@ bool JitAmd64::Compile(StackMethod* cm)
     // Pre-scan: reject methods with field-store instructions (no JIT write barrier)
     for(long i = 0; i < method->GetInstructionCount(); ++i) {
       const InstructionType type = method->GetInstruction(i)->GetType();
-      if(type == STOR_CLS_INST_INT_VAR || type == COPY_CLS_INST_INT_VAR || type == STOR_INT_ARY_ELM) {
+      if(type == STOR_CLS_INST_INT_VAR || type == COPY_CLS_INST_INT_VAR || type == STOR_INT_ARY_ELM ||
+         type == MTHD_CALL_JIT || type == DYN_MTHD_CALL_JIT) {
         return false;
       }
     }
