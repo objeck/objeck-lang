@@ -337,7 +337,7 @@ extern "C" {
 #endif
   void sdl_surface_duplicate(VMContext& context) {
     SDL_Surface* surface = (SDL_Surface*)APITools_GetIntValue(context, 1);
-    APITools_SetIntValue(context, 0, (size_t)surface->pitch);
+    APITools_SetIntValue(context, 0, (size_t)SDL_ConvertSurface(surface, surface->format, 0));
   }
 
 #ifdef _WIN32
@@ -489,9 +489,9 @@ extern "C" {
     Uint8 r, g, b;
     SDL_Surface* surface = (SDL_Surface*)APITools_GetIntValue(context, 1);
     APITools_SetIntValue(context, 0, SDL_GetSurfaceColorMod(surface, &r, &g, &b));
-    APITools_SetIntValue(context, 1, r);
-    APITools_SetIntValue(context, 2, g);
-    APITools_SetIntValue(context, 3, b);
+    APITools_SetIntValue(context, 2, r);
+    APITools_SetIntValue(context, 3, g);
+    APITools_SetIntValue(context, 4, b);
   }
 
 #ifdef _WIN32
@@ -647,8 +647,8 @@ extern "C" {
     int dstwidth; int dstheight;
     zoomSurfaceSize(width, height, zoomx, zoomy, &dstwidth, &dstheight);
 
-    APITools_SetIntValue(context, 5, dstwidth);
-    APITools_SetIntValue(context, 6, dstheight);
+    APITools_SetIntValue(context, 4, dstwidth);
+    APITools_SetIntValue(context, 5, dstheight);
   }
 
 #ifdef _WIN32
@@ -1364,14 +1364,14 @@ extern "C" {
 #endif
     void sdl_window_get_borders_size(VMContext& context) {
     SDL_Window* window = (SDL_Window*)APITools_GetIntValue(context, 1);
-    
+
     int top; int left; int bottom; int right;
     const int result = SDL_GetWindowBordersSize(window, &top, &left, &bottom, &right);
 
-    APITools_SetIntValue(context, 1, top);
-    APITools_SetIntValue(context, 2, left);
-    APITools_SetIntValue(context, 3, bottom);
-    APITools_SetIntValue(context, 4, right);
+    APITools_SetIntValue(context, 2, top);
+    APITools_SetIntValue(context, 3, left);
+    APITools_SetIntValue(context, 4, bottom);
+    APITools_SetIntValue(context, 5, right);
 
     APITools_SetIntValue(context, 0, result);
   }
@@ -1620,9 +1620,9 @@ extern "C" {
     Uint16 blue = (Uint16)APITools_GetIntValue(context, 4);
 
     APITools_SetIntValue(context, 0, SDL_SetWindowGammaRamp(window, &red, &green, &blue));
-    APITools_SetIntValue(context, 1, red);
-    APITools_SetIntValue(context, 2, green);
-    APITools_SetIntValue(context, 3, blue);
+    APITools_SetIntValue(context, 2, red);
+    APITools_SetIntValue(context, 3, green);
+    APITools_SetIntValue(context, 4, blue);
   }
 
 #ifdef _WIN32
@@ -1633,9 +1633,9 @@ extern "C" {
 
     Uint16 red, green, blue;
     APITools_SetIntValue(context, 0, SDL_GetWindowGammaRamp(window, &red, &green, &blue));
-    APITools_SetIntValue(context, 1, red);
-    APITools_SetIntValue(context, 2, green);
-    APITools_SetIntValue(context, 3, blue);
+    APITools_SetIntValue(context, 2, red);
+    APITools_SetIntValue(context, 3, green);
+    APITools_SetIntValue(context, 4, blue);
   }
 
 #ifdef _WIN32
@@ -1856,8 +1856,8 @@ extern "C" {
       button_obj[3] = event->button.which;
       button_obj[4] = event->button.button;
       button_obj[5] = event->button.state;
-      button_obj[6] = event->button.x;
-      button_obj[7] = event->button.y;
+      button_obj[6] = event->button.clicks;
+      button_obj[7] = event->button.x;
       button_obj[8] = event->button.y;
 
       APITools_SetIntValue(context, 0, 0);
@@ -1911,14 +1911,14 @@ extern "C" {
   __declspec(dllexport)
 #endif
   void sdl_event_flush(VMContext& context) {
-    SDL_PumpEvents();
+    SDL_FlushEvent((int)APITools_GetIntValue(context, 0));
   }
 
   #ifdef _WIN32
   __declspec(dllexport)
 #endif
   void sdl_event_pump(VMContext& context) {
-    SDL_FlushEvent((int)APITools_GetIntValue(context, 0));
+    SDL_PumpEvents();
   }
 
 #ifdef _WIN32
@@ -2005,7 +2005,7 @@ extern "C" {
   void sdl_palette_write(VMContext& context) {
     SDL_Palette* palette = (SDL_Palette*)APITools_GetIntValue(context, 0);
     size_t* palette_obj = APITools_GetObjectValue(context, 1);
-    sdl_palette_raw_read(palette, palette_obj);
+    sdl_palette_raw_write(palette, palette_obj);
   }
 
   //
@@ -2862,8 +2862,8 @@ extern "C" {
     size_t* rect_obj = APITools_GetObjectValue(context, 0);
 
     SDL_Rect rect;
+    sdl_rect_raw_write(&rect, rect_obj);
     SDL_SetTextInputRect(&rect);
-    sdl_rect_raw_read(&rect, rect_obj);
   }
 
 #ifdef _WIN32
@@ -3512,7 +3512,6 @@ __declspec(dllexport)
 #endif
   void sdl_joystick_current_power_level(VMContext& context) {
     SDL_Joystick* joystick = (SDL_Joystick*)APITools_GetIntValue(context, 1);
-    APITools_SetIntValue(context, 0, (size_t)SDL_JoystickCurrentPowerLevel(joystick));
     APITools_SetIntValue(context, 0, (size_t)SDL_JoystickCurrentPowerLevel(joystick));
   }
 
@@ -4710,7 +4709,7 @@ __declspec(dllexport)
     SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
     const int x = (int)APITools_GetIntValue(context, 2);
     const int y = (int)APITools_GetIntValue(context, 3);
-    const char c = (char)APITools_GetIntValue(context, 3);
+    const char c = (char)APITools_GetIntValue(context, 4);
 
     SDL_Color color;
     size_t* color_obj = APITools_GetObjectValue(context, 5);

@@ -7662,7 +7662,7 @@ bundle Game.SDL2 {
 	        array_args[2] := text;
 	        array_args[3] := fg;
 
-	        Proxy->GetDllProxy()->CallFunction("sdl_font_render_utf8_solid", array_args);
+	        Proxy->GetDllProxy()->CallFunction("sdl_font_render_text_solid", array_args);
 
 	        value := array_args[0]->As(IntRef);
 	        return Surface->New(value->Get());
@@ -7681,7 +7681,7 @@ bundle Game.SDL2 {
 	        array_args[2] := text;
 	        array_args[3] := fg;
 
-	        Proxy->GetDllProxy()->CallFunction("sdl_font_render_utf8_blended", array_args);
+	        Proxy->GetDllProxy()->CallFunction("sdl_font_render_utf8_solid", array_args);
 
 	        value := array_args[0]->As(IntRef);
 	        return Surface->New(value->Get());
@@ -7738,7 +7738,7 @@ bundle Game.SDL2 {
 	        array_args[1] := IntRef->New(@font);
 	        array_args[2] := text;
 	        array_args[3] := fg;
-	        array_args[4] := fg;
+	        array_args[4] := bg;
 
 	        Proxy->GetDllProxy()->CallFunction("sdl_font_render_text_shaded", array_args);
 
