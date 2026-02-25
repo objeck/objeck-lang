@@ -5385,6 +5385,23 @@ bool JitAmd64::Compile(StackMethod* cm)
 #endif
       float_consts = nullptr;
 
+      free(code);
+      code = nullptr;
+
+      // Clear register lists to prevent destructor from deleting
+      // possibly-corrupted entries after a mid-compilation failure
+      while(!working_stack.empty()) {
+        RegInstr* ri = working_stack.front();
+        working_stack.pop_front();
+        delete ri;
+      }
+      while(!used_regs.empty()) {
+        used_regs.pop_front();
+      }
+      while(!used_xregs.empty()) {
+        used_xregs.pop_front();
+      }
+
       return false;
     }
 
