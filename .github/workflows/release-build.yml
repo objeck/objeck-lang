@@ -225,8 +225,8 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          dotnet tool install --global wix --version 4.0.6
-          wix extension add --global WixToolset.UI.wixext/4.0.6 WixToolset.Util.wixext/4.0.6
+          dotnet tool install --global wix --version 5.0.2
+          wix extension add --global WixToolset.UI.wixext/5.0.2 WixToolset.Util.wixext/5.0.2
           Write-Output "✅ WiX Toolset installed"
 
       # ============================================
