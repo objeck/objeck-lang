@@ -63,6 +63,8 @@ obc hello && obr hello
 
 **v2026.2.1**
   * New 'try/otherwise' error handling framework
+  * **Unicode**: Fixed emoji and supplementary character output on all platforms (stdout and stderr)
+  * **Windows Installer**: Migrated from VDPROJ to WiX v4 — MSIs now built in CI without Visual Studio
   * **Debugger**: Added `help`/`h` command with full command reference, fixed README documentation
   * **JIT Fixes**: Fixed segfaults in AMD64 JIT (MTHD_CALL, DYN_MTHD_CALL, STOR_CLS_INST_INT_VAR), fixed ARM64 JIT pre-scan rejection
   * **JIT Fixes**: Fixed broken `Log`/`Log10` float math (x87 emitted wrong constants), fixed `Rand` float params
