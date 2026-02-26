@@ -18,6 +18,7 @@ cp make/Makefile.msys2-clang.amd64 Makefile
 make clean; make -j3 OBJECK_LIB_PATH=///".///"
 cp obc ../release/deploy-msys2-clang/bin
 cp ../lib/*.obl ../release/deploy-msys2-clang/lib
+cp ../lib/*.ini ../release/deploy-msys2-clang/lib
 cp ../vm/misc/*.pem ../release/deploy-msys2-clang/lib
 
 # build VM
@@ -50,9 +51,17 @@ cd ../crypto
 ./build_msys2-clang.sh crypto
 cp crypto.dll ../../release/deploy-msys2-clang/lib/native/libobjk_crypto.dll
 
+cd ../lame
+./build_msys2-clang.sh lame
+cp lame.dll ../../release/deploy-msys2-clang/lib/native/libobjk_lame.dll
+
 cd ../matrix
 ./build_msys2-clang.sh matrix
 cp matrix.dll ../../release/deploy-msys2-clang/lib/native/libobjk_ml.dll
+
+cd ../opencv
+./build_msys2-clang.sh opencv
+cp opencv.dll ../../release/deploy-msys2-clang/lib/native/libobjk_opencv.dll
 
 cd ../sdl
 ./build_msys2-clang.sh sdl
@@ -77,7 +86,7 @@ cd ../../release
 cd ../..
 cp -R docs/syntax core/release/deploy-msys2-clang/doc/syntax
 cp docs/readme.html core/release/deploy-msys2-clang
-cp docs/doc/readme.css core/release/deploy-msys2-clang/doc
+cp docs/style/readme.css core/release/deploy-msys2-clang/doc
 
 cp LICENSE core/release/deploy-msys2-clang
 unzip docs/api.zip -d core/release/deploy-msys2-clang/doc
@@ -93,10 +102,11 @@ cd core/release
 
 # deploy
 if [ ! -z "$2" ] && [ "$2" = "deploy" ]; then
+	mkdir -p ~/Desktop
 	rm -rf ~/Desktop/objeck*
 	cp -rf ../release/deploy-msys2-clang ~/Desktop/objeck-lang
 	cd ~/Desktop
-	
+
 	rm -f objeck.tar objeck.tgz
 	tar cf objeck.tar objeck-lang
 	gzip objeck.tar
