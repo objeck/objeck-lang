@@ -147,6 +147,7 @@ jobs:
         working-directory: ./core/release/deploy-x64/bin
         shell: cmd
         run: |
+          set OBJECK_LIB_PATH=%CD%\..\lib
           obc.exe -src ..\..\..\..\programs\deploy\util\deploy_rename.obs -lib misc
           if errorlevel 1 exit /b 1
           echo ✅ Binary renaming tool compiled
