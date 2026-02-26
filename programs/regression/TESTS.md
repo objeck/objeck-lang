@@ -20,11 +20,34 @@ This document lists all regression tests, what they validate, and comprehensive 
 | 12 | `jit_native_cls_fields.obs` | AMD64 JIT | Object reference storage in class instance fields with GC pressure | - | ARM64, x64 | ✅ |
 | 13 | `jit_native_math.obs` | AMD64 JIT | Native math builtins: Factorial, Sinh/Cosh/Tanh/Log2/Cbrt, Pow | - | ARM64, x64 | ✅ |
 | 14 | `jit_native_float_array.obs` | AMD64 JIT | Float array creation and math operations in native context | - | ARM64, x64 | ✅ |
+| 15 | `try_otherwise.obs` | Core Language | Exception handling with try/otherwise | - | ARM64, x64 | ✅ |
+| 16 | `fix524_array_cast_chain.obs` | Bug Fix | Array cast chain fix | - | ARM64, x64 | ✅ |
 
-**Total Tests:** 14
+**Total Runtime Tests:** 16
 **ARM64 JIT Tests:** 4
 **AMD64 JIT Tests:** 4
-**Core Language Tests:** 6
+**Core Language Tests:** 8
+
+### Debugger Tests (`run_debugger_tests.sh`)
+
+| # | Test Name | What It Validates |
+|---|-----------|-------------------|
+| 1 | `help` | Help command displays all commands |
+| 2 | `breakpoints` | Set, list, and delete breakpoints |
+| 3 | `run_break` | Run program and hit breakpoint |
+| 4 | `print_vars` | Print Int, array, and object variables |
+| 5 | `step_into` | Step into method calls |
+| 6 | `step_over` | Step over method calls |
+| 7 | `stack_trace` | Call stack display |
+| 8 | `list_source` | Source code listing |
+| 9 | `memory` | Memory allocation stats |
+| 10 | `info` | Program/class information |
+| 11 | `print_self` | Print @self and instance variables |
+| 12 | `step_out` | Step out of method (jump) |
+| 13 | `full_run` | Full program execution without breakpoints |
+| 14 | `clear_breaks` | Clear all breakpoints |
+
+**Total Debugger Tests:** 14
 **All Tests Status:** ✅ PASSING
 
 ## Feature Coverage Matrix

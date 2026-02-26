@@ -4,12 +4,12 @@ A command-line debugger for Objeck programs, providing breakpoints, stack inspec
 
 ## Features
 
-- **Breakpoints**: Set breakpoints at specific lines or methods
+- **Breakpoints**: Set breakpoints at specific lines
 - **Step execution**: Step into, over, and out of method calls
 - **Stack inspection**: View call stack and local variables
 - **Expression evaluation**: Evaluate expressions in the current context
-- **Watchpoints**: Monitor variable changes
-- **Interactive REPL**: Execute code in the debugging context
+- **Source listing**: View source code around current position
+- **Memory inspection**: View memory allocation statistics
 
 ## Prerequisites
 
@@ -30,33 +30,44 @@ obc -src myapp.obs -dest myapp.obe -debug
 
 ```bash
 # Start debugger
-obd myapp.obe
+obd -b myapp.obe
+obd -b myapp.obe -src ../src
 
 # Common debugger commands
-(obd) break MyClass:42        # Set breakpoint at line 42 in MyClass
-(obd) run                     # Run program until breakpoint
-(obd) step                    # Step to next line
-(obd) next                    # Step over method calls
-(obd) print variable          # Print variable value
-(obd) stack                   # Show call stack
-(obd) continue                # Continue execution
-(obd) quit                    # Exit debugger
+> b myapp.obs:42        # Set breakpoint at line 42
+> r                     # Run program until breakpoint
+> s                     # Step into method calls
+> n                     # Step over (next line)
+> j                     # Step out (jump out of method)
+> p variable            # Print variable value
+> l                     # List source code
+> stack                 # Show call stack
+> c                     # Continue execution
+> h                     # Show help
+> q                     # Exit debugger
 ```
 
 ## Commands Reference
 
 | Command | Shortcut | Description |
 |---------|----------|-------------|
-| `break <location>` | `b` | Set breakpoint |
-| `run [args]` | `r` | Start/restart program |
-| `continue` | `c` | Continue execution |
+| `run` | `r` | Start/restart program |
+| `break <file>:<line>` | `b` | Set breakpoint |
+| `breaks` | | List all breakpoints |
+| `delete <file>:<line>` | `d` | Remove breakpoint |
+| `clear` | | Clear all breakpoints |
+| `cont` | `c` | Continue execution |
 | `step` | `s` | Step into |
 | `next` | `n` | Step over |
-| `finish` | `f` | Step out |
+| `jump` | `j` | Step out |
 | `print <expr>` | `p` | Print expression |
-| `stack` | `bt` | Show backtrace |
-| `list` | `l` | List source code |
-| `info` | `i` | Show program info |
+| `list [<file>:<line>]` | `l` | List source code |
+| `stack` | | Show call stack |
+| `memory` | `m` | Show memory stats |
+| `info [class=<C>]` | `i` | Show program/class info |
+| `exe <file>` | | Load binary file |
+| `src <dir>` | | Set source directory |
+| `args '<args>'` | | Set program arguments |
 | `help` | `h` | Show help |
 | `quit` | `q` | Exit debugger |
 
@@ -79,29 +90,36 @@ The debugger consists of:
 ## Example Session
 
 ```bash
-$ obd myapp.obe
-Objeck Debugger v2026.2.0
-Loading program: myapp.obe
+$ obd -b myapp.obe -src .
+-------------------------------------
+Objeck 2026.2.1 - Interactive Debugger
+-------------------------------------
 
-(obd) break Main:15
-Breakpoint 1 set at Main:15
+loaded binary: 'myapp.obe'
+source file path: './'
 
-(obd) run
-Running program...
-Hit breakpoint 1 at Main:15
+> b myapp.obs:15
+added breakpoint: file='myapp.obs:15'
 
-(obd) print count
-count = 42
+> r
+break: file='myapp.obs:15', method='Main->Main(..)'
 
-(obd) stack
-#0  Main:15
-#1  Main:Main(String[])
+> p count
+print: type=Int/Byte/Bool, value=42(0x2a)
 
-(obd) next
-Main:16
+> stack
+stack:
+  frame: pos=1, class='Main', method='Main->Main(a:System.String[])', file=myapp.obs:15
 
-(obd) continue
-Program exited normally
+> n
+break: file='myapp.obs:16', method='Main->Main(..)'
+
+> c
+Program output here
+> q
+breakpoints cleared.
+
+Goodbye...
 ```
 
 ## See Also

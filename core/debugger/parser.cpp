@@ -223,6 +223,11 @@ Command* Parser::ParseStatement(int depth)
       command = TreeFactory::Instance()->MakeBasicCommand(CLEAR_COMMAND);
       break;
 
+    case TOKEN_HELP_ID:
+      NextToken();
+      command = TreeFactory::Instance()->MakeBasicCommand(HELP_COMMAND);
+      break;
+
     default:
       command = nullptr;
       break;

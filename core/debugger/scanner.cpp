@@ -102,6 +102,8 @@ void Scanner::LoadKeywords()
   ident_map[L"?r"] = TOKEN_RUN_ID;
   ident_map[L"?list"] = TOKEN_LIST_ID;
   ident_map[L"?l"] = TOKEN_LIST_ID;
+  ident_map[L"?help"] = TOKEN_HELP_ID;
+  ident_map[L"?h"] = TOKEN_HELP_ID;
   ident_map[L"@self"] = TOKEN_SELF_ID;
   ident_map[L"class"] = TOKEN_CLASS_ID;
   ident_map[L"method"] = TOKEN_METHOD_ID;
@@ -140,6 +142,7 @@ void Scanner::CheckIdentifier(int index)
     case TOKEN_FRAME_ID:
     case TOKEN_CLEAR_ID:
     case TOKEN_DELETE_ID:
+    case TOKEN_HELP_ID:
     case TOKEN_RUN_ID:
       tokens[index]->SetType(ident_type);
       break;
