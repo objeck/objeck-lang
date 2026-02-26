@@ -1,6 +1,6 @@
 v2026.2.1 (February 26, 2026)
 ===
-JIT stability fixes, debugger improvements, SDL2 bug fixes, and expanded test coverage.
+New try/otherwise error handling, JIT stability fixes, debugger improvements, SDL2 bug fixes, and expanded test coverage.
 
 v2026.2.1
 - New 'try/otherwise' error handling framework
@@ -15,6 +15,8 @@ v2026.2.1
 - Web playground updated to v2026.2.1 Preview
 - Performance: 4.38x nbody speedup via inline limit increase
 - Compiler: CSE, dead code elimination, constant folding fixes
+- JIT: Division-by-zero guards in constant folding for x64 and ARM64
+- 10 new performance benchmarks with measurement tooling
 - CI: Linux ARM64 and macOS ARM64 test execution in GitHub Actions
 
 v2026.2.0 (February 12, 2026)

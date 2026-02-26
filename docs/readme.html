@@ -58,7 +58,7 @@
   </header>
 
   <main style="text-align: left;">
-   <p>JIT stability fixes, debugger improvements, SDL2 bug fixes, and expanded test coverage.</p>
+   <p>New try/otherwise error handling, JIT stability fixes, debugger improvements, SDL2 bug fixes, and expanded test coverage.</p>
 
    <h3><u>v2026.2.1</u></h3>
     <ul>
@@ -74,6 +74,8 @@
         <li>Web playground updated to v2026.2.1 Preview</li>
         <li>Performance: 4.38x nbody speedup via inline limit increase</li>
         <li>Compiler: CSE, dead code elimination, constant folding fixes</li>
+        <li>JIT: Division-by-zero guards in constant folding for x64 and ARM64</li>
+        <li>10 new performance benchmarks with measurement tooling</li>
         <li>CI: Linux ARM64 and macOS ARM64 test execution in GitHub Actions</li>
     </ul>
 
