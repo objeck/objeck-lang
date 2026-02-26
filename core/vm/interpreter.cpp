@@ -241,6 +241,7 @@ void StackInterpreter::Execute(size_t* op_stack, size_t* stack_pos, long i, Stac
     long recovery_ip = CheckTryRecovery();
     if(recovery_ip >= 0) {
       ip = recovery_ip;
+      ctx.instrs = (*stack_frame)->method->GetInstructions();
     }
 
     // instrs may have changed from method calls
@@ -1987,9 +1988,6 @@ StackMethod* __attribute__((noinline, cold)) StackInterpreter::ResolveVirtualMet
   StackClass* concrete_class = MemoryManager::GetClass((size_t*)instance);
   if(!concrete_class) {
     if(TryErrorRecovery(stack_pos)) {
-      (*stack_frame) = PopFrame();
-      instrs = (*stack_frame)->method->GetInstructions();
-      ip = (*stack_frame)->ip;
       return nullptr;
     }
     std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;

@@ -33,6 +33,10 @@
 
 #include "../vm/common.h"
 
+#ifdef _WIN32
+#undef HELP_COMMAND
+#endif
+
 namespace frontend {
   class TreeFactory;
   class Reference;

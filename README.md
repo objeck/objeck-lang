@@ -38,8 +38,8 @@ No installation needed - write, compile, and run Objeck code directly in your br
 
 ```bash
 # Install (example for macOS/Linux)
-curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.2.1/objeck-linux-x64_2026.2.1.tgz
-tar xzf objeck-linux-x64_2026.2.1.tgz
+curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.2.2/objeck-linux-x64_2026.2.2.tgz
+tar xzf objeck-linux-x64_2026.2.2.tgz
 export PATH=$PATH:./objeck-lang/bin
 export OBJECK_LIB_PATH=./objeck-lang/lib
 
@@ -61,7 +61,7 @@ obc hello && obr hello
 
 **Web Playground** — [Try Objeck in your browser](https://playground.objeck.org). Code runs in sandboxed Docker containers on a dedicated server. Includes 33 demos covering the language basics, OOP, algorithms, collections, data processing, and more. ([Source](programs/web-playground/))
 
-**v2026.2.1**
+**v2026.2.2**
   * New 'try/otherwise' error handling framework
   * **Unicode**: Fixed emoji and supplementary character output on all platforms (stdout and stderr)
   * **Windows Installer**: Migrated from VDPROJ to WiX v4 — MSIs now built in CI without Visual Studio
@@ -76,7 +76,7 @@ obc hello && obr hello
   * **Testing**: 14 new debugger regression tests with expect-based automation in CI
   * **Testing**: 16 runtime regression tests (ARM64 JIT, core language, JIT native methods)
   * **CI**: Linux ARM64 and macOS ARM64 test execution enabled in GitHub Actions
-  * **Web Playground**: Updated to v2026.2.1 Preview
+  * **Web Playground**: Updated to v2026.2.2 Preview
   * 10 new performance benchmarks with measurement tooling
   * [Performance optimization details and benchmark data →](docs/performance.md)
 
@@ -99,7 +99,7 @@ obc hello && obr hello
 
 ## Downloads
 
-**Latest Release:** [v2026.2.1](https://github.com/objeck/objeck-lang/releases/latest)
+**Latest Release:** [v2026.2.2](https://github.com/objeck/objeck-lang/releases/latest)
 
 | Platform | Architecture | Download |
 |----------|--------------|----------|
@@ -195,7 +195,7 @@ vector := tfidf->Transform("cats and dogs");  # [0.47, 0.0, 0.47, ...]
 - 🔄 **CI/CD**: Fully automated build, test, sign, and release pipeline (GitHub Actions)
   - ✅ Every push triggers multi-platform builds (Windows, Linux, macOS)
   - ✅ Automated code signing for Windows installers
-  - ✅ One-tag releases: `git tag v2026.2.1` → automated distribution in 60 minutes
+  - ✅ One-tag releases: `git tag v2026.2.2` → automated distribution in 60 minutes
   - ✅ Parallel builds across 6 platforms (x64/ARM64)
   - 📖 [Release Process Documentation](docs/release_process.md) • [CI/CD Architecture](docs/CI_CD.md)
 - 🔍 **Quality**: Coverity static analysis + CodeQL security scanning

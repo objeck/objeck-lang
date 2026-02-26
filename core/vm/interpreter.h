@@ -105,6 +105,7 @@ namespace Runtime {
     static const int TRY_STACK_SIZE = 16;
     long try_handler_stack[TRY_STACK_SIZE];
     size_t try_handler_stack_pos[TRY_STACK_SIZE];
+    long try_handler_call_stack_pos[TRY_STACK_SIZE];
     int try_handler_pos;
     long try_recovery_ip;
 
@@ -187,10 +188,11 @@ namespace Runtime {
     //
     // push a try handler
     //
-    inline void PushTryHandler(long handler_ip, size_t saved_stack_pos) {
+    inline void PushTryHandler(long handler_ip, size_t saved_stack_pos, long saved_call_stack_pos) {
       if(try_handler_pos < TRY_STACK_SIZE) {
         try_handler_stack[try_handler_pos] = handler_ip;
         try_handler_stack_pos[try_handler_pos] = saved_stack_pos;
+        try_handler_call_stack_pos[try_handler_pos] = saved_call_stack_pos;
         ++try_handler_pos;
       }
     }
@@ -203,7 +205,15 @@ namespace Runtime {
       if(HasTryHandler()) {
         try_recovery_ip = GetTryHandlerIP();
         *stack_pos = GetTryHandlerStackPos();
+        long saved_call_pos = try_handler_call_stack_pos[try_handler_pos - 1];
         PopTryHandler();
+        while(*call_stack_pos > saved_call_pos) {
+          StackFrame* current = *stack_frame;
+          *stack_frame = PopFrame();
+          if(current != *stack_frame) {
+            ReleaseStackFrame(current);
+          }
+        }
         return true;
       }
       return false;
