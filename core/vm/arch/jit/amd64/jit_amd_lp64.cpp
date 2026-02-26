@@ -5253,6 +5253,149 @@ void JitAmd64::ProcessIndices()
 #endif
 }
 
+// Returns true if the instruction type is supported by the JIT compiler.
+// This whitelist must match the cases handled in ProcessInstructions().
+static bool CanJitInstruction(InstructionType type) {
+  switch(type) {
+    // loads
+  case LOAD_CHAR_LIT:
+  case LOAD_INT_LIT:
+  case LOAD_FLOAT_LIT:
+  case LOAD_INST_MEM:
+  case LOAD_CLS_MEM:
+  case LOAD_LOCL_INT_VAR:
+  case LOAD_CLS_INST_INT_VAR:
+  case LOAD_FLOAT_VAR:
+  case LOAD_FUNC_VAR:
+    // stores
+  case STOR_LOCL_INT_VAR:
+  case STOR_CLS_INST_INT_VAR:
+  case STOR_FLOAT_VAR:
+  case STOR_FUNC_VAR:
+    // copies
+  case COPY_LOCL_INT_VAR:
+  case COPY_CLS_INST_INT_VAR:
+  case COPY_FLOAT_VAR:
+    // int math
+  case AND_INT:
+  case OR_INT:
+  case ADD_INT:
+  case SUB_INT:
+  case MUL_INT:
+  case DIV_INT:
+  case MOD_INT:
+  case BIT_AND_INT:
+  case BIT_OR_INT:
+  case BIT_XOR_INT:
+  case BIT_NOT_INT:
+  case SHL_INT:
+  case SHR_INT:
+    // int compare
+  case LES_INT:
+  case GTR_INT:
+  case LES_EQL_INT:
+  case GTR_EQL_INT:
+  case EQL_INT:
+  case NEQL_INT:
+    // float math
+  case ADD_FLOAT:
+  case SUB_FLOAT:
+  case MUL_FLOAT:
+  case DIV_FLOAT:
+  case SIN_FLOAT:
+  case COS_FLOAT:
+  case TAN_FLOAT:
+  case ASIN_FLOAT:
+  case ACOS_FLOAT:
+  case ATAN_FLOAT:
+  case ACOSH_FLOAT:
+  case ASINH_FLOAT:
+  case ATANH_FLOAT:
+  case LOG2_FLOAT:
+  case CBRT_FLOAT:
+  case COSH_FLOAT:
+  case SINH_FLOAT:
+  case TANH_FLOAT:
+  case LOG_FLOAT:
+  case EXP_FLOAT:
+  case LOG10_FLOAT:
+  case TRUNC_FLOAT:
+  case GAMMA_FLOAT:
+  case ATAN2_FLOAT:
+  case MOD_FLOAT:
+  case POW_FLOAT:
+  case SQRT_FLOAT:
+  case ROUND_FLOAT:
+  case CEIL_FLOAT:
+  case FLOR_FLOAT:
+  case RAND_FLOAT:
+    // float compare
+  case LES_FLOAT:
+  case GTR_FLOAT:
+  case LES_EQL_FLOAT:
+  case GTR_EQL_FLOAT:
+  case EQL_FLOAT:
+  case NEQL_FLOAT:
+    // control flow
+  case MTHD_CALL:
+  case DYN_MTHD_CALL:
+  case JMP:
+  case LBL:
+  case RTRN:
+    // memory allocation
+  case NEW_BYTE_ARY:
+  case NEW_CHAR_ARY:
+  case NEW_INT_ARY:
+  case NEW_FLOAT_ARY:
+  case NEW_OBJ_INST:
+    // array copy/zero
+  case CPY_BYTE_ARY:
+  case CPY_CHAR_ARY:
+  case CPY_INT_ARY:
+  case CPY_FLOAT_ARY:
+  case ZERO_BYTE_ARY:
+  case ZERO_CHAR_ARY:
+  case ZERO_INT_ARY:
+  case ZERO_FLOAT_ARY:
+    // array access
+  case LOAD_BYTE_ARY_ELM:
+  case LOAD_CHAR_ARY_ELM:
+  case LOAD_INT_ARY_ELM:
+  case LOAD_FLOAT_ARY_ELM:
+  case STOR_BYTE_ARY_ELM:
+  case STOR_CHAR_ARY_ELM:
+  case STOR_INT_ARY_ELM:
+  case STOR_FLOAT_ARY_ELM:
+  case LOAD_ARY_SIZE:
+    // traps
+  case TRAP:
+  case TRAP_RTRN:
+    // conversions
+  case F2I:
+  case I2F:
+  case I2S:
+  case S2I:
+  case F2S:
+  case S2F:
+    // casting
+  case OBJ_TYPE_OF:
+  case OBJ_INST_CAST:
+    // threading
+  case THREAD_JOIN:
+  case THREAD_SLEEP:
+  case CRITICAL_START:
+  case CRITICAL_END:
+    // stack
+  case SWAP_INT:
+  case POP_INT:
+  case POP_FLOAT:
+    return true;
+
+  default:
+    return false;
+  }
+}
+
 bool JitAmd64::Compile(StackMethod* cm)
 {
   compile_success = true;
@@ -5264,11 +5407,9 @@ bool JitAmd64::Compile(StackMethod* cm)
     skip_jump = false;
     method = cm;
 
-    // Pre-scan: reject methods with field-store instructions (no JIT write barrier)
+    // Pre-scan: reject methods containing any instruction the JIT cannot compile
     for(long i = 0; i < method->GetInstructionCount(); ++i) {
-      const InstructionType type = method->GetInstruction(i)->GetType();
-      if(type == STOR_CLS_INST_INT_VAR || type == COPY_CLS_INST_INT_VAR || type == STOR_INT_ARY_ELM ||
-         type == MTHD_CALL_JIT || type == DYN_MTHD_CALL_JIT) {
+      if(!CanJitInstruction(method->GetInstruction(i)->GetType())) {
         return false;
       }
     }
@@ -5388,18 +5529,18 @@ bool JitAmd64::Compile(StackMethod* cm)
       free(code);
       code = nullptr;
 
-      // Clear register lists to prevent destructor from deleting
-      // possibly-corrupted entries after a mid-compilation failure
-      while(!working_stack.empty()) {
-        RegInstr* ri = working_stack.front();
-        working_stack.pop_front();
-        delete ri;
-      }
-      while(!used_regs.empty()) {
-        used_regs.pop_front();
-      }
-      while(!used_xregs.empty()) {
-        used_xregs.pop_front();
+      // On mid-compilation failure, register holders may be shared across
+      // multiple lists (aval_regs, used_regs, aux_regs, working_stack).
+      // Deleting from one list risks double-free when the destructor
+      // iterates another. Clear all lists without deleting holders
+      // (small leak of ~48 bytes per failed method is acceptable).
+      working_stack.clear();
+      aval_regs.clear();
+      used_regs.clear();
+      aval_xregs.clear();
+      used_xregs.clear();
+      while(!aux_regs.empty()) {
+        aux_regs.pop();
       }
 
       return false;

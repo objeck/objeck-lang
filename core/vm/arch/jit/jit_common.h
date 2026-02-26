@@ -41,10 +41,7 @@
 #include "../../common.h"
 #include "../../interpreter.h"
 
-// Auto-JIT disabled: compilation failure for some methods corrupts heap
-// (e.g. GameFramework:Clear: hits unsupported instruction, partial code
-// generation corrupts allocator state). Set high to effectively disable.
-#define JIT_AUTO_THRESHOLD 2000000000
+#define JIT_AUTO_THRESHOLD 10
 
 class JitCompiler {
 protected:

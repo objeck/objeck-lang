@@ -295,8 +295,10 @@ void StackInterpreter::StorClsInstIntVar(StackInstr* instr, size_t* &op_stack, s
   size_t mem = op_stack[(*stack_pos) - 2];
   (*stack_pos) -= 2;
   cls_inst_mem[instr->GetOperand()] = mem;
-  // Generational GC write barrier
-  MemoryManager::WriteBarrier(cls_inst_mem);
+  // Generational GC write barrier (skip for class static memory which has no GC header)
+  if(instr->GetOperand2() != CLS) {
+    MemoryManager::WriteBarrier(cls_inst_mem);
+  }
 }
 
 void StackInterpreter::CopyLoclIntVar(StackInstr* instr, size_t* &op_stack, size_t* &stack_pos)
@@ -329,8 +331,10 @@ void StackInterpreter::CopyClsInstIntVar(StackInstr* instr, size_t* &op_stack, s
 #endif
   }
   cls_inst_mem[instr->GetOperand()] = TopInt(op_stack, stack_pos);
-  // Generational GC write barrier
-  MemoryManager::WriteBarrier(cls_inst_mem);
+  // Generational GC write barrier (skip for class static memory which has no GC header)
+  if(instr->GetOperand2() != CLS) {
+    MemoryManager::WriteBarrier(cls_inst_mem);
+  }
 }
 
 void StackInterpreter::Str2Int(size_t* &op_stack, size_t* &stack_pos)
@@ -1534,7 +1538,10 @@ void StackInterpreter::ProcessStoreFunctionVar(StackInstr* instr, size_t* &op_st
     }
     cls_inst_mem[instr->GetOperand()] = PopInt(op_stack, stack_pos);
     cls_inst_mem[instr->GetOperand() + 1] = PopInt(op_stack, stack_pos);
-    MemoryManager::WriteBarrier(cls_inst_mem);
+    // Generational GC write barrier (skip for class static memory which has no GC header)
+    if(instr->GetOperand2() != CLS) {
+      MemoryManager::WriteBarrier(cls_inst_mem);
+    }
   }
 }
 
