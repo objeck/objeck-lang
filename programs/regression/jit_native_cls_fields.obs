@@ -1,0 +1,112 @@
+#~
+# JIT Native Class Fields Test
+# Tests object reference storage in class instance fields with GC pressure
+# Regression for prgm147/prgm272 segfaults (STOR_CLS_INST_INT_VAR write barrier)
+~#
+
+class Node {
+    @value : Int;
+    @next : Node;
+
+    New(value : Int) {
+        @value := value;
+    }
+
+    method : public : SetNext(next : Node) ~ Nil {
+        @next := next;
+    }
+
+    method : public : GetNext() ~ Node {
+        return @next;
+    }
+
+    method : public : GetValue() ~ Int {
+        return @value;
+    }
+}
+
+class Container {
+    @items : Node[];
+    @count : Int;
+
+    New(size : Int) {
+        @items := Node->New[size];
+        @count := 0;
+    }
+
+    method : public : Add(value : Int) ~ Nil {
+        if(@count < @items->Size()) {
+            @items[@count] := Node->New(value);
+            if(@count > 0) {
+                @items[@count - 1]->SetNext(@items[@count]);
+            };
+            @count += 1;
+        };
+    }
+
+    method : public : Sum() ~ Int {
+        total := 0;
+        each(i : @count) {
+            total += @items[i]->GetValue();
+        };
+        return total;
+    }
+
+    method : public : GetCount() ~ Int {
+        return @count;
+    }
+}
+
+class JitNativeClsFieldsTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing JIT native class field storage..."->PrintLine();
+
+        pass := true;
+
+        # Test basic object field storage
+        n1 := Node->New(10);
+        n2 := Node->New(20);
+        n1->SetNext(n2);
+        result := n1->GetNext()->GetValue();
+        if(result <> 20) {
+            pass := false;
+            "  FAIL: Node chain value = {$result}, expected 20"->PrintLine();
+        };
+
+        # Test container with multiple object stores (GC pressure)
+        c := Container->New(100);
+        each(i : 100) {
+            c->Add(i);
+        };
+        sum := c->Sum();
+        expected := 4950;
+        if(sum <> expected) {
+            pass := false;
+            "  FAIL: Container sum = {$sum}, expected {$expected}"->PrintLine();
+        };
+
+        count := c->GetCount();
+        if(count <> 100) {
+            pass := false;
+            "  FAIL: Container count = {$count}, expected 100"->PrintLine();
+        };
+
+        # Test linked list traversal through object refs
+        n3 := Node->New(1);
+        n4 := Node->New(2);
+        n5 := Node->New(3);
+        n3->SetNext(n4);
+        n4->SetNext(n5);
+        chain_sum := n3->GetValue() + n3->GetNext()->GetValue() + n3->GetNext()->GetNext()->GetValue();
+        if(chain_sum <> 6) {
+            pass := false;
+            "  FAIL: Chain sum = {$chain_sum}, expected 6"->PrintLine();
+        };
+
+        if(pass) {
+            "PASS: JIT native class field storage"->PrintLine();
+        } else {
+            "FAIL: JIT native class field storage"->PrintLine();
+        };
+    }
+}

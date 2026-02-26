@@ -1,0 +1,97 @@
+#~
+# JIT Native Math Builtins Test
+# Tests native math functions: Factorial, Sinh/Cosh/Tanh/Log2/Cbrt, Pow
+# Regression for prgm200/prgm245/prgm346 segfaults
+~#
+
+class JitNativeMathTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing JIT native math builtins..."->PrintLine();
+
+        pass := true;
+
+        # Test Int->Factorial (prgm200)
+        fact5 := Int->Factorial(5);
+        if(fact5 <> 120) {
+            pass := false;
+            "  FAIL: Int->Factorial(5) = {$fact5}, expected 120"->PrintLine();
+        };
+
+        fact0 := Int->Factorial(0);
+        if(fact0 <> 1) {
+            pass := false;
+            "  FAIL: Int->Factorial(0) = {$fact0}, expected 1"->PrintLine();
+        };
+
+        # Test Int->Pow (prgm346)
+        pow_result := Int->Pow(2, 10);
+        if(pow_result <> 1024) {
+            pass := false;
+            "  FAIL: Int->Pow(2,10) = {$pow_result}, expected 1024"->PrintLine();
+        };
+
+        pow_result := Int->Pow(3, 5);
+        if(pow_result <> 243) {
+            pass := false;
+            "  FAIL: Int->Pow(3,5) = {$pow_result}, expected 243"->PrintLine();
+        };
+
+        # Test Armstrong number check (prgm346 pattern)
+        armstrong := Sum5(54748);
+        if(armstrong <> 54748) {
+            pass := false;
+            "  FAIL: Sum5(54748) = {$armstrong}, expected 54748"->PrintLine();
+        };
+
+        # Test hyperbolic functions (prgm245)
+        sinh_val := 1.0->Sinh();
+        if(sinh_val < 1.175 | sinh_val > 1.176) {
+            pass := false;
+            "  FAIL: 1.0->Sinh() out of range"->PrintLine();
+        };
+
+        cosh_val := 1.0->Cosh();
+        if(cosh_val < 1.543 | cosh_val > 1.544) {
+            pass := false;
+            "  FAIL: 1.0->Cosh() out of range"->PrintLine();
+        };
+
+        tanh_val := 1.0->Tanh();
+        if(tanh_val < 0.761 | tanh_val > 0.762) {
+            pass := false;
+            "  FAIL: 1.0->Tanh() out of range"->PrintLine();
+        };
+
+        # Test Log2 (prgm245)
+        log2_val := 8.0->Log2();
+        if(log2_val < 2.999 | log2_val > 3.001) {
+            pass := false;
+            "  FAIL: 8.0->Log2() out of range"->PrintLine();
+        };
+
+        # Test Cbrt (prgm245)
+        cbrt_val := 27.0->Cbrt();
+        if(cbrt_val < 2.999 | cbrt_val > 3.001) {
+            pass := false;
+            "  FAIL: 27.0->Cbrt() out of range"->PrintLine();
+        };
+
+        # Test Float->Pow
+        fpow := Float->Pow(2.0, 10.0);
+        if(fpow < 1023.9 | fpow > 1024.1) {
+            pass := false;
+            "  FAIL: Float->Pow(2.0, 10.0) out of range"->PrintLine();
+        };
+
+        if(pass) {
+            "PASS: JIT native math builtins"->PrintLine();
+        } else {
+            "FAIL: JIT native math builtins"->PrintLine();
+        };
+    }
+
+    function : Sum5(n : Int) ~ Int {
+        if(n < 10) { return Int->Pow(n, 5); };
+        return Int->Pow(n % 10, 5) + Sum5(n / 10);
+    }
+}

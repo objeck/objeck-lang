@@ -464,7 +464,7 @@ public:
     char* buffer = (char*)calloc(buffer_max, sizeof(char));
 
     // setup stream
-    z_stream stream;
+    z_stream stream = {};
 
     // input
     stream.next_in = (Bytef*)src;
@@ -499,7 +499,7 @@ public:
 
   static char* UncompressGzip(const char* src, unsigned long src_len, unsigned long& out_len) {
     // setup stream
-    z_stream stream;
+    z_stream stream = {};
 
     // input
     stream.next_in = (Bytef*)src;
@@ -571,7 +571,7 @@ public:
     char* buffer = (char*)calloc(buffer_max, sizeof(char));
 
     // setup stream
-    z_stream stream;
+    z_stream stream = {};
 
     // input
     stream.next_in = (Bytef*)src;
@@ -606,7 +606,7 @@ public:
 
   static char* UncompressBr(const char* src, unsigned long src_len, unsigned long& out_len) {
     // setup stream
-    z_stream stream;
+    z_stream stream = {};
 
     // input
     stream.next_in = (Bytef*)src;

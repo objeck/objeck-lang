@@ -1,0 +1,88 @@
+#~
+# JIT Native Float Array Test
+# Tests native function with float array creation and math operations
+# Regression for prgm75 segfault (float array + math in native context)
+~#
+
+class JitNativeFloatArrayTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing JIT native float array operations..."->PrintLine();
+
+        pass := true;
+
+        # Test float array creation and basic math
+        values := Float->New[10];
+        each(i : values) {
+            values[i] := (i + 1)->As(Float) * 1.5;
+        };
+
+        # Verify array values
+        v0 := values[0];
+        if(v0 < 1.499 | v0 > 1.501) {
+            pass := false;
+            "  FAIL: values[0], expected 1.5"->PrintLine();
+        };
+
+        v9 := values[9];
+        if(v9 < 14.999 | v9 > 15.001) {
+            pass := false;
+            "  FAIL: values[9], expected 15.0"->PrintLine();
+        };
+
+        # Test float array with math operations (Sqrt, Log)
+        results := Float->New[5];
+        results[0] := 4.0->Sqrt();
+        results[1] := Float->E()->Log();
+        results[2] := 1.0->Cos();
+        results[3] := Float->Pi()->Sin();
+        results[4] := 100.0->Log10();
+
+        r0 := results[0];
+        if(r0 < 1.999 | r0 > 2.001) {
+            pass := false;
+            "  FAIL: Sqrt(4.0), expected 2.0"->PrintLine();
+        };
+
+        r1 := results[1];
+        if(r1 < 0.999 | r1 > 1.001) {
+            pass := false;
+            "  FAIL: Log(E), expected 1.0"->PrintLine();
+        };
+
+        r2 := results[2];
+        if(r2 < 0.540 | r2 > 0.541) {
+            pass := false;
+            "  FAIL: Cos(1.0), expected ~0.5403"->PrintLine();
+        };
+
+        # Sin(Pi) should be ~0
+        r3 := results[3];
+        if(r3 < -0.001 | r3 > 0.001) {
+            pass := false;
+            "  FAIL: Sin(Pi), expected ~0.0"->PrintLine();
+        };
+
+        r4 := results[4];
+        if(r4 < 1.999 | r4 > 2.001) {
+            pass := false;
+            "  FAIL: Log10(100), expected 2.0"->PrintLine();
+        };
+
+        # Test sum of float array
+        sum := 0.0;
+        each(i : values) {
+            sum += values[i];
+        };
+        expected := 82.5;
+        if(sum < 82.499 | sum > 82.501) {
+            pass := false;
+            "  FAIL: Float array sum, expected {$expected}"->PrintLine();
+        };
+
+        if(pass) {
+            "PASS: JIT native float array operations"->PrintLine();
+        } else {
+            "FAIL: JIT native float array operations"->PrintLine();
+        };
+    }
+}

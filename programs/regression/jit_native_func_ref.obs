@@ -1,0 +1,77 @@
+#~
+# JIT Native Function Reference Test
+# Tests native functions with function reference storage in class fields
+# Regression for prgm70/prgm71 segfaults (STOR_FUNC_VAR in native context)
+~#
+
+class Holder {
+    @f : (Int) ~ Int;
+
+    New(f : (Int) ~ Int) {
+        @f := f;
+    }
+
+    method : public : Call(v : Int) ~ Int {
+        return @f(v);
+    }
+
+    method : public : GetFunc() ~ (Int) ~ Int {
+        return @f;
+    }
+}
+
+class JitNativeFuncRefTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing JIT native function references..."->PrintLine();
+
+        pass := true;
+
+        # Test function reference storage and invocation
+        f := Double(Int) ~ Int;
+        result := f(13);
+        if(result <> 26) {
+            pass := false;
+            "  FAIL: Double(13) = {$result}, expected 26"->PrintLine();
+        };
+
+        # Test function reference stored in object field
+        h := Holder->New(f);
+        result := h->Call(7);
+        if(result <> 14) {
+            pass := false;
+            "  FAIL: Holder->Call(7) = {$result}, expected 14"->PrintLine();
+        };
+
+        # Test retrieving function reference from object
+        f2 := h->GetFunc();
+        result := f2(10);
+        if(result <> 20) {
+            pass := false;
+            "  FAIL: GetFunc()(10) = {$result}, expected 20"->PrintLine();
+        };
+
+        # Test static method as function reference
+        f3 := Helper->Triple(Int) ~ Int;
+        result := f3(5);
+        if(result <> 15) {
+            pass := false;
+            "  FAIL: Triple(5) = {$result}, expected 15"->PrintLine();
+        };
+
+        if(pass) {
+            "PASS: JIT native function references"->PrintLine();
+        } else {
+            "FAIL: JIT native function references"->PrintLine();
+        };
+    }
+
+    function : Double(v : Int) ~ Int {
+        return v * 2;
+    }
+}
+
+class Helper {
+    function : Triple(v : Int) ~ Int {
+        return v * 3;
+    }
+}
