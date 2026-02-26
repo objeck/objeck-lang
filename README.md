@@ -63,10 +63,18 @@ obc hello && obr hello
 
 **v2026.2.1**
   * New 'try/otherwise' error handling framework
+  * **Debugger**: Added `help`/`h` command with full command reference, fixed README documentation
+  * **JIT Fixes**: Fixed segfaults in AMD64 JIT (MTHD_CALL, DYN_MTHD_CALL, STOR_CLS_INST_INT_VAR), fixed ARM64 JIT pre-scan rejection
+  * **JIT Fixes**: Fixed broken `Log`/`Log10` float math (x87 emitted wrong constants), fixed `Rand` float params
+  * **SDL2**: Fixed 15 bugs in SDL2 native interface and Objeck bindings
+  * **Compression**: Fixed segfaults in CompressGzip/UncompressGzip/CompressBr/UncompressBr (zero-init z_stream)
   * **Performance**: 4.38x speedup on nbody — inline limit increase (128→256) enables JIT to optimize getter/setter-heavy code
   * **Compiler**: Common subexpression elimination (CSE), dead code elimination, div-by-zero constant folding bugfix
   * **JIT**: Division-by-zero guards in constant folding for both x64 and ARM64 backends
-  * **ARM64 CI**: Linux ARM64 and macOS ARM64 test execution enabled in GitHub Actions
+  * **Testing**: 14 new debugger regression tests with expect-based automation in CI
+  * **Testing**: 16 runtime regression tests (ARM64 JIT, core language, JIT native methods)
+  * **CI**: Linux ARM64 and macOS ARM64 test execution enabled in GitHub Actions
+  * **Web Playground**: Updated to v2026.2.1 Preview
   * 10 new performance benchmarks with measurement tooling
   * [Performance optimization details and benchmark data →](docs/performance.md)
 

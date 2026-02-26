@@ -1,3 +1,21 @@
+v2026.2.1 (February 26, 2026)
+===
+JIT stability fixes, debugger improvements, SDL2 bug fixes, and expanded test coverage.
+
+v2026.2.1
+- Added debugger help command with full command reference
+- Fixed AMD64 JIT segfaults (MTHD_CALL, DYN_MTHD_CALL, class instance vars)
+- Fixed ARM64 JIT pre-scan rejection for rewritten opcodes
+- Fixed broken Log/Log10 float math functions
+- Fixed 15 bugs in SDL2 native interface and Objeck bindings
+- Fixed compression crashes (zero-init z_stream in gzip/brotli)
+- Added 14 debugger regression tests with expect-based CI automation
+- Added 16 runtime regression tests covering JIT and core language
+- Web playground updated to v2026.2.1 Preview
+- Performance: 4.38x nbody speedup via inline limit increase
+- Compiler: CSE, dead code elimination, constant folding fixes
+- CI: Linux ARM64 and macOS ARM64 test execution in GitHub Actions
+
 v2026.2.0 (February 12, 2026)
 ===
 NLP library, web playground, Gemini 2.0/2.5 support, Windows ARM64 platform, and major performance optimizations.

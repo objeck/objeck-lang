@@ -58,9 +58,38 @@
   </header>
 
   <main style="text-align: left;">
-   <p>Syntax additions, updates to collections, and HTTPS PEM file support.</p>
-   
-   <h3><u>2025.7.0</u></h3>
+   <p>JIT stability fixes, debugger improvements, SDL2 bug fixes, and expanded test coverage.</p>
+
+   <h3><u>v2026.2.1</u></h3>
+    <ul>
+        <li>Added debugger <code>help</code> command with full command reference</li>
+        <li>Fixed AMD64 JIT segfaults (MTHD_CALL, DYN_MTHD_CALL, class instance vars)</li>
+        <li>Fixed ARM64 JIT pre-scan rejection for rewritten opcodes</li>
+        <li>Fixed broken <code>Log</code>/<code>Log10</code> float math functions</li>
+        <li>Fixed 15 bugs in SDL2 native interface and Objeck bindings</li>
+        <li>Fixed compression crashes (zero-init z_stream in gzip/brotli)</li>
+        <li>Added 14 debugger regression tests with expect-based CI automation</li>
+        <li>Added 16 runtime regression tests covering JIT and core language</li>
+        <li>Web playground updated to v2026.2.1 Preview</li>
+        <li>Performance: 4.38x nbody speedup via inline limit increase</li>
+        <li>Compiler: CSE, dead code elimination, constant folding fixes</li>
+        <li>CI: Linux ARM64 and macOS ARM64 test execution in GitHub Actions</li>
+    </ul>
+
+   <h3>v2026.2.0</h3>
+    <ul>
+        <li>Added NLP library with tokenization, TF-IDF, similarity, and sentiment analysis</li>
+        <li>Added web playground at <a href="https://playground.objeck.org">playground.objeck.org</a></li>
+        <li>Added Gemini 2.0/2.5 support with audio capabilities</li>
+        <li>Added OpenCV integration for real-time computer vision</li>
+        <li>Added Windows ARM64 platform with code signing</li>
+        <li>Migrated crypto library from OpenSSL to mbedTLS</li>
+        <li>Memory manager and JIT performance optimizations</li>
+        <li>Modern GNU-style CLI flags with backward compatibility</li>
+        <li>Bug fixes</li>
+    </ul>
+
+   <h3><u>v2025.7.0</u></h3>
     <ul>
         <li>Added <code>Hash->Dict(..)</code>, <code>Map->Dict(..)</code> and <code>Vector->Zip(..)</code> to collections</li>
         <li>Updated style (docs, logos, etc.)</li>
