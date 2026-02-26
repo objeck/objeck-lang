@@ -355,41 +355,39 @@ if [%2] NEQ [deploy] goto end
 		copy ..\..\docs\eula.rtf ..\..\Objeck-Build\release-x64\%INSTALL_TARGET%\doc
 	)
 
+	REM Build MSI installer with WiX v4
 	if [%1] == [arm64] (
-		REM Build MSI installer (files must exist in Objeck-Build first)
-		pushd ..\utils\setup\arm64
-		devenv setup-arm64.sln /rebuild "Release"
-		popd
+		set WIX_ARCH=arm64
+		set WIX_SOURCEDIR=..\..\Objeck-Build\release-arm64\%INSTALL_TARGET%
+		set WIX_OUTPUT=..\..\Objeck-Build\release-arm64\objeck-windows-arm64_0.0.0.msi
+	)
 
-		REM Try to sign MSI if certificate is available
-		signtool sign /tr http://timestamp.sectigo.com /td sha256 /fd sha256 /a ..\utils\setup\arm64\release-arm64\setup.msi 2>nul
-		if errorlevel 1 (
-			echo Warning: Code signing failed or no certificate available - continuing with unsigned MSI
-		) else (
-			echo MSI signed successfully
-		)
+	if [%1] == [x64] (
+		set WIX_ARCH=x64
+		set WIX_SOURCEDIR=..\..\Objeck-Build\release-x64\%INSTALL_TARGET%
+		set WIX_OUTPUT=..\..\Objeck-Build\release-x64\objeck-windows-x64_0.0.0.msi
+	)
 
-		REM Copy MSI and create ZIP
-		copy ..\utils\setup\arm64\release-arm64\setup.msi ..\..\Objeck-Build\release-arm64\objeck-windows-arm64_0.0.0.msi
+	wix build -arch %WIX_ARCH% -o %WIX_OUTPUT% ^
+		-d Platform=%WIX_ARCH% -d Version=0.0.0 ^
+		-d SourceDir=%WIX_SOURCEDIR% ^
+		-ext WixToolset.UI.wixext -ext WixToolset.Util.wixext ^
+		..\utils\setup\objeck.wxs
+
+	REM Try to sign MSI if certificate is available
+	signtool sign /tr http://timestamp.sectigo.com /td sha256 /fd sha256 /a %WIX_OUTPUT% 2>nul
+	if errorlevel 1 (
+		echo Warning: Code signing failed or no certificate available - continuing with unsigned MSI
+	) else (
+		echo MSI signed successfully
+	)
+
+	REM Create ZIP
+	if [%1] == [arm64] (
 		powershell -Command "Compress-Archive -Path '..\..\Objeck-Build\release-arm64\%INSTALL_TARGET%' -DestinationPath '..\..\Objeck-Build\release-arm64\objeck-windows-arm64_0.0.0.zip' -Force"
 	)
 
 	if [%1] == [x64] (
-		REM Build MSI installer (files must exist in Objeck-Build first)
-		pushd ..\utils\setup\x64
-		devenv setup-x64.sln /rebuild "Release"
-		popd
-
-		REM Try to sign MSI if certificate is available
-		signtool sign /tr http://timestamp.sectigo.com /td sha256 /fd sha256 /a ..\utils\setup\x64\release-x64\setup.msi 2>nul
-		if errorlevel 1 (
-			echo Warning: Code signing failed or no certificate available - continuing with unsigned MSI
-		) else (
-			echo MSI signed successfully
-		)
-
-		REM Copy MSI and create ZIP
-		copy ..\utils\setup\x64\release-x64\setup.msi ..\..\Objeck-Build\release-x64\objeck-windows-x64_0.0.0.msi
 		powershell -Command "Compress-Archive -Path '..\..\Objeck-Build\release-x64\%INSTALL_TARGET%' -DestinationPath '..\..\Objeck-Build\release-x64\objeck-windows-x64_0.0.0.zip' -Force"
 	)
 :end
