@@ -252,6 +252,10 @@ jobs:
         run: |
           VERSION="${{ needs.prepare.outputs.version }}"
 
+          # Find previous release tag for changelog link
+          PREV_VERSION=$(git tag --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | grep -v "v$VERSION" | head -n 1)
+          PREV_VERSION="${PREV_VERSION#v}"
+
           cat > release-notes.md << 'EOF'
           # Objeck Language v$VERSION
 
@@ -292,8 +296,8 @@ jobs:
           **Full Changelog**: https://github.com/objeck/objeck-lang/compare/v$PREV_VERSION...v$VERSION
           EOF
 
-          sed -i "s/\$VERSION/$VERSION/g" release-notes.md
-          echo "✅ Release notes generated"
+          sed -i "s/\$VERSION/$VERSION/g; s/\$PREV_VERSION/$PREV_VERSION/g" release-notes.md
+          echo "✅ Release notes generated (changelog: v$PREV_VERSION → v$VERSION)"
 
       - name: Create GitHub Release
         env:
