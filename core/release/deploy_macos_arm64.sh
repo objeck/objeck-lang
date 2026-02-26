@@ -71,7 +71,7 @@ cp macos/xcode/build/Release/libobjk_odbc.dylib ../../release/deploy/lib/native/
 
 cd ../lame
 xcodebuild -project macos/lame.xcodeproj clean build $SIGN_FLAGS
-cp macos//build/Release/libobjk_lame.dylib ../../release/deploy/lib/native/libobjk_lame.dylib
+cp macos/build/Release/libobjk_lame.dylib ../../release/deploy/lib/native/libobjk_lame.dylib
 
 cd ../opencv
 xcodebuild -project macos/objk_opencv.xcodeproj -target objk_opencv clean build $SIGN_FLAGS
@@ -96,10 +96,9 @@ cp AppLauncher "$APP_BUNDLE/Contents/MacOS/"
 cp Info.plist "$APP_BUNDLE/Contents/"
 cp ../../../docs/images/Gear.icns "$APP_BUNDLE/Contents/Resources/"
 rm -f AppLauncher
-cd ../../lib/diags
 
 # copy docs
-cd ../../..
+cd ../../../
 cp -R docs/syntax core/release/deploy/doc/syntax
 cp docs/readme.html core/release/deploy
 cp docs/style/readme.css core/release/deploy/doc
@@ -117,13 +116,13 @@ cd core/release
 
 # deploy
 if [ ! -z "$1" ] && [ "$1" = "deploy" ]; then
+	mkdir -p ~/Desktop
 	rm -rf ~/Desktop/objeck-lang
-	cp -rf ../release/deploy ~/Desktop/objeck-lang
-	rm ~/Desktop/objeck-lang/.*
+	cp -rf deploy ~/Desktop/objeck-lang
 	cd ~/Desktop
-	
+
 	rm -f objeck.tar objeck.tgz
 	tar cf objeck.tar objeck-lang
 	gzip objeck.tar
-	mv objeck.tar.gz objeck-macos-arm64_0.0.0.tgz	
+	mv objeck.tar.gz objeck-macos-arm64_0.0.0.tgz
 fi;
