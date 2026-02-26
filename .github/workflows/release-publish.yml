@@ -5,7 +5,6 @@ on:
   workflow_run:
     workflows: ["Release Build"]
     types: [completed]
-    branches: [master]
 
   # Manual trigger (fallback/override)
   workflow_dispatch:
@@ -49,13 +48,20 @@ jobs:
           if [ "${{ github.event_name }}" = "workflow_run" ]; then
             echo "🤖 Automatic trigger from Release Build workflow"
 
+            BRANCH="${{ github.event.workflow_run.head_branch }}"
+            if [ "$BRANCH" != "master" ] && ! echo "$BRANCH" | grep -qE '^v[0-9]'; then
+              echo "❌ Release Build was on branch '$BRANCH' - skipping publish"
+              echo "should_publish=false" >> $GITHUB_OUTPUT
+              exit 0
+            fi
+
             if [ "${{ github.event.workflow_run.conclusion }}" != "success" ]; then
               echo "❌ Release Build failed - skipping publish"
               echo "should_publish=false" >> $GITHUB_OUTPUT
               exit 0
             fi
 
-            echo "✅ Release Build succeeded - proceeding with publish"
+            echo "✅ Release Build succeeded on '$BRANCH' - proceeding with publish"
           else
             echo "👤 Manual trigger - proceeding with publish"
           fi
