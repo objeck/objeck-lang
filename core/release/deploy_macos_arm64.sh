@@ -15,6 +15,7 @@ mkdir deploy/lib/sdl
 mkdir deploy/lib/sdl/fonts
 mkdir deploy/lib/native
 mkdir deploy/lib/native/misc
+mkdir deploy/app
 mkdir deploy/doc
 
 # build compiler
