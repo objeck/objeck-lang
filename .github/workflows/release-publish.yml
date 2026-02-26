@@ -148,7 +148,7 @@ jobs:
         shell: cmd
         run: |
           set OBJECK_LIB_PATH=%CD%\..\lib
-          obc.exe -src ..\..\..\..\programs\deploy\util\deploy_rename.obs
+          obc.exe -src ..\..\..\..\programs\deploy\util\deploy_rename.obs -dest deploy_rename.obe
           if errorlevel 1 exit /b 1
           echo ✅ Binary renaming tool compiled
 
