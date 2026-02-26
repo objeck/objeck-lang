@@ -52,13 +52,13 @@
 
     <!-- Directory structure -->
     <StandardDirectory Id="ProgramFiles64Folder">
-      <Directory Id="INSTALLFOLDER" Name="Objeck">
-
-        <!-- Harvest all files from the staging directory -->
-        <Files Include="$(var.SourceDir)\**" />
-
-      </Directory>
+      <Directory Id="INSTALLFOLDER" Name="Objeck" />
     </StandardDirectory>
+
+    <!-- Harvest all files from the staging directory -->
+    <ComponentGroup Id="Files" Directory="INSTALLFOLDER">
+      <Files Include="$(var.SourceDir)\**" />
+    </ComponentGroup>
 
     <!-- Environment variables (system-level, appended) -->
     <Component Id="EnvPathComponent" Directory="INSTALLFOLDER" Guid="A1B2C3D4-E5F6-4A7B-8C9D-0E1F2A3B4C5D">
