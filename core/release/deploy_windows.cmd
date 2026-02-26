@@ -316,7 +316,9 @@ if [%1] == [x64] (
 	call code_doc64.cmd %1 deploy
 	rmdir /s /q %1
 ) else (
-	echo Skipping code_doc for ARM64 cross-compilation
+	echo Skipping code_doc for ARM64 cross-compilation - using pre-built API docs
+	mkdir %TARGET%\doc\api
+	powershell -Command "Expand-Archive -Path '..\..\docs\api.zip' -DestinationPath '%TARGET%\doc' -Force"
 )
 
 :installer

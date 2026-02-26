@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleName</key>
+	<string>Objeck</string>
+	<key>CFBundleDisplayName</key>
+	<string>Objeck</string>
+	<key>CFBundleIdentifier</key>
+	<string>org.objeck.launcher</string>
+	<key>CFBundleVersion</key>
+	<string>2026.2.1</string>
+	<key>CFBundleShortVersionString</key>
+	<string>2026.2.1</string>
+	<key>CFBundleExecutable</key>
+	<string>AppLauncher</string>
+	<key>CFBundleIconFile</key>
+	<string>Gear</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>11.0</string>
+	<key>NSHighResolutionCapable</key>
+	<true/>
+	<key>NSHumanReadableCopyright</key>
+	<string>Copyright 2025 Objeck. All rights reserved.</string>
+	<key>NSAppleEventsUsageDescription</key>
+	<string>Objeck needs to open Terminal to set up the development environment.</string>
+	<key>LSApplicationCategoryType</key>
+	<string>public.app-category.developer-tools</string>
+	<key>NSPrincipalClass</key>
+	<string>NSApplication</string>
+</dict>
+</plist>

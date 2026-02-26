@@ -83,6 +83,20 @@ cp macos/xcode/build/Release/libxcode.dylib ../../release/deploy/lib/native/libo
 cd ../diags
 xcodebuild -project macos/xcode/objk_diags.xcodeproj clean build $SIGN_FLAGS
 cp macos/xcode/build/Release/libobjk_diags.dylib ../../release/deploy/lib/native/libobjk_diags.dylib
+
+# build macOS app launcher (.app bundle)
+cd ../../utils/MacApp
+swiftc -O -o AppLauncher AppLauncher.swift -framework AppKit
+
+APP_BUNDLE=../../release/deploy/app/Objeck.app
+mkdir -p "$APP_BUNDLE/Contents/MacOS"
+mkdir -p "$APP_BUNDLE/Contents/Resources"
+cp AppLauncher "$APP_BUNDLE/Contents/MacOS/"
+cp Info.plist "$APP_BUNDLE/Contents/"
+cp ../../../docs/images/Gear.icns "$APP_BUNDLE/Contents/Resources/"
+rm -f AppLauncher
+cd ../../lib/diags
+
 # copy docs
 cd ../../..
 cp -R docs/syntax core/release/deploy/doc/syntax
