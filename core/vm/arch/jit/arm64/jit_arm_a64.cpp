@@ -847,7 +847,7 @@ void JitArm64::ProcessInstructions() {
 #ifdef _DEBUG_JIT
       std::wcout << L"RAND_FLOAT: regs=" << aval_regs.size() << L"," << aux_regs.size() << std::endl;
 #endif
-      ProcessStackCallback(RAND_FLOAT, instr, instr_index, 1);
+      ProcessStackCallback(RAND_FLOAT, instr, instr_index, 0);
       ProcessReturnParameters(FLOAT_TYPE);
       break;
       
@@ -4637,10 +4637,12 @@ bool JitArm64::Compile(StackMethod* cm)
     last_cmp_was_zero = false;
     last_cmp_reg = X0;  // Initialize to a valid register
 
-    // Pre-scan: reject methods with field-store instructions (no JIT write barrier)
+    // Pre-scan: reject methods with field-store or method-call instructions
+    // (no JIT write barrier for stores; register state corruption for method calls)
     for(long i = 0; i < method->GetInstructionCount(); ++i) {
       const InstructionType type = method->GetInstruction(i)->GetType();
       if(type == STOR_CLS_INST_INT_VAR || type == COPY_CLS_INST_INT_VAR || type == STOR_INT_ARY_ELM ||
+         type == MTHD_CALL || type == DYN_MTHD_CALL ||
          type == MTHD_CALL_JIT || type == DYN_MTHD_CALL_JIT) {
         return false;
       }

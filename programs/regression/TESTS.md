@@ -16,9 +16,14 @@ This document lists all regression tests, what they validate, and comprehensive 
 | 8 | `core_control_flow.obs` | Core Language | If/else, for/while loops, select statements | - | ARM64, x64 | ✅ |
 | 9 | `core_recursion.obs` | Core Language | Recursive functions, mutual recursion, Fibonacci, factorial | - | ARM64, x64 | ✅ |
 | 10 | `core_strings_simple.obs` | Core Language | String operations, substring, find, conversions | - | ARM64, x64 | ✅ |
+| 11 | `jit_native_func_ref.obs` | AMD64 JIT | Function reference storage in class fields (write barrier) | - | ARM64, x64 | ✅ |
+| 12 | `jit_native_cls_fields.obs` | AMD64 JIT | Object reference storage in class instance fields with GC pressure | - | ARM64, x64 | ✅ |
+| 13 | `jit_native_math.obs` | AMD64 JIT | Native math builtins: Factorial, Sinh/Cosh/Tanh/Log2/Cbrt, Pow | - | ARM64, x64 | ✅ |
+| 14 | `jit_native_float_array.obs` | AMD64 JIT | Float array creation and math operations in native context | - | ARM64, x64 | ✅ |
 
-**Total Tests:** 10
+**Total Tests:** 14
 **ARM64 JIT Tests:** 4
+**AMD64 JIT Tests:** 4
 **Core Language Tests:** 6
 **All Tests Status:** ✅ PASSING
 
@@ -40,6 +45,10 @@ This document lists all regression tests, what they validate, and comprehensive 
 | **Select Statements** | ✅ Complete | core_classes, core_control_flow | ✅ |
 | **Recursion** | ✅ Complete | core_recursion | ✅ |
 | **Bitwise Operations** | ✅ Complete | arm64_bitwise | ✅ |
+| **Function References** | ✅ Basic | jit_native_func_ref | ✅ |
+| **Native Math Builtins** | ✅ Complete | jit_native_math | ✅ |
+| **Float Array + Math** | ✅ Complete | jit_native_float_array | ✅ |
+| **Class Field Storage (GC)** | ✅ Complete | jit_native_cls_fields | ✅ |
 | **Lambdas/Closures** | ⏳ Partial | - | ⚠️ Complex syntax |
 | **Collections** | ⏳ Partial | - | ⚠️ Generic issues |
 | **Threads** | ❌ None | - | 📋 TODO |
@@ -72,6 +81,15 @@ programs/regression/
 └── arm64_multiply_constants.obs   # Multiply optimization
 ```
 
+**AMD64 JIT Write Barrier Regression (4 tests)**
+```
+programs/regression/
+├── jit_native_func_ref.obs        # Function ref storage in class fields
+├── jit_native_cls_fields.obs      # Object ref storage with GC pressure
+├── jit_native_math.obs            # Native math builtins (Factorial, hyperbolic, Pow)
+└── jit_native_float_array.obs     # Float array + math operations
+```
+
 **Core Language (6 tests)**
 ```
 programs/regression/
@@ -100,10 +118,10 @@ programs/regression/
 - **Limitations:** Not systematic, missing edge cases
 
 ### programs/regression/ (This Suite)
-- **Total tests:** 10 focused tests
+- **Total tests:** 14 focused tests
 - **Coverage:** Critical paths + recent fixes
 - **Purpose:** Fast regression detection
-- **CI Coverage:** All 10 run in GitHub Actions
+- **CI Coverage:** All 14 run in GitHub Actions
 - **Advantages:** Small, fast, targeted, fully automated
 
 ## Recommended Test Additions

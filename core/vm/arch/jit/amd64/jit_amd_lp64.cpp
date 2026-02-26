@@ -887,7 +887,7 @@ void JitAmd64::ProcessInstructions() {
 #ifdef _DEBUG_JIT
       std::wcout << L"RAND_FLOAT: regs=" << aval_regs.size() << L"," << aux_regs.size() << std::endl;
 #endif
-      ProcessStackCallback(RAND_FLOAT, instr, instr_index, 1);
+      ProcessStackCallback(RAND_FLOAT, instr, instr_index, 0);
       ProcessReturnParameters(FLOAT_TYPE);
       break;
       
@@ -2329,13 +2329,11 @@ void JitAmd64::ProcessFloatOperation(StackInstr* instruction) {
     break;
 
   case LOG_FLOAT:
-    fld_mem((long)left->GetOperand(), RBP);
-    flog();
+    holder = call_xfunc(log, left);
     break;
 
   case LOG10_FLOAT:
-    fld_mem((long)left->GetOperand(), RBP);
-    flog10();
+    holder = call_xfunc(log10, left);
     break;
 
   case TRUNC_FLOAT:
@@ -2955,11 +2953,17 @@ RegisterHolder* JitAmd64::call_xfunc(double(*func_ptr)(double), RegInstr* left)
   move_xreg_mem(XMM0, TMP_XMM_0, RBP);
   move_mem_xreg((long)left->GetOperand(), RBP, XMM0);
 
+#ifdef _WIN64
+  sub_imm_reg(32, RSP);
+#endif
   RegisterHolder* call_holder = GetRegister();
   move_imm_reg((size_t)func_ptr, call_holder->GetRegister());
   call_reg(call_holder->GetRegister());
   ReleaseRegister(call_holder);
-  
+#ifdef _WIN64
+  add_imm_reg(32, RSP);
+#endif
+
   RegisterHolder* result_holder = GetXmmRegister();
   if(result_holder->GetRegister() != XMM0) {
     move_xreg_xreg(XMM0, result_holder->GetRegister());
@@ -2983,11 +2987,17 @@ RegisterHolder* JitAmd64::call_xfunc2(double(*func_ptr)(double, double), RegInst
 
   move_xreg_mem(XMM0, TMP_XMM_0, RBP);
   move_mem_xreg((long)right->GetOperand(), RBP, XMM0);
-  
+
+#ifdef _WIN64
+  sub_imm_reg(32, RSP);
+#endif
   RegisterHolder* call_holder = GetRegister();
   move_imm_reg((size_t)func_ptr, call_holder->GetRegister());
   call_reg(call_holder->GetRegister());
   ReleaseRegister(call_holder);
+#ifdef _WIN64
+  add_imm_reg(32, RSP);
+#endif
 
   RegisterHolder* result_holder = GetXmmRegister();
   move_mem_xreg(TMP_XMM_1, RBP, XMM1);
@@ -5269,12 +5279,10 @@ static bool CanJitInstruction(InstructionType type) {
   case LOAD_FUNC_VAR:
     // stores
   case STOR_LOCL_INT_VAR:
-  case STOR_CLS_INST_INT_VAR:
   case STOR_FLOAT_VAR:
   case STOR_FUNC_VAR:
     // copies
   case COPY_LOCL_INT_VAR:
-  case COPY_CLS_INST_INT_VAR:
   case COPY_FLOAT_VAR:
     // int math
   case AND_INT:
@@ -5336,9 +5344,8 @@ static bool CanJitInstruction(InstructionType type) {
   case GTR_EQL_FLOAT:
   case EQL_FLOAT:
   case NEQL_FLOAT:
-    // control flow
-  case MTHD_CALL:
-  case DYN_MTHD_CALL:
+    // control flow (MTHD_CALL/DYN_MTHD_CALL excluded: ProcessStackCallback
+    // register state corruption on inline return values, matching ARM64 pre-scan)
   case JMP:
   case LBL:
   case RTRN:
@@ -5364,7 +5371,6 @@ static bool CanJitInstruction(InstructionType type) {
   case LOAD_FLOAT_ARY_ELM:
   case STOR_BYTE_ARY_ELM:
   case STOR_CHAR_ARY_ELM:
-  case STOR_INT_ARY_ELM:
   case STOR_FLOAT_ARY_ELM:
   case LOAD_ARY_SIZE:
     // traps
