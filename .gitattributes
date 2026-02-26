@@ -1,4 +1,7 @@
-# Force LF line endings for files that run on Linux/macOS
+# Default to LF line endings for all text files
+* text=auto eol=lf
+
+# Ensure these are always LF
 *.sh text eol=lf
 Dockerfile* text eol=lf
 Caddyfile text eol=lf
@@ -8,3 +11,19 @@ Makefile* text eol=lf
 # GitHub Actions
 .github/**/*.yml text eol=lf
 .github/**/*.yaml text eol=lf
+
+# Binary files - no line ending conversion
+*.exe binary
+*.dll binary
+*.so binary
+*.dylib binary
+*.obs binary
+*.obl binary
+*.png binary
+*.jpg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.zip binary
+*.gz binary
+*.tar binary
