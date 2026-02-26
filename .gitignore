@@ -77,6 +77,19 @@ core/lib/opencv/win/x64/bin/
 core/lib/openssl/win/x64/libcrypto-static.lib
 core/lib/openssl/win/x64/libssl-static.lib
 
+# Xcode build directories
+**/xcode/build/
+**/macos/build/
+
+# Deploy staging
+core/release/deploy/
+
+# Test results
+programs/regression/results/
+
+# macOS
+.DS_Store
+
 # Misc
 nul
 build.txt
