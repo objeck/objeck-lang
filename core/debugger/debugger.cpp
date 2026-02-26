@@ -1843,6 +1843,30 @@ Command* Runtime::Debugger::ProcessCommand(const std::wstring &line) {
       }
       break;
 
+    case HELP_COMMAND:
+      std::wcout << L"\nCommands:" << std::endl;
+      std::wcout << L"  r, run                  Start/restart program" << std::endl;
+      std::wcout << L"  b, break <file>:<line>   Set breakpoint" << std::endl;
+      std::wcout << L"  breaks                  List all breakpoints" << std::endl;
+      std::wcout << L"  d, delete <file>:<line>  Remove breakpoint" << std::endl;
+      std::wcout << L"  clear                   Clear all breakpoints" << std::endl;
+      std::wcout << L"  c, cont                 Continue execution" << std::endl;
+      std::wcout << L"  s, step                 Step into" << std::endl;
+      std::wcout << L"  n, next                 Step over" << std::endl;
+      std::wcout << L"  j, jump                 Step out" << std::endl;
+      std::wcout << L"  p, print <expr>         Print expression value" << std::endl;
+      std::wcout << L"  l, list [<file>:<line>]  List source code" << std::endl;
+      std::wcout << L"  stack                   Show call stack" << std::endl;
+      std::wcout << L"  m, memory               Show memory stats" << std::endl;
+      std::wcout << L"  i, info [class=<C>]     Show program/class info" << std::endl;
+      std::wcout << L"  exe <file>              Load binary file" << std::endl;
+      std::wcout << L"  src <dir>               Set source directory" << std::endl;
+      std::wcout << L"  args '<args>'           Set program arguments" << std::endl;
+      std::wcout << L"  h, help                 Show this help" << std::endl;
+      std::wcout << L"  q, quit                 Exit debugger" << std::endl;
+      std::wcout << std::endl;
+      break;
+
     default:
       break;
     }

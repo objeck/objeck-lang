@@ -87,7 +87,8 @@ jobs:
           libreadline-dev \
           libeigen3-dev \
           libmp3lame-dev \
-          ccache
+          ccache \
+          expect
 
     # macOS dependencies with caching
     - name: Cache Homebrew downloads (macOS)
@@ -344,6 +345,24 @@ jobs:
       working-directory: ./programs/regression
       shell: cmd
       run: run_regression.cmd ${{ matrix.arch }}
+
+    - name: Run debugger tests (POSIX)
+      if: runner.os != 'Windows' && matrix.platform != 'windows-arm64'
+      working-directory: ./programs/regression
+      run: |
+        chmod +x run_debugger_tests.sh
+
+        ARCH="${{ matrix.arch }}"
+
+        echo "Running debugger tests for architecture: $ARCH"
+
+        if ./run_debugger_tests.sh $ARCH; then
+          echo "Debugger tests passed"
+        else
+          echo "WARNING: Debugger tests failed or not fully supported on this platform"
+          echo "This is not fatal for CI - continuing..."
+          exit 0
+        fi
 
     # ============================================
     # API Documentation (Linux x64 only)

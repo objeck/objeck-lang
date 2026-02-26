@@ -186,6 +186,7 @@ namespace frontend {
     LIST_COMMAND,
     STEP_OUT_COMMAND,
     STACK_COMMAND,
+    HELP_COMMAND,
   };
 
   /****************************

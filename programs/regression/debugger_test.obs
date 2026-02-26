@@ -1,0 +1,56 @@
+class Counter {
+  @count : Int;
+
+  New() {
+    @count := 0;
+  }
+
+  method : public : Increment() ~ Nil {
+    @count += 1;
+  }
+
+  method : public : GetCount() ~ Int {
+    return @count;
+  }
+
+  method : public : ToString() ~ String {
+    return "Counter={$@count}";
+  }
+}
+
+class Main {
+  function : Main(args : String[]) ~ Nil {
+    values := Int->New[5];
+    each(i : values) {
+      values[i] := i * 10;
+    };
+
+    sum := 0;
+    each(i : values) {
+      sum += values[i];
+    };
+
+    counter := Counter->New();
+    counter->Increment();
+    counter->Increment();
+    counter->Increment();
+
+    msg := counter->ToString();
+    count := counter->GetCount();
+    "Sum={$sum}, {$msg}"->PrintLine();
+
+    if(count > 2) {
+      "Count is greater than 2"->PrintLine();
+    };
+
+    result := Factorial(5);
+    "Factorial(5)={$result}"->PrintLine();
+  }
+
+  function : Factorial(n : Int) ~ Int {
+    if(n <= 1) {
+      return 1;
+    };
+    return n * Factorial(n - 1);
+  }
+}
