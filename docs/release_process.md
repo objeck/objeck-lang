@@ -1,7 +1,7 @@
 # Objeck Language Release Process
 
-**Version:** 2.0 (Automated)
-**Last Updated:** 2026-02-10
+**Version:** 2.1 (Automated)
+**Last Updated:** 2026-02-26
 
 This document describes the fully automated release process for Objeck Language using GitHub Actions.
 
@@ -78,6 +78,17 @@ The following GitHub Secrets must be configured in repository settings:
 
 ## Quick Release Guide
 
+### Pre-Release Checklist
+
+Before tagging, ensure the following are updated:
+
+1. **Version string** in `core/shared/version.h` (`VER_NUM` and `VERSION_STRING`)
+2. **Release notes** in `README.md`, `docs/readme.txt`, and `docs/readme.html`
+3. **Download URLs** in `README.md` Quick Start section
+4. **Web playground** version tag in `programs/web-playground/frontend/index.html`
+5. **LSP repo** (`objeck-lsp`) — update formatter for any new keywords, regenerate `objk_apis.json`
+6. **Clean working tree** — no uncommitted changes, `.gitignore` up to date
+
 ### Creating a New Release
 
 1. **Ensure your local repository is up to date:**
@@ -94,12 +105,14 @@ The following GitHub Secrets must be configured in repository settings:
    ```
 
 3. **Wait for automation:**
-   - GitHub Actions automatically triggers
+   - GitHub Actions automatically triggers both build and publish
    - Monitor progress at: https://github.com/objeck/objeck-lang/actions
    - Builds complete in ~45 minutes
-   - Publishing completes in ~15 minutes
+   - Publishing auto-triggers on build success (~15 minutes)
 
-4. **Verify the release:**
+4. **Update the GitHub Release body** with proper release notes (the auto-generated body is generic)
+
+5. **Verify the release:**
    - GitHub: https://github.com/objeck/objeck-lang/releases
    - Sourceforge: https://sourceforge.net/projects/objeck/files/
    - API Docs: https://objeck.org/api/latest/
@@ -140,7 +153,7 @@ gh run watch
 
 ### Step 2: Release Publish (`release-publish.yml`)
 
-**Trigger:** Manual dispatch after successful build
+**Trigger:** Automatic on successful Release Build completion (also supports manual dispatch)
 
 **What Happens:**
 1. **Download build artifacts**
@@ -155,7 +168,9 @@ gh run watch
 
 **Duration:** ~15 minutes
 
-**Manual Trigger:**
+**Automatic Trigger:** The publish workflow runs automatically when Release Build completes successfully. No manual intervention needed.
+
+**Manual Trigger (fallback):**
 ```bash
 # Get the run ID from the release build
 RUN_ID=$(gh run list --workflow=release-build.yml --limit 1 --json databaseId --jq '.[0].databaseId')
@@ -171,6 +186,8 @@ Or use the GitHub Actions UI:
 2. Click **Run workflow**
 3. Enter version and run ID
 4. Click **Run workflow**
+
+**Post-Publish:** Update the GitHub Release body with proper release notes matching the format of previous releases (see `docs/readme.txt` for content).
 
 ---
 
@@ -335,17 +352,20 @@ Every push to `master` triggers the CI build workflow (`ci-build.yml`), which:
 
 Use this checklist for each release:
 
-- [ ] All tests passing on master
-- [ ] Version number decided (e.g., 2026.2.1)
-- [ ] Release notes prepared (optional, auto-generated)
-- [ ] Git tag created and pushed
+- [ ] All tests passing on master (CI green)
+- [ ] Version number updated in `core/shared/version.h`
+- [ ] Release notes updated in `README.md`, `docs/readme.txt`, `docs/readme.html`
+- [ ] Download URLs in `README.md` point to new version
+- [ ] Web playground version tag updated
+- [ ] LSP repo updated (new keywords, regenerated API JSON)
+- [ ] Git tag created and pushed (`git tag vX.Y.Z && git push origin vX.Y.Z`)
 - [ ] Release build workflow completed successfully
-- [ ] Release publish workflow triggered
-- [ ] GitHub Release verified
+- [ ] Release publish workflow completed (auto-triggered)
+- [ ] GitHub Release body updated with proper release notes
+- [ ] GitHub Release verified with all platform assets
 - [ ] Sourceforge upload verified (if enabled)
 - [ ] API docs deployed (if enabled)
-- [ ] Downloads tested on Windows/Linux/macOS
-- [ ] Announcement prepared (optional)
+- [ ] Downloads tested on at least one platform
 
 ---
 
@@ -361,5 +381,6 @@ Use this checklist for each release:
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 2.1 | 2026-02-26 | Added pre-release checklist, clarified auto-trigger, LSP update step |
 | 2.0 | 2026-02-10 | Fully automated CI/CD release process |
 | 1.0 | 2024-xx-xx | Manual release process |
