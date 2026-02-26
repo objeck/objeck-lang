@@ -357,17 +357,20 @@ if [%2] NEQ [deploy] goto end
 		copy ..\..\docs\eula.rtf ..\..\Objeck-Build\release-x64\%INSTALL_TARGET%\doc
 	)
 
-	REM Build MSI installer with WiX v4
+	REM Build MSI installer with WiX v5
+	REM Use absolute paths because WiX resolves -d variables relative to the .wxs file
+	for %%i in ("..\..\Objeck-Build") do set OBJECK_BUILD=%%~fi
+
 	if [%1] == [arm64] (
 		set WIX_ARCH=arm64
-		set WIX_SOURCEDIR=..\..\Objeck-Build\release-arm64\%INSTALL_TARGET%
-		set WIX_OUTPUT=..\..\Objeck-Build\release-arm64\objeck-windows-arm64_0.0.0.msi
+		set WIX_SOURCEDIR=%OBJECK_BUILD%\release-arm64\%INSTALL_TARGET%
+		set WIX_OUTPUT=%OBJECK_BUILD%\release-arm64\objeck-windows-arm64_0.0.0.msi
 	)
 
 	if [%1] == [x64] (
 		set WIX_ARCH=x64
-		set WIX_SOURCEDIR=..\..\Objeck-Build\release-x64\%INSTALL_TARGET%
-		set WIX_OUTPUT=..\..\Objeck-Build\release-x64\objeck-windows-x64_0.0.0.msi
+		set WIX_SOURCEDIR=%OBJECK_BUILD%\release-x64\%INSTALL_TARGET%
+		set WIX_OUTPUT=%OBJECK_BUILD%\release-x64\objeck-windows-x64_0.0.0.msi
 	)
 
 	wix build -arch %WIX_ARCH% -o %WIX_OUTPUT% ^
