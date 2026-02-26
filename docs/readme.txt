@@ -3,6 +3,7 @@ v2026.2.1 (February 26, 2026)
 JIT stability fixes, debugger improvements, SDL2 bug fixes, and expanded test coverage.
 
 v2026.2.1
+- New 'try/otherwise' error handling framework
 - Added debugger help command with full command reference
 - Fixed AMD64 JIT segfaults (MTHD_CALL, DYN_MTHD_CALL, class instance vars)
 - Fixed ARM64 JIT pre-scan rejection for rewritten opcodes

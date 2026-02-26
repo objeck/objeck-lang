@@ -135,10 +135,12 @@ jobs:
 
       - name: Build compiler
         working-directory: ./core/compiler
+        shell: cmd
         run: call update_version.cmd
 
       - name: Build runtime
         working-directory: ./core/release
+        shell: cmd
         run: deploy_windows.cmd x64
 
       - name: Build renaming tool
