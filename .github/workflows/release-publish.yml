@@ -173,8 +173,8 @@ jobs:
           $stageDir = "release-staging"
           New-Item -ItemType Directory -Force -Path $stageDir
 
-          # Copy all artifacts to staging
-          Copy-Item -Path "artifacts\*\*" -Destination $stageDir -Recurse -Force
+          # Copy only release artifacts to staging (exclude version-metadata, api-docs)
+          Copy-Item -Path "artifacts\release-*\*" -Destination $stageDir -Recurse -Force
 
           # Run renaming tool
           Write-Output "🔄 Renaming binaries with version $version..."
