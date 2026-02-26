@@ -301,7 +301,7 @@ jobs:
 
           # Create release
           gh release create "v$VERSION" \
-            --title "Objeck Language v$VERSION" \
+            --title "v$VERSION" \
             --notes-file release-notes.md \
             release-final/*
 
