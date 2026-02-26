@@ -221,6 +221,12 @@ jobs:
       # Upload Renamed Artifacts
       # ============================================
 
+      - name: Remove debug files from staging
+        shell: pwsh
+        run: |
+          Get-ChildItem -Path "release-staging" -Filter "*.wixpdb" -Recurse | Remove-Item -Force
+          Write-Output "✅ Removed .wixpdb debug files from release"
+
       - name: Upload renamed artifacts
         uses: actions/upload-artifact@v4
         with:
