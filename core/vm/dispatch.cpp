@@ -903,7 +903,7 @@ static DispatchResult Handle_TRY_START(DispatchContext& ctx) {
   std::wcout << L"stack oper: TRY_START; call_pos=" << (*ctx.call_stack_pos) << std::endl;
 #endif
   long handler_ip = ctx.instr->GetOperand();
-  ctx.interp->PushTryHandler(handler_ip, *ctx.stack_pos);
+  ctx.interp->PushTryHandler(handler_ip, *ctx.stack_pos, *ctx.call_stack_pos);
   return DispatchResult::CONTINUE;
 }
 

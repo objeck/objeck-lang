@@ -2,6 +2,12 @@
 
 All notable changes to Objeck will be documented in this file.
 
+## [v2026.2.2] - 2026-02-26
+
+### Bug Fixes
+- **Fixed Try/Otherwise crash**: VM segfault when calling non-virtual methods (e.g., `Size()`, `ToUpper()`) on Nil objects inside `Try()` chains — call stack and instruction pointer now properly unwound during error recovery
+- **Fixed debugger build error on Windows**: `HELP_COMMAND` enum collision with Windows SDK macro (`WinUser.h`)
+
 ## [v2026.2.1] - 2026-02-14
 
 ### New Features
