@@ -221,6 +221,14 @@ jobs:
           Write-Output "Set INCLUDE=$vcpkgRoot\include"
           Write-Output "Set LIB=$vcpkgRoot\lib"
 
+      - name: Install WiX Toolset (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          dotnet tool install --global wix
+          wix extension add --global WixToolset.UI.wixext WixToolset.Util.wixext
+          Write-Output "✅ WiX Toolset installed"
+
       # ============================================
       # Code Signing Note (Windows)
       # ============================================

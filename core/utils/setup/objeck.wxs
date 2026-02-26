@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!--
+  Objeck WiX v4 Installer
+
+  Build examples:
+    wix build -arch x64 -o objeck-x64.msi ^
+      -d Platform=x64 -d Version=2026.2.1 ^
+      -d SourceDir=..\..\Objeck-Build\release-x64\objeck-lang-x64 ^
+      -ext WixToolset.UI.wixext -ext WixToolset.Util.wixext ^
+      objeck.wxs
+
+    wix build -arch arm64 -o objeck-arm64.msi ^
+      -d Platform=arm64 -d Version=2026.2.1 ^
+      -d SourceDir=..\..\Objeck-Build\release-arm64\objeck-lang-arm64 ^
+      -ext WixToolset.UI.wixext -ext WixToolset.Util.wixext ^
+      objeck.wxs
+-->
+
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui"
+     xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
+
+  <Package Name="Objeck"
+           Manufacturer="Randy Hollines"
+           Version="$(var.Version)"
+           UpgradeCode="FAD125F6-CB1B-46F7-91EB-429682D927CB"
+           Scope="perMachine"
+           Language="1033"
+           Codepage="1252"
+           InstallerVersion="500">
+
+    <!-- Major upgrade: auto-uninstall previous versions -->
+    <MajorUpgrade DowngradeErrorMessage="A newer version of Objeck is already installed."
+                  Schedule="afterInstallInitialize" />
+
+    <!-- Icon for Add/Remove Programs -->
+    <Icon Id="ObjeckIcon" SourceFile="$(var.SourceDir)\doc\icons\objeck.ico" />
+    <Property Id="ARPPRODUCTICON" Value="ObjeckIcon" />
+
+    <!-- Install directory property for WixUI_InstallDir -->
+    <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
+
+    <!-- License agreement -->
+    <WixVariable Id="WixUILicenseRtf" Value="$(var.SourceDir)\doc\eula.rtf" />
+
+    <!-- UI: license agreement + folder selection + progress -->
+    <ui:WixUI Id="WixUI_InstallDir" />
+
+    <!-- Media / compression -->
+    <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
+
+    <!-- Directory structure -->
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="Objeck">
+
+        <!-- Harvest all files from the staging directory -->
+        <Files Include="$(var.SourceDir)\**" />
+
+      </Directory>
+    </StandardDirectory>
+
+    <!-- Environment variables (system-level, appended) -->
+    <Component Id="EnvPathComponent" Directory="INSTALLFOLDER" Guid="A1B2C3D4-E5F6-4A7B-8C9D-0E1F2A3B4C5D">
+      <Environment Id="ObjeckPath"
+                   Name="PATH"
+                   Action="set"
+                   Part="last"
+                   System="yes"
+                   Value="[INSTALLFOLDER]bin" />
+    </Component>
+
+    <Component Id="EnvLibPathComponent" Directory="INSTALLFOLDER" Guid="B2C3D4E5-F6A7-4B8C-9D0E-1F2A3B4C5D6E">
+      <Environment Id="ObjeckLibPath"
+                   Name="OBJECK_LIB_PATH"
+                   Action="set"
+                   Part="all"
+                   System="yes"
+                   Value="[INSTALLFOLDER]lib" />
+    </Component>
+
+    <!-- Registry entries -->
+    <Component Id="RegistryComponent" Directory="INSTALLFOLDER" Guid="C3D4E5F6-A7B8-4C9D-0E1F-2A3B4C5D6E7F">
+      <RegistryKey Root="HKLM" Key="Software\Objeck">
+        <RegistryValue Name="InstallPath" Type="string" Value="[INSTALLFOLDER]" />
+        <RegistryValue Name="Version" Type="string" Value="$(var.Version)" />
+      </RegistryKey>
+    </Component>
+
+    <!-- Notify user that a restart may be needed for PATH changes -->
+    <Property Id="MSIRESTARTMANAGERCONTROL" Value="Disable" />
+
+    <!-- Features -->
+    <Feature Id="MainFeature" Title="Objeck" Level="1">
+      <ComponentGroupRef Id="Files" />
+      <ComponentRef Id="EnvPathComponent" />
+      <ComponentRef Id="EnvLibPathComponent" />
+      <ComponentRef Id="RegistryComponent" />
+    </Feature>
+
+  </Package>
+</Wix>
