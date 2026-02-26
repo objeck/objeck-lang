@@ -1,4 +1,7 @@
-# Force LF line endings for files that run on Linux
+# Default to LF line endings for all text files
+* text=auto eol=lf
+
+# Ensure these are always LF
 *.sh text eol=lf
 Dockerfile* text eol=lf
 Caddyfile text eol=lf
