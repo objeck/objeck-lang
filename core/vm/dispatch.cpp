@@ -585,6 +585,10 @@ static DispatchResult Handle_F2S(DispatchContext& ctx) {
 //
 static DispatchResult Handle_MTHD_CALL(DispatchContext& ctx) {
   ctx.interp->ProcessMethodCall(ctx.instr, ctx.instrs, *ctx.ip, ctx.op_stack, ctx.stack_pos);
+  // skip jit_called check if TryErrorRecovery unwound frames
+  if(ctx.interp->HasPendingRecovery()) {
+    return DispatchResult::CONTINUE;
+  }
   // return directly back to JIT code
   if((*ctx.stack_frame)->jit_called) {
     (*ctx.stack_frame)->jit_called = false;
@@ -596,6 +600,10 @@ static DispatchResult Handle_MTHD_CALL(DispatchContext& ctx) {
 
 static DispatchResult Handle_DYN_MTHD_CALL(DispatchContext& ctx) {
   ctx.interp->ProcessDynamicMethodCall(ctx.instr, ctx.instrs, *ctx.ip, ctx.op_stack, ctx.stack_pos);
+  // skip jit_called check if TryErrorRecovery unwound frames
+  if(ctx.interp->HasPendingRecovery()) {
+    return DispatchResult::CONTINUE;
+  }
   // return directly back to JIT code
   if((*ctx.stack_frame)->jit_called) {
     (*ctx.stack_frame)->jit_called = false;
@@ -607,6 +615,10 @@ static DispatchResult Handle_DYN_MTHD_CALL(DispatchContext& ctx) {
 
 static DispatchResult Handle_MTHD_CALL_JIT(DispatchContext& ctx) {
   ctx.interp->ProcessJitOnlyMethodCall(ctx.instr, ctx.instrs, *ctx.ip, ctx.op_stack, ctx.stack_pos);
+  // skip jit_called check if TryErrorRecovery unwound frames
+  if(ctx.interp->HasPendingRecovery()) {
+    return DispatchResult::CONTINUE;
+  }
   if((*ctx.stack_frame)->jit_called) {
     (*ctx.stack_frame)->jit_called = false;
     StackInterpreter::ReleaseStackFrame(*ctx.stack_frame);
@@ -617,6 +629,10 @@ static DispatchResult Handle_MTHD_CALL_JIT(DispatchContext& ctx) {
 
 static DispatchResult Handle_DYN_MTHD_CALL_JIT(DispatchContext& ctx) {
   ctx.interp->ProcessJitOnlyDynamicMethodCall(ctx.instr, ctx.instrs, *ctx.ip, ctx.op_stack, ctx.stack_pos);
+  // skip jit_called check if TryErrorRecovery unwound frames
+  if(ctx.interp->HasPendingRecovery()) {
+    return DispatchResult::CONTINUE;
+  }
   if((*ctx.stack_frame)->jit_called) {
     (*ctx.stack_frame)->jit_called = false;
     StackInterpreter::ReleaseStackFrame(*ctx.stack_frame);
