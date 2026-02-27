@@ -1284,7 +1284,6 @@ void StackInterpreter::AsyncMthdCall(size_t* &op_stack, size_t* &stack_pos)
 
   StackClass* impl_class = MemoryManager::GetClass(instance);
   if(!impl_class) {
-    PopFrame();
     if(TryErrorRecovery(stack_pos)) {
       return;
     }
@@ -2136,10 +2135,6 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, size_t* instanc
   const long status = jit_executor.Execute(called, instance, op_stack, stack_pos, call_stack, call_stack_pos, *stack_frame);
   if(status < 0) {
     if(TryErrorRecovery(stack_pos)) {
-      ReleaseStackFrame(*stack_frame);
-      (*stack_frame) = PopFrame();
-      instrs = (*stack_frame)->method->GetInstructions();
-      ip = (*stack_frame)->ip;
       return;
     }
     switch(status) {

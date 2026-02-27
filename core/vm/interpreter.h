@@ -228,6 +228,14 @@ namespace Runtime {
       return ip;
     }
 
+    //
+    // check if a try error recovery is pending (used by dispatch handlers
+    // to skip jit_called checks after TryErrorRecovery unwound frames)
+    //
+    inline bool HasPendingRecovery() {
+      return try_recovery_ip >= 0;
+    }
+
     // The following methods are public to allow access from dispatch handlers
 
     //
