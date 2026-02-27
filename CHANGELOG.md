@@ -2,13 +2,7 @@
 
 All notable changes to Objeck will be documented in this file.
 
-## [v2026.2.2] - 2026-02-26
-
-### Bug Fixes
-- **Fixed Try/Otherwise crash**: VM segfault when calling non-virtual methods (e.g., `Size()`, `ToUpper()`) on Nil objects inside `Try()` chains — call stack and instruction pointer now properly unwound during error recovery
-- **Fixed debugger build error on Windows**: `HELP_COMMAND` enum collision with Windows SDK macro (`WinUser.h`)
-
-## [v2026.2.1] - 2026-02-14
+## [v2026.2.1] - 2026-02-26
 
 ### New Features
 - **Try/Otherwise Error Handling**: `Try()` and `Otherwise()` compiler intrinsics on the `Base` class for safe method chaining with graceful error recovery (e.g., `obj->Try()->Method()->Otherwise(default)`)
@@ -20,6 +14,8 @@ All notable changes to Objeck will be documented in this file.
 - **Bug Fix**: Division-by-zero crash in constant folding — `DIV_INT`/`MOD_INT` now guards against zero divisor
 - **Bug Fix**: Dead condition in `InstructionReplacement` — `&&` corrected to `||` (both types could never match simultaneously)
 - **JIT Safety**: Division-by-zero guards added to `ProcessIntFold` in both x64 and ARM64 JIT backends
+- **Fixed Try/Otherwise crash**: VM segfault when calling non-virtual methods (e.g., `Size()`, `ToUpper()`) on Nil objects inside `Try()` chains — call stack and instruction pointer now properly unwound during error recovery
+- **Fixed debugger build error on Windows**: `HELP_COMMAND` enum collision with Windows SDK macro (`WinUser.h`)
 - **Benchmarks**: 10 new performance benchmark programs with measurement tooling ([details](docs/performance.md))
 
 ### Improvements
