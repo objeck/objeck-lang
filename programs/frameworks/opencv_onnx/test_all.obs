@@ -1,0 +1,205 @@
+use API.Onnx, API.OpenCV, System.IO.Filesystem, Collection;
+
+class TestAll {
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() < 1) {
+			"Usage: test_all <test_data_dir>"->PrintLine();
+			"  e.g. test_all C:/path/to/test_data"->PrintLine();
+			return;
+		};
+
+		data_dir := args[0]->ReplaceAll('\\', '/');
+
+		"=== ONNX Runtime Providers ==="->PrintLine();
+		providers := OnnxRuntime->GetProviders();
+		if(providers <> Nil) {
+			each(p in providers) {
+				"  {$p}"->PrintLine();
+			};
+		};
+		""->PrintLine();
+
+		image_path := data_dir + "/people-park.jpg";
+		image_bytes := FileReader->ReadBinaryFile(image_path);
+		if(image_bytes = Nil) {
+			"Error: could not load image: {$image_path}"->ErrorLine();
+			return;
+		};
+		image_size := image_bytes->Size();
+		"Loaded image: {$image_path} ({$image_size} bytes)"->PrintLine();
+		""->PrintLine();
+
+		TestResNet(data_dir, image_bytes);
+		TestYolo(data_dir, image_bytes);
+		TestDeepLab(data_dir, image_bytes);
+		TestOpenPose(data_dir, image_bytes);
+
+		"=== All tests complete ==="->PrintLine();
+	}
+
+	function : TestResNet(data_dir : String, image_bytes : Byte[]) ~ Nil {
+		"=== ResNet Classification ==="->PrintLine();
+
+		model_path := data_dir + "/resnet/resnet34.onnx";
+		label_path := data_dir + "/resnet/resnet_labels.txt";
+
+		labels := LoadLabels(label_path);
+		label_count := labels->Size();
+		"  Labels: {$label_count}"->PrintLine();
+
+		label_names := labels->ToArray()->As(String[]);
+
+		session := ResNetSession->New(model_path);
+		result := session->Inference(image_bytes, 224, 224, label_names);
+		if(result <> Nil) {
+			name := result->GetName();
+			conf := result->GetConfidence();
+			id := result->GetId();
+			"  Top prediction: [{$id}] {$name} (conf={$conf})"->PrintLine();
+		}
+		else {
+			"  Error: ResNet inference returned Nil"->ErrorLine();
+		};
+
+		session->Close();
+		""->PrintLine();
+	}
+
+	function : TestYolo(data_dir : String, image_bytes : Byte[]) ~ Nil {
+		"=== YOLO Object Detection ==="->PrintLine();
+
+		model_path := data_dir + "/yolo/yolov11.onnx";
+		label_path := data_dir + "/yolo/yolo_labels.txt";
+
+		labels := LoadLabels(label_path);
+		label_count := labels->Size();
+		"  Labels: {$label_count}"->PrintLine();
+
+		label_names := labels->ToArray()->As(String[]);
+
+		session := YoloSession->New(model_path);
+		result := session->Inference(image_bytes, 640, 640, 0.5, label_names);
+		if(result <> Nil) {
+			classifications := result->GetClassifications();
+			if(classifications <> Nil) {
+				det_count := classifications->Size();
+				"  Detections: {$det_count}"->PrintLine();
+				each(cls in classifications) {
+					cls_str := cls->ToString();
+					"    {$cls_str}"->PrintLine();
+				};
+			}
+			else {
+				"  No classifications"->PrintLine();
+			};
+		}
+		else {
+			"  Error: YOLO inference returned Nil"->ErrorLine();
+		};
+
+		session->Close();
+		""->PrintLine();
+	}
+
+	function : TestDeepLab(data_dir : String, image_bytes : Byte[]) ~ Nil {
+		"=== DeepLab Segmentation ==="->PrintLine();
+
+		model_path := data_dir + "/deeplab/deeplabv3.onnx";
+		label_path := data_dir + "/deeplab/deeplab_labels.txt";
+
+		labels := LoadLabels(label_path);
+		label_count := labels->Size();
+		"  Labels: {$label_count}"->PrintLine();
+
+		label_names := labels->ToArray()->As(String[]);
+
+		session := DeepLabSession->New(model_path);
+		result := session->Inference(image_bytes, label_names);
+		if(result <> Nil) {
+			classifications := result->GetClassifications();
+			if(classifications <> Nil) {
+				cls_count := classifications->Size();
+				"  Classes detected: {$cls_count}"->PrintLine();
+				each(cls in classifications) {
+					cls_str := cls->ToString();
+					"    {$cls_str}"->PrintLine();
+				};
+			}
+			else {
+				"  No classifications"->PrintLine();
+			};
+		}
+		else {
+			"  Error: DeepLab inference returned Nil"->ErrorLine();
+		};
+
+		session->Close();
+		""->PrintLine();
+	}
+
+	function : TestOpenPose(data_dir : String, image_bytes : Byte[]) ~ Nil {
+		"=== OpenPose Pose Estimation ==="->PrintLine();
+
+		# Use yoga-pose image for better pose detection
+		pose_path := data_dir + "/yoga-pose.jpg";
+		pose_bytes := FileReader->ReadBinaryFile(pose_path);
+		if(pose_bytes = Nil) {
+			pose_bytes := image_bytes;
+			"  (using default image)"->PrintLine();
+		}
+		else {
+			"  Using: {$pose_path}"->PrintLine();
+		};
+
+		model_path := data_dir + "/openpose/openpose.onnx";
+		label_path := data_dir + "/openpose/openpose_labels.txt";
+
+		labels := LoadLabels(label_path);
+		label_count := labels->Size();
+		"  Labels: {$label_count}"->PrintLine();
+
+		label_names := labels->ToArray()->As(String[]);
+
+		session := OpenPoseSession->New(model_path);
+		result := session->Inference(pose_bytes, label_names);
+		if(result <> Nil) {
+			nx := result->GetNormalizedX();
+			ny := result->GetNormalizedY();
+			nw := result->GetNormalizedWidth();
+			nh := result->GetNormalizedHeight();
+			"  Bounding box: [{$nx}, {$ny}, {$nw}, {$nh}]"->PrintLine();
+
+			classifications := result->GetClassifications();
+			if(classifications <> Nil) {
+				kp_count := classifications->Size();
+				"  Keypoints: {$kp_count}"->PrintLine();
+				each(kp in classifications) {
+					kp_str := kp->ToString();
+					"    {$kp_str}"->PrintLine();
+				};
+			}
+			else {
+				"  No keypoints"->PrintLine();
+			};
+		}
+		else {
+			"  Error: OpenPose inference returned Nil"->ErrorLine();
+		};
+
+		session->Close();
+		""->PrintLine();
+	}
+
+	function : LoadLabels(label_path : String) ~ Vector<String> {
+		label_names := Vector->New()<String>;
+
+		file_in := FileReader->New(label_path);
+		while(<>file_in->IsEoF()) {
+			data_label := file_in->ReadLine();
+			label_names->AddBack(data_label);
+		};
+		file_in->Close();
+
+		return label_names;
+	}
+}

@@ -6,7 +6,72 @@
 use Collection, System.API, API.OpenCV, Data.JSON;
 
 #~
-Open Neural Network Exchange support (ONNX) for generative AI and large language models (-lib onnx)
+Open Neural Network Exchange (ONNX) runtime support for computer vision inference (-lib onnx).
+
+Provides sessions for YOLO (object detection), ResNet (image classification),
+DeepLab (semantic segmentation), and OpenPose (human pose estimation).
+
+Supports CUDA, DirectML and QNN execution providers with automatic FP16/FP32 handling.
+
+<b>YOLO Object Detection</b>
+<code>
+labels := ["person", "bicycle", "car", "motorcycle"];
+
+session := YoloSession->New("yolo11.onnx");
+result := session->Inference(image_bytes, 640, 640, 0.5, labels);
+
+each(cls in result->GetClassifications()) {
+  "{cls->GetName()}: {cls->GetConfidence()}"->PrintLine();
+  bounds := cls->GetBounds();
+  "[{bounds->GetX()}, {bounds->GetY()}, {bounds->GetWidth()}, {bounds->GetHeight()}]"->PrintLine();
+};
+
+session->Close();
+</code>
+
+<b>ResNet Image Classification</b>
+<code>
+labels := ["tabby cat", "golden retriever", "sports car"];
+
+session := ResNetSession->New("resnet50.onnx");
+result := session->Inference(image_bytes, 224, 224, labels);
+
+"class={result->GetName()}, conf={result->GetConfidence()}"->PrintLine();
+session->Close();
+</code>
+
+<b>DeepLab Semantic Segmentation</b>
+<code>
+labels := ["background", "person", "car", "road"];
+
+session := DeepLabSession->New("deeplabv3.onnx");
+result := session->Inference(image_bytes, labels);
+
+each(cls in result->GetClassifications()) {
+  "{cls->GetName()}: {cls->GetConfidence()}"->PrintLine();
+};
+
+session->Close();
+</code>
+
+<b>OpenPose Human Pose Estimation</b>
+<code>
+labels := ["nose", "left_eye", "right_eye", "left_ear", "right_ear",
+  "left_shoulder", "right_shoulder", "left_elbow", "right_elbow",
+  "left_wrist", "right_wrist", "left_hip", "right_hip",
+  "left_knee", "right_knee", "left_ankle", "right_ankle"];
+
+session := OpenPoseSession->New("openpose.onnx");
+result := session->Inference(image_bytes, labels);
+
+each(kp in result->GetClassifications()) {
+  if(kp->GetConfidence() > 0) {
+    "{kp->GetName()}: [{kp->GetNormalizedX()}, {kp->GetNormalizedY()}]"->PrintLine();
+  };
+};
+
+session->Close();
+</code>
 ~#
 bundle API.Onnx {
 	class : private : Proxy {
@@ -22,9 +87,21 @@ bundle API.Onnx {
 	}
 
 	#~
-	Yolo runtime
+	ONNX runtime utilities for querying execution providers.
+
+	<b>Example</b>
+	<code>
+	providers := OnnxRuntime->GetProviders();
+	each(p in providers) {
+	  p->PrintLine();
+	};
+	</code>
 	~#
-	class Runtime {
+	class OnnxRuntime {
+		#~
+		Gets available ONNX execution providers (e.g., "DML", "CUDA", "CPU")
+		@return array of provider name strings
+		~#
 		function : GetProviders() ~ String[] {
 			array_args := Base->New[1];
 			array_args[0] := StringArrayRef->New();
@@ -37,14 +114,27 @@ bundle API.Onnx {
 	}
 
 	#~
-	Yolo inference session
+	YOLO inference session for object detection (v8 and above).
+	Supports YOLO11/YOLO12 with fused head, letterbox preprocessing,
+	and automatic FP16/FP32 input handling.
+
+	<b>Example</b>
+	<code>
+	labels := ["person", "bicycle", "car"];
+	session := YoloSession->New("yolo11n.onnx");
+	result := session->Inference(image_bytes, 640, 640, 0.5, labels);
+	each(cls in result->GetClassifications()) {
+	  "{cls->GetName()}: {cls->GetConfidence()}"->PrintLine();
+	};
+	session->Close();
+	</code>
 	~#
 	class YoloSession {
 		@session : Int;
 
 		#~
 		Constructor.
-		@param model Resnet model
+		@param model YOLO model path
 		~#
 		New(model : String) {
 			Init(model, Nil);
@@ -52,7 +142,7 @@ bundle API.Onnx {
 
 		#~
 		Constructor.
-		@param model Resnet model
+		@param model YOLO model path
 		@param config session configuration parameters
 		~#
 		New(model : String, config : Map<String, String>) {
@@ -130,7 +220,7 @@ bundle API.Onnx {
 	}
 
 	#~
-	Yolo inference result
+	YOLO inference result containing raw output, shape, dimensions and classifications
 	~#
 	class YoloResult {
 		@confidences : Float[];
@@ -286,7 +376,7 @@ bundle API.Onnx {
 	}
 
 	#~
-	Yolo classification result
+	YOLO classification result for a single detected object
 	~#
 	class YoloClassification {
 		@id : Int;
@@ -339,7 +429,7 @@ bundle API.Onnx {
 			elem_json->Insert("id", @id);
 			elem_json->Insert("name", @name);
 			elem_json->Insert("confidence", @confidence);
-			elem_json->Insert("bounds" @bounds->ToJson());
+			elem_json->Insert("bounds", @bounds->ToJson());
 
 			return elem_json;
 		}
@@ -355,14 +445,24 @@ bundle API.Onnx {
 	}
 
 	#~
-	ResNet inference session
+	ResNet inference session for image classification.
+	Performs ImageNet-style classification with softmax probability normalization.
+
+	<b>Example</b>
+	<code>
+	labels := ["tabby cat", "golden retriever", "sports car"];
+	session := ResNetSession->New("resnet50.onnx");
+	result := session->Inference(image_bytes, 224, 224, labels);
+	"Top: {result->GetName()} ({result->GetConfidence()})"->PrintLine();
+	session->Close();
+	</code>
 	~#
 	class ResNetSession {
 		@session : Int;
 
 		#~
 		Constructor.
-		@param model Resnet model
+		@param model ResNet model path
 		~#
 		New(model : String) {
 			Init(model, Nil);
@@ -370,7 +470,7 @@ bundle API.Onnx {
 
 		#~
 		Constructor.
-		@param model Resnet model
+		@param model ResNet model path
 		@param config session configuration parameters
 		~#
 		New(model : String, config : Map<String, String>) {
@@ -445,7 +545,7 @@ bundle API.Onnx {
 	}
 
 	#~
-	ResNet results
+	ResNet classification results containing per-class confidences and top-1 prediction
 	~#
 	class ResNetResult {
 		@confidences : Float[];
@@ -462,7 +562,7 @@ bundle API.Onnx {
 		Gets the confidences results
 		@return confidences results
 		~#
-		method : public : GeConfidences() ~ Float[] {
+		method : public : GetConfidences() ~ Float[] {
 			return @confidences;
 		}
 
@@ -535,14 +635,27 @@ bundle API.Onnx {
 	}
 
 	#~
-	Deeplab inference session
+	DeepLab inference session for semantic segmentation.
+	Auto-detects model input dimensions and supports both NCHW and NHWC layouts.
+	Returns per-class coverage percentages and polygon boundaries.
+
+	<b>Example</b>
+	<code>
+	labels := ["background", "person", "bicycle", "car"];
+	session := DeepLabSession->New("deeplabv3.onnx");
+	result := session->Inference(image_bytes, labels);
+	each(cls in result->GetClassifications()) {
+	  "{cls->GetName()}: {cls->GetConfidence()}%"->PrintLine();
+	};
+	session->Close();
+	</code>
 	~#
 	class DeepLabSession {
 		@session : Int;
 
 		#~
 		Constructor.
-		@param model Resnet model
+		@param model DeepLab model path
 		~#
 		New(model : String) {
 			Init(model, Nil);
@@ -550,7 +663,7 @@ bundle API.Onnx {
 
 		#~
 		Constructor.
-		@param model Resnet model
+		@param model DeepLab model path
 		@param config session configuration parameters
 		~#
 		New(model : String, config : Map<String, String>) {
@@ -622,7 +735,7 @@ bundle API.Onnx {
 	}
 
 	#~
-	DeepLab results
+	DeepLab segmentation results containing masked/overlay images and per-class classifications
 	~#
 	class DeepLabResult {
 		@masked_dims : Int[];
@@ -725,7 +838,7 @@ bundle API.Onnx {
 	}
 
 	#~
-	DeepLab classification result
+	DeepLab classification result for a single segmented class with coverage and polygons
 	~#
 	class DeepLabClassification {
 		@id : Int;
@@ -810,14 +923,32 @@ bundle API.Onnx {
 	}
 
 	#~
-	OpenPose inference session
+	OpenPose inference session for human pose estimation (17-keypoint COCO skeleton).
+	Uses letterbox preprocessing with inverse keypoint mapping for accurate coordinates.
+	Supports 18/19/25/26/57-channel output configurations.
+
+	<b>Example</b>
+	<code>
+	labels := ["nose", "left_eye", "right_eye", "left_ear", "right_ear",
+	  "left_shoulder", "right_shoulder", "left_elbow", "right_elbow",
+	  "left_wrist", "right_wrist", "left_hip", "right_hip",
+	  "left_knee", "right_knee", "left_ankle", "right_ankle"];
+	session := OpenPoseSession->New("openpose.onnx");
+	result := session->Inference(image_bytes, labels);
+	each(kp in result->GetClassifications()) {
+	  if(kp->GetConfidence() > 0) {
+	    "{kp->GetName()}: [{kp->GetNormalizedX()}, {kp->GetNormalizedY()}]"->PrintLine();
+	  };
+	};
+	session->Close();
+	</code>
 	~#
 	class OpenPoseSession {
 		@session : Int;
 
 		#~
 		Constructor.
-		@param model Resnet model
+		@param model OpenPose model path
 		~#
 		New(model : String) {
 			Init(model, Nil);
@@ -825,7 +956,7 @@ bundle API.Onnx {
 
 		#~
 		Constructor.
-		@param model Resnet model
+		@param model OpenPose model path
 		@param config session configuration parameters
 		~#
 		New(model : String, config : Map<String, String>) {
@@ -896,7 +1027,7 @@ bundle API.Onnx {
 	}
 
 	#~
-	OpenPose results
+	OpenPose results containing a visualization image, normalized bounding box, and keypoint classifications
 	~#
 	class OpenPoseResult {
 		@norm_x : Float;
@@ -1028,7 +1159,8 @@ bundle API.Onnx {
 	}
 
 	#~
-	OpenPose classification result
+	OpenPose keypoint result with normalized coordinates and confidence.
+	Undetected keypoints have normalized coordinates of -1.
 	~#
 	class OpenPoseClassification {
 		@id : OpenPoseClassification->Type;
