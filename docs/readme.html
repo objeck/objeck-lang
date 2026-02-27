@@ -58,11 +58,13 @@
   </header>
 
   <main style="text-align: left;">
-   <p>Try/otherwise error handling, Unicode emoji fix, WiX v4 installer, JIT stability fixes, debugger improvements, and more.</p>
+   <p>Try/otherwise error handling, Unicode emoji fix, WiX v4 installer, JIT stability fixes, debugger improvements, Try/Otherwise crash fix, and more.</p>
 
    <h3><u>v2026.2.1</u></h3>
     <ul>
         <li>New <code>try/otherwise</code> error handling framework</li>
+        <li>Fixed VM crash in Try/Otherwise when Nil dereference occurs inside non-virtual method calls</li>
+        <li>Fixed Windows debugger build: <code>HELP_COMMAND</code> enum collision with <code>WinUser.h</code> macro</li>
         <li>Fixed emoji and Unicode supplementary character output on all platforms (stdout and stderr)</li>
         <li>Migrated Windows MSI installer from VDPROJ to WiX v4 &mdash; builds in CI without Visual Studio</li>
         <li>Added debugger <code>help</code> command with full command reference</li>

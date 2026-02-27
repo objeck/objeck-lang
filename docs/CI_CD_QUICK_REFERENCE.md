@@ -288,9 +288,9 @@ git push origin :refs/tags/v0.0.0-test
 
 ```bash
 # 1. Fix critical bug
-git checkout -b hotfix-2026.2.2
+git checkout -b hotfix-2026.3.1
 git commit -am "Fix: critical bug"
-git push origin hotfix-2026.2.2
+git push origin hotfix-2026.3.1
 
 # 2. Create PR and merge
 gh pr create --title "Hotfix: critical bug" --body "Fixes #123"
@@ -299,8 +299,8 @@ gh pr merge --squash
 # 3. Tag release
 git checkout master
 git pull
-git tag v2026.2.2
-git push origin v2026.2.2
+git tag v2026.3.1
+git push origin v2026.3.1
 
 # 4. Follow normal release process
 ```

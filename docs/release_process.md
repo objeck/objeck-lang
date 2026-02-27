@@ -322,7 +322,7 @@ Objeck uses calendar versioning: `YYYY.M.P`
 
 **Examples:**
 - `2026.2.1` - First release of February 2026
-- `2026.2.2` - Second release of February 2026
+- `2026.3.1` - First release of March 2026
 - `2026.12.1` - First release of December 2026
 
 **Git Tags:**
