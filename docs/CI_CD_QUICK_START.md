@@ -9,8 +9,8 @@ Command reference for Objeck CI/CD workflows.
 ### 1. Tag and push
 
 ```bash
-git tag v2026.2.1
-git push origin v2026.2.1
+git tag v202x.x.x
+git push origin v202x.x.x
 ```
 
 This triggers `release-build.yml` automatically. On success, `release-publish.yml` auto-triggers.
@@ -34,10 +34,10 @@ The auto-generated release notes are generic. Update with proper notes from `doc
 
 ```bash
 # Check release assets
-gh release view v2026.2.1
+gh release view v202x.x.x
 
 # Test a download
-curl -I https://github.com/objeck/objeck-lang/releases/download/v2026.2.1/objeck-windows-x64_2026.2.1.msi
+curl -I https://github.com/objeck/objeck-lang/releases/download/v202x.x.x/objeck-windows-x64_202x.x.x.msi
 ```
 
 - GitHub: https://github.com/objeck/objeck-lang/releases
@@ -72,13 +72,13 @@ If a build fails or you need to re-release:
 
 ```bash
 # Delete release and tag
-gh release delete v2026.2.1 --yes
-git tag -d v2026.2.1
-git push origin :refs/tags/v2026.2.1
+gh release delete v202x.x.x --yes
+git tag -d v202x.x.x
+git push origin :refs/tags/v202x.x.x
 
 # Fix, commit, push, then re-tag
-git tag v2026.2.1
-git push origin v2026.2.1
+git tag v202x.x.x
+git push origin v202x.x.x
 ```
 
 ---
@@ -91,7 +91,7 @@ If auto-trigger didn't fire or you need to re-publish:
 RUN_ID=$(gh run list --workflow=release-build.yml --limit 1 --json databaseId --jq '.[0].databaseId')
 
 gh workflow run release-publish.yml \
-  -f version=2026.2.1 \
+  -f version=202x.x.x \
   -f run_id=$RUN_ID
 ```
 
